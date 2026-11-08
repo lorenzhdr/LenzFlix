@@ -8,6 +8,9 @@ Quellen:
 - `html.layout-desktop | .layout-mobile | .layout-tv` (`components/layoutManager.js`). Eine eigene Modern-Klasse gibt es nicht. ✅
 - **Modern** erkennt man an `header.MuiAppBar-root` (existiert nur im Modern-Layout) ✅. In CSS: `html:has(header.MuiAppBar-root)` bzw. per JS `html.lfx-modern` setzen.
 - **TV** = `html.layout-tv`. Das TV-Layout läuft immer auf Legacy und hat den Header `.skinHeader` mit `.headerTop/.headerLeft/.headerRight` und `.headerTabs`.
+  - `.skinHeader` ist eine Flex-Spalte: `.headerTop`, darunter `.headerTabs`. Ab `@media (min-width: 100em)` (also 1920er-TVs) zieht Jellyfin `.headerTabs` per `margin-top:-4.3em; position:relative; align-self:center` in die Logo-Zeile. `tv.css` setzt das zurück. Live geprüft im Chrome-TV-Layout am 2026-11-09. ✅
+  - LG webOS 4.x (Jellyfin-App) = Chromium 53. Kein `#rrggbbaa`/`#rgba` (erst ab 62), deshalb hat lightningcss das Target `chrome: 53`. Kein `inset`, kein Flex-`gap`, kein `clamp/min/max` im TV-Pfad. Das JS-Bundle (es2020, `?.`) wird dort nicht geparst. ✅
+  - Karten ohne `.show-animation` haben `contain: content`. Der 4px-`box-shadow`-Ring bleibt trotzdem sichtbar, weil er im 0.25em-Rand der `.cardBox` liegt. ✅
 - Im Modern-Layout existiert `.skinHeader` ebenfalls im DOM, ist aber versteckt. Selektoren darauf deshalb immer scopen.
 - `html[data-theme="dark"]` ✅. Root: `#reactRoot` ✅. Der Seiten-Content liegt in `main.MuiBox-root` → `.mainAnimatedPages.skinBody` → `.page`.
 - Routing über den **Hash-Router** ✅: `#/home`, `#/home?tab=1` (Favoriten), `#/movies?topParentId=…&collectionType=movies`, `#/tv?topParentId=…`, `#/details?id=…&serverId=…`, `#/list?parentId=…`, `#/search`, `#/video`, `#/login`, `#/mypreferencesmenu`, `#/mypreferencesdisplay`.
@@ -101,6 +104,7 @@ Quellen:
 
 ## Suche
 - `#searchPage.libraryPage.allLibraryPage.noSecondaryNavPage` → `.searchFields > .searchFieldsInner` → `input#searchTextInput.searchfields-txtSearch`
+- Suchfeld-Markup (live geprüft 2026-11-09): `.searchFieldsInner.flex` → `span.searchfields-icon.material-icons` + `.inputContainer` → leeres `label.inputLabel` (inline-block, erzeugt ~20px Zeilenbox über dem Input) + `input#searchTextInput`. Theme blendet das Label aus und setzt die Lupe auf `top:22px` (Input 44px). ✅
 - Ergebnisse: `.searchResults` (Sektionen wie auf der Startseite), `.searchSuggestions`
 
 ## Player-OSD

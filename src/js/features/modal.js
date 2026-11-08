@@ -88,6 +88,7 @@ function create(opener) {
   const content = h('div', { class: 'lfx-modal__content' });
   const modal = h('div', { class: 'lfx-modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': TITLE_ID, tabindex: '-1' }, [closeBtn, content]);
   overlay.append(modal);
+  overlay.scrollTop = 0;
   const onOverlayClick = (e) => { if (e.target === overlay) closeModal(); };
   overlay.addEventListener('click', onOverlayClick);
 

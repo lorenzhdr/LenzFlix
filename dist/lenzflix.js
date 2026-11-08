@@ -1442,6 +1442,7 @@
     const content = h("div", { class: "lfx-modal__content" });
     const modal = h("div", { class: "lfx-modal", role: "dialog", "aria-modal": "true", "aria-labelledby": TITLE_ID, tabindex: "-1" }, [closeBtn, content]);
     overlay.append(modal);
+    overlay.scrollTop = 0;
     const onOverlayClick = (e) => {
       if (e.target === overlay) closeModal();
     };
@@ -3687,7 +3688,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default];
 
   // src/js/main.js
-  var VERSION = "1.1.1";
+  var VERSION = "1.1.2";
   var POLL_MS = 250;
   var POLL_MAX_MS = 15e3;
   function init() {

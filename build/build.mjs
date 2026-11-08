@@ -9,7 +9,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'dist');
 const watch = process.argv.includes('--watch');
 // Explizite Targets (browserslistToTargets erwartet aufgelöste Browserslist-Ergebnisse, keine Query-Strings)
-const targets = { chrome: 100 << 16, safari: 15 << 16, firefox: 100 << 16, android: 100 << 16, ios_saf: 15 << 16 };
+// chrome/android 53 = LG webOS 4.x (Jellyfin-App): sonst minifiziert lightningcss Farben zu #rrggbbaa/#rgba
+// (erst ab Chrome 62), und alte TV-Engines verwerfen ganze Deklarationen (z. B. Fokusring, Tab-Pillen).
+// Für moderne Browser ist die Ausgabe gleichwertig (rgba() statt Hex-Alpha, top/right/bottom/left statt inset).
+const targets = { chrome: 53 << 16, safari: 15 << 16, firefox: 100 << 16, android: 53 << 16, ios_saf: 15 << 16 };
 
 // Font/asset URLs in src/css/*.css are written relative to dist/ (../assets/fonts/x.woff2),
 // so that they stay valid in the bundled output without rewriting.

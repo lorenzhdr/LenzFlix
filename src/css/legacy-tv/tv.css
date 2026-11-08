@@ -75,10 +75,15 @@ html.layout-tv .skinHeader .headerButton {
 html.layout-tv .skinHeader .headerButton .material-icons {
   font-size: 1.6em;
 }
-/* Tabs unter der Kopfzeile: Netflix-Textlinks */
+/* Tabs unter der Kopfzeile: Netflix-Textlinks.
+   Jellyfin zieht die Tabs ab 100em Viewport (1920er-TVs) per margin-top:-4.3em + position:relative in die Logo-Zeile;
+   zusammen mit align-self:flex-start lägen sie dann auf dem Logo -> zurücksetzen, eigene Zeile unter dem Logo. */
 html.layout-tv .skinHeader .headerTabs {
   width: auto;
   align-self: flex-start;
+  margin-top: 0;
+  position: static;
+  top: auto;
   padding: 0 3.5vw 0.4em;
 }
 html.layout-tv .headerTabs .emby-tab-button {

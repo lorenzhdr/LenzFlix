@@ -1,6 +1,7 @@
 /* LenzFlix · js-ui/modal – Netflix-Detail-Modal. Nur unter html.lfx-js.
    z-index 1200: über AppBar (1100) und Header-Pills (1101), unter MUI-Menüs (1300) und Jellyfin-Dialogen (999999). */
 html.lfx-js.lfx-modal-open { overflow: hidden; }
+html.lfx-js.lfx-modal-open body { overflow: hidden; } /* iOS: html-overflow allein sperrt den Hintergrund nicht */
 
 html.lfx-js .lfx-modal-overlay {
   position: fixed;
@@ -9,6 +10,7 @@ html.lfx-js .lfx-modal-overlay {
   background: rgba(0, 0, 0, 0.7);
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -292,7 +294,7 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body { padding-top: 24px; }
 
 /* Mobil: Bottom-Sheet */
 @media (max-width: 799px) {
-  html.lfx-js .lfx-modal-overlay { padding: 0; align-items: flex-end; }
+  html.lfx-js .lfx-modal-overlay { padding: 0; align-items: flex-start; } /* flex-end würde ein hohes Sheet über die Oberkante hinaus schieben (unerreichbar) */
   html.lfx-js .lfx-modal {
     width: 100%;
     min-height: 100%;

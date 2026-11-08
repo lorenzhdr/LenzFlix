@@ -36,14 +36,14 @@
   --jf-palette-background-paperChannel: 24 24 24;
   --jf-palette-text-primary: #fff;
   --jf-palette-text-secondary: #b3b3b3;
-  --jf-palette-divider: #ffffff1f;
+  --jf-palette-divider: rgba(255, 255, 255, .12);
   --jf-palette-AppBar-defaultBg: #141414;
   --jf-palette-AppBar-darkBg: #141414;
   --jf-palette-AppBar-transparentBg: transparent;
   --jf-palette-SnackbarContent-bg: #2f2f2f;
-  --jf-palette-FilledInput-bg: #161616b3;
-  --jf-palette-Button-inheritContainedBg: #6d6d6eb3;
-  --jf-palette-Button-inheritContainedHoverBg: #6d6d6e66;
+  --jf-palette-FilledInput-bg: rgba(22, 22, 22, .7);
+  --jf-palette-Button-inheritContainedBg: rgba(109, 109, 110, .7);
+  --jf-palette-Button-inheritContainedHoverBg: rgba(109, 109, 110, .4);
   --jf-card-borderRadius: 8px;
   --jf-shape-borderRadius: 4px;
   --lfx-red: #e50914;
@@ -60,12 +60,12 @@
   --lfx-text-muted: #b3b3b3;
   --lfx-text-soft: gray;
   --lfx-green: #46d369;
-  --lfx-glass: #6d6d6eb3;
-  --lfx-glass-hover: #6d6d6e66;
-  --lfx-pill-active: #fff3;
-  --lfx-icon-circle: #2a2a2a99;
-  --lfx-icon-circle-border: #ffffff80;
-  --lfx-progress-rail: #ffffffd9;
+  --lfx-glass: rgba(109, 109, 110, .7);
+  --lfx-glass-hover: rgba(109, 109, 110, .4);
+  --lfx-pill-active: rgba(255, 255, 255, .2);
+  --lfx-icon-circle: rgba(42, 42, 42, .6);
+  --lfx-icon-circle-border: rgba(255, 255, 255, .5);
+  --lfx-progress-rail: rgba(255, 255, 255, .85);
   --lfx-ambient: 27 40 41;
   --lfx-font: "LenzFlix Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --lfx-fs-nav: 16px;
@@ -100,8 +100,8 @@
   --lfx-dur: .25s;
   --lfx-dur-slow: .4s;
   --lfx-hover-delay: .5s;
-  --lfx-shadow-card: 0 16px 32px #000000bf;
-  --lfx-shadow-modal: 0 32px 64px #000000d9;
+  --lfx-shadow-card: 0 16px 32px rgba(0, 0, 0, .75);
+  --lfx-shadow-modal: 0 32px 64px rgba(0, 0, 0, .85);
 }
 
 @media (max-width: 799px) {
@@ -154,7 +154,7 @@ html body, .MuiTypography-root, .MuiButtonBase-root, .emby-button, input, select
 }
 
 .lfx-logo {
-  color: #0000;
+  color: rgba(0, 0, 0, 0);
   vertical-align: middle;
   background: url("../assets/logo/lenzflix.svg") center / contain no-repeat;
   width: 88px;
@@ -173,7 +173,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
   box-shadow: none;
   color: var(--lfx-text);
   transition: background-color .2s var(--lfx-ease);
-  background-color: #0000;
+  background-color: rgba(0, 0, 0, 0);
   background-image: none;
 }
 
@@ -188,13 +188,16 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root:before {
   height: 260px;
   transition: opacity .2s var(--lfx-ease);
   position: absolute;
-  inset: 0 0 auto;
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root:not(.MuiAppBar-colorTransparent) {
   background-color: var(--lfx-bg);
   background-image: none;
-  box-shadow: 0 1px #ffffff0a;
+  box-shadow: 0 1px rgba(255, 255, 255, .04);
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root:not(.MuiAppBar-colorTransparent):before {
@@ -208,7 +211,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child a.MuiButton-root[href="#/"] {
-  color: #0000;
+  color: rgba(0, 0, 0, 0);
   background: url("../assets/logo/lenzflix.svg") 0 / contain no-repeat;
   border-radius: 2px;
   flex: none;
@@ -221,7 +224,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child a.MuiButton-root[href="#/"]:hover {
-  background-color: #0000;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child a.MuiButton-root[href="#/"] .MuiButton-startIcon {
@@ -259,7 +262,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child a.MuiButton-root:not([href="#/"]):hover {
   color: var(--lfx-text);
-  background-color: #ffffff14;
+  background-color: rgba(255, 255, 255, .08);
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child a.MuiButton-root:not([href="#/"]).MuiButton-textPrimary {
@@ -278,7 +281,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child .MuiIconButton-root:hover {
-  background-color: #ffffff1a;
+  background-color: rgba(255, 255, 255, .1);
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child .MuiIconButton-root .MuiSvgIcon-root {
@@ -296,7 +299,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]:hover {
-  background-color: #0000;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] .MuiAvatar-root {
@@ -307,7 +310,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]:after {
   content: "";
-  border: 5px solid #0000;
+  border: 5px solid rgba(0, 0, 0, 0);
   border-top-color: var(--lfx-text);
   transition: transform var(--lfx-dur-fast) var(--lfx-ease);
   border-bottom-width: 0;
@@ -324,7 +327,7 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiTo
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) {
   padding-inline: var(--lfx-gutter);
   color: var(--lfx-text);
-  background-color: #141414eb;
+  background-color: rgba(20, 20, 20, .92);
 }
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) .MuiButton-root {
@@ -356,7 +359,8 @@ html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root .Mui-foc
 @media (max-width: 899px) {
   html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
     min-height: 56px;
-    padding-inline: 4vw;
+    padding-left: 4vw;
+    padding-right: 4vw;
   }
 }
 
@@ -449,7 +453,7 @@ html:not(.layout-tv) .emby-scroller .cardIndicators .indicator {
 }
 
 html:not(.layout-tv) .emby-scroller .cardIndicators .playedIndicator {
-  background: #141414bf;
+  background: rgba(20, 20, 20, .75);
 }
 
 html:not(.layout-tv) .emby-scroller .cardIndicators .playedIndicator .indicatorIcon {
@@ -483,10 +487,21 @@ html:not(.layout-tv) .emby-scroller .cardOverlayContainer .cardOverlayButtonIcon
 }
 
 @media (hover: hover) and (pointer: fine) {
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) {
+    z-index: 20;
+    transition-delay: .15s;
+    transform: scale(1.07);
+  }
+
   html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
     z-index: 20;
     transition-delay: .15s;
     transform: scale(1.07);
+  }
+
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) .cardScalable {
+    box-shadow: var(--lfx-shadow-card);
+    transition-delay: .15s;
   }
 
   html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
@@ -525,6 +540,10 @@ html:not(.layout-tv) #indexPage .verticalSection {
   margin: 0;
   display: flow-root;
   position: relative;
+}
+
+html:not(.layout-tv) #indexPage .verticalSection:-webkit-any(:hover, :focus-within) {
+  z-index: 3;
 }
 
 html:not(.layout-tv) #indexPage .verticalSection:is(:hover, :focus-within) {
@@ -635,10 +654,14 @@ html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button {
   display: flex;
   width: var(--lfx-gutter) !important;
   border-radius: 0 var(--lfx-card-radius) var(--lfx-card-radius) 0 !important;
-  background: #14141480 !important;
+  background: rgba(20, 20, 20, .5) !important;
   height: 100% !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:-webkit-any([data-direction="right"], .btnNext) {
+  border-radius: var(--lfx-card-radius) 0 0 var(--lfx-card-radius) !important;
 }
 
 html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:is([data-direction="right"], .btnNext) {
@@ -662,7 +685,7 @@ html:not(.layout-tv) #indexPage .emby-scrollbuttons-button:focus-visible {
 }
 
 html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:not(:disabled):hover {
-  background: #141414bf !important;
+  background: rgba(20, 20, 20, .75) !important;
 }
 
 html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:disabled {
@@ -700,7 +723,10 @@ html:not(.layout-tv) #itemDetailPage {
     height: var(--lfx-detail-bg-h);
     z-index: 0;
     position: absolute;
-    inset: 0 0 auto;
+    top: 0;
+    bottom: auto;
+    left: 0;
+    right: 0;
   }
 
   html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) .backdropContainer .backdropImage {
@@ -710,11 +736,14 @@ html:not(.layout-tv) #itemDetailPage {
   html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) .backdropContainer:after {
     content: "";
     z-index: 2;
-    background: linear-gradient(0deg, var(--lfx-bg) 0%, #14141400 38%),
-      linear-gradient(90deg, #000000bf 0%, #0000 60%),
-      linear-gradient(180deg, #00000080 0%, #0000 140px);
+    background: linear-gradient(0deg, var(--lfx-bg) 0%, rgba(20, 20, 20, 0) 38%),
+      linear-gradient(90deg, rgba(0, 0, 0, .75) 0%, rgba(0, 0, 0, 0) 60%),
+      linear-gradient(180deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, 0) 140px);
     position: absolute;
-    inset: 0;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
   }
 
   html:not(.layout-tv):not(.layout-mobile) #itemDetailPage {
@@ -757,11 +786,14 @@ html:not(.layout-tv) #itemDetailPage .itemBackdrop {
 
 html:not(.layout-tv) #itemDetailPage .itemBackdrop:after {
   content: "";
-  background: linear-gradient(0deg, var(--lfx-bg) 0%, #14141400 38%),          /* unten: weicher Fade in #141414 */
-    linear-gradient(90deg, #000000bf 0%, #0000 60%),     /* links: Vignette */
-    linear-gradient(180deg, #00000080 0%, #0000 140px);
+  background: linear-gradient(0deg, var(--lfx-bg) 0%, rgba(20, 20, 20, 0) 38%),          /* unten: weicher Fade in #141414 */
+    linear-gradient(90deg, rgba(0, 0, 0, .75) 0%, rgba(0, 0, 0, 0) 60%),     /* links: Vignette */
+    linear-gradient(180deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, 0) 140px);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html:not(.layout-tv) #itemDetailPage .detailLogo {
@@ -783,6 +815,7 @@ html:not(.layout-tv) #itemDetailPage .detailLogo {
 }
 
 html:not(.layout-tv) #itemDetailPage:has(.detailLogo:not(.hide)) .nameContainer h1 {
+  -webkit-clip-path: inset(50%);
   clip-path: inset(50%);
   white-space: nowrap;
   width: 1px;
@@ -808,7 +841,7 @@ html:not(.layout-tv) #itemDetailPage .infoWrapper {
 html:not(.layout-tv) #itemDetailPage .nameContainer h1 {
   text-align: left;
   margin: 0 0 .2em;
-  font-size: clamp(32px, 4vw, 56px);
+  font-size: max(32px, min(4vw, 56px));
   font-weight: 800;
   line-height: 1.1;
 }
@@ -850,9 +883,15 @@ html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoItem {
   margin: 0 !important;
 }
 
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoItem:not(:-webkit-any(:first-child, .mediaInfoOfficialRating, .mediaInfoOfficialRating + .mediaInfoItem)):before {
+  content: "•";
+  color: rgba(255, 255, 255, .55);
+  margin: 0 .6em;
+}
+
 html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoItem:not(:is(:first-child, .mediaInfoOfficialRating, .mediaInfoOfficialRating + .mediaInfoItem)):before {
   content: "•";
-  color: #ffffff8c;
+  color: rgba(255, 255, 255, .55);
   margin: 0 .6em;
 }
 
@@ -873,7 +912,7 @@ html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText {
 
 html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText.mediaInfoOfficialRating {
   color: var(--lfx-text);
-  border: 1px solid #fff6;
+  border: 1px solid rgba(255, 255, 255, .4);
   border-radius: 3px;
   padding: 0 6px;
   font-size: 14px;
@@ -950,15 +989,15 @@ html:not(.layout-tv) #itemDetailPage .btnPlay, html:not(.layout-tv) #itemDetailP
 }
 
 html:not(.layout-tv) #itemDetailPage .btnPlay:hover, html:not(.layout-tv) #itemDetailPage .btnReplay:hover {
-  background: #ffffffbf;
+  background: rgba(255, 255, 255, .75);
 }
 
 html:not(.layout-tv) #itemDetailPage .btnPlay:focus-visible {
-  background: #ffffffbf;
+  background: rgba(255, 255, 255, .75);
 }
 
 html:not(.layout-tv) #itemDetailPage .btnReplay:focus-visible {
-  background: #ffffffbf;
+  background: rgba(255, 255, 255, .75);
 }
 
 html:not(.layout-tv) #itemDetailPage .btnPlay .detailButton-icon, html:not(.layout-tv) #itemDetailPage .btnReplay .detailButton-icon {
@@ -1043,7 +1082,7 @@ html:not(.layout-tv) #itemDetailPage .detailSection > .detailSectionContent, htm
 
 html:not(.layout-tv) #itemDetailPage .detailSectionContent {
   color: var(--lfx-text);
-  font-size: clamp(16px, 1.4vw, 18px);
+  font-size: max(16px, min(1.4vw, 18px));
   line-height: 1.5;
 }
 
@@ -1219,7 +1258,7 @@ html:not(.layout-tv) #itemDetailPage .listItemImageButton {
 
 html:not(.layout-tv) #itemDetailPage .listItemImageButton:hover {
   color: #fff;
-  background: #00000080;
+  background: rgba(0, 0, 0, .5);
 }
 
 html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemBody {
@@ -1331,7 +1370,7 @@ html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent .cardFo
   }
 
   html:not(.layout-tv) #itemDetailPage .nameContainer h1 {
-    font-size: clamp(28px, 8vw, 40px);
+    font-size: max(28px, min(8vw, 40px));
   }
 
   html:not(.layout-tv) #itemDetailPage .listItemImage-large {
@@ -1356,7 +1395,7 @@ html:not(.layout-tv) .skinHeader.osdHeader {
   -webkit-backdrop-filter: none;
   box-shadow: none;
   color: #fff;
-  background: linear-gradient(#000000b3 0%, #0000 100%);
+  background: linear-gradient(rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 html:not(.layout-tv) .osdHeader .MuiToolbar-root .MuiIconButton-root {
@@ -1389,7 +1428,7 @@ html:not(.layout-tv) #videoOsdPage {
 html:not(.layout-tv) #videoOsdPage .videoOsdBottom {
   padding-top: 120px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
-  background: linear-gradient(0deg, #000000b3 0%, #0000 100%);
+  background: linear-gradient(0deg, rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
 html:not(.layout-tv) #videoOsdPage .osdControls {
@@ -1587,7 +1626,7 @@ html:not(.layout-tv) #videoOsdPage .osdControls .sliderMarkerContainer, html:not
 html:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider-background-flex {
   height: 4px;
   transition: height var(--lfx-dur-fast) var(--lfx-ease), margin-top var(--lfx-dur-fast) var(--lfx-ease);
-  background: #ffffff4d;
+  background: rgba(255, 255, 255, .3);
   border-radius: 2px;
   margin-top: -2px;
 }
@@ -1598,7 +1637,7 @@ html:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider-container:hover .mdl
 }
 
 html:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider-background-upper {
-  background: #ffffff73;
+  background: rgba(255, 255, 255, .45);
 }
 
 html:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider-background-lower {
@@ -1628,11 +1667,11 @@ html:not(.layout-tv) #videoOsdPage .osdControls .sliderMarker {
 }
 
 html:not(.layout-tv) #videoOsdPage .osdControls .sliderMarker.watched, html:not(.layout-tv) #videoOsdPage .osdControls .sliderMarker.unwatched {
-  background-color: #fff9;
+  background-color: rgba(255, 255, 255, .6);
 }
 
 html:not(.layout-tv) #videoOsdPage .osdControls .sliderBubble {
-  background: #141414f2;
+  background: rgba(20, 20, 20, .95);
   border-radius: 4px;
 }
 
@@ -1662,7 +1701,7 @@ html:not(.layout-tv) #videoOsdPage .upNextContainer {
   border-radius: var(--lfx-popup-radius);
   box-shadow: var(--lfx-shadow-card);
   color: #fff;
-  background: #181818f2;
+  background: rgba(24, 24, 24, .95);
 }
 
 html:not(.layout-tv) #videoOsdPage .upNextDialog-title {
@@ -1672,7 +1711,7 @@ html:not(.layout-tv) #videoOsdPage .upNextDialog-title {
 
 html:not(.layout-tv) #videoOsdPage .upNextDialog-button {
   color: #fff;
-  background: #6d6d6eb3;
+  background: rgba(109, 109, 110, .7);
   border-radius: 4px;
   font-weight: 600;
 }
@@ -1693,9 +1732,12 @@ html:not(.layout-tv):has(#loginPage:not(.hide)) {
 html:not(.layout-tv):has(#loginPage:not(.hide)) .backdropContainer:after {
   content: "";
   pointer-events: none;
-  background: linear-gradient(#000 0, #0000 22% 70%, #000 100%), #00000080;
+  background: linear-gradient(#000 0, rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 70%, #000 100%), rgba(0, 0, 0, .5);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html:not(.layout-tv) #loginPage {
@@ -1717,7 +1759,7 @@ html:not(.layout-tv) #loginPage .manualLoginForm, html:not(.layout-tv) #loginPag
 }
 
 html:not(.layout-tv) #loginPage .manualLoginForm {
-  background: #000000b3;
+  background: rgba(0, 0, 0, .7);
   border-radius: 4px;
   padding: 48px 68px 40px;
 }
@@ -1761,8 +1803,8 @@ html:not(.layout-tv) #loginPage .emby-input {
   box-sizing: border-box;
   height: 56px;
   transition: border-color var(--lfx-dur-fast) var(--lfx-ease);
-  background: #161616b3;
-  border: 1px solid #808080b3;
+  background: rgba(22, 22, 22, .7);
+  border: 1px solid rgba(128, 128, 128, .7);
   border-radius: 4px;
   padding: 22px 16px 6px;
   font-size: 16px;
@@ -1839,12 +1881,12 @@ html:not(.layout-tv) #loginPage .button-submit:active {
 
 html:not(.layout-tv) #loginPage .btnCancel, html:not(.layout-tv) #loginPage .btnManual, html:not(.layout-tv) #loginPage .btnQuick {
   color: #fff;
-  background: #80808066;
+  background: rgba(128, 128, 128, .4);
 }
 
 html:not(.layout-tv) #loginPage .btnCancel:hover, html:not(.layout-tv) #loginPage .btnCancel:focus, html:not(.layout-tv) #loginPage .btnManual:hover, html:not(.layout-tv) #loginPage .btnManual:focus, html:not(.layout-tv) #loginPage .btnQuick:hover, html:not(.layout-tv) #loginPage .btnQuick:focus {
   color: #fff;
-  background: #8080804d;
+  background: rgba(128, 128, 128, .3);
 }
 
 html:not(.layout-tv) #loginPage .btnForgotPassword, html:not(.layout-tv) #loginPage .btnSelectServer {
@@ -1882,13 +1924,13 @@ html:not(.layout-tv) #loginPage #divUsers {
 }
 
 html:not(.layout-tv) #loginPage #divUsers .card {
-  width: clamp(84px, 10vw, 160px);
+  width: max(84px, min(10vw, 160px));
   color: var(--lfx-text-muted);
 }
 
 html:not(.layout-tv) #loginPage #divUsers .cardScalable {
   transition: border-color var(--lfx-dur-fast) var(--lfx-ease);
-  border: 3px solid #0000;
+  border: 3px solid rgba(0, 0, 0, 0);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1975,7 +2017,7 @@ html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .M
   transition: background var(--lfx-dur-fast) var(--lfx-ease);
   background: #000;
   font-size: 14px;
-  border: 1px solid #ffffffd9 !important;
+  border: 1px solid rgba(255, 255, 255, .85) !important;
   border-radius: 4px !important;
 }
 
@@ -2022,7 +2064,7 @@ html:not(.layout-tv) .itemsViewSettingsContainer .button-flat {
   color: #fff;
   text-transform: none;
   background: #000;
-  border: 1px solid #ffffffd9;
+  border: 1px solid rgba(255, 255, 255, .85);
   border-radius: 4px;
   font-size: 14px;
 }
@@ -2050,7 +2092,7 @@ html:not(.layout-tv) .paging .paper-icon-button-light:hover, html:not(.layout-tv
 html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:has( > [data-testid^="NavigateBefore"],  > [data-testid^="NavigateNext"]) {
   color: var(--lfx-text-muted);
   background: none;
-  border-color: #0000 !important;
+  border-color: rgba(0, 0, 0, 0) !important;
 }
 
 html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) {
@@ -2080,6 +2122,10 @@ html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) >
 html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .cardBox {
   transition: transform var(--lfx-dur) var(--lfx-ease), box-shadow var(--lfx-dur) var(--lfx-ease);
   margin: 0 0 12px;
+}
+
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) :-webkit-any(.cardPadder, .cardContent, .cardImageContainer, .blurhash-canvas, .cardOverlayContainer) {
+  border-radius: var(--lfx-card-radius);
 }
 
 html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) :is(.cardPadder, .cardContent, .cardImageContainer, .blurhash-canvas, .cardOverlayContainer) {
@@ -2152,8 +2198,16 @@ html:not(.layout-tv) .dialog.actionSheet .actionSheetContent {
   background: none;
 }
 
+html:not(.layout-tv) .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType) :-webkit-any(.formDialogHeader, .formDialogFooter, .collapseContent) {
+  background: none;
+}
+
 html:not(.layout-tv) .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType) :is(.formDialogHeader, .formDialogFooter, .collapseContent) {
   background: none;
+}
+
+html:not(.layout-tv) .dialog :-webkit-any(.formDialogHeaderTitle, .actionSheetTitle, .checkboxListLabel) {
+  color: #fff;
 }
 
 html:not(.layout-tv) .dialog :is(.formDialogHeaderTitle, .actionSheetTitle, .checkboxListLabel) {
@@ -2169,10 +2223,17 @@ html:not(.layout-tv) .dialog .emby-checkbox:checked + span + .checkboxOutline {
   border-color: var(--lfx-red);
 }
 
+html:not(.layout-tv) .dialog :-webkit-any(.emby-select, .emby-input) {
+  background: var(--lfx-surface-2);
+  color: #fff;
+  border: 1px solid rgba(128, 128, 128, .7);
+  border-radius: 4px;
+}
+
 html:not(.layout-tv) .dialog :is(.emby-select, .emby-input) {
   background: var(--lfx-surface-2);
   color: #fff;
-  border: 1px solid #808080b3;
+  border: 1px solid rgba(128, 128, 128, .7);
   border-radius: 4px;
 }
 
@@ -2194,29 +2255,45 @@ html:not(.layout-tv) #searchPage .searchFieldsInner {
 
 html:not(.layout-tv) #searchPage .searchfields-icon {
   z-index: 1;
+  width: 24px;
+  height: 24px;
   color: var(--lfx-text-muted);
   pointer-events: none;
-  margin: 0;
+  margin: -12px 0 0;
   font-size: 24px;
+  line-height: 24px;
+  display: block;
   position: absolute;
-  top: 50%;
+  top: 22px;
   left: 12px;
-  transform: translateY(-50%);
+  transform: none;
 }
 
 html:not(.layout-tv) #searchPage .searchFieldsInner .inputContainer {
   margin: 0 !important;
 }
 
+html:not(.layout-tv) #searchPage .searchFieldsInner .inputLabel {
+  display: none;
+}
+
 html:not(.layout-tv) #searchPage #searchTextInput {
   color: #fff;
   box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
   background: #000;
   border: 1px solid #fff;
   border-radius: 0;
   height: 44px;
+  margin: 0;
   padding: 0 16px 0 48px;
   font-size: 16px;
+}
+
+html:not(.layout-tv) #searchPage #searchTextInput::-webkit-input-placeholder {
+  color: #8c8c8c;
+  opacity: 1;
 }
 
 html:not(.layout-tv) #searchPage #searchTextInput::placeholder {
@@ -2342,7 +2419,8 @@ html:not(.layout-tv) #searchPage .noItemsMessage {
   }
 
   html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] {
-    place-items: center;
+    align-items: center;
+    justify-items: center;
     min-width: 40px;
     min-height: 40px;
     margin: 0 0 0 4px;
@@ -2496,8 +2574,8 @@ html.layout-tv .skinHeader:not(.osdHeader), html.layout-tv .skinHeader.semiTrans
   -webkit-backdrop-filter: none;
   box-shadow: none;
   color: var(--lfx-text-body);
-  background-color: #0000;
-  background-image: linear-gradient(#000000b3 0%, #0000 100%);
+  background-color: rgba(0, 0, 0, 0);
+  background-image: linear-gradient(rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, 0) 100%);
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
@@ -2518,7 +2596,7 @@ html.layout-tv .skinHeader .pageTitle {
 }
 
 html.layout-tv .skinHeader .pageTitleWithLogo, html.layout-tv .skinHeader .pageTitleWithDefaultLogo {
-  background-color: #0000;
+  background-color: rgba(0, 0, 0, 0);
   background-image: url("../assets/logo/lenzflix.svg");
   background-position: 0;
   background-repeat: no-repeat;
@@ -2540,7 +2618,10 @@ html.layout-tv .skinHeader .headerButton .material-icons {
 html.layout-tv .skinHeader .headerTabs {
   align-self: flex-start;
   width: auto;
+  margin-top: 0;
   padding: 0 3.5vw .4em;
+  position: static;
+  top: auto;
 }
 
 html.layout-tv .headerTabs .emby-tab-button {
@@ -2616,8 +2697,8 @@ html.layout-tv .card.show-animation:focus > .cardBox {
 
 html.layout-tv .card:focus .cardBox.visualCardBox, html.layout-tv .card:focus .cardBox:not(.visualCardBox) .cardScalable {
   border-radius: 8px;
-  box-shadow: 0 0 0 4px #fff, 0 16px 32px 4px #000000bf;
-  border-color: #0000 !important;
+  box-shadow: 0 0 0 4px #fff, 0 16px 32px 4px rgba(0, 0, 0, .75);
+  border-color: rgba(0, 0, 0, 0) !important;
 }
 
 html.layout-tv .sectionTitleContainer-cards {
@@ -2657,7 +2738,7 @@ html.layout-tv .emby-scroller .cardBox {
 html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter {
   z-index: 2;
   color: #fff;
-  background: linear-gradient(0deg, #000000d9 0%, #0000 100%);
+  background: linear-gradient(0deg, rgba(0, 0, 0, .85) 0%, rgba(0, 0, 0, 0) 100%);
   border-radius: 0 0 8px 8px;
   padding: 1.6em .6em .7em;
   display: block;
@@ -2677,7 +2758,7 @@ html.layout-tv .cardText-first {
 }
 
 html.layout-tv .itemProgressBar {
-  background: #ffffff4d;
+  background: rgba(255, 255, 255, .3);
   height: .3em;
 }
 
@@ -2689,9 +2770,9 @@ html.layout-tv .backdropContainer:after {
   content: "";
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(0deg, var(--lfx-bg) 0%, #14141400 55%),
-    linear-gradient(90deg, #141414eb 0%, #1414148c 40%, #14141400 75%),
-    linear-gradient(180deg, #00000080 0%, #0000 20%);
+  background: linear-gradient(0deg, var(--lfx-bg) 0%, rgba(20, 20, 20, 0) 55%),
+    linear-gradient(90deg, rgba(20, 20, 20, .92) 0%, rgba(20, 20, 20, .55) 40%, rgba(20, 20, 20, 0) 75%),
+    linear-gradient(180deg, rgba(0, 0, 0, .5) 0%, rgba(0, 0, 0, 0) 20%);
   width: 100%;
   height: 100%;
   position: absolute;
@@ -2747,7 +2828,7 @@ html.layout-tv #itemDetailPage .itemMiscInfo {
 }
 
 html.layout-tv #itemDetailPage .itemMiscInfo .mediaInfoOfficialRating {
-  border: 1px solid #ffffff80;
+  border: 1px solid rgba(255, 255, 255, .5);
   border-radius: 3px;
   padding: 0 .4em;
 }
@@ -2889,7 +2970,7 @@ html.layout-tv .dialog {
 }
 
 html.layout-tv .dialogBackdrop.dialogBackdropOpened {
-  background-color: #000000bf;
+  background-color: rgba(0, 0, 0, .75);
 }
 
 html.layout-tv .actionSheetTitle {
@@ -2946,7 +3027,10 @@ html.lfx-js #lfx-ambient {
   height: min(820px, 100vh);
   transition: opacity .3s var(--lfx-ease);
   position: absolute;
-  inset: 0 0 auto;
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js:not(.lfx-home-on) #lfx-ambient {
@@ -2988,7 +3072,7 @@ html.lfx-js #lfx-nav .lfx-nav__item {
 
 html.lfx-js #lfx-nav .lfx-nav__item:hover {
   color: var(--lfx-text);
-  background: #ffffff14;
+  background: rgba(255, 255, 255, .08);
 }
 
 html.lfx-js #lfx-nav .lfx-nav__item.is-active {
@@ -3010,7 +3094,7 @@ html.lfx-js #lfx-nav .lfx-nav__caret {
   width: 0;
   height: 0;
   transition: transform var(--lfx-dur-fast) var(--lfx-ease);
-  border: 5px solid #0000;
+  border: 5px solid rgba(0, 0, 0, 0);
   border-top-color: currentColor;
   border-bottom-width: 0;
 }
@@ -3030,8 +3114,8 @@ html.lfx-js #lfx-nav .lfx-nav__menu {
   border-radius: var(--lfx-popup-radius);
   min-width: 200px;
   box-shadow: var(--lfx-shadow-card);
-  background: #141414f5;
-  border: 1px solid #ffffff26;
+  background: rgba(20, 20, 20, .96);
+  border: 1px solid rgba(255, 255, 255, .15);
   padding: 8px 0;
   display: none;
   position: absolute;
@@ -3053,7 +3137,7 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item {
 
 html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   color: var(--lfx-text);
-  background: #ffffff1a;
+  background: rgba(255, 255, 255, .1);
 }
 
 @media (max-width: 899px) {
@@ -3104,18 +3188,21 @@ html.lfx-js .lfx-bb {
   color: #fff;
   isolation: isolate;
   background: #0c0c0c;
-  border: 1px solid #0009;
+  border: 1px solid rgba(0, 0, 0, .6);
   max-height: 80vh;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 6px 24px #00000059;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
 }
 
 html.lfx-js .lfx-bb__media, html.lfx-js .lfx-bb__pic, html.lfx-js .lfx-bb__img, html.lfx-js .lfx-bb__video {
   width: 100%;
   height: 100%;
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-bb__img, html.lfx-js .lfx-bb__video {
@@ -3143,9 +3230,12 @@ html.lfx-js .lfx-bb__video.is-in {
 
 html.lfx-js .lfx-bb__shade {
   pointer-events: none;
-  background: linear-gradient(77deg, #0009 0, #0000 55%), linear-gradient(to top, #00000073, #0000 25%);
+  background: linear-gradient(77deg, rgba(0, 0, 0, .6) 0, rgba(0, 0, 0, 0) 55%), linear-gradient(to top, rgba(0, 0, 0, .45), rgba(0, 0, 0, 0) 25%);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-bb__mark {
@@ -3161,10 +3251,11 @@ html.lfx-js .lfx-bb__mark {
 html.lfx-js .lfx-bb__mute {
   color: #fff;
   cursor: pointer;
-  background: #3f3b38d9;
+  background: rgba(63, 59, 56, .85);
   border: 0;
   border-radius: 50%;
-  place-items: center;
+  align-items: center;
+  justify-items: center;
   width: 30px;
   height: 30px;
   padding: 0;
@@ -3187,7 +3278,10 @@ html.lfx-js .lfx-bb__live {
   pointer-events: none;
   transition: opacity .4s var(--lfx-ease);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-bb__live.is-out {
@@ -3216,7 +3310,7 @@ html.lfx-js .lfx-bb__logo {
 }
 
 html.lfx-js .lfx-bb__title {
-  text-shadow: 0 2px 8px #0009;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
   margin: 0;
   font-size: 34px;
   font-weight: 700;
@@ -3226,7 +3320,7 @@ html.lfx-js .lfx-bb__title {
 html.lfx-js .lfx-bb__meta {
   font-size: var(--lfx-fs-meta);
   white-space: nowrap;
-  text-shadow: 0 1px 4px #00000080;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
   flex-wrap: wrap;
   align-items: center;
   font-weight: 600;
@@ -3312,7 +3406,7 @@ html.lfx-js .lfx-bb__dotbtn:focus-visible {
 
 @media (hover: hover) and (pointer: fine) {
   html.lfx-js .lfx-bb__btn--play:hover {
-    background: #ffffffbf;
+    background: rgba(255, 255, 255, .75);
   }
 
   html.lfx-js .lfx-bb__btn--info:hover {
@@ -3322,7 +3416,7 @@ html.lfx-js .lfx-bb__dotbtn:focus-visible {
 
 html.lfx-js .lfx-bb__badge {
   pointer-events: none;
-  background: #141414d9;
+  background: rgba(20, 20, 20, .85);
   border-radius: 8px;
   align-items: center;
   gap: 8px;
@@ -3376,7 +3470,7 @@ html.lfx-js .lfx-bb__dotbtn {
 
 html.lfx-js .lfx-bb__dotbtn:after {
   content: "";
-  background: #ffffff59;
+  background: rgba(255, 255, 255, .35);
   border-radius: 2px;
   height: 3px;
   position: absolute;
@@ -3400,7 +3494,7 @@ html.lfx-js .lfx-bb__dotbtn.is-active:after {
   }
 
   html.lfx-js .lfx-bb__shade {
-    background: linear-gradient(to top, #000000d9, #0000 55%);
+    background: linear-gradient(to top, rgba(0, 0, 0, .85), rgba(0, 0, 0, 0) 55%);
   }
 
   html.lfx-js .lfx-bb__text {
@@ -3517,7 +3611,8 @@ html.lfx-js .lfx-row__track {
   overscroll-behavior-x: contain;
   margin: -4px 0;
   display: flex;
-  overflow: auto hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 html.lfx-js .lfx-row__track::-webkit-scrollbar {
@@ -3560,7 +3655,10 @@ html.lfx-js .lfx-card__img {
   height: 100%;
   transition: filter var(--lfx-dur-fast) var(--lfx-ease);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -3572,9 +3670,12 @@ html.lfx-js .lfx-card__img {
 html.lfx-js .lfx-card__link--titled:after {
   content: "";
   pointer-events: none;
-  background: linear-gradient(to top, #000000b3, #0000 55%);
+  background: linear-gradient(to top, rgba(0, 0, 0, .7), rgba(0, 0, 0, 0) 55%);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-card__logo {
@@ -3591,7 +3692,7 @@ html.lfx-js .lfx-card__logo {
 html.lfx-js .lfx-card__title {
   z-index: 1;
   -webkit-line-clamp: 2;
-  text-shadow: 0 1px 6px #000c;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .8);
   -webkit-box-orient: vertical;
   font-size: 16px;
   font-weight: 800;
@@ -3693,7 +3794,7 @@ html.lfx-js .lfx-row__arrow {
     cursor: pointer;
     opacity: 0;
     transition: opacity var(--lfx-dur) var(--lfx-ease), background var(--lfx-dur-fast) var(--lfx-ease);
-    background: #14141480;
+    background: rgba(20, 20, 20, .5);
     border: 0;
     justify-content: center;
     align-items: center;
@@ -3728,7 +3829,7 @@ html.lfx-js .lfx-row__arrow {
   }
 
   html.lfx-js .lfx-row__arrow:hover {
-    background: #141414b3;
+    background: rgba(20, 20, 20, .7);
   }
 
   html.lfx-js .lfx-row__arrow:hover svg {
@@ -3794,10 +3895,21 @@ html.lfx-js .lfx-row:has(.lfx-card--top10) {
 }
 
 @media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) {
+    z-index: auto;
+    transition-delay: 0s;
+    transform: none;
+  }
+
   html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
     z-index: auto;
     transition-delay: 0s;
     transform: none;
+  }
+
+  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) .cardScalable {
+    box-shadow: none;
+    transition-delay: 0s;
   }
 
   html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
@@ -3817,7 +3929,7 @@ html.lfx-js #lfx-hovercard {
   font-family: var(--lfx-font);
   background: var(--lfx-surface);
   border-radius: var(--lfx-popup-radius);
-  box-shadow: 0 3px 10px #000000bf, var(--lfx-shadow-card);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .75), var(--lfx-shadow-card);
   transform-origin: 0 0;
   transform: var(--lfx-hc-from, none);
   opacity: 1;
@@ -3854,10 +3966,13 @@ html.lfx-js #lfx-hovercard.is-closing {
 
 .lfx-hc__overlay {
   pointer-events: none;
-  background: linear-gradient(#0000, #000000b3);
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .7));
   padding: 16px;
   position: absolute;
-  inset: auto 0 0;
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 .lfx-hc__overlay:empty {
@@ -3873,7 +3988,7 @@ html.lfx-js #lfx-hovercard.is-closing {
 }
 
 .lfx-hc__title {
-  text-shadow: 0 1px 6px #000c;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .8);
   font-size: 20px;
   font-weight: 700;
   line-height: 1.15;
@@ -3947,7 +4062,7 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
 }
 
 .lfx-hc__btn--play:hover {
-  background: #ffffffd9;
+  background: rgba(255, 255, 255, .85);
 }
 
 .lfx-hc__btn svg {
@@ -3974,7 +4089,7 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
 
 .lfx-hc__tip:after {
   content: "";
-  border: 6px solid #0000;
+  border: 6px solid rgba(0, 0, 0, 0);
   border-top-color: #fff;
   margin-left: -6px;
   position: absolute;
@@ -4025,7 +4140,7 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
 }
 
 .lfx-hc__badge {
-  border: 1px solid #fff6;
+  border: 1px solid rgba(255, 255, 255, .4);
   padding: 0 .4em;
   line-height: 1.35;
   display: inline-block;
@@ -4088,23 +4203,27 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
   }
 }
 
-html.lfx-js.lfx-modal-open {
+html.lfx-js.lfx-modal-open, html.lfx-js.lfx-modal-open body {
   overflow: hidden;
 }
 
 html.lfx-js .lfx-modal-overlay {
   z-index: 1200;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
   color: var(--lfx-text);
   font-family: var(--lfx-font);
-  background: #000000b3;
+  background: rgba(0, 0, 0, .7);
   justify-content: center;
   align-items: flex-start;
   padding: 32px 0 48px;
   display: flex;
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   overflow-y: auto;
 }
 
@@ -4153,7 +4272,8 @@ html.lfx-js .lfx-modal__close {
   cursor: pointer;
   border: 0;
   border-radius: 50%;
-  place-items: center;
+  align-items: center;
+  justify-items: center;
   width: 36px;
   height: 36px;
   padding: 0;
@@ -4195,13 +4315,19 @@ html.lfx-js .lfx-modal__hero-img {
   width: 100%;
   height: 100%;
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-modal__hero-fade {
-  background: linear-gradient(to top, var(--lfx-surface) 0, #18181800 40%);
+  background: linear-gradient(to top, var(--lfx-surface) 0, rgba(24, 24, 24, 0) 40%);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-modal__hero-content {
@@ -4220,7 +4346,7 @@ html.lfx-js .lfx-modal__logo {
 }
 
 html.lfx-js .lfx-modal__title {
-  text-shadow: 0 2px 8px #0009;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
   margin: 0 0 16px;
   font-size: 32px;
   font-weight: 700;
@@ -4248,7 +4374,7 @@ html.lfx-js .lfx-modal__play {
 }
 
 html.lfx-js .lfx-modal__play:hover {
-  background: #ffffffbf;
+  background: rgba(255, 255, 255, .75);
 }
 
 html.lfx-js .lfx-modal__round {
@@ -4258,7 +4384,8 @@ html.lfx-js .lfx-modal__round {
   cursor: pointer;
   border-radius: 50%;
   flex: none;
-  place-items: center;
+  align-items: center;
+  justify-items: center;
   width: 42px;
   height: 42px;
   padding: 0;
@@ -4266,7 +4393,7 @@ html.lfx-js .lfx-modal__round {
 }
 
 html.lfx-js .lfx-modal__round:hover {
-  background: #ffffff26;
+  background: rgba(255, 255, 255, .15);
   border-color: #fff;
 }
 
@@ -4301,7 +4428,7 @@ html.lfx-js .lfx-modal__year, html.lfx-js .lfx-modal__length {
 
 html.lfx-js .lfx-modal__badge {
   color: #fff;
-  border: 1px solid #fff6;
+  border: 1px solid rgba(255, 255, 255, .4);
   border-radius: 3px;
   margin-right: 8px;
   padding: 0 6px;
@@ -4482,11 +4609,15 @@ html.lfx-js .lfx-modal__ep-thumb img {
 html.lfx-js .lfx-modal__ep-playicon {
   opacity: 0;
   transition: opacity var(--lfx-dur-fast);
-  background: #0006;
-  place-items: center;
+  background: rgba(0, 0, 0, .4);
+  align-items: center;
+  justify-items: center;
   display: grid;
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-modal__ep:hover .lfx-modal__ep-playicon {
@@ -4498,7 +4629,7 @@ html.lfx-js .lfx-modal__ep:focus-visible .lfx-modal__ep-playicon {
 }
 
 html.lfx-js .lfx-modal__ep .lfx-progress {
-  background: #ffffff4d;
+  background: rgba(255, 255, 255, .3);
   height: 3px;
   position: absolute;
   bottom: 0;
@@ -4567,9 +4698,10 @@ html.lfx-js .lfx-modal__more-btn {
   background: var(--lfx-surface);
   color: #fff;
   cursor: pointer;
-  border: 2px solid #ffffff80;
+  border: 2px solid rgba(255, 255, 255, .5);
   border-radius: 50%;
-  place-items: center;
+  align-items: center;
+  justify-items: center;
   width: 40px;
   height: 40px;
   padding: 0;
@@ -4597,7 +4729,8 @@ html.lfx-js .lfx-modal__card {
 html.lfx-js .lfx-modal__card-img {
   aspect-ratio: 16 / 9;
   background: var(--lfx-surface-3);
-  place-items: center;
+  align-items: center;
+  justify-items: center;
   display: grid;
   position: relative;
 }
@@ -4688,7 +4821,7 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body {
 
 @media (max-width: 799px) {
   html.lfx-js .lfx-modal-overlay {
-    align-items: flex-end;
+    align-items: flex-start;
     padding: 0;
   }
 
@@ -4775,7 +4908,7 @@ html.lfx-js .lfx-np__tabs {
   z-index: 5;
   padding: 12px var(--lfx-gutter);
   scrollbar-width: none;
-  background: linear-gradient(#141414eb, #141414bf);
+  background: linear-gradient(rgba(20, 20, 20, .92), rgba(20, 20, 20, .75));
   gap: 10px;
   display: flex;
   position: sticky;
@@ -4794,7 +4927,7 @@ html.lfx-js .lfx-np__pill {
   cursor: pointer;
   transition: background var(--lfx-dur-fast) var(--lfx-ease), color var(--lfx-dur-fast) var(--lfx-ease);
   background: none;
-  border: 1px solid #fff6;
+  border: 1px solid rgba(255, 255, 255, .4);
   border-radius: 18px;
   flex: none;
   align-items: center;
@@ -4893,9 +5026,12 @@ html.lfx-js .lfx-np__media {
 html.lfx-js .lfx-np__media:after {
   content: "";
   pointer-events: none;
-  background: linear-gradient(to top, #000000b3, #0000 55%);
+  background: linear-gradient(to top, rgba(0, 0, 0, .7), rgba(0, 0, 0, 0) 55%);
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-np__img {
@@ -4918,7 +5054,7 @@ html.lfx-js .lfx-np__media-logo {
 html.lfx-js .lfx-np__media-title {
   z-index: 1;
   color: #fff;
-  text-shadow: 0 2px 8px #000c;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .8);
   font-size: 22px;
   font-weight: 800;
   position: absolute;
@@ -4942,7 +5078,8 @@ html.lfx-js .lfx-np__btn {
   color: #fff;
   cursor: pointer;
   border-radius: 50%;
-  place-items: center;
+  align-items: center;
+  justify-items: center;
   width: 36px;
   height: 36px;
   padding: 0;
@@ -4950,7 +5087,7 @@ html.lfx-js .lfx-np__btn {
 }
 
 html.lfx-js .lfx-np__btn:hover {
-  background: #3c3c3ccc;
+  background: rgba(60, 60, 60, .8);
   border-color: #fff;
 }
 
@@ -5077,7 +5214,8 @@ html.lfx-js .lfx-mnav__pills {
   gap: 8px;
   display: flex;
   position: absolute;
-  overflow: auto hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 html.lfx-js .lfx-mnav__pills::-webkit-scrollbar {
@@ -5095,8 +5233,8 @@ html.lfx-js .lfx-mnav__pill {
   white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  background: #00000040;
-  border: 1px solid #ffffff80;
+  background: rgba(0, 0, 0, .25);
+  border: 1px solid rgba(255, 255, 255, .5);
   border-radius: 16px;
   flex: none;
   align-items: center;
@@ -5110,7 +5248,10 @@ html.lfx-js .lfx-mnav__pill {
 html.lfx-js .lfx-mnav__pill:after {
   content: "";
   position: absolute;
-  inset: -4px -2px;
+  top: -4px;
+  bottom: -4px;
+  left: -2px;
+  right: -2px;
 }
 
 html.lfx-js .lfx-mnav__pill.is-active {
@@ -5125,7 +5266,7 @@ html.lfx-js .lfx-mnav__pill:focus-visible {
 }
 
 html.lfx-js .lfx-mnav__caret {
-  border: 4px solid #0000;
+  border: 4px solid rgba(0, 0, 0, 0);
   border-top-color: currentColor;
   border-bottom-width: 0;
   width: 0;
@@ -5147,12 +5288,15 @@ html.lfx-js .lfx-mnav-overlay {
   padding-top: env(safe-area-inset-top, 0px);
   color: #b3b3b3;
   font-family: var(--lfx-font);
-  background: #000000eb;
+  background: rgba(0, 0, 0, .92);
   flex-direction: column;
   align-items: center;
   display: flex;
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 html.lfx-js .lfx-mnav-overlay[hidden] {
@@ -5223,7 +5367,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
 
   html.lfx-js .lfx-bb {
     box-shadow: 0 0 36px rgb(var(--lfx-ambient-r) var(--lfx-ambient-g) var(--lfx-ambient-b) / .65),
-      0 10px 28px #00000080;
+      0 10px 28px rgba(0, 0, 0, .5);
     border: 0;
     border-radius: 12px;
   }
@@ -5277,7 +5421,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
   }
 
   html.lfx-js .lfx-bb__btn--info {
-    background: #6d6d6eb3;
+    background: rgba(109, 109, 110, .7);
     padding: 0 12px;
   }
 
@@ -5341,7 +5485,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
 
   html.lfx-js .lfx-modal__close {
     top: calc(12px + env(safe-area-inset-top, 0px));
-    background: #141414b3;
+    background: rgba(20, 20, 20, .7);
     width: 40px;
     height: 40px;
     right: 12px;
@@ -5513,7 +5657,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
   }
 
   html.lfx-js .lfx-modal__close:hover {
-    background: #141414b3;
+    background: rgba(20, 20, 20, .7);
   }
 }
 
@@ -5524,7 +5668,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
 
   html.lfx-js .lfx-bb__genres {
     text-align: center;
-    text-shadow: 0 1px 4px #00000080;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, .5);
     font-size: 13px;
     font-weight: 500;
     line-height: 16px;
@@ -5533,7 +5677,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
 
   html.lfx-js .lfx-bb__btn--list {
     color: #fff;
-    background: #6d6d6eb3;
+    background: rgba(109, 109, 110, .7);
     justify-content: center;
     align-items: center;
     gap: 8px;
