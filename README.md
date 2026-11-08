@@ -19,7 +19,7 @@ Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dun
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.0.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.1.0/dist/lenzflix.min.css");
 ```
 
 - `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,13 +29,25 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.0.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.1.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
 ### 3. Reverse-Proxy mit CSP
 
 Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien).
+
+## Echte Charts (optional)
+
+Ohne weitere Einrichtung zeigt LenzFlix keine echten Charts: „Top 10: Neu auf LENZFLIX“ auf der Startseite sind die zuletzt hinzugefügten Titel, in „Neu und beliebt“ erscheinen „Neueste Serien“ / „Neueste Filme“, und „Am häufigsten geschaut“ nutzt deine eigene Wiedergabezahl (sonst die Community-Bewertung).
+
+Für serverweite Charts („Top 10 Serien/Filme auf LENZFLIX“, meistgesehen der letzten 30 Tage) gibt es einen optionalen Cloudflare Worker, der die Daten aus dem Jellyfin-Plugin Playback Reporting aggregiert. Einrichtung: siehe [`charts-worker/README.md`](charts-worker/README.md); das Datenformat steht in [`docs/charts-api.md`](docs/charts-api.md). Danach die Worker-URL im Custom-CSS eintragen:
+
+```css
+:root { --lfx-charts-url: "https://charts.example.com"; }
+```
+
+Alternativ per JS: `window.LenzFlixConfig = { chartsUrl: "https://charts.example.com" }` (hat Vorrang). Nur `https://`-URLs werden akzeptiert. Der Browser sendet dein Jellyfin-Token an den Worker (Header `X-Emby-Token`) und der Worker braucht die passende CORS-Freigabe; ist der Worker nicht erreichbar, greift automatisch der Fallback oben. Bei weniger als 3 (Neu und beliebt) bzw. 5 (Startseite) auflösbaren Chart-Titeln wird ebenfalls der Fallback verwendet.
 
 ## Bedienung
 
@@ -65,7 +77,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.0.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.1.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

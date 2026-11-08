@@ -1,5 +1,6 @@
 // LenzFlix rows: Zeilen-Definitionen (Endpoints + Parameter). Jede Zeile: {id, title, kind, load()} -> Item-Array.
 import * as api from '../../core/api.js';
+import { getCharts, resolveChartItems } from '../../core/charts.js';
 import { BASE_PARAMS, NEW_DAYS, dayKey, pickGenres, selectTop10 } from './logic.js';
 
 const MOVIE_SERIES = 'Movie,Series';
@@ -32,6 +33,29 @@ export function resetSourceCache() {
   newSeriesCache = { at: 0, promise: null };
 }
 
+export const MIN_CHART_ROW = 5;
+
+/** Echte Top-10-Zeilen (Serien/Filme), je nur mit >= 5 auflösbaren Titeln. Leer, wenn keine Charts. */
+export async function buildChartDefs() {
+  try {
+    const charts = await getCharts();
+    if (!charts) return [];
+    const specs = [
+      { id: 'top10-series', title: 'Top 10 Serien auf LENZFLIX', key: 'series' },
+      { id: 'top10-movies', title: 'Top 10 Filme auf LENZFLIX', key: 'movies' },
+    ];
+    const defs = [];
+    for (const s of specs) {
+      const list = await resolveChartItems(charts[s.key], { limit: 10 });
+      if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: 'top10', load: () => list });
+    }
+    return defs;
+  } catch (e) {
+    console.warn('[LenzFlix] Chart-Zeilen nicht aufgebaut', e && e.message);
+    return [];
+  }
+}
+
 /** Baut die Zeilenliste (holt vorab Bibliotheken + Genres). */
 export async function buildRowDefs({ seed = dayKey(), genreCount = 6 } = {}) {
   const [viewsRes, genresRes] = await Promise.allSettled([
@@ -54,12 +78,16 @@ export async function buildRowDefs({ seed = dayKey(), genreCount = 6 } = {}) {
     id: 'nextup', title: 'Als Nächstes', kind: 'landscape',
     load: () => api.getNextUp({ ...BASE_PARAMS, Limit: 20, EnableResumable: false, EnableRewatching: false }).then(asItems),
   });
-  defs.push({
-    id: 'top10', title: 'Top 10: Neu auf LENZFLIX', kind: 'top10',
-    load: () => items({
-      IncludeItemTypes: MOVIE_SERIES, Recursive: true, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10,
-    }).then(selectTop10),
-  });
+  const chartDefs = await buildChartDefs();
+  if (chartDefs.length) defs.push(...chartDefs);
+  else {
+    defs.push({
+      id: 'top10', title: 'Top 10: Neu auf LENZFLIX', kind: 'top10',
+      load: () => items({
+        IncludeItemTypes: MOVIE_SERIES, Recursive: true, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10,
+      }).then(selectTop10),
+    });
+  }
   if (movieView) {
     defs.push({
       id: 'latest-movies', title: 'Neu hinzugefügt: Filme', kind: 'landscape',

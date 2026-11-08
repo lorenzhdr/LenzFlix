@@ -2,7 +2,7 @@
 
 Quellen:
 - Quellcode `jellyfin/jellyfin-web` Tag `v12.4`, Commit `0a580ce8`. Ein lokaler Klon (nicht im Repo) liegt unter `%SCRATCHPAD%/jw/src/src/…`.
-- Live-Prüfung im Testkonto am 2026-11-08. Live bestätigte Angaben sind mit ✅ markiert.
+- Live-Prüfung mit einem Nicht-Admin-Testkonto am 2026-11-08. Live bestätigte Angaben sind mit ✅ markiert.
 
 ## Layout-Erkennung
 - `html.layout-desktop | .layout-mobile | .layout-tv` (`components/layoutManager.js`). Eine eigene Modern-Klasse gibt es nicht. ✅
@@ -126,8 +126,8 @@ Quellen:
 - ActionSheet: `.dialog.actionSheet` → `.actionSheetContent` mit `h1.actionSheetTitle`, `button.actionSheetMenuItem` und `.actionSheetItemText`.
 - MUI-Menüs: `.MuiPopover-root .MuiMenu-paper`. Live-IDs: `#app-user-menu`, `#app-sync-play-menu`, `#app-remote-play-menu`.
 
-## Fremd-Elemente auf Lorenz' Server (werden beim Release entfernt)
-- Server-Custom-CSS mit `@import` von `ahza-code/Netflin` ist im Testkonto über „Server-CSS deaktivieren“ aus.
+## Fremd-Elemente auf dem Entwicklungs-Server (Beispiel für Konflikte mit anderen Themes/Plugins)
+- Server-Custom-CSS mit `@import` von `ahza-code/Netflin` war im Testkonto über „Server-CSS deaktivieren“ aus.
 - `/web/ui/spotlight-loader.js` („Abyss Spotlight“) ist ins `index.html` eingebaut. Es erzeugt `iframe.featurediframe` in `#homeTab`, `#abyss-spotlight-backdrop`, `html.abyss-spotlight-visible` und `.abyss-spotlight-active`.
   - Im Dev-Loop neutralisieren: Iframe und Backdrop entfernen, Klassen abziehen und per CSS verstecken.
   - LenzFlix soll in Produktion zusätzlich defensiv `.featurediframe`, `#abyss-spotlight-backdrop` ausblenden, solange `html.lfx-js` aktiv ist.

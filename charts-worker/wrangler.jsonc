@@ -1,0 +1,26 @@
+// Öffentliche Vorlage mit Platzhaltern. Für das eigene Deployment: Datei nach wrangler.local.jsonc kopieren
+// (gitignored), echte Domains + KV-ID eintragen und mit `npx wrangler deploy -c wrangler.local.jsonc` deployen.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lenzflix-charts",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "triggers": { "crons": ["0 * * * *"] },
+  "routes": [{ "pattern": "charts.example.com", "custom_domain": true }],
+  "kv_namespaces": [
+    {
+      "binding": "CHARTS",
+      // Platzhalter: ID per `npx wrangler kv namespace create CHARTS` erzeugen und hier eintragen.
+      "id": "REPLACE_WITH_KV_ID"
+    }
+  ],
+  "vars": {
+    "JELLYFIN_URL": "https://jellyfin.example.com",
+    "ALLOWED_ORIGIN": "https://jellyfin.example.com",
+    "WINDOW_DAYS": "30",
+    "MIN_SECONDS": "120"
+  },
+  // Secrets (nicht hier!): JELLYFIN_API_KEY, optional REFRESH_SECRET -> `npx wrangler secret put <NAME>`
+  "observability": { "enabled": true }
+}

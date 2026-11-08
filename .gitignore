@@ -1,3 +1,5 @@
 reference/
 node_modules/
 .tmp/
+charts-worker/node_modules/
+charts-worker/.wrangler/

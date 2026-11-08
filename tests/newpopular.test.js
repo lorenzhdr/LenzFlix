@@ -17,6 +17,8 @@ vi.mock('../src/js/core/api.js', async () => {
 import * as api from '../src/js/core/api.js';
 import { dateParts, sinceLabel, hasPlayCounts } from '../src/js/features/newpopular/format.js';
 import feature, { loadMostWatched } from '../src/js/features/newpopular.js';
+import { clearCache } from '../src/js/core/cache.js';
+import { resetChartsWarning } from '../src/js/core/charts.js';
 import { resetSourceCache } from '../src/js/features/rows/sources.js';
 
 const mk = (id, type, extra = {}) => ({ Id: id, Name: id, Type: type, DateCreated: '2026-11-08T12:00:00Z', ...extra });
@@ -90,5 +92,62 @@ describe('Mount/Unmount', () => {
   it('CSS blendet #lfx-home aus', () => {
     const css = fs.readFileSync('src/css/js-ui/newpopular.css', 'utf8');
     expect(css).toMatch(/lfx-newpopular-on[^{]*#lfx-home/);
+  });
+});
+
+describe('Charts in Neu und beliebt', () => {
+  const chartsOf = (n) => Array.from({ length: n }, (_, i) => ({ id: `c${i}`, viewers: 9 - i, plays: 9 - i }));
+  const body = (n) => ({ version: 1, windowDays: 14, movies: chartsOf(n), series: chartsOf(n), all: chartsOf(n) });
+
+  beforeEach(() => {
+    resetSourceCache();
+    clearCache();
+    resetChartsWarning();
+    window.LenzFlixConfig = { chartsUrl: 'https://charts.example.com' };
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    api.getItems.mockReset();
+    api.getItems.mockImplementation(async (p) => {
+      if (p.Ids) return { Items: p.Ids.split(',').map((id) => mk(id, 'Movie')) };
+      if (p.IncludeItemTypes === 'Episode') return { Items: [] };
+      return { Items: [mk('i1', 'Movie', { UserData: { PlayCount: 1 } }), mk('i2', 'Series')] };
+    });
+    document.body.innerHTML = '<div id="indexPage"><div id="homeTab"></div></div>';
+  });
+  afterEach(() => {
+    feature.unmount();
+    delete window.LenzFlixConfig;
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  const titles = () => [...document.querySelectorAll('.lfx-row__title')].map((t) => t.textContent);
+
+  it('mit Charts: Top-10-Titel und Untertitel', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => body(5) }));
+    feature.mount();
+    await vi.waitFor(() => expect(titles()).toContain('Top 10 Serien'), { timeout: 3000 });
+    expect(titles()).toContain('Top 10 Filme');
+    const subs = [...document.querySelectorAll('.lfx-np__sub')].map((s) => s.textContent);
+    expect(subs[0]).toBe('Meistgesehen auf LENZFLIX · letzte 14 Tage');
+    expect(subs.length).toBe(3);
+  });
+
+  it('ohne Charts: ehrliche Fallback-Titel', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) }));
+    feature.mount();
+    await vi.waitFor(() => expect(titles()).toContain('Neueste Serien'), { timeout: 3000 });
+    expect(titles()).toContain('Neueste Filme');
+    expect(titles()).not.toContain('Top 10 Serien');
+    expect(document.querySelector('.lfx-np__sub')).toBeNull();
+    const pills = [...document.querySelectorAll('.lfx-np__pill')].map((p) => p.textContent);
+    expect(pills.some((t) => t.includes('Neueste Serien'))).toBe(true);
+  });
+
+  it('Charts mit weniger als 3 Titeln: Fallback', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => body(2) }));
+    feature.mount();
+    await vi.waitFor(() => expect(titles()).toContain('Neueste Serien'), { timeout: 3000 });
+    expect(titles()).not.toContain('Top 10 Filme');
   });
 });

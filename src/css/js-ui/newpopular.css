@@ -55,6 +55,7 @@ html.lfx-js .lfx-np__heading {
   font-weight: 700;
 }
 html.lfx-js .lfx-np .lfx-rows { padding-top: 0; }
+html.lfx-js .lfx-np__sub { margin: -6px var(--lfx-gutter) 12px; color: #808080; font-size: 13px; line-height: 1.3; }
 
 /* „Neu bei“-Liste */
 html.lfx-js .lfx-np__list { padding: 0 var(--lfx-gutter); }

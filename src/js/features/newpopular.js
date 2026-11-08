@@ -5,6 +5,7 @@ import * as api from '../core/api.js';
 import { h } from '../core/dom.js';
 import { isTv } from '../core/layout.js';
 import { putItems } from '../core/itemstore.js';
+import { getCharts, resolveChartItems } from '../core/charts.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { createCard, detailHref, landscapeFor } from './rows/card.js';
@@ -52,6 +53,40 @@ const query = (params) => api.getItems({
 
 export function loadNew() {
   return query({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 20 }).then((l) => uniqueTitles(l, 20));
+}
+
+const MIN_CHART_TITLES = 3;
+
+/** Untertitel unter Chart-Sektionen. */
+export const chartSubtitle = (days) => `Meistgesehen auf LENZFLIX · letzte ${days || 30} Tage`;
+
+/** Charts-Titel einer Liste auflösen. Rückgabe: {items, charted, windowDays}; zu dünn/kein Chart -> charted false. */
+async function loadChart(key, limit, type) {
+  try {
+    const charts = await getCharts();
+    if (!charts || !(charts[key] || []).length) return { items: [], charted: false };
+    const items = await resolveChartItems(charts[key], { type, limit });
+    return items.length >= MIN_CHART_TITLES
+      ? { items, charted: true, windowDays: charts.windowDays }
+      : { items: [], charted: false };
+  } catch (e) {
+    console.warn('[LenzFlix] Charts nicht auflösbar', e && e.message);
+    return { items: [], charted: false };
+  }
+}
+
+/** „Am häufigsten geschaut“: echte Charts, sonst eigene PlayCount, sonst CommunityRating. */
+export async function loadMostWatchedSection() {
+  const chart = await loadChart('all', 20);
+  if (chart.charted) return { ...chart, items: uniqueTitles(chart.items, 20) };
+  return { items: await loadMostWatched(), charted: false };
+}
+
+/** „Top 10 Serien/Filme“ (type: 'Series'|'Movie'): echte Charts, sonst neueste (Titel dann ehrlich „Neueste …“). */
+export async function loadTopSection(type) {
+  const chart = await loadChart(type === 'Series' ? 'series' : 'movies', 10);
+  if (chart.charted) return chart;
+  return { items: await loadTop(type), charted: false };
 }
 
 /** PlayCount (pro Benutzer); sind alle Zähler 0, Fallback auf CommunityRating. */
@@ -219,23 +254,37 @@ function build(tab) {
     pills.delete(id);
   }
 
-  async function fill(id, loader, renderer) {
+  function relabel(id, label) {
+    const heading = sections.get(id)?.querySelector('.lfx-np__heading');
+    if (heading) heading.textContent = label;
+    const pill = pills.get(id);
+    if (pill && pill.lastChild) pill.lastChild.textContent = label;
+  }
+
+  /** loader liefert Items oder {items, charted, windowDays, fallbackLabel}. */
+  async function fill(id, loader, renderer, fallbackLabel) {
     try {
-      const items = await loader();
+      const res = await loader();
+      const items = Array.isArray(res) ? res : res.items;
+      const meta = Array.isArray(res) ? {} : res;
       if (disposed) return;
       if (!items.length) { drop(id); return; }
       putItems(items);
       const newSeries = await getNewSeriesIds();
       if (disposed) return;
-      renderer(sections.get(id), items, newSeries);
+      if (fallbackLabel && !meta.charted) relabel(id, fallbackLabel);
+      renderer(sections.get(id), items, newSeries, meta);
     } catch (e) {
       console.warn(`[LenzFlix] Neu und beliebt "${id}" nicht geladen`, e && e.message);
       if (!disposed) drop(id);
     }
   }
-  const rowRenderer = (title, kind) => (sec, items, newSeries) => {
-    const row = createRow(title, items, kind, newSeries);
+  const rowRenderer = (title, kind, fallbackTitle) => (sec, items, newSeries, meta = {}) => {
+    const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind, newSeries);
     sec.querySelector('.lfx-np__heading')?.remove();
+    if (meta.charted) {
+      row.el.querySelector('.lfx-row__head').after(h('p', { class: 'lfx-np__sub' }, chartSubtitle(meta.windowDays)));
+    }
     sec.append(row.el);
     scrollers.push(attachScroller(row.scroller));
   };
@@ -244,9 +293,9 @@ function build(tab) {
     fill('new', loadNew, (sec, items, newSeries) => {
       sec.append(h('div', { class: 'lfx-np__list' }, items.map((it) => createNewEntry(it, newSeries))));
     });
-    fill('watched', loadMostWatched, rowRenderer('Am häufigsten geschaut', 'landscape'));
-    fill('top-series', () => loadTop('Series'), rowRenderer('Top 10 Serien', 'top10'));
-    fill('top-movies', () => loadTop('Movie'), rowRenderer('Top 10 Filme', 'top10'));
+    fill('watched', loadMostWatchedSection, rowRenderer('Am häufigsten geschaut', 'landscape'));
+    fill('top-series', () => loadTopSection('Series'), rowRenderer('Top 10 Serien', 'top10', 'Neueste Serien'), 'Neueste Serien');
+    fill('top-movies', () => loadTopSection('Movie'), rowRenderer('Top 10 Filme', 'top10', 'Neueste Filme'), 'Neueste Filme');
   } else {
     console.warn('[LenzFlix] Neu und beliebt: keine Anmeldung');
   }

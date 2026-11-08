@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', async () => {
   const actual = await vi.importActual('../src/js/core/api.js');
@@ -24,6 +24,8 @@ import { createCard } from '../src/js/features/rows/card.js';
 import { resetSourceCache } from '../src/js/features/rows/sources.js';
 import { getStoredItem } from '../src/js/core/itemstore.js';
 import { render } from '../src/js/features/rows.js';
+import { clearCache } from '../src/js/core/cache.js';
+import { resetChartsWarning } from '../src/js/core/charts.js';
 
 const NOW = Date.parse('2026-11-08T12:00:00Z');
 const daysAgo = (d) => new Date(NOW - d * 86400000).toISOString();
@@ -177,5 +179,60 @@ describe('render', () => {
     await vi.waitFor(() => expect(slot.querySelector('.lfx-row:not(.is-loading)')).not.toBeNull());
     expect(slot.querySelector('[data-lfx-row="resume"]')).toBeNull();
     cleanup();
+  });
+});
+
+describe('Chart-Zeilen auf der Startseite', () => {
+  const mk = (id, type = 'Movie') => ({ Id: id, Type: type, Name: id, ImageTags: { Thumb: 't' }, DateCreated: daysAgo(1) });
+  const entries = (p, n) => Array.from({ length: n }, (_, i) => ({ id: `${p}${i}`, viewers: 5, plays: 5 }));
+  const run = async (charts) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(charts
+      ? { ok: true, status: 200, json: async () => charts }
+      : { ok: false, status: 503, json: async () => ({}) }));
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const cleanup = render(slot);
+    await vi.waitFor(() => expect(slot.querySelectorAll('.lfx-row:not(.is-loading)').length).toBeGreaterThan(1));
+    const titles = [...slot.querySelectorAll('.lfx-row__title')].map((t) => t.textContent);
+    cleanup();
+    return titles;
+  };
+  const fiveNew = (i) => mk(`n${i}`);
+  beforeEach(() => {
+    resetSourceCache();
+    clearCache();
+    resetChartsWarning();
+    window.LenzFlixConfig = { chartsUrl: 'https://charts.example.com' };
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    api.getViews.mockResolvedValue({ Items: [] });
+    api.getJson.mockResolvedValue({ Items: [] });
+    api.getResume.mockResolvedValue({ Items: [mk('r1')] });
+    api.getNextUp.mockResolvedValue({ Items: [] });
+    api.getLatest.mockResolvedValue([]);
+    api.getSimilar.mockResolvedValue({ Items: [] });
+    api.getItems.mockReset();
+  });
+  afterEach(() => { delete window.LenzFlixConfig; vi.unstubAllGlobals(); });
+
+  it('Charts vorhanden: zwei Top-10-Zeilen statt Neu-Zeile', async () => {
+    api.getItems.mockImplementation(async (p) => ({ Items: p.Ids ? p.Ids.split(',').map((id) => mk(id)) : [] }));
+    const t = await run({ version: 1, windowDays: 30, series: entries('s', 6), movies: entries('m', 7), all: [] });
+    expect(t).toContain('Top 10 Serien auf LENZFLIX');
+    expect(t).toContain('Top 10 Filme auf LENZFLIX');
+    expect(t).not.toContain('Top 10: Neu auf LENZFLIX');
+  });
+
+  it('Charts zu dünn: bisherige Neu-Zeile', async () => {
+    api.getItems.mockImplementation(async (p) => ({
+      Items: p.Ids ? p.Ids.split(',').map((id) => mk(id)) : Array.from({ length: 5 }, (_, i) => fiveNew(i)),
+    }));
+    const t = await run({ version: 1, windowDays: 30, series: entries('s', 4), movies: entries('m', 2), all: [] });
+    expect(t).toContain('Top 10: Neu auf LENZFLIX');
+    expect(t).not.toContain('Top 10 Serien auf LENZFLIX');
+  });
+
+  it('Charts nicht erreichbar: bisherige Neu-Zeile', async () => {
+    api.getItems.mockImplementation(async () => ({ Items: Array.from({ length: 5 }, (_, i) => fiveNew(i)) }));
+    expect(await run(null)).toContain('Top 10: Neu auf LENZFLIX');
   });
 });

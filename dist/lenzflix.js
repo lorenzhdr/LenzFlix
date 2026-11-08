@@ -2414,6 +2414,93 @@
     };
   }
 
+  // src/js/core/charts.js
+  var TIMEOUT_MS = 8e3;
+  var TTL_MS = 5 * 60 * 1e3;
+  function getChartsUrl() {
+    const clean = (raw) => {
+      const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
+      return /^https:\/\/[^\s"']+$/i.test(s) ? s : null;
+    };
+    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.chartsUrl);
+    if (fromConfig) return fromConfig;
+    try {
+      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-charts-url"));
+    } catch {
+      return null;
+    }
+  }
+  var warned = false;
+  function warnOnce(msg) {
+    if (warned) return;
+    warned = true;
+    console.warn(`[LenzFlix] Charts nicht verf\xFCgbar: ${msg}`);
+  }
+  function validEntries(list) {
+    return Array.isArray(list) ? list.filter((e) => e && typeof e.id === "string" && e.id) : null;
+  }
+  function validate(json) {
+    if (!json || typeof json !== "object" || json.version !== 1) return null;
+    const movies = validEntries(json.movies);
+    const series = validEntries(json.series);
+    const all = validEntries(json.all);
+    if (!movies || !series || !all) return null;
+    const days = Number(json.windowDays);
+    return { ...json, movies, series, all, windowDays: days > 0 ? days : 30 };
+  }
+  async function fetchCharts() {
+    const base = getChartsUrl();
+    if (!base) return null;
+    const { token } = getAuth();
+    if (!token) return null;
+    const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS) : null;
+    try {
+      const res = await fetch(`${base}/charts`, {
+        headers: { "X-Emby-Token": token, Accept: "application/json" },
+        signal: ctrl ? ctrl.signal : void 0
+      });
+      if (!res.ok) {
+        warnOnce(`HTTP ${res.status}`);
+        return null;
+      }
+      const data = validate(await res.json());
+      if (!data) warnOnce("ung\xFCltige Antwort");
+      return data;
+    } catch (e) {
+      warnOnce(e && e.name === "AbortError" ? "Zeit\xFCberschreitung" : "Netzwerkfehler");
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  function getCharts() {
+    if (!getChartsUrl()) return Promise.resolve(null);
+    return cached("charts", fetchCharts, TTL_MS);
+  }
+  var normId = (id) => String(id || "").replace(/-/g, "").toLowerCase();
+  async function resolveChartItems(entries, { type, limit = 10 } = {}) {
+    const list = (Array.isArray(entries) ? entries : []).filter((e) => e && e.id && (!type || e.type === type));
+    if (!list.length) return [];
+    const res = await getItems({ Ids: list.map((e) => e.id).join(","), ...BASE_PARAMS });
+    const found = Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+    const byId = new Map(found.filter((i) => i && i.Id).map((i) => [normId(i.Id), i]));
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const e of list) {
+      const key = normId(e.id);
+      const item = byId.get(key);
+      if (!item || seen.has(key)) continue;
+      seen.add(key);
+      item._lfxViewers = e.viewers;
+      item._lfxPlays = e.plays;
+      out.push(item);
+      if (out.length >= limit) break;
+    }
+    putItems(out);
+    return out;
+  }
+
   // src/js/features/rows/sources.js
   var MOVIE_SERIES = "Movie,Series";
   function asItems(res) {
@@ -2432,6 +2519,26 @@
     });
     newSeriesCache = { at: now, promise };
     return promise;
+  }
+  var MIN_CHART_ROW = 5;
+  async function buildChartDefs() {
+    try {
+      const charts = await getCharts();
+      if (!charts) return [];
+      const specs = [
+        { id: "top10-series", title: "Top 10 Serien auf LENZFLIX", key: "series" },
+        { id: "top10-movies", title: "Top 10 Filme auf LENZFLIX", key: "movies" }
+      ];
+      const defs = [];
+      for (const s of specs) {
+        const list = await resolveChartItems(charts[s.key], { limit: 10 });
+        if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: "top10", load: () => list });
+      }
+      return defs;
+    } catch (e) {
+      console.warn("[LenzFlix] Chart-Zeilen nicht aufgebaut", e && e.message);
+      return [];
+    }
   }
   async function buildRowDefs({ seed = dayKey(), genreCount = 6 } = {}) {
     const [viewsRes, genresRes] = await Promise.allSettled([
@@ -2456,18 +2563,22 @@
       kind: "landscape",
       load: () => getNextUp({ ...BASE_PARAMS, Limit: 20, EnableResumable: false, EnableRewatching: false }).then(asItems)
     });
-    defs.push({
-      id: "top10",
-      title: "Top 10: Neu auf LENZFLIX",
-      kind: "top10",
-      load: () => items({
-        IncludeItemTypes: MOVIE_SERIES,
-        Recursive: true,
-        SortBy: "DateCreated",
-        SortOrder: "Descending",
-        Limit: 10
-      }).then(selectTop10)
-    });
+    const chartDefs = await buildChartDefs();
+    if (chartDefs.length) defs.push(...chartDefs);
+    else {
+      defs.push({
+        id: "top10",
+        title: "Top 10: Neu auf LENZFLIX",
+        kind: "top10",
+        load: () => items({
+          IncludeItemTypes: MOVIE_SERIES,
+          Recursive: true,
+          SortBy: "DateCreated",
+          SortOrder: "Descending",
+          Limit: 10
+        }).then(selectTop10)
+      });
+    }
     if (movieView) {
       defs.push({
         id: "latest-movies",
@@ -3294,6 +3405,29 @@
   function loadNew() {
     return query({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 20 }).then((l) => uniqueTitles(l, 20));
   }
+  var MIN_CHART_TITLES = 3;
+  var chartSubtitle = (days) => `Meistgesehen auf LENZFLIX \xB7 letzte ${days || 30} Tage`;
+  async function loadChart(key, limit, type) {
+    try {
+      const charts = await getCharts();
+      if (!charts || !(charts[key] || []).length) return { items: [], charted: false };
+      const items = await resolveChartItems(charts[key], { type, limit });
+      return items.length >= MIN_CHART_TITLES ? { items, charted: true, windowDays: charts.windowDays } : { items: [], charted: false };
+    } catch (e) {
+      console.warn("[LenzFlix] Charts nicht aufl\xF6sbar", e && e.message);
+      return { items: [], charted: false };
+    }
+  }
+  async function loadMostWatchedSection() {
+    const chart = await loadChart("all", 20);
+    if (chart.charted) return { ...chart, items: uniqueTitles(chart.items, 20) };
+    return { items: await loadMostWatched(), charted: false };
+  }
+  async function loadTopSection(type) {
+    const chart = await loadChart(type === "Series" ? "series" : "movies", 10);
+    if (chart.charted) return chart;
+    return { items: await loadTop(type), charted: false };
+  }
   async function loadMostWatched() {
     const byPlays = await query({ SortBy: "PlayCount", SortOrder: "Descending", Limit: 20 });
     if (hasPlayCounts(byPlays)) return uniqueTitles(byPlays, 20);
@@ -3444,9 +3578,17 @@
       pills.get(id)?.remove();
       pills.delete(id);
     }
-    async function fill2(id, loader, renderer) {
+    function relabel(id, label) {
+      const heading = sections.get(id)?.querySelector(".lfx-np__heading");
+      if (heading) heading.textContent = label;
+      const pill = pills.get(id);
+      if (pill && pill.lastChild) pill.lastChild.textContent = label;
+    }
+    async function fill2(id, loader, renderer, fallbackLabel) {
       try {
-        const items = await loader();
+        const res = await loader();
+        const items = Array.isArray(res) ? res : res.items;
+        const meta = Array.isArray(res) ? {} : res;
         if (disposed) return;
         if (!items.length) {
           drop(id);
@@ -3455,15 +3597,19 @@
         putItems(items);
         const newSeries = await getNewSeriesIds();
         if (disposed) return;
-        renderer(sections.get(id), items, newSeries);
+        if (fallbackLabel && !meta.charted) relabel(id, fallbackLabel);
+        renderer(sections.get(id), items, newSeries, meta);
       } catch (e) {
         console.warn(`[LenzFlix] Neu und beliebt "${id}" nicht geladen`, e && e.message);
         if (!disposed) drop(id);
       }
     }
-    const rowRenderer = (title, kind) => (sec, items, newSeries) => {
-      const row = createRow(title, items, kind, newSeries);
+    const rowRenderer = (title, kind, fallbackTitle) => (sec, items, newSeries, meta = {}) => {
+      const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind, newSeries);
       sec.querySelector(".lfx-np__heading")?.remove();
+      if (meta.charted) {
+        row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub" }, chartSubtitle(meta.windowDays)));
+      }
       sec.append(row.el);
       scrollers.push(attachScroller(row.scroller));
     };
@@ -3471,9 +3617,9 @@
       fill2("new", loadNew, (sec, items, newSeries) => {
         sec.append(h("div", { class: "lfx-np__list" }, items.map((it) => createNewEntry(it, newSeries))));
       });
-      fill2("watched", loadMostWatched, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
-      fill2("top-series", () => loadTop("Series"), rowRenderer("Top 10 Serien", "top10"));
-      fill2("top-movies", () => loadTop("Movie"), rowRenderer("Top 10 Filme", "top10"));
+      fill2("watched", loadMostWatchedSection, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
+      fill2("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien"), "Neueste Serien");
+      fill2("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme"), "Neueste Filme");
     } else {
       console.warn("[LenzFlix] Neu und beliebt: keine Anmeldung");
     }
@@ -3522,7 +3668,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default];
 
   // src/js/main.js
-  var VERSION = "1.0.0";
+  var VERSION = "1.1.0";
   var POLL_MS = 250;
   var POLL_MAX_MS = 15e3;
   function init() {
