@@ -236,3 +236,19 @@ describe('Chart-Zeilen auf der Startseite', () => {
     expect(await run(null)).toContain('Top 10: Neu auf LENZFLIX');
   });
 });
+
+describe('newSeriesIdsFrom (Badge „Neue Folgen“)', () => {
+  const now = Date.parse('2026-11-08T12:00:00Z');
+  const daysAgo = (d) => new Date(now - d * 86400000).toISOString();
+  it('zählt nur kürzlich hinzugefügte UND kürzlich erschienene Folgen', async () => {
+    const { newSeriesIdsFrom } = await import('../src/js/features/rows/logic.js');
+    const ids = newSeriesIdsFrom([
+      { SeriesId: 'lupin', DateCreated: daysAgo(3), PremiereDate: daysAgo(17) },        // neue Staffel → ja
+      { SeriesId: 'medicopter', DateCreated: daysAgo(2), PremiereDate: daysAgo(9000) }, // nachgeholt → nein
+      { SeriesId: 'suits', DateCreated: daysAgo(2000), PremiereDate: daysAgo(30) },     // alt hinzugefügt → nein
+      { SeriesId: 'ohnedatum', DateCreated: daysAgo(1) },                               // kein PremiereDate → nein
+      { SeriesId: 'familyguy', DateCreated: daysAgo(5), PremiereDate: daysAgo(176) },   // < 12 Monate → ja
+    ], now);
+    expect([...ids].sort()).toEqual(['familyguy', 'lupin']);
+  });
+});

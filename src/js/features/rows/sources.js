@@ -1,7 +1,7 @@
 // LenzFlix rows: Zeilen-Definitionen (Endpoints + Parameter). Jede Zeile: {id, title, kind, load()} -> Item-Array.
 import * as api from '../../core/api.js';
 import { getCharts, resolveChartItems } from '../../core/charts.js';
-import { BASE_PARAMS, NEW_DAYS, dayKey, pickGenres, selectTop10 } from './logic.js';
+import { BASE_PARAMS, dayKey, newSeriesIdsFrom, pickGenres, selectTop10 } from './logic.js';
 
 const MOVIE_SERIES = 'Movie,Series';
 
@@ -13,13 +13,19 @@ export function asItems(res) {
 let newSeriesCache = { at: 0, promise: null };
 const TEN_MIN = 10 * 60 * 1000;
 
-/** Set der Serien-Ids mit Episoden, die jünger als 14 Tage sind (10 min gecacht). */
+/**
+ * Set der Serien-Ids für „Neue Folgen“ (10 min gecacht), Regel siehe newSeriesIdsFrom().
+ * Hinweis (live geprüft): Jellyfin 12.4 ignoriert `MinDateCreated` bei /Items – deshalb nach
+ * DateCreated absteigend sortieren und clientseitig filtern.
+ */
 export function getNewSeriesIds(now = Date.now()) {
   if (newSeriesCache.promise && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.promise;
-  const since = new Date(now - NEW_DAYS * 86400000).toISOString();
   const promise = api
-    .getItems({ IncludeItemTypes: 'Episode', MinDateCreated: since, Recursive: true, Fields: 'SeriesId', EnableImages: false, Limit: 500 })
-    .then((res) => new Set(asItems(res).map((e) => e.SeriesId).filter(Boolean)))
+    .getItems({
+      IncludeItemTypes: 'Episode', Recursive: true, SortBy: 'DateCreated', SortOrder: 'Descending',
+      Fields: 'SeriesId,DateCreated,PremiereDate', EnableImages: false, EnableUserData: false, Limit: 500,
+    })
+    .then((res) => newSeriesIdsFrom(asItems(res), now))
     .catch((e) => {
       console.warn('[LenzFlix] Neue-Folgen-Abfrage fehlgeschlagen', e && e.message);
       newSeriesCache = { at: 0, promise: null };

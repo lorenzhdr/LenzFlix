@@ -2155,6 +2155,17 @@
     ImageTypeLimit: 1,
     EnableImageTypes: "Primary,Backdrop,Thumb,Logo"
   };
+  var NEW_EPISODE_AIRED_DAYS = 365;
+  function newSeriesIdsFrom(episodes, now = Date.now()) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const e of episodes || []) {
+      if (!e || !e.SeriesId) continue;
+      if (!isRecent(e.DateCreated, now, NEW_DAYS2)) continue;
+      if (!isRecent(e.PremiereDate, now, NEW_EPISODE_AIRED_DAYS)) continue;
+      ids.add(e.SeriesId);
+    }
+    return ids;
+  }
   function isRecent(dateStr, now = Date.now(), days = NEW_DAYS2) {
     const t = Date.parse(dateStr);
     if (Number.isNaN(t)) return false;
@@ -2511,8 +2522,16 @@
   var TEN_MIN = 10 * 60 * 1e3;
   function getNewSeriesIds(now = Date.now()) {
     if (newSeriesCache.promise && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.promise;
-    const since = new Date(now - NEW_DAYS2 * 864e5).toISOString();
-    const promise = getItems({ IncludeItemTypes: "Episode", MinDateCreated: since, Recursive: true, Fields: "SeriesId", EnableImages: false, Limit: 500 }).then((res) => new Set(asItems(res).map((e) => e.SeriesId).filter(Boolean))).catch((e) => {
+    const promise = getItems({
+      IncludeItemTypes: "Episode",
+      Recursive: true,
+      SortBy: "DateCreated",
+      SortOrder: "Descending",
+      Fields: "SeriesId,DateCreated,PremiereDate",
+      EnableImages: false,
+      EnableUserData: false,
+      Limit: 500
+    }).then((res) => newSeriesIdsFrom(asItems(res), now)).catch((e) => {
       console.warn("[LenzFlix] Neue-Folgen-Abfrage fehlgeschlagen", e && e.message);
       newSeriesCache = { at: 0, promise: null };
       return /* @__PURE__ */ new Set();
@@ -3668,7 +3687,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default];
 
   // src/js/main.js
-  var VERSION = "1.1.0";
+  var VERSION = "1.1.1";
   var POLL_MS = 250;
   var POLL_MAX_MS = 15e3;
   function init() {

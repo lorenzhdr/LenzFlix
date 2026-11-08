@@ -17,6 +17,26 @@ export const BASE_PARAMS = {
   EnableImageTypes: 'Primary,Backdrop,Thumb,Logo',
 };
 
+/** Erstausstrahlung, ab der eine Folge noch als „neu erschienen“ gilt (Netflix-Sinn von „Neue Folgen“). */
+export const NEW_EPISODE_AIRED_DAYS = 365;
+
+/**
+ * Serien-Ids für das Badge „Neue Folgen“: Episoden, die in den letzten NEW_DAYS Tagen hinzugefügt
+ * wurden UND in den letzten NEW_EPISODE_AIRED_DAYS Tagen erstausgestrahlt wurden. Nachgeholte alte
+ * Staffeln oder ersetzte Dateien zählen so nicht. Episoden ohne PremiereDate zählen nicht.
+ * (Ob die Serie selbst neu ist → „Neu hinzugefügt“, entscheidet badgeFor.)
+ */
+export function newSeriesIdsFrom(episodes, now = Date.now()) {
+  const ids = new Set();
+  for (const e of episodes || []) {
+    if (!e || !e.SeriesId) continue;
+    if (!isRecent(e.DateCreated, now, NEW_DAYS)) continue;
+    if (!isRecent(e.PremiereDate, now, NEW_EPISODE_AIRED_DAYS)) continue;
+    ids.add(e.SeriesId);
+  }
+  return ids;
+}
+
 export function isRecent(dateStr, now = Date.now(), days = NEW_DAYS) {
   const t = Date.parse(dateStr);
   if (Number.isNaN(t)) return false;

@@ -31,8 +31,9 @@ Inoffizielles Netflix-artiges Theme für Jellyfin-Web 12.4: CSS-Kern (wirkt alle
 - `.card:not(.show-animation)` hat `contain: layout style paint` (schneidet Hover-Scale ab); `.card` hat `background:none !important`.
 - Custom CSS ist ein `<style>` ohne `@layer`: bei gleicher Spezifität gewinnt die spätere Regel.
 - Das Testkonto auf dem Entwicklungs-Server hat keine Transkodierung (für Player-Tests h264-Titel nehmen). Fremd-Elemente dort (Abyss Spotlight, `.featurediframe`) im Dev-Loop neutralisieren.
-- Versionsstände: `package.json` 0.0.0, `VERSION` in `src/js/main.js` 0.1.0 (zu prüfen/angleichen vor Release).
+- Jellyfin 12.4 ignoriert `MinDateCreated` bei `/Items` (live geprüft) – nach `DateCreated` absteigend sortieren und clientseitig filtern.
+- Version vor jedem Release in `package.json`, `VERSION` (`src/js/main.js`) und den jsDelivr-URLs der README angleichen; Release = Tag `vX.Y.Z` (jsDelivr pinnt darauf).
 
 ## Verbote
 - `reference/` und `.tmp/` nie committen (stehen in `.gitignore`).
-- Repo hatte beim Anlegen dieser Datei noch keinen Commit; nicht ungefragt committen/pushen.
+- Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.

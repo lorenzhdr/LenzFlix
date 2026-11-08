@@ -5,7 +5,7 @@ import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
 import { features } from './features/index.js';
 
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const POLL_MS = 250;
 const POLL_MAX_MS = 15_000;
 
