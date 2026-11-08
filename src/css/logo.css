@@ -1,0 +1,15 @@
+/* LenzFlix · Logo: wiederverwendbare Klasse (Wortmarke, rot). Pfade relativ zu dist/. */
+.lfx-logo {
+  display: inline-block;
+  width: 88px;
+  height: 25px;
+  background: url("../assets/logo/lenzflix.svg") no-repeat center / contain;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  vertical-align: middle;
+}
+.lfx-logo--l {
+  width: 24px;
+  background-image: url("../assets/logo/lenzflix-l.svg");
+}

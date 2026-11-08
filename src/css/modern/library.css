@@ -1,0 +1,230 @@
+/* LenzFlix · modern/library
+   Bibliotheken & Listen. Quellen:
+   - React: apps/modern/features/libraries/components/{LibraryToolbar,LibraryViewMenu,ItemsView,Pagination,AlphabetPicker}.tsx
+   - Legacy: apps/legacy/controllers/list.html
+   Grid-Regeln gelten nur für .vertical-wrap (nie für .scrollSlider). Nicht für .layout-tv. */
+
+/* --- Seite --- */
+html:not(.layout-tv) .libraryPage:not(#searchPage) {
+  background: var(--lfx-bg);
+}
+html:not(.layout-tv) .libraryPage:not(#searchPage) .padded-bottom-page > .padded-left.padded-right,
+html:not(.layout-tv) .libraryPage:not(#searchPage) .padded-bottom-page.padded-left.padded-right {
+  padding-left: var(--lfx-gutter);
+  padding-right: var(--lfx-gutter);
+}
+
+/* --- Toolbar (2. MUI-Toolbar der AppBar): dunkel, Titel als Netflix-Überschrift --- */
+html:not(.layout-tv) .MuiAppBar-root .MuiToolbar-root + .MuiToolbar-root {
+  background: var(--lfx-bg);
+  padding-left: var(--lfx-gutter);
+  padding-right: var(--lfx-gutter);
+  gap: 8px;
+}
+/* Titel-Button (Ansicht "Filme" mit Dropdown-Menü) */
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root > .MuiButton-root:first-child {
+  color: #fff;
+  text-transform: none;
+  border-radius: 4px;
+}
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root > .MuiButton-root:first-child .MuiTypography-root {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiChip-root {
+  background: transparent;
+  color: var(--lfx-text-soft);
+  font-size: 14px;
+}
+
+/* Ansicht-Menü: aktive Zeile = Pill wie im Header */
+html:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected {
+  background: var(--lfx-pill-active);
+  border-radius: 20px;
+}
+
+/* ButtonGroup Filter/Sortierung/Ansicht: Netflix-Dropdown-Optik */
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text {
+  gap: 8px;
+}
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root {
+  min-width: 40px;
+  background: #000;
+  color: #fff;
+  font-size: 14px;
+  text-transform: none;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  border-radius: 4px !important;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease);
+}
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:hover {
+  background: var(--lfx-surface-3);
+}
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root.Mui-disabled {
+  opacity: 0.4;
+}
+/* Abspielen/Mischen etc. (ButtonGroup contained, Primärfarbe = Rot) */
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root {
+  border-radius: 4px;
+  text-transform: none;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+/* --- Alphabet-Picker (React + Legacy): dezent --- */
+html:not(.layout-tv) .alphaPicker-fixed-right .MuiPaper-root {
+  background: transparent;
+}
+html:not(.layout-tv) .alphaPicker-fixed-right .MuiToggleButton-root,
+html:not(.layout-tv) .alphaPickerButton {
+  color: var(--lfx-text-soft);
+  background: transparent;
+  border: 0;
+}
+html:not(.layout-tv) .alphaPicker-fixed-right .MuiToggleButton-root:hover,
+html:not(.layout-tv) .alphaPickerButton:hover {
+  color: #fff;
+  background: transparent;
+}
+html:not(.layout-tv) .alphaPicker-fixed-right .MuiToggleButton-root.Mui-selected,
+html:not(.layout-tv) .alphaPickerButton-selected {
+  color: #fff;
+  background: var(--lfx-pill-active);
+}
+
+/* --- Legacy-Listenleiste (#/list): Buttons wie Toolbar --- */
+html:not(.layout-tv) .itemsViewSettingsContainer {
+  gap: 8px;
+}
+html:not(.layout-tv) .itemsViewSettingsContainer .button-flat {
+  background: #000;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  font-size: 14px;
+  text-transform: none;
+}
+html:not(.layout-tv) .itemsViewSettingsContainer .button-flat:hover {
+  background: var(--lfx-surface-3);
+}
+html:not(.layout-tv) .itemsViewSettingsContainer .paper-icon-button-light {
+  color: var(--lfx-text-muted);
+}
+html:not(.layout-tv) .itemsViewSettingsContainer .paper-icon-button-light:hover {
+  color: #fff;
+}
+
+/* --- Pagination: dezente Pfeile (Legacy .paging; React-Pagination ist eine MUI-ButtonGroup mit Pfeil-Icons) --- */
+html:not(.layout-tv) .paging .paper-icon-button-light,
+html:not(.layout-tv) .paging .emby-button {
+  color: var(--lfx-text-muted);
+}
+html:not(.layout-tv) .paging .paper-icon-button-light:hover,
+html:not(.layout-tv) .paging .emby-button:hover {
+  color: #fff;
+}
+html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:has(> [data-testid^="NavigateBefore"], > [data-testid^="NavigateNext"]) {
+  background: transparent;
+  border-color: transparent !important;
+  color: var(--lfx-text-muted);
+}
+
+/* --- Karten-Grid (nur .vertical-wrap; Benutzerkacheln im Login = .centered ausgenommen) --- */
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) {
+  --lfx-grid-min: 150px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--lfx-grid-min), 1fr));
+  gap: 8px;
+  align-items: start;
+  padding-top: 8px;
+  padding-bottom: 24px;
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered):has(> .backdropCard, > .smallBackdropCard, > .mixedBackdropCard) {
+  --lfx-grid-min: 240px;
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered):has(> .squareCard) {
+  --lfx-grid-min: 170px;
+}
+/* Kartenbreite regelt das Grid; Jellyfins %-Breiten und Außenabstände aus */
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) > .card {
+  width: auto;
+  min-width: 0;
+  contain: layout style; /* ohne paint, sonst schneidet der Hover-Scale ab */
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .cardBox {
+  margin: 0 0 12px;
+  transition: transform var(--lfx-dur) var(--lfx-ease), box-shadow var(--lfx-dur) var(--lfx-ease);
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) :is(.cardPadder, .cardContent, .cardImageContainer, .blurhash-canvas, .cardOverlayContainer) {
+  border-radius: var(--lfx-card-radius);
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .cardFooter {
+  padding: 8px 2px 0;
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .cardText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0;
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .cardText-first {
+  font-size: 14px;
+  color: var(--lfx-text-body);
+}
+html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .cardText-secondary {
+  font-size: 12px;
+  color: var(--lfx-text-soft);
+}
+@media (hover: hover) {
+  html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .card:hover {
+    position: relative;
+    z-index: 2;
+  }
+  html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .card:hover .cardBox {
+    transform: scale(1.04);
+  }
+  html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) .card:hover .cardScalable {
+    box-shadow: var(--lfx-shadow-card);
+    border-radius: var(--lfx-card-radius);
+  }
+}
+@media (max-width: 799px) {
+  html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) {
+    --lfx-grid-min: 104px;
+    gap: 6px;
+  }
+  html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered):has(> .backdropCard, > .smallBackdropCard, > .mixedBackdropCard) {
+    --lfx-grid-min: 150px;
+  }
+}
+
+/* --- Filter-/Sortier-/Ansichts-Dialoge + ActionSheet --- */
+html:not(.layout-tv) .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType),
+html:not(.layout-tv) .dialog.actionSheet {
+  background: var(--lfx-surface);
+  color: var(--lfx-text-body);
+  border-radius: var(--lfx-modal-radius) !important;
+  box-shadow: var(--lfx-shadow-modal);
+}
+html:not(.layout-tv) .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType) :is(.formDialogHeader, .formDialogFooter, .collapseContent),
+html:not(.layout-tv) .dialog.actionSheet .actionSheetContent {
+  background: transparent;
+}
+html:not(.layout-tv) .dialog :is(.formDialogHeaderTitle, .actionSheetTitle, .checkboxListLabel) {
+  color: #fff;
+}
+html:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:hover,
+html:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:focus {
+  background: var(--lfx-pill-active);
+  color: #fff;
+}
+html:not(.layout-tv) .dialog .emby-checkbox:checked + span + .checkboxOutline {
+  border-color: var(--lfx-red);
+}
+html:not(.layout-tv) .dialog :is(.emby-select, .emby-input) {
+  background: var(--lfx-surface-2);
+  color: #fff;
+  border: 1px solid rgba(128, 128, 128, 0.7);
+  border-radius: 4px;
+}

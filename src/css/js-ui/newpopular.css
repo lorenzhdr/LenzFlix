@@ -1,0 +1,149 @@
+/* LenzFlix · js-ui/newpopular – Ansicht „Neu und beliebt“ (#lfx-newpopular). Nur mit aktivem JS. */
+html.lfx-newpopular-on #indexPage #homeTab > .sections,
+html.lfx-newpopular-on #indexPage #homeTab > #lfx-home {
+  display: none !important;
+}
+html.lfx-newpopular-on #indexPage { padding-top: 0 !important; }
+html.lfx-js #indexPage:has(.lfx-np),
+html.lfx-js #indexPage:has(.lfx-np) #homeTab { background: transparent !important; }
+
+html.lfx-js .lfx-np {
+  position: relative;
+  z-index: 1;
+  padding: 8px 0 64px; /* Seite beginnt bereits unter dem AppBar-Spacer (live geprüft) */
+}
+
+/* Tab-Pills (sticky unter dem Header) */
+html.lfx-js .lfx-np__tabs {
+  position: sticky;
+  top: var(--lfx-header-h);
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  padding: 12px var(--lfx-gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: linear-gradient(to bottom, rgba(20, 20, 20, 0.92), rgba(20, 20, 20, 0.75));
+}
+html.lfx-js .lfx-np__tabs::-webkit-scrollbar { display: none; }
+html.lfx-js .lfx-np__pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 18px;
+  background: transparent;
+  color: #fff;
+  font: 500 15px/1 var(--lfx-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease), color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js .lfx-np__pill:hover { background: var(--lfx-pill-active); }
+html.lfx-js .lfx-np__pill.is-active,
+html.lfx-js .lfx-np__pill.is-active:hover { background: #fff; color: #000; border-color: #fff; }
+html.lfx-js .lfx-np__pill:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+html.lfx-js .lfx-np__section { scroll-margin-top: calc(var(--lfx-header-h) + 70px); margin-top: 24px; }
+html.lfx-js .lfx-np__heading {
+  margin: 0 var(--lfx-gutter) 16px;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+}
+html.lfx-js .lfx-np .lfx-rows { padding-top: 0; }
+
+/* „Neu bei“-Liste */
+html.lfx-js .lfx-np__list { padding: 0 var(--lfx-gutter); }
+html.lfx-js .lfx-np__entry {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  padding: 0 0 36px;
+}
+html.lfx-js .lfx-np__date { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
+html.lfx-js .lfx-np__month { color: var(--lfx-text-muted); font-size: 14px; font-weight: 600; letter-spacing: 0.04em; }
+html.lfx-js .lfx-np__day { color: #fff; font-size: 40px; font-weight: 800; line-height: 1.1; }
+html.lfx-js .lfx-np__main { max-width: 720px; }
+html.lfx-js .lfx-np__mediawrap { position: relative; }
+html.lfx-js .lfx-np__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--lfx-surface-2);
+}
+html.lfx-js .lfx-np__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 55%);
+  pointer-events: none;
+}
+html.lfx-js .lfx-np__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+html.lfx-js .lfx-np__media-logo {
+  position: absolute;
+  z-index: 1;
+  left: 16px;
+  bottom: 14px;
+  max-width: 40%;
+  max-height: 32%;
+  object-fit: contain;
+}
+html.lfx-js .lfx-np__media-title {
+  position: absolute;
+  z-index: 1;
+  left: 16px;
+  bottom: 14px;
+  right: 16px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+html.lfx-js .lfx-np__btns { position: absolute; z-index: 2; top: 10px; right: 10px; display: flex; gap: 8px; }
+html.lfx-js .lfx-np__btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--lfx-icon-circle-border);
+  border-radius: 50%;
+  background: var(--lfx-icon-circle);
+  color: #fff;
+  cursor: pointer;
+}
+html.lfx-js .lfx-np__btn:hover { border-color: #fff; background: rgba(60, 60, 60, 0.8); }
+html.lfx-js .lfx-np__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+html.lfx-js .lfx-np__ico { display: block; width: 18px; height: 18px; }
+html.lfx-js .lfx-np__ico svg { display: block; width: 100%; height: 100%; }
+
+html.lfx-js .lfx-np__body { padding-top: 14px; }
+html.lfx-js .lfx-np__name { color: #fff; font-size: 20px; font-weight: 700; }
+html.lfx-js .lfx-np__since { margin-top: 4px; color: var(--lfx-text-muted); font-size: 14px; }
+html.lfx-js .lfx-np__overview {
+  margin: 10px 0 0;
+  color: var(--lfx-text-muted);
+  font-size: 15px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+html.lfx-js .lfx-np__genres { margin-top: 10px; color: #fff; font-size: 14px; font-weight: 500; }
+
+@media (max-width: 799px) {
+  html.lfx-js .lfx-np { padding-top: 56px; }
+  html.lfx-js .lfx-np__tabs { top: 56px; padding-left: 4vw; padding-right: 4vw; }
+  html.lfx-js .lfx-np__entry { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  html.lfx-js .lfx-np__day { font-size: 28px; }
+  html.lfx-js .lfx-np__month { font-size: 12px; }
+  html.lfx-js .lfx-np__main { max-width: none; }
+}

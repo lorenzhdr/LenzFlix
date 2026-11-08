@@ -1,0 +1,442 @@
+/* LenzFlix · legacy-tv/tv
+   TV-Layout (html.layout-tv, Legacy-DOM, Fernbedienung/D-Pad, 10-Fuß-Ansicht).
+   Bewusst OHNE :has(), CSS-Nesting, Container Queries, `inset` und `gap` in Flex (alte webOS/Tizen-Webviews).
+   Alles ist strikt mit html.layout-tv gescoped. Jellyfin setzt auf TV html{font-size:125%} -> 1em = 20 px.
+   Quellen: scripts/libraryMenu.js (Header-Markup), styles/librarybrowser.scss, themes/_base/_theme.scss,
+   components/cardbuilder/card.scss (+ utils/builder.ts: TV-Karten tragen .show-focus und .show-animation),
+   elements/emby-button, elements/emby-tabs, elements/emby-slider, components/actionSheet, styles/videoosd.scss. */
+
+/* ---------- Basis ---------- */
+html.layout-tv,
+html.layout-tv body {
+  background-color: var(--lfx-bg);
+  color: var(--lfx-text-body);
+  font-family: var(--lfx-font);
+}
+html.layout-tv .backgroundContainer {
+  background-color: var(--lfx-bg);
+  background-image: none;
+}
+/* Seitenränder: 3.5vw statt Jellyfins 3.3 % */
+html.layout-tv .padded-left {
+  padding-left: 3.5vw;
+}
+html.layout-tv .padded-right {
+  padding-right: 3.5vw;
+}
+/* Scroll-Buttons sind per D-Pad sinnlos */
+html.layout-tv .emby-scrollbuttons {
+  display: none;
+}
+html.layout-tv ::selection {
+  background: var(--lfx-red);
+}
+
+/* ---------- Legacy-Header ---------- */
+html.layout-tv .skinHeader:not(.osdHeader),
+html.layout-tv .skinHeader.semiTransparent {
+  background-color: transparent;
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none !important;
+  box-shadow: none;
+  color: var(--lfx-text-body);
+}
+html.layout-tv .skinHeader:not(.osdHeader) .headerTop {
+  padding: 0.7em 3.5vw 0.3em;
+}
+html.layout-tv .skinHeader .headerLeft {
+  overflow: visible;
+}
+/* Seitentitel (Textseiten) */
+html.layout-tv .skinHeader .pageTitle {
+  margin-left: 0.4em;
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--lfx-text);
+}
+/* Standard-Logo (setDefaultTitle() setzt .pageTitleWithLogo + .pageTitleWithDefaultLogo) -> LENZFLIX */
+html.layout-tv .skinHeader .pageTitleWithLogo,
+html.layout-tv .skinHeader .pageTitleWithDefaultLogo {
+  width: 7.5em;
+  height: 2.2em;
+  margin-left: 0;
+  background-color: transparent;
+  background-image: url("../assets/logo/lenzflix.svg");
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: contain;
+}
+/* Header-Buttons (Suche, Benutzer, Zurück …) */
+html.layout-tv .skinHeader .headerButton {
+  color: var(--lfx-text-body);
+  border-radius: 50%;
+}
+html.layout-tv .skinHeader .headerButton .material-icons {
+  font-size: 1.6em;
+}
+/* Tabs unter der Kopfzeile: Netflix-Textlinks */
+html.layout-tv .skinHeader .headerTabs {
+  width: auto;
+  align-self: flex-start;
+  padding: 0 3.5vw 0.4em;
+}
+html.layout-tv .headerTabs .emby-tab-button {
+  margin: 0 0.3em 0 0;
+  padding: 0.4em 1.1em;
+  border-radius: 999px;
+  font-size: 1.25em;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--lfx-text-body);
+  background: transparent;
+}
+html.layout-tv .headerTabs .emby-tab-button:hover {
+  color: var(--lfx-text);
+}
+html.layout-tv .headerTabs .emby-tab-button.emby-tab-button-active {
+  font-weight: 700;
+  color: var(--lfx-text);
+  background: var(--lfx-pill-active);
+}
+
+/* ---------- Fokus: Buttons (wichtigster TV-Zustand) ---------- */
+/* Jellyfin: .emby-button.show-focus:focus = Primärfarbe + scale(1.2); .paper-icon-button-light = Sekundärfarbe + scale(1.3);
+   .emby-tab-button.show-focus:focus = scale(1.3) !important + background:0 !important */
+html.layout-tv .emby-button.show-focus:focus,
+html.layout-tv .emby-button:focus,
+html.layout-tv .detailButton:focus {
+  background: #fff;
+  color: #000;
+  transform: scale(1.06);
+  z-index: 1;
+}
+html.layout-tv .emby-button:focus .material-icons,
+html.layout-tv .emby-button:focus .detailButton-icon,
+html.layout-tv .emby-button:focus .detailButtonText,
+html.layout-tv .emby-button:focus .detailButton-text,
+html.layout-tv .emby-button:focus .emby-button-foreground {
+  color: #000 !important;
+}
+html.layout-tv .paper-icon-button-light.show-focus:focus,
+html.layout-tv .paper-icon-button-light:focus {
+  background: #fff;
+  color: #000;
+  transform: scale(1.12);
+  z-index: 1;
+}
+html.layout-tv .paper-icon-button-light:focus .material-icons {
+  color: #000;
+}
+html.layout-tv .headerTabs .emby-tab-button.show-focus:focus,
+html.layout-tv .headerTabs .emby-tab-button:focus {
+  background: #fff !important;
+  color: #000 !important;
+  transform: scale(1.06) !important;
+}
+
+/* ---------- Karten: Fokus ---------- */
+html.layout-tv .card .cardBox {
+  margin: 0.25em; /* Kartenabstand = 2 x 0.25em = 0.5em (Jellyfin: 0.6em) */
+}
+html.layout-tv .card .cardScalable,
+html.layout-tv .card .cardBox.visualCardBox {
+  border-radius: 8px;
+  overflow: hidden;
+}
+/* Ohne Skalierungs-Animation (slow browser) bringt Jellyfin einen 0.5em-Transparentrahmen mit: entfernen, Ring läuft über box-shadow */
+html.layout-tv .card.show-focus:not(.show-animation) .cardBox.visualCardBox,
+html.layout-tv .card.show-focus:not(.show-animation) .cardBox:not(.visualCardBox) .cardScalable {
+  border: 0;
+  border-radius: 8px;
+}
+html.layout-tv .card.show-focus:not(.show-animation) .cardBox {
+  margin: 0.25em;
+}
+/* Skalierung: Jellyfin transformiert .cardBox mit scale(1.07) */
+html.layout-tv .card.show-animation:focus > .cardBox {
+  transform: scale(1.09);
+}
+/* Weißer Ring um das Bild + Schatten (überschreibt Jellyfins rote border-color !important) */
+html.layout-tv .card:focus .cardBox.visualCardBox,
+html.layout-tv .card:focus .cardBox:not(.visualCardBox) .cardScalable {
+  border-color: transparent !important;
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px #fff, 0 16px 32px 4px rgba(0, 0, 0, 0.75);
+}
+
+/* ---------- Startseite / Reihen ---------- */
+html.layout-tv .sectionTitleContainer-cards {
+  margin: 0;
+}
+html.layout-tv .sectionTitle,
+html.layout-tv .sectionTitle-cards {
+  font-size: 1.5em;
+  font-weight: 700;
+  color: var(--lfx-text);
+}
+html.layout-tv .sectionTitleTextButton:focus .sectionTitle {
+  color: #000;
+}
+html.layout-tv .verticalSection {
+  margin-bottom: 1.2em;
+}
+/* 16:9-Reihen: ca. 5 sichtbar; Hochformat/Quadrat ca. 7 */
+html.layout-tv .overflowBackdropCard,
+html.layout-tv .overflowSmallBackdropCard {
+  width: 17.5vw;
+}
+html.layout-tv .overflowPortraitCard,
+html.layout-tv .overflowSquareCard {
+  width: 12.4vw;
+}
+/* Texte unter den Karten in Scroller-Reihen ausblenden. Der Fortschrittsbalken liegt im .innerCardFooter
+   (innerhalb .cardScalable) und bleibt unberührt. Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
+html.layout-tv .emby-scroller .cardBox > .cardFooter,
+html.layout-tv .emby-scroller .cardBox > .cardText {
+  display: none;
+}
+/* Titel erscheint nur bei Fokus als Verlauf am unteren Bildrand */
+html.layout-tv .emby-scroller .cardBox {
+  position: relative;
+}
+html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 1.6em 0.6em 0.7em;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
+  color: #fff;
+}
+/* Kartentexte außerhalb von Scrollern (Raster) */
+html.layout-tv .cardText {
+  color: var(--lfx-text-muted);
+}
+html.layout-tv .cardText-first {
+  color: var(--lfx-text-body);
+  font-weight: 600;
+}
+/* Fortschrittsbalken: roter Balken auf halbtransparenter Schiene */
+html.layout-tv .itemProgressBar {
+  height: 0.3em;
+  background: rgba(255, 255, 255, 0.3);
+}
+html.layout-tv .itemProgressBarForeground {
+  background-color: var(--lfx-red) !important;
+}
+
+/* ---------- Detailseite ---------- */
+/* Backdrop (global, fix): Netflix-Verläufe links dunkel, unten in #141414 */
+html.layout-tv .backdropContainer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%; /* bewusst kein inset/4x-Offset: lightningcss würde zu `inset` zusammenfassen (zu neu für alte TV-Webviews) */
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, var(--lfx-bg) 0%, rgba(20, 20, 20, 0) 55%),
+    linear-gradient(90deg, rgba(20, 20, 20, 0.92) 0%, rgba(20, 20, 20, 0.55) 40%, rgba(20, 20, 20, 0) 75%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 20%);
+}
+html.layout-tv .backgroundContainer.withBackdrop {
+  opacity: 1;
+}
+html.layout-tv #itemDetailPage {
+  background: transparent !important;
+  color: var(--lfx-text);
+}
+/* Poster ausblenden: Text/Buttons laufen links bündig */
+html.layout-tv #itemDetailPage .detailImageContainer {
+  display: none !important;
+}
+html.layout-tv #itemDetailPage .detailPageWrapperContainer {
+  padding-top: 8vh;
+}
+html.layout-tv #itemDetailPage .detailRibbon,
+html.layout-tv #itemDetailPage .detailPagePrimaryContent {
+  padding-left: 3.5vw !important;
+  padding-right: 3.5vw !important;
+  background: transparent !important;
+}
+html.layout-tv #itemDetailPage .infoWrapper {
+  max-width: 62vw;
+}
+html.layout-tv #itemDetailPage .nameContainer h1,
+html.layout-tv #itemDetailPage .itemName {
+  margin: 0 0 0.2em;
+  font-size: 2.6em;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: normal;
+  overflow: visible;
+  color: var(--lfx-text);
+}
+html.layout-tv #itemDetailPage .nameContainer h3,
+html.layout-tv #itemDetailPage .nameContainer h4 {
+  font-weight: 600;
+  color: var(--lfx-text-body);
+}
+html.layout-tv #itemDetailPage .itemMiscInfo {
+  font-size: 1em;
+  color: var(--lfx-text-body);
+}
+html.layout-tv #itemDetailPage .itemMiscInfo .mediaInfoOfficialRating {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  padding: 0 0.4em;
+}
+/* Buttons als Pillen; Beschriftung sichtbar */
+html.layout-tv #itemDetailPage .mainDetailButtons {
+  flex-wrap: wrap;
+  margin: 0.6em 0 1em;
+}
+html.layout-tv #itemDetailPage .detailButton {
+  flex-direction: row;
+  align-items: center;
+  margin: 0 0.6em 0.6em 0 !important;
+  padding: 0.5em 1.2em !important;
+  border-radius: 999px;
+  background: var(--lfx-glass);
+  color: var(--lfx-text);
+}
+html.layout-tv #itemDetailPage .detailButton-content {
+  flex-direction: row;
+}
+html.layout-tv #itemDetailPage .detailButton-icon {
+  font-size: 1.6em;
+}
+html.layout-tv #itemDetailPage .detailButtonText,
+html.layout-tv #itemDetailPage .detailButton-text {
+  margin: 0 0 0 0.4em;
+  font-size: 1em;
+  font-weight: 600;
+}
+html.layout-tv #itemDetailPage .btnPlay {
+  background: var(--lfx-red);
+  color: #fff;
+}
+html.layout-tv #itemDetailPage .detailButton:focus {
+  background: #fff;
+  color: #000;
+}
+/* Beschreibung */
+html.layout-tv #itemDetailPage .detailSectionContent .overview,
+html.layout-tv #itemDetailPage .detailSectionContent .tagline {
+  max-width: 50ch;
+  font-size: 1.05em;
+  line-height: 1.5;
+  color: var(--lfx-text);
+}
+html.layout-tv #itemDetailPage .itemGenres {
+  color: var(--lfx-text-body);
+}
+html.layout-tv #itemDetailPage .detailsGroupItem,
+html.layout-tv #itemDetailPage .detailsGroupItem a {
+  color: var(--lfx-text-muted);
+}
+/* Sektionen darunter */
+html.layout-tv #itemDetailPage .detailVerticalSection .sectionTitle {
+  font-size: 1.5em;
+  font-weight: 700;
+}
+/* Listenzeilen (Episoden …): Fokus weiß/schwarz */
+html.layout-tv .listItem {
+  border-radius: 8px;
+}
+html.layout-tv .listItem:focus {
+  background-color: #fff;
+  color: #000;
+}
+html.layout-tv .listItem:focus .listItemBodyText,
+html.layout-tv .listItem:focus .listItemMediaInfo,
+html.layout-tv .listItem:focus .mediaInfoItem,
+html.layout-tv .listItem:focus .material-icons {
+  color: #000;
+}
+
+/* ---------- Player-OSD ---------- */
+html.layout-tv .osdTitle {
+  font-size: 1.6em;
+  font-weight: 700;
+  color: var(--lfx-text);
+}
+html.layout-tv .osdControls .paper-icon-button-light {
+  color: #fff;
+}
+html.layout-tv .osdControls .paper-icon-button-light .material-icons {
+  font-size: 2.2rem;
+  color: #fff;
+}
+html.layout-tv .osdControls .btnPause .material-icons,
+html.layout-tv .osdControls .btnPlay .material-icons {
+  font-size: 3rem;
+}
+html.layout-tv .osdControls .paper-icon-button-light:focus {
+  background: #fff;
+  color: #000;
+  transform: scale(1.12);
+}
+html.layout-tv .osdControls .paper-icon-button-light:focus .material-icons {
+  color: #000;
+}
+/* Fortschritt rot */
+html.layout-tv .osdPositionSlider ~ .mdl-slider-background-flex-container .mdl-slider-background-lower,
+html.layout-tv .osdControls .mdl-slider-background-lower {
+  background-color: var(--lfx-red);
+}
+html.layout-tv .osdControls .mdl-slider-background-flex {
+  height: 0.35em;
+  margin-top: -0.175em;
+}
+html.layout-tv .osdControls .mdl-slider::-webkit-slider-thumb {
+  background: var(--lfx-red);
+}
+html.layout-tv .osdControls .mdl-slider::-moz-range-thumb {
+  background: var(--lfx-red);
+}
+html.layout-tv .osdControls .mdl-slider.show-focus:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 0.25em #fff;
+}
+html.layout-tv .osdControls .mdl-slider.show-focus:focus::-moz-range-thumb {
+  box-shadow: 0 0 0 0.25em #fff;
+}
+html.layout-tv .osdPositionText,
+html.layout-tv .osdDurationText,
+html.layout-tv .osdTimeText {
+  font-size: 1.1em;
+  color: var(--lfx-text);
+}
+
+/* ---------- Dialoge / Action-Sheets ---------- */
+html.layout-tv .dialog {
+  background-color: var(--lfx-surface);
+  color: var(--lfx-text-body);
+}
+html.layout-tv .dialogBackdrop.dialogBackdropOpened {
+  background-color: rgba(0, 0, 0, 0.75);
+}
+html.layout-tv .actionSheetTitle {
+  color: var(--lfx-text);
+  font-weight: 700;
+}
+html.layout-tv .actionSheetMenuItem {
+  color: var(--lfx-text-body);
+}
+html.layout-tv .actionSheetMenuItem:focus,
+html.layout-tv .actionSheetMenuItem.show-focus:focus {
+  background: #fff;
+  color: #000;
+  transform: none !important;
+}
+html.layout-tv .actionSheetMenuItem:focus .material-icons,
+html.layout-tv .actionSheetMenuItem:focus .actionSheetItemText,
+html.layout-tv .actionSheetMenuItem:focus .actionSheetItemAsideText {
+  color: #000;
+}

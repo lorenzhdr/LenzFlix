@@ -1,0 +1,637 @@
+/* LenzFlix · modern/detail
+   Detailseite (#itemDetailPage, Legacy-View in Desktop + Mobile) im Stil des Netflix-Detail-Modals, aber als Seite.
+   Nicht für .layout-tv (bekommt später ein eigenes CSS).
+   Selektor-Quellen: apps/legacy/controllers/itemDetails/index.html + index.js, styles/librarybrowser.scss,
+   components/mediainfo, components/listview, components/itemDetails/ItemDetailsMetadataList.tsx. */
+
+/* ---------- Seiten-Grundgerüst ---------- */
+html:not(.layout-tv) #itemDetailPage {
+  /* Backdrop-Höhe: 16:9, aber höchstens 80vh */
+  --lfx-detail-h: min(56.25vw, 80vh);
+  /* Platz über dem Hero-Inhalt (Logo/Meta/Buttons landen im unteren Backdrop-Drittel) */
+  --lfx-detail-spacer: max(var(--lfx-header-h), calc(var(--lfx-detail-h) - 400px));
+  color: var(--lfx-text);
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+/* Ohne Backdrop-Bild (Personen, Alben …) kein leerer 80vh-Kasten.
+   Achtung (live geprüft): Ab 1000 px Breite (nicht mobil) setzt Jellyfin das Bild NICHT in
+   #itemBackdrop, sondern in den globalen, fixen .backdropContainer (.displayingBackdropImage).
+   Unter 1000 px / mobil nutzt es #itemBackdrop. */
+@media (max-width: 999px) {
+  html:not(.layout-tv) #itemDetailPage:has(.itemBackdrop:not([style*="background-image"])) {
+    --lfx-detail-h: var(--lfx-header-h);
+  }
+}
+@media (min-width: 1000px) {
+  html:not(.layout-tv):not(.layout-mobile):not(:has(.backdropContainer .displayingBackdropImage)) #itemDetailPage {
+    --lfx-detail-h: var(--lfx-header-h);
+  }
+  /* Globalen Backdrop auf der Detailseite oben verankern (scrollt mit) + Netflix-Verläufe */
+  html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) {
+    --lfx-detail-bg-h: min(56.25vw, 80vh);
+  }
+  html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) .backgroundContainer {
+    background: var(--lfx-bg) !important;
+  }
+  html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) .backdropContainer {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: var(--lfx-detail-bg-h);
+    z-index: 0;
+  }
+  html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) .backdropContainer .backdropImage {
+    background-position: center top;
+  }
+  html:not(.layout-tv):not(.layout-mobile):has(#itemDetailPage:not(.hide)) .backdropContainer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background:
+      linear-gradient(0deg, var(--lfx-bg) 0%, rgba(20, 20, 20, 0) 38%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 60%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 140px);
+  }
+  /* Seite selbst durchsichtig, damit der Backdrop sichtbar ist (Jellyfin setzt sonst
+     .noBackdropTransparency mit deckendem Hintergrund) */
+  html:not(.layout-tv):not(.layout-mobile) #itemDetailPage {
+    background: transparent !important;
+  }
+}
+/* Abstandhalter über dem Hero (Block-Layout, kein Flex: Seite hat feste Höhe) */
+html:not(.layout-tv) #itemDetailPage::before {
+  content: "";
+  display: block;
+  height: var(--lfx-detail-spacer);
+}
+/* Wrapper "auflösen", damit Logo/Ribbon/Text direkte Block-Kinder der Seite sind */
+html:not(.layout-tv) #itemDetailPage .detailPageWrapperContainer,
+html:not(.layout-tv) #itemDetailPage .detailPagePrimaryContainer {
+  display: contents;
+}
+/* Poster-Karte (Desktop- und Mobil-Variante) ausblenden */
+html:not(.layout-tv) #itemDetailPage .detailImageContainer {
+  display: none !important;
+}
+
+@media (max-width: 799px) {
+  html:not(.layout-tv) #itemDetailPage {
+    --lfx-detail-h: max(56.25vw, 240px);
+    --lfx-detail-spacer: max(var(--lfx-header-h), calc(var(--lfx-detail-h) - 90px));
+  }
+}
+
+/* ---------- Backdrop + Netflix-Verläufe ---------- */
+html:not(.layout-tv) #itemDetailPage .itemBackdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--lfx-detail-h);
+  margin: 0 !important;
+  z-index: 0;
+  background-attachment: scroll;
+  background-position: center top;
+}
+html:not(.layout-tv) #itemDetailPage .itemBackdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(0deg, var(--lfx-bg) 0%, rgba(20, 20, 20, 0) 38%),          /* unten: weicher Fade in #141414 */
+    linear-gradient(90deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 60%),     /* links: Vignette */
+    linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 140px);   /* oben: Lesbarkeit Header */
+}
+
+/* ---------- Titel-Logo / Titeltext ---------- */
+html:not(.layout-tv) #itemDetailPage .detailLogo {
+  position: relative;
+  z-index: 1;
+  top: auto;
+  right: auto;
+  width: min(40vw, 420px);
+  height: 160px;
+  margin: 0 0 16px var(--lfx-gutter);
+  background-position: left bottom;
+}
+@media (max-width: 799px) {
+  html:not(.layout-tv) #itemDetailPage .detailLogo {
+    width: min(65vw, 420px);
+    height: 110px;
+  }
+}
+/* Logo vorhanden (.detailLogo ohne .hide, siehe renderLogo()) -> Text-Titel visuell ausblenden (bleibt für Screenreader).
+   Nur h1; der h3-Untertitel (Episode: "Staffel – Name") bleibt sichtbar. */
+html:not(.layout-tv) #itemDetailPage:has(.detailLogo:not(.hide)) .nameContainer h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Ribbon: Name, Meta, Buttons ---------- */
+html:not(.layout-tv) #itemDetailPage .detailRibbon {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: auto;
+  margin: 0;
+  padding: 0 var(--lfx-gutter);
+}
+html:not(.layout-tv) #itemDetailPage .infoWrapper {
+  padding: 0;
+  max-width: 100%;
+}
+html:not(.layout-tv) #itemDetailPage .nameContainer h1 {
+  margin: 0 0 0.2em;
+  font-size: clamp(32px, 4vw, 56px);
+  font-weight: 800;
+  line-height: 1.1;
+  text-align: left;
+}
+html:not(.layout-tv) #itemDetailPage .nameContainer h3,
+html:not(.layout-tv) #itemDetailPage .nameContainer h4 {
+  margin: 0 0 0.4em;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--lfx-text-body);
+  text-align: left;
+}
+html:not(.layout-tv) #itemDetailPage .nameContainer h4.originalTitle {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--lfx-text-muted);
+}
+
+/* Meta-Zeile: Jahr • Laufzeit … ; Elemente sind .mediaInfoItem (components/mediainfo) */
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo {
+  justify-content: flex-start;
+  text-align: left;
+}
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo-primary {
+  margin-bottom: 14px !important; /* überschreibt Inline-Style */
+  font-size: var(--lfx-fs-meta);
+  color: var(--lfx-text);
+}
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo-secondary {
+  margin-bottom: 14px !important;
+  font-size: 14px;
+  color: var(--lfx-text-muted);
+}
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoItem {
+  display: flex;
+  align-items: center;
+  margin: 0 !important;
+}
+/* Trenner "•" – nicht um das Altersfreigabe-Badge herum (Badge hat selbst einen Rahmen) */
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoItem:not(:first-child, .mediaInfoOfficialRating, .mediaInfoOfficialRating + .mediaInfoItem)::before {
+  content: "•";
+  margin: 0 0.6em;
+  color: rgba(255, 255, 255, 0.55);
+}
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoOfficialRating {
+  margin: 0 0.6em !important;
+}
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoOfficialRating:first-child {
+  margin-left: 0 !important;
+}
+/* Sonstige Text-Chips (Container, Auflösung …) als schlichter Text, Altersfreigabe als Rahmen-Badge */
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+}
+html:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText.mediaInfoOfficialRating {
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 3px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--lfx-text);
+}
+/* Community-Rating (Stern) dezent */
+html:not(.layout-tv) #itemDetailPage .starRatingContainer {
+  gap: 4px;
+  color: var(--lfx-text-muted);
+}
+html:not(.layout-tv) #itemDetailPage .starRatingContainer .starIcon {
+  font-size: 1.15em;
+  color: var(--lfx-text-muted);
+}
+
+/* ---------- Buttons ---------- */
+html:not(.layout-tv) #itemDetailPage .mainDetailButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--lfx-btn-gap);
+  margin: 4px 0 20px;
+  font-size: 16px;
+}
+/* Standard: runder Icon-Button 42px */
+html:not(.layout-tv) #itemDetailPage .detailButton {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 2px solid var(--lfx-icon-circle-border);
+  border-radius: 50%;
+  background: var(--lfx-icon-circle);
+  color: var(--lfx-text);
+  transition: border-color var(--lfx-dur-fast) var(--lfx-ease), background-color var(--lfx-dur-fast) var(--lfx-ease), transform var(--lfx-dur-fast) var(--lfx-ease);
+}
+html:not(.layout-tv) #itemDetailPage .detailButton:hover,
+html:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
+  border-color: #fff;
+  background: var(--lfx-icon-circle);
+}
+html:not(.layout-tv) #itemDetailPage .detailButton-icon {
+  width: 1em;
+  height: 1em;
+  font-size: 22px !important;
+  line-height: 1;
+}
+html:not(.layout-tv) #itemDetailPage .detailButton-text,
+html:not(.layout-tv) #itemDetailPage .detailButtonText {
+  display: none; /* Beschriftung läuft über title/aria */
+}
+/* Primär-Pille: Fortsetzen/Abspielen (Text kommt aus dem title-Attribut, Jellyfin-Markup hat keinen Text) */
+html:not(.layout-tv) #itemDetailPage .btnPlay,
+html:not(.layout-tv) #itemDetailPage .btnReplay {
+  width: auto;
+  height: var(--lfx-btn-h);
+  padding: 0 28px 0 20px !important;
+  border: 0;
+  border-radius: var(--lfx-btn-radius);
+  background: #fff;
+  color: #000;
+}
+html:not(.layout-tv) #itemDetailPage .btnPlay:hover,
+html:not(.layout-tv) #itemDetailPage .btnReplay:hover,
+html:not(.layout-tv) #itemDetailPage .btnPlay:focus-visible,
+html:not(.layout-tv) #itemDetailPage .btnReplay:focus-visible {
+  background: rgba(255, 255, 255, 0.75);
+}
+html:not(.layout-tv) #itemDetailPage .btnPlay .detailButton-icon,
+html:not(.layout-tv) #itemDetailPage .btnReplay .detailButton-icon {
+  font-size: 32px !important;
+  color: #000;
+}
+html:not(.layout-tv) #itemDetailPage .btnPlay::after,
+html:not(.layout-tv) #itemDetailPage .btnReplay::after {
+  content: attr(title);
+  margin-left: 6px;
+  font-size: var(--lfx-fs-button);
+  font-weight: var(--lfx-fw-button);
+  line-height: 1;
+  white-space: nowrap;
+}
+/* Wenn "Fortsetzen" sichtbar ist, wird "Von vorn" (btnReplay) zum normalen Icon-Button */
+html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay {
+  width: 42px;
+  height: 42px;
+  padding: 0 !important;
+  border: 2px solid var(--lfx-icon-circle-border);
+  border-radius: 50%;
+  background: var(--lfx-icon-circle);
+  color: var(--lfx-text);
+}
+html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay:hover {
+  border-color: #fff;
+  background: var(--lfx-icon-circle);
+}
+html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay .detailButton-icon {
+  font-size: 22px !important;
+  color: inherit;
+}
+html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay::after {
+  content: none;
+}
+/* Favorit/Gesehen: inaktiv gedämpft, aktiv weiß + weißer Rand (Theme färbt aktive Icons sonst bunt) */
+html:not(.layout-tv) #itemDetailPage .btnUserRating:not(.ratingbutton-withrating) .detailButton-icon,
+html:not(.layout-tv) #itemDetailPage .btnPlaystate:not(:has(.playstatebutton-icon-played)) .detailButton-icon {
+  opacity: 0.65;
+}
+html:not(.layout-tv) #itemDetailPage .btnUserRating.ratingbutton-withrating,
+html:not(.layout-tv) #itemDetailPage .btnPlaystate:has(.playstatebutton-icon-played) {
+  border-color: #fff;
+}
+html:not(.layout-tv) #itemDetailPage .ratingbutton-icon-withrating,
+html:not(.layout-tv) #itemDetailPage .playstatebutton-icon-played {
+  color: #fff !important;
+  opacity: 1;
+}
+
+/* ---------- Beschreibung + Details (zwei Spalten ab 1000 px) ---------- */
+html:not(.layout-tv) #itemDetailPage .detailPagePrimaryContent {
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--lfx-gutter) !important;
+}
+html:not(.layout-tv) #itemDetailPage .detailSection {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 48px;
+}
+/* Alles außer Beschreibung/Detailgruppe volle Breite */
+html:not(.layout-tv) #itemDetailPage .detailSection > * {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+html:not(.layout-tv) #itemDetailPage .detailSection > .detailSectionContent,
+html:not(.layout-tv) #itemDetailPage .detailSection > .itemDetailsGroup {
+  flex: 1 1 100%;
+}
+html:not(.layout-tv) #itemDetailPage .detailSectionContent {
+  color: var(--lfx-text);
+  font-size: clamp(16px, 1.4vw, 18px);
+  line-height: 1.5;
+}
+html:not(.layout-tv) #itemDetailPage .detailSectionContent .tagline {
+  margin: 0 0 0.6em;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--lfx-text-body);
+}
+html:not(.layout-tv) #itemDetailPage .detailSectionContent .overview,
+html:not(.layout-tv) #itemDetailPage .detailSectionContent .tagline {
+  max-width: 60ch;
+}
+html:not(.layout-tv) #itemDetailPage .detailSectionContent .overview {
+  margin: 0 0 1em;
+  color: #fff;
+}
+html:not(.layout-tv) #itemDetailPage .detailSectionContent .itemGenres {
+  margin: 0 0 0.6em;
+  font-size: 14px;
+  color: #ddd;
+}
+html:not(.layout-tv) #itemDetailPage .overview-controls {
+  justify-content: flex-start;
+  max-width: 60ch;
+}
+/* Genres/Besetzung/Studios: Label #777, Wert #ddd, 14 px */
+html:not(.layout-tv) #itemDetailPage .itemDetailsGroup {
+  margin-top: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+html:not(.layout-tv) #itemDetailPage .detailsGroupItem {
+  display: block;
+  max-width: none;
+  margin: 0 0 0.6em !important;
+  color: #ddd;
+}
+html:not(.layout-tv) #itemDetailPage .detailsGroupItem .label {
+  display: inline;
+  margin: 0 0.4em 0 0;
+  font-size: 14px;
+  color: #777;
+}
+html:not(.layout-tv) #itemDetailPage .detailsGroupItem .label::after {
+  content: ":";
+}
+html:not(.layout-tv) #itemDetailPage .detailsGroupItem > .focuscontainer-x {
+  display: inline;
+}
+html:not(.layout-tv) #itemDetailPage .detailsGroupItem a {
+  color: #ddd;
+}
+html:not(.layout-tv) #itemDetailPage .detailsGroupItem a:hover {
+  text-decoration: underline;
+}
+@media (min-width: 1000px) {
+  html:not(.layout-tv) #itemDetailPage .detailSection > .detailSectionContent {
+    flex: 2 1 0;
+    margin-top: 0;
+  }
+  html:not(.layout-tv) #itemDetailPage .detailSection > .itemDetailsGroup {
+    flex: 1 1 0;
+    min-width: 240px;
+    padding-top: 0.4em;
+  }
+}
+
+/* ---------- Track-Auswahl + Selects (dezent dunkel, Netflix-Dropdown) ---------- */
+html:not(.layout-tv) #itemDetailPage .trackSelections {
+  max-width: 44em;
+  margin-bottom: 1em;
+}
+html:not(.layout-tv) #itemDetailPage .trackSelections .selectContainer .selectLabel {
+  font-size: 14px;
+  color: #777;
+}
+html:not(.layout-tv) #itemDetailPage .emby-select,
+html:not(.layout-tv) #itemDetailPage select.detailTrackSelect {
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  background-color: #242424;
+  color: #fff;
+}
+html:not(.layout-tv) #itemDetailPage select.detailTrackSelect {
+  padding: 0.4em 2em 0.4em 0.7em;
+  font-size: 15px;
+}
+html:not(.layout-tv) #itemDetailPage .emby-select option {
+  background: #242424;
+  color: #fff;
+}
+html:not(.layout-tv) #itemDetailPage .emby-select:focus {
+  border-color: #fff;
+}
+
+/* ---------- Sektionen (Episoden, Besetzung, Ähnliche, Extras …) ---------- */
+html:not(.layout-tv) #itemDetailPage .detailPageSecondaryContainer {
+  position: relative;
+  z-index: 1;
+  padding: 24px 0 0 var(--lfx-gutter) !important;
+}
+/* Eigene Seitenränder: .padded-right (3.3 %) durch Gutter ersetzen; Scroller-Reihen laufen bündig zum rechten Rand */
+html:not(.layout-tv) #itemDetailPage .detailPageSecondaryContainer .padded-right,
+html:not(.layout-tv) #itemDetailPage .detailPagePrimaryContent .padded-right {
+  padding-right: var(--lfx-gutter);
+}
+html:not(.layout-tv) #itemDetailPage .detailPagePrimaryContent.padded-right {
+  padding-right: var(--lfx-gutter) !important;
+}
+html:not(.layout-tv) #itemDetailPage .detailVerticalSection {
+  margin-bottom: var(--lfx-row-gap);
+}
+html:not(.layout-tv) #itemDetailPage .detailVerticalSection .sectionTitle {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--lfx-text);
+}
+
+/* Episodenliste (Staffel-Seite: Listview mit großem Bild, components/listview) */
+html:not(.layout-tv) #itemDetailPage .detailVerticalSection .itemsContainer {
+  counter-reset: lfx-ep;
+}
+html:not(.layout-tv) #itemDetailPage .listItem {
+  counter-increment: lfx-ep;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--lfx-border);
+  border-radius: 0;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html:not(.layout-tv) #itemDetailPage .listItem:hover {
+  background: #333;
+}
+/* Nummer links (CSS-Zähler: Jellyfin rendert in dieser Ansicht keine Indexnummer) */
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content::before {
+  content: counter(lfx-ep);
+  flex: 0 0 48px;
+  margin-right: 8px;
+  font-size: 24px;
+  line-height: 1;
+  text-align: center;
+  color: #d2d2d2;
+}
+html:not(.layout-tv) #itemDetailPage .listItemImage-large {
+  width: 130px !important;
+  height: 73px !important;
+  min-width: 130px;
+  margin: 0 16px 0 0 !important;
+  border-radius: 4px;
+}
+html:not(.layout-tv) #itemDetailPage .listItemImageButton {
+  color: #fff;
+}
+html:not(.layout-tv) #itemDetailPage .listItemImageButton:hover {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+}
+/* Text: Titel links, Laufzeit rechts, Beschreibung darunter */
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  column-gap: 16px;
+  padding: 0;
+}
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemBodyText:first-child {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--lfx-text);
+}
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemMediaInfo {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  font-size: 16px;
+  color: var(--lfx-text);
+}
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-overview {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: normal;
+  color: #d2d2d2;
+}
+html:not(.layout-tv) #itemDetailPage .listItem-largeImage .mediaInfoItem {
+  margin: 0;
+}
+
+/* Besetzung: kompakte, dunkle Karten mit Radius */
+html:not(.layout-tv) #itemDetailPage #castContent > .card,
+html:not(.layout-tv) #itemDetailPage #guestCastContent > .card {
+  width: 148px;
+  flex: 0 0 auto;
+}
+html:not(.layout-tv) #itemDetailPage #castContent .cardBox,
+html:not(.layout-tv) #itemDetailPage #guestCastContent .cardBox {
+  overflow: hidden;
+  border-radius: var(--lfx-card-radius);
+  background: var(--lfx-surface-3);
+}
+html:not(.layout-tv) #itemDetailPage #castContent .cardText,
+html:not(.layout-tv) #itemDetailPage #guestCastContent .cardText {
+  font-size: 14px;
+  color: var(--lfx-text);
+}
+html:not(.layout-tv) #itemDetailPage #castContent .cardText-secondary,
+html:not(.layout-tv) #itemDetailPage #guestCastContent .cardText-secondary {
+  font-size: 13px;
+  color: var(--lfx-text-muted);
+}
+
+/* Ähnliche Titel: Karten-Grid (2 / 3 / 4 Spalten), dunkle Karten #2f2f2f */
+html:not(.layout-tv) #itemDetailPage #similarCollapsible [is="emby-scroller"] {
+  overflow: visible;
+}
+html:not(.layout-tv) #itemDetailPage #similarCollapsible .emby-scrollbuttons {
+  display: none;
+}
+html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-right: var(--lfx-gutter);
+  white-space: normal;
+  transform: none !important;
+}
+@media (min-width: 700px) {
+  html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent > .card {
+  width: auto;
+  margin: 0;
+}
+html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent .cardBox {
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--lfx-surface-3);
+}
+html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent .cardFooter {
+  padding: 8px 12px 12px;
+}
+
+/* ---------- Mobil: untereinander stapeln ---------- */
+@media (max-width: 799px) {
+  html:not(.layout-tv) #itemDetailPage .mainDetailButtons {
+    margin-bottom: 16px;
+  }
+  html:not(.layout-tv) #itemDetailPage .nameContainer h1 {
+    font-size: clamp(28px, 8vw, 40px);
+  }
+  html:not(.layout-tv) #itemDetailPage .listItemImage-large {
+    width: 110px !important;
+    min-width: 110px;
+    height: 62px !important;
+  }
+  html:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
+  html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content::before {
+    flex-basis: 28px;
+    font-size: 20px;
+  }
+}
+
+/* Live-Korrektur: Jellyfin gibt .detailRibbon einen halbtransparenten Paper-Hintergrund
+   (rgba(24,24,24,.8)) – bei Netflix liegen Meta + Buttons direkt auf dem Bild. */
+html:not(.layout-tv) #itemDetailPage .detailRibbon {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}

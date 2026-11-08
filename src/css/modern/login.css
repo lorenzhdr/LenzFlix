@@ -1,0 +1,242 @@
+/* LenzFlix · modern/login
+   Netflix-Anmeldeformular für #loginPage (Legacy-View, apps/legacy/controllers/session/login/index.html).
+   Nicht für .layout-tv. Logo oben links kommt aus der AppBar (header.css / logo.css). */
+
+/* --- Hintergrund: Splash-Backdrop bleibt, darüber Abdunklung + Verläufe oben/unten --- */
+html:not(.layout-tv):has(#loginPage:not(.hide)) {
+  background: #000;
+}
+html:not(.layout-tv):has(#loginPage:not(.hide)) .backdropContainer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, #000 0, rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 70%, #000 100%),
+    rgba(0, 0, 0, 0.5);
+}
+
+/* --- Seitenrahmen: Platz unter der AppBar, Inhalt zentriert --- */
+html:not(.layout-tv) #loginPage {
+  min-height: 100vh;
+  padding-top: calc(var(--lfx-header-h) + 8px) !important;
+  color: var(--lfx-text);
+}
+html:not(.layout-tv) #loginPage > .padded-bottom-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- Formular-Box --- */
+html:not(.layout-tv) #loginPage .manualLoginForm,
+html:not(.layout-tv) #loginPage .readOnlyContent,
+html:not(.layout-tv) #loginPage .visualLoginForm {
+  width: 100%;
+  max-width: 450px;
+  box-sizing: border-box;
+}
+html:not(.layout-tv) #loginPage .manualLoginForm {
+  padding: 48px 68px 40px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+}
+html:not(.layout-tv) #loginPage .manualLoginForm > .flex {
+  padding: 0 !important;
+  justify-content: flex-start;
+}
+html:not(.layout-tv) #loginPage .manualLoginForm h1.sectionTitle {
+  margin: 0 0 28px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+}
+
+/* --- Eingabefelder: Label klein oben im Feld (Label ist Geschwister VOR dem Input) --- */
+html:not(.layout-tv) #loginPage .inputContainer {
+  position: relative;
+  margin-bottom: 16px;
+}
+html:not(.layout-tv) #loginPage .inputContainer > .inputLabel {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  z-index: 1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--lfx-text-muted);
+  pointer-events: none;
+}
+html:not(.layout-tv) #loginPage .inputContainer > .inputLabelFocused {
+  color: var(--lfx-text-muted);
+}
+html:not(.layout-tv) #loginPage .emby-input {
+  height: 56px;
+  padding: 22px 16px 6px;
+  background: rgba(22, 22, 22, 0.7);
+  border: 1px solid rgba(128, 128, 128, 0.7);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html:not(.layout-tv) #loginPage .emby-input:focus {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+/* Browser-Autofill nicht hell einfärben */
+html:not(.layout-tv) #loginPage .emby-input:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  box-shadow: inset 0 0 0 100px #333;
+}
+
+/* --- „Angemeldet bleiben“ --- */
+html:not(.layout-tv) #loginPage .checkboxContainer {
+  margin: 4px 0 16px;
+}
+html:not(.layout-tv) #loginPage .emby-checkbox-label {
+  height: 2em;
+  padding-left: 28px;
+  color: var(--lfx-text-muted);
+  font-size: 14px;
+}
+html:not(.layout-tv) #loginPage .checkboxOutline {
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  border: 1px solid #737373;
+  border-radius: 2px;
+  background: #333;
+}
+html:not(.layout-tv) #loginPage .checkboxIcon {
+  font-size: 16px;
+  color: #fff;
+  background: transparent;
+}
+html:not(.layout-tv) #loginPage .emby-checkbox:checked + span + .checkboxOutline {
+  background: #333;
+  border-color: #b3b3b3;
+}
+
+/* --- Buttons --- */
+html:not(.layout-tv) #loginPage .emby-button.block {
+  min-height: 40px;
+  margin: 8px 0 0;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+html:not(.layout-tv) #loginPage .button-submit {
+  min-height: 48px;
+  margin-top: 24px;
+  background: var(--lfx-red);
+  color: #fff;
+}
+html:not(.layout-tv) #loginPage .button-submit:hover,
+html:not(.layout-tv) #loginPage .button-submit:focus {
+  background: var(--lfx-red-hover);
+  color: #fff;
+}
+html:not(.layout-tv) #loginPage .button-submit:active {
+  background: var(--lfx-red-active);
+}
+/* Sekundär: Abbrechen / Manuell / Quick Connect = grau-transparent */
+html:not(.layout-tv) #loginPage .btnCancel,
+html:not(.layout-tv) #loginPage .btnManual,
+html:not(.layout-tv) #loginPage .btnQuick {
+  background: rgba(128, 128, 128, 0.4);
+  color: #fff;
+}
+html:not(.layout-tv) #loginPage .btnCancel:hover,
+html:not(.layout-tv) #loginPage .btnCancel:focus,
+html:not(.layout-tv) #loginPage .btnManual:hover,
+html:not(.layout-tv) #loginPage .btnManual:focus,
+html:not(.layout-tv) #loginPage .btnQuick:hover,
+html:not(.layout-tv) #loginPage .btnQuick:focus {
+  background: rgba(128, 128, 128, 0.3);
+  color: #fff;
+}
+/* Tertiär: Passwort vergessen / Server wechseln = Textlinks */
+html:not(.layout-tv) #loginPage .btnForgotPassword,
+html:not(.layout-tv) #loginPage .btnSelectServer {
+  min-height: 36px;
+  background: transparent;
+  color: var(--lfx-text-muted);
+  font-weight: 400;
+  font-size: 14px;
+}
+html:not(.layout-tv) #loginPage .btnForgotPassword:hover,
+html:not(.layout-tv) #loginPage .btnForgotPassword:focus,
+html:not(.layout-tv) #loginPage .btnSelectServer:hover,
+html:not(.layout-tv) #loginPage .btnSelectServer:focus {
+  background: transparent;
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* readOnlyContent liegt ohne Formular-Box direkt auf dem Hintergrund */
+html:not(.layout-tv) #loginPage .readOnlyContent {
+  margin: 16px auto 0 !important;
+  padding: 0 68px;
+}
+
+/* --- Disclaimer --- */
+html:not(.layout-tv) #loginPage .loginDisclaimer {
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
+/* --- Benutzerkacheln (normalerweise serverseitig versteckt): Netflix-Profile --- */
+html:not(.layout-tv) #loginPage .visualLoginForm h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+}
+html:not(.layout-tv) #loginPage #divUsers {
+  gap: 24px;
+}
+html:not(.layout-tv) #loginPage #divUsers .card {
+  width: clamp(84px, 10vw, 160px);
+  color: var(--lfx-text-muted);
+}
+html:not(.layout-tv) #loginPage #divUsers .cardScalable {
+  border: 3px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html:not(.layout-tv) #loginPage #divUsers .cardPadder-square {
+  padding-bottom: 100%;
+}
+html:not(.layout-tv) #loginPage #divUsers .cardText {
+  color: inherit;
+  text-align: center;
+}
+@media (hover: hover) {
+  html:not(.layout-tv) #loginPage #divUsers .card:hover {
+    color: #fff;
+  }
+  html:not(.layout-tv) #loginPage #divUsers .card:hover .cardScalable {
+    border-color: #fff;
+  }
+}
+
+/* --- Mobil: kein Box-Hintergrund, volle Breite --- */
+@media (max-width: 740px) {
+  html:not(.layout-tv) #loginPage .manualLoginForm {
+    max-width: none;
+    padding: 24px 0 24px;
+    background: transparent;
+  }
+  html:not(.layout-tv) #loginPage .readOnlyContent {
+    max-width: none;
+    padding: 0;
+  }
+}

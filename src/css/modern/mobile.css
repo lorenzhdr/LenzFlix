@@ -1,0 +1,185 @@
+/* LenzFlix · modern/mobile: Netflix-Handy-App-Optik (< 800 px), wirkt ohne JS.
+   Ausschließlich Overrides; wird nach allen modern/*.css geladen (gleiche Spezifität -> gewinnt). */
+
+@media (max-width: 799px) {
+  :root {
+    --lfx-header-h: 56px;
+    --lfx-row-title-gap: 10px;
+    --lfx-row-gap: 24px;
+    --lfx-fs-row-title: 16px;
+    --lfx-fw-row-title: 700;
+    --lfx-card-radius: 6px;
+  }
+
+  /* Kein horizontales Seiten-Scrollen */
+  html:not(.layout-tv) body {
+    overflow-x: clip;
+  }
+  html:not(.layout-tv) {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* ---------- Header: kompakt, Safe-Area ---------- */
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
+    min-height: 56px;
+    flex-wrap: nowrap;
+    padding-inline: max(4vw, env(safe-area-inset-left, 0px)) max(4vw, env(safe-area-inset-right, 0px));
+  }
+  /* Server-Logo (nur sichtbar, wenn kein Drawer-Modus): klein */
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child a.MuiButton-root[href="#/"] {
+    width: 78px;
+    height: 22px;
+  }
+  /* Im Drawer-Modus gibt es kein Server-Logo: Wortmarke als Pseudo-Element, Menü-Button links davon */
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child:not(:has(a[href="#/"]))::before {
+    content: "";
+    order: 1;
+    flex: none;
+    width: 78px;
+    height: 22px;
+    margin-left: 4px;
+    background: url("../assets/logo/lenzflix.svg") no-repeat left center / contain;
+  }
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child > * {
+    order: 2;
+  }
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child > .MuiIconButton-root:first-child {
+    order: 0;
+  }
+  /* Tap-Ziele 40 px */
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child .MuiIconButton-root {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+  }
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child > .MuiIconButton-root:first-child {
+    margin-left: -8px;
+  }
+  /* Profil: 32 px Avatar, Tap-Ziel 40 px, kein Caret */
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup] {
+    min-width: 40px;
+    min-height: 40px;
+    margin: 0 0 0 4px;
+    padding: 4px;
+    display: inline-grid;
+    place-items: center;
+  }
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child button[aria-haspopup]::after {
+    display: none;
+  }
+  /* Bibliotheks-Toolbar (2. Zeile): umbrechen statt überlaufen */
+  html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-inline: max(4vw, env(safe-area-inset-left, 0px)) max(4vw, env(safe-area-inset-right, 0px));
+    max-width: 100vw;
+  }
+
+  /* ---------- Native Startseite (ohne JS): 2,3 Karten sichtbar ---------- */
+  html:not(.layout-tv) .emby-scroller {
+    --lfx-card-gap: 8px;
+    --lfx-card-w: calc((100vw - var(--lfx-gutter)) / 2.3 - var(--lfx-card-gap));
+    --lfx-poster-w: calc((100vw - var(--lfx-gutter)) / 3.3 - var(--lfx-card-gap));
+  }
+  html:not(.layout-tv) #indexPage {
+    --lfx-title-h: 20px;
+    --lfx-pad-top: 4px;
+    --lfx-pad-bottom: 16px;
+  }
+  html:not(.layout-tv) #indexPage h2.sectionTitle.sectionTitle-cards {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 20px;
+  }
+  html:not(.layout-tv) #indexPage .emby-scrollbuttons {
+    display: none;
+  }
+
+  /* ---------- Detailseite ---------- */
+  html:not(.layout-tv) #itemDetailPage {
+    overflow-x: clip;
+  }
+  html:not(.layout-tv) #itemDetailPage .nameContainer h1,
+  html:not(.layout-tv) #itemDetailPage .nameContainer h3,
+  html:not(.layout-tv) #itemDetailPage .overview {
+    overflow-wrap: anywhere;
+  }
+  html:not(.layout-tv) #itemDetailPage .nameContainer h3,
+  html:not(.layout-tv) #itemDetailPage .nameContainer h4 {
+    font-size: 16px;
+  }
+  html:not(.layout-tv) #itemDetailPage .itemMiscInfo {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  /* Abspielen/Fortsetzen: volle Breite, Icon-Buttons darunter */
+  html:not(.layout-tv) #itemDetailPage .mainDetailButtons .btnPlay {
+    flex: 1 1 100%;
+    justify-content: center;
+    height: 48px;
+  }
+  html:not(.layout-tv) #itemDetailPage .detailButton {
+    min-width: 42px;
+    min-height: 42px;
+  }
+  html:not(.layout-tv) #itemDetailPage img,
+  html:not(.layout-tv) #itemDetailPage video {
+    max-width: 100%;
+  }
+
+  /* ---------- Bibliothek ---------- */
+  html:not(.layout-tv) .libraryPage .vertical-wrap.itemsContainer:not(.centered) {
+    padding-inline: var(--lfx-gutter);
+    max-width: 100vw;
+  }
+
+  /* ---------- Suche ---------- */
+  html:not(.layout-tv) #searchPage .searchFields {
+    padding-inline: var(--lfx-gutter);
+  }
+  html:not(.layout-tv) #searchPage .searchFieldsInner {
+    max-width: none;
+  }
+  html:not(.layout-tv) #searchPage #searchTextInput {
+    font-size: 16px; /* >= 16 px verhindert iOS-Zoom beim Fokussieren */
+  }
+
+  /* ---------- Login ---------- */
+  html:not(.layout-tv) #loginPage {
+    padding-inline: max(var(--lfx-gutter), env(safe-area-inset-left, 0px));
+  }
+  html:not(.layout-tv) #loginPage input,
+  html:not(.layout-tv) #loginPage .emby-input {
+    font-size: 16px;
+  }
+
+  /* ---------- Player-OSD: Safe-Area ---------- */
+  html:not(.layout-tv) #videoOsdPage .videoOsdBottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-inline: max(0px, env(safe-area-inset-left, 0px)) max(0px, env(safe-area-inset-right, 0px));
+  }
+
+  /* ---------- Dialoge/ActionSheets: Safe-Area, nicht breiter als der Bildschirm ---------- */
+  html:not(.layout-tv) .dialog {
+    max-width: 100vw;
+  }
+  html:not(.layout-tv) .dialog.actionSheet .actionSheetContent {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Touch: kein Tap-Highlight, schnelle Taps, keine Hover-Reste */
+@media (hover: none) {
+  html:not(.layout-tv) a,
+  html:not(.layout-tv) button,
+  html:not(.layout-tv) .card {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  html:not(.layout-tv) #indexPage .emby-scrollbuttons {
+    display: none;
+  }
+}

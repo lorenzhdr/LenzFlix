@@ -1,0 +1,162 @@
+/* LenzFlix · modern/home
+   Jellyfin-native Startseite (#indexPage) im Netflix-Look, ohne JS lauffähig.
+   Gilt nicht für .layout-tv. Quellen: homesections/sections/*.ts, librarybrowser.scss,
+   emby-scroller.scss/js, emby-scrollbuttons (jellyfin-web v12.4). */
+
+/* ---------- Lokale Maße ---------- */
+html:not(.layout-tv) #indexPage {
+  --lfx-title-h: 22px;     /* Zeilenhöhe Zeilentitel */
+  --lfx-pad-top: 24px;     /* Scroller-Padding oben (Platz für Hover-Zoom) */
+  --lfx-pad-bottom: 48px;  /* Scroller-Padding unten (Zoom + Schatten) */
+  background-color: var(--lfx-bg);
+}
+
+/* ---------- Sektionen ---------- */
+/* flow-root: negative Scroller-Margins bleiben in der Sektionshöhe -> Zeilen-Pitch deterministisch */
+html:not(.layout-tv) #indexPage .verticalSection {
+  position: relative;
+  display: flow-root;
+  margin: 0;
+}
+/* Zoom/Schatten der Hover-Karte soll die nächste Zeile überdecken */
+html:not(.layout-tv) #indexPage .verticalSection:is(:hover, :focus-within) {
+  z-index: 3;
+}
+
+/* ---------- Zeilentitel ---------- */
+html:not(.layout-tv) #indexPage .sectionTitleContainer-cards,
+html:not(.layout-tv) #indexPage .verticalSection > h2.sectionTitle-cards {
+  position: relative;
+  z-index: 2;              /* über dem überlappenden Scroller-Padding */
+  margin: 0;
+  padding: 0 0 0 var(--lfx-gutter);
+  min-height: var(--lfx-title-h);
+}
+html:not(.layout-tv) #indexPage .verticalSection:first-child > h2.sectionTitle-cards,
+html:not(.layout-tv) #indexPage .verticalSection:first-child > .sectionTitleContainer-cards {
+  margin-top: 0;
+}
+html:not(.layout-tv) #indexPage h2.sectionTitle.sectionTitle-cards {
+  margin: 0;
+  font-size: var(--lfx-fs-row-title);
+  font-weight: var(--lfx-fw-row-title);
+  line-height: var(--lfx-title-h);
+  color: var(--lfx-text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* Titel direkt unter der Sektion: Padding trägt der h2 selbst (padded-left überschrieben),
+   Titel im Container: Padding trägt der Container */
+html:not(.layout-tv) #indexPage .sectionTitleContainer-cards h2.sectionTitle {
+  padding: 0;
+}
+html:not(.layout-tv) #indexPage .sectionTitleContainer-cards .sectionTitleTextButton {
+  align-items: center;
+  padding: 0 !important;
+  color: var(--lfx-text) !important;
+  text-decoration: none;
+}
+/* Chevron „>“: nur bei Hover der Sektion dezent einblenden (Netflix „Alle ansehen“) */
+html:not(.layout-tv) #indexPage .sectionTitleTextButton > .material-icons {
+  margin: 0 0 0 2px;
+  font-size: 20px;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--lfx-dur) var(--lfx-ease), transform var(--lfx-dur) var(--lfx-ease);
+}
+html:not(.layout-tv) #indexPage .verticalSection:hover .sectionTitleTextButton > .material-icons,
+html:not(.layout-tv) #indexPage .sectionTitleTextButton:focus-visible > .material-icons {
+  opacity: 0.85;
+  transform: none;
+}
+
+/* ---------- Scroller: Gutter, Overflow für Zoom, Abstände ---------- */
+/* Padding oben/unten schafft Platz für Zoom + Schatten und wird per negativem Margin
+   ausgeglichen: Titel-Unterkante -> Karte = 14 px, Karte -> nächster Titel = 40 px.
+   Zeilen-Pitch Backdrop (1206 px): 22 + 14 + 158,5 + 40 ≈ 234 px (Netflix ≈ 231). */
+html:not(.layout-tv) #indexPage .emby-scroller {
+  padding: var(--lfx-pad-top) var(--lfx-gutter) var(--lfx-pad-bottom);
+  margin-top: calc(var(--lfx-row-title-gap) - var(--lfx-pad-top));
+  margin-bottom: calc(var(--lfx-row-gap) - var(--lfx-pad-bottom));
+  scrollbar-width: none;
+}
+html:not(.layout-tv) #indexPage .emby-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- Kartentexte in Startseiten-Zeilen ausblenden ---------- */
+/* Netflix zeigt nur Bilder (Titel steckt im Bild; Jellyfin erzeugt für Bibliotheken
+   ohnehin Bilder mit Schriftzug). Jellyfin 12.4 legt die Texte je nach Sektion in
+   .cardFooter ODER direkt als .cardBox > .cardText ab (live geprüft).
+   Grids (.vertical-wrap) liegen nicht in .emby-scroller und bleiben unberührt. */
+html:not(.layout-tv) #indexPage .emby-scroller .card .cardFooter,
+html:not(.layout-tv) #indexPage .emby-scroller .card .cardBox > .cardText {
+  display: none;
+}
+
+/* Alternative Darstellung „Bibliotheks-Buttons“ (Einstellung Startseite) */
+html:not(.layout-tv) #indexPage .homeLibraryButtonContainer {
+  padding-left: var(--lfx-gutter);
+  padding-right: var(--lfx-gutter);
+  margin: 0;
+}
+html:not(.layout-tv) #indexPage .homeLibraryButton {
+  background: var(--lfx-surface-2);
+  color: var(--lfx-text);
+  border-radius: var(--lfx-card-radius);
+  font-weight: 700;
+}
+
+/* ---------- Scroll-Buttons: halbtransparente Streifen in Kartenhöhe ---------- */
+/* Struktur: <div class="emby-scrollbuttons"> (absolute in .verticalSection) > zwei button.emby-scrollbuttons-button
+   (links/rechts). Container deckt die Kartenhöhe ab, nimmt aber keine Klicks. */
+html:not(.layout-tv) #indexPage .emby-scrollbuttons {
+  top: calc(var(--lfx-title-h) + var(--lfx-row-title-gap));
+  bottom: var(--lfx-row-gap);
+  left: 0;
+  right: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  justify-content: space-between;
+  align-items: stretch;
+  pointer-events: none;
+  z-index: 4;
+}
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--lfx-gutter) !important;
+  height: 100% !important;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #fff;
+  background: rgba(20, 20, 20, 0.5) !important;
+  border-radius: 0 var(--lfx-card-radius) var(--lfx-card-radius) 0 !important;
+  opacity: 0;
+  transition: opacity var(--lfx-dur) var(--lfx-ease), background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:is([data-direction="right"], .btnNext) {
+  border-radius: var(--lfx-card-radius) 0 0 var(--lfx-card-radius) !important;
+}
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button .material-icons,
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button svg {
+  font-size: 32px !important;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+html:not(.layout-tv) #indexPage .verticalSection:hover .emby-scrollbuttons-button:not(:disabled),
+html:not(.layout-tv) #indexPage .emby-scrollbuttons-button:focus-visible {
+  opacity: 1;
+}
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:not(:disabled):hover {
+  background: rgba(20, 20, 20, 0.75) !important;
+}
+html:not(.layout-tv) #indexPage .emby-scrollbuttons .emby-scrollbuttons-button:disabled {
+  visibility: hidden;
+}

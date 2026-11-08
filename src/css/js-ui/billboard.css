@@ -1,0 +1,247 @@
+/* LenzFlix · js-ui/billboard – Hero-Karte (#lfx-billboard), Maße bei 1206 px Viewport */
+html.lfx-js #lfx-billboard {
+  /* Feinjustierung der Oberkante (Ziel: Karte beginnt 86 px unter Seitenanfang) */
+  --lfx-bb-top-fix: 0px;
+  --lfx-bb-desc-display: none; /* auf -webkit-box schalten für 2-zeilige Beschreibung */
+  position: relative;
+  margin: calc(6px + var(--lfx-bb-top-fix)) var(--lfx-gutter) 0;
+  min-width: 0;
+}
+html.lfx-js #lfx-billboard[hidden] { display: none; }
+
+html.lfx-js .lfx-bb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--lfx-billboard-ratio);
+  max-height: 80vh;
+  border-radius: var(--lfx-billboard-radius);
+  overflow: hidden;
+  background: #0c0c0c;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  color: #fff;
+  isolation: isolate;
+}
+
+/* Medien */
+html.lfx-js .lfx-bb__media,
+html.lfx-js .lfx-bb__pic,
+html.lfx-js .lfx-bb__img,
+html.lfx-js .lfx-bb__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+html.lfx-js .lfx-bb__img,
+html.lfx-js .lfx-bb__video { object-fit: cover; object-position: center 25%; }
+html.lfx-js .lfx-bb__pic { opacity: 0; transition: opacity 1s var(--lfx-ease); }
+html.lfx-js .lfx-bb__pic.is-in { opacity: 1; }
+html.lfx-js .lfx-bb__video { opacity: 0; transition: opacity 0.8s var(--lfx-ease); }
+html.lfx-js .lfx-bb__video.is-in { opacity: 1; }
+
+html.lfx-js .lfx-bb__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(77deg, rgba(0, 0, 0, 0.6) 0, transparent 55%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.45), transparent 25%);
+}
+
+/* Mini-Marke oben links */
+html.lfx-js .lfx-bb__mark {
+  position: absolute;
+  top: 20px;
+  left: 34px;
+  height: 24px;
+  width: 10px;
+  background: url("../assets/logo/lenzflix-l.svg") center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* Mute-Button */
+html.lfx-js .lfx-bb__mute {
+  position: absolute;
+  top: 20px;
+  right: 28px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(63, 59, 56, 0.85);
+  color: #fff;
+  cursor: pointer;
+}
+html.lfx-js .lfx-bb__mute[hidden] { display: none; }
+html.lfx-js .lfx-bb__mute svg { width: 16px; height: 16px; }
+
+/* Inhalt */
+html.lfx-js .lfx-bb__live {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.4s var(--lfx-ease);
+}
+html.lfx-js .lfx-bb__live.is-out { opacity: 0; }
+/* (Kinder positionieren sich selbst – kein generisches inset:0, das würde left/bottom von __text/__buttons überstimmen) */
+html.lfx-js .lfx-bb__text {
+  position: absolute;
+  left: 28px;
+  bottom: calc(27px + var(--lfx-btn-h) + 34px);
+  width: min(360px, 30%);
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+  pointer-events: auto;
+}
+html.lfx-js .lfx-bb__logo {
+  display: block;
+  max-width: 100%;
+  max-height: 110px;
+  object-fit: contain;
+  object-position: left bottom;
+}
+html.lfx-js .lfx-bb__title { margin: 0; font-size: 34px; font-weight: 700; line-height: 1.1; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+html.lfx-js .lfx-bb__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: var(--lfx-fs-meta);
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+html.lfx-js .lfx-bb__dot { margin: 0 8px; font-size: 9px; color: var(--lfx-text-muted); }
+html.lfx-js .lfx-bb__rating { font-weight: 400; }
+html.lfx-js .lfx-bb__desc {
+  display: var(--lfx-bb-desc-display, none);
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--lfx-fs-body);
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Buttons */
+html.lfx-js .lfx-bb__buttons {
+  position: absolute;
+  left: 28px;
+  bottom: 27px;
+  display: flex;
+  gap: var(--lfx-btn-gap);
+  pointer-events: auto;
+}
+html.lfx-js .lfx-bb__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--lfx-btn-h);
+  border: 0;
+  border-radius: var(--lfx-btn-radius);
+  font: var(--lfx-fw-button) var(--lfx-fs-button) / 1 var(--lfx-font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js .lfx-bb__btn--play { background: #fff; color: #000; padding: 0 28px 0 22px; gap: 10px; }
+html.lfx-js .lfx-bb__btn--play svg { width: 22px; height: 22px; }
+html.lfx-js .lfx-bb__btn--info { background: var(--lfx-glass); color: #fff; padding: 0 28px; }
+html.lfx-js .lfx-bb__btn:focus-visible,
+html.lfx-js .lfx-bb__mute:focus-visible,
+html.lfx-js .lfx-bb__dotbtn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-bb__btn--play:hover { background: rgba(255, 255, 255, 0.75); }
+  html.lfx-js .lfx-bb__btn--info:hover { background: var(--lfx-glass-hover); }
+}
+
+/* Badge unten rechts */
+html.lfx-js .lfx-bb__badge {
+  position: absolute;
+  right: 28px;
+  bottom: 27px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(20, 20, 20, 0.85);
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+}
+html.lfx-js .lfx-bb__badge svg { width: 16px; height: 16px; }
+
+/* Positions-Indikatoren */
+html.lfx-js .lfx-bb__dots {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity var(--lfx-dur) var(--lfx-ease);
+}
+html.lfx-js .lfx-bb__dots[hidden] { display: none; }
+html.lfx-js .lfx-bb:hover .lfx-bb__dots,
+html.lfx-js .lfx-bb:focus-within .lfx-bb__dots { opacity: 1; }
+html.lfx-js .lfx-bb__dotbtn {
+  width: 16px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+html.lfx-js .lfx-bb__dotbtn::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+html.lfx-js .lfx-bb__dotbtn.is-active::after { background: #fff; }
+
+/* Mobile: Hochformat-Karte */
+@media (max-width: 799px) {
+  html.lfx-js .lfx-bb { aspect-ratio: 4 / 5; max-height: 75vh; }
+  html.lfx-js .lfx-bb__img { object-position: center top; }
+  html.lfx-js .lfx-bb__shade { background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent 55%); }
+  html.lfx-js .lfx-bb__text {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    bottom: calc(16px + var(--lfx-btn-h) + 20px);
+    align-items: center;
+    text-align: center;
+  }
+  html.lfx-js .lfx-bb__logo { object-position: center bottom; margin: 0 auto; max-width: 70%; }
+  html.lfx-js .lfx-bb__meta { justify-content: center; white-space: normal; }
+  html.lfx-js .lfx-bb__buttons { left: 16px; right: 16px; bottom: 16px; }
+  html.lfx-js .lfx-bb__btn { flex: 1 1 50%; padding: 0 12px; }
+  html.lfx-js .lfx-bb__badge { display: none; }
+  html.lfx-js .lfx-bb__mark { left: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-bb__pic,
+  html.lfx-js .lfx-bb__video,
+  html.lfx-js .lfx-bb__live { transition: none; }
+}
+
+/* Mobile Genre-Zeile + "Meine Liste"-Button: Desktop ausgeblendet (mobile.css schaltet um) */
+html.lfx-js .lfx-bb__genres,
+html.lfx-js .lfx-bb__btn--list { display: none; }

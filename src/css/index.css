@@ -1,0 +1,25 @@
+/* LenzFlix · CSS-Einstieg. Reihenfolge = Kaskade. Keine Globs in @import – neue Dateien hier eintragen. */
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./logo.css";
+/* Kern-CSS: wirkt auch ohne JS */
+@import "./modern/header.css";
+@import "./modern/cards.css";
+@import "./modern/home.css";
+@import "./modern/detail.css";
+@import "./modern/player.css";
+@import "./modern/login.css";
+@import "./modern/library.css";
+@import "./modern/search.css";
+@import "./modern/dialogs.css";
+@import "./modern/mobile.css";
+@import "./legacy-tv/tv.css";
+/* Styles der JS-Komponenten (greifen nur, wenn html.lfx-js gesetzt ist) */
+@import "./js-ui/header.css";
+@import "./js-ui/home.css";
+@import "./js-ui/billboard.css";
+@import "./js-ui/rows.css";
+@import "./js-ui/hovercard.css";
+@import "./js-ui/modal.css";
+@import "./js-ui/newpopular.css";
+@import "./js-ui/mobile.css";

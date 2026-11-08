@@ -1,0 +1,235 @@
+/* LenzFlix · js-ui/hovercard
+   Netflix-Hover-Popup (#lfx-hovercard, vom JS in <body> angelegt). Nur im JS-Modus. */
+
+/* ---------- Nativen Hover-Zoom/-Overlay im JS-Modus neutralisieren ---------- */
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
+    transform: none;
+    z-index: auto;
+    transition-delay: 0s;
+  }
+  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
+    box-shadow: none;
+    transition-delay: 0s;
+  }
+  html.lfx-js .emby-scroller .cardOverlayContainer {
+    display: none !important;
+  }
+}
+
+/* ---------- Popup ---------- */
+html.lfx-js #lfx-hovercard {
+  position: fixed;
+  z-index: 1050;
+  box-sizing: border-box;
+  margin: 0;
+  color: #fff;
+  font-family: var(--lfx-font);
+  background: var(--lfx-surface);
+  border-radius: var(--lfx-popup-radius);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.75), var(--lfx-shadow-card);
+  transform-origin: 0 0;
+  transform: var(--lfx-hc-from, none);
+  opacity: 1;
+  transition: transform 300ms var(--lfx-ease), opacity 300ms var(--lfx-ease);
+}
+html.lfx-js #lfx-hovercard.is-open {
+  transform: none;
+}
+html.lfx-js #lfx-hovercard.is-closing {
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 200ms var(--lfx-ease), opacity 200ms var(--lfx-ease);
+}
+
+.lfx-hc__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--lfx-surface-2);
+  border-radius: var(--lfx-popup-radius) var(--lfx-popup-radius) 0 0;
+}
+.lfx-hc__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lfx-hc__overlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 16px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+.lfx-hc__overlay:empty { display: none; }
+.lfx-hc__logo {
+  display: block;
+  max-width: 55%;
+  max-height: 56px;
+  object-fit: contain;
+  object-position: left bottom;
+}
+.lfx-hc__title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+.lfx-hc__info {
+  position: relative;
+  z-index: 1;
+  padding: 16px;
+  background: var(--lfx-surface);
+  border-radius: 0 0 var(--lfx-popup-radius) var(--lfx-popup-radius);
+  opacity: 0;
+  transition: opacity 150ms var(--lfx-ease);
+}
+html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
+  opacity: 1;
+  transition-delay: 150ms;
+}
+
+/* ---------- Buttons ---------- */
+.lfx-hc__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.lfx-hc__actions-main {
+  display: flex;
+  gap: 8px;
+}
+.lfx-hc__btnwrap {
+  position: relative;
+  display: inline-flex;
+}
+.lfx-hc__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  color: #fff;
+  cursor: pointer;
+  background: var(--lfx-icon-circle);
+  border: 2px solid var(--lfx-icon-circle-border);
+  border-radius: 50%;
+  transition: border-color 150ms var(--lfx-ease), background-color 150ms var(--lfx-ease);
+}
+.lfx-hc__btn:hover,
+.lfx-hc__btn:focus-visible {
+  border-color: #fff;
+}
+.lfx-hc__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.lfx-hc__btn--play {
+  color: #000;
+  background: #fff;
+  border-color: #fff;
+}
+.lfx-hc__btn--play:hover { background: rgba(255, 255, 255, 0.85); }
+.lfx-hc__btn svg { width: 22px; height: 22px; }
+
+.lfx-hc__tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  z-index: 2;
+  padding: 8px 12px;
+  color: #000;
+  font: 600 14px/1 var(--lfx-font);
+  white-space: nowrap;
+  pointer-events: none;
+  background: #fff;
+  border-radius: 4px;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 120ms var(--lfx-ease);
+}
+.lfx-hc__tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: #fff;
+}
+.lfx-hc__btnwrap:first-child .lfx-hc__tip { left: 0; transform: none; }
+.lfx-hc__btnwrap:first-child .lfx-hc__tip::after { left: 21px; }
+.lfx-hc__actions > .lfx-hc__btnwrap:last-child .lfx-hc__tip { left: auto; right: 0; transform: none; }
+.lfx-hc__actions > .lfx-hc__btnwrap:last-child .lfx-hc__tip::after { left: auto; right: 15px; margin-left: 0; }
+.lfx-hc__btnwrap:hover .lfx-hc__tip,
+.lfx-hc__btnwrap:focus-within .lfx-hc__tip { opacity: 1; }
+
+/* ---------- Infobereich ---------- */
+.lfx-hc__meta,
+.lfx-hc__genres,
+.lfx-hc__ep,
+.lfx-hc__progress {
+  font-size: 14px;
+  line-height: 1.3;
+}
+.lfx-hc__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.lfx-hc__badge {
+  display: inline-block;
+  padding: 0 0.4em;
+  line-height: 1.35;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.lfx-hc__badge--q {
+  padding: 0 4px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.lfx-hc__year { color: #bcbcbc; }
+.lfx-hc__genres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  color: #fff;
+}
+.lfx-hc__dot {
+  margin: 0 8px;
+  color: #646464;
+}
+.lfx-hc__ep {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.lfx-hc__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.lfx-hc__rail {
+  flex: 1;
+  height: 2px;
+  background: #5a5a5a;
+}
+.lfx-hc__fill {
+  height: 100%;
+  background: var(--lfx-red);
+}
+.lfx-hc__remain {
+  color: #bcbcbc;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js #lfx-hovercard,
+  html.lfx-js #lfx-hovercard.is-closing,
+  .lfx-hc__info { transition-duration: 0ms; transition-delay: 0ms; }
+}

@@ -1,0 +1,287 @@
+// LenzFlix: Ansicht „Neu und beliebt“ (Route #/home?lfx=new).
+// Eigener Container #lfx-newpopular als erstes Kind von #homeTab; native Sektionen und #lfx-home
+// werden per CSS (html.lfx-newpopular-on) ausgeblendet. Karten/Scroller kommen aus rows/*.
+import * as api from '../core/api.js';
+import { h } from '../core/dom.js';
+import { isTv } from '../core/layout.js';
+import { putItems } from '../core/itemstore.js';
+import { play } from '../core/playback.js';
+import { openModal } from './modal.js';
+import { createCard, detailHref, landscapeFor } from './rows/card.js';
+import { BASE_PARAMS, badgeFor } from './rows/logic.js';
+import { attachScroller, chevronButton } from './rows/scroller.js';
+import { asItems, getNewSeriesIds } from './rows/sources.js';
+import { dateParts, hasPlayCounts, sinceLabel, uniqueTitles } from './newpopular/format.js';
+
+const ROOT_ID = 'lfx-newpopular';
+const ON_CLASS = 'lfx-newpopular-on';
+const TYPES = 'Movie,Series';
+
+const SECTIONS = [
+  { id: 'new', label: 'Neu bei LENZFLIX', icon: '🍿' },
+  { id: 'watched', label: 'Am häufigsten geschaut', icon: '🔥' },
+  { id: 'top-series', label: 'Top 10 Serien', icon: '🔟' },
+  { id: 'top-movies', label: 'Top 10 Filme', icon: '🔟' },
+];
+
+let cleanups = [];
+let waitTimer = null;
+
+function isNewRoute(route) {
+  return route.path === '/home' && route.params.get('lfx') === 'new';
+}
+
+function findHomeTab() {
+  const tab = document.querySelector('#indexPage:not(.hide) #homeTab');
+  return tab && tab.isConnected ? tab : null;
+}
+
+function teardown() {
+  for (const fn of cleanups.splice(0)) {
+    try { fn && fn(); } catch (e) { console.error('[LenzFlix] newpopular cleanup', e); }
+  }
+  document.getElementById(ROOT_ID)?.remove();
+  document.documentElement.classList.remove(ON_CLASS);
+}
+
+// ---------------------------------------------------------------- Abfragen
+
+const query = (params) => api.getItems({
+  ...BASE_PARAMS, IncludeItemTypes: TYPES, Recursive: true, ...params,
+}).then(asItems);
+
+export function loadNew() {
+  return query({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 20 }).then((l) => uniqueTitles(l, 20));
+}
+
+/** PlayCount (pro Benutzer); sind alle Zähler 0, Fallback auf CommunityRating. */
+export async function loadMostWatched() {
+  const byPlays = await query({ SortBy: 'PlayCount', SortOrder: 'Descending', Limit: 20 });
+  if (hasPlayCounts(byPlays)) return uniqueTitles(byPlays, 20);
+  return uniqueTitles(await query({ SortBy: 'CommunityRating', SortOrder: 'Descending', Limit: 20 }), 20);
+}
+
+export const loadTop = (type) => query({
+  IncludeItemTypes: type, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10,
+}).then((l) => uniqueTitles(l, 10));
+
+// ---------------------------------------------------------------- Rendering
+
+function svg(path) {
+  const w = h('span', { class: 'lfx-np__ico', 'aria-hidden': 'true' });
+  w.innerHTML = `<svg viewBox="0 0 24 24" focusable="false">${path}</svg>`;
+  return w;
+}
+const ICON_PLAY = '<path d="M7 4.5v15l12-7.5z" fill="currentColor"/>';
+const ICON_PLUS = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
+const ICON_CHECK = '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+const ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+
+function roundButton(label, icon, onClick) {
+  const b = h('button', { type: 'button', class: 'lfx-np__btn', 'aria-label': label, title: label, onclick: onClick });
+  b.append(svg(icon));
+  return b;
+}
+
+function favoriteButton(item) {
+  let fav = Boolean(item.UserData && item.UserData.IsFavorite);
+  function paint() {
+    const label = fav ? 'Aus Meine Liste entfernen' : 'Zu Meine Liste hinzufügen';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    btn.querySelector('svg').innerHTML = fav ? ICON_CHECK : ICON_PLUS;
+  }
+  const btn = roundButton('Meine Liste', ICON_PLUS, async () => {
+    const next = !fav;
+    try {
+      await api.setFavorite(item.Id, next);
+      fav = next;
+      if (item.UserData) item.UserData.IsFavorite = next;
+      paint();
+    } catch (e) {
+      console.warn('[LenzFlix] Meine Liste fehlgeschlagen', e && e.message);
+    }
+  });
+  paint();
+  return btn;
+}
+
+/** Ein Eintrag der „Neu bei LENZFLIX“-Liste. */
+export function createNewEntry(item, newSeries) {
+  const parts = dateParts(item.DateCreated);
+  const title = item.Name || '';
+  const bg = api.imageUrl(item, { type: 'Backdrop', maxWidth: 1000, quality: 85 }) || (landscapeFor(item, 1000) || {}).url;
+  const logo = api.logoImage(item, { maxWidth: 400 });
+  const open = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    openModal(item);
+  };
+  const media = h('a', { class: 'lfx-np__media', href: detailHref(item), 'aria-label': title, onclick: open }, [
+    bg ? h('img', { class: 'lfx-np__img', src: bg, alt: '', loading: 'lazy', decoding: 'async' }) : null,
+    logo
+      ? h('img', { class: 'lfx-np__media-logo', src: logo, alt: '', loading: 'lazy', decoding: 'async' })
+      : h('span', { class: 'lfx-np__media-title' }, title),
+  ]);
+  const buttons = h('div', { class: 'lfx-np__btns' }, [
+    roundButton('Abspielen', ICON_PLAY, () => { play(item, { resume: false }); }),
+    favoriteButton(item),
+    roundButton('Weitere Infos', ICON_DOWN, open),
+  ]);
+  const genres = (item.Genres || []).slice(0, 4).join(' • ');
+  const body = h('div', { class: 'lfx-np__body' }, [
+    h('div', { class: 'lfx-np__name' }, title),
+    h('div', { class: 'lfx-np__since' }, sinceLabel(item, newSeries)),
+    item.Overview ? h('p', { class: 'lfx-np__overview' }, item.Overview) : null,
+    genres ? h('div', { class: 'lfx-np__genres' }, genres) : null,
+  ]);
+  return h('article', { class: 'lfx-np__entry', dataset: { lfxId: item.Id } }, [
+    h('div', { class: 'lfx-np__date', 'aria-hidden': parts ? 'true' : null }, parts
+      ? [h('span', { class: 'lfx-np__month' }, parts.month), h('span', { class: 'lfx-np__day' }, parts.day)]
+      : []),
+    h('div', { class: 'lfx-np__main' }, [h('div', { class: 'lfx-np__mediawrap' }, [media, buttons]), body]),
+  ]);
+}
+
+/** Karten-Zeile (Klassen aus rows.css). Rückgabe: {el, scroller}. */
+export function createRow(title, items, kind, newSeries) {
+  const now = Date.now();
+  const cards = items.map((it, i) => createCard(it, {
+    kind, rank: kind === 'top10' ? i + 1 : 0, badge: badgeFor(it, newSeries, now),
+  }));
+  const track = h('div', { class: 'lfx-row__track', role: 'list', 'aria-label': title }, cards);
+  const prev = chevronButton('prev', 'Zurück');
+  const next = chevronButton('next', 'Weiter');
+  const indicator = h('div', { class: 'lfx-row__pages', 'aria-hidden': 'true', hidden: true });
+  const el = h('div', { class: 'lfx-rows' }, [
+    h('section', { class: `lfx-row lfx-row--${kind}` }, [
+      h('div', { class: 'lfx-row__head' }, [h('h2', { class: 'lfx-row__title' }, title), indicator]),
+      h('div', { class: 'lfx-row__viewport' }, [prev, track, next]),
+    ]),
+  ]);
+  return { el, scroller: { track, prev, next, indicator } };
+}
+
+function sectionShell(def) {
+  return h('section', { class: 'lfx-np__section', id: `lfx-np-${def.id}`, dataset: { np: def.id } }, [
+    h('h2', { class: 'lfx-np__heading' }, def.label),
+  ]);
+}
+
+function build(tab) {
+  teardown();
+  let disposed = false;
+  const scrollers = [];
+  const sections = new Map(SECTIONS.map((d) => [d.id, sectionShell(d)]));
+  const pills = new Map();
+  const nav = h('nav', { class: 'lfx-np__tabs', 'aria-label': 'Neu und beliebt' });
+
+  function setActive(id) {
+    for (const [pid, pill] of pills) pill.classList.toggle('is-active', pid === id);
+  }
+
+  for (const d of SECTIONS) {
+    const pill = h('button', {
+      type: 'button',
+      class: 'lfx-np__pill',
+      dataset: { np: d.id },
+      onclick: () => {
+        const sec = sections.get(d.id);
+        setActive(d.id);
+        if (sec && typeof sec.scrollIntoView === 'function') sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+    }, [h('span', { class: 'lfx-np__pill-ico', 'aria-hidden': 'true' }, d.icon), d.label]);
+    pills.set(d.id, pill);
+    nav.append(pill);
+  }
+  const root = h('div', { id: ROOT_ID, class: 'lfx-np' }, [nav, ...sections.values()]);
+  tab.prepend(root);
+  document.documentElement.classList.add(ON_CLASS);
+  setActive('new');
+
+  let raf = 0;
+  const onScroll = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      let current = null;
+      for (const [id, sec] of sections) {
+        if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current = id;
+      }
+      if (current) setActive(current);
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  function drop(id) {
+    sections.get(id)?.remove();
+    sections.delete(id);
+    pills.get(id)?.remove();
+    pills.delete(id);
+  }
+
+  async function fill(id, loader, renderer) {
+    try {
+      const items = await loader();
+      if (disposed) return;
+      if (!items.length) { drop(id); return; }
+      putItems(items);
+      const newSeries = await getNewSeriesIds();
+      if (disposed) return;
+      renderer(sections.get(id), items, newSeries);
+    } catch (e) {
+      console.warn(`[LenzFlix] Neu und beliebt "${id}" nicht geladen`, e && e.message);
+      if (!disposed) drop(id);
+    }
+  }
+  const rowRenderer = (title, kind) => (sec, items, newSeries) => {
+    const row = createRow(title, items, kind, newSeries);
+    sec.querySelector('.lfx-np__heading')?.remove();
+    sec.append(row.el);
+    scrollers.push(attachScroller(row.scroller));
+  };
+
+  if (api.isReady()) {
+    fill('new', loadNew, (sec, items, newSeries) => {
+      sec.append(h('div', { class: 'lfx-np__list' }, items.map((it) => createNewEntry(it, newSeries))));
+    });
+    fill('watched', loadMostWatched, rowRenderer('Am häufigsten geschaut', 'landscape'));
+    fill('top-series', () => loadTop('Series'), rowRenderer('Top 10 Serien', 'top10'));
+    fill('top-movies', () => loadTop('Movie'), rowRenderer('Top 10 Filme', 'top10'));
+  } else {
+    console.warn('[LenzFlix] Neu und beliebt: keine Anmeldung');
+  }
+
+  cleanups.push(() => {
+    disposed = true;
+    window.removeEventListener('scroll', onScroll);
+    if (raf) cancelAnimationFrame(raf);
+    for (const d of scrollers.splice(0)) {
+      try { d && d(); } catch { /* ignorieren */ }
+    }
+  });
+}
+
+function ensure() {
+  clearTimeout(waitTimer);
+  const existing = document.getElementById(ROOT_ID);
+  const tab = findHomeTab();
+  if (tab && existing && tab.contains(existing)) return;
+  if (tab) { build(tab); return; }
+  let tries = 0;
+  const poll = () => {
+    const t = findHomeTab();
+    if (t) build(t);
+    else if (++tries < 30) waitTimer = setTimeout(poll, 200);
+  };
+  waitTimer = setTimeout(poll, 200);
+}
+
+const newPopularFeature = {
+  name: 'newpopular',
+  match: (route) => isNewRoute(route) && !isTv(),
+  mount: () => ensure(),
+  update: () => ensure(),
+  unmount: () => { clearTimeout(waitTimer); teardown(); },
+};
+
+export default newPopularFeature;

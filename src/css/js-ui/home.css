@@ -1,0 +1,21 @@
+/* LenzFlix · js-ui/home – Startseiten-Hülle (#lfx-home), nur mit aktivem JS */
+/* Native Jellyfin-Sektionen ausblenden, sobald die eigene Startseite steht.
+   Fällt das JS aus, entfällt html.lfx-home-on und die native (per CSS gestylte) Startseite erscheint. */
+html.lfx-home-on #indexPage #homeTab > .sections {
+  display: none !important;
+}
+html.lfx-home-on #indexPage {
+  padding-top: 0 !important;
+}
+.lfx-home {
+  position: relative;
+  padding-bottom: 48px;
+}
+
+/* Ambient-Verlauf (#lfx-ambient, fixed hinter allem) sichtbar machen: Die Startseite ist sonst
+   deckend #141414 (modern/home.css). html/body tragen bereits #141414 als Grundfarbe. */
+html.lfx-js #indexPage,
+html.lfx-js #indexPage #homeTab,
+html.lfx-home-on .backgroundContainer:not(.withBackdrop) {
+  background: transparent !important;
+}

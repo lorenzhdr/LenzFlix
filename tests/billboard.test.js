@@ -1,0 +1,137 @@
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+const items = (prefix, n, extra = {}) =>
+  Array.from({ length: n }, (_, i) => ({
+    Id: `${prefix}${i}`, Name: `${prefix}${i}`, Type: 'Movie',
+    ImageTags: { Logo: 'l', Primary: 'p' }, BackdropImageTags: ['b'], ...extra,
+  }));
+
+vi.mock('../src/js/core/api.js', async () => {
+  const actual = await vi.importActual('../src/js/core/api.js');
+  return { ...actual, getItems: vi.fn(), getJson: vi.fn(async () => []), getUserId: () => 'u' };
+});
+vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
+vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn() }));
+
+import * as api from '../src/js/core/api.js';
+import { mixPool, formatRuntime, formatRating, metaParts, genreLine, badgeFor } from '../src/js/features/billboard/format.js';
+import { render } from '../src/js/features/billboard.js';
+import { openModal } from '../src/js/features/modal.js';
+
+describe('billboard format', () => {
+  it('mixPool: nur Logo+Backdrop, abwechselnd, ohne Duplikate', () => {
+    const bad = { Id: 'x', ImageTags: {}, BackdropImageTags: ['b'] };
+    const latest = [...items('n', 3), bad];
+    const random = [items('n', 1)[0], ...items('r', 2)];
+    expect(mixPool(latest, random).map((i) => i.Id)).toEqual(['n0', 'n1', 'r0', 'n2', 'r1']);
+  });
+  it('Laufzeit, FSK, Staffeln', () => {
+    expect(formatRuntime(106 * 600000000)).toBe('1 Std. 46 Min.');
+    expect(formatRuntime(45 * 600000000)).toBe('45 Min.');
+    expect(formatRuntime(120 * 600000000)).toBe('2 Std.');
+    expect(formatRating('FSK-12')).toBe('12');
+    expect(formatRating('PG-13')).toBe('PG-13');
+    const m = metaParts({ Type: 'Series', Genres: ['Drama'], ProductionYear: 2019, ChildCount: 3, OfficialRating: 'FSK-16' });
+    expect(m.map((p) => p.text)).toEqual(['Serie', 'Drama', '2019', '3 Staffeln', '16']);
+    expect(metaParts({ Type: 'Movie', RunTimeTicks: 106 * 600000000 }).map((p) => p.text)).toEqual(['Film', '1 Std. 46 Min.']);
+  });
+  it('badgeFor: 14-Tage-Logik', () => {
+    const now = Date.parse('2026-11-08T00:00:00Z');
+    expect(badgeFor({ DateCreated: '2026-11-01T00:00:00Z' }, now)).toBe('Neu hinzugefügt');
+    expect(badgeFor({ DateCreated: '2026-10-01T00:00:00Z' }, now)).toBeNull();
+    expect(badgeFor({}, now)).toBeNull();
+  });
+});
+
+describe('genreLine', () => {
+  it('bis zu 3 Genres mit Bullet', () => {
+    expect(genreLine({ Genres: ['Drama', 'Thriller', 'Krimi', 'Action'] })).toBe('Drama • Thriller • Krimi');
+    expect(genreLine({ Genres: ['Drama'] })).toBe('Drama');
+    expect(genreLine({})).toBe('');
+  });
+});
+
+describe('billboard render', () => {
+  let slot;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<section id="s"></section>';
+    document.documentElement.className = '';
+    slot = document.getElementById('s');
+    api.getItems.mockReset();
+    api.getItems.mockImplementation(async (p) => ({ Items: p.SortBy === 'Random' ? items('r', 3) : items('n', 3) }));
+    window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't' };
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const title = () => slot.querySelector('.lfx-bb__logo')?.getAttribute('alt');
+  const flush = async () => { await vi.advanceTimersByTimeAsync(0); };
+
+  it('rendert und rotiert nach 10 s, pausiert bei Hover und Modal', async () => {
+    const cleanup = render(slot);
+    await flush();
+    expect(slot.hidden).toBe(false);
+    expect(title()).toBe('n0');
+    const card = slot.querySelector('.lfx-bb');
+    card.dispatchEvent(new Event('mouseenter'));
+    await vi.advanceTimersByTimeAsync(25000);
+    expect(title()).toBe('n0');
+    card.dispatchEvent(new Event('mouseleave'));
+    document.documentElement.classList.add('lfx-modal-open');
+    await vi.advanceTimersByTimeAsync(10500);
+    expect(title()).toBe('n0');
+    document.documentElement.classList.remove('lfx-modal-open');
+    await vi.advanceTimersByTimeAsync(10500);
+    expect(title()).toBe('r0');
+    cleanup();
+    expect(slot.children.length).toBe(0);
+  });
+
+  it('pausiert bei document.hidden', async () => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    render(slot);
+    await flush();
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(title()).toBe('n0');
+    delete document.hidden;
+  });
+
+  it('leerer Pool -> Slot hidden', async () => {
+    api.getItems.mockResolvedValue({ Items: [] });
+    render(slot);
+    await flush();
+    expect(slot.hidden).toBe(true);
+  });
+
+  it('rendert Genre-Zeile und beide Buttons; "Meine Liste" toggelt optimistisch mit Rollback', async () => {
+    api.getItems.mockImplementation(async () => ({ Items: items('n', 2, { Genres: ['A', 'B', 'C', 'D'], UserData: { IsFavorite: false } }) }));
+    const fav = vi.spyOn(api, 'setFavorite');
+    render(slot);
+    await flush();
+    expect(slot.querySelector('.lfx-bb__genres').textContent).toBe('A • B • C');
+    expect(slot.querySelector('.lfx-bb__btn--info')).not.toBeNull();
+    const btn = () => slot.querySelector('.lfx-bb__btn--list');
+    expect(btn().classList.contains('is-on')).toBe(false);
+    fav.mockResolvedValueOnce({});
+    btn().click();
+    expect(btn().classList.contains('is-on')).toBe(true);
+    expect(fav).toHaveBeenCalledWith('n0', true);
+    await flush();
+    fav.mockRejectedValueOnce(new Error('x'));
+    btn().click();
+    expect(btn().classList.contains('is-on')).toBe(false);
+    expect(fav).toHaveBeenLastCalledWith('n0', false);
+    await flush();
+    expect(btn().classList.contains('is-on')).toBe(true); // Rollback
+    fav.mockRestore();
+  });
+
+  it('Mobil: Tipp auf das Poster öffnet das Modal', async () => {
+    document.documentElement.classList.add('layout-mobile');
+    render(slot);
+    await flush();
+    slot.querySelector('.lfx-bb__media').click();
+    expect(openModal).toHaveBeenCalledTimes(1);
+  });
+});

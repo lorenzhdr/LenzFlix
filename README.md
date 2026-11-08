@@ -1,0 +1,121 @@
+# LenzFlix
+
+Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dunkles Design mit roter Akzentfarbe, Modern-Layout für Desktop und Mobil sowie ein Legacy-TV-Layout.
+
+- Der **CSS-Kern** funktioniert allein und braucht kein JavaScript.
+- Das **optionale JavaScript** ergänzt: Billboard (Hero), Netflix-artige Zeilen inklusive Top 10 und Badges, Hover-Popup, Detail-Modal, „Neu und beliebt“, Handy-Navigation im App-Stil und eine Ambient-Farbe aus dem Billboard-Bild.
+
+> **Haftungsausschluss:** LenzFlix ist ein inoffizielles Fan-Theme. Es hat keine Verbindung zu Netflix oder zum Jellyfin-Projekt und enthält keine Netflix-Marken, -Logos oder -Assets. „Netflix“ wird nur beschreibend für den Look verwendet. Logo und Name „LENZFLIX“ sind eigene Gestaltung.
+
+## Kompatibilität
+
+- Jellyfin Server und Web **12.4**, getestet im Browser. Android-App und TV-Webclients, die das Web-Frontend laden, sollten funktionieren (zu prüfen: nicht auf jedem Gerät getestet).
+- Native Apps (Android TV, Swiftfin, Findroid, Streamyfin) ignorieren Custom CSS/JS und zeigen weiter ihr eigenes Design.
+
+## Installation
+
+### 1. CSS
+
+Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
+
+```css
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.0.0/dist/lenzflix.min.css");
+```
+
+- `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
+- Vorher altes Theme-CSS (andere Themes, `@import`s) entfernen.
+
+### 2. JavaScript (optional)
+
+1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
+2. Im Plugin einen Skript-Eintrag anlegen:
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.0.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
+3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
+
+### 3. Reverse-Proxy mit CSP
+
+Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien).
+
+## Bedienung
+
+- **Billboard:** rotiert alle 10 s. Trailer werden nur bei lokalen Trailern abgespielt.
+- **Top 10:** die 10 neuesten Filme/Serien der Bibliothek (nicht nach Beliebtheit).
+- **Badges** „Neu hinzugefügt“ / „Neue Folgen“: Zeitraum 14 Tage.
+- **Meine Liste:** entspricht den Jellyfin-Favoriten.
+- **Hover-Popup:** nur mit Maus (Hover-fähige Geräte, kein TV, nicht mobil).
+- **Klick auf eine Karte** öffnet das Detail-Modal. **Strg/Shift/Meta-Klick oder Mittelklick** öffnet die native Detailseite.
+- **Neu und beliebt:** eigene Ansicht unter `#/home?lfx=new`.
+- Handy (< 800 px): Logo, Filter-Pills und Kategorien-Overlay im App-Stil.
+
+## Anpassen
+
+Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben im Custom-CSS **nach** dem `@import`:
+
+| Token | Bedeutung | Standard |
+| --- | --- | --- |
+| `--lfx-red` | Akzentfarbe (Hover `--lfx-red-hover`, aktiv `--lfx-red-active`) | `#e50914` |
+| `--lfx-bg` | Seitenhintergrund | `#141414` |
+| `--lfx-surface` | Karten-/Flächenfarbe | `#181818` |
+| `--lfx-gutter` | Seitenrand links/rechts (breitenabhängig) | `36px` |
+| `--lfx-cards-visible` | volle Karten pro Zeile (2–6 je Breite) | `4` |
+| `--lfx-card-radius` | Kartenradius | `8px` |
+| `--lfx-billboard-radius` | Billboard-Radius | `18px` |
+| `--lfx-row-gap` | Abstand zwischen Zeilen | `40px` |
+| `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
+
+```css
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.0.0/dist/lenzflix.min.css");
+:root {
+  --lfx-red: #1db954;
+  --lfx-card-radius: 4px;
+  --lfx-hover-delay: 300ms;
+}
+```
+
+Hinweis: `--lfx-cards-visible` und `--lfx-gutter` werden in Media-Queries pro Breite gesetzt. Ein Override im Custom-CSS gilt dadurch für alle Breiten, sofern nicht selbst per Media-Query eingeschränkt.
+
+## Entwicklung
+
+```bash
+npm install
+npm run build   # dist/lenzflix(.min).css und dist/lenzflix(.min).js
+npm run dev     # Watch-Modus (nicht minifiziert)
+npm test        # vitest + jsdom
+npm run lint    # eslint
+npm run serve   # Dev-Server http://localhost:5179/dist/ (liefert dist/ und assets/ mit CORS)
+```
+
+**Dev-Loop:** `npm run dev` und `npm run serve` laufen lassen. Den Inhalt von `build/dev-inject.js` in die Konsole eines eingeloggten Jellyfin-Tabs einfügen. Das Skript entfernt bekannte Fremd-Spotlight-Elemente, lädt CSS und JS frisch vom Dev-Server und ruft vorher `window.LenzFlix.destroy()` auf. Mit `window.__lfxNoJs = true` wird nur das CSS geladen. Chrome: in den Seiteneinstellungen des Jellyfin-Tabs den Zugriff auf das **lokale Netzwerk** erlauben, sonst blockiert Chrome den Zugriff von https auf localhost.
+
+### Projektstruktur
+
+```
+build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js (Dev-Loader)
+dist/         Build-Ausgabe (lenzflix[.min].css/.js)
+assets/       Schrift Inter (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
+docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features)
+src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css, logo.css
+  modern/     Kern-CSS für das Modern-Layout (wirkt ohne JS)
+  legacy-tv/  TV-Layout
+  js-ui/      Styles der JS-Komponenten (nur unter html.lfx-js)
+src/js/       main.js (Einstieg, setzt window.LenzFlix)
+  core/       API, Cache, Router, Layout, Playback, DOM-Helper, Ambient, Item-Store
+  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular
+tests/        vitest-Tests (jsdom)
+```
+
+### Architekturregeln
+
+- **Keine React-Knoten mutieren.** Jellyfin 12.4 rendert den Header per React. Eigene UI hängt an eigenen Mount-Points (z. B. `#lfx-nav`, `#lfx-home`), native Elemente werden nur per CSS-Klasse ausgeblendet.
+- **Wiedergabe per Proxy-Klick:** ein verstecktes `.itemAction[data-action=play]` wird in einen vorhandenen `.itemsContainer` gehängt und geklickt (siehe `docs/dom-map.md`).
+- **Scoping:** Modern-Regeln unter `html:not(.layout-tv)`, TV-Regeln unter `html.layout-tv`, JS-UI-Styles nur unter `html.lfx-js`. Details in `CLAUDE.md`.
+- `window.LenzFlix.destroy()` muss alles wieder entfernen (Listener, Timer, Knoten).
+
+## Lizenz
+
+Der Code steht unter der **MIT-Lizenz**, siehe `LICENSE`.
+
+Schriften:
+- **Inter** (SIL OFL 1.1), Lizenz: `assets/fonts/LICENSE-Inter.txt`
+- **Anton** (SIL OFL 1.1), nur als Pfade im Logo verwendet, Lizenz: `assets/logo/LICENSE-font.txt`

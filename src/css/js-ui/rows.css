@@ -1,0 +1,252 @@
+/* LenzFlix · js-ui/rows – Netflix-Zeilen (#lfx-rows). Nur mit aktivem JS. */
+html.lfx-js .lfx-rows {
+  --lfx-card-w: calc((100vw - var(--lfx-gutter) - var(--lfx-cards-visible) * var(--lfx-card-gap) - var(--lfx-card-peek)) / var(--lfx-cards-visible));
+  --lfx-card-h: calc(var(--lfx-card-w) * 9 / 16);
+  --lfx-poster-w: calc(var(--lfx-card-h) * 2 / 3);
+  position: relative;
+  z-index: 1;
+  padding-top: 24px;
+}
+
+html.lfx-js .lfx-row { margin: 0 0 var(--lfx-row-gap); }
+
+html.lfx-js .lfx-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 19px;
+  margin: 0 var(--lfx-gutter) var(--lfx-row-title-gap);
+}
+html.lfx-js .lfx-row__title {
+  margin: 0;
+  color: #fff;
+  font-size: var(--lfx-fs-row-title);
+  font-weight: var(--lfx-fw-row-title);
+  line-height: 19px;
+}
+html.lfx-js .lfx-row__pages {
+  display: flex;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity var(--lfx-dur) var(--lfx-ease);
+}
+html.lfx-js .lfx-row__pages[hidden] { display: none; }
+html.lfx-js .lfx-row__pages span { width: 12px; height: 2px; background: #4d4d4d; }
+html.lfx-js .lfx-row__pages span.is-active { background: #aaa; }
+
+html.lfx-js .lfx-row__viewport { position: relative; }
+
+/* Track: nativer Scroll-Container (Touch = Wischen, Desktop = Pfeile) */
+html.lfx-js .lfx-row__track {
+  display: flex;
+  gap: var(--lfx-card-gap);
+  margin: -4px 0;
+  padding: 4px var(--lfx-gutter);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--lfx-gutter);
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+html.lfx-js .lfx-row__track::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-row__track { scroll-behavior: auto; }
+}
+
+/* Karten */
+html.lfx-js .lfx-card {
+  position: relative;
+  flex: 0 0 var(--lfx-card-w);
+  width: var(--lfx-card-w);
+  scroll-snap-align: start;
+}
+html.lfx-js .lfx-card__link {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--lfx-card-radius);
+  background: var(--lfx-surface-2);
+  color: #fff;
+  text-decoration: none;
+}
+html.lfx-js .lfx-card__link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+html.lfx-js .lfx-card__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter var(--lfx-dur-fast) var(--lfx-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-card__link:hover .lfx-card__img { filter: brightness(1.12); }
+}
+html.lfx-js .lfx-card__link--titled::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0) 55%);
+  pointer-events: none;
+}
+html.lfx-js .lfx-card__logo {
+  position: absolute;
+  z-index: 1;
+  left: 8%;
+  bottom: 8%;
+  max-width: 70%;
+  max-height: 40%;
+  object-fit: contain;
+  object-position: left bottom;
+}
+html.lfx-js .lfx-card__title {
+  position: absolute;
+  z-index: 1;
+  left: 8%;
+  right: 8%;
+  bottom: 8%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* Badge: unten mittig, 5 px über der Bildunterkante */
+html.lfx-js .lfx-badge {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--lfx-card-h) - var(--lfx-badge-h) - 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  height: var(--lfx-badge-h);
+  padding: 0 6px;
+  border-radius: 3px;
+  background: var(--lfx-red);
+  color: #fff;
+  font-size: var(--lfx-fs-badge);
+  font-weight: 700;
+  line-height: var(--lfx-badge-h);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Fortschritt unter der Karte */
+html.lfx-js .lfx-progress {
+  width: 60%;
+  height: 4px;
+  margin: 6px auto 0;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--lfx-progress-rail);
+}
+html.lfx-js .lfx-progress__bar { height: 100%; background: var(--lfx-red); }
+
+/* Top 10 */
+html.lfx-js .lfx-card--top10 { height: var(--lfx-card-h); }
+html.lfx-js .lfx-card--top10 .lfx-card__link {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: var(--lfx-poster-w);
+  height: var(--lfx-card-h);
+  aspect-ratio: auto;
+}
+html.lfx-js .lfx-card--top10 .lfx-badge {
+  left: calc(100% - var(--lfx-poster-w) / 2);
+}
+html.lfx-js .lfx-card__rank {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: calc(100% - var(--lfx-poster-w) + var(--lfx-card-h) * 0.1);
+  height: var(--lfx-card-h);
+  color: var(--lfx-bg);
+  font-family: var(--lfx-font);
+  font-size: calc(var(--lfx-card-h) * 1.28);
+  font-weight: 900;
+  line-height: 1;
+  -webkit-text-stroke: 4px #595959;
+  paint-order: stroke fill;
+  pointer-events: none;
+  user-select: none;
+}
+html.lfx-js .lfx-card__rank--wide {
+  font-size: calc(var(--lfx-card-h) * 1.05);
+  letter-spacing: -0.1em;
+  padding-right: 0.08em;
+}
+
+/* Pfeile (nur Maus) */
+html.lfx-js .lfx-row__arrow { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-row__arrow {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--lfx-gutter);
+    height: var(--lfx-card-h);
+    padding: 0;
+    border: 0;
+    background: rgba(20, 20, 20, 0.5);
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--lfx-dur) var(--lfx-ease), background var(--lfx-dur-fast) var(--lfx-ease);
+  }
+  html.lfx-js .lfx-row__arrow[hidden] { display: none; }
+  html.lfx-js .lfx-row__arrow--prev { left: 0; border-radius: 0 4px 4px 0; }
+  html.lfx-js .lfx-row__arrow--next { right: 0; border-radius: 4px 0 0 4px; }
+  html.lfx-js .lfx-row__arrow svg {
+    width: 2.5em;
+    height: 2.5em;
+    transition: transform var(--lfx-dur-fast) var(--lfx-ease);
+  }
+  html.lfx-js .lfx-row__arrow--prev svg { transform: scaleX(-1); }
+  html.lfx-js .lfx-row__arrow:hover { background: rgba(20, 20, 20, 0.7); }
+  html.lfx-js .lfx-row__arrow:hover svg { transform: scale(1.25); }
+  html.lfx-js .lfx-row__arrow--prev:hover svg { transform: scale(-1.25, 1.25); }
+  html.lfx-js .lfx-row:hover .lfx-row__arrow,
+  html.lfx-js .lfx-row:focus-within .lfx-row__arrow { opacity: 1; }
+  html.lfx-js .lfx-row:hover .lfx-row__pages,
+  html.lfx-js .lfx-row:focus-within .lfx-row__pages { opacity: 1; }
+}
+
+/* Skeleton */
+html.lfx-js .lfx-row__skeleton {
+  display: flex;
+  gap: var(--lfx-card-gap);
+  padding: 0 var(--lfx-gutter);
+  overflow: hidden;
+}
+html.lfx-js .lfx-skel {
+  flex: 0 0 var(--lfx-card-w);
+  height: var(--lfx-card-h);
+  border-radius: var(--lfx-card-radius);
+  background: linear-gradient(100deg, #232323 30%, #2b2b2b 50%, #232323 70%) 0 0 / 200% 100% #232323;
+  animation: lfx-shimmer 1.6s linear infinite;
+}
+@keyframes lfx-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-skel { animation: none; }
+}
+
+/* Live-Abgleich mit der Vorlage (t3/t7): Die Top-10-Zeile ist höher als eine 16:9-Zeile –
+   Poster ≈ 140×200 bei 289 px Pitch, Ziffer so hoch wie das Poster. Höhe ≈ 0,7 × Kartenbreite. */
+html.lfx-js .lfx-row:has(.lfx-card--top10),
+html.lfx-js .lfx-card--top10 {
+  --lfx-card-h: calc(var(--lfx-card-w) * 0.7);
+  --lfx-poster-w: calc(var(--lfx-card-h) * 2 / 3);
+}

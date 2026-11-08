@@ -1,0 +1,157 @@
+/* LenzFlix · js-ui/header: Netflix-Navigation (#lfx-nav) + Ambient-Layer. Greift nur mit html.lfx-js. */
+
+/* Animierbare Ambient-Kanäle (Überblendung 600 ms beim Setzen durch setAmbient) */
+@property --lfx-ambient-r { syntax: "<number>"; inherits: true; initial-value: 27; }
+@property --lfx-ambient-g { syntax: "<number>"; inherits: true; initial-value: 40; }
+@property --lfx-ambient-b { syntax: "<number>"; inherits: true; initial-value: 41; }
+
+html.lfx-js {
+  transition:
+    --lfx-ambient-r 600ms var(--lfx-ease),
+    --lfx-ambient-g 600ms var(--lfx-ease),
+    --lfx-ambient-b 600ms var(--lfx-ease);
+}
+
+/* Ambient-Verlauf: fixiert oben, unter dem Content (erstes Kind von body) */
+html.lfx-js #lfx-ambient {
+  /* Netflix: Ambient-Farbe aus dem Billboard-Bild; oben dunkel, zum Billboard hin heller,
+     umfließt die eingerückte Billboard-Karte und läuft darunter in #141414 aus.
+     Gemessen in der Vorlage: y0 #071617 → y80 #133c3c → y160 #1b5657. Scrollt mit der Seite. */
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: min(820px, 100vh);
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--lfx-ambient-r) var(--lfx-ambient-g) var(--lfx-ambient-b) / 0.35) 0,
+    rgb(var(--lfx-ambient-r) var(--lfx-ambient-g) var(--lfx-ambient-b) / 0.85) 170px,
+    rgb(var(--lfx-ambient-r) var(--lfx-ambient-g) var(--lfx-ambient-b) / 0.7) 55%,
+    transparent 100%
+  );
+  transition: opacity 300ms var(--lfx-ease);
+}
+/* Nur auf der Startseite (dort steht das Billboard) */
+html.lfx-js:not(.lfx-home-on) #lfx-ambient {
+  opacity: 0;
+}
+
+
+/* Der CSS-only-Verlauf der AppBar wird vom Ambient-Layer ersetzt */
+html.lfx-js.lfx-nav-on body:not(.dashboardDocument) header.MuiAppBar-root::before {
+  display: none;
+}
+
+/* MUI-Navigationsbuttons ausblenden (Logo/Suche/User-Menü bleiben) */
+html.lfx-js.lfx-nav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child .MuiStack-root > :not(a[href="#/"]) {
+  display: none;
+}
+
+/* Navigation */
+html.lfx-js #lfx-nav {
+  position: fixed;
+  top: 0;
+  left: calc(var(--lfx-gutter) + 88px);
+  height: var(--lfx-header-h);
+  z-index: 1101; /* über der AppBar (1100), unter Menüs/Dialogen (1300) */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: var(--lfx-fw-nav) var(--lfx-fs-nav) / 1 var(--lfx-font);
+}
+
+html.lfx-js #lfx-nav .lfx-nav__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--lfx-nav-pill-h);
+  padding: 0 16px;
+  border: 0;
+  border-radius: calc(var(--lfx-nav-pill-h) / 2);
+  background: transparent;
+  color: var(--lfx-text-body);
+  font: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease), color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js #lfx-nav .lfx-nav__item:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: var(--lfx-text);
+}
+html.lfx-js #lfx-nav .lfx-nav__item.is-active {
+  background: var(--lfx-pill-active);
+  color: var(--lfx-text);
+}
+html.lfx-js #lfx-nav .lfx-nav__item:focus-visible,
+html.lfx-js #lfx-nav .lfx-nav__menu-item:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 2px;
+}
+
+html.lfx-js #lfx-nav .lfx-nav__caret {
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: currentcolor;
+  border-bottom-width: 0;
+  transition: transform var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js #lfx-nav .is-open .lfx-nav__caret {
+  transform: rotate(180deg);
+}
+
+/* „Mehr“-Dropdown */
+html.lfx-js #lfx-nav .lfx-nav__more {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+html.lfx-js #lfx-nav .lfx-nav__menu {
+  display: none;
+  position: absolute;
+  top: calc(100% - 14px);
+  left: 0;
+  min-width: 200px;
+  padding: 8px 0;
+  background: rgb(20 20 20 / 0.96);
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: var(--lfx-popup-radius);
+  box-shadow: var(--lfx-shadow-card);
+}
+html.lfx-js #lfx-nav .lfx-nav__more.is-open .lfx-nav__menu {
+  display: block;
+}
+html.lfx-js #lfx-nav .lfx-nav__menu-item {
+  display: block;
+  padding: 10px 20px;
+  color: var(--lfx-text-body);
+  text-decoration: none;
+  white-space: nowrap;
+}
+html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
+  background: rgb(255 255 255 / 0.1);
+  color: var(--lfx-text);
+}
+
+/* Drawer-Modus (< 900px): Bibliotheken liegen im MUI-Drawer */
+@media (max-width: 899px) {
+  html.lfx-js #lfx-nav {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js {
+    transition: none;
+  }
+}
+
+/* ---------- Kompatibilität: fremde Home-Slider ausblenden, solange LenzFlix-JS aktiv ist ----------
+   (z. B. „Abyss Spotlight“ / Media-Bar-iframes, die LenzFlix durch das eigene Billboard ersetzt) */
+html.lfx-js .featurediframe,
+html.lfx-js #abyss-spotlight-backdrop {
+  display: none !important;
+}

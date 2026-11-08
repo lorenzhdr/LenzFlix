@@ -1,0 +1,364 @@
+// LenzFlix: Billboard (Hero) auf der Startseite. render(slot, ctx) -> Cleanup.
+import { getItems, getJson, getUserId, getAuth, imageUrl, logoImage, setFavorite } from '../core/api.js';
+import { setAmbient, resetAmbient } from '../core/ambient.js';
+import { ambientFromPixels } from '../core/color.js';
+import { h } from '../core/dom.js';
+import { isMobile } from '../core/layout.js';
+import { putItems } from '../core/itemstore.js';
+import { play } from '../core/playback.js';
+import { openModal } from './modal.js';
+import { mixPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
+
+export const ROTATE_MS = 10000;
+export const TRAILER_DELAY_MS = 4000;
+const IMG_FADE_MS = 1000;
+const TEXT_FADE_MS = 400;
+const FIELDS = 'Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount';
+const NS = 'http://www.w3.org/2000/svg';
+
+function svg(html, cls) {
+  const el = document.createElementNS(NS, 'svg');
+  el.setAttribute('viewBox', '0 0 24 24');
+  el.setAttribute('aria-hidden', 'true');
+  if (cls) el.setAttribute('class', cls);
+  el.innerHTML = html;
+  return el;
+}
+const ICON_PLAY = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
+const ICON_MUTED = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>';
+const ICON_SOUND = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/>';
+const ICON_PLUS = '<path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>';
+const ICON_CHECK = '<path fill="currentColor" d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>';
+const ICON_BADGE = '<defs><linearGradient id="lfx-bb-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5fa2"/><stop offset="1" stop-color="#e50914"/></linearGradient></defs><path fill="url(#lfx-bb-grad)" d="M3 10.5v3a1 1 0 0 0 1 1h1.5l2.5 5h2.2l-1.7-5H11l8 4.5v-13L11 10H4a1 1 0 0 0-1 .5zM21 9.5v5a2.5 2.5 0 0 0 0-5z"/>';
+
+async function fetchPool() {
+  const base = {
+    Recursive: true,
+    IncludeItemTypes: 'Movie,Series',
+    ImageTypes: 'Logo,Backdrop',
+    Fields: FIELDS,
+    EnableUserData: true,
+    Limit: 40,
+  };
+  const [latest, random] = await Promise.all([
+    getItems({ ...base, SortBy: 'DateCreated', SortOrder: 'Descending' }).catch(() => null),
+    getItems({ ...base, SortBy: 'Random' }).catch(() => null),
+  ]);
+  return mixPool(latest && latest.Items, random && random.Items, 6);
+}
+
+function reducedMotion() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function trailerUrl(trailerId) {
+  const c = window.ApiClient;
+  if (c && typeof c.getUrl === 'function') {
+    return c.getUrl(`Videos/${trailerId}/stream.mp4`, { static: true, api_key: c.accessToken() });
+  }
+  const { address, token } = getAuth();
+  return `${address}/Videos/${trailerId}/stream.mp4?static=true&api_key=${encodeURIComponent(token || '')}`;
+}
+
+/** Liest eine 64px-Version des Backdrops und setzt die Ambient-Farbe. Fehler werden still ignoriert. */
+function loadAmbient(item, isCurrent) {
+  const url = imageUrl(item, { type: 'Backdrop', maxWidth: 64, quality: 60 });
+  if (!url || typeof Image === 'undefined') return;
+  const img = new Image();
+  img.onload = () => {
+    if (!isCurrent()) return;
+    try {
+      const w = img.naturalWidth || 64;
+      const hh = img.naturalHeight || 36;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = hh;
+      const ctx2d = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx2d) return;
+      ctx2d.drawImage(img, 0, 0, w, hh);
+      const [r, g, b] = ambientFromPixels(ctx2d.getImageData(0, 0, w, hh).data);
+      setAmbient(r, g, b);
+    } catch { /* ignorieren */ }
+  };
+  img.src = url;
+}
+
+export function render(slot) {
+  let disposed = false;
+  let pool = [];
+  let index = 0;
+  let gen = 0; // Generation: macht asynchrone Antworten alter Slides ungültig
+  let hovering = false;
+  let trailerActive = false;
+  let rotateTimer = null;
+  let trailerTimer = null;
+  const timers = new Set();
+  let video = null;
+  let card = null;
+  let media = null;
+  let content = null;
+  let muteBtn = null;
+  let dots = null;
+  const cleanupFns = [];
+
+  const later = (fn, ms) => {
+    const t = setTimeout(() => {
+      timers.delete(t);
+      fn();
+    }, ms);
+    timers.add(t);
+    return t;
+  };
+
+  const paused = () =>
+    hovering || trailerActive || document.hidden || document.documentElement.classList.contains('lfx-modal-open');
+
+  function stopTrailer() {
+    clearTimeout(trailerTimer);
+    trailerTimer = null;
+    trailerActive = false;
+    if (video) {
+      const v = video;
+      video = null;
+      try {
+        v.pause();
+        v.removeAttribute('src');
+        if (v.load) v.load();
+      } catch { /* jsdom: nicht implementiert */ }
+      v.remove();
+    }
+    if (muteBtn) muteBtn.hidden = true;
+    if (card) card.classList.remove('is-trailer');
+  }
+
+  function scheduleRotate() {
+    clearTimeout(rotateTimer);
+    rotateTimer = null;
+    if (disposed || pool.length < 2 || reducedMotion()) return;
+    rotateTimer = setTimeout(() => {
+      rotateTimer = null;
+      if (paused()) scheduleRotate();
+      else show((index + 1) % pool.length);
+    }, ROTATE_MS);
+  }
+
+  function buildListButton(item) {
+    const btn = h('button', { type: 'button', class: 'lfx-bb__btn lfx-bb__btn--list' });
+    const paint = () => {
+      const on = Boolean(item.UserData && item.UserData.IsFavorite);
+      btn.replaceChildren(svg(on ? ICON_CHECK : ICON_PLUS), h('span', null, 'Meine Liste'));
+      btn.classList.toggle('is-on', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    paint();
+    btn.addEventListener('click', async () => {
+      const prev = Boolean(item.UserData && item.UserData.IsFavorite);
+      item.UserData = { ...(item.UserData || {}), IsFavorite: !prev };
+      paint();
+      try {
+        await setFavorite(item.Id, !prev);
+      } catch {
+        item.UserData = { ...(item.UserData || {}), IsFavorite: prev };
+        paint();
+      }
+    });
+    return btn;
+  }
+
+  function buildContent(item) {
+    const logo = logoImage(item, { maxWidth: 720 });
+    const meta = h('div', { class: 'lfx-bb__meta' });
+    metaParts(item).forEach((p, i) => {
+      if (i) meta.append(h('span', { class: 'lfx-bb__dot', 'aria-hidden': 'true' }, '•'));
+      meta.append(h('span', { class: p.rating ? 'lfx-bb__rating' : null }, p.text));
+    });
+    const playBtn = h('button', { type: 'button', class: 'lfx-bb__btn lfx-bb__btn--play' }, [svg(ICON_PLAY), h('span', null, 'Abspielen')]);
+    playBtn.addEventListener('click', () => play(item, { resume: hasProgress(item) }));
+    const infoBtn = h('button', { type: 'button', class: 'lfx-bb__btn lfx-bb__btn--info' }, [h('span', null, 'Weitere Infos')]);
+    infoBtn.addEventListener('click', () => openModal(item));
+    const listBtn = buildListButton(item);
+    const genres = genreLine(item);
+    const badgeText = badgeFor(item);
+    return h('div', null, [
+      h('div', { class: 'lfx-bb__text' }, [
+        logo
+          ? h('img', { class: 'lfx-bb__logo', src: logo, alt: item.Name || '', decoding: 'async' })
+          : h('h2', { class: 'lfx-bb__title' }, item.Name || ''),
+        meta,
+        genres ? h('div', { class: 'lfx-bb__genres' }, genres) : null,
+        item.Overview ? h('p', { class: 'lfx-bb__desc' }, item.Overview) : null,
+      ]),
+      h('div', { class: 'lfx-bb__buttons' }, [playBtn, infoBtn, listBtn]),
+      badgeText ? h('span', { class: 'lfx-bb__badge' }, [svg(ICON_BADGE), badgeText]) : null,
+    ]);
+  }
+
+  function buildImage(item) {
+    const bd = imageUrl(item, { type: 'Backdrop', maxWidth: 1920, quality: 90 });
+    const poster = imageUrl(item, { type: 'Primary', maxWidth: 900, quality: 90 });
+    return h('picture', { class: 'lfx-bb__pic' }, [
+      poster ? h('source', { media: '(max-width: 799px)', srcset: poster }) : null,
+      h('img', { class: 'lfx-bb__img', src: bd, alt: '', decoding: 'async' }),
+    ]);
+  }
+
+  function updateDots() {
+    if (!dots) return;
+    [...dots.children].forEach((b, i) => {
+      b.classList.toggle('is-active', i === index);
+      b.setAttribute('aria-current', i === index ? 'true' : 'false');
+    });
+  }
+
+  function setMuteIcon() {
+    if (!video) return;
+    muteBtn.replaceChildren(svg(video.muted ? ICON_MUTED : ICON_SOUND));
+    muteBtn.setAttribute('aria-label', video.muted ? 'Ton einschalten' : 'Ton ausschalten');
+  }
+
+  async function startTrailer(item, myGen) {
+    if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen) return;
+    try {
+      const list = await getJson(`/Users/${getUserId()}/Items/${item.Id}/LocalTrailers`);
+      if (myGen !== gen || disposed) return;
+      const t = Array.isArray(list) ? list[0] : null;
+      if (!t || !t.Id) return;
+      const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
+      v.muted = true;
+      v.setAttribute('muted', '');
+      v.addEventListener('playing', () => {
+        if (myGen !== gen || video !== v) return;
+        trailerActive = true;
+        v.classList.add('is-in');
+        card.classList.add('is-trailer');
+        muteBtn.hidden = false;
+        setMuteIcon();
+      });
+      const end = () => {
+        if (video !== v) return;
+        stopTrailer();
+        scheduleRotate();
+      };
+      v.addEventListener('ended', end);
+      v.addEventListener('error', end);
+      v.src = trailerUrl(t.Id);
+      video = v;
+      media.append(v);
+      const p = v.play && v.play();
+      if (p && p.catch) p.catch(end);
+    } catch { /* still ignorieren */ }
+  }
+
+  function show(i, immediate = false) {
+    if (disposed || !pool[i]) return;
+    const item = pool[i];
+    index = i;
+    gen += 1;
+    const myGen = gen;
+    stopTrailer();
+    updateDots();
+    // Bild: neues Bild blendet über dem alten ein (1 s), danach wird das alte entfernt.
+    const pic = buildImage(item);
+    const olds = [...media.querySelectorAll('.lfx-bb__pic')];
+    media.append(pic);
+    if (immediate || !olds.length) {
+      olds.forEach((o) => o.remove());
+      pic.classList.add('is-in');
+    } else {
+      requestAnimationFrame(() => pic.classList.add('is-in'));
+      later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS + 50);
+    }
+    // Text: ausblenden (400 ms), tauschen, einblenden
+    const swap = () => {
+      if (disposed || myGen !== gen) return;
+      content.replaceChildren(...buildContent(item).childNodes);
+      content.classList.remove('is-out');
+    };
+    if (immediate || !content.firstChild) swap();
+    else {
+      content.classList.add('is-out');
+      later(swap, TEXT_FADE_MS);
+    }
+    putItems([item]);
+    loadAmbient(item, () => myGen === gen && !disposed);
+    scheduleRotate();
+    clearTimeout(trailerTimer);
+    trailerTimer = setTimeout(() => startTrailer(item, myGen), TRAILER_DELAY_MS);
+  }
+
+  function build() {
+    media = h('div', { class: 'lfx-bb__media' });
+    content = h('div', { class: 'lfx-bb__live', 'aria-live': 'off' });
+    muteBtn = h('button', { type: 'button', class: 'lfx-bb__mute', hidden: true, 'aria-label': 'Ton einschalten' });
+    muteBtn.addEventListener('click', () => {
+      if (!video) return;
+      video.muted = !video.muted;
+      setMuteIcon();
+    });
+    dots = h('div', { class: 'lfx-bb__dots', role: 'group', 'aria-label': 'Empfehlung wählen' });
+    pool.forEach((it, i) => {
+      const b = h('button', { type: 'button', class: 'lfx-bb__dotbtn', 'aria-label': `Empfehlung ${i + 1}: ${it.Name || ''}` });
+      b.addEventListener('click', () => show(i));
+      dots.append(b);
+    });
+    if (pool.length < 2) dots.hidden = true;
+    card = h('div', { class: 'lfx-bb' }, [
+      media,
+      h('div', { class: 'lfx-bb__shade', 'aria-hidden': 'true' }),
+      h('span', { class: 'lfx-bb__mark', 'aria-hidden': 'true' }),
+      muteBtn,
+      content,
+      dots,
+    ]);
+    slot.replaceChildren(card);
+    slot.setAttribute('aria-roledescription', 'Karussell');
+    const onEnter = () => { hovering = true; };
+    const onLeave = () => { hovering = false; scheduleRotate(); };
+    const onVis = () => { if (!document.hidden) scheduleRotate(); };
+    // Mobil: Tipp auf das Poster oeffnet das Modal (Buttons/Punkte/Mute ausgenommen).
+    const onCardClick = (e) => {
+      if (!isMobile() || (e.target.closest && e.target.closest('button, a'))) return;
+      if (pool[index]) openModal(pool[index]);
+    };
+    card.addEventListener('click', onCardClick);
+    card.addEventListener('mouseenter', onEnter);
+    card.addEventListener('mouseleave', onLeave);
+    document.addEventListener('visibilitychange', onVis);
+    cleanupFns.push(() => document.removeEventListener('visibilitychange', onVis));
+  }
+
+  async function init() {
+    let items = [];
+    try {
+      items = await fetchPool();
+    } catch { /* leer */ }
+    if (disposed) return;
+    if (!items.length) {
+      slot.hidden = true;
+      resetAmbient();
+      return;
+    }
+    pool = items;
+    putItems(pool);
+    build();
+    slot.hidden = false;
+    show(0, true);
+  }
+
+  slot.hidden = true;
+  init();
+
+  return () => {
+    disposed = true;
+    gen += 1;
+    clearTimeout(rotateTimer);
+    clearTimeout(trailerTimer);
+    timers.forEach(clearTimeout);
+    timers.clear();
+    stopTrailer();
+    cleanupFns.forEach((f) => f());
+    slot.replaceChildren();
+    slot.removeAttribute('aria-roledescription');
+    resetAmbient();
+  };
+}

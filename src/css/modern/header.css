@@ -1,0 +1,172 @@
+/* LenzFlix · modern/header: MUI-AppBar im Netflix-Look (wirkt ohne JS).
+   Gilt nur im Modern-Layout (header.MuiAppBar-root), nicht im TV-Layout und nicht im Dashboard. */
+
+html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  color: var(--lfx-text);
+  transition: background-color 200ms var(--lfx-ease);
+
+  /* Verlauf in der Ambient-Farbe hinter dem (transparenten) Header */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 260px;
+    pointer-events: none;
+    z-index: -1;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--lfx-ambient) / 0.55) 0,
+      rgb(var(--lfx-ambient) / 0.25) 120px,
+      transparent 260px
+    );
+    transition: opacity 200ms var(--lfx-ease);
+  }
+
+  /* Scroll-Zustand: MUI wechselt auf colorDefault -> solider Header */
+  &:not(.MuiAppBar-colorTransparent) {
+    background-color: var(--lfx-bg);
+    background-image: none;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+  &:not(.MuiAppBar-colorTransparent)::before {
+    opacity: 0;
+  }
+
+  /* --- Haupt-Toolbar (erste Zeile) --- */
+  & > .MuiToolbar-root:first-child {
+    min-height: var(--lfx-header-h);
+    padding-inline: var(--lfx-gutter);
+    gap: 0;
+
+    /* Logo = Server-Button */
+    & a.MuiButton-root[href="#/"] {
+      flex: none;
+      width: 88px;
+      min-width: 0;
+      height: 25px;
+      padding: 0;
+      margin-right: 0;
+      border-radius: 2px;
+      font-size: 0;
+      color: transparent;
+      background: url("../assets/logo/lenzflix.svg") no-repeat left center / contain;
+      &:hover {
+        background-color: transparent;
+      }
+      & .MuiButton-startIcon,
+      & .MuiButton-endIcon,
+      & img {
+        display: none;
+      }
+    }
+
+    /* Navigation: Textlinks, aktiver Eintrag als Pill */
+    & a.MuiButton-root:not([href="#/"]) {
+      height: var(--lfx-nav-pill-h);
+      min-width: 0;
+      padding: 0 16px;
+      border-radius: calc(var(--lfx-nav-pill-h) / 2);
+      font: var(--lfx-fw-nav) var(--lfx-fs-nav) / 1 var(--lfx-font);
+      letter-spacing: 0;
+      text-transform: none;
+      white-space: nowrap;
+      color: var(--lfx-text-body);
+      transition: background-color var(--lfx-dur-fast) var(--lfx-ease), color var(--lfx-dur-fast) var(--lfx-ease);
+      & .MuiButton-startIcon,
+      & .MuiButton-endIcon {
+        display: none;
+      }
+      &:hover {
+        background-color: rgb(255 255 255 / 0.08);
+        color: var(--lfx-text);
+      }
+      &.MuiButton-textPrimary {
+        color: var(--lfx-text);
+        background-color: var(--lfx-pill-active);
+      }
+    }
+    & .MuiStack-root {
+      align-items: center;
+      /* 4px Stack-Abstand + 2x16px Padding = 40px Text-zu-Text */
+      margin-left: 0;
+    }
+
+    /* Rechte Icon-Buttons */
+    & .MuiIconButton-root {
+      color: var(--lfx-text);
+      transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+      &:hover {
+        background-color: rgb(255 255 255 / 0.1);
+      }
+      & .MuiSvgIcon-root {
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    /* Profil-Avatar 32x32 mit Caret */
+    & button[aria-haspopup] {
+      position: relative;
+      margin-left: 8px;
+      margin-right: 18px;
+      padding: 0;
+      border-radius: 6px;
+      overflow: visible;
+      &:hover {
+        background-color: transparent;
+      }
+      & .MuiAvatar-root {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+      }
+      &::after {
+        content: "";
+        position: absolute;
+        right: -16px;
+        top: 50%;
+        margin-top: -2px;
+        border: 5px solid transparent;
+        border-top-color: var(--lfx-text);
+        border-bottom-width: 0;
+        transition: transform var(--lfx-dur-fast) var(--lfx-ease);
+      }
+      &[aria-expanded="true"]::after {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  /* --- Bibliotheks-Toolbar (2. Zeile auf #/movies etc.): dezent dunkel, Buttons weiß --- */
+  & > .MuiToolbar-root:not(:first-child) {
+    padding-inline: var(--lfx-gutter);
+    background-color: rgb(20 20 20 / 0.92);
+    color: var(--lfx-text);
+    & .MuiButton-root,
+    & .MuiIconButton-root,
+    & .MuiButtonBase-root {
+      color: var(--lfx-text);
+    }
+    & .MuiButtonGroup-root .MuiButton-root {
+      border-color: var(--lfx-border);
+    }
+  }
+
+  /* Sichtbarer Tastaturfokus */
+  & .MuiButtonBase-root:focus-visible,
+  & .Mui-focusVisible {
+    outline: 2px solid var(--lfx-text);
+    outline-offset: 2px;
+  }
+
+  /* Drawer-/Mobil-Modus (< 900px): Menü-Button + User bleiben, schmalere Leiste */
+  @media (max-width: 899px) {
+    & > .MuiToolbar-root:first-child {
+      min-height: 56px;
+      padding-inline: 4vw;
+    }
+  }
+}

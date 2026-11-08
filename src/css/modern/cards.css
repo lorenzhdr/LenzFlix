@@ -1,0 +1,169 @@
+/* LenzFlix · modern/cards
+   Karten in horizontalen Zeilen (.emby-scroller .itemsContainer.scrollSlider) im Netflix-Look.
+   Gilt nicht für .layout-tv. Grids (.vertical-wrap) bleiben bewusst unberührt.
+   Quellen: components/cardbuilder/card.scss, cardBuilder.js, indicators.scss (jellyfin-web v12.4). */
+
+/* ---------- Zeilen-Variablen (lokal, nur im Scroller) ---------- */
+html:not(.layout-tv) .emby-scroller {
+  /* Kartenbreite: ein Gutter links, rechts läuft die 5. Karte als Peek an den Rand
+     (1206 px: (1206 - 36 - 4*7.5 - 13) / 4 = 281,75 px) */
+  --lfx-card-w: calc(
+    (100vw - var(--lfx-gutter) - var(--lfx-cards-visible) * var(--lfx-card-gap) - var(--lfx-card-peek))
+    / var(--lfx-cards-visible)
+  );
+  /* Poster/Quadrat: mehr Karten pro Zeile als bei Querformat (Standard: cards-visible + 3 -> 7 bei 1206 px) */
+  --lfx-poster-visible: calc(var(--lfx-cards-visible) + 3);
+  --lfx-poster-w: calc(
+    (100vw - var(--lfx-gutter) - var(--lfx-poster-visible) * var(--lfx-card-gap) - var(--lfx-card-peek))
+    / var(--lfx-poster-visible)
+  );
+}
+
+/* Schmale Breiten: engerer Abstand (wirkt auch in der Breitenformel) */
+@media (max-width: 599px) {
+  html:not(.layout-tv) .emby-scroller { --lfx-card-gap: 4px; }
+}
+
+/* ---------- Layout der Zeile: Gap statt Karten-Margin ---------- */
+html:not(.layout-tv) .emby-scroller .itemsContainer.scrollSlider {
+  gap: var(--lfx-card-gap);
+}
+
+/* Jellyfin setzt margin-right: 1.2em am cardBox (emby-scroller.scss) -> Gap übernimmt */
+html:not(.layout-tv) .emby-scroller .itemsContainer > .card > .cardBox {
+  margin: 0;
+}
+
+/* Breiten (überschreibt die vw-Breiten aus card.scss, Spezifität höher) */
+html:not(.layout-tv) .emby-scroller .itemsContainer > .overflowBackdropCard,
+html:not(.layout-tv) .emby-scroller .itemsContainer > .overflowSmallBackdropCard {
+  width: var(--lfx-card-w);
+}
+html:not(.layout-tv) .emby-scroller .itemsContainer > .overflowPortraitCard,
+html:not(.layout-tv) .emby-scroller .itemsContainer > .overflowSquareCard {
+  width: var(--lfx-poster-w);
+}
+
+/* Querformat strikt 16:9 (Padder ist bereits 56.25 %), Poster 2:3 (150 %) – nur Bild füllend */
+html:not(.layout-tv) .emby-scroller .cardImageContainer {
+  background-size: cover;
+  background-position: center;
+}
+
+/* ---------- Form: Radius, Overflow für Zoom/Schatten ---------- */
+html:not(.layout-tv) .emby-scroller .cardScalable,
+html:not(.layout-tv) .emby-scroller .cardPadder,
+html:not(.layout-tv) .emby-scroller .cardContent,
+html:not(.layout-tv) .emby-scroller .blurhash-canvas,
+html:not(.layout-tv) .emby-scroller .cardOverlayContainer {
+  border-radius: var(--lfx-card-radius);
+}
+
+/* .card:not(.show-animation) hat contain: ... paint -> schneidet Schatten, Zoom-Überstand und
+   die Fortschrittsleiste unter dem Bild ab. Paint-Containment in Zeilen deshalb abschalten. */
+html:not(.layout-tv) .emby-scroller .itemsContainer > .card {
+  contain: layout style;
+  position: relative;
+  transition: transform var(--lfx-dur) var(--lfx-ease);
+}
+html:not(.layout-tv) .emby-scroller .cardScalable {
+  transition: box-shadow var(--lfx-dur) var(--lfx-ease);
+}
+/* cardContent ist contain: strict + overflow hidden; nur bei Karten mit Fortschrittsleiste öffnen
+   (Bild-Hintergrund bleibt durch border-radius am selben Element gerundet) */
+html:not(.layout-tv) .emby-scroller .cardScalable .cardContent:has(.itemProgressBar) {
+  overflow: visible;
+  contain: layout style;
+}
+
+/* ---------- Fortschritt (Weiterschauen): unter dem Bild, mittig, 60 % ---------- */
+/* Jellyfin rendert .innerCardFooter.innerCardFooterClear > .itemProgressBar IM Bild-Link (cardBuilder.js);
+   wir verschieben sie per absolute/bottom:-10px in den Zeilenabstand unter der Karte. */
+html:not(.layout-tv) .emby-scroller .innerCardFooter.innerCardFooterClear {
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  overflow: visible;
+  background: transparent;
+}
+html:not(.layout-tv) .emby-scroller .innerCardFooterClear > .itemProgressBar {
+  width: 60%;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--lfx-progress-rail);
+}
+html:not(.layout-tv) .emby-scroller .innerCardFooterClear .itemProgressBarForeground {
+  background: var(--lfx-red);
+}
+
+/* ---------- Indikatoren: dezent ---------- */
+/* Begründung: Netflix zeigt keine Gesehen-Haken; wir behalten eine kleine Info, ohne das Bild zu stören. */
+html:not(.layout-tv) .emby-scroller .cardIndicators {
+  top: 8px;
+  right: 8px;
+  font-size: 12px;
+}
+html:not(.layout-tv) .emby-scroller .cardIndicators .indicator {
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  box-shadow: none;
+}
+html:not(.layout-tv) .emby-scroller .cardIndicators .playedIndicator {
+  background: rgba(20, 20, 20, 0.75);
+}
+html:not(.layout-tv) .emby-scroller .cardIndicators .playedIndicator .indicatorIcon {
+  font-size: 14px;
+}
+html:not(.layout-tv) .emby-scroller .cardIndicators .countIndicator {
+  background: var(--lfx-red);
+  font-weight: 700;
+}
+
+/* ---------- Jellyfin-Hover-Overlay: minimal (nur runder weißer Play-Button) ---------- */
+html:not(.layout-tv) .emby-scroller .cardOverlayContainer {
+  background: transparent;
+}
+html:not(.layout-tv) .emby-scroller .cardOverlayContainer .cardOverlayButton-br {
+  display: none;
+}
+html:not(.layout-tv) .emby-scroller .cardOverlayContainer > .cardOverlayFab-primary {
+  font-size: 16px;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  background: transparent;
+}
+html:not(.layout-tv) .emby-scroller .cardOverlayContainer .cardOverlayButtonIcon {
+  background: #fff !important;
+  color: var(--lfx-bg) !important;
+}
+
+/* ---------- Hover: Zoom + Schatten (nur Desktop mit Maus) ---------- */
+@media (hover: hover) and (pointer: fine) {
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
+    transform: scale(1.07);
+    z-index: 20;
+    transition-delay: 150ms;
+  }
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
+    box-shadow: var(--lfx-shadow-card);
+    transition-delay: 150ms;
+  }
+  /* Randkarten nicht aus dem Sichtbereich schieben */
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:first-child { transform-origin: left center; }
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:last-child { transform-origin: right center; }
+}
+
+/* ---------- Tastatur-Fokus: weißer 2-px-Ring am Bild ---------- */
+/* card.scss setzt outline: none !important -> hier ebenfalls !important nötig */
+html:not(.layout-tv) .emby-scroller .cardImageContainer:focus-visible {
+  outline: 2px solid #fff !important;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:not(.layout-tv) .emby-scroller .itemsContainer > .card { transition: none; }
+}

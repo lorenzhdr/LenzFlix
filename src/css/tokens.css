@@ -1,0 +1,133 @@
+/* LenzFlix · Design-Tokens
+   Werte aus der Vermessung von netflix.de/browse (Viewport 1206 CSS-px, siehe Plan).
+   Schicht 1: Jellyfin-12-Theme-Variablen überschreiben (wirkt auf MUI + theme.css).
+   Schicht 2: eigene --lfx-*-Tokens für alle LenzFlix-Regeln. */
+
+:root,
+[data-theme] {
+  /* --- Jellyfin / MUI Palette --- */
+  --jf-palette-primary-main: #e50914;
+  --jf-palette-primary-light: #f40612;
+  --jf-palette-primary-dark: #b81d24;
+  --jf-palette-primary-contrastText: #fff;
+  --jf-palette-primary-mainChannel: 229 9 20;
+  --jf-palette-primary-lightChannel: 244 6 18;
+  --jf-palette-primary-darkChannel: 184 29 36;
+  --jf-palette-primary-contrastTextChannel: 255 255 255;
+  --jf-palette-secondary-main: #e50914;
+  --jf-palette-secondary-light: #f40612;
+  --jf-palette-secondary-dark: #b81d24;
+  --jf-palette-secondary-contrastText: #fff;
+  --jf-palette-secondary-mainChannel: 229 9 20;
+  --jf-palette-background-default: #141414;
+  --jf-palette-background-defaultChannel: 20 20 20;
+  --jf-palette-background-paper: #181818;
+  --jf-palette-background-paperChannel: 24 24 24;
+  --jf-palette-text-primary: #fff;
+  --jf-palette-text-secondary: #b3b3b3;
+  --jf-palette-divider: rgba(255, 255, 255, 0.12);
+  --jf-palette-AppBar-defaultBg: #141414;
+  --jf-palette-AppBar-darkBg: #141414;
+  --jf-palette-AppBar-transparentBg: transparent;
+  --jf-palette-SnackbarContent-bg: #2f2f2f;
+  --jf-palette-FilledInput-bg: rgba(22, 22, 22, 0.7);
+  --jf-palette-Button-inheritContainedBg: rgba(109, 109, 110, 0.7);
+  --jf-palette-Button-inheritContainedHoverBg: rgba(109, 109, 110, 0.4);
+  --jf-card-borderRadius: 8px;
+  --jf-shape-borderRadius: 4px;
+
+  /* --- LenzFlix: Farben --- */
+  --lfx-red: #e50914;
+  --lfx-red-hover: #f40612;
+  --lfx-red-active: #b81d24;
+  --lfx-bg: #141414;
+  --lfx-bg-deep: #0c0c0c;
+  --lfx-surface: #181818;
+  --lfx-surface-2: #232323;
+  --lfx-surface-3: #2f2f2f;
+  --lfx-border: #404040;
+  --lfx-text: #fff;
+  --lfx-text-body: #e5e5e5;
+  --lfx-text-muted: #b3b3b3;
+  --lfx-text-soft: #808080;
+  --lfx-green: #46d369;
+  --lfx-glass: rgba(109, 109, 110, 0.7);
+  --lfx-glass-hover: rgba(109, 109, 110, 0.4);
+  --lfx-pill-active: rgba(255, 255, 255, 0.2);
+  --lfx-icon-circle: rgba(42, 42, 42, 0.6);
+  --lfx-icon-circle-border: rgba(255, 255, 255, 0.5);
+  --lfx-progress-rail: rgba(255, 255, 255, 0.85);
+  /* Ambient-Farbe (setzt das JS aus dem Billboard-Bild; Default = neutrales Dunkelgrau-Teal) */
+  --lfx-ambient: 27 40 41;
+
+  /* --- Typografie --- */
+  --lfx-font: "LenzFlix Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --lfx-fs-nav: 16px;
+  --lfx-fs-row-title: 18px;
+  --lfx-fs-meta: 15px;
+  --lfx-fs-button: 20px;
+  --lfx-fs-badge: 12px;
+  --lfx-fs-body: 16px;
+  --lfx-fw-nav: 500;
+  --lfx-fw-row-title: 600;
+  --lfx-fw-button: 600;
+
+  /* --- Maße (Referenz 1206 px Viewport) --- */
+  --lfx-gutter: 36px;              /* Seitenrand links/rechts */
+  --lfx-header-h: 80px;
+  --lfx-nav-pill-h: 40px;
+  --lfx-card-gap: 7.5px;
+  --lfx-cards-visible: 4;          /* volle Karten pro Zeile (+ Peek) */
+  --lfx-card-peek: 13px;           /* angeschnittene 5. Karte */
+  --lfx-card-radius: 8px;
+  --lfx-row-title-gap: 14px;       /* Unterkante Titel -> Kartenoberkante */
+  --lfx-row-gap: 40px;             /* Kartenunterkante -> nächster Titel */
+  --lfx-billboard-radius: 18px;
+  --lfx-billboard-ratio: 1149 / 526;
+  --lfx-btn-h: 48px;
+  --lfx-btn-radius: 24px;
+  --lfx-btn-gap: 12px;
+  --lfx-badge-h: 18px;
+  --lfx-popup-radius: 8px;
+  --lfx-modal-radius: 8px;
+
+  /* --- Bewegung --- */
+  --lfx-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --lfx-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --lfx-dur-fast: 150ms;
+  --lfx-dur: 250ms;
+  --lfx-dur-slow: 400ms;
+  --lfx-hover-delay: 500ms;
+
+  /* --- Schatten --- */
+  --lfx-shadow-card: 0 16px 32px rgba(0, 0, 0, 0.75);
+  --lfx-shadow-modal: 0 32px 64px rgba(0, 0, 0, 0.85);
+}
+
+/* Breitenabhängige Kartenanzahl (Netflix-Verhalten: 2–6 Karten je Breite) */
+@media (max-width: 799px) { :root { --lfx-cards-visible: 2; --lfx-gutter: 4vw; } }
+@media (min-width: 800px) and (max-width: 1099px) { :root { --lfx-cards-visible: 3; } }
+@media (min-width: 1400px) { :root { --lfx-cards-visible: 5; --lfx-gutter: 3vw; } }
+@media (min-width: 1800px) { :root { --lfx-cards-visible: 6; --lfx-gutter: 60px; } }
+
+/* Basis: Schrift + Hintergrund für alle Nicht-Dashboard-Seiten */
+html,
+body {
+  background-color: var(--lfx-bg);
+  font-family: var(--lfx-font);
+}
+html body,
+.MuiTypography-root,
+.MuiButtonBase-root,
+.emby-button,
+input,
+select,
+textarea,
+button {
+  font-family: var(--lfx-font);
+}
+::selection { background: var(--lfx-red); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --lfx-dur-fast: 0ms; --lfx-dur: 0ms; --lfx-dur-slow: 0ms; }
+}
