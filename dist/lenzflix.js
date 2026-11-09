@@ -395,6 +395,39 @@
     mounts.clear();
   }
 
+  // src/js/core/favicon.js
+  var HREF = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAAABmJLR0QA/wD/AP+gvaeTAAAC3ElEQVR4nO3av06TYRiG8ef9V9pScGBkEWIYOzl5BIYDc/A4PAU9BDf30oCtOBlxIqFQvu99HKoGy2BCkIuW+xqavF/S9P7yS9MmbXi+98K43p2dn0c7ynlU0rikaU4VXEOU2ZcfVN9r6nDeLo4XMRznuPCY5nScYxMCu/B/BwMs1a8+nLd/PNoQTlM8KumopFHOo5Lma8fxuACWSu57TbvXtK9nZmZNCF9veIxLulx9j0cNsFS+5XGa4rikD93Op41VupGbreruhcd+0+437fcUVxcg0gOeegKAEwCcAOAEACcAOAHACQBOAHACgBMAnADgBAAnADgBwAkATgBwAoATAJwA4AQAJwA4AcAJAE4AcAKAEwCcAOAEACcAOAHACQBOAHACgBMAnADgBAAnADgBwAkATgBwAoATAJwA4AQAJwA4AcAJAE4AcAKAEwCcAOAEACcAOAHACQBOAHACgBMAnADgBAAnADgBwAkATgBwAoATAJwA4AQAJwA4AcAJAE4AcAKAEwCcAOAEACcAOAHACQBOAHACgBMAnADgBAAnADgBwAkATgBwAoATAJwA4AQAJwA4AcCtA8BOW7e90ivuWKYH3EOHs/nhbH4ewqTESUrTkkY5H+d4EQM97d+tA8CiLffhvB1aa7NfV37EOClpkhaPaVzS5eMTWR+A2+3UunNVX/4+NiF8i+FLTp9zmuQ4zekkp2uaZJ0Blsruu63vtvXV1fXiynWwSUqLd8lJSeOSzuJDfyg+IYDbFbeDpj1o2sXxfb/zZrv/wBvW4VvQSicAOAHACQBOAHACgBMAnADgBAAnADgBwAkATgBwAoATAJwA4AQAJwA4AcDBvwm/fdbru226Z/eee3Hrum24d9x7ZsW9Xz2FMKg1uA3cs1m/ejbrubPL7ysY4ONGufNzO24b5l33jlvXrbhvVg/mW27RbOCe3Pt/o3bNOu696vkGajLbrJ6h/6f8BHjLwMLsw05oAAAAAElFTkSuQmCC";
+  var ATTR = "data-lfx-orig";
+  var created = null;
+  var patched = [];
+  function applyFavicon() {
+    if (!document.head || created) return;
+    patched = [...document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')];
+    for (const l of patched) {
+      l.setAttribute(ATTR, l.getAttribute("href") ?? "");
+      l.setAttribute("href", HREF);
+      l.setAttribute("type", "image/png");
+      l.removeAttribute("sizes");
+    }
+    created = document.createElement("link");
+    created.id = "lfx-favicon";
+    created.rel = "icon";
+    created.type = "image/png";
+    created.href = HREF;
+    document.head.append(created);
+  }
+  function removeFavicon() {
+    created?.remove();
+    created = null;
+    for (const l of patched) {
+      if (l.hasAttribute(ATTR)) {
+        l.setAttribute("href", l.getAttribute(ATTR));
+        l.removeAttribute(ATTR);
+      }
+    }
+    patched = [];
+  }
+
   // src/js/core/ambient.js
   var ID = "lfx-ambient";
   var clamp = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
@@ -3364,8 +3397,8 @@
     return new Date(t).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
   }
   function sinceLabel(item, newSeriesIds, now = Date.now()) {
-    const created = Date.parse(item && item.DateCreated);
-    const recent = !Number.isNaN(created) && now - created < 14 * 864e5;
+    const created2 = Date.parse(item && item.DateCreated);
+    const recent = !Number.isNaN(created2) && now - created2 < 14 * 864e5;
     const has = newSeriesIds && typeof newSeriesIds.has === "function" && newSeriesIds.has(item.Id);
     if (item && item.Type === "Series" && has && !recent) return "Neue Folgen";
     const d = longDate(item && item.DateCreated);
@@ -3688,11 +3721,12 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default];
 
   // src/js/main.js
-  var VERSION = "1.1.2";
+  var VERSION = "1.1.3";
   var POLL_MS = 250;
   var POLL_MAX_MS = 15e3;
   function init() {
     if (window.LenzFlix) return;
+    applyFavicon();
     let started = false;
     let destroyed = false;
     let pollTimer = null;
@@ -3727,6 +3761,7 @@
       resetRouter();
       removeAllMounts();
       destroyLayout();
+      removeFavicon();
       delete window.LenzFlix;
     }
     window.LenzFlix = { version: VERSION, destroy };

@@ -3,15 +3,17 @@ import { isReady } from './core/api.js';
 import { initLayout, destroyLayout, applyLayoutClasses } from './core/layout.js';
 import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
+import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { features } from './features/index.js';
 
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 const POLL_MS = 250;
 const POLL_MAX_MS = 15_000;
 
 function init() {
   if (window.LenzFlix) return; // Guard gegen Doppel-Init (Dev-Loader ruft vorher destroy())
 
+  applyFavicon();
   let started = false;
   let destroyed = false;
   let pollTimer = null;
@@ -51,6 +53,7 @@ function init() {
     resetRouter(); // unmount aller Features
     removeAllMounts();
     destroyLayout();
+    removeFavicon();
     delete window.LenzFlix;
   }
 
