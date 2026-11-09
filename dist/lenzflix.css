@@ -17,6 +17,7 @@
 }
 
 :root, [data-theme] {
+  --lfx-css: 1;
   --jf-palette-primary-main: #e50914;
   --jf-palette-primary-light: #f40612;
   --jf-palette-primary-dark: #b81d24;

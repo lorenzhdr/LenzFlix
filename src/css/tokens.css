@@ -5,6 +5,9 @@
 
 :root,
 [data-theme] {
+  /* Marker: das JS startet nur, solange dieses CSS aktiv ist (core/csscheck.js). */
+  --lfx-css: 1;
+
   /* --- Jellyfin / MUI Palette --- */
   --jf-palette-primary-main: #e50914;
   --jf-palette-primary-light: #f40612;

@@ -1,30 +1,28 @@
 // LenzFlix: Einstiegspunkt. Setzt window.LenzFlix = {version, destroy()}.
+// Das JS läuft nur, solange das LenzFlix-CSS aktiv ist (Marker --lfx-css): wird das CSS abgeschaltet
+// (z. B. Einstellungen → Anzeige → Custom-CSS aus), stoppen alle Features; kommt es zurück, starten sie wieder.
 import { isReady } from './core/api.js';
 import { initLayout, destroyLayout, applyLayoutClasses } from './core/layout.js';
 import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
+import { cssActive } from './core/csscheck.js';
 import { features } from './features/index.js';
 
-const VERSION = '1.1.4';
-const POLL_MS = 250;
-const POLL_MAX_MS = 15_000;
+const VERSION = '1.1.5';
+const WATCH_MS = 1000;
 
 function init() {
   if (window.LenzFlix) return; // Guard gegen Doppel-Init (Dev-Loader ruft vorher destroy())
 
-  applyFavicon();
-  let started = false;
+  let running = false;
   let destroyed = false;
-  let pollTimer = null;
+  let watchTimer = null;
   let refreshTimer = null;
 
-  function start() {
-    if (started || destroyed) return;
-    if (!window.ApiClient || !isReady()) return;
-    started = true;
-    clearInterval(pollTimer);
-    window.removeEventListener('hashchange', start);
+  function startFeatures() {
+    if (running || destroyed) return;
+    running = true;
     initLayout();
     for (const f of features) registerFeature(f);
     // Der MUI-Header wird von React evtl. erst nach dem ersten Route-Event gerendert.
@@ -36,23 +34,38 @@ function init() {
     }, 500);
   }
 
-  const startedAt = Date.now();
-  pollTimer = setInterval(() => {
-    start();
-    if (Date.now() - startedAt > POLL_MAX_MS) clearInterval(pollTimer);
-  }, POLL_MS);
-  // Login ohne Reload: später erneut versuchen, sobald die Route wechselt.
-  window.addEventListener('hashchange', start);
-  start();
-
-  function destroy() {
-    destroyed = true;
-    clearInterval(pollTimer);
+  function stopFeatures() {
+    running = false;
     clearInterval(refreshTimer);
-    window.removeEventListener('hashchange', start);
     resetRouter(); // unmount aller Features
     removeAllMounts();
     destroyLayout();
+  }
+
+  // Läuft dauerhaft: startet (sobald CSS aktiv und ApiClient bereit; auch nach Login ohne Reload)
+  // bzw. stoppt die Features, wenn das CSS abgeschaltet wird.
+  function sync() {
+    if (destroyed) return;
+    if (cssActive()) {
+      applyFavicon();
+      if (!running && window.ApiClient && isReady()) startFeatures();
+    } else if (running || document.documentElement.classList.contains('lfx-js')) {
+      stopFeatures();
+      removeFavicon();
+    } else {
+      removeFavicon();
+    }
+  }
+
+  watchTimer = setInterval(sync, WATCH_MS);
+  window.addEventListener('hashchange', sync);
+  sync();
+
+  function destroy() {
+    destroyed = true;
+    clearInterval(watchTimer);
+    window.removeEventListener('hashchange', sync);
+    stopFeatures();
     removeFavicon();
     delete window.LenzFlix;
   }

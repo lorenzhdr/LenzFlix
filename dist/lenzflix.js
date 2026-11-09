@@ -428,6 +428,15 @@
     patched = [];
   }
 
+  // src/js/core/csscheck.js
+  function cssActive() {
+    try {
+      return getComputedStyle(document.documentElement).getPropertyValue("--lfx-css").trim() === "1";
+    } catch {
+      return false;
+    }
+  }
+
   // src/js/core/ambient.js
   var ID = "lfx-ambient";
   var clamp = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
@@ -3721,22 +3730,17 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default];
 
   // src/js/main.js
-  var VERSION = "1.1.4";
-  var POLL_MS = 250;
-  var POLL_MAX_MS = 15e3;
+  var VERSION = "1.1.5";
+  var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;
-    applyFavicon();
-    let started = false;
+    let running = false;
     let destroyed = false;
-    let pollTimer = null;
+    let watchTimer = null;
     let refreshTimer = null;
-    function start2() {
-      if (started || destroyed) return;
-      if (!window.ApiClient || !isReady()) return;
-      started = true;
-      clearInterval(pollTimer);
-      window.removeEventListener("hashchange", start2);
+    function startFeatures() {
+      if (running || destroyed) return;
+      running = true;
       initLayout();
       for (const f of features2) registerFeature(f);
       let n = 0;
@@ -3746,21 +3750,33 @@
         if (++n >= 40) clearInterval(refreshTimer);
       }, 500);
     }
-    const startedAt = Date.now();
-    pollTimer = setInterval(() => {
-      start2();
-      if (Date.now() - startedAt > POLL_MAX_MS) clearInterval(pollTimer);
-    }, POLL_MS);
-    window.addEventListener("hashchange", start2);
-    start2();
-    function destroy() {
-      destroyed = true;
-      clearInterval(pollTimer);
+    function stopFeatures() {
+      running = false;
       clearInterval(refreshTimer);
-      window.removeEventListener("hashchange", start2);
       resetRouter();
       removeAllMounts();
       destroyLayout();
+    }
+    function sync() {
+      if (destroyed) return;
+      if (cssActive()) {
+        applyFavicon();
+        if (!running && window.ApiClient && isReady()) startFeatures();
+      } else if (running || document.documentElement.classList.contains("lfx-js")) {
+        stopFeatures();
+        removeFavicon();
+      } else {
+        removeFavicon();
+      }
+    }
+    watchTimer = setInterval(sync, WATCH_MS);
+    window.addEventListener("hashchange", sync);
+    sync();
+    function destroy() {
+      destroyed = true;
+      clearInterval(watchTimer);
+      window.removeEventListener("hashchange", sync);
+      stopFeatures();
       removeFavicon();
       delete window.LenzFlix;
     }

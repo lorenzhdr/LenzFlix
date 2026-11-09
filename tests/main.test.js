@@ -1,16 +1,27 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
+const CSS = ':root { --lfx-css: 1; }';
+function addCss() {
+  const st = document.createElement('style');
+  st.id = 'test-css';
+  st.textContent = CSS;
+  document.head.append(st);
+  return st;
+}
+
 afterEach(() => {
   if (window.LenzFlix) window.LenzFlix.destroy();
   vi.resetModules();
   document.body.innerHTML = '';
   delete window.ApiClient;
+  document.getElementById('test-css')?.remove();
 });
 
 describe('main', () => {
   it('setzt window.LenzFlix, Guard gegen Doppel-Init, destroy räumt auf', async () => {
     window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's' };
+    addCss();
     window.fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ Items: [{ Id: 'm', Name: 'F', CollectionType: 'movies' }] }) }));
     document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
     window.location.hash = '#/home';
@@ -29,5 +40,33 @@ describe('main', () => {
     expect(document.getElementById('lfx-ambient')).toBeNull();
     expect(document.documentElement.classList.contains('lfx-js')).toBe(false);
     expect(document.documentElement.classList.contains('lfx-nav-on')).toBe(false);
+  });
+
+  it('startet nicht ohne LenzFlix-CSS, stoppt bei CSS-Abschaltung und startet bei Rückkehr neu', async () => {
+    vi.useFakeTimers();
+    try {
+      window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's' };
+      window.fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ Items: [] }) }));
+      document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
+      window.location.hash = '#/home';
+      await import('../src/js/main.js');
+      const html = document.documentElement;
+      expect(html.classList.contains('lfx-js')).toBe(false); // kein CSS → keine Features
+      expect(document.getElementById('lfx-favicon')).toBeNull();
+      const st = addCss();
+      vi.advanceTimersByTime(1100);
+      expect(html.classList.contains('lfx-js')).toBe(true);
+      expect(document.getElementById('lfx-favicon')).not.toBeNull();
+      st.remove(); // Nutzer deaktiviert das CSS
+      vi.advanceTimersByTime(1100);
+      expect(html.classList.contains('lfx-js')).toBe(false);
+      expect(document.getElementById('lfx-nav')).toBeNull();
+      expect(document.getElementById('lfx-favicon')).toBeNull();
+      addCss();
+      vi.advanceTimersByTime(1100);
+      expect(html.classList.contains('lfx-js')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
