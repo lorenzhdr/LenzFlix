@@ -6,7 +6,7 @@ import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { features } from './features/index.js';
 
-const VERSION = '1.1.3';
+const VERSION = '1.1.4';
 const POLL_MS = 250;
 const POLL_MAX_MS = 15_000;
 
