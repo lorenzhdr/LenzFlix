@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -182,5 +182,459 @@ describe('Textinjektion', () => {
     expect(container.querySelector('img')).toBeNull();
     expect(container.textContent).toContain(evil);
     expect(container.querySelector('.tname').getAttribute('title')).toBe(evil);
+  });
+});
+
+describe('Share-Dialog', () => {
+  const ITEMS = {
+    s1: { name: 'Serie Eins', tag: '', type: 'Series' },
+    s2: { name: 'Serie Zwei', tag: '', type: 'Series' },
+    m1: { name: 'Film Eins', tag: '', type: 'Movie' },
+  };
+  const fullStats = () => ({
+    range: '30d',
+    totals: { seconds: 123456, plays: 9, episodes: 7, movies: 2, series: 2, activeDays: 5 },
+    compare: { rank: 3, of: 12, avgSeconds: 98000 },
+    topSeries: [{ id: 'S1', seconds: 7200, episodes: 4 }, { id: 'S2', seconds: 3600, episodes: 3 }],
+    topMovies: [{ id: 'M1', seconds: 5400, plays: 1 }],
+    timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] },
+    heatmap: [{ dow: 1, hour: 0, seconds: 100 }, { dow: 0, hour: 5, seconds: 400 }],
+    binge: { topDay: { date: '2026-11-02', seconds: 9000 }, seriesDay: { seriesId: 's1', date: '2026-11-02', episodes: 5 } },
+    devices: [{ client: 'Web', device: 'Chrome', plays: 3, seconds: 500 }],
+    methods: { directPlay: { plays: 3, seconds: 500 } },
+  });
+
+  let origGetContext;
+  let origToBlob;
+
+  function makeCtx() {
+    const rec = { calls: [] };
+    ['fillRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'quadraticCurveTo', 'closePath', 'fill', 'clip', 'save', 'restore', 'drawImage'].forEach((m) => {
+      rec[m] = (...args) => {
+        rec.calls.push({ m, args, fillStyle: rec.fillStyle });
+      };
+    });
+    rec.measureText = (t) => ({ width: String(t).length * 10 });
+    return rec;
+  }
+
+  beforeEach(() => {
+    origGetContext = HTMLCanvasElement.prototype.getContext;
+    origToBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.getContext = function () {
+      if (!this.__ctx) this.__ctx = makeCtx();
+      return this.__ctx;
+    };
+    HTMLCanvasElement.prototype.toBlob = function (cb) {
+      cb(new Blob(['x'], { type: 'image/png' }));
+    };
+    L.closeShareDialog(false);
+    L.state.token = null;
+    L.state.items = ITEMS;
+    document.body.style.overflow = '';
+  });
+
+  afterEach(() => {
+    L.closeShareDialog(false);
+    HTMLCanvasElement.prototype.getContext = origGetContext;
+    HTMLCanvasElement.prototype.toBlob = origToBlob;
+  });
+
+  const texts = (ctx) => ctx.calls.filter((c) => c.m === 'fillText').map((c) => c.args[0]);
+  const tabByLabel = (label) => [...document.querySelectorAll('.share-dialog .tab')].find((b) => b.textContent === label);
+  const btnByLabel = (label) => [...document.querySelectorAll('.share-dialog .btn')].find((b) => b.textContent === label);
+
+  it('Varianten-Verfügbarkeit je nach Datenlage', () => {
+    expect(L.shareVariants(fullStats(), ITEMS)).toEqual(['overview', 'top', 'activity', 'binge']);
+    const noTop = { ...fullStats(), topSeries: [], topMovies: [] };
+    expect(L.shareVariants(noTop, ITEMS)).not.toContain('top');
+    expect(L.shareVariants(fullStats(), {})).not.toContain('top');
+    const noBinge = { ...fullStats(), binge: {}, devices: [], methods: {} };
+    expect(L.shareVariants(noBinge, ITEMS)).not.toContain('binge');
+    const noAct = { ...fullStats(), timeline: { unit: 'day', buckets: [] }, heatmap: [] };
+    expect(L.shareVariants(noAct, ITEMS)).not.toContain('activity');
+    expect(L.shareVariants({ totals: {} }, {})).toEqual(['overview']);
+  });
+
+  it('Format bestimmt die Canvas-Höhe; Dateiname', () => {
+    const c = document.createElement('canvas');
+    L.drawShare(c, { variant: 'overview', format: '4:5', stats: fullStats(), items: ITEMS });
+    expect([c.width, c.height]).toEqual([1080, 1350]);
+    L.drawShare(c, { variant: 'overview', format: 'story', stats: fullStats(), items: ITEMS });
+    expect([c.width, c.height]).toEqual([1080, 1920]);
+    expect(L.shareFileName('top', '4:5')).toBe('lenzflix-top-4x5.png');
+    expect(L.shareFileName('binge', 'story')).toBe('lenzflix-binge-story.png');
+  });
+
+  it('fitText kürzt mit Ellipse', () => {
+    const ctx = { measureText: (t) => ({ width: t.length * 10 }) };
+    expect(L.fitText(ctx, 'kurz', 100)).toBe('kurz');
+    const r = L.fitText(ctx, 'ein sehr langer Titel hier', 100);
+    expect(r.endsWith('…')).toBe(true);
+    expect(r.length * 10).toBeLessThanOrEqual(100);
+    expect(L.fitText(ctx, null, 100)).toBe('');
+  });
+
+  it('Overview zeigt Rahmen, Watchtime, Platz und Top-Serie', () => {
+    const c = document.createElement('canvas');
+    L.drawShare(c, { variant: 'overview', format: '4:5', stats: fullStats(), items: ITEMS });
+    const t = texts(c.__ctx);
+    expect(t).toContain('LENZFLIX');
+    expect(t).toContain('Meine Statistik · Letzte 30 Tage');
+    expect(t).toContain('Inoffizielles Jellyfin-Theme');
+    expect(t).toContain('34 Std 18 Min');
+    expect(t).toContain('7 Folgen · 2 Filme · 2 Serien');
+    expect(t).toContain('Platz 3 von 12 · Ø 27 Std');
+    expect(t).toContain('Serie Eins');
+  });
+
+  it('Heatmap im Share-Layout: Montag zuerst, Sonntag zuletzt', () => {
+    const c = document.createElement('canvas');
+    L.drawShare(c, { variant: 'activity', format: '4:5', stats: fullStats(), items: ITEMS });
+    const ctx = c.__ctx;
+    const labels = texts(ctx).filter((x) => ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].includes(x));
+    expect(labels).toEqual(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']);
+    const red = ctx.calls.filter((cl) => cl.m === 'fillRect' && String(cl.fillStyle).indexOf('rgba(229, 9, 20') === 0 && cl.args[2] < 40);
+    expect(red).toHaveLength(2);
+    const mon = red.find((cl) => cl.args[0] === 80 + 70); // Stunde 0
+    const sun = red.find((cl) => cl.args[0] === 80 + 70 + 5 * 35); // Stunde 5
+    expect(mon.args[1]).toBeLessThan(sun.args[1]);
+  });
+
+  it('Dialog öffnen: ARIA, Fokus, nur einer gleichzeitig; Schließen per Button', () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const ov = L.openShareDialog(fullStats(), trigger);
+    const dlg = document.querySelector('[role="dialog"]');
+    expect(dlg.getAttribute('aria-modal')).toBe('true');
+    expect(dlg.getAttribute('aria-label')).toBeTruthy();
+    expect(document.activeElement).toBe(dlg);
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(L.openShareDialog(fullStats(), trigger)).toBe(ov);
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(tabByLabel('Überblick').getAttribute('aria-pressed')).toBe('true');
+    expect(tabByLabel('4:5').classList.contains('on')).toBe(true);
+    btnByLabel('Schließen').click();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('Esc und Klick auf den Hintergrund schließen; Klick im Dialog nicht', () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    L.openShareDialog(fullStats(), trigger);
+    document.querySelector('.share-dialog').click();
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    L.openShareDialog(fullStats(), trigger);
+    document.querySelector('.share-overlay').click();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.querySelector('.share-overlay')).toBeNull();
+  });
+
+  it('Tab- und Formatwechsel zeichnen mit der richtigen Variante/Höhe', () => {
+    L.openShareDialog(fullStats(), null);
+    const canvas = document.querySelector('.share-canvas');
+    expect(canvas.height).toBe(1350);
+    tabByLabel('Top').click();
+    expect(texts(canvas.__ctx)).toContain('Top-Serien');
+    expect(tabByLabel('Top').getAttribute('aria-pressed')).toBe('true');
+    expect(tabByLabel('Überblick').getAttribute('aria-pressed')).toBe('false');
+    tabByLabel('Binge').click();
+    expect(texts(canvas.__ctx)).toContain('Top-Geräte');
+    expect(texts(canvas.__ctx)).toContain('Wiedergabeart');
+    tabByLabel('Verlauf').click();
+    expect(texts(canvas.__ctx)).toContain('Wann du schaust');
+    tabByLabel('Story 9:16').click();
+    expect(canvas.height).toBe(1920);
+    expect(tabByLabel('Story 9:16').classList.contains('on')).toBe(true);
+  });
+
+  it('Varianten ohne Daten fehlen in der Leiste', () => {
+    const s = { ...fullStats(), topSeries: [], topMovies: [], binge: {}, devices: [], methods: {} };
+    L.openShareDialog(s, null);
+    expect(tabByLabel('Top')).toBeUndefined();
+    expect(tabByLabel('Binge')).toBeUndefined();
+    expect(tabByLabel('Verlauf')).toBeDefined();
+  });
+
+  it('Speichern erzeugt PNG-Download mit Dateiname (ohne Share-API)', async () => {
+    const created = [];
+    URL.createObjectURL = () => 'blob:fake';
+    URL.revokeObjectURL = () => {};
+    const origClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      created.push(this.download);
+    };
+    try {
+      L.openShareDialog(fullStats(), null);
+      tabByLabel('Top').click();
+      tabByLabel('Story 9:16').click();
+      btnByLabel('Speichern / Teilen').click();
+      await new Promise((r) => setTimeout(r, 20));
+      expect(created).toEqual(['lenzflix-top-story.png']);
+    } finally {
+      HTMLAnchorElement.prototype.click = origClick;
+    }
+  });
+
+  it('Titel mit HTML bleibt im Dialog/Canvas Text', () => {
+    const evil = '<img src=x onerror=alert(1)>';
+    L.state.items = { s1: { name: evil, tag: '', type: 'Series' } };
+    L.openShareDialog({ ...fullStats(), topMovies: [] }, null);
+    tabByLabel('Top').click();
+    expect(document.querySelector('.share-overlay img')).toBeNull();
+    expect(document.querySelector('[onerror]')).toBeNull();
+    expect(texts(document.querySelector('.share-canvas').__ctx).some((t) => t.indexOf('<img') === 0)).toBe(true);
+  });
+  it('Poster-Race: Wechsel während des Ladens zeichnet Poster im aktuellen Format nach; Speichern wartet', async () => {
+    const origImage = globalThis.Image;
+    const origFetch = window.fetch;
+    const origCreate = URL.createObjectURL;
+    const origRevoke = URL.revokeObjectURL;
+    const origClick = HTMLAnchorElement.prototype.click;
+    let release;
+    const gate = new Promise((r) => {
+      release = r;
+    });
+    window.fetch = () => gate.then(() => ({ ok: true, blob: () => Promise.resolve(new Blob(['p'])) }));
+    URL.createObjectURL = () => 'blob:poster';
+    URL.revokeObjectURL = () => {};
+    globalThis.Image = function () {
+      const img = { width: 100, height: 150 };
+      Object.defineProperty(img, 'src', {
+        set() {
+          setTimeout(() => img.onload && img.onload(), 0);
+        },
+      });
+      return img;
+    };
+    const exported = [];
+    HTMLCanvasElement.prototype.toBlob = function (cb) {
+      exported.push({ height: this.height, draws: this.__ctx.calls.filter((c) => c.m === 'drawImage').length });
+      cb(new Blob(['x'], { type: 'image/png' }));
+    };
+    HTMLAnchorElement.prototype.click = function () {};
+    try {
+      L.state.token = 'tok';
+      L.state.items = { s1: { name: 'Serie Eins', tag: 't1', type: 'Series' } };
+      L.openShareDialog({ ...fullStats(), topSeries: [{ id: 's1', seconds: 60, episodes: 1 }], topMovies: [] }, null);
+      const canvas = document.querySelector('.share-canvas');
+      tabByLabel('Top').click();
+      tabByLabel('Story 9:16').click();
+      btnByLabel('Speichern / Teilen').click();
+      await new Promise((r) => setTimeout(r, 10));
+      expect(exported).toHaveLength(0); // wartet auf Poster
+      release();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(canvas.height).toBe(1920);
+      expect(canvas.__ctx.calls.filter((c) => c.m === 'drawImage').length).toBeGreaterThan(0);
+      expect(exported).toHaveLength(1);
+      expect(exported[0].height).toBe(1920);
+      expect(exported[0].draws).toBeGreaterThan(0);
+      // Poster im Cache: Export läuft synchron im Klick-Handler
+      btnByLabel('Speichern / Teilen').click();
+      expect(exported).toHaveLength(2);
+    } finally {
+      globalThis.Image = origImage;
+      window.fetch = origFetch;
+      URL.createObjectURL = origCreate;
+      URL.revokeObjectURL = origRevoke;
+      HTMLAnchorElement.prototype.click = origClick;
+    }
+  });
+
+  it('Randfälle: leere Daten → keine Varianten; Watchtime-Schrift schrumpft statt zu kürzen', () => {
+    const zero = { ...fullStats(), timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 0 }] }, heatmap: [{ dow: 1, hour: 1, seconds: 0 }], binge: {}, devices: [{ device: 'X', seconds: 0 }], methods: { directPlay: { plays: 2, seconds: 0 } } };
+    const v = L.shareVariants(zero, ITEMS);
+    expect(v).not.toContain('activity');
+    expect(v).not.toContain('binge');
+    const c = document.createElement('canvas');
+    const st = { ...fullStats(), totals: { ...fullStats().totals, seconds: 5 * 86400 + 3 * 3600 } };
+    L.drawShare(c, { variant: 'overview', format: '4:5', stats: st, items: ITEMS });
+    const t = c.__ctx.calls.filter((x) => x.m === 'fillText').map((x) => x.args[0]);
+    expect(t).toContain('5 Tage 3 Std');
+    expect(t.some((x) => x.endsWith('…'))).toBe(false);
+  });
+  /* ---- Poster-Races (Fetch-Gate + Fake-Image) ---- */
+  function posterEnv(prefix, mode) {
+    const orig = {
+      Image: globalThis.Image,
+      fetch: window.fetch,
+      create: URL.createObjectURL,
+      revoke: URL.revokeObjectURL,
+      click: HTMLAnchorElement.prototype.click,
+    };
+    let release;
+    const gate = new Promise((r) => {
+      release = r;
+    });
+    window.fetch = () =>
+      gate.then(() => {
+        if (mode === 'reject') throw new Error('net');
+        if (mode === '404') return { ok: false, blob: () => Promise.resolve(null) };
+        return { ok: true, blob: () => Promise.resolve(new Blob(['p'])) };
+      });
+    URL.createObjectURL = () => 'blob:poster';
+    URL.revokeObjectURL = () => {};
+    globalThis.Image = function () {
+      const img = { width: 100, height: 150 };
+      Object.defineProperty(img, 'src', {
+        set() {
+          setTimeout(() => img.onload && img.onload(), 0);
+        },
+      });
+      return img;
+    };
+    const downloads = [];
+    HTMLAnchorElement.prototype.click = function () {
+      downloads.push(this.download);
+    };
+    const exported = [];
+    HTMLCanvasElement.prototype.toBlob = function (cb) {
+      exported.push({ height: this.height, draws: lastFrameDraws(this) });
+      cb(new Blob(['x'], { type: 'image/png' }));
+    };
+    const items = {};
+    const series = [];
+    const movies = [];
+    for (let i = 1; i <= 6; i++) {
+      items[prefix + 's' + i] = { name: 'Serie ' + i, tag: 't', type: 'Series' };
+      series.push({ id: prefix + 's' + i, seconds: 600 * (7 - i), episodes: i });
+    }
+    for (let i = 1; i <= 4; i++) {
+      items[prefix + 'm' + i] = { name: 'Film ' + i, tag: 't', type: 'Movie' };
+      movies.push({ id: prefix + 'm' + i, seconds: 300 * (5 - i), plays: 1 });
+    }
+    L.state.token = 'tok';
+    L.state.items = items;
+    return {
+      stats: { ...fullStats(), topSeries: series, topMovies: movies },
+      release,
+      exported,
+      downloads,
+      restore() {
+        globalThis.Image = orig.Image;
+        window.fetch = orig.fetch;
+        URL.createObjectURL = orig.create;
+        URL.revokeObjectURL = orig.revoke;
+        HTMLAnchorElement.prototype.click = orig.click;
+      },
+    };
+  }
+
+  /** drawImage-Aufrufe seit dem letzten Hintergrund-fillRect (= letzter vollständiger Zeichenvorgang). */
+  function lastFrameDraws(canvas) {
+    const calls = canvas.__ctx.calls;
+    let start = 0;
+    calls.forEach((c, i) => {
+      if (c.m === 'fillRect' && c.args[0] === 0 && c.args[1] === 0 && c.args[2] === 1080 && c.args[3] > 1000) start = i;
+    });
+    return calls.slice(start).filter((c) => c.m === 'drawImage').length;
+  }
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  it('Save, dann Formatwechsel während des Ladens: ein Export im aktuellen Format mit Postern', async () => {
+    const env = posterEnv('a', 'ok');
+    try {
+      L.openShareDialog(env.stats, null);
+      const canvas = document.querySelector('.share-canvas');
+      tabByLabel('Top').click();
+      btnByLabel('Speichern / Teilen').click();
+      tabByLabel('Story 9:16').click();
+      await wait(10);
+      expect(env.exported).toHaveLength(0);
+      env.release();
+      await wait(60);
+      expect(env.exported).toHaveLength(1);
+      expect(env.exported[0].height).toBe(1920);
+      expect(env.exported[0].draws).toBe(10);
+      expect(canvas.height).toBe(1920);
+      expect(env.downloads).toEqual(['lenzflix-top-story.png']);
+      expect(btnByLabel('Speichern / Teilen').disabled).toBe(false);
+    } finally {
+      env.restore();
+    }
+  });
+
+  it('Save, dann Schließen während des Ladens: kein Export, keine Exception', async () => {
+    const env = posterEnv('b', 'ok');
+    try {
+      L.openShareDialog(env.stats, null);
+      tabByLabel('Top').click();
+      btnByLabel('Speichern / Teilen').click();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      env.release();
+      await wait(60);
+      expect(env.exported).toHaveLength(0);
+      expect(env.downloads).toEqual([]);
+    } finally {
+      env.restore();
+    }
+  });
+
+  it('Race Top → Überblick → Top: letzter Zeichenvorgang hat alle 8 Poster', async () => {
+    const env = posterEnv('c', 'ok');
+    try {
+      L.openShareDialog(env.stats, null);
+      const canvas = document.querySelector('.share-canvas');
+      tabByLabel('Top').click();
+      tabByLabel('Überblick').click();
+      tabByLabel('Top').click();
+      env.release();
+      await wait(60);
+      expect(canvas.height).toBe(1350);
+      expect(lastFrameDraws(canvas)).toBe(8);
+    } finally {
+      env.restore();
+    }
+  });
+
+  it('Race 4:5 → Story → 4:5 in Top: 8 Poster im 4:5-Frame; Story zeigt 10', async () => {
+    const env = posterEnv('d', 'ok');
+    try {
+      L.openShareDialog(env.stats, null);
+      const canvas = document.querySelector('.share-canvas');
+      tabByLabel('Top').click();
+      tabByLabel('Story 9:16').click();
+      tabByLabel('4:5').click();
+      env.release();
+      await wait(60);
+      expect(canvas.height).toBe(1350);
+      expect(lastFrameDraws(canvas)).toBe(8);
+      tabByLabel('Story 9:16').click();
+      await wait(30);
+      expect(canvas.height).toBe(1920);
+      expect(lastFrameDraws(canvas)).toBe(10);
+    } finally {
+      env.restore();
+    }
+  });
+
+  it.each(['reject', '404'])('Poster-Fetch fehlgeschlagen (%s): Platzhalter, Save wieder aktiv, Export läuft', async (mode) => {
+    const env = posterEnv('e' + mode.charAt(0), mode);
+    try {
+      L.openShareDialog(env.stats, null);
+      const canvas = document.querySelector('.share-canvas');
+      tabByLabel('Top').click();
+      btnByLabel('Speichern / Teilen').click();
+      expect(btnByLabel('Speichern / Teilen').disabled).toBe(true);
+      env.release();
+      await wait(60);
+      expect(lastFrameDraws(canvas)).toBe(0);
+      expect(canvas.__ctx.calls.some((c) => c.m === 'fillText' && c.args[0] === 'S')).toBe(true); // Platzhalter-Buchstabe
+      expect(btnByLabel('Speichern / Teilen').disabled).toBe(false);
+      expect(env.exported).toHaveLength(1);
+      expect(env.downloads).toEqual(['lenzflix-top-4x5.png']);
+    } finally {
+      env.restore();
+    }
   });
 });
