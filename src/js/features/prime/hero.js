@@ -1,14 +1,16 @@
 // LENZPRIME: Vollbreiter Hero mit Crossfade, stummem Hintergrund-Trailer, Abspielen/Meine Liste/Info und grüner Rangzeile.
 import { getItems, imageUrl, logoImage } from '../../core/api.js';
 import { h } from '../../core/dom.js';
+import { isMobile } from '../../core/layout.js';
 import { putItems } from '../../core/itemstore.js';
 import { isChooserOpen } from '../../core/download.js';
 import { isMenuOpen, onItemsChanged } from '../../core/itemmenu.js';
 import { titleHref } from '../../shared/routes.js';
 import { toggleFavorite } from '../../shared/titleactions.js';
 import { createMutedPreview } from '../../shared/trailer.js';
-import { getTrendInfo, heroTrendLine } from '../../shared/trend.js';
-import { buildPool, formatRating } from '../billboard/format.js';
+import { getNewContentInfo } from '../../shared/newcontent.js';
+import { cardBadge, getTrendInfo, heroTrendLine } from '../../shared/trend.js';
+import { buildPool, formatRating, formatRuntime, formatSeasons } from '../billboard/format.js';
 import * as data from '../modal/data.js';
 import { playLabel, playTitle } from './hero-play.js';
 import { autoPause } from './preview-gate.js';
@@ -63,6 +65,10 @@ export async function fetchHomePool() {
 
 /** loadPool: () => Promise<Item[]>. Rückgabe: Cleanup-Funktion. */
 export function renderHero(slot, { loadPool }) {
+  // Handy (<800 px): 16:9-Rahmen, Meta + Abspielen darunter, kein Autoplay-Trailer (Datenverbrauch). Wechsel baut home.js neu auf.
+  const mobile = isMobile();
+  let newInfo = null;
+  let logoBox = null;
   let disposed = false;
   let pool = [];
   let index = 0;
@@ -118,7 +124,7 @@ export function renderHero(slot, { loadPool }) {
   }
 
   function startTrailer(item, myGen) {
-    if (reducedMotion() || disposed || myGen !== gen) return;
+    if (mobile || reducedMotion() || disposed || myGen !== gen) return;
     preview = createMutedPreview(media, item, {
       delay: TRAILER_DELAY_MS,
       startAt: 4,
@@ -205,6 +211,29 @@ export function renderHero(slot, { loadPool }) {
     ]);
   }
 
+  /** Handy: Titel-Logo im Bild, darunter Metazeile (Badge, Altersfreigabe, Laufzeit/Jahr/Genre), Rangzeile und Abspielen. */
+  function buildMobileParts(item, myGen) {
+    const logo = logoImage(item, { maxWidth: 480 });
+    const title = logo
+      ? h('img', { class: 'lfx-prime-hero__logo', src: logo, alt: item.Name || '', decoding: 'async' })
+      : h('h2', { class: 'lfx-prime-hero__title' }, item.Name || '');
+    const badge = cardBadge(item, { newInfo, trend });
+    const fsk = formatRating(item.OfficialRating);
+    const extra = item.Type === 'Series' ? formatSeasons(item.ChildCount) : formatRuntime(item.RunTimeTicks);
+    const text = [extra, item.ProductionYear ? String(item.ProductionYear) : '', item.Genres && item.Genres[0]].filter(Boolean).join('  ');
+    const rank = heroTrendLine(item, trend);
+    const info = h('div', { class: 'lfx-prime-hero__below' }, [
+      h('div', { class: 'lfx-prime-hero__meta' }, [
+        badge ? h('span', { class: 'lfx-prime-badge lfx-prime-badge--inline' }, badge) : null,
+        fsk ? h('span', { class: 'lfx-prime-chip lfx-prime-hero__fsk' }, fsk) : null,
+        text ? h('span', { class: 'lfx-prime-hero__metatext' }, text) : null,
+      ]),
+      rank ? h('div', { class: 'lfx-prime-hero__rank' }, [svg(ICON_TREND), h('span', null, rank)]) : null,
+      h('div', { class: 'lfx-prime-hero__actions' }, [playButton(item, myGen)]),
+    ]);
+    return { title, info };
+  }
+
   function buildImage(item) {
     const bd = imageUrl(item, { type: 'Backdrop', maxWidth: 1920, quality: 90 });
     return h('img', { class: 'lfx-prime-hero__img', src: bd, alt: '', decoding: 'async' });
@@ -248,7 +277,13 @@ export function renderHero(slot, { loadPool }) {
     }
     const swap = () => {
       if (disposed || myGen !== gen) return;
-      content.replaceChildren(...buildContent(item, myGen).childNodes);
+      if (mobile) {
+        const parts = buildMobileParts(item, myGen);
+        logoBox.replaceChildren(parts.title);
+        content.replaceChildren(parts.info);
+      } else {
+        content.replaceChildren(...buildContent(item, myGen).childNodes);
+      }
       content.classList.remove('is-out');
     };
     if (immediate || !content.firstChild) swap();
@@ -282,6 +317,36 @@ export function renderHero(slot, { loadPool }) {
     if (curGone) show(index);
   }
 
+  function buildMobile() {
+    logoBox = h('div', { class: 'lfx-prime-hero__mlogo' });
+    fillDots();
+    const frame = h('div', { class: 'lfx-prime-hero__frame' }, [
+      media,
+      h('div', { class: 'lfx-prime-hero__shade', 'aria-hidden': 'true' }),
+      logoBox,
+    ]);
+    hero = h('div', { class: 'lfx-prime-hero lfx-prime-hero--mobile' }, [frame, content, dots]);
+    slot.replaceChildren(hero);
+    slot.setAttribute('aria-roledescription', 'Karussell');
+    // Wischen wechselt die Empfehlung
+    let sx = 0;
+    let sy = 0;
+    frame.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (t) { sx = t.clientX; sy = t.clientY; }
+    }, { passive: true });
+    frame.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - sx;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(t.clientY - sy) * 1.5) step(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    const onVis = () => { if (!document.hidden) scheduleRotate(); };
+    document.addEventListener('visibilitychange', onVis);
+    cleanupFns.push(() => document.removeEventListener('visibilitychange', onVis));
+    cleanupFns.push(onItemsChanged(onChanged));
+  }
+
   function build() {
     media = h('div', { class: 'lfx-prime-hero__media' });
     content = h('div', { class: 'lfx-prime-hero__live', 'aria-live': 'off' });
@@ -292,6 +357,7 @@ export function renderHero(slot, { loadPool }) {
       setMuteIcon();
     });
     dots = h('div', { class: 'lfx-prime-hero__dots', role: 'group', 'aria-label': 'Empfehlung wählen' });
+    if (mobile) { buildMobile(); return; }
     const prev = h('button', { type: 'button', class: 'lfx-prime-hero__arrow lfx-prime-hero__arrow--prev', 'aria-label': 'Vorherige Empfehlung' });
     const next = h('button', { type: 'button', class: 'lfx-prime-hero__arrow lfx-prime-hero__arrow--next', 'aria-label': 'Nächste Empfehlung' });
     prev.append(svg(ICON_CHEV));
@@ -321,6 +387,7 @@ export function renderHero(slot, { loadPool }) {
     let items = [];
     try { items = await loadPool(); } catch { /* leer */ }
     try { trend = await getTrendInfo(); } catch { trend = null; }
+    if (mobile) { try { newInfo = await getNewContentInfo(); } catch { newInfo = null; } }
     if (disposed) return;
     if (!items || !items.length) { slot.hidden = true; return; }
     pool = items;

@@ -3,7 +3,7 @@
 // die native AppBar wird nur per html.lfx-prime-header-on ausgeblendet.
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import { isReady } from '../../core/api.js';
-import { isModern, isTv } from '../../core/layout.js';
+import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js';
 import { getLibraries } from '../../shared/libraries.js';
@@ -12,9 +12,12 @@ import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { hubHref, titleHref } from '../../shared/routes.js';
 import { openPrimeSearch, closePrimeSearch, isPrimeSearchOpen } from './search.js';
 import { openMenus } from './header-menus.js';
+import { openProfileSheet, closeProfileSheet } from './profile-sheet.js';
 
 const ID = 'lfx-prime-header';
 const HTML_CLASS = 'lfx-prime-header-on';
+const MOBILE_CLASS = 'lfx-prime-mobile'; // Handy-Layout aktiv (isMobile()); alle Handy-Regeln hängen daran
+const PILLS_CLASS = 'lfx-prime-header-pills'; // Handy-Kopfzeile mit Pillen (Startseite/Hub): höhere Kopfzeile
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 const SCROLL_THRESHOLD = 10;
 const LIST_HREF = '#/home?tab=1';
@@ -25,6 +28,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const ICONS = {
   search: 'M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z',
   grid: 'M5 4h3v3H5V4Zm5.5 0h3v3h-3V4ZM16 4h3v3h-3V4ZM5 10.5h3v3H5v-3Zm5.5 0h3v3h-3v-3Zm5.5 0h3v3h-3v-3ZM5 17h3v3H5v-3Zm5.5 0h3v3h-3v-3Zm5.5 0h3v3h-3v-3Z',
+  back: 'M15.5 4.5 8 12l7.5 7.5-1.6 1.6L4.8 12l9.1-9.1z',
   bookmark: 'M6 3h12a1 1 0 0 1 1 1v17l-7-4.6L5 21V4a1 1 0 0 1 1-1Zm1 2v12.2l5-3.3 5 3.3V5H7Z',
 };
 
@@ -62,7 +66,36 @@ export function activeKey(route) {
   return p.get('tab') === '1' ? 'list' : 'home';
 }
 
+/** Handy-Kopfzeile: 'home' (Wortmarke + Pillen Filme/Serien) oder 'sub' (Zurück-Pfeil + Seitentitel). */
+export function mobileKind(route) {
+  if (!route || route.path !== '/home') return 'sub';
+  const lfx = route.params.get('lfx');
+  if (route.params.get('tab') === '1') return 'sub';
+  return !lfx || lfx === 'hub' ? 'home' : 'sub';
+}
+
+/** Seitentitel der Handy-Kopfzeile auf Unterseiten (Titelseite: leer, nur der Zurück-Pfeil). */
+export function mobileTitle(route) {
+  if (!route) return '';
+  if (route.path === '/home') {
+    const lfx = route.params.get('lfx');
+    if (route.params.get('tab') === '1') return 'Meine Liste';
+    if (lfx === 'new') return 'Neu & beliebt';
+    if (lfx === 'search') return 'Suche';
+    if (lfx === 'title') return '';
+  }
+  const t = String(document.title || '').replace(/\s*[-–|]\s*Jellyfin.*$/i, '').trim();
+  return /^jellyfin$/i.test(t) ? '' : t;
+}
+
+function goBack() {
+  if (window.history.length > 1) window.history.back();
+  else window.location.hash = '#/home';
+}
+
 const state = {
+  mobile: false,
+  kind: null,
   el: null,
   route: null,
   libs: [],
@@ -158,6 +191,43 @@ function build() {
   return { avatar };
 }
 
+function buildMobile(route) {
+  const kind = mobileKind(route);
+  state.kind = kind;
+  const avatar = h('button', {
+    type: 'button', class: 'lfx-prime-header__avatar', 'aria-label': 'Profil', 'aria-haspopup': 'dialog',
+  });
+  avatar.addEventListener('click', () => {
+    closePrimeSearch({ restoreFocus: false });
+    openProfileSheet({ returnFocus: avatar });
+  });
+  let left;
+  if (kind === 'home') {
+    left = [h('a', { class: 'lfx-prime-header__logo', href: '#/home', 'aria-label': 'LENZPRIME – Startseite' })];
+  } else {
+    const back = h('button', { type: 'button', class: 'lfx-prime-header__back', 'aria-label': 'Zurück' });
+    back.append(icon('back'));
+    back.addEventListener('click', goBack);
+    left = [back, h('h1', { class: 'lfx-prime-header__title' }, mobileTitle(route))];
+  }
+  const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [avatar])]);
+  const kids = [bar];
+  if (kind === 'home') kids.push(h('nav', { class: 'lfx-prime-header__pills', 'aria-label': 'Filme und Serien' }));
+  state.el.replaceChildren(...kids);
+  return { avatar };
+}
+
+function renderPills() {
+  const nav = state.el && state.el.querySelector('.lfx-prime-header__pills');
+  if (!nav) return;
+  const items = navItems(state.libs).filter((it) => it.key.startsWith('lib:'));
+  nav.replaceChildren(...items.map((it) => h('a', {
+    class: 'lfx-prime-header__pill', href: it.href, dataset: { key: it.key },
+  }, it.label)));
+  nav.hidden = !items.length;
+  applyActive();
+}
+
 async function loadFlyoutData() {
   let libs = state.libs;
   let cols;
@@ -189,6 +259,7 @@ async function loadLibs(seq) {
     state.libs = [];
   }
   renderNav();
+  renderPills();
 }
 
 async function loadAvatar(seq, avatar) {
@@ -212,10 +283,35 @@ function onScroll() {
 }
 
 function applyScroll() {
-  if (!state.el) return;
+  if (!state.el || state.mobile) return;
   const y = window.scrollY || document.documentElement.scrollTop || 0;
   const on = y > SCROLL_THRESHOLD;
   if (state.el.classList.contains('is-scrolled') !== on) state.el.classList.toggle('is-scrolled', on);
+}
+
+function syncHtmlClasses() {
+  const cl = document.documentElement.classList;
+  cl.toggle(MOBILE_CLASS, state.mobile);
+  cl.toggle(PILLS_CLASS, state.mobile && state.kind === 'home');
+}
+
+/** Baut die Kopfzeile neu auf (Desktop oder Handy je nach Fensterbreite). */
+function render() {
+  const seq = ++state.seq;
+  if (state.menus) state.menus.destroy();
+  state.menus = null;
+  closeProfile();
+  closeProfileSheet({ restoreFocus: false });
+  state.mobile = isMobile();
+  state.kind = null;
+  const parts = state.mobile ? buildMobile(state.route) : build();
+  state.el.className = `lfx-prime-header${state.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state.kind}` : ''}`;
+  syncHtmlClasses();
+  applyScroll();
+  renderNav();
+  renderPills();
+  loadLibs(seq);
+  loadAvatar(seq, parts.avatar);
 }
 
 export default {
@@ -224,22 +320,29 @@ export default {
     return isTheme('prime') && isModern() && !isTv() && isReady() && !EXCLUDED.test(route.path);
   },
   mount(route) {
-    const seq = ++state.seq;
     state.route = route;
     state.el = mountPoint(ID, { tag: 'header', className: 'lfx-prime-header' });
-    const { avatar } = build();
     document.documentElement.classList.add(HTML_CLASS);
     window.addEventListener('scroll', onScroll, { passive: true });
     state.cleanups.push(() => window.removeEventListener('scroll', onScroll));
-    applyScroll();
-    renderNav();
-    loadLibs(seq);
-    loadAvatar(seq, avatar);
+    render();
   },
   update(route) {
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
+    if (!state.el) return;
+    const mobileNow = isMobile();
+    if (mobileNow !== state.mobile || (mobileNow && mobileKind(route) !== state.kind)) {
+      // Fensterwechsel Desktop <-> Handy bzw. Startseite <-> Unterseite am Handy: Kopfzeile neu aufbauen
+      closePrimeSearch({ restoreFocus: false });
+      render();
+      return;
+    }
     if (changed && state.menus) state.menus.close();
+    if (state.mobile) {
+      const t = state.el.querySelector('.lfx-prime-header__title');
+      if (t) t.textContent = mobileTitle(route);
+    }
     applyActive();
   },
   unmount() {
@@ -250,11 +353,14 @@ export default {
     if (state.menus) state.menus.destroy();
     state.menus = null;
     closeProfile();
+    closeProfileSheet({ restoreFocus: false });
     closePrimeSearch({ restoreFocus: false });
     unmountPoint(ID);
-    document.documentElement.classList.remove(HTML_CLASS);
+    document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
     state.el = null;
     state.libs = [];
+    state.mobile = false;
+    state.kind = null;
     state.profileBusy = false;
   },
 };

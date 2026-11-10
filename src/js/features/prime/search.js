@@ -2,12 +2,14 @@
 // Glas-Panel mit Eingabefeld, Textvorschlägen (Titelnamen) und Karten-Raster. Kein eigener Hash.
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import * as api from '../../core/api.js';
+import { isMobile } from '../../core/layout.js';
 import { searchItems } from '../../shared/search.js';
 import { titleHref } from '../../shared/routes.js';
 
 const ID = 'lfx-prime-search';
 const DEBOUNCE_MS = 300;
 const MAX_CARDS = 8;
+const MAX_CARDS_MOBILE = 18; // 3-Spalten-Raster, 6 Reihen
 const MAX_SUGGESTIONS = 5;
 const MIN_LEN = 2;
 
@@ -45,8 +47,9 @@ function metaOf(item) {
   return parts.join(' · ');
 }
 
-function card(item, close) {
-  const url = api.landscapeImage(item, { maxWidth: 400 });
+function card(item, close, mobile = false) {
+  // Handy: Poster (2:3) im 3-Spalten-Raster, sonst 16:9
+  const url = (mobile && api.imageUrl(item, { type: 'Primary', maxWidth: 300, quality: 85 })) || api.landscapeImage(item, { maxWidth: 400 });
   const a = h('a', {
     class: 'lfx-prime-search__card',
     href: titleHref(item.Id),
@@ -56,7 +59,7 @@ function card(item, close) {
       ? h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async' })
       : null),
     h('span', { class: 'lfx-prime-search__title' }, item.Name || ''),
-    h('span', { class: 'lfx-prime-search__meta' }, metaOf(item)),
+    mobile ? null : h('span', { class: 'lfx-prime-search__meta' }, metaOf(item)),
   ]);
   a.addEventListener('click', () => close());
   return a;
@@ -91,7 +94,8 @@ export function openPrimeSearch({ returnFocus } = {}) {
     return;
   }
   const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
-  const root = mountPoint(ID, { className: 'lfx-prime-search' });
+  const mobile = isMobile();
+  const root = mountPoint(ID, { className: `lfx-prime-search${mobile ? ' lfx-prime-search--full' : ''}` });
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', 'Suche');
@@ -105,11 +109,13 @@ export function openPrimeSearch({ returnFocus } = {}) {
     'aria-label': 'Suchen',
   });
   const clear = h('button', { type: 'button', class: 'lfx-prime-search__clear', hidden: true }, 'Löschen');
+  const cancel = mobile ? h('button', { type: 'button', class: 'lfx-prime-search__cancel' }, 'Abbrechen') : null;
   const form = h('form', { class: 'lfx-prime-search__form', role: 'search' }, [searchIcon(), input, clear]);
+  const head = mobile ? h('div', { class: 'lfx-prime-search__head' }, [form, cancel]) : form;
   const suggest = h('ul', { class: 'lfx-prime-search__suggest', 'aria-label': 'Vorschläge' });
   const grid = h('div', { class: 'lfx-prime-search__grid' });
   const status = h('p', { class: 'lfx-prime-search__status', role: 'status' });
-  const panel = h('div', { class: 'lfx-prime-search__panel' }, [form, suggest, status, grid]);
+  const panel = h('div', { class: 'lfx-prime-search__panel' }, [head, suggest, status, grid]);
   root.replaceChildren(panel);
 
   const c = { root, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
@@ -141,7 +147,7 @@ export function openPrimeSearch({ returnFocus } = {}) {
         a.addEventListener('click', close);
         return h('li', null, a);
       }));
-      grid.replaceChildren(...items.slice(0, MAX_CARDS).map((it) => card(it, close)));
+      grid.replaceChildren(...items.slice(0, mobile ? MAX_CARDS_MOBILE : MAX_CARDS).map((it) => card(it, close, mobile)));
       status.textContent = items.length ? '' : `Keine Treffer für „${term}“.`;
     } catch (e) {
       if (e && e.name === 'AbortError') return;
@@ -168,6 +174,7 @@ export function openPrimeSearch({ returnFocus } = {}) {
     run('');
     input.focus();
   });
+  if (cancel) cancel.addEventListener('click', () => close());
   root.addEventListener('mousedown', (e) => {
     if (!panel.contains(e.target)) close();
   });

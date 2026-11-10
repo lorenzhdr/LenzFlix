@@ -3,6 +3,19 @@ import { h } from '../../core/dom.js';
 import * as api from '../../core/api.js';
 import { detailHref, landscapeFor, posterUrl } from '../rows/card.js';
 import { progressPercent } from '../rows/logic.js';
+import { openTitleMenu } from '../../shared/titleactions.js';
+
+const TICKS_PER_MIN = 600000000;
+const DOTS = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg>';
+
+/** "Noch 19 Min." / "Noch 1 Std. 8 Min."; leer ohne bekannte Restzeit. */
+export function remainingText(item) {
+  const ud = item && item.UserData;
+  if (!ud || !(ud.PlaybackPositionTicks > 0) || !(item.RunTimeTicks > 0)) return '';
+  const left = Math.round((item.RunTimeTicks - ud.PlaybackPositionTicks) / TICKS_PER_MIN);
+  if (left <= 0) return '';
+  return left >= 60 ? `Noch ${Math.floor(left / 60)} Std. ${left % 60} Min.` : `Noch ${left} Min.`;
+}
 
 const displayTitle = (item) => (item.Type === 'Episode' && item.SeriesName ? item.SeriesName : item.Name || '');
 const ariaLabel = (item) => (item.Type === 'Episode' && item.SeriesName ? `${item.SeriesName} – ${item.Name || ''}`.trim() : item.Name || '');
@@ -53,5 +66,21 @@ export function createPrimeCard(item, { kind = 'landscape', badge = null, rank =
     href: detailHref(item),
     'aria-label': ariaLabel(item),
   }, children));
+  if (kind === 'resume') card.append(resumeFoot(item)); // nur am Handy sichtbar (CSS), Desktop zeigt die Fußzeile nicht
   return card;
+}
+
+/** Fußzeile der Fortsetzen-Karte: Restzeit + Drei-Punkte-Knopf (Titelmenü). */
+function resumeFoot(item) {
+  const menu = h('button', { type: 'button', class: 'lfx-prime-card__menu', 'aria-label': `Weitere Optionen: ${ariaLabel(item)}`, 'aria-haspopup': 'menu' });
+  menu.innerHTML = DOTS;
+  menu.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openTitleMenu(item, menu);
+  });
+  return h('div', { class: 'lfx-prime-card__foot' }, [
+    h('span', { class: 'lfx-prime-card__remaining' }, remainingText(item)),
+    menu,
+  ]);
 }

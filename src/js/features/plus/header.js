@@ -9,6 +9,7 @@ import { parseLfxRoute, browseHref, searchHref } from '../../shared/routes.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { ICONS } from './header-icons.js';
+import { isPhone } from './mobile.js';
 
 const ROOT_ID = 'lfx-plus-header';
 const ON_CLASS = 'lfx-plus-header-on';
@@ -241,7 +242,7 @@ async function loadLibraries(mountSeq) {
 export const plusHeader = {
   name: 'plus-header',
   match(route) {
-    return isTheme('plus') && isModern() && !isTv() && isReady() && !EXCLUDED.test(route.path);
+    return isTheme('plus') && isModern() && !isTv() && !isPhone() && isReady() && !EXCLUDED.test(route.path);
   },
   mount(route) {
     const mountSeq = ++state.mountSeq;

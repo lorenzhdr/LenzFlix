@@ -1,1 +1,834 @@
-/* LENZPRIME: Handy-Layouts (<800px) und Tab-Leiste. Alle Regeln unter html.lfx-js.lfx-theme-prime:not(.layout-tv). */
+/* LENZPRIME: Handy-Layouts (<800px) und Tab-Pille (Spec: reference/spec-mobile.md, Abschnitt LENZPRIME).
+   Alle Handy-Regeln hängen an html.lfx-prime-mobile (setzt header.js nach isMobile()), Desktop bleibt unberührt.
+   Maße: 390-px-Referenz aus reference/iphone/notes-mobile.md. Nie auf TV (:not(.layout-tv)). */
+
+/* ---------- Grundwerte ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile {
+  --lfx-prime-mh: calc(env(safe-area-inset-top, 0px) + 52px); /* Höhe der Handy-Kopfzeile */
+  --lfx-header-h: var(--lfx-prime-mh);
+  --pv-pad: 15px;
+  --pv-gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-header-pills {
+  --lfx-prime-mh: calc(env(safe-area-inset-top, 0px) + 98px); /* mit Pillen-Zeile (Startseite, Hubs) */
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-home-on #indexPage {
+  padding-top: var(--lfx-prime-mh) !important;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-tabbar-on .page:not(#videoOsdPage) {
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important; /* Platz unter der Tab-Pille */
+}
+
+/* ---------- Kopfzeile ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--mobile {
+  pointer-events: auto;
+  background: #00050d;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--over {
+  pointer-events: none;
+  background: linear-gradient(rgba(0, 5, 13, 0.85), rgba(0, 5, 13, 0));
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__bar {
+  --lfx-prime-inset: 0px;
+  box-sizing: border-box;
+  height: calc(env(safe-area-inset-top, 0px) + 52px);
+  margin: 0;
+  padding: env(safe-area-inset-top, 0px) 15px 0;
+  border-radius: 0;
+  box-shadow: none;
+  gap: 4px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__bar::before {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__logo {
+  width: 84px;
+  height: 24px;
+  margin-right: 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__right {
+  gap: 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 0 0 -12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__back svg {
+  width: 24px;
+  height: 24px;
+  fill: currentcolor;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--over .lfx-prime-header__back {
+  background: rgba(0, 5, 13, 0.55);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #fff;
+  font: 700 18px/1.2 var(--lfx-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__title:empty {
+  display: none;
+}
+/* Avatar: 44-px-Tippziel, sichtbarer Kreis 28 px */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__avatar {
+  width: 44px;
+  height: 44px;
+  margin: 0 -8px 0 0;
+  overflow: visible;
+  background: transparent;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__avatar img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__initial {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--lfx-prime-chip);
+  font-size: 14px;
+}
+/* Pillen Filme | Serien */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__pills {
+  display: flex;
+  gap: 9px;
+  box-sizing: border-box;
+  height: 46px;
+  padding: 6px 15px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__pills[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__pill {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 34px;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: 500 15px/1 var(--lfx-font);
+  text-decoration: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__pill.is-active {
+  background: #fff;
+  color: #00050d;
+}
+
+/* ---------- Hero: 16:9-Rahmen, darunter Meta + Abspielen, Punkte ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero-slot {
+  padding: 10px 10px 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero {
+  height: auto;
+  overflow: visible;
+  background: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 13px 13px 0 0;
+  background: #0a1018;
+  isolation: isolate;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__frame .lfx-prime-hero__shade {
+  background-image: linear-gradient(0deg, #00050d 0, rgba(0, 5, 13, 0.55) 22%, rgba(0, 5, 13, 0) 55%);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__mlogo {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 10px;
+  left: 12px;
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__mlogo .lfx-prime-hero__logo {
+  max-width: 56%;
+  max-height: 58px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__mlogo .lfx-prime-hero__title {
+  font-size: 22px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__live {
+  position: static;
+  inset: auto;
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__below {
+  padding: 8px 2px 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  color: #b5b9c2;
+  font: 400 13px/16px var(--pv-font);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-badge.lfx-prime-badge--inline {
+  position: static;
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__meta .lfx-prime-hero__fsk {
+  position: static;
+  height: 16px;
+  min-width: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  line-height: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__below .lfx-prime-hero__rank {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 18px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__below .lfx-prime-hero__actions {
+  display: block;
+  margin-top: 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__below .lfx-prime-hero__playwrap {
+  display: block;
+  margin: 0 0 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__below .lfx-prime-hero__play {
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  font-size: 17px;
+  border-radius: 8px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__below .lfx-prime-hero__play.is-two {
+  font-size: 15px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__dots {
+  position: static;
+  gap: 5px;
+  padding: 10px 0 2px;
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__dot {
+  position: relative;
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__dot::after {
+  content: "";
+  position: absolute;
+  inset: -12px -3px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__dot.is-active {
+  width: 10px;
+}
+
+/* ---------- Zeilen und Karten ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-rows {
+  padding-top: 8px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row {
+  margin-bottom: 22px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__head {
+  position: relative;
+  align-items: center;
+  gap: 0;
+  min-height: 32px;
+  margin: 0 15px 4px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__title {
+  color: #a9adb6;
+  font: 700 15px/24px var(--pv-font);
+}
+/* Ziel-Chevron statt „Mehr ansehen ›“; die ganze Kopfzeile ist das Tippziel */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  color: #a9adb6;
+  font-size: 0;
+  opacity: 1;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__more::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border: solid currentcolor;
+  border-width: 2px 2px 0 0;
+  transform: rotate(45deg);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__more::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row__track {
+  --pv-w: clamp(140px, 44.9cqw, 260px); /* 16:9 ~175x98 bei 390 */
+  --lfx-cards-visible: 2;
+  gap: 8px;
+  padding: 0 15px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-row--poster .lfx-prime-row__track {
+  --pv-w: clamp(96px, 29.5cqw, 140px); /* Poster ~115x172 bei 390, 3 voll + Anschnitt */
+  --lfx-cards-visible: 3;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card .lfx-card__link {
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card--poster {
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-skel {
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-badge {
+  padding: 0 5px;
+  border-radius: 0 6px 0 3px;
+  font-size: 9px;
+  line-height: 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__mark {
+  right: 6px;
+  bottom: 5px;
+  width: 20px;
+  height: 11px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__progress {
+  height: 3px;
+}
+/* Top 10: kleinere Ziffern */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card--ranked {
+  margin-left: calc(var(--pv-w) * 0.26);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__rank {
+  font-size: calc(var(--pv-w) * 0.42);
+  -webkit-text-stroke-width: 2px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__rank--wide {
+  font-size: calc(var(--pv-w) * 0.36);
+}
+/* Fortsetzen: Restzeit + Drei-Punkte-Knopf unter der Karte (Desktop zeigt die Fußzeile nicht) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card__foot {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__remaining {
+  color: #a9adb6;
+  font: 400 13px/1.2 var(--pv-font);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__menu {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -2px -12px -2px 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__menu svg {
+  width: 20px;
+  height: 20px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-moreslot {
+  padding: 4px 15px 24px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-more {
+  min-width: 112px;
+  height: 48px;
+  padding: 0 24px;
+  font-size: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-footer {
+  min-height: 96px;
+  padding: 12px 15px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-footer__link {
+  font-size: 14px;
+}
+
+/* ---------- Suche: Vollbild ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search.lfx-prime-search--full {
+  padding-top: 0;
+  background: #00050d;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__panel {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+  padding: 0 15px calc(110px + env(safe-area-inset-bottom, 0px));
+  border-radius: 0;
+  background: #00050d;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 0 10px;
+  background: #00050d;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__form {
+  flex: 1 1 0;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 22px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__icon {
+  width: 20px;
+  height: 20px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__input {
+  font-size: 16px; /* >= 16 px: iOS zoomt sonst ins Feld */
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__clear {
+  min-height: 44px;
+  padding: 0 4px;
+  font-size: 14px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__cancel {
+  flex: none;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: #fff;
+  font: 500 15px/1 var(--lfx-font);
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__suggest {
+  margin-top: 8px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__sug {
+  padding: 12px 4px;
+  font-size: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 8px;
+  margin-top: 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__thumb {
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .lfx-prime-search__title {
+  display: -webkit-box;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ---------- Titelseite: einspaltig ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__stage {
+  display: block;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__bg {
+  position: relative;
+  inset: auto;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__shade--a {
+  background:
+    linear-gradient(rgba(0, 5, 13, 0.7), rgba(0, 5, 13, 0) 32%),
+    linear-gradient(0deg, #00050d, rgba(0, 5, 13, 0) 45%);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__shade--b {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__content {
+  width: 100%;
+  margin-top: -34px;
+  padding: 0 15px 8px;
+  gap: 10px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__logo {
+  max-width: 70%;
+  max-height: 72px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__title {
+  font-size: 26px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__meta {
+  gap: 6px 12px;
+  font-size: 14px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__desc {
+  font-size: 15px;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__mute {
+  top: calc(var(--lfx-prime-mh) + 8px);
+  right: 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__actions {
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 12px;
+  margin-top: 4px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__play-wrap {
+  width: 100%;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__play {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  font-size: 17px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__circles {
+  justify-content: space-around;
+  width: 100%;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__tabs {
+  top: var(--lfx-prime-mh);
+  gap: 24px;
+  height: 48px;
+  padding: 0 15px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__tabs::-webkit-scrollbar {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__tab {
+  flex: none;
+  min-width: 44px;
+  height: 48px;
+  font-size: 16px;
+  line-height: 48px;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__panels {
+  padding: 16px 15px 24px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__season {
+  height: 44px;
+  font-size: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__eps-head {
+  margin-bottom: 16px;
+}
+/* Folgen als Liste: Bild links ~40 %, Titel/Meta rechts, Beschreibung darunter */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__eps {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep {
+  display: grid;
+  grid-template-columns: 40% minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: start;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-media {
+  grid-row: 1 / span 2;
+  grid-column: 1;
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-title {
+  grid-row: 1;
+  grid-column: 2;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.25;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-meta {
+  grid-row: 2;
+  grid-column: 2;
+  margin: 0;
+  font-size: 13px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-desc {
+  display: -webkit-box;
+  grid-row: 3;
+  grid-column: 1 / -1;
+  max-height: none;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-play {
+  opacity: 1;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-play .lfx-pt__ico {
+  width: 16px;
+  height: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__ep-badge {
+  right: 4px;
+  bottom: 8px;
+  font-size: 11px;
+}
+/* Ähnliches / Sammlung: Posterraster, 3 Spalten */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 8px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__grid .lfx-prime-card {
+  flex: none;
+  width: auto;
+  height: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__grid .lfx-prime-card .lfx-card__link {
+  height: auto;
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__tile {
+  padding: 16px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__tile-title {
+  font-size: 18px;
+}
+
+/* ---------- Tab-Pille (schwebendes Glas; Mount nur am Handy) ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-tabbar {
+  position: fixed;
+  z-index: 1260; /* über dem Such-Vollbild (1250), unter Sheets (1300) */
+  bottom: calc(21px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: min(348px, calc(100% - 42px));
+  height: 58px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 29px;
+  background: rgba(45, 48, 56, 0.55);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-family: var(--lfx-font);
+  transform: translateX(-50%);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-tabbar.is-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 24px);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv):has(#videoOsdPage:not(.hide), .dialogContainer .dialog) #lfx-prime-tabbar {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-tabbar__tab {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  min-width: 44px;
+  height: 52px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 26px;
+  background: transparent;
+  color: #c8cbd2;
+  font: 700 10px/1 var(--lfx-font);
+  text-decoration: none;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-tabbar__tab svg {
+  width: 22px;
+  height: 22px;
+  fill: currentcolor;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-tabbar__tab.is-active {
+  background: rgba(0, 0, 0, 0.32);
+  color: #fff;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-tabbar__tab:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+/* ---------- Profil-Blatt (Bottom-Sheet) ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.6);
+  animation: lfx-prime-psheet-fade 0.2s ease;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 86vh;
+  max-height: 86dvh;
+  padding: 8px 15px calc(18px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px 18px 0 0;
+  background: #0f141b;
+  color: #fff;
+  font-family: var(--lfx-font);
+  outline: none;
+  animation: lfx-prime-psheet-up 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__grip {
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 4px auto 12px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.3);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 4px 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--lfx-prime-chip);
+  font-size: 18px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__name {
+  font-size: 18px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__section {
+  padding: 6px 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__section + .lfx-prime-psheet__section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__head {
+  margin: 8px 8px 4px;
+  color: var(--lfx-text-soft);
+  font: 700 12px/1.4 var(--lfx-font);
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #fff;
+  font: 500 16px/1.2 var(--lfx-font);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item.is-stats {
+  color: var(--lfx-gold);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet__item:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+@keyframes lfx-prime-psheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lfx-prime-psheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-tabbar,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-psheet-overlay {
+    transition: none;
+    animation: none;
+  }
+}

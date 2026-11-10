@@ -1,1 +1,585 @@
-/* LENZ+: Handy-Layouts (<800px) und Tab-Leiste. Alle Regeln unter html.lfx-js.lfx-theme-plus:not(.layout-tv). */
+/* LENZ+: Handy-Layouts (<800px) und Tab-Leiste. Alle Regeln unter html.lfx-js.lfx-theme-plus:not(.layout-tv) und im @media-Block; Desktop bleibt unberührt. */
+@media (max-width: 799px) {
+  /* ---------- Maße ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) {
+    --plus-m-head: calc(env(safe-area-inset-top, 0px) + 56px);
+    --plus-m-tabbar: calc(46px + env(safe-area-inset-bottom, 0px));
+    --lfx-header-h: var(--plus-m-head);
+    --lfx-plus-top: var(--plus-m-head);
+    -webkit-tap-highlight-color: transparent;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-tabbar-on body {
+    padding-bottom: var(--plus-m-tabbar);
+  }
+
+  /* ---------- Native AppBar: erste Toolbar unsichtbar, zweite (Filter/Sortierung) bleibt ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-mhead-on body:not(.dashboardDocument) header.MuiAppBar-root {
+    background-color: transparent !important;
+    background-image: none;
+    box-shadow: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-mhead-on body:not(.dashboardDocument) header.MuiAppBar-root::before {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-mhead-on body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
+    min-height: var(--plus-m-head);
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* ---------- Handy-Kopfzeile ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 1101;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--plus-m-head);
+    padding: env(safe-area-inset-top, 0px) 16px 0;
+    background: transparent;
+    color: #fff;
+    font-family: var(--lfx-font);
+    transition: background-color 0.25s ease-out;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead.has-back {
+    padding-left: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead.is-solid {
+    background: rgb(16 19 31 / 0.75);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__back {
+    flex: none;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(16 19 31 / 0.55);
+    color: #fff;
+    cursor: pointer;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__back[hidden] {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__back svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__title {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: #fff;
+    font: 700 26px / 1.2 var(--lfx-font);
+    letter-spacing: -0.2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ---------- Chip-Reihe (Umschalter): scrollt mit, nicht fixiert ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher {
+    position: absolute;
+    top: var(--plus-m-head);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    max-width: none;
+    padding: 0;
+    transform: none;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__list {
+    gap: 8px;
+    padding: 0 16px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__tab {
+    position: relative;
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    background: #1f2029;
+    color: #fff;
+    font: 600 14px / 1 var(--lfx-font);
+    letter-spacing: 0;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__tab::after {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__tab.is-active {
+    border-color: #fff;
+    background: #fff;
+    color: #101010;
+  }
+
+  /* ---------- Startseite: Hülle ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home {
+    --plus-gutter: 5.4cqw;
+    --plus-gap: 10px;
+    padding: calc(var(--plus-m-head) + 52px) 0 32px;
+  }
+
+  /* ---------- Hero: Hochformat-Karussell 3:4 mit Scroll-Snap ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero {
+    --plus-hero-m: 87cqw;
+    margin-bottom: 18px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__viewport {
+    overflow: visible;
+    padding-bottom: 0;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__track {
+    gap: 12px;
+    padding: 0 calc((100cqw - var(--plus-hero-m)) / 2);
+    overflow-x: auto;
+    overflow-y: hidden;
+    transform: none;
+    transition: none;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: calc((100cqw - var(--plus-hero-m)) / 2);
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__track::-webkit-scrollbar {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide {
+    flex: 0 0 var(--plus-hero-m);
+    width: var(--plus-hero-m);
+    aspect-ratio: 3 / 4;
+    border-radius: 8px;
+    box-shadow: none;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide::after {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide:not(.is-active) .lfx-plus-hero__img {
+    filter: none;
+    transform: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__img {
+    object-position: center;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__shade {
+    background: linear-gradient(0deg, rgb(10 12 22 / 0.94) 0%, rgb(10 12 22 / 0.55) 34%, rgb(10 12 22 / 0) 62%);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__content,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide:not(.is-active) .lfx-plus-hero__content {
+    left: 0;
+    right: 0;
+    bottom: 18px;
+    align-items: center;
+    width: auto;
+    padding: 0 20px;
+    opacity: 1;
+    text-align: center;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__badge {
+    height: 17px;
+    padding: 0 6px;
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__logo {
+    max-width: 80%;
+    max-height: 64px;
+    margin: 0 0 10px;
+    object-position: center bottom;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__title {
+    margin: 0 0 10px;
+    font-size: 28px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__tagline {
+    display: -webkit-box;
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__meta {
+    justify-content: center;
+    font-size: 12px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dots {
+    display: none;
+  }
+
+  /* ---------- Zeilen ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-rows {
+    --plus-card-w: 27.4cqw;
+    --plus-resume-w: 57.2cqw;
+    --lfx-cards-visible: 3;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row {
+    margin: 0 0 12px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__title {
+    margin: 0 var(--plus-gutter);
+    color: #e8e8ec;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 24px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__track,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__skeleton {
+    padding: 10px var(--plus-gutter) 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row__track {
+    margin: 0;
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-skel {
+    border-radius: 6px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-row--resume .lfx-plus-skel {
+    flex-basis: var(--plus-resume-w);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card--poster > .lfx-card__link {
+    border-radius: 6px;
+    box-shadow: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card--poster > .lfx-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+    pointer-events: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card .lfx-card__img,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card .lfx-plus-card__fallback {
+    border-radius: 6px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__new {
+    border-radius: 0 0 6px 6px;
+  }
+
+  /* Weiterschauen: 16:9, weißer Play-Kreis immer sichtbar, 3 px Fortschritt */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card--resume {
+    flex-basis: var(--plus-resume-w);
+    width: var(--plus-resume-w);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__media,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card--resume .lfx-card__link,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card--resume .lfx-card__img {
+    border-radius: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-progress {
+    height: 3px;
+    border-radius: 0 0 8px 8px;
+    background: rgb(255 255 255 / 0.3);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-progress__bar {
+    background: #2ab7ff;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play {
+    width: 35px;
+    height: 35px;
+    margin: -17.5px 0 0 -17.5px;
+    border: 0;
+    background: #fff;
+    opacity: 1;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play::after {
+    content: "";
+    position: absolute;
+    inset: -5px; /* Tippfläche ~45 px */
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play-icon {
+    margin-left: 2px;
+    border-width: 7px 0 7px 11px;
+    border-color: transparent transparent transparent #101010;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__info {
+    padding: 8px 0 0;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__rest,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__sub {
+    color: #b8b9c0;
+    font-size: 13px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* Sammlungs-Kacheln: kleiner, zwei sichtbar + Anschnitt */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands {
+    margin: 0 0 12px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands__track {
+    --plus-brand-w: 40cqw;
+    padding: 6px var(--plus-gutter) 14px;
+    scroll-snap-type: x proximity;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand__img {
+    border-radius: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand__name {
+    font-size: 16px;
+  }
+
+  /* ---------- Tab-Leiste ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 1102;
+    box-sizing: border-box;
+    display: flex;
+    align-items: stretch;
+    height: var(--plus-m-tabbar);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgb(20 21 28 / 0.75);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    backdrop-filter: blur(28px) saturate(1.4);
+    transition: transform 0.25s ease-out;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__tab {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #8b8c94;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__tab.is-active {
+    color: #fff;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--lfx-plus-circle) center / cover no-repeat;
+    color: #fff;
+    font: 700 12px / 1 var(--lfx-font);
+    opacity: 0.8;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__tab.is-active .lfx-plus-tabbar__avatar {
+    opacity: 1;
+    box-shadow: 0 0 0 2px #fff;
+  }
+  /* Ausblenden: Dialoge, Sheets, Design-Dialog, Menüs, Player, Bildschirmtastatur */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-sheet-open #lfx-plus-tabbar,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-themepicker-open #lfx-plus-tabbar,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-popover-open #lfx-plus-tabbar,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open #lfx-plus-tabbar,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv):has(.dialogContainer .dialog) #lfx-plus-tabbar,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv):has(#videoOsdPage:not(.hide)) #lfx-plus-tabbar {
+    transform: translateY(100%);
+    pointer-events: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-kb #lfx-plus-tabbar {
+    display: none;
+  }
+
+  /* ---------- Unterseiten (Titel, Bibliothek, Suche, Neu & beliebt): einspaltig, Touch-Ziele ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-page {
+    --lfx-plus-side: 16px;
+    --lfx-plus-top: var(--plus-m-head);
+    --lfx-plus-gap: 12px;
+    padding: calc(var(--plus-m-head) + 8px) var(--lfx-plus-side) 40px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np {
+    --lfx-gutter: 16px;
+    padding-top: calc(var(--plus-m-head) + 4px);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-browse__title {
+    margin: 4px 0 16px;
+    font-size: 28px;
+    text-align: left;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-chips {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-chip {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 15px;
+  }
+
+  /* Suche: Feld oben, sticky */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__field {
+    position: sticky;
+    top: var(--plus-m-head);
+    z-index: 4;
+    margin: 0 calc(var(--lfx-plus-side) * -1) 20px;
+    padding: 8px var(--lfx-plus-side) 0;
+    background: rgb(16 19 31 / 0.94);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input {
+    min-height: 44px;
+    padding: 4px 44px 10px 40px;
+    font-size: 20px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__icon {
+    top: 14px;
+    left: var(--lfx-plus-side);
+    width: 24px;
+    height: 24px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__clear {
+    top: 8px;
+    right: calc(var(--lfx-plus-side) - 10px);
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-section {
+    margin-bottom: 28px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-section__title {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  /* Raster: Posterkarten, 3 Spalten (Ähnliche, Suche, Bibliothek) */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-grid--cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-grid--cards > .lfx-card .lfx-card__link {
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-grid--cards > .lfx-card .lfx-card__img {
+    border-radius: 6px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-result__text {
+    padding-top: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-result__title {
+    font-size: 12px;
+  }
+
+  /* Titelseite */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__hero {
+    --lfx-plus-side: 16px;
+    min-height: 62vh;
+    gap: 12px;
+    padding: calc(var(--plus-m-head) + 24px) var(--lfx-plus-side) 24px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__hero > * {
+    max-width: 100%;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__buttons {
+    gap: 12px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__buttons .lfx-plus-pill--primary {
+    flex: 1 1 100%;
+    min-height: 48px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__tabs {
+    --lfx-plus-side: 16px;
+    gap: 24px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__tabs::-webkit-scrollbar {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__tab {
+    flex: none;
+    min-height: 44px;
+    padding: 14px 0 12px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-panel {
+    --lfx-plus-side: 16px;
+    padding: 24px var(--lfx-plus-side) 16px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-season {
+    height: 44px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-details__row {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-details__text,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-details__tagline {
+    font-size: 16px;
+  }
+
+  /* Episoden als Liste: Bild links ~40 %, Titel/Dauer rechts, Beschreibung darunter */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-grid--eps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep {
+    display: grid;
+    grid-template-columns: 40% minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    align-items: start;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__media {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    border-radius: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__img {
+    border-radius: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__title {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    margin-top: 0;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__dur {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__text {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}

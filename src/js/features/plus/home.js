@@ -11,6 +11,7 @@ import { buildRowDefs } from '../rows/sources.js';
 import { createHero, loadHomeHeroPool } from './hero.js';
 import { renderBrands } from './brands.js';
 import { renderRows } from './rows.js';
+import { isPhone } from './mobile.js';
 
 const ROOT_ID = 'lfx-plus-home';
 const ON_CLASS = 'lfx-plus-home-on';
@@ -19,6 +20,7 @@ let cleanups = [];
 let waitTimer = null;
 let token = 0;
 let currentKey = null;
+let currentPhone = false; // Hero-Variante beim Aufbau (Handy-Karussell vs. Desktop)
 
 /** 'home' | 'hub:<id>' | null (nicht zuständig). */
 export function routeKey(route) {
@@ -45,6 +47,7 @@ function teardown() {
   document.getElementById(ROOT_ID)?.remove();
   document.documentElement.classList.remove(ON_CLASS);
   currentKey = null;
+  currentPhone = false;
 }
 
 async function build(tab, key) {
@@ -57,6 +60,7 @@ async function build(tab, key) {
   tab.prepend(root);
   document.documentElement.classList.add(ON_CLASS);
   currentKey = key;
+  currentPhone = isPhone();
   const alive = () => my === token;
 
   let lib = null;
@@ -98,7 +102,7 @@ function ensure(route) {
   if (!key) return;
   const existing = document.getElementById(ROOT_ID);
   const tab = findHomeTab();
-  if (tab && existing && tab.contains(existing) && currentKey === key) return;
+  if (tab && existing && tab.contains(existing) && currentKey === key && currentPhone === isPhone()) return;
   let tries = 0;
   const poll = () => {
     const t = findHomeTab();

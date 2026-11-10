@@ -3,7 +3,7 @@
 // native Sektionen werden per html.lfx-prime-title-on ausgeblendet. Episode/Staffel -> Serie, BoxSet -> Titel-Raster.
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
-import { isModern, isTv } from '../../core/layout.js';
+import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { play } from '../../core/playback.js';
 import { canDownload } from '../../core/download.js';
@@ -460,7 +460,7 @@ async function load(id) {
     if (s.dead || !src) return;
     s.trailerSrc = src;
     s.trailerBtn.hidden = false;
-    if (reducedMotion()) return;
+    if (reducedMotion() || isMobile()) return; // Handy: kein Autoplay (Datenverbrauch), der Trailer-Knopf startet ihn
     const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS);
     s.cleanups.push(() => clearTimeout(t));
   }).catch(() => {});

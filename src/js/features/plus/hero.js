@@ -6,6 +6,7 @@ import { plusBadge } from '../../shared/newcontent.js';
 import { BASE_PARAMS } from '../rows/logic.js';
 import { buildPool } from '../billboard/format.js';
 import { yearGenres, ratingBox } from './card.js';
+import { isPhone } from './mobile.js';
 
 export const HERO_INTERVAL = 7000;
 const HERO_FIELDS = `${BASE_PARAMS.Fields},Taglines`;
@@ -41,8 +42,10 @@ export async function loadHomeHeroPool() {
   }).slice(0, 8);
 }
 
-function buildSlide(item, i, info) {
-  const bd = api.imageUrl(item, { type: 'Backdrop', maxWidth: 1920, quality: 80 });
+function buildSlide(item, i, info, mobile) {
+  // Handy: Hochformat-Karte -> Poster, sonst Backdrop
+  const bd = (mobile && api.imageUrl(item, { type: 'Primary', maxWidth: 900, quality: 80 }))
+    || api.imageUrl(item, { type: 'Backdrop', maxWidth: mobile ? 1000 : 1920, quality: 80 });
   const logo = api.logoImage(item, { maxWidth: 520 });
   const badge = plusBadge(item, info);
   const tag = taglineFor(item);
@@ -71,11 +74,11 @@ function buildSlide(item, i, info) {
  * Baut das Karussell. Rückgabe: { el, destroy, go(i), index() } oder null (leer).
  * Timer läuft nur bei sichtbarem Tab, ohne Hover und ohne Fokus in der Hero.
  */
-export function createHero(items, { info = null, interval = HERO_INTERVAL } = {}) {
+export function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone() } = {}) {
   const list = (items || []).filter((it) => it && it.Id);
   if (!list.length) return null;
   const n = list.length;
-  const slides = list.map((it, i) => buildSlide(it, i, info));
+  const slides = list.map((it, i) => buildSlide(it, i, info, mobile));
   const track = h('div', { class: 'lfx-plus-hero__track' }, slides);
   const prev = h('button', { type: 'button', class: 'lfx-plus-hero__nav lfx-plus-hero__nav--prev', 'aria-label': 'Vorherige Empfehlung', tabindex: '-1' });
   const next = h('button', { type: 'button', class: 'lfx-plus-hero__nav lfx-plus-hero__nav--next', 'aria-label': 'Nächste Empfehlung', tabindex: '-1' });
@@ -86,9 +89,9 @@ export function createHero(items, { info = null, interval = HERO_INTERVAL } = {}
     onclick: () => go(i),
   }));
   const dotsEl = h('div', { class: 'lfx-plus-hero__dots' }, n > 1 ? dots : []);
-  const el = h('section', { class: 'lfx-plus-hero', 'aria-roledescription': 'carousel', 'aria-label': 'Empfehlungen' }, [
+  const el = h('section', { class: `lfx-plus-hero${mobile ? ' lfx-plus-hero--m' : ''}`, 'aria-roledescription': 'carousel', 'aria-label': 'Empfehlungen' }, [
     h('div', { class: 'lfx-plus-hero__viewport' }, [track]),
-    n > 1 ? prev : null, n > 1 ? next : null, dotsEl,
+    n > 1 && !mobile ? prev : null, n > 1 && !mobile ? next : null, mobile ? null : dotsEl,
   ]);
 
   let idx = 0;
@@ -96,7 +99,7 @@ export function createHero(items, { info = null, interval = HERO_INTERVAL } = {}
   let hover = false;
   let focus = false;
 
-  const running = () => n > 1 && !hover && !focus && !document.hidden;
+  const running = () => !mobile && n > 1 && !hover && !focus && !document.hidden; // Handy: wischen statt Autoplay (Datenverbrauch)
   function stop() { clearTimeout(timer); timer = null; }
   function schedule() {
     stop();
@@ -115,10 +118,38 @@ export function createHero(items, { info = null, interval = HERO_INTERVAL } = {}
       if (i === idx) d.setAttribute('aria-current', 'true'); else d.removeAttribute('aria-current');
     });
   }
+  function scrollToSlide(i) {
+    const s = slides[i];
+    if (!s || typeof track.scrollTo !== 'function') return;
+    const tr = track.getBoundingClientRect();
+    const sr = s.getBoundingClientRect();
+    const left = track.scrollLeft + (sr.left - tr.left) - (tr.width - sr.width) / 2;
+    track.scrollTo({ left, behavior: 'smooth' });
+  }
   function go(i) {
     idx = ((i % n) + n) % n;
     paint();
+    if (mobile) scrollToSlide(idx);
     schedule();
+  }
+  // Handy: Index folgt dem Scroll-Snap (Folie, deren Mitte der Mitte des Streifens am nächsten liegt)
+  let scrollRaf = 0;
+  function onTrackScroll() {
+    if (scrollRaf) return;
+    const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    scrollRaf = raf(() => {
+      scrollRaf = 0;
+      const tr = track.getBoundingClientRect();
+      const mid = tr.left + tr.width / 2;
+      let best = idx;
+      let bestD = Infinity;
+      slides.forEach((s, i) => {
+        const r = s.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - mid);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      if (best !== idx) { idx = best; paint(); }
+    });
   }
   const onPrev = (e) => { e.preventDefault(); go(idx - 1); };
   const onNext = (e) => { e.preventDefault(); go(idx + 1); };
@@ -141,6 +172,7 @@ export function createHero(items, { info = null, interval = HERO_INTERVAL } = {}
   prev.addEventListener('click', onPrev);
   next.addEventListener('click', onNext);
   track.addEventListener('click', onSlideClick);
+  if (mobile) track.addEventListener('scroll', onTrackScroll, { passive: true });
   el.addEventListener('mouseenter', onEnter);
   el.addEventListener('mouseleave', onLeave);
   el.addEventListener('focusin', onFocusIn);
@@ -156,6 +188,9 @@ export function createHero(items, { info = null, interval = HERO_INTERVAL } = {}
     index: () => idx,
     destroy() {
       stop();
+      track.removeEventListener('scroll', onTrackScroll);
+      if (scrollRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
       prev.removeEventListener('click', onPrev);
       next.removeEventListener('click', onNext);
       track.removeEventListener('click', onSlideClick);
