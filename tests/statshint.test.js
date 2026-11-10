@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+vi.mock('../src/js/core/theme.js', () => ({ isTheme: (id) => id === 'flix', getTheme: () => 'flix' }));
 import statshint, { shouldShow, markSeen, readState, HINT_DELAY, HINT_DURATION, HINT_DAYS } from '../src/js/features/statshint.js';
 import { parseHash } from '../src/js/core/router.js';
 

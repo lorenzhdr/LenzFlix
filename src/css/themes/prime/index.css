@@ -1,3 +1,13 @@
-/* LENZPRIME · Design-CSS (dist/lenzprime.css), wird von core/themecss.js nachgeladen.
-   Alle Regeln unter html.lfx-js.lfx-theme-prime:not(.layout-tv). */
+/* LENZPRIME · Bundle-Einstieg (build/build.mjs → dist/lenzprime.css). Reihenfolge = Kaskade. */
+@import "./fonts.css";
 @import "./tokens.css";
+@import "./header.css";
+@import "./menus.css";
+@import "./search.css";
+@import "./hero.css";
+@import "./rows.css";
+@import "./hover.css";
+@import "./footer.css";
+@import "./title.css";
+@import "./native.css";
+@import "./newpopular.css";

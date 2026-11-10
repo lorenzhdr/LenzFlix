@@ -16,25 +16,14 @@ export function hubTypes(lib) {
 }
 
 /**
- * Weiterschauen je Bibliothek. Ob /UserItems/Resume ParentId zuverlässig beachtet, ist nicht live bestätigt:
- * ParentId wird mitgeschickt UND das Ergebnis per /Items?Ids=…&ParentId=…&Recursive=true gegengeprüft
- * (nur Items, die die Bibliothek wirklich enthält, bleiben). Schlägt die Prüfung fehl -> leer (keine Fremd-Items).
+ * Weiterschauen je Bibliothek. /UserItems/Resume beachtet ParentId (live geprüft, 12.4). Eine Gegenprüfung per
+ * /Items?Ids=…&ParentId=… wäre wirkungslos: Jellyfin ignoriert ParentId, sobald Ids gesetzt ist (live geprüft).
  */
 async function loadResume(lib, types) {
   const list = asItems(await api.getResume({
     ...BASE_PARAMS, ParentId: lib.id, MediaTypes: 'Video', IncludeItemTypes: types.resume, Limit: 20,
   }));
-  if (!list.length) return [];
-  try {
-    const check = asItems(await api.getItems({
-      Ids: list.map((i) => i.Id).join(','), ParentId: lib.id, Recursive: true, IncludeItemTypes: types.resume,
-      EnableImages: false, EnableUserData: false, Fields: 'ParentId',
-    }));
-    const ok = new Set(check.map((i) => i.Id));
-    return list.filter((i) => ok.has(i.Id));
-  } catch {
-    return [];
-  }
+  return list;
 }
 
 /**

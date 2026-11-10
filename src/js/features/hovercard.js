@@ -19,6 +19,7 @@ import { confirmAction } from '../core/sheet.js';
 import { toast } from '../core/toast.js';
 import { getStoredItem, putItems } from '../core/itemstore.js';
 import { isMobile, isTv } from '../core/layout.js';
+import { isTheme } from '../core/theme.js';
 import { play } from '../core/playback.js';
 import { canDownload, isChooserOpen, startDownload } from '../core/download.js';
 import { isMenuOpen, onItemsChanged, openItemMenu } from '../core/itemmenu.js';
@@ -730,7 +731,7 @@ function stop() {
 const hovercardFeature = {
   name: 'hovercard',
   match(route) {
-    return !EXCLUDED.test(route.path) && isReady() && !isTv() && !isMobile() && hoverCapable();
+    return isTheme('flix') && !EXCLUDED.test(route.path) && isReady() && !isTv() && !isMobile() && hoverCapable();
   },
   mount() {
     start();

@@ -4,6 +4,7 @@
 // 10 Tage nach dem ersten Anzeigen. Nur Modern-Layout (Desktop + Handy), nicht TV, nur mit statsUrl.
 import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { isModern, isTv, isMobile } from '../core/layout.js';
+import { isTheme } from '../core/theme.js';
 import { getStatsUrl, isStatsHref, statsHref, STATS_LABEL } from '../core/stats.js';
 
 const ID = 'lfx-statshint';
@@ -140,7 +141,7 @@ function sync(route) {
 export const statshintFeature = {
   name: 'statshint',
   match(route) {
-    return isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED.test(route.path);
+    return isTheme('flix') && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED.test(route.path);
   },
   mount(route) {
     // Ein Klick auf irgendeinen Statistik-Link (Nav, Mehr-Overlay, Hinweis) beendet den Hinweis dauerhaft.

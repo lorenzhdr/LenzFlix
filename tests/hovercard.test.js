@@ -15,6 +15,7 @@ vi.mock('../src/js/core/api.js', () => ({
   getEpisodes: vi.fn(),
 }));
 vi.mock('../src/js/core/sheet.js', () => ({ confirmAction: vi.fn() }));
+vi.mock('../src/js/core/theme.js', () => ({ isTheme: (id) => id === 'flix', getTheme: () => 'flix' }));
 vi.mock('../src/js/core/toast.js', () => ({ toast: vi.fn() }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn() }));
 vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));

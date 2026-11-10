@@ -1,3 +1,13 @@
-/* LENZ+ · Design-CSS (dist/lenzplus.css), wird von core/themecss.js nachgeladen.
-   Alle Regeln unter html.lfx-js.lfx-theme-plus:not(.layout-tv). */
+/* LENZ+ · Bundle-Einstieg (build/build.mjs → dist/lenzplus.css). Reihenfolge = Kaskade. */
+@import "./fonts.css";
 @import "./tokens.css";
+@import "./header.css";
+@import "./switcher.css";
+@import "./hero.css";
+@import "./rows.css";
+@import "./brands.css";
+@import "./title.css";
+@import "./browse.css";
+@import "./search.css";
+@import "./native.css";
+@import "./newpopular.css";

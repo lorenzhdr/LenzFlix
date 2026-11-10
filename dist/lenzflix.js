@@ -5756,7 +5756,7 @@
   var hovercardFeature = {
     name: "hovercard",
     match(route) {
-      return !EXCLUDED3.test(route.path) && isReady() && !isTv() && !isMobile() && hoverCapable();
+      return isTheme("flix") && !EXCLUDED3.test(route.path) && isReady() && !isTv() && !isMobile() && hoverCapable();
     },
     mount() {
       start();
@@ -6398,7 +6398,7 @@
   var statshintFeature = {
     name: "statshint",
     match(route) {
-      return isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED5.test(route.path);
+      return isTheme("flix") && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED5.test(route.path);
     },
     mount(route) {
       state5.onClick = (e) => {
@@ -6422,11 +6422,111 @@
   };
   var statshint_default = statshintFeature;
 
+  // src/js/features/plus/header.js
+  var header_default = {
+    name: "plus-header",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/plus/switcher.js
+  var switcher_default = {
+    name: "plus-switcher",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/plus/home.js
+  var home_default2 = {
+    name: "plus-home",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/plus/title.js
+  var title_default = {
+    name: "plus-title",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/plus/browse.js
+  var browse_default = {
+    name: "plus-browse",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/plus/search.js
+  var search_default = {
+    name: "plus-search",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
   // src/js/features/plus/index.js
-  var plusFeatures = [];
+  var plusFeatures = [header_default, switcher_default, home_default2, title_default, browse_default, search_default];
+
+  // src/js/features/prime/header.js
+  var header_default2 = {
+    name: "prime-header",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/prime/home.js
+  var home_default3 = {
+    name: "prime-home",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/prime/hover.js
+  var hover_default = {
+    name: "prime-hover",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
+  // src/js/features/prime/title.js
+  var title_default2 = {
+    name: "prime-title",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
 
   // src/js/features/prime/index.js
-  var primeFeatures = [];
+  var primeFeatures = [header_default2, home_default3, hover_default, title_default2];
 
   // src/js/features/index.js
   var features2 = [themeroute_default, nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures];

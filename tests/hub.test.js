@@ -54,17 +54,15 @@ describe('buildHubRowDefs', () => {
     expect(defs.length).toBe(4);
   });
 
-  it('Resume wird gegen die Bibliothek gefiltert', async () => {
+  it('Resume filtert serverseitig per ParentId (keine Ids-Gegenprüfung)', async () => {
     const defs = await buildHubRowDefs({ id: 'L1', collectionType: 'movies' });
     const resume = defs.find((d) => d.kind === 'resume');
     api.getResume.mockResolvedValue({ Items: [{ Id: 'a' }, { Id: 'b' }] });
-    api.getItems.mockImplementation(async (p) => (p.Ids ? { Items: [{ Id: 'b' }] } : { Items: [] }));
+    api.getItems.mockClear();
     const out = await resume.load();
-    expect(out.map((i) => i.Id)).toEqual(['b']);
-    const check = api.getItems.mock.calls.at(-1)[0];
-    expect(check).toMatchObject({ Ids: 'a,b', ParentId: 'L1', Recursive: true });
-    api.getItems.mockRejectedValue(new Error('x'));
-    expect(await resume.load()).toEqual([]);
+    expect(out.map((i) => i.Id)).toEqual(['a', 'b']);
+    expect(api.getResume.mock.calls.at(-1)[0]).toMatchObject({ ParentId: 'L1', IncludeItemTypes: 'Movie' });
+    expect(api.getItems).not.toHaveBeenCalled();
   });
 });
 
