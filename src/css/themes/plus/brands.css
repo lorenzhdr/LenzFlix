@@ -78,3 +78,16 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand:focus-visible::before
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand { transition: none; }
 }
+
+/* Platzhalter während des Ladens (renderBrands): gleiche Kachelmaße, dezenter Puls */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands.is-loading .lfx-plus-brand {
+  background: #2d2f36;
+  animation: lfx-plus-brand-pulse 1.4s ease-in-out infinite;
+}
+@keyframes lfx-plus-brand-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands.is-loading .lfx-plus-brand { animation: none; }
+}

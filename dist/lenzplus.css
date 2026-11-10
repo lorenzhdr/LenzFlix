@@ -1404,6 +1404,27 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand:focus-visible:before 
   }
 }
 
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands.is-loading .lfx-plus-brand {
+  background: #2d2f36;
+  animation: 1.4s ease-in-out infinite lfx-plus-brand-pulse;
+}
+
+@keyframes lfx-plus-brand-pulse {
+  0%, 100% {
+    opacity: .55;
+  }
+
+  50% {
+    opacity: .85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands.is-loading .lfx-plus-brand {
+    animation: none;
+  }
+}
+
 html.lfx-js.lfx-theme-plus.lfx-plus-page-on:not(.layout-tv) #indexPage #homeTab > .sections {
   display: none !important;
 }

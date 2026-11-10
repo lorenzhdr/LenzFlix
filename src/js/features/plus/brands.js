@@ -18,14 +18,28 @@ export function buildBrandRow(collections) {
   ]);
 }
 
+/** Platzhalter-Reihe (gleiche Maße wie die echte), damit die Zeilen darunter beim Nachladen nicht springen. */
+function buildPlaceholder(count = 6) {
+  const cells = Array.from({ length: count }, () => h('div', { class: 'lfx-plus-brands__cell' }, [h('div', { class: 'lfx-plus-brand' })]));
+  return h('section', { class: 'lfx-plus-brands is-loading', 'aria-hidden': 'true' }, [
+    h('div', { class: 'lfx-plus-brands__track' }, cells),
+  ]);
+}
+
 /** Lädt Sammlungen und hängt die Reihe vor `before` in `parent`. Rückgabe: Cleanup. */
 export function renderBrands(parent, before) {
   let disposed = false;
-  let el = null;
-  getCollections().then((list) => {
+  let el = buildPlaceholder();
+  parent.insertBefore(el, before && before.parentNode === parent ? before : null);
+  const swap = (next) => {
     if (disposed) return;
-    el = buildBrandRow(list);
-    if (el) parent.insertBefore(el, before && before.parentNode === parent ? before : null);
-  }).catch((e) => console.warn('[LenzFlix] Sammlungen nicht geladen', e && e.message));
+    if (next) el.replaceWith(next);
+    else el.remove();
+    el = next;
+  };
+  getCollections().then((list) => swap(buildBrandRow(list))).catch((e) => {
+    console.warn('[LenzFlix] Sammlungen nicht geladen', e && e.message);
+    swap(null);
+  });
   return () => { disposed = true; if (el) el.remove(); el = null; };
 }
