@@ -1,0 +1,133 @@
+{
+  "Items": [
+    {
+      "Id": "73758b19cd1796f107f8e8ba2422c7d3",
+      "Name": "Nachtschicht",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "49e8724fa1b8d48da9d7d56df82f4d6c",
+      "Name": "Das Echo von Brandt",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "82f33c810017f7ced843a9f0943d7ea1",
+      "Name": "Küstenwache Nord",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "7078fbe5aabfcf2be217ff6d1a13b93d",
+      "Name": "Siebzehn Minuten",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "d4750ab23f2b82fca9070b2a7d488dbe",
+      "Name": "Ministerium der Zufälle",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "193c6f16c874b2cbb56d1b2919311cd4",
+      "Name": "Haus am Moor",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "6c48e96b3fb465f612ad45043ae3b753",
+      "Name": "Die Gärtnerin",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "628b8eb8ea83e3e0c36ebab4883332e3",
+      "Name": "Funkstille",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "721defad2b7af23e00c324cc8ac4d24e",
+      "Name": "Kleine Fluchten",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "bb4fb71853bfbd4714f2944912f82d22",
+      "Name": "Salz und Eisen",
+      "Type": "Series",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "b1d858bf4158cea7938b86b531f12950",
+      "Name": "Der letzte Zug nach Lindau",
+      "Type": "Movie",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "cc884f868d1c01cee323b144e3912f9c",
+      "Name": "Blaue Stunde",
+      "Type": "Movie",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "d993c12b228ec34b10fa817565a809be",
+      "Name": "Ein Sommer in Triest",
+      "Type": "Movie",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "8d77ffb62403b2a6cd436f852d76d271",
+      "Name": "Hinter dem Deich",
+      "Type": "Movie",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "fed9ffddc68efd8630ba8bf9915926b2",
+      "Name": "Das Archiv",
+      "Type": "Movie",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    },
+    {
+      "Id": "2bb5c49037f20667650410f3743fe244",
+      "Name": "Nachtfalter",
+      "Type": "Movie",
+      "ImageTags": {
+        "Primary": "dev"
+      }
+    }
+  ],
+  "TotalRecordCount": 16
+}

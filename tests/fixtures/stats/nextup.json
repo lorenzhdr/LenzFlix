@@ -1,0 +1,41 @@
+{
+  "Items": [
+    {
+      "Id": "673c17b915e0ced8df69212f66d7651a",
+      "Name": "Folge 4",
+      "SeriesName": "Das Echo von Brandt",
+      "SeriesId": "49e8724fa1b8d48da9d7d56df82f4d6c",
+      "SeriesPrimaryImageTag": "dev",
+      "ParentIndexNumber": 2,
+      "IndexNumber": 4
+    },
+    {
+      "Id": "09face50eaca7a9bb32e9bd572bc6fed",
+      "Name": "Das Wiedersehen",
+      "SeriesName": "Ministerium der Zufälle",
+      "SeriesId": "d4750ab23f2b82fca9070b2a7d488dbe",
+      "SeriesPrimaryImageTag": "dev",
+      "ParentIndexNumber": 1,
+      "IndexNumber": 7
+    },
+    {
+      "Id": "afa075257ebfcc35fdf9439ab52bf1a7",
+      "Name": "Nebel",
+      "SeriesName": "Haus am Moor",
+      "SeriesId": "193c6f16c874b2cbb56d1b2919311cd4",
+      "SeriesPrimaryImageTag": "dev",
+      "ParentIndexNumber": 3,
+      "IndexNumber": 1
+    },
+    {
+      "Id": "dc578355a690bc4010cde8aa541fad37",
+      "Name": "Ankunft",
+      "SeriesName": "Funkstille",
+      "SeriesId": "628b8eb8ea83e3e0c36ebab4883332e3",
+      "SeriesPrimaryImageTag": "dev",
+      "ParentIndexNumber": 1,
+      "IndexNumber": 2
+    }
+  ],
+  "TotalRecordCount": 4
+}

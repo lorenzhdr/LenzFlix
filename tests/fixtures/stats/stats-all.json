@@ -1,0 +1,499 @@
+{
+  "range": "all",
+  "computedAt": "2026-11-10T17:00:00.000Z",
+  "totals": {
+    "seconds": 2470139,
+    "plays": 1606,
+    "episodes": 1331,
+    "movies": 99,
+    "series": 27,
+    "activeDays": 286
+  },
+  "compare": {
+    "rank": 2,
+    "of": 9,
+    "avgSeconds": 1829733
+  },
+  "topSeries": [
+    {
+      "id": "73758b19cd1796f107f8e8ba2422c7d3",
+      "seconds": 408573,
+      "episodes": 264
+    },
+    {
+      "id": "49e8724fa1b8d48da9d7d56df82f4d6c",
+      "seconds": 238337,
+      "episodes": 132
+    },
+    {
+      "id": "82f33c810017f7ced843a9f0943d7ea1",
+      "seconds": 168234,
+      "episodes": 88
+    },
+    {
+      "id": "7078fbe5aabfcf2be217ff6d1a13b93d",
+      "seconds": 129998,
+      "episodes": 66
+    },
+    {
+      "id": "d4750ab23f2b82fca9070b2a7d488dbe",
+      "seconds": 105930,
+      "episodes": 55
+    },
+    {
+      "id": "193c6f16c874b2cbb56d1b2919311cd4",
+      "seconds": 89375,
+      "episodes": 44
+    },
+    {
+      "id": "6c48e96b3fb465f612ad45043ae3b753",
+      "seconds": 77297,
+      "episodes": 33
+    },
+    {
+      "id": "628b8eb8ea83e3e0c36ebab4883332e3",
+      "seconds": 68090,
+      "episodes": 33
+    }
+  ],
+  "topMovies": [
+    {
+      "id": "b1d858bf4158cea7938b86b531f12950",
+      "seconds": 92400,
+      "plays": 2
+    },
+    {
+      "id": "cc884f868d1c01cee323b144e3912f9c",
+      "seconds": 82500,
+      "plays": 1
+    },
+    {
+      "id": "d993c12b228ec34b10fa817565a809be",
+      "seconds": 72600,
+      "plays": 1
+    },
+    {
+      "id": "8d77ffb62403b2a6cd436f852d76d271",
+      "seconds": 62700,
+      "plays": 1
+    },
+    {
+      "id": "fed9ffddc68efd8630ba8bf9915926b2",
+      "seconds": 52800,
+      "plays": 1
+    }
+  ],
+  "timeline": {
+    "unit": "month",
+    "buckets": [
+      {
+        "ago": 13,
+        "seconds": 210296
+      },
+      {
+        "ago": 12,
+        "seconds": 146359
+      },
+      {
+        "ago": 11,
+        "seconds": 230907
+      },
+      {
+        "ago": 10,
+        "seconds": 159673
+      },
+      {
+        "ago": 9,
+        "seconds": 171528
+      },
+      {
+        "ago": 8,
+        "seconds": 204494
+      },
+      {
+        "ago": 7,
+        "seconds": 185862
+      },
+      {
+        "ago": 6,
+        "seconds": 134533
+      },
+      {
+        "ago": 5,
+        "seconds": 131001
+      },
+      {
+        "ago": 4,
+        "seconds": 148080
+      },
+      {
+        "ago": 3,
+        "seconds": 240385
+      },
+      {
+        "ago": 2,
+        "seconds": 125110
+      },
+      {
+        "ago": 1,
+        "seconds": 157984
+      },
+      {
+        "ago": 0,
+        "seconds": 223927
+      }
+    ]
+  },
+  "heatmap": [
+    {
+      "dow": 0,
+      "hour": 10,
+      "seconds": 14861
+    },
+    {
+      "dow": 0,
+      "hour": 11,
+      "seconds": 11902
+    },
+    {
+      "dow": 0,
+      "hour": 12,
+      "seconds": 6578
+    },
+    {
+      "dow": 0,
+      "hour": 13,
+      "seconds": 23111
+    },
+    {
+      "dow": 0,
+      "hour": 14,
+      "seconds": 13915
+    },
+    {
+      "dow": 0,
+      "hour": 15,
+      "seconds": 33462
+    },
+    {
+      "dow": 0,
+      "hour": 16,
+      "seconds": 37213
+    },
+    {
+      "dow": 0,
+      "hour": 17,
+      "seconds": 35750
+    },
+    {
+      "dow": 0,
+      "hour": 18,
+      "seconds": 32747
+    },
+    {
+      "dow": 0,
+      "hour": 19,
+      "seconds": 53119
+    },
+    {
+      "dow": 0,
+      "hour": 20,
+      "seconds": 45617
+    },
+    {
+      "dow": 0,
+      "hour": 21,
+      "seconds": 69113
+    },
+    {
+      "dow": 0,
+      "hour": 22,
+      "seconds": 74492
+    },
+    {
+      "dow": 0,
+      "hour": 23,
+      "seconds": 82665
+    },
+    {
+      "dow": 1,
+      "hour": 12,
+      "seconds": 3949
+    },
+    {
+      "dow": 1,
+      "hour": 19,
+      "seconds": 33055
+    },
+    {
+      "dow": 1,
+      "hour": 20,
+      "seconds": 31163
+    },
+    {
+      "dow": 1,
+      "hour": 21,
+      "seconds": 50853
+    },
+    {
+      "dow": 1,
+      "hour": 22,
+      "seconds": 58861
+    },
+    {
+      "dow": 1,
+      "hour": 23,
+      "seconds": 31526
+    },
+    {
+      "dow": 2,
+      "hour": 13,
+      "seconds": 5192
+    },
+    {
+      "dow": 2,
+      "hour": 19,
+      "seconds": 30547
+    },
+    {
+      "dow": 2,
+      "hour": 20,
+      "seconds": 50094
+    },
+    {
+      "dow": 2,
+      "hour": 21,
+      "seconds": 40667
+    },
+    {
+      "dow": 2,
+      "hour": 22,
+      "seconds": 43340
+    },
+    {
+      "dow": 2,
+      "hour": 23,
+      "seconds": 32813
+    },
+    {
+      "dow": 3,
+      "hour": 13,
+      "seconds": 3740
+    },
+    {
+      "dow": 3,
+      "hour": 19,
+      "seconds": 46101
+    },
+    {
+      "dow": 3,
+      "hour": 20,
+      "seconds": 56749
+    },
+    {
+      "dow": 3,
+      "hour": 21,
+      "seconds": 47520
+    },
+    {
+      "dow": 3,
+      "hour": 22,
+      "seconds": 55858
+    },
+    {
+      "dow": 3,
+      "hour": 23,
+      "seconds": 30822
+    },
+    {
+      "dow": 4,
+      "hour": 12,
+      "seconds": 6248
+    },
+    {
+      "dow": 4,
+      "hour": 13,
+      "seconds": 5225
+    },
+    {
+      "dow": 4,
+      "hour": 19,
+      "seconds": 52085
+    },
+    {
+      "dow": 4,
+      "hour": 20,
+      "seconds": 38995
+    },
+    {
+      "dow": 4,
+      "hour": 21,
+      "seconds": 38269
+    },
+    {
+      "dow": 4,
+      "hour": 22,
+      "seconds": 34672
+    },
+    {
+      "dow": 4,
+      "hour": 23,
+      "seconds": 43417
+    },
+    {
+      "dow": 5,
+      "hour": 12,
+      "seconds": 4664
+    },
+    {
+      "dow": 5,
+      "hour": 13,
+      "seconds": 5885
+    },
+    {
+      "dow": 5,
+      "hour": 19,
+      "seconds": 53383
+    },
+    {
+      "dow": 5,
+      "hour": 20,
+      "seconds": 59334
+    },
+    {
+      "dow": 5,
+      "hour": 21,
+      "seconds": 49258
+    },
+    {
+      "dow": 5,
+      "hour": 22,
+      "seconds": 47652
+    },
+    {
+      "dow": 5,
+      "hour": 23,
+      "seconds": 56001
+    },
+    {
+      "dow": 6,
+      "hour": 10,
+      "seconds": 17523
+    },
+    {
+      "dow": 6,
+      "hour": 11,
+      "seconds": 6050
+    },
+    {
+      "dow": 6,
+      "hour": 13,
+      "seconds": 6545
+    },
+    {
+      "dow": 6,
+      "hour": 14,
+      "seconds": 10010
+    },
+    {
+      "dow": 6,
+      "hour": 15,
+      "seconds": 23254
+    },
+    {
+      "dow": 6,
+      "hour": 16,
+      "seconds": 23122
+    },
+    {
+      "dow": 6,
+      "hour": 17,
+      "seconds": 27346
+    },
+    {
+      "dow": 6,
+      "hour": 18,
+      "seconds": 38148
+    },
+    {
+      "dow": 6,
+      "hour": 19,
+      "seconds": 72655
+    },
+    {
+      "dow": 6,
+      "hour": 20,
+      "seconds": 75625
+    },
+    {
+      "dow": 6,
+      "hour": 21,
+      "seconds": 48884
+    },
+    {
+      "dow": 6,
+      "hour": 22,
+      "seconds": 57200
+    },
+    {
+      "dow": 6,
+      "hour": 23,
+      "seconds": 65241
+    }
+  ],
+  "devices": [
+    {
+      "client": "Jellyfin Web",
+      "device": "Chrome",
+      "plays": 704,
+      "seconds": 2651000
+    },
+    {
+      "client": "Jellyfin Android TV",
+      "device": "Wohnzimmer-TV",
+      "plays": 561,
+      "seconds": 2277000
+    },
+    {
+      "client": "Jellyfin iOS",
+      "device": "iPhone",
+      "plays": 242,
+      "seconds": 704000
+    },
+    {
+      "client": "Jellyfin Web",
+      "device": "Firefox",
+      "plays": 99,
+      "seconds": 258500
+    }
+  ],
+  "methods": {
+    "directPlay": {
+      "plays": 968,
+      "seconds": 3861000
+    },
+    "directStream": {
+      "plays": 341,
+      "seconds": 1298000
+    },
+    "transcode": {
+      "plays": 297,
+      "seconds": 731500
+    },
+    "other": {
+      "plays": 0,
+      "seconds": 0
+    }
+  },
+  "binge": {
+    "topDay": {
+      "agoDays": 12,
+      "seconds": 31500
+    },
+    "seriesDay": {
+      "seriesId": "73758b19cd1796f107f8e8ba2422c7d3",
+      "agoDays": 12,
+      "episodes": 9
+    }
+  }
+}

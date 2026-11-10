@@ -292,3 +292,276 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 }
 .share-tabs { justify-content: center; margin-left: 0; }
 .share-actions { justify-content: center; margin-top: 4px; }
+
+/* ==========================================================================
+   Design-Varianten. body.theme-<id> setzt app.js (CSP verbietet Inline-Skripte). theme-flix hat keine eigenen Regeln.
+   Weiterhin nur Flexbox, kein Grid/gap/:has/Nesting.
+   ========================================================================== */
+@font-face {
+  font-family: "LenzPlus Sans";
+  src: url("figtree-latin-wght-normal.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "LenzPlus Sans";
+  src: url("figtree-latin-ext-wght-normal.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "LenzPrime Sans";
+  src: url("source-sans-3-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "LenzPrime Sans";
+  src: url("source-sans-3-latin-ext-wght-normal.woff2") format("woff2");
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Kopfbereich (nur bei plus/prime gerendert): Struktur gemeinsam, Aussehen je Design */
+.hero-meta { display: flex; flex-direction: row; flex-wrap: wrap; margin-top: 14px; }
+.hero-note { margin: 4px 0 0; font-size: 0.75rem; color: var(--lfx-text-muted); }
+
+/* ---------------------------------------------------------------- LENZ+ */
+.theme-plus {
+  --lfx-red: #1bb3e8;
+  --lfx-red-hover: #4cc6f0;
+  --lfx-bg: #10131f;
+  --lfx-surface: #181c2e;
+  --lfx-surface-2: #1d2238;
+  --lfx-surface-3: #2a3150;
+  --lfx-border: rgba(255, 255, 255, 0.14);
+  --lfx-text-body: #e6e9f2;
+  --lfx-text-muted: #a9b0c6;
+  --lfx-text-soft: #7a829c;
+  --lfx-font: "LenzPlus Sans", Figtree, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* schwarze Kopfzeile über dem Navy-Schwarz */
+  background-image: linear-gradient(#050507, #050507);
+  background-repeat: no-repeat;
+  background-size: 100% 64px;
+  background-position: 0 0;
+}
+.theme-plus .top { height: 64px; padding: 0 16px; }
+.theme-plus .brand img { width: 90px; height: 28px; }
+.theme-plus .back {
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-weight: 500;
+}
+.theme-plus .back:hover { background: rgba(255, 255, 255, 0.18); }
+.theme-plus .app { padding-top: 14px; }
+.theme-plus h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 6px 16px; }
+.theme-plus h2 { font-size: 21px; font-weight: 500; margin: 0 0 14px; }
+
+/* Zeitraum: Pillen in einer Segment-Leiste */
+.theme-plus .tab { margin: 0 4px 0 0; padding: 8px 18px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: #e6e9f2; font-weight: 500; }
+.theme-plus .tab.on { background: #fff; color: #10131f; font-weight: 700; }
+.theme-plus .app .tabs {
+  display: -webkit-inline-flex;
+  display: inline-flex;
+  margin: 0 0 16px 6px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.theme-plus .app .tab { margin: 0; background: transparent; }
+.theme-plus .app .tab.on { background: #fff; }
+
+/* Kopfkachel */
+.theme-plus .hero {
+  margin: 6px;
+  padding: 28px 28px 22px;
+  border-radius: 18px;
+  background: radial-gradient(120% 150% at 100% 0%, rgba(27, 179, 232, 0.3), rgba(27, 179, 232, 0) 55%), linear-gradient(135deg, #1e2548, #151a33);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+.theme-plus .hero-label { font-size: 0.9rem; font-weight: 500; color: var(--lfx-text-muted); }
+.theme-plus .hero-value { margin-top: 2px; font-size: 3rem; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: #fff; }
+.theme-plus .chip { margin: 0 8px 8px 0; padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 0.8125rem; font-weight: 500; }
+
+/* Kennzahlen: große, weiche Karten */
+.theme-plus .kpi {
+  margin: 8px 6px;
+  padding: 22px 20px 18px;
+  border-radius: 18px;
+  background: var(--lfx-surface-2);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+}
+.theme-plus .kpi-v { font-size: 2rem; font-weight: 700; }
+.theme-plus .kpi-l { margin-top: 6px; font-size: 0.875rem; }
+
+.theme-plus .panel {
+  margin: 8px 6px;
+  width: calc(100% - 12px);
+  padding: 22px 22px 18px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--lfx-surface);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+@media (min-width: 700px) {
+  .theme-plus .panel.half { width: calc(50% - 12px); }
+}
+
+/* Top-Titel: Poster-Raster statt Scroll-Reihe */
+.theme-plus .rail { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
+.theme-plus .tcard { width: 136px; margin: 0 14px 18px 0; }
+.theme-plus .poster { width: 136px; height: 204px; border-radius: 12px; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4); }
+.theme-plus .tname { font-weight: 600; }
+.theme-plus .rank {
+  left: 8px;
+  top: 8px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: #10131f;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  line-height: 28px;
+}
+@media (min-width: 1280px) {
+  .theme-plus .tcard, .theme-plus .poster { width: 150px; }
+  .theme-plus .poster { height: 225px; }
+}
+
+/* Diagramme: Cyan, Auswahl Weiß */
+.theme-plus .bar { fill: #1bb3e8; rx: 3px; }
+.theme-plus .bar.sel { fill: #fff; }
+.theme-plus .chart .grid { stroke: rgba(255, 255, 255, 0.07); }
+.theme-plus .chart .axis { stroke: rgba(255, 255, 255, 0.22); }
+.theme-plus .hm-cell { fill: #1bb3e8; }
+.theme-plus .hm-empty { fill: rgba(255, 255, 255, 0.06); }
+.theme-plus .track { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.1); }
+.theme-plus .fill { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #1bb3e8, #4f7cff); }
+
+.theme-plus .btn { border-radius: 999px; background: #fff; color: #10131f; }
+.theme-plus .btn:hover { background: #dfe3ee; }
+.theme-plus .btn.ghost { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.theme-plus .btn.ghost:hover { background: rgba(255, 255, 255, 0.18); }
+.theme-plus .notice { border-left: 0; border-radius: 14px; background: var(--lfx-surface-2); }
+.theme-plus .login input { border-radius: 14px; border-color: rgba(255, 255, 255, 0.14); }
+.theme-plus .progress-run { background: linear-gradient(90deg, #1bb3e8, #4f7cff); }
+.theme-plus .share-dialog { border: 0; border-radius: 24px; background: var(--lfx-surface); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
+.theme-plus .share-canvas { border-radius: 16px; }
+
+/* ------------------------------------------------------------ LENZPRIME */
+.theme-prime {
+  --lfx-red: #1a98ff;
+  --lfx-red-hover: #47adff;
+  --lfx-bg: #00050d;
+  --lfx-surface: rgba(25, 30, 37, 0.8);
+  --lfx-surface-2: rgba(25, 30, 37, 0.8);
+  --lfx-surface-3: #33373d;
+  --lfx-border: rgba(255, 255, 255, 0.16);
+  --lfx-text-body: #dde3ea;
+  --lfx-text-muted: #8197a4;
+  --lfx-text-soft: #5f7380;
+  --lfx-green: #37f1a3;
+  --lfx-font: "LenzPrime Sans", "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Vollbreiter Kopf mit Verlauf: Blau-Schimmer oben links, läuft in Blauschwarz aus */
+  background-image: radial-gradient(70% 100% at 15% 0%, rgba(26, 152, 255, 0.38), rgba(26, 152, 255, 0) 70%), linear-gradient(180deg, #0a1c38 0%, #00050d 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 520px, 100% 520px;
+  background-position: 0 0, 0 0;
+}
+.theme-prime .top { max-width: 76rem; height: 72px; padding: 0 16px; }
+.theme-prime .brand img { width: 85px; height: 28px; }
+.theme-prime .back {
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: rgba(25, 30, 37, 0.8);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: #fff;
+  font-weight: 600;
+}
+.theme-prime .back:hover { background: #fff; color: #00050d; }
+.theme-prime .app { max-width: 76rem; padding-top: 18px; }
+.theme-prime h1 { font-size: 34px; font-weight: 700; margin: 8px 6px 14px; }
+.theme-prime h2 { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
+
+/* Zeitraum */
+.theme-prime .tab { padding: 9px 18px; border-radius: 8px; background: rgba(25, 30, 37, 0.8); color: #fff; font-weight: 600; letter-spacing: 0.03em; }
+.theme-prime .tab:hover { background: rgba(255, 255, 255, 0.2); }
+.theme-prime .tab.on { background: #fff; color: #00050d; font-weight: 700; }
+
+/* Kopf: Watchtime frei auf dem Verlauf, weiße Versal-Badges */
+.theme-prime .hero { margin: 22px 6px 14px; padding: 0; }
+.theme-prime .hero-label { font-size: 1rem; font-weight: 700; color: #5aa9ff; }
+.theme-prime .hero-value { margin: 2px 0 6px; font-size: 4rem; font-weight: 700; line-height: 1; letter-spacing: -0.01em; color: #fff; }
+.theme-prime .chip { margin: 0 8px 8px 0; padding: 4px 10px; border-radius: 4px; background: #fff; color: #00050d; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Kennzahlen: Glas-Kacheln */
+.theme-prime .kpi, .theme-prime .panel, .theme-prime .notice {
+  background: rgba(25, 30, 37, 0.8);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.theme-prime .kpi { margin: 6px; padding: 18px 18px 14px; border-radius: 12px; }
+.theme-prime .kpi-v { font-size: 1.9rem; font-weight: 700; }
+.theme-prime .panel { margin: 10px 6px; width: calc(100% - 12px); padding: 20px 20px 16px; border-radius: 12px; }
+.theme-prime .notice { border-radius: 8px; }
+@media (min-width: 700px) {
+  .theme-prime .panel.half { width: calc(50% - 12px); }
+}
+
+/* Top-Listen: große Rangziffern neben dem Poster (wie Top-10-Zeilen) */
+.theme-prime .rail { padding-bottom: 12px; scrollbar-width: thin; scrollbar-color: #33373d transparent; }
+.theme-prime .rail::-webkit-scrollbar { height: 6px; }
+.theme-prime .rail::-webkit-scrollbar-track { background: transparent; }
+.theme-prime .rail::-webkit-scrollbar-thumb { background: #33373d; border-radius: 3px; }
+.theme-prime .poster { border-radius: 8px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); }
+.theme-prime .tcard-rank { display: -webkit-flex; display: flex; flex-direction: row; align-items: flex-end; width: auto; margin-right: 22px; }
+.theme-prime .tcard-rank .rank {
+  position: static;
+  z-index: 0;
+  min-width: 0;
+  margin: 0 10px 66px 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: #37f1a3;
+  font-size: 88px;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 0.8;
+}
+.theme-prime .tcol { position: relative; z-index: 1; width: 130px; }
+.theme-prime .tcol .poster { width: 130px; height: 195px; }
+.theme-prime .tname { font-weight: 700; }
+
+/* Diagramme: Blau, Auswahl Weiß */
+.theme-prime .bar { fill: #1a98ff; }
+.theme-prime .bar.sel { fill: #fff; }
+.theme-prime .chart .grid { stroke: rgba(255, 255, 255, 0.08); }
+.theme-prime .chart .axis { stroke: rgba(255, 255, 255, 0.28); }
+.theme-prime .hm-cell { fill: #1a98ff; }
+.theme-prime .hm-empty { fill: rgba(255, 255, 255, 0.06); }
+.theme-prime .track { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); }
+.theme-prime .fill { height: 6px; border-radius: 3px; background: #1a98ff; }
+
+.theme-prime .btn { border-radius: 8px; background: #fff; color: #00050d; font-weight: 700; }
+.theme-prime .btn:hover { background: #dbe7f3; }
+.theme-prime .btn.ghost { background: #33373d; color: #fff; }
+.theme-prime .btn.ghost:hover { background: #4a4f57; }
+.theme-prime .login input { border-radius: 8px; background: #33373d; border-color: transparent; }
+.theme-prime .share-dialog { border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; background: #0c1219; }
+.theme-prime .share-canvas { border-radius: 8px; }

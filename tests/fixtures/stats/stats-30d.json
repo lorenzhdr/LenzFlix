@@ -1,0 +1,551 @@
+{
+  "range": "30d",
+  "computedAt": "2026-11-10T17:00:00.000Z",
+  "totals": {
+    "seconds": 142003,
+    "plays": 146,
+    "episodes": 121,
+    "movies": 9,
+    "series": 8,
+    "activeDays": 26
+  },
+  "compare": {
+    "rank": 2,
+    "of": 9,
+    "avgSeconds": 105187
+  },
+  "topSeries": [
+    {
+      "id": "73758b19cd1796f107f8e8ba2422c7d3",
+      "seconds": 37143,
+      "episodes": 24
+    },
+    {
+      "id": "49e8724fa1b8d48da9d7d56df82f4d6c",
+      "seconds": 21667,
+      "episodes": 12
+    },
+    {
+      "id": "82f33c810017f7ced843a9f0943d7ea1",
+      "seconds": 15294,
+      "episodes": 8
+    },
+    {
+      "id": "7078fbe5aabfcf2be217ff6d1a13b93d",
+      "seconds": 11818,
+      "episodes": 6
+    },
+    {
+      "id": "d4750ab23f2b82fca9070b2a7d488dbe",
+      "seconds": 9630,
+      "episodes": 5
+    },
+    {
+      "id": "193c6f16c874b2cbb56d1b2919311cd4",
+      "seconds": 8125,
+      "episodes": 4
+    },
+    {
+      "id": "6c48e96b3fb465f612ad45043ae3b753",
+      "seconds": 7027,
+      "episodes": 3
+    },
+    {
+      "id": "628b8eb8ea83e3e0c36ebab4883332e3",
+      "seconds": 6190,
+      "episodes": 3
+    }
+  ],
+  "topMovies": [
+    {
+      "id": "b1d858bf4158cea7938b86b531f12950",
+      "seconds": 8400,
+      "plays": 2
+    },
+    {
+      "id": "cc884f868d1c01cee323b144e3912f9c",
+      "seconds": 7500,
+      "plays": 1
+    },
+    {
+      "id": "d993c12b228ec34b10fa817565a809be",
+      "seconds": 6600,
+      "plays": 1
+    },
+    {
+      "id": "8d77ffb62403b2a6cd436f852d76d271",
+      "seconds": 5700,
+      "plays": 1
+    },
+    {
+      "id": "fed9ffddc68efd8630ba8bf9915926b2",
+      "seconds": 4800,
+      "plays": 1
+    }
+  ],
+  "timeline": {
+    "unit": "day",
+    "buckets": [
+      {
+        "ago": 29,
+        "seconds": 4719
+      },
+      {
+        "ago": 28,
+        "seconds": 7901
+      },
+      {
+        "ago": 27,
+        "seconds": 3530
+      },
+      {
+        "ago": 26,
+        "seconds": 6849
+      },
+      {
+        "ago": 23,
+        "seconds": 11380
+      },
+      {
+        "ago": 22,
+        "seconds": 4886
+      },
+      {
+        "ago": 21,
+        "seconds": 6200
+      },
+      {
+        "ago": 20,
+        "seconds": 3664
+      },
+      {
+        "ago": 19,
+        "seconds": 8063
+      },
+      {
+        "ago": 18,
+        "seconds": 3030
+      },
+      {
+        "ago": 17,
+        "seconds": 6251
+      },
+      {
+        "ago": 16,
+        "seconds": 8801
+      },
+      {
+        "ago": 15,
+        "seconds": 3321
+      },
+      {
+        "ago": 14,
+        "seconds": 2632
+      },
+      {
+        "ago": 13,
+        "seconds": 4629
+      },
+      {
+        "ago": 12,
+        "seconds": 5078
+      },
+      {
+        "ago": 11,
+        "seconds": 7543
+      },
+      {
+        "ago": 10,
+        "seconds": 3417
+      },
+      {
+        "ago": 9,
+        "seconds": 11805
+      },
+      {
+        "ago": 8,
+        "seconds": 2661
+      },
+      {
+        "ago": 7,
+        "seconds": 2911
+      },
+      {
+        "ago": 6,
+        "seconds": 2980
+      },
+      {
+        "ago": 4,
+        "seconds": 6332
+      },
+      {
+        "ago": 3,
+        "seconds": 2379
+      },
+      {
+        "ago": 2,
+        "seconds": 4607
+      },
+      {
+        "ago": 1,
+        "seconds": 1826
+      },
+      {
+        "ago": 0,
+        "seconds": 4608
+      }
+    ]
+  },
+  "heatmap": [
+    {
+      "dow": 0,
+      "hour": 10,
+      "seconds": 1351
+    },
+    {
+      "dow": 0,
+      "hour": 11,
+      "seconds": 1082
+    },
+    {
+      "dow": 0,
+      "hour": 12,
+      "seconds": 598
+    },
+    {
+      "dow": 0,
+      "hour": 13,
+      "seconds": 2101
+    },
+    {
+      "dow": 0,
+      "hour": 14,
+      "seconds": 1265
+    },
+    {
+      "dow": 0,
+      "hour": 15,
+      "seconds": 3042
+    },
+    {
+      "dow": 0,
+      "hour": 16,
+      "seconds": 3383
+    },
+    {
+      "dow": 0,
+      "hour": 17,
+      "seconds": 3250
+    },
+    {
+      "dow": 0,
+      "hour": 18,
+      "seconds": 2977
+    },
+    {
+      "dow": 0,
+      "hour": 19,
+      "seconds": 4829
+    },
+    {
+      "dow": 0,
+      "hour": 20,
+      "seconds": 4147
+    },
+    {
+      "dow": 0,
+      "hour": 21,
+      "seconds": 6283
+    },
+    {
+      "dow": 0,
+      "hour": 22,
+      "seconds": 6772
+    },
+    {
+      "dow": 0,
+      "hour": 23,
+      "seconds": 7515
+    },
+    {
+      "dow": 1,
+      "hour": 12,
+      "seconds": 359
+    },
+    {
+      "dow": 1,
+      "hour": 19,
+      "seconds": 3005
+    },
+    {
+      "dow": 1,
+      "hour": 20,
+      "seconds": 2833
+    },
+    {
+      "dow": 1,
+      "hour": 21,
+      "seconds": 4623
+    },
+    {
+      "dow": 1,
+      "hour": 22,
+      "seconds": 5351
+    },
+    {
+      "dow": 1,
+      "hour": 23,
+      "seconds": 2866
+    },
+    {
+      "dow": 2,
+      "hour": 13,
+      "seconds": 472
+    },
+    {
+      "dow": 2,
+      "hour": 19,
+      "seconds": 2777
+    },
+    {
+      "dow": 2,
+      "hour": 20,
+      "seconds": 4554
+    },
+    {
+      "dow": 2,
+      "hour": 21,
+      "seconds": 3697
+    },
+    {
+      "dow": 2,
+      "hour": 22,
+      "seconds": 3940
+    },
+    {
+      "dow": 2,
+      "hour": 23,
+      "seconds": 2983
+    },
+    {
+      "dow": 3,
+      "hour": 13,
+      "seconds": 340
+    },
+    {
+      "dow": 3,
+      "hour": 19,
+      "seconds": 4191
+    },
+    {
+      "dow": 3,
+      "hour": 20,
+      "seconds": 5159
+    },
+    {
+      "dow": 3,
+      "hour": 21,
+      "seconds": 4320
+    },
+    {
+      "dow": 3,
+      "hour": 22,
+      "seconds": 5078
+    },
+    {
+      "dow": 3,
+      "hour": 23,
+      "seconds": 2802
+    },
+    {
+      "dow": 4,
+      "hour": 12,
+      "seconds": 568
+    },
+    {
+      "dow": 4,
+      "hour": 13,
+      "seconds": 475
+    },
+    {
+      "dow": 4,
+      "hour": 19,
+      "seconds": 4735
+    },
+    {
+      "dow": 4,
+      "hour": 20,
+      "seconds": 3545
+    },
+    {
+      "dow": 4,
+      "hour": 21,
+      "seconds": 3479
+    },
+    {
+      "dow": 4,
+      "hour": 22,
+      "seconds": 3152
+    },
+    {
+      "dow": 4,
+      "hour": 23,
+      "seconds": 3947
+    },
+    {
+      "dow": 5,
+      "hour": 12,
+      "seconds": 424
+    },
+    {
+      "dow": 5,
+      "hour": 13,
+      "seconds": 535
+    },
+    {
+      "dow": 5,
+      "hour": 19,
+      "seconds": 4853
+    },
+    {
+      "dow": 5,
+      "hour": 20,
+      "seconds": 5394
+    },
+    {
+      "dow": 5,
+      "hour": 21,
+      "seconds": 4478
+    },
+    {
+      "dow": 5,
+      "hour": 22,
+      "seconds": 4332
+    },
+    {
+      "dow": 5,
+      "hour": 23,
+      "seconds": 5091
+    },
+    {
+      "dow": 6,
+      "hour": 10,
+      "seconds": 1593
+    },
+    {
+      "dow": 6,
+      "hour": 11,
+      "seconds": 550
+    },
+    {
+      "dow": 6,
+      "hour": 13,
+      "seconds": 595
+    },
+    {
+      "dow": 6,
+      "hour": 14,
+      "seconds": 910
+    },
+    {
+      "dow": 6,
+      "hour": 15,
+      "seconds": 2114
+    },
+    {
+      "dow": 6,
+      "hour": 16,
+      "seconds": 2102
+    },
+    {
+      "dow": 6,
+      "hour": 17,
+      "seconds": 2486
+    },
+    {
+      "dow": 6,
+      "hour": 18,
+      "seconds": 3468
+    },
+    {
+      "dow": 6,
+      "hour": 19,
+      "seconds": 6605
+    },
+    {
+      "dow": 6,
+      "hour": 20,
+      "seconds": 6875
+    },
+    {
+      "dow": 6,
+      "hour": 21,
+      "seconds": 4444
+    },
+    {
+      "dow": 6,
+      "hour": 22,
+      "seconds": 5200
+    },
+    {
+      "dow": 6,
+      "hour": 23,
+      "seconds": 5931
+    }
+  ],
+  "devices": [
+    {
+      "client": "Jellyfin Web",
+      "device": "Chrome",
+      "plays": 64,
+      "seconds": 241000
+    },
+    {
+      "client": "Jellyfin Android TV",
+      "device": "Wohnzimmer-TV",
+      "plays": 51,
+      "seconds": 207000
+    },
+    {
+      "client": "Jellyfin iOS",
+      "device": "iPhone",
+      "plays": 22,
+      "seconds": 64000
+    },
+    {
+      "client": "Jellyfin Web",
+      "device": "Firefox",
+      "plays": 9,
+      "seconds": 23500
+    }
+  ],
+  "methods": {
+    "directPlay": {
+      "plays": 88,
+      "seconds": 351000
+    },
+    "directStream": {
+      "plays": 31,
+      "seconds": 118000
+    },
+    "transcode": {
+      "plays": 27,
+      "seconds": 66500
+    },
+    "other": {
+      "plays": 0,
+      "seconds": 0
+    }
+  },
+  "binge": {
+    "topDay": {
+      "agoDays": 12,
+      "seconds": 31500
+    },
+    "seriesDay": {
+      "seriesId": "73758b19cd1796f107f8e8ba2422c7d3",
+      "agoDays": 12,
+      "episodes": 9
+    }
+  }
+}

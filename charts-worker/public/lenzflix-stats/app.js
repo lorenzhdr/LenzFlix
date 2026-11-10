@@ -277,6 +277,93 @@
     return out;
   }
 
+  /* ---------- Design (flix | plus | prime) ---------- */
+
+  var THEME_IDS = ['flix', 'plus', 'prime'];
+  var KEY_THEME_USER = 'lfx.theme.';
+  var KEY_THEME_LAST = 'lfx.theme.last';
+  /* logo/shareLogo: Dateien neben app.js; ratio = Breite/Höhe der Share-Wortmarke; hdr = Größe im Seitenkopf */
+  var THEME_INFO = {
+    flix: { name: 'LENZFLIX', logo: 'lenzflix.svg', shareLogo: '', ratio: 0, hdrW: 98, hdrH: 28, color: '#141414', filePrefix: 'lenzflix' },
+    plus: { name: 'LENZ+', logo: 'lenzplus.svg', shareLogo: 'lenzplus-large.svg', ratio: 372.16 / 130.62, hdrW: 90, hdrH: 28, color: '#10131f', filePrefix: 'lenzplus' },
+    prime: { name: 'LENZPRIME', logo: 'lenzprime.svg', shareLogo: 'lenzprime.svg', ratio: 475.3 / 155.6, hdrW: 85, hdrH: 28, color: '#00050d', filePrefix: 'lenzprime' },
+  };
+  var currentTheme = 'flix';
+
+  function themeId() {
+    return currentTheme;
+  }
+
+  function validTheme(x) {
+    return THEME_IDS.indexOf(x) >= 0 ? x : null;
+  }
+
+  /** ?theme= aus einem Query-String (nur Whitelist), sonst null. */
+  function queryTheme(search) {
+    var m = /[?&]theme=([^&#]*)/.exec(String(search || ''));
+    return m ? validTheme(m[1]) : null;
+  }
+
+  /** Benutzer-ID für die Design-Wahl: eigene Anmeldung der Seite, sonst die der Jellyfin-Web-Sitzung. */
+  function knownUserId() {
+    if (S.userId) return S.userId;
+    var own = readOwnAuth();
+    if (own && own.userId) return own.userId;
+    try {
+      var cred = pickCredentials(window.localStorage.getItem('jellyfin_credentials'));
+      return cred && cred.userId ? cred.userId : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /** Vorrang: ?theme= → lfx.theme.<userId> → lfx.theme.last → 'flix'. o: { search, storage, userId } (für Tests). */
+  function resolveTheme(o) {
+    var opt = o || {};
+    var search = opt.search != null ? opt.search : (window.location && window.location.search) || '';
+    var q = queryTheme(search);
+    if (q) return q;
+    try {
+      var store = opt.storage || window.localStorage;
+      var uid = opt.userId !== undefined ? opt.userId : knownUserId();
+      if (uid) {
+        var u = validTheme(store.getItem(KEY_THEME_USER + uid));
+        if (u) return u;
+      }
+      var l = validTheme(store.getItem(KEY_THEME_LAST));
+      if (l) return l;
+    } catch (e) {
+      /* ohne Speicher: Standarddesign */
+    }
+    return 'flix';
+  }
+
+  /** Setzt body-Klasse, Titel, Zurück-Link, theme-color und Wortmarke. Inline-Skripte verbietet die CSP, daher hier. */
+  function applyTheme(id) {
+    var t = validTheme(id) || 'flix';
+    var info = THEME_INFO[t];
+    currentTheme = t;
+    document.body.className = 'theme-' + t;
+    document.title = 'Meine Statistik · ' + info.name;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', info.color);
+    var brand = document.querySelector('.brand');
+    if (brand) brand.setAttribute('aria-label', info.name);
+    var img = document.querySelector('.brand img');
+    if (img) {
+      img.setAttribute('src', info.logo);
+      img.setAttribute('alt', info.name);
+      img.setAttribute('width', String(info.hdrW));
+      img.setAttribute('height', String(info.hdrH));
+    }
+    var back = document.querySelector('.back');
+    if (back) {
+      back.textContent = 'Zurück zu ' + info.name;
+      back.setAttribute('href', '/web/');
+    }
+    return t;
+  }
+
   /* ---------- Requests (Token nur im Header) ---------- */
 
   function buildStatsRequest(range, token) {
@@ -445,16 +532,20 @@
       var it = items[id];
       if (!it) return;
       shown++;
-      var card = el('div', 'tcard');
+      /* prime: große Rangziffer neben dem Poster (Textspalte .tcol); sonst Rang-Badge auf dem Poster */
+      var big = themeId() === 'prime';
+      var card = el('div', big ? 'tcard tcard-rank' : 'tcard');
       card.appendChild(el('div', 'rank', String(shown)));
-      card.appendChild(makePoster(it.name, id, it.tag));
+      var col = big ? el('div', 'tcol') : card;
+      col.appendChild(makePoster(it.name, id, it.tag));
       var name = el('div', 'tname', it.name);
       name.setAttribute('title', it.name);
-      card.appendChild(name);
+      col.appendChild(name);
       var meta = fmtDuration(entry.seconds);
       if (kind === 'series') meta += ' · ' + fmtInt(entry.episodes) + (entry.episodes === 1 ? ' Folge' : ' Folgen');
       else if (entry.plays > 1) meta += ' · ' + fmtInt(entry.plays) + 'x';
-      card.appendChild(el('div', 'tmeta', meta));
+      col.appendChild(el('div', 'tmeta', meta));
+      if (big) card.appendChild(col);
       container.appendChild(card);
     });
     return shown;
@@ -536,7 +627,7 @@
       bars.push(rect);
       svg.appendChild(rect);
     });
-    svg.appendChild(svgEl('line', { x1: LM, x2: W, y1: TM + H + 0.5, y2: TM + H + 0.5, stroke: '#404040', 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { class: 'axis', x1: LM, x2: W, y1: TM + H + 0.5, y2: TM + H + 0.5, stroke: '#404040', 'stroke-width': 1 }));
     var last = data.length - 1;
     var mid = Math.floor(last / 2);
     svg.appendChild(svgEl('text', { x: LM, y: TM + H + 16, 'text-anchor': 'start' }, axisLabel(unit, data[0].key)));
@@ -692,6 +783,20 @@
     k.appendChild(el('div', 'kpi-v', value));
     k.appendChild(el('div', 'kpi-l', label));
     return k;
+  }
+
+  /** Kopfbereich für LENZ+/LENZPRIME: große Watchtime, Zeitraum und Platz als Chips. */
+  function buildHero(stats) {
+    var t = stats.totals || {};
+    var hero = el('section', 'hero');
+    hero.appendChild(el('div', 'hero-label', 'Watchtime'));
+    hero.appendChild(el('div', 'hero-value', fmtDuration(t.seconds)));
+    var meta = el('div', 'hero-meta');
+    meta.appendChild(el('span', 'chip', RANGE_TITLES[stats.range] || ''));
+    if (stats.compare) meta.appendChild(el('span', 'chip', compareText(stats.compare)));
+    hero.appendChild(meta);
+    if (stats.compare) hero.appendChild(el('p', 'hero-note', 'Dein Platz nach Watchtime unter allen aktiven Nutzern. Mehr Details über andere gibt es nicht.'));
+    return hero;
   }
 
   function panel(title, half) {
@@ -952,15 +1057,17 @@
 
   function drawStats(wrap, stats) {
     var t = stats.totals || {};
+    var themed = themeId() !== 'flix';
+    if (themed) wrap.appendChild(buildHero(stats));
     var kp = el('div', 'row');
-    kp.appendChild(kpi('Watchtime', fmtDuration(t.seconds), true));
+    if (!themed) kp.appendChild(kpi('Watchtime', fmtDuration(t.seconds), true));
     kp.appendChild(kpi('Folgen', fmtInt(t.episodes)));
     kp.appendChild(kpi('Filme', fmtInt(t.movies)));
     kp.appendChild(kpi('Serien', fmtInt(t.series)));
     kp.appendChild(kpi('Aktive Tage', fmtInt(t.activeDays)));
     wrap.appendChild(kp);
 
-    if (stats.compare) {
+    if (stats.compare && !themed) {
       var cp = el('div', 'panel');
       cp.appendChild(el('p', 'big', compareText(stats.compare)));
       cp.appendChild(el('p', 'sub', 'Dein Platz nach Watchtime unter allen aktiven Nutzern. Mehr Details über andere gibt es nicht.'));
@@ -987,7 +1094,7 @@
     renderTimeline(pv, stats);
     row.appendChild(pv);
     var ph = panel('Wann du schaust', true);
-    ph.appendChild(el('p', 'sub', 'Je dunkler, desto weniger – je roter, desto mehr.'));
+    ph.appendChild(el('p', 'sub', themed ? 'Je kräftiger die Farbe, desto mehr Watchtime.' : 'Je dunkler, desto weniger – je roter, desto mehr.'));
     renderHeatmap(ph, stats);
     row.appendChild(ph);
     wrap.appendChild(row);
@@ -1057,7 +1164,30 @@
 
   /* ---------- Bild teilen (Dialog mit Vorschau, Varianten und Formaten) ---------- */
 
-  var SHARE_FONT = '"LenzFlix Sans", Helvetica, Arial, sans-serif';
+  var SHARE_FONTS = {
+    flix: '"LenzFlix Sans", Helvetica, Arial, sans-serif',
+    plus: '"LenzPlus Sans", Figtree, Helvetica, Arial, sans-serif',
+    prime: '"LenzPrime Sans", "Source Sans 3", Helvetica, Arial, sans-serif',
+  };
+  var SHARE_FAMILIES = { flix: 'LenzFlix Sans', plus: 'LenzPlus Sans', prime: 'LenzPrime Sans' };
+  /* Farben des Share-Bilds je Design. flix = die bisherigen festen Werte (unverändert). */
+  var SHARE_PALETTES = {
+    flix: {
+      font: SHARE_FONTS.flix, bg: '#141414', stripe: '#e50914', text: '#ffffff', muted: '#b3b3b3', soft: '#808080',
+      accent: '#e50914', rank: '#e50914', bar: '#e50914', card: '', track: '#2f2f2f', grid: '#2a2a2a', axis: '#404040',
+      cell: '#232323', poster: '#2f2f2f', posterText: '#808080', heat: '229, 9, 20',
+    },
+    plus: {
+      font: SHARE_FONTS.plus, bg: '#10131f', stripe: '', text: '#ffffff', muted: '#a9b0c6', soft: '#7a829c',
+      accent: '#1bb3e8', rank: '#1bb3e8', bar: '#1bb3e8', card: '#1a1f33', track: 'rgba(255, 255, 255, 0.1)', grid: 'rgba(255, 255, 255, 0.08)',
+      axis: 'rgba(255, 255, 255, 0.22)', cell: 'rgba(255, 255, 255, 0.06)', poster: '#262d47', posterText: '#7a829c', heat: '27, 179, 232',
+    },
+    prime: {
+      font: SHARE_FONTS.prime, bg: '#00050d', stripe: '', text: '#ffffff', muted: '#8197a4', soft: '#5f7380',
+      accent: '#1a98ff', rank: '#37f1a3', bar: '#1a98ff', card: '#12171e', track: 'rgba(255, 255, 255, 0.14)', grid: 'rgba(255, 255, 255, 0.08)',
+      axis: 'rgba(255, 255, 255, 0.28)', cell: 'rgba(255, 255, 255, 0.06)', poster: '#1d242d', posterText: '#5f7380', heat: '26, 152, 255',
+    },
+  };
   var FORMATS = {
     '4:5': { w: 1080, h: 1350, file: '4x5', label: '4:5' },
     story: { w: 1080, h: 1920, file: 'story', label: 'Story 9:16' },
@@ -1071,6 +1201,10 @@
   ];
   var HEAT_ALPHA = [0, 0.2, 0.4, 0.6, 0.8, 1];
 
+  function sharePalette(theme) {
+    return SHARE_PALETTES[theme] || SHARE_PALETTES.flix;
+  }
+
   function fitText(ctx, text, maxW) {
     var t = String(text || '');
     if (ctx.measureText(t).width <= maxW) return t;
@@ -1078,13 +1212,15 @@
     return t + '…';
   }
 
-  function shareFileName(variant, format) {
+  function shareFileName(variant, format, theme) {
     var f = FORMATS[format] || FORMATS['4:5'];
-    return 'lenzflix-' + variant + '-' + f.file + '.png';
+    var info = THEME_INFO[theme] || THEME_INFO[themeId()];
+    return info.filePrefix + '-' + variant + '-' + f.file + '.png';
   }
 
-  function heatColor(level) {
-    return level > 0 ? 'rgba(229, 9, 20, ' + HEAT_ALPHA[level] + ')' : '#232323';
+  function heatColor(level, pal) {
+    var p = pal || SHARE_PALETTES.flix;
+    return level > 0 ? 'rgba(' + p.heat + ', ' + HEAT_ALPHA[level] + ')' : p.cell;
   }
 
   /** Einträge einer Top-Liste, zu denen ein Item (Name) bekannt ist; höchstens max. */
@@ -1143,53 +1279,197 @@
 
   function stxt(g, s, x, y, size, weight, color, maxW, align) {
     var ctx = g.ctx;
-    ctx.font = weight + ' ' + size + 'px ' + SHARE_FONT;
+    ctx.font = weight + ' ' + size + 'px ' + g.pal.font;
     ctx.fillStyle = color;
     ctx.textAlign = align || 'left';
     ctx.fillText(maxW ? fitText(ctx, s, maxW) : String(s), x, y);
   }
 
+  /** Karte (LENZ+: weich mit Schatten; LENZPRIME: Glasfläche mit feiner Kante). Nur für plus/prime. */
+  function shareCard(g, x, y, w, h, r) {
+    var ctx = g.ctx;
+    var p = g.pal;
+    if (g.theme === 'plus') {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+      ctx.shadowBlur = 36;
+      ctx.shadowOffsetY = 14;
+      ctx.fillStyle = p.card;
+      roundRectPath(ctx, x, y, w, h, r);
+      ctx.fill();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+    } else {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      roundRectPath(ctx, x, y, w, h, r);
+      ctx.fill();
+      ctx.fillStyle = p.card;
+      roundRectPath(ctx, x + 2, y + 2, w - 4, h - 4, Math.max(0, r - 2));
+      ctx.fill();
+    }
+  }
+
+  /** Abschnittstitel: LENZ+ zurückhaltend, LENZPRIME weiß und fett. */
+  function shareHead(g, text, y) {
+    if (g.theme === 'prime') stxt(g, text, g.x, y, 44, 700, g.pal.text);
+    else stxt(g, text, g.x, y, 44, 500, g.pal.muted);
+  }
+
+  function drawBrandLogo(g, y, h) {
+    var info = THEME_INFO[g.theme];
+    var img = g.logo;
+    if (img && (img.naturalWidth || img.width || img.complete)) {
+      try {
+        g.ctx.drawImage(img, g.x, y, Math.round(h * info.ratio), h);
+        return;
+      } catch (e) {
+        /* Text-Ersatz */
+      }
+    }
+    stxt(g, info.name, g.x, y + Math.round(h * 0.85), Math.round(h * 0.95), 800, g.pal.text);
+  }
+
   function drawFrame(g) {
     var ctx = g.ctx;
-    ctx.fillStyle = '#141414';
+    var p = g.pal;
+    ctx.fillStyle = p.bg;
     ctx.fillRect(0, 0, g.W, g.H);
-    ctx.fillStyle = '#e50914';
-    ctx.fillRect(0, 0, g.W, 14);
+    if (g.theme !== 'flix' && ctx.createRadialGradient) {
+      var glow = ctx.createRadialGradient(g.W * 0.85, 0, 0, g.W * 0.85, 0, g.W * 0.95);
+      glow.addColorStop(0, g.theme === 'plus' ? 'rgba(27, 179, 232, 0.26)' : 'rgba(26, 152, 255, 0.34)');
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, g.W, Math.round(g.W * 0.95));
+    }
+    if (p.stripe) {
+      ctx.fillStyle = p.stripe;
+      ctx.fillRect(0, 0, g.W, 14);
+    }
     ctx.textBaseline = 'alphabetic';
-    stxt(g, 'LENZFLIX', g.x, g.top + 170, 76, 800, '#e50914');
-    stxt(g, 'Meine Statistik · ' + (RANGE_TITLES[g.stats.range] || ''), g.x, g.top + 235, 40, 500, '#b3b3b3', g.cw);
-    stxt(g, 'Inoffizielles Jellyfin-Theme', g.x, g.footY, 34, 500, '#808080', g.cw);
+    if (g.theme === 'flix') {
+      stxt(g, 'LENZFLIX', g.x, g.top + 170, 76, 800, p.accent);
+      stxt(g, 'Meine Statistik · ' + (RANGE_TITLES[g.stats.range] || ''), g.x, g.top + 235, 40, 500, p.muted, g.cw);
+    } else if (g.theme === 'plus') {
+      drawBrandLogo(g, g.top + 70, 84);
+      stxt(g, 'Meine Statistik · ' + (RANGE_TITLES[g.stats.range] || ''), g.x, g.top + 238, 40, 500, p.muted, g.cw);
+    } else {
+      drawBrandLogo(g, g.top + 62, 84);
+      var title = 'Meine Statistik';
+      stxt(g, title, g.x, g.top + 238, 50, 700, p.text);
+      /* weißes Versal-Badge mit dem Zeitraum */
+      var label = String(RANGE_TITLES[g.stats.range] || '').toUpperCase();
+      if (label) {
+        ctx.font = '700 50px ' + p.font;
+        var bx = g.x + ctx.measureText(title).width + 26;
+        ctx.font = '700 26px ' + p.font;
+        var bw = ctx.measureText(label).width + 36;
+        ctx.fillStyle = '#ffffff';
+        roundRectPath(ctx, bx, g.top + 238 - 36, bw, 46, 6);
+        ctx.fill();
+        stxt(g, label, bx + 18, g.top + 238 - 3, 26, 700, p.bg);
+      }
+    }
+    stxt(g, 'Inoffizielles Jellyfin-Theme', g.x, g.footY, 34, 500, p.soft, g.cw);
   }
 
   function drawOverview(g) {
+    if (g.theme !== 'flix') {
+      drawOverviewThemed(g);
+      return;
+    }
+    var p = g.pal;
     var t = g.stats.totals || {};
     var f = g.f;
     var y = g.y0;
-    stxt(g, 'Watchtime', g.x, y + 50 * f, 44, 500, '#b3b3b3');
+    stxt(g, 'Watchtime', g.x, y + 50 * f, 44, 500, p.muted);
     var wt = fmtDuration(t.seconds);
     var wsize = 130;
-    g.ctx.font = '800 ' + wsize + 'px ' + SHARE_FONT;
+    g.ctx.font = '800 ' + wsize + 'px ' + p.font;
     while (wsize > 56 && g.ctx.measureText(wt).width > g.cw) {
       wsize -= 10;
-      g.ctx.font = '800 ' + wsize + 'px ' + SHARE_FONT;
+      g.ctx.font = '800 ' + wsize + 'px ' + p.font;
     }
-    stxt(g, wt, g.x, y + 200 * f, wsize, 800, '#ffffff', g.cw);
+    stxt(g, wt, g.x, y + 200 * f, wsize, 800, p.text, g.cw);
     var counts =
       fmtInt(t.episodes) + (Number(t.episodes) === 1 ? ' Folge' : ' Folgen') + ' · ' +
       fmtInt(t.movies) + (Number(t.movies) === 1 ? ' Film' : ' Filme') + ' · ' +
       fmtInt(t.series) + (Number(t.series) === 1 ? ' Serie' : ' Serien');
-    stxt(g, counts, g.x, y + 320 * f, 52, 600, '#ffffff', g.cw);
-    stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + 395 * f, 44, 500, '#b3b3b3', g.cw);
-    if (g.stats.compare) stxt(g, compareText(g.stats.compare), g.x, y + 465 * f, 44, 500, '#b3b3b3', g.cw);
+    stxt(g, counts, g.x, y + 320 * f, 52, 600, p.text, g.cw);
+    stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + 395 * f, 44, 500, p.muted, g.cw);
+    if (g.stats.compare) stxt(g, compareText(g.stats.compare), g.x, y + 465 * f, 44, 500, p.muted, g.cw);
     var top = topEntries(g.stats.topSeries, g.items, 1)[0];
     if (top) {
-      stxt(g, 'Top-Serie', g.x, y + 620 * f, 44, 500, '#b3b3b3');
-      stxt(g, top.name, g.x, y + 710 * f, 72, 700, '#ffffff', g.cw);
+      stxt(g, 'Top-Serie', g.x, y + 620 * f, 44, 500, p.muted);
+      stxt(g, top.name, g.x, y + 710 * f, 72, 700, p.text, g.cw);
+    }
+  }
+
+  /** LENZ+: große Karte mit Watchtime, drei Kennzahl-Karten, Top-Serie in Karte.
+      LENZPRIME: Watchtime frei auf dem Verlauf, Glas-Kacheln, Top-Serie mit grüner Rangziffer. */
+  function drawOverviewThemed(g) {
+    var ctx = g.ctx;
+    var p = g.pal;
+    var plus = g.theme === 'plus';
+    var t = g.stats.totals || {};
+    var f = g.f;
+    var y = g.y0;
+    var heroH = Math.round(330 * f);
+    var ix = plus ? g.x + 44 : g.x;
+    var iw = plus ? g.cw - 88 : g.cw;
+    if (plus) shareCard(g, g.x, y, g.cw, heroH, 40);
+    stxt(g, 'Watchtime', ix, y + (plus ? 82 : 52) * f, 42, plus ? 500 : 700, plus ? p.muted : '#5aa9ff');
+    var wt = fmtDuration(t.seconds);
+    var wsize = 130;
+    ctx.font = '800 ' + wsize + 'px ' + p.font;
+    while (wsize > 56 && ctx.measureText(wt).width > iw) {
+      wsize -= 10;
+      ctx.font = '800 ' + wsize + 'px ' + p.font;
+    }
+    stxt(g, wt, ix, y + (plus ? 225 : 195) * f, wsize, plus ? 800 : 700, p.text, iw);
+    if (g.stats.compare) {
+      var ct = plus ? compareText(g.stats.compare) : compareText(g.stats.compare).toUpperCase();
+      var cy = y + (plus ? 262 : 250) * f;
+      ctx.font = '600 30px ' + p.font;
+      var cwid = Math.min(iw, ctx.measureText(ct).width + 44);
+      ctx.fillStyle = plus ? 'rgba(255, 255, 255, 0.12)' : '#ffffff';
+      roundRectPath(ctx, ix, cy, cwid, 52, plus ? 26 : 6);
+      ctx.fill();
+      stxt(g, ct, ix + 22, cy + 37, 30, 600, plus ? p.text : p.bg, iw - 44);
+    }
+    var gap = 24;
+    var tw = Math.floor((g.cw - gap * 2) / 3);
+    var th = Math.round(170 * f);
+    var ty = y + Math.round(360 * f);
+    var tiles = [
+      [fmtInt(t.episodes), Number(t.episodes) === 1 ? 'Folge' : 'Folgen'],
+      [fmtInt(t.movies), Number(t.movies) === 1 ? 'Film' : 'Filme'],
+      [fmtInt(t.series), Number(t.series) === 1 ? 'Serie' : 'Serien'],
+    ];
+    tiles.forEach(function (tl, i) {
+      var tx = g.x + i * (tw + gap);
+      shareCard(g, tx, ty, tw, th, plus ? 32 : 14);
+      stxt(g, tl[0], tx + 30, ty + th * 0.56, 66, plus ? 800 : 700, p.text, tw - 40);
+      stxt(g, tl[1], tx + 30, ty + th * 0.84, 30, 500, p.muted, tw - 40);
+    });
+    stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + Math.round(600 * f), 40, 500, p.muted, g.cw);
+    var top = topEntries(g.stats.topSeries, g.items, 1)[0];
+    if (top) {
+      var cy2 = y + Math.round(650 * f);
+      var ch = Math.round(190 * f);
+      shareCard(g, g.x, cy2, g.cw, ch, plus ? 36 : 14);
+      var nx = g.x + 36;
+      if (!plus) {
+        stxt(g, '1', g.x + 30, cy2 + ch * 0.8, Math.round(ch * 0.7), 900, p.rank);
+        nx = g.x + 30 + Math.round(ch * 0.42) + 30;
+      }
+      stxt(g, 'Top-Serie', nx, cy2 + ch * 0.32, 30, 500, p.muted);
+      stxt(g, top.name, nx, cy2 + ch * 0.7, 58, 700, p.text, g.x + g.cw - nx - 30);
     }
   }
 
   function drawPoster(g, x, y, w, h, name, img) {
     var ctx = g.ctx;
+    var rad = g.theme === 'plus' ? 16 : 8;
     var done = false;
     if (img && (img.naturalWidth || img.width)) {
       try {
@@ -1199,7 +1479,7 @@
         var cw = w / sc;
         var ch = h / sc;
         ctx.save();
-        roundRectPath(ctx, x, y, w, h, 8);
+        roundRectPath(ctx, x, y, w, h, rad);
         ctx.clip();
         ctx.drawImage(img, (sw - cw) / 2, (sh - ch) / 2, cw, ch, x, y, w, h);
         ctx.restore();
@@ -1209,26 +1489,30 @@
       }
     }
     if (done) return;
-    ctx.fillStyle = '#2f2f2f';
-    roundRectPath(ctx, x, y, w, h, 8);
+    ctx.fillStyle = g.pal.poster;
+    roundRectPath(ctx, x, y, w, h, rad);
     ctx.fill();
-    stxt(g, (name || '?').charAt(0).toUpperCase(), x + w / 2, y + h / 2 + h * 0.14, Math.round(h * 0.4), 800, '#808080', 0, 'center');
+    stxt(g, (name || '?').charAt(0).toUpperCase(), x + w / 2, y + h / 2 + h * 0.14, Math.round(h * 0.4), 800, g.pal.posterText, 0, 'center');
   }
 
   function drawTopRow(g, e, rank, y, rh, kind) {
+    var p = g.pal;
     var ph = rh - 14;
     var pw = Math.round((ph * 2) / 3);
     var px = g.x + 60;
+    if (g.theme === 'plus') shareCard(g, g.x - 28, y - 4, g.cw + 56, ph + 8, 28);
+    if (g.theme === 'prime') px = g.x + Math.round(ph * 0.6);
     var tx = px + pw + 24;
     var maxW = g.W - g.x - tx;
-    stxt(g, String(rank), g.x, y + ph / 2 + 14, 40, 800, '#e50914');
+    if (g.theme === 'prime') stxt(g, String(rank), g.x, y + ph - 6, Math.round(ph * 0.95), 900, p.rank);
+    else stxt(g, String(rank), g.x, y + ph / 2 + 14, 40, 800, p.rank);
     drawPoster(g, px, y, pw, ph, e.name, g.posters[e.id]);
     var meta = fmtDuration(e.entry.seconds);
     if (kind === 'series') meta += ' · ' + fmtInt(e.entry.episodes) + (Number(e.entry.episodes) === 1 ? ' Folge' : ' Folgen');
     else if (Number(e.entry.plays) > 1) meta += ' · ' + fmtInt(e.entry.plays) + 'x';
     var nameSize = rh >= 100 ? 40 : 34;
-    stxt(g, e.name, tx, y + ph / 2 - 4, nameSize, 700, '#ffffff', maxW);
-    stxt(g, meta, tx, y + ph / 2 + 34, 32, 500, '#b3b3b3', maxW);
+    stxt(g, e.name, tx, y + ph / 2 - 4, nameSize, 700, p.text, maxW);
+    stxt(g, meta, tx, y + ph / 2 + 34, 32, 500, p.muted, maxW);
   }
 
   function drawTop(g) {
@@ -1241,7 +1525,7 @@
     var y = g.y0;
     function block(title, list, kind) {
       if (!list.length) return;
-      stxt(g, title, g.x, y + 40, 44, 500, '#b3b3b3');
+      shareHead(g, title, y + 40);
       y += 80;
       list.forEach(function (e, i) {
         drawTopRow(g, e, i + 1, y, rh, kind);
@@ -1257,7 +1541,9 @@
     var st = g.stats;
     var f = g.f;
     var ctx = g.ctx;
+    var p = g.pal;
     var y = g.y0;
+    if (g.theme !== 'flix') shareCard(g, g.x - 32, y - 28, g.cw + 64, g.y1 - g.y0 + 44, g.theme === 'plus' ? 40 : 16);
     var unit = (st.timeline && st.timeline.unit) || 'day';
     var days = st.range === '7d' ? 7 : st.range === '30d' ? 30 : 0;
     var data = fillTimeline(unit, (st.timeline && st.timeline.buckets) || [], { days: days, now: g.now });
@@ -1268,7 +1554,7 @@
     if (data.length && max > 0) {
       var chartH = Math.round(260 * f);
       var base = y + 70 + chartH;
-      stxt(g, 'Verlauf', g.x, y + 40, 44, 500, '#b3b3b3');
+      shareHead(g, 'Verlauf', y + 40);
       var axis = niceAxis(max);
       var lm = 130; // Platz für die Y-Achsen-Beschriftung
       var px = g.x + lm;
@@ -1277,26 +1563,26 @@
       for (t = 0; t <= axis.count; t++) {
         var ty = base - (t / axis.count) * chartH;
         if (t > 0) {
-          ctx.fillStyle = '#2a2a2a';
+          ctx.fillStyle = p.grid;
           ctx.fillRect(px, ty - 1, pw, 2);
         }
-        stxt(g, axisTickLabel(t * axis.step, axis.step), px - 16, ty + 10, 28, 500, '#808080', 0, 'right');
+        stxt(g, axisTickLabel(t * axis.step, axis.step), px - 16, ty + 10, 28, 500, p.soft, 0, 'right');
       }
       var slot = pw / data.length;
       var bw = Math.max(1, slot * 0.72);
-      ctx.fillStyle = '#e50914';
+      ctx.fillStyle = p.bar;
       data.forEach(function (b, i) {
         if (!(b.seconds > 0)) return;
         var h = Math.max(3, (b.seconds / axis.max) * chartH);
         ctx.fillRect(px + i * slot + (slot - bw) / 2, base - h, bw, h);
       });
-      ctx.fillStyle = '#404040';
+      ctx.fillStyle = p.axis;
       ctx.fillRect(px, base, pw, 2);
       var last = data.length - 1;
       var mid = Math.floor(last / 2);
-      stxt(g, axisLabel(unit, data[0].key), px, base + 36, 28, 500, '#808080', 0, 'left');
-      if (last >= 2) stxt(g, axisLabel(unit, data[mid].key), px + mid * slot + slot / 2, base + 36, 28, 500, '#808080', 0, 'center');
-      if (last >= 1) stxt(g, axisLabel(unit, data[last].key), px + pw, base + 36, 28, 500, '#808080', 0, 'right');
+      stxt(g, axisLabel(unit, data[0].key), px, base + 36, 28, 500, p.soft, 0, 'left');
+      if (last >= 2) stxt(g, axisLabel(unit, data[mid].key), px + mid * slot + slot / 2, base + 36, 28, 500, p.soft, 0, 'center');
+      if (last >= 1) stxt(g, axisLabel(unit, data[last].key), px + pw, base + 36, 28, 500, p.soft, 0, 'right');
       y = base + 36 + 50 * f;
     }
     var hm = buildHeatmap(st.heatmap);
@@ -1305,40 +1591,41 @@
       var cs = Math.floor((g.cw - lw) / 24);
       var chh = Math.round(cs * (f > 1.2 ? 1.3 : 1));
       var gy = y + 70;
-      stxt(g, 'Wann du schaust', g.x, y + 40, 44, 500, '#b3b3b3');
+      shareHead(g, 'Wann du schaust', y + 40);
       var d, h;
       for (d = 0; d < 7; d++) {
-        stxt(g, DOW_LABELS[d], g.x, gy + d * chh + chh * 0.7, 26, 500, '#b3b3b3', 0, 'left');
+        stxt(g, DOW_LABELS[d], g.x, gy + d * chh + chh * 0.7, 26, 500, p.muted, 0, 'left');
         for (h = 0; h < 24; h++) {
           var lv = hm.levels[d][h];
           var cx = g.x + lw + h * cs;
           var cy = gy + d * chh;
-          ctx.fillStyle = '#232323';
+          ctx.fillStyle = p.cell;
           ctx.fillRect(cx, cy, cs - 4, chh - 4);
           if (lv > 0) {
-            ctx.fillStyle = heatColor(lv);
+            ctx.fillStyle = heatColor(lv, p);
             ctx.fillRect(cx, cy, cs - 4, chh - 4);
           }
         }
       }
       [0, 6, 12, 18].forEach(function (hh) {
-        stxt(g, hh + ' Uhr', g.x + lw + hh * cs, gy + 7 * chh + 32, 26, 500, '#808080', 0, 'left');
+        stxt(g, hh + ' Uhr', g.x + lw + hh * cs, gy + 7 * chh + 32, 26, 500, p.soft, 0, 'left');
       });
     }
   }
 
   function drawShareRows(g, rows, y, rh) {
     var ctx = g.ctx;
+    var p = g.pal;
     var size = Math.min(34, Math.floor(rh * 0.5));
     rows.forEach(function (r) {
       var right = Math.round(r.share * 100) + ' % · ' + fmtDuration(r.seconds);
-      stxt(g, right, g.x + g.cw, y + size, size, 500, '#b3b3b3', 0, 'right');
+      stxt(g, right, g.x + g.cw, y + size, size, 500, p.muted, 0, 'right');
       var rw = ctx.measureText(right).width;
-      stxt(g, r.label, g.x, y + size, size, 600, '#ffffff', Math.max(100, g.cw - rw - 24), 'left');
-      ctx.fillStyle = '#2f2f2f';
+      stxt(g, r.label, g.x, y + size, size, 600, p.text, Math.max(100, g.cw - rw - 24), 'left');
+      ctx.fillStyle = p.track;
       roundRectPath(ctx, g.x, y + size + 12, g.cw, 12, 6);
       ctx.fill();
-      ctx.fillStyle = '#e50914';
+      ctx.fillStyle = p.accent;
       roundRectPath(ctx, g.x, y + size + 12, Math.max(12, g.cw * r.share), 12, 6);
       ctx.fill();
       y += rh;
@@ -1346,19 +1633,21 @@
   }
 
   function drawBinge(g) {
+    var p = g.pal;
     var b = g.stats.binge || {};
     var dev = shareDevices(g.stats);
     var met = shareMethods(g.stats);
     var y = g.y0;
+    if (g.theme !== 'flix') shareCard(g, g.x - 32, y - 28, g.cw + 64, g.y1 - g.y0 + 44, g.theme === 'plus' ? 40 : 16);
     if (b.topDay) {
-      stxt(g, 'Bester Tag', g.x, y + 40, 44, 500, '#b3b3b3');
-      stxt(g, fmtDate(b.topDay.date) + ' · ' + fmtDuration(b.topDay.seconds), g.x, y + 110, 56, 700, '#ffffff', g.cw);
+      shareHead(g, 'Bester Tag', y + 40);
+      stxt(g, fmtDate(b.topDay.date) + ' · ' + fmtDuration(b.topDay.seconds), g.x, y + 110, 56, 700, p.text, g.cw);
       y += 150;
     }
     if (b.seriesDay) {
       var sd = g.items[normId(b.seriesDay.seriesId)];
       var n = Number(b.seriesDay.episodes) || 0;
-      stxt(g, n + (n === 1 ? ' Folge' : ' Folgen') + ' von ' + (sd ? sd.name : 'einer Serie') + ' am ' + fmtDate(b.seriesDay.date), g.x, y + 30, 38, 500, '#ffffff', g.cw);
+      stxt(g, n + (n === 1 ? ' Folge' : ' Folgen') + ' von ' + (sd ? sd.name : 'einer Serie') + ' am ' + fmtDate(b.seriesDay.date), g.x, y + 30, 38, 500, p.text, g.cw);
       y += 70;
     }
     y += 20;
@@ -1367,19 +1656,19 @@
     if (!rows) return;
     var rh = Math.max(52, Math.min(84, Math.floor((g.y1 - y - heads * 80) / rows)));
     if (dev.length) {
-      stxt(g, 'Top-Geräte', g.x, y + 40, 44, 500, '#b3b3b3');
+      shareHead(g, 'Top-Geräte', y + 40);
       y += 80;
       drawShareRows(g, dev, y, rh);
       y += dev.length * rh + 10;
     }
     if (met.length) {
-      stxt(g, 'Wiedergabeart', g.x, y + 40, 44, 500, '#b3b3b3');
+      shareHead(g, 'Wiedergabeart', y + 40);
       y += 80;
       drawShareRows(g, met, y, rh);
     }
   }
 
-  /** Zeichnet das Share-Bild synchron auf canvas. o: { variant, format, stats, items, posters, now }. */
+  /** Zeichnet das Share-Bild synchron auf canvas. o: { variant, format, stats, items, posters, now, theme, logo }. */
   function drawShare(canvas, o) {
     var fmt = FORMATS[o.format] || FORMATS['4:5'];
     canvas.width = fmt.w;
@@ -1387,7 +1676,8 @@
     var ctx = canvas.getContext('2d');
     if (!ctx) return canvas;
     var story = fmt.h > 1500;
-    var g = { ctx: ctx, W: fmt.w, H: fmt.h, story: story, stats: o.stats || {}, items: o.items || {}, posters: o.posters || {}, now: o.now || new Date(), x: 80, cw: fmt.w - 160 };
+    var theme = validTheme(o.theme) || themeId();
+    var g = { ctx: ctx, W: fmt.w, H: fmt.h, story: story, theme: theme, pal: sharePalette(theme), logo: o.logo || null, stats: o.stats || {}, items: o.items || {}, posters: o.posters || {}, now: o.now || new Date(), x: 80, cw: fmt.w - 160 };
     g.top = story ? 110 : 0;
     g.y0 = g.top + 310;
     g.footY = fmt.h - (story ? 140 : 80);
@@ -1476,6 +1766,35 @@
 
   var shareDlg = null;
 
+  /** Design-Schrift (Canvas braucht sie vorab geladen) und Wortmarke laden; danach neu zeichnen. Maximal ~4 s. */
+  function loadShareAssets(st, repaint) {
+    var info = THEME_INFO[st.theme];
+    var fam = SHARE_FAMILIES[st.theme];
+    var font = Promise.resolve();
+    if (document.fonts && document.fonts.load) {
+      font = Promise.all(
+        ['500', '700', '800', '900'].map(function (w) {
+          return document.fonts.load(w + ' 40px "' + fam + '"').catch(function () {
+            return null;
+          });
+        })
+      );
+    }
+    var logo = info.shareLogo ? loadImage(info.shareLogo) : Promise.resolve(null);
+    var timeout = new Promise(function (resolve) {
+      window.setTimeout(function () {
+        resolve(null);
+      }, 4000);
+    });
+    st.assetsPending = true;
+    st.assets = Promise.race([Promise.all([font, logo]), timeout]).then(function (r) {
+      st.assetsPending = false;
+      if (r && r[1]) st.logo = r[1];
+      if (shareDlg === st) repaint();
+    });
+    return st.assets;
+  }
+
   function closeShareDialog(restoreFocus) {
     var st = shareDlg;
     if (!st) return;
@@ -1514,6 +1833,10 @@
       pending: {},
       seq: 0,
       ready: null,
+      theme: themeId(),
+      logo: null,
+      assetsPending: false,
+      assets: null,
       prevOverflow: document.body.style.overflow,
     };
     var variants = shareVariants(stats, st.items);
@@ -1534,7 +1857,7 @@
 
     function paint() {
       var seq = ++st.seq;
-      var o = { variant: st.variant, format: st.format, stats: stats, items: st.items, posters: st.posters };
+      var o = { variant: st.variant, format: st.format, stats: stats, items: st.items, posters: st.posters, theme: st.theme, logo: st.logo };
       try {
         drawShare(canvas, o);
       } catch (e) {
@@ -1612,6 +1935,11 @@
       function exportNow() {
         /* Dialog wurde währenddessen geschlossen: nichts mehr exportieren. */
         if (shareDlg !== st) return;
+        /* Schrift/Wortmarke des Designs laden noch: darauf warten (danach zeichnet paint() neu). */
+        if (st.assetsPending) {
+          st.assets.then(exportNow);
+          return;
+        }
         /* Variante/Format wurden gewechselt und die neue Zeichnung lädt noch Poster: darauf warten. */
         if (st.ready) {
           st.ready.then(exportNow);
@@ -1619,9 +1947,10 @@
         }
         var variant = st.variant;
         var format = st.format;
+        var theme = st.theme;
         canvas.toBlob(function (blob) {
           save.disabled = false;
-          if (blob) deliverBlob(blob, shareFileName(variant, format));
+          if (blob) deliverBlob(blob, shareFileName(variant, format, theme));
         }, 'image/png');
       }
       /* Ohne laufende Poster-Ladung läuft das synchron (Share braucht die Nutzergeste). */
@@ -1674,6 +2003,7 @@
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
     paint();
+    if (st.theme !== 'flix') loadShareAssets(st, paint);
     dlg.focus();
     return overlay;
   }
@@ -1681,6 +2011,7 @@
   /* ---------- Ablauf ---------- */
 
   function loadAll() {
+    applyTheme(resolveTheme());
     var ui = showLoading('Statistik wird berechnet …', 1, 2);
     /* Nach längerer Pause rechnet der Server alles neu (mehrere Abfragen an Jellyfin). */
     var slow = window.setTimeout(function () {
@@ -1753,6 +2084,7 @@
 
   function start() {
     root = document.getElementById('lfx-app');
+    applyTheme(resolveTheme());
     requestJson('/System/Info/Public', { method: 'GET', credentials: 'omit' }).then(
       function (res) {
         if (!(res.ok && res.json && (res.json.ServerName || res.json.Version))) {
@@ -1800,6 +2132,12 @@
     shareVariants: shareVariants,
     shareFileName: shareFileName,
     heatColor: heatColor,
+    resolveTheme: resolveTheme,
+    applyTheme: applyTheme,
+    themeId: themeId,
+    sharePalette: sharePalette,
+    sharePalettes: SHARE_PALETTES,
+    themeInfo: THEME_INFO,
     topEntries: topEntries,
     drawShare: drawShare,
     openShareDialog: openShareDialog,

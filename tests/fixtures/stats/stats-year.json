@@ -1,0 +1,603 @@
+{
+  "range": "year",
+  "computedAt": "2026-11-10T17:00:00.000Z",
+  "totals": {
+    "seconds": 1809553,
+    "plays": 1022,
+    "episodes": 847,
+    "movies": 63,
+    "series": 21,
+    "activeDays": 182
+  },
+  "compare": {
+    "rank": 2,
+    "of": 9,
+    "avgSeconds": 1340410
+  },
+  "topSeries": [
+    {
+      "id": "73758b19cd1796f107f8e8ba2422c7d3",
+      "seconds": 260001,
+      "episodes": 168
+    },
+    {
+      "id": "49e8724fa1b8d48da9d7d56df82f4d6c",
+      "seconds": 151669,
+      "episodes": 84
+    },
+    {
+      "id": "82f33c810017f7ced843a9f0943d7ea1",
+      "seconds": 107058,
+      "episodes": 56
+    },
+    {
+      "id": "7078fbe5aabfcf2be217ff6d1a13b93d",
+      "seconds": 82726,
+      "episodes": 42
+    },
+    {
+      "id": "d4750ab23f2b82fca9070b2a7d488dbe",
+      "seconds": 67410,
+      "episodes": 35
+    },
+    {
+      "id": "193c6f16c874b2cbb56d1b2919311cd4",
+      "seconds": 56875,
+      "episodes": 28
+    },
+    {
+      "id": "6c48e96b3fb465f612ad45043ae3b753",
+      "seconds": 49189,
+      "episodes": 21
+    },
+    {
+      "id": "628b8eb8ea83e3e0c36ebab4883332e3",
+      "seconds": 43330,
+      "episodes": 21
+    }
+  ],
+  "topMovies": [
+    {
+      "id": "b1d858bf4158cea7938b86b531f12950",
+      "seconds": 58800,
+      "plays": 2
+    },
+    {
+      "id": "cc884f868d1c01cee323b144e3912f9c",
+      "seconds": 52500,
+      "plays": 1
+    },
+    {
+      "id": "d993c12b228ec34b10fa817565a809be",
+      "seconds": 46200,
+      "plays": 1
+    },
+    {
+      "id": "8d77ffb62403b2a6cd436f852d76d271",
+      "seconds": 39900,
+      "plays": 1
+    },
+    {
+      "id": "fed9ffddc68efd8630ba8bf9915926b2",
+      "seconds": 33600,
+      "plays": 1
+    }
+  ],
+  "timeline": {
+    "unit": "week",
+    "buckets": [
+      {
+        "ago": 43,
+        "seconds": 51455
+      },
+      {
+        "ago": 42,
+        "seconds": 53487
+      },
+      {
+        "ago": 41,
+        "seconds": 21892
+      },
+      {
+        "ago": 40,
+        "seconds": 41532
+      },
+      {
+        "ago": 39,
+        "seconds": 23278
+      },
+      {
+        "ago": 37,
+        "seconds": 69496
+      },
+      {
+        "ago": 36,
+        "seconds": 60360
+      },
+      {
+        "ago": 35,
+        "seconds": 40371
+      },
+      {
+        "ago": 34,
+        "seconds": 21330
+      },
+      {
+        "ago": 33,
+        "seconds": 43139
+      },
+      {
+        "ago": 32,
+        "seconds": 44599
+      },
+      {
+        "ago": 31,
+        "seconds": 21591
+      },
+      {
+        "ago": 30,
+        "seconds": 34931
+      },
+      {
+        "ago": 29,
+        "seconds": 59677
+      },
+      {
+        "ago": 28,
+        "seconds": 69845
+      },
+      {
+        "ago": 27,
+        "seconds": 38836
+      },
+      {
+        "ago": 26,
+        "seconds": 23353
+      },
+      {
+        "ago": 25,
+        "seconds": 58723
+      },
+      {
+        "ago": 24,
+        "seconds": 23377
+      },
+      {
+        "ago": 23,
+        "seconds": 49139
+      },
+      {
+        "ago": 21,
+        "seconds": 38004
+      },
+      {
+        "ago": 20,
+        "seconds": 52850
+      },
+      {
+        "ago": 19,
+        "seconds": 47681
+      },
+      {
+        "ago": 18,
+        "seconds": 71525
+      },
+      {
+        "ago": 17,
+        "seconds": 21381
+      },
+      {
+        "ago": 16,
+        "seconds": 69770
+      },
+      {
+        "ago": 15,
+        "seconds": 50921
+      },
+      {
+        "ago": 14,
+        "seconds": 50505
+      },
+      {
+        "ago": 13,
+        "seconds": 55332
+      },
+      {
+        "ago": 12,
+        "seconds": 28883
+      },
+      {
+        "ago": 11,
+        "seconds": 46153
+      },
+      {
+        "ago": 10,
+        "seconds": 53258
+      },
+      {
+        "ago": 8,
+        "seconds": 28892
+      },
+      {
+        "ago": 6,
+        "seconds": 51148
+      },
+      {
+        "ago": 5,
+        "seconds": 37151
+      },
+      {
+        "ago": 4,
+        "seconds": 39119
+      },
+      {
+        "ago": 3,
+        "seconds": 63219
+      },
+      {
+        "ago": 2,
+        "seconds": 60814
+      },
+      {
+        "ago": 1,
+        "seconds": 31776
+      },
+      {
+        "ago": 0,
+        "seconds": 60760
+      }
+    ]
+  },
+  "heatmap": [
+    {
+      "dow": 0,
+      "hour": 10,
+      "seconds": 9457
+    },
+    {
+      "dow": 0,
+      "hour": 11,
+      "seconds": 7574
+    },
+    {
+      "dow": 0,
+      "hour": 12,
+      "seconds": 4186
+    },
+    {
+      "dow": 0,
+      "hour": 13,
+      "seconds": 14707
+    },
+    {
+      "dow": 0,
+      "hour": 14,
+      "seconds": 8855
+    },
+    {
+      "dow": 0,
+      "hour": 15,
+      "seconds": 21294
+    },
+    {
+      "dow": 0,
+      "hour": 16,
+      "seconds": 23681
+    },
+    {
+      "dow": 0,
+      "hour": 17,
+      "seconds": 22750
+    },
+    {
+      "dow": 0,
+      "hour": 18,
+      "seconds": 20839
+    },
+    {
+      "dow": 0,
+      "hour": 19,
+      "seconds": 33803
+    },
+    {
+      "dow": 0,
+      "hour": 20,
+      "seconds": 29029
+    },
+    {
+      "dow": 0,
+      "hour": 21,
+      "seconds": 43981
+    },
+    {
+      "dow": 0,
+      "hour": 22,
+      "seconds": 47404
+    },
+    {
+      "dow": 0,
+      "hour": 23,
+      "seconds": 52605
+    },
+    {
+      "dow": 1,
+      "hour": 12,
+      "seconds": 2513
+    },
+    {
+      "dow": 1,
+      "hour": 19,
+      "seconds": 21035
+    },
+    {
+      "dow": 1,
+      "hour": 20,
+      "seconds": 19831
+    },
+    {
+      "dow": 1,
+      "hour": 21,
+      "seconds": 32361
+    },
+    {
+      "dow": 1,
+      "hour": 22,
+      "seconds": 37457
+    },
+    {
+      "dow": 1,
+      "hour": 23,
+      "seconds": 20062
+    },
+    {
+      "dow": 2,
+      "hour": 13,
+      "seconds": 3304
+    },
+    {
+      "dow": 2,
+      "hour": 19,
+      "seconds": 19439
+    },
+    {
+      "dow": 2,
+      "hour": 20,
+      "seconds": 31878
+    },
+    {
+      "dow": 2,
+      "hour": 21,
+      "seconds": 25879
+    },
+    {
+      "dow": 2,
+      "hour": 22,
+      "seconds": 27580
+    },
+    {
+      "dow": 2,
+      "hour": 23,
+      "seconds": 20881
+    },
+    {
+      "dow": 3,
+      "hour": 13,
+      "seconds": 2380
+    },
+    {
+      "dow": 3,
+      "hour": 19,
+      "seconds": 29337
+    },
+    {
+      "dow": 3,
+      "hour": 20,
+      "seconds": 36113
+    },
+    {
+      "dow": 3,
+      "hour": 21,
+      "seconds": 30240
+    },
+    {
+      "dow": 3,
+      "hour": 22,
+      "seconds": 35546
+    },
+    {
+      "dow": 3,
+      "hour": 23,
+      "seconds": 19614
+    },
+    {
+      "dow": 4,
+      "hour": 12,
+      "seconds": 3976
+    },
+    {
+      "dow": 4,
+      "hour": 13,
+      "seconds": 3325
+    },
+    {
+      "dow": 4,
+      "hour": 19,
+      "seconds": 33145
+    },
+    {
+      "dow": 4,
+      "hour": 20,
+      "seconds": 24815
+    },
+    {
+      "dow": 4,
+      "hour": 21,
+      "seconds": 24353
+    },
+    {
+      "dow": 4,
+      "hour": 22,
+      "seconds": 22064
+    },
+    {
+      "dow": 4,
+      "hour": 23,
+      "seconds": 27629
+    },
+    {
+      "dow": 5,
+      "hour": 12,
+      "seconds": 2968
+    },
+    {
+      "dow": 5,
+      "hour": 13,
+      "seconds": 3745
+    },
+    {
+      "dow": 5,
+      "hour": 19,
+      "seconds": 33971
+    },
+    {
+      "dow": 5,
+      "hour": 20,
+      "seconds": 37758
+    },
+    {
+      "dow": 5,
+      "hour": 21,
+      "seconds": 31346
+    },
+    {
+      "dow": 5,
+      "hour": 22,
+      "seconds": 30324
+    },
+    {
+      "dow": 5,
+      "hour": 23,
+      "seconds": 35637
+    },
+    {
+      "dow": 6,
+      "hour": 10,
+      "seconds": 11151
+    },
+    {
+      "dow": 6,
+      "hour": 11,
+      "seconds": 3850
+    },
+    {
+      "dow": 6,
+      "hour": 13,
+      "seconds": 4165
+    },
+    {
+      "dow": 6,
+      "hour": 14,
+      "seconds": 6370
+    },
+    {
+      "dow": 6,
+      "hour": 15,
+      "seconds": 14798
+    },
+    {
+      "dow": 6,
+      "hour": 16,
+      "seconds": 14714
+    },
+    {
+      "dow": 6,
+      "hour": 17,
+      "seconds": 17402
+    },
+    {
+      "dow": 6,
+      "hour": 18,
+      "seconds": 24276
+    },
+    {
+      "dow": 6,
+      "hour": 19,
+      "seconds": 46235
+    },
+    {
+      "dow": 6,
+      "hour": 20,
+      "seconds": 48125
+    },
+    {
+      "dow": 6,
+      "hour": 21,
+      "seconds": 31108
+    },
+    {
+      "dow": 6,
+      "hour": 22,
+      "seconds": 36400
+    },
+    {
+      "dow": 6,
+      "hour": 23,
+      "seconds": 41517
+    }
+  ],
+  "devices": [
+    {
+      "client": "Jellyfin Web",
+      "device": "Chrome",
+      "plays": 448,
+      "seconds": 1687000
+    },
+    {
+      "client": "Jellyfin Android TV",
+      "device": "Wohnzimmer-TV",
+      "plays": 357,
+      "seconds": 1449000
+    },
+    {
+      "client": "Jellyfin iOS",
+      "device": "iPhone",
+      "plays": 154,
+      "seconds": 448000
+    },
+    {
+      "client": "Jellyfin Web",
+      "device": "Firefox",
+      "plays": 63,
+      "seconds": 164500
+    }
+  ],
+  "methods": {
+    "directPlay": {
+      "plays": 616,
+      "seconds": 2457000
+    },
+    "directStream": {
+      "plays": 217,
+      "seconds": 826000
+    },
+    "transcode": {
+      "plays": 189,
+      "seconds": 465500
+    },
+    "other": {
+      "plays": 0,
+      "seconds": 0
+    }
+  },
+  "binge": {
+    "topDay": {
+      "agoDays": 12,
+      "seconds": 31500
+    },
+    "seriesDay": {
+      "seriesId": "73758b19cd1796f107f8e8ba2422c7d3",
+      "agoDays": 12,
+      "episodes": 9
+    }
+  }
+}

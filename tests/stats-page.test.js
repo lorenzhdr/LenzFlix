@@ -821,3 +821,200 @@ describe('Ladeanzeige', () => {
     expect(document.querySelector('.loading')).toBeNull();
   });
 });
+
+describe('Design-Auswahl (resolveTheme/applyTheme)', () => {
+  const store = (obj) => ({ getItem: (k) => (Object.prototype.hasOwnProperty.call(obj, k) ? obj[k] : null) });
+
+  afterEach(() => {
+    L.applyTheme('flix');
+    document.title = '';
+  });
+
+  it('Vorrang: ?theme= vor Benutzerwahl vor lfx.theme.last vor flix', () => {
+    const s = store({ 'lfx.theme.u1': 'plus', 'lfx.theme.last': 'prime' });
+    expect(L.resolveTheme({ search: '?theme=prime', storage: s, userId: 'u1' })).toBe('prime');
+    expect(L.resolveTheme({ search: '', storage: s, userId: 'u1' })).toBe('plus');
+    expect(L.resolveTheme({ search: '', storage: s, userId: 'andere' })).toBe('prime');
+    expect(L.resolveTheme({ search: '', storage: s, userId: null })).toBe('prime');
+    expect(L.resolveTheme({ search: '', storage: store({}), userId: 'u1' })).toBe('flix');
+  });
+
+  it('Whitelist: unbekannte Werte werden ignoriert (Query und Speicher)', () => {
+    const s = store({ 'lfx.theme.u1': 'bogus', 'lfx.theme.last': '<script>' });
+    expect(L.resolveTheme({ search: '?theme=evil', storage: s, userId: 'u1' })).toBe('flix');
+    expect(L.resolveTheme({ search: '?x=1&theme=plus&y=2', storage: s, userId: 'u1' })).toBe('plus');
+    expect(L.resolveTheme({ search: '?theme=PLUS', storage: store({}), userId: null })).toBe('flix');
+  });
+
+  it('kaputter Speicher fällt auf flix zurück', () => {
+    const bad = {
+      getItem: () => {
+        throw new Error('x');
+      },
+    };
+    expect(L.resolveTheme({ search: '', storage: bad, userId: 'u1' })).toBe('flix');
+  });
+
+  it('applyTheme setzt body-Klasse, Titel, Zurück-Link, theme-color und Wortmarke', () => {
+    document.head.innerHTML = '<meta name="theme-color" content="#141414">';
+    document.body.innerHTML =
+      '<header><a class="brand" href="/web/"><img src="lenzflix.svg" alt="LENZFLIX" width="98" height="28"></a><a class="back" href="/web/">Zurück zu LENZFLIX</a></header>';
+    L.applyTheme('plus');
+    expect(document.body.className).toBe('theme-plus');
+    expect(document.title).toBe('Meine Statistik · LENZ+');
+    expect(document.querySelector('.back').textContent).toBe('Zurück zu LENZ+');
+    expect(document.querySelector('meta[name="theme-color"]').getAttribute('content')).toBe('#10131f');
+    expect(document.querySelector('.brand img').getAttribute('src')).toBe('lenzplus.svg');
+    L.applyTheme('prime');
+    expect(document.body.className).toBe('theme-prime');
+    expect(document.querySelector('.back').textContent).toBe('Zurück zu LENZPRIME');
+    expect(document.querySelector('.brand img').getAttribute('src')).toBe('lenzprime.svg');
+    L.applyTheme('nope');
+    expect(document.body.className).toBe('theme-flix');
+    expect(document.querySelector('.brand img').getAttribute('src')).toBe('lenzflix.svg');
+    expect(document.title).toBe('Meine Statistik · LENZFLIX');
+    document.head.innerHTML = '';
+  });
+
+  it('prime: Top-Liste mit großer Rangziffer (tcard-rank + tcol), flix/plus ohne', () => {
+    const items = { abc123: { name: 'Titel', tag: '', type: 'Series' } };
+    const render = () => {
+      const c = document.createElement('div');
+      L.renderTopList(c, [{ id: 'abc123', seconds: 3600, episodes: 2 }], items, 'series');
+      return c;
+    };
+    L.applyTheme('prime');
+    const p = render();
+    expect(p.querySelector('.tcard-rank > .rank').textContent).toBe('1');
+    expect(p.querySelector('.tcard-rank > .tcol > .poster')).not.toBeNull();
+    L.applyTheme('plus');
+    expect(render().querySelector('.tcard-rank')).toBeNull();
+    expect(render().querySelector('.tcard > .rank')).not.toBeNull();
+  });
+});
+
+describe('Share-Bild je Design', () => {
+  const ITEMS = { s1: { name: 'Serie Eins', tag: '', type: 'Series' } };
+  const stats = () => ({
+    range: '30d',
+    totals: { seconds: 123456, plays: 9, episodes: 7, movies: 2, series: 2, activeDays: 5 },
+    compare: { rank: 3, of: 12, avgSeconds: 98000 },
+    topSeries: [{ id: 'S1', seconds: 7200, episodes: 4 }],
+    topMovies: [],
+    timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] },
+    heatmap: [{ dow: 1, hour: 0, seconds: 100 }, { dow: 0, hour: 5, seconds: 400 }],
+  });
+  let origGetContext;
+
+  function makeCtx() {
+    const rec = { calls: [] };
+    ['fillRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'quadraticCurveTo', 'closePath', 'fill', 'clip', 'save', 'restore', 'drawImage'].forEach((m) => {
+      rec[m] = (...args) => rec.calls.push({ m, args, fillStyle: rec.fillStyle, font: rec.font });
+    });
+    rec.measureText = (t) => ({ width: String(t).length * 10 });
+    return rec;
+  }
+
+  beforeEach(() => {
+    origGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function () {
+      if (!this.__ctx) this.__ctx = makeCtx();
+      return this.__ctx;
+    };
+  });
+  afterEach(() => {
+    HTMLCanvasElement.prototype.getContext = origGetContext;
+    L.applyTheme('flix');
+  });
+
+  const draw = (theme, variant, extra) => {
+    const c = document.createElement('canvas');
+    L.drawShare(c, Object.assign({ variant, format: '4:5', stats: stats(), items: ITEMS, theme }, extra || {}));
+    return c.__ctx;
+  };
+  const texts = (ctx) => ctx.calls.filter((c) => c.m === 'fillText').map((c) => c.args[0]);
+
+  it('Paletten: drei Designs mit eigener Schrift und Hintergrund', () => {
+    expect(Object.keys(L.sharePalettes)).toEqual(['flix', 'plus', 'prime']);
+    expect(L.sharePalette('flix').bg).toBe('#141414');
+    expect(L.sharePalette('flix').accent).toBe('#e50914');
+    expect(L.sharePalette('plus').bg).toBe('#10131f');
+    expect(L.sharePalette('prime').bg).toBe('#00050d');
+    expect(L.sharePalette('prime').rank).toBe('#37f1a3');
+    expect(L.sharePalette('gibts-nicht')).toBe(L.sharePalette('flix'));
+    expect(L.sharePalette('plus').font).toContain('LenzPlus Sans');
+    expect(L.sharePalette('prime').font).toContain('LenzPrime Sans');
+    expect(L.heatColor(3)).toBe('rgba(229, 9, 20, 0.6)');
+    expect(L.heatColor(3, L.sharePalette('plus'))).toBe('rgba(27, 179, 232, 0.6)');
+    expect(L.heatColor(0, L.sharePalette('prime'))).toBe(L.sharePalette('prime').cell);
+  });
+
+  it('flix unverändert: Farben, Schrift, Wortmarke als Text', () => {
+    const ctx = draw('flix', 'overview');
+    expect(ctx.calls[0]).toMatchObject({ m: 'fillRect', fillStyle: '#141414' });
+    expect(ctx.calls[1]).toMatchObject({ m: 'fillRect', fillStyle: '#e50914', args: [0, 0, 1080, 14] });
+    const brand = ctx.calls.find((c) => c.m === 'fillText' && c.args[0] === 'LENZFLIX');
+    expect(brand.font).toBe('800 76px "LenzFlix Sans", Helvetica, Arial, sans-serif');
+    expect(ctx.calls.some((c) => c.m === 'drawImage')).toBe(false);
+  });
+
+  it('plus: Navy-Hintergrund, kein roter Streifen, Figtree, Kartenstruktur', () => {
+    const ctx = draw('plus', 'overview');
+    expect(ctx.calls[0]).toMatchObject({ m: 'fillRect', fillStyle: '#10131f' });
+    expect(ctx.calls.some((c) => c.fillStyle === '#e50914')).toBe(false);
+    const t = texts(ctx);
+    expect(t).toContain('LENZ+'); // Text-Ersatz ohne geladene Wortmarke
+    expect(t).toContain('Meine Statistik · Letzte 30 Tage');
+    expect(t).toContain('34 Std 18 Min');
+    expect(t).toContain('Folgen');
+    expect(t).toContain('Serie Eins');
+    expect(ctx.calls.find((c) => c.m === 'fillText' && c.args[0] === '34 Std 18 Min').font).toContain('LenzPlus Sans');
+    expect(ctx.calls.filter((c) => c.m === 'fill' && c.fillStyle === '#1a1f33').length).toBeGreaterThanOrEqual(5); // Karten
+  });
+
+  it('plus/prime: geladene Wortmarke wird als Bild gezeichnet', () => {
+    const logo = { naturalWidth: 372, naturalHeight: 131 };
+    ['plus', 'prime'].forEach((th) => {
+      const ctx = draw(th, 'overview', { logo });
+      const di = ctx.calls.find((c) => c.m === 'drawImage');
+      expect(di.args[0]).toBe(logo);
+      expect(di.args.length).toBe(5);
+      expect(texts(ctx)).not.toContain(th === 'plus' ? 'LENZ+' : 'LENZPRIME');
+    });
+  });
+
+  it('prime: Blauschwarz, weißes Versal-Badge, grüne Rangziffer, Source Sans', () => {
+    const ctx = draw('prime', 'overview');
+    expect(ctx.calls[0]).toMatchObject({ m: 'fillRect', fillStyle: '#00050d' });
+    const t = texts(ctx);
+    expect(t).toContain('LETZTE 30 TAGE');
+    expect(t).toContain('PLATZ 3 VON 12 · Ø 27 STD');
+    expect(t).toContain('Meine Statistik');
+    const rank = ctx.calls.find((c) => c.m === 'fillText' && c.args[0] === '1');
+    expect(rank.fillStyle).toBe('#37f1a3');
+    expect(rank.font).toContain('LenzPrime Sans');
+    const top = draw('prime', 'top');
+    const digit = top.calls.find((c) => c.m === 'fillText' && c.args[0] === '1');
+    expect(digit.fillStyle).toBe('#37f1a3');
+    expect(digit.font).toMatch(/^900 /);
+  });
+
+  it('Verlauf: Balken und Heatmap in der Designfarbe', () => {
+    const plus = draw('plus', 'activity');
+    expect(plus.calls.some((c) => c.m === 'fillRect' && String(c.fillStyle).indexOf('rgba(27, 179, 232') === 0)).toBe(true);
+    expect(plus.calls.some((c) => c.m === 'fillRect' && c.fillStyle === '#1bb3e8')).toBe(true);
+    const prime = draw('prime', 'activity');
+    expect(prime.calls.some((c) => c.m === 'fillRect' && c.fillStyle === '#1a98ff')).toBe(true);
+    expect(prime.calls.some((c) => c.fillStyle === '#e50914')).toBe(false);
+  });
+
+  it('Standard-Design aus applyTheme; Dateiname je Design', () => {
+    L.applyTheme('prime');
+    const c = document.createElement('canvas');
+    L.drawShare(c, { variant: 'overview', format: '4:5', stats: stats(), items: ITEMS });
+    expect(c.__ctx.calls[0].fillStyle).toBe('#00050d');
+    expect(L.shareFileName('top', '4:5')).toBe('lenzprime-top-4x5.png');
+    expect(L.shareFileName('top', 'story', 'plus')).toBe('lenzplus-top-story.png');
+    expect(L.shareFileName('top', 'story', 'flix')).toBe('lenzflix-top-story.png');
+  });
+});
