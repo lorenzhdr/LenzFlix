@@ -22,3 +22,16 @@ export function getStatsUrl() {
 }
 
 export const STATS_LABEL = 'Meine Statistik';
+
+/** Ziel-Vergleich ohne Hash/Query: zeigt href auf die konfigurierte Statistik-Seite? */
+export function isStatsHref(href) {
+  const stats = getStatsUrl();
+  if (!stats || !href) return false;
+  try {
+    const a = new URL(href, window.location.href);
+    const b = new URL(stats, window.location.href);
+    return a.origin === b.origin && a.pathname.replace(/\/+$/, '') === b.pathname.replace(/\/+$/, '');
+  } catch {
+    return false;
+  }
+}

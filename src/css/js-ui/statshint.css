@@ -1,0 +1,90 @@
+/* LenzFlix · Hinweis „Neu: Meine Statistik“ (#lfx-statshint, Feature statshint). Dezente dunkle Pille unten. */
+html.lfx-js:not(.layout-tv) .lfx-statshint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 1290;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  box-sizing: border-box;
+  pointer-events: none;
+  animation: lfx-statshint-in var(--lfx-dur) var(--lfx-ease-out) both;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint.is-leaving {
+  animation: lfx-statshint-out 200ms var(--lfx-ease) both;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint__box {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(460px, 100%);
+  color: var(--lfx-text);
+  font: 500 14px/1.3 var(--lfx-font);
+  background: var(--lfx-glass);
+  border: 1px solid var(--lfx-border);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 6px 10px 14px;
+  color: inherit;
+  text-decoration: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint__badge {
+  flex: none;
+  padding: 2px 7px;
+  color: #fff;
+  font: 700 11px/1.3 var(--lfx-font);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--lfx-red);
+  border-radius: 4px;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint__text {
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint__arrow {
+  flex: none;
+  color: var(--lfx-text-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint__close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin-right: 6px;
+  padding: 0;
+  color: var(--lfx-text-muted);
+  font: 400 20px/1 var(--lfx-font);
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-statshint__link:hover .lfx-statshint__arrow,
+  html.lfx-js:not(.layout-tv) .lfx-statshint__close:hover {
+    color: var(--lfx-text);
+  }
+}
+@keyframes lfx-statshint-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lfx-statshint-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-statshint,
+  html.lfx-js:not(.layout-tv) .lfx-statshint.is-leaving { animation: none !important; }
+}

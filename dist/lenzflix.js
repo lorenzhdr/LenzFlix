@@ -479,6 +479,17 @@
     }
   }
   var STATS_LABEL = "Meine Statistik";
+  function isStatsHref(href) {
+    const stats = getStatsUrl();
+    if (!stats || !href) return false;
+    try {
+      const a = new URL(href, window.location.href);
+      const b = new URL(stats, window.location.href);
+      return a.origin === b.origin && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
+    } catch {
+      return false;
+    }
+  }
 
   // src/js/core/ambient.js
   var ID = "lfx-ambient";
@@ -1111,7 +1122,7 @@
     const backdrop = opts.backdrop || null;
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state4 = "idle";
+    let state5 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -1160,7 +1171,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state4 = "closing";
+      state5 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -1171,13 +1182,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state4 = "closing";
+      state5 = "closing";
       el.style.transition = ANIM;
       el.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state4 = "idle";
+        state5 = "idle";
       });
     }
     function velocityNow() {
@@ -1188,49 +1199,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state4 === "closing") return;
-      state4 = "idle";
+      if (state5 === "closing") return;
+      state5 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state4 = "ignored";
+        state5 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el)) {
-        state4 = "ignored";
+        state5 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state4 = "ignored";
+        state5 = "ignored";
         return;
       }
-      state4 = "tracking";
+      state5 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state4 !== "tracking" && state4 !== "dragging") return;
+      if (state5 !== "tracking" && state5 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state4 === "dragging") springBack();
-        else state4 = "ignored";
+        if (state5 === "dragging") springBack();
+        else state5 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state4 === "tracking") {
+      if (state5 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state4 = "dragging";
+          state5 = "dragging";
           el.classList.add("lfx-dragging");
           el.style.transition = "none";
         } else {
-          state4 = "ignored";
+          state5 = "ignored";
           return;
         }
       }
@@ -1244,18 +1255,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state4 === "dragging") {
+      if (state5 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state4 !== "closing") {
-        state4 = "idle";
+      } else if (state5 !== "closing") {
+        state5 = "idle";
       }
     }
     function onCancel() {
-      if (state4 === "dragging") springBack();
-      else if (state4 !== "closing") state4 = "idle";
+      if (state5 === "dragging") springBack();
+      else if (state5 !== "closing") state5 = "idle";
     }
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove2, { passive: false });
@@ -1271,7 +1282,7 @@
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state4 = "idle";
+      state5 = "idle";
     };
   }
 
@@ -2285,10 +2296,10 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
-  function renderEpisodes(slot, state4, H) {
+  function renderEpisodes(slot, state5, H) {
     slot.hidden = false;
     slot.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state4;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state5;
     putItems(episodes);
     const current3 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
@@ -3166,7 +3177,7 @@
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
         if (paused()) scheduleRotate();
-        else show((index + 1) % pool.length);
+        else show2((index + 1) % pool.length);
       }, ROTATE_MS);
     }
     function buildListButton(item) {
@@ -3267,7 +3278,7 @@
     function fillDots() {
       dots.replaceChildren(...pool.map((it, i) => {
         const b = h("button", { type: "button", class: "lfx-bb__dotbtn", "aria-label": `Empfehlung ${i + 1}: ${it.Name || ""}` });
-        b.addEventListener("click", () => show(i));
+        b.addEventListener("click", () => show2(i));
         return b;
       }));
       dots.hidden = pool.length < 2;
@@ -3293,7 +3304,7 @@
         }
         index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur);
         fillDots();
-        if (curGone) show(index);
+        if (curGone) show2(index);
         return;
       }
       if (cur && updated.includes(cur.Id)) {
@@ -3342,7 +3353,7 @@
       } catch {
       }
     }
-    function show(i, immediate = false) {
+    function show2(i, immediate = false) {
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
@@ -3434,7 +3445,7 @@
       putItems(pool);
       build3();
       slot.hidden = false;
-      show(0, true);
+      show2(0, true);
     }
     slot.hidden = true;
     init2();
@@ -5330,14 +5341,14 @@
     if (!el) return;
     if (isMenuOpen() && inNativeDialog(el)) return;
     const t = e.touches && e.touches[0] || e;
-    const state4 = { x: t.clientX, y: t.clientY, fired: false };
-    press = state4;
+    const state5 = { x: t.clientX, y: t.clientY, fired: false };
+    press = state5;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press !== state4 || !el.isConnected) return;
-      state4.fired = true;
+      if (press !== state5 || !el.isConnected) return;
+      state5.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el, state4.x, state4.y);
+      openFor(el, state5.x, state5.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -5401,11 +5412,154 @@
   };
   var contextmenu_default = contextmenuFeature;
 
+  // src/js/features/statshint.js
+  var ID3 = "lfx-statshint";
+  var KEY = "lfx.statsHint";
+  var SESSION_KEY = "lfx.statsHint.shown";
+  var HINT_DURATION = 7e3;
+  var HINT_DELAY = 1500;
+  var HINT_DAYS = 10;
+  var LEAVE_MS = 200;
+  var EXCLUDED5 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video)/;
+  function readState() {
+    try {
+      const v = JSON.parse(localStorage.getItem(KEY));
+      return v && typeof v === "object" ? v : {};
+    } catch {
+      return {};
+    }
+  }
+  function writeState(patch) {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ ...readState(), ...patch }));
+    } catch {
+    }
+  }
+  function markSeen() {
+    writeState({ seen: true });
+  }
+  function shouldShow(now = Date.now()) {
+    const st = readState();
+    if (st.seen) return false;
+    if (st.firstShown && now - st.firstShown > HINT_DAYS * 864e5) return false;
+    try {
+      if (sessionStorage.getItem(SESSION_KEY)) return false;
+    } catch {
+    }
+    return true;
+  }
+  function isHomeRoute2(route) {
+    return route.path === "/home" && route.params.get("tab") !== "1" && !route.params.get("lfx");
+  }
+  var state4 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
+  function clearTimers2() {
+    clearTimeout(state4.showTimer);
+    clearTimeout(state4.hideTimer);
+    clearTimeout(state4.removeTimer);
+    state4.showTimer = state4.hideTimer = state4.removeTimer = null;
+  }
+  function removeHint() {
+    clearTimers2();
+    if (state4.el) unmountPoint(state4.el);
+    state4.el = null;
+  }
+  function leave2() {
+    if (!state4.el) return;
+    const el = state4.el;
+    clearTimeout(state4.hideTimer);
+    state4.hideTimer = null;
+    el.classList.add("is-leaving");
+    state4.removeTimer = setTimeout(() => {
+      state4.removeTimer = null;
+      if (state4.el === el) removeHint();
+    }, LEAVE_MS);
+  }
+  function startHideTimer(ms) {
+    clearTimeout(state4.hideTimer);
+    state4.deadline = Date.now() + ms;
+    state4.hideTimer = setTimeout(leave2, ms);
+  }
+  function canHover() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  }
+  function show() {
+    state4.showTimer = null;
+    const url = getStatsUrl();
+    if (!url || state4.el || !shouldShow()) return;
+    const link = h("a", { class: "lfx-statshint__link", href: url }, [
+      h("span", { class: "lfx-statshint__badge" }, "Neu"),
+      h("span", { class: "lfx-statshint__text" }, `${STATS_LABEL} \u2013 deine Sehgewohnheiten im \xDCberblick`),
+      h("span", { class: "lfx-statshint__arrow", "aria-hidden": "true" }, "\u203A")
+    ]);
+    const close2 = h("button", { type: "button", class: "lfx-statshint__close", "aria-label": "Hinweis schlie\xDFen" }, "\xD7");
+    close2.addEventListener("click", (e) => {
+      e.preventDefault();
+      leave2();
+    });
+    const root2 = mountPoint(ID3, { className: "lfx-statshint" });
+    root2.classList.remove("is-leaving");
+    root2.setAttribute("role", "status");
+    root2.setAttribute("aria-live", "polite");
+    root2.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
+    state4.el = root2;
+    if (canHover()) {
+      root2.addEventListener("mouseenter", () => {
+        if (!state4.hideTimer) return;
+        state4.remaining = Math.max(500, state4.deadline - Date.now());
+        clearTimeout(state4.hideTimer);
+        state4.hideTimer = null;
+      });
+      root2.addEventListener("mouseleave", () => {
+        if (state4.el !== root2 || state4.hideTimer || state4.removeTimer) return;
+        startHideTimer(state4.remaining || HINT_DURATION);
+      });
+    }
+    try {
+      sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+    }
+    if (!readState().firstShown) writeState({ firstShown: Date.now() });
+    startHideTimer(HINT_DURATION);
+  }
+  function sync(route) {
+    if (isHomeRoute2(route)) {
+      if (!state4.el && !state4.showTimer && shouldShow()) state4.showTimer = setTimeout(show, HINT_DELAY);
+    } else {
+      removeHint();
+    }
+  }
+  var statshintFeature = {
+    name: "statshint",
+    match(route) {
+      return isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED5.test(route.path);
+    },
+    mount(route) {
+      state4.onClick = (e) => {
+        const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+        if (a && isStatsHref(a.getAttribute("href"))) {
+          markSeen();
+          removeHint();
+        }
+      };
+      document.addEventListener("click", state4.onClick, true);
+      sync(route);
+    },
+    update(route) {
+      sync(route);
+    },
+    unmount() {
+      if (state4.onClick) document.removeEventListener("click", state4.onClick, true);
+      state4.onClick = null;
+      removeHint();
+    }
+  };
+  var statshint_default = statshintFeature;
+
   // src/js/features/index.js
-  var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
+  var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default];
 
   // src/js/main.js
-  var VERSION = "1.4.4";
+  var VERSION = "1.4.5";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;
@@ -5432,7 +5586,7 @@
       removeAllMounts();
       destroyLayout();
     }
-    function sync() {
+    function sync2() {
       if (destroyed) return;
       if (cssActive()) {
         applyFavicon();
@@ -5444,13 +5598,13 @@
         removeFavicon();
       }
     }
-    watchTimer = setInterval(sync, WATCH_MS);
-    window.addEventListener("hashchange", sync);
-    sync();
+    watchTimer = setInterval(sync2, WATCH_MS);
+    window.addEventListener("hashchange", sync2);
+    sync2();
     function destroy() {
       destroyed = true;
       clearInterval(watchTimer);
-      window.removeEventListener("hashchange", sync);
+      window.removeEventListener("hashchange", sync2);
       stopFeatures();
       removeFavicon();
       delete window.LenzFlix;

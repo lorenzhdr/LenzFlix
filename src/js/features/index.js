@@ -6,5 +6,6 @@ import hovercard from './hovercard.js';
 import modal from './modal.js';
 import newpopular from './newpopular.js';
 import contextmenu from './contextmenu.js';
+import statshint from './statshint.js';
 
-export const features = [nav, mobilenav, home, hovercard, modal, newpopular, contextmenu];
+export const features = [nav, mobilenav, home, hovercard, modal, newpopular, contextmenu, statshint];
