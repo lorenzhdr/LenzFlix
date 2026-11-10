@@ -181,7 +181,7 @@ function onChipClick() {
 async function fillChip(mountSeq) {
   let user = { name: '', imageUrl: null };
   try {
-    user = await getUserChip();
+    user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state.mountSeq && Boolean(state.chip) });
   } catch { /* Platzhalter bleibt */ }
   if (mountSeq !== state.mountSeq || !state.chip) return;
   const avatar = state.chip.querySelector('.lfx-plus-header__avatar');

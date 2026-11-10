@@ -34,10 +34,19 @@ export async function profileEntries({ theme, returnFocus } = {}) {
   return entries;
 }
 
-/** Name und Profilbild-URL (ohne api_key) des angemeldeten Benutzers. */
-export async function getUserChip() {
-  let user = null;
-  try { user = await getUser(); } catch { /* leer */ }
+/**
+ * Name und Profilbild-URL (ohne api_key) des angemeldeten Benutzers.
+ * `retries`: Beim Seitenstart kennt Jellyfin den Benutzer evtl. noch nicht (getUser() → null).
+ * Dann bis zu `retries`-mal im Abstand `delay` erneut fragen; `isAlive()` false bricht ab.
+ */
+export async function getUserChip({ retries = 0, delay = 500, isAlive = () => true } = {}) {
+  let user;
+  for (let i = 0; ; i++) {
+    try { user = await getUser(); } catch { user = null; }
+    if (user || i >= retries || !isAlive()) break;
+    await new Promise((r) => setTimeout(r, delay));
+    if (!isAlive()) break;
+  }
   const name = (user && user.Name) || '';
   const tag = user && user.PrimaryImageTag;
   const id = (user && user.Id) || getUserId();

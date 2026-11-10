@@ -326,7 +326,7 @@ async function loadLibs(seq) {
 async function loadAvatar(seq, avatar) {
   let chip = { name: '', imageUrl: null };
   try {
-    chip = await getUserChip();
+    chip = await getUserChip({ retries: 20, isAlive: () => seq === state.seq && Boolean(state.el) });
   } catch { /* Initial genügt */ }
   if (seq !== state.seq || !state.el) return;
   avatar.replaceChildren();

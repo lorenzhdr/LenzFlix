@@ -88,4 +88,23 @@ describe('getUserChip', () => {
     h.user = null;
     expect(await getUserChip()).toEqual({ name: '', imageUrl: null });
   });
+
+  it('fragt erneut, solange Jellyfin den Benutzer beim Start noch nicht kennt', async () => {
+    const { getUser } = await import('../src/js/core/api.js');
+    const user = h.user;
+    h.user = null;
+    setTimeout(() => { h.user = user; }, 15);
+    const c = await getUserChip({ retries: 10, delay: 10 });
+    expect(c.name).toBe('Anna');
+    expect(c.imageUrl).toContain('tag=abc');
+    expect(getUser.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('bricht das Nachfragen ab, wenn isAlive() false wird', async () => {
+    h.user = null;
+    const { getUser } = await import('../src/js/core/api.js');
+    const c = await getUserChip({ retries: 50, delay: 5, isAlive: () => getUser.mock.calls.length < 2 });
+    expect(c).toEqual({ name: '', imageUrl: null });
+    expect(getUser.mock.calls.length).toBe(2);
+  });
 });

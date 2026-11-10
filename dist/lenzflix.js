@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.5.1";
+  var VERSION = "1.5.2";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -6721,11 +6721,17 @@
     entries.push({ key: "logout", label: "Abmelden", onClick: () => logout() });
     return entries;
   }
-  async function getUserChip() {
-    let user = null;
-    try {
-      user = await getUser();
-    } catch {
+  async function getUserChip({ retries = 0, delay = 500, isAlive = () => true } = {}) {
+    let user;
+    for (let i = 0; ; i++) {
+      try {
+        user = await getUser();
+      } catch {
+        user = null;
+      }
+      if (user || i >= retries || !isAlive()) break;
+      await new Promise((r) => setTimeout(r, delay));
+      if (!isAlive()) break;
     }
     const name = user && user.Name || "";
     const tag = user && user.PrimaryImageTag;
@@ -6948,7 +6954,7 @@
   async function fillChip(mountSeq) {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip();
+      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state6.mountSeq && Boolean(state6.chip) });
     } catch {
     }
     if (mountSeq !== state6.mountSeq || !state6.chip) return;
@@ -9440,13 +9446,13 @@
       if (e.stats && buttons[i]) buttons[i].classList.add("is-stats");
     });
   }
-  async function fillAvatar(seq3) {
+  async function fillAvatar() {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip();
+      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state12.profileBtn) });
     } catch {
     }
-    if (seq3 !== state12.seq || !state12.profileBtn) return;
+    if (!state12.profileBtn) return;
     const avatar = state12.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
@@ -9462,7 +9468,7 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED8.test(route.path);
     },
     mount(route) {
-      const seq3 = ++state12.seq;
+      state12.seq++;
       state12.route = route;
       const root4 = mountPoint(ROOT_ID11, { tag: "nav", className: "lfx-plus-tabbar" });
       root4.textContent = "";
@@ -9502,7 +9508,7 @@
       cl2.remove(HIDE_CLASS);
       cl2.add(ON_CLASS9);
       applyActive5();
-      fillAvatar(seq3);
+      fillAvatar();
     },
     update(route) {
       const changed = !state12.route || state12.route.hash !== route.hash;
@@ -10443,7 +10449,7 @@
   async function loadAvatar(seq3, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip();
+      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state14.seq && Boolean(state14.el) });
     } catch {
     }
     if (seq3 !== state14.seq || !state14.el) return;

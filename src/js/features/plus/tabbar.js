@@ -115,10 +115,11 @@ async function openProfile() {
   entries.forEach((e, i) => { if (e.stats && buttons[i]) buttons[i].classList.add('is-stats'); });
 }
 
-async function fillAvatar(seq) {
+// Bewusst ohne seq-Prüfung: state.seq zählt auch das Öffnen des Profil-Sheets hoch.
+async function fillAvatar() {
   let user = { name: '', imageUrl: null };
-  try { user = await getUserChip(); } catch { /* Platzhalter bleibt */ }
-  if (seq !== state.seq || !state.profileBtn) return;
+  try { user = await getUserChip({ retries: 20, isAlive: () => Boolean(state.profileBtn) }); } catch { /* Platzhalter bleibt */ }
+  if (!state.profileBtn) return;
   const avatar = state.profileBtn.querySelector('.lfx-plus-tabbar__avatar');
   if (user.imageUrl) {
     avatar.style.backgroundImage = `url("${user.imageUrl}")`;
@@ -135,7 +136,7 @@ export const plusTabbar = {
     return isTheme('plus') && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED.test(route.path);
   },
   mount(route) {
-    const seq = ++state.seq;
+    state.seq++;
     state.route = route;
     const root = mountPoint(ROOT_ID, { tag: 'nav', className: 'lfx-plus-tabbar' });
     root.textContent = '';
@@ -177,7 +178,7 @@ export const plusTabbar = {
 
     cl.add(ON_CLASS);
     applyActive();
-    fillAvatar(seq);
+    fillAvatar();
   },
   update(route) {
     const changed = !state.route || state.route.hash !== route.hash;
