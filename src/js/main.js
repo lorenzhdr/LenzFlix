@@ -9,7 +9,7 @@ import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { cssActive } from './core/csscheck.js';
 import { features } from './features/index.js';
 
-const VERSION = '1.3.2';
+const VERSION = '1.4.0';
 const WATCH_MS = 1000;
 
 function init() {

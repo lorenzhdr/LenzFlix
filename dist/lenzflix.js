@@ -461,6 +461,25 @@
     }
   }
 
+  // src/js/core/stats.js
+  function clean(raw) {
+    const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "");
+    if (!s || /[\s"'\\<>]/.test(s)) return null;
+    if (/^https:\/\/[^/]/i.test(s)) return s;
+    if (/^\/(?![/\\])/.test(s)) return s;
+    return null;
+  }
+  function getStatsUrl() {
+    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.statsUrl);
+    if (fromConfig) return fromConfig;
+    try {
+      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-stats-url"));
+    } catch {
+      return null;
+    }
+  }
+  var STATS_LABEL = "Meine Statistik";
+
   // src/js/core/ambient.js
   var ID = "lfx-ambient";
   var clamp = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
@@ -584,12 +603,11 @@
       nav.append(h("a", { class: "lfx-nav__item", href: it.href, dataset: { key: it.key } }, it.label));
     }
     const more = state.model.more;
-    if (more.length) {
-      const menu = h(
-        "div",
-        { class: "lfx-nav__menu", role: "menu", id: "lfx-nav-menu" },
-        more.map((m) => h("a", { class: "lfx-nav__menu-item", role: "menuitem", href: m.href, dataset: { id: m.id } }, m.label))
-      );
+    const statsUrl = getStatsUrl();
+    if (more.length || statsUrl) {
+      const entries = more.map((m) => h("a", { class: "lfx-nav__menu-item", role: "menuitem", href: m.href, dataset: { id: m.id } }, m.label));
+      if (statsUrl) entries.push(h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--stats", role: "menuitem", href: statsUrl }, STATS_LABEL));
+      const menu = h("div", { class: "lfx-nav__menu", role: "menu", id: "lfx-nav-menu" }, entries);
       const btn = h("button", {
         type: "button",
         class: "lfx-nav__item lfx-nav__more-btn",
@@ -694,6 +712,8 @@
   function overlayItems(model) {
     const items = navItems(model).map((it) => ({ key: it.key, label: it.label, href: it.href }));
     for (const m of model.more) items.push({ key: "more", label: m.label, href: m.href, id: m.id });
+    const statsUrl = getStatsUrl();
+    if (statsUrl) items.push({ key: "stats", label: STATS_LABEL, href: statsUrl, external: true });
     return items;
   }
   var state2 = {
@@ -786,7 +806,8 @@
       "ul",
       { class: "lfx-mnav-overlay__list" },
       overlayItems(state2.model).map((it) => h("li", null, [
-        h("a", { class: "lfx-mnav-overlay__link", href: it.href, dataset: { key: it.key } }, it.label)
+        // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
+        h("a", { class: "lfx-mnav-overlay__link", href: it.href, ...it.external ? {} : { dataset: { key: it.key } } }, it.label)
       ]))
     );
     const close2 = h("button", { type: "button", class: "lfx-mnav-overlay__close", "aria-label": "Schlie\xDFen" }, "\xD7");
@@ -3701,14 +3722,14 @@
   var TIMEOUT_MS = 8e3;
   var TTL_MS = 5 * 60 * 1e3;
   function getChartsUrl() {
-    const clean = (raw) => {
+    const clean2 = (raw) => {
       const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
       return /^https:\/\/[^\s"']+$/i.test(s) ? s : null;
     };
-    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.chartsUrl);
+    const fromConfig = clean2(window.LenzFlixConfig && window.LenzFlixConfig.chartsUrl);
     if (fromConfig) return fromConfig;
     try {
-      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-charts-url"));
+      return clean2(getComputedStyle(document.documentElement).getPropertyValue("--lfx-charts-url"));
     } catch {
       return null;
     }
@@ -5342,7 +5363,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.3.2";
+  var VERSION = "1.4.0";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;
