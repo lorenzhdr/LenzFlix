@@ -288,6 +288,18 @@ describe('Share-Dialog', () => {
     expect(t).toContain('Serie Eins');
   });
 
+  it('Overview nutzt bei genau 1 die Einzahl (Folge, Film, Serie)', () => {
+    const c = document.createElement('canvas');
+    const stats = fullStats();
+    stats.totals = Object.assign({}, stats.totals, { episodes: 1, movies: 1, series: 1 });
+    L.drawShare(c, { variant: 'overview', format: '4:5', stats: stats, items: ITEMS });
+    expect(texts(c.__ctx)).toContain('1 Folge · 1 Film · 1 Serie');
+    const z = document.createElement('canvas');
+    stats.totals = Object.assign({}, stats.totals, { episodes: 0, movies: 0, series: 0 });
+    L.drawShare(z, { variant: 'overview', format: '4:5', stats: stats, items: ITEMS });
+    expect(texts(z.__ctx)).toContain('0 Folgen · 0 Filme · 0 Serien');
+  });
+
   it('Heatmap im Share-Layout: Montag zuerst, Sonntag zuletzt', () => {
     const c = document.createElement('canvas');
     L.drawShare(c, { variant: 'activity', format: '4:5', stats: fullStats(), items: ITEMS });

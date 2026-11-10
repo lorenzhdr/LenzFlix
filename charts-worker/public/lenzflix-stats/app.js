@@ -1013,7 +1013,11 @@
       g.ctx.font = '800 ' + wsize + 'px ' + SHARE_FONT;
     }
     stxt(g, wt, g.x, y + 200 * f, wsize, 800, '#ffffff', g.cw);
-    stxt(g, fmtInt(t.episodes) + ' Folgen · ' + fmtInt(t.movies) + ' Filme · ' + fmtInt(t.series) + ' Serien', g.x, y + 320 * f, 52, 600, '#ffffff', g.cw);
+    var counts =
+      fmtInt(t.episodes) + (Number(t.episodes) === 1 ? ' Folge' : ' Folgen') + ' · ' +
+      fmtInt(t.movies) + (Number(t.movies) === 1 ? ' Film' : ' Filme') + ' · ' +
+      fmtInt(t.series) + (Number(t.series) === 1 ? ' Serie' : ' Serien');
+    stxt(g, counts, g.x, y + 320 * f, 52, 600, '#ffffff', g.cw);
     stxt(g, fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + 395 * f, 44, 500, '#b3b3b3', g.cw);
     if (g.stats.compare) stxt(g, compareText(g.stats.compare), g.x, y + 465 * f, 44, 500, '#b3b3b3', g.cw);
     var top = topEntries(g.stats.topSeries, g.items, 1)[0];
