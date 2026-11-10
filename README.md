@@ -35,7 +35,19 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 ### 3. Reverse-Proxy mit CSP
 
-Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien).
+Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
+
+## Designs
+
+Mit aktivem JavaScript gibt es drei Designs:
+
+- **LENZFLIX** (Standard): das klassische Design mit roten Akzenten.
+- **LENZ+**: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs.
+- **LENZPRIME**: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile.
+
+Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZPRIME über das Profilmenü). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
+
+Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
 ## Echte Charts (optional)
 
@@ -57,7 +69,7 @@ Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Dom
 :root { --lfx-stats-url: "/lenzflix-stats/"; }
 ```
 
-Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (hat Vorrang). Erlaubt sind `https://`-URLs und Pfade mit einem einzelnen führenden `/` auf derselben Domain. Der Link öffnet die Seite im selben Tab. Die Seite selbst braucht einen Worker plus Reverse-Proxy und gehört nicht zum Theme: Einrichtung und Datenformat siehe [`docs/stats-api.md`](docs/stats-api.md).
+Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (hat Vorrang). Erlaubt sind `https://`-URLs und Pfade mit einem einzelnen führenden `/` auf derselben Domain. Der Link öffnet die Seite im selben Tab und übergibt das gewählte Design per `?theme=`; für die Layouts von LENZ+ und LENZPRIME muss der `charts-worker` neu deployt werden (die Seite liegt in dessen `public/`). Die Seite selbst braucht einen Worker plus Reverse-Proxy und gehört nicht zum Theme: Einrichtung und Datenformat siehe [`docs/stats-api.md`](docs/stats-api.md).
 
 ## Bedienung
 
@@ -119,7 +131,7 @@ npm run serve   # Dev-Server http://localhost:5179/dist/ (liefert dist/ und asse
 
 ```
 build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js (Dev-Loader)
-dist/         Build-Ausgabe (lenzflix[.min].css/.js)
+dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css)
 assets/       Schrift Inter (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
 docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features)
 src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css, logo.css
@@ -128,7 +140,9 @@ src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css
   js-ui/      Styles der JS-Komponenten (nur unter html.lfx-js)
 src/js/       main.js (Einstieg, setzt window.LenzFlix)
   core/       API, Cache, Router, Layout, Playback, DOM-Helper, Ambient, Item-Store
-  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular
+  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/ und prime/ (LENZ+, LENZPRIME)
+  shared/     von beiden Designs genutzte Module (Routen, Hubs, Suche, Titel-Aktionen)
+src/css/themes/  plus/ und prime/ (je index.css = Bundle-Einstieg)
 tests/        vitest-Tests (jsdom)
 ```
 
