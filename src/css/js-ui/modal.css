@@ -188,6 +188,23 @@ html.lfx-js .lfx-modal__h strong { font-weight: 700; }
 html.lfx-js .lfx-modal__eps-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 html.lfx-js .lfx-modal__eps-head .lfx-modal__h { margin: 0; }
 html.lfx-js .lfx-modal__eps-tools { display: flex; align-items: center; gap: 10px; }
+/* Staffel: Gesehen-Button und Staffelauswahl bilden einen zusammengesetzten Block (gemeinsame Kontur, Trennlinie) */
+html.lfx-js .lfx-modal__eps-tools--joined { gap: 0; }
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played {
+  width: 46px;
+  height: 42px;
+  box-sizing: border-box;
+  border-width: 1px;
+  border-radius: 10px 0 0 10px;
+}
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on) { border-color: #4d4d4d; background: #242424; }
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on):hover { background: #333; }
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__seasonbtn {
+  height: 42px;
+  box-sizing: border-box;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+}
 html.lfx-js .lfx-modal__dropdown { position: relative; }
 html.lfx-js .lfx-modal__seasonbtn {
   display: inline-flex;

@@ -2303,6 +2303,7 @@
         }, s.Name || `Staffel ${s.IndexNumber}`)]));
       }
       tools.append(h("div", { class: "lfx-modal__dropdown" }, [btn, list]));
+      if (tools.querySelector(".lfx-modal__round--played")) tools.classList.add("lfx-modal__eps-tools--joined");
     }
     slot.append(head);
     const listEl = h("div", { class: "lfx-modal__eplist" });
@@ -5239,7 +5240,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.3.0";
+  var VERSION = "1.3.1";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

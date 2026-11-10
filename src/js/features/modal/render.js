@@ -327,6 +327,7 @@ export function renderEpisodes(slot, state, H) {
       }, s.Name || `Staffel ${s.IndexNumber}`)]));
     }
     tools.append(h('div', { class: 'lfx-modal__dropdown' }, [btn, list]));
+    if (tools.querySelector('.lfx-modal__round--played')) tools.classList.add('lfx-modal__eps-tools--joined');
   }
   slot.append(head);
 

@@ -4684,6 +4684,34 @@ html.lfx-js .lfx-modal__eps-tools {
   display: flex;
 }
 
+html.lfx-js .lfx-modal__eps-tools--joined {
+  gap: 0;
+}
+
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played {
+  box-sizing: border-box;
+  border-width: 1px;
+  border-radius: 10px 0 0 10px;
+  width: 46px;
+  height: 42px;
+}
+
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on) {
+  background: #242424;
+  border-color: #4d4d4d;
+}
+
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on):hover {
+  background: #333;
+}
+
+html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__seasonbtn {
+  box-sizing: border-box;
+  border-left: 0;
+  border-radius: 0 10px 10px 0;
+  height: 42px;
+}
+
 html.lfx-js .lfx-modal__dropdown {
   position: relative;
 }
@@ -6254,6 +6282,15 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
 
   html.lfx-js .lfx-modal__eps-tools .lfx-modal__round {
     width: 40px;
+    height: 40px;
+  }
+
+  html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played {
+    width: 44px;
+    height: 40px;
+  }
+
+  html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__seasonbtn {
     height: 40px;
   }
 

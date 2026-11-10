@@ -374,6 +374,13 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     width: 40px;
     height: 40px;
   }
+  html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played {
+    width: 44px;
+    height: 40px;
+  }
+  html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__seasonbtn {
+    height: 40px;
+  }
   html.lfx-js .lfx-modal__seasonopt {
     min-height: 40px;
   }

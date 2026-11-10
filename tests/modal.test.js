@@ -394,6 +394,8 @@ describe('Gesehen-Button', () => {
     const btn = document.querySelector('.lfx-modal__eps-tools .lfx-modal__round--played');
     expect(btn).not.toBeNull();
     expect(btn.classList.contains('is-on')).toBe(false);
+    // Mit Staffelauswahl bilden Button und Dropdown einen zusammengesetzten Block
+    expect(btn.parentElement.classList.contains('lfx-modal__eps-tools--joined')).toBe(Boolean(document.querySelector('.lfx-modal__seasonbtn')));
     btn.click();
     expect(confirmAction).toHaveBeenCalledTimes(1);
     expect(lastConfirm()).toMatchObject({ title: '14 Folgen als gesehen markieren?', confirmLabel: 'Als gesehen markieren', anchorEl: btn });
