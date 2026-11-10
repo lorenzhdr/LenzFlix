@@ -19,7 +19,7 @@ Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dun
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.4.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.4.3/dist/lenzflix.min.css");
 ```
 
 - `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.4.2/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.4.3/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -51,7 +51,7 @@ Alternativ per JS: `window.LenzFlixConfig = { chartsUrl: "https://charts.example
 
 ## Meine Statistik (optional)
 
-Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Domain eine eigenständige Statistik-Seite (z. B. `/lenzflix-stats/`), erscheint „Meine Statistik“ im „Mehr“-Menü der Navigation und im „Kategorien“-Overlay am Handy. Die URL im Custom-CSS eintragen:
+Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Domain eine eigenständige Statistik-Seite (z. B. `/lenzflix-stats/`), erscheint „Meine Statistik“ im „Mehr“-Menü der Navigation und im „Mehr“-Overlay am Handy. Die URL im Custom-CSS eintragen:
 
 ```css
 :root { --lfx-stats-url: "/lenzflix-stats/"; }
@@ -73,7 +73,7 @@ Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (h
 - **Daumen (Gefällt mir):** aktiv gefüllt in Rot.
 - **Gesehen-Button (Detail-Modal):** eckiger Button mit Auge, aktiv = weiß. Im Kopf bei Filmen und Folgen direkt, bei Serien für die ganze Serie (mit Rückfrage). In jeder Folgenzeile für die einzelne Folge und im Folgen-Kopf als ein Block mit der Staffel-Auswahl (links daneben, gemeinsame Kontur) für die ganze Staffel (mit Rückfrage). Auch im Hover-Popup unten rechts im Bild. Die Startseite zeigt die Änderung nach dem nächsten Laden.
 - **Neu und beliebt:** eigene Ansicht unter `#/home?lfx=new`.
-- Handy (< 800 px): Logo, Filter-Pills und Kategorien-Overlay im App-Stil.
+- Handy (< 800 px): Logo, Filter-Pills und Mehr-Overlay im App-Stil.
 
 ## Anpassen
 
@@ -92,7 +92,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.4.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.4.3/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

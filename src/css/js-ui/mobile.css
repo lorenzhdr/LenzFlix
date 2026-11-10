@@ -2,7 +2,7 @@
    Nur Overrides, geladen nach allen anderen js-ui-Dateien. Greift nur mit html.lfx-js.
    Die mobilenav-Elemente (#lfx-mnav, #lfx-mnav-overlay) existieren nur, wenn das Feature mobil läuft. */
 
-/* ---------- mobilenav: Logo, Pills, Kategorien-Overlay ---------- */
+/* ---------- mobilenav: Logo, Pills, Mehr-Overlay ---------- */
 html.lfx-js .lfx-mnav {
   display: contents;
 }
@@ -25,7 +25,7 @@ html.lfx-js .lfx-mnav__logo:focus-visible {
 html.lfx-js.lfx-mnav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child::before {
   display: none;
 }
-/* MUI-Drawer-Button ausblenden – Navigation läuft über Pills + Kategorien-Overlay */
+/* MUI-Drawer-Button ausblenden – Navigation läuft über Pills + Mehr-Overlay */
 html.lfx-js.lfx-mnav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child > .MuiIconButton-root:first-child:not([aria-label*="ück" i]) {
   display: none;
 }
@@ -97,7 +97,7 @@ html.lfx-js .lfx-mnav__pill[aria-expanded="true"] .lfx-mnav__caret {
   transform: rotate(180deg);
 }
 
-/* Kategorien-Vollbild-Overlay */
+/* Mehr-Vollbild-Overlay */
 html.lfx-js.lfx-mnav-open {
   overflow: hidden;
 }

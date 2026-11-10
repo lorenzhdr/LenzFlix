@@ -803,7 +803,7 @@
       "aria-expanded": String(isOpen()),
       "aria-controls": OVERLAY_ID,
       dataset: { key: "cats" }
-    }, ["Kategorien", h("span", { class: "lfx-mnav__caret", "aria-hidden": "true" })]);
+    }, ["Mehr", h("span", { class: "lfx-mnav__caret", "aria-hidden": "true" })]);
     state2.catBtn.addEventListener("click", () => isOpen() ? closeOverlay() : openOverlay());
     state2.pills.append(state2.catBtn);
     const list = h(
@@ -850,7 +850,7 @@
       state2.overlay = mountPoint(OVERLAY_ID, { className: "lfx-mnav-overlay" });
       state2.overlay.setAttribute("role", "dialog");
       state2.overlay.setAttribute("aria-modal", "true");
-      state2.overlay.setAttribute("aria-label", "Kategorien");
+      state2.overlay.setAttribute("aria-label", "Mehr");
       state2.overlay.hidden = true;
       state2.overlay.addEventListener("keydown", onOverlayKey);
       const onOverlayClick = (e) => {
@@ -866,8 +866,9 @@
       loadViews2(seq);
     },
     update(route) {
+      const changed = !state2.route || state2.route.hash !== route.hash;
       state2.route = route;
-      closeOverlay({ restoreFocus: false });
+      if (changed) closeOverlay({ restoreFocus: false });
       applyActive2();
       applyPillsVisibility();
     },
@@ -5367,7 +5368,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.4.2";
+  var VERSION = "1.4.3";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

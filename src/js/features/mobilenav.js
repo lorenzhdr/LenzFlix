@@ -1,8 +1,8 @@
 // LenzFlix: Handy-Navigation im Netflix-App-Stil (Feature "mobilenav").
 // Nur Modern-Layout, nicht TV, nur bei Breite < 800 px bzw. html.layout-mobile.
 //  - Logo-Link (fixed im Header; der MUI-Drawer-Button wird per CSS ausgeblendet, solange das Feature läuft)
-//  - Filter-Pills (Serien · Filme · Meine Liste · Kategorien ▾) unter dem Header, nur auf der Startseite
-//  - Vollbild-Overlay „Kategorien“ mit Startseite/Bibliotheken als zentrierte Textliste
+//  - Filter-Pills (Serien · Filme · Meine Liste · Mehr ▾) unter dem Header, nur auf der Startseite
+//  - Vollbild-Overlay „Mehr“ mit Startseite/Bibliotheken als zentrierte Textliste
 // Eigene Knoten liegen außerhalb der React-Knoten; unmount() räumt alles auf.
 import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
@@ -21,12 +21,12 @@ export function showsPills(route) {
   return route.path === '/home' && route.params.get('tab') !== '1' && !route.params.get('lfx');
 }
 
-/** Pill-Definitionen aus dem Nav-Modell (ohne „Kategorien“). */
+/** Pill-Definitionen aus dem Nav-Modell (ohne „Mehr“). */
 export function pillItems(model) {
   return navItems(model).filter((it) => it.key === 'series' || it.key === 'movies' || it.key === 'list');
 }
 
-/** Einträge der Kategorien-Liste: Navigation + weitere Bibliotheken. */
+/** Einträge der Mehr-Liste: Navigation + weitere Bibliotheken. */
 export function overlayItems(model) {
   const items = navItems(model).map((it) => ({ key: it.key, label: it.label, href: it.href }));
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
@@ -126,7 +126,7 @@ function render() {
     'aria-expanded': String(isOpen()),
     'aria-controls': OVERLAY_ID,
     dataset: { key: 'cats' },
-  }, ['Kategorien', h('span', { class: 'lfx-mnav__caret', 'aria-hidden': 'true' })]);
+  }, ['Mehr', h('span', { class: 'lfx-mnav__caret', 'aria-hidden': 'true' })]);
   state.catBtn.addEventListener('click', () => (isOpen() ? closeOverlay() : openOverlay()));
   state.pills.append(state.catBtn);
 
@@ -173,7 +173,7 @@ export const mobilenavFeature = {
     state.overlay = mountPoint(OVERLAY_ID, { className: 'lfx-mnav-overlay' });
     state.overlay.setAttribute('role', 'dialog');
     state.overlay.setAttribute('aria-modal', 'true');
-    state.overlay.setAttribute('aria-label', 'Kategorien');
+    state.overlay.setAttribute('aria-label', 'Mehr');
     state.overlay.hidden = true;
     state.overlay.addEventListener('keydown', onOverlayKey);
     // Klick auf einen Eintrag navigiert (Hash) und schließt das Overlay
@@ -190,8 +190,11 @@ export const mobilenavFeature = {
     loadViews(seq);
   },
   update(route) {
+    // Der Router ruft update() bei jedem viewshow auf (beim frischen Laden mehrfach). Das Overlay nur
+    // schließen, wenn sich die Route wirklich ändert, sonst klappt es direkt nach dem Öffnen wieder zu.
+    const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
-    closeOverlay({ restoreFocus: false });
+    if (changed) closeOverlay({ restoreFocus: false });
     applyActive();
     applyPillsVisibility();
   },

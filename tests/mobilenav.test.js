@@ -110,6 +110,40 @@ describe('mobilenav (DOM)', () => {
     }
   });
 
+  it('Button heißt „Mehr“, das Overlay trägt dasselbe Label', async () => {
+    mobilenav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav__pill').length).toBe(4));
+    expect(document.querySelector('.lfx-mnav__pill--cats').textContent).toBe('Mehr');
+    expect(document.getElementById('lfx-mnav-overlay').getAttribute('aria-label')).toBe('Mehr');
+    expect(document.body.textContent).not.toContain('Kategorien');
+  });
+
+  it('viewshow/update mit gleicher Route schließt das offene Overlay nicht (frisches Laden), eine neue Route schon', async () => {
+    mobilenav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav__pill').length).toBe(4));
+    const overlay = document.getElementById('lfx-mnav-overlay');
+    document.querySelector('.lfx-mnav__pill--cats').click();
+    expect(overlay.hidden).toBe(false);
+    for (let i = 0; i < 5; i += 1) mobilenav.update(parseHash('#/home'));
+    expect(overlay.hidden).toBe(false);
+    expect(document.documentElement.classList.contains('lfx-mnav-open')).toBe(true);
+    expect(document.querySelector('.lfx-mnav__pill--cats').getAttribute('aria-expanded')).toBe('true');
+    mobilenav.update(parseHash('#/movies?topParentId=m1'));
+    expect(overlay.hidden).toBe(true);
+    expect(document.documentElement.classList.contains('lfx-mnav-open')).toBe(false);
+  });
+
+  it('Overlay bleibt offen, wenn nach dem Laden der Bibliotheken neu gerendert wird', async () => {
+    mobilenav.mount(parseHash('#/home'));
+    const overlay = document.getElementById('lfx-mnav-overlay');
+    document.querySelector('.lfx-mnav__pill--cats').click();
+    expect(overlay.hidden).toBe(false);
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav__pill').length).toBe(4));
+    expect(overlay.hidden).toBe(false);
+    expect(document.querySelector('.lfx-mnav__pill--cats').getAttribute('aria-expanded')).toBe('true');
+    expect(overlay.querySelectorAll('.lfx-mnav-overlay__link').length).toBeGreaterThan(3);
+  });
+
   it('Overlay ohne Konfiguration: kein Statistik-Link', async () => {
     mobilenav.mount(parseHash('#/home'));
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(6));
