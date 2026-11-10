@@ -1,0 +1,33 @@
+/* LENZPRIME · Tokens: überschreiben die Kern-Tokens (tokens.css) mit höherer Spezifität. */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) {
+  --jf-palette-primary-main: #1a98ff;
+  --jf-palette-primary-light: #5aa9ff;
+  --jf-palette-primary-dark: #0f78d1;
+  --jf-palette-primary-mainChannel: 26 152 255;
+  --jf-palette-secondary-main: #1a98ff;
+  --jf-palette-background-default: #0f1117;
+  --jf-palette-background-defaultChannel: 15 17 23;
+  --jf-palette-background-paper: #171a22;
+  --jf-palette-AppBar-defaultBg: #0a0e17;
+  --jf-palette-AppBar-darkBg: #0a0e17;
+  --jf-palette-text-primary: #fff;
+  --jf-palette-text-secondary: #a8adb8;
+
+  --lfx-red: #1a98ff;
+  --lfx-red-hover: #5aa9ff;
+  --lfx-red-active: #0f78d1;
+  --lfx-accent: #1a98ff;
+  --lfx-link: #5aa9ff;
+  --lfx-bg: #0f1117;
+  --lfx-bg-deep: #0a0e17;
+  --lfx-surface: #1a1d26;
+  --lfx-surface-2: #2c2f38;
+  --lfx-surface-3: #3a3d45;
+  --lfx-border: #3a3d45;
+  --lfx-text: #fff;
+  --lfx-text-body: #e6e8ec;
+  --lfx-text-muted: #a8adb8;
+  --lfx-text-soft: #7d828e;
+  --lfx-green: #1ed38a;
+  --lfx-green-soft: rgba(30, 211, 138, 0.12);
+}

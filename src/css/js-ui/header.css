@@ -144,6 +144,18 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item--stats:hover {
   color: var(--lfx-gold-hover);
 }
 
+/* „Design Einstellungen“: Button sieht aus wie die Link-Einträge */
+html.lfx-js #lfx-nav .lfx-nav__menu-item--design {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 /* Drawer-Modus (< 900px): Bibliotheken liegen im MUI-Drawer */
 @media (max-width: 899px) {
   html.lfx-js #lfx-nav {

@@ -12,6 +12,7 @@ import { getCharts, resolveChartItems } from '../core/charts.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { createCard, detailHref, landscapeFor } from './rows/card.js';
+import { brandName } from '../core/theme.js';
 import { BASE_PARAMS, badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
 import { asItems, getNewSeriesIds } from './rows/sources.js';
@@ -21,8 +22,8 @@ const ROOT_ID = 'lfx-newpopular';
 const ON_CLASS = 'lfx-newpopular-on';
 const TYPES = 'Movie,Series';
 
-const SECTIONS = [
-  { id: 'new', label: 'Neu bei LENZFLIX', icon: '🍿' },
+const sectionDefs = () => [
+  { id: 'new', label: `Neu bei ${brandName()}`, icon: '🍿' },
   { id: 'watched', label: 'Am häufigsten geschaut', icon: '🔥' },
   { id: 'top-series', label: 'Top 10 Serien', icon: '🔟' },
   { id: 'top-movies', label: 'Top 10 Filme', icon: '🔟' },
@@ -61,7 +62,7 @@ export function loadNew() {
 const MIN_CHART_TITLES = 3;
 
 /** Untertitel unter Chart-Sektionen. */
-export const chartSubtitle = (days) => `Meistgesehen auf LENZFLIX · letzte ${days || 30} Tage`;
+export const chartSubtitle = (days) => `Meistgesehen auf ${brandName()} · letzte ${days || 30} Tage`;
 
 /** Charts-Titel einer Liste auflösen. Rückgabe: {items, charted, windowDays}; zu dünn/kein Chart -> charted false. */
 async function loadChart(key, limit, type) {
@@ -238,7 +239,7 @@ function build(tab) {
   teardown();
   let disposed = false;
   const scrollers = [];
-  const sections = new Map(SECTIONS.map((d) => [d.id, sectionShell(d)]));
+  const sections = new Map(sectionDefs().map((d) => [d.id, sectionShell(d)]));
   const pills = new Map();
   const nav = h('nav', { class: 'lfx-np__tabs', 'aria-label': 'Neu und beliebt' });
 
@@ -246,7 +247,7 @@ function build(tab) {
     for (const [pid, pill] of pills) pill.classList.toggle('is-active', pid === id);
   }
 
-  for (const d of SECTIONS) {
+  for (const d of sectionDefs()) {
     const pill = h('button', {
       type: 'button',
       class: 'lfx-np__pill',

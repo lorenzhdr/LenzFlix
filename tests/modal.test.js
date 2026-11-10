@@ -28,6 +28,13 @@ vi.mock('../src/js/core/download.js', () => ({
   isChooserOpen: vi.fn(() => false),
 }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn(async () => true) }));
+const themeState = vi.hoisted(() => ({ id: null }));
+vi.mock('../src/js/core/theme.js', () => ({
+  getTheme: () => themeState.id,
+  isTheme: (id) => themeState.id === id,
+  brandName: () => 'LENZFLIX',
+  onThemeChange: () => () => {},
+}));
 
 import * as api from '../src/js/core/api.js';
 import { play } from '../src/js/core/playback.js';
@@ -117,6 +124,29 @@ describe('Klick-Abfang', () => {
 });
 
 describe('open/close', () => {
+  it('Theme plus: Weiterleitung auf die Titelseite statt Modal', async () => {
+    themeState.id = 'plus';
+    try {
+      modal.mount();
+      const card = cardHtml();
+      const ev = click(card.querySelector('img'));
+      expect(ev.defaultPrevented).toBe(true);
+      await flush();
+      expect(window.location.hash).toBe('#/home?lfx=title&id=M1');
+      expect(document.querySelector('.lfx-modal')).toBeNull();
+      expect(api.getItem).not.toHaveBeenCalled();
+    } finally { themeState.id = null; }
+  });
+
+  it('Theme flix: Modal wie bisher', async () => {
+    themeState.id = 'flix';
+    try {
+      await openModal('M1');
+      expect(document.querySelector('.lfx-modal')).not.toBeNull();
+      expect(window.location.hash).toBe('#/home');
+    } finally { themeState.id = null; }
+  });
+
   it('ohne lfx-js: Fallback auf Detailseite', () => {
     document.documentElement.className = '';
     openModal('M1');

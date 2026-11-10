@@ -18,4 +18,16 @@ describe('favicon', () => {
     expect(after[0].getAttribute('href')).toBe('favicon.ico');
     expect(after[1].getAttribute('href')).toBe('a.png');
   });
+
+  it('applyFavicon(theme) stellt bei Designwechsel um, ohne Doppel-Links', () => {
+    document.head.innerHTML = '<link rel="icon" href="favicon.ico">';
+    applyFavicon('plus');
+    applyFavicon('prime');
+    expect(document.head.querySelectorAll('link').length).toBe(2);
+    expect(document.head.querySelector('#lfx-favicon').getAttribute('href')).toMatch(/^data:image\/png/);
+    applyFavicon('unbekannt'); // Fallback auf flix
+    expect(document.head.querySelectorAll('link').length).toBe(2);
+    removeFavicon();
+    expect(document.head.querySelector('link').getAttribute('href')).toBe('favicon.ico');
+  });
 });

@@ -69,4 +69,18 @@ describe('main', () => {
       vi.useRealTimers();
     }
   });
+
+  it('startet das Design (Klasse lfx-theme-flix), räumt bei destroy alles auf', async () => {
+    window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's' };
+    addCss();
+    window.fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ Items: [] }) }));
+    document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
+    window.location.hash = '#/home';
+    await import('../src/js/main.js');
+    const cl = document.documentElement.classList;
+    expect(cl.contains('lfx-theme-flix')).toBe(true);
+    expect(Object.keys(window.LenzFlix).sort()).toEqual(['destroy', 'version']);
+    window.LenzFlix.destroy();
+    expect([...cl].some((c) => c.startsWith('lfx-theme-'))).toBe(false);
+  });
 });

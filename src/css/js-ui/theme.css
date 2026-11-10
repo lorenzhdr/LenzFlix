@@ -1,0 +1,8 @@
+/* LenzFlix · Design-Umschaltung (core/theme.js): beim ersten Start mit LENZ+/LENZPRIME bleibt die Seite
+   unsichtbar, bis das Design-CSS geladen ist (sonst blitzt kurz das LENZFLIX-Design auf). Nicht auf TV. */
+html.lfx-theme-loading:not(.layout-tv) body {
+  opacity: 0 !important;
+}
+html.lfx-js:not(.layout-tv):not(.lfx-theme-loading):not(.lfx-theme-flix) body {
+  transition: opacity 0.2s ease;
+}

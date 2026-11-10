@@ -3,3 +3,7 @@ node_modules/
 .tmp/
 charts-worker/node_modules/
 charts-worker/.wrangler/
+
+# Lokale Referenz-Screenshots (nie committen)
+/disney_*.png
+/www.primevideo.com_*.png

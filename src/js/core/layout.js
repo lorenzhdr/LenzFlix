@@ -1,6 +1,7 @@
 // LenzFlix: Layout-Erkennung + Klassen auf <html>.
 import { debounce } from './cache.js';
 import { reevaluate } from './router.js';
+import { applyThemeClass } from './theme.js';
 
 const root = () => document.documentElement;
 
@@ -26,6 +27,7 @@ export function applyLayoutClasses() {
   setClass('lfx-js', true);
   setClass('lfx-modern', isModern());
   setClass('lfx-tv', isTv());
+  applyThemeClass();
 }
 
 let observer = null;
@@ -65,5 +67,7 @@ export function destroyLayout() {
   }
   resizeHandler = null;
   lastMobile = null;
-  root().classList.remove('lfx-js', 'lfx-modern', 'lfx-tv', 'lfx-scrolled', 'lfx-nav-on');
+  const cl = root().classList;
+  cl.remove('lfx-js', 'lfx-modern', 'lfx-tv', 'lfx-scrolled', 'lfx-nav-on');
+  for (const c of [...cl]) if (c.startsWith('lfx-theme-')) cl.remove(c); // inkl. lfx-theme-loading
 }

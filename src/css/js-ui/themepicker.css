@@ -1,0 +1,476 @@
+/* LenzFlix · js-ui/themepicker: Design-Auswahl #lfx-themepicker (z-index 1400).
+   Desktop: zentrierter Dialog; < 800 px: Bottom-Sheet. Vorschauen rein per CSS. Nur unter html.lfx-js. */
+html.lfx-js {
+  --lfx-tp-radius: 18px;
+  --lfx-tp-card-radius: 14px;
+  --lfx-tp-scrim: rgba(0, 0, 0, 0.72);
+}
+html.lfx-js.lfx-themepicker-open {
+  overflow: hidden;
+}
+
+html.lfx-js .lfx-tp {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background: var(--lfx-tp-scrim);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--lfx-text-body);
+  font-family: var(--lfx-font);
+  opacity: 0;
+  transition: opacity var(--lfx-dur) var(--lfx-ease-out);
+}
+html.lfx-js .lfx-tp.is-open {
+  opacity: 1;
+}
+html.lfx-js .lfx-tp__dialog {
+  position: relative;
+  box-sizing: border-box;
+  width: min(980px, 100%);
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 32px;
+  background: var(--lfx-surface);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--lfx-tp-radius);
+  box-shadow: var(--lfx-shadow-modal);
+  outline: none;
+  transform: translateY(12px) scale(0.97);
+  transition: transform var(--lfx-dur) var(--lfx-ease-out);
+}
+html.lfx-js .lfx-tp.is-open .lfx-tp__dialog {
+  transform: none;
+}
+html.lfx-js .lfx-tp__handle {
+  display: none;
+}
+html.lfx-js .lfx-tp__head {
+  margin: 0 48px 24px 0;
+}
+html.lfx-js .lfx-tp__title {
+  margin: 0 0 6px;
+  color: var(--lfx-text);
+  font: 700 28px / 1.15 var(--lfx-font);
+}
+html.lfx-js .lfx-tp__sub {
+  margin: 0;
+  color: var(--lfx-text-muted);
+  font: 400 var(--lfx-fs-body) / 1.4 var(--lfx-font);
+}
+html.lfx-js .lfx-tp__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  padding: 0 0 3px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.08);
+  color: var(--lfx-text);
+  font: 300 28px / 1 var(--lfx-font);
+  cursor: pointer;
+}
+html.lfx-js .lfx-tp__close:focus-visible,
+html.lfx-js .lfx-tp__card:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 2px;
+}
+
+/* ---------- Karten ---------- */
+html.lfx-js .lfx-tp__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+html.lfx-js .lfx-tp__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px 12px 16px;
+  border: 2px solid transparent;
+  border-radius: var(--lfx-tp-card-radius);
+  background: var(--lfx-surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--lfx-dur-fast) var(--lfx-ease), transform var(--lfx-dur-fast) var(--lfx-ease), background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js .lfx-tp__card.is-active {
+  border-color: var(--lfx-text);
+  background: var(--lfx-surface-3);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-tp__card:hover {
+    transform: translateY(-2px);
+    background: var(--lfx-surface-3);
+  }
+}
+html.lfx-js .lfx-tp__info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+  min-width: 0;
+}
+html.lfx-js .lfx-tp__tagline {
+  color: var(--lfx-text-muted);
+  font: 400 14px / 1.35 var(--lfx-font);
+}
+html.lfx-js .lfx-tp__palette {
+  display: flex;
+  gap: 6px;
+}
+html.lfx-js .lfx-tp__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+html.lfx-js .lfx-tp__state {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+}
+html.lfx-js .lfx-tp__active {
+  display: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--lfx-text);
+  color: #000;
+  font: 700 12px / 1.4 var(--lfx-font);
+  letter-spacing: 0.02em;
+}
+html.lfx-js .lfx-tp__card.is-active .lfx-tp__active {
+  display: inline-block;
+}
+html.lfx-js .lfx-tp__spin {
+  display: none;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border: 3px solid rgb(255 255 255 / 0.3);
+  border-top-color: var(--lfx-text);
+  border-radius: 50%;
+  animation: lfx-tp-spin 0.8s linear infinite;
+}
+html.lfx-js .lfx-tp__card.is-loading .lfx-tp__spin {
+  display: inline-block;
+}
+html.lfx-js .lfx-tp__card.is-loading .lfx-tp__active {
+  display: none;
+}
+@keyframes lfx-tp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Wortmarken ---------- */
+html.lfx-js .lfx-tp__mark {
+  display: block;
+  height: 26px;
+  line-height: 26px;
+}
+html.lfx-js .lfx-tp__mark--flix {
+  width: 92px;
+  background: url("../assets/logo/lenzflix.svg") no-repeat left center / contain;
+  font-size: 0;
+  color: transparent;
+}
+html.lfx-js .lfx-tp__mark--plus {
+  color: var(--lfx-text);
+  font: 800 22px / 26px var(--lfx-font);
+  letter-spacing: 0.06em;
+}
+html.lfx-js .lfx-tp__mark-plus {
+  background: linear-gradient(135deg, #7fd0ff 0%, #4f7bff 55%, #9b7bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+html.lfx-js .lfx-tp__mark--prime {
+  color: var(--lfx-text);
+  font: 700 19px / 24px var(--lfx-font);
+  letter-spacing: 0.01em;
+}
+html.lfx-js .lfx-tp__mark--prime .lfx-tp__mark-text {
+  display: inline-block;
+  border-bottom: 3px solid #1a98ff;
+  border-radius: 0 0 40% 40%;
+  line-height: 20px;
+}
+
+/* ---------- Vorschau (Grundgerüst) ---------- */
+html.lfx-js .lfx-tp__preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+}
+html.lfx-js .lfx-tp__preview > span,
+html.lfx-js .lfx-tp__tile {
+  display: block;
+}
+html.lfx-js .lfx-tp__preview .lfx-tp__row {
+  position: absolute;
+  display: flex;
+  gap: 3%;
+}
+html.lfx-js .lfx-tp__preview .lfx-tp__tile {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 3px;
+  background: linear-gradient(160deg, #3b3b3b, #1e1e1e);
+}
+
+/* flix: schwarzer Grund, roter Logo-Balken, runder Hero, Querformat-Kacheln */
+html.lfx-js .lfx-tp__preview--flix {
+  background: #0a0a0a;
+}
+html.lfx-js .lfx-tp__preview--flix .lfx-tp__logo {
+  position: absolute;
+  left: 6%;
+  top: 6%;
+  width: 22%;
+  height: 6%;
+  border-radius: 2px;
+  background: var(--lfx-red);
+}
+html.lfx-js .lfx-tp__preview--flix .lfx-tp__hero {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 18%;
+  height: 40%;
+  border-radius: 10px;
+  background: linear-gradient(120deg, #5a1015 0%, #2a2a2a 55%, #3a3a3a 100%);
+}
+html.lfx-js .lfx-tp__preview--flix .lfx-tp__row {
+  left: 6%;
+  right: 6%;
+  top: 65%;
+  height: 24%;
+}
+
+/* plus: dunkles Navy, schwarze Kopfleiste, Hero-Karussell, Hochformat-Poster */
+html.lfx-js .lfx-tp__preview--plus {
+  background: linear-gradient(180deg, #0f1a3c 0%, #0a1230 100%);
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 11%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  background: #000;
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__dot {
+  width: 4%;
+  height: 28%;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.5);
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__hero {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 17%;
+  height: 40%;
+  border-radius: 6px;
+  background: linear-gradient(130deg, #2c4fa8 0%, #5a3fa0 100%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__hero--side {
+  top: 20%;
+  height: 34%;
+  width: 11%;
+  right: auto;
+  opacity: 0.6;
+  box-shadow: none;
+  background: linear-gradient(130deg, #1d3270, #2c2a68);
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__hero--l {
+  left: 1%;
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__hero--r {
+  left: auto;
+  right: 1%;
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__pager {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 61%;
+  display: flex;
+  justify-content: center;
+  gap: 2%;
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__pdot {
+  width: 2.4%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.35);
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__pdot.is-on {
+  background: #fff;
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__row {
+  left: 5%;
+  right: 5%;
+  top: 69%;
+  height: 28%;
+  gap: 2.5%;
+}
+html.lfx-js .lfx-tp__preview--plus .lfx-tp__tile {
+  background: linear-gradient(170deg, #34508f, #1a2a5c);
+  border-radius: 4px 4px 0 0;
+}
+
+/* prime: Blauschwarz, Vollbreite-Hero mit weißem Button, Querformat-Kacheln mit Ecken-Badges */
+html.lfx-js .lfx-tp__preview--prime {
+  background: #0f171e;
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__hero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 54%;
+  background: linear-gradient(90deg, #0f171e 8%, rgb(15 23 30 / 0) 70%), linear-gradient(135deg, #1b4a73, #2a2f55);
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__line {
+  position: absolute;
+  left: 6%;
+  top: 22%;
+  width: 34%;
+  height: 7%;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.85);
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__line--s {
+  top: 33%;
+  width: 22%;
+  height: 4%;
+  background: rgb(255 255 255 / 0.4);
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__btn {
+  position: absolute;
+  left: 6%;
+  top: 42%;
+  width: 20%;
+  height: 8%;
+  border-radius: 2px;
+  background: #fff;
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__row {
+  left: 6%;
+  right: 0;
+  top: 62%;
+  height: 26%;
+  gap: 2.5%;
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__tile {
+  background: linear-gradient(160deg, #2c3a47, #18222c);
+  border-radius: 3px;
+}
+html.lfx-js .lfx-tp__preview--prime .lfx-tp__badge-mini {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26%;
+  height: 24%;
+  border-radius: 3px 0 3px 0;
+  background: rgb(0 0 0 / 0.75);
+}
+
+/* ---------- Handy: Bottom-Sheet ---------- */
+html.lfx-js .lfx-tp--sheet {
+  align-items: flex-end;
+  padding: 0;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__dialog {
+  width: 100%;
+  max-height: 92%;
+  padding: 8px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  border-width: 1px 0 0;
+  border-radius: 20px 20px 0 0;
+  transform: translateY(100%);
+}
+html.lfx-js .lfx-tp--sheet.is-open .lfx-tp__dialog {
+  transform: none;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__handle {
+  display: block;
+  width: 40px;
+  height: 5px;
+  margin: 4px auto 14px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.3);
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__head {
+  margin: 0 48px 16px 4px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__title {
+  font-size: 22px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__sub {
+  font-size: 14px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__close {
+  top: 22px;
+  right: 14px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__state {
+  top: 12px;
+  right: 12px;
+}
+
+@media (max-width: 799px) {
+  html.lfx-js .lfx-tp__dialog {
+    padding: 24px 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-tp,
+  html.lfx-js .lfx-tp__dialog,
+  html.lfx-js .lfx-tp__card {
+    transition: none;
+  }
+  html.lfx-js .lfx-tp__spin {
+    animation-duration: 2s;
+  }
+}

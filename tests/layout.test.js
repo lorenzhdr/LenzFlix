@@ -72,4 +72,12 @@ describe('layout', () => {
       setW(1024);
     }
   });
+
+describe('layout: Design-Klassen', () => {
+  it('destroyLayout entfernt alle lfx-theme-* Klassen inkl. lfx-theme-loading', () => {
+    root.classList.add('lfx-theme-plus', 'lfx-theme-loading', 'lfx-theme-flix', 'andere');
+    destroyLayout();
+    expect(root.className).toBe('andere');
+  });
+});
 });

@@ -44,7 +44,7 @@ describe('statshint', () => {
     vi.advanceTimersByTime(HINT_DELAY);
     const el = document.getElementById('lfx-statshint');
     expect(el).not.toBeNull();
-    expect(el.querySelector('a').getAttribute('href')).toBe('/lenzflix-stats/');
+    expect(el.querySelector('a').getAttribute('href')).toBe('/lenzflix-stats/?theme=flix');
     vi.advanceTimersByTime(HINT_DURATION + 300);
     expect(document.getElementById('lfx-statshint')).toBeNull();
   });

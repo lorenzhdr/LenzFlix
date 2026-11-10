@@ -1,0 +1,29 @@
+html.lfx-js.lfx-theme-plus:not(.layout-tv) {
+  --jf-palette-primary-main: #1bb3e8;
+  --jf-palette-primary-light: #4cc6f0;
+  --jf-palette-primary-dark: #0f8fbc;
+  --jf-palette-primary-mainChannel: 27 179 232;
+  --jf-palette-secondary-main: #1bb3e8;
+  --jf-palette-background-default: #10131f;
+  --jf-palette-background-defaultChannel: 16 19 31;
+  --jf-palette-background-paper: #151a2a;
+  --jf-palette-AppBar-defaultBg: #050507;
+  --jf-palette-AppBar-darkBg: #050507;
+  --jf-palette-text-primary: #f5f5f7;
+  --jf-palette-text-secondary: #8d8d95;
+  --lfx-red: #1bb3e8;
+  --lfx-red-hover: #4cc6f0;
+  --lfx-red-active: #0f8fbc;
+  --lfx-accent: #1bb3e8;
+  --lfx-bg: #10131f;
+  --lfx-bg-deep: #050507;
+  --lfx-surface: #151a2a;
+  --lfx-surface-2: #1d2336;
+  --lfx-surface-3: #282f46;
+  --lfx-border: #353c55;
+  --lfx-text: #f5f5f7;
+  --lfx-text-body: #e1e2e8;
+  --lfx-text-muted: #a9abb5;
+  --lfx-text-soft: #8d8d95;
+  --lfx-progress: #1bb3e8;
+}

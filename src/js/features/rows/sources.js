@@ -1,5 +1,6 @@
 // LenzFlix rows: Zeilen-Definitionen (Endpoints + Parameter). Jede Zeile: {id, title, kind, load()} -> Item-Array.
 import * as api from '../../core/api.js';
+import { brandName } from '../../core/theme.js';
 import { getCharts, resolveChartItems } from '../../core/charts.js';
 import { BASE_PARAMS, dayKey, newSeriesIdsFrom, pickGenres, selectTop10 } from './logic.js';
 
@@ -47,8 +48,8 @@ export async function buildChartDefs() {
     const charts = await getCharts();
     if (!charts) return [];
     const specs = [
-      { id: 'top10-series', title: 'Top 10 Serien auf LENZFLIX', key: 'series' },
-      { id: 'top10-movies', title: 'Top 10 Filme auf LENZFLIX', key: 'movies' },
+      { id: 'top10-series', title: `Top 10 Serien auf ${brandName()}`, key: 'series' },
+      { id: 'top10-movies', title: `Top 10 Filme auf ${brandName()}`, key: 'movies' },
     ];
     const defs = [];
     for (const s of specs) {
@@ -88,7 +89,7 @@ export async function buildRowDefs({ seed = dayKey(), genreCount = 6 } = {}) {
   if (chartDefs.length) defs.push(...chartDefs);
   else {
     defs.push({
-      id: 'top10', title: 'Top 10: Neu auf LENZFLIX', kind: 'top10',
+      id: 'top10', title: `Top 10: Neu auf ${brandName()}`, kind: 'top10',
       load: () => items({
         IncludeItemTypes: MOVIE_SERIES, Recursive: true, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10,
       }).then(selectTop10),

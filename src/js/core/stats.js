@@ -1,5 +1,6 @@
 // LenzFlix: Link zur eigenständigen Statistik-Seite (siehe docs/stats-api.md).
 // Nur sichtbar, wenn konfiguriert; das öffentliche Theme bleibt sonst neutral.
+import { getTheme } from './theme.js';
 
 /** Erlaubt: https-URL oder same-origin-Pfad mit genau einem führenden "/". */
 function clean(raw) {
@@ -19,6 +20,13 @@ export function getStatsUrl() {
   } catch {
     return null;
   }
+}
+
+/** Statistik-URL mit angehängtem theme=<id> (Seite übernimmt das Design). null ohne statsUrl. */
+export function statsHref(theme = getTheme() || 'flix') {
+  const url = getStatsUrl();
+  if (!url) return null;
+  return `${url}${url.includes('?') ? '&' : '?'}theme=${encodeURIComponent(theme)}`;
 }
 
 export const STATS_LABEL = 'Meine Statistik';

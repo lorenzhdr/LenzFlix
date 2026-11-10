@@ -4,7 +4,7 @@
 // 10 Tage nach dem ersten Anzeigen. Nur Modern-Layout (Desktop + Handy), nicht TV, nur mit statsUrl.
 import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { isModern, isTv, isMobile } from '../core/layout.js';
-import { getStatsUrl, isStatsHref, STATS_LABEL } from '../core/stats.js';
+import { getStatsUrl, isStatsHref, statsHref, STATS_LABEL } from '../core/stats.js';
 
 const ID = 'lfx-statshint';
 const KEY = 'lfx.statsHint';
@@ -88,7 +88,7 @@ function canHover() {
 
 function show() {
   state.showTimer = null;
-  const url = getStatsUrl();
+  const url = statsHref() || getStatsUrl();
   if (!url || state.el || !shouldShow()) return;
   const link = h('a', { class: 'lfx-statshint__link', href: url }, [
     h('span', { class: 'lfx-statshint__badge' }, 'Neu'),

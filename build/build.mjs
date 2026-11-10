@@ -16,12 +16,20 @@ const targets = { chrome: 53 << 16, safari: 15 << 16, firefox: 100 << 16, androi
 
 // Font/asset URLs in src/css/*.css are written relative to dist/ (../assets/fonts/x.woff2),
 // so that they stay valid in the bundled output without rewriting.
+// Kern-CSS + Design-CSS (LENZ+ / LENZPRIME werden per JS nachgeladen, siehe core/themecss.js).
+const cssEntries = [
+  ['src/css/index.css', 'lenzflix'],
+  ['src/css/themes/plus/index.css', 'lenzplus'],
+  ['src/css/themes/prime/index.css', 'lenzprime'],
+];
+
 function buildCss() {
-  const entry = resolve(root, 'src/css/index.css');
-  for (const minify of [false, true]) {
-    const { code } = bundle({ filename: entry, minify, targets });
-    const out = resolve(dist, minify ? 'lenzflix.min.css' : 'lenzflix.css');
-    writeFileSync(out, code);
+  for (const [file, name] of cssEntries) {
+    const entry = resolve(root, file);
+    for (const minify of [false, true]) {
+      const { code } = bundle({ filename: entry, minify, targets });
+      writeFileSync(resolve(dist, minify ? `${name}.min.css` : `${name}.css`), code);
+    }
   }
 }
 

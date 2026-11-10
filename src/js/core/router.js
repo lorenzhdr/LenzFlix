@@ -67,28 +67,65 @@ export function onRoute(handler) {
 const features = new Map(); // name -> {feature, mounted}
 let featureSub = null;
 
-function evaluate(route) {
-  for (const entry of [...features.values()]) {
-    const { feature } = entry;
+let evaluating = false;
+let rerun = null;
+
+function runPass(route) {
+  // 1. alle match() auswerten (Stand vor jeder Aktion)
+  const plan = [...features.values()].map((entry) => {
     let matched = false;
     try {
-      matched = Boolean(feature.match(route));
+      matched = Boolean(entry.feature.match(route));
     } catch (e) {
-      console.error(`[LenzFlix] ${feature.name}.match`, e);
+      console.error(`[LenzFlix] ${entry.feature.name}.match`, e);
     }
+    return { entry, matched };
+  });
+  const alive = (entry) => features.get(entry.feature.name) === entry;
+  // 2. Phase 1: alle nötigen Unmounts
+  for (const { entry, matched } of plan) {
+    if (matched || !entry.mounted || !alive(entry)) continue;
+    entry.mounted = false;
     try {
-      if (matched && !entry.mounted) {
+      entry.feature.unmount();
+    } catch (e) {
+      console.error(`[LenzFlix] Feature ${entry.feature.name}`, e);
+    }
+  }
+  // 3. Phase 2: Mounts/Updates in Registrierungsreihenfolge
+  for (const { entry, matched } of plan) {
+    if (!matched || !alive(entry)) continue;
+    const { feature } = entry;
+    try {
+      if (!entry.mounted) {
         entry.mounted = true;
         feature.mount(route);
-      } else if (matched && typeof feature.update === 'function') {
+      } else if (typeof feature.update === 'function') {
         feature.update(route);
-      } else if (!matched && entry.mounted) {
-        entry.mounted = false;
-        feature.unmount();
       }
     } catch (e) {
       console.error(`[LenzFlix] Feature ${feature.name}`, e);
     }
+  }
+}
+
+function evaluate(route) {
+  if (evaluating) {
+    rerun = route; // Wiedereintritt (z. B. mount löst reevaluate aus): nach Abschluss mit neuester Route wiederholen
+    return;
+  }
+  evaluating = true;
+  try {
+    let next = route;
+    let guard = 0;
+    while (next && guard++ < 10) {
+      rerun = null;
+      runPass(next);
+      next = rerun;
+    }
+  } finally {
+    evaluating = false;
+    rerun = null;
   }
 }
 

@@ -16,6 +16,8 @@ import { toast } from '../core/toast.js';
 import { putItems } from '../core/itemstore.js';
 import { attachSwipeClose } from '../core/swipe.js';
 import { clearCache } from '../core/cache.js';
+import { getTheme } from '../core/theme.js';
+import { titleHref } from '../shared/routes.js';
 import * as data from './modal/data.js';
 import { hasResume, pickInitialSeason } from './modal/format.js';
 import { TITLE_ID, buildSkeleton, buildError, buildDetail, renderEpisodes, renderCards, icon, setFavState, setLikeState, setPlayLabel, setPlayedState, setEpisodeSeen, detailHref } from './modal/render.js';
@@ -83,6 +85,12 @@ export function openModal(itemOrId, opts = {}) {
   if (!featureActive()) {
     const sid = (itemOrId && itemOrId.ServerId) || getAuth().serverId || '';
     location.hash = `#/details?id=${id}${sid ? `&serverId=${sid}` : ''}`;
+    return Promise.resolve();
+  }
+  // Designs ohne Modal (plus/prime): eigene Titelseite. Theme noch offen (null) -> Standardverhalten (Modal).
+  const theme = getTheme();
+  if (theme && theme !== 'flix') {
+    location.hash = titleHref(id);
     return Promise.resolve();
   }
   const hint = typeof itemOrId === 'object' ? itemOrId : null;

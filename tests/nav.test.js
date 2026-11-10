@@ -7,6 +7,11 @@ vi.mock('../src/js/core/api.js', () => ({
   isReady: () => true,
 }));
 
+vi.mock('../src/js/core/theme.js', () => ({ isTheme: vi.fn(() => true), getTheme: () => 'flix' }));
+vi.mock('../src/js/core/themepicker.js', () => ({ openThemePicker: vi.fn() }));
+
+import { isTheme } from '../src/js/core/theme.js';
+import { openThemePicker } from '../src/js/core/themepicker.js';
 import { buildNavModel, activeKey, navItems, viewUrl } from '../src/js/features/nav.js';
 import nav from '../src/js/features/nav.js';
 import { parseHash } from '../src/js/core/router.js';
@@ -52,11 +57,37 @@ describe('nav: Meine Statistik', () => {
     document.documentElement.className = '';
   });
 
-  it('ohne Konfiguration: kein Link, Mehr-Menü bleibt aus', async () => {
+  it('ohne Konfiguration: kein Statistik-Link, Mehr-Menü ist trotzdem da (mit Design-Eintrag)', async () => {
     nav.mount(parseHash('#/home'));
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-nav__item').length).toBe(4));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-nav__item').length).toBe(5));
     expect(document.querySelector('.lfx-nav__menu-item--stats')).toBeNull();
-    expect(document.querySelector('.lfx-nav__more')).toBeNull();
+    expect(document.querySelector('.lfx-nav__more')).not.toBeNull();
+    expect(document.querySelector('.lfx-nav__menu-item--design')).not.toBeNull();
+  });
+
+  it('Design-Eintrag ist letzter Button, öffnet den Picker und schließt das Menü; Pfeiltasten erreichen ihn', async () => {
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    nav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelector('.lfx-nav__menu-item--stats')).not.toBeNull());
+    const items = [...document.querySelectorAll('.lfx-nav__menu [role="menuitem"]')];
+    const design = items.at(-1);
+    expect(design.tagName).toBe('BUTTON');
+    expect(design.type).toBe('button');
+    expect(design.textContent).toBe('Design Einstellungen');
+    expect(design.classList.contains('lfx-nav__menu-item--design')).toBe(true);
+    const wrap = document.querySelector('.lfx-nav__more');
+    items.at(-2).focus();
+    items.at(-2).dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(design);
+    design.click();
+    expect(wrap.classList.contains('is-open')).toBe(false);
+    expect(openThemePicker).toHaveBeenCalledWith({ returnFocus: wrap.querySelector('.lfx-nav__more-btn') });
+  });
+
+  it('match nur im Design flix', () => {
+    expect(nav.match(parseHash('#/home'))).toBe(true);
+    isTheme.mockReturnValueOnce(false);
+    expect(nav.match(parseHash('#/home'))).toBe(false);
   });
 
   it('mit Konfiguration: normaler Link im Mehr-Menü, auch ohne weitere Bibliotheken', async () => {
@@ -64,7 +95,7 @@ describe('nav: Meine Statistik', () => {
     nav.mount(parseHash('#/home'));
     await vi.waitFor(() => expect(document.querySelector('.lfx-nav__menu-item--stats')).not.toBeNull());
     const a = document.querySelector('.lfx-nav__menu-item--stats');
-    expect(a.getAttribute('href')).toBe('/lenzflix-stats/');
+    expect(a.getAttribute('href')).toBe('/lenzflix-stats/?theme=flix');
     expect(a.textContent).toBe('Meine Statistik');
     expect(a.getAttribute('target')).toBeNull();
     expect(a.getAttribute('href').startsWith('#')).toBe(false);

@@ -146,6 +146,13 @@ html.lfx-js .lfx-mnav-overlay__link.is-active {
 html.lfx-js .lfx-mnav-overlay__link--stats {
   color: var(--lfx-gold);
 }
+html.lfx-js .lfx-mnav-overlay__link--design {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
 html.lfx-js .lfx-mnav-overlay__link:focus-visible {
   outline: 2px solid #fff;
   outline-offset: -2px;

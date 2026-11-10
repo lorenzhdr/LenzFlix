@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { getStatsUrl } from '../src/js/core/stats.js';
+import { getStatsUrl, statsHref, isStatsHref } from '../src/js/core/stats.js';
 
 const setVar = (v) => document.documentElement.style.setProperty('--lfx-stats-url', v);
 
@@ -42,4 +42,24 @@ describe('getStatsUrl', () => {
     window.LenzFlixConfig = { statsUrl: 42 };
     expect(getStatsUrl()).toBeNull();
   });
+
+describe('statsHref', () => {
+  afterEach(() => {
+    delete window.LenzFlixConfig;
+  });
+  it('ohne statsUrl: null', () => {
+    expect(statsHref('plus')).toBeNull();
+  });
+  it('hängt theme=<id> an (? oder &), Default flix', () => {
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    expect(statsHref('plus')).toBe('/lenzflix-stats/?theme=plus');
+    expect(statsHref()).toBe('/lenzflix-stats/?theme=flix');
+    window.LenzFlixConfig = { statsUrl: 'https://s.example/x?a=1' };
+    expect(statsHref('prime')).toBe('https://s.example/x?a=1&theme=prime');
+  });
+  it('isStatsHref erkennt den Link mit theme-Parameter weiterhin', () => {
+    window.LenzFlixConfig = { statsUrl: 'https://s.example/x/' };
+    expect(isStatsHref(statsHref('plus'))).toBe(true);
+  });
+});
 });

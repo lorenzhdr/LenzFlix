@@ -4,6 +4,7 @@
 // werden per CSS (html.lfx-home-on) ausgeblendet. Billboard/Zeilen liefern je render(slot, ctx) -> cleanup.
 import { h } from '../core/dom.js';
 import { isTv } from '../core/layout.js';
+import { isTheme } from '../core/theme.js';
 import * as billboard from './billboard.js';
 import * as rows from './rows.js';
 
@@ -63,7 +64,7 @@ function ensure() {
 
 const homeFeature = {
   name: 'home',
-  match: (route) => isHomeRoute(route) && !isTv(),
+  match: (route) => isHomeRoute(route) && !isTv() && isTheme('flix'),
   mount: () => ensure(),
   update: () => ensure(),
   unmount: () => { clearTimeout(waitTimer); teardown(); },

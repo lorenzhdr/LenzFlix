@@ -13,6 +13,11 @@ vi.mock('../src/js/core/api.js', () => ({
   isReady: () => true,
 }));
 
+vi.mock('../src/js/core/theme.js', () => ({ isTheme: vi.fn(() => true), getTheme: () => 'flix' }));
+vi.mock('../src/js/core/themepicker.js', () => ({ openThemePicker: vi.fn() }));
+
+import { isTheme } from '../src/js/core/theme.js';
+import { openThemePicker } from '../src/js/core/themepicker.js';
 import mobilenav, { showsPills, pillItems, overlayItems } from '../src/js/features/mobilenav.js';
 import { buildNavModel } from '../src/js/features/nav.js';
 import { parseHash } from '../src/js/core/router.js';
@@ -30,14 +35,15 @@ describe('mobilenav (rein)', () => {
   const model = buildNavModel(views);
   it('Pills und Overlay-Einträge', () => {
     expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
-    expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik']);
+    expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik', 'Design Einstellungen']);
   });
   it('Statistik-Eintrag nur mit Konfiguration, nicht in den Pills', () => {
     expect(overlayItems(model).some((i) => i.label === 'Meine Statistik')).toBe(false);
     window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
     try {
-      const last = overlayItems(model).at(-1);
-      expect(last).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/' });
+      const items = overlayItems(model);
+      expect(items.at(-1)).toMatchObject({ key: 'design', label: 'Design Einstellungen', action: 'design' });
+      expect(items.at(-2)).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/?theme=flix' });
       expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
     } finally {
       delete window.LenzFlixConfig;
@@ -72,6 +78,28 @@ describe('mobilenav (DOM)', () => {
     expect(mobilenav.match(parseHash('#/login'))).toBe(false);
   });
 
+  it('match nur im Design flix', () => {
+    expect(mobilenav.match(parseHash('#/home'))).toBe(true);
+    isTheme.mockReturnValueOnce(false);
+    expect(mobilenav.match(parseHash('#/home'))).toBe(false);
+  });
+
+  it('Design-Eintrag ist letzter Button; Klick schließt das Overlay und öffnet den Picker', async () => {
+    mobilenav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(7));
+    const overlay = document.getElementById('lfx-mnav-overlay');
+    document.querySelector('.lfx-mnav__pill--cats').click();
+    expect(overlay.hidden).toBe(false);
+    const btn = [...overlay.querySelectorAll('.lfx-mnav-overlay__link')].at(-1);
+    expect(btn.tagName).toBe('BUTTON');
+    expect(btn.type).toBe('button');
+    expect(btn.dataset.action).toBe('design');
+    expect(btn.textContent).toBe('Design Einstellungen');
+    btn.click();
+    expect(overlay.hidden).toBe(true);
+    expect(openThemePicker).toHaveBeenCalledWith({ returnFocus: expect.anything() });
+  });
+
   it('mount rendert Pills, Overlay öffnet/schließt, unmount räumt auf', async () => {
     mobilenav.mount(parseHash('#/home'));
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav__pill').length).toBe(4));
@@ -96,9 +124,9 @@ describe('mobilenav (DOM)', () => {
     window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
     try {
       mobilenav.mount(parseHash('#/home'));
-      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(7));
+      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(8));
       const a = [...document.querySelectorAll('.lfx-mnav-overlay__link')].find((x) => x.textContent === 'Meine Statistik');
-      expect(a.getAttribute('href')).toBe('/lenzflix-stats/');
+      expect(a.getAttribute('href')).toBe('/lenzflix-stats/?theme=flix');
       expect(a.dataset.key).toBeUndefined();
       expect(document.querySelectorAll('.lfx-mnav__pill').length).toBe(4);
       mobilenav.update(parseHash('#/home'));
@@ -146,7 +174,7 @@ describe('mobilenav (DOM)', () => {
 
   it('Overlay ohne Konfiguration: kein Statistik-Link', async () => {
     mobilenav.mount(parseHash('#/home'));
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(6));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(7));
     expect([...document.querySelectorAll('.lfx-mnav-overlay__link')].some((x) => x.textContent === 'Meine Statistik')).toBe(false);
   });
 });

@@ -1,0 +1,46 @@
+// LenzFlix: Profil-Menü-Einträge und Benutzer-Chip (für Popover in den Designs plus/prime).
+import { getUser, getUserId, buildUrl } from '../core/api.js';
+import { getStatsUrl, statsHref } from '../core/stats.js';
+import { openThemePicker } from '../core/themepicker.js';
+
+/**
+ * Abmelden. Bevorzugt Jellyfins eigenes Dashboard.logout(). Fehlt es (docs/dom-map.md dokumentiert keinen
+ * Logout-Weg), landet der Nutzer auf '#/mypreferencesmenu', wo Jellyfin die native Abmelden-Schaltfläche anbietet
+ * – bewusst kein ApiClient.logout() (würde Jellyfins Sitzungs-/Redirect-Logik umgehen).
+ */
+export function logout() {
+  const d = window.Dashboard;
+  if (d && typeof d.logout === 'function') {
+    d.logout();
+    return;
+  }
+  window.location.hash = '#/mypreferencesmenu';
+}
+
+/** Einträge für openPopover: Statistik (falls konfiguriert), Design, Einstellungen, Dashboard (Admin), Abmelden. */
+export async function profileEntries({ theme, returnFocus } = {}) {
+  const entries = [];
+  if (getStatsUrl()) {
+    entries.push({ key: 'stats', label: 'Meine Statistik', href: statsHref(theme) || getStatsUrl(), className: 'is-stats' });
+  }
+  entries.push({ key: 'design', label: 'Design Einstellungen', onClick: () => openThemePicker({ returnFocus }) });
+  entries.push({ key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' });
+  let user = null;
+  try { user = await getUser(); } catch { /* ohne Admin-Eintrag weiter */ }
+  if (user && user.Policy && user.Policy.IsAdministrator) {
+    entries.push({ key: 'dashboard', label: 'Dashboard', href: '#/dashboard' });
+  }
+  entries.push({ key: 'logout', label: 'Abmelden', onClick: () => logout() });
+  return entries;
+}
+
+/** Name und Profilbild-URL (ohne api_key) des angemeldeten Benutzers. */
+export async function getUserChip() {
+  let user = null;
+  try { user = await getUser(); } catch { /* leer */ }
+  const name = (user && user.Name) || '';
+  const tag = user && user.PrimaryImageTag;
+  const id = (user && user.Id) || getUserId();
+  const imageUrl = tag && id ? buildUrl(`/Users/${id}/Images/Primary`, { tag, maxWidth: 96 }) : null;
+  return { name, imageUrl };
+}

@@ -8,8 +8,13 @@ import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv, isMobile } from '../core/layout.js';
-import { getStatsUrl, STATS_LABEL } from '../core/stats.js';
+import * as stats from '../core/stats.js';
+import { isTheme } from '../core/theme.js';
+import { openThemePicker } from '../core/themepicker.js';
 import { buildNavModel, navItems, activeKey } from './nav.js';
+
+const { STATS_LABEL } = stats;
+const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref() : stats.getStatsUrl());
 
 const ROOT_ID = 'lfx-mnav';
 const OVERLAY_ID = 'lfx-mnav-overlay';
@@ -30,8 +35,9 @@ export function pillItems(model) {
 export function overlayItems(model) {
   const items = navItems(model).map((it) => ({ key: it.key, label: it.label, href: it.href }));
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
-  const statsUrl = getStatsUrl();
+  const statsUrl = statsLink();
   if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
+  items.push({ key: 'design', label: 'Design Einstellungen', action: 'design' });
   return items;
 }
 
@@ -132,6 +138,7 @@ function render() {
 
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
+      it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, dataset: { action: it.action } }, it.label) :
       // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
       h('a', { class: `lfx-mnav-overlay__link${it.external ? ' lfx-mnav-overlay__link--stats' : ''}`, href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
     ])));
@@ -158,7 +165,7 @@ async function loadViews(seq) {
 export const mobilenavFeature = {
   name: 'mobilenav',
   match(route) {
-    return isReady() && isModern() && !isTv() && isMobile() && !EXCLUDED.test(route.path);
+    return isReady() && isModern() && !isTv() && isMobile() && isTheme('flix') && !EXCLUDED.test(route.path);
   },
   mount(route) {
     const seq = ++state.seq;
@@ -178,7 +185,11 @@ export const mobilenavFeature = {
     state.overlay.addEventListener('keydown', onOverlayKey);
     // Klick auf einen Eintrag navigiert (Hash) und schließt das Overlay
     const onOverlayClick = (e) => {
-      if (e.target.closest && e.target.closest('a')) closeOverlay({ restoreFocus: false });
+      const t = e.target.closest && e.target.closest('a, button[data-action]');
+      if (!t) return;
+      const opener = state.returnFocus || state.catBtn;
+      closeOverlay({ restoreFocus: false });
+      if (t.dataset && t.dataset.action === 'design') openThemePicker({ returnFocus: opener });
     };
     state.overlay.addEventListener('click', onOverlayClick);
     state.cleanups.push(

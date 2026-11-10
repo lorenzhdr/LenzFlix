@@ -18,6 +18,12 @@ vi.mock('../src/js/core/api.js', async () => {
   };
 });
 
+const themeState = vi.hoisted(() => ({ id: 'flix' }));
+vi.mock('../src/js/core/theme.js', () => ({
+  getTheme: () => themeState.id,
+  brandName: () => ({ flix: 'LENZFLIX', plus: 'LENZ+', prime: 'LENZPRIME' })[themeState.id],
+}));
+
 import * as api from '../src/js/core/api.js';
 import { badgeFor, selectTop10, pickGenres, seededShuffle, dayKey, progressPercent } from '../src/js/features/rows/logic.js';
 import { createCard } from '../src/js/features/rows/card.js';
@@ -243,6 +249,16 @@ describe('Chart-Zeilen auf der Startseite', () => {
     expect(t).toContain('Top 10 Serien auf LENZFLIX');
     expect(t).toContain('Top 10 Filme auf LENZFLIX');
     expect(t).not.toContain('Top 10: Neu auf LENZFLIX');
+  });
+
+  it('Theme plus: Markenname LENZ+ in den Titeln', async () => {
+    themeState.id = 'plus';
+    try {
+      api.getItems.mockImplementation(async (p) => ({ Items: p.Ids ? p.Ids.split(',').map((id) => mk(id)) : [] }));
+      const t = await run({ version: 1, windowDays: 30, series: entries('s', 6), movies: entries('m', 7), all: [] });
+      expect(t).toContain('Top 10 Serien auf LENZ+');
+      expect(t).toContain('Top 10 Filme auf LENZ+');
+    } finally { themeState.id = 'flix'; }
   });
 
   it('Charts zu dünn: bisherige Neu-Zeile', async () => {

@@ -7,9 +7,10 @@ import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { cssActive } from './core/csscheck.js';
+import { VERSION } from './core/version.js';
+import { startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
 import { features } from './features/index.js';
 
-const VERSION = '1.4.10';
 const WATCH_MS = 1000;
 
 function init() {
@@ -40,6 +41,7 @@ function init() {
     resetRouter(); // unmount aller Features
     removeAllMounts();
     destroyLayout();
+    stopTheme();
   }
 
   // Läuft dauerhaft: startet (sobald CSS aktiv und ApiClient bereit; auch nach Login ohne Reload)
@@ -47,16 +49,20 @@ function init() {
   function sync() {
     if (destroyed) return;
     if (cssActive()) {
-      applyFavicon();
+      startTheme();
+      syncThemeUser();
+      applyFavicon(getTheme() || 'flix');
       if (!running && window.ApiClient && isReady()) startFeatures();
     } else if (running || document.documentElement.classList.contains('lfx-js')) {
       stopFeatures();
       removeFavicon();
     } else {
+      stopTheme();
       removeFavicon();
     }
   }
 
+  if (cssActive()) startTheme(); // vor allem anderen: Design-CSS/Klasse so früh wie möglich
   watchTimer = setInterval(sync, WATCH_MS);
   window.addEventListener('hashchange', sync);
   sync();
@@ -66,6 +72,7 @@ function init() {
     clearInterval(watchTimer);
     window.removeEventListener('hashchange', sync);
     stopFeatures();
+    destroyTheme();
     removeFavicon();
     delete window.LenzFlix;
   }

@@ -1,5 +1,5 @@
 // LenzFlix: Billboard (Hero) auf der Startseite. render(slot, ctx) -> Cleanup.
-import { getItems, getJson, getUserId, getAuth, imageUrl, logoImage, setFavorite } from '../core/api.js';
+import { getItems, imageUrl, logoImage, setFavorite } from '../core/api.js';
 import { setAmbient, resetAmbient } from '../core/ambient.js';
 import { ambientFromPixels } from '../core/color.js';
 import { h } from '../core/dom.js';
@@ -10,6 +10,7 @@ import { canDownload, startDownload, isChooserOpen } from '../core/download.js';
 import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
+import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
 import { buildPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
 
 export const ROTATE_MS = 10000;
@@ -64,15 +65,6 @@ async function fetchPool() {
 
 function reducedMotion() {
   return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-function trailerUrl(trailerId) {
-  const c = window.ApiClient;
-  if (c && typeof c.getUrl === 'function') {
-    return c.getUrl(`Videos/${trailerId}/stream.mp4`, { static: true, api_key: c.accessToken() });
-  }
-  const { address, token } = getAuth();
-  return `${address}/Videos/${trailerId}/stream.mp4?static=true&api_key=${encodeURIComponent(token || '')}`;
 }
 
 /** Liest eine 64px-Version des Backdrops und setzt die Ambient-Farbe. Fehler werden still ignoriert. */
@@ -305,10 +297,9 @@ export function render(slot) {
   async function startTrailer(item, myGen) {
     if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen) return;
     try {
-      const list = await getJson(`/Users/${getUserId()}/Items/${item.Id}/LocalTrailers`);
+      const t = await loadLocalTrailer(item);
       if (myGen !== gen || disposed) return;
-      const t = Array.isArray(list) ? list[0] : null;
-      if (!t || !t.Id) return;
+      if (!t) return;
       const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
       v.muted = true;
       v.setAttribute('muted', '');

@@ -7,6 +7,7 @@
   document.documentElement.classList.remove('abyss-spotlight-visible');
   document.querySelectorAll('.abyss-spotlight-active').forEach((e) => e.classList.remove('abyss-spotlight-active'));
   document.getElementById('lfx-dev-css')?.remove();
+  document.querySelectorAll('link.lfx-theme-css').forEach((e) => e.remove());
   const link = Object.assign(document.createElement('link'), { id: 'lfx-dev-css', rel: 'stylesheet', href: `${base}dist/lenzflix.css?${ts}` });
   document.head.appendChild(link);
   if (window.__lfxNoJs) return;

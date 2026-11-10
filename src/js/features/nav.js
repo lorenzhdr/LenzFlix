@@ -5,10 +5,15 @@ import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv } from '../core/layout.js';
-import { getStatsUrl, STATS_LABEL } from '../core/stats.js';
+import * as stats from '../core/stats.js';
+import { isTheme } from '../core/theme.js';
+import { openThemePicker } from '../core/themepicker.js';
 import { mountAmbient, unmountAmbient, setAmbient } from '../core/ambient.js';
 
 export { setAmbient };
+
+const { STATS_LABEL } = stats;
+const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref() : stats.getStatsUrl());
 
 const NAV_ID = 'lfx-nav';
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
@@ -110,11 +115,13 @@ function render() {
     nav.append(h('a', { class: 'lfx-nav__item', href: it.href, dataset: { key: it.key } }, it.label));
   }
   const more = state.model.more;
-  const statsUrl = getStatsUrl();
-  if (more.length || statsUrl) {
+  const statsUrl = statsLink();
+  {
     const entries = more.map((m) => h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
     // Eigenständige Seite (kein Hash-Link, kein data-key -> nie „aktiv“)
     if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
+    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem' }, 'Design Einstellungen');
+    entries.push(designBtn);
     const menu = h('div', { class: 'lfx-nav__menu', role: 'menu', id: 'lfx-nav-menu' }, entries);
     const btn = h('button', {
       type: 'button',
@@ -133,7 +140,7 @@ function render() {
         setMenu(false);
         btn.focus();
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const items = [...menu.querySelectorAll('a')];
+        const items = [...menu.querySelectorAll('[role="menuitem"]')];
         const i = items.indexOf(document.activeElement);
         const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
         setMenu(true);
@@ -142,12 +149,14 @@ function render() {
       }
     });
     menu.addEventListener('click', () => setMenu(false));
+    designBtn.addEventListener('click', () => {
+      setMenu(false);
+      openThemePicker({ returnFocus: btn });
+    });
     nav.append(wrap);
     // Render läuft nach dem Laden der Bibliotheken erneut: ein gerade geöffnetes Menü offen halten
     // (die Maus steht schon darüber, ein neues mouseenter feuert nicht).
     if (state.menuOpen) setMenu(true);
-  } else {
-    state.menuOpen = false;
   }
   applyActive();
 }
@@ -178,7 +187,7 @@ async function loadViews(seq) {
 export const navFeature = {
   name: 'nav',
   match(route) {
-    return isReady() && isModern() && !isTv() && !EXCLUDED.test(route.path);
+    return isReady() && isModern() && !isTv() && isTheme('flix') && !EXCLUDED.test(route.path);
   },
   mount(route) {
     const seq = ++state.seq;
