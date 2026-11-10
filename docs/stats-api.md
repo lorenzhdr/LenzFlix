@@ -36,7 +36,7 @@ Eigene Statistik pro Jellyfin-Nutzer aus dem Plugin Playback Reporting. Die Seit
 - `topSeries`/`topMovies` max. 10, IDs normalisiert (32 Hex ohne Bindestriche, klein). Titel/Poster lädt die Seite selbst mit dem Nutzer-Token.
 - `timeline.buckets` sind dünn besetzt (nur Buckets mit Daten), `key` = `YYYY-MM-DD` (day), `YYYY-WW` (week, SQLite `%W`), `YYYY-MM` (month). Einheit: `7d`/`30d` → day, `year` → week, `all` → month. Lücken füllt die Seite.
 - `heatmap`: `dow` 0 = Sonntag … 6 = Samstag (SQLite `%w`), `hour` 0–23, nur Zellen mit Daten. Zeit = lokale Serverzeit (Europe/Berlin), keine Umrechnung. Die Dauer einer Wiedergabe wird der Startstunde zugerechnet.
-- `methods`: `PlaybackMethod` wird per Präfix normalisiert (`DirectPlay` → directPlay, `DirectStream` → directStream, `Transcode…` → transcode, sonst other).
+- `methods`: `PlaybackMethod` wird per Präfix normalisiert (`DirectPlay` → directPlay, `DirectStream` und `Transcode (v:direct a:direct)` (nur Remux, laut echten Daten häufig) → directStream, übrige `Transcode…` → transcode, sonst other).
 - `compare` ist `null`, wenn weniger als 3 aktive Nutzer im Zeitraum (Ignorierliste ausgenommen) existieren, wenn der Nutzer selbst im Zeitraum keine Wiedergabe hat oder wenn er ignoriert wird. Es enthält **nie** Daten anderer Nutzer außer dem Durchschnitt; `rank = 1 + Anzahl Nutzer mit mehr Watchtime`.
 - `ignored: true` (Nutzer steht auf der Ignorierliste von Playback Reporting): alle Zahlen 0/leer, `compare: null`.
 - `approx: true`, wenn mehr als 3000 Episoden für die Serien-Zuordnung angefallen sind (Subrequest-Limit). Dann sind `topSeries`/`binge.seriesDay` Näherungen; `totals.episodes`/`movies`/`seconds` bleiben exakt.

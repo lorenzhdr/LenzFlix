@@ -97,7 +97,8 @@ const emptyMethods = () => ({
 function methodKey(m) {
   const s = String(m ?? '').toLowerCase();
   if (s.startsWith('directplay')) return 'directPlay';
-  if (s.startsWith('directstream')) return 'directStream';
+  // „Transcode (v:direct a:direct)“ ist nur ein Remux (Container-Wechsel) und zählt als Direct Stream.
+  if (s.startsWith('directstream') || s.startsWith('transcode (v:direct a:direct)')) return 'directStream';
   if (s.startsWith('transcode')) return 'transcode';
   return 'other';
 }

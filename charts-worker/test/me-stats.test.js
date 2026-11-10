@@ -114,7 +114,7 @@ const full = {
   q6b: () =>
     table(
       ['PlaybackMethod', 'plays', 'secs'],
-      [['DirectPlay', '2', '1000'], ['Transcode (h264)', '1', '1500'], ['DirectStream', '1', '300'], [null, '0', '200']],
+      [['DirectPlay', '2', '1000'], ['Transcode (h264)', '1', '1500'], ['DirectStream', '1', '300'], ['Transcode (v:direct a:direct)', '3', '400'], [null, '0', '200']],
     ),
   q7: () => table(['n', 'avgSecs', 'ahead'], [['7', '4000.4', '1']]),
 };
@@ -242,7 +242,7 @@ describe('GET /lenzflix-stats/api/me/stats', () => {
     expect(b.devices).toEqual([{ client: 'Jellyfin Web', device: 'Chrome', plays: 4, seconds: 3000 }]);
     expect(b.methods).toEqual({
       directPlay: { plays: 2, seconds: 1000 },
-      directStream: { plays: 1, seconds: 300 },
+      directStream: { plays: 4, seconds: 700 },
       transcode: { plays: 1, seconds: 1500 },
       other: { plays: 0, seconds: 200 },
     });
