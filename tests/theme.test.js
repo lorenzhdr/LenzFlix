@@ -58,11 +58,13 @@ afterEach(() => {
 describe('Metadaten', () => {
   it('THEMES, THEME_META, normalizeTheme, brandName', async () => {
     const t = await load();
-    expect(t.THEMES).toEqual(['flix', 'plus', 'prime']);
+    expect(t.THEMES).toEqual(['flix', 'plus', 'prime', 'retro']);
     expect(t.THEME_META.plus.name).toBe('LENZ+');
     expect(t.normalizeTheme('prime')).toBe('prime');
     expect(t.normalizeTheme('x')).toBe('flix');
     expect(t.normalizeTheme(undefined)).toBe('flix');
+    expect(t.normalizeTheme('retro')).toBe('retro');
+    expect(t.brandName('retro')).toBe('LENZ//84');
     expect(t.brandName('prime')).toBe('LENZPRIME');
     expect(t.brandName()).toBe('LENZFLIX');
   });

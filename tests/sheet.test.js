@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { confirmAction, openSheet, isChooserOpen, closeChooser, isCurrent, getSheet } from '../src/js/core/sheet.js';
+import { confirmAction, openSheet, renderSheet, isChooserOpen, closeChooser, isCurrent, getSheet } from '../src/js/core/sheet.js';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -49,5 +49,19 @@ describe('confirmAction', () => {
     expect(isCurrent(a)).toBe(false);
     expect(isCurrent(b)).toBe(true);
     expect(getSheet()).toBe(b);
+  });
+});
+
+describe('renderSheet badge', () => {
+  it('rendert Beta-Pille und zugänglichen Namen nur bei badge', () => {
+    const c = openSheet(null, 'Mehr');
+    renderSheet(c, 'Mehr', [{ label: 'Design Einstellungen', badge: 'Beta' }, { label: 'Abmelden' }]);
+    const [a, b] = buttons();
+    expect(a.querySelector('.lfx-beta').textContent).toBe('Beta');
+    expect(a.querySelector('.lfx-beta').getAttribute('aria-hidden')).toBe('true');
+    expect(a.getAttribute('aria-label')).toBe('Design Einstellungen (Beta)');
+    expect(b.querySelector('.lfx-beta')).toBeNull();
+    expect(b.hasAttribute('aria-label')).toBe(false);
+    expect(b.textContent).toBe('Abmelden');
   });
 });

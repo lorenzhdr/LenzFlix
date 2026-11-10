@@ -1,0 +1,381 @@
+/* LENZ//84 · hero.css – gehört Worker P1. Alle Regeln unter html.lfx-js.lfx-theme-retro:not(.layout-tv).
+   Startseite/Hub (features/retro/home.js) + Hero (home-hero.js).
+   Hero-Aufbau: .lfx-retro-hero > .__stage (Bühne: __stars, __bd[img], __sun, __horizon, __grid > __plane, __fog) + __noise (Kanalwechsel) + .lfx-retro-frame.__win.
+   Animiert wird nur transform/opacity/background-position; Backdrop-Filter (Graustufen) liegt an einem nie animierten Element.
+   Geschwindigkeit des Gitters: --lfx-retro-grid-speed am .lfx-retro-hero (Overdrive: html.lfx-retro-overdrive). */
+
+/* Native Startseite ausblenden (nur die Sektionen; der Legacy-Container bleibt für den Proxy-Klick im DOM) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-home-on #indexPage #homeTab > .sections { display: none !important; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-home-on #indexPage { padding-top: 0 !important; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-home-on #indexPage,
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-home-on #indexPage #homeTab,
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-home-on .backgroundContainer:not(.withBackdrop) { background: var(--lfx-retro-bg) !important; }
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-home {
+  position: relative;
+  min-height: 60vh;
+  background: var(--lfx-retro-bg);
+  color: var(--lfx-retro-amber);
+  font-family: var(--lfx-retro-font-mono);
+}
+
+/* ---------- Hero ---------- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero-slot { position: relative; margin: 0; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero-slot[hidden] { display: none; }
+/* Platzhalter bis der Pool geladen ist: reserviert die Höhe, damit die Zeilen nicht springen */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero-slot.is-loading {
+  min-height: clamp(520px, 74vh, 860px);
+  background: radial-gradient(ellipse 50% 40% at 70% 64%, rgba(255, 120, 0, 0.22), transparent 70%), var(--lfx-retro-bg);
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero {
+  --hz: 34%;                       /* Höhe des Horizonts über dem Hero-Boden */
+  --lfx-retro-grid-speed: 2.2s;    /* eine Rasterzeile pro Durchlauf */
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  min-height: clamp(520px, 74vh, 860px);
+  padding: calc(var(--lfx-header-h) + 32px) var(--lfx-retro-gutter) clamp(40px, 7vh, 88px);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--lfx-retro-bg);
+  contain: paint;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-overdrive .lfx-retro-hero { --lfx-retro-grid-speed: 0.5s; }
+
+/* ----- Bühne ----- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+/* Scanlines über der ganzen Bühne */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  background: var(--lfx-retro-scan);
+  opacity: 0.6;
+}
+
+/* (d) Sterne: statische Punkte im oberen Himmel, funkeln über opacity */
+@keyframes lfx-retro-twinkle { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.35; } }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__stars {
+  position: absolute;
+  inset: 0 0 var(--hz) 0;
+  background:
+    radial-gradient(1.5px 1.5px at 8% 14%, #ffe2a8, transparent),
+    radial-gradient(1px 1px at 17% 38%, #ffb000, transparent),
+    radial-gradient(1.5px 1.5px at 27% 9%, #ffe2a8, transparent),
+    radial-gradient(1px 1px at 36% 27%, #ffb000, transparent),
+    radial-gradient(1.5px 1.5px at 47% 16%, #ffe2a8, transparent),
+    radial-gradient(1px 1px at 55% 41%, #ffb000, transparent),
+    radial-gradient(1.5px 1.5px at 63% 8%, #ffe2a8, transparent),
+    radial-gradient(1px 1px at 74% 24%, #ffb000, transparent),
+    radial-gradient(1.5px 1.5px at 83% 12%, #ffe2a8, transparent),
+    radial-gradient(1px 1px at 91% 33%, #ffb000, transparent),
+    radial-gradient(1px 1px at 12% 52%, #ffb000, transparent),
+    radial-gradient(1px 1px at 58% 58%, #ffe2a8, transparent),
+    radial-gradient(1px 1px at 96% 6%, #ffe2a8, transparent);
+  animation: lfx-retro-twinkle 5s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/* (a) Backdrop: Duotone. Das <img> wird nur entsättigt (kein Animations-Ziel), das Bernstein-Overlay liegt statisch darüber. */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__bd {
+  position: absolute;
+  inset: 0;
+  opacity: 0.62;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 96%);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  filter: grayscale(1) contrast(1.1) brightness(0.9);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__bd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(10, 6, 3, 0.85), rgba(10, 6, 3, 0.15) 70%),
+    #ff9a00;
+  mix-blend-mode: multiply;
+}
+
+/* (b) Retro-Sonne: Halbkreis am Horizont, Streifenschnitte wandern nach unten (transform auf eigener Ebene, kein background-position) */
+@keyframes lfx-retro-sun-cuts { from { transform: translateY(0); } to { transform: translateY(28px); } }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__sun {
+  --s: clamp(260px, 38vw, 560px);
+  position: absolute;
+  left: 70%;
+  bottom: var(--hz);
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: linear-gradient(to bottom, var(--lfx-retro-amber-hi) 0%, var(--lfx-retro-amber) 42%, var(--lfx-retro-hot) 82%);
+  transform: translate(-50%, 46%);
+  box-shadow: 0 0 70px 6px rgba(255, 140, 0, 0.5), 0 0 200px 40px rgba(255, 90, 31, 0.28);
+  overflow: hidden;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__cuts {
+  position: absolute;
+  inset: 42% 0 0 0;
+  overflow: hidden;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__cuts::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -28px;
+  bottom: 0;
+  background: repeating-linear-gradient(to bottom, transparent 0 14px, var(--lfx-retro-bg) 14px 22px, transparent 22px 28px);
+  animation: lfx-retro-sun-cuts 3.2s linear infinite;
+  will-change: transform;
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--hz);
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--lfx-retro-amber-hi) 15%, var(--lfx-retro-amber-hi) 85%, transparent);
+  box-shadow: 0 0 16px 3px rgba(255, 176, 0, 0.75), 0 0 56px 10px rgba(255, 90, 31, 0.4);
+}
+
+/* (c) Neon-Gitter: Bodenebene in Perspektive, endlose Fahrt über transform (eigene Compositing-Ebene, kein Neu-Rastern) */
+@keyframes lfx-retro-grid-run { from { transform: rotateX(68deg) translateY(0); } to { transform: rotateX(68deg) translateY(64px); } }
+@keyframes lfx-retro-grid-tint { 0%, 100% { opacity: 0; } 33% { opacity: 0.4; } 66% { opacity: 0.4; } }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--hz);
+  overflow: hidden;
+  perspective: 320px;
+  perspective-origin: 50% 0;
+  background: linear-gradient(to bottom, #1c0b00, var(--lfx-retro-bg) 85%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 30%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 30%);
+}
+/* Overdrive: farbiger Schimmer über opacity (statt filter-Animation) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-overdrive .lfx-retro-hero__grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 43, 109, 0.5), rgba(34, 228, 255, 0.5));
+  animation: lfx-retro-grid-tint 2.4s steps(6, end) infinite;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__plane {
+  position: absolute;
+  left: -70%;
+  right: -70%;
+  top: -64px;
+  height: calc(150% + 64px);
+  transform-origin: 50% 64px;
+  transform: rotateX(68deg);
+  will-change: transform;
+  background-image:
+    linear-gradient(rgba(255, 176, 0, 0.9) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 176, 0, 0.9) 2px, transparent 2px),
+    linear-gradient(rgba(255, 90, 31, 0.28) 8px, transparent 8px),
+    linear-gradient(90deg, rgba(255, 90, 31, 0.28) 8px, transparent 8px);
+  background-size: 64px 64px;
+  animation: lfx-retro-grid-run var(--lfx-retro-grid-speed) linear infinite;
+}
+/* Hero außerhalb des Sichtfelds: alle Bühnen-Animationen pausieren (home-hero.js setzt .is-offscreen) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-offscreen *,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-offscreen *::before,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-offscreen *::after { animation-play-state: paused !important; }
+
+/* Nebel: Horizont-Glühen + Übergang in den Seitengrund */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__fog {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 62% 18% at 70% calc(100% - var(--hz)), rgba(255, 120, 0, 0.34), transparent 70%),
+    linear-gradient(to top, var(--lfx-retro-bg) 0%, transparent 16%);
+}
+
+/* Kanalwechsel: Rauschen-Flash + vertikaler Roll (nur opacity/transform) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__noise {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 226, 168, 0.5) 0 2px, rgba(10, 6, 3, 0.75) 2px 5px),
+    repeating-linear-gradient(90deg, rgba(255, 176, 0, 0.3) 0 3px, transparent 3px 11px);
+}
+@keyframes lfx-retro-flash { 0% { opacity: 0; } 12% { opacity: 0.85; } 30% { opacity: 0.3; } 45% { opacity: 0.75; } 70% { opacity: 0.2; } 100% { opacity: 0; } }
+@keyframes lfx-retro-roll {
+  0% { transform: translateY(0); }
+  20% { transform: translateY(-7%); }
+  42% { transform: translateY(5%); }
+  65% { transform: translateY(-2%); }
+  100% { transform: translateY(0); }
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-changing .lfx-retro-hero__noise { animation: lfx-retro-flash 520ms steps(8, end) 1; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-changing .lfx-retro-hero__stage,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-changing .lfx-retro-hero__win { animation: lfx-retro-roll 520ms steps(10, end) 1; }
+
+/* ----- Terminal-Fenster ----- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__win {
+  position: relative;
+  z-index: 4;
+  box-sizing: border-box;
+  width: min(660px, 100%);
+  background-color: rgba(14, 8, 3, 0.86);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__bar {
+  display: flex;
+  align-items: center;
+  padding: 2px 12px 1px;
+  background: var(--lfx-retro-amber);
+  color: var(--lfx-retro-ink);
+  font: 400 22px/1.2 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__body { padding: 18px 24px 20px; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title {
+  margin: 0 0 10px;
+  min-height: 1.1em;
+  font: 400 clamp(40px, 4.6vw, 66px) / 0.95 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.03em;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow-strong);
+  overflow-wrap: break-word; /* Notbremse; regulär bricht der Titel nach „_“ (<wbr>) */
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__seg { white-space: nowrap; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title[data-size="1"] { font-size: clamp(34px, 3.8vw, 54px); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title[data-size="2"] { font-size: clamp(30px, 3.2vw, 46px); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title[data-size="3"] { font-size: clamp(26px, 2.8vw, 40px); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__meta {
+  margin: 0 0 12px;
+  min-height: 1.2em;
+  font: 400 24px/1.2 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.1em;
+  color: var(--lfx-retro-amber);
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0 0 18px;
+  max-width: 58ch;
+  font: 400 13.5px/1.65 var(--lfx-retro-font-mono);
+  color: #d9a032;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__desc[hidden] { display: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__actions .lfx-retro-btn svg { width: 16px; height: 16px; flex: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__play { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); text-shadow: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__play:hover { background: var(--lfx-retro-amber-hi); }
+}
+
+/* Kanalwahl */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__channel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--lfx-retro-line);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__channel[hidden] { display: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__count {
+  min-width: 3.6em;
+  text-align: center;
+  font: 400 26px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.08em;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--lfx-retro-amber-lo);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--lfx-retro-amber);
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__arrow svg { width: 14px; height: 14px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__arrow:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); border-color: var(--lfx-retro-amber); }
+}
+
+/* ---------- Handy: kürzere Bühne, volle Fensterbreite, kleinere Sonne ---------- */
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero-slot.is-loading { min-height: 60vh; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero {
+    --hz: 50%;
+    min-height: max(640px, 88vh);
+    padding: calc(var(--lfx-header-h) + 18px) 14px 28px;
+  }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__sun { --s: min(76vw, 340px); left: 50%; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__win { width: 100%; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__body { padding: 14px 16px 16px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title { font-size: clamp(30px, 9vw, 48px); }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title[data-size="1"] { font-size: clamp(28px, 7.6vw, 40px); }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title[data-size="2"] { font-size: clamp(26px, 6.6vw, 34px); }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__title[data-size="3"] { font-size: clamp(24px, 5.8vw, 30px); }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__meta { font-size: 21px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__desc { -webkit-line-clamp: 2; line-clamp: 2; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__actions .lfx-retro-btn { min-height: 44px; flex: 1 1 0; justify-content: center; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__arrow { width: 44px; height: 40px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__channel { justify-content: center; }
+}
+
+/* ---------- Fußzeile „READY.“ ---------- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-footer {
+  margin-top: 40px;
+  padding: 28px var(--lfx-retro-gutter) 72px;
+  border-top: 1px dashed var(--lfx-retro-line);
+  user-select: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-footer__ready {
+  margin: 0 0 6px;
+  font: 400 34px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.1em;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow-strong);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-footer__sys {
+  margin: 0;
+  font: 400 11px/1.4 var(--lfx-retro-font-mono);
+  letter-spacing: 0.12em;
+  color: var(--lfx-retro-amber-lo);
+}
+
+/* ---------- Bewegung reduzieren: statische Bühne ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__plane,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__cuts::before,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero__stars,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-overdrive .lfx-retro-hero__grid::after { animation: none; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-changing .lfx-retro-hero__noise,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-changing .lfx-retro-hero__stage,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-hero.is-changing .lfx-retro-hero__win { animation: none; }
+}

@@ -55,8 +55,8 @@ export function sheetEntries(libs, profile, { go, close }) {
     if (href) entries.push({ label: l.name, onClick: () => { close(); go(href); } });
   }
   for (const p of Array.isArray(profile) ? profile : []) {
-    if (p.href) entries.push({ label: p.label, onClick: () => { close(); go(p.href); }, stats: p.key === 'stats' });
-    else if (typeof p.onClick === 'function') entries.push({ label: p.label, onClick: () => { close(); p.onClick(); } });
+    if (p.href) entries.push({ label: p.label, badge: p.badge, onClick: () => { close(); go(p.href); }, stats: p.key === 'stats' });
+    else if (typeof p.onClick === 'function') entries.push({ label: p.label, badge: p.badge, onClick: () => { close(); p.onClick(); } });
   }
   return entries;
 }

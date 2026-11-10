@@ -19,7 +19,7 @@ Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dun
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.5.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.6.0/dist/lenzflix.min.css");
 ```
 
 - `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,27 +29,28 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.5.2/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.6.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
 ### 3. Reverse-Proxy mit CSP
 
-Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
+Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
 
 ## Designs
 
-Mit aktivem JavaScript gibt es drei Designs:
+Mit aktivem JavaScript gibt es vier Designs:
 
 - **LENZFLIX** (Standard): das klassische Design mit roten Akzenten.
 - **LENZ+**: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs.
 - **LENZPRIME**: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile.
+- **LENZ//84** (Beta): Cyber-Retro mit Bernstein-Terminal, Kassetten-Regal und Neon-Gitter samt Sonne im Hero, dazu CRT-Effekte und ein paar versteckte Überraschungen. Sound ist standardmäßig aus und lässt sich in der Kopfzeile einschalten. Tipp: Ein Terminal öffnet sich mit der Taste `^` (am Handy: Logo lange drücken), und mit dem richtigen Cheat-Code passiert etwas Besonderes.
 
-Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZPRIME über das Profilmenü). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
+Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; der Eintrag trägt das Badge „Beta“). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
 
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
-**Wichtig bei Updates:** CSS-`@import` und JS-URL immer auf **denselben** Release-Tag setzen. Das Design-CSS wird aus dem Pfad des eingebundenen CSS abgeleitet. Steht das CSS noch auf einer älteren Version (ohne `lenzplus`/`lenzprime`), schlägt das Nachladen fehl. Dann fällt LenzFlix auf LENZFLIX zurück, und der Design-Dialog ist ungestylt.
+**Wichtig bei Updates:** CSS-`@import` und JS-URL immer auf **denselben** Release-Tag setzen. Das Design-CSS wird aus dem Pfad des eingebundenen CSS abgeleitet. Steht das CSS noch auf einer älteren Version (ohne `lenzplus`/`lenzprime`/`lenzretro`), schlägt das Nachladen fehl. Dann fällt LenzFlix auf LENZFLIX zurück, und der Design-Dialog ist ungestylt.
 
 ## Echte Charts (optional)
 
@@ -71,7 +72,7 @@ Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Dom
 :root { --lfx-stats-url: "/lenzflix-stats/"; }
 ```
 
-Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (hat Vorrang). Erlaubt sind `https://`-URLs und Pfade mit einem einzelnen führenden `/` auf derselben Domain. Der Link öffnet die Seite im selben Tab und übergibt das gewählte Design per `?theme=`; für die Layouts von LENZ+ und LENZPRIME muss der `charts-worker` neu deployt werden (die Seite liegt in dessen `public/`). Die Seite selbst braucht einen Worker plus Reverse-Proxy und gehört nicht zum Theme: Einrichtung und Datenformat siehe [`docs/stats-api.md`](docs/stats-api.md).
+Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (hat Vorrang). Erlaubt sind `https://`-URLs und Pfade mit einem einzelnen führenden `/` auf derselben Domain. Der Link öffnet die Seite im selben Tab und übergibt das gewählte Design per `?theme=`; für die Layouts von LENZ+, LENZPRIME und LENZ//84 muss der `charts-worker` neu deployt werden (die Seite liegt in dessen `public/`). Die Seite selbst braucht einen Worker plus Reverse-Proxy und gehört nicht zum Theme: Einrichtung und Datenformat siehe [`docs/stats-api.md`](docs/stats-api.md).
 
 ## Bedienung
 
@@ -106,7 +107,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.5.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.6.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;
@@ -133,8 +134,8 @@ npm run serve   # Dev-Server http://localhost:5179/dist/ (liefert dist/ und asse
 
 ```
 build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js (Dev-Loader)
-dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css)
-assets/       Schrift Inter (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
+dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css, lenzretro[.min].css)
+assets/       Schriften Inter und LenzRetro (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
 docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features)
 src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css, logo.css
   modern/     Kern-CSS für das Modern-Layout (wirkt ohne JS)
@@ -142,9 +143,9 @@ src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css
   js-ui/      Styles der JS-Komponenten (nur unter html.lfx-js)
 src/js/       main.js (Einstieg, setzt window.LenzFlix)
   core/       API, Cache, Router, Layout, Playback, DOM-Helper, Ambient, Item-Store
-  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/ und prime/ (LENZ+, LENZPRIME)
+  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/, prime/ und retro/ (LENZ+, LENZPRIME, LENZ//84)
   shared/     von beiden Designs genutzte Module (Routen, Hubs, Suche, Titel-Aktionen)
-src/css/themes/  plus/ und prime/ (je index.css = Bundle-Einstieg)
+src/css/themes/  plus/, prime/ und retro/ (je index.css = Bundle-Einstieg)
 tests/        vitest-Tests (jsdom)
 ```
 

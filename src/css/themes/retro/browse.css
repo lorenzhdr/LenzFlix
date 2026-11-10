@@ -1,0 +1,120 @@
+/* LENZ//84 · browse.css – gehört Worker P2. Bibliothek als Verzeichnis-Listing (#lfx-retro-browse).
+   Alle Regeln unter html.lfx-js.lfx-theme-retro:not(.layout-tv). Seitenhülle aus title.css (.lfx-retro-page). */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+  & .lfx-rb { max-width: 1480px; margin: 0 auto; }
+  & .lfx-rb__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--lfx-retro-line);
+  }
+  & .lfx-rb__path {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font: 400 clamp(34px, 4vw, 56px)/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.05em;
+    color: var(--lfx-retro-amber-hi);
+  }
+  & .lfx-rb__count { margin: 0; font: 400 26px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.1em; color: var(--lfx-retro-amber-lo); }
+
+  /* Terminal-Optionen */
+  & .lfx-rb__opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 14px 0 0; }
+  & .lfx-rb__opts-sep { flex: 1 1 0; }
+  & .lfx-rb__opt {
+    min-height: 36px;
+    padding: 2px 12px 0;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 22px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background-color 120ms steps(2, end), color 120ms steps(2, end);
+  }
+  & .lfx-rb__opt.is-on { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); border-color: var(--lfx-retro-amber); box-shadow: 0 0 14px rgba(255, 176, 0, 0.4); }
+  & .lfx-rb__opt:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-rb__opt:not(.is-on):hover { background: var(--lfx-retro-amber-dim); color: var(--lfx-retro-amber-hi); }
+  }
+
+  /* Genre-Filter */
+  & .lfx-rb__genres { display: flex; flex-wrap: wrap; gap: 6px 8px; margin-top: 12px; padding: 12px; border: 1px dashed rgba(255, 176, 0, 0.35); }
+  & .lfx-rb__genres[hidden] { display: none; }
+  & .lfx-rb__genre {
+    padding: 2px 10px 0;
+    border: 1px solid transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 22px/28px var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+    text-decoration: none;
+  }
+  & .lfx-rb__genre::before { content: "/F:"; opacity: 0.5; margin-right: 2px; }
+  & .lfx-rb__genre.is-active { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  & .lfx-rb__genre:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-rb__genre:not(.is-active):hover { border-color: var(--lfx-retro-amber); color: var(--lfx-retro-amber-hi); }
+  }
+
+  /* Raster */
+  & .lfx-rb__grid {
+    --rc-cover-w: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+    gap: 28px 20px;
+    margin-top: 26px;
+  }
+  /* Liste: TITEL.MOV   1982   1H57   SCI-FI */
+  & .lfx-rb__grid.is-list { display: block; gap: 0; margin-top: 18px; border: 1px solid var(--lfx-retro-line); background: rgba(14, 8, 3, 0.85); }
+  & .lfx-rb__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 90px 80px minmax(110px, 200px);
+    gap: 20px;
+    align-items: baseline;
+    padding: 6px 16px 3px;
+    color: var(--lfx-retro-amber);
+    font: 400 26px/1.15 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    border-bottom: 1px dotted rgba(255, 176, 0, 0.2);
+  }
+  & .lfx-rb__row:nth-child(even) { background: rgba(255, 176, 0, 0.035); }
+  & .lfx-rb__row-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--lfx-retro-amber-hi); }
+  & .lfx-rb__row-year,
+  & .lfx-rb__row-time { text-align: right; }
+  & .lfx-rb__row-genre { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--lfx-retro-amber-lo); }
+  & .lfx-rb__row:focus-visible { outline: 2px solid var(--lfx-retro-amber); outline-offset: -2px; background: var(--lfx-retro-amber-dim); }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-rb__row:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+    & .lfx-rb__row:hover .lfx-rb__row-name,
+    & .lfx-rb__row:hover .lfx-rb__row-genre { color: var(--lfx-retro-ink); }
+  }
+
+  & .lfx-rb__status { margin-top: 26px; text-align: center; }
+  & .lfx-rb__empty,
+  & .lfx-rb__end { margin: 12px 0; font: 400 28px/1.1 var(--lfx-retro-font-pixel); letter-spacing: 0.1em; color: var(--lfx-retro-amber-lo); }
+  & .lfx-rb__empty { color: var(--lfx-retro-hot); font-size: 36px; }
+  & .lfx-rb__sentinel { height: 1px; }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+    & .lfx-rb__path { font-size: 34px; }
+    & .lfx-rb__count { font-size: 22px; }
+    & .lfx-rb__opts { flex-wrap: nowrap; overflow-x: auto; margin-right: -14px; padding-right: 14px; scrollbar-width: none; }
+    & .lfx-rb__opts::-webkit-scrollbar { display: none; }
+    & .lfx-rb__opt { flex: none; min-height: 44px; }
+    & .lfx-rb__opt--view,
+    & .lfx-rb__opts-sep { display: none; }
+    & .lfx-rb__grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 18px 12px; margin-top: 18px; }
+    & .lfx-rb__genre { min-height: 44px; display: inline-flex; align-items: center; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rb__opt { transition: none; }
+}

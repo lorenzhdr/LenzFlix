@@ -1,7 +1,7 @@
 // LenzFlix: kleines Menü-Popover (Singleton #lfx-popover) unter einem Anker.
 // Für Profil-/Bibliotheksmenüs der Designs. Klicks auf den Anker selbst zählen nicht als „außerhalb“,
 // der Aufrufer schaltet dort per isPopoverOpen()/closePopover() um.
-import { h, mountPoint, unmountPoint } from './dom.js';
+import { h, mountPoint, unmountPoint, badgePill, badgedName } from './dom.js';
 
 const ID = 'lfx-popover';
 const GAP = 8;
@@ -49,7 +49,7 @@ function place(el, anchorEl, align) {
   el.style.top = `${Math.round(top)}px`;
 }
 
-/** items: [{ key, label, href?, onClick?, className?, icon? (SVG-String), hidden? }] */
+/** items: [{ key, label, href?, onClick?, className?, icon? (SVG-String), badge? (z. B. 'Beta'), hidden? }] */
 export function openPopover(anchorEl, { label, items = [], align = 'end', className = '' } = {}) {
   closePopover();
   const el = mountPoint(ID, { className: `lfx-popover${className ? ` ${className}` : ''}` });
@@ -67,9 +67,11 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
       kids.push(ic);
     }
     kids.push(h('span', { class: 'lfx-popover__label' }, it.label));
+    if (it.badge) kids.push(badgePill(it.badge));
+    const aria = badgedName(it.label, it.badge);
     const node = it.href
-      ? h('a', { class: cls, role: 'menuitem', href: it.href, dataset: { key: it.key } }, kids)
-      : h('button', { type: 'button', class: cls, role: 'menuitem', dataset: { key: it.key } }, kids);
+      ? h('a', { class: cls, role: 'menuitem', href: it.href, 'aria-label': aria, dataset: { key: it.key } }, kids)
+      : h('button', { type: 'button', class: cls, role: 'menuitem', 'aria-label': aria, dataset: { key: it.key } }, kids);
     node.addEventListener('click', () => {
       closePopover();
       if (typeof it.onClick === 'function') it.onClick();

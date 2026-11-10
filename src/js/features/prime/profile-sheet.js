@@ -1,6 +1,6 @@
 // LENZPRIME (Handy): Profil-Blatt als Bottom-Sheet (kein eigenes Feature; wird vom Avatar der Handy-Kopfzeile geöffnet).
 // Einträge: Nutzer-Chip, „Neu & beliebt“, Bibliotheken, dann profileEntries() (Statistik, Design, Einstellungen, Dashboard, Abmelden).
-import { h, mountPoint, unmountPoint } from '../../core/dom.js';
+import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../../core/dom.js';
 import { attachSwipeClose } from '../../core/swipe.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
@@ -33,10 +33,12 @@ export function closeProfileSheet({ restoreFocus = true } = {}) {
 
 function entryNode(it, close) {
   const kids = [h('span', { class: 'lfx-prime-psheet__label' }, it.label)];
+  if (it.badge) kids.push(badgePill(it.badge));
+  const aria = badgedName(it.label, it.badge);
   const cls = `lfx-prime-psheet__item${it.className ? ` ${it.className}` : ''}`;
   const node = it.href
-    ? h('a', { class: cls, href: it.href, dataset: { key: it.key || '' } }, kids)
-    : h('button', { type: 'button', class: cls, dataset: { key: it.key || '' } }, kids);
+    ? h('a', { class: cls, href: it.href, 'aria-label': aria, dataset: { key: it.key || '' } }, kids)
+    : h('button', { type: 'button', class: cls, 'aria-label': aria, dataset: { key: it.key || '' } }, kids);
   node.addEventListener('click', () => {
     close({ restoreFocus: false });
     if (typeof it.onClick === 'function') it.onClick();

@@ -21,6 +21,7 @@ const cssEntries = [
   ['src/css/index.css', 'lenzflix'],
   ['src/css/themes/plus/index.css', 'lenzplus'],
   ['src/css/themes/prime/index.css', 'lenzprime'],
+  ['src/css/themes/retro/index.css', 'lenzretro'],
 ];
 
 function buildCss() {

@@ -1,0 +1,278 @@
+/* LENZ//84 · header.css – gehört Worker P1. Alle Regeln unter html.lfx-js.lfx-theme-retro:not(.layout-tv).
+   Desktop-Kopfzeile #lfx-retro-header (features/retro/header.js) + gemeinsame Bausteine (Uhr, Schalter, Wortmarke, Profil-Popover),
+   die auch die Handy-Kopfzeile (mobile-home.css) nutzt. */
+
+/* --- Native AppBar: erste Toolbar weg, Hintergrund weg; die zweite Toolbar (Bibliotheks-Filter) bleibt --- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv):is(.lfx-retro-header-on, .lfx-retro-tabbar-on) body:not(.dashboardDocument) header.MuiAppBar-root {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv):is(.lfx-retro-header-on, .lfx-retro-tabbar-on) body:not(.dashboardDocument) header.MuiAppBar-root::before {
+  display: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv):is(.lfx-retro-header-on, .lfx-retro-tabbar-on) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
+  display: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv):is(.lfx-retro-header-on, .lfx-retro-tabbar-on) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) {
+  pointer-events: auto;
+  margin-top: var(--lfx-header-h);
+}
+
+/* --- Kopfzeile: fest, immer sichtbar --- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1101; /* über der AppBar (1100), unter Menüs/Dialogen (1300) */
+  height: var(--lfx-header-h);
+  pointer-events: none;
+  color: var(--lfx-retro-amber);
+  font-family: var(--lfx-retro-font-pixel);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 32px);
+  height: 100%;
+  padding: 0 var(--lfx-retro-gutter);
+  pointer-events: auto;
+  /* oben: dunkler Verlauf für Lesbarkeit über dem Hero */
+  background: linear-gradient(to bottom, rgba(10, 6, 3, 0.92), rgba(10, 6, 3, 0.55) 70%, rgba(10, 6, 3, 0));
+}
+/* Nach dem Scrollen: Panel mit Scanlines und Unterlinie (Pseudo-Elemente, damit nur opacity übergeht) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::before,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms steps(5, end);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::before {
+  background: var(--lfx-retro-scan), rgba(14, 8, 3, 0.9);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::after {
+  top: auto;
+  height: 1px;
+  background: var(--lfx-retro-line);
+  box-shadow: 0 0 12px rgba(255, 176, 0, 0.45), 0 6px 22px rgba(0, 0, 0, 0.7);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header.is-scrolled .lfx-retro-header__bar::before,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header.is-scrolled .lfx-retro-header__bar::after {
+  opacity: 1;
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header.is-scrolled .lfx-retro-header__bar { background: none; }
+
+/* --- Wortmarke (Link; Bild per CSS-Hintergrund, Glow am kleinen Element) --- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) :is(#lfx-retro-header .lfx-retro-header__logo, #lfx-retro-topbar .lfx-retro-topbar__logo) {
+  display: block;
+  flex: none;
+  width: 112px;
+  height: 30px;
+  background: url("../assets/logo/lenz84.svg") no-repeat left center / contain;
+  filter: drop-shadow(0 0 6px rgba(255, 176, 0, 0.6)) drop-shadow(0 0 16px rgba(255, 90, 31, 0.3));
+  transition: filter 160ms steps(4, end);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__logo:hover {
+    filter: drop-shadow(0 0 8px rgba(255, 226, 168, 0.9)) drop-shadow(0 0 22px rgba(255, 90, 31, 0.55));
+  }
+}
+
+/* --- Navigation als Terminal-Befehle --- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__nav {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: clamp(2px, 0.6vw, 10px);
+  min-width: 0;
+  overflow: hidden;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  color: var(--lfx-retro-amber);
+  font: 400 24px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-shadow: var(--lfx-retro-glow);
+  white-space: nowrap;
+  transition: background-color 90ms steps(2, end), color 90ms steps(2, end);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link.is-active {
+  background: var(--lfx-retro-amber);
+  color: var(--lfx-retro-ink);
+  text-shadow: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link.is-active::before {
+  content: ">";
+  margin-right: 0.4em;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link:focus-visible {
+  background: var(--lfx-retro-amber-dim);
+  outline: 1px solid var(--lfx-retro-amber);
+  outline-offset: 0;
+  box-shadow: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link:hover {
+    background: var(--lfx-retro-amber-hi);
+    color: var(--lfx-retro-ink);
+    text-shadow: none;
+  }
+}
+
+/* --- Rechte Seite: Uhr, Schalter, Profil --- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__right {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Uhr (Desktop und Handy) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-clock {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  color: var(--lfx-retro-amber-hi);
+  font: 400 28px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.06em;
+  text-shadow: var(--lfx-retro-glow);
+  font-variant-numeric: tabular-nums;
+}
+@keyframes lfx-retro-colon { 0%, 54% { opacity: 1; } 55%, 100% { opacity: 0.15; } }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-clock__c {
+  margin: 0 1px;
+  animation: lfx-retro-colon 2s steps(1, end) infinite;
+}
+
+/* Sound-/CRT-Schalter: Eckklammer-Kasten, an = Glow, aus = gedimmt + Schrägstrich */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--lfx-retro-amber-lo);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--lfx-retro-amber-lo);
+  cursor: pointer;
+  transition: color 120ms steps(3, end), border-color 120ms steps(3, end), box-shadow 120ms steps(3, end), background-color 120ms steps(3, end);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch svg { width: 22px; height: 22px; overflow: visible; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch .lfx-retro-slash { display: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch[aria-pressed="false"] .lfx-retro-slash { display: inline; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch[aria-pressed="true"] {
+  border-color: var(--lfx-retro-amber);
+  background: var(--lfx-retro-amber-dim);
+  color: var(--lfx-retro-amber-hi);
+  box-shadow: var(--lfx-retro-box-glow);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch:hover {
+    border-color: var(--lfx-retro-amber);
+    color: var(--lfx-retro-amber);
+  }
+}
+
+/* Profil-Chip: quadratisches Terminal-Fenster */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 2px;
+  background: var(--lfx-retro-panel);
+  color: var(--lfx-retro-amber-hi);
+  box-shadow: var(--lfx-retro-box-glow);
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: sepia(0.5) saturate(1.1) contrast(1.05);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__initial {
+  font: 400 26px/1 var(--lfx-retro-font-pixel);
+  text-shadow: var(--lfx-retro-glow);
+}
+
+/* Schmales Fenster (800–1000 px): Navigation rückt zusammen */
+@media (max-width: 1000px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link { padding: 0 6px; font-size: 21px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__logo { width: 92px; }
+}
+
+/* --- Profil-Popover (core/popover.js, className lfx-retro-profile) --- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile {
+  min-width: 260px;
+  padding: 6px;
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 2px;
+  background: var(--lfx-retro-panel);
+  box-shadow: var(--lfx-retro-box-glow), 0 18px 48px rgba(0, 0, 0, 0.85);
+  color: var(--lfx-retro-amber);
+  font-family: var(--lfx-retro-font-pixel);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 0;
+  color: var(--lfx-retro-amber);
+  font: 400 22px/1.1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item::before {
+  content: ">";
+  margin-right: 0.6em;
+  opacity: 0;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:focus,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:focus-visible {
+  background: var(--lfx-retro-amber);
+  color: var(--lfx-retro-ink);
+  text-shadow: none;
+  outline: none;
+  box-shadow: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:focus::before,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:focus-visible::before { opacity: 1; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item.is-stats { color: var(--lfx-retro-amber-hi); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-beta {
+  border-radius: 2px;
+  background: transparent;
+  font: 400 15px/1.2 var(--lfx-retro-font-pixel);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:hover {
+    background: var(--lfx-retro-amber);
+    color: var(--lfx-retro-ink);
+    text-shadow: none;
+  }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:hover::before { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-clock__c { animation: none; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::before,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::after { transition: none; }
+}

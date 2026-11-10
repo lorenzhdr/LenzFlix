@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><title>LENZ//84</title>
+<defs>
+<linearGradient id="c" x1="0" y1="9.6" x2="0" y2="54.4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe2a8"/><stop offset=".45" stop-color="#ffb000"/><stop offset="1" stop-color="#ff5a1f"/></linearGradient>
+<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><rect x="0" y="34.7" width="64" height="1" fill="#000"/><rect x="0" y="40.75" width="64" height="1.7" fill="#000"/><rect x="0" y="46.8" width="64" height="2.4" fill="#000"/></mask>
+</defs>
+<g mask="url(#m)"><path fill="url(#c)" d="M7.7 9.6h16.2v6.4h-16.2zM2.3 16h5.4v6.4h-5.4zM23.9 16h5.4v6.4h-5.4zM2.3 22.4h5.4v6.4h-5.4zM23.9 22.4h5.4v6.4h-5.4zM7.7 28.8h16.2v6.4h-16.2zM2.3 35.2h5.4v6.4h-5.4zM23.9 35.2h5.4v6.4h-5.4zM2.3 41.6h5.4v6.4h-5.4zM23.9 41.6h5.4v6.4h-5.4zM7.7 48h16.2v6.4h-16.2zM50.9 9.6h5.4v6.4h-5.4zM45.5 16h10.8v6.4h-10.8zM40.1 22.4h5.4v6.4h-5.4zM50.9 22.4h5.4v6.4h-5.4zM34.7 28.8h5.4v6.4h-5.4zM50.9 28.8h5.4v6.4h-5.4zM34.7 35.2h27v6.4h-27zM50.9 41.6h5.4v6.4h-5.4zM50.9 48h5.4v6.4h-5.4z"/></g>
+</svg>

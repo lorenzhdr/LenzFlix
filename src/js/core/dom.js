@@ -27,6 +27,16 @@ export function h(tag, attrs, children) {
   return el;
 }
 
+/** Kleine Pille („Beta“) hinter einem Menü-Label; für Screenreader ausgeblendet (Name siehe badgedName). */
+export function badgePill(text) {
+  return h('span', { class: 'lfx-beta', 'aria-hidden': 'true' }, text);
+}
+
+/** Zugänglicher Name eines Menüeintrags mit Badge: 'Design Einstellungen (Beta)'. */
+export function badgedName(label, badge) {
+  return badge ? `${label} (${badge})` : undefined;
+}
+
 const mounts = new Set();
 
 /**

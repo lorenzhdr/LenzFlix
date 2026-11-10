@@ -23,7 +23,7 @@ const logoutClick = vi.fn();
 vi.mock('../src/js/shared/profile.js', () => ({
   profileEntries: vi.fn(async () => [
     { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
-    { key: 'design', label: 'Design Einstellungen', onClick: designClick },
+    { key: 'design', label: 'Design Einstellungen', badge: 'Beta', onClick: designClick },
     { key: 'logout', label: 'Abmelden', onClick: logoutClick },
   ]),
   getUserChip: vi.fn(async () => ({ name: 'Lorenz', imageUrl: null })),
@@ -166,6 +166,7 @@ describe('plus-tabbar: Feature', () => {
     const [, title, entries] = sheetMod.renderSheet.mock.calls[0];
     expect(title).toBe('Lorenz');
     expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design Einstellungen', 'Abmelden']);
+    expect(entries.find((e) => e.label === 'Design Einstellungen').badge).toBe('Beta');
     btn.click();
     await flush();
     expect(sheetMod.closeChooser).toHaveBeenCalled();

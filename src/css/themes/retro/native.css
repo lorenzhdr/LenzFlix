@@ -1,0 +1,379 @@
+/* LENZ//84 · native.css – gehört Worker P2. Native Jellyfin-Seiten im Bernstein-Terminal-Look: Bibliotheken, Detailseite,
+   Dialoge/Action-Sheets/Menüs, Formulare (Terminal-Felder), Einstellungsseiten, Anmeldung.
+   Scope: html.lfx-theme-retro:not(.layout-tv) (bewusst OHNE lfx-js, damit auch die Login-Seite greift, wie bei LENZPRIME),
+   alle nativen Bereiche zusätzlich body:not(.dashboardDocument). Der Player (#videoOsdPage trägt .libraryPage) und das
+   Dashboard bleiben unberührt. Nie auf TV. Hover nur unter (hover:hover) and (pointer:fine). */
+
+html.lfx-theme-retro:not(.layout-tv) {
+  --nat-line: rgba(255, 176, 0, 0.45);
+  --nat-line-lo: #5a3b08;
+  --nat-field: #0a0603;
+  --nat-panel: rgba(20, 12, 5, 0.96);
+}
+
+html.lfx-theme-retro:not(.layout-tv) body:not(.dashboardDocument) {
+  /* Browser-Steuerelemente (Checkbox, Radio, Range) in Bernstein */
+  & input, & select, & textarea { accent-color: #ffb000; color-scheme: dark; }
+
+  /* ================= Bibliotheken & Listen ================= */
+  & .libraryPage:not(#videoOsdPage):not(#searchPage) { font-family: var(--lfx-retro-font-mono); }
+  & .libraryPage:not(#videoOsdPage) .cardScalable,
+  & .libraryPage:not(#videoOsdPage) .cardImageContainer,
+  & .libraryPage:not(#videoOsdPage) .cardContent,
+  & .libraryPage:not(#videoOsdPage) .cardOverlayContainer { border-radius: 2px; }
+  & .libraryPage:not(#videoOsdPage) .cardScalable {
+    border: 1px solid var(--nat-line-lo);
+    background: #1d1208;
+    transition: box-shadow 160ms steps(4, end), border-color 160ms steps(4, end);
+  }
+  & .libraryPage:not(#videoOsdPage) .cardImageContainer { filter: sepia(0.4) saturate(1.05) brightness(0.9); }
+  & .libraryPage:not(#videoOsdPage) .card:focus-within .cardScalable {
+    border-color: var(--lfx-retro-amber);
+    box-shadow: var(--lfx-retro-box-glow);
+  }
+  & .libraryPage:not(#videoOsdPage) .cardText,
+  & .libraryPage:not(#videoOsdPage) .cardText-first { color: var(--lfx-retro-amber-hi); }
+  & .libraryPage:not(#videoOsdPage) .cardText-secondary { color: var(--lfx-retro-amber-lo); }
+  & .libraryPage:not(#videoOsdPage) .cardText-first { font-family: var(--lfx-retro-font-pixel); font-size: 20px; letter-spacing: 0.04em; }
+  & .libraryPage:not(#videoOsdPage) .innerCardFooter,
+  & .libraryPage:not(#videoOsdPage) .cardOverlayContainer { background-color: rgba(10, 6, 3, 0.78); }
+
+  /* Filter/Sortierung/Ansicht: Terminal-Optionen */
+  & .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root {
+    border: 1px solid var(--nat-line-lo) !important;
+    border-radius: 2px !important;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 20px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  & .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root {
+    --variant-containedColor: #0a0603;
+    --variant-containedBg: #ffb000;
+    --variant-containedHoverBg: #ffe2a8;
+    border-radius: 2px;
+    background: #ffb000;
+    color: #0a0603;
+    font: 400 20px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+  }
+  & .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root :is(svg, .MuiSvgIcon-root) { color: #0a0603; fill: currentColor; }
+  & .alphaPickerButton { font-family: var(--lfx-retro-font-pixel); font-size: 20px; border-radius: 2px; }
+  & .alphaPickerButton-selected { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); border-radius: 2px; }
+  @media (hover: hover) and (pointer: fine) {
+    & .libraryPage:not(#videoOsdPage) .card:hover .cardScalable {
+      border-color: var(--lfx-retro-amber);
+      box-shadow: var(--lfx-retro-box-glow);
+    }
+    & .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  }
+
+  /* ================= Native Detailseite ================= */
+  /* Titel-Logo: Jellyfin blendet .detailLogo am Handy aus; ohne sichtbares Logo (Klasse aus features/retro/nativedetail.js) steht der Name als Text. */
+  & #itemDetailPage:not(.lfx-retro-nologo) .detailLogo:not(.hide) { display: block; }
+  & #itemDetailPage.lfx-retro-nologo .detailLogo { display: none !important; }
+  & #itemDetailPage.lfx-retro-nologo .nameContainer h1 {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    font-size: 48px;
+  }
+  & #itemDetailPage .detailLogo { filter: sepia(1) saturate(3) hue-rotate(-12deg) brightness(1.1) drop-shadow(0 0 14px rgba(255, 140, 0, 0.5)); }
+  & #itemDetailPage .itemBackdrop,
+  & .backdropContainer .displayingBackdropImage { filter: sepia(1) saturate(2.2) hue-rotate(-14deg) brightness(0.55) contrast(1.15); }
+  & #itemDetailPage.lfx-retro-nobackdrop { background: radial-gradient(ellipse 80% 60% at 70% 20%, rgba(255, 140, 0, 0.12), transparent 70%), #0a0603; }
+  & #itemDetailPage .itemBackdrop::after {
+    background:
+      linear-gradient(rgba(10, 6, 3, 0.8), rgba(10, 6, 3, 0) 22%),
+      linear-gradient(0deg, #0a0603, rgba(10, 6, 3, 0.6) 24%, rgba(10, 6, 3, 0) 55%),
+      linear-gradient(90deg, rgba(10, 6, 3, 0.9), rgba(10, 6, 3, 0.45) 42%, rgba(10, 6, 3, 0) 70%),
+      var(--lfx-retro-scan);
+  }
+  & #itemDetailPage .btnPlay,
+  & #itemDetailPage .btnReplay {
+    height: 56px;
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: var(--lfx-retro-amber);
+    color: var(--lfx-retro-ink);
+    box-shadow: 0 0 20px rgba(255, 176, 0, 0.4);
+  }
+  & #itemDetailPage .btnPlay::after,
+  & #itemDetailPage .btnReplay::after { font: 400 26px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.08em; text-transform: uppercase; }
+  & #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay,
+  & #itemDetailPage .detailButton:not(.btnPlay):not(.btnReplay) {
+    width: 46px;
+    height: 46px;
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: rgba(10, 6, 3, 0.7);
+    color: var(--lfx-retro-amber);
+  }
+  & #itemDetailPage .itemMiscInfo .mediaInfoText.mediaInfoOfficialRating {
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber-hi);
+    font: 400 20px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+  }
+  & #itemDetailPage :is(.detailSection, .verticalSection, .itemMiscInfo, .itemOverview) { color: var(--lfx-retro-amber); }
+  & #itemDetailPage .itemName, & #itemDetailPage .nameContainer h1 { font-family: var(--lfx-retro-font-pixel); letter-spacing: 0.04em; color: var(--lfx-retro-amber-hi); }
+  @media (hover: hover) and (pointer: fine) {
+    & #itemDetailPage .btnPlay:hover,
+    & #itemDetailPage .btnReplay:hover { background: var(--lfx-retro-amber-hi); }
+    & #itemDetailPage .detailButton:not(.btnPlay):not(.btnReplay):hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  }
+
+  /* ================= Dialoge, Action-Sheets, Menüs ================= */
+  & .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType),
+  & .dialog.actionSheet,
+  & .dialog.formDialog {
+    background: var(--nat-panel);
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px !important;
+    box-shadow: var(--lfx-retro-box-glow), 0 24px 64px rgba(0, 0, 0, 0.85);
+    color: var(--lfx-retro-amber);
+  }
+  & .dialog.actionSheet .actionSheetTitle,
+  & .dialog.formDialog .formDialogHeaderTitle {
+    font: 400 28px/1.1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  & .dialog.actionSheet .actionSheetMenuItem { border-radius: 0; font-family: var(--lfx-retro-font-pixel); font-size: 22px; letter-spacing: 0.05em; text-transform: uppercase; }
+  & .dialog.actionSheet .actionSheetMenuItem:focus,
+  & .dialog.actionSheet .actionSheetMenuItem.selected { background: var(--lfx-retro-amber-dim); }
+  & .dialogBackdrop.dialogBackdropOpened { background: rgba(5, 3, 1, 0.82); }
+  & .MuiPaper-root.MuiMenu-paper,
+  & .MuiPaper-root.MuiPopover-paper,
+  & .MuiDialog-paper {
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background-color: var(--nat-panel);
+    background-image: none;
+    box-shadow: var(--lfx-retro-box-glow), 0 20px 50px rgba(0, 0, 0, 0.8);
+    color: var(--lfx-retro-amber);
+  }
+  & .MuiMenuItem-root { font-family: var(--lfx-retro-font-pixel); font-size: 21px; letter-spacing: 0.05em; text-transform: uppercase; }
+  & .MuiMenu-paper .MuiMenuItem-root.Mui-selected { background: var(--lfx-retro-amber-dim); border-radius: 0; }
+  @media (hover: hover) and (pointer: fine) {
+    & .dialog.actionSheet .actionSheetMenuItem:hover,
+    & .MuiMenuItem-root:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  }
+
+  /* ================= Formulare: Terminal-Felder ================= */
+  & .dialog :is(.emby-select, .emby-input, .emby-textarea),
+  & .page:not(#videoOsdPage) :is(.emby-input, .emby-select, .emby-textarea) {
+    border: 1px solid var(--nat-line-lo);
+    border-radius: 0;
+    background: var(--nat-field);
+    color: var(--lfx-retro-amber-hi);
+    font-family: var(--lfx-retro-font-mono);
+    text-shadow: 0 0 6px rgba(255, 176, 0, 0.35);
+    box-shadow: inset 0 0 12px rgba(255, 176, 0, 0.05);
+    caret-color: var(--lfx-retro-amber);
+  }
+  & .page:not(#videoOsdPage) :is(.emby-input, .emby-select, .emby-textarea):focus,
+  & .dialog :is(.emby-input, .emby-select, .emby-textarea):focus {
+    border-color: var(--lfx-retro-amber);
+    outline: 0;
+    box-shadow: var(--lfx-retro-box-glow);
+  }
+  & .page:not(#videoOsdPage) .inputLabel,
+  & .dialog .inputLabel,
+  & .page:not(#videoOsdPage) .fieldDescription { font-family: var(--lfx-retro-font-pixel); font-size: 19px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lfx-retro-amber-lo); }
+  & .page:not(#videoOsdPage) .inputLabelFocused,
+  & .dialog .inputLabelFocused { color: var(--lfx-retro-amber-hi); }
+  & .page:not(#videoOsdPage) .fieldDescription { font-family: var(--lfx-retro-font-mono); font-size: 12px; text-transform: none; letter-spacing: 0; }
+  /* Checkboxen */
+  & .emby-checkbox-label .checkboxOutline { border: 1px solid var(--lfx-retro-amber); border-radius: 0; background: var(--nat-field); }
+  & .emby-checkbox:checked + span + .checkboxOutline { background: var(--lfx-retro-amber); border-color: var(--lfx-retro-amber); }
+  & .emby-checkbox:checked + span + .checkboxOutline .checkboxIcon { color: var(--lfx-retro-ink); }
+  & .emby-checkbox:focus + span + .checkboxOutline { box-shadow: var(--lfx-retro-box-glow); }
+  /* Buttons */
+  & .page:not(#videoOsdPage) .emby-button.raised:not(.button-submit),
+  & .dialog .emby-button.raised:not(.button-submit) {
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 22px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow: var(--lfx-retro-glow);
+  }
+  & .page:not(#videoOsdPage) :is(.button-submit, .emby-button.raised.button-submit),
+  & .dialog .button-submit {
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: var(--lfx-retro-amber);
+    color: var(--lfx-retro-ink);
+    font: 400 24px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: none;
+    box-shadow: 0 0 18px rgba(255, 176, 0, 0.35);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    & .page:not(#videoOsdPage) .emby-button.raised:not(.button-submit):hover,
+    & .dialog .emby-button.raised:not(.button-submit):hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); text-shadow: none; }
+    & .page:not(#videoOsdPage) .button-submit:hover,
+    & .dialog .button-submit:hover { background: var(--lfx-retro-amber-hi); }
+  }
+
+  /* ================= Einstellungsseiten ================= */
+  & .page:not(#videoOsdPage) .sectionTitle,
+  & .page:not(#videoOsdPage) .listItem-content h2 { font-family: var(--lfx-retro-font-pixel); font-size: 28px; letter-spacing: 0.06em; text-transform: uppercase; }
+  & .page:not(#videoOsdPage) .sectionTitle::before { content: "// "; color: var(--lfx-retro-hot); }
+  & .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction):not(.lfx-card__link) { color: var(--lfx-retro-amber-hi); }
+  & .page:not(#videoOsdPage) .paperList,
+  & .page:not(#videoOsdPage) .MuiPaper-root:not(.MuiMenu-paper):not(.MuiPopover-paper):not(.MuiDialog-paper) {
+    border: 1px solid var(--nat-line-lo);
+    border-radius: 2px;
+    background: rgba(20, 12, 5, 0.85);
+  }
+  & .page:not(#videoOsdPage) .listItem { border-radius: 0; }
+  & .page:not(#videoOsdPage) .listItem:focus { background: var(--lfx-retro-amber-dim); }
+  @media (hover: hover) and (pointer: fine) {
+    & .page:not(#videoOsdPage) .listItem-border:hover,
+    & .page:not(#videoOsdPage) a.listItem:hover { background: var(--lfx-retro-amber-dim); }
+  }
+}
+
+/* ================= Anmeldung (Wortmarke, Scanlines, Terminal-Formular) ================= */
+html.lfx-theme-retro:not(.layout-tv):has(#loginPage:not(.hide)) { background: #0a0603; }
+html.lfx-theme-retro:not(.layout-tv):has(#loginPage:not(.hide)) .backdropContainer { filter: sepia(1) saturate(2) hue-rotate(-14deg) brightness(0.5); }
+html.lfx-theme-retro:not(.layout-tv):has(#loginPage:not(.hide)) .backdropContainer::after {
+  background:
+    linear-gradient(to bottom, #0a0603 0, rgba(10, 6, 3, 0) 24%, rgba(10, 6, 3, 0) 62%, #0a0603 100%),
+    rgba(10, 6, 3, 0.62);
+}
+/* Scanlines über der ganzen Anmeldeseite (statisch) */
+html.lfx-theme-retro:not(.layout-tv) #loginPage:not(.hide)::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  background: var(--lfx-retro-scan);
+  opacity: 0.8;
+  pointer-events: none;
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage > .padded-bottom-page::before {
+  content: "";
+  display: block;
+  width: min(440px, 74vw);
+  aspect-ratio: 258 / 69;
+  margin: 0 auto 26px;
+  background: url("../assets/logo/lenz84.svg") no-repeat center / contain;
+  filter: drop-shadow(0 0 16px rgba(255, 150, 0, 0.5));
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .manualLoginForm {
+  position: relative;
+  border: 1px solid var(--lfx-retro-line);
+  border-radius: 2px;
+  background: rgba(14, 8, 3, 0.9);
+  box-shadow: var(--lfx-retro-box-glow), 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .manualLoginForm::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) top left / 12px 2px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) top left / 2px 12px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) top right / 12px 2px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) top right / 2px 12px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) bottom left / 12px 2px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) bottom left / 2px 12px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) bottom right / 12px 2px no-repeat,
+    linear-gradient(var(--lfx-retro-amber), var(--lfx-retro-amber)) bottom right / 2px 12px no-repeat;
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .manualLoginForm h1.sectionTitle {
+  font: 400 42px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow-strong);
+}
+/* LOGIN: / PASSWORT: – Beschriftung als Eingabeaufforderung */
+html.lfx-theme-retro:not(.layout-tv) #loginPage .inputContainer > .inputLabel {
+  top: 7px;
+  font: 400 18px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lfx-retro-amber-lo);
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .inputContainer > .inputLabel::before { content: "> "; color: var(--lfx-retro-hot); }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .inputContainer > .inputLabel::after { content: ":"; }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .inputContainer > .inputLabelFocused { color: var(--lfx-retro-amber-hi); }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .emby-input {
+  border: 1px solid var(--nat-line-lo);
+  border-radius: 0;
+  background: #0a0603;
+  color: var(--lfx-retro-amber-hi);
+  font-family: var(--lfx-retro-font-mono);
+  text-shadow: 0 0 6px rgba(255, 176, 0, 0.4);
+  caret-color: var(--lfx-retro-amber);
+  box-shadow: inset 0 0 12px rgba(255, 176, 0, 0.06);
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .emby-input:focus {
+  border-color: var(--lfx-retro-amber);
+  outline: 0;
+  box-shadow: var(--lfx-retro-box-glow);
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .emby-input:-webkit-autofill {
+  -webkit-text-fill-color: var(--lfx-retro-amber-hi);
+  box-shadow: inset 0 0 0 100px #1d1208;
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .emby-checkbox-label { color: var(--lfx-retro-amber); font-family: var(--lfx-retro-font-pixel); font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .checkboxOutline { border: 1px solid var(--lfx-retro-amber); border-radius: 0; background: #0a0603; }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .checkboxIcon { color: var(--lfx-retro-ink); }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .emby-checkbox:checked + span + .checkboxOutline { background: var(--lfx-retro-amber); border-color: var(--lfx-retro-amber); }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .emby-button.block {
+  min-height: 46px;
+  border-radius: 2px;
+  font: 400 24px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .button-submit {
+  border: 1px solid var(--lfx-retro-amber);
+  background: var(--lfx-retro-amber);
+  color: var(--lfx-retro-ink);
+  box-shadow: 0 0 20px rgba(255, 176, 0, 0.4);
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage .btnCancel,
+html.lfx-theme-retro:not(.layout-tv) #loginPage .btnManual,
+html.lfx-theme-retro:not(.layout-tv) #loginPage .btnQuick {
+  border: 1px solid var(--lfx-retro-amber-lo);
+  background: transparent;
+  color: var(--lfx-retro-amber);
+}
+html.lfx-theme-retro:not(.layout-tv) #loginPage :is(.btnForgotPassword, .btnSelectServer) { color: var(--lfx-retro-amber-hi); }
+html.lfx-theme-retro:not(.layout-tv) #loginPage #divUsers .cardScalable { border-radius: 2px; border: 1px solid var(--lfx-retro-amber-lo); }
+html.lfx-theme-retro:not(.layout-tv) #loginPage .loginDisclaimer { color: var(--lfx-retro-amber-lo); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-theme-retro:not(.layout-tv) #loginPage .button-submit:hover { background: var(--lfx-retro-amber-hi); color: var(--lfx-retro-ink); }
+  html.lfx-theme-retro:not(.layout-tv) #loginPage :is(.btnCancel, .btnManual, .btnQuick):hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+}
+@media (max-width: 740px) {
+  html.lfx-theme-retro:not(.layout-tv) #loginPage .manualLoginForm { background: transparent; box-shadow: none; border-color: transparent; }
+  html.lfx-theme-retro:not(.layout-tv) #loginPage .manualLoginForm::before { display: none; }
+}
+
+/* ================= Player: nur Akzente (Seite trägt .libraryPage, daher keine Bibliotheks-Regeln) ================= */
+html.lfx-theme-retro:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider-background-lower { background-color: #ffb000; }
+html.lfx-theme-retro:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider::-webkit-slider-thumb,
+html.lfx-theme-retro:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider::-moz-range-thumb { background: #ffb000; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-theme-retro:not(.layout-tv) body:not(.dashboardDocument) .libraryPage:not(#videoOsdPage) .cardScalable { transition: none; }
+}

@@ -43,6 +43,8 @@ function buildPreview(id) {
       span('lfx-tp__hero', [span('lfx-tp__line'), span('lfx-tp__line lfx-tp__line--s'), span('lfx-tp__btn')]),
       span('lfx-tp__row', tiles(4).map((t) => { t.append(span('lfx-tp__badge-mini')); return t; })),
     );
+  } else if (id === 'retro') {
+    root.append(span('lfx-tp__sun'), span('lfx-tp__grid'), span('lfx-tp__scan'));
   } else {
     root.append(span('lfx-tp__logo'), span('lfx-tp__hero'), span('lfx-tp__row', tiles(4)));
   }
@@ -55,6 +57,9 @@ function buildMark(id, name) {
   }
   if (id === 'prime') {
     return span('lfx-tp__mark lfx-tp__mark--prime', [span('lfx-tp__mark-text', ['lenzprime'])]);
+  }
+  if (id === 'retro') {
+    return span('lfx-tp__mark lfx-tp__mark--retro', [name]);
   }
   return span('lfx-tp__mark lfx-tp__mark--flix', [name]);
 }

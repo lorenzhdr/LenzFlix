@@ -37,6 +37,7 @@ describe('resolveThemeCssBase', () => {
     expect(r.base).toBe('https://cdn.example/x/dist/');
     expect(r.min).toBe(true);
     expect(themeCssUrl('prime')).toBe('https://cdn.example/x/dist/lenzprime.min.css');
+    expect(themeCssUrl('retro')).toBe('https://cdn.example/x/dist/lenzretro.min.css');
   });
 
   it('3b. verschachtelter Import (Sheet im Import) und CORS-Fehler werden toleriert', () => {

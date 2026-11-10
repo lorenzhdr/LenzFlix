@@ -26,6 +26,18 @@ describe('popover', () => {
       ...extra,
     });
 
+  it('badge: Pille nach dem Label, zugänglicher Name mit Badge', () => {
+    const { el } = openPopover(anchor, { label: 'Profil', items: [{ key: 'd', label: 'Design Einstellungen', badge: 'Beta', onClick }, { key: 'e', label: 'Ohne' }] });
+    const [withBadge, without] = el.querySelectorAll('[role="menuitem"]');
+    expect(withBadge.querySelector('.lfx-popover__label').textContent).toBe('Design Einstellungen');
+    const pill = withBadge.querySelector('.lfx-beta');
+    expect(pill.textContent).toBe('Beta');
+    expect(pill.getAttribute('aria-hidden')).toBe('true');
+    expect(withBadge.getAttribute('aria-label')).toBe('Design Einstellungen (Beta)');
+    expect(without.querySelector('.lfx-beta')).toBeNull();
+    expect(without.hasAttribute('aria-label')).toBe(false);
+  });
+
   it('rendert Menü mit Einträgen, setzt aria-expanded, fokussiert den ersten', () => {
     const { el } = open();
     expect(el.id).toBe('lfx-popover');

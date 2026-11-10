@@ -6934,6 +6934,14 @@ html.lfx-js .lfx-tp__mark--prime {
   font-size: 0;
 }
 
+html.lfx-js .lfx-tp__mark--retro {
+  aspect-ratio: 4;
+  color: rgba(0, 0, 0, 0);
+  background: url("../assets/logo/lenz84.svg") 0 / contain no-repeat;
+  width: 128px;
+  font-size: 0;
+}
+
 html.lfx-js .lfx-tp__preview {
   aspect-ratio: 16 / 10;
   border-radius: 8px;
@@ -7144,6 +7152,62 @@ html.lfx-js .lfx-tp__preview--prime .lfx-tp__badge-mini {
   left: 0;
 }
 
+html.lfx-js .lfx-tp__preview--retro {
+  background: linear-gradient(#0a0603 0%, #1c0d05 55%, #0a0603 56%);
+}
+
+html.lfx-js .lfx-tp__preview--retro .lfx-tp__sun {
+  aspect-ratio: 1;
+  background: repeating-linear-gradient(rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 8%, #0a0603 8%, #0a0603 11%), linear-gradient(#ffb000 0%, #ff5a1f 100%);
+  border-radius: 50%;
+  width: 34%;
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  -webkit-mask: linear-gradient(#000 0, #000 58%, rgba(0, 0, 0, 0) 58%);
+  mask: linear-gradient(#000 0, #000 58%, rgba(0, 0, 0, 0) 58%);
+}
+
+html.lfx-js .lfx-tp__preview--retro .lfx-tp__grid {
+  transform-origin: 50% 0;
+  background-image: linear-gradient(90deg, rgba(255, 176, 0, .75) 1px, rgba(0, 0, 0, 0) 1px), linear-gradient(rgba(255, 176, 0, .75) 1px, rgba(0, 0, 0, 0) 1px);
+  background-size: 14% 22%;
+  height: 80%;
+  animation: 2.4s linear infinite lfx-tp-retro-grid;
+  position: absolute;
+  top: 56%;
+  left: -40%;
+  right: -40%;
+  transform: perspective(120px) rotateX(58deg);
+}
+
+html.lfx-js .lfx-tp__preview--retro .lfx-tp__scan {
+  pointer-events: none;
+  background: repeating-linear-gradient(rgba(0, 0, 0, .28) 0, rgba(0, 0, 0, .28) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 3px);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+@keyframes lfx-tp-retro-grid {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 0 22%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-tp__preview--retro .lfx-tp__grid {
+    animation: none;
+  }
+}
+
 html.lfx-js .lfx-tp--sheet {
   align-items: flex-end;
   padding: 0;
@@ -7303,6 +7367,24 @@ html.lfx-js .lfx-popover__item:focus-visible {
     transition: none;
     transform: none;
   }
+}
+
+html.lfx-js .lfx-beta {
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+  opacity: .8;
+  pointer-events: none;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid;
+  border-radius: 999px;
+  margin-left: 7px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  display: inline-block;
 }
 
 html.lfx-theme-loading:not(.layout-tv) body {

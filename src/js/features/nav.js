@@ -1,7 +1,7 @@
 // LenzFlix: Netflix-Look-Navigation (Feature "nav").
 // Eigener Container #lfx-nav außerhalb der React-Knoten; die MUI-Nav-Buttons werden nur per CSS
 // (html.lfx-nav-on) ausgeblendet. Logo, Suche und User-Menü der AppBar bleiben unangetastet.
-import { h, mountPoint, unmountPoint } from '../core/dom.js';
+import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv } from '../core/layout.js';
@@ -120,7 +120,7 @@ function render() {
     const entries = more.map((m) => h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
     // Eigenständige Seite (kein Hash-Link, kein data-key -> nie „aktiv“)
     if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
-    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem' }, 'Design Einstellungen');
+    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem', 'aria-label': badgedName('Design Einstellungen', 'Beta') }, ['Design Einstellungen', badgePill('Beta')]);
     entries.push(designBtn);
     const menu = h('div', { class: 'lfx-nav__menu', role: 'menu', id: 'lfx-nav-menu' }, entries);
     const btn = h('button', {

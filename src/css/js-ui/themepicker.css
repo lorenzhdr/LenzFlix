@@ -204,6 +204,13 @@ html.lfx-js .lfx-tp__mark--prime {
   font-size: 0;
   color: transparent;
 }
+html.lfx-js .lfx-tp__mark--retro {
+  width: 128px;
+  aspect-ratio: 4 / 1;
+  background: url("../assets/logo/lenz84.svg") no-repeat left center / contain;
+  font-size: 0;
+  color: transparent;
+}
 
 /* ---------- Vorschau (Grundgerüst) ---------- */
 html.lfx-js .lfx-tp__preview {
@@ -394,6 +401,54 @@ html.lfx-js .lfx-tp__preview--prime .lfx-tp__badge-mini {
   height: 24%;
   border-radius: 3px 0 3px 0;
   background: rgb(0 0 0 / 0.75);
+}
+
+/* retro: dunkles Bernstein-Terminal, perspektivisches Neon-Gitter, gestreifte Sonne, Scanlines */
+html.lfx-js .lfx-tp__preview--retro {
+  background: linear-gradient(180deg, #0a0603 0%, #1c0d05 55%, #0a0603 56%);
+}
+html.lfx-js .lfx-tp__preview--retro .lfx-tp__sun {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: 34%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 8%, #0a0603 8% 11%),
+    linear-gradient(180deg, #ffb000 0%, #ff5a1f 100%);
+  -webkit-mask: linear-gradient(180deg, #000 0 58%, transparent 58%);
+  mask: linear-gradient(180deg, #000 0 58%, transparent 58%);
+}
+html.lfx-js .lfx-tp__preview--retro .lfx-tp__grid {
+  position: absolute;
+  left: -40%;
+  right: -40%;
+  top: 56%;
+  height: 80%;
+  background-image:
+    linear-gradient(90deg, rgb(255 176 0 / 0.75) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(255 176 0 / 0.75) 1px, transparent 1px);
+  background-size: 14% 22%;
+  transform: perspective(120px) rotateX(58deg);
+  transform-origin: 50% 0;
+  animation: lfx-tp-retro-grid 2.4s linear infinite;
+}
+html.lfx-js .lfx-tp__preview--retro .lfx-tp__scan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, rgb(0 0 0 / 0.28) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+}
+@keyframes lfx-tp-retro-grid {
+  from { background-position: 0 0; }
+  to { background-position: 0 22%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-tp__preview--retro .lfx-tp__grid {
+    animation: none;
+  }
 }
 
 /* ---------- Handy: Bottom-Sheet ---------- */

@@ -62,11 +62,11 @@
 - `src/js/features/home.js` (fertig) legt `#lfx-home` als erstes Kind von `#homeTab` an mit Slots `#lfx-billboard` und `#lfx-rows` und ruft `billboard.render(slot, ctx)` bzw. `rows.render(slot, ctx)` auf (Rückgabe: Cleanup-Funktion). Native Sektionen sind dann per `html.lfx-home-on` versteckt.
 
 ## Designs (Umschalter)
-Drei Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`plus`: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs) und **LENZPRIME** (`prime`: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile). Feature-Ordner `src/js/features/plus/` und `features/prime/` (Listen `plusFeatures`/`primeFeatures` in `features/index.js`), CSS unter `src/css/themes/<id>/`. `core/` und `shared/` nutzen alle Designs gemeinsam. Die Features von LENZFLIX (`home`, `nav`, `mobilenav`, `hovercard`, `statshint`) matchen nur mit `isTheme('flix')`.
+Vier Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`plus`: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs) **LENZPRIME** (`prime`: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile) und **LENZ//84** (`retro`, Beta: Bernstein-Terminal, Kassetten, Neon-Gitter). Feature-Ordner `src/js/features/plus/`, `features/prime/` und `features/retro/` (Listen `plusFeatures`/`primeFeatures`/`retroFeatures` in `features/index.js`), CSS unter `src/css/themes/<id>/`. `core/` und `shared/` nutzen alle Designs gemeinsam. Die Features von LENZFLIX (`home`, `nav`, `mobilenav`, `hovercard`, `statshint`) matchen nur mit `isTheme('flix')`.
 
 ### Design-Kern (`src/js/core/theme.js`)
 - `THEMES`, `THEME_META` (id, Name, Tagline, Palette), `normalizeTheme(x)` (unbekannt → `flix`).
-- `getTheme()` = **wirksame** id (`null` solange `pending`), `getChosenTheme()` = gewählte id (kann bei TV/Fehler abweichen), `getThemeState()` = `'pending' | 'active' | 'failed'`, `isTheme(id)` = `getTheme() === id`, `brandName(id?)` = „LENZFLIX“ / „LENZ+“ / „LENZPRIME“ (für UI-Texte statt hartkodierter Marke).
+- `getTheme()` = **wirksame** id (`null` solange `pending`), `getChosenTheme()` = gewählte id (kann bei TV/Fehler abweichen), `getThemeState()` = `'pending' | 'active' | 'failed'`, `isTheme(id)` = `getTheme() === id`, `brandName(id?)` = „LENZFLIX“ / „LENZ+“ / „LENZPRIME“ / „LENZ//84“ (für UI-Texte statt hartkodierter Marke).
 - `setTheme(id, {source='user'})` → Promise, löst nach Anwenden (bzw. Scheitern) auf. `onThemeChange(fn)` → Abmeldefunktion; `fn({theme, previous})`.
 - Zustände: `pending` (erster Start, Design-CSS lädt; `html.lfx-theme-loading` blendet `body` aus, spätestens nach 1,5 s erscheint LENZFLIX, das Design-CSS lädt weiter), `active`, `failed` (Design-CSS nicht ladbar → LENZFLIX + Toast). Genau eine Klasse `html.lfx-theme-<id>`. Der Kern wird aus `main.js` getrieben (`earlyTheme`, `startTheme`, `syncThemeUser`; `applyThemeClass` aus `layout.js`), Features rufen nur die Lese-API und `setTheme`.
 - Vorrang der Wahl: Hash-Param `lfxtheme=<id>` (wird sofort aus dem Hash entfernt und gespeichert) → `localStorage lfx.theme.<userId>` → `lfx.theme.last` → `flix`. Zusätzlich pro Benutzer auf dem Server: DisplayPreferences mit id **und** client `lenzflix`, `CustomPrefs.theme` (ganzes Objekt GET → ändern → POST, 400 ms entprellt; einmal pro Benutzer geladen, eine schnellere Nutzerwahl schlägt einen später eintreffenden Server-Wert).
@@ -74,19 +74,19 @@ Drei Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`
 - `getTheme()` nie beim Modul-Laden auswerten; Features entscheiden in `match()` per `isTheme(id)`. Ein Wechsel löst `reevaluate()` aus.
 
 ### Design-CSS nachladen (`src/js/core/themecss.js`)
-- `plus`/`prime` liegen in eigenen Bundles `dist/lenzplus(.min).css` und `dist/lenzprime(.min).css` (Build: `build/build.mjs`, Einstiege `src/css/themes/<id>/index.css`, Reihenfolge = Kaskade, keine Globs); `flix` braucht nichts.
+- `plus`/`prime`/`retro` liegen in eigenen Bundles `dist/lenzplus(.min).css`, `dist/lenzprime(.min).css` und `dist/lenzretro(.min).css` (Build: `build/build.mjs`, Einstiege `src/css/themes/<id>/index.css`, Reihenfolge = Kaskade, keine Globs); `flix` braucht nichts.
 - `ensureThemeCss(id, {timeout})` → `Promise<boolean>`: `<link class="lfx-theme-css" data-lfx-theme=id>` am Ende von `<head>`; bei Fehler/Timeout wird der Link entfernt. `removeThemeCss(exceptId)` entfernt alle anderen (der bleibende bekommt `id="lfx-theme-css"`). Außerdem `themeCssUrl(id)`, `getThemeCssLink(id)`.
 - Basis-URL (`resolveThemeCssBase()`), Reihenfolge: 1. `window.LenzFlixConfig.themeCssBase` (Verzeichnis-URL; `.min` folgt dem erkannten Kern-CSS) → 2. Dev-Link `#lfx-dev-css` (mit Query) → 3. Ort des eingebundenen Kern-CSS/-JS (`@import`-Regel, `<link>`, Boot-Skript, `<script src>`) → 4. jsDelivr-Fallback `…/LenzFlix@v<VERSION>/dist/` (`VERSION` aus `core/version.js`).
 - Asset-URLs in Design-CSS wie im Kern relativ zu `dist/` (`../assets/…`).
 
-### Regeln für Design-Features (`features/plus|prime`)
-- `match(route)` beginnt mit `isTheme('plus'|'prime')` und prüft `isModern()`/nicht TV; ohne passendes Design mountet nichts.
-- Eigene Mount-IDs und Klassen mit Präfix `lfx-plus-*` bzw. `lfx-prime-*` (z. B. `#lfx-plus-home`, `html.lfx-plus-home-on`); die Mounts von LENZFLIX (`#lfx-home`, `#lfx-nav` …) nicht mitbenutzen. Native Elemente nur per CSS-Klasse verstecken, `unmount()` räumt vollständig auf.
-- Karten: Kartenvertrag (oben) bleibt Basis (`.lfx-card`, `data-lfx-id`, `data-lfx-type`, `.lfx-card__img`/`__logo`/`__title`) plus Design-Klasse (`lfx-plus-card`, `lfx-prime-card`); Items in `itemStore`, Wiedergabe über `core/playback.js`.
+### Regeln für Design-Features (`features/plus|prime|retro`)
+- `match(route)` beginnt mit `isTheme('plus'|'prime'|'retro')` und prüft `isModern()`/nicht TV; ohne passendes Design mountet nichts.
+- Eigene Mount-IDs und Klassen mit Präfix `lfx-plus-*`, `lfx-prime-*` bzw. `lfx-retro-*` (z. B. `#lfx-plus-home`, `html.lfx-plus-home-on`); die Mounts von LENZFLIX (`#lfx-home`, `#lfx-nav` …) nicht mitbenutzen. Native Elemente nur per CSS-Klasse verstecken, `unmount()` räumt vollständig auf.
+- Karten: Kartenvertrag (oben) bleibt Basis (`.lfx-card`, `data-lfx-id`, `data-lfx-type`, `.lfx-card__img`/`__logo`/`__title`) plus Design-Klasse (`lfx-plus-card`, `lfx-prime-card`; retro: `createTapeCard`, siehe unten); Items in `itemStore`, Wiedergabe über `core/playback.js`.
 - Eigene Routen, alle unter `#/home?lfx=…` (der native Router behandelt sie als Startseite): `title&id=`, `hub&lib=`, `browse&lib=[&genre=]`, `search[&q=]` (`new` = „Neu und beliebt“). Links bauen und lesen nur mit `src/js/shared/routes.js` (`titleHref`, `hubHref`, `browseHref`, `searchHref`, `parseLfxRoute`).
 - Feature `themeroute` (zuerst registriert): ist das wirksame Design `flix` (geteilter Link, TV, Wechsel) und die Route `title|hub|browse|search`, leitet es per `location.replace` ohne History-Eintrag auf das native Ziel um (Detailseite, Bibliothek, `#/search`, `#/home`).
-- Klicks auf Karten fängt weiterhin das Modal-Feature ab (gewollt): `openModal()` leitet bei wirksamem Design `plus`/`prime` auf `titleHref(id)` um, statt das Overlay zu öffnen. Eigene Karten brauchen dafür nur den Kartenvertrag.
-- Neue Design-Features in `features/plus/index.js` bzw. `features/prime/index.js` eintragen.
+- Klicks auf Karten fängt weiterhin das Modal-Feature ab (gewollt): `openModal()` leitet bei wirksamem Design `plus`/`prime`/`retro` auf `titleHref(id)` um, statt das Overlay zu öffnen. Eigene Karten brauchen dafür nur den Kartenvertrag.
+- Neue Design-Features in `features/plus/index.js`, `features/prime/index.js` bzw. `features/retro/index.js` eintragen.
 
 ### CSS-Scoping für Designs
 - Alle Regeln: `html.lfx-js.lfx-theme-<id>:not(.layout-tv)` (plus ggf. Feature-Klasse wie `.lfx-plus-header-on`); nie auf TV. Native Overrides zusätzlich mit `body:not(.dashboardDocument)` begrenzen.
@@ -94,18 +94,32 @@ Drei Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`
 - Eigene Tokens in `src/css/themes/<id>/tokens.css` (unter dem Design-Selektor, überschreiben Kern-Tokens). Admin-Overrides nach dem `@import` greifen daher nur in LENZFLIX.
 - Design-neutrale UI (`js-ui/themepicker.css`, `js-ui/popover.css`, `js-ui/theme.css`) liegt im Kern-Bundle.
 
+### LENZ//84 (`retro`, `features/retro/`)
+- Features (Reihenfolge = `retroFeatures`): `header` (Desktop-Kopfzeile als Terminal-Statuszeile, `#lfx-retro-header`), `tabbar` (Handy: `#lfx-retro-topbar` + Funktionstasten-Leiste `#lfx-retro-tabbar`, „MEHR“-Sheet), `home` (Startseite und Hubs Filme/Serien: Hero mit Neon-Gitter und Sonne, Kassetten-Regal), `title` (Titelseite als Kassettenhülle, Trailer-Overlay), `search` (Suche als Kommandozeile), `browse` (Bibliothek als Verzeichnis-Listing), `nativedetail` (native Detailseite, nutzt die Fabrik `createNativeDetail` aus `features/plus/`), `fx` (siehe unten). Sonst importieren die retro-Features nichts aus `features/plus|prime`.
+- Karte: `createTapeCard(item, {variant, progress})` aus `features/retro/card.js`; `variant` = `'spine'` (Kassettenrücken im Regal, Standard) | `'cover'` (Poster 2:3 in Hülle) | `'wide'` (16:9, Episoden/Weiterschauen); `progress` 0..100 für den Bandwickel-Balken (ohne Angabe aus UserData). Erfüllt den Kartenvertrag plus `lfx-retro-card__*`.
+- FX-Schnittstelle `features/retro/prefs.js` (Seiten-Features importieren nur diese Datei, nie `fx/`):
+  - `getPref(name)` / `setPref(name, value)` / `togglePref(name)`: Vorlieben `sound` (Standard **aus**) und `crt` (Standard an), pro Benutzer in `localStorage` (`lfx.retro.<name>.<userId|anon>`). `setPref` feuert am `document` das Ereignis `PREFS_EVENT` (`lfx-retro-prefs`, `detail: {name, value}`).
+  - `emitFx(name, detail?)` meldet ein Effekt-Ereignis (`FX_EVENT` = `lfx-retro-fx`, `detail: {name, …}`), z. B. `'hover'`, `'click'`, `'type'`, `'open'`; retro-fx spielt dazu ggf. einen Sound (nur bei `sound` an). Wirft nie.
+  - `LOGO_ATTR` (`data-lfx-retro-logo`): Logos tragen es, damit retro-fx die Gesten erkennt (mehrfaches Tippen = Cheat-Code/Overdrive, Langdruck = Terminal; Klicks aufs Logo werden dabei ggf. unterdrückt). Das Terminal öffnet auch die Taste `^` (`Backquote`).
+  - `OVERDRIVE_CLASS` (`lfx-retro-overdrive`): Klasse am `<html>`, solange Overdrive aktiv ist (20 s); CSS darf darauf reagieren. `NO_CRT_CLASS` (`lfx-retro-nocrt`): Klasse am `<html>`, wenn das CRT-Overlay aus ist (setzt nur retro-fx).
+- Regel: **`retro-fx` (`features/retro/fx/`) besitzt alle Effekt-Schleifen und globalen Listener** (CRT-Overlay, Boot-Screen, Glitch, Sound, Cheat-Code, Terminal, Code-Regen-Bildschirmschoner). Andere retro-Features starten keine eigenen globalen Schleifen/Listener, sondern melden per `emitFx`. retro-fx ist **aus im Player und auf der Dashboard-Seite** (`shouldRun`: Retro, Modern, nicht TV, eingeloggt, kein sichtbarer Player, kein `body.dashboardDocument`); `unmount()` stoppt Timer/Listener und entfernt `#lfx-retro-crt|boot|terminal|rain`, den Toast und die html-Klassen. Bei `prefers-reduced-motion` laufen keine Schleifen.
+- z-index-Stufen (`src/css/themes/retro/fx.css`): CRT-Overlay 1280 (über Header 1101/Modal 1200/Sheet 1250, unter Toast/Menüs ab 1300 und Jellyfin-Dialogen), Overdrive-Toast 1285, Terminal 1380, Code-Regen 1390, Boot-Screen 2000 (nur beim Start). Animiert wird nur `transform`/`opacity`.
+- Terminal: Parser und `execute(line, ctx)` in `fx/terminal-commands.js` sind DOM-frei und über `ctx` testbar; Ausgaben sind reiner Text (per `textContent`), nie Tokens/IDs/URLs mit `api_key`.
+- Schriften: `LenzRetro Pixel`/`LenzRetro Mono` (`assets/fonts/lenzretro-*.woff2`, Lizenzdateien `LICENSE-SpaceMono.txt`/`LICENSE-VT323.txt`); die Statistik-Seite hat eigene Kopien in `charts-worker/public/lenzflix-stats/`.
+
 ### Router (zweiphasig, `core/router.js`)
 - Pro Auswertung (`hashchange`, `viewshow`, `reevaluate()`, Registrierung) werden zuerst **alle** `match()` ausgewertet (Stand vor jeder Aktion). Phase 1: alle nicht mehr passenden, gemounteten Features `unmount()`. Phase 2: neue Treffer `mount(route)`, bestehende `update(route)`, in Registrierungsreihenfolge.
 - Kein neues Feature sieht dadurch noch DOM/Klassen eines alten (Design- oder Routenwechsel). Wiedereintritt (z. B. `reevaluate()` in `mount`) wird gemerkt und danach mit der neuesten Route wiederholt (max. 10 Durchläufe).
 
 ### Design-Dialog und Popover
 - `openThemePicker({returnFocus})` / `closeThemePicker()` / `isThemePickerOpen()` (`core/themepicker.js`): Singleton `#lfx-themepicker` an `<body>` (Dialog am Desktop, Bottom-Sheet < 800 px mit Wisch-Schließen), unabhängig von Features, überlebt Design-Wechsel; Klick auf eine Karte ruft `setTheme(id, {source:'user'})`. Aufrufer: „Mehr → Design Einstellungen“ (`nav.js`), Mehr-Overlay (`mobilenav.js`), Profilmenüs der Designs (`shared/profile.js`).
-- `openPopover(anchorEl, {label, items, align='end', className})` / `closePopover({restoreFocus})` / `isPopoverOpen()` (`core/popover.js`): Singleton `#lfx-popover`; `items: [{key, label, href?, onClick?, className?, icon?, hidden?}]`. Klicks auf den Anker zählen nicht als „außerhalb“, der Aufrufer schaltet selbst per `isPopoverOpen()`/`closePopover()` um.
+- `openPopover(anchorEl, {label, items, align='end', className})` / `closePopover({restoreFocus})` / `isPopoverOpen()` (`core/popover.js`): Singleton `#lfx-popover`; `items: [{key, label, href?, onClick?, className?, icon?, badge?, hidden?}]`. Klicks auf den Anker zählen nicht als „außerhalb“, der Aufrufer schaltet selbst per `isPopoverOpen()`/`closePopover()` um.
+- `badge` (Menüeintrag-Feld, Text z. B. „Beta“): kleine Pille hinter dem Label (`badgePill(text)` in `core/dom.js`, Styles `js-ui/beta.css`); der zugängliche Name wird als „Label (Beta)“ gesetzt (`badgedName(label, badge)`, `aria-label`). „Design Einstellungen“ trägt das Badge „Beta“ in `core/popover.js`, `features/nav.js`, `features/mobilenav.js`, `features/prime/footer.js` und `features/retro/tabbar.js`; neue Menüs mit diesem Eintrag setzen das Feld ebenfalls.
 
 ### Statistik-Seite und Design
-- `statsHref(theme)` (`core/stats.js`) hängt `theme=<id>` an die Statistik-URL. Die Seite (`charts-worker/public/lenzflix-stats/app.js`, `resolveTheme()` → `applyTheme()`) löst `?theme=` → `lfx.theme.<userId>` → `lfx.theme.last` → `flix` auf (nur Whitelist). Lokal prüfen: `node build/stats-dev.mjs`.
+- `statsHref(theme)` (`core/stats.js`) hängt `theme=<id>` an die Statistik-URL. Die Seite (`charts-worker/public/lenzflix-stats/app.js`, `resolveTheme()` → `applyTheme()`, Whitelist `flix|plus|prime|retro`) löst `?theme=` → `lfx.theme.<userId>` → `lfx.theme.last` → `flix` auf (nur Whitelist). Lokal prüfen: `node build/stats-dev.mjs`.
 
-### Gemeinsame Module (`src/js/shared/`, für plus und prime)
+### Gemeinsame Module (`src/js/shared/`, für plus, prime und retro)
 - `routes.js` – Design-Routen (`#/home?lfx=…`) bauen/lesen.
 - `libraries.js` – Bibliotheken des Benutzers als einfaches Modell (`getLibraries`).
 - `hub.js` – Zeilen-Definitionen und Hero-Pool für Bibliotheks-Hubs (`hubTypes`, `buildHubRowDefs`, `getHubHeroPool`).

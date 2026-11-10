@@ -117,6 +117,20 @@ describe('main', () => {
       }
     });
 
+    it('retro: Prehide sofort beim Start, Design-CSS vorgeladen', async () => {
+      vi.useFakeTimers();
+      try {
+        setup();
+        localStorage.setItem('lfx.theme.last', 'retro');
+        await import('../src/js/main.js');
+        expect(prehide()).not.toBeNull();
+        expect(document.documentElement.classList.contains('lfx-theme-loading')).toBe(true);
+        expect(document.querySelector('link.lfx-theme-css')).not.toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('CSS nie aktiv: nach 1,5 s sichtbar, ohne lfx-Klassen, Prehide und Design-Link', async () => {
       vi.useFakeTimers();
       try {

@@ -1,0 +1,98 @@
+/* LENZ//84 · mobile-title.css – gehört Worker P2. Handy-Layout (< 800 px) der Unterseiten Titel, Suche, Bibliothek.
+   Oben bleibt Platz für den Handy-Kopf (~52 px), unten für die Funktionstastenleiste (~64 px + Safe-Area).
+   Hülle untereinander (Vorderseite kleiner oben, Rückseite darunter), große Tap-Ziele. */
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+    & .lfx-retro-page {
+      --rt-top: 52px;
+      padding: calc(var(--rt-top) + 16px) 14px calc(64px + env(safe-area-inset-bottom, 0px) + 36px);
+    }
+    & .lfx-rt__boot { margin-top: 22vh; font-size: 32px; }
+
+    /* Hülle: Vorderseite oben, Rückseite darunter */
+    & .lfx-rt__case {
+      grid-template-columns: minmax(0, 1fr);
+      perspective: 1600px;
+    }
+    & .lfx-rt__front {
+      position: relative;
+      top: auto;
+      padding: 14px 14px 6px;
+      transform-origin: 50% 100%;
+    }
+    & .lfx-rt__sleeve { width: min(62vw, 250px); height: auto; margin: 0 auto; padding: 10px; }
+    & .lfx-rt__sticker--fsk { width: 52px; height: 52px; top: -6px; right: -4px; }
+    & .lfx-rt__fsk-num { font-size: 26px; }
+    & .lfx-rt__hinge { display: none; }
+    & .lfx-rt__back { padding: 6px 14px 14px; }
+    & .lfx-rt__sheet { padding: 22px 18px 24px; }
+    & .lfx-rt__sheet::before { display: none; }
+    & .lfx-rt__chrome { font-size: clamp(36px, 11vw, 54px); }
+    & .lfx-rt__logo { max-height: 96px; }
+    & .lfx-rt__meta { font-size: 23px; }
+    & .lfx-rt__text { font-size: 14px; }
+    & .lfx-rt__spec { grid-template-columns: 92px minmax(0, 1fr); }
+
+    /* Große Tap-Ziele */
+    & .lfx-rt__actions { gap: 10px; }
+    & .lfx-rt__btn { min-height: 48px; flex: 1 1 calc(50% - 10px); justify-content: center; }
+    & .lfx-rt__btn--primary { flex: 1 1 100%; min-height: 56px; }
+    & .lfx-rt__tab { min-height: 46px; padding: 4px 16px 0; }
+
+    /* Folgen: Nummer weg, Etikett unter dem Standbild, Spulen als schmale Leiste */
+    & .lfx-rt__tapes,
+    & .lfx-rt__shelf { margin-top: 40px; }
+    & .lfx-rt__ep {
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 10px 12px;
+      padding: 10px;
+      min-height: 64px;
+    }
+    & .lfx-rt__ep-no { display: none; }
+    & .lfx-rt__ep-title { font-size: 26px; }
+    & .lfx-rt__ep-label { padding: 6px 10px 7px; }
+    & .lfx-rt__ep-reels { grid-column: 1 / -1; height: 44px; }
+    & .lfx-rt__reel--l { width: calc(20px + 14px * (1 - var(--rt-fill, 0))); height: calc(20px + 14px * (1 - var(--rt-fill, 0))); }
+    & .lfx-rt__reel--r { width: calc(20px + 14px * var(--rt-fill, 0)); height: calc(20px + 14px * var(--rt-fill, 0)); }
+    & .lfx-rt__reel::after { width: 16px; height: 16px; margin: -8px 0 0 -8px; }
+    & .lfx-rt__ep-next { right: 14px; }
+
+    /* Regal wird zum Raster (Cover-Kassetten) */
+    & .lfx-rt__shelf-row,
+    & .lfx-rt__shelf-row.is-wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+      gap: 18px 12px;
+      padding: 6px 0 12px;
+      overflow: visible;
+      border-bottom: 0;
+      box-shadow: none;
+    }
+    & .lfx-rt__shelf-row .lfx-retro-card--cover,
+    & .lfx-rt__shelf-row.is-wrap .lfx-retro-card--cover { --rc-cover-w: 100%; }
+
+    /* Trailer */
+    & .lfx-retro-trailer { padding: 12px; }
+    & .lfx-retro-trailer__tube { padding: 10px; width: 100%; }
+    & .lfx-retro-trailer__video { max-height: 56vh; }
+  }
+}
+
+/* Auf-Klapp-Animation am Handy: Klappe fällt nach vorn (Scharnier unten) */
+@keyframes lfx-rt-open-m {
+  0% { transform: rotateX(-100deg); }
+  100% { transform: rotateX(0deg); }
+}
+@media (max-width: 799px) and (prefers-reduced-motion: no-preference) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rt__front {
+    animation: lfx-rt-open-m 600ms var(--lfx-retro-ease-crt) both;
+  }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rt__back {
+    animation: lfx-rt-back-in-m 600ms var(--lfx-retro-ease-crt) both;
+  }
+}
+@keyframes lfx-rt-back-in-m {
+  0% { opacity: 0.2; transform: translateY(-12px); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0); }
+}

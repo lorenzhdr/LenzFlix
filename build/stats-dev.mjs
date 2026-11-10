@@ -1,6 +1,6 @@
 // Lokaler Server für die Statistik-Seite (charts-worker/public/lenzflix-stats/) mit Fixture-Daten.
 // Start: node build/stats-dev.mjs [--port 5180]   Bindet nur 127.0.0.1, nichts verlässt den Rechner.
-//   http://127.0.0.1:5180/lenzflix-stats/dev-login.html?theme=plus   (flix | plus | prime)
+//   http://127.0.0.1:5180/lenzflix-stats/dev-login.html?theme=plus   (flix | plus | prime | retro)
 //   dev-login.html setzt Dummy-Zugangsdaten (Token "dev") und leitet auf die Statistik weiter.
 //   Share-Bild direkt: /lenzflix-stats/dev-share.html?theme=prime&variant=top&format=story (overview|top|activity|binge).
 //   Optionen: &store=<id> legt zusätzlich lfx.theme.<userId>/lfx.theme.last an, &noq=1 leitet ohne ?theme= weiter
@@ -117,7 +117,7 @@ function sharePage() {
   Promise.all([
     fetch('/lenzflix-stats/api/me/stats?range=' + (q.get('range') || '30d')).then(function (r) { return r.json(); }),
     fetch('/Items?Ids=all').then(function (r) { return r.json(); }),
-    Promise.all(['500', '700', '800', '900'].map(function (w) { return document.fonts.load(w + ' 40px "' + ({ flix: 'LenzFlix Sans', plus: 'LenzPlus Sans', prime: 'LenzPrime Sans' })[theme] + '"'); })),
+    Promise.all(L.shareFontLoads(theme).map(function (spec) { return document.fonts.load(spec); })),
     info.shareLogo ? img(info.shareLogo) : Promise.resolve(null)
   ]).then(function (r) {
     var stats = r[0], items = {};
@@ -176,5 +176,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Statistik-Dev-Server: http://${HOST}:${PORT}/lenzflix-stats/dev-login.html?theme=flix|plus|prime`);
+  console.log(`Statistik-Dev-Server: http://${HOST}:${PORT}/lenzflix-stats/dev-login.html?theme=flix|plus|prime|retro`);
 });

@@ -10,5 +10,6 @@ import contextmenu from './contextmenu.js';
 import statshint from './statshint.js';
 import { plusFeatures } from './plus/index.js';
 import { primeFeatures } from './prime/index.js';
+import { retroFeatures } from './retro/index.js';
 
-export const features = [themeroute, nav, mobilenav, home, hovercard, modal, newpopular, contextmenu, statshint, ...plusFeatures, ...primeFeatures];
+export const features = [themeroute, nav, mobilenav, home, hovercard, modal, newpopular, contextmenu, statshint, ...plusFeatures, ...primeFeatures, ...retroFeatures];

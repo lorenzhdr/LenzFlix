@@ -277,9 +277,9 @@
     return out;
   }
 
-  /* ---------- Design (flix | plus | prime) ---------- */
+  /* ---------- Design (flix | plus | prime | retro) ---------- */
 
-  var THEME_IDS = ['flix', 'plus', 'prime'];
+  var THEME_IDS = ['flix', 'plus', 'prime', 'retro'];
   var KEY_THEME_USER = 'lfx.theme.';
   var KEY_THEME_LAST = 'lfx.theme.last';
   /* logo/shareLogo: Dateien neben app.js; ratio = Breite/Höhe der Share-Wortmarke; hdr = Größe im Seitenkopf */
@@ -287,6 +287,7 @@
     flix: { name: 'LENZFLIX', logo: 'lenzflix.svg', shareLogo: '', ratio: 0, hdrW: 98, hdrH: 28, color: '#141414', filePrefix: 'lenzflix' },
     plus: { name: 'LENZ+', logo: 'lenzplus.svg', shareLogo: 'lenzplus-large.svg', ratio: 372.16 / 130.62, hdrW: 90, hdrH: 28, color: '#10131f', filePrefix: 'lenzplus' },
     prime: { name: 'LENZPRIME', logo: 'lenzprime.svg', shareLogo: 'lenzprime.svg', ratio: 475.3 / 155.6, hdrW: 85, hdrH: 28, color: '#00050d', filePrefix: 'lenzprime' },
+    retro: { name: 'LENZ//84', logo: 'lenz84.svg', shareLogo: 'lenz84.svg', ratio: 258 / 69, hdrW: 105, hdrH: 28, color: '#ffb000', filePrefix: 'lenz84' },
   };
   var currentTheme = 'flix';
 
@@ -1168,8 +1169,13 @@
     flix: '"LenzFlix Sans", Helvetica, Arial, sans-serif',
     plus: '"LenzPlus Sans", Figtree, Helvetica, Arial, sans-serif',
     prime: '"LenzPrime Sans", "Source Sans 3", Helvetica, Arial, sans-serif',
+    retro: '"LenzRetro Mono", "Courier New", monospace',
   };
-  var SHARE_FAMILIES = { flix: 'LenzFlix Sans', plus: 'LenzPlus Sans', prime: 'LenzPrime Sans' };
+  var SHARE_FAMILIES = { flix: 'LenzFlix Sans', plus: 'LenzPlus Sans', prime: 'LenzPrime Sans', retro: 'LenzRetro Mono' };
+  /* LENZ//84: Pixel-Schrift für Überschriften und Zahlen (VT323 wirkt klein, daher Faktor) */
+  var RETRO_PIXEL = '"LenzRetro Pixel", "Courier New", monospace';
+  var RETRO_PIXEL_SCALE = 1.3;
+  var RETRO_MONO_SCALE = 0.82;
   /* Farben des Share-Bilds je Design. flix = die bisherigen festen Werte (unverändert). */
   var SHARE_PALETTES = {
     flix: {
@@ -1187,6 +1193,12 @@
       accent: '#1a98ff', rank: '#37f1a3', bar: '#1a98ff', card: '#12171e', track: 'rgba(255, 255, 255, 0.14)', grid: 'rgba(255, 255, 255, 0.08)',
       axis: 'rgba(255, 255, 255, 0.28)', cell: 'rgba(255, 255, 255, 0.06)', poster: '#1d242d', posterText: '#5f7380', heat: '26, 152, 255',
     },
+    retro: {
+      font: SHARE_FONTS.retro, bg: '#0a0603', stripe: '', text: '#ffe2a8', muted: '#c98a12', soft: '#8a5d10',
+      accent: '#ffb000', rank: '#ffb000', bar: '#ffb000', card: 'rgba(20, 12, 5, 0.9)', track: 'rgba(255, 176, 0, 0.16)', grid: 'rgba(255, 176, 0, 0.16)',
+      axis: 'rgba(255, 176, 0, 0.5)', cell: 'rgba(255, 176, 0, 0.07)', poster: '#2a1a0a', posterText: '#8a5d10', heat: '255, 176, 0',
+      glow: 'rgba(255, 176, 0, 0.75)', hot: '#ff5a1f', hi: '#ffe2a8', line: 'rgba(255, 176, 0, 0.42)',
+    },
   };
   var FORMATS = {
     '4:5': { w: 1080, h: 1350, file: '4x5', label: '4:5' },
@@ -1200,6 +1212,15 @@
     { key: 'binge', label: 'Binge' },
   ];
   var HEAT_ALPHA = [0, 0.2, 0.4, 0.6, 0.8, 1];
+
+  /** Schrift-Spezifikationen, die vor dem Zeichnen geladen sein müssen (Canvas lädt nicht selbst). */
+  function shareFontLoads(theme) {
+    if (theme === 'retro') return ['400 40px "LenzRetro Pixel"', '400 40px "LenzRetro Mono"', '700 40px "LenzRetro Mono"'];
+    var fam = SHARE_FAMILIES[theme] || SHARE_FAMILIES.flix;
+    return ['500', '700', '800', '900'].map(function (w) {
+      return w + ' 40px "' + fam + '"';
+    });
+  }
 
   function sharePalette(theme) {
     return SHARE_PALETTES[theme] || SHARE_PALETTES.flix;
@@ -1279,17 +1300,141 @@
 
   function stxt(g, s, x, y, size, weight, color, maxW, align) {
     var ctx = g.ctx;
-    ctx.font = weight + ' ' + size + 'px ' + g.pal.font;
+    if (g.theme === 'retro') {
+      /* LENZ//84: fette Texte (Überschriften, Zahlen, Namen) in Pixel-Schrift mit Glow, Fließtext in Mono */
+      if (weight >= 700) {
+        pixelText(g, s, x, y, Math.round(size * RETRO_PIXEL_SCALE), color, maxW, align);
+        return;
+      }
+      ctx.font = (weight >= 600 ? '700 ' : '400 ') + Math.round(size * RETRO_MONO_SCALE) + 'px ' + g.pal.font;
+    } else {
+      ctx.font = weight + ' ' + size + 'px ' + g.pal.font;
+    }
     ctx.fillStyle = color;
     ctx.textAlign = align || 'left';
     ctx.fillText(maxW ? fitText(ctx, s, maxW) : String(s), x, y);
+  }
+
+  /** LENZ//84: Pixel-Text (exakte Pixelgröße) mit Phosphor-Glow (shadowBlur). */
+  function pixelText(g, s, x, y, px, color, maxW, align) {
+    var ctx = g.ctx;
+    ctx.font = '400 ' + px + 'px ' + RETRO_PIXEL;
+    ctx.fillStyle = color;
+    ctx.textAlign = align || 'left';
+    ctx.shadowColor = g.pal.glow;
+    ctx.shadowBlur = Math.max(8, Math.round(px * 0.18));
+    ctx.fillText(maxW ? fitText(ctx, s, maxW) : String(s), x, y);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+    ctx.shadowBlur = 0;
+  }
+
+  /** LENZ//84: vier Eckmarker (Terminal-Rahmen) um das Rechteck. */
+  function retroCorners(g, x, y, w, h, len, th) {
+    var ctx = g.ctx;
+    ctx.fillStyle = g.pal.accent;
+    ctx.shadowColor = g.pal.glow;
+    ctx.shadowBlur = 10;
+    ctx.fillRect(x, y, len, th);
+    ctx.fillRect(x, y, th, len);
+    ctx.fillRect(x + w - len, y, len, th);
+    ctx.fillRect(x + w - th, y, th, len);
+    ctx.fillRect(x, y + h - th, len, th);
+    ctx.fillRect(x, y + h - len, th, len);
+    ctx.fillRect(x + w - len, y + h - th, len, th);
+    ctx.fillRect(x + w - th, y + h - len, th, len);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+    ctx.shadowBlur = 0;
+  }
+
+  /** LENZ//84: Terminal-Kachel (dunkle Fläche, feine Kante, Eckmarker). */
+  function retroPanel(g, x, y, w, h) {
+    var ctx = g.ctx;
+    ctx.fillStyle = g.pal.card;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = g.pal.line;
+    ctx.fillRect(x, y, w, 2);
+    ctx.fillRect(x, y + h - 2, w, 2);
+    ctx.fillRect(x, y, 2, h);
+    ctx.fillRect(x + w - 2, y, 2, h);
+    retroCorners(g, x, y, w, h, 26, 5);
+  }
+
+  /** LENZ//84: Sonne mit Streifen hinter der Kopfzeile, perspektivisches Gitter am unteren Rand. */
+  function drawRetroBackdrop(g) {
+    var ctx = g.ctx;
+    var p = g.pal;
+    if (!ctx.createLinearGradient || !ctx.arc || !ctx.stroke) return;
+    var cx = g.W - 230;
+    var cy = g.top + 175;
+    var r = 150;
+    var sun = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+    sun.addColorStop(0, p.hi);
+    sun.addColorStop(0.5, p.accent);
+    sun.addColorStop(1, p.hot);
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.shadowColor = p.glow;
+    ctx.shadowBlur = 70;
+    ctx.fillStyle = sun;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 1, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = p.bg;
+    var i;
+    for (i = 0; i < 6; i++) ctx.fillRect(cx - r - 6, cy + r * 0.06 + i * r * 0.17, r * 2 + 12, 3 + i * 3.4);
+    ctx.restore();
+    /* Gitter */
+    var hy = g.H - 200;
+    var span = g.H - hy;
+    var fade = ctx.createLinearGradient(0, hy, 0, g.H);
+    fade.addColorStop(0, 'rgba(255, 176, 0, 0)');
+    fade.addColorStop(1, 'rgba(255, 176, 0, 0.42)');
+    ctx.save();
+    ctx.strokeStyle = fade;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (i = -14; i <= 14; i++) {
+      ctx.moveTo(g.W / 2 + i * 26, hy);
+      ctx.lineTo(g.W / 2 + i * 190, g.H);
+    }
+    for (i = 1; i <= 8; i++) {
+      var ly = hy + span * Math.pow(i / 8, 2);
+      ctx.moveTo(0, ly);
+      ctx.lineTo(g.W, ly);
+    }
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = p.line;
+    ctx.fillRect(0, hy - 1, g.W, 2);
+  }
+
+  /** LENZ//84: Scanlines und Außenrahmen über dem fertigen Bild. */
+  function drawRetroOverlay(g) {
+    var ctx = g.ctx;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.17)';
+    var y;
+    for (y = 0; y < g.H; y += 4) ctx.fillRect(0, y, g.W, 2);
+    ctx.fillStyle = g.pal.line;
+    var m = 28;
+    ctx.fillRect(m, m, g.W - 2 * m, 2);
+    ctx.fillRect(m, g.H - m - 2, g.W - 2 * m, 2);
+    ctx.fillRect(m, m, 2, g.H - 2 * m);
+    ctx.fillRect(g.W - m - 2, m, 2, g.H - 2 * m);
+    retroCorners(g, m, m, g.W - 2 * m, g.H - 2 * m, 44, 6);
   }
 
   /** Karte (LENZ+: weich mit Schatten; LENZPRIME: Glasfläche mit feiner Kante). Nur für plus/prime. */
   function shareCard(g, x, y, w, h, r) {
     var ctx = g.ctx;
     var p = g.pal;
-    if (g.theme === 'plus') {
+    if (g.theme === 'retro') {
+      retroPanel(g, x, y, w, h);
+    } else if (g.theme === 'plus') {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
       ctx.shadowBlur = 36;
       ctx.shadowOffsetY = 14;
@@ -1311,7 +1456,8 @@
 
   /** Abschnittstitel: LENZ+ zurückhaltend, LENZPRIME weiß und fett. */
   function shareHead(g, text, y) {
-    if (g.theme === 'prime') stxt(g, text, g.x, y, 44, 700, g.pal.text);
+    if (g.theme === 'retro') stxt(g, '// ' + text.toUpperCase(), g.x, y, 36, 700, g.pal.accent);
+    else if (g.theme === 'prime') stxt(g, text, g.x, y, 44, 700, g.pal.text);
     else stxt(g, text, g.x, y, 44, 500, g.pal.muted);
   }
 
@@ -1320,13 +1466,19 @@
     var img = g.logo;
     if (img && (img.naturalWidth || img.width || img.complete)) {
       try {
+        if (g.theme === 'retro') {
+          g.ctx.shadowColor = g.pal.glow;
+          g.ctx.shadowBlur = 24;
+        }
         g.ctx.drawImage(img, g.x, y, Math.round(h * info.ratio), h);
+        g.ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+        g.ctx.shadowBlur = 0;
         return;
       } catch (e) {
         /* Text-Ersatz */
       }
     }
-    stxt(g, info.name, g.x, y + Math.round(h * 0.85), Math.round(h * 0.95), 800, g.pal.text);
+    stxt(g, info.name, g.x, y + Math.round(h * 0.85), Math.round(h * 0.95), 800, g.theme === 'retro' ? g.pal.accent : g.pal.text);
   }
 
   function drawFrame(g) {
@@ -1334,6 +1486,18 @@
     var p = g.pal;
     ctx.fillStyle = p.bg;
     ctx.fillRect(0, 0, g.W, g.H);
+    if (g.theme === 'retro') {
+      drawRetroBackdrop(g);
+      ctx.textBaseline = 'alphabetic';
+      drawBrandLogo(g, g.top + 62, 84);
+      stxt(g, '// MEINE STATISTIK', g.x, g.top + 222, 50, 700, p.hi, g.cw);
+      stxt(g, '> ' + String(RANGE_TITLES[g.stats.range] || '').toUpperCase(), g.x, g.top + 264, 30, 400, p.accent, g.cw);
+      var ft = '> INOFFIZIELLES JELLYFIN-THEME';
+      stxt(g, ft, g.x, g.footY, 30, 400, p.muted, g.cw - 40);
+      ctx.fillStyle = p.accent;
+      ctx.fillRect(g.x + Math.min(g.cw - 40, ctx.measureText(ft).width) + 12, g.footY - 24, 16, 28);
+      return;
+    }
     if (g.theme !== 'flix' && ctx.createRadialGradient) {
       var glow = ctx.createRadialGradient(g.W * 0.85, 0, 0, g.W * 0.85, 0, g.W * 0.95);
       glow.addColorStop(0, g.theme === 'plus' ? 'rgba(27, 179, 232, 0.26)' : 'rgba(26, 152, 255, 0.34)');
@@ -1373,6 +1537,10 @@
   }
 
   function drawOverview(g) {
+    if (g.theme === 'retro') {
+      drawOverviewRetro(g);
+      return;
+    }
     if (g.theme !== 'flix') {
       drawOverviewThemed(g);
       return;
@@ -1467,9 +1635,58 @@
     }
   }
 
+  /** LENZ//84: große Watchtime in Pixel-Schrift mit Glow, drei Terminal-Kacheln, Top-Serie. */
+  function drawOverviewRetro(g) {
+    var ctx = g.ctx;
+    var p = g.pal;
+    var t = g.stats.totals || {};
+    var f = g.f;
+    var y = g.y0;
+    var heroH = Math.round(330 * f);
+    var ix = g.x + 44;
+    var iw = g.cw - 88;
+    retroPanel(g, g.x, y, g.cw, heroH);
+    stxt(g, '// WATCHTIME', ix, y + 78 * f, 36, 400, p.muted);
+    var wt = fmtDuration(t.seconds);
+    var px = 200;
+    ctx.font = '400 ' + px + 'px ' + RETRO_PIXEL;
+    while (px > 72 && ctx.measureText(wt).width > iw) {
+      px -= 8;
+      ctx.font = '400 ' + px + 'px ' + RETRO_PIXEL;
+    }
+    pixelText(g, wt, ix, y + 215 * f, px, p.hi, iw);
+    if (g.stats.compare) {
+      stxt(g, '[ ' + compareText(g.stats.compare).toUpperCase() + ' ]', ix, y + 285 * f, 30, 700, p.accent, iw);
+    }
+    var gap = 24;
+    var tw = Math.floor((g.cw - gap * 2) / 3);
+    var th = Math.round(170 * f);
+    var ty = y + Math.round(360 * f);
+    var tiles = [
+      [fmtInt(t.episodes), Number(t.episodes) === 1 ? 'Folge' : 'Folgen'],
+      [fmtInt(t.movies), Number(t.movies) === 1 ? 'Film' : 'Filme'],
+      [fmtInt(t.series), Number(t.series) === 1 ? 'Serie' : 'Serien'],
+    ];
+    tiles.forEach(function (tl, i) {
+      var tx = g.x + i * (tw + gap);
+      retroPanel(g, tx, ty, tw, th);
+      pixelText(g, tl[0], tx + 30, ty + th * 0.6, 96, p.hi, tw - 50);
+      stxt(g, tl[1].toUpperCase(), tx + 30, ty + th * 0.86, 30, 400, p.muted, tw - 50);
+    });
+    stxt(g, '> ' + fmtInt(t.activeDays) + (Number(t.activeDays) === 1 ? ' aktiver Tag' : ' aktive Tage'), g.x, y + Math.round(600 * f), 40, 400, p.muted, g.cw);
+    var top = topEntries(g.stats.topSeries, g.items, 1)[0];
+    if (top) {
+      var cy2 = y + Math.round(650 * f);
+      var ch = Math.round(190 * f);
+      retroPanel(g, g.x, cy2, g.cw, ch);
+      stxt(g, '// TOP-SERIE', g.x + 36, cy2 + ch * 0.32, 30, 400, p.muted);
+      stxt(g, top.name, g.x + 36, cy2 + ch * 0.74, 58, 700, p.hi, g.cw - 72);
+    }
+  }
+
   function drawPoster(g, x, y, w, h, name, img) {
     var ctx = g.ctx;
-    var rad = g.theme === 'plus' ? 16 : 8;
+    var rad = g.theme === 'plus' ? 16 : g.theme === 'retro' ? 2 : 8;
     var done = false;
     if (img && (img.naturalWidth || img.width)) {
       try {
@@ -1505,7 +1722,7 @@
     var tx = px + pw + 24;
     var maxW = g.W - g.x - tx;
     if (g.theme === 'prime') stxt(g, String(rank), g.x, y + ph - 6, Math.round(ph * 0.95), 900, p.rank);
-    else stxt(g, String(rank), g.x, y + ph / 2 + 14, 40, 800, p.rank);
+    else stxt(g, g.theme === 'retro' ? '0' + rank : String(rank), g.x, y + ph / 2 + 14, 40, 800, p.rank);
     drawPoster(g, px, y, pw, ph, e.name, g.posters[e.id]);
     var meta = fmtDuration(e.entry.seconds);
     if (kind === 'series') meta += ' · ' + fmtInt(e.entry.episodes) + (Number(e.entry.episodes) === 1 ? ' Folge' : ' Folgen');
@@ -1571,11 +1788,17 @@
       var slot = pw / data.length;
       var bw = Math.max(1, slot * 0.72);
       ctx.fillStyle = p.bar;
+      if (g.theme === 'retro') {
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 12;
+      }
       data.forEach(function (b, i) {
         if (!(b.seconds > 0)) return;
         var h = Math.max(3, (b.seconds / axis.max) * chartH);
         ctx.fillRect(px + i * slot + (slot - bw) / 2, base - h, bw, h);
       });
+      ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+      ctx.shadowBlur = 0;
       ctx.fillStyle = p.axis;
       ctx.fillRect(px, base, pw, 2);
       var last = data.length - 1;
@@ -1623,6 +1846,17 @@
       var rw = ctx.measureText(right).width;
       stxt(g, r.label, g.x, y + size, size, 600, p.text, Math.max(100, g.cw - rw - 24), 'left');
       ctx.fillStyle = p.track;
+      if (g.theme === 'retro') {
+        ctx.fillRect(g.x, y + size + 12, g.cw, 12);
+        ctx.fillStyle = p.accent;
+        ctx.shadowColor = p.glow;
+        ctx.shadowBlur = 10;
+        ctx.fillRect(g.x, y + size + 12, Math.max(12, g.cw * r.share), 12);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+        ctx.shadowBlur = 0;
+        y += rh;
+        return;
+      }
       roundRectPath(ctx, g.x, y + size + 12, g.cw, 12, 6);
       ctx.fill();
       ctx.fillStyle = p.accent;
@@ -1688,6 +1922,7 @@
     else if (o.variant === 'activity') drawActivity(g);
     else if (o.variant === 'binge') drawBinge(g);
     else drawOverview(g);
+    if (theme === 'retro') drawRetroOverlay(g);
     return canvas;
   }
 
@@ -1769,12 +2004,11 @@
   /** Design-Schrift (Canvas braucht sie vorab geladen) und Wortmarke laden; danach neu zeichnen. Maximal ~4 s. */
   function loadShareAssets(st, repaint) {
     var info = THEME_INFO[st.theme];
-    var fam = SHARE_FAMILIES[st.theme];
     var font = Promise.resolve();
     if (document.fonts && document.fonts.load) {
       font = Promise.all(
-        ['500', '700', '800', '900'].map(function (w) {
-          return document.fonts.load(w + ' 40px "' + fam + '"').catch(function () {
+        shareFontLoads(st.theme).map(function (spec) {
+          return document.fonts.load(spec).catch(function () {
             return null;
           });
         })
@@ -2136,6 +2370,7 @@
     applyTheme: applyTheme,
     themeId: themeId,
     sharePalette: sharePalette,
+    shareFontLoads: shareFontLoads,
     sharePalettes: SHARE_PALETTES,
     themeInfo: THEME_INFO,
     topEntries: topEntries,

@@ -42,7 +42,7 @@ describe('mobilenav (rein)', () => {
     window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
     try {
       const items = overlayItems(model);
-      expect(items.at(-1)).toMatchObject({ key: 'design', label: 'Design Einstellungen', action: 'design' });
+      expect(items.at(-1)).toMatchObject({ key: 'design', label: 'Design Einstellungen', badge: 'Beta', action: 'design' });
       expect(items.at(-2)).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/?theme=flix' });
       expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
     } finally {
@@ -94,7 +94,9 @@ describe('mobilenav (DOM)', () => {
     expect(btn.tagName).toBe('BUTTON');
     expect(btn.type).toBe('button');
     expect(btn.dataset.action).toBe('design');
-    expect(btn.textContent).toBe('Design Einstellungen');
+    expect(btn.childNodes[0].textContent).toBe('Design Einstellungen');
+    expect(btn.querySelector('.lfx-beta').textContent).toBe('Beta');
+    expect(btn.getAttribute('aria-label')).toBe('Design Einstellungen (Beta)');
     btn.click();
     expect(overlay.hidden).toBe(true);
     expect(openThemePicker).toHaveBeenCalledWith({ returnFocus: expect.anything() });

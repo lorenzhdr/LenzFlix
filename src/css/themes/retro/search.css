@@ -1,0 +1,168 @@
+/* LENZ//84 · search.css – gehört Worker P2. Suche als Kommandozeile (#lfx-retro-search). Alle Regeln unter html.lfx-js.lfx-theme-retro:not(.layout-tv).
+   Seiten-Reset und Hüllenabstände kommen aus title.css (.lfx-retro-page). */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+  & .lfx-rs { max-width: 1320px; margin: 0 auto; }
+  & .lfx-rs__banner {
+    margin: 0 0 14px;
+    font: 400 20px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.16em;
+    color: var(--lfx-retro-amber-lo);
+  }
+
+  /* Kommandozeile */
+  & .lfx-rs__cmd {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    background-color: rgba(14, 8, 3, 0.92);
+  }
+  & .lfx-rs__prompt {
+    flex: none;
+    font: 400 44px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    color: var(--lfx-retro-hot);
+    text-shadow: 0 0 10px rgba(255, 90, 31, 0.6);
+  }
+  & .lfx-rs__field { position: relative; flex: 1; min-width: 0; display: block; }
+  & .lfx-rs__input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    height: 56px;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font: 400 44px/56px var(--lfx-retro-font-pixel);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow-strong);
+    caret-color: transparent; /* echter Cursor wird als Block gezeichnet */
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  & .lfx-rs__input::placeholder { color: var(--lfx-retro-amber-lo); opacity: 0.8; text-shadow: none; }
+  & .lfx-rs__input:focus-visible { outline: 0; box-shadow: none; }
+  & .lfx-rs__caret {
+    position: absolute;
+    top: 50%;
+    left: min(calc(var(--rs-pos, 0) * (1ch + 0.04em)), calc(100% - 0.5em));
+    width: 0.5em;
+    height: 0.78em;
+    margin-top: -0.39em;
+    font-size: 44px;
+    background: var(--lfx-retro-amber);
+    box-shadow: var(--lfx-retro-glow);
+    pointer-events: none;
+    opacity: 0;
+  }
+  & .lfx-rs__cmd { --rs-pos: 0; }
+  & .lfx-rs__field:focus-within .lfx-rs__caret { opacity: 1; animation: lfx-retro-blink 1.06s steps(1, end) infinite; }
+  & .lfx-rs__clear {
+    flex: none;
+    min-width: 44px;
+    min-height: 40px;
+    padding: 2px 10px 0;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 20px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.1em;
+    cursor: pointer;
+  }
+  & .lfx-rs__clear[hidden] { display: none; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-rs__clear:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  }
+
+  & .lfx-rs__count {
+    min-height: 26px;
+    margin: 12px 4px 0;
+    font: 400 24px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.1em;
+    color: var(--lfx-retro-amber-lo);
+  }
+  & .lfx-rs__results { margin-top: 10px; }
+  & .lfx-rs[aria-busy="true"] .lfx-rs__results { opacity: 0.55; transition: opacity 160ms steps(3, end); }
+
+  /* Gruppen */
+  & .lfx-rs__group { margin-top: 34px; }
+  & .lfx-rs__group > h2 { margin-bottom: 16px; }
+  & .lfx-rs__grid {
+    --rc-cover-w: 100%;
+    --rc-wide-w: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+    gap: 26px 20px;
+  }
+  & .lfx-rs__group--wide .lfx-rs__grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+  & .lfx-rs__group--new .lfx-rs__grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+
+  /* Start- und Leerzustand */
+  & .lfx-rs__hint,
+  & .lfx-rs__empty {
+    margin: 26px 0;
+    font: 400 38px/1.1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  & .lfx-rs__empty { color: var(--lfx-retro-hot); text-shadow: 0 0 10px rgba(255, 90, 31, 0.5); }
+  & .lfx-rs__opts { display: flex; flex-wrap: wrap; gap: 10px; }
+  & .lfx-rs__opt { min-height: 38px; font-size: 20px; }
+
+  /* Personen */
+  & .lfx-rs__people { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  & .lfx-rs__person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px 8px 8px;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    color: var(--lfx-retro-amber);
+    text-decoration: none;
+    background: rgba(14, 8, 3, 0.8);
+  }
+  & .lfx-rs__person-img {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    overflow: hidden;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    background: #1d1208;
+  }
+  & .lfx-rs__person-img img { display: block; width: 100%; height: 100%; object-fit: cover; filter: sepia(0.6) brightness(0.9); }
+  & .lfx-rs__person-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 400 24px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.05em; }
+  & .lfx-rs__person:focus-visible { outline: 2px solid var(--lfx-retro-amber); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-rs__person:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+    & .lfx-rs__banner { font-size: 16px; letter-spacing: 0.1em; }
+    & .lfx-rs__cmd { gap: 10px; padding: 10px 12px; }
+    & .lfx-rs__prompt { font-size: 30px; }
+    & .lfx-rs__input { height: 46px; font-size: 32px; line-height: 46px; }
+    & .lfx-rs__caret { font-size: 32px; }
+    & .lfx-rs__grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 18px 12px; }
+    & .lfx-rs__group--wide .lfx-rs__grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    & .lfx-rs__group--new .lfx-rs__grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+    & .lfx-rs__hint,
+    & .lfx-rs__empty { font-size: 30px; }
+    & .lfx-rs__opt { min-height: 44px; }
+    & .lfx-rs__people { grid-template-columns: 1fr; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rs__field:focus-within .lfx-rs__caret { animation: none; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rs[aria-busy="true"] .lfx-rs__results { transition: none; }
+}

@@ -837,6 +837,8 @@ describe('Design-Auswahl (resolveTheme/applyTheme)', () => {
     expect(L.resolveTheme({ search: '', storage: s, userId: 'andere' })).toBe('prime');
     expect(L.resolveTheme({ search: '', storage: s, userId: null })).toBe('prime');
     expect(L.resolveTheme({ search: '', storage: store({}), userId: 'u1' })).toBe('flix');
+    expect(L.resolveTheme({ search: '?theme=retro', storage: s, userId: 'u1' })).toBe('retro');
+    expect(L.resolveTheme({ search: '', storage: store({ 'lfx.theme.u1': 'retro' }), userId: 'u1' })).toBe('retro');
   });
 
   it('Whitelist: unbekannte Werte werden ignoriert (Query und Speicher)', () => {
@@ -869,6 +871,12 @@ describe('Design-Auswahl (resolveTheme/applyTheme)', () => {
     expect(document.body.className).toBe('theme-prime');
     expect(document.querySelector('.back').textContent).toBe('Zurück zu LENZPRIME');
     expect(document.querySelector('.brand img').getAttribute('src')).toBe('lenzprime.svg');
+    L.applyTheme('retro');
+    expect(document.body.className).toBe('theme-retro');
+    expect(document.title).toBe('Meine Statistik · LENZ//84');
+    expect(document.querySelector('.back').textContent).toBe('Zurück zu LENZ//84');
+    expect(document.querySelector('.brand img').getAttribute('src')).toBe('lenz84.svg');
+    expect(document.querySelector('meta[name="theme-color"]').getAttribute('content')).toBe('#ffb000');
     L.applyTheme('nope');
     expect(document.body.className).toBe('theme-flix');
     expect(document.querySelector('.brand img').getAttribute('src')).toBe('lenzflix.svg');
@@ -908,9 +916,10 @@ describe('Share-Bild je Design', () => {
 
   function makeCtx() {
     const rec = { calls: [] };
-    ['fillRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'quadraticCurveTo', 'closePath', 'fill', 'clip', 'save', 'restore', 'drawImage'].forEach((m) => {
+    ['fillRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'quadraticCurveTo', 'closePath', 'fill', 'clip', 'save', 'restore', 'drawImage', 'arc', 'stroke'].forEach((m) => {
       rec[m] = (...args) => rec.calls.push({ m, args, fillStyle: rec.fillStyle, font: rec.font });
     });
+    rec.createLinearGradient = () => ({ addColorStop() {} });
     rec.measureText = (t) => ({ width: String(t).length * 10 });
     return rec;
   }
@@ -935,12 +944,14 @@ describe('Share-Bild je Design', () => {
   const texts = (ctx) => ctx.calls.filter((c) => c.m === 'fillText').map((c) => c.args[0]);
 
   it('Paletten: drei Designs mit eigener Schrift und Hintergrund', () => {
-    expect(Object.keys(L.sharePalettes)).toEqual(['flix', 'plus', 'prime']);
+    expect(Object.keys(L.sharePalettes)).toEqual(['flix', 'plus', 'prime', 'retro']);
     expect(L.sharePalette('flix').bg).toBe('#141414');
     expect(L.sharePalette('flix').accent).toBe('#e50914');
     expect(L.sharePalette('plus').bg).toBe('#10131f');
     expect(L.sharePalette('prime').bg).toBe('#00050d');
     expect(L.sharePalette('prime').rank).toBe('#37f1a3');
+    expect(L.sharePalette('retro').bg).toBe('#0a0603');
+    expect(L.sharePalette('retro').accent).toBe('#ffb000');
     expect(L.sharePalette('gibts-nicht')).toBe(L.sharePalette('flix'));
     expect(L.sharePalette('plus').font).toContain('LenzPlus Sans');
     expect(L.sharePalette('prime').font).toContain('LenzPrime Sans');
@@ -1006,6 +1017,34 @@ describe('Share-Bild je Design', () => {
     const prime = draw('prime', 'activity');
     expect(prime.calls.some((c) => c.m === 'fillRect' && c.fillStyle === '#1a98ff')).toBe(true);
     expect(prime.calls.some((c) => c.fillStyle === '#e50914')).toBe(false);
+  });
+
+  it('retro: Bernstein, Pixel-Schrift mit Glow, Gitter/Sonne, Scanlines, alle Varianten und Formate', () => {
+    const ctx = draw('retro', 'overview');
+    expect(ctx.calls[0]).toMatchObject({ m: 'fillRect', fillStyle: '#0a0603' });
+    const t = texts(ctx);
+    expect(t).toContain('LENZ//84'); // Text-Ersatz ohne geladene Wortmarke
+    expect(t).toContain('// MEINE STATISTIK');
+    expect(t).toContain('34 Std 18 Min');
+    expect(t).toContain('FOLGEN');
+    expect(t).toContain('Serie Eins');
+    expect(ctx.calls.find((c) => c.m === 'fillText' && c.args[0] === '34 Std 18 Min').font).toContain('LenzRetro Pixel');
+    expect(ctx.calls.some((c) => c.m === 'arc')).toBe(true); // Sonne
+    expect(ctx.calls.some((c) => c.m === 'stroke')).toBe(true); // Gitter
+    expect(ctx.shadowBlur).toBe(0); // Glow wird zurückgesetzt
+    expect(ctx.calls.some((c) => c.fillStyle === '#e50914')).toBe(false);
+    const logo = { naturalWidth: 258, naturalHeight: 69 };
+    expect(draw('retro', 'overview', { logo }).calls.find((c) => c.m === 'drawImage').args[0]).toBe(logo);
+    ['overview', 'top', 'activity', 'binge'].forEach((v) => {
+      ['4:5', 'story'].forEach((f) => {
+        const c = document.createElement('canvas');
+        const st = Object.assign(stats(), { binge: { topDay: { date: '2026-11-09', seconds: 7200 } }, devices: [{ name: 'TV', seconds: 100 }] });
+        expect(() => L.drawShare(c, { variant: v, format: f, stats: st, items: ITEMS, theme: 'retro' })).not.toThrow();
+      });
+    });
+    expect(L.shareFontLoads('retro').join('|')).toContain('LenzRetro Pixel');
+    expect(L.shareFontLoads('plus')[0]).toBe('500 40px "LenzPlus Sans"');
+    expect(L.shareFileName('top', 'story', 'retro')).toBe('lenz84-top-story.png');
   });
 
   it('Standard-Design aus applyTheme; Dateiname je Design', () => {

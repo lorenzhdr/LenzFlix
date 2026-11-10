@@ -34,6 +34,7 @@ describe('profileEntries', () => {
     const e = await profileEntries({ theme: 'plus' });
     expect(e.map((x) => x.key)).toEqual(['stats', 'design', 'settings', 'dashboard', 'logout']);
     expect(e.map((x) => x.label)).toEqual(['Meine Statistik', 'Design Einstellungen', 'Einstellungen', 'Dashboard', 'Abmelden']);
+    expect(e[1].badge).toBe('Beta');
     expect(e[0]).toMatchObject({ href: 'https://stats.example/me?theme=plus', className: 'is-stats' });
     expect(e[2].href).toBe('#/mypreferencesmenu');
     expect(e[3].href).toBe('#/dashboard');

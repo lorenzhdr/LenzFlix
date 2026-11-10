@@ -1,0 +1,132 @@
+/* LENZ//84 · newpopular.css – gehört Worker P2. „Neu und beliebt“ (#lfx-newpopular, Klassen aus js-ui/newpopular.css) im Terminal-Look.
+   Zeilen/Karten (.lfx-rows, .lfx-card) kommen aus rows.css/card.css des Designs; hier Hülle, Tabs und „Neu bei“-Liste.
+   Alle Regeln unter html.lfx-js.lfx-theme-retro:not(.layout-tv). */
+html.lfx-newpopular-on.lfx-theme-retro:not(.layout-tv) #indexPage,
+html.lfx-newpopular-on.lfx-theme-retro:not(.layout-tv) #indexPage #homeTab { background: transparent !important; }
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+  & .lfx-np {
+    --np-gutter: var(--lfx-retro-gutter);
+    padding: 8px 0 96px;
+    color: var(--lfx-retro-amber);
+    font-family: var(--lfx-retro-font-mono);
+  }
+
+  /* Tabs: Terminal-Optionen */
+  & .lfx-np__tabs {
+    top: var(--lfx-header-h);
+    gap: 8px;
+    padding: 12px var(--np-gutter);
+    background: linear-gradient(to bottom, rgba(10, 6, 3, 0.98), rgba(10, 6, 3, 0.86));
+    border-bottom: 1px solid var(--lfx-retro-line);
+  }
+  & .lfx-np__pill {
+    height: 40px;
+    padding: 2px 14px 0;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 22px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: background-color 120ms steps(2, end), color 120ms steps(2, end);
+  }
+  & .lfx-np__pill::before { content: "["; margin-right: 0.4em; opacity: 0.6; }
+  & .lfx-np__pill::after { content: "]"; margin-left: 0.4em; opacity: 0.6; }
+  & .lfx-np__pill.is-active,
+  & .lfx-np__pill.is-active:hover {
+    border-color: var(--lfx-retro-amber);
+    background: var(--lfx-retro-amber);
+    color: var(--lfx-retro-ink);
+    box-shadow: 0 0 16px rgba(255, 176, 0, 0.4);
+  }
+  & .lfx-np__pill:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); outline-offset: 2px; }
+  & .lfx-np__pill-ico { display: none; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-np__pill:not(.is-active):hover { background: var(--lfx-retro-amber-dim); color: var(--lfx-retro-amber-hi); }
+  }
+
+  /* Abschnitte */
+  & .lfx-np__section { scroll-margin-top: calc(var(--lfx-header-h) + 72px); margin-top: 36px; }
+  & .lfx-np__heading {
+    margin: 0 var(--np-gutter) 18px;
+    font: 400 34px/1.1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  & .lfx-np__heading::before { content: "// "; color: var(--lfx-retro-hot); text-shadow: 0 0 8px rgba(255, 90, 31, 0.6); }
+  & .lfx-np__sub {
+    margin: -8px var(--np-gutter) 14px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--lfx-retro-amber-lo);
+  }
+
+  /* „Neu bei“-Liste: Datum als Dateistempel, Vorschau im Röhrenrahmen */
+  & .lfx-np__list { padding: 0 var(--np-gutter); }
+  & .lfx-np__entry { grid-template-columns: 104px minmax(0, 1fr); gap: 26px; padding-bottom: 44px; }
+  & .lfx-np__month { font: 400 26px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.1em; text-transform: uppercase; color: var(--lfx-retro-amber-lo); }
+  & .lfx-np__day { font: 400 56px/1 var(--lfx-retro-font-pixel); color: var(--lfx-retro-amber-hi); text-shadow: var(--lfx-retro-glow); }
+  & .lfx-np__main { max-width: 780px; }
+  & .lfx-np__media {
+    position: relative;
+    border: 1px solid var(--lfx-retro-line);
+    border-radius: 2px;
+    background: #1d1208;
+    box-shadow: var(--lfx-retro-box-glow);
+  }
+  & .lfx-np__img { filter: sepia(0.5) saturate(1.1) brightness(0.9) contrast(1.05); }
+  & .lfx-np__media::after {
+    background:
+      var(--lfx-retro-scan),
+      linear-gradient(to top, rgba(10, 6, 3, 0.85), rgba(10, 6, 3, 0) 55%);
+  }
+  & .lfx-np__media-title { font: 400 32px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.05em; color: var(--lfx-retro-amber-hi); text-shadow: var(--lfx-retro-glow); }
+  & .lfx-np__btns { gap: 8px; }
+  & .lfx-np__btn {
+    width: 42px;
+    height: 42px;
+    box-sizing: border-box;
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: rgba(10, 6, 3, 0.75);
+    color: var(--lfx-retro-amber);
+    transition: background-color 120ms steps(2, end), color 120ms steps(2, end);
+  }
+  & .lfx-np__btn:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); outline-offset: 2px; }
+  /* „Meine Liste“ aktiv: gefüllt statt Grün */
+  & .lfx-np__btn.lfx-np__btn--fav.is-on,
+  & .lfx-np__btn.lfx-np__btn--fav.is-on:hover { border-color: var(--lfx-retro-amber); background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-np__btn:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+  }
+  & .lfx-np__name { font: 400 36px/1.05 var(--lfx-retro-font-pixel); letter-spacing: 0.05em; color: var(--lfx-retro-amber-hi); text-shadow: var(--lfx-retro-glow); }
+  & .lfx-np__since { font: 400 24px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.1em; text-transform: uppercase; color: var(--lfx-retro-hot); }
+  & .lfx-np__overview { font-size: 13px; line-height: 1.7; color: var(--lfx-retro-amber); }
+  & .lfx-np__genres { font: 400 22px/1.2 var(--lfx-retro-font-pixel); letter-spacing: 0.08em; text-transform: uppercase; color: var(--lfx-retro-amber-lo); }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+    & .lfx-np { padding-top: 52px; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 36px); }
+    & .lfx-np__tabs { top: 52px; padding-left: 14px; padding-right: 14px; }
+    & .lfx-np__pill { height: 44px; }
+    & .lfx-np__list,
+    & .lfx-np__heading,
+    & .lfx-np__sub { padding-left: 14px; padding-right: 14px; margin-left: 0; margin-right: 0; }
+    & .lfx-np__entry { grid-template-columns: 58px minmax(0, 1fr); gap: 12px; }
+    & .lfx-np__day { font-size: 40px; }
+    & .lfx-np__month { font-size: 22px; }
+    & .lfx-np__main { max-width: none; }
+    & .lfx-np__btn { width: 46px; height: 46px; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np__pill,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-np__btn { transition: none; }
+}

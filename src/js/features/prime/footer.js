@@ -1,5 +1,5 @@
 // LENZPRIME: „Mehr“-Button und Fußzeile (Wortmarke per CSS-Hintergrund, Links: Statistik, Design-Auswahl).
-import { h } from '../../core/dom.js';
+import { h, badgePill, badgedName } from '../../core/dom.js';
 import { statsHref, STATS_LABEL } from '../../core/stats.js';
 import { openThemePicker } from '../../core/themepicker.js';
 
@@ -12,7 +12,7 @@ export function buildMoreButton(onClick) {
 
 export function buildFooter() {
   const href = statsHref('prime');
-  const picker = h('button', { type: 'button', class: 'lfx-prime-footer__link' }, 'Design Einstellungen');
+  const picker = h('button', { type: 'button', class: 'lfx-prime-footer__link', 'aria-label': badgedName('Design Einstellungen', 'Beta') }, ['Design Einstellungen', badgePill('Beta')]);
   picker.addEventListener('click', () => openThemePicker({ returnFocus: picker }));
   const links = [
     href ? h('a', { class: 'lfx-prime-footer__link', href }, STATS_LABEL) : null,

@@ -4,7 +4,7 @@
 //  - Filter-Pills (Serien · Filme · Meine Liste · Mehr ▾) unter dem Header, nur auf der Startseite
 //  - Vollbild-Overlay „Mehr“ mit Startseite/Bibliotheken als zentrierte Textliste
 // Eigene Knoten liegen außerhalb der React-Knoten; unmount() räumt alles auf.
-import { h, mountPoint, unmountPoint } from '../core/dom.js';
+import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv, isMobile } from '../core/layout.js';
@@ -37,7 +37,7 @@ export function overlayItems(model) {
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
   const statsUrl = statsLink();
   if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
-  items.push({ key: 'design', label: 'Design Einstellungen', action: 'design' });
+  items.push({ key: 'design', label: 'Design Einstellungen', badge: 'Beta', action: 'design' });
   return items;
 }
 
@@ -138,7 +138,7 @@ function render() {
 
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
-      it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, dataset: { action: it.action } }, it.label) :
+      it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, 'aria-label': badgedName(it.label, it.badge), dataset: { action: it.action } }, [it.label, it.badge ? badgePill(it.badge) : null]) :
       // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
       h('a', { class: `lfx-mnav-overlay__link${it.external ? ' lfx-mnav-overlay__link--stats' : ''}`, href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
     ])));

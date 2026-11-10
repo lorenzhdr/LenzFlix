@@ -1,0 +1,296 @@
+/* LENZ//84 · Kassetten-Karte (features/retro/card.js).
+   Markup: .lfx-card.lfx-retro-card.lfx-retro-card--{spine|cover|wide}[data-tone=0..4] > a.lfx-card__link >
+     img.lfx-retro-card__img, (spine) .lfx-retro-card__label{__spine-title,__year,__stripe,__wear} | (cover/wide) .lfx-retro-card__cap{__cap-title,__year},
+     .lfx-retro-card__progress > .lfx-retro-card__bar (Bandwickel), .lfx-retro-card__fallback (ohne Bild).
+   Größen per Custom Properties überschreibbar (Zeilen-Features): --rc-w, --rc-h, --rc-open-w (spine), --rc-cover-w (cover), --rc-wide-w (wide).
+   Hover nur unter (hover:hover) and (pointer:fine), Fokus (Tastatur) immer. Nie auf TV. */
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+  /* Farbstreifen-Töne der Kassettenrücken (data-tone) */
+  & .lfx-retro-card { --rc-tone: var(--lfx-retro-amber); }
+  & .lfx-retro-card[data-tone="1"] { --rc-tone: var(--lfx-retro-hot); }
+  & .lfx-retro-card[data-tone="2"] { --rc-tone: var(--lfx-retro-amber-hi); }
+  & .lfx-retro-card[data-tone="3"] { --rc-tone: var(--lfx-retro-amber-lo); }
+  & .lfx-retro-card[data-tone="4"] { --rc-tone: #d97b00; }
+
+  /* ---------- gemeinsam ---------- */
+  & .lfx-retro-card {
+    position: relative;
+    contain: none;
+    overflow: visible;
+    scroll-snap-align: start;
+  }
+  & .lfx-retro-card:hover,
+  & .lfx-retro-card:focus-within { z-index: 6; }
+  & .lfx-retro-card .lfx-card__link {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    background: linear-gradient(160deg, #1d1208, #0e0803);
+    color: var(--lfx-retro-amber);
+    text-decoration: none;
+    transition: width 260ms var(--lfx-retro-ease-crt), transform 260ms var(--lfx-retro-ease-crt), box-shadow 200ms steps(4, end), border-color 200ms steps(4, end);
+  }
+  & .lfx-retro-card .lfx-card__link:focus-visible {
+    outline: 2px solid var(--lfx-retro-amber);
+    outline-offset: 3px;
+  }
+  & .lfx-retro-card__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: sepia(0.45) saturate(0.95) contrast(1.05) brightness(0.88);
+    transition: opacity 180ms steps(3, end);
+  }
+  /* Scanlines über dem Bild */
+  & .lfx-retro-card .lfx-card__link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: var(--lfx-retro-scan);
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  & .lfx-retro-card__year {
+    font: 400 18px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    color: var(--lfx-retro-amber);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  /* Fortschritt: Bandwickel-Balken */
+  & .lfx-retro-card__progress {
+    position: absolute;
+    z-index: 3;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    height: 7px;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    background: rgba(10, 6, 3, 0.85);
+  }
+  & .lfx-retro-card__bar {
+    display: block;
+    height: 100%;
+    background: repeating-linear-gradient(90deg, var(--lfx-retro-hot) 0 3px, transparent 3px 5px);
+    box-shadow: 0 0 8px rgba(255, 90, 31, 0.6);
+  }
+  & .lfx-retro-card__fallback {
+    position: absolute;
+    z-index: 1;
+    inset: auto 8px 12px;
+    display: block;
+    font: 400 24px/1.05 var(--lfx-retro-font-pixel);
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+    overflow: hidden;
+  }
+
+  /* ---------- spine: Kassettenrücken ---------- */
+  & .lfx-retro-card--spine {
+    --rc-w: 56px;
+    --rc-h: 240px;
+    --rc-open-w: 160px;
+    flex: 0 0 var(--rc-w);
+    width: var(--rc-w);
+    height: var(--rc-h);
+  }
+  & .lfx-retro-card--spine .lfx-card__link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--rc-w);
+    height: 100%;
+    aspect-ratio: auto;
+    box-shadow: inset 0 0 0 2px #0a0603, inset 0 0 14px rgba(255, 176, 0, 0.08);
+  }
+  & .lfx-retro-card--spine .lfx-retro-card__img { opacity: 0; }
+  & .lfx-retro-card--spine .lfx-retro-card__label {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 18px 4px 10px;
+    transition: opacity 140ms steps(3, end);
+  }
+  & .lfx-retro-card--spine:has(.lfx-retro-card__progress) .lfx-retro-card__label { padding-bottom: 20px; }
+  & .lfx-retro-card--spine .lfx-retro-card__stripe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 9px;
+    background: var(--rc-tone);
+    box-shadow: 0 0 10px var(--rc-tone), 0 3px 0 #0a0603, 0 4px 0 var(--rc-tone);
+  }
+  & .lfx-retro-card--spine .lfx-retro-card__spine-title {
+    position: static;
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    -webkit-line-clamp: unset;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 4px 3px;
+    border: 1px solid rgba(255, 176, 0, 0.28);
+    background: rgba(255, 176, 0, 0.07);
+    font: 400 24px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.05em;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  /* Abnutzungsstreifen: feine Kratzer quer über das Gehäuse */
+  & .lfx-retro-card--spine .lfx-retro-card__wear {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background:
+      linear-gradient(104deg, transparent 0 46%, rgba(255, 226, 168, 0.18) 46.4% 47%, transparent 47.4%),
+      linear-gradient(0deg, transparent 0 30%, rgba(255, 226, 168, 0.12) 30% 30.8%, transparent 31%),
+      linear-gradient(0deg, transparent 0 71%, rgba(255, 226, 168, 0.1) 71% 71.6%, transparent 72%);
+  }
+
+  /* Herausziehen: Fokus immer, Hover nur mit Maus */
+  & .lfx-retro-card--spine .lfx-card__link:focus-visible {
+    width: var(--rc-open-w);
+    transform: translateY(-12px);
+    border-color: var(--lfx-retro-amber);
+    box-shadow: var(--lfx-retro-box-glow);
+  }
+  & .lfx-retro-card--spine .lfx-card__link:focus-visible .lfx-retro-card__img { opacity: 1; filter: none; animation: lfx-retro-card-glitch var(--lfx-retro-dur-glitch) steps(2, end) 1; }
+  & .lfx-retro-card--spine .lfx-card__link:focus-visible .lfx-retro-card__label { opacity: 0; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-retro-card--spine .lfx-card__link:hover {
+      width: var(--rc-open-w);
+      transform: translateY(-12px);
+      border-color: var(--lfx-retro-amber);
+      box-shadow: var(--lfx-retro-box-glow);
+    }
+    & .lfx-retro-card--spine .lfx-card__link:hover .lfx-retro-card__img { opacity: 1; filter: none; animation: lfx-retro-card-glitch var(--lfx-retro-dur-glitch) steps(2, end) 1; }
+    & .lfx-retro-card--spine .lfx-card__link:hover .lfx-retro-card__label { opacity: 0; }
+  }
+  /* Ohne Bild bleibt das Etikett sichtbar */
+  & .lfx-retro-card--spine .lfx-card__link:not(:has(.lfx-retro-card__img)):focus-visible .lfx-retro-card__label { opacity: 1; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-retro-card--spine .lfx-card__link:not(:has(.lfx-retro-card__img)):hover .lfx-retro-card__label { opacity: 1; }
+  }
+
+  /* ---------- cover: Poster 2:3 in Kassettenhülle ---------- */
+  & .lfx-retro-card--cover {
+    --rc-cover-w: var(--lfx-poster-w, 150px);
+    flex: 0 0 var(--rc-cover-w);
+    width: var(--rc-cover-w);
+  }
+  & .lfx-retro-card--cover .lfx-card__link {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border-color: var(--lfx-retro-line);
+  }
+  /* Hüllenrand: zweite Linie innen */
+  & .lfx-retro-card--cover .lfx-card__link::after,
+  & .lfx-retro-card--wide .lfx-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    z-index: 3;
+    border: 1px solid rgba(255, 176, 0, 0.28);
+    pointer-events: none;
+  }
+  /* ---------- wide: 16:9 ---------- */
+  & .lfx-retro-card--wide {
+    --rc-wide-w: var(--lfx-card-w, 280px);
+    flex: 0 0 var(--rc-wide-w);
+    width: var(--rc-wide-w);
+  }
+  & .lfx-retro-card--wide .lfx-card__link {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-color: var(--lfx-retro-line);
+  }
+
+  /* Beschriftung cover/wide: Titel-Streifen unten */
+  & .lfx-retro-card--cover .lfx-retro-card__cap,
+  & .lfx-retro-card--wide .lfx-retro-card__cap {
+    position: absolute;
+    z-index: 3;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 22px 10px 14px;
+    background: linear-gradient(to top, rgba(10, 6, 3, 0.94), rgba(10, 6, 3, 0));
+  }
+  & .lfx-retro-card--cover:has(.lfx-retro-card__progress) .lfx-retro-card__cap,
+  & .lfx-retro-card--wide:has(.lfx-retro-card__progress) .lfx-retro-card__cap { padding-bottom: 18px; }
+  & .lfx-retro-card__cap-title {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: 400 22px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.04em;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  /* Poster tragen ihren Titel im Bild: Streifen nur bei Fokus/Hover, ohne Bild immer */
+  & .lfx-retro-card--cover .lfx-retro-card__cap { opacity: 0; transition: opacity 140ms steps(3, end); }
+  & .lfx-retro-card--cover .lfx-card__link:focus-visible .lfx-retro-card__cap,
+  & .lfx-retro-card--cover .lfx-card__link:not(:has(.lfx-retro-card__img)) .lfx-retro-card__cap { opacity: 1; }
+  & .lfx-retro-card--cover .lfx-retro-card__fallback { display: none; }
+
+  & .lfx-retro-card--cover .lfx-card__link:focus-visible,
+  & .lfx-retro-card--wide .lfx-card__link:focus-visible {
+    border-color: var(--lfx-retro-amber);
+    box-shadow: var(--lfx-retro-box-glow);
+  }
+  & .lfx-retro-card--cover .lfx-card__link:focus-visible .lfx-retro-card__img,
+  & .lfx-retro-card--wide .lfx-card__link:focus-visible .lfx-retro-card__img { filter: none; animation: lfx-retro-card-glitch var(--lfx-retro-dur-glitch) steps(2, end) 1; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-retro-card--cover .lfx-card__link:hover,
+    & .lfx-retro-card--wide .lfx-card__link:hover {
+      transform: translateY(-4px);
+      border-color: var(--lfx-retro-amber);
+      box-shadow: var(--lfx-retro-box-glow);
+    }
+    & .lfx-retro-card--cover .lfx-card__link:hover .lfx-retro-card__img,
+    & .lfx-retro-card--wide .lfx-card__link:hover .lfx-retro-card__img { filter: none; animation: lfx-retro-card-glitch var(--lfx-retro-dur-glitch) steps(2, end) 1; }
+    & .lfx-retro-card--cover .lfx-card__link:hover .lfx-retro-card__cap { opacity: 1; }
+  }
+}
+
+/* Glitch beim Herausziehen: Versatz + kurzer Farbstich (chromatische Anmutung) */
+@keyframes lfx-retro-card-glitch {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(-3px, 0); }
+  40%  { transform: translate(3px, 1px); }
+  60%  { transform: translate(-2px, -1px); }
+  80%  { transform: translate(1px, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-card .lfx-card__link,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-card__img,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-card .lfx-retro-card__label,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-card .lfx-retro-card__cap { transition: none; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-card .lfx-retro-card__img { animation: none !important; }
+}
