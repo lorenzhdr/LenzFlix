@@ -1,0 +1,16 @@
+/lenzflix-stats/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+
+/lenzflix-stats/
+  Cache-Control: no-cache
+
+/lenzflix-stats/index.html
+  Cache-Control: no-cache
+
+/lenzflix-stats/*.js
+  Cache-Control: no-cache
+
+/lenzflix-stats/*.css
+  Cache-Control: no-cache
