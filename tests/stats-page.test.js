@@ -132,6 +132,19 @@ describe('Verlauf: Y-Achse und Balken-Details', () => {
     expect(c.querySelector('.tl-detail .tl-t')).toBeNull();
     expect(c.querySelectorAll('.bar.sel').length).toBe(0);
   });
+  it('renderTimeline: Klick außerhalb der Balken hebt die Auswahl auf', () => {
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    L.renderTimeline(c, { range: '7d', timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] } });
+    const hits = c.querySelectorAll('.hit');
+    hits[2].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(c.querySelectorAll('.bar.sel').length).toBe(1);
+    hits[4].dispatchEvent(new MouseEvent('click', { bubbles: true })); // anderer Balken: bleibt ausgewählt
+    expect(c.querySelectorAll('.bar.sel').length).toBe(1);
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(c.querySelectorAll('.bar.sel').length).toBe(0);
+    expect(c.querySelector('.tl-detail').textContent).toContain('Tippe');
+  });
 });
 
 describe('Heatmap', () => {

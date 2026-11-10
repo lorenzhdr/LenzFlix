@@ -5564,7 +5564,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default];
 
   // src/js/main.js
-  var VERSION = "1.4.9";
+  var VERSION = "1.4.10";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

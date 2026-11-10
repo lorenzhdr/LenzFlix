@@ -546,6 +546,7 @@
     // Detailbox: Klick/Tipp (oder Enter/Leertaste) auf einen Balken, erneut = abwählen
     var detail = el('div', 'tl-detail');
     var selected = -1;
+    var hits = [];
     function showDetail() {
       clear(detail);
       svg.setAttribute('class', selected >= 0 ? 'chart has-sel' : 'chart');
@@ -583,7 +584,20 @@
         }
       });
       svg.appendChild(hit);
+      hits.push(hit);
     });
+    // Klick irgendwo außerhalb der Balken → zurück zur Gesamtansicht
+    var outside = function (e) {
+      if (!document.body.contains(svg)) {
+        document.removeEventListener('click', outside);
+        return;
+      }
+      if (selected >= 0 && hits.indexOf(e.target) < 0) {
+        selected = -1;
+        showDetail();
+      }
+    };
+    document.addEventListener('click', outside);
     showDetail();
     container.appendChild(svg);
     container.appendChild(detail);
