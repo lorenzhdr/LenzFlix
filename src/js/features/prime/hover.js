@@ -29,6 +29,8 @@ const SCALE = 1.56;
 const MIN_WIDTH = 340;
 const EDGE = 12;
 const TOP_GUARD = 72; // Kopfzeile
+const HEADER_H = 80; // Oberkante des Panels bleibt beim Scrollen mindestens hier
+const USER_SCROLL_QUIET_MS = 400; // jüngeres Nutzer-Scrollen: nicht eingreifen
 const FIELDS = 'Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,CommunityRating,RemoteTrailers,LocalTrailerCount,UserData,ImageTags,BackdropImageTags';
 
 const hoverCapable = () => typeof window.matchMedia === 'function' && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
@@ -49,6 +51,14 @@ export function popupGeometry(r, vw, vh, infoH = 0) {
   return { left, top, width, imgH, originX: cx - left, originY: cy - top, scale: r.width / width };
 }
 
+/** Nötiger Scroll-Betrag nach unten (px), damit die Unterkante im Viewport liegt, ohne die Oberkante unter die Kopfzeile zu schieben. */
+export function scrollDeltaForBottom(bottom, top, vh) {
+  const dy = bottom - (vh - EDGE);
+  if (dy <= 0) return 0;
+  return Math.max(0, Math.min(dy, top - HEADER_H));
+}
+
+let lastUserScroll = 0;
 let active = null; // { card, kind, el, preview, video, timers }
 let intent = null; // { card, timer }
 let leaveTimer = null;
@@ -205,6 +215,14 @@ async function openPoster(card) {
       selfScrollUntil = Date.now() + 700;
       if (typeof track.scrollBy === 'function') track.scrollBy({ left: over, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
+    // Tief liegende Zeilen: Seite so weit verschieben, dass das Panel unten komplett sichtbar ist (einmalig, nicht beim Scrollen)
+    if (Date.now() - lastUserScroll < USER_SCROLL_QUIET_MS) return;
+    const pr = el.getBoundingClientRect();
+    const dy = scrollDeltaForBottom(Math.max(pr.bottom, cr.bottom), Math.min(pr.top, cr.top), window.innerHeight);
+    if (dy > 0 && typeof window.scrollBy === 'function') {
+      selfScrollUntil = Date.now() + 900;
+      window.scrollBy({ top: dy, behavior: reducedMotion() ? 'auto' : 'smooth' });
+    }
   }, 340));
   if (reducedMotion()) return;
   loadDetail(item.Id).then((detail) => {
@@ -278,8 +296,9 @@ function onOut(e) {
 }
 
 function onScroll() {
-  if (!active && !intent) return;
   if (Date.now() < selfScrollUntil) return;
+  lastUserScroll = Date.now();
+  if (!active && !intent) return;
   closeNow();
 }
 
@@ -307,6 +326,8 @@ function stop() {
   unmountPoint(POPUP_ID);
   trendP = null;
   pointerInside = false;
+  selfScrollUntil = 0;
+  lastUserScroll = 0;
 }
 
 const primeHover = {

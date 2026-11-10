@@ -206,7 +206,13 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round {
   text-decoration: none;
   transition: transform 0.3s ease-in-out, background-color 0.3s;
 }
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round svg { width: 56%; height: 56%; }
+/* Der "i"-Knopf ist ein <a>: Jellyfins Link-Farbe darf Icon und Hover nicht blau färben */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hero__round,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hero__round:link,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hero__round:visited,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hero__round:hover,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hero__round:focus { color: #fff !important; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round svg { width: 56%; height: 56%; color: inherit; }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round--info svg { width: 62%; height: 62%; }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round:focus-visible,
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play:focus-visible,

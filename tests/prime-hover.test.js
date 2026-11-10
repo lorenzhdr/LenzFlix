@@ -36,7 +36,7 @@ import { putItems } from '../src/js/core/itemstore.js';
 import { clearCache } from '../src/js/core/cache.js';
 import { createMutedPreview } from '../src/js/shared/trailer.js';
 import { openTitleMenu, toggleFavorite, togglePlayed } from '../src/js/shared/titleactions.js';
-import feature, { INTENT_POSTER_MS, INTENT_WIDE_MS, PREVIEW_MS, popupGeometry } from '../src/js/features/prime/hover.js';
+import feature, { INTENT_POSTER_MS, INTENT_WIDE_MS, PREVIEW_MS, popupGeometry, scrollDeltaForBottom } from '../src/js/features/prime/hover.js';
 import { createPrimeCard } from '../src/js/features/prime/card.js';
 
 const route = (q = '') => ({ path: '/home', params: new URLSearchParams(q) });
@@ -269,6 +269,42 @@ describe('prime-hover: Poster', () => {
     await tick(INTENT_POSTER_MS + 50);
     expect(poster.classList.contains('is-expanded')).toBe(true);
     expect(poster.querySelector('.lfx-prime-expand__mute').hidden).toBe(true);
+  });
+
+  describe('Scroll in den Viewport', () => {
+    const rect = (top, bottom) => ({ top, bottom, left: 100, right: 400, width: 300, height: bottom - top });
+    let spy;
+    beforeEach(() => {
+      Object.defineProperty(window, 'innerHeight', { value: 1030, configurable: true });
+      window.scrollBy = vi.fn();
+      spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function rectOf() {
+        return this.classList.contains('lfx-prime-expand') ? rect(724, 1138) : rect(724, 1000);
+      });
+    });
+    afterEach(() => { spy.mockRestore(); delete window.scrollBy; });
+
+    it('scrollDeltaForBottom: nur so weit nötig, Oberkante bleibt unter der Kopfzeile', () => {
+      expect(scrollDeltaForBottom(1138, 724, 1030)).toBe(120);
+      expect(scrollDeltaForBottom(900, 500, 1030)).toBe(0);
+      expect(scrollDeltaForBottom(1138, 100, 1030)).toBe(20);
+      expect(scrollDeltaForBottom(1138, 60, 1030)).toBe(0);
+    });
+
+    it('scrollt einmal nach dem Aufklappen, wenn das Panel unten herausragt', async () => {
+      over(poster.querySelector('a'));
+      await tick(INTENT_POSTER_MS + 400);
+      expect(window.scrollBy).toHaveBeenCalledTimes(1);
+      expect(window.scrollBy.mock.calls[0][0]).toMatchObject({ top: 120, behavior: 'smooth' });
+    });
+
+    it('scrollt nicht, wenn der Nutzer gerade scrollt', async () => {
+      over(poster.querySelector('a'));
+      await tick(INTENT_POSTER_MS - 100);
+      window.dispatchEvent(new Event('scroll')); // Nutzer-Scroll vor dem Aufklappen
+      await tick(150);
+      expect(poster.classList.contains('is-expanded')).toBe(false); // Absicht abgebrochen
+      expect(window.scrollBy).not.toHaveBeenCalled();
+    });
   });
 
   it('Wechsel zu einem anderen Poster schließt das erste', async () => {

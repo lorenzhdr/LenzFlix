@@ -5,5 +5,6 @@ import home from './home.js';
 import title from './title.js';
 import browse from './browse.js';
 import search from './search.js';
+import tabbar from './tabbar.js';
 
-export const plusFeatures = [header, switcher, home, title, browse, search];
+export const plusFeatures = [header, switcher, home, title, browse, search, tabbar];

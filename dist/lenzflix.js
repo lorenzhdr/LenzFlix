@@ -9154,8 +9154,18 @@
     unmount: dispose3
   };
 
+  // src/js/features/plus/tabbar.js
+  var tabbar_default = {
+    name: "plus-tabbar",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
   // src/js/features/plus/index.js
-  var plusFeatures = [header_default, switcher_default, home_default2, title_default, browse_default, search_default];
+  var plusFeatures = [header_default, switcher_default, home_default2, title_default, browse_default, search_default, tabbar_default];
 
   // src/js/features/prime/search.js
   var ID6 = "lfx-prime-search";
@@ -10646,6 +10656,8 @@
   var MIN_WIDTH2 = 340;
   var EDGE2 = 12;
   var TOP_GUARD = 72;
+  var HEADER_H = 80;
+  var USER_SCROLL_QUIET_MS = 400;
   var FIELDS4 = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,CommunityRating,RemoteTrailers,LocalTrailerCount,UserData,ImageTags,BackdropImageTags";
   var hoverCapable2 = () => typeof window.matchMedia === "function" && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
   var reducedMotion3 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -10662,6 +10674,12 @@
     top = Math.max(top, Math.min(TOP_GUARD, Math.max(0, vh - EDGE2 - total)));
     return { left, top, width, imgH, originX: cx - left, originY: cy - top, scale: r.width / width };
   }
+  function scrollDeltaForBottom(bottom, top, vh) {
+    const dy = bottom - (vh - EDGE2);
+    if (dy <= 0) return 0;
+    return Math.max(0, Math.min(dy, top - HEADER_H));
+  }
+  var lastUserScroll = 0;
   var active3 = null;
   var intent = null;
   var leaveTimer = null;
@@ -10807,6 +10825,13 @@
         selfScrollUntil = Date.now() + 700;
         if (typeof track.scrollBy === "function") track.scrollBy({ left: over, behavior: reducedMotion3() ? "auto" : "smooth" });
       }
+      if (Date.now() - lastUserScroll < USER_SCROLL_QUIET_MS) return;
+      const pr = el.getBoundingClientRect();
+      const dy = scrollDeltaForBottom(Math.max(pr.bottom, cr.bottom), Math.min(pr.top, cr.top), window.innerHeight);
+      if (dy > 0 && typeof window.scrollBy === "function") {
+        selfScrollUntil = Date.now() + 900;
+        window.scrollBy({ top: dy, behavior: reducedMotion3() ? "auto" : "smooth" });
+      }
     }, 340));
     if (reducedMotion3()) return;
     loadDetail(item.Id).then((detail) => {
@@ -10880,8 +10905,9 @@
     if (active3) scheduleLeave();
   }
   function onScroll4() {
-    if (!active3 && !intent) return;
     if (Date.now() < selfScrollUntil) return;
+    lastUserScroll = Date.now();
+    if (!active3 && !intent) return;
     closeNow2();
   }
   function onKey2(e) {
@@ -10905,6 +10931,8 @@
     unmountPoint(POPUP_ID2);
     trendP = null;
     pointerInside = false;
+    selfScrollUntil = 0;
+    lastUserScroll = 0;
   }
   var primeHover = {
     name: "prime-hover",
@@ -11145,7 +11173,7 @@
   var ROOT_ID11 = "lfx-prime-title";
   var ON_CLASS9 = "lfx-prime-title-on";
   var TRAILER_DELAY_MS3 = 1200;
-  var HEADER_H = 80;
+  var HEADER_H2 = 80;
   var root3 = null;
   var session3 = null;
   var waitTimer5 = null;
@@ -11420,8 +11448,8 @@
     select(defs[0].id);
     if (typeof IntersectionObserver === "function") {
       const io = new IntersectionObserver(([e]) => {
-        bar.classList.toggle("is-stuck", !e.isIntersecting && e.boundingClientRect.top < HEADER_H);
-      }, { rootMargin: `-${HEADER_H}px 0px 0px 0px` });
+        bar.classList.toggle("is-stuck", !e.isIntersecting && e.boundingClientRect.top < HEADER_H2);
+      }, { rootMargin: `-${HEADER_H2}px 0px 0px 0px` });
       io.observe(sentinel);
       s.cleanups.push(() => io.disconnect());
     }
@@ -11665,8 +11693,18 @@
     unmount: () => stop4()
   };
 
+  // src/js/features/prime/tabbar.js
+  var tabbar_default2 = {
+    name: "prime-tabbar",
+    match: () => false,
+    mount() {
+    },
+    unmount() {
+    }
+  };
+
   // src/js/features/prime/index.js
-  var primeFeatures = [header_default2, home_default3, hover_default, title_default2];
+  var primeFeatures = [header_default2, home_default3, hover_default, title_default2, tabbar_default2];
 
   // src/js/features/index.js
   var features2 = [themeroute_default, nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures];

@@ -89,7 +89,12 @@
     transition: background-color 0.2s, transform 0.3s ease-in-out;
   }
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round:hover { background: rgba(255, 255, 255, 0.35); transform: scale(1.06); }
-  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round svg { width: 24px; height: 24px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hc__round,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hc__round:link,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hc__round:visited,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hc__round:hover,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) a.lfx-prime-hc__round:focus { color: #fff !important; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round svg { width: 24px; height: 24px; color: inherit; }
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__ico { display: inline-flex; }
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round.is-on { color: var(--pv-green); }
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__play:focus-visible,
