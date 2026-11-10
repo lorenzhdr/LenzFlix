@@ -1687,7 +1687,7 @@
     c.title.textContent = title;
     c.list.replaceChildren(
       ...entries.map(
-        ({ label, onClick, disabled, primary }) => h(
+        ({ label, note, onClick, disabled, primary }) => h(
           "button",
           {
             type: "button",
@@ -1695,7 +1695,7 @@
             disabled: disabled ? true : null,
             onclick: onClick
           },
-          [label]
+          note ? [h("span", { class: "lfx-sheet__text" }, [h("span", null, [label]), h("span", { class: "lfx-sheet__note" }, [note])])] : [label]
         )
       )
     );
@@ -1801,8 +1801,14 @@
       return;
     }
     const count = (n) => `${n} ${n === 1 ? "Episode" : "Episoden"}`;
+    const touch = typeof window.matchMedia === "function" && window.matchMedia("(hover: none)").matches;
     const entries = [
-      { label: `Ganze Serie (${count(data.episodes.length)})`, onClick: () => confirmStep(c, data.episodes) }
+      {
+        label: `Ganze Serie (${count(data.episodes.length)})`,
+        note: touch ? "Funktioniert nur am Desktop" : null,
+        disabled: touch,
+        onClick: () => confirmStep(c, data.episodes)
+      }
     ];
     for (const season of data.seasons) {
       const eps = data.episodes.filter((ep) => ep.SeasonId === season.Id);
@@ -5030,7 +5036,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.2.1";
+  var VERSION = "1.2.2";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

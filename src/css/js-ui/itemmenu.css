@@ -177,6 +177,15 @@ html.lfx-js .lfx-sheet__item:disabled {
   opacity: 0.5;
   background: transparent;
 }
+html.lfx-js .lfx-sheet__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+html.lfx-js .lfx-sheet__note {
+  font-size: 12px;
+  color: var(--lfx-text-soft);
+}
 html.lfx-js .lfx-sheet__item--primary {
   justify-content: center;
   width: auto;

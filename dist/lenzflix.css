@@ -5257,6 +5257,17 @@ html.lfx-js .lfx-sheet__item:disabled {
   background: none;
 }
 
+html.lfx-js .lfx-sheet__text {
+  flex-direction: column;
+  gap: 2px;
+  display: flex;
+}
+
+html.lfx-js .lfx-sheet__note {
+  color: var(--lfx-text-soft);
+  font-size: 12px;
+}
+
 html.lfx-js .lfx-sheet__item--primary {
   color: #000;
   width: auto;

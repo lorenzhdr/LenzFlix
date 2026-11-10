@@ -236,6 +236,24 @@ describe('Chooser', () => {
     expect(clicked).toHaveLength(3);
   });
 
+  it('Touch: „Ganze Serie“ ist ausgegraut mit Hinweis, Staffeln bleiben wählbar', async () => {
+    getSeasons.mockResolvedValue(seasons);
+    getEpisodes.mockResolvedValue(eps);
+    window.matchMedia = vi.fn((q) => ({ matches: /hover: none/.test(q) }));
+    await openDownloadChooser(series, null);
+    await flush();
+    const items = [...document.querySelectorAll('.lfx-sheet__list button.lfx-sheet__item')];
+    expect(items).toHaveLength(3);
+    expect(items[0].disabled).toBe(true);
+    expect(items[0].textContent).toContain('Ganze Serie (3 Episoden)');
+    expect(items[0].querySelector('.lfx-sheet__note').textContent).toBe('Funktioniert nur am Desktop');
+    expect(items[1].disabled).toBe(false);
+    expect(items[1].querySelector('.lfx-sheet__note')).toBeNull();
+    expect(document.activeElement).toBe(items[1]);
+    items[0].click();
+    expect(document.querySelector('.lfx-sheet__title').textContent).toBe('Download');
+  });
+
   it('Season geht direkt zur Bestätigung', async () => {
     getEpisodes.mockResolvedValue({ Items: [{ Id: 'e1' }, { Id: 'e2' }] });
     await openDownloadChooser({ Id: 's1', Type: 'Season', SeriesId: 'ser' });

@@ -182,7 +182,7 @@ export function closeChooser() {
 function render(c, title, entries) {
   c.title.textContent = title;
   c.list.replaceChildren(
-    ...entries.map(({ label, onClick, disabled, primary }) =>
+    ...entries.map(({ label, note, onClick, disabled, primary }) =>
       h(
         'button',
         {
@@ -191,7 +191,9 @@ function render(c, title, entries) {
           disabled: disabled ? true : null,
           onclick: onClick,
         },
-        [label],
+        note
+          ? [h('span', { class: 'lfx-sheet__text' }, [h('span', null, [label]), h('span', { class: 'lfx-sheet__note' }, [note])])]
+          : [label],
       ),
     ),
   );
@@ -304,8 +306,15 @@ export async function openDownloadChooser(item, anchorEl) {
     return;
   }
   const count = (n) => `${n} ${n === 1 ? 'Episode' : 'Episoden'}`;
+  // Handy/Tablet (Touch): Safari verlangt je Datei eine Bestätigung, die ganze Serie ist dort nicht sinnvoll.
+  const touch = typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches;
   const entries = [
-    { label: `Ganze Serie (${count(data.episodes.length)})`, onClick: () => confirmStep(c, data.episodes) },
+    {
+      label: `Ganze Serie (${count(data.episodes.length)})`,
+      note: touch ? 'Funktioniert nur am Desktop' : null,
+      disabled: touch,
+      onClick: () => confirmStep(c, data.episodes),
+    },
   ];
   for (const season of data.seasons) {
     const eps = data.episodes.filter((ep) => ep.SeasonId === season.Id);
