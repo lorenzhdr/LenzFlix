@@ -684,8 +684,9 @@
       loadViews(seq);
     },
     update(route) {
+      const changed = !state.route || state.route.hash !== route.hash;
       state.route = route;
-      setMenu(false);
+      if (changed) setMenu(false);
       applyActive();
     },
     unmount() {
@@ -5366,7 +5367,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.4.1";
+  var VERSION = "1.4.2";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

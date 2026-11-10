@@ -198,8 +198,11 @@ export const navFeature = {
     loadViews(seq);
   },
   update(route) {
+    // Der Router ruft update() bei jedem viewshow auf (beim frischen Laden mehrfach). Das Menü nur
+    // schließen, wenn sich die Route wirklich ändert, sonst klappt es unter der Maus wieder zu.
+    const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
-    setMenu(false);
+    if (changed) setMenu(false);
     applyActive();
   },
   unmount() {

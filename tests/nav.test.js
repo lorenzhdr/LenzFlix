@@ -95,6 +95,20 @@ describe('nav: Meine Statistik', () => {
     expect(second.classList.contains('is-open')).toBe(false);
   });
 
+  it('viewshow/update mit gleicher Route schließt ein offenes Mehr-Menü nicht (frisches Laden), eine neue Route schon', async () => {
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    nav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelector('.lfx-nav__menu-item--stats')).not.toBeNull());
+    const wrap = () => document.querySelector('.lfx-nav__more');
+    wrap().dispatchEvent(new MouseEvent('mouseenter'));
+    expect(wrap().classList.contains('is-open')).toBe(true);
+    for (let i = 0; i < 5; i += 1) nav.update(parseHash('#/home'));
+    expect(wrap().classList.contains('is-open')).toBe(true);
+    expect(wrap().querySelector('.lfx-nav__more-btn').getAttribute('aria-expanded')).toBe('true');
+    nav.update(parseHash('#/movies?topParentId=m1&collectionType=movies'));
+    expect(wrap().classList.contains('is-open')).toBe(false);
+  });
+
   it('geschlossenes Menü bleibt nach dem erneuten Rendern geschlossen', async () => {
     window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
     nav.mount(parseHash('#/home'));
