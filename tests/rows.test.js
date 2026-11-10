@@ -24,6 +24,7 @@ import { createCard } from '../src/js/features/rows/card.js';
 import { resetSourceCache } from '../src/js/features/rows/sources.js';
 import { getStoredItem } from '../src/js/core/itemstore.js';
 import { render } from '../src/js/features/rows.js';
+import { startItemWatch, stopItemWatch } from '../src/js/core/itemmenu.js';
 import { clearCache } from '../src/js/core/cache.js';
 import { resetChartsWarning } from '../src/js/core/charts.js';
 
@@ -170,6 +171,28 @@ describe('render', () => {
     expect(slot.querySelector('[data-lfx-row="latest-movies"]').classList.contains('lfx-row--poster')).toBe(true);
     cleanup();
     expect(slot.children).toHaveLength(0);
+  });
+
+  it('entfernte Titel verschwinden aus den Zeilen, leere Zeilen auch', async () => {
+    api.getResume.mockResolvedValue({ Items: [mk('r1', 'Movie', { UserData: { PlayedPercentage: 30 } })] });
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const cleanup = render(slot);
+    await vi.waitFor(() => expect(slot.querySelectorAll('.lfx-row:not(.is-loading)').length).toBeGreaterThan(3));
+    let cb;
+    window.ApiClient = { subscribe: (_t, fn) => { cb = fn; return () => {}; } };
+    startItemWatch();
+    const emitForTest = ({ removed }) => cb({ Data: { ItemsRemoved: removed } });
+    expect(slot.querySelector('[data-lfx-row="resume"]')).not.toBeNull();
+    emitForTest({ removed: ['r1', 'x0'], updated: [] });
+    expect(slot.querySelector('[data-lfx-row="resume"]')).toBeNull();
+    expect(slot.querySelectorAll('.lfx-card[data-lfx-id="x0"]')).toHaveLength(0);
+    const top = slot.querySelector('[data-lfx-row="top10"]');
+    if (top) expect(top.querySelectorAll('.lfx-card').length).toBeGreaterThan(0);
+    cleanup();
+    emitForTest({ removed: ['x1'], updated: [] });
+    stopItemWatch();
+    delete window.ApiClient;
   });
 
   it('API-Fehler: Zeile wird still weggelassen', async () => {

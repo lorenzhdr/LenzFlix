@@ -13,11 +13,24 @@ vi.mock('../src/js/core/api.js', async () => {
 });
 vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn() }));
+vi.mock('../src/js/core/download.js', () => ({
+  canDownload: vi.fn(async () => true),
+  startDownload: vi.fn(),
+  isChooserOpen: vi.fn(() => false),
+}));
+vi.mock('../src/js/core/itemmenu.js', () => ({
+  openItemMenu: vi.fn(),
+  isMenuOpen: vi.fn(() => false),
+  onItemsChanged: vi.fn(() => () => {}),
+}));
 
 import * as api from '../src/js/core/api.js';
 import { mixPool, formatRuntime, formatRating, metaParts, genreLine, badgeFor } from '../src/js/features/billboard/format.js';
 import { render } from '../src/js/features/billboard.js';
 import { openModal } from '../src/js/features/modal.js';
+import { canDownload, startDownload, isChooserOpen } from '../src/js/core/download.js';
+import { openItemMenu, isMenuOpen, onItemsChanged } from '../src/js/core/itemmenu.js';
+import { putItems } from '../src/js/core/itemstore.js';
 
 describe('billboard format', () => {
   it('mixPool: nur Logo+Backdrop, abwechselnd, ohne Duplikate', () => {
@@ -133,5 +146,98 @@ describe('billboard render', () => {
     await flush();
     slot.querySelector('.lfx-bb__media').click();
     expect(openModal).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Download- und Mehr-Button', () => {
+    const dl = () => slot.querySelector('.lfx-bb__btn--dl');
+    const menu = () => slot.querySelector('.lfx-bb__btn--menu');
+    beforeEach(() => {
+      canDownload.mockReset();
+      canDownload.mockResolvedValue(true);
+      startDownload.mockReset();
+      openItemMenu.mockReset();
+      openModal.mockClear();
+      isMenuOpen.mockReturnValue(false);
+      isChooserOpen.mockReturnValue(false);
+      onItemsChanged.mockClear();
+      document.documentElement.classList.remove('layout-mobile');
+    });
+
+    it('Buttons vorhanden, Download erst nach canDownload sichtbar', async () => {
+      let resolve;
+      canDownload.mockReturnValue(new Promise((r) => { resolve = r; }));
+      render(slot);
+      await flush();
+      expect(dl()).not.toBeNull();
+      expect(dl().hidden).toBe(true);
+      expect(dl().getAttribute('aria-label')).toBe('Herunterladen');
+      expect(menu().getAttribute('aria-label')).toBe('Mehr');
+      expect(menu().getAttribute('aria-haspopup')).toBe('menu');
+      resolve(true);
+      await flush();
+      expect(dl().hidden).toBe(false);
+    });
+
+    it('canDownload false: Download bleibt versteckt; Serie -> "Episoden herunterladen"', async () => {
+      canDownload.mockResolvedValue(false);
+      api.getItems.mockImplementation(async () => ({ Items: items('s', 2, { Type: 'Series' }) }));
+      render(slot);
+      await flush();
+      expect(dl().hidden).toBe(true);
+      expect(dl().getAttribute('aria-label')).toBe('Episoden herunterladen');
+    });
+
+    it('Klick ruft startDownload/openItemMenu mit Item + Button, öffnet kein Modal (auch mobil)', async () => {
+      document.documentElement.classList.add('layout-mobile');
+      render(slot);
+      await flush();
+      const d = dl();
+      d.click();
+      expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Id: 'n0' }), d);
+      const m = menu();
+      m.click();
+      expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: 'n0' }), m);
+      expect(openModal).not.toHaveBeenCalled();
+    });
+
+    it('rotiert nicht, solange Menü oder Download-Sheet offen ist', async () => {
+      render(slot);
+      await flush();
+      isMenuOpen.mockReturnValue(true);
+      await vi.advanceTimersByTimeAsync(25000);
+      expect(title()).toBe('n0');
+      isMenuOpen.mockReturnValue(false);
+      isChooserOpen.mockReturnValue(true);
+      await vi.advanceTimersByTimeAsync(10500);
+      expect(title()).toBe('n0');
+      isChooserOpen.mockReturnValue(false);
+      await vi.advanceTimersByTimeAsync(10500);
+      expect(title()).toBe('r0');
+    });
+
+    it('onItemsChanged: entferntes aktuelles Item -> nächstes; Abmeldung im Cleanup', async () => {
+      const unsub = vi.fn();
+      onItemsChanged.mockReturnValue(unsub);
+      const cleanup = render(slot);
+      await flush();
+      const cb = onItemsChanged.mock.calls[0][0];
+      cb({ removed: ['n0'], updated: [] });
+      await vi.advanceTimersByTimeAsync(500);
+      expect(title()).not.toBe('n0');
+      expect(slot.querySelectorAll('.lfx-bb__dotbtn').length).toBe(5);
+      cb({ removed: ['n1', 'r0', 'r1', 'r2', 'n2'], updated: [] });
+      expect(slot.hidden).toBe(true);
+      cleanup();
+      expect(unsub).toHaveBeenCalled();
+    });
+
+    it('onItemsChanged: updated des sichtbaren Titels zeichnet Inhalt neu', async () => {
+      render(slot);
+      await flush();
+      const cb = onItemsChanged.mock.calls[0][0];
+      putItems([{ Id: 'n0', Name: 'Neu', Type: 'Movie', ImageTags: { Logo: 'l', Primary: 'p' }, BackdropImageTags: ['b'] }]);
+      cb({ removed: [], updated: ['n0'] });
+      expect(title()).toBe('Neu');
+    });
   });
 });

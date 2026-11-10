@@ -4,7 +4,10 @@ import { setAmbient, resetAmbient } from '../core/ambient.js';
 import { ambientFromPixels } from '../core/color.js';
 import { h } from '../core/dom.js';
 import { isMobile } from '../core/layout.js';
-import { putItems } from '../core/itemstore.js';
+import { putItems, getStoredItem } from '../core/itemstore.js';
+import { ICON_DOWNLOAD, ICON_MORE } from '../core/icons.js';
+import { canDownload, startDownload, isChooserOpen } from '../core/download.js';
+import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { mixPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
@@ -111,7 +114,8 @@ export function render(slot) {
   };
 
   const paused = () =>
-    hovering || trailerActive || document.hidden || document.documentElement.classList.contains('lfx-modal-open');
+    hovering || trailerActive || document.hidden || document.documentElement.classList.contains('lfx-modal-open')
+    || isMenuOpen() || isChooserOpen();
 
   function stopTrailer() {
     clearTimeout(trailerTimer);
@@ -143,7 +147,7 @@ export function render(slot) {
   }
 
   function buildListButton(item) {
-    const btn = h('button', { type: 'button', class: 'lfx-bb__btn lfx-bb__btn--list' });
+    const btn = h('button', { type: 'button', class: 'lfx-bb__btn lfx-bb__btn--list', 'aria-label': 'Meine Liste' });
     const paint = () => {
       const on = Boolean(item.UserData && item.UserData.IsFavorite);
       btn.replaceChildren(svg(on ? ICON_CHECK : ICON_PLUS), h('span', null, 'Meine Liste'));
@@ -163,6 +167,33 @@ export function render(slot) {
       }
     });
     return btn;
+  }
+
+  /** Runde Aktions-Buttons: Download (erst nach canDownload sichtbar) und „Mehr“ (⋮). */
+  function buildRoundButtons(item) {
+    const folder = item.Type === 'Series' || item.Type === 'Season';
+    const dlLabel = folder ? 'Episoden herunterladen' : 'Herunterladen';
+    const dl = h('button', {
+      type: 'button', class: 'lfx-bb__btn lfx-bb__btn--dl', 'aria-label': dlLabel, title: dlLabel, hidden: true,
+    });
+    dl.innerHTML = ICON_DOWNLOAD;
+    dl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startDownload(item, dl);
+    });
+    // Race: Der Button gilt nur, solange er noch im Slot hängt (Item gewechselt/neu gerendert -> verworfen).
+    Promise.resolve(canDownload(item)).then((ok) => {
+      if (ok && !disposed && slot.contains(dl)) dl.hidden = false;
+    }, () => {});
+    const menu = h('button', {
+      type: 'button', class: 'lfx-bb__btn lfx-bb__btn--menu', 'aria-label': 'Mehr', title: 'Mehr', 'aria-haspopup': 'menu',
+    });
+    menu.innerHTML = ICON_MORE;
+    menu.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openItemMenu(item, menu);
+    });
+    return [dl, menu];
   }
 
   function buildContent(item) {
@@ -188,7 +219,7 @@ export function render(slot) {
         genres ? h('div', { class: 'lfx-bb__genres' }, genres) : null,
         item.Overview ? h('p', { class: 'lfx-bb__desc' }, item.Overview) : null,
       ]),
-      h('div', { class: 'lfx-bb__buttons' }, [playBtn, infoBtn, listBtn]),
+      h('div', { class: 'lfx-bb__buttons' }, [playBtn, infoBtn, listBtn, ...buildRoundButtons(item)]),
       badgeText ? h('span', { class: 'lfx-bb__badge' }, [svg(ICON_BADGE), badgeText]) : null,
     ]);
   }
@@ -208,6 +239,49 @@ export function render(slot) {
       b.classList.toggle('is-active', i === index);
       b.setAttribute('aria-current', i === index ? 'true' : 'false');
     });
+  }
+
+  function fillDots() {
+    dots.replaceChildren(...pool.map((it, i) => {
+      const b = h('button', { type: 'button', class: 'lfx-bb__dotbtn', 'aria-label': `Empfehlung ${i + 1}: ${it.Name || ''}` });
+      b.addEventListener('click', () => show(i));
+      return b;
+    }));
+    dots.hidden = pool.length < 2;
+    updateDots();
+  }
+
+  /** Bibliothek hat sich geändert (Löschen/Bearbeiten über das Titelmenü). */
+  function onChanged({ removed = [], updated = [] }) {
+    if (disposed || !card) return;
+    const cur = pool[index];
+    if (removed.length && pool.some((it) => removed.includes(it.Id))) {
+      const curGone = cur && removed.includes(cur.Id);
+      pool = pool.filter((it) => !removed.includes(it.Id));
+      if (!pool.length) {
+        gen += 1;
+        stopTrailer();
+        clearTimeout(rotateTimer);
+        clearTimeout(trailerTimer);
+        timers.forEach(clearTimeout);
+        timers.clear();
+        content.replaceChildren();
+        slot.hidden = true;
+        resetAmbient();
+        return;
+      }
+      index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur);
+      fillDots();
+      if (curGone) show(index);
+      return;
+    }
+    if (cur && updated.includes(cur.Id)) {
+      const fresh = getStoredItem(cur.Id);
+      if (!fresh) return;
+      const merged = { ...cur, ...fresh };
+      pool[index] = merged;
+      if (!content.classList.contains('is-out')) content.replaceChildren(...buildContent(merged).childNodes);
+    }
   }
 
   function setMuteIcon() {
@@ -296,12 +370,7 @@ export function render(slot) {
       setMuteIcon();
     });
     dots = h('div', { class: 'lfx-bb__dots', role: 'group', 'aria-label': 'Empfehlung wählen' });
-    pool.forEach((it, i) => {
-      const b = h('button', { type: 'button', class: 'lfx-bb__dotbtn', 'aria-label': `Empfehlung ${i + 1}: ${it.Name || ''}` });
-      b.addEventListener('click', () => show(i));
-      dots.append(b);
-    });
-    if (pool.length < 2) dots.hidden = true;
+    fillDots();
     card = h('div', { class: 'lfx-bb' }, [
       media,
       h('div', { class: 'lfx-bb__shade', 'aria-hidden': 'true' }),
@@ -325,6 +394,7 @@ export function render(slot) {
     card.addEventListener('mouseleave', onLeave);
     document.addEventListener('visibilitychange', onVis);
     cleanupFns.push(() => document.removeEventListener('visibilitychange', onVis));
+    cleanupFns.push(onItemsChanged(onChanged));
   }
 
   async function init() {

@@ -119,7 +119,10 @@ html.lfx-js .lfx-np__btn {
   color: #fff;
   cursor: pointer;
 }
-html.lfx-js .lfx-np__btn:hover { border-color: #fff; background: rgba(60, 60, 60, 0.8); }
+html.lfx-js .lfx-np__btn[hidden] { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-np__btn:hover { border-color: #fff; background: rgba(60, 60, 60, 0.8); }
+}
 html.lfx-js .lfx-np__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 html.lfx-js .lfx-np__ico { display: block; width: 18px; height: 18px; }
 html.lfx-js .lfx-np__ico svg { display: block; width: 100%; height: 100%; }
@@ -147,4 +150,6 @@ html.lfx-js .lfx-np__genres { margin-top: 10px; color: #fff; font-size: 14px; fo
   html.lfx-js .lfx-np__day { font-size: 28px; }
   html.lfx-js .lfx-np__month { font-size: 12px; }
   html.lfx-js .lfx-np__main { max-width: none; }
+  html.lfx-js .lfx-np__btns { flex-wrap: nowrap; gap: 6px; top: 8px; right: 8px; }
+  html.lfx-js .lfx-np__btn { flex: none; }
 }

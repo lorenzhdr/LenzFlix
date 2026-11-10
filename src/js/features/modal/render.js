@@ -1,6 +1,10 @@
 // LenzFlix Modal: DOM-Aufbau (Skeleton, Hero, Body, Episoden, Ähnliche Titel, Info).
 import { h } from '../../core/dom.js';
 import * as api from '../../core/api.js';
+import { putItems } from '../../core/itemstore.js';
+import { ICON_MORE, ICON_DOWNLOAD, ICON_LIKE, ICON_LIKE_OUTLINE } from '../../core/icons.js';
+import { canDownload, startDownload } from '../../core/download.js';
+import { openItemMenu } from '../../core/itemmenu.js';
 import { formatRuntime, metaParts, peopleOf, progressPercent, ratingText, episodeLabel } from './format.js';
 
 export const TITLE_ID = 'lfx-modal-title';
@@ -16,9 +20,10 @@ const ICONS = {
   chevron: '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M7.4 8.6L12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg>',
 };
 
+/** name = Schlüssel aus ICONS oder fertiges SVG-Markup (core/icons.js). */
 export function icon(name) {
   const s = h('span', { class: 'lfx-modal__icon', 'aria-hidden': 'true' });
-  s.innerHTML = ICONS[name] || '';
+  s.innerHTML = name.startsWith('<svg') ? name : ICONS[name] || '';
   return s;
 }
 
@@ -65,7 +70,27 @@ export function setFavState(btn, on) {
 export function setLikeState(btn, on) {
   btn.classList.toggle('is-on', on);
   btn.setAttribute('aria-pressed', String(on));
+  btn.replaceChildren(icon(on ? ICON_LIKE : ICON_LIKE_OUTLINE));
 }
+
+const isFolderType = (item) => item.Type === 'Series' || item.Type === 'Season';
+
+/** Download-Button (startet hidden; sichtbar, sobald canDownload true liefert und der Button noch im DOM hängt). */
+function downloadButton(item, small = false, label = null) {
+  const text = label || (isFolderType(item) ? 'Episoden herunterladen' : 'Herunterladen');
+  const btn = roundButton(text, ICON_DOWNLOAD, (e) => { e.stopPropagation(); startDownload(item, btn); }, `${small ? 'lfx-modal__round--small ' : ''}lfx-modal__round--dl`);
+  btn.hidden = true;
+  Promise.resolve(canDownload(item)).then((ok) => { if (ok && btn.isConnected) btn.hidden = false; }).catch(() => {});
+  return btn;
+}
+
+function menuButton(item, small = false, label = 'Mehr', opts = null) {
+  const btn = roundButton(label, ICON_MORE, (e) => { e.stopPropagation(); (opts ? openItemMenu(item, btn, opts) : openItemMenu(item, btn)); }, `${small ? 'lfx-modal__round--small ' : ''}lfx-modal__round--menu`);
+  btn.setAttribute('aria-haspopup', 'menu');
+  return btn;
+}
+
+const stopKeys = (btn) => { btn.addEventListener('keydown', (e) => e.stopPropagation()); return btn; };
 
 export function setPlayLabel(btn, label) {
   const t = btn.querySelector('.lfx-modal__play-text');
@@ -87,8 +112,10 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
   ]);
   const favBtn = roundButton('Meine Liste', 'plus', () => H.toggleFav(favBtn));
   setFavState(favBtn, Boolean(ud.IsFavorite));
-  const likeBtn = roundButton('Gefällt mir', 'like', () => H.toggleLike(likeBtn));
+  const likeBtn = roundButton('Gefällt mir', ICON_LIKE_OUTLINE, () => H.toggleLike(likeBtn), 'lfx-modal__round--like');
   setLikeState(likeBtn, ud.Likes === true);
+  const dlBtn = downloadButton(item);
+  const menuBtn = menuButton(item);
 
   const title = h('h2', { id: TITLE_ID, class: logo ? 'lfx-modal__title lfx-sr' : 'lfx-modal__title' }, item.Name || '');
   const hero = h('div', { class: 'lfx-modal__hero' }, [
@@ -97,7 +124,7 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
     h('div', { class: 'lfx-modal__hero-content' }, [
       logo ? h('img', { class: 'lfx-modal__logo', src: logo, alt: '' }) : null,
       title,
-      h('div', { class: 'lfx-modal__actions' }, [playBtn, favBtn, likeBtn]),
+      h('div', { class: 'lfx-modal__actions' }, [playBtn, favBtn, likeBtn, dlBtn, menuBtn]),
     ]),
   ]);
 
@@ -141,7 +168,7 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
   ]);
 
   const el = h('div', { class: 'lfx-modal__detail' }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
-  return { el, playBtn, favBtn, likeBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
+  return { el, playBtn, favBtn, likeBtn, dlBtn, menuBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
 }
 
 function personLinks(people, H) {
@@ -179,7 +206,7 @@ export function buildInfo(item, H) {
 
 // ---------------------------------------------------------------- Episoden
 
-function episodeRow(ep, selectedId, H) {
+function episodeRow(ep, selectedId, H, siblings) {
   const img = api.imageUrl(ep, { type: 'Primary', maxWidth: 400 }) || api.landscapeImage(ep, { maxWidth: 400 });
   const pct = progressPercent(ep);
   const rt = formatRuntime(ep.RunTimeTicks);
@@ -188,9 +215,11 @@ function episodeRow(ep, selectedId, H) {
     role: 'button',
     tabindex: '0',
     'data-id': ep.Id,
+    'data-lfx-id': ep.Id,
+    'data-lfx-type': 'Episode',
     'aria-label': `Episode abspielen: ${ep.Name || ''}`,
     onclick: () => H.playItem(ep),
-    onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); H.playItem(ep); } },
+    onkeydown: (e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); H.playItem(ep); } },
   }, [
     h('span', { class: 'lfx-modal__ep-num' }, episodeLabel(ep)),
     h('div', { class: 'lfx-modal__ep-thumb' }, [
@@ -201,6 +230,10 @@ function episodeRow(ep, selectedId, H) {
     h('div', { class: 'lfx-modal__ep-text' }, [
       h('div', { class: 'lfx-modal__ep-head' }, [h('span', { class: 'lfx-modal__ep-title' }, ep.Name || ''), rt ? h('span', { class: 'lfx-modal__ep-rt' }, rt) : null]),
       ep.Overview ? h('p', { class: 'lfx-modal__ep-desc' }, ep.Overview) : null,
+    ]),
+    h('div', { class: 'lfx-modal__epactions' }, [
+      stopKeys(downloadButton(ep, true, `Herunterladen: ${ep.Name || 'Episode'}`)),
+      stopKeys(menuButton(ep, true, `Mehr zu ${ep.Name || 'Episode'}`, { siblings })),
     ]),
   ]);
 }
@@ -216,6 +249,7 @@ export function renderEpisodes(slot, state, H) {
   slot.hidden = false;
   slot.replaceChildren();
   const { seasons, seasonId, episodes, selectedEpisodeId } = state;
+  putItems(episodes);
   const current = seasons.find((s) => s.Id === seasonId);
 
   const head = h('div', { class: 'lfx-modal__eps-head' }, [h('h3', { class: 'lfx-modal__h' }, 'Folgen')]);
@@ -245,7 +279,7 @@ export function renderEpisodes(slot, state, H) {
   const selIdx = episodes.findIndex((e) => e.Id === selectedEpisodeId);
   let shown = Math.max(EPISODES_INITIAL, selIdx + 1);
   const draw = () => {
-    listEl.replaceChildren(...episodes.slice(0, shown).map((e) => episodeRow(e, selectedEpisodeId, H)));
+    listEl.replaceChildren(...episodes.slice(0, shown).map((e) => episodeRow(e, selectedEpisodeId, H, episodes)));
     if (shown < episodes.length) listEl.append(moreButton(() => { shown = episodes.length; draw(); }));
   };
   draw();

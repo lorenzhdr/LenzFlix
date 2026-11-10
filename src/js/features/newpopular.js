@@ -4,7 +4,10 @@
 import * as api from '../core/api.js';
 import { h } from '../core/dom.js';
 import { isTv } from '../core/layout.js';
-import { putItems } from '../core/itemstore.js';
+import { putItems, getStoredItem } from '../core/itemstore.js';
+import { ICON_DOWNLOAD, ICON_MORE } from '../core/icons.js';
+import { canDownload, startDownload } from '../core/download.js';
+import { openItemMenu, onItemsChanged } from '../core/itemmenu.js';
 import { getCharts, resolveChartItems } from '../core/charts.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
@@ -118,6 +121,32 @@ function roundButton(label, icon, onClick) {
   return b;
 }
 
+/** Runder Button mit fertigem SVG-String (core/icons.js); Klick stoppt die Weitergabe. */
+function iconButton(mod, label, icon, onClick) {
+  const b = h('button', { type: 'button', class: `lfx-np__btn lfx-np__btn--${mod}`, 'aria-label': label, title: label });
+  b.append(h('span', { class: 'lfx-np__ico', 'aria-hidden': 'true' }));
+  b.firstChild.innerHTML = icon;
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick(b);
+  });
+  return b;
+}
+
+/** Download (versteckt bis canDownload true) und „Mehr“ (⋮) für einen Eintrag. */
+function extraButtons(item) {
+  const folder = item.Type === 'Series' || item.Type === 'Season';
+  const dl = iconButton('dl', folder ? 'Episoden herunterladen' : 'Herunterladen', ICON_DOWNLOAD, (b) => startDownload(item, b));
+  dl.hidden = true;
+  // Race: nur einblenden, solange der Button noch im Dokument hängt (Liste kann neu gerendert worden sein).
+  Promise.resolve(canDownload(item)).then((ok) => {
+    if (ok && dl.isConnected) dl.hidden = false;
+  }, () => {});
+  const menu = iconButton('menu', 'Mehr', ICON_MORE, (b) => openItemMenu(item, b));
+  menu.setAttribute('aria-haspopup', 'menu');
+  return [dl, menu];
+}
+
 function favoriteButton(item) {
   let fav = Boolean(item.UserData && item.UserData.IsFavorite);
   function paint() {
@@ -160,6 +189,7 @@ export function createNewEntry(item, newSeries) {
   const buttons = h('div', { class: 'lfx-np__btns' }, [
     roundButton('Abspielen', ICON_PLAY, () => { play(item, { resume: false }); }),
     favoriteButton(item),
+    ...extraButtons(item),
     roundButton('Weitere Infos', ICON_DOWN, open),
   ]);
   const genres = (item.Genres || []).slice(0, 4).join(' • ');
@@ -261,6 +291,28 @@ function build(tab) {
     if (pill && pill.lastChild) pill.lastChild.textContent = label;
   }
 
+  let newSeriesIds = new Set();
+
+  /** Bibliothek geändert: entfernte Titel aus der Ansicht nehmen, geänderte „Neu“-Einträge neu zeichnen. */
+  function onChanged({ removed = [], updated = [] }) {
+    if (disposed) return;
+    const list = root.querySelector('.lfx-np__list');
+    for (const id of removed) {
+      root.querySelectorAll('[data-lfx-id]').forEach((el) => {
+        if (el.dataset.lfxId === id) el.remove();
+      });
+    }
+    if (list && removed.length && !list.children.length) drop('new');
+    if (list) {
+      for (const id of updated) {
+        const fresh = getStoredItem(id);
+        const entry = [...list.children].find((el) => el.dataset.lfxId === id);
+        if (fresh && entry) entry.replaceWith(createNewEntry(fresh, newSeriesIds));
+      }
+    }
+  }
+  cleanups.push(onItemsChanged(onChanged));
+
   /** loader liefert Items oder {items, charted, windowDays, fallbackLabel}. */
   async function fill(id, loader, renderer, fallbackLabel) {
     try {
@@ -272,6 +324,7 @@ function build(tab) {
       putItems(items);
       const newSeries = await getNewSeriesIds();
       if (disposed) return;
+      newSeriesIds = newSeries;
       if (fallbackLabel && !meta.charted) relabel(id, fallbackLabel);
       renderer(sections.get(id), items, newSeries, meta);
     } catch (e) {

@@ -3,6 +3,7 @@
 import * as api from '../core/api.js';
 import { h } from '../core/dom.js';
 import { putItems } from '../core/itemstore.js';
+import { onItemsChanged } from '../core/itemmenu.js';
 import { createCard } from './rows/card.js';
 import { badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
@@ -44,6 +45,23 @@ export function render(slot) {
   const disposers = [];
   slot.hidden = false;
   slot.textContent = '';
+
+  // Gelöschte Titel aus den Zeilen nehmen (Top-10-Nummern bleiben bewusst unverändert).
+  disposers.push(onItemsChanged(({ removed }) => {
+    if (disposed || !removed || !removed.length) return;
+    const gone = new Set(removed);
+    for (const row of [...slot.querySelectorAll('.lfx-row')]) {
+      const track = row.querySelector('.lfx-row__track');
+      if (!track) continue;
+      let changed = false;
+      for (const card of [...track.querySelectorAll('.lfx-card[data-lfx-id]')]) {
+        if (gone.has(card.dataset.lfxId)) { card.remove(); changed = true; }
+      }
+      if (!changed) continue;
+      if (!track.querySelector('.lfx-card')) row.remove();
+      else track.dispatchEvent(new Event('scroll')); // Scroller (Pfeile/Seitenpunkte) neu berechnen
+    }
+  }));
 
   async function loadRow(rowEl, def) {
     try {

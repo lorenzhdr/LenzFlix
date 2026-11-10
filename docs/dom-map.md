@@ -44,6 +44,16 @@ Quellen:
   2. `.click()` aufrufen. `shortcuts.onClick` startet dann `playbackManager`.
   3. Element danach entfernen.
   4. Fallback, falls kein Container da ist: `#/details?id=…` öffnen und `.detailButton.btnPlay` klicken.
+- **Titel-Kontextmenü per JS (live verifiziert 2026-11-10 ✅):** „Proxy-Klick“ mit `data-action="menu"` (`core/itemmenu.js`)
+  1. Wrapper `div.lfx-proxywrap.itemsContainer` (display:none) in ein echtes `.itemsContainer` mit Karten hängen, darin `div.lfx-proxy.itemAction[data-action="menu"]` mit `data-id`, `data-serverid`, `data-type`, `data-isfolder`, `data-mediatype`. Funktioniert auf Startseite, `#/home?lfx=new` und den React-Bibliotheksseiten; auch bei verstecktem Container und über dem LenzFlix-Modal.
+  2. `.click()` → `shortcuts.showContextMenu` lädt das Item und öffnet `.dialog.actionSheet` (Rechteprüfung inklusive). Ein 404 des Items endet ohne Menü.
+  3. Der Wrapper ist nötig: Home-Container mit `fetchData` würden bei „Alles ab hier abspielen“ ihre eigenen Items spielen. `playAllFromHere` sammelt `parent.querySelectorAll('.' + card.classList[0] + '[data-id]')`, deshalb muss `lfx-proxy` die **erste** Klasse sein; Geschwister (Episoden der Staffel) als weitere Proxys in Reihenfolge einhängen.
+  4. Der Proxy muss leben, bis alle Dialoge zu sind (`shortcuts.js` nutzt die Karte asynchron weiter). Zwischen Sheet und Folgedialog existiert kurz (~35 ms) kein `.dialogContainer`; Sitzungsende deshalb erst nach 800 ms ohne Dialog.
+  5. Position: `positionTo` ist der (unsichtbare) Proxy, das Sheet landet bei `left:10px; top:10px` (Inline-Style). Überschreiben per CSS: `html.lfx-menu-open .dialog.actionSheet{left:var(--lfx-menu-x)!important;top:var(--lfx-menu-y)!important}`.
+  6. Einträge sind `button.actionSheetMenuItem[data-id]` mit u. a. `resume`, `playallfromhere`, `queue`, `queuenext`, `shuffle`, `addtocollection`, `addtoplaylist`, `download`, `downloadall`, `copy-stream`, `delete`, `edit`, `editimages`, `editsubtitles`, `identify`, `moremediainfo`, `refresh`, `multiSelect`. Ein Klick (auch programmatisch) führt den Befehl aus und öffnet ggf. den nativen Folgedialog.
+  7. History: Jeder Dialog pusht einen State (`usr.dialogs`), Schließen ist `history.back()` → nur `popstate`, kein `hashchange`. Jellyfin fokussiert im Desktop-Layout keinen Eintrag.
+  8. Download-URL: `ApiClient.getItemDownloadUrl(id)` (`/Items/{id}/Download?api_key=…`, nie loggen). Nativ erlaubt bei `user.Policy.EnableContentDownloading && item.CanDownload`.
+  9. Bibliotheksänderungen: `ApiClient.subscribe(['LibraryChanged'], cb)` → `msg.Data.ItemsRemoved/ItemsUpdated`; Rückgabe ist die Abmeldefunktion (laut Quelltext, nicht live geprüft).
 - Credentials liegen in `localStorage.jellyfin_credentials` ✅ als `{Servers:[{Id, AccessToken, UserId, ManualAddress, LocalAddress, …}]}`.
 - Custom Elements sind **nicht** über `customElements` registriert. `document.createElement('div',{is:'emby-…'})` funktioniert also nicht.
 

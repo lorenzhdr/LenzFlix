@@ -181,3 +181,24 @@ export function logoImage(item, { maxWidth = 500, quality = 90 } = {}) {
   }
   return null;
 }
+
+// ---------------------------------------------------------------- Benutzer
+
+const userCache = new Map();
+
+/** Aktueller Benutzer (inkl. Policy), pro userId gecacht. Fehler -> null. */
+export async function getUser() {
+  const userId = getUserId();
+  if (!userId) return null;
+  if (userCache.has(userId)) return userCache.get(userId);
+  try {
+    const client = window.ApiClient;
+    const user =
+      client && typeof client.getCurrentUser === 'function' ? await client.getCurrentUser() : await getJson(`/Users/${userId}`);
+    if (!user) return null;
+    userCache.set(userId, user);
+    return user;
+  } catch {
+    return null;
+  }
+}

@@ -101,19 +101,21 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
 }
 .lfx-hc__actions-main {
   display: flex;
-  gap: 8px;
+  min-width: 0;
+  gap: 6px; /* 5 Buttons (Play, Liste, Daumen, Download, Menü) + Chevron müssen in eine Zeile passen */
 }
 .lfx-hc__btnwrap {
   position: relative;
   display: inline-flex;
 }
+.lfx-hc__btnwrap[hidden] { display: none; }
 .lfx-hc__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   color: #fff;
   cursor: pointer;
@@ -133,7 +135,17 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
   border-color: #fff;
 }
 .lfx-hc__btn--play:hover { background: rgba(255, 255, 255, 0.85); }
-.lfx-hc__btn svg { width: 22px; height: 22px; }
+.lfx-hc__btn svg { width: 20px; height: 20px; }
+
+/* Daumen aktiv: gefülltes Icon (fill=currentColor) in Rot + roter Rand. Spezifität über Hover/Fokus. */
+html.lfx-js .lfx-hc__btn--like.is-on,
+html.lfx-js .lfx-hc__btn--like.is-on:hover,
+html.lfx-js .lfx-hc__btn--like.is-on:focus-visible {
+  --lfx-like-bg: rgba(229, 9, 20, 0.12);
+  color: var(--lfx-red);
+  background: var(--lfx-like-bg);
+  border-color: var(--lfx-red);
+}
 
 .lfx-hc__tip {
   position: absolute;
@@ -161,9 +173,9 @@ html.lfx-js #lfx-hovercard.is-open .lfx-hc__info {
   border-top-color: #fff;
 }
 .lfx-hc__btnwrap:first-child .lfx-hc__tip { left: 0; transform: none; }
-.lfx-hc__btnwrap:first-child .lfx-hc__tip::after { left: 21px; }
+.lfx-hc__btnwrap:first-child .lfx-hc__tip::after { left: 19px; }
 .lfx-hc__actions > .lfx-hc__btnwrap:last-child .lfx-hc__tip { left: auto; right: 0; transform: none; }
-.lfx-hc__actions > .lfx-hc__btnwrap:last-child .lfx-hc__tip::after { left: auto; right: 15px; margin-left: 0; }
+.lfx-hc__actions > .lfx-hc__btnwrap:last-child .lfx-hc__tip::after { left: auto; right: 13px; margin-left: 0; }
 .lfx-hc__btnwrap:hover .lfx-hc__tip,
 .lfx-hc__btnwrap:focus-within .lfx-hc__tip { opacity: 1; }
 

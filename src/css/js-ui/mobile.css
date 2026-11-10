@@ -404,6 +404,12 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     opacity: 1;
     background: transparent;
   }
+  /* Episoden-Aktionen: eigene Zeile am Ende, rechtsbündig */
+  html.lfx-js .lfx-modal__epactions {
+    grid-column: 1 / -1;
+    justify-self: end;
+    margin: 0;
+  }
   html.lfx-js .lfx-modal__more-btn {
     width: 44px;
     height: 44px;
@@ -424,6 +430,13 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
   }
   html.lfx-js .lfx-modal__round.is-on:hover {
     border-color: #fff;
+  }
+  /* Roter Daumen bleibt auch auf Touch rot (Reset oben hat gleiche/ähnliche Spezifität, daher hier danach) */
+  html.lfx-js .lfx-modal__round--like.is-on,
+  html.lfx-js .lfx-modal__round--like.is-on:hover {
+    color: var(--lfx-red);
+    background: rgba(229, 9, 20, 0.12);
+    border-color: var(--lfx-red);
   }
   html.lfx-js .lfx-modal__close:hover {
     background: rgba(20, 20, 20, 0.7);

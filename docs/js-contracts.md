@@ -32,5 +32,17 @@
 - `setAmbient(r,g,b)` aus `src/js/core/ambient.js`.
 - `setFavorite(id,bool)` aus `src/js/core/api.js`; Likes: `POST /Users/{userId}/Items/{id}/Rating?likes=true|false`, `DELETE …/Rating`.
 
+- Titelmenü (`src/js/core/itemmenu.js`, natives Jellyfin-Menü per Proxy-Klick, siehe dom-map):
+  - `openItemMenu(item, anchor, {siblings, onClose})` → `boolean`. `anchor` ist ein Element oder `{x, y}`. `siblings` nur für Episodenlisten (für „Alles ab hier abspielen“).
+  - `isMenuOpen()` ist während der ganzen Sitzung true (inkl. Folgedialoge + 800 ms). `closeItemMenu()` räumt sofort auf.
+  - `html.lfx-menu-open` + `--lfx-menu-x/-y` auf `<html>` gelten nur, solange das erste Sheet offen ist. Nur darunter blendet `itemmenu.css` die Einträge `download`, `downloadall`, `multiSelect` aus.
+  - `onItemsChanged(fn)` → Abmeldefunktion; `fn({removed, updated})`. Quellen: eigene Menü-Sitzung (Nachladen nach änderndem Befehl) und `LibraryChanged`. Wer Titel anzeigt, abonniert und räumt entfernte Titel weg.
+  - `startItemWatch()` / `stopItemWatch()` ruft nur das Feature `contextmenu` auf.
+- Download (`src/js/core/download.js`): `canDownload(item)` (async, Policy + `CanDownload`), `startDownload(item, anchorEl)` (Serie/Staffel öffnet die Auswahl `#lfx-sheet`, sonst Direkt-Download), `isChooserOpen()`, `closeChooser()`. Download-Buttons starten mit `hidden`. URLs mit `api_key` nie loggen.
+- `toast(text)` aus `src/js/core/toast.js` (Mount `#lfx-toast`).
+- Neue Icons in `src/js/core/icons.js` (`ICON_MORE`, `ICON_DOWNLOAD`, `ICON_LIKE`, `ICON_LIKE_OUTLINE`).
+- Feature `contextmenu` (`src/js/features/contextmenu.js`): Rechtsklick bzw. langes Drücken (500 ms) auf `.lfx-card[data-lfx-id]` und `.lfx-modal__ep[data-lfx-id]` öffnet das Titelmenü. Native Karten bleiben unberührt.
+- Solange ein natives `.dialogContainer` oder die Download-Auswahl offen ist, reagieren Modal (Escape, Tab-Falle, Klick außerhalb) und Hovercard (Schließen) nicht.
+
 ## Startseite
 - `src/js/features/home.js` (fertig) legt `#lfx-home` als erstes Kind von `#homeTab` an mit Slots `#lfx-billboard` und `#lfx-rows` und ruft `billboard.render(slot, ctx)` bzw. `rows.render(slot, ctx)` auf (Rückgabe: Cleanup-Funktion). Native Sektionen sind dann per `html.lfx-home-on` versteckt.

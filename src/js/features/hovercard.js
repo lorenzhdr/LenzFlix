@@ -16,6 +16,9 @@ import { cached, clearCache } from '../core/cache.js';
 import { getStoredItem, putItems } from '../core/itemstore.js';
 import { isMobile, isTv } from '../core/layout.js';
 import { play } from '../core/playback.js';
+import { canDownload, isChooserOpen, startDownload } from '../core/download.js';
+import { isMenuOpen, onItemsChanged, openItemMenu } from '../core/itemmenu.js';
+import { ICON_DOWNLOAD, ICON_LIKE, ICON_LIKE_OUTLINE, ICON_MORE } from '../core/icons.js';
 import { openModal } from './modal.js';
 import {
   computePopupRect,
@@ -86,13 +89,11 @@ const ICONS = {
   play: '<path d="M8 5v14l11-7z"/>',
   plus: '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>',
   check: '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>',
-  like: '<path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>',
   chevron: '<path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z"/>',
 };
 
-function svg(name, outline = false) {
-  const attrs = outline ? 'fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"' : 'fill="currentColor"';
-  return `<svg viewBox="0 0 24 24" width="24" height="24" ${attrs} aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
+function svg(name) {
+  return `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
 }
 
 // ---------------------------------------------------------------- Zustand
@@ -102,6 +103,14 @@ let session = null; // {card, target, el, item, own, fav, like, pending, closing
 let openTimer = null;
 let closeTimer = null;
 let listeners = [];
+let unsubItems = null;
+let lastOver = null; // letztes Pointer-Ziel (für die Prüfung nach Menü/Chooser)
+let wasHeld = false; // Menü/Chooser war offen und wurde noch nicht ausgewertet
+
+/** Solange das native Menü oder der Download-Chooser offen ist, darf die Hovercard nicht schließen. */
+function holdOpen() {
+  return Boolean(isMenuOpen() || isChooserOpen());
+}
 
 function readDelay() {
   try {
@@ -198,6 +207,18 @@ function startPlayback(s) {
   play(item, { resume });
 }
 
+function openMenu(s) {
+  wasHeld = true;
+  clearClose();
+  openItemMenu(s.item, s.btns.menu.btn, { onClose: () => onMenuClosed(s) });
+}
+
+function downloadClick(s) {
+  wasHeld = true;
+  clearClose();
+  startDownload(s.item, s.btns.dl.btn);
+}
+
 function showDetails(s) {
   const item = s.item;
   closeNow();
@@ -233,7 +254,14 @@ function updateButtons(s) {
     s.fav ? svg('check') : svg('plus'),
     Boolean(s.fav),
   );
-  setButton(s.btns.like, s.like ? 'Gefällt mir nicht mehr' : 'Gefällt mir', svg('like', !s.like), Boolean(s.like));
+  setButton(
+    s.btns.like,
+    s.like ? 'Gefällt mir nicht mehr' : 'Gefällt mir',
+    s.like ? ICON_LIKE : ICON_LIKE_OUTLINE,
+    Boolean(s.like),
+  );
+  setButton(s.btns.dl, /^(Series|Season)$/.test(s.item.Type) ? 'Episoden herunterladen' : 'Herunterladen', ICON_DOWNLOAD);
+  setButton(s.btns.menu, 'Mehr', ICON_MORE);
   setButton(s.btns.more, 'Weitere Infos', svg('chevron'));
 }
 
@@ -312,11 +340,24 @@ function render(s) {
   updateButtons(s);
   renderBody(s);
   applyMedia(s);
+  refreshDownload(s);
 }
 
-async function hydrate(s) {
+/** Download-Button nur zeigen, wenn canDownload(item) true liefert (async, Race-sicher). */
+function refreshDownload(s) {
+  const item = s.item;
+  Promise.resolve()
+    .then(() => canDownload(item))
+    .then((ok) => {
+      if (session !== s || !s.item || s.item.Id !== item.Id) return;
+      s.btns.dl.wrap.hidden = !ok;
+    })
+    .catch(() => {});
+}
+
+async function hydrate(s, force = false) {
   const id = s.item.Id;
-  if (s.item.Genres && s.item.UserData) return;
+  if (!force && s.item.Genres && s.item.UserData) return;
   try {
     const full = await cached(`hc:${getUserId()}:${id}`, () => getItem(id), ITEM_TTL);
     if (session !== s || !full) return;
@@ -342,12 +383,16 @@ function buildPopup(s) {
   s.btns = {
     play: circleButton('lfx-hc__btn--play', 'Abspielen', () => startPlayback(s)),
     list: circleButton('', 'Meine Liste', () => toggleFavorite(s)),
-    like: circleButton('', 'Gefällt mir', () => toggleLike(s)),
+    like: circleButton('lfx-hc__btn--like', 'Gefällt mir', () => toggleLike(s)),
+    dl: circleButton('lfx-hc__btn--dl', 'Herunterladen', () => downloadClick(s)),
+    menu: circleButton('lfx-hc__btn--menu', 'Mehr', () => openMenu(s)),
     more: circleButton('lfx-hc__btn--more', 'Weitere Infos', () => showDetails(s)),
   };
+  s.btns.dl.wrap.hidden = true;
+  s.btns.menu.btn.setAttribute('aria-haspopup', 'menu');
   const body = h('div', { class: 'lfx-hc__body' });
   const actions = h('div', { class: 'lfx-hc__actions' }, [
-    h('div', { class: 'lfx-hc__actions-main' }, [s.btns.play.wrap, s.btns.list.wrap, s.btns.like.wrap]),
+    h('div', { class: 'lfx-hc__actions-main' }, [s.btns.play.wrap, s.btns.list.wrap, s.btns.like.wrap, s.btns.dl.wrap, s.btns.menu.wrap]),
     s.btns.more.wrap,
   ]);
   const info = h('div', { class: 'lfx-hc__info' }, [actions, body]);
@@ -437,12 +482,45 @@ function scheduleClose() {
 
 function leave() {
   clearOpen();
+  if (holdOpen()) return;
   if (session) scheduleClose();
+}
+
+/** Liegt der Zeiger noch über Karte oder Popup? (letztes Ziel oder :hover) */
+function pointerStillInside(s, el) {
+  if (el && el.isConnected && (s.el.contains(el) || s.card.contains(el))) return true;
+  try {
+    return s.el.matches(':hover') || s.card.matches(':hover');
+  } catch {
+    return false;
+  }
+}
+
+function onMenuClosed(s) {
+  wasHeld = false;
+  if (session !== s || s.closing) return;
+  if (!pointerStillInside(s, lastOver)) scheduleClose();
+}
+
+function onMove(e) {
+  if (e.pointerType && e.pointerType !== 'mouse') return;
+  lastOver = e.target;
+  if (!wasHeld) return;
+  if (holdOpen()) return;
+  wasHeld = false;
+  if (session && !session.closing && !pointerStillInside(session, e.target)) scheduleClose();
 }
 
 function onOver(e) {
   if (e.pointerType && e.pointerType !== 'mouse') return;
   const t = e.target;
+  lastOver = t;
+  if (holdOpen()) {
+    wasHeld = true;
+    clearOpen();
+    return;
+  }
+  wasHeld = false;
   if (session && !session.closing && session.el.contains(t)) {
     clearClose();
     return;
@@ -464,16 +542,39 @@ function onOver(e) {
 
 function onOut(e) {
   if (e.pointerType && e.pointerType !== 'mouse') return;
+  if (holdOpen()) return;
   if (!e.relatedTarget) leave();
 }
 
 function onKey(e) {
+  if (holdOpen()) return;
   if (e.key === 'Escape' && session) close();
 }
 
-function onAbort() {
+function onHash() {
   clearOpen();
   closeNow();
+}
+
+function onAbort() {
+  if (holdOpen()) return;
+  onHash();
+}
+
+function onItems({ removed = [], updated = [] } = {}) {
+  const s = session;
+  if (!s || !s.item) return;
+  const id = s.item.Id;
+  if (removed.includes(id)) {
+    closeNow();
+    return;
+  }
+  if (updated.includes(id)) {
+    clearCache(`hc:${getUserId()}:${id}`);
+    const fresh = getStoredItem(id);
+    if (fresh) s.item = { ...s.item, ...fresh };
+    hydrate(s, true);
+  }
 }
 
 function onClickCapture(e) {
@@ -490,15 +591,21 @@ function start() {
   };
   add(document, 'pointerover', onOver, { passive: true });
   add(document, 'pointerout', onOut, { passive: true });
+  add(document, 'pointermove', onMove, { passive: true });
   add(document, 'keydown', onKey);
   add(document, 'click', onClickCapture, true);
   add(window, 'scroll', onAbort, { capture: true, passive: true });
   add(window, 'resize', onAbort, { passive: true });
-  add(window, 'hashchange', onAbort);
+  add(window, 'hashchange', onHash);
+  unsubItems = onItemsChanged(onItems);
 }
 
 function stop() {
   active = false;
+  wasHeld = false;
+  lastOver = null;
+  if (typeof unsubItems === 'function') unsubItems();
+  unsubItems = null;
   clearOpen();
   closeNow();
   for (const off of listeners.splice(0)) off();

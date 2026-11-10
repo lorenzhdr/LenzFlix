@@ -115,6 +115,18 @@ html.lfx-js .lfx-modal__round {
 html.lfx-js .lfx-modal__round:hover { border-color: #fff; background: rgba(255, 255, 255, 0.15); }
 html.lfx-js .lfx-modal__round.is-on { border-color: #fff; }
 html.lfx-js .lfx-modal__round--small { width: 34px; height: 34px; }
+html.lfx-js .lfx-modal__round[hidden] { display: none; }
+html.lfx-js .lfx-modal__round svg { display: block; width: 22px; height: 22px; }
+html.lfx-js .lfx-modal__round--small svg { width: 18px; height: 18px; }
+/* Daumen aktiv: gefülltes Icon (fill=currentColor) in Rot + roter Rand; Spezifität über Hover/Fokus (auch .is-on:hover aus mobile.css) */
+html.lfx-js .lfx-modal__round--like.is-on,
+html.lfx-js .lfx-modal__round--like.is-on:hover,
+html.lfx-js .lfx-modal__round--like.is-on:focus-visible {
+  --lfx-like-bg: rgba(229, 9, 20, 0.12);
+  color: var(--lfx-red);
+  background: var(--lfx-like-bg);
+  border-color: var(--lfx-red);
+}
 
 /* Body */
 html.lfx-js .lfx-modal__body {
@@ -243,6 +255,25 @@ html.lfx-js .lfx-modal__card-desc {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* Aktionen je Episode (Download, Menü): letzte Spalte, Platz bleibt immer reserviert */
+html.lfx-js .lfx-modal__epactions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__epactions {
+    opacity: 0;
+    transition: opacity var(--lfx-dur-fast) var(--lfx-ease-out);
+  }
+  html.lfx-js .lfx-modal__ep:hover .lfx-modal__epactions,
+  html.lfx-js .lfx-modal__ep:focus-within .lfx-modal__epactions,
+  html.lfx-js .lfx-modal__ep.is-selected .lfx-modal__epactions:focus-within {
+    opacity: 1;
+  }
+}
 html.lfx-js .lfx-modal__empty { color: #bcbcbc; }
 
 /* "Mehr anzeigen" */
@@ -314,5 +345,6 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body { padding-top: 24px; }
   to { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-modal__epactions { transition: none; }
   html.lfx-js .lfx-modal { animation: none; }
 }

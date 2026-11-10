@@ -1,0 +1,320 @@
+/* LenzFlix · js-ui/itemmenu
+   1) Natives Jellyfin-ActionSheet in eigener Menü-Sitzung (html.lfx-menu-open) als Dropdown / Bottom-Sheet
+   2) Eigenes Sheet #lfx-sheet (Download-Auswahl)
+   3) Toast #lfx-toast
+   4) Touch-Callout aus für Karten-Links und Episodenzeilen
+   z-index: Sheet-Overlay 1250 (über Modal 1200), Toast 1300. Nur unter html.lfx-js.
+   Hinweis: :focus-visible steht bewusst in eigenen Regeln (alte Browser verwerfen sonst die ganze Liste). */
+
+html.lfx-js {
+  --lfx-menu-w-min: 220px;
+  --lfx-menu-w-max: 360px;
+  --lfx-menu-item-h: 40px;
+  --lfx-menu-item-h-touch: 48px;
+  --lfx-menu-sheet-radius: 12px;
+  --lfx-menu-scrim: rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- Gemeinsame Fläche: natives ActionSheet (eigene Sitzung) + eigenes Sheet ---------- */
+html.lfx-js.lfx-menu-open .dialog.actionSheet,
+html.lfx-js .lfx-sheet {
+  box-sizing: border-box;
+  min-width: var(--lfx-menu-w-min);
+  max-width: var(--lfx-menu-w-max);
+  max-height: calc(100vh - 16px);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: var(--lfx-text-body);
+  font-family: var(--lfx-font);
+  background: var(--lfx-surface-2);
+  border: 1px solid var(--lfx-border);
+  border-radius: var(--lfx-popup-radius) !important;
+  box-shadow: var(--lfx-shadow-modal);
+  transform-origin: 0 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Position + Animation des nativen Sheets (überschreibt Inline-Style von Jellyfin) */
+html.lfx-js.lfx-menu-open .dialog.actionSheet {
+  position: fixed !important;
+  left: var(--lfx-menu-x, 10px) !important;
+  top: var(--lfx-menu-y, 10px) !important;
+  animation: lfx-menu-in var(--lfx-dur-fast) var(--lfx-ease-out) both !important;
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetContent,
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetScroller {
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetScroller {
+  padding: 8px 0;
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetTitle {
+  margin: 0;
+  padding: 12px 16px 4px;
+  color: var(--lfx-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+@keyframes lfx-menu-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Einträge (nativ + eigenes Sheet) ---------- */
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem,
+html.lfx-js .lfx-sheet__item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--lfx-menu-item-h);
+  margin: 0;
+  padding: 8px 16px;
+  color: var(--lfx-text-body);
+  font: 400 15px/1.3 var(--lfx-font);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionsheetMenuItemIcon {
+  flex: none;
+  margin: 0 14px 0 0;
+  color: var(--lfx-text-muted);
+  font-size: 22px;
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetItemText {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus,
+html.lfx-js .lfx-sheet__item:focus {
+  color: var(--lfx-text);
+  background: var(--lfx-pill-active);
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus .actionsheetMenuItemIcon {
+  color: var(--lfx-text);
+}
+html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus-visible,
+html.lfx-js .lfx-sheet__item:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: -2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:hover,
+  html.lfx-js .lfx-sheet__item:hover {
+    color: var(--lfx-text);
+    background: var(--lfx-pill-active);
+  }
+  html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:hover .actionsheetMenuItemIcon {
+    color: var(--lfx-text);
+  }
+}
+
+/* Nur in eigener Sitzung ausblenden (Jellyfins eigene Download-/Mehrfachauswahl-Einträge) */
+html.lfx-js.lfx-menu-open .actionSheetMenuItem[data-id="download"],
+html.lfx-js.lfx-menu-open .actionSheetMenuItem[data-id="downloadall"],
+html.lfx-js.lfx-menu-open .actionSheetMenuItem[data-id="multiSelect"] {
+  display: none !important;
+}
+
+/* Desktop: Backdrop unsichtbar (Dropdown-Gefühl), Klick daneben schließt weiterhin */
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-menu-open .dialogBackdrop {
+    background: transparent !important;
+  }
+}
+
+/* ---------- Eigenes Sheet (Download-Auswahl) ---------- */
+html.lfx-js .lfx-sheet-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1250;
+  background: transparent;
+}
+html.lfx-js .lfx-sheet {
+  position: fixed;
+  left: var(--lfx-sheet-x, 10px);
+  top: var(--lfx-sheet-y, 10px);
+  width: 300px;
+  padding: 8px 0;
+  animation: lfx-menu-in var(--lfx-dur-fast) var(--lfx-ease-out) both;
+}
+html.lfx-js .lfx-sheet__title {
+  margin: 0;
+  padding: 8px 16px 8px;
+  color: var(--lfx-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+html.lfx-js .lfx-sheet__list {
+  display: flex;
+  flex-direction: column;
+}
+html.lfx-js .lfx-sheet__item:disabled {
+  color: var(--lfx-text-soft);
+  cursor: default;
+  opacity: 0.5;
+  background: transparent;
+}
+html.lfx-js .lfx-sheet__item--primary {
+  justify-content: center;
+  width: auto;
+  margin: 8px 12px 4px;
+  color: #000;
+  font-weight: var(--lfx-fw-button);
+  background: #fff;
+  border-radius: 4px;
+}
+html.lfx-js .lfx-sheet__item--primary:focus {
+  color: #000;
+  background: rgba(255, 255, 255, 0.85);
+}
+html.lfx-js .lfx-sheet__item--primary:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-sheet__item--primary:hover {
+    color: #000;
+    background: rgba(255, 255, 255, 0.85);
+  }
+  html.lfx-js .lfx-sheet__item:disabled:hover {
+    color: var(--lfx-text-soft);
+    background: transparent;
+  }
+}
+html.lfx-js .lfx-sheet__item--primary:disabled,
+html.lfx-js .lfx-sheet__item--primary:disabled:focus {
+  color: #000;
+  background: #fff;
+}
+
+/* ---------- Bottom-Sheet (Touch / schmal) ---------- */
+@media (hover: none), (max-width: 799px) {
+  html.lfx-js.lfx-menu-open .dialogBackdrop {
+    background: var(--lfx-menu-scrim) !important;
+  }
+  html.lfx-js .lfx-sheet-overlay {
+    background: var(--lfx-menu-scrim);
+  }
+
+  html.lfx-js.lfx-menu-open .dialog.actionSheet,
+  html.lfx-js .lfx-sheet {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    min-width: 0;
+    max-width: none !important;
+    max-height: 80vh;
+    margin: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--lfx-menu-sheet-radius) var(--lfx-menu-sheet-radius) 0 0 !important;
+    transform-origin: 50% 100%;
+    animation: lfx-menu-sheet-in var(--lfx-dur) var(--lfx-ease-out) both !important;
+  }
+  html.lfx-js.lfx-menu-open .dialog.actionSheet .actionSheetMenuItem,
+  html.lfx-js .lfx-sheet__item {
+    min-height: var(--lfx-menu-item-h-touch);
+    font-size: 16px;
+  }
+  html.lfx-js .lfx-sheet__item--primary {
+    width: auto;
+    margin: 8px 16px 8px;
+  }
+}
+@keyframes lfx-menu-sheet-in {
+  from { opacity: 1; transform: translateY(100%); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Toast ---------- */
+html.lfx-js .lfx-toast {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 1300;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px;
+  box-sizing: border-box;
+  pointer-events: none;
+  animation: lfx-toast-in var(--lfx-dur) var(--lfx-ease-out) both;
+}
+html.lfx-js .lfx-toast.is-leaving {
+  animation: lfx-toast-out 200ms var(--lfx-ease) both;
+}
+/* Helle Fläche mit dunklem Text: auf dem dunklen UI sofort lesbar */
+html.lfx-js .lfx-toast__msg {
+  max-width: min(420px, 100%);
+  padding: 12px 20px;
+  color: #141414;
+  font: 500 15px/1.35 var(--lfx-font);
+  text-align: center;
+  background: var(--lfx-text);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+@keyframes lfx-toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lfx-toast-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px); }
+}
+
+/* ---------- Touch-Callout (langes Drücken auf dem iPhone) ---------- */
+html.lfx-js .lfx-card__link,
+html.lfx-js .lfx-modal__ep {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Schließen: Jellyfin setzt inline eine Exit-Animation (scaledown/slidedown/fadeout) und wartet auf deren
+   animationend. Ersetzen wir sie durch eine eigene, MUSS eine Animation laufen, sonst bleibt das Sheet stehen. */
+html.lfx-js.lfx-menu-open .dialog.actionSheet[style*="scaledown"],
+html.lfx-js.lfx-menu-open .dialog.actionSheet[style*="slidedown"],
+html.lfx-js.lfx-menu-open .dialog.actionSheet[style*="fadeout"] {
+  animation: lfx-menu-out 100ms var(--lfx-ease) both !important;
+}
+@keyframes lfx-menu-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-sheet,
+  html.lfx-js .lfx-toast,
+  html.lfx-js .lfx-toast.is-leaving { animation: none !important; }
+  /* Natives Sheet: nicht auf none setzen (animationend würde ausbleiben), sondern praktisch sofort. */
+  html.lfx-js.lfx-menu-open .dialog.actionSheet { animation-duration: 1ms !important; }
+}

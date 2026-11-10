@@ -14,10 +14,22 @@ vi.mock('../src/js/core/api.js', async (orig) => {
     setFavorite: vi.fn(async () => ({})),
   };
 });
+vi.mock('../src/js/core/itemmenu.js', () => ({
+  openItemMenu: vi.fn(() => true),
+  isMenuOpen: vi.fn(() => false),
+  onItemsChanged: vi.fn(() => vi.fn()),
+}));
+vi.mock('../src/js/core/download.js', () => ({
+  startDownload: vi.fn(async () => {}),
+  canDownload: vi.fn(async () => false),
+  isChooserOpen: vi.fn(() => false),
+}));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn(async () => true) }));
 
 import * as api from '../src/js/core/api.js';
 import { play } from '../src/js/core/playback.js';
+import { openItemMenu, onItemsChanged } from '../src/js/core/itemmenu.js';
+import { startDownload, canDownload, isChooserOpen } from '../src/js/core/download.js';
 import { clearCache } from '../src/js/core/cache.js';
 import modal, { openModal, closeModal, findInterceptTarget } from '../src/js/features/modal.js';
 import { formatRuntime, metaParts, qualityLabel, seasonsLabel, ratingText } from '../src/js/features/modal/format.js';
@@ -202,6 +214,122 @@ describe('Serien', () => {
     expect(document.querySelectorAll('.lfx-modal__card').length).toBe(6);
     document.querySelector('.lfx-modal__grid ~ .lfx-modal__more .lfx-modal__more-btn').click();
     expect(document.querySelectorAll('.lfx-modal__card').length).toBe(12);
+  });
+});
+
+describe('Aktionen, Menü, Download', () => {
+  it('Button-Leiste: Daumen mit Icon-Wechsel, Download hidden bis erlaubt, Mehr', async () => {
+    canDownload.mockResolvedValue(false);
+    await openModal('M1');
+    const like = document.querySelector('.lfx-modal__actions .lfx-modal__round--like');
+    const dl = document.querySelector('.lfx-modal__actions .lfx-modal__round--dl');
+    const more = document.querySelector('.lfx-modal__actions .lfx-modal__round--menu');
+    expect(like && dl && more).toBeTruthy();
+    expect(dl.hidden).toBe(true);
+    expect(dl.getAttribute('aria-label')).toBe('Herunterladen');
+    expect(more.getAttribute('aria-haspopup')).toBe('menu');
+    expect(more.getAttribute('aria-label')).toBe('Mehr');
+    const off = like.innerHTML;
+    expect(like.getAttribute('aria-pressed')).toBe('false');
+    like.click();
+    expect(like.classList.contains('is-on')).toBe(true);
+    expect(like.innerHTML).not.toBe(off);
+    more.click();
+    expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: 'M1' }), more);
+  });
+
+  it('Download wird sichtbar, wenn canDownload true; Klick startet Download', async () => {
+    canDownload.mockResolvedValue(true);
+    await openModal('M1');
+    const dl = document.querySelector('.lfx-modal__actions .lfx-modal__round--dl');
+    await wait(() => !dl.hidden);
+    expect(dl.hidden).toBe(false);
+    dl.click();
+    expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Id: 'M1' }), dl);
+  });
+
+  it('Serie: Download-Label "Episoden herunterladen"', async () => {
+    await openModal('S1');
+    expect(document.querySelector('.lfx-modal__actions .lfx-modal__round--dl').getAttribute('aria-label')).toBe('Episoden herunterladen');
+  });
+
+  it('Episodenzeile: data-lfx-id, Aktionen spielen nicht ab, siblings übergeben', async () => {
+    canDownload.mockResolvedValue(true);
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const row = document.querySelector('.lfx-modal__ep');
+    expect(row.dataset.lfxId).toBe('SE1-E1');
+    expect(row.dataset.lfxType).toBe('Episode');
+    const acts = row.querySelector(':scope > .lfx-modal__epactions');
+    expect(acts).not.toBeNull();
+    expect(row.lastElementChild).toBe(acts);
+    const dl = acts.querySelector('.lfx-modal__round--small.lfx-modal__round--dl');
+    const more = acts.querySelector('.lfx-modal__round--small.lfx-modal__round--menu');
+    expect(more.getAttribute('aria-label')).toContain('Folge 1');
+    await wait(() => !dl.hidden);
+    expect(dl.hidden).toBe(false);
+    dl.click();
+    more.click();
+    for (const b of [dl, more]) {
+      const ev = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      b.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(false);
+    }
+    expect(play).not.toHaveBeenCalled();
+    expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Id: 'SE1-E1' }), dl);
+    const [item, btn, opts] = openItemMenu.mock.calls.at(-1);
+    expect(item.Id).toBe('SE1-E1');
+    expect(btn).toBe(more);
+    expect(opts.siblings.length).toBe(14);
+    row.click();
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'SE1-E1' }), expect.anything());
+  });
+});
+
+describe('Escape bei Dialog, Änderungen', () => {
+  const esc = () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+  it('Escape schließt nicht, solange .dialogContainer oder Download-Sheet offen ist', async () => {
+    await openModal('M1');
+    const dlg = document.createElement('div');
+    dlg.className = 'dialogContainer';
+    document.body.append(dlg);
+    esc();
+    await flush();
+    expect(document.querySelector('.lfx-modal')).not.toBeNull();
+    dlg.remove();
+    isChooserOpen.mockReturnValueOnce(true);
+    esc();
+    await flush();
+    expect(document.querySelector('.lfx-modal')).not.toBeNull();
+    esc();
+    await wait(() => !document.querySelector('.lfx-modal'), 1000);
+    expect(document.querySelector('.lfx-modal')).toBeNull();
+  });
+
+  it('onItemsChanged: removed schließt, Abo wird beim Schließen beendet', async () => {
+    const unsub = vi.fn();
+    onItemsChanged.mockReturnValue(unsub);
+    await openModal('M1');
+    const cb = onItemsChanged.mock.calls.at(-1)[0];
+    cb({ removed: ['M1'], updated: [] });
+    await wait(() => !document.querySelector('.lfx-modal'), 1000);
+    expect(document.querySelector('.lfx-modal')).toBeNull();
+    expect(unsub).toHaveBeenCalled();
+  });
+
+  it('onItemsChanged: entfernte Episode verschwindet, updated lädt neu', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const cb = onItemsChanged.mock.calls.at(-1)[0];
+    cb({ removed: ['SE1-E1'], updated: [] });
+    expect(document.querySelector('.lfx-modal__ep[data-id="SE1-E1"]')).toBeNull();
+    const calls = api.getItem.mock.calls.length;
+    cb({ removed: [], updated: ['S1'] });
+    await wait(() => api.getItem.mock.calls.length > calls);
+    expect(api.getItem.mock.calls.length).toBeGreaterThan(calls);
+    await flush();
+    expect(document.querySelector('.lfx-modal')).not.toBeNull();
   });
 });
 

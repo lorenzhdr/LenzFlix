@@ -150,6 +150,21 @@
     }
     return null;
   }
+  var userCache = /* @__PURE__ */ new Map();
+  async function getUser() {
+    const userId = getUserId();
+    if (!userId) return null;
+    if (userCache.has(userId)) return userCache.get(userId);
+    try {
+      const client = window.ApiClient;
+      const user = client && typeof client.getCurrentUser === "function" ? await client.getCurrentUser() : await getJson(`/Users/${userId}`);
+      if (!user) return null;
+      userCache.set(userId, user);
+      return user;
+    } catch {
+      return null;
+    }
+  }
 
   // src/js/core/cache.js
   var store = /* @__PURE__ */ new Map();
@@ -844,7 +859,7 @@
   __export(billboard_exports, {
     ROTATE_MS: () => ROTATE_MS,
     TRAILER_DELAY_MS: () => TRAILER_DELAY_MS,
-    render: () => render3
+    render: () => render4
   });
 
   // src/js/core/color.js
@@ -926,6 +941,46 @@
     return store2.get(id) || null;
   }
 
+  // src/js/core/icons.js
+  var svg = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
+  var ICON_MORE = svg('<circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>');
+  var ICON_DOWNLOAD = svg('<path d="M11 3h2v9.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4 3.6 3.6z"/><path d="M5 19h14v2H5z"/>');
+  var ICON_LIKE = svg(
+    '<path d="M2 10h4v11H2z"/><path d="M8 21V10l4.3-7.2c.4-.6 1.1-.9 1.8-.7 1 .3 1.6 1.3 1.4 2.3L14.8 9H20.5c1.2 0 2.1 1.1 1.9 2.3l-1.3 8.5c-.2 1.2-1.2 2.2-2.4 2.2z"/>'
+  );
+  var ICON_LIKE_OUTLINE = svg(
+    '<path fill-rule="evenodd" d="M2 10h4v11H2zm1.5 1.5v8h1v-8z"/><path fill-rule="evenodd" d="M8 10l4.3-7.2c.4-.6 1.1-.9 1.8-.7 1 .3 1.6 1.3 1.4 2.3L14.8 9H20.5c1.2 0 2.1 1.1 1.9 2.3l-1.3 8.5c-.2 1.2-1.2 2.2-2.4 2.2H8zm2 1.1V19h8.7l1.2-7.4h-7.3l1.2-5.6z"/>'
+  );
+
+  // src/js/core/toast.js
+  var ID2 = "lfx-toast";
+  var hideTimer = null;
+  var removeTimer = null;
+  function clearTimers() {
+    clearTimeout(hideTimer);
+    clearTimeout(removeTimer);
+    hideTimer = removeTimer = null;
+  }
+  function toast(text, { duration = 3e3 } = {}) {
+    clearTimers();
+    const root2 = mountPoint(ID2, { className: "lfx-toast" });
+    root2.classList.remove("is-leaving");
+    root2.setAttribute("role", "status");
+    root2.setAttribute("aria-live", "polite");
+    root2.replaceChildren(h("div", { class: "lfx-toast__msg" }, [String(text)]));
+    hideTimer = setTimeout(() => {
+      root2.classList.add("is-leaving");
+      removeTimer = setTimeout(() => {
+        unmountPoint(root2);
+        hideTimer = removeTimer = null;
+      }, 200);
+    }, duration);
+  }
+  function clearToast() {
+    clearTimers();
+    unmountPoint(ID2);
+  }
+
   // src/js/core/playback.js
   function isVisible(el) {
     return el.getClientRects().length > 0;
@@ -949,7 +1004,7 @@
     return el;
   }
   function playViaDetails(item, resume, timeoutMs) {
-    return new Promise((resolve) => {
+    return new Promise((resolve2) => {
       const serverId = item.ServerId || getAuth().serverId || "";
       window.location.hash = `#/details?id=${item.Id}&serverId=${serverId}`;
       const started = Date.now();
@@ -960,10 +1015,10 @@
         if (target) {
           clearInterval(timer);
           target.click();
-          resolve(true);
+          resolve2(true);
         } else if (Date.now() - started > timeoutMs) {
           clearInterval(timer);
-          resolve(false);
+          resolve2(false);
         }
       }, 150);
     });
@@ -984,6 +1039,506 @@
     return playViaDetails(item, resume, timeoutMs);
   }
 
+  // src/js/core/itemmenu.js
+  var END_QUIET_MS = 800;
+  var NO_DIALOG_TIMEOUT_MS = 4e3;
+  var HIDDEN_FIRST = ["download", "downloadall", "multiSelect"];
+  var CHANGING_COMMANDS = ["delete", "edit", "editimages", "editsubtitles", "identify", "refresh", "addtocollection", "removefromcollection"];
+  var RETRY_COMMANDS = ["delete", "refresh"];
+  var RETRY_DELAYS = [1e3, 3e3, 8e3];
+  var FOLDER_TYPES = ["Series", "Season", "BoxSet"];
+  var EDGE = 8;
+  function rectOf(anchor) {
+    if (anchor && typeof anchor.getBoundingClientRect === "function") return anchor.getBoundingClientRect();
+    const x = Number(anchor && anchor.x) || 0;
+    const y = Number(anchor && anchor.y) || 0;
+    return { left: x, right: x, top: y, bottom: y, width: 0, height: 0 };
+  }
+  function computeMenuPosition(anchorRect, viewport, menu = { w: 300, h: 320 }) {
+    const vp = viewport || { w: window.innerWidth, h: window.innerHeight };
+    const gap = 4;
+    const clamp2 = (v, min, max) => Math.max(min, Math.min(v, Math.max(min, max)));
+    const isPoint = anchorRect.right === anchorRect.left;
+    let x = isPoint ? anchorRect.left : anchorRect.right - menu.w;
+    x = clamp2(x, EDGE, vp.w - menu.w - EDGE);
+    let y = anchorRect.bottom + gap;
+    if (y + menu.h > vp.h - EDGE) {
+      const above = anchorRect.top - gap - menu.h;
+      y = above >= EDGE ? above : y;
+    }
+    y = clamp2(y, EDGE, vp.h - menu.h - EDGE);
+    return { x, y };
+  }
+  var listeners = /* @__PURE__ */ new Set();
+  var ownDeletes = /* @__PURE__ */ new Set();
+  function onItemsChanged(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  }
+  function emit({ removed = [], updated = [] }) {
+    if (!removed.length && !updated.length) return;
+    if (removed.some((id) => ownDeletes.has(id))) {
+      for (const id of removed) ownDeletes.delete(id);
+      toast("Gel\xF6scht");
+    }
+    for (const fn of [...listeners]) {
+      try {
+        fn({ removed, updated });
+      } catch {
+      }
+    }
+  }
+  var retryTimers = [];
+  function clearRetries() {
+    retryTimers.forEach(clearTimeout);
+    retryTimers = [];
+  }
+  function isNetworkError(err) {
+    return err instanceof TypeError || /failed to fetch|network/i.test(String(err && err.message));
+  }
+  async function verifyItem(id, removalOnly = false) {
+    let item;
+    try {
+      item = await getItem(id);
+    } catch (err) {
+      if (isNetworkError(err) || !/\b404\b/.test(String(err && err.message))) return false;
+      emit({ removed: [id], updated: [] });
+      return true;
+    }
+    if (!item || !item.Id) {
+      emit({ removed: [id], updated: [] });
+      return true;
+    }
+    if (removalOnly) return false;
+    putItems([item]);
+    emit({ removed: [], updated: [id] });
+    return false;
+  }
+  function afterSession(id, command) {
+    if (!id || !CHANGING_COMMANDS.includes(command)) return;
+    if (command === "delete") ownDeletes.add(id);
+    let done = false;
+    const run = async () => {
+      if (done) return;
+      if (await verifyItem(id, command === "delete")) done = true;
+    };
+    run();
+    if (RETRY_COMMANDS.includes(command)) {
+      const last = RETRY_DELAYS[RETRY_DELAYS.length - 1];
+      for (const delay of RETRY_DELAYS) {
+        retryTimers.push(
+          setTimeout(async () => {
+            await run();
+            if (delay === last && !done) ownDeletes.delete(id);
+          }, delay)
+        );
+      }
+    }
+  }
+  var session = null;
+  function clearMarker() {
+    const root2 = document.documentElement;
+    root2.classList.remove("lfx-menu-open");
+    root2.style.removeProperty("--lfx-menu-x");
+    root2.style.removeProperty("--lfx-menu-y");
+  }
+  function setPosition(pos) {
+    const root2 = document.documentElement;
+    root2.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
+    root2.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
+  }
+  function teardown(s) {
+    s.observer.disconnect();
+    clearTimeout(s.endTimer);
+    clearTimeout(s.startTimer);
+    document.removeEventListener("click", s.onClick, true);
+    window.removeEventListener("keydown", s.onKey, true);
+    s.wrapper.remove();
+    clearMarker();
+    if (session === s) session = null;
+  }
+  function finish(s) {
+    if (session !== s) return;
+    teardown(s);
+    const { anchor, opts, command, item } = s;
+    if (anchor && typeof anchor.focus === "function" && anchor.isConnected) {
+      try {
+        anchor.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    if (typeof opts.onClose === "function") {
+      try {
+        opts.onClose({ command });
+      } catch {
+      }
+    }
+    afterSession(item.Id, command);
+  }
+  function focusFirstEntry(sheet) {
+    const entries = [...sheet.querySelectorAll(".actionSheetMenuItem")].filter(
+      (el) => !HIDDEN_FIRST.includes(el.getAttribute("data-id")) && !el.hidden && el.style.display !== "none"
+    );
+    if (entries[0]) entries[0].focus({ preventScroll: true });
+  }
+  function onMutation(s) {
+    const containers = document.querySelectorAll(".dialogContainer");
+    if (containers.length) {
+      s.sawDialog = true;
+      clearTimeout(s.endTimer);
+      s.endTimer = null;
+      clearTimeout(s.startTimer);
+      s.startTimer = null;
+      if (!s.sheet) {
+        const sheet = document.querySelector(".dialogContainer .dialog.actionSheet");
+        if (sheet) {
+          s.sheet = sheet;
+          const w = sheet.offsetWidth;
+          const hgt = sheet.offsetHeight;
+          if (w && hgt) setPosition(computeMenuPosition(rectOf(s.anchor), void 0, { w, h: hgt }));
+          focusFirstEntry(sheet);
+        }
+      }
+    }
+    if (s.sheet && !s.sheet.isConnected && !s.markerCleared) {
+      s.markerCleared = true;
+      clearMarker();
+    }
+    if (!containers.length && s.sawDialog && !s.endTimer) {
+      s.endTimer = setTimeout(() => finish(s), END_QUIET_MS);
+    }
+  }
+  function buildProxyFor(item) {
+    const isFolder = Boolean(item.IsFolder) || FOLDER_TYPES.includes(item.Type);
+    const el = document.createElement("div");
+    el.className = "lfx-proxy itemAction";
+    el.setAttribute("data-action", "menu");
+    el.setAttribute("data-id", item.Id);
+    el.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el.setAttribute("data-type", item.Type || "");
+    el.setAttribute("data-isfolder", String(isFolder));
+    el.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
+    return el;
+  }
+  function openItemMenu(item, anchor, opts = {}) {
+    if (!item || !item.Id) return false;
+    if (session) teardown(session);
+    const container = findProxyContainer();
+    if (!container) {
+      toast("Men\xFC hier nicht verf\xFCgbar");
+      return false;
+    }
+    const wrapper = document.createElement("div");
+    wrapper.className = "lfx-proxywrap itemsContainer";
+    wrapper.style.display = "none";
+    const list = Array.isArray(opts.siblings) && opts.siblings.some((s2) => s2 && s2.Id === item.Id) ? opts.siblings : [item];
+    let target = null;
+    for (const it of list) {
+      if (!it || !it.Id) continue;
+      const proxy = buildProxyFor(it);
+      wrapper.append(proxy);
+      if (it.Id === item.Id) target = proxy;
+    }
+    container.append(wrapper);
+    const s = {
+      item,
+      anchor,
+      opts,
+      wrapper,
+      command: null,
+      sheet: null,
+      sawDialog: false,
+      markerCleared: false,
+      endTimer: null,
+      startTimer: null,
+      observer: null,
+      onClick: null
+    };
+    s.onClick = (e) => {
+      if (s.command) return;
+      const entry = e.target && e.target.closest && e.target.closest(".actionSheetMenuItem[data-id]");
+      if (entry && (!s.sheet || s.sheet.contains(entry))) s.command = entry.getAttribute("data-id");
+    };
+    s.onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (s.sheet && !s.sheet.isConnected) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (!s.sheet || s.escaped) return;
+      s.escaped = true;
+      history.back();
+    };
+    window.addEventListener("keydown", s.onKey, true);
+    s.observer = new MutationObserver(() => onMutation(s));
+    s.observer.observe(document.body, { childList: true });
+    document.addEventListener("click", s.onClick, true);
+    s.startTimer = setTimeout(() => finish(s), NO_DIALOG_TIMEOUT_MS);
+    session = s;
+    setPosition(computeMenuPosition(rectOf(anchor)));
+    document.documentElement.classList.add("lfx-menu-open");
+    target.click();
+    return true;
+  }
+  function isMenuOpen() {
+    return session !== null;
+  }
+  function closeItemMenu() {
+    if (session) teardown(session);
+    else clearMarker();
+    clearRetries();
+    ownDeletes.clear();
+  }
+  var unsubscribeWatch = null;
+  function onLibraryChanged(msg) {
+    const data = msg && msg.Data || {};
+    const removed = Array.isArray(data.ItemsRemoved) ? data.ItemsRemoved.filter(Boolean) : [];
+    const updated = Array.isArray(data.ItemsUpdated) ? data.ItemsUpdated.filter(Boolean) : [];
+    emit({ removed, updated });
+  }
+  function startItemWatch() {
+    if (unsubscribeWatch) return;
+    const client = window.ApiClient;
+    if (!client || typeof client.subscribe !== "function") return;
+    try {
+      const res = client.subscribe(["LibraryChanged"], onLibraryChanged);
+      unsubscribeWatch = typeof res === "function" ? res : () => {
+        if (typeof client.unsubscribe === "function") client.unsubscribe(["LibraryChanged"], onLibraryChanged);
+      };
+    } catch {
+      unsubscribeWatch = null;
+    }
+  }
+  function stopItemWatch() {
+    if (unsubscribeWatch) {
+      try {
+        unsubscribeWatch();
+      } catch {
+      }
+      unsubscribeWatch = null;
+    }
+    closeItemMenu();
+  }
+
+  // src/js/core/download.js
+  var SHEET_ID = "lfx-sheet";
+  var FOLDER_TYPES2 = ["Series", "Season"];
+  async function canDownload(item) {
+    if (!item) return false;
+    const user = await getUser();
+    if (!user || !user.Policy || user.Policy.EnableContentDownloading !== true) return false;
+    if (FOLDER_TYPES2.includes(item.Type)) return true;
+    if (item.IsFolder || item.Type === "BoxSet") return false;
+    return item.CanDownload !== false;
+  }
+  function downloadUrl(id) {
+    const client = window.ApiClient;
+    if (client && typeof client.getItemDownloadUrl === "function") return client.getItemDownloadUrl(id);
+    const { address, token } = getAuth();
+    return `${address}/Items/${id}/Download?api_key=${encodeURIComponent(token || "")}`;
+  }
+  function triggerDownload(item) {
+    const a = document.createElement("a");
+    a.href = downloadUrl(item.Id);
+    a.setAttribute("download", "");
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.append(a);
+    try {
+      a.click();
+    } finally {
+      a.remove();
+    }
+  }
+  async function downloadItem(item) {
+    if (!item || !item.Id) return;
+    triggerDownload(item);
+    toast("Download gestartet");
+  }
+  var manyTimer = null;
+  var manyResolve = null;
+  function cancelDownloads() {
+    clearTimeout(manyTimer);
+    manyTimer = null;
+    if (manyResolve) {
+      const r = manyResolve;
+      manyResolve = null;
+      r();
+    }
+  }
+  function downloadMany(items) {
+    cancelDownloads();
+    const list = (items || []).filter((i) => i && i.Id);
+    if (!list.length) return Promise.resolve();
+    const n = list.length;
+    const touch = typeof window.matchMedia === "function" && window.matchMedia("(hover: none)").matches;
+    toast(touch ? `${n} Downloads gestartet \u2013 falls blockiert, bitte Episoden einzeln laden` : `${n} Downloads gestartet`);
+    return new Promise((resolve2) => {
+      manyResolve = resolve2;
+      let i = 0;
+      const step = () => {
+        manyTimer = null;
+        triggerDownload(list[i]);
+        i += 1;
+        if (i < list.length) {
+          manyTimer = setTimeout(step, 1e3);
+        } else {
+          manyResolve = null;
+          resolve2();
+        }
+      };
+      step();
+    });
+  }
+  async function startDownload(item, anchorEl) {
+    if (!item) return;
+    if (FOLDER_TYPES2.includes(item.Type)) return openDownloadChooser(item, anchorEl);
+    return downloadItem(item);
+  }
+  var chooser = null;
+  function isChooserOpen() {
+    return chooser !== null;
+  }
+  function closeChooser() {
+    const c = chooser;
+    if (!c) return;
+    chooser = null;
+    window.removeEventListener("keydown", c.onKeydown, true);
+    c.overlay.removeEventListener("click", c.onOverlayClick);
+    unmountPoint(c.overlay);
+    document.documentElement.classList.remove("lfx-sheet-open");
+    const a = c.anchorEl;
+    if (a && typeof a.focus === "function" && a.isConnected) {
+      try {
+        a.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+  }
+  function render3(c, title, entries) {
+    c.title.textContent = title;
+    c.list.replaceChildren(
+      ...entries.map(
+        ({ label, onClick, disabled, primary }) => h(
+          "button",
+          {
+            type: "button",
+            class: `lfx-sheet__item${primary ? " lfx-sheet__item--primary" : ""}`,
+            disabled: disabled ? true : null,
+            onclick: onClick
+          },
+          [label]
+        )
+      )
+    );
+    const first2 = c.list.querySelector("button:not([disabled])");
+    if (first2) first2.focus({ preventScroll: true });
+  }
+  function confirmStep(c, episodes) {
+    const n = episodes.length;
+    render3(c, `${n} ${n === 1 ? "Episode" : "Episoden"} herunterladen?`, [
+      {
+        label: "Herunterladen",
+        primary: true,
+        onClick: () => {
+          closeChooser();
+          downloadMany(episodes);
+        }
+      },
+      { label: "Abbrechen", onClick: () => closeChooser() }
+    ]);
+  }
+  var downloadable = (ep) => ep && ep.CanDownload !== false && ep.LocationType !== "Virtual";
+  async function loadEpisodes(item) {
+    const fields = "CanDownload";
+    if (item.Type === "Season") {
+      const res = await getEpisodes(item.SeriesId || item.ParentId, { seasonId: item.Id, Fields: fields });
+      return { seasons: [], episodes: (res && res.Items || []).filter(downloadable) };
+    }
+    const [seasonsRes, epRes] = await Promise.all([getSeasons(item.Id), getEpisodes(item.Id, { Fields: fields })]);
+    return {
+      seasons: seasonsRes && seasonsRes.Items || [],
+      episodes: (epRes && epRes.Items || []).filter(downloadable)
+    };
+  }
+  async function openDownloadChooser(item, anchorEl) {
+    if (!item) return;
+    closeChooser();
+    const overlay = mountPoint(SHEET_ID, { className: "lfx-sheet-overlay" });
+    const title = h("h2", { class: "lfx-sheet__title" }, ["Download"]);
+    const list = h("div", { class: "lfx-sheet__list" });
+    const sheet = h("div", { class: "lfx-sheet", role: "dialog", "aria-modal": "true", "aria-label": "Download" }, [title, list]);
+    overlay.replaceChildren(sheet);
+    const pos = computeMenuPosition(anchorEl ? rectOf(anchorEl) : { left: 0, right: window.innerWidth, top: 0, bottom: 0 });
+    sheet.style.setProperty("--lfx-sheet-x", `${Math.round(pos.x)}px`);
+    sheet.style.setProperty("--lfx-sheet-y", `${Math.round(pos.y)}px`);
+    const c = { overlay, sheet, title, list, anchorEl };
+    c.onKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        closeChooser();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const focusable = [...sheet.querySelectorAll("button:not([disabled])")];
+      if (!focusable.length) {
+        e.preventDefault();
+        return;
+      }
+      const firstEl = focusable[0];
+      const lastEl = focusable[focusable.length - 1];
+      const active3 = document.activeElement;
+      if (!sheet.contains(active3)) {
+        e.preventDefault();
+        firstEl.focus();
+      } else if (e.shiftKey && active3 === firstEl) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && active3 === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    };
+    c.onOverlayClick = (e) => {
+      if (e.target === overlay) closeChooser();
+    };
+    window.addEventListener("keydown", c.onKeydown, true);
+    overlay.addEventListener("click", c.onOverlayClick);
+    document.documentElement.classList.add("lfx-sheet-open");
+    chooser = c;
+    render3(c, "Download", [{ label: "L\xE4dt \u2026", disabled: true }]);
+    sheet.setAttribute("tabindex", "-1");
+    sheet.focus({ preventScroll: true });
+    let data;
+    try {
+      data = await loadEpisodes(item);
+    } catch {
+      data = { seasons: [], episodes: [] };
+    }
+    if (chooser !== c) return;
+    if (!data.episodes.length) {
+      closeChooser();
+      toast("Keine herunterladbaren Episoden");
+      return;
+    }
+    if (item.Type === "Season") {
+      confirmStep(c, data.episodes);
+      return;
+    }
+    const count = (n) => `${n} ${n === 1 ? "Episode" : "Episoden"}`;
+    const entries = [
+      { label: `Ganze Serie (${count(data.episodes.length)})`, onClick: () => confirmStep(c, data.episodes) }
+    ];
+    for (const season of data.seasons) {
+      const eps = data.episodes.filter((ep) => ep.SeasonId === season.Id);
+      if (!eps.length) continue;
+      entries.push({ label: `${season.Name || "Staffel"} (${count(eps.length)})`, onClick: () => confirmStep(c, eps) });
+    }
+    render3(c, "Download", entries);
+  }
+
   // src/js/features/modal/data.js
   var TTL = 5 * 6e4;
   var ITEM_FIELDS = "Overview,Genres,People,Studios,Taglines,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,RemoteTrailers,MediaSources,Width,ImageTags,BackdropImageTags,UserData";
@@ -999,7 +1554,7 @@
     putItems(items);
     return items;
   }
-  async function loadEpisodes(seriesId, seasonId) {
+  async function loadEpisodes2(seriesId, seasonId) {
     const items = itemsOf(await cached(`lfx:modal:eps:${seriesId}:${seasonId}`, () => getEpisodes(seriesId, { SeasonId: seasonId, Fields: LIST_FIELDS }), TTL));
     putItems(items);
     return items;
@@ -1124,7 +1679,7 @@
   };
   function icon(name) {
     const s = h("span", { class: "lfx-modal__icon", "aria-hidden": "true" });
-    s.innerHTML = ICONS[name] || "";
+    s.innerHTML = name.startsWith("<svg") ? name : ICONS[name] || "";
     return s;
   }
   function badge(text, extra = "") {
@@ -1167,7 +1722,34 @@
   function setLikeState(btn, on) {
     btn.classList.toggle("is-on", on);
     btn.setAttribute("aria-pressed", String(on));
+    btn.replaceChildren(icon(on ? ICON_LIKE : ICON_LIKE_OUTLINE));
   }
+  var isFolderType = (item) => item.Type === "Series" || item.Type === "Season";
+  function downloadButton(item, small = false, label = null) {
+    const text = label || (isFolderType(item) ? "Episoden herunterladen" : "Herunterladen");
+    const btn = roundButton(text, ICON_DOWNLOAD, (e) => {
+      e.stopPropagation();
+      startDownload(item, btn);
+    }, `${small ? "lfx-modal__round--small " : ""}lfx-modal__round--dl`);
+    btn.hidden = true;
+    Promise.resolve(canDownload(item)).then((ok) => {
+      if (ok && btn.isConnected) btn.hidden = false;
+    }).catch(() => {
+    });
+    return btn;
+  }
+  function menuButton(item, small = false, label = "Mehr", opts = null) {
+    const btn = roundButton(label, ICON_MORE, (e) => {
+      e.stopPropagation();
+      opts ? openItemMenu(item, btn, opts) : openItemMenu(item, btn);
+    }, `${small ? "lfx-modal__round--small " : ""}lfx-modal__round--menu`);
+    btn.setAttribute("aria-haspopup", "menu");
+    return btn;
+  }
+  var stopKeys = (btn) => {
+    btn.addEventListener("keydown", (e) => e.stopPropagation());
+    return btn;
+  };
   function setPlayLabel(btn, label) {
     const t = btn.querySelector(".lfx-modal__play-text");
     if (t) t.textContent = label;
@@ -1182,8 +1764,10 @@
     ]);
     const favBtn = roundButton("Meine Liste", "plus", () => H.toggleFav(favBtn));
     setFavState(favBtn, Boolean(ud.IsFavorite));
-    const likeBtn = roundButton("Gef\xE4llt mir", "like", () => H.toggleLike(likeBtn));
+    const likeBtn = roundButton("Gef\xE4llt mir", ICON_LIKE_OUTLINE, () => H.toggleLike(likeBtn), "lfx-modal__round--like");
     setLikeState(likeBtn, ud.Likes === true);
+    const dlBtn = downloadButton(item);
+    const menuBtn = menuButton(item);
     const title = h("h2", { id: TITLE_ID, class: logo ? "lfx-modal__title lfx-sr" : "lfx-modal__title" }, item.Name || "");
     const hero = h("div", { class: "lfx-modal__hero" }, [
       img ? h("img", { class: "lfx-modal__hero-img", src: img, alt: "" }) : null,
@@ -1191,7 +1775,7 @@
       h("div", { class: "lfx-modal__hero-content" }, [
         logo ? h("img", { class: "lfx-modal__logo", src: logo, alt: "" }) : null,
         title,
-        h("div", { class: "lfx-modal__actions" }, [playBtn, favBtn, likeBtn])
+        h("div", { class: "lfx-modal__actions" }, [playBtn, favBtn, likeBtn, dlBtn, menuBtn])
       ])
     ]);
     const m = metaParts(item);
@@ -1236,7 +1820,7 @@
       } }, "Zur Detailseite")
     ]);
     const el = h("div", { class: "lfx-modal__detail" }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
-    return { el, playBtn, favBtn, likeBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
+    return { el, playBtn, favBtn, likeBtn, dlBtn, menuBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
   }
   function personLinks(people, H) {
     const span = h("span", { class: "lfx-modal__value" });
@@ -1271,7 +1855,7 @@
     if (studios.length) sec.append(infoRow("Studio", h("span", { class: "lfx-modal__value" }, studios.join(", "))));
     return sec;
   }
-  function episodeRow(ep, selectedId, H) {
+  function episodeRow(ep, selectedId, H, siblings) {
     const img = imageUrl(ep, { type: "Primary", maxWidth: 400 }) || landscapeImage(ep, { maxWidth: 400 });
     const pct = progressPercent(ep);
     const rt = formatRuntime(ep.RunTimeTicks);
@@ -1280,9 +1864,12 @@
       role: "button",
       tabindex: "0",
       "data-id": ep.Id,
+      "data-lfx-id": ep.Id,
+      "data-lfx-type": "Episode",
       "aria-label": `Episode abspielen: ${ep.Name || ""}`,
       onclick: () => H.playItem(ep),
       onkeydown: (e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           H.playItem(ep);
@@ -1298,6 +1885,10 @@
       h("div", { class: "lfx-modal__ep-text" }, [
         h("div", { class: "lfx-modal__ep-head" }, [h("span", { class: "lfx-modal__ep-title" }, ep.Name || ""), rt ? h("span", { class: "lfx-modal__ep-rt" }, rt) : null]),
         ep.Overview ? h("p", { class: "lfx-modal__ep-desc" }, ep.Overview) : null
+      ]),
+      h("div", { class: "lfx-modal__epactions" }, [
+        stopKeys(downloadButton(ep, true, `Herunterladen: ${ep.Name || "Episode"}`)),
+        stopKeys(menuButton(ep, true, `Mehr zu ${ep.Name || "Episode"}`, { siblings }))
       ])
     ]);
   }
@@ -1310,6 +1901,7 @@
     slot.hidden = false;
     slot.replaceChildren();
     const { seasons, seasonId, episodes, selectedEpisodeId } = state4;
+    putItems(episodes);
     const current2 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
     if (seasons.length > 1) {
@@ -1350,7 +1942,7 @@
     const selIdx = episodes.findIndex((e) => e.Id === selectedEpisodeId);
     let shown = Math.max(EPISODES_INITIAL, selIdx + 1);
     const draw = () => {
-      listEl.replaceChildren(...episodes.slice(0, shown).map((e) => episodeRow(e, selectedEpisodeId, H)));
+      listEl.replaceChildren(...episodes.slice(0, shown).map((e) => episodeRow(e, selectedEpisodeId, H, episodes)));
       if (shown < episodes.length) listEl.append(moreButton(() => {
         shown = episodes.length;
         draw();
@@ -1431,6 +2023,7 @@
   var state3 = null;
   var clickInstalled = false;
   var rootEl = () => document.documentElement;
+  var overlayOnTop = () => Boolean(document.querySelector(".dialogContainer")) || isChooserOpen();
   function isBlockedRoute(route) {
     return BLOCKED_PATHS.some((p) => route.path === p || route.path.startsWith(`${p}/`) || p === "/dashboard" && route.path.startsWith("/dashboard"));
   }
@@ -1486,10 +2079,14 @@
     overlay.append(modal);
     overlay.scrollTop = 0;
     const onOverlayClick = (e) => {
-      if (e.target === overlay) closeModal();
+      if (e.target !== overlay) return;
+      if (e.target.closest && e.target.closest(".dialogContainer, .dialogBackdrop, #lfx-sheet")) return;
+      if (overlayOnTop()) return;
+      closeModal();
     };
     overlay.addEventListener("click", onOverlayClick);
-    state3 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, seasons: [], seasonId: null, selectedEpisodeId: null, onOverlayClick };
+    state3 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    state3.unsub = onItemsChanged(onChanged);
     rootEl().classList.add("lfx-modal-open");
     document.addEventListener("keydown", onKeydown, true);
     window.addEventListener("popstate", onPopState);
@@ -1501,11 +2098,12 @@
     }
     closeBtn.focus({ preventScroll: true });
   }
-  function teardown() {
+  function teardown2() {
     if (!state3) return null;
     const s = state3;
     state3 = null;
     clearTimeout(s.fallback);
+    if (typeof s.unsub === "function") s.unsub();
     s.overlay.removeEventListener("click", s.onOverlayClick);
     document.removeEventListener("keydown", onKeydown, true);
     window.removeEventListener("popstate", onPopState);
@@ -1513,21 +2111,21 @@
     rootEl().classList.remove("lfx-modal-open");
     unmountPoint(s.overlay);
     const op = s.opener;
-    if (op && op.isConnected && typeof op.focus === "function") op.focus({ preventScroll: true });
+    if (op && op.isConnected && typeof op.focus === "function" && !overlayOnTop()) op.focus({ preventScroll: true });
     return s.after;
   }
   function closeModal(opts = {}) {
     if (!state3) return;
     if (opts.after) state3.after = opts.after;
     if (state3.pushed) {
-      state3.fallback = setTimeout(() => finish(), 600);
+      state3.fallback = setTimeout(() => finish2(), 600);
       history.back();
     } else {
-      finish();
+      finish2();
     }
   }
-  function finish() {
-    const after = teardown();
+  function finish2() {
+    const after = teardown2();
     if (after) after();
   }
   function onPopState() {
@@ -1535,13 +2133,13 @@
     const st = history.state;
     if (st && st.lfxModal) return;
     state3.pushed = false;
-    finish();
+    finish2();
   }
   function onHashChange() {
     if (!state3) return;
     state3.pushed = false;
     const after = state3.after;
-    teardown();
+    teardown2();
     if (after) after();
   }
   function focusables() {
@@ -1551,6 +2149,7 @@
   }
   function onKeydown(e) {
     if (!state3) return;
+    if (overlayOnTop()) return;
     if (e.key === "Escape") {
       const open2 = state3.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
       e.stopPropagation();
@@ -1569,14 +2168,14 @@
     }
     const first2 = list[0];
     const last = list[list.length - 1];
-    const active2 = document.activeElement;
-    if (!state3.modal.contains(active2)) {
+    const active3 = document.activeElement;
+    if (!state3.modal.contains(active3)) {
       e.preventDefault();
       first2.focus();
-    } else if (e.shiftKey && active2 === first2) {
+    } else if (e.shiftKey && active3 === first2) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && active2 === last) {
+    } else if (!e.shiftKey && active3 === last) {
       e.preventDefault();
       first2.focus();
     }
@@ -1595,11 +2194,12 @@
     }
     return { targetId, sel };
   }
-  async function loadInto(id, hint, replace) {
+  async function loadInto(id, hint, replace, refresh = false) {
     const s = state3;
     const token = ++s.token;
     const stale = () => state3 !== s || s.token !== token;
-    if (replace) {
+    if (refresh) {
+    } else if (replace) {
       s.content.replaceChildren(buildSkeleton());
       s.overlay.scrollTop = 0;
       if (s.pushed) {
@@ -1615,11 +2215,12 @@
     let sel;
     try {
       const r = await resolveTarget(id, hint);
-      sel = r.sel;
+      sel = refresh ? { seasonId: s.seasonId, episodeId: s.selectedEpisodeId } : r.sel;
       main = await loadItem(r.targetId);
       if (!main) throw new Error("Titel nicht gefunden");
     } catch (err) {
       if (stale()) return;
+      if (refresh) return;
       const href = detailHref(id, null);
       s.content.replaceChildren(buildError(err && err.message ? "Der Server hat nicht geantwortet." : "", href, (hash) => navigate(hash)));
       return;
@@ -1666,11 +2267,36 @@
     }
   }
   async function showSeason(s, token, H) {
-    const episodes = await loadEpisodes(s.main.Id, s.seasonId);
+    const episodes = await loadEpisodes2(s.main.Id, s.seasonId);
     if (state3 !== s || s.token !== token) return;
+    s.episodes = episodes;
     renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
     const sel = s.parts.episodesSlot.querySelector(".lfx-modal__ep.is-selected");
     if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest" });
+  }
+  function onChanged({ removed = [], updated = [] } = {}) {
+    const s = state3;
+    if (!s || !s.main) return;
+    const id = s.main.Id;
+    if (removed.includes(id)) {
+      closeModal();
+      return;
+    }
+    const gone = removed.filter((rid) => s.episodes.some((e) => e.Id === rid));
+    if (gone.length) {
+      s.episodes = s.episodes.filter((e) => !gone.includes(e.Id));
+      clearCache(`lfx:modal:eps:${id}:`);
+      for (const rid of gone) {
+        s.overlay.querySelectorAll(".lfx-modal__ep").forEach((row) => {
+          if (row.dataset.id === rid) row.remove();
+        });
+      }
+    }
+    if (updated.includes(id)) {
+      for (const key of ["item", "seasons", "next", "similar", "coll"]) clearCache(`lfx:modal:${key}:${id}`);
+      clearCache(`lfx:modal:eps:${id}:`);
+      loadInto(id, null, true, true);
+    }
   }
   function navigate(hash) {
     closeModal({ after: () => {
@@ -1698,7 +2324,7 @@
         if (main.Type === "Series") {
           target = await loadNextUp(main.Id).catch(() => null);
           if (!target) {
-            const eps = s.seasons.length ? await loadEpisodes(main.Id, pickInitialSeason(s.seasons, null)).catch(() => []) : [];
+            const eps = s.seasons.length ? await loadEpisodes2(main.Id, pickInitialSeason(s.seasons, null)).catch(() => []) : [];
             target = eps[0] || null;
           }
           resume = hasResume(target);
@@ -1738,7 +2364,7 @@
   function destroyAll() {
     if (state3) {
       state3.pushed = false;
-      teardown();
+      teardown2();
     }
     if (clickInstalled) {
       document.removeEventListener("click", onDocumentClick, true);
@@ -1830,7 +2456,7 @@
   var TEXT_FADE_MS = 400;
   var FIELDS = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount";
   var NS = "http://www.w3.org/2000/svg";
-  function svg(html, cls) {
+  function svg2(html, cls) {
     const el = document.createElementNS(NS, "svg");
     el.setAttribute("viewBox", "0 0 24 24");
     el.setAttribute("aria-hidden", "true");
@@ -1892,7 +2518,7 @@
     };
     img.src = url;
   }
-  function render3(slot) {
+  function render4(slot) {
     let disposed = false;
     let pool = [];
     let index = 0;
@@ -1917,7 +2543,7 @@
       timers.add(t);
       return t;
     };
-    const paused = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open");
+    const paused = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       clearTimeout(trailerTimer);
       trailerTimer = null;
@@ -1947,10 +2573,10 @@
       }, ROTATE_MS);
     }
     function buildListButton(item) {
-      const btn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--list" });
+      const btn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--list", "aria-label": "Meine Liste" });
       const paint = () => {
         const on = Boolean(item.UserData && item.UserData.IsFavorite);
-        btn.replaceChildren(svg(on ? ICON_CHECK : ICON_PLUS), h("span", null, "Meine Liste"));
+        btn.replaceChildren(svg2(on ? ICON_CHECK : ICON_PLUS), h("span", null, "Meine Liste"));
         btn.classList.toggle("is-on", on);
         btn.setAttribute("aria-pressed", on ? "true" : "false");
       };
@@ -1968,6 +2594,39 @@
       });
       return btn;
     }
+    function buildRoundButtons(item) {
+      const folder = item.Type === "Series" || item.Type === "Season";
+      const dlLabel = folder ? "Episoden herunterladen" : "Herunterladen";
+      const dl = h("button", {
+        type: "button",
+        class: "lfx-bb__btn lfx-bb__btn--dl",
+        "aria-label": dlLabel,
+        title: dlLabel,
+        hidden: true
+      });
+      dl.innerHTML = ICON_DOWNLOAD;
+      dl.addEventListener("click", (e) => {
+        e.stopPropagation();
+        startDownload(item, dl);
+      });
+      Promise.resolve(canDownload(item)).then((ok) => {
+        if (ok && !disposed && slot.contains(dl)) dl.hidden = false;
+      }, () => {
+      });
+      const menu = h("button", {
+        type: "button",
+        class: "lfx-bb__btn lfx-bb__btn--menu",
+        "aria-label": "Mehr",
+        title: "Mehr",
+        "aria-haspopup": "menu"
+      });
+      menu.innerHTML = ICON_MORE;
+      menu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openItemMenu(item, menu);
+      });
+      return [dl, menu];
+    }
     function buildContent(item) {
       const logo = logoImage(item, { maxWidth: 720 });
       const meta = h("div", { class: "lfx-bb__meta" });
@@ -1975,7 +2634,7 @@
         if (i) meta.append(h("span", { class: "lfx-bb__dot", "aria-hidden": "true" }, "\u2022"));
         meta.append(h("span", { class: p.rating ? "lfx-bb__rating" : null }, p.text));
       });
-      const playBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--play" }, [svg(ICON_PLAY), h("span", null, "Abspielen")]);
+      const playBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--play" }, [svg2(ICON_PLAY), h("span", null, "Abspielen")]);
       playBtn.addEventListener("click", () => play(item, { resume: hasProgress(item) }));
       const infoBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--info" }, [h("span", null, "Weitere Infos")]);
       infoBtn.addEventListener("click", () => openModal(item));
@@ -1989,8 +2648,8 @@
           genres ? h("div", { class: "lfx-bb__genres" }, genres) : null,
           item.Overview ? h("p", { class: "lfx-bb__desc" }, item.Overview) : null
         ]),
-        h("div", { class: "lfx-bb__buttons" }, [playBtn, infoBtn, listBtn]),
-        badgeText ? h("span", { class: "lfx-bb__badge" }, [svg(ICON_BADGE), badgeText]) : null
+        h("div", { class: "lfx-bb__buttons" }, [playBtn, infoBtn, listBtn, ...buildRoundButtons(item)]),
+        badgeText ? h("span", { class: "lfx-bb__badge" }, [svg2(ICON_BADGE), badgeText]) : null
       ]);
     }
     function buildImage(item) {
@@ -2008,9 +2667,49 @@
         b.setAttribute("aria-current", i === index ? "true" : "false");
       });
     }
+    function fillDots() {
+      dots.replaceChildren(...pool.map((it, i) => {
+        const b = h("button", { type: "button", class: "lfx-bb__dotbtn", "aria-label": `Empfehlung ${i + 1}: ${it.Name || ""}` });
+        b.addEventListener("click", () => show(i));
+        return b;
+      }));
+      dots.hidden = pool.length < 2;
+      updateDots();
+    }
+    function onChanged2({ removed = [], updated = [] }) {
+      if (disposed || !card2) return;
+      const cur = pool[index];
+      if (removed.length && pool.some((it) => removed.includes(it.Id))) {
+        const curGone = cur && removed.includes(cur.Id);
+        pool = pool.filter((it) => !removed.includes(it.Id));
+        if (!pool.length) {
+          gen += 1;
+          stopTrailer();
+          clearTimeout(rotateTimer);
+          clearTimeout(trailerTimer);
+          timers.forEach(clearTimeout);
+          timers.clear();
+          content.replaceChildren();
+          slot.hidden = true;
+          resetAmbient();
+          return;
+        }
+        index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur);
+        fillDots();
+        if (curGone) show(index);
+        return;
+      }
+      if (cur && updated.includes(cur.Id)) {
+        const fresh = getStoredItem(cur.Id);
+        if (!fresh) return;
+        const merged = { ...cur, ...fresh };
+        pool[index] = merged;
+        if (!content.classList.contains("is-out")) content.replaceChildren(...buildContent(merged).childNodes);
+      }
+    }
     function setMuteIcon() {
       if (!video) return;
-      muteBtn.replaceChildren(svg(video.muted ? ICON_MUTED : ICON_SOUND));
+      muteBtn.replaceChildren(svg2(video.muted ? ICON_MUTED : ICON_SOUND));
       muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     async function startTrailer(item, myGen) {
@@ -2090,12 +2789,7 @@
         setMuteIcon();
       });
       dots = h("div", { class: "lfx-bb__dots", role: "group", "aria-label": "Empfehlung w\xE4hlen" });
-      pool.forEach((it, i) => {
-        const b = h("button", { type: "button", class: "lfx-bb__dotbtn", "aria-label": `Empfehlung ${i + 1}: ${it.Name || ""}` });
-        b.addEventListener("click", () => show(i));
-        dots.append(b);
-      });
-      if (pool.length < 2) dots.hidden = true;
+      fillDots();
       card2 = h("div", { class: "lfx-bb" }, [
         media,
         h("div", { class: "lfx-bb__shade", "aria-hidden": "true" }),
@@ -2125,6 +2819,7 @@
       card2.addEventListener("mouseleave", onLeave);
       document.addEventListener("visibilitychange", onVis);
       cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
+      cleanupFns.push(onItemsChanged(onChanged2));
     }
     async function init2() {
       let items = [];
@@ -2164,7 +2859,7 @@
   // src/js/features/rows.js
   var rows_exports = {};
   __export(rows_exports, {
-    render: () => render4
+    render: () => render5
   });
 
   // src/js/features/rows/logic.js
@@ -2741,12 +3436,30 @@
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev, next, indicator });
   }
-  function render4(slot) {
+  function render5(slot) {
     let disposed = false;
     let observer2 = null;
     const disposers = [];
     slot.hidden = false;
     slot.textContent = "";
+    disposers.push(onItemsChanged(({ removed }) => {
+      if (disposed || !removed || !removed.length) return;
+      const gone = new Set(removed);
+      for (const row of [...slot.querySelectorAll(".lfx-row")]) {
+        const track = row.querySelector(".lfx-row__track");
+        if (!track) continue;
+        let changed = false;
+        for (const card2 of [...track.querySelectorAll(".lfx-card[data-lfx-id]")]) {
+          if (gone.has(card2.dataset.lfxId)) {
+            card2.remove();
+            changed = true;
+          }
+        }
+        if (!changed) continue;
+        if (!track.querySelector(".lfx-card")) row.remove();
+        else track.dispatchEvent(new Event("scroll"));
+      }
+    }));
     async function loadRow(rowEl, def) {
       try {
         const items = (await def.load(def)).filter((i) => i && i.Id);
@@ -2818,7 +3531,7 @@
     const tab = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab && tab.isConnected ? tab : null;
   }
-  function teardown2() {
+  function teardown3() {
     for (const fn of cleanups.splice(0)) {
       try {
         fn && fn();
@@ -2830,7 +3543,7 @@
     document.documentElement.classList.remove("lfx-home-on");
   }
   function build(tab) {
-    teardown2();
+    teardown3();
     const billboardSlot = h("section", { id: "lfx-billboard", class: "lfx-billboard", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { id: "lfx-rows", class: "lfx-rows" });
     const root2 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
@@ -2869,7 +3582,7 @@
     update: () => ensure(),
     unmount: () => {
       clearTimeout(waitTimer);
-      teardown2();
+      teardown3();
     }
   };
   var home_default = homeFeature;
@@ -3015,18 +3728,22 @@
     play: '<path d="M8 5v14l11-7z"/>',
     plus: '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>',
     check: '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>',
-    like: '<path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>',
     chevron: '<path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z"/>'
   };
-  function svg2(name, outline = false) {
-    const attrs = outline ? 'fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"' : 'fill="currentColor"';
-    return `<svg viewBox="0 0 24 24" width="24" height="24" ${attrs} aria-hidden="true" focusable="false">${ICONS2[name]}</svg>`;
+  function svg3(name) {
+    return `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${ICONS2[name]}</svg>`;
   }
   var active = false;
-  var session = null;
+  var session2 = null;
   var openTimer = null;
   var closeTimer = null;
-  var listeners = [];
+  var listeners2 = [];
+  var unsubItems = null;
+  var lastOver = null;
+  var wasHeld = false;
+  function holdOpen() {
+    return Boolean(isMenuOpen() || isChooserOpen());
+  }
   function readDelay() {
     try {
       const v = getComputedStyle(document.documentElement).getPropertyValue("--lfx-hover-delay").trim();
@@ -3108,6 +3825,16 @@
     closeNow();
     play(item, { resume });
   }
+  function openMenu(s) {
+    wasHeld = true;
+    clearClose();
+    openItemMenu(s.item, s.btns.menu.btn, { onClose: () => onMenuClosed(s) });
+  }
+  function downloadClick(s) {
+    wasHeld = true;
+    clearClose();
+    startDownload(s.item, s.btns.dl.btn);
+  }
   function showDetails(s) {
     const item = s.item;
     closeNow();
@@ -3131,15 +3858,22 @@
     b.btn.classList.toggle("is-on", Boolean(pressed));
   }
   function updateButtons(s) {
-    setButton(s.btns.play, "Abspielen", svg2("play"));
+    setButton(s.btns.play, "Abspielen", svg3("play"));
     setButton(
       s.btns.list,
       s.fav ? "Aus Meiner Liste entfernen" : "Zu Meiner Liste hinzuf\xFCgen",
-      s.fav ? svg2("check") : svg2("plus"),
+      s.fav ? svg3("check") : svg3("plus"),
       Boolean(s.fav)
     );
-    setButton(s.btns.like, s.like ? "Gef\xE4llt mir nicht mehr" : "Gef\xE4llt mir", svg2("like", !s.like), Boolean(s.like));
-    setButton(s.btns.more, "Weitere Infos", svg2("chevron"));
+    setButton(
+      s.btns.like,
+      s.like ? "Gef\xE4llt mir nicht mehr" : "Gef\xE4llt mir",
+      s.like ? ICON_LIKE : ICON_LIKE_OUTLINE,
+      Boolean(s.like)
+    );
+    setButton(s.btns.dl, /^(Series|Season)$/.test(s.item.Type) ? "Episoden herunterladen" : "Herunterladen", ICON_DOWNLOAD);
+    setButton(s.btns.menu, "Mehr", ICON_MORE);
+    setButton(s.btns.more, "Weitere Infos", svg3("chevron"));
   }
   function badge2(text, cls = "") {
     return h("span", { class: `lfx-hc__badge ${cls}`.trim() }, text);
@@ -3205,25 +3939,34 @@
       }
     }
   }
-  function render5(s) {
+  function render6(s) {
     s.fav = Boolean(userData(s).IsFavorite);
     s.like = userData(s).Likes === true;
     s.el.setAttribute("aria-label", s.item.Name || s.card.querySelector("[aria-label]")?.getAttribute("aria-label") || "Titel");
     updateButtons(s);
     renderBody(s);
     applyMedia(s);
+    refreshDownload(s);
   }
-  async function hydrate(s) {
+  function refreshDownload(s) {
+    const item = s.item;
+    Promise.resolve().then(() => canDownload(item)).then((ok) => {
+      if (session2 !== s || !s.item || s.item.Id !== item.Id) return;
+      s.btns.dl.wrap.hidden = !ok;
+    }).catch(() => {
+    });
+  }
+  async function hydrate(s, force = false) {
     const id = s.item.Id;
-    if (s.item.Genres && s.item.UserData) return;
+    if (!force && s.item.Genres && s.item.UserData) return;
     try {
       const full = await cached(`hc:${getUserId()}:${id}`, () => getItem(id), ITEM_TTL);
-      if (session !== s || !full) return;
+      if (session2 !== s || !full) return;
       const keepFav = s.busyFav ? s.fav : void 0;
       const keepLike = s.busyLike ? s.like : void 0;
       s.item = { ...s.item, ...full };
       putItems([s.item]);
-      render5(s);
+      render6(s);
       if (keepFav !== void 0) s.fav = keepFav;
       if (keepLike !== void 0) s.like = keepLike;
       if (keepFav !== void 0 || keepLike !== void 0) updateButtons(s);
@@ -3238,12 +3981,16 @@
     s.btns = {
       play: circleButton("lfx-hc__btn--play", "Abspielen", () => startPlayback(s)),
       list: circleButton("", "Meine Liste", () => toggleFavorite(s)),
-      like: circleButton("", "Gef\xE4llt mir", () => toggleLike(s)),
+      like: circleButton("lfx-hc__btn--like", "Gef\xE4llt mir", () => toggleLike(s)),
+      dl: circleButton("lfx-hc__btn--dl", "Herunterladen", () => downloadClick(s)),
+      menu: circleButton("lfx-hc__btn--menu", "Mehr", () => openMenu(s)),
       more: circleButton("lfx-hc__btn--more", "Weitere Infos", () => showDetails(s))
     };
+    s.btns.dl.wrap.hidden = true;
+    s.btns.menu.btn.setAttribute("aria-haspopup", "menu");
     const body = h("div", { class: "lfx-hc__body" });
     const actions = h("div", { class: "lfx-hc__actions" }, [
-      h("div", { class: "lfx-hc__actions-main" }, [s.btns.play.wrap, s.btns.list.wrap, s.btns.like.wrap]),
+      h("div", { class: "lfx-hc__actions-main" }, [s.btns.play.wrap, s.btns.list.wrap, s.btns.like.wrap, s.btns.dl.wrap, s.btns.menu.wrap]),
       s.btns.more.wrap
     ]);
     const info = h("div", { class: "lfx-hc__info" }, [actions, body]);
@@ -3270,14 +4017,14 @@
       busyLike: false
     };
     const el = buildPopup(s);
-    session = s;
+    session2 = s;
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = window.innerHeight;
     const rect = computePopupRect(cardRect, vw, SCALE, { minWidth: MIN_WIDTH, viewportH: vh });
     el.style.left = `${rect.left}px`;
     el.style.top = `${rect.top}px`;
     el.style.width = `${rect.width}px`;
-    render5(s);
+    render6(s);
     document.body.append(el);
     const total = el.offsetHeight;
     let top = rect.top;
@@ -3295,11 +4042,11 @@
     if (s.removeTimer) clearTimeout(s.removeTimer);
     s.removeTimer = null;
     s.el.remove();
-    if (session === s) session = null;
+    if (session2 === s) session2 = null;
   }
   function close() {
     clearClose();
-    const s = session;
+    const s = session2;
     if (!s || s.closing) return;
     s.closing = true;
     s.el.classList.remove("is-open");
@@ -3308,10 +4055,10 @@
   }
   function closeNow() {
     clearClose();
-    if (session) removeSession(session);
+    if (session2) removeSession(session2);
   }
   function scheduleClose() {
-    if (closeTimer || !session || session.closing) return;
+    if (closeTimer || !session2 || session2.closing) return;
     closeTimer = setTimeout(() => {
       closeTimer = null;
       close();
@@ -3319,12 +4066,41 @@
   }
   function leave() {
     clearOpen();
-    if (session) scheduleClose();
+    if (holdOpen()) return;
+    if (session2) scheduleClose();
+  }
+  function pointerStillInside(s, el) {
+    if (el && el.isConnected && (s.el.contains(el) || s.card.contains(el))) return true;
+    try {
+      return s.el.matches(":hover") || s.card.matches(":hover");
+    } catch {
+      return false;
+    }
+  }
+  function onMenuClosed(s) {
+    wasHeld = false;
+    if (session2 !== s || s.closing) return;
+    if (!pointerStillInside(s, lastOver)) scheduleClose();
+  }
+  function onMove(e) {
+    if (e.pointerType && e.pointerType !== "mouse") return;
+    lastOver = e.target;
+    if (!wasHeld) return;
+    if (holdOpen()) return;
+    wasHeld = false;
+    if (session2 && !session2.closing && !pointerStillInside(session2, e.target)) scheduleClose();
   }
   function onOver(e) {
     if (e.pointerType && e.pointerType !== "mouse") return;
     const t = e.target;
-    if (session && !session.closing && session.el.contains(t)) {
+    lastOver = t;
+    if (holdOpen()) {
+      wasHeld = true;
+      clearOpen();
+      return;
+    }
+    wasHeld = false;
+    if (session2 && !session2.closing && session2.el.contains(t)) {
       clearClose();
       return;
     }
@@ -3334,9 +4110,9 @@
       return;
     }
     clearClose();
-    if (session && !session.closing && session.card === target.card) return;
+    if (session2 && !session2.closing && session2.card === target.card) return;
     clearOpen();
-    if (session) closeNow();
+    if (session2) closeNow();
     openTimer = setTimeout(() => {
       openTimer = null;
       open(target);
@@ -3344,17 +4120,38 @@
   }
   function onOut(e) {
     if (e.pointerType && e.pointerType !== "mouse") return;
+    if (holdOpen()) return;
     if (!e.relatedTarget) leave();
   }
   function onKey(e) {
-    if (e.key === "Escape" && session) close();
+    if (holdOpen()) return;
+    if (e.key === "Escape" && session2) close();
   }
-  function onAbort() {
+  function onHash() {
     clearOpen();
     closeNow();
   }
+  function onAbort() {
+    if (holdOpen()) return;
+    onHash();
+  }
+  function onItems({ removed = [], updated = [] } = {}) {
+    const s = session2;
+    if (!s || !s.item) return;
+    const id = s.item.Id;
+    if (removed.includes(id)) {
+      closeNow();
+      return;
+    }
+    if (updated.includes(id)) {
+      clearCache(`hc:${getUserId()}:${id}`);
+      const fresh = getStoredItem(id);
+      if (fresh) s.item = { ...s.item, ...fresh };
+      hydrate(s, true);
+    }
+  }
   function onClickCapture(e) {
-    if (session && session.el.contains(e.target)) return;
+    if (session2 && session2.el.contains(e.target)) return;
     onAbort();
   }
   function start() {
@@ -3362,21 +4159,27 @@
     active = true;
     const add = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
-      listeners.push(() => target.removeEventListener(type, fn, opts));
+      listeners2.push(() => target.removeEventListener(type, fn, opts));
     };
     add(document, "pointerover", onOver, { passive: true });
     add(document, "pointerout", onOut, { passive: true });
+    add(document, "pointermove", onMove, { passive: true });
     add(document, "keydown", onKey);
     add(document, "click", onClickCapture, true);
     add(window, "scroll", onAbort, { capture: true, passive: true });
     add(window, "resize", onAbort, { passive: true });
-    add(window, "hashchange", onAbort);
+    add(window, "hashchange", onHash);
+    unsubItems = onItemsChanged(onItems);
   }
   function stop() {
     active = false;
+    wasHeld = false;
+    lastOver = null;
+    if (typeof unsubItems === "function") unsubItems();
+    unsubItems = null;
     clearOpen();
     closeNow();
-    for (const off of listeners.splice(0)) off();
+    for (const off of listeners2.splice(0)) off();
   }
   var hovercardFeature = {
     name: "hovercard",
@@ -3447,7 +4250,7 @@
     const tab = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab && tab.isConnected ? tab : null;
   }
-  function teardown3() {
+  function teardown4() {
     for (const fn of cleanups2.splice(0)) {
       try {
         fn && fn();
@@ -3501,7 +4304,7 @@
     SortOrder: "Descending",
     Limit: 10
   }).then((l) => uniqueTitles(l, 10));
-  function svg3(path) {
+  function svg4(path) {
     const w = h("span", { class: "lfx-np__ico", "aria-hidden": "true" });
     w.innerHTML = `<svg viewBox="0 0 24 24" focusable="false">${path}</svg>`;
     return w;
@@ -3512,8 +4315,30 @@
   var ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
   function roundButton2(label, icon2, onClick) {
     const b = h("button", { type: "button", class: "lfx-np__btn", "aria-label": label, title: label, onclick: onClick });
-    b.append(svg3(icon2));
+    b.append(svg4(icon2));
     return b;
+  }
+  function iconButton(mod, label, icon2, onClick) {
+    const b = h("button", { type: "button", class: `lfx-np__btn lfx-np__btn--${mod}`, "aria-label": label, title: label });
+    b.append(h("span", { class: "lfx-np__ico", "aria-hidden": "true" }));
+    b.firstChild.innerHTML = icon2;
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick(b);
+    });
+    return b;
+  }
+  function extraButtons(item) {
+    const folder = item.Type === "Series" || item.Type === "Season";
+    const dl = iconButton("dl", folder ? "Episoden herunterladen" : "Herunterladen", ICON_DOWNLOAD, (b) => startDownload(item, b));
+    dl.hidden = true;
+    Promise.resolve(canDownload(item)).then((ok) => {
+      if (ok && dl.isConnected) dl.hidden = false;
+    }, () => {
+    });
+    const menu = iconButton("menu", "Mehr", ICON_MORE, (b) => openItemMenu(item, b));
+    menu.setAttribute("aria-haspopup", "menu");
+    return [dl, menu];
   }
   function favoriteButton(item) {
     let fav = Boolean(item.UserData && item.UserData.IsFavorite);
@@ -3555,6 +4380,7 @@
         play(item, { resume: false });
       }),
       favoriteButton(item),
+      ...extraButtons(item),
       roundButton2("Weitere Infos", ICON_DOWN, open2)
     ]);
     const genres = (item.Genres || []).slice(0, 4).join(" \u2022 ");
@@ -3594,7 +4420,7 @@
     ]);
   }
   function build2(tab) {
-    teardown3();
+    teardown4();
     let disposed = false;
     const scrollers = [];
     const sections = new Map(SECTIONS.map((d) => [d.id, sectionShell(d)]));
@@ -3646,6 +4472,25 @@
       const pill = pills.get(id);
       if (pill && pill.lastChild) pill.lastChild.textContent = label;
     }
+    let newSeriesIds = /* @__PURE__ */ new Set();
+    function onChanged2({ removed = [], updated = [] }) {
+      if (disposed) return;
+      const list = root2.querySelector(".lfx-np__list");
+      for (const id of removed) {
+        root2.querySelectorAll("[data-lfx-id]").forEach((el) => {
+          if (el.dataset.lfxId === id) el.remove();
+        });
+      }
+      if (list && removed.length && !list.children.length) drop("new");
+      if (list) {
+        for (const id of updated) {
+          const fresh = getStoredItem(id);
+          const entry = [...list.children].find((el) => el.dataset.lfxId === id);
+          if (fresh && entry) entry.replaceWith(createNewEntry(fresh, newSeriesIds));
+        }
+      }
+    }
+    cleanups2.push(onItemsChanged(onChanged2));
     async function fill2(id, loader, renderer, fallbackLabel) {
       try {
         const res = await loader();
@@ -3659,6 +4504,7 @@
         putItems(items);
         const newSeries = await getNewSeriesIds();
         if (disposed) return;
+        newSeriesIds = newSeries;
         if (fallbackLabel && !meta.charted) relabel(id, fallbackLabel);
         renderer(sections.get(id), items, newSeries, meta);
       } catch (e) {
@@ -3721,16 +4567,144 @@
     update: () => ensure2(),
     unmount: () => {
       clearTimeout(waitTimer2);
-      teardown3();
+      teardown4();
     }
   };
   var newpopular_default = newPopularFeature;
 
+  // src/js/features/contextmenu.js
+  var EXCLUDED4 = /^\/(video|login|dashboard|selectserver|addserver|startup|forgotpassword|resetpassword|wizard)/;
+  var TARGET = ".lfx-card[data-lfx-id], .lfx-modal__ep[data-lfx-id]";
+  var LONG_PRESS_MS = 500;
+  var MOVE_TOLERANCE = 10;
+  var CLICK_WINDOW_MS = 700;
+  var DOUBLE_OPEN_MS = 800;
+  var active2 = false;
+  var listeners3 = [];
+  var pressTimer = null;
+  var press = null;
+  var swallowUntil = 0;
+  var lastLongPressAt = -Infinity;
+  function resolve(el) {
+    if (!el || typeof el.closest !== "function") return null;
+    return el.closest(TARGET);
+  }
+  function itemFor(el, fallbackType) {
+    const id = el.dataset.lfxId;
+    return getStoredItem(id) || { Id: id, Type: el.dataset.lfxType || fallbackType || void 0 };
+  }
+  function openFor(el, x, y) {
+    const item = itemFor(el);
+    const opts = {};
+    if (el.classList.contains("lfx-modal__ep") && el.parentElement) {
+      opts.siblings = [...el.parentElement.children].filter((n) => n.matches(".lfx-modal__ep[data-lfx-id]")).map((n) => itemFor(n, "Episode"));
+    }
+    openItemMenu(item, { x, y }, opts);
+  }
+  function inNativeDialog(el) {
+    return Boolean(el.closest && el.closest(".dialogContainer, .dialog"));
+  }
+  function onContextMenu(e) {
+    const el = resolve(e.target);
+    if (!el) return;
+    if (e.shiftKey) return;
+    if (isMenuOpen() && inNativeDialog(el)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (Date.now() - lastLongPressAt < DOUBLE_OPEN_MS) return;
+    openFor(el, e.clientX, e.clientY);
+  }
+  function cancelPress() {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    press = null;
+  }
+  function onTouchStart(e) {
+    if (e.touches && e.touches.length > 1) {
+      cancelPress();
+      return;
+    }
+    cancelPress();
+    const el = resolve(e.target);
+    if (!el) return;
+    if (isMenuOpen() && inNativeDialog(el)) return;
+    const t = e.touches && e.touches[0] || e;
+    const state4 = { x: t.clientX, y: t.clientY, fired: false };
+    press = state4;
+    pressTimer = setTimeout(() => {
+      pressTimer = null;
+      if (press !== state4 || !el.isConnected) return;
+      state4.fired = true;
+      lastLongPressAt = Date.now();
+      openFor(el, state4.x, state4.y);
+    }, LONG_PRESS_MS);
+  }
+  function onTouchMove(e) {
+    if (!press || press.fired) return;
+    const t = e.touches && e.touches[0];
+    if (!t) return;
+    if (Math.hypot(t.clientX - press.x, t.clientY - press.y) > MOVE_TOLERANCE) cancelPress();
+  }
+  function onTouchEnd() {
+    if (press && press.fired) swallowUntil = Date.now() + CLICK_WINDOW_MS;
+    cancelPress();
+  }
+  function onClickCapture2(e) {
+    if (!swallowUntil) return;
+    const until = swallowUntil;
+    if (e.target && e.target.closest && e.target.closest(".lfx-proxywrap")) return;
+    swallowUntil = 0;
+    if (Date.now() > until) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+  function start2() {
+    if (active2) return;
+    active2 = true;
+    const add = (target, type, fn, opts) => {
+      target.addEventListener(type, fn, opts);
+      listeners3.push(() => target.removeEventListener(type, fn, opts));
+    };
+    add(document, "contextmenu", onContextMenu, true);
+    add(document, "touchstart", onTouchStart, { passive: true });
+    add(document, "touchmove", onTouchMove, { passive: true });
+    add(document, "touchend", onTouchEnd, { passive: true });
+    add(document, "touchcancel", cancelPress, { passive: true });
+    add(window, "scroll", cancelPress, { capture: true, passive: true });
+    add(window, "click", onClickCapture2, true);
+  }
+  function stop2() {
+    active2 = false;
+    cancelPress();
+    swallowUntil = 0;
+    lastLongPressAt = -Infinity;
+    for (const off of listeners3.splice(0)) off();
+  }
+  var contextmenuFeature = {
+    name: "contextmenu",
+    match(route) {
+      return !isTv() && !EXCLUDED4.test(route.path);
+    },
+    mount() {
+      start2();
+      startItemWatch();
+    },
+    unmount() {
+      stop2();
+      stopItemWatch();
+      closeChooser();
+      cancelDownloads();
+      clearToast();
+    }
+  };
+  var contextmenu_default = contextmenuFeature;
+
   // src/js/features/index.js
-  var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default];
+  var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.1.5";
+  var VERSION = "1.2.0";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

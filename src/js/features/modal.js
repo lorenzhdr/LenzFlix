@@ -9,6 +9,9 @@ import { isTv } from '../core/layout.js';
 import { parseHash } from '../core/router.js';
 import { play } from '../core/playback.js';
 import { setFavorite, getAuth } from '../core/api.js';
+import { onItemsChanged } from '../core/itemmenu.js';
+import { isChooserOpen } from '../core/download.js';
+import { clearCache } from '../core/cache.js';
 import * as data from './modal/data.js';
 import { hasResume, pickInitialSeason } from './modal/format.js';
 import { TITLE_ID, buildSkeleton, buildError, buildDetail, renderEpisodes, renderCards, icon, setFavState, setLikeState, setPlayLabel, detailHref } from './modal/render.js';
@@ -23,6 +26,9 @@ let state = null; // offenes Modal
 let clickInstalled = false;
 
 const rootEl = () => document.documentElement;
+
+/** Natives Jellyfin-Menü/Dialog oder LenzFlix-Download-Sheet liegt über dem Modal. */
+const overlayOnTop = () => Boolean(document.querySelector('.dialogContainer')) || isChooserOpen();
 
 function isBlockedRoute(route) {
   return BLOCKED_PATHS.some((p) => route.path === p || route.path.startsWith(`${p}/`) || (p === '/dashboard' && route.path.startsWith('/dashboard')));
@@ -89,10 +95,16 @@ function create(opener) {
   const modal = h('div', { class: 'lfx-modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': TITLE_ID, tabindex: '-1' }, [closeBtn, content]);
   overlay.append(modal);
   overlay.scrollTop = 0;
-  const onOverlayClick = (e) => { if (e.target === overlay) closeModal(); };
+  const onOverlayClick = (e) => {
+    if (e.target !== overlay) return;
+    if (e.target.closest && e.target.closest('.dialogContainer, .dialogBackdrop, #lfx-sheet')) return;
+    if (overlayOnTop()) return;
+    closeModal();
+  };
   overlay.addEventListener('click', onOverlayClick);
 
-  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, seasons: [], seasonId: null, selectedEpisodeId: null, onOverlayClick };
+  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+  state.unsub = onItemsChanged(onChanged);
   rootEl().classList.add('lfx-modal-open');
   document.addEventListener('keydown', onKeydown, true);
   window.addEventListener('popstate', onPopState);
@@ -109,6 +121,7 @@ function teardown() {
   const s = state;
   state = null;
   clearTimeout(s.fallback);
+  if (typeof s.unsub === 'function') s.unsub();
   s.overlay.removeEventListener('click', s.onOverlayClick);
   document.removeEventListener('keydown', onKeydown, true);
   window.removeEventListener('popstate', onPopState);
@@ -116,7 +129,7 @@ function teardown() {
   rootEl().classList.remove('lfx-modal-open');
   unmountPoint(s.overlay);
   const op = s.opener;
-  if (op && op.isConnected && typeof op.focus === 'function') op.focus({ preventScroll: true });
+  if (op && op.isConnected && typeof op.focus === 'function' && !overlayOnTop()) op.focus({ preventScroll: true });
   return s.after;
 }
 
@@ -164,6 +177,7 @@ function focusables() {
 
 function onKeydown(e) {
   if (!state) return;
+  if (overlayOnTop()) return;
   if (e.key === 'Escape') {
     const open = state.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
     e.stopPropagation();
@@ -199,11 +213,13 @@ async function resolveTarget(id, hint) {
   return { targetId, sel };
 }
 
-async function loadInto(id, hint, replace) {
+async function loadInto(id, hint, replace, refresh = false) {
   const s = state;
   const token = ++s.token;
   const stale = () => state !== s || s.token !== token;
-  if (replace) {
+  if (refresh) {
+    // Aktualisierung: bisherigen Inhalt stehen lassen, kein Skeleton, kein Scroll-Reset, keine History-Änderung.
+  } else if (replace) {
     s.content.replaceChildren(buildSkeleton());
     s.overlay.scrollTop = 0;
     if (s.pushed) { try { history.replaceState({ ...(history.state || {}), lfxModal: true }, '', location.href); } catch { /* egal */ } }
@@ -214,11 +230,12 @@ async function loadInto(id, hint, replace) {
   let sel;
   try {
     const r = await resolveTarget(id, hint);
-    sel = r.sel;
+    sel = refresh ? { seasonId: s.seasonId, episodeId: s.selectedEpisodeId } : r.sel;
     main = await data.loadItem(r.targetId);
     if (!main) throw new Error('Titel nicht gefunden');
   } catch (err) {
     if (stale()) return;
+    if (refresh) return;
     const href = detailHref(id, null);
     s.content.replaceChildren(buildError(err && err.message ? 'Der Server hat nicht geantwortet.' : '', href, (hash) => navigate(hash)));
     return;
@@ -267,9 +284,31 @@ async function loadSeriesParts(s, token, H) {
 async function showSeason(s, token, H) {
   const episodes = await data.loadEpisodes(s.main.Id, s.seasonId);
   if (state !== s || s.token !== token) return;
+  s.episodes = episodes;
   renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
   const sel = s.parts.episodesSlot.querySelector('.lfx-modal__ep.is-selected');
   if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+}
+
+/** Reaktion auf Bibliotheksänderungen (core/itemmenu.js). */
+function onChanged({ removed = [], updated = [] } = {}) {
+  const s = state;
+  if (!s || !s.main) return;
+  const id = s.main.Id;
+  if (removed.includes(id)) { closeModal(); return; }
+  const gone = removed.filter((rid) => s.episodes.some((e) => e.Id === rid));
+  if (gone.length) {
+    s.episodes = s.episodes.filter((e) => !gone.includes(e.Id));
+    clearCache(`lfx:modal:eps:${id}:`);
+    for (const rid of gone) {
+      s.overlay.querySelectorAll('.lfx-modal__ep').forEach((row) => { if (row.dataset.id === rid) row.remove(); });
+    }
+  }
+  if (updated.includes(id)) {
+    for (const key of ['item', 'seasons', 'next', 'similar', 'coll']) clearCache(`lfx:modal:${key}:${id}`);
+    clearCache(`lfx:modal:eps:${id}:`);
+    loadInto(id, null, true, true);
+  }
 }
 
 function navigate(hash) {

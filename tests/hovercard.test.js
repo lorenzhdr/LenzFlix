@@ -14,6 +14,21 @@ vi.mock('../src/js/core/api.js', () => ({
 }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn() }));
 vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
+const hoisted = vi.hoisted(() => ({ changed: null, unsub: null }));
+vi.mock('../src/js/core/itemmenu.js', () => ({
+  openItemMenu: vi.fn(),
+  isMenuOpen: vi.fn(() => false),
+  onItemsChanged: vi.fn((fn) => {
+    hoisted.changed = fn;
+    hoisted.unsub = vi.fn();
+    return hoisted.unsub;
+  }),
+}));
+vi.mock('../src/js/core/download.js', () => ({
+  startDownload: vi.fn(),
+  canDownload: vi.fn(async () => false),
+  isChooserOpen: vi.fn(() => false),
+}));
 
 import hovercard, {
   computePopupRect,
@@ -23,6 +38,8 @@ import hovercard, {
   resolveTarget,
 } from '../src/js/features/hovercard.js';
 import { getItem, setFavorite } from '../src/js/core/api.js';
+import { openItemMenu, isMenuOpen } from '../src/js/core/itemmenu.js';
+import { startDownload, canDownload, isChooserOpen } from '../src/js/core/download.js';
 import { clearCache } from '../src/js/core/cache.js';
 import { clearItemStore, putItems } from '../src/js/core/itemstore.js';
 
@@ -45,6 +62,9 @@ beforeEach(() => {
   window.matchMedia = () => ({ matches: true });
   clearCache();
   clearItemStore();
+  isMenuOpen.mockReturnValue(false);
+  isChooserOpen.mockReturnValue(false);
+  canDownload.mockResolvedValue(false);
   hovercard.mount();
 });
 afterEach(() => {
@@ -161,7 +181,7 @@ describe('Favoriten', () => {
   it('optimistisch umschalten', async () => {
     setFavorite.mockResolvedValue({});
     const pop = await openPopup();
-    const btn = pop.querySelectorAll('.lfx-hc__btn')[1];
+    const btn = pop.querySelector('.lfx-hc__btnwrap .lfx-hc__btn:not([class*="--"])');
     btn.click();
     expect(btn.classList.contains('is-on')).toBe(true);
     await vi.advanceTimersByTimeAsync(0);
@@ -172,7 +192,7 @@ describe('Favoriten', () => {
     setFavorite.mockRejectedValue(new Error('x'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const pop = await openPopup();
-    const btn = pop.querySelectorAll('.lfx-hc__btn')[1];
+    const btn = pop.querySelector('.lfx-hc__btnwrap .lfx-hc__btn:not([class*="--"])');
     btn.click();
     expect(btn.classList.contains('is-on')).toBe(true);
     await vi.advanceTimersByTimeAsync(0);
@@ -187,6 +207,91 @@ describe('Favoriten', () => {
     expect(getItem).toHaveBeenCalledTimes(1);
     expect(document.querySelector('.lfx-hc__genres').textContent).toContain('Drama');
     expect(document.querySelector('.lfx-hc__badge--rating').textContent).toBe('16');
+  });
+});
+
+describe('Neue Buttons und Menü', () => {
+  async function openPopup(extra) {
+    const c = makeCard(extra);
+    over(c.img);
+    vi.advanceTimersByTime(500);
+    await vi.advanceTimersByTimeAsync(0);
+    return { c, pop: document.getElementById('lfx-hovercard') };
+  }
+  it('Reihenfolge der Buttons', async () => {
+    const { pop } = await openPopup();
+    const cls = [...pop.querySelectorAll('.lfx-hc__actions-main .lfx-hc__btn')].map((b) => b.className);
+    expect(cls[0]).toContain('lfx-hc__btn--play');
+    expect(cls[2]).toContain('lfx-hc__btn--like');
+    expect(cls[3]).toContain('lfx-hc__btn--dl');
+    expect(cls[4]).toContain('lfx-hc__btn--menu');
+    expect(pop.querySelector('.lfx-hc__btn--menu').getAttribute('aria-haspopup')).toBe('menu');
+  });
+  it('Download-Wrap bleibt hidden bei canDownload false', async () => {
+    const { pop } = await openPopup();
+    expect(pop.querySelector('.lfx-hc__btn--dl').closest('.lfx-hc__btnwrap').hidden).toBe(true);
+  });
+  it('Download-Wrap wird sichtbar bei canDownload true; Klick startet Download', async () => {
+    canDownload.mockResolvedValue(true);
+    const { pop } = await openPopup();
+    const btn = pop.querySelector('.lfx-hc__btn--dl');
+    expect(btn.closest('.lfx-hc__btnwrap').hidden).toBe(false);
+    expect(btn.getAttribute('aria-label')).toBe('Herunterladen');
+    btn.click();
+    expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Type: 'Movie' }), btn);
+  });
+  it('Series: Label „Episoden herunterladen“', async () => {
+    const { pop } = await openPopup({ Type: 'Series' });
+    expect(pop.querySelector('.lfx-hc__btn--dl').getAttribute('aria-label')).toBe('Episoden herunterladen');
+  });
+  it('Mehr ruft openItemMenu', async () => {
+    const { c, pop } = await openPopup();
+    const btn = pop.querySelector('.lfx-hc__btn--menu');
+    btn.click();
+    expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: c.id }), btn, expect.any(Object));
+  });
+  it('Daumen: is-on und Icon-Wechsel', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    const { pop } = await openPopup();
+    const btn = pop.querySelector('.lfx-hc__btn--like');
+    const before = btn.innerHTML;
+    expect(btn.classList.contains('is-on')).toBe(false);
+    btn.click();
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn.innerHTML).not.toBe(before);
+    vi.unstubAllGlobals();
+  });
+  it('bei offenem Menü schließen pointerout, Klick außerhalb und Escape nicht', async () => {
+    const { pop } = await openPopup();
+    isMenuOpen.mockReturnValue(true);
+    document.body.dispatchEvent(new MouseEvent('pointerout', { bubbles: true }));
+    document.body.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    vi.advanceTimersByTime(1000);
+    expect(pop.classList.contains('is-closing')).toBe(false);
+    expect(document.getElementById('lfx-hovercard')).toBe(pop);
+  });
+  it('bei offenem Chooser schließt die Hovercard nicht', async () => {
+    const { pop } = await openPopup();
+    isChooserOpen.mockReturnValue(true);
+    document.body.click();
+    document.body.dispatchEvent(new MouseEvent('pointerout', { bubbles: true }));
+    vi.advanceTimersByTime(1000);
+    expect(document.getElementById('lfx-hovercard')).toBe(pop);
+  });
+  it('onItemsChanged removed schließt, updated lädt neu; unmount meldet ab', async () => {
+    const { c } = await openPopup();
+    getItem.mockResolvedValue({ Id: c.id, Type: 'Movie', Genres: ['Neu'], UserData: {} });
+    hoisted.changed({ removed: [], updated: [c.id] });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getItem).toHaveBeenCalledWith(c.id);
+    hoisted.changed({ removed: [c.id], updated: [] });
+    expect(document.getElementById('lfx-hovercard')).toBeNull();
+    const unsub = hoisted.unsub;
+    hovercard.unmount();
+    expect(unsub).toHaveBeenCalled();
   });
 });
 

@@ -245,3 +245,43 @@ html.lfx-js .lfx-bb__dotbtn.is-active::after { background: #fff; }
 /* Mobile Genre-Zeile + "Meine Liste"-Button: Desktop ausgeblendet (mobile.css schaltet um) */
 html.lfx-js .lfx-bb__genres,
 html.lfx-js .lfx-bb__btn--list { display: none; }
+
+/* Runde Aktions-Buttons: Download + Mehr (Spezifität über .lfx-bb__btn aus billboard.css/mobile.css) */
+html.lfx-js .lfx-bb__btn.lfx-bb__btn--dl,
+html.lfx-js .lfx-bb__btn.lfx-bb__btn--menu {
+  flex: none;
+  width: var(--lfx-btn-h);
+  height: var(--lfx-btn-h);
+  padding: 0;
+  border: 2px solid var(--lfx-icon-circle-border);
+  border-radius: 50%;
+  background: var(--lfx-icon-circle);
+  color: #fff;
+}
+html.lfx-js .lfx-bb__btn--dl[hidden],
+html.lfx-js .lfx-bb__btn--menu[hidden] { display: none; }
+html.lfx-js .lfx-bb__btn--dl svg,
+html.lfx-js .lfx-bb__btn--menu svg { display: block; width: 22px; height: 22px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--dl:hover,
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--menu:hover { border-color: #fff; background: rgba(255, 255, 255, 0.15); }
+}
+@media (max-width: 799px) {
+  html.lfx-js .lfx-bb__buttons { flex-wrap: nowrap; }
+  /* Mit Download + Mehr ist neben „Abspielen“ kein Platz mehr für den Text von „Meine Liste“:
+     dort nur noch als runder Button (Name steht im aria-label). */
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--list {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 2px solid var(--lfx-icon-circle-border);
+    border-radius: 50%;
+    background: var(--lfx-icon-circle);
+  }
+  html.lfx-js .lfx-bb__btn--list span { display: none; }
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--dl,
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--menu { width: 44px; height: 44px; }
+  html.lfx-js .lfx-bb__btn--dl svg,
+  html.lfx-js .lfx-bb__btn--menu svg { width: 20px; height: 20px; }
+}

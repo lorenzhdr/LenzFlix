@@ -14,12 +14,28 @@ vi.mock('../src/js/core/api.js', async () => {
   };
 });
 
+vi.mock('../src/js/core/download.js', () => ({
+  canDownload: vi.fn(async () => true),
+  startDownload: vi.fn(),
+  isChooserOpen: vi.fn(() => false),
+}));
+vi.mock('../src/js/core/itemmenu.js', () => ({
+  openItemMenu: vi.fn(),
+  isMenuOpen: vi.fn(() => false),
+  onItemsChanged: vi.fn(() => () => {}),
+}));
+vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
+
 import * as api from '../src/js/core/api.js';
 import { dateParts, sinceLabel, hasPlayCounts } from '../src/js/features/newpopular/format.js';
 import feature, { loadMostWatched } from '../src/js/features/newpopular.js';
 import { clearCache } from '../src/js/core/cache.js';
 import { resetChartsWarning } from '../src/js/core/charts.js';
 import { resetSourceCache } from '../src/js/features/rows/sources.js';
+import { canDownload, startDownload } from '../src/js/core/download.js';
+import { openItemMenu, onItemsChanged } from '../src/js/core/itemmenu.js';
+import { openModal } from '../src/js/features/modal.js';
+import { putItems } from '../src/js/core/itemstore.js';
 
 const mk = (id, type, extra = {}) => ({ Id: id, Name: id, Type: type, DateCreated: '2026-11-08T12:00:00Z', ...extra });
 
@@ -92,6 +108,75 @@ describe('Mount/Unmount', () => {
   it('CSS blendet #lfx-home aus', () => {
     const css = fs.readFileSync('src/css/js-ui/newpopular.css', 'utf8');
     expect(css).toMatch(/lfx-newpopular-on[^{]*#lfx-home/);
+  });
+});
+
+describe('Download- und Mehr-Button', () => {
+  let unsub;
+  beforeEach(() => {
+    resetSourceCache();
+    unsub = vi.fn();
+    canDownload.mockReset();
+    canDownload.mockResolvedValue(true);
+    startDownload.mockReset();
+    openItemMenu.mockReset();
+    openModal.mockClear();
+    onItemsChanged.mockReset();
+    onItemsChanged.mockReturnValue(unsub);
+    api.getItems.mockReset();
+    api.getItems.mockImplementation(async (p) => {
+      if (p.IncludeItemTypes === 'Episode') return { Items: [] };
+      return { Items: [mk('i1', 'Movie', { UserData: { PlayCount: 1 } }), mk('i2', 'Series')] };
+    });
+    document.body.innerHTML = '<div id="indexPage"><div id="homeTab"></div></div>';
+  });
+  afterEach(() => { feature.unmount(); document.body.innerHTML = ''; });
+
+  const entry = (id) => [...document.querySelectorAll('.lfx-np__entry')].find((e) => e.dataset.lfxId === id);
+
+  it('Buttons vorhanden; Download erst nach canDownload sichtbar; Serie -> Episoden', async () => {
+    let resolve;
+    canDownload.mockImplementation((it) => (it.Id === 'i1' ? new Promise((r) => { resolve = r; }) : Promise.resolve(false)));
+    feature.mount();
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));
+    const dl = entry('i1').querySelector('.lfx-np__btn--dl');
+    expect(dl.hidden).toBe(true);
+    expect(dl.getAttribute('aria-label')).toBe('Herunterladen');
+    expect(entry('i2').querySelector('.lfx-np__btn--dl').getAttribute('aria-label')).toBe('Episoden herunterladen');
+    const menu = entry('i1').querySelector('.lfx-np__btn--menu');
+    expect(menu.getAttribute('aria-label')).toBe('Mehr');
+    expect(menu.getAttribute('aria-haspopup')).toBe('menu');
+    resolve(true);
+    await vi.waitFor(() => expect(dl.hidden).toBe(false));
+    expect(entry('i2').querySelector('.lfx-np__btn--dl').hidden).toBe(true);
+  });
+
+  it('Klick ruft startDownload/openItemMenu mit Item + Button, öffnet kein Modal', async () => {
+    feature.mount();
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));
+    const dl = entry('i1').querySelector('.lfx-np__btn--dl');
+    const menu = entry('i1').querySelector('.lfx-np__btn--menu');
+    dl.click();
+    menu.click();
+    expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Id: 'i1' }), dl);
+    expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: 'i1' }), menu);
+    expect(openModal).not.toHaveBeenCalled();
+  });
+
+  it('onItemsChanged: entfernt Einträge, zeichnet geänderte neu, meldet sich ab', async () => {
+    feature.mount();
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));
+    const cb = onItemsChanged.mock.calls[0][0];
+    putItems([mk('i1', 'Movie', { Name: 'Umbenannt' })]);
+    cb({ removed: [], updated: ['i1'] });
+    expect(entry('i1').querySelector('.lfx-np__name').textContent).toBe('Umbenannt');
+    cb({ removed: ['i2'], updated: [] });
+    expect(entry('i2')).toBeUndefined();
+    expect(document.querySelectorAll('.lfx-np__entry').length).toBe(1);
+    cb({ removed: ['i1'], updated: [] });
+    expect(document.getElementById('lfx-np-new')).toBeNull();
+    feature.unmount();
+    expect(unsub).toHaveBeenCalled();
   });
 });
 
