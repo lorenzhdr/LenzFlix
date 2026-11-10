@@ -120,6 +120,11 @@ html:not(.layout-tv) #itemDetailPage .detailLogo {
     width: min(65vw, 420px);
     height: 110px;
   }
+  /* Jellyfin blendet das Logo am Handy aus, die Regel unten klippt aber den Text-Titel, sobald ein Logo
+     existiert -> ohne diese Zeile waren am Handy weder Logo noch Name sichtbar (live geprüft, 390 px). */
+  html:not(.layout-tv) #itemDetailPage .detailLogo:not(.hide) {
+    display: block;
+  }
 }
 /* Logo vorhanden (.detailLogo ohne .hide, siehe renderLogo()) -> Text-Titel visuell ausblenden (bleibt für Screenreader).
    Nur h1; der h3-Untertitel (Episode: "Staffel – Name") bleibt sichtbar. */

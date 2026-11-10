@@ -816,6 +816,10 @@ html:not(.layout-tv) #itemDetailPage .detailLogo {
     width: min(65vw, 420px);
     height: 110px;
   }
+
+  html:not(.layout-tv) #itemDetailPage .detailLogo:not(.hide) {
+    display: block;
+  }
 }
 
 html:not(.layout-tv) #itemDetailPage:has(.detailLogo:not(.hide)) .nameContainer h1 {
