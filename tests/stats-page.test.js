@@ -87,6 +87,53 @@ describe('fillTimeline', () => {
   });
 });
 
+describe('Verlauf: Y-Achse und Balken-Details', () => {
+  it('niceAxis: runde Schritte, Maximum deckt den höchsten Wert ab', () => {
+    expect(L.niceAxis(0)).toEqual({ step: 300, count: 2, max: 600 });
+    expect(L.niceAxis(5400)).toEqual({ step: 1800, count: 3, max: 5400 });
+    const a = L.niceAxis(9000); // 2,5 Std
+    expect(a.step).toBe(3600);
+    expect(a.max).toBeGreaterThanOrEqual(9000);
+    expect(a.count).toBeLessThanOrEqual(4);
+    expect(L.niceAxis(86400 * 40).max).toBeGreaterThanOrEqual(86400 * 40);
+  });
+  it('axisTickLabel: Std bei vollen Stunden, sonst Min', () => {
+    expect(L.axisTickLabel(0, 1800)).toBe('0');
+    expect(L.axisTickLabel(5400, 1800)).toBe('90 Min');
+    expect(L.axisTickLabel(7200, 3600)).toBe('2 Std');
+  });
+  it('bucketDetails: Anteil, Rang, Abweichung vom Schnitt, Wochentag im Titel', () => {
+    const data = [
+      { key: '2026-11-08', seconds: 3600 },
+      { key: '2026-11-09', seconds: 0 },
+      { key: '2026-11-10', seconds: 7200 },
+    ];
+    const d = L.bucketDetails('day', data, 2);
+    expect(d.title).toBe('Dienstag, 10. November 2026');
+    expect(d.share).toBeCloseTo(2 / 3);
+    expect(d.rank).toBe(1);
+    expect(d.active).toBe(2);
+    expect(d.avg).toBe(5400);
+    expect(d.vsAvg).toBeCloseTo(7200 / 5400 - 1);
+    const z = L.bucketDetails('day', data, 1);
+    expect(z.share).toBeUndefined();
+  });
+  it('renderTimeline: Klick auf Balken zeigt Details, zweiter Klick blendet sie aus', () => {
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    L.renderTimeline(c, { range: '7d', timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] } });
+    const hits = c.querySelectorAll('.hit');
+    expect(hits.length).toBeGreaterThanOrEqual(7);
+    expect(c.querySelector('.tl-detail').textContent).toContain('Tippe');
+    hits[3].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(c.querySelector('.tl-detail .tl-t')).not.toBeNull();
+    expect(c.querySelectorAll('.bar.sel').length).toBe(1);
+    hits[3].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(c.querySelector('.tl-detail .tl-t')).toBeNull();
+    expect(c.querySelectorAll('.bar.sel').length).toBe(0);
+  });
+});
+
 describe('Heatmap', () => {
   it('Sonntag (dow 0) landet in der letzten Zeile, Montag (dow 1) in der ersten', () => {
     const hm = L.buildHeatmap([

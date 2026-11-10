@@ -230,6 +230,14 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .chart text { fill: var(--lfx-text-muted); font-family: var(--lfx-font); font-size: 11px; }
 .bar { fill: var(--lfx-red); }
 .chart .grid { stroke: rgba(255, 255, 255, 0.08); stroke-width: 1; }
+.chart .hit { fill: transparent; cursor: pointer; outline: none; }
+.chart .hit:hover { fill: rgba(255, 255, 255, 0.06); }
+.chart .hit:focus-visible { stroke: var(--lfx-text-muted); stroke-width: 1; }
+.chart.has-sel .bar:not(.sel) { opacity: 0.45; }
+.tl-detail { margin-top: 10px; min-height: 5.5em; font-size: 0.875rem; }
+.tl-detail .sub { margin: 0; }
+.tl-detail .tl-t { font-weight: 600; margin-bottom: 4px; }
+.tl-detail .tl-r { color: var(--lfx-text-muted); line-height: 1.5; }
 .hm-cell { fill: var(--lfx-red); }
 .hm-empty { fill: #2a2a2a; }
 

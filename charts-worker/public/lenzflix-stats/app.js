@@ -529,10 +529,11 @@
     }
     var slot = PW / data.length;
     var bw = Math.max(1, slot * 0.72);
+    var bars = [];
     data.forEach(function (b, i) {
       var h = axis.max > 0 && b.seconds > 0 ? Math.max(2, (b.seconds / axis.max) * H) : 0;
       var rect = svgEl('rect', { class: 'bar', x: (LM + i * slot + (slot - bw) / 2).toFixed(2), y: (TM + H - h).toFixed(2), width: bw.toFixed(2), height: h.toFixed(2), rx: 1.5 });
-      rect.appendChild(svgEl('title', {}, bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds)));
+      bars.push(rect);
       svg.appendChild(rect);
     });
     svg.appendChild(svgEl('line', { x1: LM, x2: W, y1: TM + H + 0.5, y2: TM + H + 0.5, stroke: '#404040', 'stroke-width': 1 }));
@@ -541,7 +542,86 @@
     svg.appendChild(svgEl('text', { x: LM, y: TM + H + 16, 'text-anchor': 'start' }, axisLabel(unit, data[0].key)));
     if (last >= 2) svg.appendChild(svgEl('text', { x: (LM + mid * slot + slot / 2).toFixed(1), y: TM + H + 16, 'text-anchor': 'middle' }, axisLabel(unit, data[mid].key)));
     if (last >= 1) svg.appendChild(svgEl('text', { x: W, y: TM + H + 16, 'text-anchor': 'end' }, axisLabel(unit, data[last].key)));
+
+    // Detailbox: Klick/Tipp (oder Enter/Leertaste) auf einen Balken, erneut = abwählen
+    var detail = el('div', 'tl-detail');
+    var selected = -1;
+    function showDetail() {
+      clear(detail);
+      svg.setAttribute('class', selected >= 0 ? 'chart has-sel' : 'chart');
+      bars.forEach(function (r, k) {
+        r.setAttribute('class', k === selected ? 'bar sel' : 'bar');
+      });
+      if (selected < 0) {
+        detail.appendChild(el('p', 'sub', 'Tippe auf einen Balken für Details.'));
+        return;
+      }
+      var d = bucketDetails(unit, data, selected);
+      detail.appendChild(el('div', 'tl-t', d.title));
+      detail.appendChild(el('div', 'tl-r', d.seconds > 0 ? 'Watchtime: ' + fmtDuration(d.seconds) : 'Keine Wiedergabe'));
+      if (d.share != null) detail.appendChild(el('div', 'tl-r', (d.share < 0.01 ? '< 1' : Math.round(d.share * 100)) + ' % der Watchtime im Zeitraum'));
+      if (d.rank != null && d.active > 1) detail.appendChild(el('div', 'tl-r', 'Platz ' + d.rank + ' von ' + d.active + ' aktiven ' + UNIT_PLURAL[unit]));
+      if (d.vsAvg != null && d.active > 1) {
+        var pct = Math.round(Math.abs(d.vsAvg) * 100);
+        detail.appendChild(
+          el('div', 'tl-r', (pct < 5 ? 'Etwa im Schnitt' : pct + ' % ' + (d.vsAvg > 0 ? 'über' : 'unter') + ' dem Schnitt') + ' (Ø ' + fmtDuration(d.avg) + ' pro aktivem ' + UNIT_SINGULAR[unit] + ')')
+        );
+      }
+    }
+    data.forEach(function (b, i) {
+      var hit = svgEl('rect', { class: 'hit', x: (LM + i * slot).toFixed(2), y: TM, width: slot.toFixed(2), height: H, tabindex: 0, role: 'button', 'aria-label': bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds) });
+      hit.appendChild(svgEl('title', {}, bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds)));
+      var pick = function () {
+        selected = selected === i ? -1 : i;
+        showDetail();
+      };
+      hit.addEventListener('click', pick);
+      hit.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          pick();
+        }
+      });
+      svg.appendChild(hit);
+    });
+    showDetail();
     container.appendChild(svg);
+    container.appendChild(detail);
+  }
+
+  var WEEKDAYS_LONG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  var UNIT_PLURAL = { day: 'Tagen', week: 'Wochen', month: 'Monaten' };
+  var UNIT_SINGULAR = { day: 'Tag', week: 'Woche', month: 'Monat' };
+
+  /** Titel eines Balkens; bei Tagen mit Wochentag ("Montag, 3. November 2026"). */
+  function bucketTitle(unit, key) {
+    var label = bucketLabel(unit, key);
+    var m = unit === 'day' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(key) : null;
+    if (!m) return label;
+    return WEEKDAYS_LONG[new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay()] + ', ' + label;
+  }
+
+  /** Kennzahlen zu einem Balken: Anteil am Zeitraum, Rang unter den aktiven Buckets, Abweichung vom Schnitt. */
+  function bucketDetails(unit, data, idx) {
+    var b = data[idx];
+    var total = 0;
+    var active = 0;
+    var rank = 1;
+    data.forEach(function (x) {
+      total += x.seconds;
+      if (x.seconds > 0) {
+        active++;
+        if (x.seconds > b.seconds) rank++;
+      }
+    });
+    var res = { title: bucketTitle(unit, b.key), seconds: b.seconds, active: active };
+    if (b.seconds > 0 && total > 0) {
+      res.share = b.seconds / total;
+      res.rank = rank;
+      res.avg = total / active;
+      res.vsAvg = b.seconds / res.avg - 1;
+    }
+    return res;
   }
 
   /** Runde Y-Achse für Sekundenwerte: Schrittweite (s), Anzahl Schritte (2–4) und Achsenmaximum (s). */
@@ -1175,21 +1255,34 @@
       var chartH = Math.round(260 * f);
       var base = y + 70 + chartH;
       stxt(g, 'Verlauf', g.x, y + 40, 44, 500, '#b3b3b3');
-      var slot = g.cw / data.length;
+      var axis = niceAxis(max);
+      var lm = 130; // Platz für die Y-Achsen-Beschriftung
+      var px = g.x + lm;
+      var pw = g.cw - lm;
+      var t;
+      for (t = 0; t <= axis.count; t++) {
+        var ty = base - (t / axis.count) * chartH;
+        if (t > 0) {
+          ctx.fillStyle = '#2a2a2a';
+          ctx.fillRect(px, ty - 1, pw, 2);
+        }
+        stxt(g, axisTickLabel(t * axis.step, axis.step), px - 16, ty + 10, 28, 500, '#808080', 0, 'right');
+      }
+      var slot = pw / data.length;
       var bw = Math.max(1, slot * 0.72);
       ctx.fillStyle = '#e50914';
       data.forEach(function (b, i) {
         if (!(b.seconds > 0)) return;
-        var h = Math.max(3, (b.seconds / max) * chartH);
-        ctx.fillRect(g.x + i * slot + (slot - bw) / 2, base - h, bw, h);
+        var h = Math.max(3, (b.seconds / axis.max) * chartH);
+        ctx.fillRect(px + i * slot + (slot - bw) / 2, base - h, bw, h);
       });
       ctx.fillStyle = '#404040';
-      ctx.fillRect(g.x, base, g.cw, 2);
+      ctx.fillRect(px, base, pw, 2);
       var last = data.length - 1;
       var mid = Math.floor(last / 2);
-      stxt(g, axisLabel(unit, data[0].key), g.x, base + 36, 28, 500, '#808080', 0, 'left');
-      if (last >= 2) stxt(g, axisLabel(unit, data[mid].key), g.x + mid * slot + slot / 2, base + 36, 28, 500, '#808080', 0, 'center');
-      if (last >= 1) stxt(g, axisLabel(unit, data[last].key), g.x + g.cw, base + 36, 28, 500, '#808080', 0, 'right');
+      stxt(g, axisLabel(unit, data[0].key), px, base + 36, 28, 500, '#808080', 0, 'left');
+      if (last >= 2) stxt(g, axisLabel(unit, data[mid].key), px + mid * slot + slot / 2, base + 36, 28, 500, '#808080', 0, 'center');
+      if (last >= 1) stxt(g, axisLabel(unit, data[last].key), px + pw, base + 36, 28, 500, '#808080', 0, 'right');
       y = base + 36 + 50 * f;
     }
     var hm = buildHeatmap(st.heatmap);
@@ -1686,6 +1779,9 @@
     renderTopList: renderTopList,
     renderHeatmap: renderHeatmap,
     renderTimeline: renderTimeline,
+    bucketDetails: bucketDetails,
+    niceAxis: niceAxis,
+    axisTickLabel: axisTickLabel,
     fitText: fitText,
     shareVariants: shareVariants,
     shareFileName: shareFileName,
