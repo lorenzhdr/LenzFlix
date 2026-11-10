@@ -33,12 +33,12 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input:focus {
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__icon {
   position: absolute;
-  top: 12px;
+  top: 8px;
   left: 0;
   display: block;
-  width: 28px;
-  height: 28px;
-  color: rgba(255, 255, 255, 0.7);
+  width: 32px;
+  height: 32px;
+  color: rgba(255, 255, 255, 0.85);
   pointer-events: none;
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__icon svg,
@@ -132,11 +132,24 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile__name {
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile__name.has-img {
   position: absolute;
   inset: auto 0 0 0;
-  padding: 28px 12px 12px;
+  padding: 40px 12px 12px;
   border-radius: 0 0 12px 12px;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
   text-align: left;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* Sammlungs-Kacheln mit Bild: Name nur für Screenreader (Schriftzug steckt im Bild) */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile__name.is-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Personen */

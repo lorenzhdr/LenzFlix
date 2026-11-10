@@ -34,6 +34,8 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search_
   align-items: center;
   gap: 14px;
   box-sizing: border-box;
+  width: 100%;
+  max-width: none;
   height: 82px;
   margin: 0;
   padding: 0 24px;
@@ -50,7 +52,8 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search_
   fill: var(--lfx-text);
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search__input {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  width: 100%;
   min-width: 0;
   height: 100%;
   margin: 0;

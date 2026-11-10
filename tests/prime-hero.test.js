@@ -92,6 +92,7 @@ describe('Hero: Slides', () => {
     expect(slot.querySelector('.lfx-prime-hero__logo')).not.toBeNull();
     expect(slot.querySelector('.lfx-prime-hero__rank').textContent).toContain('Platz 2 der Top 10');
     expect(slot.querySelector('.lfx-prime-hero__label1').textContent).toBe('Abspielen');
+    expect(slot.querySelector('.lfx-prime-hero__label').textContent).toBe('Abspielen'); // kein "null"
     expect(slot.querySelectorAll('.lfx-prime-hero__round').length).toBe(2);
     expect(slot.querySelector('a.lfx-prime-hero__round--info').getAttribute('href')).toBe('#/home?lfx=title&id=m1');
     expect(slot.querySelector('.lfx-prime-hero__fsk').textContent).toBe('12');

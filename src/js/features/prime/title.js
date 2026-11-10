@@ -15,7 +15,8 @@ import { parseLfxRoute } from '../../shared/routes.js';
 import { togglePlayed, toggleFavorite, startDownloadFor, openTitleMenu } from '../../shared/titleactions.js';
 import { getTrendInfo, heroTrendLine } from '../../shared/trend.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
-import { loadLocalTrailer, trailerUrl, directRemoteTrailerUrl } from '../../shared/trailer.js';
+import { loadLocalTrailer, trailerUrl, directRemoteTrailerUrl, applyStartAt } from '../../shared/trailer.js';
+import { autoPause } from './preview-gate.js';
 import * as data from '../modal/data.js';
 import { hasResume, pickInitialSeason } from '../modal/format.js';
 import { resolveTarget, playInfo, metaItems, detailTiles } from './title-logic.js';
@@ -50,6 +51,7 @@ function stopVideo(s) {
   if (!s || !s.video) return;
   const v = s.video;
   s.video = null;
+  if (s.gate) { s.gate.stop(); s.gate = null; }
   try {
     v.pause();
     v.removeAttribute('src');
@@ -99,8 +101,10 @@ function startVideo(s, { muted = true } = {}) {
   v.addEventListener('ended', end);
   v.addEventListener('error', end);
   s.video = v;
+  if (muted) applyStartAt(v, 4);
   v.src = s.trailerSrc;
   s.bg.append(v);
+  s.gate = autoPause(v);
   try {
     const p = v.play && v.play();
     if (p && p.catch) p.catch(end);

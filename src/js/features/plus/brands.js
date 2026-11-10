@@ -8,7 +8,7 @@ export function buildBrandRow(collections) {
   const list = (collections || []).filter((c) => c && c.id);
   if (!list.length) return null;
   const cells = list.map((c) => h('div', { role: 'listitem', class: 'lfx-plus-brands__cell' }, [
-    h('a', { class: 'lfx-plus-brand', href: titleHref(c.id), 'aria-label': c.name || 'Sammlung' }, [
+    h('a', { class: 'lfx-plus-brand', href: titleHref(c.id), 'aria-label': c.name || 'Sammlung', title: c.name || 'Sammlung' }, [
       c.imageUrl ? h('img', { class: 'lfx-plus-brand__img', src: c.imageUrl, alt: '', loading: 'lazy', decoding: 'async' }) : null,
       c.imageUrl ? null : h('span', { class: 'lfx-plus-brand__name' }, c.name || ''),
     ]),

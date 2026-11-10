@@ -59,10 +59,10 @@ export function buildTitleInfo(item, variant, { trend = null, isCurrent = () => 
   const label = h('span', { class: 'lfx-prime-hc__label' });
   const play = h('button', { type: 'button', class: 'lfx-prime-hc__play' }, [svgIcon(ICON_PLAY), label]);
   const paintPlay = (state) => {
-    label.replaceChildren(
+    label.replaceChildren(...[
       h('span', null, state.line1),
       state.line2 ? h('span', { class: 'lfx-prime-hc__label2' }, state.line2) : null,
-    );
+    ].filter(Boolean));
     play.classList.toggle('is-two', Boolean(state.line2));
   };
   paintPlay(playLabel(item));

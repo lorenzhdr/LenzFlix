@@ -11,6 +11,7 @@ import { getTrendInfo, heroTrendLine } from '../../shared/trend.js';
 import { buildPool, formatRating } from '../billboard/format.js';
 import * as data from '../modal/data.js';
 import { playLabel, playTitle } from './hero-play.js';
+import { autoPause } from './preview-gate.js';
 
 export const ROTATE_MS = 20000;
 export const TRAILER_DELAY_MS = 3000;
@@ -70,6 +71,7 @@ export function renderHero(slot, { loadPool }) {
   let trailerActive = false;
   let rotateTimer = null;
   let preview = null;
+  let gate = null;
   let video = null;
   let trend = null;
   let media = null;
@@ -90,6 +92,7 @@ export function renderHero(slot, { loadPool }) {
     || document.documentElement.classList.contains('lfx-modal-open') || isMenuOpen() || isChooserOpen();
 
   function stopTrailer() {
+    if (gate) { gate.stop(); gate = null; }
     if (preview) { preview.cancel(); preview = null; }
     video = null;
     trailerActive = false;
@@ -118,9 +121,11 @@ export function renderHero(slot, { loadPool }) {
     if (reducedMotion() || disposed || myGen !== gen) return;
     preview = createMutedPreview(media, item, {
       delay: TRAILER_DELAY_MS,
+      startAt: 4,
       onStart: (v) => {
         if (disposed || myGen !== gen) return;
         video = v;
+        gate = autoPause(v, { respectHold: true });
         trailerActive = true;
         v.classList.add('is-in');
         hero.classList.add('is-trailer');
@@ -142,10 +147,10 @@ export function renderHero(slot, { loadPool }) {
     const bar = h('span', { class: 'lfx-prime-hero__bar' });
     const progress = h('span', { class: 'lfx-prime-hero__progress', hidden: true }, [bar]);
     const paint = (state) => {
-      label.replaceChildren(
+      label.replaceChildren(...[
         h('span', { class: 'lfx-prime-hero__label1' }, state.line1),
         state.line2 ? h('span', { class: 'lfx-prime-hero__label2' }, state.line2) : null,
-      );
+      ].filter(Boolean));
       btn.classList.toggle('is-two', Boolean(state.line2));
       progress.hidden = !(state.progress > 0);
       bar.style.width = `${Math.round(state.progress)}%`;

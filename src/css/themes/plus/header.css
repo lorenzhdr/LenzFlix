@@ -243,13 +243,22 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item {
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item.is-stats {
   color: var(--lfx-gold);
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item:focus {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item:focus,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item:focus-visible {
   background: rgb(255 255 255 / 0.1);
   color: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item.is-stats:focus,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item.is-stats:focus-visible {
+  background: rgb(255 255 255 / 0.1);
+  color: var(--lfx-gold);
 }
 @media (hover: hover) and (pointer: fine) {
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item:hover {
     background: rgb(255 255 255 / 0.1);
     color: #fff;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item.is-stats:hover {
+    color: var(--lfx-gold);
   }
 }

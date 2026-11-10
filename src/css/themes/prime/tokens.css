@@ -4,6 +4,8 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) {
   --jf-palette-primary-light: #5aa9ff;
   --jf-palette-primary-dark: #0f78d1;
   --jf-palette-primary-mainChannel: 26 152 255;
+  --jf-palette-primary-contrastText: #00050d;
+  --jf-palette-primary-contrastTextChannel: 0 5 13;
   --jf-palette-secondary-main: #1a98ff;
   --jf-palette-background-default: #00050d;
   --jf-palette-background-defaultChannel: 0 5 13;

@@ -31,6 +31,19 @@ import { isPrimeSearchOpen } from '../src/js/features/prime/search.js';
 const route = (h) => parseHash(h);
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+describe('prime-header: Wortmarke', () => {
+  it('Link ohne img (Logo per CSS-Hintergrund) mit aria-label', async () => {
+    document.body.innerHTML = '';
+    isTheme.mockReturnValue(true);
+    await header.mount(route('#/home'));
+    await flush();
+    const logo = document.querySelector('.lfx-prime-header__logo');
+    expect(logo.querySelector('img')).toBeNull();
+    expect(logo.getAttribute('aria-label')).toBe('LENZPRIME – Startseite');
+    header.unmount();
+  });
+});
+
 describe('prime-header: Modell', () => {
   const libs = [
     { id: 'm1', collectionType: 'movies' },

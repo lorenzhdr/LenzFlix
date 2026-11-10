@@ -68,13 +68,11 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header_
   display: inline-flex;
   flex: none;
   align-items: center;
+  width: 68px;
+  height: 22px;
   margin-right: clamp(16px, 2.6vw, 28px);
   border-radius: 6px;
-}
-html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__logo img {
-  display: block;
-  height: 22px;
-  width: auto;
+  background: url("../assets/logo/lenzprime.svg") no-repeat left center / contain;
 }
 
 /* Text-Navigation */

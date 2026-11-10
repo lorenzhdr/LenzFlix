@@ -72,6 +72,23 @@ describe('createMutedPreview', () => {
     expect(onStart).toHaveBeenCalledTimes(1);
   });
 
+  it('startAt: springt nach loadedmetadata nur bei langen Videos', async () => {
+    api.getJson.mockResolvedValue([{ Id: 'T1' }]);
+    const run = async (duration, opts) => {
+      box().innerHTML = '';
+      createMutedPreview(box(), { Id: 'M1', LocalTrailerCount: 1 }, { delay: 10, ...opts });
+      await vi.advanceTimersByTimeAsync(20);
+      await flush();
+      const v = box().querySelector('video');
+      Object.defineProperty(v, 'duration', { value: duration, configurable: true });
+      v.dispatchEvent(new Event('loadedmetadata'));
+      return v.currentTime;
+    };
+    expect(await run(120, { startAt: 4 })).toBe(4);
+    expect(await run(25, { startAt: 4 })).toBe(0);
+    expect(await run(120, {})).toBe(0);
+  });
+
   it('cancel vor dem Start: kein Video, kein Request-Ergebnis', async () => {
     api.getJson.mockResolvedValue([{ Id: 'T1' }]);
     const p = createMutedPreview(box(), { Id: 'M1', LocalTrailerCount: 1 }, { delay: 1000 });

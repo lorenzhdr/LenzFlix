@@ -17,7 +17,7 @@ const ON_CLASS = 'lfx-plus-search-on';
 const DEBOUNCE_MS = 300;
 const MIN_LEN = 2;
 
-const LUPE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5zm-6 0a4.500 4.500 0 1 1 0-9 4.500 4.500 0 0 1 0 9z"/></svg>';
+const LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
 const X = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg>';
 
 let state = null; // { root, input, results, term, timer, abort, seq, cleanups, cancelWait }
@@ -45,10 +45,11 @@ function dispose() {
 
 // ---------------------------------------------------------------- Bausteine
 
-function tile(href, label, imageUrl) {
-  return h('a', { class: 'lfx-plus-tile', href }, [
+function tile(href, label, imageUrl, { nameOnImage = true } = {}) {
+  const hide = !!imageUrl && !nameOnImage;
+  return h('a', { class: 'lfx-plus-tile', href, 'aria-label': label, title: label }, [
     imageUrl ? h('img', { class: 'lfx-plus-tile__img', src: imageUrl, alt: '', loading: 'lazy', decoding: 'async' }) : null,
-    h('span', { class: `lfx-plus-tile__name${imageUrl ? ' has-img' : ''}` }, label),
+    h('span', { class: `lfx-plus-tile__name${imageUrl ? (hide ? ' is-sr' : ' has-img') : ''}` }, label),
   ]);
 }
 
@@ -80,7 +81,7 @@ async function renderEmpty(s, seq) {
     )))));
   }
   if (colls.length) {
-    parts.push(section('Sammlungen', h('div', { class: 'lfx-plus-tilerow' }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl)))));
+    parts.push(section('Sammlungen', h('div', { class: 'lfx-plus-tilerow' }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl, { nameOnImage: false })))));
   }
   s.results.replaceChildren(...parts);
 }

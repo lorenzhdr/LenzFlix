@@ -118,6 +118,9 @@ describe('prime-hover: Geometrie', () => {
     expect(right.left).toBe(1920 - 12 - 431);
     const bottom = popupGeometry({ left: 600, top: 800, width: 276, height: 155 }, 1920, 927, 180);
     expect(bottom.top + 242 + 180).toBeLessThanOrEqual(927 - 12);
+    const low = popupGeometry({ left: 600, top: 601, width: 276, height: 155 }, 2133, 967, 235);
+    expect(low.top + Math.round((431 * 9) / 16) + 235).toBeLessThanOrEqual(967 - 12);
+    expect(low.top).toBeGreaterThanOrEqual(72);
     const top = popupGeometry({ left: 600, top: 10, width: 276, height: 155 }, 1920, 927, 180);
     expect(top.top).toBe(72);
   });

@@ -36,10 +36,18 @@ html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiBut
   background: #ebecee;
   color: #00050d;
 }
-html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root {
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root {
+  --variant-containedColor: #00050d;
+  --variant-containedBg: #fff;
+  --variant-containedHoverBg: #ebecee;
   border-radius: 8px;
   background: #fff;
   color: #00050d;
+}
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root svg,
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root .MuiSvgIcon-root {
+  color: #00050d;
+  fill: currentColor;
 }
 html.lfx-theme-prime:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected,
 html.lfx-theme-prime:not(.layout-tv) .alphaPickerButton-selected {

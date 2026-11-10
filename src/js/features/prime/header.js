@@ -17,7 +17,6 @@ const ID = 'lfx-prime-header';
 const HTML_CLASS = 'lfx-prime-header-on';
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 const SCROLL_THRESHOLD = 10;
-const LOGO = '../assets/logo/lenzprime.svg';
 const LIST_HREF = '#/home?tab=1';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -123,9 +122,7 @@ async function toggleProfile(btn) {
 }
 
 function build() {
-  const logo = h('a', { class: 'lfx-prime-header__logo', href: '#/home', 'aria-label': 'LENZPRIME Startseite' }, [
-    h('img', { src: LOGO, alt: 'LENZPRIME', draggable: 'false' }),
-  ]);
+  const logo = h('a', { class: 'lfx-prime-header__logo', href: '#/home', 'aria-label': 'LENZPRIME – Startseite' });
   const nav = h('nav', { class: 'lfx-prime-header__nav', 'aria-label': 'Hauptnavigation' });
 
   const searchBtn = h('button', {

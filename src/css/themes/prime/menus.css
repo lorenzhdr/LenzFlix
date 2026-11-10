@@ -109,7 +109,9 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-
   letter-spacing: 0.64px;
   transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out;
 }
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats {
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus-visible {
   color: var(--lfx-gold);
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item:focus,
@@ -118,7 +120,18 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-
   color: var(--lfx-prime-ink);
   outline: none;
 }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--lfx-gold);
+  outline: 2px solid var(--lfx-gold);
+  outline-offset: -2px;
+}
 @media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--lfx-gold);
+  }
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item:hover {
     background: var(--lfx-prime-hover-bg);
     color: var(--lfx-prime-ink);

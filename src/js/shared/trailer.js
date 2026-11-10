@@ -31,12 +31,25 @@ export function directRemoteTrailerUrl(item) {
   return null;
 }
 
+/** Springt nach den Metadaten auf `startAt` Sekunden, wenn das Video lang genug ist (überspringt Freigabe-Vorspänne). */
+export function applyStartAt(v, startAt) {
+  if (!(startAt > 0)) return;
+  const apply = () => {
+    const d = v.duration;
+    if (Number.isFinite(d) && d > 30 && d > startAt + 20) {
+      try { v.currentTime = startAt; } catch { /* egal */ }
+    }
+  };
+  if (v.readyState >= 1) apply();
+  else v.addEventListener('loadedmetadata', apply, { once: true });
+}
+
 /**
  * Stumme Trailer-Vorschau im Container: startet nach `delay` ms einen <video>, sofern ein direkt abspielbarer
  * Trailer existiert. onStart beim ersten „playing“, onEnd bei Ende/Fehler nach dem Start (nicht bei cancel()).
- * cancel() räumt alles auf (Timer, Video, src, load()).
+ * cancel() räumt alles auf (Timer, Video, src, load()). Option startAt: Startsekunde (nur bei langen Videos).
  */
-export function createMutedPreview(container, item, { delay = 1500, onStart, onEnd } = {}) {
+export function createMutedPreview(container, item, { delay = 1500, onStart, onEnd, startAt = 0 } = {}) {
   let dead = false;
   let video = null;
   let started = false;
@@ -88,6 +101,7 @@ export function createMutedPreview(container, item, { delay = 1500, onStart, onE
     v.addEventListener('ended', finish);
     v.addEventListener('error', finish);
     video = v;
+    applyStartAt(v, startAt);
     v.src = src;
     container.append(v);
     try {

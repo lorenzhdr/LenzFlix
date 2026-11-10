@@ -34,6 +34,7 @@ vi.mock('../src/js/shared/trailer.js', () => ({
   loadLocalTrailer: vi.fn(async () => null),
   trailerUrl: vi.fn((id) => `http://x/Videos/${id}/stream.mp4`),
   directRemoteTrailerUrl: vi.fn(() => null),
+  applyStartAt: vi.fn(),
 }));
 vi.mock('../src/js/shared/titleactions.js', () => ({
   togglePlayed: vi.fn(async () => true),

@@ -16,6 +16,7 @@ import { landscapeFor } from '../rows/card.js';
 import { progressPercent } from '../rows/logic.js';
 import { ICON_MUTED, ICON_SOUND, svgIcon } from './hero.js';
 import { buildTitleInfo } from './hover-content.js';
+import { setPreviewHold } from './preview-gate.js';
 import { primeHomeRoute, ROOT_ID } from './home-route.js';
 
 const POPUP_ID = 'lfx-prime-hover';
@@ -44,7 +45,7 @@ export function popupGeometry(r, vw, vh, infoH = 0) {
   left = Math.max(EDGE, Math.min(left, vw - EDGE - width));
   let top = cy - imgH / 2;
   top = Math.min(top, vh - EDGE - total);
-  top = Math.max(top, TOP_GUARD);
+  top = Math.max(top, Math.min(TOP_GUARD, Math.max(0, vh - EDGE - total)));
   return { left, top, width, imgH, originX: cx - left, originY: cy - top, scale: r.width / width };
 }
 
@@ -95,6 +96,7 @@ function closeNow() {
   if (!a) return;
   a.timers.forEach(clearTimeout);
   if (a.preview) a.preview.cancel();
+  if (a.holding) setPreviewHold(false);
   if (a.kind === 'popup') {
     unmountPoint(POPUP_ID);
   } else {
@@ -145,8 +147,8 @@ async function openPopup(card) {
   el.style.left = '0px';
   el.style.top = '0px';
   const imgH = Math.round((width * 9) / 16);
+  media.style.height = `${imgH}px`; // vor dem Messen setzen, sonst fehlt die Bildhöhe in offsetHeight
   const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el.offsetHeight - imgH));
-  media.style.height = `${imgH}px`;
   el.style.left = `${g.left}px`;
   el.style.top = `${g.top}px`;
   el.style.transformOrigin = `${g.originX}px ${g.originY}px`;
@@ -209,9 +211,12 @@ async function openPoster(card) {
     if (active !== a || !detail) return;
     a.preview = createMutedPreview(mediaEl, detail, {
       delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
+      startAt: 4,
       onStart: (v) => {
         if (active !== a) return;
         a.video = v;
+        a.holding = true;
+        setPreviewHold(true);
         v.classList.add('is-in');
         el.classList.add('is-video');
         mute.hidden = false;
@@ -221,6 +226,7 @@ async function openPoster(card) {
         if (active !== a) return;
         a.preview = null;
         a.video = null;
+        if (a.holding) { a.holding = false; setPreviewHold(false); }
         el.classList.remove('is-video');
         mute.hidden = true;
       },

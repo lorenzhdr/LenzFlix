@@ -3897,7 +3897,21 @@
     }
     return null;
   }
-  function createMutedPreview(container, item, { delay = 1500, onStart, onEnd } = {}) {
+  function applyStartAt(v, startAt) {
+    if (!(startAt > 0)) return;
+    const apply = () => {
+      const d = v.duration;
+      if (Number.isFinite(d) && d > 30 && d > startAt + 20) {
+        try {
+          v.currentTime = startAt;
+        } catch {
+        }
+      }
+    };
+    if (v.readyState >= 1) apply();
+    else v.addEventListener("loadedmetadata", apply, { once: true });
+  }
+  function createMutedPreview(container, item, { delay = 1500, onStart, onEnd, startAt = 0 } = {}) {
     let dead = false;
     let video = null;
     let started2 = false;
@@ -3948,6 +3962,7 @@
       v.addEventListener("ended", finish3);
       v.addEventListener("error", finish3);
       video = v;
+      applyStartAt(v, startAt);
       v.src = src;
       container.append(v);
       try {
@@ -7663,7 +7678,7 @@
     const list = (collections || []).filter((c) => c && c.id);
     if (!list.length) return null;
     const cells = list.map((c) => h("div", { role: "listitem", class: "lfx-plus-brands__cell" }, [
-      h("a", { class: "lfx-plus-brand", href: titleHref(c.id), "aria-label": c.name || "Sammlung" }, [
+      h("a", { class: "lfx-plus-brand", href: titleHref(c.id), "aria-label": c.name || "Sammlung", title: c.name || "Sammlung" }, [
         c.imageUrl ? h("img", { class: "lfx-plus-brand__img", src: c.imageUrl, alt: "", loading: "lazy", decoding: "async" }) : null,
         c.imageUrl ? null : h("span", { class: "lfx-plus-brand__name" }, c.name || "")
       ])
@@ -8911,7 +8926,7 @@
   var ON_CLASS7 = "lfx-plus-search-on";
   var DEBOUNCE_MS = 300;
   var MIN_LEN2 = 2;
-  var LUPE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5zm-6 0a4.500 4.500 0 1 1 0-9 4.500 4.500 0 0 1 0 9z"/></svg>';
+  var LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
   var X = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg>';
   var state10 = null;
   var routeQ = (route) => {
@@ -8937,10 +8952,11 @@
     document.getElementById(ROOT_ID9)?.remove();
     setPageOn(ON_CLASS7, false);
   }
-  function tile(href, label, imageUrl2) {
-    return h("a", { class: "lfx-plus-tile", href }, [
+  function tile(href, label, imageUrl2, { nameOnImage = true } = {}) {
+    const hide = !!imageUrl2 && !nameOnImage;
+    return h("a", { class: "lfx-plus-tile", href, "aria-label": label, title: label }, [
       imageUrl2 ? h("img", { class: "lfx-plus-tile__img", src: imageUrl2, alt: "", loading: "lazy", decoding: "async" }) : null,
-      h("span", { class: `lfx-plus-tile__name${imageUrl2 ? " has-img" : ""}` }, label)
+      h("span", { class: `lfx-plus-tile__name${imageUrl2 ? hide ? " is-sr" : " has-img" : ""}` }, label)
     ]);
   }
   function section(title, body, mod = "") {
@@ -8972,7 +8988,7 @@
       )))));
     }
     if (colls.length) {
-      parts.push(section("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl)))));
+      parts.push(section("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl, { nameOnImage: false })))));
     }
     s.results.replaceChildren(...parts);
   }
@@ -9467,7 +9483,6 @@
   var HTML_CLASS = "lfx-prime-header-on";
   var EXCLUDED7 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SCROLL_THRESHOLD2 = 10;
-  var LOGO = "../assets/logo/lenzprime.svg";
   var LIST_HREF = "#/home?tab=1";
   var SVG_NS2 = "http://www.w3.org/2000/svg";
   var ICONS4 = {
@@ -9558,9 +9573,7 @@
     }
   }
   function build6() {
-    const logo = h("a", { class: "lfx-prime-header__logo", href: "#/home", "aria-label": "LENZPRIME Startseite" }, [
-      h("img", { src: LOGO, alt: "LENZPRIME", draggable: "false" })
-    ]);
+    const logo = h("a", { class: "lfx-prime-header__logo", href: "#/home", "aria-label": "LENZPRIME \u2013 Startseite" });
     const nav = h("nav", { class: "lfx-prime-header__nav", "aria-label": "Hauptnavigation" });
     const searchBtn = h("button", {
       type: "button",
@@ -9797,6 +9810,58 @@
     return { line1: resume ? "Fortsetzen" : "Abspielen", line2: null, progress: resume ? progressPercent(item) : 0 };
   }
 
+  // src/js/features/prime/preview-gate.js
+  var HOLD_EVENT = "lfx-prime-preview-hold";
+  var VISIBLE_RATIO = 0.2;
+  function setPreviewHold(on) {
+    document.dispatchEvent(new CustomEvent(HOLD_EVENT, { detail: { on: Boolean(on) } }));
+  }
+  function autoPause(video, { respectHold = false } = {}) {
+    let visible = true;
+    let held = false;
+    let stopped = false;
+    let io = null;
+    const sync2 = () => {
+      if (stopped || !video) return;
+      const want = visible && !held && !document.hidden;
+      try {
+        if (want && video.paused) {
+          const p = video.play && video.play();
+          if (p && p.catch) p.catch(() => {
+          });
+        } else if (!want && !video.paused) {
+          video.pause();
+        }
+      } catch {
+      }
+    };
+    const onVis = () => sync2();
+    const onHold = (e) => {
+      held = Boolean(e.detail && e.detail.on);
+      sync2();
+    };
+    if (typeof IntersectionObserver === "function") {
+      io = new IntersectionObserver((entries) => {
+        const e = entries[entries.length - 1];
+        if (!e) return;
+        visible = e.isIntersecting && e.intersectionRatio >= VISIBLE_RATIO;
+        sync2();
+      }, { threshold: [0, VISIBLE_RATIO, 1] });
+      io.observe(video);
+    }
+    document.addEventListener("visibilitychange", onVis);
+    if (respectHold) document.addEventListener(HOLD_EVENT, onHold);
+    return {
+      stop() {
+        stopped = true;
+        if (io) io.disconnect();
+        io = null;
+        document.removeEventListener("visibilitychange", onVis);
+        document.removeEventListener(HOLD_EVENT, onHold);
+      }
+    };
+  }
+
   // src/js/features/prime/hero.js
   var ROTATE_MS2 = 2e4;
   var TRAILER_DELAY_MS2 = 3e3;
@@ -9857,6 +9922,7 @@
     let trailerActive = false;
     let rotateTimer = null;
     let preview = null;
+    let gate = null;
     let video = null;
     let trend2 = null;
     let media = null;
@@ -9876,6 +9942,10 @@
     };
     const paused = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
+      if (gate) {
+        gate.stop();
+        gate = null;
+      }
       if (preview) {
         preview.cancel();
         preview = null;
@@ -9904,9 +9974,11 @@
       if (reducedMotion2() || disposed || myGen !== gen3) return;
       preview = createMutedPreview(media, item, {
         delay: TRAILER_DELAY_MS2,
+        startAt: 4,
         onStart: (v) => {
           if (disposed || myGen !== gen3) return;
           video = v;
+          gate = autoPause(v, { respectHold: true });
           trailerActive = true;
           v.classList.add("is-in");
           hero.classList.add("is-trailer");
@@ -9927,10 +9999,10 @@
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
       const paint = (state12) => {
-        label.replaceChildren(
+        label.replaceChildren(...[
           h("span", { class: "lfx-prime-hero__label1" }, state12.line1),
           state12.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state12.line2) : null
-        );
+        ].filter(Boolean));
         btn.classList.toggle("is-two", Boolean(state12.line2));
         progress.hidden = !(state12.progress > 0);
         bar.style.width = `${Math.round(state12.progress)}%`;
@@ -10494,10 +10566,10 @@
     const label = h("span", { class: "lfx-prime-hc__label" });
     const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
     const paintPlay2 = (state12) => {
-      label.replaceChildren(
+      label.replaceChildren(...[
         h("span", null, state12.line1),
         state12.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state12.line2) : null
-      );
+      ].filter(Boolean));
       play2.classList.toggle("is-two", Boolean(state12.line2));
     };
     paintPlay2(playLabel(item));
@@ -10587,7 +10659,7 @@
     left = Math.max(EDGE2, Math.min(left, vw - EDGE2 - width));
     let top = cy - imgH / 2;
     top = Math.min(top, vh - EDGE2 - total);
-    top = Math.max(top, TOP_GUARD);
+    top = Math.max(top, Math.min(TOP_GUARD, Math.max(0, vh - EDGE2 - total)));
     return { left, top, width, imgH, originX: cx - left, originY: cy - top, scale: r.width / width };
   }
   var active3 = null;
@@ -10628,6 +10700,7 @@
     if (!a) return;
     a.timers.forEach(clearTimeout);
     if (a.preview) a.preview.cancel();
+    if (a.holding) setPreviewHold(false);
     if (a.kind === "popup") {
       unmountPoint(POPUP_ID2);
     } else {
@@ -10677,8 +10750,8 @@
     el.style.left = "0px";
     el.style.top = "0px";
     const imgH = Math.round(width * 9 / 16);
-    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el.offsetHeight - imgH));
     media.style.height = `${imgH}px`;
+    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el.offsetHeight - imgH));
     el.style.left = `${g.left}px`;
     el.style.top = `${g.top}px`;
     el.style.transformOrigin = `${g.originX}px ${g.originY}px`;
@@ -10740,9 +10813,12 @@
       if (active3 !== a || !detail) return;
       a.preview = createMutedPreview(mediaEl, detail, {
         delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
+        startAt: 4,
         onStart: (v) => {
           if (active3 !== a) return;
           a.video = v;
+          a.holding = true;
+          setPreviewHold(true);
           v.classList.add("is-in");
           el.classList.add("is-video");
           mute.hidden = false;
@@ -10752,6 +10828,10 @@
           if (active3 !== a) return;
           a.preview = null;
           a.video = null;
+          if (a.holding) {
+            a.holding = false;
+            setPreviewHold(false);
+          }
           el.classList.remove("is-video");
           mute.hidden = true;
         }
@@ -11084,6 +11164,10 @@
     if (!s || !s.video) return;
     const v = s.video;
     s.video = null;
+    if (s.gate) {
+      s.gate.stop();
+      s.gate = null;
+    }
     try {
       v.pause();
       v.removeAttribute("src");
@@ -11139,8 +11223,10 @@
     v.addEventListener("ended", end);
     v.addEventListener("error", end);
     s.video = v;
+    if (muted) applyStartAt(v, 4);
     v.src = s.trailerSrc;
     s.bg.append(v);
+    s.gate = autoPause(v);
     try {
       const p = v.play && v.play();
       if (p && p.catch) p.catch(end);

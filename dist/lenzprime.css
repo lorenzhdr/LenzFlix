@@ -21,6 +21,8 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) {
   --jf-palette-primary-light: #5aa9ff;
   --jf-palette-primary-dark: #0f78d1;
   --jf-palette-primary-mainChannel: 26 152 255;
+  --jf-palette-primary-contrastText: #00050d;
+  --jf-palette-primary-contrastTextChannel: 0 5 13;
   --jf-palette-secondary-main: #1a98ff;
   --jf-palette-background-default: #00050d;
   --jf-palette-background-defaultChannel: 0 5 13;
@@ -140,17 +142,14 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header.is-scrolled .lfx-p
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__logo {
+  background: url("../assets/logo/lenzprime.svg") 0 / contain no-repeat;
   border-radius: 6px;
   flex: none;
   align-items: center;
+  width: 68px;
+  height: 22px;
   margin-right: max(16px, min(2.6vw, 28px));
   display: inline-flex;
-}
-
-html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__logo img {
-  width: auto;
-  height: 22px;
-  display: block;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__nav {
@@ -402,7 +401,11 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-
   transition: color .1s ease-in-out, background-color .1s ease-in-out;
 }
 
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats {
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats, html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus {
+  color: var(--lfx-gold);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus-visible {
   color: var(--lfx-gold);
 }
 
@@ -418,7 +421,26 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-
   outline: none;
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus {
+  color: var(--lfx-gold);
+  outline: 2px solid var(--lfx-gold);
+  outline-offset: -2px;
+  background: rgba(255, 255, 255, .12);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:focus-visible {
+  color: var(--lfx-gold);
+  outline: 2px solid var(--lfx-gold);
+  outline-offset: -2px;
+  background: rgba(255, 255, 255, .12);
+}
+
 @media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats:hover {
+    color: var(--lfx-gold);
+    background: rgba(255, 255, 255, .12);
+  }
+
   html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item:hover {
     background: var(--lfx-prime-hover-bg);
     color: var(--lfx-prime-ink);
@@ -472,6 +494,8 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search_
   border-radius: 12px;
   align-items: center;
   gap: 14px;
+  width: 100%;
+  max-width: none;
   height: 82px;
   margin: 0;
   padding: 0 24px;
@@ -490,6 +514,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search_
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search__input {
+  width: 100%;
   min-width: 0;
   height: 100%;
   color: var(--lfx-text);
@@ -499,7 +524,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search_
   background: none;
   border: 0;
   outline: 0;
-  flex: auto;
+  flex: 1 1 0;
   margin: 0;
   padding: 0;
 }
@@ -2655,10 +2680,18 @@ html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiBut
   background: #ebecee;
 }
 
-html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root {
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root {
+  --variant-containedColor: #00050d;
+  --variant-containedBg: #fff;
+  --variant-containedHoverBg: #ebecee;
   color: #00050d;
   background: #fff;
   border-radius: 8px;
+}
+
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root svg, html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root.MuiButton-root .MuiSvgIcon-root {
+  color: #00050d;
+  fill: currentColor;
 }
 
 html.lfx-theme-prime:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected, html.lfx-theme-prime:not(.layout-tv) .alphaPickerButton-selected {
