@@ -5,6 +5,7 @@ import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv } from '../core/layout.js';
+import { getStatsUrl, STATS_LABEL } from '../core/stats.js';
 import { mountAmbient, unmountAmbient, setAmbient } from '../core/ambient.js';
 
 export { setAmbient };
@@ -109,9 +110,12 @@ function render() {
     nav.append(h('a', { class: 'lfx-nav__item', href: it.href, dataset: { key: it.key } }, it.label));
   }
   const more = state.model.more;
-  if (more.length) {
-    const menu = h('div', { class: 'lfx-nav__menu', role: 'menu', id: 'lfx-nav-menu' },
-      more.map((m) => h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label)));
+  const statsUrl = getStatsUrl();
+  if (more.length || statsUrl) {
+    const entries = more.map((m) => h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
+    // Eigenständige Seite (kein Hash-Link, kein data-key -> nie „aktiv“)
+    if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
+    const menu = h('div', { class: 'lfx-nav__menu', role: 'menu', id: 'lfx-nav-menu' }, entries);
     const btn = h('button', {
       type: 'button',
       class: 'lfx-nav__item lfx-nav__more-btn',

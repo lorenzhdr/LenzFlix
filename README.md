@@ -49,6 +49,16 @@ Für serverweite Charts („Top 10 Serien/Filme auf LENZFLIX“, meistgesehen de
 
 Alternativ per JS: `window.LenzFlixConfig = { chartsUrl: "https://charts.example.com" }` (hat Vorrang). Nur `https://`-URLs werden akzeptiert. Der Browser sendet dein Jellyfin-Token an den Worker (Header `X-Emby-Token`) und der Worker braucht die passende CORS-Freigabe; ist der Worker nicht erreichbar, greift automatisch der Fallback oben. Bei weniger als 3 (Neu und beliebt) bzw. 5 (Startseite) auflösbaren Chart-Titeln wird ebenfalls der Fallback verwendet.
 
+## Meine Statistik (optional)
+
+Ohne Konfiguration zeigt LenzFlix keinen Statistik-Link. Läuft unter deiner Domain eine eigenständige Statistik-Seite (z. B. `/lenzflix-stats/`), erscheint „Meine Statistik“ im „Mehr“-Menü der Navigation und im „Kategorien“-Overlay am Handy. Die URL im Custom-CSS eintragen:
+
+```css
+:root { --lfx-stats-url: "/lenzflix-stats/"; }
+```
+
+Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (hat Vorrang). Erlaubt sind `https://`-URLs und Pfade mit einem einzelnen führenden `/` auf derselben Domain. Der Link öffnet die Seite im selben Tab. Die Seite selbst braucht einen Worker plus Reverse-Proxy und gehört nicht zum Theme: Einrichtung und Datenformat siehe [`docs/stats-api.md`](docs/stats-api.md).
+
 ## Bedienung
 
 - **Billboard:** rotiert alle 10 s. Trailer werden nur bei lokalen Trailern abgespielt.

@@ -32,6 +32,17 @@ describe('mobilenav (rein)', () => {
     expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
     expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik']);
   });
+  it('Statistik-Eintrag nur mit Konfiguration, nicht in den Pills', () => {
+    expect(overlayItems(model).some((i) => i.label === 'Meine Statistik')).toBe(false);
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    try {
+      const last = overlayItems(model).at(-1);
+      expect(last).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/' });
+      expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
+    } finally {
+      delete window.LenzFlixConfig;
+    }
+  });
   it('Pills nur auf der Startseite', () => {
     expect(showsPills(parseHash('#/home'))).toBe(true);
     expect(showsPills(parseHash('#/home?tab=1'))).toBe(false);
@@ -79,5 +90,29 @@ describe('mobilenav (DOM)', () => {
     expect(document.getElementById('lfx-mnav')).toBeNull();
     expect(document.getElementById('lfx-mnav-overlay')).toBeNull();
     expect(document.documentElement.classList.contains('lfx-mnav-on')).toBe(false);
+  });
+
+  it('Overlay: Statistik-Link ohne Hash/data-key, Aufräumen in unmount', async () => {
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    try {
+      mobilenav.mount(parseHash('#/home'));
+      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(7));
+      const a = [...document.querySelectorAll('.lfx-mnav-overlay__link')].find((x) => x.textContent === 'Meine Statistik');
+      expect(a.getAttribute('href')).toBe('/lenzflix-stats/');
+      expect(a.dataset.key).toBeUndefined();
+      expect(document.querySelectorAll('.lfx-mnav__pill').length).toBe(4);
+      mobilenav.update(parseHash('#/home'));
+      expect(a.classList.contains('is-active')).toBe(false);
+      mobilenav.unmount();
+      expect(document.querySelector('.lfx-mnav-overlay__link')).toBeNull();
+    } finally {
+      delete window.LenzFlixConfig;
+    }
+  });
+
+  it('Overlay ohne Konfiguration: kein Statistik-Link', async () => {
+    mobilenav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(6));
+    expect([...document.querySelectorAll('.lfx-mnav-overlay__link')].some((x) => x.textContent === 'Meine Statistik')).toBe(false);
   });
 });

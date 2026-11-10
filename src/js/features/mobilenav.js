@@ -8,6 +8,7 @@ import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv, isMobile } from '../core/layout.js';
+import { getStatsUrl, STATS_LABEL } from '../core/stats.js';
 import { buildNavModel, navItems, activeKey } from './nav.js';
 
 const ROOT_ID = 'lfx-mnav';
@@ -29,6 +30,8 @@ export function pillItems(model) {
 export function overlayItems(model) {
   const items = navItems(model).map((it) => ({ key: it.key, label: it.label, href: it.href }));
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
+  const statsUrl = getStatsUrl();
+  if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
   return items;
 }
 
@@ -129,7 +132,8 @@ function render() {
 
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
-      h('a', { class: 'lfx-mnav-overlay__link', href: it.href, dataset: { key: it.key } }, it.label),
+      // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
+      h('a', { class: 'lfx-mnav-overlay__link', href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
     ])));
   const close = h('button', { type: 'button', class: 'lfx-mnav-overlay__close', 'aria-label': 'Schließen' }, '×');
   close.addEventListener('click', () => closeOverlay());
