@@ -7,19 +7,46 @@ export function hasLogoAndBackdrop(it) {
   return Boolean(it && it.Id && it.ImageTags && it.ImageTags.Logo && it.BackdropImageTags && it.BackdropImageTags.length);
 }
 
-/** Mischt abwechselnd neu/zufällig, entfernt Duplikate und Items ohne Logo+Backdrop. */
-export function mixPool(latest, random, perList = 6) {
-  const a = (latest || []).filter(hasLogoAndBackdrop).slice(0, perList);
-  const b = (random || []).filter(hasLogoAndBackdrop).slice(0, perList);
-  const out = [];
-  const seen = new Set();
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    for (const it of [a[i], b[i]]) {
-      if (it && !seen.has(it.Id)) {
+function shuffled(arr, rng) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Baut den Billboard-Pool: Zufall zuerst, dann abwechselnd neu/zufällig (Z N Z N … Z Z).
+ * - Neue: die `newCount` neuesten (Logo+Backdrop), in zufälliger Reihenfolge.
+ * - Zufällige: `randomCount` Stück ohne Überschneidung mit den Neuen.
+ * - Slide 1: bevorzugt Zufallstitel mit lokalem Trailer, nie `avoidFirstId` (außer es gibt keine Alternative).
+ */
+export function buildPool(latest, random, opts = {}) {
+  const { newCount = 4, randomCount = 8, avoidFirstId = null, rng = Math.random } = opts;
+  const uniq = (list, skip) => {
+    const seen = new Set(skip);
+    const out = [];
+    for (const it of list || []) {
+      if (hasLogoAndBackdrop(it) && !seen.has(it.Id)) {
         seen.add(it.Id);
         out.push(it);
       }
     }
+    return out;
+  };
+  const a = shuffled(uniq(latest, []).slice(0, newCount), rng);
+  const b = uniq(random, a.map((it) => it.Id)).slice(0, randomCount);
+  const fresh = b.filter((it) => it.Id !== avoidFirstId);
+  const first = fresh.find((it) => it.LocalTrailerCount > 0) || fresh[0];
+  if (first) {
+    b.splice(b.indexOf(first), 1);
+    b.unshift(first);
+  }
+  const out = [];
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if (b[i]) out.push(b[i]);
+    if (a[i]) out.push(a[i]);
   }
   return out;
 }

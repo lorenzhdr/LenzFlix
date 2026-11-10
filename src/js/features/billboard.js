@@ -10,7 +10,7 @@ import { canDownload, startDownload, isChooserOpen } from '../core/download.js';
 import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
-import { mixPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
+import { buildPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
 
 export const ROTATE_MS = 10000;
 export const TRAILER_DELAY_MS = 4000;
@@ -34,6 +34,16 @@ const ICON_PLUS = '<path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z
 const ICON_CHECK = '<path fill="currentColor" d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>';
 const ICON_BADGE = '<defs><linearGradient id="lfx-bb-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5fa2"/><stop offset="1" stop-color="#e50914"/></linearGradient></defs><path fill="url(#lfx-bb-grad)" d="M3 10.5v3a1 1 0 0 0 1 1h1.5l2.5 5h2.2l-1.7-5H11l8 4.5v-13L11 10H4a1 1 0 0 0-1 .5zM21 9.5v5a2.5 2.5 0 0 0 0-5z"/>';
 
+const LAST_FIRST_KEY = 'lfx-bb-first';
+
+function readLastFirst() {
+  try { return sessionStorage.getItem(LAST_FIRST_KEY); } catch { return null; }
+}
+
+function writeLastFirst(id) {
+  try { sessionStorage.setItem(LAST_FIRST_KEY, id); } catch { /* ignorieren */ }
+}
+
 async function fetchPool() {
   const base = {
     Recursive: true,
@@ -47,7 +57,9 @@ async function fetchPool() {
     getItems({ ...base, SortBy: 'DateCreated', SortOrder: 'Descending' }).catch(() => null),
     getItems({ ...base, SortBy: 'Random' }).catch(() => null),
   ]);
-  return mixPool(latest && latest.Items, random && random.Items, 6);
+  const pool = buildPool(latest && latest.Items, random && random.Items, { avoidFirstId: readLastFirst() });
+  if (pool[0]) writeLastFirst(pool[0].Id);
+  return pool;
 }
 
 function reducedMotion() {

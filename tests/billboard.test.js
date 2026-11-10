@@ -25,7 +25,7 @@ vi.mock('../src/js/core/itemmenu.js', () => ({
 }));
 
 import * as api from '../src/js/core/api.js';
-import { mixPool, formatRuntime, formatRating, metaParts, genreLine, badgeFor } from '../src/js/features/billboard/format.js';
+import { buildPool, formatRuntime, formatRating, metaParts, genreLine, badgeFor } from '../src/js/features/billboard/format.js';
 import { render } from '../src/js/features/billboard.js';
 import { openModal } from '../src/js/features/modal.js';
 import { canDownload, startDownload, isChooserOpen } from '../src/js/core/download.js';
@@ -33,11 +33,27 @@ import { openItemMenu, isMenuOpen, onItemsChanged } from '../src/js/core/itemmen
 import { putItems } from '../src/js/core/itemstore.js';
 
 describe('billboard format', () => {
-  it('mixPool: nur Logo+Backdrop, abwechselnd, ohne Duplikate', () => {
+  it('buildPool: Zufall zuerst, dann abwechselnd, max 4 neue + 8 zufällige, ohne Duplikate', () => {
     const bad = { Id: 'x', ImageTags: {}, BackdropImageTags: ['b'] };
-    const latest = [...items('n', 3), bad];
-    const random = [items('n', 1)[0], ...items('r', 2)];
-    expect(mixPool(latest, random).map((i) => i.Id)).toEqual(['n0', 'n1', 'r0', 'n2', 'r1']);
+    const latest = [...items('n', 6), bad];
+    const random = [items('n', 1)[0], ...items('r', 10)];
+    const ids = buildPool(latest, random, { rng: () => 0.999 }).map((i) => i.Id);
+    expect(ids).toEqual(['r0', 'n0', 'r1', 'n1', 'r2', 'n2', 'r3', 'n3', 'r4', 'r5', 'r6', 'r7']);
+  });
+  it('buildPool: neue in gemischter Reihenfolge, nur die 4 neuesten', () => {
+    const ids = buildPool(items('n', 6), items('r', 8), { rng: () => 0 }).map((i) => i.Id);
+    const news = ids.filter((i) => i.startsWith('n'));
+    expect(news.sort()).toEqual(['n0', 'n1', 'n2', 'n3']);
+  });
+  it('buildPool: Slide 1 bevorzugt Trailer und meidet avoidFirstId', () => {
+    const random = items('r', 4);
+    random[2].LocalTrailerCount = 1;
+    expect(buildPool([], random, { rng: () => 0 })[0].Id).toBe('r2');
+    expect(buildPool([], random, { rng: () => 0, avoidFirstId: 'r2' })[0].Id).toBe('r0');
+    expect(buildPool([], [random[2]], { avoidFirstId: 'r2' }).map((i) => i.Id)).toEqual(['r2']);
+  });
+  it('buildPool: nur neue, wenn Zufallsliste fehlt', () => {
+    expect(buildPool(items('n', 2), null).length).toBe(2);
   });
   it('Laufzeit, FSK, Staffeln', () => {
     expect(formatRuntime(106 * 600000000)).toBe('1 Std. 46 Min.');
@@ -69,6 +85,9 @@ describe('billboard render', () => {
   let slot;
   beforeEach(() => {
     vi.useFakeTimers();
+    // Identische Shuffle-Reihenfolge; Pool: r0 n0 r1 n1 r2 n2 (Zufallstitel zuerst).
+    vi.spyOn(Math, 'random').mockReturnValue(0.999);
+    sessionStorage.clear();
     document.body.innerHTML = '<section id="s"></section>';
     document.documentElement.className = '';
     slot = document.getElementById('s');
@@ -76,7 +95,7 @@ describe('billboard render', () => {
     api.getItems.mockImplementation(async (p) => ({ Items: p.SortBy === 'Random' ? items('r', 3) : items('n', 3) }));
     window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't' };
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
   const title = () => slot.querySelector('.lfx-bb__logo')?.getAttribute('alt');
   const flush = async () => { await vi.advanceTimersByTimeAsync(0); };
@@ -85,18 +104,18 @@ describe('billboard render', () => {
     const cleanup = render(slot);
     await flush();
     expect(slot.hidden).toBe(false);
-    expect(title()).toBe('n0');
+    expect(title()).toBe('r0');
     const card = slot.querySelector('.lfx-bb');
     card.dispatchEvent(new Event('mouseenter'));
     await vi.advanceTimersByTimeAsync(25000);
-    expect(title()).toBe('n0');
+    expect(title()).toBe('r0');
     card.dispatchEvent(new Event('mouseleave'));
     document.documentElement.classList.add('lfx-modal-open');
     await vi.advanceTimersByTimeAsync(10500);
-    expect(title()).toBe('n0');
+    expect(title()).toBe('r0');
     document.documentElement.classList.remove('lfx-modal-open');
     await vi.advanceTimersByTimeAsync(10500);
-    expect(title()).toBe('r0');
+    expect(title()).toBe('n0');
     cleanup();
     expect(slot.children.length).toBe(0);
   });
@@ -106,7 +125,7 @@ describe('billboard render', () => {
     render(slot);
     await flush();
     await vi.advanceTimersByTimeAsync(30000);
-    expect(title()).toBe('n0');
+    expect(title()).toBe('r0');
     delete document.hidden;
   });
 
@@ -197,10 +216,10 @@ describe('billboard render', () => {
       await flush();
       const d = dl();
       d.click();
-      expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Id: 'n0' }), d);
+      expect(startDownload).toHaveBeenCalledWith(expect.objectContaining({ Id: 'r0' }), d);
       const m = menu();
       m.click();
-      expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: 'n0' }), m);
+      expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: 'r0' }), m);
       expect(openModal).not.toHaveBeenCalled();
     });
 
@@ -209,14 +228,14 @@ describe('billboard render', () => {
       await flush();
       isMenuOpen.mockReturnValue(true);
       await vi.advanceTimersByTimeAsync(25000);
-      expect(title()).toBe('n0');
+      expect(title()).toBe('r0');
       isMenuOpen.mockReturnValue(false);
       isChooserOpen.mockReturnValue(true);
       await vi.advanceTimersByTimeAsync(10500);
-      expect(title()).toBe('n0');
+      expect(title()).toBe('r0');
       isChooserOpen.mockReturnValue(false);
       await vi.advanceTimersByTimeAsync(10500);
-      expect(title()).toBe('r0');
+      expect(title()).toBe('n0');
     });
 
     it('onItemsChanged: entferntes aktuelles Item -> nächstes; Abmeldung im Cleanup', async () => {
@@ -225,11 +244,11 @@ describe('billboard render', () => {
       const cleanup = render(slot);
       await flush();
       const cb = onItemsChanged.mock.calls[0][0];
-      cb({ removed: ['n0'], updated: [] });
+      cb({ removed: ['r0'], updated: [] });
       await vi.advanceTimersByTimeAsync(500);
-      expect(title()).not.toBe('n0');
+      expect(title()).not.toBe('r0');
       expect(slot.querySelectorAll('.lfx-bb__dotbtn').length).toBe(5);
-      cb({ removed: ['n1', 'r0', 'r1', 'r2', 'n2'], updated: [] });
+      cb({ removed: ['n0', 'n1', 'r1', 'r2', 'n2'], updated: [] });
       expect(slot.hidden).toBe(true);
       cleanup();
       expect(unsub).toHaveBeenCalled();
@@ -239,8 +258,8 @@ describe('billboard render', () => {
       render(slot);
       await flush();
       const cb = onItemsChanged.mock.calls[0][0];
-      putItems([{ Id: 'n0', Name: 'Neu', Type: 'Movie', ImageTags: { Logo: 'l', Primary: 'p' }, BackdropImageTags: ['b'] }]);
-      cb({ removed: [], updated: ['n0'] });
+      putItems([{ Id: 'r0', Name: 'Neu', Type: 'Movie', ImageTags: { Logo: 'l', Primary: 'p' }, BackdropImageTags: ['b'] }]);
+      cb({ removed: [], updated: ['r0'] });
       expect(title()).toBe('Neu');
     });
   });

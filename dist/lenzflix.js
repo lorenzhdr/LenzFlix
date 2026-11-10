@@ -2950,18 +2950,39 @@
   function hasLogoAndBackdrop(it) {
     return Boolean(it && it.Id && it.ImageTags && it.ImageTags.Logo && it.BackdropImageTags && it.BackdropImageTags.length);
   }
-  function mixPool(latest, random, perList = 6) {
-    const a = (latest || []).filter(hasLogoAndBackdrop).slice(0, perList);
-    const b = (random || []).filter(hasLogoAndBackdrop).slice(0, perList);
-    const out = [];
-    const seen = /* @__PURE__ */ new Set();
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      for (const it of [a[i], b[i]]) {
-        if (it && !seen.has(it.Id)) {
+  function shuffled(arr, rng) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function buildPool(latest, random, opts = {}) {
+    const { newCount = 4, randomCount = 8, avoidFirstId = null, rng = Math.random } = opts;
+    const uniq = (list, skip) => {
+      const seen = new Set(skip);
+      const out2 = [];
+      for (const it of list || []) {
+        if (hasLogoAndBackdrop(it) && !seen.has(it.Id)) {
           seen.add(it.Id);
-          out.push(it);
+          out2.push(it);
         }
       }
+      return out2;
+    };
+    const a = shuffled(uniq(latest, []).slice(0, newCount), rng);
+    const b = uniq(random, a.map((it) => it.Id)).slice(0, randomCount);
+    const fresh = b.filter((it) => it.Id !== avoidFirstId);
+    const first2 = fresh.find((it) => it.LocalTrailerCount > 0) || fresh[0];
+    if (first2) {
+      b.splice(b.indexOf(first2), 1);
+      b.unshift(first2);
+    }
+    const out = [];
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      if (b[i]) out.push(b[i]);
+      if (a[i]) out.push(a[i]);
     }
     return out;
   }
@@ -3030,6 +3051,20 @@
   var ICON_PLUS = '<path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>';
   var ICON_CHECK = '<path fill="currentColor" d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>';
   var ICON_BADGE = '<defs><linearGradient id="lfx-bb-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5fa2"/><stop offset="1" stop-color="#e50914"/></linearGradient></defs><path fill="url(#lfx-bb-grad)" d="M3 10.5v3a1 1 0 0 0 1 1h1.5l2.5 5h2.2l-1.7-5H11l8 4.5v-13L11 10H4a1 1 0 0 0-1 .5zM21 9.5v5a2.5 2.5 0 0 0 0-5z"/>';
+  var LAST_FIRST_KEY = "lfx-bb-first";
+  function readLastFirst() {
+    try {
+      return sessionStorage.getItem(LAST_FIRST_KEY);
+    } catch {
+      return null;
+    }
+  }
+  function writeLastFirst(id) {
+    try {
+      sessionStorage.setItem(LAST_FIRST_KEY, id);
+    } catch {
+    }
+  }
   async function fetchPool() {
     const base = {
       Recursive: true,
@@ -3043,7 +3078,9 @@
       getItems({ ...base, SortBy: "DateCreated", SortOrder: "Descending" }).catch(() => null),
       getItems({ ...base, SortBy: "Random" }).catch(() => null)
     ]);
-    return mixPool(latest && latest.Items, random && random.Items, 6);
+    const pool = buildPool(latest && latest.Items, random && random.Items, { avoidFirstId: readLastFirst() });
+    if (pool[0]) writeLastFirst(pool[0].Id);
+    return pool;
   }
   function reducedMotion() {
     return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5368,7 +5405,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.4.3";
+  var VERSION = "1.4.4";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;
