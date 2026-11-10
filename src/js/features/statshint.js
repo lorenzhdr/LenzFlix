@@ -3,7 +3,7 @@
 // Browser-Sitzung. Endet dauerhaft, sobald ein Statistik-Link des Themes geklickt wurde, spätestens
 // 10 Tage nach dem ersten Anzeigen. Nur Modern-Layout (Desktop + Handy), nicht TV, nur mit statsUrl.
 import { h, mountPoint, unmountPoint } from '../core/dom.js';
-import { isModern, isTv } from '../core/layout.js';
+import { isModern, isTv, isMobile } from '../core/layout.js';
 import { getStatsUrl, isStatsHref, STATS_LABEL } from '../core/stats.js';
 
 const ID = 'lfx-statshint';
@@ -102,6 +102,12 @@ function show() {
   });
   const root = mountPoint(ID, { className: 'lfx-statshint' });
   root.classList.remove('is-leaving');
+  // Desktop: oben in der Kopfzeile direkt rechts neben der Navigation (fällt dort mehr auf); Handy: unten.
+  const top = !isMobile();
+  root.classList.toggle('lfx-statshint--top', top);
+  const nav = top ? document.getElementById('lfx-nav') : null;
+  const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
+  root.style.left = top && navRight > 0 ? `${navRight + 12}px` : '';
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
   root.replaceChildren(h('div', { class: 'lfx-statshint__box' }, [link, close]));

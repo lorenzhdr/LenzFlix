@@ -76,6 +76,38 @@ html.lfx-js:not(.layout-tv) .lfx-statshint__close {
     color: var(--lfx-text);
   }
 }
+/* Desktop: in der Kopfzeile rechts neben der Navigation (left setzt das JS aus der Nav-Breite) */
+html.lfx-js:not(.layout-tv) .lfx-statshint--top {
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: calc(var(--lfx-gutter) + 420px);
+  height: var(--lfx-header-h);
+  align-items: center;
+  max-width: calc(100vw - 480px);
+  padding: 0;
+  z-index: 1101;
+  animation-name: lfx-statshint-in-top;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint--top.is-leaving {
+  animation-name: lfx-statshint-out-top;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint--top .lfx-statshint__box {
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-statshint--top .lfx-statshint__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes lfx-statshint-in-top {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lfx-statshint-out-top {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateX(-6px); }
+}
 @keyframes lfx-statshint-in {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }

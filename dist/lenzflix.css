@@ -6578,6 +6578,57 @@ html.lfx-js:not(.layout-tv) .lfx-statshint__close {
   }
 }
 
+html.lfx-js:not(.layout-tv) .lfx-statshint--top {
+  top: 0;
+  bottom: auto;
+  right: auto;
+  left: calc(var(--lfx-gutter) + 420px);
+  height: var(--lfx-header-h);
+  z-index: 1101;
+  align-items: center;
+  max-width: calc(100vw - 480px);
+  padding: 0;
+  animation-name: lfx-statshint-in-top;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-statshint--top.is-leaving {
+  animation-name: lfx-statshint-out-top;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-statshint--top .lfx-statshint__box {
+  min-width: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-statshint--top .lfx-statshint__text {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+@keyframes lfx-statshint-in-top {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lfx-statshint-out-top {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
 @keyframes lfx-statshint-in {
   from {
     opacity: 0;

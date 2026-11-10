@@ -5498,6 +5498,11 @@
     });
     const root2 = mountPoint(ID3, { className: "lfx-statshint" });
     root2.classList.remove("is-leaving");
+    const top = !isMobile();
+    root2.classList.toggle("lfx-statshint--top", top);
+    const nav = top ? document.getElementById("lfx-nav") : null;
+    const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
+    root2.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
     root2.setAttribute("role", "status");
     root2.setAttribute("aria-live", "polite");
     root2.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
@@ -5559,7 +5564,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default];
 
   // src/js/main.js
-  var VERSION = "1.4.5";
+  var VERSION = "1.4.6";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;
