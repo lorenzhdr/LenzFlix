@@ -49,6 +49,8 @@ Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZ
 
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
+**Wichtig bei Updates:** CSS-`@import` und JS-URL immer auf **denselben** Release-Tag setzen. Das Design-CSS wird aus dem Pfad des eingebundenen CSS abgeleitet. Steht das CSS noch auf einer älteren Version (ohne `lenzplus`/`lenzprime`), schlägt das Nachladen fehl. Dann fällt LenzFlix auf LENZFLIX zurück, und der Design-Dialog ist ungestylt.
+
 ## Echte Charts (optional)
 
 Ohne weitere Einrichtung zeigt LenzFlix keine echten Charts: „Top 10: Neu auf LENZFLIX“ auf der Startseite sind die zuletzt hinzugefügten Titel, in „Neu und beliebt“ erscheinen „Neueste Serien“ / „Neueste Filme“, und „Am häufigsten geschaut“ nutzt deine eigene Wiedergabezahl (sonst die Community-Bewertung).
