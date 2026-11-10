@@ -126,9 +126,13 @@ describe('billboard render', () => {
     expect(slot.querySelector('.lfx-bb__btn--info')).not.toBeNull();
     const btn = () => slot.querySelector('.lfx-bb__btn--list');
     expect(btn().classList.contains('is-on')).toBe(false);
+    expect(btn().getAttribute('aria-pressed')).toBe('false');
+    const plusIcon = btn().querySelector('svg').innerHTML;
     fav.mockResolvedValueOnce({});
     btn().click();
     expect(btn().classList.contains('is-on')).toBe(true);
+    expect(btn().getAttribute('aria-pressed')).toBe('true');
+    expect(btn().querySelector('svg').innerHTML).not.toBe(plusIcon);
     expect(fav).toHaveBeenCalledWith('n0', true);
     await flush();
     fav.mockRejectedValueOnce(new Error('x'));

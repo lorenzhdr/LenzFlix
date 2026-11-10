@@ -54,6 +54,7 @@
   --lfx-text-muted: #b3b3b3;
   --lfx-text-soft: #808080;
   --lfx-green: #46d369;
+  --lfx-green-soft: rgba(70, 211, 105, 0.12);
   --lfx-glass: rgba(109, 109, 110, 0.7);
   --lfx-glass-hover: rgba(109, 109, 110, 0.4);
   --lfx-pill-active: rgba(255, 255, 255, 0.2);

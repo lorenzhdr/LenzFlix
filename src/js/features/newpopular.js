@@ -115,8 +115,8 @@ const ICON_PLUS = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" 
 const ICON_CHECK = '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
 const ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
 
-function roundButton(label, icon, onClick) {
-  const b = h('button', { type: 'button', class: 'lfx-np__btn', 'aria-label': label, title: label, onclick: onClick });
+function roundButton(label, icon, onClick, extra = '') {
+  const b = h('button', { type: 'button', class: `lfx-np__btn ${extra}`.trim(), 'aria-label': label, title: label, onclick: onClick });
   b.append(svg(icon));
   return b;
 }
@@ -154,6 +154,8 @@ function favoriteButton(item) {
     btn.setAttribute('aria-label', label);
     btn.title = label;
     btn.querySelector('svg').innerHTML = fav ? ICON_CHECK : ICON_PLUS;
+    btn.classList.toggle('is-on', fav);
+    btn.setAttribute('aria-pressed', String(fav));
   }
   const btn = roundButton('Meine Liste', ICON_PLUS, async () => {
     const next = !fav;
@@ -165,7 +167,7 @@ function favoriteButton(item) {
     } catch (e) {
       console.warn('[LenzFlix] Meine Liste fehlgeschlagen', e && e.message);
     }
-  });
+  }, 'lfx-np__btn--fav');
   paint();
   return btn;
 }

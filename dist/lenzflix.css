@@ -61,6 +61,7 @@
   --lfx-text-muted: #b3b3b3;
   --lfx-text-soft: gray;
   --lfx-green: #46d369;
+  --lfx-green-soft: rgba(70, 211, 105, .12);
   --lfx-glass: rgba(109, 109, 110, .7);
   --lfx-glass-hover: rgba(109, 109, 110, .4);
   --lfx-pill-active: rgba(255, 255, 255, .2);
@@ -3595,6 +3596,18 @@ html.lfx-js .lfx-bb__btn--dl svg, html.lfx-js .lfx-bb__btn--menu svg {
     display: none;
   }
 
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--list.is-on, html.lfx-js .lfx-bb__btn.lfx-bb__btn--list.is-on:hover {
+    color: var(--lfx-green);
+    background: var(--lfx-green-soft);
+    border-color: var(--lfx-green);
+  }
+
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--list.is-on:focus-visible {
+    color: var(--lfx-green);
+    background: var(--lfx-green-soft);
+    border-color: var(--lfx-green);
+  }
+
   html.lfx-js .lfx-bb__btn.lfx-bb__btn--dl, html.lfx-js .lfx-bb__btn.lfx-bb__btn--menu {
     width: 44px;
     height: 44px;
@@ -4148,6 +4161,18 @@ html.lfx-js .lfx-hc__btn--like.is-on:focus-visible {
   border-color: var(--lfx-red);
 }
 
+html.lfx-js .lfx-hc__btn--list.is-on, html.lfx-js .lfx-hc__btn--list.is-on:hover {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
+
+html.lfx-js .lfx-hc__btn--list.is-on:focus-visible {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
+
 .lfx-hc__tip {
   z-index: 2;
   color: #000;
@@ -4511,6 +4536,18 @@ html.lfx-js .lfx-modal__round--like.is-on:focus-visible {
   color: var(--lfx-red);
   background: var(--lfx-like-bg);
   border-color: var(--lfx-red);
+}
+
+html.lfx-js .lfx-modal__round--fav.is-on, html.lfx-js .lfx-modal__round--fav.is-on:hover {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
+
+html.lfx-js .lfx-modal__round--fav.is-on:focus-visible {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
 }
 
 html.lfx-js .lfx-modal__body {
@@ -4966,6 +5003,24 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body {
     border-radius: 12px 12px 0 0;
   }
 
+  html.lfx-js .lfx-modal.lfx-dragging {
+    animation: none;
+  }
+
+  html.lfx-js .lfx-modal:before {
+    content: "";
+    z-index: 2;
+    pointer-events: none;
+    background: rgba(255, 255, 255, .45);
+    border-radius: 2px;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+  }
+
   html.lfx-js .lfx-modal__hero-content {
     bottom: 1.2em;
     left: 1.2em;
@@ -5276,6 +5331,27 @@ html.lfx-js .lfx-sheet__item--primary:disabled, html.lfx-js .lfx-sheet__item--pr
   html.lfx-js .lfx-sheet__item--primary {
     width: auto;
     margin: 8px 16px;
+  }
+
+  html.lfx-js.lfx-menu-open .dialog.actionSheet, html.lfx-js .lfx-sheet {
+    padding-top: 16px !important;
+  }
+
+  html.lfx-js.lfx-menu-open .dialog.actionSheet:before, html.lfx-js .lfx-sheet:before {
+    content: "";
+    pointer-events: none;
+    background: rgba(255, 255, 255, .35);
+    border-radius: 2px;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    position: absolute;
+    top: 6px;
+    left: 50%;
+  }
+
+  html.lfx-js.lfx-menu-open .dialog.actionSheet.lfx-dragging, html.lfx-js .lfx-sheet.lfx-dragging {
+    animation: none !important;
   }
 }
 
@@ -5593,6 +5669,18 @@ html.lfx-js .lfx-np__btn[hidden] {
 html.lfx-js .lfx-np__btn:focus-visible {
   outline-offset: 2px;
   outline: 2px solid #fff;
+}
+
+html.lfx-js .lfx-np__btn.lfx-np__btn--fav.is-on, html.lfx-js .lfx-np__btn.lfx-np__btn--fav.is-on:hover {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
+
+html.lfx-js .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
 }
 
 html.lfx-js .lfx-np__ico {
@@ -6176,6 +6264,12 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     color: var(--lfx-red);
     border-color: var(--lfx-red);
     background: rgba(229, 9, 20, .12);
+  }
+
+  html.lfx-js .lfx-modal__round--fav.is-on, html.lfx-js .lfx-modal__round--fav.is-on:hover {
+    color: var(--lfx-green);
+    background: var(--lfx-green-soft);
+    border-color: var(--lfx-green);
   }
 
   html.lfx-js .lfx-modal__close:hover {

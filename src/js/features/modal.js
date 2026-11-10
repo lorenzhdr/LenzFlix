@@ -11,6 +11,7 @@ import { play } from '../core/playback.js';
 import { setFavorite, getAuth } from '../core/api.js';
 import { onItemsChanged } from '../core/itemmenu.js';
 import { isChooserOpen } from '../core/download.js';
+import { attachSwipeClose } from '../core/swipe.js';
 import { clearCache } from '../core/cache.js';
 import * as data from './modal/data.js';
 import { hasResume, pickInitialSeason } from './modal/format.js';
@@ -103,8 +104,16 @@ function create(opener) {
   };
   overlay.addEventListener('click', onOverlayClick);
 
-  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, autoScroll: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
   state.unsub = onItemsChanged(onChanged);
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 799px)').matches) {
+    // Handy: Modal per Wischgeste nach unten schließen (nur am Anfang des Inhalts, nicht über Menü/Auswahl).
+    state.detachSwipe = attachSwipeClose(modal, {
+      backdrop: overlay,
+      canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
+      onClose: () => closeModal(),
+    });
+  }
   rootEl().classList.add('lfx-modal-open');
   document.addEventListener('keydown', onKeydown, true);
   window.addEventListener('popstate', onPopState);
@@ -121,7 +130,9 @@ function teardown() {
   const s = state;
   state = null;
   clearTimeout(s.fallback);
+  cancelAutoScroll(s);
   if (typeof s.unsub === 'function') s.unsub();
+  if (s.detachSwipe) s.detachSwipe();
   s.overlay.removeEventListener('click', s.onOverlayClick);
   document.removeEventListener('keydown', onKeydown, true);
   window.removeEventListener('popstate', onPopState);
@@ -217,6 +228,7 @@ async function loadInto(id, hint, replace, refresh = false) {
   const s = state;
   const token = ++s.token;
   const stale = () => state !== s || s.token !== token;
+  if (!refresh) cancelAutoScroll(s);
   if (refresh) {
     // Aktualisierung: bisherigen Inhalt stehen lassen, kein Skeleton, kein Scroll-Reset, keine History-Änderung.
   } else if (replace) {
@@ -250,10 +262,11 @@ async function loadInto(id, hint, replace, refresh = false) {
   const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? 'Fortsetzen' : 'Abspielen' });
   s.parts = parts;
   s.content.replaceChildren(parts.el);
+  if (!refresh) s.overlay.scrollTop = 0;
 
   const tasks = [];
   if (isSeries) {
-    tasks.push(loadSeriesParts(s, token, H));
+    tasks.push(loadSeriesParts(s, token, H, refresh));
     tasks.push(data.loadNextUp(main.Id).then((ep) => {
       if (!stale() && ep && hasResume(ep)) setPlayLabel(parts.playBtn, 'Fortsetzen');
     }).catch(() => {}));
@@ -270,24 +283,65 @@ async function loadInto(id, hint, replace, refresh = false) {
   await Promise.all(tasks);
 }
 
-async function loadSeriesParts(s, token, H) {
+async function loadSeriesParts(s, token, H, refresh = false) {
   const stale = () => state !== s || s.token !== token;
   try {
     s.seasons = await data.loadSeasons(s.main.Id);
     if (stale()) return;
     s.seasonId = pickInitialSeason(s.seasons, s.seasonId);
     if (!s.seasonId) return;
-    await showSeason(s, token, H);
+    await showSeason(s, token, H, { reveal: !refresh });
   } catch { /* Folgenliste bleibt aus */ }
 }
 
-async function showSeason(s, token, H) {
+const USER_SCROLL_EVENTS = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
+
+/** Bricht ein geplantes automatisches Scrollen ab und entfernt die Nutzereingriff-Listener. */
+function cancelAutoScroll(s) {
+  const a = s && s.autoScroll;
+  if (!a) return;
+  s.autoScroll = null;
+  a.cancelled = true;
+  if (a.raf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(a.raf);
+  for (const t of USER_SCROLL_EVENTS) s.overlay.removeEventListener(t, a.onUser);
+}
+
+/** Scrollt das Overlay sanft zur markierten Folge (einmalig, bricht bei Nutzereingriff ab). */
+function scheduleRevealScroll(s, token, row) {
+  cancelAutoScroll(s);
+  const a = { cancelled: false, raf: null, onUser: null };
+  a.onUser = () => cancelAutoScroll(s);
+  s.autoScroll = a;
+  for (const t of USER_SCROLL_EVENTS) s.overlay.addEventListener(t, a.onUser, { passive: true });
+  const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+  a.raf = raf(() => {
+    a.raf = null;
+    if (a.cancelled || state !== s || s.token !== token || s.autoScroll !== a || !row.isConnected) { cancelAutoScroll(s); return; }
+    cancelAutoScroll(s);
+    const top = Math.max(0, Math.round(row.getBoundingClientRect().top - s.overlay.getBoundingClientRect().top + s.overlay.scrollTop - 24));
+    let reduce = false;
+    try { reduce = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { /* egal */ }
+    if (typeof s.overlay.scrollTo === 'function') s.overlay.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
+    else s.overlay.scrollTop = top;
+  });
+}
+
+/** opts.reveal: markierte Folge nach dem ersten Laden sanft ins Bild scrollen (nicht bei Staffelwechsel/Refresh). */
+async function showSeason(s, token, H, opts = {}) {
   const episodes = await data.loadEpisodes(s.main.Id, s.seasonId);
   if (state !== s || s.token !== token) return;
   s.episodes = episodes;
   renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
-  const sel = s.parts.episodesSlot.querySelector('.lfx-modal__ep.is-selected');
-  if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+  const row = s.parts.episodesSlot.querySelector('.lfx-modal__ep.is-selected');
+  if (!row) return;
+  // Interne Folgenliste (falls scrollbar) auf die Zeile setzen – ohne das Overlay zu bewegen (kein scrollIntoView).
+  const list = row.parentElement;
+  if (list && list.scrollHeight > list.clientHeight) {
+    const lr = list.getBoundingClientRect();
+    const rr = row.getBoundingClientRect();
+    if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop = Math.max(0, rr.top - lr.top + list.scrollTop - (list.clientHeight - rr.height) / 2);
+  }
+  if (opts.reveal && s.selectedEpisodeId) scheduleRevealScroll(s, token, row);
 }
 
 /** Reaktion auf Bibliotheksänderungen (core/itemmenu.js). */

@@ -4,6 +4,7 @@ import { getAuth, getItem } from './api.js';
 import { findProxyContainer } from './playback.js';
 import { putItems } from './itemstore.js';
 import { toast } from './toast.js';
+import { attachSwipeClose } from './swipe.js';
 
 const END_QUIET_MS = 800;
 const NO_DIALOG_TIMEOUT_MS = 4000;
@@ -146,7 +147,27 @@ function setPosition(pos) {
   root.style.setProperty('--lfx-menu-y', `${Math.round(pos.y)}px`);
 }
 
+const isTouchSheet = () => typeof window.matchMedia === 'function' && window.matchMedia('(hover: none), (max-width: 799px)').matches;
+
+/** Bottom-Sheet (Touch/schmal): per Wischgeste nach unten schließen, auf demselben Weg wie Escape (history.back). */
+function attachSheetSwipe(s, sheet) {
+  if (!isTouchSheet()) return;
+  const backdrop = document.querySelector('.dialogBackdrop');
+  s.detachSwipe = attachSwipeClose(sheet, {
+    backdrop,
+    onClose: () => {
+      if (s.escaped || !sheet.isConnected) return;
+      s.escaped = true;
+      history.back();
+    },
+  });
+}
+
 function teardown(s) {
+  if (s.detachSwipe) {
+    s.detachSwipe();
+    s.detachSwipe = null;
+  }
   s.observer.disconnect();
   clearTimeout(s.endTimer);
   clearTimeout(s.startTimer);
@@ -202,6 +223,7 @@ function onMutation(s) {
         const hgt = sheet.offsetHeight;
         if (w && hgt) setPosition(computeMenuPosition(rectOf(s.anchor), undefined, { w, h: hgt }));
         focusFirstEntry(sheet);
+        attachSheetSwipe(s, sheet);
       }
     }
   }

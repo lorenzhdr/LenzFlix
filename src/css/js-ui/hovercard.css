@@ -147,6 +147,15 @@ html.lfx-js .lfx-hc__btn--like.is-on:focus-visible {
   border-color: var(--lfx-red);
 }
 
+/* „Meine Liste“ aktiv: Haken in Grün + grüner Rand, gleiche Spezifität wie der Daumen. */
+html.lfx-js .lfx-hc__btn--list.is-on,
+html.lfx-js .lfx-hc__btn--list.is-on:hover,
+html.lfx-js .lfx-hc__btn--list.is-on:focus-visible {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
+
 .lfx-hc__tip {
   position: absolute;
   bottom: calc(100% + 10px);

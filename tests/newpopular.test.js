@@ -151,6 +151,27 @@ describe('Download- und Mehr-Button', () => {
     expect(entry('i2').querySelector('.lfx-np__btn--dl').hidden).toBe(true);
   });
 
+  it('Meine Liste: --fav, is-on, aria-pressed und Icon-Wechsel', async () => {
+    api.setFavorite.mockReset();
+    api.setFavorite.mockResolvedValue({});
+    feature.mount();
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));
+    const fav = entry('i1').querySelector('.lfx-np__btn--fav');
+    expect(fav).not.toBeNull();
+    const plus = fav.querySelector('svg').innerHTML;
+    expect(fav.classList.contains('is-on')).toBe(false);
+    expect(fav.getAttribute('aria-pressed')).toBe('false');
+    fav.click();
+    await vi.waitFor(() => expect(fav.classList.contains('is-on')).toBe(true));
+    expect(api.setFavorite).toHaveBeenCalledWith('i1', true);
+    expect(fav.getAttribute('aria-pressed')).toBe('true');
+    expect(fav.querySelector('svg').innerHTML).not.toBe(plus);
+    fav.click();
+    await vi.waitFor(() => expect(fav.classList.contains('is-on')).toBe(false));
+    expect(fav.getAttribute('aria-pressed')).toBe('false');
+    expect(fav.querySelector('svg').innerHTML).toBe(plus);
+  });
+
   it('Klick ruft startDownload/openItemMenu mit Item + Button, öffnet kein Modal', async () => {
     feature.mount();
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));

@@ -16,6 +16,7 @@ import {
   canDownload,
   downloadUrl,
   downloadItem,
+  probeDownload,
   downloadMany,
   cancelDownloads,
   startDownload,
@@ -29,13 +30,16 @@ const flush = async () => {
 };
 
 let clicked;
+let fetchMock;
+const respond = (status) => ({ ok: status >= 200 && status < 300, status });
 const origClick = HTMLAnchorElement.prototype.click;
 beforeEach(() => {
   vi.useFakeTimers();
   document.body.innerHTML = '';
   document.documentElement.className = '';
   clicked = [];
-  window.ApiClient = { getItemDownloadUrl: (id) => `http://srv/Items/${id}/Download?api_key=SECRET` };
+  fetchMock = vi.fn(async () => respond(206));
+  vi.stubGlobal('fetch', fetchMock);
   window.matchMedia = vi.fn(() => ({ matches: false }));
   HTMLAnchorElement.prototype.click = function () {
     clicked.push({ href: this.getAttribute('href'), download: this.hasAttribute('download') });
@@ -50,6 +54,7 @@ afterEach(() => {
   HTMLAnchorElement.prototype.click = origClick;
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('canDownload', () => {
@@ -68,25 +73,60 @@ describe('canDownload', () => {
   });
 });
 
-describe('downloadUrl / downloadItem', () => {
-  it('Fallback ohne getItemDownloadUrl', () => {
-    window.ApiClient = {};
-    expect(downloadUrl('x')).toBe('http://srv/Items/x/Download?api_key=TOK');
+describe('downloadUrl / probeDownload / downloadItem', () => {
+  it('URL nutzt ApiKey= statt api_key=', () => {
+    const u = downloadUrl('x');
+    expect(u).toBe('http://srv/Items/x/Download?ApiKey=TOK');
+    expect(u).not.toContain('api_key=');
   });
 
-  it('klickt Anker mit URL, entfernt ihn, loggt nichts', async () => {
+  it('probeDownload: Range-Request, 206 ok, 401 Fehler, Exception unknown', async () => {
+    expect(await probeDownload('http://srv/x')).toEqual({ ok: true });
+    expect(fetchMock.mock.calls[0][1].headers).toEqual({ Range: 'bytes=0-0' });
+    fetchMock.mockResolvedValueOnce(respond(401));
+    expect(await probeDownload('http://srv/x')).toEqual({ ok: false, status: 401 });
+    fetchMock.mockRejectedValueOnce(new Error('net'));
+    expect(await probeDownload('http://srv/x')).toEqual({ ok: true, unknown: true });
+  });
+
+  it('probeDownload: Timeout nach 5 s -> unknown', async () => {
+    fetchMock.mockImplementationOnce(
+      (url, { signal }) => new Promise((_, rej) => signal.addEventListener('abort', () => rej(new Error('abort')))),
+    );
+    const p = probeDownload('http://srv/x');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await p).toEqual({ ok: true, unknown: true });
+  });
+
+  it('206 -> klickt Anker, entfernt ihn, loggt nichts', async () => {
     const spies = ['log', 'info', 'warn', 'error', 'debug'].map((k) => vi.spyOn(console, k).mockImplementation(() => {}));
     await downloadItem({ Id: 'm1' });
-    expect(clicked).toEqual([{ href: 'http://srv/Items/m1/Download?api_key=SECRET', download: true }]);
+    expect(clicked).toEqual([{ href: 'http://srv/Items/m1/Download?ApiKey=TOK', download: true }]);
     expect(document.querySelector('a')).toBeNull();
     expect(document.querySelector('.lfx-toast__msg').textContent).toBe('Download gestartet');
     spies.forEach((s) => expect(s).not.toHaveBeenCalled());
+  });
+
+  it('401 -> Toast mit Fehler 401, kein Anker, kein Token im Toast', async () => {
+    fetchMock.mockResolvedValue(respond(401));
+    await downloadItem({ Id: 'm1' });
+    expect(clicked).toHaveLength(0);
+    const msg = document.querySelector('.lfx-toast__msg').textContent;
+    expect(msg).toContain('Fehler 401');
+    expect(msg).not.toContain('TOK');
+  });
+
+  it('fetch wirft -> Anker wird trotzdem geklickt', async () => {
+    fetchMock.mockRejectedValue(new Error('net'));
+    await downloadItem({ Id: 'm1' });
+    expect(clicked).toHaveLength(1);
   });
 });
 
 describe('downloadMany', () => {
   it('nacheinander im Abstand von 1 s', async () => {
     const p = downloadMany([{ Id: 'a' }, { Id: 'b' }, { Id: 'c' }]);
+    await vi.advanceTimersByTimeAsync(0);
     expect(document.querySelector('.lfx-toast__msg').textContent).toBe('3 Downloads gestartet');
     expect(clicked).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(999);
@@ -98,17 +138,44 @@ describe('downloadMany', () => {
     await p;
   });
 
-  it('cancelDownloads bricht ab', async () => {
+  it('bricht bei 401 ab, ein Toast', async () => {
+    fetchMock.mockResolvedValue(respond(401));
     const p = downloadMany([{ Id: 'a' }, { Id: 'b' }]);
+    await p;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(clicked).toHaveLength(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const msgs = [...document.querySelectorAll('.lfx-toast__msg')].map((e) => e.textContent);
+    expect(msgs).toEqual(['Download nicht möglich (Fehler 401)']);
+  });
+
+  it('cancelDownloads stoppt Timer', async () => {
+    const p = downloadMany([{ Id: 'a' }, { Id: 'b' }]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(clicked).toHaveLength(1);
     cancelDownloads();
     await p;
     await vi.advanceTimersByTimeAsync(5000);
     expect(clicked).toHaveLength(1);
   });
 
-  it('Touch: Hinweistext', () => {
+  it('cancelDownloads bricht laufenden Vortest ab und löst auf', async () => {
+    fetchMock.mockImplementation(
+      (url, { signal }) => new Promise((_, rej) => signal.addEventListener('abort', () => rej(new Error('abort')))),
+    );
+    const p = downloadMany([{ Id: 'a' }, { Id: 'b' }]);
+    await vi.advanceTimersByTimeAsync(10);
+    cancelDownloads();
+    await p;
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(clicked).toHaveLength(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('Touch: Hinweistext', async () => {
     window.matchMedia = vi.fn(() => ({ matches: true }));
     downloadMany([{ Id: 'a' }, { Id: 'b' }]);
+    await vi.advanceTimersByTimeAsync(0);
     expect(document.querySelector('.lfx-toast__msg').textContent).toBe(
       '2 Downloads gestartet – falls blockiert, bitte Episoden einzeln laden',
     );
@@ -163,6 +230,7 @@ describe('Chooser', () => {
     primary.click();
     expect(isChooserOpen()).toBe(false);
     expect(document.getElementById('lfx-sheet')).toBeNull();
+    await vi.advanceTimersByTimeAsync(0);
     expect(clicked).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(2000);
     expect(clicked).toHaveLength(3);
@@ -211,5 +279,70 @@ describe('Chooser', () => {
     await openDownloadChooser(series, null);
     expect(isChooserOpen()).toBe(false);
     expect(document.querySelector('.lfx-toast__msg').textContent).toBe('Keine herunterladbaren Episoden');
+  });
+});
+
+function touch(target, type, x, y) {
+  const e = new Event(type, { bubbles: true, cancelable: true });
+  const list = [{ clientX: x, clientY: y, identifier: 0 }];
+  e.touches = type === 'touchend' || type === 'touchcancel' ? [] : list;
+  e.changedTouches = list;
+  target.dispatchEvent(e);
+  return e;
+}
+/** Abwaertsgeste mit Fake-Timern (Date.now + setTimeout muessen gefakt sein). */
+function swipeDown(target, to = 200) {
+  touch(target, 'touchstart', 50, 10);
+  vi.advanceTimersByTime(100);
+  touch(target, 'touchmove', 50, to / 2);
+  vi.advanceTimersByTime(100);
+  touch(target, 'touchmove', 50, to);
+  touch(target, 'touchend', 50, to);
+}
+
+describe('Chooser-Wischgeste', () => {
+  const series = { Id: 'ser', Type: 'Series' };
+  const seasons = { Items: [{ Id: 's1', Name: 'Staffel 1' }] };
+  const eps = { Items: [{ Id: 'e1', SeasonId: 's1' }, { Id: 'e2', SeasonId: 's1' }] };
+  const open = async (matches) => {
+    window.matchMedia = vi.fn((q) => ({ matches: matches && !/reduced-motion/.test(q) }));
+    getSeasons.mockResolvedValue(seasons);
+    getEpisodes.mockResolvedValue(eps);
+    await openDownloadChooser(series, null);
+    return document.querySelector('.lfx-sheet');
+  };
+
+  it('Touch: Abwaertsgeste schliesst den Chooser', async () => {
+    const sheet = await open(true);
+    swipeDown(sheet);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(true);
+    expect(isChooserOpen()).toBe(true);
+    vi.advanceTimersByTime(250);
+    expect(isChooserOpen()).toBe(false);
+    expect(document.querySelector('.lfx-sheet')).toBeNull();
+    expect(document.documentElement.classList.contains('lfx-sheet-open')).toBe(false);
+  });
+
+  it('Desktop (matchMedia false): Geste bewirkt nichts', async () => {
+    const sheet = await open(false);
+    swipeDown(sheet);
+    vi.advanceTimersByTime(500);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(false);
+    expect(sheet.style.transform).toBe('');
+    expect(isChooserOpen()).toBe(true);
+  });
+
+  it('Cleanup: closeChooser mitten in der Geste hinterlaesst nichts und ist wirkungslos', async () => {
+    const sheet = await open(true);
+    touch(sheet, 'touchstart', 50, 10);
+    touch(sheet, 'touchmove', 50, 60);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(true);
+    closeChooser();
+    expect(sheet.classList.contains('lfx-dragging')).toBe(false);
+    expect(sheet.style.transform).toBe('');
+    touch(sheet, 'touchend', 50, 60);
+    vi.advanceTimersByTime(500);
+    expect(sheet.style.transform).toBe('');
+    expect(isChooserOpen()).toBe(false);
   });
 });

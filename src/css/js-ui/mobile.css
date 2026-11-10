@@ -438,6 +438,13 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     background: rgba(229, 9, 20, 0.12);
     border-color: var(--lfx-red);
   }
+  /* Grüner „Meine Liste“-Haken bleibt auf Touch grün */
+  html.lfx-js .lfx-modal__round--fav.is-on,
+  html.lfx-js .lfx-modal__round--fav.is-on:hover {
+    color: var(--lfx-green);
+    background: var(--lfx-green-soft);
+    border-color: var(--lfx-green);
+  }
   html.lfx-js .lfx-modal__close:hover {
     background: rgba(20, 20, 20, 0.7);
   }

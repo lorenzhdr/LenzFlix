@@ -1039,6 +1039,201 @@
     return playViaDetails(item, resume, timeoutMs);
   }
 
+  // src/js/core/swipe.js
+  var DECIDE_PX = 8;
+  var SAMPLE_MS = 100;
+  var FALLBACK_PX = 80;
+  var EASE = "cubic-bezier(0.2,0,0,1)";
+  var ANIM = `transform 180ms ${EASE}`;
+  function defaultReducedMotion() {
+    try {
+      return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  }
+  function scrolledAncestor(target, el) {
+    let n = target && target.nodeType === 1 ? target : target && target.parentElement;
+    while (n) {
+      if (n.scrollTop > 0) return true;
+      if (n === el) break;
+      n = n.parentElement;
+    }
+    return false;
+  }
+  function attachSwipeClose(el, opts = {}) {
+    const onClose = opts.onClose;
+    const handleZone = opts.handleZone ?? 32;
+    const canStart = opts.canStart || (() => true);
+    const threshold = opts.threshold ?? 0.3;
+    const velocity = opts.velocity ?? 0.5;
+    const backdrop = opts.backdrop || null;
+    const reduced = opts.reducedMotion || defaultReducedMotion;
+    const now = () => Date.now();
+    let state4 = "idle";
+    let startX = 0;
+    let startY = 0;
+    let dy = 0;
+    let samples = [];
+    let timer = 0;
+    let detached = false;
+    let finishFn = null;
+    const height = () => el.offsetHeight || el.getBoundingClientRect().height || 0;
+    function clearTimer() {
+      if (timer) clearTimeout(timer);
+      timer = 0;
+    }
+    function resetStyles() {
+      el.classList.remove("lfx-dragging");
+      el.style.removeProperty("transform");
+      el.style.removeProperty("transition");
+      if (backdrop) {
+        backdrop.style.removeProperty("opacity");
+        backdrop.style.removeProperty("transition");
+      }
+    }
+    function animateThen(ms, fn) {
+      clearTimer();
+      let done = false;
+      const finish3 = () => {
+        if (done) return;
+        done = true;
+        clearTimer();
+        el.removeEventListener("transitionend", onEnd2);
+        finishFn = null;
+        fn();
+      };
+      const onEnd2 = (e) => {
+        if (e.target === el) finish3();
+      };
+      finishFn = () => {
+        done = true;
+        el.removeEventListener("transitionend", onEnd2);
+      };
+      el.addEventListener("transitionend", onEnd2);
+      timer = setTimeout(finish3, ms);
+    }
+    function setBackdrop(v, animate) {
+      if (!backdrop) return;
+      backdrop.style.transition = animate ? "opacity 180ms linear" : "none";
+      backdrop.style.opacity = String(v);
+    }
+    function close2() {
+      state4 = "closing";
+      if (reduced()) {
+        onClose();
+        return;
+      }
+      el.style.transition = ANIM;
+      el.style.transform = "translateY(100%)";
+      setBackdrop(0.3, true);
+      animateThen(250, () => onClose());
+    }
+    function springBack() {
+      state4 = "closing";
+      el.style.transition = ANIM;
+      el.style.transform = "translateY(0px)";
+      setBackdrop(1, true);
+      animateThen(250, () => {
+        resetStyles();
+        state4 = "idle";
+      });
+    }
+    function velocityNow() {
+      if (samples.length < 2) return 0;
+      const first2 = samples[0];
+      const last = samples[samples.length - 1];
+      const dt = last.t - first2.t;
+      return dt > 0 ? (last.y - first2.y) / dt : 0;
+    }
+    function onStart(e) {
+      if (state4 === "closing") return;
+      state4 = "idle";
+      const touches = e.touches || [];
+      if (touches.length !== 1) {
+        state4 = "ignored";
+        return;
+      }
+      const t = touches[0];
+      const rect = el.getBoundingClientRect();
+      const inHandle = t.clientY - rect.top <= handleZone;
+      if (!inHandle && scrolledAncestor(e.target, el)) {
+        state4 = "ignored";
+        return;
+      }
+      if (!canStart(e)) {
+        state4 = "ignored";
+        return;
+      }
+      state4 = "tracking";
+      startX = t.clientX;
+      startY = t.clientY;
+      dy = 0;
+      samples = [{ t: now(), y: startY }];
+    }
+    function onMove2(e) {
+      if (state4 !== "tracking" && state4 !== "dragging") return;
+      const touches = e.touches || [];
+      if (touches.length !== 1) {
+        if (state4 === "dragging") springBack();
+        else state4 = "ignored";
+        return;
+      }
+      const t = touches[0];
+      const mx = t.clientX - startX;
+      const my = t.clientY - startY;
+      if (state4 === "tracking") {
+        if (Math.hypot(mx, my) < DECIDE_PX) return;
+        if (my > 0 && my > Math.abs(mx)) {
+          state4 = "dragging";
+          el.classList.add("lfx-dragging");
+          el.style.transition = "none";
+        } else {
+          state4 = "ignored";
+          return;
+        }
+      }
+      if (e.cancelable) e.preventDefault();
+      dy = Math.max(0, my);
+      const ts = now();
+      samples.push({ t: ts, y: t.clientY });
+      while (samples.length > 2 && ts - samples[0].t > SAMPLE_MS) samples.shift();
+      el.style.transform = `translateY(${dy}px)`;
+      const h2 = height() || 300;
+      setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
+    }
+    function onEnd() {
+      if (state4 === "dragging") {
+        const h2 = height();
+        const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
+        if (far || velocityNow() > velocity) close2();
+        else springBack();
+      } else if (state4 !== "closing") {
+        state4 = "idle";
+      }
+    }
+    function onCancel() {
+      if (state4 === "dragging") springBack();
+      else if (state4 !== "closing") state4 = "idle";
+    }
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove2, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onCancel);
+    return function detach() {
+      if (detached) return;
+      detached = true;
+      clearTimer();
+      if (finishFn) finishFn();
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove2);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onCancel);
+      resetStyles();
+      state4 = "idle";
+    };
+  }
+
   // src/js/core/itemmenu.js
   var END_QUIET_MS = 800;
   var NO_DIALOG_TIMEOUT_MS = 4e3;
@@ -1147,7 +1342,24 @@
     root2.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
     root2.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
   }
+  var isTouchSheet = () => typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches;
+  function attachSheetSwipe(s, sheet) {
+    if (!isTouchSheet()) return;
+    const backdrop = document.querySelector(".dialogBackdrop");
+    s.detachSwipe = attachSwipeClose(sheet, {
+      backdrop,
+      onClose: () => {
+        if (s.escaped || !sheet.isConnected) return;
+        s.escaped = true;
+        history.back();
+      }
+    });
+  }
   function teardown(s) {
+    if (s.detachSwipe) {
+      s.detachSwipe();
+      s.detachSwipe = null;
+    }
     s.observer.disconnect();
     clearTimeout(s.endTimer);
     clearTimeout(s.startTimer);
@@ -1197,6 +1409,7 @@
           const hgt = sheet.offsetHeight;
           if (w && hgt) setPosition(computeMenuPosition(rectOf(s.anchor), void 0, { w, h: hgt }));
           focusFirstEntry(sheet);
+          attachSheetSwipe(s, sheet);
         }
       }
     }
@@ -1332,14 +1545,15 @@
     return item.CanDownload !== false;
   }
   function downloadUrl(id) {
-    const client = window.ApiClient;
-    if (client && typeof client.getItemDownloadUrl === "function") return client.getItemDownloadUrl(id);
     const { address, token } = getAuth();
-    return `${address}/Items/${id}/Download?api_key=${encodeURIComponent(token || "")}`;
+    if (!token) return null;
+    return `${address || ""}/Items/${id}/Download?ApiKey=${encodeURIComponent(token)}`;
   }
   function triggerDownload(item) {
+    const url = downloadUrl(item.Id);
+    if (!url) return;
     const a = document.createElement("a");
-    a.href = downloadUrl(item.Id);
+    a.href = url;
     a.setAttribute("download", "");
     a.rel = "noopener";
     a.style.display = "none";
@@ -1350,16 +1564,54 @@
       a.remove();
     }
   }
+  var PROBE_TIMEOUT = 5e3;
+  async function probeDownload(url, outerSignal) {
+    const controller = new AbortController();
+    const onOuter = () => controller.abort();
+    if (outerSignal) {
+      if (outerSignal.aborted) return { ok: true, unknown: true };
+      outerSignal.addEventListener("abort", onOuter, { once: true });
+    }
+    const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
+    try {
+      const res = await fetch(url, { headers: { Range: "bytes=0-0" }, signal: controller.signal });
+      const result = res.ok ? { ok: true } : { ok: false, status: res.status };
+      controller.abort();
+      return result;
+    } catch {
+      return { ok: true, unknown: true };
+    } finally {
+      clearTimeout(timer);
+      if (outerSignal) outerSignal.removeEventListener("abort", onOuter);
+    }
+  }
+  var failToast = (status) => toast(`Download nicht m\xF6glich (Fehler ${status || "?"})`);
   async function downloadItem(item) {
     if (!item || !item.Id) return;
+    const url = downloadUrl(item.Id);
+    if (!url) {
+      toast("Download nicht m\xF6glich");
+      return;
+    }
+    const probe = await probeDownload(url);
+    if (!probe.ok) {
+      failToast(probe.status);
+      return;
+    }
     triggerDownload(item);
     toast("Download gestartet");
   }
   var manyTimer = null;
   var manyResolve = null;
+  var manyAbort = null;
   function cancelDownloads() {
     clearTimeout(manyTimer);
     manyTimer = null;
+    if (manyAbort) {
+      const ac = manyAbort;
+      manyAbort = null;
+      ac.abort();
+    }
     if (manyResolve) {
       const r = manyResolve;
       manyResolve = null;
@@ -1372,20 +1624,35 @@
     if (!list.length) return Promise.resolve();
     const n = list.length;
     const touch = typeof window.matchMedia === "function" && window.matchMedia("(hover: none)").matches;
-    toast(touch ? `${n} Downloads gestartet \u2013 falls blockiert, bitte Episoden einzeln laden` : `${n} Downloads gestartet`);
+    const startMsg = touch ? `${n} Downloads gestartet \u2013 falls blockiert, bitte Episoden einzeln laden` : `${n} Downloads gestartet`;
+    const ac = new AbortController();
+    manyAbort = ac;
     return new Promise((resolve2) => {
       manyResolve = resolve2;
       let i = 0;
-      const step = () => {
-        manyTimer = null;
-        triggerDownload(list[i]);
-        i += 1;
-        if (i < list.length) {
-          manyTimer = setTimeout(step, 1e3);
-        } else {
+      const finish3 = () => {
+        if (manyAbort === ac) {
+          manyAbort = null;
           manyResolve = null;
-          resolve2();
         }
+        resolve2();
+      };
+      const step = async () => {
+        manyTimer = null;
+        const item = list[i];
+        const url = downloadUrl(item.Id);
+        const probe = url ? await probeDownload(url, ac.signal) : { ok: false };
+        if (ac.signal.aborted) return;
+        if (!probe.ok) {
+          failToast(probe.status);
+          finish3();
+          return;
+        }
+        if (i === 0) toast(startMsg);
+        triggerDownload(item);
+        i += 1;
+        if (i < list.length) manyTimer = setTimeout(step, 1e3);
+        else finish3();
       };
       step();
     });
@@ -1403,6 +1670,7 @@
     const c = chooser;
     if (!c) return;
     chooser = null;
+    if (c.detachSwipe) c.detachSwipe();
     window.removeEventListener("keydown", c.onKeydown, true);
     c.overlay.removeEventListener("click", c.onOverlayClick);
     unmountPoint(c.overlay);
@@ -1506,6 +1774,11 @@
     };
     window.addEventListener("keydown", c.onKeydown, true);
     overlay.addEventListener("click", c.onOverlayClick);
+    if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches) {
+      c.detachSwipe = attachSwipeClose(sheet, { onClose: () => {
+        if (chooser === c) closeChooser();
+      } });
+    }
     document.documentElement.classList.add("lfx-sheet-open");
     chooser = c;
     render3(c, "Download", [{ label: "L\xE4dt \u2026", disabled: true }]);
@@ -1762,7 +2035,7 @@
       icon("play"),
       h("span", { class: "lfx-modal__play-text" }, playLabel)
     ]);
-    const favBtn = roundButton("Meine Liste", "plus", () => H.toggleFav(favBtn));
+    const favBtn = roundButton("Meine Liste", "plus", () => H.toggleFav(favBtn), "lfx-modal__round--fav");
     setFavState(favBtn, Boolean(ud.IsFavorite));
     const likeBtn = roundButton("Gef\xE4llt mir", ICON_LIKE_OUTLINE, () => H.toggleLike(likeBtn), "lfx-modal__round--like");
     setLikeState(likeBtn, ud.Likes === true);
@@ -1955,7 +2228,7 @@
     const rt = formatRuntime(item.RunTimeTicks);
     const fav = h("button", {
       type: "button",
-      class: "lfx-modal__round lfx-modal__round--small",
+      class: "lfx-modal__round lfx-modal__round--small lfx-modal__round--fav",
       "aria-label": "Meine Liste",
       title: "Meine Liste",
       onclick: (e) => {
@@ -2085,8 +2358,15 @@
       closeModal();
     };
     overlay.addEventListener("click", onOverlayClick);
-    state3 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    state3 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, autoScroll: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
     state3.unsub = onItemsChanged(onChanged);
+    if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
+      state3.detachSwipe = attachSwipeClose(modal, {
+        backdrop: overlay,
+        canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
+        onClose: () => closeModal()
+      });
+    }
     rootEl().classList.add("lfx-modal-open");
     document.addEventListener("keydown", onKeydown, true);
     window.addEventListener("popstate", onPopState);
@@ -2103,7 +2383,9 @@
     const s = state3;
     state3 = null;
     clearTimeout(s.fallback);
+    cancelAutoScroll(s);
     if (typeof s.unsub === "function") s.unsub();
+    if (s.detachSwipe) s.detachSwipe();
     s.overlay.removeEventListener("click", s.onOverlayClick);
     document.removeEventListener("keydown", onKeydown, true);
     window.removeEventListener("popstate", onPopState);
@@ -2198,6 +2480,7 @@
     const s = state3;
     const token = ++s.token;
     const stale = () => state3 !== s || s.token !== token;
+    if (!refresh) cancelAutoScroll(s);
     if (refresh) {
     } else if (replace) {
       s.content.replaceChildren(buildSkeleton());
@@ -2234,9 +2517,10 @@
     const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? "Fortsetzen" : "Abspielen" });
     s.parts = parts;
     s.content.replaceChildren(parts.el);
+    if (!refresh) s.overlay.scrollTop = 0;
     const tasks = [];
     if (isSeries) {
-      tasks.push(loadSeriesParts(s, token, H));
+      tasks.push(loadSeriesParts(s, token, H, refresh));
       tasks.push(loadNextUp(main.Id).then((ep) => {
         if (!stale() && ep && hasResume(ep)) setPlayLabel(parts.playBtn, "Fortsetzen");
       }).catch(() => {
@@ -2255,24 +2539,64 @@
     }
     await Promise.all(tasks);
   }
-  async function loadSeriesParts(s, token, H) {
+  async function loadSeriesParts(s, token, H, refresh = false) {
     const stale = () => state3 !== s || s.token !== token;
     try {
       s.seasons = await loadSeasons(s.main.Id);
       if (stale()) return;
       s.seasonId = pickInitialSeason(s.seasons, s.seasonId);
       if (!s.seasonId) return;
-      await showSeason(s, token, H);
+      await showSeason(s, token, H, { reveal: !refresh });
     } catch {
     }
   }
-  async function showSeason(s, token, H) {
+  var USER_SCROLL_EVENTS = ["wheel", "touchstart", "pointerdown", "keydown"];
+  function cancelAutoScroll(s) {
+    const a = s && s.autoScroll;
+    if (!a) return;
+    s.autoScroll = null;
+    a.cancelled = true;
+    if (a.raf != null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(a.raf);
+    for (const t of USER_SCROLL_EVENTS) s.overlay.removeEventListener(t, a.onUser);
+  }
+  function scheduleRevealScroll(s, token, row) {
+    cancelAutoScroll(s);
+    const a = { cancelled: false, raf: null, onUser: null };
+    a.onUser = () => cancelAutoScroll(s);
+    s.autoScroll = a;
+    for (const t of USER_SCROLL_EVENTS) s.overlay.addEventListener(t, a.onUser, { passive: true });
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    a.raf = raf(() => {
+      a.raf = null;
+      if (a.cancelled || state3 !== s || s.token !== token || s.autoScroll !== a || !row.isConnected) {
+        cancelAutoScroll(s);
+        return;
+      }
+      cancelAutoScroll(s);
+      const top = Math.max(0, Math.round(row.getBoundingClientRect().top - s.overlay.getBoundingClientRect().top + s.overlay.scrollTop - 24));
+      let reduce = false;
+      try {
+        reduce = Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+      } catch {
+      }
+      if (typeof s.overlay.scrollTo === "function") s.overlay.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
+      else s.overlay.scrollTop = top;
+    });
+  }
+  async function showSeason(s, token, H, opts = {}) {
     const episodes = await loadEpisodes2(s.main.Id, s.seasonId);
     if (state3 !== s || s.token !== token) return;
     s.episodes = episodes;
     renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
-    const sel = s.parts.episodesSlot.querySelector(".lfx-modal__ep.is-selected");
-    if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest" });
+    const row = s.parts.episodesSlot.querySelector(".lfx-modal__ep.is-selected");
+    if (!row) return;
+    const list = row.parentElement;
+    if (list && list.scrollHeight > list.clientHeight) {
+      const lr = list.getBoundingClientRect();
+      const rr = row.getBoundingClientRect();
+      if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop = Math.max(0, rr.top - lr.top + list.scrollTop - (list.clientHeight - rr.height) / 2);
+    }
+    if (opts.reveal && s.selectedEpisodeId) scheduleRevealScroll(s, token, row);
   }
   function onChanged({ removed = [], updated = [] } = {}) {
     const s = state3;
@@ -3980,7 +4304,7 @@
     media.addEventListener("click", () => showDetails(s));
     s.btns = {
       play: circleButton("lfx-hc__btn--play", "Abspielen", () => startPlayback(s)),
-      list: circleButton("", "Meine Liste", () => toggleFavorite(s)),
+      list: circleButton("lfx-hc__btn--list", "Meine Liste", () => toggleFavorite(s)),
       like: circleButton("lfx-hc__btn--like", "Gef\xE4llt mir", () => toggleLike(s)),
       dl: circleButton("lfx-hc__btn--dl", "Herunterladen", () => downloadClick(s)),
       menu: circleButton("lfx-hc__btn--menu", "Mehr", () => openMenu(s)),
@@ -4313,8 +4637,8 @@
   var ICON_PLUS2 = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
   var ICON_CHECK2 = '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
   var ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
-  function roundButton2(label, icon2, onClick) {
-    const b = h("button", { type: "button", class: "lfx-np__btn", "aria-label": label, title: label, onclick: onClick });
+  function roundButton2(label, icon2, onClick, extra = "") {
+    const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick });
     b.append(svg4(icon2));
     return b;
   }
@@ -4347,6 +4671,8 @@
       btn.setAttribute("aria-label", label);
       btn.title = label;
       btn.querySelector("svg").innerHTML = fav ? ICON_CHECK2 : ICON_PLUS2;
+      btn.classList.toggle("is-on", fav);
+      btn.setAttribute("aria-pressed", String(fav));
     }
     const btn = roundButton2("Meine Liste", ICON_PLUS2, async () => {
       const next = !fav;
@@ -4358,7 +4684,7 @@
       } catch (e) {
         console.warn("[LenzFlix] Meine Liste fehlgeschlagen", e && e.message);
       }
-    });
+    }, "lfx-np__btn--fav");
     paint();
     return btn;
   }
@@ -4704,7 +5030,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.2.0";
+  var VERSION = "1.2.1";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

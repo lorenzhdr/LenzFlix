@@ -124,6 +124,14 @@ html.lfx-js .lfx-np__btn[hidden] { display: none; }
   html.lfx-js .lfx-np__btn:hover { border-color: #fff; background: rgba(60, 60, 60, 0.8); }
 }
 html.lfx-js .lfx-np__btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* „Meine Liste“ aktiv: Haken in Grün + grüner Rand (auch bei Hover) */
+html.lfx-js .lfx-np__btn.lfx-np__btn--fav.is-on,
+html.lfx-js .lfx-np__btn.lfx-np__btn--fav.is-on:hover,
+html.lfx-js .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
 html.lfx-js .lfx-np__ico { display: block; width: 18px; height: 18px; }
 html.lfx-js .lfx-np__ico svg { display: block; width: 100%; height: 100%; }
 

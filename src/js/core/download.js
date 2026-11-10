@@ -1,9 +1,10 @@
 // LenzFlix: Download einzelner Titel und Sammel-Download (Serie/Staffel) mit Auswahl-Sheet.
-// Sicherheit: Download-URLs enthalten api_key und werden nie geloggt.
+// Sicherheit: Download-URLs enthalten ApiKey und werden nie geloggt.
 import { getAuth, getUser, getSeasons, getEpisodes } from './api.js';
 import { h, mountPoint, unmountPoint } from './dom.js';
 import { toast } from './toast.js';
 import { computeMenuPosition, anchorRect } from './itemmenu.js';
+import { attachSwipeClose } from './swipe.js';
 
 const SHEET_ID = 'lfx-sheet';
 const FOLDER_TYPES = ['Series', 'Season'];
@@ -22,15 +23,17 @@ export async function canDownload(item) {
 // ------------------------------------------------------------ Download
 
 export function downloadUrl(id) {
-  const client = window.ApiClient;
-  if (client && typeof client.getItemDownloadUrl === 'function') return client.getItemDownloadUrl(id);
   const { address, token } = getAuth();
-  return `${address}/Items/${id}/Download?api_key=${encodeURIComponent(token || '')}`;
+  if (!token) return null;
+  // Jellyfin 12.4 akzeptiert für /Download nur ?ApiKey= (api_key= liefert 401).
+  return `${address || ''}/Items/${id}/Download?ApiKey=${encodeURIComponent(token)}`;
 }
 
 function triggerDownload(item) {
+  const url = downloadUrl(item.Id);
+  if (!url) return;
   const a = document.createElement('a');
-  a.href = downloadUrl(item.Id);
+  a.href = url;
   a.setAttribute('download', '');
   a.rel = 'noopener';
   a.style.display = 'none';
@@ -42,18 +45,60 @@ function triggerDownload(item) {
   }
 }
 
+const PROBE_TIMEOUT = 5000;
+
+/** Vortest per Range-Request (HEAD liefert 405). Netzwerkfehler/Timeout blockieren nie (unknown). */
+export async function probeDownload(url, outerSignal) {
+  const controller = new AbortController();
+  const onOuter = () => controller.abort();
+  if (outerSignal) {
+    if (outerSignal.aborted) return { ok: true, unknown: true };
+    outerSignal.addEventListener('abort', onOuter, { once: true });
+  }
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT);
+  try {
+    const res = await fetch(url, { headers: { Range: 'bytes=0-0' }, signal: controller.signal });
+    const result = res.ok ? { ok: true } : { ok: false, status: res.status };
+    controller.abort();
+    return result;
+  } catch {
+    return { ok: true, unknown: true };
+  } finally {
+    clearTimeout(timer);
+    if (outerSignal) outerSignal.removeEventListener('abort', onOuter);
+  }
+}
+
+const failToast = (status) => toast(`Download nicht möglich (Fehler ${status || '?'})`);
+
 export async function downloadItem(item) {
   if (!item || !item.Id) return;
+  const url = downloadUrl(item.Id);
+  if (!url) {
+    toast('Download nicht möglich');
+    return;
+  }
+  const probe = await probeDownload(url);
+  if (!probe.ok) {
+    failToast(probe.status);
+    return;
+  }
   triggerDownload(item);
   toast('Download gestartet');
 }
 
 let manyTimer = null;
 let manyResolve = null;
+let manyAbort = null;
 
 export function cancelDownloads() {
   clearTimeout(manyTimer);
   manyTimer = null;
+  if (manyAbort) {
+    const ac = manyAbort;
+    manyAbort = null;
+    ac.abort();
+  }
   if (manyResolve) {
     const r = manyResolve;
     manyResolve = null;
@@ -67,20 +112,35 @@ export function downloadMany(items) {
   if (!list.length) return Promise.resolve();
   const n = list.length;
   const touch = typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches;
-  toast(touch ? `${n} Downloads gestartet – falls blockiert, bitte Episoden einzeln laden` : `${n} Downloads gestartet`);
+  const startMsg = touch ? `${n} Downloads gestartet – falls blockiert, bitte Episoden einzeln laden` : `${n} Downloads gestartet`;
+  const ac = new AbortController();
+  manyAbort = ac;
   return new Promise((resolve) => {
     manyResolve = resolve;
     let i = 0;
-    const step = () => {
-      manyTimer = null;
-      triggerDownload(list[i]);
-      i += 1;
-      if (i < list.length) {
-        manyTimer = setTimeout(step, 1000);
-      } else {
+    const finish = () => {
+      if (manyAbort === ac) {
+        manyAbort = null;
         manyResolve = null;
-        resolve();
       }
+      resolve();
+    };
+    const step = async () => {
+      manyTimer = null;
+      const item = list[i];
+      const url = downloadUrl(item.Id);
+      const probe = url ? await probeDownload(url, ac.signal) : { ok: false };
+      if (ac.signal.aborted) return;
+      if (!probe.ok) {
+        failToast(probe.status);
+        finish();
+        return;
+      }
+      if (i === 0) toast(startMsg);
+      triggerDownload(item);
+      i += 1;
+      if (i < list.length) manyTimer = setTimeout(step, 1000);
+      else finish();
     };
     step();
   });
@@ -104,6 +164,7 @@ export function closeChooser() {
   const c = chooser;
   if (!c) return;
   chooser = null;
+  if (c.detachSwipe) c.detachSwipe();
   window.removeEventListener('keydown', c.onKeydown, true);
   c.overlay.removeEventListener('click', c.onOverlayClick);
   unmountPoint(c.overlay);
@@ -215,6 +276,9 @@ export async function openDownloadChooser(item, anchorEl) {
   };
   window.addEventListener('keydown', c.onKeydown, true);
   overlay.addEventListener('click', c.onOverlayClick);
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(hover: none), (max-width: 799px)').matches) {
+    c.detachSwipe = attachSwipeClose(sheet, { onClose: () => { if (chooser === c) closeChooser(); } });
+  }
   document.documentElement.classList.add('lfx-sheet-open');
   chooser = c;
 

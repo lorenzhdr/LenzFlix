@@ -181,9 +181,14 @@ describe('Favoriten', () => {
   it('optimistisch umschalten', async () => {
     setFavorite.mockResolvedValue({});
     const pop = await openPopup();
-    const btn = pop.querySelector('.lfx-hc__btnwrap .lfx-hc__btn:not([class*="--"])');
+    const btn = pop.querySelector('.lfx-hc__btn--list');
+    expect(btn).not.toBeNull();
+    const before = btn.innerHTML;
+    expect(btn.classList.contains('is-on')).toBe(false);
     btn.click();
     expect(btn.classList.contains('is-on')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn.innerHTML).not.toBe(before);
     await vi.advanceTimersByTimeAsync(0);
     expect(setFavorite).toHaveBeenCalledWith(expect.any(String), true);
     expect(btn.classList.contains('is-on')).toBe(true);
@@ -192,11 +197,12 @@ describe('Favoriten', () => {
     setFavorite.mockRejectedValue(new Error('x'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const pop = await openPopup();
-    const btn = pop.querySelector('.lfx-hc__btnwrap .lfx-hc__btn:not([class*="--"])');
+    const btn = pop.querySelector('.lfx-hc__btn--list');
     btn.click();
     expect(btn.classList.contains('is-on')).toBe(true);
     await vi.advanceTimersByTimeAsync(0);
     expect(btn.classList.contains('is-on')).toBe(false);
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
   });
   it('lädt fehlende Daten nach', async () => {
     getItem.mockResolvedValue({ Id: 'z', Type: 'Movie', Genres: ['Drama'], UserData: {}, OfficialRating: 'FSK-16' });
@@ -222,6 +228,7 @@ describe('Neue Buttons und Menü', () => {
     const { pop } = await openPopup();
     const cls = [...pop.querySelectorAll('.lfx-hc__actions-main .lfx-hc__btn')].map((b) => b.className);
     expect(cls[0]).toContain('lfx-hc__btn--play');
+    expect(cls[1]).toContain('lfx-hc__btn--list');
     expect(cls[2]).toContain('lfx-hc__btn--like');
     expect(cls[3]).toContain('lfx-hc__btn--dl');
     expect(cls[4]).toContain('lfx-hc__btn--menu');

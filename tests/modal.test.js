@@ -238,6 +238,33 @@ describe('Aktionen, Menü, Download', () => {
     expect(openItemMenu).toHaveBeenCalledWith(expect.objectContaining({ Id: 'M1' }), more);
   });
 
+  it('Meine Liste: Modifier --fav, is-on, aria-pressed und Icon-Wechsel', async () => {
+    await openModal('M1');
+    const fav = document.querySelector('.lfx-modal__actions .lfx-modal__round--fav');
+    expect(fav).not.toBeNull();
+    const off = fav.innerHTML;
+    expect(fav.classList.contains('is-on')).toBe(false);
+    expect(fav.getAttribute('aria-pressed')).toBe('false');
+    fav.click();
+    expect(fav.classList.contains('is-on')).toBe(true);
+    expect(fav.getAttribute('aria-pressed')).toBe('true');
+    expect(fav.innerHTML).not.toBe(off);
+    fav.click();
+    expect(fav.classList.contains('is-on')).toBe(false);
+    expect(fav.innerHTML).toBe(off);
+  });
+
+  it('Karten-Button „Meine Liste“ trägt --fav', async () => {
+    api.getSimilar.mockResolvedValue({ Items: [{ ...movie, Id: 'X1' }] });
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__card'));
+    const fav = document.querySelector('.lfx-modal__card .lfx-modal__round--fav');
+    expect(fav).not.toBeNull();
+    fav.click();
+    expect(fav.classList.contains('is-on')).toBe(true);
+    expect(fav.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('Download wird sichtbar, wenn canDownload true; Klick startet Download', async () => {
     canDownload.mockResolvedValue(true);
     await openModal('M1');
@@ -333,6 +360,122 @@ describe('Escape bei Dialog, Änderungen', () => {
   });
 });
 
+describe('Scrollverhalten', () => {
+  let scrollTo;
+  let scrollIntoView;
+  let rafQueue;
+  const runRaf = () => { const q = rafQueue; rafQueue = []; q.forEach((fn) => fn(0)); };
+  const epCard = { Id: 'SE2-E2', Type: 'Episode', Name: 'x', SeriesId: 'S1', SeasonId: 'SE2' };
+
+  beforeEach(() => {
+    scrollTo = vi.fn();
+    scrollIntoView = vi.fn();
+    rafQueue = [];
+    Element.prototype.scrollTo = scrollTo;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.stubGlobal('requestAnimationFrame', (fn) => rafQueue.push(fn));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete Element.prototype.scrollTo;
+    delete Element.prototype.scrollIntoView;
+  });
+
+  it('Episoden-Karte: Overlay bleibt oben, danach genau ein sanftes scrollTo, kein scrollIntoView', async () => {
+    await openModal(epCard);
+    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+    const overlay = document.getElementById('lfx-modal');
+    expect(overlay.scrollTop).toBe(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+    runRaf();
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(overlay.scrollTop).toBe(0);
+  });
+
+  it('Film und Serie ohne Episodenwahl: kein scrollTo', async () => {
+    await openModal('M1');
+    runRaf();
+    closeModal();
+    await wait(() => !document.querySelector('.lfx-modal'));
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    runRaf();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('Staffelwechsel: kein Overlay-Scroll', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    document.querySelector('.lfx-modal__seasonbtn').click();
+    document.querySelector('.lfx-modal__seasonopt[data-id="SE2"]').click();
+    await wait(() => document.querySelectorAll('.lfx-modal__ep').length === 3);
+    runRaf();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('Staffelwechsel nach Episoden-Karte: kein zweites scrollTo', async () => {
+    await openModal(epCard);
+    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+    runRaf();
+    scrollTo.mockClear();
+    document.querySelector('.lfx-modal__seasonbtn').click();
+    document.querySelector('.lfx-modal__seasonopt[data-id="SE1"]').click();
+    await wait(() => document.querySelectorAll('.lfx-modal__ep').length === 10);
+    runRaf();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('Refresh (onChanged updated): kein Overlay-Scroll', async () => {
+    await openModal(epCard);
+    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+    runRaf();
+    scrollTo.mockClear();
+    const cb = onItemsChanged.mock.calls.at(-1)[0];
+    const calls = api.getEpisodes.mock.calls.length;
+    cb({ removed: [], updated: ['S1'] });
+    await wait(() => api.getEpisodes.mock.calls.length > calls);
+    await flush(); await flush();
+    runRaf();
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(document.getElementById('lfx-modal').scrollTop).toBe(0);
+  });
+
+  it('Nutzereingriff (wheel) vor rAF: kein scrollTo', async () => {
+    await openModal(epCard);
+    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+    document.getElementById('lfx-modal').dispatchEvent(new Event('wheel', { bubbles: true }));
+    runRaf();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('Schließen vor rAF: kein scrollTo', async () => {
+    await openModal(epCard);
+    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+    modal.unmount();
+    runRaf();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('prefers-reduced-motion: behavior auto', async () => {
+    const mm = window.matchMedia;
+    window.matchMedia = vi.fn((q) => ({ matches: /reduced-motion/.test(q), media: q, addEventListener() {}, removeEventListener() {} }));
+    try {
+      await openModal(epCard);
+      await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+      runRaf();
+      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
+    } finally {
+      window.matchMedia = mm;
+    }
+  });
+});
+
 describe('Formatierung', () => {
   it('Laufzeit, Staffeln, Qualität, Altersfreigabe, Meta', () => {
     expect(formatRuntime(67_200_000_000)).toBe('1 Std. 52 Min.');
@@ -349,5 +492,104 @@ describe('Formatierung', () => {
     expect(ratingText('FSK-0')).toBe('Ohne Altersbeschränkung');
     expect(metaParts(series)).toMatchObject({ year: '2020', length: '2 Staffeln', rating: 'FSK-12' });
     expect(metaParts(movie)).toMatchObject({ length: '1 Std. 52 Min.', quality: 'HD' });
+  });
+});
+
+function touch(target, type, x, y) {
+  const e = new Event(type, { bubbles: true, cancelable: true });
+  const list = [{ clientX: x, clientY: y, identifier: 0 }];
+  e.touches = type === 'touchend' || type === 'touchcancel' ? [] : list;
+  e.changedTouches = list;
+  target.dispatchEvent(e);
+  return e;
+}
+/** Abwaertsgeste mit Fake-Timern (Date.now + setTimeout muessen gefakt sein). */
+function swipeDown(target, to = 200) {
+  touch(target, 'touchstart', 50, 10);
+  vi.advanceTimersByTime(100);
+  touch(target, 'touchmove', 50, to / 2);
+  vi.advanceTimersByTime(100);
+  touch(target, 'touchmove', 50, to);
+  touch(target, 'touchend', 50, to);
+}
+
+describe('Modal-Wischgeste', () => {
+  let mm;
+  let backSpy;
+  beforeEach(() => {
+    mm = window.matchMedia;
+    backSpy = vi.spyOn(history, 'back').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    window.matchMedia = mm;
+    backSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  async function openMobile(matches) {
+    window.matchMedia = vi.fn((q) => ({ matches: matches && !/reduced-motion/.test(q) }));
+    modal.mount();
+    await openModal('M1');
+    await wait(() => document.querySelector('.lfx-modal__title'));
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    return document.querySelector('.lfx-modal');
+  }
+
+  it('Handy: Abwaertsgeste schliesst das Modal (history.back, dann Fallback-Abbau)', async () => {
+    const m = await openMobile(true);
+    swipeDown(m);
+    expect(m.classList.contains('lfx-dragging')).toBe(true);
+    expect(backSpy).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(250);
+    expect(backSpy).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(600);
+    expect(document.querySelector('.lfx-modal')).toBeNull();
+    expect(document.documentElement.classList.contains('lfx-modal-open')).toBe(false);
+  });
+
+  it('Desktop (matchMedia false): keine Wischgeste', async () => {
+    const m = await openMobile(false);
+    swipeDown(m);
+    vi.advanceTimersByTime(500);
+    expect(m.classList.contains('lfx-dragging')).toBe(false);
+    expect(m.style.transform).toBe('');
+    expect(backSpy).not.toHaveBeenCalled();
+  });
+
+  it('gescrolltes Overlay (scrollTop > 0): Geste startet nicht', async () => {
+    const m = await openMobile(true);
+    Object.defineProperty(m.parentElement, 'scrollTop', { value: 40, configurable: true, writable: true });
+    swipeDown(m);
+    vi.advanceTimersByTime(500);
+    expect(m.classList.contains('lfx-dragging')).toBe(false);
+    expect(m.style.transform).toBe('');
+    expect(backSpy).not.toHaveBeenCalled();
+  });
+
+  it('Geste startet nicht ueber offenem Dialog (overlayOnTop)', async () => {
+    const m = await openMobile(true);
+    const dlg = document.createElement('div');
+    dlg.className = 'dialogContainer';
+    document.body.append(dlg);
+    swipeDown(m);
+    vi.advanceTimersByTime(500);
+    expect(m.classList.contains('lfx-dragging')).toBe(false);
+    expect(backSpy).not.toHaveBeenCalled();
+    dlg.remove();
+  });
+
+  it('Cleanup: unmount mitten in der Geste hinterlaesst keine Drag-Klasse/Transform', async () => {
+    const m = await openMobile(true);
+    const overlay = m.parentElement;
+    touch(m, 'touchstart', 50, 10);
+    touch(m, 'touchmove', 50, 60);
+    expect(m.classList.contains('lfx-dragging')).toBe(true);
+    modal.unmount();
+    expect(m.classList.contains('lfx-dragging')).toBe(false);
+    expect(m.style.transform).toBe('');
+    expect(overlay.style.opacity).toBe('');
+    swipeDown(m);
+    vi.advanceTimersByTime(500);
+    expect(backSpy).not.toHaveBeenCalled();
   });
 });

@@ -279,3 +279,81 @@ describe('startItemWatch', () => {
     }).not.toThrow();
   });
 });
+
+function touch(target, type, x, y) {
+  const e = new Event(type, { bubbles: true, cancelable: true });
+  const list = [{ clientX: x, clientY: y, identifier: 0 }];
+  e.touches = type === 'touchend' || type === 'touchcancel' ? [] : list;
+  e.changedTouches = list;
+  target.dispatchEvent(e);
+  return e;
+}
+/** Abwaertsgeste mit Fake-Timern (Date.now + setTimeout muessen gefakt sein). */
+function swipeDown(target, to = 200) {
+  touch(target, 'touchstart', 50, 10);
+  vi.advanceTimersByTime(100);
+  touch(target, 'touchmove', 50, to / 2);
+  vi.advanceTimersByTime(100);
+  touch(target, 'touchmove', 50, to);
+  touch(target, 'touchend', 50, to);
+}
+
+describe('Wischgeste am Action-Sheet', () => {
+  let backSpy;
+  beforeEach(() => {
+    backSpy = vi.spyOn(history, 'back').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete window.matchMedia;
+  });
+
+  async function openWithSheet() {
+    setupContainer();
+    openItemMenu(item, { x: 0, y: 0 });
+    const d = addDialog();
+    await flush();
+    return { d, sheet: d.querySelector('.dialog.actionSheet') };
+  }
+
+  it('Touch/schmal: Abwaertsgeste ruft history.back genau einmal', async () => {
+    window.matchMedia = vi.fn((q) => ({ matches: !/reduced-motion/.test(q) }));
+    const { sheet } = await openWithSheet();
+    swipeDown(sheet);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(true);
+    expect(backSpy).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(250);
+    expect(backSpy).toHaveBeenCalledTimes(1);
+    swipeDown(sheet);
+    vi.advanceTimersByTime(500);
+    expect(backSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('Desktop (matchMedia false): nichts gebunden', async () => {
+    window.matchMedia = vi.fn(() => ({ matches: false }));
+    const { sheet } = await openWithSheet();
+    swipeDown(sheet);
+    vi.advanceTimersByTime(500);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(false);
+    expect(sheet.style.transform).toBe('');
+    expect(backSpy).not.toHaveBeenCalled();
+  });
+
+  it('Cleanup: nach Sitzungsende keine Drag-Klasse/Transform, Geste wirkungslos', async () => {
+    window.matchMedia = vi.fn((q) => ({ matches: !/reduced-motion/.test(q) }));
+    const { d, sheet } = await openWithSheet();
+    touch(sheet, 'touchstart', 50, 10);
+    touch(sheet, 'touchmove', 50, 60);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(true);
+    d.remove();
+    await flush();
+    vi.advanceTimersByTime(800);
+    expect(isMenuOpen()).toBe(false);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(false);
+    expect(sheet.style.transform).toBe('');
+    swipeDown(sheet);
+    vi.advanceTimersByTime(500);
+    expect(sheet.classList.contains('lfx-dragging')).toBe(false);
+    expect(backSpy).not.toHaveBeenCalled();
+  });
+});

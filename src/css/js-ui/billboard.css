@@ -280,6 +280,14 @@ html.lfx-js .lfx-bb__btn--menu svg { display: block; width: 22px; height: 22px; 
     background: var(--lfx-icon-circle);
   }
   html.lfx-js .lfx-bb__btn--list span { display: none; }
+  /* aktiv: grün (Icon, Rand, Hintergrund); höhere Spezifität als Hover/Basis */
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--list.is-on,
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--list.is-on:hover,
+  html.lfx-js .lfx-bb__btn.lfx-bb__btn--list.is-on:focus-visible {
+    color: var(--lfx-green);
+    background: var(--lfx-green-soft);
+    border-color: var(--lfx-green);
+  }
   html.lfx-js .lfx-bb__btn.lfx-bb__btn--dl,
   html.lfx-js .lfx-bb__btn.lfx-bb__btn--menu { width: 44px; height: 44px; }
   html.lfx-js .lfx-bb__btn--dl svg,

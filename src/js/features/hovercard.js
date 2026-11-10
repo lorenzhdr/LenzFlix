@@ -382,7 +382,7 @@ function buildPopup(s) {
   media.addEventListener('click', () => showDetails(s));
   s.btns = {
     play: circleButton('lfx-hc__btn--play', 'Abspielen', () => startPlayback(s)),
-    list: circleButton('', 'Meine Liste', () => toggleFavorite(s)),
+    list: circleButton('lfx-hc__btn--list', 'Meine Liste', () => toggleFavorite(s)),
     like: circleButton('lfx-hc__btn--like', 'Gefällt mir', () => toggleLike(s)),
     dl: circleButton('lfx-hc__btn--dl', 'Herunterladen', () => downloadClick(s)),
     menu: circleButton('lfx-hc__btn--menu', 'Mehr', () => openMenu(s)),

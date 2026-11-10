@@ -248,6 +248,31 @@ html.lfx-js .lfx-sheet__item--primary:disabled:focus {
     width: auto;
     margin: 8px 16px 8px;
   }
+
+  /* Griff: Hinweis zum Wegwischen nach unten (core/swipe.js) */
+  html.lfx-js.lfx-menu-open .dialog.actionSheet,
+  html.lfx-js .lfx-sheet {
+    padding-top: 16px !important;
+  }
+  html.lfx-js.lfx-menu-open .dialog.actionSheet::before,
+  html.lfx-js .lfx-sheet::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    pointer-events: none;
+  }
+  /* Während des Ziehens folgt das Sheet dem Finger: die Öffnungsanimation (both !important) würde das
+     inline-transform überdecken. Die Schließ-Animation weiter unten bleibt davon unberührt (spätere Regel). */
+  html.lfx-js.lfx-menu-open .dialog.actionSheet.lfx-dragging,
+  html.lfx-js .lfx-sheet.lfx-dragging {
+    animation: none !important;
+  }
 }
 @keyframes lfx-menu-sheet-in {
   from { opacity: 1; transform: translateY(100%); }

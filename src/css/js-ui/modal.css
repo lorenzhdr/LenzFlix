@@ -127,6 +127,14 @@ html.lfx-js .lfx-modal__round--like.is-on:focus-visible {
   background: var(--lfx-like-bg);
   border-color: var(--lfx-red);
 }
+/* „Meine Liste“ aktiv: Haken in Grün + grüner Rand */
+html.lfx-js .lfx-modal__round--fav.is-on,
+html.lfx-js .lfx-modal__round--fav.is-on:hover,
+html.lfx-js .lfx-modal__round--fav.is-on:focus-visible {
+  color: var(--lfx-green);
+  background: var(--lfx-green-soft);
+  border-color: var(--lfx-green);
+}
 
 /* Body */
 html.lfx-js .lfx-modal__body {
@@ -331,6 +339,21 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body { padding-top: 24px; }
     min-height: 100%;
     border-radius: 12px 12px 0 0;
     animation: lfx-modal-sheet 300ms var(--lfx-ease-out) both;
+  }
+  /* Wischgeste (core/swipe.js): Modal folgt dem Finger, die Öffnungsanimation würde das inline-transform überdecken */
+  html.lfx-js .lfx-modal.lfx-dragging { animation: none; }
+  html.lfx-js .lfx-modal::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    z-index: 2;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.45);
+    pointer-events: none;
   }
   html.lfx-js .lfx-modal__hero-content { left: 1.2em; right: 1.2em; bottom: 1.2em; }
   html.lfx-js .lfx-modal__body { grid-template-columns: 1fr; padding: 0 1.2em; }

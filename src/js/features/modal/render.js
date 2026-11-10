@@ -110,7 +110,7 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
     icon('play'),
     h('span', { class: 'lfx-modal__play-text' }, playLabel),
   ]);
-  const favBtn = roundButton('Meine Liste', 'plus', () => H.toggleFav(favBtn));
+  const favBtn = roundButton('Meine Liste', 'plus', () => H.toggleFav(favBtn), 'lfx-modal__round--fav');
   setFavState(favBtn, Boolean(ud.IsFavorite));
   const likeBtn = roundButton('Gefällt mir', ICON_LIKE_OUTLINE, () => H.toggleLike(likeBtn), 'lfx-modal__round--like');
   setLikeState(likeBtn, ud.Likes === true);
@@ -291,7 +291,7 @@ function card(item, H) {
   const img = api.landscapeImage(item, { maxWidth: 500 });
   const rt = formatRuntime(item.RunTimeTicks);
   const fav = h('button', {
-    type: 'button', class: 'lfx-modal__round lfx-modal__round--small', 'aria-label': 'Meine Liste', title: 'Meine Liste',
+    type: 'button', class: 'lfx-modal__round lfx-modal__round--small lfx-modal__round--fav', 'aria-label': 'Meine Liste', title: 'Meine Liste',
     onclick: (e) => { e.stopPropagation(); H.toggleFavOf(item, fav); },
   });
   setFavState(fav, Boolean(item.UserData && item.UserData.IsFavorite));
