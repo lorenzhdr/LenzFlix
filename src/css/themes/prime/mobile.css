@@ -24,9 +24,11 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-tabbar-on
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
   padding-top: var(--lfx-prime-mh) !important;
 }
-/* Bibliotheksseiten: zweite AppBar-Toolbar (Filter/Sortierung, ~48 px) hängt unter der Kopfzeile */
+/* Bibliotheksseiten: zweite AppBar-Toolbar (Filter/Sortierung, ~48 px) hängt unter der Kopfzeile. Live gemessen (390 px): mit
+   +52 px blieben ~100 px Leerraum bis zur ersten Kartenreihe, die Seite bringt also selbst Platz mit. Korrektur über
+   --lfx-prime-libshift (Ziel: erste Reihe ~12-16 px unter der Toolbar); bei Abweichung nur diesen Wert nachziehen. */
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
-  padding-top: calc(var(--lfx-prime-mh) + 52px) !important;
+  padding-top: max(0px, calc(var(--lfx-prime-mh) + var(--lfx-prime-libshift, -34px))) !important;
 }
 
 /* ---------- Kopfzeile ---------- */
@@ -149,6 +151,13 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .
 /* ---------- Hero: 16:9-Rahmen, darunter Meta + Abspielen, Punkte ---------- */
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero-slot {
   padding: 10px 10px 0;
+}
+/* Platzhalter: 16:9-Rahmen + Platz für Meta, Abspielen und Punkte (~150 px) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero-slot.is-loading {
+  box-sizing: border-box;
+  min-height: calc((100vw - 20px) * 9 / 16 + 160px);
+  background: linear-gradient(#17191c, #17191c) no-repeat 10px 10px / calc(100% - 20px) calc((100vw - 20px) * 9 / 16);
+  background-color: transparent;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero {
   height: auto;

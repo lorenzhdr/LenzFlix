@@ -55,6 +55,22 @@ html.lfx-theme-prime:not(.layout-tv) .alphaPickerButton-selected {
 }
 
 /* ---------- Native Detailseite ---------- */
+/* Titel-Logo: Jellyfin blendet .detailLogo am Handy per display:none aus, modern/detail.css klippt dann den Namen auf 1 px.
+   Logo wieder zeigen; ohne sichtbares Logo (Klasse lfx-prime-nologo, features/prime/nativedetail.js) steht der Name als Text. */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #itemDetailPage:not(.lfx-prime-nologo) .detailLogo:not(.hide) {
+  display: block;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #itemDetailPage.lfx-prime-nologo .detailLogo {
+  display: none !important;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #itemDetailPage.lfx-prime-nologo .nameContainer h1 {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
 html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .itemBackdrop::after,
 html.lfx-theme-prime:not(.layout-tv):has(#itemDetailPage:not(.hide)) .backdropContainer::after {
   background:

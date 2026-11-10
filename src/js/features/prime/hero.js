@@ -389,15 +389,18 @@ export function renderHero(slot, { loadPool }) {
     try { trend = await getTrendInfo(); } catch { trend = null; }
     if (mobile) { try { newInfo = await getNewContentInfo(); } catch { newInfo = null; } }
     if (disposed) return;
-    if (!items || !items.length) { slot.hidden = true; return; }
+    if (!items || !items.length) { slot.classList.remove('is-loading'); slot.hidden = true; return; }
     pool = items;
     putItems(pool);
     build();
     slot.hidden = false;
+    slot.classList.remove('is-loading');
     show(0, true);
   }
 
-  slot.hidden = true;
+  // Platz reservieren (Skeleton per CSS), bis der Pool geladen ist; hidden erst, wenn es keinen Hero gibt
+  slot.hidden = false;
+  slot.classList.add('is-loading');
   init();
 
   return () => {
@@ -409,6 +412,7 @@ export function renderHero(slot, { loadPool }) {
     stopTrailer();
     cleanupFns.splice(0).forEach((f) => f());
     slot.replaceChildren();
+    slot.classList.remove('is-loading');
     slot.removeAttribute('aria-roledescription');
   };
 }

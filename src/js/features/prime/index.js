@@ -4,5 +4,6 @@ import home from './home.js';
 import hover from './hover.js';
 import title from './title.js';
 import tabbar from './tabbar.js';
+import nativedetail from './nativedetail.js';
 
-export const primeFeatures = [header, home, hover, title, tabbar];
+export const primeFeatures = [header, home, hover, title, tabbar, nativedetail];

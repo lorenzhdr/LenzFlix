@@ -54,7 +54,7 @@ async function build(tab, key) {
   teardown();
   const my = token;
   const isHub = key.startsWith('hub:');
-  const heroSlot = h('div', { class: 'lfx-plus-home__hero' });
+  const heroSlot = h('div', { class: 'lfx-plus-home__hero is-loading' });
   const rowsSlot = h('div', { class: 'lfx-plus-rows' });
   const root = h('div', { id: ROOT_ID, class: `lfx-plus-home${isHub ? ' lfx-plus-home--hub' : ''}` }, [heroSlot, rowsSlot]);
   tab.prepend(root);
@@ -82,10 +82,13 @@ async function build(tab, key) {
       if (!alive() || !pool.length) return;
       const hero = createHero(pool, { info });
       if (!hero) return;
+      heroSlot.classList.remove('is-loading');
       heroSlot.append(hero.el);
       cleanups.push(() => hero.destroy());
     } catch (e) {
       console.warn('[LenzFlix] Hero nicht geladen', e && e.message);
+    } finally {
+      heroSlot.classList.remove('is-loading');
     }
   })();
 

@@ -265,3 +265,32 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot:focus-visible { o
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__img,
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__content { transition: none; }
 }
+
+/* Platzhalter, bis der Hero geladen ist (home.js setzt is-loading auf .lfx-plus-home__hero): reserviert die Slide-Höhe, damit die Zeilen nicht springen */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home__hero.is-loading {
+  box-sizing: border-box;
+  height: calc((100cqw - 2 * var(--plus-gutter)) / 3 + 40px);
+  padding: 0 var(--plus-gutter) 40px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home__hero.is-loading::before {
+  content: "";
+  display: block;
+  height: 100%;
+  border-radius: 18px;
+  background: var(--plus-surface);
+  animation: lfx-plus-hero-skel 1.6s ease-in-out infinite;
+}
+@keyframes lfx-plus-hero-skel {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home__hero.is-loading {
+    height: calc(87cqw * 4 / 3 + 18px);
+    padding: 0 calc((100cqw - 87cqw) / 2) 18px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home__hero.is-loading::before { border-radius: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home__hero.is-loading::before { animation: none; }
+}

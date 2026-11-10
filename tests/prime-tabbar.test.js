@@ -134,6 +134,19 @@ describe('prime-tabbar: Mount', () => {
     expect(shouldHide()).toBe(true);
   });
 
+  it('reagiert sofort auf aria-hidden/Klassenwechsel tief im DOM (Popover schließt)', async () => {
+    tabbar.mount(route('#/home'));
+    const el = document.getElementById('lfx-prime-tabbar');
+    const pop = document.createElement('div');
+    pop.className = 'MuiPopover-root MuiModal-root';
+    document.body.append(pop);
+    await flush();
+    expect(el.classList.contains('is-hidden')).toBe(true);
+    pop.className = 'MuiPopover-root MuiModal-root MuiModal-hidden';
+    await flush();
+    expect(el.classList.contains('is-hidden')).toBe(false);
+  });
+
   it('blendet bei Sheets, Dialogen und Player aus und danach wieder ein', async () => {
     tabbar.mount(route('#/home'));
     const el = document.getElementById('lfx-prime-tabbar');

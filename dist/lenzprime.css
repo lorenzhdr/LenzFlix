@@ -709,6 +709,28 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot[hidden] {
   display: none;
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot.is-loading {
+  background: #17191c;
+  min-height: max(440px, min(37.5vw, 720px));
+  animation: 1.6s ease-in-out infinite lfx-prime-hero-skel;
+}
+
+@keyframes lfx-prime-hero-skel {
+  0%, 100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .72;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot.is-loading {
+    animation: none;
+  }
+}
+
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero {
   background: var(--pv-bg);
   isolation: isolate;
@@ -2708,6 +2730,24 @@ html.lfx-theme-prime:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-select
   border-radius: 8px;
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #itemDetailPage:not(.lfx-prime-nologo) .detailLogo:not(.hide) {
+  display: block;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #itemDetailPage.lfx-prime-nologo .detailLogo {
+  display: none !important;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #itemDetailPage.lfx-prime-nologo .nameContainer h1 {
+  -webkit-clip-path: none;
+  clip-path: none;
+  white-space: normal;
+  width: auto;
+  height: auto;
+  position: static;
+  overflow: visible;
+}
+
 html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .itemBackdrop:after {
   background: linear-gradient(rgba(0, 5, 13, .8), rgba(0, 5, 13, 0) 22%), linear-gradient(0deg, #00050d, rgba(0, 5, 13, .55) 22%, rgba(0, 5, 13, 0) 52%), linear-gradient(90deg, rgba(0, 5, 13, .85), rgba(0, 5, 13, .4) 40%, rgba(0, 5, 13, 0) 68%);
 }
@@ -3164,7 +3204,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsd
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
-  padding-top: calc(var(--lfx-prime-mh) + 52px) !important;
+  padding-top: max(0px, calc(var(--lfx-prime-mh) + var(--lfx-prime-libshift, -34px))) !important;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--mobile {
@@ -3301,6 +3341,12 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero-slot {
   padding: 10px 10px 0;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero-slot.is-loading {
+  box-sizing: border-box;
+  background: linear-gradient(#17191c, #17191c) 10px 10px / calc(100% - 20px) calc(56.25vw - 11.25px) no-repeat;
+  min-height: calc(56.25vw + 148.75px);
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero {

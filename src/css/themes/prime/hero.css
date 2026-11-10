@@ -39,6 +39,19 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot {
   margin: 0;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot[hidden] { display: none; }
+/* Platzhalter bis der Hero geladen ist (home.js/hero.js setzen is-loading): reserviert die Hero-Höhe, damit die Zeilen nicht springen */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot.is-loading {
+  min-height: clamp(440px, 37.5vw, 720px);
+  background: #17191c;
+  animation: lfx-prime-hero-skel 1.6s ease-in-out infinite;
+}
+@keyframes lfx-prime-hero-skel {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot.is-loading { animation: none; }
+}
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero {
   position: relative;

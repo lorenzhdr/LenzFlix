@@ -67,6 +67,18 @@ describe('plus-nativedetail', () => {
     expect(p.classList.contains('lfx-plus-nologo')).toBe(true);
   });
 
+  it('Logo per CSS ausgeblendet (display:none): Text-Titel-Klasse', () => {
+    globalThis.Image = class { set src(v) { this._s = v; } };
+    document.body.innerHTML = page('background-image: url(/L.png); display: none', '', 'background-image: url(/B.jpg)');
+    nativedetail.mount(R('#/details?id=1'));
+    const p = document.getElementById('itemDetailPage');
+    expect(p.classList.contains('lfx-plus-nologo')).toBe(true);
+    // Klasse sperrt sich nicht selbst: sichtbar gewordenes Logo nimmt sie wieder weg
+    document.querySelector('.detailLogo').style.display = '';
+    evaluate();
+    expect(p.classList.contains('lfx-plus-nologo')).toBe(false);
+  });
+
   it('unmount entfernt die Klassen', () => {
     document.body.innerHTML = page('', 'hide', '');
     nativedetail.mount(R('#/details?id=1'));

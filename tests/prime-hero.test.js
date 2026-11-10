@@ -106,6 +106,18 @@ describe('Hero: Slides', () => {
   it('ohne Pool bleibt der Slot versteckt', async () => {
     await mount([]);
     expect(slot.hidden).toBe(true);
+    expect(slot.classList.contains('is-loading')).toBe(false);
+  });
+
+  it('reserviert Platz (is-loading) bis der Hero da ist', async () => {
+    const cleanup = renderHero(slot, { loadPool: () => new Promise(() => {}) });
+    expect(slot.hidden).toBe(false);
+    expect(slot.classList.contains('is-loading')).toBe(true);
+    cleanup();
+    expect(slot.classList.contains('is-loading')).toBe(false);
+    const c2 = await mount([mk('m1')]);
+    expect(slot.classList.contains('is-loading')).toBe(false);
+    c2();
   });
 
   it('Crossfade: nach 20 s zweite Slide, altes Bild verschwindet nach der Überblendung', async () => {

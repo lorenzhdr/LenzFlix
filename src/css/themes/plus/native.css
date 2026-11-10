@@ -215,6 +215,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:active {
 
 /* ---- Native Detailseite: kein Logo (oder Logo lädt nicht) -> Name als Text; kein Backdrop -> Verlauf ----
    Klassen setzt features/plus/nativedetail.js auf #itemDetailPage. */
+/* Logo vorhanden: Jellyfin blendet .detailLogo am Handy per display:none aus -> wieder zeigen (Maße setzt modern/detail.css),
+   sonst bleibt der Name (auf 1 px geklippt) unsichtbar. */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage:not(.lfx-plus-nologo) .detailLogo:not(.hide) {
+  display: block;
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage.lfx-plus-nologo .detailLogo {
   display: none !important;
 }

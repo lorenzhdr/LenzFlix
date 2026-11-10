@@ -49,7 +49,14 @@ export function activeTab(route, searchOpen = false) {
   return null;
 }
 
-const state = { el: null, route: null, observer: null, cleanups: [] };
+const state = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
+
+/** Zustand im nächsten Frame neu berechnen (bündelt viele DOM-Änderungen, reagiert aber sofort statt per Polling). */
+function scheduleApply() {
+  if (state.raf) return;
+  const run = () => { state.raf = 0; applyState(); };
+  state.raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(run) : setTimeout(run, 0);
+}
 
 function inputFocused() {
   const a = document.activeElement;
@@ -75,8 +82,8 @@ function applyState() {
   for (const t of el.querySelectorAll('[data-tab]')) {
     const on = t.dataset.tab === active;
     t.classList.toggle('is-active', on);
-    if (on) t.setAttribute('aria-current', 'page');
-    else t.removeAttribute('aria-current');
+    if (on) { if (t.getAttribute('aria-current') !== 'page') t.setAttribute('aria-current', 'page'); }
+    else if (t.hasAttribute('aria-current')) t.removeAttribute('aria-current');
   }
 }
 
@@ -116,6 +123,13 @@ export default {
       state.observer = new MutationObserver(applyState);
       state.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
       state.observer.observe(document.body, { childList: true });
+      // Sheets/Popover/Dialoge schließen auch per Klassen-/aria-hidden-Wechsel (MUI: MuiModal-hidden) oder tiefer im DOM:
+      // sofort reagieren, damit die Pille nicht erst verspätet zurückkommt.
+      state.bodyObserver = new MutationObserver((records) => {
+        if (state.el && records.every((r) => state.el.contains(r.target))) return;
+        scheduleApply();
+      });
+      state.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-hidden', 'hidden', 'open'] });
     }
     const onFocus = () => applyState();
     document.addEventListener('focusin', onFocus);
@@ -133,6 +147,13 @@ export default {
   unmount() {
     if (state.observer) state.observer.disconnect();
     state.observer = null;
+    if (state.bodyObserver) state.bodyObserver.disconnect();
+    state.bodyObserver = null;
+    if (state.raf) {
+      if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(state.raf);
+      clearTimeout(state.raf);
+      state.raf = 0;
+    }
     for (const fn of state.cleanups.splice(0)) fn();
     unmountPoint(ID);
     document.documentElement.classList.remove(HTML_CLASS);

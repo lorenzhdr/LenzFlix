@@ -1255,7 +1255,7 @@
     const backdrop = opts.backdrop || null;
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state17 = "idle";
+    let state16 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -1304,7 +1304,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state17 = "closing";
+      state16 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -1315,13 +1315,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state17 = "closing";
+      state16 = "closing";
       el.style.transition = ANIM;
       el.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state17 = "idle";
+        state16 = "idle";
       });
     }
     function velocityNow() {
@@ -1332,49 +1332,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state17 === "closing") return;
-      state17 = "idle";
+      if (state16 === "closing") return;
+      state16 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state17 = "ignored";
+        state16 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el)) {
-        state17 = "ignored";
+        state16 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state17 = "ignored";
+        state16 = "ignored";
         return;
       }
-      state17 = "tracking";
+      state16 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state17 !== "tracking" && state17 !== "dragging") return;
+      if (state16 !== "tracking" && state16 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state17 === "dragging") springBack();
-        else state17 = "ignored";
+        if (state16 === "dragging") springBack();
+        else state16 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state17 === "tracking") {
+      if (state16 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state17 = "dragging";
+          state16 = "dragging";
           el.classList.add("lfx-dragging");
           el.style.transition = "none";
         } else {
-          state17 = "ignored";
+          state16 = "ignored";
           return;
         }
       }
@@ -1388,18 +1388,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state17 === "dragging") {
+      if (state16 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state17 !== "closing") {
-        state17 = "idle";
+      } else if (state16 !== "closing") {
+        state16 = "idle";
       }
     }
     function onCancel() {
-      if (state17 === "dragging") springBack();
-      else if (state17 !== "closing") state17 = "idle";
+      if (state16 === "dragging") springBack();
+      else if (state16 !== "closing") state16 = "idle";
     }
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove2, { passive: false });
@@ -1415,7 +1415,7 @@
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state17 = "idle";
+      state16 = "idle";
     };
   }
 
@@ -3209,10 +3209,10 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
-  function renderEpisodes(slot, state17, H) {
+  function renderEpisodes(slot, state16, H) {
     slot.hidden = false;
     slot.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state17;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state16;
     putItems(episodes);
     const current6 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
@@ -4738,7 +4738,7 @@
         Array.from(indicator.children).forEach((s, i) => s.classList.toggle("is-active", i === page));
       }
     }
-    const schedule3 = () => {
+    const schedule2 = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
     function go2(dir) {
@@ -4770,24 +4770,24 @@
     }
     prev.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
-    track.addEventListener("scroll", schedule3, { passive: true });
+    track.addEventListener("scroll", schedule2, { passive: true });
     track.addEventListener("focusin", onFocusIn);
     track.addEventListener("keydown", onKey3);
-    window.addEventListener("resize", schedule3);
+    window.addEventListener("resize", schedule2);
     const ls = links();
     ls.forEach((l, i) => {
       l.tabIndex = i === 0 ? 0 : -1;
     });
-    schedule3();
+    schedule2();
     return () => {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       prev.removeEventListener("click", onPrev);
       next.removeEventListener("click", onNext);
-      track.removeEventListener("scroll", schedule3);
+      track.removeEventListener("scroll", schedule2);
       track.removeEventListener("focusin", onFocusIn);
       track.removeEventListener("keydown", onKey3);
-      window.removeEventListener("resize", schedule3);
+      window.removeEventListener("resize", schedule2);
     };
   }
 
@@ -6361,14 +6361,14 @@
     if (!el) return;
     if (isMenuOpen() && inNativeDialog(el)) return;
     const t = e.touches && e.touches[0] || e;
-    const state17 = { x: t.clientX, y: t.clientY, fired: false };
-    press = state17;
+    const state16 = { x: t.clientX, y: t.clientY, fired: false };
+    press = state16;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press !== state17 || !el.isConnected) return;
-      state17.fired = true;
+      if (press !== state16 || !el.isConnected) return;
+      state16.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el, state17.x, state17.y);
+      openFor(el, state16.x, state16.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -7653,7 +7653,7 @@
       clearTimeout(timer);
       timer = null;
     }
-    function schedule3() {
+    function schedule2() {
       stop5();
       if (running()) timer = setTimeout(() => go2(idx + 1), interval);
     }
@@ -7683,7 +7683,7 @@
       idx = (i % n + n) % n;
       paint();
       if (mobile) scrollToSlide(idx);
-      schedule3();
+      schedule2();
     }
     let scrollRaf = 0;
     function onTrackScroll() {
@@ -7729,7 +7729,7 @@
     };
     const onLeave = () => {
       hover = false;
-      schedule3();
+      schedule2();
     };
     const onFocusIn = () => {
       focus = true;
@@ -7738,10 +7738,10 @@
     const onFocusOut = (e) => {
       if (!el.contains(e.relatedTarget)) {
         focus = false;
-        schedule3();
+        schedule2();
       }
     };
-    const onVis = () => document.hidden ? stop5() : schedule3();
+    const onVis = () => document.hidden ? stop5() : schedule2();
     const onKey3 = (e) => {
       if (e.key === "ArrowLeft") go2(idx - 1);
       else if (e.key === "ArrowRight") go2(idx + 1);
@@ -7757,7 +7757,7 @@
     el.addEventListener("keydown", onKey3);
     document.addEventListener("visibilitychange", onVis);
     paint();
-    schedule3();
+    schedule2();
     return {
       el,
       go: go2,
@@ -8000,7 +8000,7 @@
     teardown5();
     const my = token;
     const isHub = key.startsWith("hub:");
-    const heroSlot = h("div", { class: "lfx-plus-home__hero" });
+    const heroSlot = h("div", { class: "lfx-plus-home__hero is-loading" });
     const rowsSlot = h("div", { class: "lfx-plus-rows" });
     const root4 = h("div", { id: ROOT_ID7, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
     tab2.prepend(root4);
@@ -8027,10 +8027,13 @@
         if (!alive() || !pool.length) return;
         const hero = createHero(pool, { info });
         if (!hero) return;
+        heroSlot.classList.remove("is-loading");
         heroSlot.append(hero.el);
         cleanups3.push(() => hero.destroy());
       } catch (e) {
         console.warn("[LenzFlix] Hero nicht geladen", e && e.message);
+      } finally {
+        heroSlot.classList.remove("is-loading");
       }
     })();
     if (!isHub) cleanups3.push(renderBrands(root4, rowsSlot));
@@ -9507,10 +9510,7 @@
   var tabbar_default = plusTabbar;
 
   // src/js/features/plus/nativedetail.js
-  var NOLOGO = "lfx-plus-nologo";
-  var NOBD = "lfx-plus-nobackdrop";
   var URL_RE = /url\(\s*["']?([^"')]+)["']?\s*\)/;
-  var state13 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
   var bgUrl = (el) => {
     if (!el) return null;
     const css = el.style && el.style.backgroundImage || (typeof getComputedStyle === "function" ? getComputedStyle(el).backgroundImage : "");
@@ -9520,92 +9520,119 @@
   function setClass2(el, cls, on) {
     if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on);
   }
-  function probeLogo(url) {
-    if (state13.probes.has(url) || typeof Image !== "function") return;
-    state13.probes.set(url, "pending");
-    const img = new Image();
-    img.onload = () => state13.probes.set(url, "ok");
-    img.onerror = () => {
-      state13.probes.set(url, "bad");
-      evaluate2();
-    };
-    img.src = url;
+  function logoHidden(el) {
+    if (typeof getComputedStyle !== "function") return false;
+    return getComputedStyle(el).display === "none";
   }
-  function evaluate2() {
-    const page = state13.page;
-    if (!page || !page.isConnected) return;
-    const logoEl = page.querySelector(".detailLogo");
-    const logoUrl = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
-    if (logoUrl) probeLogo(logoUrl);
-    const noLogo = !logoUrl || state13.probes.get(logoUrl) === "bad";
-    setClass2(page, NOLOGO, noLogo);
-    const bd = page.querySelector(".itemBackdrop");
-    const own = bd && !bd.classList.contains("hide") && bgUrl(bd);
-    const global = !!document.querySelector(".backdropContainer .displayingBackdropImage");
-    const wide = typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1000px)").matches;
-    setClass2(page, NOBD, !own && !(wide && global));
-  }
-  function schedule() {
-    if (state13.timer) return;
-    state13.timer = setTimeout(() => {
-      state13.timer = 0;
-      evaluate2();
-    }, 60);
-  }
-  function clearPage() {
-    if (state13.obs) state13.obs.disconnect();
-    state13.obs = null;
-    clearTimeout(state13.timer);
-    clearTimeout(state13.poll);
-    state13.timer = 0;
-    state13.poll = 0;
-    if (state13.page) {
-      state13.page.classList.remove(NOLOGO, NOBD);
-      state13.page = null;
+  function createNativeDetail({ name, theme, nologoClass, nobdClass = null }) {
+    const NOLOGO = nologoClass;
+    const NOBD = nobdClass;
+    const ALL = [NOLOGO, NOBD].filter(Boolean);
+    const state16 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
+    function probeLogo(url) {
+      if (state16.probes.has(url) || typeof Image !== "function") return;
+      state16.probes.set(url, "pending");
+      const img = new Image();
+      img.onload = () => state16.probes.set(url, "ok");
+      img.onerror = () => {
+        state16.probes.set(url, "bad");
+        evaluate3();
+      };
+      img.src = url;
     }
-    for (const p of document.querySelectorAll(`.${NOLOGO}, .${NOBD}`)) p.classList.remove(NOLOGO, NOBD);
-    state13.probes.clear();
-  }
-  function attach() {
-    const page = document.querySelector("#itemDetailPage:not(.hide)");
-    if (!page) {
-      if (++state13.tries < 30) state13.poll = setTimeout(attach, 200);
-      return;
+    function evaluate3() {
+      const page = state16.page;
+      if (!page || !page.isConnected) return;
+      const logoEl = page.querySelector(".detailLogo");
+      const logoUrl = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
+      if (logoUrl) probeLogo(logoUrl);
+      let noLogo = !logoUrl || state16.probes.get(logoUrl) === "bad";
+      if (!noLogo) {
+        const had = page.classList.contains(NOLOGO);
+        if (had) page.classList.remove(NOLOGO);
+        noLogo = logoHidden(logoEl);
+        if (had) page.classList.add(NOLOGO);
+      }
+      setClass2(page, NOLOGO, noLogo);
+      if (NOBD) {
+        const bd = page.querySelector(".itemBackdrop");
+        const own = bd && !bd.classList.contains("hide") && bgUrl(bd);
+        const global = !!document.querySelector(".backdropContainer .displayingBackdropImage");
+        const wide = typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1000px)").matches;
+        setClass2(page, NOBD, !own && !(wide && global));
+      }
     }
-    if (state13.page === page) return;
-    if (state13.obs) state13.obs.disconnect();
-    state13.page = page;
-    state13.obs = new MutationObserver((records) => {
-      if (records.every((r) => r.type === "attributes" && r.target === page)) return;
-      schedule();
-    });
-    state13.obs.observe(page, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
-    evaluate2();
-  }
-  var nativedetail_default = {
-    name: "plus-nativedetail",
-    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && route.path === "/details",
-    mount() {
-      state13.tries = 0;
-      attach();
-    },
-    update() {
-      state13.tries = 0;
-      clearTimeout(state13.poll);
-      state13.probes.clear();
+    function schedule2() {
+      if (state16.timer) return;
+      state16.timer = setTimeout(() => {
+        state16.timer = 0;
+        evaluate3();
+      }, 60);
+    }
+    function clearPage() {
+      if (state16.obs) state16.obs.disconnect();
+      state16.obs = null;
+      clearTimeout(state16.timer);
+      clearTimeout(state16.poll);
+      state16.timer = 0;
+      state16.poll = 0;
+      if (state16.page) {
+        state16.page.classList.remove(...ALL);
+        state16.page = null;
+      }
+      for (const p of document.querySelectorAll(ALL.map((c) => `.${c}`).join(", "))) p.classList.remove(...ALL);
+      state16.probes.clear();
+    }
+    function attach2() {
       const page = document.querySelector("#itemDetailPage:not(.hide)");
-      if (page && page !== state13.page) clearPage();
-      attach();
-      evaluate2();
-    },
-    unmount: clearPage
-  };
+      if (!page) {
+        if (++state16.tries < 30) state16.poll = setTimeout(attach2, 200);
+        return;
+      }
+      if (state16.page === page) return;
+      if (state16.obs) state16.obs.disconnect();
+      state16.page = page;
+      state16.obs = new MutationObserver((records) => {
+        if (records.every((r) => r.type === "attributes" && r.target === page)) return;
+        schedule2();
+      });
+      state16.obs.observe(page, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
+      evaluate3();
+    }
+    const feature = {
+      name,
+      match: (route) => isTheme(theme) && isModern() && !isTv() && isReady() && route.path === "/details",
+      mount() {
+        state16.tries = 0;
+        attach2();
+      },
+      update() {
+        state16.tries = 0;
+        clearTimeout(state16.poll);
+        state16.probes.clear();
+        const page = document.querySelector("#itemDetailPage:not(.hide)");
+        if (page && page !== state16.page) clearPage();
+        attach2();
+        evaluate3();
+      },
+      unmount: clearPage
+    };
+    return { feature, evaluate: evaluate3 };
+  }
+  var plus = createNativeDetail({
+    name: "plus-nativedetail",
+    theme: "plus",
+    nologoClass: "lfx-plus-nologo",
+    nobdClass: "lfx-plus-nobackdrop"
+  });
+  var evaluate2 = plus.evaluate;
+  var nativedetail_default = plus.feature;
 
   // src/js/features/plus/favempty.js
   var ID6 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
-  var state14 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
+  var state13 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
   var isFavRoute = (route) => route && route.path === "/home" && route.params.get("tab") === "1" && !route.params.get("lfx");
   function findTab() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #favoritesTab");
@@ -9613,8 +9640,8 @@
   }
   var hasCards = (tab2) => !!tab2.querySelector(".card, .listItem");
   function check() {
-    state14.timer = 0;
-    const tab2 = state14.tab;
+    state13.timer = 0;
+    const tab2 = state13.tab;
     if (!tab2 || !tab2.isConnected) return;
     const mine = document.getElementById(ID6);
     if (hasCards(tab2)) {
@@ -9623,46 +9650,46 @@
       tab2.prepend(h("p", { id: ID6, class: "lfx-plus-favempty" }, EMPTY_TEXT));
     }
   }
-  function schedule2(delay = SETTLE_MS) {
-    clearTimeout(state14.timer);
-    state14.timer = setTimeout(check, delay);
+  function schedule(delay = SETTLE_MS) {
+    clearTimeout(state13.timer);
+    state13.timer = setTimeout(check, delay);
   }
   function teardown6() {
-    if (state14.obs) state14.obs.disconnect();
-    state14.obs = null;
-    clearTimeout(state14.timer);
-    clearTimeout(state14.poll);
-    state14.timer = 0;
-    state14.poll = 0;
-    state14.tab = null;
+    if (state13.obs) state13.obs.disconnect();
+    state13.obs = null;
+    clearTimeout(state13.timer);
+    clearTimeout(state13.poll);
+    state13.timer = 0;
+    state13.poll = 0;
+    state13.tab = null;
     document.getElementById(ID6)?.remove();
   }
-  function attach2() {
+  function attach() {
     const tab2 = findTab();
     if (!tab2) {
-      if (++state14.tries < 30) state14.poll = setTimeout(attach2, 200);
+      if (++state13.tries < 30) state13.poll = setTimeout(attach, 200);
       return;
     }
-    if (state14.tab === tab2) return;
+    if (state13.tab === tab2) return;
     teardown6();
-    state14.tab = tab2;
-    state14.obs = new MutationObserver((records) => {
+    state13.tab = tab2;
+    state13.obs = new MutationObserver((records) => {
       if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID6))) return;
-      schedule2();
+      schedule();
     });
-    state14.obs.observe(tab2, { childList: true, subtree: true });
-    schedule2();
+    state13.obs.observe(tab2, { childList: true, subtree: true });
+    schedule();
   }
   var favempty_default = {
     name: "plus-favempty",
     match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && isFavRoute(route),
     mount() {
-      state14.tries = 0;
-      attach2();
+      state13.tries = 0;
+      attach();
     },
     update() {
-      state14.tries = 0;
-      attach2();
+      state13.tries = 0;
+      attach();
     },
     unmount: teardown6
   };
@@ -10207,7 +10234,7 @@
     if (window.history.length > 1) window.history.back();
     else window.location.hash = "#/home";
   }
-  var state15 = {
+  var state14 = {
     mobile: false,
     kind: null,
     el: null,
@@ -10221,30 +10248,30 @@
     titleTimer: 0
   };
   function refreshTitle() {
-    if (!state15.el || !state15.mobile || !state15.route) return;
-    const t = state15.el.querySelector(".lfx-prime-header__title");
+    if (!state14.el || !state14.mobile || !state14.route) return;
+    const t = state14.el.querySelector(".lfx-prime-header__title");
     if (!t) return;
-    const next = mobileTitle(state15.route, state15.libs);
+    const next = mobileTitle(state14.route, state14.libs);
     if (t.textContent !== next) t.textContent = next;
   }
   function stopTitlePoll() {
-    if (state15.titleTimer) clearInterval(state15.titleTimer);
-    state15.titleTimer = 0;
+    if (state14.titleTimer) clearInterval(state14.titleTimer);
+    state14.titleTimer = 0;
   }
   function startTitlePoll() {
     stopTitlePoll();
-    if (!state15.mobile || state15.kind !== "sub") return;
+    if (!state14.mobile || state14.kind !== "sub") return;
     let n = 0;
-    state15.titleTimer = setInterval(() => {
+    state14.titleTimer = setInterval(() => {
       refreshTitle();
       n += 1;
-      if (n >= 24 || !state15.el) stopTitlePoll();
+      if (n >= 24 || !state14.el) stopTitlePoll();
     }, 250);
   }
   function applyActive6() {
-    if (!state15.el || !state15.route) return;
-    const key = activeKey3(state15.route);
-    for (const el of state15.el.querySelectorAll("[data-key]")) {
+    if (!state14.el || !state14.route) return;
+    const key = activeKey3(state14.route);
+    for (const el of state14.el.querySelectorAll("[data-key]")) {
       const on = el.dataset.key === key;
       el.classList.toggle("is-active", on);
       if (on) el.setAttribute("aria-current", "page");
@@ -10252,9 +10279,9 @@
     }
   }
   function renderNav2() {
-    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__nav");
+    const nav = state14.el && state14.el.querySelector(".lfx-prime-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems3(state15.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems3(state14.libs).map((it) => h("a", {
       class: "lfx-prime-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -10273,15 +10300,15 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state15.profileBusy) return;
-    state15.profileBusy = true;
+    if (state14.profileBusy) return;
+    state14.profileBusy = true;
     try {
-      state15.menus.close();
+      state14.menus.close();
       const items = await profileEntries({ theme: "prime", returnFocus: btn });
-      if (!state15.el || !btn.isConnected) return;
+      if (!state14.el || !btn.isConnected) return;
       openPopover(btn, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
     } finally {
-      state15.profileBusy = false;
+      state14.profileBusy = false;
     }
   }
   function build6() {
@@ -10294,7 +10321,7 @@
       "aria-haspopup": "dialog"
     }, [icon3("search")]);
     searchBtn.addEventListener("click", () => {
-      state15.menus.close();
+      state14.menus.close();
       closeProfile2();
       if (isPrimeSearchOpen()) closePrimeSearch();
       else openPrimeSearch({ returnFocus: searchBtn });
@@ -10324,13 +10351,13 @@
     avatar.addEventListener("click", () => toggleProfile(avatar));
     const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, gridWrap, listLink, avatar]);
     const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
-    state15.el.replaceChildren(bar);
-    state15.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
+    state14.el.replaceChildren(bar);
+    state14.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
     return { avatar };
   }
   function buildMobile(route) {
     const kind2 = mobileKind(route);
-    state15.kind = kind2;
+    state14.kind = kind2;
     const avatar = h("button", {
       type: "button",
       class: "lfx-prime-header__avatar",
@@ -10348,18 +10375,18 @@
       const back = h("button", { type: "button", class: "lfx-prime-header__back", "aria-label": "Zur\xFCck" });
       back.append(icon3("back"));
       back.addEventListener("click", goBack);
-      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state15.libs))];
+      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state14.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [avatar])]);
     const kids = [bar];
     if (kind2 === "home") kids.push(h("nav", { class: "lfx-prime-header__pills", "aria-label": "Filme und Serien" }));
-    state15.el.replaceChildren(...kids);
+    state14.el.replaceChildren(...kids);
     return { avatar };
   }
   function renderPills() {
-    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__pills");
+    const nav = state14.el && state14.el.querySelector(".lfx-prime-header__pills");
     if (!nav) return;
-    const items = navItems3(state15.libs).filter((it) => it.key.startsWith("lib:"));
+    const items = navItems3(state14.libs).filter((it) => it.key.startsWith("lib:"));
     nav.replaceChildren(...items.map((it) => h("a", {
       class: "lfx-prime-header__pill",
       href: it.href,
@@ -10369,7 +10396,7 @@
     applyActive6();
   }
   async function loadFlyoutData() {
-    let libs = state15.libs;
+    let libs = state14.libs;
     let cols;
     try {
       cols = await getCollections();
@@ -10391,11 +10418,11 @@
   async function loadLibs(seq3) {
     try {
       const libs = await getLibraries();
-      if (seq3 !== state15.seq || !state15.el) return;
-      state15.libs = libs;
+      if (seq3 !== state14.seq || !state14.el) return;
+      state14.libs = libs;
     } catch {
-      if (seq3 !== state15.seq || !state15.el) return;
-      state15.libs = [];
+      if (seq3 !== state14.seq || !state14.el) return;
+      state14.libs = [];
     }
     renderNav2();
     renderPills();
@@ -10407,40 +10434,40 @@
       chip = await getUserChip();
     } catch {
     }
-    if (seq3 !== state15.seq || !state15.el) return;
+    if (seq3 !== state14.seq || !state14.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-prime-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function onScroll4() {
-    if (state15.raf) return;
-    state15.raf = requestAnimationFrame(() => {
-      state15.raf = 0;
+    if (state14.raf) return;
+    state14.raf = requestAnimationFrame(() => {
+      state14.raf = 0;
       applyScroll();
     });
   }
   function applyScroll() {
-    if (!state15.el || state15.mobile) return;
+    if (!state14.el || state14.mobile) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD2;
-    if (state15.el.classList.contains("is-scrolled") !== on) state15.el.classList.toggle("is-scrolled", on);
+    if (state14.el.classList.contains("is-scrolled") !== on) state14.el.classList.toggle("is-scrolled", on);
   }
   function syncHtmlClasses() {
     const cl2 = document.documentElement.classList;
-    cl2.toggle(MOBILE_CLASS, state15.mobile);
-    cl2.toggle(PILLS_CLASS, state15.mobile && state15.kind === "home");
+    cl2.toggle(MOBILE_CLASS, state14.mobile);
+    cl2.toggle(PILLS_CLASS, state14.mobile && state14.kind === "home");
   }
   function render8() {
-    const seq3 = ++state15.seq;
-    if (state15.menus) state15.menus.destroy();
-    state15.menus = null;
+    const seq3 = ++state14.seq;
+    if (state14.menus) state14.menus.destroy();
+    state14.menus = null;
     closeProfile2();
     closeProfileSheet({ restoreFocus: false });
-    state15.mobile = isMobile();
-    state15.kind = null;
-    const parts = state15.mobile ? buildMobile(state15.route) : build6();
-    state15.el.className = `lfx-prime-header${state15.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state15.kind}` : ""}`;
+    state14.mobile = isMobile();
+    state14.kind = null;
+    const parts = state14.mobile ? buildMobile(state14.route) : build6();
+    state14.el.className = `lfx-prime-header${state14.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state14.kind}` : ""}`;
     syncHtmlClasses();
     applyScroll();
     renderNav2();
@@ -10455,48 +10482,48 @@
       return isTheme("prime") && isModern() && !isTv() && isReady() && !EXCLUDED9.test(route.path);
     },
     mount(route) {
-      state15.route = route;
-      state15.el = mountPoint(ID9, { tag: "header", className: "lfx-prime-header" });
+      state14.route = route;
+      state14.el = mountPoint(ID9, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
-      state15.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
+      state14.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
       render8();
     },
     update(route) {
-      const changed = !state15.route || state15.route.hash !== route.hash;
-      state15.route = route;
-      if (!state15.el) return;
+      const changed = !state14.route || state14.route.hash !== route.hash;
+      state14.route = route;
+      if (!state14.el) return;
       const mobileNow = isMobile();
-      if (mobileNow !== state15.mobile || mobileNow && mobileKind(route) !== state15.kind) {
+      if (mobileNow !== state14.mobile || mobileNow && mobileKind(route) !== state14.kind) {
         closePrimeSearch({ restoreFocus: false });
         render8();
         return;
       }
-      if (changed && state15.menus) state15.menus.close();
-      if (state15.mobile) {
+      if (changed && state14.menus) state14.menus.close();
+      if (state14.mobile) {
         refreshTitle();
         if (changed) startTitlePoll();
       }
       applyActive6();
     },
     unmount() {
-      state15.seq++;
+      state14.seq++;
       stopTitlePoll();
-      for (const fn of state15.cleanups.splice(0)) fn();
-      if (state15.raf) cancelAnimationFrame(state15.raf);
-      state15.raf = 0;
-      if (state15.menus) state15.menus.destroy();
-      state15.menus = null;
+      for (const fn of state14.cleanups.splice(0)) fn();
+      if (state14.raf) cancelAnimationFrame(state14.raf);
+      state14.raf = 0;
+      if (state14.menus) state14.menus.destroy();
+      state14.menus = null;
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
       unmountPoint(ID9);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
-      state15.el = null;
-      state15.libs = [];
-      state15.mobile = false;
-      state15.kind = null;
-      state15.profileBusy = false;
+      state14.el = null;
+      state14.libs = [];
+      state14.mobile = false;
+      state14.kind = null;
+      state14.profileBusy = false;
     }
   };
 
@@ -10788,14 +10815,14 @@
       const btn = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg7(ICON_PLAY4), label]);
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
-      const paint = (state17) => {
+      const paint = (state16) => {
         label.replaceChildren(...[
-          h("span", { class: "lfx-prime-hero__label1" }, state17.line1),
-          state17.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state17.line2) : null
+          h("span", { class: "lfx-prime-hero__label1" }, state16.line1),
+          state16.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state16.line2) : null
         ].filter(Boolean));
-        btn.classList.toggle("is-two", Boolean(state17.line2));
-        progress.hidden = !(state17.progress > 0);
-        bar.style.width = `${Math.round(state17.progress)}%`;
+        btn.classList.toggle("is-two", Boolean(state16.line2));
+        progress.hidden = !(state16.progress > 0);
+        bar.style.width = `${Math.round(state16.progress)}%`;
       };
       paint(playLabel(item));
       if (item.Type === "Series") {
@@ -11043,6 +11070,7 @@
       }
       if (disposed) return;
       if (!items || !items.length) {
+        slot.classList.remove("is-loading");
         slot.hidden = true;
         return;
       }
@@ -11050,9 +11078,11 @@
       putItems(pool);
       build8();
       slot.hidden = false;
+      slot.classList.remove("is-loading");
       show2(0, true);
     }
-    slot.hidden = true;
+    slot.hidden = false;
+    slot.classList.add("is-loading");
     init2();
     return () => {
       disposed = true;
@@ -11063,6 +11093,7 @@
       stopTrailer();
       cleanupFns.splice(0).forEach((f) => f());
       slot.replaceChildren();
+      slot.classList.remove("is-loading");
       slot.removeAttribute("aria-roledescription");
     };
   }
@@ -11449,12 +11480,12 @@
     const logo = !popup ? logoImage(item, { maxWidth: 400 }) : null;
     const label = h("span", { class: "lfx-prime-hc__label" });
     const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
-    const paintPlay2 = (state17) => {
+    const paintPlay2 = (state16) => {
       label.replaceChildren(...[
-        h("span", null, state17.line1),
-        state17.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state17.line2) : null
+        h("span", null, state16.line1),
+        state16.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state16.line2) : null
       ].filter(Boolean));
-      play2.classList.toggle("is-two", Boolean(state17.line2));
+      play2.classList.toggle("is-two", Boolean(state16.line2));
     };
     paintPlay2(playLabel(item));
     if (item.Type === "Series") {
@@ -12605,7 +12636,15 @@
     if (key === "list") return "list";
     return null;
   }
-  var state16 = { el: null, route: null, observer: null, cleanups: [] };
+  var state15 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
+  function scheduleApply() {
+    if (state15.raf) return;
+    const run = () => {
+      state15.raf = 0;
+      applyState();
+    };
+    state15.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
+  }
   function inputFocused() {
     const a = document.activeElement;
     return Boolean(a && a.classList && a.classList.contains("lfx-prime-search__input"));
@@ -12618,17 +12657,18 @@
     return inputFocused();
   }
   function applyState() {
-    const el = state16.el;
+    const el = state15.el;
     if (!el) return;
     const hide = shouldHide();
     if (el.classList.contains("is-hidden") !== hide) el.classList.toggle("is-hidden", hide);
     el.toggleAttribute("inert", hide);
-    const active4 = state16.route ? activeTab2(state16.route, isPrimeSearchOpen()) : null;
+    const active4 = state15.route ? activeTab2(state15.route, isPrimeSearchOpen()) : null;
     for (const t of el.querySelectorAll("[data-tab]")) {
       const on = t.dataset.tab === active4;
       t.classList.toggle("is-active", on);
-      if (on) t.setAttribute("aria-current", "page");
-      else t.removeAttribute("aria-current");
+      if (on) {
+        if (t.getAttribute("aria-current") !== "page") t.setAttribute("aria-current", "page");
+      } else if (t.hasAttribute("aria-current")) t.removeAttribute("aria-current");
     }
   }
   function tab(key, label, iconName, attrs = {}) {
@@ -12657,8 +12697,8 @@
       else openPrimeSearch({ returnFocus: search });
       applyState();
     });
-    state16.el.replaceChildren(home, list, search);
-    state16.el.setAttribute("aria-label", "Hauptnavigation");
+    state15.el.replaceChildren(home, list, search);
+    state15.el.setAttribute("aria-label", "Hauptnavigation");
   }
   var tabbar_default2 = {
     name: "prime-tabbar",
@@ -12666,41 +12706,56 @@
       return isTheme("prime") && isModern() && !isTv() && isMobile() && isReady() && !EXCLUDED10.test(route.path);
     },
     mount(route) {
-      state16.route = route;
-      state16.el = mountPoint(ID10, { tag: "nav", className: "lfx-prime-tabbar" });
+      state15.route = route;
+      state15.el = mountPoint(ID10, { tag: "nav", className: "lfx-prime-tabbar" });
       build7();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
-        state16.observer = new MutationObserver(applyState);
-        state16.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        state16.observer.observe(document.body, { childList: true });
+        state15.observer = new MutationObserver(applyState);
+        state15.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        state15.observer.observe(document.body, { childList: true });
+        state15.bodyObserver = new MutationObserver((records) => {
+          if (state15.el && records.every((r) => state15.el.contains(r.target))) return;
+          scheduleApply();
+        });
+        state15.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
       }
       const onFocus = () => applyState();
       document.addEventListener("focusin", onFocus);
       document.addEventListener("focusout", onFocus);
-      state16.cleanups.push(() => {
+      state15.cleanups.push(() => {
         document.removeEventListener("focusin", onFocus);
         document.removeEventListener("focusout", onFocus);
       });
       applyState();
     },
     update(route) {
-      state16.route = route;
+      state15.route = route;
       applyState();
     },
     unmount() {
-      if (state16.observer) state16.observer.disconnect();
-      state16.observer = null;
-      for (const fn of state16.cleanups.splice(0)) fn();
+      if (state15.observer) state15.observer.disconnect();
+      state15.observer = null;
+      if (state15.bodyObserver) state15.bodyObserver.disconnect();
+      state15.bodyObserver = null;
+      if (state15.raf) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state15.raf);
+        clearTimeout(state15.raf);
+        state15.raf = 0;
+      }
+      for (const fn of state15.cleanups.splice(0)) fn();
       unmountPoint(ID10);
       document.documentElement.classList.remove(HTML_CLASS2);
-      state16.el = null;
-      state16.route = null;
+      state15.el = null;
+      state15.route = null;
     }
   };
 
+  // src/js/features/prime/nativedetail.js
+  var nativedetail_default2 = createNativeDetail({ name: "prime-nativedetail", theme: "prime", nologoClass: "lfx-prime-nologo" }).feature;
+
   // src/js/features/prime/index.js
-  var primeFeatures = [header_default2, home_default3, hover_default, title_default2, tabbar_default2];
+  var primeFeatures = [header_default2, home_default3, hover_default, title_default2, tabbar_default2, nativedetail_default2];
 
   // src/js/features/index.js
   var features2 = [themeroute_default, nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures];
