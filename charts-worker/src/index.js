@@ -1,6 +1,7 @@
 import { aggregate } from './aggregate.js';
 import { jsonResponse, preflight } from './http.js';
 import { checkToken, resolveSeries, runCustomQuery } from './jellyfin.js';
+import { handleMeStats } from './me-stats.js';
 import { buildSql, windowDays } from './sql.js';
 
 const KV_KEY = 'charts:v1';
@@ -68,11 +69,15 @@ async function safeEqual(a, b) {
   return x === y;
 }
 
-async function handle(request, env) {
+async function handle(request, env, ctx) {
   const url = new URL(request.url);
   const { pathname } = url;
 
   if (request.method === 'OPTIONS') return preflight(request, env);
+
+  if ((pathname === '/me/stats' || pathname === '/lenzflix-stats/api/me/stats') && request.method === 'GET') {
+    return handleMeStats(request, env, ctx);
+  }
 
   if (pathname === '/health' && request.method === 'GET') {
     const data = await env.CHARTS.get(KV_KEY, 'json');
@@ -113,8 +118,8 @@ async function handle(request, env) {
 }
 
 export default {
-  fetch(request, env) {
-    return handle(request, env).catch((err) => {
+  fetch(request, env, ctx) {
+    return handle(request, env, ctx).catch((err) => {
       console.error('unhandled error:', err?.message);
       return jsonResponse({ error: 'internal' }, 500, request, env);
     });

@@ -19,8 +19,9 @@
     "JELLYFIN_URL": "https://jellyfin.example.com",
     "ALLOWED_ORIGIN": "https://jellyfin.example.com",
     "WINDOW_DAYS": "30",
-    "MIN_SECONDS": "120"
+    "MIN_SECONDS": "300"
   },
   // Secrets (nicht hier!): JELLYFIN_API_KEY, optional REFRESH_SECRET -> `npx wrangler secret put <NAME>`
+  "assets": { "directory": "./public", "html_handling": "auto-trailing-slash" },
   "observability": { "enabled": true }
 }
