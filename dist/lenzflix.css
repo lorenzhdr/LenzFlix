@@ -6907,8 +6907,8 @@ html.lfx-js .lfx-tp__card.is-loading .lfx-tp__active {
 }
 
 html.lfx-js .lfx-tp__mark {
-  height: 26px;
-  line-height: 26px;
+  height: 48px;
+  line-height: 48px;
   display: block;
 }
 
@@ -6920,30 +6920,18 @@ html.lfx-js .lfx-tp__mark--flix {
 }
 
 html.lfx-js .lfx-tp__mark--plus {
-  color: var(--lfx-text);
-  font: 800 22px / 26px var(--lfx-font);
-  letter-spacing: .06em;
-}
-
-html.lfx-js .lfx-tp__mark-plus {
-  background: linear-gradient(135deg, #7fd0ff 0%, #4f7bff 55%, #9b7bff 100%);
-  -webkit-text-fill-color: transparent;
   color: rgba(0, 0, 0, 0);
-  -webkit-background-clip: text;
-  background-clip: text;
+  background: url("../assets/logo/lenzplus-large.svg") 0 / contain no-repeat;
+  width: 138px;
+  max-width: 100%;
+  font-size: 0;
 }
 
 html.lfx-js .lfx-tp__mark--prime {
-  color: var(--lfx-text);
-  font: 700 19px / 24px var(--lfx-font);
-  letter-spacing: .01em;
-}
-
-html.lfx-js .lfx-tp__mark--prime .lfx-tp__mark-text {
-  border-bottom: 3px solid #1a98ff;
-  border-radius: 0 0 40% 40%;
-  line-height: 20px;
-  display: inline-block;
+  color: rgba(0, 0, 0, 0);
+  background: url("../assets/logo/lenzprime.svg") 0 / contain no-repeat;
+  width: 112px;
+  font-size: 0;
 }
 
 html.lfx-js .lfx-tp__preview {

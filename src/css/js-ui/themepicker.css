@@ -181,8 +181,8 @@ html.lfx-js .lfx-tp__card.is-loading .lfx-tp__active {
 /* ---------- Wortmarken ---------- */
 html.lfx-js .lfx-tp__mark {
   display: block;
-  height: 26px;
-  line-height: 26px;
+  height: 48px;
+  line-height: 48px;
 }
 html.lfx-js .lfx-tp__mark--flix {
   width: 92px;
@@ -190,28 +190,19 @@ html.lfx-js .lfx-tp__mark--flix {
   font-size: 0;
   color: transparent;
 }
+/* Echte Wortmarken statt Text: LENZ+ groß mit Lichtbogen, damit der Stil sofort erkennbar ist */
 html.lfx-js .lfx-tp__mark--plus {
-  color: var(--lfx-text);
-  font: 800 22px / 26px var(--lfx-font);
-  letter-spacing: 0.06em;
-}
-html.lfx-js .lfx-tp__mark-plus {
-  background: linear-gradient(135deg, #7fd0ff 0%, #4f7bff 55%, #9b7bff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  width: 138px;
+  max-width: 100%;
+  background: url("../assets/logo/lenzplus-large.svg") no-repeat left center / contain;
+  font-size: 0;
   color: transparent;
 }
 html.lfx-js .lfx-tp__mark--prime {
-  color: var(--lfx-text);
-  font: 700 19px / 24px var(--lfx-font);
-  letter-spacing: 0.01em;
-}
-html.lfx-js .lfx-tp__mark--prime .lfx-tp__mark-text {
-  display: inline-block;
-  border-bottom: 3px solid #1a98ff;
-  border-radius: 0 0 40% 40%;
-  line-height: 20px;
+  width: 112px;
+  background: url("../assets/logo/lenzprime.svg") no-repeat left center / contain;
+  font-size: 0;
+  color: transparent;
 }
 
 /* ---------- Vorschau (Grundgerüst) ---------- */
