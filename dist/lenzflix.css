@@ -60,6 +60,8 @@
   --lfx-text-body: #e5e5e5;
   --lfx-text-muted: #b3b3b3;
   --lfx-text-soft: gray;
+  --lfx-gold: #e3c36a;
+  --lfx-gold-hover: #f1d98f;
   --lfx-green: #46d369;
   --lfx-green-soft: rgba(70, 211, 105, .12);
   --lfx-glass: rgba(109, 109, 110, .7);
@@ -3142,6 +3144,14 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   background: rgba(255, 255, 255, .1);
 }
 
+html.lfx-js #lfx-nav .lfx-nav__menu-item--stats {
+  color: var(--lfx-gold);
+}
+
+html.lfx-js #lfx-nav .lfx-nav__menu-item--stats:hover {
+  color: var(--lfx-gold-hover);
+}
+
 @media (max-width: 899px) {
   html.lfx-js #lfx-nav {
     display: none;
@@ -6069,6 +6079,10 @@ html.lfx-js .lfx-mnav-overlay__link.is-active {
   color: #fff;
   font-size: 22px;
   font-weight: 700;
+}
+
+html.lfx-js .lfx-mnav-overlay__link--stats {
+  color: var(--lfx-gold);
 }
 
 html.lfx-js .lfx-mnav-overlay__link:focus-visible {

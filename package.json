@@ -1,6 +1,6 @@
 {
   "name": "lenzflix",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "description": "Netflix-look theme for the Jellyfin 12.4 web client",
   "private": false,
   "type": "module",

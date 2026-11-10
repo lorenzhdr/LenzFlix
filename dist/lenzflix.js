@@ -822,7 +822,7 @@
       { class: "lfx-mnav-overlay__list" },
       overlayItems(state2.model).map((it) => h("li", null, [
         // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
-        h("a", { class: "lfx-mnav-overlay__link", href: it.href, ...it.external ? {} : { dataset: { key: it.key } } }, it.label)
+        h("a", { class: `lfx-mnav-overlay__link${it.external ? " lfx-mnav-overlay__link--stats" : ""}`, href: it.href, ...it.external ? {} : { dataset: { key: it.key } } }, it.label)
       ]))
     );
     const close2 = h("button", { type: "button", class: "lfx-mnav-overlay__close", "aria-label": "Schlie\xDFen" }, "\xD7");
@@ -5564,7 +5564,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default];
 
   // src/js/main.js
-  var VERSION = "1.4.6";
+  var VERSION = "1.4.7";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;

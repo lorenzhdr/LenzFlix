@@ -136,6 +136,14 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   color: var(--lfx-text);
 }
 
+/* „Meine Statistik“: leicht goldener Farbton, hebt den Eintrag dezent hervor */
+html.lfx-js #lfx-nav .lfx-nav__menu-item--stats {
+  color: var(--lfx-gold);
+}
+html.lfx-js #lfx-nav .lfx-nav__menu-item--stats:hover {
+  color: var(--lfx-gold-hover);
+}
+
 /* Drawer-Modus (< 900px): Bibliotheken liegen im MUI-Drawer */
 @media (max-width: 899px) {
   html.lfx-js #lfx-nav {

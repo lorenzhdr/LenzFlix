@@ -133,7 +133,7 @@ function render() {
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
       // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
-      h('a', { class: 'lfx-mnav-overlay__link', href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
+      h('a', { class: `lfx-mnav-overlay__link${it.external ? ' lfx-mnav-overlay__link--stats' : ''}`, href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
     ])));
   const close = h('button', { type: 'button', class: 'lfx-mnav-overlay__close', 'aria-label': 'Schließen' }, '×');
   close.addEventListener('click', () => closeOverlay());
