@@ -10,7 +10,7 @@ function makeEnv(stored) {
     JELLYFIN_URL: 'https://jf.example',
     ALLOWED_ORIGIN: ORIGIN,
     WINDOW_DAYS: '30',
-    MIN_SECONDS: '120',
+    MIN_SECONDS: '300',
     JELLYFIN_API_KEY: 'KEY',
     REFRESH_SECRET: 'sec',
     CHARTS: {

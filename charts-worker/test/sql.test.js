@@ -9,8 +9,8 @@ describe('sql', () => {
     expect(windowDays('366')).toBe(30);
     expect(windowDays('-5')).toBe(30);
     expect(windowDays('1.5')).toBe(30);
-    expect(minSeconds('')).toBe(120);
-    expect(minSeconds('3601')).toBe(120);
+    expect(minSeconds('')).toBe(300);
+    expect(minSeconds('3601')).toBe(300);
   });
 
   it('akzeptiert Grenzwerte', () => {
@@ -30,7 +30,7 @@ describe('sql', () => {
   it('Injection nicht möglich: Müll fällt auf Defaults zurück', () => {
     const evil = "1 days'); DROP TABLE PlaybackActivity;--";
     const sql = buildSql(evil, '0; DELETE FROM UserList');
-    expect(sql).toBe(buildSql('30', '120'));
+    expect(sql).toBe(buildSql('30', '300'));
     expect(sql).not.toMatch(/DROP|DELETE/);
     expect(sql.match(/;/g)).toBeNull();
   });

@@ -35,7 +35,7 @@ Vertrag: [`../docs/charts-api.md`](../docs/charts-api.md).
    ```
 
 Konfiguration (Vars in `wrangler.jsonc`): `JELLYFIN_URL`, `ALLOWED_ORIGIN`, `WINDOW_DAYS` (1–365, Default 30),
-`MIN_SECONDS` (0–3600, Default 120). Ungültige Werte fallen auf den Default zurück.
+`MIN_SECONDS` (0–3600, Default 300). Ungültige Werte fallen auf den Default zurück.
 
 ## Entwicklung
 

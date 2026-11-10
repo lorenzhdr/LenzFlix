@@ -1,6 +1,6 @@
 // Feste SQL-Vorlage. Einzige Variablen: zwei validierte Integer (kein Nutzerinput).
 export const DEFAULT_WINDOW_DAYS = 30;
-export const DEFAULT_MIN_SECONDS = 120;
+export const DEFAULT_MIN_SECONDS = 300;
 
 /** Parst einen Integer-String strikt (nur Ziffern) und prüft den Bereich, sonst Default. */
 export function safeInt(value, min, max, fallback) {

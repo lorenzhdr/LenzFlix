@@ -11,12 +11,12 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
   - Antwort: `{"colums":[...], "results":[[...string...]], "message":"..."}` (Key heißt wirklich `colums`; alle Zellen sind Strings)
 - Tabelle `PlaybackActivity(DateCreated DATETIME, UserId TEXT, ItemId TEXT, ItemType TEXT, ItemName TEXT, PlaybackMethod TEXT, ClientName TEXT, DeviceName TEXT, PlayDuration INT)`; `UserList(UserId)` = ignorierte Benutzer. IDs = GUID ohne Bindestriche. `DateCreated` = lokale Serverzeit.
 - **Nur feste, im Code hinterlegte SELECT-Abfragen** (keine Nutzereingaben im SQL!). Die einzige Variable ist das Zeitfenster als Zahl aus der Worker-Konfiguration (Integer-validiert).
-- Abfrage (distinct Paare Item×Benutzer im Fenster, Mindestdauer 120 s):
+- Abfrage (distinct Paare Item×Benutzer im Fenster, Mindestdauer 300 s):
   ```sql
   SELECT ItemId, ItemType, UserId, COUNT(*) AS plays, SUM(PlayDuration) AS secs
   FROM PlaybackActivity
   WHERE ItemType IN ('Movie','Episode')
-    AND PlayDuration >= 120
+    AND PlayDuration >= 300
     AND DateCreated >= datetime('now','localtime','-30 days')
     AND UserId NOT IN (SELECT UserId FROM UserList)
   GROUP BY ItemId, UserId
@@ -52,7 +52,7 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
 - `GET /health` → `{"ok":true,"generatedAt":…}` ohne Auth (keine Item-Daten).
 
 ## Worker-Konfiguration
-- Vars: `JELLYFIN_URL` (z. B. `https://jellyfin.example.com`), `ALLOWED_ORIGIN`, `WINDOW_DAYS` (Default 30), `MIN_SECONDS` (Default 120).
+- Vars: `JELLYFIN_URL` (z. B. `https://jellyfin.example.com`), `ALLOWED_ORIGIN`, `WINDOW_DAYS` (Default 30), `MIN_SECONDS` (Default 300).
 - Secrets (setzt der Betreiber selbst per `wrangler secret put`): `JELLYFIN_API_KEY`, optional `REFRESH_SECRET`.
 - Route: Custom Domain `charts.example.com` (Zone liegt bei Cloudflare).
 
