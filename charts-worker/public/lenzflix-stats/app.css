@@ -229,6 +229,7 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .chart { display: block; width: 100%; height: auto; }
 .chart text { fill: var(--lfx-text-muted); font-family: var(--lfx-font); font-size: 11px; }
 .bar { fill: var(--lfx-red); }
+.chart .grid { stroke: rgba(255, 255, 255, 0.08); stroke-width: 1; }
 .hm-cell { fill: var(--lfx-red); }
 .hm-empty { fill: #2a2a2a; }
 

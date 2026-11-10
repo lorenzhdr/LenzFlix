@@ -509,26 +509,64 @@
     }
     var W = 600;
     var H = 140;
+    var LM = 46; // linker Rand für die Y-Achsen-Beschriftung
+    var TM = 8; // oberer Rand, damit das oberste Label nicht abgeschnitten wird
+    var PW = W - LM;
     var max = 0;
     data.forEach(function (b) {
       if (b.seconds > max) max = b.seconds;
     });
-    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + (H + 22), class: 'chart', role: 'img', 'aria-label': 'Watchtime im Verlauf', preserveAspectRatio: 'xMidYMid meet' });
-    var slot = W / data.length;
+    var axis = niceAxis(max);
+    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + (TM + H + 22), class: 'chart', role: 'img', 'aria-label': 'Watchtime im Verlauf', preserveAspectRatio: 'xMidYMid meet' });
+    // Gitternetz + Y-Achse (hinter den Balken)
+    for (var t = 1; t <= axis.count; t++) {
+      var ty = TM + H - (t / axis.count) * H;
+      svg.appendChild(svgEl('line', { x1: LM, x2: W, y1: (ty + 0.5).toFixed(1), y2: (ty + 0.5).toFixed(1), class: 'grid' }));
+    }
+    for (var u = 0; u <= axis.count; u++) {
+      var uy = TM + H - (u / axis.count) * H;
+      svg.appendChild(svgEl('text', { x: LM - 6, y: (uy + 4).toFixed(1), 'text-anchor': 'end', class: 'ytick' }, axisTickLabel(u * axis.step, axis.step)));
+    }
+    var slot = PW / data.length;
     var bw = Math.max(1, slot * 0.72);
     data.forEach(function (b, i) {
-      var h = max > 0 && b.seconds > 0 ? Math.max(2, (b.seconds / max) * (H - 6)) : 0;
-      var rect = svgEl('rect', { class: 'bar', x: (i * slot + (slot - bw) / 2).toFixed(2), y: (H - h).toFixed(2), width: bw.toFixed(2), height: h.toFixed(2), rx: 1.5 });
+      var h = axis.max > 0 && b.seconds > 0 ? Math.max(2, (b.seconds / axis.max) * H) : 0;
+      var rect = svgEl('rect', { class: 'bar', x: (LM + i * slot + (slot - bw) / 2).toFixed(2), y: (TM + H - h).toFixed(2), width: bw.toFixed(2), height: h.toFixed(2), rx: 1.5 });
       rect.appendChild(svgEl('title', {}, bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds)));
       svg.appendChild(rect);
     });
-    svg.appendChild(svgEl('line', { x1: 0, x2: W, y1: H + 0.5, y2: H + 0.5, stroke: '#404040', 'stroke-width': 1 }));
+    svg.appendChild(svgEl('line', { x1: LM, x2: W, y1: TM + H + 0.5, y2: TM + H + 0.5, stroke: '#404040', 'stroke-width': 1 }));
     var last = data.length - 1;
     var mid = Math.floor(last / 2);
-    svg.appendChild(svgEl('text', { x: 0, y: H + 16, 'text-anchor': 'start' }, axisLabel(unit, data[0].key)));
-    if (last >= 2) svg.appendChild(svgEl('text', { x: (mid * slot + slot / 2).toFixed(1), y: H + 16, 'text-anchor': 'middle' }, axisLabel(unit, data[mid].key)));
-    if (last >= 1) svg.appendChild(svgEl('text', { x: W, y: H + 16, 'text-anchor': 'end' }, axisLabel(unit, data[last].key)));
+    svg.appendChild(svgEl('text', { x: LM, y: TM + H + 16, 'text-anchor': 'start' }, axisLabel(unit, data[0].key)));
+    if (last >= 2) svg.appendChild(svgEl('text', { x: (LM + mid * slot + slot / 2).toFixed(1), y: TM + H + 16, 'text-anchor': 'middle' }, axisLabel(unit, data[mid].key)));
+    if (last >= 1) svg.appendChild(svgEl('text', { x: W, y: TM + H + 16, 'text-anchor': 'end' }, axisLabel(unit, data[last].key)));
     container.appendChild(svg);
+  }
+
+  /** Runde Y-Achse für Sekundenwerte: Schrittweite (s), Anzahl Schritte (2–4) und Achsenmaximum (s). */
+  function niceAxis(maxSec) {
+    var steps = [300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400];
+    var step = 0;
+    var i;
+    for (i = 0; i < steps.length; i++) {
+      if (maxSec <= steps[i] * 4) {
+        step = steps[i];
+        break;
+      }
+    }
+    if (!step) {
+      step = 86400;
+      while (maxSec > step * 4) step *= 2;
+    }
+    var count = Math.max(2, Math.ceil(maxSec / step));
+    return { step: step, count: count, max: step * count };
+  }
+
+  /** Y-Achsen-Beschriftung: volle Stunden als "N Std", sonst "N Min". */
+  function axisTickLabel(sec, step) {
+    if (sec === 0) return '0';
+    return step % 3600 === 0 ? sec / 3600 + ' Std' : Math.round(sec / 60) + ' Min';
   }
 
   function renderHeatmap(container, stats) {
