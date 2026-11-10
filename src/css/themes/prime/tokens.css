@@ -1,33 +1,59 @@
-/* LENZPRIME · Tokens: überschreiben die Kern-Tokens (tokens.css) mit höherer Spezifität. */
+/* LENZPRIME · Tokens: überschreiben die Kern-Tokens (tokens.css) mit höherer Spezifität. Werte aus reference/live/notes-prime.md. */
 html.lfx-js.lfx-theme-prime:not(.layout-tv) {
   --jf-palette-primary-main: #1a98ff;
   --jf-palette-primary-light: #5aa9ff;
   --jf-palette-primary-dark: #0f78d1;
   --jf-palette-primary-mainChannel: 26 152 255;
   --jf-palette-secondary-main: #1a98ff;
-  --jf-palette-background-default: #0f1117;
-  --jf-palette-background-defaultChannel: 15 17 23;
-  --jf-palette-background-paper: #171a22;
-  --jf-palette-AppBar-defaultBg: #0a0e17;
-  --jf-palette-AppBar-darkBg: #0a0e17;
+  --jf-palette-background-default: #00050d;
+  --jf-palette-background-defaultChannel: 0 5 13;
+  --jf-palette-background-paper: #17191c;
+  --jf-palette-background-paperChannel: 23 25 28;
+  --jf-palette-AppBar-defaultBg: #00050d;
+  --jf-palette-AppBar-darkBg: #00050d;
   --jf-palette-text-primary: #fff;
-  --jf-palette-text-secondary: #a8adb8;
+  --jf-palette-text-secondary: #b3b3b3;
 
   --lfx-red: #1a98ff;
   --lfx-red-hover: #5aa9ff;
   --lfx-red-active: #0f78d1;
   --lfx-accent: #1a98ff;
   --lfx-link: #5aa9ff;
-  --lfx-bg: #0f1117;
-  --lfx-bg-deep: #0a0e17;
-  --lfx-surface: #1a1d26;
-  --lfx-surface-2: #2c2f38;
-  --lfx-surface-3: #3a3d45;
-  --lfx-border: #3a3d45;
+  --lfx-bg: #00050d;
+  --lfx-bg-deep: #00050d;
+  --lfx-surface: #17191c;
+  --lfx-surface-2: #33373d;
+  --lfx-surface-3: #4a4e55;
+  --lfx-border: #66696e;
   --lfx-text: #fff;
   --lfx-text-body: #e6e8ec;
-  --lfx-text-muted: #a8adb8;
-  --lfx-text-soft: #7d828e;
-  --lfx-green: #1ed38a;
-  --lfx-green-soft: rgba(30, 211, 138, 0.12);
+  --lfx-text-muted: #b3b3b3;
+  --lfx-text-soft: #808080;
+  --lfx-green: #37f1a3;
+  --lfx-green-soft: rgba(55, 241, 163, 0.12);
+  --lfx-glass: rgba(25, 30, 37, 0.8);
+  --lfx-glass-hover: rgba(255, 255, 255, 0.2);
+  --lfx-pill-active: rgba(255, 255, 255, 0.2);
+
+  /* LENZPRIME-eigene Tokens */
+  --lfx-prime-glass: rgba(25, 30, 37, 0.8);
+  --lfx-prime-panel: rgba(23, 25, 28, 0.8);
+  --lfx-prime-chip: #33373d;
+  --lfx-prime-rating: #35a9e5;
+  --lfx-prime-hover-bg: #ebecee;
+  --lfx-prime-ink: #00050d;
+  --lfx-prime-shadow: rgba(0, 0, 0, 0.3) 0 4px 4px 0, rgba(0, 0, 0, 0.15) 0 8px 12px 6px;
+  --lfx-prime-gutter: clamp(20px, 3.75vw, 72px);
+
+  --lfx-font: "LenzPrime Sans", "Source Sans 3", "Helvetica Neue", Arial, sans-serif;
+  --lfx-fs-nav: 16px;
+  --lfx-fw-nav: 500;
+  --lfx-header-h: 66px;
+  --lfx-prime-header-h: var(--lfx-header-h); /* von Titelseite und Neu & beliebt genutzt */
+  --lfx-nav-pill-h: 42px;
+  --lfx-card-radius: 12px;
+  --lfx-popup-radius: 8px;
+  --lfx-modal-radius: 12px;
+  --lfx-btn-radius: 8px;
+  --lfx-shadow-card: rgba(0, 0, 0, 0.3) 0 4px 4px 0, rgba(0, 0, 0, 0.15) 0 8px 12px 6px;
 }

@@ -1,1 +1,339 @@
-/* LENZPRIME: Hero (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZPRIME: Hero (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-prime:not(.layout-tv).
+   Maße von 1920 px Breite (Notizen C), proportional über vw/clamp. Lokale Variablen --pv-* gelten auch für hover/rows/footer. */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) {
+  --pv-bg: #00050d;
+  --pv-pad: clamp(24px, 3.75vw, 72px);
+  --pv-gap: clamp(12px, 1.25vw, 24px);
+  --pv-green: #37f1a3;
+  --pv-chip: #35a9e5;
+  --pv-text-2: #b3b3b3;
+  --pv-link: #79b8f3;
+  --pv-glass: rgba(25, 30, 37, 0.8);
+  --pv-font: "LenzPrime Sans", Arial, sans-serif;
+}
+
+/* Native Startseite ausblenden (nur die Sektionen; der Legacy-Container bleibt für den Proxy-Klick im DOM) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-home-on #indexPage #homeTab > .sections {
+  display: none !important;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-home-on #indexPage {
+  padding-top: 0 !important;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-home-on #indexPage,
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-home-on #indexPage #homeTab,
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-home-on .backgroundContainer:not(.withBackdrop) {
+  background: var(--pv-bg) !important;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-home {
+  position: relative;
+  min-height: 60vh;
+  background: var(--pv-bg);
+  color: #fff;
+  font-family: var(--pv-font);
+}
+
+/* ---------- Hero ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot {
+  position: relative;
+  margin: 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero-slot[hidden] { display: none; }
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero {
+  position: relative;
+  height: clamp(440px, 37.5vw, 720px);
+  overflow: hidden;
+  background: var(--pv-bg);
+  isolation: isolate;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__media,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__img,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__media .lfx-preview__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__img,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__media .lfx-preview__video {
+  object-fit: cover;
+  object-position: 70% 22%;
+}
+/* Crossfade mit minimalem Versatz */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__img {
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 1s ease, transform 1.4s cubic-bezier(0.2, 0.45, 0, 1);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__img.is-in {
+  opacity: 1;
+  transform: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__media .lfx-preview__video {
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__media .lfx-preview__video.is-in { opacity: 1; }
+
+/* Overlay-Verläufe (Notizen C, Overlay 1 und 2) plus linke Abdunklung für die Lesbarkeit */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(90deg, rgba(0, 5, 13, 0.72), rgba(0, 5, 13, 0) 52%),
+    linear-gradient(rgba(0, 5, 13, 0.8), rgba(0, 5, 13, 0) 22.78%),
+    linear-gradient(0deg, rgb(0, 5, 13), rgba(0, 5, 13, 0.35) 15.68%, rgba(0, 5, 13, 0.05) 23.89%, rgba(0, 5, 13, 0) 27.36%),
+    radial-gradient(83.07% 105.9% at 75.42% 30.21%, rgba(0, 5, 13, 0) 28.66%, rgba(0, 5, 13, 0.9) 100%),
+    radial-gradient(91.1% 112.51% at 69.92% -12.5%, rgba(0, 5, 13, 0) 76.71%, rgba(0, 5, 13, 0.4) 100%);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__shade--corner {
+  background-image:
+    radial-gradient(100% 263.7% at 100% 0, rgba(0, 0, 0, 0.44) 0, transparent 79.4%),
+    radial-gradient(144.58% 54.18% at 100% 0, rgba(0, 0, 0, 0.11) 69.54%, transparent 100%);
+}
+
+/* Inhalt links */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__live {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__live.is-out { opacity: 0; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__text {
+  position: absolute;
+  left: var(--pv-pad);
+  bottom: clamp(36px, 3.6vw, 70px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: clamp(10px, 1vw, 18px);
+  max-width: min(46vw, 760px);
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__logo {
+  display: block;
+  width: auto;
+  max-width: min(23vw, 440px);
+  max-height: clamp(70px, 7.3vw, 140px);
+  object-fit: contain;
+  object-position: left bottom;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__title {
+  margin: 0;
+  font-size: clamp(28px, 2.3vw, 44px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__rank,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__rank {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pv-green);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__rank svg,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__rank svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* Knöpfe */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__actions {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 4px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__playwrap {
+  position: relative;
+  margin-right: 28px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: clamp(48px, 3.23vw, 62px);
+  padding: 8px 21px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--pv-bg);
+  font: 500 clamp(16px, 1.04vw, 20px)/1.15 var(--pv-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play svg { width: 26px; height: 26px; flex: none; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__label { display: flex; flex-direction: column; text-align: left; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play.is-two { font-size: clamp(14px, 0.94vw, 18px); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__label2 { font-weight: 400; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 4px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.3);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__progress[hidden] { display: none; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__bar { display: block; height: 100%; background: #fff; }
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(48px, 3.18vw, 61px);
+  height: clamp(48px, 3.18vw, 61px);
+  margin-right: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 10000px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.3s ease-in-out, background-color 0.3s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round svg { width: 56%; height: 56%; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round--info svg { width: 62%; height: 62%; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round:focus-visible,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play:focus-visible,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__mute:focus-visible,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play:hover { background: #ebecee; transform: scale(1.04); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round:hover { background: rgba(255, 255, 255, 0.32); transform: scale(1.06); }
+}
+
+/* FSK-Chip (auch Hover-Meta) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-chip {
+  display: inline-block;
+  min-width: 22px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--pv-chip);
+  color: var(--pv-bg);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  letter-spacing: -0.3px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__fsk {
+  position: absolute;
+  right: 20px;
+  bottom: 24px;
+  pointer-events: none;
+}
+
+/* Stumm-Knopf rechts oben (Kreis mit Rand) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__mute {
+  position: absolute;
+  z-index: 3;
+  top: clamp(72px, 5.2vw, 100px);
+  right: clamp(20px, 1.9vw, 36px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10000px;
+  background: rgba(0, 5, 13, 0.4);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__mute[hidden] { display: none; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__mute svg { width: 22px; height: 22px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__mute:hover { background: rgba(0, 5, 13, 0.7); }
+
+/* Punkte */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__dots {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 19.7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__dots[hidden] { display: none; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__dot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: width 0.3s ease, background-color 0.3s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__dot.is-active { width: 20px; background: #fff; }
+
+/* Pfeile (nur bei Hover über dem Hero) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-top: -22px;
+    padding: 0;
+    border: 0;
+    border-radius: 10000px;
+    background: rgba(0, 5, 13, 0.4);
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out, background-color 0.3s;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow--prev { left: 14px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow--next { right: 14px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow svg { width: 22px; height: 22px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow--prev svg { transform: scaleX(-1); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero:hover .lfx-prime-hero__arrow,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero:focus-within .lfx-prime-hero__arrow { opacity: 1; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__arrow:hover { background: rgba(0, 5, 13, 0.7); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__img,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__live,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__play,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__round { transition: none; }
+}
+
+/* Schmale Fenster (< 800 px): Hero niedriger, Logo kleiner; eigene Handy-Layouts folgen später */
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero { height: 480px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__text { max-width: calc(100vw - 2 * var(--pv-pad)); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__logo { max-width: 60vw; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hero__dots { bottom: 14px; }
+}

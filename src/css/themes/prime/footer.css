@@ -1,1 +1,66 @@
-/* LENZPRIME: Mehr-Button + Fußzeile (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZPRIME: Mehr-Button + Fußzeile (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-prime:not(.layout-tv). */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-moreslot {
+  display: flex;
+  justify-content: center;
+  padding: 8px var(--pv-pad) 56px;
+  background: var(--pv-bg);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-moreslot:empty { display: none; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-more {
+  min-width: 132px;
+  height: 62px;
+  padding: 0 28px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font: 500 20px/1 var(--pv-font);
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-more[hidden] { display: none; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-more:disabled { opacity: 0.6; cursor: progress; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-more:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-more:hover:not(:disabled) { background: rgba(255, 255, 255, 0.32); }
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 122px;
+  padding: 16px var(--pv-pad);
+  background: var(--pv-bg);
+  color: #999;
+  font-family: var(--pv-font);
+  text-align: center;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer__mark {
+  display: block;
+  width: 112px;
+  height: 22px;
+  background: url("../assets/logo/lenzprime.svg") center / contain no-repeat;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 24px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pv-link);
+  font: 400 15px/22px var(--pv-font);
+  text-decoration: none;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer__link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer__link:hover { text-decoration: underline; }
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-footer__note { margin: 0; color: #999; font-size: 13px; line-height: 18px; }

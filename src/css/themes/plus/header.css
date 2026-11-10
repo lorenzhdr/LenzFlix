@@ -1,1 +1,255 @@
-/* LENZ+: Kopfzeile + Profilmenü (Etappe 2, X1). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZ+: Kopfzeile + Profilmenü (Etappe 2, X1). Alle Regeln unter html.lfx-js.lfx-theme-plus:not(.layout-tv). */
+
+/* ---------- Native AppBar: erste Toolbar unsichtbar (Platz bleibt erhalten), zweite Toolbar (Filter/Sortierung) bleibt ---------- */
+html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
+  background-color: transparent !important;
+  background-image: none;
+  box-shadow: none;
+}
+html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root::before {
+  display: none;
+}
+html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
+  min-height: var(--lfx-header-h);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ---------- Eigene Kopfzeile ---------- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1101; /* über der AppBar (1100), unter Menüs/Dialogen (1300) */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--lfx-header-h);
+  padding: 0 clamp(16px, 1.9vw, 36px) 0 clamp(12px, 0.9vw, 17px);
+  background: transparent;
+  color: var(--lfx-text);
+  font: 400 var(--lfx-fs-nav) / 1 var(--lfx-font);
+  letter-spacing: var(--lfx-plus-ls);
+  transform: translateY(0);
+  transition:
+    background-color 0.3s ease-in-out,
+    transform 0.3s ease-in-out,
+    opacity 0.3s ease-in-out;
+}
+/* feiner Verlauf, solange die Leiste transparent über dem Hero liegt */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -40px 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.55), transparent);
+  transition: opacity 0.3s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header.is-solid {
+  background: #000;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.08);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header.is-solid::before {
+  opacity: 0;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header.is-hidden {
+  transform: translateY(-64px);
+}
+
+/* links: Wortmarke + Profil-Chip */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__brand {
+  flex: none;
+  display: block;
+  width: 96px;
+  height: 30px;
+  margin: 0 8px 0 4px;
+  background: url("../assets/logo/lenzplus.svg") no-repeat left center / contain;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 220px;
+  height: 52px;
+  padding: 0 14px 0 8px;
+  border: 0;
+  border-radius: 100px;
+  background: transparent;
+  color: var(--lfx-text-body);
+  font: 400 15px / 1 var(--lfx-font);
+  letter-spacing: var(--lfx-plus-ls);
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--lfx-plus-circle) center / cover no-repeat;
+  color: var(--lfx-text);
+  font-weight: 700;
+  font-size: 15px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mitte: Navigation, zentriert */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__nav {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 1.9vw, 36px);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  color: var(--lfx-plus-nav-idle);
+  font: var(--lfx-fw-nav) var(--lfx-fs-nav) / 24px var(--lfx-font);
+  letter-spacing: var(--lfx-plus-ls-bold);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__item.is-active {
+  color: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__icon {
+  display: inline-flex;
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* rechts: runder Such-Button */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--lfx-plus-circle);
+  color: rgb(255 255 255 / 0.7);
+  text-decoration: none;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search .lfx-plus-header__icon {
+  width: 20px;
+  height: 20px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
+  background: #fff;
+  color: #101010;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header a:focus-visible,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__item:hover {
+    color: #fff;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__chip:hover {
+    background: rgb(255 255 255 / 0.08);
+    color: #fff;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search:hover:not(.is-active) {
+    background: #3a3a42;
+    color: #fff;
+  }
+}
+
+/* Responsiver Fallback: unter 1100 px nur Icons, unter 800 px zusätzlich ohne Namen/Wortmarke-Lücke */
+@media (max-width: 1099px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__nav {
+    gap: 22px;
+  }
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__name,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__brand {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__chip {
+    padding: 0 4px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__nav {
+    gap: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header {
+    transition: none;
+  }
+}
+
+/* ---------- Profilmenü (core/popover.js, className lfx-plus-menu) ---------- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-popover.lfx-plus-menu {
+  width: 240px;
+  min-width: 240px;
+  padding: 8px 0 12px;
+  background: var(--lfx-plus-menu-bg);
+  border: 1px solid var(--lfx-plus-menu-border);
+  border-radius: 4px;
+  box-shadow: none;
+  z-index: 1350;
+  font-family: var(--lfx-font);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item {
+  min-height: 39px;
+  padding: 8px 20px 7px;
+  border-radius: 0;
+  color: var(--lfx-text-body);
+  font: 400 15px / 1.3 var(--lfx-font);
+  letter-spacing: var(--lfx-plus-ls);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item.is-stats {
+  color: var(--lfx-gold);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item:focus {
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-menu .lfx-popover__item:hover {
+    background: rgb(255 255 255 / 0.1);
+    color: #fff;
+  }
+}

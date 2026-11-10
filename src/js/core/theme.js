@@ -25,6 +25,8 @@ const SAVE_DEBOUNCE_MS = 400;
 const CSS_TIMEOUT_MS = 3000;
 const REVEAL_MS = 1500; // erster Start: spätestens dann LENZFLIX zeigen, Design-CSS lädt weiter
 const LOADING = 'lfx-theme-loading';
+const PREHIDE_ID = 'lfx-theme-prehide';
+const PREHIDE_CSS = 'html.lfx-theme-loading:not(.layout-tv) body{opacity:0!important}';
 const TV_UA = /Web0S|webOS|Tizen|SmartTV|SMART-TV/i;
 
 const root = () => document.documentElement;
@@ -41,6 +43,9 @@ let remoteDone = false;
 let saveTimer = null;
 let revealTimer = null;
 let unsynced = false; // Nutzerwahl noch nicht auf dem Server
+let earlyId = null; // Frühstart (earlyTheme) aktiv: Ziel-Design, das vorgeladen wird
+let earlyAt = 0;
+let earlyTimer = null;
 const listeners = new Set();
 
 export function normalizeTheme(x) {
@@ -110,7 +115,7 @@ function saveLocal(id) {
 }
 
 /** Hash-Param lfxtheme=<id> lesen und aus dem Hash entfernen. Rückgabe: id oder null. */
-function takeHashChoice() {
+function takeHashChoice(consume = true) {
   let r;
   try {
     r = parseHash(window.location.hash);
@@ -119,6 +124,7 @@ function takeHashChoice() {
   }
   if (!r.params.has(HASH_PARAM)) return null;
   const id = strictTheme(r.params.get(HASH_PARAM));
+  if (!consume) return id;
   r.params.delete(HASH_PARAM);
   try {
     const qs = r.params.toString();
@@ -221,6 +227,61 @@ function setHtmlTheme(id) {
   }
   if (!cl.contains(`lfx-theme-${id}`)) cl.add(`lfx-theme-${id}`);
   if (cl.contains(LOADING)) cl.remove(LOADING);
+  removePrehide();
+}
+
+function removePrehide() {
+  const el = document.getElementById(PREHIDE_ID);
+  if (el) el.remove();
+}
+
+/** Frühstart beendet (startTheme übernimmt oder Abbruch): Timer weg, Zustand zurücksetzen. */
+function endEarly() {
+  clearTimeout(earlyTimer);
+  earlyTimer = null;
+  earlyId = null;
+}
+
+/** Frühstart abbrechen: alles wieder sichtbar, Prehide/Klasse/vorgeladenes Design-CSS weg. */
+function abortEarly() {
+  if (earlyId === null) return;
+  endEarly();
+  earlyAt = 0;
+  removePrehide();
+  root().classList.remove(LOADING);
+  removeThemeCss(null);
+}
+
+/**
+ * Direkt beim Skriptstart (vor cssActive/startTheme): Ist das wirksame Ziel plus/prime (kein TV), sofort
+ * ausblenden (Inline-Style + Klasse) und das Design-CSS vorladen. LENZFLIX/TV: tut nichts.
+ * Kommt startTheme() bis REVEAL_MS nicht (CSS nie aktiv), wird alles wieder aufgeräumt.
+ */
+export function earlyTheme() {
+  if (started || earlyId !== null) return;
+  let id;
+  try {
+    id = (!forcedFlix() && (takeHashChoice(false) || resolveLocalChoice())) || 'flix';
+  } catch {
+    return;
+  }
+  if (id !== 'plus' && id !== 'prime') return;
+  earlyId = id;
+  earlyAt = Date.now();
+  if (!document.getElementById(PREHIDE_ID)) {
+    const st = document.createElement('style');
+    st.id = PREHIDE_ID;
+    st.textContent = PREHIDE_CSS;
+    (document.head || root()).appendChild(st);
+  }
+  root().classList.add(LOADING);
+  earlyTimer = setTimeout(() => {
+    earlyTimer = null;
+    if (!started) abortEarly();
+  }, REVEAL_MS);
+  try {
+    Promise.resolve(ensureThemeCss(id, { timeout: CSS_TIMEOUT_MS })).catch(() => {});
+  } catch { /* Vorladen ist optional */ }
 }
 
 function emit(theme, previous) {
@@ -274,10 +335,12 @@ function transition(target) {
     state = 'pending';
     root().classList.add(LOADING);
     clearTimeout(revealTimer);
+    const waited = earlyAt ? Math.max(0, Date.now() - earlyAt) : 0; // Frühstart zählt mit
+    earlyAt = 0;
     revealTimer = setTimeout(() => {
       revealTimer = null;
       if (mine === seq && effective === null) revealFlix();
-    }, REVEAL_MS);
+    }, Math.max(0, REVEAL_MS - waited));
   }
   const promise = ensureThemeCss(target, { timeout: CSS_TIMEOUT_MS }).then((ok) => {
     if (initial && mine === seq) {
@@ -336,6 +399,7 @@ export function applyThemeClass() {
 export function startTheme() {
   if (started) return;
   started = true;
+  endEarly(); // Ausblenden übernimmt ab jetzt transition()
   lastUid = getUserId() || null;
   const fromHash = takeHashChoice();
   if (fromHash) {
@@ -371,10 +435,14 @@ export function syncThemeUser() {
 }
 
 export function stopTheme() {
+  if (!started && earlyId !== null) return; // Frühstart-Fenster läuft: räumt sich selbst auf (REVEAL_MS)
   const cl = root().classList;
   const hasDom = started || [...cl].some((c) => c.startsWith('lfx-theme-')) || document.querySelector('link.lfx-theme-css');
   if (!hasDom) return;
   started = false;
+  endEarly();
+  earlyAt = 0;
+  removePrehide();
   seq++;
   inflight = null;
   clearTimeout(saveTimer);
@@ -392,6 +460,7 @@ export function stopTheme() {
 }
 
 export function destroyTheme() {
+  abortEarly();
   stopTheme();
   listeners.clear();
   touched = 0;

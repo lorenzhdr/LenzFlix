@@ -1,1 +1,194 @@
-/* LENZ+: Suchseite (Etappe 2, X3). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZ+: Suchseite (Etappe 2, X3). Raster, Ring und Karten-Text kommen aus title.css. */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__field {
+  position: relative;
+  margin-bottom: 36px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 1px 56px 16px 48px;
+  border: 0;
+  border-bottom: 3px solid rgba(255, 255, 255, 0.5);
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font: 700 32px/1.4 var(--lfx-font);
+  letter-spacing: -0.1px;
+  outline: none;
+  appearance: none;
+  transition: border-color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 1;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input::-webkit-search-cancel-button,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input::-webkit-search-decoration {
+  display: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input:focus {
+  border-bottom-color: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__icon {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  display: block;
+  width: 28px;
+  height: 28px;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__icon svg,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__clear svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__clear {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__clear[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__clear:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-section {
+  margin: 0 0 40px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-section__title {
+  margin: 0 0 14px;
+  color: var(--lfx-text-body);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: -0.1px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-section--small .lfx-plus-section__title {
+  font-size: 18px;
+}
+
+/* Kachel-Zeilen (Genres, Sammlungen) */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tilerow {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 4 * var(--lfx-plus-gap)) / 5);
+  gap: var(--lfx-plus-gap);
+  margin: 0 calc(var(--lfx-plus-side) * -1);
+  padding: 10px var(--lfx-plus-side) 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tilerow::-webkit-scrollbar {
+  display: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  isolation: isolate;
+  border-radius: 12px;
+  background: var(--lfx-surface-3);
+  color: #fff;
+  text-decoration: none;
+  transition: transform 0.3s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile:focus-visible {
+  outline: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile__name {
+  position: relative;
+  z-index: 1;
+  padding: 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile__name.has-img {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 12px 12px;
+  border-radius: 0 0 12px 12px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
+  text-align: left;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* Personen */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 110px;
+  color: var(--lfx-text-body);
+  text-align: center;
+  text-decoration: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-person__img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--lfx-surface-3);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-person__img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-person__name {
+  font-size: 13px;
+  line-height: 1.3;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-person:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+@media (max-width: 1399px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tilerow {
+    grid-auto-columns: calc((100% - 3 * var(--lfx-plus-gap)) / 4);
+  }
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-search__input {
+    font-size: 22px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tilerow {
+    grid-auto-columns: calc((100% - var(--lfx-plus-gap)) / 2);
+  }
+}

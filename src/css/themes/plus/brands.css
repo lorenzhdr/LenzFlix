@@ -1,1 +1,80 @@
 /* LENZ+: Sammlungs-Kacheln (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 24px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands__track {
+  --plus-brand-w: calc((100cqw - 2 * var(--plus-gutter) - 4 * var(--plus-gap)) / 5);
+  display: flex;
+  gap: var(--plus-gap);
+  padding: 14px var(--plus-gutter) 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--plus-gutter);
+  scrollbar-width: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands__track::-webkit-scrollbar { display: none; }
+@media (max-width: 1099px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands__track { --plus-brand-w: calc((100cqw - 2 * var(--plus-gutter) - 2 * var(--plus-gap)) / 3); }
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands__track { --plus-brand-w: calc((100cqw - 2 * var(--plus-gutter) - var(--plus-gap)) / 2); }
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brands__cell {
+  flex: 0 0 var(--plus-brand-w);
+  width: var(--plus-brand-w);
+  scroll-snap-align: start;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  border-radius: 9px;
+  background: var(--plus-surface, #2d2f36);
+  color: #fff;
+  text-decoration: none;
+  transition: transform 0.3s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 9px;
+  object-fit: cover;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand__name {
+  padding: 0 16px;
+  font-size: clamp(18px, 1.7cqw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.15;
+  text-align: center;
+}
+/* Ring wie bei Karten */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  z-index: 2;
+  border: 3px solid #fff;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 4px #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand:focus-visible { outline: none; transform: scale(1.03); }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand:focus-visible::before { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand:hover { transform: scale(1.03); }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand:hover::before { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-brand { transition: none; }
+}

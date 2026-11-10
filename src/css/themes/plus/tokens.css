@@ -1,31 +1,113 @@
 /* LENZ+ · Tokens: überschreiben die Kern-Tokens (tokens.css) mit höherer Spezifität. */
 html.lfx-js.lfx-theme-plus:not(.layout-tv) {
+  /* --- Jellyfin / MUI Palette (native Komponenten) --- */
   --jf-palette-primary-main: #1bb3e8;
   --jf-palette-primary-light: #4cc6f0;
   --jf-palette-primary-dark: #0f8fbc;
+  --jf-palette-primary-contrastText: #fff;
   --jf-palette-primary-mainChannel: 27 179 232;
+  --jf-palette-primary-lightChannel: 76 198 240;
+  --jf-palette-primary-darkChannel: 15 143 188;
   --jf-palette-secondary-main: #1bb3e8;
+  --jf-palette-secondary-light: #4cc6f0;
+  --jf-palette-secondary-dark: #0f8fbc;
+  --jf-palette-secondary-mainChannel: 27 179 232;
   --jf-palette-background-default: #10131f;
   --jf-palette-background-defaultChannel: 16 19 31;
   --jf-palette-background-paper: #151a2a;
-  --jf-palette-AppBar-defaultBg: #050507;
-  --jf-palette-AppBar-darkBg: #050507;
-  --jf-palette-text-primary: #f5f5f7;
-  --jf-palette-text-secondary: #8d8d95;
+  --jf-palette-background-paperChannel: 21 26 42;
+  --jf-palette-AppBar-defaultBg: #000;
+  --jf-palette-AppBar-darkBg: #000;
+  --jf-palette-AppBar-transparentBg: transparent;
+  --jf-palette-text-primary: #f9f9f9;
+  --jf-palette-text-secondary: #c0c0c0;
+  --jf-palette-divider: rgba(255, 255, 255, 0.12);
+  --jf-palette-SnackbarContent-bg: #2d2f36;
+  --jf-palette-FilledInput-bg: rgba(255, 255, 255, 0.08);
+  --jf-palette-Button-inheritContainedBg: rgba(255, 255, 255, 0.1);
+  --jf-palette-Button-inheritContainedHoverBg: rgba(255, 255, 255, 0.18);
+  --jf-card-borderRadius: 12px;
+  --jf-shape-borderRadius: 8px;
 
+  /* --- Farben --- */
   --lfx-red: #1bb3e8;
   --lfx-red-hover: #4cc6f0;
   --lfx-red-active: #0f8fbc;
   --lfx-accent: #1bb3e8;
   --lfx-bg: #10131f;
-  --lfx-bg-deep: #050507;
+  --lfx-bg-deep: #000;
   --lfx-surface: #151a2a;
   --lfx-surface-2: #1d2336;
-  --lfx-surface-3: #282f46;
+  --lfx-surface-3: #2d2f36;
   --lfx-border: #353c55;
-  --lfx-text: #f5f5f7;
-  --lfx-text-body: #e1e2e8;
-  --lfx-text-muted: #a9abb5;
+  --lfx-text: #f9f9f9;
+  --lfx-text-body: #dbdcde;
+  --lfx-text-muted: #c0c0c0;
   --lfx-text-soft: #8d8d95;
   --lfx-progress: #1bb3e8;
+  --lfx-pill-active: #fff;
+  --lfx-glass: rgba(45, 47, 54, 0.71);
+  --lfx-glass-hover: rgba(255, 255, 255, 0.18);
+  --lfx-progress-rail: rgba(255, 255, 255, 0.2);
+
+  /* --- LENZ+-eigene Tokens --- */
+  --lfx-plus-tile: #2d2f36;
+  --lfx-plus-nav-idle: #c5c5cc;
+  --lfx-plus-circle: #2a2a30;
+  --lfx-plus-chip: rgba(255, 255, 255, 0.05);
+  --lfx-plus-footer: #0e0b14;
+  --lfx-plus-menu-bg: #131313;
+  --lfx-plus-menu-border: rgba(151, 151, 151, 0.34);
+  --lfx-plus-ring: #fff;
+  --lfx-plus-ls: -0.1px;
+  --lfx-plus-ls-bold: 0.11px;
+  --lfx-plus-ls-caps: 1.76px;
+
+  /* --- Typografie --- */
+  --lfx-font: "LenzPlus Sans", "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --lfx-fs-nav: 15px;
+  --lfx-fs-row-title: 22px;
+  --lfx-fs-meta: 15px;
+  --lfx-fs-button: 15px;
+  --lfx-fs-badge: 12px;
+  --lfx-fs-body: 16px;
+  --lfx-fw-nav: 700;
+  --lfx-fw-row-title: 400;
+  --lfx-fw-button: 700;
+
+  /* --- Maße (Referenz 1920 px) --- */
+  --lfx-gutter: 3.7vw; /* ~71 px bei 1920 */
+  --lfx-header-h: 66px;
+  --lfx-card-gap: 20px;
+  --lfx-cards-visible: 5;
+  --lfx-card-radius: 12px;
+  --lfx-billboard-radius: 18px;
+  --lfx-btn-h: 48px;
+  --lfx-btn-radius: 9999px;
+  --lfx-btn-gap: 20px;
+  --lfx-popup-radius: 8px;
+  --lfx-modal-radius: 12px;
+  --lfx-shadow-card: 0 20px 24px rgba(0, 0, 0, 0.8);
+}
+
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) {
+    --lfx-gutter: 4vw;
+    --lfx-cards-visible: 2;
+  }
+}
+@media (min-width: 800px) and (max-width: 1099px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) { --lfx-cards-visible: 3; }
+}
+@media (min-width: 1100px) and (max-width: 1399px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) { --lfx-cards-visible: 4; }
+}
+
+/* Grundschrift und -farbe */
+html.lfx-js.lfx-theme-plus:not(.layout-tv),
+html.lfx-js.lfx-theme-plus:not(.layout-tv) body {
+  background-color: var(--lfx-bg);
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+  letter-spacing: var(--lfx-plus-ls);
 }

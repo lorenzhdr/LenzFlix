@@ -1,1 +1,198 @@
 /* LENZPRIME: Kopfzeile (Etappe 2, X1). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+
+/* --- Native AppBar: erste Toolbar weg, Hintergrund weg; die zweite Toolbar (Bibliotheks-Filter) bleibt --- */
+html.lfx-js.lfx-theme-prime.lfx-prime-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-prime.lfx-prime-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root::before {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime.lfx-prime-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
+  display: none;
+}
+html.lfx-js.lfx-theme-prime.lfx-prime-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) {
+  pointer-events: auto;
+  margin-top: var(--lfx-header-h);
+}
+
+/* --- Kopfzeile: fest, immer sichtbar --- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 1101; /* über der AppBar (1100), unter Menüs/Dialogen (1300) */
+  height: var(--lfx-header-h);
+  pointer-events: none;
+  font: var(--lfx-fw-nav) var(--lfx-fs-nav) / 1 var(--lfx-font);
+  color: var(--lfx-text);
+}
+
+/* Leiste: oben bündig und transparent, nach dem Scrollen eingerückt mit Glas und Doppelschatten */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__bar {
+  --lfx-prime-inset: 0px;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  margin-inline: var(--lfx-prime-inset);
+  padding-inline: calc(var(--lfx-prime-gutter) - var(--lfx-prime-inset));
+  border-radius: 0 0 12px 12px;
+  pointer-events: auto;
+  transition: margin-inline 0.3s var(--lfx-ease), padding-inline 0.3s var(--lfx-ease), box-shadow 0.3s var(--lfx-ease);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--lfx-prime-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  opacity: 0;
+  transition: opacity 0.3s var(--lfx-ease);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header.is-scrolled .lfx-prime-header__bar {
+  --lfx-prime-inset: clamp(12px, 2.66vw, 51px);
+  box-shadow: var(--lfx-prime-shadow);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header.is-scrolled .lfx-prime-header__bar::before {
+  opacity: 1;
+}
+
+/* Wortmarke */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__logo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  margin-right: clamp(16px, 2.6vw, 28px);
+  border-radius: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__logo img {
+  display: block;
+  height: 22px;
+  width: auto;
+}
+
+/* Text-Navigation */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__link {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--lfx-nav-pill-h);
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--lfx-text);
+  font: inherit;
+  letter-spacing: 0.64px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out, box-shadow 0.1s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__link.is-active {
+  background: var(--lfx-pill-active);
+  color: var(--lfx-text);
+}
+
+/* Rechte Icons */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__flyout-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__icon,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 39px;
+  height: 39px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10000px;
+  background: transparent;
+  color: var(--lfx-text);
+  cursor: pointer;
+  transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__icon svg {
+  width: 24px;
+  height: 24px;
+  fill: currentcolor;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__icon.is-active,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__flyout-wrap.is-open > .lfx-prime-header__icon {
+  background: var(--lfx-pill-active);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__avatar {
+  width: 34px;
+  height: 34px;
+  margin-left: 6px;
+  overflow: hidden;
+  background: var(--lfx-prime-chip);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__initial {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header a:focus-visible,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header button:focus-visible {
+  outline: 3px solid var(--lfx-text);
+  outline-offset: 1px;
+}
+
+/* Hover: fast weiß mit dunkler Schrift (Menüpunkte), weißer Kreis mit dunklem Icon (Icons) */
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__link:hover {
+    background: var(--lfx-prime-hover-bg);
+    color: var(--lfx-prime-ink);
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__icon:hover,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__flyout-wrap.is-open > .lfx-prime-header__icon:hover {
+    background: var(--lfx-text);
+    color: var(--lfx-prime-ink);
+  }
+}
+
+/* Schmale Fenster: Wortmarke bleibt, Navigation rückt zusammen */
+@media (max-width: 1099px) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__link {
+    padding: 0 9px;
+    letter-spacing: 0.3px;
+  }
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__nav {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__bar,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__bar::before {
+    transition: none;
+  }
+}

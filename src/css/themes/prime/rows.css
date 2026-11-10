@@ -1,1 +1,217 @@
-/* LENZPRIME: Zeilen + Karten + Badges (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZPRIME: Zeilen + Karten + Badges (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-prime:not(.layout-tv).
+   Maße von 1920 px: Karte 276x155 (Poster 276x414), Abstand 24, Rand 72, Radius 12; Variablen --pv-* siehe hero.css.
+   Die Basis-Regeln für .lfx-card/.lfx-card__link (js-ui/rows.css) werden hier übersteuert; die Zeilen selbst nutzen eigene Klassen. */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-rows {
+  position: relative;
+  z-index: 1;
+  padding-top: 4px;
+  background: var(--pv-bg);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row { margin: 0 0 clamp(28px, 2.7vw, 52px); }
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__head {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  min-height: 28px;
+  margin: 0 var(--pv-pad) 12px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__title {
+  margin: 0;
+  color: #fff;
+  font: 700 clamp(17px, 1.04vw, 20px)/28px var(--pv-font);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more {
+  color: #fff;
+  font: 400 clamp(17px, 1.04vw, 20px)/28px var(--pv-font);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:focus-visible { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:hover .lfx-prime-row__more,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:focus-within .lfx-prime-row__more { opacity: 1; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:hover { color: var(--pv-text-2); }
+
+/* Viewport: Container für die Kartenbreite (cqw), Track: nativer Scroll-Container */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__viewport {
+  position: relative;
+  container-type: inline-size;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__track {
+  --pv-w: calc((100cqw - 2 * var(--pv-pad) - 5 * var(--pv-gap)) / 6);
+  --lfx-cards-visible: 6;
+  display: flex;
+  gap: var(--pv-gap);
+  padding: 0 var(--pv-pad);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: none; /* Aufklappen verändert Breiten: Einrasten würde die Zeile springen lassen */
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__track::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__track { scroll-behavior: auto; }
+}
+
+/* ---------- Karten ---------- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card {
+  position: relative;
+  flex: 0 0 var(--pv-w);
+  width: var(--pv-w);
+  scroll-snap-align: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #33373d;
+  color: #fff;
+  text-decoration: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:hover .lfx-card__img { filter: none; }
+/* Fuß-Verlauf unter Karten-Zeichen/Titel */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 5, 13, 0.7), rgba(0, 5, 13, 0) 38%);
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__title { font-family: var(--pv-font); font-weight: 700; }
+
+/* Poster */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card--poster {
+  height: calc(var(--pv-w) * 1.5);
+  overflow: hidden;
+  border-radius: 12px;
+  transition: flex-basis 0.3s cubic-bezier(0.2, 0.45, 0, 1), width 0.3s cubic-bezier(0.2, 0.45, 0, 1);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card--poster .lfx-card__link {
+  height: 100%;
+  aspect-ratio: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card--poster.is-expanded {
+  flex-basis: calc(var(--pv-w) * 2.6667);
+  width: calc(var(--pv-w) * 2.6667);
+}
+
+/* Badge: oben rechts bündig (Notizen D) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-badge {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  padding: 3px 7px;
+  border-radius: 0 3px;
+  background: #fff;
+  color: var(--pv-bg);
+  font: 700 13px/1.25 var(--pv-font);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Karten-Zeichen unten rechts */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card__mark {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  bottom: 8px;
+  width: 27px;
+  height: 15px;
+  background: url("../assets/logo/lenzprime-cardmark.svg") center / contain no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* Fortsetzen: dünner weißer Fortschritt am unteren Rand */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card__progress {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card__bar { height: 100%; background: #fff; }
+
+/* Top 10: große Rangziffer links neben der 16:9-Karte (dezent, hohl mit Kontur) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card--ranked { margin-left: calc(var(--pv-w) * 0.34); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card__rank {
+  position: absolute;
+  right: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--pv-bg);
+  font: 900 calc(var(--pv-w) * 0.56)/1 var(--pv-font);
+  letter-spacing: -0.04em;
+  -webkit-text-stroke: 3px rgba(255, 255, 255, 0.5);
+  paint-order: stroke fill;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card__rank--wide {
+  font-size: calc(var(--pv-w) * 0.46);
+  letter-spacing: -0.12em;
+}
+
+/* Pfeile (nur Maus) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow {
+    position: absolute;
+    z-index: 3;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--pv-pad);
+    padding: 0;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.25s ease-in-out, background-color 0.2s;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow[hidden] { display: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow--prev { left: 0; background: linear-gradient(90deg, rgba(0, 5, 13, 0.85), rgba(0, 5, 13, 0.4)); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow--next { right: 0; background: linear-gradient(270deg, rgba(0, 5, 13, 0.85), rgba(0, 5, 13, 0.4)); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow svg { width: 32px; height: 32px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-arrow--prev svg { transform: scaleX(-1); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:hover .lfx-prime-arrow,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:focus-within .lfx-prime-arrow { opacity: 1; }
+}
+
+/* Skeleton */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-skel {
+  flex: 0 0 var(--pv-w);
+  height: calc(var(--pv-w) * 9 / 16);
+  border-radius: 12px;
+  background: linear-gradient(100deg, #33373d 30%, #3b4047 50%, #33373d 70%) 0 0 / 200% 100% #33373d;
+  animation: lfx-prime-shimmer 1.6s linear infinite;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row--poster .lfx-prime-skel { height: calc(var(--pv-w) * 1.5); }
+@keyframes lfx-prime-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-skel { animation: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card--poster { transition: none; }
+}
+
+/* Schmale Fenster (< 800 px): 2,3 Karten sichtbar, Pfeile entfallen */
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__track {
+    --pv-w: calc((100cqw - 2 * var(--pv-pad) - 2 * var(--pv-gap)) / 2.3);
+    --lfx-cards-visible: 2;
+  }
+}

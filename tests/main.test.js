@@ -16,6 +16,10 @@ afterEach(() => {
   document.body.innerHTML = '';
   delete window.ApiClient;
   document.getElementById('test-css')?.remove();
+  document.getElementById('lfx-theme-prehide')?.remove();
+  document.querySelectorAll('link.lfx-theme-css').forEach((l) => l.remove());
+  document.documentElement.className = '';
+  localStorage.clear();
 });
 
 describe('main', () => {
@@ -82,5 +86,76 @@ describe('main', () => {
     expect(Object.keys(window.LenzFlix).sort()).toEqual(['destroy', 'version']);
     window.LenzFlix.destroy();
     expect([...cl].some((c) => c.startsWith('lfx-theme-'))).toBe(false);
+  });
+
+  describe('Frühstart / schnelles Polling', () => {
+    const prehide = () => document.getElementById('lfx-theme-prehide');
+    const setup = () => {
+      window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't', serverId: () => 's' };
+      window.fetch = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ Items: [] }) }));
+      document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
+      window.location.hash = '#/home';
+    };
+
+    it('plus: Prehide sofort beim Start, CSS nach 300 ms erkannt (schnelles Polling)', async () => {
+      vi.useFakeTimers();
+      try {
+        setup();
+        localStorage.setItem('lfx.theme.last', 'plus');
+        await import('../src/js/main.js');
+        const cl = document.documentElement.classList;
+        expect(prehide()).not.toBeNull();
+        expect(cl.contains('lfx-theme-loading')).toBe(true);
+        expect(document.querySelector('link.lfx-theme-css')).not.toBeNull(); // vorgeladen
+        await vi.advanceTimersByTimeAsync(250);
+        expect(cl.contains('lfx-js')).toBe(false);
+        addCss();
+        await vi.advanceTimersByTimeAsync(100);
+        expect(cl.contains('lfx-js')).toBe(true); // nicht erst nach 1 s
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('CSS nie aktiv: nach 1,5 s sichtbar, ohne lfx-Klassen, Prehide und Design-Link', async () => {
+      vi.useFakeTimers();
+      try {
+        setup();
+        localStorage.setItem('lfx.theme.last', 'prime');
+        await import('../src/js/main.js');
+        expect(prehide()).not.toBeNull();
+        await vi.advanceTimersByTimeAsync(1400);
+        expect(prehide()).not.toBeNull();
+        await vi.advanceTimersByTimeAsync(150);
+        expect(prehide()).toBeNull();
+        expect([...document.documentElement.classList].filter((c) => c.startsWith('lfx-'))).toEqual([]);
+        expect(document.querySelector('link.lfx-theme-css')).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('flix: kein Prehide, kein Design-Link', async () => {
+      vi.useFakeTimers();
+      try {
+        setup();
+        await import('../src/js/main.js');
+        expect(prehide()).toBeNull();
+        expect(document.querySelector('link.lfx-theme-css')).toBeNull();
+        expect(document.documentElement.classList.contains('lfx-theme-loading')).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('destroy entfernt Prehide', async () => {
+      setup();
+      localStorage.setItem('lfx.theme.last', 'plus');
+      await import('../src/js/main.js');
+      expect(prehide()).not.toBeNull();
+      window.LenzFlix.destroy();
+      expect(prehide()).toBeNull();
+      expect(document.querySelector('link.lfx-theme-css')).toBeNull();
+    });
   });
 });

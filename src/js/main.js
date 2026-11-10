@@ -8,10 +8,12 @@ import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { cssActive } from './core/csscheck.js';
 import { VERSION } from './core/version.js';
-import { startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
+import { earlyTheme, startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
 import { features } from './features/index.js';
 
 const WATCH_MS = 1000;
+const FAST_MS = 100; // Start: Kern-CSS (Custom CSS) lädt erst nach dem Skript, schnell erkennen
+const FAST_TICKS = 50; // = 5 s
 
 function init() {
   if (window.LenzFlix) return; // Guard gegen Doppel-Init (Dev-Loader ruft vorher destroy())
@@ -62,8 +64,16 @@ function init() {
     }
   }
 
+  earlyTheme(); // LENZ+/LENZPRIME: sofort ausblenden + Design-CSS vorladen (LENZFLIX: nichts)
   if (cssActive()) startTheme(); // vor allem anderen: Design-CSS/Klasse so früh wie möglich
-  watchTimer = setInterval(sync, WATCH_MS);
+  let fastN = 0;
+  watchTimer = setInterval(() => {
+    if (++fastN >= FAST_TICKS) {
+      clearInterval(watchTimer);
+      watchTimer = setInterval(sync, WATCH_MS);
+    }
+    sync();
+  }, FAST_MS);
   window.addEventListener('hashchange', sync);
   sync();
 

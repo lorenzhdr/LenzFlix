@@ -1,1 +1,126 @@
 /* LENZPRIME: Raster-/Lesezeichen-/Profil-Flyouts (Etappe 2, X1). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+
+/* --- Raster-Flyout (Glas-Panel, ~1011x482 bei 1920) --- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout {
+  position: absolute;
+  top: 100%;
+  right: -40px;
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  gap: 0;
+  width: min(1011px, 52.7vw, calc(100vw - 48px));
+  min-height: 120px;
+  max-height: min(482px, calc(100vh - 100px));
+  margin-top: 6px;
+  padding: 21px;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: var(--lfx-prime-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--lfx-prime-shadow);
+  color: var(--lfx-text);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout[hidden] {
+  display: none;
+}
+/* unsichtbare Brücke, damit der Hover zwischen Knopf und Panel nicht abreißt */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 auto 0;
+  height: 8px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__sep {
+  flex: none;
+  width: 1px;
+  margin: 0 21px;
+  background: rgba(255, 255, 255, 0.2);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__head {
+  margin: 0 0 8px;
+  padding: 0 14px;
+  color: var(--lfx-text-soft);
+  font: 400 14px / 1.4 var(--lfx-font);
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 4px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--lfx-text);
+  font: 500 16px / 1.2 var(--lfx-font);
+  letter-spacing: 0.64px;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__item:focus-visible {
+  background: var(--lfx-prime-hover-bg);
+  color: var(--lfx-prime-ink);
+  outline: none;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__empty {
+  margin: 0;
+  padding: 0 14px;
+  color: var(--lfx-text-soft);
+  font: 400 15px / 42px var(--lfx-font);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout__item:hover {
+    background: var(--lfx-prime-hover-bg);
+    color: var(--lfx-prime-ink);
+  }
+}
+
+/* --- Profil-Panel (core/popover.js, className lfx-prime-profile) --- */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile {
+  min-width: 260px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--lfx-prime-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--lfx-prime-shadow);
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--lfx-text);
+  font: 500 16px / 1.2 var(--lfx-font);
+  letter-spacing: 0.64px;
+  transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item.is-stats {
+  color: var(--lfx-gold);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item:focus,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item:focus-visible {
+  background: var(--lfx-prime-hover-bg);
+  color: var(--lfx-prime-ink);
+  outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-popover.lfx-prime-profile .lfx-popover__item:hover {
+    background: var(--lfx-prime-hover-bg);
+    color: var(--lfx-prime-ink);
+  }
+}

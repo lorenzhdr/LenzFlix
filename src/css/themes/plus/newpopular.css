@@ -1,1 +1,104 @@
-/* LENZ+: Neu & beliebt (Etappe 2, X3). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZ+: Neu und beliebt (#lfx-newpopular) im LENZ+-Look (Etappe 2, X3). Überschreibt js-ui/newpopular.css. */
+html.lfx-js.lfx-theme-plus.lfx-newpopular-on:not(.layout-tv) #indexPage,
+html.lfx-js.lfx-theme-plus.lfx-newpopular-on:not(.layout-tv) #indexPage #homeTab {
+  background: transparent !important;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np {
+  --lfx-gutter: clamp(20px, 3.7vw, 71px);
+  --lfx-card-radius: 12px;
+  padding-top: 24px;
+  font-family: var(--lfx-font);
+  letter-spacing: -0.1px;
+}
+/* Tabs als Pillen (aktiv: weiß mit dunkler Schrift, wie Chips und Umschalter) */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__tabs {
+  gap: 12px;
+  background: linear-gradient(to bottom, rgba(16, 19, 31, 0.96), rgba(16, 19, 31, 0.8));
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__pill {
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  font: 400 16px/1 var(--lfx-font);
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__pill.is-active,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__pill.is-active:hover {
+  background: #fff;
+  color: #000;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__pill:not(.is-active):hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__pill:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__heading {
+  color: var(--lfx-text-body);
+  font-size: 22px;
+  font-weight: 400;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__sub {
+  color: var(--lfx-text-muted);
+}
+/* Liste „Neu bei …“ */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__month {
+  color: var(--lfx-text-muted);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__day {
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__media {
+  border-radius: 12px;
+  background: var(--lfx-surface-3);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__name {
+  font-size: 20px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__since,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__overview {
+  color: var(--lfx-text-muted);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__genres {
+  color: var(--lfx-text-body);
+  font-weight: 400;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:hover,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
+  border: 0;
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:hover {
+    border: 0;
+    background: rgba(255, 255, 255, 0.26);
+  }
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__tabs {
+    gap: 8px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__pill {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+}

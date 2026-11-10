@@ -1,1 +1,184 @@
-/* LENZ+: native Jellyfin-Seiten (Bibliothek, Detail, Dialoge, Login, Player-Akzente) (Etappe 2, X3). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZ+: native Jellyfin-Seiten im LENZ+-Look (Etappe 2, X3): Bibliotheken, Detailseite, Dialoge, Login, Einstellungen.
+   Die Farben kommen bereits über tokens.css (--lfx-red = Cyan, --lfx-bg = Navy); hier nur Form, Typo und Ring.
+   Der Player (#videoOsdPage trägt .libraryPage) bleibt unangetastet; die Akzente laufen über die Tokens.
+   Login-Regeln stehen ohne html.lfx-js (dort laufen evtl. noch keine Features). */
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) {
+  --jf-card-borderRadius: 12px;
+  --lfx-card-radius: 12px;
+}
+
+/* ---- Bibliotheken (ohne Player und Suche) ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) {
+  font-family: var(--lfx-font);
+  letter-spacing: -0.1px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiAppBar-root .MuiToolbar-root + .MuiToolbar-root .MuiButton-root:first-child .MuiTypography-root {
+  font-weight: 700;
+  letter-spacing: 0.11px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root {
+  border: 0 !important;
+  border-radius: 100px !important;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root {
+  border-radius: 100px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiMenu-paper {
+  border: 1px solid rgba(151, 151, 151, 0.34);
+  border-radius: 4px;
+  background: #131313;
+  box-shadow: none;
+}
+/* Karten im Raster: Radius, Ring bei Hover/Fokus (Paint-Containment würde den Ring abschneiden) */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .vertical-wrap > .card {
+  contain: layout style;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .cardScalable,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .cardPadder,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .cardContent,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .cardOverlayContainer {
+  border-radius: 12px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .cardScalable {
+  transition: box-shadow 0.2s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .card:focus-within .cardScalable {
+  box-shadow: 0 0 0 4px #000, 0 0 0 7px #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .libraryPage:not(#videoOsdPage):not(#searchPage) .card:hover .cardScalable {
+    box-shadow: 0 0 0 4px #000, 0 0 0 7px #fff;
+  }
+}
+
+/* ---- Native Detailseite ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:hover,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
+  border: 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay {
+  width: auto;
+  height: 48px;
+  padding: 0 24px 0 18px !important;
+  border-radius: 9999px;
+  background: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:hover,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:hover,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:focus-visible,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:focus-visible {
+  background: #d9d9de;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay::after,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay::after {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1.76px;
+  text-transform: uppercase;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay {
+  width: 48px;
+  height: 48px;
+  padding: 0 !important;
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay:hover {
+  border: 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText.mediaInfoOfficialRating {
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---- Dialoge, Action-Sheets, Eingabefelder ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType),
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog.actionSheet {
+  border: 1px solid rgba(151, 151, 151, 0.34);
+  border-radius: 8px !important;
+  background: #131313;
+  box-shadow: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog :is(.emby-select, .emby-input) {
+  border-radius: 8px;
+}
+
+/* ---- Einstellungs- und Formularseiten: Grundfarben und Pillen ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .page:not(#videoOsdPage) .button-submit {
+  border-radius: 9999px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .page:not(#videoOsdPage) .emby-input,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .page:not(#videoOsdPage) .emby-select {
+  border-radius: 8px;
+}
+
+/* ---- Login (ohne html.lfx-js) ---- */
+html.lfx-theme-plus:not(.layout-tv):has(#loginPage:not(.hide)) header.MuiAppBar-root a.MuiButton-root[href="#/"] {
+  width: clamp(130px, 14vw, 180px);
+  height: 52px;
+  background-image: url("../assets/logo/lenzplus-large.svg");
+  background-position: left center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .manualLoginForm {
+  border-radius: 12px;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .emby-input {
+  border-radius: 8px;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .emby-input:focus {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .button-submit {
+  border-radius: 9999px;
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+  letter-spacing: 1.76px;
+  text-transform: uppercase;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .button-submit:hover,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .button-submit:focus {
+  background: #d9d9de;
+  color: #000;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .button-submit:active {
+  background: #bfbfc6;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .emby-button.block {
+  border-radius: 9999px;
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnCancel,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnManual,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnQuick {
+  background: rgba(255, 255, 255, 0.1);
+}
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnCancel:hover,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnCancel:focus,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnManual:hover,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnManual:focus,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnQuick:hover,
+html.lfx-theme-plus:not(.layout-tv) #loginPage .btnQuick:focus {
+  background: rgba(255, 255, 255, 0.2);
+}

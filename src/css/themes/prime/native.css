@@ -1,1 +1,249 @@
-/* LENZPRIME: native Jellyfin-Seiten (Bibliothek, Detail, Dialoge, Login, Player-Akzente) (Etappe 2, X3). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZPRIME · native Jellyfin-Seiten im Prime-Look (Bibliothek, Detailseite, Dialoge, Login, Einstellungen).
+   Bewusst nur mit html.lfx-theme-prime:not(.layout-tv) gescoped (ohne lfx-js), damit auch die Login-Seite greift.
+   Ergänzt die Kern-Regeln aus src/css/modern/*; die zusätzliche Klasse sorgt für höhere Spezifität. Nie auf TV.
+   Der Player (#videoOsdPage trägt .libraryPage) bekommt nur Akzente. */
+
+html.lfx-theme-prime:not(.layout-tv) {
+  --nat-bg: #00050d;
+  --nat-glass: rgba(25, 30, 37, 0.92);
+  --nat-panel: rgba(23, 25, 28, 0.8);
+  --nat-field: #33373d;
+  --nat-line: #66696e;
+  --nat-link: #5aa9ff;
+}
+
+/* ---------- Bibliotheken & Listen ---------- */
+html.lfx-theme-prime:not(.layout-tv) .libraryPage:not(#searchPage):not(#videoOsdPage) {
+  background: var(--nat-bg);
+}
+html.lfx-theme-prime:not(.layout-tv) .libraryPage:not(#videoOsdPage) .cardScalable,
+html.lfx-theme-prime:not(.layout-tv) .libraryPage:not(#videoOsdPage) .cardImageContainer,
+html.lfx-theme-prime:not(.layout-tv) .libraryPage:not(#videoOsdPage) .cardContent {
+  border-radius: 12px;
+}
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root > .MuiButton-root:first-child .MuiTypography-root {
+  font-weight: 700;
+}
+/* Filter/Sortierung/Ansicht: graue Prime-Buttons statt Rahmen */
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root {
+  background: rgba(255, 255, 255, 0.2);
+  border: 0 !important;
+  border-radius: 8px !important;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:hover {
+  background: #ebecee;
+  color: #00050d;
+}
+html.lfx-theme-prime:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root {
+  border-radius: 8px;
+  background: #fff;
+  color: #00050d;
+}
+html.lfx-theme-prime:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected,
+html.lfx-theme-prime:not(.layout-tv) .alphaPickerButton-selected {
+  border-radius: 8px;
+}
+
+/* ---------- Native Detailseite ---------- */
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .itemBackdrop::after,
+html.lfx-theme-prime:not(.layout-tv):has(#itemDetailPage:not(.hide)) .backdropContainer::after {
+  background:
+    linear-gradient(rgba(0, 5, 13, 0.8), rgba(0, 5, 13, 0) 22%),
+    linear-gradient(0deg, #00050d, rgba(0, 5, 13, 0.55) 22%, rgba(0, 5, 13, 0) 52%),
+    linear-gradient(90deg, rgba(0, 5, 13, 0.85), rgba(0, 5, 13, 0.4) 40%, rgba(0, 5, 13, 0) 68%);
+}
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .btnPlay,
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .btnReplay {
+  height: 62px;
+  border-radius: 8px;
+  background: #fff;
+  color: #00050d;
+}
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .btnPlay::after,
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .btnReplay::after {
+  font-size: 20px;
+  font-weight: 500;
+}
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay,
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .detailButton:not(.btnPlay):not(.btnReplay) {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 5, 13, 0.4);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .detailButton:not(.btnPlay):not(.btnReplay):hover {
+    border-color: #fff;
+    background: #fff;
+    color: #00050d;
+  }
+}
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText.mediaInfoOfficialRating {
+  border: 0;
+  border-radius: 3px;
+  background: #35a9e5;
+  color: #00050d;
+  font-size: 12px;
+  font-weight: 700;
+}
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .detailSection,
+html.lfx-theme-prime:not(.layout-tv) #itemDetailPage .verticalSection {
+  color: var(--lfx-text-body);
+}
+
+/* ---------- Dialoge, Action-Sheets, Menüs ---------- */
+html.lfx-theme-prime:not(.layout-tv) .dialog:has(.filterDialogContent, .selectSortBy, .selectImageType),
+html.lfx-theme-prime:not(.layout-tv) .dialog.actionSheet,
+html.lfx-theme-prime:not(.layout-tv) .dialog.formDialog {
+  background: var(--nat-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-radius: 12px !important;
+  box-shadow: rgba(0, 0, 0, 0.3) 0 4px 4px 0, rgba(0, 0, 0, 0.15) 0 8px 12px 6px;
+}
+html.lfx-theme-prime:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem {
+  border-radius: 8px;
+}
+html.lfx-theme-prime:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:hover,
+html.lfx-theme-prime:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:focus {
+  background: #ebecee;
+  color: #00050d;
+}
+html.lfx-theme-prime:not(.layout-tv) .dialog :is(.emby-select, .emby-input),
+html.lfx-theme-prime:not(.layout-tv) .dialog .emby-textarea {
+  border: 0;
+  border-radius: 8px;
+  background: var(--nat-field);
+}
+html.lfx-theme-prime:not(.layout-tv) .dialogBackdrop.dialogBackdropOpened {
+  background: rgba(0, 5, 13, 0.7);
+}
+html.lfx-theme-prime:not(.layout-tv) .MuiPaper-root.MuiMenu-paper,
+html.lfx-theme-prime:not(.layout-tv) .MuiPaper-root.MuiPopover-paper,
+html.lfx-theme-prime:not(.layout-tv) .MuiDialog-paper {
+  border-radius: 12px;
+  background-color: var(--nat-glass);
+  background-image: none;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/* ---------- Einstellungsseiten ---------- */
+html.lfx-theme-prime:not(.layout-tv) .content-primary .emby-input,
+html.lfx-theme-prime:not(.layout-tv) .content-primary .emby-select,
+html.lfx-theme-prime:not(.layout-tv) .content-primary .emby-textarea,
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .emby-input,
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .emby-select {
+  border: 0;
+  border-radius: 8px;
+  background: var(--nat-field);
+  color: #fff;
+}
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .emby-input:focus,
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .emby-select:focus {
+  outline: 3px solid #fff;
+  outline-offset: 0;
+  box-shadow: none;
+}
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .button-submit,
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .emby-button.raised.button-submit {
+  border-radius: 8px;
+  background: #fff;
+  color: #00050d;
+  font-weight: 500;
+}
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .emby-button.raised:not(.button-submit) {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .sectionTitle,
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .listItem-content h2 {
+  font-weight: 700;
+}
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction) {
+  color: var(--nat-link);
+}
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .paperList,
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .MuiPaper-root:not(.MuiMenu-paper):not(.MuiPopover-paper):not(.MuiDialog-paper) {
+  border-radius: 12px;
+}
+
+/* ---------- Anmeldung (Wortmarke groß) ---------- */
+html.lfx-theme-prime:not(.layout-tv):has(#loginPage:not(.hide)) {
+  background: var(--nat-bg);
+}
+html.lfx-theme-prime:not(.layout-tv):has(#loginPage:not(.hide)) .backdropContainer::after {
+  background:
+    linear-gradient(to bottom, #00050d 0, rgba(0, 5, 13, 0) 24%, rgba(0, 5, 13, 0) 66%, #00050d 100%),
+    rgba(0, 5, 13, 0.6);
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage > .padded-bottom-page::before {
+  content: "";
+  display: block;
+  width: min(420px, 70vw);
+  height: clamp(56px, 7vw, 96px);
+  margin: 0 auto 28px;
+  background: url("../assets/logo/lenzprime.svg") no-repeat center / contain;
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .manualLoginForm {
+  border-radius: 12px;
+  background: rgba(25, 30, 37, 0.8);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .emby-input {
+  border: 0;
+  border-radius: 8px;
+  background: var(--nat-field);
+  box-shadow: none;
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .emby-input:focus {
+  border: 0;
+  outline: 3px solid #fff;
+  box-shadow: none;
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .emby-button.block {
+  border-radius: 8px;
+  font-weight: 500;
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .button-submit,
+html.lfx-theme-prime:not(.layout-tv) #loginPage .button-submit:hover,
+html.lfx-theme-prime:not(.layout-tv) #loginPage .button-submit:focus {
+  background: #fff;
+  color: #00050d;
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .button-submit:hover,
+html.lfx-theme-prime:not(.layout-tv) #loginPage .button-submit:focus {
+  background: #ebecee;
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .btnCancel,
+html.lfx-theme-prime:not(.layout-tv) #loginPage .btnManual,
+html.lfx-theme-prime:not(.layout-tv) #loginPage .btnQuick {
+  background: rgba(255, 255, 255, 0.2);
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage .btnForgotPassword,
+html.lfx-theme-prime:not(.layout-tv) #loginPage .btnSelectServer {
+  color: var(--nat-link);
+}
+html.lfx-theme-prime:not(.layout-tv) #loginPage #divUsers .cardScalable {
+  border-radius: 12px;
+}
+@media (max-width: 740px) {
+  html.lfx-theme-prime:not(.layout-tv) #loginPage .manualLoginForm {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ---------- Player: nur Akzente (Seite trägt .libraryPage, daher keine Bibliotheks-Regeln) ---------- */
+html.lfx-theme-prime:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider-background-lower {
+  background-color: #1a98ff;
+}
+html.lfx-theme-prime:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider::-webkit-slider-thumb,
+html.lfx-theme-prime:not(.layout-tv) #videoOsdPage .osdControls .mdl-slider::-moz-range-thumb {
+  background: #1a98ff;
+}

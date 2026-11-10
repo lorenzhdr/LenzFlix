@@ -1,1 +1,119 @@
-/* LENZPRIME: Neu & beliebt (Etappe 2, X3). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZPRIME · Neu & beliebt (#lfx-newpopular, Klassen aus js-ui/newpopular.css). Nur Desktop, nie auf TV.
+   Zeilen/Karten (.lfx-rows, .lfx-card) kommen aus rows.css des Designs; hier Hülle, Tabs und „Neu bei“-Liste. */
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np {
+  --np-bg: #00050d;
+  --np-gutter: clamp(24px, 3.75vw, 72px);
+  --np-header: var(--lfx-prime-header-h, 80px);
+  padding: 8px 0 96px;
+  background: var(--np-bg);
+  color: #fff;
+  font-family: var(--lfx-font);
+}
+html.lfx-newpopular-on.lfx-theme-prime:not(.layout-tv) #indexPage,
+html.lfx-newpopular-on.lfx-theme-prime:not(.layout-tv) #indexPage #homeTab {
+  background: var(--lfx-prime-bg, #00050d) !important;
+}
+
+/* Tabs: wie die Menüpunkte der Kopfzeile (Pille 42 px, aktiv grau, Hover fast weiß) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__tabs {
+  top: var(--np-header);
+  gap: 8px;
+  padding: 12px var(--np-gutter);
+  background: linear-gradient(to bottom, #00050d, rgba(0, 5, 13, 0.92));
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill {
+  height: 42px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font: 500 16px/42px var(--lfx-font);
+  letter-spacing: 0.04em;
+  transition: color 0.1s ease-in-out, background-color 0.1s ease-in-out;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill.is-active,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill.is-active:hover {
+  border: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill:hover { background: #ebecee; color: #00050d; }
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill-ico { display: none; }
+
+/* Abschnitte */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__section { scroll-margin-top: calc(var(--np-header) + 72px); margin-top: 32px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__heading {
+  margin: 0 var(--np-gutter) 20px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__sub {
+  margin: -8px var(--np-gutter) 14px;
+  color: #808080;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+
+/* „Neu bei“-Liste */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__list { padding: 0 var(--np-gutter); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__entry { grid-template-columns: 96px minmax(0, 1fr); gap: 24px; padding-bottom: 40px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__month { color: #b3b3b3; font-weight: 700; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__day { font-weight: 700; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__main { max-width: 760px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__media {
+  border-radius: 12px;
+  background: #33373d;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__media::after {
+  background: linear-gradient(to top, rgba(0, 5, 13, 0.8), rgba(0, 5, 13, 0) 55%);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__media-title { font-weight: 700; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btns { gap: 8px; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn {
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 5, 13, 0.4);
+  transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn:hover { border-color: #fff; background: #fff; color: #00050d; }
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+/* „Meine Liste“ aktiv: weißer Rand statt Grün */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:hover,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
+  border-color: #fff;
+  background: rgba(0, 5, 13, 0.4);
+  color: #fff;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__name { font-size: 24px; font-weight: 700; letter-spacing: 0.04em; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__since { color: #37f1a3; font-size: 14px; font-weight: 700; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__overview { color: #b3b3b3; font-size: 16px; font-weight: 500; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__genres { color: #999; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__pill,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__btn { transition: none; }
+}
+
+/* Schmale Fenster: Kern-Verhalten behalten (eigene Handy-Layouts folgen später) */
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np { padding-top: 56px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__tabs { top: 56px; padding-left: 4vw; padding-right: 4vw; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__list,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__heading,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__sub { padding-left: 4vw; padding-right: 4vw; margin-left: 0; margin-right: 0; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__entry { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__main { max-width: none; }
+}

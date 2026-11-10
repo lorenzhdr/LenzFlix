@@ -1,1 +1,198 @@
-/* LENZPRIME: Hover-Popup + aufklappende Poster (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZPRIME: Hover-Popup + aufklappende Poster (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-prime:not(.layout-tv).
+   Nur mit Maus: (hover:hover) and (pointer:fine). Das Popup #lfx-prime-hover ist fixed (hover.js setzt Lage und --lfx-prime-s0). */
+@media (hover: hover) and (pointer: fine) {
+  /* ---------- 16:9-Popup ---------- */
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-hover.lfx-prime-hover {
+    position: fixed;
+    z-index: 400;
+    overflow: hidden;
+    border-radius: 12px;
+    background: transparent;
+    color: #fff;
+    font-family: var(--pv-font);
+    transform: scale(var(--lfx-prime-s0, 0.64));
+    transition: transform 0.3s cubic-bezier(0.2, 0.45, 0, 1) 0.1s;
+    will-change: transform;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-hover.lfx-prime-hover.is-in { transform: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hover__media {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background: #33373d;
+    cursor: pointer;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hover__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hover__info {
+    padding: 20px;
+    background: #000;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease 0.25s;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-hover.is-in .lfx-prime-hover__info { opacity: 1; }
+
+  /* ---------- Inhalt (Popup und Poster) ---------- */
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__title {
+    margin: 0;
+    font: 700 24px/1.2 var(--pv-font);
+    letter-spacing: 0.96px;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__logo {
+    display: block;
+    max-width: 55%;
+    max-height: 64px;
+    object-fit: contain;
+    object-position: left bottom;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__buttons { display: flex; align-items: center; gap: 10px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__play {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 54px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--pv-bg);
+    font: 500 18px/1.15 var(--pv-font);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__play:hover { background: #ebecee; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__play svg { width: 24px; height: 24px; flex: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__label { display: flex; flex-direction: column; text-align: left; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__play.is-two { font-size: 16px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__label2 { font-weight: 400; font-size: 14px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    border: 0;
+    border-radius: 10000px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.2s, transform 0.3s ease-in-out;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round:hover { background: rgba(255, 255, 255, 0.35); transform: scale(1.06); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round svg { width: 24px; height: 24px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__ico { display: inline-flex; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round.is-on { color: var(--pv-green); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__play:focus-visible,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__round:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    color: #999;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 17px;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-meta__rating { color: var(--pv-text-2); }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc__desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    margin: 0;
+    overflow: hidden;
+    color: var(--pv-text-2);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  /* ---------- Poster: horizontal aufklappen (Breite siehe rows.css), Inhalt liegt in .lfx-prime-expand ---------- */
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand {
+    position: absolute;
+    z-index: 4;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: calc(var(--pv-w) * 2.6667);
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__media,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__img,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__media .lfx-preview__video,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__shade {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__img,
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__media .lfx-preview__video { object-fit: cover; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__media .lfx-preview__video {
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__media .lfx-preview__video.is-in { opacity: 1; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__shade {
+    pointer-events: none;
+    background:
+      linear-gradient(0deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.45) 48%, rgba(0, 0, 0, 0) 75%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) 60%);
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__body {
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 22px;
+    opacity: 0;
+    animation: lfx-prime-expand-in 0.25s ease 0.22s forwards;
+  }
+  @keyframes lfx-prime-expand-in { to { opacity: 1; } }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand { gap: 10px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand .lfx-prime-hc__title { font-size: 28px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand .lfx-prime-hc__play { height: 44px; padding: 0 18px; font-size: 16px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand .lfx-prime-hc__play svg { width: 20px; height: 20px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand .lfx-prime-hc__round { width: 34px; height: 34px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand .lfx-prime-hc__round svg { width: 18px; height: 18px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hc--expand .lfx-prime-hc__desc { display: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__mute {
+    position: absolute;
+    z-index: 2;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 3px solid rgba(255, 255, 255, 0.35);
+    border-radius: 10000px;
+    background: rgba(0, 5, 13, 0.4);
+    color: #fff;
+    cursor: pointer;
+  }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__mute[hidden] { display: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__mute svg { width: 16px; height: 16px; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__mute:hover { background: rgba(0, 5, 13, 0.7); }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-hover.lfx-prime-hover { transition: none; transform: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-hover__info { transition: none; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-expand__body { animation: none; opacity: 1; }
+}

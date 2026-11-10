@@ -1,1 +1,267 @@
-/* LENZ+: Hero-Karussell (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+/* LENZ+: Hero-Karussell + Startseiten-Hülle (Etappe 2, X2). Alle Regeln unter html.lfx-js.lfx-theme-<id>:not(.layout-tv). */
+
+/* Native Startseite ausblenden, sobald #lfx-plus-home steht (Fällt das JS aus, erscheint die native Seite). */
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-home-on #indexPage #homeTab > .sections {
+  display: none !important;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-home-on #indexPage {
+  padding-top: 0 !important;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-home-on #indexPage,
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-home-on #indexPage #homeTab,
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-home-on .backgroundContainer:not(.withBackdrop) {
+  background: transparent !important;
+}
+
+/* Hülle: Maße über Container-Einheiten (cqw = Breite der Hülle). Hero beginnt unter Kopfzeile + Umschalter-Pille. */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home {
+  --plus-gutter: 3.7cqw;
+  --plus-gap: 20px;
+  --plus-hero-w: calc(100cqw - 2 * var(--plus-gutter));
+  --plus-surface: #2d2f36;
+  --plus-text-2: #dbdce0;
+  container-type: inline-size;
+  position: relative;
+  z-index: 1;
+  padding: 157px 0 64px;
+  color: var(--lfx-text, #f5f5f7);
+}
+
+/* Gemeinsame Kleinteile: Badge + Altersfreigabe */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: #ededee;
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-rating {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: #3a3d48;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Hero */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero {
+  position: relative;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__viewport {
+  overflow-x: clip;
+  overflow-y: visible;
+  padding-bottom: 40px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__track {
+  display: flex;
+  gap: var(--plus-gap);
+  padding-left: var(--plus-gutter);
+  transform: translateX(calc(var(--i, 0) * -1 * (var(--plus-hero-w) + var(--plus-gap))));
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide {
+  position: relative;
+  display: block;
+  flex: 0 0 var(--plus-hero-w);
+  width: var(--plus-hero-w);
+  aspect-ratio: 3 / 1;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--plus-surface);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: rgba(0, 0, 0, 0.69) 0 26px 30px -10px, rgba(0, 0, 0, 0.73) 0 16px 10px -10px;
+  transition: box-shadow 0.2s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide:not(.is-active) {
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px #000, 0 0 0 7px #fff, rgba(0, 0, 0, 0.69) 0 26px 30px -10px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  transition: filter 0.5s ease-out, transform 0.5s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide:not(.is-active) .lfx-plus-hero__img {
+  filter: brightness(0.5);
+  transform: scale(1.05);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(10, 12, 22, 0.9) 0%, rgba(10, 12, 22, 0.62) 30%, rgba(10, 12, 22, 0) 62%),
+    linear-gradient(0deg, rgba(10, 12, 22, 0.5) 0%, rgba(10, 12, 22, 0) 40%);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__content {
+  position: absolute;
+  left: clamp(24px, 4.3cqw, 76px);
+  bottom: clamp(20px, 2.7cqw, 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: min(410px, 50%);
+  transition: opacity 0.3s ease-out;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide:not(.is-active) .lfx-plus-hero__content {
+  opacity: 0;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__badge {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__logo {
+  display: block;
+  max-width: min(396px, 100%);
+  max-height: clamp(80px, 9.2cqw, 176px);
+  object-fit: contain;
+  object-position: left bottom;
+  margin: 0 0 14px;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__title {
+  margin: 0 0 14px;
+  font-size: clamp(28px, 2.9cqw, 44px);
+  font-weight: 700;
+  line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__tagline {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.11px;
+  color: #f9f9f9;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  font-size: 12px;
+  color: var(--plus-text-2);
+}
+
+/* Randpfeile: unsichtbare Streifen mit nacktem Chevron */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--plus-gutter);
+  height: calc(var(--plus-hero-w) / 3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav svg {
+  width: 14px;
+  height: 27px;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.6));
+  transition: transform 0.5s;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav--prev { left: 0; }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav--next { right: 0; }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav--prev svg { transform: scaleX(-1); }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav:focus-visible { opacity: 1; outline: none; }
+
+/* Punkte */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dots {
+  display: flex;
+  justify-content: center;
+  margin-top: -20px;
+  min-height: 28px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8d8d95;
+  transition: width 0.2s, height 0.2s, background-color 0.2s;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot.is-active::before {
+  width: 7px;
+  height: 7px;
+  background: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot:focus-visible { outline: 2px solid #fff; }
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero:hover .lfx-plus-hero__nav { opacity: 1; }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav:hover svg { transform: scale(1.15); }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav--prev:hover svg { transform: scale(-1.15, 1.15); }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide.is-active:hover {
+    box-shadow: 0 0 0 4px #000, 0 0 0 7px #fff, rgba(0, 0, 0, 0.69) 0 26px 30px -10px;
+  }
+}
+
+/* Schmale Fenster: Hero höher, weniger Text (eigene Handy-Layouts folgen später) */
+@media (max-width: 799px) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home {
+    --plus-gutter: 4cqw;
+    --plus-gap: 12px;
+    padding-top: 120px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__slide { aspect-ratio: 16 / 10; border-radius: 12px; }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__tagline { display: none; }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__content { width: 70%; }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__nav { height: calc(var(--plus-hero-w) * 10 / 16); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__track,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__img,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__content { transition: none; }
+}

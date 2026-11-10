@@ -26,9 +26,9 @@
     const stored = readStoredServer();
     const address = trimSlash(call(client, "serverAddress") || stored && (stored.ManualAddress || stored.LocalAddress) || "");
     const userId = call(client, "getCurrentUserId") || stored && stored.UserId || null;
-    const token = call(client, "accessToken") || stored && stored.AccessToken || null;
+    const token2 = call(client, "accessToken") || stored && stored.AccessToken || null;
     const serverId = call(client, "serverId") || stored && stored.Id || null;
-    return { address, userId, token, serverId };
+    return { address, userId, token: token2, serverId };
   }
   function getUserId() {
     return getAuth().userId;
@@ -51,10 +51,10 @@
     return `${address}${path.startsWith("/") ? "" : "/"}${path}${toQuery(params)}`;
   }
   async function getJson(path, params, { signal } = {}) {
-    const { token, address } = getAuth();
-    if (token && typeof fetch === "function") {
+    const { token: token2, address } = getAuth();
+    if (token2 && typeof fetch === "function") {
       const res = await fetch(buildUrl(path, params), {
-        headers: { Authorization: `MediaBrowser Token="${token}"`, Accept: "application/json" },
+        headers: { Authorization: `MediaBrowser Token="${token2}"`, Accept: "application/json" },
         signal
       });
       if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} f\xFCr ${path}`);
@@ -100,20 +100,20 @@
     if (client && typeof client.updateFavoriteStatus === "function") {
       return client.updateFavoriteStatus(userId, id, Boolean(isFavorite));
     }
-    const { token } = getAuth();
+    const { token: token2 } = getAuth();
     const res = await fetch(buildUrl(`/Users/${userId}/FavoriteItems/${id}`), {
       method: isFavorite ? "POST" : "DELETE",
-      headers: { Authorization: `MediaBrowser Token="${token}"` }
+      headers: { Authorization: `MediaBrowser Token="${token2}"` }
     });
     if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
     return res.json();
   }
   async function setPlayed(id, played) {
     const userId = getUserId();
-    const { token } = getAuth();
+    const { token: token2 } = getAuth();
     const res = await fetch(buildUrl(`/Users/${userId}/PlayedItems/${id}`), {
       method: played ? "POST" : "DELETE",
-      headers: { Authorization: `MediaBrowser Token="${token}"` }
+      headers: { Authorization: `MediaBrowser Token="${token2}"` }
     });
     if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Gesehen)`);
   }
@@ -604,15 +604,15 @@
   }
   function toast(text, { duration = 3e3 } = {}) {
     clearTimers();
-    const root3 = mountPoint(ID, { className: "lfx-toast" });
-    root3.classList.remove("is-leaving");
-    root3.setAttribute("role", "status");
-    root3.setAttribute("aria-live", "polite");
-    root3.replaceChildren(h("div", { class: "lfx-toast__msg" }, [String(text)]));
+    const root4 = mountPoint(ID, { className: "lfx-toast" });
+    root4.classList.remove("is-leaving");
+    root4.setAttribute("role", "status");
+    root4.setAttribute("aria-live", "polite");
+    root4.replaceChildren(h("div", { class: "lfx-toast__msg" }, [String(text)]));
     hideTimer = setTimeout(() => {
-      root3.classList.add("is-leaving");
+      root4.classList.add("is-leaving");
       removeTimer = setTimeout(() => {
-        unmountPoint(root3);
+        unmountPoint(root4);
         hideTimer = removeTimer = null;
       }, 200);
     }, duration);
@@ -638,6 +638,8 @@
   var CSS_TIMEOUT_MS = 3e3;
   var REVEAL_MS = 1500;
   var LOADING = "lfx-theme-loading";
+  var PREHIDE_ID = "lfx-theme-prehide";
+  var PREHIDE_CSS = "html.lfx-theme-loading:not(.layout-tv) body{opacity:0!important}";
   var TV_UA = /Web0S|webOS|Tizen|SmartTV|SMART-TV/i;
   var root = () => document.documentElement;
   var started = false;
@@ -652,6 +654,9 @@
   var saveTimer = null;
   var revealTimer = null;
   var unsynced = false;
+  var earlyId = null;
+  var earlyAt = 0;
+  var earlyTimer = null;
   var listeners = /* @__PURE__ */ new Set();
   function normalizeTheme(x) {
     return THEMES.includes(x) ? x : "flix";
@@ -701,7 +706,7 @@
     if (uk) lsSet(uk, id);
     lsSet(KEY_LAST, id);
   }
-  function takeHashChoice() {
+  function takeHashChoice(consume = true) {
     let r;
     try {
       r = parseHash(window.location.hash);
@@ -710,6 +715,7 @@
     }
     if (!r.params.has(HASH_PARAM)) return null;
     const id = strictTheme(r.params.get(HASH_PARAM));
+    if (!consume) return id;
     r.params.delete(HASH_PARAM);
     try {
       const qs = r.params.toString();
@@ -731,10 +737,10 @@
     if (client && typeof client.updateDisplayPreferences === "function") {
       return client.updateDisplayPreferences(PREFS_ID, prefs, uid, PREFS_CLIENT);
     }
-    const { token } = getAuth();
+    const { token: token2 } = getAuth();
     const res = await fetch(buildUrl(`/DisplayPreferences/${PREFS_ID}`, { userId: uid, client: PREFS_CLIENT }), {
       method: "POST",
-      headers: { Authorization: `MediaBrowser Token="${token}"`, "Content-Type": "application/json" },
+      headers: { Authorization: `MediaBrowser Token="${token2}"`, "Content-Type": "application/json" },
       body: JSON.stringify(prefs)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -800,6 +806,52 @@
     }
     if (!cl2.contains(`lfx-theme-${id}`)) cl2.add(`lfx-theme-${id}`);
     if (cl2.contains(LOADING)) cl2.remove(LOADING);
+    removePrehide();
+  }
+  function removePrehide() {
+    const el = document.getElementById(PREHIDE_ID);
+    if (el) el.remove();
+  }
+  function endEarly() {
+    clearTimeout(earlyTimer);
+    earlyTimer = null;
+    earlyId = null;
+  }
+  function abortEarly() {
+    if (earlyId === null) return;
+    endEarly();
+    earlyAt = 0;
+    removePrehide();
+    root().classList.remove(LOADING);
+    removeThemeCss(null);
+  }
+  function earlyTheme() {
+    if (started || earlyId !== null) return;
+    let id;
+    try {
+      id = !forcedFlix() && (takeHashChoice(false) || resolveLocalChoice()) || "flix";
+    } catch {
+      return;
+    }
+    if (id !== "plus" && id !== "prime") return;
+    earlyId = id;
+    earlyAt = Date.now();
+    if (!document.getElementById(PREHIDE_ID)) {
+      const st = document.createElement("style");
+      st.id = PREHIDE_ID;
+      st.textContent = PREHIDE_CSS;
+      (document.head || root()).appendChild(st);
+    }
+    root().classList.add(LOADING);
+    earlyTimer = setTimeout(() => {
+      earlyTimer = null;
+      if (!started) abortEarly();
+    }, REVEAL_MS);
+    try {
+      Promise.resolve(ensureThemeCss(id, { timeout: CSS_TIMEOUT_MS })).catch(() => {
+      });
+    } catch {
+    }
   }
   function emit(theme, previous) {
     for (const fn of [...listeners]) {
@@ -847,10 +899,12 @@
       state = "pending";
       root().classList.add(LOADING);
       clearTimeout(revealTimer);
+      const waited = earlyAt ? Math.max(0, Date.now() - earlyAt) : 0;
+      earlyAt = 0;
       revealTimer = setTimeout(() => {
         revealTimer = null;
         if (mine === seq && effective === null) revealFlix();
-      }, REVEAL_MS);
+      }, Math.max(0, REVEAL_MS - waited));
     }
     const promise = ensureThemeCss(target, { timeout: CSS_TIMEOUT_MS }).then((ok) => {
       if (initial && mine === seq) {
@@ -904,6 +958,7 @@
   function startTheme() {
     if (started) return;
     started = true;
+    endEarly();
     lastUid = getUserId() || null;
     const fromHash = takeHashChoice();
     if (fromHash) {
@@ -936,10 +991,14 @@
     }
   }
   function stopTheme() {
+    if (!started && earlyId !== null) return;
     const cl2 = root().classList;
     const hasDom = started || [...cl2].some((c) => c.startsWith("lfx-theme-")) || document.querySelector("link.lfx-theme-css");
     if (!hasDom) return;
     started = false;
+    endEarly();
+    earlyAt = 0;
+    removePrehide();
     seq++;
     inflight3 = null;
     clearTimeout(saveTimer);
@@ -956,6 +1015,7 @@
     lastUid = null;
   }
   function destroyTheme() {
+    abortEarly();
     stopTheme();
     listeners.clear();
     touched = 0;
@@ -1032,14 +1092,17 @@
   // src/js/shared/routes.js
   var enc = encodeURIComponent;
   var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
+  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
+  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
+  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
   var KINDS = ["title", "hub", "browse", "search", "new"];
   function parseLfxRoute(route) {
-    const empty = { kind: null, id: null, lib: null, genre: null, q: null };
-    if (!route || !route.params || route.path !== "/home") return empty;
-    const kind = route.params.get("lfx");
-    if (!KINDS.includes(kind)) return empty;
+    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null };
+    if (!route || !route.params || route.path !== "/home") return empty2;
+    const kind2 = route.params.get("lfx");
+    if (!KINDS.includes(kind2)) return empty2;
     return {
-      kind,
+      kind: kind2,
       id: route.params.get("id") || null,
       lib: route.params.get("lib") || null,
       genre: route.params.get("genre") || null,
@@ -1192,7 +1255,7 @@
     const backdrop = opts.backdrop || null;
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state6 = "idle";
+    let state12 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -1241,7 +1304,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state6 = "closing";
+      state12 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -1252,13 +1315,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state6 = "closing";
+      state12 = "closing";
       el.style.transition = ANIM;
       el.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state6 = "idle";
+        state12 = "idle";
       });
     }
     function velocityNow() {
@@ -1269,49 +1332,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state6 === "closing") return;
-      state6 = "idle";
+      if (state12 === "closing") return;
+      state12 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state6 = "ignored";
+        state12 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el)) {
-        state6 = "ignored";
+        state12 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state6 = "ignored";
+        state12 = "ignored";
         return;
       }
-      state6 = "tracking";
+      state12 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state6 !== "tracking" && state6 !== "dragging") return;
+      if (state12 !== "tracking" && state12 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state6 === "dragging") springBack();
-        else state6 = "ignored";
+        if (state12 === "dragging") springBack();
+        else state12 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state6 === "tracking") {
+      if (state12 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state6 = "dragging";
+          state12 = "dragging";
           el.classList.add("lfx-dragging");
           el.style.transition = "none";
         } else {
-          state6 = "ignored";
+          state12 = "ignored";
           return;
         }
       }
@@ -1325,18 +1388,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state6 === "dragging") {
+      if (state12 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state6 !== "closing") {
-        state6 = "idle";
+      } else if (state12 !== "closing") {
+        state12 = "idle";
       }
     }
     function onCancel() {
-      if (state6 === "dragging") springBack();
-      else if (state6 !== "closing") state6 = "idle";
+      if (state12 === "dragging") springBack();
+      else if (state12 !== "closing") state12 = "idle";
     }
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove2, { passive: false });
@@ -1352,7 +1415,7 @@
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state6 = "idle";
+      state12 = "idle";
     };
   }
 
@@ -1371,10 +1434,10 @@
   var span = (cls, children) => h("span", { class: cls }, children);
   function buildPreview(id) {
     const tiles = (n) => Array.from({ length: n }, () => span("lfx-tp__tile"));
-    const root3 = span(`lfx-tp__preview lfx-tp__preview--${id}`);
-    root3.setAttribute("aria-hidden", "true");
+    const root4 = span(`lfx-tp__preview lfx-tp__preview--${id}`);
+    root4.setAttribute("aria-hidden", "true");
     if (id === "plus") {
-      root3.append(
+      root4.append(
         span("lfx-tp__bar", [span("lfx-tp__dot"), span("lfx-tp__dot"), span("lfx-tp__dot"), span("lfx-tp__dot")]),
         span("lfx-tp__hero lfx-tp__hero--side lfx-tp__hero--l"),
         span("lfx-tp__hero"),
@@ -1383,7 +1446,7 @@
         span("lfx-tp__row", tiles(5))
       );
     } else if (id === "prime") {
-      root3.append(
+      root4.append(
         span("lfx-tp__hero", [span("lfx-tp__line"), span("lfx-tp__line lfx-tp__line--s"), span("lfx-tp__btn")]),
         span("lfx-tp__row", tiles(4).map((t) => {
           t.append(span("lfx-tp__badge-mini"));
@@ -1391,9 +1454,9 @@
         }))
       );
     } else {
-      root3.append(span("lfx-tp__logo"), span("lfx-tp__hero"), span("lfx-tp__row", tiles(4)));
+      root4.append(span("lfx-tp__logo"), span("lfx-tp__hero"), span("lfx-tp__row", tiles(4)));
     }
-    return root3;
+    return root4;
   }
   function buildMark(id, name) {
     if (id === "plus") {
@@ -1490,9 +1553,9 @@
     ]);
     const grid = h("div", { class: "lfx-tp__grid" });
     for (const id of THEMES) {
-      const card2 = buildCard(c, id);
-      c.cards.set(id, card2);
-      grid.append(card2);
+      const card3 = buildCard(c, id);
+      c.cards.set(id, card3);
+      grid.append(card3);
     }
     dialog.append(grid);
     overlay.replaceChildren(dialog);
@@ -1513,14 +1576,14 @@
       }
       const first2 = nodes[0];
       const last = nodes[nodes.length - 1];
-      const active3 = document.activeElement;
-      if (!dialog.contains(active3) || active3 === dialog) {
+      const active4 = document.activeElement;
+      if (!dialog.contains(active4) || active4 === dialog) {
         e.preventDefault();
         (e.shiftKey ? last : first2).focus();
-      } else if (e.shiftKey && active3 === first2) {
+      } else if (e.shiftKey && active4 === first2) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && active3 === last) {
+      } else if (!e.shiftKey && active4 === last) {
         e.preventDefault();
         first2.focus();
       }
@@ -1719,9 +1782,9 @@
   }
   function onScroll() {
     const y = window.scrollY || document.documentElement.scrollTop || 0;
-    const root3 = document.documentElement;
+    const root4 = document.documentElement;
     const on = y > SCROLL_THRESHOLD;
-    if (root3.classList.contains("lfx-scrolled") !== on) root3.classList.toggle("lfx-scrolled", on);
+    if (root4.classList.contains("lfx-scrolled") !== on) root4.classList.toggle("lfx-scrolled", on);
   }
   function onDocClick(e) {
     if (state2.menuOpen && state2.nav && !state2.nav.contains(e.target)) setMenu(false);
@@ -2234,15 +2297,15 @@
   }
   var session = null;
   function clearMarker() {
-    const root3 = document.documentElement;
-    root3.classList.remove("lfx-menu-open");
-    root3.style.removeProperty("--lfx-menu-x");
-    root3.style.removeProperty("--lfx-menu-y");
+    const root4 = document.documentElement;
+    root4.classList.remove("lfx-menu-open");
+    root4.style.removeProperty("--lfx-menu-x");
+    root4.style.removeProperty("--lfx-menu-y");
   }
   function setPosition(pos) {
-    const root3 = document.documentElement;
-    root3.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
-    root3.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
+    const root4 = document.documentElement;
+    root4.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
+    root4.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
   }
   var isTouchSheet = () => typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches;
   function attachSheetSwipe(s, sheet) {
@@ -2507,14 +2570,14 @@
       }
       const firstEl = focusable[0];
       const lastEl = focusable[focusable.length - 1];
-      const active3 = document.activeElement;
-      if (!sheet.contains(active3)) {
+      const active4 = document.activeElement;
+      if (!sheet.contains(active4)) {
         e.preventDefault();
         firstEl.focus();
-      } else if (e.shiftKey && active3 === firstEl) {
+      } else if (e.shiftKey && active4 === firstEl) {
         e.preventDefault();
         lastEl.focus();
-      } else if (!e.shiftKey && active3 === lastEl) {
+      } else if (!e.shiftKey && active4 === lastEl) {
         e.preventDefault();
         firstEl.focus();
       }
@@ -2562,9 +2625,9 @@
     return item.CanDownload !== false;
   }
   function downloadUrl(id) {
-    const { address, token } = getAuth();
-    if (!token) return null;
-    return `${address || ""}/Items/${id}/Download?ApiKey=${encodeURIComponent(token)}`;
+    const { address, token: token2 } = getAuth();
+    if (!token2) return null;
+    return `${address || ""}/Items/${id}/Download?ApiKey=${encodeURIComponent(token2)}`;
   }
   function triggerDownload(item) {
     const url = downloadUrl(item.Id);
@@ -2781,10 +2844,10 @@
     return items;
   }
   async function setLike(id, likes) {
-    const { token, userId } = getAuth();
+    const { token: token2, userId } = getAuth();
     const res = await fetch(buildUrl(`/Users/${userId}/Items/${id}/Rating`, likes ? { likes: true } : void 0), {
       method: likes ? "POST" : "DELETE",
-      headers: { Authorization: `MediaBrowser Token="${token}"` }
+      headers: { Authorization: `MediaBrowser Token="${token2}"` }
     });
     if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Bewertung)`);
   }
@@ -2995,13 +3058,13 @@
     const t = btn.querySelector(".lfx-modal__play-text");
     if (t) t.textContent = label;
   }
-  function buildDetail(item, H, { playLabel = "Abspielen" } = {}) {
+  function buildDetail(item, H, { playLabel: playLabel2 = "Abspielen" } = {}) {
     const ud = item.UserData || {};
     const logo = logoImage(item, { maxWidth: 500 });
     const img = heroImage(item);
     const playBtn = h("button", { type: "button", class: "lfx-modal__play", onclick: () => H.play() }, [
       icon("play"),
-      h("span", { class: "lfx-modal__play-text" }, playLabel)
+      h("span", { class: "lfx-modal__play-text" }, playLabel2)
     ]);
     const favBtn = roundButton("Meine Liste", "plus", () => H.toggleFav(favBtn), "lfx-modal__round--fav");
     setFavState(favBtn, Boolean(ud.IsFavorite));
@@ -3146,12 +3209,12 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
-  function renderEpisodes(slot, state6, H) {
+  function renderEpisodes(slot, state12, H) {
     slot.hidden = false;
     slot.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state6;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state12;
     putItems(episodes);
-    const current4 = seasons.find((s) => s.Id === seasonId);
+    const current6 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
     const tools = h("div", { class: "lfx-modal__eps-tools" });
     head.append(tools);
@@ -3171,7 +3234,7 @@
         "aria-haspopup": "listbox",
         "aria-expanded": "false",
         onclick: () => toggle(list.hidden)
-      }, [h("span", {}, current4 && current4.Name || "Staffel"), icon("chevron")]);
+      }, [h("span", {}, current6 && current6.Name || "Staffel"), icon("chevron")]);
       const toggle = (open2) => {
         list.hidden = !open2;
         btn.setAttribute("aria-expanded", String(open2));
@@ -3297,15 +3360,15 @@
     const t = e.target;
     if (!t || !t.closest) return null;
     if (t.closest('.dialog, .dialogContainer, [role="dialog"], .MuiPopover-root, .lfx-modal-overlay, .detailImageContainer')) return null;
-    const card2 = t.closest(".lfx-card[data-lfx-id], .card[data-id]");
-    if (!card2) return null;
+    const card3 = t.closest(".lfx-card[data-lfx-id], .card[data-id]");
+    if (!card3) return null;
     if (document.querySelector(".selectionCommandsPanel, .itemSelectionPanel")) return null;
     const skip = t.closest(SKIP_IN_CARD);
-    if (skip && card2.contains(skip) && !skip.matches(IMAGE_LINK)) return null;
-    const id = card2.dataset.lfxId || card2.dataset.id;
-    const type = card2.dataset.lfxType || card2.dataset.type;
+    if (skip && card3.contains(skip) && !skip.matches(IMAGE_LINK)) return null;
+    const id = card3.dataset.lfxId || card3.dataset.id;
+    const type = card3.dataset.lfxType || card3.dataset.type;
     if (!id || !ALLOWED_TYPES.has(type)) return null;
-    return { card: card2, id, type, opener: t.closest("a, button") || card2 };
+    return { card: card3, id, type, opener: t.closest("a, button") || card3 };
   }
   function onDocumentClick(e) {
     const hit = findInterceptTarget(e);
@@ -3442,14 +3505,14 @@
     }
     const first2 = list[0];
     const last = list[list.length - 1];
-    const active3 = document.activeElement;
-    if (!state4.modal.contains(active3)) {
+    const active4 = document.activeElement;
+    if (!state4.modal.contains(active4)) {
       e.preventDefault();
       first2.focus();
-    } else if (e.shiftKey && active3 === first2) {
+    } else if (e.shiftKey && active4 === first2) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && active3 === last) {
+    } else if (!e.shiftKey && active4 === last) {
       e.preventDefault();
       first2.focus();
     }
@@ -3470,8 +3533,8 @@
   }
   async function loadInto(id, hint, replace, refresh2 = false) {
     const s = state4;
-    const token = ++s.token;
-    const stale = () => state4 !== s || s.token !== token;
+    const token2 = ++s.token;
+    const stale = () => state4 !== s || s.token !== token2;
     if (!refresh2) cancelAutoScroll(s);
     if (refresh2) {
     } else if (replace) {
@@ -3504,7 +3567,7 @@
     s.main = main;
     s.seasonId = sel.seasonId;
     s.selectedEpisodeId = sel.episodeId;
-    const H = makeHandlers(s, token);
+    const H = makeHandlers(s, token2);
     const isSeries = main.Type === "Series";
     const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? "Fortsetzen" : "Abspielen" });
     s.parts = parts;
@@ -3512,7 +3575,7 @@
     if (!refresh2) s.overlay.scrollTop = 0;
     const tasks = [];
     if (isSeries) {
-      tasks.push(loadSeriesParts(s, token, H, refresh2));
+      tasks.push(loadSeriesParts(s, token2, H, refresh2));
       tasks.push(loadNextUp(main.Id).then((ep) => {
         if (!stale() && ep && hasResume(ep)) setPlayLabel(parts.playBtn, "Fortsetzen");
       }).catch(() => {
@@ -3531,14 +3594,14 @@
     }
     await Promise.all(tasks);
   }
-  async function loadSeriesParts(s, token, H, refresh2 = false) {
-    const stale = () => state4 !== s || s.token !== token;
+  async function loadSeriesParts(s, token2, H, refresh2 = false) {
+    const stale = () => state4 !== s || s.token !== token2;
     try {
       s.seasons = await loadSeasons(s.main.Id);
       if (stale()) return;
       s.seasonId = pickInitialSeason(s.seasons, s.seasonId);
       if (!s.seasonId) return;
-      await showSeason(s, token, H, { reveal: !refresh2 });
+      await showSeason(s, token2, H, { reveal: !refresh2 });
     } catch {
     }
   }
@@ -3551,7 +3614,7 @@
     if (a.raf != null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(a.raf);
     for (const t of USER_SCROLL_EVENTS) s.overlay.removeEventListener(t, a.onUser);
   }
-  function scheduleRevealScroll(s, token, row) {
+  function scheduleRevealScroll(s, token2, row) {
     cancelAutoScroll(s);
     const a = { cancelled: false, raf: null, onUser: null };
     a.onUser = () => cancelAutoScroll(s);
@@ -3560,7 +3623,7 @@
     const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
     a.raf = raf(() => {
       a.raf = null;
-      if (a.cancelled || state4 !== s || s.token !== token || s.autoScroll !== a || !row.isConnected) {
+      if (a.cancelled || state4 !== s || s.token !== token2 || s.autoScroll !== a || !row.isConnected) {
         cancelAutoScroll(s);
         return;
       }
@@ -3575,9 +3638,9 @@
       else s.overlay.scrollTop = top;
     });
   }
-  async function showSeason(s, token, H, opts = {}) {
+  async function showSeason(s, token2, H, opts = {}) {
     const episodes = await loadEpisodes2(s.main.Id, s.seasonId);
-    if (state4 !== s || s.token !== token) return;
+    if (state4 !== s || s.token !== token2) return;
     s.episodes = episodes;
     renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
     const row = s.parts.episodesSlot.querySelector(".lfx-modal__ep.is-selected");
@@ -3588,7 +3651,7 @@
       const rr = row.getBoundingClientRect();
       if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop = Math.max(0, rr.top - lr.top + list.scrollTop - (list.clientHeight - rr.height) / 2);
     }
-    if (opts.reveal && s.selectedEpisodeId) scheduleRevealScroll(s, token, row);
+    if (opts.reveal && s.selectedEpisodeId) scheduleRevealScroll(s, token2, row);
   }
   function onChanged({ removed = [], updated = [] } = {}) {
     const s = state4;
@@ -3674,9 +3737,9 @@
       return 0;
     }
   }
-  function makeHandlers(s, token) {
+  function makeHandlers(s, token2) {
     const main = s.main;
-    const stale = () => state4 !== s || s.token !== token;
+    const stale = () => state4 !== s || s.token !== token2;
     const askBulk = ({ btn, n, next, targetId, isSeries }) => {
       const verb = next ? "gesehen" : "ungesehen";
       confirmAction({
@@ -3694,7 +3757,7 @@
               main.UserData.Played = isSeries ? next : false;
               if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, main.UserData.Played);
             }
-            await showSeason(s, token, H).catch(() => {
+            await showSeason(s, token2, H).catch(() => {
             });
             if (failed) toast(SAVE_ERROR);
             else toast(isSeries ? `Serie als ${verb} markiert` : `${folgen(n)} als ${verb} markiert`);
@@ -3780,7 +3843,7 @@
       async season(seasonId) {
         s.seasonId = seasonId;
         s.selectedEpisodeId = null;
-        await showSeason(s, token, H).catch(() => {
+        await showSeason(s, token2, H).catch(() => {
         });
       },
       playItem: (ep) => play(ep, { resume: hasResume(ep) })
@@ -3811,19 +3874,99 @@
   var modal_default = modalFeature;
 
   // src/js/shared/trailer.js
+  var DIRECT_VIDEO = /\.(mp4|m4v|webm)(\?|#|$)/i;
   function trailerUrl(trailerId) {
     const c = window.ApiClient;
     if (c && typeof c.getUrl === "function") {
       return c.getUrl(`Videos/${trailerId}/stream.mp4`, { static: true, api_key: c.accessToken() });
     }
-    const { address, token } = getAuth();
-    return `${address}/Videos/${trailerId}/stream.mp4?static=true&api_key=${encodeURIComponent(token || "")}`;
+    const { address, token: token2 } = getAuth();
+    return `${address}/Videos/${trailerId}/stream.mp4?static=true&api_key=${encodeURIComponent(token2 || "")}`;
   }
   async function loadLocalTrailer(item) {
     if (!item || !(item.LocalTrailerCount > 0)) return null;
     const list = await getJson(`/Users/${getUserId()}/Items/${item.Id}/LocalTrailers`);
     const t = Array.isArray(list) ? list[0] : null;
     return t && t.Id ? t : null;
+  }
+  function directRemoteTrailerUrl(item) {
+    const list = item && Array.isArray(item.RemoteTrailers) ? item.RemoteTrailers : [];
+    for (const r of list) {
+      const u = r && typeof r.Url === "string" ? r.Url : "";
+      if (/^https?:\/\//i.test(u) && DIRECT_VIDEO.test(u)) return u;
+    }
+    return null;
+  }
+  function createMutedPreview(container, item, { delay = 1500, onStart, onEnd } = {}) {
+    let dead = false;
+    let video = null;
+    let started2 = false;
+    const cleanup = () => {
+      if (video) {
+        const v = video;
+        video = null;
+        try {
+          v.pause();
+          v.removeAttribute("src");
+          if (v.load) v.load();
+        } catch {
+        }
+        v.remove();
+      }
+    };
+    const finish3 = () => {
+      if (dead) return;
+      dead = true;
+      clearTimeout(timer);
+      const wasStarted = started2;
+      cleanup();
+      if (wasStarted && typeof onEnd === "function") onEnd();
+    };
+    const start6 = async () => {
+      timer = null;
+      if (dead || !container) return;
+      let src;
+      try {
+        const t = await loadLocalTrailer(item);
+        src = t ? trailerUrl(t.Id) : directRemoteTrailerUrl(item);
+      } catch {
+        src = directRemoteTrailerUrl(item);
+      }
+      if (dead || !src) return;
+      const v = document.createElement("video");
+      v.className = "lfx-preview__video";
+      v.setAttribute("playsinline", "");
+      v.setAttribute("aria-hidden", "true");
+      v.preload = "auto";
+      v.muted = true;
+      v.setAttribute("muted", "");
+      v.addEventListener("playing", () => {
+        if (dead || video !== v || started2) return;
+        started2 = true;
+        if (typeof onStart === "function") onStart(v);
+      });
+      v.addEventListener("ended", finish3);
+      v.addEventListener("error", finish3);
+      video = v;
+      v.src = src;
+      container.append(v);
+      try {
+        const p = v.play && v.play();
+        if (p && p.catch) p.catch(finish3);
+      } catch {
+        finish3();
+      }
+    };
+    let timer = setTimeout(start6, delay);
+    return {
+      cancel() {
+        if (dead) return;
+        dead = true;
+        clearTimeout(timer);
+        timer = null;
+        cleanup();
+      }
+    };
   }
 
   // src/js/features/billboard/format.js
@@ -3842,7 +3985,7 @@
   }
   function buildPool(latest, random, opts = {}) {
     const { newCount = 4, randomCount = 8, avoidFirstId = null, rng = Math.random } = opts;
-    const uniq = (list, skip) => {
+    const uniq2 = (list, skip) => {
       const seen = new Set(skip);
       const out2 = [];
       for (const it of list || []) {
@@ -3853,8 +3996,8 @@
       }
       return out2;
     };
-    const a = shuffled(uniq(latest, []).slice(0, newCount), rng);
-    const b = uniq(random, a.map((it) => it.Id)).slice(0, randomCount);
+    const a = shuffled(uniq2(latest, []).slice(0, newCount), rng);
+    const b = uniq2(random, a.map((it) => it.Id)).slice(0, randomCount);
     const fresh = b.filter((it) => it.Id !== avoidFirstId);
     const first2 = fresh.find((it) => it.LocalTrailerCount > 0) || fresh[0];
     if (first2) {
@@ -3993,14 +4136,14 @@
     let disposed = false;
     let pool = [];
     let index = 0;
-    let gen = 0;
+    let gen3 = 0;
     let hovering = false;
     let trailerActive = false;
     let rotateTimer = null;
     let trailerTimer = null;
     const timers = /* @__PURE__ */ new Set();
     let video = null;
-    let card2 = null;
+    let card3 = null;
     let media = null;
     let content = null;
     let muteBtn = null;
@@ -4031,7 +4174,7 @@
         v.remove();
       }
       if (muteBtn) muteBtn.hidden = true;
-      if (card2) card2.classList.remove("is-trailer");
+      if (card3) card3.classList.remove("is-trailer");
     }
     function scheduleRotate() {
       clearTimeout(rotateTimer);
@@ -4148,13 +4291,13 @@
       updateDots();
     }
     function onChanged2({ removed = [], updated = [] }) {
-      if (disposed || !card2) return;
-      const cur = pool[index];
+      if (disposed || !card3) return;
+      const cur2 = pool[index];
       if (removed.length && pool.some((it) => removed.includes(it.Id))) {
-        const curGone = cur && removed.includes(cur.Id);
+        const curGone = cur2 && removed.includes(cur2.Id);
         pool = pool.filter((it) => !removed.includes(it.Id));
         if (!pool.length) {
-          gen += 1;
+          gen3 += 1;
           stopTrailer();
           clearTimeout(rotateTimer);
           clearTimeout(trailerTimer);
@@ -4165,15 +4308,15 @@
           resetAmbient();
           return;
         }
-        index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur);
+        index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur2);
         fillDots();
         if (curGone) show2(index);
         return;
       }
-      if (cur && updated.includes(cur.Id)) {
-        const fresh = getStoredItem(cur.Id);
+      if (cur2 && updated.includes(cur2.Id)) {
+        const fresh = getStoredItem(cur2.Id);
         if (!fresh) return;
-        const merged = { ...cur, ...fresh };
+        const merged = { ...cur2, ...fresh };
         pool[index] = merged;
         if (!content.classList.contains("is-out")) content.replaceChildren(...buildContent(merged).childNodes);
       }
@@ -4184,19 +4327,19 @@
       muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     async function startTrailer(item, myGen) {
-      if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen) return;
+      if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen3) return;
       try {
         const t = await loadLocalTrailer(item);
-        if (myGen !== gen || disposed) return;
+        if (myGen !== gen3 || disposed) return;
         if (!t) return;
         const v = h("video", { class: "lfx-bb__video", playsinline: true, preload: "auto", "aria-hidden": "true" });
         v.muted = true;
         v.setAttribute("muted", "");
         v.addEventListener("playing", () => {
-          if (myGen !== gen || video !== v) return;
+          if (myGen !== gen3 || video !== v) return;
           trailerActive = true;
           v.classList.add("is-in");
-          card2.classList.add("is-trailer");
+          card3.classList.add("is-trailer");
           muteBtn.hidden = false;
           setMuteIcon();
         });
@@ -4219,8 +4362,8 @@
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen += 1;
-      const myGen = gen;
+      gen3 += 1;
+      const myGen = gen3;
       stopTrailer();
       updateDots();
       const pic = buildImage(item);
@@ -4234,7 +4377,7 @@
         later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS + 50);
       }
       const swap = () => {
-        if (disposed || myGen !== gen) return;
+        if (disposed || myGen !== gen3) return;
         content.replaceChildren(...buildContent(item).childNodes);
         content.classList.remove("is-out");
       };
@@ -4244,12 +4387,12 @@
         later(swap, TEXT_FADE_MS);
       }
       putItems([item]);
-      loadAmbient(item, () => myGen === gen && !disposed);
+      loadAmbient(item, () => myGen === gen3 && !disposed);
       scheduleRotate();
       clearTimeout(trailerTimer);
       trailerTimer = setTimeout(() => startTrailer(item, myGen), TRAILER_DELAY_MS);
     }
-    function build3() {
+    function build7() {
       media = h("div", { class: "lfx-bb__media" });
       content = h("div", { class: "lfx-bb__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-bb__mute", hidden: true, "aria-label": "Ton einschalten" });
@@ -4260,7 +4403,7 @@
       });
       dots = h("div", { class: "lfx-bb__dots", role: "group", "aria-label": "Empfehlung w\xE4hlen" });
       fillDots();
-      card2 = h("div", { class: "lfx-bb" }, [
+      card3 = h("div", { class: "lfx-bb" }, [
         media,
         h("div", { class: "lfx-bb__shade", "aria-hidden": "true" }),
         h("span", { class: "lfx-bb__mark", "aria-hidden": "true" }),
@@ -4268,7 +4411,7 @@
         content,
         dots
       ]);
-      slot.replaceChildren(card2);
+      slot.replaceChildren(card3);
       slot.setAttribute("aria-roledescription", "Karussell");
       const onEnter = () => {
         hovering = true;
@@ -4284,9 +4427,9 @@
         if (!isMobile() || e.target.closest && e.target.closest("button, a")) return;
         if (pool[index]) openModal(pool[index]);
       };
-      card2.addEventListener("click", onCardClick);
-      card2.addEventListener("mouseenter", onEnter);
-      card2.addEventListener("mouseleave", onLeave);
+      card3.addEventListener("click", onCardClick);
+      card3.addEventListener("mouseenter", onEnter);
+      card3.addEventListener("mouseleave", onLeave);
       document.addEventListener("visibilitychange", onVis);
       cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
       cleanupFns.push(onItemsChanged(onChanged2));
@@ -4305,7 +4448,7 @@
       }
       pool = items;
       putItems(pool);
-      build3();
+      build7();
       slot.hidden = false;
       show2(0, true);
     }
@@ -4313,7 +4456,7 @@
     init2();
     return () => {
       disposed = true;
-      gen += 1;
+      gen3 += 1;
       clearTimeout(rotateTimer);
       clearTimeout(trailerTimer);
       timers.forEach(clearTimeout);
@@ -4486,17 +4629,17 @@
     return imageUrl(item, { type: "Primary", maxWidth, quality: 85 });
   }
   function createCard(item, opts = {}) {
-    const { badge: badge3 = null, kind = "landscape", rank = 0 } = opts;
+    const { badge: badge3 = null, kind: kind2 = "landscape", rank = 0 } = opts;
     const title = displayTitle(item);
     let link;
-    if (kind === "top10") {
+    if (kind2 === "top10") {
       const url = imageUrl(item, { type: "Primary", maxWidth: 300, quality: 85 }) || landscapeImage(item, { maxWidth: 300 });
       link = h("a", { class: "lfx-card__link", href: detailHref2(item), "aria-label": ariaLabel(item) }, [
         url ? h("img", { class: "lfx-card__img", src: url, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-card__title" }, title)
       ]);
     } else {
       const img = landscapeFor(item);
-      const poster = kind === "landscape" ? posterUrl(item) : null;
+      const poster = kind2 === "landscape" ? posterUrl(item) : null;
       const children = [];
       const src = img ? img.url : poster;
       if (src) {
@@ -4514,26 +4657,26 @@
         "aria-label": ariaLabel(item)
       }, children);
     }
-    const card2 = h("div", {
-      class: `lfx-card${kind === "top10" ? " lfx-card--top10" : ""}`,
+    const card3 = h("div", {
+      class: `lfx-card${kind2 === "top10" ? " lfx-card--top10" : ""}`,
       dataset: { lfxId: item.Id, lfxType: item.Type || "" },
       tabindex: "-1",
       role: "listitem"
     });
-    if (kind === "top10" && rank) {
-      card2.append(h("span", { class: `lfx-card__rank${rank >= 10 ? " lfx-card__rank--wide" : ""}`, "aria-hidden": "true" }, String(rank)));
+    if (kind2 === "top10" && rank) {
+      card3.append(h("span", { class: `lfx-card__rank${rank >= 10 ? " lfx-card__rank--wide" : ""}`, "aria-hidden": "true" }, String(rank)));
     }
-    card2.append(link);
-    if (badge3) card2.append(h("span", { class: "lfx-badge" }, badge3));
-    if (kind === "resume") {
+    card3.append(link);
+    if (badge3) card3.append(h("span", { class: "lfx-badge" }, badge3));
+    if (kind2 === "resume") {
       const p = progressPercent2(item);
       if (p > 0) {
-        card2.append(h("div", { class: "lfx-progress" }, [
+        card3.append(h("div", { class: "lfx-progress" }, [
           h("div", { class: "lfx-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })
         ]));
       }
     }
-    return card2;
+    return card3;
   }
 
   // src/js/features/rows/scroller.js
@@ -4599,7 +4742,7 @@
       if (!a) return;
       for (const l of links()) l.tabIndex = l === a ? 0 : -1;
     }
-    function onKey2(e) {
+    function onKey3(e) {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       const a = e.target.closest && e.target.closest(".lfx-card__link");
       if (!a) return;
@@ -4614,7 +4757,7 @@
     next.addEventListener("click", onNext);
     track.addEventListener("scroll", schedule, { passive: true });
     track.addEventListener("focusin", onFocusIn);
-    track.addEventListener("keydown", onKey2);
+    track.addEventListener("keydown", onKey3);
     window.addEventListener("resize", schedule);
     const ls = links();
     ls.forEach((l, i) => {
@@ -4628,7 +4771,7 @@
       next.removeEventListener("click", onNext);
       track.removeEventListener("scroll", schedule);
       track.removeEventListener("focusin", onFocusIn);
-      track.removeEventListener("keydown", onKey2);
+      track.removeEventListener("keydown", onKey3);
       window.removeEventListener("resize", schedule);
     };
   }
@@ -4670,13 +4813,13 @@
   async function fetchCharts() {
     const base = getChartsUrl();
     if (!base) return null;
-    const { token } = getAuth();
-    if (!token) return null;
+    const { token: token2 } = getAuth();
+    if (!token2) return null;
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS) : null;
     try {
       const res = await fetch(`${base}/charts`, {
-        headers: { "X-Emby-Token": token, Accept: "application/json" },
+        headers: { "X-Emby-Token": token2, Accept: "application/json" },
         signal: ctrl ? ctrl.signal : void 0
       });
       if (!res.ok) {
@@ -4919,9 +5062,9 @@
         const track = row.querySelector(".lfx-row__track");
         if (!track) continue;
         let changed = false;
-        for (const card2 of [...track.querySelectorAll(".lfx-card[data-lfx-id]")]) {
-          if (gone.has(card2.dataset.lfxId)) {
-            card2.remove();
+        for (const card3 of [...track.querySelectorAll(".lfx-card[data-lfx-id]")]) {
+          if (gone.has(card3.dataset.lfxId)) {
+            card3.remove();
             changed = true;
           }
         }
@@ -5016,10 +5159,10 @@
     teardown3();
     const billboardSlot = h("section", { id: "lfx-billboard", class: "lfx-billboard", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { id: "lfx-rows", class: "lfx-rows" });
-    const root3 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
-    tab.prepend(root3);
+    const root4 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
+    tab.prepend(root4);
     document.documentElement.classList.add("lfx-home-on");
-    const ctx = { root: root3 };
+    const ctx = { root: root4 };
     for (const [mod, slot] of [[billboard_exports, billboardSlot], [rows_exports, rowsSlot]]) {
       try {
         cleanups.push(mod.render(slot, ctx));
@@ -5168,9 +5311,9 @@
     if (el.closest(`#${POPUP_ID}, #lfx-modal, .lfx-modal, .vertical-wrap`)) return null;
     const own = el.closest(".lfx-card[data-lfx-id]");
     if (own) return { card: own, id: own.dataset.lfxId, type: own.dataset.lfxType || "", own: true };
-    const card2 = el.closest(".emby-scroller .card[data-id]");
-    if (!card2 || !NATIVE_TYPES.has(card2.dataset.type)) return null;
-    return { card: card2, id: card2.dataset.id, type: card2.dataset.type, own: false };
+    const card3 = el.closest(".emby-scroller .card[data-id]");
+    if (!card3 || !NATIVE_TYPES.has(card3.dataset.type)) return null;
+    return { card: card3, id: card3.dataset.id, type: card3.dataset.type, own: false };
   }
   function stubItem(target) {
     const d = target.card.dataset;
@@ -5183,11 +5326,11 @@
       IsFolder: d.isfolder === "true"
     };
   }
-  function cardImageUrl(card2) {
-    const img = card2.querySelector("img.lfx-card__img, img.cardImage");
+  function cardImageUrl(card3) {
+    const img = card3.querySelector("img.lfx-card__img, img.cardImage");
     const src = img && (img.getAttribute("src") || img.getAttribute("data-src"));
     if (src) return src;
-    const bg = card2.querySelector(".cardImageContainer");
+    const bg = card3.querySelector(".cardImageContainer");
     if (bg) {
       const m = /url\(["']?(.*?)["']?\)/.exec(bg.style.backgroundImage || "");
       if (m) return m[1];
@@ -5239,10 +5382,10 @@
     closeTimer = null;
   }
   async function setLike2(id, likes) {
-    const { token, userId } = getAuth();
+    const { token: token2, userId } = getAuth();
     const res = await fetch(buildUrl(`/Users/${userId}/Items/${id}/Rating`, likes ? { likes: true } : void 0), {
       method: likes ? "POST" : "DELETE",
-      headers: { Authorization: `MediaBrowser Token="${token}"` }
+      headers: { Authorization: `MediaBrowser Token="${token2}"` }
     });
     if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Bewertung)`);
   }
@@ -5729,18 +5872,18 @@
   function start() {
     if (active) return;
     active = true;
-    const add = (target, type, fn, opts) => {
+    const add2 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       listeners3.push(() => target.removeEventListener(type, fn, opts));
     };
-    add(document, "pointerover", onOver, { passive: true });
-    add(document, "pointerout", onOut, { passive: true });
-    add(document, "pointermove", onMove, { passive: true });
-    add(document, "keydown", onKey);
-    add(document, "click", onClickCapture, true);
-    add(window, "scroll", onAbort, { capture: true, passive: true });
-    add(window, "resize", onAbort, { passive: true });
-    add(window, "hashchange", onHash);
+    add2(document, "pointerover", onOver, { passive: true });
+    add2(document, "pointerout", onOut, { passive: true });
+    add2(document, "pointermove", onMove, { passive: true });
+    add2(document, "keydown", onKey);
+    add2(document, "click", onClickCapture, true);
+    add2(window, "scroll", onAbort, { capture: true, passive: true });
+    add2(window, "resize", onAbort, { passive: true });
+    add2(window, "hashchange", onHash);
     unsubItems = onItemsChanged(onItems);
   }
   function stop() {
@@ -5885,15 +6028,15 @@
   var ICON_PLUS2 = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
   var ICON_CHECK2 = '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
   var ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
-  function roundButton2(label, icon2, onClick, extra = "") {
+  function roundButton2(label, icon4, onClick, extra = "") {
     const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick });
-    b.append(svg4(icon2));
+    b.append(svg4(icon4));
     return b;
   }
-  function iconButton(mod, label, icon2, onClick) {
+  function iconButton(mod, label, icon4, onClick) {
     const b = h("button", { type: "button", class: `lfx-np__btn lfx-np__btn--${mod}`, "aria-label": label, title: label });
     b.append(h("span", { class: "lfx-np__ico", "aria-hidden": "true" }));
-    b.firstChild.innerHTML = icon2;
+    b.firstChild.innerHTML = icon4;
     b.addEventListener("click", (e) => {
       e.stopPropagation();
       onClick(b);
@@ -5969,11 +6112,11 @@
       h("div", { class: "lfx-np__main" }, [h("div", { class: "lfx-np__mediawrap" }, [media, buttons]), body])
     ]);
   }
-  function createRow(title, items, kind, newSeries) {
+  function createRow(title, items, kind2, newSeries) {
     const now = Date.now();
     const cards = items.map((it, i) => createCard(it, {
-      kind,
-      rank: kind === "top10" ? i + 1 : 0,
+      kind: kind2,
+      rank: kind2 === "top10" ? i + 1 : 0,
       badge: badgeFor2(it, newSeries, now)
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": title }, cards);
@@ -5981,7 +6124,7 @@
     const next = chevronButton("next", "Weiter");
     const indicator = h("div", { class: "lfx-row__pages", "aria-hidden": "true", hidden: true });
     const el = h("div", { class: "lfx-rows" }, [
-      h("section", { class: `lfx-row lfx-row--${kind}` }, [
+      h("section", { class: `lfx-row lfx-row--${kind2}` }, [
         h("div", { class: "lfx-row__head" }, [h("h2", { class: "lfx-row__title" }, title), indicator]),
         h("div", { class: "lfx-row__viewport" }, [prev, track, next])
       ])
@@ -6017,23 +6160,23 @@
       pills.set(d.id, pill);
       nav.append(pill);
     }
-    const root3 = h("div", { id: ROOT_ID3, class: "lfx-np" }, [nav, ...sections.values()]);
-    tab.prepend(root3);
+    const root4 = h("div", { id: ROOT_ID3, class: "lfx-np" }, [nav, ...sections.values()]);
+    tab.prepend(root4);
     document.documentElement.classList.add(ON_CLASS);
     setActive("new");
     let raf = 0;
-    const onScroll2 = () => {
+    const onScroll5 = () => {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        let current4 = null;
+        let current6 = null;
         for (const [id, sec] of sections) {
-          if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current4 = id;
+          if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current6 = id;
         }
-        if (current4) setActive(current4);
+        if (current6) setActive(current6);
       });
     };
-    window.addEventListener("scroll", onScroll2, { passive: true });
+    window.addEventListener("scroll", onScroll5, { passive: true });
     function drop(id) {
       sections.get(id)?.remove();
       sections.delete(id);
@@ -6049,9 +6192,9 @@
     let newSeriesIds = /* @__PURE__ */ new Set();
     function onChanged2({ removed = [], updated = [] }) {
       if (disposed) return;
-      const list = root3.querySelector(".lfx-np__list");
+      const list = root4.querySelector(".lfx-np__list");
       for (const id of removed) {
-        root3.querySelectorAll("[data-lfx-id]").forEach((el) => {
+        root4.querySelectorAll("[data-lfx-id]").forEach((el) => {
           if (el.dataset.lfxId === id) el.remove();
         });
       }
@@ -6065,7 +6208,7 @@
       }
     }
     cleanups2.push(onItemsChanged(onChanged2));
-    async function fill2(id, loader, renderer, fallbackLabel) {
+    async function fill3(id, loader, renderer, fallbackLabel) {
       try {
         const res = await loader();
         const items = Array.isArray(res) ? res : res.items;
@@ -6086,8 +6229,8 @@
         if (!disposed) drop(id);
       }
     }
-    const rowRenderer = (title, kind, fallbackTitle) => (sec, items, newSeries, meta = {}) => {
-      const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind, newSeries);
+    const rowRenderer = (title, kind2, fallbackTitle) => (sec, items, newSeries, meta = {}) => {
+      const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind2, newSeries);
       sec.querySelector(".lfx-np__heading")?.remove();
       if (meta.charted) {
         row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub" }, chartSubtitle(meta.windowDays)));
@@ -6096,18 +6239,18 @@
       scrollers.push(attachScroller(row.scroller));
     };
     if (isReady()) {
-      fill2("new", loadNew, (sec, items, newSeries) => {
+      fill3("new", loadNew, (sec, items, newSeries) => {
         sec.append(h("div", { class: "lfx-np__list" }, items.map((it) => createNewEntry(it, newSeries))));
       });
-      fill2("watched", loadMostWatchedSection, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
-      fill2("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien"), "Neueste Serien");
-      fill2("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme"), "Neueste Filme");
+      fill3("watched", loadMostWatchedSection, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
+      fill3("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien"), "Neueste Serien");
+      fill3("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme"), "Neueste Filme");
     } else {
       console.warn("[LenzFlix] Neu und beliebt: keine Anmeldung");
     }
     cleanups2.push(() => {
       disposed = true;
-      window.removeEventListener("scroll", onScroll2);
+      window.removeEventListener("scroll", onScroll5);
       if (raf) cancelAnimationFrame(raf);
       for (const d of scrollers.splice(0)) {
         try {
@@ -6203,14 +6346,14 @@
     if (!el) return;
     if (isMenuOpen() && inNativeDialog(el)) return;
     const t = e.touches && e.touches[0] || e;
-    const state6 = { x: t.clientX, y: t.clientY, fired: false };
-    press = state6;
+    const state12 = { x: t.clientX, y: t.clientY, fired: false };
+    press = state12;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press !== state6 || !el.isConnected) return;
-      state6.fired = true;
+      if (press !== state12 || !el.isConnected) return;
+      state12.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el, state6.x, state6.y);
+      openFor(el, state12.x, state12.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -6236,17 +6379,17 @@
   function start2() {
     if (active2) return;
     active2 = true;
-    const add = (target, type, fn, opts) => {
+    const add2 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       listeners4.push(() => target.removeEventListener(type, fn, opts));
     };
-    add(document, "contextmenu", onContextMenu, true);
-    add(document, "touchstart", onTouchStart, { passive: true });
-    add(document, "touchmove", onTouchMove, { passive: true });
-    add(document, "touchend", onTouchEnd, { passive: true });
-    add(document, "touchcancel", cancelPress, { passive: true });
-    add(window, "scroll", cancelPress, { capture: true, passive: true });
-    add(window, "click", onClickCapture2, true);
+    add2(document, "contextmenu", onContextMenu, true);
+    add2(document, "touchstart", onTouchStart, { passive: true });
+    add2(document, "touchmove", onTouchMove, { passive: true });
+    add2(document, "touchend", onTouchEnd, { passive: true });
+    add2(document, "touchcancel", cancelPress, { passive: true });
+    add2(window, "scroll", cancelPress, { capture: true, passive: true });
+    add2(window, "click", onClickCapture2, true);
   }
   function stop2() {
     active2 = false;
@@ -6358,26 +6501,26 @@
       e.preventDefault();
       leave2();
     });
-    const root3 = mountPoint(ID4, { className: "lfx-statshint" });
-    root3.classList.remove("is-leaving");
+    const root4 = mountPoint(ID4, { className: "lfx-statshint" });
+    root4.classList.remove("is-leaving");
     const top = !isMobile();
-    root3.classList.toggle("lfx-statshint--top", top);
+    root4.classList.toggle("lfx-statshint--top", top);
     const nav = top ? document.getElementById("lfx-nav") : null;
     const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
-    root3.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
-    root3.setAttribute("role", "status");
-    root3.setAttribute("aria-live", "polite");
-    root3.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
-    state5.el = root3;
+    root4.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
+    root4.setAttribute("role", "status");
+    root4.setAttribute("aria-live", "polite");
+    root4.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
+    state5.el = root4;
     if (canHover()) {
-      root3.addEventListener("mouseenter", () => {
+      root4.addEventListener("mouseenter", () => {
         if (!state5.hideTimer) return;
         state5.remaining = Math.max(500, state5.deadline - Date.now());
         clearTimeout(state5.hideTimer);
         state5.hideTimer = null;
       });
-      root3.addEventListener("mouseleave", () => {
-        if (state5.el !== root3 || state5.hideTimer || state5.removeTimer) return;
+      root4.addEventListener("mouseleave", () => {
+        if (state5.el !== root4 || state5.hideTimer || state5.removeTimer) return;
         startHideTimer(state5.remaining || HINT_DURATION);
       });
     }
@@ -6422,107 +6565,5018 @@
   };
   var statshint_default = statshintFeature;
 
+  // src/js/core/popover.js
+  var ID5 = "lfx-popover";
+  var GAP = 8;
+  var MARGIN = 8;
+  var current4 = null;
+  function isPopoverOpen() {
+    return current4 !== null;
+  }
+  function closePopover({ restoreFocus = false } = {}) {
+    const c = current4;
+    if (!c) return;
+    current4 = null;
+    window.removeEventListener("keydown", c.onKeydown, true);
+    document.removeEventListener("click", c.onDocClick, true);
+    window.removeEventListener("resize", c.onClose);
+    window.removeEventListener("scroll", c.onScroll, true);
+    unmountPoint(c.el);
+    if (c.anchorEl) {
+      c.anchorEl.removeAttribute("aria-expanded");
+      if (c.hadExpanded !== null) c.anchorEl.setAttribute("aria-expanded", c.hadExpanded);
+      if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === "function") {
+        try {
+          c.anchorEl.focus({ preventScroll: true });
+        } catch {
+        }
+      }
+    }
+  }
+  function place(el, anchorEl, align) {
+    const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    const a = anchorEl.getBoundingClientRect();
+    const w = el.offsetWidth;
+    const hgt = el.offsetHeight;
+    let left = align === "start" ? a.left : a.right - w;
+    let top = a.bottom + GAP;
+    if (vw) left = Math.max(MARGIN, Math.min(left, vw - w - MARGIN));
+    if (vh && top + hgt > vh - MARGIN) top = Math.max(MARGIN, a.top - GAP - hgt);
+    el.style.left = `${Math.round(left)}px`;
+    el.style.top = `${Math.round(top)}px`;
+  }
+  function openPopover(anchorEl, { label, items = [], align = "end", className = "" } = {}) {
+    closePopover();
+    const el = mountPoint(ID5, { className: `lfx-popover${className ? ` ${className}` : ""}` });
+    el.className = `lfx-popover${className ? ` ${className}` : ""}`;
+    el.setAttribute("role", "menu");
+    if (label) el.setAttribute("aria-label", label);
+    const list = items.filter((it) => it && !it.hidden);
+    const nodes = list.map((it) => {
+      const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ""}`;
+      const kids = [];
+      if (it.icon) {
+        const ic = h("span", { class: "lfx-popover__icon", "aria-hidden": "true" });
+        ic.innerHTML = it.icon;
+        kids.push(ic);
+      }
+      kids.push(h("span", { class: "lfx-popover__label" }, it.label));
+      const node = it.href ? h("a", { class: cls, role: "menuitem", href: it.href, dataset: { key: it.key } }, kids) : h("button", { type: "button", class: cls, role: "menuitem", dataset: { key: it.key } }, kids);
+      node.addEventListener("click", () => {
+        closePopover();
+        if (typeof it.onClick === "function") it.onClick();
+      });
+      return node;
+    });
+    el.replaceChildren(...nodes);
+    const c = { el, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
+    c.close = () => {
+      if (current4 === c) closePopover({ restoreFocus: true });
+    };
+    c.onClose = () => {
+      if (current4 === c) closePopover();
+    };
+    c.onScroll = (e) => {
+      if (e.target && e.target !== document && el.contains(e.target)) return;
+      c.onClose();
+    };
+    c.onDocClick = (e) => {
+      if (el.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
+      c.onClose();
+    };
+    c.onKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        c.close();
+      } else if (e.key === "Tab") {
+        closePopover({ restoreFocus: true });
+      } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && nodes.length) {
+        const i = nodes.indexOf(document.activeElement);
+        let next;
+        if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = nodes.length - 1;
+        else if (e.key === "ArrowDown") next = i < 0 ? 0 : (i + 1) % nodes.length;
+        else next = i < 0 ? nodes.length - 1 : (i - 1 + nodes.length) % nodes.length;
+        e.preventDefault();
+        nodes[next].focus();
+      }
+    };
+    current4 = c;
+    if (anchorEl) anchorEl.setAttribute("aria-expanded", "true");
+    window.addEventListener("keydown", c.onKeydown, true);
+    document.addEventListener("click", c.onDocClick, true);
+    window.addEventListener("resize", c.onClose);
+    window.addEventListener("scroll", c.onScroll, true);
+    if (anchorEl) place(el, anchorEl, align);
+    if (nodes[0]) nodes[0].focus({ preventScroll: true });
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+    raf(() => {
+      if (current4 === c) el.classList.add("is-open");
+    });
+    return { el, close: c.close };
+  }
+
+  // src/js/shared/profile.js
+  function logout() {
+    const d = window.Dashboard;
+    if (d && typeof d.logout === "function") {
+      d.logout();
+      return;
+    }
+    window.location.hash = "#/mypreferencesmenu";
+  }
+  async function profileEntries({ theme, returnFocus } = {}) {
+    const entries = [];
+    if (getStatsUrl()) {
+      entries.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme) || getStatsUrl(), className: "is-stats" });
+    }
+    entries.push({ key: "design", label: "Design Einstellungen", onClick: () => openThemePicker({ returnFocus }) });
+    entries.push({ key: "settings", label: "Einstellungen", href: "#/mypreferencesmenu" });
+    let user = null;
+    try {
+      user = await getUser();
+    } catch {
+    }
+    if (user && user.Policy && user.Policy.IsAdministrator) {
+      entries.push({ key: "dashboard", label: "Dashboard", href: "#/dashboard" });
+    }
+    entries.push({ key: "logout", label: "Abmelden", onClick: () => logout() });
+    return entries;
+  }
+  async function getUserChip() {
+    let user = null;
+    try {
+      user = await getUser();
+    } catch {
+    }
+    const name = user && user.Name || "";
+    const tag = user && user.PrimaryImageTag;
+    const id = user && user.Id || getUserId();
+    const imageUrl2 = tag && id ? buildUrl(`/Users/${id}/Images/Primary`, { tag, maxWidth: 96 }) : null;
+    return { name, imageUrl: imageUrl2 };
+  }
+
+  // src/js/shared/libraries.js
+  var HUB_TYPES = ["movies", "tvshows", "homevideos", "mixed"];
+  function viewHref(view) {
+    const id = view.Id;
+    const ct = view.CollectionType;
+    const q = `topParentId=${id}&collectionType=${ct}`;
+    switch (ct) {
+      case "movies":
+        return `#/movies?${q}`;
+      case "tvshows":
+        return `#/tv?${q}`;
+      case "music":
+        return `#/music?${q}`;
+      case "books":
+        return `#/books?${q}`;
+      case "musicvideos":
+        return `#/musicvideos?${q}`;
+      case "boxsets":
+        return `#/boxsets?${q}`;
+      case "playlists":
+        return `#/playlists?${q}`;
+      case "homevideos":
+        return `#/homevideos?topParentId=${id}`;
+      case "livetv":
+        return "#/livetv";
+      default:
+        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
+    }
+  }
+  function getLibraries() {
+    return cached("libraries", async () => {
+      const res = await getViews();
+      const list = Array.isArray(res) ? res : res && res.Items || [];
+      return list.filter((v) => v && v.Id).map((v) => ({
+        id: v.Id,
+        name: v.Name,
+        collectionType: v.CollectionType || null,
+        href: viewHref(v),
+        hubCapable: !v.CollectionType || HUB_TYPES.includes(v.CollectionType)
+      }));
+    }, 5 * 60 * 1e3);
+  }
+
+  // src/js/features/plus/header-icons.js
+  var svg5 = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+  var ICONS3 = {
+    home: svg5('<path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 10v9.5h5v-5.2h3v5.2h5V10"/>'),
+    list: svg5('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M12 8.8v6.4M8.8 12h6.4"/>'),
+    movies: svg5('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M16 4v16M4 8.5h4M4 15.5h4M16 8.5h4M16 15.5h4"/>'),
+    tv: svg5('<rect x="3" y="6.5" width="18" height="12" rx="2.5"/><path d="m8 3 4 3.5L16 3"/>'),
+    star: svg5('<path d="m12 3.8 2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8z"/>'),
+    search: svg5('<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>')
+  };
+
   // src/js/features/plus/header.js
-  var header_default = {
+  var ROOT_ID4 = "lfx-plus-header";
+  var ON_CLASS2 = "lfx-plus-header-on";
+  var HIDDEN_CLASS = "lfx-plus-header-hidden";
+  var EXCLUDED6 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
+  var SOLID_AT = 10;
+  var HIDE_AFTER = 80;
+  var SCROLL_DELTA = 4;
+  var OPEN_DELAY = 150;
+  var CLOSE_DELAY = 250;
+  function navItems2(libs) {
+    const list = Array.isArray(libs) ? libs : [];
+    const movies = list.find((l) => l.collectionType === "movies") || null;
+    const series = list.find((l) => l.collectionType === "tvshows") || null;
+    const items = [
+      { key: "home", label: "Startseite", href: "#/home", icon: "home" },
+      { key: "list", label: "Meine Liste", href: "#/home?tab=1", icon: "list" }
+    ];
+    if (movies) items.push({ key: "movies", label: "Filme", href: browseHref(movies.id), icon: "movies" });
+    if (series) items.push({ key: "series", label: "Serien", href: browseHref(series.id), icon: "tv" });
+    items.push({ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new", icon: "star" });
+    return items;
+  }
+  function activeKey2(route, libs) {
+    if (!route) return null;
+    const list = Array.isArray(libs) ? libs : [];
+    const movies = list.find((l) => l.collectionType === "movies");
+    const series = list.find((l) => l.collectionType === "tvshows");
+    const { kind: kind2, lib } = parseLfxRoute(route);
+    if (route.path === "/home") {
+      if (kind2 === "new") return "new";
+      if (kind2 === "search") return "search";
+      if (kind2 === "browse") {
+        if (movies && lib === movies.id) return "movies";
+        if (series && lib === series.id) return "series";
+        return null;
+      }
+      if (kind2) return null;
+      const tab = route.params.get("tab");
+      if (tab === "1") return "list";
+      return !tab || tab === "0" ? "home" : null;
+    }
+    const parent = route.params.get("topParentId") || route.params.get("parentId");
+    if (route.path === "/movies" && (!parent || movies && parent === movies.id)) return "movies";
+    if (route.path === "/tv" && (!parent || series && parent === series.id)) return "series";
+    return null;
+  }
+  var state6 = {
+    root: null,
+    nav: null,
+    chip: null,
+    route: null,
+    libs: [],
+    seq: 0,
+    // Menü-Öffnen
+    mountSeq: 0,
+    // Mount-Generation (async Füllung)
+    cleanups: [],
+    menu: null,
+    pinned: false,
+    openTimer: null,
+    closeTimer: null,
+    raf: 0,
+    lastY: 0
+  };
+  var icon2 = (name, cls) => {
+    const span2 = h("span", { class: cls, "aria-hidden": "true" });
+    span2.innerHTML = ICONS3[name];
+    return span2;
+  };
+  function applyActive3() {
+    if (!state6.root) return;
+    const key = state6.route ? activeKey2(state6.route, state6.libs) : null;
+    for (const el of state6.root.querySelectorAll("[data-key]")) {
+      const on = el.dataset.key === key;
+      el.classList.toggle("is-active", on);
+      if (on) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    }
+  }
+  function renderNav() {
+    if (!state6.nav) return;
+    state6.nav.textContent = "";
+    for (const it of navItems2(state6.libs)) {
+      state6.nav.append(
+        h("a", { class: "lfx-plus-header__item", href: it.href, dataset: { key: it.key } }, [
+          icon2(it.icon, "lfx-plus-header__icon"),
+          h("span", { class: "lfx-plus-header__label" }, it.label)
+        ])
+      );
+    }
+    applyActive3();
+  }
+  var menuOpen = () => Boolean(state6.menu && state6.menu.el.isConnected && isPopoverOpen());
+  function clearTimers3() {
+    clearTimeout(state6.openTimer);
+    clearTimeout(state6.closeTimer);
+    state6.openTimer = null;
+    state6.closeTimer = null;
+  }
+  function closeMenu() {
+    clearTimers3();
+    state6.seq++;
+    if (menuOpen()) closePopover();
+    state6.menu = null;
+    state6.pinned = false;
+  }
+  async function openMenu2() {
+    if (!state6.chip || menuOpen()) return;
+    const seq3 = ++state6.seq;
+    let items;
+    try {
+      items = await profileEntries({ theme: "plus", returnFocus: state6.chip });
+    } catch {
+      items = [];
+    }
+    if (seq3 !== state6.seq || !state6.chip || menuOpen()) return;
+    const menu = openPopover(state6.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
+    state6.menu = menu;
+    menu.el.addEventListener("mouseenter", () => clearTimeout(state6.closeTimer));
+    menu.el.addEventListener("mouseleave", () => scheduleClose2());
+  }
+  function scheduleOpen() {
+    clearTimeout(state6.closeTimer);
+    if (menuOpen() || state6.openTimer) return;
+    state6.openTimer = setTimeout(() => {
+      state6.openTimer = null;
+      openMenu2();
+    }, OPEN_DELAY);
+  }
+  function scheduleClose2() {
+    clearTimeout(state6.openTimer);
+    state6.openTimer = null;
+    if (state6.pinned || !menuOpen()) return;
+    clearTimeout(state6.closeTimer);
+    state6.closeTimer = setTimeout(() => {
+      state6.closeTimer = null;
+      if (!state6.pinned) closeMenu();
+    }, CLOSE_DELAY);
+  }
+  function onChipClick() {
+    clearTimers3();
+    if (menuOpen()) {
+      if (state6.pinned) closeMenu();
+      else state6.pinned = true;
+      return;
+    }
+    state6.pinned = true;
+    openMenu2();
+  }
+  async function fillChip(mountSeq) {
+    let user = { name: "", imageUrl: null };
+    try {
+      user = await getUserChip();
+    } catch {
+    }
+    if (mountSeq !== state6.mountSeq || !state6.chip) return;
+    const avatar = state6.chip.querySelector(".lfx-plus-header__avatar");
+    const name = state6.chip.querySelector(".lfx-plus-header__name");
+    name.textContent = user.name || "";
+    if (user.imageUrl) {
+      avatar.style.backgroundImage = `url("${user.imageUrl}")`;
+      avatar.textContent = "";
+    } else {
+      avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
+    }
+    if (user.name) state6.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
+  }
+  function setHidden(on) {
+    if (state6.root) state6.root.classList.toggle("is-hidden", on);
+    document.documentElement.classList.toggle(HIDDEN_CLASS, on);
+  }
+  function scrollTick() {
+    state6.raf = 0;
+    const root4 = state6.root;
+    if (!root4) return;
+    const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+    const dy = y - state6.lastY;
+    root4.classList.toggle("is-solid", y > SOLID_AT);
+    if (y <= SOLID_AT) {
+      setHidden(false);
+    } else if (dy >= SCROLL_DELTA && y > HIDE_AFTER) {
+      if (!root4.contains(document.activeElement) && !menuOpen()) setHidden(true);
+    } else if (dy <= -SCROLL_DELTA) {
+      setHidden(false);
+    }
+    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state6.lastY = y;
+  }
+  function onScroll2() {
+    if (state6.raf) return;
+    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    state6.raf = raf(scrollTick);
+  }
+  async function loadLibraries(mountSeq) {
+    let libs = [];
+    try {
+      libs = await getLibraries() || [];
+    } catch {
+    }
+    if (mountSeq !== state6.mountSeq || !state6.root) return;
+    state6.libs = libs;
+    renderNav();
+  }
+  var plusHeader = {
     name: "plus-header",
-    match: () => false,
-    mount() {
+    match(route) {
+      return isTheme("plus") && isModern() && !isTv() && isReady() && !EXCLUDED6.test(route.path);
+    },
+    mount(route) {
+      const mountSeq = ++state6.mountSeq;
+      state6.route = route;
+      state6.libs = [];
+      state6.pinned = false;
+      const root4 = mountPoint(ROOT_ID4, { tag: "header", className: "lfx-plus-header" });
+      root4.textContent = "";
+      state6.root = root4;
+      const brand = h("a", { class: "lfx-plus-header__brand", href: "#/home", "aria-label": `${brandName("plus")} Startseite` });
+      const chip = h("button", {
+        type: "button",
+        class: "lfx-plus-header__chip",
+        "aria-haspopup": "menu",
+        "aria-label": "Profilmen\xFC"
+      }, [
+        h("span", { class: "lfx-plus-header__avatar", "aria-hidden": "true" }),
+        h("span", { class: "lfx-plus-header__name" })
+      ]);
+      const nav = h("nav", { class: "lfx-plus-header__nav", "aria-label": "Hauptnavigation" });
+      const search = h("a", { class: "lfx-plus-header__search", href: searchHref(), "aria-label": "Suche", dataset: { key: "search" } });
+      search.append(icon2("search", "lfx-plus-header__icon"));
+      root4.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, search);
+      state6.nav = nav;
+      state6.chip = chip;
+      chip.addEventListener("click", onChipClick);
+      chip.addEventListener("mouseenter", scheduleOpen);
+      chip.addEventListener("mouseleave", scheduleClose2);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          state6.pinned = true;
+          clearTimers3();
+          openMenu2();
+        }
+      });
+      document.documentElement.classList.add(ON_CLASS2);
+      renderNav();
+      window.addEventListener("scroll", onScroll2, { passive: true });
+      state6.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
+      state6.lastY = Math.max(0, window.scrollY || 0);
+      scrollTick();
+      fillChip(mountSeq);
+      loadLibraries(mountSeq);
+    },
+    update(route) {
+      const changed = !state6.route || state6.route.hash !== route.hash;
+      state6.route = route;
+      if (changed) {
+        closeMenu();
+        setHidden(false);
+      }
+      applyActive3();
     },
     unmount() {
+      state6.mountSeq++;
+      closeMenu();
+      for (const fn of state6.cleanups.splice(0)) fn();
+      if (state6.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state6.raf);
+      state6.raf = 0;
+      unmountPoint(ROOT_ID4);
+      document.documentElement.classList.remove(ON_CLASS2, HIDDEN_CLASS);
+      state6.root = null;
+      state6.nav = null;
+      state6.chip = null;
+      state6.libs = [];
     }
   };
+  var header_default = plusHeader;
 
   // src/js/features/plus/switcher.js
-  var switcher_default = {
+  var ROOT_ID5 = "lfx-plus-switcher";
+  var ON_CLASS3 = "lfx-plus-switcher-on";
+  function isSwitcherRoute(route) {
+    if (!route || route.path !== "/home" || !route.params) return false;
+    const { kind: kind2 } = parseLfxRoute(route);
+    if (kind2 === "hub") return true;
+    if (route.params.get("lfx")) return false;
+    const tab = route.params.get("tab");
+    return !tab || tab === "0";
+  }
+  function switcherTabs(libs) {
+    const tabs = [{ key: "foryou", label: "F\xFCr dich", href: "#/home" }];
+    for (const l of Array.isArray(libs) ? libs : []) {
+      tabs.push({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href });
+    }
+    return tabs;
+  }
+  function activeTab(route) {
+    const { kind: kind2, lib } = parseLfxRoute(route);
+    if (kind2 === "hub" && lib) return `lib:${lib}`;
+    return "foryou";
+  }
+  var state7 = { root: null, route: null, libs: [], seq: 0 };
+  function applyActive4() {
+    if (!state7.root || !state7.route) return;
+    const key = activeTab(state7.route);
+    let active4 = null;
+    for (const el of state7.root.querySelectorAll('[role="tab"]')) {
+      const on = el.dataset.key === key;
+      el.classList.toggle("is-active", on);
+      el.setAttribute("aria-selected", String(on));
+      el.tabIndex = on ? 0 : -1;
+      if (on) active4 = el;
+    }
+    const list = state7.root.querySelector(".lfx-plus-switcher__list");
+    if (active4 && list && list.scrollWidth > list.clientWidth) {
+      list.scrollLeft = Math.max(0, active4.offsetLeft - (list.clientWidth - active4.offsetWidth) / 2);
+    }
+  }
+  function render6() {
+    if (!state7.root) return;
+    const list = h("div", { class: "lfx-plus-switcher__list", role: "tablist", "aria-label": "Ansicht w\xE4hlen" });
+    for (const t of switcherTabs(state7.libs)) {
+      list.append(h("a", { class: "lfx-plus-switcher__tab", role: "tab", href: t.href, dataset: { key: t.key } }, t.label));
+    }
+    list.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const tabs = [...list.querySelectorAll('[role="tab"]')];
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      e.preventDefault();
+      next.tabIndex = 0;
+      next.focus();
+    });
+    state7.root.replaceChildren(list);
+    applyActive4();
+  }
+  async function loadLibraries2(seq3) {
+    let libs = [];
+    try {
+      libs = await getLibraries() || [];
+    } catch {
+    }
+    if (seq3 !== state7.seq || !state7.root) return;
+    state7.libs = libs;
+    render6();
+  }
+  var plusSwitcher = {
     name: "plus-switcher",
-    match: () => false,
-    mount() {
+    match(route) {
+      return isTheme("plus") && isModern() && !isTv() && isReady() && isSwitcherRoute(route);
+    },
+    mount(route) {
+      const seq3 = ++state7.seq;
+      state7.route = route;
+      state7.libs = [];
+      state7.root = mountPoint(ROOT_ID5, { className: "lfx-plus-switcher" });
+      document.documentElement.classList.add(ON_CLASS3);
+      render6();
+      loadLibraries2(seq3);
+    },
+    update(route) {
+      state7.route = route;
+      applyActive4();
     },
     unmount() {
+      state7.seq++;
+      unmountPoint(ROOT_ID5);
+      document.documentElement.classList.remove(ON_CLASS3);
+      state7.root = null;
+      state7.libs = [];
     }
   };
+  var switcher_default = plusSwitcher;
+
+  // src/js/shared/hub.js
+  var asItems2 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  function hubTypes(lib) {
+    switch (lib && lib.collectionType) {
+      case "movies":
+        return { items: "Movie", resume: "Movie" };
+      case "tvshows":
+        return { items: "Series", resume: "Episode" };
+      case "homevideos":
+        return { items: "Video", resume: "Video" };
+      default:
+        return { items: "Movie,Series", resume: "Movie,Episode" };
+    }
+  }
+  async function loadResume(lib, types) {
+    const list = asItems2(await getResume({
+      ...BASE_PARAMS,
+      ParentId: lib.id,
+      MediaTypes: "Video",
+      IncludeItemTypes: types.resume,
+      Limit: 20
+    }));
+    return list;
+  }
+  async function buildHubRowDefs(lib, { seed = dayKey(), genreCount = 6 } = {}) {
+    if (!lib || !lib.id) return [];
+    const types = hubTypes(lib);
+    const items = (params) => getItems({
+      ...BASE_PARAMS,
+      ParentId: lib.id,
+      IncludeItemTypes: types.items,
+      Recursive: true,
+      ...params
+    }).then(asItems2);
+    const defs = [
+      { id: `${lib.id}-resume`, title: "Weiterschauen", kind: "resume", load: () => loadResume(lib, types) },
+      {
+        id: `${lib.id}-latest`,
+        title: "Neu hinzugef\xFCgt",
+        kind: "landscape",
+        load: () => getLatest({
+          ...BASE_PARAMS,
+          ParentId: lib.id,
+          IncludeItemTypes: types.items,
+          GroupItems: true,
+          Limit: 20
+        }).then(asItems2)
+      },
+      {
+        id: `${lib.id}-toprated`,
+        title: "Hochbewertet",
+        kind: "poster",
+        load: () => items({ SortBy: "CommunityRating", SortOrder: "Descending", Limit: 20 })
+      }
+    ];
+    let genres;
+    try {
+      genres = asItems2(await getJson("/Genres", {
+        userId: getUserId(),
+        ParentId: lib.id,
+        IncludeItemTypes: types.items,
+        Recursive: true,
+        SortBy: "SortName"
+      }));
+    } catch {
+      genres = [];
+    }
+    const idByName = new Map(genres.filter((g) => g && g.Name && g.Id).map((g) => [g.Name, g.Id]));
+    for (const name of pickGenres(genres, { seed, count: genreCount })) {
+      const gid = idByName.get(name);
+      if (!gid) continue;
+      defs.push({
+        id: `${lib.id}-genre-${gid}`,
+        title: name,
+        kind: "landscape",
+        load: () => items({ GenreIds: gid, SortBy: "Random", Limit: 20 })
+      });
+    }
+    defs.push({
+      id: `${lib.id}-random`,
+      title: "Zuf\xE4llige Auswahl",
+      kind: "poster",
+      load: () => items({ SortBy: "Random", Limit: 20 })
+    });
+    return defs;
+  }
+  var HERO_FIELDS = `${BASE_PARAMS.Fields},RemoteTrailers,LocalTrailerCount`;
+  async function getHubHeroPool(lib) {
+    if (!lib || !lib.id) return [];
+    const types = hubTypes(lib);
+    const q = (params) => getItems({
+      ...BASE_PARAMS,
+      Fields: HERO_FIELDS,
+      ParentId: lib.id,
+      IncludeItemTypes: types.items,
+      Recursive: true,
+      ...params
+    }).then(asItems2);
+    const [latest, random] = await Promise.all([
+      q({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 30 }).catch(() => []),
+      q({ SortBy: "Random", Limit: 40 }).catch(() => [])
+    ]);
+    const pool = buildPool(latest, random, { newCount: 3, randomCount: 7 });
+    if (pool.length) return pool;
+    const seen = /* @__PURE__ */ new Set();
+    return [...latest, ...random].filter((it) => {
+      if (!it || !it.Id || seen.has(it.Id) || !(it.BackdropImageTags && it.BackdropImageTags.length)) return false;
+      seen.add(it.Id);
+      return true;
+    }).slice(0, 8);
+  }
+
+  // src/js/shared/newcontent.js
+  var TTL_MS2 = 5 * 60 * 1e3;
+  var asArr = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  function newContentFrom(episodes, now = Date.now(), { days = NEW_DAYS2 } = {}) {
+    const map = /* @__PURE__ */ new Map();
+    for (const e of episodes || []) {
+      if (!e || !e.SeriesId || !isRecent(e.DateCreated, now, days)) continue;
+      const isSeason = e.IndexNumber === 1 && e.ParentIndexNumber > 1;
+      if (isSeason) map.set(e.SeriesId, "season");
+      else if (!map.has(e.SeriesId)) map.set(e.SeriesId, "episode");
+    }
+    return map;
+  }
+  var emptyInfo = () => ({ bySeries: /* @__PURE__ */ new Map(), newMovieIds: /* @__PURE__ */ new Set(), newSeriesIds: /* @__PURE__ */ new Set() });
+  async function load(now) {
+    const [eps, titles] = await Promise.allSettled([
+      getItems({
+        IncludeItemTypes: "Episode",
+        Recursive: true,
+        SortBy: "DateCreated",
+        SortOrder: "Descending",
+        Limit: 500,
+        Fields: "DateCreated,ParentIndexNumber,IndexNumber,SeriesId",
+        EnableImages: false,
+        EnableUserData: false
+      }),
+      getItems({
+        IncludeItemTypes: "Movie,Series",
+        Recursive: true,
+        SortBy: "DateCreated",
+        SortOrder: "Descending",
+        Limit: 100,
+        Fields: "DateCreated",
+        EnableImages: false,
+        EnableUserData: false
+      })
+    ]);
+    if (eps.status === "rejected" && titles.status === "rejected") throw eps.reason;
+    const info = emptyInfo();
+    if (eps.status === "fulfilled") info.bySeries = newContentFrom(asArr(eps.value), now);
+    if (titles.status === "fulfilled") {
+      for (const it of asArr(titles.value)) {
+        if (!it || !it.Id || !isRecent(it.DateCreated, now)) continue;
+        if (it.Type === "Movie") info.newMovieIds.add(it.Id);
+        else if (it.Type === "Series") info.newSeriesIds.add(it.Id);
+      }
+    }
+    return info;
+  }
+  async function getNewContentInfo() {
+    try {
+      return await cached("newcontent", () => load(Date.now()), TTL_MS2);
+    } catch (e) {
+      console.warn("[LenzFlix] Neu-Info nicht verf\xFCgbar", e && e.message);
+      return emptyInfo();
+    }
+  }
+  function kind(item, info) {
+    if (!item || !info) return null;
+    if (item.Type === "Movie") return info.newMovieIds && info.newMovieIds.has(item.Id) ? "movie" : null;
+    if (item.Type !== "Series" && item.Type !== "Episode") return null;
+    const sid = item.Type === "Episode" ? item.SeriesId : item.Id;
+    if (item.Type === "Series" && info.newSeriesIds && info.newSeriesIds.has(sid)) return "series";
+    const s = info.bySeries && info.bySeries.get(sid);
+    if (s === "season") return "season";
+    if (s === "episode") return "episode";
+    return null;
+  }
+  var CAPS = { movie: "NEUER FILM", series: "NEUE SERIE", season: "NEUE STAFFEL", episode: "NEUE FOLGE" };
+  var SENTENCE = { movie: "Neuer Film", series: "Neue Serie", season: "Neue Staffel", episode: "Neue Folge" };
+  function newBadge(item, info) {
+    const k = kind(item, info);
+    return k ? CAPS[k] : null;
+  }
+  function plusBadge(item, info) {
+    const k = kind(item, info);
+    return k ? SENTENCE[k] : null;
+  }
+
+  // src/js/features/plus/card.js
+  var SEP = " \u2022 ";
+  function displayTitle2(item) {
+    return item.Type === "Episode" && item.SeriesName ? item.SeriesName : item.Name || "";
+  }
+  function yearGenres(item) {
+    const g = Array.isArray(item.Genres) ? item.Genres.filter(Boolean).slice(0, 3).join(", ") : "";
+    return [item.ProductionYear ? String(item.ProductionYear) : "", g].filter(Boolean).join(SEP);
+  }
+  function remainingLabel(item) {
+    const ud = item && item.UserData;
+    const total = Number(item && item.RunTimeTicks) || 0;
+    const pos = Number(ud && ud.PlaybackPositionTicks) || 0;
+    if (!total || !(pos > 0) || pos >= total) return "";
+    const min = Math.max(1, Math.round((total - pos) / 6e8));
+    const hrs = Math.floor(min / 60);
+    const rest = min % 60;
+    if (!hrs) return `Noch ${min} Min.`;
+    return rest ? `Noch ${hrs} Std. ${rest} Min.` : `Noch ${hrs} Std.`;
+  }
+  function episodeLine(item) {
+    if (item.Type === "Episode") {
+      const s = item.ParentIndexNumber;
+      const e = item.IndexNumber;
+      const code = s != null && e != null ? `S${s}:F${e}` : e != null ? `F${e}` : "";
+      return [code, item.Name].filter(Boolean).join(" ");
+    }
+    return yearGenres(item);
+  }
+  function ratingBox(item) {
+    const r = formatRating(item && item.OfficialRating);
+    return r ? h("span", { class: "lfx-plus-rating" }, r) : null;
+  }
+  function cardShell(item, kind2, extraClass) {
+    return h("div", {
+      class: `lfx-card lfx-plus-card lfx-plus-card--${kind2}${extraClass ? ` ${extraClass}` : ""}`,
+      dataset: { lfxId: item.Id, lfxType: item.Type || "" },
+      tabindex: "-1",
+      role: "listitem"
+    });
+  }
+  function ariaFor(item) {
+    if (item.Type === "Episode" && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
+    return item.Name || "";
+  }
+  function createPosterCard(item, { badge: badge3 = null } = {}) {
+    const url = posterUrl(item, 400) || null;
+    const media = [];
+    if (url) media.push(h("img", { class: "lfx-card__img", src: url, alt: "", loading: "lazy", decoding: "async" }));
+    else media.push(h("span", { class: "lfx-card__title lfx-plus-card__fallback" }, displayTitle2(item)));
+    if (badge3) {
+      const logo = logoImage(item, { maxWidth: 360 });
+      media.push(h("div", { class: "lfx-plus-card__new" }, [
+        h("span", { class: "lfx-plus-badge" }, badge3),
+        logo ? h("img", { class: "lfx-card__logo lfx-plus-card__logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : null,
+        h("span", { class: "lfx-plus-card__meta" }, yearGenres(item))
+      ]));
+    }
+    const link = h("a", { class: "lfx-card__link", href: titleHref(item.Id), "aria-label": ariaFor(item) }, media);
+    const card3 = cardShell(item, "poster", badge3 ? "lfx-plus-card--new" : "");
+    card3.append(link);
+    return card3;
+  }
+  function createResumeCard(item) {
+    const img = landscapeFor(item, 600);
+    const media = [];
+    if (img) media.push(h("img", { class: "lfx-card__img", src: img.url, alt: "", loading: "lazy", decoding: "async" }));
+    else media.push(h("span", { class: "lfx-card__title lfx-plus-card__fallback" }, displayTitle2(item)));
+    const p = progressPercent2(item);
+    if (p > 0) {
+      media.push(h("div", { class: "lfx-plus-progress" }, [
+        h("div", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })
+      ]));
+    }
+    const link = h("a", { class: "lfx-card__link", href: titleHref(item.Id), "aria-label": ariaFor(item) }, media);
+    const playBtn = h("button", {
+      type: "button",
+      class: "lfx-plus-card__play lfx-card__action",
+      "aria-label": `${displayTitle2(item)} fortsetzen`,
+      tabindex: "-1",
+      onclick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        play(item, { resume: true });
+      }
+    }, [h("span", { class: "lfx-plus-card__play-icon", "aria-hidden": "true" })]);
+    const rest = remainingLabel(item);
+    const info = h("div", { class: "lfx-plus-card__info" }, [
+      rest ? h("div", { class: "lfx-plus-card__rest" }, rest) : null,
+      h("div", { class: "lfx-plus-card__name" }, displayTitle2(item)),
+      h("div", { class: "lfx-plus-card__sub" }, [ratingBox(item), h("span", null, episodeLine(item))])
+    ]);
+    const card3 = cardShell(item, "resume");
+    card3.append(h("div", { class: "lfx-plus-card__media" }, [link, playBtn]), info);
+    return card3;
+  }
+  function createPlusCard(item, { kind: kind2 = "poster", badge: badge3 = null } = {}) {
+    return kind2 === "resume" ? createResumeCard(item) : createPosterCard(item, { badge: badge3 });
+  }
+
+  // src/js/features/plus/hero.js
+  var HERO_INTERVAL = 7e3;
+  var HERO_FIELDS2 = `${BASE_PARAMS.Fields},Taglines`;
+  var asItems3 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var CHEVRON2 = '<svg viewBox="0 0 14 27" aria-hidden="true" focusable="false"><polyline points="1.5,1.5 12.5,13.5 1.5,25.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function taglineFor(item) {
+    const t = Array.isArray(item.Taglines) ? item.Taglines.find(Boolean) : "";
+    if (t) return t;
+    const o = String(item.Overview || "").replace(/\s+/g, " ").trim();
+    if (o.length <= 150) return o;
+    const cut = o.slice(0, 150);
+    return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 100)).replace(/[\s,.;:!?-]+$/, "")}\u2026`;
+  }
+  async function loadHomeHeroPool() {
+    const q = (params) => getItems({
+      ...BASE_PARAMS,
+      Fields: HERO_FIELDS2,
+      IncludeItemTypes: "Movie,Series",
+      Recursive: true,
+      ...params
+    }).then(asItems3);
+    const [latest, random] = await Promise.all([
+      q({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 30 }).catch(() => []),
+      q({ SortBy: "Random", Limit: 40 }).catch(() => [])
+    ]);
+    const pool = buildPool(latest, random, { newCount: 3, randomCount: 7 });
+    if (pool.length) return pool;
+    const seen = /* @__PURE__ */ new Set();
+    return [...latest, ...random].filter((it) => {
+      if (!it || !it.Id || seen.has(it.Id) || !(it.BackdropImageTags && it.BackdropImageTags.length)) return false;
+      seen.add(it.Id);
+      return true;
+    }).slice(0, 8);
+  }
+  function buildSlide(item, i, info) {
+    const bd = imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 80 });
+    const logo = logoImage(item, { maxWidth: 520 });
+    const badge3 = plusBadge(item, info);
+    const tag = taglineFor(item);
+    const meta = yearGenres(item);
+    const rating = ratingBox(item);
+    return h("a", {
+      class: "lfx-plus-hero__slide",
+      href: titleHref(item.Id),
+      dataset: { index: String(i) },
+      "aria-label": item.Name || ""
+    }, [
+      bd ? h("img", { class: "lfx-plus-hero__img", src: bd, alt: "", decoding: "async", loading: i < 3 ? "eager" : "lazy" }) : null,
+      h("div", { class: "lfx-plus-hero__shade", "aria-hidden": "true" }),
+      h("div", { class: "lfx-plus-hero__content" }, [
+        badge3 ? h("span", { class: "lfx-plus-badge lfx-plus-hero__badge" }, badge3) : null,
+        logo ? h("img", { class: "lfx-plus-hero__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("span", { class: "lfx-plus-hero__title" }, item.Name || ""),
+        tag ? h("p", { class: "lfx-plus-hero__tagline" }, tag) : null,
+        rating || meta ? h("div", { class: "lfx-plus-hero__meta" }, [rating, meta ? h("span", null, meta) : null]) : null
+      ])
+    ]);
+  }
+  function createHero(items, { info = null, interval = HERO_INTERVAL } = {}) {
+    const list = (items || []).filter((it) => it && it.Id);
+    if (!list.length) return null;
+    const n = list.length;
+    const slides = list.map((it, i) => buildSlide(it, i, info));
+    const track = h("div", { class: "lfx-plus-hero__track" }, slides);
+    const prev = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
+    const next = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--next", "aria-label": "N\xE4chste Empfehlung", tabindex: "-1" });
+    prev.innerHTML = CHEVRON2;
+    next.innerHTML = CHEVRON2;
+    const dots = list.map((it, i) => h("button", {
+      type: "button",
+      class: "lfx-plus-hero__dot",
+      "aria-label": `Empfehlung ${i + 1} von ${n}`,
+      onclick: () => go(i)
+    }));
+    const dotsEl = h("div", { class: "lfx-plus-hero__dots" }, n > 1 ? dots : []);
+    const el = h("section", { class: "lfx-plus-hero", "aria-roledescription": "carousel", "aria-label": "Empfehlungen" }, [
+      h("div", { class: "lfx-plus-hero__viewport" }, [track]),
+      n > 1 ? prev : null,
+      n > 1 ? next : null,
+      dotsEl
+    ]);
+    let idx = 0;
+    let timer = null;
+    let hover = false;
+    let focus = false;
+    const running = () => n > 1 && !hover && !focus && !document.hidden;
+    function stop5() {
+      clearTimeout(timer);
+      timer = null;
+    }
+    function schedule() {
+      stop5();
+      if (running()) timer = setTimeout(() => go(idx + 1), interval);
+    }
+    function paint() {
+      el.style.setProperty("--i", String(idx));
+      slides.forEach((s, i) => {
+        const active4 = i === idx;
+        s.classList.toggle("is-active", active4);
+        s.setAttribute("aria-hidden", active4 ? "false" : "true");
+        s.tabIndex = active4 ? 0 : -1;
+      });
+      dots.forEach((d, i) => {
+        d.classList.toggle("is-active", i === idx);
+        if (i === idx) d.setAttribute("aria-current", "true");
+        else d.removeAttribute("aria-current");
+      });
+    }
+    function go(i) {
+      idx = (i % n + n) % n;
+      paint();
+      schedule();
+    }
+    const onPrev = (e) => {
+      e.preventDefault();
+      go(idx - 1);
+    };
+    const onNext = (e) => {
+      e.preventDefault();
+      go(idx + 1);
+    };
+    const onSlideClick = (e) => {
+      const s = e.target.closest && e.target.closest(".lfx-plus-hero__slide");
+      if (!s || s.classList.contains("is-active")) return;
+      e.preventDefault();
+      go(Number(s.dataset.index));
+    };
+    const onEnter = () => {
+      hover = true;
+      stop5();
+    };
+    const onLeave = () => {
+      hover = false;
+      schedule();
+    };
+    const onFocusIn = () => {
+      focus = true;
+      stop5();
+    };
+    const onFocusOut = (e) => {
+      if (!el.contains(e.relatedTarget)) {
+        focus = false;
+        schedule();
+      }
+    };
+    const onVis = () => document.hidden ? stop5() : schedule();
+    const onKey3 = (e) => {
+      if (e.key === "ArrowLeft") go(idx - 1);
+      else if (e.key === "ArrowRight") go(idx + 1);
+    };
+    prev.addEventListener("click", onPrev);
+    next.addEventListener("click", onNext);
+    track.addEventListener("click", onSlideClick);
+    el.addEventListener("mouseenter", onEnter);
+    el.addEventListener("mouseleave", onLeave);
+    el.addEventListener("focusin", onFocusIn);
+    el.addEventListener("focusout", onFocusOut);
+    el.addEventListener("keydown", onKey3);
+    document.addEventListener("visibilitychange", onVis);
+    paint();
+    schedule();
+    return {
+      el,
+      go,
+      index: () => idx,
+      destroy() {
+        stop5();
+        prev.removeEventListener("click", onPrev);
+        next.removeEventListener("click", onNext);
+        track.removeEventListener("click", onSlideClick);
+        el.removeEventListener("mouseenter", onEnter);
+        el.removeEventListener("mouseleave", onLeave);
+        el.removeEventListener("focusin", onFocusIn);
+        el.removeEventListener("focusout", onFocusOut);
+        el.removeEventListener("keydown", onKey3);
+        document.removeEventListener("visibilitychange", onVis);
+        el.remove();
+      }
+    };
+  }
+
+  // src/js/shared/collections.js
+  var asItems4 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var FIELDS2 = "ChildCount,ImageTags,BackdropImageTags";
+  function pickImage(b) {
+    const tags = b.ImageTags || {};
+    const bd = Array.isArray(b.BackdropImageTags) ? b.BackdropImageTags[0] : null;
+    if (tags.Thumb) return { type: "Thumb", tag: tags.Thumb };
+    if (bd) return { type: "Backdrop", tag: bd };
+    if (tags.Primary) return { type: "Primary", tag: tags.Primary };
+    return null;
+  }
+  function getCollections({ tag = "lenzplus", fallbackLimit = 8 } = {}) {
+    return cached(`collections:${tag}:${fallbackLimit}`, async () => {
+      const q = (params) => getItems({
+        IncludeItemTypes: "BoxSet",
+        Recursive: true,
+        Fields: FIELDS2,
+        ImageTypeLimit: 1,
+        EnableImageTypes: "Primary,Backdrop,Thumb",
+        EnableUserData: false,
+        ...params
+      }).then(asItems4);
+      let list = tag ? await q({ Tags: tag, SortBy: "SortName", SortOrder: "Ascending" }) : [];
+      if (!list.length) {
+        const all = await q({ SortBy: "SortName", SortOrder: "Ascending" });
+        list = all.slice().sort((a, b) => (b.ChildCount || 0) - (a.ChildCount || 0)).slice(0, fallbackLimit);
+      }
+      return list.filter((b) => b && b.Id).map((b) => {
+        const img = pickImage(b);
+        return {
+          id: b.Id,
+          name: b.Name,
+          imageUrl: img ? imageUrlFor(b.Id, { type: img.type, tag: img.tag, maxWidth: 640 }) : null,
+          imageType: img ? img.type : null,
+          href: `#/details?id=${b.Id}`
+        };
+      });
+    }, 5 * 60 * 1e3);
+  }
+
+  // src/js/features/plus/brands.js
+  function buildBrandRow(collections) {
+    const list = (collections || []).filter((c) => c && c.id);
+    if (!list.length) return null;
+    const cells = list.map((c) => h("div", { role: "listitem", class: "lfx-plus-brands__cell" }, [
+      h("a", { class: "lfx-plus-brand", href: titleHref(c.id), "aria-label": c.name || "Sammlung" }, [
+        c.imageUrl ? h("img", { class: "lfx-plus-brand__img", src: c.imageUrl, alt: "", loading: "lazy", decoding: "async" }) : null,
+        c.imageUrl ? null : h("span", { class: "lfx-plus-brand__name" }, c.name || "")
+      ])
+    ]));
+    return h("section", { class: "lfx-plus-brands", "aria-label": "Sammlungen" }, [
+      h("div", { class: "lfx-plus-brands__track", role: "list" }, cells)
+    ]);
+  }
+  function renderBrands(parent, before) {
+    let disposed = false;
+    let el = null;
+    getCollections().then((list) => {
+      if (disposed) return;
+      el = buildBrandRow(list);
+      if (el) parent.insertBefore(el, before && before.parentNode === parent ? before : null);
+    }).catch((e) => console.warn("[LenzFlix] Sammlungen nicht geladen", e && e.message));
+    return () => {
+      disposed = true;
+      if (el) el.remove();
+      el = null;
+    };
+  }
+
+  // src/js/features/plus/rows.js
+  function skeleton2(def) {
+    const resume = def.kind === "resume";
+    const cells = [];
+    for (let i = 0; i < 6; i++) cells.push(h("div", { class: "lfx-plus-skel" }));
+    return h("section", {
+      class: `lfx-plus-row lfx-plus-row--${resume ? "resume" : "poster"} is-loading`,
+      dataset: { lfxRow: def.id }
+    }, [
+      h("h2", { class: "lfx-plus-row__title" }, def.title || ""),
+      h("div", { class: "lfx-plus-row__viewport" }, [h("div", { class: "lfx-plus-row__skeleton" }, cells)])
+    ]);
+  }
+  function fill2(rowEl, def, items, info) {
+    const resume = def.kind === "resume";
+    const cards = items.map((it) => createPlusCard(it, {
+      kind: resume ? "resume" : "poster",
+      badge: resume ? null : plusBadge(it, info)
+    }));
+    const track = h("div", { class: "lfx-plus-row__track", role: "list", "aria-label": def.title || "" }, cards);
+    const prev = chevronButton("prev", "Zur\xFCck");
+    const next = chevronButton("next", "Weiter");
+    prev.classList.add("lfx-plus-row__arrow");
+    next.classList.add("lfx-plus-row__arrow");
+    const viewport = rowEl.querySelector(".lfx-plus-row__viewport");
+    viewport.textContent = "";
+    viewport.append(prev, track, next);
+    rowEl.querySelector(".lfx-plus-row__title").textContent = def.title || "";
+    rowEl.classList.remove("is-loading");
+    return attachScroller({ track, prev, next, indicator: null });
+  }
+  function renderRows(slot, getDefs) {
+    let disposed = false;
+    let observer2 = null;
+    const disposers = [];
+    slot.textContent = "";
+    disposers.push(onItemsChanged(({ removed }) => {
+      if (disposed || !removed || !removed.length) return;
+      const gone = new Set(removed);
+      for (const row of [...slot.querySelectorAll(".lfx-plus-row")]) {
+        const track = row.querySelector(".lfx-plus-row__track");
+        if (!track) continue;
+        let changed = false;
+        for (const card3 of [...track.querySelectorAll(".lfx-card[data-lfx-id]")]) {
+          if (gone.has(card3.dataset.lfxId)) {
+            card3.remove();
+            changed = true;
+          }
+        }
+        if (!changed) continue;
+        if (!track.querySelector(".lfx-card")) row.remove();
+        else track.dispatchEvent(new Event("scroll"));
+      }
+    }));
+    async function loadRow(rowEl, def) {
+      try {
+        const items = (await def.load(def)).filter((i) => i && i.Id);
+        if (disposed) return;
+        if (!items.length) {
+          rowEl.remove();
+          return;
+        }
+        putItems(items);
+        const info = await getNewContentInfo();
+        if (disposed) return;
+        disposers.push(fill2(rowEl, def, items, info));
+      } catch (e) {
+        console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
+        if (!disposed) rowEl.remove();
+      }
+    }
+    (async () => {
+      let defs;
+      try {
+        defs = await getDefs();
+      } catch (e) {
+        console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
+        return;
+      }
+      if (disposed) return;
+      const pending = /* @__PURE__ */ new Map();
+      for (const def of defs || []) {
+        const el = skeleton2(def);
+        pending.set(el, def);
+        slot.append(el);
+      }
+      if (typeof IntersectionObserver === "function") {
+        observer2 = new IntersectionObserver((entries) => {
+          for (const en of entries) {
+            const def = pending.get(en.target);
+            if (!en.isIntersecting || !def) continue;
+            pending.delete(en.target);
+            observer2.unobserve(en.target);
+            loadRow(en.target, def);
+          }
+        }, { rootMargin: "600px 0px" });
+        for (const el of pending.keys()) observer2.observe(el);
+      } else {
+        for (const [el, def] of pending) loadRow(el, def);
+      }
+    })();
+    return () => {
+      disposed = true;
+      if (observer2) observer2.disconnect();
+      observer2 = null;
+      for (const d of disposers.splice(0)) d();
+      slot.textContent = "";
+    };
+  }
 
   // src/js/features/plus/home.js
+  var ROOT_ID6 = "lfx-plus-home";
+  var ON_CLASS4 = "lfx-plus-home-on";
+  var cleanups3 = [];
+  var waitTimer3 = null;
+  var token = 0;
+  var currentKey = null;
+  function routeKey(route) {
+    if (!route || route.path !== "/home") return null;
+    const lfx = route.params.get("lfx");
+    if (lfx === "hub") {
+      const lib = route.params.get("lib");
+      return lib ? `hub:${lib}` : null;
+    }
+    if (lfx || route.params.get("tab") === "1") return null;
+    return "home";
+  }
+  function findHomeTab3() {
+    const tab = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab && tab.isConnected ? tab : null;
+  }
+  function teardown5() {
+    token++;
+    for (const fn of cleanups3.splice(0)) {
+      try {
+        fn && fn();
+      } catch (e) {
+        console.error("[LenzFlix] plus-home cleanup", e);
+      }
+    }
+    document.getElementById(ROOT_ID6)?.remove();
+    document.documentElement.classList.remove(ON_CLASS4);
+    currentKey = null;
+  }
+  async function build3(tab, key) {
+    teardown5();
+    const my = token;
+    const isHub = key.startsWith("hub:");
+    const heroSlot = h("div", { class: "lfx-plus-home__hero" });
+    const rowsSlot = h("div", { class: "lfx-plus-rows" });
+    const root4 = h("div", { id: ROOT_ID6, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
+    tab.prepend(root4);
+    document.documentElement.classList.add(ON_CLASS4);
+    currentKey = key;
+    const alive = () => my === token;
+    let lib = null;
+    if (isHub) {
+      try {
+        const libs = await getLibraries();
+        lib = libs.find((l) => l.id === key.slice(4)) || null;
+      } catch {
+        lib = null;
+      }
+      if (!alive()) return;
+    }
+    (async () => {
+      try {
+        const [pool, info] = await Promise.all([
+          isHub ? lib ? getHubHeroPool(lib) : [] : loadHomeHeroPool(),
+          getNewContentInfo()
+        ]);
+        if (!alive() || !pool.length) return;
+        const hero = createHero(pool, { info });
+        if (!hero) return;
+        heroSlot.append(hero.el);
+        cleanups3.push(() => hero.destroy());
+      } catch (e) {
+        console.warn("[LenzFlix] Hero nicht geladen", e && e.message);
+      }
+    })();
+    if (!isHub) cleanups3.push(renderBrands(root4, rowsSlot));
+    cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs()));
+  }
+  function ensure3(route) {
+    clearTimeout(waitTimer3);
+    const key = routeKey(route);
+    if (!key) return;
+    const existing = document.getElementById(ROOT_ID6);
+    const tab = findHomeTab3();
+    if (tab && existing && tab.contains(existing) && currentKey === key) return;
+    let tries = 0;
+    const poll = () => {
+      const t = findHomeTab3();
+      if (t) build3(t, key);
+      else if (++tries < 30) waitTimer3 = setTimeout(poll, 200);
+    };
+    if (tab) build3(tab, key);
+    else waitTimer3 = setTimeout(poll, 200);
+  }
   var home_default2 = {
     name: "plus-home",
-    match: () => false,
-    mount() {
-    },
-    unmount() {
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeKey(route) !== null,
+    mount: (route) => ensure3(route),
+    update: (route) => ensure3(route),
+    unmount: () => {
+      clearTimeout(waitTimer3);
+      teardown5();
     }
   };
 
+  // src/js/shared/titleactions.js
+  var SAVE_ERROR3 = "Konnte nicht gespeichert werden";
+  var isPlayed2 = (it) => Boolean(it && it.UserData && it.UserData.Played === true);
+  var folgen3 = (n) => n === 1 ? "1 Folge" : `${n} Folgen`;
+  function clearPlayedCaches2(itemId, seriesId) {
+    clearCache(`lfx:modal:item:${itemId}`);
+    if (seriesId) {
+      clearCache(`lfx:modal:next:${seriesId}`);
+      clearCache(`lfx:modal:eps:${seriesId}:`);
+    }
+  }
+  async function bulkPlayed2(seriesId, targetId, seasonIds, next) {
+    await setPlayed(targetId, next);
+    clearPlayedCaches2(seriesId, seriesId);
+    const wrong = [];
+    for (const sid of seasonIds) {
+      try {
+        for (const e of await loadEpisodes2(seriesId, sid)) if (isPlayed2(e) !== next) wrong.push(e);
+      } catch {
+      }
+    }
+    let failed = 0;
+    for (let i = 0; i < wrong.length; i += 6) {
+      const res = await Promise.allSettled(wrong.slice(i, i + 6).map((e) => setPlayed(e.Id, next)));
+      failed += res.filter((r) => r.status === "rejected").length;
+    }
+    clearPlayedCaches2(seriesId, seriesId);
+    return failed;
+  }
+  function askConfirm({ title, confirmLabel, anchorEl }) {
+    return new Promise((resolve2) => {
+      let done = false;
+      let obs = null;
+      const settle = (v) => {
+        if (done) return;
+        done = true;
+        if (obs) obs.disconnect();
+        resolve2(v);
+      };
+      const sheet = confirmAction({ title, confirmLabel, anchorEl, onConfirm: () => settle(true) });
+      const overlay = sheet && sheet.overlay;
+      if (overlay && typeof MutationObserver === "function") {
+        obs = new MutationObserver(() => {
+          if (!overlay.isConnected) settle(false);
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+      }
+    });
+  }
+  async function bulkToggle(item, anchorEl) {
+    const isSeries = item.Type === "Series";
+    const seriesId = isSeries ? item.Id : item.SeriesId || item.ParentId;
+    let seasonIds;
+    let episodeLists;
+    try {
+      if (isSeries) {
+        const seasons = await loadSeasons(item.Id);
+        seasonIds = seasons.map((s) => s.Id);
+      } else {
+        seasonIds = [item.Id];
+      }
+      episodeLists = [];
+      for (const sid of seasonIds) episodeLists.push(await loadEpisodes2(seriesId, sid));
+    } catch {
+      seasonIds = seasonIds || [];
+      episodeLists = episodeLists || [];
+    }
+    const eps = episodeLists.flat();
+    const prev = isPlayed2(item);
+    const next = isSeries ? !prev : !(eps.length > 0 && eps.every(isPlayed2));
+    const n = eps.length;
+    const verb = next ? "gesehen" : "ungesehen";
+    const ok = await askConfirm({
+      title: n ? `${folgen3(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`,
+      confirmLabel: `Als ${verb} markieren`,
+      anchorEl
+    });
+    if (!ok) return prev;
+    try {
+      const failed = await bulkPlayed2(seriesId, item.Id, seasonIds, next);
+      if (failed) {
+        toast(SAVE_ERROR3);
+        return prev;
+      }
+      item.UserData = { ...item.UserData || {}, Played: next };
+      putItems([item]);
+      toast(isSeries ? `Serie als ${verb} markiert` : `${folgen3(n)} als ${verb} markiert`);
+      return next;
+    } catch {
+      toast(SAVE_ERROR3);
+      return prev;
+    }
+  }
+  async function togglePlayed2(item, { anchorEl } = {}) {
+    if (!item || !item.Id) return false;
+    if (item.Type === "Series" || item.Type === "Season") return bulkToggle(item, anchorEl);
+    const prev = { ...item.UserData || {} };
+    const next = prev.Played !== true;
+    item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
+    delete item.UserData.PlayedPercentage;
+    try {
+      await setPlayed(item.Id, next);
+    } catch {
+      item.UserData = prev;
+      toast(SAVE_ERROR3);
+      return prev.Played === true;
+    }
+    putItems([item]);
+    clearPlayedCaches2(item.Id, item.Type === "Episode" ? item.SeriesId : null);
+    return next;
+  }
+  async function toggleFavorite2(item) {
+    if (!item || !item.Id) return false;
+    const prev = Boolean(item.UserData && item.UserData.IsFavorite);
+    const next = !prev;
+    item.UserData = { ...item.UserData || {}, IsFavorite: next };
+    try {
+      await setFavorite(item.Id, next);
+    } catch {
+      item.UserData = { ...item.UserData || {}, IsFavorite: prev };
+      return prev;
+    }
+    putItems([item]);
+    return next;
+  }
+  async function startDownloadFor(item, { anchorEl } = {}) {
+    if (!item || !item.Id) return false;
+    try {
+      await startDownload(item, anchorEl);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  async function openTitleMenu(item, anchorEl) {
+    if (!item || !item.Id) return false;
+    return Boolean(openItemMenu(item, anchorEl));
+  }
+
+  // src/js/features/plus/title-mount.js
+  var ROOT = () => document.documentElement;
+  function findHomeTab4() {
+    const tab = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab && tab.isConnected ? tab : null;
+  }
+  function whenHomeTab(cb, { tries = 30, every = 200 } = {}) {
+    let dead = false;
+    let timer = null;
+    let n = 0;
+    const poll = () => {
+      timer = null;
+      if (dead) return;
+      const t = findHomeTab4();
+      if (t) cb(t);
+      else if (++n < tries) timer = setTimeout(poll, every);
+    };
+    poll();
+    return () => {
+      dead = true;
+      if (timer) clearTimeout(timer);
+      timer = null;
+    };
+  }
+  function setPageOn(cls, on) {
+    const cl2 = ROOT().classList;
+    cl2.toggle("lfx-plus-page-on", on);
+    cl2.toggle(cls, on);
+  }
+  function scrollTop() {
+    try {
+      window.scrollTo(0, 0);
+    } catch {
+    }
+  }
+
+  // src/js/features/plus/title-cards.js
+  function ageBox(rating) {
+    const r = String(rating || "").trim().replace(/^fsk[-\s]?/i, "");
+    return r ? h("span", { class: "lfx-plus-age" }, r) : null;
+  }
+  function metaText(item, { genres = 3 } = {}) {
+    if (!item) return "";
+    const m = metaParts(item);
+    const g = (item.Genres || []).slice(0, genres).join(", ");
+    return [m.year, m.length, g].filter(Boolean).join(" \u2022 ");
+  }
+  function metaLine(item, opts) {
+    return h("div", { class: "lfx-plus-meta" }, [ageBox(item && item.OfficialRating), h("span", { class: "lfx-plus-meta__text" }, metaText(item, opts))]);
+  }
+  var episodeCode = (ep) => ep && ep.ParentIndexNumber != null && ep.IndexNumber != null ? `S${ep.ParentIndexNumber}:F${ep.IndexNumber}` : "";
+  function gridCard(item, { badge: badge3 = null, text = false } = {}) {
+    const card3 = createCard(item, { kind: "landscape", badge: badge3 });
+    card3.classList.add("lfx-card--plus");
+    if (text) {
+      const ep = item.Type === "Episode";
+      const code = ep ? episodeCode(item) : "";
+      const meta = ep ? [item.SeriesName, code].filter(Boolean).join(" \u2022 ") : "";
+      card3.append(h("div", { class: "lfx-plus-result__text" }, [
+        h("div", { class: "lfx-plus-result__title" }, item.Name || ""),
+        ep ? h("div", { class: "lfx-plus-meta" }, [h("span", { class: "lfx-plus-meta__text" }, meta)]) : metaLine(item)
+      ]));
+    }
+    return card3;
+  }
+
   // src/js/features/plus/title.js
+  var ROOT_ID7 = "lfx-plus-title";
+  var TRAILER_ID = "lfx-plus-trailer";
+  var ON_CLASS5 = "lfx-plus-title-on";
+  var TICKS_PER_MIN3 = 6e8;
+  var svg6 = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
+  var ICON_PLAY3 = svg6('<path d="M7 4.5v15l12-7.5z"/>');
+  var ICON_PLUS3 = svg6('<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>');
+  var ICON_CHECK3 = svg6('<path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z"/>');
+  var ICON_TRAILER = svg6('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4 1.5 6 3.5-6 3.5z"/>');
+  var ICON_CHEVRON = svg6('<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/>');
+  var ICON_CLOSE = svg6('<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/>');
+  var state8 = null;
+  var gen = 0;
+  var routeId = (route) => {
+    const r = parseLfxRoute(route);
+    return r.kind === "title" ? r.id : null;
+  };
+  var stalenessOf = (g) => () => !state8 || state8.g !== g;
+  function closeTrailer() {
+    const el = document.getElementById(TRAILER_ID);
+    if (!el) return;
+    const v = el.querySelector("video");
+    if (v) {
+      try {
+        v.pause();
+        v.removeAttribute("src");
+        if (v.load) v.load();
+      } catch {
+      }
+    }
+    if (typeof el.__lfxCleanup === "function") el.__lfxCleanup();
+    unmountPoint(el);
+  }
+  function dispose() {
+    gen += 1;
+    const s = state8;
+    state8 = null;
+    closeTrailer();
+    try {
+      closePopover();
+    } catch {
+    }
+    if (s) {
+      if (s.cancelWait) s.cancelWait();
+      for (const fn of s.cleanups.splice(0)) {
+        try {
+          fn && fn();
+        } catch (e) {
+          console.error("[LenzFlix] plus-title cleanup", e);
+        }
+      }
+      if (s.root) s.root.remove();
+    }
+    document.getElementById(ROOT_ID7)?.remove();
+    setPageOn(ON_CLASS5, false);
+  }
+  function circle(mod, label, icon4, onClick) {
+    const b = h("button", { type: "button", class: `lfx-plus-circle lfx-plus-circle--${mod}`, "aria-label": label, title: label });
+    const ico = h("span", { class: "lfx-plus-circle__ico", "aria-hidden": "true" });
+    ico.innerHTML = icon4;
+    b.append(ico);
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      onClick(b);
+    });
+    return b;
+  }
+  function setIcon(btn, icon4) {
+    const ico = btn.querySelector(".lfx-plus-circle__ico");
+    if (ico) ico.innerHTML = icon4;
+  }
+  function setLabel(btn, label) {
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  }
+  var remainingText2 = (it) => {
+    const total = Number(it && it.RunTimeTicks) || 0;
+    const pos = Number(it && it.UserData && it.UserData.PlaybackPositionTicks) || 0;
+    const left = Math.round((total - pos) / TICKS_PER_MIN3);
+    return total && pos && left > 0 ? `Noch ${left} Min.` : "";
+  };
+  function backdropUrl(item) {
+    return imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 80 }) || landscapeImage(item, { maxWidth: 1920, quality: 80 });
+  }
+  function errorBox(message) {
+    return h("div", { class: "lfx-plus-title__error", role: "alert" }, [
+      h("h1", { class: "lfx-plus-title__errtitle" }, "Titel konnte nicht geladen werden"),
+      h("p", null, message || "Bitte sp\xE4ter erneut versuchen."),
+      h("a", { class: "lfx-plus-pill", href: "#/home" }, "Zur Startseite")
+    ]);
+  }
+  function openTrailer(src, returnFocus) {
+    closeTrailer();
+    const overlay = mountPoint(TRAILER_ID, { className: "lfx-plus-trailer" });
+    overlay.replaceChildren();
+    const video = h("video", { class: "lfx-plus-trailer__video", controls: true, autoplay: true, playsinline: true });
+    const close2 = () => {
+      closeTrailer();
+      if (returnFocus && returnFocus.isConnected && returnFocus.focus) {
+        try {
+          returnFocus.focus({ preventScroll: true });
+        } catch {
+        }
+      }
+    };
+    const closeBtn = h("button", { type: "button", class: "lfx-plus-trailer__close", "aria-label": "Trailer schlie\xDFen", title: "Schlie\xDFen", onclick: close2 });
+    const ico = h("span", { "aria-hidden": "true" });
+    ico.innerHTML = ICON_CLOSE;
+    closeBtn.append(ico);
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Trailer");
+    overlay.append(video, closeBtn);
+    const onKey3 = (e) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      close2();
+    };
+    const onBackdrop = (e) => {
+      if (e.target === overlay) close2();
+    };
+    window.addEventListener("keydown", onKey3, true);
+    overlay.addEventListener("click", onBackdrop);
+    overlay.__lfxCleanup = () => {
+      window.removeEventListener("keydown", onKey3, true);
+      overlay.removeEventListener("click", onBackdrop);
+    };
+    video.addEventListener("error", () => {
+      toast("Trailer konnte nicht abgespielt werden");
+      close2();
+    });
+    video.addEventListener("ended", close2);
+    video.src = src;
+    try {
+      const p = video.play && video.play();
+      if (p && p.catch) p.catch(() => {
+      });
+    } catch {
+    }
+    closeBtn.focus();
+  }
+  async function resolveTarget3(id) {
+    const first2 = getStoredItem(id) || await loadItem(id);
+    if (!first2) throw new Error("Titel nicht gefunden");
+    const sel = { target: id, seasonId: null, episodeId: null };
+    if (first2.Type === "Episode") {
+      sel.target = first2.SeriesId || first2.ParentId || id;
+      sel.episodeId = first2.Id;
+      sel.seasonId = first2.SeasonId || first2.ParentId || null;
+    } else if (first2.Type === "Season") {
+      sel.target = first2.SeriesId || first2.ParentId || id;
+      sel.seasonId = first2.Id;
+    }
+    return sel;
+  }
+  function buildDetails(main) {
+    const rows = [];
+    const add2 = (label, value) => {
+      if (!value) return;
+      rows.push(h("div", { class: "lfx-plus-details__row" }, [h("dt", null, label), h("dd", null, value)]));
+    };
+    const runtime = main.Type === "Series" ? "" : formatRuntime(main.RunTimeTicks);
+    add2("Laufzeit", runtime);
+    if (main.Type === "Series" && main.ChildCount) add2("Staffeln", String(main.ChildCount));
+    add2("Erscheinungsjahr", main.ProductionYear ? String(main.ProductionYear) : "");
+    add2("Altersfreigabe", ratingText(main.OfficialRating));
+    add2("Genres", (main.Genres || []).join(", "));
+    add2("Studio", (main.Studios || []).map((s) => s.Name).filter(Boolean).slice(0, 4).join(", "));
+    add2("Regie", peopleOf(main, "Director").map((p) => p.Name).slice(0, 4).join(", "));
+    add2("Besetzung", peopleOf(main, "Actor").map((p) => p.Name).slice(0, 12).join(", "));
+    const streams = main.MediaSources && main.MediaSources[0] && main.MediaSources[0].MediaStreams || [];
+    const langs = (type) => [...new Set(streams.filter((s) => s.Type === type).map((s) => s.DisplayLanguage || s.Language).filter(Boolean))];
+    add2("Audio", langs("Audio").join(", "));
+    add2("Untertitel", langs("Subtitle").join(", "));
+    const left = h("div", { class: "lfx-plus-details__main" }, [
+      h("h2", { class: "lfx-plus-details__title" }, main.Name || ""),
+      main.Taglines && main.Taglines[0] ? h("p", { class: "lfx-plus-details__tagline" }, main.Taglines[0]) : null,
+      main.Overview ? h("p", { class: "lfx-plus-details__text" }, main.Overview) : null
+    ]);
+    return h("div", { class: "lfx-plus-details" }, [left, h("dl", { class: "lfx-plus-details__list" }, rows)]);
+  }
+  function episodeCard(ep, selected, onPlay) {
+    const img = imageUrl(ep, { type: "Primary", maxWidth: 640, quality: 85 }) || (landscapeFor(ep, 640) || {}).url || null;
+    const p = progressPercent(ep);
+    const played = ep.UserData && ep.UserData.Played === true;
+    const mins = formatRuntime(ep.RunTimeTicks);
+    const media = h("span", { class: "lfx-plus-ep__media" }, [
+      img ? h("img", { class: "lfx-plus-ep__img", src: img, alt: "", loading: "lazy", decoding: "async" }) : null,
+      played ? h("span", { class: "lfx-plus-ep__seen", "aria-label": "Gesehen", title: "Gesehen" }) : null,
+      p > 0 ? h("span", { class: "lfx-plus-progress lfx-plus-ep__progress" }, [h("span", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })]) : null
+    ]);
+    const num = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
+    const btn = h("button", {
+      type: "button",
+      class: `lfx-plus-ep${selected ? " is-selected" : ""}`,
+      dataset: { id: ep.Id },
+      "aria-label": `${num}${ep.Name || ""} abspielen`,
+      onclick: () => onPlay(ep)
+    }, [
+      media,
+      h("span", { class: "lfx-plus-ep__title" }, `${num}${ep.Name || ""}`),
+      mins ? h("span", { class: "lfx-plus-ep__dur" }, mins) : null,
+      ep.Overview ? h("span", { class: "lfx-plus-ep__text" }, ep.Overview) : null
+    ]);
+    return btn;
+  }
+  async function load2(g) {
+    const stale = stalenessOf(g);
+    const s = state8;
+    const root4 = s.root;
+    let sel;
+    let main;
+    try {
+      sel = await resolveTarget3(s.id);
+      if (stale()) return;
+      main = await loadItem(sel.target);
+      if (!main) throw new Error("Titel nicht gefunden");
+    } catch (e) {
+      if (stale()) return;
+      root4.replaceChildren(errorBox(e && e.message ? "Der Server hat nicht geantwortet." : ""));
+      root4.classList.add("is-error");
+      return;
+    }
+    if (stale()) return;
+    const isSeries = main.Type === "Series";
+    const isBox = main.Type === "BoxSet";
+    const c = { main, seasons: [], seasonId: sel.seasonId, selectedEp: sel.episodeId, focusEp: null, nextUp: null, trailerSrc: null };
+    const bg = backdropUrl(main);
+    const backdrop = h("div", { class: "lfx-plus-title__backdrop", "aria-hidden": "true" }, [
+      bg ? h("img", { class: "lfx-plus-title__bgimg", src: bg, alt: "", decoding: "async" }) : null,
+      h("div", { class: "lfx-plus-title__shade" }),
+      h("div", { class: "lfx-plus-title__dim" })
+    ]);
+    const logo = logoImage(main, { maxWidth: 720 });
+    const name = h("h1", { class: `lfx-plus-title__name${logo ? " has-logo" : ""}` }, logo ? [h("img", { class: "lfx-plus-title__logo", src: logo, alt: main.Name || "" })] : main.Name || "");
+    const progressSlot = h("div", { class: "lfx-plus-title__progress", hidden: true });
+    const playLabel2 = h("span", { class: "lfx-plus-pill__label" }, "Abspielen");
+    const playIco = h("span", { class: "lfx-plus-pill__ico", "aria-hidden": "true" });
+    playIco.innerHTML = ICON_PLAY3;
+    const playBtn = h("button", { type: "button", class: "lfx-plus-pill lfx-plus-pill--primary" }, [playIco, playLabel2]);
+    const code = episodeCode;
+    const target = () => {
+      if (!isSeries) return { item: main, resume: hasResume(main), label: hasResume(main) ? "Fortsetzen" : "Abspielen" };
+      const ep = c.focusEp || c.nextUp;
+      if (!ep) return { item: null, resume: false, label: "Abspielen" };
+      const cd = code(ep);
+      const resume = hasResume(ep);
+      if (resume) return { item: ep, resume, label: cd ? `${cd} fortsetzen` : "Fortsetzen" };
+      return { item: ep, resume, label: c.focusEp && cd ? `${cd} abspielen` : "Abspielen" };
+    };
+    const paintPlay2 = () => {
+      playLabel2.textContent = target().label;
+      const it = isSeries ? c.focusEp || c.nextUp : main;
+      const p = it ? progressPercent(it) : 0;
+      progressSlot.replaceChildren();
+      progressSlot.hidden = !(p > 0);
+      if (p > 0) {
+        const left = remainingText2(it);
+        if (isSeries) {
+          const cd = code(it);
+          progressSlot.append(h("div", { class: "lfx-plus-title__eptitle" }, [cd, it.Name].filter(Boolean).join(" ")));
+        }
+        progressSlot.append(h("div", { class: "lfx-plus-title__progressrow" }, [
+          h("span", { class: "lfx-plus-progress" }, [h("span", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })]),
+          left ? h("span", { class: "lfx-plus-title__left" }, left) : null
+        ]));
+      }
+    };
+    playBtn.addEventListener("click", async () => {
+      let t = target();
+      if (isSeries && !t.item) {
+        try {
+          const eps = c.seasons.length ? await loadEpisodes2(main.Id, pickInitialSeason(c.seasons, null)) : [];
+          t = { item: eps[0] || null, resume: false };
+        } catch {
+          t = { item: null };
+        }
+        if (stale()) return;
+      }
+      if (t.item) await play(t.item, { resume: Boolean(t.resume) });
+    });
+    const circles = [];
+    const favBtn = circle("fav", "Zu Meine Liste hinzuf\xFCgen", ICON_PLUS3, async () => {
+      favBtn.disabled = true;
+      const on = await toggleFavorite2(main);
+      favBtn.disabled = false;
+      if (!stale()) paintFav(on);
+    });
+    const paintFav = (on) => {
+      setIcon(favBtn, on ? ICON_CHECK3 : ICON_PLUS3);
+      setLabel(favBtn, on ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen");
+      favBtn.classList.toggle("is-on", on);
+      favBtn.setAttribute("aria-pressed", String(on));
+    };
+    paintFav(Boolean(main.UserData && main.UserData.IsFavorite));
+    circles.push(favBtn);
+    const trailerBtn = circle("trailer", "Trailer ansehen", ICON_TRAILER, (b) => {
+      if (c.trailerSrc) openTrailer(c.trailerSrc, b);
+    });
+    trailerBtn.hidden = true;
+    circles.push(trailerBtn);
+    const dlBtn = circle("dl", isSeries ? "Episoden herunterladen" : "Herunterladen", ICON_DOWNLOAD, (b) => {
+      startDownloadFor(main, { anchorEl: b });
+    });
+    dlBtn.hidden = true;
+    circles.push(dlBtn);
+    const seenBtn = circle("seen", "Als gesehen markieren", ICON_EYE, async (b) => {
+      b.disabled = true;
+      const on = await togglePlayed2(main, { anchorEl: b });
+      b.disabled = false;
+      if (stale()) return;
+      paintSeen(on);
+      if (isSeries) refreshEpisodes();
+    });
+    const paintSeen = (on) => {
+      setIcon(seenBtn, on ? ICON_EYE_CHECK : ICON_EYE);
+      setLabel(seenBtn, on ? "Als ungesehen markieren" : "Als gesehen markieren");
+      seenBtn.classList.toggle("is-on", on);
+      seenBtn.setAttribute("aria-pressed", String(on));
+    };
+    paintSeen(Boolean(main.UserData && main.UserData.Played));
+    circles.push(seenBtn);
+    const moreBtn = circle("more", "Mehr", ICON_MORE, (b) => {
+      openTitleMenu(main, b);
+    });
+    moreBtn.setAttribute("aria-haspopup", "menu");
+    circles.push(moreBtn);
+    const hero = h("section", { class: "lfx-plus-title__hero", "aria-label": main.Name || "Titel" }, [
+      name,
+      metaLine(main, { genres: 3 }),
+      main.Overview ? h("p", { class: "lfx-plus-title__overview" }, main.Overview) : null,
+      progressSlot,
+      h("div", { class: "lfx-plus-title__buttons" }, [playBtn, ...circles])
+    ]);
+    const panels = [];
+    const addTab = (id, label, panel) => panels.push({ id, label, panel });
+    const episodesBody = h("div", { class: "lfx-plus-grid lfx-plus-grid--eps", role: "list" });
+    const seasonBar = h("div", { class: "lfx-plus-title__seasonbar" });
+    if (isSeries) addTab("eps", "Folgen", h("div", { class: "lfx-plus-panel" }, [seasonBar, episodesBody]));
+    const listBody = h("div", { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" });
+    if (isBox) addTab("items", "Titel", h("div", { class: "lfx-plus-panel" }, [listBody]));
+    else addTab("similar", "Empfehlungen", h("div", { class: "lfx-plus-panel" }, [listBody]));
+    addTab("details", "Details", h("div", { class: "lfx-plus-panel" }, [buildDetails(main)]));
+    const tablist = h("div", { class: "lfx-plus-title__tabs", role: "tablist", "aria-label": "Bereiche" });
+    const panelWrap = h("div", { class: "lfx-plus-title__panels" });
+    const tabBtns = /* @__PURE__ */ new Map();
+    const select = (id) => {
+      for (const t of panels) {
+        const on = t.id === id;
+        tabBtns.get(t.id).classList.toggle("is-active", on);
+        tabBtns.get(t.id).setAttribute("aria-selected", String(on));
+        tabBtns.get(t.id).tabIndex = on ? 0 : -1;
+        t.panel.hidden = !on;
+      }
+    };
+    for (const t of panels) {
+      const b = h("button", { type: "button", class: "lfx-plus-title__tab", role: "tab", id: `lfx-plus-tab-${t.id}`, onclick: () => select(t.id) }, t.label);
+      t.panel.setAttribute("role", "tabpanel");
+      t.panel.setAttribute("aria-labelledby", `lfx-plus-tab-${t.id}`);
+      tabBtns.set(t.id, b);
+      tablist.append(b);
+      panelWrap.append(t.panel);
+    }
+    tablist.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const ids = panels.map((t) => t.id);
+      const cur2 = ids.findIndex((i) => tabBtns.get(i).classList.contains("is-active"));
+      const next = ids[(cur2 + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
+      select(next);
+      tabBtns.get(next).focus();
+    });
+    select(panels[0].id);
+    const footer = h("footer", { class: "lfx-plus-title__footer" });
+    root4.classList.remove("is-loading");
+    root4.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
+    paintPlay2();
+    let raf = 0;
+    const onScroll5 = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const vh = window.innerHeight || 800;
+        const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
+        root4.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
+        tablist.classList.toggle("is-stuck", tablist.getBoundingClientRect().top <= 67);
+      });
+    };
+    window.addEventListener("scroll", onScroll5, { passive: true });
+    s.cleanups.push(() => {
+      window.removeEventListener("scroll", onScroll5);
+      if (raf) cancelAnimationFrame(raf);
+    });
+    const playEpisode = (ep) => play(ep, { resume: hasResume(ep) });
+    async function showSeason2() {
+      const sid = c.seasonId;
+      if (!sid) return;
+      let eps;
+      try {
+        eps = await loadEpisodes2(main.Id, sid);
+      } catch {
+        if (!stale() && c.seasonId === sid) episodesBody.replaceChildren(h("p", { class: "lfx-plus-empty" }, "Folgen konnten nicht geladen werden."));
+        return;
+      }
+      if (stale() || c.seasonId !== sid) return;
+      c.episodes = eps;
+      if (c.selectedEp && !c.focusEp) {
+        const hit = eps.find((e) => e.Id === c.selectedEp);
+        if (hit) {
+          c.focusEp = hit;
+          paintPlay2();
+        }
+      }
+      episodesBody.replaceChildren(...eps.map((e) => {
+        const card3 = episodeCard(e, e.Id === c.selectedEp, playEpisode);
+        card3.setAttribute("role", "listitem");
+        return card3;
+      }));
+      if (!eps.length) episodesBody.append(h("p", { class: "lfx-plus-empty" }, "Keine Folgen vorhanden."));
+    }
+    const refreshEpisodes = () => {
+      showSeason2();
+    };
+    function paintSeasonBar() {
+      seasonBar.replaceChildren();
+      const cur2 = c.seasons.find((x) => x.Id === c.seasonId);
+      if (!cur2) return;
+      if (c.seasons.length < 2) {
+        seasonBar.append(h("span", { class: "lfx-plus-season lfx-plus-season--static" }, cur2.Name || "Staffel 1"));
+        return;
+      }
+      const label = h("span", null, cur2.Name || "Staffel");
+      const ico = h("span", { class: "lfx-plus-season__chev", "aria-hidden": "true" });
+      ico.innerHTML = ICON_CHEVRON;
+      const btn = h("button", { type: "button", class: "lfx-plus-season", "aria-haspopup": "menu" }, [label, ico]);
+      btn.addEventListener("click", () => {
+        openPopover(btn, {
+          label: "Staffel w\xE4hlen",
+          align: "start",
+          className: "lfx-plus-season-menu",
+          items: c.seasons.map((x) => ({
+            key: x.Id,
+            label: x.Name || "Staffel",
+            className: x.Id === c.seasonId ? "is-active" : "",
+            onClick: () => {
+              closePopover();
+              if (x.Id === c.seasonId) return;
+              c.seasonId = x.Id;
+              c.selectedEp = null;
+              paintSeasonBar();
+              showSeason2();
+            }
+          }))
+        });
+      });
+      seasonBar.append(btn);
+    }
+    const tasks = [];
+    if (isSeries) {
+      tasks.push(loadSeasons(main.Id).then(async (list) => {
+        if (stale()) return;
+        c.seasons = list;
+        c.seasonId = pickInitialSeason(list, c.seasonId);
+        paintSeasonBar();
+        if (sel.episodeId) select("eps");
+        await showSeason2();
+      }).catch(() => {
+      }));
+      tasks.push(loadNextUp(main.Id).then((ep) => {
+        if (stale()) return;
+        c.nextUp = ep;
+        paintPlay2();
+      }).catch(() => {
+      }));
+    }
+    const fillCards = (items, emptyText) => {
+      if (stale()) return;
+      if (!items.length) {
+        listBody.replaceChildren(h("p", { class: "lfx-plus-empty" }, emptyText));
+        return;
+      }
+      listBody.replaceChildren(...items.map((it) => gridCard(it)));
+    };
+    if (isBox) tasks.push(loadCollection(main.Id).then((l) => fillCards(l, "Diese Sammlung ist leer.")).catch(() => fillCards([], "Titel konnten nicht geladen werden.")));
+    else tasks.push(loadSimilar(main.Id).then((l) => fillCards(l.filter((i) => i.Id !== main.Id), "Keine Empfehlungen verf\xFCgbar.")).catch(() => fillCards([], "Keine Empfehlungen verf\xFCgbar.")));
+    (async () => {
+      let src;
+      try {
+        const t = await loadLocalTrailer(main);
+        src = t ? trailerUrl(t.Id) : directRemoteTrailerUrl(main);
+      } catch {
+        src = directRemoteTrailerUrl(main);
+      }
+      if (stale() || !src) return;
+      c.trailerSrc = src;
+      trailerBtn.hidden = false;
+    })();
+    Promise.resolve(canDownload(main)).then((ok) => {
+      if (!stale() && ok) dlBtn.hidden = false;
+    }, () => {
+    });
+    s.cleanups.push(onItemsChanged(({ removed = [], updated = [] } = {}) => {
+      if (stale()) return;
+      if (removed.includes(main.Id) || removed.includes(s.id)) {
+        location.hash = "#/home";
+      } else if (updated.includes(main.Id)) {
+        begin(s.id, { keepScroll: true });
+      }
+    }));
+    await Promise.all(tasks);
+  }
+  function begin(id, { keepScroll = false } = {}) {
+    dispose();
+    const g = gen;
+    state8 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state8;
+    s.cancelWait = whenHomeTab((tab) => {
+      if (state8 !== s) return;
+      const root4 = h("div", { id: ROOT_ID7, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
+        h("div", { class: "lfx-plus-title__skeleton" })
+      ]);
+      s.root = root4;
+      tab.prepend(root4);
+      setPageOn(ON_CLASS5, true);
+      if (!keepScroll) scrollTop();
+      load2(g).then(() => {
+        if (state8 === s) root4.removeAttribute("aria-busy");
+      }).catch((e) => console.error("[LenzFlix] plus-title", e));
+    });
+  }
   var title_default = {
     name: "plus-title",
-    match: () => false,
-    mount() {
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeId(route) != null,
+    mount(route) {
+      const id = routeId(route);
+      if (id) begin(id);
     },
-    unmount() {
-    }
+    update(route) {
+      const id = routeId(route);
+      if (!id) return;
+      if (state8 && state8.id === id && state8.root && state8.root.isConnected) return;
+      begin(id);
+    },
+    unmount: dispose
   };
 
   // src/js/features/plus/browse.js
+  var ROOT_ID8 = "lfx-plus-browse";
+  var ON_CLASS6 = "lfx-plus-browse-on";
+  var PAGE = 40;
+  var state9 = null;
+  var routeOf = (route) => {
+    const r = parseLfxRoute(route);
+    return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
+  };
+  var asItems5 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  function dispose2() {
+    const s = state9;
+    state9 = null;
+    if (s) {
+      if (s.cancelWait) s.cancelWait();
+      for (const fn of s.cleanups.splice(0)) {
+        try {
+          fn && fn();
+        } catch (e) {
+          console.error("[LenzFlix] plus-browse cleanup", e);
+        }
+      }
+      if (s.root) s.root.remove();
+    }
+    document.getElementById(ROOT_ID8)?.remove();
+    setPageOn(ON_CLASS6, false);
+  }
+  function paintChips(s) {
+    for (const chip of s.chips.querySelectorAll(".lfx-plus-chip")) {
+      const on = (chip.dataset.genre || "") === (s.genreId || "");
+      chip.classList.toggle("is-active", on);
+      if (on) chip.setAttribute("aria-current", "true");
+      else chip.removeAttribute("aria-current");
+    }
+  }
+  function reload(s) {
+    s.seq += 1;
+    s.items = [];
+    s.total = null;
+    s.done = false;
+    s.loading = false;
+    s.grid.replaceChildren();
+    s.status.replaceChildren();
+    paintChips(s);
+    loadMore(s);
+  }
+  async function loadMore(s) {
+    if (state9 !== s || s.loading || s.done) return;
+    const seq3 = s.seq;
+    s.loading = true;
+    s.root.setAttribute("aria-busy", "true");
+    const stale = () => state9 !== s || s.seq !== seq3;
+    try {
+      const res = await getItems({
+        ...BASE_PARAMS,
+        ParentId: s.libId,
+        IncludeItemTypes: s.types,
+        Recursive: true,
+        SortBy: "SortName",
+        SortOrder: "Ascending",
+        GenreIds: s.genreId || void 0,
+        StartIndex: s.items.length,
+        Limit: PAGE
+      });
+      if (stale()) return;
+      const items = asItems5(res);
+      putItems(items);
+      s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
+      s.items.push(...items);
+      if (s.info === null) {
+        s.info = await getNewContentInfo().catch(() => false);
+        if (stale()) return;
+      }
+      for (const it of items) s.grid.append(gridCard(it, { badge: s.info ? plusBadge(it, s.info) : null }));
+      s.done = items.length < PAGE || s.total != null && s.items.length >= s.total;
+      if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-plus-empty" }, "Keine Titel gefunden."));
+    } catch (e) {
+      if (stale()) return;
+      console.warn("[LenzFlix] plus-browse konnte nicht laden", e && e.message);
+      s.done = true;
+      s.status.replaceChildren(
+        h("p", { class: "lfx-plus-empty" }, "Titel konnten nicht geladen werden."),
+        h("button", { type: "button", class: "lfx-plus-pill", onclick: () => {
+          s.done = false;
+          s.status.replaceChildren();
+          loadMore(s);
+        } }, "Erneut versuchen")
+      );
+    } finally {
+      if (!stale()) {
+        s.loading = false;
+        s.root.removeAttribute("aria-busy");
+      }
+    }
+  }
+  async function build4(tab, s) {
+    const stale = () => state9 !== s;
+    let lib = null;
+    try {
+      lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
+    } catch {
+    }
+    if (stale()) return;
+    s.types = hubTypes(lib).items;
+    const title = h("h1", { class: "lfx-plus-browse__title" }, lib ? lib.name : "Bibliothek");
+    const chips = h("nav", { class: "lfx-plus-chips", "aria-label": "Genres" });
+    const grid = h("div", { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" });
+    const status = h("div", { class: "lfx-plus-browse__status" });
+    const sentinel = h("div", { class: "lfx-plus-browse__sentinel", "aria-hidden": "true" });
+    const root4 = h("div", { id: ROOT_ID8, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid, status, sentinel]);
+    Object.assign(s, { root: root4, chips, grid, status });
+    tab.prepend(root4);
+    setPageOn(ON_CLASS6, true);
+    scrollTop();
+    const addChip = (label, genreId) => {
+      chips.append(h("a", {
+        class: "lfx-plus-chip",
+        href: browseHref(s.libId, genreId),
+        dataset: { genre: genreId || "" }
+      }, label));
+    };
+    addChip("Alle", null);
+    if (typeof IntersectionObserver === "function") {
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) loadMore(s);
+      }, { rootMargin: "800px 0px" });
+      io.observe(sentinel);
+      s.cleanups.push(() => io.disconnect());
+    } else {
+      const onScroll5 = () => {
+        const r = sentinel.getBoundingClientRect();
+        if (r.top < (window.innerHeight || 800) + 800) loadMore(s);
+      };
+      window.addEventListener("scroll", onScroll5, { passive: true });
+      s.cleanups.push(() => window.removeEventListener("scroll", onScroll5));
+    }
+    reload(s);
+    try {
+      const genres = asItems5(await getJson("/Genres", {
+        userId: getUserId(),
+        ParentId: s.libId,
+        IncludeItemTypes: s.types,
+        Recursive: true,
+        SortBy: "SortName"
+      })).filter((g) => g && g.Id && g.Name);
+      if (stale()) return;
+      for (const g of genres) addChip(g.Name, g.Id);
+      paintChips(s);
+    } catch {
+    }
+  }
+  function begin2(r) {
+    dispose2();
+    const s = {
+      libId: r.lib,
+      genreId: r.genre || null,
+      seq: 0,
+      items: [],
+      total: null,
+      done: false,
+      loading: false,
+      info: null,
+      cleanups: [],
+      cancelWait: null,
+      root: null
+    };
+    state9 = s;
+    s.cancelWait = whenHomeTab((tab) => {
+      if (state9 === s) build4(tab, s);
+    });
+  }
   var browse_default = {
     name: "plus-browse",
-    match: () => false,
-    mount() {
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeOf(route) != null,
+    mount(route) {
+      const r = routeOf(route);
+      if (r) begin2(r);
     },
-    unmount() {
-    }
+    update(route) {
+      const r = routeOf(route);
+      if (!r) return;
+      if (!state9 || state9.libId !== r.lib || !state9.root || !state9.root.isConnected) {
+        begin2(r);
+        return;
+      }
+      if ((r.genre || null) !== state9.genreId) {
+        state9.genreId = r.genre || null;
+        reload(state9);
+      }
+    },
+    unmount: dispose2
   };
 
+  // src/js/shared/search.js
+  var asItems6 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var MIN_LEN = 2;
+  async function searchItems(q, { limit = 40, signal } = {}) {
+    const out = { movies: [], series: [], episodes: [], people: [] };
+    const term = String(q == null ? "" : q).trim();
+    if (term.length < MIN_LEN) return out;
+    const userId = getUserId();
+    const get = (path, params) => getJson(path, { userId, ...params }, { signal }).then(asItems6);
+    const soft = (e) => {
+      if (e && e.name === "AbortError") throw e;
+      return [];
+    };
+    const [titles, episodes, people] = await Promise.all([
+      get("/Items", { ...BASE_PARAMS, searchTerm: term, IncludeItemTypes: "Movie,Series", Recursive: true, Limit: limit }),
+      get("/Items", { ...BASE_PARAMS, searchTerm: term, IncludeItemTypes: "Episode", Recursive: true, Limit: 12 }).catch(soft),
+      get("/Persons", { searchTerm: term, Limit: 8, Fields: "PrimaryImageAspectRatio", ImageTypeLimit: 1 }).catch(soft)
+    ]);
+    out.movies = titles.filter((i) => i.Type === "Movie");
+    out.series = titles.filter((i) => i.Type === "Series");
+    out.episodes = episodes;
+    out.people = people;
+    return out;
+  }
+  async function tileFor(genre, parentId) {
+    const own = genre.ImageTags && (genre.ImageTags.Thumb ? "Thumb" : genre.ImageTags.Primary ? "Primary" : null);
+    if (own) return imageUrlFor(genre.Id, { type: own, tag: genre.ImageTags[own], maxWidth: 640 });
+    const top = asItems6(await getItems({
+      ParentId: parentId || void 0,
+      GenreIds: genre.Id,
+      IncludeItemTypes: "Movie,Series",
+      Recursive: true,
+      SortBy: "CommunityRating",
+      SortOrder: "Descending",
+      Limit: 5,
+      Fields: "BackdropImageTags",
+      ImageTypeLimit: 1,
+      EnableImageTypes: "Backdrop",
+      EnableUserData: false
+    }));
+    const hit = top.find((i) => i.BackdropImageTags && i.BackdropImageTags.length);
+    return hit ? imageUrlFor(hit.Id, { type: "Backdrop", tag: hit.BackdropImageTags[0], maxWidth: 640 }) : null;
+  }
+  async function getGenreTiles({ parentId, limit = 12 } = {}) {
+    const res = await getJson("/Genres", {
+      userId: getUserId(),
+      ParentId: parentId || void 0,
+      IncludeItemTypes: "Movie,Series",
+      Recursive: true,
+      SortBy: "SortName",
+      Fields: "PrimaryImageAspectRatio"
+    });
+    const genres = asItems6(res).filter((g) => g && g.Id && g.Name).slice(0, limit);
+    return Promise.all(genres.map(async (g) => {
+      let imageUrl2;
+      try {
+        imageUrl2 = await cached(`genretile:${parentId || ""}:${g.Id}`, () => tileFor(g, parentId), 10 * 60 * 1e3);
+      } catch {
+        imageUrl2 = null;
+      }
+      return { id: g.Id, name: g.Name, imageUrl: imageUrl2 };
+    }));
+  }
+
   // src/js/features/plus/search.js
+  var ROOT_ID9 = "lfx-plus-search";
+  var ON_CLASS7 = "lfx-plus-search-on";
+  var DEBOUNCE_MS = 300;
+  var MIN_LEN2 = 2;
+  var LUPE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M15.5 14h-.8l-.3-.3A6.5 6.5 0 1 0 14 15.5l.3.3v.8l5 5 1.5-1.5zm-6 0a4.500 4.500 0 1 1 0-9 4.500 4.500 0 0 1 0 9z"/></svg>';
+  var X = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg>';
+  var state10 = null;
+  var routeQ = (route) => {
+    const r = parseLfxRoute(route);
+    return r.kind === "search" ? r.q || "" : null;
+  };
+  function dispose3() {
+    const s = state10;
+    state10 = null;
+    if (s) {
+      if (s.cancelWait) s.cancelWait();
+      clearTimeout(s.timer);
+      if (s.abort) s.abort.abort();
+      for (const fn of s.cleanups.splice(0)) {
+        try {
+          fn && fn();
+        } catch (e) {
+          console.error("[LenzFlix] plus-search cleanup", e);
+        }
+      }
+      if (s.root) s.root.remove();
+    }
+    document.getElementById(ROOT_ID9)?.remove();
+    setPageOn(ON_CLASS7, false);
+  }
+  function tile(href, label, imageUrl2) {
+    return h("a", { class: "lfx-plus-tile", href }, [
+      imageUrl2 ? h("img", { class: "lfx-plus-tile__img", src: imageUrl2, alt: "", loading: "lazy", decoding: "async" }) : null,
+      h("span", { class: `lfx-plus-tile__name${imageUrl2 ? " has-img" : ""}` }, label)
+    ]);
+  }
+  function section(title, body, mod = "") {
+    return h("section", { class: `lfx-plus-section ${mod}`.trim() }, [h("h2", { class: "lfx-plus-section__title" }, title), body]);
+  }
+  async function genreLib() {
+    try {
+      const libs = await getLibraries();
+      return libs.find((l) => l.collectionType === "movies") || libs.find((l) => l.collectionType === "tvshows") || libs.find((l) => l.hubCapable) || null;
+    } catch {
+      return null;
+    }
+  }
+  async function renderEmpty(s, seq3) {
+    const stale = () => state10 !== s || s.seq !== seq3;
+    s.results.replaceChildren();
+    const [lib, genres, colls] = await Promise.all([
+      genreLib(),
+      getGenreTiles({ limit: 16 }).catch(() => []),
+      getCollections().catch(() => [])
+    ]);
+    if (stale()) return;
+    const parts = [];
+    if (genres.length) {
+      parts.push(section("Genres", h("div", { class: "lfx-plus-tilerow" }, genres.map((g) => tile(
+        lib ? browseHref(lib.id, g.id) : searchHref(g.name),
+        g.name,
+        g.imageUrl
+      )))));
+    }
+    if (colls.length) {
+      parts.push(section("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl)))));
+    }
+    s.results.replaceChildren(...parts);
+  }
+  function personCard(p) {
+    const url = imageUrl(p, { type: "Primary", maxWidth: 240, quality: 85 });
+    return h("a", { class: "lfx-plus-person", href: `#/details?id=${encodeURIComponent(p.Id)}` }, [
+      h("span", { class: "lfx-plus-person__img" }, url ? [h("img", { src: url, alt: "", loading: "lazy", decoding: "async" })] : []),
+      h("span", { class: "lfx-plus-person__name" }, p.Name || "")
+    ]);
+  }
+  async function runSearch(s, term) {
+    if (s.abort) s.abort.abort();
+    const seq3 = ++s.seq;
+    s.term = term;
+    s.syncUi();
+    if (term.length < MIN_LEN2) {
+      s.abort = null;
+      s.root.removeAttribute("aria-busy");
+      await renderEmpty(s, seq3);
+      return;
+    }
+    const ctl = new AbortController();
+    s.abort = ctl;
+    s.root.setAttribute("aria-busy", "true");
+    const stale = () => state10 !== s || s.seq !== seq3;
+    try {
+      const [res, info] = await Promise.all([
+        searchItems(term, { signal: ctl.signal }),
+        getNewContentInfo().catch(() => null)
+      ]);
+      if (stale()) return;
+      const titles = [...res.movies, ...res.series];
+      putItems([...titles, ...res.episodes]);
+      const parts = [];
+      if (titles.length) {
+        parts.push(section("Filme und Serien", h(
+          "div",
+          { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" },
+          titles.map((it) => gridCard(it, { text: true, badge: info ? plusBadge(it, info) : null }))
+        )));
+      }
+      if (res.episodes.length) {
+        parts.push(section("Folgen", h(
+          "div",
+          { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" },
+          res.episodes.map((it) => gridCard(it, { text: true }))
+        ), "lfx-plus-section--small"));
+      }
+      if (res.people.length) {
+        parts.push(section("Personen", h("div", { class: "lfx-plus-people" }, res.people.map(personCard)), "lfx-plus-section--small"));
+      }
+      if (!parts.length) parts.push(h("p", { class: "lfx-plus-empty" }, `Keine Ergebnisse f\xFCr \u201E${term}\u201C.`));
+      s.results.replaceChildren(...parts);
+      s.root.removeAttribute("aria-busy");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      if (stale()) return;
+      console.warn("[LenzFlix] plus-search fehlgeschlagen", e && e.message);
+      s.results.replaceChildren(h("p", { class: "lfx-plus-empty" }, "Die Suche ist fehlgeschlagen."));
+      s.root.removeAttribute("aria-busy");
+    }
+  }
+  function build5(tab, s, q) {
+    const input = h("input", {
+      type: "search",
+      class: "lfx-plus-search__input",
+      placeholder: "Titel, Charakter oder Genre suchen",
+      "aria-label": "Suche",
+      autocomplete: "off",
+      spellcheck: "false",
+      value: q
+    });
+    input.value = q;
+    const icon4 = h("span", { class: "lfx-plus-search__icon", "aria-hidden": "true" });
+    icon4.innerHTML = LUPE;
+    const clear = h("button", { type: "button", class: "lfx-plus-search__clear", "aria-label": "Eingabe l\xF6schen", title: "L\xF6schen", hidden: !q }, []);
+    clear.innerHTML = X;
+    const results = h("div", { class: "lfx-plus-search__results", "aria-live": "polite" });
+    const field = h("div", { class: "lfx-plus-search__field" }, [icon4, input, clear]);
+    const root4 = h("div", { id: ROOT_ID9, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
+    Object.assign(s, { root: root4, input, results });
+    s.syncUi = () => {
+      clear.hidden = !input.value;
+    };
+    tab.prepend(root4);
+    setPageOn(ON_CLASS7, true);
+    const writeHash = (term) => {
+      try {
+        history.replaceState(history.state, "", searchHref(term));
+      } catch {
+      }
+    };
+    const onInput = () => {
+      clearTimeout(s.timer);
+      s.syncUi();
+      s.timer = setTimeout(() => {
+        const term = input.value.trim();
+        writeHash(term);
+        runSearch(s, term);
+      }, DEBOUNCE_MS);
+    };
+    const onClear = () => {
+      input.value = "";
+      clearTimeout(s.timer);
+      writeHash("");
+      runSearch(s, "");
+      input.focus();
+    };
+    const onKey3 = (e) => {
+      if (e.key === "Enter") {
+        clearTimeout(s.timer);
+        const term = input.value.trim();
+        writeHash(term);
+        runSearch(s, term);
+      }
+    };
+    input.addEventListener("input", onInput);
+    input.addEventListener("keydown", onKey3);
+    clear.addEventListener("click", onClear);
+    s.cleanups.push(() => {
+      input.removeEventListener("input", onInput);
+      input.removeEventListener("keydown", onKey3);
+      clear.removeEventListener("click", onClear);
+    });
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+    }
+    runSearch(s, q.trim());
+  }
+  function begin3(q) {
+    dispose3();
+    const s = { root: null, input: null, results: null, term: null, timer: null, abort: null, seq: 0, cleanups: [], cancelWait: null, syncUi: () => {
+    } };
+    state10 = s;
+    s.cancelWait = whenHomeTab((tab) => {
+      if (state10 === s) build5(tab, s, q);
+    });
+  }
   var search_default = {
     name: "plus-search",
-    match: () => false,
-    mount() {
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeQ(route) != null,
+    mount(route) {
+      begin3(routeQ(route) || "");
     },
-    unmount() {
-    }
+    update(route) {
+      const q = routeQ(route);
+      if (q == null) return;
+      if (!state10 || !state10.root || !state10.root.isConnected) {
+        begin3(q);
+        return;
+      }
+      if (q.trim() !== (state10.term || "")) {
+        state10.input.value = q;
+        clearTimeout(state10.timer);
+        runSearch(state10, q.trim());
+      }
+      try {
+        state10.input.focus({ preventScroll: true });
+      } catch {
+      }
+    },
+    unmount: dispose3
   };
 
   // src/js/features/plus/index.js
   var plusFeatures = [header_default, switcher_default, home_default2, title_default, browse_default, search_default];
 
+  // src/js/features/prime/search.js
+  var ID6 = "lfx-prime-search";
+  var DEBOUNCE_MS2 = 300;
+  var MAX_CARDS = 8;
+  var MAX_SUGGESTIONS = 5;
+  var MIN_LEN3 = 2;
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var FOCUSABLE2 = "a[href], button:not([disabled]), input:not([disabled])";
+  var cur = null;
+  function searchIcon() {
+    const svg9 = document.createElementNS(SVG_NS, "svg");
+    svg9.setAttribute("viewBox", "0 0 24 24");
+    svg9.setAttribute("aria-hidden", "true");
+    svg9.setAttribute("class", "lfx-prime-search__icon");
+    const p = document.createElementNS(SVG_NS, "path");
+    p.setAttribute("d", "M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z");
+    svg9.append(p);
+    return svg9;
+  }
+  function formatRuntime3(ticks) {
+    const min = Math.round((Number(ticks) || 0) / 6e8);
+    if (!min) return "";
+    return min >= 60 ? `${Math.floor(min / 60)} Std. ${min % 60} Min.` : `${min} Min.`;
+  }
+  function metaOf(item) {
+    const parts = [];
+    if (item.ProductionYear) parts.push(String(item.ProductionYear));
+    if (item.Type === "Movie") {
+      const rt = formatRuntime3(item.RunTimeTicks);
+      if (rt) parts.push(rt);
+    } else if (item.Type === "Series") {
+      parts.push("Serie");
+    }
+    return parts.join(" \xB7 ");
+  }
+  function card2(item, close2) {
+    const url = landscapeImage(item, { maxWidth: 400 });
+    const a = h("a", {
+      class: "lfx-prime-search__card",
+      href: titleHref(item.Id),
+      dataset: { id: item.Id }
+    }, [
+      h("span", { class: "lfx-prime-search__thumb" }, url ? h("img", { src: url, alt: "", loading: "lazy", decoding: "async" }) : null),
+      h("span", { class: "lfx-prime-search__title" }, item.Name || ""),
+      h("span", { class: "lfx-prime-search__meta" }, metaOf(item))
+    ]);
+    a.addEventListener("click", () => close2());
+    return a;
+  }
+  function isPrimeSearchOpen() {
+    return cur !== null;
+  }
+  function closePrimeSearch({ restoreFocus = true } = {}) {
+    const c = cur;
+    if (!c) return;
+    cur = null;
+    clearTimeout(c.timer);
+    if (c.ctrl) c.ctrl.abort();
+    document.removeEventListener("keydown", c.onKeydown, true);
+    window.removeEventListener("hashchange", c.onHash);
+    unmountPoint(c.root);
+    document.documentElement.classList.remove("lfx-prime-search-open");
+    const back = c.returnFocus;
+    if (restoreFocus && back && back.isConnected && typeof back.focus === "function") {
+      try {
+        back.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+  }
+  function openPrimeSearch({ returnFocus } = {}) {
+    if (cur) {
+      cur.input.focus();
+      return;
+    }
+    const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    const root4 = mountPoint(ID6, { className: "lfx-prime-search" });
+    root4.setAttribute("role", "dialog");
+    root4.setAttribute("aria-modal", "true");
+    root4.setAttribute("aria-label", "Suche");
+    const input = h("input", {
+      class: "lfx-prime-search__input",
+      type: "search",
+      placeholder: "Suchen",
+      autocomplete: "off",
+      spellcheck: "false",
+      "aria-label": "Suchen"
+    });
+    const clear = h("button", { type: "button", class: "lfx-prime-search__clear", hidden: true }, "L\xF6schen");
+    const form = h("form", { class: "lfx-prime-search__form", role: "search" }, [searchIcon(), input, clear]);
+    const suggest = h("ul", { class: "lfx-prime-search__suggest", "aria-label": "Vorschl\xE4ge" });
+    const grid = h("div", { class: "lfx-prime-search__grid" });
+    const status = h("p", { class: "lfx-prime-search__status", role: "status" });
+    const panel = h("div", { class: "lfx-prime-search__panel" }, [form, suggest, status, grid]);
+    root4.replaceChildren(panel);
+    const c = { root: root4, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
+    cur = c;
+    const close2 = () => closePrimeSearch();
+    const reset = () => {
+      suggest.replaceChildren();
+      grid.replaceChildren();
+      status.textContent = "";
+    };
+    const run = async (term) => {
+      if (c.ctrl) c.ctrl.abort();
+      const seq3 = ++c.seq;
+      if (term.length < MIN_LEN3) {
+        c.ctrl = null;
+        reset();
+        return;
+      }
+      const ctrl = new AbortController();
+      c.ctrl = ctrl;
+      try {
+        const res = await searchItems(term, { limit: 24, signal: ctrl.signal });
+        if (cur !== c || seq3 !== c.seq || ctrl.signal.aborted) return;
+        const items = [...res.movies, ...res.series];
+        suggest.replaceChildren(...items.slice(0, MAX_SUGGESTIONS).map((it) => {
+          const a = h("a", { class: "lfx-prime-search__sug", href: titleHref(it.Id) }, it.Name || "");
+          a.addEventListener("click", close2);
+          return h("li", null, a);
+        }));
+        grid.replaceChildren(...items.slice(0, MAX_CARDS).map((it) => card2(it, close2)));
+        status.textContent = items.length ? "" : `Keine Treffer f\xFCr \u201E${term}\u201C.`;
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+        if (cur !== c || seq3 !== c.seq) return;
+        reset();
+        status.textContent = "Die Suche ist fehlgeschlagen.";
+      }
+    };
+    input.addEventListener("input", () => {
+      clear.hidden = input.value === "";
+      clearTimeout(c.timer);
+      c.timer = setTimeout(() => run(input.value.trim()), DEBOUNCE_MS2);
+    });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      clearTimeout(c.timer);
+      run(input.value.trim());
+    });
+    clear.addEventListener("click", () => {
+      input.value = "";
+      clear.hidden = true;
+      clearTimeout(c.timer);
+      run("");
+      input.focus();
+    });
+    root4.addEventListener("mousedown", (e) => {
+      if (!panel.contains(e.target)) close2();
+    });
+    c.onKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        close2();
+      } else if (e.key === "Tab") {
+        const list = [...panel.querySelectorAll(FOCUSABLE2)].filter((el) => !el.hidden);
+        if (!list.length) return;
+        const first2 = list[0];
+        const last = list[list.length - 1];
+        const active4 = document.activeElement;
+        if (!panel.contains(active4)) {
+          e.preventDefault();
+          first2.focus();
+        } else if (e.shiftKey && active4 === first2) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active4 === last) {
+          e.preventDefault();
+          first2.focus();
+        }
+      }
+    };
+    c.onHash = () => closePrimeSearch({ restoreFocus: false });
+    document.addEventListener("keydown", c.onKeydown, true);
+    window.addEventListener("hashchange", c.onHash);
+    document.documentElement.classList.add("lfx-prime-search-open");
+    input.focus({ preventScroll: true });
+  }
+
+  // src/js/features/prime/header-menus.js
+  var LEAVE_MS2 = 180;
+  var ITEM = ".lfx-prime-flyout__item";
+  function column(title, entries) {
+    return h("section", { class: "lfx-prime-flyout__col" }, [
+      h("h3", { class: "lfx-prime-flyout__head" }, title),
+      entries.length ? h("div", { class: "lfx-prime-flyout__list" }, entries.map((e) => h("a", {
+        class: "lfx-prime-flyout__item",
+        href: e.href,
+        role: "menuitem",
+        dataset: { key: e.key }
+      }, e.label))) : h("p", { class: "lfx-prime-flyout__empty" }, "Nichts vorhanden")
+    ]);
+  }
+  function openMenus({ wrap, button, flyout, load: load4 }) {
+    let opened = false;
+    let loaded = false;
+    let leaveTimer2 = null;
+    let pinned = false;
+    let gen3 = 0;
+    const items = () => [...flyout.querySelectorAll(ITEM)];
+    async function ensureLoaded() {
+      if (loaded) return;
+      loaded = true;
+      const mine = ++gen3;
+      let data;
+      try {
+        data = await load4();
+      } catch {
+        data = { libraries: [], collections: [] };
+      }
+      if (mine !== gen3) return;
+      flyout.replaceChildren(
+        column("Bibliotheken", data.libraries),
+        h("span", { class: "lfx-prime-flyout__sep", "aria-hidden": "true" }),
+        column("Empfohlene Sammlungen", data.collections)
+      );
+    }
+    function open2({ focus = false } = {}) {
+      clearTimeout(leaveTimer2);
+      if (!opened) {
+        opened = true;
+        flyout.hidden = false;
+        wrap.classList.add("is-open");
+        button.setAttribute("aria-expanded", "true");
+      }
+      const p = ensureLoaded();
+      if (focus) p.then(() => {
+        if (opened) {
+          const f = items()[0];
+          if (f) f.focus();
+        }
+      });
+    }
+    function close2({ restoreFocus = false } = {}) {
+      clearTimeout(leaveTimer2);
+      if (!opened) return;
+      opened = false;
+      pinned = false;
+      flyout.hidden = true;
+      wrap.classList.remove("is-open");
+      button.setAttribute("aria-expanded", "false");
+      if (restoreFocus) button.focus();
+    }
+    const onEnter = () => open2();
+    const onLeave = () => {
+      clearTimeout(leaveTimer2);
+      if (pinned) return;
+      leaveTimer2 = setTimeout(() => close2(), LEAVE_MS2);
+    };
+    const onClick = (e) => {
+      if (e.detail === 0) {
+        if (opened) close2();
+        else open2({ focus: true });
+      } else if (opened && !pinned) {
+        pinned = true;
+      } else if (opened) close2();
+      else {
+        open2();
+        pinned = true;
+      }
+    };
+    const onFlyoutClick = (e) => {
+      if (e.target.closest && e.target.closest(ITEM)) close2();
+    };
+    const onKeydown2 = (e) => {
+      if (!opened) {
+        if (e.key === "ArrowDown" && e.target === button) {
+          e.preventDefault();
+          open2({ focus: true });
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        close2({ restoreFocus: true });
+      } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+        const list = items();
+        if (!list.length) return;
+        const i = list.indexOf(document.activeElement);
+        let next;
+        if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = list.length - 1;
+        else if (e.key === "ArrowDown") next = i < 0 ? 0 : (i + 1) % list.length;
+        else next = i < 0 ? list.length - 1 : (i - 1 + list.length) % list.length;
+        e.preventDefault();
+        list[next].focus();
+      }
+    };
+    const onFocusOut = (e) => {
+      if (opened && e.relatedTarget && !wrap.contains(e.relatedTarget)) close2();
+    };
+    const onDocClick2 = (e) => {
+      if (opened && !wrap.contains(e.target)) close2();
+    };
+    wrap.addEventListener("mouseenter", onEnter);
+    wrap.addEventListener("mouseleave", onLeave);
+    button.addEventListener("click", onClick);
+    flyout.addEventListener("click", onFlyoutClick);
+    wrap.addEventListener("keydown", onKeydown2);
+    wrap.addEventListener("focusout", onFocusOut);
+    document.addEventListener("click", onDocClick2, true);
+    return {
+      open: open2,
+      close: close2,
+      isOpen: () => opened,
+      destroy() {
+        gen3++;
+        close2();
+        document.removeEventListener("click", onDocClick2, true);
+        wrap.removeEventListener("mouseenter", onEnter);
+        wrap.removeEventListener("mouseleave", onLeave);
+        wrap.removeEventListener("keydown", onKeydown2);
+        wrap.removeEventListener("focusout", onFocusOut);
+      }
+    };
+  }
+
   // src/js/features/prime/header.js
+  var ID7 = "lfx-prime-header";
+  var HTML_CLASS = "lfx-prime-header-on";
+  var EXCLUDED7 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
+  var SCROLL_THRESHOLD2 = 10;
+  var LOGO = "../assets/logo/lenzprime.svg";
+  var LIST_HREF = "#/home?tab=1";
+  var SVG_NS2 = "http://www.w3.org/2000/svg";
+  var ICONS4 = {
+    search: "M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z",
+    grid: "M5 4h3v3H5V4Zm5.5 0h3v3h-3V4ZM16 4h3v3h-3V4ZM5 10.5h3v3H5v-3Zm5.5 0h3v3h-3v-3Zm5.5 0h3v3h-3v-3ZM5 17h3v3H5v-3Zm5.5 0h3v3h-3v-3Zm5.5 0h3v3h-3v-3Z",
+    bookmark: "M6 3h12a1 1 0 0 1 1 1v17l-7-4.6L5 21V4a1 1 0 0 1 1-1Zm1 2v12.2l5-3.3 5 3.3V5H7Z"
+  };
+  function icon3(name) {
+    const svg9 = document.createElementNS(SVG_NS2, "svg");
+    svg9.setAttribute("viewBox", "0 0 24 24");
+    svg9.setAttribute("aria-hidden", "true");
+    svg9.setAttribute("focusable", "false");
+    const p = document.createElementNS(SVG_NS2, "path");
+    p.setAttribute("d", ICONS4[name]);
+    svg9.append(p);
+    return svg9;
+  }
+  function navItems3(libs) {
+    const list = Array.isArray(libs) ? libs : [];
+    const items = [{ key: "home", label: "Startseite", href: "#/home" }];
+    const movies = list.find((l) => l.collectionType === "movies");
+    const series = list.find((l) => l.collectionType === "tvshows");
+    if (movies) items.push({ key: `lib:${movies.id}`, label: "Filme", href: hubHref(movies.id) });
+    if (series) items.push({ key: `lib:${series.id}`, label: "Serien", href: hubHref(series.id) });
+    items.push({ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new" });
+    return items;
+  }
+  function activeKey3(route) {
+    if (!route || route.path !== "/home") return null;
+    const p = route.params;
+    const lfx = p.get("lfx");
+    if (lfx === "new") return "new";
+    if (lfx === "hub" && p.get("lib")) return `lib:${p.get("lib")}`;
+    if (lfx) return null;
+    return p.get("tab") === "1" ? "list" : "home";
+  }
+  var state11 = {
+    el: null,
+    route: null,
+    libs: [],
+    cleanups: [],
+    menus: null,
+    seq: 0,
+    raf: 0,
+    profileBusy: false
+  };
+  function applyActive5() {
+    if (!state11.el || !state11.route) return;
+    const key = activeKey3(state11.route);
+    for (const el of state11.el.querySelectorAll("[data-key]")) {
+      const on = el.dataset.key === key;
+      el.classList.toggle("is-active", on);
+      if (on) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
+    }
+  }
+  function renderNav2() {
+    const nav = state11.el && state11.el.querySelector(".lfx-prime-header__nav");
+    if (!nav) return;
+    nav.replaceChildren(...navItems3(state11.libs).map((it) => h("a", {
+      class: "lfx-prime-header__link",
+      href: it.href,
+      dataset: { key: it.key }
+    }, it.label)));
+    applyActive5();
+  }
+  function profileIsOpen() {
+    const el = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el && el.classList.contains("lfx-prime-profile"));
+  }
+  function closeProfile() {
+    if (profileIsOpen()) closePopover();
+  }
+  async function toggleProfile(btn) {
+    if (profileIsOpen()) {
+      closePopover({ restoreFocus: true });
+      return;
+    }
+    if (state11.profileBusy) return;
+    state11.profileBusy = true;
+    try {
+      state11.menus.close();
+      const items = await profileEntries({ theme: "prime", returnFocus: btn });
+      if (!state11.el || !btn.isConnected) return;
+      openPopover(btn, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
+    } finally {
+      state11.profileBusy = false;
+    }
+  }
+  function build6() {
+    const logo = h("a", { class: "lfx-prime-header__logo", href: "#/home", "aria-label": "LENZPRIME Startseite" }, [
+      h("img", { src: LOGO, alt: "LENZPRIME", draggable: "false" })
+    ]);
+    const nav = h("nav", { class: "lfx-prime-header__nav", "aria-label": "Hauptnavigation" });
+    const searchBtn = h("button", {
+      type: "button",
+      class: "lfx-prime-header__icon",
+      "aria-label": "Suche",
+      "aria-haspopup": "dialog"
+    }, [icon3("search")]);
+    searchBtn.addEventListener("click", () => {
+      state11.menus.close();
+      closeProfile();
+      if (isPrimeSearchOpen()) closePrimeSearch();
+      else openPrimeSearch({ returnFocus: searchBtn });
+    });
+    const gridBtn = h("button", {
+      type: "button",
+      class: "lfx-prime-header__icon",
+      "aria-label": "Bibliotheken und Sammlungen",
+      "aria-haspopup": "true",
+      "aria-expanded": "false",
+      "aria-controls": "lfx-prime-grid"
+    }, [icon3("grid")]);
+    const flyout = h("div", { class: "lfx-prime-flyout", id: "lfx-prime-grid", role: "menu", hidden: true, "aria-label": "Bibliotheken und Sammlungen" });
+    const gridWrap = h("div", { class: "lfx-prime-header__flyout-wrap" }, [gridBtn, flyout]);
+    const listLink = h("a", {
+      class: "lfx-prime-header__icon",
+      href: LIST_HREF,
+      "aria-label": "Meine Liste",
+      dataset: { key: "list" }
+    }, [icon3("bookmark")]);
+    const avatar = h("button", {
+      type: "button",
+      class: "lfx-prime-header__avatar",
+      "aria-label": "Profil",
+      "aria-haspopup": "true"
+    });
+    avatar.addEventListener("click", () => toggleProfile(avatar));
+    const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, gridWrap, listLink, avatar]);
+    const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
+    state11.el.replaceChildren(bar);
+    state11.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
+    return { avatar };
+  }
+  async function loadFlyoutData() {
+    let libs = state11.libs;
+    let cols;
+    try {
+      cols = await getCollections();
+    } catch {
+      cols = [];
+    }
+    if (!libs.length) {
+      try {
+        libs = await getLibraries();
+      } catch {
+        libs = [];
+      }
+    }
+    return {
+      libraries: libs.map((l) => ({ key: l.id, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href })),
+      collections: cols.map((c) => ({ key: c.id, label: c.name, href: titleHref(c.id) }))
+    };
+  }
+  async function loadLibs(seq3) {
+    try {
+      const libs = await getLibraries();
+      if (seq3 !== state11.seq || !state11.el) return;
+      state11.libs = libs;
+    } catch {
+      if (seq3 !== state11.seq || !state11.el) return;
+      state11.libs = [];
+    }
+    renderNav2();
+  }
+  async function loadAvatar(seq3, avatar) {
+    let chip = { name: "", imageUrl: null };
+    try {
+      chip = await getUserChip();
+    } catch {
+    }
+    if (seq3 !== state11.seq || !state11.el) return;
+    avatar.replaceChildren();
+    if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
+    else avatar.append(h("span", { class: "lfx-prime-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
+    if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
+  }
+  function onScroll3() {
+    if (state11.raf) return;
+    state11.raf = requestAnimationFrame(() => {
+      state11.raf = 0;
+      applyScroll();
+    });
+  }
+  function applyScroll() {
+    if (!state11.el) return;
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    const on = y > SCROLL_THRESHOLD2;
+    if (state11.el.classList.contains("is-scrolled") !== on) state11.el.classList.toggle("is-scrolled", on);
+  }
   var header_default2 = {
     name: "prime-header",
-    match: () => false,
-    mount() {
+    match(route) {
+      return isTheme("prime") && isModern() && !isTv() && isReady() && !EXCLUDED7.test(route.path);
+    },
+    mount(route) {
+      const seq3 = ++state11.seq;
+      state11.route = route;
+      state11.el = mountPoint(ID7, { tag: "header", className: "lfx-prime-header" });
+      const { avatar } = build6();
+      document.documentElement.classList.add(HTML_CLASS);
+      window.addEventListener("scroll", onScroll3, { passive: true });
+      state11.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
+      applyScroll();
+      renderNav2();
+      loadLibs(seq3);
+      loadAvatar(seq3, avatar);
+    },
+    update(route) {
+      const changed = !state11.route || state11.route.hash !== route.hash;
+      state11.route = route;
+      if (changed && state11.menus) state11.menus.close();
+      applyActive5();
     },
     unmount() {
+      state11.seq++;
+      for (const fn of state11.cleanups.splice(0)) fn();
+      if (state11.raf) cancelAnimationFrame(state11.raf);
+      state11.raf = 0;
+      if (state11.menus) state11.menus.destroy();
+      state11.menus = null;
+      closeProfile();
+      closePrimeSearch({ restoreFocus: false });
+      unmountPoint(ID7);
+      document.documentElement.classList.remove(HTML_CLASS);
+      state11.el = null;
+      state11.libs = [];
+      state11.profileBusy = false;
     }
   };
+
+  // src/js/features/prime/footer.js
+  function buildMoreButton(onClick) {
+    const btn = h("button", { type: "button", class: "lfx-prime-more" }, "Mehr");
+    btn.addEventListener("click", () => onClick(btn));
+    return btn;
+  }
+  function buildFooter() {
+    const href = statsHref("prime");
+    const picker = h("button", { type: "button", class: "lfx-prime-footer__link" }, "Design Einstellungen");
+    picker.addEventListener("click", () => openThemePicker({ returnFocus: picker }));
+    const links = [
+      href ? h("a", { class: "lfx-prime-footer__link", href }, STATS_LABEL) : null,
+      picker
+    ];
+    return h("footer", { class: "lfx-prime-footer" }, [
+      h("span", { class: "lfx-prime-footer__mark", role: "img", "aria-label": "LENZPRIME" }),
+      h("nav", { class: "lfx-prime-footer__links", "aria-label": "Fu\xDFzeile" }, links),
+      h("p", { class: "lfx-prime-footer__note" }, "LENZPRIME f\xFCr Jellyfin")
+    ]);
+  }
+
+  // src/js/shared/trend.js
+  var norm = (id) => String(id || "").replace(/-/g, "").toLowerCase();
+  async function getTrendInfo() {
+    const rank = /* @__PURE__ */ new Map();
+    let charts;
+    try {
+      charts = await getCharts();
+    } catch {
+      charts = null;
+    }
+    if (!charts) return { available: false, rank };
+    const add2 = (list, type) => {
+      (Array.isArray(list) ? list : []).forEach((e, i) => {
+        const key = norm(e && e.id);
+        if (key && !rank.has(key)) rank.set(key, { rank: i + 1, type });
+      });
+    };
+    add2(charts.movies, "Movie");
+    add2(charts.series, "Series");
+    return { available: true, rank };
+  }
+  function entryFor(item, trend2) {
+    if (!item || !trend2 || !trend2.available || !trend2.rank) return null;
+    const id = item.Type === "Episode" ? item.SeriesId : item.Id;
+    return trend2.rank.get(norm(id)) || null;
+  }
+  function trendBadge(item, trend2) {
+    if (!item) return null;
+    if (!trend2 || !trend2.available) {
+      return (item.Type === "Movie" || item.Type === "Series") && Number(item.CommunityRating) >= 8 ? "AM BELIEBTESTEN" : null;
+    }
+    const e = entryFor(item, trend2);
+    if (!e) return null;
+    if (e.rank <= 3) return "AM BELIEBTESTEN";
+    if (e.rank <= 10) return "IM TREND";
+    return null;
+  }
+  function heroTrendLine(item, trend2) {
+    const e = entryFor(item, trend2);
+    return e && e.rank <= 10 ? `Platz ${e.rank} der Top 10` : null;
+  }
+  function cardBadge(item, { newInfo, trend: trend2 } = {}) {
+    return newBadge(item, newInfo) || trendBadge(item, trend2);
+  }
+
+  // src/js/features/prime/hero-play.js
+  async function seriesTarget(series) {
+    let target = await loadNextUp(series.Id).catch(() => null);
+    if (!target) {
+      const seasons = await loadSeasons(series.Id).catch(() => []);
+      const sid = pickInitialSeason(seasons, null);
+      const eps = sid ? await loadEpisodes2(series.Id, sid).catch(() => []) : [];
+      target = eps[0] || null;
+    }
+    return target;
+  }
+  async function playTitle(item) {
+    if (!item || !item.Id) return false;
+    let target = item;
+    if (item.Type === "Series") target = await seriesTarget(item);
+    if (!target) return false;
+    return play(target, { resume: hasResume(target) });
+  }
+  function playLabel(item, next = null) {
+    if (item && item.Type === "Series") {
+      if (!next) return { line1: "Abspielen", line2: null, progress: 0 };
+      const resume2 = hasResume(next);
+      const started2 = resume2 || next.IndexNumber > 1 || next.ParentIndexNumber > 1;
+      if (!started2) return { line1: "Abspielen", line2: null, progress: 0 };
+      const n = next.IndexNumber != null ? `Folge ${next.IndexNumber}` : "N\xE4chste Folge";
+      return { line1: n, line2: resume2 ? "Fortsetzen" : "weiter ansehen", progress: resume2 ? progressPercent(next) : 0 };
+    }
+    const resume = hasResume(item);
+    return { line1: resume ? "Fortsetzen" : "Abspielen", line2: null, progress: resume ? progressPercent(item) : 0 };
+  }
+
+  // src/js/features/prime/hero.js
+  var ROTATE_MS2 = 2e4;
+  var TRAILER_DELAY_MS2 = 3e3;
+  var IMG_FADE_MS2 = 1e3;
+  var TEXT_FADE_MS2 = 350;
+  var FIELDS3 = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount";
+  var FIRST_KEY = "lfx-prime-hero-first";
+  var NS2 = "http://www.w3.org/2000/svg";
+  function svg7(html, cls) {
+    const el = document.createElementNS(NS2, "svg");
+    el.setAttribute("viewBox", "0 0 24 24");
+    el.setAttribute("aria-hidden", "true");
+    if (cls) el.setAttribute("class", cls);
+    el.innerHTML = html;
+    return el;
+  }
+  var ICON_PLAY4 = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
+  var ICON_PLUS4 = '<path fill="currentColor" d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/>';
+  var ICON_CHECK4 = '<path fill="currentColor" d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>';
+  var ICON_INFO = '<path fill="currentColor" d="M11 10h2v8h-2zM11 6h2v2h-2z"/>';
+  var ICON_MUTED2 = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>';
+  var ICON_SOUND2 = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/>';
+  var ICON_TREND = '<path fill="currentColor" d="M3 17.6 9.5 11l4 4L21 7.5V12h2V4h-8v2h4.6l-6.1 6.1-4-4L1.6 16.2z"/>';
+  var ICON_CHEV = '<polyline points="8,3 17,12 8,21" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
+  function svgIcon(html, cls) {
+    return svg7(html, cls);
+  }
+  var reducedMotion2 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function readFirst() {
+    try {
+      return sessionStorage.getItem(FIRST_KEY);
+    } catch {
+      return null;
+    }
+  }
+  function writeFirst(id) {
+    try {
+      sessionStorage.setItem(FIRST_KEY, id);
+    } catch {
+    }
+  }
+  async function fetchHomePool() {
+    const base = { Recursive: true, IncludeItemTypes: "Movie,Series", ImageTypes: "Logo,Backdrop", Fields: FIELDS3, EnableUserData: true, Limit: 40 };
+    const [latest, random] = await Promise.all([
+      getItems({ ...base, SortBy: "DateCreated", SortOrder: "Descending" }).catch(() => null),
+      getItems({ ...base, SortBy: "Random" }).catch(() => null)
+    ]);
+    const pool = buildPool(latest && latest.Items, random && random.Items, { avoidFirstId: readFirst(), newCount: 3, randomCount: 7 });
+    if (pool[0]) writeFirst(pool[0].Id);
+    return pool;
+  }
+  function renderHero(slot, { loadPool }) {
+    let disposed = false;
+    let pool = [];
+    let index = 0;
+    let gen3 = 0;
+    let hovering = false;
+    let trailerActive = false;
+    let rotateTimer = null;
+    let preview = null;
+    let video = null;
+    let trend2 = null;
+    let media = null;
+    let content = null;
+    let muteBtn = null;
+    let dots = null;
+    let hero = null;
+    const timers = /* @__PURE__ */ new Set();
+    const cleanupFns = [];
+    const later = (fn, ms) => {
+      const t = setTimeout(() => {
+        timers.delete(t);
+        fn();
+      }, ms);
+      timers.add(t);
+      return t;
+    };
+    const paused = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    function stopTrailer() {
+      if (preview) {
+        preview.cancel();
+        preview = null;
+      }
+      video = null;
+      trailerActive = false;
+      if (muteBtn) muteBtn.hidden = true;
+      if (hero) hero.classList.remove("is-trailer");
+    }
+    function scheduleRotate() {
+      clearTimeout(rotateTimer);
+      rotateTimer = null;
+      if (disposed || pool.length < 2 || reducedMotion2()) return;
+      rotateTimer = setTimeout(() => {
+        rotateTimer = null;
+        if (paused()) scheduleRotate();
+        else show2((index + 1) % pool.length);
+      }, ROTATE_MS2);
+    }
+    function setMuteIcon() {
+      if (!video) return;
+      muteBtn.replaceChildren(svg7(video.muted ? ICON_MUTED2 : ICON_SOUND2));
+      muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
+    }
+    function startTrailer(item, myGen) {
+      if (reducedMotion2() || disposed || myGen !== gen3) return;
+      preview = createMutedPreview(media, item, {
+        delay: TRAILER_DELAY_MS2,
+        onStart: (v) => {
+          if (disposed || myGen !== gen3) return;
+          video = v;
+          trailerActive = true;
+          v.classList.add("is-in");
+          hero.classList.add("is-trailer");
+          muteBtn.hidden = false;
+          setMuteIcon();
+        },
+        onEnd: () => {
+          if (disposed || myGen !== gen3) return;
+          preview = null;
+          stopTrailer();
+          scheduleRotate();
+        }
+      });
+    }
+    function playButton(item, myGen) {
+      const label = h("span", { class: "lfx-prime-hero__label" });
+      const btn = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg7(ICON_PLAY4), label]);
+      const bar = h("span", { class: "lfx-prime-hero__bar" });
+      const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
+      const paint = (state12) => {
+        label.replaceChildren(
+          h("span", { class: "lfx-prime-hero__label1" }, state12.line1),
+          state12.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state12.line2) : null
+        );
+        btn.classList.toggle("is-two", Boolean(state12.line2));
+        progress.hidden = !(state12.progress > 0);
+        bar.style.width = `${Math.round(state12.progress)}%`;
+      };
+      paint(playLabel(item));
+      if (item.Type === "Series") {
+        loadNextUp(item.Id).then((ep) => {
+          if (disposed || myGen !== gen3 || !btn.isConnected) return;
+          paint(playLabel(item, ep));
+        }, () => {
+        });
+      }
+      btn.addEventListener("click", () => {
+        playTitle(item);
+      });
+      return h("div", { class: "lfx-prime-hero__playwrap" }, [btn, progress]);
+    }
+    function listButton(item) {
+      const btn = h("button", { type: "button", class: "lfx-prime-hero__round lfx-prime-hero__round--list", title: "Meine Liste" });
+      const paint = () => {
+        const on = Boolean(item.UserData && item.UserData.IsFavorite);
+        btn.replaceChildren(svg7(on ? ICON_CHECK4 : ICON_PLUS4));
+        btn.classList.toggle("is-on", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.setAttribute("aria-label", on ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen");
+      };
+      paint();
+      btn.addEventListener("click", async () => {
+        await toggleFavorite2(item);
+        if (btn.isConnected) paint();
+      });
+      return btn;
+    }
+    function buildContent(item, myGen) {
+      const logo = logoImage(item, { maxWidth: 720 });
+      const rank = heroTrendLine(item, trend2);
+      const info = h("a", {
+        class: "lfx-prime-hero__round lfx-prime-hero__round--info",
+        href: titleHref(item.Id),
+        "aria-label": "Weitere Informationen",
+        title: "Weitere Informationen"
+      }, [svg7(ICON_INFO)]);
+      const fsk = formatRating(item.OfficialRating);
+      return h("div", null, [
+        h("div", { class: "lfx-prime-hero__text" }, [
+          logo ? h("img", { class: "lfx-prime-hero__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("h2", { class: "lfx-prime-hero__title" }, item.Name || ""),
+          rank ? h("div", { class: "lfx-prime-hero__rank" }, [svg7(ICON_TREND), h("span", null, rank)]) : null,
+          h("div", { class: "lfx-prime-hero__actions" }, [playButton(item, myGen), listButton(item), info])
+        ]),
+        fsk ? h("span", { class: "lfx-prime-chip lfx-prime-hero__fsk" }, fsk) : null
+      ]);
+    }
+    function buildImage(item) {
+      const bd = imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 90 });
+      return h("img", { class: "lfx-prime-hero__img", src: bd, alt: "", decoding: "async" });
+    }
+    function updateDots() {
+      if (!dots) return;
+      [...dots.children].forEach((b, i) => {
+        b.classList.toggle("is-active", i === index);
+        b.setAttribute("aria-current", i === index ? "true" : "false");
+      });
+    }
+    function fillDots() {
+      dots.replaceChildren(...pool.map((it, i) => {
+        const b = h("button", { type: "button", class: "lfx-prime-hero__dot", "aria-label": `Empfehlung ${i + 1}: ${it.Name || ""}` });
+        b.addEventListener("click", () => show2(i));
+        return b;
+      }));
+      dots.hidden = pool.length < 2;
+      updateDots();
+    }
+    function show2(i, immediate = false) {
+      if (disposed || !pool[i]) return;
+      const item = pool[i];
+      index = i;
+      gen3 += 1;
+      const myGen = gen3;
+      stopTrailer();
+      updateDots();
+      const pic = buildImage(item);
+      const olds = [...media.querySelectorAll(".lfx-prime-hero__img")];
+      media.append(pic);
+      if (immediate || !olds.length) {
+        olds.forEach((o) => o.remove());
+        pic.classList.add("is-in");
+      } else {
+        requestAnimationFrame(() => pic.classList.add("is-in"));
+        later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS2 + 50);
+      }
+      const swap = () => {
+        if (disposed || myGen !== gen3) return;
+        content.replaceChildren(...buildContent(item, myGen).childNodes);
+        content.classList.remove("is-out");
+      };
+      if (immediate || !content.firstChild) swap();
+      else {
+        content.classList.add("is-out");
+        later(swap, TEXT_FADE_MS2);
+      }
+      putItems([item]);
+      scheduleRotate();
+      startTrailer(item, myGen);
+    }
+    function step(dir) {
+      if (pool.length > 1) show2((index + dir + pool.length) % pool.length);
+    }
+    function onChanged2({ removed = [] }) {
+      if (disposed || !hero || !removed.length || !pool.some((it) => removed.includes(it.Id))) return;
+      const cur2 = pool[index];
+      const curGone = cur2 && removed.includes(cur2.Id);
+      pool = pool.filter((it) => !removed.includes(it.Id));
+      if (!pool.length) {
+        gen3 += 1;
+        stopTrailer();
+        clearTimeout(rotateTimer);
+        slot.hidden = true;
+        return;
+      }
+      index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur2);
+      fillDots();
+      if (curGone) show2(index);
+    }
+    function build7() {
+      media = h("div", { class: "lfx-prime-hero__media" });
+      content = h("div", { class: "lfx-prime-hero__live", "aria-live": "off" });
+      muteBtn = h("button", { type: "button", class: "lfx-prime-hero__mute", hidden: true, "aria-label": "Ton einschalten" });
+      muteBtn.addEventListener("click", () => {
+        if (!video) return;
+        video.muted = !video.muted;
+        setMuteIcon();
+      });
+      dots = h("div", { class: "lfx-prime-hero__dots", role: "group", "aria-label": "Empfehlung w\xE4hlen" });
+      const prev = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--prev", "aria-label": "Vorherige Empfehlung" });
+      const next = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--next", "aria-label": "N\xE4chste Empfehlung" });
+      prev.append(svg7(ICON_CHEV));
+      next.append(svg7(ICON_CHEV));
+      prev.addEventListener("click", () => step(-1));
+      next.addEventListener("click", () => step(1));
+      fillDots();
+      hero = h("div", { class: "lfx-prime-hero" }, [
+        media,
+        h("div", { class: "lfx-prime-hero__shade", "aria-hidden": "true" }),
+        h("div", { class: "lfx-prime-hero__shade lfx-prime-hero__shade--corner", "aria-hidden": "true" }),
+        prev,
+        next,
+        muteBtn,
+        content,
+        dots
+      ]);
+      slot.replaceChildren(hero);
+      slot.setAttribute("aria-roledescription", "Karussell");
+      const onEnter = () => {
+        hovering = true;
+      };
+      const onLeave = () => {
+        hovering = false;
+        scheduleRotate();
+      };
+      const onVis = () => {
+        if (!document.hidden) scheduleRotate();
+      };
+      hero.addEventListener("mouseenter", onEnter);
+      hero.addEventListener("mouseleave", onLeave);
+      document.addEventListener("visibilitychange", onVis);
+      cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
+      cleanupFns.push(onItemsChanged(onChanged2));
+    }
+    async function init2() {
+      let items = [];
+      try {
+        items = await loadPool();
+      } catch {
+      }
+      try {
+        trend2 = await getTrendInfo();
+      } catch {
+        trend2 = null;
+      }
+      if (disposed) return;
+      if (!items || !items.length) {
+        slot.hidden = true;
+        return;
+      }
+      pool = items;
+      putItems(pool);
+      build7();
+      slot.hidden = false;
+      show2(0, true);
+    }
+    slot.hidden = true;
+    init2();
+    return () => {
+      disposed = true;
+      gen3 += 1;
+      clearTimeout(rotateTimer);
+      timers.forEach(clearTimeout);
+      timers.clear();
+      stopTrailer();
+      cleanupFns.splice(0).forEach((f) => f());
+      slot.replaceChildren();
+      slot.removeAttribute("aria-roledescription");
+    };
+  }
+
+  // src/js/features/prime/home-route.js
+  var ROOT_ID10 = "lfx-prime-home";
+  var ON_CLASS8 = "lfx-prime-home-on";
+  function primeHomeRoute(route) {
+    if (!route || route.path !== "/home" || !route.params) return null;
+    const lfx = route.params.get("lfx");
+    if (lfx === "hub") {
+      const lib = route.params.get("lib");
+      return lib ? { key: `hub:${lib}`, kind: "hub", lib } : null;
+    }
+    if (lfx || route.params.get("tab") === "1") return null;
+    return { key: "home", kind: "home", lib: null };
+  }
+  function findHomeTab5() {
+    const tab = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab && tab.isConnected ? tab : null;
+  }
+
+  // src/js/features/prime/card.js
+  var displayTitle3 = (item) => item.Type === "Episode" && item.SeriesName ? item.SeriesName : item.Name || "";
+  var ariaLabel2 = (item) => item.Type === "Episode" && item.SeriesName ? `${item.SeriesName} \u2013 ${item.Name || ""}`.trim() : item.Name || "";
+  function createPrimeCard(item, { kind: kind2 = "landscape", badge: badge3 = null, rank = 0 } = {}) {
+    const poster = kind2 === "poster";
+    const wide = landscapeFor(item);
+    const pUrl = poster ? posterUrl(item, 400) : null;
+    const src = poster ? pUrl || wide && wide.url : wide ? wide.url : posterUrl(item, 400);
+    const titled = !poster && (!wide || !wide.isThumb);
+    const children = [];
+    if (src) children.push(h("img", { class: "lfx-card__img", src, alt: "", loading: "lazy", decoding: "async" }));
+    if (titled) {
+      const logo = logoImage(item, { maxWidth: 400 });
+      children.push(logo ? h("img", { class: "lfx-card__logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-card__title" }, displayTitle3(item)));
+    }
+    const classes = ["lfx-card", "lfx-prime-card", poster ? "lfx-prime-card--poster" : "lfx-prime-card--wide"];
+    if (kind2 === "top10") classes.push("lfx-prime-card--ranked");
+    const card3 = h("div", {
+      class: classes.join(" "),
+      dataset: { lfxId: item.Id, lfxType: item.Type || "" },
+      tabindex: "-1",
+      role: "listitem"
+    });
+    if (kind2 === "top10" && rank) {
+      card3.append(h("span", { class: `lfx-prime-card__rank${rank >= 10 ? " lfx-prime-card__rank--wide" : ""}`, "aria-hidden": "true" }, String(rank)));
+    }
+    if (badge3) children.push(h("span", { class: "lfx-prime-badge" }, badge3));
+    children.push(h("span", { class: "lfx-prime-card__mark", "aria-hidden": "true" }));
+    if (kind2 === "resume") {
+      const p = progressPercent2(item);
+      if (p > 0) {
+        children.push(h("div", { class: "lfx-prime-card__progress" }, [
+          h("div", { class: "lfx-prime-card__bar", style: { width: `${Math.round(p * 10) / 10}%` } })
+        ]));
+      }
+    }
+    card3.append(h("a", {
+      class: `lfx-card__link${titled ? " lfx-card__link--titled" : ""}`,
+      href: detailHref2(item),
+      "aria-label": ariaLabel2(item)
+    }, children));
+    return card3;
+  }
+
+  // src/js/features/prime/home-rows.js
+  var CHEVRON3 = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="8,3 17,12 8,21" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function arrow(dir, label) {
+    const b = h("button", { type: "button", class: `lfx-prime-arrow lfx-prime-arrow--${dir}`, "aria-label": label, tabindex: "-1", hidden: true });
+    b.innerHTML = CHEVRON3;
+    return b;
+  }
+  function pickPosterId(defs, hub) {
+    const list = defs || [];
+    if (hub) {
+      const d2 = list.find((x) => x.kind === "poster");
+      return d2 ? d2.id : null;
+    }
+    for (const id of ["latest-movies", "toprated"]) if (list.some((d2) => d2.id === id)) return id;
+    const d = list.find((x) => x.kind === "landscape" && !["nextup", "favorites"].includes(x.id));
+    return d ? d.id : null;
+  }
+  function displayKind(def, posterId) {
+    if (def.kind === "top10") return "top10";
+    if (def.kind === "resume") return "resume";
+    return def.id === posterId ? "poster" : "landscape";
+  }
+  function createRows(slot, { posterId = null, moreHref = () => null } = {}) {
+    let disposed = false;
+    let observer2 = null;
+    let infoP = null;
+    const disposers = [];
+    const pending = /* @__PURE__ */ new Map();
+    const rendered = /* @__PURE__ */ new Set();
+    const info = () => {
+      if (!infoP) {
+        infoP = Promise.all([getNewContentInfo().catch(() => null), getTrendInfo().catch(() => null)]).then(([newInfo, trend2]) => ({ newInfo, trend: trend2 }));
+      }
+      return infoP;
+    };
+    disposers.push(onItemsChanged(({ removed }) => {
+      if (disposed || !removed || !removed.length) return;
+      const gone = new Set(removed);
+      for (const row of [...slot.querySelectorAll(".lfx-prime-row")]) {
+        const track = row.querySelector(".lfx-prime-row__track");
+        if (!track) continue;
+        let changed = false;
+        for (const card3 of [...track.querySelectorAll(".lfx-card[data-lfx-id]")]) {
+          if (gone.has(card3.dataset.lfxId)) {
+            card3.remove();
+            changed = true;
+          }
+        }
+        if (!changed) continue;
+        if (!track.querySelector(".lfx-card")) row.remove();
+        else track.dispatchEvent(new Event("scroll"));
+      }
+    }));
+    function skeleton3(def, kind2) {
+      const skels = [];
+      for (let i = 0; i < 6; i++) skels.push(h("div", { class: "lfx-prime-skel" }));
+      const more = moreHref(def);
+      const head = h("div", { class: "lfx-prime-row__head" }, [
+        h("h2", { class: "lfx-prime-row__title" }, def.title || ""),
+        more ? h("a", { class: "lfx-prime-row__more", href: more }, "Mehr ansehen \u203A") : null
+      ]);
+      const track = h("div", { class: "lfx-prime-row__track", role: "list", "aria-label": def.title || "" }, skels);
+      return h("section", {
+        class: `lfx-prime-row lfx-prime-row--${kind2} is-loading`,
+        dataset: { lfxRow: def.id }
+      }, [head, h("div", { class: "lfx-prime-row__viewport" }, [track])]);
+    }
+    async function loadRow(rowEl, def, kind2) {
+      try {
+        const items = (await def.load(def)).filter((i) => i && i.Id);
+        if (disposed) return;
+        if (!items.length) {
+          rowEl.remove();
+          return;
+        }
+        putItems(items);
+        const { newInfo, trend: trend2 } = await info();
+        if (disposed) return;
+        const cards = items.map((it, i) => createPrimeCard(it, {
+          kind: kind2,
+          rank: kind2 === "top10" ? i + 1 : 0,
+          badge: cardBadge(it, { newInfo, trend: trend2 })
+        }));
+        const track = rowEl.querySelector(".lfx-prime-row__track");
+        const prev = arrow("prev", "Zur\xFCck");
+        const next = arrow("next", "Weiter");
+        track.replaceChildren(...cards);
+        track.setAttribute("aria-label", def.title || "");
+        track.before(prev);
+        track.after(next);
+        rowEl.querySelector(".lfx-prime-row__title").textContent = def.title || "";
+        rowEl.classList.remove("is-loading");
+        disposers.push(attachScroller({ track, prev, next, indicator: null }));
+      } catch (e) {
+        console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
+        if (!disposed) rowEl.remove();
+      }
+    }
+    function ensureObserver() {
+      if (observer2 || typeof IntersectionObserver !== "function") return;
+      observer2 = new IntersectionObserver((entries) => {
+        for (const en of entries) {
+          const p = pending.get(en.target);
+          if (!en.isIntersecting || !p) continue;
+          pending.delete(en.target);
+          observer2.unobserve(en.target);
+          loadRow(en.target, p.def, p.kind);
+        }
+      }, { rootMargin: "600px 0px" });
+    }
+    return {
+      add(defs) {
+        if (disposed) return;
+        ensureObserver();
+        for (const def of defs || []) {
+          if (!def || rendered.has(def.id)) continue;
+          rendered.add(def.id);
+          const kind2 = displayKind(def, posterId);
+          const el = skeleton3(def, kind2);
+          slot.append(el);
+          pending.set(el, { def, kind: kind2 });
+          if (observer2) observer2.observe(el);
+          else loadRow(el, def, kind2);
+        }
+      },
+      ids: () => [...rendered],
+      destroy() {
+        disposed = true;
+        if (observer2) observer2.disconnect();
+        observer2 = null;
+        pending.clear();
+        for (const d of disposers.splice(0)) d();
+        slot.textContent = "";
+      }
+    };
+  }
 
   // src/js/features/prime/home.js
-  var home_default3 = {
+  var MORE_STEP = 4;
+  var BASE_GENRES = 6;
+  var cleanups4 = [];
+  var waitTimer4 = null;
+  var gen2 = 0;
+  var current5 = null;
+  function teardown6() {
+    for (const fn of cleanups4.splice(0)) {
+      try {
+        fn && fn();
+      } catch (e) {
+        console.error("[LenzFlix] prime-home cleanup", e);
+      }
+    }
+    document.getElementById(ROOT_ID10)?.remove();
+    document.documentElement.classList.remove(ON_CLASS8);
+  }
+  var isGenreDef = (d) => /(^|-)genre-/.test(d.id);
+  function moreHrefFor(def, { hub, libs, lib }) {
+    if (hub) {
+      if (lib && (def.id === `${lib.id}-latest` || def.id === `${lib.id}-toprated`)) return lib.href;
+      return null;
+    }
+    const byType = (t) => libs.find((l) => l.collectionType === t && l.hubCapable);
+    if (def.id === "latest-movies") {
+      const l = byType("movies");
+      return l ? hubHref(l.id) : null;
+    }
+    if (def.id === "latest-series") {
+      const l = byType("tvshows");
+      return l ? hubHref(l.id) : null;
+    }
+    if (def.id === "favorites") return "#/home?tab=1";
+    if (def.kind === "top10") return "#/home?lfx=new";
+    return null;
+  }
+  async function start3(tab, route, myGen) {
+    let libs = [];
+    try {
+      libs = await getLibraries();
+    } catch {
+      libs = [];
+    }
+    if (myGen !== gen2) return;
+    const hub = route.kind === "hub";
+    const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
+    if (hub && !lib) return;
+    teardown6();
+    const heroSlot = h("section", { id: "lfx-prime-hero", class: "lfx-prime-hero-slot", "aria-label": "Empfehlung" });
+    const rowsSlot = h("div", { class: "lfx-prime-rows" });
+    const moreSlot = h("div", { class: "lfx-prime-moreslot" });
+    const root4 = h("div", { id: ROOT_ID10, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
+    tab.prepend(root4);
+    document.documentElement.classList.add(ON_CLASS8);
+    current5 = route;
+    cleanups4.push(renderHero(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool() }));
+    const getDefs = (genreCount2) => hub ? buildHubRowDefs(lib, { genreCount: genreCount2 }) : buildRowDefs({ genreCount: genreCount2 });
+    let defs = [];
+    try {
+      defs = await getDefs(BASE_GENRES);
+    } catch (e) {
+      console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
+    }
+    if (myGen !== gen2 || !isReady()) return;
+    const rows = createRows(rowsSlot, {
+      posterId: pickPosterId(defs, hub),
+      moreHref: (def) => moreHrefFor(def, { hub, libs, lib })
+    });
+    cleanups4.push(() => rows.destroy());
+    rows.add(defs);
+    let genreCount = BASE_GENRES;
+    const moreBtn = buildMoreButton(async (btn) => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      genreCount += MORE_STEP;
+      try {
+        const all = await getDefs(genreCount);
+        if (myGen !== gen2) return;
+        const have = new Set(rows.ids());
+        const fresh = all.filter((d) => isGenreDef(d) && !have.has(d.id)).slice(0, MORE_STEP);
+        rows.add(fresh);
+        if (fresh.length < MORE_STEP) btn.hidden = true;
+      } catch (e) {
+        console.warn("[LenzFlix] Weitere Zeilen nicht geladen", e && e.message);
+      }
+      btn.disabled = false;
+    });
+    if (!defs.some(isGenreDef)) moreBtn.hidden = true;
+    moreSlot.append(moreBtn);
+  }
+  function ensure4(route) {
+    clearTimeout(waitTimer4);
+    const tab = findHomeTab5();
+    const existing = document.getElementById(ROOT_ID10);
+    if (tab && existing && tab.contains(existing) && current5 && current5.key === route.key) return;
+    gen2 += 1;
+    const myGen = gen2;
+    let tries = 0;
+    const poll = () => {
+      if (myGen !== gen2) return;
+      const t = findHomeTab5();
+      if (t) start3(t, route, myGen);
+      else if (++tries < 30) waitTimer4 = setTimeout(poll, 200);
+    };
+    if (tab) poll();
+    else waitTimer4 = setTimeout(poll, 200);
+  }
+  var primeHome = {
     name: "prime-home",
-    match: () => false,
-    mount() {
-    },
+    match: (route) => isTheme("prime") && isModern() && !isTv() && isReady() && Boolean(primeHomeRoute(route)),
+    mount: (route) => ensure4(primeHomeRoute(route)),
+    update: (route) => ensure4(primeHomeRoute(route)),
     unmount() {
+      gen2 += 1;
+      clearTimeout(waitTimer4);
+      current5 = null;
+      teardown6();
     }
   };
+  var home_default3 = primeHome;
+
+  // src/js/features/prime/hover-content.js
+  var displayName = (item) => item.Type === "Episode" && item.SeriesName ? item.SeriesName : item.Name || "";
+  function ratingLabel(item) {
+    const r = Number(item && item.CommunityRating);
+    return r > 0 ? r.toFixed(1).replace(".", ",") : "";
+  }
+  function buildMeta(item) {
+    const parts = [];
+    const fsk = formatRating(item.OfficialRating);
+    if (fsk) parts.push(h("span", { class: "lfx-prime-chip" }, fsk));
+    const rating = ratingLabel(item);
+    if (rating) parts.push(h("span", { class: "lfx-prime-meta__rating" }, `\u2605 ${rating}`));
+    if (item.ProductionYear) parts.push(h("span", null, String(item.ProductionYear)));
+    const extra = item.Type === "Series" ? formatSeasons(item.ChildCount) : formatRuntime2(item.RunTimeTicks);
+    if (extra) parts.push(h("span", null, extra));
+    return h("div", { class: "lfx-prime-meta" }, parts);
+  }
+  function roundButton3(mod, label, icon4, onClick) {
+    const b = h("button", { type: "button", class: `lfx-prime-hc__round lfx-prime-hc__round--${mod}`, title: label, "aria-label": label });
+    if (icon4) b.append(icon4);
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClick(b);
+    });
+    return b;
+  }
+  function htmlIcon(markup) {
+    const s = h("span", { class: "lfx-prime-hc__ico", "aria-hidden": "true" });
+    s.innerHTML = markup;
+    return s;
+  }
+  function buildTitleInfo(item, variant, { trend: trend2 = null, isCurrent: isCurrent2 = () => true } = {}) {
+    const popup = variant === "popup";
+    const logo = !popup ? logoImage(item, { maxWidth: 400 }) : null;
+    const label = h("span", { class: "lfx-prime-hc__label" });
+    const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
+    const paintPlay2 = (state12) => {
+      label.replaceChildren(
+        h("span", null, state12.line1),
+        state12.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state12.line2) : null
+      );
+      play2.classList.toggle("is-two", Boolean(state12.line2));
+    };
+    paintPlay2(playLabel(item));
+    if (item.Type === "Series") {
+      loadNextUp(item.Id).then((ep) => {
+        if (isCurrent2() && play2.isConnected) paintPlay2(playLabel(item, ep));
+      }, () => {
+      });
+    }
+    play2.addEventListener("click", (e) => {
+      e.stopPropagation();
+      playTitle(item);
+    });
+    const list = roundButton3("list", "Meine Liste", null, async (b) => {
+      await toggleFavorite2(item);
+      if (b.isConnected) paintList();
+    });
+    function paintList() {
+      const on = Boolean(item.UserData && item.UserData.IsFavorite);
+      list.replaceChildren(svgIcon(on ? ICON_CHECK4 : ICON_PLUS4));
+      list.classList.toggle("is-on", on);
+      list.setAttribute("aria-pressed", on ? "true" : "false");
+      list.setAttribute("aria-label", on ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen");
+      list.title = list.getAttribute("aria-label");
+    }
+    paintList();
+    const buttons = [play2, list];
+    if (popup) {
+      const seen = roundButton3("seen", "Gesehen", null, async (b) => {
+        await togglePlayed2(item, { anchorEl: b });
+        if (b.isConnected) paintSeen();
+      });
+      const paintSeen = () => {
+        const on = Boolean(item.UserData && item.UserData.Played);
+        seen.replaceChildren(htmlIcon(on ? ICON_EYE_CHECK : ICON_EYE));
+        seen.classList.toggle("is-on", on);
+        seen.setAttribute("aria-pressed", on ? "true" : "false");
+        seen.setAttribute("aria-label", on ? "Als ungesehen markieren" : "Als gesehen markieren");
+        seen.title = seen.getAttribute("aria-label");
+      };
+      paintSeen();
+      const more = roundButton3("more", "Mehr", htmlIcon(ICON_MORE), (b) => {
+        openTitleMenu(item, b);
+      });
+      more.setAttribute("aria-haspopup", "menu");
+      buttons.push(seen, more);
+    } else {
+      buttons.push(h("a", {
+        class: "lfx-prime-hc__round lfx-prime-hc__round--info",
+        href: titleHref(item.Id),
+        title: "Weitere Informationen",
+        "aria-label": "Weitere Informationen"
+      }, [svgIcon(ICON_INFO)]));
+    }
+    const rank = heroTrendLine(item, trend2);
+    const desc = item.Overview ? h("p", { class: "lfx-prime-hc__desc" }, item.Overview) : null;
+    return h("div", { class: `lfx-prime-hc lfx-prime-hc--${variant}` }, [
+      logo ? h("img", { class: "lfx-prime-hc__logo", src: logo, alt: displayName(item), decoding: "async" }) : h("h4", { class: "lfx-prime-hc__title" }, displayName(item)),
+      h("div", { class: "lfx-prime-hc__buttons" }, buttons),
+      rank ? h("div", { class: "lfx-prime-hc__rank" }, [svgIcon(ICON_TREND), h("span", null, rank)]) : null,
+      buildMeta(item),
+      desc
+    ]);
+  }
 
   // src/js/features/prime/hover.js
-  var hover_default = {
-    name: "prime-hover",
-    match: () => false,
-    mount() {
-    },
-    unmount() {
+  var POPUP_ID2 = "lfx-prime-hover";
+  var INTENT_WIDE_MS = 300;
+  var INTENT_POSTER_MS = 420;
+  var PREVIEW_MS = 1500;
+  var LEAVE_MS3 = 140;
+  var HOLD_POLL_MS = 300;
+  var SCALE2 = 1.56;
+  var MIN_WIDTH2 = 340;
+  var EDGE2 = 12;
+  var TOP_GUARD = 72;
+  var FIELDS4 = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,CommunityRating,RemoteTrailers,LocalTrailerCount,UserData,ImageTags,BackdropImageTags";
+  var hoverCapable2 = () => typeof window.matchMedia === "function" && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+  var reducedMotion3 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function popupGeometry(r, vw, vh, infoH = 0) {
+    const width = Math.max(Math.round(r.width * SCALE2), MIN_WIDTH2);
+    const imgH = Math.round(width * 9 / 16);
+    const total = imgH + infoH;
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    let left = cx - width / 2;
+    left = Math.max(EDGE2, Math.min(left, vw - EDGE2 - width));
+    let top = cy - imgH / 2;
+    top = Math.min(top, vh - EDGE2 - total);
+    top = Math.max(top, TOP_GUARD);
+    return { left, top, width, imgH, originX: cx - left, originY: cy - top, scale: r.width / width };
+  }
+  var active3 = null;
+  var intent = null;
+  var leaveTimer = null;
+  var pointerInside = false;
+  var listeners5 = [];
+  var trendP = null;
+  var selfScrollUntil = 0;
+  var holdOpen2 = () => Boolean(isMenuOpen() || isChooserOpen());
+  var blocked = () => holdOpen2() || document.documentElement.classList.contains("lfx-modal-open") || Boolean(document.querySelector(".dialogContainer")) || document.hidden;
+  function loadDetail(id) {
+    return cached(`lfx:prime:hover:${id}`, async () => {
+      const it = await getItem(id, { Fields: FIELDS4 });
+      if (it) putItems([it]);
+      return it;
+    }, 5 * 6e4);
+  }
+  function trend() {
+    if (!trendP) trendP = getTrendInfo().catch(() => null);
+    return trendP;
+  }
+  function cardOf(target) {
+    if (!target || !target.closest) return null;
+    const card3 = target.closest(".lfx-prime-card");
+    return card3 && card3.closest(`#${ROOT_ID10}`) ? card3 : null;
+  }
+  function clearIntent() {
+    if (intent) clearTimeout(intent.timer);
+    intent = null;
+  }
+  function closeNow2() {
+    clearIntent();
+    clearTimeout(leaveTimer);
+    leaveTimer = null;
+    const a = active3;
+    active3 = null;
+    if (!a) return;
+    a.timers.forEach(clearTimeout);
+    if (a.preview) a.preview.cancel();
+    if (a.kind === "popup") {
+      unmountPoint(POPUP_ID2);
+    } else {
+      a.card.classList.remove("is-expanded");
+      a.el.remove();
     }
+  }
+  function scheduleLeave() {
+    clearTimeout(leaveTimer);
+    leaveTimer = setTimeout(function check() {
+      leaveTimer = null;
+      if (!active3 || pointerInside) return;
+      if (holdOpen2()) {
+        leaveTimer = setTimeout(check, HOLD_POLL_MS);
+        return;
+      }
+      closeNow2();
+    }, LEAVE_MS3);
+  }
+  async function openPopup(card3) {
+    const item = getStoredItem(card3.dataset.lfxId);
+    const link = card3.querySelector(".lfx-card__link");
+    if (!item || !link) return;
+    const trendInfo = await trend();
+    if (!intent || intent.card !== card3) return;
+    clearIntent();
+    if (active3 || blocked()) return;
+    const a = { card: card3, kind: "popup", el: null, preview: null, video: null, timers: [] };
+    const pic = landscapeFor(item, 900);
+    const p = progressPercent2(item);
+    const media = h("a", { class: "lfx-prime-hover__media", href: titleHref(item.Id), "aria-label": item.Name || "" }, [
+      pic ? h("img", { class: "lfx-prime-hover__img", src: pic.url, alt: "" }) : null,
+      p > 0 ? h("div", { class: "lfx-prime-card__progress" }, [h("div", { class: "lfx-prime-card__bar", style: { width: `${Math.round(p)}%` } })]) : null
+    ]);
+    const info = h("div", { class: "lfx-prime-hover__info" }, [
+      buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active3 === a })
+    ]);
+    const el = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
+    el.className = "lfx-prime-hover";
+    el.replaceChildren(media, info);
+    el.dataset.lfxId = item.Id;
+    a.el = el;
+    const r = link.getBoundingClientRect();
+    const width = Math.max(Math.round(r.width * SCALE2), MIN_WIDTH2);
+    el.style.width = `${width}px`;
+    el.style.visibility = "hidden";
+    el.style.left = "0px";
+    el.style.top = "0px";
+    const imgH = Math.round(width * 9 / 16);
+    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el.offsetHeight - imgH));
+    media.style.height = `${imgH}px`;
+    el.style.left = `${g.left}px`;
+    el.style.top = `${g.top}px`;
+    el.style.transformOrigin = `${g.originX}px ${g.originY}px`;
+    el.style.setProperty("--lfx-prime-s0", String(g.scale));
+    el.style.visibility = "";
+    active3 = a;
+    pointerInside = true;
+    const go = () => {
+      if (active3 === a) el.classList.add("is-in");
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go));
+    else go();
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("button, a")) return;
+      closeNow2();
+      window.location.hash = titleHref(item.Id);
+    });
+  }
+  async function openPoster(card3) {
+    const item = getStoredItem(card3.dataset.lfxId);
+    if (!item) return;
+    const trendInfo = await trend();
+    if (!intent || intent.card !== card3) return;
+    clearIntent();
+    if (active3 || blocked()) return;
+    const a = { card: card3, kind: "poster", el: null, preview: null, video: null, timers: [], t0: Date.now() };
+    const pic = landscapeFor(item, 1e3);
+    const mediaEl = h("div", { class: "lfx-prime-expand__media" }, [
+      pic ? h("img", { class: "lfx-prime-expand__img", src: pic.url, alt: "" }) : null
+    ]);
+    const mute = h("button", { type: "button", class: "lfx-prime-expand__mute", hidden: true, "aria-label": "Ton einschalten" });
+    mute.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!a.video) return;
+      a.video.muted = !a.video.muted;
+      mute.replaceChildren(svgIcon(a.video.muted ? ICON_MUTED2 : ICON_SOUND2));
+      mute.setAttribute("aria-label", a.video.muted ? "Ton einschalten" : "Ton ausschalten");
+    });
+    const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active3 === a })]);
+    const el = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
+    a.el = el;
+    card3.append(el);
+    card3.classList.add("is-expanded");
+    active3 = a;
+    pointerInside = true;
+    a.timers.push(setTimeout(() => {
+      const track = card3.closest(".lfx-prime-row__track");
+      if (!track || active3 !== a) return;
+      const cr = card3.getBoundingClientRect();
+      const tr = track.getBoundingClientRect();
+      const over = cr.right - (tr.right - EDGE2 * 2);
+      if (over > 0) {
+        selfScrollUntil = Date.now() + 700;
+        if (typeof track.scrollBy === "function") track.scrollBy({ left: over, behavior: reducedMotion3() ? "auto" : "smooth" });
+      }
+    }, 340));
+    if (reducedMotion3()) return;
+    loadDetail(item.Id).then((detail) => {
+      if (active3 !== a || !detail) return;
+      a.preview = createMutedPreview(mediaEl, detail, {
+        delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
+        onStart: (v) => {
+          if (active3 !== a) return;
+          a.video = v;
+          v.classList.add("is-in");
+          el.classList.add("is-video");
+          mute.hidden = false;
+          mute.replaceChildren(svgIcon(ICON_MUTED2));
+        },
+        onEnd: () => {
+          if (active3 !== a) return;
+          a.preview = null;
+          a.video = null;
+          el.classList.remove("is-video");
+          mute.hidden = true;
+        }
+      });
+    }, () => {
+    });
+  }
+  function scheduleOpen2(card3) {
+    clearIntent();
+    if (blocked()) return;
+    const poster = card3.classList.contains("lfx-prime-card--poster");
+    const timer = setTimeout(() => {
+      if (!intent || intent.card !== card3) return;
+      if (!card3.isConnected) {
+        clearIntent();
+        return;
+      }
+      (poster ? openPoster : openPopup)(card3);
+    }, poster ? INTENT_POSTER_MS : INTENT_WIDE_MS);
+    intent = { card: card3, timer };
+  }
+  function onOver2(e) {
+    const t = e.target;
+    const inPopup = Boolean(t && t.closest && t.closest(`#${POPUP_ID2}`));
+    const card3 = inPopup ? null : cardOf(t);
+    if (inPopup || card3 && active3 && active3.card === card3) {
+      pointerInside = true;
+      clearTimeout(leaveTimer);
+      leaveTimer = null;
+      return;
+    }
+    pointerInside = false;
+    if (active3) {
+      if (!card3 || card3 !== active3.card) {
+        if (card3) closeNow2();
+        else scheduleLeave();
+      }
+    }
+    if (card3 && !active3) scheduleOpen2(card3);
+    else if (!card3) clearIntent();
+  }
+  function onOut2(e) {
+    if (e.relatedTarget) return;
+    pointerInside = false;
+    clearIntent();
+    if (active3) scheduleLeave();
+  }
+  function onScroll4() {
+    if (!active3 && !intent) return;
+    if (Date.now() < selfScrollUntil) return;
+    closeNow2();
+  }
+  function onKey2(e) {
+    if (e.key === "Escape" && active3) closeNow2();
+  }
+  function add(target, type, fn, opts) {
+    target.addEventListener(type, fn, opts);
+    listeners5.push(() => target.removeEventListener(type, fn, opts));
+  }
+  function start4() {
+    add(document, "mouseover", onOver2);
+    add(document, "mouseout", onOut2);
+    add(document, "keydown", onKey2);
+    add(window, "scroll", onScroll4, { capture: true, passive: true });
+    add(window, "hashchange", closeNow2);
+    add(window, "blur", closeNow2);
+  }
+  function stop3() {
+    closeNow2();
+    for (const off of listeners5.splice(0)) off();
+    unmountPoint(POPUP_ID2);
+    trendP = null;
+    pointerInside = false;
+  }
+  var primeHover = {
+    name: "prime-hover",
+    match: (route) => isTheme("prime") && isModern() && !isTv() && !isMobile() && isReady() && hoverCapable2() && Boolean(primeHomeRoute(route)),
+    mount: start4,
+    unmount: stop3
   };
+  var hover_default = primeHover;
+
+  // src/js/features/prime/title-logic.js
+  var TICKS_PER_MIN4 = 6e8;
+  function resolveTarget4(item, id) {
+    const sel = { seasonId: null, episodeId: null };
+    let targetId = id;
+    if (item && item.Type === "Episode") {
+      targetId = item.SeriesId || item.ParentId || id;
+      sel.episodeId = item.Id;
+      sel.seasonId = item.SeasonId || item.ParentId || null;
+    } else if (item && item.Type === "Season") {
+      targetId = item.SeriesId || item.ParentId || id;
+      sel.seasonId = item.Id;
+    }
+    return { targetId, sel };
+  }
+  function ratingChip(rating) {
+    const r = String(rating || "").trim();
+    if (!r) return null;
+    const m = /(\d{1,2})/.exec(r);
+    if (!m) return { text: r.slice(0, 6), tone: "16" };
+    const n = Number(m[1]);
+    return { text: String(n), tone: n >= 16 ? "16" : n >= 12 ? "12" : "6" };
+  }
+  function metaItems(item, seasonCount = 0) {
+    const out = [];
+    const score = Number(item && item.CommunityRating);
+    if (score > 0) out.push(`\u2605 ${score.toFixed(1).replace(".", ",")}`);
+    if (item && item.ProductionYear) out.push(String(item.ProductionYear));
+    if (item && item.Type === "Series") {
+      const n = seasonCount || Number(item.ChildCount) || 0;
+      if (n > 0) out.push(`${n} ${n === 1 ? "Staffel" : "Staffeln"}`);
+    } else {
+      const rt = formatRuntime(item && item.RunTimeTicks);
+      if (rt) out.push(rt);
+    }
+    return out;
+  }
+  function playInfo(main, nextUp) {
+    const isSeries = main && main.Type === "Series";
+    if (isSeries && nextUp) {
+      const resume2 = hasResume(nextUp);
+      const n = nextUp.IndexNumber != null ? nextUp.IndexNumber : null;
+      const s = nextUp.ParentIndexNumber != null ? nextUp.ParentIndexNumber : null;
+      const code = s != null && n != null ? `S${s} F${n}` : n != null ? `Folge ${n}` : "";
+      return {
+        label: resume2 ? "Fortsetzen" : n != null ? `Folge ${n}` : "Abspielen",
+        sub: resume2 ? code : "Jetzt ansehen",
+        progress: resume2 ? progressPercent(nextUp) : 0,
+        target: nextUp,
+        resume: resume2
+      };
+    }
+    const resume = !isSeries && hasResume(main);
+    return {
+      label: resume ? "Fortsetzen" : "Abspielen",
+      sub: "",
+      progress: resume ? progressPercent(main) : 0,
+      target: main,
+      resume
+    };
+  }
+  function remainingLabel2(ep) {
+    const ud = ep && ep.UserData;
+    if (!ud || !(ud.PlaybackPositionTicks > 0) || !(ep.RunTimeTicks > 0)) return "";
+    const left = Math.round((ep.RunTimeTicks - ud.PlaybackPositionTicks) / TICKS_PER_MIN4);
+    return left > 0 ? `Noch ${left} Min.` : "";
+  }
+  function episodeRuntime(ep) {
+    return formatRuntime(ep && ep.RunTimeTicks);
+  }
+  function episodeTitle(ep) {
+    const n = ep && ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
+    return `${n}${ep && ep.Name || ""}`.trim();
+  }
+  function seasonName(season) {
+    if (!season) return "";
+    if (season.IndexNumber === 0) return season.Name || "Extras";
+    if (season.IndexNumber > 0) return `Staffel ${season.IndexNumber}`;
+    return season.Name || "Staffel";
+  }
+  var uniq = (arr) => [...new Set(arr.filter(Boolean))];
+  function streamsOf(item, type) {
+    const out = [];
+    for (const src of item && item.MediaSources || []) {
+      for (const s of src.MediaStreams || []) if (s && s.Type === type) out.push(s);
+    }
+    return out;
+  }
+  function detailTiles(item, seasonCount = 0) {
+    if (!item) return [];
+    const tiles = [];
+    const facts = [...metaItems(item, seasonCount)];
+    tiles.push({ id: "info", title: item.Name || "", lines: facts.length ? [facts.join("  \xB7  ")] : [], text: item.Overview || "" });
+    if (item.Genres && item.Genres.length) tiles.push({ id: "genres", title: "Genres", chips: item.Genres.slice(0, 12) });
+    const actors = peopleOf(item, "Actor").slice(0, 14);
+    if (actors.length) tiles.push({ id: "cast", title: "Besetzung", lines: actors.map((p) => p.Role ? `${p.Name} (${p.Role})` : p.Name) });
+    const directors = peopleOf(item, "Director");
+    const writers = peopleOf(item, "Writer");
+    if (directors.length || writers.length) {
+      const lines = [];
+      if (directors.length) lines.push(`Regie: ${directors.map((p) => p.Name).join(", ")}`);
+      if (writers.length) lines.push(`Drehbuch: ${writers.slice(0, 6).map((p) => p.Name).join(", ")}`);
+      tiles.push({ id: "crew", title: "Kreative", lines });
+    }
+    const studios = uniq((item.Studios || []).map((s) => s && s.Name));
+    if (studios.length) tiles.push({ id: "studio", title: "Studio", lines: [studios.join(", ")] });
+    const audio = uniq(streamsOf(item, "Audio").map((s) => s.DisplayLanguage || s.Language));
+    if (audio.length) tiles.push({ id: "audio", title: "Wiedergabesprachen", chips: audio });
+    const subs = uniq(streamsOf(item, "Subtitle").map((s) => s.DisplayLanguage || s.Language));
+    if (subs.length) tiles.push({ id: "subs", title: "Untertitel", chips: subs });
+    if (item.Type !== "Series" && item.RunTimeTicks > 0) tiles.push({ id: "runtime", title: "Laufzeit", lines: [formatRuntime(item.RunTimeTicks)] });
+    return tiles;
+  }
+
+  // src/js/features/prime/title-dom.js
+  var svg8 = (p) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
+  var ICONS5 = {
+    play: svg8('<path d="M7 4.2v15.6a1 1 0 0 0 1.5.86l13-7.8a1 1 0 0 0 0-1.72l-13-7.8A1 1 0 0 0 7 4.2z"/>'),
+    plus: svg8('<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>'),
+    check: svg8('<path d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>'),
+    trailer: svg8('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4.5 2.2 5 2.8-5 2.8z"/>'),
+    muted: svg8('<path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>'),
+    sound: svg8('<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/>'),
+    chevron: svg8('<path d="M6.7 9.3 12 14.6l5.3-5.3 1.4 1.4-6.7 6.7-6.7-6.7z"/>'),
+    trend: svg8('<path d="M3 17.6 9.5 11l4 4 6.3-6.6L21 9.7V5h-4.7l1.4 1.4-4.2 4.4-4-4L1.6 15.8z"/>')
+  };
+  function iconEl(markup, cls = "lfx-pt__ico") {
+    const el = h("span", { class: cls, "aria-hidden": "true" });
+    el.innerHTML = markup;
+    return el;
+  }
+  function circleButton2({ label, icon: icon4, mod = "", onClick, hidden = false }) {
+    const b = h("button", {
+      type: "button",
+      class: `lfx-pt__circle${mod ? ` lfx-pt__circle--${mod}` : ""}`,
+      "aria-label": label,
+      title: label,
+      hidden: hidden || null
+    });
+    b.append(iconEl(icon4));
+    if (onClick) {
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onClick(b, e);
+      });
+    }
+    return b;
+  }
+  function setIcon2(btn, markup) {
+    const ico = btn.querySelector(".lfx-pt__ico");
+    if (ico) ico.innerHTML = markup;
+  }
+  function ratingChipEl(rating) {
+    const c = ratingChip(rating);
+    return c ? h("span", { class: `lfx-pt__fsk lfx-pt__fsk--${c.tone}`, title: `Altersfreigabe ${rating}` }, c.text) : null;
+  }
+  function buildTile(tile2) {
+    return h("section", { class: `lfx-pt__tile lfx-pt__tile--${tile2.id}` }, [
+      h("h3", { class: "lfx-pt__tile-title" }, tile2.title),
+      ...(tile2.lines || []).map((l) => h("p", { class: "lfx-pt__tile-line" }, l)),
+      tile2.text ? h("p", { class: "lfx-pt__tile-text" }, tile2.text) : null,
+      tile2.chips ? h("div", { class: "lfx-pt__chips" }, tile2.chips.map((c) => h("span", { class: "lfx-pt__chip" }, c))) : null
+    ]);
+  }
+  function buildEpisode(ep, { onPlay, selected = false } = {}) {
+    const img = landscapeFor(ep, 640);
+    const p = progressPercent(ep);
+    const remaining = remainingLabel2(ep);
+    const media = h("button", { type: "button", class: "lfx-pt__ep-media", "aria-label": `${episodeTitle(ep)} abspielen` }, [
+      img ? h("img", { class: "lfx-pt__ep-img", src: img.url, alt: "", loading: "lazy", decoding: "async" }) : null,
+      h("span", { class: "lfx-pt__ep-play", "aria-hidden": "true" }, [iconEl(ICONS5.play)]),
+      remaining ? h("span", { class: "lfx-pt__ep-badge" }, remaining) : null,
+      p > 0 ? h("span", { class: "lfx-pt__ep-progress", "aria-hidden": "true" }, [h("span", { style: { width: `${Math.round(p)}%` } })]) : null
+    ]);
+    media.addEventListener("click", () => onPlay && onPlay(ep));
+    const meta = [
+      ratingChipEl(ep.OfficialRating),
+      episodeRuntime(ep) ? h("span", null, episodeRuntime(ep)) : null,
+      ep.PremiereDate ? h("span", null, formatDate(ep.PremiereDate)) : null
+    ].filter(Boolean);
+    return h("article", {
+      class: `lfx-pt__ep${selected ? " is-selected" : ""}`,
+      dataset: { lfxId: ep.Id }
+    }, [
+      media,
+      h("h3", { class: "lfx-pt__ep-title" }, episodeTitle(ep)),
+      ep.Overview ? h("p", { class: "lfx-pt__ep-desc" }, ep.Overview) : null,
+      meta.length ? h("div", { class: "lfx-pt__ep-meta" }, meta) : null
+    ]);
+  }
+  function formatDate(iso) {
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return "";
+    return new Date(t).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" });
+  }
+  function buildCardGrid(items, { trend: trend2, newInfo } = {}) {
+    return h("div", { class: "lfx-pt__grid", role: "list" }, items.map((it) => createCard(it, { badge: cardBadge(it, { newInfo, trend: trend2 }) })));
+  }
+  function buildSeasonSelect(seasons, seasonId, onPick) {
+    const cur2 = seasons.find((s) => s.Id === seasonId) || seasons[0];
+    const btn = h("button", {
+      type: "button",
+      class: "lfx-pt__season",
+      "aria-haspopup": "menu",
+      "aria-label": "Staffel w\xE4hlen"
+    }, [h("span", { class: "lfx-pt__season-label" }, seasonName(cur2)), iconEl(ICONS5.chevron, "lfx-pt__season-chev")]);
+    btn.addEventListener("click", () => {
+      if (isPopoverOpen()) {
+        closePopover({ restoreFocus: true });
+        return;
+      }
+      btn.setAttribute("aria-expanded", "true");
+      openPopover(btn, {
+        label: "Staffeln",
+        align: "start",
+        className: "lfx-pt-popover",
+        items: seasons.map((s) => ({
+          key: s.Id,
+          label: seasonName(s),
+          className: s.Id === (cur2 && cur2.Id) ? "is-active" : "",
+          onClick: () => onPick(s.Id)
+        }))
+      });
+    });
+    return btn;
+  }
 
   // src/js/features/prime/title.js
+  var ROOT_ID11 = "lfx-prime-title";
+  var ON_CLASS9 = "lfx-prime-title-on";
+  var TRAILER_DELAY_MS3 = 1200;
+  var HEADER_H = 80;
+  var root3 = null;
+  var session3 = null;
+  var waitTimer5 = null;
+  var isPlainRoute = (route) => {
+    const r = parseLfxRoute(route);
+    return r.kind === "title" && r.id ? r : null;
+  };
+  function findHomeTab6() {
+    const tab = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab && tab.isConnected ? tab : null;
+  }
+  function reducedMotion4() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+  function stopVideo(s) {
+    if (!s || !s.video) return;
+    const v = s.video;
+    s.video = null;
+    try {
+      v.pause();
+      v.removeAttribute("src");
+      if (v.load) v.load();
+    } catch {
+    }
+    v.remove();
+    if (s.stage) s.stage.classList.remove("has-video");
+    if (s.muteBtn) s.muteBtn.hidden = true;
+  }
+  function paintMute(s) {
+    if (!s.video || !s.muteBtn) return;
+    setIcon2(s.muteBtn, s.video.muted ? ICONS5.muted : ICONS5.sound);
+    const label = s.video.muted ? "Ton einschalten" : "Ton ausschalten";
+    s.muteBtn.setAttribute("aria-label", label);
+    s.muteBtn.title = label;
+  }
+  async function resolveTrailerSrc(item) {
+    try {
+      const t = await loadLocalTrailer({ ...item, LocalTrailerCount: item.LocalTrailerCount == null ? 1 : item.LocalTrailerCount });
+      if (t) return trailerUrl(t.Id);
+    } catch {
+    }
+    return directRemoteTrailerUrl(item);
+  }
+  function startVideo(s, { muted = true } = {}) {
+    if (s.dead || !s.trailerSrc || !s.bg) return;
+    if (s.video) {
+      s.video.muted = muted;
+      try {
+        s.video.currentTime = 0;
+        const p = s.video.play && s.video.play();
+        if (p && p.catch) p.catch(() => {
+        });
+      } catch {
+      }
+      paintMute(s);
+      return;
+    }
+    const v = h("video", { class: "lfx-pt__video", playsinline: true, preload: "auto", "aria-hidden": "true" });
+    v.muted = muted;
+    if (muted) v.setAttribute("muted", "");
+    v.addEventListener("playing", () => {
+      if (s.dead || s.video !== v) return;
+      v.classList.add("is-in");
+      s.stage.classList.add("has-video");
+      s.muteBtn.hidden = false;
+      paintMute(s);
+    });
+    const end = () => {
+      if (s.video === v) stopVideo(s);
+    };
+    v.addEventListener("ended", end);
+    v.addEventListener("error", end);
+    s.video = v;
+    v.src = s.trailerSrc;
+    s.bg.append(v);
+    try {
+      const p = v.play && v.play();
+      if (p && p.catch) p.catch(end);
+    } catch {
+      end();
+    }
+  }
+  function buildSkeleton2() {
+    return h("div", { class: "lfx-pt__skeleton", "aria-busy": "true", "aria-label": "Wird geladen" }, [
+      h("div", { class: "lfx-pt__sk-bar lfx-pt__sk-bar--title" }),
+      h("div", { class: "lfx-pt__sk-bar" }),
+      h("div", { class: "lfx-pt__sk-bar lfx-pt__sk-bar--btn" })
+    ]);
+  }
+  function buildError2(message) {
+    return h("div", { class: "lfx-pt__error", role: "alert" }, [
+      h("p", null, message),
+      h("a", { class: "lfx-pt__back", href: "#/home" }, "Zur Startseite")
+    ]);
+  }
+  function backdropOf(main) {
+    return imageUrl(main, { type: "Backdrop", maxWidth: 1920, quality: 85 }) || landscapeImage(main, { maxWidth: 1920, quality: 85 }) || imageUrl(main, { type: "Primary", maxWidth: 900, quality: 85 });
+  }
+  function paintPlay(s, info) {
+    const btn = s.playBtn;
+    if (!btn) return;
+    btn.replaceChildren(
+      iconEl(ICONS5.play),
+      h("span", { class: "lfx-pt__play-text" }, [
+        h("span", { class: "lfx-pt__play-label" }, info.label),
+        info.sub ? h("span", { class: "lfx-pt__play-sub" }, info.sub) : null
+      ])
+    );
+    btn.classList.toggle("is-two-line", Boolean(info.sub));
+    s.playInfo = info;
+    const wrap = s.playWrap;
+    const old = wrap.querySelector(".lfx-pt__progress");
+    if (old) old.remove();
+    if (info.progress > 0) {
+      wrap.append(h("div", { class: "lfx-pt__progress", "aria-hidden": "true" }, [h("span", { style: { width: `${Math.round(info.progress)}%` } })]));
+    }
+  }
+  function buildStage(s, main) {
+    const bgUrl = backdropOf(main);
+    s.bg = h("div", { class: "lfx-pt__bg", "aria-hidden": "true" }, [
+      bgUrl ? h("img", { class: "lfx-pt__bg-img", src: bgUrl, alt: "", decoding: "async" }) : null,
+      h("div", { class: "lfx-pt__shade lfx-pt__shade--a" }),
+      h("div", { class: "lfx-pt__shade lfx-pt__shade--b" })
+    ]);
+    s.muteBtn = circleButton2({
+      label: "Ton einschalten",
+      icon: ICONS5.muted,
+      mod: "mute",
+      hidden: true,
+      onClick: () => {
+        if (!s.video) return;
+        s.video.muted = !s.video.muted;
+        paintMute(s);
+      }
+    });
+    s.muteBtn.classList.add("lfx-pt__mute");
+    const logo = logoImage(main, { maxWidth: 720 });
+    const title = logo ? h("img", { class: "lfx-pt__logo", src: logo, alt: main.Name || "", decoding: "async" }) : h("h1", { class: "lfx-pt__title" }, main.Name || "");
+    s.rankEl = h("div", { class: "lfx-pt__rank", hidden: true });
+    const meta = h("div", { class: "lfx-pt__meta" });
+    const fill3 = (seasonCount) => {
+      const parts = metaItems(main, seasonCount);
+      const chip = ratingChipEl(main.OfficialRating);
+      meta.replaceChildren(
+        ...chip ? [chip] : [],
+        ...parts.map((p) => h("span", { class: "lfx-pt__meta-item" }, p))
+      );
+    };
+    fill3(0);
+    s.fillMeta = fill3;
+    s.playBtn = h("button", { type: "button", class: "lfx-pt__play" });
+    s.playBtn.addEventListener("click", () => {
+      const info = s.playInfo;
+      if (info && info.target) play(info.target, { resume: info.resume });
+    });
+    s.playWrap = h("div", { class: "lfx-pt__play-wrap" }, [s.playBtn]);
+    paintPlay(s, playInfo(main, null));
+    const isFav = () => Boolean(main.UserData && main.UserData.IsFavorite);
+    const isPlayed3 = () => Boolean(main.UserData && main.UserData.Played);
+    const favLabel = () => isFav() ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen";
+    s.favBtn = circleButton2({
+      label: favLabel(),
+      icon: isFav() ? ICONS5.check : ICONS5.plus,
+      mod: "fav",
+      onClick: async (b) => {
+        await toggleFavorite2(main);
+        if (!s.dead) syncButtons(s, main);
+        b.blur();
+      }
+    });
+    s.playedBtn = circleButton2({
+      label: isPlayed3() ? "Als ungesehen markieren" : "Als gesehen markieren",
+      icon: isPlayed3() ? ICON_EYE_CHECK : ICON_EYE,
+      mod: "seen",
+      onClick: async (b) => {
+        await togglePlayed2(main, { anchorEl: b });
+        if (!s.dead) syncButtons(s, main);
+      }
+    });
+    s.trailerBtn = circleButton2({
+      label: "Trailer ansehen",
+      icon: ICONS5.trailer,
+      mod: "trailer",
+      hidden: true,
+      onClick: () => startVideo(s, { muted: false })
+    });
+    s.dlBtn = circleButton2({
+      label: main.Type === "Series" || main.Type === "Season" ? "Episoden herunterladen" : "Herunterladen",
+      icon: ICON_DOWNLOAD,
+      mod: "dl",
+      hidden: true,
+      onClick: (b) => startDownloadFor(main, { anchorEl: b })
+    });
+    const more = circleButton2({ label: "Mehr", icon: ICON_MORE, mod: "more", onClick: (b) => openTitleMenu(main, b) });
+    more.setAttribute("aria-haspopup", "menu");
+    s.circles = h("div", { class: "lfx-pt__circles" }, [s.trailerBtn, s.favBtn, s.playedBtn, s.dlBtn, more]);
+    const content = h("div", { class: "lfx-pt__content" }, [
+      title,
+      s.rankEl,
+      meta,
+      main.Overview ? h("p", { class: "lfx-pt__desc" }, main.Overview) : null,
+      h("div", { class: "lfx-pt__actions" }, [s.playWrap, s.circles])
+    ]);
+    s.stage = h("div", { class: "lfx-pt__stage" }, [s.bg, s.muteBtn, content]);
+    return s.stage;
+  }
+  function syncButtons(s, main) {
+    const fav = Boolean(main.UserData && main.UserData.IsFavorite);
+    const played = Boolean(main.UserData && main.UserData.Played);
+    setIcon2(s.favBtn, fav ? ICONS5.check : ICONS5.plus);
+    s.favBtn.classList.toggle("is-on", fav);
+    s.favBtn.setAttribute("aria-pressed", String(fav));
+    const favLabel = fav ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen";
+    s.favBtn.setAttribute("aria-label", favLabel);
+    s.favBtn.title = favLabel;
+    setIcon2(s.playedBtn, played ? ICON_EYE_CHECK : ICON_EYE);
+    s.playedBtn.classList.toggle("is-on", played);
+    s.playedBtn.setAttribute("aria-pressed", String(played));
+    const pl = played ? "Als ungesehen markieren" : "Als gesehen markieren";
+    s.playedBtn.setAttribute("aria-label", pl);
+    s.playedBtn.title = pl;
+  }
+  function buildTabs(s, defs) {
+    const bar = h("div", { class: "lfx-pt__tabs", role: "tablist" });
+    const panels = h("div", { class: "lfx-pt__panels" });
+    const sentinel = h("div", { class: "lfx-pt__sentinel", "aria-hidden": "true" });
+    const btns = /* @__PURE__ */ new Map();
+    const panelEls = /* @__PURE__ */ new Map();
+    function select(id) {
+      for (const [pid, b] of btns) {
+        const on = pid === id;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-selected", String(on));
+        b.tabIndex = on ? 0 : -1;
+        panelEls.get(pid).hidden = !on;
+      }
+    }
+    for (const d of defs) {
+      const b = h("button", {
+        type: "button",
+        class: "lfx-pt__tab",
+        role: "tab",
+        id: `lfx-pt-tab-${d.id}`,
+        "aria-controls": `lfx-pt-panel-${d.id}`
+      }, d.label);
+      b.addEventListener("click", () => select(d.id));
+      b.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        const ids = defs.map((x) => x.id);
+        const next = ids[(ids.indexOf(d.id) + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
+        select(next);
+        btns.get(next).focus();
+      });
+      btns.set(d.id, b);
+      bar.append(b);
+      const p = h("div", {
+        class: "lfx-pt__panel",
+        role: "tabpanel",
+        id: `lfx-pt-panel-${d.id}`,
+        "aria-labelledby": `lfx-pt-tab-${d.id}`,
+        hidden: true
+      });
+      panelEls.set(d.id, p);
+      panels.append(p);
+    }
+    select(defs[0].id);
+    if (typeof IntersectionObserver === "function") {
+      const io = new IntersectionObserver(([e]) => {
+        bar.classList.toggle("is-stuck", !e.isIntersecting && e.boundingClientRect.top < HEADER_H);
+      }, { rootMargin: `-${HEADER_H}px 0px 0px 0px` });
+      io.observe(sentinel);
+      s.cleanups.push(() => io.disconnect());
+    }
+    return { bar, panels, sentinel, panel: (id) => panelEls.get(id), select };
+  }
+  var empty = (text) => h("p", { class: "lfx-pt__empty" }, text);
+  function fillEpisodes(s, main, panel, sel) {
+    let seasons = [];
+    let seq3 = 0;
+    let firstReveal = Boolean(sel.episodeId);
+    async function showSeason2(seasonId) {
+      const mine = ++seq3;
+      const slot = panel.querySelector(".lfx-pt__eps");
+      slot.replaceChildren(h("p", { class: "lfx-pt__empty" }, "Folgen werden geladen \u2026"));
+      let eps;
+      try {
+        eps = await loadEpisodes2(main.Id, seasonId);
+      } catch {
+        if (!s.dead && mine === seq3) slot.replaceChildren(empty("Folgen konnten nicht geladen werden."));
+        return;
+      }
+      if (s.dead || mine !== seq3) return;
+      if (!eps.length) {
+        slot.replaceChildren(empty("Keine Folgen vorhanden."));
+        return;
+      }
+      const onPlay = (ep) => play(ep, { resume: hasResume(ep) });
+      slot.replaceChildren(...eps.map((ep) => buildEpisode(ep, { onPlay, selected: ep.Id === sel.episodeId })));
+      if (firstReveal) {
+        firstReveal = false;
+        const row = slot.querySelector(".is-selected");
+        if (row && typeof row.scrollIntoView === "function") {
+          try {
+            row.scrollIntoView({ block: "center", behavior: reducedMotion4() ? "auto" : "smooth" });
+          } catch {
+          }
+        }
+      }
+    }
+    return (async () => {
+      try {
+        seasons = await loadSeasons(main.Id);
+      } catch {
+        if (!s.dead) panel.replaceChildren(empty("Folgen konnten nicht geladen werden."));
+        return;
+      }
+      if (s.dead) return;
+      if (!seasons.length) {
+        panel.replaceChildren(empty("Keine Folgen vorhanden."));
+        return;
+      }
+      s.fillMeta(seasons.length);
+      let seasonId = pickInitialSeason(seasons, sel.seasonId);
+      const head = h("div", { class: "lfx-pt__eps-head" });
+      const mountSelect = () => {
+        const btn = buildSeasonSelect(seasons, seasonId, (id) => {
+          seasonId = id;
+          mountSelect();
+          showSeason2(id);
+        });
+        head.replaceChildren(btn);
+      };
+      if (seasons.length > 1) mountSelect();
+      panel.replaceChildren(head, h("div", { class: "lfx-pt__eps" }));
+      await showSeason2(seasonId);
+    })();
+  }
+  function teardownSession() {
+    const s = session3;
+    session3 = null;
+    if (!s) return;
+    s.dead = true;
+    stopVideo(s);
+    for (const fn of s.cleanups.splice(0)) {
+      try {
+        fn && fn();
+      } catch (e) {
+        console.error("[LenzFlix] prime-title cleanup", e);
+      }
+    }
+    closePopover();
+  }
+  async function load3(id) {
+    teardownSession();
+    const s = { id, dead: false, cleanups: [], video: null, trailerSrc: null };
+    session3 = s;
+    root3.replaceChildren(buildSkeleton2());
+    try {
+      window.scrollTo(0, 0);
+    } catch {
+    }
+    let main;
+    let sel;
+    try {
+      const peek = getStoredItem(id) || await loadItem(id);
+      if (s.dead) return;
+      if (!peek) throw new Error("Titel nicht gefunden");
+      const r = resolveTarget4(peek, id);
+      sel = r.sel;
+      main = await loadItem(r.targetId);
+      if (!main) throw new Error("Titel nicht gefunden");
+    } catch {
+      if (!s.dead) root3.replaceChildren(buildError2("Der Titel konnte nicht geladen werden."));
+      return;
+    }
+    if (s.dead) return;
+    s.main = main;
+    const isSeries = main.Type === "Series";
+    const isBox = main.Type === "BoxSet";
+    const defs = [];
+    if (isSeries) defs.push({ id: "episodes", label: "Folgen" });
+    if (isBox) defs.push({ id: "titles", label: "Titel" });
+    else defs.push({ id: "similar", label: "\xC4hnliches" });
+    defs.push({ id: "details", label: "Details" });
+    const stage = buildStage(s, main);
+    const tabs = buildTabs(s, defs);
+    root3.replaceChildren(stage, tabs.sentinel, tabs.bar, tabs.panels);
+    const tilesEl = h("div", { class: "lfx-pt__tiles" }, detailTiles(main).map(buildTile));
+    tabs.panel("details").append(tilesEl);
+    const tasks = [];
+    if (isSeries) {
+      tasks.push(loadNextUp(main.Id).then((ep) => {
+        if (!s.dead && ep) paintPlay(s, playInfo(main, ep));
+      }).catch(() => {
+      }));
+      tasks.push(fillEpisodes(s, main, tabs.panel("episodes"), sel).catch(() => {
+      }));
+    }
+    const gridPromise = Promise.all([getTrendInfo().catch(() => null), getNewContentInfo().catch(() => null)]);
+    const renderGrid = (panel, items, emptyText) => gridPromise.then(([trend2, newInfo]) => {
+      if (s.dead) return;
+      panel.replaceChildren(items.length ? buildCardGrid(items, { trend: trend2, newInfo }) : empty(emptyText));
+    });
+    if (isBox) {
+      tasks.push(loadCollection(main.Id).then((items) => renderGrid(tabs.panel("titles"), items, "Diese Sammlung ist leer.")).catch(() => {
+        if (!s.dead) tabs.panel("titles").replaceChildren(empty("Titel konnten nicht geladen werden."));
+      }));
+    } else {
+      tasks.push(loadSimilar(main.Id).then((items) => renderGrid(tabs.panel("similar"), items.filter((i) => i.Id !== main.Id), "Keine \xE4hnlichen Titel gefunden.")).catch(() => {
+        if (!s.dead) tabs.panel("similar").replaceChildren(empty("\xC4hnliche Titel konnten nicht geladen werden."));
+      }));
+    }
+    getTrendInfo().then((trend2) => {
+      if (s.dead) return;
+      const line = heroTrendLine(main, trend2);
+      if (!line) return;
+      s.rankEl.replaceChildren(iconEl(ICONS5.trend, "lfx-pt__rank-ico"), h("span", null, line));
+      s.rankEl.hidden = false;
+    }).catch(() => {
+    });
+    Promise.resolve(canDownload(main)).then((ok) => {
+      if (ok && !s.dead && s.dlBtn.isConnected) s.dlBtn.hidden = false;
+    }, () => {
+    });
+    resolveTrailerSrc(main).then((src) => {
+      if (s.dead || !src) return;
+      s.trailerSrc = src;
+      s.trailerBtn.hidden = false;
+      if (reducedMotion4()) return;
+      const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS3);
+      s.cleanups.push(() => clearTimeout(t));
+    }).catch(() => {
+    });
+    const onVis = () => {
+      if (!s.video) return;
+      try {
+        if (document.hidden) s.video.pause();
+        else {
+          const p = s.video.play();
+          if (p && p.catch) p.catch(() => {
+          });
+        }
+      } catch {
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    s.cleanups.push(() => document.removeEventListener("visibilitychange", onVis));
+    s.cleanups.push(onItemsChanged(({ removed = [], updated = [] }) => {
+      if (s.dead) return;
+      if (removed.includes(main.Id)) {
+        window.location.hash = "#/home";
+        return;
+      }
+      if (updated.includes(main.Id)) {
+        const fresh = getStoredItem(main.Id);
+        if (fresh) {
+          main.UserData = fresh.UserData || main.UserData;
+          syncButtons(s, main);
+        }
+      }
+    }));
+    await Promise.all(tasks);
+  }
+  function stop4() {
+    clearTimeout(waitTimer5);
+    waitTimer5 = null;
+    teardownSession();
+    if (root3) root3.remove();
+    root3 = null;
+    document.getElementById(ROOT_ID11)?.remove();
+    document.documentElement.classList.remove(ON_CLASS9);
+  }
+  function pullToTop(el) {
+    el.style.marginTop = "";
+    const top = el.getBoundingClientRect().top + (window.scrollY || 0);
+    if (top > 2 && top < 240) el.style.marginTop = `-${Math.round(top)}px`;
+  }
+  function start5(route) {
+    const r = isPlainRoute(route);
+    if (!r) return;
+    clearTimeout(waitTimer5);
+    if (root3 && root3.isConnected && session3 && session3.id === r.id) return;
+    const run = (tab2) => {
+      if (!root3 || !root3.isConnected || !tab2.contains(root3)) {
+        document.getElementById(ROOT_ID11)?.remove();
+        root3 = h("div", { id: ROOT_ID11, class: "lfx-pt" });
+        tab2.prepend(root3);
+      }
+      document.documentElement.classList.add(ON_CLASS9);
+      pullToTop(root3);
+      load3(r.id);
+    };
+    const tab = findHomeTab6();
+    if (tab) {
+      run(tab);
+      return;
+    }
+    let tries = 0;
+    const poll = () => {
+      const t = findHomeTab6();
+      if (t) run(t);
+      else if (++tries < 30) waitTimer5 = setTimeout(poll, 200);
+    };
+    waitTimer5 = setTimeout(poll, 200);
+  }
   var title_default2 = {
     name: "prime-title",
-    match: () => false,
-    mount() {
-    },
-    unmount() {
-    }
+    match: (route) => isTheme("prime") && isModern() && !isTv() && isReady() && Boolean(isPlainRoute(route)),
+    mount: (route) => start5(route),
+    update: (route) => start5(route),
+    unmount: () => stop4()
   };
 
   // src/js/features/prime/index.js
@@ -6533,6 +11587,8 @@
 
   // src/js/main.js
   var WATCH_MS = 1e3;
+  var FAST_MS = 100;
+  var FAST_TICKS = 50;
   function init() {
     if (window.LenzFlix) return;
     let running = false;
@@ -6574,8 +11630,16 @@
         removeFavicon();
       }
     }
+    earlyTheme();
     if (cssActive()) startTheme();
-    watchTimer = setInterval(sync2, WATCH_MS);
+    let fastN = 0;
+    watchTimer = setInterval(() => {
+      if (++fastN >= FAST_TICKS) {
+        clearInterval(watchTimer);
+        watchTimer = setInterval(sync2, WATCH_MS);
+      }
+      sync2();
+    }, FAST_MS);
     window.addEventListener("hashchange", sync2);
     sync2();
     function destroy() {

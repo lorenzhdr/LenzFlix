@@ -24,19 +24,30 @@ async function load() {
     removeThemeCss: removeMock,
   }));
   vi.doMock('../src/js/core/toast.js', () => ({ toast: toastMock }));
-  return import('../src/js/core/theme.js');
+  current = await import('../src/js/core/theme.js');
+  return current;
 }
+// Zuletzt geladene Modul-Instanz: wird nach jedem Test zerstört, damit kein (echter) Upload-/Reveal-Timer
+// eines früheren Tests in einen späteren hineinfeuert (sonst flackernde Tests unter Last).
+let current = null;
 const settle = (id, ok = true) => pending[id].shift().resolve(ok);
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
   localStorage.clear();
   html.className = '';
+  document.getElementById('lfx-theme-prehide')?.remove();
   window.location.hash = '#/home';
   delete window.ApiClient;
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 Desktop');
 });
 afterEach(() => {
+  try {
+    current?.destroyTheme();
+  } catch {
+    /* egal */
+  }
+  current = null;
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.doUnmock('../src/js/core/themecss.js');
@@ -430,6 +441,138 @@ describe('Benutzerwechsel', () => {
     settle('plus');
     await flush();
     expect(t.getTheme()).toBe('plus');
+  });
+});
+
+describe('Frühstart (earlyTheme)', () => {
+  const prehide = () => document.getElementById('lfx-theme-prehide');
+
+  it('plus: Prehide-Style + Klasse + Vorladen; Style steht in head', async () => {
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    const t = await load();
+    t.earlyTheme();
+    expect(prehide()).not.toBeNull();
+    expect(prehide().parentNode).toBe(document.head);
+    expect(prehide().textContent).toContain('opacity:0!important');
+    expect(html.classList.contains('lfx-theme-loading')).toBe(true);
+    expect(pending.plus).toHaveLength(1);
+    t.earlyTheme(); // idempotent
+    expect(document.querySelectorAll('#lfx-theme-prehide')).toHaveLength(1);
+    expect(pending.plus).toHaveLength(1);
+  });
+
+  it('Hash lfxtheme wird gelesen, aber nicht verbraucht', async () => {
+    setUser('u1');
+    window.location.hash = '#/home?lfxtheme=prime';
+    const t = await load();
+    t.earlyTheme();
+    expect(pending.prime).toHaveLength(1);
+    expect(window.location.hash).toBe('#/home?lfxtheme=prime');
+  });
+
+  it('flix, keine Wahl, TV-Klasse, TV-UA: kein Prehide, kein Vorladen', async () => {
+    setUser('u1');
+    let t = await load();
+    t.earlyTheme();
+    expect(prehide()).toBeNull();
+    expect(html.classList.contains('lfx-theme-loading')).toBe(false);
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    html.classList.add('layout-tv');
+    t = await load();
+    t.earlyTheme();
+    expect(prehide()).toBeNull();
+    expect(pending.plus).toBeUndefined();
+    html.classList.remove('layout-tv');
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Web0S; SmartTV)');
+    t = await load();
+    t.earlyTheme();
+    expect(prehide()).toBeNull();
+    expect(pending.plus).toBeUndefined();
+  });
+
+  it('Commit entfernt Prehide', async () => {
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    const t = await load();
+    t.earlyTheme();
+    t.startTheme();
+    expect(prehide()).not.toBeNull();
+    for (const w of pending.plus.splice(0)) w.resolve(true);
+    await flush();
+    expect(t.getTheme()).toBe('plus');
+    expect(prehide()).toBeNull();
+    expect(html.classList.contains('lfx-theme-loading')).toBe(false);
+  });
+
+  it('Fehler entfernt Prehide', async () => {
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'prime');
+    const t = await load();
+    t.earlyTheme();
+    t.startTheme();
+    for (const w of pending.prime.splice(0)) w.resolve(false);
+    await flush();
+    expect(t.getThemeState()).toBe('failed');
+    expect(prehide()).toBeNull();
+  });
+
+  it('Reveal nach 1,5 s ab Frühstart (nicht ab startTheme) entfernt Prehide', async () => {
+    vi.useFakeTimers();
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    const t = await load();
+    t.earlyTheme();
+    await vi.advanceTimersByTimeAsync(1000);
+    t.startTheme();
+    await vi.advanceTimersByTimeAsync(499);
+    expect(prehide()).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(prehide()).toBeNull();
+    expect(t.getTheme()).toBe('flix');
+    expect(html.classList.contains('lfx-theme-loading')).toBe(false);
+  });
+
+  it('startTheme nie aufgerufen: nach 1,5 s sichtbar und Design-CSS entfernt', async () => {
+    vi.useFakeTimers();
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    const t = await load();
+    t.earlyTheme();
+    t.stopTheme(); // sync() ruft das ohne CSS ständig: darf das Fenster nicht vorzeitig beenden
+    expect(prehide()).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1499);
+    expect(prehide()).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(prehide()).toBeNull();
+    expect(html.classList.contains('lfx-theme-loading')).toBe(false);
+    expect(removeMock).toHaveBeenLastCalledWith(null);
+  });
+
+  it('stopTheme nach startTheme und destroyTheme entfernen Prehide', async () => {
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    let t = await load();
+    t.earlyTheme();
+    t.startTheme();
+    t.stopTheme();
+    expect(prehide()).toBeNull();
+    t = await load();
+    t.earlyTheme();
+    t.destroyTheme();
+    expect(prehide()).toBeNull();
+    expect(html.classList.contains('lfx-theme-loading')).toBe(false);
+  });
+
+  it('startTheme löst auf flix auf (Hash): Prehide + Vorlade-Link weg', async () => {
+    setUser('u1');
+    localStorage.setItem('lfx.theme.u1', 'plus');
+    const t = await load();
+    t.earlyTheme();
+    window.location.hash = '#/home?lfxtheme=flix';
+    t.startTheme();
+    expect(t.getTheme()).toBe('flix');
+    expect(prehide()).toBeNull();
   });
 });
 
