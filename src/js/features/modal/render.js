@@ -2,7 +2,7 @@
 import { h } from '../../core/dom.js';
 import * as api from '../../core/api.js';
 import { putItems } from '../../core/itemstore.js';
-import { ICON_MORE, ICON_DOWNLOAD, ICON_LIKE, ICON_LIKE_OUTLINE } from '../../core/icons.js';
+import { ICON_MORE, ICON_DOWNLOAD, ICON_LIKE, ICON_LIKE_OUTLINE, ICON_EYE, ICON_EYE_CHECK } from '../../core/icons.js';
 import { canDownload, startDownload } from '../../core/download.js';
 import { openItemMenu } from '../../core/itemmenu.js';
 import { formatRuntime, metaParts, peopleOf, progressPercent, ratingText, episodeLabel } from './format.js';
@@ -73,6 +73,49 @@ export function setLikeState(btn, on) {
   btn.replaceChildren(icon(on ? ICON_LIKE : ICON_LIKE_OUTLINE));
 }
 
+const PLAYED_LABELS = {
+  item: ['Als gesehen markieren', 'Als ungesehen markieren'],
+  series: ['Ganze Serie als gesehen markieren', 'Ganze Serie als ungesehen markieren'],
+  season: ['Staffel als gesehen markieren', 'Staffel als ungesehen markieren'],
+};
+
+/** Gesehen-Button: Zustand, Icon und Beschriftung (scope: item | series | season, steht in data-scope). */
+export function setPlayedState(btn, on) {
+  const labels = PLAYED_LABELS[btn.dataset.scope] || PLAYED_LABELS.item;
+  const label = on ? labels[1] : labels[0];
+  btn.classList.toggle('is-on', on);
+  btn.setAttribute('aria-pressed', String(on));
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('title', label);
+  btn.replaceChildren(icon(on ? ICON_EYE_CHECK : ICON_EYE));
+}
+
+/** Eckiger Gesehen-Button. opts: {small, scope, on, onclick}. */
+export function playedButton(item, { small = false, scope = null, on = null, onclick = null } = {}) {
+  const sc = scope || (item.Type === 'Series' ? 'series' : 'item');
+  const btn = roundButton(PLAYED_LABELS[sc][0], ICON_EYE, onclick, `${small ? 'lfx-modal__round--small ' : ''}lfx-modal__round--played`);
+  btn.dataset.scope = sc;
+  setPlayedState(btn, on === null ? Boolean(item.UserData && item.UserData.Played === true) : on);
+  return btn;
+}
+
+/** Folgenzeile als gesehen/ungesehen darstellen (Klasse, Haken im Thumb). */
+export function setEpisodeSeen(row, on) {
+  if (!row) return;
+  row.classList.toggle('is-played', on);
+  const thumb = row.querySelector('.lfx-modal__ep-thumb');
+  if (!thumb) return;
+  const mark = thumb.querySelector('.lfx-modal__ep-seen');
+  if (on && !mark) thumb.append(seenMark());
+  if (!on && mark) mark.remove();
+}
+
+function seenMark() {
+  const m = h('span', { class: 'lfx-modal__ep-seen', 'aria-hidden': 'true' });
+  m.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12"><path fill="currentColor" d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+  return m;
+}
+
 const isFolderType = (item) => item.Type === 'Series' || item.Type === 'Season';
 
 /** Download-Button (startet hidden; sichtbar, sobald canDownload true liefert und der Button noch im DOM hängt). */
@@ -116,6 +159,9 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
   setLikeState(likeBtn, ud.Likes === true);
   const dlBtn = downloadButton(item);
   const menuBtn = menuButton(item);
+  const playedBtn = item.Type === 'BoxSet' || item.Type === 'Season'
+    ? null
+    : playedButton(item, { onclick: () => (item.Type === 'Series' ? H.toggleSeriesPlayed(playedBtn) : H.togglePlayed(item, playedBtn)) });
 
   const title = h('h2', { id: TITLE_ID, class: logo ? 'lfx-modal__title lfx-sr' : 'lfx-modal__title' }, item.Name || '');
   const hero = h('div', { class: 'lfx-modal__hero' }, [
@@ -124,7 +170,7 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
     h('div', { class: 'lfx-modal__hero-content' }, [
       logo ? h('img', { class: 'lfx-modal__logo', src: logo, alt: '' }) : null,
       title,
-      h('div', { class: 'lfx-modal__actions' }, [playBtn, favBtn, likeBtn, dlBtn, menuBtn]),
+      h('div', { class: 'lfx-modal__actions' }, [playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn]),
     ]),
   ]);
 
@@ -168,7 +214,7 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
   ]);
 
   const el = h('div', { class: 'lfx-modal__detail' }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
-  return { el, playBtn, favBtn, likeBtn, dlBtn, menuBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
+  return { el, playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
 }
 
 function personLinks(people, H) {
@@ -210,8 +256,10 @@ function episodeRow(ep, selectedId, H, siblings) {
   const img = api.imageUrl(ep, { type: 'Primary', maxWidth: 400 }) || api.landscapeImage(ep, { maxWidth: 400 });
   const pct = progressPercent(ep);
   const rt = formatRuntime(ep.RunTimeTicks);
+  const seen = Boolean(ep.UserData && ep.UserData.Played === true);
+  const playedBtn = playedButton(ep, { small: true, scope: 'item', onclick: (e) => { e.stopPropagation(); H.togglePlayed(ep, playedBtn); } });
   return h('div', {
-    class: `lfx-modal__ep${ep.Id === selectedId ? ' is-selected' : ''}`,
+    class: `lfx-modal__ep${ep.Id === selectedId ? ' is-selected' : ''}${seen ? ' is-played' : ''}`,
     role: 'button',
     tabindex: '0',
     'data-id': ep.Id,
@@ -225,13 +273,15 @@ function episodeRow(ep, selectedId, H, siblings) {
     h('div', { class: 'lfx-modal__ep-thumb' }, [
       img ? h('img', { src: img, alt: '', loading: 'lazy' }) : null,
       h('span', { class: 'lfx-modal__ep-playicon' }, [icon('play')]),
-      pct > 0 ? h('div', { class: 'lfx-progress' }, [h('div', { class: 'lfx-progress__bar', style: { width: `${pct.toFixed(1)}%` } })]) : null,
+      pct > 0 && !seen ? h('div', { class: 'lfx-progress' }, [h('div', { class: 'lfx-progress__bar', style: { width: `${pct.toFixed(1)}%` } })]) : null,
+      seen ? seenMark() : null,
     ]),
     h('div', { class: 'lfx-modal__ep-text' }, [
       h('div', { class: 'lfx-modal__ep-head' }, [h('span', { class: 'lfx-modal__ep-title' }, ep.Name || ''), rt ? h('span', { class: 'lfx-modal__ep-rt' }, rt) : null]),
       ep.Overview ? h('p', { class: 'lfx-modal__ep-desc' }, ep.Overview) : null,
     ]),
     h('div', { class: 'lfx-modal__epactions' }, [
+      stopKeys(playedBtn),
       stopKeys(downloadButton(ep, true, `Herunterladen: ${ep.Name || 'Episode'}`)),
       stopKeys(menuButton(ep, true, `Mehr zu ${ep.Name || 'Episode'}`, { siblings })),
     ]),
@@ -253,6 +303,16 @@ export function renderEpisodes(slot, state, H) {
   const current = seasons.find((s) => s.Id === seasonId);
 
   const head = h('div', { class: 'lfx-modal__eps-head' }, [h('h3', { class: 'lfx-modal__h' }, 'Folgen')]);
+  const tools = h('div', { class: 'lfx-modal__eps-tools' });
+  head.append(tools);
+  if (seasonId && episodes.length) {
+    const seasonBtn = playedButton({}, {
+      scope: 'season',
+      on: episodes.every((e) => e.UserData && e.UserData.Played === true),
+      onclick: () => H.toggleSeasonPlayed(seasonBtn),
+    });
+    tools.append(seasonBtn);
+  }
   if (seasons.length > 1) {
     const list = h('ul', { class: 'lfx-modal__seasonlist', role: 'listbox', hidden: true });
     const btn = h('button', {
@@ -266,7 +326,7 @@ export function renderEpisodes(slot, state, H) {
         onclick: () => { toggle(false); if (s.Id !== seasonId) H.season(s.Id); },
       }, s.Name || `Staffel ${s.IndexNumber}`)]));
     }
-    head.append(h('div', { class: 'lfx-modal__dropdown' }, [btn, list]));
+    tools.append(h('div', { class: 'lfx-modal__dropdown' }, [btn, list]));
   }
   slot.append(head);
 

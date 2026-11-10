@@ -19,7 +19,7 @@ Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dun
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.2.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.3.0/dist/lenzflix.min.css");
 ```
 
 - `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.2.2/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.3.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -61,6 +61,7 @@ Alternativ per JS: `window.LenzFlixConfig = { chartsUrl: "https://charts.example
 - **Download-Button:** neben dem Daumen, nur mit Download-Recht. Bei Serien erst Auswahl „Ganze Serie / Staffel“, dann Rückfrage. Auf Touch-Geräten (Handy/Tablet) ist „Ganze Serie“ ausgegraut („Funktioniert nur am Desktop“), weil Safari jede Datei einzeln bestätigen lässt; einzelne Staffeln bleiben wählbar.
 - **Detail-Modal:** bei Episoden-Karten scrollt es nach dem Öffnen sanft zur Folge.
 - **Daumen (Gefällt mir):** aktiv gefüllt in Rot.
+- **Gesehen-Button (Detail-Modal):** eckiger Button mit Auge, aktiv = weiß. Im Kopf bei Filmen und Folgen direkt, bei Serien für die ganze Serie (mit Rückfrage). In jeder Folgenzeile für die einzelne Folge und im Folgen-Kopf links neben der Staffel-Auswahl für die ganze Staffel (mit Rückfrage). Die Startseite zeigt die Änderung nach dem nächsten Laden.
 - **Neu und beliebt:** eigene Ansicht unter `#/home?lfx=new`.
 - Handy (< 800 px): Logo, Filter-Pills und Kategorien-Overlay im App-Stil.
 
@@ -81,7 +82,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.2.2/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.3.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

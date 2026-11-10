@@ -46,8 +46,13 @@
   - CSS: Öffnungsanimationen mit `both !important` überdecken den Inline-Transform, deshalb setzt `.lfx-dragging` `animation:none`. Die Schließanimation (`lfx-menu-out`, Jellyfin wartet auf `animationend`) bleibt bewusst unberührt.
 - Modal-Scroll: Das Modal startet immer bei `scrollTop` 0. Bei Episoden-Karten scrollt es nach dem Rendern per rAF sanft (`overlay.scrollTo`, reduced motion → `auto`) zur markierten Folge. Kein `scrollIntoView` (es scrollte auch das Overlay). Staffelwechsel und Refresh scrollen nie; Nutzereingriff (wheel/touchstart/pointerdown/keydown) bricht ab.
 - „Meine Liste“-Buttons: aktiv = grüner Haken. Modifier-Klassen `lfx-hc__btn--list`, `lfx-modal__round--fav`, `lfx-np__btn--fav`, `lfx-bb__btn--list`; Tokens `--lfx-green` / `--lfx-green-soft`.
+- Gesehen-Status (nur im Detail-Modal): `setPlayed(id, bool)` aus `src/js/core/api.js` (`POST`/`DELETE /Users/{userId}/PlayedItems/{id}`, wirft bei Fehler).
+  - Button = `lfx-modal__round lfx-modal__round--played` (eckig, `data-scope` = `item` | `series` | `season`), aktiv = weiße Fläche mit dunklem `ICON_EYE_CHECK`; `playedButton`, `setPlayedState`, `setEpisodeSeen` in `modal/render.js`. Orte: Kopf (Film/Episode direkt, Serie mit Rückfrage; nicht bei BoxSet/Season), Folgenzeile (immer sichtbar, `stopPropagation`, Zeile bekommt `is-played`), Folgen-Kopf links neben dem Staffel-Dropdown (`.lfx-modal__eps-tools`, mit Rückfrage).
+  - Staffel/Serie: `setPlayed` auf die Staffel-/Serien-Id (rekursiv serverseitig), danach Folgen neu laden und abweichende Folgen einzeln nachziehen (`bulkPlayed` in `modal.js`). Die Startseite („Weiterschauen“) wird nicht live aktualisiert (`rows.js` reagiert nur auf `removed`).
+  - Folgen-Aktionen (`.lfx-modal__epactions`): Hover-Fade nur für Download/⋮, nicht für den Gesehen-Button.
+- Sheet (`src/js/core/sheet.js`): `openSheet(anchorEl, label)`, `renderSheet(c, title, entries)`, `closeChooser()`, `isChooserOpen()`, `isCurrent(c)`, `confirmAction({title, confirmLabel, anchorEl, onConfirm})` (Bestätigen schließt zuerst, ruft dann `onConfirm()` ohne await; `onConfirm` fängt eigene Fehler). Es gibt genau ein Sheet; `download.js` re-exportiert `closeChooser`/`isChooserOpen`.
 - `toast(text)` aus `src/js/core/toast.js` (Mount `#lfx-toast`).
-- Neue Icons in `src/js/core/icons.js` (`ICON_MORE`, `ICON_DOWNLOAD`, `ICON_LIKE`, `ICON_LIKE_OUTLINE`).
+- Neue Icons in `src/js/core/icons.js` (`ICON_MORE`, `ICON_DOWNLOAD`, `ICON_LIKE`, `ICON_LIKE_OUTLINE`, `ICON_EYE`, `ICON_EYE_CHECK`).
 - Feature `contextmenu` (`src/js/features/contextmenu.js`): Rechtsklick bzw. langes Drücken (500 ms) auf `.lfx-card[data-lfx-id]` und `.lfx-modal__ep[data-lfx-id]` öffnet das Titelmenü. Native Karten bleiben unberührt.
 - Solange ein natives `.dialogContainer` oder die Download-Auswahl offen ist, reagieren Modal (Escape, Tab-Falle, Klick außerhalb) und Hovercard (Schließen) nicht.
 

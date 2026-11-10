@@ -1,12 +1,9 @@
 // LenzFlix: Download einzelner Titel und Sammel-Download (Serie/Staffel) mit Auswahl-Sheet.
 // Sicherheit: Download-URLs enthalten ApiKey und werden nie geloggt.
 import { getAuth, getUser, getSeasons, getEpisodes } from './api.js';
-import { h, mountPoint, unmountPoint } from './dom.js';
 import { toast } from './toast.js';
-import { computeMenuPosition, anchorRect } from './itemmenu.js';
-import { attachSwipeClose } from './swipe.js';
+import { openSheet, renderSheet, closeChooser, isChooserOpen, isCurrent } from './sheet.js';
 
-const SHEET_ID = 'lfx-sheet';
 const FOLDER_TYPES = ['Series', 'Season'];
 
 // ------------------------------------------------------------ Berechtigung
@@ -154,56 +151,11 @@ export async function startDownload(item, anchorEl) {
 
 // ------------------------------------------------------------ Chooser
 
-let chooser = null;
-
-export function isChooserOpen() {
-  return chooser !== null;
-}
-
-export function closeChooser() {
-  const c = chooser;
-  if (!c) return;
-  chooser = null;
-  if (c.detachSwipe) c.detachSwipe();
-  window.removeEventListener('keydown', c.onKeydown, true);
-  c.overlay.removeEventListener('click', c.onOverlayClick);
-  unmountPoint(c.overlay);
-  document.documentElement.classList.remove('lfx-sheet-open');
-  const a = c.anchorEl;
-  if (a && typeof a.focus === 'function' && a.isConnected) {
-    try {
-      a.focus({ preventScroll: true });
-    } catch {
-      /* Fokus ist optional */
-    }
-  }
-}
-
-function render(c, title, entries) {
-  c.title.textContent = title;
-  c.list.replaceChildren(
-    ...entries.map(({ label, note, onClick, disabled, primary }) =>
-      h(
-        'button',
-        {
-          type: 'button',
-          class: `lfx-sheet__item${primary ? ' lfx-sheet__item--primary' : ''}`,
-          disabled: disabled ? true : null,
-          onclick: onClick,
-        },
-        note
-          ? [h('span', { class: 'lfx-sheet__text' }, [h('span', null, [label]), h('span', { class: 'lfx-sheet__note' }, [note])])]
-          : [label],
-      ),
-    ),
-  );
-  const first = c.list.querySelector('button:not([disabled])');
-  if (first) first.focus({ preventScroll: true });
-}
+export { closeChooser, isChooserOpen };
 
 function confirmStep(c, episodes) {
   const n = episodes.length;
-  render(c, `${n} ${n === 1 ? 'Episode' : 'Episoden'} herunterladen?`, [
+  renderSheet(c, `${n} ${n === 1 ? 'Episode' : 'Episoden'} herunterladen?`, [
     {
       label: 'Herunterladen',
       primary: true,
@@ -234,59 +186,8 @@ async function loadEpisodes(item) {
 export async function openDownloadChooser(item, anchorEl) {
   if (!item) return;
   closeChooser();
-  const overlay = mountPoint(SHEET_ID, { className: 'lfx-sheet-overlay' });
-  const title = h('h2', { class: 'lfx-sheet__title' }, ['Download']);
-  const list = h('div', { class: 'lfx-sheet__list' });
-  const sheet = h('div', { class: 'lfx-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Download' }, [title, list]);
-  overlay.replaceChildren(sheet);
-
-  const pos = computeMenuPosition(anchorEl ? anchorRect(anchorEl) : { left: 0, right: window.innerWidth, top: 0, bottom: 0 });
-  sheet.style.setProperty('--lfx-sheet-x', `${Math.round(pos.x)}px`);
-  sheet.style.setProperty('--lfx-sheet-y', `${Math.round(pos.y)}px`);
-
-  const c = { overlay, sheet, title, list, anchorEl };
-  c.onKeydown = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      closeChooser();
-      return;
-    }
-    if (e.key !== 'Tab') return;
-    const focusable = [...sheet.querySelectorAll('button:not([disabled])')];
-    if (!focusable.length) {
-      e.preventDefault();
-      return;
-    }
-    const firstEl = focusable[0];
-    const lastEl = focusable[focusable.length - 1];
-    const active = document.activeElement;
-    if (!sheet.contains(active)) {
-      e.preventDefault();
-      firstEl.focus();
-    } else if (e.shiftKey && active === firstEl) {
-      e.preventDefault();
-      lastEl.focus();
-    } else if (!e.shiftKey && active === lastEl) {
-      e.preventDefault();
-      firstEl.focus();
-    }
-  };
-  c.onOverlayClick = (e) => {
-    if (e.target === overlay) closeChooser();
-  };
-  window.addEventListener('keydown', c.onKeydown, true);
-  overlay.addEventListener('click', c.onOverlayClick);
-  if (typeof window.matchMedia === 'function' && window.matchMedia('(hover: none), (max-width: 799px)').matches) {
-    c.detachSwipe = attachSwipeClose(sheet, { onClose: () => { if (chooser === c) closeChooser(); } });
-  }
-  document.documentElement.classList.add('lfx-sheet-open');
-  chooser = c;
-
-  render(c, 'Download', [{ label: 'Lädt …', disabled: true }]);
-  sheet.setAttribute('tabindex', '-1');
-  sheet.focus({ preventScroll: true });
+  const c = openSheet(anchorEl, 'Download');
+  renderSheet(c, 'Download', [{ label: 'Lädt …', disabled: true }]);
 
   let data;
   try {
@@ -294,7 +195,7 @@ export async function openDownloadChooser(item, anchorEl) {
   } catch {
     data = { seasons: [], episodes: [] };
   }
-  if (chooser !== c) return;
+  if (!isCurrent(c)) return;
 
   if (!data.episodes.length) {
     closeChooser();
@@ -321,5 +222,5 @@ export async function openDownloadChooser(item, anchorEl) {
     if (!eps.length) continue;
     entries.push({ label: `${season.Name || 'Staffel'} (${count(eps.length)})`, onClick: () => confirmStep(c, eps) });
   }
-  render(c, 'Download', entries);
+  renderSheet(c, 'Download', entries);
 }

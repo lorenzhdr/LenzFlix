@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { landscapeImage, pickLandscape, logoImage, imageUrl, buildUrl } from '../src/js/core/api.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { landscapeImage, pickLandscape, logoImage, imageUrl, buildUrl, setPlayed } from '../src/js/core/api.js';
 
 beforeEach(() => {
   window.ApiClient = {
@@ -59,5 +59,26 @@ describe('api', () => {
   it('imageUrl: null wenn Tag fehlt', () => {
     expect(imageUrl({ Id: 'a', ImageTags: {} }, { type: 'Primary' })).toBeNull();
     expect(imageUrl({ Id: 'a', BackdropImageTags: ['b'] }, { type: 'Backdrop' })).toContain('Backdrop');
+  });
+});
+
+describe('setPlayed', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('POST bzw. DELETE auf /PlayedItems/<id> mit Authorization-Header', async () => {
+    const f = vi.fn(async () => ({ ok: true, status: 204 }));
+    vi.stubGlobal('fetch', f);
+    await setPlayed('abc', true);
+    await setPlayed('abc', false);
+    expect(f.mock.calls[0][0]).toBe('http://srv:8096/Users/u1/PlayedItems/abc');
+    expect(f.mock.calls[0][1].method).toBe('POST');
+    expect(f.mock.calls[0][1].headers.Authorization).toBe('MediaBrowser Token="tok"');
+    expect(f.mock.calls[1][1].method).toBe('DELETE');
+  });
+
+  it('wirft bei !ok, ohne Token in der Meldung', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })));
+    await expect(setPlayed('abc', true)).rejects.toThrow('HTTP 500 (Gesehen)');
+    await setPlayed('abc', true).catch((e) => expect(e.message).not.toContain('tok'));
   });
 });

@@ -127,6 +127,16 @@ html.lfx-js .lfx-modal__round--like.is-on:focus-visible {
   background: var(--lfx-like-bg);
   border-color: var(--lfx-red);
 }
+/* Gesehen-Button: eckig (abgerundetes Quadrat); aktiv = weiße Fläche mit dunklem Auge-Haken-Symbol */
+html.lfx-js .lfx-modal__round--played { border-radius: 10px; }
+html.lfx-js .lfx-modal__round--played.lfx-modal__round--small { border-radius: 8px; }
+html.lfx-js .lfx-modal__round--played.is-on,
+html.lfx-js .lfx-modal__round--played.is-on:hover,
+html.lfx-js .lfx-modal__round--played.is-on:focus-visible {
+  color: #141414;
+  background: #fff;
+  border-color: #fff;
+}
 /* „Meine Liste“ aktiv: Haken in Grün + grüner Rand */
 html.lfx-js .lfx-modal__round--fav.is-on,
 html.lfx-js .lfx-modal__round--fav.is-on:hover,
@@ -177,6 +187,7 @@ html.lfx-js .lfx-modal__h strong { font-weight: 700; }
 /* Episoden */
 html.lfx-js .lfx-modal__eps-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 html.lfx-js .lfx-modal__eps-head .lfx-modal__h { margin: 0; }
+html.lfx-js .lfx-modal__eps-tools { display: flex; align-items: center; gap: 10px; }
 html.lfx-js .lfx-modal__dropdown { position: relative; }
 html.lfx-js .lfx-modal__seasonbtn {
   display: inline-flex;
@@ -246,6 +257,22 @@ html.lfx-js .lfx-modal__ep-playicon {
 }
 html.lfx-js .lfx-modal__ep:hover .lfx-modal__ep-playicon,
 html.lfx-js .lfx-modal__ep:focus-visible .lfx-modal__ep-playicon { opacity: 1; }
+/* Gesehene Folge: Vorschau abgedunkelt + kleiner Haken unten links im Thumb */
+html.lfx-js .lfx-modal__ep.is-played .lfx-modal__ep-thumb img { opacity: 0.55; }
+html.lfx-js .lfx-modal__ep-seen {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(20, 20, 20, 0.7);
+  color: #fff;
+  pointer-events: none;
+}
+html.lfx-js .lfx-modal__ep-seen svg { display: block; width: 12px; height: 12px; }
 html.lfx-js .lfx-modal__ep .lfx-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, 0.3); }
 html.lfx-js .lfx-modal__ep .lfx-progress__bar { height: 100%; background: var(--lfx-red); }
 html.lfx-js .lfx-modal__ep-text { flex: 1; min-width: 0; }
@@ -272,13 +299,14 @@ html.lfx-js .lfx-modal__epactions {
   margin-left: auto;
 }
 @media (hover: hover) and (pointer: fine) {
-  html.lfx-js .lfx-modal__epactions {
+  /* Gesehen-Button bleibt immer sichtbar, nur Download/Menü blenden bei Hover ein */
+  html.lfx-js .lfx-modal__epactions > .lfx-modal__round:not(.lfx-modal__round--played) {
     opacity: 0;
     transition: opacity var(--lfx-dur-fast) var(--lfx-ease-out);
   }
-  html.lfx-js .lfx-modal__ep:hover .lfx-modal__epactions,
-  html.lfx-js .lfx-modal__ep:focus-within .lfx-modal__epactions,
-  html.lfx-js .lfx-modal__ep.is-selected .lfx-modal__epactions:focus-within {
+  html.lfx-js .lfx-modal__ep:hover .lfx-modal__epactions > .lfx-modal__round:not(.lfx-modal__round--played),
+  html.lfx-js .lfx-modal__ep:focus-within .lfx-modal__epactions > .lfx-modal__round:not(.lfx-modal__round--played),
+  html.lfx-js .lfx-modal__ep.is-selected .lfx-modal__epactions:focus-within > .lfx-modal__round:not(.lfx-modal__round--played) {
     opacity: 1;
   }
 }
@@ -368,6 +396,6 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body { padding-top: 24px; }
   to { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  html.lfx-js .lfx-modal__epactions { transition: none; }
+  html.lfx-js .lfx-modal__epactions > .lfx-modal__round { transition: none; }
   html.lfx-js .lfx-modal { animation: none; }
 }

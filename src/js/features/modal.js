@@ -8,14 +8,17 @@ import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { isTv } from '../core/layout.js';
 import { parseHash } from '../core/router.js';
 import { play } from '../core/playback.js';
-import { setFavorite, getAuth } from '../core/api.js';
+import { setFavorite, setPlayed, getAuth } from '../core/api.js';
 import { onItemsChanged } from '../core/itemmenu.js';
 import { isChooserOpen } from '../core/download.js';
+import { confirmAction } from '../core/sheet.js';
+import { toast } from '../core/toast.js';
+import { putItems } from '../core/itemstore.js';
 import { attachSwipeClose } from '../core/swipe.js';
 import { clearCache } from '../core/cache.js';
 import * as data from './modal/data.js';
 import { hasResume, pickInitialSeason } from './modal/format.js';
-import { TITLE_ID, buildSkeleton, buildError, buildDetail, renderEpisodes, renderCards, icon, setFavState, setLikeState, setPlayLabel, detailHref } from './modal/render.js';
+import { TITLE_ID, buildSkeleton, buildError, buildDetail, renderEpisodes, renderCards, icon, setFavState, setLikeState, setPlayLabel, setPlayedState, setEpisodeSeen, detailHref } from './modal/render.js';
 
 const ROOT_ID = 'lfx-modal';
 const ALLOWED_TYPES = new Set(['Movie', 'Series', 'Episode', 'Season', 'BoxSet', 'Video', 'MusicVideo']);
@@ -382,9 +385,126 @@ async function toggleFavGeneric(item, btn) {
   }
 }
 
+// ---------------------------------------------------------------- Gesehen-Status
+
+const isPlayed = (it) => Boolean(it && it.UserData && it.UserData.Played === true);
+const folgen = (n) => (n === 1 ? '1 Folge' : `${n} Folgen`);
+const SAVE_ERROR = 'Konnte nicht gespeichert werden';
+
+function clearPlayedCaches(itemId, seriesId) {
+  clearCache(`lfx:modal:item:${itemId}`);
+  if (seriesId) {
+    clearCache(`lfx:modal:next:${seriesId}`);
+    clearCache(`lfx:modal:eps:${seriesId}:`);
+  }
+}
+
+/** Staffel-Button aus den geladenen Folgen neu berechnen (aktiv, wenn alle Folgen gesehen). */
+function syncSeasonBtn(s) {
+  const btn = s.parts && s.parts.episodesSlot.querySelector('.lfx-modal__round--played[data-scope="season"]');
+  if (btn) setPlayedState(btn, s.episodes.length > 0 && s.episodes.every(isPlayed));
+}
+
+/** Setzt Gesehen für Serie/Staffel (rekursiv serverseitig) und zieht Folgen mit falschem Status einzeln nach. Liefert Anzahl Fehlschläge. */
+async function bulkPlayed(s, targetId, next) {
+  const seriesId = s.main.Id;
+  await setPlayed(targetId, next);
+  clearPlayedCaches(seriesId, seriesId);
+  const seasonIds = targetId === seriesId ? s.seasons.map((x) => x.Id) : [targetId];
+  const wrong = [];
+  for (const sid of seasonIds) {
+    try {
+      for (const e of await data.loadEpisodes(seriesId, sid)) if (isPlayed(e) !== next) wrong.push(e);
+    } catch { /* Absicherung best effort */ }
+  }
+  let failed = 0;
+  for (let i = 0; i < wrong.length; i += 6) {
+    const res = await Promise.allSettled(wrong.slice(i, i + 6).map((e) => setPlayed(e.Id, next)));
+    failed += res.filter((r) => r.status === 'rejected').length;
+  }
+  clearPlayedCaches(seriesId, seriesId);
+  return failed;
+}
+
+async function seriesEpisodeCount(s) {
+  try {
+    let n = 0;
+    for (const se of s.seasons) n += (await data.loadEpisodes(s.main.Id, se.Id)).length;
+    return n;
+  } catch {
+    return 0;
+  }
+}
+
 function makeHandlers(s, token) {
   const main = s.main;
+  const stale = () => state !== s || s.token !== token;
+  const askBulk = ({ btn, n, next, targetId, isSeries }) => {
+    const verb = next ? 'gesehen' : 'ungesehen';
+    confirmAction({
+      title: n ? `${folgen(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`,
+      confirmLabel: `Als ${verb} markieren`,
+      anchorEl: btn,
+      onConfirm: async () => {
+        if (stale()) return;
+        btn.disabled = true;
+        try {
+          const failed = await bulkPlayed(s, targetId, next);
+          if (stale()) return;
+          if (isSeries || !next) {
+            main.UserData = main.UserData || {};
+            main.UserData.Played = isSeries ? next : false;
+            if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, main.UserData.Played);
+          }
+          await showSeason(s, token, H).catch(() => {});
+          if (failed) toast(SAVE_ERROR);
+          else toast(isSeries ? `Serie als ${verb} markiert` : `${folgen(n)} als ${verb} markiert`);
+        } catch {
+          toast(SAVE_ERROR);
+        } finally {
+          btn.disabled = false;
+        }
+      },
+    });
+  };
   const H = {
+    async togglePlayed(item, btn) {
+      const prev = { ...(item.UserData || {}) };
+      const next = prev.Played !== true;
+      const row = btn.closest('.lfx-modal__ep');
+      item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
+      delete item.UserData.PlayedPercentage;
+      setPlayedState(btn, next);
+      setEpisodeSeen(row, next);
+      syncSeasonBtn(s);
+      try {
+        await setPlayed(item.Id, next);
+      } catch {
+        item.UserData = prev;
+        setPlayedState(btn, !next);
+        setEpisodeSeen(row, !next);
+        if (!stale()) syncSeasonBtn(s);
+        toast(SAVE_ERROR);
+        return;
+      }
+      putItems([item]);
+      clearPlayedCaches(item.Id, item.Type === 'Episode' ? main.Id : null);
+      if (next && row) row.querySelector('.lfx-progress')?.remove();
+      if (!next && item.Type === 'Episode' && main.Type === 'Series' && isPlayed(main) && !stale()) {
+        main.UserData.Played = false;
+        if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, false);
+      }
+    },
+    async toggleSeriesPlayed(btn) {
+      const next = !isPlayed(main);
+      const n = await seriesEpisodeCount(s);
+      if (stale()) return;
+      askBulk({ btn, n, next, targetId: main.Id, isSeries: true });
+    },
+    toggleSeasonPlayed(btn) {
+      if (!s.seasonId || !s.episodes.length) return;
+      askBulk({ btn, n: s.episodes.length, next: !s.episodes.every(isPlayed), targetId: s.seasonId, isSeries: false });
+    },
     async play() {
       let target = main;
       let resume = hasResume(main);

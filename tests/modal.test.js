@@ -12,8 +12,11 @@ vi.mock('../src/js/core/api.js', async (orig) => {
     getNextUp: vi.fn(),
     getItems: vi.fn(),
     setFavorite: vi.fn(async () => ({})),
+    setPlayed: vi.fn(async () => {}),
   };
 });
+vi.mock('../src/js/core/sheet.js', () => ({ confirmAction: vi.fn() }));
+vi.mock('../src/js/core/toast.js', () => ({ toast: vi.fn() }));
 vi.mock('../src/js/core/itemmenu.js', () => ({
   openItemMenu: vi.fn(() => true),
   isMenuOpen: vi.fn(() => false),
@@ -30,6 +33,8 @@ import * as api from '../src/js/core/api.js';
 import { play } from '../src/js/core/playback.js';
 import { openItemMenu, onItemsChanged } from '../src/js/core/itemmenu.js';
 import { startDownload, canDownload, isChooserOpen } from '../src/js/core/download.js';
+import { confirmAction } from '../src/js/core/sheet.js';
+import { toast } from '../src/js/core/toast.js';
 import { clearCache } from '../src/js/core/cache.js';
 import modal, { openModal, closeModal, findInterceptTarget } from '../src/js/features/modal.js';
 import { formatRuntime, metaParts, qualityLabel, seasonsLabel, ratingText } from '../src/js/features/modal/format.js';
@@ -310,6 +315,148 @@ describe('Aktionen, Menü, Download', () => {
     expect(opts.siblings.length).toBe(14);
     row.click();
     expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'SE1-E1' }), expect.anything());
+  });
+});
+
+describe('Gesehen-Button', () => {
+  const lastConfirm = () => confirmAction.mock.calls.at(-1)[0];
+
+  it('Film: Kopfbutton hinter Mehr, Zustand aus UserData.Played, Klick -> setPlayed, Wiedergabe unberührt', async () => {
+    await openModal('M1');
+    const actions = document.querySelector('.lfx-modal__actions');
+    const btn = actions.querySelector('.lfx-modal__round--played');
+    expect(btn).not.toBeNull();
+    expect(actions.lastElementChild).toBe(btn);
+    expect(btn.classList.contains('is-on')).toBe(false);
+    expect(btn.getAttribute('aria-label')).toBe('Als gesehen markieren');
+    btn.click();
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn.getAttribute('aria-label')).toBe('Als ungesehen markieren');
+    expect(api.setPlayed).toHaveBeenCalledWith('M1', true);
+    expect(confirmAction).not.toHaveBeenCalled();
+    await flush();
+    btn.click();
+    expect(btn.classList.contains('is-on')).toBe(false);
+    expect(api.setPlayed).toHaveBeenLastCalledWith('M1', false);
+  });
+
+  it('Film mit UserData.Played startet aktiv; Fehler rollt zurück und zeigt Toast', async () => {
+    api.getItem.mockImplementation(async (id) => ({ S1: series, M1: { ...movie, UserData: { Played: true } } }[id]));
+    await openModal('M1');
+    const btn = document.querySelector('.lfx-modal__actions .lfx-modal__round--played');
+    expect(btn.classList.contains('is-on')).toBe(true);
+    api.setPlayed.mockRejectedValueOnce(new Error('x'));
+    btn.click();
+    expect(btn.classList.contains('is-on')).toBe(false);
+    await flush(); await flush();
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(toast).toHaveBeenCalledWith('Konnte nicht gespeichert werden');
+  });
+
+  it('Folgenzeile: Button immer im DOM, Klick spielt nicht ab, Zeile bekommt is-played', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const row = document.querySelector('.lfx-modal__ep');
+    const btn = row.querySelector('.lfx-modal__epactions > .lfx-modal__round--played');
+    expect(btn).toBe(row.querySelector('.lfx-modal__epactions').firstElementChild);
+    expect(btn.classList.contains('lfx-modal__round--small')).toBe(true);
+    expect(row.classList.contains('is-played')).toBe(false);
+    expect(row.querySelector('.lfx-modal__ep-seen')).toBeNull();
+    btn.click();
+    expect(play).not.toHaveBeenCalled();
+    expect(api.setPlayed).toHaveBeenCalledWith('SE1-E1', true);
+    expect(row.classList.contains('is-played')).toBe(true);
+    expect(row.querySelector('.lfx-modal__ep-seen')).not.toBeNull();
+    const ev = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    btn.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(false);
+    await flush();
+    btn.click();
+    expect(row.classList.contains('is-played')).toBe(false);
+    expect(row.querySelector('.lfx-modal__ep-seen')).toBeNull();
+  });
+
+  it('Folge: Fehler beim Speichern rollt Zeile zurück', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const row = document.querySelector('.lfx-modal__ep');
+    api.setPlayed.mockRejectedValueOnce(new Error('x'));
+    row.querySelector('.lfx-modal__round--played').click();
+    await flush(); await flush();
+    expect(row.classList.contains('is-played')).toBe(false);
+    expect(toast).toHaveBeenCalledWith('Konnte nicht gespeichert werden');
+  });
+
+  it('Staffel-Button: Bestätigungs-Sheet, Abbrechen ruft nichts auf, Bestätigen setzt und rendert neu', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const btn = document.querySelector('.lfx-modal__eps-tools .lfx-modal__round--played');
+    expect(btn).not.toBeNull();
+    expect(btn.classList.contains('is-on')).toBe(false);
+    btn.click();
+    expect(confirmAction).toHaveBeenCalledTimes(1);
+    expect(lastConfirm()).toMatchObject({ title: '14 Folgen als gesehen markieren?', confirmLabel: 'Als gesehen markieren', anchorEl: btn });
+    expect(api.setPlayed).not.toHaveBeenCalled();
+    // Server markiert rekursiv: Neuladen liefert alle Folgen als gesehen
+    api.getEpisodes.mockImplementation(async (_s, p) => ({ Items: mkEps(p.SeasonId, 14).map((e) => ({ ...e, UserData: { Played: true } })) }));
+    lastConfirm().onConfirm();
+    await wait(() => document.querySelector('.lfx-modal__eps-tools .lfx-modal__round--played.is-on'));
+    expect(api.setPlayed).toHaveBeenCalledWith('SE1', true);
+    expect(api.setPlayed).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.lfx-modal__ep').classList.contains('is-played')).toBe(true);
+    expect(toast).toHaveBeenCalledWith('14 Folgen als gesehen markiert');
+  });
+
+  it('Staffel: alle gesehen -> aktiv, Rückfrage „ungesehen“; Folgen-Toggle aktualisiert den Staffel-Button', async () => {
+    api.getEpisodes.mockImplementation(async (_s, p) => ({ Items: mkEps(p.SeasonId, 2).map((e) => ({ ...e, UserData: { Played: true } })) }));
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const btn = document.querySelector('.lfx-modal__eps-tools .lfx-modal__round--played');
+    expect(btn.classList.contains('is-on')).toBe(true);
+    btn.click();
+    expect(lastConfirm().title).toBe('2 Folgen als ungesehen markieren?');
+    expect(lastConfirm().confirmLabel).toBe('Als ungesehen markieren');
+    document.querySelector('.lfx-modal__ep .lfx-modal__round--played').click();
+    expect(btn.classList.contains('is-on')).toBe(false);
+  });
+
+  it('Staffel: teilweise gesetzter Status wird einzeln nachgezogen', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    api.getEpisodes.mockImplementation(async (_s, p) => ({ Items: mkEps(p.SeasonId, 3).map((e, i) => ({ ...e, UserData: { Played: i === 0 } })) }));
+    document.querySelector('.lfx-modal__eps-tools .lfx-modal__round--played').click();
+    lastConfirm().onConfirm();
+    await wait(() => api.setPlayed.mock.calls.length >= 3);
+    await flush();
+    const ids = api.setPlayed.mock.calls.map((c) => c[0]);
+    expect(ids).toEqual(expect.arrayContaining(['SE1', 'SE1-E2', 'SE1-E3']));
+    expect(ids).not.toContain('SE1-E1');
+  });
+
+  it('Serien-Kopf: Rückfrage nennt Gesamtzahl, Abbrechen ändert nichts', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const btn = document.querySelector('.lfx-modal__actions .lfx-modal__round--played');
+    expect(btn.getAttribute('aria-label')).toBe('Ganze Serie als gesehen markieren');
+    btn.click();
+    await wait(() => confirmAction.mock.calls.length);
+    expect(lastConfirm()).toMatchObject({ title: '17 Folgen als gesehen markieren?', anchorEl: btn });
+    expect(api.setPlayed).not.toHaveBeenCalled();
+    expect(btn.classList.contains('is-on')).toBe(false);
+  });
+
+  it('Serien-Kopf: Bestätigen -> setPlayed(Serie), Button aktiv, Toast', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const btn = document.querySelector('.lfx-modal__actions .lfx-modal__round--played');
+    btn.click();
+    await wait(() => confirmAction.mock.calls.length);
+    api.getEpisodes.mockImplementation(async (_s, p) => ({ Items: mkEps(p.SeasonId, 2).map((e) => ({ ...e, UserData: { Played: true } })) }));
+    lastConfirm().onConfirm();
+    await wait(() => btn.classList.contains('is-on'));
+    expect(api.setPlayed).toHaveBeenCalledWith('S1', true);
+    expect(toast).toHaveBeenCalledWith('Serie als gesehen markiert');
   });
 });
 

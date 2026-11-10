@@ -365,6 +365,15 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     min-height: 40px;
     font-size: 16px;
   }
+  /* Folgen-Kopf einzeilig: Gesehen-Button 40 px + Dropdown */
+  html.lfx-js .lfx-modal__eps-head {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  html.lfx-js .lfx-modal__eps-tools .lfx-modal__round {
+    width: 40px;
+    height: 40px;
+  }
   html.lfx-js .lfx-modal__seasonopt {
     min-height: 40px;
   }
@@ -444,6 +453,13 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     color: var(--lfx-green);
     background: var(--lfx-green-soft);
     border-color: var(--lfx-green);
+  }
+  /* Aktiver Gesehen-Button bleibt auf Touch weiß mit dunklem Symbol */
+  html.lfx-js .lfx-modal__round--played.is-on,
+  html.lfx-js .lfx-modal__round--played.is-on:hover {
+    color: #141414;
+    background: #fff;
+    border-color: #fff;
   }
   html.lfx-js .lfx-modal__close:hover {
     background: rgba(20, 20, 20, 0.7);

@@ -4538,6 +4538,26 @@ html.lfx-js .lfx-modal__round--like.is-on:focus-visible {
   border-color: var(--lfx-red);
 }
 
+html.lfx-js .lfx-modal__round--played {
+  border-radius: 10px;
+}
+
+html.lfx-js .lfx-modal__round--played.lfx-modal__round--small {
+  border-radius: 8px;
+}
+
+html.lfx-js .lfx-modal__round--played.is-on, html.lfx-js .lfx-modal__round--played.is-on:hover {
+  color: #141414;
+  background: #fff;
+  border-color: #fff;
+}
+
+html.lfx-js .lfx-modal__round--played.is-on:focus-visible {
+  color: #141414;
+  background: #fff;
+  border-color: #fff;
+}
+
 html.lfx-js .lfx-modal__round--fav.is-on, html.lfx-js .lfx-modal__round--fav.is-on:hover {
   color: var(--lfx-green);
   background: var(--lfx-green-soft);
@@ -4658,6 +4678,12 @@ html.lfx-js .lfx-modal__eps-head .lfx-modal__h {
   margin: 0;
 }
 
+html.lfx-js .lfx-modal__eps-tools {
+  align-items: center;
+  gap: 10px;
+  display: flex;
+}
+
 html.lfx-js .lfx-modal__dropdown {
   position: relative;
 }
@@ -4772,6 +4798,31 @@ html.lfx-js .lfx-modal__ep:focus-visible .lfx-modal__ep-playicon {
   opacity: 1;
 }
 
+html.lfx-js .lfx-modal__ep.is-played .lfx-modal__ep-thumb img {
+  opacity: .55;
+}
+
+html.lfx-js .lfx-modal__ep-seen {
+  color: #fff;
+  pointer-events: none;
+  background: rgba(20, 20, 20, .7);
+  border-radius: 50%;
+  align-items: center;
+  justify-items: center;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+}
+
+html.lfx-js .lfx-modal__ep-seen svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
 html.lfx-js .lfx-modal__ep .lfx-progress {
   background: rgba(255, 255, 255, .3);
   height: 3px;
@@ -4826,20 +4877,20 @@ html.lfx-js .lfx-modal__epactions {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  html.lfx-js .lfx-modal__epactions {
+  html.lfx-js .lfx-modal__epactions > .lfx-modal__round:not(.lfx-modal__round--played) {
     opacity: 0;
     transition: opacity var(--lfx-dur-fast) var(--lfx-ease-out);
   }
 
-  html.lfx-js .lfx-modal__ep:hover .lfx-modal__epactions {
+  html.lfx-js .lfx-modal__ep:hover .lfx-modal__epactions > .lfx-modal__round:not(.lfx-modal__round--played) {
     opacity: 1;
   }
 
-  html.lfx-js .lfx-modal__ep:focus-within .lfx-modal__epactions {
+  html.lfx-js .lfx-modal__ep:focus-within .lfx-modal__epactions > .lfx-modal__round:not(.lfx-modal__round--played) {
     opacity: 1;
   }
 
-  html.lfx-js .lfx-modal__ep.is-selected .lfx-modal__epactions:focus-within {
+  html.lfx-js .lfx-modal__ep.is-selected .lfx-modal__epactions:focus-within > .lfx-modal__round:not(.lfx-modal__round--played) {
     opacity: 1;
   }
 }
@@ -5065,7 +5116,7 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.lfx-js .lfx-modal__epactions {
+  html.lfx-js .lfx-modal__epactions > .lfx-modal__round {
     transition: none;
   }
 
@@ -6196,6 +6247,16 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     font-size: 16px;
   }
 
+  html.lfx-js .lfx-modal__eps-head {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  html.lfx-js .lfx-modal__eps-tools .lfx-modal__round {
+    width: 40px;
+    height: 40px;
+  }
+
   html.lfx-js .lfx-modal__seasonopt {
     min-height: 40px;
   }
@@ -6281,6 +6342,12 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
     color: var(--lfx-green);
     background: var(--lfx-green-soft);
     border-color: var(--lfx-green);
+  }
+
+  html.lfx-js .lfx-modal__round--played.is-on, html.lfx-js .lfx-modal__round--played.is-on:hover {
+    color: #141414;
+    background: #fff;
+    border-color: #fff;
   }
 
   html.lfx-js .lfx-modal__close:hover {

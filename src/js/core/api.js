@@ -125,6 +125,17 @@ export async function setFavorite(id, isFavorite) {
   return res.json();
 }
 
+/** Gesehen-Status setzen (POST) oder zurücknehmen (DELETE). */
+export async function setPlayed(id, played) {
+  const userId = getUserId();
+  const { token } = getAuth();
+  const res = await fetch(buildUrl(`/Users/${userId}/PlayedItems/${id}`), {
+    method: played ? 'POST' : 'DELETE',
+    headers: { Authorization: `MediaBrowser Token="${token}"` },
+  });
+  if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Gesehen)`);
+}
+
 // ---------------------------------------------------------------- Bilder
 
 function first(arr) {
