@@ -1255,7 +1255,7 @@
     const backdrop = opts.backdrop || null;
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state15 = "idle";
+    let state17 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -1304,7 +1304,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state15 = "closing";
+      state17 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -1315,13 +1315,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state15 = "closing";
+      state17 = "closing";
       el.style.transition = ANIM;
       el.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state15 = "idle";
+        state17 = "idle";
       });
     }
     function velocityNow() {
@@ -1332,49 +1332,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state15 === "closing") return;
-      state15 = "idle";
+      if (state17 === "closing") return;
+      state17 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state15 = "ignored";
+        state17 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el)) {
-        state15 = "ignored";
+        state17 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state15 = "ignored";
+        state17 = "ignored";
         return;
       }
-      state15 = "tracking";
+      state17 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state15 !== "tracking" && state15 !== "dragging") return;
+      if (state17 !== "tracking" && state17 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state15 === "dragging") springBack();
-        else state15 = "ignored";
+        if (state17 === "dragging") springBack();
+        else state17 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state15 === "tracking") {
+      if (state17 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state15 = "dragging";
+          state17 = "dragging";
           el.classList.add("lfx-dragging");
           el.style.transition = "none";
         } else {
-          state15 = "ignored";
+          state17 = "ignored";
           return;
         }
       }
@@ -1388,18 +1388,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state15 === "dragging") {
+      if (state17 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state15 !== "closing") {
-        state15 = "idle";
+      } else if (state17 !== "closing") {
+        state17 = "idle";
       }
     }
     function onCancel() {
-      if (state15 === "dragging") springBack();
-      else if (state15 !== "closing") state15 = "idle";
+      if (state17 === "dragging") springBack();
+      else if (state17 !== "closing") state17 = "idle";
     }
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove2, { passive: false });
@@ -1415,7 +1415,7 @@
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state15 = "idle";
+      state17 = "idle";
     };
   }
 
@@ -3209,10 +3209,10 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
-  function renderEpisodes(slot, state15, H) {
+  function renderEpisodes(slot, state17, H) {
     slot.hidden = false;
     slot.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state15;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state17;
     putItems(episodes);
     const current6 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
@@ -4738,7 +4738,7 @@
         Array.from(indicator.children).forEach((s, i) => s.classList.toggle("is-active", i === page));
       }
     }
-    const schedule = () => {
+    const schedule3 = () => {
       if (!raf) raf = requestAnimationFrame(update);
     };
     function go2(dir) {
@@ -4770,24 +4770,24 @@
     }
     prev.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
-    track.addEventListener("scroll", schedule, { passive: true });
+    track.addEventListener("scroll", schedule3, { passive: true });
     track.addEventListener("focusin", onFocusIn);
     track.addEventListener("keydown", onKey3);
-    window.addEventListener("resize", schedule);
+    window.addEventListener("resize", schedule3);
     const ls = links();
     ls.forEach((l, i) => {
       l.tabIndex = i === 0 ? 0 : -1;
     });
-    schedule();
+    schedule3();
     return () => {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       prev.removeEventListener("click", onPrev);
       next.removeEventListener("click", onNext);
-      track.removeEventListener("scroll", schedule);
+      track.removeEventListener("scroll", schedule3);
       track.removeEventListener("focusin", onFocusIn);
       track.removeEventListener("keydown", onKey3);
-      window.removeEventListener("resize", schedule);
+      window.removeEventListener("resize", schedule3);
     };
   }
 
@@ -6361,14 +6361,14 @@
     if (!el) return;
     if (isMenuOpen() && inNativeDialog(el)) return;
     const t = e.touches && e.touches[0] || e;
-    const state15 = { x: t.clientX, y: t.clientY, fired: false };
-    press = state15;
+    const state17 = { x: t.clientX, y: t.clientY, fired: false };
+    press = state17;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press !== state15 || !el.isConnected) return;
-      state15.fired = true;
+      if (press !== state17 || !el.isConnected) return;
+      state17.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el, state15.x, state15.y);
+      openFor(el, state17.x, state17.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -7653,7 +7653,7 @@
       clearTimeout(timer);
       timer = null;
     }
-    function schedule() {
+    function schedule3() {
       stop5();
       if (running()) timer = setTimeout(() => go2(idx + 1), interval);
     }
@@ -7683,7 +7683,7 @@
       idx = (i % n + n) % n;
       paint();
       if (mobile) scrollToSlide(idx);
-      schedule();
+      schedule3();
     }
     let scrollRaf = 0;
     function onTrackScroll() {
@@ -7729,7 +7729,7 @@
     };
     const onLeave = () => {
       hover = false;
-      schedule();
+      schedule3();
     };
     const onFocusIn = () => {
       focus = true;
@@ -7738,10 +7738,10 @@
     const onFocusOut = (e) => {
       if (!el.contains(e.relatedTarget)) {
         focus = false;
-        schedule();
+        schedule3();
       }
     };
-    const onVis = () => document.hidden ? stop5() : schedule();
+    const onVis = () => document.hidden ? stop5() : schedule3();
     const onKey3 = (e) => {
       if (e.key === "ArrowLeft") go2(idx - 1);
       else if (e.key === "ArrowRight") go2(idx + 1);
@@ -7757,7 +7757,7 @@
     el.addEventListener("keydown", onKey3);
     document.addEventListener("visibilitychange", onVis);
     paint();
-    schedule();
+    schedule3();
     return {
       el,
       go: go2,
@@ -8504,7 +8504,16 @@
       h("div", { class: "lfx-plus-title__dim" })
     ]);
     const logo = logoImage(main, { maxWidth: 720 });
-    const name = h("h1", { class: `lfx-plus-title__name${logo ? " has-logo" : ""}` }, logo ? [h("img", { class: "lfx-plus-title__logo", src: logo, alt: main.Name || "" })] : main.Name || "");
+    const name = h("h1", { class: `lfx-plus-title__name${logo ? " has-logo" : ""}` }, logo ? [h("img", {
+      class: "lfx-plus-title__logo",
+      src: logo,
+      alt: main.Name || "",
+      // Logo lädt nicht: Name als Text-Titel
+      onerror: () => {
+        name.classList.remove("has-logo");
+        name.textContent = main.Name || "";
+      }
+    })] : main.Name || "");
     const progressSlot = h("div", { class: "lfx-plus-title__progress", hidden: true });
     const playLabel2 = h("span", { class: "lfx-plus-pill__label" }, "Abspielen");
     const playIco = h("span", { class: "lfx-plus-pill__ico", "aria-hidden": "true" });
@@ -9309,6 +9318,7 @@
   var ROOT_ID11 = "lfx-plus-tabbar";
   var ON_CLASS9 = "lfx-plus-tabbar-on";
   var KB_CLASS = "lfx-plus-kb";
+  var HIDE_CLASS = "lfx-plus-tabbar-hide";
   var EXCLUDED8 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var TEXT_INPUT = "input:not([type=button]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=range]), textarea, select";
   var TABS = [
@@ -9331,6 +9341,7 @@
     if (/^\/(mypreferences|usermenu)/.test(route.path)) return "profile";
     return null;
   }
+  var isVideoHash = (hash) => /^#!?[/]video(?:[/?]|$)/.test(String(hash || ""));
   function sheetEntries(libs, profile, { go: go2, close: close2 }) {
     const entries = [{ label: "Neu & beliebt", onClick: () => {
       close2();
@@ -9347,7 +9358,7 @@
       if (p.href) entries.push({ label: p.label, onClick: () => {
         close2();
         go2(p.href);
-      } });
+      }, stats: p.key === "stats" });
       else if (typeof p.onClick === "function") entries.push({ label: p.label, onClick: () => {
         close2();
         p.onClick();
@@ -9407,7 +9418,12 @@
     if (seq3 !== state12.seq || !state12.root) return;
     const c = openSheet(anchor, "Profil");
     state12.sheet = c;
-    renderSheet(c, user && user.name || "Profil", sheetEntries(libs, profile, { go, close: () => closeChooser() }));
+    const entries = sheetEntries(libs, profile, { go, close: () => closeChooser() });
+    renderSheet(c, user && user.name || "Profil", entries);
+    const buttons = c.list ? c.list.querySelectorAll(".lfx-sheet__item") : [];
+    entries.forEach((e, i) => {
+      if (e.stats && buttons[i]) buttons[i].classList.add("is-stats");
+    });
   }
   async function fillAvatar(seq3) {
     let user = { name: "", imageUrl: null };
@@ -9462,6 +9478,13 @@
         document.removeEventListener("focusout", onFocusOut);
         cl2.remove(KB_CLASS);
       });
+      const onHash2 = () => cl2.toggle(HIDE_CLASS, isVideoHash(window.location.hash));
+      window.addEventListener("hashchange", onHash2);
+      state12.cleanups.push(() => {
+        window.removeEventListener("hashchange", onHash2);
+        cl2.remove(HIDE_CLASS);
+      });
+      cl2.remove(HIDE_CLASS);
       cl2.add(ON_CLASS9);
       applyActive5();
       fillAvatar(seq3);
@@ -9483,11 +9506,172 @@
   };
   var tabbar_default = plusTabbar;
 
+  // src/js/features/plus/nativedetail.js
+  var NOLOGO = "lfx-plus-nologo";
+  var NOBD = "lfx-plus-nobackdrop";
+  var URL_RE = /url\(\s*["']?([^"')]+)["']?\s*\)/;
+  var state13 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
+  var bgUrl = (el) => {
+    if (!el) return null;
+    const css = el.style && el.style.backgroundImage || (typeof getComputedStyle === "function" ? getComputedStyle(el).backgroundImage : "");
+    const m = URL_RE.exec(css || "");
+    return m ? m[1] : null;
+  };
+  function setClass2(el, cls, on) {
+    if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on);
+  }
+  function probeLogo(url) {
+    if (state13.probes.has(url) || typeof Image !== "function") return;
+    state13.probes.set(url, "pending");
+    const img = new Image();
+    img.onload = () => state13.probes.set(url, "ok");
+    img.onerror = () => {
+      state13.probes.set(url, "bad");
+      evaluate2();
+    };
+    img.src = url;
+  }
+  function evaluate2() {
+    const page = state13.page;
+    if (!page || !page.isConnected) return;
+    const logoEl = page.querySelector(".detailLogo");
+    const logoUrl = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
+    if (logoUrl) probeLogo(logoUrl);
+    const noLogo = !logoUrl || state13.probes.get(logoUrl) === "bad";
+    setClass2(page, NOLOGO, noLogo);
+    const bd = page.querySelector(".itemBackdrop");
+    const own = bd && !bd.classList.contains("hide") && bgUrl(bd);
+    const global = !!document.querySelector(".backdropContainer .displayingBackdropImage");
+    const wide = typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1000px)").matches;
+    setClass2(page, NOBD, !own && !(wide && global));
+  }
+  function schedule() {
+    if (state13.timer) return;
+    state13.timer = setTimeout(() => {
+      state13.timer = 0;
+      evaluate2();
+    }, 60);
+  }
+  function clearPage() {
+    if (state13.obs) state13.obs.disconnect();
+    state13.obs = null;
+    clearTimeout(state13.timer);
+    clearTimeout(state13.poll);
+    state13.timer = 0;
+    state13.poll = 0;
+    if (state13.page) {
+      state13.page.classList.remove(NOLOGO, NOBD);
+      state13.page = null;
+    }
+    for (const p of document.querySelectorAll(`.${NOLOGO}, .${NOBD}`)) p.classList.remove(NOLOGO, NOBD);
+    state13.probes.clear();
+  }
+  function attach() {
+    const page = document.querySelector("#itemDetailPage:not(.hide)");
+    if (!page) {
+      if (++state13.tries < 30) state13.poll = setTimeout(attach, 200);
+      return;
+    }
+    if (state13.page === page) return;
+    if (state13.obs) state13.obs.disconnect();
+    state13.page = page;
+    state13.obs = new MutationObserver((records) => {
+      if (records.every((r) => r.type === "attributes" && r.target === page)) return;
+      schedule();
+    });
+    state13.obs.observe(page, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
+    evaluate2();
+  }
+  var nativedetail_default = {
+    name: "plus-nativedetail",
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && route.path === "/details",
+    mount() {
+      state13.tries = 0;
+      attach();
+    },
+    update() {
+      state13.tries = 0;
+      clearTimeout(state13.poll);
+      state13.probes.clear();
+      const page = document.querySelector("#itemDetailPage:not(.hide)");
+      if (page && page !== state13.page) clearPage();
+      attach();
+      evaluate2();
+    },
+    unmount: clearPage
+  };
+
+  // src/js/features/plus/favempty.js
+  var ID6 = "lfx-plus-favempty";
+  var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
+  var SETTLE_MS = 1500;
+  var state14 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
+  var isFavRoute = (route) => route && route.path === "/home" && route.params.get("tab") === "1" && !route.params.get("lfx");
+  function findTab() {
+    const tab2 = document.querySelector("#indexPage:not(.hide) #favoritesTab");
+    return tab2 && tab2.isConnected ? tab2 : null;
+  }
+  var hasCards = (tab2) => !!tab2.querySelector(".card, .listItem");
+  function check() {
+    state14.timer = 0;
+    const tab2 = state14.tab;
+    if (!tab2 || !tab2.isConnected) return;
+    const mine = document.getElementById(ID6);
+    if (hasCards(tab2)) {
+      if (mine) mine.remove();
+    } else if (!mine) {
+      tab2.prepend(h("p", { id: ID6, class: "lfx-plus-favempty" }, EMPTY_TEXT));
+    }
+  }
+  function schedule2(delay = SETTLE_MS) {
+    clearTimeout(state14.timer);
+    state14.timer = setTimeout(check, delay);
+  }
+  function teardown6() {
+    if (state14.obs) state14.obs.disconnect();
+    state14.obs = null;
+    clearTimeout(state14.timer);
+    clearTimeout(state14.poll);
+    state14.timer = 0;
+    state14.poll = 0;
+    state14.tab = null;
+    document.getElementById(ID6)?.remove();
+  }
+  function attach2() {
+    const tab2 = findTab();
+    if (!tab2) {
+      if (++state14.tries < 30) state14.poll = setTimeout(attach2, 200);
+      return;
+    }
+    if (state14.tab === tab2) return;
+    teardown6();
+    state14.tab = tab2;
+    state14.obs = new MutationObserver((records) => {
+      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID6))) return;
+      schedule2();
+    });
+    state14.obs.observe(tab2, { childList: true, subtree: true });
+    schedule2();
+  }
+  var favempty_default = {
+    name: "plus-favempty",
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && isFavRoute(route),
+    mount() {
+      state14.tries = 0;
+      attach2();
+    },
+    update() {
+      state14.tries = 0;
+      attach2();
+    },
+    unmount: teardown6
+  };
+
   // src/js/features/plus/index.js
-  var plusFeatures = [header_default, mobilehead_default, switcher_default, home_default2, title_default, browse_default, search_default, tabbar_default];
+  var plusFeatures = [header_default, mobilehead_default, switcher_default, home_default2, title_default, browse_default, search_default, tabbar_default, nativedetail_default, favempty_default];
 
   // src/js/features/prime/search.js
-  var ID6 = "lfx-prime-search";
+  var ID7 = "lfx-prime-search";
   var DEBOUNCE_MS2 = 300;
   var MAX_CARDS = 8;
   var MAX_CARDS_MOBILE = 18;
@@ -9564,7 +9748,7 @@
     }
     const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
     const mobile = isMobile();
-    const root4 = mountPoint(ID6, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
+    const root4 = mountPoint(ID7, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
     root4.setAttribute("role", "dialog");
     root4.setAttribute("aria-modal", "true");
     root4.setAttribute("aria-label", "Suche");
@@ -9813,7 +9997,7 @@
   }
 
   // src/js/features/prime/profile-sheet.js
-  var ID7 = "lfx-prime-profilesheet";
+  var ID8 = "lfx-prime-profilesheet";
   var OPEN_CLASS2 = "lfx-prime-profilesheet-open";
   var FOCUSABLE3 = "a[href], button:not([disabled])";
   var cur2 = null;
@@ -9852,7 +10036,7 @@
   }
   function openProfileSheet({ returnFocus } = {}) {
     closeProfileSheet({ restoreFocus: false });
-    const root4 = mountPoint(ID7, { className: "lfx-prime-psheet-overlay" });
+    const root4 = mountPoint(ID8, { className: "lfx-prime-psheet-overlay" });
     const who = h("div", { class: "lfx-prime-psheet__who" });
     const body = h("div", { class: "lfx-prime-psheet__body" });
     const sheet = h("div", { class: "lfx-prime-psheet", role: "dialog", "aria-modal": "true", "aria-label": "Profil", tabindex: "-1" }, [
@@ -9931,7 +10115,7 @@
   }
 
   // src/js/features/prime/header.js
-  var ID8 = "lfx-prime-header";
+  var ID9 = "lfx-prime-header";
   var HTML_CLASS = "lfx-prime-header-on";
   var MOBILE_CLASS = "lfx-prime-mobile";
   var PILLS_CLASS = "lfx-prime-header-pills";
@@ -9980,23 +10164,50 @@
     if (route.params.get("tab") === "1") return "sub";
     return !lfx || lfx === "hub" ? "home" : "sub";
   }
-  function mobileTitle(route) {
+  var NATIVE_TITLES = {
+    "/mypreferencesmenu": "Einstellungen",
+    "/mypreferencesdisplay": "Anzeige",
+    "/mypreferenceshome": "Startseite",
+    "/mypreferencesplayback": "Wiedergabe",
+    "/mypreferencessubtitles": "Untertitel",
+    "/mypreferencescontrols": "Steuerung",
+    "/mypreferencesquickconnect": "Quick Connect",
+    "/userprofile": "Profil",
+    "/search": "Suche",
+    "/queue": "Warteschlange"
+  };
+  function domText(selector, attr) {
+    const el = document.querySelector(selector);
+    if (!el) return "";
+    return String((attr ? el.getAttribute(attr) : el.textContent) || "").trim();
+  }
+  function mobileTitle(route, libs = []) {
     if (!route) return "";
+    const p = route.params;
     if (route.path === "/home") {
-      const lfx = route.params.get("lfx");
-      if (route.params.get("tab") === "1") return "Meine Liste";
+      const lfx = p.get("lfx");
+      if (p.get("tab") === "1") return "Meine Liste";
       if (lfx === "new") return "Neu & beliebt";
       if (lfx === "search") return "Suche";
-      if (lfx === "title") return "";
+      if (lfx === "title") return domText(".lfx-pt__title") || domText(".lfx-pt__logo", "alt");
+      if (lfx === "browse") {
+        const lib2 = libs.find((l) => l.id === p.get("lib"));
+        return lib2 ? lib2.name || "" : "";
+      }
+      return "";
     }
-    const t = String(document.title || "").replace(/\s*[-–|]\s*Jellyfin.*$/i, "").trim();
-    return /^jellyfin$/i.test(t) ? "" : t;
+    if (NATIVE_TITLES[route.path]) return NATIVE_TITLES[route.path];
+    const libId = p.get("topParentId") || p.get("parentId");
+    const lib = libId ? libs.find((l) => l.id === libId) : null;
+    if (lib) return lib.name || "";
+    if (route.path === "/details" || route.path === "/item") return domText(".page:not(.hide) .nameContainer h1");
+    return "";
   }
   function goBack() {
     if (window.history.length > 1) window.history.back();
     else window.location.hash = "#/home";
   }
-  var state13 = {
+  var state15 = {
     mobile: false,
     kind: null,
     el: null,
@@ -10006,12 +10217,34 @@
     menus: null,
     seq: 0,
     raf: 0,
-    profileBusy: false
+    profileBusy: false,
+    titleTimer: 0
   };
+  function refreshTitle() {
+    if (!state15.el || !state15.mobile || !state15.route) return;
+    const t = state15.el.querySelector(".lfx-prime-header__title");
+    if (!t) return;
+    const next = mobileTitle(state15.route, state15.libs);
+    if (t.textContent !== next) t.textContent = next;
+  }
+  function stopTitlePoll() {
+    if (state15.titleTimer) clearInterval(state15.titleTimer);
+    state15.titleTimer = 0;
+  }
+  function startTitlePoll() {
+    stopTitlePoll();
+    if (!state15.mobile || state15.kind !== "sub") return;
+    let n = 0;
+    state15.titleTimer = setInterval(() => {
+      refreshTitle();
+      n += 1;
+      if (n >= 24 || !state15.el) stopTitlePoll();
+    }, 250);
+  }
   function applyActive6() {
-    if (!state13.el || !state13.route) return;
-    const key = activeKey3(state13.route);
-    for (const el of state13.el.querySelectorAll("[data-key]")) {
+    if (!state15.el || !state15.route) return;
+    const key = activeKey3(state15.route);
+    for (const el of state15.el.querySelectorAll("[data-key]")) {
       const on = el.dataset.key === key;
       el.classList.toggle("is-active", on);
       if (on) el.setAttribute("aria-current", "page");
@@ -10019,9 +10252,9 @@
     }
   }
   function renderNav2() {
-    const nav = state13.el && state13.el.querySelector(".lfx-prime-header__nav");
+    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems3(state13.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems3(state15.libs).map((it) => h("a", {
       class: "lfx-prime-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -10040,15 +10273,15 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state13.profileBusy) return;
-    state13.profileBusy = true;
+    if (state15.profileBusy) return;
+    state15.profileBusy = true;
     try {
-      state13.menus.close();
+      state15.menus.close();
       const items = await profileEntries({ theme: "prime", returnFocus: btn });
-      if (!state13.el || !btn.isConnected) return;
+      if (!state15.el || !btn.isConnected) return;
       openPopover(btn, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
     } finally {
-      state13.profileBusy = false;
+      state15.profileBusy = false;
     }
   }
   function build6() {
@@ -10061,7 +10294,7 @@
       "aria-haspopup": "dialog"
     }, [icon3("search")]);
     searchBtn.addEventListener("click", () => {
-      state13.menus.close();
+      state15.menus.close();
       closeProfile2();
       if (isPrimeSearchOpen()) closePrimeSearch();
       else openPrimeSearch({ returnFocus: searchBtn });
@@ -10091,13 +10324,13 @@
     avatar.addEventListener("click", () => toggleProfile(avatar));
     const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, gridWrap, listLink, avatar]);
     const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
-    state13.el.replaceChildren(bar);
-    state13.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
+    state15.el.replaceChildren(bar);
+    state15.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
     return { avatar };
   }
   function buildMobile(route) {
     const kind2 = mobileKind(route);
-    state13.kind = kind2;
+    state15.kind = kind2;
     const avatar = h("button", {
       type: "button",
       class: "lfx-prime-header__avatar",
@@ -10115,18 +10348,18 @@
       const back = h("button", { type: "button", class: "lfx-prime-header__back", "aria-label": "Zur\xFCck" });
       back.append(icon3("back"));
       back.addEventListener("click", goBack);
-      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route))];
+      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state15.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [avatar])]);
     const kids = [bar];
     if (kind2 === "home") kids.push(h("nav", { class: "lfx-prime-header__pills", "aria-label": "Filme und Serien" }));
-    state13.el.replaceChildren(...kids);
+    state15.el.replaceChildren(...kids);
     return { avatar };
   }
   function renderPills() {
-    const nav = state13.el && state13.el.querySelector(".lfx-prime-header__pills");
+    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__pills");
     if (!nav) return;
-    const items = navItems3(state13.libs).filter((it) => it.key.startsWith("lib:"));
+    const items = navItems3(state15.libs).filter((it) => it.key.startsWith("lib:"));
     nav.replaceChildren(...items.map((it) => h("a", {
       class: "lfx-prime-header__pill",
       href: it.href,
@@ -10136,7 +10369,7 @@
     applyActive6();
   }
   async function loadFlyoutData() {
-    let libs = state13.libs;
+    let libs = state15.libs;
     let cols;
     try {
       cols = await getCollections();
@@ -10158,14 +10391,15 @@
   async function loadLibs(seq3) {
     try {
       const libs = await getLibraries();
-      if (seq3 !== state13.seq || !state13.el) return;
-      state13.libs = libs;
+      if (seq3 !== state15.seq || !state15.el) return;
+      state15.libs = libs;
     } catch {
-      if (seq3 !== state13.seq || !state13.el) return;
-      state13.libs = [];
+      if (seq3 !== state15.seq || !state15.el) return;
+      state15.libs = [];
     }
     renderNav2();
     renderPills();
+    refreshTitle();
   }
   async function loadAvatar(seq3, avatar) {
     let chip = { name: "", imageUrl: null };
@@ -10173,46 +10407,47 @@
       chip = await getUserChip();
     } catch {
     }
-    if (seq3 !== state13.seq || !state13.el) return;
+    if (seq3 !== state15.seq || !state15.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-prime-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function onScroll4() {
-    if (state13.raf) return;
-    state13.raf = requestAnimationFrame(() => {
-      state13.raf = 0;
+    if (state15.raf) return;
+    state15.raf = requestAnimationFrame(() => {
+      state15.raf = 0;
       applyScroll();
     });
   }
   function applyScroll() {
-    if (!state13.el || state13.mobile) return;
+    if (!state15.el || state15.mobile) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD2;
-    if (state13.el.classList.contains("is-scrolled") !== on) state13.el.classList.toggle("is-scrolled", on);
+    if (state15.el.classList.contains("is-scrolled") !== on) state15.el.classList.toggle("is-scrolled", on);
   }
   function syncHtmlClasses() {
     const cl2 = document.documentElement.classList;
-    cl2.toggle(MOBILE_CLASS, state13.mobile);
-    cl2.toggle(PILLS_CLASS, state13.mobile && state13.kind === "home");
+    cl2.toggle(MOBILE_CLASS, state15.mobile);
+    cl2.toggle(PILLS_CLASS, state15.mobile && state15.kind === "home");
   }
   function render8() {
-    const seq3 = ++state13.seq;
-    if (state13.menus) state13.menus.destroy();
-    state13.menus = null;
+    const seq3 = ++state15.seq;
+    if (state15.menus) state15.menus.destroy();
+    state15.menus = null;
     closeProfile2();
     closeProfileSheet({ restoreFocus: false });
-    state13.mobile = isMobile();
-    state13.kind = null;
-    const parts = state13.mobile ? buildMobile(state13.route) : build6();
-    state13.el.className = `lfx-prime-header${state13.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state13.kind}` : ""}`;
+    state15.mobile = isMobile();
+    state15.kind = null;
+    const parts = state15.mobile ? buildMobile(state15.route) : build6();
+    state15.el.className = `lfx-prime-header${state15.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state15.kind}` : ""}`;
     syncHtmlClasses();
     applyScroll();
     renderNav2();
     renderPills();
     loadLibs(seq3);
     loadAvatar(seq3, parts.avatar);
+    startTitlePoll();
   }
   var header_default2 = {
     name: "prime-header",
@@ -10220,47 +10455,48 @@
       return isTheme("prime") && isModern() && !isTv() && isReady() && !EXCLUDED9.test(route.path);
     },
     mount(route) {
-      state13.route = route;
-      state13.el = mountPoint(ID8, { tag: "header", className: "lfx-prime-header" });
+      state15.route = route;
+      state15.el = mountPoint(ID9, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
-      state13.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
+      state15.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
       render8();
     },
     update(route) {
-      const changed = !state13.route || state13.route.hash !== route.hash;
-      state13.route = route;
-      if (!state13.el) return;
+      const changed = !state15.route || state15.route.hash !== route.hash;
+      state15.route = route;
+      if (!state15.el) return;
       const mobileNow = isMobile();
-      if (mobileNow !== state13.mobile || mobileNow && mobileKind(route) !== state13.kind) {
+      if (mobileNow !== state15.mobile || mobileNow && mobileKind(route) !== state15.kind) {
         closePrimeSearch({ restoreFocus: false });
         render8();
         return;
       }
-      if (changed && state13.menus) state13.menus.close();
-      if (state13.mobile) {
-        const t = state13.el.querySelector(".lfx-prime-header__title");
-        if (t) t.textContent = mobileTitle(route);
+      if (changed && state15.menus) state15.menus.close();
+      if (state15.mobile) {
+        refreshTitle();
+        if (changed) startTitlePoll();
       }
       applyActive6();
     },
     unmount() {
-      state13.seq++;
-      for (const fn of state13.cleanups.splice(0)) fn();
-      if (state13.raf) cancelAnimationFrame(state13.raf);
-      state13.raf = 0;
-      if (state13.menus) state13.menus.destroy();
-      state13.menus = null;
+      state15.seq++;
+      stopTitlePoll();
+      for (const fn of state15.cleanups.splice(0)) fn();
+      if (state15.raf) cancelAnimationFrame(state15.raf);
+      state15.raf = 0;
+      if (state15.menus) state15.menus.destroy();
+      state15.menus = null;
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
-      unmountPoint(ID8);
+      unmountPoint(ID9);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
-      state13.el = null;
-      state13.libs = [];
-      state13.mobile = false;
-      state13.kind = null;
-      state13.profileBusy = false;
+      state15.el = null;
+      state15.libs = [];
+      state15.mobile = false;
+      state15.kind = null;
+      state15.profileBusy = false;
     }
   };
 
@@ -10552,14 +10788,14 @@
       const btn = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg7(ICON_PLAY4), label]);
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
-      const paint = (state15) => {
+      const paint = (state17) => {
         label.replaceChildren(...[
-          h("span", { class: "lfx-prime-hero__label1" }, state15.line1),
-          state15.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state15.line2) : null
+          h("span", { class: "lfx-prime-hero__label1" }, state17.line1),
+          state17.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state17.line2) : null
         ].filter(Boolean));
-        btn.classList.toggle("is-two", Boolean(state15.line2));
-        progress.hidden = !(state15.progress > 0);
-        bar.style.width = `${Math.round(state15.progress)}%`;
+        btn.classList.toggle("is-two", Boolean(state17.line2));
+        progress.hidden = !(state17.progress > 0);
+        bar.style.width = `${Math.round(state17.progress)}%`;
       };
       paint(playLabel(item));
       if (item.Type === "Series") {
@@ -11061,7 +11297,7 @@
   var gen2 = 0;
   var current5 = null;
   var builtMobile = false;
-  function teardown6() {
+  function teardown7() {
     for (const fn of cleanups4.splice(0)) {
       try {
         fn && fn();
@@ -11102,7 +11338,7 @@
     const hub = route.kind === "hub";
     const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
     if (hub && !lib) return;
-    teardown6();
+    teardown7();
     const heroSlot = h("section", { id: "lfx-prime-hero", class: "lfx-prime-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-prime-rows" });
     const moreSlot = h("div", { class: "lfx-prime-moreslot" });
@@ -11172,7 +11408,7 @@
       gen2 += 1;
       clearTimeout(waitTimer4);
       current5 = null;
-      teardown6();
+      teardown7();
     }
   };
   var home_default3 = primeHome;
@@ -11213,12 +11449,12 @@
     const logo = !popup ? logoImage(item, { maxWidth: 400 }) : null;
     const label = h("span", { class: "lfx-prime-hc__label" });
     const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
-    const paintPlay2 = (state15) => {
+    const paintPlay2 = (state17) => {
       label.replaceChildren(...[
-        h("span", null, state15.line1),
-        state15.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state15.line2) : null
+        h("span", null, state17.line1),
+        state17.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state17.line2) : null
       ].filter(Boolean));
-      play2.classList.toggle("is-two", Boolean(state15.line2));
+      play2.classList.toggle("is-two", Boolean(state17.line2));
     };
     paintPlay2(playLabel(item));
     if (item.Type === "Series") {
@@ -11366,11 +11602,11 @@
   }
   function scheduleLeave() {
     clearTimeout(leaveTimer);
-    leaveTimer = setTimeout(function check() {
+    leaveTimer = setTimeout(function check2() {
       leaveTimer = null;
       if (!active3 || pointerInside) return;
       if (holdOpen2()) {
-        leaveTimer = setTimeout(check, HOLD_POLL_MS);
+        leaveTimer = setTimeout(check2, HOLD_POLL_MS);
         return;
       }
       closeNow2();
@@ -11937,9 +12173,9 @@
     }
   }
   function buildStage(s, main) {
-    const bgUrl = backdropOf(main);
+    const bgUrl2 = backdropOf(main);
     s.bg = h("div", { class: "lfx-pt__bg", "aria-hidden": "true" }, [
-      bgUrl ? h("img", { class: "lfx-pt__bg-img", src: bgUrl, alt: "", decoding: "async" }) : null,
+      bgUrl2 ? h("img", { class: "lfx-pt__bg-img", src: bgUrl2, alt: "", decoding: "async" }) : null,
       h("div", { class: "lfx-pt__shade lfx-pt__shade--a" }),
       h("div", { class: "lfx-pt__shade lfx-pt__shade--b" })
     ]);
@@ -12333,11 +12569,19 @@
   };
 
   // src/js/features/prime/tabbar.js
-  var ID9 = "lfx-prime-tabbar";
+  var ID10 = "lfx-prime-tabbar";
   var HTML_CLASS2 = "lfx-prime-tabbar-on";
   var EXCLUDED10 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var HIDE_CLASSES = ["lfx-sheet-open", "lfx-themepicker-open", "lfx-popover-open", "lfx-modal-open", "lfx-prime-profilesheet-open"];
-  var DIALOG_SELECTOR = ".dialogContainer .dialog, .MuiDialog-root, .MuiPopover-root, #lfx-popover, #lfx-sheet, #lfx-themepicker";
+  var DIALOG_SELECTOR = [
+    ".dialogContainer .dialog",
+    ".MuiDialog-root:not(.MuiModal-hidden)",
+    ".MuiPopover-root:not(.MuiModal-hidden)",
+    ".MuiModal-root:not(.MuiModal-hidden)[role=presentation]",
+    "#lfx-popover",
+    "#lfx-sheet",
+    "#lfx-themepicker"
+  ].map((q) => `${q}:not([aria-hidden=true]):not([hidden])`).join(", ");
   var SVG_NS3 = "http://www.w3.org/2000/svg";
   var ICONS6 = {
     home: "M12 3.2 2.5 11.3l1.3 1.5L5 11.8V20a1 1 0 0 0 1 1h4.2v-6h3.6v6H18a1 1 0 0 0 1-1v-8.2l1.2 1 1.3-1.5L12 3.2Z",
@@ -12361,7 +12605,7 @@
     if (key === "list") return "list";
     return null;
   }
-  var state14 = { el: null, route: null, observer: null, cleanups: [] };
+  var state16 = { el: null, route: null, observer: null, cleanups: [] };
   function inputFocused() {
     const a = document.activeElement;
     return Boolean(a && a.classList && a.classList.contains("lfx-prime-search__input"));
@@ -12374,12 +12618,12 @@
     return inputFocused();
   }
   function applyState() {
-    const el = state14.el;
+    const el = state16.el;
     if (!el) return;
     const hide = shouldHide();
     if (el.classList.contains("is-hidden") !== hide) el.classList.toggle("is-hidden", hide);
     el.toggleAttribute("inert", hide);
-    const active4 = state14.route ? activeTab2(state14.route, isPrimeSearchOpen()) : null;
+    const active4 = state16.route ? activeTab2(state16.route, isPrimeSearchOpen()) : null;
     for (const t of el.querySelectorAll("[data-tab]")) {
       const on = t.dataset.tab === active4;
       t.classList.toggle("is-active", on);
@@ -12413,8 +12657,8 @@
       else openPrimeSearch({ returnFocus: search });
       applyState();
     });
-    state14.el.replaceChildren(home, list, search);
-    state14.el.setAttribute("aria-label", "Hauptnavigation");
+    state16.el.replaceChildren(home, list, search);
+    state16.el.setAttribute("aria-label", "Hauptnavigation");
   }
   var tabbar_default2 = {
     name: "prime-tabbar",
@@ -12422,36 +12666,36 @@
       return isTheme("prime") && isModern() && !isTv() && isMobile() && isReady() && !EXCLUDED10.test(route.path);
     },
     mount(route) {
-      state14.route = route;
-      state14.el = mountPoint(ID9, { tag: "nav", className: "lfx-prime-tabbar" });
+      state16.route = route;
+      state16.el = mountPoint(ID10, { tag: "nav", className: "lfx-prime-tabbar" });
       build7();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
-        state14.observer = new MutationObserver(applyState);
-        state14.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        state14.observer.observe(document.body, { childList: true });
+        state16.observer = new MutationObserver(applyState);
+        state16.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        state16.observer.observe(document.body, { childList: true });
       }
       const onFocus = () => applyState();
       document.addEventListener("focusin", onFocus);
       document.addEventListener("focusout", onFocus);
-      state14.cleanups.push(() => {
+      state16.cleanups.push(() => {
         document.removeEventListener("focusin", onFocus);
         document.removeEventListener("focusout", onFocus);
       });
       applyState();
     },
     update(route) {
-      state14.route = route;
+      state16.route = route;
       applyState();
     },
     unmount() {
-      if (state14.observer) state14.observer.disconnect();
-      state14.observer = null;
-      for (const fn of state14.cleanups.splice(0)) fn();
-      unmountPoint(ID9);
+      if (state16.observer) state16.observer.disconnect();
+      state16.observer = null;
+      for (const fn of state16.cleanups.splice(0)) fn();
+      unmountPoint(ID10);
       document.documentElement.classList.remove(HTML_CLASS2);
-      state14.el = null;
-      state14.route = null;
+      state16.el = null;
+      state16.route = null;
     }
   };
 

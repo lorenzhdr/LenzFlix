@@ -74,18 +74,51 @@ export function mobileKind(route) {
   return !lfx || lfx === 'hub' ? 'home' : 'sub';
 }
 
-/** Seitentitel der Handy-Kopfzeile auf Unterseiten (Titelseite: leer, nur der Zurück-Pfeil). */
-export function mobileTitle(route) {
+/** Feste Titel nativer Seiten (Einstellungen u. a.); Bibliotheken kommen über die Bibliotheksliste. */
+const NATIVE_TITLES = {
+  '/mypreferencesmenu': 'Einstellungen',
+  '/mypreferencesdisplay': 'Anzeige',
+  '/mypreferenceshome': 'Startseite',
+  '/mypreferencesplayback': 'Wiedergabe',
+  '/mypreferencessubtitles': 'Untertitel',
+  '/mypreferencescontrols': 'Steuerung',
+  '/mypreferencesquickconnect': 'Quick Connect',
+  '/userprofile': 'Profil',
+  '/search': 'Suche',
+  '/queue': 'Warteschlange',
+};
+
+function domText(selector, attr) {
+  const el = document.querySelector(selector);
+  if (!el) return '';
+  return String((attr ? el.getAttribute(attr) : el.textContent) || '').trim();
+}
+
+/**
+ * Seitentitel der Handy-Kopfzeile auf Unterseiten. Nie document.title (Jellyfin schreibt dort den Servernamen):
+ * feste Titel, Bibliotheksname per topParentId/parentId/lib, Titelname aus dem gerenderten DOM, sonst leer.
+ */
+export function mobileTitle(route, libs = []) {
   if (!route) return '';
+  const p = route.params;
   if (route.path === '/home') {
-    const lfx = route.params.get('lfx');
-    if (route.params.get('tab') === '1') return 'Meine Liste';
+    const lfx = p.get('lfx');
+    if (p.get('tab') === '1') return 'Meine Liste';
     if (lfx === 'new') return 'Neu & beliebt';
     if (lfx === 'search') return 'Suche';
-    if (lfx === 'title') return '';
+    if (lfx === 'title') return domText('.lfx-pt__title') || domText('.lfx-pt__logo', 'alt');
+    if (lfx === 'browse') {
+      const lib = libs.find((l) => l.id === p.get('lib'));
+      return lib ? lib.name || '' : '';
+    }
+    return '';
   }
-  const t = String(document.title || '').replace(/\s*[-–|]\s*Jellyfin.*$/i, '').trim();
-  return /^jellyfin$/i.test(t) ? '' : t;
+  if (NATIVE_TITLES[route.path]) return NATIVE_TITLES[route.path];
+  const libId = p.get('topParentId') || p.get('parentId');
+  const lib = libId ? libs.find((l) => l.id === libId) : null;
+  if (lib) return lib.name || '';
+  if (route.path === '/details' || route.path === '/item') return domText('.page:not(.hide) .nameContainer h1');
+  return '';
 }
 
 function goBack() {
@@ -104,7 +137,34 @@ const state = {
   seq: 0,
   raf: 0,
   profileBusy: false,
+  titleTimer: 0,
 };
+
+/** Titel neu berechnen und setzen (Handy, Unterseite). */
+function refreshTitle() {
+  if (!state.el || !state.mobile || !state.route) return;
+  const t = state.el.querySelector('.lfx-prime-header__title');
+  if (!t) return;
+  const next = mobileTitle(state.route, state.libs);
+  if (t.textContent !== next) t.textContent = next;
+}
+
+function stopTitlePoll() {
+  if (state.titleTimer) clearInterval(state.titleTimer);
+  state.titleTimer = 0;
+}
+
+/** Kurzes Polling nach Routenwechsel: DOM-Titel (Titelseite, native Detailseite) erscheint erst nach dem Laden. */
+function startTitlePoll() {
+  stopTitlePoll();
+  if (!state.mobile || state.kind !== 'sub') return;
+  let n = 0;
+  state.titleTimer = setInterval(() => {
+    refreshTitle();
+    n += 1;
+    if (n >= 24 || !state.el) stopTitlePoll();
+  }, 250);
+}
 
 function applyActive() {
   if (!state.el || !state.route) return;
@@ -208,7 +268,7 @@ function buildMobile(route) {
     const back = h('button', { type: 'button', class: 'lfx-prime-header__back', 'aria-label': 'Zurück' });
     back.append(icon('back'));
     back.addEventListener('click', goBack);
-    left = [back, h('h1', { class: 'lfx-prime-header__title' }, mobileTitle(route))];
+    left = [back, h('h1', { class: 'lfx-prime-header__title' }, mobileTitle(route, state.libs))];
   }
   const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [avatar])]);
   const kids = [bar];
@@ -260,6 +320,7 @@ async function loadLibs(seq) {
   }
   renderNav();
   renderPills();
+  refreshTitle();
 }
 
 async function loadAvatar(seq, avatar) {
@@ -312,6 +373,7 @@ function render() {
   renderPills();
   loadLibs(seq);
   loadAvatar(seq, parts.avatar);
+  startTitlePoll();
 }
 
 export default {
@@ -340,13 +402,14 @@ export default {
     }
     if (changed && state.menus) state.menus.close();
     if (state.mobile) {
-      const t = state.el.querySelector('.lfx-prime-header__title');
-      if (t) t.textContent = mobileTitle(route);
+      refreshTitle();
+      if (changed) startTitlePoll();
     }
     applyActive();
   },
   unmount() {
     state.seq++;
+    stopTitlePoll();
     for (const fn of state.cleanups.splice(0)) fn();
     if (state.raf) cancelAnimationFrame(state.raf);
     state.raf = 0;

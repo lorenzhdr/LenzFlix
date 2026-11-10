@@ -14,6 +14,7 @@ import { isPhone } from './mobile.js';
 const ROOT_ID = 'lfx-plus-tabbar';
 const ON_CLASS = 'lfx-plus-tabbar-on';
 const KB_CLASS = 'lfx-plus-kb';
+const HIDE_CLASS = 'lfx-plus-tabbar-hide'; // Player-Route: Leiste sofort ausblenden (vor unmount)
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 const TEXT_INPUT = 'input:not([type=button]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=range]), textarea, select';
 
@@ -40,6 +41,9 @@ export function tabKey(route) {
   return null;
 }
 
+/** True, wenn der Hash auf den Player zeigt (#/video). */
+export const isVideoHash = (hash) => /^#!?[/]video(?:[/?]|$)/.test(String(hash || ''));
+
 /**
  * Einträge des Profil-Blatts: Neu & beliebt, Bibliotheken, dann die Profil-Einträge.
  * go(href) navigiert, close() schließt das Blatt (vor jeder Aktion).
@@ -51,7 +55,7 @@ export function sheetEntries(libs, profile, { go, close }) {
     if (href) entries.push({ label: l.name, onClick: () => { close(); go(href); } });
   }
   for (const p of Array.isArray(profile) ? profile : []) {
-    if (p.href) entries.push({ label: p.label, onClick: () => { close(); go(p.href); } });
+    if (p.href) entries.push({ label: p.label, onClick: () => { close(); go(p.href); }, stats: p.key === 'stats' });
     else if (typeof p.onClick === 'function') entries.push({ label: p.label, onClick: () => { close(); p.onClick(); } });
   }
   return entries;
@@ -105,7 +109,10 @@ async function openProfile() {
   if (seq !== state.seq || !state.root) return;
   const c = openSheet(anchor, 'Profil');
   state.sheet = c;
-  renderSheet(c, (user && user.name) || 'Profil', sheetEntries(libs, profile, { go, close: () => closeChooser() }));
+  const entries = sheetEntries(libs, profile, { go, close: () => closeChooser() });
+  renderSheet(c, (user && user.name) || 'Profil', entries);
+  const buttons = c.list ? c.list.querySelectorAll('.lfx-sheet__item') : [];
+  entries.forEach((e, i) => { if (e.stats && buttons[i]) buttons[i].classList.add('is-stats'); });
 }
 
 async function fillAvatar(seq) {
@@ -158,6 +165,15 @@ export const plusTabbar = {
       document.removeEventListener('focusout', onFocusOut);
       cl.remove(KB_CLASS);
     });
+
+    // Wechsel in den Player: Leiste sofort weg (hashchange feuert vor dem Route-unmount), sonst im ersten Frame sichtbar
+    const onHash = () => cl.toggle(HIDE_CLASS, isVideoHash(window.location.hash));
+    window.addEventListener('hashchange', onHash);
+    state.cleanups.push(() => {
+      window.removeEventListener('hashchange', onHash);
+      cl.remove(HIDE_CLASS);
+    });
+    cl.remove(HIDE_CLASS);
 
     cl.add(ON_CLASS);
     applyActive();

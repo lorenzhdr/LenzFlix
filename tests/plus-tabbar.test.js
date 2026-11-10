@@ -36,7 +36,7 @@ vi.mock('../src/js/core/sheet.js', () => ({
   isCurrent: vi.fn((c) => c !== null && c === sheet.current),
 }));
 
-import tabbar, { tabKey, sheetEntries } from '../src/js/features/plus/tabbar.js';
+import tabbar, { tabKey, sheetEntries, isVideoHash } from '../src/js/features/plus/tabbar.js';
 import { parseHash } from '../src/js/core/router.js';
 import { isTheme } from '../src/js/core/theme.js';
 import * as sheetMod from '../src/js/core/sheet.js';
@@ -126,6 +126,29 @@ describe('plus-tabbar: Feature', () => {
     expect(root.querySelector('.is-active').dataset.key).toBe('search');
     tabbar.update(R('#/home?lfx=title&id=2'));
     expect(root.querySelector('.is-active')).toBeNull();
+  });
+
+  it('hashchange nach /video blendet die Leiste sofort aus (Klasse), zurück blendet ein; unmount räumt auf', () => {
+    tabbar.mount(R('#/home'));
+    const cl = document.documentElement.classList;
+    window.location.hash = '#/video';
+    window.dispatchEvent(new Event('hashchange'));
+    expect(cl.contains('lfx-plus-tabbar-hide')).toBe(true);
+    window.location.hash = '#/home';
+    window.dispatchEvent(new Event('hashchange'));
+    expect(cl.contains('lfx-plus-tabbar-hide')).toBe(false);
+    window.location.hash = '#/video';
+    window.dispatchEvent(new Event('hashchange'));
+    tabbar.unmount();
+    expect(cl.contains('lfx-plus-tabbar-hide')).toBe(false);
+    window.location.hash = '#/home';
+  });
+
+  it('isVideoHash erkennt nur den Player', () => {
+    expect(isVideoHash('#/video')).toBe(true);
+    expect(isVideoHash('#/video?x=1')).toBe(true);
+    expect(isVideoHash('#/videos')).toBe(false);
+    expect(isVideoHash('#/home')).toBe(false);
   });
 
   it('Avatar zeigt Initial ohne Profilbild', async () => {

@@ -418,9 +418,18 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
   .theme-plus .panel.half { width: calc(50% - 12px); }
 }
 
-/* Top-Titel: Poster-Raster statt Scroll-Reihe */
-.theme-plus .rail { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
-.theme-plus .tcard { width: 136px; margin: 0 14px 18px 0; }
+/* Top-Titel: einzeilige, horizontal scrollbare Reihe (wie die Zeilen im Theme): Scroll-Snap, keine sichtbare Scrollbar, rechts Anschnitt */
+.theme-plus .rail {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.theme-plus .rail::-webkit-scrollbar { display: none; }
+.theme-plus .tcard { flex: 0 0 auto; width: 136px; margin: 0 14px 0 0; scroll-snap-align: start; }
 .theme-plus .poster { width: 136px; height: 204px; border-radius: 12px; box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4); }
 .theme-plus .tname { font-weight: 600; }
 .theme-plus .rank {

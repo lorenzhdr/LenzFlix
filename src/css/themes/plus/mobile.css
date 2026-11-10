@@ -132,7 +132,8 @@
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-home {
     --plus-gutter: 5.4cqw;
     --plus-gap: 10px;
-    padding: calc(var(--plus-m-head) + 52px) 0 32px;
+    /* Die Hülle beginnt bereits unter der AppBar-Höhe; Chips (36 px) + ~14 px Abstand */
+    padding: 50px 0 32px;
   }
 
   /* ---------- Hero: Hochformat-Karussell 3:4 mit Scroll-Snap ---------- */
@@ -355,7 +356,6 @@
     background: rgb(20 21 28 / 0.75);
     -webkit-backdrop-filter: blur(28px) saturate(1.4);
     backdrop-filter: blur(28px) saturate(1.4);
-    transition: transform 0.25s ease-out;
   }
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-tabbar .lfx-plus-tabbar__tab {
     flex: 1 1 0;
@@ -412,6 +412,13 @@
   html.lfx-js.lfx-theme-plus:not(.layout-tv):has(#videoOsdPage:not(.hide)) #lfx-plus-tabbar {
     transform: translateY(100%);
     pointer-events: none;
+    transition: transform 0.2s ease-out; /* nur beim Ausblenden animieren: Einblenden sofort, damit der erste Tipp nicht ins Leere geht */
+  }
+  /* Player: sofort weg (die Klasse setzt tabbar.js schon bei hashchange nach /video) */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-tabbar-hide #lfx-plus-tabbar,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv):has(#videoOsdPage:not(.hide)) #lfx-plus-tabbar {
+    display: none;
+    transition: none;
   }
   html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-plus-kb #lfx-plus-tabbar {
     display: none;
@@ -508,6 +515,11 @@
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__hero > * {
     max-width: 100%;
   }
+  /* Fußbereich: kein leeres Panel; Platz für die Tab-Leiste kommt vom body-Padding */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__footer {
+    min-height: 0;
+    margin-top: 0;
+  }
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__buttons {
     gap: 12px;
   }
@@ -581,5 +593,56 @@
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__text {
     grid-column: 1 / -1;
     grid-row: 3;
+  }
+
+  /* ---------- Native Staffelseite (Episodenliste): Bild ~40 %, Titel rechts, Aktionen kompakt in Zeile 2, Beschreibung darunter.
+     .listItemBody wird aufgelöst (display: contents): Titel, Buttons und Beschreibung sind dann Geschwister im Flex-Container. ---------- */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper),
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 6px;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content::before {
+    flex: 0 0 24px;
+    margin-right: 4px;
+    font-size: 18px;
+    line-height: 1.4;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItemImage-large {
+    flex: 0 0 calc(40% - 12px);
+    width: calc(40% - 12px) !important;
+    min-width: 0;
+    height: auto !important;
+    aspect-ratio: 16 / 9;
+    margin: 0 12px 0 0 !important;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemBody {
+    display: contents;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemBodyText:first-child {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 15px;
+    line-height: 1.3;
+    white-space: normal;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemBodyText:not(:first-child):not(.listItem-overview) {
+    flex: 0 0 100%;
+    order: 2;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemMediaInfo,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItemButton,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listViewUserDataButtons {
+    flex: none;
+    order: 3;
+    margin: 0;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-overview {
+    flex: 0 0 100%;
+    order: 9;
+    margin-top: 2px;
   }
 }

@@ -25,7 +25,7 @@ vi.mock('../src/js/shared/search.js', () => ({ searchItems: vi.fn(async () => ({
 import { isTheme } from '../src/js/core/theme.js';
 import { closePopover } from '../src/js/core/popover.js';
 import { parseHash } from '../src/js/core/router.js';
-import header, { navItems, activeKey } from '../src/js/features/prime/header.js';
+import header, { navItems, activeKey, mobileTitle } from '../src/js/features/prime/header.js';
 import { isPrimeSearchOpen } from '../src/js/features/prime/search.js';
 
 const route = (h) => parseHash(h);
@@ -170,5 +170,36 @@ describe('prime-header: Feature', () => {
     expect(pop.querySelector('.is-stats')).not.toBeNull();
     header.unmount();
     expect(document.getElementById('lfx-popover')).toBeNull();
+  });
+});
+
+describe('prime-header: Handy-Titel (nie Servername)', () => {
+  const libs = [{ id: 'm1', name: 'Filme' }, { id: 'x1', name: 'Musik' }];
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    document.title = 'LENZFLIX';
+  });
+  it('feste Titel und Bibliotheksnamen', () => {
+    expect(mobileTitle(route('#/home?tab=1'))).toBe('Meine Liste');
+    expect(mobileTitle(route('#/home?lfx=new'))).toBe('Neu & beliebt');
+    expect(mobileTitle(route('#/mypreferencesmenu'))).toBe('Einstellungen');
+    expect(mobileTitle(route('#/music?topParentId=x1'), libs)).toBe('Musik');
+    expect(mobileTitle(route('#/list?parentId=m1'), libs)).toBe('Filme');
+  });
+  it('unbekannte native Seite: leer statt document.title', () => {
+    expect(mobileTitle(route('#/irgendwas'), libs)).toBe('');
+    expect(mobileTitle(route('#/details?id=7'), libs)).toBe('');
+  });
+  it('Titelseite: Name aus dem DOM, leer bis bekannt', () => {
+    const r = route('#/home?lfx=title&id=5');
+    expect(mobileTitle(r)).toBe('');
+    document.body.innerHTML = '<h1 class="lfx-pt__title">Arcane</h1>';
+    expect(mobileTitle(r)).toBe('Arcane');
+    document.body.innerHTML = '<img class="lfx-pt__logo" alt="Dune">';
+    expect(mobileTitle(r)).toBe('Dune');
+  });
+  it('Native Detailseite: Name aus .nameContainer', () => {
+    document.body.innerHTML = '<div class="page"><div class="nameContainer"><h1>Staffel 1</h1></div></div>';
+    expect(mobileTitle(route('#/details?id=9'))).toBe('Staffel 1');
   });
 });

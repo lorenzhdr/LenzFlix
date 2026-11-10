@@ -117,6 +117,23 @@ describe('prime-tabbar: Mount', () => {
     expect(isPrimeSearchOpen()).toBe(false);
   });
 
+  it('versteckte AppBar-Popover (MuiModal-hidden, aria-hidden) blenden die Pille nicht aus', () => {
+    tabbar.mount(route('#/home'));
+    const hidden = ['app-user-menu', 'app-sync-play-menu', 'app-remote-play-menu', 'app-remote-play-active-menu'];
+    for (const id of hidden) {
+      const d = document.createElement('div');
+      d.id = id;
+      d.className = 'MuiPopover-root MuiModal-root MuiModal-hidden';
+      d.setAttribute('aria-hidden', 'true');
+      document.body.append(d);
+    }
+    expect(shouldHide()).toBe(false);
+    const open = document.getElementById('app-user-menu');
+    open.className = 'MuiPopover-root MuiModal-root';
+    open.removeAttribute('aria-hidden');
+    expect(shouldHide()).toBe(true);
+  });
+
   it('blendet bei Sheets, Dialogen und Player aus und danach wieder ein', async () => {
     tabbar.mount(route('#/home'));
     const el = document.getElementById('lfx-prime-tabbar');

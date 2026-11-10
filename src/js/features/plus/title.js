@@ -271,7 +271,13 @@ async function load(g) {
   // ---- Kopf
   const logo = api.logoImage(main, { maxWidth: 720 });
   const name = h('h1', { class: `lfx-plus-title__name${logo ? ' has-logo' : ''}` }, logo
-    ? [h('img', { class: 'lfx-plus-title__logo', src: logo, alt: main.Name || '' })]
+    ? [h('img', {
+      class: 'lfx-plus-title__logo',
+      src: logo,
+      alt: main.Name || '',
+      // Logo lädt nicht: Name als Text-Titel
+      onerror: () => { name.classList.remove('has-logo'); name.textContent = main.Name || ''; },
+    })]
     : main.Name || '');
   const progressSlot = h('div', { class: 'lfx-plus-title__progress', hidden: true });
   const playLabel = h('span', { class: 'lfx-plus-pill__label' }, 'Abspielen');

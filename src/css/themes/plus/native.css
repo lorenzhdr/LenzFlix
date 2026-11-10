@@ -182,3 +182,74 @@ html.lfx-theme-plus:not(.layout-tv) #loginPage .btnQuick:hover,
 html.lfx-theme-plus:not(.layout-tv) #loginPage .btnQuick:focus {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* ---- Profil-/Auswahl-Blatt (core/sheet.js): dezente Fläche statt weißer Pille, Fokus nur per Tastatur sichtbar ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item--primary):focus {
+  background: transparent;
+  color: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item--primary):focus-visible,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item--primary):active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item--primary):focus:not(:focus-visible) {
+  outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item:not(.lfx-sheet__item--primary):hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:focus,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:active {
+  color: var(--lfx-gold, #f5c518);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-sheet__item.is-stats:hover {
+    color: var(--lfx-gold, #f5c518);
+  }
+}
+
+/* ---- Native Detailseite: kein Logo (oder Logo lädt nicht) -> Name als Text; kein Backdrop -> Verlauf ----
+   Klassen setzt features/plus/nativedetail.js auf #itemDetailPage. */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage.lfx-plus-nologo .detailLogo {
+  display: none !important;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage.lfx-plus-nologo .nameContainer h1 {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage.lfx-plus-nobackdrop {
+  --lfx-detail-h: min(max(56.25vw, 240px), 60vh);
+  --lfx-detail-spacer: max(var(--lfx-header-h), calc(var(--lfx-detail-h) - 90px));
+  position: relative;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage.lfx-plus-nobackdrop::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  height: var(--lfx-detail-h);
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, var(--lfx-bg) 0%, rgba(16, 19, 31, 0) 70%),
+    radial-gradient(120% 90% at 20% 0%, rgba(60, 76, 130, 0.45) 0%, rgba(60, 76, 130, 0) 70%);
+}
+
+/* ---- Meine Liste: Leerzustand (features/plus/favempty.js) ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-favempty {
+  box-sizing: border-box;
+  padding: 96px 24px;
+  color: var(--lfx-text-muted, #b8b9c0);
+  font: 400 16px / 1.5 var(--lfx-font);
+  text-align: center;
+}

@@ -17,7 +17,16 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-home-on #
   padding-top: var(--lfx-prime-mh) !important;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-tabbar-on .page:not(#videoOsdPage) {
-  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)) !important; /* Platz unter der Tab-Pille */
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important; /* Pille (21 + 58 px) + >= 24 px Luft */
+}
+/* Native Seiten (Einstellungen, Bibliotheken ...) beginnen unter der 52-px-Kopfzeile; eigene Seiten (Start, Titel, Suche,
+   Neu & beliebt, Detail, Login) haben ihren eigenen Abstand. Absoluter Wert + !important: kein Doppelabstand. */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+  padding-top: var(--lfx-prime-mh) !important;
+}
+/* Bibliotheksseiten: zweite AppBar-Toolbar (Filter/Sortierung, ~48 px) hängt unter der Kopfzeile */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+  padding-top: calc(var(--lfx-prime-mh) + 52px) !important;
 }
 
 /* ---------- Kopfzeile ---------- */
@@ -151,7 +160,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__fr
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 13px 13px 0 0;
-  background: #0a1018;
+  background: #17191c; /* Platzhalter bis das Bild geladen ist */
   isolation: isolate;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-hero__frame .lfx-prime-hero__shade {
@@ -372,7 +381,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-card__me
   height: 20px;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-moreslot {
-  padding: 4px 15px 24px;
+  padding: 4px 15px 32px;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-more {
   min-width: 112px;
@@ -382,7 +391,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-more {
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-footer {
   min-height: 96px;
-  padding: 12px 15px;
+  padding: 12px 15px 24px;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-prime-footer__link {
   font-size: 14px;
@@ -469,6 +478,71 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-search .
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* ---------- Native Staffelseite: Episodenliste (.listItem) ---------- */
+/* Bild ~40 % links, Titel/Meta rechts, Aktions-Buttons (Info/Haken/Herz/Mehr) in zweiter Zeile rechts, Beschreibung darunter */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper),
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItem-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 6px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItem-content::before {
+  display: none; /* Zählernummer spart Breite */
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItemImage-large {
+  flex: none;
+  width: 40% !important;
+  min-width: 0;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
+  margin: 0 12px 0 0 !important;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItemBody {
+  flex: 1 1 calc(60% - 40px);
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 2px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItemBodyText:first-child {
+  font-size: 15px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItemMediaInfo {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 13px;
+  color: #a9adb6;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItem-overview {
+  grid-row: 3;
+  flex: 1 1 100%;
+  font-size: 13px;
+}
+/* Aktions-Buttons: kompakt, brechen in eine zweite Zeile um (Body + Bild füllen die erste) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listViewUserDataButtons,
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItemButton {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listViewUserDataButtons {
+  display: inline-flex;
+  align-items: center;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listViewUserDataButtons .paper-icon-button-light,
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItemButton {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  font-size: 20px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listViewUserDataButtons .listItemButton {
+  margin-left: 0;
 }
 
 /* ---------- Titelseite: einspaltig ---------- */

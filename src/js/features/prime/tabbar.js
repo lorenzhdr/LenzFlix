@@ -13,7 +13,14 @@ const HTML_CLASS = 'lfx-prime-tabbar-on';
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 /** html-Klassen, bei denen die Pille weicht. */
 const HIDE_CLASSES = ['lfx-sheet-open', 'lfx-themepicker-open', 'lfx-popover-open', 'lfx-modal-open', 'lfx-prime-profilesheet-open'];
-const DIALOG_SELECTOR = '.dialogContainer .dialog, .MuiDialog-root, .MuiPopover-root, #lfx-popover, #lfx-sheet, #lfx-themepicker';
+// Nur SICHTBARE Dialoge/Popover zählen: Jellyfins AppBar hält dauerhaft versteckte Popover (MuiModal-hidden, aria-hidden) im DOM.
+const DIALOG_SELECTOR = [
+  '.dialogContainer .dialog',
+  '.MuiDialog-root:not(.MuiModal-hidden)',
+  '.MuiPopover-root:not(.MuiModal-hidden)',
+  '.MuiModal-root:not(.MuiModal-hidden)[role=presentation]',
+  '#lfx-popover', '#lfx-sheet', '#lfx-themepicker',
+].map((q) => `${q}:not([aria-hidden=true]):not([hidden])`).join(', ');
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ICONS = {
