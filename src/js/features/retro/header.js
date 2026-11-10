@@ -135,9 +135,12 @@ export default {
     loadAvatar(seq, avatar);
   },
   update(route) {
+    // Der Router ruft update() bei jedem viewshow auf (nach dem Neuladen mehrfach): das Profil-Menü
+    // nur bei echter Routenänderung schließen, sonst klappt es direkt nach dem Öffnen wieder zu.
+    const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
     if (!state.el) return;
-    if (profileIsOpen()) closePopover();
+    if (changed && profileIsOpen()) closePopover();
     applyActive();
   },
   unmount() {

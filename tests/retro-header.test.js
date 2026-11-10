@@ -178,6 +178,20 @@ describe('retro-header: Feature', () => {
     expect(pop.querySelector('.lfx-beta')).toBeTruthy();
   });
 
+  it('Profil-Menü bleibt bei viewshow-update offen, schließt nur bei Routenwechsel', async () => {
+    header.mount(route('#/home'));
+    await flush();
+    document.querySelector('.lfx-retro-header__avatar').click();
+    await flush();
+    const isOpen = () => Boolean(document.querySelector('#lfx-popover.lfx-retro-profile'));
+    expect(isOpen()).toBe(true);
+    header.update(route('#/home')); // Router: viewshow nach dem Neuladen, gleiche Route
+    header.update(route('#/home'));
+    expect(isOpen()).toBe(true);
+    header.update(route('#/home?tab=1')); // echte Routenänderung
+    expect(isOpen()).toBe(false);
+  });
+
   it('Scrollen setzt is-scrolled', async () => {
     header.mount(route('#/home'));
     await flush();

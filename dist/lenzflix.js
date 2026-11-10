@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.6.0";
+  var VERSION = "1.6.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -13077,9 +13077,10 @@
       loadAvatar2(seq3, avatar);
     },
     update(route) {
+      const changed = !state16.route || state16.route.hash !== route.hash;
       state16.route = route;
       if (!state16.el) return;
-      if (profileIsOpen2()) closePopover();
+      if (changed && profileIsOpen2()) closePopover();
       applyActive7();
     },
     unmount() {
