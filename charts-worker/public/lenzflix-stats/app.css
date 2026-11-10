@@ -66,6 +66,34 @@ h1 { font-size: 1.6rem; font-weight: 800; margin: 8px 6px 14px; color: var(--lfx
 h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-text); }
 
 .msg { margin: 24px 6px; color: var(--lfx-text-muted); }
+
+/* Ladeanzeige: unbestimmter, laufender Balken (nur transform/overflow, läuft auch auf alten TV-Browsern) */
+.loading { margin: 40px 6px; max-width: 28rem; }
+.loading-title { margin: 0 0 14px; font-size: 1.05rem; font-weight: 600; color: var(--lfx-text); }
+.loading-sub { margin: 10px 0 0; min-height: 1.2em; font-size: 0.875rem; color: var(--lfx-text-muted); }
+.progress { position: relative; height: 6px; overflow: hidden; border-radius: 3px; background: var(--lfx-surface-3); }
+.progress-run {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 3px;
+  background: var(--lfx-red);
+  -webkit-animation: lfx-run 1.3s ease-in-out infinite;
+  animation: lfx-run 1.3s ease-in-out infinite;
+}
+@-webkit-keyframes lfx-run {
+  0% { -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+  100% { -webkit-transform: translateX(250%); transform: translateX(250%); }
+}
+@keyframes lfx-run {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-run { -webkit-animation: none; animation: none; width: 100%; opacity: 0.6; }
+}
 .notice {
   margin: 8px 6px;
   padding: 12px 14px;

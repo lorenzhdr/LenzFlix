@@ -573,10 +573,39 @@
   var root = null;
 
   function setView(node) {
+    if (!root || !document.body.contains(root)) root = document.getElementById('lfx-app') || root;
     closeShareDialog(false);
     revokeBlobs();
     clear(root);
     root.appendChild(node);
+  }
+
+  /**
+   * Ladeanzeige: laufender Balken (unbestimmt, ehrlich: der Server meldet keinen Fortschritt),
+   * Titel, „Schritt n von m“ und ein optionaler Hinweis, wenn es länger dauert.
+   */
+  function showLoading(label, step, total) {
+    var wrap = el('div', 'loading');
+    wrap.setAttribute('role', 'status');
+    var title = el('p', 'loading-title', label);
+    var bar = el('div', 'progress');
+    bar.appendChild(el('div', 'progress-run'));
+    var meta = el('p', 'loading-sub', total ? 'Schritt ' + step + ' von ' + total : '');
+    var hint = el('p', 'loading-sub');
+    wrap.appendChild(title);
+    wrap.appendChild(bar);
+    wrap.appendChild(meta);
+    wrap.appendChild(hint);
+    setView(wrap);
+    return {
+      step: function (text, n) {
+        title.textContent = text;
+        meta.textContent = total ? 'Schritt ' + n + ' von ' + total : '';
+      },
+      hint: function (text) {
+        hint.textContent = text;
+      },
+    };
   }
 
   function showMessage(text, retry) {
@@ -1507,18 +1536,24 @@
   /* ---------- Ablauf ---------- */
 
   function loadAll() {
-    var wrap = el('p', 'msg', 'Lade Statistik …');
-    setView(wrap);
+    var ui = showLoading('Statistik wird berechnet …', 1, 2);
+    /* Nach längerer Pause rechnet der Server alles neu (mehrere Abfragen an Jellyfin). */
+    var slow = window.setTimeout(function () {
+      ui.hint('Nach längerer Pause dauert die Berechnung einen Moment. Bitte kurz warten.');
+    }, 3500);
     var token = S.token;
     loadStats(S.range, token).then(
       function (stats) {
         S.stats = stats;
+        ui.step('Titel und Poster werden geladen …', 2);
         return loadItems(collectIds(stats), token, S.userId).then(function (items) {
+          window.clearTimeout(slow);
           S.items = items;
           drawDashboard(stats);
         });
       },
       function (err) {
+        window.clearTimeout(slow);
         if (err && err.code === 'unauthorized') {
           dropAuth();
           showLogin('Bitte melde dich erneut an.');
@@ -1621,6 +1656,8 @@
     drawShare: drawShare,
     openShareDialog: openShareDialog,
     closeShareDialog: closeShareDialog,
+    showLoading: showLoading,
+    loadAll: loadAll,
     formats: FORMATS,
     state: S,
   };

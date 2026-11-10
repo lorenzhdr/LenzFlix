@@ -650,3 +650,114 @@ describe('Share-Dialog', () => {
     }
   });
 });
+
+describe('Ladeanzeige', () => {
+  const SERIES_ID = 'a'.repeat(32);
+  const STATS = {
+    version: 1,
+    range: '30d',
+    computedAt: '2026-11-10T12:00:00Z',
+    stale: false,
+    approx: false,
+    ignored: false,
+    totals: { seconds: 3600, plays: 2, episodes: 1, movies: 0, series: 1, activeDays: 1, firstAt: null, lastAt: null },
+    topSeries: [{ id: SERIES_ID, seconds: 3000, episodes: 1 }],
+    topMovies: [],
+    timeline: { unit: 'day', buckets: [] },
+    heatmap: [],
+    binge: { topDay: null, seriesDay: null },
+    devices: [],
+    methods: {
+      directPlay: { plays: 0, seconds: 0 },
+      directStream: { plays: 0, seconds: 0 },
+      transcode: { plays: 0, seconds: 0 },
+      other: { plays: 0, seconds: 0 },
+    },
+    compare: null,
+  };
+
+  function gate() {
+    let resolve;
+    const promise = new Promise((r) => {
+      resolve = r;
+    });
+    return { promise, resolve };
+  }
+
+  function json(body) {
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = '<main id="lfx-app"></main>';
+    L.state.token = 'tok';
+    L.state.userId = 'u1';
+    L.state.range = '30d';
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('showLoading: Statusbereich mit laufendem Balken, Schritt-Anzeige und Hinweis', () => {
+    const ui = L.showLoading('Statistik wird berechnet …', 1, 2);
+    const box = document.querySelector('#lfx-app .loading');
+    expect(box.getAttribute('role')).toBe('status');
+    expect(box.querySelector('.progress .progress-run')).not.toBeNull();
+    expect(box.querySelector('.loading-title').textContent).toBe('Statistik wird berechnet …');
+    expect(box.textContent).toContain('Schritt 1 von 2');
+    ui.step('Titel und Poster werden geladen …', 2);
+    expect(box.querySelector('.loading-title').textContent).toBe('Titel und Poster werden geladen …');
+    expect(box.textContent).toContain('Schritt 2 von 2');
+    ui.hint('Bitte kurz warten.');
+    expect(box.textContent).toContain('Bitte kurz warten.');
+    // kein Inline-Style, kein HTML aus Daten
+    expect(box.innerHTML).not.toContain('style=');
+  });
+
+  it('loadAll: nach 3,5 s erscheint der Hinweis zur längeren Berechnung', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    L.loadAll();
+    const box = () => document.querySelector('#lfx-app .loading');
+    expect(box().textContent).toContain('Statistik wird berechnet');
+    expect(box().textContent).not.toContain('Nach längerer Pause');
+    vi.advanceTimersByTime(3000);
+    expect(box().textContent).not.toContain('Nach längerer Pause');
+    vi.advanceTimersByTime(600);
+    expect(box().textContent).toContain('Nach längerer Pause');
+  });
+
+  it('loadAll: Schritt 1 (berechnen) → Schritt 2 (Titel/Poster) → Dashboard ohne Ladebalken', async () => {
+    const statsGate = gate();
+    const itemsGate = gate();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url) => {
+        const u = String(url);
+        if (u.indexOf('/lenzflix-stats/api/me/stats') >= 0) return statsGate.promise;
+        if (u.indexOf('/Items?') >= 0) return itemsGate.promise;
+        return Promise.resolve(new Response('', { status: 404 }));
+      })
+    );
+    L.loadAll();
+    const text = () => (document.getElementById('lfx-app') || document.body).textContent;
+    expect(text()).toContain('Statistik wird berechnet');
+    expect(text()).toContain('Schritt 1 von 2');
+    statsGate.resolve(json(STATS));
+    await vi.waitFor(() => expect(text()).toContain('Titel und Poster werden geladen'));
+    expect(text()).toContain('Schritt 2 von 2');
+    expect(document.querySelector('.progress-run')).not.toBeNull();
+    itemsGate.resolve(json({ Items: [{ Id: SERIES_ID, Name: 'Serie Eins', Type: 'Series', ImageTags: {} }] }));
+    await vi.waitFor(() => expect(text()).toContain('Watchtime'));
+    expect(document.querySelector('.loading')).toBeNull();
+    expect(document.querySelector('.progress-run')).toBeNull();
+  });
+
+  it('loadAll: Serverfehler ersetzt den Ladebalken durch die Fehlermeldung', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline'))));
+    L.loadAll();
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Server gerade nicht erreichbar'));
+    expect(document.querySelector('.loading')).toBeNull();
+  });
+});

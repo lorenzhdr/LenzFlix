@@ -16,7 +16,10 @@
     <a class="back" href="/web/">Zurück zu LENZFLIX</a>
   </header>
   <main id="lfx-app" class="app" aria-live="polite">
-    <p class="msg">Lade …</p>
+    <div class="loading" role="status">
+      <p class="loading-title">Lade …</p>
+      <div class="progress"><div class="progress-run"></div></div>
+    </div>
     <noscript><p class="msg">Diese Seite benötigt JavaScript.</p></noscript>
   </main>
   <script src="app.js"></script>
