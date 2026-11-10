@@ -77,4 +77,29 @@ describe('nav: Meine Statistik', () => {
     expect(document.getElementById('lfx-nav')).toBeNull();
     expect(document.querySelector('.lfx-nav__menu-item--stats')).toBeNull();
   });
+
+  it('geöffnetes Mehr-Menü bleibt offen, wenn die Navigation nach dem Laden der Bibliotheken neu gerendert wird', async () => {
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    nav.mount(parseHash('#/home'));
+    const first = document.querySelector('.lfx-nav__more');
+    expect(first).not.toBeNull();
+    first.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(first.classList.contains('is-open')).toBe(true);
+    // Zweiter Render (loadViews) ersetzt das Element; das Menü muss offen bleiben.
+    await vi.waitFor(() => expect(document.querySelector('.lfx-nav__more')).not.toBe(first));
+    const second = document.querySelector('.lfx-nav__more');
+    expect(second.classList.contains('is-open')).toBe(true);
+    expect(second.querySelector('.lfx-nav__more-btn').getAttribute('aria-expanded')).toBe('true');
+    // Verlässt die Maus das Menü, schließt es weiterhin.
+    second.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(second.classList.contains('is-open')).toBe(false);
+  });
+
+  it('geschlossenes Menü bleibt nach dem erneuten Rendern geschlossen', async () => {
+    window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
+    nav.mount(parseHash('#/home'));
+    const first = document.querySelector('.lfx-nav__more');
+    await vi.waitFor(() => expect(document.querySelector('.lfx-nav__more')).not.toBe(first));
+    expect(document.querySelector('.lfx-nav__more').classList.contains('is-open')).toBe(false);
+  });
 });

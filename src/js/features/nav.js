@@ -143,6 +143,11 @@ function render() {
     });
     menu.addEventListener('click', () => setMenu(false));
     nav.append(wrap);
+    // Render läuft nach dem Laden der Bibliotheken erneut: ein gerade geöffnetes Menü offen halten
+    // (die Maus steht schon darüber, ein neues mouseenter feuert nicht).
+    if (state.menuOpen) setMenu(true);
+  } else {
+    state.menuOpen = false;
   }
   applyActive();
 }
