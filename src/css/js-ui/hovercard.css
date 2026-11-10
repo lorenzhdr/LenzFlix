@@ -71,6 +71,40 @@ html.lfx-js #lfx-hovercard.is-closing {
   object-fit: contain;
   object-position: left bottom;
 }
+/* Gesehen-Button: unten rechts im Bild, über dem Overlay (das selbst keine Klicks annimmt) */
+html.lfx-js .lfx-hc__played {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: #fff;
+  cursor: pointer;
+  background: rgba(20, 20, 20, 0.65);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: border-color 150ms var(--lfx-ease), background-color 150ms var(--lfx-ease);
+}
+html.lfx-js .lfx-hc__played svg { display: block; width: 18px; height: 18px; }
+html.lfx-js .lfx-hc__played:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-hc__played:hover { border-color: #fff; background: rgba(20, 20, 20, 0.85); }
+}
+html.lfx-js .lfx-hc__played.is-on,
+html.lfx-js .lfx-hc__played.is-on:hover,
+html.lfx-js .lfx-hc__played.is-on:focus-visible {
+  color: #141414;
+  background: #fff;
+  border-color: #fff;
+}
+
 .lfx-hc__title {
   font-size: 20px;
   font-weight: 700;

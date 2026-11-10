@@ -11,7 +11,11 @@ vi.mock('../src/js/core/api.js', () => ({
   logoImage: () => null,
   pickLandscape: () => ({ type: 'Thumb' }),
   setFavorite: vi.fn(),
+  setPlayed: vi.fn(),
+  getEpisodes: vi.fn(),
 }));
+vi.mock('../src/js/core/sheet.js', () => ({ confirmAction: vi.fn() }));
+vi.mock('../src/js/core/toast.js', () => ({ toast: vi.fn() }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn() }));
 vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
 const hoisted = vi.hoisted(() => ({ changed: null, unsub: null }));
@@ -37,7 +41,10 @@ import hovercard, {
   qualityBadge,
   resolveTarget,
 } from '../src/js/features/hovercard.js';
-import { getItem, setFavorite } from '../src/js/core/api.js';
+import { getItem, setFavorite, setPlayed, getEpisodes } from '../src/js/core/api.js';
+import { confirmAction } from '../src/js/core/sheet.js';
+import { toast } from '../src/js/core/toast.js';
+import { openModal } from '../src/js/features/modal.js';
 import { openItemMenu, isMenuOpen } from '../src/js/core/itemmenu.js';
 import { startDownload, canDownload, isChooserOpen } from '../src/js/core/download.js';
 import { clearCache } from '../src/js/core/cache.js';
@@ -299,6 +306,87 @@ describe('Neue Buttons und Menü', () => {
     const unsub = hoisted.unsub;
     hovercard.unmount();
     expect(unsub).toHaveBeenCalled();
+  });
+});
+
+describe('Gesehen-Button', () => {
+  async function openPopup(extra) {
+    const c = makeCard(extra);
+    over(c.img);
+    vi.advanceTimersByTime(500);
+    await vi.advanceTimersByTimeAsync(0);
+    return { c, pop: document.getElementById('lfx-hovercard') };
+  }
+  it('liegt im Bild und ist aktiv bei UserData.Played', async () => {
+    const { pop } = await openPopup({ UserData: { Played: true } });
+    const btn = pop.querySelector('.lfx-hc__media .lfx-hc__played');
+    expect(btn).not.toBeNull();
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(btn.getAttribute('aria-label')).toBe('Als ungesehen markieren');
+  });
+  it('Film: Klick togglet optimistisch, ruft setPlayed einmal, öffnet kein Modal', async () => {
+    setPlayed.mockResolvedValue(undefined);
+    const { c, pop } = await openPopup();
+    const btn = pop.querySelector('.lfx-hc__played');
+    expect(btn.classList.contains('is-on')).toBe(false);
+    expect(btn.getAttribute('aria-label')).toBe('Als gesehen markieren');
+    btn.click();
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    btn.click(); // Doppelklick gesperrt
+    await vi.advanceTimersByTimeAsync(0);
+    expect(setPlayed).toHaveBeenCalledTimes(1);
+    expect(setPlayed).toHaveBeenCalledWith(c.id, true);
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(openModal).not.toHaveBeenCalled();
+  });
+  it('Fehler: Rollback und Toast', async () => {
+    setPlayed.mockRejectedValue(new Error('x'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { pop } = await openPopup();
+    const btn = pop.querySelector('.lfx-hc__played');
+    btn.click();
+    expect(btn.classList.contains('is-on')).toBe(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(btn.classList.contains('is-on')).toBe(false);
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+    expect(toast).toHaveBeenCalledWith('Konnte nicht gespeichert werden');
+  });
+  it('Serie: Rückfrage mit Folgenzahl, vor Bestätigung kein setPlayed', async () => {
+    getEpisodes.mockResolvedValue({ Items: [{ Id: 'e1' }, { Id: 'e2' }, { Id: 'e3' }] });
+    const { c, pop } = await openPopup({ Type: 'Series' });
+    const btn = pop.querySelector('.lfx-hc__played');
+    expect(btn.getAttribute('aria-label')).toBe('Ganze Serie als gesehen markieren');
+    btn.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(confirmAction).toHaveBeenCalledTimes(1);
+    const args = confirmAction.mock.calls[0][0];
+    expect(args.title).toBe('3 Folgen als gesehen markieren?');
+    expect(args.confirmLabel).toBe('Als gesehen markieren');
+    expect(args.anchorEl).toBe(btn);
+    expect(setPlayed).not.toHaveBeenCalled();
+    expect(openModal).not.toHaveBeenCalled();
+
+    // Bestätigen: Serie setzen, abweichende Folge nachziehen
+    getEpisodes.mockResolvedValue({ Items: [{ Id: 'e1', UserData: { Played: true } }, { Id: 'e2', UserData: { Played: false } }] });
+    setPlayed.mockResolvedValue(undefined);
+    await args.onConfirm();
+    expect(setPlayed).toHaveBeenCalledWith(c.id, true);
+    expect(setPlayed).toHaveBeenCalledWith('e2', true);
+    expect(setPlayed).not.toHaveBeenCalledWith('e1', true);
+    expect(btn.classList.contains('is-on')).toBe(true);
+    expect(toast).toHaveBeenCalledWith('Serie als gesehen markiert');
+  });
+  it('Serie: Abbrechen löst keinen Call aus', async () => {
+    getEpisodes.mockResolvedValue({ Items: [{ Id: 'e1' }] });
+    const { pop } = await openPopup({ Type: 'Series' });
+    const btn = pop.querySelector('.lfx-hc__played');
+    btn.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(confirmAction.mock.calls[0][0].title).toBe('1 Folge als gesehen markieren?');
+    expect(setPlayed).not.toHaveBeenCalled();
+    expect(btn.classList.contains('is-on')).toBe(false);
   });
 });
 

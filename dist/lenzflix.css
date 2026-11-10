@@ -4059,6 +4059,58 @@ html.lfx-js #lfx-hovercard.is-closing {
   display: block;
 }
 
+html.lfx-js .lfx-hc__played {
+  z-index: 2;
+  box-sizing: border-box;
+  color: #fff;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  width: 34px;
+  height: 34px;
+  transition: border-color .15s var(--lfx-ease), background-color .15s var(--lfx-ease);
+  background: rgba(20, 20, 20, .65);
+  border: 2px solid rgba(255, 255, 255, .5);
+  border-radius: 8px;
+  align-items: center;
+  justify-items: center;
+  padding: 0;
+  display: inline-grid;
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+}
+
+html.lfx-js .lfx-hc__played svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+html.lfx-js .lfx-hc__played:focus-visible {
+  outline-offset: 2px;
+  outline: 2px solid #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-hc__played:hover {
+    background: rgba(20, 20, 20, .85);
+    border-color: #fff;
+  }
+}
+
+html.lfx-js .lfx-hc__played.is-on, html.lfx-js .lfx-hc__played.is-on:hover {
+  color: #141414;
+  background: #fff;
+  border-color: #fff;
+}
+
+html.lfx-js .lfx-hc__played.is-on:focus-visible {
+  color: #141414;
+  background: #fff;
+  border-color: #fff;
+}
+
 .lfx-hc__title {
   text-shadow: 0 1px 6px rgba(0, 0, 0, .8);
   font-size: 20px;

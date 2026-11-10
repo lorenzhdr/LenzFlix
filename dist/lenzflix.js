@@ -4352,6 +4352,89 @@
       updateButtons(s);
     }
   }
+  var SAVE_ERROR2 = "Konnte nicht gespeichert werden";
+  var isBulk = (it) => Boolean(it) && (it.Type === "Series" || it.Type === "Season");
+  var folgen2 = (n) => n === 1 ? "1 Folge" : `${n} Folgen`;
+  async function loadBulkEpisodes(item) {
+    const isSeason = item.Type === "Season";
+    const seriesId = isSeason ? item.SeriesId || item.ParentId : item.Id;
+    const params = { Fields: "UserData" };
+    if (isSeason) params.SeasonId = item.Id;
+    const res = await getEpisodes(seriesId, params);
+    return res && res.Items || [];
+  }
+  async function togglePlayed(s) {
+    if (s.busyPlayed) return;
+    if (isBulk(s.item)) {
+      askBulkPlayed(s);
+      return;
+    }
+    s.busyPlayed = true;
+    const item = s.item;
+    const before = Boolean(s.played);
+    const next = !before;
+    s.played = next;
+    updateButtons(s);
+    try {
+      await setPlayed(item.Id, next);
+      patchUserData(s, { Played: next, PlaybackPositionTicks: 0 });
+    } catch (e) {
+      s.played = before;
+      console.error("[LenzFlix] Gesehen", e && e.message);
+      toast(SAVE_ERROR2);
+    } finally {
+      s.busyPlayed = false;
+      updateButtons(s);
+    }
+  }
+  async function askBulkPlayed(s) {
+    s.busyPlayed = true;
+    wasHeld = true;
+    clearClose();
+    const item = s.item;
+    const next = !s.played;
+    const verb = next ? "gesehen" : "ungesehen";
+    let n = 0;
+    try {
+      n = (await loadBulkEpisodes(item)).length;
+    } catch {
+    }
+    s.busyPlayed = false;
+    confirmAction({
+      title: n ? `${folgen2(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`,
+      confirmLabel: `Als ${verb} markieren`,
+      anchorEl: s.btns.played,
+      onConfirm: async () => {
+        s.busyPlayed = true;
+        let failed = 0;
+        try {
+          await setPlayed(item.Id, next);
+          try {
+            const wrong = (await loadBulkEpisodes(item)).filter((e) => Boolean(e.UserData && e.UserData.Played === true) !== next);
+            for (let i = 0; i < wrong.length; i += 6) {
+              const res = await Promise.allSettled(wrong.slice(i, i + 6).map((e) => setPlayed(e.Id, next)));
+              failed += res.filter((r) => r.status === "rejected").length;
+            }
+          } catch {
+          }
+          if (s.item && s.item.Id === item.Id) {
+            s.played = next;
+            patchUserData(s, { Played: next, PlaybackPositionTicks: 0 });
+          }
+          clearCache(`lfx:modal:item:${item.Id}`);
+          clearCache(`lfx:modal:next:${item.Id}`);
+          clearCache(`lfx:modal:eps:${item.Type === "Season" ? item.SeriesId || item.ParentId : item.Id}:`);
+          toast(failed ? SAVE_ERROR2 : `${item.Type === "Season" ? "Staffel" : "Serie"} als ${verb} markiert`);
+        } catch (e) {
+          console.error("[LenzFlix] Gesehen", e && e.message);
+          toast(SAVE_ERROR2);
+        } finally {
+          s.busyPlayed = false;
+          updateButtons(s);
+        }
+      }
+    });
+  }
   function startPlayback(s) {
     const ud = userData(s);
     const resume = (ud.PlaybackPositionTicks || 0) > 0 || progressPercent3(s.item) > 0;
@@ -4408,6 +4491,15 @@
     setButton(s.btns.dl, /^(Series|Season)$/.test(s.item.Type) ? "Episoden herunterladen" : "Herunterladen", ICON_DOWNLOAD);
     setButton(s.btns.menu, "Mehr", ICON_MORE);
     setButton(s.btns.more, "Weitere Infos", svg3("chevron"));
+    const bulk = isBulk(s.item);
+    const pb = s.btns.played;
+    const what = s.item.Type === "Season" ? "Staffel" : "Ganze Serie";
+    const label = bulk ? s.played ? `${what} als ungesehen markieren` : `${what} als gesehen markieren` : s.played ? "Als ungesehen markieren" : "Als gesehen markieren";
+    pb.setAttribute("aria-label", label);
+    pb.title = label;
+    pb.innerHTML = s.played ? ICON_EYE_CHECK : ICON_EYE;
+    pb.setAttribute("aria-pressed", String(Boolean(s.played)));
+    pb.classList.toggle("is-on", Boolean(s.played));
   }
   function badge2(text, cls = "") {
     return h("span", { class: `lfx-hc__badge ${cls}`.trim() }, text);
@@ -4476,6 +4568,7 @@
   function render5(s) {
     s.fav = Boolean(userData(s).IsFavorite);
     s.like = userData(s).Likes === true;
+    s.played = userData(s).Played === true;
     s.el.setAttribute("aria-label", s.item.Name || s.card.querySelector("[aria-label]")?.getAttribute("aria-label") || "Titel");
     updateButtons(s);
     renderBody(s);
@@ -4498,19 +4591,26 @@
       if (session2 !== s || !full) return;
       const keepFav = s.busyFav ? s.fav : void 0;
       const keepLike = s.busyLike ? s.like : void 0;
+      const keepPlayed = s.busyPlayed ? s.played : void 0;
       s.item = { ...s.item, ...full };
       putItems([s.item]);
       render5(s);
       if (keepFav !== void 0) s.fav = keepFav;
       if (keepLike !== void 0) s.like = keepLike;
-      if (keepFav !== void 0 || keepLike !== void 0) updateButtons(s);
+      if (keepPlayed !== void 0) s.played = keepPlayed;
+      if (keepFav !== void 0 || keepLike !== void 0 || keepPlayed !== void 0) updateButtons(s);
     } catch {
     }
   }
   function buildPopup(s) {
     const img = h("img", { class: "lfx-hc__img", alt: "", decoding: "async" });
     const overlay = h("div", { class: "lfx-hc__overlay" });
-    const media = h("div", { class: "lfx-hc__media" }, [img, overlay]);
+    const playedBtn = h("button", { type: "button", class: "lfx-hc__played", "aria-label": "Als gesehen markieren" });
+    playedBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      togglePlayed(s);
+    });
+    const media = h("div", { class: "lfx-hc__media" }, [img, overlay, playedBtn]);
     media.addEventListener("click", () => showDetails(s));
     s.btns = {
       play: circleButton("lfx-hc__btn--play", "Abspielen", () => startPlayback(s)),
@@ -4520,6 +4620,7 @@
       menu: circleButton("lfx-hc__btn--menu", "Mehr", () => openMenu(s)),
       more: circleButton("lfx-hc__btn--more", "Weitere Infos", () => showDetails(s))
     };
+    s.btns.played = playedBtn;
     s.btns.dl.wrap.hidden = true;
     s.btns.menu.btn.setAttribute("aria-haspopup", "menu");
     const body = h("div", { class: "lfx-hc__body" });
@@ -4548,7 +4649,8 @@
       closing: false,
       removeTimer: null,
       busyFav: false,
-      busyLike: false
+      busyLike: false,
+      busyPlayed: false
     };
     const el = buildPopup(s);
     session2 = s;
@@ -5240,7 +5342,7 @@
   var features2 = [nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default];
 
   // src/js/main.js
-  var VERSION = "1.3.1";
+  var VERSION = "1.3.2";
   var WATCH_MS = 1e3;
   function init() {
     if (window.LenzFlix) return;
