@@ -12,7 +12,33 @@ Inoffizielles Netflix-artiges Theme für Jellyfin-Web 12.4: CSS-Kern (wirkt alle
 ## Dev-Loop
 `build/dev-inject.js` per Konsole/`javascript_tool` in einen eingeloggten Jellyfin-Tab einfügen: entfernt Fremd-Spotlight, ruft `window.LenzFlix.destroy()`, lädt CSS+JS von `http://localhost:5179`. `window.__lfxNoJs = true` → nur CSS. Chrome muss „Lokales Netzwerk“ für die Seite erlauben. Der Dev-`<link>` steht nach Jellyfins Theme-CSS und dem Custom-CSS-`<style>` (Kaskade wie live); `window.__lfxDevNoLiveCss = true` entfernt zusätzlich nur die `@import`-Regel des Custom-CSS (`--lfx-stats-url`/`--lfx-charts-url` bleiben).
 Im Claude-in-Chrome-Tab sind Requests an localhost aktuell gesperrt (seit Nov 2026). Kurz-Loader `build/dev-boot.js` (über serve als `/boot.js`, leitet die Basis-URL aus der Skript-Adresse ab, tut dasselbe wie `dev-inject.js`): `document.head.appendChild(Object.assign(document.createElement('script'),{src:'<base>/boot.js?'+Date.now()}))`; `window.__lfxDevTheme` wählt das Design (Standard `store`); entfernt altes `window.LenzFlixStore3D`.
-Workaround: temporärer cloudflared-Tunnel (`cloudflared tunnel --no-autoupdate --url http://127.0.0.1:5179`, nur mit Zustimmung des Nutzers, nach dem Test beenden) und vor dem Loader `window.__lfxDevBase = '<tunnel-url>/'` setzen.
+Workaround: temporärer cloudflared-Tunnel, Ablauf siehe unten.
+
+### Live-Test im Jellyfin-Tab über Tunnel
+Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den Dev-Server öffentlich erreichbar macht. Nach dem Test immer beenden.
+1. `npm run build` ausführen. Der Tunnel liefert `dist/` aus, nicht `src/`.
+2. Den Dev-Server im Hintergrund auf eigenem Port starten: `PORT=5191 node build/serve.mjs`.
+3. Den Tunnel im Hintergrund starten: `.tmp/tools/cloudflared.exe tunnel --no-autoupdate --url http://127.0.0.1:5191 > .tmp/tunnel.log 2>&1`.
+   - Das Binary ist gitignored. Fehlt es, mit Zustimmung `cloudflared-windows-amd64.exe` von den offiziellen Releases auf GitHub (`cloudflare/cloudflared`) dorthin laden.
+   - Die URL steht nach etwa 5 bis 10 s im Log: `grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' .tmp/tunnel.log`. Jeder Start erzeugt eine neue URL.
+   - Blockiert die Auto-Mode-Prüfung den Start, den Nutzer um ausdrückliche Freigabe bitten.
+4. Im eingeloggten Jellyfin-Tab laden (Claude-in-Chrome, eigener neuer Tab, `javascript_tool`):
+   ```js
+   const base = '<tunnel-url>/';
+   window.__lfxStoreDebug = true;   // optional: window.__lfxStore (stats/teleport/take/zones)
+   window.__lfxDevBase = base;
+   window.__lfxDevTheme = 'store';  // Design, Standard 'store'
+   document.head.appendChild(Object.assign(document.createElement('script'), { src: base + 'boot.js?' + Date.now() }));
+   ```
+   - VR-Emulator (optional): vorher `base + 'xr-emu.js'` als Skript laden und `onload` abwarten, danach `window.__xrEmu.device.stereoEnabled = true` setzen. Dafür muss `.tmp/xr-emu.js` gebaut sein.
+   - Am Handy funktionieren dieselben Zeilen als Lesezeichen mit dem Präfix `javascript:void `. Das Lesezeichen veraltet mit jeder neuen Tunnel-URL.
+5. Nach Code-Änderungen erneut `npm run build` ausführen und den Loader neu starten. Er räumt per `destroy()` auf und lädt das 3D-Bundle frisch.
+6. Aufräumen:
+   - `boot.js` stellt das Design per Hash um, und das bleibt gespeichert. Am Ende `#/home?lfxtheme=<vorheriges Design>` aufrufen.
+   - Im Player verstellte Ton- und Untertitelspuren zurückstellen.
+   - Tunnel und Server per PID beenden, in PowerShell mit `Get-Process cloudflared` und `Get-NetTCPConnection -LocalPort 5191 -State Listen`, dann `Stop-Process -Id …`.
+   - Die Test-Tabs schließen.
+   - Zum Schluss prüfen, dass weder `cloudflared` noch `serve.mjs` mehr läuft.
 
 ## Designs (LENZFLIX `flix` Standard, LENZ+ `plus`, LENZPRIME `prime`, LENZ//84 `retro`, VIDEOTHEK LENZ `store`; retro/store Beta)
 - Design-Kern `core/theme.js` (+ `themecss.js`, `themepicker.js`, `popover.js`), Features in `features/plus|prime|retro/`, CSS in `src/css/themes/<id>/` (eigene Bundles `dist/lenzplus|lenzprime|lenzretro(.min).css`, per JS nachgeladen). `core/` und `shared/` gehören allen Designs, Änderungen dort wirken auf alle: nie Verhalten von LENZFLIX brechen. Details und Regeln: `docs/js-contracts.md` („Designs“).
@@ -25,7 +51,7 @@ Workaround: temporärer cloudflared-Tunnel (`cloudflared tunnel --no-autoupdate 
   - Dev-Harness `build/store-dev.html` (über serve `/store-dev.html`); Debug: `window.__lfxStoreDebug = true` → `window.__lfxStore`.
   - Die Statistik-Seite kennt `store` nicht und zeigt den LENZFLIX-Look.
   - VR-Modus (Beta, WebXR): `store3d/xr/` + `store3d/cinema/` (Kino), Player-Bridge nur in der Hülle `features/store/cinema-bridge.js` (Jellyfin-DOM nie im 3D-Bundle); Vertrag in `docs/store3d.md` („VR-Modus“). Ohne XR-Session muss 2D bitgleich bleiben; keine Marken-/Gerätenamen von Brillen/Controllern (Texte: „VR-Brille“, „Controller“, „Hände“), kein UA-Sniffing.
-  - Test ohne Brille: Harness `/store-dev.html?xremu=1&xrshot=1&cinema=1` (Fake-Player; `?cinema=series|fail`, `?subs=srt|ass|off`), Emulator-Bundle `.tmp/xr-emu.js` selbst bauen (nicht committen, `serve` liefert 404 ohne). Emulator-Canvas liegt unter der Bühne: `xrshot=1` blendet sie in XR aus.
+  - Test ohne Brille: Harness `/store-dev.html?xremu=1&xrshot=1&cinema=1` (Fake-Player; `?cinema=series|fail`, `?subs=srt|ass|off`), Emulator-Bundle `.tmp/xr-emu.js` selbst bauen (nicht committen, `serve` liefert 404 ohne). Emulator-Canvas liegt unter der Bühne: `xrshot=1` blendet sie in XR aus. Fahrskript (CDP, Headless-Chrome, gitignored): `node .tmp/vr/e2e/xr-e2e.mjs --list` bzw. `--only enter,take`. Pro Chrome-Start einen eigenen CDP-Port nehmen, weil derselbe Port mit demselben Profil direkt nacheinander hängt.
   - Falle: `CanvasTexture` nach Größenwechsel der Canvas nie weiterverwenden (three legt den Speicher fest an) → alte Textur `dispose()`, neue anlegen (`xr/panel.js`, `cinema/subtitles.js`).
 - Statistik-Seite lokal: `node build/stats-dev.mjs` (127.0.0.1:5180), `/lenzflix-stats/dev-login.html?theme=flix|plus|prime|retro`; Produktiv-CSP (keine Inline-Skripte) beachten. Style-Regression: `build/style-snapshot.js` in der Konsole vor/nach der Änderung, dann `node build/style-diff.mjs alt.json neu.json`.
 
