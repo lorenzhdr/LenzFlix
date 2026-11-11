@@ -18,7 +18,7 @@ export function wrapDeps(deps, getXr) {
       if (!x) return deps.play(item, o);
       x.beforePlay(item, o);
       const res = deps.play(item, o);
-      const fail = () => { if (typeof x.leaveCinema === 'function') x.leaveCinema('fail'); };
+      const fail = () => { if (typeof x.leaveCinema === 'function') x.leaveCinema('fail', 'P'); };
       if (res && typeof res.then === 'function') res.then((ok) => { if (ok === false) fail(); }, fail);
       else if (res === false) fail();
       return res;

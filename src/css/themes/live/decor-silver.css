@@ -1,0 +1,705 @@
+/* LENZ LIVE · Dekor „Silber-Röhre“ (silver): Regeln für ui/decor-silver.js, nur unter .lfx-live--style-silver; Animationen nur unter .lfx-live-app:not(.no-tubefx).
+   Vertikale Maße (vh, von unten im Raum): TV-Unterkante/Rack-Oberseite 12, Glasplatte 11–12, Boden-Fläche 1.2 (Füße), Fläche 1 bei 8.25, Fläche 2 bei 5.05.
+   Geräte (tv-Ebene) hängen mit top: calc(100% + …vh) am Fernseher (Unterkante des Fernsehers = 12vh). */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  /* ---------- Raum ---------- */
+  .lfx-live--style-silver .lfx-live-decor {
+    /* freier Rand links/rechts des Fernseher-Blocks (Fernseher + 28 px + Fernbedienung, Raum-Padding 16 px) – nur für direkte Kinder gedacht */
+    --lfx-s-m: calc((100% - 60px - var(--lfx-live-tv-w) - 176 * var(--lfx-live-u)) / 2 + 16px);
+  }
+  .lfx-live--style-silver .lfx-live-d-wall {
+    position: absolute;
+    inset: 0 0 9vh 0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.5) 0 0.6px, transparent 1.3px) 0 0 / 7px 6px,
+      radial-gradient(circle at 70% 60%, rgba(70, 60, 45, 0.1) 0 0.7px, transparent 1.5px) 3px 2px / 5px 7px,
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.28) 0 0.5px, transparent 1.1px) 1px 4px / 9px 8px,
+      linear-gradient(180deg, #e6e1d7 0%, #dbd5c9 70%, #cdc6b8 100%);
+  }
+  .lfx-live--style-silver .lfx-live-d-wall__light {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(55% 70% at 50% 0%, rgba(255, 252, 238, 0.7), transparent 75%),
+      radial-gradient(70% 90% at 12% 15%, rgba(255, 252, 240, 0.35), transparent 65%),
+      radial-gradient(60% 60% at 100% 100%, rgba(40, 32, 20, 0.22), transparent 70%),
+      linear-gradient(0deg, rgba(60, 50, 38, 0.2), transparent 22%);
+  }
+  .lfx-live--style-silver .lfx-live-d-tvshadow {
+    position: absolute;
+    left: calc(var(--lfx-s-m) + 1.2%);
+    width: var(--lfx-live-tv-w);
+    bottom: 20vh;
+    height: calc(var(--lfx-live-tv-w) / 1.5);
+    border-radius: 3%;
+    background: rgba(70, 52, 30, 0.3);
+    box-shadow: 0 0 3vh 1vh rgba(70, 52, 30, 0.3);
+    filter: blur(1.8vh);
+  }
+  .lfx-live--style-silver .lfx-live-d-baseboard {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 9vh;
+    height: 1.5vh;
+    background: linear-gradient(180deg, #f6f4ef 0, #e7e3da 30%, #c9c3b6 100%);
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.12), 0 2px 3px rgba(0, 0, 0, 0.18);
+  }
+  .lfx-live--style-silver .lfx-live-d-floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 9vh;
+    background:
+      /* Stoßfugen (versetzt je Reihe) */
+      linear-gradient(90deg, rgba(60, 38, 18, 0.35) 0 2px, transparent 2px) 0 0 / 15vw 3vh repeat-x,
+      linear-gradient(90deg, rgba(60, 38, 18, 0.35) 0 2px, transparent 2px) 6vw 3vh / 15vw 3vh repeat-x,
+      linear-gradient(90deg, rgba(60, 38, 18, 0.35) 0 2px, transparent 2px) 11vw 6vh / 15vw 3vh repeat-x,
+      /* Dielenfugen */
+      linear-gradient(180deg, transparent 0 3vh, rgba(60, 38, 18, 0.4) 3vh calc(3vh + 1px), transparent calc(3vh + 1px) 6vh, rgba(60, 38, 18, 0.4) 6vh calc(6vh + 1px), transparent calc(6vh + 1px)),
+      linear-gradient(180deg, #b78a58 0%, #a67a4b 60%, #8d6539 100%);
+  }
+  .lfx-live--style-silver .lfx-live-d-floor__shine {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 25%),
+      radial-gradient(60% 100% at 30% 100%, rgba(255, 240, 210, 0.22), transparent 70%);
+  }
+
+  /* ---------- Glas-Rack mit Chromfüßen (Maße in vh, Rack-Unterkante = 1vh über dem Boden; Plattenfläche endet bei 12vh) ---------- */
+  .lfx-live--style-silver .lfx-live-d-rack {
+    position: absolute;
+    left: 3%;
+    right: 3%;
+    bottom: 1vh;
+    height: 19vh;
+    --lfx-s-edge: linear-gradient(180deg, rgba(222, 250, 244, 0.95) 0, rgba(140, 205, 193, 0.85) 38%, rgba(70, 140, 128, 0.9) 100%);
+    --lfx-s-face: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(215, 245, 240, 0.55));
+  }
+  .lfx-live--style-silver .lfx-live-d-rack__shadow {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.7vh;
+    height: 1.9vh;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(30, 18, 6, 0.6), transparent 70%);
+  }
+  .lfx-live--style-silver .lfx-live-d-rack__leg {
+    position: absolute;
+    bottom: 0;
+    width: calc(11 * var(--lfx-live-u));
+    height: 17.4vh;
+    margin-left: calc(-5.5 * var(--lfx-live-u));
+    border-radius: 6px 6px 3px 3px / 3px 3px 3px 3px;
+    background: linear-gradient(90deg, #4f555e 0%, #aeb5bf 14%, #ffffff 30%, #f2f4f7 40%, #8d95a0 68%, #3f444c 100%);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3), 1px 0 0 rgba(0, 0, 0, 0.15);
+  }
+  .lfx-live--style-silver .lfx-live-d-rack__leg::after {
+    content: "";
+    position: absolute;
+    left: -25%;
+    right: -25%;
+    bottom: -0.25vh;
+    height: 0.6vh;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #e8ebef, #6c737d);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+  }
+  .lfx-live--style-silver .lfx-live-d-rack__leg--l { left: calc(6 * var(--lfx-live-u)); }
+  .lfx-live--style-silver .lfx-live-d-rack__leg--il { left: 9%; }
+  .lfx-live--style-silver .lfx-live-d-rack__leg--ir { left: 91%; }
+  .lfx-live--style-silver .lfx-live-d-rack__leg--r { left: auto; right: calc(6 * var(--lfx-live-u)); margin-left: 0; margin-right: calc(-5.5 * var(--lfx-live-u)); }
+  .lfx-live--style-silver .lfx-live-d-rack__top,
+  .lfx-live--style-silver .lfx-live-d-rack__shelf {
+    position: absolute;
+    left: calc(5 * var(--lfx-live-u));
+    right: calc(5 * var(--lfx-live-u));
+    background: var(--lfx-s-edge);
+    border-radius: 1px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(20, 70, 62, 0.7), 0 3px 6px rgba(0, 0, 0, 0.22);
+  }
+  .lfx-live--style-silver .lfx-live-d-rack__top { left: 0; right: 0; bottom: 17.4vh; height: 0.9vh; border-radius: 3px; }
+  .lfx-live--style-silver .lfx-live-d-rack__shelf { height: 0.6vh; }
+  .lfx-live--style-silver .lfx-live-d-rack__shelf--1 { bottom: 10.9vh; }
+  .lfx-live--style-silver .lfx-live-d-rack__shelf--2 { bottom: 4.8vh; }
+  .lfx-live--style-silver .lfx-live-d-rack__face {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 0.3vh;
+    background: var(--lfx-s-face);
+    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.55);
+  }
+  .lfx-live--style-silver .lfx-live-d-rack__top > .lfx-live-d-rack__face {
+    height: 0.7vh;
+    background: linear-gradient(180deg, rgba(235, 252, 248, 0.92), rgba(200, 238, 232, 0.8) 55%, rgba(255, 255, 255, 0.9));
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* ---------- Stufe 2/3 (nur bei genug Platz) ---------- */
+  .lfx-live--style-silver .lfx-live-d-wshelf,
+  .lfx-live--style-silver .lfx-live-d-plant,
+  .lfx-live--style-silver .lfx-live-d-clock,
+  .lfx-live--style-silver .lfx-live-d-sub,
+  .lfx-live--style-silver .lfx-live-d-spk { display: none; }
+
+  @media (min-width: 1440px) and (min-aspect-ratio: 17 / 10) {
+    .lfx-live--style-silver .lfx-live-d-wshelf {
+      display: block;
+      position: absolute;
+      left: calc(3% + 14px);
+      width: max(0px, min(calc(var(--lfx-s-m) - 3% - 40px), 230px));
+      top: 28vh;
+      height: 10vh;
+    }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row {
+      position: absolute;
+      left: 3%;
+      right: 3%;
+      bottom: 1.3vh;
+      height: 8.4vh;
+      display: flex;
+      align-items: flex-end;
+      gap: 1px;
+    }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+      height: 90%;
+      transform-origin: 50% 100%;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.4) 0, rgba(255, 255, 255, 0.3) 14%, transparent 45%, rgba(0, 0, 0, 0.28) 100%),
+        hsl(calc(var(--i) * 61 + 8) 52% 40%);
+      border-radius: 1px;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+    }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i::before {
+      content: "";
+      position: absolute;
+      left: 18%;
+      right: 18%;
+      top: 8%;
+      height: 14%;
+      background: rgba(255, 255, 255, 0.42);
+      border-radius: 1px;
+    }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i:nth-child(3n) { height: 96%; background-color: hsl(calc(var(--i) * 61 + 8) 40% 55%); }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i:nth-child(4n+1) { height: 86%; }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i:nth-child(5n) {
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.4) 0, rgba(255, 255, 255, 0.25) 14%, transparent 45%, rgba(0, 0, 0, 0.3) 100%),
+        #1e232b;
+    }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i:nth-child(6) { transform: rotate(-7deg); margin-left: 2px; }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i:nth-child(7) { transform: rotate(-4deg); }
+    .lfx-live--style-silver .lfx-live-d-wshelf__row > .lfx-live-d__i:nth-child(9) { transform: rotate(5deg); margin-left: 3px; }
+    .lfx-live--style-silver .lfx-live-d-wshelf__board {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1vh;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #fbf9f4, #d5cfc2 55%, #a79f8f);
+      box-shadow: 0 1.1vh 1.8vh -0.2vh rgba(50, 38, 24, 0.45), 0 0.3vh 0.5vh rgba(0, 0, 0, 0.25);
+    }
+    .lfx-live--style-silver .lfx-live-d-wshelf__face {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 100%;
+      height: 0.45vh;
+      background: linear-gradient(180deg, #ffffff, #e8e3d8);
+      border-radius: 2px 2px 0 0;
+    }
+    .lfx-live--style-silver .lfx-live-d-plant {
+      display: block;
+      position: absolute;
+      right: calc(1.2% + 4px);
+      bottom: 20vh;
+      width: max(0px, min(calc(var(--lfx-s-m) - 3% - 30px), 100px));
+      height: 40vh;
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__shadow {
+      position: absolute;
+      left: 8%;
+      right: -6%;
+      bottom: -0.5vh;
+      height: 1.3vh;
+      border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 50%, rgba(10, 40, 40, 0.55), transparent 70%);
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__pot {
+      position: absolute;
+      left: 20%;
+      right: 20%;
+      bottom: 0;
+      height: 6vh;
+      border-radius: 5px 5px 12px 12px / 5px 5px 18px 18px;
+      background: linear-gradient(90deg, #7d848f 0%, #d3d8df 18%, #ffffff 36%, #c4cad2 58%, #6c737d 100%);
+      box-shadow: inset 0 -1.2vh 1.2vh rgba(0, 0, 0, 0.22), 0 0.3vh 0.6vh rgba(0, 0, 0, 0.35);
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__pot::before {
+      content: "";
+      position: absolute;
+      left: -2%;
+      right: -2%;
+      top: -0.3vh;
+      height: 1vh;
+      border-radius: 50%;
+      background: linear-gradient(180deg, #f6f8fa, #98a0ab);
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__soil {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      top: -0.05vh;
+      height: 0.7vh;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 50%, #8e9298 0 2px, transparent 3px) 0 0 / 7px 5px, #34383f;
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks { position: absolute; inset: 0; }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i {
+      position: absolute;
+      bottom: 5.4vh;
+      left: calc(28% + var(--i) * 4.8%);
+      width: calc(3.5 * var(--lfx-live-u));
+      height: 24vh;
+      transform-origin: 50% 100%;
+      transform: rotate(calc((var(--i) - 4.5) * 3deg));
+      background: repeating-linear-gradient(180deg, #5d9a3f 0 5.5vh, #29561f 5.5vh calc(5.5vh + 3px), #7ec259 calc(5.5vh + 3px) calc(5.5vh + 4px));
+      border-radius: 2px;
+      box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25), inset 1px 0 0 rgba(255, 255, 255, 0.25);
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i:nth-child(2n) { height: 30vh; }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i:nth-child(3n) { height: 21vh; }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i:nth-child(5n) { height: 33vh; }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i::after,
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i::before {
+      content: "";
+      position: absolute;
+      border-radius: 80% 10% 80% 10%;
+      background: linear-gradient(135deg, hsl(calc(88 + var(--i) * 4) 50% 52%), hsl(calc(100 + var(--i) * 3) 48% 28%));
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i::after {
+      left: -2px;
+      top: -3.2vh;
+      width: calc(24 * var(--lfx-live-u));
+      height: 3.6vh;
+      transform-origin: 0 100%;
+      transform: rotate(calc(-62deg + var(--i) * 9deg));
+    }
+    .lfx-live--style-silver .lfx-live-d-plant__stalks > .lfx-live-d__i::before {
+      left: 1px;
+      top: 22%;
+      width: calc(20 * var(--lfx-live-u));
+      height: 3vh;
+      transform-origin: 0 100%;
+      transform: rotate(calc(10deg - var(--i) * 7deg)) scaleX(-1);
+    }
+    .lfx-live--style-silver .lfx-live-d-clock {
+      display: block;
+      position: absolute;
+      left: calc(3% + 14px + 40px);
+      top: 8vh;
+      width: 8.5vh;
+      height: 8.5vh;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #ffffff 0 55%, #ebe8e0 80%, #d8d4ca 100%);
+      box-shadow:
+        0 0 0 0.35vh #4a525d,
+        0 0 0 0.75vh #c9d0d8,
+        0 0 0 0.95vh #8a929d,
+        0.5vh 1.2vh 1.8vh rgba(40, 30, 18, 0.45),
+        inset 0 0.3vh 0.8vh rgba(0, 0, 0, 0.18);
+    }
+    .lfx-live--style-silver .lfx-live-d-clock__ticks { position: absolute; inset: 0; }
+    .lfx-live--style-silver .lfx-live-d-clock__ticks > .lfx-live-d__i {
+      position: absolute;
+      inset: 0;
+      transform: rotate(calc(var(--i) * 30deg));
+    }
+    .lfx-live--style-silver .lfx-live-d-clock__ticks > .lfx-live-d__i::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 6%;
+      width: 2px;
+      height: 8%;
+      margin-left: -1px;
+      background: #2a313b;
+    }
+    .lfx-live--style-silver .lfx-live-d-clock__ticks > .lfx-live-d__i:nth-child(3n)::before { width: 3px; height: 12%; margin-left: -1.5px; }
+    .lfx-live--style-silver .lfx-live-d-clock__h,
+    .lfx-live--style-silver .lfx-live-d-clock__m {
+      position: absolute;
+      left: 50%;
+      bottom: 50%;
+      transform-origin: 50% 100%;
+      background: #1f252d;
+      border-radius: 2px;
+      box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
+    }
+    .lfx-live--style-silver .lfx-live-d-clock__h { width: 4px; margin-left: -2px; height: 24%; transform: rotate(calc(var(--lfx-live-clock-h, 0) * 1deg)); }
+    .lfx-live--style-silver .lfx-live-d-clock__m { width: 2.5px; margin-left: -1.25px; height: 36%; transform: rotate(calc(var(--lfx-live-clock-m, 0) * 1deg)); }
+    .lfx-live--style-silver .lfx-live-d-clock__cap {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 8%;
+      height: 8%;
+      margin: -4% 0 0 -4%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #e9edf1, #6d7580);
+    }
+  }
+  @media (min-width: 1800px) and (min-aspect-ratio: 17 / 10) {
+    .lfx-live--style-silver .lfx-live-d-plant { right: calc(1.2% + 8vh); }
+    .lfx-live--style-silver .lfx-live-d-sub {
+      display: block;
+      position: absolute;
+      left: calc(3% + 4.5vh);
+      bottom: 0.2vh;
+      width: 9.4vh;
+      height: 9.4vh;
+      border-radius: 3px;
+      background: linear-gradient(135deg, #3b4049, #181b21 60%, #101216);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 1vh 1.8vh rgba(0, 0, 0, 0.45);
+    }
+    .lfx-live--style-silver .lfx-live-d-sub::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: -1.9vh;
+      bottom: 100%;
+      height: 1.5vh;
+      background: linear-gradient(180deg, #8a919c, #565d68);
+      clip-path: polygon(14% 0, 100% 0, calc(100% - 1.9vh) 100%, 0 100%);
+    }
+    .lfx-live--style-silver .lfx-live-d-sub::after {
+      content: "";
+      position: absolute;
+      left: 100%;
+      top: -1.5vh;
+      width: 1.9vh;
+      bottom: 0;
+      background: linear-gradient(90deg, #14171c, #2a2f37);
+      clip-path: polygon(0 1.5vh, 100% 0, 100% calc(100% - 1.5vh), 0 100%);
+    }
+    .lfx-live--style-silver .lfx-live-d-sub__drv {
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 10%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, #0b0d11 0 18%, #2b3037 20% 34%, #0d0f13 36% 56%, #4b515b 58% 62%, #1a1d23 64% 80%, #aab1bb 82% 86%, #20242b 88%);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+    }
+    .lfx-live--style-silver .lfx-live-d-spk {
+      display: block;
+      position: absolute;
+      bottom: 1.2vh;
+      width: 6.5vh;
+      height: 46vh;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(90deg, #7b838e, #c8cdd4 14%, #9aa1ab 50%, #5a616c 100%);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 1.2vh 2vh rgba(0, 0, 0, 0.45);
+    }
+    .lfx-live--style-silver .lfx-live-d-spk--l { left: -1.5vh; }
+    .lfx-live--style-silver .lfx-live-d-spk--r { right: -1.5vh; }
+    .lfx-live--style-silver .lfx-live-d-spk::after {
+      content: "";
+      position: absolute;
+      top: 0.6vh;
+      bottom: 0;
+      width: 2vh;
+      background: linear-gradient(90deg, #5b626d, #2b3038);
+    }
+    .lfx-live--style-silver .lfx-live-d-spk--l::after { left: 100%; clip-path: polygon(0 0, 100% 1vh, 100% 100%, 0 100%); }
+    .lfx-live--style-silver .lfx-live-d-spk--r::after { right: 100%; clip-path: polygon(0 1vh, 100% 0, 100% 100%, 0 100%); background: linear-gradient(90deg, #2b3038, #5b626d); }
+    .lfx-live--style-silver .lfx-live-d-spk__cloth {
+      position: absolute;
+      inset: 4% 8% 3% 8%;
+      border-radius: 2px;
+      background:
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.25) 0 1px, transparent 1px 3px),
+        linear-gradient(90deg, #2a2e35, #15181d 60%, #20242a);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+    }
+    .lfx-live--style-silver .lfx-live-d-spk__tw,
+    .lfx-live--style-silver .lfx-live-d-spk__wf {
+      position: absolute;
+      aspect-ratio: 1;
+      border-radius: 50%;
+    }
+    .lfx-live--style-silver .lfx-live-d-spk__tw {
+      left: 28%;
+      right: 28%;
+      top: 8%;
+      background: radial-gradient(circle, #0a0c0f 0 22%, #404650 26% 44%, #0f1216 48% 70%, #8d949f 74% 80%, transparent 82%);
+    }
+    .lfx-live--style-silver .lfx-live-d-spk__wf {
+      left: 14%;
+      right: 14%;
+      top: 22%;
+      background: radial-gradient(circle, #090b0e 0 14%, #2d323a 16% 34%, #0e1115 36% 58%, #4c535d 60% 66%, #12151a 68% 78%, #9aa1ac 80% 85%, #1a1d22 87%);
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+    }
+    .lfx-live--style-silver .lfx-live-d-spk__wf--2 { top: 56%; }
+  }
+
+  /* ---------- Gehäuse-Details (tv-Ebene) ---------- */
+  .lfx-live--style-silver .lfx-live-d-top {
+    position: absolute;
+    left: 5%;
+    right: 5%;
+    bottom: calc(100% - 1px);
+    height: 3.4%;
+    background: linear-gradient(0deg, #d3d9e0 0%, #aeb7c2 50%, #7d8795 100%);
+    clip-path: polygon(0 100%, 100% 100%, 92% 38%, 80% 0, 20% 0, 8% 38%);
+  }
+  .lfx-live--style-silver .lfx-live-d-rim {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.2% / 3.2%;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+      inset 0 3px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -3px 5px rgba(0, 0, 0, 0.14),
+      inset 3px 0 5px rgba(255, 255, 255, 0.3),
+      inset -3px 0 5px rgba(0, 0, 0, 0.1);
+  }
+  .lfx-live--style-silver .lfx-live-d-grille {
+    position: absolute;
+    left: 6%;
+    width: 27%;
+    bottom: 2.6%;
+    height: 5.6%;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #8d96a3, #aeb6c1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.7);
+    overflow: hidden;
+  }
+  .lfx-live--style-silver .lfx-live-d-grille__dots {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(32, 40, 52, 0.85) 0 26%, transparent 32%) 0 0 / calc(6 * var(--lfx-live-u)) calc(6 * var(--lfx-live-u));
+  }
+  .lfx-live--style-silver .lfx-live-d-logo {
+    position: absolute;
+    left: 40%;
+    width: 18%;
+    bottom: 2.9%;
+    height: 5.2%;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #7c8592, #b9c1cb);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+  .lfx-live--style-silver .lfx-live-d-flap {
+    position: absolute;
+    right: 5%;
+    width: 28%;
+    bottom: 2.6%;
+    height: 5.6%;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #d9dee5, #a0a9b5 85%, #8b94a0);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), inset 0 -2px 3px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    padding: 0 3%;
+  }
+  .lfx-live--style-silver .lfx-live-d-flap__keys { display: contents; }
+  .lfx-live--style-silver .lfx-live-d-flap__keys > .lfx-live-d__i {
+    display: block;
+    width: 11%;
+    height: 38%;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #eef0f3, #8f98a4);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+  }
+  .lfx-live--style-silver .lfx-live-d-foot {
+    position: absolute;
+    left: 2%;
+    right: 2%;
+    top: 100%;
+    height: 2.4vh;
+    background: linear-gradient(180deg, rgba(225, 232, 240, 0.42), rgba(225, 232, 240, 0.08) 70%, transparent);
+  }
+  .lfx-live--style-silver .lfx-live-d-contact {
+    position: absolute;
+    left: 1%;
+    right: 1%;
+    top: 100%;
+    height: 0.8vh;
+    background: radial-gradient(ellipse at 50% 0, rgba(10, 30, 28, 0.55), transparent 72%);
+  }
+
+  /* ---------- Geräte im Rack (Breite ~ Gerätehöhe x 9.5, begrenzt auf 42 % der TV-Breite) ---------- */
+  .lfx-live--style-silver .lfx-live-d-dev {
+    position: absolute;
+    left: calc(var(--lfx-s-m) + var(--lfx-live-tv-w) / 2);
+    transform: translateX(-50%);
+    aspect-ratio: 7 / 1;
+  }
+  .lfx-live--style-silver .lfx-live-d-dvd { bottom: 12.6vh; width: min(calc(var(--lfx-live-tv-w) * 0.4), 32vh); }
+  .lfx-live--style-silver .lfx-live-d-rcv { bottom: 6.5vh; width: min(calc(var(--lfx-live-tv-w) * 0.38), 29vh); }
+  .lfx-live--style-silver .lfx-live-d-dev__shadow {
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    bottom: -0.35vh;
+    height: 0.8vh;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(0, 30, 26, 0.6), transparent 70%);
+  }
+  .lfx-live--style-silver .lfx-live-d-dev__body {
+    position: absolute;
+    inset: 0 0 0.25vh 0;
+    border-radius: 3px 3px 1px 1px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+  .lfx-live--style-silver .lfx-live-d-dev__body::after {
+    content: "";
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    bottom: -0.25vh;
+    height: 0.25vh;
+    background: linear-gradient(90deg, #232830 0 8%, transparent 8% 92%, #232830 92%);
+  }
+  .lfx-live--style-silver .lfx-live-d-dvd .lfx-live-d-dev__body { background: linear-gradient(180deg, #5c636e 0, #323840 40%, #1b1f26 100%); }
+  .lfx-live--style-silver .lfx-live-d-rcv .lfx-live-d-dev__body { background: linear-gradient(180deg, #f2f4f7 0, #cdd3db 45%, #98a1ad 100%); }
+  .lfx-live--style-silver .lfx-live-d-dev__seam {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 66%;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .lfx-live--style-silver .lfx-live-d-dev__tray {
+    position: absolute;
+    left: 6%;
+    width: 46%;
+    top: 20%;
+    height: 38%;
+    border-radius: 2px;
+    background:
+      linear-gradient(180deg, transparent 38%, rgba(255, 255, 255, 0.3) 40% 48%, transparent 50%),
+      linear-gradient(180deg, #07090c, #1c2027);
+    box-shadow: inset 0 0 0 1px rgba(160, 170, 185, 0.5), 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  .lfx-live--style-silver .lfx-live-d-rcv .lfx-live-d-dev__tray { left: 45%; width: 28%; top: 62%; height: 14%; background: rgba(20, 28, 38, 0.5); box-shadow: none; }
+  .lfx-live--style-silver .lfx-live-d-dev__disp {
+    position: absolute;
+    right: 5%;
+    width: 27%;
+    top: 14%;
+    height: 56%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #05263f, #021426);
+    color: #9fe2ff;
+    text-shadow: 0 0 5px rgba(100, 200, 255, 1), 0 0 10px rgba(60, 160, 255, 0.7);
+    font: 700 max(10px, 2.1vh) / 1 "Courier New", monospace;
+    letter-spacing: 0.06em;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), 0 0 7px 1px rgba(70, 170, 255, 0.5);
+  }
+  .lfx-live--style-silver .lfx-live-d-dev__disp:empty { background: #06080b; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7); }
+  .lfx-live--style-silver .lfx-live-d-rcv .lfx-live-d-dev__disp { right: auto; left: 6%; width: 30%; }
+  .lfx-live--style-silver .lfx-live-d-dev__btns {
+    position: absolute;
+    left: 50%;
+    width: 14%;
+    top: 22%;
+    height: 22%;
+    display: flex;
+    gap: 8%;
+  }
+  .lfx-live--style-silver .lfx-live-d-rcv .lfx-live-d-dev__btns { left: 44%; width: 30%; top: 24%; height: 20%; }
+  .lfx-live--style-silver .lfx-live-d-dvd .lfx-live-d-dev__btns > .lfx-live-d__i { flex: 1 1 0; border-radius: 50%; background: linear-gradient(180deg, #aab3bf, #5c6470); }
+  .lfx-live--style-silver .lfx-live-d-rcv .lfx-live-d-dev__btns > .lfx-live-d__i { flex: 1 1 0; border-radius: 1px; background: linear-gradient(180deg, #8e97a3, #5f6773); }
+  .lfx-live--style-silver .lfx-live-d-dev__knob { display: none; }
+  .lfx-live--style-silver .lfx-live-d-rcv .lfx-live-d-dev__knob {
+    display: block;
+    position: absolute;
+    right: 5%;
+    top: 14%;
+    height: 66%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: conic-gradient(from 20deg, #5d6570, #f4f6f8, #8b939e, #e6e9ed, #5d6570);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+
+  /* ---------- Glas (Röhren-Effekte) ---------- */
+  .lfx-live--style-silver .lfx-live-screen__glass > div { position: absolute; inset: 0; pointer-events: none; }
+  .lfx-live--style-silver .lfx-live-d-g-vignette {
+    background:
+      radial-gradient(120% 108% at 50% 48%, transparent 56%, rgba(0, 0, 0, 0.3) 84%, rgba(0, 0, 0, 0.6) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.25), transparent 8%, transparent 92%, rgba(0, 0, 0, 0.3));
+    box-shadow: inset 0 0 calc(var(--lfx-live-tv-w) * 0.035) calc(var(--lfx-live-tv-w) * 0.004) rgba(0, 0, 0, 0.75);
+  }
+  .lfx-live--style-silver .lfx-live-d-g-lines {
+    background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+    opacity: 0.8;
+  }
+  .lfx-live--style-silver .lfx-live-d-g-flicker { background: rgba(0, 0, 0, 0.06); opacity: 0; }
+  .lfx-live--style-silver .lfx-live-d-g-roll {
+    inset: 0 0 auto 0;
+    height: 16%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.07) 50%, transparent);
+    opacity: 0;
+    transform: translateY(-110%);
+  }
+  .lfx-live--style-silver .lfx-live-d-g-fringe {
+    box-shadow: inset 3px 0 5px rgba(255, 40, 80, 0.12), inset -3px 0 5px rgba(40, 170, 255, 0.14);
+  }
+  .lfx-live--style-silver .lfx-live-d-g-reflex {
+    background:
+      radial-gradient(70% 42% at 24% 6%, rgba(255, 255, 255, 0.22), transparent 70%),
+      radial-gradient(60% 40% at 82% 96%, rgba(255, 255, 255, 0.07), transparent 70%),
+      linear-gradient(128deg, rgba(255, 255, 255, 0.1) 0, transparent 30%);
+  }
+  .lfx-live-app:not(.is-on).lfx-live--style-silver .lfx-live-d-g-reflex {
+    background:
+      radial-gradient(75% 48% at 24% 6%, rgba(255, 255, 255, 0.34), transparent 72%),
+      radial-gradient(60% 40% at 82% 96%, rgba(255, 255, 255, 0.12), transparent 70%),
+      linear-gradient(128deg, rgba(255, 255, 255, 0.18) 0, transparent 34%);
+  }
+  .lfx-live-app:not(.is-on).lfx-live--style-silver .lfx-live-d-g-lines,
+  .lfx-live-app:not(.is-on).lfx-live--style-silver .lfx-live-d-g-flicker,
+  .lfx-live-app:not(.is-on).lfx-live--style-silver .lfx-live-d-g-roll,
+  .lfx-live-app:not(.is-on).lfx-live--style-silver .lfx-live-d-g-fringe,
+  .lfx-live-app.no-tubefx.lfx-live--style-silver .lfx-live-d-g-lines,
+  .lfx-live-app.no-tubefx.lfx-live--style-silver .lfx-live-d-g-flicker,
+  .lfx-live-app.no-tubefx.lfx-live--style-silver .lfx-live-d-g-roll,
+  .lfx-live-app.no-tubefx.lfx-live--style-silver .lfx-live-d-g-fringe { display: none; }
+
+  .lfx-live-app:not(.no-tubefx).lfx-live--style-silver .lfx-live-d-g-flicker { animation: lfx-live-s-flicker 0.18s steps(2, end) infinite; }
+  .lfx-live-app:not(.no-tubefx).lfx-live--style-silver .lfx-live-d-g-roll { animation: lfx-live-s-roll 11s linear infinite; }
+}
+
+@keyframes lfx-live-s-flicker {
+  0% { opacity: 0.2; }
+  50% { opacity: 0.75; }
+  100% { opacity: 0.4; }
+}
+@keyframes lfx-live-s-roll {
+  0%, 62% { opacity: 0; transform: translateY(-110%); }
+  64% { opacity: 1; transform: translateY(-80%); }
+  94% { opacity: 1; transform: translateY(560%); }
+  96%, 100% { opacity: 0; transform: translateY(600%); }
+}

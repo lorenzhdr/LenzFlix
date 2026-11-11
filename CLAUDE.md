@@ -51,7 +51,7 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
   - Dev-Harness `build/store-dev.html` (über serve `/store-dev.html`); Debug: `window.__lfxStoreDebug = true` → `window.__lfxStore`.
   - Die Statistik-Seite kennt `store` (und `live`) nicht und zeigt den LENZFLIX-Look.
   - VR-Modus (Beta, WebXR): `store3d/xr/` + `store3d/cinema/` (Kino), Player-Bridge nur in der Hülle `features/store/cinema-bridge.js` (Jellyfin-DOM nie im 3D-Bundle); Vertrag in `docs/store3d.md` („VR-Modus“). Ohne XR-Session muss 2D bitgleich bleiben; keine Marken-/Gerätenamen von Brillen/Controllern (Texte: „VR-Brille“, „Controller“, „Hände“), kein UA-Sniffing.
-  - Test ohne Brille: Harness `/store-dev.html?xremu=1&xrshot=1&cinema=1` (Fake-Player; `?cinema=series|fail`, `?subs=srt|ass|off`), Emulator-Bundle `.tmp/xr-emu.js` selbst bauen (nicht committen, `serve` liefert 404 ohne). Emulator-Canvas liegt unter der Bühne: `xrshot=1` blendet sie in XR aus. Fahrskript (CDP, Headless-Chrome, gitignored): `node .tmp/vr/e2e/xr-e2e.mjs --list` bzw. `--only enter,take`. Pro Chrome-Start einen eigenen CDP-Port nehmen, weil derselbe Port mit demselben Profil direkt nacheinander hängt.
+  - Test ohne Brille: Harness `/store-dev.html?xremu=1&xrshot=1&cinema=1` (Fake-Player; `?cinema=series|fail|paused|slow`, `?subs=srt|ass|off`; Kino-Startfehler zeigen einen Code P/T1/T2/D/B, siehe `docs/store3d.md`), Emulator-Bundle `.tmp/xr-emu.js` selbst bauen (nicht committen, `serve` liefert 404 ohne). Emulator-Canvas liegt unter der Bühne: `xrshot=1` blendet sie in XR aus. Fahrskript (CDP, Headless-Chrome, gitignored): `node .tmp/vr/e2e/xr-e2e.mjs --list` bzw. `--only enter,take`. Pro Chrome-Start einen eigenen CDP-Port nehmen, weil derselbe Port mit demselben Profil direkt nacheinander hängt.
   - Falle: `CanvasTexture` nach Größenwechsel der Canvas nie weiterverwenden (three legt den Speicher fest an) → alte Textur `dispose()`, neue anlegen (`xr/panel.js`, `cinema/subtitles.js`).
 - LENZ LIVE (`live`, Beta, lineares Fernsehen aus der Mediathek: 18 Sender, EPG, Videotext), Vertrag: `docs/live.md`:
   - Zwei Bundles: Hülle `features/live/` im Hauptbundle, Engine `src/js/live/**` → lazy `dist/lenzlive.js` per `core/themejs.js`; die Engine importiert nur Dateien aus `src/js/live/` (Zustandsbehaftetes per `deps`). Marker `__LFX_LIVE_ENGINE__` in `live/entry.js`, Build-Wächter in `build/build.mjs` (nie im Hauptbundle).
@@ -59,8 +59,9 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
   - Admin-Senderbelegung (Plätze 5–16) per CSS-Variable `--lfx-live-channels` (Format `"5=Action;6=Komödie"`) oder `LenzFlixConfig.liveChannels`.
   - `core/theme.js` merkt beim Wechsel zu `live` das vorherige Design (`prevTheme`, `getPreviousTheme()`, nie `live`, Fallback `flix`); `leaveToLibrary` wechselt dauerhaft dorthin. `modal` und `newpopular` matchen unter `live` nicht, `guard.js` leitet Mediathek-Routen auf `#/home`.
   - Pausenmusik (`live/player/music.js`, im Browser erzeugt, `unlock()` synchron in der Nutzergeste, kein `Math.random`), Fernsehzeitung (`live/magazine/`, Taste Z) und PDF-Export (`live/pdf/`, eigener Schreiber): die Importgrenze der Engine gilt auch dort. `pdf/metrics.js` ist aus Core-14-AFM generiert, nie von Hand ändern. Cover im PDF nur bei CORS-freigegebenen Bildern (sonst Platzhalter). Vertrag: `docs/live.md` („Erweiterungen 1.9.1“).
+  - Raum-Dekor der Röhren-Stile (1.9.4): `live/ui/decor.js` baut aus `decor-crt80.js`/`decor-silver.js` drei Ebenen (`.lfx-live-decor` im Raum, `.lfx-live-tv__deco` am Gerät, `.lfx-live-screen__glass` über dem Bild, unter dem Overlay), CSS in `decor-<stil>.css`. Pro Stil eigene Dateien, damit zwei Stile parallel bearbeitet werden können. Dekor ist reines DOM/CSS ohne Schrift oder Logos (außer „LENZ LIVE“) und wird im Handy-, Vollbild- und <760px-Layout per `!important` ausgeblendet. Effekte-Schalter `fx` (Menü „Röhren-Effekte“, Klasse `no-tubefx`). Vertrag: `docs/live.md` („Dekor und Röhren-Effekte“).
   - Planer (`src/js/live/schedule/`) muss deterministisch bleiben (gleicher Plan auf allen Clients): kein `Math.random`, keine Lokalzeit, kein `Intl`; Zeit nur über `schedule/time.js` (MEZ/MESZ arithmetisch), Zufall nur über `schedule/hash.js`.
-  - Dev-Harness `build/live-dev.html` (über serve `/live-dev.html`, Fake-Katalog ohne Netzwerk): `?phone=1&admin=1&now=<ISO>&style=flat|crt80|silver|plain&channel=&autopower=1&overlay=epg|ttx|menu|guide&page=N&idle=pause|test|error&music=0&remote=1&fullscreen=1&real=1&debug=1`; Debug im Hauptbundle: `window.__lfxLiveDebug = true` → `window.__lfxLive`.
+  - Dev-Harness `build/live-dev.html` (über serve `/live-dev.html`, Fake-Katalog ohne Netzwerk): `?phone=1&admin=1&now=<ISO>&style=flat|crt80|silver|plain&channel=&autopower=1&overlay=epg|ttx|menu|guide&page=N&idle=pause|test|error&music=0&fx=0&remote=1&fullscreen=1&real=1&debug=1`; Debug im Hauptbundle: `window.__lfxLiveDebug = true` → `window.__lfxLive`.
   - Dev-Harness `build/picker-dev.html` (über serve `/picker-dev.html`, lädt den echten Design-Picker aus `src/js/`, Fake-API): `?charts=0` (ohne Charts), `?api=0` (ohne API), `?delay=1` (verzögerte Antworten), `?day=YYYY-MM-DD` (Systemdatum für die Tagesmischung, `core/dayseed.js`).
 - Statistik-Seite lokal: `node build/stats-dev.mjs` (127.0.0.1:5180), `/lenzflix-stats/dev-login.html?theme=flix|plus|prime|retro`; Produktiv-CSP (keine Inline-Skripte) beachten. Style-Regression: `build/style-snapshot.js` in der Konsole vor/nach der Änderung, dann `node build/style-diff.mjs alt.json neu.json`.
 
@@ -90,3 +91,25 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 ## Verbote
 - `reference/` und `.tmp/` nie committen (stehen in `.gitignore`).
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
+
+## Aktueller Stand und offene Punkte
+Stand 11.11.2026. Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/live.md` und `docs/store3d.md`.
+- **Version:** v1.9.4 released (Tag `v1.9.4`, jsDelivr), 1788 Tests, Lint und Build grün.
+- **Inhalt 1.9.4:**
+  - VR-Kino:
+    - „Lauter“ rechnet jetzt wie Jellyfin kubisch (Pegel = ∛`video.volume`).
+    - Ein pausierter Start (Autoplay blockiert) zeigt „Weiter“ statt abzubrechen.
+    - Der Watchdog wartet bei Fortschritt bis 60 s.
+    - Fehlercodes P/T1/T2/D/B stehen auf der Leinwand und im Toast.
+  - LENZ LIVE:
+    - „Röhre 80er“ ist als Holz-Truhe im Wohnzimmer um 1982 neu gestaltet.
+    - „Silber-Röhre“ ist als Silbergerät auf einem Glas-Rack um 2000 neu gestaltet.
+    - Neues Raum-Dekor-System und Schalter „Röhren-Effekte“.
+- **Offen:**
+  - Test mit echter VR-Brille: „Lauter“ und Kino-Start beim ersten Versuch. Scheitert der Start, den angezeigten Code (z. B. „T2“) notieren. Bedeutung siehe `docs/store3d.md`.
+  - Die Autoplay-Ursache für „erst beim zweiten Mal“ ist nur aus dem Code hergeleitet, mit Brille noch nicht bestätigt.
+  - iPhone-Safari (aus 1.9.1): Pausenmusik bei Stummschalter, PDF-Download.
+  - LENZ LIVE live ungetestet: Ton- und Untertitelwechsel, Gesehen-Regel.
+- **Weitermachen:**
+  - Screenshots der TV-Stile mit Headless-Chrome über `.tmp/verify/lib.mjs`. Vorlagen sind `r-shot.mjs` (crt80), `s-shot.mjs` (silver) und `h.mjs`. Server `PORT=<frei> node build/serve.mjs`, Harness-Parameter siehe oben.
+  - Kino im Harness mit `?cinema=paused|slow|fail`.

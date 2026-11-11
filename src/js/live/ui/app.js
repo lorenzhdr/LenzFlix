@@ -5,6 +5,7 @@
 //   pdf: { downloadPdf(magazine, style, onProgress) } (optional, Fernsehzeitung als PDF).   time: { formatClock, formatDay, broadcastDayOf, dayBounds }.
 import { buildTv, createNoise, STYLES, normStyle, h } from './tv.js';
 import { createRemote } from './remote.js';
+import { createDecor } from './decor.js';
 import { createKeys } from './keys.js';
 import { createOsd } from './osd.js';
 import { createCard } from './card.js';
@@ -67,6 +68,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   const refs = buildTv({ style: opts.style, fakePlayer: !!opts.fakePlayer, doc });
   const { app, room, screen, video, overlay: overlayEl } = refs;
   const noise = createNoise(refs.noise, { win });
+  const decor = createDecor({ room, tv: refs.tv, screen, doc }); // Raum-/Gehäuse-/Glas-Dekor der Röhren-Stile
+  decor.setStyle(normStyle(opts.style));
   const card = createCard(screen, { formatClock, doc, win, onKind: () => syncMusic() });
   const osd = createOsd(screen, { doc, win });
   screen.append(overlayEl); // Overlays liegen über OSD/Karte
@@ -86,6 +89,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   }
   if (opts.phone) app.classList.add('is-phone');
   if (opts.touch) app.classList.add('is-touch');
+  app.classList.toggle('no-tubefx', opts.fx === false);
 
   // ---------- Zustand ----------
   let style = normStyle(opts.style);
@@ -106,6 +110,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   let tickCount = 0;
   let lastDay = null;
   let musicOn = opts.music !== false;
+  let fxOn = opts.fx !== false;
   let magCache = null; // { D, base, full: Promise<Magazine>|null }
   const T = {};
   let tickIv = null;
@@ -228,6 +233,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     openOverlay: (name, o) => openOverlay(name, o),
     musicEnabled: () => musicOn,
     toggleMusic: () => toggleMusic(),
+    fxEnabled: () => fxOn,
+    toggleFx: () => toggleFx(),
   };
 
   function overlayInst(name) {
@@ -354,6 +361,22 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (music) safe(() => music.setEnabled(musicOn));
     savePrefs({ music: musicOn });
     return musicOn;
+  }
+
+  function toggleFx() {
+    fxOn = !fxOn;
+    app.classList.toggle('no-tubefx', !fxOn);
+    savePrefs({ fx: fxOn });
+    return fxOn;
+  }
+
+  // ---------- Dekor-Anzeigen (Videorecorder, DVD, Receiver, Wanduhr) ----------
+  // Zustandsänderungen (Ein/Aus, Sender) rufen syncDecor direkt; die Uhrzeit läuft über einen Minuten-Timer (auch im Standby).
+  function syncDecor() {
+    safe(() => decor.setDisplays({ on, clock: formatClock(clock()), ch: channel }));
+  }
+  function scheduleClock() {
+    later('clock', () => { syncDecor(); scheduleClock(); }, 60000 - (clock() % 60000) + 50);
   }
 
   // ---------- Lautstärke ----------
@@ -541,6 +564,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     entry = null;
     card.hide();
     card.hideBanner();
+    syncDecor();
     noise.flash(style);
     const t = clock();
     try { osd.showChannel(describe(no, scheduler.nowOn(no, t).entry, t)); } catch { /* OSD ohne Daten */ }
@@ -584,6 +608,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     safe(() => player.unlock && player.unlock());
     if (music) safe(() => music.unlock());
     on = true;
+    syncDecor();
     app.classList.add('is-on', 'is-powering-on');
     app.classList.remove('is-powering-off');
     remote.setOn(true);
@@ -617,6 +642,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (!on) return;
     stopAll();
     on = false;
+    syncDecor();
     stopIntervals();
     app.classList.remove('is-on', 'is-powering-on', 'is-blend', 'is-loading');
     app.classList.add('is-powering-off');
@@ -707,6 +733,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     style = s;
     app.classList.add(`lfx-live--style-${style}`);
     if (music) safe(() => music.setStyle(style));
+    decor.setStyle(style);
     if (prop) { prop.setStyle(style); placeProp(); }
     savePrefs({ style });
   }
@@ -841,7 +868,9 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   });
   keys.attach();
 
-  // ---------- Musik / Heft initial ----------
+  // ---------- Dekor / Musik / Heft initial ----------
+  syncDecor();
+  scheduleClock();
   if (music) {
     safe(() => music.setStyle(style));
     safe(() => music.setEnabled(musicOn));
@@ -908,6 +937,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       for (const off of offs) if (typeof off === 'function') safe(off);
       for (const n of Object.keys(made)) { const o = made[n]; if (o) { safe(() => o.close()); if (o.el) o.el.remove(); } }
       noise.dispose();
+      decor.dispose();
       osd.dispose();
       card.dispose();
       remote.destroy();

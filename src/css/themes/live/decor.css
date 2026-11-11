@@ -1,0 +1,30 @@
+/* LENZ LIVE · Dekor-Grundlage (Ebenen für crt80/silver, Inhalt: ui/decor.js + ui/decor-<id>.js; Stilregeln in decor-crt80.css / decor-silver.css).
+   Ebenen: .lfx-live-decor (Raum, erstes Kind von .lfx-live-room, z 0 – unter TV z 1 und Seitenspalte z 2),
+   .lfx-live-tv__deco (Gehäuse, letztes Kind von .lfx-live-tv, ohne eigenen Stapelkontext: Kinder ordnen sich per z-index im TV ein),
+   .lfx-live-screen__glass (Glas im Bildschirm: über Bild z 0/1, Rauschen 2, Karte 3/4, unter OSD 5 und Overlay 6; Scanlines ::before z 8). */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live-decor {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .lfx-live-tv__deco {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .lfx-live-screen__glass {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .lfx-live-decor *,
+  .lfx-live-tv__deco *,
+  .lfx-live-screen__glass * { pointer-events: none; }
+  /* Platzhalter-Knoten der Spezifikationen bleiben unsichtbar, bis der Stil-Coder sie ersetzt */
+  .lfx-live-d-todo { display: none; }
+}

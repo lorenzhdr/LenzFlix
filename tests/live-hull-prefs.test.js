@@ -63,6 +63,17 @@ describe('live prefs', () => {
     expect(prefs.getLastChannel()).toBe(1);
   });
 
+  it('Röhren-Effekte: Standard an, speichert lfx.live.fx.<uid>, nur Boolean', () => {
+    expect(prefs.getFx()).toBe(true);
+    prefs.savePrefs({ fx: false });
+    expect(localStorage.getItem('lfx.live.fx.u1')).toBe('0');
+    expect(prefs.getFx()).toBe(false);
+    prefs.savePrefs({ fx: 'nein' });
+    expect(prefs.getFx()).toBe(false);
+    prefs.savePrefs({ fx: true });
+    expect(prefs.getFx()).toBe(true);
+  });
+
   it('Pausenmusik: Standard an, speichert lfx.live.music.<uid>, nur Boolean', () => {
     expect(prefs.getMusic()).toBe(true);
     expect(prefs.DEFAULTS.music).toBe(true);

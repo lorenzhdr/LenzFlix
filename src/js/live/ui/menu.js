@@ -64,6 +64,17 @@ export function createMenu(ctx) {
         },
       });
     }
+    if (ctx.toggleFx && (ctx.style() === 'crt80' || ctx.style() === 'silver')) {
+      items.push({
+        label: 'Röhren-Effekte',
+        value: ctx.fxEnabled && ctx.fxEnabled() ? 'An' : 'Aus',
+        act: () => {
+          const on = ctx.toggleFx();
+          ctx.toast(on ? 'Röhren-Effekte an.' : 'Röhren-Effekte aus.');
+          render();
+        },
+      });
+    }
     if (ctx.openOverlay) {
       items.push({ label: 'Fernsehzeitung als PDF', act: () => closeThen(() => ctx.openOverlay('guide', { autoPdf: true })) });
     }

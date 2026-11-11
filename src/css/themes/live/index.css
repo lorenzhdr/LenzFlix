@@ -6,6 +6,9 @@
 @import "./tv-silver.css";
 @import "./tv-flat.css";
 @import "./tv-plain.css";
+@import "./decor.css";
+@import "./decor-crt80.css";
+@import "./decor-silver.css";
 @import "./remote.css";
 @import "./osd.css";
 @import "./card.css";

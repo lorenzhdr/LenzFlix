@@ -36,6 +36,11 @@ export function createCinemaBridge({ win = window, doc = document, pollMs = 250 
     }
   }
   const finite = (n) => (Number.isFinite(n) ? n : 0);
+  // Jellyfin rechnet kubisch: video.volume = (Regler/100)^3. Pegel = Kubikwurzel (0..1, auf 0,01 gerundet) = Jellyfins eigene Anzeige.
+  const levelOf = (v) => {
+    const vol = Math.max(0, Math.min(1, finite(Number(v.volume))));
+    return Math.round(Math.cbrt(vol) * 100) / 100;
+  };
 
   function routeOf() {
     let hash = '';
@@ -104,7 +109,7 @@ export function createCinemaBridge({ win = window, doc = document, pollMs = 250 
       hasNext: visibleBtn('.btnNextTrack'),
       upNext: upNextState(),
       error,
-      volume: v ? finite(v.volume) : 1,
+      volume: v ? levelOf(v) : 1,
       muted: v ? Boolean(v.muted) : false,
       reloading,
     };
@@ -181,14 +186,16 @@ export function createCinemaBridge({ win = window, doc = document, pollMs = 250 
   function setVolume(val) {
     const f = Math.max(0, Math.min(1, Number(val) || 0));
     try {
+      const v = cur();
+      // Lauter bei Stummschaltung: erst Stumm aufheben (sonst bleibt die Änderung unhörbar)
+      if (v && v.muted && f > levelOf(v)) click('.buttonMute');
       const slider = osd('input.osdVolumeSlider');
       if (slider) {
         slider.value = String(Math.round(f * 100));
         slider.dispatchEvent(new win.Event('input', { bubbles: true }));
         slider.dispatchEvent(new win.Event('change', { bubbles: true }));
-      } else {
-        const v = cur();
-        if (v) v.volume = f;
+      } else if (v) {
+        v.volume = f ** 3;
       }
     } catch { /* egal */ }
   }

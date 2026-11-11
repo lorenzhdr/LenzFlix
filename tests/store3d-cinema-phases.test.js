@@ -45,7 +45,7 @@ function setup({ video = null, state = {} } = {}) {
     },
     toast: (t) => calls.toasts.push(t),
     closePanels: () => { for (const p of calls.panels) p.close(); },
-    leaveCinema: (r) => { calls.leave.push(r); return cin.leave(r); },
+    leaveCinema: (r, c) => { calls.leave.push(r); return cin.leave(r, c); },
   };
   return { cin, app, dc, calls, engine };
 }
@@ -109,18 +109,96 @@ describe('Cinema Phasen', () => {
     c.cin.dispose();
   });
 
-  it('Timeout nach 10 s: stop() und leave(fail)', async () => {
+  it('ohne Player nach 25 s: T1, stop() und leave(fail); Code in Statuszeile und Toast', async () => {
     const c = setup({ video: null, state: { phase: 'loading', route: 'video' } });
     c.cin.enter({ Name: 'X' });
-    run(c, 0, 9500, { play: false });
+    run(c, 0, 24500, { play: false });
     expect(c.cin.diag().phase).toBe('starting');
-    run(c, 9500, 1500, { play: false });
+    run(c, 24500, 1500, { play: false });
     expect(c.cin.diag().phase).toBe('failed');
-    expect(c.calls.toasts).toContain('Kino konnte nicht starten');
+    expect(c.cin.diag().failCode).toBe('T1');
+    expect(c.calls.toasts).toContain('Kino konnte nicht starten (T1)');
     await vi.advanceTimersByTimeAsync(3000);
     expect(c.calls.stop).toBe(1);
     expect(c.calls.leave).toEqual(['fail']);
     expect(c.cin.active).toBe(false);
+  });
+
+  it('Video ohne Fortschritt: nach 15 s T2', () => {
+    const v = makeVideo({ readyState: 1 });
+    const c = setup({ video: v, state: { phase: 'loading', route: 'video' } });
+    c.cin.enter({});
+    run(c, 0, 14000, { play: false });
+    expect(c.cin.diag().phase).toBe('starting');
+    run(c, 14000, 2500, { play: false });
+    expect(c.cin.diag().phase).toBe('failed');
+    expect(c.cin.diag().failCode).toBe('T2');
+    expect(c.calls.toasts).toContain('Kino konnte nicht starten (T2)');
+    expect(c.cin.diag().marks.video).toBeDefined();
+    expect(c.cin.diag().marks.fail).toBeGreaterThan(14000);
+  });
+
+  it('langsamer Start mit Fortschritt (buffered wächst, 15 s Bild) -> kein Fehlschlag, spätes playing; Hinweis nach 8 s', () => {
+    const v = makeVideo({ readyState: 1 });
+    let buf = 0;
+    v.buffered = { length: 1, end: () => buf };
+    const c = setup({ video: v, state: { phase: 'loading', route: 'video' } });
+    c.cin.enter({ Name: 'X' });
+    let now = 0;
+    for (; now < 16000; now += 50) {
+      buf += 0.05;
+      c.cin.tick(0.05, now);
+    }
+    expect(c.cin.diag().phase).toBe('starting');
+    expect(c.cin.prepareShown).toBe(true);
+    v.readyState = 4;
+    c.dc.st = { ...c.dc.st, phase: 'playing' };
+    run(c, now, 1500);
+    expect(c.cin.diag().phase).toBe('playing');
+    expect(c.calls.leave).toEqual([]);
+    c.cin.dispose();
+  });
+
+  it('pausierter Start (Autoplay geblockt): nach 1,5 s paused statt Fehlschlag, Panel und Hinweis', () => {
+    const v = makeVideo({ paused: true });
+    const c = setup({ video: v, state: { phase: 'paused', route: 'video' } });
+    c.cin.enter({});
+    run(c, 0, 1000, { play: false });
+    expect(c.cin.diag().phase).toBe('starting');
+    run(c, 1000, 2500, { play: false });
+    expect(c.cin.diag().phase).toBe('paused');
+    expect(c.cin.hall.curtainOpen).toBe(true);
+    expect(c.cin.controls.visible).toBe(true);
+    expect(c.calls.toasts.some((t) => t.includes('Weiter'))).toBe(true);
+    run(c, 3500, 20000, { play: false });
+    expect(c.cin.diag().phase).toBe('paused');
+    expect(c.calls.leave).toEqual([]);
+    // Nutzer drückt „Weiter“ -> Player spielt -> playing
+    v.paused = false;
+    c.dc.st = { ...c.dc.st, phase: 'playing' };
+    run(c, 23500, 600);
+    expect(c.cin.diag().phase).toBe('playing');
+    c.cin.dispose();
+  });
+
+  it('Fehlerdialog: Code D', () => {
+    const c = setup({ video: null, state: { phase: 'error', error: 'Nicht abspielbar', route: 'video' } });
+    c.cin.enter({});
+    c.cin.tick(0.016, 300);
+    expect(c.cin.diag().failCode).toBe('D');
+    expect(c.calls.toasts).toContain('Kino konnte nicht starten (D)');
+  });
+
+  it('Code aus leave(fail, code) landet im Toast nach dem Verlassen (play()-Fehler P)', async () => {
+    const c = setup({ video: null, state: { phase: 'loading', route: 'video' } });
+    const jump = vi.fn(async (fn) => { await fn(); });
+    c.app.xr.presenting = true;
+    c.app.xr.fade = { jump };
+    c.cin.enter({});
+    await vi.advanceTimersByTimeAsync(10);
+    await c.cin.leave('fail', 'P');
+    expect(c.cin.diag().failCode).toBe('P');
+    expect(c.calls.toasts).toContain('Kino konnte nicht starten (P)');
   });
 
   it('Fehler-Phase von Jellyfin: sofort failed, stop + leave(fail)', async () => {

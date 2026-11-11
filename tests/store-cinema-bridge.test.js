@@ -236,7 +236,39 @@ describe('Proxy', () => {
     vs.volume = 1;
     video.volume = 1;
     bridge.setVolume(0.5);
-    expect(video.volume).toBe(0.5);
+    expect(video.volume).toBeCloseTo(0.125, 10);
+  });
+
+  it('Lautstärke kubisch: Pegel = Kubikwurzel, Lauter/Leiser driften nicht, Stumm wird aufgehoben', () => {
+    const slider = document.querySelector('input.osdVolumeSlider');
+    video.volume = 1;
+    video.muted = false;
+    slider.addEventListener('input', () => { video.volume = (Number(slider.value) / 100) ** 3; });
+    bridge.setVolume(0.5);
+    expect(video.volume).toBeCloseTo(0.125, 10);
+    expect(bridge.state().volume).toBe(0.5);
+    // Leiser 100 -> 90 zeigt 0,9 (nicht 0,73 linear)
+    bridge.setVolume(0.9);
+    expect(bridge.state().volume).toBe(0.9);
+    // Schrittfolge 50 -> 60 -> 50 -> 60 ohne Drift
+    bridge.setVolume(0.5);
+    for (let i = 0; i < 3; i++) {
+      const before = video.volume;
+      bridge.setVolume(0.6);
+      expect(Number(slider.value)).toBe(60);
+      expect(video.volume).toBeGreaterThan(before);
+      expect(video.volume).toBeCloseTo(0.216, 10);
+      bridge.setVolume(0.5);
+      expect(Number(slider.value)).toBe(50);
+      expect(video.volume).toBeCloseTo(0.125, 10);
+    }
+    // Stumm + lauter -> Stumm-Knopf wird geklickt; leiser nicht
+    video.muted = true;
+    clicks.length = 0;
+    bridge.setVolume(0.4);
+    expect(clicks).toEqual([]);
+    bridge.setVolume(0.7);
+    expect(clicks).toEqual(['buttonMute']);
   });
 });
 

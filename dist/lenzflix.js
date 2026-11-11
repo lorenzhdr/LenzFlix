@@ -370,7 +370,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.9.3";
+  var VERSION = "1.9.4";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -17396,6 +17396,10 @@
       }
     }
     const finite = (n) => Number.isFinite(n) ? n : 0;
+    const levelOf = (v) => {
+      const vol = Math.max(0, Math.min(1, finite(Number(v.volume))));
+      return Math.round(Math.cbrt(vol) * 100) / 100;
+    };
     function routeOf3() {
       let hash2 = "";
       try {
@@ -17470,7 +17474,7 @@
         hasNext: visibleBtn(".btnNextTrack"),
         upNext: upNextState(),
         error,
-        volume: v ? finite(v.volume) : 1,
+        volume: v ? levelOf(v) : 1,
         muted: v ? Boolean(v.muted) : false,
         reloading
       };
@@ -17556,14 +17560,15 @@
     function setVolume(val) {
       const f = Math.max(0, Math.min(1, Number(val) || 0));
       try {
+        const v = cur3();
+        if (v && v.muted && f > levelOf(v)) click(".buttonMute");
         const slider = osd("input.osdVolumeSlider");
         if (slider) {
           slider.value = String(Math.round(f * 100));
           slider.dispatchEvent(new win.Event("input", { bubbles: true }));
           slider.dispatchEvent(new win.Event("change", { bubbles: true }));
-        } else {
-          const v = cur3();
-          if (v) v.volume = f;
+        } else if (v) {
+          v.volume = f ** 3;
         }
       } catch {
       }
@@ -18576,7 +18581,7 @@
   // src/js/features/live/prefs.js
   var KEY4 = "lfx.live.";
   var STYLES = ["flat", "crt80", "silver", "plain"];
-  var DEFAULTS3 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1, music: true };
+  var DEFAULTS3 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1, music: true, fx: true };
   var storageKey3 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
   function read2(key) {
     try {
@@ -18607,6 +18612,9 @@
   function getMusic() {
     return read2(storageKey3("music")) !== "0";
   }
+  function getFx() {
+    return read2(storageKey3("fx")) !== "0";
+  }
   function getLastChannel() {
     const v = Number(read2(storageKey3("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS3.lastChannel;
@@ -18617,6 +18625,7 @@
     if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write2(storageKey3("volume"), String(p.volume));
     if (typeof p.muted === "boolean") write2(storageKey3("muted"), p.muted ? "1" : "0");
     if (typeof p.music === "boolean") write2(storageKey3("music"), p.music ? "1" : "0");
+    if (typeof p.fx === "boolean") write2(storageKey3("fx"), p.fx ? "1" : "0");
     if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write2(storageKey3("lastChannel"), String(p.lastChannel));
   }
 
@@ -18850,6 +18859,7 @@
       muted: getMuted(),
       lastChannel: getLastChannel(),
       music: getMusic(),
+      fx: getFx(),
       audioPref: null,
       phone: isMobile(),
       touch: coarse2(),

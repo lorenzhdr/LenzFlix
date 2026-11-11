@@ -40,6 +40,9 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-app.is-phone:not(.is-landscape).lfx-live--style-crt80 .lfx-live-screen { left: 6%; right: 6%; top: 7%; bottom: 13%; }
   .lfx-live-app.is-phone:not(.is-landscape).lfx-live--style-crt80 .lfx-live-tv__led { right: 8%; }
   .lfx-live-app.is-phone:not(.is-landscape).lfx-live--style-silver .lfx-live-screen { left: 4%; right: 4%; top: 5%; bottom: 12%; }
+  /* Dekor-Ebenen am Handy-Hochformat aus; !important, damit spätere Stilregeln (.lfx-live--style-x .lfx-live-d-…) nicht gewinnen */
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-decor,
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-tv__deco { display: none !important; }
   .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-room__shelf,
   .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-room__lamp,
   .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-tv__stand { display: none; }
@@ -96,6 +99,8 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     }
     .lfx-live-app:not(.is-phone) .lfx-live-remote { max-height: none; transform: none; width: 100%; max-width: 360px; }
     .lfx-live-app:not(.is-phone) .lfx-live-side { display: contents; }
+    .lfx-live-app:not(.is-phone) .lfx-live-decor,
+    .lfx-live-app:not(.is-phone) .lfx-live-tv__deco { display: none !important; }
     .lfx-live-app:not(.is-phone) .lfx-live-side::after,
     .lfx-live-app:not(.is-phone) .lfx-live-side__slot,
     .lfx-live-app:not(.is-phone) .lfx-live-room__prop { display: none !important; }

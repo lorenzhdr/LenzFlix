@@ -123,7 +123,7 @@ describe('mount', () => {
     expect(ensureThemeJs).toHaveBeenCalledWith('live');
     expect(loadCatalog).toHaveBeenCalledTimes(1);
     expect(captured.opts).toEqual({
-      style: 'flat', volume: 0.8, muted: false, lastChannel: 1, music: true, audioPref: null, phone: false, touch: false, debug: false, now: null, fakePlayer: false,
+      style: 'flat', volume: 0.8, muted: false, lastChannel: 1, music: true, fx: true, audioPref: null, phone: false, touch: false, debug: false, now: null, fakePlayer: false,
     });
     for (const k of ['catalog', 'user', 'server', 'request', 'streamUrl', 'imageUrl', 'getBoxSetItems', 'loadTrailer', 'setPlayed', 'channelConfig',
       'savePrefs', 'leaveToLibrary', 'previousThemeName', 'openThemePicker', 'openDashboard', 'logout', 'toast', 'onProgress', 'onReady', 'onFatal']) {

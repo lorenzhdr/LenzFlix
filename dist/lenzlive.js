@@ -4,8 +4,8 @@
   var HOUR = 36e5;
   var GRID = 3e5;
   var lastSun = (y, m) => {
-    const d = new Date(Date.UTC(y, m + 1, 0));
-    return d.getUTCDate() - d.getUTCDay();
+    const d2 = new Date(Date.UTC(y, m + 1, 0));
+    return d2.getUTCDate() - d2.getUTCDay();
   };
   var offsetMs = (u) => {
     const y = new Date(u).getUTCFullYear();
@@ -29,7 +29,7 @@
     const D = Math.floor(w / 864e5);
     return w - D * 864e5 < 5 * 36e5 ? D - 1 : D;
   };
-  var dayOfDate = (y, m, d) => Math.round(Date.UTC(y, m, d) / 864e5);
+  var dayOfDate = (y, m, d2) => Math.round(Date.UTC(y, m, d2) / 864e5);
   var two = (n) => (n < 10 ? "0" : "") + n;
   var formatClock = (t) => {
     const w = t + offsetMs(t);
@@ -166,7 +166,7 @@
   function normalizeCatalog(raw) {
     const r = raw || {};
     const labelCounts = /* @__PURE__ */ new Map();
-    const items = /* @__PURE__ */ new Map();
+    const items2 = /* @__PURE__ */ new Map();
     const movies = [];
     for (const { x, id } of dedupe(r.movies)) {
       const durMs = ticksToMs(x.RunTimeTicks);
@@ -185,7 +185,7 @@
         trailer: (num(x.LocalTrailerCount) || 0) > 0
       };
       movies.push(it);
-      items.set(id, it);
+      items2.set(id, it);
     }
     const rawSeries = dedupe(r.series);
     const byId = new Map(rawSeries.map((s) => [s.id, s]));
@@ -236,7 +236,7 @@
         e.year = year;
         delete e.ownAge;
         Object.freeze(e);
-        items.set(e.id, e);
+        items2.set(e.id, e);
       }
       const s = {
         id,
@@ -255,7 +255,7 @@
       };
       s.firstEpAdded = s.epAddedSorted.length ? s.epAddedSorted[0] : 0;
       for (const e of keep) s.totalMs += e.durMs;
-      items.set(id, s);
+      items2.set(id, s);
       if (keep.length) series.push(s);
     }
     const boxsets = dedupe(r.boxsets).map(({ x, id }) => ({ id, name: String(x.Name == null ? "" : x.Name), childCount: num(x.ChildCount) || 0 }));
@@ -275,7 +275,7 @@
     return {
       movies,
       series,
-      items,
+      items: items2,
       boxsets,
       genres,
       genreLabel: (n) => labels.get(n) ?? n,
@@ -293,8 +293,8 @@
     return C;
   }
   var log2i = (C) => 31 - Math.clz32(C);
-  function makeEntries(key, items, msOf) {
-    const out = items.map((it) => {
+  function makeEntries(key, items2, msOf) {
+    const out = items2.map((it) => {
       const h3 = keyHash(key, it.id);
       return { id: it.id, h: h3, br: bitrev32(h3), it, ms: msOf ? msOf(it) : it.durMs };
     });
@@ -532,9 +532,9 @@
     const views = /* @__PURE__ */ new Map();
     const starts = /* @__PURE__ */ new Map();
     const walks = /* @__PURE__ */ new Map();
-    const dayStart = (d) => {
-      let v = starts.get(d);
-      if (v === void 0) starts.set(d, v = wallToUtc(d, 300));
+    const dayStart = (d2) => {
+      let v = starts.get(d2);
+      if (v === void 0) starts.set(d2, v = wallToUtc(d2, 300));
       return v;
     };
     function view(s, cut) {
@@ -660,10 +660,10 @@
       const keys = new Float64Array(list.length);
       for (let i = 0; i < list.length; i++) keys[i] = bitrev32(keyHash("fill", list[i].id)) * 2097152 + i;
       keys.sort();
-      const items = Array.from(keys, (k) => list[k % 2097152]);
-      const eff = new Float64Array(items.length);
-      for (let i = 0; i < items.length; i++) eff[i] = items[i].kind === "movie" ? items[i].addedAt : Math.max(items[i].addedAt, catalog.items.get(items[i].seriesId).addedAt);
-      return { items, eff };
+      const items2 = Array.from(keys, (k) => list[k % 2097152]);
+      const eff = new Float64Array(items2.length);
+      for (let i = 0; i < items2.length; i++) eff[i] = items2[i].kind === "movie" ? items2[i].addedAt : Math.max(items2[i].addedAt, catalog.items.get(items2[i].seriesId).addedAt);
+      return { items: items2, eff };
     })();
     function shorts(D) {
       let v = shortsCache.get(D);
@@ -775,11 +775,11 @@
           series = P.gSeries.get(no);
         }
       }
-      const items = movies.map((m) => ({ id: m.id, movie: m })).concat(series.map((sv) => ({ id: sv.s.id, s: sv.s, v: sv.v })));
+      const items2 = movies.map((m) => ({ id: m.id, movie: m })).concat(series.map((sv) => ({ id: sv.s.id, s: sv.s, v: sv.v })));
       const msOf = (w) => w.movie ? w.movie.durMs : w.v.aufMs;
       const ageOf = (w) => w.movie ? w.movie.age : w.v.age;
-      const a = items.filter((w) => streamOfAge(ageOf(w)) === "A");
-      const b = items.filter((w) => streamOfAge(ageOf(w)) === "B");
+      const a = items2.filter((w) => streamOfAge(ageOf(w)) === "A");
+      const b = items2.filter((w) => streamOfAge(ageOf(w)) === "B");
       let totalMs = 0;
       for (const m of movies) totalMs += m.durMs;
       for (const sv of series) totalMs += sv.v.totalMs;
@@ -1002,14 +1002,14 @@
   var MIN_POOL_MS = 24 * HOUR;
   var WINDOWS = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 365];
   var infos = /* @__PURE__ */ new WeakMap();
-  function mkUnit(id, kind, addedAt, items) {
+  function mkUnit(id, kind, addedAt, items2) {
     let age = null;
     let ms = 0;
-    for (const it of items) {
+    for (const it of items2) {
       if (it.age != null && (age == null || it.age > age)) age = it.age;
       ms += it.durMs;
     }
-    return { id, kind, addedAt, day: broadcastDayOf(addedAt), items, age, ms };
+    return { id, kind, addedAt, day: broadcastDayOf(addedAt), items: items2, age, ms };
   }
   function buildInfo(catalog) {
     let info = infos.get(catalog);
@@ -1020,9 +1020,9 @@
       const byDay2 = /* @__PURE__ */ new Map();
       for (const e of s.eps) {
         const at = Math.max(e.addedAt, s.addedAt);
-        const d = broadcastDayOf(at);
-        let g = byDay2.get(d);
-        if (!g) byDay2.set(d, g = []);
+        const d2 = broadcastDayOf(at);
+        let g = byDay2.get(d2);
+        if (!g) byDay2.set(d2, g = []);
         g.push({ e, at });
       }
       for (const g of byDay2.values()) {
@@ -1136,9 +1136,9 @@
   function chrono(a, b) {
     return numCmp(a.year ?? 9999, b.year ?? 9999) || numCmp(a.premiere ?? Infinity, b.premiere ?? Infinity) || numCmp(a.season ?? 0, b.season ?? 0) || numCmp(a.episode ?? 0, b.episode ?? 0) || cmpStr(a.id, b.id);
   }
-  function rotated(key, items, D) {
-    if (!items.length) return [];
-    const sorted = makeEntries(key, items, () => 1);
+  function rotated(key, items2, D) {
+    if (!items2.length) return [];
+    const sorted = makeEntries(key, items2, () => 1);
     const C = bucketCount(sorted.length, 2);
     const out = [];
     const seen = /* @__PURE__ */ new Set();
@@ -1148,12 +1148,12 @@
     }
     return out;
   }
-  function pickDay(items, key, D) {
+  function pickDay(items2, key, D) {
     const ms = (it) => slotOf(it.durMs);
-    const total = items.reduce((x, it) => x + ms(it), 0);
-    let sel = items;
+    const total = items2.reduce((x, it) => x + ms(it), 0);
+    let sel = items2;
     if (total > DAY_CAP_MS) {
-      const sorted = makeEntries(key, items, ms);
+      const sorted = makeEntries(key, items2, ms);
       const C = bucketCount(total, DAY_CAP_MS);
       const { home, borrow } = rotationWithBorrow(sorted, C, D);
       sel = [];
@@ -1203,15 +1203,15 @@
       for (const c2 of boxsetCands(ctx, D)) {
         const ids = cache.get(c2.id);
         if (!ids) continue;
-        const items = boxsetItems(ctx, ids, D);
-        if (items.length >= MIN_ITEMS) return { kind, name: "Filmreihe: " + c2.name, items: items.sort(chrono) };
+        const items2 = boxsetItems(ctx, ids, D);
+        if (items2.length >= MIN_ITEMS) return { kind, name: "Filmreihe: " + c2.name, items: items2.sort(chrono) };
       }
       return null;
     }
     const P = poolOf(ctx, D);
     if (kind === "overlength") {
-      const items = P.movies.filter((m) => m.durMs >= OVERLENGTH_MS);
-      return items.length >= MIN_ITEMS ? { kind, name: "\xDCberl\xE4nge", items: pickDay(items, "themeday:overlength", D) } : null;
+      const items2 = P.movies.filter((m) => m.durMs >= OVERLENGTH_MS);
+      return items2.length >= MIN_ITEMS ? { kind, name: "\xDCberl\xE4nge", items: pickDay(items2, "themeday:overlength", D) } : null;
     }
     if (kind === "pilot") {
       return P.pilots.length >= MIN_PILOTS ? { kind, name: "Pilotfolgen-Tag", items: pickDay(P.pilots, "themeday:pilot", D) } : null;
@@ -1535,9 +1535,9 @@
       },
       pause: () => {
         if (!armed || !playedOnce || video.ended) return;
-        const d = video.duration;
+        const d2 = video.duration;
         const pos = livePos() / 1e3;
-        if (Number.isFinite(d) && pos >= d - 0.5) return;
+        if (Number.isFinite(d2) && pos >= d2 - 0.5) return;
         try {
           video.currentTime = pos;
         } catch {
@@ -1779,8 +1779,8 @@
     return { audio, subs };
   }
   function serverDefaultAudio(mediaSource, audio) {
-    const d = mediaSource && mediaSource.DefaultAudioStreamIndex;
-    if (typeof d === "number") return d;
+    const d2 = mediaSource && mediaSource.DefaultAudioStreamIndex;
+    if (typeof d2 === "number") return d2;
     const def = audio.find((a) => a.isDefault) || audio[0];
     return def ? def.index : null;
   }
@@ -2523,16 +2523,16 @@
       const out = [];
       if (!r) return out;
       [...r.byDay.keys()].sort((a, b) => a - b).forEach((di) => {
-        const d = r.byDay.get(di);
-        d.entries.forEach((en, k) => out.push({ en, node: d.els[k], di }));
+        const d2 = r.byDay.get(di);
+        d2.entries.forEach((en, k) => out.push({ en, node: d2.els[k], di }));
       });
       return out;
     }
     const findFocus = () => entriesOf(focus.no).find((x) => x.en.start === focus.start) || null;
     function dayIndexOfTime(t) {
       let r = 0;
-      dayInfo.forEach((d, i) => {
-        if (d.start <= t) r = i;
+      dayInfo.forEach((d2, i) => {
+        if (d2.start <= t) r = i;
       });
       return r;
     }
@@ -2623,8 +2623,8 @@
         prevEnd = b.end;
       }
       totalStart = dayInfo[0].start;
-      dayInfo.forEach((d) => {
-        d.off = (d.start - totalStart) / MIN2;
+      dayInfo.forEach((d2) => {
+        d2.off = (d2.start - totalStart) / MIN2;
       });
       const last = dayInfo[DAYS - 1];
       totalMin = Math.max(1, last.off + last.len);
@@ -2637,18 +2637,18 @@
       corner = h("div", "lfx-live-epg__chan lfx-live-epg__corner", dayLabel(day));
       corner.setAttribute("role", "columnheader");
       const rtrack = h("div", "lfx-live-epg__track");
-      dayInfo.forEach((d) => {
-        const cols = Math.ceil(d.len / COL_MIN);
+      dayInfo.forEach((d2) => {
+        const cols = Math.ceil(d2.len / COL_MIN);
         for (let c2 = 0; c2 < cols; c2++) {
           const first = c2 === 0;
           const t = h("div", "lfx-live-epg__tick" + (first ? " is-daymark" : ""));
           t.setAttribute("role", "columnheader");
           if (first) {
-            t.dataset.day = String(d.D);
-            t.append(h("span", "lfx-live-epg__daymark", dayLabel(d.D)));
-          } else t.textContent = clock(d.start + c2 * COL_MIN * MIN2);
-          t.style.left = `calc(var(--lfx-live-epg-pm) * ${d.off + c2 * COL_MIN})`;
-          t.style.width = `calc(var(--lfx-live-epg-pm) * ${Math.min(COL_MIN, d.len - c2 * COL_MIN)})`;
+            t.dataset.day = String(d2.D);
+            t.append(h("span", "lfx-live-epg__daymark", dayLabel(d2.D)));
+          } else t.textContent = clock(d2.start + c2 * COL_MIN * MIN2);
+          t.style.left = `calc(var(--lfx-live-epg-pm) * ${d2.off + c2 * COL_MIN})`;
+          t.style.width = `calc(var(--lfx-live-epg-pm) * ${Math.min(COL_MIN, d2.len - c2 * COL_MIN)})`;
           rtrack.append(t);
         }
       });
@@ -2670,11 +2670,11 @@
           ctx.closeOverlay();
         });
         const track = h("div", "lfx-live-epg__track");
-        dayInfo.forEach((d, i) => {
+        dayInfo.forEach((d2, i) => {
           const sec = h("div", "lfx-live-epg__daysec");
-          sec.dataset.day = String(d.D);
-          sec.style.left = `calc(var(--lfx-live-epg-pm) * ${d.off})`;
-          sec.style.width = `calc(var(--lfx-live-epg-pm) * ${d.len})`;
+          sec.dataset.day = String(d2.D);
+          sec.style.left = `calc(var(--lfx-live-epg-pm) * ${d2.off})`;
+          sec.style.width = `calc(var(--lfx-live-epg-pm) * ${d2.len})`;
           r.secs[i] = sec;
           track.append(sec);
         });
@@ -2731,7 +2731,7 @@
     }
     function blockFor(r, en, i) {
       const ch = r.ch;
-      const d = describe(ctx.scheduler, en);
+      const d2 = describe(ctx.scheduler, en);
       const node = h("div", "lfx-live-epg__ev is-" + en.type);
       node.setAttribute("role", "gridcell");
       node.tabIndex = -1;
@@ -2742,7 +2742,7 @@
       node.style.left = `calc(var(--lfx-live-epg-pm) * ${minFrom})`;
       node.style.width = `calc(var(--lfx-live-epg-pm) * ${dur})`;
       const text = h("span", "lfx-live-epg__ev-text");
-      const title = h("span", "lfx-live-epg__ev-title", d.title);
+      const title = h("span", "lfx-live-epg__ev-title", d2.title);
       const meta = h("span", "lfx-live-epg__ev-meta");
       meta.append(h("span", "lfx-live-epg__time", clock(en.start)));
       badges(en).forEach((b) => meta.append(h("span", "lfx-live-epg__badge", b)));
@@ -2751,7 +2751,7 @@
         text.append(h("span", "lfx-live-epg__hint", "F\xFCllprogramm"));
       }
       node.append(text);
-      node.setAttribute("aria-label", `${clock(en.start)} ${d.title}${badges(en).length ? ", " + badges(en).join(", ") : ""}`);
+      node.setAttribute("aria-label", `${clock(en.start)} ${d2.title}${badges(en).length ? ", " + badges(en).join(", ") : ""}`);
       node.addEventListener("click", () => {
         focus = { no: ch.no, start: en.start };
         anchorT = en.start;
@@ -2766,8 +2766,8 @@
       if (min === lastMinute) return;
       lastMinute = min;
       Object.values(rowsByNo).forEach((r) => {
-        r.byDay.forEach((d) => {
-          d.entries.forEach((en, k) => d.els[k].classList.toggle("is-now", en.start <= t && t < en.end));
+        r.byDay.forEach((d2) => {
+          d2.entries.forEach((en, k) => d2.els[k].classList.toggle("is-now", en.start <= t && t < en.end));
         });
       });
       if (nowLine) {
@@ -2795,8 +2795,8 @@
         }
       }
       if (scroll && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest", inline: "nearest" });
-      const d = describe(ctx.scheduler, f.en);
-      infoTitle.textContent = d.title;
+      const d2 = describe(ctx.scheduler, f.en);
+      infoTitle.textContent = d2.title;
       infoMeta.textContent = `${clock(f.en.start)}\u2013${clock(f.en.end)} \xB7 ${r.ch.no} ${r.ch.name}`;
     }
     function pickAt(no, t) {
@@ -2864,8 +2864,8 @@
       if (pm <= 0) return;
       const centerMin = (scroller.scrollLeft + visible / 2) / pm;
       let c2 = 0;
-      dayInfo.forEach((d, i) => {
-        if (d.off <= centerMin) c2 = i;
+      dayInfo.forEach((d2, i) => {
+        if (d2.off <= centerMin) c2 = i;
       });
       setWindow(c2);
       if (today + c2 !== day) {
@@ -2900,13 +2900,13 @@
       const m = rowsByNo[focus.no];
       const en = f.en;
       detailEntry = { no: focus.no, entry: en };
-      const d = describe(ctx.scheduler, en);
+      const d2 = describe(ctx.scheduler, en);
       detail.textContent = "";
-      detail.append(h("h2", "lfx-live-epg__d-title", d.title));
+      detail.append(h("h2", "lfx-live-epg__d-title", d2.title));
       const lines = [
         `${clock(en.start)}\u2013${clock(en.end)} \xB7 ${statusText(en)}`,
         `Sender ${m.ch.no} \xB7 ${m.ch.name}`,
-        [d.year, d.genres.slice(0, 3).join(", "), d.runMin ? d.runMin + " min" : ""].filter(Boolean).join(" \xB7 ")
+        [d2.year, d2.genres.slice(0, 3).join(", "), d2.runMin ? d2.runMin + " min" : ""].filter(Boolean).join(" \xB7 ")
       ];
       if (en.theme) lines.push("Thementag: " + en.theme);
       if (en.type === "fill" || en.type === "nightfill") lines.push(en.type === "nightfill" ? "F\xFCllprogramm \u2013 regul\xE4res Programm ab 5:00" : "F\xFCllprogramm");
@@ -2935,9 +2935,9 @@
         ctx.tune(no);
         ctx.closeOverlay();
       });
-      if (d.itemId) {
+      if (d2.itemId) {
         mk("library", "Von vorne ansehen", `In ${ctx.previousThemeName || "der Mediathek"} ansehen`, () => {
-          ctx.leaveToLibrary(d.itemId, { type: d.kind, seriesId: d.seriesId });
+          ctx.leaveToLibrary(d2.itemId, { type: d2.kind, seriesId: d2.seriesId });
         });
       }
       mk("close", "Schlie\xDFen", null, () => closeDetail());
@@ -3171,7 +3171,7 @@
     let subCount = 1;
     let input = "";
     let cursor = 0;
-    let items = [];
+    let items2 = [];
     let rows = [];
     let lastMinute = -1;
     let headerEl = null;
@@ -3241,8 +3241,8 @@
     }
     function lineFor(entry) {
       if (!entry) return { title: "", start: "" };
-      const d = describe(ctx.scheduler, entry);
-      return { title: d.title || (entry.type === "filler" ? entry.label || "Pause" : ""), start: ctx.formatClock(entry.start) };
+      const d2 = describe(ctx.scheduler, entry);
+      return { title: d2.title || (entry.type === "filler" ? entry.label || "Pause" : ""), start: ctx.formatClock(entry.start) };
     }
     function pageNow() {
       const t = now();
@@ -3315,7 +3315,7 @@
       const hint = body.hint || 0;
       rows = [row(headerSegs()), ...body];
       screen.textContent = "";
-      items = [];
+      items2 = [];
       rows.forEach((r, ri) => {
         const rowEl = h("div", "lfx-live-ttx__row");
         if (r.dbl) rowEl.classList.add("is-dbl");
@@ -3328,7 +3328,7 @@
             n.type = "button";
             n.tabIndex = -1;
             n.addEventListener("click", () => activate(s.act));
-            if (!s.nocursor) items.push({ r: ri, node: n, act: s.act, c: items.filter((i) => i.r === ri).length });
+            if (!s.nocursor) items2.push({ r: ri, node: n, act: s.act, c: items2.filter((i) => i.r === ri).length });
           } else {
             n = h("span", "lfx-live-ttx__seg", s.t);
           }
@@ -3349,11 +3349,11 @@
         foot.append(n);
       });
       screen.append(foot);
-      cursor = keepCursor ? Math.min(cursor, Math.max(0, items.length - 1)) : Math.min(hint, Math.max(0, items.length - 1));
+      cursor = keepCursor ? Math.min(cursor, Math.max(0, items2.length - 1)) : Math.min(hint, Math.max(0, items2.length - 1));
       paintCursor();
     }
     function paintCursor() {
-      items.forEach((it, i) => it.node.classList.toggle("is-cursor", i === cursor));
+      items2.forEach((it, i) => it.node.classList.toggle("is-cursor", i === cursor));
       screen.dataset.page = String(page);
       screen.dataset.sub = String(sub);
     }
@@ -3382,22 +3382,22 @@
       }
     }
     function moveCursor(dy, dx) {
-      if (!items.length) return;
-      const cur = items[cursor];
+      if (!items2.length) return;
+      const cur = items2[cursor];
       if (dx) {
-        const same = items.filter((i) => i.r === cur.r);
+        const same = items2.filter((i) => i.r === cur.r);
         const k = same.indexOf(cur) + dx;
-        if (same[k]) cursor = items.indexOf(same[k]);
+        if (same[k]) cursor = items2.indexOf(same[k]);
       } else {
-        const cand = items.filter((i) => dy > 0 ? i.r > cur.r : i.r < cur.r);
+        const cand = items2.filter((i) => dy > 0 ? i.r > cur.r : i.r < cur.r);
         if (cand.length) {
           const rr = dy > 0 ? Math.min(...cand.map((i) => i.r)) : Math.max(...cand.map((i) => i.r));
           const rowItems = cand.filter((i) => i.r === rr);
-          cursor = items.indexOf(rowItems.find((i) => i.c === cur.c) || rowItems[rowItems.length - 1]);
+          cursor = items2.indexOf(rowItems.find((i) => i.c === cur.c) || rowItems[rowItems.length - 1]);
         }
       }
       paintCursor();
-      const n = items[cursor].node;
+      const n = items2[cursor].node;
       if (typeof n.scrollIntoView === "function") n.scrollIntoView({ block: "nearest" });
     }
     function onKey(key) {
@@ -3420,12 +3420,12 @@
         }
         case "left":
         case "right": {
-          const d = key === "right" ? 1 : -1;
+          const d2 = key === "right" ? 1 : -1;
           if (subCount > 1) {
-            sub = (sub + d + subCount) % subCount;
+            sub = (sub + d2 + subCount) % subCount;
             input = "";
             rebuild(false);
-          } else moveCursor(0, d);
+          } else moveCursor(0, d2);
           return true;
         }
         case "up":
@@ -3435,7 +3435,7 @@
           moveCursor(1, 0);
           return true;
         case "ok":
-          if (items[cursor]) activate(items[cursor].act);
+          if (items2[cursor]) activate(items2[cursor].act);
           return true;
         case "back":
           if (input) {
@@ -3534,13 +3534,13 @@
       fn();
     };
     function viewMain() {
-      const items = [
+      const items2 = [
         { label: "TV-Stil", value: (ctx.styles.find((s) => s.id === ctx.style()) || {}).name || "", act: () => push("style") },
         { label: "Senderliste", act: () => push("channels") }
       ];
       if (ctx.toggleMusic) {
         const musicLabel = () => ctx.musicEnabled && ctx.musicEnabled() ? "An" : "Aus";
-        items.push({
+        items2.push({
           label: "Pausenmusik",
           value: musicLabel(),
           act: () => {
@@ -3550,18 +3550,29 @@
           }
         });
       }
-      if (ctx.openOverlay) {
-        items.push({ label: "Fernsehzeitung als PDF", act: () => closeThen(() => ctx.openOverlay("guide", { autoPdf: true })) });
+      if (ctx.toggleFx && (ctx.style() === "crt80" || ctx.style() === "silver")) {
+        items2.push({
+          label: "R\xF6hren-Effekte",
+          value: ctx.fxEnabled && ctx.fxEnabled() ? "An" : "Aus",
+          act: () => {
+            const on = ctx.toggleFx();
+            ctx.toast(on ? "R\xF6hren-Effekte an." : "R\xF6hren-Effekte aus.");
+            render();
+          }
+        });
       }
-      if (isAdmin()) items.push({ label: "Senderbelegung", act: () => {
+      if (ctx.openOverlay) {
+        items2.push({ label: "Fernsehzeitung als PDF", act: () => closeThen(() => ctx.openOverlay("guide", { autoPdf: true })) });
+      }
+      if (isAdmin()) items2.push({ label: "Senderbelegung", act: () => {
         loadSel();
         push("assign");
       } });
-      items.push({ label: `Mediathek (${prev()})`, act: () => closeThen(() => ctx.leaveToLibrary(null)) });
-      items.push({ label: "Design wechseln", act: () => closeThen(() => ctx.openThemePicker()) });
-      if (isAdmin()) items.push({ label: "Dashboard", act: () => closeThen(() => ctx.openDashboard()) });
-      items.push({ label: "Abmelden", act: () => push("logout", null, 1) });
-      return { title: "Men\xFC", items };
+      items2.push({ label: `Mediathek (${prev()})`, act: () => closeThen(() => ctx.leaveToLibrary(null)) });
+      items2.push({ label: "Design wechseln", act: () => closeThen(() => ctx.openThemePicker()) });
+      if (isAdmin()) items2.push({ label: "Dashboard", act: () => closeThen(() => ctx.openDashboard()) });
+      items2.push({ label: "Abmelden", act: () => push("logout", null, 1) });
+      return { title: "Men\xFC", items: items2 };
     }
     function viewStyle() {
       const cur = ctx.style();
@@ -3590,19 +3601,19 @@
     }
     function viewAssign() {
       const cs = chans();
-      const items = [];
+      const items2 = [];
       for (let no = FIRST; no <= LAST; no++) {
         const c2 = cs.find((x) => x.no === no) || {};
         const cur = c2.genreLabel || shortName(c2);
-        items.push({
+        items2.push({
           label: `Platz ${no}`,
           value: sel[no] ? sel[no] : `Automatisch${cur ? " (derzeit " + cur + ")" : ""}`,
           cls: sel[no] ? "is-set" : "",
           act: () => push("pick", no)
         });
       }
-      items.push({ label: "Zeile kopieren", cls: "is-primary", act: copyLine });
-      items.push({ label: "Zur\xFCck", act: pop });
+      items2.push({ label: "Zeile kopieren", cls: "is-primary", act: copyLine });
+      items2.push({ label: "Zur\xFCck", act: pop });
       const line = buildChannelLine(sel);
       const extra = [];
       const used = {};
@@ -3619,10 +3630,10 @@
         extra.push(h("p", "lfx-live-menu__note", "Alles automatisch \u2013 keine Zeile n\xF6tig."));
       }
       extra.push(h("p", "lfx-live-menu__note", "Im Jellyfin-Dashboard unter Branding \u2192 Benutzerdefiniertes CSS unterhalb der @import-Zeile einf\xFCgen (nie davor, sonst l\xE4dt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen f\xFCr alle Nutzer."));
-      return { title: "Senderbelegung", items, extra, wide: true };
+      return { title: "Senderbelegung", items: items2, extra, wide: true };
     }
     function viewPick(no) {
-      const items = [
+      const items2 = [
         {
           label: "Automatisch",
           check: !sel[no],
@@ -3639,7 +3650,7 @@
         gs = [];
       }
       gs.filter((g) => labelOk(g.label)).forEach(
-        (g) => items.push({
+        (g) => items2.push({
           label: g.label,
           value: String(g.count),
           check: sel[no] === g.label,
@@ -3649,7 +3660,7 @@
           }
         })
       );
-      return { title: `Platz ${no}: Genre w\xE4hlen`, items };
+      return { title: `Platz ${no}: Genre w\xE4hlen`, items: items2 };
     }
     function viewLogout() {
       return {
@@ -3915,8 +3926,8 @@
     function foot(p) {
       const f = h("div", "lfx-live-mag__foot");
       const n = h("span", "lfx-live-mag__foot-no", String(p.no));
-      const d = h("span", "lfx-live-mag__foot-day", dayTag(p));
-      f.append(p.no % 2 === 0 ? n : d, p.no % 2 === 0 ? d : n);
+      const d2 = h("span", "lfx-live-mag__foot-day", dayTag(p));
+      f.append(p.no % 2 === 0 ? n : d2, p.no % 2 === 0 ? d2 : n);
       return f;
     }
     function meta(t) {
@@ -4066,7 +4077,7 @@
       const ps = pagesOf(cur).map((x) => pages()[x]);
       const withD = ps.find((p) => p.D != null);
       if (!withD) return -1;
-      return (magazine.days || []).findIndex((d) => d.D === withD.D);
+      return (magazine.days || []).findIndex((d2) => d2.D === withD.D);
     }
     function updateChrome() {
       const ps = pagesOf(cur).map((x) => pages()[x]);
@@ -4087,11 +4098,11 @@
     }
     function buildDays() {
       daysEl.textContent = "";
-      (magazine.days || []).forEach((d, k) => {
-        const b = h("button", "lfx-live-mag__day", d.weekday);
+      (magazine.days || []).forEach((d2, k) => {
+        const b = h("button", "lfx-live-mag__day", d2.weekday);
         b.type = "button";
-        b.setAttribute("aria-label", "Zu " + d.weekday + " " + (d.date || ""));
-        b.title = d.weekday + " " + (d.date || "");
+        b.setAttribute("aria-label", "Zu " + d2.weekday + " " + (d2.date || ""));
+        b.title = d2.weekday + " " + (d2.date || "");
         b.addEventListener("click", () => jumpDay(k));
         daysEl.append(b);
       });
@@ -4180,15 +4191,15 @@
       }, ms + 30);
       updateChrome();
     }
-    const step = (d) => goTo(cur + d);
+    const step = (d2) => goTo(cur + d2);
     function pageSpread(pageIdx) {
       const f = spreads.findIndex((s) => s.includes(pageIdx));
       return f < 0 ? 0 : f;
     }
     function jumpDay(k) {
-      const d = (magazine.days || [])[k];
-      if (!d) return;
-      const idx = pages().findIndex((p) => p.kind === "tips" && p.D === d.D);
+      const d2 = (magazine.days || [])[k];
+      if (!d2) return;
+      const idx = pages().findIndex((p) => p.kind === "tips" && p.D === d2.D);
       if (idx >= 0) goTo(pageSpread(idx));
     }
     function stepDay(dir) {
@@ -5785,8 +5796,8 @@
   function dayLabelOf(mag, tip) {
     if (!tip || !(tip.start > 0)) return "";
     const D = Math.floor((tip.start - 3 * 36e5) / 864e5);
-    const d = (mag.days || []).find((x) => x.D === D);
-    return d ? d.weekday + " " + d.date : "";
+    const d2 = (mag.days || []).find((x) => x.D === D);
+    return d2 ? d2.weekday + " " + d2.date : "";
   }
   function chips(c2, st, list, x, y) {
     for (const b of list.slice(0, 4)) {
@@ -6163,8 +6174,8 @@
       try {
         const t = clockNow();
         if (!time.formatDay || !time.broadcastDayOf || !time.formatClock) return void 0;
-        const d = time.formatDay(time.broadcastDayOf(t));
-        return `${d.date} ${time.formatClock(t)} Uhr`;
+        const d2 = time.formatDay(time.broadcastDayOf(t));
+        return `${d2.date} ${time.formatClock(t)} Uhr`;
       } catch {
         return void 0;
       }
@@ -6382,10 +6393,10 @@
       const buf = ctx.createBuffer(2, len, sr);
       const rnd = mulberry322(2046620);
       for (let ch = 0; ch < 2; ch++) {
-        const d = buf.getChannelData(ch);
+        const d2 = buf.getChannelData(ch);
         for (let i = 0; i < len; i++) {
           const k = 1 - i / len;
-          d[i] = (rnd() * 2 - 1) * k * k * k;
+          d2[i] = (rnd() * 2 - 1) * k * k * k;
         }
       }
       return buf;
@@ -6393,9 +6404,9 @@
     function buildNoise(sr) {
       const len = Math.floor(sr * 1.2);
       const buf = ctx.createBuffer(1, len, sr);
-      const d = buf.getChannelData(0);
+      const d2 = buf.getChannelData(0);
       const rnd = mulberry322(5369127);
-      for (let i = 0; i < len; i++) d[i] = rnd() * 2 - 1;
+      for (let i = 0; i < len; i++) d2[i] = rnd() * 2 - 1;
       return buf;
     }
     function ensureCtx() {
@@ -6874,11 +6885,11 @@
     function draw() {
       if (!ctx) return;
       if (!img) img = ctx.createImageData(canvas.width, canvas.height);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) {
+      const d2 = img.data;
+      for (let i = 0; i < d2.length; i += 4) {
         const v = Math.random() * 255 | 0;
-        d[i] = d[i + 1] = d[i + 2] = v;
-        d[i + 3] = 255;
+        d2[i] = d2[i + 1] = d2[i + 2] = v;
+        d2[i + 3] = 255;
       }
       ctx.putImageData(img, 0, 0);
     }
@@ -6992,6 +7003,273 @@
         el.removeEventListener("click", click);
         el.removeEventListener("mousedown", down);
         el.remove();
+      }
+    };
+  }
+
+  // src/js/live/ui/decor-crt80.js
+  var pre = (cls) => cls.split(" ").map((c2) => c2.startsWith("lfx-") ? c2 : `lfx-live-d-${c2}`).join(" ");
+  var d = (cls, children, extra) => ({ cls: pre(cls), ...children ? { children } : {}, ...extra || {} });
+  var items = (cls, n) => d(cls, null, { count: n });
+  var antenna = d("ant", [
+    d("ant__rod ant__rod--l", [d("ant__seg"), d("ant__seg"), d("ant__seg"), d("ant__tip")]),
+    d("ant__rod ant__rod--r", [d("ant__seg"), d("ant__seg"), d("ant__seg"), d("ant__tip")]),
+    d("ant__base"),
+    d("ant__hub")
+  ]);
+  var tape = (v) => d(`tape lfx-live-d-tape--${v}`, [
+    d("tape__label"),
+    d("tape__win", [d("tape__reel"), d("tape__reel")])
+  ]);
+  var decor_crt80_default = {
+    room: [
+      d("wallglow"),
+      d("tvshade"),
+      d("shade"),
+      // Stufe 2
+      d("frame lfx-live-d-frame--a", [d("frame__mat", [d("frame__art lfx-live-d-frame__art--sun")])]),
+      d("frame lfx-live-d-frame--b", [d("frame__mat", [d("frame__art lfx-live-d-frame__art--hills")])]),
+      d("clock", [
+        d("clock__rim", [
+          d("clock__face", [
+            items("clock__ticks", 12),
+            d("clock__h"),
+            d("clock__m"),
+            d("clock__pin")
+          ])
+        ])
+      ]),
+      // Stufe 3
+      d("lamp", [
+        d("lamp__glow"),
+        d("lamp__cone"),
+        d("lamp__shade"),
+        d("lamp__pole"),
+        d("lamp__base")
+      ]),
+      d("rug", [d("rug__pattern"), d("rug__edge")]),
+      // Stufe 1: Lowboard mit Türen, Fach, Videorekorder und Kassetten
+      d("board", [
+        d("board__shadow"),
+        d("board__legs", [d("board__leg"), d("board__leg"), d("board__leg"), d("board__leg")]),
+        d("board__body", [
+          d("board__door board__door--l", [d("board__handle")]),
+          d("board__niche", [
+            d("vcr", [
+              d("vcr__top"),
+              d("vcr__front", [
+                d("vcr__slot"),
+                d("vcr__disp", null, { display: "vcr" }),
+                d("vcr__btns", null, { count: 5 })
+              ]),
+              d("vcr__feet")
+            ]),
+            d("tapes", [tape("a"), tape("b"), tape("c")])
+          ]),
+          d("board__door board__door--r", [d("board__handle")])
+        ]),
+        d("board__top")
+      ]),
+      d("plant", [
+        d("plant__shadow"),
+        d("plant__leaves", null, { count: 11 }),
+        d("plant__pot")
+      ])
+    ],
+    tv: [
+      antenna,
+      d("feet", [d("foot"), d("foot")]),
+      d("topface"),
+      d("rim"),
+      d("bezel", [d("bezel__shine")]),
+      d("plate", [
+        d("scale lfx-live-d-scale--a", null, { count: 9 }),
+        d("scale lfx-live-d-scale--b", null, { count: 9 }),
+        d("btns", null, { count: 8 }),
+        d("power")
+      ])
+    ],
+    glass: [
+      d("g-vig"),
+      d("g-mask"),
+      d("g-scan"),
+      d("g-fringe"),
+      d("g-flicker"),
+      d("g-roll"),
+      d("g-glare")
+    ]
+  };
+
+  // src/js/live/ui/decor-silver.js
+  var dev = (cls, display, kids) => ({
+    cls: `lfx-live-d-dev ${cls}`,
+    children: [
+      { cls: "lfx-live-d-dev__shadow" },
+      { cls: "lfx-live-d-dev__body" },
+      { cls: "lfx-live-d-dev__seam" },
+      { cls: "lfx-live-d-dev__tray" },
+      { cls: "lfx-live-d-dev__disp", display },
+      { cls: "lfx-live-d-dev__btns", count: 4 },
+      { cls: "lfx-live-d-dev__knob" },
+      ...kids || []
+    ]
+  });
+  var decor_silver_default = {
+    room: [
+      { cls: "lfx-live-d-wall", children: [{ cls: "lfx-live-d-wall__light" }] },
+      { cls: "lfx-live-d-tvshadow" },
+      { cls: "lfx-live-d-clock", children: [{ cls: "lfx-live-d-clock__ticks", count: 12 }, { cls: "lfx-live-d-clock__h" }, { cls: "lfx-live-d-clock__m" }, { cls: "lfx-live-d-clock__cap" }] },
+      { cls: "lfx-live-d-baseboard" },
+      { cls: "lfx-live-d-floor", children: [{ cls: "lfx-live-d-floor__shine" }] },
+      // Wandregal mit DVD-Rücken (Stufe 2)
+      {
+        cls: "lfx-live-d-wshelf",
+        children: [
+          { cls: "lfx-live-d-wshelf__row", count: 9 },
+          { cls: "lfx-live-d-wshelf__board", children: [{ cls: "lfx-live-d-wshelf__face" }] }
+        ]
+      },
+      // Pflanze: Bambus im Topf (Stufe 2)
+      {
+        cls: "lfx-live-d-plant",
+        children: [
+          { cls: "lfx-live-d-plant__stalks", count: 8 },
+          { cls: "lfx-live-d-plant__pot", children: [{ cls: "lfx-live-d-plant__soil" }] },
+          { cls: "lfx-live-d-plant__shadow" }
+        ]
+      },
+      // Standlautsprecher (Stufe 3)
+      { cls: "lfx-live-d-spk lfx-live-d-spk--l", children: [{ cls: "lfx-live-d-spk__cloth" }, { cls: "lfx-live-d-spk__tw" }, { cls: "lfx-live-d-spk__wf" }, { cls: "lfx-live-d-spk__wf lfx-live-d-spk__wf--2" }] },
+      { cls: "lfx-live-d-spk lfx-live-d-spk--r", children: [{ cls: "lfx-live-d-spk__cloth" }, { cls: "lfx-live-d-spk__tw" }, { cls: "lfx-live-d-spk__wf" }, { cls: "lfx-live-d-spk__wf lfx-live-d-spk__wf--2" }] },
+      // Glas-Rack mit Chromfüßen (Platte und zwei Böden, je mit Kante und Fläche)
+      {
+        cls: "lfx-live-d-rack",
+        children: [
+          { cls: "lfx-live-d-rack__shadow" },
+          { cls: "lfx-live-d-rack__leg lfx-live-d-rack__leg--l" },
+          { cls: "lfx-live-d-rack__leg lfx-live-d-rack__leg--il" },
+          { cls: "lfx-live-d-rack__leg lfx-live-d-rack__leg--ir" },
+          { cls: "lfx-live-d-rack__leg lfx-live-d-rack__leg--r" },
+          { cls: "lfx-live-d-rack__shelf lfx-live-d-rack__shelf--2", children: [{ cls: "lfx-live-d-rack__face" }] },
+          { cls: "lfx-live-d-rack__shelf lfx-live-d-rack__shelf--1", children: [{ cls: "lfx-live-d-rack__face" }] },
+          { cls: "lfx-live-d-rack__top", children: [{ cls: "lfx-live-d-rack__face" }] }
+        ]
+      },
+      // Geräte im Rack (Raum-Ebene, mittig unter dem Fernseher über --lfx-s-m)
+      dev("lfx-live-d-dvd", "dvd"),
+      dev("lfx-live-d-rcv", "rcv"),
+      // Subwoofer: Würfel vor dem linken Rack-Ende (Stufe 3)
+      { cls: "lfx-live-d-sub", children: [{ cls: "lfx-live-d-sub__drv" }] }
+    ],
+    tv: [
+      // Gehäuse
+      { cls: "lfx-live-d-top" },
+      { cls: "lfx-live-d-rim" },
+      { cls: "lfx-live-d-grille", children: [{ cls: "lfx-live-d-grille__dots" }] },
+      { cls: "lfx-live-d-logo" },
+      { cls: "lfx-live-d-flap", children: [{ cls: "lfx-live-d-flap__keys", count: 6 }] },
+      { cls: "lfx-live-d-foot" },
+      { cls: "lfx-live-d-contact" }
+    ],
+    glass: [
+      { cls: "lfx-live-d-g-vignette" },
+      { cls: "lfx-live-d-g-lines" },
+      { cls: "lfx-live-d-g-flicker" },
+      { cls: "lfx-live-d-g-roll" },
+      { cls: "lfx-live-d-g-fringe" },
+      { cls: "lfx-live-d-g-reflex" }
+    ]
+  };
+
+  // src/js/live/ui/decor.js
+  var SPECS = { crt80: decor_crt80_default, silver: decor_silver_default };
+  var KINDS2 = ["vcr", "dvd", "rcv"];
+  var p2 = (n) => String(n).padStart(2, "0");
+  function buildNode(doc, node) {
+    const e = doc.createElement(node.tag || "div");
+    if (node.cls) e.className = node.cls;
+    if (node.text != null) e.textContent = node.text;
+    if (node.display && KINDS2.includes(node.display)) e.dataset.display = node.display;
+    const n = Math.max(0, Math.floor(Number(node.count) || 0));
+    for (let i = 1; i <= n; i++) {
+      const c2 = doc.createElement("span");
+      c2.className = "lfx-live-d__i";
+      c2.style.setProperty("--i", String(i));
+      e.append(c2);
+    }
+    if (Array.isArray(node.children)) for (const c2 of node.children) e.append(buildNode(doc, c2));
+    return e;
+  }
+  function createDecor({ room, tv, screen, doc = document }) {
+    const mk = (cls) => {
+      const e = doc.createElement("div");
+      e.className = cls;
+      e.setAttribute("aria-hidden", "true");
+      return e;
+    };
+    const decor = mk("lfx-live-decor");
+    const deco = mk("lfx-live-tv__deco");
+    const glass = mk("lfx-live-screen__glass");
+    room.prepend(decor);
+    tv.append(deco);
+    const ov = screen.querySelector(":scope > .lfx-live-overlay");
+    if (ov) screen.insertBefore(glass, ov);
+    else screen.append(glass);
+    let state = { on: false, clock: null, ch: 1 };
+    const shown = /* @__PURE__ */ new WeakMap();
+    let angles = "";
+    function put(e, text) {
+      if (shown.get(e) === text) return;
+      shown.set(e, text);
+      e.textContent = text;
+    }
+    function render() {
+      const { on, clock, ch } = state;
+      for (const layer of [decor, deco, glass]) {
+        for (const e of layer.querySelectorAll("[data-display]")) {
+          const k = e.dataset.display;
+          if (k === "vcr") put(e, on && clock ? clock : "--:--");
+          else if (k === "dvd") put(e, on && clock ? clock : "");
+          else if (k === "rcv") put(e, on ? `P${p2(ch)}` : "");
+        }
+      }
+      const chAttr = on ? String(ch) : "";
+      if (deco.dataset.ch !== chAttr) deco.dataset.ch = chAttr;
+      const m = /^(\d{1,2}):(\d{2})/.exec(clock || "");
+      if (m) {
+        const h3 = Number(m[1]) % 12;
+        const min = Number(m[2]);
+        const key = `${h3}:${min}`;
+        if (key !== angles) {
+          angles = key;
+          decor.style.setProperty("--lfx-live-clock-h", String(h3 * 30 + min * 0.5));
+          decor.style.setProperty("--lfx-live-clock-m", String(min * 6));
+        }
+      }
+    }
+    return {
+      el: decor,
+      layers: { room: decor, tv: deco, glass },
+      setStyle(style) {
+        const spec = SPECS[style] || {};
+        for (const [layer, key] of [[decor, "room"], [deco, "tv"], [glass, "glass"]]) {
+          layer.textContent = "";
+          for (const node of spec[key] || []) layer.append(buildNode(doc, node));
+        }
+        render();
+      },
+      setDisplays(p = {}) {
+        state = {
+          on: p.on === void 0 ? state.on : !!p.on,
+          clock: p.clock === void 0 ? state.clock : p.clock,
+          ch: p.ch === void 0 ? state.ch : p.ch
+        };
+        render();
+      },
+      dispose() {
+        decor.remove();
+        deco.remove();
+        glass.remove();
       }
     };
   }
@@ -7549,8 +7827,8 @@
         i = j;
         continue;
       }
-      const d = describe(scheduler, e);
-      rows.push({ time: formatClock2(e.start), start: e.start, title: d.title || "\u2013", sub: "", badges: badgesOf(e), kind: "program" });
+      const d2 = describe(scheduler, e);
+      rows.push({ time: formatClock2(e.start), start: e.start, title: d2.title || "\u2013", sub: "", badges: badgesOf(e), kind: "program" });
       i++;
     }
     return rows;
@@ -7558,10 +7836,10 @@
   function makeTip(ctx, ch, list, idx, kindLabel, overviews) {
     const { scheduler, formatClock: formatClock2 } = ctx;
     const e = list[idx];
-    const d = describe(scheduler, e);
+    const d2 = describe(scheduler, e);
     const it = e.itemId ? scheduler.item(e.itemId) : null;
     const isEp = it && it.kind === "episode";
-    let title = d.title;
+    let title = d2.title;
     let sub = "";
     let imageId = e.itemId || null;
     if (isEp) {
@@ -7586,9 +7864,9 @@
       itemId: e.itemId || null,
       title,
       sub,
-      year: d.year,
-      genres: d.genres,
-      runMin: d.runMin,
+      year: d2.year,
+      genres: d2.genres,
+      runMin: d2.runMin,
       channelNo: ch.no,
       channelName: ch.name,
       time: formatClock2(e.start),
@@ -7655,7 +7933,7 @@
     if (ma !== mb) return da + "." + ma + ".\u2013" + db + "." + mb + "." + yb;
     return da + ".\u2013" + db + "." + mb + "." + yb;
   }
-  var p2 = (n) => (n < 10 ? "0" : "") + n;
+  var p22 = (n) => (n < 10 ? "0" : "") + n;
   function buildMagazine(ctx) {
     const { scheduler, today: D0, formatDay: formatDay2, formatClock: formatClock2, dayBounds: dayBounds2 } = ctx;
     const overviews = ctx.overviews instanceof Map ? ctx.overviews : null;
@@ -7708,7 +7986,7 @@
     return {
       title: "LIVE Programm",
       subtitle: "Die Fernsehwoche \xB7 " + rangeText(D0, D0 + DAYS2 - 1),
-      fileName: "LIVE-Programm_" + d0.getUTCFullYear() + "-" + p2(d0.getUTCMonth() + 1) + "-" + p2(d0.getUTCDate()) + ".pdf",
+      fileName: "LIVE-Programm_" + d0.getUTCFullYear() + "-" + p22(d0.getUTCMonth() + 1) + "-" + p22(d0.getUTCDate()) + ".pdf",
       days,
       cover: { hero: hero ? { ...hero } : null, teasers },
       pages
@@ -7860,11 +8138,11 @@
   var OVERLAY_FACTORY = { epg: "epg", txt: "ttx", menu: "menu", guide: "guide" };
   var OVERLAY_CLASS = { epg: "has-epg", txt: "has-ttx", menu: "has-menu", guide: "has-guide" };
   var IDLE_KINDS = ["pause", "test", "error"];
-  var p22 = (n) => String(n).padStart(2, "0");
+  var p23 = (n) => String(n).padStart(2, "0");
   var clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   function defaultClock(t) {
-    const d = new Date(t);
-    return `${p22(d.getHours())}:${p22(d.getMinutes())}`;
+    const d2 = new Date(t);
+    return `${p23(d2.getHours())}:${p23(d2.getMinutes())}`;
   }
   function pick(it, ...keys) {
     for (const k of keys) if (it[k] != null && it[k] !== "") return it[k];
@@ -7896,6 +8174,8 @@
     const refs = buildTv({ style: opts.style, fakePlayer: !!opts.fakePlayer, doc });
     const { app, room, screen, video, overlay: overlayEl } = refs;
     const noise = createNoise(refs.noise, { win });
+    const decor = createDecor({ room, tv: refs.tv, screen, doc });
+    decor.setStyle(normStyle(opts.style));
     const card = createCard(screen, { formatClock: formatClock2, doc, win, onKind: () => syncMusic() });
     const osd = createOsd(screen, { doc, win });
     screen.append(overlayEl);
@@ -7914,6 +8194,7 @@
     }
     if (opts.phone) app.classList.add("is-phone");
     if (opts.touch) app.classList.add("is-touch");
+    app.classList.toggle("no-tubefx", opts.fx === false);
     let style = normStyle(opts.style);
     let on = false;
     let suspended = false;
@@ -7932,6 +8213,7 @@
     let tickCount = 0;
     let lastDay = null;
     let musicOn = opts.music !== false;
+    let fxOn = opts.fx !== false;
     let magCache = null;
     const T = {};
     let tickIv = null;
@@ -7966,7 +8248,7 @@
       if (e.type === "filler") return { title: "Kurze Pause", sub: null };
       const f = itemFields(e.itemId ? scheduler.item(e.itemId) : null, scheduler);
       if (f.seriesName) {
-        const code = f.season != null && f.episode != null ? `S${p22(f.season)}E${p22(f.episode)}` : null;
+        const code = f.season != null && f.episode != null ? `S${p23(f.season)}E${p23(f.episode)}` : null;
         const sub = [code, f.title && f.title !== f.seriesName ? f.title : null].filter(Boolean).join(" \xB7 ");
         return { title: f.seriesName, sub: sub || null };
       }
@@ -8060,7 +8342,9 @@
       },
       openOverlay: (name, o) => openOverlay(name, o),
       musicEnabled: () => musicOn,
-      toggleMusic: () => toggleMusic()
+      toggleMusic: () => toggleMusic(),
+      fxEnabled: () => fxOn,
+      toggleFx: () => toggleFx()
     };
     function overlayInst(name) {
       if (made[name]) return made[name];
@@ -8180,6 +8464,21 @@
       if (music) safe2(() => music.setEnabled(musicOn));
       savePrefs({ music: musicOn });
       return musicOn;
+    }
+    function toggleFx() {
+      fxOn = !fxOn;
+      app.classList.toggle("no-tubefx", !fxOn);
+      savePrefs({ fx: fxOn });
+      return fxOn;
+    }
+    function syncDecor() {
+      safe2(() => decor.setDisplays({ on, clock: formatClock2(clock()), ch: channel }));
+    }
+    function scheduleClock() {
+      later("clock", () => {
+        syncDecor();
+        scheduleClock();
+      }, 6e4 - clock() % 6e4 + 50);
     }
     function applyVolume() {
       safe2(() => player.setVolume && player.setVolume(vol / 100));
@@ -8399,6 +8698,7 @@
       entry = null;
       card.hide();
       card.hideBanner();
+      syncDecor();
       noise.flash(style);
       const t = clock();
       try {
@@ -8446,6 +8746,7 @@
       safe2(() => player.unlock && player.unlock());
       if (music) safe2(() => music.unlock());
       on = true;
+      syncDecor();
       app.classList.add("is-on", "is-powering-on");
       app.classList.remove("is-powering-off");
       remote.setOn(true);
@@ -8477,14 +8778,15 @@
       if (!on) return;
       stopAll();
       on = false;
+      syncDecor();
       stopIntervals();
       app.classList.remove("is-on", "is-powering-on", "is-blend", "is-loading");
       app.classList.add("is-powering-off");
       remote.setOn(false);
       later("pw", () => app.classList.remove("is-powering-off"), 600);
     }
-    function digit(d) {
-      const n = Number(d);
+    function digit(d2) {
+      const n = Number(d2);
       if (digitBuf === "") {
         if (n === 0) {
           digitBuf = "0";
@@ -8506,7 +8808,7 @@
       digitBuf = "";
       unlater("digit");
       osd.clearInput();
-      const no = Number(first + d);
+      const no = Number(first + d2);
       if (no >= 1 && no <= NCH()) tune(no);
       else osd.showMessage("Dieser Sender existiert nicht");
     }
@@ -8597,6 +8899,7 @@
       style = s;
       app.classList.add(`lfx-live--style-${style}`);
       if (music) safe2(() => music.setStyle(style));
+      decor.setStyle(style);
       if (prop) {
         prop.setStyle(style);
         placeProp();
@@ -8782,6 +9085,8 @@
       win
     });
     keys.attach();
+    syncDecor();
+    scheduleClock();
     if (music) {
       safe2(() => music.setStyle(style));
       safe2(() => music.setEnabled(musicOn));
@@ -8854,6 +9159,7 @@
           }
         }
         noise.dispose();
+        decor.dispose();
         osd.dispose();
         card.dispose();
         remote.destroy();

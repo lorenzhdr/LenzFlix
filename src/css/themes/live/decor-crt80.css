@@ -1,0 +1,562 @@
+/* LENZ LIVE · Dekor „Röhre 80er“ (crt80): Regeln für ui/decor-crt80.js, nur unter .lfx-live--style-crt80; Animationen nur unter :not(.no-tubefx).
+   Raum-Ebene: .lfx-live-decor ist Container (cqw = Raumbreite); vertikal vh (Lowboard-Oberkante 15 vh, Boden ab 12,5 vh, siehe tv-crt80.css).
+   TV-Ebene: .lfx-live-tv ist Container (cqw = Gerätebreite, Gerät 3:2). Glas-Ebene: .lfx-live-screen ist Container (cqw = Bildbreite).
+   Stufen: 1 immer (Gehäuse, Antenne, Lowboard, Videorekorder, Wand, Boden, Teppich), 2 ab 1440 px (Pflanze, Bilder, Wanduhr), 3 ab 1800 px (Stehlampe). */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live--style-crt80 .lfx-live-decor {
+    container-type: size;
+    /* TV + Lücke + Fernbedienung stehen mittig im Raum: links und rechts bleibt je --side frei (Wand-/Bodenfläche für Stufe 2/3) */
+    --side: max(0px, calc((100cqw - var(--lfx-live-tv-w) - 28px - 176 * var(--lfx-live-u)) / 2));
+  }
+  .lfx-live--style-crt80 .lfx-live-decor > *,
+  .lfx-live--style-crt80 .lfx-live-d-board > * { position: absolute; }
+
+  /* ---------- Licht und Schatten auf der Wand ---------- */
+  .lfx-live--style-crt80 .lfx-live-d-wallglow {
+    inset: 0;
+    background:
+      radial-gradient(44cqw 64vh at calc(var(--side) * 0.45) 50vh, rgba(255, 186, 104, 0.2), transparent 72%),
+      radial-gradient(80cqw 40vh at 50% 0, rgba(255, 200, 130, 0.05), transparent 70%);
+  }
+  /* weicher Schatten des Geräts an der Wand */
+  .lfx-live--style-crt80 .lfx-live-d-tvshade {
+    left: var(--side);
+    width: var(--lfx-live-tv-w);
+    bottom: 17vh;
+    height: calc(var(--lfx-live-tv-w) / 1.5);
+    border-radius: 3%;
+    box-shadow: 1.2vh 1.6vh 7vh 1.6vh rgba(18, 7, 3, 0.55);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-shade {
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(14, 6, 3, 0.45), transparent 22%),
+      radial-gradient(125% 95% at 50% 42%, transparent 42%, rgba(18, 7, 3, 0.62) 100%);
+  }
+
+  /* ---------- Teppich (liegt unter dem Lowboard) ---------- */
+  .lfx-live--style-crt80 .lfx-live-d-rug {
+    left: 7cqw;
+    right: 7cqw;
+    bottom: -1vh;
+    height: 8vh;
+    clip-path: polygon(3% 0, 97% 0, 100% 100%, 0 100%);
+    background: #8a3a22;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-rug__pattern {
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 4vh, rgba(238, 204, 140, 0.7) 4vh calc(4vh + 2px), transparent calc(4vh + 2px) 8vh),
+      linear-gradient(45deg, #c46a26 25%, transparent 25% 75%, #c46a26 75%) 0 0 / 4vh 4vh,
+      linear-gradient(135deg, #e0a53a 25%, transparent 25% 75%, #e0a53a 75%) 0 0 / 4vh 4vh,
+      #7c2f1c;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-rug__edge {
+    inset: 0;
+    box-shadow: inset 0 0 0 0.6vh #ecd49a, inset 0 0 0 1vh #7c2f1c, inset 0 0.5vh 1vh rgba(0, 0, 0, 0.5);
+  }
+
+  /* ---------- Lowboard ---------- */
+  .lfx-live--style-crt80 .lfx-live-d-board {
+    left: 3cqw;
+    right: 3cqw;
+    bottom: 4.5vh;
+    height: 12.5vh;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__shadow {
+    left: -1cqw;
+    right: -1cqw;
+    bottom: -1.4vh;
+    height: 3.4vh;
+    background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55), transparent 100%);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__legs {
+    left: 2cqw;
+    right: 2cqw;
+    bottom: 0;
+    height: 2.4vh;
+    display: flex;
+    justify-content: space-between;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__leg {
+    width: 1cqw;
+    clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+    background: linear-gradient(90deg, #3b2312, #6b4226, #2e1a0d);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__legs .lfx-live-d-board__leg:nth-child(2),
+  .lfx-live--style-crt80 .lfx-live-d-board__legs .lfx-live-d-board__leg:nth-child(3) { display: none; }
+  .lfx-live--style-crt80 .lfx-live-d-board__body {
+    left: 0.4cqw;
+    right: 0.4cqw;
+    top: 1.8vh;
+    bottom: 2.2vh;
+    display: flex;
+    gap: 0.8cqw;
+    padding: 0.9vh 0.8cqw;
+    box-sizing: border-box;
+    background:
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 6px),
+      linear-gradient(180deg, #75482a, #5a3520);
+    box-shadow: inset 0 1px 0 rgba(255, 220, 170, 0.25), inset 0 -0.5vh 1vh rgba(0, 0, 0, 0.4);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__top {
+    left: -0.6cqw;
+    right: -0.6cqw;
+    top: 0;
+    height: 1.8vh;
+    border-radius: 0.5vh 0.5vh 0.3vh 0.3vh;
+    background:
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 7px),
+      linear-gradient(180deg, #c08a56 0, #a0693c 45%, #6b4226 46%, #4a2a17 100%);
+    box-shadow: 0 0.6vh 1vh rgba(0, 0, 0, 0.45);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__door {
+    position: relative;
+    flex: 0 0 29%;
+    border-radius: 0.4vh;
+    background:
+      repeating-linear-gradient(88deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 8px),
+      linear-gradient(135deg, #8e5d36, #6a4025);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), inset 1px 1px 0 rgba(255, 220, 170, 0.25);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__handle {
+    position: absolute;
+    top: 30%;
+    width: 0.5cqw;
+    height: 40%;
+    border-radius: 0.3cqw;
+    background: linear-gradient(90deg, #f1e3b0, #b79a52 60%, #6d5a2a);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-board__door--l .lfx-live-d-board__handle { right: 8%; }
+  .lfx-live--style-crt80 .lfx-live-d-board__door--r .lfx-live-d-board__handle { left: 8%; }
+  .lfx-live--style-crt80 .lfx-live-d-board__niche {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    background: linear-gradient(180deg, #170d07, #28170d);
+    box-shadow: inset 0 0.5vh 0.9vh rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-end;
+    gap: 1.2cqw;
+    padding: 0.5vh 1cqw 0.5vh;
+    box-sizing: border-box;
+  }
+
+  /* Videorekorder */
+  .lfx-live--style-crt80 .lfx-live-d-vcr {
+    position: relative;
+    flex: 0 0 62%;
+    height: 82%;
+    display: flex;
+    flex-direction: column;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__top {
+    height: 14%;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, #4a4a4e, #26262a);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__front {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 3%;
+    padding: 0 3%;
+    background:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 2px),
+      linear-gradient(180deg, #34343a, #17171a);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.7);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__slot {
+    flex: 0 0 40%;
+    height: 38%;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #000, #121214);
+    box-shadow: 0 0 0 1px #6d6d74, inset 0 1px 3px #000;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__disp {
+    flex: 0 0 auto;
+    padding: 0.1em 0.45em;
+    border-radius: 2px;
+    background: #061006;
+    color: #8dff7a;
+    font: 700 clamp(7px, 1.5vh, 18px) / 1.2 "Courier New", Courier, monospace;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 5px rgba(141, 255, 122, 0.8);
+    box-shadow: inset 0 0 0 1px #3a3a40;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__btns { display: flex; gap: 3%; margin-left: auto; }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__btns > .lfx-live-d__i {
+    width: 0.5cqw;
+    height: 1.4vh;
+    background: linear-gradient(180deg, #8c8c94, #4a4a50);
+    border-radius: 1px;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-vcr__feet { height: 4%; }
+
+  /* Videokassetten (ohne Schrift): kleiner Stapel neben dem Rekorder; Etikett, Fenster mit zwei Spulen */
+  .lfx-live--style-crt80 .lfx-live-d-tapes { position: relative; flex: 1; height: 100%; }
+  .lfx-live--style-crt80 .lfx-live-d-tape {
+    position: absolute;
+    left: 6%;
+    height: 50%;
+    aspect-ratio: 1.8;
+    max-width: 90%;
+    border-radius: 0.3vh;
+    background: linear-gradient(180deg, #2c2c32, #151518);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 3px rgba(0, 0, 0, 0.85);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-tape--a { bottom: 0; left: 3%; }
+  .lfx-live--style-crt80 .lfx-live-d-tape--b { bottom: 0; left: 31%; }
+  .lfx-live--style-crt80 .lfx-live-d-tape--c { bottom: 50%; left: 14%; transform: rotate(-3deg); }
+  .lfx-live--style-crt80 .lfx-live-d-tape__label { position: absolute; left: 8%; right: 8%; top: 8%; height: 36%; background: #e8dcc0; box-shadow: inset 0 -0.2vh 0 #c4472f; }
+  .lfx-live--style-crt80 .lfx-live-d-tape--b .lfx-live-d-tape__label { box-shadow: inset 0 -0.2vh 0 #2f6bb0; }
+  .lfx-live--style-crt80 .lfx-live-d-tape--c .lfx-live-d-tape__label { box-shadow: inset 0 -0.2vh 0 #d9a93e; }
+  .lfx-live--style-crt80 .lfx-live-d-tape__win {
+    position: absolute;
+    left: 24%;
+    right: 24%;
+    bottom: 10%;
+    height: 34%;
+    border-radius: 0.2vh;
+    background: #0a0a0c;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    box-shadow: inset 0 0 0 1px #3c3c44;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-tape__reel { height: 70%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(#cfcfd4 0 25%, #4a4a50 26% 60%, #111 61%); }
+
+  /* ---------- Stufe 2 ab 1440 px: Bilder, Wanduhr, Gummibaum ---------- */
+  .lfx-live--style-crt80 .lfx-live-d-frame,
+  .lfx-live--style-crt80 .lfx-live-d-clock,
+  .lfx-live--style-crt80 .lfx-live-d-plant,
+  .lfx-live--style-crt80 .lfx-live-d-lamp { display: none; }
+  @media (min-width: 1440px) {
+    .lfx-live--style-crt80 .lfx-live-d-frame,
+    .lfx-live--style-crt80 .lfx-live-d-clock,
+    .lfx-live--style-crt80 .lfx-live-d-plant { display: block; }
+
+    .lfx-live--style-crt80 .lfx-live-d-frame {
+      width: min(8cqw, calc(var(--side) * 0.7));
+      padding: 0.45cqw;
+      box-sizing: border-box;
+      background: linear-gradient(135deg, #5a3a20, #2e1b0d);
+      box-shadow: 0.2cqw 0.4cqw 0.9cqw rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 220, 170, 0.25);
+    }
+    .lfx-live--style-crt80 .lfx-live-d-frame--a { right: calc(var(--side) * 0.14); top: 14vh; aspect-ratio: 4 / 5; }
+    .lfx-live--style-crt80 .lfx-live-d-frame--b { left: calc(var(--side) * 0.2); top: 20vh; aspect-ratio: 5 / 4; width: min(7cqw, calc(var(--side) * 0.62)); }
+    .lfx-live--style-crt80 .lfx-live-d-frame__mat { position: absolute; inset: 0.45cqw; background: #e6d9b8; padding: 12%; box-sizing: border-box; }
+    .lfx-live--style-crt80 .lfx-live-d-frame__art { position: relative; width: 100%; height: 100%; }
+    .lfx-live--style-crt80 .lfx-live-d-frame__art--sun { background: radial-gradient(circle at 50% 42%, #d98a2b 0 26%, transparent 27%), linear-gradient(180deg, #b9553a 0 60%, #3b5f6b 60%); }
+    .lfx-live--style-crt80 .lfx-live-d-frame__art--hills { background: radial-gradient(90% 70% at 30% 110%, #4d6b3a 0 60%, transparent 61%), radial-gradient(90% 60% at 80% 115%, #7f8f3a 0 60%, transparent 61%), linear-gradient(180deg, #f1c46a, #e08b3b); }
+
+    .lfx-live--style-crt80 .lfx-live-d-clock {
+      right: calc(var(--side) * 0.22);
+      top: 38vh;
+      width: min(7cqw, calc(var(--side) * 0.56));
+      aspect-ratio: 1;
+    }
+    .lfx-live--style-crt80 .lfx-live-d-clock__rim {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7a4d2b, #3a2112);
+      box-shadow: 0.2cqw 0.4cqw 0.8cqw rgba(0, 0, 0, 0.55);
+    }
+    .lfx-live--style-crt80 .lfx-live-d-clock__face { position: absolute; inset: 9%; border-radius: 50%; background: #eadfc4; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3); }
+    .lfx-live--style-crt80 .lfx-live-d-clock__ticks { position: absolute; inset: 0; }
+    .lfx-live--style-crt80 .lfx-live-d-clock__ticks > .lfx-live-d__i {
+      position: absolute;
+      left: calc(50% - 1px);
+      top: 4%;
+      width: 2px;
+      height: 9%;
+      background: #3a2a1c;
+      transform-origin: 50% 450%;
+      transform: rotate(calc(var(--i) * 30deg));
+    }
+    .lfx-live--style-crt80 .lfx-live-d-clock__h,
+    .lfx-live--style-crt80 .lfx-live-d-clock__m {
+      position: absolute;
+      left: calc(50% - 2px);
+      bottom: 50%;
+      width: 4px;
+      height: 26%;
+      background: #2a1a10;
+      border-radius: 2px;
+      transform-origin: 50% 100%;
+      transform: rotate(calc(var(--lfx-live-clock-h, 0) * 1deg));
+    }
+    .lfx-live--style-crt80 .lfx-live-d-clock__m { width: 3px; left: calc(50% - 1.5px); height: 38%; transform: rotate(calc(var(--lfx-live-clock-m, 0) * 1deg)); }
+    .lfx-live--style-crt80 .lfx-live-d-clock__pin { position: absolute; left: calc(50% - 3px); top: calc(50% - 3px); width: 6px; height: 6px; border-radius: 50%; background: #b8402a; }
+
+    /* Gummibaum: steht auf dem rechten Ende des Lowboards (verdeckt dessen Front nicht) */
+    .lfx-live--style-crt80 .lfx-live-d-plant {
+      right: max(3.8cqw, calc(var(--side) * 0.1));
+      bottom: calc(17vh - 5px);
+      width: min(9cqw, max(0px, calc(var(--side) - 3.8cqw - 14px)));
+      height: 27vh;
+    }
+    .lfx-live--style-crt80 .lfx-live-d-plant__shadow { left: -8%; right: -8%; bottom: -1.2vh; height: 2.4vh; background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.55), transparent); }
+    .lfx-live--style-crt80 .lfx-live-d-plant__pot {
+      left: 24%;
+      right: 24%;
+      bottom: 0;
+      height: 20%;
+      position: absolute;
+      clip-path: polygon(0 0, 100% 0, 86% 100%, 14% 100%);
+      background:
+        linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 26%),
+        linear-gradient(90deg, #8f4423, #d98650 34%, #b25f33 62%, #6a2f16);
+    }
+    .lfx-live--style-crt80 .lfx-live-d-plant__leaves { position: absolute; left: 0; right: 0; top: 0; bottom: 17%; }
+    .lfx-live--style-crt80 .lfx-live-d-plant__leaves::before { content: ""; position: absolute; left: 49%; width: 3%; top: 4%; bottom: 0; background: linear-gradient(90deg, #4a3a1f, #7a6638); }
+    .lfx-live--style-crt80 .lfx-live-d-plant__leaves > .lfx-live-d__i {
+      position: absolute;
+      bottom: calc(2% + var(--i) * 7.6%);
+      width: calc(46% - var(--i) * 1.7%);
+      height: 11%;
+      border-radius: 50%;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 40%),
+        linear-gradient(90deg, #12331a, #2f7a3a 52%, #174a22);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0.3vh 0.6vh rgba(0, 0, 0, 0.4);
+    }
+    .lfx-live--style-crt80 .lfx-live-d-plant__leaves > .lfx-live-d__i:nth-child(odd) { left: 49%; transform-origin: 0 50%; transform: rotate(calc(-14deg - var(--i) * 4deg)); }
+    .lfx-live--style-crt80 .lfx-live-d-plant__leaves > .lfx-live-d__i:nth-child(even) { right: 49%; transform-origin: 100% 50%; transform: rotate(calc(14deg + var(--i) * 4deg)); }
+    .lfx-live--style-crt80 .lfx-live-d-plant__leaves > .lfx-live-d__i:nth-child(11) { left: 36%; right: auto; width: 28%; height: 17%; bottom: 82%; transform: rotate(-84deg); transform-origin: 50% 100%; }
+  }
+
+  /* ---------- Stufe 3 ab 1800 px: Stehlampe, ganz links (Heft-Objekt liegt rechts davon auf dem Lowboard) ---------- */
+  @media (min-width: 1800px) {
+    .lfx-live--style-crt80 .lfx-live-d-lamp {
+      display: block;
+      left: 0.3cqw;
+      bottom: 5vh;
+      width: min(7cqw, calc(var(--side) * 0.4));
+      height: 48vh;
+    }
+    .lfx-live--style-crt80 .lfx-live-d-lamp__glow {
+      position: absolute;
+      left: -120%;
+      right: -260%;
+      top: -34%;
+      height: 70%;
+      background: radial-gradient(closest-side, rgba(255, 196, 110, 0.34), rgba(255, 170, 80, 0.1) 60%, transparent);
+    }
+    .lfx-live--style-crt80 .lfx-live-d-lamp__shade {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 24%;
+      clip-path: polygon(13% 0, 87% 0, 100% 100%, 0 100%);
+      background:
+        radial-gradient(60% 90% at 50% 100%, rgba(255, 250, 220, 0.9), transparent 70%),
+        repeating-linear-gradient(90deg, rgba(150, 90, 30, 0.14) 0 1px, transparent 1px 4px),
+        linear-gradient(180deg, #f2c070, #f7d894 80%, #fff0bd);
+    }
+    .lfx-live--style-crt80 .lfx-live-d-lamp__cone {
+      position: absolute;
+      left: -70%;
+      right: -150%;
+      top: 22%;
+      bottom: 0;
+      clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%);
+      background: linear-gradient(180deg, rgba(255, 205, 130, 0.28), rgba(255, 205, 130, 0));
+    }
+    .lfx-live--style-crt80 .lfx-live-d-lamp__pole { position: absolute; left: calc(50% - 3px); width: 6px; top: 24%; bottom: 3%; background: linear-gradient(90deg, #6b5a2c, #ecd38a, #5a4a22); }
+    .lfx-live--style-crt80 .lfx-live-d-lamp__base { position: absolute; left: 14%; right: 14%; bottom: 0; height: 3%; border-radius: 50%; background: radial-gradient(#7b6a3a, #2b2210); box-shadow: 0 0.8vh 1.4vh rgba(0, 0, 0, 0.55); }
+  }
+
+  /* ---------- Gerät: Antenne, Füße, Rahmen ---------- */
+  .lfx-live--style-crt80 .lfx-live-tv__deco > *,
+  .lfx-live--style-crt80 .lfx-live-d-ant > *,
+  .lfx-live--style-crt80 .lfx-live-d-plate > * { position: absolute; }
+  .lfx-live--style-crt80 .lfx-live-d-ant { left: 41cqw; top: 0; width: 14cqw; height: 0; }
+  .lfx-live--style-crt80 .lfx-live-d-ant__base {
+    left: 22%;
+    right: 22%;
+    top: -1.3cqw;
+    height: 1.5cqw;
+    border-radius: 50% 50% 0.2cqw 0.2cqw / 100% 100% 0 0;
+    background: linear-gradient(180deg, #4a4a50, #17171a);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-ant__hub { left: calc(50% - 0.7cqw); top: -1.9cqw; width: 1.4cqw; height: 1.4cqw; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #d8d8d8, #55555a); }
+  .lfx-live--style-crt80 .lfx-live-d-ant__rod {
+    left: calc(50% - 0.35cqw);
+    bottom: 1.2cqw;
+    width: 0.7cqw;
+    height: 14cqw;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    transform-origin: 50% 100%;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-ant__rod--l { transform: rotate(-36deg); }
+  .lfx-live--style-crt80 .lfx-live-d-ant__rod--r { transform: rotate(36deg); }
+  .lfx-live--style-crt80 .lfx-live-d-ant__seg { position: relative; width: 100%; flex: 0 0 31%; background: linear-gradient(90deg, #8d8d94, #f4f4f6 45%, #6a6a70); }
+  .lfx-live--style-crt80 .lfx-live-d-ant__seg:nth-child(2) { width: 74%; }
+  .lfx-live--style-crt80 .lfx-live-d-ant__seg:nth-child(3) { width: 50%; }
+  .lfx-live--style-crt80 .lfx-live-d-ant__tip { position: absolute; left: calc(50% - 0.4cqw); top: -0.3cqw; width: 0.8cqw; height: 0.8cqw; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #7a7a80); }
+  .lfx-live--style-crt80 .lfx-live-d-feet { left: 8cqw; right: 8cqw; bottom: -0.9cqw; height: 0.9cqw; display: flex; justify-content: space-between; }
+  .lfx-live--style-crt80 .lfx-live-d-foot { width: 7cqw; border-radius: 0 0 0.5cqw 0.5cqw; background: linear-gradient(180deg, #2a2a2e, #0c0c0e); }
+  .lfx-live--style-crt80 .lfx-live-d-topface {
+    left: 2.6cqw;
+    right: 2.6cqw;
+    top: -0.9cqw;
+    height: 1cqw;
+    clip-path: polygon(2% 0, 98% 0, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, #c89a68, #a06c40);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-rim {
+    inset: 0;
+    border-radius: 3% / 4.5%;
+    box-shadow:
+      inset 0.25cqw 0.25cqw 0.2cqw rgba(255, 230, 190, 0.38),
+      inset -0.3cqw -0.35cqw 0.5cqw rgba(0, 0, 0, 0.5),
+      inset 0 0 0 0.12cqw rgba(0, 0, 0, 0.35);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-bezel {
+    z-index: -1;
+    left: 5.1cqw;
+    top: 5.77cqw;
+    width: 70.8cqw;
+    height: 53.8cqw;
+    border-radius: 5.5cqw;
+    background: linear-gradient(162deg, #26262a 0, #eceef1 9%, #6c6e76 19%, #c3c5cb 31%, #1a1a1e 46%, #8f9199 60%, #f2f3f5 76%, #4b4d54 90%, #1c1c20 100%);
+    box-shadow: 0 0 0 0.3cqw #1d110a, 0 0.3cqw 0.8cqw 0.2cqw rgba(0, 0, 0, 0.7), inset 0 0 0 0.3cqw rgba(10, 10, 12, 0.85);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-bezel__shine { inset: 0.3cqw 4cqw auto 4cqw; height: 0.25cqw; border-radius: 0.5cqw; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent); position: absolute; }
+
+  /* Bedienfeld-Details */
+  .lfx-live--style-crt80 .lfx-live-d-plate { left: 81.3cqw; top: 7.33cqw; width: 15.5cqw; height: 50.67cqw; }
+  .lfx-live--style-crt80 .lfx-live-d-scale { position: absolute; left: 2cqw; width: 11.5cqw; height: 11.5cqw; }
+  .lfx-live--style-crt80 .lfx-live-d-scale--a { top: 1.45cqw; }
+  .lfx-live--style-crt80 .lfx-live-d-scale--b { top: 12.45cqw; }
+  .lfx-live--style-crt80 .lfx-live-d-scale > .lfx-live-d__i {
+    position: absolute;
+    left: calc(50% - 0.12cqw);
+    top: 0;
+    width: 0.24cqw;
+    height: 0.9cqw;
+    background: #2a2a2e;
+    transform-origin: 50% 5.75cqw;
+    transform: rotate(calc(var(--i) * 30deg - 150deg));
+  }
+  .lfx-live--style-crt80 .lfx-live-d-btns { position: absolute; left: 1.4cqw; top: 25cqw; width: 12.7cqw; height: 5cqw; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.35cqw; counter-reset: k; }
+  .lfx-live--style-crt80 .lfx-live-d-btns > .lfx-live-d__i {
+    counter-increment: k;
+    border-radius: 0.3cqw;
+    background: linear-gradient(180deg, #5d5d64, #2c2c31 55%, #1f1f23);
+    box-shadow: 0 0.2cqw 0.25cqw rgba(0, 0, 0, 0.65), inset 0 0.1cqw 0 rgba(255, 255, 255, 0.4);
+    color: #dcdce0;
+    font: 700 0.85cqw / 2.3cqw var(--lfx-font);
+    text-align: center;
+    overflow: hidden;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-btns > .lfx-live-d__i::after { content: counter(k); }
+  /* Gedrückte Programmtaste = aktueller Sender 1–8 (decor.js setzt data-ch an .lfx-live-tv__deco) */
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="1"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(1),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="2"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(2),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="3"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(3),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="4"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(4),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="5"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(5),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="6"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(6),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="7"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(7),
+  .lfx-live--style-crt80 .lfx-live-tv__deco[data-ch="8"] .lfx-live-d-btns > .lfx-live-d__i:nth-child(8) {
+    background: linear-gradient(180deg, #2a2a2e, #3a3a40);
+    box-shadow: inset 0 0.15cqw 0.3cqw rgba(0, 0, 0, 0.8), 0 0 0.6cqw rgba(255, 170, 60, 0.55);
+    color: #ffb347;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-power {
+    left: 3cqw;
+    top: 32cqw;
+    width: 5cqw;
+    height: 3.2cqw;
+    border-radius: 0.4cqw;
+    background: linear-gradient(180deg, #3a3a40, #151518);
+    box-shadow: 0 0.2cqw 0.3cqw rgba(0, 0, 0, 0.6), inset 0 0.1cqw 0 rgba(255, 255, 255, 0.3);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-power::after {
+    content: "";
+    position: absolute;
+    left: calc(50% - 0.7cqw);
+    top: calc(50% - 0.7cqw);
+    width: 1.4cqw;
+    height: 1.4cqw;
+    border-radius: 50%;
+    border: 0.2cqw solid #e8e8ea;
+    box-sizing: border-box;
+  }
+
+  /* ---------- Glas: Wölbung, Maske, Scanlines, Flimmern, Rollbalken, Farbsäume ---------- */
+  .lfx-live--style-crt80 .lfx-live-screen__glass > * { position: absolute; inset: 0; border-radius: inherit; }
+  .lfx-live--style-crt80 .lfx-live-d-g-vig {
+    background: radial-gradient(ellipse 72% 76% at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.4) 86%, rgba(0, 0, 0, 0.75) 100%);
+    box-shadow: inset 0 0 6cqw 1.2cqw rgba(0, 0, 0, 0.7);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-g-mask {
+    background: repeating-linear-gradient(90deg, rgba(255, 0, 0, 0.07) 0 1px, rgba(0, 255, 0, 0.05) 1px 2px, rgba(0, 0, 255, 0.07) 2px 3px);
+  }
+  /* kleine Bilder: Maske und Scanlines leiser, sonst körnig */
+  @container (max-width: 640px) {
+    .lfx-live--style-crt80 .lfx-live-d-g-mask { opacity: 0.45; }
+    .lfx-live--style-crt80 .lfx-live-d-g-scan { opacity: 0.7; }
+  }
+  /* Standby: dunkles Glas ohne Maske, mit Spiegelung */
+  .lfx-live--style-crt80:not(.is-on) .lfx-live-d-g-mask,
+  .lfx-live--style-crt80:not(.is-on) .lfx-live-d-g-scan,
+  .lfx-live--style-crt80:not(.is-on) .lfx-live-d-g-fringe { display: none; }
+  .lfx-live--style-crt80:not(.is-on) .lfx-live-d-g-glare {
+    background:
+      radial-gradient(ellipse 60% 36% at 26% 10%, rgba(255, 255, 255, 0.26), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 82% 88%, rgba(255, 200, 140, 0.1), transparent 70%),
+      linear-gradient(118deg, rgba(255, 255, 255, 0.12) 0 14%, transparent 14.4%);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-g-scan { background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 3px); }
+  .lfx-live--style-crt80 .lfx-live-d-g-fringe {
+    box-shadow: inset 0.4cqw 0 0.6cqw -0.2cqw rgba(255, 40, 40, 0.3), inset -0.4cqw 0 0.6cqw -0.2cqw rgba(60, 90, 255, 0.3);
+  }
+  .lfx-live--style-crt80 .lfx-live-d-g-flicker { background: #000; opacity: 0; }
+  .lfx-live--style-crt80 .lfx-live-d-g-roll {
+    inset: auto 0 100% 0;
+    height: 16%;
+    border-radius: 0;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0.09) 52%, rgba(0, 0, 0, 0.06) 70%, transparent);
+    opacity: 0;
+  }
+  .lfx-live--style-crt80 .lfx-live-d-g-glare {
+    background:
+      radial-gradient(ellipse 70% 42% at 24% 6%, rgba(255, 255, 255, 0.22), transparent 70%),
+      linear-gradient(118deg, rgba(255, 255, 255, 0.09) 0 12%, transparent 12.4%);
+  }
+  .lfx-live--style-crt80:not(.no-tubefx).is-on .lfx-live-d-g-flicker { animation: lfx-live-crt-flicker 2.3s steps(1, end) infinite; }
+  .lfx-live--style-crt80:not(.no-tubefx).is-on .lfx-live-d-g-roll { opacity: 1; animation: lfx-live-crt-roll 9s linear infinite; }
+  .lfx-live--style-crt80.no-tubefx .lfx-live-d-g-mask,
+  .lfx-live--style-crt80.no-tubefx .lfx-live-d-g-fringe,
+  .lfx-live--style-crt80.no-tubefx .lfx-live-d-g-flicker,
+  .lfx-live--style-crt80.no-tubefx .lfx-live-d-g-roll { display: none; }
+  .lfx-live--style-crt80.no-tubefx .lfx-live-d-g-scan { opacity: 0.5; }
+}
+
+@keyframes lfx-live-crt-flicker {
+  0% { opacity: 0.02; }
+  11% { opacity: 0.04; }
+  23% { opacity: 0; }
+  38% { opacity: 0.035; }
+  52% { opacity: 0.01; }
+  67% { opacity: 0.04; }
+  81% { opacity: 0.005; }
+  92% { opacity: 0.03; }
+}
+@keyframes lfx-live-crt-roll {
+  from { transform: translateY(0); }
+  to { transform: translateY(720%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lfx-live-d-g-flicker,
+  .lfx-live-d-g-roll { animation: none !important; }
+}

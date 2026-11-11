@@ -386,3 +386,27 @@ renderMagazinePdf(magazine, { style, loadImage(imageId) → Promise<Uint8Array|n
 - Das Overlay `guide` hängt an der App-Wurzel (`.lfx-live-app`, `z-index: 40`, abgedunkelter und unscharfer Hintergrund, Doppelseite ~96 % der Höhe, Klick auf den Hintergrund schließt, am Handy Einzelseite bildschirmfüllend); EPG/Videotext/Menü bleiben im Fernsehbild. Tasten gehen weiter über `onKey` ans Heft.
 - Röhre und Silber: das Heft-Objekt liegt per `position: absolute` auf dem Lowboard links neben dem Fernseher; der Slot ist quadratisch mit der Breite des freien Raums links (max. 240 px), der Platzwächter (Höhe ≥ 110 px) prüft damit „Breite ≥ 110 px“. Flat und Schlicht: weiter über der Fernbedienung (mit 14 px Sicherheitsabstand oben).
 - EPG: Tagesleiste und ◀ ▶ Jetzt in einer Zeile (`.lfx-live-epg__bar`); Blöcke, die links über den sichtbaren Rand ragen, bekommen `--lfx-live-epg-vis` (Restbreite), der mitlaufende Text kürzt sich damit statt unter die Senderspalte zu rutschen.
+
+## Dekor und Röhren-Effekte (1.9.4)
+Infrastruktur für die Stile `crt80` und `silver`: Raum-Dekor, Gehäuse-Details und Glas, ohne gemeinsame Dateien anzufassen. Je Stil gehören nur `ui/decor-<id>.js` (Spezifikation) und `src/css/themes/live/decor-<id>.css` (Regeln unter `.lfx-live--style-<id>`).
+
+### `ui/decor.js`
+```
+createDecor({ room, tv, screen, doc }) → { el, layers: { room, tv, glass }, setStyle(style), setDisplays({ on, clock, ch }), dispose() }
+```
+- Ebenen (alle `aria-hidden="true"`, `pointer-events: none`): `.lfx-live-decor` (erstes Kind von `.lfx-live-room`, hinter TV und Seitenspalte), `.lfx-live-tv__deco` (letztes Kind von `.lfx-live-tv`: Antenne, Gitter, Tastenreihen, Klappe), `.lfx-live-screen__glass` (in `.lfx-live-screen`, vor `.lfx-live-overlay` im DOM).
+- `setStyle(id)` leert alle drei Ebenen und baut sie aus `SPECS[id]` neu (flat/plain/unbekannt: leer). Die App ruft es beim Aufbau und bei jedem Stilwechsel.
+- Spezifikation `ui/decor-<id>.js`: `export default { room: Node[], tv: Node[], glass: Node[] }`, `Node = { cls, tag? = 'div', text?, display?: 'vcr'|'dvd'|'rcv', count?: n, children?: Node[] }`. `count: n` erzeugt n Kinder `<span class="lfx-live-d__i" style="--i:k">` (k = 1…n) vor `children` (z. B. Programmtasten). Neue Klassen heißen `lfx-live-d-…`. Platzhalter tragen `lfx-live-d-todo` (per CSS ausgeblendet).
+- Anzeigen: Elemente mit `data-display`. `setDisplays({ on, clock:'20:15', ch:5 })` (fehlende Felder behalten den letzten Wert): `vcr` → an ? Uhrzeit : `--:--`; `dvd` → an ? Uhrzeit : leer; `rcv` → an ? `P` + zweistelliger Sender : leer. Zusätzlich an `.lfx-live-decor` die Variablen `--lfx-live-clock-h` (Stundenwinkel in Grad, 0–360) und `--lfx-live-clock-m` (Minutenwinkel) für eine Wanduhr (sie zeigt auch im Standby die Zeit). Geschrieben wird nur bei Änderung.
+- Einbau `ui/app.js`: `syncDecor()` bei Ein/Aus, Senderwechsel und Stilwechsel; Uhrzeit über `ctx.formatClock` und einen Minuten-Timer (`later('clock')`, läuft auch im Standby, kein rAF; der Planer bleibt unberührt). `dispose` entfernt die Ebenen.
+
+### Stapelreihenfolge im Bild (z-index in `.lfx-live-screen`)
+Video 0, Fake-Player 1, Rauschen 2, Leerlaufkarte 3 (Banner 4), **Glas 4**, OSD 5, Overlay (EPG/Videotext/Menü) 6, Scanlines-`::before` 8, Ein-/Ausschalt-`::after` 20. Raum: `.lfx-live-decor` z 0, TV z 1, Seitenspalte z 2. `.lfx-live-tv__deco` hat keinen eigenen Stapelkontext; Kinder ordnen sich per z-index im TV ein.
+
+### Pref „Röhren-Effekte“ (`fx`)
+- Standard an (`lfx.live.fx.<uid>`, `prefs.getFx()`), Hülle `opts.fx`, gespeichert über `deps.savePrefs({ fx })`; Harness `?fx=0`.
+- Menü: „Röhren-Effekte“ (Wert An/Aus, Toast „Röhren-Effekte an./aus.“) nur bei `crt80` und `silver`. Aus → Klasse `no-tubefx` an `.lfx-live-app`: Stil-CSS schaltet Animationen/Flackern darunter ab (`.lfx-live-app.no-tubefx …` bzw. `:not(.no-tubefx)`).
+
+### Ausblendregeln
+`display: none !important` (damit spätere Stilregeln wie `.lfx-live--style-crt80 .lfx-live-d-foo` mit höherer Spezifität nicht gewinnen): Handy-Hochformat und `≤ 760 px` am Desktop (`mobile.css`): `.lfx-live-decor`, `.lfx-live-tv__deco`; Vollbild und Handy-Querformat (`fullscreen.css`): zusätzlich `.lfx-live-screen__glass`. CSS-Reihenfolge: `tv-*.css`, `decor.css`, `decor-crt80.css`, `decor-silver.css`, `remote.css` … `mobile.css`, `fullscreen.css`.
+- Die stilabhängigen Fernbedienungsregeln liegen jetzt in `tv-crt80.css` bzw. `tv-silver.css` (Abschnitt am Dateiende); `remote.css` enthält nur noch Basis, Flach und Schlicht.

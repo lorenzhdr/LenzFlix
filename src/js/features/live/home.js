@@ -249,6 +249,7 @@ function buildOpts() {
     muted: prefs.getMuted(),
     lastChannel: prefs.getLastChannel(),
     music: prefs.getMusic(),
+    fx: prefs.getFx(),
     audioPref: null,
     phone: isMobile(),
     touch: coarse(),

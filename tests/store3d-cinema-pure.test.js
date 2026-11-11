@@ -138,6 +138,12 @@ describe('cinema/controls Spec', () => {
     expect(calls).toEqual([['by', -10], ['by', 30], ['vol', -0.1], ['seat', 'back'], ['up', 'start'], ['up', 'hide']]);
   });
 
+  it('Lautstärke-Zeile: Prozent, max., stumm', () => {
+    expect(controlsSpec({ ...base, volume: 0.5 }, h).lines[0]).toBe('Lautstärke 50 %');
+    expect(controlsSpec({ ...base, volume: 1 }, h).lines[0]).toBe('Lautstärke 100 % (max.)');
+    expect(controlsSpec({ ...base, muted: true }, h).lines[0]).toBe('Lautstärke stumm');
+  });
+
   it('trackSpec: Laden, Liste, Wechsel', () => {
     const opts = { onPick() {}, onBack() {} };
     expect(trackSpec('audio', null, opts).text).toBe('Lade …');

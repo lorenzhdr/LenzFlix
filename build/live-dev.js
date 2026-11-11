@@ -219,7 +219,7 @@
   var opts = {
     style: style, volume: prefs.volume != null ? prefs.volume : 0.5, muted: prefs.muted != null ? prefs.muted : false,
     lastChannel: Number(q.get('channel')) || prefs.lastChannel || 1, audioPref: null,
-    phone: phone, touch: phone, debug: q.get('debug') === '1' || !!q.get('idle'), music: q.get('music') !== '0' && prefs.music !== false, now: nowFn, fakePlayer: q.get('real') !== '1',
+    phone: phone, touch: phone, debug: q.get('debug') === '1' || !!q.get('idle'), music: q.get('music') !== '0' && prefs.music !== false, fx: q.get('fx') !== '0' && prefs.fx !== false, now: nowFn, fakePlayer: q.get('real') !== '1',
   };
   if (opts.debug) window.__lfxLiveDebug = true;
   if (phone) document.documentElement.classList.add('lfx-phone');

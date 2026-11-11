@@ -557,9 +557,9 @@ export class XrMode {
   cinemaEnter(item) { this.cinema.enter(item); }
 
   /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. */
-  leaveCinema(reason) {
+  leaveCinema(reason, code) {
     if (!this.cinemaReported && !this.cinema.active) return;
-    this.cinema.leave(reason);
+    this.cinema.leave(reason, code);
     this.cinemaReported = false;
     if (reason !== 'sessionend' && this.presenting) this.report({ presenting: true, cinema: false });
   }

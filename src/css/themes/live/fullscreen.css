@@ -46,6 +46,14 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-app.is-phone.is-landscape .lfx-live-tv__stand,
   .lfx-live-app.is-phone.is-landscape .lfx-live-tv__led { display: none; }
 
+  /* Dekor-Ebenen im Vollbild und in der Handy-Querformat-Leiste komplett aus (!important: spätere Stilregeln dürfen sie nicht zurückholen) */
+  .lfx-live-app.is-fullscreen .lfx-live-decor,
+  .lfx-live-app.is-fullscreen .lfx-live-tv__deco,
+  .lfx-live-app.is-fullscreen .lfx-live-screen__glass,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-decor,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-tv__deco,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-screen__glass { display: none !important; }
+
   .lfx-live-app.is-fullscreen .lfx-live-tv,
   .lfx-live-app.is-phone.is-landscape .lfx-live-tv {
     position: absolute;

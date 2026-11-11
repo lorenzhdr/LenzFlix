@@ -4,27 +4,26 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     --lfx-live-osd-font: Arial, "Helvetica Neue", Helvetica, sans-serif;
     --lfx-live-osd-accent: #6ab7ff;
     --lfx-live-osd-bg: rgba(8, 36, 88, 0.82);
-    background:
-      radial-gradient(70% 60% at 50% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
-      linear-gradient(180deg, #8b95a6 0%, #5f6a7d 70%, #444d5e 100%);
+    --lfx-live-led-standby: #e3231c;
+    --lfx-live-led-on: #46b4ff;
+    --lfx-live-tv-w: min(calc(100vw - 330px), 104vh, 1400px);
+    background: #d8d3c8; /* Wand/Boden zeichnet das Dekor (decor-silver.css); Fallback für Handy/Vollbild */
   }
-  .lfx-live--style-silver .lfx-live-room__lamp { display: none; }
-  .lfx-live--style-silver .lfx-live-room__shelf {
-    left: 3%;
-    right: 3%;
-    bottom: 0;
-    height: 12vh;
-    border-radius: 10px 10px 0 0;
-    background: linear-gradient(180deg, #f1f3f6 0, #d4d9e0 12px, #aab2bf 13px, #8d96a4 100%);
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
-  }
+  /* Glas-Rack: Plattenoberkante bei 20 vh (Fernseher, Heft-Objekt und Fernbedienung stehen darauf) */
+  .lfx-live--style-silver .lfx-live-room { padding-bottom: 20vh; }
+  .lfx-live-app.lfx-live--style-silver .lfx-live-side { margin-top: -6vh; }
+  .lfx-live-app.lfx-live--style-silver[data-prop] .lfx-live-room .lfx-live-side { margin-top: -6vh; }
+  .lfx-live-app[data-prop="lowboard"].lfx-live--style-silver .lfx-live-room .lfx-live-room__prop { bottom: calc(20vh - 3px); }
+  .lfx-live--style-silver .lfx-live-room__lamp,
+  .lfx-live--style-silver .lfx-live-room__shelf { display: none; }
 
   .lfx-live--style-silver .lfx-live-tv {
     border-radius: 2.2% / 3.2%;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.75), transparent 12%),
-      linear-gradient(180deg, #e9edf1 0%, #bcc3cc 55%, #8f98a4 100%);
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(0, 0, 0, 0.25), 0 24px 36px rgba(0, 0, 0, 0.5);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.85), transparent 9%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.1), transparent 6%, transparent 94%, rgba(0, 0, 0, 0.12)),
+      linear-gradient(180deg, #eceff3 0%, #c9d0d8 55%, #9aa3af 100%);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(0, 0, 0, 0.25), 0 10px 18px rgba(0, 0, 0, 0.3);
   }
   .lfx-live--style-silver .lfx-live-screen {
     left: 5%;
@@ -32,57 +31,69 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     top: 6%;
     bottom: 11%;
     border-radius: 3% / 4%;
-    box-shadow: 0 0 0 0.8cqw #1b1f27, 0 0 0 1.2cqw #4b5464, inset 0 0 40px 8px rgba(0, 0, 0, 0.7);
+    box-shadow:
+      0 0 0 calc(var(--lfx-live-tv-w) * 0.008) #14171d,
+      0 0 0 calc(var(--lfx-live-tv-w) * 0.0135) #3d4552,
+      0 0 0 calc(var(--lfx-live-tv-w) * 0.015) #a9b1bc,
+      inset 0 0 40px 8px rgba(0, 0, 0, 0.6);
   }
+  /* Scanlines wandern in die Glas-Ebene (decor-silver.css); hier nur noch ein dezenter Rand */
   .lfx-live--style-silver .lfx-live-screen::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 8;
     pointer-events: none;
-    background:
-      repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 3px),
-      radial-gradient(130% 110% at 50% 45%, transparent 62%, rgba(0, 0, 0, 0.35) 100%),
-      linear-gradient(125deg, rgba(255, 255, 255, 0.08), transparent 30%);
+    background: radial-gradient(130% 110% at 50% 45%, transparent 75%, rgba(0, 0, 0, 0.18) 100%);
   }
 
-  .lfx-live--style-silver .lfx-live-tv__panel {
-    position: absolute;
-    right: 6%;
-    bottom: 2.6%;
-    height: 5%;
-    width: 16%;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8%;
-  }
-  .lfx-live--style-silver .lfx-live-tv__knob {
-    height: 100%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: linear-gradient(180deg, #f4f6f8, #8f98a4);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  }
-  .lfx-live--style-silver .lfx-live-tv__grille { display: none; }
+  .lfx-live--style-silver .lfx-live-tv__panel,
+  .lfx-live--style-silver .lfx-live-tv__stand { display: none; }
   .lfx-live--style-silver .lfx-live-tv__brand {
     position: absolute;
-    left: 6%;
-    bottom: 3%;
-    font: 700 clamp(8px, 0.85vw, 12px) / 1 Arial, sans-serif;
-    letter-spacing: 0.35em;
-    color: #3b4452;
+    z-index: 2;
+    left: 40%;
+    width: 18%;
+    text-align: center;
+    bottom: 4.6%;
+    font: 700 clamp(7px, 0.85vw, 12px) / 1 Arial, sans-serif;
+    letter-spacing: 0.3em;
+    color: #2d3542;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
   }
-  .lfx-live--style-silver .lfx-live-tv__led { left: 50%; bottom: 3.4%; }
-  .lfx-live--style-silver .lfx-live-tv__stand {
-    position: absolute;
-    left: 30%;
-    right: 30%;
-    top: 100%;
-    height: 6px;
-    border-radius: 0 0 6px 6px;
-    background: linear-gradient(180deg, #8f98a4, #566070);
+  .lfx-live-app.lfx-live--style-silver .lfx-live-tv__led {
+    left: 60%;
+    bottom: 4.6%;
+    z-index: 2;
+    box-shadow: 0 0 6px 2px rgba(227, 35, 28, 0.6);
   }
+  .lfx-live-app.lfx-live--style-silver.is-on .lfx-live-tv__led {
+    background: var(--lfx-live-led-on);
+    box-shadow: 0 0 7px 2px rgba(70, 180, 255, 0.75);
+    animation: none;
+  }
+
+  /* Fernbedienung im Silber-Stil: silberner Körper mit Glanz, graue Gummitasten, nur OK blau */
+  .lfx-live--style-silver .lfx-live-remote {
+    background:
+      radial-gradient(120% 30% at 30% 0%, rgba(255, 255, 255, 0.85), transparent 70%),
+      linear-gradient(100deg, #f4f6f8 0%, #d3d9e0 38%, #aab2bd 70%, #8d96a3 100%);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.75),
+      inset 0 -3px 6px rgba(0, 0, 0, 0.2),
+      inset 3px 0 5px rgba(255, 255, 255, 0.35),
+      0 18px 30px rgba(0, 0, 0, 0.45);
+    --lfx-live-rb-bg: #b3bac4;
+    --lfx-live-rb-ink: #1f2733;
+  }
+  .lfx-live--style-silver .lfx-live-remote__led { background: #1b222c; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 255, 255, 0.6); }
+  .lfx-live--style-silver .lfx-live-remote.is-on .lfx-live-remote__led { background: #46b4ff; box-shadow: 0 0 6px rgba(70, 180, 255, 0.8); }
+  .lfx-live--style-silver .lfx-live-remote__btn {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(0, 0, 0, 0.1));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.45);
+  }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-power { color: #fff; }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-ok { background-color: #2f6fc0; color: #fff; }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-rock { background-color: #9fa8b4; }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-arrow { background-color: #98a2af; }
 }

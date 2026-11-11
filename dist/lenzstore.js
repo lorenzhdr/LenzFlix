@@ -40448,7 +40448,7 @@ void main() {
         x.beforePlay(item, o);
         const res = deps.play(item, o);
         const fail = () => {
-          if (typeof x.leaveCinema === "function") x.leaveCinema("fail");
+          if (typeof x.leaveCinema === "function") x.leaveCinema("fail", "P");
         };
         if (res && typeof res.then === "function") res.then((ok) => {
           if (ok === false) fail();
@@ -43146,7 +43146,8 @@ void main() {
     buttons.push({ row: 2, label: "Lauter", onSelect: () => h2.onVolume(0.1) });
     for (const name of SEAT_ORDER) buttons.push({ row: 3, label: `Platz ${SEAT_LABEL[name]}`, on: h2.seat === name, onSelect: () => h2.onSeat(name) });
     buttons.push({ row: 4, label: "Zur\xFCck in die Videothek", onSelect: () => h2.onBack() });
-    const vol = s.muted ? "stumm" : `${Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100)} %`;
+    const pct = Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100);
+    const vol = s.muted ? "stumm" : pct >= 100 ? "100 % (max.)" : `${pct} %`;
     const spec = {
       title: clip2(s.title || "Kino", 70),
       lines: [`Lautst\xE4rke ${vol}`],
@@ -43223,8 +43224,22 @@ void main() {
       },
       onVolume: (d) => {
         api.touch();
-        const v = Number.isFinite(state().volume) ? state().volume : 1;
-        cinema.setVolume(Math.max(0, Math.min(1, Math.round((v + d) * 10) / 10)));
+        const st = state();
+        const pct = Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100);
+        if (d > 0) {
+          if (pct >= 100) {
+            if (st.muted) cinema.toggleMute();
+            else if (toast) toast("Schon volle Lautst\xE4rke");
+            return;
+          }
+          cinema.setVolume(Math.min(100, (Math.floor(pct / 10) + 1) * 10) / 100);
+        } else {
+          if (pct <= 0) {
+            if (toast) toast("Schon ganz leise");
+            return;
+          }
+          cinema.setVolume(Math.max(0, (Math.ceil(pct / 10) - 1) * 10) / 100);
+        }
       },
       onSeat: (name) => {
         api.touch();
@@ -43371,7 +43386,11 @@ void main() {
   }
 
   // src/js/store3d/cinema/cinema.js
-  var WATCHDOG_MS = 1e4;
+  var NO_VIDEO_MS = 25e3;
+  var STALL_MS = 15e3;
+  var MAX_START_MS = 6e4;
+  var PREPARE_MS = 8e3;
+  var PAUSED_HOLD_MS = 1500;
   var SLOW_START_MS = 3e3;
   var STATE_MS = 200;
   var VIDEO_MS = 250;
@@ -43421,6 +43440,12 @@ void main() {
       this.opened = false;
       this.visible = true;
       this.controlsWanted = false;
+      this.failCode = null;
+      this.marks = {};
+      this.prog = null;
+      this.lastProgress = 0;
+      this.pausedSince = null;
+      this.prepareShown = false;
     }
     /** true ab enter() bis leave() abgeschlossen. */
     get active() {
@@ -43521,7 +43546,8 @@ void main() {
         this.phase = "starting";
       } catch (err) {
         warn4("Kino bauen", err);
-        this._selfLeave("fail");
+        this.failCode = "B";
+        this._selfLeave("fail", "B");
       }
     }
     _title() {
@@ -43598,7 +43624,7 @@ void main() {
     _onState() {
       const st = this.state || {};
       if (this.phase === "starting") {
-        if (st.phase === "error" && !st.reloading) this._fail(st.error || "error");
+        if (st.phase === "error" && !st.reloading) this._fail("D");
         return;
       }
       if (this.phase !== "playing" && this.phase !== "paused") return;
@@ -43607,7 +43633,7 @@ void main() {
         return;
       }
       if (st.phase === "error" && !st.reloading) {
-        this._fail(st.error || "error");
+        this._fail("D");
         return;
       }
       if (st.phase === "playing" && this.phase !== "playing") this._setPlaying(false);
@@ -43636,26 +43662,82 @@ void main() {
       if (this.startAt == null) this.startAt = now;
       const v = this.video;
       const st = this.state || {};
+      const el2 = now - this.startAt;
+      const rs = v ? Number(v.readyState) || 0 : 0;
       const frames = this.screen ? this.screen.videoFrames : 0;
-      if (v && (Number(v.readyState) || 0) >= 2 && frames >= 3 && (Math.abs((Number(v.currentTime) || 0) - this.baseTime) >= 0.3 || st.phase === "paused")) {
+      const mark = (k) => {
+        if (this.marks[k] == null) this.marks[k] = Math.round(el2);
+      };
+      if (v) {
+        mark("video");
+        this._progress(v, now);
+        if (rs >= 2) mark("ready");
+        if (frames >= 1) mark("frame");
+      }
+      if (v && rs >= 2 && frames >= 3 && (Math.abs((Number(v.currentTime) || 0) - this.baseTime) >= 0.3 || st.phase === "paused")) {
         this.opened = true;
+        mark("start");
         if (st.phase === "paused") {
           this._setPaused();
           this.hall.curtain(true);
         } else this._setPlaying(true);
         return;
       }
-      if (now - this.startAt > SLOW_START_MS && this.hall && !this.hall.curtainOpen) this.hall.curtain(true);
-      if (now - this.startAt > WATCHDOG_MS) this._fail("timeout");
+      const pausedNow = Boolean(v) && rs >= 2 && Boolean(this.screen && this.screen.hasFrame) && (st.phase === "paused" || v.paused === true);
+      if (pausedNow) {
+        if (this.pausedSince == null) this.pausedSince = now;
+        else if (now - this.pausedSince >= PAUSED_HOLD_MS) {
+          this.opened = true;
+          mark("start");
+          this._setPaused();
+          if (this.hall) this.hall.curtain(true);
+          if (this._xr) this._xr.toast("Zum Starten \u201EWeiter\u201C dr\xFCcken", 5e3);
+          return;
+        }
+      } else this.pausedSince = null;
+      if (el2 > SLOW_START_MS && this.hall && !this.hall.curtainOpen) this.hall.curtain(true);
+      if (el2 > PREPARE_MS && !this.prepareShown && this.screen) {
+        this.prepareShown = true;
+        this.screen.setStatus({ title: this._title(), text: "Film wird gestartet \u2026", sub: "Der Server bereitet den Film vor \u2026" });
+      }
+      if (!v) {
+        if (el2 > NO_VIDEO_MS) this._fail("T1");
+        return;
+      }
+      if (now - this.lastProgress > STALL_MS || el2 > MAX_START_MS) this._fail("T2");
     }
-    _fail(reason) {
+    /** Fortschritt des Ladens: readyState steigt, buffered-Ende wächst oder currentTime ändert sich. */
+    _progress(v, now) {
+      const rs = Number(v.readyState) || 0;
+      let be = 0;
+      try {
+        const b = v.buffered;
+        if (b && b.length) be = Number(b.end(b.length - 1)) || 0;
+      } catch {
+      }
+      const ct = Number(v.currentTime) || 0;
+      const p = this.prog;
+      if (!p || p.v !== v) {
+        this.prog = { v, rs, be, ct };
+        this.lastProgress = now;
+        return;
+      }
+      if (rs > p.rs || be > p.be + 0.01 || Math.abs(ct - p.ct) > 0.01) this.lastProgress = now;
+      p.rs = rs;
+      p.be = be;
+      p.ct = ct;
+    }
+    /** code: P (play() false), T1 (kein Player), T2 (Stillstand/Zeitlimit), D (Fehlerdialog), B (Bau-Fehler). */
+    _fail(code) {
       if (this.phase === "failed" || this.phase === "leaving" || !this._active || this._leaveAsked) return;
       this.phase = "failed";
-      this.failReason = reason;
+      this.failCode = code;
+      this.marks.fail = Math.round(this.startAt == null ? 0 : this.now - this.startAt);
+      warn4("Kino-Start fehlgeschlagen", code);
       const d = this._deps;
       const st = this.state || {};
-      const txt = "Kino konnte nicht starten";
-      if (this.screen) this.screen.setStatus({ title: this._title(), text: txt, sub: "Zur\xFCck in die Videothek \u2026" });
+      const txt = `Kino konnte nicht starten (${code})`;
+      if (this.screen) this.screen.setStatus({ title: this._title(), text: "Kino konnte nicht starten", sub: `Zur\xFCck in die Videothek \u2026 (${code})` });
       if (this.controls) this.controls.hide();
       if (this.hall) this.hall.curtain(true);
       if (this._xr) this._xr.toast(txt, FAIL_HOLD_MS + 600);
@@ -43667,16 +43749,16 @@ void main() {
           warn4("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
-        this._later(FAIL_HOLD_MS, () => this._selfLeave("fail"));
+        this._later(FAIL_HOLD_MS, () => this._selfLeave("fail", code));
       };
       stop();
     }
     /** Selbst-Verlassen: über app.xr.leaveCinema, damit die Hülle die onXr-Meldung bekommt. */
-    _selfLeave(reason) {
+    _selfLeave(reason, code) {
       if (this._leaveAsked) return;
       const x = this._xr;
-      if (x && typeof x.leaveCinema === "function") x.leaveCinema(reason);
-      else this.leave(reason);
+      if (x && typeof x.leaveCinema === "function") x.leaveCinema(reason, code);
+      else this.leave(reason, code);
     }
     backToStore() {
       if (this._leaveAsked || !this._active) return;
@@ -43762,13 +43844,21 @@ void main() {
     }
     diag() {
       const v = this.video;
-      return { phase: this._active ? this.phase : "idle", videoFrames: this.screen ? this.screen.videoFrames : 0, readyState: v ? Number(v.readyState) || 0 : 0 };
+      return {
+        phase: this._active ? this.phase : "idle",
+        videoFrames: this.screen ? this.screen.videoFrames : 0,
+        readyState: v ? Number(v.readyState) || 0 : 0,
+        failCode: this.failCode,
+        // ms seit Start-Phase: erstes Video, readyState>=2, erster Upload, Start, Fehlschlag
+        marks: { ...this.marks }
+      };
     }
     // ---------------------------------------------------------------- verlassen
     /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. Rückgabe: Promise (löst nach der Rückblende auf). */
-    leave(reason = "stop") {
+    leave(reason = "stop", code) {
       if (!this._active) return Promise.resolve(false);
       if (this._leavePromise) return this._leavePromise;
+      if (code) this.failCode = code;
       this._leaveAsked = true;
       this.gen++;
       this._clearTimers();
@@ -43781,7 +43871,7 @@ void main() {
       const run = () => this._teardown();
       this._leavePromise = Promise.resolve(this._enterPromise).then(() => f.jump(run, { out: 250, in: 500 })).then(() => {
         this._leavePromise = null;
-        if (reason === "fail" && this._xr) this._xr.toast("Kino konnte nicht starten", 3200);
+        if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(this.failCode ? `Kino konnte nicht starten (${this.failCode})` : "Kino konnte nicht starten", 3200);
         return true;
       }, (err) => {
         warn4("Kino verlassen", err);
@@ -44574,9 +44664,9 @@ void main() {
       this.cinema.enter(item);
     }
     /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. */
-    leaveCinema(reason) {
+    leaveCinema(reason, code) {
       if (!this.cinemaReported && !this.cinema.active) return;
-      this.cinema.leave(reason);
+      this.cinema.leave(reason, code);
       this.cinemaReported = false;
       if (reason !== "sessionend" && this.presenting) this.report({ presenting: true, cinema: false });
     }

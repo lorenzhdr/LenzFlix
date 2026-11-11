@@ -202,10 +202,10 @@
   };
 
   // --- VR-Kino-Harness: echte Bridge (Hülle) + Fake-Jellyfin-Player mit identischem DOM (docs/store3d.md, Kino) ---
-  // ?cinema=1|series|fail  Fake-Player (Film / Serie mit Up-Next / Wiedergabefehler)   ?subs=srt|ass|off  Untertitelart
+  // ?cinema=1|series|fail|paused|slow  Fake-Player (Film / Serie mit Up-Next / Wiedergabefehler / Start pausiert / Bild erst nach 15 s)   ?subs=srt|ass|off  Untertitelart
   // ?xremu=1 lädt den Emulator (/xr-emu.js, nur lokal in .tmp/)   ?xrshot=1 blendet die Bühne während XR aus (Screenshot-Hilfe)
   var cinemaQ = q.get('cinema');
-  var cinemaMode = cinemaQ === '1' ? 'movie' : cinemaQ === 'series' ? 'series' : cinemaQ === 'fail' ? 'fail' : null;
+  var cinemaMode = cinemaQ === '1' ? 'movie' : cinemaQ === 'series' ? 'series' : cinemaQ === 'fail' ? 'fail' : cinemaQ === 'paused' ? 'paused' : cinemaQ === 'slow' ? 'slow' : null;
   var xrshot = q.get('xrshot') === '1';
   var subsMode = q.get('subs') === 'ass' ? 'ass' : q.get('subs') === 'off' ? 'off' : 'srt';
   var xrState = { presenting: false, cinema: false };
@@ -488,9 +488,24 @@
       } catch { f.ac = null; }
       draw(f);
       f.timers.push(setInterval(function () { draw(f); }, 33));
-      video.srcObject = f.stream;
-      var pr = video.play();
-      if (pr && pr.catch) pr.catch(function () { video.muted = true; var p2 = video.play(); if (p2 && p2.catch) p2.catch(function () {}); });
+      var attach = function () {
+        if (fake !== f) return;
+        video.srcObject = f.stream;
+        var pr = video.play();
+        if (cinemaQ === 'paused') {
+          // Autoplay geblockt: das Video bleibt nach dem Laden pausiert, bis .btnPause geklickt wird
+          video.addEventListener('playing', function once() { video.removeEventListener('playing', once); video.pause(); });
+        } else if (pr && pr.catch) pr.catch(function () { video.muted = true; var p2 = video.play(); if (p2 && p2.catch) p2.catch(function () {}); });
+      };
+      if (cinemaQ === 'slow') {
+        // Langsamer Start: erstes Bild erst nach 15 s, buffered wächst währenddessen
+        var t0 = performance.now();
+        def('buffered', function () {
+          var e = Math.min(30, (performance.now() - t0) / 1000 * 2);
+          return { length: 1, start: function () { return 0; }, end: function () { return e; } };
+        });
+        f.timers.push(setTimeout(attach, 15000));
+      } else attach();
     } else {
       setTimeout(function () { if (fake === f) showError(f); }, 3000);
     }
@@ -518,7 +533,7 @@
     mk('span', 'osdDurationText', f.osd, '');
     var vol = mk('input', 'osdVolumeSlider', f.osd);
     vol.type = 'range'; vol.min = '0'; vol.max = '100'; vol.value = '100';
-    vol.addEventListener('input', function () { video.volume = Math.max(0, Math.min(1, Number(vol.value) / 100)); });
+    vol.addEventListener('input', function () { video.volume = Math.pow(Math.max(0, Math.min(1, Number(vol.value) / 100)), 3); }); // kubisch wie Jellyfin
 
     f.up = mk('div', 'upNextContainer upNextDialog hide', document.body);
     f.up.style.cssText = 'position:fixed;right:16px;bottom:70px;z-index:16;background:#222;color:#fff;padding:12px 16px;border-radius:6px;';

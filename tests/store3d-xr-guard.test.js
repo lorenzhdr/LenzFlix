@@ -68,6 +68,6 @@ describe('xr/guard wrapDeps', () => {
     deps.play.mockResolvedValueOnce(false);
     await w.play({ Id: 3 });
     await Promise.resolve();
-    expect(xr.leaveCinema).toHaveBeenCalledWith('fail');
+    expect(xr.leaveCinema).toHaveBeenCalledWith('fail', 'P');
   });
 });

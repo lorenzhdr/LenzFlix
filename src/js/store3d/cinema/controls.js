@@ -43,7 +43,8 @@ export function controlsSpec(st, h) {
   buttons.push({ row: 2, label: 'Lauter', onSelect: () => h.onVolume(0.1) });
   for (const name of SEAT_ORDER) buttons.push({ row: 3, label: `Platz ${SEAT_LABEL[name]}`, on: h.seat === name, onSelect: () => h.onSeat(name) });
   buttons.push({ row: 4, label: 'Zurück in die Videothek', onSelect: () => h.onBack() });
-  const vol = s.muted ? 'stumm' : `${Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100)} %`;
+  const pct = Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100);
+  const vol = s.muted ? 'stumm' : pct >= 100 ? '100 % (max.)' : `${pct} %`;
   const spec = {
     title: clip(s.title || 'Kino', 70),
     lines: [`Lautstärke ${vol}`],
@@ -100,8 +101,19 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
     onTracks: (kind) => { api.touch(); api.openTracks(kind); },
     onVolume: (d) => {
       api.touch();
-      const v = Number.isFinite(state().volume) ? state().volume : 1;
-      cinema.setVolume(Math.max(0, Math.min(1, Math.round((v + d) * 10) / 10)));
+      const st = state();
+      const pct = Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100);
+      if (d > 0) {
+        if (pct >= 100) {
+          if (st.muted) cinema.toggleMute();
+          else if (toast) toast('Schon volle Lautstärke');
+          return;
+        }
+        cinema.setVolume((Math.min(100, (Math.floor(pct / 10) + 1) * 10)) / 100);
+      } else {
+        if (pct <= 0) { if (toast) toast('Schon ganz leise'); return; }
+        cinema.setVolume((Math.max(0, (Math.ceil(pct / 10) - 1) * 10)) / 100);
+      }
     },
     onSeat: (name) => { api.touch(); onSeat(name); },
     onBack: () => onBack(),

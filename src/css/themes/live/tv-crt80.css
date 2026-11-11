@@ -1,56 +1,52 @@
-/* LENZ LIVE · Stil „Röhre 80er/90er“ (crt80, Standard): Holzdekor-Gehäuse, gewölbtes Bild, Scanlines, Wohnzimmer aus Verläufen. */
+/* LENZ LIVE · Stil „Röhre 80er“ (crt80, Standard): Wohnzimmer um 1982 (Tapete, Holzdielen), Holz-Truhe als Fernseher, gewölbtes Bild.
+   Raum-Dekor, Antenne, Bedienfeld-Details und Glas-Effekte: decor-crt80.css (Spezifikation ui/decor-crt80.js). */
 html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live--style-crt80 {
     --lfx-live-osd-font: "Courier New", Courier, monospace;
     --lfx-live-osd-accent: #9dff9d;
     --lfx-live-osd-bg: rgba(0, 0, 0, 0.62);
+    /* etwas kleiner als die anderen Stile: über dem Gerät bleibt Platz für die Zimmerantenne, unter ihm Platz für das Lowboard */
+    --lfx-live-tv-w: min(calc(100vw - 330px), 103vh, 1400px);
+    /* Wand: Kreis-Tapete in Braun/Orange/Senf; Boden: Dielen bis 14 vh über dem unteren Rand, davor die Fußleiste */
     background:
-      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 2px, transparent 2px 30px),
-      linear-gradient(180deg, #4a3652 0%, #3a2840 62%, #2b1d30 100%);
+      /* Boden */
+      linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 4vh) left bottom / 100% 14vh no-repeat,
+      repeating-linear-gradient(90deg, transparent 0 17vh, rgba(0, 0, 0, 0.25) 17vh calc(17vh + 1px)) left bottom / 100% 14vh no-repeat,
+      repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 2.6vh) left bottom / 100% 14vh no-repeat,
+      linear-gradient(180deg, #7a4e2c, #8d5c35 55%, #a06c40) left bottom / 100% 14vh no-repeat,
+      /* Fußleiste */
+      linear-gradient(180deg, #e8d9bd 0, #cdb890 70%, #8f7a55 100%) left bottom 14vh / 100% 1.6vh no-repeat,
+      /* Tapete: verschlungene Ringe und Ovale in gedämpftem Braun/Senf, dazu Papierstruktur */
+      repeating-linear-gradient(45deg, rgba(255, 235, 200, 0.018) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.03) 0 1px, transparent 1px 4px),
+      radial-gradient(ellipse 34% 24% at 50% 50%, transparent 0 72%, rgba(196, 144, 62, 0.2) 73% 80%, transparent 81%) 0 0 / 15vh 15vh,
+      radial-gradient(circle at 50% 50%, transparent 0 40%, rgba(150, 92, 40, 0.28) 41% 47%, transparent 48% 60%, rgba(196, 144, 62, 0.16) 61% 64%, transparent 65%) 7.5vh 7.5vh / 15vh 15vh,
+      radial-gradient(circle at 50% 50%, rgba(120, 70, 34, 0.35) 0 9%, transparent 10%) 0 0 / 15vh 15vh,
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0 2px, transparent 2px 15vh),
+      linear-gradient(180deg, #5f3d26, #4e3220);
   }
+  .lfx-live--style-crt80 .lfx-live-room { padding-bottom: 17vh; }
+  /* Alt-Elemente des Basisaufbaus: Lampe und Lowboard zeichnet jetzt das Dekor */
+  .lfx-live--style-crt80 .lfx-live-room::before,
+  .lfx-live--style-crt80 .lfx-live-room__lamp,
+  .lfx-live--style-crt80 .lfx-live-room__shelf { display: none; }
 
-  /* Wandlampe: warmer Lichtkegel + Schirm */
-  .lfx-live--style-crt80 .lfx-live-room::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(38% 46% at 10% 14%, rgba(255, 196, 110, 0.32), transparent 70%);
-    pointer-events: none;
-  }
-  .lfx-live--style-crt80 .lfx-live-room__lamp {
-    left: 5%;
-    top: 5%;
-    width: 4.2vw;
-    min-width: 36px;
-    max-width: 64px;
-    aspect-ratio: 1 / 0.8;
-    background: linear-gradient(180deg, #ffd98e, #e29a3b);
-    clip-path: polygon(18% 0, 82% 0, 100% 100%, 0 100%);
-    filter: drop-shadow(0 0 18px rgba(255, 190, 100, 0.8));
-  }
-
-  /* Lowboard aus Holz */
-  .lfx-live--style-crt80 .lfx-live-room__shelf {
-    left: 3%;
-    right: 3%;
-    bottom: 0;
-    height: 12vh;
-    border-radius: 10px 10px 0 0;
-    background:
-      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 2px, transparent 2px 9px),
-      linear-gradient(180deg, #a06a3f 0, #8a5a34 14px, #5b351c 15px, #4a2b17 100%);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18), 0 -10px 30px rgba(0, 0, 0, 0.35);
-  }
-
+  /* ---------- Holz-Truhe ---------- */
   .lfx-live--style-crt80 .lfx-live-tv {
+    container-type: inline-size;
     border-radius: 3% / 4.5%;
     background:
-      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.09) 0 2px, transparent 2px 7px),
-      linear-gradient(145deg, #94613a 0%, #6b4226 45%, #3f2314 100%);
+      /* Maserung: feine Fasern, breitere Bänder, dunkle Adern */
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(90deg, rgba(255, 220, 170, 0.07) 0 2px, transparent 2px 13px),
+      repeating-linear-gradient(90deg, transparent 0 41px, rgba(0, 0, 0, 0.16) 41px 43px, transparent 43px 97px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.18), transparent 8%, transparent 92%, rgba(0, 0, 0, 0.22)),
+      radial-gradient(60% 9% at 30% 22%, rgba(255, 205, 150, 0.16), transparent),
+      radial-gradient(50% 7% at 70% 78%, rgba(0, 0, 0, 0.18), transparent),
+      linear-gradient(160deg, #8f5d37 0%, #6b4226 48%, #4a2a17 100%);
     box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -8px 18px rgba(0, 0, 0, 0.5),
-      0 26px 38px rgba(0, 0, 0, 0.55);
+      0 2.2vh 3.4vh rgba(0, 0, 0, 0.5),
+      0 0.4vh 0.8vh rgba(0, 0, 0, 0.55);
   }
 
   .lfx-live--style-crt80 .lfx-live-screen {
@@ -58,61 +54,79 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     right: 25%;
     top: 10%;
     bottom: 12%;
-    border-radius: 7% / 9%;
-    box-shadow: 0 0 0 0.7cqw #151515, 0 0 0 1.1cqw #2b2b2b, inset 0 0 60px 14px rgba(0, 0, 0, 0.85);
+    border-radius: 6.5% / 8.5%;
+    /* Wölbung: Innenschatten; Rahmen/Chrom zeichnet .lfx-live-d-bezel hinter dem Bild */
+    box-shadow: 0 0 0 2px #0a0a0a;
   }
-  /* Scanlines + Vignette über dem Bild */
-  .lfx-live--style-crt80 .lfx-live-screen::before {
+  /* Basis-Scanlines: nur dort, wo die Glas-Ebene fehlt (Vollbild, Handy quer); sonst übernimmt .lfx-live-screen__glass */
+  .lfx-live--style-crt80 .lfx-live-screen::before { content: none; }
+  .lfx-live--style-crt80.is-fullscreen .lfx-live-screen::before,
+  .lfx-live--style-crt80.is-phone.is-landscape .lfx-live-screen::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 8;
     pointer-events: none;
     background:
-      repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px),
-      radial-gradient(120% 100% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.5) 100%),
-      linear-gradient(125deg, rgba(255, 255, 255, 0.07), transparent 32%);
+      repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 100% at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
   }
+  .lfx-live--style-crt80.is-fullscreen.has-epg .lfx-live-screen::before,
+  .lfx-live--style-crt80.is-fullscreen.has-ttx .lfx-live-screen::before,
+  .lfx-live--style-crt80.is-fullscreen.has-menu .lfx-live-screen::before,
+  .lfx-live--style-crt80.is-fullscreen.has-guide .lfx-live-screen::before { opacity: 0.35; }
+  .lfx-live--style-crt80.no-tubefx .lfx-live-screen::before { opacity: 0.5; }
 
+  /* ---------- Bedienfeld: gebürstete Alu-Blende ---------- */
   .lfx-live--style-crt80 .lfx-live-tv__panel {
     position: absolute;
     right: 3.2%;
     top: 11%;
     bottom: 13%;
     width: 15.5%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6%;
-    padding: 6% 0;
-    border-radius: 8px;
-    background: linear-gradient(180deg, #2a1a10, #1c110a);
-    box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.8);
+    display: block;
+    border-radius: 4% / 1.6%;
+    background:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.16) 0 1px, rgba(0, 0, 0, 0.06) 1px 2px),
+      linear-gradient(100deg, #b9bcc0 0%, #e4e6e8 30%, #aeb1b6 58%, #d8dadd 82%, #9fa3a8 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.4), 0 0 0 2px #2a170c, 0 3px 6px rgba(0, 0, 0, 0.6);
   }
   .lfx-live--style-crt80 .lfx-live-tv__knob {
-    width: 56%;
+    position: absolute;
+    left: 23%;
+    width: 54%;
     aspect-ratio: 1;
     border-radius: 50%;
-    background: conic-gradient(from 20deg, #cfcfcf, #7a7a7a, #e8e8e8, #6f6f6f, #cfcfcf);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.7), inset 0 0 0 3px #2d2d2d;
-    position: relative;
+    background:
+      repeating-conic-gradient(from 0deg, rgba(0, 0, 0, 0.35) 0 2deg, rgba(255, 255, 255, 0.12) 2deg 5deg) ,
+      conic-gradient(from 20deg, #d8d8d8, #7a7a7a, #f0f0f0, #6f6f6f, #d8d8d8);
+    box-shadow: 0 4px 7px rgba(0, 0, 0, 0.65), inset 0 0 0 3px #2a2a2a, inset 0 0 0 5px rgba(255, 255, 255, 0.25);
   }
+  .lfx-live--style-crt80 .lfx-live-tv__knob--a { top: 5.9%; }
+  .lfx-live--style-crt80 .lfx-live-tv__knob--b { top: 28.5%; transform: rotate(52deg); }
   .lfx-live--style-crt80 .lfx-live-tv__knob::after {
     content: "";
     position: absolute;
     left: 47%;
-    top: 8%;
+    top: 9%;
     width: 6%;
-    height: 32%;
+    height: 30%;
     border-radius: 2px;
-    background: #222;
+    background: #1c1c1c;
   }
-  .lfx-live--style-crt80 .lfx-live-tv__knob--b { transform: rotate(52deg); }
+  /* Lautsprecherstoff mit Webstruktur */
   .lfx-live--style-crt80 .lfx-live-tv__grille {
-    flex: 1;
-    width: 78%;
-    border-radius: 4px;
-    background: repeating-linear-gradient(0deg, #0a0605 0 3px, #3b2618 3px 6px);
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    top: 72%;
+    bottom: 4%;
+    border-radius: 3px;
+    background:
+      repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0 1px, transparent 1px 3px),
+      linear-gradient(135deg, #6e5233, #4b3520);
+    box-shadow: inset 0 0 0 2px #2a170c, inset 0 2px 6px rgba(0, 0, 0, 0.7);
   }
 
   .lfx-live--style-crt80 .lfx-live-tv__brand {
@@ -121,17 +135,75 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     bottom: 3.6%;
     font: 700 clamp(8px, 0.9vw, 13px) / 1 var(--lfx-font);
     letter-spacing: 0.3em;
-    color: #d9b56a;
+    color: #e2c27a;
     text-shadow: 0 1px 0 #000, 0 -1px 0 rgba(255, 255, 255, 0.25);
   }
-  .lfx-live--style-crt80 .lfx-live-tv__led { right: 21%; bottom: 4%; }
+  .lfx-live--style-crt80 .lfx-live-tv__led { left: 92.5%; top: 58.8%; right: auto; bottom: auto; }
 
-  .lfx-live--style-crt80 .lfx-live-tv__stand {
+  /* Fuß: kleine Gummifüße statt Standleiste (zeichnet das Dekor) */
+  .lfx-live--style-crt80 .lfx-live-tv__stand { display: none; }
+  /* Heft-Objekt auf dem Lowboard: Oberkante liegt bei 17 vh */
+  .lfx-live-app[data-prop="lowboard"].lfx-live--style-crt80 .lfx-live-room .lfx-live-room__prop { bottom: calc(17vh - 3px); }
+
+  /* ---------- Fernbedienung: dunkelbrauner Kunststoffkasten mit Alu-Blende oben, eckige Tasten, Glanz ---------- */
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote {
+    transform: rotate(-2.5deg);
+    border-radius: calc(10 * var(--lfx-live-u)) calc(10 * var(--lfx-live-u)) calc(26 * var(--lfx-live-u)) calc(26 * var(--lfx-live-u));
+    background:
+      linear-gradient(100deg, rgba(255, 255, 255, 0.1) 0, transparent 16%, transparent 80%, rgba(255, 255, 255, 0.05) 100%),
+      linear-gradient(170deg, #3a2c24, #1b1410 55%, #0d0a08);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 220, 180, 0.1),
+      inset 0 calc(2 * var(--lfx-live-u)) 0 rgba(255, 235, 210, 0.16),
+      inset 0 calc(-3 * var(--lfx-live-u)) calc(6 * var(--lfx-live-u)) rgba(0, 0, 0, 0.5),
+      0 18px 30px rgba(0, 0, 0, 0.55);
+  }
+  /* Alu-Blende nur an der freistehenden Fernbedienung, nicht an der Leiste im Vollbild / Handy quer */
+  .lfx-live-app.lfx-live--style-crt80:not(.is-fullscreen):not(.is-landscape) .lfx-live-remote { padding-top: calc(28 * var(--lfx-live-u)); }
+  .lfx-live--style-crt80:not(.is-fullscreen):not(.is-landscape) .lfx-live-remote::before {
+    content: "";
     position: absolute;
-    left: 10%;
-    right: 10%;
-    top: 100%;
-    height: 5px;
-    background: linear-gradient(90deg, #000 0 14%, transparent 14% 86%, #000 86%);
+    left: 0;
+    right: 0;
+    top: 0;
+    height: calc(20 * var(--lfx-live-u));
+    background:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.2) 0 1px, rgba(0, 0, 0, 0.05) 1px 2px),
+      linear-gradient(100deg, #aaadb2, #e6e8ea 35%, #a3a6ab 65%, #d4d6d9);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.6), 0 2px 3px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
+  .lfx-live--style-crt80 .lfx-live-remote__led { top: calc(8 * var(--lfx-live-u)); background: #5a1a14; box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.7); }
+  .lfx-live--style-crt80 .lfx-live-remote.is-on .lfx-live-remote__led { background: #e0362b; box-shadow: 0 0 6px rgba(255, 60, 40, 0.8); }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn:not(.is-power):not(.is-color) {
+    border-radius: calc(4 * var(--lfx-live-u));
+    background: linear-gradient(180deg, #5a544d 0, #3b3732 48%, #2a2723 52%, #34302c 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.5), 0 2px 3px rgba(0, 0, 0, 0.7);
+    color: #ece6da;
+  }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn.is-small:not(.is-power):not(.is-color) {
+    background: linear-gradient(180deg, #8a8478 0, #6e695f 48%, #5d5950 52%, #67625a 100%);
+    color: #1c1814;
+  }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn.is-rock:not(.is-power):not(.is-color) {
+    background: linear-gradient(180deg, #d6cdb8 0, #b9af97 48%, #a69c85 52%, #b0a68f 100%);
+    color: #26201a;
+    border-radius: calc(5 * var(--lfx-live-u));
+  }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn.is-arrow:not(.is-power):not(.is-color) {
+    background: linear-gradient(180deg, #4c4640 0, #342f2b 100%);
+  }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn.is-ok:not(.is-power):not(.is-color) {
+    background: linear-gradient(180deg, #bdb39c 0, #8f8672 100%);
+    color: #1c1814;
+  }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn.is-power {
+    border-radius: calc(4 * var(--lfx-live-u));
+    background: linear-gradient(180deg, #e0463a, #a5231a);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 3px rgba(0, 0, 0, 0.7);
+  }
+  .lfx-live-app.lfx-live--style-crt80 .lfx-live-remote__btn.is-color {
+    border-radius: calc(3 * var(--lfx-live-u));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 3px rgba(0, 0, 0, 0.3), 0 2px 3px rgba(0, 0, 0, 0.7);
   }
 }
