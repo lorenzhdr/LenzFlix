@@ -259,7 +259,7 @@ WebXR (`immersive-vr`) für die Videothek samt VR-Kino, ab v1.8.0. Code: `src/js
 
 ### Einstieg
 - `probeXr()` (`xr/session.js`) fragt `navigator.xr.isSessionSupported('immersive-vr')` einmal ab und cached das Ergebnis; Fehler zählen als „nein“. `app.xr.supported` steuert die Knöpfe.
-- Einstiege (nur wenn `supported && !presenting`): HUD-Knopf „In VR betreten“ (`.lfx-store-vrbtn`, nur im Laufmodus) und Pause-Eintrag „VR-Modus“.
+- Einstiege (nur wenn `supported && !presenting`): HUD-Knopf „In VR betreten“ (`.lfx-store-vrbtn`, im Lauf- und Haltemodus; eine gehaltene Hülle wandert beim Betreten in die Hand) und Pause-Eintrag „VR-Modus“.
 - `XrMode.enter()` ruft `navigator.xr.requestSession` **synchron im Klick** auf (Nutzeraktivierung), `optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']`; fehlt `local-floor`, fällt die Sitzung auf `local` zurück (Rig rechnet dann mit der Standard-Augenhöhe). Davor werden die Controller-Objekte angelegt (`prepareSources`, sonst ignoriert three neue Eingabequellen) und Ton/Stimme per Geste freigeschaltet (`sound.unlock`, `cashier.unlockVoice`).
 - `renderer.xr.enabled` ist **nur während der Sitzung** an. Sitzungsende räumt alles ab (Rig = Identität, Budget/Qualität zurück, Desktop-/Touch-Eingabe wieder an).
 - Beim Start: Overlay/Pause/Intro zu, Zoom 1, gehaltene Hülle an die Hand, `deps.onXr({ presenting: true, cinema: false })`, `ctx.on('xr', true)`.
@@ -297,7 +297,7 @@ spec = {
 }
 handle = { update(spec), close(), get open }
 ```
-- Anker: `'front'` (Standard, auch `'hand'`/`'seat'`) weltfest vor dem Kopf, nur Yaw zum Kopf; `'low'` näher und tiefer, zum Kopf geneigt (Couch/Kino-Bedienung); `Object3D` als Kind dieses Objekts; `{ object, offset, follow: true }` weltfest, folgt dem Objekt träge (HoldView).
+- Anker: `'front'` (Standard, auch `'hand'`/`'seat'`) weltfest vor dem Kopf, nur Yaw zum Kopf; `'low'` näher und tiefer, zum Kopf geneigt (Couch/Kino-Bedienung); `Object3D` als Kind dieses Objekts; `{ object, offset, follow: true }` weltfest, folgt dem Objekt träge; `{ head: true, offset, follow: true }` weltfest neben dem Kopf, folgt erst bei > 35° Drehung oder > 0,6 m Weg (HoldView). `'front'` rückt vor Regalen heran (`clearance` gegen die Kollider, min. 0,5 m, Winkelgröße bleibt), Panels sind höchstens ~55° breit. Panels zeichnen immer oben (`depthTest: false`, `renderOrder` 900), Laser und Endpunkt danach (950/951).
 - Tastatur: QWERTZ mit Umlauten, Shift, Löschen, Leertaste und „Suchen“; die Tasten sind Treffer `kind: 'key'` (`xr/keyboard.js`, rein).
 - Ein Panel zählt als Overlay (`overlay.isOpen()` true, Modus `overlay`); B/Y oder `handle.close()` schließt. `mode.closePanels()` räumt alle (auch beim Sitzungsende).
 - Sprechblasen (`xr/bubble3d.js`): Billboard mit Canvas-Textur, Spitze auf der Position, höchstens 3 Zeilen, wächst mit der Entfernung.
@@ -326,7 +326,7 @@ Event `ctx.on('xr', (on) => …)` bei Sitzungsbeginn/-ende (das Intro endet sofo
 - **Couch (`tv.js`):** Hinsetzen per Sprung auf den Platz (Sofa-Kollider für die Dauer entfernt), keine Kamerafahrt; Knopfleiste als Panel (Anker `'low'`, `couchSpec`), B/Y = Aufstehen.
 - **Rückgabe-Wagen (`returns.js`) und Reservierung (`reserve.js`):** Panel mit Liste statt Karte/Hülle; leer → Hinweis. Abspielen läuft über `deps.play` (also ins Kino).
 - **Personalraum (`staff.js`):** Einstellungen, Design und Abmelden gehen nur außerhalb von VR → `exitThen` mit Hinweis.
-- **HoldView (`ui/holdview.js`):** Die Hülle fliegt in die Hand (Anker = Grip-Raum der Hand, `app.xr.holdAnchor(hand)`, mit Tiefentest), das Panel (`buildVrSpec`: Beschreibung, Staffeln/Folgen, Abspielen) schwebt weltfest daneben (`follow`). Beim Betreten/Verlassen von VR wird die Hülle umgehängt (`reanchor`); das Kino schließt sie beim Betreten.
+- **HoldView (`ui/holdview.js`):** Die Hülle fliegt in die Hand (Anker = Grip-Raum der Hand, `app.xr.holdAnchor(hand)`, mit Tiefentest), das Panel (`buildVrSpec`: Beschreibung, Staffeln/Folgen, Abspielen) schwebt weltfest neben dem Kopf zur freien Hand hin (Anker `head`). Beim Betreten/Verlassen von VR wird die Hülle umgehängt (`reanchor`); das Kino schließt sie beim Betreten.
 
 ### Kino (`cinema/*`)
 `Cinema` (`cinema.js`) hängt an `app.xr.cinema`: `enter(item)`, `leave(reason)`, `tick`, `onSelectEmpty`, `menuItems`, `onVisibility`, `dispose`. Eigene Szene (`hall.js`: prozeduraler Saal, Vorhang, Saallicht, drei Plätze); das Rig wechselt in die Kinoszene, `mode.beforeTick` macht dann nur noch Blende, Laser und Menü (kein Kopf→Spieler-Mapping, keine Fortbewegung). Beim Betreten `holdview.close(false)`, Module bekommen `onSuspend` (beim Verlassen `onResume`), `sound.duck('cinema', …)`.
@@ -337,7 +337,7 @@ Event `ctx.on('xr', (on) => …)` bei Sitzungsbeginn/-ende (das Intro endet sofo
 - **Leinwand (`screen.js`):** gewölbte Fläche, Seitenverhältnis wird eingepasst; Video als `VideoTexture`-Ableger mit Polling und Frame-Zähler (`videoFrames`). Das `<video>` bleibt bei Spur-/Folgenwechsel dasselbe Element, `deps.cinema.onVideo` meldet trotzdem jeden Wechsel.
 - **Platzwahl:** `vrSeat` `front`/`mid`/`back` (Standard `mid`), Wechsel per Panelknopf oder VR-Menü mit kurzer Blende; wird als Pref gesichert.
 - **Untertitel (`subtitles.js`):** Quelle `deps.cinema.subtitles()`. `{ kind: 'text' }` wird in eine eigene Canvas gezeichnet (höchstens 3 Zeilen, Umriss), `{ kind: 'canvas' }` (libass) wird mit höchstens ~30 Hz in eine eigene Kopie-Canvas übertragen. Beides als transparente Fläche über der Leinwand.
-- **Bedienpanel (`controls.js`, Anker `'low'`):** Fortschritt mit Seek, Pause/Weiter, −10 s/+30 s, Folge zurück/vor (nur wenn der Player sie anbietet), Tonspur, Untertitel, Leiser/Lauter, Platz, „Zur Videothek“. Erscheint beim Start, nach Pause und per Trigger ins Leere; blendet sich beim Spielen nach 6 s ohne Bedienung aus. Solange die Sitzung nicht `visible` ist (Brille abgenommen, Systemmenü), ist das Panel zu und kommt danach zurück.
+- **Bedienpanel (`controls.js`, Anker `'low'`):** Fortschritt mit Seek, Pause/Weiter, −10 s/+30 s, Folge zurück/vor (nur wenn der Player sie anbietet), Tonspur, Untertitel, Leiser/Lauter, Platz, „Zurück in die Videothek“. Erscheint beim Start, nach Pause und per Trigger ins Leere; blendet sich beim Spielen nach 6 s ohne Bedienung aus. Solange die Sitzung nicht `visible` ist (Brille abgenommen, Systemmenü), ist das Panel zu und kommt danach zurück.
 - **Up-Next:** Erscheint `state().upNext`, zeigt das Panel „Nächste Folge in N s“ mit „Jetzt starten“/„Verbergen“ (`deps.cinema.upNext(...)`) und blendet sich nicht aus.
 - **Spurwahl:** Panel „Tonspur“/„Untertitel“ mit Liste (`tracks(kind)` → `selectTrack(kind, id)`). Ein Tonspurwechsel dauert im Player einige Sekunden (`reloading`: `readyState 0` nach vorherigem Bild, kein Fehler, kein Watchdog) und setzt die Untertitel zurück; die Bridge setzt die vorher gewählte Untertitelspur danach erneut. Das Panel zeigt währenddessen „Wechsel läuft …“.
 
@@ -356,7 +356,7 @@ cinema = {
   tracks('audio' | 'subtitle') → Promise<[{ id, label, selected }]>,
   selectTrack(kind, id) → Promise<bool>,      // Aufrufe laufen nacheinander (Warteschlange)
   upNext('start' | 'hide'),
-  stop() → Promise<bool>,             // true, sobald #/video verlassen ist; sorgt für #/home
+  stop() → Promise<bool>,             // true, sobald #/video verlassen ist; sorgt für #/home (ohne offenen Player: kein Klick, sofort true)
 }
 ```
 Alles läuft über die (ausgeblendeten) OSD-Knöpfe; Selektoren und Fallstricke: `docs/dom-map.md` („Player für das VR-Kino“). Verlässt der Player `#/video` Richtung anderswo als `#/home`, setzt die Bridge `#/home`. Die Bridge loggt weder URLs noch Titel. Im Harness gibt es dieselbe API gegen ein Fake-OSD mit identischem DOM.
