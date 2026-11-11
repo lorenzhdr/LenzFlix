@@ -1,0 +1,161 @@
+/* VIDEOTHEK LENZ · Touch-Steuerung „Joystick“ (store3d/ui/joypad.js) und Hochformat-Hinweis (store3d/ui/rotate.js).
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv). Kein backdrop-filter. Ebene 3: über der HUD (2), unter Hülle/Pause. */
+
+/* ---------- Pad: Gehen-Knopf unten links, Joystick unten rechts ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad {
+  --lfx-store-pad-bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+  --lfx-store-pad-left: max(22px, calc(env(safe-area-inset-left, 0px) + 10px));
+  --lfx-store-pad-right: max(22px, calc(env(safe-area-inset-right, 0px) + 10px));
+  --lfx-store-pad-walk: 84px;
+  --lfx-store-pad-stick: 124px;
+  --lfx-store-pad-knob: 52px;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-pad {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-walk,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-stick {
+  position: absolute;
+  bottom: var(--lfx-store-pad-bottom);
+  border-radius: 50%;
+  pointer-events: auto;
+  touch-action: none;
+  box-sizing: border-box;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-walk {
+  left: var(--lfx-store-pad-left);
+  width: var(--lfx-store-pad-walk);
+  height: var(--lfx-store-pad-walk);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 210, 63, 0.75);
+  background: rgba(13, 19, 48, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 210, 63, 0.25);
+  color: var(--lfx-store-yellow, #ffd23f);
+  font-family: var(--lfx-store-neon-font, "Arial Black", Impact, sans-serif);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(255, 210, 63, 0.55);
+  transition: transform 0.08s ease, background 0.08s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-walk.is-on {
+  transform: scale(0.94);
+  background: rgba(255, 210, 63, 0.3);
+  color: #fff;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-stick {
+  right: var(--lfx-store-pad-right);
+  width: var(--lfx-store-pad-stick);
+  height: var(--lfx-store-pad-stick);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(53, 230, 255, 0.55);
+  background: rgba(13, 19, 48, 0.42);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 18px rgba(53, 230, 255, 0.12);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-stick.is-on {
+  border-color: rgba(53, 230, 255, 0.85);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad-knob {
+  width: var(--lfx-store-pad-knob);
+  height: var(--lfx-store-pad-knob);
+  border-radius: 50%;
+  background: rgba(53, 230, 255, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  will-change: transform;
+}
+@media (orientation: portrait) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pad {
+    --lfx-store-pad-walk: 74px;
+    --lfx-store-pad-stick: 112px;
+    --lfx-store-pad-knob: 46px;
+    --lfx-store-pad-bottom: max(26px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+  }
+}
+
+/* ---------- Hochformat-Hinweis „quer drehen“ (Banner oben, unter dem Menüknopf-Band) ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 64px);
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 8px 6px 8px 14px;
+  border-radius: 14px;
+  background: rgba(13, 19, 48, 0.9);
+  border: 1px solid rgba(255, 210, 63, 0.55);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  color: var(--lfx-store-text, #f4f6ff);
+  font-family: var(--lfx-font, system-ui, sans-serif);
+  font-size: 0.88rem;
+  line-height: 1.3;
+  pointer-events: auto;
+  animation: lfx-store-rotate-in 0.25s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-rotate {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate-icon {
+  flex: none;
+  display: flex;
+  color: var(--lfx-store-yellow, #ffd23f);
+  animation: lfx-store-rotate-tilt 2.4s ease-in-out infinite;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate-text {
+  flex: 1 1 auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate-close {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--lfx-store-muted, #aab4e8);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate-close:focus-visible {
+  outline: 2px solid var(--lfx-store-yellow, #ffd23f);
+  outline-offset: 1px;
+}
+@keyframes lfx-store-rotate-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes lfx-store-rotate-tilt {
+  0%, 30% { transform: rotate(0deg); }
+  55%, 80% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate-icon {
+    animation: none;
+  }
+}

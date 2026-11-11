@@ -1,5 +1,8 @@
-// VIDEOTHEK LENZ · Touch-Steuerung: Gedrückt halten = vorwärts laufen (Ziehen lenkt), kurzes Wischen = Umsehen,
-// kurzes Tippen = Hülle nehmen/benutzen (Logik in store.js), Pinch = Zoom.
+// VIDEOTHEK LENZ · Touch-Steuerung. Zwei Schemata:
+//  'touch':    Gedrückt halten = vorwärts laufen (Ziehen lenkt), kurzes Wischen = Umsehen.
+//  'joystick': Gehen-Knopf unten links = vorwärts, Joystick unten rechts = Blick drehen (ui/joypad.js); Wischen sieht zusätzlich um.
+// Beide: kurzes Tippen = Hülle nehmen/benutzen (Logik in store.js), Pinch = Zoom.
+import { createJoypad } from '../ui/joypad.js';
 
 /** Bogenmaß pro Pixel beim Wischen/Lenken. */
 export const TOUCH_LOOK = 0.0045;
@@ -7,13 +10,22 @@ export const TOUCH_LOOK = 0.0045;
 export const TOUCH_HOLD_MS = 220;
 /** Bewegungsschwelle (px) für „Finger ruht“. */
 export const TOUCH_SLOP = 9;
+/** Joystick: Drehrate (rad/s) bei voller Auslenkung. */
+export const STICK_YAW_RATE = 2.4;
+export const STICK_PITCH_RATE = 1.5;
+export const SCHEMES = ['joystick', 'touch'];
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?() } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), scheme?: 'touch' | 'joystick', padHost? } */
   constructor(ctx) {
     this.ctx = ctx;
+    this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : 'touch';
+    this.pad = null;
+    this.padWalk = false;
+    this.stick = { x: 0, y: 0 };
+    this.padShown = true;
     this.pointers = new Map();
     this.attached = false;
     this.walkId = null; // pointerId des Fingers, der gerade läuft
@@ -32,8 +44,52 @@ export class TouchControls {
 
   /** Eingabe für Player.update(): läuft nur im Laufmodus. */
   get input() {
-    if (this.walkId !== null && this.ctx.getMode() !== 'play') this.stopWalk();
-    return { fwd: this.walkId !== null ? 1 : 0, strafe: 0, run: false };
+    if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== 'play') { this.stopWalk(); if (this.pad) this.pad.reset(); }
+    return { fwd: this.walkId !== null || this.padWalk ? 1 : 0, strafe: 0, run: false };
+  }
+
+  /** Pro Frame (nur im Laufmodus aufrufen): Joystick-Auslenkung → Blickdrehung. Rechts = Blick rechts, oben = Blick oben. */
+  tick(dt) {
+    const { x, y } = this.stick;
+    if ((!x && !y) || !(dt > 0)) return;
+    if (this.ctx.getMode() !== 'play') return;
+    const t = Math.min(dt, 0.1);
+    this.ctx.player.look(-x * STICK_YAW_RATE * t, -y * STICK_PITCH_RATE * t);
+  }
+
+  /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
+  setScheme(s) {
+    if (!SCHEMES.includes(s) || s === this.scheme) return;
+    this.scheme = s;
+    this.reset();
+    if (this.attached) this.syncPad();
+  }
+
+  /** Pad ein-/ausblenden (z. B. nur im Laufmodus). */
+  showPad(on) {
+    this.padShown = !!on;
+    if (this.pad) this.pad.show(this.padShown);
+  }
+
+  syncPad() {
+    if (this.scheme === 'joystick' && this.attached) {
+      if (!this.pad) {
+        const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
+        this.pad = createJoypad(host, {
+          onWalk: (on) => {
+            this.padWalk = !!on && this.ctx.getMode() === 'play';
+            if (this.padWalk && this.currentZoom() !== 1) this.setZoom(1);
+          },
+          onLook: (x, y) => { this.stick = { x, y }; },
+        });
+      }
+      this.pad.show(this.padShown);
+    } else if (this.pad) {
+      this.pad.destroy();
+      this.pad = null;
+      this.padWalk = false;
+      this.stick = { x: 0, y: 0 };
+    }
   }
 
   attach() {
@@ -47,6 +103,7 @@ export class TouchControls {
     c.addEventListener('pointerup', this.h.up);
     c.addEventListener('pointercancel', this.h.cancel);
     c.addEventListener('contextmenu', this.h.noCtx);
+    this.syncPad();
   }
 
   detach() {
@@ -59,6 +116,7 @@ export class TouchControls {
     c.removeEventListener('pointercancel', this.h.cancel);
     c.removeEventListener('contextmenu', this.h.noCtx);
     this.reset();
+    this.syncPad();
     if (this.ring) { this.ring.remove(); this.ring = null; }
   }
 
@@ -68,6 +126,9 @@ export class TouchControls {
     this.pinch = null;
     this.pointers.clear();
     this.hideRing();
+    if (this.pad) this.pad.reset();
+    this.padWalk = false;
+    this.stick = { x: 0, y: 0 };
   }
 
   clearTimer() {
@@ -86,7 +147,7 @@ export class TouchControls {
     this.clearTimer();
     if (this.pointers.size === 1) {
       const id = e.pointerId;
-      this.timer = setTimeout(() => { this.timer = 0; this.startWalk(id); }, TOUCH_HOLD_MS);
+      if (this.scheme === 'touch') this.timer = setTimeout(() => { this.timer = 0; this.startWalk(id); }, TOUCH_HOLD_MS);
     } else if (this.pointers.size === 2) {
       // Pinch: kein Laufen, kein Umsehen, kein Tippen
       this.stopWalk();

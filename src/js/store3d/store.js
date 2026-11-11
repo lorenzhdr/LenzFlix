@@ -13,7 +13,8 @@ import { buildProps } from './world/build-props.js';
 import { CoverManager } from './covers/manager.js';
 import { Player, EYE } from './controls/player.js';
 import { DesktopControls } from './controls/desktop.js';
-import { TouchControls } from './controls/touch.js';
+import { TouchControls, SCHEMES } from './controls/touch.js';
+import { createRotateHint } from './ui/rotate.js';
 import { pickCover, pickBoxes } from './controls/pick.js';
 import { ModuleHost } from './modules/runtime.js';
 import { createHud } from './ui/hud.js';
@@ -42,6 +43,7 @@ class StoreApp {
     this.voiceName = typeof this.opts.voiceName === 'string' ? this.opts.voiceName : '';
     this.voicePitch = ['normal', 'tief', 'sehrtief'].includes(this.opts.voicePitch) ? this.opts.voicePitch : 'tief';
     this.bigCovers = this.opts.bigCovers !== false;
+    this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : 'joystick';
     this.zoomTarget = 1;
     this.zoom = 1;
     this.lastFps = 0;
@@ -86,6 +88,7 @@ class StoreApp {
       host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
       onChange: () => { if (this.pause) this.pause.refresh(); },
     });
+    this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
     this.pause = createPause(host, {
       onResume: () => this.resumeFromPause(),
       onSearch: () => { this.resumeFromPause(); this.openTerminal(''); },
@@ -97,6 +100,8 @@ class StoreApp {
       getVoicePrefs: () => ({ name: this.voiceName, online: this.voiceOnline, pitch: this.voicePitch }),
       getVoiceList: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voices ? c.voices() : []; },
       onBigCovers: (on) => this.setBigCovers(on),
+      onTouchControl: this.touch ? (s) => { this.setTouchControl(s); this.savePrefs(); } : null,
+      getTouchControl: () => this.touchScheme,
       onTheme: () => this.deps.openThemePicker(),
       onMenu: (anchor) => this.deps.openMenu(anchor),
       getQuality: () => this.qualitySetting,
@@ -191,7 +196,7 @@ class StoreApp {
         else this.resumeFromPause();
       },
     });
-    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget }) : null;
+    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme }) : null;
 
     this.progress(0.86, 'Module werden geladen');
     await this.mods.init((f) => this.progress(0.86 + f * 0.05, 'Module werden geladen'));
@@ -271,6 +276,8 @@ class StoreApp {
     this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
     this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
     this.hud.showMenuBtn(play);
+    if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
+    if (this.rotate) this.rotate.update();
     if (!play || !this.aim) this.hud.setHint(null);
     if (this.pause && this.mode !== 'paused' && this.pause.visible) this.pause.hide();
   }
@@ -383,7 +390,7 @@ class StoreApp {
     this.pendingTake = null;
     const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
     const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
-    const far = 'Halte gedrückt, um hinzulaufen';
+    const far = this.touchScheme === 'joystick' ? 'Halte GEHEN, um hinzulaufen' : 'Halte gedrückt, um hinzulaufen';
     const p = this.player;
     if (iaHit && (!hit || iaHit.t < hit.t)) {
       const { min, max } = iaHit.ia.box;
@@ -478,6 +485,11 @@ class StoreApp {
     this.mods.flushNav();
     this.stepZoom(dt);
     if (now - this.lastFps >= 500) { this.lastFps = now; this.updateFps(); if (this.fs) this.fs.update(); }
+    if (this.touchCtl) {
+      const padOn = this.mode === 'play' && !this.mods.locked;
+      if (padOn !== this.touchCtl.padShown) this.touchCtl.showPad(padOn);
+      if (padOn) this.touchCtl.tick(dt);
+    }
     if (this.mode === 'play' && !this.mods.locked) p.update(dt, (this.desktop || this.touchCtl) ? (this.desktop || this.touchCtl).input : null);
     else p.update(dt, null);
     this.mods.update(dt, now);
@@ -565,7 +577,7 @@ class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme }); } catch { /* egal */ }
   }
 
   /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
@@ -588,6 +600,15 @@ class StoreApp {
   previewVoice() {
     const c = this.mods && this.mods.ctx.use('cashier');
     if (c && c.preview) c.preview();
+  }
+
+  /** Touch-Steuerung: 'joystick' (Gehen-Knopf + Joystick, Standard) oder 'touch' (Halten = laufen, Wischen = umsehen). */
+  setTouchControl(s) {
+    if (!SCHEMES.includes(s)) return;
+    this.touchScheme = s;
+    if (this.touchCtl) this.touchCtl.setScheme(s);
+    if (this.pause) this.pause.refresh();
+    this.syncUi();
   }
 
   setShowFps(on) {
@@ -687,6 +708,7 @@ class StoreApp {
     this.disposed = true;
     try { if (this.desktop) this.desktop.detach(); } catch { /* egal */ }
     try { if (this.touchCtl) this.touchCtl.detach(); } catch { /* egal */ }
+    try { if (this.rotate) this.rotate.destroy(); } catch { /* egal */ }
     if (this.engine) this.engine.stop();
     if (this.mods) this.mods.dispose();
     if (this.holdview) this.holdview.dispose(true);

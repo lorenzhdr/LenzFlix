@@ -265,6 +265,7 @@ function buildOpts(r) {
     voiceName: prefs.getVoiceName(),
     voicePitch: prefs.getVoicePitch(),
     bigCovers: prefs.getBigCovers(),
+    touchControl: prefs.getTouchControl(),
     skipIntro: prefs.getIntroSeen(),
     restore: prefs.getState(),
     openItemId: r && r.kind === 'title' ? r.id : null,

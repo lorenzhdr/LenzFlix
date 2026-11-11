@@ -37,7 +37,8 @@ Die Hülle lädt es per `core/themejs.js` (`ensureThemeJs('store')`, Basis wie `
   openTerminal: false,      // Route #/home?lfx=search → direkt am Kassen-PC (opts.query = Vorbelegung)
   query: '',
   phone: false,             // innerWidth < 800 oder Touch-Gerät ohne feinen Zeiger
-  touch: false,             // (pointer:coarse) → Tippen-zum-Gehen statt Pointer-Lock
+  touch: false,             // (pointer:coarse) → Touch-Steuerung statt Pointer-Lock
+  touchControl: 'joystick', // nur Touch: 'joystick' (Gehen-Knopf + Joystick) | 'touch' (Halten = laufen); Pref lfx.store.touchControl.<uid>
   debug: false,             // window.__lfxStoreDebug === true
 }
 ```
@@ -155,7 +156,19 @@ Regeln (gemessen auf dem Entwicklungs-Server: 674 Filme, 157 Serien; Freigaben `
   Zoom: rechte Maustaste oder `Q` gehalten → `onZoom(2.6)`, loslassen → `onZoom(1)`; Maus-Empfindlichkeit wird durch den Zoom geteilt;
   Rechtsklick öffnet kein Kontextmenü. `StoreApp.setZoom(z)` (1..3) glättet (~0.12 s) und setzt `engine.setZoom` (FOV = Basis-FOV / Zoom); in Terminal/Intro/Couch/Pause wird auf 1 zurückgesetzt.
   Pointer-Lock: Chrome lehnt `requestPointerLock()` ~1 s nach Esc ab → `requestLock()` wartet bis `unlockAt + 1150 ms`, bei Fehler kurz nach Esc genau ein verzögerter Retry. Esc im offenen Pause-Menü = „Weiter“ (Entprellung 300 ms nach dem Lock-Verlust, greift auch mit Fokus auf einem Knopf). Esc ist keine Nutzeraktivierung: scheitert der Lock (Fehler oder 400 ms Stille), bleibt der Modus `play`, der HUD zeigt „Klicken zum Weiterspielen“ und `relockArmed` lockt beim nächsten Klick **oder** der nächsten Nicht-Esc-Taste synchron im Handler. `dragLook` (Zieh-Modus) nur ohne `requestPointerLock` oder wenn der allererste Klick-Versuch der Sitzung scheitert.
-- Touch (`controls/touch.js`): Finger gedrückt halten (> 220 ms, < 9 px Bewegung) → vorwärts in Blickrichtung laufen
+- Touch-Schemata (ab v1.7.8, `TouchControls({ scheme })`, `setScheme()`, Esc-Menü „Steuerung: Joystick/Touch“ nur auf Touch,
+  Standard `joystick`, `deps.onPrefs` mit `touchControl`):
+  - `joystick`: `ui/joypad.js` legt im Host `.lfx-store-pad` an (Ebene 3, eigene Pointer-Events, Multitouch):
+    Gehen-Knopf `.lfx-store-pad-walk` unten links (gedrückt = `input.fwd = 1`, Zoom fällt auf 1),
+    Joystick `.lfx-store-pad-stick` unten rechts (Totzone 0,12, quadratische Kurve, `shapeStick`). `touchCtl.tick(dt)` pro Frame
+    im Laufmodus dreht den Blick: rechts = Blick rechts, oben = Blick oben (`STICK_YAW_RATE` 2,4 / `STICK_PITCH_RATE` 1,5 rad/s).
+    Auf dem Canvas: Wischen = Umsehen, Tippen = nehmen, Pinch = Zoom; Halten startet kein Laufen. Pad nur bei `mode === 'play'`
+    und ohne `mods.locked` (`showPad`), im Intro per CSS aus.
+  - `touch`: wie unten beschrieben.
+  - Hochformat-Hinweis (`ui/rotate.js`, nur `opts.phone`): Banner `.lfx-store-rotate` „Für die beste Ansicht das Handy quer
+    drehen“ im Hochformat und Laufmodus; verschwindet im Querformat, kommt beim Zurückdrehen wieder, ✕ schließt ihn für den
+    Besuch (nichts gespeichert).
+- Touch (`controls/touch.js`, Schema `touch`): Finger gedrückt halten (> 220 ms, < 9 px Bewegung) → vorwärts in Blickrichtung laufen
   (`touchCtl.input = { fwd: 1 }`, Ring `.lfx-store-walkring` am Finger), Ziehen beim Halten lenkt. Bewegung > 9 px
   vor Ablauf → nur Umsehen („Szene greifen“). Kurzes Tippen → `onTap`: Hülle/Objekt in Reichweite (≤ 3 m) nehmen/benutzen,
   weiter weg nur Hinweis (kein Auto-Pfad mehr; `walkTo`/`approach*` bleiben für Module/Terminal). Zwei Finger = Pinch-Zoom

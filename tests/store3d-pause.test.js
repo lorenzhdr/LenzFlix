@@ -153,3 +153,25 @@ describe('Pause-Menue: Stimmenauswahl', () => {
     empty.p.destroy();
   });
 });
+
+describe('Pause-Menue: Steuerung (Touch)', () => {
+  const btn = (host) => [...host.querySelectorAll('.lfx-store-act')].find((b) => b.textContent.startsWith('Steuerung'));
+  it('ist ohne onTouchControl (Desktop) versteckt', () => {
+    const { host, p } = make({ onTouchControl: null });
+    expect(btn(host).hidden).toBe(true);
+    p.destroy();
+  });
+  it('zeigt die Wahl und schaltet Joystick ↔ Touch', () => {
+    let scheme = 'joystick';
+    const { host, p } = make({ onTouchControl: (s) => { scheme = s; }, getTouchControl: () => scheme });
+    const b = btn(host);
+    expect(b.hidden).toBe(false);
+    expect(b.textContent).toBe('Steuerung: Joystick');
+    b.click();
+    expect(scheme).toBe('touch');
+    expect(b.textContent).toBe('Steuerung: Touch');
+    b.click();
+    expect(scheme).toBe('joystick');
+    p.destroy();
+  });
+});

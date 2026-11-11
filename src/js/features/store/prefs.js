@@ -2,7 +2,8 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief' };
+const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief', touchControl: 'joystick' };
+export const TOUCH_CONTROLS = ['joystick', 'touch'];
 export const VOICE_PITCHES = ['normal', 'tief', 'sehrtief'];
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
 const SESSION_INTRO = 'lfx.store.introSeen';
@@ -49,13 +50,19 @@ export function getVoicePitch() {
   return VOICE_PITCHES.includes(v) ? v : DEFAULTS.voicePitch;
 }
 
+/** Touch-Steuerung: 'joystick' (Standard: Gehen-Knopf + Joystick) oder 'touch' (Halten = laufen, Wischen = umsehen). */
+export function getTouchControl() {
+  const v = read('localStorage', storageKey('touchControl'));
+  return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS.touchControl;
+}
+
 /** Große Hüllen (Standard an): nur ein ausdrückliches „0“ schaltet sie aus. */
 export function getBigCovers() {
   const v = read('localStorage', storageKey('bigCovers'));
   return v === null ? DEFAULTS.bigCovers : v !== '0';
 }
 
-/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch? } (unbekannte/fehlende Felder werden ignoriert). */
+/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl? } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
@@ -64,6 +71,7 @@ export function savePrefs(p) {
   if (typeof p.voiceOnline === 'boolean') write('localStorage', storageKey('voiceOnline'), p.voiceOnline ? '1' : '0');
   if (typeof p.voiceName === 'string') write('localStorage', storageKey('voiceName'), p.voiceName);
   if (VOICE_PITCHES.includes(p.voicePitch)) write('localStorage', storageKey('voicePitch'), p.voicePitch);
+  if (TOUCH_CONTROLS.includes(p.touchControl)) write('localStorage', storageKey('touchControl'), p.touchControl);
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
 }
 

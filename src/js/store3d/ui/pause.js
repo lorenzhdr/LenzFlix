@@ -48,6 +48,7 @@ export function voiceNote(info, wantOnline = false) {
  *   getVoiceInfo?() → { diag, voiceName, lang, onlineDe } | null (Diagnosezeile unter „Ton“, nur bei Ton an),
  *   onVoice?({ name?, online?, pitch? }) (Stimmwahl/Tonlage; spricht danach die Probe), getVoicePrefs?() → { name, online, pitch },
  *   getVoiceList?() → [{ name, lang, online, male }] (deutsche Stimmen),
+ *   onTouchControl?(scheme) / getTouchControl?() → 'joystick' | 'touch' (nur Touch; fehlt = Knopf ausgeblendet),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
 export function createPause(host, a) {
@@ -80,6 +81,11 @@ export function createPause(host, a) {
   panel.appendChild(note);
   const f = mk('', () => { a.onFps(!a.getFps()); refresh(); });
   const bc = mk('', () => { a.onBigCovers(!a.getBigCovers()); refresh(); });
+  const tc = mk('', () => {
+    if (!a.onTouchControl) return;
+    a.onTouchControl(a.getTouchControl && a.getTouchControl() === 'touch' ? 'joystick' : 'touch');
+    refresh();
+  });
   const fs = mk('', () => { if (a.onFullscreen) a.onFullscreen(); refresh(); }, 'lfx-store-act--fs');
   mk('Design wechseln', () => a.onTheme());
   mk('Menü', (b) => a.onMenu(b));
@@ -155,6 +161,8 @@ export function createPause(host, a) {
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
     f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;
     bc.textContent = `Hüllen: ${a.getBigCovers() ? 'Groß' : 'Normal'}`;
+    tc.hidden = !a.onTouchControl;
+    tc.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === 'touch' ? 'Touch' : 'Joystick'}`;
     const pr = prefsNow();
     const wantOnline = !!pr.online;
     vo.hidden = !a.onVoice || !a.getSound();

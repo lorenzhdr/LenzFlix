@@ -31938,16 +31938,166 @@ void main() {
     }
   };
 
+  // src/js/store3d/ui/joypad.js
+  var STICK_DEAD = 0.12;
+  function shapeStick(x, y) {
+    const m = Math.hypot(x, y);
+    if (m <= STICK_DEAD) return { x: 0, y: 0 };
+    const k = Math.min(1, (m - STICK_DEAD) / (1 - STICK_DEAD));
+    const s = k * k / m;
+    return { x: x * s, y: y * s };
+  }
+  function mk(tag, cls, text) {
+    const e = document.createElement(tag);
+    e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function createJoypad(host, { onWalk, onLook } = {}) {
+    const root = mk("div", "lfx-store-pad");
+    root.setAttribute("aria-hidden", "true");
+    const walk = mk("div", "lfx-store-pad-walk", "GEHEN");
+    const stick = mk("div", "lfx-store-pad-stick");
+    const knob = mk("div", "lfx-store-pad-knob");
+    stick.appendChild(knob);
+    root.append(walk, stick);
+    host.appendChild(root);
+    let walkId = null;
+    let stickId = null;
+    let center = null;
+    const capture = (el2, id) => {
+      try {
+        el2.setPointerCapture(id);
+      } catch {
+      }
+    };
+    const stop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    function setWalk(on) {
+      walk.classList.toggle("is-on", on);
+      if (onWalk) onWalk(on);
+    }
+    function walkDown(e) {
+      stop(e);
+      if (walkId !== null) return;
+      walkId = e.pointerId;
+      capture(walk, e.pointerId);
+      try {
+        if (navigator.vibrate) navigator.vibrate(8);
+      } catch {
+      }
+      setWalk(true);
+    }
+    function walkUp(e) {
+      if (e.pointerId !== walkId) return;
+      stop(e);
+      walkId = null;
+      setWalk(false);
+    }
+    function setKnob(dx, dy) {
+      knob.style.transform = dx || dy ? `translate(${Math.round(dx)}px, ${Math.round(dy)}px)` : "";
+    }
+    function stickMove(e) {
+      if (e.pointerId !== stickId || !center) return;
+      stop(e);
+      let dx = e.clientX - center.x;
+      let dy = e.clientY - center.y;
+      const m = Math.hypot(dx, dy);
+      if (m > center.r) {
+        dx *= center.r / m;
+        dy *= center.r / m;
+      }
+      setKnob(dx, dy);
+      const v = shapeStick(dx / center.r, dy / center.r);
+      if (onLook) onLook(v.x, v.y);
+    }
+    function stickDown(e) {
+      stop(e);
+      if (stickId !== null) return;
+      stickId = e.pointerId;
+      capture(stick, e.pointerId);
+      const r = stick.getBoundingClientRect();
+      center = { x: r.left + r.width / 2, y: r.top + r.height / 2, r: Math.max(20, r.width / 2 - 8) };
+      stick.classList.add("is-on");
+      stickMove(e);
+    }
+    function stickUp(e) {
+      if (e.pointerId !== stickId) return;
+      stop(e);
+      releaseStick();
+    }
+    function releaseStick() {
+      stickId = null;
+      center = null;
+      stick.classList.remove("is-on");
+      setKnob(0, 0);
+      if (onLook) onLook(0, 0);
+    }
+    const noCtx = (e) => e.preventDefault();
+    const L = [
+      [walk, "pointerdown", walkDown],
+      [walk, "pointerup", walkUp],
+      [walk, "pointercancel", walkUp],
+      [walk, "lostpointercapture", walkUp],
+      [stick, "pointerdown", stickDown],
+      [stick, "pointermove", stickMove],
+      [stick, "pointerup", stickUp],
+      [stick, "pointercancel", stickUp],
+      [stick, "lostpointercapture", stickUp],
+      [root, "contextmenu", noCtx]
+    ];
+    for (const [el2, t, fn] of L) el2.addEventListener(t, fn);
+    const noTouch = (e) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    root.addEventListener("touchstart", noTouch, { passive: false });
+    const api = {
+      root,
+      get walking() {
+        return walkId !== null;
+      },
+      /** Gedrückte Finger loslassen (Moduswechsel, Ausblenden). */
+      reset() {
+        if (walkId !== null) {
+          walkId = null;
+          setWalk(false);
+        }
+        if (stickId !== null) releaseStick();
+      },
+      show(on) {
+        if (!on) api.reset();
+        root.hidden = !on;
+      },
+      destroy() {
+        api.reset();
+        for (const [el2, t, fn] of L) el2.removeEventListener(t, fn);
+        root.removeEventListener("touchstart", noTouch, { passive: false });
+        root.remove();
+      }
+    };
+    return api;
+  }
+
   // src/js/store3d/controls/touch.js
   var TOUCH_LOOK = 45e-4;
   var TOUCH_HOLD_MS = 220;
   var TOUCH_SLOP = 9;
+  var STICK_YAW_RATE = 2.4;
+  var STICK_PITCH_RATE = 1.5;
+  var SCHEMES = ["joystick", "touch"];
   var ZOOM_MIN = 1;
   var ZOOM_MAX = 3;
   var TouchControls = class {
-    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?() } */
+    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), scheme?: 'touch' | 'joystick', padHost? } */
     constructor(ctx) {
       this.ctx = ctx;
+      this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : "touch";
+      this.pad = null;
+      this.padWalk = false;
+      this.stick = { x: 0, y: 0 };
+      this.padShown = true;
       this.pointers = /* @__PURE__ */ new Map();
       this.attached = false;
       this.walkId = null;
@@ -31965,8 +32115,53 @@ void main() {
     }
     /** Eingabe für Player.update(): läuft nur im Laufmodus. */
     get input() {
-      if (this.walkId !== null && this.ctx.getMode() !== "play") this.stopWalk();
-      return { fwd: this.walkId !== null ? 1 : 0, strafe: 0, run: false };
+      if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== "play") {
+        this.stopWalk();
+        if (this.pad) this.pad.reset();
+      }
+      return { fwd: this.walkId !== null || this.padWalk ? 1 : 0, strafe: 0, run: false };
+    }
+    /** Pro Frame (nur im Laufmodus aufrufen): Joystick-Auslenkung → Blickdrehung. Rechts = Blick rechts, oben = Blick oben. */
+    tick(dt) {
+      const { x, y } = this.stick;
+      if (!x && !y || !(dt > 0)) return;
+      if (this.ctx.getMode() !== "play") return;
+      const t = Math.min(dt, 0.1);
+      this.ctx.player.look(-x * STICK_YAW_RATE * t, -y * STICK_PITCH_RATE * t);
+    }
+    /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
+    setScheme(s) {
+      if (!SCHEMES.includes(s) || s === this.scheme) return;
+      this.scheme = s;
+      this.reset();
+      if (this.attached) this.syncPad();
+    }
+    /** Pad ein-/ausblenden (z. B. nur im Laufmodus). */
+    showPad(on) {
+      this.padShown = !!on;
+      if (this.pad) this.pad.show(this.padShown);
+    }
+    syncPad() {
+      if (this.scheme === "joystick" && this.attached) {
+        if (!this.pad) {
+          const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
+          this.pad = createJoypad(host, {
+            onWalk: (on) => {
+              this.padWalk = !!on && this.ctx.getMode() === "play";
+              if (this.padWalk && this.currentZoom() !== 1) this.setZoom(1);
+            },
+            onLook: (x, y) => {
+              this.stick = { x, y };
+            }
+          });
+        }
+        this.pad.show(this.padShown);
+      } else if (this.pad) {
+        this.pad.destroy();
+        this.pad = null;
+        this.padWalk = false;
+        this.stick = { x: 0, y: 0 };
+      }
     }
     attach() {
       if (this.attached) return;
@@ -31979,6 +32174,7 @@ void main() {
       c.addEventListener("pointerup", this.h.up);
       c.addEventListener("pointercancel", this.h.cancel);
       c.addEventListener("contextmenu", this.h.noCtx);
+      this.syncPad();
     }
     detach() {
       if (!this.attached) return;
@@ -31990,6 +32186,7 @@ void main() {
       c.removeEventListener("pointercancel", this.h.cancel);
       c.removeEventListener("contextmenu", this.h.noCtx);
       this.reset();
+      this.syncPad();
       if (this.ring) {
         this.ring.remove();
         this.ring = null;
@@ -32001,6 +32198,9 @@ void main() {
       this.pinch = null;
       this.pointers.clear();
       this.hideRing();
+      if (this.pad) this.pad.reset();
+      this.padWalk = false;
+      this.stick = { x: 0, y: 0 };
     }
     clearTimer() {
       if (this.timer) {
@@ -32022,7 +32222,7 @@ void main() {
       this.clearTimer();
       if (this.pointers.size === 1) {
         const id = e.pointerId;
-        this.timer = setTimeout(() => {
+        if (this.scheme === "touch") this.timer = setTimeout(() => {
           this.timer = 0;
           this.startWalk(id);
         }, TOUCH_HOLD_MS);
@@ -32106,6 +32306,82 @@ void main() {
       if (this.ring) this.ring.classList.remove("is-on");
     }
   };
+
+  // src/js/store3d/ui/rotate.js
+  var ICON = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false"><rect x="7" y="2.5" width="10" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 13.5a8.5 8.5 0 0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.2 19.6l2.4 1.9-2 2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ROTATE_TEXT = "F\xFCr die beste Ansicht das Handy quer drehen";
+  function isPortrait(win = window) {
+    try {
+      const mq = win.matchMedia && win.matchMedia("(orientation: portrait)");
+      if (mq && typeof mq.matches === "boolean") return mq.matches;
+    } catch {
+    }
+    return (win.innerHeight || 0) > (win.innerWidth || 0);
+  }
+  function createRotateHint(host, { getMode = () => "play", win = window } = {}) {
+    const root = document.createElement("div");
+    root.className = "lfx-store-rotate";
+    root.setAttribute("role", "status");
+    root.hidden = true;
+    const icon = document.createElement("span");
+    icon.className = "lfx-store-rotate-icon";
+    icon.innerHTML = ICON;
+    const text = document.createElement("span");
+    text.className = "lfx-store-rotate-text";
+    text.textContent = ROTATE_TEXT;
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "lfx-store-rotate-close";
+    close.setAttribute("aria-label", "Hinweis schlie\xDFen");
+    close.textContent = "\u2715";
+    root.append(icon, text, close);
+    host.appendChild(root);
+    let dismissed = false;
+    let destroyed = false;
+    function update() {
+      if (destroyed) return;
+      const mode = getMode();
+      root.hidden = dismissed || mode !== "play" || !isPortrait(win);
+    }
+    close.addEventListener("click", () => {
+      dismissed = true;
+      update();
+    });
+    let mq = null;
+    try {
+      mq = win.matchMedia ? win.matchMedia("(orientation: portrait)") : null;
+    } catch {
+      mq = null;
+    }
+    if (mq) {
+      if (mq.addEventListener) mq.addEventListener("change", update);
+      else if (mq.addListener) mq.addListener(update);
+    }
+    win.addEventListener("resize", update);
+    win.addEventListener("orientationchange", update);
+    update();
+    return {
+      root,
+      update,
+      get visible() {
+        return !root.hidden;
+      },
+      get dismissed() {
+        return dismissed;
+      },
+      destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        if (mq) {
+          if (mq.removeEventListener) mq.removeEventListener("change", update);
+          else if (mq.removeListener) mq.removeListener(update);
+        }
+        win.removeEventListener("resize", update);
+        win.removeEventListener("orientationchange", update);
+        root.remove();
+      }
+    };
+  }
 
   // src/js/store3d/controls/pick.js
   var T0 = 0;
@@ -37869,7 +38145,7 @@ void main() {
     panel.setAttribute("aria-label", "Pause");
     const title = el("div", "lfx-store-pause-title", "Pause");
     panel.appendChild(title);
-    const mk = (label, fn, cls = "") => {
+    const mk2 = (label, fn, cls = "") => {
       const b = el("button", `lfx-store-act ${cls}`.trim(), label);
       b.type = "button";
       b.addEventListener("click", (e) => {
@@ -37879,36 +38155,41 @@ void main() {
       panel.appendChild(b);
       return b;
     };
-    mk("Weiter", () => a.onResume(), "lfx-store-act--primary");
-    mk("Suche", () => a.onSearch());
-    mk("Klassische Ansicht", () => a.onClassic());
-    const q = mk("", () => {
+    mk2("Weiter", () => a.onResume(), "lfx-store-act--primary");
+    mk2("Suche", () => a.onSearch());
+    mk2("Klassische Ansicht", () => a.onClassic());
+    const q = mk2("", () => {
       const next = QUALITY_NEXT[a.getQuality()] || "auto";
       a.onQuality(next);
       refresh();
     });
-    const s = mk("", () => {
+    const s = mk2("", () => {
       a.onSound(!a.getSound());
       refresh();
     });
-    const vo = mk("", () => openPick());
+    const vo = mk2("", () => openPick());
     const note = el("div", "lfx-store-pause-note");
     note.hidden = true;
     panel.appendChild(note);
-    const f = mk("", () => {
+    const f = mk2("", () => {
       a.onFps(!a.getFps());
       refresh();
     });
-    const bc = mk("", () => {
+    const bc = mk2("", () => {
       a.onBigCovers(!a.getBigCovers());
       refresh();
     });
-    const fs = mk("", () => {
+    const tc = mk2("", () => {
+      if (!a.onTouchControl) return;
+      a.onTouchControl(a.getTouchControl && a.getTouchControl() === "touch" ? "joystick" : "touch");
+      refresh();
+    });
+    const fs = mk2("", () => {
       if (a.onFullscreen) a.onFullscreen();
       refresh();
     }, "lfx-store-act--fs");
-    mk("Design wechseln", () => a.onTheme());
-    mk("Men\xFC", (b) => a.onMenu(b));
+    mk2("Design wechseln", () => a.onTheme());
+    mk2("Men\xFC", (b) => a.onMenu(b));
     const pick = el("div", "lfx-store-voicepick");
     pick.hidden = true;
     const pickPanel = el("div", "lfx-store-voicepick-panel");
@@ -38004,6 +38285,8 @@ void main() {
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
+      tc.hidden = !a.onTouchControl;
+      tc.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === "touch" ? "Touch" : "Joystick"}`;
       const pr = prefsNow();
       const wantOnline = !!pr.online;
       vo.hidden = !a.onVoice || !a.getSound();
@@ -38924,6 +39207,7 @@ void main() {
       this.voiceName = typeof this.opts.voiceName === "string" ? this.opts.voiceName : "";
       this.voicePitch = ["normal", "tief", "sehrtief"].includes(this.opts.voicePitch) ? this.opts.voicePitch : "tief";
       this.bigCovers = this.opts.bigCovers !== false;
+      this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : "joystick";
       this.zoomTarget = 1;
       this.zoom = 1;
       this.lastFps = 0;
@@ -38972,6 +39256,7 @@ void main() {
           if (this.pause) this.pause.refresh();
         }
       });
+      this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
       this.pause = createPause(host, {
         onResume: () => this.resumeFromPause(),
         onSearch: () => {
@@ -39003,6 +39288,11 @@ void main() {
           return c && c.voices ? c.voices() : [];
         },
         onBigCovers: (on) => this.setBigCovers(on),
+        onTouchControl: this.touch ? (s) => {
+          this.setTouchControl(s);
+          this.savePrefs();
+        } : null,
+        getTouchControl: () => this.touchScheme,
         onTheme: () => this.deps.openThemePicker(),
         onMenu: (anchor) => this.deps.openMenu(anchor),
         getQuality: () => this.qualitySetting,
@@ -39116,7 +39406,7 @@ void main() {
           else this.resumeFromPause();
         }
       });
-      this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget }) : null;
+      this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme }) : null;
       this.progress(0.86, "Module werden geladen");
       await this.mods.init((f) => this.progress(0.86 + f * 0.05, "Module werden geladen"));
       if (this.disposed) return;
@@ -39202,6 +39492,8 @@ void main() {
       this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
       this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
       this.hud.showMenuBtn(play);
+      if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
+      if (this.rotate) this.rotate.update();
       if (!play || !this.aim) this.hud.setHint(null);
       if (this.pause && this.mode !== "paused" && this.pause.visible) this.pause.hide();
     }
@@ -39312,7 +39604,7 @@ void main() {
       this.pendingTake = null;
       const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
       const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
-      const far = "Halte gedr\xFCckt, um hinzulaufen";
+      const far = this.touchScheme === "joystick" ? "Halte GEHEN, um hinzulaufen" : "Halte gedr\xFCckt, um hinzulaufen";
       const p = this.player;
       if (iaHit && (!hit || iaHit.t < hit.t)) {
         const { min, max } = iaHit.ia.box;
@@ -39427,6 +39719,11 @@ void main() {
         this.updateFps();
         if (this.fs) this.fs.update();
       }
+      if (this.touchCtl) {
+        const padOn = this.mode === "play" && !this.mods.locked;
+        if (padOn !== this.touchCtl.padShown) this.touchCtl.showPad(padOn);
+        if (padOn) this.touchCtl.tick(dt);
+      }
       if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
       else p.update(dt, null);
       this.mods.update(dt, now);
@@ -39517,7 +39814,7 @@ void main() {
     }
     savePrefs() {
       try {
-        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch });
+        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme });
       } catch {
       }
     }
@@ -39539,6 +39836,14 @@ void main() {
     previewVoice() {
       const c = this.mods && this.mods.ctx.use("cashier");
       if (c && c.preview) c.preview();
+    }
+    /** Touch-Steuerung: 'joystick' (Gehen-Knopf + Joystick, Standard) oder 'touch' (Halten = laufen, Wischen = umsehen). */
+    setTouchControl(s) {
+      if (!SCHEMES.includes(s)) return;
+      this.touchScheme = s;
+      if (this.touchCtl) this.touchCtl.setScheme(s);
+      if (this.pause) this.pause.refresh();
+      this.syncUi();
     }
     setShowFps(on) {
       this.showFps = !!on;
@@ -39657,6 +39962,10 @@ void main() {
       }
       try {
         if (this.touchCtl) this.touchCtl.detach();
+      } catch {
+      }
+      try {
+        if (this.rotate) this.rotate.destroy();
       } catch {
       }
       if (this.engine) this.engine.stop();

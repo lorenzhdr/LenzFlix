@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.7.7";
+  var VERSION = "1.7.8";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -17051,7 +17051,8 @@
 
   // src/js/features/store/prefs.js
   var KEY3 = "lfx.store.";
-  var DEFAULTS2 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief" };
+  var DEFAULTS2 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "joystick" };
+  var TOUCH_CONTROLS = ["joystick", "touch"];
   var VOICE_PITCHES = ["normal", "tief", "sehrtief"];
   var QUALITIES = ["auto", "low", "mid", "high"];
   var SESSION_INTRO = "lfx.store.introSeen";
@@ -17095,6 +17096,10 @@
     const v = read("localStorage", storageKey2("voicePitch"));
     return VOICE_PITCHES.includes(v) ? v : DEFAULTS2.voicePitch;
   }
+  function getTouchControl() {
+    const v = read("localStorage", storageKey2("touchControl"));
+    return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS2.touchControl;
+  }
   function getBigCovers() {
     const v = read("localStorage", storageKey2("bigCovers"));
     return v === null ? DEFAULTS2.bigCovers : v !== "0";
@@ -17107,6 +17112,7 @@
     if (typeof p.voiceOnline === "boolean") write("localStorage", storageKey2("voiceOnline"), p.voiceOnline ? "1" : "0");
     if (typeof p.voiceName === "string") write("localStorage", storageKey2("voiceName"), p.voiceName);
     if (VOICE_PITCHES.includes(p.voicePitch)) write("localStorage", storageKey2("voicePitch"), p.voicePitch);
+    if (TOUCH_CONTROLS.includes(p.touchControl)) write("localStorage", storageKey2("touchControl"), p.touchControl);
     if (typeof p.bigCovers === "boolean") write("localStorage", storageKey2("bigCovers"), p.bigCovers ? "1" : "0");
   }
   var getIntroSeen = () => read("sessionStorage", SESSION_INTRO) === "1";
@@ -17386,6 +17392,7 @@
       voiceName: getVoiceName(),
       voicePitch: getVoicePitch(),
       bigCovers: getBigCovers(),
+      touchControl: getTouchControl(),
       skipIntro: getIntroSeen(),
       restore: getState(),
       openItemId: r && r.kind === "title" ? r.id : null,

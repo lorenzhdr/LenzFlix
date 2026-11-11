@@ -102,7 +102,7 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, touchControl: 'joystick', skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
       'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal']) {
