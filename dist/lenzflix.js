@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.7.6";
+  var VERSION = "1.7.7";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -17051,7 +17051,8 @@
 
   // src/js/features/store/prefs.js
   var KEY3 = "lfx.store.";
-  var DEFAULTS2 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false };
+  var DEFAULTS2 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief" };
+  var VOICE_PITCHES = ["normal", "tief", "sehrtief"];
   var QUALITIES = ["auto", "low", "mid", "high"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
@@ -17087,6 +17088,13 @@
   function getVoiceOnline() {
     return read("localStorage", storageKey2("voiceOnline")) === "1";
   }
+  function getVoiceName() {
+    return read("localStorage", storageKey2("voiceName")) || "";
+  }
+  function getVoicePitch() {
+    const v = read("localStorage", storageKey2("voicePitch"));
+    return VOICE_PITCHES.includes(v) ? v : DEFAULTS2.voicePitch;
+  }
   function getBigCovers() {
     const v = read("localStorage", storageKey2("bigCovers"));
     return v === null ? DEFAULTS2.bigCovers : v !== "0";
@@ -17097,6 +17105,8 @@
     if (typeof p.sound === "boolean") write("localStorage", storageKey2("soundOn"), p.sound ? "1" : "0");
     if (typeof p.fps === "boolean") write("localStorage", storageKey2("fps"), p.fps ? "1" : "0");
     if (typeof p.voiceOnline === "boolean") write("localStorage", storageKey2("voiceOnline"), p.voiceOnline ? "1" : "0");
+    if (typeof p.voiceName === "string") write("localStorage", storageKey2("voiceName"), p.voiceName);
+    if (VOICE_PITCHES.includes(p.voicePitch)) write("localStorage", storageKey2("voicePitch"), p.voicePitch);
     if (typeof p.bigCovers === "boolean") write("localStorage", storageKey2("bigCovers"), p.bigCovers ? "1" : "0");
   }
   var getIntroSeen = () => read("sessionStorage", SESSION_INTRO) === "1";
@@ -17373,6 +17383,8 @@
       sound: getSound(),
       showFps: getFps(),
       voiceOnline: getVoiceOnline(),
+      voiceName: getVoiceName(),
+      voicePitch: getVoicePitch(),
       bigCovers: getBigCovers(),
       skipIntro: getIntroSeen(),
       restore: getState(),

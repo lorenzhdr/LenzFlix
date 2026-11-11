@@ -262,6 +262,8 @@ function buildOpts(r) {
     sound: prefs.getSound(),
     showFps: prefs.getFps(),
     voiceOnline: prefs.getVoiceOnline(),
+    voiceName: prefs.getVoiceName(),
+    voicePitch: prefs.getVoicePitch(),
     bigCovers: prefs.getBigCovers(),
     skipIntro: prefs.getIntroSeen(),
     restore: prefs.getState(),

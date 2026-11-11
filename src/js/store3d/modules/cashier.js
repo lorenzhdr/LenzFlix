@@ -117,7 +117,11 @@ export default {
     }
 
     // --- Stimme ---
-    const voice = createVoice({ soundOn: () => ctx.soundOn(), online: () => !!(ctx.voiceOnline && ctx.voiceOnline()) });
+    const voice = createVoice({
+      soundOn: () => ctx.soundOn(),
+      online: () => !!(ctx.voiceOnline && ctx.voiceOnline()),
+      prefer: () => (ctx.voicePrefs ? ctx.voicePrefs() : {}),
+    });
     voice.unlock();
     let talkId = 0;
     const duck = (on) => { const s = ctx.use('sound'); if (s && s.duck) s.duck('talk', on); };
@@ -318,6 +322,15 @@ export default {
       voiceInfo() {
         return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
       },
+      /** Deutsche Stimmen für die Auswahl im Pause-Menü: [{ name, lang, online, male }]. */
+      voices() { return voice.listVoices(); },
+      /** Probezeile sprechen (synchron im Klick-Handler aufrufen; nur bei Ton an). */
+      preview(text) {
+        if (!ctx.soundOn()) return;
+        const id = ++talkId;
+        duck(true);
+        voice.preview(String(text || 'Hallo, ich bin Richard. So klinge ich.')).then(() => { if (id === talkId) duck(false); });
+      },
     });
 
     if (ctx.opts.debug) {
@@ -408,6 +421,8 @@ export default {
       },
       onSound(on) { if (!on) stopVoice(); },
       onVoiceOnline() { stopVoice(); voice.reselect(); },
+      // Stimme/Tonlage geändert: nur neu wählen (laufende Rede wird von der folgenden Probe abgelöst)
+      onVoicePrefs() { voice.reselect(); },
       onSuspend() { bubble.hidden = true; bubbleLeft = 0; stopVoice(); },
       dispose() {
         offs.forEach((o) => o());

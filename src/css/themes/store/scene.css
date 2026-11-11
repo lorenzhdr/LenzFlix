@@ -265,6 +265,57 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note {
   user-select: none;
 }
 
+/* Stimmenauswahl (über dem Pause-Menü) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 10, 28, 0.72);
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(92vw, 380px);
+  max-height: 92vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--lfx-store-night-2, #141c48);
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicelist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voiceitem,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepitch,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel .lfx-store-act {
+  min-height: 44px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voiceitem {
+  text-align: left;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-note {
+  pointer-events: auto;
+  user-select: text;
+  text-align: left;
+}
+
 /* ---------- Hülle in der Hand ---------- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
   position: absolute;

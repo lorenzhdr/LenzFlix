@@ -181,10 +181,12 @@
     },
   };
 
-  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0', voiceOnline: q.get('voice') === 'online' };
+  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0', voiceOnline: q.get('voice') === 'online', voiceName: '', voicePitch: 'tief' };
   deps.onPrefs = function (p) {
     if (typeof p.fps === 'boolean') prefs.fps = p.fps;
     if (typeof p.voiceOnline === 'boolean') prefs.voiceOnline = p.voiceOnline;
+    if (typeof p.voiceName === 'string') prefs.voiceName = p.voiceName;
+    if (typeof p.voicePitch === 'string') prefs.voicePitch = p.voicePitch;
     if (typeof p.bigCovers === 'boolean') prefs.bigCovers = p.bigCovers;
     console.log('[dev] prefs', p);
   };
@@ -206,7 +208,7 @@
       try { restore = JSON.parse(sessionStorage.getItem('store-dev-state')); } catch { restore = null; }
     }
     inst = window.LenzFlixStore3D.create(host, deps, {
-      quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline,
+      quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
       openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true,
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,

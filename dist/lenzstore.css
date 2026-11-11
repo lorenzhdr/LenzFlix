@@ -796,6 +796,64 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note {
   line-height: 1.35;
 }
 
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick {
+  z-index: 1;
+  pointer-events: auto;
+  background: rgba(7, 10, 28, .72);
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick[hidden] {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
+  overscroll-behavior: contain;
+  background: var(--lfx-store-night-2, #141c48);
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
+  border-radius: 18px;
+  flex-direction: column;
+  gap: 8px;
+  width: min(92vw, 380px);
+  max-height: 92vh;
+  padding: 18px;
+  display: flex;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicelist {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 60vh;
+  display: flex;
+  overflow-y: auto;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voiceitem, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepitch, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel .lfx-store-act {
+  min-height: 44px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voiceitem {
+  text-align: left;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-note {
+  pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
+  text-align: left;
+}
+
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
   z-index: 4;
   pointer-events: none;

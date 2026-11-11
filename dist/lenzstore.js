@@ -30777,6 +30777,17 @@ void main() {
   var HI_COST = (HI_SIZE / 1024) ** 2;
   var LOW_SIZE = 256;
   var LOW_SIZE_SMALL = 128;
+  var CALM_SPEED = 0.5;
+  var HI_SELECT_MS = 400;
+  var HI_HOLD_MS = 3e3;
+  var HI_BEHIND_MS = 2e3;
+  var HI_KEEP_D = 9;
+  var HI_UPLOAD_GAP_MS = 600;
+  var HI_LRU_MS = 3e3;
+  var SLOW_TURN = 0.8;
+  var FAST_TURN = 1.5;
+  var EVICT_MARGIN = 3;
+  var EVICT_PROTECT_MS = 5e3;
   function lowSizeFor(faceCount, phone, level) {
     if (phone || level === "low" || faceCount > 160) return LOW_SIZE_SMALL;
     return LOW_SIZE;
@@ -30793,7 +30804,7 @@ void main() {
       this.preset = o.preset;
       this.spec = o.spec || shelfSpec(false);
       this.phone = !!o.phone;
-      this.hiMax = o.phone ? 4 : 8;
+      this.hiMax = o.phone ? 2 : 4;
       this.concurrency = o.phone ? 4 : 8;
       this.maxLoadingFaces = o.phone ? 2 : 5;
       this.onFirst = o.onFirst || null;
@@ -30802,6 +30813,18 @@ void main() {
       this.pre = null;
       this.lowCanvas = null;
       this.evictSync = 0;
+      this.now = o.now || (() => typeof performance !== "undefined" ? performance.now() : Date.now());
+      this.poses = [];
+      this.calm = false;
+      this.zoomed = false;
+      this.turnFast = false;
+      this.turnSlow = false;
+      this.frame = 0;
+      this.lastUploadFrame = -9;
+      this.lastHiAt = -1e9;
+      this.frameDts = [];
+      this.lastTickAt = 0;
+      this.counters = { coverUploads: 0, hiUp: 0, hiDown: 0, fullLoads: 0, fullEvicts: 0 };
       this.itemFaces = null;
       this.faces = o.faceViews.filter((fv) => fv.mesh).map((fv) => ({
         fv,
@@ -30819,7 +30842,12 @@ void main() {
         d: Infinity,
         front: 0,
         dot: 0,
-        lowDirty: false
+        lowDirty: false,
+        hiSince: null,
+        hiLastWanted: 0,
+        hiBehindSince: null,
+        hiChangedAt: -1e9,
+        loadedAt: -1e9
       }));
       this.byFace = new Map(this.faces.map((f) => [f.face.index, f]));
       this.queue = [];
@@ -30885,6 +30913,9 @@ void main() {
       if (this.disposed) return;
       const zoom = extra && extra.zoom || 1;
       const pitch = extra && extra.pitch || 0;
+      const now = this.now();
+      this.trackPose(now, px, pz, yaw);
+      this.zoomed = zoom > 1.3;
       this.evictSync = 2;
       const vx = -Math.sin(yaw);
       const vz = -Math.cos(yaw);
@@ -30903,38 +30934,113 @@ void main() {
       const hiSet = this.updateHi(zoom, pitch);
       const radius = this.preset.loadRadius;
       const max = Math.max(4, this.preset.maxAtlases - this.hiPending * HI_COST);
-      const wanted = this.faces.filter((f) => f.score < radius).sort((a, b) => a.score - b.score).slice(0, max);
-      const wantedSet = new Set(wanted);
-      const loaded = this.faces.filter((f) => f.tex && f.state !== "low");
-      if (loaded.length > max) {
-        loaded.sort((a, b) => b.score - a.score);
-        for (const f of loaded) {
-          if (this.loadedCount <= max) break;
-          if (!wantedSet.has(f)) this.evict(f);
+      const inRadius = /* @__PURE__ */ new Set();
+      const order = [];
+      for (const f of this.faces) if (f.score < radius) {
+        inRadius.add(f);
+        order.push(f);
+      }
+      order.sort((a, b) => a.score - b.score);
+      let used = this.usedCount;
+      if (used > max) {
+        const cand = this.faces.filter((f) => f.tex && f.state !== "low" && !f.loading).sort((a, b) => this.evictRank(b, now) - this.evictRank(a, now));
+        for (const f of cand) {
+          if (used <= max) break;
+          this.evict(f);
+          used--;
         }
       }
-      for (const f of this.faces) if (f.loading && !wantedSet.has(f) && f.score > radius * 1.25) this.cancelLoad(f);
+      for (const f of this.faces) if (f.loading && !inRadius.has(f) && f.score > radius * 1.25) this.cancelLoad(f);
       let loadingNow = this.faces.reduce((n, f) => n + (f.loading ? 1 : 0), 0);
+      used = this.usedCount;
       let ph = 0;
-      for (const f of wanted) {
-        if (f.state === "flat" && !f.queued && !this.lowEnabled && ph < 2) {
+      for (const f of order) {
+        if (f.state === "flat" && !f.queued && !this.lowEnabled && ph < 2 && used + ph < max) {
           this.queueCompose(f, "ph");
           ph++;
         }
         if (f.state !== "full" && !f.loading && loadingNow < this.maxLoadingFaces) {
+          const counted = !!(f.tex && f.state !== "low");
+          if (!counted && used >= max) {
+            const v = this.pickVictim(f, now);
+            if (!v) continue;
+            this.evict(v);
+            used--;
+          }
+          if (!counted) used++;
           this.startLoad(f);
           loadingNow++;
         }
       }
-      let hiLoadingNow = this.faces.reduce((n, f) => n + (f.hiLoading ? 1 : 0), 0);
-      for (const f of hiSet) {
-        if (hiLoadingNow >= 2) break;
-        if (f.state === "full" && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip) {
-          this.startHiLoad(f);
-          if (f.hiLoading) hiLoadingNow++;
-        }
-      }
+      this.startHiLoads(hiSet, now);
       this.pump();
+    }
+    /** Belegte Grund-Budget-Plätze (fertige ph/full-Atlanten plus laufende Ladevorgänge). */
+    get usedCount() {
+      return this.faces.reduce((n, f) => n + (f.tex && f.state !== "low" || f.loading ? 1 : 0), 0);
+    }
+    /** Eviction-Rang: je größer, desto eher verdrängt (Distanz; frisch geladene zuletzt). */
+    evictRank(f, now) {
+      return f.d + (now - f.loadedAt < EVICT_PROTECT_MS ? -1e3 : 0);
+    }
+    /** Entfernteste geladene Seite (nach Distanz), die nicht geschützt ist und mindestens EVICT_MARGIN weiter weg liegt als nf. */
+    pickVictim(nf, now) {
+      let best = null;
+      for (const f of this.faces) {
+        if (f === nf || !f.tex || f.state === "low" || f.loading) continue;
+        if (now - f.loadedAt < EVICT_PROTECT_MS) continue;
+        if (f.d < nf.d + EVICT_MARGIN) continue;
+        if (!best || f.d > best.d) best = f;
+      }
+      return best;
+    }
+    /** Pose-Historie: Geschwindigkeit und Drehrate über >= ~230 ms. */
+    trackPose(now, x, z, yaw) {
+      const ps = this.poses;
+      let ref = null;
+      for (let i = ps.length - 1; i >= 0; i--) if (now - ps[i].t >= 230) {
+        ref = ps[i];
+        break;
+      }
+      if (ref) {
+        const dt = (now - ref.t) / 1e3;
+        let dy = yaw - ref.yaw;
+        dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        this.calm = Math.hypot(x - ref.x, z - ref.z) / dt < CALM_SPEED;
+        this.turnFast = Math.abs(dy) / dt > FAST_TURN;
+        this.turnSlow = Math.abs(dy) / dt < SLOW_TURN;
+      } else {
+        this.calm = false;
+        this.turnFast = false;
+        this.turnSlow = false;
+      }
+      ps.push({ t: now, x, z, yaw });
+      while (ps.length > 2 && now - ps[1].t > 800) ps.shift();
+    }
+    /** Hochstufen nur in Ruhe (langsam) oder bei Zoom, nach Auswahl >= 400 ms, nicht kurz nach Herabstufen; LRU-Platz bei Bedarf. */
+    startHiLoads(wanted, now) {
+      if (!wanted.length || !(this.calm || this.zoomed) || !(this.turnSlow || this.zoomed)) return;
+      const cap = this.hiCap;
+      const set = new Set(wanted);
+      let hiLoadingNow = this.faces.reduce((n, f) => n + (f.hiLoading ? 1 : 0), 0);
+      for (const f of wanted) {
+        if (hiLoadingNow >= 2) break;
+        if (!(f.state === "full" && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip)) continue;
+        if (f.hiSince == null || now - f.hiSince < HI_SELECT_MS || now - f.hiChangedAt < HI_HOLD_MS) continue;
+        if (this.hiPending >= cap) {
+          let v = null;
+          for (const g of this.faces) {
+            if (set.has(g) || !(g.hiTex || g.hiLoading)) continue;
+            if (g.hiTex && now - g.hiChangedAt < HI_HOLD_MS) continue;
+            if (now - g.hiLastWanted < HI_LRU_MS) continue;
+            if (!v || g.hiLastWanted < v.hiLastWanted) v = g;
+          }
+          if (!v) break;
+          this.dropHi(v);
+        }
+        this.startHiLoad(f);
+        if (f.hiLoading) hiLoadingNow++;
+      }
     }
     /**
      * Wählt die Seiten für die Schärfestufe und stuft alle anderen herab.
@@ -30943,6 +31049,7 @@ void main() {
      * @returns {Array} gewählte Seiten (nach Rang, höchstens hiCap)
      */
     updateHi(zoom, pitch) {
+      const now = this.now();
       const cap = this.hiCap;
       const zoomed = zoom > 1.3;
       const cands = [];
@@ -30961,29 +31068,92 @@ void main() {
       cands.sort((a, b) => a.hiScore - b.hiScore);
       const wanted = cands.slice(0, cap);
       const set = new Set(wanted);
-      for (const f of this.faces) if ((f.hiTex || f.hiLoading) && !set.has(f)) this.dropHi(f);
+      for (const f of this.faces) {
+        const has = !!(f.hiTex || f.hiLoading);
+        if (set.has(f)) {
+          if (f.hiSince == null) f.hiSince = now;
+          f.hiLastWanted = now;
+          f.hiBehindSince = null;
+          continue;
+        }
+        f.hiSince = null;
+        if (!has) {
+          f.hiBehindSince = null;
+          continue;
+        }
+        if (cap === 0) {
+          this.dropHi(f);
+          continue;
+        }
+        const behind = f.front < -0.3 || f.dot < -0.2;
+        if (behind) {
+          if (f.hiBehindSince == null) f.hiBehindSince = now;
+        } else f.hiBehindSince = null;
+        if (f.hiTex && now - f.hiChangedAt < HI_HOLD_MS) continue;
+        if (f.d > HI_KEEP_D || f.hiBehindSince != null && now - f.hiBehindSince > HI_BEHIND_MS) this.dropHi(f);
+      }
+      let over = this.hiPending - cap;
+      if (over > 0) {
+        const out = this.faces.filter((f) => (f.hiTex || f.hiLoading) && !set.has(f)).sort((a, b) => a.hiLastWanted - b.hiLastWanted);
+        for (const f of out) {
+          if (over-- <= 0) break;
+          this.dropHi(f);
+        }
+      }
       return wanted;
+    }
+    /** Frame-Takt festhalten (für das Hi-Upload-Pacing). */
+    trackFrame(now) {
+      if (this.lastTickAt) {
+        this.frameDts.push(now - this.lastTickAt);
+        if (this.frameDts.length > 30) this.frameDts.shift();
+      }
+      this.lastTickAt = now;
+    }
+    /** Letzte ~5 Frames unauffällig (< 1,5× Median)? Ohne genug Historie: ja. */
+    framesSteady() {
+      const a = this.frameDts;
+      if (a.length < 10) return true;
+      const med = [...a].sort((x, y) => x - y)[a.length >> 1];
+      return a.slice(-5).every((v) => v < med * 1.5);
+    }
+    /** 2048er-Upload jetzt erlaubt? Ruhe/Zoom, keine schnelle Drehung, Abstand >= 250 ms, Frames unauffällig. */
+    hiUploadOk(now) {
+      return (this.calm || this.zoomed) && !this.turnFast && now - this.lastHiAt >= HI_UPLOAD_GAP_MS && this.framesSteady();
     }
     /** Pro Frame höchstens ein Atlas zeichnen + hochladen (Grund-Atlas vor Low-Nachzügler vor Schärfestufe). */
     tick() {
       if (this.disposed) return;
+      const now = this.now();
+      this.frame++;
+      this.trackFrame(now);
+      if (this.frame - this.lastUploadFrame < 2) return;
       const low = this.lowEnabled ? this.pickLow() : null;
-      if (!this.composeQueue.length) {
-        if (low) this.composeLowSafe(low);
+      let job = null;
+      if (this.composeQueue.length) {
+        const rank = (j) => j.f.score + (j.kind === "hi" ? 100 : 0);
+        this.composeQueue.sort((a, b) => rank(a) - rank(b));
+        const hiOk = this.hiUploadOk(now);
+        const at = this.composeQueue.findIndex((j) => j.kind !== "hi" || hiOk);
+        if (at >= 0) job = this.composeQueue[at];
+        if (job && low && job.kind === "hi") job = null;
+        if (job) this.composeQueue.splice(at, 1);
+      }
+      if (!job) {
+        if (low) {
+          this.lastUploadFrame = this.frame;
+          this.composeLowSafe(low);
+        }
         return;
       }
-      const rank = (j) => j.f.score + (j.kind === "hi" ? 100 : 0);
-      this.composeQueue.sort((a, b) => rank(a) - rank(b));
-      if (low && this.composeQueue[0].kind === "hi") {
-        this.composeLowSafe(low);
-        return;
-      }
-      const job = this.composeQueue.shift();
       if (job.kind !== "hi") job.f.queued = false;
+      this.lastUploadFrame = this.frame;
       try {
         if (job.kind === "ph") this.composePlaceholder(job.f);
-        else if (job.kind === "hi") this.composeHi(job.f);
-        else this.composeFull(job.f);
+        else if (job.kind === "hi") {
+          this.lastHiAt = now;
+          this.composeHi(job.f);
+        } else this.composeFull(job.f);
       } catch {
       }
     }
@@ -31050,6 +31220,8 @@ void main() {
       const t = f.hiTex;
       if (!t) return;
       f.hiTex = null;
+      f.hiChangedAt = this.now();
+      this.counters.hiDown++;
       const mat = f.fv.material;
       if (mat.map === t) mat.map = f.tex || this.blank;
       t.onUpdate = null;
@@ -31185,6 +31357,7 @@ void main() {
       l.bitmaps.forEach(closeBitmap);
       l.bitmaps.clear();
       f.loading = null;
+      this.counters.fullLoads++;
       this.applyTexture(f, canvas, "full");
     }
     composeHi(f) {
@@ -31201,6 +31374,9 @@ void main() {
       const tex = this.makeTexture(canvas);
       f.fv.material.map = tex;
       f.hiTex = tex;
+      f.hiChangedAt = this.now();
+      this.counters.hiUp++;
+      this.counters.coverUploads++;
       try {
         if (this.renderer) this.renderer.initTexture(tex);
       } catch {
@@ -31228,6 +31404,8 @@ void main() {
       const old = f.tex;
       f.tex = tex;
       f.state = state;
+      this.counters.coverUploads++;
+      if (state !== "low") f.loadedAt = this.now();
       try {
         if (this.renderer) this.renderer.initTexture(tex);
       } catch {
@@ -31246,6 +31424,7 @@ void main() {
       this.composeQueue = this.composeQueue.filter((j) => j.f !== f);
       f.queued = false;
       if (!hard && f.state === "low") return;
+      if (!hard && f.state === "full") this.counters.fullEvicts++;
       const mat = f.fv.material;
       mat.map = this.blank;
       mat.color.copy(f.fv.flatColor);
@@ -35087,6 +35266,10 @@ void main() {
   var nameOf = (v) => String(v && v.name || "").toLowerCase();
   function pickVoice(voices, opts = {}) {
     const all = Array.from(voices || []).filter((v) => v && isDe(v));
+    if (opts.name) {
+      const f = all.find((v) => v.name === opts.name);
+      if (f) return { voice: f, pitch: 1, online: f.localService !== true };
+    }
     if (opts.online) {
       const onl = all.filter((v) => v.localService !== true);
       if (onl.length) {
@@ -35113,9 +35296,19 @@ void main() {
     if (males.length) return { voice: males[0].v, pitch: 1 };
     return { voice: list.find(isDeDE) || list[0], pitch: 0.8 };
   }
+  var PITCH_FACTOR = { normal: 1, tief: 0.8, sehrtief: 0.65 };
+  var clampPitch = (x) => Math.max(0.5, Math.min(2, x));
+  function listVoices(voices) {
+    return Array.from(voices || []).filter((v) => v && isDe(v)).map((v) => ({
+      name: String(v.name || ""),
+      lang: String(v.lang || ""),
+      online: v.localService !== true,
+      male: MALE.some((m) => nameOf(v).includes(m))
+    })).sort((a, b) => (a.male ? 0 : 1) - (b.male ? 0 : 1) || (a.online ? 1 : 0) - (b.online ? 1 : 0) || a.name.localeCompare(b.name, "de"));
+  }
   var START_WAIT = 2e3;
   var PENDING_MAX = 15e3;
-  function createVoice({ soundOn = () => true, online = () => false, synth, Utterance } = {}) {
+  function createVoice({ soundOn = () => true, online = () => false, prefer, synth, Utterance } = {}) {
     const S = synth !== void 0 ? synth : typeof window !== "undefined" ? window.speechSynthesis : null;
     const U = Utterance !== void 0 ? Utterance : typeof window !== "undefined" ? window.SpeechSynthesisUtterance : null;
     let picked = null;
@@ -35135,10 +35328,20 @@ void main() {
     let lastError = "";
     let pending = null;
     const gestureEvents = ["touchend", "click", "keydown"];
+    const prefs = () => {
+      let p;
+      try {
+        p = prefer ? prefer() : null;
+      } catch {
+        p = null;
+      }
+      return { online: p && p.online !== void 0 ? !!p.online : !!online(), name: p && p.name || "", pf: p && Number.isFinite(p.pitchFactor) ? p.pitchFactor : 1 };
+    };
     const refresh = () => {
       if (!S || picked) return;
       try {
-        picked = pickVoice(S.getVoices ? S.getVoices() : [], { online: !!online() });
+        const p = prefs();
+        picked = pickVoice(S.getVoices ? S.getVoices() : [], { online: p.online, name: p.name });
       } catch {
         picked = null;
       }
@@ -35202,7 +35405,7 @@ void main() {
       u.voice = picked.voice;
       u.lang = picked.voice.lang || "de-DE";
       u.rate = 1;
-      u.pitch = picked.pitch;
+      u.pitch = clampPitch(picked.pitch * prefs().pf);
       u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
       return u;
     }
@@ -35264,6 +35467,9 @@ void main() {
           begin(str, volume);
         }, 0);
       });
+    }
+    function preview(text, opts) {
+      return say(text, opts);
     }
     function cancel() {
       clearTimeout(timer);
@@ -35348,11 +35554,16 @@ void main() {
     };
     return {
       say,
+      preview,
       cancel,
       unlock,
       dispose,
       setPending,
       clearPending,
+      /** Deutsche Stimmen des Geräts/Browsers (siehe listVoices). */
+      listVoices() {
+        return listVoices(allVoices());
+      },
       /** Stimme neu wählen (z. B. nach Umschalten Gerät/Online). */
       reselect() {
         picked = null;
@@ -35504,7 +35715,11 @@ void main() {
           if (!cur || cur.kind === "new") deptOf.set(id, d);
         }
       }
-      const voice = createVoice({ soundOn: () => ctx.soundOn(), online: () => !!(ctx.voiceOnline && ctx.voiceOnline()) });
+      const voice = createVoice({
+        soundOn: () => ctx.soundOn(),
+        online: () => !!(ctx.voiceOnline && ctx.voiceOnline()),
+        prefer: () => ctx.voicePrefs ? ctx.voicePrefs() : {}
+      });
       voice.unlock();
       let talkId = 0;
       const duck = (on) => {
@@ -35745,6 +35960,19 @@ void main() {
         /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
         voiceInfo() {
           return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
+        },
+        /** Deutsche Stimmen für die Auswahl im Pause-Menü: [{ name, lang, online, male }]. */
+        voices() {
+          return voice.listVoices();
+        },
+        /** Probezeile sprechen (synchron im Klick-Handler aufrufen; nur bei Ton an). */
+        preview(text) {
+          if (!ctx.soundOn()) return;
+          const id = ++talkId;
+          duck(true);
+          voice.preview(String(text || "Hallo, ich bin Richard. So klinge ich.")).then(() => {
+            if (id === talkId) duck(false);
+          });
         }
       });
       if (ctx.opts.debug) {
@@ -35852,6 +36080,10 @@ void main() {
         },
         onVoiceOnline() {
           stopVoice();
+          voice.reselect();
+        },
+        // Stimme/Tonlage geändert: nur neu wählen (laufende Rede wird von der folgenden Probe abgelöst)
+        onVoicePrefs() {
           voice.reselect();
         },
         onSuspend() {
@@ -37153,6 +37385,7 @@ void main() {
         quality: () => app.engine.preset.level,
         soundOn: () => app.sound,
         voiceOnline: () => !!app.voiceOnline,
+        voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || "", pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
         addCollider(rect) {
           if (!rect || app.layout.colliders.includes(rect)) return rect;
           if (!rect.kind) rect.kind = "prop";
@@ -37600,6 +37833,16 @@ void main() {
   // src/js/store3d/ui/pause.js
   var QUALITY_LABEL = { auto: "Auto", low: "Niedrig", mid: "Mittel", high: "Hoch" };
   var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "auto" };
+  var PITCH_LABEL = { normal: "Normal", tief: "Tief", sehrtief: "Sehr tief" };
+  var PITCH_NEXT = { normal: "tief", tief: "sehrtief", sehrtief: "normal" };
+  var AUTO_DEVICE = "Automatisch (Ger\xE4testimme)";
+  var AUTO_ONLINE = "Automatisch (Online bevorzugt)";
+  var NOTE_ONLINE = "Online: S\xE4tze, Name und Filmtitel gehen an den Stimmendienst des Browsers.";
+  var NOTE_TIP = "Tipp: M\xE4nnliche Online-Stimmen (z. B. \u201ENatural\u201C) gibt es in manchen Browsern (z. B. dem Windows-Standardbrowser); am iPhone unter Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch weitere laden.";
+  function shortVoiceName(name) {
+    const n = String(name || "").replace(/\s+-\s+.*$/, "").replace(/\s*\([^)]*\)/g, "").replace(/^(Microsoft|Google|Apple)\s+/i, "").replace(/\s+Online\s*$/i, "").trim();
+    return n || String(name || "");
+  }
   function voiceNote(info, wantOnline = false) {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
@@ -37648,10 +37891,7 @@ void main() {
       a.onSound(!a.getSound());
       refresh();
     });
-    const vo = mk("", () => {
-      if (a.onVoiceOnline) a.onVoiceOnline(!(a.getVoiceOnline && a.getVoiceOnline()));
-      refresh();
-    });
+    const vo = mk("", () => openPick());
     const note = el("div", "lfx-store-pause-note");
     note.hidden = true;
     panel.appendChild(note);
@@ -37669,14 +37909,106 @@ void main() {
     }, "lfx-store-act--fs");
     mk("Design wechseln", () => a.onTheme());
     mk("Men\xFC", (b) => a.onMenu(b));
+    const pick = el("div", "lfx-store-voicepick");
+    pick.hidden = true;
+    const pickPanel = el("div", "lfx-store-voicepick-panel");
+    pickPanel.setAttribute("role", "dialog");
+    pickPanel.setAttribute("aria-label", "Stimme");
+    pickPanel.appendChild(el("div", "lfx-store-pause-title", "Stimme"));
+    const list = el("div", "lfx-store-voicelist");
+    const pitchBtn = el("button", "lfx-store-act lfx-store-voicepitch");
+    pitchBtn.type = "button";
+    const pickNote = el("div", "lfx-store-pause-note lfx-store-voicepick-note");
+    const doneBtn = el("button", "lfx-store-act lfx-store-act--primary", "Fertig");
+    doneBtn.type = "button";
+    pickPanel.append(list, pitchBtn, pickNote, doneBtn);
+    pick.appendChild(pickPanel);
+    const prefsNow = () => a.getVoicePrefs && a.getVoicePrefs() || { name: "", online: false, pitch: "tief" };
+    const voicesNow = () => {
+      try {
+        return a.getVoiceList && a.getVoiceList() || [];
+      } catch {
+        return [];
+      }
+    };
+    const selectedVoice = (pr, voices) => pr.name ? voices.find((v) => v.name === pr.name) || null : null;
+    function entry(label, on, fn) {
+      const b = el("button", "lfx-store-act lfx-store-voiceitem", label);
+      b.type = "button";
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.classList.toggle("is-on", on);
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fn();
+        renderPick();
+      });
+      return b;
+    }
+    function renderPick() {
+      const pr = prefsNow();
+      const voices = voicesNow();
+      const sel = selectedVoice(pr, voices);
+      list.textContent = "";
+      list.appendChild(entry(AUTO_DEVICE, !sel && !pr.online, () => a.onVoice({ name: "", online: false })));
+      list.appendChild(entry(AUTO_ONLINE, !sel && !!pr.online, () => a.onVoice({ name: "", online: true })));
+      for (const v of voices) {
+        list.appendChild(entry(`${shortVoiceName(v.name)}${v.online ? " \xB7 online" : ""}`, !!sel && sel.name === v.name, () => a.onVoice({ name: v.name })));
+      }
+      if (!voices.length) list.appendChild(el("div", "lfx-store-pause-note", "Keine deutschen Stimmen gefunden"));
+      pitchBtn.textContent = `Tonlage: ${PITCH_LABEL[pr.pitch] || PITCH_LABEL.tief}`;
+      const info = a.getVoiceInfo ? a.getVoiceInfo() : null;
+      const usesOnline = sel ? sel.online : !!pr.online && !!(info && info.online);
+      const lines = [];
+      if (usesOnline) lines.push(NOTE_ONLINE);
+      if (!voices.some((v) => v.male)) lines.push(NOTE_TIP);
+      pickNote.textContent = lines.join(" ");
+      pickNote.hidden = !lines.length;
+      refresh();
+    }
+    pitchBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      a.onVoice({ pitch: PITCH_NEXT[prefsNow().pitch] || "sehrtief" });
+      renderPick();
+    });
+    function openPick() {
+      renderPick();
+      pick.hidden = false;
+      const on = list.querySelector('[aria-pressed="true"]') || list.querySelector("button");
+      if (on) {
+        try {
+          on.focus({ preventScroll: true });
+        } catch {
+        }
+      }
+    }
+    function closePick() {
+      if (pick.hidden) return;
+      pick.hidden = true;
+      try {
+        vo.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    doneBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closePick();
+    });
+    pick.addEventListener("click", (e) => {
+      if (e.target === pick) {
+        e.stopPropagation();
+        closePick();
+      }
+    });
     function refresh() {
       q.textContent = `Qualit\xE4t: ${QUALITY_LABEL[a.getQuality()] || "Auto"}`;
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
-      const wantOnline = !!(a.getVoiceOnline && a.getVoiceOnline());
-      vo.hidden = !a.onVoiceOnline || !a.getSound();
-      vo.textContent = `Stimme: ${wantOnline ? "Online" : "Ger\xE4t"}`;
+      const pr = prefsNow();
+      const wantOnline = !!pr.online;
+      vo.hidden = !a.onVoice || !a.getSound();
+      const chosen = pr.name ? voicesNow().find((v) => v.name === pr.name) : null;
+      vo.textContent = `Stimme: ${chosen ? shortVoiceName(chosen.name) : "Automatisch"}`;
       const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline) : "";
       note.textContent = vt;
       note.hidden = !vt;
@@ -37685,6 +38017,7 @@ void main() {
       fs.textContent = fk === "guide" ? "Vollbild \u2026" : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? "An" : "Aus"}`;
     }
     root.appendChild(panel);
+    root.appendChild(pick);
     root.addEventListener("click", (e) => {
       if (e.target === root) a.onResume();
     });
@@ -37696,7 +38029,12 @@ void main() {
       get visible() {
         return !root.hidden;
       },
+      get pickOpen() {
+        return !pick.hidden;
+      },
+      closePick,
       show() {
+        pick.hidden = true;
         refresh();
         focusBack = document.activeElement;
         root.hidden = false;
@@ -37710,6 +38048,7 @@ void main() {
       },
       hide() {
         root.hidden = true;
+        pick.hidden = true;
         if (focusBack && typeof focusBack.focus === "function") {
           try {
             focusBack.focus({ preventScroll: true });
@@ -37718,7 +38057,10 @@ void main() {
         }
         focusBack = null;
       },
-      refresh,
+      refresh() {
+        refresh();
+        if (!pick.hidden) renderPick();
+      },
       destroy() {
         root.remove();
       }
@@ -38579,6 +38921,8 @@ void main() {
       this.sound = !!this.opts.sound;
       this.showFps = this.opts.showFps === true;
       this.voiceOnline = this.opts.voiceOnline === true;
+      this.voiceName = typeof this.opts.voiceName === "string" ? this.opts.voiceName : "";
+      this.voicePitch = ["normal", "tief", "sehrtief"].includes(this.opts.voicePitch) ? this.opts.voicePitch : "tief";
       this.bigCovers = this.opts.bigCovers !== false;
       this.zoomTarget = 1;
       this.zoom = 1;
@@ -38647,11 +38991,17 @@ void main() {
           this.setShowFps(on);
           this.savePrefs();
         },
-        onVoiceOnline: (on) => {
-          this.setVoiceOnline(on);
+        onVoice: (p) => {
+          this.setVoicePrefs(p);
           this.savePrefs();
+          this.previewVoice();
         },
-        getVoiceOnline: () => this.voiceOnline,
+        // synchron im Klick (iOS-Nutzergeste)
+        getVoicePrefs: () => ({ name: this.voiceName, online: this.voiceOnline, pitch: this.voicePitch }),
+        getVoiceList: () => {
+          const c = this.mods && this.mods.ctx.use("cashier");
+          return c && c.voices ? c.voices() : [];
+        },
         onBigCovers: (on) => this.setBigCovers(on),
         onTheme: () => this.deps.openThemePicker(),
         onMenu: (anchor) => this.deps.openMenu(anchor),
@@ -38762,6 +39112,7 @@ void main() {
         onEscape: () => {
           if (this.mode === "hold") this.holdview.close(true);
           else if (this.mode === "overlay") this.mods.overlayClose();
+          else if (this.pause && this.pause.pickOpen) this.pause.closePick();
           else this.resumeFromPause();
         }
       });
@@ -39166,7 +39517,7 @@ void main() {
     }
     savePrefs() {
       try {
-        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline });
+        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch });
       } catch {
       }
     }
@@ -39175,6 +39526,19 @@ void main() {
       this.voiceOnline = !!on;
       if (this.mods) this.mods.hook("onVoiceOnline", this.voiceOnline);
       if (this.pause) this.pause.refresh();
+    }
+    /** Stimmwahl { name?, pitch?, online? }: name '' = automatisch (online bestimmt dann Gerät/Online). */
+    setVoicePrefs(p) {
+      if (!p) return;
+      if (typeof p.name === "string") this.voiceName = p.name;
+      if (["normal", "tief", "sehrtief"].includes(p.pitch)) this.voicePitch = p.pitch;
+      if (typeof p.online === "boolean") this.voiceOnline = p.online;
+      if (this.mods) this.mods.hook("onVoicePrefs", { name: this.voiceName, pitch: this.voicePitch, online: this.voiceOnline });
+      if (this.pause) this.pause.refresh();
+    }
+    previewVoice() {
+      const c = this.mods && this.mods.ctx.use("cashier");
+      if (c && c.preview) c.preview();
     }
     setShowFps(on) {
       this.showFps = !!on;
@@ -39364,6 +39728,7 @@ void main() {
             coversFull: app.covers ? app.covers.fullCount : 0,
             coversHi: app.covers ? app.covers.hiCount : 0,
             preload: app.covers ? app.covers.preloadStats : { done: 0, total: 0, ms: 0 },
+            ...app.covers ? app.covers.counters : { coverUploads: 0, hiUp: 0, hiDown: 0, fullLoads: 0, fullEvicts: 0 },
             quality: app.engine.preset.level,
             qualitySetting: app.qualitySetting
           };

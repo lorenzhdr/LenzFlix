@@ -2,7 +2,8 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false };
+const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief' };
+export const VOICE_PITCHES = ['normal', 'tief', 'sehrtief'];
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
 const SESSION_INTRO = 'lfx.store.introSeen';
 const SESSION_STATE = 'lfx.store.state';
@@ -37,19 +38,32 @@ export function getVoiceOnline() {
   return read('localStorage', storageKey('voiceOnline')) === '1';
 }
 
+/** Gewählte Kassierer-Stimme (Name; leer = automatisch). */
+export function getVoiceName() {
+  return read('localStorage', storageKey('voiceName')) || '';
+}
+
+/** Tonlage des Kassierers: 'normal' | 'tief' (Standard) | 'sehrtief'. */
+export function getVoicePitch() {
+  const v = read('localStorage', storageKey('voicePitch'));
+  return VOICE_PITCHES.includes(v) ? v : DEFAULTS.voicePitch;
+}
+
 /** Große Hüllen (Standard an): nur ein ausdrückliches „0“ schaltet sie aus. */
 export function getBigCovers() {
   const v = read('localStorage', storageKey('bigCovers'));
   return v === null ? DEFAULTS.bigCovers : v !== '0';
 }
 
-/** Speichert { quality?, sound?, fps?, bigCovers? } (unbekannte/fehlende Felder werden ignoriert). */
+/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch? } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
   if (typeof p.sound === 'boolean') write('localStorage', storageKey('soundOn'), p.sound ? '1' : '0');
   if (typeof p.fps === 'boolean') write('localStorage', storageKey('fps'), p.fps ? '1' : '0');
   if (typeof p.voiceOnline === 'boolean') write('localStorage', storageKey('voiceOnline'), p.voiceOnline ? '1' : '0');
+  if (typeof p.voiceName === 'string') write('localStorage', storageKey('voiceName'), p.voiceName);
+  if (VOICE_PITCHES.includes(p.voicePitch)) write('localStorage', storageKey('voicePitch'), p.voicePitch);
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
 }
 

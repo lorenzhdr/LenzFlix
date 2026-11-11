@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { pickVoice, createVoice } from '../src/js/store3d/modules/voice.js';
+import { pickVoice, createVoice, listVoices, PITCH_FACTOR } from '../src/js/store3d/modules/voice.js';
 
 const V = (name, lang = 'de-DE', localService = true) => ({ name, lang, localService });
 
@@ -310,6 +310,77 @@ describe('pickVoice online', () => {
     on = true;
     v.reselect();
     expect(v.voiceName).toContain('Conrad');
+    expect(v.online).toBe(true);
+    v.dispose();
+  });
+});
+
+describe('Stimmwahl nach Name, Tonlage, listVoices', () => {
+  const voices = [
+    V('Anna'),
+    V('Microsoft Conrad Online (Natural) - German (Germany)', 'de-DE', false),
+    V('Markus'),
+    V('Google Deutsch', 'de-DE', false),
+    V('Hans', 'en-US'),
+    V('Stefan', 'de-AT'),
+  ];
+  it('pickVoice mit name: exakter Name, pitch 1.0, online nach localService', () => {
+    const r = pickVoice(voices, { name: 'Anna' });
+    expect(r.voice.name).toBe('Anna');
+    expect(r.pitch).toBe(1.0);
+    expect(r.online).toBe(false);
+    const o = pickVoice(voices, { name: 'Google Deutsch' });
+    expect(o.voice.name).toBe('Google Deutsch');
+    expect(o.online).toBe(true);
+  });
+  it('pickVoice mit unbekanntem oder nicht deutschem name: Fallback wie bisher', () => {
+    expect(pickVoice(voices, { name: 'Gibtsnicht' }).voice.name).toBe('Markus');
+    expect(pickVoice(voices, { name: 'Hans' }).voice.name).toBe('Markus');
+    expect(pickVoice(voices, { name: 'Gibtsnicht', online: true }).voice.name).toContain('Conrad');
+  });
+  it('listVoices: nur de, männlich zuerst, Gerät vor Online', () => {
+    const l = listVoices(voices);
+    expect(l.map((v) => v.name)).toEqual(['Markus', 'Stefan', 'Microsoft Conrad Online (Natural) - German (Germany)', 'Anna', 'Google Deutsch']);
+    expect(l.map((v) => v.male)).toEqual([true, true, true, false, false]);
+    expect(l.map((v) => v.online)).toEqual([false, false, true, false, true]);
+    expect(listVoices(null)).toEqual([]);
+  });
+  it('createVoice: prefer wählt Stimme, Pitch-Faktor wirkt auf say, preview und Freischalt-Äußerung, begrenzt auf [0.5, 2]', () => {
+    vi.useFakeTimers();
+    let pref = { name: 'Anna', pitchFactor: PITCH_FACTOR.tief };
+    const synth = mockSynth(voices);
+    const v = createVoice({ soundOn: () => true, prefer: () => pref, synth, Utterance: Utt });
+    expect(v.voiceName).toBe('Anna');
+    expect(v.listVoices().length).toBe(5);
+    v.say('x');
+    expect(synth.spoken[0].pitch).toBeCloseTo(0.8);
+    synth.spoken[0].onend();
+    pref = { name: 'Anna', pitchFactor: PITCH_FACTOR.sehrtief };
+    v.say('y');
+    expect(synth.spoken[1].pitch).toBeCloseTo(0.65);
+    synth.spoken[1].onend();
+    pref = { name: 'Anna', pitchFactor: 0.1 };
+    v.preview('z');
+    expect(synth.spoken[2].pitch).toBe(0.5);
+    synth.spoken[2].onend();
+    v.unlock();
+    pref = { name: 'Anna', pitchFactor: 0.8 };
+    document.dispatchEvent(new Event('click'));
+    expect(synth.spoken[3].pitch).toBeCloseTo(0.8);
+    v.dispose();
+    vi.useRealTimers();
+  });
+  it('createVoice: gewählte Stimme verschwindet, reselect fällt zurück', () => {
+    const list = voices.slice();
+    let pref = { name: 'Anna', pitchFactor: 1 };
+    const synth = { cancel() {}, speak() {}, getVoices: () => list, addEventListener() {}, removeEventListener() {} };
+    const v = createVoice({ soundOn: () => true, prefer: () => pref, synth, Utterance: Utt });
+    expect(v.voiceName).toBe('Anna');
+    list.splice(0, 1);
+    v.reselect();
+    expect(v.voiceName).toBe('Markus');
+    pref = { name: 'Google Deutsch', pitchFactor: 1 };
+    v.reselect();
     expect(v.online).toBe(true);
     v.dispose();
   });

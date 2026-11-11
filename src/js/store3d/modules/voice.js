@@ -17,6 +17,10 @@ const nameOf = (v) => String((v && v.name) || '').toLowerCase();
  */
 export function pickVoice(voices, opts = {}) {
   const all = Array.from(voices || []).filter((v) => v && isDe(v));
+  if (opts.name) { // ausdrücklich gewählte Stimme (exakter Name), unabhängig von Gerät/Online
+    const f = all.find((v) => v.name === opts.name);
+    if (f) return { voice: f, pitch: 1.0, online: f.localService !== true };
+  }
   if (opts.online) {
     const onl = all.filter((v) => v.localService !== true);
     if (onl.length) {
@@ -44,6 +48,17 @@ export function pickVoice(voices, opts = {}) {
   return { voice: list.find(isDeDE) || list[0], pitch: 0.8 };
 }
 
+/** Tonlagen-Faktoren (mit dem Grund-pitch aus pickVoice multipliziert, Ergebnis auf [0.5, 2] begrenzt). */
+export const PITCH_FACTOR = { normal: 1.0, tief: 0.8, sehrtief: 0.65 };
+const clampPitch = (x) => Math.max(0.5, Math.min(2, x));
+
+/** Alle deutschen Stimmen: [{ name, lang, online, male }], männliche zuerst, Gerät vor Online, dann nach Name. */
+export function listVoices(voices) {
+  return Array.from(voices || []).filter((v) => v && isDe(v)).map((v) => ({
+    name: String(v.name || ''), lang: String(v.lang || ''), online: v.localService !== true, male: MALE.some((m) => nameOf(v).includes(m)),
+  })).sort((a, b) => (a.male ? 0 : 1) - (b.male ? 0 : 1) || (a.online ? 1 : 0) - (b.online ? 1 : 0) || a.name.localeCompare(b.name, 'de'));
+}
+
 const START_WAIT = 2000; // so lange darf onstart ausbleiben, bevor „notStarted“ gilt / ein neuer Freischalt-Versuch erlaubt ist
 const PENDING_MAX = 15000;
 
@@ -52,7 +67,7 @@ const PENDING_MAX = 15000;
  * (touchend/click/keydown; pointerdown und Escape zählen nicht). `unlocked` wird erst wahr, wenn onstart einer Äußerung
  * tatsächlich gefeuert hat; bis dahin versucht jede weitere Geste es erneut.
  */
-export function createVoice({ soundOn = () => true, online = () => false, synth, Utterance } = {}) {
+export function createVoice({ soundOn = () => true, online = () => false, prefer, synth, Utterance } = {}) {
   const S = synth !== undefined ? synth : (typeof window !== 'undefined' ? window.speechSynthesis : null);
   const U = Utterance !== undefined ? Utterance : (typeof window !== 'undefined' ? window.SpeechSynthesisUtterance : null);
   let picked = null;
@@ -73,9 +88,15 @@ export function createVoice({ soundOn = () => true, online = () => false, synth,
   let pending = null; // { text, volume, at, onBegin, onEnd }: wartende Zeile, wird in der Geste als Freischaltung gesprochen
   const gestureEvents = ['touchend', 'click', 'keydown']; // KEIN pointerdown: auf iOS keine Nutzeraktivierung
 
+  // prefer() → { online, name, pitchFactor }; ohne prefer gilt nur online()
+  const prefs = () => {
+    let p;
+    try { p = prefer ? prefer() : null; } catch { p = null; }
+    return { online: p && p.online !== undefined ? !!p.online : !!online(), name: (p && p.name) || '', pf: p && Number.isFinite(p.pitchFactor) ? p.pitchFactor : 1 };
+  };
   const refresh = () => {
     if (!S || picked) return;
-    try { picked = pickVoice(S.getVoices ? S.getVoices() : [], { online: !!online() }); } catch { picked = null; }
+    try { const p = prefs(); picked = pickVoice(S.getVoices ? S.getVoices() : [], { online: p.online, name: p.name }); } catch { picked = null; }
   };
   const onVoices = () => refresh();
 
@@ -121,7 +142,7 @@ export function createVoice({ soundOn = () => true, online = () => false, synth,
     u.voice = picked.voice;
     u.lang = picked.voice.lang || 'de-DE';
     u.rate = 1.0;
-    u.pitch = picked.pitch;
+    u.pitch = clampPitch(picked.pitch * prefs().pf);
     u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
     return u;
   }
@@ -163,6 +184,9 @@ export function createVoice({ soundOn = () => true, online = () => false, synth,
       }, 0);
     });
   }
+
+  /** Probezeile (z. B. nach Stimmwahl): wie say, im Leerlauf synchron (Nutzergeste). */
+  function preview(text, opts) { return say(text, opts); }
 
   function cancel() {
     clearTimeout(timer); timer = 0;
@@ -222,7 +246,9 @@ export function createVoice({ soundOn = () => true, online = () => false, synth,
   const allVoices = () => { try { return Array.from((S && S.getVoices && S.getVoices()) || []); } catch { return []; } };
 
   return {
-    say, cancel, unlock, dispose, setPending, clearPending,
+    say, preview, cancel, unlock, dispose, setPending, clearPending,
+    /** Deutsche Stimmen des Geräts/Browsers (siehe listVoices). */
+    listVoices() { return listVoices(allVoices()); },
     /** Stimme neu wählen (z. B. nach Umschalten Gerät/Online). */
     reselect() { picked = null; lastError = ''; notStarted = false; refresh(); },
     /** Gewählte Stimme ist eine Online-Stimme. */

@@ -20,6 +20,19 @@ export const HI_COST = (HI_SIZE / 1024) ** 2; // Budgeteinheiten (1 = Atlas 1024
 export const LOW_SIZE = 256;
 export const LOW_SIZE_SMALL = 128;
 
+// Stabilität (kein Thrashing, Upload-Pacing)
+export const CALM_SPEED = 0.5; // m/s: darunter darf hochgestuft werden
+export const HI_SELECT_MS = 400; // Seite muss so lange ausgewählt sein
+export const HI_HOLD_MS = 3000; // keine Hoch-/Herabstufung derselben Seite innerhalb
+export const HI_BEHIND_MS = 2000; // hinter dem Spieler so lange, bevor herabgestuft wird
+export const HI_KEEP_D = 9; // weiter weg: Herabstufen
+export const HI_UPLOAD_GAP_MS = 600; // zwischen zwei 2048er-Uploads (jeder kostet die GPU ~1 Frame; live gemessen v1.7.7)
+export const HI_LRU_MS = 3000; // Hi-Platz nur von Seiten, die so lange nicht mehr gewollt waren
+export const SLOW_TURN = 0.8; // rad/s: schneller → keine neuen Hi-Ladevorgänge
+export const FAST_TURN = 1.5; // rad/s: Hi-Uploads zurückgestellt
+export const EVICT_MARGIN = 3; // m: neue Seite muss so viel näher sein als die entfernteste geladene
+export const EVICT_PROTECT_MS = 5000; // frisch geladene Seiten nicht verdrängen
+
 /** Kantenlänge der Low-Atlanten: Handy/Qualität low oder viele Seiten → 128, sonst 256. */
 export function lowSizeFor(faceCount, phone, level) {
   if (phone || level === 'low' || faceCount > 160) return LOW_SIZE_SMALL;
@@ -38,7 +51,7 @@ export class CoverManager {
     this.preset = o.preset;
     this.spec = o.spec || shelfSpec(false);
     this.phone = !!o.phone;
-    this.hiMax = o.phone ? 4 : 8;
+    this.hiMax = o.phone ? 2 : 4; // v1.7.7: weniger 2048er-Texturen = weniger Upload-Ruckler beim Stehenbleiben
     this.concurrency = o.phone ? 4 : 8;
     this.maxLoadingFaces = o.phone ? 2 : 5;
     this.onFirst = o.onFirst || null;
@@ -47,10 +60,23 @@ export class CoverManager {
     this.pre = null;
     this.lowCanvas = null;
     this.evictSync = 0;
+    this.now = o.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
+    this.poses = []; // { t, x, z, yaw } der letzten ~1 s
+    this.calm = false;
+    this.zoomed = false;
+    this.turnFast = false;
+    this.turnSlow = false;
+    this.frame = 0;
+    this.lastUploadFrame = -9;
+    this.lastHiAt = -1e9;
+    this.frameDts = [];
+    this.lastTickAt = 0;
+    this.counters = { coverUploads: 0, hiUp: 0, hiDown: 0, fullLoads: 0, fullEvicts: 0 };
     this.itemFaces = null;
     this.faces = o.faceViews.filter((fv) => fv.mesh).map((fv) => ({
       fv, face: fv.face, state: 'flat', tex: null, score: Infinity, loading: null, ph: false, queued: false,
       hiTex: null, hiLoading: null, hiSkip: false, hiScore: Infinity, d: Infinity, front: 0, dot: 0, lowDirty: false,
+      hiSince: null, hiLastWanted: 0, hiBehindSince: null, hiChangedAt: -1e9, loadedAt: -1e9,
     }));
     this.byFace = new Map(this.faces.map((f) => [f.face.index, f]));
     this.queue = [];
@@ -103,6 +129,9 @@ export class CoverManager {
     if (this.disposed) return;
     const zoom = (extra && extra.zoom) || 1;
     const pitch = (extra && extra.pitch) || 0;
+    const now = this.now();
+    this.trackPose(now, px, pz, yaw);
+    this.zoomed = zoom > 1.3;
     this.evictSync = 2;
     const vx = -Math.sin(yaw);
     const vz = -Math.cos(yaw);
@@ -113,7 +142,7 @@ export class CoverManager {
       const d = Math.hypot(dx, dz);
       const front = (px - fc.x) * fc.nx + (pz - fc.z) * fc.nz;
       const dot = (dx * vx + dz * vz) / (d || 1);
-      f.score = d + (front < -0.3 ? 9 : 0) + (dot < -0.2 ? 4 : 0);
+      f.score = d + (front < -0.3 ? 9 : 0) + (dot < -0.2 ? 4 : 0); // nur Lade-Reihenfolge, nicht Eviction
       f.d = d;
       f.front = front;
       f.dot = dot;
@@ -122,40 +151,106 @@ export class CoverManager {
     const radius = this.preset.loadRadius;
     // Budget in Einheiten: 2048er-Atlanten (je HI_COST) werden vom Grund-Budget abgezogen
     const max = Math.max(4, this.preset.maxAtlases - this.hiPending * HI_COST);
-    const wanted = this.faces.filter((f) => f.score < radius).sort((a, b) => a.score - b.score).slice(0, max);
-    const wantedSet = new Set(wanted);
+    const inRadius = new Set();
+    const order = [];
+    for (const f of this.faces) if (f.score < radius) { inRadius.add(f); order.push(f); }
+    order.sort((a, b) => a.score - b.score);
 
-    // Budget: entferntesten Atlas zuerst verdrängen
-    const loaded = this.faces.filter((f) => f.tex && f.state !== 'low');
-    if (loaded.length > max) {
-      loaded.sort((a, b) => b.score - a.score);
-      for (const f of loaded) {
-        if (this.loadedCount <= max) break;
-        if (!wantedSet.has(f)) this.evict(f);
+    // Über Budget (z. B. durch 2048er): entfernteste (nach Distanz) zuerst verdrängen, frisch geladene zuletzt
+    let used = this.usedCount;
+    if (used > max) {
+      const cand = this.faces.filter((f) => f.tex && f.state !== 'low' && !f.loading).sort((a, b) => this.evictRank(b, now) - this.evictRank(a, now));
+      for (const f of cand) {
+        if (used <= max) break;
+        this.evict(f);
+        used--;
       }
     }
     // Laufende Ladevorgänge weit entfernter Faces abbrechen
-    for (const f of this.faces) if (f.loading && !wantedSet.has(f) && f.score > radius * 1.25) this.cancelLoad(f);
+    for (const f of this.faces) if (f.loading && !inRadius.has(f) && f.score > radius * 1.25) this.cancelLoad(f);
 
     let loadingNow = this.faces.reduce((n, f) => n + (f.loading ? 1 : 0), 0);
+    used = this.usedCount;
     let ph = 0;
-    for (const f of wanted) {
-      if (f.state === 'flat' && !f.queued && !this.lowEnabled && ph < 2) { this.queueCompose(f, 'ph'); ph++; }
+    for (const f of order) {
+      if (f.state === 'flat' && !f.queued && !this.lowEnabled && ph < 2 && used + ph < max) { this.queueCompose(f, 'ph'); ph++; }
       if (f.state !== 'full' && !f.loading && loadingNow < this.maxLoadingFaces) {
+        const counted = !!(f.tex && f.state !== 'low');
+        if (!counted && used >= max) {
+          // Platz nur schaffen, wenn die neue Seite deutlich näher ist als die entfernteste geladene (Hysterese)
+          const v = this.pickVictim(f, now);
+          if (!v) continue;
+          this.evict(v);
+          used--;
+        }
+        if (!counted) used++;
         this.startLoad(f);
         loadingNow++;
       }
     }
-    // Hochstufen (höchstens 2 gleichzeitig ladende 2048er-Seiten, nur bei fertigem Grund-Atlas)
-    let hiLoadingNow = this.faces.reduce((n, f) => n + (f.hiLoading ? 1 : 0), 0);
-    for (const f of hiSet) {
-      if (hiLoadingNow >= 2) break;
-      if (f.state === 'full' && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip) {
-        this.startHiLoad(f);
-        if (f.hiLoading) hiLoadingNow++;
-      }
-    }
+    this.startHiLoads(hiSet, now);
     this.pump();
+  }
+
+  /** Belegte Grund-Budget-Plätze (fertige ph/full-Atlanten plus laufende Ladevorgänge). */
+  get usedCount() { return this.faces.reduce((n, f) => n + ((f.tex && f.state !== 'low') || f.loading ? 1 : 0), 0); }
+
+  /** Eviction-Rang: je größer, desto eher verdrängt (Distanz; frisch geladene zuletzt). */
+  evictRank(f, now) { return f.d + (now - f.loadedAt < EVICT_PROTECT_MS ? -1000 : 0); }
+
+  /** Entfernteste geladene Seite (nach Distanz), die nicht geschützt ist und mindestens EVICT_MARGIN weiter weg liegt als nf. */
+  pickVictim(nf, now) {
+    let best = null;
+    for (const f of this.faces) {
+      if (f === nf || !f.tex || f.state === 'low' || f.loading) continue;
+      if (now - f.loadedAt < EVICT_PROTECT_MS) continue;
+      if (f.d < nf.d + EVICT_MARGIN) continue;
+      if (!best || f.d > best.d) best = f;
+    }
+    return best;
+  }
+
+  /** Pose-Historie: Geschwindigkeit und Drehrate über >= ~230 ms. */
+  trackPose(now, x, z, yaw) {
+    const ps = this.poses;
+    let ref = null;
+    for (let i = ps.length - 1; i >= 0; i--) if (now - ps[i].t >= 230) { ref = ps[i]; break; }
+    if (ref) {
+      const dt = (now - ref.t) / 1000;
+      let dy = yaw - ref.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      this.calm = Math.hypot(x - ref.x, z - ref.z) / dt < CALM_SPEED;
+      this.turnFast = Math.abs(dy) / dt > FAST_TURN;
+      this.turnSlow = Math.abs(dy) / dt < SLOW_TURN;
+    } else { this.calm = false; this.turnFast = false; this.turnSlow = false; }
+    ps.push({ t: now, x, z, yaw });
+    while (ps.length > 2 && now - ps[1].t > 800) ps.shift();
+  }
+
+  /** Hochstufen nur in Ruhe (langsam) oder bei Zoom, nach Auswahl >= 400 ms, nicht kurz nach Herabstufen; LRU-Platz bei Bedarf. */
+  startHiLoads(wanted, now) {
+    if (!wanted.length || !(this.calm || this.zoomed) || !(this.turnSlow || this.zoomed)) return;
+    const cap = this.hiCap;
+    const set = new Set(wanted);
+    let hiLoadingNow = this.faces.reduce((n, f) => n + (f.hiLoading ? 1 : 0), 0);
+    for (const f of wanted) {
+      if (hiLoadingNow >= 2) break;
+      if (!(f.state === 'full' && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip)) continue;
+      if (f.hiSince == null || now - f.hiSince < HI_SELECT_MS || now - f.hiChangedAt < HI_HOLD_MS) continue;
+      if (this.hiPending >= cap) {
+        let v = null;
+        for (const g of this.faces) {
+          if (set.has(g) || !(g.hiTex || g.hiLoading)) continue;
+          if (g.hiTex && now - g.hiChangedAt < HI_HOLD_MS) continue;
+          if (now - g.hiLastWanted < HI_LRU_MS) continue;
+          if (!v || g.hiLastWanted < v.hiLastWanted) v = g;
+        }
+        if (!v) break;
+        this.dropHi(v);
+      }
+      this.startHiLoad(f);
+      if (f.hiLoading) hiLoadingNow++;
+    }
   }
 
   /**
@@ -165,6 +260,7 @@ export class CoverManager {
    * @returns {Array} gewählte Seiten (nach Rang, höchstens hiCap)
    */
   updateHi(zoom, pitch) {
+    const now = this.now();
     const cap = this.hiCap;
     const zoomed = zoom > 1.3;
     const cands = [];
@@ -183,27 +279,81 @@ export class CoverManager {
     cands.sort((a, b) => a.hiScore - b.hiScore);
     const wanted = cands.slice(0, cap);
     const set = new Set(wanted);
-    for (const f of this.faces) if ((f.hiTex || f.hiLoading) && !set.has(f)) this.dropHi(f);
+    for (const f of this.faces) {
+      const has = !!(f.hiTex || f.hiLoading);
+      if (set.has(f)) {
+        if (f.hiSince == null) f.hiSince = now;
+        f.hiLastWanted = now;
+        f.hiBehindSince = null;
+        continue;
+      }
+      f.hiSince = null;
+      if (!has) { f.hiBehindSince = null; continue; }
+      if (cap === 0) { this.dropHi(f); continue; }
+      // Hysterese: Hi-Textur bleibt, bis sie deutlich aus dem Bereich ist (weit weg / lange hinter dem Spieler)
+      const behind = f.front < -0.3 || f.dot < -0.2;
+      if (behind) { if (f.hiBehindSince == null) f.hiBehindSince = now; } else f.hiBehindSince = null;
+      if (f.hiTex && now - f.hiChangedAt < HI_HOLD_MS) continue;
+      if (f.d > HI_KEEP_D || (f.hiBehindSince != null && now - f.hiBehindSince > HI_BEHIND_MS)) this.dropHi(f);
+    }
+    // Cap geschrumpft (Qualitätswechsel): überzählige Seiten außerhalb der Auswahl (LRU) abgeben
+    let over = this.hiPending - cap;
+    if (over > 0) {
+      const out = this.faces.filter((f) => (f.hiTex || f.hiLoading) && !set.has(f)).sort((a, b) => a.hiLastWanted - b.hiLastWanted);
+      for (const f of out) { if (over-- <= 0) break; this.dropHi(f); }
+    }
     return wanted;
+  }
+
+  /** Frame-Takt festhalten (für das Hi-Upload-Pacing). */
+  trackFrame(now) {
+    if (this.lastTickAt) {
+      this.frameDts.push(now - this.lastTickAt);
+      if (this.frameDts.length > 30) this.frameDts.shift();
+    }
+    this.lastTickAt = now;
+  }
+
+  /** Letzte ~5 Frames unauffällig (< 1,5× Median)? Ohne genug Historie: ja. */
+  framesSteady() {
+    const a = this.frameDts;
+    if (a.length < 10) return true;
+    const med = [...a].sort((x, y) => x - y)[a.length >> 1];
+    return a.slice(-5).every((v) => v < med * 1.5);
+  }
+
+  /** 2048er-Upload jetzt erlaubt? Ruhe/Zoom, keine schnelle Drehung, Abstand >= 250 ms, Frames unauffällig. */
+  hiUploadOk(now) {
+    return (this.calm || this.zoomed) && !this.turnFast && now - this.lastHiAt >= HI_UPLOAD_GAP_MS && this.framesSteady();
   }
 
   /** Pro Frame höchstens ein Atlas zeichnen + hochladen (Grund-Atlas vor Low-Nachzügler vor Schärfestufe). */
   tick() {
     if (this.disposed) return;
+    const now = this.now();
+    this.frame++;
+    this.trackFrame(now);
+    if (this.frame - this.lastUploadFrame < 2) return; // höchstens ein Atlas-Upload alle 2 Frames
     const low = this.lowEnabled ? this.pickLow() : null;
-    if (!this.composeQueue.length) {
-      if (low) this.composeLowSafe(low);
+    let job = null;
+    if (this.composeQueue.length) {
+      const rank = (j) => j.f.score + (j.kind === 'hi' ? 100 : 0); // Grund-Atlanten vor Schärfestufe
+      this.composeQueue.sort((a, b) => rank(a) - rank(b));
+      const hiOk = this.hiUploadOk(now);
+      const at = this.composeQueue.findIndex((j) => j.kind !== 'hi' || hiOk);
+      if (at >= 0) job = this.composeQueue[at];
+      if (job && low && job.kind === 'hi') job = null;
+      if (job) this.composeQueue.splice(at, 1);
+    }
+    if (!job) {
+      if (low) { this.lastUploadFrame = this.frame; this.composeLowSafe(low); }
       return;
     }
-    const rank = (j) => j.f.score + (j.kind === 'hi' ? 100 : 0); // Grund-Atlanten vor Schärfestufe
-    this.composeQueue.sort((a, b) => rank(a) - rank(b));
-    if (low && this.composeQueue[0].kind === 'hi') { this.composeLowSafe(low); return; }
-    const job = this.composeQueue.shift();
     if (job.kind !== 'hi') job.f.queued = false;
+    this.lastUploadFrame = this.frame;
     try {
       if (job.kind === 'ph') this.composePlaceholder(job.f);
-      else if (job.kind === 'hi') this.composeHi(job.f);
-      else this.composeFull(job.f);
+      else if (job.kind === 'hi') { this.lastHiAt = now; this.composeHi(job.f); } else this.composeFull(job.f);
     } catch { /* ein defekter Atlas darf die Szene nicht stoppen */ }
   }
 
@@ -267,6 +417,8 @@ export class CoverManager {
     const t = f.hiTex;
     if (!t) return;
     f.hiTex = null;
+    f.hiChangedAt = this.now();
+    this.counters.hiDown++;
     const mat = f.fv.material;
     if (mat.map === t) mat.map = f.tex || this.blank;
     t.onUpdate = null;
@@ -384,6 +536,7 @@ export class CoverManager {
     l.bitmaps.forEach(closeBitmap);
     l.bitmaps.clear();
     f.loading = null;
+    this.counters.fullLoads++;
     this.applyTexture(f, canvas, 'full');
   }
 
@@ -398,6 +551,9 @@ export class CoverManager {
     const tex = this.makeTexture(canvas);
     f.fv.material.map = tex;
     f.hiTex = tex;
+    f.hiChangedAt = this.now();
+    this.counters.hiUp++;
+    this.counters.coverUploads++;
     try { if (this.renderer) this.renderer.initTexture(tex); } catch { /* wird beim ersten Rendern hochgeladen */ }
   }
 
@@ -420,6 +576,8 @@ export class CoverManager {
     const old = f.tex;
     f.tex = tex;
     f.state = state;
+    this.counters.coverUploads++;
+    if (state !== 'low') f.loadedAt = this.now();
     try { if (this.renderer) this.renderer.initTexture(tex); } catch { /* wird beim ersten Rendern hochgeladen */ }
     if (old) old.dispose();
     if (!this.first) { this.first = true; if (this.onFirst) this.onFirst(); }
@@ -433,6 +591,7 @@ export class CoverManager {
     this.composeQueue = this.composeQueue.filter((j) => j.f !== f);
     f.queued = false;
     if (!hard && f.state === 'low') return;
+    if (!hard && f.state === 'full') this.counters.fullEvicts++;
     const mat = f.fv.material;
     mat.map = this.blank;
     mat.color.copy(f.fv.flatColor);

@@ -102,7 +102,7 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: true, showFps: false, voiceOnline: false, bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
       'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal']) {
@@ -184,11 +184,18 @@ describe('Hüllengröße', () => {
     expect(captured.opts.voiceOnline).toBe(false);
     captured.deps.onPrefs({ voiceOnline: true });
     expect(localStorage.getItem('lfx.store.voiceOnline.u1')).toBe('1');
+    expect(captured.opts.voiceName).toBe('');
+    expect(captured.opts.voicePitch).toBe('tief');
+    captured.deps.onPrefs({ voiceName: 'Conrad', voicePitch: 'sehrtief' });
+    expect(localStorage.getItem('lfx.store.voiceName.u1')).toBe('Conrad');
+    expect(localStorage.getItem('lfx.store.voicePitch.u1')).toBe('sehrtief');
+    captured.deps.onPrefs({ voicePitch: 'quatsch' });
+    expect(localStorage.getItem('lfx.store.voicePitch.u1')).toBe('sehrtief');
     feature.unmount();
     destroyStore();
     create.mockClear();
     await mountOk();
-    expect(captured.opts).toMatchObject({ showFps: true, bigCovers: false, voiceOnline: true });
+    expect(captured.opts).toMatchObject({ showFps: true, bigCovers: false, voiceOnline: true, voiceName: 'Conrad', voicePitch: 'sehrtief' });
   });
 
   it('onBigCovers: dispose, Ladebildschirm, neues create mit bigCovers:false, ohne Intro und mit Position', async () => {

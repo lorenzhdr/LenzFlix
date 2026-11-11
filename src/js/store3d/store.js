@@ -39,6 +39,8 @@ class StoreApp {
     this.sound = !!this.opts.sound;
     this.showFps = this.opts.showFps === true;
     this.voiceOnline = this.opts.voiceOnline === true;
+    this.voiceName = typeof this.opts.voiceName === 'string' ? this.opts.voiceName : '';
+    this.voicePitch = ['normal', 'tief', 'sehrtief'].includes(this.opts.voicePitch) ? this.opts.voicePitch : 'tief';
     this.bigCovers = this.opts.bigCovers !== false;
     this.zoomTarget = 1;
     this.zoom = 1;
@@ -91,8 +93,9 @@ class StoreApp {
       onQuality: (q) => { this.setQuality(q); this.savePrefs(); },
       onSound: (on) => { this.setSound(on); this.savePrefs(); },
       onFps: (on) => { this.setShowFps(on); this.savePrefs(); },
-      onVoiceOnline: (on) => { this.setVoiceOnline(on); this.savePrefs(); },
-      getVoiceOnline: () => this.voiceOnline,
+      onVoice: (p) => { this.setVoicePrefs(p); this.savePrefs(); this.previewVoice(); }, // synchron im Klick (iOS-Nutzergeste)
+      getVoicePrefs: () => ({ name: this.voiceName, online: this.voiceOnline, pitch: this.voicePitch }),
+      getVoiceList: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voices ? c.voices() : []; },
       onBigCovers: (on) => this.setBigCovers(on),
       onTheme: () => this.deps.openThemePicker(),
       onMenu: (anchor) => this.deps.openMenu(anchor),
@@ -184,6 +187,7 @@ class StoreApp {
       onEscape: () => {
         if (this.mode === 'hold') this.holdview.close(true);
         else if (this.mode === 'overlay') this.mods.overlayClose();
+        else if (this.pause && this.pause.pickOpen) this.pause.closePick();
         else this.resumeFromPause();
       },
     });
@@ -561,7 +565,7 @@ class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch }); } catch { /* egal */ }
   }
 
   /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
@@ -569,6 +573,21 @@ class StoreApp {
     this.voiceOnline = !!on;
     if (this.mods) this.mods.hook('onVoiceOnline', this.voiceOnline);
     if (this.pause) this.pause.refresh();
+  }
+
+  /** Stimmwahl { name?, pitch?, online? }: name '' = automatisch (online bestimmt dann Gerät/Online). */
+  setVoicePrefs(p) {
+    if (!p) return;
+    if (typeof p.name === 'string') this.voiceName = p.name;
+    if (['normal', 'tief', 'sehrtief'].includes(p.pitch)) this.voicePitch = p.pitch;
+    if (typeof p.online === 'boolean') this.voiceOnline = p.online;
+    if (this.mods) this.mods.hook('onVoicePrefs', { name: this.voiceName, pitch: this.voicePitch, online: this.voiceOnline });
+    if (this.pause) this.pause.refresh();
+  }
+
+  previewVoice() {
+    const c = this.mods && this.mods.ctx.use('cashier');
+    if (c && c.preview) c.preview();
   }
 
   setShowFps(on) {
@@ -712,6 +731,7 @@ class StoreApp {
           coverSegmentsLoaded: app.covers ? app.covers.loadedCount : 0, coverFull: app.covers ? app.covers.fullCount : 0,
           coversLow: app.covers ? app.covers.lowCount : 0, coversFull: app.covers ? app.covers.fullCount : 0, coversHi: app.covers ? app.covers.hiCount : 0,
           preload: app.covers ? app.covers.preloadStats : { done: 0, total: 0, ms: 0 },
+          ...(app.covers ? app.covers.counters : { coverUploads: 0, hiUp: 0, hiDown: 0, fullLoads: 0, fullEvicts: 0 }),
           quality: app.engine.preset.level, qualitySetting: app.qualitySetting,
         };
       },

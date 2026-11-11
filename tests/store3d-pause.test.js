@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { createPause, voiceNote } from '../src/js/store3d/ui/pause.js';
+import { createPause, voiceNote, shortVoiceName } from '../src/js/store3d/ui/pause.js';
 
 function make(over = {}) {
   const host = document.createElement('div');
@@ -47,5 +47,109 @@ describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
     expect(voiceNote(null)).toBe('');
     expect(voiceNote({ diag: 'ok', voiceName: 'Conrad', lang: 'de-DE', online: true })).toContain('online: Sätze, Name und Titel');
     expect(voiceNote({ diag: 'ok', voiceName: 'Stefan', lang: 'de-DE' }, true)).toContain('keine Online-Stimme verfügbar');
+  });
+});
+
+const LIST = [
+  { name: 'Markus', lang: 'de-DE', online: false, male: true },
+  { name: 'Microsoft Conrad Online (Natural) - German (Germany)', lang: 'de-DE', online: true, male: true },
+  { name: 'Anna', lang: 'de-DE', online: false, male: false },
+];
+function makeVoice(over = {}) {
+  let prefs = { name: '', online: false, pitch: 'tief' };
+  const calls = [];
+  const m = make({
+    onVoice: (p) => { calls.push(p); prefs = { ...prefs, ...p }; },
+    getVoicePrefs: () => prefs,
+    getVoiceList: () => LIST,
+    ...over,
+  });
+  return { ...m, calls };
+}
+const btn = (host, re) => Array.from(host.querySelectorAll('button')).find((b) => re.test(b.textContent));
+
+describe('Pause-Menue: Stimmenauswahl', () => {
+  it('Knopftext: Automatisch bzw. Kurzname, nur bei Ton an', () => {
+    const { host, p, setSound } = makeVoice();
+    expect(btn(host, /^Stimme:/).textContent).toBe('Stimme: Automatisch');
+    expect(btn(host, /^Stimme:/).hidden).toBe(false);
+    setSound(false);
+    p.refresh();
+    expect(btn(host, /^Stimme:/).hidden).toBe(true);
+    p.destroy();
+    const n = makeVoice({ getVoicePrefs: () => ({ name: LIST[1].name, online: false, pitch: 'tief' }) });
+    expect(btn(n.host, /^Stimme:/).textContent).toBe('Stimme: Conrad');
+    n.p.destroy();
+  });
+  it('shortVoiceName', () => {
+    expect(shortVoiceName('Microsoft Conrad Online (Natural) - German (Germany)')).toBe('Conrad');
+    expect(shortVoiceName('Google Deutsch')).toBe('Deutsch');
+    expect(shortVoiceName('Anna')).toBe('Anna');
+  });
+  it('Panel öffnet, listet Einträge, schließt per Fertig, closePick, Klick daneben und hide', () => {
+    const { host, p } = makeVoice();
+    const pick = host.querySelector('.lfx-store-voicepick');
+    expect(pick.hidden).toBe(true);
+    btn(host, /^Stimme:/).click();
+    expect(pick.hidden).toBe(false);
+    expect(p.pickOpen).toBe(true);
+    const items = Array.from(pick.querySelectorAll('.lfx-store-voiceitem')).map((b) => b.textContent);
+    expect(items).toEqual(['Automatisch (Gerätestimme)', 'Automatisch (Online bevorzugt)', 'Markus', 'Conrad · online', 'Anna']);
+    expect(pick.querySelector('[aria-pressed="true"]').textContent).toBe('Automatisch (Gerätestimme)');
+    btn(host, /^Fertig$/).click();
+    expect(pick.hidden).toBe(true);
+    btn(host, /^Stimme:/).click();
+    p.closePick();
+    expect(p.pickOpen).toBe(false);
+    btn(host, /^Stimme:/).click();
+    pick.click();
+    expect(pick.hidden).toBe(true);
+    btn(host, /^Stimme:/).click();
+    p.hide();
+    expect(pick.hidden).toBe(true);
+    p.destroy();
+  });
+  it('Auswahl ruft onVoice und markiert den Eintrag', () => {
+    const { host, p, calls } = makeVoice();
+    btn(host, /^Stimme:/).click();
+    btn(host, /^Conrad/).click();
+    expect(calls).toEqual([{ name: LIST[1].name }]);
+    expect(btn(host, /^Conrad/).getAttribute('aria-pressed')).toBe('true');
+    expect(btn(host, /^Markus/).getAttribute('aria-pressed')).toBe('false');
+    expect(btn(host, /^Stimme:/).textContent).toBe('Stimme: Conrad');
+    btn(host, /^Automatisch \(Online/).click();
+    expect(calls[1]).toEqual({ name: '', online: true });
+    expect(btn(host, /^Automatisch \(Online/).getAttribute('aria-pressed')).toBe('true');
+    expect(btn(host, /^Stimme:/).textContent).toBe('Stimme: Automatisch');
+    p.destroy();
+  });
+  it('Tonlage zykliert Tief -> Sehr tief -> Normal', () => {
+    const { host, p, calls } = makeVoice();
+    btn(host, /^Stimme:/).click();
+    expect(btn(host, /^Tonlage/).textContent).toBe('Tonlage: Tief');
+    btn(host, /^Tonlage/).click();
+    expect(btn(host, /^Tonlage/).textContent).toBe('Tonlage: Sehr tief');
+    btn(host, /^Tonlage/).click();
+    expect(btn(host, /^Tonlage/).textContent).toBe('Tonlage: Normal');
+    expect(calls).toEqual([{ pitch: 'sehrtief' }, { pitch: 'normal' }]);
+    p.destroy();
+  });
+  it('Hinweise: online, Tipp ohne männliche Stimme, keine Stimmen', () => {
+    const online = makeVoice({ getVoicePrefs: () => ({ name: LIST[1].name, online: false, pitch: 'tief' }) });
+    btn(online.host, /^Stimme:/).click();
+    const nt = online.host.querySelector('.lfx-store-voicepick-note');
+    expect(nt.textContent).toContain('Online: Sätze, Name und Filmtitel');
+    expect(nt.textContent).not.toContain('Tipp:');
+    online.p.destroy();
+    const none = makeVoice({ getVoiceList: () => [LIST[2]] });
+    btn(none.host, /^Stimme:/).click();
+    const tip = none.host.querySelector('.lfx-store-voicepick-note').textContent;
+    expect(tip).toContain('Tipp: Männliche Online-Stimmen');
+    expect(tip).not.toMatch(/Edge/);
+    none.p.destroy();
+    const empty = makeVoice({ getVoiceList: () => [] });
+    btn(empty.host, /^Stimme:/).click();
+    expect(empty.host.querySelector('.lfx-store-voicelist').textContent).toContain('Keine deutschen Stimmen gefunden');
+    empty.p.destroy();
   });
 });

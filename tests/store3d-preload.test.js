@@ -199,7 +199,7 @@ describe('CoverManager Low-Stufe', () => {
     expect(m.faces.map((f) => f.tex)).toEqual(before);
     m.invalidateAll();
     expect(m.lowCount).toBe(0);
-    for (let i = 0; i < 3; i++) m.tick();
+    for (let i = 0; i < 6; i++) m.tick(); // höchstens 1 Upload alle 2 Frames
     expect(m.lowCount).toBe(3);
   });
 
@@ -213,7 +213,9 @@ describe('CoverManager Low-Stufe', () => {
     m.markLowItem('a0'); m.markLowItem('a1'); m.markLowItem('a2');
     m.tick();
     expect(drawAtlas).toHaveBeenCalledTimes(1);
-    m.tick(); m.tick(); m.tick();
+    m.tick();
+    expect(drawAtlas).toHaveBeenCalledTimes(1); // Pacing: erst nach 2 Frames wieder
+    for (let i = 0; i < 4; i++) m.tick();
     expect(drawAtlas).toHaveBeenCalledTimes(3);
   });
 

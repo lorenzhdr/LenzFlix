@@ -7,6 +7,7 @@ import { slotWorld } from '../world/build-shelves.js';
 import { loadBitmap, closeBitmap } from '../covers/loader.js';
 import { makeCanvas } from '../world/textures.js';
 import { disposeTree } from '../util/geo.js';
+import { PITCH_FACTOR } from './voice.js';
 
 const ease = (t) => t * t * (3 - 2 * t);
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
@@ -52,6 +53,7 @@ export class ModuleHost {
       quality: () => app.engine.preset.level,
       soundOn: () => app.sound,
       voiceOnline: () => !!app.voiceOnline,
+      voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || '', pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
       addCollider(rect) {
         if (!rect || app.layout.colliders.includes(rect)) return rect;
         if (!rect.kind) rect.kind = 'prop';
