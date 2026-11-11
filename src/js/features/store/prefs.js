@@ -2,7 +2,7 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true };
+const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false };
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
 const SESSION_INTRO = 'lfx.store.introSeen';
 const SESSION_STATE = 'lfx.store.state';
@@ -32,6 +32,11 @@ export function getFps() {
   return read('localStorage', storageKey('fps')) === '1';
 }
 
+/** Online-Stimmen für den Kassierer (Standard aus: nur Gerätestimmen, Datenschutz). */
+export function getVoiceOnline() {
+  return read('localStorage', storageKey('voiceOnline')) === '1';
+}
+
 /** Große Hüllen (Standard an): nur ein ausdrückliches „0“ schaltet sie aus. */
 export function getBigCovers() {
   const v = read('localStorage', storageKey('bigCovers'));
@@ -44,6 +49,7 @@ export function savePrefs(p) {
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
   if (typeof p.sound === 'boolean') write('localStorage', storageKey('soundOn'), p.sound ? '1' : '0');
   if (typeof p.fps === 'boolean') write('localStorage', storageKey('fps'), p.fps ? '1' : '0');
+  if (typeof p.voiceOnline === 'boolean') write('localStorage', storageKey('voiceOnline'), p.voiceOnline ? '1' : '0');
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
 }
 

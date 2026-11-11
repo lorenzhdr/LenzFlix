@@ -117,7 +117,7 @@ export default {
     }
 
     // --- Stimme ---
-    const voice = createVoice({ soundOn: () => ctx.soundOn() });
+    const voice = createVoice({ soundOn: () => ctx.soundOn(), online: () => !!(ctx.voiceOnline && ctx.voiceOnline()) });
     voice.unlock();
     let talkId = 0;
     const duck = (on) => { const s = ctx.use('sound'); if (s && s.duck) s.duck('talk', on); };
@@ -316,7 +316,7 @@ export default {
       },
       /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
       voiceInfo() {
-        return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe };
+        return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
       },
     });
 
@@ -407,6 +407,7 @@ export default {
         }
       },
       onSound(on) { if (!on) stopVoice(); },
+      onVoiceOnline() { stopVoice(); voice.reselect(); },
       onSuspend() { bubble.hidden = true; bubbleLeft = 0; stopVoice(); },
       dispose() {
         offs.forEach((o) => o());

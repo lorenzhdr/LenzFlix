@@ -45,5 +45,7 @@ describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
     expect(voiceNote({ diag: 'unsupported' })).toBe('Stimme: vom Browser nicht unterstützt');
     expect(voiceNote({ diag: 'error:synthesis-failed' })).toBe('Stimme: Fehler (synthesis-failed)');
     expect(voiceNote(null)).toBe('');
+    expect(voiceNote({ diag: 'ok', voiceName: 'Conrad', lang: 'de-DE', online: true })).toContain('online: Sätze, Name und Titel');
+    expect(voiceNote({ diag: 'ok', voiceName: 'Stefan', lang: 'de-DE' }, true)).toContain('keine Online-Stimme verfügbar');
   });
 });

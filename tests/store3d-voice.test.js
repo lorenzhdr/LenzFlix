@@ -274,3 +274,43 @@ describe('createVoice', () => {
     expect(synth.speak).not.toHaveBeenCalled();
   });
 });
+
+describe('pickVoice online', () => {
+  const voices = [
+    V('Microsoft Stefan - German (Germany)'),
+    V('Google Deutsch', 'de-DE', false),
+    V('Microsoft Katja Online (Natural) - German (Germany)', 'de-DE', false),
+    V('Microsoft Conrad Online (Natural) - German (Germany)', 'de-DE', false),
+    V('Microsoft Guy Online (Natural) - English (United States)', 'en-US', false),
+  ];
+  it('ohne Freigabe nur lokale Stimmen', () => {
+    const r = pickVoice(voices);
+    expect(r.voice.name).toContain('Stefan');
+    expect(r.online).toBeFalsy();
+  });
+  it('mit Freigabe: männliche Natural-Stimme zuerst, pitch 1.0, online markiert', () => {
+    const r = pickVoice(voices, { online: true });
+    expect(r.voice.name).toContain('Conrad');
+    expect(r.pitch).toBe(1.0);
+    expect(r.online).toBe(true);
+  });
+  it('mit Freigabe: Natural vor sonstigen Online-Stimmen, ohne Online-Stimme lokal', () => {
+    expect(pickVoice(voices.filter((v) => !/Conrad/.test(v.name)), { online: true }).voice.name).toContain('Katja');
+    expect(pickVoice([V('Google Deutsch', 'de-DE', false), V('Microsoft Stefan')], { online: true }).voice.name).toBe('Google Deutsch');
+    const local = pickVoice([V('Microsoft Stefan')], { online: true });
+    expect(local.voice.name).toContain('Stefan');
+    expect(local.online).toBeFalsy();
+  });
+  it('createVoice: reselect wechselt zwischen Gerät und Online', () => {
+    let on = false;
+    const synth = { cancel() {}, speak() {}, getVoices: () => voices, addEventListener() {}, removeEventListener() {} };
+    const v = createVoice({ soundOn: () => true, online: () => on, synth, Utterance: class { constructor(t) { this.text = t; } } });
+    expect(v.voiceName).toContain('Stefan');
+    expect(v.online).toBe(false);
+    on = true;
+    v.reselect();
+    expect(v.voiceName).toContain('Conrad');
+    expect(v.online).toBe(true);
+    v.dispose();
+  });
+});

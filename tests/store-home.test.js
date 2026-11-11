@@ -102,7 +102,7 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: true, showFps: false, bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: true, showFps: false, voiceOnline: false, bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
       'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal']) {
@@ -181,11 +181,14 @@ describe('Hüllengröße', () => {
     captured.deps.onPrefs({ quality: 'auto', sound: false, fps: true, bigCovers: false });
     expect(localStorage.getItem('lfx.store.fps.u1')).toBe('1');
     expect(localStorage.getItem('lfx.store.bigCovers.u1')).toBe('0');
+    expect(captured.opts.voiceOnline).toBe(false);
+    captured.deps.onPrefs({ voiceOnline: true });
+    expect(localStorage.getItem('lfx.store.voiceOnline.u1')).toBe('1');
     feature.unmount();
     destroyStore();
     create.mockClear();
     await mountOk();
-    expect(captured.opts).toMatchObject({ showFps: true, bigCovers: false });
+    expect(captured.opts).toMatchObject({ showFps: true, bigCovers: false, voiceOnline: true });
   });
 
   it('onBigCovers: dispose, Ladebildschirm, neues create mit bigCovers:false, ohne Intro und mit Position', async () => {

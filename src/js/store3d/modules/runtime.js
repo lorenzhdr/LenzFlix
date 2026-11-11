@@ -51,6 +51,7 @@ export class ModuleHost {
       catalog: app.deps.catalog, deps: app.deps, opts: app.opts, isPhone: app.phone, isTouch: app.touch,
       quality: () => app.engine.preset.level,
       soundOn: () => app.sound,
+      voiceOnline: () => !!app.voiceOnline,
       addCollider(rect) {
         if (!rect || app.layout.colliders.includes(rect)) return rect;
         if (!rect.kind) rect.kind = 'prop';

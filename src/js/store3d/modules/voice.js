@@ -1,6 +1,7 @@
-// VIDEOTHEK LENZ · Stimme des Kassierers (Web Speech API, nur lokale Gerätestimmen). Hilfsdatei, KEIN Modul der Registry.
-// Datenschutz: Es werden ausschließlich Stimmen mit localService === true benutzt, damit Nutzername und Filmtitel nie
-// an Dritte gesendet werden. Text wird nie geloggt.
+// VIDEOTHEK LENZ · Stimme des Kassierers (Web Speech API). Hilfsdatei, KEIN Modul der Registry.
+// Datenschutz: Standardmäßig nur Stimmen mit localService === true, damit Nutzername und Filmtitel nie an Dritte gehen.
+// Online-Stimmen (z. B. „Natural“-Stimmen des Browsers) nur, wenn der Nutzer sie im Pause-Menü ausdrücklich einschaltet.
+// Text wird nie geloggt.
 
 const MALE = ['markus', 'martin', 'stefan', 'conrad', 'killian', 'florian', 'yannick', 'viktor', 'jonas'];
 const NOVELTY = ['eddy', 'reed', 'rocko', 'grandpa', 'eloquence'];
@@ -9,9 +10,27 @@ const isDe = (v) => /^de([-_]|$)/i.test(String((v && v.lang) || ''));
 const isDeDE = (v) => /^de[-_]de$/i.test(String((v && v.lang) || ''));
 const nameOf = (v) => String((v && v.name) || '').toLowerCase();
 
-/** Beste lokale deutsche Stimme: männlich zuerst (pitch 1.0), sonst irgendeine lokale deutsche mit pitch 0.8, sonst null. */
-export function pickVoice(voices) {
-  const list = Array.from(voices || []).filter((v) => v && v.localService === true && isDe(v));
+/**
+ * Beste deutsche Stimme. opts.online: zuerst Online-Stimmen (männliche „Natural“ > andere „Natural“ > übrige, pitch 1.0,
+ * Ergebnis mit online: true); sonst bzw. ohne Online-Stimme die beste lokale: männlich zuerst (pitch 1.0), sonst irgendeine
+ * lokale deutsche mit pitch 0.8, sonst null.
+ */
+export function pickVoice(voices, opts = {}) {
+  const all = Array.from(voices || []).filter((v) => v && isDe(v));
+  if (opts.online) {
+    const onl = all.filter((v) => v.localService !== true);
+    if (onl.length) {
+      const rank = (v) => {
+        const n = nameOf(v);
+        const nat = n.includes('natural') ? 0 : 1;
+        const male = MALE.some((m) => n.includes(m)) ? 0 : 1;
+        return nat * 4 + male * 2 + (isDeDE(v) ? 0 : 1);
+      };
+      const best = onl.map((v, i) => ({ v, r: rank(v), i })).sort((a, b) => a.r - b.r || a.i - b.i)[0].v;
+      return { voice: best, pitch: 1.0, online: true };
+    }
+  }
+  const list = all.filter((v) => v.localService === true);
   if (!list.length) return null;
   const key = (v) => {
     const n = nameOf(v);
@@ -33,7 +52,7 @@ const PENDING_MAX = 15000;
  * (touchend/click/keydown; pointerdown und Escape zählen nicht). `unlocked` wird erst wahr, wenn onstart einer Äußerung
  * tatsächlich gefeuert hat; bis dahin versucht jede weitere Geste es erneut.
  */
-export function createVoice({ soundOn = () => true, synth, Utterance } = {}) {
+export function createVoice({ soundOn = () => true, online = () => false, synth, Utterance } = {}) {
   const S = synth !== undefined ? synth : (typeof window !== 'undefined' ? window.speechSynthesis : null);
   const U = Utterance !== undefined ? Utterance : (typeof window !== 'undefined' ? window.SpeechSynthesisUtterance : null);
   let picked = null;
@@ -56,7 +75,7 @@ export function createVoice({ soundOn = () => true, synth, Utterance } = {}) {
 
   const refresh = () => {
     if (!S || picked) return;
-    try { picked = pickVoice(S.getVoices ? S.getVoices() : []); } catch { picked = null; }
+    try { picked = pickVoice(S.getVoices ? S.getVoices() : [], { online: !!online() }); } catch { picked = null; }
   };
   const onVoices = () => refresh();
 
@@ -204,6 +223,10 @@ export function createVoice({ soundOn = () => true, synth, Utterance } = {}) {
 
   return {
     say, cancel, unlock, dispose, setPending, clearPending,
+    /** Stimme neu wählen (z. B. nach Umschalten Gerät/Online). */
+    reselect() { picked = null; lastError = ''; notStarted = false; refresh(); },
+    /** Gewählte Stimme ist eine Online-Stimme. */
+    get online() { return !!(picked && picked.online); },
     get unlocked() { return unlocked; },
     get speaking() { return speaking; },
     get voiceName() { refresh(); return picked ? picked.voice.name : ''; },

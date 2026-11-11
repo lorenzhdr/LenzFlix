@@ -38,6 +38,7 @@ class StoreApp {
     this.qualitySetting = ['auto', 'low', 'mid', 'high'].includes(this.opts.quality) ? this.opts.quality : 'auto';
     this.sound = !!this.opts.sound;
     this.showFps = this.opts.showFps === true;
+    this.voiceOnline = this.opts.voiceOnline === true;
     this.bigCovers = this.opts.bigCovers !== false;
     this.zoomTarget = 1;
     this.zoom = 1;
@@ -90,6 +91,8 @@ class StoreApp {
       onQuality: (q) => { this.setQuality(q); this.savePrefs(); },
       onSound: (on) => { this.setSound(on); this.savePrefs(); },
       onFps: (on) => { this.setShowFps(on); this.savePrefs(); },
+      onVoiceOnline: (on) => { this.setVoiceOnline(on); this.savePrefs(); },
+      getVoiceOnline: () => this.voiceOnline,
       onBigCovers: (on) => this.setBigCovers(on),
       onTheme: () => this.deps.openThemePicker(),
       onMenu: (anchor) => this.deps.openMenu(anchor),
@@ -200,13 +203,13 @@ class StoreApp {
     await yieldFrame();
     if (this.disposed) return;
 
-    // Cover aller Regale in niedriger Qualität vorladen (höchstens 15 s, der Rest lädt im Hintergrund weiter)
+    // Cover aller Regale in niedriger Qualität vorladen (höchstens 20 s, der Rest lädt im Hintergrund weiter)
     this.progress(0.92, 'Cover werden vorgeladen');
     const pre = this.covers.startPreload({
       px: this.player.x, pz: this.player.z,
       onProgress: (done, total) => this.progress(0.92 + 0.07 * (total ? done / total : 1), 'Cover werden vorgeladen'),
     });
-    await pre.wait(15000);
+    await pre.wait(20000);
     if (this.disposed) return;
     this.progress(0.99, 'Erste Cover werden gezeichnet');
     this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
@@ -558,7 +561,14 @@ class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline }); } catch { /* egal */ }
+  }
+
+  /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
+  setVoiceOnline(on) {
+    this.voiceOnline = !!on;
+    if (this.mods) this.mods.hook('onVoiceOnline', this.voiceOnline);
+    if (this.pause) this.pause.refresh();
   }
 
   setShowFps(on) {

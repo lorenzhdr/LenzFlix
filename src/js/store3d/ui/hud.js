@@ -20,7 +20,7 @@ export function createHud(host, { touch, onMenu }) {
   const pSub = el(
     'div',
     'lfx-store-prompt-sub',
-    touch ? 'Wischen zum Umsehen · Tippen zum Nehmen' : 'WASD laufen · Maus umsehen · Shift rennen · E nehmen · Esc Pause',
+    touch ? 'Wischen zum Umsehen · Tippen zum Nehmen' : 'WASD laufen · Maus umsehen · Shift rennen · E nehmen · Q zoomen · Esc Pause',
   );
   prompt.append(pTitle, pSub);
   const lost = el('div', 'lfx-store-lost', 'Grafik wird neu aufgebaut…');

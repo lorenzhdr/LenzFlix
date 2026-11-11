@@ -35085,8 +35085,22 @@ void main() {
   var isDe = (v) => /^de([-_]|$)/i.test(String(v && v.lang || ""));
   var isDeDE = (v) => /^de[-_]de$/i.test(String(v && v.lang || ""));
   var nameOf = (v) => String(v && v.name || "").toLowerCase();
-  function pickVoice(voices) {
-    const list = Array.from(voices || []).filter((v) => v && v.localService === true && isDe(v));
+  function pickVoice(voices, opts = {}) {
+    const all = Array.from(voices || []).filter((v) => v && isDe(v));
+    if (opts.online) {
+      const onl = all.filter((v) => v.localService !== true);
+      if (onl.length) {
+        const rank = (v) => {
+          const n = nameOf(v);
+          const nat = n.includes("natural") ? 0 : 1;
+          const male = MALE.some((m) => n.includes(m)) ? 0 : 1;
+          return nat * 4 + male * 2 + (isDeDE(v) ? 0 : 1);
+        };
+        const best = onl.map((v, i) => ({ v, r: rank(v), i })).sort((a, b) => a.r - b.r || a.i - b.i)[0].v;
+        return { voice: best, pitch: 1, online: true };
+      }
+    }
+    const list = all.filter((v) => v.localService === true);
     if (!list.length) return null;
     const key = (v) => {
       const n = nameOf(v);
@@ -35101,7 +35115,7 @@ void main() {
   }
   var START_WAIT = 2e3;
   var PENDING_MAX = 15e3;
-  function createVoice({ soundOn = () => true, synth, Utterance } = {}) {
+  function createVoice({ soundOn = () => true, online = () => false, synth, Utterance } = {}) {
     const S = synth !== void 0 ? synth : typeof window !== "undefined" ? window.speechSynthesis : null;
     const U = Utterance !== void 0 ? Utterance : typeof window !== "undefined" ? window.SpeechSynthesisUtterance : null;
     let picked = null;
@@ -35124,7 +35138,7 @@ void main() {
     const refresh = () => {
       if (!S || picked) return;
       try {
-        picked = pickVoice(S.getVoices ? S.getVoices() : []);
+        picked = pickVoice(S.getVoices ? S.getVoices() : [], { online: !!online() });
       } catch {
         picked = null;
       }
@@ -35339,6 +35353,17 @@ void main() {
       dispose,
       setPending,
       clearPending,
+      /** Stimme neu wählen (z. B. nach Umschalten Gerät/Online). */
+      reselect() {
+        picked = null;
+        lastError = "";
+        notStarted = false;
+        refresh();
+      },
+      /** Gewählte Stimme ist eine Online-Stimme. */
+      get online() {
+        return !!(picked && picked.online);
+      },
       get unlocked() {
         return unlocked;
       },
@@ -35479,7 +35504,7 @@ void main() {
           if (!cur || cur.kind === "new") deptOf.set(id, d);
         }
       }
-      const voice = createVoice({ soundOn: () => ctx.soundOn() });
+      const voice = createVoice({ soundOn: () => ctx.soundOn(), online: () => !!(ctx.voiceOnline && ctx.voiceOnline()) });
       voice.unlock();
       let talkId = 0;
       const duck = (on) => {
@@ -35719,7 +35744,7 @@ void main() {
         },
         /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
         voiceInfo() {
-          return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe };
+          return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
         }
       });
       if (ctx.opts.debug) {
@@ -35824,6 +35849,10 @@ void main() {
         },
         onSound(on) {
           if (!on) stopVoice();
+        },
+        onVoiceOnline() {
+          stopVoice();
+          voice.reselect();
         },
         onSuspend() {
           bubble.hidden = true;
@@ -37123,6 +37152,7 @@ void main() {
         isTouch: app.touch,
         quality: () => app.engine.preset.level,
         soundOn: () => app.sound,
+        voiceOnline: () => !!app.voiceOnline,
         addCollider(rect) {
           if (!rect || app.layout.colliders.includes(rect)) return rect;
           if (!rect.kind) rect.kind = "prop";
@@ -37490,7 +37520,7 @@ void main() {
     const pSub = el(
       "div",
       "lfx-store-prompt-sub",
-      touch ? "Wischen zum Umsehen \xB7 Tippen zum Nehmen" : "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 E nehmen \xB7 Esc Pause"
+      touch ? "Wischen zum Umsehen \xB7 Tippen zum Nehmen" : "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 E nehmen \xB7 Q zoomen \xB7 Esc Pause"
     );
     prompt.append(pTitle, pSub);
     const lost = el("div", "lfx-store-lost", "Grafik wird neu aufgebaut\u2026");
@@ -37570,11 +37600,16 @@ void main() {
   // src/js/store3d/ui/pause.js
   var QUALITY_LABEL = { auto: "Auto", low: "Niedrig", mid: "Mittel", high: "Hoch" };
   var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "auto" };
-  function voiceNote(info) {
+  function voiceNote(info, wantOnline = false) {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})`;
+    const warn3 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    if (info.online) {
+      const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
+      return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
+    }
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn3}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -37613,6 +37648,10 @@ void main() {
       a.onSound(!a.getSound());
       refresh();
     });
+    const vo = mk("", () => {
+      if (a.onVoiceOnline) a.onVoiceOnline(!(a.getVoiceOnline && a.getVoiceOnline()));
+      refresh();
+    });
     const note = el("div", "lfx-store-pause-note");
     note.hidden = true;
     panel.appendChild(note);
@@ -37635,7 +37674,10 @@ void main() {
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
-      const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null) : "";
+      const wantOnline = !!(a.getVoiceOnline && a.getVoiceOnline());
+      vo.hidden = !a.onVoiceOnline || !a.getSound();
+      vo.textContent = `Stimme: ${wantOnline ? "Online" : "Ger\xE4t"}`;
+      const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline) : "";
       note.textContent = vt;
       note.hidden = !vt;
       const fk = a.fullscreenKind ? a.fullscreenKind() : "none";
@@ -38536,6 +38578,7 @@ void main() {
       this.qualitySetting = ["auto", "low", "mid", "high"].includes(this.opts.quality) ? this.opts.quality : "auto";
       this.sound = !!this.opts.sound;
       this.showFps = this.opts.showFps === true;
+      this.voiceOnline = this.opts.voiceOnline === true;
       this.bigCovers = this.opts.bigCovers !== false;
       this.zoomTarget = 1;
       this.zoom = 1;
@@ -38604,6 +38647,11 @@ void main() {
           this.setShowFps(on);
           this.savePrefs();
         },
+        onVoiceOnline: (on) => {
+          this.setVoiceOnline(on);
+          this.savePrefs();
+        },
+        getVoiceOnline: () => this.voiceOnline,
         onBigCovers: (on) => this.setBigCovers(on),
         onTheme: () => this.deps.openThemePicker(),
         onMenu: (anchor) => this.deps.openMenu(anchor),
@@ -38736,7 +38784,7 @@ void main() {
         pz: this.player.z,
         onProgress: (done, total) => this.progress(0.92 + 0.07 * (total ? done / total : 1), "Cover werden vorgeladen")
       });
-      await pre.wait(15e3);
+      await pre.wait(2e4);
       if (this.disposed) return;
       this.progress(0.99, "Erste Cover werden gezeichnet");
       this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
@@ -39118,9 +39166,15 @@ void main() {
     }
     savePrefs() {
       try {
-        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers });
+        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline });
       } catch {
       }
+    }
+    /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
+    setVoiceOnline(on) {
+      this.voiceOnline = !!on;
+      if (this.mods) this.mods.hook("onVoiceOnline", this.voiceOnline);
+      if (this.pause) this.pause.refresh();
     }
     setShowFps(on) {
       this.showFps = !!on;

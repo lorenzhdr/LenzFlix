@@ -5,11 +5,16 @@ const QUALITY_LABEL = { auto: 'Auto', low: 'Niedrig', mid: 'Mittel', high: 'Hoch
 const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
 
 /** Diagnosezeile zur Kassierer-Stimme (nur Zustand, nie Gesprochenes). */
-export function voiceNote(info) {
+export function voiceNote(info, wantOnline = false) {
   if (!info || !info.diag) return '';
   const d = String(info.diag);
   const name = info.voiceName || '';
-  if (d === 'ok') return `Stimme: ${name} (${info.lang || ''})`;
+  const warn = wantOnline && !info.online ? ' – keine Online-Stimme verfügbar, nutze Gerätestimme' : '';
+  if (info.online) {
+    const st = d === 'ok' ? '' : d === 'locked' ? ' – wartet auf ersten Tipp' : d === 'notStarted' ? ' – hat nicht gesprochen' : d.startsWith('error:') ? ` – Fehler (${d.slice(6)})` : '';
+    return `Stimme: ${name}${st} · online: Sätze, Name und Titel gehen an den Stimmendienst des Browsers`;
+  }
+  if (d === 'ok') return `Stimme: ${name} (${info.lang || ''})${warn}`;
   if (d === 'locked') return 'Stimme: wartet auf ersten Tipp';
   if (d === 'notStarted') return `Stimme: ${name} – Gerät hat nicht gesprochen (Stummschalter?)`;
   if (d === 'noLocalDe') return 'Stimme: keine deutsche Gerätestimme – Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch';
@@ -49,6 +54,7 @@ export function createPause(host, a) {
     refresh();
   });
   const s = mk('', () => { a.onSound(!a.getSound()); refresh(); });
+  const vo = mk('', () => { if (a.onVoiceOnline) a.onVoiceOnline(!(a.getVoiceOnline && a.getVoiceOnline())); refresh(); });
   const note = el('div', 'lfx-store-pause-note');
   note.hidden = true;
   panel.appendChild(note);
@@ -62,7 +68,10 @@ export function createPause(host, a) {
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
     f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;
     bc.textContent = `Hüllen: ${a.getBigCovers() ? 'Groß' : 'Normal'}`;
-    const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null) : '';
+    const wantOnline = !!(a.getVoiceOnline && a.getVoiceOnline());
+    vo.hidden = !a.onVoiceOnline || !a.getSound();
+    vo.textContent = `Stimme: ${wantOnline ? 'Online' : 'Gerät'}`;
+    const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline) : '';
     note.textContent = vt;
     note.hidden = !vt;
     const fk = a.fullscreenKind ? a.fullscreenKind() : 'none';
