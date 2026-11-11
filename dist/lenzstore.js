@@ -31116,6 +31116,7 @@ void main() {
   };
 
   // src/js/store3d/controls/touch.js
+  var TOUCH_LOOK = 45e-4;
   var TouchControls = class {
     /** @param {object} ctx { canvas, player, getMode(), onTap(clientX, clientY) } */
     constructor(ctx) {
@@ -31169,7 +31170,7 @@ void main() {
       p.x = e.clientX;
       p.y = e.clientY;
       if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 9) p.moved = true;
-      if (p.moved && this.pointers.size === 1) this.ctx.player.look(-dx * 45e-4, -dy * 45e-4);
+      if (p.moved && this.pointers.size === 1) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
     }
     onUp(e, cancelled) {
       const p = this.pointers.get(e.pointerId);

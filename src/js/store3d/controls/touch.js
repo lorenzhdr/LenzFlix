@@ -1,5 +1,8 @@
 // VIDEOTHEK LENZ · Touch-Steuerung: Ziehen (ein Finger) = Umsehen, Tippen = Gehen/Hülle nehmen (Logik in store.js).
 
+/** Bogenmaß pro Pixel beim Wischen. */
+export const TOUCH_LOOK = 0.0045;
+
 export class TouchControls {
   /** @param {object} ctx { canvas, player, getMode(), onTap(clientX, clientY) } */
   constructor(ctx) {
@@ -53,7 +56,9 @@ export class TouchControls {
     const dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
     if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 9) p.moved = true;
-    if (p.moved && this.pointers.size === 1) this.ctx.player.look(-dx * 0.0045, -dy * 0.0045);
+    // Touch = „Szene greifen“ (wie bei Karten/360°-Fotos): Finger nach rechts zieht das Bild mit → Blick dreht nach links;
+    // Finger nach unten → Blick nach oben. (Maus/Pointer-Lock in desktop.js bleibt Kamera-Konvention.)
+    if (p.moved && this.pointers.size === 1) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
   }
 
   onUp(e, cancelled) {
