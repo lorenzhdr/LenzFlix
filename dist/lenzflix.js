@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.7.8";
+  var VERSION = "1.8.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -17055,6 +17055,10 @@
   var TOUCH_CONTROLS = ["joystick", "touch"];
   var VOICE_PITCHES = ["normal", "tief", "sehrtief"];
   var QUALITIES = ["auto", "low", "mid", "high"];
+  var VR_TURNS = ["snap", "smooth"];
+  var VR_HEIGHTS = ["auto", "seated"];
+  var VR_QUALITIES = ["mid", "low"];
+  var VR_SEATS = ["front", "mid", "back"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
   var storageKey2 = (name) => `${KEY3}${name}.${getUserId() || "anon"}`;
@@ -17104,6 +17108,18 @@
     const v = read("localStorage", storageKey2("bigCovers"));
     return v === null ? DEFAULTS2.bigCovers : v !== "0";
   }
+  function readEnum(name, list, def) {
+    const v = read("localStorage", storageKey2(name));
+    return list.includes(v) ? v : def;
+  }
+  var getVrTurn = () => readEnum("vrTurn", VR_TURNS, "snap");
+  var getVrVignette = () => read("localStorage", storageKey2("vrVignette")) !== "0";
+  var getVrHeight = () => readEnum("vrHeight", VR_HEIGHTS, "auto");
+  var getVrQuality = () => readEnum("vrQuality", VR_QUALITIES, "mid");
+  var getVrSeat = () => readEnum("vrSeat", VR_SEATS, "mid");
+  function getVr() {
+    return { turn: getVrTurn(), vignette: getVrVignette(), height: getVrHeight(), quality: getVrQuality(), seat: getVrSeat() };
+  }
   function savePrefs(p) {
     if (!p) return;
     if (QUALITIES.includes(p.quality)) write("localStorage", storageKey2("quality"), p.quality);
@@ -17114,6 +17130,14 @@
     if (VOICE_PITCHES.includes(p.voicePitch)) write("localStorage", storageKey2("voicePitch"), p.voicePitch);
     if (TOUCH_CONTROLS.includes(p.touchControl)) write("localStorage", storageKey2("touchControl"), p.touchControl);
     if (typeof p.bigCovers === "boolean") write("localStorage", storageKey2("bigCovers"), p.bigCovers ? "1" : "0");
+    const vr = p.vr;
+    if (vr && typeof vr === "object") {
+      if (VR_TURNS.includes(vr.turn)) write("localStorage", storageKey2("vrTurn"), vr.turn);
+      if (typeof vr.vignette === "boolean") write("localStorage", storageKey2("vrVignette"), vr.vignette ? "1" : "0");
+      if (VR_HEIGHTS.includes(vr.height)) write("localStorage", storageKey2("vrHeight"), vr.height);
+      if (VR_QUALITIES.includes(vr.quality)) write("localStorage", storageKey2("vrQuality"), vr.quality);
+      if (VR_SEATS.includes(vr.seat)) write("localStorage", storageKey2("vrSeat"), vr.seat);
+    }
   }
   var getIntroSeen = () => read("sessionStorage", SESSION_INTRO) === "1";
   var setIntroSeen = () => write("sessionStorage", SESSION_INTRO, "1");
@@ -17132,6 +17156,408 @@
     write("sessionStorage", SESSION_STATE, JSON.stringify(state21));
   }
 
+  // src/js/features/store/cinema-bridge.js
+  function createCinemaBridge({ win = window, doc = document, pollMs = 250 } = {}) {
+    let timer = null;
+    let videoEl = null;
+    let played = false;
+    let seenVideoRoute = false;
+    let lastPhase = null;
+    let lastRoute = null;
+    let lock = Promise.resolve();
+    const videoFns = /* @__PURE__ */ new Set();
+    const changeFns = /* @__PURE__ */ new Set();
+    const cache = { audio: null, subtitle: null };
+    const q = (sel) => {
+      try {
+        return doc.querySelector(sel);
+      } catch {
+        return null;
+      }
+    };
+    const osd = (sel) => q(`[id="videoOsdPage"]:not(.hide) ${sel}`) || q(`#videoOsdPage ${sel}`) || q(sel);
+    const find = () => q("video.htmlvideoplayer");
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const fire = (set, arg) => {
+      for (const fn of [...set]) {
+        try {
+          fn(arg);
+        } catch (e) {
+          console.warn("[LenzFlix] cinema cb", e && e.message);
+        }
+      }
+    };
+    async function waitFor(cond, ms, step = 50) {
+      const end = Date.now() + ms;
+      for (; ; ) {
+        let ok = false;
+        try {
+          ok = Boolean(cond());
+        } catch {
+        }
+        if (ok) return true;
+        if (Date.now() >= end) return false;
+        await sleep(step);
+      }
+    }
+    const finite = (n) => Number.isFinite(n) ? n : 0;
+    function routeOf3() {
+      let hash2 = "";
+      try {
+        hash2 = String(win.location.hash || "");
+      } catch {
+      }
+      const path = hash2.replace(/^#!?/, "").split("?")[0];
+      if (path === "/video") return "video";
+      if (path === "/home") return "home";
+      return "other";
+    }
+    function errorDialogText() {
+      try {
+        for (const d of doc.querySelectorAll(".dialogContainer .dialog:not(.actionSheet)")) {
+          if (d.hidden || d.classList.contains("hide")) continue;
+          const cs = win.getComputedStyle(d);
+          if (cs && (cs.display === "none" || cs.visibility === "hidden")) continue;
+          const t = String(d.textContent || "").replace(/\s+/g, " ").trim();
+          if (t) return t;
+        }
+      } catch {
+      }
+      return null;
+    }
+    function upNextState() {
+      try {
+        const el = osd(".upNextContainer");
+        if (!el || el.classList.contains("hide")) return null;
+        const text = String(el.textContent || "").replace(/\s+/g, " ").trim();
+        const m = /(\d+)\s*Sek/i.exec(text) || /(\d+)/.exec(text);
+        return { text, seconds: m ? Number(m[1]) : 0 };
+      } catch {
+        return null;
+      }
+    }
+    const visibleBtn = (sel) => {
+      const b = osd(sel);
+      return Boolean(b) && !b.classList.contains("hide");
+    };
+    function compute() {
+      const route = routeOf3();
+      const v = videoEl && videoEl.isConnected !== false ? videoEl : find();
+      let phase = "idle";
+      let reloading = false;
+      let error = null;
+      if (!v) {
+        if (route === "video") phase = "loading";
+      } else {
+        const rs = Number(v.readyState) || 0;
+        if (rs >= 2) played = true;
+        if (v.ended) phase = "ended";
+        else if (rs < 2 && !played) phase = "loading";
+        else if (rs === 0 && played) {
+          phase = "loading";
+          reloading = true;
+        } else phase = v.paused ? "paused" : "playing";
+      }
+      if (phase === "loading" && !reloading && (route === "video" || v)) {
+        const t = errorDialogText();
+        if (t) {
+          phase = "error";
+          error = t;
+        }
+      }
+      return {
+        route,
+        phase,
+        time: v ? finite(v.currentTime) : 0,
+        duration: v ? finite(v.duration) : 0,
+        title: String(doc.title || ""),
+        hasPrev: visibleBtn(".btnPreviousTrack"),
+        hasNext: visibleBtn(".btnNextTrack"),
+        upNext: upNextState(),
+        error,
+        volume: v ? finite(v.volume) : 1,
+        muted: v ? Boolean(v.muted) : false,
+        reloading
+      };
+    }
+    function poll() {
+      const v = find();
+      if (v !== videoEl) {
+        videoEl = v;
+        played = false;
+        fire(videoFns, v);
+      }
+      const s = compute();
+      if (s.route === "video") seenVideoRoute = true;
+      else if (seenVideoRoute) {
+        seenVideoRoute = false;
+        if (s.route === "other") {
+          try {
+            win.location.hash = "#/home";
+          } catch {
+          }
+        }
+      }
+      if (s.phase !== lastPhase || s.route !== lastRoute) {
+        lastPhase = s.phase;
+        lastRoute = s.route;
+        fire(changeFns, s);
+      }
+    }
+    function activate(on) {
+      if (on) {
+        if (timer) return;
+        timer = setInterval(() => {
+          try {
+            poll();
+          } catch {
+          }
+        }, pollMs);
+        try {
+          poll();
+        } catch {
+        }
+      } else {
+        if (timer) clearInterval(timer);
+        timer = null;
+        videoEl = null;
+        played = false;
+        seenVideoRoute = false;
+        lastPhase = null;
+        lastRoute = null;
+        cache.audio = null;
+        cache.subtitle = null;
+      }
+    }
+    const click = (sel) => {
+      try {
+        const b = osd(sel);
+        if (b) b.click();
+      } catch {
+      }
+    };
+    const cur3 = () => videoEl || find();
+    function seekTo(s) {
+      try {
+        const v = cur3();
+        const slider = osd("input.osdPositionSlider");
+        const d = v ? v.duration : NaN;
+        if (slider && Number.isFinite(d) && d > 0) {
+          const pct = Math.max(0, Math.min(100, Number(s) / d * 100));
+          slider.value = String(pct);
+          slider.dispatchEvent(new win.Event("change", { bubbles: true }));
+        } else if (v && Number.isFinite(Number(s))) {
+          v.currentTime = Math.max(0, Number(s));
+        }
+      } catch {
+      }
+    }
+    function seekBy(d) {
+      if (d === -10) return click(".btnRewind");
+      if (d === 30) return click(".btnFastForward");
+      const v = cur3();
+      return seekTo((v ? finite(v.currentTime) : 0) + Number(d || 0));
+    }
+    function setVolume(val) {
+      const f = Math.max(0, Math.min(1, Number(val) || 0));
+      try {
+        const slider = osd("input.osdVolumeSlider");
+        if (slider) {
+          slider.value = String(Math.round(f * 100));
+          slider.dispatchEvent(new win.Event("input", { bubbles: true }));
+          slider.dispatchEvent(new win.Event("change", { bubbles: true }));
+        } else {
+          const v = cur3();
+          if (v) v.volume = f;
+        }
+      } catch {
+      }
+    }
+    const sheetEl = () => q(".dialogContainer .actionSheet.opened") || q(".dialogContainer .actionSheet") || q(".actionSheet");
+    const dialogDepth = () => {
+      try {
+        const d = win.history.state && win.history.state.usr && win.history.state.usr.dialogs;
+        return d ? d.length : 0;
+      } catch {
+        return 0;
+      }
+    };
+    const kindSel = (kind2) => kind2 === "audio" ? ".btnAudio" : ".btnSubtitles";
+    async function openSheet2(kind2) {
+      const btn2 = osd(kindSel(kind2));
+      if (!btn2) return null;
+      btn2.click();
+      return await waitFor(sheetEl, 2e3) ? sheetEl() : null;
+    }
+    async function closeSheet() {
+      if (!sheetEl()) return;
+      if (dialogDepth() > 0) {
+        try {
+          win.history.back();
+        } catch {
+        }
+        await waitFor(() => !sheetEl(), 2e3);
+      }
+    }
+    function readItems(sheet) {
+      const out = [];
+      for (const it of sheet.querySelectorAll(".actionSheetMenuItem[data-id]")) {
+        const id = it.getAttribute("data-id");
+        if (id === "secondarysubtitle") continue;
+        const lab = it.querySelector(".actionSheetItemText");
+        const icon5 = it.querySelector(".actionsheetMenuItemIcon");
+        let selected = false;
+        try {
+          selected = Boolean(icon5) && icon5.style.visibility !== "hidden" && !icon5.classList.contains("hide");
+        } catch {
+        }
+        out.push({ id, label: String((lab || it).textContent || "").trim(), selected });
+      }
+      return out;
+    }
+    async function readTracks(kind2) {
+      const sheet = await openSheet2(kind2);
+      if (!sheet) return cache[kind2] || [];
+      const list = readItems(sheet);
+      await closeSheet();
+      cache[kind2] = list;
+      return list;
+    }
+    async function pick(kind2, id) {
+      const sheet = await openSheet2(kind2);
+      if (!sheet) return false;
+      const item = [...sheet.querySelectorAll(".actionSheetMenuItem[data-id]")].find((it) => it.getAttribute("data-id") === String(id));
+      if (!item) {
+        await closeSheet();
+        return false;
+      }
+      item.click();
+      await waitFor(() => !sheetEl(), 2e3);
+      if (cache[kind2]) cache[kind2] = cache[kind2].map((t) => ({ ...t, selected: t.id === String(id) }));
+      return true;
+    }
+    async function select(kind2, id) {
+      let prevSub = null;
+      if (kind2 === "audio") {
+        const subs = await readTracks("subtitle");
+        const s = subs.find((t) => t.selected);
+        if (s && s.id !== "-1") prevSub = s.id;
+      }
+      if (!await pick(kind2, id)) return false;
+      if (kind2 === "audio") {
+        const v = cur3();
+        if (v) {
+          await waitFor(() => (Number(v.readyState) || 0) < 2, 1e3);
+          await waitFor(() => (Number(v.readyState) || 0) >= 2, 15e3, 100);
+        }
+        if (prevSub !== null) await pick("subtitle", prevSub);
+      }
+      return true;
+    }
+    const queued = (fn) => {
+      const run = lock.then(fn, fn);
+      lock = run.then(() => void 0, () => void 0);
+      return run;
+    };
+    function subtitles() {
+      try {
+        const v = cur3();
+        if (v && v.textTracks) {
+          for (const tr of v.textTracks) {
+            if (tr.mode !== "showing") continue;
+            const cues = tr.activeCues ? [...tr.activeCues] : [];
+            const text2 = cues.map((c) => String(c.text || "")).join("\n").replace(/‎/g, "").replace(/<[^>]+>/g, "").trim();
+            return { kind: "text", text: text2 };
+          }
+        }
+        const canvas = q(".libassjs-canvas");
+        if (canvas && canvas.isConnected !== false && canvas.width > 0 && canvas.height > 0) return { kind: "canvas", canvas };
+        const inner = q(".videoSubtitles .videoSubtitlesInner");
+        const text = inner ? String(inner.textContent || "").replace(/‎/g, "").trim() : "";
+        if (text) return { kind: "text", text };
+      } catch {
+      }
+      return null;
+    }
+    async function stop5() {
+      if (routeOf3() !== "video" && !find()) {
+        if (routeOf3() !== "home") {
+          try {
+            win.location.hash = "#/home";
+          } catch {
+          }
+        }
+        return true;
+      }
+      try {
+        const b = q(".skinHeader .headerBackButton");
+        if (b) b.click();
+        else win.history.back();
+      } catch {
+      }
+      if (!await waitFor(() => routeOf3() !== "video", 5e3, 100)) return false;
+      if (routeOf3() !== "home") {
+        try {
+          win.location.hash = "#/home";
+        } catch {
+        }
+      }
+      return true;
+    }
+    function dispose7() {
+      activate(false);
+      videoFns.clear();
+      changeFns.clear();
+    }
+    return {
+      activate,
+      state: compute,
+      video: cur3,
+      onVideo: (fn) => {
+        videoFns.add(fn);
+        return () => videoFns.delete(fn);
+      },
+      onChange: (fn) => {
+        changeFns.add(fn);
+        return () => changeFns.delete(fn);
+      },
+      subtitles,
+      togglePause: () => click(".btnPause"),
+      seekBy,
+      seekTo,
+      next: () => click(".btnNextTrack"),
+      prev: () => click(".btnPreviousTrack"),
+      setVolume,
+      toggleMute: () => click(".buttonMute"),
+      tracks: (kind2) => queued(() => readTracks(kind2)),
+      selectTrack: (kind2, id) => queued(() => select(kind2, id)),
+      upNext: (action) => click(action === "start" ? ".btnStartNow" : ".btnHide"),
+      stop: stop5,
+      dispose: dispose7
+    };
+  }
+
+  // src/js/features/store/stage-park.js
+  var PARK_ID = "lfx-store-park";
+  var stageEl = null;
+  function parkStage(stage) {
+    if (!stage) return;
+    unparkStage();
+    const box = document.createElement("div");
+    box.id = PARK_ID;
+    box.setAttribute("style", "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;z-index:-1");
+    box.appendChild(stage);
+    document.body.appendChild(box);
+    stageEl = stage;
+  }
+  function unparkStage() {
+    const el = stageEl;
+    stageEl = null;
+    const box = document.getElementById(PARK_ID);
+    if (box) box.remove();
+    return el;
+  }
+
   // src/js/features/store/home.js
   var SUSPEND_MS = 3 * 60 * 1e3;
   var CLASSIC_HASH = "#/home?lfx=classic";
@@ -17144,6 +17570,41 @@
   var lastKey2 = null;
   var shown = false;
   var root5 = () => document.documentElement;
+  var bridge = null;
+  var xr = { presenting: false, cinema: false };
+  var getBridge = () => bridge || (bridge = createCinemaBridge());
+  function isPresenting() {
+    if (!xr.presenting || !inst || !inst.instance) return false;
+    try {
+      return typeof inst.instance.isXr === "function" && Boolean(inst.instance.isXr());
+    } catch {
+      return false;
+    }
+  }
+  function releaseParked() {
+    const cur3 = inst;
+    if (!cur3 || !cur3.parked) return;
+    cur3.parked = false;
+    try {
+      cur3.instance.suspend();
+    } catch (e) {
+      console.warn("[LenzFlix] store suspend", e && e.message);
+    }
+    unparkStage();
+    clearTimeout(cur3.disposeTimer);
+    cur3.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
+    if (bridge) bridge.activate(false);
+  }
+  function onXr(s) {
+    xr.presenting = Boolean(s && s.presenting);
+    xr.cinema = xr.presenting && Boolean(s.cinema);
+    if (!xr.presenting && inst && inst.parked) {
+      releaseParked();
+      return;
+    }
+    if (xr.cinema) getBridge().activate(true);
+    else if (bridge) bridge.activate(false);
+  }
   function hasWebGL() {
     try {
       const c = document.createElement("canvas");
@@ -17183,6 +17644,10 @@
     } catch (e) {
       console.warn("[LenzFlix] store dispose", e && e.message);
     }
+    unparkStage();
+    if (bridge) bridge.activate(false);
+    xr.presenting = false;
+    xr.cinema = false;
   }
   function setProgress(fraction, label) {
     if (!ui || !ui.fill) return;
@@ -17380,6 +17845,8 @@
       onState: ret((s) => saveState(s)),
       onPrefs: ret((p) => savePrefs(p)),
       onBigCovers: ret((on) => onBigCovers(on)),
+      onXr: ret((s) => onXr(s)),
+      cinema: getBridge(),
       onFatal: ret(onFatal)
     };
   }
@@ -17393,6 +17860,7 @@
       voicePitch: getVoicePitch(),
       bigCovers: getBigCovers(),
       touchControl: getTouchControl(),
+      vr: getVr(),
       skipIntro: getIntroSeen(),
       restore: getState(),
       openItemId: r && r.kind === "title" ? r.id : null,
@@ -17474,6 +17942,29 @@
     const path = (qi < 0 ? hash2 : hash2.slice(0, qi)) || "/home";
     return { path, params: new URLSearchParams(qi < 0 ? "" : hash2.slice(qi + 1)), hash: hash2 };
   }
+  function reattachParked() {
+    const stage = unparkStage();
+    if (!stage || !ui) return false;
+    try {
+      ui.stage.replaceWith(stage);
+      ui.stage = stage;
+      ui.loading.remove();
+      ui.searchBtn.disabled = false;
+      stage.classList.add("is-ready");
+      inst.parked = false;
+      clearDisposeTimer();
+      if (bridge) bridge.activate(false);
+    } catch (e) {
+      console.warn("[LenzFlix] store reattach", e && e.message);
+      return false;
+    }
+    try {
+      if (typeof inst.instance.leaveCinema === "function") inst.instance.leaveCinema("home");
+    } catch (e) {
+      console.warn("[LenzFlix] store leaveCinema", e && e.message);
+    }
+    return true;
+  }
   function start7(tab2, route, myGen) {
     teardownUi();
     ui = buildUi();
@@ -17482,6 +17973,13 @@
     shown = true;
     const r = storeHomeRoute(route);
     if (inst && inst.instance) {
+      if (inst.parked) {
+        if (isPresenting() && reattachParked()) {
+          applyRoute(r);
+          return;
+        }
+        releaseParked();
+      }
       clearDisposeTimer();
       ui.loading.remove();
       ui.searchBtn.disabled = false;
@@ -17522,6 +18020,11 @@
     clearTimeout(waitTimer7);
     waitTimer7 = null;
     disposeInstance();
+    unparkStage();
+    if (bridge) {
+      bridge.dispose();
+      bridge = null;
+    }
     teardownUi();
     lastKey2 = null;
     removeThemeJs();
@@ -17551,14 +18054,29 @@
       clearTimeout(waitTimer7);
       waitTimer7 = null;
       lastKey2 = null;
-      if (inst && inst.instance) {
-        try {
-          inst.instance.suspend();
-        } catch (e) {
-          console.warn("[LenzFlix] store suspend", e && e.message);
+      if (inst && inst.instance && !inst.parked) {
+        let parkedNow = false;
+        if (isPresenting() && xr.cinema && ui && ui.stage) {
+          try {
+            parkStage(ui.stage);
+            inst.parked = true;
+            parkedNow = true;
+            clearDisposeTimer();
+            getBridge().activate(true);
+          } catch (e) {
+            console.warn("[LenzFlix] store park", e && e.message);
+            inst.parked = false;
+          }
         }
-        clearDisposeTimer();
-        inst.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
+        if (!parkedNow) {
+          try {
+            inst.instance.suspend();
+          } catch (e) {
+            console.warn("[LenzFlix] store suspend", e && e.message);
+          }
+          clearDisposeTimer();
+          inst.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
+        }
       }
       teardownUi();
     }

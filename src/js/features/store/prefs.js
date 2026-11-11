@@ -6,6 +6,10 @@ const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, vo
 export const TOUCH_CONTROLS = ['joystick', 'touch'];
 export const VOICE_PITCHES = ['normal', 'tief', 'sehrtief'];
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
+export const VR_TURNS = ['snap', 'smooth'];
+export const VR_HEIGHTS = ['auto', 'seated'];
+export const VR_QUALITIES = ['mid', 'low'];
+export const VR_SEATS = ['front', 'mid', 'back'];
 const SESSION_INTRO = 'lfx.store.introSeen';
 const SESSION_STATE = 'lfx.store.state';
 
@@ -62,7 +66,23 @@ export function getBigCovers() {
   return v === null ? DEFAULTS.bigCovers : v !== '0';
 }
 
-/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl? } (unbekannte/fehlende Felder werden ignoriert). */
+function readEnum(name, list, def) {
+  const v = read('localStorage', storageKey(name));
+  return list.includes(v) ? v : def;
+}
+export const getVrTurn = () => readEnum('vrTurn', VR_TURNS, 'snap');
+/** Tunnelblick-Vignette beim Gleiten (Standard an): nur ein ausdrückliches „0“ schaltet sie aus. */
+export const getVrVignette = () => read('localStorage', storageKey('vrVignette')) !== '0';
+export const getVrHeight = () => readEnum('vrHeight', VR_HEIGHTS, 'auto');
+export const getVrQuality = () => readEnum('vrQuality', VR_QUALITIES, 'mid');
+export const getVrSeat = () => readEnum('vrSeat', VR_SEATS, 'mid');
+
+/** VR-Vorlieben als opts.vr. */
+export function getVr() {
+  return { turn: getVrTurn(), vignette: getVrVignette(), height: getVrHeight(), quality: getVrQuality(), seat: getVrSeat() };
+}
+
+/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl?, vr? { turn, vignette, height, quality, seat } } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
@@ -73,6 +93,14 @@ export function savePrefs(p) {
   if (VOICE_PITCHES.includes(p.voicePitch)) write('localStorage', storageKey('voicePitch'), p.voicePitch);
   if (TOUCH_CONTROLS.includes(p.touchControl)) write('localStorage', storageKey('touchControl'), p.touchControl);
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
+  const vr = p.vr;
+  if (vr && typeof vr === 'object') {
+    if (VR_TURNS.includes(vr.turn)) write('localStorage', storageKey('vrTurn'), vr.turn);
+    if (typeof vr.vignette === 'boolean') write('localStorage', storageKey('vrVignette'), vr.vignette ? '1' : '0');
+    if (VR_HEIGHTS.includes(vr.height)) write('localStorage', storageKey('vrHeight'), vr.height);
+    if (VR_QUALITIES.includes(vr.quality)) write('localStorage', storageKey('vrQuality'), vr.quality);
+    if (VR_SEATS.includes(vr.seat)) write('localStorage', storageKey('vrSeat'), vr.seat);
+  }
 }
 
 export const getIntroSeen = () => read('sessionStorage', SESSION_INTRO) === '1';

@@ -38,3 +38,31 @@ export function pickCandidates({ highlights = [], items = null, adult = new Set(
   }
   return out;
 }
+
+/**
+ * VR-Knopfleiste der Couch (Panel-Spec, Anker „low“). st = { title, playing, muted }, act = { stand, next, sound, down, up, watch }.
+ * Ton/Lautstärke erscheinen nur, solange ein Trailer läuft (wie in der 2D-Leiste).
+ */
+export function couchSpec(st, act, onClose) {
+  const buttons = [
+    { label: 'Aufstehen', onSelect: act.stand },
+    { label: 'Nächster', onSelect: act.next },
+  ];
+  if (st.playing) {
+    buttons.push(
+      { label: st.muted ? 'Ton an' : 'Ton aus', onSelect: act.sound },
+      { label: 'Leiser', onSelect: act.down },
+      { label: 'Lauter', onSelect: act.up },
+    );
+  }
+  buttons.push({ label: 'Diesen Film ansehen', primary: true, onSelect: act.watch });
+  const spec = {
+    title: st.title || 'VIDEOTHEK LENZ',
+    lines: [st.playing ? 'Vorschau' : 'Diashow'],
+    buttons,
+    anchor: 'low',
+    width: 0.9,
+  };
+  if (onClose) spec.onClose = onClose; // beim Aktualisieren weglassen, sonst wird der Schließen-Rückruf gelöscht
+  return spec;
+}

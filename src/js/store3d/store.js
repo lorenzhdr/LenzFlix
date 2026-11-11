@@ -21,6 +21,8 @@ import { createHud } from './ui/hud.js';
 import { createPause } from './ui/pause.js';
 import { HoldView } from './ui/holdview.js';
 import { createFullscreen } from './ui/fullscreen.js';
+import { wrapDeps } from './xr/guard.js';
+import { XrMode } from './xr/mode.js';
 
 const yieldFrame = () => new Promise((r) => setTimeout(r, 0));
 
@@ -29,11 +31,25 @@ function resolveLevel(setting) {
   return 'mid'; // Start immer auf „mid“, die Automatik schaltet bei stabil > 58 fps hoch
 }
 
+/** VR-Prefs (Vertrag): turn snap|smooth, vignette bool, height auto|seated, quality mid|low, seat front|mid|back. */
+export function normalizeVr(v) {
+  const o = v && typeof v === 'object' ? v : {};
+  return {
+    turn: o.turn === 'smooth' ? 'smooth' : 'snap',
+    vignette: o.vignette !== false,
+    height: o.height === 'seated' ? 'seated' : 'auto',
+    quality: o.quality === 'low' ? 'low' : 'mid',
+    seat: o.seat === 'front' || o.seat === 'back' ? o.seat : 'mid',
+  };
+}
+
 class StoreApp {
   constructor(host, deps, opts) {
     this.host = host;
-    this.deps = deps;
-    this.opts = opts || {};
+    this.xr = null;
+    this.deps = wrapDeps(deps, () => this.xr); // in VR leiten die Wrapper DOM-Wege um (xr/guard.js)
+    this.opts = { ...(opts || {}), vr: normalizeVr(opts && opts.vr) };
+    this.vr = this.opts.vr;
     this.phone = !!this.opts.phone;
     this.touch = !!this.opts.touch;
     this.qualitySetting = ['auto', 'low', 'mid', 'high'].includes(this.opts.quality) ? this.opts.quality : 'auto';
@@ -83,7 +99,8 @@ class StoreApp {
       this.fail(err);
       return;
     }
-    this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause() });
+    this.xr = new XrMode(this);
+    this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter() });
     this.fs = createFullscreen({
       host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
       onChange: () => { if (this.pause) this.pause.refresh(); },
@@ -91,6 +108,8 @@ class StoreApp {
     this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
     this.pause = createPause(host, {
       onResume: () => this.resumeFromPause(),
+      onVr: () => this.xr.enter(),
+      getVr: () => this.xr.supported && !this.xr.presenting,
       onSearch: () => { this.resumeFromPause(); this.openTerminal(''); },
       onClassic: () => this.deps.classicView(),
       onQuality: (q) => { this.setQuality(q); this.savePrefs(); },
@@ -125,7 +144,8 @@ class StoreApp {
   progress(f, label) { try { if (this.deps.onProgress) this.deps.onProgress(f, label); } catch { /* egal */ } }
 
   async boot() {
-    const { deps, engine } = this;
+    const { engine } = this;
+    const deps = this.deps;
     const preset = engine.preset;
     this.progress(0.02, 'Grundriss wird berechnet');
     const big = this.opts.bigCovers !== false;
@@ -177,6 +197,8 @@ class StoreApp {
       host: this.host, camera: engine.camera, deps, items: this.items, shelves: this.shelves, covers: this.covers, layout: L,
       notify: () => this.notifyState(true),
       onClosed: () => this.onHoldClosed(),
+      openPanel: (spec) => this.xr.openPanel(spec),
+      isXr: () => !!(this.xr && this.xr.presenting),
       onPlay: (item, resume) => this.mods && this.mods.emit('play', item, { resume }),
     });
     this.mods = new ModuleHost(this);
@@ -199,6 +221,7 @@ class StoreApp {
     this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme }) : null;
 
     this.progress(0.86, 'Module werden geladen');
+    this.mods.ctx.on('xr', (on) => this.onXrHold(on));
     await this.mods.init((f) => this.progress(0.86 + f * 0.05, 'Module werden geladen'));
     if (this.disposed) return;
     // Startposition / Wiederherstellung
@@ -230,8 +253,9 @@ class StoreApp {
     if (this.desktop) this.desktop.attach();
     if (this.touchCtl) this.touchCtl.attach();
     if (this.opts.debug) this.exposeDebug();
-    this.engine.start((dt, now) => this.tick(dt, now));
+    this.engine.start((dt, now, frame) => this.tick(dt, now, frame));
     this.syncUi();
+    this.xr.probe().then(() => { if (!this.disposed) this.syncUi(); });
     if (this.suspended) { this.engine.stop(); this.desktop && this.desktop.detach(); }
 
     // Intro-Provider (Modul): nach dem ersten Bild, außer es wurde in dieser Sitzung schon gesehen
@@ -271,6 +295,18 @@ class StoreApp {
 
   syncUi() {
     if (!this.hud) return;
+    const xr = this.xr;
+    if (xr && xr.presenting) {
+      // In VR gibt es kein DOM-HUD und keine Desktop-/Touch-Steuerung
+      this.hud.setCross(false, false);
+      this.hud.showPrompt(false, false);
+      this.hud.showMenuBtn(false);
+      this.hud.showVr(false);
+      this.hud.setHint(null);
+      if (this.touchCtl) this.touchCtl.showPad(false);
+      if (this.pause && this.pause.visible) this.pause.hide();
+      return;
+    }
     const play = this.mode === 'play';
     const locked = this.desktop ? this.desktop.locked || this.desktop.dragLook : true;
     this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
@@ -278,11 +314,14 @@ class StoreApp {
     this.hud.showMenuBtn(play);
     if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
     if (this.rotate) this.rotate.update();
+    // auch mit Hülle in der Hand (z. B. nach Wiederherstellung): sie wandert beim Betreten in die Hand
+    this.hud.showVr(this.ready && (play || this.mode === 'hold') && !!xr && xr.supported && !xr.presenting);
     if (!play || !this.aim) this.hud.setHint(null);
     if (this.pause && this.mode !== 'paused' && this.pause.visible) this.pause.hide();
   }
 
   openPause() {
+    if (this.xr && this.xr.presenting) { this.xr.openMenu(); return; }
     if (this.mode !== 'play') return;
     this.player.cancelPath();
     this.marker.visible = false;
@@ -317,14 +356,28 @@ class StoreApp {
     return null;
   }
 
-  take(id, { instant = false, fromCounter = false } = {}) {
+  /** VR-Start/-Ende: offene Hülle in die rechte Hand bzw. zurück an die Kamera (2D-Pose, DOM-Panel). */
+  onXrHold(on) {
+    const hv = this.holdview;
+    if (!hv || this.disposed || !hv.isOpen) return;
+    if (on) hv.reanchor(this.holdAnchorFor('right'), { xr: true, hand: 'right' });
+    else hv.reanchor(this.engine.camera, { xr: false });
+  }
+
+  holdAnchorFor(hand) {
+    const a = this.xr && typeof this.xr.holdAnchor === 'function' ? this.xr.holdAnchor(hand || 'right') : null;
+    return a || this.engine.camera;
+  }
+
+  take(id, { instant = false, fromCounter = false, hand, grab = false, from } = {}) {
     if (!this.holdview || this.disposed || !id) return false;
     if (this.holdview.isOpen) {
       this.takingNext = true;
       this.holdview.close(false);
       this.takingNext = false;
     }
-    const slot = fromCounter ? null : this.findSlot(id);
+    const xr = !!(this.xr && this.xr.presenting);
+    const slot = fromCounter || from === 'counter' ? null : this.findSlot(id);
     this.heldId = id;
     this.setMode('hold');
     this.pendingTake = null;
@@ -332,7 +385,8 @@ class StoreApp {
     this.marker.visible = false;
     if (this.desktop) this.desktop.releaseLock();
     this.clearAim();
-    this.holdview.open(id, slot, instant);
+    if (xr) this.holdview.open(id, slot, instant, { xr: true, anchor: this.holdAnchorFor(hand), hand: hand || 'right', grab: !!grab });
+    else this.holdview.open(id, slot, instant);
     this.mods.emit('take', id);
     return true;
   }
@@ -479,23 +533,31 @@ class StoreApp {
   }
 
   // --- Schleife ---
-  tick(dt, now) {
+  tick(dt, now, frame) {
     const p = this.player;
     if (!p) return;
+    const xr = this.xr;
+    const inXr = !!(xr && xr.presenting);
+    if (inXr) xr.beforeTick(dt, now, frame);
     this.mods.flushNav();
-    this.stepZoom(dt);
+    if (!inXr) this.stepZoom(dt);
     if (now - this.lastFps >= 500) { this.lastFps = now; this.updateFps(); if (this.fs) this.fs.update(); }
-    if (this.touchCtl) {
+    if (this.touchCtl && !inXr) {
       const padOn = this.mode === 'play' && !this.mods.locked;
       if (padOn !== this.touchCtl.padShown) this.touchCtl.showPad(padOn);
       if (padOn) this.touchCtl.tick(dt);
     }
-    if (this.mode === 'play' && !this.mods.locked) p.update(dt, (this.desktop || this.touchCtl) ? (this.desktop || this.touchCtl).input : null);
-    else p.update(dt, null);
+    if (!inXr) {
+      if (this.mode === 'play' && !this.mods.locked) p.update(dt, (this.desktop || this.touchCtl) ? (this.desktop || this.touchCtl).input : null);
+      else p.update(dt, null);
+    }
     this.mods.update(dt, now);
-    p.applyCamera(this.engine.camera);
-    this.mods.cameraStep(dt);
-    this.engine.camera.updateMatrixWorld();
+    if (!inXr) {
+      p.applyCamera(this.engine.camera);
+      this.mods.cameraStep(dt);
+      this.engine.camera.updateMatrixWorld();
+    }
+    if (inXr && xr.inCinema) { xr.cinemaTick(dt, now); return; }
     this.holdview.update(dt);
     if (this.mode === 'play' && !this.mods.locked && this.desktop && (this.desktop.locked || this.desktop.dragLook)) {
       if (now - this.lastAim > 90) { this.lastAim = now; this.updateAim(); }
@@ -570,6 +632,7 @@ class StoreApp {
 
   setQuality(q) {
     if (!this.engine || !['auto', 'low', 'mid', 'high'].includes(q)) return;
+    if (this.xr && this.xr.presenting) q = q === 'low' ? 'low' : 'mid'; // in VR nur low/mid
     this.qualitySetting = q;
     this.engine.setAuto(q === 'auto');
     const level = q === 'auto' ? this.engine.preset.level : q;
@@ -577,7 +640,7 @@ class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, vr: { ...this.vr } }); } catch { /* egal */ }
   }
 
   /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
@@ -673,6 +736,7 @@ class StoreApp {
   suspend() {
     if (this.suspended || this.disposed) return;
     this.suspended = true;
+    if (this.xr && this.xr.presenting) this.xr.exit(); // Sitzung zuerst beenden
     if (this.engine) this.engine.stop();
     if (this.desktop) this.desktop.detach();
     if (this.touchCtl) this.touchCtl.detach();
@@ -698,7 +762,7 @@ class StoreApp {
     if (this.touchCtl) this.touchCtl.attach();
     if (this.covers) this.covers.resume();
     if (this.mods) this.mods.hook('onResume');
-    if (this.engine) { this.engine.resize(); this.engine.start((dt, now) => this.tick(dt, now)); }
+    if (this.engine) { this.engine.resize(); this.engine.start((dt, now, frame) => this.tick(dt, now, frame)); }
     if (this.fs) this.fs.resume();
     this.syncUi();
   }
@@ -706,6 +770,7 @@ class StoreApp {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    try { if (this.xr) this.xr.dispose(); } catch { /* egal */ }
     try { if (this.desktop) this.desktop.detach(); } catch { /* egal */ }
     try { if (this.touchCtl) this.touchCtl.detach(); } catch { /* egal */ }
     try { if (this.rotate) this.rotate.destroy(); } catch { /* egal */ }
@@ -755,11 +820,13 @@ class StoreApp {
           preload: app.covers ? app.covers.preloadStats : { done: 0, total: 0, ms: 0 },
           ...(app.covers ? app.covers.counters : { coverUploads: 0, hiUp: 0, hiDown: 0, fullLoads: 0, fullEvicts: 0 }),
           quality: app.engine.preset.level, qualitySetting: app.qualitySetting,
+          xr: { supported: !!(app.xr && app.xr.supported), presenting: !!(app.xr && app.xr.presenting), inCinema: !!(app.xr && app.xr.inCinema), phase: null, videoFrames: 0, visibility: app.xr ? app.xr.visibility : 'visible', ...((app.xr && app.xr.cinema && typeof app.xr.cinema.diag === 'function' && app.xr.cinema.diag()) || {}) },
         };
       },
       state() { return app.getState(); },
       zones() { return Object.values(app.layout.zones).map((z) => { const v = z.view || z; return { id: z.id, label: z.label, x: +v.x.toFixed(2), z: +v.z.toFixed(2), yaw: v.yaw, obj: { x: +z.x.toFixed(2), z: +z.z.toFixed(2) } }; }); }, // x/z/yaw = Blickpunkt, obj = Objektposition
     };
+    this.dbg.xr = this.xr;
     window.__lfxStore = this.dbg;
   }
 }
@@ -775,6 +842,8 @@ export function create(host, deps, opts = {}) {
     getState: () => app.getState(),
     setQuality: (q) => app.setQuality(q),
     setSound: (on) => app.setSound(on),
+    isXr: () => !!(app.xr && app.xr.presenting),
+    leaveCinema: (reason) => { if (app.xr) app.xr.leaveCinema(reason); },
   };
   if (opts.debug) Object.defineProperty(api, 'debug', { get: () => app.dbg, enumerable: true });
   return api;

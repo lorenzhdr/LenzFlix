@@ -13,6 +13,30 @@ const MAX = 18;
 const HALF = 0.85;
 const ROW_Y = [1.35, 0.9, 0.45]; // Fachböden, oberste Reihe zuerst
 
+/** VR-Panel „Reservierungen“. act = { play(it), take(it), remove(it) }; leere Liste → Hinweistext. */
+export function reserveSpec(favs, name, act, onClose) {
+  const spec = { title: 'Reservierungen', lines: [`für ${name}`], anchor: 'front', width: 0.9 };
+  if (onClose) spec.onClose = onClose;
+  if (!favs.length) {
+    spec.text = 'Hier liegt noch nichts für dich zurück. Markiere in der Hülle einen Titel mit „Merken“ – dann legen wir ihn dir hierher.';
+    return spec;
+  }
+  spec.lines.push(`${favs.length} zurückgelegt`);
+  spec.list = {
+    visible: 5,
+    rows: favs.map((it) => ({
+      label: it.Name || 'Titel',
+      sub: it.ProductionYear ? String(it.ProductionYear) : undefined,
+      actions: [
+        { label: 'Abspielen', primary: true, onSelect: () => act.play(it) },
+        { label: 'Nehmen', onSelect: () => act.take(it) },
+        { label: 'Entfernen', onSelect: () => act.remove(it) },
+      ],
+    })),
+  };
+  return spec;
+}
+
 export default {
   name: 'reserve',
   init(ctx) {
@@ -94,6 +118,7 @@ export default {
     // --- Overlay: Karteikarten ---
     function openList() {
       favs = collectFavs();
+      if (ctx.xr.presenting()) { openVrList(); return; }
       openPanel(ctx, {
         cls: 'lfx-store-res', label: 'Reservierungen',
         build(panel, close) {
@@ -125,6 +150,22 @@ export default {
           panel.append(grid);
         },
       });
+    }
+
+    function openVrList() {
+      let handle = null;
+      const render = (close) => reserveSpec(favs, name, {
+        play: (it) => { close(); ctx.deps.play(it, { resume: false }); },
+        take: (it) => { close(); ctx.items.take(it.Id, { from: 'counter' }); },
+        remove: (it) => {
+          if (it.UserData) it.UserData.IsFavorite = false;
+          favs = favs.filter((f) => f.Id !== it.Id);
+          if (ctx.catalog && Array.isArray(ctx.catalog.favorites)) ctx.catalog.favorites = ctx.catalog.favorites.filter((f) => f.Id !== it.Id);
+          if (typeof ctx.deps.setFavorite === 'function') { try { Promise.resolve(ctx.deps.setFavorite(it.Id, false)).catch(() => {}); } catch { /* egal */ } }
+          if (handle && handle.vr && handle.vr.open) handle.vr.update(render(handle.close));
+        },
+      });
+      handle = openPanel(ctx, { vr: (close) => render(close) });
     }
 
     const removeIa = ctx.addInteractable({

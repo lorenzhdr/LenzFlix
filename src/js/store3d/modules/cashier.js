@@ -6,7 +6,7 @@ import { Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, Vector3 } from 'th
 import { box, quad, merge } from '../util/geo.js';
 import { sph } from './m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
-import { LINES, pickLine, categoryFor, greetingCategory, dialogPicks } from './cashier-lines.js';
+import { LINES, pickLine, categoryFor, greetingCategory, dialogPicks, dialogStart, dialogAnswer } from './cashier-lines.js';
 import { timeOfDay, isLate, createLimiter, clamp, prefersReducedMotion } from './m4-util.js';
 import { createVoice } from './voice.js';
 
@@ -83,15 +83,6 @@ function buildFigure(ctx) {
   return { root, head: headMesh, mouth, armL, armR };
 }
 
-const ANSWERS = [
-  { key: 'comedy', label: 'Was Lustiges?', cat: 'tipComedy' },
-  { key: 'horror', label: 'Was Gruseliges?', cat: 'tipHorror' },
-  { key: 'kids', label: 'Was für Kinder?', cat: 'tipKids' },
-  { key: 'new', label: 'Was ist neu?', cat: 'tipNew' },
-  { key: 'random', label: 'Überrasch mich!', cat: 'tipRandom' },
-  { key: 'resume', label: 'Weiterschauen?', cat: 'tipResume' },
-];
-
 export default {
   name: 'cashier',
   init(ctx) {
@@ -159,6 +150,18 @@ export default {
     if (host) host.appendChild(bubble);
     let bubbleLeft = 0;
     const v = new Vector3();
+    // VR: 3D-Blase statt DOM-Blase (lazy einmal erzeugt)
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    let bubble3d = null;
+    let bubbleText = '';
+    function showBubble3d() {
+      if (!bubble3d) bubble3d = ctx.xr.bubble();
+      bubble3d.show(bubbleText, { x: cx, y: 1.95 + 0.35, z: cz });
+    }
+    function hideBubble() {
+      bubble.hidden = true;
+      if (bubble3d) bubble3d.hide();
+    }
 
     let now = 0;
     const weather = () => ctx.use('weather');
@@ -180,7 +183,8 @@ export default {
       let text = picked.text;
       if (also) { const extra = pickLine(LINES[also], rand, all, lastIdx[also]); if (extra) { lastIdx[also] = extra.index; text += ' ' + extra.text; } }
       txt.textContent = text;
-      bubble.hidden = false;
+      bubbleText = text;
+      if (xrOn()) showBubble3d(); else bubble.hidden = false;
       bubbleSticky = overOverlay;
       bubbleLeft = (ctx.isTouch ? BUBBLE_MS + 500 : BUBBLE_MS) / 1000;
       limiter.mark(now);
@@ -190,7 +194,7 @@ export default {
     }
     let bubbleSticky = false; // Blase bleibt trotz offenem Overlay (Couch-Sprüche)
     function placeBubble() {
-      if (bubble.hidden || !host) return;
+      if (bubble.hidden || !host || xrOn()) return;
       v.set(cx, 1.95, cz).project(ctx.camera);
       const on = v.z < 1 && Math.abs(v.x) < 0.9 && v.y > -0.8 && v.y < 0.88;
       bubble.classList.toggle('is-edge', !on);
@@ -216,6 +220,16 @@ export default {
 
     // --- Ereignisse ---
     const offs = [];
+    // Wechsel 2D <-> VR: laufende Blase auf der jeweils anderen Seite zeigen
+    offs.push(ctx.on('xr', (on) => {
+      if (on) {
+        bubble.hidden = true;
+        if (bubbleLeft > 0 && bubbleText) showBubble3d();
+      } else {
+        if (bubble3d) bubble3d.hide();
+        if (bubbleLeft > 0) { bubble.hidden = false; placeBubble(); }
+      }
+    }));
     offs.push(ctx.on('enter', () => { pendingGreet = 1.1; wave(); }));
     offs.push(ctx.on('take', (id) => {
       const it = ctx.catalog.items && ctx.catalog.items.get(id);
@@ -243,10 +257,34 @@ export default {
       speak(cat, {}, { force: true, also: first ? 'intro' : null });
     }
 
-    // --- „Mit Richard reden“: Dialog ---
+    // --- „Mit Richard reden“: Dialog (Modell in cashier-lines.js; Ansicht DOM oder VR-Panel) ---
     let lastTipId = null;
-    function openDialog() {
+    function dialogFlow(view) {
       const picks = dialogPicks(ctx.catalog, deptOf);
+      const line = (cat, vars) => { const r = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]); if (r) lastIdx[cat] = r.index; return r ? r.text : ''; };
+      let cur = null;
+      const showModel = (m, first) => { cur = m; view.show(m, first); voiceSay(m.text, 0); };
+      const start = (first) => showModel(dialogStart(picks, line), first);
+      const act = (id) => {
+        if (id === 'bye') { view.close(); speak('dialogBye', {}, { force: true }); return; }
+        if (id === 'more') { start(false); return; }
+        if (id === 'show') {
+          const it = cur && cur.item;
+          view.close();
+          if (it) ctx.items.take(it.Id, { from: 'counter' });
+          return;
+        }
+        if (id.startsWith('a:')) {
+          const m = dialogAnswer(picks, id.slice(2), { rand, lastId: lastTipId, line, deptOf });
+          if (!m) return;
+          lastTipId = m.item.Id;
+          showModel(m, false);
+        }
+      };
+      return { start, act };
+    }
+
+    function openDialogDom() {
       const el = document.createElement('div');
       el.className = 'lfx-store-tip lfx-store-dialog' + (ctx.isTouch ? ' is-touch' : '');
       const card = document.createElement('div');
@@ -260,55 +298,53 @@ export default {
       row.className = 'lfx-store-tip-btns lfx-store-dialog-btns';
       card.append(h, p, row);
       el.appendChild(card);
-
-      const line = (cat, vars) => { const r = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]); if (r) lastIdx[cat] = r.index; return r ? r.text : ''; };
-      const say = (text) => { p.textContent = text; voiceSay(text, 0); };
-      const btn = (label, fn, primary) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'lfx-store-tip-btn' + (primary ? ' is-primary' : '');
-        b.textContent = label;
-        b.addEventListener('click', fn);
-        row.appendChild(b);
-        return b;
+      let flow = null;
+      const view = {
+        show(m, first) {
+          p.textContent = m.text;
+          row.textContent = '';
+          row.classList.toggle('is-choices', !!m.choices);
+          for (const bt of m.buttons) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'lfx-store-tip-btn' + (bt.primary ? ' is-primary' : '');
+            b.textContent = bt.label;
+            b.addEventListener('click', () => flow.act(bt.id));
+            row.appendChild(b);
+          }
+          if (first && m.choices) { const f = row.querySelector('button'); if (f && !ctx.isTouch) f.focus({ preventScroll: true }); }
+        },
+        close: () => ctx.overlay.close(),
       };
-      const bye = () => {
-        ctx.overlay.close();
-        speak('dialogBye', {}, { force: true });
-      };
-      function choices(first) {
-        row.textContent = '';
-        row.classList.add('is-choices');
-        const avail = ANSWERS.filter((a) => picks[a.key].length);
-        if (!avail.length) {
-          say(line('noTip'));
-          btn('Tschüss', bye, true);
-          return;
-        }
-        say(line('dialogHello'));
-        for (const a of avail) btn(a.label, () => answer(a), false);
-        btn('Tschüss', bye, false);
-        if (first) { const f = row.querySelector('button'); if (f && !ctx.isTouch) f.focus({ preventScroll: true }); }
-      }
-      function answer(a) {
-        const list = picks[a.key];
-        let pool = list.filter((i) => i.Id !== lastTipId);
-        if (!pool.length) pool = list;
-        const it = pool[Math.floor(rand() * pool.length)];
-        lastTipId = it.Id;
-        const dept = deptOf.get(it.Id);
-        row.textContent = '';
-        row.classList.remove('is-choices');
-        say(line(a.cat, { title: it.Name, dept: dept && dept.label }));
-        btn('Zeig mal', () => { ctx.overlay.close(); ctx.items.take(it.Id, { from: 'counter' }); }, true);
-        btn('Was anderes', () => choices(false), false);
-        btn('Tschüss', bye, false);
-      }
+      flow = dialogFlow(view);
       el.addEventListener('pointerdown', (e) => { if (e.target === el) ctx.overlay.close(); });
       ctx.overlay.open(el, { onClose: () => { stopVoice(); } });
       bubble.hidden = true;
-      choices(true);
+      flow.start(true);
     }
+
+    function openDialogXr() {
+      let handle = null;
+      let flow = null;
+      const toSpec = (m) => ({
+        title: 'Richard',
+        text: m.text,
+        buttons: m.buttons.map((bt) => ({ label: bt.label, primary: !!bt.primary, onSelect: () => flow.act(bt.id) })),
+      });
+      const view = {
+        show(m) {
+          if (handle && handle.open) handle.update(toSpec(m));
+          else handle = ctx.xr.panel.open({ ...toSpec(m), onClose: () => { stopVoice(); } });
+        },
+        close: () => { if (handle) handle.close(); },
+      };
+      flow = dialogFlow(view);
+      hideBubble();
+      flow.start(true);
+    }
+
+    function openDialog() { if (xrOn()) openDialogXr(); else openDialogDom(); }
+
     const offIa = ctx.addInteractable({
       box: { min: { x: cx - 0.5, y: 0.2, z: cz - 0.6 }, max: { x: cx + 0.5, y: 2.0, z: cz + 0.4 } },
       label: 'Richard', hint: 'E / Klick: Mit Richard reden', onUse: openDialog,
@@ -322,6 +358,8 @@ export default {
       voiceInfo() {
         return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
       },
+      /** Stimme sofort freischalten; synchron aus dem Klick „In VR betreten“ aufrufen (Brillen-Browser ohne Sprachausgabe: No-op). */
+      unlockVoice() { try { voice.unlockNow(); } catch { /* egal */ } },
       /** Deutsche Stimmen für die Auswahl im Pause-Menü: [{ name, lang, online, male }]. */
       voices() { return voice.listVoices(); },
       /** Probezeile sprechen (synchron im Klick-Handler aufrufen; nur bei Ton an). */
@@ -395,7 +433,7 @@ export default {
         }
         if (bubbleLeft > 0) {
           bubbleLeft -= dt;
-          if (bubbleLeft <= 0 || (ctx.overlay.isOpen() && !bubbleSticky)) { bubble.hidden = true; bubbleLeft = 0; } else placeBubble();
+          if (bubbleLeft <= 0 || (ctx.overlay.isOpen() && !bubbleSticky)) { hideBubble(); bubbleLeft = 0; } else placeBubble();
         }
         poll += dt;
         if (poll > 1) {
@@ -423,9 +461,10 @@ export default {
       onVoiceOnline() { stopVoice(); voice.reselect(); },
       // Stimme/Tonlage geändert: nur neu wählen (laufende Rede wird von der folgenden Probe abgelöst)
       onVoicePrefs() { voice.reselect(); },
-      onSuspend() { bubble.hidden = true; bubbleLeft = 0; stopVoice(); },
+      onSuspend() { hideBubble(); bubbleLeft = 0; stopVoice(); },
       dispose() {
         offs.forEach((o) => o());
+        if (bubble3d) { bubble3d.dispose(); bubble3d = null; }
         offIa();
         offProvide();
         stopVoice();

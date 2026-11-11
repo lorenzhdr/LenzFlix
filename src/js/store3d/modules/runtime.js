@@ -87,6 +87,21 @@ export class ModuleHost {
         close: () => self.overlayClose(),
         isOpen: () => !!self.overlayState,
       },
+      xr: {
+        presenting: () => self.xrOn(),
+        panel: { open: (spec) => self.panelOpen(spec) },
+        toast: (text, ms) => {
+          if (self.xrOn() && app.xr.toast) app.xr.toast(text, ms);
+          else { try { app.deps.toast(text); } catch { /* egal */ } }
+        },
+        bubble: () => (app.xr && typeof app.xr.bubble === 'function' ? app.xr.bubble() : { show() {}, hide() {}, dispose() {} }),
+        exitThen: (label, fn) => {
+          if (app.xr && typeof app.xr.exitThen === 'function') return app.xr.exitThen(label, fn);
+          try { fn(); } catch (err) { warn('exitThen', err); }
+          return true;
+        },
+        jumpTo: (x, z, o) => self.jumpTo(x, z, o || {}),
+      },
       items: {
         take: (id, o) => app.take(id, { fromCounter: !!(o && o.from === 'counter') }),
         slotOf: (id) => self.slotOf(id),
@@ -157,9 +172,23 @@ export class ModuleHost {
     this.zoneIn = inside;
   }
 
+  /** Sitzung läuft (lazy: fakeApp hat kein app.xr). */
+  xrOn() {
+    const x = this.app.xr;
+    return !!(x && x.presenting);
+  }
+
+  jumpTo(x, z, o) {
+    const app = this.app;
+    if (app.xr && typeof app.xr.jumpTo === 'function') return app.xr.jumpTo(x, z, o);
+    app.player.teleport(x, z, typeof (o && o.face) === 'number' ? o.face : undefined);
+    return Promise.resolve(true);
+  }
+
   // --- Spieler ---
   walkTo(x, z, o) {
     const app = this.app;
+    if (this.xrOn()) return this.jumpTo(x, z, o);
     this.flushNav();
     if (this.walkPending) { this.walkPending(false); this.walkPending = null; }
     return new Promise((resolve) => {
@@ -176,6 +205,7 @@ export class ModuleHost {
   }
 
   lookAt(x, y, z, ms = 400) {
+    if (this.xrOn()) return Promise.resolve(true);
     const p = this.app.player;
     if (this.look) this.look.resolve(false);
     const dx = x - p.x;
@@ -202,6 +232,7 @@ export class ModuleHost {
 
   // --- Kamera-Übernahme ---
   flyTo(pos, target, ms = 1000) {
+    if (this.xrOn()) return this.jumpTo(pos.x, pos.z, { face: { x: target.x, z: target.z } });
     const cam = this.app.engine.camera;
     if (this.cam && this.cam.resolve) this.cam.resolve(false);
     const eye = new Vector3(pos.x, pos.y, pos.z);
@@ -233,6 +264,7 @@ export class ModuleHost {
   }
 
   release() {
+    if (this.xrOn()) return;
     if (!this.cam) return;
     const r = this.cam.resolve;
     this.cam = null;
@@ -242,6 +274,13 @@ export class ModuleHost {
   // --- Overlay ---
   overlayOpen(el, o) {
     const app = this.app;
+    if (this.xrOn()) {
+      // In VR gibt es kein DOM-Overlay: Hinweis, Schließen-Rückruf asynchron, kein Moduswechsel
+      try { app.xr.toast('In VR noch nicht verfügbar'); } catch { /* egal */ }
+      const cb = o && o.onClose;
+      if (cb) queueMicrotask(() => { try { cb(); } catch (err) { warn('overlay.onClose', err); } });
+      return;
+    }
     if (this.overlayState) this.overlayClose();
     this.overlayState = { el, onClose: o.onClose, prev: app.mode };
     app.host.appendChild(el);
@@ -250,12 +289,42 @@ export class ModuleHost {
     app.setMode('overlay');
   }
 
+  /** VR-Panel als Overlay (Modus 'overlay'); Rückgabe: Handle, dessen close() das Overlay mitschließt. */
+  panelOpen(spec) {
+    const app = this.app;
+    const dead = { mesh: null, open: false, update() {}, close() {}, hit: () => null, hover: () => null, scroll() {}, activate: () => false };
+    if (!this.xrOn() || typeof app.xr.openPanel !== 'function') {
+      try { app.deps.toast('Das geht nur in VR'); } catch { /* egal */ }
+      const cb = spec && spec.onClose;
+      if (cb) queueMicrotask(() => { try { cb(); } catch (err) { warn('panel.onClose', err); } });
+      return dead;
+    }
+    if (this.overlayState) this.overlayClose();
+    const st = { panel: null, el: null, onClose: spec && spec.onClose, prev: app.mode };
+    const wrapper = () => { if (this.overlayState === st) this.overlayClose(); };
+    const h = app.xr.openPanel({ ...spec, onClose: wrapper });
+    st.panel = h;
+    this.overlayState = st;
+    app.player.cancelPath();
+    app.setMode('overlay');
+    return {
+      get mesh() { return h.mesh; },
+      get open() { return h.open; },
+      update(s) { if (s && 'onClose' in s) st.onClose = s.onClose; h.update({ ...s, onClose: wrapper }); },
+      close() { h.close(); },
+      hit: (uv) => h.hit(uv),
+      hover: (uv) => h.hover(uv),
+      scroll: (dy) => h.scroll(dy),
+      activate: (hit) => h.activate(hit),
+    };
+  }
+
   overlayClose() {
     const st = this.overlayState;
     if (!st) return;
     this.overlayState = null;
     const app = this.app;
-    if (st.el.parentNode) st.el.parentNode.removeChild(st.el);
+    if (st.panel) { try { st.panel.close(); } catch { /* egal */ } } else if (st.el && st.el.parentNode) st.el.parentNode.removeChild(st.el);
     try { if (st.onClose) st.onClose(); } catch (err) { warn('overlay.onClose', err); }
     app.setMode(st.prev === 'hold' && app.holdview.isOpen ? 'hold' : 'play');
     if (app.mode === 'play' && app.desktop && !app.suspended) app.desktop.requestLock();

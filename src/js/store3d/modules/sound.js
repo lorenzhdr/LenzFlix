@@ -27,7 +27,7 @@ export default {
     let hum = null;
     let rain = null;
     let ambientWanted = false;
-    const duckKeys = new Set(); // aktive Dämpfungs-Schlüssel: 'tv' (stark), 'talk' (mittel)
+    const duckKeys = new Set(); // aktive Dämpfungs-Schlüssel: 'cinema' (stumm), 'tv' (stark), 'talk' (mittel)
     let ambientRunning = false;
     let suspended = false;
     let nextStep = 0;
@@ -36,7 +36,7 @@ export default {
     let filterTarget = 2600;
     const gestureEvents = ['pointerdown', 'keydown', 'touchend'];
 
-    const level = () => (ctx.soundOn() ? (duckKeys.has('tv') ? MASTER * 0.12 : duckKeys.has('talk') ? MASTER * 0.45 : MASTER) : 0);
+    const level = () => (ctx.soundOn() ? (duckKeys.has('cinema') ? 0 : duckKeys.has('tv') ? MASTER * 0.12 : duckKeys.has('talk') ? MASTER * 0.45 : MASTER) : 0);
 
     function buildGraph() {
       master = ac.createGain();
@@ -258,6 +258,8 @@ export default {
 
     ctx.provide('sound', {
       play,
+      /** Audio freischalten (Nutzergeste, z. B. Klick auf „In VR betreten“). */
+      unlock() { unlock(); },
       /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
       duck(key, on) {
         if (arguments.length < 2) { on = key; key = 'tv'; } // abwärtskompatibel: duck(bool)

@@ -19,7 +19,7 @@ Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dun
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.7.8/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.8.0/dist/lenzflix.min.css");
 ```
 
 - `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.7.8/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.8.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -52,6 +52,20 @@ Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZ
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
 **Wichtig bei Updates:** CSS-`@import` und JS-URL immer auf **denselben** Release-Tag setzen. Das Design-CSS wird aus dem Pfad des eingebundenen CSS abgeleitet. Steht das CSS noch auf einer älteren Version (ohne `lenzplus`/`lenzprime`/`lenzretro`), schlägt das Nachladen fehl. Dann fällt LenzFlix auf LENZFLIX zurück, und der Design-Dialog ist ungestylt.
+
+### VR-Modus (Beta, VIDEOTHEK LENZ)
+
+Die Videothek lässt sich mit einer VR-Brille begehen, samt Kinosaal für die Wiedergabe.
+
+- **Voraussetzung:** VR-Brille mit WebXR-fähigem Browser, Jellyfin über HTTPS erreichbar. Ohne unterstützte Brille erscheint kein VR-Knopf, am Desktop und Handy ändert sich nichts.
+- **Starten:** In der Videothek auf „In VR betreten“ tippen bzw. klicken, oder im Pause-Menü „VR-Modus“ wählen.
+- **Bedienung:**
+  - Linker Stick: gehen (in Blickrichtung), Stick-Klick: rennen. Rechter Stick: drehen (Ruck-Drehung oder weich, einstellbar).
+  - Trigger: mit dem Laser auswählen, Hüllen nehmen, Panels bedienen. Grip nahe einer Hülle: greifen.
+  - B/Y: VR-Menü bzw. oberste Ebene schließen. Mit Händen: Pinch zum Auswählen, Handfläche zum Gesicht für das Menü.
+  - Das VR-Menü bietet Ton, Drehen, Vignette, Größe (automatisch/sitzend), Neu ausrichten, Qualität (mittel/niedrig) und die Kassen-PC-Suche.
+- **Kino:** Ein Film läuft im Kinosaal auf einer großen Leinwand. Das Kino-Bedienpanel (Pause, Spulen, Lautstärke, Tonspur, Untertitel, Platz vorn/Mitte/hinten, nächste Folge) erscheint per Trigger ins Leere. Einstellungen, Design-Wechsel und Abmelden gibt es nur außerhalb von VR.
+- **Hinweis:** Beta, bisher nur im Emulator geprüft. Rückmeldungen (Brille, Browser, Ruckler, Fehler) sind willkommen.
 
 ## Echte Charts (optional)
 
@@ -108,7 +122,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.7.8/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.8.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

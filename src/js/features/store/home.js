@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ: 3D-Startseite. Mount #lfx-store-home als erstes Kind von #homeTab (Proxy-Klick fürs Abspielen braucht den
 // Legacy-Container), darin Bühne (div.lfx-store-stage für window.LenzFlixStore3D), Ladebildschirm, HUD und Fallback-Panel.
 // Lebenszyklus (Ausnahme vom Unmount-Vertrag, docs/store3d.md): unmount() setzt die 3D-Instanz nur aus (suspend), nach 3 min
-// oder bei Design-Wechsel/destroy folgt dispose(). Die Hülle importiert nie `three`.
+// oder bei Design-Wechsel/destroy folgt dispose(). Im VR-Kino (XR-Session läuft, Player offen) wird stattdessen die Bühne geparkt. Die Hülle importiert nie `three`.
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
@@ -17,6 +17,8 @@ import { loadCatalog } from './data.js';
 import { closeProfileMenu, hudButton, profileButton, toggleProfileMenu, wordmark } from './hud.js';
 import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js';
 import * as prefs from './prefs.js';
+import { createCinemaBridge } from './cinema-bridge.js';
+import { parkStage, unparkStage } from './stage-park.js';
 
 export const SUSPEND_MS = 3 * 60 * 1000;
 const CLASSIC_HASH = '#/home?lfx=classic';
@@ -25,12 +27,47 @@ const FADE_MS = 450;
 let gen = 0;
 let waitTimer = null;
 let fadeTimer = null;
-let inst = null; // { instance, unsubTheme, disposeTimer, ready }
+let inst = null; // { instance, unsubTheme, disposeTimer, ready, parked }
 let ui = null; // { root, stage, loading, fill, label, hud, avatar, searchBtn }
 let lastKey = null;
 let shown = false; // Bühne gerade im DOM
 
 const root = () => document.documentElement;
+
+// ------------------------------------------------------------------ XR (VR-Modus)
+
+let bridge = null; // Player-Bridge, ein Objekt pro Modul, lazy
+const xr = { presenting: false, cinema: false };
+const getBridge = () => bridge || (bridge = createCinemaBridge());
+
+/** Session läuft laut Meldung UND laut Instanz (fehlt isXr: nicht präsentierend). */
+function isPresenting() {
+  if (!xr.presenting || !inst || !inst.instance) return false;
+  try { return typeof inst.instance.isXr === 'function' && Boolean(inst.instance.isXr()); } catch { return false; }
+}
+
+/** Zeile 4: geparkte Bühne verwerfen, Instanz wie bei unmount aussetzen (3-min-Timer). */
+function releaseParked() {
+  const cur = inst;
+  if (!cur || !cur.parked) return;
+  cur.parked = false;
+  try { cur.instance.suspend(); } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
+  unparkStage();
+  clearTimeout(cur.disposeTimer);
+  cur.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
+  if (bridge) bridge.activate(false);
+}
+
+function onXr(s) {
+  xr.presenting = Boolean(s && s.presenting);
+  xr.cinema = xr.presenting && Boolean(s.cinema);
+  if (!xr.presenting && inst && inst.parked) {
+    releaseParked();
+    return;
+  }
+  if (xr.cinema) getBridge().activate(true);
+  else if (bridge) bridge.activate(false);
+}
 
 export function hasWebGL() {
   try {
@@ -67,6 +104,10 @@ function disposeInstance() {
   clearTimeout(cur.disposeTimer);
   if (cur.unsubTheme) cur.unsubTheme();
   try { cur.instance.dispose(); } catch (e) { console.warn('[LenzFlix] store dispose', e && e.message); }
+  unparkStage();
+  if (bridge) bridge.activate(false);
+  xr.presenting = false;
+  xr.cinema = false;
 }
 
 // ------------------------------------------------------------------ UI
@@ -252,6 +293,8 @@ function buildDeps(catalog, name, onFatal, onBigCovers) {
     onState: ret((s) => prefs.saveState(s)),
     onPrefs: ret((p) => prefs.savePrefs(p)),
     onBigCovers: ret((on) => onBigCovers(on)),
+    onXr: ret((s) => onXr(s)),
+    cinema: getBridge(),
     onFatal: ret(onFatal),
   };
 }
@@ -266,6 +309,7 @@ function buildOpts(r) {
     voicePitch: prefs.getVoicePitch(),
     bigCovers: prefs.getBigCovers(),
     touchControl: prefs.getTouchControl(),
+    vr: prefs.getVr(),
     skipIntro: prefs.getIntroSeen(),
     restore: prefs.getState(),
     openItemId: r && r.kind === 'title' ? r.id : null,
@@ -349,6 +393,31 @@ function parseCurrent() {
   return { path, params: new URLSearchParams(qi < 0 ? '' : hash.slice(qi + 1)), hash };
 }
 
+/** Geparkte Bühne anstelle der neuen einhängen. false bei Fehlern (dann Rückfall auf den bisherigen Weg). */
+function reattachParked() {
+  const stage = unparkStage();
+  if (!stage || !ui) return false;
+  try {
+    ui.stage.replaceWith(stage);
+    ui.stage = stage;
+    ui.loading.remove();
+    ui.searchBtn.disabled = false;
+    stage.classList.add('is-ready');
+    inst.parked = false;
+    clearDisposeTimer();
+    if (bridge) bridge.activate(false);
+  } catch (e) {
+    console.warn('[LenzFlix] store reattach', e && e.message);
+    return false;
+  }
+  try {
+    if (typeof inst.instance.leaveCinema === 'function') inst.instance.leaveCinema('home');
+  } catch (e) {
+    console.warn('[LenzFlix] store leaveCinema', e && e.message);
+  }
+  return true;
+}
+
 function start(tab, route, myGen) {
   teardownUi();
   ui = buildUi();
@@ -357,6 +426,14 @@ function start(tab, route, myGen) {
   shown = true;
   const r = storeHomeRoute(route);
   if (inst && inst.instance) {
+    if (inst.parked) {
+      // Zeile 6: aus dem VR-Kino zurück, Bühne samt laufender Session wieder einhängen (kein resume)
+      if (isPresenting() && reattachParked()) {
+        applyRoute(r);
+        return;
+      }
+      releaseParked(); // Rückfall: wie bisher suspendieren und normal fortsetzen
+    }
     // Suspendierte Instanz weiterverwenden: kein Ladebildschirm
     clearDisposeTimer();
     ui.loading.remove();
@@ -401,6 +478,8 @@ export function destroyStore() {
   clearTimeout(waitTimer);
   waitTimer = null;
   disposeInstance();
+  unparkStage();
+  if (bridge) { bridge.dispose(); bridge = null; }
   teardownUi();
   lastKey = null;
   removeThemeJs();
@@ -432,10 +511,26 @@ const storeHome = {
     clearTimeout(waitTimer);
     waitTimer = null;
     lastKey = null;
-    if (inst && inst.instance) {
-      try { inst.instance.suspend(); } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
-      clearDisposeTimer();
-      inst.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
+    if (inst && inst.instance && !inst.parked) {
+      let parkedNow = false;
+      if (isPresenting() && xr.cinema && ui && ui.stage) {
+        // Zeile 2: Kino läuft, Bühne VOR dem Abbau aus ui.root lösen und parken (kein suspend, kein Timer)
+        try {
+          parkStage(ui.stage);
+          inst.parked = true;
+          parkedNow = true;
+          clearDisposeTimer();
+          getBridge().activate(true);
+        } catch (e) {
+          console.warn('[LenzFlix] store park', e && e.message);
+          inst.parked = false;
+        }
+      }
+      if (!parkedNow) {
+        try { inst.instance.suspend(); } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
+        clearDisposeTimer();
+        inst.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
+      }
     }
     teardownUi();
   },

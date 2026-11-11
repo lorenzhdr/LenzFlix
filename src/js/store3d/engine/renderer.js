@@ -1,5 +1,5 @@
 // VIDEOTHEK LENZ · Renderer, Schleife, Qualitätsautomatik, Resize, Sichtbarkeit und Kontextverlust.
-import { WebGLRenderer, Scene, PerspectiveCamera, ACESFilmicToneMapping, SRGBColorSpace, PCFShadowMap, Color } from 'three';
+import { WebGLRenderer, Scene, PerspectiveCamera, Group, ACESFilmicToneMapping, SRGBColorSpace, PCFShadowMap, Color } from 'three';
 import { presetFor, AutoQuality } from './quality.js';
 
 const DEG = Math.PI / 180;
@@ -30,10 +30,15 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   renderer.shadowMap.enabled = preset.shadows;
   renderer.setClearColor(new Color(0x0b0d1c), 1);
 
-  const scene = new Scene();
+  const storeScene = new Scene();
+  let scene = storeScene; // aktive Szene (das Kino bekommt später eine eigene)
+  // Rig: Elternteil von Kamera (und später Controllern). Außerhalb von XR die Identität.
+  const rig = new Group();
+  rig.name = 'lfx-rig';
+  storeScene.add(rig);
   const camera = new PerspectiveCamera(70, 1, 0.05, 90);
   camera.rotation.order = 'YXZ';
-  scene.add(camera);
+  rig.add(camera);
 
   const aq = new AutoQuality(level);
   let autoOn = !!auto;
@@ -52,11 +57,15 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   let baseFov = 70;
   let zoom = 1;
 
+  const inXr = () => renderer.xr.isPresenting === true;
+
   function applyRatio() {
+    if (inXr()) return;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, preset.pixelRatio));
   }
 
   function resize() {
+    if (inXr()) return;
     const w = Math.max(1, curHost.clientWidth || window.innerWidth);
     const h = Math.max(1, curHost.clientHeight || window.innerHeight);
     renderer.setSize(w, h, false);
@@ -68,6 +77,7 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   }
 
   function applyFov() {
+    if (inXr()) return;
     camera.fov = baseFov / zoom;
     camera.updateProjectionMatrix();
   }
@@ -79,7 +89,7 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     applyFov();
   }
 
-  function loop(time) {
+  function loop(time, frame) {
     const now = time || performance.now();
     let dt = (now - last) / 1000;
     last = now;
@@ -88,12 +98,12 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     acc += dt;
     accN++;
     if (acc >= 0.5) { fps = accN / acc; frameMs = (acc / accN) * 1000; acc = 0; accN = 0; }
-    if (autoOn) {
+    if (autoOn && !inXr()) {
       const l = aq.sample(dt, now);
       if (l) { setLevel(l); if (onAutoLevel) onAutoLevel(l); }
     }
     const t0 = performance.now();
-    if (tick) tick(dt, now);
+    if (tick) tick(dt, now, frame);
     const t1 = performance.now();
     renderer.render(scene, camera);
     const t2 = performance.now();
@@ -102,21 +112,26 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   }
 
   function go() {
-    if (!running || lost || document.hidden) return;
+    if (!running || lost || (document.hidden && !inXr())) return;
     last = performance.now();
     renderer.setAnimationLoop(loop);
   }
   function halt() { renderer.setAnimationLoop(null); }
 
+  // XR-Budget: Presets wie am Handy (kleinere Cover-Atlanten, kein Schatten)
+  let xrBudget = false;
+  let levelNow = level;
+
   function setLevel(l) {
     const prev = preset;
-    preset = presetFor(l, phone);
+    levelNow = l;
+    preset = presetFor(l, phone || xrBudget);
     aq.setLevel(preset.level);
     applyRatio();
     resize();
     if (prev.shadows !== preset.shadows) {
       renderer.shadowMap.enabled = preset.shadows;
-      scene.traverse((o) => {
+      storeScene.traverse((o) => {
         const m = o.material;
         if (Array.isArray(m)) m.forEach((x) => { x.needsUpdate = true; });
         else if (m) m.needsUpdate = true;
@@ -125,7 +140,20 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     return preset;
   }
 
-  const onVis = () => { if (document.hidden) halt(); else go(); };
+  function setXrBudget(on) {
+    on = !!on;
+    if (on === xrBudget) return preset;
+    xrBudget = on;
+    return setLevel(levelNow);
+  }
+
+  function setFoveation(v) {
+    try { renderer.xr.setFoveation(v); } catch { /* egal */ }
+  }
+
+  const onVis = () => { if (inXr()) return; if (document.hidden) halt(); else go(); };
+  const onXrEnd = () => { applyRatio(); resize(); applyFov(); };
+  renderer.xr.addEventListener('sessionend', onXrEnd);
   const onLost = (e) => { e.preventDefault(); lost = true; halt(); if (onContextLost) onContextLost(); };
   const onRestored = () => { lost = false; if (onContextRestored) onContextRestored(); go(); };
   const onWin = () => resize();
@@ -146,7 +174,10 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   resize();
 
   return {
-    renderer, scene, camera, canvas,
+    renderer, camera, canvas, rig, storeScene,
+    get scene() { return scene; },
+    setScene(s) { scene = s || storeScene; },
+    render(active, cam) { renderer.render(active || scene, cam || camera); },
     get preset() { return preset; },
     get fps() { return fps; },
     get frameMs() { return frameMs; },
@@ -158,14 +189,18 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     get host() { return curHost; },
     setLevel,
     setZoom,
+    setXrBudget,
+    setFoveation,
     setAuto(v) { autoOn = !!v; aq.setLevel(preset.level); },
     resize,
     setHost(h) { curHost = h; observe(); resize(); },
     start(fn) { tick = fn; running = true; go(); },
     stop() { running = false; halt(); },
     dispose() {
+      try { const sess = renderer.xr.getSession && renderer.xr.getSession(); if (sess) { const r = sess.end(); if (r && r.catch) r.catch(() => {}); } } catch { /* egal */ }
       running = false;
       halt();
+      renderer.xr.removeEventListener('sessionend', onXrEnd);
       document.removeEventListener('visibilitychange', onVis);
       canvas.removeEventListener('webglcontextlost', onLost);
       canvas.removeEventListener('webglcontextrestored', onRestored);

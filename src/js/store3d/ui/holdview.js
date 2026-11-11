@@ -1,5 +1,6 @@
 // VIDEOTHEK LENZ · Hülle in der Hand: animiert aus dem Regal vor die Kamera, drehbar (Cover vorn, gerenderte Rückseite),
-// DOM-Panel mit Aktionen, bei Serien Staffel-Tabs + Folgenliste. Das Card-Mesh hängt an der Kamera (ohne Tiefentest).
+// DOM-Panel mit Aktionen, bei Serien Staffel-Tabs + Folgenliste. Das Card-Mesh hängt an einem Anker: in 2D die Kamera (ohne Tiefentest),
+// in VR der Grip-Raum der Hand (mit Tiefentest, Panel per app.xr.openPanel).
 import {
   Group, Mesh, BoxGeometry, MeshBasicMaterial, MeshLambertMaterial, CanvasTexture, SRGBColorSpace, LinearFilter, Quaternion, Vector3, Euler,
 } from 'three';
@@ -13,7 +14,7 @@ const TMP_Q = new Quaternion();
 const TMP_V = new Vector3();
 const TMP_E = new Euler();
 const IDENT = new Quaternion();
-const TARGET = { pos: new Vector3(), scale: 1 };
+const TARGET = { pos: new Vector3(), scale: 1, quat: new Quaternion() };
 const ease = (t) => 1 - (1 - t) ** 3;
 
 const SIDE_COLOR = { vhs: 0xe2d8bd, dvd: 0x1d3f9c, box: 0xc9a227 };
@@ -124,10 +125,112 @@ function drawBack(canvas, item) {
   for (let x = W / 2 - 60; x < W / 2 + 60; x += 4) ctx.fillRect(x, H - 38, 1 + ((x * 7) % 3), 12);
 }
 
+// --- Reine Hilfen (DOM und VR nutzen dieselbe Logik; getestet) ---
+const clip = (text, n) => {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= n) return t;
+  return `${t.slice(0, n).replace(/\s+\S*$/, '')} …`;
+};
+
+export function metaLine(it) {
+  return [it.ProductionYear, fsk(it.OfficialRating), it.RunTimeTicks ? ticksToText(it.RunTimeTicks) : '', it.CommunityRating ? `★ ${Number(it.CommunityRating).toFixed(1).replace('.', ',')}` : ''].filter(Boolean).join(' · ');
+}
+
+export function itemFlags(it) {
+  const ud = it.UserData || {};
+  const lfx = it.lfx || {};
+  return {
+    fav: !!ud.IsFavorite,
+    seen: !!(ud.Played || lfx.watched),
+    resumable: it.Type !== 'Series' && !!((lfx.progress > 0) || (ud.PlaybackPositionTicks > 0)),
+    series: it.Type === 'Series',
+  };
+}
+
+/** Erste Staffel mit ungesehenen Folgen (sonst 0). */
+export function firstOpenSeason(seasons) {
+  return Math.max(0, (seasons || []).findIndex((s) => !(s.UserData && s.UserData.Played)));
+}
+
+/** Zeilenmodell einer Folge: name, tag (DOM), runtime, resume, played. */
+export function episodeRow(ep) {
+  const ticks = (ep.UserData && ep.UserData.PlaybackPositionTicks) || 0;
+  const played = !!(ep.UserData && ep.UserData.Played);
+  const n = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : '';
+  return { ep, name: `${n}${ep.Name || 'Folge'}`, tag: played ? '✓' : ticks > 0 ? '▶ weiter' : '', runtime: ep.RunTimeTicks ? ticksToText(ep.RunTimeTicks) : '', resume: ticks > 0, played };
+}
+
+/** Nächste Folge zum Abspielen: erste ungesehene, sonst die erste. */
+export function nextEpisode(eps) {
+  return (eps || []).find((x) => !(x.UserData && x.UserData.Played)) || (eps || [])[0] || null;
+}
+
+/** Serienmodell: Tabs (Staffeln), Zeilen (Folgen der gewählten Staffel), nächste Folge. */
+export function seriesModel(seasons, eps, sel = 0) {
+  const ss = seasons || [];
+  return {
+    tabs: ss.map((s, i) => ({ id: s.Id, label: s.Name || `Staffel ${i + 1}`, on: i === sel })),
+    rows: (eps || []).map(episodeRow),
+    next: nextEpisode(eps),
+    firstOpen: firstOpenSeason(ss),
+  };
+}
+
+/**
+ * Panel-Spec für VR. st = { series: null | { seasons, sel, eps, status: 'loading'|'ready' } }.
+ * act = { play(item, resume), toggle(kind), flip(), back(), season(i), episode(ep, resume) }.
+ */
+export function buildVrSpec(item, st, act) {
+  const f = itemFlags(item);
+  const meta = metaLine(item);
+  const spec = {
+    title: item.Name || '',
+    lines: meta ? [meta] : [],
+    width: 0.55,
+  };
+  const ov = item.Overview ? clip(item.Overview, f.series ? 90 : 130) : '';
+  if (ov) spec.text = ov;
+  const sr = f.series ? st && st.series : null;
+  if (sr && sr.seasons && sr.seasons.length) {
+    const m = seriesModel(sr.seasons, sr.eps, sr.sel);
+    spec.tabs = m.tabs.map((t, i) => ({ label: t.label, on: t.on, onSelect: () => act.season(i) }));
+    let rows;
+    if (sr.status === 'loading') rows = [{ label: 'Lade Folgen …' }];
+    else if (!m.rows.length) rows = [{ label: 'Keine Folgen gefunden.' }];
+    else {
+      rows = m.rows.map((r) => ({
+        label: r.name,
+        sub: [r.runtime, r.played ? 'gesehen' : r.resume ? 'weiter' : ''].filter(Boolean).join(' · ') || undefined,
+        onSelect: () => act.episode(r.ep, r.resume),
+      }));
+    }
+    spec.list = { rows, visible: 4 };
+  } else if (f.series && sr && sr.status === 'ready') {
+    spec.list = { rows: [{ label: 'Keine Folgen gefunden.' }], visible: 1 };
+  }
+  const buttons = [];
+  if (!f.series) buttons.push({ label: 'Abspielen', primary: true, onSelect: () => act.play(item, false) });
+  if (f.resumable) buttons.push({ label: 'Weiterschauen', primary: true, onSelect: () => act.play(item, true) });
+  buttons.push({ label: f.fav ? 'Gemerkt ✓' : 'Merken', on: f.fav, onSelect: () => act.toggle('fav') });
+  buttons.push({ label: f.seen ? 'Gesehen ✓' : 'Gesehen', on: f.seen, onSelect: () => act.toggle('seen') });
+  buttons.push({ label: 'Umdrehen', onSelect: () => act.flip() });
+  buttons.push({ label: 'Zurückstellen', onSelect: () => act.back() });
+  spec.buttons = buttons;
+  return spec;
+}
+
 export class HoldView {
   constructor(o) {
     this.host = o.host;
     this.camera = o.camera;
+    this.anchor = o.camera; // Elternobjekt der Hüllen-Gruppe: Kamera (2D) oder Grip-Objekt (VR)
+    this.xr = false;
+    this.hand = 'right';
+    this.openPanel = o.openPanel || null; // (spec) => Panel-Handle (VR), von der Hülle verdrahtet
+    this.isXr = o.isXr || (() => true); // läuft die Sitzung noch? (Panel-onClose beim Sitzungsende ist kein Zurückstellen)
+    this.vr = null; // VR-Panel-Handle
+    this.series = null; // { seasons, sel, eps, status }
+    this.hidden = false;
     this.deps = o.deps;
     this.items = o.items;
     this.shelves = o.shelves; // { faceViews, setHidden }
@@ -155,8 +258,15 @@ export class HoldView {
   get itemId() { return this.item && (this.state === 'in' || this.state === 'held') ? this.item.Id : null; }
 
   /** @param {string} id @param {{fv,info}|null} slot @param {boolean} instant */
-  open(id, slot, instant = false) {
+  open(id, slot, instant = false, opts = null) {
     if (this.state !== 'idle') this.dispose(true);
+    const xr = !!(opts && opts.xr);
+    this.xr = xr;
+    this.anchor = (xr && opts.anchor) || this.camera;
+    this.hand = (opts && opts.hand) || 'right';
+    this.dur = xr && opts.grab ? 0.18 : 0.4;
+    this.series = null;
+    this.hidden = false;
     const item = this.items.get(id) || { Id: id, Name: '…', lfx: { media: 'dvd' } };
     this.item = item;
     this.slot = slot || null;
@@ -180,25 +290,25 @@ export class HoldView {
     };
     this.frontTex = mkTex(this.front);
     this.backTex = mkTex(this.back);
-    const side = new MeshLambertMaterial({ color: SIDE_COLOR[media] || 0x1d3f9c, depthTest: false, transparent: true });
-    const front = new MeshBasicMaterial({ map: this.frontTex, depthTest: false, transparent: true, toneMapped: false });
-    const back = new MeshBasicMaterial({ map: this.backTex, depthTest: false, transparent: true, toneMapped: false });
+    const side = new MeshLambertMaterial({ color: SIDE_COLOR[media] || 0x1d3f9c, depthTest: xr, transparent: true });
+    const front = new MeshBasicMaterial({ map: this.frontTex, depthTest: xr, transparent: true, toneMapped: false });
+    const back = new MeshBasicMaterial({ map: this.backTex, depthTest: xr, transparent: true, toneMapped: false });
     const C = (this.layout && this.layout.spec && this.layout.spec.cover) || COVER; // gleiche Hüllengröße wie im Regal
     const w = media === 'box' ? C.boxW : C.w;
     const h = media === 'box' ? C.boxH : C.h;
     this.mesh = new Mesh(new BoxGeometry(w, h, th), [side, side, side, side, front, back]);
-    this.mesh.renderOrder = 999;
+    this.mesh.renderOrder = xr ? 0 : 999;
     this.group = new Group();
     this.group.add(this.mesh);
-    this.camera.add(this.group);
+    this.anchor.add(this.group);
     this.rot.x = 0; this.rot.y = 0; this.rotTargetY = 0; this.flipped = false;
 
     if (slot) {
       this.shelves.setHidden(slot.fv, slot.info, true);
-      this.camera.updateMatrixWorld(true);
-      slotWorld(slot.fv, slot.info, TMP_V, TMP_Q);
-      this.from.pos.copy(this.camera.worldToLocal(TMP_V.clone()));
-      this.camera.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
+      this.fromSlot();
+    } else if (this.gripMode()) {
+      this.from.pos.set(0, -0.1, 0.1);
+      this.from.quat.setFromEuler(TMP_E.set(-0.5, 0, 0));
     } else {
       this.from.pos.set(0, -0.6, -0.5);
       this.from.quat.setFromEuler(TMP_E.set(-0.5, 0, 0));
@@ -246,6 +356,7 @@ export class HoldView {
 
   // --- Panel ---
   buildPanel(token) {
+    if (this.xr) { this.buildVrPanel(token); return; }
     const item = this.item;
     const root = el('div', 'lfx-store-hold');
     const drag = el('div', 'lfx-store-hold-drag');
@@ -266,8 +377,7 @@ export class HoldView {
       return b;
     };
     this.dom.btns = {};
-    const isSeries = item.Type === 'Series';
-    const resumable = !isSeries && ((item.lfx && item.lfx.progress > 0) || (item.UserData && item.UserData.PlaybackPositionTicks > 0));
+    const { series: isSeries, resumable } = itemFlags(item);
     if (!isSeries) this.dom.btns.play = btn('Abspielen', () => this.play(item, false), 'lfx-store-act--primary');
     if (resumable) this.dom.btns.resume = btn('Weiterschauen', () => this.play(item, true), 'lfx-store-act--primary');
     this.dom.btns.fav = btn('', () => this.toggle('fav'));
@@ -294,12 +404,11 @@ export class HoldView {
   }
 
   refreshMeta() {
+    if (this.vr) { this.refreshVr(); return; }
     if (!this.dom) return;
     const it = this.item;
-    const bits = [it.ProductionYear, fsk(it.OfficialRating), it.RunTimeTicks ? ticksToText(it.RunTimeTicks) : '', it.CommunityRating ? `★ ${Number(it.CommunityRating).toFixed(1).replace('.', ',')}` : ''].filter(Boolean);
-    this.dom.meta.textContent = bits.join(' · ');
-    const fav = !!(it.UserData && it.UserData.IsFavorite);
-    const seen = !!((it.UserData && it.UserData.Played) || (it.lfx && it.lfx.watched));
+    this.dom.meta.textContent = metaLine(it);
+    const { fav, seen } = itemFlags(it);
     this.dom.btns.fav.textContent = fav ? 'Gemerkt ✓' : 'Merken';
     this.dom.btns.fav.classList.toggle('is-on', fav);
     this.dom.btns.seen.textContent = seen ? 'Gesehen ✓' : 'Gesehen';
@@ -337,14 +446,26 @@ export class HoldView {
     try { await this.deps.play(item, { resume }); } catch { this.deps.toast('Wiedergabe nicht möglich'); }
   }
 
+  // Seriendaten (gemeinsam für DOM und VR)
+  async loadSeasons(token) {
+    let seasons;
+    try { seasons = (await this.deps.getSeasons(this.item.Id)) || []; } catch { seasons = []; }
+    return token !== this.token ? null : seasons;
+  }
+
+  async loadEpisodes(seasonId, token) {
+    let eps;
+    try { eps = (await this.deps.getEpisodes(this.item.Id, seasonId)) || []; } catch { eps = []; }
+    return token !== this.token ? null : eps;
+  }
+
   async buildSeries(token) {
     const { panel } = this.dom;
     const tabs = el('div', 'lfx-store-hold-tabs');
     const list = el('div', 'lfx-store-hold-eps');
     panel.append(tabs, list);
-    let seasons = [];
-    try { seasons = (await this.deps.getSeasons(this.item.Id)) || []; } catch { seasons = []; }
-    if (token !== this.token) return;
+    const seasons = await this.loadSeasons(token);
+    if (seasons === null) return;
     if (!seasons.length) { list.textContent = 'Keine Folgen gefunden.'; return; }
     const playBtn = this.dom.btns.play || (() => {
       const b = el('button', 'lfx-store-act lfx-store-act--primary', 'Abspielen');
@@ -357,19 +478,18 @@ export class HoldView {
     const select = async (i) => {
       [...tabs.children].forEach((c, k) => c.classList.toggle('is-on', k === i));
       list.textContent = 'Lade Folgen …';
-      try { eps = (await this.deps.getEpisodes(this.item.Id, seasons[i].Id)) || []; } catch { eps = []; }
-      if (token !== this.token) return;
+      const got = await this.loadEpisodes(seasons[i].Id, token);
+      if (got === null) return;
+      eps = got;
       list.textContent = '';
-      if (!eps.length) list.textContent = 'Keine Folgen gefunden.';
-      for (const ep of eps) {
-        const ticks = ep.UserData && ep.UserData.PlaybackPositionTicks;
+      const m = seriesModel(seasons, eps, i);
+      if (!m.rows.length) list.textContent = 'Keine Folgen gefunden.';
+      for (const r of m.rows) {
         const row = el('button', 'lfx-store-ep');
         row.type = 'button';
-        const n = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : '';
-        row.append(el('span', 'lfx-store-ep-name', `${n}${ep.Name || 'Folge'}`));
-        const tag = ep.UserData && ep.UserData.Played ? '✓' : ticks > 0 ? '▶ weiter' : '';
-        if (tag) row.append(el('span', 'lfx-store-ep-tag', tag));
-        row.addEventListener('click', (e) => { e.stopPropagation(); this.play(ep, ticks > 0); });
+        row.append(el('span', 'lfx-store-ep-name', r.name));
+        if (r.tag) row.append(el('span', 'lfx-store-ep-tag', r.tag));
+        row.addEventListener('click', (e) => { e.stopPropagation(); this.play(r.ep, r.resume); });
         list.appendChild(row);
       }
     };
@@ -381,16 +501,101 @@ export class HoldView {
     });
     playBtn.onclick = (e) => {
       e.stopPropagation();
-      const next = eps.find((x) => !(x.UserData && x.UserData.Played)) || eps[0];
+      const next = nextEpisode(eps);
       if (next) this.play(next, !!(next.UserData && next.UserData.PlaybackPositionTicks > 0));
     };
     // erste Staffel mit ungesehenen Folgen vorwählen
-    const firstOpen = Math.max(0, seasons.findIndex((s) => !(s.UserData && s.UserData.Played)));
-    select(firstOpen);
+    select(firstOpenSeason(seasons));
+  }
+
+  // --- VR-Panel ---
+  vrSpec() {
+    const spec = buildVrSpec(this.item, { series: this.series }, {
+      play: (it, resume) => this.play(it, resume),
+      toggle: (k) => this.toggle(k),
+      flip: () => { this.flipped = !this.flipped; this.rotTargetY = this.flipped ? Math.PI : 0; },
+      back: () => this.close(true),
+      season: (i) => this.selectVrSeason(i),
+      episode: (ep, resume) => this.play(ep, resume),
+    });
+    // Weltfest vor dem Kopf (0,65 m, 0,15 m unter Augenhöhe), seitlich zur freien Hand hin; folgt dem Kopf nur bei deutlicher Drehung/Bewegung
+    spec.anchor = { head: true, offset: { x: this.hand === 'left' ? 0.3 : -0.3, y: -0.15, z: 0.65 }, follow: true };
+    spec.onClose = () => { if (this.vr && this.isXr()) this.close(true); };
+    return spec;
+  }
+
+  buildVrPanel(token) {
+    if (typeof this.openPanel !== 'function' || !this.group) return;
+    this.vr = this.openPanel(this.vrSpec());
+    if (this.vr && this.hidden && this.vr.mesh) this.vr.mesh.visible = false;
+    if (itemFlags(this.item).series) this.loadVrSeries(token);
+  }
+
+  refreshVr() {
+    if (this.vr && this.group) { try { this.vr.update(this.vrSpec()); } catch { /* Panel schon zu */ } }
+  }
+
+  closeVr() {
+    const h = this.vr;
+    this.vr = null;
+    if (h) { try { h.close(); } catch { /* egal */ } }
+  }
+
+  async loadVrSeries(token) {
+    this.series = { seasons: [], sel: 0, eps: [], status: 'loading' };
+    const seasons = await this.loadSeasons(token);
+    if (seasons === null) return;
+    this.series.seasons = seasons;
+    if (!seasons.length) { this.series.status = 'ready'; this.refreshVr(); return; }
+    await this.selectVrSeason(firstOpenSeason(seasons), token);
+  }
+
+  async selectVrSeason(i, token = this.token) {
+    const sr = this.series;
+    if (!sr || !sr.seasons[i]) return;
+    sr.sel = i;
+    sr.status = 'loading';
+    sr.eps = [];
+    this.refreshVr();
+    const eps = await this.loadEpisodes(sr.seasons[i].Id, token);
+    if (eps === null || this.series !== sr || sr.sel !== i) return;
+    sr.eps = eps;
+    sr.status = 'ready';
+    this.refreshVr();
   }
 
   // --- Animation ---
+  /** Grip-Raum der Hand (VR) statt Kamera. */
+  gripMode() { return this.xr && this.anchor !== this.camera; }
+
+  /**
+   * Ausrichtung der Hülle im Anker (VR): Die Vorderseite (+z der Hülle) zeigt vom Griff zum Gesicht, also im Grip-Raum
+   * nach oben (+y, leicht zur Körpermitte); im Ray-Raum der Hände nach hinten-oben. Hülle steht dabei „hochkant“, Oberkante nach vorn.
+   */
+  gripQuat(q) {
+    const kind = this.anchor && this.anchor.userData && this.anchor.userData.lfxHold;
+    const side = this.hand === 'left' ? -1 : 1;
+    if (kind === 'grip') return q.setFromEuler(TMP_E.set(-Math.PI / 2, 0, 0.4 * side, 'ZXY'));
+    if (kind === 'ray') return q.setFromEuler(TMP_E.set(-0.9, 0.25 * side, 0, 'YXZ'));
+    return q.identity();
+  }
+
+  fromSlot() {
+    this.anchor.updateMatrixWorld(true);
+    slotWorld(this.slot.fv, this.slot.info, TMP_V, TMP_Q);
+    this.from.pos.copy(this.anchor.worldToLocal(TMP_V.clone()));
+    this.anchor.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
+  }
+
   target() {
+    if (this.gripMode()) {
+      // Etwa 3 cm über und 9 cm vor dem Grip-Punkt, Vorderseite zum Gesicht (+z), natürliche Größe leicht vergrößert
+      if (this.anchor.userData && this.anchor.userData.lfxHold === 'grip') TARGET.pos.set(0, 0.08, -0.04);
+      else TARGET.pos.set(0, 0.03, -0.09);
+      TARGET.scale = 1.2;
+      this.gripQuat(TARGET.quat);
+      return TARGET;
+    }
     const wide = this.camera.aspect >= 1.2;
     if (wide) TARGET.pos.set(-0.14, 0.02, -0.66);
     else TARGET.pos.set(0, 0.3, -0.6);
@@ -404,17 +609,14 @@ export class HoldView {
     const tg = this.target();
     const k = ease(Math.max(0, Math.min(1, t)));
     if (this.state === 'out' && this.slot) {
-      this.camera.updateMatrixWorld(true);
-      slotWorld(this.slot.fv, this.slot.info, TMP_V, TMP_Q);
-      this.from.pos.copy(this.camera.worldToLocal(TMP_V.clone()));
-      this.camera.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
+      this.fromSlot();
     }
     this.group.position.lerpVectors(this.from.pos, tg.pos, k);
     // Hand-Größe unabhängig von der Regal-Hüllengröße (große Hüllen werden entsprechend kleiner skaliert)
     const C = this.layout && this.layout.spec && this.layout.spec.cover;
-    const norm = C ? COVER.h / C.h : 1;
+    const norm = C && !this.gripMode() ? COVER.h / C.h : 1;
     this.group.scale.setScalar(1 + (tg.scale * norm - 1) * k);
-    this.group.quaternion.copy(this.from.quat).slerp(IDENT, k);
+    this.group.quaternion.copy(this.from.quat).slerp(this.gripMode() ? tg.quat : IDENT, k);
   }
 
   update(dt) {
@@ -434,7 +636,7 @@ export class HoldView {
       this.pose(1);
       this.rot.y += (this.rotTargetY - this.rot.y) * Math.min(1, dt * 8);
     }
-    const sway = this.state === 'held' ? Math.sin(performance.now() / 1400) * 0.04 : 0;
+    const sway = this.state === 'held' && !this.xr ? Math.sin(performance.now() / 1400) * 0.04 : 0;
     TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, 'YXZ');
     this.mesh.quaternion.setFromEuler(TMP_E);
   }
@@ -443,6 +645,7 @@ export class HoldView {
   close(animated = true) {
     if (this.state === 'idle' || this.state === 'out') return;
     if (this.dom) this.dom.root.classList.add('is-closing');
+    this.closeVr();
     if (this.slot && animated) {
       this.state = 'out';
       this.t = 1;
@@ -466,7 +669,7 @@ export class HoldView {
 
   teardown() {
     if (this.group) {
-      this.camera.remove(this.group);
+      this.anchor.remove(this.group);
       this.mesh.geometry.dispose();
       const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
       new Set(mats).forEach((m) => m.dispose());
@@ -478,12 +681,43 @@ export class HoldView {
     if (this.front) { this.front.width = 1; this.front.height = 1; this.front = null; }
     if (this.back) { this.back.width = 1; this.back.height = 1; this.back = null; }
     if (this.dom) { this.dom.root.remove(); this.dom = null; }
+    this.closeVr();
+    this.series = null;
   }
 
   /** Hülle bleibt in der Hand, DOM wandert mit dem Host (resume). */
   setHost(host) {
     this.host = host;
     if (this.dom) host.appendChild(this.dom.root);
+  }
+
+  setVisible(on) {
+    this.hidden = !on;
+    if (this.group) this.group.visible = !!on;
+    if (this.dom) this.dom.root.style.display = on ? '' : 'none';
+    if (this.vr && this.vr.mesh) this.vr.mesh.visible = !!on;
+  }
+
+  /** Offene Hülle ohne Flug umhängen (VR-Start/-Ende) und die Panel-Art wechseln. */
+  reanchor(anchor, { xr = false, hand } = {}) {
+    const next = anchor || this.camera;
+    if (hand) this.hand = hand;
+    if (this.state === 'idle' || !this.group) { this.anchor = next; this.xr = !!xr; return; }
+    this.anchor.remove(this.group);
+    this.anchor = next;
+    this.xr = !!xr;
+    this.anchor.add(this.group);
+    if (this.state === 'in') { this.state = 'held'; this.t = 1; }
+    this.mesh.renderOrder = this.xr ? 0 : 999;
+    const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
+    new Set(mats).forEach((m) => { m.depthTest = this.xr; });
+    this.group.visible = !this.hidden;
+    // Panel wechseln: DOM weg, VR zu (oder umgekehrt)
+    this.closeVr();
+    if (this.dom) { this.dom.root.remove(); this.dom = null; }
+    if (this.state !== 'out') this.buildPanel(this.token);
+    if (this.hidden) this.setVisible(false);
+    this.pose(1);
   }
 
   dispose(silent = false) {

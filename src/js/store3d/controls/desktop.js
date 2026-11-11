@@ -126,6 +126,7 @@ export class DesktopControls {
   requestLock(opts) {
     const c = this.ctx.canvas;
     this.clearLockTimer();
+    if (!this.attached) return; // abgehängt (z. B. VR): nie Pointer-Lock anfordern
     if (this.locked) return;
     if (!c.requestPointerLock) { this.dragLook = true; this.ctx.onLockChange(false); return; }
     this.retried = false;

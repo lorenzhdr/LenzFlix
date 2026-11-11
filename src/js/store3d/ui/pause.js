@@ -44,7 +44,7 @@ export function voiceNote(info, wantOnline = false) {
 
 /**
  * @param {HTMLElement} host
- * @param {object} a { onResume, onSearch, onClassic, onQuality(q), onSound(on), onFps(on), onBigCovers(on), onTheme, onMenu(anchor), getQuality, getSound, getFps, getBigCovers,
+ * @param {object} a { onResume, onVr?() / getVr?() → bool (VR-Modus-Eintrag nur wenn true), onSearch, onClassic, onQuality(q), onSound(on), onFps(on), onBigCovers(on), onTheme, onMenu(anchor), getQuality, getSound, getFps, getBigCovers,
  *   getVoiceInfo?() → { diag, voiceName, lang, onlineDe } | null (Diagnosezeile unter „Ton“, nur bei Ton an),
  *   onVoice?({ name?, online?, pitch? }) (Stimmwahl/Tonlage; spricht danach die Probe), getVoicePrefs?() → { name, online, pitch },
  *   getVoiceList?() → [{ name, lang, online, male }] (deutsche Stimmen),
@@ -67,6 +67,8 @@ export function createPause(host, a) {
     return b;
   };
   mk('Weiter', () => a.onResume(), 'lfx-store-act--primary');
+  const vrb = mk('VR-Modus', () => { if (a.onVr) a.onVr(); }); // synchron im Klick (Nutzeraktivierung für requestSession)
+  vrb.hidden = true;
   mk('Suche', () => a.onSearch());
   mk('Klassische Ansicht', () => a.onClassic());
   const q = mk('', () => {
@@ -157,6 +159,7 @@ export function createPause(host, a) {
   pick.addEventListener('click', (e) => { if (e.target === pick) { e.stopPropagation(); closePick(); } });
 
   function refresh() {
+    vrb.hidden = !(a.getVr && a.getVr());
     q.textContent = `Qualität: ${QUALITY_LABEL[a.getQuality()] || 'Auto'}`;
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
     f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;

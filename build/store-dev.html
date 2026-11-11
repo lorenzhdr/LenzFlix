@@ -6,7 +6,8 @@
   <title>VIDEOTHEK LENZ · Dev-Harness</title>
   <!-- Dev-Harness für das 3D-Bundle ohne Jellyfin. Start: npm run build && npm run serve → http://localhost:5179/store-dev.html
        Parameter: ?touch=1&phone=1 (Handy simulieren), ?quality=auto|low|mid|high, ?n=900 (Titelzahl), ?item=m12, ?restore=1,
-       ?intro=1 (Intro-Rollladen abspielen, sonst übersprungen), ?hour=22 (Uhrzeit erzwingen), ?rain=1|0 (Regen erzwingen), ?sound=0 (Ton aus; Standard an) -->
+       ?intro=1 (Intro-Rollladen abspielen, sonst übersprungen), ?hour=22 (Uhrzeit erzwingen), ?rain=1|0 (Regen erzwingen), ?sound=0 (Ton aus; Standard an),
+       VR: ?xremu=1 (lädt /xr-emu.js aus .tmp/), ?xrshot=1 (Bühne in XR ausblenden, für Screenshots), ?cinema=1|series|fail (Fake-Jellyfin-Player, echte Bridge), ?subs=srt|ass|off -->
   <link rel="stylesheet" href="/dist/lenzstore.css">
   <style>
     html, body { margin: 0; height: 100%; background: #0d1330; color: #f4f6ff; font-family: system-ui, sans-serif; }
@@ -15,7 +16,9 @@
     #dev-load i { display: block; height: 100%; width: 0; background: #ffd23f; transition: width .2s; }
     #dev-toast { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 1400; padding: 8px 16px; border-radius: 999px; background: #141c48; border: 1px solid #2f3d86; display: none; }
     #dev-fatal { position: fixed; inset: 0; z-index: 1500; display: none; align-items: center; justify-content: center; background: #070a1c; padding: 24px; text-align: center; }
+    #videoOsdPage .hide, .upNextContainer.hide { display: none !important; }
   </style>
+  <script>if (/[?&]xremu=1(&|$)/.test(location.search)) document.write('<script src="/xr-emu.js"><\/script>');</script>
 </head>
 <body>
   <div class="lfx-store-stage" id="stage"></div>

@@ -3,7 +3,7 @@
 import { Group, Mesh, MeshBasicMaterial, MeshLambertMaterial } from 'three';
 import { box, quad, merge, hex } from '../util/geo.js';
 import { coverBoard, canvasTexture, h, button, openPanel, MONO } from './m3-gfx.js';
-import { coverRef, progressOf, resumeLabel, isEpisode } from './m3-util.js';
+import { coverRef, progressOf, resumeLabel, isEpisode, episodeTag } from './m3-util.js';
 import { FONT } from '../world/textures.js';
 import { debugHook } from './m3-debug.js';
 
@@ -25,6 +25,41 @@ function signCanvas(g, w, hh) {
   g.fillText('RÜCKGABE', w / 2, hh * 0.45);
   g.font = `bold ${Math.round(hh * 0.15)}px ${MONO}`;
   g.fillText('angefangene Titel · bitte weiterschauen', w / 2, hh * 0.82);
+}
+
+/** „Noch 34 Min.“ aus Laufzeit und Fortschritt; ohne Laufzeit „34 % gesehen“; ohne Fortschritt ''. */
+export function remainingText(it) {
+  const pr = progressOf(it);
+  if (!(pr > 0)) return '';
+  const min = it && it.RunTimeTicks > 0 ? (it.RunTimeTicks / 6e8) * (1 - pr) : 0;
+  return min > 0 ? `Noch ${Math.max(1, Math.ceil(min))} Min.` : `${Math.round(pr * 100)} % gesehen`;
+}
+
+/** VR-Panel „Rückgabe-Wagen · Weiterschauen“. act = { play(it), take(id), canTake(id) → bool }; Folgen zeigen die Serie und „S1E3“. */
+export function returnsSpec(items, act, onClose) {
+  const spec = { title: 'Rückgabe-Wagen · Weiterschauen', anchor: 'front', width: 0.9 };
+  if (onClose) spec.onClose = onClose;
+  if (!items.length) { spec.text = 'Hier liegt gerade nichts – fang einen Film an!'; return spec; }
+  spec.lines = [`${items.length} angefangen`];
+  spec.list = {
+    visible: 5,
+    rows: items.map((it) => {
+      const ep = isEpisode(it);
+      const tag = ep ? episodeTag(it).replace(/\s+/g, '').replace('F', 'E') : '';
+      const pr = progressOf(it);
+      const rest = remainingText(it);
+      const takeId = ep ? it.SeriesId : it.Id;
+      const actions = [{ label: 'Weiterschauen', primary: true, onSelect: () => act.play(it) }];
+      if (takeId && (!ep || act.canTake(takeId))) actions.push({ label: ep ? 'Zur Serie' : 'Nehmen', onSelect: () => act.take(takeId) });
+      return {
+        label: (ep ? it.SeriesName || 'Serie' : it.Name) || 'Titel',
+        sub: [tag, ep ? it.Name : '', rest].filter(Boolean).join(' · '),
+        tag: pr > 0 ? `${Math.round(pr * 100)} %` : undefined,
+        actions,
+      };
+    }),
+  };
+  return spec;
 }
 
 export default {
@@ -107,6 +142,19 @@ export default {
       });
     }
 
+    // VR: Panel mit Liste statt Karte/Hülle am Wagen; leer → Hinweis wie am Wagen
+    function openVrList() {
+      if (!items.length) { ctx.xr.toast('Hier liegt gerade nichts – fang einen Film an!'); return; }
+      const canTake = (id) => !!(ctx.catalog.items && ctx.catalog.items.get && ctx.catalog.items.get(id));
+      openPanel(ctx, {
+        vr: (close) => returnsSpec(items, {
+          play: (it) => { close(); ctx.deps.play(it, { resume: true }); },
+          take: (id) => { close(); ctx.items.take(id, { from: 'counter' }); },
+          canTake,
+        }, undefined),
+      });
+    }
+
     items.forEach((it, i) => {
       const p = pos[i];
       const ep = isEpisode(it);
@@ -114,7 +162,7 @@ export default {
         box: { min: { x: p.x - 0.1, y: p.y - 0.12, z: p.z - 0.14 }, max: { x: p.x + 0.1, y: p.y + 0.12, z: p.z + 0.14 } },
         label: ep ? resumeLabel(it) : it.Name,
         hint: ep ? 'E / Klick: Weiterschauen' : 'E / Klick: Hülle nehmen',
-        onUse: () => { if (ep) episodeCard(it); else ctx.items.take(it.Id, { from: 'counter' }); },
+        onUse: () => { if (ctx.xr.presenting()) openVrList(); else if (ep) episodeCard(it); else ctx.items.take(it.Id, { from: 'counter' }); },
       }));
     });
     // Leerer Wagen: Gestell selbst ansprechbar (mit Hüllen würde die große Box die Hüllen-Boxen überdecken)
@@ -123,7 +171,7 @@ export default {
         box: { min: { x: cx - 0.4, y: 0.15, z: cz - 0.27 }, max: { x: cx + 0.4, y: 1.22, z: cz + 0.27 } },
         label: 'Rückgabe-Wagen',
         hint: 'Gerade ist nichts angefangen',
-        onUse: () => ctx.deps.toast('Hier liegt gerade nichts – fang einen Film an!'),
+        onUse: () => (ctx.xr.presenting() ? ctx.xr.toast('Hier liegt gerade nichts – fang einen Film an!') : ctx.deps.toast('Hier liegt gerade nichts – fang einen Film an!')),
       }));
     }
 

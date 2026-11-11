@@ -26,6 +26,7 @@ export class Player {
     this.path = null;
     this.onArrive = null;
     this.turnTo = null; // { yaw, pitch } sanft einnehmen
+    this.tp = 0; // Zähler für Teleports (VR-Rig setzt sich bei Änderung neu)
     this.moved = 0; // Zähler für "bewegt sich" (State-Drosselung)
     this.lastLook = 0;
   }
@@ -35,6 +36,7 @@ export class Player {
     this.vx = 0; this.vz = 0;
     this.cancelPath();
     this.turnTo = null;
+    this.tp++;
     this.moved++;
   }
 
@@ -58,11 +60,11 @@ export class Player {
 
   faceYaw(yaw, pitch = 0.05) { this.turnTo = { yaw, pitch }; }
 
-  /** input: { fwd, strafe } in -1..1, run: bool. Bewegung relativ zum Blick. */
+  /** input: { fwd, strafe } in -1..1, run: bool, scale 0..1 (Standard 1). Bewegung relativ zum Blick. */
   update(dt, input) {
     let tx = 0;
     let tz = 0;
-    let speed = input && input.run ? RUN : WALK;
+    let speed = (input && input.run ? RUN : WALK) * (input && Number.isFinite(input.scale) ? Math.max(0, Math.min(1, input.scale)) : 1);
     const manual = input && (input.fwd || input.strafe);
     if (manual) {
       this.cancelPath();

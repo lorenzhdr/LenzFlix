@@ -128,6 +128,27 @@ Quellen:
   - Icon-Größen: `.xlargePaperIconButton/.largePaperIconButton`
 - Mausruhe: `.hide-mouse-idle-tv`, `.mouseIdle`.
 
+### Player für das VR-Kino (live geprüft 2026-11-11, Desktop-Chrome ✅)
+Genutzt von `features/store/cinema-bridge.js` (Verhalten: `docs/store3d.md`, „VR-Modus“). Getestet mit HLS/MSE (Audio-Transkodierung, SRT), Direktstream mkv (ASS) und einer Serienfolge mit Up-Next.
+- **Video:** `video.htmlvideoplayer` in `.videoPlayerContainer`, direktes Kind von `body`; `crossOrigin="anonymous"`, same-origin.
+  - Quelle: Direktstream (`currentSrc` mit `https`) oder HLS (`blob:`, MSE). Beide sind als WebGL-Textur lesbar (`texImage2D(video)`, kein SecurityError). `requestVideoFrameCallback` ist vorhanden.
+  - Es bleibt **dasselbe Element** bei Seek, Tonspurwechsel und nächster Folge. Nächste Folge: `currentTime` springt auf 0, Route bleibt `#/video`, `document.title` wechselt.
+  - Tonspurwechsel (HLS): ~6–7 s `readyState 0` und `currentTime 0`, dann weiter an der alten Position: kein Fehler. Danach sind die Untertitel aus (`manualTrack` disabled), die gewählte Untertitelspur muss erneut gesetzt werden.
+  - Titel: `.osdTitle` ist leer, es gilt `document.title`.
+- **Alte Player-Seiten:** Jellyfin behält bei jeder Wiedergabe die vorige Player-Seite versteckt (`.hide`) mit derselben ID `#videoOsdPage` im DOM. OSD-Knöpfe deshalb immer über `[id="videoOsdPage"]:not(.hide) …` suchen (Attribut-Selektor, weil `#id` bei doppelten IDs je nach Engine nur das erste Element trifft); sonst klickt man ab der zweiten Wiedergabe tote Knöpfe.
+- **Stopp:** `.skinHeader .headerBackButton` (title „Zurück“) `.click()` stoppt, entfernt das `<video>` und navigiert zur vorigen Route (aus der Videothek `#/home`). Daneben existiert ein MUI-Zurück-Knopf, der klassische genügt.
+- **OSD-Proxy** (alle Knöpfe existieren im ausgeblendeten OSD, `.click()` wirkt): `#videoOsdPage .btnPause` (Pause/Weiter), `.btnRewind` (−10 s), `.btnFastForward` (+30 s), `.btnPreviousTrack`/`.btnNextTrack` (mit `.hide`, wenn es kein Vor/Zurück gibt), `.buttonMute`, `input.osdVolumeSlider` (0..100).
+  - **Seek:** `input.osdPositionSlider` (0..100 Prozent): `value` setzen und `change` (bubbles) feuern. `.osdPositionText`/`.osdDurationText` zeigen die Restzeit („-1:39:49“); besser `video.currentTime/duration` lesen.
+- **Ton/Untertitel (Action-Sheet):** `#videoOsdPage .btnAudio` bzw. `.btnSubtitles` `.click()` → `.dialogContainer > .dialog.actionSheet.opened` (Titel `.actionSheetTitle`).
+  - Das Sheet legt einen **History-Eintrag** an (`history.state.usr.dialogs`).
+  - Einträge `.actionSheetMenuItem[data-id]`, Text `.actionSheetItemText`. Gewählt ist, wessen `.actionsheetMenuItemIcon` kein inline `visibility:hidden` trägt (nicht `getComputedStyle` nehmen: das Sheet ist beim Einblenden selbst noch unsichtbar, dann wirken alle Einträge abgewählt).
+  - Untertitel: `data-id="secondarysubtitle"` überspringen, `"-1"` = Aus, sonst Stream-Index. Tonspur: `data-id` = Stream-Index.
+  - Wählen: `item.click()` schließt das Sheet, Hash und Video bleiben, die Spur wechselt.
+  - **Schließen ohne Wahl:** Esc-keydown und Backdrop-Klick wirken nicht. `history.back()` schließt nur das Sheet (Wiedergabe läuft weiter), **nur wenn** `history.state?.usr?.dialogs?.length > 0`, sonst verlässt man den Player.
+- **Untertitel-Darstellung:** Text (SRT u. ä.) als `video.textTracks` mit Label `manualTrack`, `mode 'showing'`, Text aus `activeCues[i].text` (kann LRM `‎` und Zeilenumbrüche enthalten). ASS/SSA: `.libassjs-canvas-parent > canvas.libassjs-canvas` (absolut über dem Video, transparent), als WebGL-Textur lesbar. `.videoSubtitles .videoSubtitlesInner` kam nicht vor (dritte Quelle, nicht live gesehen). PGS nicht geprüft.
+- **Up-Next (Serien):** `.upNextContainer.upNextDialog`, sichtbar ohne `.hide`, ~30–40 s vor dem Ende, Text „Nächste Folge beginnt in N Sekunden“ + Titel. Knöpfe `.btnStartNow` („Jetzt starten“), `.btnHide` („Verbergen“). Danach spielt die Folge im selben `<video>`.
+- Nicht geprüft: Jellyfins Fehlerdialoge (generisch `.dialogContainer .dialog:not(.actionSheet)` bei Phase „loading“) und Verhalten in einer echten XR-Session auf der Brille.
+
 ## Login (Legacy-View)
 - Grundgerüst: `#loginPage.page.standalonePage.backdropPage[data-backdroptype="splashscreen"]` → `div.padded-left.padded-right.padded-bottom-page.margin-auto-y`
 - Formular: `form.manualLoginForm` mit `h1.sectionTitle`, `#txtManualName`, `#txtManualPassword`, `.chkRememberLogin`, `button.raised.button-submit.block`, `.btnCancel`

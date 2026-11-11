@@ -264,3 +264,44 @@ export function dialogPicks(catalog, deptOf) {
   if (r) add(out.resume, r);
   return out;
 }
+
+// --- Dialogmodell „Mit Richard reden“ (rein; DOM und VR-Panel nutzen dasselbe) ---
+export const ANSWERS = [
+  { key: 'comedy', label: 'Was Lustiges?', cat: 'tipComedy' },
+  { key: 'horror', label: 'Was Gruseliges?', cat: 'tipHorror' },
+  { key: 'kids', label: 'Was für Kinder?', cat: 'tipKids' },
+  { key: 'new', label: 'Was ist neu?', cat: 'tipNew' },
+  { key: 'random', label: 'Überrasch mich!', cat: 'tipRandom' },
+  { key: 'resume', label: 'Weiterschauen?', cat: 'tipResume' },
+];
+
+/** Einstieg: Antwortknöpfe nur für Kategorien mit Kandidaten (picks aus dialogPicks, nie Ab-18). line(cat, vars) → Text. */
+export function dialogStart(picks, line) {
+  const avail = ANSWERS.filter((a) => picks[a.key] && picks[a.key].length);
+  if (!avail.length) return { text: line('noTip'), choices: false, buttons: [{ id: 'bye', label: 'Tschüss', primary: true }] };
+  return {
+    text: line('dialogHello'),
+    choices: true,
+    buttons: [...avail.map((a) => ({ id: `a:${a.key}`, label: a.label })), { id: 'bye', label: 'Tschüss' }],
+  };
+}
+
+/** Antwort auf eine Kategorie: wählt einen Titel (nicht zweimal derselbe in Folge) und liefert Text + Folgeknöpfe. */
+export function dialogAnswer(picks, key, { rand = Math.random, lastId = null, line, deptOf } = {}) {
+  const a = ANSWERS.find((x) => x.key === key);
+  const list = picks && picks[key];
+  if (!a || !list || !list.length) return null;
+  let pool = list.filter((i) => i.Id !== lastId);
+  if (!pool.length) pool = list;
+  const item = pool[Math.floor(rand() * pool.length)];
+  const dept = deptOf && typeof deptOf.get === 'function' ? deptOf.get(item.Id) : null;
+  return {
+    item,
+    text: line(a.cat, { title: item.Name, dept: dept && dept.label }),
+    buttons: [
+      { id: 'show', label: 'Zeig mal', primary: true },
+      { id: 'more', label: 'Was anderes' },
+      { id: 'bye', label: 'Tschüss' },
+    ],
+  };
+}

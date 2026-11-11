@@ -7,7 +7,9 @@ export function el(tag, cls, text) {
   return e;
 }
 
-export function createHud(host, { touch, onMenu }) {
+const VR_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 8.5C3 7.1 4.1 6 5.5 6h13C19.9 6 21 7.1 21 8.5v6c0 1.4-1.1 2.5-2.5 2.5h-3.2c-.8 0-1.5-.5-1.8-1.2l-.3-.8c-.2-.5-.7-.8-1.2-.8s-1 .3-1.2.8l-.3.8c-.3.7-1 1.2-1.8 1.2H5.5C4.1 17 3 15.9 3 14.5v-6zm2 .5v5.5c0 .3.2.5.5.5h2.6l.1-.3c.5-1.2 1.6-1.9 2.8-1.9s2.3.7 2.8 1.9l.1.3h2.6c.3 0 .5-.2.5-.5V9c0-.3-.2-.5-.5-.5h-13c-.3 0-.5.2-.5.5z"/></svg>';
+
+export function createHud(host, { touch, onMenu, onVr }) {
   const root = el('div', 'lfx-store-ov');
   const cross = el('div', 'lfx-store-cross');
   cross.setAttribute('aria-hidden', 'true');
@@ -40,6 +42,16 @@ export function createHud(host, { touch, onMenu }) {
     menuBtn.addEventListener('click', (e) => { e.stopPropagation(); if (onMenu) onMenu(); });
     root.appendChild(menuBtn);
   }
+  const vrBtn = el('button', 'lfx-store-vrbtn');
+  vrBtn.type = 'button';
+  vrBtn.setAttribute('aria-label', 'In VR betreten');
+  vrBtn.innerHTML = VR_ICON;
+  vrBtn.appendChild(el('span', 'lfx-store-vrbtn-label', 'In VR betreten'));
+  vrBtn.hidden = true;
+  // Der Canvas-Lock darf nicht greifen; requestSession muss synchron im Klick laufen.
+  for (const ev of ['pointerdown', 'mousedown', 'touchstart']) vrBtn.addEventListener(ev, (e) => e.stopPropagation());
+  vrBtn.addEventListener('click', (e) => { e.stopPropagation(); if (onVr) onVr(); });
+  root.appendChild(vrBtn);
   host.appendChild(root);
   hint.hidden = true;
   cross.hidden = touch;
@@ -70,6 +82,7 @@ export function createHud(host, { touch, onMenu }) {
     },
     showLost(on) { lost.hidden = !on; },
     showMenuBtn(on) { if (menuBtn) menuBtn.hidden = !on; },
+    showVr(on) { vrBtn.hidden = !on; },
     note(text, ms = 2200) {
       toast.textContent = text;
       toast.hidden = false;

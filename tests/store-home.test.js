@@ -102,10 +102,10 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, touchControl: 'joystick', skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: true, showFps: false, voiceOnline: false, voiceName: '', voicePitch: 'tief', bigCovers: true, touchControl: 'joystick', vr: { turn: 'snap', vignette: true, height: 'auto', quality: 'mid', seat: 'mid' }, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
-      'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal']) {
+      'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal', 'onXr', 'cinema']) {
       expect(captured.deps[k]).toBeDefined();
     }
     expect(captured.deps.user).toEqual({ name: 'Lenz' });
@@ -351,5 +351,179 @@ describe('Fallback', () => {
     expect(document.querySelector('.lfx-store-fallback')).not.toBeNull();
     feature.unmount();
     expect(inst.suspend).not.toHaveBeenCalled();
+  });
+});
+
+describe('VR (XR-Lebenszyklus)', () => {
+  let xrOn;
+
+  beforeEach(() => {
+    xrOn = true;
+    inst.isXr = vi.fn(() => xrOn);
+    inst.leaveCinema = vi.fn();
+  });
+
+  it('Zeile 1: ohne onXr-Meldung wie bisher (suspend, kein Park-Container)', async () => {
+    await mountOk();
+    feature.unmount();
+    expect(inst.suspend).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+  });
+
+  it('Zeile 3: presenting ohne Kino -> suspend wie Zeile 1', async () => {
+    await mountOk();
+    captured.deps.onXr({ presenting: true, cinema: false });
+    feature.unmount();
+    expect(inst.suspend).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+  });
+
+  it('fehlendes isXr: gilt als nicht präsentierend', async () => {
+    await mountOk();
+    delete inst.isXr;
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    expect(inst.suspend).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+  });
+
+  it('Zeile 2: Kino -> Bühne wird geparkt, kein suspend, kein Timer, Bridge aktiv', async () => {
+    await mountOk();
+    const stage = captured.host;
+    const act = vi.spyOn(captured.deps.cinema, 'activate');
+    captured.deps.onXr({ presenting: true, cinema: true });
+    vi.useFakeTimers();
+    feature.unmount();
+    const park = document.getElementById('lfx-store-park');
+    expect(park).not.toBeNull();
+    expect(park.parentElement).toBe(document.body);
+    expect(park.contains(stage)).toBe(true);
+    expect(park.style.opacity).toBe('0');
+    expect(park.style.pointerEvents).toBe('none');
+    expect(document.getElementById('lfx-store-home')).toBeNull();
+    expect(inst.suspend).not.toHaveBeenCalled();
+    expect(act).toHaveBeenCalledWith(true);
+    vi.advanceTimersByTime(SUSPEND_MS * 2);
+    expect(inst.dispose).not.toHaveBeenCalled();
+  });
+
+  it('Zeile 4: Session endet im geparkten Zustand -> suspend, Container weg, 3-min-Timer, Bridge aus', async () => {
+    await mountOk();
+    const act = vi.spyOn(captured.deps.cinema, 'activate');
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    vi.useFakeTimers();
+    xrOn = false;
+    captured.deps.onXr({ presenting: false, cinema: false });
+    expect(inst.suspend).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+    expect(act).toHaveBeenLastCalledWith(false);
+    vi.advanceTimersByTime(SUSPEND_MS - 1);
+    expect(inst.dispose).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2);
+    expect(inst.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Zeile 4 danach: erneuter mount nimmt den normalen resume-Weg', async () => {
+    await mountOk();
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    xrOn = false;
+    captured.deps.onXr({ presenting: false, cinema: false });
+    feature.mount(route());
+    expect(inst.resume).toHaveBeenCalledTimes(1);
+    expect(inst.leaveCinema).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('Zeile 5: Session endet auf der Startseite (nicht geparkt) -> nichts', async () => {
+    await mountOk();
+    captured.deps.onXr({ presenting: true, cinema: false });
+    xrOn = false;
+    captured.deps.onXr({ presenting: false, cinema: false });
+    expect(inst.suspend).not.toHaveBeenCalled();
+    expect(document.getElementById('lfx-store-home')).not.toBeNull();
+  });
+
+  it('Zeile 6: mount im geparkten Zustand bei laufender Session -> alte Bühne zurück, kein resume, leaveCinema', async () => {
+    await mountOk();
+    captured.deps.onReady();
+    const stage = captured.host;
+    const act = vi.spyOn(captured.deps.cinema, 'activate');
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    feature.mount(route('lfx=title&id=q1'));
+    const home = document.getElementById('lfx-store-home');
+    expect(home).not.toBeNull();
+    expect(home.contains(stage)).toBe(true);
+    expect(home.querySelectorAll('.lfx-store-stage').length).toBe(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+    expect(stage.classList.contains('is-ready')).toBe(true);
+    expect(home.querySelector('.lfx-store-loading')).toBeNull();
+    expect(home.querySelector('.lfx-store-btn--search').disabled).toBe(false);
+    expect(inst.resume).not.toHaveBeenCalled();
+    expect(inst.suspend).not.toHaveBeenCalled();
+    expect(inst.leaveCinema).toHaveBeenCalledWith('home');
+    expect(inst.openItem).toHaveBeenCalledWith('q1');
+    expect(act).toHaveBeenLastCalledWith(false);
+    // ensure() erkennt die ausgetauschte Bühne: update mit gleicher Route baut nichts neu
+    feature.update(route('lfx=title&id=q1'));
+    expect(document.querySelectorAll('#lfx-store-home').length).toBe(1);
+    // später endende Session: nichts mehr geparkt
+    xrOn = false;
+    captured.deps.onXr({ presenting: false, cinema: false });
+    expect(inst.suspend).not.toHaveBeenCalled();
+  });
+
+  it('Zeile 6: ein Fehler in leaveCinema ist nicht fatal, Bühne bleibt eingehängt', async () => {
+    await mountOk();
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    inst.leaveCinema = vi.fn(() => { throw new Error('x'); });
+    feature.mount(route());
+    expect(inst.resume).not.toHaveBeenCalled();
+    expect(document.getElementById('lfx-store-home')).not.toBeNull();
+  });
+
+  it('Zeile 6 ohne laufende Session (isXr false): Rückfall suspend + resume', async () => {
+    await mountOk();
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    xrOn = false;
+    feature.mount(route());
+    expect(inst.suspend).toHaveBeenCalledTimes(1);
+    expect(inst.resume).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+    expect(document.querySelectorAll('.lfx-store-stage').length).toBe(1);
+  });
+
+  it('Zeile 8: Design-Wechsel im geparkten Zustand -> dispose, Container weg', async () => {
+    await mountOk();
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    for (const fn of [...themeState.listeners]) fn({ theme: 'flix', previous: 'store' });
+    expect(inst.dispose).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+  });
+
+  it('Zeile 8: destroyStore im geparkten Zustand -> dispose, Container weg, Bridge entsorgt', async () => {
+    await mountOk();
+    const dis = vi.spyOn(captured.deps.cinema, 'dispose');
+    captured.deps.onXr({ presenting: true, cinema: true });
+    feature.unmount();
+    destroyStore();
+    expect(inst.dispose).toHaveBeenCalledTimes(1);
+    expect(document.getElementById('lfx-store-park')).toBeNull();
+    expect(dis).toHaveBeenCalled();
+  });
+
+  it('onPrefs speichert vr; opts.vr kommt aus den Prefs', async () => {
+    await mountOk();
+    captured.deps.onPrefs({ vr: { turn: 'smooth', vignette: false, height: 'seated', quality: 'low', seat: 'back' } });
+    feature.unmount();
+    destroyStore();
+    create.mockClear();
+    await mountOk();
+    expect(captured.opts.vr).toEqual({ turn: 'smooth', vignette: false, height: 'seated', quality: 'low', seat: 'back' });
   });
 });

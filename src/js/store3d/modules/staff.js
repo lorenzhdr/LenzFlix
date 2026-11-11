@@ -77,6 +77,13 @@ export default {
 
     // --- Overlay: Pinnwand ---
     function openMenu() {
+      if (ctx.xr.presenting()) {
+        ctx.xr.exitThen('Personalraum: Einstellungen, Design und Abmelden gibt es außerhalb von VR.', () => openMenuDom());
+        return;
+      }
+      openMenuDom();
+    }
+    function openMenuDom() {
       openPanel(ctx, {
         cls: 'lfx-store-staff', label: 'Personalraum',
         build(panel, close) {

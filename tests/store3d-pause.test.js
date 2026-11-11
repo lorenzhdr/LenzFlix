@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createPause, voiceNote, shortVoiceName } from '../src/js/store3d/ui/pause.js';
 
 function make(over = {}) {
@@ -173,5 +173,30 @@ describe('Pause-Menue: Steuerung (Touch)', () => {
     b.click();
     expect(scheme).toBe('joystick');
     p.destroy();
+  });
+});
+
+describe('Pause-Menue: VR-Modus', () => {
+  const vrBtn = (host) => [...host.querySelectorAll('button')].find((b) => b.textContent === 'VR-Modus');
+  it('Eintrag steht direkt nach „Weiter“ und ist nur bei getVr() sichtbar', () => {
+    let on = false;
+    const m = make({ onVr: () => {}, getVr: () => on });
+    const b = vrBtn(m.host);
+    expect(b.hidden).toBe(true);
+    expect(b.previousElementSibling.textContent).toBe('Weiter');
+    on = true;
+    m.p.show();
+    expect(b.hidden).toBe(false);
+    m.p.destroy();
+  });
+  it('Klick ruft onVr synchron; ohne getVr bleibt der Eintrag versteckt', () => {
+    const onVr = vi.fn();
+    const m = make({ onVr, getVr: () => true });
+    vrBtn(m.host).click();
+    expect(onVr).toHaveBeenCalledTimes(1);
+    m.p.destroy();
+    const n = make();
+    expect(vrBtn(n.host).hidden).toBe(true);
+    n.p.destroy();
   });
 });

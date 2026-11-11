@@ -1249,11 +1249,11 @@
      * @param {number} angle - The angle in radians.
      * @return {Quaternion} A reference to this quaternion.
      */
-    setFromAxisAngle(axis, angle) {
+    setFromAxisAngle(axis2, angle) {
       const halfAngle = angle / 2, s = Math.sin(halfAngle);
-      this._x = axis.x * s;
-      this._y = axis.y * s;
-      this._z = axis.z * s;
+      this._x = axis2.x * s;
+      this._y = axis2.y * s;
+      this._z = axis2.z * s;
       this._w = Math.cos(halfAngle);
       this._onChangeCallback();
       return this;
@@ -1882,8 +1882,8 @@
      * @param {number} angle - The angle in radians.
      * @return {Vector3} A reference to this vector.
      */
-    applyAxisAngle(axis, angle) {
-      return this.applyQuaternion(_quaternion$5.setFromAxisAngle(axis, angle));
+    applyAxisAngle(axis2, angle) {
+      return this.applyQuaternion(_quaternion$5.setFromAxisAngle(axis2, angle));
     }
     /**
      * Multiplies this vector with the given 3x3 matrix.
@@ -5488,11 +5488,11 @@
      * @param {number} angle - The rotation in radians.
      * @return {Matrix4} A reference to this matrix.
      */
-    makeRotationAxis(axis, angle) {
+    makeRotationAxis(axis2, angle) {
       const c = Math.cos(angle);
       const s = Math.sin(angle);
       const t = 1 - c;
-      const x = axis.x, y = axis.y, z = axis.z;
+      const x = axis2.x, y = axis2.y, z = axis2.z;
       const tx = t * x, ty = t * y;
       this.set(
         tx * x + c,
@@ -6383,8 +6383,8 @@
      * @param {Vector3} axis - The (normalized) axis vector.
      * @param {number} angle - The angle in radians.
      */
-    setRotationFromAxisAngle(axis, angle) {
-      this.quaternion.setFromAxisAngle(axis, angle);
+    setRotationFromAxisAngle(axis2, angle) {
+      this.quaternion.setFromAxisAngle(axis2, angle);
     }
     /**
      * Sets the given rotation represented as Euler angles to the 3D object.
@@ -6418,8 +6418,8 @@
      * @param {number} angle - The angle in radians.
      * @return {Object3D} A reference to this instance.
      */
-    rotateOnAxis(axis, angle) {
-      _q1.setFromAxisAngle(axis, angle);
+    rotateOnAxis(axis2, angle) {
+      _q1.setFromAxisAngle(axis2, angle);
       this.quaternion.multiply(_q1);
       return this;
     }
@@ -6430,8 +6430,8 @@
      * @param {number} angle - The angle in radians.
      * @return {Object3D} A reference to this instance.
      */
-    rotateOnWorldAxis(axis, angle) {
-      _q1.setFromAxisAngle(axis, angle);
+    rotateOnWorldAxis(axis2, angle) {
+      _q1.setFromAxisAngle(axis2, angle);
       this.quaternion.premultiply(_q1);
       return this;
     }
@@ -6469,8 +6469,8 @@
      * @param {number} distance - The distance in world units.
      * @return {Object3D} A reference to this instance.
      */
-    translateOnAxis(axis, distance) {
-      _v1$6.copy(axis).applyQuaternion(this.quaternion);
+    translateOnAxis(axis2, distance) {
+      _v1$6.copy(axis2).applyQuaternion(this.quaternion);
       this.position.add(_v1$6.multiplyScalar(distance));
       return this;
     }
@@ -8514,8 +8514,8 @@
      * @param {Box3} box - The box to intersect.
      * @return {boolean} Whether this triangle intersects with the given box or not.
      */
-    intersectsBox(box2) {
-      return box2.intersectsTriangle(this);
+    intersectsBox(box3) {
+      return box3.intersectsTriangle(this);
     }
     /**
      * Returns the closest point on the triangle to the given point.
@@ -8692,9 +8692,9 @@
      * @param {Box3} box - The box to copy.
      * @return {Box3} A reference to this bounding box.
      */
-    copy(box2) {
-      this.min.copy(box2.min);
-      this.max.copy(box2.max);
+    copy(box3) {
+      this.min.copy(box3.min);
+      this.max.copy(box3.max);
       return this;
     }
     /**
@@ -8837,8 +8837,8 @@
      * @param {Box3} box - The bounding box to test.
      * @return {boolean} Whether the bounding box contains the given bounding box or not.
      */
-    containsBox(box2) {
-      return this.min.x <= box2.min.x && box2.max.x <= this.max.x && this.min.y <= box2.min.y && box2.max.y <= this.max.y && this.min.z <= box2.min.z && box2.max.z <= this.max.z;
+    containsBox(box3) {
+      return this.min.x <= box3.min.x && box3.max.x <= this.max.x && this.min.y <= box3.min.y && box3.max.y <= this.max.y && this.min.z <= box3.min.z && box3.max.z <= this.max.z;
     }
     /**
      * Returns a point as a proportion of this box's width, height and depth.
@@ -8860,8 +8860,8 @@
      * @param {Box3} box - The bounding box to test.
      * @return {boolean} Whether the given bounding box intersects with this bounding box.
      */
-    intersectsBox(box2) {
-      return box2.max.x >= this.min.x && box2.min.x <= this.max.x && box2.max.y >= this.min.y && box2.min.y <= this.max.y && box2.max.z >= this.min.z && box2.min.z <= this.max.z;
+    intersectsBox(box3) {
+      return box3.max.x >= this.min.x && box3.min.x <= this.max.x && box3.max.y >= this.min.y && box3.min.y <= this.max.y && box3.max.z >= this.min.z && box3.min.z <= this.max.z;
     }
     /**
      * Returns `true` if the given bounding sphere intersects with this bounding box.
@@ -9006,9 +9006,9 @@
      * @param {Box3} box - The bounding box to intersect with.
      * @return {Box3} A reference to this bounding box.
      */
-    intersect(box2) {
-      this.min.max(box2.min);
-      this.max.min(box2.max);
+    intersect(box3) {
+      this.min.max(box3.min);
+      this.max.min(box3.max);
       if (this.isEmpty()) this.makeEmpty();
       return this;
     }
@@ -9020,9 +9020,9 @@
      * @param {Box3} box - The bounding box that will be unioned with this instance.
      * @return {Box3} A reference to this bounding box.
      */
-    union(box2) {
-      this.min.min(box2.min);
-      this.max.max(box2.max);
+    union(box3) {
+      this.min.min(box3.min);
+      this.max.max(box3.max);
       return this;
     }
     /**
@@ -9062,8 +9062,8 @@
      * @param {Box3} box - The box to test for equality.
      * @return {boolean} Whether this bounding box is equal with the given one.
      */
-    equals(box2) {
-      return box2.min.equals(this.min) && box2.max.equals(this.max);
+    equals(box3) {
+      return box3.min.equals(this.min) && box3.max.equals(this.max);
     }
     /**
      * Returns a serialized structure of the bounding box.
@@ -9696,8 +9696,8 @@
      * @param {Box3} box - The box to test.
      * @return {boolean} Whether this sphere intersects with the given box or not.
      */
-    intersectsBox(box2) {
-      return box2.intersectsSphere(this);
+    intersectsBox(box3) {
+      return box3.intersectsSphere(this);
     }
     /**
      * Returns `true` if this sphere intersects with the given plane.
@@ -10795,8 +10795,8 @@
      * @param {Box3} box - The bounding box to test.
      * @return {boolean} Whether the given bounding box intersects with the plane or not.
      */
-    intersectsBox(box2) {
-      return box2.intersectsPlane(this);
+    intersectsBox(box3) {
+      return box3.intersectsPlane(this);
     }
     /**
      * Returns `true` if the given bounding sphere intersects with the plane.
@@ -11728,33 +11728,33 @@
      * @param {Vector3} target - The target vector that is used to store the method's result.
      * @return {?Vector3} The intersection point.
      */
-    intersectBox(box2, target) {
+    intersectBox(box3, target) {
       let tmin, tmax, tymin, tymax, tzmin, tzmax;
       const invdirx = 1 / this.direction.x, invdiry = 1 / this.direction.y, invdirz = 1 / this.direction.z;
       const origin = this.origin;
       if (invdirx >= 0) {
-        tmin = (box2.min.x - origin.x) * invdirx;
-        tmax = (box2.max.x - origin.x) * invdirx;
+        tmin = (box3.min.x - origin.x) * invdirx;
+        tmax = (box3.max.x - origin.x) * invdirx;
       } else {
-        tmin = (box2.max.x - origin.x) * invdirx;
-        tmax = (box2.min.x - origin.x) * invdirx;
+        tmin = (box3.max.x - origin.x) * invdirx;
+        tmax = (box3.min.x - origin.x) * invdirx;
       }
       if (invdiry >= 0) {
-        tymin = (box2.min.y - origin.y) * invdiry;
-        tymax = (box2.max.y - origin.y) * invdiry;
+        tymin = (box3.min.y - origin.y) * invdiry;
+        tymax = (box3.max.y - origin.y) * invdiry;
       } else {
-        tymin = (box2.max.y - origin.y) * invdiry;
-        tymax = (box2.min.y - origin.y) * invdiry;
+        tymin = (box3.max.y - origin.y) * invdiry;
+        tymax = (box3.min.y - origin.y) * invdiry;
       }
       if (tmin > tymax || tymin > tmax) return null;
       if (tymin > tmin || isNaN(tmin)) tmin = tymin;
       if (tymax < tmax || isNaN(tmax)) tmax = tymax;
       if (invdirz >= 0) {
-        tzmin = (box2.min.z - origin.z) * invdirz;
-        tzmax = (box2.max.z - origin.z) * invdirz;
+        tzmin = (box3.min.z - origin.z) * invdirz;
+        tzmax = (box3.max.z - origin.z) * invdirz;
       } else {
-        tzmin = (box2.max.z - origin.z) * invdirz;
-        tzmax = (box2.min.z - origin.z) * invdirz;
+        tzmin = (box3.max.z - origin.z) * invdirz;
+        tzmax = (box3.min.z - origin.z) * invdirz;
       }
       if (tmin > tzmax || tzmin > tmax) return null;
       if (tzmin > tmin || tmin !== tmin) tmin = tzmin;
@@ -11768,8 +11768,8 @@
      * @param {Box3} box - The box to intersect.
      * @return {boolean} Whether this ray intersects with the given box or not.
      */
-    intersectsBox(box2) {
-      return this.intersectBox(box2, _vector$7) !== null;
+    intersectsBox(box3) {
+      return this.intersectBox(box3, _vector$7) !== null;
     }
     /**
      * Intersects this ray with the given triangle, returning the intersection
@@ -11789,7 +11789,7 @@
       const dy = direction.y;
       const dz = direction.z;
       const aox = a.x - origin.x, aoy = a.y - origin.y, aoz = a.z - origin.z;
-      const box2 = b.x - origin.x, boy = b.y - origin.y, boz = b.z - origin.z;
+      const box3 = b.x - origin.x, boy = b.y - origin.y, boz = b.z - origin.z;
       const cox = c.x - origin.x, coy = c.y - origin.y, coz = c.z - origin.z;
       const adx = Math.abs(dx), ady = Math.abs(dy), adz = Math.abs(dz);
       let dkx, dky, dkz;
@@ -11797,7 +11797,7 @@
       if (adx >= ady && adx >= adz) {
         dkz = dx;
         akz = aox;
-        bkz = box2;
+        bkz = box3;
         ckz = cox;
         if (dx >= 0) {
           dkx = dy;
@@ -11829,7 +11829,7 @@
           akx = aoz;
           aky = aox;
           bkx = boz;
-          bky = box2;
+          bky = box3;
           ckx = coz;
           cky = cox;
         } else {
@@ -11837,7 +11837,7 @@
           dky = dz;
           akx = aox;
           aky = aoz;
-          bkx = box2;
+          bkx = box3;
           bky = boz;
           ckx = cox;
           cky = coz;
@@ -11852,7 +11852,7 @@
           dky = dy;
           akx = aox;
           aky = aoy;
-          bkx = box2;
+          bkx = box3;
           bky = boy;
           ckx = cox;
           cky = coy;
@@ -11862,7 +11862,7 @@
           akx = aoy;
           aky = aox;
           bkx = boy;
-          bky = box2;
+          bky = box3;
           ckx = coy;
           cky = cox;
         }
@@ -12644,13 +12644,13 @@
      * @param {Box3} box - The bounding box to test.
      * @return {boolean} Whether the bounding box is intersecting this frustum or not.
      */
-    intersectsBox(box2) {
+    intersectsBox(box3) {
       const planes = this.planes;
       for (let i = 0; i < 6; i++) {
         const plane = planes[i];
-        _vector$6.x = plane.normal.x > 0 ? box2.max.x : box2.min.x;
-        _vector$6.y = plane.normal.y > 0 ? box2.max.y : box2.min.y;
-        _vector$6.z = plane.normal.z > 0 ? box2.max.z : box2.min.z;
+        _vector$6.x = plane.normal.x > 0 ? box3.max.x : box3.min.x;
+        _vector$6.y = plane.normal.y > 0 ? box3.max.y : box3.min.y;
+        _vector$6.z = plane.normal.z > 0 ? box3.max.z : box3.min.z;
         if (plane.distanceToPoint(_vector$6) < 0) {
           return false;
         }
@@ -13063,6 +13063,58 @@
       });
     }
   }
+  var VideoTexture = class extends Texture {
+    /**
+     * Constructs a new video texture.
+     *
+     * @param {HTMLVideoElement} video - The video element to use as a data source for the texture.
+     * @param {number} [mapping=Texture.DEFAULT_MAPPING] - The texture mapping.
+     * @param {number} [wrapS=ClampToEdgeWrapping] - The wrapS value.
+     * @param {number} [wrapT=ClampToEdgeWrapping] - The wrapT value.
+     * @param {number} [magFilter=LinearFilter] - The mag filter value.
+     * @param {number} [minFilter=LinearFilter] - The min filter value.
+     * @param {number} [format=RGBAFormat] - The texture format.
+     * @param {number} [type=UnsignedByteType] - The texture type.
+     * @param {number} [anisotropy=Texture.DEFAULT_ANISOTROPY] - The anisotropy value.
+     */
+    constructor(video, mapping, wrapS, wrapT, magFilter = LinearFilter, minFilter = LinearFilter, format, type, anisotropy) {
+      super(video, mapping, wrapS, wrapT, magFilter, minFilter, format, type, anisotropy);
+      this.isVideoTexture = true;
+      this.generateMipmaps = false;
+      this._requestVideoFrameCallbackId = 0;
+      const scope = this;
+      function updateVideo() {
+        scope.needsUpdate = true;
+        scope._requestVideoFrameCallbackId = video.requestVideoFrameCallback(updateVideo);
+      }
+      if ("requestVideoFrameCallback" in video) {
+        this._requestVideoFrameCallbackId = video.requestVideoFrameCallback(updateVideo);
+      }
+    }
+    clone() {
+      return new this.constructor(this.image).copy(this);
+    }
+    /**
+     * This method is called automatically by the renderer and sets {@link Texture#needsUpdate}
+     * to `true` every time a new frame is available.
+     *
+     * Only relevant if `requestVideoFrameCallback` is not supported in the browser.
+     */
+    update() {
+      const video = this.image;
+      const hasVideoFrameCallback = "requestVideoFrameCallback" in video;
+      if (hasVideoFrameCallback === false && video.readyState >= video.HAVE_CURRENT_DATA) {
+        this.needsUpdate = true;
+      }
+    }
+    dispose() {
+      if (this._requestVideoFrameCallbackId !== 0) {
+        this.source.data.cancelVideoFrameCallback(this._requestVideoFrameCallbackId);
+        this._requestVideoFrameCallbackId = 0;
+      }
+      super.dispose();
+    }
+  };
   var CubeTexture = class extends Texture {
     /**
      * Constructs a new cube texture.
@@ -13307,6 +13359,126 @@
       return new _BoxGeometry(data.width, data.height, data.depth, data.widthSegments, data.heightSegments, data.depthSegments);
     }
   };
+  var CapsuleGeometry = class _CapsuleGeometry extends BufferGeometry {
+    /**
+     * Constructs a new capsule geometry.
+     *
+     * @param {number} [radius=1] - Radius of the capsule.
+     * @param {number} [height=1] - Height of the middle section.
+     * @param {number} [capSegments=4] - Number of curve segments used to build each cap.
+     * @param {number} [radialSegments=8] - Number of segmented faces around the circumference of the capsule. Must be an integer >= 3.
+     * @param {number} [heightSegments=1] - Number of rows of faces along the height of the middle section. Must be an integer >= 1.
+     */
+    constructor(radius = 1, height = 1, capSegments = 4, radialSegments = 8, heightSegments = 1) {
+      super();
+      this.type = "CapsuleGeometry";
+      this.parameters = {
+        radius,
+        height,
+        capSegments,
+        radialSegments,
+        heightSegments
+      };
+      height = Math.max(0, height);
+      capSegments = Math.max(1, Math.floor(capSegments));
+      radialSegments = Math.max(3, Math.floor(radialSegments));
+      heightSegments = Math.max(1, Math.floor(heightSegments));
+      const indices = [];
+      const vertices = [];
+      const normals = [];
+      const uvs = [];
+      const halfHeight = height / 2;
+      const capArcLength = Math.PI / 2 * radius;
+      const cylinderPartLength = height;
+      const totalArcLength = 2 * capArcLength + cylinderPartLength;
+      const numVerticalSegments = capSegments * 2 + heightSegments;
+      const verticesPerRow = radialSegments + 1;
+      const normal = new Vector3();
+      const vertex2 = new Vector3();
+      for (let iy = 0; iy <= numVerticalSegments; iy++) {
+        let currentArcLength = 0;
+        let profileY = 0;
+        let profileRadius = 0;
+        let normalYComponent = 0;
+        if (iy <= capSegments) {
+          const segmentProgress = iy / capSegments;
+          const angle = segmentProgress * Math.PI / 2;
+          profileY = -halfHeight - radius * Math.cos(angle);
+          profileRadius = radius * Math.sin(angle);
+          normalYComponent = -radius * Math.cos(angle);
+          currentArcLength = segmentProgress * capArcLength;
+        } else if (iy <= capSegments + heightSegments) {
+          const segmentProgress = (iy - capSegments) / heightSegments;
+          profileY = -halfHeight + segmentProgress * height;
+          profileRadius = radius;
+          normalYComponent = 0;
+          currentArcLength = capArcLength + segmentProgress * cylinderPartLength;
+        } else {
+          const segmentProgress = (iy - capSegments - heightSegments) / capSegments;
+          const angle = segmentProgress * Math.PI / 2;
+          profileY = halfHeight + radius * Math.sin(angle);
+          profileRadius = radius * Math.cos(angle);
+          normalYComponent = radius * Math.sin(angle);
+          currentArcLength = capArcLength + cylinderPartLength + segmentProgress * capArcLength;
+        }
+        const v = Math.max(0, Math.min(1, currentArcLength / totalArcLength));
+        let uOffset = 0;
+        if (iy === 0) {
+          uOffset = 0.5 / radialSegments;
+        } else if (iy === numVerticalSegments) {
+          uOffset = -0.5 / radialSegments;
+        }
+        for (let ix = 0; ix <= radialSegments; ix++) {
+          const u = ix / radialSegments;
+          const theta = u * Math.PI * 2;
+          const sinTheta = Math.sin(theta);
+          const cosTheta = Math.cos(theta);
+          vertex2.x = -profileRadius * cosTheta;
+          vertex2.y = profileY;
+          vertex2.z = profileRadius * sinTheta;
+          vertices.push(vertex2.x, vertex2.y, vertex2.z);
+          normal.set(
+            -profileRadius * cosTheta,
+            normalYComponent,
+            profileRadius * sinTheta
+          );
+          normal.normalize();
+          normals.push(normal.x, normal.y, normal.z);
+          uvs.push(u + uOffset, v);
+        }
+        if (iy > 0) {
+          const prevIndexRow = (iy - 1) * verticesPerRow;
+          for (let ix = 0; ix < radialSegments; ix++) {
+            const i1 = prevIndexRow + ix;
+            const i2 = prevIndexRow + ix + 1;
+            const i3 = iy * verticesPerRow + ix;
+            const i4 = iy * verticesPerRow + ix + 1;
+            indices.push(i1, i2, i3);
+            indices.push(i2, i4, i3);
+          }
+        }
+      }
+      this.setIndex(indices);
+      this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+      this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+      this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+    }
+    copy(source) {
+      super.copy(source);
+      this.parameters = Object.assign({}, source.parameters);
+      return this;
+    }
+    /**
+     * Factory method for creating an instance of this class from the given
+     * JSON object.
+     *
+     * @param {Object} data - A JSON object representing the serialized geometry.
+     * @return {CapsuleGeometry} A new instance.
+     */
+    static fromJSON(data) {
+      return new _CapsuleGeometry(data.radius, data.height, data.capSegments, data.radialSegments, data.heightSegments);
+    }
+  };
   var CircleGeometry = class _CircleGeometry extends BufferGeometry {
     /**
      * Constructs a new circle geometry.
@@ -13368,6 +13540,156 @@
      */
     static fromJSON(data) {
       return new _CircleGeometry(data.radius, data.segments, data.thetaStart, data.thetaLength);
+    }
+  };
+  var CylinderGeometry = class _CylinderGeometry extends BufferGeometry {
+    /**
+     * Constructs a new cylinder geometry.
+     *
+     * @param {number} [radiusTop=1] - Radius of the cylinder at the top.
+     * @param {number} [radiusBottom=1] - Radius of the cylinder at the bottom.
+     * @param {number} [height=1] - Height of the cylinder.
+     * @param {number} [radialSegments=32] - Number of segmented faces around the circumference of the cylinder.
+     * @param {number} [heightSegments=1] - Number of rows of faces along the height of the cylinder.
+     * @param {boolean} [openEnded=false] - Whether the base of the cylinder is open or capped.
+     * @param {number} [thetaStart=0] - Start angle for first segment, in radians.
+     * @param {number} [thetaLength=Math.PI*2] - The central angle, often called theta, of the circular sector, in radians.
+     * The default value results in a complete cylinder.
+     */
+    constructor(radiusTop = 1, radiusBottom = 1, height = 1, radialSegments = 32, heightSegments = 1, openEnded = false, thetaStart = 0, thetaLength = Math.PI * 2) {
+      super();
+      this.type = "CylinderGeometry";
+      this.parameters = {
+        radiusTop,
+        radiusBottom,
+        height,
+        radialSegments,
+        heightSegments,
+        openEnded,
+        thetaStart,
+        thetaLength
+      };
+      const scope = this;
+      radialSegments = Math.floor(radialSegments);
+      heightSegments = Math.floor(heightSegments);
+      const indices = [];
+      const vertices = [];
+      const normals = [];
+      const uvs = [];
+      let index = 0;
+      const indexArray = [];
+      const halfHeight = height / 2;
+      let groupStart = 0;
+      generateTorso();
+      if (openEnded === false) {
+        if (radiusTop > 0) generateCap(true);
+        if (radiusBottom > 0) generateCap(false);
+      }
+      this.setIndex(indices);
+      this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+      this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+      this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+      function generateTorso() {
+        const normal = new Vector3();
+        const vertex2 = new Vector3();
+        let groupCount = 0;
+        const slope = (radiusBottom - radiusTop) / height;
+        for (let y = 0; y <= heightSegments; y++) {
+          const indexRow = [];
+          const v = y / heightSegments;
+          const radius = v * (radiusBottom - radiusTop) + radiusTop;
+          for (let x = 0; x <= radialSegments; x++) {
+            const u = x / radialSegments;
+            const theta = u * thetaLength + thetaStart;
+            const sinTheta = Math.sin(theta);
+            const cosTheta = Math.cos(theta);
+            vertex2.x = radius * sinTheta;
+            vertex2.y = -v * height + halfHeight;
+            vertex2.z = radius * cosTheta;
+            vertices.push(vertex2.x, vertex2.y, vertex2.z);
+            normal.set(sinTheta, slope, cosTheta).normalize();
+            normals.push(normal.x, normal.y, normal.z);
+            uvs.push(u, 1 - v);
+            indexRow.push(index++);
+          }
+          indexArray.push(indexRow);
+        }
+        for (let x = 0; x < radialSegments; x++) {
+          for (let y = 0; y < heightSegments; y++) {
+            const a = indexArray[y][x];
+            const b = indexArray[y + 1][x];
+            const c = indexArray[y + 1][x + 1];
+            const d = indexArray[y][x + 1];
+            if (radiusTop > 0 || y !== 0) {
+              indices.push(a, b, d);
+              groupCount += 3;
+            }
+            if (radiusBottom > 0 || y !== heightSegments - 1) {
+              indices.push(b, c, d);
+              groupCount += 3;
+            }
+          }
+        }
+        scope.addGroup(groupStart, groupCount, 0);
+        groupStart += groupCount;
+      }
+      function generateCap(top) {
+        const centerIndexStart = index;
+        const uv = new Vector2();
+        const vertex2 = new Vector3();
+        let groupCount = 0;
+        const radius = top === true ? radiusTop : radiusBottom;
+        const sign = top === true ? 1 : -1;
+        for (let x = 1; x <= radialSegments; x++) {
+          vertices.push(0, halfHeight * sign, 0);
+          normals.push(0, sign, 0);
+          uvs.push(0.5, 0.5);
+          index++;
+        }
+        const centerIndexEnd = index;
+        for (let x = 0; x <= radialSegments; x++) {
+          const u = x / radialSegments;
+          const theta = u * thetaLength + thetaStart;
+          const cosTheta = Math.cos(theta);
+          const sinTheta = Math.sin(theta);
+          vertex2.x = radius * sinTheta;
+          vertex2.y = halfHeight * sign;
+          vertex2.z = radius * cosTheta;
+          vertices.push(vertex2.x, vertex2.y, vertex2.z);
+          normals.push(0, sign, 0);
+          uv.x = cosTheta * 0.5 + 0.5;
+          uv.y = sinTheta * 0.5 * sign + 0.5;
+          uvs.push(uv.x, uv.y);
+          index++;
+        }
+        for (let x = 0; x < radialSegments; x++) {
+          const c = centerIndexStart + x;
+          const i = centerIndexEnd + x;
+          if (top === true) {
+            indices.push(i, i + 1, c);
+          } else {
+            indices.push(i + 1, i, c);
+          }
+          groupCount += 3;
+        }
+        scope.addGroup(groupStart, groupCount, top === true ? 1 : 2);
+        groupStart += groupCount;
+      }
+    }
+    copy(source) {
+      super.copy(source);
+      this.parameters = Object.assign({}, source.parameters);
+      return this;
+    }
+    /**
+     * Factory method for creating an instance of this class from the given
+     * JSON object.
+     *
+     * @param {Object} data - A JSON object representing the serialized geometry.
+     * @return {CylinderGeometry} A new instance.
+     */
+    static fromJSON(data) {
+      return new _CylinderGeometry(data.radiusTop, data.radiusBottom, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
     }
   };
   var PlaneGeometry = class _PlaneGeometry extends BufferGeometry {
@@ -15741,6 +16063,19 @@
       data.object.shadow = this.shadow.toJSON();
       data.object.target = this.target.uuid;
       return data;
+    }
+  };
+  var AmbientLight = class extends Light {
+    /**
+     * Constructs a new ambient light.
+     *
+     * @param {(number|Color|string)} [color=0xffffff] - The light's color.
+     * @param {number} [intensity=1] - The light's strength/intensity.
+     */
+    constructor(color, intensity) {
+      super(color, intensity);
+      this.isAmbientLight = true;
+      this.type = "AmbientLight";
     }
   };
   var fov = -90;
@@ -28672,32 +29007,32 @@ void main() {
     const zone = (id, o) => {
       zones[id] = { id, ...o };
     };
-    const box2 = (x0, z0, x1, z1) => ({ x0, z0, x1, z1 });
-    zone("entrance", { label: "Eingang", x: W / 2, z: D - 1.4, yaw: 0, rect: box2(W / 2 - 1.6, D - 2.4, W / 2 + 1.6, D - 0.4) });
+    const box3 = (x0, z0, x1, z1) => ({ x0, z0, x1, z1 });
+    zone("entrance", { label: "Eingang", x: W / 2, z: D - 1.4, yaw: 0, rect: box3(W / 2 - 1.6, D - 2.4, W / 2 + 1.6, D - 0.4) });
     zone("register", {
       label: "Kasse",
       ...register,
-      rect: box2(W - 4.6, D - 4.9, W - 1.7, D - 2.8),
+      rect: box3(W - 4.6, D - 4.9, W - 1.7, D - 2.8),
       counter: { ...counter }
     });
     for (const dp of depts) {
       const f = faces.find((q) => q.dept === dp.id);
-      if (f) zone(`dept:${dp.id}`, { label: dp.label, x: f.stand.x, z: f.stand.z, yaw: f.stand.yaw, rect: box2(f.stand.x - 0.8, f.stand.z - 0.8, f.stand.x + 0.8, f.stand.z + 0.8) });
+      if (f) zone(`dept:${dp.id}`, { label: dp.label, x: f.stand.x, z: f.stand.z, yaw: f.stand.yaw, rect: box3(f.stand.x - 0.8, f.stand.z - 0.8, f.stand.x + 0.8, f.stand.z + 0.8) });
     }
     const kidsFace = faces.find((q) => q.kind === "kids");
-    if (kidsFace) zone("kids", { label: "Kinder-Ecke", x: kidsFace.stand.x, z: kidsFace.stand.z, yaw: kidsFace.stand.yaw, rect: box2(0.3, 0.3, wk, band - 0.3) });
-    if (sAdult > 0) zone("adult", { label: "Ab 18", x: (adultDoor.x0 + adultDoor.x1) / 2, z: band + 0.9, yaw: 0, rect: box2(xs + WALL_T, 0, W, band - WALL_T) });
+    if (kidsFace) zone("kids", { label: "Kinder-Ecke", x: kidsFace.stand.x, z: kidsFace.stand.z, yaw: kidsFace.stand.yaw, rect: box3(0.3, 0.3, wk, band - 0.3) });
+    if (sAdult > 0) zone("adult", { label: "Ab 18", x: (adultDoor.x0 + adultDoor.x1) / 2, z: band + 0.9, yaw: 0, rect: box3(xs + WALL_T, 0, W, band - WALL_T) });
     const midX0 = wk + 0.3;
     const midX1 = Math.max(midX0, xs - 0.3);
     const staffX = (wk + xs) / 2;
-    zone("cashier", { label: "Kassierer-Platz", reserved: true, x: W - 2.9, z: D - 1.6, yaw: Math.PI, rect: box2(W - 4.4, D - 2.4, W - 1.4, D - 0.6) });
-    zone("reserve", { label: "Reservierungsfach", reserved: true, x: W - 0.7, z: D - 1.5, yaw: -HALF_PI, rect: box2(W - 1.2, D - 2.6, W - 0.2, D - 0.6) });
-    zone("returns", { label: "R\xFCckgabe-Wagen", reserved: true, x: W - 1, z: D - 4.3, yaw: Math.PI, rect: box2(W - 1.6, D - 4.9, W - 0.4, D - 3.7) });
-    zone("snack", { label: "Snack-Theke", reserved: true, x: 1.1, z: D - 2.2, yaw: -HALF_PI, rect: box2(0.3, D - 3.6, 2, D - 0.8) });
-    zone("tv", { label: "TV-Ecke", reserved: true, x: (midX0 + midX1) / 2, z: band * 0.5 + 0.7, yaw: 0, rect: box2(midX0, 1.4, midX1, band - 0.8) });
-    zone("staff", { label: "Mitarbeiter-T\xFCr", reserved: true, x: staffX, z: 1.2, yaw: 0, rect: box2(staffX - 0.6, 0, staffX + 0.6, 1.2) });
-    zone("window", { label: "Schaufenster links", reserved: true, x: (1.2 + door.x0 - 0.7) / 2, z: D - 0.6, yaw: 0, rect: box2(1.2, D - 1, door.x0 - 0.7, D) });
-    zone("window2", { label: "Schaufenster rechts", reserved: true, x: (door.x1 + 0.7 + W - 1.2) / 2, z: D - 0.6, yaw: 0, rect: box2(door.x1 + 0.7, D - 1, W - 1.2, D) });
+    zone("cashier", { label: "Kassierer-Platz", reserved: true, x: W - 2.9, z: D - 1.6, yaw: Math.PI, rect: box3(W - 4.4, D - 2.4, W - 1.4, D - 0.6) });
+    zone("reserve", { label: "Reservierungsfach", reserved: true, x: W - 0.7, z: D - 1.5, yaw: -HALF_PI, rect: box3(W - 1.2, D - 2.6, W - 0.2, D - 0.6) });
+    zone("returns", { label: "R\xFCckgabe-Wagen", reserved: true, x: W - 1, z: D - 4.3, yaw: Math.PI, rect: box3(W - 1.6, D - 4.9, W - 0.4, D - 3.7) });
+    zone("snack", { label: "Snack-Theke", reserved: true, x: 1.1, z: D - 2.2, yaw: -HALF_PI, rect: box3(0.3, D - 3.6, 2, D - 0.8) });
+    zone("tv", { label: "TV-Ecke", reserved: true, x: (midX0 + midX1) / 2, z: band * 0.5 + 0.7, yaw: 0, rect: box3(midX0, 1.4, midX1, band - 0.8) });
+    zone("staff", { label: "Mitarbeiter-T\xFCr", reserved: true, x: staffX, z: 1.2, yaw: 0, rect: box3(staffX - 0.6, 0, staffX + 0.6, 1.2) });
+    zone("window", { label: "Schaufenster links", reserved: true, x: (1.2 + door.x0 - 0.7) / 2, z: D - 0.6, yaw: 0, rect: box3(1.2, D - 1, door.x0 - 0.7, D) });
+    zone("window2", { label: "Schaufenster rechts", reserved: true, x: (door.x1 + 0.7 + W - 1.2) / 2, z: D - 0.6, yaw: 0, rect: box3(door.x1 + 0.7, D - 1, W - 1.2, D) });
     const look = (fx, fz, tx, tz) => Math.atan2(-(tx - fx), -(tz - fz));
     const view = (id, x, z, tx, tz) => {
       if (zones[id]) zones[id].view = { x, z, yaw: look(x, z, tx, tz) };
@@ -28859,10 +29194,14 @@ void main() {
     renderer.shadowMap.type = PCFShadowMap;
     renderer.shadowMap.enabled = preset.shadows;
     renderer.setClearColor(new Color(724252), 1);
-    const scene = new Scene();
+    const storeScene = new Scene();
+    let scene = storeScene;
+    const rig = new Group();
+    rig.name = "lfx-rig";
+    storeScene.add(rig);
     const camera = new PerspectiveCamera(70, 1, 0.05, 90);
     camera.rotation.order = "YXZ";
-    scene.add(camera);
+    rig.add(camera);
     const aq = new AutoQuality(level);
     let autoOn = !!auto;
     let tick = null;
@@ -28879,10 +29218,13 @@ void main() {
     let accN = 0;
     let baseFov = 70;
     let zoom = 1;
+    const inXr = () => renderer.xr.isPresenting === true;
     function applyRatio() {
+      if (inXr()) return;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, preset.pixelRatio));
     }
     function resize() {
+      if (inXr()) return;
       const w = Math.max(1, curHost.clientWidth || window.innerWidth);
       const h2 = Math.max(1, curHost.clientHeight || window.innerHeight);
       renderer.setSize(w, h2, false);
@@ -28892,6 +29234,7 @@ void main() {
       applyFov();
     }
     function applyFov() {
+      if (inXr()) return;
       camera.fov = baseFov / zoom;
       camera.updateProjectionMatrix();
     }
@@ -28901,7 +29244,7 @@ void main() {
       zoom = v;
       applyFov();
     }
-    function loop(time) {
+    function loop(time, frame) {
       const now = time || performance.now();
       let dt = (now - last) / 1e3;
       last = now;
@@ -28915,7 +29258,7 @@ void main() {
         acc = 0;
         accN = 0;
       }
-      if (autoOn) {
+      if (autoOn && !inXr()) {
         const l = aq.sample(dt, now);
         if (l) {
           setLevel(l);
@@ -28923,7 +29266,7 @@ void main() {
         }
       }
       const t0 = performance.now();
-      if (tick) tick(dt, now);
+      if (tick) tick(dt, now, frame);
       const t1 = performance.now();
       renderer.render(scene, camera);
       const t2 = performance.now();
@@ -28931,22 +29274,25 @@ void main() {
       renderMs += (t2 - t1 - renderMs) * 0.05;
     }
     function go() {
-      if (!running || lost || document.hidden) return;
+      if (!running || lost || document.hidden && !inXr()) return;
       last = performance.now();
       renderer.setAnimationLoop(loop);
     }
     function halt() {
       renderer.setAnimationLoop(null);
     }
+    let xrBudget = false;
+    let levelNow = level;
     function setLevel(l) {
       const prev = preset;
-      preset = presetFor(l, phone);
+      levelNow = l;
+      preset = presetFor(l, phone || xrBudget);
       aq.setLevel(preset.level);
       applyRatio();
       resize();
       if (prev.shadows !== preset.shadows) {
         renderer.shadowMap.enabled = preset.shadows;
-        scene.traverse((o) => {
+        storeScene.traverse((o) => {
           const m = o.material;
           if (Array.isArray(m)) m.forEach((x) => {
             x.needsUpdate = true;
@@ -28956,10 +29302,29 @@ void main() {
       }
       return preset;
     }
+    function setXrBudget(on) {
+      on = !!on;
+      if (on === xrBudget) return preset;
+      xrBudget = on;
+      return setLevel(levelNow);
+    }
+    function setFoveation(v) {
+      try {
+        renderer.xr.setFoveation(v);
+      } catch {
+      }
+    }
     const onVis = () => {
+      if (inXr()) return;
       if (document.hidden) halt();
       else go();
     };
+    const onXrEnd = () => {
+      applyRatio();
+      resize();
+      applyFov();
+    };
+    renderer.xr.addEventListener("sessionend", onXrEnd);
     const onLost = (e) => {
       e.preventDefault();
       lost = true;
@@ -28988,9 +29353,19 @@ void main() {
     resize();
     return {
       renderer,
-      scene,
       camera,
       canvas,
+      rig,
+      storeScene,
+      get scene() {
+        return scene;
+      },
+      setScene(s) {
+        scene = s || storeScene;
+      },
+      render(active, cam) {
+        renderer.render(active || scene, cam || camera);
+      },
       get preset() {
         return preset;
       },
@@ -29020,6 +29395,8 @@ void main() {
       },
       setLevel,
       setZoom,
+      setXrBudget,
+      setFoveation,
       setAuto(v) {
         autoOn = !!v;
         aq.setLevel(preset.level);
@@ -29040,8 +29417,18 @@ void main() {
         halt();
       },
       dispose() {
+        try {
+          const sess = renderer.xr.getSession && renderer.xr.getSession();
+          if (sess) {
+            const r = sess.end();
+            if (r && r.catch) r.catch(() => {
+            });
+          }
+        } catch {
+        }
         running = false;
         halt();
+        renderer.xr.removeEventListener("sessionend", onXrEnd);
         document.removeEventListener("visibilitychange", onVis);
         canvas.removeEventListener("webglcontextlost", onLost);
         canvas.removeEventListener("webglcontextrestored", onRestored);
@@ -29630,9 +30017,9 @@ void main() {
     part(cur, x1, 0, CEIL_H);
   }
   function wallTrimSpans(layout, side, D) {
-    const GAP = 2e-3;
+    const GAP2 = 2e-3;
     const W = layout.w;
-    const cuts = (layout.runs || []).filter((r) => r.style === "wall" && r.rect && (side === "w" ? r.rect.x0 < W / 2 : r.rect.x1 > W / 2)).map((r) => [Math.max(0, r.rect.z0 - GAP), Math.min(D, r.rect.z1 + GAP)]).sort((a, b) => a[0] - b[0]);
+    const cuts = (layout.runs || []).filter((r) => r.style === "wall" && r.rect && (side === "w" ? r.rect.x0 < W / 2 : r.rect.x1 > W / 2)).map((r) => [Math.max(0, r.rect.z0 - GAP2), Math.min(D, r.rect.z1 + GAP2)]).sort((a, b) => a[0] - b[0]);
     const spans = [];
     let cur = 0;
     for (const [a, b] of cuts) {
@@ -31510,6 +31897,7 @@ void main() {
       this.path = null;
       this.onArrive = null;
       this.turnTo = null;
+      this.tp = 0;
       this.moved = 0;
       this.lastLook = 0;
     }
@@ -31522,6 +31910,7 @@ void main() {
       this.vz = 0;
       this.cancelPath();
       this.turnTo = null;
+      this.tp++;
       this.moved++;
     }
     look(dyaw, dpitch) {
@@ -31549,11 +31938,11 @@ void main() {
     faceYaw(yaw, pitch = 0.05) {
       this.turnTo = { yaw, pitch };
     }
-    /** input: { fwd, strafe } in -1..1, run: bool. Bewegung relativ zum Blick. */
+    /** input: { fwd, strafe } in -1..1, run: bool, scale 0..1 (Standard 1). Bewegung relativ zum Blick. */
     update(dt, input) {
       let tx = 0;
       let tz = 0;
-      let speed = input && input.run ? RUN : WALK;
+      let speed = (input && input.run ? RUN : WALK) * (input && Number.isFinite(input.scale) ? Math.max(0, Math.min(1, input.scale)) : 1);
       const manual = input && (input.fwd || input.strafe);
       if (manual) {
         this.cancelPath();
@@ -31767,6 +32156,7 @@ void main() {
     requestLock(opts) {
       const c = this.ctx.canvas;
       this.clearLockTimer();
+      if (!this.attached) return;
       if (this.locked) return;
       if (!c.requestPointerLock) {
         this.dragLook = true;
@@ -32741,7 +33131,7 @@ void main() {
     texture.colorSpace = SRGBColorSpace;
     texture.anisotropy = 4;
     const imgs = new Array(entries.length).fill(null);
-    const paint2 = (i) => {
+    const paint3 = (i) => {
       const e = entries[i];
       const cell = atlasCell(i, cols, rows, cw, ch);
       g.save();
@@ -32762,12 +33152,12 @@ void main() {
       texture.needsUpdate = true;
     };
     entries.forEach((e, i) => {
-      paint2(i);
+      paint3(i);
       if (!e.url) return;
       ctx.loadTexture(e.url, { maxWidth }).then((t) => {
         if (!t || !t.image) return;
         imgs[i] = t.image;
-        paint2(i);
+        paint3(i);
       });
     });
     return { texture, uv: (i) => atlasCell(i, cols, rows, cw, ch).uv };
@@ -32787,7 +33177,20 @@ void main() {
     });
     return b;
   }
-  function openPanel(ctx, { cls, label, build, onClose }) {
+  function openPanel(ctx, { cls, label, build: build2, onClose, vr }) {
+    if (typeof vr === "function" && ctx.xr && ctx.xr.presenting()) {
+      let open2 = true;
+      const close2 = () => {
+        if (open2 && ctx.overlay.isOpen()) ctx.overlay.close();
+      };
+      const spec = vr(close2);
+      const handle = ctx.xr.panel.open({ ...spec, onClose: () => {
+        open2 = false;
+        if (spec.onClose) spec.onClose();
+        if (onClose) onClose();
+      } });
+      return { root: null, panel: null, close: close2, vr: handle };
+    }
     const root = h("div", `lfx-store-m3 ${cls || ""}`.trim());
     const panel = h("div", "lfx-store-m3-panel");
     panel.setAttribute("role", "dialog");
@@ -32801,7 +33204,7 @@ void main() {
       if (e.target === root) close();
     });
     for (const ev of ["keydown", "keyup", "keypress"]) root.addEventListener(ev, (e) => e.stopPropagation());
-    build(panel, close);
+    build2(panel, close);
     ctx.overlay.open(root, { onClose: () => {
       open = false;
       if (onClose) onClose();
@@ -32989,6 +33392,28 @@ void main() {
     for (let y = 0; y < hh; y += 3) g.fillRect(0, y, w, 1);
     void t;
   }
+  var ACT_LABEL = { guide: "Hinf\xFChren", counter: "\xDCber den Tresen", play: "Abspielen", series: "Serie \xFCber den Tresen" };
+  var MEDIA_TAG = { vhs: "VHS", dvd: "DVD", box: "Box" };
+  function termStatus(searching, count) {
+    if (searching) return "Suche l\xE4uft \u2026";
+    if (!count) return "Nichts gefunden";
+    return count === 1 ? "1 Treffer" : `${count} Treffer`;
+  }
+  function buildTermSpec({ query = "", status = "", descs = [], mediaOf = () => "", handlers = {}, onClose } = {}) {
+    const rows = descs.map((d) => ({
+      label: d.title,
+      sub: [d.sub, d.year, d.location, d.typeLabel].filter(Boolean).join(" \xB7 "),
+      tag: MEDIA_TAG[mediaOf(d)] || "",
+      actions: d.actions.map((k, i) => ({ label: ACT_LABEL[k], primary: i === 0, onSelect: () => handlers.act && handlers.act(d, k) }))
+    }));
+    return {
+      title: "Kassen-PC \xB7 Suche",
+      lines: status ? [status] : [],
+      input: { value: query, placeholder: "Titel suchen \u2026", onInput: (v) => handlers.onInput && handlers.onInput(v), onEnter: (v) => handlers.onEnter && handlers.onEnter(v) },
+      list: { rows, visible: 6 },
+      onClose
+    };
+  }
   var terminal_default = {
     name: "terminal",
     init(ctx) {
@@ -33060,8 +33485,119 @@ void main() {
           if (!disposed) restoreCam();
         });
       }
+      let xs = null;
+      const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+      const mediaOf = (d) => {
+        const it = d.inCatalog ? getItem(d.targetId) : null;
+        return it ? it.lfx && it.lfx.media || "dvd" : "";
+      };
+      function xrRefresh(s) {
+        if (xs !== s || !s.handle || !s.handle.open) return;
+        s.handle.update(buildTermSpec({ query: s.query, status: s.status, descs: s.descs, mediaOf, handlers: s.handlers }));
+      }
+      async function xrRun(s, q) {
+        if (s.ac) s.ac.abort();
+        s.ac = new AbortController();
+        const mine = ++s.token;
+        s.status = termStatus(true, 0);
+        xrRefresh(s);
+        const e = env();
+        try {
+          const res = await ctx.deps.search(q, { signal: s.ac.signal });
+          if (mine !== s.token || disposed || xs !== s) return;
+          const ranked = rankResults(res, q).slice(0, MAX_RESULTS);
+          s.descs = ranked.map((it) => describeResult(it, e));
+          s.status = termStatus(false, s.descs.length);
+        } catch (err) {
+          if (mine !== s.token || err && err.name === "AbortError") return;
+          s.status = "Verbindung zur Datenbank gest\xF6rt";
+        }
+        xrRefresh(s);
+      }
+      function xrSchedule(s, q, immediate) {
+        clearTimeout(s.timer);
+        const t = q.trim();
+        if (!t) {
+          if (s.ac) s.ac.abort();
+          s.token++;
+          const e = env();
+          s.descs = defaultSections(ctx.catalog, getItem, 6).flatMap((sec) => sec.items).map((it) => describeResult(it, e));
+          s.status = "Titel eingeben oder aus der Liste w\xE4hlen";
+          xrRefresh(s);
+          return;
+        }
+        s.status = termStatus(true, 0);
+        xrRefresh(s);
+        if (immediate) xrRun(s, t);
+        else s.timer = setTimeout(() => xrRun(s, t), SEARCH_DELAY);
+      }
+      function xrAct(s, d, kind) {
+        const id = d.targetId;
+        if (kind === "guide") {
+          const r = trail.start(id);
+          ctx.xr.toast(r ? "Der Spur folgen \xB7 H\xFClle leuchtet" : "Zu diesem Titel finde ich gerade keinen Weg");
+          if (r) s.handle.close();
+        } else if (kind === "counter" || kind === "series") {
+          s.handle.close();
+          ctx.items.take(id, { from: "counter" });
+        } else if (kind === "play") {
+          s.handle.close();
+          ctx.deps.play(d.item, { resume: false });
+        }
+      }
+      function xrClose(s) {
+        clearTimeout(s.timer);
+        if (s.ac) s.ac.abort();
+        s.token++;
+        if (xs === s) xs = null;
+      }
+      function xrOpen(q) {
+        if (xs) {
+          xs.query = q || "";
+          xrSchedule(xs, xs.query, true);
+          return;
+        }
+        const s = {
+          handle: null,
+          query: q || "",
+          status: "",
+          descs: [],
+          timer: 0,
+          ac: null,
+          token: 0,
+          handlers: null
+        };
+        s.handlers = {
+          onInput: (v) => {
+            s.query = v;
+            xrSchedule(s, v, false);
+          },
+          onEnter: (v) => {
+            s.query = v;
+            xrSchedule(s, v, true);
+          },
+          act: (d, k) => xrAct(s, d, k)
+        };
+        xs = s;
+        const p = ctx.player.getPose();
+        const far = Math.hypot(p.x - pcx, p.z - pcz) > 2.5;
+        const go = far ? ctx.xr.jumpTo(pcx, pcz - 1, { face: { x: pcx, z: pcz } }) : Promise.resolve(true);
+        go.then(() => {
+          if (disposed || xs !== s || !xrOn()) {
+            if (xs === s) xrClose(s);
+            return;
+          }
+          s.handle = ctx.xr.panel.open(buildTermSpec({ query: s.query, status: s.status, descs: s.descs, mediaOf, handlers: s.handlers, onClose: () => xrClose(s) }));
+          ctx.use("sound")?.play("beep");
+          xrSchedule(s, s.query, true);
+        });
+      }
       function open(q) {
         if (disposed) return;
+        if (xrOn()) {
+          xrOpen(q);
+          return;
+        }
         if (st) {
           st.setQuery(q || "");
           return;
@@ -33190,7 +33726,6 @@ void main() {
           else if (kind === "counter" || kind === "series") finish(() => ctx.items.take(d.targetId, { from: "counter" }));
           else if (kind === "play") finish(() => ctx.deps.play(d.item, { resume: false }), true);
         }
-        const ACT_LABEL = { guide: "Hinf\xFChren", counter: "\xDCber den Tresen", play: "Abspielen", series: "Serie \xFCber den Tresen" };
         function addRow(desc) {
           const row = h("div", "lfx-store-term-row");
           row.setAttribute("role", "option");
@@ -33363,6 +33898,16 @@ void main() {
         onUse: () => open("")
       });
       const removeProvider = ctx.provide("terminal", { open });
+      const offXr = ctx.on("xr", (on) => {
+        if (!on && xs) {
+          const s = xs;
+          try {
+            if (s.handle && s.handle.open) s.handle.close();
+          } catch {
+          }
+          xrClose(s);
+        }
+      });
       const offDbg = debugHook(ctx, "terminal", {
         open,
         guide: (id) => guide(id),
@@ -33387,11 +33932,22 @@ void main() {
             st.instant = true;
             ctx.overlay.close();
           }
+          if (xs) {
+            const s = xs;
+            if (s.handle) s.handle.close();
+            xrClose(s);
+          }
         },
         dispose() {
           disposed = true;
+          if (xs) {
+            const s = xs;
+            if (s.handle && s.handle.open) s.handle.close();
+            xrClose(s);
+          }
           removeIa();
           removeProvider();
+          offXr();
           offDbg();
           trail.dispose();
           if (st) st.cleanup();
@@ -33418,6 +33974,40 @@ void main() {
     g.fillText("R\xDCCKGABE", w / 2, hh * 0.45);
     g.font = `bold ${Math.round(hh * 0.15)}px ${MONO}`;
     g.fillText("angefangene Titel \xB7 bitte weiterschauen", w / 2, hh * 0.82);
+  }
+  function remainingText(it) {
+    const pr = progressOf(it);
+    if (!(pr > 0)) return "";
+    const min = it && it.RunTimeTicks > 0 ? it.RunTimeTicks / 6e8 * (1 - pr) : 0;
+    return min > 0 ? `Noch ${Math.max(1, Math.ceil(min))} Min.` : `${Math.round(pr * 100)} % gesehen`;
+  }
+  function returnsSpec(items, act, onClose) {
+    const spec = { title: "R\xFCckgabe-Wagen \xB7 Weiterschauen", anchor: "front", width: 0.9 };
+    if (onClose) spec.onClose = onClose;
+    if (!items.length) {
+      spec.text = "Hier liegt gerade nichts \u2013 fang einen Film an!";
+      return spec;
+    }
+    spec.lines = [`${items.length} angefangen`];
+    spec.list = {
+      visible: 5,
+      rows: items.map((it) => {
+        const ep = isEpisode(it);
+        const tag = ep ? episodeTag(it).replace(/\s+/g, "").replace("F", "E") : "";
+        const pr = progressOf(it);
+        const rest = remainingText(it);
+        const takeId = ep ? it.SeriesId : it.Id;
+        const actions = [{ label: "Weiterschauen", primary: true, onSelect: () => act.play(it) }];
+        if (takeId && (!ep || act.canTake(takeId))) actions.push({ label: ep ? "Zur Serie" : "Nehmen", onSelect: () => act.take(takeId) });
+        return {
+          label: (ep ? it.SeriesName || "Serie" : it.Name) || "Titel",
+          sub: [tag, ep ? it.Name : "", rest].filter(Boolean).join(" \xB7 "),
+          tag: pr > 0 ? `${Math.round(pr * 100)} %` : void 0,
+          actions
+        };
+      })
+    };
+    return spec;
   }
   var returns_default = {
     name: "returns",
@@ -33500,6 +34090,26 @@ void main() {
           }
         });
       }
+      function openVrList() {
+        if (!items.length) {
+          ctx.xr.toast("Hier liegt gerade nichts \u2013 fang einen Film an!");
+          return;
+        }
+        const canTake = (id) => !!(ctx.catalog.items && ctx.catalog.items.get && ctx.catalog.items.get(id));
+        openPanel(ctx, {
+          vr: (close) => returnsSpec(items, {
+            play: (it) => {
+              close();
+              ctx.deps.play(it, { resume: true });
+            },
+            take: (id) => {
+              close();
+              ctx.items.take(id, { from: "counter" });
+            },
+            canTake
+          }, void 0)
+        });
+      }
       items.forEach((it, i) => {
         const p = pos[i];
         const ep = isEpisode(it);
@@ -33508,7 +34118,8 @@ void main() {
           label: ep ? resumeLabel(it) : it.Name,
           hint: ep ? "E / Klick: Weiterschauen" : "E / Klick: H\xFClle nehmen",
           onUse: () => {
-            if (ep) episodeCard(it);
+            if (ctx.xr.presenting()) openVrList();
+            else if (ep) episodeCard(it);
             else ctx.items.take(it.Id, { from: "counter" });
           }
         }));
@@ -33518,7 +34129,7 @@ void main() {
           box: { min: { x: cx - 0.4, y: 0.15, z: cz - 0.27 }, max: { x: cx + 0.4, y: 1.22, z: cz + 0.27 } },
           label: "R\xFCckgabe-Wagen",
           hint: "Gerade ist nichts angefangen",
-          onUse: () => ctx.deps.toast("Hier liegt gerade nichts \u2013 fang einen Film an!")
+          onUse: () => ctx.xr.presenting() ? ctx.xr.toast("Hier liegt gerade nichts \u2013 fang einen Film an!") : ctx.deps.toast("Hier liegt gerade nichts \u2013 fang einen Film an!")
         }));
       }
       const offDbg = debugHook(ctx, "returns", { pos: { x: cx, z: cz }, items: items.map((it) => it.Id), card: (i) => episodeCard(items[i]) });
@@ -33538,6 +34149,28 @@ void main() {
   var MAX2 = 18;
   var HALF = 0.85;
   var ROW_Y = [1.35, 0.9, 0.45];
+  function reserveSpec(favs, name, act, onClose) {
+    const spec = { title: "Reservierungen", lines: [`f\xFCr ${name}`], anchor: "front", width: 0.9 };
+    if (onClose) spec.onClose = onClose;
+    if (!favs.length) {
+      spec.text = "Hier liegt noch nichts f\xFCr dich zur\xFCck. Markiere in der H\xFClle einen Titel mit \u201EMerken\u201C \u2013 dann legen wir ihn dir hierher.";
+      return spec;
+    }
+    spec.lines.push(`${favs.length} zur\xFCckgelegt`);
+    spec.list = {
+      visible: 5,
+      rows: favs.map((it) => ({
+        label: it.Name || "Titel",
+        sub: it.ProductionYear ? String(it.ProductionYear) : void 0,
+        actions: [
+          { label: "Abspielen", primary: true, onSelect: () => act.play(it) },
+          { label: "Nehmen", onSelect: () => act.take(it) },
+          { label: "Entfernen", onSelect: () => act.remove(it) }
+        ]
+      }))
+    };
+    return spec;
+  }
   var reserve_default = {
     name: "reserve",
     init(ctx) {
@@ -33615,6 +34248,10 @@ void main() {
       const rect = ctx.addCollider({ x0: W - 0.32, z0: zc - HALF, x1: W, z1: zc + HALF, kind: "prop" });
       function openList() {
         favs = collectFavs();
+        if (ctx.xr.presenting()) {
+          openVrList();
+          return;
+        }
         openPanel(ctx, {
           cls: "lfx-store-res",
           label: "Reservierungen",
@@ -33651,6 +34288,33 @@ void main() {
             panel.append(grid);
           }
         });
+      }
+      function openVrList() {
+        let handle = null;
+        const render = (close) => reserveSpec(favs, name, {
+          play: (it) => {
+            close();
+            ctx.deps.play(it, { resume: false });
+          },
+          take: (it) => {
+            close();
+            ctx.items.take(it.Id, { from: "counter" });
+          },
+          remove: (it) => {
+            if (it.UserData) it.UserData.IsFavorite = false;
+            favs = favs.filter((f) => f.Id !== it.Id);
+            if (ctx.catalog && Array.isArray(ctx.catalog.favorites)) ctx.catalog.favorites = ctx.catalog.favorites.filter((f) => f.Id !== it.Id);
+            if (typeof ctx.deps.setFavorite === "function") {
+              try {
+                Promise.resolve(ctx.deps.setFavorite(it.Id, false)).catch(() => {
+                });
+              } catch {
+              }
+            }
+            if (handle && handle.vr && handle.vr.open) handle.vr.update(render(handle.close));
+          }
+        });
+        handle = openPanel(ctx, { vr: (close) => render(close) });
       }
       const removeIa = ctx.addInteractable({
         box: { min: { x: W - 0.36, y: 0.3, z: zc - HALF }, max: { x: W, y: 2.4, z: zc + HALF } },
@@ -33740,6 +34404,13 @@ void main() {
       ctx.track(group);
       const rect = ctx.addCollider({ x0: sx - 0.55, z0: 0, x1: sx + 0.55, z1: 0.12, kind: "prop" });
       function openMenu() {
+        if (ctx.xr.presenting()) {
+          ctx.xr.exitThen("Personalraum: Einstellungen, Design und Abmelden gibt es au\xDFerhalb von VR.", () => openMenuDom());
+          return;
+        }
+        openMenuDom();
+      }
+      function openMenuDom() {
         openPanel(ctx, {
           cls: "lfx-store-staff",
           label: "Personalraum",
@@ -33968,7 +34639,7 @@ void main() {
       let lastFilterCheck = 0;
       let filterTarget = 2600;
       const gestureEvents = ["pointerdown", "keydown", "touchend"];
-      const level = () => ctx.soundOn() ? duckKeys.has("tv") ? MASTER * 0.12 : duckKeys.has("talk") ? MASTER * 0.45 : MASTER : 0;
+      const level = () => ctx.soundOn() ? duckKeys.has("cinema") ? 0 : duckKeys.has("tv") ? MASTER * 0.12 : duckKeys.has("talk") ? MASTER * 0.45 : MASTER : 0;
       function buildGraph() {
         master = ac.createGain();
         master.gain.value = level();
@@ -34260,6 +34931,10 @@ void main() {
       if (ctx.opts.debug) window.__lfxM4 = { ...window.__lfxM4, sound: () => ({ state: ac && ac.state, ambient: ambientRunning, wanted: ambientWanted, hum: !!hum, rain: !!rain, step: stepIdx }) };
       ctx.provide("sound", {
         play,
+        /** Audio freischalten (Nutzergeste, z. B. Klick auf „In VR betreten“). */
+        unlock() {
+          unlock();
+        },
         /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
         duck(key, on) {
           if (arguments.length < 2) {
@@ -34996,6 +35671,9 @@ void main() {
           });
         }
       });
+      ctx.on("xr", (on) => {
+        if (on) finish();
+      });
       if (o.debug) window.__lfxM4 = { ...window.__lfxM4, intro: () => ({ tl, started, done, step, shutter: facade.openAmount }) };
       function toFinal() {
         const cp = Math.cos(pose.pitch);
@@ -35533,6 +36211,41 @@ void main() {
     if (r) add(out.resume, r);
     return out;
   }
+  var ANSWERS = [
+    { key: "comedy", label: "Was Lustiges?", cat: "tipComedy" },
+    { key: "horror", label: "Was Gruseliges?", cat: "tipHorror" },
+    { key: "kids", label: "Was f\xFCr Kinder?", cat: "tipKids" },
+    { key: "new", label: "Was ist neu?", cat: "tipNew" },
+    { key: "random", label: "\xDCberrasch mich!", cat: "tipRandom" },
+    { key: "resume", label: "Weiterschauen?", cat: "tipResume" }
+  ];
+  function dialogStart(picks, line) {
+    const avail = ANSWERS.filter((a) => picks[a.key] && picks[a.key].length);
+    if (!avail.length) return { text: line("noTip"), choices: false, buttons: [{ id: "bye", label: "Tsch\xFCss", primary: true }] };
+    return {
+      text: line("dialogHello"),
+      choices: true,
+      buttons: [...avail.map((a) => ({ id: `a:${a.key}`, label: a.label })), { id: "bye", label: "Tsch\xFCss" }]
+    };
+  }
+  function dialogAnswer(picks, key, { rand = Math.random, lastId = null, line, deptOf } = {}) {
+    const a = ANSWERS.find((x) => x.key === key);
+    const list = picks && picks[key];
+    if (!a || !list || !list.length) return null;
+    let pool = list.filter((i) => i.Id !== lastId);
+    if (!pool.length) pool = list;
+    const item = pool[Math.floor(rand() * pool.length)];
+    const dept = deptOf && typeof deptOf.get === "function" ? deptOf.get(item.Id) : null;
+    return {
+      item,
+      text: line(a.cat, { title: item.Name, dept: dept && dept.label }),
+      buttons: [
+        { id: "show", label: "Zeig mal", primary: true },
+        { id: "more", label: "Was anderes" },
+        { id: "bye", label: "Tsch\xFCss" }
+      ]
+    };
+  }
 
   // src/js/store3d/modules/voice.js
   var MALE = ["markus", "martin", "stefan", "conrad", "killian", "florian", "yannick", "viktor", "jonas"];
@@ -35809,6 +36522,11 @@ void main() {
       if (unlocked || disposed || !S || !U) return;
       for (const ev of gestureEvents) document.addEventListener(ev, onGesture, { capture: true, passive: true });
     }
+    function unlockNow() {
+      if (unlocked || disposed) return;
+      unlock();
+      onGesture({ type: "click" });
+    }
     function dispose() {
       if (disposed) return;
       cancel();
@@ -35833,6 +36551,7 @@ void main() {
       preview,
       cancel,
       unlock,
+      unlockNow,
       dispose,
       setPending,
       clearPending,
@@ -35958,14 +36677,6 @@ void main() {
     ctx.track(root);
     return { root, head: headMesh, mouth, armL, armR };
   }
-  var ANSWERS = [
-    { key: "comedy", label: "Was Lustiges?", cat: "tipComedy" },
-    { key: "horror", label: "Was Gruseliges?", cat: "tipHorror" },
-    { key: "kids", label: "Was f\xFCr Kinder?", cat: "tipKids" },
-    { key: "new", label: "Was ist neu?", cat: "tipNew" },
-    { key: "random", label: "\xDCberrasch mich!", cat: "tipRandom" },
-    { key: "resume", label: "Weiterschauen?", cat: "tipResume" }
-  ];
   var cashier_default = {
     name: "cashier",
     init(ctx) {
@@ -36035,6 +36746,17 @@ void main() {
       if (host) host.appendChild(bubble);
       let bubbleLeft = 0;
       const v = new Vector3();
+      const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+      let bubble3d = null;
+      let bubbleText = "";
+      function showBubble3d() {
+        if (!bubble3d) bubble3d = ctx.xr.bubble();
+        bubble3d.show(bubbleText, { x: cx, y: 1.95 + 0.35, z: cz });
+      }
+      function hideBubble() {
+        bubble.hidden = true;
+        if (bubble3d) bubble3d.hide();
+      }
       let now = 0;
       const weather = () => ctx.use("weather");
       const hourNow = () => {
@@ -36068,7 +36790,9 @@ void main() {
           }
         }
         txt.textContent = text;
-        bubble.hidden = false;
+        bubbleText = text;
+        if (xrOn()) showBubble3d();
+        else bubble.hidden = false;
         bubbleSticky = overOverlay;
         bubbleLeft = (ctx.isTouch ? BUBBLE_MS + 500 : BUBBLE_MS) / 1e3;
         limiter.mark(now);
@@ -36078,7 +36802,7 @@ void main() {
       }
       let bubbleSticky = false;
       function placeBubble() {
-        if (bubble.hidden || !host) return;
+        if (bubble.hidden || !host || xrOn()) return;
         v.set(cx, 1.95, cz).project(ctx.camera);
         const on = v.z < 1 && Math.abs(v.x) < 0.9 && v.y > -0.8 && v.y < 0.88;
         bubble.classList.toggle("is-edge", !on);
@@ -36104,6 +36828,18 @@ void main() {
         waveT = 0;
       }
       const offs = [];
+      offs.push(ctx.on("xr", (on) => {
+        if (on) {
+          bubble.hidden = true;
+          if (bubbleLeft > 0 && bubbleText) showBubble3d();
+        } else {
+          if (bubble3d) bubble3d.hide();
+          if (bubbleLeft > 0) {
+            bubble.hidden = false;
+            placeBubble();
+          }
+        }
+      }));
       offs.push(ctx.on("enter", () => {
         pendingGreet = 1.1;
         wave();
@@ -36143,8 +36879,46 @@ void main() {
         speak(cat, {}, { force: true, also: first ? "intro" : null });
       }
       let lastTipId = null;
-      function openDialog() {
+      function dialogFlow(view) {
         const picks = dialogPicks(ctx.catalog, deptOf);
+        const line = (cat, vars) => {
+          const r = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]);
+          if (r) lastIdx[cat] = r.index;
+          return r ? r.text : "";
+        };
+        let cur = null;
+        const showModel = (m, first) => {
+          cur = m;
+          view.show(m, first);
+          voiceSay(m.text, 0);
+        };
+        const start = (first) => showModel(dialogStart(picks, line), first);
+        const act = (id) => {
+          if (id === "bye") {
+            view.close();
+            speak("dialogBye", {}, { force: true });
+            return;
+          }
+          if (id === "more") {
+            start(false);
+            return;
+          }
+          if (id === "show") {
+            const it = cur && cur.item;
+            view.close();
+            if (it) ctx.items.take(it.Id, { from: "counter" });
+            return;
+          }
+          if (id.startsWith("a:")) {
+            const m = dialogAnswer(picks, id.slice(2), { rand, lastId: lastTipId, line, deptOf });
+            if (!m) return;
+            lastTipId = m.item.Id;
+            showModel(m, false);
+          }
+        };
+        return { start, act };
+      }
+      function openDialogDom() {
         const el2 = document.createElement("div");
         el2.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
         const card = document.createElement("div");
@@ -36158,62 +36932,28 @@ void main() {
         row.className = "lfx-store-tip-btns lfx-store-dialog-btns";
         card.append(h2, p, row);
         el2.appendChild(card);
-        const line = (cat, vars) => {
-          const r = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]);
-          if (r) lastIdx[cat] = r.index;
-          return r ? r.text : "";
+        let flow = null;
+        const view = {
+          show(m, first) {
+            p.textContent = m.text;
+            row.textContent = "";
+            row.classList.toggle("is-choices", !!m.choices);
+            for (const bt of m.buttons) {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.className = "lfx-store-tip-btn" + (bt.primary ? " is-primary" : "");
+              b.textContent = bt.label;
+              b.addEventListener("click", () => flow.act(bt.id));
+              row.appendChild(b);
+            }
+            if (first && m.choices) {
+              const f = row.querySelector("button");
+              if (f && !ctx.isTouch) f.focus({ preventScroll: true });
+            }
+          },
+          close: () => ctx.overlay.close()
         };
-        const say = (text) => {
-          p.textContent = text;
-          voiceSay(text, 0);
-        };
-        const btn = (label, fn, primary) => {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "lfx-store-tip-btn" + (primary ? " is-primary" : "");
-          b.textContent = label;
-          b.addEventListener("click", fn);
-          row.appendChild(b);
-          return b;
-        };
-        const bye = () => {
-          ctx.overlay.close();
-          speak("dialogBye", {}, { force: true });
-        };
-        function choices(first) {
-          row.textContent = "";
-          row.classList.add("is-choices");
-          const avail = ANSWERS.filter((a) => picks[a.key].length);
-          if (!avail.length) {
-            say(line("noTip"));
-            btn("Tsch\xFCss", bye, true);
-            return;
-          }
-          say(line("dialogHello"));
-          for (const a of avail) btn(a.label, () => answer(a), false);
-          btn("Tsch\xFCss", bye, false);
-          if (first) {
-            const f = row.querySelector("button");
-            if (f && !ctx.isTouch) f.focus({ preventScroll: true });
-          }
-        }
-        function answer(a) {
-          const list = picks[a.key];
-          let pool = list.filter((i) => i.Id !== lastTipId);
-          if (!pool.length) pool = list;
-          const it = pool[Math.floor(rand() * pool.length)];
-          lastTipId = it.Id;
-          const dept = deptOf.get(it.Id);
-          row.textContent = "";
-          row.classList.remove("is-choices");
-          say(line(a.cat, { title: it.Name, dept: dept && dept.label }));
-          btn("Zeig mal", () => {
-            ctx.overlay.close();
-            ctx.items.take(it.Id, { from: "counter" });
-          }, true);
-          btn("Was anderes", () => choices(false), false);
-          btn("Tsch\xFCss", bye, false);
-        }
+        flow = dialogFlow(view);
         el2.addEventListener("pointerdown", (e) => {
           if (e.target === el2) ctx.overlay.close();
         });
@@ -36221,7 +36961,34 @@ void main() {
           stopVoice();
         } });
         bubble.hidden = true;
-        choices(true);
+        flow.start(true);
+      }
+      function openDialogXr() {
+        let handle = null;
+        let flow = null;
+        const toSpec = (m) => ({
+          title: "Richard",
+          text: m.text,
+          buttons: m.buttons.map((bt) => ({ label: bt.label, primary: !!bt.primary, onSelect: () => flow.act(bt.id) }))
+        });
+        const view = {
+          show(m) {
+            if (handle && handle.open) handle.update(toSpec(m));
+            else handle = ctx.xr.panel.open({ ...toSpec(m), onClose: () => {
+              stopVoice();
+            } });
+          },
+          close: () => {
+            if (handle) handle.close();
+          }
+        };
+        flow = dialogFlow(view);
+        hideBubble();
+        flow.start(true);
+      }
+      function openDialog() {
+        if (xrOn()) openDialogXr();
+        else openDialogDom();
       }
       const offIa = ctx.addInteractable({
         box: { min: { x: cx - 0.5, y: 0.2, z: cz - 0.6 }, max: { x: cx + 0.5, y: 2, z: cz + 0.4 } },
@@ -36236,6 +37003,13 @@ void main() {
         /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
         voiceInfo() {
           return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
+        },
+        /** Stimme sofort freischalten; synchron aus dem Klick „In VR betreten“ aufrufen (Brillen-Browser ohne Sprachausgabe: No-op). */
+        unlockVoice() {
+          try {
+            voice.unlockNow();
+          } catch {
+          }
         },
         /** Deutsche Stimmen für die Auswahl im Pause-Menü: [{ name, lang, online, male }]. */
         voices() {
@@ -36319,7 +37093,7 @@ void main() {
           if (bubbleLeft > 0) {
             bubbleLeft -= dt;
             if (bubbleLeft <= 0 || ctx.overlay.isOpen() && !bubbleSticky) {
-              bubble.hidden = true;
+              hideBubble();
               bubbleLeft = 0;
             } else placeBubble();
           }
@@ -36363,12 +37137,16 @@ void main() {
           voice.reselect();
         },
         onSuspend() {
-          bubble.hidden = true;
+          hideBubble();
           bubbleLeft = 0;
           stopVoice();
         },
         dispose() {
           offs.forEach((o) => o());
+          if (bubble3d) {
+            bubble3d.dispose();
+            bubble3d = null;
+          }
           offIa();
           offProvide();
           stopVoice();
@@ -36677,6 +37455,29 @@ void main() {
     }
     return out;
   }
+  function couchSpec(st, act, onClose) {
+    const buttons = [
+      { label: "Aufstehen", onSelect: act.stand },
+      { label: "N\xE4chster", onSelect: act.next }
+    ];
+    if (st.playing) {
+      buttons.push(
+        { label: st.muted ? "Ton an" : "Ton aus", onSelect: act.sound },
+        { label: "Leiser", onSelect: act.down },
+        { label: "Lauter", onSelect: act.up }
+      );
+    }
+    buttons.push({ label: "Diesen Film ansehen", primary: true, onSelect: act.watch });
+    const spec = {
+      title: st.title || "VIDEOTHEK LENZ",
+      lines: [st.playing ? "Vorschau" : "Diashow"],
+      buttons,
+      anchor: "low",
+      width: 0.9
+    };
+    if (onClose) spec.onClose = onClose;
+    return spec;
+  }
 
   // src/js/store3d/modules/tv.js
   var SW = 320;
@@ -36860,7 +37661,8 @@ void main() {
       }
       ctx.track(tex);
       ctx.addCollider({ x0: backX - 0.56, z0: zc - 0.6, x1: backX, z1: zc + 0.6 });
-      ctx.addCollider({ x0: backEdge - 0.02, z0: zc - 1.05, x1: backEdge + 0.92, z1: zc + 1.05 });
+      const sofaRect = { x0: backEdge - 0.02, z0: zc - 1.05, x1: backEdge + 0.92, z1: zc + 1.05 };
+      let sofaCol = ctx.addCollider(sofaRect);
       ctx.addCollider({ x0: tx - 0.33, z0: zc - 0.55, x1: tx + 0.33, z1: zc + 0.55 });
       const items = ctx.catalog.items;
       const adult = adultIds(ctx.catalog);
@@ -36996,6 +37798,8 @@ void main() {
       let suspended = false;
       let disposed = false;
       let seat = "idle";
+      let xrSit = false;
+      let xrPanel = null;
       const offCouch = ctx.provide("couch", { seated: () => seat === "in" });
       let userMuted = false;
       let vol = 0.7;
@@ -37271,10 +38075,10 @@ void main() {
       const screenX = xf - 0.014;
       const SIT = { x: sofaX, y: 1, z: zc };
       const LOOK = { x: screenX, y: 0.93, z: zc };
-      const keyOf = () => `${cam.fov.toFixed(2)}|${cam.aspect.toFixed(3)}`;
+      const keyOf2 = () => `${cam.fov.toFixed(2)}|${cam.aspect.toFixed(3)}`;
       function flyClose(ms) {
         const tk = ++flyToken;
-        fitKey = keyOf();
+        fitKey = keyOf2();
         settled = false;
         const d = fitDistance(cam.fov, cam.aspect);
         return ctx.player.camera.flyTo({ x: screenX - d, y: 0.93, z: zc }, LOOK, ms).then((ok) => {
@@ -37287,7 +38091,7 @@ void main() {
         return { x: p.x - Math.sin(p.yaw) * cp, y: EYE3 + Math.sin(p.pitch || 0), z: p.z - Math.cos(p.yaw) * cp };
       }
       function refit() {
-        if (seat !== "in" || !settled || keyOf() === fitKey) return;
+        if (seat !== "in" || !settled || keyOf2() === fitKey) return;
         flyClose(250);
       }
       function buildUi() {
@@ -37302,12 +38106,7 @@ void main() {
         const row = h("div", "lfx-store-couch-btns");
         const bStand = button("Aufstehen", "lfx-store-couch-btn", () => ctx.overlay.close());
         const bNext = button("N\xE4chster", "lfx-store-couch-btn", () => next());
-        const bSnd = button("Ton aus", "lfx-store-couch-btn", () => {
-          userMuted = !userMuted;
-          applyAudio(trailer && trailer.video);
-          if (trailer && trailer.video.paused) playVideo(trailer.video);
-          refreshUi();
-        });
+        const bSnd = button("Ton aus", "lfx-store-couch-btn", () => toggleSound());
         const bDn = button("Leiser", "lfx-store-couch-btn", () => setVol(vol - 0.15));
         const bUp = button("Lauter", "lfx-store-couch-btn", () => setVol(vol + 0.15));
         const bWatch = button("Diesen Film ansehen", "lfx-store-couch-btn is-main", () => watch());
@@ -37323,12 +38122,34 @@ void main() {
         const sig = `${cur && cur.title || ""}|${playing}|${userMuted}`;
         if (sig === ui.last) return;
         ui.last = sig;
+        if (ui.xr) {
+          if (xrPanel && xrPanel.open) xrPanel.update(vrSpec());
+          return;
+        }
         ui.title.textContent = cur && cur.title || "VIDEOTHEK LENZ";
         ui.tag.textContent = playing ? "Vorschau" : "Diashow";
         ui.bSnd.hidden = !playing;
         ui.bDn.hidden = !playing;
         ui.bUp.hidden = !playing;
         ui.bSnd.textContent = userMuted ? "Ton an" : "Ton aus";
+      }
+      function toggleSound() {
+        userMuted = !userMuted;
+        applyAudio(trailer && trailer.video);
+        if (trailer && trailer.video.paused) playVideo(trailer.video);
+        refreshUi();
+      }
+      const xrAct = {
+        stand: () => ctx.overlay.close(),
+        next: () => next(),
+        sound: () => toggleSound(),
+        down: () => setVol(vol - 0.15),
+        up: () => setVol(vol + 0.15),
+        watch: () => watch()
+      };
+      function vrSpec(onClose) {
+        const cur = current();
+        return couchSpec({ title: cur && cur.title, playing: state === "trailer" && !!trailer, muted: userMuted }, xrAct, onClose);
       }
       function setVol(v) {
         vol = clamp2(v, 0, 1);
@@ -37352,8 +38173,13 @@ void main() {
         sitAc = new AbortController();
         useBig(true);
         userMuted = false;
-        ui = buildUi();
-        ctx.overlay.open(ui.root, { onClose: onClosed });
+        xrSit = ctx.xr.presenting();
+        if (xrSit && sofaCol) {
+          ctx.removeCollider(sofaCol);
+          sofaCol = null;
+        }
+        ui = xrSit ? { xr: true, last: "" } : buildUi();
+        if (!xrSit) ctx.overlay.open(ui.root, { onClose: onClosed });
         const snd = ctx.use("sound");
         if (snd && snd.duck) snd.duck("tv", true);
         {
@@ -37381,6 +38207,14 @@ void main() {
           });
         }
         frame();
+        if (xrSit) {
+          ctx.xr.jumpTo(SIT.x, SIT.z, { face: { x: LOOK.x, z: LOOK.z } }).then(() => {
+            if (seat !== "in" || !ui || !ui.xr || xrPanel || suspended || disposed) return;
+            xrPanel = ctx.xr.panel.open(vrSpec(onClosed));
+            refreshUi();
+          });
+          return;
+        }
         refreshUi();
         ctx.player.camera.flyTo(SIT, LOOK, 750).then((ok) => {
           if (ok && seat === "in") flyClose(800);
@@ -37444,6 +38278,9 @@ void main() {
         if (snap) ctx.player.teleport(snap.x, snap.z, snap.yaw, snap.pitch);
         ctx.player.camera.release();
       }
+      function restoreSofa() {
+        if (!sofaCol && !disposed) sofaCol = ctx.addCollider(sofaRect);
+      }
       function finishLeave() {
         seat = "idle";
         ctx.player.freeze(false);
@@ -37475,6 +38312,23 @@ void main() {
           ctx.player.camera.release();
           ctx.player.freeze(false);
           seat = "idle";
+          xrSit = false;
+          xrPanel = null;
+          return;
+        }
+        if (xrSit) {
+          xrSit = false;
+          xrPanel = null;
+          if (!ctx.xr.presenting()) {
+            if (snap) ctx.player.teleport(snap.x, snap.z, snap.yaw, snap.pitch);
+            restoreSofa();
+            finishLeave();
+            return;
+          }
+          ctx.xr.jumpTo(sofaX + 0.7, zc, { face: { x: LOOK.x, z: LOOK.z } }).then(() => {
+            restoreSofa();
+            finishLeave();
+          });
           return;
         }
         if (instantLeave || !snap) {
@@ -37488,6 +38342,12 @@ void main() {
           finishLeave();
         });
       }
+      const offXr = ctx.on("xr", (on) => {
+        if (on || seat !== "in" || !xrSit) return;
+        instantLeave = true;
+        if (ctx.overlay.isOpen()) ctx.overlay.close();
+        onClosed();
+      });
       return {
         update(dt) {
           if (seat === "in") refit();
@@ -37556,6 +38416,7 @@ void main() {
           if (seat === "in" && ui) {
             instantLeave = true;
             ctx.overlay.close();
+            onClosed();
           }
           killVideo();
           if (state === "trailer") begin("slide");
@@ -37570,7 +38431,10 @@ void main() {
           ac.abort();
           removeSofa();
           offCouch();
+          offXr();
           if (seat !== "idle") {
+            xrSit = false;
+            xrPanel = null;
             ui = null;
             if (sitAc) sitAc.abort();
             sitAc = null;
@@ -37707,6 +38571,33 @@ void main() {
           close: () => self2.overlayClose(),
           isOpen: () => !!self2.overlayState
         },
+        xr: {
+          presenting: () => self2.xrOn(),
+          panel: { open: (spec) => self2.panelOpen(spec) },
+          toast: (text, ms) => {
+            if (self2.xrOn() && app.xr.toast) app.xr.toast(text, ms);
+            else {
+              try {
+                app.deps.toast(text);
+              } catch {
+              }
+            }
+          },
+          bubble: () => app.xr && typeof app.xr.bubble === "function" ? app.xr.bubble() : { show() {
+          }, hide() {
+          }, dispose() {
+          } },
+          exitThen: (label, fn) => {
+            if (app.xr && typeof app.xr.exitThen === "function") return app.xr.exitThen(label, fn);
+            try {
+              fn();
+            } catch (err) {
+              warn2("exitThen", err);
+            }
+            return true;
+          },
+          jumpTo: (x, z, o) => self2.jumpTo(x, z, o || {})
+        },
         items: {
           take: (id, o) => app.take(id, { fromCounter: !!(o && o.from === "counter") }),
           slotOf: (id) => self2.slotOf(id),
@@ -37796,9 +38687,21 @@ void main() {
       for (const id of inside) if (!this.zoneIn.has(id)) this.emit("zone", id);
       this.zoneIn = inside;
     }
+    /** Sitzung läuft (lazy: fakeApp hat kein app.xr). */
+    xrOn() {
+      const x = this.app.xr;
+      return !!(x && x.presenting);
+    }
+    jumpTo(x, z, o) {
+      const app = this.app;
+      if (app.xr && typeof app.xr.jumpTo === "function") return app.xr.jumpTo(x, z, o);
+      app.player.teleport(x, z, typeof (o && o.face) === "number" ? o.face : void 0);
+      return Promise.resolve(true);
+    }
     // --- Spieler ---
     walkTo(x, z, o) {
       const app = this.app;
+      if (this.xrOn()) return this.jumpTo(x, z, o);
       this.flushNav();
       if (this.walkPending) {
         this.walkPending(false);
@@ -37820,6 +38723,7 @@ void main() {
       });
     }
     lookAt(x, y, z, ms = 400) {
+      if (this.xrOn()) return Promise.resolve(true);
       const p = this.app.player;
       if (this.look) this.look.resolve(false);
       const dx = x - p.x;
@@ -37847,6 +38751,7 @@ void main() {
     }
     // --- Kamera-Übernahme ---
     flyTo(pos, target, ms = 1e3) {
+      if (this.xrOn()) return this.jumpTo(pos.x, pos.z, { face: { x: target.x, z: target.z } });
       const cam = this.app.engine.camera;
       if (this.cam && this.cam.resolve) this.cam.resolve(false);
       const eye = new Vector3(pos.x, pos.y, pos.z);
@@ -37886,6 +38791,7 @@ void main() {
       return true;
     }
     release() {
+      if (this.xrOn()) return;
       if (!this.cam) return;
       const r = this.cam.resolve;
       this.cam = null;
@@ -37894,6 +38800,21 @@ void main() {
     // --- Overlay ---
     overlayOpen(el2, o) {
       const app = this.app;
+      if (this.xrOn()) {
+        try {
+          app.xr.toast("In VR noch nicht verf\xFCgbar");
+        } catch {
+        }
+        const cb = o && o.onClose;
+        if (cb) queueMicrotask(() => {
+          try {
+            cb();
+          } catch (err) {
+            warn2("overlay.onClose", err);
+          }
+        });
+        return;
+      }
       if (this.overlayState) this.overlayClose();
       this.overlayState = { el: el2, onClose: o.onClose, prev: app.mode };
       app.host.appendChild(el2);
@@ -37901,12 +38822,69 @@ void main() {
       app.player.cancelPath();
       app.setMode("overlay");
     }
+    /** VR-Panel als Overlay (Modus 'overlay'); Rückgabe: Handle, dessen close() das Overlay mitschließt. */
+    panelOpen(spec) {
+      const app = this.app;
+      const dead = { mesh: null, open: false, update() {
+      }, close() {
+      }, hit: () => null, hover: () => null, scroll() {
+      }, activate: () => false };
+      if (!this.xrOn() || typeof app.xr.openPanel !== "function") {
+        try {
+          app.deps.toast("Das geht nur in VR");
+        } catch {
+        }
+        const cb = spec && spec.onClose;
+        if (cb) queueMicrotask(() => {
+          try {
+            cb();
+          } catch (err) {
+            warn2("panel.onClose", err);
+          }
+        });
+        return dead;
+      }
+      if (this.overlayState) this.overlayClose();
+      const st = { panel: null, el: null, onClose: spec && spec.onClose, prev: app.mode };
+      const wrapper = () => {
+        if (this.overlayState === st) this.overlayClose();
+      };
+      const h2 = app.xr.openPanel({ ...spec, onClose: wrapper });
+      st.panel = h2;
+      this.overlayState = st;
+      app.player.cancelPath();
+      app.setMode("overlay");
+      return {
+        get mesh() {
+          return h2.mesh;
+        },
+        get open() {
+          return h2.open;
+        },
+        update(s) {
+          if (s && "onClose" in s) st.onClose = s.onClose;
+          h2.update({ ...s, onClose: wrapper });
+        },
+        close() {
+          h2.close();
+        },
+        hit: (uv) => h2.hit(uv),
+        hover: (uv) => h2.hover(uv),
+        scroll: (dy) => h2.scroll(dy),
+        activate: (hit) => h2.activate(hit)
+      };
+    }
     overlayClose() {
       const st = this.overlayState;
       if (!st) return;
       this.overlayState = null;
       const app = this.app;
-      if (st.el.parentNode) st.el.parentNode.removeChild(st.el);
+      if (st.panel) {
+        try {
+          st.panel.close();
+        } catch {
+        }
+      } else if (st.el && st.el.parentNode) st.el.parentNode.removeChild(st.el);
       try {
         if (st.onClose) st.onClose();
       } catch (err) {
@@ -38016,7 +38994,8 @@ void main() {
     if (text != null) e.textContent = text;
     return e;
   }
-  function createHud(host, { touch, onMenu }) {
+  var VR_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 8.5C3 7.1 4.1 6 5.5 6h13C19.9 6 21 7.1 21 8.5v6c0 1.4-1.1 2.5-2.5 2.5h-3.2c-.8 0-1.5-.5-1.8-1.2l-.3-.8c-.2-.5-.7-.8-1.2-.8s-1 .3-1.2.8l-.3.8c-.3.7-1 1.2-1.8 1.2H5.5C4.1 17 3 15.9 3 14.5v-6zm2 .5v5.5c0 .3.2.5.5.5h2.6l.1-.3c.5-1.2 1.6-1.9 2.8-1.9s2.3.7 2.8 1.9l.1.3h2.6c.3 0 .5-.2.5-.5V9c0-.3-.2-.5-.5-.5h-13c-.3 0-.5.2-.5.5z"/></svg>';
+  function createHud(host, { touch, onMenu, onVr }) {
     const root = el("div", "lfx-store-ov");
     const cross = el("div", "lfx-store-cross");
     cross.setAttribute("aria-hidden", "true");
@@ -38052,6 +39031,18 @@ void main() {
       });
       root.appendChild(menuBtn);
     }
+    const vrBtn = el("button", "lfx-store-vrbtn");
+    vrBtn.type = "button";
+    vrBtn.setAttribute("aria-label", "In VR betreten");
+    vrBtn.innerHTML = VR_ICON;
+    vrBtn.appendChild(el("span", "lfx-store-vrbtn-label", "In VR betreten"));
+    vrBtn.hidden = true;
+    for (const ev of ["pointerdown", "mousedown", "touchstart"]) vrBtn.addEventListener(ev, (e) => e.stopPropagation());
+    vrBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (onVr) onVr();
+    });
+    root.appendChild(vrBtn);
     host.appendChild(root);
     hint.hidden = true;
     cross.hidden = touch;
@@ -38091,6 +39082,9 @@ void main() {
       showMenuBtn(on) {
         if (menuBtn) menuBtn.hidden = !on;
       },
+      showVr(on) {
+        vrBtn.hidden = !on;
+      },
       note(text, ms = 2200) {
         toast.textContent = text;
         toast.hidden = false;
@@ -38123,12 +39117,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn3 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn6 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn3}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn6}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -38156,6 +39150,10 @@ void main() {
       return b;
     };
     mk2("Weiter", () => a.onResume(), "lfx-store-act--primary");
+    const vrb = mk2("VR-Modus", () => {
+      if (a.onVr) a.onVr();
+    });
+    vrb.hidden = true;
     mk2("Suche", () => a.onSearch());
     mk2("Klassische Ansicht", () => a.onClassic());
     const q = mk2("", () => {
@@ -38281,6 +39279,7 @@ void main() {
       }
     });
     function refresh() {
+      vrb.hidden = !(a.getVr && a.getVr());
       q.textContent = `Qualit\xE4t: ${QUALITY_LABEL[a.getQuality()] || "Auto"}`;
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
@@ -38355,7 +39354,7 @@ void main() {
   var TMP_V = new Vector3();
   var TMP_E = new Euler();
   var IDENT = new Quaternion();
-  var TARGET = { pos: new Vector3(), scale: 1 };
+  var TARGET = { pos: new Vector3(), scale: 1, quat: new Quaternion() };
   var ease3 = (t) => 1 - (1 - t) ** 3;
   var SIDE_COLOR = { vhs: 14866621, dvd: 1916828, box: 13214247 };
   var BACK_COLORS = ["#1f2a44", "#3a1f2e", "#12352f", "#352a12", "#2a1f44", "#14303f"];
@@ -38481,10 +39480,95 @@ void main() {
     ctx.fillStyle = "rgba(255,255,255,0.8)";
     for (let x = W / 2 - 60; x < W / 2 + 60; x += 4) ctx.fillRect(x, H - 38, 1 + x * 7 % 3, 12);
   }
+  var clip = (text, n) => {
+    const t = String(text || "").replace(/\s+/g, " ").trim();
+    if (t.length <= n) return t;
+    return `${t.slice(0, n).replace(/\s+\S*$/, "")} \u2026`;
+  };
+  function metaLine(it) {
+    return [it.ProductionYear, fsk(it.OfficialRating), it.RunTimeTicks ? ticksToText(it.RunTimeTicks) : "", it.CommunityRating ? `\u2605 ${Number(it.CommunityRating).toFixed(1).replace(".", ",")}` : ""].filter(Boolean).join(" \xB7 ");
+  }
+  function itemFlags(it) {
+    const ud = it.UserData || {};
+    const lfx = it.lfx || {};
+    return {
+      fav: !!ud.IsFavorite,
+      seen: !!(ud.Played || lfx.watched),
+      resumable: it.Type !== "Series" && !!(lfx.progress > 0 || ud.PlaybackPositionTicks > 0),
+      series: it.Type === "Series"
+    };
+  }
+  function firstOpenSeason(seasons) {
+    return Math.max(0, (seasons || []).findIndex((s) => !(s.UserData && s.UserData.Played)));
+  }
+  function episodeRow(ep) {
+    const ticks = ep.UserData && ep.UserData.PlaybackPositionTicks || 0;
+    const played = !!(ep.UserData && ep.UserData.Played);
+    const n = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
+    return { ep, name: `${n}${ep.Name || "Folge"}`, tag: played ? "\u2713" : ticks > 0 ? "\u25B6 weiter" : "", runtime: ep.RunTimeTicks ? ticksToText(ep.RunTimeTicks) : "", resume: ticks > 0, played };
+  }
+  function nextEpisode(eps) {
+    return (eps || []).find((x) => !(x.UserData && x.UserData.Played)) || (eps || [])[0] || null;
+  }
+  function seriesModel(seasons, eps, sel = 0) {
+    const ss = seasons || [];
+    return {
+      tabs: ss.map((s, i) => ({ id: s.Id, label: s.Name || `Staffel ${i + 1}`, on: i === sel })),
+      rows: (eps || []).map(episodeRow),
+      next: nextEpisode(eps),
+      firstOpen: firstOpenSeason(ss)
+    };
+  }
+  function buildVrSpec(item, st, act) {
+    const f = itemFlags(item);
+    const meta = metaLine(item);
+    const spec = {
+      title: item.Name || "",
+      lines: meta ? [meta] : [],
+      width: 0.55
+    };
+    const ov = item.Overview ? clip(item.Overview, f.series ? 90 : 130) : "";
+    if (ov) spec.text = ov;
+    const sr = f.series ? st && st.series : null;
+    if (sr && sr.seasons && sr.seasons.length) {
+      const m = seriesModel(sr.seasons, sr.eps, sr.sel);
+      spec.tabs = m.tabs.map((t, i) => ({ label: t.label, on: t.on, onSelect: () => act.season(i) }));
+      let rows;
+      if (sr.status === "loading") rows = [{ label: "Lade Folgen \u2026" }];
+      else if (!m.rows.length) rows = [{ label: "Keine Folgen gefunden." }];
+      else {
+        rows = m.rows.map((r) => ({
+          label: r.name,
+          sub: [r.runtime, r.played ? "gesehen" : r.resume ? "weiter" : ""].filter(Boolean).join(" \xB7 ") || void 0,
+          onSelect: () => act.episode(r.ep, r.resume)
+        }));
+      }
+      spec.list = { rows, visible: 4 };
+    } else if (f.series && sr && sr.status === "ready") {
+      spec.list = { rows: [{ label: "Keine Folgen gefunden." }], visible: 1 };
+    }
+    const buttons = [];
+    if (!f.series) buttons.push({ label: "Abspielen", primary: true, onSelect: () => act.play(item, false) });
+    if (f.resumable) buttons.push({ label: "Weiterschauen", primary: true, onSelect: () => act.play(item, true) });
+    buttons.push({ label: f.fav ? "Gemerkt \u2713" : "Merken", on: f.fav, onSelect: () => act.toggle("fav") });
+    buttons.push({ label: f.seen ? "Gesehen \u2713" : "Gesehen", on: f.seen, onSelect: () => act.toggle("seen") });
+    buttons.push({ label: "Umdrehen", onSelect: () => act.flip() });
+    buttons.push({ label: "Zur\xFCckstellen", onSelect: () => act.back() });
+    spec.buttons = buttons;
+    return spec;
+  }
   var HoldView = class {
     constructor(o) {
       this.host = o.host;
       this.camera = o.camera;
+      this.anchor = o.camera;
+      this.xr = false;
+      this.hand = "right";
+      this.openPanel = o.openPanel || null;
+      this.isXr = o.isXr || (() => true);
+      this.vr = null;
+      this.series = null;
+      this.hidden = false;
       this.deps = o.deps;
       this.items = o.items;
       this.shelves = o.shelves;
@@ -38514,8 +39598,15 @@ void main() {
       return this.item && (this.state === "in" || this.state === "held") ? this.item.Id : null;
     }
     /** @param {string} id @param {{fv,info}|null} slot @param {boolean} instant */
-    open(id, slot, instant = false) {
+    open(id, slot, instant = false, opts = null) {
       if (this.state !== "idle") this.dispose(true);
+      const xr = !!(opts && opts.xr);
+      this.xr = xr;
+      this.anchor = xr && opts.anchor || this.camera;
+      this.hand = opts && opts.hand || "right";
+      this.dur = xr && opts.grab ? 0.18 : 0.4;
+      this.series = null;
+      this.hidden = false;
       const item = this.items.get(id) || { Id: id, Name: "\u2026", lfx: { media: "dvd" } };
       this.item = item;
       this.slot = slot || null;
@@ -38538,27 +39629,27 @@ void main() {
       };
       this.frontTex = mkTex(this.front);
       this.backTex = mkTex(this.back);
-      const side = new MeshLambertMaterial({ color: SIDE_COLOR[media] || 1916828, depthTest: false, transparent: true });
-      const front = new MeshBasicMaterial({ map: this.frontTex, depthTest: false, transparent: true, toneMapped: false });
-      const back = new MeshBasicMaterial({ map: this.backTex, depthTest: false, transparent: true, toneMapped: false });
+      const side = new MeshLambertMaterial({ color: SIDE_COLOR[media] || 1916828, depthTest: xr, transparent: true });
+      const front = new MeshBasicMaterial({ map: this.frontTex, depthTest: xr, transparent: true, toneMapped: false });
+      const back = new MeshBasicMaterial({ map: this.backTex, depthTest: xr, transparent: true, toneMapped: false });
       const C = this.layout && this.layout.spec && this.layout.spec.cover || COVER;
       const w = media === "box" ? C.boxW : C.w;
       const h2 = media === "box" ? C.boxH : C.h;
       this.mesh = new Mesh(new BoxGeometry(w, h2, th), [side, side, side, side, front, back]);
-      this.mesh.renderOrder = 999;
+      this.mesh.renderOrder = xr ? 0 : 999;
       this.group = new Group();
       this.group.add(this.mesh);
-      this.camera.add(this.group);
+      this.anchor.add(this.group);
       this.rot.x = 0;
       this.rot.y = 0;
       this.rotTargetY = 0;
       this.flipped = false;
       if (slot) {
         this.shelves.setHidden(slot.fv, slot.info, true);
-        this.camera.updateMatrixWorld(true);
-        slotWorld(slot.fv, slot.info, TMP_V, TMP_Q);
-        this.from.pos.copy(this.camera.worldToLocal(TMP_V.clone()));
-        this.camera.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
+        this.fromSlot();
+      } else if (this.gripMode()) {
+        this.from.pos.set(0, -0.1, 0.1);
+        this.from.quat.setFromEuler(TMP_E.set(-0.5, 0, 0));
       } else {
         this.from.pos.set(0, -0.6, -0.5);
         this.from.quat.setFromEuler(TMP_E.set(-0.5, 0, 0));
@@ -38609,6 +39700,10 @@ void main() {
     }
     // --- Panel ---
     buildPanel(token) {
+      if (this.xr) {
+        this.buildVrPanel(token);
+        return;
+      }
       const item = this.item;
       const root = el("div", "lfx-store-hold");
       const drag = el("div", "lfx-store-hold-drag");
@@ -38631,8 +39726,7 @@ void main() {
         return b;
       };
       this.dom.btns = {};
-      const isSeries = item.Type === "Series";
-      const resumable = !isSeries && (item.lfx && item.lfx.progress > 0 || item.UserData && item.UserData.PlaybackPositionTicks > 0);
+      const { series: isSeries, resumable } = itemFlags(item);
       if (!isSeries) this.dom.btns.play = btn("Abspielen", () => this.play(item, false), "lfx-store-act--primary");
       if (resumable) this.dom.btns.resume = btn("Weiterschauen", () => this.play(item, true), "lfx-store-act--primary");
       this.dom.btns.fav = btn("", () => this.toggle("fav"));
@@ -38666,12 +39760,14 @@ void main() {
       drag.addEventListener("pointercancel", end);
     }
     refreshMeta() {
+      if (this.vr) {
+        this.refreshVr();
+        return;
+      }
       if (!this.dom) return;
       const it = this.item;
-      const bits = [it.ProductionYear, fsk(it.OfficialRating), it.RunTimeTicks ? ticksToText(it.RunTimeTicks) : "", it.CommunityRating ? `\u2605 ${Number(it.CommunityRating).toFixed(1).replace(".", ",")}` : ""].filter(Boolean);
-      this.dom.meta.textContent = bits.join(" \xB7 ");
-      const fav = !!(it.UserData && it.UserData.IsFavorite);
-      const seen = !!(it.UserData && it.UserData.Played || it.lfx && it.lfx.watched);
+      this.dom.meta.textContent = metaLine(it);
+      const { fav, seen } = itemFlags(it);
       this.dom.btns.fav.textContent = fav ? "Gemerkt \u2713" : "Merken";
       this.dom.btns.fav.classList.toggle("is-on", fav);
       this.dom.btns.seen.textContent = seen ? "Gesehen \u2713" : "Gesehen";
@@ -38710,18 +39806,32 @@ void main() {
         this.deps.toast("Wiedergabe nicht m\xF6glich");
       }
     }
-    async buildSeries(token) {
-      const { panel } = this.dom;
-      const tabs = el("div", "lfx-store-hold-tabs");
-      const list = el("div", "lfx-store-hold-eps");
-      panel.append(tabs, list);
-      let seasons = [];
+    // Seriendaten (gemeinsam für DOM und VR)
+    async loadSeasons(token) {
+      let seasons;
       try {
         seasons = await this.deps.getSeasons(this.item.Id) || [];
       } catch {
         seasons = [];
       }
-      if (token !== this.token) return;
+      return token !== this.token ? null : seasons;
+    }
+    async loadEpisodes(seasonId, token) {
+      let eps;
+      try {
+        eps = await this.deps.getEpisodes(this.item.Id, seasonId) || [];
+      } catch {
+        eps = [];
+      }
+      return token !== this.token ? null : eps;
+    }
+    async buildSeries(token) {
+      const { panel } = this.dom;
+      const tabs = el("div", "lfx-store-hold-tabs");
+      const list = el("div", "lfx-store-hold-eps");
+      panel.append(tabs, list);
+      const seasons = await this.loadSeasons(token);
+      if (seasons === null) return;
       if (!seasons.length) {
         list.textContent = "Keine Folgen gefunden.";
         return;
@@ -38737,25 +39847,20 @@ void main() {
       const select = async (i) => {
         [...tabs.children].forEach((c, k) => c.classList.toggle("is-on", k === i));
         list.textContent = "Lade Folgen \u2026";
-        try {
-          eps = await this.deps.getEpisodes(this.item.Id, seasons[i].Id) || [];
-        } catch {
-          eps = [];
-        }
-        if (token !== this.token) return;
+        const got = await this.loadEpisodes(seasons[i].Id, token);
+        if (got === null) return;
+        eps = got;
         list.textContent = "";
-        if (!eps.length) list.textContent = "Keine Folgen gefunden.";
-        for (const ep of eps) {
-          const ticks = ep.UserData && ep.UserData.PlaybackPositionTicks;
+        const m = seriesModel(seasons, eps, i);
+        if (!m.rows.length) list.textContent = "Keine Folgen gefunden.";
+        for (const r of m.rows) {
           const row = el("button", "lfx-store-ep");
           row.type = "button";
-          const n = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
-          row.append(el("span", "lfx-store-ep-name", `${n}${ep.Name || "Folge"}`));
-          const tag = ep.UserData && ep.UserData.Played ? "\u2713" : ticks > 0 ? "\u25B6 weiter" : "";
-          if (tag) row.append(el("span", "lfx-store-ep-tag", tag));
+          row.append(el("span", "lfx-store-ep-name", r.name));
+          if (r.tag) row.append(el("span", "lfx-store-ep-tag", r.tag));
           row.addEventListener("click", (e) => {
             e.stopPropagation();
-            this.play(ep, ticks > 0);
+            this.play(r.ep, r.resume);
           });
           list.appendChild(row);
         }
@@ -38771,14 +39876,109 @@ void main() {
       });
       playBtn.onclick = (e) => {
         e.stopPropagation();
-        const next = eps.find((x) => !(x.UserData && x.UserData.Played)) || eps[0];
+        const next = nextEpisode(eps);
         if (next) this.play(next, !!(next.UserData && next.UserData.PlaybackPositionTicks > 0));
       };
-      const firstOpen = Math.max(0, seasons.findIndex((s) => !(s.UserData && s.UserData.Played)));
-      select(firstOpen);
+      select(firstOpenSeason(seasons));
+    }
+    // --- VR-Panel ---
+    vrSpec() {
+      const spec = buildVrSpec(this.item, { series: this.series }, {
+        play: (it, resume) => this.play(it, resume),
+        toggle: (k) => this.toggle(k),
+        flip: () => {
+          this.flipped = !this.flipped;
+          this.rotTargetY = this.flipped ? Math.PI : 0;
+        },
+        back: () => this.close(true),
+        season: (i) => this.selectVrSeason(i),
+        episode: (ep, resume) => this.play(ep, resume)
+      });
+      spec.anchor = { head: true, offset: { x: this.hand === "left" ? 0.3 : -0.3, y: -0.15, z: 0.65 }, follow: true };
+      spec.onClose = () => {
+        if (this.vr && this.isXr()) this.close(true);
+      };
+      return spec;
+    }
+    buildVrPanel(token) {
+      if (typeof this.openPanel !== "function" || !this.group) return;
+      this.vr = this.openPanel(this.vrSpec());
+      if (this.vr && this.hidden && this.vr.mesh) this.vr.mesh.visible = false;
+      if (itemFlags(this.item).series) this.loadVrSeries(token);
+    }
+    refreshVr() {
+      if (this.vr && this.group) {
+        try {
+          this.vr.update(this.vrSpec());
+        } catch {
+        }
+      }
+    }
+    closeVr() {
+      const h2 = this.vr;
+      this.vr = null;
+      if (h2) {
+        try {
+          h2.close();
+        } catch {
+        }
+      }
+    }
+    async loadVrSeries(token) {
+      this.series = { seasons: [], sel: 0, eps: [], status: "loading" };
+      const seasons = await this.loadSeasons(token);
+      if (seasons === null) return;
+      this.series.seasons = seasons;
+      if (!seasons.length) {
+        this.series.status = "ready";
+        this.refreshVr();
+        return;
+      }
+      await this.selectVrSeason(firstOpenSeason(seasons), token);
+    }
+    async selectVrSeason(i, token = this.token) {
+      const sr = this.series;
+      if (!sr || !sr.seasons[i]) return;
+      sr.sel = i;
+      sr.status = "loading";
+      sr.eps = [];
+      this.refreshVr();
+      const eps = await this.loadEpisodes(sr.seasons[i].Id, token);
+      if (eps === null || this.series !== sr || sr.sel !== i) return;
+      sr.eps = eps;
+      sr.status = "ready";
+      this.refreshVr();
     }
     // --- Animation ---
+    /** Grip-Raum der Hand (VR) statt Kamera. */
+    gripMode() {
+      return this.xr && this.anchor !== this.camera;
+    }
+    /**
+     * Ausrichtung der Hülle im Anker (VR): Die Vorderseite (+z der Hülle) zeigt vom Griff zum Gesicht, also im Grip-Raum
+     * nach oben (+y, leicht zur Körpermitte); im Ray-Raum der Hände nach hinten-oben. Hülle steht dabei „hochkant“, Oberkante nach vorn.
+     */
+    gripQuat(q) {
+      const kind = this.anchor && this.anchor.userData && this.anchor.userData.lfxHold;
+      const side = this.hand === "left" ? -1 : 1;
+      if (kind === "grip") return q.setFromEuler(TMP_E.set(-Math.PI / 2, 0, 0.4 * side, "ZXY"));
+      if (kind === "ray") return q.setFromEuler(TMP_E.set(-0.9, 0.25 * side, 0, "YXZ"));
+      return q.identity();
+    }
+    fromSlot() {
+      this.anchor.updateMatrixWorld(true);
+      slotWorld(this.slot.fv, this.slot.info, TMP_V, TMP_Q);
+      this.from.pos.copy(this.anchor.worldToLocal(TMP_V.clone()));
+      this.anchor.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
+    }
     target() {
+      if (this.gripMode()) {
+        if (this.anchor.userData && this.anchor.userData.lfxHold === "grip") TARGET.pos.set(0, 0.08, -0.04);
+        else TARGET.pos.set(0, 0.03, -0.09);
+        TARGET.scale = 1.2;
+        this.gripQuat(TARGET.quat);
+        return TARGET;
+      }
       const wide = this.camera.aspect >= 1.2;
       if (wide) TARGET.pos.set(-0.14, 0.02, -0.66);
       else TARGET.pos.set(0, 0.3, -0.6);
@@ -38791,16 +39991,13 @@ void main() {
       const tg = this.target();
       const k = ease3(Math.max(0, Math.min(1, t)));
       if (this.state === "out" && this.slot) {
-        this.camera.updateMatrixWorld(true);
-        slotWorld(this.slot.fv, this.slot.info, TMP_V, TMP_Q);
-        this.from.pos.copy(this.camera.worldToLocal(TMP_V.clone()));
-        this.camera.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
+        this.fromSlot();
       }
       this.group.position.lerpVectors(this.from.pos, tg.pos, k);
       const C = this.layout && this.layout.spec && this.layout.spec.cover;
-      const norm2 = C ? COVER.h / C.h : 1;
+      const norm2 = C && !this.gripMode() ? COVER.h / C.h : 1;
       this.group.scale.setScalar(1 + (tg.scale * norm2 - 1) * k);
-      this.group.quaternion.copy(this.from.quat).slerp(IDENT, k);
+      this.group.quaternion.copy(this.from.quat).slerp(this.gripMode() ? tg.quat : IDENT, k);
     }
     update(dt) {
       if (this.state === "idle" || !this.group) return;
@@ -38822,7 +40019,7 @@ void main() {
         this.pose(1);
         this.rot.y += (this.rotTargetY - this.rot.y) * Math.min(1, dt * 8);
       }
-      const sway = this.state === "held" ? Math.sin(performance.now() / 1400) * 0.04 : 0;
+      const sway = this.state === "held" && !this.xr ? Math.sin(performance.now() / 1400) * 0.04 : 0;
       TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, "YXZ");
       this.mesh.quaternion.setFromEuler(TMP_E);
     }
@@ -38830,6 +40027,7 @@ void main() {
     close(animated = true) {
       if (this.state === "idle" || this.state === "out") return;
       if (this.dom) this.dom.root.classList.add("is-closing");
+      this.closeVr();
       if (this.slot && animated) {
         this.state = "out";
         this.t = 1;
@@ -38851,7 +40049,7 @@ void main() {
     }
     teardown() {
       if (this.group) {
-        this.camera.remove(this.group);
+        this.anchor.remove(this.group);
         this.mesh.geometry.dispose();
         const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
         new Set(mats).forEach((m) => m.dispose());
@@ -38874,11 +40072,51 @@ void main() {
         this.dom.root.remove();
         this.dom = null;
       }
+      this.closeVr();
+      this.series = null;
     }
     /** Hülle bleibt in der Hand, DOM wandert mit dem Host (resume). */
     setHost(host) {
       this.host = host;
       if (this.dom) host.appendChild(this.dom.root);
+    }
+    setVisible(on) {
+      this.hidden = !on;
+      if (this.group) this.group.visible = !!on;
+      if (this.dom) this.dom.root.style.display = on ? "" : "none";
+      if (this.vr && this.vr.mesh) this.vr.mesh.visible = !!on;
+    }
+    /** Offene Hülle ohne Flug umhängen (VR-Start/-Ende) und die Panel-Art wechseln. */
+    reanchor(anchor, { xr = false, hand } = {}) {
+      const next = anchor || this.camera;
+      if (hand) this.hand = hand;
+      if (this.state === "idle" || !this.group) {
+        this.anchor = next;
+        this.xr = !!xr;
+        return;
+      }
+      this.anchor.remove(this.group);
+      this.anchor = next;
+      this.xr = !!xr;
+      this.anchor.add(this.group);
+      if (this.state === "in") {
+        this.state = "held";
+        this.t = 1;
+      }
+      this.mesh.renderOrder = this.xr ? 0 : 999;
+      const mats = Array.isArray(this.mesh.material) ? this.mesh.material : [this.mesh.material];
+      new Set(mats).forEach((m) => {
+        m.depthTest = this.xr;
+      });
+      this.group.visible = !this.hidden;
+      this.closeVr();
+      if (this.dom) {
+        this.dom.root.remove();
+        this.dom = null;
+      }
+      if (this.state !== "out") this.buildPanel(this.token);
+      if (this.hidden) this.setVisible(false);
+      this.pose(1);
     }
     dispose(silent = false) {
       this.token++;
@@ -39187,17 +40425,4201 @@ void main() {
     };
   }
 
+  // src/js/store3d/xr/guard.js
+  var EXIT_THEN = ["classicView", "openLibraries", "openSettings", "openThemePicker", "openMenu", "logout", "onBigCovers"];
+  var EXIT_LABEL = "Das geht nur au\xDFerhalb von VR";
+  function wrapDeps(deps, getXr) {
+    if (!deps || typeof deps !== "object") return deps;
+    const out = { ...deps };
+    const live = () => {
+      const x = getXr && getXr();
+      return x && x.presenting ? x : null;
+    };
+    if (typeof deps.toast === "function") {
+      out.toast = (...a) => {
+        const x = live();
+        return x ? x.toast(a[0]) : deps.toast(...a);
+      };
+    }
+    if (typeof deps.play === "function") {
+      out.play = (item, o) => {
+        const x = live();
+        if (!x) return deps.play(item, o);
+        x.beforePlay(item, o);
+        const res = deps.play(item, o);
+        const fail = () => {
+          if (typeof x.leaveCinema === "function") x.leaveCinema("fail");
+        };
+        if (res && typeof res.then === "function") res.then((ok) => {
+          if (ok === false) fail();
+        }, fail);
+        else if (res === false) fail();
+        return res;
+      };
+    }
+    for (const name of EXIT_THEN) {
+      if (typeof deps[name] !== "function") continue;
+      out[name] = (...a) => {
+        const x = live();
+        if (!x) return deps[name](...a);
+        return x.exitThen(EXIT_LABEL, () => deps[name](...a));
+      };
+    }
+    if (typeof deps.onFatal === "function") {
+      out.onFatal = (...a) => {
+        const x = live();
+        if (x) {
+          try {
+            x.exit();
+          } catch {
+          }
+        }
+        return deps.onFatal(...a);
+      };
+    }
+    return out;
+  }
+
+  // src/js/store3d/xr/session.js
+  var probed = null;
+  function probeXr() {
+    if (probed) return probed;
+    probed = (async () => {
+      try {
+        const xr = typeof navigator !== "undefined" ? navigator.xr : null;
+        if (!xr || typeof xr.isSessionSupported !== "function") return false;
+        return !!await xr.isSessionSupported("immersive-vr");
+      } catch {
+        return false;
+      }
+    })();
+    return probed;
+  }
+  var XrSession = class {
+    /** @param {{ renderer, onStart(info), onEnd(), onVisibility(state) }} o */
+    constructor({ renderer, onStart, onEnd, onVisibility }) {
+      this.renderer = renderer;
+      this.onStart = onStart || (() => {
+      });
+      this.onEnd = onEnd || (() => {
+      });
+      this.onVisibility = onVisibility || (() => {
+      });
+      this._session = null;
+      this._presenting = false;
+      this._busy = false;
+      this.floor = true;
+      this.visibility = "visible";
+      this._ended = () => this.handleEnd();
+      this._vis = () => {
+        const s = this._session;
+        this.visibility = s && s.visibilityState || "visible";
+        this.onVisibility(this.visibility);
+      };
+    }
+    get presenting() {
+      return this._presenting;
+    }
+    get session() {
+      return this._session;
+    }
+    /** Muss synchron aus einem Klick-Handler laufen (Nutzeraktivierung). Löst mit true/false auf. */
+    enter() {
+      const xr = typeof navigator !== "undefined" ? navigator.xr : null;
+      if (this._busy || this._presenting || !xr) return Promise.resolve(false);
+      this._busy = true;
+      let req;
+      try {
+        req = xr.requestSession("immersive-vr", { optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"] });
+      } catch {
+        this._busy = false;
+        return Promise.resolve(false);
+      }
+      return Promise.resolve(req).then(async (session) => {
+        const r = this.renderer;
+        try {
+          let type = "local-floor";
+          this.floor = true;
+          try {
+            await session.requestReferenceSpace("local-floor");
+          } catch {
+            type = "local";
+            this.floor = false;
+          }
+          this._session = session;
+          r.xr.enabled = true;
+          r.xr.setReferenceSpaceType(type);
+          session.addEventListener("visibilitychange", this._vis);
+          r.xr.addEventListener("sessionend", this._ended);
+          await r.xr.setSession(session);
+          if (this._session !== session) return false;
+          this._presenting = true;
+          this._busy = false;
+          this.visibility = session.visibilityState || "visible";
+          this.onStart({ floor: this.floor });
+          return true;
+        } catch {
+          try {
+            console.warn("[LenzFlix Store3D] XR-Start fehlgeschlagen");
+          } catch {
+          }
+          this.cleanup();
+          try {
+            session.end();
+          } catch {
+          }
+          return false;
+        }
+      }, () => {
+        this._busy = false;
+        return false;
+      });
+    }
+    /** Sitzung beenden (Ende meldet sich über onEnd). */
+    exit() {
+      const s = this._session;
+      if (!s) return Promise.resolve();
+      try {
+        return Promise.resolve(s.end()).catch(() => {
+        });
+      } catch {
+        return Promise.resolve();
+      }
+    }
+    cleanup() {
+      const s = this._session;
+      if (s) {
+        try {
+          s.removeEventListener("visibilitychange", this._vis);
+        } catch {
+        }
+      }
+      try {
+        this.renderer.xr.removeEventListener("sessionend", this._ended);
+      } catch {
+      }
+      this._session = null;
+      this._presenting = false;
+      this._busy = false;
+      this.renderer.xr.enabled = false;
+    }
+    handleEnd() {
+      const was = this._presenting;
+      this.cleanup();
+      if (was) this.onEnd();
+    }
+    dispose() {
+      const s = this._session;
+      this.onStart = () => {
+      };
+      this.onEnd = () => {
+      };
+      this.onVisibility = () => {
+      };
+      this.cleanup();
+      if (s) {
+        try {
+          Promise.resolve(s.end()).catch(() => {
+          });
+        } catch {
+        }
+      }
+    }
+  };
+
+  // src/js/store3d/xr/rig.js
+  var _e3 = new Euler(0, 0, 0, "YXZ");
+  function headLocal(cameraXr) {
+    _e3.setFromQuaternion(cameraXr.quaternion, "YXZ");
+    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e3.y, pitch: _e3.x };
+  }
+  function headWorld(rig, head) {
+    const ry = rig.rotation.y;
+    const c = Math.cos(ry);
+    const s = Math.sin(ry);
+    return { x: rig.position.x + head.x * c + head.z * s, z: rig.position.z - head.x * s + head.z * c, yaw: ry + head.yaw };
+  }
+  function placeRig(rig, target, head, { y = 0 } = {}) {
+    const ry = target.yaw - head.yaw;
+    const c = Math.cos(ry);
+    const s = Math.sin(ry);
+    rig.rotation.set(0, ry, 0);
+    rig.position.set(target.x - (head.x * c + head.z * s), y, target.z - (-head.x * s + head.z * c));
+    return rig;
+  }
+  function turnAboutHead(rig, head, dYaw) {
+    const w = headWorld(rig, head);
+    return placeRig(rig, { x: w.x, z: w.z, yaw: w.yaw + dYaw }, head, { y: rig.position.y });
+  }
+  function seatedOffset(headY, eye = 1.65) {
+    return eye - (Number.isFinite(headY) ? headY : 0);
+  }
+
+  // src/js/store3d/xr/fade.js
+  function createFade(camera) {
+    const mat = new MeshBasicMaterial({ color: 0, transparent: true, opacity: 0, depthTest: false, depthWrite: false, side: BackSide, toneMapped: false, fog: false });
+    const mesh = new Mesh(new SphereGeometry(0.3, 16, 12), mat);
+    mesh.name = "lfx-fade";
+    mesh.renderOrder = 1e4;
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    camera.add(mesh);
+    let alpha = 0;
+    let from = 0;
+    let target = 0;
+    let dur = 0;
+    let t = 0;
+    let resolve = null;
+    const apply = () => {
+      mat.opacity = alpha;
+      mesh.visible = alpha > 2e-3;
+    };
+    const api = {
+      mesh,
+      get alpha() {
+        return alpha;
+      },
+      /** Auf alpha (0..1) in ms blenden. */
+      to(a, ms = 200) {
+        if (resolve) {
+          const r = resolve;
+          resolve = null;
+          r();
+        }
+        target = Math.max(0, Math.min(1, a));
+        from = alpha;
+        dur = Math.max(0, ms) / 1e3;
+        t = 0;
+        if (dur === 0 || from === target) {
+          alpha = target;
+          apply();
+          return Promise.resolve();
+        }
+        return new Promise((res) => {
+          resolve = res;
+        });
+      },
+      /** Abdunkeln, fn() ausführen, aufhellen. */
+      async jump(fn, { out = 180, in: inn = 220 } = {}) {
+        await api.to(1, out);
+        try {
+          await fn();
+        } finally {
+          await api.to(0, inn);
+        }
+      },
+      update(dt) {
+        if (!resolve) return;
+        t += dt;
+        const k = dur > 0 ? Math.min(1, t / dur) : 1;
+        alpha = from + (target - from) * k;
+        apply();
+        if (k >= 1) {
+          const r = resolve;
+          resolve = null;
+          r();
+        }
+      },
+      dispose() {
+        if (resolve) {
+          const r = resolve;
+          resolve = null;
+          r();
+        }
+        mesh.removeFromParent();
+        mesh.geometry.dispose();
+        mat.dispose();
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/xr/keyboard.js
+  var KEY_H = 64;
+  var KEY_GAP = 8;
+  var KEY_ROWS = 5;
+  var MAX_LEN = 80;
+  var keyboardHeight = () => KEY_ROWS * KEY_H + (KEY_ROWS - 1) * KEY_GAP;
+  var chars = (s) => [...s].map((c) => ({ w: 1, key: c }));
+  var ROWS = [
+    chars("1234567890\xDF"),
+    chars("qwertzuiop\xFC"),
+    chars("asdfghjkl\xF6\xE4"),
+    [{ w: 1.5, key: "shift", label: "\u21E7" }, ...chars("yxcvbnm-"), { w: 1.5, key: "back", label: "\u232B" }],
+    [{ w: 8, key: "space", label: "Leertaste" }, { w: 3, key: "enter", label: "Suchen" }]
+  ];
+  var isLetter = (c) => c !== "\xDF" && c.toLowerCase() !== c.toUpperCase();
+  function keyboardLayout(W, { shift = false } = {}) {
+    const out = [];
+    ROWS.forEach((row, r) => {
+      const units = row.reduce((a, k) => a + k.w, 0);
+      const unit = (W - (row.length - 1) * KEY_GAP) / units;
+      let x = 0;
+      for (const k of row) {
+        const w = k.w * unit;
+        const label = k.label || (shift && isLetter(k.key) ? k.key.toUpperCase() : k.key);
+        out.push({ x, y: r * (KEY_H + KEY_GAP), w, h: KEY_H, label, key: k.key });
+        x += w + KEY_GAP;
+      }
+    });
+    return out;
+  }
+  function applyKey(value, key, { shift = false } = {}) {
+    const v = value == null ? "" : String(value);
+    if (key === "shift") return { value: v, shift: !shift, enter: false };
+    if (key === "enter") return { value: v, shift, enter: true };
+    if (key === "back") return { value: [...v].slice(0, -1).join(""), shift, enter: false };
+    if (key === "space") return { value: v.length >= MAX_LEN ? v : `${v} `, shift, enter: false };
+    if (typeof key === "string" && [...key].length === 1) {
+      if (v.length >= MAX_LEN) return { value: v, shift, enter: false };
+      const c = shift && isLetter(key) ? key.toUpperCase() : key;
+      return { value: v + c, shift: false, enter: false };
+    }
+    return { value: v, shift, enter: false };
+  }
+
+  // src/js/store3d/xr/panel.js
+  var PX_PER_M = 1e3;
+  var MAX_H = 1100;
+  var PAD = 36;
+  var GAP = 18;
+  var MAX_HALF_ANGLE = 27.5 * Math.PI / 180;
+  var HEAD_TURN = 35 * Math.PI / 180;
+  var HEAD_WALK = 0.6;
+  var ROW_H = 88;
+  var BTN_H = 76;
+  var TAB_H = 60;
+  var INPUT_H = 72;
+  var COLORS = {
+    bg: "rgba(13, 19, 48, 0.94)",
+    border: "#2f3d86",
+    text: "#f4f6ff",
+    muted: "#aab4e8",
+    yellow: "#ffd23f",
+    pink: "#ff3d7f",
+    fill: "#1a2458",
+    fillOn: "#232f6c",
+    hover: "#3a4a9c",
+    dark: "#0d1330"
+  };
+  var FONT2 = 'system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  var approx = (text, size) => String(text).length * size * 0.55;
+  function wrapText2(text, maxW, size, measure = approx) {
+    const out = [];
+    for (const para of String(text == null ? "" : text).split("\n")) {
+      let line = "";
+      for (const w of para.split(/\s+/).filter(Boolean)) {
+        const cand = line ? `${line} ${w}` : w;
+        if (line && measure(cand, size) > maxW) {
+          out.push(line);
+          line = w;
+        } else line = cand;
+      }
+      out.push(line);
+    }
+    return out;
+  }
+  function build(s, W, scroll, measure, shift, visCap) {
+    const ops = [];
+    const hits = [];
+    const inner = W - PAD * 2;
+    let y = PAD;
+    let maxScroll = 0;
+    let listVisible = 0;
+    const text = (x, yy, t, size, color, extra = {}) => ops.push({ t: "text", x, y: yy, text: t, size, color, ...extra });
+    const rect = (x, yy, w, h2, fill, extra = {}) => ops.push({ t: "rect", x, y: yy, w, h: h2, fill, ...extra });
+    if (s.title) {
+      for (const ln of wrapText2(s.title, inner, 46, measure)) {
+        text(PAD, y, ln, 46, COLORS.yellow, { weight: "700" });
+        y += 56;
+      }
+      y += GAP - 6;
+    }
+    if (s.text) {
+      for (const ln of wrapText2(s.text, inner, 32, measure)) {
+        text(PAD, y, ln, 32, COLORS.text);
+        y += 44;
+      }
+      y += GAP - 6;
+    }
+    if (Array.isArray(s.lines) && s.lines.length) {
+      for (const l of s.lines) for (const ln of wrapText2(l, inner, 26, measure)) {
+        text(PAD, y, ln, 26, COLORS.muted);
+        y += 36;
+      }
+      y += GAP - 6;
+    }
+    if (Array.isArray(s.tabs) && s.tabs.length) {
+      const tw = inner / s.tabs.length;
+      s.tabs.forEach((tab, i) => {
+        const x = PAD + i * tw;
+        rect(x + 3, y, tw - 6, TAB_H, tab.on ? COLORS.yellow : COLORS.fill, { r: 14, key: `tab:${i}` });
+        text(x + tw / 2, y + 15, tab.label, 28, tab.on ? COLORS.dark : COLORS.text, { align: "center", weight: "600", maxW: tw - 30 });
+        hits.push({ x: x + 3, y, w: tw - 6, h: TAB_H, kind: "tab", ref: i });
+      });
+      y += TAB_H + GAP;
+    }
+    if (s.list && Array.isArray(s.list.rows)) {
+      const rows = s.list.rows;
+      const visible = visCap || Math.max(1, s.list.visible || 6);
+      const shown = Math.min(visible, rows.length);
+      listVisible = visible;
+      maxScroll = Math.max(0, (rows.length - visible) * ROW_H);
+      const sc = Math.max(0, Math.min(maxScroll, scroll || 0));
+      const first = Math.floor(sc / ROW_H + 1e-4);
+      for (let k = 0; k < shown; k++) {
+        const i = first + k;
+        const r = rows[i];
+        if (!r) break;
+        const ry = y + k * ROW_H;
+        const acts = Array.isArray(r.actions) ? r.actions : [];
+        const aw = 170;
+        const bodyW = inner - acts.length * (aw + 8);
+        rect(PAD, ry + 4, bodyW, ROW_H - 8, r.selected ? COLORS.fillOn : COLORS.fill, { r: 14, stroke: r.selected ? COLORS.yellow : null, key: `row:${i}` });
+        let tagW = 0;
+        if (r.tag) {
+          tagW = Math.ceil(measure(String(r.tag), 22)) + 28;
+          rect(PAD + bodyW - 16 - tagW, ry + 4 + (ROW_H - 8) / 2 - 20, tagW, 40, COLORS.pink, { r: 20 });
+          text(PAD + bodyW - 16 - tagW / 2, ry + 4 + (ROW_H - 8) / 2 - 12, r.tag, 22, COLORS.dark, { align: "center", weight: "700" });
+        }
+        const labelW = bodyW - 48 - (tagW ? tagW + 16 : 0);
+        text(PAD + 24, ry + (r.sub ? 10 : 26), r.label, 30, COLORS.text, { weight: "600", maxW: labelW });
+        if (r.sub) text(PAD + 24, ry + 50, r.sub, 22, COLORS.muted, { maxW: bodyW - 48 - (tagW ? tagW + 16 : 0) });
+        hits.push({ x: PAD, y: ry + 4, w: bodyW, h: ROW_H - 8, kind: "row", ref: i });
+        acts.forEach((a, j) => {
+          const ax = PAD + bodyW + 8 + j * (aw + 8);
+          rect(ax, ry + 4, aw, ROW_H - 8, a.primary ? COLORS.yellow : COLORS.fill, { r: 14, key: `action:${i}:${j}` });
+          text(ax + aw / 2, ry + 28, a.label, 26, a.primary ? COLORS.dark : COLORS.text, { align: "center", weight: "600", maxW: aw - 20 });
+          hits.push({ x: ax, y: ry + 4, w: aw, h: ROW_H - 8, kind: "action", ref: { row: i, action: j } });
+        });
+      }
+      if (maxScroll > 0) {
+        const trackH = shown * ROW_H - 8;
+        const thumbH = Math.max(40, trackH * (visible / rows.length));
+        const thumbY = y + 4 + (trackH - thumbH) * (sc / maxScroll);
+        rect(W - 22, y + 4, 8, trackH, COLORS.fill, { r: 4 });
+        rect(W - 22, thumbY, 8, thumbH, COLORS.yellow, { r: 4 });
+      }
+      y += shown * ROW_H + GAP;
+    }
+    if (s.input) {
+      rect(PAD, y, inner, INPUT_H, COLORS.dark, { r: 14, stroke: COLORS.yellow, key: "input:0" });
+      const val = s.input.value == null ? "" : String(s.input.value);
+      const has = val !== "";
+      const maxW = inner - 44;
+      text(PAD + 22, y + 18, has ? val : s.input.placeholder || "", 32, has ? COLORS.text : COLORS.muted, { maxW });
+      const cx = PAD + 22 + (has ? Math.min(maxW, measure(val, 32)) : 0) + 3;
+      ops.push({ t: "cursor", x: cx, y: y + 16, w: 3, h: 40, fill: COLORS.yellow });
+      hits.push({ x: PAD, y, w: inner, h: INPUT_H, kind: "input", ref: 0 });
+      y += INPUT_H + GAP;
+      for (const k of keyboardLayout(inner, { shift })) {
+        const isShift = k.key === "shift";
+        const isEnter = k.key === "enter";
+        const lit = isEnter || isShift && shift;
+        const kx = PAD + k.x;
+        const ky = y + k.y;
+        rect(kx, ky, k.w, k.h, lit ? COLORS.yellow : k.label.length > 1 ? COLORS.fillOn : COLORS.fill, { r: 12, key: `key:${k.key}` });
+        text(kx + k.w / 2, ky + 14, k.label, k.label.length > 1 ? 28 : 32, lit ? COLORS.dark : COLORS.text, { align: "center", weight: "600" });
+        hits.push({ x: kx, y: ky, w: k.w, h: k.h, kind: "key", ref: k.key });
+      }
+      y += keyboardHeight() + GAP;
+    }
+    if (s.progress) {
+      const v = Math.max(0, Math.min(1, Number(s.progress.value) || 0));
+      if (s.progress.label) {
+        text(PAD, y, s.progress.label, 26, COLORS.muted, { maxW: inner });
+        y += 36;
+      }
+      y += 6;
+      rect(PAD, y, inner, 24, COLORS.fill, { r: 12, key: "progress:0" });
+      rect(PAD, y, Math.max(24, inner * v), 24, COLORS.yellow, { r: 12 });
+      rect(PAD + Math.max(0, inner * v - 14), y - 6, 28, 36, COLORS.text, { r: 14 });
+      if (typeof s.progress.onSeek === "function") hits.push({ x: PAD, y: y - 20, w: inner, h: 64, kind: "progress", ref: 0 });
+      y += 24 + GAP + 8;
+    }
+    if (Array.isArray(s.buttons) && s.buttons.length) {
+      const n = s.buttons.length;
+      const manual = s.buttons.some((b) => Number.isFinite(b.row));
+      const rowOf = [];
+      const colOf = [];
+      const sizeOf = [];
+      let rowsN;
+      if (manual) {
+        const keys = [...new Set(s.buttons.map((b, i) => Number.isFinite(b.row) ? b.row : -1 - i))];
+        rowsN = keys.length;
+        const counts = new Array(rowsN).fill(0);
+        s.buttons.forEach((b, i) => {
+          const r = keys.indexOf(Number.isFinite(b.row) ? b.row : -1 - i);
+          rowOf[i] = r;
+          colOf[i] = counts[r]++;
+        });
+        s.buttons.forEach((b, i) => {
+          sizeOf[i] = counts[rowOf[i]];
+        });
+      } else {
+        const perRow = Math.max(1, Math.min(n, Math.floor((inner + 14) / (190 + 14))));
+        rowsN = Math.ceil(n / perRow);
+        const per = Math.ceil(n / rowsN);
+        s.buttons.forEach((b, i) => {
+          const r = Math.floor(i / per);
+          rowOf[i] = r;
+          colOf[i] = i - r * per;
+          sizeOf[i] = Math.min(per, n - r * per);
+        });
+      }
+      s.buttons.forEach((b, i) => {
+        const rowIdx = rowOf[i];
+        const inRow = sizeOf[i];
+        const col = colOf[i];
+        const bw = (inner - (inRow - 1) * 14) / inRow;
+        const x = PAD + col * (bw + 14);
+        const by = y + rowIdx * (BTN_H + 14);
+        const off = !!b.disabled;
+        const lit = b.on || b.primary;
+        rect(x, by, bw, BTN_H, lit ? COLORS.yellow : COLORS.fill, { r: 16, key: off ? null : `button:${i}`, alpha: off ? 0.4 : 1, stroke: b.on && !b.primary ? COLORS.pink : null });
+        text(x + bw / 2, by + 21, b.label, 30, lit ? COLORS.dark : COLORS.text, { align: "center", weight: "700", maxW: bw - 24, alpha: off ? 0.5 : 1 });
+        if (!off) hits.push({ x, y: by, w: bw, h: BTN_H, kind: "button", ref: i });
+      });
+      y += rowsN * BTN_H + (rowsN - 1) * 14 + GAP;
+    }
+    const height = Math.max(PAD * 2, y - GAP + PAD);
+    return { ops, hits, height, maxScroll, listVisible };
+  }
+  function layoutPanel(spec, W = 900, scroll = 0, measure = approx, opts = {}) {
+    const s = spec || {};
+    const maxH = opts.maxH || MAX_H;
+    let L = build(s, W, scroll, measure, !!opts.shift, 0);
+    if (L.height > maxH && L.listVisible > 1) {
+      const over = Math.ceil((L.height - maxH) / ROW_H);
+      L = build(s, W, scroll, measure, !!opts.shift, Math.max(1, L.listVisible - over));
+    }
+    return L;
+  }
+  function rayClearance(rects, x, z, dx, dz, maxDist = Infinity) {
+    let best = maxDist;
+    for (const r of rects || []) {
+      if (!r || !Number.isFinite(r.x0 + r.x1 + r.z0 + r.z1)) continue;
+      let t0 = 0;
+      let t1 = best;
+      let ok = true;
+      for (const [o, d, lo, hi] of [[x, dx, r.x0, r.x1], [z, dz, r.z0, r.z1]]) {
+        if (Math.abs(d) < 1e-9) {
+          if (o < lo || o > hi) {
+            ok = false;
+            break;
+          }
+          continue;
+        }
+        let a = (lo - o) / d;
+        let b = (hi - o) / d;
+        if (a > b) {
+          const t = a;
+          a = b;
+          b = t;
+        }
+        t0 = Math.max(t0, a);
+        t1 = Math.min(t1, b);
+        if (t0 > t1) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok && t0 < best) best = t0;
+    }
+    return best;
+  }
+  function roundPath(g, x, y, w, h2, r) {
+    g.beginPath();
+    if (r && g.roundRect) g.roundRect(x, y, w, h2, r);
+    else g.rect(x, y, w, h2);
+  }
+  function paint2(g, W, H, laid, hoverKey, cursorOn) {
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = COLORS.bg;
+    roundPath(g, 0, 0, W, H, 28);
+    g.fill();
+    g.strokeStyle = COLORS.border;
+    g.lineWidth = 3;
+    roundPath(g, 1.5, 1.5, W - 3, H - 3, 28);
+    g.stroke();
+    g.textBaseline = "top";
+    for (const op of laid.ops) {
+      g.globalAlpha = op.alpha == null ? 1 : op.alpha;
+      if (op.t === "rect") {
+        g.fillStyle = op.key && op.key === hoverKey ? COLORS.hover : op.fill;
+        roundPath(g, op.x, op.y, op.w, op.h, op.r || 0);
+        g.fill();
+        if (op.stroke) {
+          g.strokeStyle = op.stroke;
+          g.lineWidth = 3;
+          g.stroke();
+        }
+      } else if (op.t === "cursor") {
+        if (cursorOn) {
+          g.fillStyle = op.fill;
+          g.fillRect(op.x, op.y, op.w, op.h);
+        }
+      } else {
+        g.font = `${op.weight || "400"} ${op.size}px ${FONT2}`;
+        g.fillStyle = op.color;
+        g.textAlign = op.align || "left";
+        g.fillText(op.text, op.x, op.y, op.maxW || void 0);
+      }
+    }
+    g.globalAlpha = 1;
+  }
+  var keyOf = (h2) => h2 ? h2.kind === "action" ? `action:${h2.ref.row}:${h2.ref.action}` : `${h2.kind}:${h2.ref}` : null;
+  var warn3 = (what, err) => {
+    try {
+      console.warn(`[LenzFlix Store3D] ${what}`, err);
+    } catch {
+    }
+  };
+  function openPanel2(spec, { anchor = "front", camera, scene, measure, clearance } = {}) {
+    let cur = spec || {};
+    const W = Math.round((cur.width || 0.9) * PX_PER_M);
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = 256;
+    let g = null;
+    try {
+      g = canvas.getContext ? canvas.getContext("2d") : null;
+    } catch {
+      g = null;
+    }
+    const m = measure || (g ? (t, size) => {
+      g.font = `600 ${size}px ${FONT2}`;
+      return g.measureText(t).width;
+    } : approx);
+    const makeTex = () => {
+      const t = new CanvasTexture(canvas);
+      t.colorSpace = SRGBColorSpace;
+      t.anisotropy = 4;
+      return t;
+    };
+    let tex = makeTex();
+    const mat = new MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, depthTest: false, depthWrite: false, side: DoubleSide });
+    const mesh = new Mesh(new PlaneGeometry(1, 1), mat);
+    mesh.name = "lfx-panel";
+    mesh.renderOrder = 900;
+    let laid = null;
+    let scrollPx = 0;
+    let hoverKey = null;
+    let isOpen = true;
+    let H = 0;
+    let kbValue = null;
+    let shift = false;
+    let cursorOn = true;
+    const effective = () => cur.input && kbValue != null ? { ...cur, input: { ...cur.input, value: kbValue } } : cur;
+    function redraw() {
+      laid = layoutPanel(effective(), W, scrollPx, m, { shift });
+      scrollPx = Math.max(0, Math.min(laid.maxScroll, scrollPx));
+      const h2 = Math.min(MAX_H, Math.ceil(laid.height));
+      if (h2 !== H) {
+        const first = H === 0;
+        H = h2;
+        canvas.height = H;
+        mesh.geometry.dispose();
+        mesh.geometry = new PlaneGeometry(W / PX_PER_M, H / PX_PER_M);
+        if (!first) {
+          tex.dispose();
+          tex = makeTex();
+          mat.map = tex;
+          mat.needsUpdate = true;
+        }
+      }
+      if (g) {
+        paint2(g, W, H, laid, hoverKey, cursorOn);
+        tex.needsUpdate = true;
+      }
+    }
+    const follow = anchor && anchor.follow && anchor.object && anchor.object.isObject3D ? anchor : null;
+    const headFollow = !follow && anchor && anchor.follow && anchor.head ? anchor : null;
+    const headRef = { x: 0, z: 0, fx: 0, fz: -1, set: false };
+    const wantPos = new Vector3();
+    const tmp = new Vector3();
+    const head = new Vector3();
+    const dir = new Vector3();
+    const readHead = () => {
+      if (!camera) return false;
+      head.setFromMatrixPosition(camera.matrixWorld);
+      dir.setFromMatrixColumn(camera.matrixWorld, 2).negate();
+      return true;
+    };
+    const yawDir = () => {
+      const d = dir.clone();
+      d.y = 0;
+      if (d.lengthSq() < 1e-6) d.set(0, 0, -1);
+      return d.normalize();
+    };
+    function placeWorld() {
+      const host = scene || camera && camera.parent;
+      if (host) host.add(mesh);
+      if (!readHead()) return;
+      const d = yawDir();
+      const minDist = W / PX_PER_M / 2 / Math.tan(MAX_HALF_ANGLE);
+      if (anchor === "low") {
+        const dist = Math.max(0.85, minDist);
+        mesh.position.set(head.x + d.x * dist, head.y - 0.4, head.z + d.z * dist);
+        mesh.lookAt(head.x, head.y, head.z);
+      } else {
+        const nominal = Math.max(1.1, minDist);
+        let dist = nominal;
+        if (typeof clearance === "function") {
+          let free;
+          try {
+            free = Number(clearance(head.x, head.z, d.x, d.z, nominal + 0.15));
+          } catch {
+            free = NaN;
+          }
+          if (Number.isFinite(free) && free - 0.15 < nominal) dist = Math.max(0.5, free - 0.15);
+        }
+        mesh.scale.setScalar(dist / nominal);
+        mesh.position.set(head.x + d.x * dist, head.y - 0.1, head.z + d.z * dist);
+        mesh.lookAt(head.x, mesh.position.y, head.z);
+      }
+    }
+    function headStep(dt, snap) {
+      if (!headFollow || !readHead()) return;
+      const d = yawDir();
+      let moved = !headRef.set;
+      if (!moved) {
+        const dot = Math.max(-1, Math.min(1, d.x * headRef.fx + d.z * headRef.fz));
+        moved = Math.acos(dot) > HEAD_TURN || Math.hypot(head.x - headRef.x, head.z - headRef.z) > HEAD_WALK;
+      }
+      if (moved) {
+        headRef.set = true;
+        headRef.x = head.x;
+        headRef.z = head.z;
+        headRef.fx = d.x;
+        headRef.fz = d.z;
+        const o = headFollow.offset || {};
+        wantPos.set(head.x + d.x * (o.z || 0.65) + -d.z * (o.x || 0), head.y + (o.y == null ? -0.15 : o.y), head.z + d.z * (o.z || 0.65) + d.x * (o.x || 0));
+      }
+      if (snap) mesh.position.copy(wantPos);
+      else mesh.position.lerp(wantPos, 1 - Math.exp(-Math.max(0, dt) * 3));
+      mesh.rotation.set(0, Math.atan2(head.x - mesh.position.x, head.z - mesh.position.z), 0);
+    }
+    function followStep(dt, snap) {
+      if (!follow) return;
+      follow.object.getWorldPosition(tmp);
+      const o = follow.offset || {};
+      tmp.x += o.x || 0;
+      tmp.y += o.y || 0;
+      tmp.z += o.z || 0;
+      if (snap) mesh.position.copy(tmp);
+      else mesh.position.lerp(tmp, 1 - Math.exp(-Math.max(0, dt) * 4));
+      if (readHead()) mesh.rotation.set(0, Math.atan2(head.x - mesh.position.x, head.z - mesh.position.z), 0);
+    }
+    function place() {
+      if (anchor && anchor.isObject3D) {
+        anchor.add(mesh);
+        return;
+      }
+      if (follow || headFollow) {
+        const host = scene || camera && camera.parent;
+        if (host) host.add(mesh);
+        if (follow) followStep(0, true);
+        else headStep(0, true);
+        return;
+      }
+      placeWorld();
+    }
+    redraw();
+    place();
+    const blink = () => {
+      if (!isOpen || !cur.input) return;
+      const on = Math.floor(performance.now() / 500) % 2 === 0;
+      if (on !== cursorOn) {
+        cursorOn = on;
+        redraw();
+      }
+    };
+    let lastTick = -1e9;
+    const tick = (dt) => {
+      if (!isOpen) return;
+      lastTick = performance.now();
+      followStep(dt || 0, false);
+      headStep(dt || 0, false);
+      blink();
+    };
+    let lastRender = performance.now();
+    mesh.onBeforeRender = () => {
+      const now = performance.now();
+      const dt = (now - lastRender) / 1e3;
+      lastRender = now;
+      if (now - lastTick > 250) {
+        followStep(dt, false);
+        headStep(dt, false);
+        blink();
+      }
+    };
+    const hitAt = (uv) => {
+      if (!uv || !laid) return null;
+      const px = uv.x * W;
+      const py = (1 - uv.y) * H;
+      for (let i = laid.hits.length - 1; i >= 0; i--) {
+        const h2 = laid.hits[i];
+        if (px >= h2.x && px <= h2.x + h2.w && py >= h2.y && py <= h2.y + h2.h) return h2.kind === "progress" ? { ...h2, frac: Math.max(0, Math.min(1, (px - h2.x) / h2.w)) } : h2;
+      }
+      return null;
+    };
+    const handle = {
+      mesh,
+      get open() {
+        return isOpen;
+      },
+      get spec() {
+        return cur;
+      },
+      update(next) {
+        if (!isOpen) return;
+        if (next) {
+          const nv = next.input && next.input.value;
+          const ov = cur.input && cur.input.value;
+          if (nv != null && nv !== ov) kbValue = String(nv);
+          if (!next.input) kbValue = null;
+          cur = next;
+        }
+        redraw();
+      },
+      hit: hitAt,
+      hover(uv) {
+        const h2 = hitAt(uv);
+        const k = keyOf(h2);
+        if (k !== hoverKey) {
+          hoverKey = k;
+          redraw();
+        }
+        return h2;
+      },
+      scroll(dy) {
+        if (!isOpen || !laid || !laid.maxScroll) return;
+        const n = Math.max(0, Math.min(laid.maxScroll, scrollPx + dy));
+        if (n !== scrollPx) {
+          scrollPx = n;
+          redraw();
+        }
+      },
+      tick,
+      /** Treffer auslösen (ruft die onSelect-Funktionen der Spec). */
+      activate(h2) {
+        if (!isOpen || !h2) return false;
+        try {
+          if (h2.kind === "button") {
+            const b = cur.buttons && cur.buttons[h2.ref];
+            if (b && !b.disabled && b.onSelect) b.onSelect();
+          } else if (h2.kind === "tab") {
+            const t = cur.tabs && cur.tabs[h2.ref];
+            if (t && t.onSelect) t.onSelect();
+          } else if (h2.kind === "row") {
+            const r = cur.list && cur.list.rows[h2.ref];
+            if (r && r.onSelect) r.onSelect();
+          } else if (h2.kind === "action") {
+            const r = cur.list && cur.list.rows[h2.ref.row];
+            const a = r && r.actions && r.actions[h2.ref.action];
+            if (a && a.onSelect) a.onSelect();
+          } else if (h2.kind === "progress") {
+            if (cur.progress && cur.progress.onSeek) cur.progress.onSeek(h2.frac == null ? 0 : h2.frac);
+          } else if (h2.kind === "key") {
+            if (!cur.input) return false;
+            const base = kbValue != null ? kbValue : cur.input.value == null ? "" : String(cur.input.value);
+            const r = applyKey(base, h2.ref, { shift });
+            shift = r.shift;
+            cursorOn = true;
+            if (r.enter) {
+              redraw();
+              if (cur.input.onEnter) cur.input.onEnter(r.value);
+            } else {
+              const changed = r.value !== base;
+              kbValue = r.value;
+              redraw();
+              if (changed && cur.input.onInput) cur.input.onInput(r.value);
+            }
+          } else if (h2.kind === "input") {
+          } else return false;
+        } catch (err) {
+          warn3("Panel", err);
+        }
+        return true;
+      },
+      close() {
+        if (!isOpen) return;
+        isOpen = false;
+        mesh.onBeforeRender = () => {
+        };
+        mesh.removeFromParent();
+        mesh.geometry.dispose();
+        mat.dispose();
+        tex.dispose();
+        const cb = cur.onClose;
+        try {
+          if (cb) cb();
+        } catch (err) {
+          warn3("Panel.onClose", err);
+        }
+      }
+    };
+    return handle;
+  }
+
+  // src/js/store3d/xr/bubble3d.js
+  var CW = 768;
+  var CH = 288;
+  var BODY_H = 232;
+  var M_PER_PX = 0.6 / CW;
+  var FONT3 = 'system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  var SIZE = 44;
+  var LINE_H = 54;
+  var MAX_LINES = 3;
+  var PAD_X = 40;
+  var NEAR2 = 2.5;
+  var MAX_SCALE = 3.4;
+  var approx2 = (text, size) => String(text).length * size * 0.55;
+  function bubbleLines(text, maxW, measure = approx2, maxLines = MAX_LINES) {
+    const lines = wrapText2(text, maxW, SIZE, measure).filter((l, i, a) => l !== "" || a.length === 1);
+    if (lines.length <= maxLines) return lines;
+    const out = lines.slice(0, maxLines);
+    let last = `${out[maxLines - 1]} ${lines.slice(maxLines).join(" ")}`.trim();
+    while (last.length > 1 && measure(`${last}\u2026`, SIZE) > maxW) last = last.slice(0, -1);
+    out[maxLines - 1] = `${last.trimEnd()}\u2026`;
+    return out;
+  }
+  function createBubble3d({ getScene, camera } = {}) {
+    let mesh = null;
+    let mat = null;
+    let tex = null;
+    let canvas = null;
+    let g = null;
+    let shown = false;
+    let opacity = 0;
+    let curText = null;
+    let disposed = false;
+    const tip = new Vector3();
+    const cam = new Vector3();
+    function ensure() {
+      if (mesh || disposed) return;
+      canvas = document.createElement("canvas");
+      canvas.width = CW;
+      canvas.height = CH;
+      try {
+        g = canvas.getContext ? canvas.getContext("2d") : null;
+      } catch {
+        g = null;
+      }
+      tex = new CanvasTexture(canvas);
+      tex.colorSpace = SRGBColorSpace;
+      tex.anisotropy = 4;
+      mat = new MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, depthTest: true, depthWrite: false, side: DoubleSide, opacity: 0 });
+      const geo = new PlaneGeometry(CW * M_PER_PX, CH * M_PER_PX);
+      geo.translate(0, CH * M_PER_PX / 2, 0);
+      mesh = new Mesh(geo, mat);
+      mesh.name = "lfx-bubble3d";
+      mesh.renderOrder = 25;
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+    }
+    function draw(text) {
+      if (!g) return;
+      g.clearRect(0, 0, CW, CH);
+      const r = 44;
+      const w = CW - 16;
+      const x0 = 8;
+      const y0 = 8;
+      const h2 = BODY_H - 16;
+      g.beginPath();
+      if (g.roundRect) g.roundRect(x0, y0, w, h2, r);
+      else g.rect(x0, y0, w, h2);
+      g.moveTo(CW / 2 - 28, y0 + h2 - 1);
+      g.lineTo(CW / 2, CH - 8);
+      g.lineTo(CW / 2 + 28, y0 + h2 - 1);
+      g.closePath();
+      g.fillStyle = "#fff6d6";
+      g.fill();
+      g.lineWidth = 8;
+      g.strokeStyle = COLORS.yellow;
+      g.lineJoin = "round";
+      g.stroke();
+      g.font = `700 ${SIZE}px ${FONT3}`;
+      const meas = (t) => g.measureText(t).width;
+      const lines = bubbleLines(text, CW - PAD_X * 2, (t) => meas(t));
+      g.fillStyle = COLORS.dark;
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      const top = y0 + h2 / 2 - (lines.length - 1) * LINE_H / 2;
+      lines.forEach((ln, i) => g.fillText(ln, CW / 2, top + i * LINE_H, CW - PAD_X * 2));
+      tex.needsUpdate = true;
+    }
+    function face() {
+      if (!mesh || !camera) return;
+      cam.setFromMatrixPosition(camera.matrixWorld);
+      const dx = cam.x - mesh.position.x;
+      const dz = cam.z - mesh.position.z;
+      mesh.rotation.set(0, Math.atan2(dx, dz), 0);
+      const dist = Math.hypot(dx, cam.y - mesh.position.y, dz);
+      mesh.scale.setScalar(Math.max(1, Math.min(MAX_SCALE, dist / NEAR2)));
+    }
+    function attach() {
+      const scene = typeof getScene === "function" ? getScene() : null;
+      if (scene && mesh && mesh.parent !== scene) scene.add(mesh);
+    }
+    return {
+      get visible() {
+        return shown;
+      },
+      show(text, pos) {
+        if (disposed) return;
+        ensure();
+        const t = String(text == null ? "" : text);
+        if (t !== curText) {
+          curText = t;
+          draw(t);
+        }
+        if (pos) {
+          tip.set(pos.x || 0, pos.y || 0, pos.z || 0);
+          mesh.position.copy(tip);
+        }
+        shown = true;
+        mesh.visible = true;
+        attach();
+        face();
+      },
+      hide() {
+        shown = false;
+      },
+      update(dt) {
+        if (!mesh || disposed) return;
+        const target = shown ? 1 : 0;
+        if (opacity !== target) {
+          const step = Math.max(0, dt || 0) * 6;
+          opacity = opacity < target ? Math.min(target, opacity + step) : Math.max(target, opacity - step);
+          mat.opacity = opacity;
+          if (opacity <= 1e-3 && !shown) mesh.visible = false;
+        }
+        if (mesh.visible) {
+          attach();
+          face();
+        }
+      },
+      dispose() {
+        shown = false;
+        if (disposed) return;
+        disposed = true;
+        if (mesh) {
+          mesh.removeFromParent();
+          mesh.geometry.dispose();
+        }
+        if (mat) mat.dispose();
+        if (tex) tex.dispose();
+        mesh = null;
+        mat = null;
+        tex = null;
+        canvas = null;
+        g = null;
+      }
+    };
+  }
+
+  // src/js/store3d/xr/input.js
+  var DEADZONE = 0.15;
+  var ON = 0.5;
+  function deadzone(v, dz = DEADZONE) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 0;
+    const a = Math.abs(n);
+    if (a <= dz) return 0;
+    return Math.sign(n) * Math.min(1, (a - dz) / (1 - dz));
+  }
+  function button2(gp, i) {
+    const b = gp && gp.buttons ? gp.buttons[i] : null;
+    if (!b) return 0;
+    const v = Number.isFinite(b.value) ? b.value : 0;
+    return v > 0 ? v : b.pressed ? 1 : 0;
+  }
+  function axis(gp, i) {
+    const a = gp && gp.axes ? gp.axes[i] : 0;
+    return Number.isFinite(a) ? a : 0;
+  }
+  function emptyPad() {
+    return {
+      trigger: 0,
+      grip: 0,
+      stick: { x: 0, y: 0 },
+      stickClick: false,
+      a: false,
+      b: false,
+      edges: { triggerDown: false, triggerUp: false, gripDown: false, gripUp: false, stickClickDown: false, aDown: false, bDown: false }
+    };
+  }
+  function readPad(gamepad, prev) {
+    const pv = prev || emptyPad();
+    const trigger = button2(gamepad, 0);
+    const grip = button2(gamepad, 1);
+    const stickClick = button2(gamepad, 3) >= ON;
+    const a = button2(gamepad, 4) >= ON;
+    const b = button2(gamepad, 5) >= ON;
+    const hasStick = !!(gamepad && gamepad.axes && gamepad.axes.length >= 4);
+    const stick = hasStick ? { x: deadzone(axis(gamepad, 2)), y: deadzone(axis(gamepad, 3)) } : { x: 0, y: 0 };
+    const tOn = trigger >= ON;
+    const tWas = pv.trigger >= ON;
+    const gOn = grip >= ON;
+    const gWas = pv.grip >= ON;
+    return {
+      trigger,
+      grip,
+      stick,
+      stickClick,
+      a,
+      b,
+      edges: {
+        triggerDown: tOn && !tWas,
+        triggerUp: !tOn && tWas,
+        gripDown: gOn && !gWas,
+        gripUp: !gOn && gWas,
+        stickClickDown: stickClick && !pv.stickClick,
+        aDown: a && !pv.a,
+        bDown: b && !pv.b
+      }
+    };
+  }
+
+  // src/js/store3d/xr/locomotion.js
+  var SNAP_ANGLE = Math.PI / 4;
+  var SNAP_ON = 0.7;
+  var SNAP_OFF = 0.3;
+  var SMOOTH_RATE = Math.PI / 2;
+  function createLoco() {
+    return { running: false, snapArmed: true };
+  }
+  var NONE = { x: 0, y: 0 };
+  function stepLoco(st, { left, right, dt = 0, turnMode = "snap", locked = false, blockLeft = false, blockRight = false } = {}) {
+    const ls = left && !blockLeft && left.stick ? left.stick : NONE;
+    const rs = right && !blockRight && right.stick ? right.stick : NONE;
+    const mag = Math.min(1, Math.hypot(ls.x, ls.y));
+    if (locked || mag === 0) st.running = false;
+    if (!locked && !blockLeft && left && left.edges && left.edges.stickClickDown && mag > 0) st.running = !st.running;
+    let fwd = 0;
+    let strafe = 0;
+    let scale = 1;
+    if (!locked && mag > 0) {
+      fwd = -ls.y;
+      strafe = ls.x;
+      scale = mag;
+    }
+    let turn = 0;
+    const x = rs.x;
+    if (turnMode === "smooth") {
+      turn = -x * SMOOTH_RATE * Math.max(0, dt);
+      st.snapArmed = true;
+    } else {
+      if (Math.abs(x) < SNAP_OFF) st.snapArmed = true;
+      else if (st.snapArmed && Math.abs(x) > SNAP_ON) {
+        turn = -Math.sign(x) * SNAP_ANGLE;
+        st.snapArmed = false;
+      }
+    }
+    return { fwd, strafe, run: !!st.running, scale, turn };
+  }
+
+  // src/js/store3d/xr/vignette.js
+  function vignetteTarget(speed, turnRate) {
+    const s = Math.min(1, Math.max(0, (Number(speed) || 0) / 2.2));
+    const t = Math.min(1, Math.max(0, Math.abs(Number(turnRate) || 0) / (Math.PI / 2)));
+    return Math.min(0.85, s * 0.6 + t * 0.6);
+  }
+  function createVignette(camera) {
+    const inner = 0.07;
+    const outer = 0.45;
+    const geo = new RingGeometry(inner, outer, 48, 1);
+    const pos = geo.getAttribute("position");
+    const cols = new Float32Array(pos.count * 4);
+    for (let i = 0; i < pos.count; i++) {
+      const r = Math.hypot(pos.getX(i), pos.getY(i));
+      const a = Math.min(1, Math.max(0, (r - inner) / (outer - inner)));
+      cols[i * 4] = 0;
+      cols[i * 4 + 1] = 0;
+      cols[i * 4 + 2] = 0;
+      cols[i * 4 + 3] = a * a;
+    }
+    geo.setAttribute("color", new Float32BufferAttribute(cols, 4));
+    const mat = new MeshBasicMaterial({ color: 16777215, vertexColors: true, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false, fog: false });
+    const mesh = new Mesh(geo, mat);
+    mesh.name = "lfx-vignette";
+    mesh.renderOrder = 9990;
+    mesh.frustumCulled = false;
+    mesh.visible = false;
+    mesh.position.set(0, 0, -0.14);
+    camera.add(mesh);
+    let cur = 0;
+    return {
+      mesh,
+      get strength() {
+        return cur;
+      },
+      /** on = Option aus; speed in m/s, turnRate in rad/s. */
+      update(dt, on, speed, turnRate) {
+        const target = on ? vignetteTarget(speed, turnRate) : 0;
+        const k = Math.min(1, dt * (target > cur ? 8 : 3));
+        cur += (target - cur) * k;
+        if (cur < 4e-3) cur = 0;
+        mat.opacity = cur;
+        mesh.visible = cur > 0;
+      },
+      dispose() {
+        mesh.removeFromParent();
+        geo.dispose();
+        mat.dispose();
+      }
+    };
+  }
+
+  // src/js/store3d/xr/hud3d.js
+  function vrHint(hint, fallback = "Trigger: Benutzen") {
+    const h2 = String(hint == null || hint === "" ? fallback : hint);
+    return h2.replace(/E\s*\/\s*Klick\s*:/i, "Trigger:");
+  }
+  function diagLines({ visibility, space, sources, cinema }) {
+    const out = [`Sitzung: ${visibility || "?"}`, `Raum: ${space || "?"}`, `Eingabe: ${sources && sources.length ? sources.join(", ") : "keine"}`];
+    if (typeof cinema === "string") out.push(cinema);
+    else if (Array.isArray(cinema)) for (const l of cinema) out.push(String(l));
+    else if (cinema && typeof cinema === "object") {
+      const keys = ["phase", "videoFrames", "readyState"];
+      const parts = keys.filter((k) => cinema[k] != null).map((k) => `${k} ${cinema[k]}`);
+      out.push(`Kino: ${parts.length ? parts.join(" \xB7 ") : Object.keys(cinema).map((k) => `${k} ${cinema[k]}`).join(" \xB7 ")}`);
+    }
+    return out;
+  }
+  var FONT4 = 'system-ui, "Segoe UI", sans-serif';
+  var TextQuad = class {
+    constructor({ renderOrder, depthTest = false }) {
+      this.canvas = document.createElement("canvas");
+      this.canvas.width = 64;
+      this.canvas.height = 64;
+      let g;
+      try {
+        g = this.canvas.getContext ? this.canvas.getContext("2d") : null;
+      } catch {
+        g = null;
+      }
+      this.g = g;
+      this.tex = new CanvasTexture(this.canvas);
+      this.tex.colorSpace = SRGBColorSpace;
+      this.mat = new MeshBasicMaterial({ map: this.tex, transparent: true, toneMapped: false, depthTest, depthWrite: false, fog: false });
+      this.mesh = new Mesh(new PlaneGeometry(1, 1), this.mat);
+      this.mesh.renderOrder = renderOrder;
+      this.mesh.frustumCulled = false;
+      this.mesh.visible = false;
+      this.key = null;
+      this.w = 1;
+      this.h = 1;
+    }
+    /** rows: [{ text, size, color, weight? }]; ppm = Pixel pro Meter. Zeichnet nur bei geändertem Inhalt. */
+    set(rows, { ppm = 1e3, align = "center", pad = 22 } = {}) {
+      const key = JSON.stringify([rows, ppm, align]);
+      if (key === this.key) return;
+      this.key = key;
+      const g = this.g;
+      let w = 200;
+      let h2 = 60;
+      if (g) {
+        let maxW = 0;
+        let y = pad;
+        for (const r of rows) {
+          g.font = `${r.weight || "600"} ${r.size}px ${FONT4}`;
+          maxW = Math.max(maxW, g.measureText(r.text).width);
+          y += r.size * 1.25;
+        }
+        w = Math.ceil(maxW + pad * 2);
+        h2 = Math.ceil(y + pad - 4);
+        this.canvas.width = w;
+        this.canvas.height = h2;
+        g.clearRect(0, 0, w, h2);
+        g.fillStyle = "rgba(13, 19, 48, 0.88)";
+        g.beginPath();
+        if (g.roundRect) g.roundRect(0, 0, w, h2, 20);
+        else g.rect(0, 0, w, h2);
+        g.fill();
+        g.textBaseline = "top";
+        g.textAlign = align;
+        y = pad;
+        for (const r of rows) {
+          g.font = `${r.weight || "600"} ${r.size}px ${FONT4}`;
+          g.fillStyle = r.color;
+          g.fillText(r.text, align === "center" ? w / 2 : pad, y);
+          y += r.size * 1.25;
+        }
+        this.tex.needsUpdate = true;
+      }
+      this.w = w / ppm;
+      this.h = h2 / ppm;
+      this.mesh.geometry.dispose();
+      this.mesh.geometry = new PlaneGeometry(this.w, this.h);
+    }
+    dispose() {
+      this.mesh.removeFromParent();
+      this.mesh.geometry.dispose();
+      this.mat.dispose();
+      this.tex.dispose();
+    }
+  };
+  var _v = new Vector3();
+  var Hud3d = class {
+    /** @param {{ rig: Object3D, camera: Camera }} o */
+    constructor({ rig, camera }) {
+      this.rig = rig;
+      this.camera = camera;
+      this.label = new TextQuad({ renderOrder: 9e3 });
+      this.toastQuad = new TextQuad({ renderOrder: 9001 });
+      this.diagQuad = new TextQuad({ renderOrder: 9002 });
+      rig.add(this.label.mesh);
+      camera.add(this.toastQuad.mesh);
+      camera.add(this.diagQuad.mesh);
+      this.toastQuad.mesh.position.set(0, -0.28, -1);
+      this.diagQuad.mesh.position.set(-0.32, 0.2, -1);
+      this.toastLeft = 0;
+      this.labelOn = false;
+    }
+    /** Label am Weltpunkt (Laserende); title leer → ausblenden. */
+    setLabel(title, hint, worldPoint) {
+      if (!title && !hint) {
+        this.hideLabel();
+        return;
+      }
+      const rows = [];
+      if (title) rows.push({ text: String(title), size: 40, color: "#ffffff", weight: "700" });
+      if (hint) rows.push({ text: vrHint(hint), size: 28, color: "#ffd23f" });
+      this.label.set(rows, { ppm: 1100 });
+      const m = this.label.mesh;
+      this.rig.updateWorldMatrix(true, false);
+      _v.copy(worldPoint);
+      this.rig.worldToLocal(_v);
+      const cam = this.camera;
+      const dx = _v.x - cam.position.x;
+      const dy = _v.y - cam.position.y;
+      const dz = _v.z - cam.position.z;
+      const dist = Math.min(5, Math.max(0.6, Math.hypot(dx, dy, dz)));
+      m.position.set(_v.x, _v.y + 0.07 * dist * 0.5 + 0.06, _v.z);
+      m.quaternion.copy(cam.quaternion);
+      const s = 0.55 + dist * 0.22;
+      m.scale.set(s, s, 1);
+      m.visible = true;
+      this.labelOn = true;
+    }
+    hideLabel() {
+      if (this.labelOn) {
+        this.label.mesh.visible = false;
+        this.labelOn = false;
+      }
+    }
+    toast(text, ms = 2600) {
+      this.toastQuad.set([{ text: String(text == null ? "" : text), size: 34, color: "#f4f6ff" }], { ppm: 1100 });
+      this.toastQuad.mesh.visible = true;
+      this.toastLeft = Math.max(0.3, ms / 1e3);
+    }
+    closeToast() {
+      this.toastLeft = 0;
+      this.toastQuad.mesh.visible = false;
+    }
+    get toastOpen() {
+      return this.toastQuad.mesh.visible;
+    }
+    /** lines: string[] | null (aus). */
+    setDiag(lines) {
+      if (!lines || !lines.length) {
+        this.diagQuad.mesh.visible = false;
+        return;
+      }
+      this.diagQuad.set(lines.map((t) => ({ text: String(t), size: 24, color: "#aab4e8", weight: "500" })), { ppm: 1400, align: "left" });
+      this.diagQuad.mesh.visible = true;
+    }
+    update(dt) {
+      if (this.toastLeft > 0) {
+        this.toastLeft -= dt;
+        if (this.toastLeft <= 0) this.closeToast();
+      }
+    }
+    dispose() {
+      this.label.dispose();
+      this.toastQuad.dispose();
+      this.diagQuad.dispose();
+    }
+  };
+
+  // src/js/store3d/xr/pointer.js
+  var COVER_REACH = 4;
+  var IA_REACH = 3;
+  var PANEL_REACH = 8;
+  var GRIP_REACH = 0.4;
+  var PICK_MS = 50;
+  var IDLE_MS = 300;
+  var SCROLL_PX_PER_S = 700;
+  var COLORS2 = { panel: 16765503, panelIdle: 9411544, cover: 16771488, ia: 16727423, wrist: 16765503, none: 9411544 };
+  function choose(panelHit, coverHit, iaHit, wristHit) {
+    if (wristHit != null) {
+      const wt = typeof wristHit === "number" ? wristHit : wristHit.t;
+      if (!panelHit || wt <= panelHit.t) return { kind: "wrist", t: wt };
+    }
+    if (panelHit) return { kind: "panel", ...panelHit };
+    if (coverHit && (!iaHit || coverHit.t <= iaHit.t)) return { kind: "cover", ...coverHit };
+    if (iaHit) return { kind: "ia", ...iaHit };
+    return null;
+  }
+  var _sp = new Vector3();
+  function nearestCover(faceViews, p, r = GRIP_REACH) {
+    let best = null;
+    const lim = (r + 1.2) * (r + 1.2);
+    for (const fv of faceViews) {
+      if (!fv.mesh) continue;
+      const f = fv.face;
+      const rx = p.x - f.x;
+      const rz = p.z - f.z;
+      if (rx * rx + rz * rz > lim) continue;
+      for (const info of fv.infos) {
+        if (info.hidden) continue;
+        slotWorld(fv, info, _sp);
+        const d = Math.hypot(_sp.x - p.x, _sp.y - p.y, _sp.z - p.z);
+        if (d <= r && (!best || d < best.d)) best = { fv, info, d };
+      }
+    }
+    return best;
+  }
+  function scrollable(panel) {
+    const s = panel && panel.spec;
+    const l = s && s.list;
+    return !!(l && Array.isArray(l.rows) && l.rows.length > (l.visible || 6));
+  }
+  var Pointer = class {
+    constructor(mode) {
+      this.mode = mode;
+      this.rc = new Raycaster();
+      this.blocks = { left: false, right: false };
+      this.dirty = true;
+      this.geos = [];
+      this.mats = [];
+      this.attached = false;
+      this._o = new Vector3();
+      this._d = new Vector3();
+      this._pt = new Vector3();
+    }
+    mat(color, o = {}) {
+      const m = new MeshBasicMaterial({ color, toneMapped: false, fog: false, ...o });
+      this.mats.push(m);
+      return m;
+    }
+    /** Visuals an die Strahlobjekte hängen (nach dem Anlegen der Quellen). */
+    attach() {
+      if (this.attached) return;
+      this.attached = true;
+      const laserGeo = new CylinderGeometry(25e-4, 25e-4, 1, 6, 1, true);
+      laserGeo.rotateX(-Math.PI / 2);
+      laserGeo.translate(0, 0, -0.5);
+      const dotGeo = new SphereGeometry(9e-3, 12, 8);
+      const boxGeo = new BoxGeometry(1, 1, 1);
+      this.geos.push(laserGeo, dotGeo, boxGeo);
+      const storeScene = this.mode.app.engine.storeScene;
+      for (const rec of this.mode.sources) {
+        const laser = new Mesh(laserGeo, this.mat(COLORS2.none, { transparent: true, opacity: 0.8, depthWrite: false }));
+        laser.name = "lfx-xr-laser";
+        laser.renderOrder = 950;
+        laser.frustumCulled = false;
+        laser.visible = false;
+        const dot = new Mesh(dotGeo, this.mat(COLORS2.none, { depthTest: false }));
+        dot.name = "lfx-xr-laserdot";
+        dot.renderOrder = 951;
+        dot.visible = false;
+        rec.ray.add(laser, dot);
+        const hl = new Mesh(boxGeo, this.mat(16771488, { transparent: true, opacity: 0.3, depthWrite: false, blending: AdditiveBlending }));
+        hl.name = "lfx-xr-highlight";
+        hl.renderOrder = 6;
+        hl.visible = false;
+        storeScene.add(hl);
+        rec.pt = { laser, dot, hl, o: new Vector3(), d: new Vector3(0, 0, -1), at: -1e9, target: null, hover: null, len: -1, color: -1 };
+      }
+    }
+    invalidate() {
+      this.dirty = true;
+    }
+    /** Ziel der Hand ('left'|'right'|Index) für Diagnose/Tests. */
+    targetOf(hand) {
+      const rec = typeof hand === "number" ? this.mode.sources[hand] : this.mode.recFor(hand);
+      const t = rec && rec.pt ? rec.pt.target : null;
+      if (!t) return null;
+      return { kind: t.kind, t: t.t, id: t.info ? t.info.itemId : null, label: t.ia ? t.ia.label : null, hit: t.hit ? t.hit.kind : null };
+    }
+    rayOf(rec) {
+      const ray = rec.ray;
+      ray.updateWorldMatrix(true, false);
+      this._o.setFromMatrixPosition(ray.matrixWorld);
+      this._d.set(0, 0, -1).transformDirection(ray.matrixWorld);
+      return { o: this._o, d: this._d };
+    }
+    raycastPanels(o, d) {
+      let best = null;
+      this.rc.set(o, d);
+      this.rc.far = PANEL_REACH;
+      for (const panel of this.mode.panels) {
+        const mesh = panel.mesh;
+        if (!mesh || !mesh.parent || !mesh.visible || !panel.open) continue;
+        mesh.updateWorldMatrix(true, false);
+        const hits = this.rc.intersectObject(mesh, false);
+        const h2 = hits[0];
+        if (h2 && h2.uv && (!best || h2.distance < best.t)) best = { t: h2.distance, panel, uv: { x: h2.uv.x, y: h2.uv.y } };
+      }
+      if (best) best.hit = best.panel.hover(best.uv);
+      return best;
+    }
+    canPickWorld() {
+      const m = this.mode;
+      const app = m.app;
+      return app.mode === "play" && !(app.mods && app.mods.locked) && !m.inCinema && !!app.shelves;
+    }
+    pick(rec, now) {
+      const m = this.mode;
+      const app = m.app;
+      const pt = rec.pt;
+      const { o, d } = this.rayOf(rec);
+      pt.at = now;
+      pt.o.copy(o);
+      pt.d.copy(d);
+      const panelHit = this.raycastPanels(o, d);
+      let coverHit = null;
+      let iaHit = null;
+      if (this.canPickWorld()) {
+        coverHit = pickCover(app.shelves.faceViews, o, d, COVER_REACH);
+        iaHit = app.mods ? pickBoxes(app.mods.interactables, o, d, IA_REACH) : null;
+      }
+      let wristHit = null;
+      if (m.wrist && rec.side !== "left") wristHit = m.wrist.hit(o, d);
+      const target = choose(panelHit, coverHit, iaHit, wristHit);
+      const hov = target && target.kind === "panel" ? target.panel : null;
+      if (pt.hover && pt.hover !== hov && pt.hover.open) pt.hover.hover(null);
+      pt.hover = hov;
+      pt.target = target;
+      return target;
+    }
+    clearRec(rec) {
+      const pt = rec.pt;
+      if (!pt) return;
+      if (pt.hover && pt.hover.open) pt.hover.hover(null);
+      pt.hover = null;
+      pt.target = null;
+      pt.at = -1e9;
+      pt.laser.visible = false;
+      pt.dot.visible = false;
+      pt.hl.visible = false;
+    }
+    hideAll() {
+      for (const rec of this.mode.sources) this.clearRec(rec);
+      this.blocks.left = false;
+      this.blocks.right = false;
+      if (this.mode.hud3d) this.mode.hud3d.hideLabel();
+    }
+    update(dt, now) {
+      const m = this.mode;
+      if (!this.attached) return;
+      const active = m.inputActive();
+      this.blocks.left = false;
+      this.blocks.right = false;
+      if (!active) {
+        this.hideAll();
+        return;
+      }
+      for (const rec of m.sources) {
+        const pt = rec.pt;
+        if (!pt) continue;
+        if (!rec.source || !rec.ray.visible) {
+          this.clearRec(rec);
+          continue;
+        }
+        const { o, d } = this.rayOf(rec);
+        const moved = o.distanceToSquared(pt.o) > 16e-6 || 1 - d.dot(pt.d) > 15e-7;
+        const age = now - pt.at;
+        if (this.dirty || age >= IDLE_MS || moved && age >= PICK_MS) this.pick(rec, now);
+        this.render(rec);
+        const tg = pt.target;
+        if (tg && tg.kind === "panel" && scrollable(tg.panel) && rec.side) {
+          this.blocks[rec.side] = true;
+          const sy = rec.pad ? rec.pad.stick.y : 0;
+          if (sy) tg.panel.scroll(sy * SCROLL_PX_PER_S * dt);
+        }
+      }
+      this.dirty = false;
+      this.updateLabel();
+    }
+    render(rec) {
+      const pt = rec.pt;
+      const tg = pt.target;
+      const m = this.mode;
+      const len = tg ? Math.min(tg.t, PANEL_REACH) : 1.6;
+      const color = !tg ? COLORS2.none : tg.kind === "panel" ? tg.hit ? COLORS2.panel : COLORS2.panelIdle : COLORS2[tg.kind];
+      pt.laser.visible = true;
+      pt.laser.scale.set(1, 1, Math.max(0.02, len));
+      if (color !== pt.color) {
+        pt.color = color;
+        pt.laser.material.color.setHex(color);
+        pt.dot.material.color.setHex(color);
+      }
+      pt.laser.material.opacity = tg ? 0.9 : 0.45;
+      pt.dot.visible = !!tg;
+      if (tg) pt.dot.position.set(0, 0, -len);
+      const hl = pt.hl;
+      if (tg && tg.kind === "cover" && !m.inCinema) {
+        slotWorld(tg.fv, tg.info, hl.position, hl.quaternion);
+        const h2 = tg.info.half;
+        hl.scale.set(h2 ? h2.x * 2 + 0.015 : 0.17, h2 ? h2.y * 2 + 0.015 : 0.23, 0.05);
+        hl.visible = true;
+      } else hl.visible = false;
+    }
+    updateLabel() {
+      const m = this.mode;
+      const hud = m.hud3d;
+      if (!hud) return;
+      const order = m.aimHand === "left" ? ["left", "right"] : ["right", "left"];
+      for (const side of order) {
+        const rec = m.recFor(side);
+        const tg = rec && rec.pt ? rec.pt.target : null;
+        if (!tg || tg.kind === "panel") continue;
+        let title = "";
+        let hint = "";
+        if (tg.kind === "cover") {
+          const it = m.app.items.get(tg.info.itemId);
+          title = it && it.Name || "";
+          hint = "Trigger: Nehmen \xB7 Grip: Greifen";
+        } else if (tg.kind === "ia") {
+          title = tg.ia.label || "";
+          hint = vrHint(tg.ia.hint);
+        } else if (tg.kind === "wrist") {
+          title = "Men\xFC";
+          hint = "Trigger: \xD6ffnen";
+        }
+        const len = Math.min(tg.t, 4);
+        this._pt.copy(rec.pt.o).addScaledVector(rec.pt.d, len);
+        hud.setLabel(title, hint, this._pt);
+        return;
+      }
+      hud.hideLabel();
+    }
+    /** Trigger/Pinch losgelassen→gedrückt: frisch zielen und auslösen. */
+    trigger(rec, now) {
+      const m = this.mode;
+      if (!this.attached || !rec.pt || !rec.source) return;
+      if (rec.side) m.aimHand = rec.side;
+      const tg = this.pick(rec, now);
+      const app = m.app;
+      this.dirty = true;
+      if (!tg) {
+        if (m.inCinema && m.cinema && typeof m.cinema.onSelectEmpty === "function") m.cinema.onSelectEmpty();
+        return;
+      }
+      if (tg.kind === "wrist") {
+        m.openMenu();
+        return;
+      }
+      if (tg.kind === "panel") {
+        if (tg.hit) tg.panel.activate(tg.hit);
+        return;
+      }
+      if (!this.canPickWorld()) return;
+      if (tg.kind === "cover") app.take(tg.info.itemId, { hand: rec.side || "right" });
+      else if (tg.kind === "ia") {
+        if (!tg.ia.enabled || tg.ia.enabled()) tg.ia.onUse();
+      }
+    }
+    /** Grip gedrückt: Hülle in Reichweite greifen. */
+    grip(rec, now) {
+      const m = this.mode;
+      void now;
+      if (!this.attached || !rec.source || !this.canPickWorld()) return;
+      if (rec.side) m.aimHand = rec.side;
+      const p = rec.source.hand ? this.rayOf(rec).o : rec.grip.getWorldPosition(this._pt);
+      const hit = nearestCover(m.app.shelves.faceViews, p, GRIP_REACH);
+      if (hit) m.app.take(hit.info.itemId, { hand: rec.side || "right", grab: true });
+    }
+    dispose() {
+      for (const rec of this.mode.sources) {
+        const pt = rec && rec.pt;
+        if (!pt) continue;
+        if (pt.hover && pt.hover.open) {
+          try {
+            pt.hover.hover(null);
+          } catch {
+          }
+        }
+        pt.laser.removeFromParent();
+        pt.dot.removeFromParent();
+        pt.hl.removeFromParent();
+        rec.pt = null;
+      }
+      for (const g of this.geos) g.dispose();
+      for (const m of this.mats) m.dispose();
+      this.geos = [];
+      this.mats = [];
+      this.attached = false;
+    }
+  };
+
+  // src/js/store3d/xr/hands.js
+  var _p2 = new Vector3();
+  var _n = new Vector3();
+  var _h = new Vector3();
+  var _q2 = new Quaternion();
+  function attachVisuals(rec) {
+    const geos = [];
+    const mats = [];
+    const mk2 = (geo, color, opacity = 1) => {
+      const mat = new MeshBasicMaterial({ color, transparent: opacity < 1, opacity, toneMapped: false, fog: false });
+      geos.push(geo);
+      mats.push(mat);
+      return new Mesh(geo, mat);
+    };
+    const cap = mk2(new CapsuleGeometry(0.018, 0.1, 4, 10), 2765944);
+    cap.rotation.x = Math.PI / 2;
+    cap.position.set(0, 0, 0.02);
+    cap.name = "lfx-xr-controller";
+    rec.grip.add(cap);
+    const dot = mk2(new SphereGeometry(7e-3, 12, 8), 16771488, 0.9);
+    dot.name = "lfx-xr-handdot";
+    dot.visible = false;
+    rec.ray.add(dot);
+    return {
+      cap,
+      dot,
+      /** isHand → Punkt statt Kapsel. */
+      setKind(isHand) {
+        cap.visible = !isHand;
+        dot.visible = !!isHand;
+      },
+      dispose() {
+        cap.removeFromParent();
+        dot.removeFromParent();
+        for (const g of geos) g.dispose();
+        for (const m of mats) m.dispose();
+      }
+    };
+  }
+  var WristButton = class {
+    constructor(rig) {
+      this.rig = rig;
+      this.group = new Group();
+      this.group.name = "lfx-xr-wrist";
+      this.group.visible = false;
+      this.mats = [];
+      this.geos = [];
+      const base = this.part(new CylinderGeometry(0.026, 0.026, 8e-3, 28), 16765503);
+      const core = this.part(new CylinderGeometry(0.015, 0.015, 0.01, 28), 856880);
+      core.position.y = 2e-3;
+      this.group.add(base, core);
+      this.radius = 0.05;
+      this.visible = false;
+      rig.add(this.group);
+    }
+    part(geo, color) {
+      const mat = new MeshBasicMaterial({ color, toneMapped: false, fog: false });
+      this.geos.push(geo);
+      this.mats.push(mat);
+      return new Mesh(geo, mat);
+    }
+    /**
+     * rec = Eingabequelle der linken Seite oder null; headLocal = Kopfposition im Rig-Raum.
+     * Controller: Knopf auf der Oberseite hinter dem Griff, Hand: auf der Handflächenseite des Handgelenks.
+     */
+    update(rec, headPos) {
+      const g = this.group;
+      let show = false;
+      if (rec && rec.source && rec.ray.visible) {
+        if (rec.source.hand) {
+          const joint = rec.handGroup && rec.handGroup.joints ? rec.handGroup.joints.wrist : null;
+          if (joint && joint.visible) {
+            _q2.copy(joint.quaternion);
+            _n.set(0, -1, 0).applyQuaternion(_q2);
+            _p2.copy(joint.position).addScaledVector(_n, 0.03);
+            show = true;
+          }
+        } else if (rec.grip.visible) {
+          _q2.copy(rec.grip.quaternion);
+          _n.set(0, 1, 0).applyQuaternion(_q2);
+          _p2.set(0, 0.035, 0.09).applyQuaternion(_q2).add(rec.grip.position);
+          show = true;
+        }
+      }
+      if (show) {
+        _h.copy(headPos).sub(_p2).normalize();
+        show = _n.dot(_h) > 0.35;
+      }
+      this.visible = show;
+      g.visible = show;
+      if (show) {
+        g.position.copy(_p2);
+        g.quaternion.setFromUnitVectors(_h.set(0, 1, 0), _n);
+      }
+    }
+    /** Strahl (Welt) gegen die Kugel um den Knopf; Treffer → Abstand t, sonst null. */
+    hit(o, d, maxDist = 3) {
+      if (!this.visible) return null;
+      this.group.getWorldPosition(_p2);
+      const cx = _p2.x - o.x;
+      const cy = _p2.y - o.y;
+      const cz = _p2.z - o.z;
+      const t = cx * d.x + cy * d.y + cz * d.z;
+      if (t < 0 || t > maxDist) return null;
+      const dist2 = cx * cx + cy * cy + cz * cz - t * t;
+      return dist2 <= this.radius * this.radius ? t : null;
+    }
+    dispose() {
+      this.group.removeFromParent();
+      for (const g of this.geos) g.dispose();
+      for (const m of this.mats) m.dispose();
+    }
+  };
+
+  // src/js/store3d/xr/menu.js
+  var onOff = (v) => v ? "An" : "Aus";
+  function setVr(mode, patch) {
+    const app = mode.app;
+    if (!app.opts.vr) app.opts.vr = {};
+    Object.assign(app.opts.vr, patch);
+    mode.savePrefs();
+  }
+  function buildMenuSpec(mode) {
+    const app = mode.app;
+    const vr = app.opts.vr || {};
+    const again = () => mode.refreshMenu();
+    const rows = [
+      { label: "Ton", tag: onOff(app.sound), onSelect: () => {
+        app.setSound(!app.sound);
+        mode.savePrefs();
+        again();
+      } },
+      { label: "Drehen", tag: vr.turn === "smooth" ? "Weich" : "Ruck 45\xB0", onSelect: () => {
+        setVr(mode, { turn: vr.turn === "smooth" ? "snap" : "smooth" });
+        again();
+      } },
+      { label: "Vignette", tag: onOff(vr.vignette !== false), onSelect: () => {
+        setVr(mode, { vignette: vr.vignette === false });
+        again();
+      } },
+      { label: "Gr\xF6\xDFe", tag: vr.height === "seated" ? "Sitzend" : "Automatisch", onSelect: () => {
+        setVr(mode, { height: vr.height === "seated" ? "auto" : "seated" });
+        mode.recenter();
+        again();
+      } },
+      { label: "Neu ausrichten", sub: "Sitzh\xF6he neu kalibrieren", onSelect: () => {
+        mode.recenter();
+        mode.toast("Neu ausgerichtet", 1600);
+      } },
+      { label: "Qualit\xE4t", tag: vr.quality === "low" ? "Niedrig" : "Mittel", onSelect: () => {
+        const q = vr.quality === "low" ? "mid" : "low";
+        setVr(mode, { quality: q });
+        app.setQuality(q);
+        again();
+      } },
+      { label: "Kassen-PC-Suche", onSelect: () => {
+        mode.closeMenu();
+        app.openTerminal("");
+      } },
+      { label: "Diagnose", tag: onOff(mode.diagOn), onSelect: () => {
+        mode.setDiag(!mode.diagOn);
+        again();
+      } }
+    ];
+    let extra;
+    try {
+      extra = mode.cinema && typeof mode.cinema.menuItems === "function" ? mode.cinema.menuItems() || [] : [];
+    } catch {
+      extra = [];
+    }
+    for (const it of extra) {
+      if (!it || !it.label) continue;
+      rows.push({ label: it.label, tag: it.tag, sub: it.sub, onSelect: () => {
+        mode.closeMenu();
+        if (typeof it.onSelect === "function") it.onSelect();
+      } });
+    }
+    return {
+      title: "VR-Men\xFC",
+      width: 0.9,
+      list: { rows, visible: 7 },
+      buttons: [
+        { label: "Weiter", primary: true, onSelect: () => mode.closeMenu() },
+        { label: "VR verlassen", onSelect: () => {
+          mode.closeMenu();
+          mode.exit();
+        } }
+      ],
+      onClose: () => {
+        mode.menuPanel = null;
+      }
+    };
+  }
+
+  // src/js/store3d/cinema/hall.js
+  var SEAT_NAMES = ["front", "mid", "back"];
+  var ROW_Z = [6, 8, 10, 12, 14, 16, 18];
+  var floorY = (z) => Math.max(0, 0.125 * (z - 8));
+  var SEATS = {
+    front: { x: 0, z: 8, y: floorY(8), yaw: 0 },
+    mid: { x: 0, z: 12, y: floorY(12), yaw: 0 },
+    back: { x: 0, z: 16, y: floorY(16), yaw: 0 }
+  };
+  var SEAT_EYE = 1.1;
+  var HALL = { x: 13, back: 21, front: -0.4, h: 12 };
+  var CURTAIN = { half: 9.3, z: 2.05, h: 11.4 };
+  var HOUSE = { r: 1, g: 0.78, b: 0.55 };
+  var CURTAIN_SECONDS = 1.8;
+  var SPILL_AMBIENT = 6.5;
+  var SPILL_SUN = 11;
+  function box2(w, h2, d, cx, cy, cz, color) {
+    const g = new BoxGeometry(w, h2, d);
+    g.translate(cx, cy, cz);
+    const c = new Color(color);
+    const n = g.attributes.position.count;
+    const arr = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      arr[i * 3] = c.r;
+      arr[i * 3 + 1] = c.g;
+      arr[i * 3 + 2] = c.b;
+    }
+    g.setAttribute("color", new Float32BufferAttribute(arr, 3));
+    return g;
+  }
+  var span = (x0, x1, y0, y1, z0, z1, color) => box2(x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, color);
+  function canvas2d(w, h2) {
+    try {
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h2;
+      const g = c.getContext ? c.getContext("2d") : null;
+      return g ? { c, g } : { c, g: null };
+    } catch {
+      return { c: null, g: null };
+    }
+  }
+  function pleatTexture() {
+    const { c, g } = canvas2d(256, 32);
+    if (!g) return null;
+    for (let x = 0; x < 256; x++) {
+      const k = 0.5 + 0.5 * Math.sin(x / 256 * Math.PI * 2 * 12);
+      const sh = 0.38 + 0.62 * k * k;
+      g.fillStyle = `rgb(${Math.round(150 * sh)},${Math.round(14 * sh)},${Math.round(32 * sh)})`;
+      g.fillRect(x, 0, 1, 32);
+    }
+    const t = new CanvasTexture(c);
+    t.colorSpace = SRGBColorSpace;
+    t.wrapS = RepeatWrapping;
+    return t;
+  }
+  function exitTexture() {
+    const { c, g } = canvas2d(256, 96);
+    if (!g) return null;
+    g.fillStyle = "#0a5a2a";
+    g.fillRect(0, 0, 256, 96);
+    g.strokeStyle = "#e8ffe8";
+    g.lineWidth = 5;
+    g.strokeRect(5, 5, 246, 86);
+    g.fillStyle = "#ffffff";
+    g.font = "700 46px system-ui, Arial, sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("AUSGANG", 128, 50);
+    const t = new CanvasTexture(c);
+    t.colorSpace = SRGBColorSpace;
+    return t;
+  }
+  function buildStatic() {
+    const list = [];
+    const carpet = 3805209;
+    const wall = 2500144;
+    list.push(span(-HALL.x, HALL.x, -0.6, 0, HALL.front, 9, carpet));
+    for (const z of ROW_Z) {
+      if (z < 10) continue;
+      list.push(span(-HALL.x, HALL.x, -0.6, floorY(z), z - 1, z === ROW_Z[ROW_Z.length - 1] ? HALL.back : z + 1, z % 4 === 0 ? 4461341 : carpet));
+    }
+    list.push(span(-HALL.x - 0.3, -HALL.x, -0.6, HALL.h, HALL.front - 0.3, HALL.back + 0.3, wall));
+    list.push(span(HALL.x, HALL.x + 0.3, -0.6, HALL.h, HALL.front - 0.3, HALL.back + 0.3, wall));
+    list.push(span(-HALL.x, HALL.x, -0.6, HALL.h, HALL.front - 0.3, HALL.front, 789521));
+    list.push(span(-HALL.x, HALL.x, -0.6, HALL.h, HALL.back, HALL.back + 0.3, wall));
+    list.push(span(-HALL.x, HALL.x, HALL.h, HALL.h + 0.3, HALL.front - 0.3, HALL.back + 0.3, 723728));
+    for (let z = 1.6, i = 0; z < 20.4; z += 1.7, i++) {
+      const col = i % 2 ? 3877420 : 3088676;
+      list.push(span(-HALL.x, -HALL.x + 0.16, 1.4, 7.2, z, z + 1.4, col));
+      list.push(span(HALL.x - 0.16, HALL.x, 1.4, 7.2, z, z + 1.4, col));
+    }
+    list.push(span(-HALL.x, -HALL.x + 0.1, -0.6, 1.4, HALL.front, HALL.back, 1840152));
+    list.push(span(HALL.x - 0.1, HALL.x, -0.6, 1.4, HALL.front, HALL.back, 1840152));
+    const red = 10166832;
+    const redDark = 8002088;
+    for (const z of ROW_Z) {
+      const y = floorY(z);
+      for (let k = -9; k <= 9; k++) {
+        const x = k * 0.62;
+        list.push(box2(0.54, 0.4, 0.52, x, y + 0.2, z + 0.1, red));
+        list.push(box2(0.54, 0.78, 0.14, x, y + 0.79, z + 0.42, redDark));
+        list.push(box2(0.07, 0.07, 0.46, x + 0.31, y + 0.52, z + 0.12, 2759451));
+      }
+    }
+    return mergeGeometries(list, false);
+  }
+  function buildStairLights() {
+    const list = [];
+    const amber = 16777215;
+    for (const z of ROW_Z) {
+      if (z < 10) continue;
+      const y = floorY(z);
+      for (let x = -12; x <= 12; x += 1.5) list.push(box2(0.22, 0.04, 0.04, x, y - 0.07, z - 1 - 0.01, amber));
+    }
+    return mergeGeometries(list, false);
+  }
+  function buildExitSigns() {
+    const a = new PlaneGeometry(1.1, 0.42);
+    a.rotateY(Math.PI / 2);
+    a.translate(-HALL.x + 0.2, 3.3, 3.2);
+    const b = new PlaneGeometry(1.1, 0.42);
+    b.rotateY(-Math.PI / 2);
+    b.translate(HALL.x - 0.2, 3.3, 3.2);
+    return mergeGeometries([a, b], false);
+  }
+  function createHall() {
+    const scene = new Scene();
+    scene.name = "lfx-cinema-hall";
+    scene.background = new Color(263174);
+    const disposables = [];
+    const track = (o) => {
+      disposables.push(o);
+      return o;
+    };
+    const shellGeo = track(buildStatic());
+    const shellMat = track(new MeshLambertMaterial({ vertexColors: true }));
+    const shell = new Mesh(shellGeo, shellMat);
+    shell.name = "lfx-cinema-shell";
+    shell.matrixAutoUpdate = false;
+    scene.add(shell);
+    const stairGeo = track(buildStairLights());
+    const stairMat = track(new MeshBasicMaterial({ color: 16753226, toneMapped: false }));
+    const stairs = new Mesh(stairGeo, stairMat);
+    stairs.name = "lfx-cinema-stairlights";
+    scene.add(stairs);
+    const exitTex = exitTexture();
+    if (exitTex) track(exitTex);
+    const exitGeo = track(buildExitSigns());
+    const exitMat = track(new MeshBasicMaterial({ map: exitTex, color: exitTex ? 16777215 : 1874506, toneMapped: false, side: DoubleSide }));
+    const exits = new Mesh(exitGeo, exitMat);
+    exits.name = "lfx-cinema-exit";
+    scene.add(exits);
+    const pleats = pleatTexture();
+    if (pleats) track(pleats);
+    const curtainMat = track(new MeshLambertMaterial({ map: pleats, color: pleats ? 16777215 : 6950684 }));
+    const curtains = new Group();
+    curtains.name = "lfx-cinema-curtain";
+    scene.add(curtains);
+    const makeHalf = (side) => {
+      const g = track(new PlaneGeometry(CURTAIN.half, CURTAIN.h));
+      g.translate(-side * CURTAIN.half / 2, CURTAIN.h / 2, 0);
+      const m = new Mesh(g, curtainMat);
+      m.position.set(side * CURTAIN.half, 0, CURTAIN.z);
+      curtains.add(m);
+      return m;
+    };
+    const left = makeHalf(-1);
+    const right = makeHalf(1);
+    const CLOSED = 1;
+    const OPEN = 0.1;
+    let curtainK = 0;
+    let curtainTarget = 0;
+    const applyCurtain = () => {
+      const e = curtainK * curtainK * (3 - 2 * curtainK);
+      const s = CLOSED + (OPEN - CLOSED) * e;
+      left.scale.x = s;
+      right.scale.x = s;
+    };
+    applyCurtain();
+    const ambient = new AmbientLight(16777215, 1);
+    const sun = new DirectionalLight(16777215, 1);
+    sun.position.set(0, 6.5, 1.5);
+    const sunTarget = new Object3D();
+    sunTarget.position.set(0, 1.2, 15);
+    scene.add(ambient, sun, sunTarget);
+    sun.target = sunTarget;
+    let house = 1;
+    let houseTarget = 1;
+    let spillColor = [0, 0, 0];
+    let spillK = 0;
+    let spillKTarget = 0;
+    function applyLight() {
+      const sr = spillColor[0] * spillK;
+      const sg = spillColor[1] * spillK;
+      const sb = spillColor[2] * spillK;
+      const hk = house;
+      ambient.color.setRGB(HOUSE.r * (0.06 + 1.7 * hk) + sr * SPILL_AMBIENT, HOUSE.g * (0.06 + 1.7 * hk) + sg * SPILL_AMBIENT, HOUSE.b * (0.06 + 1.7 * hk) + sb * SPILL_AMBIENT);
+      sun.color.setRGB(HOUSE.r * 0.45 * hk + sr * SPILL_SUN, HOUSE.g * 0.45 * hk + sg * SPILL_SUN, HOUSE.b * 0.45 * hk + sb * SPILL_SUN);
+      const s = 0.28 + 0.72 * hk;
+      stairMat.color.setRGB(1 * s, 0.64 * s, 0.29 * s);
+    }
+    applyLight();
+    const ease4 = (cur, target, dt, rate) => Math.abs(target - cur) < 5e-4 ? target : cur + (target - cur) * (1 - Math.exp(-Math.max(0, dt) * rate));
+    const api = {
+      scene,
+      get curtainOpen() {
+        return curtainTarget >= 1;
+      },
+      get curtainProgress() {
+        return curtainK;
+      },
+      get houseLight() {
+        return house;
+      },
+      get houseLightTarget() {
+        return houseTarget;
+      },
+      get spill() {
+        return { color: [...spillColor], k: spillK };
+      },
+      get meshes() {
+        return [shell, stairs, exits, left, right];
+      },
+      SEATS,
+      seat(name) {
+        return SEATS[name] || SEATS.mid;
+      },
+      curtain(open, instant = false) {
+        curtainTarget = open ? 1 : 0;
+        if (instant) {
+          curtainK = curtainTarget;
+          applyCurtain();
+        }
+      },
+      setHouseLight(k, instant = false) {
+        houseTarget = Math.max(0, Math.min(1, Number(k) || 0));
+        if (instant) {
+          house = houseTarget;
+          applyLight();
+        }
+      },
+      /** Streulicht: color {r,g,b} in sRGB 0..1, k 0..1 (Stärke). */
+      setSpill(color, k = 1) {
+        if (color) {
+          const c = new Color().setRGB(color.r, color.g, color.b, SRGBColorSpace);
+          spillColor = [c.r, c.g, c.b];
+        }
+        spillKTarget = Math.max(0, Math.min(1, Number(k) || 0));
+      },
+      update(dt) {
+        let dirty = false;
+        if (curtainK !== curtainTarget) {
+          const step = dt / CURTAIN_SECONDS;
+          curtainK = curtainTarget > curtainK ? Math.min(curtainTarget, curtainK + step) : Math.max(curtainTarget, curtainK - step);
+          applyCurtain();
+        }
+        if (house !== houseTarget) {
+          house = ease4(house, houseTarget, dt, 2.2);
+          dirty = true;
+        }
+        if (spillK !== spillKTarget) {
+          spillK = ease4(spillK, spillKTarget, dt, 2.5);
+          dirty = true;
+        }
+        if (dirty || spillK > 0) applyLight();
+      },
+      dispose() {
+        scene.removeFromParent();
+        for (const o of disposables) {
+          try {
+            o.dispose();
+          } catch {
+          }
+        }
+        disposables.length = 0;
+        scene.clear();
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/cinema/screen.js
+  var SCREEN_RADIUS = 14;
+  var SCREEN_MAX_W = 16;
+  var SCREEN_MAX_H = 9;
+  var SCREEN_BOTTOM = 1.5;
+  function screenGeometry({ radius = SCREEN_RADIUS, width = SCREEN_MAX_W, aspect: aspect2 = 16 / 9, height } = {}) {
+    const R2 = Math.max(1, Number(radius) || SCREEN_RADIUS);
+    const w = Math.max(0.1, Number(width) || SCREEN_MAX_W);
+    const a = aspect2 > 0 ? aspect2 : 16 / 9;
+    const h2 = height > 0 ? height : w / a;
+    const arc = Math.min(w / R2, Math.PI * 0.9);
+    const n = Math.max(4, Math.min(96, Math.ceil(arc / 0.05)));
+    const pos = [];
+    const nor = [];
+    const uv = [];
+    for (let i = 0; i <= n; i++) {
+      const f = i / n;
+      const th = (f - 0.5) * arc;
+      const x = R2 * Math.sin(th);
+      const z = R2 * (1 - Math.cos(th));
+      for (let j = 0; j < 2; j++) {
+        pos.push(x, (j - 0.5) * h2, z);
+        nor.push(-Math.sin(th), 0, Math.cos(th));
+        uv.push(f, j);
+      }
+    }
+    const idx = [];
+    for (let i = 0; i < n; i++) {
+      const a0 = i * 2;
+      const b0 = (i + 1) * 2;
+      idx.push(a0, b0, b0 + 1, a0, b0 + 1, a0 + 1);
+    }
+    const g = new BufferGeometry();
+    g.setAttribute("position", new Float32BufferAttribute(pos, 3));
+    g.setAttribute("normal", new Float32BufferAttribute(nor, 3));
+    g.setAttribute("uv", new Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.userData = { radius: R2, width: arc * R2, height: h2, arc, chord: 2 * R2 * Math.sin(arc / 2) };
+    return g;
+  }
+  function fitScreen(aspect2, { maxW = SCREEN_MAX_W, maxH = SCREEN_MAX_H } = {}) {
+    const a = Number.isFinite(aspect2) && aspect2 > 0.3 && aspect2 < 6 ? aspect2 : 16 / 9;
+    const width = Math.min(maxW, maxH * a);
+    return { width, height: width / a, aspect: a };
+  }
+  var MIN_GAP = 22;
+  var PLAY_GAP = 33;
+  var PolledVideoTexture = class extends VideoTexture {
+    constructor(video) {
+      super(video);
+      try {
+        if (this._requestVideoFrameCallbackId && typeof video.cancelVideoFrameCallback === "function") video.cancelVideoFrameCallback(this._requestVideoFrameCallbackId);
+      } catch {
+      }
+      this._requestVideoFrameCallbackId = 0;
+      this.colorSpace = SRGBColorSpace;
+      this.minFilter = LinearFilter;
+      this.magFilter = LinearFilter;
+      this.generateMipmaps = false;
+      this.uploads = 0;
+      this._lastTime = -1;
+      this._lastAt = -1e9;
+    }
+    /** @returns {boolean} true, wenn ein Upload angefordert wurde. */
+    update(now = typeof performance !== "undefined" ? performance.now() : Date.now()) {
+      const v = this.image;
+      if (!v || (Number(v.readyState) || 0) < 2) return false;
+      const t = Number(v.currentTime);
+      const gap = now - this._lastAt;
+      let go = false;
+      if (t !== this._lastTime) go = gap >= MIN_GAP;
+      else if (!v.paused && !v.ended) go = gap >= PLAY_GAP;
+      if (!go) return false;
+      this._lastTime = t;
+      this._lastAt = now;
+      this.uploads++;
+      this.needsUpdate = true;
+      return true;
+    }
+  };
+  function ctx2d(canvas) {
+    try {
+      return canvas.getContext ? canvas.getContext("2d") : null;
+    } catch {
+      return null;
+    }
+  }
+  function drawStatus(canvas, { title = "", text = "", sub = "" } = {}) {
+    const g = ctx2d(canvas);
+    if (!g) return false;
+    const W = canvas.width;
+    const H = canvas.height;
+    g.fillStyle = "#05060b";
+    g.fillRect(0, 0, W, H);
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = "#ffd23f";
+    g.font = `700 ${Math.round(H * 0.058)}px system-ui, "Segoe UI", Arial, sans-serif`;
+    g.fillText("VIDEOTHEK LENZ", W / 2, H * 0.2, W * 0.9);
+    if (title) {
+      g.fillStyle = "#aab4e8";
+      g.font = `600 ${Math.round(H * 0.06)}px system-ui, "Segoe UI", Arial, sans-serif`;
+      g.fillText(String(title).slice(0, 80), W / 2, H * 0.42, W * 0.9);
+    }
+    g.fillStyle = "#f4f6ff";
+    g.font = `700 ${Math.round(H * 0.095)}px system-ui, "Segoe UI", Arial, sans-serif`;
+    g.fillText(String(text), W / 2, H * 0.58, W * 0.92);
+    if (sub) {
+      g.fillStyle = "#aab4e8";
+      g.font = `500 ${Math.round(H * 0.048)}px system-ui, "Segoe UI", Arial, sans-serif`;
+      g.fillText(String(sub).slice(0, 90), W / 2, H * 0.74, W * 0.9);
+    }
+    return true;
+  }
+  function createScreen({ radius = SCREEN_RADIUS, bottom = SCREEN_BOTTOM } = {}) {
+    const group = new Group();
+    group.name = "lfx-cinema-screen";
+    const statusCanvas = document.createElement("canvas");
+    statusCanvas.width = 1280;
+    statusCanvas.height = 720;
+    const statusTex = new CanvasTexture(statusCanvas);
+    statusTex.colorSpace = SRGBColorSpace;
+    statusTex.generateMipmaps = false;
+    statusTex.minFilter = LinearFilter;
+    const statusMat = new MeshBasicMaterial({ map: statusTex, toneMapped: false, side: FrontSide });
+    const videoMat = new MeshBasicMaterial({ color: 16777215, toneMapped: false, side: FrontSide });
+    const maskMat = new MeshBasicMaterial({ color: 0, toneMapped: false, side: FrontSide });
+    const mesh = new Mesh(new BufferGeometry(), statusMat);
+    mesh.name = "lfx-cinema-screen-surface";
+    const mask = new Mesh(new BufferGeometry(), maskMat);
+    mask.name = "lfx-cinema-screen-mask";
+    group.add(mask, mesh);
+    const dims = { radius, bottom, width: SCREEN_MAX_W, height: SCREEN_MAX_W * 9 / 16, aspect: 16 / 9, centerY: 0, version: 0 };
+    let video = null;
+    let tex = null;
+    let disposed = false;
+    let status = { title: "", text: "", sub: "" };
+    function rebuild(aspect2) {
+      const f = fitScreen(aspect2);
+      dims.width = f.width;
+      dims.height = f.height;
+      dims.aspect = f.aspect;
+      dims.centerY = bottom + f.height / 2;
+      dims.version++;
+      mesh.geometry.dispose();
+      mask.geometry.dispose();
+      mesh.geometry = screenGeometry({ radius, width: f.width, aspect: f.aspect });
+      mask.geometry = screenGeometry({ radius, width: f.width + 1.6, height: f.height + 1.2 });
+      mask.position.z = -0.06;
+      group.position.y = dims.centerY;
+    }
+    rebuild(16 / 9);
+    const api = {
+      group,
+      dims,
+      get video() {
+        return video;
+      },
+      get videoFrames() {
+        return tex ? tex.uploads : 0;
+      },
+      get hasFrame() {
+        return Boolean(video && tex && tex.uploads >= 1 && (Number(video.readyState) || 0) >= 2 && (Number(video.videoWidth) || 0) > 0);
+      },
+      get texture() {
+        return tex;
+      },
+      setVideo(el2) {
+        if (disposed || el2 === video) return;
+        if (tex) {
+          tex.dispose();
+          tex = null;
+        }
+        video = el2 || null;
+        if (video) {
+          tex = new PolledVideoTexture(video);
+          videoMat.map = tex;
+        } else videoMat.map = null;
+        videoMat.needsUpdate = true;
+        mesh.material = statusMat;
+      },
+      setStatus(s) {
+        status = { ...status, ...s || {} };
+        drawStatus(statusCanvas, status);
+        statusTex.needsUpdate = true;
+      },
+      update(now) {
+        if (disposed) return;
+        if (tex) {
+          tex.update(now);
+          const vw = Number(video.videoWidth) || 0;
+          const vh = Number(video.videoHeight) || 0;
+          if (vw > 0 && vh > 0 && Math.abs(vw / vh - dims.aspect) > 0.01) rebuild(vw / vh);
+        }
+        const m = api.hasFrame ? videoMat : statusMat;
+        if (mesh.material !== m) mesh.material = m;
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (tex) tex.dispose();
+        tex = null;
+        video = null;
+        statusTex.dispose();
+        statusMat.dispose();
+        videoMat.dispose();
+        maskMat.dispose();
+        mesh.geometry.dispose();
+        mask.geometry.dispose();
+        group.removeFromParent();
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/cinema/subtitles.js
+  function wrapLines(text, maxWidth, measure, maxLines = 3) {
+    const out = [];
+    for (const para of String(text == null ? "" : text).replace(/\r/g, "").split("\n")) {
+      const words = para.split(/\s+/).filter(Boolean);
+      if (!words.length) continue;
+      let line = "";
+      for (const w of words) {
+        const cand = line ? `${line} ${w}` : w;
+        if (line && measure(cand) > maxWidth) {
+          out.push(line);
+          line = w;
+        } else line = cand;
+      }
+      if (line) out.push(line);
+    }
+    if (out.length <= maxLines) return out;
+    const cut = out.slice(0, maxLines);
+    let last = `${cut[maxLines - 1]}\u2026`;
+    while (last.length > 2 && measure(last) > maxWidth) last = `${last.slice(0, -2)}\u2026`;
+    cut[maxLines - 1] = last;
+    return cut;
+  }
+  var TEXT_W = 1600;
+  var TEXT_H = 330;
+  var FONT_PX = 66;
+  var LINE_PX = 82;
+  var FONT5 = `700 ${FONT_PX}px system-ui, "Segoe UI", Roboto, Arial, sans-serif`;
+  var MAX_CANVAS_FPS_GAP = 33;
+  function ctx2d2(c) {
+    try {
+      return c.getContext ? c.getContext("2d") : null;
+    } catch {
+      return null;
+    }
+  }
+  function createSubtitles({ screen }) {
+    const textCanvas = document.createElement("canvas");
+    textCanvas.width = TEXT_W;
+    textCanvas.height = TEXT_H;
+    const tg = ctx2d2(textCanvas);
+    const mat = new MeshBasicMaterial({ transparent: true, toneMapped: false, depthWrite: false, opacity: 1 });
+    const mesh = new Mesh(new BufferGeometry(), mat);
+    mesh.name = "lfx-cinema-subtitles";
+    mesh.renderOrder = 6;
+    mesh.visible = false;
+    screen.group.add(mesh);
+    let textTex = null;
+    let canvasTex = null;
+    let copyCanvas = null;
+    let copyCtx = null;
+    let mode = "none";
+    let lastText = null;
+    let lastCopy = -1e9;
+    let dimsVersion = -1;
+    let srcW = 0;
+    let srcH = 0;
+    let disposed = false;
+    function layout() {
+      const d = screen.dims;
+      dimsVersion = d.version;
+      mesh.geometry.dispose();
+      if (mode === "canvas") {
+        mesh.geometry = screenGeometry({ radius: d.radius, width: d.width, height: d.height });
+        mesh.position.set(0, 0, 0.04);
+      } else {
+        const w = d.width * 0.62;
+        const h2 = w * TEXT_H / TEXT_W;
+        mesh.geometry = screenGeometry({ radius: d.radius, width: w, height: h2 });
+        mesh.position.set(0, -d.height / 2 + h2 / 2 + d.height * 0.05, 0.04);
+      }
+    }
+    function drawText(text) {
+      if (!tg) return;
+      tg.clearRect(0, 0, TEXT_W, TEXT_H);
+      tg.font = FONT5;
+      tg.textAlign = "center";
+      tg.textBaseline = "alphabetic";
+      tg.lineJoin = "round";
+      const lines = wrapLines(text, TEXT_W * 0.92, (s) => tg.measureText(s).width, 3);
+      let y = TEXT_H - 36 - (lines.length - 1) * LINE_PX;
+      for (const ln of lines) {
+        tg.lineWidth = 12;
+        tg.strokeStyle = "rgba(0,0,0,0.88)";
+        tg.strokeText(ln, TEXT_W / 2, y, TEXT_W * 0.96);
+        tg.fillStyle = "#ffffff";
+        tg.fillText(ln, TEXT_W / 2, y, TEXT_W * 0.96);
+        y += LINE_PX;
+      }
+      if (textTex) textTex.needsUpdate = true;
+    }
+    function ensureTextTex() {
+      if (textTex) return;
+      textTex = new CanvasTexture(textCanvas);
+      textTex.colorSpace = SRGBColorSpace;
+      textTex.generateMipmaps = false;
+      textTex.minFilter = LinearFilter;
+    }
+    function ensureCopy(sw, sh) {
+      if (copyCanvas && sw === srcW && sh === srcH) return;
+      if (canvasTex) {
+        canvasTex.dispose();
+        canvasTex = null;
+      }
+      const k = Math.min(1, 1920 / Math.max(1, sw));
+      srcW = sw;
+      srcH = sh;
+      copyCanvas = document.createElement("canvas");
+      copyCanvas.width = Math.max(2, Math.round(sw * k));
+      copyCanvas.height = Math.max(2, Math.round(sh * k));
+      copyCtx = ctx2d2(copyCanvas);
+      canvasTex = new CanvasTexture(copyCanvas);
+      canvasTex.colorSpace = SRGBColorSpace;
+      canvasTex.generateMipmaps = false;
+      canvasTex.minFilter = LinearFilter;
+      if (mode === "canvas") {
+        mat.map = canvasTex;
+        mat.needsUpdate = true;
+      }
+    }
+    function setMode(m) {
+      if (m === mode) return;
+      mode = m;
+      mesh.visible = m !== "none";
+      if (m === "text") {
+        ensureTextTex();
+        mat.map = textTex;
+      } else if (m === "canvas") mat.map = canvasTex;
+      mat.needsUpdate = true;
+      dimsVersion = -1;
+    }
+    const api = {
+      mesh,
+      get mode() {
+        return mode;
+      },
+      get text() {
+        return lastText;
+      },
+      set(sub) {
+        if (disposed) return;
+        if (!sub) {
+          setMode("none");
+          lastText = null;
+          return;
+        }
+        if (sub.kind === "text") {
+          const t = String(sub.text == null ? "" : sub.text).trim();
+          if (!t) {
+            setMode("none");
+            lastText = null;
+            return;
+          }
+          ensureTextTex();
+          setMode("text");
+          if (t !== lastText) {
+            lastText = t;
+            drawText(t);
+          }
+        } else if (sub.kind === "canvas" && sub.canvas) {
+          const c = sub.canvas;
+          if (!(c.width > 0 && c.height > 0)) {
+            setMode("none");
+            return;
+          }
+          ensureCopy(c.width, c.height);
+          mat.map = canvasTex;
+          setMode("canvas");
+          mat.map = canvasTex;
+          lastText = null;
+          api._src = c;
+        }
+      },
+      tick(now) {
+        if (disposed || mode === "none") return;
+        if (dimsVersion !== screen.dims.version) layout();
+        if (mode === "canvas" && copyCtx && api._src && now - lastCopy >= MAX_CANVAS_FPS_GAP) {
+          lastCopy = now;
+          try {
+            copyCtx.clearRect(0, 0, copyCanvas.width, copyCanvas.height);
+            copyCtx.drawImage(api._src, 0, 0, copyCanvas.width, copyCanvas.height);
+            canvasTex.needsUpdate = true;
+          } catch {
+          }
+        }
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        mesh.removeFromParent();
+        mesh.geometry.dispose();
+        mat.dispose();
+        if (textTex) textTex.dispose();
+        if (canvasTex) canvasTex.dispose();
+        api._src = null;
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/cinema/ambient.js
+  function averageColor(img) {
+    const d = img && img.data;
+    if (!d || d.length < 4) return { r: 0, g: 0, b: 0 };
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    const n = Math.floor(d.length / 4);
+    for (let i = 0; i < n; i++) {
+      r += d[i * 4];
+      g += d[i * 4 + 1];
+      b += d[i * 4 + 2];
+    }
+    const k = 1 / (n * 255);
+    return { r: r * k, g: g * k, b: b * k };
+  }
+  function smoothColor(prev, next, dt, tau = 0.6) {
+    if (!next) return prev || { r: 0, g: 0, b: 0 };
+    if (!prev) return { r: next.r, g: next.g, b: next.b };
+    const a = 1 - Math.exp(-Math.max(0, dt) / Math.max(1e-3, tau));
+    return { r: prev.r + (next.r - prev.r) * a, g: prev.g + (next.g - prev.g) * a, b: prev.b + (next.b - prev.b) * a };
+  }
+  function createAmbientSampler({ video, doc = typeof document !== "undefined" ? document : null, hz = 8, w = 16, h: h2 = 9 } = {}) {
+    let g = null;
+    try {
+      const canvas = doc && doc.createElement("canvas");
+      if (canvas) {
+        canvas.width = w;
+        canvas.height = h2;
+        g = canvas.getContext("2d", { willReadFrequently: true });
+      }
+    } catch {
+      g = null;
+    }
+    let last = -1e9;
+    let failed = !g;
+    const gap = 1e3 / Math.max(1, hz);
+    return {
+      get failed() {
+        return failed;
+      },
+      update(now) {
+        if (failed || !video || (Number(video.readyState) || 0) < 2) return null;
+        if (now - last < gap) return null;
+        last = now;
+        try {
+          g.drawImage(video, 0, 0, w, h2);
+          return averageColor(g.getImageData(0, 0, w, h2));
+        } catch {
+          failed = true;
+          return null;
+        }
+      },
+      dispose() {
+        failed = true;
+        g = null;
+      }
+    };
+  }
+
+  // src/js/store3d/cinema/controls.js
+  var SEAT_ORDER = ["front", "mid", "back"];
+  var SEAT_LABEL = { front: "vorn", mid: "Mitte", back: "hinten" };
+  var AUTO_HIDE_MS = 6e3;
+  function fmtTime(s) {
+    const t = Math.max(0, Math.floor(Number.isFinite(s) ? s : 0));
+    const h2 = Math.floor(t / 3600);
+    const m = Math.floor(t % 3600 / 60);
+    const sec = t % 60;
+    const p = (n) => String(n).padStart(2, "0");
+    return h2 > 0 ? `${h2}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+  }
+  var clip2 = (s, n) => {
+    const t = String(s == null ? "" : s);
+    return t.length > n ? `${t.slice(0, n - 1)}\u2026` : t;
+  };
+  function controlsSpec(st, h2) {
+    const s = st || {};
+    const dur = s.duration > 0 ? s.duration : 0;
+    const t = dur ? Math.min(s.time || 0, dur) : s.time || 0;
+    const playing = s.phase === "playing";
+    const buttons = [];
+    if (s.upNext) {
+      buttons.push({ row: 0, label: "Jetzt starten", primary: true, onSelect: () => h2.onUpNext("start") });
+      buttons.push({ row: 0, label: "Verbergen", onSelect: () => h2.onUpNext("hide") });
+    }
+    buttons.push({ row: 1, label: playing ? "Pause" : "Weiter", primary: !s.upNext, onSelect: () => h2.onTogglePause() });
+    buttons.push({ row: 1, label: "\u221210 s", onSelect: () => h2.onSeekBy(-10) });
+    buttons.push({ row: 1, label: "+30 s", onSelect: () => h2.onSeekBy(30) });
+    if (s.hasPrev) buttons.push({ row: 1, label: "\u25C0 Folge", onSelect: () => h2.onPrev() });
+    if (s.hasNext) buttons.push({ row: 1, label: "Folge \u25B6", onSelect: () => h2.onNext() });
+    buttons.push({ row: 2, label: "Tonspur", onSelect: () => h2.onTracks("audio") });
+    buttons.push({ row: 2, label: "Untertitel", onSelect: () => h2.onTracks("subtitle") });
+    buttons.push({ row: 2, label: "Leiser", onSelect: () => h2.onVolume(-0.1) });
+    buttons.push({ row: 2, label: "Lauter", onSelect: () => h2.onVolume(0.1) });
+    for (const name of SEAT_ORDER) buttons.push({ row: 3, label: `Platz ${SEAT_LABEL[name]}`, on: h2.seat === name, onSelect: () => h2.onSeat(name) });
+    buttons.push({ row: 4, label: "Zur\xFCck in die Videothek", onSelect: () => h2.onBack() });
+    const vol = s.muted ? "stumm" : `${Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100)} %`;
+    const spec = {
+      title: clip2(s.title || "Kino", 70),
+      lines: [`Lautst\xE4rke ${vol}`],
+      progress: { value: dur ? t / dur : 0, label: `${fmtTime(t)} / ${fmtTime(dur)}`, onSeek: dur ? (f) => h2.onSeekFrac(f) : void 0 },
+      buttons,
+      width: 0.95,
+      anchor: "low",
+      onClose: h2.onClose
+    };
+    if (s.upNext) spec.text = s.upNext.seconds > 0 ? `N\xE4chste Folge in ${s.upNext.seconds} s` : "N\xE4chste Folge startet gleich";
+    return spec;
+  }
+  function trackSpec(kind, rows, { busy = false, onPick, onBack, onClose } = {}) {
+    const spec = {
+      title: kind === "audio" ? "Tonspur" : "Untertitel",
+      buttons: [{ label: "Zur\xFCck", onSelect: () => onBack() }],
+      width: 0.9,
+      anchor: "front",
+      onClose
+    };
+    if (busy) spec.text = "Wechsel l\xE4uft \u2026 das kann einige Sekunden dauern.";
+    else if (!rows) spec.text = "Lade \u2026";
+    else if (!rows.length) spec.text = "Keine Eintr\xE4ge vorhanden.";
+    else spec.list = { rows: rows.map((r) => ({ label: clip2(r.label, 48), selected: !!r.selected, onSelect: () => onPick(r) })), visible: 6 };
+    return spec;
+  }
+  function createControls({ openPanel: openPanel3, cinema, getState, getSeat, onSeat, onBack, toast }) {
+    let main = null;
+    let tracks = null;
+    let trackToken = 0;
+    let selfClose = false;
+    let lastKey = "";
+    let lastTouch = 0;
+    let now = 0;
+    let disposed = false;
+    const state = () => getState && getState() || {};
+    const closeHandle = (h2) => {
+      if (!h2) return;
+      selfClose = true;
+      try {
+        if (h2.open !== false) h2.close();
+      } catch {
+      }
+      selfClose = false;
+    };
+    const handlers = {
+      get seat() {
+        return getSeat();
+      },
+      onTogglePause: () => {
+        api.touch();
+        cinema.togglePause();
+      },
+      onSeekBy: (d) => {
+        api.touch();
+        cinema.seekBy(d);
+      },
+      onSeekFrac: (f) => {
+        api.touch();
+        const d = state().duration;
+        if (d > 0) cinema.seekTo(Math.max(0, Math.min(1, f)) * d);
+      },
+      onPrev: () => {
+        api.touch();
+        cinema.prev();
+      },
+      onNext: () => {
+        api.touch();
+        cinema.next();
+      },
+      onTracks: (kind) => {
+        api.touch();
+        api.openTracks(kind);
+      },
+      onVolume: (d) => {
+        api.touch();
+        const v = Number.isFinite(state().volume) ? state().volume : 1;
+        cinema.setVolume(Math.max(0, Math.min(1, Math.round((v + d) * 10) / 10)));
+      },
+      onSeat: (name) => {
+        api.touch();
+        onSeat(name);
+      },
+      onBack: () => onBack(),
+      onUpNext: (a) => {
+        api.touch();
+        cinema.upNext(a);
+      },
+      onClose: () => {
+        if (selfClose) return;
+        main = null;
+        lastKey = "";
+      }
+    };
+    const keyOf2 = (st) => [
+      st.title,
+      Math.floor(st.time || 0),
+      Math.floor(st.duration || 0),
+      st.phase,
+      st.hasPrev,
+      st.hasNext,
+      st.upNext ? `${st.upNext.seconds}|${st.upNext.text ? 1 : 0}` : "-",
+      Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100),
+      st.muted,
+      getSeat()
+    ].join("~");
+    const api = {
+      get visible() {
+        return Boolean(main && main.open);
+      },
+      get tracksOpen() {
+        return Boolean(tracks && tracks.open);
+      },
+      touch() {
+        lastTouch = now;
+      },
+      show() {
+        if (disposed) return;
+        api.touch();
+        if (main && main.open) return;
+        const st = state();
+        main = openPanel3(controlsSpec(st, handlers));
+        lastKey = keyOf2(st);
+      },
+      hide() {
+        const h2 = main;
+        main = null;
+        lastKey = "";
+        closeHandle(h2);
+        api.closeTracks();
+      },
+      toggle() {
+        if (api.tracksOpen) {
+          api.closeTracks();
+          return;
+        }
+        if (api.visible) api.hide();
+        else api.show();
+      },
+      /** Spec nur bei Änderungen neu zeichnen. */
+      refresh() {
+        if (!main || !main.open) return;
+        const st = state();
+        const k = keyOf2(st);
+        if (k === lastKey) return;
+        lastKey = k;
+        main.update(controlsSpec(st, handlers));
+      },
+      /** Pro Frame: Zeit merken, Panel aktualisieren, bei Spiel ohne Bedienung ausblenden. */
+      tick(t) {
+        now = t;
+        if (disposed) return;
+        if (main && !main.open) {
+          main = null;
+          lastKey = "";
+        }
+        if (tracks && !tracks.open) {
+          tracks = null;
+        }
+        if (!main) return;
+        api.refresh();
+        const st = state();
+        if (st.phase === "playing" && !st.upNext && !api.tracksOpen && now - lastTouch > AUTO_HIDE_MS) api.hide();
+      },
+      openTracks(kind) {
+        if (disposed) return;
+        api.closeTracks();
+        const token = ++trackToken;
+        const common2 = {
+          onBack: () => api.closeTracks(),
+          onClose: () => {
+            if (selfClose) return;
+            if (token === trackToken) {
+              tracks = null;
+            }
+          }
+        };
+        let rows = null;
+        let busy = false;
+        const spec = () => trackSpec(kind, rows, { busy, onPick, ...common2 });
+        const onPick = (r) => {
+          if (busy) return;
+          busy = true;
+          api.touch();
+          if (tracks && tracks.open) tracks.update(spec());
+          Promise.resolve(cinema.selectTrack(kind, r.id)).then((ok) => {
+            if (token !== trackToken) return;
+            busy = false;
+            if (ok === false && toast) toast("Auswahl nicht m\xF6glich");
+            api.closeTracks();
+          }, () => {
+            if (token === trackToken) {
+              busy = false;
+              api.closeTracks();
+            }
+          });
+        };
+        tracks = openPanel3(spec());
+        Promise.resolve(cinema.tracks(kind)).then((list) => {
+          if (token !== trackToken) return;
+          rows = Array.isArray(list) ? list : [];
+          if (tracks && tracks.open) tracks.update(spec());
+        }, () => {
+          if (token !== trackToken) return;
+          rows = [];
+          if (tracks && tracks.open) tracks.update(spec());
+        });
+      },
+      closeTracks() {
+        trackToken++;
+        const h2 = tracks;
+        tracks = null;
+        closeHandle(h2);
+      },
+      dispose() {
+        if (disposed) return;
+        api.hide();
+        disposed = true;
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/cinema/cinema.js
+  var WATCHDOG_MS = 1e4;
+  var SLOW_START_MS = 3e3;
+  var STATE_MS = 200;
+  var VIDEO_MS = 250;
+  var SUB_MS = 100;
+  var FAIL_HOLD_MS = 2600;
+  var warn4 = (...a) => {
+    try {
+      console.warn("[LenzFlix Store3D]", ...a);
+    } catch {
+    }
+  };
+  var clamp3 = (v, a, b) => Math.max(a, Math.min(b, v));
+  var Cinema = class {
+    constructor(app) {
+      this.app = app;
+      this._active = false;
+      this.disposed = false;
+      this.phase = "idle";
+      this.item = null;
+      this.hall = null;
+      this.screen = null;
+      this.subs = null;
+      this.ambient = null;
+      this.controls = null;
+      this.video = null;
+      this.state = {};
+      this.saved = null;
+      this.seat = "mid";
+      this.gen = 0;
+      this.timers = /* @__PURE__ */ new Set();
+      this.offs = [];
+      this._enterPromise = null;
+      this._leavePromise = null;
+      this._leaveAsked = false;
+      this._resetRun();
+    }
+    _resetRun() {
+      this.now = 0;
+      this.startAt = null;
+      this.baseTime = 0;
+      this.lastState = -1e9;
+      this.lastVideo = -1e9;
+      this.lastSub = -1e9;
+      this.spillTarget = null;
+      this.spillK = 0;
+      this.spill = null;
+      this.opened = false;
+      this.visible = true;
+      this.controlsWanted = false;
+    }
+    /** true ab enter() bis leave() abgeschlossen. */
+    get active() {
+      return this._active;
+    }
+    get _deps() {
+      const d = this.app.deps;
+      return d && d.cinema ? d.cinema : null;
+    }
+    get _xr() {
+      return this.app.xr || null;
+    }
+    _fade() {
+      const x = this._xr;
+      return x && x.presenting && x.fade ? x.fade : null;
+    }
+    _later(ms, fn) {
+      const gen = this.gen;
+      const id = setTimeout(() => {
+        this.timers.delete(id);
+        if (gen === this.gen && !this.disposed) fn();
+      }, ms);
+      this.timers.add(id);
+      return id;
+    }
+    _clearTimers() {
+      for (const id of this.timers) clearTimeout(id);
+      this.timers.clear();
+    }
+    // ---------------------------------------------------------------- betreten
+    enter(item) {
+      if (this._active || this.disposed) return;
+      this._active = true;
+      this._leaveAsked = false;
+      this.gen++;
+      this.item = item || null;
+      this.phase = "entering";
+      this._resetRun();
+      const f = this._fade();
+      const run = () => this._build(this.gen);
+      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn4("Kino betreten", err));
+      else run();
+    }
+    _seatName() {
+      const v = this.app.opts && this.app.opts.vr && this.app.opts.vr.seat;
+      return SEAT_NAMES.includes(v) ? v : "mid";
+    }
+    _build(gen) {
+      const app = this.app;
+      const eng = app.engine;
+      if (gen !== this.gen || this.disposed || this._leaveAsked || !this._active) return;
+      try {
+        const p = app.player;
+        if (p) this.saved = { x: p.x, z: p.z, yaw: p.yaw, pitch: p.pitch };
+        try {
+          if (app.holdview && typeof app.holdview.close === "function") app.holdview.close(false);
+        } catch (err) {
+          warn4("H\xFClle schlie\xDFen", err);
+        }
+        if (app.mods) app.mods.hook("onSuspend");
+        this._duck(true);
+        if (!this.hall) this.hall = createHall();
+        const hall = this.hall;
+        hall.curtain(false, true);
+        hall.setHouseLight(1, true);
+        hall.setSpill({ r: 0, g: 0, b: 0 }, 0);
+        this.screen = createScreen();
+        hall.scene.add(this.screen.group);
+        this.subs = createSubtitles({ screen: this.screen });
+        this.seat = this._seatName();
+        hall.scene.add(eng.rig);
+        eng.setScene(hall.scene);
+        this._placeSeat();
+        eng.setFoveation(0);
+        const title = this._title();
+        this.screen.setStatus({ title, text: "Film wird gestartet \u2026", sub: "" });
+        this.controls = createControls({
+          openPanel: (spec) => this._xr.openPanel(spec),
+          cinema: this._deps || {},
+          getState: () => this.state,
+          getSeat: () => this.seat,
+          onSeat: (n) => this.setSeat(n),
+          onBack: () => this.backToStore(),
+          toast: (t) => {
+            if (this._xr) this._xr.toast(t);
+          }
+        });
+        const d = this._deps;
+        if (d) {
+          this.offs.push(d.onVideo((v) => this._setVideo(v)));
+          this.offs.push(d.onChange((s) => {
+            this.state = s || this.state;
+            this._onState();
+          }));
+          this._setVideo(d.video());
+          this.state = d.state() || {};
+        }
+        this.phase = "starting";
+      } catch (err) {
+        warn4("Kino bauen", err);
+        this._selfLeave("fail");
+      }
+    }
+    _title() {
+      const it = this.item;
+      return String(it && (it.Name || it.name) || this.state && this.state.title || "");
+    }
+    _duck(on) {
+      try {
+        const ctx = this.app.mods && this.app.mods.ctx;
+        const snd = ctx && ctx.use("sound");
+        if (snd && typeof snd.duck === "function") snd.duck("cinema", on);
+      } catch {
+      }
+    }
+    _placeSeat() {
+      const eng = this.app.engine;
+      const s = SEATS[this.seat] || SEATS.mid;
+      let head = { x: 0, y: SEAT_EYE, z: 0, yaw: 0, pitch: 0 };
+      try {
+        if (eng.camera) head = headLocal(eng.camera);
+      } catch {
+      }
+      const floor = !this._xr || this._xr.floor !== false;
+      let off = floor ? clamp3(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
+      if (!Number.isFinite(off)) off = 0;
+      placeRig(eng.rig, { x: s.x, z: s.z, yaw: s.yaw }, head, { y: s.y + off });
+      eng.rig.updateMatrixWorld(true);
+    }
+    // ---------------------------------------------------------------- Platz
+    setSeat(name) {
+      if (!SEAT_NAMES.includes(name) || !this._active) return Promise.resolve(false);
+      const vr = this.app.opts && this.app.opts.vr;
+      if (vr) vr.seat = name;
+      try {
+        this.app.savePrefs();
+      } catch (err) {
+        warn4("Platz speichern", err);
+      }
+      if (name === this.seat || !this.hall || this.phase === "entering" || this.phase === "leaving") {
+        this.seat = name;
+        return Promise.resolve(true);
+      }
+      const wasVisible = !!(this.controls && this.controls.visible);
+      const go = () => {
+        this.seat = name;
+        if (this.controls) this.controls.hide();
+        this._placeSeat();
+      };
+      const f = this._fade();
+      const done = () => {
+        if (this._active && wasVisible && this.controls && !this._leaveAsked) this.controls.show();
+        return true;
+      };
+      if (!f) {
+        go();
+        return Promise.resolve(done());
+      }
+      return Promise.resolve(f.jump(go, { out: 160, in: 260 })).then(done, done);
+    }
+    // ---------------------------------------------------------------- Video / Zustand
+    _setVideo(v) {
+      if (!this.screen || v === this.video) return;
+      this.video = v || null;
+      this.screen.setVideo(this.video);
+      if (this.ambient) {
+        this.ambient.dispose();
+        this.ambient = null;
+      }
+      if (this.video) {
+        this.ambient = createAmbientSampler({ video: this.video });
+        this.baseTime = Number(this.video.currentTime) || 0;
+      }
+    }
+    _onState() {
+      const st = this.state || {};
+      if (this.phase === "starting") {
+        if (st.phase === "error" && !st.reloading) this._fail(st.error || "error");
+        return;
+      }
+      if (this.phase !== "playing" && this.phase !== "paused") return;
+      if (st.route === "home") {
+        this._selfLeave("home");
+        return;
+      }
+      if (st.phase === "error" && !st.reloading) {
+        this._fail(st.error || "error");
+        return;
+      }
+      if (st.phase === "playing" && this.phase !== "playing") this._setPlaying(false);
+      else if ((st.phase === "paused" || st.phase === "ended") && this.phase !== "paused") this._setPaused();
+    }
+    _setPlaying(first) {
+      this.phase = "playing";
+      const hall = this.hall;
+      if (hall) {
+        hall.curtain(true);
+        hall.setHouseLight(0.08);
+      }
+      this.spillK = 1;
+      if (this.controls) {
+        if (first || this.controls.visible) this.controls.show();
+        else this.controls.touch();
+      }
+    }
+    _setPaused() {
+      this.phase = "paused";
+      if (this.hall) this.hall.setHouseLight(0.35);
+      this.spillK = 0.35;
+      if (this.controls) this.controls.show();
+    }
+    _checkStart(now) {
+      if (this.startAt == null) this.startAt = now;
+      const v = this.video;
+      const st = this.state || {};
+      const frames = this.screen ? this.screen.videoFrames : 0;
+      if (v && (Number(v.readyState) || 0) >= 2 && frames >= 3 && (Math.abs((Number(v.currentTime) || 0) - this.baseTime) >= 0.3 || st.phase === "paused")) {
+        this.opened = true;
+        if (st.phase === "paused") {
+          this._setPaused();
+          this.hall.curtain(true);
+        } else this._setPlaying(true);
+        return;
+      }
+      if (now - this.startAt > SLOW_START_MS && this.hall && !this.hall.curtainOpen) this.hall.curtain(true);
+      if (now - this.startAt > WATCHDOG_MS) this._fail("timeout");
+    }
+    _fail(reason) {
+      if (this.phase === "failed" || this.phase === "leaving" || !this._active || this._leaveAsked) return;
+      this.phase = "failed";
+      this.failReason = reason;
+      const d = this._deps;
+      const st = this.state || {};
+      const txt = "Kino konnte nicht starten";
+      if (this.screen) this.screen.setStatus({ title: this._title(), text: txt, sub: "Zur\xFCck in die Videothek \u2026" });
+      if (this.controls) this.controls.hide();
+      if (this.hall) this.hall.curtain(true);
+      if (this._xr) this._xr.toast(txt, FAIL_HOLD_MS + 600);
+      const gen = this.gen;
+      const stop = async () => {
+        try {
+          if (d && (st.route === "video" || d.video())) await d.stop();
+        } catch (err) {
+          warn4("Stopp", err);
+        }
+        if (gen !== this.gen || this.disposed) return;
+        this._later(FAIL_HOLD_MS, () => this._selfLeave("fail"));
+      };
+      stop();
+    }
+    /** Selbst-Verlassen: über app.xr.leaveCinema, damit die Hülle die onXr-Meldung bekommt. */
+    _selfLeave(reason) {
+      if (this._leaveAsked) return;
+      const x = this._xr;
+      if (x && typeof x.leaveCinema === "function") x.leaveCinema(reason);
+      else this.leave(reason);
+    }
+    backToStore() {
+      if (this._leaveAsked || !this._active) return;
+      const d = this._deps;
+      const gen = this.gen;
+      Promise.resolve(d ? d.stop() : true).catch(() => false).then(() => {
+        if (gen === this.gen) this._selfLeave("stop");
+      });
+    }
+    // ---------------------------------------------------------------- Schleife
+    tick(dt, now) {
+      if (!this._active || this.disposed) return;
+      this.now = now;
+      const hall = this.hall;
+      if (hall) hall.update(dt);
+      if (this.phase === "entering" || this.phase === "leaving" || !this.screen) return;
+      const d = this._deps;
+      if (d && now - this.lastVideo >= VIDEO_MS) {
+        this.lastVideo = now;
+        try {
+          this._setVideo(d.video());
+        } catch {
+        }
+      }
+      if (d && now - this.lastState >= STATE_MS) {
+        this.lastState = now;
+        try {
+          this.state = d.state() || this.state;
+        } catch {
+        }
+        this._onState();
+        if (this._leaveAsked) return;
+      }
+      this.screen.update(now);
+      if (this.subs) {
+        if (d && now - this.lastSub >= SUB_MS && this.phase !== "failed") {
+          this.lastSub = now;
+          try {
+            this.subs.set(d.subtitles());
+          } catch {
+          }
+        }
+        this.subs.tick(now);
+      }
+      if (this.ambient && this.screen.hasFrame && (this.phase === "playing" || this.phase === "paused")) {
+        const c = this.ambient.update(now);
+        if (c) this.spillTarget = c;
+      }
+      if (this.spillTarget) {
+        this.spill = smoothColor(this.spill, this.spillTarget, dt, 0.5);
+        hall.setSpill(this.spill, this.spillK == null ? 0 : this.spillK);
+      }
+      if (this.controls && this.phase !== "failed") this.controls.tick(now);
+      if (this.phase === "starting") this._checkStart(now);
+    }
+    // ---------------------------------------------------------------- Eingabe-Hooks (mode.js)
+    /** Trigger ins Leere: Bedienpanel ein/aus. */
+    onSelectEmpty() {
+      if (!this._active || !this.controls || this.phase === "entering" || this.phase === "leaving" || this.phase === "failed") return;
+      this.controls.toggle();
+    }
+    menuItems() {
+      if (!this._active) return [];
+      const next = SEAT_ORDER[(SEAT_ORDER.indexOf(this.seat) + 1) % SEAT_ORDER.length];
+      return [
+        { label: "Zur\xFCck in die Videothek", onSelect: () => this.backToStore() },
+        { label: `Platz: ${SEAT_LABEL[this.seat] || SEAT_LABEL.mid}`, onSelect: () => this.setSeat(next) },
+        { label: "Kino-Bedienung zeigen", onSelect: () => {
+          if (this.controls && !this.controls.visible) this.controls.show();
+        } }
+      ];
+    }
+    /** XR-Sichtbarkeit: außerhalb von „visible“ Panel zu, danach wieder zeigen. */
+    onVisibility(state) {
+      if (!this._active || !this.controls) return;
+      if (state !== "visible") {
+        this.controlsWanted = this.controls.visible;
+        this.controls.hide();
+      } else if (this.controlsWanted && this.phase !== "failed") {
+        this.controlsWanted = false;
+        this.controls.show();
+      }
+    }
+    diag() {
+      const v = this.video;
+      return { phase: this._active ? this.phase : "idle", videoFrames: this.screen ? this.screen.videoFrames : 0, readyState: v ? Number(v.readyState) || 0 : 0 };
+    }
+    // ---------------------------------------------------------------- verlassen
+    /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. Rückgabe: Promise (löst nach der Rückblende auf). */
+    leave(reason = "stop") {
+      if (!this._active) return Promise.resolve(false);
+      if (this._leavePromise) return this._leavePromise;
+      this._leaveAsked = true;
+      this.gen++;
+      this._clearTimers();
+      const f = this._fade();
+      if (reason === "sessionend" || !f) {
+        this._teardown();
+        return Promise.resolve(true);
+      }
+      this.phase = "leaving";
+      const run = () => this._teardown();
+      this._leavePromise = Promise.resolve(this._enterPromise).then(() => f.jump(run, { out: 250, in: 500 })).then(() => {
+        this._leavePromise = null;
+        if (reason === "fail" && this._xr) this._xr.toast("Kino konnte nicht starten", 3200);
+        return true;
+      }, (err) => {
+        warn4("Kino verlassen", err);
+        this._leavePromise = null;
+        if (this._active) this._teardown();
+        return false;
+      });
+      return this._leavePromise;
+    }
+    _teardown() {
+      if (!this._active) return;
+      const app = this.app;
+      const eng = app.engine;
+      for (const off of this.offs.splice(0)) {
+        try {
+          off();
+        } catch {
+        }
+      }
+      if (this.controls) {
+        this.controls.dispose();
+        this.controls = null;
+      }
+      if (this._xr && typeof this._xr.closePanels === "function") this._xr.closePanels();
+      if (this.subs) {
+        this.subs.dispose();
+        this.subs = null;
+      }
+      if (this.ambient) {
+        this.ambient.dispose();
+        this.ambient = null;
+      }
+      if (this.screen) {
+        this.screen.dispose();
+        this.screen = null;
+      }
+      this.video = null;
+      if (eng) {
+        eng.storeScene.add(eng.rig);
+        eng.setScene(eng.storeScene);
+        eng.rig.position.set(0, 0, 0);
+        eng.rig.rotation.set(0, 0, 0);
+        eng.rig.updateMatrixWorld(true);
+        eng.setFoveation(1);
+      }
+      const s = this.saved;
+      if (s && app.player) app.player.teleport(s.x, s.z, s.yaw, s.pitch);
+      if (app.mods) app.mods.hook("onResume");
+      this._duck(false);
+      this.saved = null;
+      this._active = false;
+      this.phase = "idle";
+      this._leavePromise = null;
+      this._enterPromise = null;
+    }
+    dispose() {
+      if (this.disposed) return;
+      this._clearTimers();
+      if (this._active) {
+        this._leaveAsked = true;
+        this._teardown();
+      }
+      this.disposed = true;
+      if (this.hall) {
+        this.hall.dispose();
+        this.hall = null;
+      }
+      this.item = null;
+    }
+  };
+
+  // src/js/store3d/xr/mode.js
+  var RADIUS2 = 0.28;
+  var warn5 = (...a) => {
+    try {
+      console.warn("[LenzFlix Store3D]", ...a);
+    } catch {
+    }
+  };
+  var XrMode = class {
+    constructor(app) {
+      this.app = app;
+      this.supported = false;
+      this.visibility = "visible";
+      this.floor = true;
+      this.input = { fwd: 0, strafe: 0, run: false, scale: 1 };
+      this.fade = null;
+      this.cinema = new Cinema(app);
+      this.cinemaReported = false;
+      this.panels = /* @__PURE__ */ new Set();
+      this.confirmPanel = null;
+      this.menuPanel = null;
+      this.afterEnd = [];
+      this.placed = false;
+      this.lastTp = 0;
+      this.rigY = 0;
+      this.lastX = 0;
+      this.lastZ = 0;
+      this.prevQuality = null;
+      this.disposed = false;
+      this.sources = [];
+      this.loco = createLoco();
+      this.locoOut = { fwd: 0, strafe: 0, run: false, scale: 1, turn: 0 };
+      this.pointer = null;
+      this.hud3d = null;
+      this.vignette = null;
+      this.wrist = null;
+      this.bubbles = /* @__PURE__ */ new Set();
+      this.anchorFallback = null;
+      this.selectQueue = [];
+      this.aimHand = "right";
+      this.diagOn = false;
+      this.diagAcc = 0;
+      this.jumping = false;
+      this.speed = 0;
+      this.turnRate = 0;
+      this.session = new XrSession({
+        renderer: app.engine.renderer,
+        onStart: (info) => this.onSessionStart(info),
+        onEnd: () => this.onSessionEnd(),
+        onVisibility: (v) => this.onVisibility(v)
+      });
+    }
+    get presenting() {
+      return this.session.presenting;
+    }
+    get inCinema() {
+      return !!this.cinema.active;
+    }
+    probe() {
+      return probeXr().then((v) => {
+        this.supported = !!v;
+        return this.supported;
+      });
+    }
+    report(state) {
+      try {
+        const f = this.app.deps && this.app.deps.onXr;
+        if (typeof f === "function") f(state);
+      } catch (err) {
+        warn5("onXr", err);
+      }
+    }
+    /** Muss synchron aus einem Klick laufen. */
+    enter() {
+      this.prepareSources();
+      const p = this.session.enter();
+      try {
+        const ctx = this.app.mods && this.app.mods.ctx;
+        const snd = ctx && ctx.use("sound");
+        if (snd && typeof snd.unlock === "function") snd.unlock();
+        const cash = ctx && ctx.use("cashier");
+        if (cash && typeof cash.unlockVoice === "function") cash.unlockVoice();
+      } catch (err) {
+        warn5("Entsperren", err);
+      }
+      Promise.resolve(p).then((ok) => {
+        if (!ok && !this.presenting) this.releaseSources();
+      }, () => {
+        if (!this.presenting) this.releaseSources();
+      });
+      return p;
+    }
+    exit() {
+      return this.session.exit();
+    }
+    // --- Eingabequellen ---
+    /** Controller/Grip/Hand-Objekte des Renderers holen und Ereignisse abonnieren (idempotent, noch nicht im Rig). */
+    prepareSources() {
+      if (this.sources.length || this.disposed) return;
+      const xr = this.app.engine.renderer.xr;
+      for (let i = 0; i < 2; i++) {
+        const rec = { i, ray: xr.getController(i), grip: xr.getControllerGrip(i), handGroup: xr.getHand(i), source: null, side: null, pad: emptyPad(), pt: null, vis: null, off: [] };
+        const on = (type, fn) => {
+          rec.ray.addEventListener(type, fn);
+          rec.off.push(() => rec.ray.removeEventListener(type, fn));
+        };
+        on("connected", (e) => this.onConnected(rec, e.data));
+        on("disconnected", () => this.onDisconnected(rec));
+        on("selectstart", () => this.onSelect(rec));
+        rec.vis = attachVisuals(rec);
+        this.sources.push(rec);
+      }
+    }
+    /** Abonnements und Objekte der Quellen entfernen. */
+    releaseSources() {
+      for (const rec of this.sources) {
+        for (const off of rec.off) {
+          try {
+            off();
+          } catch {
+          }
+        }
+        rec.off = [];
+        if (rec.vis) {
+          rec.vis.dispose();
+          rec.vis = null;
+        }
+        rec.ray.removeFromParent();
+        rec.grip.removeFromParent();
+        rec.handGroup.removeFromParent();
+        rec.source = null;
+      }
+      this.sources = [];
+      this.selectQueue.length = 0;
+    }
+    onConnected(rec, src) {
+      if (!src) return;
+      rec.source = src;
+      rec.side = src.handedness === "left" ? "left" : "right";
+      rec.pad = emptyPad();
+      if (rec.vis) rec.vis.setKind(!!src.hand);
+    }
+    onDisconnected(rec) {
+      rec.source = null;
+      rec.side = null;
+      rec.pad = emptyPad();
+      if (this.pointer) this.pointer.clearRec(rec);
+    }
+    onSelect(rec) {
+      if (!this.inputActive() || !rec.source) return;
+      if (!this.selectQueue.includes(rec)) this.selectQueue.push(rec);
+    }
+    /** Eingabe aktiv: Sitzung läuft und Sichtbarkeit „visible“. */
+    inputActive() {
+      return !this.disposed && this.presenting && this.visibility === "visible";
+    }
+    recFor(side) {
+      for (const r of this.sources) if (r.source && r.side === side) return r;
+      return null;
+    }
+    /** Pro Frame Gamepads lesen (Sticks, Knöpfe, Flanken). Trigger/Pinch kommen über select-Ereignisse. */
+    pollInput() {
+      const active = this.inputActive();
+      for (const rec of this.sources) {
+        if (!rec.source) continue;
+        rec.pad = active ? readPad(rec.source.gamepad, rec.pad) : emptyPad();
+      }
+    }
+    /** Grip-/B-Flanken und Trigger-Warteschlange abarbeiten (nach der Rig-Platzierung). */
+    processActions(now) {
+      if (!this.inputActive()) {
+        this.selectQueue.length = 0;
+        return;
+      }
+      for (const rec of this.sources) {
+        if (!rec.source) continue;
+        const e = rec.pad.edges;
+        if (e.gripDown && this.pointer) this.pointer.grip(rec, now);
+        if (e.bDown) this.back();
+      }
+      const q = this.selectQueue.splice(0);
+      for (const rec of q) {
+        if (rec.source && this.pointer) this.pointer.trigger(rec, now);
+      }
+    }
+    /** Grip-Objekt der Hand (Hände: Zielstrahl-Ursprung). Ohne Quelle: Gruppe 0,45 m vor dem Kopf. */
+    holdAnchor(hand) {
+      const rec = this.recFor(hand === "left" ? "left" : "right");
+      if (rec) {
+        const isHand = !!rec.source.hand;
+        const o = isHand ? rec.ray : rec.grip;
+        if (o.visible) {
+          o.userData.lfxHold = isHand ? "ray" : "grip";
+          return o;
+        }
+      }
+      if (!this.anchorFallback) {
+        const g = new Group();
+        g.name = "lfx-xr-holdanchor";
+        g.position.set(0, -0.1, -0.45);
+        this.app.engine.camera.add(g);
+        this.anchorFallback = g;
+      }
+      return this.anchorFallback;
+    }
+    bubble() {
+      const eng = this.app.engine;
+      const b = createBubble3d({ getScene: () => eng.scene, camera: eng.camera });
+      this.bubbles.add(b);
+      const dispose = b.dispose;
+      b.dispose = () => {
+        this.bubbles.delete(b);
+        if (typeof dispose === "function") dispose.call(b);
+      };
+      return b;
+    }
+    /** Zielobjekte für Diagnose/Tests: { kind, t, id, label, hit } oder null. */
+    pointerInfo(hand) {
+      return this.pointer ? this.pointer.targetOf(hand) : null;
+    }
+    // --- Sitzung ---
+    onSessionStart({ floor }) {
+      const app = this.app;
+      if (this.disposed || app.disposed) {
+        this.session.exit();
+        return;
+      }
+      this.floor = floor !== false;
+      this.placed = false;
+      this.lastTp = -1;
+      if (app.desktop) app.desktop.detach();
+      if (app.touchCtl) {
+        app.touchCtl.detach();
+        app.touchCtl.showPad(false);
+      }
+      if (app.mods) {
+        if (app.mods.overlayState) app.mods.overlayClose();
+        app.mods.release();
+        if (app.mods.look) {
+          const l = app.mods.look;
+          app.mods.look = null;
+          l.resolve(false);
+        }
+      }
+      if (app.pause) {
+        app.pause.closePick();
+        app.pause.hide();
+      }
+      if (app.mode === "paused" || app.mode === "overlay") app.setMode("play");
+      const p = app.player;
+      p.cancelPath();
+      p.turnTo = null;
+      p.vx = 0;
+      p.vz = 0;
+      app.zoomTarget = 1;
+      app.zoom = 1;
+      app.engine.setZoom(1);
+      app.clearAim();
+      if (app.hud) {
+        app.hud.showPrompt(false);
+        app.hud.setCross(false, false);
+        app.hud.setHint(null);
+      }
+      this.prevQuality = app.qualitySetting;
+      app.engine.setXrBudget(true);
+      const vr = app.opts.vr || {};
+      app.setQuality(vr.quality === "low" ? "low" : "mid");
+      app.engine.setFoveation(1);
+      this.fade = createFade(app.engine.camera);
+      this.input.fwd = 0;
+      this.input.strafe = 0;
+      this.input.run = false;
+      this.setupXr();
+      if (app.mods) app.mods.emit("xr", true);
+      this.report({ presenting: true, cinema: false });
+      app.syncUi();
+    }
+    /** Quellen ins Rig hängen, Laser/Anzeigen/Vignette/Handgelenk-Knopf anlegen. */
+    setupXr() {
+      this.prepareSources();
+      const eng = this.app.engine;
+      const rig = eng.rig;
+      for (const rec of this.sources) rig.add(rec.ray, rec.grip, rec.handGroup);
+      this.pointer = new Pointer(this);
+      this.pointer.attach();
+      this.hud3d = new Hud3d({ rig, camera: eng.camera });
+      this.vignette = createVignette(eng.camera);
+      this.wrist = new WristButton(rig);
+      this.loco.running = false;
+      this.loco.snapArmed = true;
+      this.speed = 0;
+      this.turnRate = 0;
+      this.diagAcc = 0;
+    }
+    /** Alles abbauen, was setupXr()/prepareSources() angelegt hat (Sitzungsende und dispose). */
+    teardownXr() {
+      if (this.pointer) {
+        this.pointer.dispose();
+        this.pointer = null;
+      }
+      if (this.hud3d) {
+        this.hud3d.dispose();
+        this.hud3d = null;
+      }
+      if (this.vignette) {
+        this.vignette.dispose();
+        this.vignette = null;
+      }
+      if (this.wrist) {
+        this.wrist.dispose();
+        this.wrist = null;
+      }
+      for (const b of [...this.bubbles]) {
+        try {
+          b.dispose();
+        } catch {
+        }
+      }
+      this.bubbles.clear();
+      if (this.anchorFallback) {
+        this.anchorFallback.removeFromParent();
+        this.anchorFallback = null;
+      }
+      this.releaseSources();
+      this.loco.running = false;
+      this.input.fwd = 0;
+      this.input.strafe = 0;
+      this.input.run = false;
+      this.input.scale = 1;
+      this.menuPanel = null;
+    }
+    onSessionEnd() {
+      const app = this.app;
+      const wasCinema = this.cinemaReported || this.cinema.active;
+      this.closePanels();
+      if (wasCinema) {
+        this.cinema.leave("sessionend");
+        this.cinemaReported = false;
+      }
+      if (this.fade) {
+        this.fade.dispose();
+        this.fade = null;
+      }
+      this.teardownXr();
+      this.jumping = false;
+      this.placed = false;
+      const rig = app.engine && app.engine.rig;
+      if (rig) {
+        rig.position.set(0, 0, 0);
+        rig.rotation.set(0, 0, 0);
+        rig.updateMatrixWorld(true);
+      }
+      if (!app.disposed && app.engine) {
+        app.engine.setXrBudget(false);
+        if (this.prevQuality) app.setQuality(this.prevQuality);
+        app.engine.setZoom(1);
+        const p = app.player;
+        if (p) {
+          p.vx = 0;
+          p.vz = 0;
+          p.moved++;
+        }
+        if (!app.suspended) {
+          if (app.desktop) {
+            app.desktop.attach();
+            app.desktop.relockArmed = true;
+          }
+          if (app.touchCtl) app.touchCtl.attach();
+        }
+        if (!(app.holdview && app.holdview.isOpen)) app.setMode("play");
+        else app.syncUi();
+        if (app.mods) app.mods.emit("xr", false);
+      }
+      this.prevQuality = null;
+      this.report({ presenting: false, cinema: false });
+      if (!app.disposed) app.syncUi();
+      const q = this.afterEnd.splice(0);
+      for (const fn of q) {
+        try {
+          fn();
+        } catch (err) {
+          warn5("exitThen", err);
+        }
+      }
+    }
+    onVisibility(state) {
+      this.visibility = state;
+      if (state !== "visible") {
+        this.closeToast();
+        this.selectQueue.length = 0;
+        for (const rec of this.sources) rec.pad = emptyPad();
+        this.input.fwd = 0;
+        this.input.strafe = 0;
+        this.input.run = false;
+        this.loco.running = false;
+        if (this.pointer) this.pointer.hideAll();
+      }
+      try {
+        if (this.cinema && typeof this.cinema.onVisibility === "function") this.cinema.onVisibility(state);
+      } catch (err) {
+        warn5("Kino-Sichtbarkeit", err);
+      }
+    }
+    // --- Schleife ---
+    isFading() {
+      return this.jumping || !!(this.fade && this.fade.alpha > 0.01);
+    }
+    /** Pro Frame in XR vor allem anderen: Eingabe lesen, Kopfpose → Spielerpose, Drehen/Gehen, Rig zurückrechnen, Laser. */
+    beforeTick(dt, now, frame) {
+      const app = this.app;
+      const p = app.player;
+      const eng = app.engine;
+      if (this.fade) this.fade.update(dt);
+      if (!frame || !p) return;
+      this.pollInput();
+      const head = headLocal(eng.renderer.xr.getCamera());
+      const rig = eng.rig;
+      const i = this.input;
+      this.speed = 0;
+      this.turnRate = 0;
+      if (this.inCinema) {
+        i.fwd = 0;
+        i.strafe = 0;
+        i.run = false;
+        i.scale = 1;
+        this.loco.running = false;
+      } else {
+        const vr = app.opts.vr || {};
+        const left = this.recFor("left");
+        const right = this.recFor("right");
+        const blocks = this.pointer ? this.pointer.blocks : { left: false, right: false };
+        const res = stepLoco(this.loco, {
+          left: left ? left.pad : null,
+          right: right ? right.pad : null,
+          dt,
+          turnMode: vr.turn === "smooth" ? "smooth" : "snap",
+          locked: !!(app.mods && app.mods.locked) || this.isFading(),
+          blockLeft: blocks.left,
+          blockRight: blocks.right
+        });
+        if (!this.placed || p.tp !== this.lastTp) {
+          this.lastTp = p.tp;
+          this.placed = true;
+          this.rigY = this.heightFor(head);
+          placeRig(rig, { x: p.x, z: p.z, yaw: p.yaw }, head, { y: this.rigY });
+          p.pitch = head.pitch;
+          this.lastX = p.x;
+          this.lastZ = p.z;
+        } else {
+          const w = headWorld(rig, head);
+          let yaw = w.yaw;
+          if (res.turn) {
+            turnAboutHead(rig, head, res.turn);
+            yaw += res.turn;
+            p.moved++;
+            this.turnRate = dt > 0 ? Math.abs(res.turn) / dt : 0;
+          }
+          const r = resolveCircle(w.x, w.z, RADIUS2, app.layout.colliders);
+          p.x = r.x;
+          p.z = r.z;
+          p.yaw = yaw;
+          p.pitch = head.pitch;
+          i.fwd = res.fwd;
+          i.strafe = res.strafe;
+          i.run = res.run;
+          i.scale = res.scale;
+          this.locomote(dt);
+          if (Math.abs(p.x - w.x) > 1e-5 || Math.abs(p.z - w.z) > 1e-5) {
+            placeRig(rig, { x: p.x, z: p.z, yaw: p.yaw }, head, { y: this.rigY });
+          }
+          if (Math.hypot(p.x - this.lastX, p.z - this.lastZ) > 0.01) {
+            this.lastX = p.x;
+            this.lastZ = p.z;
+            p.moved++;
+          }
+          this.speed = Math.hypot(p.vx, p.vz);
+        }
+      }
+      this.afterPlace(dt, now);
+    }
+    /** Nach der Rig-Platzierung: Laser, Handgelenk-Knopf, Aktionen, Anzeigen, Panels, Blasen, Vignette. */
+    afterPlace(dt, now) {
+      const app = this.app;
+      const eng = app.engine;
+      if (this.wrist) this.wrist.update(this.recFor("left"), eng.camera.position);
+      eng.rig.updateMatrixWorld(true);
+      if (this.pointer) this.pointer.update(dt, now);
+      this.processActions(now);
+      if (this.hud3d) {
+        this.hud3d.update(dt);
+        if (this.diagOn) {
+          this.diagAcc -= dt;
+          if (this.diagAcc <= 0) {
+            this.diagAcc = 0.5;
+            this.hud3d.setDiag(this.diag());
+          }
+        }
+      }
+      for (const h2 of [...this.panels]) {
+        if (typeof h2.tick === "function") {
+          try {
+            h2.tick(dt);
+          } catch (err) {
+            warn5("Panel", err);
+          }
+        }
+      }
+      for (const b of this.bubbles) {
+        try {
+          b.update(dt);
+        } catch (err) {
+          warn5("Blase", err);
+        }
+      }
+      if (this.vignette) this.vignette.update(dt, !!(app.opts.vr && app.opts.vr.vignette !== false) && !this.inCinema, this.speed, this.turnRate);
+    }
+    /** Stick-Fortbewegung (Eingabe aus this.input; ohne Eingabe stehen). */
+    locomote(dt) {
+      const i = this.input;
+      const p = this.app.player;
+      if (i && (i.fwd || i.strafe)) {
+        p.update(dt, i);
+      } else {
+        p.vx = 0;
+        p.vz = 0;
+      }
+    }
+    heightFor(head) {
+      const pref = this.app.opts.vr && this.app.opts.vr.height;
+      if (pref === "seated") return seatedOffset(head.y, EYE);
+      return this.floor ? 0 : EYE;
+    }
+    /** Neu ausrichten: Höhe und Rig beim nächsten Frame aus der Kopfpose neu berechnen. */
+    recenter() {
+      this.placed = false;
+    }
+    cinemaTick(dt, now) {
+      this.cinema.tick(dt, now);
+    }
+    // --- Bewegung ---
+    /** Schwarzblende + Teleport; face = yaw oder { x, z }. */
+    async jumpTo(x, z, { face } = {}) {
+      const app = this.app;
+      const p = app.player;
+      let yaw = p.yaw;
+      if (typeof face === "number") yaw = face;
+      else if (face && Number.isFinite(face.x) && Number.isFinite(face.z)) yaw = Math.atan2(-(face.x - x), -(face.z - z));
+      let tx = x;
+      let tz = z;
+      const nav = app.layout && app.layout.nav;
+      if (nav && !isFree(nav, x, z)) {
+        const n = nearestFree(nav, x, z);
+        if (n) {
+          tx = n.x;
+          tz = n.z;
+        }
+      }
+      const go = () => {
+        p.teleport(tx, tz, yaw, 0);
+      };
+      if (this.fade && this.presenting) {
+        this.jumping = true;
+        try {
+          await this.fade.jump(go);
+        } finally {
+          this.jumping = false;
+        }
+      } else go();
+      return true;
+    }
+    // --- Panels / Hinweise ---
+    openPanel(spec) {
+      const app = this.app;
+      const h2 = openPanel2(spec, { anchor: spec && spec.anchor || "front", camera: app.engine.camera, scene: app.engine.scene, clearance: this.inCinema ? null : (x, z, dx, dz, max) => rayClearance(app.layout && app.layout.colliders, x, z, dx, dz, max) });
+      this.panels.add(h2);
+      const close = h2.close;
+      h2.close = () => {
+        this.panels.delete(h2);
+        close();
+        if (this.pointer) this.pointer.invalidate();
+      };
+      if (this.pointer) this.pointer.invalidate();
+      return h2;
+    }
+    closePanels() {
+      this.closeToast();
+      for (const h2 of [...this.panels]) {
+        try {
+          h2.close();
+        } catch {
+        }
+      }
+      this.panels.clear();
+      this.confirmPanel = null;
+      this.menuPanel = null;
+    }
+    closeToast() {
+      if (this.hud3d) this.hud3d.closeToast();
+    }
+    toast(text, ms = 2600) {
+      if (this.disposed || !this.presenting || !this.hud3d) return;
+      this.hud3d.toast(text, ms);
+    }
+    /** Bestätigungs-Panel; bei „Ja“ Sitzung beenden, dann fn(). */
+    exitThen(label, fn) {
+      if (!this.presenting) {
+        try {
+          fn();
+        } catch (err) {
+          warn5("exitThen", err);
+        }
+        return true;
+      }
+      if (this.confirmPanel) {
+        this.confirmPanel.close();
+        this.confirmPanel = null;
+      }
+      this.confirmFn = fn;
+      this.confirmPanel = this.openPanel({
+        text: label,
+        width: 0.9,
+        buttons: [
+          { label: "VR verlassen und fortfahren", primary: true, onSelect: () => this._confirm() },
+          { label: "Abbrechen", onSelect: () => this._cancel() }
+        ],
+        onClose: () => {
+          this.confirmFn = null;
+          this.confirmPanel = null;
+        }
+      });
+      return true;
+    }
+    _confirm() {
+      const fn = this.confirmFn;
+      this.confirmFn = null;
+      if (this.confirmPanel) {
+        this.confirmPanel.close();
+        this.confirmPanel = null;
+      }
+      if (!fn) return;
+      if (this.presenting) {
+        this.afterEnd.push(fn);
+        this.exit();
+      } else fn();
+    }
+    _cancel() {
+      this.confirmFn = null;
+      if (this.confirmPanel) {
+        this.confirmPanel.close();
+        this.confirmPanel = null;
+      }
+    }
+    // --- Menü ---
+    openMenu() {
+      if (!this.presenting || !this.hud3d) return;
+      if (this.menuPanel) {
+        this.closeMenu();
+        return;
+      }
+      this.menuPanel = this.openPanel(buildMenuSpec(this));
+    }
+    closeMenu() {
+      const m = this.menuPanel;
+      this.menuPanel = null;
+      if (m && m.open) m.close();
+    }
+    refreshMenu() {
+      const m = this.menuPanel;
+      if (m && m.open) m.update(buildMenuSpec(this));
+    }
+    /** B/Y bzw. Handgelenk-Knopf: oberste Ebene (zuletzt geöffnetes Panel mit onClose) schließen, sonst Menü auf/zu. */
+    back() {
+      let top = null;
+      for (const h2 of this.panels) {
+        if (h2.open && h2.spec && typeof h2.spec.onClose === "function") top = h2;
+      }
+      if (top) {
+        top.close();
+        return true;
+      }
+      this.openMenu();
+      return true;
+    }
+    /** Einstellungen sichern; in VR bleibt die 2D-Qualität erhalten (setQuality erzwingt dort nur low/mid). */
+    savePrefs() {
+      const app = this.app;
+      const cur = app.qualitySetting;
+      if (this.presenting && this.prevQuality) app.qualitySetting = this.prevQuality;
+      try {
+        app.savePrefs();
+      } finally {
+        app.qualitySetting = cur;
+      }
+    }
+    setDiag(on) {
+      this.diagOn = !!on;
+      this.diagAcc = 0;
+      if (!this.diagOn && this.hud3d) this.hud3d.setDiag(null);
+    }
+    /** Diagnose-Zeilen (Sitzung, Raum, Eingabequellen, Kino). */
+    diag() {
+      let cin;
+      try {
+        cin = this.cinema && typeof this.cinema.diag === "function" ? this.cinema.diag() : null;
+      } catch {
+        cin = null;
+      }
+      const sources = this.sources.filter((r) => r.source).map((r) => `${r.side === "left" ? "links" : "rechts"} ${r.source.hand ? "Hand" : "Controller"}`);
+      return diagLines({ visibility: this.visibility, space: this.floor ? "local-floor" : "local", sources, cinema: cin });
+    }
+    // --- Kino (Paket F) ---
+    /** Vor dem echten deps.play() in VR. */
+    beforePlay(item) {
+      this.cinemaReported = true;
+      this.report({ presenting: true, cinema: true });
+      this.cinemaEnter(item);
+    }
+    cinemaEnter(item) {
+      this.cinema.enter(item);
+    }
+    /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. */
+    leaveCinema(reason) {
+      if (!this.cinemaReported && !this.cinema.active) return;
+      this.cinema.leave(reason);
+      this.cinemaReported = false;
+      if (reason !== "sessionend" && this.presenting) this.report({ presenting: true, cinema: false });
+    }
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      this.afterEnd = [];
+      const was = this.presenting;
+      this.closePanels();
+      if (this.fade) {
+        this.fade.dispose();
+        this.fade = null;
+      }
+      this.teardownXr();
+      this.cinema.dispose();
+      if (was) this.report({ presenting: false, cinema: false });
+      this.session.dispose();
+    }
+  };
+
   // src/js/store3d/store.js
   var yieldFrame = () => new Promise((r) => setTimeout(r, 0));
   function resolveLevel(setting) {
     if (setting === "low" || setting === "mid" || setting === "high") return setting;
     return "mid";
   }
+  function normalizeVr(v) {
+    const o = v && typeof v === "object" ? v : {};
+    return {
+      turn: o.turn === "smooth" ? "smooth" : "snap",
+      vignette: o.vignette !== false,
+      height: o.height === "seated" ? "seated" : "auto",
+      quality: o.quality === "low" ? "low" : "mid",
+      seat: o.seat === "front" || o.seat === "back" ? o.seat : "mid"
+    };
+  }
   var StoreApp = class {
     constructor(host, deps, opts) {
       this.host = host;
-      this.deps = deps;
-      this.opts = opts || {};
+      this.xr = null;
+      this.deps = wrapDeps(deps, () => this.xr);
+      this.opts = { ...opts || {}, vr: normalizeVr(opts && opts.vr) };
+      this.vr = this.opts.vr;
       this.phone = !!this.opts.phone;
       this.touch = !!this.opts.touch;
       this.qualitySetting = ["auto", "low", "mid", "high"].includes(this.opts.quality) ? this.opts.quality : "auto";
@@ -39245,7 +44667,8 @@ void main() {
         this.fail(err);
         return;
       }
-      this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause() });
+      this.xr = new XrMode(this);
+      this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter() });
       this.fs = createFullscreen({
         host,
         isTouch: this.touch,
@@ -39259,6 +44682,8 @@ void main() {
       this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
       this.pause = createPause(host, {
         onResume: () => this.resumeFromPause(),
+        onVr: () => this.xr.enter(),
+        getVr: () => this.xr.supported && !this.xr.presenting,
         onSearch: () => {
           this.resumeFromPause();
           this.openTerminal("");
@@ -39327,7 +44752,8 @@ void main() {
       }
     }
     async boot() {
-      const { deps, engine } = this;
+      const { engine } = this;
+      const deps = this.deps;
       const preset = engine.preset;
       this.progress(0.02, "Grundriss wird berechnet");
       const big = this.opts.bigCovers !== false;
@@ -39387,6 +44813,8 @@ void main() {
         layout: L,
         notify: () => this.notifyState(true),
         onClosed: () => this.onHoldClosed(),
+        openPanel: (spec) => this.xr.openPanel(spec),
+        isXr: () => !!(this.xr && this.xr.presenting),
         onPlay: (item, resume) => this.mods && this.mods.emit("play", item, { resume })
       });
       this.mods = new ModuleHost(this);
@@ -39408,6 +44836,7 @@ void main() {
       });
       this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme }) : null;
       this.progress(0.86, "Module werden geladen");
+      this.mods.ctx.on("xr", (on) => this.onXrHold(on));
       await this.mods.init((f) => this.progress(0.86 + f * 0.05, "Module werden geladen"));
       if (this.disposed) return;
       const r = this.opts.restore;
@@ -39437,8 +44866,11 @@ void main() {
       if (this.desktop) this.desktop.attach();
       if (this.touchCtl) this.touchCtl.attach();
       if (this.opts.debug) this.exposeDebug();
-      this.engine.start((dt, now) => this.tick(dt, now));
+      this.engine.start((dt, now, frame) => this.tick(dt, now, frame));
       this.syncUi();
+      this.xr.probe().then(() => {
+        if (!this.disposed) this.syncUi();
+      });
       if (this.suspended) {
         this.engine.stop();
         this.desktop && this.desktop.detach();
@@ -39487,6 +44919,17 @@ void main() {
     }
     syncUi() {
       if (!this.hud) return;
+      const xr = this.xr;
+      if (xr && xr.presenting) {
+        this.hud.setCross(false, false);
+        this.hud.showPrompt(false, false);
+        this.hud.showMenuBtn(false);
+        this.hud.showVr(false);
+        this.hud.setHint(null);
+        if (this.touchCtl) this.touchCtl.showPad(false);
+        if (this.pause && this.pause.visible) this.pause.hide();
+        return;
+      }
       const play = this.mode === "play";
       const locked = this.desktop ? this.desktop.locked || this.desktop.dragLook : true;
       this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
@@ -39494,10 +44937,15 @@ void main() {
       this.hud.showMenuBtn(play);
       if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
       if (this.rotate) this.rotate.update();
+      this.hud.showVr(this.ready && (play || this.mode === "hold") && !!xr && xr.supported && !xr.presenting);
       if (!play || !this.aim) this.hud.setHint(null);
       if (this.pause && this.mode !== "paused" && this.pause.visible) this.pause.hide();
     }
     openPause() {
+      if (this.xr && this.xr.presenting) {
+        this.xr.openMenu();
+        return;
+      }
       if (this.mode !== "play") return;
       this.player.cancelPath();
       this.marker.visible = false;
@@ -39531,14 +44979,26 @@ void main() {
       }
       return null;
     }
-    take(id, { instant = false, fromCounter = false } = {}) {
+    /** VR-Start/-Ende: offene Hülle in die rechte Hand bzw. zurück an die Kamera (2D-Pose, DOM-Panel). */
+    onXrHold(on) {
+      const hv = this.holdview;
+      if (!hv || this.disposed || !hv.isOpen) return;
+      if (on) hv.reanchor(this.holdAnchorFor("right"), { xr: true, hand: "right" });
+      else hv.reanchor(this.engine.camera, { xr: false });
+    }
+    holdAnchorFor(hand) {
+      const a = this.xr && typeof this.xr.holdAnchor === "function" ? this.xr.holdAnchor(hand || "right") : null;
+      return a || this.engine.camera;
+    }
+    take(id, { instant = false, fromCounter = false, hand, grab = false, from } = {}) {
       if (!this.holdview || this.disposed || !id) return false;
       if (this.holdview.isOpen) {
         this.takingNext = true;
         this.holdview.close(false);
         this.takingNext = false;
       }
-      const slot = fromCounter ? null : this.findSlot(id);
+      const xr = !!(this.xr && this.xr.presenting);
+      const slot = fromCounter || from === "counter" ? null : this.findSlot(id);
       this.heldId = id;
       this.setMode("hold");
       this.pendingTake = null;
@@ -39546,7 +45006,8 @@ void main() {
       this.marker.visible = false;
       if (this.desktop) this.desktop.releaseLock();
       this.clearAim();
-      this.holdview.open(id, slot, instant);
+      if (xr) this.holdview.open(id, slot, instant, { xr: true, anchor: this.holdAnchorFor(hand), hand: hand || "right", grab: !!grab });
+      else this.holdview.open(id, slot, instant);
       this.mods.emit("take", id);
       return true;
     }
@@ -39709,27 +45170,38 @@ void main() {
       this.player.faceYaw(Math.atan2(-dx, -dz), Math.atan2(y - EYE, Math.hypot(dx, dz)));
     }
     // --- Schleife ---
-    tick(dt, now) {
+    tick(dt, now, frame) {
       const p = this.player;
       if (!p) return;
+      const xr = this.xr;
+      const inXr = !!(xr && xr.presenting);
+      if (inXr) xr.beforeTick(dt, now, frame);
       this.mods.flushNav();
-      this.stepZoom(dt);
+      if (!inXr) this.stepZoom(dt);
       if (now - this.lastFps >= 500) {
         this.lastFps = now;
         this.updateFps();
         if (this.fs) this.fs.update();
       }
-      if (this.touchCtl) {
+      if (this.touchCtl && !inXr) {
         const padOn = this.mode === "play" && !this.mods.locked;
         if (padOn !== this.touchCtl.padShown) this.touchCtl.showPad(padOn);
         if (padOn) this.touchCtl.tick(dt);
       }
-      if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
-      else p.update(dt, null);
+      if (!inXr) {
+        if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
+        else p.update(dt, null);
+      }
       this.mods.update(dt, now);
-      p.applyCamera(this.engine.camera);
-      this.mods.cameraStep(dt);
-      this.engine.camera.updateMatrixWorld();
+      if (!inXr) {
+        p.applyCamera(this.engine.camera);
+        this.mods.cameraStep(dt);
+        this.engine.camera.updateMatrixWorld();
+      }
+      if (inXr && xr.inCinema) {
+        xr.cinemaTick(dt, now);
+        return;
+      }
       this.holdview.update(dt);
       if (this.mode === "play" && !this.mods.locked && this.desktop && (this.desktop.locked || this.desktop.dragLook)) {
         if (now - this.lastAim > 90) {
@@ -39807,6 +45279,7 @@ void main() {
     }
     setQuality(q) {
       if (!this.engine || !["auto", "low", "mid", "high"].includes(q)) return;
+      if (this.xr && this.xr.presenting) q = q === "low" ? "low" : "mid";
       this.qualitySetting = q;
       this.engine.setAuto(q === "auto");
       const level = q === "auto" ? this.engine.preset.level : q;
@@ -39814,7 +45287,7 @@ void main() {
     }
     savePrefs() {
       try {
-        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme });
+        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, vr: { ...this.vr } });
       } catch {
       }
     }
@@ -39922,6 +45395,7 @@ void main() {
     suspend() {
       if (this.suspended || this.disposed) return;
       this.suspended = true;
+      if (this.xr && this.xr.presenting) this.xr.exit();
       if (this.engine) this.engine.stop();
       if (this.desktop) this.desktop.detach();
       if (this.touchCtl) this.touchCtl.detach();
@@ -39948,7 +45422,7 @@ void main() {
       if (this.mods) this.mods.hook("onResume");
       if (this.engine) {
         this.engine.resize();
-        this.engine.start((dt, now) => this.tick(dt, now));
+        this.engine.start((dt, now, frame) => this.tick(dt, now, frame));
       }
       if (this.fs) this.fs.resume();
       this.syncUi();
@@ -39956,6 +45430,10 @@ void main() {
     dispose() {
       if (this.disposed) return;
       this.disposed = true;
+      try {
+        if (this.xr) this.xr.dispose();
+      } catch {
+      }
       try {
         if (this.desktop) this.desktop.detach();
       } catch {
@@ -40039,7 +45517,8 @@ void main() {
             preload: app.covers ? app.covers.preloadStats : { done: 0, total: 0, ms: 0 },
             ...app.covers ? app.covers.counters : { coverUploads: 0, hiUp: 0, hiDown: 0, fullLoads: 0, fullEvicts: 0 },
             quality: app.engine.preset.level,
-            qualitySetting: app.qualitySetting
+            qualitySetting: app.qualitySetting,
+            xr: { supported: !!(app.xr && app.xr.supported), presenting: !!(app.xr && app.xr.presenting), inCinema: !!(app.xr && app.xr.inCinema), phase: null, videoFrames: 0, visibility: app.xr ? app.xr.visibility : "visible", ...app.xr && app.xr.cinema && typeof app.xr.cinema.diag === "function" && app.xr.cinema.diag() || {} }
           };
         },
         state() {
@@ -40053,6 +45532,7 @@ void main() {
         }
         // x/z/yaw = Blickpunkt, obj = Objektposition
       };
+      this.dbg.xr = this.xr;
       window.__lfxStore = this.dbg;
     }
   };
@@ -40069,7 +45549,11 @@ void main() {
       openTerminal: (q) => app.openTerminal(q),
       getState: () => app.getState(),
       setQuality: (q) => app.setQuality(q),
-      setSound: (on) => app.setSound(on)
+      setSound: (on) => app.setSound(on),
+      isXr: () => !!(app.xr && app.xr.presenting),
+      leaveCinema: (reason) => {
+        if (app.xr) app.xr.leaveCinema(reason);
+      }
     };
     if (opts.debug) Object.defineProperty(api, "debug", { get: () => app.dbg, enumerable: true });
     return api;

@@ -53,6 +53,36 @@ function drawScreen(g, w, hh, t, name, blink) {
   void t;
 }
 
+const ACT_LABEL = { guide: 'Hinführen', counter: 'Über den Tresen', play: 'Abspielen', series: 'Serie über den Tresen' };
+const MEDIA_TAG = { vhs: 'VHS', dvd: 'DVD', box: 'Box' };
+
+/** Statuszeile der VR-Suche: „Suche läuft …“ / „3 Treffer“ / „Nichts gefunden“. */
+export function termStatus(searching, count) {
+  if (searching) return 'Suche läuft …';
+  if (!count) return 'Nichts gefunden';
+  return count === 1 ? '1 Treffer' : `${count} Treffer`;
+}
+
+/**
+ * Panel-Spec der VR-Suche (rein). descs = describeResult-Ergebnisse; handlers.act(desc, kind) führt eine Aktion aus.
+ * mediaOf(desc) → 'vhs'|'dvd'|'box'|'' (Hüllenformat des Titels, falls im Sortiment).
+ */
+export function buildTermSpec({ query = '', status = '', descs = [], mediaOf = () => '', handlers = {}, onClose } = {}) {
+  const rows = descs.map((d) => ({
+    label: d.title,
+    sub: [d.sub, d.year, d.location, d.typeLabel].filter(Boolean).join(' · '),
+    tag: MEDIA_TAG[mediaOf(d)] || '',
+    actions: d.actions.map((k, i) => ({ label: ACT_LABEL[k], primary: i === 0, onSelect: () => handlers.act && handlers.act(d, k) })),
+  }));
+  return {
+    title: 'Kassen-PC · Suche',
+    lines: status ? [status] : [],
+    input: { value: query, placeholder: 'Titel suchen …', onInput: (v) => handlers.onInput && handlers.onInput(v), onEnter: (v) => handlers.onEnter && handlers.onEnter(v) },
+    list: { rows, visible: 6 },
+    onClose,
+  };
+}
+
 export default {
   name: 'terminal',
   init(ctx) {
@@ -121,8 +151,101 @@ export default {
     }
 
     // --- Overlay ---
+    // --- VR: Panel statt DOM-Overlay ---
+    let xs = null;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    const mediaOf = (d) => { const it = d.inCatalog ? getItem(d.targetId) : null; return it ? ((it.lfx && it.lfx.media) || 'dvd') : ''; };
+
+    function xrRefresh(s) {
+      if (xs !== s || !s.handle || !s.handle.open) return;
+      s.handle.update(buildTermSpec({ query: s.query, status: s.status, descs: s.descs, mediaOf, handlers: s.handlers }));
+    }
+
+    async function xrRun(s, q) {
+      if (s.ac) s.ac.abort();
+      s.ac = new AbortController();
+      const mine = ++s.token;
+      s.status = termStatus(true, 0);
+      xrRefresh(s);
+      const e = env();
+      try {
+        const res = await ctx.deps.search(q, { signal: s.ac.signal });
+        if (mine !== s.token || disposed || xs !== s) return;
+        const ranked = rankResults(res, q).slice(0, MAX_RESULTS);
+        s.descs = ranked.map((it) => describeResult(it, e));
+        s.status = termStatus(false, s.descs.length);
+      } catch (err) {
+        if (mine !== s.token || (err && err.name === 'AbortError')) return;
+        s.status = 'Verbindung zur Datenbank gestört';
+      }
+      xrRefresh(s);
+    }
+
+    function xrSchedule(s, q, immediate) {
+      clearTimeout(s.timer);
+      const t = q.trim();
+      if (!t) {
+        if (s.ac) s.ac.abort();
+        s.token++;
+        const e = env();
+        s.descs = defaultSections(ctx.catalog, getItem, 6).flatMap((sec) => sec.items).map((it) => describeResult(it, e));
+        s.status = 'Titel eingeben oder aus der Liste wählen';
+        xrRefresh(s);
+        return;
+      }
+      s.status = termStatus(true, 0);
+      xrRefresh(s);
+      if (immediate) xrRun(s, t);
+      else s.timer = setTimeout(() => xrRun(s, t), SEARCH_DELAY);
+    }
+
+    function xrAct(s, d, kind) {
+      const id = d.targetId;
+      if (kind === 'guide') {
+        const r = trail.start(id);
+        ctx.xr.toast(r ? 'Der Spur folgen · Hülle leuchtet' : 'Zu diesem Titel finde ich gerade keinen Weg');
+        if (r) s.handle.close();
+      } else if (kind === 'counter' || kind === 'series') {
+        s.handle.close();
+        ctx.items.take(id, { from: 'counter' });
+      } else if (kind === 'play') {
+        s.handle.close();
+        ctx.deps.play(d.item, { resume: false });
+      }
+    }
+
+    function xrClose(s) {
+      clearTimeout(s.timer);
+      if (s.ac) s.ac.abort();
+      s.token++;
+      if (xs === s) xs = null;
+    }
+
+    function xrOpen(q) {
+      if (xs) { xs.query = q || ''; xrSchedule(xs, xs.query, true); return; }
+      const s = {
+        handle: null, query: q || '', status: '', descs: [], timer: 0, ac: null, token: 0, handlers: null,
+      };
+      s.handlers = {
+        onInput: (v) => { s.query = v; xrSchedule(s, v, false); },
+        onEnter: (v) => { s.query = v; xrSchedule(s, v, true); },
+        act: (d, k) => xrAct(s, d, k),
+      };
+      xs = s;
+      const p = ctx.player.getPose();
+      const far = Math.hypot(p.x - pcx, p.z - pcz) > 2.5;
+      const go = far ? ctx.xr.jumpTo(pcx, pcz - 1.0, { face: { x: pcx, z: pcz } }) : Promise.resolve(true);
+      go.then(() => {
+        if (disposed || xs !== s || !xrOn()) { if (xs === s) xrClose(s); return; }
+        s.handle = ctx.xr.panel.open(buildTermSpec({ query: s.query, status: s.status, descs: s.descs, mediaOf, handlers: s.handlers, onClose: () => xrClose(s) }));
+        ctx.use('sound')?.play('beep');
+        xrSchedule(s, s.query, true);
+      });
+    }
+
     function open(q) {
       if (disposed) return;
+      if (xrOn()) { xrOpen(q); return; }
       if (st) { st.setQuery(q || ''); return; }
       snap = { ...ctx.player.getPose() };
       st = buildOverlay(q || '');
@@ -229,7 +352,6 @@ export default {
         else if (kind === 'counter' || kind === 'series') finish(() => ctx.items.take(d.targetId, { from: 'counter' }));
         else if (kind === 'play') finish(() => ctx.deps.play(d.item, { resume: false }), true);
       }
-      const ACT_LABEL = { guide: 'Hinführen', counter: 'Über den Tresen', play: 'Abspielen', series: 'Serie über den Tresen' };
 
       function addRow(desc) {
         const row = h('div', 'lfx-store-term-row');
@@ -349,6 +471,7 @@ export default {
       onUse: () => open(''),
     });
     const removeProvider = ctx.provide('terminal', { open });
+    const offXr = ctx.on('xr', (on) => { if (!on && xs) { const s = xs; try { if (s.handle && s.handle.open) s.handle.close(); } catch { /* egal */ } xrClose(s); } });
     const offDbg = debugHook(ctx, 'terminal', {
       open, guide: (id) => guide(id), stopTrail: () => trail.stop(), look: (x, y, zz, ms) => ctx.player.lookAt(x, y, zz, ms || 1),
       pc: { x: pcx, z: pcz }, get trailActive() { return trail.active; }, trailPoints: () => trail.points.map((p) => ({ x: p.x, z: p.z })),
@@ -362,11 +485,16 @@ export default {
         if (Math.hypot(p.x - pcx, p.z - pcz) > 9) return;
         redraw(t);
       },
-      onSuspend() { if (st) { st.instant = true; ctx.overlay.close(); } },
+      onSuspend() {
+        if (st) { st.instant = true; ctx.overlay.close(); }
+        if (xs) { const s = xs; if (s.handle) s.handle.close(); xrClose(s); }
+      },
       dispose() {
         disposed = true;
+        if (xs) { const s = xs; if (s.handle && s.handle.open) s.handle.close(); xrClose(s); }
         removeIa();
         removeProvider();
+        offXr();
         offDbg();
         trail.dispose();
         if (st) st.cleanup();

@@ -234,6 +234,13 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
     for (const ev of gestureEvents) document.addEventListener(ev, onGesture, { capture: true, passive: true });
   }
 
+  /** Wie eine Nutzergeste: sofort freischalten (synchron aus einem Klick-Handler, z. B. „In VR betreten“). */
+  function unlockNow() {
+    if (unlocked || disposed) return;
+    unlock();
+    onGesture({ type: 'click' });
+  }
+
   function dispose() {
     if (disposed) return;
     cancel();
@@ -246,7 +253,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
   const allVoices = () => { try { return Array.from((S && S.getVoices && S.getVoices()) || []); } catch { return []; } };
 
   return {
-    say, preview, cancel, unlock, dispose, setPending, clearPending,
+    say, preview, cancel, unlock, unlockNow, dispose, setPending, clearPending,
     /** Deutsche Stimmen des Geräts/Browsers (siehe listVoices). */
     listVoices() { return listVoices(allVoices()); },
     /** Stimme neu wählen (z. B. nach Umschalten Gerät/Online). */

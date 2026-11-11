@@ -93,6 +93,8 @@ export default {
       },
     });
 
+    ctx.on('xr', (on) => { if (on) finish(); }); // VR: Intro sofort beenden
+
     if (o.debug) window.__lfxM4 = { ...window.__lfxM4, intro: () => ({ tl, started, done, step, shutter: facade.openAmount }) };
 
     function toFinal() {

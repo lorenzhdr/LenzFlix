@@ -142,8 +142,17 @@ export function button(text, cls, onClick) {
 /**
  * Modales Panel (Backdrop + Panel) über ctx.overlay. build(panel, close) füllt das Panel.
  * Esc schließt der Kern (Modus „overlay“); Klick auf den Backdrop und der Schließen-Knopf rufen close().
+ * vr: (close) => Panel-Spec. In einer VR-Sitzung öffnet das stattdessen ein VR-Panel (ctx.xr.panel.open); build entfällt dort.
+ * Rückgabe in VR: { root: null, panel: null, close, vr: Panel-Handle } (vr.update(spec) zum Aktualisieren).
  */
-export function openPanel(ctx, { cls, label, build, onClose }) {
+export function openPanel(ctx, { cls, label, build, onClose, vr }) {
+  if (typeof vr === 'function' && ctx.xr && ctx.xr.presenting()) {
+    let open = true;
+    const close = () => { if (open && ctx.overlay.isOpen()) ctx.overlay.close(); };
+    const spec = vr(close);
+    const handle = ctx.xr.panel.open({ ...spec, onClose: () => { open = false; if (spec.onClose) spec.onClose(); if (onClose) onClose(); } });
+    return { root: null, panel: null, close, vr: handle };
+  }
   const root = h('div', `lfx-store-m3 ${cls || ''}`.trim());
   const panel = h('div', 'lfx-store-m3-panel');
   panel.setAttribute('role', 'dialog');

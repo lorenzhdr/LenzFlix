@@ -1,0 +1,39 @@
+/* VIDEOTHEK LENZ · VR-Knopf (Hülle/HUD). Nur --lfx-*-Tokens, nur unter html.lfx-js.lfx-theme-store:not(.layout-tv). */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--lfx-store-safe-bottom, 0px) + 22px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: var(--lfx-store-text, #f4f6ff);
+  font: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 3;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn svg {
+  color: var(--lfx-store-yellow, #ffd23f);
+  flex: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn:hover {
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  background: var(--lfx-glass-hover, rgba(255, 210, 63, 0.18));
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn:focus-visible {
+  outline: 2px solid var(--lfx-store-yellow, #ffd23f);
+  outline-offset: 3px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-vrbtn {
+  display: none;
+}

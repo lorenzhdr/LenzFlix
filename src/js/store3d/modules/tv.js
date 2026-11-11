@@ -9,7 +9,7 @@ import { makeCanvas, FONT } from '../world/textures.js';
 import { loadBitmap, closeBitmap } from '../covers/loader.js';
 import { prefersReducedMotion, clamp, adultIds } from './m4-util.js';
 import { h, button } from './m3-gfx.js';
-import { fitDistance, pickCandidates } from './couch-util.js';
+import { fitDistance, pickCandidates, couchSpec } from './couch-util.js';
 
 const SW = 320;
 const SH = 240;
@@ -175,7 +175,8 @@ export default {
     ctx.track(tex);
 
     ctx.addCollider({ x0: backX - 0.56, z0: zc - 0.6, x1: backX, z1: zc + 0.6 });
-    ctx.addCollider({ x0: backEdge - 0.02, z0: zc - 1.05, x1: backEdge + 0.92, z1: zc + 1.05 });
+    const sofaRect = { x0: backEdge - 0.02, z0: zc - 1.05, x1: backEdge + 0.92, z1: zc + 1.05 };
+    let sofaCol = ctx.addCollider(sofaRect); // in VR beim Sitzen kurz entfernt (jumpTo schiebt sonst aus dem Sofa heraus)
     ctx.addCollider({ x0: tx - 0.33, z0: zc - 0.55, x1: tx + 0.33, z1: zc + 0.55 });
 
     // --- Programm: Diashow aus Highlights + einigen zufälligen Titeln mit Backdrop ---
@@ -287,6 +288,8 @@ export default {
     let suspended = false;
     let disposed = false;
     let seat = 'idle'; // idle | in | leaving
+    let xrSit = false; // Sitzen in einer VR-Sitzung (Knopfleiste als VR-Panel, keine Kamerafahrt)
+    let xrPanel = null;
     const offCouch = ctx.provide('couch', { seated: () => seat === 'in' });
     let userMuted = false;
     let vol = 0.7;
@@ -517,12 +520,7 @@ export default {
       const row = h('div', 'lfx-store-couch-btns');
       const bStand = button('Aufstehen', 'lfx-store-couch-btn', () => ctx.overlay.close());
       const bNext = button('Nächster', 'lfx-store-couch-btn', () => next());
-      const bSnd = button('Ton aus', 'lfx-store-couch-btn', () => {
-        userMuted = !userMuted;
-        applyAudio(trailer && trailer.video);
-        if (trailer && trailer.video.paused) playVideo(trailer.video);
-        refreshUi();
-      });
+      const bSnd = button('Ton aus', 'lfx-store-couch-btn', () => toggleSound());
       const bDn = button('Leiser', 'lfx-store-couch-btn', () => setVol(vol - 0.15));
       const bUp = button('Lauter', 'lfx-store-couch-btn', () => setVol(vol + 0.15));
       const bWatch = button('Diesen Film ansehen', 'lfx-store-couch-btn is-main', () => watch());
@@ -538,12 +536,27 @@ export default {
       const sig = `${(cur && cur.title) || ''}|${playing}|${userMuted}`;
       if (sig === ui.last) return;
       ui.last = sig;
+      if (ui.xr) { if (xrPanel && xrPanel.open) xrPanel.update(vrSpec()); return; }
       ui.title.textContent = (cur && cur.title) || 'VIDEOTHEK LENZ';
       ui.tag.textContent = playing ? 'Vorschau' : 'Diashow';
       ui.bSnd.hidden = !playing;
       ui.bDn.hidden = !playing;
       ui.bUp.hidden = !playing;
       ui.bSnd.textContent = userMuted ? 'Ton an' : 'Ton aus';
+    }
+    function toggleSound() {
+      userMuted = !userMuted;
+      applyAudio(trailer && trailer.video);
+      if (trailer && trailer.video.paused) playVideo(trailer.video);
+      refreshUi();
+    }
+    // VR-Knopfleiste (Panel-Spec); onClose (B/Y) = Aufstehen
+    const xrAct = {
+      stand: () => ctx.overlay.close(), next: () => next(), sound: () => toggleSound(), down: () => setVol(vol - 0.15), up: () => setVol(vol + 0.15), watch: () => watch(),
+    };
+    function vrSpec(onClose) {
+      const cur = current();
+      return couchSpec({ title: cur && cur.title, playing: state === 'trailer' && !!trailer, muted: userMuted }, xrAct, onClose);
     }
     function setVol(v) {
       vol = clamp(v, 0, 1);
@@ -565,8 +578,10 @@ export default {
       sitAc = new AbortController();
       useBig(true);
       userMuted = false;
-      ui = buildUi();
-      ctx.overlay.open(ui.root, { onClose: onClosed });
+      xrSit = ctx.xr.presenting();
+      if (xrSit && sofaCol) { ctx.removeCollider(sofaCol); sofaCol = null; }
+      ui = xrSit ? { xr: true, last: '' } : buildUi();
+      if (!xrSit) ctx.overlay.open(ui.root, { onClose: onClosed });
       const snd = ctx.use('sound');
       if (snd && snd.duck) snd.duck('tv', true);
       { const c = ctx.use('cashier'); if (c && c.event) c.event('couchSit'); }
@@ -586,6 +601,15 @@ export default {
         });
       }
       frame();
+      if (xrSit) {
+        // VR: Schwarzblende auf den Sitzplatz (Augenhöhe kommt von der Brille), Knopfleiste erst danach vor dem Kopf
+        ctx.xr.jumpTo(SIT.x, SIT.z, { face: { x: LOOK.x, z: LOOK.z } }).then(() => {
+          if (seat !== 'in' || !ui || !ui.xr || xrPanel || suspended || disposed) return;
+          xrPanel = ctx.xr.panel.open(vrSpec(onClosed));
+          refreshUi();
+        });
+        return;
+      }
       refreshUi();
       ctx.player.camera.flyTo(SIT, LOOK, 750).then((ok) => { if (ok && seat === 'in') flyClose(800); });
     }
@@ -630,6 +654,7 @@ export default {
       if (snap) ctx.player.teleport(snap.x, snap.z, snap.yaw, snap.pitch);
       ctx.player.camera.release();
     }
+    function restoreSofa() { if (!sofaCol && !disposed) sofaCol = ctx.addCollider(sofaRect); }
     function finishLeave() {
       seat = 'idle';
       ctx.player.freeze(false);
@@ -655,11 +680,33 @@ export default {
       frame();
       const snd = ctx.use('sound');
       if (snd && snd.duck) snd.duck('tv', false);
-      if (disposed) { ctx.player.camera.release(); ctx.player.freeze(false); seat = 'idle'; return; }
+      if (disposed) { ctx.player.camera.release(); ctx.player.freeze(false); seat = 'idle'; xrSit = false; xrPanel = null; return; }
+      if (xrSit) {
+        // VR: kein Rückflug, man steht vor dem Sofa; war die Sitzung schon vorbei, zurück an die alte 2D-Pose
+        xrSit = false;
+        xrPanel = null;
+        if (!ctx.xr.presenting()) {
+          if (snap) ctx.player.teleport(snap.x, snap.z, snap.yaw, snap.pitch);
+          restoreSofa();
+          finishLeave();
+          return;
+        }
+        // Kein Rückflug an die alte Pose, aber raus aus dem Sofa: kurze Blende auf den Platz davor (Blick zum Fernseher)
+        ctx.xr.jumpTo(sofaX + 0.7, zc, { face: { x: LOOK.x, z: LOOK.z } }).then(() => { restoreSofa(); finishLeave(); });
+        return;
+      }
       if (instantLeave || !snap) { restoreCam(); finishLeave(); return; }
       const s = snap;
       ctx.player.camera.flyTo({ x: s.x, y: EYE, z: s.z }, eyeTarget(s), 600).then(() => { if (!disposed) restoreCam(); finishLeave(); });
     }
+
+    // VR-Sitzung endet im Sitzen: sauber aufstehen (robuster als ein Wechsel auf die 2D-Couch: kein DOM-Umbau mitten im Zustandswechsel)
+    const offXr = ctx.on('xr', (on) => {
+      if (on || seat !== 'in' || !xrSit) return;
+      instantLeave = true;
+      if (ctx.overlay.isOpen()) ctx.overlay.close();
+      onClosed();
+    });
 
     return {
       update(dt) {
@@ -713,7 +760,7 @@ export default {
       },
       onSuspend() {
         suspended = true;
-        if (seat === 'in' && ui) { instantLeave = true; ctx.overlay.close(); }
+        if (seat === 'in' && ui) { instantLeave = true; ctx.overlay.close(); onClosed(); } // onClosed: No-op, wenn das Overlay es schon ausgelöst hat (VR: Panel evtl. noch nicht offen)
         killVideo();
         if (state === 'trailer') begin('slide');
       },
@@ -723,7 +770,10 @@ export default {
         ac.abort();
         removeSofa();
         offCouch();
+        offXr();
         if (seat !== 'idle') {
+          xrSit = false;
+          xrPanel = null;
           ui = null; // runtime.dispose schließt das Overlay danach; onClosed ist dann ein No-op
           if (sitAc) sitAc.abort();
           sitAc = null;
