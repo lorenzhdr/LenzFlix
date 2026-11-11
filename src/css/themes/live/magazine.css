@@ -731,6 +731,18 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
       filter: drop-shadow(0 12px 8px rgba(0, 0, 0, 0.45));
     }
   }
+  /* Flachbild und schlicht: leicht angelehnt wie bei der Röhre 80er (Fuß unten, ~10° nach hinten gekippt) statt stark liegend */
+  .lfx-live-mag-prop[data-style="flat"],
+  .lfx-live-mag-prop[data-style="plain"] {
+    transform: perspective(600px) rotateX(10deg) rotate(-5deg);
+    transform-origin: 50% 100%;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lfx-live-mag-prop[data-style="flat"]:hover,
+    .lfx-live-mag-prop[data-style="plain"]:hover {
+      transform: perspective(600px) rotateX(10deg) rotate(-5deg) translateY(-4%);
+    }
+  }
   .lfx-live-mag-prop:focus-visible { outline: 2px solid #ffe14a; outline-offset: 4px; }
 
   @media (prefers-reduced-motion: reduce) {

@@ -658,13 +658,35 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__
   box-shadow: 0 4px 7px rgba(0, 0, 0, .65), inset 0 0 0 3px #2a2a2a, inset 0 0 0 5px rgba(255, 255, 255, .25);
 }
 
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__knob {
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .25s cubic-bezier(.3, 1.4, .5, 1);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__knob.is-drag {
+  cursor: grabbing;
+  transition-duration: 90ms;
+}
+
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__knob--a {
+  transform: rotate(var(--lfx-live-knob-a, 0deg));
   top: 5.9%;
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__knob--b {
+  transform: rotate(var(--lfx-live-knob-b, 0deg));
   top: 28.5%;
-  transform: rotate(52deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__knob {
+    transition: none;
+  }
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__knob:after {
@@ -1105,6 +1127,24 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-tv__deco * {
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-screen__glass * {
   pointer-events: none;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-decor [data-action] {
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-tv__deco [data-action] {
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-d-todo {
@@ -1956,6 +1996,37 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__
   color: #ffb347;
   background: linear-gradient(#2a2a2e, #3a3a40);
   box-shadow: inset 0 .15cqw .3cqw rgba(0, 0, 0, .8), 0 0 .6cqw rgba(255, 170, 60, .55);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-d-btns > .lfx-live-d__i {
+  transition: transform 60ms, box-shadow 60ms;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-d-btns > .lfx-live-d__i:active {
+  background: linear-gradient(#2a2a2e, #3a3a40);
+  transform: translateY(.18cqw);
+  box-shadow: inset 0 .15cqw .3cqw rgba(0, 0, 0, .8);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-d-power {
+  transition: transform 60ms, box-shadow 60ms, background 60ms;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-d-power:active {
+  background: linear-gradient(#17171a, #2e2e33);
+  transform: translateY(.25cqw);
+  box-shadow: inset 0 .2cqw .4cqw rgba(0, 0, 0, .85), 0 0 rgba(0, 0, 0, 0);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__deco[data-on="1"] .lfx-live-d-power {
+  background: linear-gradient(#17171a, #2e2e33);
+  transform: translateY(.25cqw);
+  box-shadow: inset 0 .2cqw .4cqw rgba(0, 0, 0, .85), 0 0 rgba(0, 0, 0, 0);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-tv__deco[data-on="1"] .lfx-live-d-power:after {
+  border-color: #ffb347;
+  box-shadow: 0 0 .5cqw rgba(255, 170, 60, .55);
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-d-power {
@@ -2825,13 +2896,14 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-f
   border-radius: 6px;
   justify-content: space-evenly;
   align-items: center;
-  width: 28%;
-  height: 5.6%;
-  padding: 0 3%;
+  gap: 1.2%;
+  width: 25.2%;
+  height: 6.2%;
+  padding: 0 1.2%;
   display: flex;
   position: absolute;
-  bottom: 2.6%;
-  right: 5%;
+  bottom: 2.4%;
+  right: 10.8%;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .6), inset 0 -2px 3px rgba(0, 0, 0, .12), 0 1px 3px rgba(0, 0, 0, .4);
 }
 
@@ -2839,13 +2911,87 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-f
   display: contents;
 }
 
-html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-flap__keys > .lfx-live-d__i {
-  background: linear-gradient(#eef0f3, #8f98a4);
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-key {
+  color: #27303c;
+  min-width: 0;
+  height: 66%;
+  font: 700 max(7px, calc(var(--lfx-live-tv-w) * .0098)) / 1 Arial, sans-serif;
+  letter-spacing: 0;
+  text-shadow: 0 1px rgba(255, 255, 255, .7);
+  background: linear-gradient(#f4f6f8, #b9c1cb 70%, #9aa3af);
   border-radius: 3px;
-  width: 11%;
-  height: 38%;
-  display: block;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, .45);
+  flex: 1 1 0;
+  justify-content: center;
+  align-items: center;
+  transition: transform 60ms, box-shadow 60ms;
+  display: flex;
+  box-shadow: 0 1.5px rgba(60, 68, 80, .75), 0 2px 3px rgba(0, 0, 0, .35), inset 0 1px rgba(255, 255, 255, .9);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-key:active {
+  background: linear-gradient(#aab3be, #cfd5dc);
+  transform: translateY(1.5px);
+  box-shadow: 0 0 rgba(0, 0, 0, 0), inset 0 1px 3px rgba(0, 0, 0, .45);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-pwr {
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  --lfx-live-pwr-led: #e3231c;
+  height: 5.8%;
+  box-shadow: 0 0 0 max(2px, calc(var(--lfx-live-tv-w) * .0032)) var(--lfx-live-pwr-led),
+      0 0 7px 1px color-mix(in srgb, var(--lfx-live-pwr-led) 70%, transparent),
+      0 0 0 max(3px, calc(var(--lfx-live-tv-w) * .0045)) #5f6874,
+      0 2px 4px rgba(0, 0, 0, .5);
+  background: radial-gradient(circle at 38% 30%, #f4f6f8 0, #f4f6f8 30%, #aab3be 62%, #8a93a0 100%);
+  border-radius: 50%;
+  transition: transform 60ms, box-shadow .15s;
+  position: absolute;
+  bottom: 2.6%;
+  right: 4.4%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-tv__deco[data-on="1"] .lfx-live-d-pwr {
+  --lfx-live-pwr-led: #46b4ff;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-pwr:before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-pwr:after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-pwr:before {
+  border: max(1.5px, calc(var(--lfx-live-tv-w) * .0022)) solid #27303c;
+  box-sizing: border-box;
+  border-top-color: rgba(0, 0, 0, 0);
+  border-radius: 50%;
+  width: 46%;
+  height: 46%;
+  margin-left: -23%;
+  top: 26%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-pwr:after {
+  width: max(1.5px, calc(var(--lfx-live-tv-w) * .0022));
+  height: 30%;
+  margin-left: calc(max(1.5px, calc(var(--lfx-live-tv-w) * .0022)) / -2);
+  background: #27303c;
+  border-radius: 1px;
+  top: 18%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-pwr:active {
+  background: radial-gradient(circle at 50% 60%, #c4ccd5 0, #c4ccd5 30%, #98a1ad 100%);
+  transform: translateY(1.5px);
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-silver .lfx-live-d-foot {
@@ -3176,6 +3322,14 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-side__slot {
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-side__slot > .lfx-live-mag-prop {
   flex: none;
   width: min(76%, 100cqh);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-side__slot > .lfx-live-mag-prop[data-style="flat"] {
+  width: min(76%, 74cqh);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-side__slot > .lfx-live-mag-prop[data-style="plain"] {
+  width: min(76%, 74cqh);
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-side__slot {
@@ -6246,6 +6400,26 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-mag-prop__week {
   html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-mag-prop:hover {
     filter: drop-shadow(0 12px 8px rgba(0, 0, 0, .45));
     transform: perspective(420px) rotateX(46deg) rotate(-6deg) translateY(-6%);
+  }
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-mag-prop[data-style="flat"] {
+  transform-origin: 50% 100%;
+  transform: perspective(600px) rotateX(10deg) rotate(-5deg);
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-mag-prop[data-style="plain"] {
+  transform-origin: 50% 100%;
+  transform: perspective(600px) rotateX(10deg) rotate(-5deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-mag-prop[data-style="flat"]:hover {
+    transform: perspective(600px) rotateX(10deg) rotate(-5deg) translateY(-4%);
+  }
+
+  html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-mag-prop[data-style="plain"]:hover {
+    transform: perspective(600px) rotateX(10deg) rotate(-5deg) translateY(-4%);
   }
 }
 

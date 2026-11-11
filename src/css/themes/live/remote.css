@@ -27,6 +27,9 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   }
   /* Heft-Objekt über der Fernbedienung (Slot): 88 % der Breite, damit die gedrehte Bounding-Box weder Viewport noch TV berührt */
   .lfx-live-side__slot > .lfx-live-mag-prop { flex: 0 0 auto; width: min(76%, 100cqh); }
+  /* Flat/schlicht: aufrecht angelehnt, braucht Höhe 1,3 × Breite (Seitenverhältnis 1 : 1,3) */
+  .lfx-live-side__slot > .lfx-live-mag-prop[data-style="flat"],
+  .lfx-live-side__slot > .lfx-live-mag-prop[data-style="plain"] { width: min(76%, 74cqh); }
   /* Sicherheitsabstand oben, damit die perspektivische Ausdehnung des Hefts nie am Rand abgeschnitten wird */
   .lfx-live-side__slot { box-sizing: border-box; padding-top: 14px; }
   /* Platz über der Fernbedienung: die Seitenspalte darf ein Stück in den oberen Rand des Raums reichen (app.js setzt data-prop) */

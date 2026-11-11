@@ -82,8 +82,8 @@ export default {
     d('plate', [
       d('scale lfx-live-d-scale--a', null, { count: 9 }),
       d('scale lfx-live-d-scale--b', null, { count: 9 }),
-      d('btns', null, { count: 8 }),
-      d('power'),
+      d('btns', null, { count: 8, actionEach: 'ch' }),
+      d('power', null, { action: 'power', tip: 'Ein/Aus' }),
     ]),
   ],
   glass: [

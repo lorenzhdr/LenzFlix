@@ -102,8 +102,21 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
       conic-gradient(from 20deg, #d8d8d8, #7a7a7a, #f0f0f0, #6f6f6f, #d8d8d8);
     box-shadow: 0 4px 7px rgba(0, 0, 0, 0.65), inset 0 0 0 3px #2a2a2a, inset 0 0 0 5px rgba(255, 255, 255, 0.25);
   }
-  .lfx-live--style-crt80 .lfx-live-tv__knob--a { top: 5.9%; }
-  .lfx-live--style-crt80 .lfx-live-tv__knob--b { top: 28.5%; transform: rotate(52deg); }
+  /* Winkel kommen aus ui/knobs.js (--lfx-live-knob-a: Sender 20° je Stufe, endlos; --lfx-live-knob-b: Lautstärke −135° … +135°) */
+  .lfx-live--style-crt80 .lfx-live-tv__knob {
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.25s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+  .lfx-live--style-crt80 .lfx-live-tv__knob.is-drag { cursor: grabbing; transition-duration: 0.09s; }
+  .lfx-live--style-crt80 .lfx-live-tv__knob--a { top: 5.9%; transform: rotate(var(--lfx-live-knob-a, 0deg)); }
+  .lfx-live--style-crt80 .lfx-live-tv__knob--b { top: 28.5%; transform: rotate(var(--lfx-live-knob-b, 0deg)); }
+  @media (prefers-reduced-motion: reduce) {
+    .lfx-live--style-crt80 .lfx-live-tv__knob { transition: none; }
+  }
   .lfx-live--style-crt80 .lfx-live-tv__knob::after {
     content: "";
     position: absolute;

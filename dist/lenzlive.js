@@ -7085,8 +7085,8 @@
       d("plate", [
         d("scale lfx-live-d-scale--a", null, { count: 9 }),
         d("scale lfx-live-d-scale--b", null, { count: 9 }),
-        d("btns", null, { count: 8 }),
-        d("power")
+        d("btns", null, { count: 8, actionEach: "ch" }),
+        d("power", null, { action: "power", tip: "Ein/Aus" })
       ])
     ],
     glass: [
@@ -7167,7 +7167,21 @@
       { cls: "lfx-live-d-rim" },
       { cls: "lfx-live-d-grille", children: [{ cls: "lfx-live-d-grille__dots" }] },
       { cls: "lfx-live-d-logo" },
-      { cls: "lfx-live-d-flap", children: [{ cls: "lfx-live-d-flap__keys", count: 6 }] },
+      // Gerätetasten unten rechts: Programm ±, Lautstärke ±, Programmübersicht; daneben der Netzschalter mit LED-Ring
+      {
+        cls: "lfx-live-d-flap",
+        children: [{
+          cls: "lfx-live-d-flap__keys",
+          children: [
+            { cls: "lfx-live-d-key", text: "P+", action: "key:ch+", tip: "Programm +" },
+            { cls: "lfx-live-d-key", text: "P\u2212", action: "key:ch-", tip: "Programm \u2212" },
+            { cls: "lfx-live-d-key", text: "V+", action: "key:vol+", tip: "Lauter" },
+            { cls: "lfx-live-d-key", text: "V\u2212", action: "key:vol-", tip: "Leiser" },
+            { cls: "lfx-live-d-key", text: "EPG", action: "key:epg", tip: "Programm\xFCbersicht" }
+          ]
+        }]
+      },
+      { cls: "lfx-live-d-pwr", action: "power", tip: "Ein/Aus" },
       { cls: "lfx-live-d-foot" },
       { cls: "lfx-live-d-contact" }
     ],
@@ -7190,17 +7204,23 @@
     if (node.cls) e.className = node.cls;
     if (node.text != null) e.textContent = node.text;
     if (node.display && KINDS2.includes(node.display)) e.dataset.display = node.display;
+    if (node.action) e.dataset.action = node.action;
+    if (node.tip) e.title = node.tip;
     const n = Math.max(0, Math.floor(Number(node.count) || 0));
     for (let i = 1; i <= n; i++) {
       const c2 = doc.createElement("span");
       c2.className = "lfx-live-d__i";
       c2.style.setProperty("--i", String(i));
+      if (node.actionEach === "ch") {
+        c2.dataset.action = `ch:${i}`;
+        c2.title = `Sender ${i}`;
+      }
       e.append(c2);
     }
     if (Array.isArray(node.children)) for (const c2 of node.children) e.append(buildNode(doc, c2));
     return e;
   }
-  function createDecor({ room, tv, screen, doc = document }) {
+  function createDecor({ room, tv, screen, doc = document, onAction }) {
     const mk = (cls) => {
       const e = doc.createElement("div");
       e.className = cls;
@@ -7215,6 +7235,13 @@
     const ov = screen.querySelector(":scope > .lfx-live-overlay");
     if (ov) screen.insertBefore(glass, ov);
     else screen.append(glass);
+    const onClick = (e) => {
+      const t = e.target && e.target.closest ? e.target.closest("[data-action]") : null;
+      if (!t || !e.currentTarget.contains(t)) return;
+      if (typeof onAction === "function") onAction(t.dataset.action, t);
+    };
+    decor.addEventListener("click", onClick);
+    deco.addEventListener("click", onClick);
     let state = { on: false, clock: null, ch: 1 };
     const shown = /* @__PURE__ */ new WeakMap();
     let angles = "";
@@ -7228,13 +7255,15 @@
       for (const layer of [decor, deco, glass]) {
         for (const e of layer.querySelectorAll("[data-display]")) {
           const k = e.dataset.display;
-          if (k === "vcr") put(e, on && clock ? clock : "--:--");
+          if (k === "vcr") put(e, clock || "--:--");
           else if (k === "dvd") put(e, on && clock ? clock : "");
           else if (k === "rcv") put(e, on ? `P${p2(ch)}` : "");
         }
       }
       const chAttr = on ? String(ch) : "";
       if (deco.dataset.ch !== chAttr) deco.dataset.ch = chAttr;
+      const onAttr = on ? "1" : "0";
+      if (deco.dataset.on !== onAttr) deco.dataset.on = onAttr;
       const m = /^(\d{1,2}):(\d{2})/.exec(clock || "");
       if (m) {
         const h3 = Number(m[1]) % 12;
@@ -7267,9 +7296,412 @@
         render();
       },
       dispose() {
+        decor.removeEventListener("click", onClick);
+        deco.removeEventListener("click", onClick);
         decor.remove();
         deco.remove();
         glass.remove();
+      }
+    };
+  }
+
+  // src/js/live/ui/knobs.js
+  var COMMIT_MS = 400;
+  var DRAG_PX2 = 4;
+  var VOL_STEP = 5;
+  var VOL_MIN = -135;
+  var VOL_RANGE = 270;
+  var WHEEL_UNIT = 100;
+  var clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  var norm180 = (a) => ((a + 180) % 360 + 360) % 360 - 180;
+  function createKnobs({ tv, getState, onChannel, onVolume, onSound, onPreview, win = globalThis.window }) {
+    const elA = tv.querySelector(".lfx-live-tv__knob--a");
+    const elB = tv.querySelector(".lfx-live-tv__knob--b");
+    const st = () => {
+      const s = getState && getState() || {};
+      return { active: !!s.active, channel: s.channel || 1, count: Math.max(2, s.count || 18), volume: clamp(Number(s.volume) || 0, 0, 100) };
+    };
+    const stepDeg = () => 360 / st().count;
+    const sound = (k) => {
+      if (onSound) try {
+        onSound(k);
+      } catch {
+      }
+    };
+    let angA = 0;
+    let angB = 0;
+    let angStart = 0;
+    let busy = false;
+    let commitTimer = null;
+    let pending = null;
+    let drag = null;
+    let wheelAcc = 0;
+    let wheelDir = 0;
+    const write = (el, name, deg) => {
+      if (el) el.style.setProperty(name, `${deg}deg`);
+    };
+    const volAngle = (v) => VOL_MIN + clamp(v, 0, 100) / 100 * VOL_RANGE;
+    const wrapCh = (n, count) => ((n - 1) % count + count) % count + 1;
+    function setChannel(n) {
+      if (busy) return;
+      const target = (wrapCh(n, st().count) - 1) * stepDeg();
+      const diff = norm180(target - angA);
+      if (Math.abs(diff) < 1e-3) return;
+      angA += diff;
+      write(elA, "--lfx-live-knob-a", angA);
+    }
+    function setVolume(v) {
+      if (drag && drag.which === "b") return;
+      angB = volAngle(v);
+      write(elB, "--lfx-live-knob-b", angB);
+    }
+    function sync() {
+      const s = st();
+      setChannel(s.channel);
+      setVolume(s.volume);
+    }
+    function flush() {
+      clearTimeout(commitTimer);
+      commitTimer = null;
+      const p = pending;
+      pending = null;
+      busy = !!drag && drag.which === "a";
+      if (p != null && onChannel) onChannel(p);
+      if (!busy) {
+        const s = st();
+        setChannel(s.channel);
+      }
+    }
+    function armCommit() {
+      clearTimeout(commitTimer);
+      commitTimer = setTimeout(() => {
+        commitTimer = null;
+        const p = pending;
+        flush();
+        if (drag && drag.which === "a") {
+          drag.baseCh = p != null ? p : drag.baseCh;
+          drag.steps = 0;
+          drag.cum = 0;
+          angStart = angA;
+          busy = true;
+        }
+      }, COMMIT_MS);
+    }
+    function stepChannel(base, steps) {
+      const s = st();
+      const next = wrapCh(base + steps, s.count);
+      angA = angStart + steps * stepDeg();
+      write(elA, "--lfx-live-knob-a", angA);
+      if (pending !== next) {
+        pending = next;
+        sound("detent");
+        if (onPreview) try {
+          onPreview(next);
+        } catch {
+        }
+      }
+    }
+    function applyVolumeAngle(ang) {
+      angB = clamp(ang, VOL_MIN, VOL_MIN + VOL_RANGE);
+      const v = clamp(Math.round((angB - VOL_MIN) / VOL_RANGE * 100 / VOL_STEP) * VOL_STEP, 0, 100);
+      angB = volAngle(v);
+      write(elB, "--lfx-live-knob-b", angB);
+      return v;
+    }
+    function volStep(dir) {
+      const cur = Math.round((angB - VOL_MIN) / VOL_RANGE * 100 / VOL_STEP) * VOL_STEP;
+      const v = clamp(cur + dir * VOL_STEP, 0, 100);
+      if (v === cur) return;
+      applyVolumeAngle(volAngle(v));
+      sound("detent");
+      if (onVolume) onVolume(v);
+    }
+    function chanSteps(dir) {
+      const s = st();
+      const base = pending != null ? pending : s.channel;
+      busy = true;
+      angStart = angA;
+      const next = wrapCh(base + dir, s.count);
+      angA += dir * stepDeg();
+      write(elA, "--lfx-live-knob-a", angA);
+      pending = next;
+      sound("detent");
+      if (onPreview) try {
+        onPreview(next);
+      } catch {
+      }
+      armCommit();
+    }
+    function chanImmediate(dir) {
+      chanSteps(dir);
+      flush();
+    }
+    function center(el) {
+      const r = el.getBoundingClientRect();
+      const w = el.offsetWidth || Math.min(r.width, r.height);
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: w / 2 };
+    }
+    function onDown(which, e) {
+      if (!st().active) return;
+      if (e.button != null && e.button > 0) return;
+      if (drag) return;
+      const el = which === "a" ? elA : elB;
+      const c2 = center(el);
+      drag = {
+        which,
+        el,
+        c: c2,
+        id: e.pointerId,
+        sx: e.clientX,
+        sy: e.clientY,
+        lx: e.clientX,
+        ly: e.clientY,
+        moved: false,
+        cum: 0,
+        start: angB,
+        baseCh: pending != null ? pending : st().channel,
+        steps: 0
+      };
+      if (which === "a") {
+        busy = true;
+        angStart = angA;
+      }
+      el.classList.add("is-drag");
+      try {
+        if (e.pointerId != null && el.setPointerCapture) el.setPointerCapture(e.pointerId);
+      } catch {
+      }
+      win.addEventListener("pointermove", onMove);
+      win.addEventListener("pointerup", onUp);
+      win.addEventListener("pointercancel", onCancel);
+      if (e.cancelable && e.preventDefault) e.preventDefault();
+    }
+    function onMove(e) {
+      const d2 = drag;
+      if (!d2 || d2.id != null && e.pointerId != null && e.pointerId !== d2.id) return;
+      const dx = e.clientX - d2.c.x;
+      const dy = e.clientY - d2.c.y;
+      const px = d2.lx - d2.c.x;
+      const py = d2.ly - d2.c.y;
+      let delta;
+      if (Math.hypot(dx, dy) >= d2.c.r * 0.4 && Math.hypot(px, py) >= d2.c.r * 0.4) {
+        delta = norm180((Math.atan2(dy, dx) - Math.atan2(py, px)) * 180 / Math.PI);
+      } else {
+        delta = (d2.ly - e.clientY) * 1.5;
+      }
+      d2.lx = e.clientX;
+      d2.ly = e.clientY;
+      if (!d2.moved) {
+        if (Math.hypot(e.clientX - d2.sx, e.clientY - d2.sy) <= DRAG_PX2) return;
+        d2.moved = true;
+      }
+      if (d2.which === "a") {
+        d2.cum += delta;
+        const steps = Math.round(d2.cum / stepDeg());
+        if (steps !== d2.steps) {
+          d2.steps = steps;
+          stepChannel(d2.baseCh, steps);
+          armCommit();
+        }
+      } else {
+        d2.cum = clamp(d2.cum + delta, VOL_MIN - d2.start, VOL_MIN + VOL_RANGE - d2.start);
+        const before = Math.round((angB - VOL_MIN) / VOL_RANGE * 100 / VOL_STEP) * VOL_STEP;
+        const v = applyVolumeAngle(d2.start + d2.cum);
+        if (v !== before) {
+          sound("detent");
+          if (onVolume) onVolume(v);
+        }
+      }
+    }
+    function end() {
+      const d2 = drag;
+      drag = null;
+      win.removeEventListener("pointermove", onMove);
+      win.removeEventListener("pointerup", onUp);
+      win.removeEventListener("pointercancel", onCancel);
+      if (d2) {
+        d2.el.classList.remove("is-drag");
+        try {
+          if (d2.id != null && d2.el.releasePointerCapture) d2.el.releasePointerCapture(d2.id);
+        } catch {
+        }
+      }
+      return d2;
+    }
+    function onUp(e) {
+      const d2 = drag;
+      if (!d2 || d2.id != null && e.pointerId != null && e.pointerId !== d2.id) return;
+      end();
+      if (d2.moved) {
+        if (d2.which === "a") flush();
+        return;
+      }
+      const dir = e.clientX < d2.c.x ? -1 : 1;
+      if (d2.which === "a") chanImmediate(dir);
+      else volStep(dir);
+    }
+    function onCancel() {
+      const d2 = end();
+      if (d2 && d2.which === "a") flush();
+    }
+    function onWheel(which, e) {
+      if (!st().active) return;
+      e.preventDefault();
+      const dy = Number(e.deltaY) || 0;
+      if (!dy) return;
+      const dir = dy < 0 ? 1 : -1;
+      if (dir !== wheelDir) {
+        wheelAcc = 0;
+        wheelDir = dir;
+      }
+      wheelAcc += Math.abs(dy);
+      while (wheelAcc >= WHEEL_UNIT) {
+        wheelAcc -= WHEEL_UNIT;
+        if (which === "a") chanSteps(dir);
+        else volStep(dir);
+      }
+    }
+    const hs = [];
+    for (const [which, el, tip] of [["a", elA, "Sender w\xE4hlen"], ["b", elB, "Lautst\xE4rke"]]) {
+      if (!el) continue;
+      el.title = tip;
+      const down = (e) => onDown(which, e);
+      const wheel = (e) => onWheel(which, e);
+      el.addEventListener("pointerdown", down);
+      el.addEventListener("wheel", wheel, { passive: false });
+      hs.push(() => {
+        el.removeEventListener("pointerdown", down);
+        el.removeEventListener("wheel", wheel);
+      });
+    }
+    write(elA, "--lfx-live-knob-a", 0);
+    write(elB, "--lfx-live-knob-b", 0);
+    sync();
+    return {
+      setChannel,
+      setVolume,
+      sync,
+      dispose() {
+        end();
+        clearTimeout(commitTimer);
+        commitTimer = null;
+        pending = null;
+        for (const off of hs) off();
+      }
+    };
+  }
+
+  // src/js/live/player/sfx.js
+  var SCALE = 0.35;
+  var KINDS3 = {
+    // noise: [highpass Hz, lowpass Hz, Dauer s, Gewicht]; tone: [von Hz, nach Hz, Dauer s, Gewicht]
+    press: { noise: [2200, 9e3, 0.03, 1], tone: [1700, 800, 0.025, 0.35] },
+    detent: { noise: [3e3, 8e3, 0.014, 0.8], tone: [2600, 1900, 0.012, 0.25] },
+    power: { noise: [200, 1800, 0.07, 0.8], tone: [150, 62, 0.09, 0.9] }
+  };
+  function createSfx({ AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext } = {}) {
+    let ctx = null;
+    let noiseBuf = null;
+    let disposed = false;
+    let vol = 1;
+    let muted = false;
+    let n = 0;
+    const level = () => muted ? 0 : vol * SCALE;
+    function ensure() {
+      if (ctx || disposed || !AudioCtx) return ctx;
+      try {
+        ctx = new AudioCtx();
+        const sr = ctx.sampleRate || 44100;
+        const len = Math.floor(sr * 0.5);
+        noiseBuf = ctx.createBuffer(1, len, sr);
+        const d2 = noiseBuf.getChannelData(0);
+        const rnd = mulberry322(8141597);
+        for (let i = 0; i < len; i++) d2[i] = rnd() * 2 - 1;
+      } catch {
+        ctx = null;
+        noiseBuf = null;
+      }
+      return ctx;
+    }
+    function play(kind, g) {
+      const k = KINDS3[kind] || KINDS3.press;
+      const t = ctx.currentTime;
+      const out = ctx.createGain();
+      out.gain.value = g;
+      out.connect(ctx.destination);
+      const dead = [out];
+      const [hp, lp, nd, nw] = k.noise;
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuf;
+      const f1 = ctx.createBiquadFilter();
+      f1.type = "highpass";
+      f1.frequency.value = hp;
+      const f2 = ctx.createBiquadFilter();
+      f2.type = "lowpass";
+      f2.frequency.value = lp;
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(nw, t);
+      ng.gain.exponentialRampToValueAtTime(1e-3, t + nd);
+      src.connect(f1);
+      f1.connect(f2);
+      f2.connect(ng);
+      ng.connect(out);
+      n = (n + 1) % 7;
+      src.start(t, n * 0.05, nd + 0.01);
+      dead.push(src, f1, f2, ng);
+      const [f0, f9, td, tw] = k.tone;
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(f0, t);
+      osc.frequency.exponentialRampToValueAtTime(f9, t + td);
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(tw, t);
+      og.gain.exponentialRampToValueAtTime(1e-3, t + td);
+      osc.connect(og);
+      og.connect(out);
+      osc.start(t);
+      osc.stop(t + td + 0.01);
+      dead.push(osc, og);
+      osc.onended = () => {
+        for (const x of dead) {
+          try {
+            x.disconnect();
+          } catch {
+          }
+        }
+      };
+    }
+    return {
+      click(kind = "press") {
+        const g = level();
+        if (disposed || g <= 0) return;
+        try {
+          if (!ensure()) return;
+          if (ctx.state === "suspended" && typeof ctx.resume === "function") {
+            const r = ctx.resume();
+            if (r && typeof r.catch === "function") r.catch(() => {
+            });
+          }
+          play(kind, g);
+        } catch {
+        }
+      },
+      setLevel(v, m) {
+        vol = Math.max(0, Math.min(1, Number(v) || 0));
+        muted = !!m;
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (ctx) {
+          try {
+            const r = ctx.close();
+            if (r && typeof r.catch === "function") r.catch(() => {
+            });
+          } catch {
+          }
+          ctx = null;
+        }
       }
     };
   }
@@ -8133,13 +8565,13 @@
   var RETRY_MS = 1e4;
   var SYNC_MS = 3e4;
   var MAX_TIMEOUT = 2147483647;
-  var VOL_STEP = 5;
+  var VOL_STEP2 = 5;
   var PLAYABLE = ["program", "fill", "nightfill"];
   var OVERLAY_FACTORY = { epg: "epg", txt: "ttx", menu: "menu", guide: "guide" };
   var OVERLAY_CLASS = { epg: "has-epg", txt: "has-ttx", menu: "has-menu", guide: "has-guide" };
   var IDLE_KINDS = ["pause", "test", "error"];
   var p23 = (n) => String(n).padStart(2, "0");
-  var clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  var clamp2 = (n, a, b) => Math.max(a, Math.min(b, n));
   function defaultClock(t) {
     const d2 = new Date(t);
     return `${p23(d2.getHours())}:${p23(d2.getMinutes())}`;
@@ -8165,7 +8597,7 @@
       type: pick(it, "kind")
     };
   }
-  function createApp(host, { scheduler, player: playerArg, watch, pickFiller: pickFiller2, overlays = {}, music = null, pdf = null, deps = {}, opts = {}, time = {} }) {
+  function createApp(host, { scheduler, player: playerArg, watch, pickFiller: pickFiller2, overlays = {}, music = null, sfx: sfxArg, pdf = null, deps = {}, opts = {}, time = {} }) {
     const doc = host.ownerDocument || document;
     const win = typeof window !== "undefined" ? window : doc.defaultView;
     const clock = typeof opts.now === "function" ? opts.now : () => Date.now();
@@ -8174,7 +8606,9 @@
     const refs = buildTv({ style: opts.style, fakePlayer: !!opts.fakePlayer, doc });
     const { app, room, screen, video, overlay: overlayEl } = refs;
     const noise = createNoise(refs.noise, { win });
-    const decor = createDecor({ room, tv: refs.tv, screen, doc });
+    let knobs = null;
+    const sfx = sfxArg === void 0 ? createSfx() : sfxArg;
+    const decor = createDecor({ room, tv: refs.tv, screen, doc, onAction: (a) => onDeviceAction(a) });
     decor.setStyle(normStyle(opts.style));
     const card = createCard(screen, { formatClock: formatClock2, doc, win, onKind: () => syncMusic() });
     const osd = createOsd(screen, { doc, win });
@@ -8199,11 +8633,11 @@
     let on = false;
     let suspended = false;
     let disposed = false;
-    let channel = clamp(Math.round(Number(opts.lastChannel) || 1), 1, 18);
+    let channel = clamp2(Math.round(Number(opts.lastChannel) || 1), 1, 18);
     let entry = null;
     let gen = 0;
     let playing = false;
-    let vol = clamp(Math.round((opts.volume == null ? 1 : Number(opts.volume)) * 100), 0, 100);
+    let vol = clamp2(Math.round((opts.volume == null ? 1 : Number(opts.volume)) * 100), 0, 100);
     let muted = !!opts.muted;
     let digitBuf = "";
     let pendingRestart = null;
@@ -8292,7 +8726,7 @@
         from: formatClock2(e.start),
         to: formatClock2(e.end),
         badges: badgesOf2(e),
-        progress: clamp((t - e.start) / Math.max(1, e.end - e.start), 0, 1),
+        progress: clamp2((t - e.start) / Math.max(1, e.end - e.start), 0, 1),
         next: nx ? { title: titleOf(nx).title, from: formatClock2(nx.start) } : null,
         meta: []
       };
@@ -8473,6 +8907,7 @@
     }
     function syncDecor() {
       safe2(() => decor.setDisplays({ on, clock: formatClock2(clock()), ch: channel }));
+      safe2(() => knobs.sync());
     }
     function scheduleClock() {
       later("clock", () => {
@@ -8484,6 +8919,8 @@
       safe2(() => player.setVolume && player.setVolume(vol / 100));
       safe2(() => player.setMuted && player.setMuted(muted));
       if (music) safe2(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted || mutedByPolicy));
+      if (sfx) safe2(() => sfx.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted));
+      safe2(() => knobs.setVolume(vol));
     }
     function savePrefs(partial) {
       if (deps.savePrefs) safe2(() => deps.savePrefs(partial));
@@ -8492,18 +8929,61 @@
       if (player.volumeSupported === false) {
         muted = key === "vol+" ? false : key === "vol-" ? true : !muted;
         applyVolume();
-        osd.showVolume({ percent: vol, muted, hint: "Lautst\xE4rke bitte am Ger\xE4t einstellen" });
+        if (on) osd.showVolume({ percent: vol, muted, hint: "Lautst\xE4rke bitte am Ger\xE4t einstellen" });
         savePrefs({ muted });
         return;
       }
       if (key === "mute") muted = !muted;
       else {
-        vol = clamp(vol + (key === "vol+" ? VOL_STEP : -VOL_STEP), 0, 100);
+        vol = clamp2(vol + (key === "vol+" ? VOL_STEP2 : -VOL_STEP2), 0, 100);
         muted = false;
       }
       applyVolume();
-      osd.showVolume({ percent: vol, muted });
+      if (on) osd.showVolume({ percent: vol, muted });
       savePrefs({ volume: vol / 100, muted });
+    }
+    function setVolumeAbs(v) {
+      if (disposed || suspended) return;
+      v = clamp2(Math.round(Number(v) || 0), 0, 100);
+      if (player.volumeSupported === false) {
+        if (v !== vol) changeVolume(v > vol ? "vol+" : "vol-");
+        return;
+      }
+      vol = v;
+      muted = false;
+      applyVolume();
+      if (on) osd.showVolume({ percent: vol, muted });
+      savePrefs({ volume: vol / 100, muted });
+    }
+    function onDeviceAction(action) {
+      if (disposed || suspended || !action) return;
+      const N = NCH();
+      const wrap2 = (n) => ((n - 1) % N + N) % N + 1;
+      safe2(() => sfx && sfx.click(action === "power" ? "power" : "press"));
+      const m = /^ch:(\d+)$/.exec(action);
+      if (m) {
+        const no = Number(m[1]);
+        if (no >= 1 && no <= N) ctx.tune(no);
+        return;
+      }
+      if (action === "power") {
+        press("power");
+        return;
+      }
+      const key = action.startsWith("key:") ? action.slice(4) : "";
+      if (key === "ch+" || key === "ch-") {
+        if (on) press(key);
+        else ctx.tune(wrap2(channel + (key === "ch+" ? 1 : -1)));
+      } else if (key === "vol+" || key === "vol-") {
+        if (on) press(key);
+        else changeVolume(key);
+      } else if (key === "epg") {
+        if (on) press("epg");
+        else {
+          powerOn();
+          openOverlay("epg");
+        }
+      }
     }
     function watchTune() {
       if (!watch || !entry) return;
@@ -8562,7 +9042,7 @@
       return false;
     }
     function armAdvance(e, g) {
-      const delay = clamp(e.end - clock() + 30, 50, MAX_TIMEOUT);
+      const delay = clamp2(e.end - clock() + 30, 50, MAX_TIMEOUT);
       later("advance", () => advance(g), delay);
     }
     function advance(g) {
@@ -8662,7 +9142,7 @@
       const ts = pickRes && pickRes.trailerStartMs;
       if (ts && ts > clock()) later("trailer", () => {
         if (g === gen && on) runFiller(e, g);
-      }, clamp(ts - clock() + 20, 20, MAX_TIMEOUT));
+      }, clamp2(ts - clock() + 20, 20, MAX_TIMEOUT));
     }
     async function start(g, save = true) {
       if (g !== gen || !on) return;
@@ -8722,7 +9202,7 @@
       if (!on) return;
       const t = clock();
       card.tick(t);
-      if (entry) osd.setProgress(clamp((t - entry.start) / Math.max(1, entry.end - entry.start), 0, 1));
+      if (entry) osd.setProgress(clamp2((t - entry.start) / Math.max(1, entry.end - entry.start), 0, 1));
       for (const n of Object.keys(made)) if (made[n] && made[n].isOpen() && made[n].tick) safe2(() => made[n].tick(t));
       if (watch) safe2(() => watch.tick());
       tickCount++;
@@ -8900,6 +9380,7 @@
       app.classList.add(`lfx-live--style-${style}`);
       if (music) safe2(() => music.setStyle(style));
       decor.setStyle(style);
+      safe2(() => knobs.sync());
       if (prop) {
         prop.setStyle(style);
         placeProp();
@@ -9085,6 +9566,19 @@
       win
     });
     keys.attach();
+    knobs = createKnobs({
+      tv: refs.tv,
+      getState: () => ({ active: style === "crt80" && !disposed && !suspended, channel, count: NCH(), volume: vol }),
+      onChannel: (n) => {
+        if (!disposed && !suspended) ctx.tune(n);
+      },
+      onVolume: (v) => setVolumeAbs(v),
+      onSound: (k) => safe2(() => sfx && sfx.click(k)),
+      onPreview: (n) => {
+        if (on) safe2(() => osd.showMessage(`Sender ${n}`, 1200));
+      },
+      win
+    });
     syncDecor();
     scheduleClock();
     if (music) {
@@ -9159,7 +9653,9 @@
           }
         }
         noise.dispose();
+        knobs.dispose();
         decor.dispose();
+        if (sfx && sfxArg === void 0) safe2(() => sfx.dispose());
         osd.dispose();
         card.dispose();
         remote.destroy();

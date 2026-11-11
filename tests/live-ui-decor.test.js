@@ -104,8 +104,21 @@ describe('createDecor: Anzeigen und Uhr', () => {
     decor.setStyle('crt80');
     expect(txt(decor, 'vcr')).toBe('20:15');
     decor.setDisplays({ on: false });
-    expect(txt(decor, 'vcr')).toBe('--:--');
+    // Videorekorder zeigt die Uhrzeit auch bei ausgeschaltetem Fernseher
+    expect(txt(decor, 'vcr')).toBe('20:15');
     expect(decor.layers.tv.dataset.ch).toBe('');
+    expect(decor.layers.tv.dataset.on).toBe('0');
+    decor.setDisplays({ on: true });
+    expect(decor.layers.tv.dataset.on).toBe('1');
+  });
+
+  it('vcr zeigt --:-- nur ohne bekannte Uhrzeit', () => {
+    const { decor } = make('crt80');
+    decor.setStyle('crt80');
+    decor.setDisplays({ on: false });
+    expect(txt(decor, 'vcr')).toBe('--:--');
+    decor.setDisplays({ clock: '07:05' });
+    expect(txt(decor, 'vcr')).toBe('07:05');
   });
 
   it('Wanduhr-Variablen an .lfx-live-decor', () => {
@@ -127,6 +140,61 @@ describe('createDecor: Anzeigen und Uhr', () => {
     expect(el.firstChild).toBe(node);
     decor.setDisplays({ on: true, clock: '20:16' });
     expect(el.textContent).toBe('20:16');
+  });
+});
+
+describe('createDecor: bedienbare Knoten', () => {
+  function makeWith(onAction, style = 'crt80') {
+    const refs = buildTv({ style, doc: document });
+    document.body.append(refs.app);
+    const decor = createDecor({ room: refs.room, tv: refs.tv, screen: refs.screen, doc: document, onAction });
+    decor.setStyle(style);
+    return { refs, decor };
+  }
+
+  it('crt80: Programmtasten 1–8 und Netzschalter tragen data-action und title', () => {
+    const { decor } = makeWith(() => {});
+    const btns = [...decor.layers.tv.querySelectorAll('.lfx-live-d-btns > .lfx-live-d__i')];
+    expect(btns.length).toBe(8);
+    btns.forEach((b, i) => {
+      expect(b.dataset.action).toBe(`ch:${i + 1}`);
+      expect(b.title).toBe(`Sender ${i + 1}`);
+    });
+    const pw = decor.layers.tv.querySelector('.lfx-live-d-power');
+    expect(pw.dataset.action).toBe('power');
+    expect(pw.title).toBe('Ein/Aus');
+  });
+
+  it('silver: Tasten P+ P− V+ V− EPG und Netzschalter', () => {
+    const { decor } = makeWith(() => {}, 'silver');
+    const keys = [...decor.layers.tv.querySelectorAll('.lfx-live-d-key')];
+    expect(keys.map((k) => [k.textContent, k.dataset.action])).toEqual([
+      ['P+', 'key:ch+'], ['P−', 'key:ch-'], ['V+', 'key:vol+'], ['V−', 'key:vol-'], ['EPG', 'key:epg'],
+    ]);
+    keys.forEach((k) => expect(k.title).toBeTruthy());
+    expect(decor.layers.tv.querySelector('.lfx-live-d-pwr').dataset.action).toBe('power');
+  });
+
+  it('ein Klick ruft onAction genau einmal, Nicht-Aktionsknoten nie', () => {
+    const fn = vi.fn();
+    const { decor } = makeWith(fn);
+    decor.layers.tv.querySelectorAll('.lfx-live-d-btns > .lfx-live-d__i')[2].click();
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn.mock.calls[0][0]).toBe('ch:3');
+    decor.layers.tv.querySelector('.lfx-live-d-rim').click();
+    decor.layers.tv.querySelector('.lfx-live-d-plate').click();
+    expect(fn).toHaveBeenCalledTimes(1);
+    decor.layers.tv.querySelector('.lfx-live-d-power').click();
+    expect(fn).toHaveBeenLastCalledWith('power', expect.anything());
+  });
+
+  it('dispose entfernt die Listener', () => {
+    const fn = vi.fn();
+    const { decor } = makeWith(fn);
+    const b = decor.layers.tv.querySelector('.lfx-live-d-power');
+    decor.dispose();
+    b.click();
+    expect(fn).not.toHaveBeenCalled();
   });
 });
 

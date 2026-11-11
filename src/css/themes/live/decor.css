@@ -25,6 +25,15 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-decor *,
   .lfx-live-tv__deco *,
   .lfx-live-screen__glass * { pointer-events: none; }
+  /* Bedienbare Gerätetasten (Spezifikation: action/tip → data-action/title): nehmen Zeiger an, nicht fokussierbar (Fernbedienung bleibt der Tastaturweg) */
+  .lfx-live-decor [data-action],
+  .lfx-live-tv__deco [data-action] {
+    pointer-events: auto;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    touch-action: manipulation;
+  }
   /* Platzhalter-Knoten der Spezifikationen bleiben unsichtbar, bis der Stil-Coder sie ersetzt */
   .lfx-live-d-todo { display: none; }
 }

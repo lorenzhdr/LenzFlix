@@ -64,7 +64,7 @@ function makeEnv(over = {}) {
     ...(over.deps || {}),
   };
   const opts = { style: 'crt80', volume: 0.5, muted: false, lastChannel: 1, now: () => clock.t, ...(over.opts || {}) };
-  const app = createApp(host, { scheduler, player, watch, pickFiller, overlays, deps, opts, time: {} });
+  const app = createApp(host, { scheduler, player, watch, pickFiller, overlays, deps, opts, time: {}, sfx: over.sfx });
   return { host, clock, scheduler, player, watch, pickFiller, overlays, ov, ctxs, deps, app, opts };
 }
 
@@ -627,5 +627,131 @@ describe('Info, Handy, Vollbild, Lebenszyklus', () => {
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
     await flush(1000);
     expect(env.player.play.mock.calls.length).toBe(before);
+  });
+});
+
+describe('Gerätetasten und Drehknöpfe', () => {
+  const act = (env, sel) => q(env, sel).click();
+  const preBtn = (env, n) => env.host.querySelectorAll('.lfx-live-d-btns > .lfx-live-d__i')[n - 1];
+
+  it('Programmtaste 3 schaltet aus dem Standby auf Sender 3 ein', async () => {
+    const env = makeEnv();
+    expect(env.app.isOn()).toBe(false);
+    preBtn(env, 3).click();
+    expect(env.app.isOn()).toBe(true);
+    expect(env.app.channel()).toBe(3);
+    await flush();
+    expect(env.scheduler.nowOn).toHaveBeenCalledWith(3, T0);
+    expect(q(env, '.lfx-live-tv__deco').dataset.ch).toBe('3');
+    expect(q(env, '.lfx-live-tv__deco').dataset.on).toBe('1');
+  });
+
+  it('Programmtaste bei an wechselt den Sender', async () => {
+    const env = makeEnv();
+    env.app.press('power');
+    await flush();
+    preBtn(env, 5).click();
+    await flush(500);
+    expect(env.app.channel()).toBe(5);
+  });
+
+  it('Netzschalter schaltet um', async () => {
+    const env = makeEnv();
+    act(env, '.lfx-live-d-power');
+    expect(env.app.isOn()).toBe(true);
+    await flush();
+    act(env, '.lfx-live-d-power');
+    expect(env.app.isOn()).toBe(false);
+    expect(q(env, '.lfx-live-tv__deco').dataset.on).toBe('0');
+  });
+
+  it('Videorekorder zeigt im Standby die Uhrzeit', () => {
+    const env = makeEnv();
+    expect(q(env, '[data-display="vcr"]').textContent).toMatch(/^\d\d:\d\d$/);
+  });
+
+  it('Silber: P+ schaltet ein (nächster Sender ab dem zuletzt gesehenen), V+ lässt den TV aus', async () => {
+    const env = makeEnv({ opts: { style: 'silver', lastChannel: 4 } });
+    const key = (a) => env.host.querySelector(`.lfx-live-d-key[data-action="${a}"]`);
+    key('key:vol+').click();
+    expect(env.app.isOn()).toBe(false);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.55);
+    expect(q(env, '.lfx-live-osd__vol-num')?.textContent || '').not.toMatch(/55/);
+    key('key:ch+').click();
+    expect(env.app.isOn()).toBe(true);
+    expect(env.app.channel()).toBe(5);
+    await flush();
+    key('key:ch-').click();
+    await flush(500);
+    expect(env.app.channel()).toBe(4);
+  });
+
+  it('Silber: P− aus dem Standby geht rückwärts, 1 → 18', () => {
+    const env = makeEnv({ opts: { style: 'silver', lastChannel: 1 } });
+    env.host.querySelector('.lfx-live-d-key[data-action="key:ch-"]').click();
+    expect(env.app.channel()).toBe(18);
+    expect(env.app.isOn()).toBe(true);
+  });
+
+  it('Silber: EPG aus dem Standby schaltet ein und öffnet die Programmübersicht', async () => {
+    const env = makeEnv({ opts: { style: 'silver' } });
+    env.host.querySelector('.lfx-live-d-key[data-action="key:epg"]').click();
+    expect(env.app.isOn()).toBe(true);
+    expect(env.ov.epg.inst.open).toHaveBeenCalled();
+    await flush();
+  });
+
+  it('Gerätetasten und Knöpfe spielen Klicks über sfx, Lautstärke folgt', async () => {
+    const sfx = { click: vi.fn(), setLevel: vi.fn(), dispose: vi.fn() };
+    const env = makeEnv({ sfx });
+    act(env, '.lfx-live-d-power');
+    expect(sfx.click).toHaveBeenLastCalledWith('power');
+    preBtn(env, 2).click();
+    expect(sfx.click).toHaveBeenLastCalledWith('press');
+    q(env, '.lfx-live-tv__knob--b').dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true }));
+    expect(sfx.click).toHaveBeenLastCalledWith('detent');
+    expect(sfx.setLevel).toHaveBeenLastCalledWith(0.55, false);
+    await flush();
+    env.app.dispose();
+    expect(sfx.dispose).not.toHaveBeenCalled(); // injizierte Instanz gehört dem Aufrufer
+  });
+
+  it('Drehknopf: Rad am Lautstärkeknopf ändert die Lautstärke absolut', async () => {
+    const env = makeEnv();
+    const knob = q(env, '.lfx-live-tv__knob--b');
+    knob.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true }));
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.55);
+    expect(env.deps.savePrefs).toHaveBeenLastCalledWith({ volume: 0.55, muted: false });
+    expect(knob.style.getPropertyValue('--lfx-live-knob-b')).toBe('13.5deg');
+    expect(env.app.isOn()).toBe(false);
+  });
+
+  it('Drehknopf: Rad am Senderknopf wechselt nach 400 ms (schaltet aus dem Standby ein)', async () => {
+    const env = makeEnv();
+    const knob = q(env, '.lfx-live-tv__knob--a');
+    knob.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true }));
+    expect(env.app.isOn()).toBe(false);
+    await flush(401);
+    expect(env.app.isOn()).toBe(true);
+    expect(env.app.channel()).toBe(2);
+    expect(knob.style.getPropertyValue('--lfx-live-knob-a')).toBe('20deg');
+  });
+
+  it('Drehknöpfe wirken nur bei crt80; bei Silber kein Eingriff', () => {
+    const env = makeEnv({ opts: { style: 'silver' } });
+    const knob = q(env, '.lfx-live-tv__knob--b');
+    const w = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true });
+    knob.dispatchEvent(w);
+    expect(w.defaultPrevented).toBe(false);
+    expect(env.player.setVolume).not.toHaveBeenCalledWith(0.55);
+  });
+
+  it('Stilwechsel auf crt80 aktiviert die Knöpfe', () => {
+    const env = makeEnv({ opts: { style: 'flat' } });
+    const knob = q(env, '.lfx-live-tv__knob--b');
+    const w = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true });
+    knob.dispatchEvent(w);
+    expect(w.defaultPrevented).toBe(false);
+    env.app.dispose();
   });
 });

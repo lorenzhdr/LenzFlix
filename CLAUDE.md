@@ -94,7 +94,8 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 
 ## Aktueller Stand und offene Punkte
 Stand 11.11.2026. Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/live.md` und `docs/store3d.md`.
-- **Version:** v1.9.4 released (Tag `v1.9.4`, jsDelivr), 1788 Tests, Lint und Build grün.
+- **Version:** v1.9.5 released (Tag `v1.9.5`, jsDelivr), 1826 Tests, Lint und Build grün.
+- **Inhalt 1.9.5:** bedienbare Geräte an den Röhren-TVs (`ui/knobs.js`, `player/sfx.js`, decor-Aktionen; siehe `docs/live.md` „Bedienbare Geräte (1.9.5)“), Videorekorder zeigt immer die Uhrzeit, Fernsehzeitung bei flat/plain angelehnt. Offen: echtes Touch und Klickgeräusch am Gerät testen.
 - **Inhalt 1.9.4:**
   - VR-Kino:
     - „Lauter“ rechnet jetzt wie Jellyfin kubisch (Pegel = ∛`video.volume`).

@@ -69,7 +69,21 @@ export default {
     { cls: 'lfx-live-d-rim' },
     { cls: 'lfx-live-d-grille', children: [{ cls: 'lfx-live-d-grille__dots' }] },
     { cls: 'lfx-live-d-logo' },
-    { cls: 'lfx-live-d-flap', children: [{ cls: 'lfx-live-d-flap__keys', count: 6 }] },
+    // Gerätetasten unten rechts: Programm ±, Lautstärke ±, Programmübersicht; daneben der Netzschalter mit LED-Ring
+    {
+      cls: 'lfx-live-d-flap',
+      children: [{
+        cls: 'lfx-live-d-flap__keys',
+        children: [
+          { cls: 'lfx-live-d-key', text: 'P+', action: 'key:ch+', tip: 'Programm +' },
+          { cls: 'lfx-live-d-key', text: 'P−', action: 'key:ch-', tip: 'Programm −' },
+          { cls: 'lfx-live-d-key', text: 'V+', action: 'key:vol+', tip: 'Lauter' },
+          { cls: 'lfx-live-d-key', text: 'V−', action: 'key:vol-', tip: 'Leiser' },
+          { cls: 'lfx-live-d-key', text: 'EPG', action: 'key:epg', tip: 'Programmübersicht' },
+        ],
+      }],
+    },
+    { cls: 'lfx-live-d-pwr', action: 'power', tip: 'Ein/Aus' },
     { cls: 'lfx-live-d-foot' },
     { cls: 'lfx-live-d-contact' },
   ],

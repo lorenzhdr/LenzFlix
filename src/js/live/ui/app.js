@@ -1,11 +1,14 @@
 // LENZ LIVE · Controller. Alles Zustandsbehaftete und alle Module kommen per Injektion (testbar ohne echte Module).
 // createApp(host, { scheduler, player, watch, pickFiller, overlays, music, pdf, deps, opts, time }) → instance
 //   player: Objekt ODER Fabrik ({ video, canvas }) → Player (das <video> entsteht hier im DOM-Gerüst).
+//   sfx: createSfx()-Instanz (optional; Standard: eigene, Klickgeräusche der Gerätetasten/Drehknöpfe).
 //   overlays: { epg, ttx, menu, guide } – Fabriken createX(ctx) → Overlay.   music: createMusic()-Instanz (optional, Pausenmusik).
 //   pdf: { downloadPdf(magazine, style, onProgress) } (optional, Fernsehzeitung als PDF).   time: { formatClock, formatDay, broadcastDayOf, dayBounds }.
 import { buildTv, createNoise, STYLES, normStyle, h } from './tv.js';
 import { createRemote } from './remote.js';
 import { createDecor } from './decor.js';
+import { createKnobs } from './knobs.js';
+import { createSfx } from '../player/sfx.js';
 import { createKeys } from './keys.js';
 import { createOsd } from './osd.js';
 import { createCard } from './card.js';
@@ -57,7 +60,7 @@ export function itemFields(it, scheduler) {
   };
 }
 
-export function createApp(host, { scheduler, player: playerArg, watch, pickFiller, overlays = {}, music = null, pdf = null, deps = {}, opts = {}, time = {} }) {
+export function createApp(host, { scheduler, player: playerArg, watch, pickFiller, overlays = {}, music = null, sfx: sfxArg, pdf = null, deps = {}, opts = {}, time = {} }) {
   const doc = host.ownerDocument || document;
   const win = typeof window !== 'undefined' ? window : doc.defaultView;
   const clock = typeof opts.now === 'function' ? opts.now : () => Date.now();
@@ -68,7 +71,10 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   const refs = buildTv({ style: opts.style, fakePlayer: !!opts.fakePlayer, doc });
   const { app, room, screen, video, overlay: overlayEl } = refs;
   const noise = createNoise(refs.noise, { win });
-  const decor = createDecor({ room, tv: refs.tv, screen, doc }); // Raum-/Gehäuse-/Glas-Dekor der Röhren-Stile
+  let knobs = null;
+  const sfx = sfxArg === undefined ? createSfx() : sfxArg; // Klickgeräusche (AudioContext entsteht erst im ersten Klick)
+  // Raum-/Gehäuse-/Glas-Dekor der Röhren-Stile; bedienbare Gerätetasten rufen onDeviceAction
+  const decor = createDecor({ room, tv: refs.tv, screen, doc, onAction: (a) => onDeviceAction(a) });
   decor.setStyle(normStyle(opts.style));
   const card = createCard(screen, { formatClock, doc, win, onKind: () => syncMusic() });
   const osd = createOsd(screen, { doc, win });
@@ -374,6 +380,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   // Zustandsänderungen (Ein/Aus, Sender) rufen syncDecor direkt; die Uhrzeit läuft über einen Minuten-Timer (auch im Standby).
   function syncDecor() {
     safe(() => decor.setDisplays({ on, clock: formatClock(clock()), ch: channel }));
+    safe(() => knobs.sync());
   }
   function scheduleClock() {
     later('clock', () => { syncDecor(); scheduleClock(); }, 60000 - (clock() % 60000) + 50);
@@ -384,6 +391,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     safe(() => player.setVolume && player.setVolume(vol / 100));
     safe(() => player.setMuted && player.setMuted(muted));
     if (music) safe(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted || mutedByPolicy));
+    if (sfx) safe(() => sfx.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted));
+    safe(() => knobs.setVolume(vol));
   }
 
   function savePrefs(partial) { if (deps.savePrefs) safe(() => deps.savePrefs(partial)); }
@@ -392,7 +401,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (player.volumeSupported === false) {
       muted = key === 'vol+' ? false : key === 'vol-' ? true : !muted;
       applyVolume();
-      osd.showVolume({ percent: vol, muted, hint: 'Lautstärke bitte am Gerät einstellen' });
+      if (on) osd.showVolume({ percent: vol, muted, hint: 'Lautstärke bitte am Gerät einstellen' });
       savePrefs({ muted });
       return;
     }
@@ -402,8 +411,46 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       muted = false;
     }
     applyVolume();
-    osd.showVolume({ percent: vol, muted });
+    if (on) osd.showVolume({ percent: vol, muted });
     savePrefs({ volume: vol / 100, muted });
+  }
+
+  // Absolute Lautstärke (Drehknopf, 0–100); bei fester Gerätelautstärke (iOS) nur Richtung
+  function setVolumeAbs(v) {
+    if (disposed || suspended) return;
+    v = clamp(Math.round(Number(v) || 0), 0, 100);
+    if (player.volumeSupported === false) { if (v !== vol) changeVolume(v > vol ? 'vol+' : 'vol-'); return; }
+    vol = v;
+    muted = false;
+    applyVolume();
+    if (on) osd.showVolume({ percent: vol, muted });
+    savePrefs({ volume: vol / 100, muted });
+  }
+
+  // Gerätetasten (Dekor am Fernseher): nur sie schalten aus dem Standby heraus; die Fernbedienung bleibt unverändert.
+  //   power → Ein/Aus · ch:N → Sender N (schaltet ein) · key:ch± → ein, nächster/vorheriger Sender ab dem zuletzt gesehenen
+  //   key:epg → ein und Programmübersicht · key:vol± → nur Lautstärke (TV bleibt aus)
+  function onDeviceAction(action) {
+    if (disposed || suspended || !action) return;
+    const N = NCH();
+    const wrap = (n) => ((((n - 1) % N) + N) % N) + 1;
+    safe(() => sfx && sfx.click(action === 'power' ? 'power' : 'press'));
+    const m = /^ch:(\d+)$/.exec(action);
+    if (m) {
+      const no = Number(m[1]);
+      if (no >= 1 && no <= N) ctx.tune(no);
+      return;
+    }
+    if (action === 'power') { press('power'); return; }
+    const key = action.startsWith('key:') ? action.slice(4) : '';
+    if (key === 'ch+' || key === 'ch-') {
+      if (on) press(key); else ctx.tune(wrap(channel + (key === 'ch+' ? 1 : -1)));
+    } else if (key === 'vol+' || key === 'vol-') {
+      if (on) press(key); else changeVolume(key);
+    } else if (key === 'epg') {
+      if (on) press('epg');
+      else { powerOn(); openOverlay('epg'); }
+    }
   }
 
   // ---------- Abspielen ----------
@@ -734,6 +781,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     app.classList.add(`lfx-live--style-${style}`);
     if (music) safe(() => music.setStyle(style));
     decor.setStyle(style);
+    safe(() => knobs.sync());
     if (prop) { prop.setStyle(style); placeProp(); }
     savePrefs({ style });
   }
@@ -869,6 +917,16 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   keys.attach();
 
   // ---------- Dekor / Musik / Heft initial ----------
+  // Drehknöpfe der Röhre 80er (lesen den Zustand per getState; erst hier, weil sie sofort synchronisieren)
+  knobs = createKnobs({
+    tv: refs.tv,
+    getState: () => ({ active: style === 'crt80' && !disposed && !suspended, channel, count: NCH(), volume: vol }),
+    onChannel: (n) => { if (!disposed && !suspended) ctx.tune(n); },
+    onVolume: (v) => setVolumeAbs(v),
+    onSound: (k) => safe(() => sfx && sfx.click(k)),
+    onPreview: (n) => { if (on) safe(() => osd.showMessage(`Sender ${n}`, 1200)); },
+    win,
+  });
   syncDecor();
   scheduleClock();
   if (music) {
@@ -937,7 +995,9 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       for (const off of offs) if (typeof off === 'function') safe(off);
       for (const n of Object.keys(made)) { const o = made[n]; if (o) { safe(() => o.close()); if (o.el) o.el.remove(); } }
       noise.dispose();
+      knobs.dispose();
       decor.dispose();
+      if (sfx && sfxArg === undefined) safe(() => sfx.dispose());
       osd.dispose();
       card.dispose();
       remote.destroy();
