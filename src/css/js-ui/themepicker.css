@@ -617,11 +617,58 @@ html.lfx-js .lfx-tp__preview--live .lfx-tp__screen {
   height: 100%;
   overflow: hidden;
   border-radius: 8px / 10px;
-  background:
-    repeating-linear-gradient(180deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 3px),
-    linear-gradient(135deg, #3a7bd5 0%, #1c3f7a 60%, #0f2447 100%);
+  background: linear-gradient(135deg, #3a7bd5 0%, #1c3f7a 60%, #0f2447 100%);
+  box-shadow: inset 0 0 14px rgb(0 0 0 / 0.55);
+}
+/* Bildzeilen: Ebene ist 24px höher als der Schirm und wandert auf und ab (Vielfaches der Zeilenperiode 3px) */
+html.lfx-js .lfx-tp__preview--live .lfx-tp__screen::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -24px;
+  bottom: -24px;
+  z-index: 2;
+  background: repeating-linear-gradient(180deg, rgb(0 0 0 / 0.26) 0 1px, transparent 1px 3px);
+  animation: lfx-tp-live-lines 2.6s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+/* Glasreflex oben links */
+html.lfx-js .lfx-tp__preview--live .lfx-tp__screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 22% 12%, rgb(255 255 255 / 0.22) 0%, transparent 46%);
+  pointer-events: none;
+}
+/* heller Rollbalken, läuft über den Schirm auf und ab */
+html.lfx-js .lfx-tp__preview--live .lfx-tp__roll {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  height: 34%;
+  background: linear-gradient(180deg, transparent 0%, rgb(190 220 255 / 0.2) 45%, rgb(225 240 255 / 0.28) 55%, transparent 100%);
+  animation: lfx-tp-live-roll 3.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes lfx-tp-live-lines {
+  from { transform: translateY(-21px); }
+  to { transform: translateY(21px); }
+}
+@keyframes lfx-tp-live-roll {
+  from { transform: translateY(-40%); }
+  to { transform: translateY(234%); }
+}
+@keyframes lfx-tp-live-blink {
+  0%, 55% { opacity: 1; }
+  70%, 100% { opacity: 0.25; }
 }
 html.lfx-js .lfx-tp__preview--live .lfx-tp__chno {
+  z-index: 3;
   position: absolute;
   left: 8%;
   top: 8%;
@@ -636,8 +683,10 @@ html.lfx-js .lfx-tp__preview--live .lfx-tp__rec {
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  z-index: 3;
   background: #e03a2f;
   box-shadow: 0 0 6px #e03a2f;
+  animation: lfx-tp-live-blink 1.6s linear infinite;
 }
 html.lfx-js .lfx-tp__preview--live .lfx-tp__ant {
   position: absolute;
@@ -649,33 +698,104 @@ html.lfx-js .lfx-tp__preview--live .lfx-tp__ant {
   border-top: 2px solid #8a8573;
   border-radius: 100% 100% 0 0;
 }
+/* Fernbedienung: schlanker Korpus mit Glanzkante; Ein + LED, 3×3 Ziffern, Steuerkreuz, Farbtasten */
 html.lfx-js .lfx-tp__preview--live .lfx-tp__remote {
   position: absolute;
-  right: 9%;
-  top: 22%;
+  right: 8%;
+  top: 12%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-evenly;
+  justify-content: space-between;
   width: 15%;
-  height: 56%;
+  height: 76%;
   box-sizing: border-box;
-  padding: 0;
-  border-radius: 6px;
-  background: #23272f;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  padding: 7% 0 9%;
+  border-radius: 12px / 10px;
+  background: linear-gradient(100deg, #3a404c 0%, #262a33 38%, #1a1d24 100%);
+  box-shadow:
+    inset 1px 1px 0 rgb(255 255 255 / 0.16),
+    inset -1px -1px 0 rgb(0 0 0 / 0.5),
+    0 6px 12px rgb(0 0 0 / 0.55);
 }
-html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn {
-  display: block;
-  flex: none;
-  height: 15%;
-  width: auto;
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rtop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 68%;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rled {
+  width: 12%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: #8a8f9b;
+  background: #ff5a4f;
+  box-shadow: 0 0 4px #ff5a4f;
+  animation: lfx-tp-live-blink 1.6s linear infinite;
 }
-html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn--power {
-  background: #e03a2f;
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rpower {
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff7a70, #c8261c 70%);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rkeys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 74%;
+}
+/* Abstände proportional: die Taste füllt ihre Zelle nur zu ~75 % (skaliert mit der Kartengröße) */
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rkey {
+  position: relative;
+  display: block;
+  aspect-ratio: 1.25;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rkey::before {
+  content: "";
+  position: absolute;
+  inset: 16% 12%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #a7adb9, #737a87);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.55);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rpad {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64%;
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: radial-gradient(circle, #20242c 0 38%, #5b6270 40%, #444a56 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 1px 2px rgb(0 0 0 / 0.6);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rok {
+  width: 42%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #c3c8d2, #7e8592 75%);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcols {
+  display: flex;
+  gap: 8%;
+  width: 68%;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol {
+  flex: 1 1 0;
+  aspect-ratio: 1.6;
+  border-radius: 2px;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--r { background: #e03a2f; }
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--g { background: #2fb35a; }
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--y { background: #f2c230; }
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--b { background: #2f7de0; }
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-tp__preview--live .lfx-tp__screen::before,
+  html.lfx-js .lfx-tp__preview--live .lfx-tp__roll,
+  html.lfx-js .lfx-tp__preview--live .lfx-tp__rec,
+  html.lfx-js .lfx-tp__preview--live .lfx-tp__rled {
+    animation: none;
+  }
 }
 html.lfx-js .lfx-tp__mark--live {
   display: flex;

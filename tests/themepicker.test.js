@@ -89,7 +89,11 @@ describe('themepicker', () => {
     expect(card('retro').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
     expect(card('plus').getAttribute('aria-label')).not.toContain('Beta');
     expect(card('store').getAttribute('aria-label')).toContain('(Beta)');
-    expect(card('live').querySelectorAll('.lfx-tp__rbtn').length).toBe(4);
+    expect(card('live').querySelectorAll('.lfx-tp__remote .lfx-tp__rkey').length).toBe(9);
+    expect(card('live').querySelectorAll('.lfx-tp__remote .lfx-tp__rcol').length).toBe(4);
+    expect(card('live').querySelector('.lfx-tp__remote .lfx-tp__rpower')).not.toBeNull();
+    expect(card('live').querySelector('.lfx-tp__remote .lfx-tp__rpad .lfx-tp__rok')).not.toBeNull();
+    expect(card('live').querySelector('.lfx-tp__screen .lfx-tp__roll')).not.toBeNull();
     expect(card('live').querySelector('.lfx-tp__mark-live-b .lfx-tp__mark-live-dot')).not.toBeNull();
     expect(card('store').querySelectorAll('.lfx-tp__shelf').length).toBe(2);
     expect(card('store').querySelectorAll('.lfx-tp__cover').length).toBe(13);

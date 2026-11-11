@@ -7399,16 +7399,86 @@ html.lfx-js .lfx-tp__preview--live .lfx-tp__tv {
 }
 
 html.lfx-js .lfx-tp__preview--live .lfx-tp__screen {
-  background: repeating-linear-gradient(rgba(0, 0, 0, .18) 0, rgba(0, 0, 0, .18) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 3px), linear-gradient(135deg, #3a7bd5 0%, #1c3f7a 60%, #0f2447 100%);
+  background: linear-gradient(135deg, #3a7bd5 0%, #1c3f7a 60%, #0f2447 100%);
   border-radius: 8px / 10px;
   width: 100%;
   height: 100%;
   display: block;
   position: relative;
   overflow: hidden;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, .55);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__screen:before {
+  content: "";
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(rgba(0, 0, 0, .26) 0, rgba(0, 0, 0, .26) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 3px);
+  animation: 2.6s ease-in-out infinite alternate lfx-tp-live-lines;
+  position: absolute;
+  top: -24px;
+  bottom: -24px;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__screen:after {
+  content: "";
+  z-index: 4;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(at 22% 12%, rgba(255, 255, 255, .22) 0%, rgba(0, 0, 0, 0) 46%);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__roll {
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(rgba(0, 0, 0, 0) 0%, rgba(190, 220, 255, .2) 45%, rgba(225, 240, 255, .28) 55%, rgba(0, 0, 0, 0) 100%);
+  height: 34%;
+  animation: 3.8s ease-in-out infinite alternate lfx-tp-live-roll;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+@keyframes lfx-tp-live-lines {
+  from {
+    transform: translateY(-21px);
+  }
+
+  to {
+    transform: translateY(21px);
+  }
+}
+
+@keyframes lfx-tp-live-roll {
+  from {
+    transform: translateY(-40%);
+  }
+
+  to {
+    transform: translateY(234%);
+  }
+}
+
+@keyframes lfx-tp-live-blink {
+  0%, 55% {
+    opacity: 1;
+  }
+
+  70%, 100% {
+    opacity: .25;
+  }
 }
 
 html.lfx-js .lfx-tp__preview--live .lfx-tp__chno {
+  z-index: 3;
   color: #8dff8d;
   text-shadow: 0 0 4px rgba(141, 255, 141, .7);
   font: 800 max(8px, min(1.8vw, 13px)) / 1 Courier New, monospace;
@@ -7418,10 +7488,12 @@ html.lfx-js .lfx-tp__preview--live .lfx-tp__chno {
 }
 
 html.lfx-js .lfx-tp__preview--live .lfx-tp__rec {
+  z-index: 3;
   background: #e03a2f;
   border-radius: 50%;
   width: 7px;
   height: 7px;
+  animation: 1.6s linear infinite lfx-tp-live-blink;
   position: absolute;
   top: 9%;
   right: 9%;
@@ -7441,33 +7513,120 @@ html.lfx-js .lfx-tp__preview--live .lfx-tp__ant {
 
 html.lfx-js .lfx-tp__preview--live .lfx-tp__remote {
   box-sizing: border-box;
-  background: #23272f;
-  border-radius: 6px;
+  background: linear-gradient(100deg, #3a404c 0%, #262a33 38%, #1a1d24 100%);
+  border-radius: 12px / 10px;
   flex-direction: column;
-  justify-content: space-evenly;
+  justify-content: space-between;
   align-items: center;
   width: 15%;
-  height: 56%;
-  padding: 0;
+  height: 76%;
+  padding: 7% 0 9%;
   display: flex;
   position: absolute;
-  top: 22%;
-  right: 9%;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  top: 12%;
+  right: 8%;
+  box-shadow: inset 1px 1px rgba(255, 255, 255, .16), inset -1px -1px rgba(0, 0, 0, .5), 0 6px 12px rgba(0, 0, 0, .55);
 }
 
-html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn {
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rtop {
+  justify-content: space-between;
+  align-items: center;
+  width: 68%;
+  display: flex;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rled {
   aspect-ratio: 1;
-  background: #8a8f9b;
+  background: #ff5a4f;
   border-radius: 50%;
-  flex: none;
-  width: auto;
-  height: 15%;
-  display: block;
+  width: 12%;
+  animation: 1.6s linear infinite lfx-tp-live-blink;
+  box-shadow: 0 0 4px #ff5a4f;
 }
 
-html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn--power {
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rpower {
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 35% 30%, #ff7a70, #c8261c 70%);
+  border-radius: 50%;
+  width: 34%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rkeys {
+  grid-template-columns: repeat(3, 1fr);
+  width: 74%;
+  display: grid;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rkey {
+  aspect-ratio: 1.25;
+  display: block;
+  position: relative;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rkey:before {
+  content: "";
+  background: linear-gradient(#a7adb9, #737a87);
+  border-radius: 2px;
+  position: absolute;
+  top: 16%;
+  bottom: 16%;
+  left: 12%;
+  right: 12%;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .55);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rpad {
+  aspect-ratio: 1;
+  box-sizing: border-box;
+  background: radial-gradient(circle, #20242c 0, #20242c 38%, #5b6270 40%, #444a56 100%);
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  width: 64%;
+  display: flex;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .18), 0 1px 2px rgba(0, 0, 0, .6);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rok {
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 40% 35%, #c3c8d2, #7e8592 75%);
+  border-radius: 50%;
+  width: 42%;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcols {
+  gap: 8%;
+  width: 68%;
+  display: flex;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol {
+  aspect-ratio: 1.6;
+  border-radius: 2px;
+  flex: 1 1 0;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--r {
   background: #e03a2f;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--g {
+  background: #2fb35a;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--y {
+  background: #f2c230;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rcol--b {
+  background: #2f7de0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-tp__preview--live .lfx-tp__screen:before, html.lfx-js .lfx-tp__preview--live .lfx-tp__roll, html.lfx-js .lfx-tp__preview--live .lfx-tp__rec, html.lfx-js .lfx-tp__preview--live .lfx-tp__rled {
+    animation: none;
+  }
 }
 
 html.lfx-js .lfx-tp__mark--live {

@@ -59,9 +59,17 @@ function buildPreview(id) {
     const shelf = (n) => span('lfx-tp__shelf', Array.from({ length: n }, () => span(`lfx-tp__cover lfx-tp__cover--${k++ % 6}`)));
     root.append(span('lfx-tp__shopsign', ['VIDEOTHEK LENZ']), ...STORE_ROWS.map(shelf), span('lfx-tp__carpet'));
   } else if (id === 'live') {
+    // Bildschirm mit laufenden Zeilen und Rollbalken (CSS-Animation), Fernbedienung wie in LENZ LIVE: Ein, Ziffern, Steuerkreuz, Farbtasten
+    const keys = Array.from({ length: 9 }, () => span('lfx-tp__rkey'));
+    const colors = ['r', 'g', 'y', 'b'].map((c) => span(`lfx-tp__rcol lfx-tp__rcol--${c}`));
     root.append(
-      span('lfx-tp__tv', [span('lfx-tp__screen', [span('lfx-tp__chno', ['5']), span('lfx-tp__rec')]), span('lfx-tp__ant')]),
-      span('lfx-tp__remote', [span('lfx-tp__rbtn lfx-tp__rbtn--power'), span('lfx-tp__rbtn'), span('lfx-tp__rbtn'), span('lfx-tp__rbtn')]),
+      span('lfx-tp__tv', [span('lfx-tp__screen', [span('lfx-tp__roll'), span('lfx-tp__chno', ['5']), span('lfx-tp__rec')]), span('lfx-tp__ant')]),
+      span('lfx-tp__remote', [
+        span('lfx-tp__rtop', [span('lfx-tp__rled'), span('lfx-tp__rpower')]),
+        span('lfx-tp__rkeys', keys),
+        span('lfx-tp__rpad', [span('lfx-tp__rok')]),
+        span('lfx-tp__rcols', colors),
+      ]),
     );
   } else {
     root.append(span('lfx-tp__logo'), span('lfx-tp__hero'), span('lfx-tp__row', tiles(4)));
