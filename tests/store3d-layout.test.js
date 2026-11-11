@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLayout, fillSlots, COLS } from '../src/js/store3d/world/layout.js';
+import { buildLayout, fillSlots, shelfSpec, levelY, slotLocal, COLS, H_TALL, H_LOW } from '../src/js/store3d/world/layout.js';
 import { findPath, isFree, nearestFree } from '../src/js/store3d/nav/path.js';
 
 // Synthetischer Katalog analog der Hülle: Neuheiten, Kinder, Ab 18, Serien-Genres, Film-Genres, Querbeet
@@ -32,10 +32,21 @@ function makeDepartments(total) {
 const overlap = (a, b) => a.x0 < b.x1 - 1e-6 && a.x1 > b.x0 + 1e-6 && a.z0 < b.z1 - 1e-6 && a.z1 > b.z0 + 1e-6;
 
 describe('store3d layout', () => {
-  for (const total of [50, 900, 1500]) {
-    describe(`${total} Titel`, () => {
+  for (const big of [false, true]) for (const total of [50, 900, 1500]) {
+    describe(`${total} Titel, ${big ? 'große' : 'normale'} Hüllen`, () => {
       const depts = makeDepartments(total);
-      const lay = buildLayout(depts);
+      const lay = buildLayout(depts, { big });
+      const spec = shelfSpec(big);
+
+      it('trägt die Spezifikation und hält Kapazität je Seite ein', () => {
+        expect(lay.spec).toBe(spec);
+        expect(lay.faces.length).toBeGreaterThan(0);
+        for (const f of lay.faces) {
+          expect(f.rows).toBe(f.low ? spec.rowsLow : spec.rowsTall);
+          expect(f.slots.length).toBe(f.rows * spec.cols);
+          expect(f.slots.filter((x) => x != null).length).toBeLessThanOrEqual(f.low ? spec.capLow : spec.capTall);
+        }
+      });
 
       it('platziert jede itemId genau einmal (Neuheiten zusätzlich)', () => {
         const newIds = new Set(depts.find((d) => d.kind === 'new').itemIds);
@@ -89,12 +100,48 @@ describe('store3d layout', () => {
       });
 
       it('ist deterministisch', () => {
-        const again = buildLayout(makeDepartments(total));
+        const again = buildLayout(makeDepartments(total), { big });
         const strip = (l) => JSON.stringify({ ...l, nav: { ...l.nav, blocked: Array.from(l.nav.blocked) } });
         expect(strip(again)).toBe(strip(lay));
       });
     });
   }
+
+  it('Spezifikationen: Normal unverändert, Groß passt in Regalhöhe und Atlas', () => {
+    const n = shelfSpec(false);
+    expect([n.cols, n.rowsTall, n.rowsLow, n.capTall, n.capLow, n.cover.w, n.cover.h, n.cover.pitch]).toEqual([COLS, 5, 3, 35, 21, 0.14, 0.2, 0.16]);
+    expect(n.cellW).toBe(146);
+    expect(n.cellH).toBe(200);
+    const b = shelfSpec(true);
+    expect(b.cols).toBe(6);
+    expect(b.cover.w).toBeGreaterThan(n.cover.w);
+    expect(b.cover.h).toBeGreaterThan(n.cover.h);
+    expect(b.capTall).toBe(b.cols * b.rowsTall);
+    expect(b.capLow).toBe(b.cols * b.rowsLow);
+    for (const sp of [n, b]) {
+      // Reihe nebeneinander innerhalb der Fachbodenbreite (1,16 m), oberste Hülle unter der Decke des Regals, Abstand zum nächsten Fach
+      expect((sp.cols - 1) * sp.cover.pitch + sp.cover.boxW).toBeLessThanOrEqual(1.16);
+      for (const low of [false, true]) {
+        const rows = low ? sp.rowsLow : sp.rowsTall;
+        const h = low ? H_LOW : H_TALL;
+        expect(levelY(sp, rows - 1, low) + sp.cover.boxH).toBeLessThan(h - 0.04);
+        const step = low ? sp.stepLow : sp.stepTall;
+        expect(step - 0.03).toBeGreaterThan(sp.cover.boxH);
+      }
+      expect(sp.cover.pitch).toBeGreaterThanOrEqual(sp.cover.boxW);
+      expect(slotLocal(0, sp.rowsTall, sp).x).toBeCloseTo(-((sp.cols - 1) / 2) * sp.cover.pitch);
+    }
+  });
+
+  it('zwei Layouts nacheinander mit unterschiedlicher Größe beeinflussen sich nicht', () => {
+    const d = makeDepartments(900);
+    const a = buildLayout(d, { big: true });
+    const b = buildLayout(d, { big: false });
+    const a2 = buildLayout(d, { big: true });
+    expect(a.faces.length).toBeGreaterThan(b.faces.length);
+    expect(JSON.stringify(a.faces)).toBe(JSON.stringify(a2.faces));
+    expect(buildLayout(d).spec.big).toBe(false);
+  });
 
   it('Raumgröße wächst mit der Titelzahl', () => {
     const a = buildLayout(makeDepartments(50));

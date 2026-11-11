@@ -1,21 +1,15 @@
 // VIDEOTHEK LENZ · Regale: alle Rahmen in EINEM Mesh (Holz, Rückwand, Leisten), Hüllen je Regalseite ("Face") als
-// zusammengeführte Geometrie mit eigenem Atlas-Material. Ein Face = ein Draw-Call (max. 35 Hüllen, 7 × 5).
+// zusammengeführte Geometrie mit eigenem Atlas-Material. Ein Face = ein Draw-Call (max. 35 Hüllen normal 7 × 5, 24 groß 6 × 4).
 import {
   Group, Mesh, MeshLambertMaterial, BoxGeometry, Float32BufferAttribute, Color, Vector3, Quaternion, Euler,
 } from 'three';
 import { box, merge, hex, hash, disposeTree } from '../util/geo.js';
-import { COLS, levelBase, H_TALL, H_LOW, ROWS_TALL, ROWS_LOW } from './layout.js';
+import { levelY, shelfSpec, H_TALL, H_LOW } from './layout.js';
 import { cellUV, slotCell, swatchUV, swatchFor } from '../covers/atlasmap.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export const COVER = {
-  w: 0.14,
-  h: 0.2,
-  thick: { vhs: 0.025, dvd: 0.014, box: 0.05 },
-  tilt: 0.1,
-  pitch: 0.16,
-  zBottom: -0.03,
-};
+/** Hüllenmaße der Normal-Spezifikation (Neigung/Dicken gelten für alle); Größen je Layout: `layout.spec.cover`. */
+export const COVER = shelfSpec(false).cover;
 
 const STYLE_TINT = {
   wood: [0.8, 0.62, 0.45],
@@ -25,11 +19,11 @@ const STYLE_TINT = {
 };
 const KIDS_COLORS = ['#e63946', '#ffd23f', '#3ddc97', '#2a9df4'];
 
-function frameGeometry(run) {
+function frameGeometry(run, spec) {
   const L = run.segs * 1.2;
   const depth = run.depth;
   const h = run.h;
-  const rows = run.low ? ROWS_LOW : ROWS_TALL;
+  const rows = run.rows || (run.low ? spec.rowsLow : spec.rowsTall);
   const parts = [];
   const segTint = (j) => (run.style === 'kids' ? hex(KIDS_COLORS[j % KIDS_COLORS.length]) : STYLE_TINT[run.style] || STYLE_TINT.wood);
   const dark = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
@@ -55,7 +49,7 @@ function frameGeometry(run) {
     const zc = (zFront + zBack) / 2;
     const bd = Math.abs(zFront - zBack);
     for (let lv = 0; lv < rows; lv++) {
-      const top = levelBase(lv);
+      const top = levelY(spec, lv, run.low);
       for (let j = 0; j < run.segs; j++) {
         const x = run.segments[j].lx;
         const seg = run.segments[j];
@@ -72,13 +66,15 @@ function frameGeometry(run) {
   return g;
 }
 
-function coverGeometry(item, idx, rows) {
+function coverGeometry(item, idx, face, spec) {
+  const rows = face.rows;
+  const C = spec.cover;
   const media = (item && item.lfx && item.lfx.media) || 'dvd';
-  const t = COVER.thick[media] || COVER.thick.dvd;
-  const g = new BoxGeometry(media === 'box' ? 0.15 : COVER.w, media === 'box' ? 0.205 : COVER.h, t);
+  const t = C.thick[media] || C.thick.dvd;
+  const g = new BoxGeometry(media === 'box' ? C.boxW : C.w, media === 'box' ? C.boxH : C.h, t);
   const uv = g.attributes.uv;
-  const { col, row } = slotCell(idx);
-  const [u0, v0, u1, v1] = cellUV(col, row);
+  const { col, row } = slotCell(idx, spec);
+  const [u0, v0, u1, v1] = cellUV(col, row, spec);
   const sw = swatchUV(swatchFor(media, hash(String((item && item.Id) || idx))));
   for (let i = 0; i < uv.count; i++) {
     if (i >= 16 && i < 20) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (v1 - v0));
@@ -88,11 +84,12 @@ function coverGeometry(item, idx, rows) {
   const cols = new Float32Array(n * 3).fill(1);
   g.setAttribute('color', new Float32BufferAttribute(cols, 3));
   const level = rows - 1 - row;
-  const ch = media === 'box' ? 0.205 : COVER.h;
+  const ch = media === 'box' ? C.boxH : C.h;
+  const cw = media === 'box' ? C.boxW : C.w;
   g.translate(0, ch / 2, 0);
-  g.rotateX(-COVER.tilt);
-  g.translate((col - (COLS - 1) / 2) * COVER.pitch, levelBase(level) + 0.004, COVER.zBottom);
-  return { g, media, t, ch, level, col, row };
+  g.rotateX(-C.tilt);
+  g.translate((col - (spec.cols - 1) / 2) * C.pitch, levelY(spec, level, face.low) + 0.004, C.zBottom);
+  return { g, media, t, ch, cw, level, col, row };
 }
 
 /** Face-Hilfen: Weltposition/-ausrichtung des Hüllen-Mittelpunkts. */
@@ -113,7 +110,8 @@ export function slotWorld(fv, info, outPos = new Vector3(), outQuat = new Quater
 export function buildShelves(layout, catalogItems, blankTex, woodTex) {
   const group = new Group();
   group.name = 'shelves';
-  const frames = layout.runs.map(frameGeometry);
+  const spec = layout.spec || shelfSpec(false);
+  const frames = layout.runs.map((r) => frameGeometry(r, spec));
   const frameMesh = new Mesh(
     mergeGeometries(frames, false),
     new MeshLambertMaterial({ map: woodTex, vertexColors: true }),
@@ -131,12 +129,12 @@ export function buildShelves(layout, catalogItems, blankTex, woodTex) {
     face.slots.forEach((id, idx) => {
       if (id == null) return;
       const item = catalogItems.get(id);
-      const cg = coverGeometry(item || { Id: id }, idx, face.rows);
+      const cg = coverGeometry(item || { Id: id }, idx, face, spec);
       geoms.push(cg.g);
       infos.push({
         idx, itemId: id, media: cg.media, thick: cg.t, vert: (infos.length) * 24, hidden: false,
-        local: { x: (cg.col - (COLS - 1) / 2) * COVER.pitch, y: levelBase(cg.level) + 0.004 + (cg.ch / 2) * Math.cos(COVER.tilt), z: COVER.zBottom - (cg.ch / 2) * Math.sin(COVER.tilt) },
-        half: { x: 0.075, y: cg.ch / 2 + 0.005, z: Math.max(0.03, cg.t / 2 + 0.015) },
+        local: { x: (cg.col - (spec.cols - 1) / 2) * spec.cover.pitch, y: levelY(spec, cg.level, face.low) + 0.004 + (cg.ch / 2) * Math.cos(spec.cover.tilt), z: spec.cover.zBottom - (cg.ch / 2) * Math.sin(spec.cover.tilt) },
+        half: { x: spec.cover.w / 2 + 0.005, y: cg.ch / 2 + 0.005, z: Math.max(0.03, cg.t / 2 + 0.015) },
       });
     });
     const fv = { face, infos, mesh: null, material: null, geometry: null, backup: null, byIdx: new Map(infos.map((i) => [i.idx, i])) };

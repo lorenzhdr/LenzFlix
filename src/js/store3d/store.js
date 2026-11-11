@@ -36,6 +36,11 @@ class StoreApp {
     this.touch = !!this.opts.touch;
     this.qualitySetting = ['auto', 'low', 'mid', 'high'].includes(this.opts.quality) ? this.opts.quality : 'auto';
     this.sound = !!this.opts.sound;
+    this.showFps = this.opts.showFps === true;
+    this.bigCovers = this.opts.bigCovers !== false;
+    this.zoomTarget = 1;
+    this.zoom = 1;
+    this.lastFps = 0;
     this.disposed = false;
     this.suspended = false;
     this.ready = false;
@@ -77,12 +82,16 @@ class StoreApp {
       onResume: () => this.resumeFromPause(),
       onSearch: () => { this.resumeFromPause(); this.openTerminal(''); },
       onClassic: () => this.deps.classicView(),
-      onQuality: (q) => { this.setQuality(q); this.deps.onPrefs({ quality: q, sound: this.sound }); },
-      onSound: (on) => { this.setSound(on); this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound }); },
+      onQuality: (q) => { this.setQuality(q); this.savePrefs(); },
+      onSound: (on) => { this.setSound(on); this.savePrefs(); },
+      onFps: (on) => { this.setShowFps(on); this.savePrefs(); },
+      onBigCovers: (on) => this.setBigCovers(on),
       onTheme: () => this.deps.openThemePicker(),
       onMenu: (anchor) => this.deps.openMenu(anchor),
       getQuality: () => this.qualitySetting,
       getSound: () => this.sound,
+      getFps: () => this.showFps,
+      getBigCovers: () => this.bigCovers,
     });
     this.boot().catch((err) => this.fail(err));
   }
@@ -99,7 +108,8 @@ class StoreApp {
     const { deps, engine } = this;
     const preset = engine.preset;
     this.progress(0.02, 'Grundriss wird berechnet');
-    this.layout = buildLayout((deps.catalog && deps.catalog.departments) || []);
+    const big = this.opts.bigCovers !== false;
+    this.layout = buildLayout((deps.catalog && deps.catalog.departments) || [], { big });
     const L = this.layout;
     await yieldFrame();
     if (this.disposed) return;
@@ -141,7 +151,7 @@ class StoreApp {
     this.progress(0.8, 'Cover werden geholt');
     this.player = new Player(L);
     this.covers = new CoverManager({
-      faceViews: this.shelves.faceViews, items: this.items, deps, preset, blankTex: this.blank, renderer: engine.renderer, phone: this.phone,
+      faceViews: this.shelves.faceViews, items: this.items, deps, preset, blankTex: this.blank, renderer: engine.renderer, phone: this.phone, spec: L.spec,
     });
     this.holdview = new HoldView({
       host: this.host, camera: engine.camera, deps, items: this.items, shelves: this.shelves, covers: this.covers, layout: L,
@@ -157,13 +167,15 @@ class StoreApp {
       onLockLost: () => this.openPause(),
       onLockChange: () => this.syncUi(),
       onTake: () => this.takeAimed(),
+      onZoom: (z) => this.setZoom(z),
+      getZoom: () => this.zoom,
       onEscape: () => {
         if (this.mode === 'hold') this.holdview.close(true);
         else if (this.mode === 'overlay') this.mods.overlayClose();
         else this.resumeFromPause();
       },
     });
-    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y) }) : null;
+    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget }) : null;
 
     this.progress(0.86, 'Module werden geladen');
     await this.mods.init((f) => this.progress(0.86 + f * 0.05, 'Module werden geladen'));
@@ -175,7 +187,7 @@ class StoreApp {
       this.player.teleport(free.x, free.z, Number.isFinite(r.yaw) ? r.yaw : 0, Number.isFinite(r.pitch) ? r.pitch : 0);
     }
     this.player.applyCamera(engine.camera);
-    this.covers.update(this.player.x, this.player.z, this.player.yaw);
+    this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
     await yieldFrame();
     if (this.disposed) return;
 
@@ -344,11 +356,25 @@ class StoreApp {
     this.pendingTake = null;
     const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
     const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
-    if (iaHit && (!hit || iaHit.t < hit.t)) { this.approachInteractable(iaHit.ia); return; }
-    if (hit) { this.approachCover(hit); return; }
-    if (direction.y < -0.02) {
-      const t = -origin.y / direction.y;
-      if (t < 30) this.walkTo({ x: origin.x + direction.x * t, z: origin.z + direction.z * t });
+    const far = 'Halte gedrückt, um hinzulaufen';
+    const p = this.player;
+    if (iaHit && (!hit || iaHit.t < hit.t)) {
+      const { min, max } = iaHit.ia.box;
+      const d = Math.hypot(p.x - Math.min(Math.max(p.x, min.x), max.x), p.z - Math.min(Math.max(p.z, min.z), max.z));
+      if (d > 3) { this.hud.note(far); return; }
+      p.cancelPath();
+      this.lookAtPoint((min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2);
+      this.pendingUse = { ia: iaHit.ia, at: performance.now() + 250 };
+      return;
+    }
+    if (hit) {
+      const f = hit.fv.face;
+      const pos = slotWorld(hit.fv, hit.info, this._v, this._q).pos;
+      const dist = Math.hypot(pos.x - p.x, pos.z - p.z);
+      if (dist > 3 || (p.x - f.x) * f.nx + (p.z - f.z) * f.nz <= 0.2) { this.hud.note(far); return; }
+      p.cancelPath();
+      this.lookAtPoint(pos.x, pos.y, pos.z);
+      this.pendingTake = { id: hit.info.itemId, at: performance.now() + 280 };
     }
   }
 
@@ -423,7 +449,9 @@ class StoreApp {
     const p = this.player;
     if (!p) return;
     this.mods.flushNav();
-    if (this.mode === 'play' && !this.mods.locked) p.update(dt, this.desktop ? this.desktop.input : null);
+    this.stepZoom(dt);
+    if (now - this.lastFps >= 500) { this.lastFps = now; this.updateFps(); }
+    if (this.mode === 'play' && !this.mods.locked) p.update(dt, (this.desktop || this.touchCtl) ? (this.desktop || this.touchCtl).input : null);
     else p.update(dt, null);
     this.mods.update(dt, now);
     p.applyCamera(this.engine.camera);
@@ -455,7 +483,7 @@ class StoreApp {
     }
     if (now - this.lastCover > 250) {
       this.lastCover = now;
-      this.covers.update(p.x, p.z, p.yaw);
+      this.covers.update(p.x, p.z, p.yaw, { zoom: this.zoom, pitch: p.pitch });
     }
     if (p.moved !== this.lastMoved && now - this.lastNotify >= 500) this.notifyState(false, now);
     if (!this.ready && ++this.readyFrames >= 2) {
@@ -507,6 +535,49 @@ class StoreApp {
     this.engine.setAuto(q === 'auto');
     const level = q === 'auto' ? this.engine.preset.level : q;
     this.applyPreset(this.engine.setLevel(level));
+  }
+
+  savePrefs() {
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers }); } catch { /* egal */ }
+  }
+
+  setShowFps(on) {
+    this.showFps = !!on;
+    this.lastFps = 0;
+    if (this.hud && !this.showFps) this.hud.setFps(null);
+    if (this.pause) this.pause.refresh();
+  }
+
+  updateFps() {
+    if (!this.hud) return;
+    if (!this.showFps) return;
+    const lv = { low: 'Niedrig', mid: 'Mittel', high: 'Hoch' }[this.engine.preset.level] || '';
+    this.hud.setFps(`${Math.round(this.engine.fps)} FPS · ${lv}${this.qualitySetting === 'auto' ? ' (Auto)' : ''}`);
+  }
+
+  /** Hüllengröße umschalten: Prefs sichern, dann baut die Hülle die Szene neu auf. */
+  setBigCovers(on) {
+    on = !!on;
+    if (on === this.bigCovers) return;
+    this.bigCovers = on;
+    if (this.pause) this.pause.refresh();
+    this.savePrefs();
+    this.notifyState(true);
+    try { if (this.deps.onBigCovers) this.deps.onBigCovers(on); } catch { /* egal */ }
+  }
+
+  /** Zoom-Ziel (1..3): Desktop rechte Maustaste/Q, Touch Pinch. */
+  setZoom(z) {
+    const v = Number(z);
+    this.zoomTarget = Number.isFinite(v) ? Math.min(3, Math.max(1, v)) : 1;
+  }
+
+  stepZoom(dt) {
+    if (this.mode !== 'play' || (this.mods && this.mods.locked)) this.zoomTarget = 1;
+    const d = this.zoomTarget - this.zoom;
+    if (Math.abs(d) < 0.001) { if (this.zoom !== this.zoomTarget) { this.zoom = this.zoomTarget; this.engine.setZoom(this.zoom); } return; }
+    this.zoom += d * (1 - Math.exp(-dt / 0.12 * 1.0));
+    this.engine.setZoom(this.zoom);
   }
 
   setSound(on) { this.sound = !!on; if (this.pause) this.pause.refresh(); if (this.mods) this.mods.hook('onSound', this.sound); }

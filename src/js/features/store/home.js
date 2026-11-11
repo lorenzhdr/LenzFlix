@@ -200,7 +200,7 @@ async function userName() {
   }
 }
 
-function buildDeps(catalog, name, onFatal) {
+function buildDeps(catalog, name, onFatal, onBigCovers) {
   const ret = (f) => (...a) => { try { return f(...a); } catch (e) { console.warn('[LenzFlix] store dep', e && e.message); return undefined; } };
   const items = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
   return {
@@ -251,6 +251,7 @@ function buildDeps(catalog, name, onFatal) {
     }),
     onState: ret((s) => prefs.saveState(s)),
     onPrefs: ret((p) => prefs.savePrefs(p)),
+    onBigCovers: ret((on) => onBigCovers(on)),
     onFatal: ret(onFatal),
   };
 }
@@ -259,6 +260,8 @@ function buildOpts(r) {
   return {
     quality: prefs.getQuality(),
     sound: prefs.getSound(),
+    showFps: prefs.getFps(),
+    bigCovers: prefs.getBigCovers(),
     skipIntro: prefs.getIntroSeen(),
     restore: prefs.getState(),
     openItemId: r && r.kind === 'title' ? r.id : null,
@@ -293,7 +296,7 @@ async function boot(myGen, route) {
     fatal = true; // kann schon während create() feuern
     disposeInstance();
     showFallback('Die 3D-Videothek konnte nicht gestartet werden.', { retry: true, detail: fatalText(err) });
-  });
+  }, (on) => rebuild(on));
   const opts = buildOpts(route);
   prefs.setIntroSeen();
   try {
@@ -309,6 +312,22 @@ async function boot(myGen, route) {
   } catch (e) {
     if (myGen === gen && ui) showFallback('Die 3D-Videothek konnte nicht gestartet werden.', { retry: true, detail: fatalText(e) });
   }
+}
+
+/** Hüllengröße geändert (aus dem Pause-Menü): Pref sichern, Instanz verwerfen, mit Ladebildschirm neu starten (ohne Intro, Position bleibt). */
+function rebuild(on) {
+  if (!ui || !inst || !shown) return; // Seite verlassen: nichts neu aufbauen
+  prefs.savePrefs({ bigCovers: Boolean(on) });
+  // Aufruf kommt aus der Instanz selbst: Abbau/Neuaufbau erst nach ihrem Callback-Stack
+  const g = gen;
+  setTimeout(() => {
+    if (g !== gen || !ui || !inst || !shown) return;
+    disposeInstance();
+    attachLoading();
+    ui.searchBtn.disabled = true;
+    gen += 1;
+    boot(gen, storeHomeRoute(parseCurrent()));
+  }, 0);
 }
 
 function retryBoot() {

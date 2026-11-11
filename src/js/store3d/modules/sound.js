@@ -1,6 +1,6 @@
 // VIDEOTHEK LENZ · M4 Ton: WebAudio-Synthese (Türglocke, Kassen-Piep, Schublade, Klack, Rollladen) und Ambiente
 // (leise Lounge-Musik mit Lo-Fi-Beat, Leuchtstoffröhren-Brummen, bei Regen leises Rauschen). Standardmäßig aus.
-// Provider 'sound' { play(name, opts), ambient(on) }. Der AudioContext entsteht erst in einer Nutzergeste.
+// Provider 'sound' { play(name, opts), ambient(on), duck(on) }. Der AudioContext entsteht erst in einer Nutzergeste.
 
 const MASTER = 0.9;
 const BPM = 74;
@@ -27,6 +27,7 @@ export default {
     let hum = null;
     let rain = null;
     let ambientWanted = false;
+    let ducked = false;
     let ambientRunning = false;
     let suspended = false;
     let nextStep = 0;
@@ -35,9 +36,11 @@ export default {
     let filterTarget = 2600;
     const gestureEvents = ['pointerdown', 'keydown', 'touchend'];
 
+    const level = () => (ctx.soundOn() ? (ducked ? MASTER * 0.12 : MASTER) : 0);
+
     function buildGraph() {
       master = ac.createGain();
-      master.gain.value = ctx.soundOn() ? MASTER : 0;
+      master.gain.value = level();
       master.connect(ac.destination);
       // Pseudo-Hall: zwei Delays mit Rückkopplung, dumpf gefiltert
       fx = ac.createGain();
@@ -71,7 +74,7 @@ export default {
     }
     function onRunning() {
       if (!ac || ac.state !== 'running') return;
-      if (master) master.gain.setTargetAtTime(ctx.soundOn() ? MASTER : 0, ac.currentTime, 0.05);
+      if (master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.05);
       if (ambientWanted && !ambientRunning) startAmbient();
     }
     const onGesture = () => { if (ctx.soundOn()) unlock(); };
@@ -255,6 +258,11 @@ export default {
 
     ctx.provide('sound', {
       play,
+      /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
+      duck(on) {
+        ducked = !!on;
+        if (ac && master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.25);
+      },
       ambient(on) {
         ambientWanted = !!on;
         if (on && ctx.soundOn()) { unlock(); if (ac && ac.state === 'running') startAmbient(); }
@@ -281,7 +289,7 @@ export default {
           return;
         }
         unlock();
-        if (ac && master) master.gain.setTargetAtTime(MASTER, ac.currentTime, 0.05);
+        if (ac && master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.05);
         if (ambientWanted && ac && ac.state === 'running') startAmbient();
       },
       onSuspend() {

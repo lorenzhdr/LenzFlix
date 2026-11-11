@@ -25,6 +25,26 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ov [hidden] {
   display: none !important;
 }
 
+/* Laufring am Finger (Touch: Gedrückt halten = vorwärts) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-walkring {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 210, 63, 0.85);
+  background: rgba(255, 210, 63, 0.16);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 5;
+  will-change: transform;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-walkring.is-on {
+  opacity: 1;
+}
+
 /* Fadenkreuz */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-cross {
   position: absolute;

@@ -49,6 +49,8 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   let tickMs = 0;
   let renderMs = 0;
   let accN = 0;
+  let baseFov = 70;
+  let zoom = 1;
 
   function applyRatio() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, preset.pixelRatio));
@@ -61,8 +63,20 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     const a = w / h;
     camera.aspect = a;
     // Hochformat: horizontales FOV bei ~64° halten; Querformat: 70° vertikal
-    camera.fov = a < 1.2 ? Math.min(100, (2 * Math.atan(Math.tan(32 * DEG) / a)) / DEG) : 70;
+    baseFov = a < 1.2 ? Math.min(100, (2 * Math.atan(Math.tan(32 * DEG) / a)) / DEG) : 70;
+    applyFov();
+  }
+
+  function applyFov() {
+    camera.fov = baseFov / zoom;
     camera.updateProjectionMatrix();
+  }
+
+  function setZoom(z) {
+    const v = Math.max(1, Number(z) || 1);
+    if (v === zoom) return;
+    zoom = v;
+    applyFov();
   }
 
   function loop(time) {
@@ -138,9 +152,12 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     get frameMs() { return frameMs; },
     get tickMs() { return tickMs; },
     get renderMs() { return renderMs; },
+    get baseFov() { return baseFov; },
+    get zoom() { return zoom; },
     get lost() { return lost; },
     get host() { return curHost; },
     setLevel,
+    setZoom,
     setAuto(v) { autoOn = !!v; aq.setLevel(preset.level); },
     resize,
     setHost(h) { curHost = h; observe(); resize(); },

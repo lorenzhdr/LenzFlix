@@ -1,15 +1,22 @@
 // VIDEOTHEK LENZ · M4 TV-Ecke (Zone „tv“): Röhrenfernseher auf Holzschrank + kleines Sofa. Bildschirm = Canvas-Textur mit
 // Diashow aus Backdrops (Rauschen/Kanalwechsel, Scanlines, gewölbte Scheibe); lokale Trailer als letzte Stufe, abschaltbar
 // (nur im Sichtfeld, < 12 m, Qualität ≠ low, nicht suspendiert). Die Trailer-URL enthält api_key und wird nie geloggt.
+// Couch: Interactable „Sofa“ → Hinsetzen, TV-Vollbild (960×720, Trailer mit Ton, Knopfleiste), siehe docs/store3d.md „Couch“.
 // Bilder laufen per loadBitmap → eigener Canvas (keine Dauer-Texturen). Interactable „Fernseher“ nimmt den gezeigten Titel.
 import { Mesh, MeshBasicMaterial, MeshLambertMaterial, PlaneGeometry, RepeatWrapping, CanvasTexture, SRGBColorSpace, LinearFilter } from 'three';
 import { box, merge } from '../util/geo.js';
 import { makeCanvas, FONT } from '../world/textures.js';
 import { loadBitmap, closeBitmap } from '../covers/loader.js';
 import { prefersReducedMotion, clamp, adultIds } from './m4-util.js';
+import { h, button } from './m3-gfx.js';
+import { fitDistance, pickCandidates } from './couch-util.js';
 
 const SW = 320;
 const SH = 240;
+const BW = 960; // Sitz-Ansicht (TV-Vollbild)
+const BH = 720;
+const EYE = 1.65; // Augenhöhe im Laden (wie terminal.js)
+const VOL_KEY = 'lfx-store-tv-vol';
 const SLIDE_S = 8;
 const STATIC_S = 0.45;
 const TRAILER_S = 20;
@@ -23,11 +30,12 @@ function noiseCanvas() {
   return c;
 }
 
-function overlayCanvas() {
+function overlayCanvas(SW, SH) {
   const c = makeCanvas(SW, SH);
   const x = c.getContext('2d');
   x.fillStyle = 'rgba(0,0,0,0.22)';
-  for (let y = 0; y < SH; y += 3) x.fillRect(0, y, SW, 1);
+  const k = SW / 320;
+  for (let y = 0; y < SH; y += 3 * k) x.fillRect(0, y, SW, k);
   const g = x.createRadialGradient(SW / 2, SH / 2, SH * 0.3, SW / 2, SH / 2, SW * 0.62);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.62)');
   x.fillStyle = g; x.fillRect(0, 0, SW, SH);
@@ -38,7 +46,7 @@ function overlayCanvas() {
 }
 
 /** Bild füllend (Querformat) bzw. als Poster mit abgedunkelten Rändern (Hochformat) in den 4:3-Bildschirm zeichnen. */
-function drawArt(x, img) {
+function drawArt(x, img, SW, SH) {
   const iw = img.width || img.naturalWidth;
   const ih = img.height || img.naturalHeight;
   x.fillStyle = '#05060c'; x.fillRect(0, 0, SW, SH);
@@ -54,12 +62,12 @@ function drawArt(x, img) {
   }
 }
 
-function fallbackArt(x, title) {
+function fallbackArt(x, title, SW, SH) {
   const g = x.createLinearGradient(0, 0, SW, SH);
   g.addColorStop(0, '#2a2f8a'); g.addColorStop(1, '#0b0f2c');
   x.fillStyle = g; x.fillRect(0, 0, SW, SH);
   x.fillStyle = 'rgba(255,255,255,0.9)'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.font = `bold 26px ${FONT}`;
+  x.font = `bold ${26 * (SW / 320)}px ${FONT}`;
   x.fillText(String(title || 'VIDEOTHEK LENZ').slice(0, 22), SW / 2, SH / 2);
 }
 
@@ -180,74 +188,191 @@ export default {
       const all = [...items.values()].filter((i) => i && i.Id && !seen.has(i.Id) && !adult.has(i.Id) && i.BackdropImageTags && i.BackdropImageTags.length);
       for (let i = 0; i < 6 && all.length; i++) extra.push(all.splice(Math.floor(Math.random() * all.length), 1)[0]);
     }
-    const slides = [...hl.slice(0, 8), ...extra].map((it) => ({ it, id: it.Id, title: it.Name, canvas: null, st: 'idle' }));
+    const slides = [...hl.slice(0, 8), ...extra].map((it) => ({ it, id: it.Id, title: it.Name, canvas: null, st: 'idle', big: null, bst: 'idle' }));
     if (!slides.length) {
       sx.fillStyle = '#05060c'; sx.fillRect(0, 0, SW, SH);
       tex.needsUpdate = true;
     }
     const ac = new AbortController();
     const noise = [noiseCanvas(), noiseCanvas(), noiseCanvas()];
-    const over = overlayCanvas();
+    const overSmall = overlayCanvas(SW, SH);
 
+    // Aktives Zeichenziel: klein (320×240, Normalbetrieb) oder groß (960×720, nur beim Sitzen)
+    let W = SW;
+    let H = SH;
+    let gx = sx;
+    let over = overSmall;
+    let bigCanvas = null;
+    let bigTex = null;
+
+    function slideUrl(s, maxWidth) {
+      const tag = s.it.BackdropImageTags && s.it.BackdropImageTags[0];
+      return tag
+        ? ctx.deps.imageUrl(s.id, { type: 'Backdrop', maxWidth, tag })
+        : ctx.deps.imageUrl(s.id, { type: 'Primary', maxWidth: Math.round(maxWidth * 0.66), tag: s.it.ImageTags && s.it.ImageTags.Primary });
+    }
     function loadSlide(i) {
       const s = slides[i % slides.length];
       if (!s || s.st !== 'idle') return;
       s.st = 'loading';
-      const tag = s.it.BackdropImageTags && s.it.BackdropImageTags[0];
-      const url = tag
-        ? ctx.deps.imageUrl(s.id, { type: 'Backdrop', maxWidth: 480, tag })
-        : ctx.deps.imageUrl(s.id, { type: 'Primary', maxWidth: 320, tag: s.it.ImageTags && s.it.ImageTags.Primary });
-      loadBitmap(url, ac.signal).then((bm) => {
+      loadBitmap(slideUrl(s, 480), ac.signal).then((bm) => {
         if (!bm || ac.signal.aborted) { s.st = 'failed'; closeBitmap(bm); return; }
         const c = makeCanvas(SW, SH);
-        try { drawArt(c.getContext('2d'), bm); s.canvas = c; s.st = 'ready'; } catch { s.st = 'failed'; }
+        try { drawArt(c.getContext('2d'), bm, SW, SH); s.canvas = c; s.st = 'ready'; } catch { s.st = 'failed'; }
         closeBitmap(bm);
       });
     }
+    // Sitz-Ansicht: scharfe Backdrops (eigener Cache, nur aktuelle + nächste Folie, beim Aufstehen freigegeben)
+    let sitAc = null;
+    function freeBig(keep) {
+      for (let i = 0; i < slides.length; i++) {
+        const s = slides[i];
+        if (keep && keep.includes(i)) continue;
+        if (s.big) { s.big.width = 0; s.big.height = 0; }
+        s.big = null;
+        if (s.bst !== 'loading') s.bst = 'idle';
+      }
+    }
+    function loadBig(i) {
+      if (!slides.length || !sitAc) return;
+      const s = slides[((i % slides.length) + slides.length) % slides.length];
+      if (!s || s.bst !== 'idle') return;
+      s.bst = 'loading';
+      const sig = sitAc.signal;
+      loadBitmap(slideUrl(s, 1280), sig).then((bm) => {
+        if (!bm || sig.aborted) { s.bst = 'idle'; closeBitmap(bm); return; }
+        const c = makeCanvas(BW, BH);
+        try { drawArt(c.getContext('2d'), bm, BW, BH); s.big = c; s.bst = 'ready'; } catch { s.bst = 'failed'; }
+        closeBitmap(bm);
+      });
+    }
+    function updateBig() {
+      const a = idx % slides.length;
+      const b = (idx + 1) % slides.length;
+      freeBig([a, b]);
+      loadBig(a); loadBig(b);
+    }
+    function useBig(on) {
+      const mat = screen.material;
+      if (on) {
+        bigCanvas = makeCanvas(BW, BH);
+        bigTex = new CanvasTexture(bigCanvas);
+        bigTex.colorSpace = SRGBColorSpace;
+        bigTex.minFilter = LinearFilter;
+        bigTex.generateMipmaps = false;
+        W = BW; H = BH; gx = bigCanvas.getContext('2d');
+        over = overlayCanvas(BW, BH);
+        mat.map = bigTex;
+      } else {
+        W = SW; H = SH; gx = sx; over = overSmall;
+        mat.map = tex;
+        if (bigTex) bigTex.dispose();
+        if (bigCanvas) { bigCanvas.width = 0; bigCanvas.height = 0; }
+        bigTex = null; bigCanvas = null;
+      }
+      mat.needsUpdate = true;
+    }
 
-    // --- Trailer (optional) ---
-    let trailer = null; // { video, id, title }
-    let trailerTried = false;
+    // --- Trailer (optional): Kandidatenliste, lazy gefunden; höchstens EIN Video-Element, URL (api_key) nie loggen ---
+    let trailer = null; // { video, id, title, item } – erst gesetzt, wenn das Video spielbereit ist
+    let vid = null;
+    let vtoken = 0;
+    const trailers = []; // { id, title, item, url }
+    const cands = pickCandidates({ highlights: hl, items, adult, max: 12 });
+    let cIdx = 0;
+    let discovering = null;
+    let trIdx = -1;
+    let autoTried = false;
     let level = ctx.quality();
     let suspended = false;
+    let disposed = false;
+    let seat = 'idle'; // idle | in | leaving
+    let userMuted = false;
+    let vol = 0.7;
+    try { const sv = parseFloat(sessionStorage.getItem(VOL_KEY)); if (Number.isFinite(sv)) vol = clamp(sv, 0, 1); } catch { /* egal */ }
     const withTimeout = (p, ms) => Promise.race([p, new Promise((res) => setTimeout(() => res(null), ms))]);
-    function killVideo() {
-      if (!trailer) return;
-      const v = trailer.video;
-      trailer = null;
-      try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* egal */ }
+    function applyAudio(v) {
+      if (!v) return;
+      try { v.muted = !(seat === 'in' && !userMuted); v.volume = vol; } catch { /* egal */ }
     }
-    async function findTrailer() {
-      if (trailerTried || !ctx.deps.getItem || !ctx.deps.loadTrailer) return;
-      trailerTried = true;
-      for (const it of hl.slice(0, 4)) {
-        if (ac.signal.aborted) return;
+    function killVideo() {
+      vtoken++;
+      const v = vid;
+      vid = null;
+      trailer = null;
+      if (!v) return;
+      try { v.pause(); v.muted = true; v.removeAttribute('src'); v.load(); } catch { /* egal */ }
+    }
+    function discover(want) {
+      if (!ctx.deps.getItem || !ctx.deps.loadTrailer) return Promise.resolve();
+      if (discovering) return discovering;
+      discovering = (async () => {
         try {
-          const full = await withTimeout(ctx.deps.getItem(it.Id), 6000);
-          if (!full || !(full.LocalTrailerCount > 0)) continue;
-          const url = await withTimeout(ctx.deps.loadTrailer(full), 6000);
-          if (!url || ac.signal.aborted) continue;
-          const v = document.createElement('video');
-          v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
-          v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
-          v.crossOrigin = 'anonymous';
-          const ok = await new Promise((res) => {
-            const done = (val) => { clearTimeout(tm); v.removeEventListener('canplay', onOk); v.removeEventListener('error', onErr); res(val); };
-            const onOk = () => done(true);
-            const onErr = () => done(false);
-            const tm = setTimeout(() => done(false), 9000);
-            v.addEventListener('canplay', onOk);
-            v.addEventListener('error', onErr);
-            v.src = url;
-          });
-          if (ok && !ac.signal.aborted) {
-            v.addEventListener('error', () => { if (trailer && trailer.video === v) { if (state === 'trailer') begin('slide'); killVideo(); } });
-            trailer = { video: v, id: it.Id, title: it.Name };
-            return;
+          while (trailers.length < want && cIdx < cands.length && !ac.signal.aborted) {
+            const it = cands[cIdx++];
+            try {
+              const full = await withTimeout(ctx.deps.getItem(it.Id), 6000);
+              if (!full || !(full.LocalTrailerCount > 0)) continue;
+              const url = await withTimeout(ctx.deps.loadTrailer(full), 6000);
+              if (url && !ac.signal.aborted) trailers.push({ id: it.Id, title: it.Name, item: full, url });
+            } catch { /* nächster Kandidat */ }
           }
-          try { v.removeAttribute('src'); v.load(); } catch { /* egal */ }
-        } catch { /* nächster Kandidat */ }
+        } finally { discovering = null; }
+      })();
+      return discovering;
+    }
+    function playVideo(v) {
+      let pr;
+      try { pr = v.play(); } catch { pr = null; }
+      if (!pr || !pr.catch) return;
+      pr.catch((e) => {
+        if (!trailer || trailer.video !== v || (e && e.name === 'AbortError')) return;
+        if (!v.muted) { v.muted = true; userMuted = true; refreshUi(); playVideo(v); } else begin('slide');
+      });
+    }
+    // Früh gestartetes play() (noch in der Nutzergeste, vor canplay): Fehler still schlucken; der Zustandsautomat startet danach erneut
+    function playQuiet(v) { try { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch { /* egal */ } }
+    /** Trailer i in das (wiederverwendete) Video-Element laden; im Sitzen startet play() noch im Geste-Stack (Ton). */
+    async function openTrailer(i) {
+      const e = trailers[i];
+      if (!e || disposed) return false;
+      const tk = ++vtoken;
+      trailer = null;
+      if (!vid) {
+        const nv = document.createElement('video');
+        nv.muted = true; nv.defaultMuted = true; nv.loop = true; nv.playsInline = true; nv.preload = 'auto';
+        nv.setAttribute('playsinline', ''); nv.setAttribute('muted', '');
+        nv.crossOrigin = 'anonymous';
+        nv.addEventListener('error', () => { if (trailer && trailer.video === nv) { trailer = null; if (state === 'trailer') begin('slide'); } });
+        vid = nv;
       }
+      const v = vid;
+      applyAudio(v);
+      const ok = await new Promise((res) => {
+        const done = (val) => { clearTimeout(tm); v.removeEventListener('canplay', onOk); v.removeEventListener('error', onErr); res(val); };
+        const onOk = () => done(true);
+        const onErr = () => done(false);
+        const tm = setTimeout(() => done(false), 9000);
+        v.addEventListener('canplay', onOk);
+        v.addEventListener('error', onErr);
+        v.src = e.url;
+        if (seat === 'in') playQuiet(v);
+      });
+      if (tk !== vtoken || disposed || ac.signal.aborted) return false;
+      if (!ok) {
+        const k = trailers.indexOf(e);
+        if (k >= 0) trailers.splice(k, 1);
+        try { v.pause(); v.removeAttribute('src'); v.load(); } catch { /* egal */ }
+        return false;
+      }
+      trailer = { video: v, id: e.id, title: e.title, item: e.item };
+      trIdx = trailers.indexOf(e);
+      return true;
+    }
+    function autoStart() {
+      if (autoTried || reduced || level === 'low' || suspended) return;
+      autoTried = true;
+      discover(1).then(() => { if (!ac.signal.aborted && !trailer && trailers.length && !suspended) openTrailer(0); });
     }
 
     // --- Zustandsautomat ---
@@ -271,11 +396,17 @@ export default {
       if (kind === 'static') { chan = 1 + ((chan + 2 + Math.floor(Math.random() * 5)) % 9); osdT = 1.6; }
     }
     function current() {
-      if (state === 'trailer' && trailer) return { id: trailer.id, title: trailer.title };
+      if (state === 'trailer' && trailer) return { id: trailer.id, title: trailer.title, item: trailer.item };
       const s = slides[idx % slides.length];
-      return s ? { id: s.id, title: s.title } : null;
+      return s ? { id: s.id, title: s.title, item: s.it } : null;
+    }
+    function gotoSlide(n) {
+      idx = n;
+      loadSlide(idx); loadSlide(idx + 1); loadSlide(idx + 2);
+      if (seat === 'in') updateBig();
     }
     function checkVisible() {
+      if (seat === 'in') { near = true; visible = true; canVideo = !suspended; return; } // im Sitzen kostet die Szene kaum etwas: Trailer auch bei Qualität low
       const e = cam.matrixWorld.elements;
       const fx = -e[8];
       const fz = -e[10];
@@ -292,38 +423,41 @@ export default {
     }
     function frame() {
       if (!slides.length) return;
+      const k = W / SW;
       const s = slides[idx % slides.length];
-      sx.imageSmoothingEnabled = state !== 'static';
+      const sitting = seat === 'in';
+      gx.imageSmoothingEnabled = state !== 'static';
       if (state === 'static') {
-        sx.imageSmoothingEnabled = false;
-        sx.drawImage(noise[Math.floor(Math.random() * 3)], 0, 0, SW, SH);
+        gx.imageSmoothingEnabled = false;
+        gx.drawImage(noise[Math.floor(Math.random() * 3)], 0, 0, W, H);
       } else if (state === 'trailer' && trailer && trailer.video.readyState >= 2) {
         const v = trailer.video;
         const vw = v.videoWidth || 16;
         const vh = v.videoHeight || 9;
-        const k = Math.max(SW / vw, SH / vh);
-        sx.fillStyle = '#000'; sx.fillRect(0, 0, SW, SH);
-        sx.drawImage(v, (SW - vw * k) / 2, (SH - vh * k) / 2, vw * k, vh * k);
-      } else if (s && s.canvas) {
-        sx.drawImage(s.canvas, 0, 0);
+        // Sitzen: ganzes Bild (Letterbox, nichts abgeschnitten); sonst füllend
+        const kk = sitting ? Math.min(W / vw, H / vh) : Math.max(W / vw, H / vh);
+        gx.fillStyle = '#000'; gx.fillRect(0, 0, W, H);
+        gx.drawImage(v, (W - vw * kk) / 2, (H - vh * kk) / 2, vw * kk, vh * kk);
+      } else if (s && ((sitting && s.big) || s.canvas)) {
+        gx.drawImage((sitting && s.big) || s.canvas, 0, 0, W, H);
       } else {
-        fallbackArt(sx, s && s.title);
+        fallbackArt(gx, s && s.title, W, H);
       }
       if (state !== 'static') {
         const cur = current();
-        sx.fillStyle = 'rgba(0,0,0,0.55)'; sx.fillRect(0, SH - 34, SW, 34);
-        sx.fillStyle = '#f4f6ff'; sx.textAlign = 'left'; sx.textBaseline = 'middle';
-        sx.font = `bold 15px ${FONT}`;
-        sx.fillText(String((cur && cur.title) || '').slice(0, 30), 12, SH - 17);
-        sx.fillStyle = '#ffd23f'; sx.textAlign = 'right'; sx.font = `12px ${FONT}`;
-        sx.fillText(state === 'trailer' ? 'VORSCHAU' : 'KANAL ' + chan, SW - 12, SH - 17);
+        gx.fillStyle = 'rgba(0,0,0,0.55)'; gx.fillRect(0, H - 34 * k, W, 34 * k);
+        gx.fillStyle = '#f4f6ff'; gx.textAlign = 'left'; gx.textBaseline = 'middle';
+        gx.font = `bold ${15 * k}px ${FONT}`;
+        gx.fillText(String((cur && cur.title) || '').slice(0, 30), 12 * k, H - 17 * k);
+        gx.fillStyle = '#ffd23f'; gx.textAlign = 'right'; gx.font = `${12 * k}px ${FONT}`;
+        gx.fillText(state === 'trailer' ? 'VORSCHAU' : 'KANAL ' + chan, W - 12 * k, H - 17 * k);
       }
       if (osdT > 0) {
-        sx.fillStyle = '#6dff8a'; sx.textAlign = 'left'; sx.textBaseline = 'top'; sx.font = `bold 22px "Courier New",monospace`;
-        sx.fillText('CH ' + String(chan).padStart(2, '0'), 14, 12);
+        gx.fillStyle = '#6dff8a'; gx.textAlign = 'left'; gx.textBaseline = 'top'; gx.font = `bold ${22 * k}px "Courier New",monospace`;
+        gx.fillText('CH ' + String(chan).padStart(2, '0'), 14 * k, 12 * k);
       }
-      sx.drawImage(over, 0, 0);
-      tex.needsUpdate = true;
+      gx.drawImage(over, 0, 0, W, H);
+      (bigTex || tex).needsUpdate = true;
     }
 
     ctx.addInteractable({
@@ -331,54 +465,274 @@ export default {
       label: 'Fernseher', hint: 'E / Klick: Gezeigten Titel nehmen',
       onUse: () => { const c = current(); if (c && c.id) ctx.items.take(c.id, { from: 'counter' }); },
     });
+    const removeSofa = ctx.addInteractable({
+      box: { min: { x: backEdge, y: 0.1, z: zc - 0.95 }, max: { x: sofaX + 0.45, y: 0.8, z: zc + 0.95 } },
+      label: 'Sofa', hint: 'E / Klick: Hinsetzen',
+      onUse: () => sitDown(),
+    });
 
     frame(); // Standbild schon vor dem ersten Näherkommen (Fallback-Grafik)
 
     function pauseVideo() { if (trailer) { try { trailer.video.pause(); } catch { /* egal */ } } }
 
+    // --- Couch: Hinsetzen, TV-Vollbild, Aufstehen ---
+    let snap = null;
+    let ui = null;
+    let instantLeave = false;
+    let afterLeave = null;
+    let settled = false;
+    let fitKey = '';
+    let flyToken = 0;
+    const screenX = xf - 0.014;
+    const SIT = { x: sofaX, y: 1.0, z: zc };
+    const LOOK = { x: screenX, y: 0.93, z: zc };
+
+    const keyOf = () => `${cam.fov.toFixed(2)}|${cam.aspect.toFixed(3)}`;
+    function flyClose(ms) {
+      const tk = ++flyToken;
+      fitKey = keyOf();
+      settled = false;
+      const d = fitDistance(cam.fov, cam.aspect); // Abstand zur Schirmebene; die Wölbung (0,03 m) liegt davor, Near-Plane (0,05) bleibt frei
+      return ctx.player.camera.flyTo({ x: screenX - d, y: 0.93, z: zc }, LOOK, ms).then((ok) => { if (ok && tk === flyToken) settled = true; return ok; });
+    }
+    function eyeTarget(p) {
+      const cp = Math.cos(p.pitch || 0);
+      return { x: p.x - Math.sin(p.yaw) * cp, y: EYE + Math.sin(p.pitch || 0), z: p.z - Math.cos(p.yaw) * cp };
+    }
+    function refit() {
+      if (seat !== 'in' || !settled || keyOf() === fitKey) return;
+      flyClose(250);
+    }
+
+    function buildUi() {
+      const root = h('div', 'lfx-store-couch');
+      const bar = h('div', 'lfx-store-couch-bar');
+      bar.setAttribute('role', 'group');
+      bar.setAttribute('aria-label', 'Fernseher');
+      const info = h('div', 'lfx-store-couch-info');
+      const title = h('span', 'lfx-store-couch-title', '');
+      const tag = h('span', 'lfx-store-couch-tag', '');
+      info.append(title, tag);
+      const row = h('div', 'lfx-store-couch-btns');
+      const bStand = button('Aufstehen', 'lfx-store-couch-btn', () => ctx.overlay.close());
+      const bNext = button('Nächster', 'lfx-store-couch-btn', () => next());
+      const bSnd = button('Ton aus', 'lfx-store-couch-btn', () => {
+        userMuted = !userMuted;
+        applyAudio(trailer && trailer.video);
+        if (trailer && trailer.video.paused) playVideo(trailer.video);
+        refreshUi();
+      });
+      const bDn = button('Leiser', 'lfx-store-couch-btn', () => setVol(vol - 0.15));
+      const bUp = button('Lauter', 'lfx-store-couch-btn', () => setVol(vol + 0.15));
+      const bWatch = button('Diesen Film ansehen', 'lfx-store-couch-btn is-main', () => watch());
+      row.append(bStand, bNext, bSnd, bDn, bUp, bWatch);
+      bar.append(info, row);
+      root.appendChild(bar);
+      return { root, title, tag, bSnd, bDn, bUp, last: '' };
+    }
+    function refreshUi() {
+      if (!ui) return;
+      const cur = current();
+      const playing = state === 'trailer' && !!trailer;
+      const sig = `${(cur && cur.title) || ''}|${playing}|${userMuted}`;
+      if (sig === ui.last) return;
+      ui.last = sig;
+      ui.title.textContent = (cur && cur.title) || 'VIDEOTHEK LENZ';
+      ui.tag.textContent = playing ? 'Vorschau' : 'Diashow';
+      ui.bSnd.hidden = !playing;
+      ui.bDn.hidden = !playing;
+      ui.bUp.hidden = !playing;
+      ui.bSnd.textContent = userMuted ? 'Ton an' : 'Ton aus';
+    }
+    function setVol(v) {
+      vol = clamp(v, 0, 1);
+      try { sessionStorage.setItem(VOL_KEY, String(vol)); } catch { /* egal */ }
+      if (vol > 0) userMuted = false;
+      applyAudio(trailer && trailer.video);
+      if (trailer && trailer.video.paused) playVideo(trailer.video);
+      refreshUi();
+    }
+
+    function sitDown() {
+      if (seat !== 'idle' || disposed || suspended || ctx.overlay.isOpen() || !slides.length) return;
+      seat = 'in';
+      snap = { ...ctx.player.getPose() };
+      instantLeave = false;
+      afterLeave = null;
+      settled = false;
+      ctx.player.freeze(true);
+      sitAc = new AbortController();
+      useBig(true);
+      userMuted = false;
+      ui = buildUi();
+      ctx.overlay.open(ui.root, { onClose: onClosed });
+      const snd = ctx.use('sound');
+      if (snd && snd.duck) snd.duck(true);
+      checkVisible();
+      loadSlide(idx); loadSlide(idx + 1);
+      updateBig();
+      if (trailer) {
+        // Nutzergeste (Klick/Tipp): Ton freischalten und im selben Call-Stack starten
+        applyAudio(trailer.video);
+        begin('trailer');
+        playQuiet(trailer.video);
+      } else {
+        begin('slide');
+        discover(trailers.length ? 0 : 1).then(() => {
+          if (seat !== 'in' || trailer || !trailers.length) return;
+          openTrailer(0).then((ok) => { if (ok && seat === 'in') { begin('trailer'); if (trailer) playVideo(trailer.video); } });
+        });
+      }
+      frame();
+      refreshUi();
+      ctx.player.camera.flyTo(SIT, LOOK, 750).then((ok) => { if (ok && seat === 'in') flyClose(800); });
+    }
+
+    function next() {
+      if (seat !== 'in') return;
+      const nextSlide = () => { gotoSlide(idx + 1); after = 'slide'; begin('static'); };
+      const target = trIdx + 1;
+      const openAt = (i) => {
+        begin('static'); after = 'slide';
+        openTrailer(i).then((ok) => {
+          if (seat !== 'in') return;
+          if (ok) { begin('trailer'); if (trailer) playVideo(trailer.video); } else nextSlide();
+        });
+      };
+      if (target < trailers.length) { openAt(target); return; }
+      if (cIdx < cands.length && ctx.deps.getItem && ctx.deps.loadTrailer) {
+        begin('static'); after = 'slide';
+        discover(trailers.length + 1).then(() => {
+          if (seat !== 'in') return;
+          if (target < trailers.length) openAt(target);
+          else if (trailers.length > 1) openAt(0);
+          else nextSlide();
+        });
+        return;
+      }
+      if (trailers.length > 1) { openAt(0); return; }
+      nextSlide();
+    }
+
+    function watch() {
+      const c = current();
+      if (!c || !c.id) return;
+      const item = c.item || { Id: c.id, Name: c.title };
+      // Wie am Kassen-PC: sofort aufstehen (ohne Rückfahrt) und über deps.play abspielen – derselbe Rückkehr-Weg der Hülle
+      instantLeave = true;
+      afterLeave = () => { try { ctx.deps.play(item, { resume: false }); } catch { if (ctx.deps.toast) ctx.deps.toast('Wiedergabe nicht möglich'); } };
+      ctx.overlay.close();
+    }
+
+    function restoreCam() {
+      if (snap) ctx.player.teleport(snap.x, snap.z, snap.yaw, snap.pitch);
+      ctx.player.camera.release();
+    }
+    function finishLeave() {
+      seat = 'idle';
+      ctx.player.freeze(false);
+      const a = afterLeave;
+      afterLeave = null;
+      if (a && !disposed) a();
+    }
+    /** Overlay wurde geschlossen (Aufstehen, Esc, Suspend, Qualität low, Abspielen). */
+    function onClosed() {
+      const u = ui;
+      ui = null;
+      if (!u || seat === 'idle') return;
+      seat = 'leaving';
+      flyToken++;
+      settled = false;
+      if (sitAc) sitAc.abort();
+      sitAc = null;
+      applyAudio(trailer && trailer.video); // seat !== 'in' → stumm
+      freeBig(null);
+      useBig(false);
+      visT = 1; // Auto-Betrieb prüft Sichtbarkeit im nächsten Takt neu
+      frame();
+      const snd = ctx.use('sound');
+      if (snd && snd.duck) snd.duck(false);
+      if (disposed) { ctx.player.camera.release(); ctx.player.freeze(false); seat = 'idle'; return; }
+      if (instantLeave || !snap) { restoreCam(); finishLeave(); return; }
+      const s = snap;
+      ctx.player.camera.flyTo({ x: s.x, y: EYE, z: s.z }, eyeTarget(s), 600).then(() => { if (!disposed) restoreCam(); finishLeave(); });
+    }
+
     return {
       update(dt) {
+        if (seat === 'in') refit();
         if (!slides.length || suspended) return;
         visT += dt;
         if (visT > 0.25) {
           visT = 0;
           const was = near;
           checkVisible();
-          if (near && !was) { loadSlide(0); loadSlide(1); loadSlide(2); if (!reduced) setTimeout(() => { if (!ac.signal.aborted && near && level !== 'low') findTrailer(); }, 5000); }
+          if (near && !was) { loadSlide(0); loadSlide(1); loadSlide(2); if (!reduced) setTimeout(() => { if (!ac.signal.aborted && near && level !== 'low') autoStart(); }, 5000); }
           if (state === 'trailer' && !canVideo) begin('slide');
-          if (state === 'trailer' && trailer && canVideo && trailer.video.paused) { const pr = trailer.video.play(); if (pr && pr.catch) pr.catch(() => begin('slide')); }
+          if (state === 'trailer' && trailer && canVideo && trailer.video.paused) playVideo(trailer.video);
           if (!canVideo || state !== 'trailer') pauseVideo();
           if (!trailer && state === 'trailer') begin('slide');
+          refreshUi();
         }
         if (!visible) return;
         stateT += dt;
         osdT = Math.max(0, osdT - dt);
+        const sitting = seat === 'in';
         if (state === 'slide') {
           if (stateT >= SLIDE_S) {
             shown++;
-            idx++;
-            loadSlide(idx + 1); loadSlide(idx + 2);
-            after = trailer && canVideo && shown % 4 === 0 ? 'trailer' : 'slide';
+            gotoSlide(idx + 1);
+            after = trailer && canVideo && (sitting || shown % 4 === 0) ? 'trailer' : 'slide';
             begin(reduced ? after : 'static');
             if (reduced) { stateT = 0; osdT = 0; }
           }
         } else if (state === 'static') {
           if (stateT >= STATIC_S) {
             begin(after);
-            if (state === 'trailer' && trailer) { const pr = trailer.video.play(); if (pr && pr.catch) pr.catch(() => begin('slide')); }
+            if (state === 'trailer' && trailer) playVideo(trailer.video);
           }
-        } else if (state === 'trailer' && stateT >= TRAILER_S) {
-          idx++;
+        } else if (state === 'trailer' && !sitting && stateT >= TRAILER_S) {
+          gotoSlide(idx + 1);
           begin('static');
           after = 'slide';
         }
         drawT += dt;
-        if (drawT >= (state === 'trailer' ? 1 / 24 : 1 / 12)) { drawT = 0; frame(); }
+        if (drawT >= (state === 'trailer' ? (sitting ? 1 / 30 : 1 / 24) : 1 / 12)) { drawT = 0; frame(); }
       },
-      onQuality(lv) { level = lv; if (lv === 'low') { if (state === 'trailer') begin('slide'); pauseVideo(); } },
-      onSuspend() { suspended = true; killVideo(); if (state === 'trailer') begin('slide'); },
-      onResume() { suspended = false; near = false; trailerTried = false; },
-      dispose() { ac.abort(); killVideo(); },
+      onQuality(lv) {
+        level = lv;
+        if (lv === 'low') {
+          if (seat !== 'in') { // im Sitzen weiterlaufen lassen
+            if (state === 'trailer') begin('slide');
+            pauseVideo();
+          }
+        }
+      },
+      onSuspend() {
+        suspended = true;
+        if (seat === 'in' && ui) { instantLeave = true; ctx.overlay.close(); }
+        killVideo();
+        if (state === 'trailer') begin('slide');
+      },
+      onResume() { suspended = false; near = false; autoTried = false; },
+      dispose() {
+        disposed = true;
+        ac.abort();
+        removeSofa();
+        if (seat !== 'idle') {
+          ui = null; // runtime.dispose schließt das Overlay danach; onClosed ist dann ein No-op
+          if (sitAc) sitAc.abort();
+          sitAc = null;
+          freeBig(null);
+          useBig(false);
+          const snd = ctx.use('sound');
+          if (snd && snd.duck) snd.duck(false);
+          ctx.player.camera.release();
+          ctx.player.freeze(false);
+          seat = 'idle';
+        }
+        killVideo();
+      },
     };
   },
 };

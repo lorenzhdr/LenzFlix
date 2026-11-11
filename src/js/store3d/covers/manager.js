@@ -1,13 +1,21 @@
 // VIDEOTHEK LENZ · Cover-Verwaltung: ein Atlas pro Regalseite, LRU-Budget, Ladequeue mit begrenzter Parallelität
 // und Priorität nach Nähe/Blickrichtung. Der Texturspeicher ist auf dem iPhone der Engpass – deshalb:
 //   flat (nur Farbe) → ph (kleiner Platzhalter-Atlas mit Titeln) → full (Cover-Atlas), Eviction des entferntesten Atlas.
+// Schärfestufe "hi": für die nächsten Regalseiten im Blickfeld zusätzlich ein Atlas mit doppelter Kantenlänge (2048², Bilder 400 px).
+// Er liegt zusätzlich zum Grund-Atlas (f.tex) und zählt im Budget HI_COST (4) Einheiten (Grund-Atlas = 1); Hochstufen nur, wenn der
+// Grund-Atlas fertig ist, Herabstufen tauscht zuerst auf den Grund-Atlas zurück und gibt dann die große Textur frei.
 import { CanvasTexture, SRGBColorSpace, LinearMipmapLinearFilter } from 'three';
 import { drawAtlas } from './atlas.js';
 import { loadBitmap, closeBitmap } from './loader.js';
+import { shelfSpec } from '../world/layout.js';
+
+export const HI_SIZE = 2048;
+export const HI_WIDTH = 400;
+export const HI_COST = (HI_SIZE / 1024) ** 2; // Budgeteinheiten (1 = Atlas 1024²)
 
 export class CoverManager {
   /**
-   * @param {object} o { faceViews, items: Map, deps, preset, blankTex, renderer, phone, onFirst }
+   * @param {object} o { faceViews, items: Map, deps, preset, blankTex, renderer, phone, spec (shelfSpec), onFirst }
    */
   constructor(o) {
     this.deps = o.deps;
@@ -15,11 +23,15 @@ export class CoverManager {
     this.blank = o.blankTex;
     this.renderer = o.renderer;
     this.preset = o.preset;
+    this.spec = o.spec || shelfSpec(false);
+    this.phone = !!o.phone;
+    this.hiMax = o.phone ? 4 : 8;
     this.concurrency = o.phone ? 4 : 8;
     this.maxLoadingFaces = o.phone ? 2 : 5;
     this.onFirst = o.onFirst || null;
     this.faces = o.faceViews.filter((fv) => fv.mesh).map((fv) => ({
       fv, face: fv.face, state: 'flat', tex: null, score: Infinity, loading: null, ph: false, queued: false,
+      hiTex: null, hiLoading: null, hiSkip: false, hiScore: Infinity, d: Infinity, front: 0, dot: 0,
     }));
     this.byFace = new Map(this.faces.map((f) => [f.face.index, f]));
     this.queue = [];
@@ -32,6 +44,23 @@ export class CoverManager {
 
   get loadedCount() { return this.faces.reduce((n, f) => n + (f.tex ? 1 : 0), 0); }
   get fullCount() { return this.faces.reduce((n, f) => n + (f.state === 'full' ? 1 : 0), 0); }
+  /** Seiten mit fertiger 2048er-Textur. */
+  get hiCount() { return this.faces.reduce((n, f) => n + (f.hiTex ? 1 : 0), 0); }
+  /** Seiten mit fertiger oder ladender 2048er-Stufe (belegen Budget). */
+  get hiPending() { return this.faces.reduce((n, f) => n + (f.hiTex || f.hiLoading ? 1 : 0), 0); }
+
+  /** Schärfestufe erlaubt? Nicht bei Qualität low, nur mit Texturen >= 2048 und Atlas-Grundstufe >= 1024. */
+  get hiEnabled() {
+    const cap = this.renderer && this.renderer.capabilities;
+    const maxTex = (cap && cap.maxTextureSize) || 0;
+    return this.preset.level !== 'low' && this.preset.atlas >= 1024 && maxTex >= HI_SIZE;
+  }
+
+  /** Höchstzahl 2048er-Atlanten: Limit je Gerät (8 / Handy 4), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
+  get hiCap() {
+    if (!this.hiEnabled) return 0;
+    return Math.max(0, Math.min(this.hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
+  }
 
   setPreset(p) {
     const sizeChanged = p.atlas !== this.preset.atlas;
@@ -43,9 +72,11 @@ export class CoverManager {
   pause() { this.paused = true; }
   resume() { this.paused = false; this.pump(); }
 
-  /** Aufruf ca. 4×/s mit der Spielerposition. */
-  update(px, pz, yaw) {
+  /** Aufruf ca. 4×/s mit der Spielerposition. `extra` optional { zoom, pitch } (Zoom > 1,3: Blickrichtung bevorzugen). */
+  update(px, pz, yaw, extra) {
     if (this.disposed) return;
+    const zoom = (extra && extra.zoom) || 1;
+    const pitch = (extra && extra.pitch) || 0;
     const vx = -Math.sin(yaw);
     const vz = -Math.cos(yaw);
     for (const f of this.faces) {
@@ -56,9 +87,14 @@ export class CoverManager {
       const front = (px - fc.x) * fc.nx + (pz - fc.z) * fc.nz;
       const dot = (dx * vx + dz * vz) / (d || 1);
       f.score = d + (front < -0.3 ? 9 : 0) + (dot < -0.2 ? 4 : 0);
+      f.d = d;
+      f.front = front;
+      f.dot = dot;
     }
+    const hiSet = this.updateHi(zoom, pitch);
     const radius = this.preset.loadRadius;
-    const max = this.preset.maxAtlases;
+    // Budget in Einheiten: 2048er-Atlanten (je HI_COST) werden vom Grund-Budget abgezogen
+    const max = Math.max(4, this.preset.maxAtlases - this.hiPending * HI_COST);
     const wanted = this.faces.filter((f) => f.score < radius).sort((a, b) => a.score - b.score).slice(0, max);
     const wantedSet = new Set(wanted);
 
@@ -83,17 +119,57 @@ export class CoverManager {
         loadingNow++;
       }
     }
+    // Hochstufen (höchstens 2 gleichzeitig ladende 2048er-Seiten, nur bei fertigem Grund-Atlas)
+    let hiLoadingNow = this.faces.reduce((n, f) => n + (f.hiLoading ? 1 : 0), 0);
+    for (const f of hiSet) {
+      if (hiLoadingNow >= 2) break;
+      if (f.state === 'full' && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip) {
+        this.startHiLoad(f);
+        if (f.hiLoading) hiLoadingNow++;
+      }
+    }
     this.pump();
+  }
+
+  /**
+   * Wählt die Seiten für die Schärfestufe und stuft alle anderen herab.
+   * Kandidaten: Betrachter vor dem Regal, Grund-Atlas fertig, nah und im Blickfeld; bei Zoom > 1,3 weiter weg, aber nur
+   * in Blickrichtung (Seite nahe der Blickachse zuerst). Bereits hochgestufte Seiten haben Hysterese.
+   * @returns {Array} gewählte Seiten (nach Rang, höchstens hiCap)
+   */
+  updateHi(zoom, pitch) {
+    const cap = this.hiCap;
+    const zoomed = zoom > 1.3;
+    const cands = [];
+    if (cap > 0 && Math.abs(pitch) < 1.1) {
+      for (const f of this.faces) {
+        if (f.state !== 'full' || !f.tex) continue;
+        const had = !!(f.hiTex || f.hiLoading);
+        const maxD = (zoomed ? 11 : 6.5) + (had ? 1.5 : 0);
+        const minDot = (zoomed ? 0.7 : 0.35) - (had ? 0.1 : 0);
+        if (f.front < -0.3 || f.d > maxD || f.dot < minDot) continue;
+        f.hiScore = zoomed ? f.d - f.dot * 6 : f.d + (f.dot < 0.7 ? 1.5 : 0);
+        if (had) f.hiScore -= 1;
+        cands.push(f);
+      }
+    }
+    cands.sort((a, b) => a.hiScore - b.hiScore);
+    const wanted = cands.slice(0, cap);
+    const set = new Set(wanted);
+    for (const f of this.faces) if ((f.hiTex || f.hiLoading) && !set.has(f)) this.dropHi(f);
+    return wanted;
   }
 
   /** Pro Frame höchstens ein Atlas zeichnen + hochladen. */
   tick() {
     if (this.disposed || !this.composeQueue.length) return;
-    this.composeQueue.sort((a, b) => a.f.score - b.f.score);
+    const rank = (j) => j.f.score + (j.kind === 'hi' ? 100 : 0); // Grund-Atlanten vor Schärfestufe
+    this.composeQueue.sort((a, b) => rank(a) - rank(b));
     const job = this.composeQueue.shift();
-    job.f.queued = false;
+    if (job.kind !== 'hi') job.f.queued = false;
     try {
       if (job.kind === 'ph') this.composePlaceholder(job.f);
+      else if (job.kind === 'hi') this.composeHi(job.f);
       else this.composeFull(job.f);
     } catch { /* ein defekter Atlas darf die Szene nicht stoppen */ }
   }
@@ -106,21 +182,29 @@ export class CoverManager {
     this.composeQueue.push({ f, kind });
   }
 
-  startLoad(f) {
+  startLoad(f) { this.loadFace(f, false); }
+
+  startHiLoad(f) { this.loadFace(f, true); }
+
+  loadFace(f, hi) {
     const ac = new AbortController();
-    const loading = { ac, bitmaps: new Map(), pending: 0 };
-    f.loading = loading;
+    const loading = { ac, bitmaps: new Map(), pending: 0, hi };
+    if (hi) f.hiLoading = loading; else f.loading = loading;
     const jobs = [];
     f.face.slots.forEach((id, idx) => {
       if (id == null) return;
       const it = this.items.get(id);
       if (!it || !it.ImageTags || !it.ImageTags.Primary) return;
       let url;
-      try { url = this.deps.imageUrl(id, { type: 'Primary', maxWidth: 200, tag: it.ImageTags.Primary, quality: 80 }); } catch { /* ohne Bild */ }
+      try { url = this.deps.imageUrl(id, { type: 'Primary', maxWidth: hi ? HI_WIDTH : 200, tag: it.ImageTags.Primary, quality: hi ? 85 : 80 }); } catch { /* ohne Bild */ }
       if (url) jobs.push({ f, idx, url, loading });
     });
     loading.pending = jobs.length;
-    if (!jobs.length) { this.queueCompose(f, 'full'); return; }
+    if (!jobs.length) {
+      if (hi) { f.hiLoading = null; f.hiSkip = true; return; } // keine Cover-Bilder: 2048er bringt nichts
+      this.queueCompose(f, 'full');
+      return;
+    }
     this.queue.push(...jobs);
   }
 
@@ -134,20 +218,43 @@ export class CoverManager {
     this.queue = this.queue.filter((j) => j.loading !== l);
   }
 
+  cancelHiLoad(f) {
+    const l = f.hiLoading;
+    if (!l) return;
+    l.ac.abort();
+    l.bitmaps.forEach(closeBitmap);
+    l.bitmaps.clear();
+    f.hiLoading = null;
+    this.queue = this.queue.filter((j) => j.loading !== l);
+    this.composeQueue = this.composeQueue.filter((j) => !(j.f === f && j.kind === 'hi'));
+  }
+
+  /** Schärfestufe verlassen: erst zurück auf den Grund-Atlas tauschen, dann die 2048er-Textur freigeben. */
+  dropHi(f) {
+    this.cancelHiLoad(f);
+    const t = f.hiTex;
+    if (!t) return;
+    f.hiTex = null;
+    const mat = f.fv.material;
+    if (mat.map === t) mat.map = f.tex || this.blank;
+    t.onUpdate = null;
+    t.dispose();
+  }
+
   pump() {
     while (!this.paused && !this.disposed && this.active < this.concurrency && this.queue.length) {
       let best = 0;
       for (let i = 1; i < this.queue.length; i++) if (this.queue[i].f.score < this.queue[best].f.score) best = i;
       const job = this.queue.splice(best, 1)[0];
-      if (job.f.loading !== job.loading) continue;
+      if (job.f.loading !== job.loading && job.f.hiLoading !== job.loading) continue;
       this.active++;
       loadBitmap(job.url, job.loading.ac.signal).then((bm) => {
         this.active--;
         const l = job.loading;
-        if (this.disposed || job.f.loading !== l) { closeBitmap(bm); } else {
+        if (this.disposed || (job.f.loading !== l && job.f.hiLoading !== l)) { closeBitmap(bm); } else {
           if (bm) l.bitmaps.set(job.idx, bm);
           l.pending--;
-          if (l.pending <= 0) this.queueCompose(job.f, 'full');
+          if (l.pending <= 0) this.queueCompose(job.f, l.hi ? 'hi' : 'full');
         }
         this.pump();
       });
@@ -157,28 +264,48 @@ export class CoverManager {
   composePlaceholder(f) {
     if (f.state !== 'flat') return;
     const size = Math.min(512, this.preset.atlas);
-    this.applyTexture(f, drawAtlas({ face: f.face, items: this.items, bitmaps: null, size }), 'ph');
+    this.applyTexture(f, drawAtlas({ face: f.face, items: this.items, bitmaps: null, size, spec: this.spec }), 'ph');
   }
 
   composeFull(f) {
     const l = f.loading;
     if (!l) return;
-    const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps: l.bitmaps, size: this.preset.atlas });
+    const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps: l.bitmaps, size: this.preset.atlas, spec: this.spec });
     l.bitmaps.forEach(closeBitmap);
     l.bitmaps.clear();
     f.loading = null;
     this.applyTexture(f, canvas, 'full');
   }
 
-  applyTexture(f, canvas, state) {
+  composeHi(f) {
+    const l = f.hiLoading;
+    if (!l) return;
+    if (f.state !== 'full' || !f.tex || !this.hiEnabled) { this.cancelHiLoad(f); return; }
+    const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps: l.bitmaps, size: HI_SIZE, spec: this.spec });
+    l.bitmaps.forEach(closeBitmap);
+    l.bitmaps.clear();
+    f.hiLoading = null;
+    const tex = this.makeTexture(canvas);
+    f.fv.material.map = tex;
+    f.hiTex = tex;
+    try { if (this.renderer) this.renderer.initTexture(tex); } catch { /* wird beim ersten Rendern hochgeladen */ }
+  }
+
+  makeTexture(canvas) {
     const tex = new CanvasTexture(canvas);
     tex.colorSpace = SRGBColorSpace;
     tex.anisotropy = this.preset.anisotropy;
     tex.generateMipmaps = true;
     tex.minFilter = LinearMipmapLinearFilter;
     tex.onUpdate = () => { tex.onUpdate = null; canvas.width = 1; canvas.height = 1; }; // Canvas nach dem Upload freigeben
+    return tex;
+  }
+
+  applyTexture(f, canvas, state) {
+    const tex = this.makeTexture(canvas);
     const mat = f.fv.material;
     mat.map = tex;
+    if (f.hiTex && state === 'full') this.dropHi(f); // Grund-Atlas neu gezeichnet (z. B. Aufkleber): 2048er ist veraltet
     mat.color.setRGB(1.3, 1.3, 1.3); // heller als 1: ersetzt die frühere Emissive-Map
     const old = f.tex;
     f.tex = tex;
@@ -190,6 +317,8 @@ export class CoverManager {
 
   evict(f) {
     this.cancelLoad(f);
+    this.dropHi(f);
+    f.hiSkip = false;
     const mat = f.fv.material;
     mat.map = this.blank;
     mat.color.copy(f.fv.flatColor);
@@ -204,6 +333,7 @@ export class CoverManager {
   invalidateAll() {
     for (const f of this.faces) {
       if (f.tex) { f.tex.onUpdate = null; f.tex = null; }
+      if (f.hiTex) { f.hiTex.onUpdate = null; f.hiTex = null; }
       this.evict(f);
     }
   }

@@ -174,7 +174,6 @@
     onProgress: function (f, label) { $('dev-load-text').textContent = label || ''; $('dev-load-bar').style.width = Math.round(f * 100) + '%'; },
     onReady: function () { $('dev-load').style.display = 'none'; console.log('[dev] ready'); },
     onState: function (s) { try { sessionStorage.setItem('store-dev-state', JSON.stringify(s)); } catch { /* egal */ } },
-    onPrefs: function (p) { console.log('[dev] prefs', p); },
     onFatal: function (e) {
       var f = $('dev-fatal');
       f.style.display = 'flex';
@@ -182,17 +181,38 @@
     },
   };
 
-  var restore = null;
-  if (q.get('restore') === '1') {
-    try { restore = JSON.parse(sessionStorage.getItem('store-dev-state')); } catch { restore = null; }
-  }
+  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0' };
+  deps.onPrefs = function (p) {
+    if (typeof p.fps === 'boolean') prefs.fps = p.fps;
+    if (typeof p.bigCovers === 'boolean') prefs.bigCovers = p.bigCovers;
+    console.log('[dev] prefs', p);
+  };
+  deps.onBigCovers = function (on) {
+    prefs.bigCovers = !!on;
+    console.log('[dev] bigCovers', on, '-> Neuaufbau');
+    setTimeout(function () {
+      if (inst) inst.dispose();
+      $('dev-load').style.display = 'block';
+      start(true);
+    }, 0);
+  };
+
   var host = $('stage');
+  var inst = null;
+  function start(rebuilt) {
+    var restore = null;
+    if (rebuilt || q.get('restore') === '1') {
+      try { restore = JSON.parse(sessionStorage.getItem('store-dev-state')); } catch { restore = null; }
+    }
+    inst = window.LenzFlixStore3D.create(host, deps, {
+      quality: q.get('quality') || 'auto', sound: q.get('sound') === '1', showFps: prefs.fps, bigCovers: prefs.bigCovers,
+      skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
+      openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true,
+      hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,
+    });
+    window.__store = inst;
+  }
   if (!window.LenzFlixStore3D) { deps.onFatal(new Error('dist/lenzstore.js fehlt – erst npm run build')); return; }
-  var inst = window.LenzFlixStore3D.create(host, deps, {
-    quality: q.get('quality') || 'auto', sound: q.get('sound') === '1', skipIntro: q.get('intro') !== '1', restore: restore, openItemId: q.get('item') || null,
-    openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true,
-    hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,
-  });
-  window.__store = inst;
-  window.addEventListener('pagehide', function () { inst.dispose(); });
+  start(false);
+  window.addEventListener('pagehide', function () { if (inst) inst.dispose(); });
 }());

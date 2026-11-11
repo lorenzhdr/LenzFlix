@@ -6,7 +6,7 @@ const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
 
 /**
  * @param {HTMLElement} host
- * @param {object} a { onResume, onSearch, onClassic, onQuality(q), onSound(on), onTheme, onMenu(anchor), getQuality, getSound }
+ * @param {object} a { onResume, onSearch, onClassic, onQuality(q), onSound(on), onFps(on), onBigCovers(on), onTheme, onMenu(anchor), getQuality, getSound, getFps, getBigCovers }
  */
 export function createPause(host, a) {
   const root = el('div', 'lfx-store-pause');
@@ -32,11 +32,15 @@ export function createPause(host, a) {
     refresh();
   });
   const s = mk('', () => { a.onSound(!a.getSound()); refresh(); });
+  const f = mk('', () => { a.onFps(!a.getFps()); refresh(); });
+  const bc = mk('', () => { a.onBigCovers(!a.getBigCovers()); refresh(); });
   mk('Design wechseln', () => a.onTheme());
   mk('Menü', (b) => a.onMenu(b));
   function refresh() {
     q.textContent = `Qualität: ${QUALITY_LABEL[a.getQuality()] || 'Auto'}`;
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
+    f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;
+    bc.textContent = `Hüllen: ${a.getBigCovers() ? 'Groß' : 'Normal'}`;
   }
   root.appendChild(panel);
   root.addEventListener('click', (e) => { if (e.target === root) a.onResume(); });

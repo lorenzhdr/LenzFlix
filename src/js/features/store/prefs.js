@@ -2,7 +2,7 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: false };
+const DEFAULTS = { quality: 'auto', sound: false, fps: false, bigCovers: true };
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
 const SESSION_INTRO = 'lfx.store.introSeen';
 const SESSION_STATE = 'lfx.store.state';
@@ -25,11 +25,23 @@ export function getSound() {
   return read('localStorage', storageKey('sound')) === '1';
 }
 
-/** Speichert { quality?, sound? } (unbekannte/fehlende Felder werden ignoriert). */
+export function getFps() {
+  return read('localStorage', storageKey('fps')) === '1';
+}
+
+/** Große Hüllen (Standard an): nur ein ausdrückliches „0“ schaltet sie aus. */
+export function getBigCovers() {
+  const v = read('localStorage', storageKey('bigCovers'));
+  return v === null ? DEFAULTS.bigCovers : v !== '0';
+}
+
+/** Speichert { quality?, sound?, fps?, bigCovers? } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
   if (typeof p.sound === 'boolean') write('localStorage', storageKey('sound'), p.sound ? '1' : '0');
+  if (typeof p.fps === 'boolean') write('localStorage', storageKey('fps'), p.fps ? '1' : '0');
+  if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
 }
 
 export const getIntroSeen = () => read('sessionStorage', SESSION_INTRO) === '1';

@@ -1,8 +1,8 @@
 // VIDEOTHEK LENZ · Cover-Atlas zeichnen (temporäres Canvas): Cover, Medien-Optik (VHS-Pappe, DVD-Rand, Box-Set),
 // Platzhalter (Abteilungsfarbe + Titel) und Aufkleber (Gesehen, Fortschritts-Banderole, NEU).
 import { makeCanvas, FONT } from '../world/textures.js';
-import { COLS } from '../world/layout.js';
-import { BASE, CELL_W, CELL_H, SWATCH_Y, SWATCH_W, SWATCH_H, SWATCH_COLORS } from './atlasmap.js';
+import { shelfSpec } from '../world/layout.js';
+import { BASE, SWATCH_Y, SWATCH_W, SWATCH_H, SWATCH_COLORS } from './atlasmap.js';
 import { hash } from '../util/geo.js';
 
 function wrap(ctx, text, maxW, maxLines) {
@@ -120,10 +120,10 @@ function placeholderCell(ctx, item, x, y, w, h, s, color) {
 
 /**
  * Zeichnet den Atlas eines Faces.
- * @param {object} p { face, items: Map, bitmaps: Map<slotIdx, Image|ImageBitmap>, size }
+ * @param {object} p { face, items: Map, bitmaps: Map<slotIdx, Image|ImageBitmap>, size, spec? (shelfSpec, Standard normal) }
  * @returns {HTMLCanvasElement}
  */
-export function drawAtlas({ face, items, bitmaps, size }) {
+export function drawAtlas({ face, items, bitmaps, size, spec = shelfSpec(false) }) {
   const s = size / BASE;
   const c = makeCanvas(size, size);
   const ctx = c.getContext('2d');
@@ -134,13 +134,13 @@ export function drawAtlas({ face, items, bitmaps, size }) {
     ctx.fillStyle = col;
     ctx.fillRect(i * SWATCH_W * s, SWATCH_Y * s, SWATCH_W * s, SWATCH_H * s);
   });
-  const cw = CELL_W * s;
-  const ch = CELL_H * s;
+  const cw = spec.cellW * s;
+  const ch = spec.cellH * s;
   face.slots.forEach((id, idx) => {
     if (id == null) return;
     const item = items.get(id) || { Id: id, Name: '?' };
-    const col = idx % COLS;
-    const row = Math.floor(idx / COLS);
+    const col = idx % spec.cols;
+    const row = Math.floor(idx / spec.cols);
     const x = col * cw;
     const y = row * ch;
     const media = (item.lfx && item.lfx.media) || 'dvd';

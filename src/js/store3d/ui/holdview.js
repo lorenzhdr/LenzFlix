@@ -183,8 +183,9 @@ export class HoldView {
     const side = new MeshLambertMaterial({ color: SIDE_COLOR[media] || 0x1d3f9c, depthTest: false, transparent: true });
     const front = new MeshBasicMaterial({ map: this.frontTex, depthTest: false, transparent: true, toneMapped: false });
     const back = new MeshBasicMaterial({ map: this.backTex, depthTest: false, transparent: true, toneMapped: false });
-    const w = media === 'box' ? 0.15 : COVER.w;
-    const h = media === 'box' ? 0.205 : COVER.h;
+    const C = (this.layout && this.layout.spec && this.layout.spec.cover) || COVER; // gleiche Hüllengröße wie im Regal
+    const w = media === 'box' ? C.boxW : C.w;
+    const h = media === 'box' ? C.boxH : C.h;
     this.mesh = new Mesh(new BoxGeometry(w, h, th), [side, side, side, side, front, back]);
     this.mesh.renderOrder = 999;
     this.group = new Group();
@@ -409,7 +410,10 @@ export class HoldView {
       this.camera.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
     }
     this.group.position.lerpVectors(this.from.pos, tg.pos, k);
-    this.group.scale.setScalar(1 + (tg.scale - 1) * k);
+    // Hand-Größe unabhängig von der Regal-Hüllengröße (große Hüllen werden entsprechend kleiner skaliert)
+    const C = this.layout && this.layout.spec && this.layout.spec.cover;
+    const norm = C ? COVER.h / C.h : 1;
+    this.group.scale.setScalar(1 + (tg.scale * norm - 1) * k);
     this.group.quaternion.copy(this.from.quat).slerp(IDENT, k);
   }
 

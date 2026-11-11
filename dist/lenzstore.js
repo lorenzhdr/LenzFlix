@@ -28398,16 +28398,56 @@ void main() {
   var CROSS = 1.8;
   var MIN_W = 12.5;
   var HALF_PI = Math.PI / 2;
-  function fillSlots(items, rows) {
-    const slots = new Array(rows * COLS).fill(null);
+  var THICK = { vhs: 0.025, dvd: 0.014, box: 0.05 };
+  var SPECS = {
+    // Normal: 7 Spalten, Hülle 0,14 × 0,20 m, 5 (hoch) bzw. 3 (niedrig) Fächer à 0,33 m, Atlas-Zelle 146 × 200
+    normal: {
+      big: false,
+      cols: 7,
+      rowsTall: 5,
+      rowsLow: 3,
+      capTall: 35,
+      capLow: 21,
+      base: 0.26,
+      stepTall: 0.33,
+      stepLow: 0.33,
+      cover: { w: 0.14, h: 0.2, boxW: 0.15, boxH: 0.205, pitch: 0.16, tilt: 0.1, zBottom: -0.03, thick: THICK },
+      cellW: 146,
+      cellH: 200
+    },
+    // Groß: 6 Spalten, Hülle 0,17 × 0,24 m (Seitenverhältnis wie die Atlas-Zelle 170 × 240), hohe Regale 4 Fächer à 0,42 m
+    // (4 × 240 px + Farbfeldstreifen passen in 1024²), niedrige 3 Fächer à 0,33 m.
+    big: {
+      big: true,
+      cols: 6,
+      rowsTall: 4,
+      rowsLow: 3,
+      capTall: 24,
+      capLow: 18,
+      base: 0.26,
+      stepTall: 0.42,
+      stepLow: 0.33,
+      cover: { w: 0.17, h: 0.24, boxW: 0.18, boxH: 0.249, pitch: 0.19, tilt: 0.1, zBottom: -0.03, thick: THICK },
+      cellW: 170,
+      cellH: 240
+    }
+  };
+  function shelfSpec(big) {
+    return big ? SPECS.big : SPECS.normal;
+  }
+  function levelY(spec, level, low) {
+    return spec.base + (low ? spec.stepLow : spec.stepTall) * level;
+  }
+  function fillSlots(items, rows, cols = COLS) {
+    const slots = new Array(rows * cols).fill(null);
     const m = items.length;
     const base = Math.floor(m / rows);
     const extra = m % rows;
     let cur = 0;
     for (let r = 0; r < rows; r++) {
       const q = base + (r < extra ? 1 : 0);
-      const start = Math.floor((COLS - q) / 2);
-      for (let k = 0; k < q; k++) slots[r * COLS + start + k] = items[cur++];
+      const start = Math.floor((cols - q) / 2);
+      for (let k = 0; k < q; k++) slots[r * cols + start + k] = items[cur++];
     }
     return slots;
   }
@@ -28423,25 +28463,23 @@ void main() {
     }
     return out;
   }
-  function levelBase(level) {
-    return 0.26 + 0.33 * level;
-  }
-  function runSegCount(dept, double) {
+  function runSegCount(dept, double, spec) {
     const n = dept.itemIds.length;
-    const cap = dept.kind === "kids" ? CAP_LOW : CAP_TALL;
+    const cap = dept.kind === "kids" ? spec.capLow : spec.capTall;
     return Math.max(1, double ? Math.ceil(n / (2 * cap)) : Math.ceil(n / cap));
   }
-  function buildLayout(departments) {
+  function buildLayout(departments, opts = {}) {
+    const spec = shelfSpec(!!(opts && opts.big));
     const depts = (departments || []).filter((x) => x && x.itemIds && x.itemIds.length);
     const newD = depts.filter((x) => x.kind === "new");
     const kidsD = depts.filter((x) => x.kind === "kids");
     const adultD = depts.filter((x) => x.kind === "adult");
     const seriesD = depts.filter((x) => x.kind === "series");
     const freeD = depts.filter((x) => !["new", "kids", "adult", "series"].includes(x.kind));
-    const sFree = freeD.reduce((a, x) => a + runSegCount(x, true), 0);
-    const sWall = seriesD.reduce((a, x) => a + runSegCount(x, false), 0);
-    const sKids = kidsD.reduce((a, x) => a + runSegCount(x, true), 0);
-    const sAdult = adultD.reduce((a, x) => a + runSegCount(x, true), 0);
+    const sFree = freeD.reduce((a, x) => a + runSegCount(x, true, spec), 0);
+    const sWall = seriesD.reduce((a, x) => a + runSegCount(x, false, spec), 0);
+    const sKids = kidsD.reduce((a, x) => a + runSegCount(x, true, spec), 0);
+    const sAdult = adultD.reduce((a, x) => a + runSegCount(x, true, spec), 0);
     const rMinWall = Math.ceil(sWall / 2);
     let r = Math.max(3, rMinWall, Math.round(Math.sqrt(sFree * 1.6)));
     const k = sFree > 0 ? Math.ceil(sFree / r) : 0;
@@ -28475,6 +28513,7 @@ void main() {
         depth: o.double ? UNIT_DEPTH : WALL_DEPTH,
         double: o.double,
         low: !!o.low,
+        rows: o.low ? spec.rowsLow : spec.rowsTall,
         h: o.low ? H_LOW : H_TALL,
         yaw: o.yaw,
         rev: !!o.rev,
@@ -28486,7 +28525,7 @@ void main() {
       const dz = -Math.sin(o.yaw);
       const nx = Math.sin(o.yaw);
       const nz = Math.cos(o.yaw);
-      const rows = run.low ? ROWS_LOW : ROWS_TALL;
+      const rows = run.low ? spec.rowsLow : spec.rowsTall;
       o.segs.forEach((sg, j) => {
         const lx = (o.rev ? -1 : 1) * (j - (S - 1) / 2) * SEG_W;
         const sx = o.cx + dx * lx;
@@ -28517,7 +28556,7 @@ void main() {
             nz: Math.round(fnz * 1e6) / 1e6,
             rows,
             low: run.low,
-            slots: fillSlots(items, rows),
+            slots: fillSlots(items, rows, spec.cols),
             stand: { x: fx + fnx * 0.85, z: fz + fnz * 0.85, yaw }
           };
           face.slots.forEach((id, idx) => {
@@ -28535,7 +28574,7 @@ void main() {
       return run;
     }
     function deptSegs(dept, double) {
-      const S = runSegCount(dept, double);
+      const S = runSegCount(dept, double, spec);
       const out = [];
       if (double) {
         const parts = chunk(dept.itemIds, S * 2);
@@ -28680,6 +28719,7 @@ void main() {
       for (let x = stepX / 2; x < W; x += stepX) panels.push({ x, z, w: 1.2, d: 0.3 });
     }
     return {
+      spec,
       w: W,
       d: D,
       ceilH: CEIL_H,
@@ -28837,6 +28877,8 @@ void main() {
     let tickMs = 0;
     let renderMs = 0;
     let accN = 0;
+    let baseFov = 70;
+    let zoom = 1;
     function applyRatio() {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, preset.pixelRatio));
     }
@@ -28846,8 +28888,18 @@ void main() {
       renderer.setSize(w, h2, false);
       const a = w / h2;
       camera.aspect = a;
-      camera.fov = a < 1.2 ? Math.min(100, 2 * Math.atan(Math.tan(32 * DEG) / a) / DEG) : 70;
+      baseFov = a < 1.2 ? Math.min(100, 2 * Math.atan(Math.tan(32 * DEG) / a) / DEG) : 70;
+      applyFov();
+    }
+    function applyFov() {
+      camera.fov = baseFov / zoom;
       camera.updateProjectionMatrix();
+    }
+    function setZoom(z) {
+      const v = Math.max(1, Number(z) || 1);
+      if (v === zoom) return;
+      zoom = v;
+      applyFov();
     }
     function loop(time) {
       const now = time || performance.now();
@@ -28954,6 +29006,12 @@ void main() {
       get renderMs() {
         return renderMs;
       },
+      get baseFov() {
+        return baseFov;
+      },
+      get zoom() {
+        return zoom;
+      },
       get lost() {
         return lost;
       },
@@ -28961,6 +29019,7 @@ void main() {
         return curHost;
       },
       setLevel,
+      setZoom,
       setAuto(v) {
         autoOn = !!v;
         aq.setLevel(preset.level);
@@ -29744,17 +29803,17 @@ void main() {
 
   // src/js/store3d/covers/atlasmap.js
   var BASE = 1024;
-  var CELL_W = 146;
-  var CELL_H = 200;
   var SWATCH_Y = 1004;
   var SWATCH_W = 40;
   var SWATCH_H = 20;
   var SWATCH_COLORS = ["#e2d8bd", "#1d3f9c", "#101012", "#c9a227", "#1a1a20"];
-  function cellUV(col, row) {
-    return [col * CELL_W / BASE, 1 - (row + 1) * CELL_H / BASE, (col + 1) * CELL_W / BASE, 1 - row * CELL_H / BASE];
+  function cellUV(col, row, spec = shelfSpec(false)) {
+    const cw = spec.cellW;
+    const ch = spec.cellH;
+    return [col * cw / BASE, 1 - (row + 1) * ch / BASE, (col + 1) * cw / BASE, 1 - row * ch / BASE];
   }
-  function slotCell(idx) {
-    return { col: idx % COLS, row: Math.floor(idx / COLS) };
+  function slotCell(idx, spec = shelfSpec(false)) {
+    return { col: idx % spec.cols, row: Math.floor(idx / spec.cols) };
   }
   function swatchUV(i) {
     return [(i * SWATCH_W + SWATCH_W / 2) / BASE, 1 - (SWATCH_Y + SWATCH_H / 2) / BASE];
@@ -29766,14 +29825,7 @@ void main() {
   }
 
   // src/js/store3d/world/build-shelves.js
-  var COVER = {
-    w: 0.14,
-    h: 0.2,
-    thick: { vhs: 0.025, dvd: 0.014, box: 0.05 },
-    tilt: 0.1,
-    pitch: 0.16,
-    zBottom: -0.03
-  };
+  var COVER = shelfSpec(false).cover;
   var STYLE_TINT = {
     wood: [0.8, 0.62, 0.45],
     wall: [0.8, 0.62, 0.45],
@@ -29781,11 +29833,11 @@ void main() {
     new: [0.95, 0.3, 0.3]
   };
   var KIDS_COLORS = ["#e63946", "#ffd23f", "#3ddc97", "#2a9df4"];
-  function frameGeometry(run) {
+  function frameGeometry(run, spec) {
     const L = run.segs * 1.2;
     const depth = run.depth;
     const h2 = run.h;
-    const rows = run.low ? ROWS_LOW : ROWS_TALL;
+    const rows = run.rows || (run.low ? spec.rowsLow : spec.rowsTall);
     const parts = [];
     const segTint = (j) => run.style === "kids" ? hex(KIDS_COLORS[j % KIDS_COLORS.length]) : STYLE_TINT[run.style] || STYLE_TINT.wood;
     const dark = (c, f) => [c[0] * f, c[1] * f, c[2] * f];
@@ -29807,7 +29859,7 @@ void main() {
       const zc = (zFront + zBack) / 2;
       const bd = Math.abs(zFront - zBack);
       for (let lv = 0; lv < rows; lv++) {
-        const top = levelBase(lv);
+        const top = levelY(spec, lv, run.low);
         for (let j = 0; j < run.segs; j++) {
           const x = run.segments[j].lx;
           const seg = run.segments[j];
@@ -29822,13 +29874,15 @@ void main() {
     g.translate(run.cx, 0, run.cz);
     return g;
   }
-  function coverGeometry(item, idx, rows) {
+  function coverGeometry(item, idx, face, spec) {
+    const rows = face.rows;
+    const C = spec.cover;
     const media = item && item.lfx && item.lfx.media || "dvd";
-    const t = COVER.thick[media] || COVER.thick.dvd;
-    const g = new BoxGeometry(media === "box" ? 0.15 : COVER.w, media === "box" ? 0.205 : COVER.h, t);
+    const t = C.thick[media] || C.thick.dvd;
+    const g = new BoxGeometry(media === "box" ? C.boxW : C.w, media === "box" ? C.boxH : C.h, t);
     const uv = g.attributes.uv;
-    const { col, row } = slotCell(idx);
-    const [u0, v0, u1, v1] = cellUV(col, row);
+    const { col, row } = slotCell(idx, spec);
+    const [u0, v0, u1, v1] = cellUV(col, row, spec);
     const sw = swatchUV(swatchFor(media, hash(String(item && item.Id || idx))));
     for (let i = 0; i < uv.count; i++) {
       if (i >= 16 && i < 20) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (v1 - v0));
@@ -29838,11 +29892,12 @@ void main() {
     const cols = new Float32Array(n * 3).fill(1);
     g.setAttribute("color", new Float32BufferAttribute(cols, 3));
     const level = rows - 1 - row;
-    const ch = media === "box" ? 0.205 : COVER.h;
+    const ch = media === "box" ? C.boxH : C.h;
+    const cw = media === "box" ? C.boxW : C.w;
     g.translate(0, ch / 2, 0);
-    g.rotateX(-COVER.tilt);
-    g.translate((col - (COLS - 1) / 2) * COVER.pitch, levelBase(level) + 4e-3, COVER.zBottom);
-    return { g, media, t, ch, level, col, row };
+    g.rotateX(-C.tilt);
+    g.translate((col - (spec.cols - 1) / 2) * C.pitch, levelY(spec, level, face.low) + 4e-3, C.zBottom);
+    return { g, media, t, ch, cw, level, col, row };
   }
   var _e2 = new Euler();
   function slotWorld(fv, info, outPos = new Vector3(), outQuat = new Quaternion()) {
@@ -29859,7 +29914,8 @@ void main() {
   function buildShelves(layout, catalogItems, blankTex, woodTex) {
     const group = new Group();
     group.name = "shelves";
-    const frames = layout.runs.map(frameGeometry);
+    const spec = layout.spec || shelfSpec(false);
+    const frames = layout.runs.map((r) => frameGeometry(r, spec));
     const frameMesh = new Mesh(
       mergeGeometries(frames, false),
       new MeshLambertMaterial({ map: woodTex, vertexColors: true })
@@ -29876,7 +29932,7 @@ void main() {
       face.slots.forEach((id, idx) => {
         if (id == null) return;
         const item = catalogItems.get(id);
-        const cg = coverGeometry(item || { Id: id }, idx, face.rows);
+        const cg = coverGeometry(item || { Id: id }, idx, face, spec);
         geoms.push(cg.g);
         infos.push({
           idx,
@@ -29885,8 +29941,8 @@ void main() {
           thick: cg.t,
           vert: infos.length * 24,
           hidden: false,
-          local: { x: (cg.col - (COLS - 1) / 2) * COVER.pitch, y: levelBase(cg.level) + 4e-3 + cg.ch / 2 * Math.cos(COVER.tilt), z: COVER.zBottom - cg.ch / 2 * Math.sin(COVER.tilt) },
-          half: { x: 0.075, y: cg.ch / 2 + 5e-3, z: Math.max(0.03, cg.t / 2 + 0.015) }
+          local: { x: (cg.col - (spec.cols - 1) / 2) * spec.cover.pitch, y: levelY(spec, cg.level, face.low) + 4e-3 + cg.ch / 2 * Math.cos(spec.cover.tilt), z: spec.cover.zBottom - cg.ch / 2 * Math.sin(spec.cover.tilt) },
+          half: { x: spec.cover.w / 2 + 5e-3, y: cg.ch / 2 + 5e-3, z: Math.max(0.03, cg.t / 2 + 0.015) }
         });
       });
       const fv = { face, infos, mesh: null, material: null, geometry: null, backup: null, byIdx: new Map(infos.map((i) => [i.idx, i])) };
@@ -30431,7 +30487,7 @@ void main() {
       ctx.fillText(String(item.ProductionYear), cx, y + h2 * 0.78);
     }
   }
-  function drawAtlas({ face, items, bitmaps, size }) {
+  function drawAtlas({ face, items, bitmaps, size, spec = shelfSpec(false) }) {
     const s = size / BASE;
     const c = makeCanvas(size, size);
     const ctx = c.getContext("2d");
@@ -30441,13 +30497,13 @@ void main() {
       ctx.fillStyle = col;
       ctx.fillRect(i * SWATCH_W * s, SWATCH_Y * s, SWATCH_W * s, SWATCH_H * s);
     });
-    const cw = CELL_W * s;
-    const ch = CELL_H * s;
+    const cw = spec.cellW * s;
+    const ch = spec.cellH * s;
     face.slots.forEach((id, idx) => {
       if (id == null) return;
       const item = items.get(id) || { Id: id, Name: "?" };
-      const col = idx % COLS;
-      const row = Math.floor(idx / COLS);
+      const col = idx % spec.cols;
+      const row = Math.floor(idx / spec.cols);
       const x = col * cw;
       const y = row * ch;
       const media = item.lfx && item.lfx.media || "dvd";
@@ -30550,9 +30606,12 @@ void main() {
   }
 
   // src/js/store3d/covers/manager.js
+  var HI_SIZE = 2048;
+  var HI_WIDTH = 400;
+  var HI_COST = (HI_SIZE / 1024) ** 2;
   var CoverManager = class {
     /**
-     * @param {object} o { faceViews, items: Map, deps, preset, blankTex, renderer, phone, onFirst }
+     * @param {object} o { faceViews, items: Map, deps, preset, blankTex, renderer, phone, spec (shelfSpec), onFirst }
      */
     constructor(o) {
       this.deps = o.deps;
@@ -30560,6 +30619,9 @@ void main() {
       this.blank = o.blankTex;
       this.renderer = o.renderer;
       this.preset = o.preset;
+      this.spec = o.spec || shelfSpec(false);
+      this.phone = !!o.phone;
+      this.hiMax = o.phone ? 4 : 8;
       this.concurrency = o.phone ? 4 : 8;
       this.maxLoadingFaces = o.phone ? 2 : 5;
       this.onFirst = o.onFirst || null;
@@ -30571,7 +30633,14 @@ void main() {
         score: Infinity,
         loading: null,
         ph: false,
-        queued: false
+        queued: false,
+        hiTex: null,
+        hiLoading: null,
+        hiSkip: false,
+        hiScore: Infinity,
+        d: Infinity,
+        front: 0,
+        dot: 0
       }));
       this.byFace = new Map(this.faces.map((f) => [f.face.index, f]));
       this.queue = [];
@@ -30587,6 +30656,25 @@ void main() {
     get fullCount() {
       return this.faces.reduce((n, f) => n + (f.state === "full" ? 1 : 0), 0);
     }
+    /** Seiten mit fertiger 2048er-Textur. */
+    get hiCount() {
+      return this.faces.reduce((n, f) => n + (f.hiTex ? 1 : 0), 0);
+    }
+    /** Seiten mit fertiger oder ladender 2048er-Stufe (belegen Budget). */
+    get hiPending() {
+      return this.faces.reduce((n, f) => n + (f.hiTex || f.hiLoading ? 1 : 0), 0);
+    }
+    /** Schärfestufe erlaubt? Nicht bei Qualität low, nur mit Texturen >= 2048 und Atlas-Grundstufe >= 1024. */
+    get hiEnabled() {
+      const cap = this.renderer && this.renderer.capabilities;
+      const maxTex = cap && cap.maxTextureSize || 0;
+      return this.preset.level !== "low" && this.preset.atlas >= 1024 && maxTex >= HI_SIZE;
+    }
+    /** Höchstzahl 2048er-Atlanten: Limit je Gerät (8 / Handy 4), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
+    get hiCap() {
+      if (!this.hiEnabled) return 0;
+      return Math.max(0, Math.min(this.hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
+    }
     setPreset(p) {
       const sizeChanged = p.atlas !== this.preset.atlas;
       this.preset = p;
@@ -30600,9 +30688,11 @@ void main() {
       this.paused = false;
       this.pump();
     }
-    /** Aufruf ca. 4×/s mit der Spielerposition. */
-    update(px, pz, yaw) {
+    /** Aufruf ca. 4×/s mit der Spielerposition. `extra` optional { zoom, pitch } (Zoom > 1,3: Blickrichtung bevorzugen). */
+    update(px, pz, yaw, extra) {
       if (this.disposed) return;
+      const zoom = extra && extra.zoom || 1;
+      const pitch = extra && extra.pitch || 0;
       const vx = -Math.sin(yaw);
       const vz = -Math.cos(yaw);
       for (const f of this.faces) {
@@ -30613,9 +30703,13 @@ void main() {
         const front = (px - fc.x) * fc.nx + (pz - fc.z) * fc.nz;
         const dot = (dx * vx + dz * vz) / (d || 1);
         f.score = d + (front < -0.3 ? 9 : 0) + (dot < -0.2 ? 4 : 0);
+        f.d = d;
+        f.front = front;
+        f.dot = dot;
       }
+      const hiSet = this.updateHi(zoom, pitch);
       const radius = this.preset.loadRadius;
-      const max = this.preset.maxAtlases;
+      const max = Math.max(4, this.preset.maxAtlases - this.hiPending * HI_COST);
       const wanted = this.faces.filter((f) => f.score < radius).sort((a, b) => a.score - b.score).slice(0, max);
       const wantedSet = new Set(wanted);
       const loaded = this.faces.filter((f) => f.tex);
@@ -30639,16 +30733,54 @@ void main() {
           loadingNow++;
         }
       }
+      let hiLoadingNow = this.faces.reduce((n, f) => n + (f.hiLoading ? 1 : 0), 0);
+      for (const f of hiSet) {
+        if (hiLoadingNow >= 2) break;
+        if (f.state === "full" && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip) {
+          this.startHiLoad(f);
+          if (f.hiLoading) hiLoadingNow++;
+        }
+      }
       this.pump();
+    }
+    /**
+     * Wählt die Seiten für die Schärfestufe und stuft alle anderen herab.
+     * Kandidaten: Betrachter vor dem Regal, Grund-Atlas fertig, nah und im Blickfeld; bei Zoom > 1,3 weiter weg, aber nur
+     * in Blickrichtung (Seite nahe der Blickachse zuerst). Bereits hochgestufte Seiten haben Hysterese.
+     * @returns {Array} gewählte Seiten (nach Rang, höchstens hiCap)
+     */
+    updateHi(zoom, pitch) {
+      const cap = this.hiCap;
+      const zoomed = zoom > 1.3;
+      const cands = [];
+      if (cap > 0 && Math.abs(pitch) < 1.1) {
+        for (const f of this.faces) {
+          if (f.state !== "full" || !f.tex) continue;
+          const had = !!(f.hiTex || f.hiLoading);
+          const maxD = (zoomed ? 11 : 6.5) + (had ? 1.5 : 0);
+          const minDot = (zoomed ? 0.7 : 0.35) - (had ? 0.1 : 0);
+          if (f.front < -0.3 || f.d > maxD || f.dot < minDot) continue;
+          f.hiScore = zoomed ? f.d - f.dot * 6 : f.d + (f.dot < 0.7 ? 1.5 : 0);
+          if (had) f.hiScore -= 1;
+          cands.push(f);
+        }
+      }
+      cands.sort((a, b) => a.hiScore - b.hiScore);
+      const wanted = cands.slice(0, cap);
+      const set = new Set(wanted);
+      for (const f of this.faces) if ((f.hiTex || f.hiLoading) && !set.has(f)) this.dropHi(f);
+      return wanted;
     }
     /** Pro Frame höchstens ein Atlas zeichnen + hochladen. */
     tick() {
       if (this.disposed || !this.composeQueue.length) return;
-      this.composeQueue.sort((a, b) => a.f.score - b.f.score);
+      const rank = (j) => j.f.score + (j.kind === "hi" ? 100 : 0);
+      this.composeQueue.sort((a, b) => rank(a) - rank(b));
       const job = this.composeQueue.shift();
-      job.f.queued = false;
+      if (job.kind !== "hi") job.f.queued = false;
       try {
         if (job.kind === "ph") this.composePlaceholder(job.f);
+        else if (job.kind === "hi") this.composeHi(job.f);
         else this.composeFull(job.f);
       } catch {
       }
@@ -30661,9 +30793,16 @@ void main() {
       this.composeQueue.push({ f, kind });
     }
     startLoad(f) {
+      this.loadFace(f, false);
+    }
+    startHiLoad(f) {
+      this.loadFace(f, true);
+    }
+    loadFace(f, hi) {
       const ac = new AbortController();
-      const loading = { ac, bitmaps: /* @__PURE__ */ new Map(), pending: 0 };
-      f.loading = loading;
+      const loading = { ac, bitmaps: /* @__PURE__ */ new Map(), pending: 0, hi };
+      if (hi) f.hiLoading = loading;
+      else f.loading = loading;
       const jobs = [];
       f.face.slots.forEach((id, idx) => {
         if (id == null) return;
@@ -30671,13 +30810,18 @@ void main() {
         if (!it || !it.ImageTags || !it.ImageTags.Primary) return;
         let url;
         try {
-          url = this.deps.imageUrl(id, { type: "Primary", maxWidth: 200, tag: it.ImageTags.Primary, quality: 80 });
+          url = this.deps.imageUrl(id, { type: "Primary", maxWidth: hi ? HI_WIDTH : 200, tag: it.ImageTags.Primary, quality: hi ? 85 : 80 });
         } catch {
         }
         if (url) jobs.push({ f, idx, url, loading });
       });
       loading.pending = jobs.length;
       if (!jobs.length) {
+        if (hi) {
+          f.hiLoading = null;
+          f.hiSkip = true;
+          return;
+        }
         this.queueCompose(f, "full");
         return;
       }
@@ -30692,22 +30836,43 @@ void main() {
       f.loading = null;
       this.queue = this.queue.filter((j) => j.loading !== l);
     }
+    cancelHiLoad(f) {
+      const l = f.hiLoading;
+      if (!l) return;
+      l.ac.abort();
+      l.bitmaps.forEach(closeBitmap);
+      l.bitmaps.clear();
+      f.hiLoading = null;
+      this.queue = this.queue.filter((j) => j.loading !== l);
+      this.composeQueue = this.composeQueue.filter((j) => !(j.f === f && j.kind === "hi"));
+    }
+    /** Schärfestufe verlassen: erst zurück auf den Grund-Atlas tauschen, dann die 2048er-Textur freigeben. */
+    dropHi(f) {
+      this.cancelHiLoad(f);
+      const t = f.hiTex;
+      if (!t) return;
+      f.hiTex = null;
+      const mat = f.fv.material;
+      if (mat.map === t) mat.map = f.tex || this.blank;
+      t.onUpdate = null;
+      t.dispose();
+    }
     pump() {
       while (!this.paused && !this.disposed && this.active < this.concurrency && this.queue.length) {
         let best = 0;
         for (let i = 1; i < this.queue.length; i++) if (this.queue[i].f.score < this.queue[best].f.score) best = i;
         const job = this.queue.splice(best, 1)[0];
-        if (job.f.loading !== job.loading) continue;
+        if (job.f.loading !== job.loading && job.f.hiLoading !== job.loading) continue;
         this.active++;
         loadBitmap(job.url, job.loading.ac.signal).then((bm) => {
           this.active--;
           const l = job.loading;
-          if (this.disposed || job.f.loading !== l) {
+          if (this.disposed || job.f.loading !== l && job.f.hiLoading !== l) {
             closeBitmap(bm);
           } else {
             if (bm) l.bitmaps.set(job.idx, bm);
             l.pending--;
-            if (l.pending <= 0) this.queueCompose(job.f, "full");
+            if (l.pending <= 0) this.queueCompose(job.f, l.hi ? "hi" : "full");
           }
           this.pump();
         });
@@ -30716,18 +30881,37 @@ void main() {
     composePlaceholder(f) {
       if (f.state !== "flat") return;
       const size = Math.min(512, this.preset.atlas);
-      this.applyTexture(f, drawAtlas({ face: f.face, items: this.items, bitmaps: null, size }), "ph");
+      this.applyTexture(f, drawAtlas({ face: f.face, items: this.items, bitmaps: null, size, spec: this.spec }), "ph");
     }
     composeFull(f) {
       const l = f.loading;
       if (!l) return;
-      const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps: l.bitmaps, size: this.preset.atlas });
+      const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps: l.bitmaps, size: this.preset.atlas, spec: this.spec });
       l.bitmaps.forEach(closeBitmap);
       l.bitmaps.clear();
       f.loading = null;
       this.applyTexture(f, canvas, "full");
     }
-    applyTexture(f, canvas, state) {
+    composeHi(f) {
+      const l = f.hiLoading;
+      if (!l) return;
+      if (f.state !== "full" || !f.tex || !this.hiEnabled) {
+        this.cancelHiLoad(f);
+        return;
+      }
+      const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps: l.bitmaps, size: HI_SIZE, spec: this.spec });
+      l.bitmaps.forEach(closeBitmap);
+      l.bitmaps.clear();
+      f.hiLoading = null;
+      const tex = this.makeTexture(canvas);
+      f.fv.material.map = tex;
+      f.hiTex = tex;
+      try {
+        if (this.renderer) this.renderer.initTexture(tex);
+      } catch {
+      }
+    }
+    makeTexture(canvas) {
       const tex = new CanvasTexture(canvas);
       tex.colorSpace = SRGBColorSpace;
       tex.anisotropy = this.preset.anisotropy;
@@ -30738,8 +30922,13 @@ void main() {
         canvas.width = 1;
         canvas.height = 1;
       };
+      return tex;
+    }
+    applyTexture(f, canvas, state) {
+      const tex = this.makeTexture(canvas);
       const mat = f.fv.material;
       mat.map = tex;
+      if (f.hiTex && state === "full") this.dropHi(f);
       mat.color.setRGB(1.3, 1.3, 1.3);
       const old = f.tex;
       f.tex = tex;
@@ -30756,6 +30945,8 @@ void main() {
     }
     evict(f) {
       this.cancelLoad(f);
+      this.dropHi(f);
+      f.hiSkip = false;
       const mat = f.fv.material;
       mat.map = this.blank;
       mat.color.copy(f.fv.flatColor);
@@ -30776,6 +30967,10 @@ void main() {
         if (f.tex) {
           f.tex.onUpdate = null;
           f.tex = null;
+        }
+        if (f.hiTex) {
+          f.hiTex.onUpdate = null;
+          f.hiTex = null;
         }
         this.evict(f);
       }
@@ -30952,6 +31147,9 @@ void main() {
     ShiftLeft: "run",
     ShiftRight: "run"
   };
+  var ZOOM_IN = 2.6;
+  var LOCK_COOLDOWN = 1150;
+  var LOCK_RECENT = 3e3;
   function typing(t) {
     if (!t || !t.tagName) return false;
     const n = t.tagName;
@@ -30959,7 +31157,7 @@ void main() {
   }
   var DesktopControls = class {
     /**
-     * @param {object} ctx { canvas, player, getMode(), onLockLost(), onLockChange(locked), onTake(), onEscape() }
+     * @param {object} ctx { canvas, player, getMode(), onLockLost(), onLockChange(locked), onTake(), onEscape(), onZoom(z), getZoom() }
      */
     constructor(ctx) {
       this.ctx = ctx;
@@ -30969,20 +31167,34 @@ void main() {
       this.dragLook = false;
       this.drag = null;
       this.sens = 22e-4;
+      this.unlockAt = -Infinity;
+      this.lockTimer = 0;
+      this.inflight = false;
+      this.retried = false;
+      this.zoomKey = false;
+      this.zoomBtn = false;
+      this.zoomSent = 1;
       this.h = {
         key: (e) => this.onKey(e, true),
         keyUp: (e) => this.onKey(e, false),
         move: (e) => this.onMove(e),
         lock: () => this.onLockChange(),
-        lockErr: () => {
-          this.dragLook = true;
-          this.ctx.onLockChange(false);
-        },
+        lockErr: () => this.onLockFail(),
         down: (e) => this.onDown(e),
-        up: () => {
+        up: (e) => {
           this.drag = null;
+          if (e && e.button === 2) {
+            this.zoomBtn = false;
+            this.syncZoom();
+          }
         },
-        blur: () => this.down.clear()
+        blur: () => {
+          this.down.clear();
+          this.zoomKey = false;
+          this.zoomBtn = false;
+          this.syncZoom();
+        },
+        noCtx: (e) => e.preventDefault()
       };
     }
     get locked() {
@@ -31007,6 +31219,7 @@ void main() {
       document.addEventListener("pointerlockchange", this.h.lock);
       document.addEventListener("pointerlockerror", this.h.lockErr);
       c.addEventListener("mousedown", this.h.down);
+      c.addEventListener("contextmenu", this.h.noCtx);
       window.addEventListener("mouseup", this.h.up);
     }
     detach() {
@@ -31020,19 +31233,71 @@ void main() {
       document.removeEventListener("pointerlockchange", this.h.lock);
       document.removeEventListener("pointerlockerror", this.h.lockErr);
       c.removeEventListener("mousedown", this.h.down);
+      c.removeEventListener("contextmenu", this.h.noCtx);
       window.removeEventListener("mouseup", this.h.up);
       this.down.clear();
+      this.clearLockTimer();
+      this.inflight = false;
+      this.zoomKey = false;
+      this.zoomBtn = false;
+      this.syncZoom();
       this.releaseLock();
     }
+    clearLockTimer() {
+      if (this.lockTimer) {
+        clearTimeout(this.lockTimer);
+        this.lockTimer = 0;
+      }
+    }
+    /** Pointer-Lock anfordern; kurz nach einem Esc-Exit verzögert (sonst lehnt Chrome ab). */
     requestLock() {
       const c = this.ctx.canvas;
-      if (this.locked || !c.requestPointerLock) return;
+      this.clearLockTimer();
+      if (this.locked) return;
+      if (!c.requestPointerLock) {
+        this.dragLook = true;
+        this.ctx.onLockChange(false);
+        return;
+      }
+      this.retried = false;
+      this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 0);
+    }
+    scheduleLock(wait, min) {
+      this.clearLockTimer();
+      const w = Math.max(min, wait);
+      if (w <= 0) {
+        this.doLock();
+        return;
+      }
+      this.lockTimer = setTimeout(() => {
+        this.lockTimer = 0;
+        if (this.attached && !this.locked && this.ctx.getMode() === "play") this.doLock();
+      }, w);
+    }
+    doLock() {
+      const c = this.ctx.canvas;
+      this.inflight = true;
       try {
         const p = c.requestPointerLock();
-        if (p && typeof p.catch === "function") p.catch(() => {
-        });
+        if (p && typeof p.catch === "function") p.catch(() => this.onLockFail());
       } catch {
+        this.onLockFail();
       }
+    }
+    onLockFail() {
+      if (!this.inflight) return;
+      this.inflight = false;
+      const since = performance.now() - this.unlockAt;
+      if (since < LOCK_RECENT) {
+        if (!this.retried && this.attached) {
+          this.retried = true;
+          this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 150);
+        }
+        this.ctx.onLockChange(false);
+        return;
+      }
+      this.dragLook = true;
+      this.ctx.onLockChange(false);
     }
     /** Lock absichtlich freigeben (öffnet kein Pause-Menü). */
     releaseLock() {
@@ -31046,17 +31311,37 @@ void main() {
     }
     onLockChange() {
       const locked = this.locked;
+      this.inflight = false;
       if (!locked) {
+        this.zoomKey = false;
+        this.zoomBtn = false;
+        this.syncZoom();
         const wasIntentional = this.exiting;
         this.exiting = false;
+        if (!wasIntentional) this.unlockAt = performance.now();
         this.down.clear();
         if (!wasIntentional && this.ctx.getMode() === "play") this.ctx.onLockLost();
       } else {
         this.dragLook = false;
+        this.retried = false;
+        this.clearLockTimer();
       }
       this.ctx.onLockChange(locked);
     }
+    syncZoom() {
+      const z = this.zoomKey || this.zoomBtn ? ZOOM_IN : 1;
+      if (z === this.zoomSent) return;
+      this.zoomSent = z;
+      if (this.ctx.onZoom) this.ctx.onZoom(z);
+    }
     onDown(e) {
+      if (e.button === 2) {
+        if (this.ctx.getMode() === "play") {
+          this.zoomBtn = true;
+          this.syncZoom();
+        }
+        return;
+      }
       if (e.button !== 0) return;
       const mode = this.ctx.getMode();
       if (mode !== "play") return;
@@ -31072,14 +31357,15 @@ void main() {
     }
     onMove(e) {
       const p = this.ctx.player;
+      const zf = this.ctx.getZoom ? Math.max(1, this.ctx.getZoom()) : 1;
       if (this.locked) {
-        p.look(-e.movementX * this.sens, -e.movementY * this.sens);
+        p.look(-e.movementX * this.sens / zf, -e.movementY * this.sens / zf);
       } else if (this.dragLook && this.drag && e.buttons & 1) {
         const dx = e.clientX - this.drag.x;
         const dy = e.clientY - this.drag.y;
         this.drag.x = e.clientX;
         this.drag.y = e.clientY;
-        p.look(-dx * 4e-3, -dy * 4e-3);
+        p.look(-dx * 4e-3 / zf, -dy * 4e-3 / zf);
       }
     }
     onKey(e, isDown) {
@@ -31107,6 +31393,13 @@ void main() {
         if (!isDown) this.down.delete(k);
         return;
       }
+      if (e.code === "KeyQ") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.zoomKey = isDown && mode === "play";
+        this.syncZoom();
+        return;
+      }
       if (e.code === "KeyE") {
         e.preventDefault();
         e.stopPropagation();
@@ -31117,12 +31410,21 @@ void main() {
 
   // src/js/store3d/controls/touch.js
   var TOUCH_LOOK = 45e-4;
+  var TOUCH_HOLD_MS = 220;
+  var TOUCH_SLOP = 9;
+  var ZOOM_MIN = 1;
+  var ZOOM_MAX = 3;
   var TouchControls = class {
-    /** @param {object} ctx { canvas, player, getMode(), onTap(clientX, clientY) } */
+    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?() } */
     constructor(ctx) {
       this.ctx = ctx;
       this.pointers = /* @__PURE__ */ new Map();
       this.attached = false;
+      this.walkId = null;
+      this.timer = 0;
+      this.zoom = 1;
+      this.pinch = null;
+      this.ring = null;
       this.h = {
         down: (e) => this.onDown(e),
         move: (e) => this.onMove(e),
@@ -31130,6 +31432,11 @@ void main() {
         cancel: (e) => this.onUp(e, true),
         noCtx: (e) => e.preventDefault()
       };
+    }
+    /** Eingabe für Player.update(): läuft nur im Laufmodus. */
+    get input() {
+      if (this.walkId !== null && this.ctx.getMode() !== "play") this.stopWalk();
+      return { fwd: this.walkId !== null ? 1 : 0, strafe: 0, run: false };
     }
     attach() {
       if (this.attached) return;
@@ -31152,7 +31459,28 @@ void main() {
       c.removeEventListener("pointerup", this.h.up);
       c.removeEventListener("pointercancel", this.h.cancel);
       c.removeEventListener("contextmenu", this.h.noCtx);
+      this.reset();
+      if (this.ring) {
+        this.ring.remove();
+        this.ring = null;
+      }
+    }
+    reset() {
+      this.clearTimer();
+      this.walkId = null;
+      this.pinch = null;
       this.pointers.clear();
+      this.hideRing();
+    }
+    clearTimer() {
+      if (this.timer) {
+        clearTimeout(this.timer);
+        this.timer = 0;
+      }
+    }
+    stopWalk() {
+      this.walkId = null;
+      this.hideRing();
     }
     onDown(e) {
       if (this.ctx.getMode() !== "play") return;
@@ -31160,7 +31488,42 @@ void main() {
         this.ctx.canvas.setPointerCapture(e.pointerId);
       } catch {
       }
-      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, dead: false, walked: false });
+      this.clearTimer();
+      if (this.pointers.size === 1) {
+        const id = e.pointerId;
+        this.timer = setTimeout(() => {
+          this.timer = 0;
+          this.startWalk(id);
+        }, TOUCH_HOLD_MS);
+      } else if (this.pointers.size === 2) {
+        this.stopWalk();
+        for (const p of this.pointers.values()) p.dead = true;
+        const [a, b] = [...this.pointers.values()];
+        this.pinch = { d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), z0: this.currentZoom() };
+      } else {
+        for (const p of this.pointers.values()) p.dead = true;
+      }
+    }
+    currentZoom() {
+      const z = this.ctx.getZoom ? this.ctx.getZoom() : this.zoom;
+      return Number.isFinite(z) ? z : this.zoom;
+    }
+    setZoom(z) {
+      this.zoom = z;
+      if (this.ctx.onZoom) this.ctx.onZoom(z);
+    }
+    startWalk(id) {
+      const p = this.pointers.get(id);
+      if (!p || p.dead || p.moved || this.pointers.size !== 1 || this.ctx.getMode() !== "play") return;
+      this.walkId = id;
+      p.walked = true;
+      if (this.currentZoom() !== 1) this.setZoom(1);
+      this.showRing(p.x, p.y);
+      try {
+        if (navigator.vibrate) navigator.vibrate(8);
+      } catch {
+      }
     }
     onMove(e) {
       const p = this.pointers.get(e.pointerId);
@@ -31169,14 +31532,48 @@ void main() {
       const dy = e.clientY - p.y;
       p.x = e.clientX;
       p.y = e.clientY;
-      if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 9) p.moved = true;
-      if (p.moved && this.pointers.size === 1) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
+      if (this.pointers.size >= 2) {
+        if (this.pinch && this.pointers.size === 2) {
+          const [a, b] = [...this.pointers.values()];
+          const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.pinch.z0 * (Math.hypot(a.x - b.x, a.y - b.y) / this.pinch.d0)));
+          this.setZoom(z);
+        }
+        return;
+      }
+      if (p.dead) return;
+      if (!p.moved && !p.walked && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > TOUCH_SLOP) {
+        p.moved = true;
+        this.clearTimer();
+      }
+      if (p.moved || p.walked) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
+      if (p.walked) this.moveRing(e.clientX, e.clientY);
     }
     onUp(e, cancelled) {
       const p = this.pointers.get(e.pointerId);
       this.pointers.delete(e.pointerId);
-      if (!p || cancelled || p.moved || this.ctx.getMode() !== "play") return;
-      if (performance.now() - p.t < 600 && this.pointers.size === 0) this.ctx.onTap(e.clientX, e.clientY);
+      this.clearTimer();
+      if (this.walkId === e.pointerId) this.stopWalk();
+      if (this.pointers.size < 2) this.pinch = null;
+      if (!p || cancelled || p.dead || p.moved || p.walked || this.ctx.getMode() !== "play") return;
+      if (this.pointers.size === 0) this.ctx.onTap(e.clientX, e.clientY);
+    }
+    // --- Ring am Finger ---
+    showRing(x, y) {
+      if (!this.ring) {
+        const host = this.ctx.canvas.parentElement || document.body;
+        const r = document.createElement("div");
+        r.className = "lfx-store-walkring";
+        host.appendChild(r);
+        this.ring = r;
+      }
+      this.moveRing(x, y);
+      this.ring.classList.add("is-on");
+    }
+    moveRing(x, y) {
+      if (this.ring) this.ring.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -50%)`;
+    }
+    hideRing() {
+      if (this.ring) this.ring.classList.remove("is-on");
     }
   };
 
@@ -32757,6 +33154,7 @@ void main() {
       let hum = null;
       let rain = null;
       let ambientWanted = false;
+      let ducked = false;
       let ambientRunning = false;
       let suspended = false;
       let nextStep = 0;
@@ -32764,9 +33162,10 @@ void main() {
       let lastFilterCheck = 0;
       let filterTarget = 2600;
       const gestureEvents = ["pointerdown", "keydown", "touchend"];
+      const level = () => ctx.soundOn() ? ducked ? MASTER * 0.12 : MASTER : 0;
       function buildGraph() {
         master = ac.createGain();
-        master.gain.value = ctx.soundOn() ? MASTER : 0;
+        master.gain.value = level();
         master.connect(ac.destination);
         fx = ac.createGain();
         const verbLp = ac.createBiquadFilter();
@@ -32818,7 +33217,7 @@ void main() {
       }
       function onRunning() {
         if (!ac || ac.state !== "running") return;
-        if (master) master.gain.setTargetAtTime(ctx.soundOn() ? MASTER : 0, ac.currentTime, 0.05);
+        if (master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.05);
         if (ambientWanted && !ambientRunning) startAmbient();
       }
       const onGesture = () => {
@@ -33055,6 +33454,11 @@ void main() {
       if (ctx.opts.debug) window.__lfxM4 = { ...window.__lfxM4, sound: () => ({ state: ac && ac.state, ambient: ambientRunning, wanted: ambientWanted, hum: !!hum, rain: !!rain, step: stepIdx }) };
       ctx.provide("sound", {
         play,
+        /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
+        duck(on) {
+          ducked = !!on;
+          if (ac && master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.25);
+        },
         ambient(on) {
           ambientWanted = !!on;
           if (on && ctx.soundOn()) {
@@ -33086,7 +33490,7 @@ void main() {
             return;
           }
           unlock();
-          if (ac && master) master.gain.setTargetAtTime(MASTER, ac.currentTime, 0.05);
+          if (ac && master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.05);
           if (ambientWanted && ac && ac.state === "running") startAmbient();
         },
         onSuspend() {
@@ -34745,9 +35149,48 @@ void main() {
     }
   };
 
+  // src/js/store3d/modules/couch-util.js
+  var SCREEN_W = 0.62;
+  var SCREEN_H = 0.465;
+  function fitDistance(fov2, aspect2, { w = SCREEN_W, h: h2 = SCREEN_H, fillV = 0.9, fillH = 0.92 } = {}) {
+    const f = Number.isFinite(fov2) && fov2 > 5 && fov2 < 170 ? fov2 : 70;
+    const a = Number.isFinite(aspect2) && aspect2 > 0.1 ? aspect2 : 16 / 9;
+    const t = Math.tan(f * Math.PI / 360);
+    const dV = h2 / (fillV * 2 * t);
+    const dH = w / (fillH * 2 * t * a);
+    return Math.max(0.2, dV, dH);
+  }
+  function pickCandidates({ highlights = [], items = null, adult = /* @__PURE__ */ new Set(), max = 12, rand = Math.random } = {}) {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    const ok = (i) => i && i.Id && !seen.has(i.Id) && !adult.has(i.Id);
+    for (const i of highlights) {
+      if (out.length >= max) break;
+      if (ok(i)) {
+        seen.add(i.Id);
+        out.push(i);
+      }
+    }
+    if (items && typeof items.values === "function") {
+      const rest = [...items.values()].filter(ok);
+      while (out.length < max && rest.length) {
+        const [i] = rest.splice(Math.floor(rand() * rest.length), 1);
+        if (ok(i)) {
+          seen.add(i.Id);
+          out.push(i);
+        }
+      }
+    }
+    return out;
+  }
+
   // src/js/store3d/modules/tv.js
   var SW = 320;
   var SH = 240;
+  var BW = 960;
+  var BH = 720;
+  var EYE3 = 1.65;
+  var VOL_KEY = "lfx-store-tv-vol";
   var SLIDE_S = 8;
   var STATIC_S = 0.45;
   var TRAILER_S = 20;
@@ -34765,53 +35208,54 @@ void main() {
     x.putImageData(d, 0, 0);
     return c;
   }
-  function overlayCanvas() {
-    const c = makeCanvas(SW, SH);
+  function overlayCanvas(SW2, SH2) {
+    const c = makeCanvas(SW2, SH2);
     const x = c.getContext("2d");
     x.fillStyle = "rgba(0,0,0,0.22)";
-    for (let y = 0; y < SH; y += 3) x.fillRect(0, y, SW, 1);
-    const g = x.createRadialGradient(SW / 2, SH / 2, SH * 0.3, SW / 2, SH / 2, SW * 0.62);
+    const k = SW2 / 320;
+    for (let y = 0; y < SH2; y += 3 * k) x.fillRect(0, y, SW2, k);
+    const g = x.createRadialGradient(SW2 / 2, SH2 / 2, SH2 * 0.3, SW2 / 2, SH2 / 2, SW2 * 0.62);
     g.addColorStop(0, "rgba(0,0,0,0)");
     g.addColorStop(1, "rgba(0,0,0,0.62)");
     x.fillStyle = g;
-    x.fillRect(0, 0, SW, SH);
-    const s = x.createLinearGradient(0, 0, SW * 0.6, SH * 0.5);
+    x.fillRect(0, 0, SW2, SH2);
+    const s = x.createLinearGradient(0, 0, SW2 * 0.6, SH2 * 0.5);
     s.addColorStop(0, "rgba(255,255,255,0.12)");
     s.addColorStop(1, "rgba(255,255,255,0)");
     x.fillStyle = s;
-    x.fillRect(0, 0, SW * 0.6, SH * 0.5);
+    x.fillRect(0, 0, SW2 * 0.6, SH2 * 0.5);
     return c;
   }
-  function drawArt(x, img) {
+  function drawArt(x, img, SW2, SH2) {
     const iw = img.width || img.naturalWidth;
     const ih = img.height || img.naturalHeight;
     x.fillStyle = "#05060c";
-    x.fillRect(0, 0, SW, SH);
+    x.fillRect(0, 0, SW2, SH2);
     if (!iw || !ih) return;
     if (iw / ih >= 1.2) {
-      const k = Math.max(SW / iw, SH / ih);
-      x.drawImage(img, (SW - iw * k) / 2, (SH - ih * k) / 2, iw * k, ih * k);
+      const k = Math.max(SW2 / iw, SH2 / ih);
+      x.drawImage(img, (SW2 - iw * k) / 2, (SH2 - ih * k) / 2, iw * k, ih * k);
     } else {
       x.globalAlpha = 0.45;
-      x.drawImage(img, 0, 0, SW, SH);
+      x.drawImage(img, 0, 0, SW2, SH2);
       x.globalAlpha = 1;
       x.fillStyle = "rgba(0,0,0,0.5)";
-      x.fillRect(0, 0, SW, SH);
-      const w = iw * SH / ih;
-      x.drawImage(img, (SW - w) / 2, 0, w, SH);
+      x.fillRect(0, 0, SW2, SH2);
+      const w = iw * SH2 / ih;
+      x.drawImage(img, (SW2 - w) / 2, 0, w, SH2);
     }
   }
-  function fallbackArt(x, title) {
-    const g = x.createLinearGradient(0, 0, SW, SH);
+  function fallbackArt(x, title, SW2, SH2) {
+    const g = x.createLinearGradient(0, 0, SW2, SH2);
     g.addColorStop(0, "#2a2f8a");
     g.addColorStop(1, "#0b0f2c");
     x.fillStyle = g;
-    x.fillRect(0, 0, SW, SH);
+    x.fillRect(0, 0, SW2, SH2);
     x.fillStyle = "rgba(255,255,255,0.9)";
     x.textAlign = "center";
     x.textBaseline = "middle";
-    x.font = `bold 26px ${FONT}`;
-    x.fillText(String(title || "VIDEOTHEK LENZ").slice(0, 22), SW / 2, SH / 2);
+    x.font = `bold ${26 * (SW2 / 320)}px ${FONT}`;
+    x.fillText(String(title || "VIDEOTHEK LENZ").slice(0, 22), SW2 / 2, SH2 / 2);
   }
   var tv_default = {
     name: "tv",
@@ -34933,7 +35377,7 @@ void main() {
         const all = [...items.values()].filter((i) => i && i.Id && !seen.has(i.Id) && !adult.has(i.Id) && i.BackdropImageTags && i.BackdropImageTags.length);
         for (let i = 0; i < 6 && all.length; i++) extra.push(all.splice(Math.floor(Math.random() * all.length), 1)[0]);
       }
-      const slides = [...hl.slice(0, 8), ...extra].map((it) => ({ it, id: it.Id, title: it.Name, canvas: null, st: "idle" }));
+      const slides = [...hl.slice(0, 8), ...extra].map((it) => ({ it, id: it.Id, title: it.Name, canvas: null, st: "idle", big: null, bst: "idle" }));
       if (!slides.length) {
         sx.fillStyle = "#05060c";
         sx.fillRect(0, 0, SW, SH);
@@ -34941,14 +35385,22 @@ void main() {
       }
       const ac = new AbortController();
       const noise = [noiseCanvas(), noiseCanvas(), noiseCanvas()];
-      const over = overlayCanvas();
+      const overSmall = overlayCanvas(SW, SH);
+      let W = SW;
+      let H = SH;
+      let gx = sx;
+      let over = overSmall;
+      let bigCanvas = null;
+      let bigTex = null;
+      function slideUrl(s, maxWidth) {
+        const tag = s.it.BackdropImageTags && s.it.BackdropImageTags[0];
+        return tag ? ctx.deps.imageUrl(s.id, { type: "Backdrop", maxWidth, tag }) : ctx.deps.imageUrl(s.id, { type: "Primary", maxWidth: Math.round(maxWidth * 0.66), tag: s.it.ImageTags && s.it.ImageTags.Primary });
+      }
       function loadSlide(i) {
         const s = slides[i % slides.length];
         if (!s || s.st !== "idle") return;
         s.st = "loading";
-        const tag = s.it.BackdropImageTags && s.it.BackdropImageTags[0];
-        const url = tag ? ctx.deps.imageUrl(s.id, { type: "Backdrop", maxWidth: 480, tag }) : ctx.deps.imageUrl(s.id, { type: "Primary", maxWidth: 320, tag: s.it.ImageTags && s.it.ImageTags.Primary });
-        loadBitmap(url, ac.signal).then((bm) => {
+        loadBitmap(slideUrl(s, 480), ac.signal).then((bm) => {
           if (!bm || ac.signal.aborted) {
             s.st = "failed";
             closeBitmap(bm);
@@ -34956,7 +35408,7 @@ void main() {
           }
           const c = makeCanvas(SW, SH);
           try {
-            drawArt(c.getContext("2d"), bm);
+            drawArt(c.getContext("2d"), bm, SW, SH);
             s.canvas = c;
             s.st = "ready";
           } catch {
@@ -34965,73 +35417,230 @@ void main() {
           closeBitmap(bm);
         });
       }
+      let sitAc = null;
+      function freeBig(keep) {
+        for (let i = 0; i < slides.length; i++) {
+          const s = slides[i];
+          if (keep && keep.includes(i)) continue;
+          if (s.big) {
+            s.big.width = 0;
+            s.big.height = 0;
+          }
+          s.big = null;
+          if (s.bst !== "loading") s.bst = "idle";
+        }
+      }
+      function loadBig(i) {
+        if (!slides.length || !sitAc) return;
+        const s = slides[(i % slides.length + slides.length) % slides.length];
+        if (!s || s.bst !== "idle") return;
+        s.bst = "loading";
+        const sig = sitAc.signal;
+        loadBitmap(slideUrl(s, 1280), sig).then((bm) => {
+          if (!bm || sig.aborted) {
+            s.bst = "idle";
+            closeBitmap(bm);
+            return;
+          }
+          const c = makeCanvas(BW, BH);
+          try {
+            drawArt(c.getContext("2d"), bm, BW, BH);
+            s.big = c;
+            s.bst = "ready";
+          } catch {
+            s.bst = "failed";
+          }
+          closeBitmap(bm);
+        });
+      }
+      function updateBig() {
+        const a = idx % slides.length;
+        const b = (idx + 1) % slides.length;
+        freeBig([a, b]);
+        loadBig(a);
+        loadBig(b);
+      }
+      function useBig(on) {
+        const mat = screen.material;
+        if (on) {
+          bigCanvas = makeCanvas(BW, BH);
+          bigTex = new CanvasTexture(bigCanvas);
+          bigTex.colorSpace = SRGBColorSpace;
+          bigTex.minFilter = LinearFilter;
+          bigTex.generateMipmaps = false;
+          W = BW;
+          H = BH;
+          gx = bigCanvas.getContext("2d");
+          over = overlayCanvas(BW, BH);
+          mat.map = bigTex;
+        } else {
+          W = SW;
+          H = SH;
+          gx = sx;
+          over = overSmall;
+          mat.map = tex;
+          if (bigTex) bigTex.dispose();
+          if (bigCanvas) {
+            bigCanvas.width = 0;
+            bigCanvas.height = 0;
+          }
+          bigTex = null;
+          bigCanvas = null;
+        }
+        mat.needsUpdate = true;
+      }
       let trailer = null;
-      let trailerTried = false;
+      let vid = null;
+      let vtoken = 0;
+      const trailers = [];
+      const cands = pickCandidates({ highlights: hl, items, adult, max: 12 });
+      let cIdx = 0;
+      let discovering = null;
+      let trIdx = -1;
+      let autoTried = false;
       let level = ctx.quality();
       let suspended = false;
+      let disposed = false;
+      let seat = "idle";
+      let userMuted = false;
+      let vol = 0.7;
+      try {
+        const sv = parseFloat(sessionStorage.getItem(VOL_KEY));
+        if (Number.isFinite(sv)) vol = clamp2(sv, 0, 1);
+      } catch {
+      }
       const withTimeout = (p, ms) => Promise.race([p, new Promise((res) => setTimeout(() => res(null), ms))]);
+      function applyAudio(v) {
+        if (!v) return;
+        try {
+          v.muted = !(seat === "in" && !userMuted);
+          v.volume = vol;
+        } catch {
+        }
+      }
       function killVideo() {
-        if (!trailer) return;
-        const v = trailer.video;
+        vtoken++;
+        const v = vid;
+        vid = null;
         trailer = null;
+        if (!v) return;
         try {
           v.pause();
+          v.muted = true;
           v.removeAttribute("src");
           v.load();
         } catch {
         }
       }
-      async function findTrailer() {
-        if (trailerTried || !ctx.deps.getItem || !ctx.deps.loadTrailer) return;
-        trailerTried = true;
-        for (const it of hl.slice(0, 4)) {
-          if (ac.signal.aborted) return;
+      function discover(want) {
+        if (!ctx.deps.getItem || !ctx.deps.loadTrailer) return Promise.resolve();
+        if (discovering) return discovering;
+        discovering = (async () => {
           try {
-            const full = await withTimeout(ctx.deps.getItem(it.Id), 6e3);
-            if (!full || !(full.LocalTrailerCount > 0)) continue;
-            const url = await withTimeout(ctx.deps.loadTrailer(full), 6e3);
-            if (!url || ac.signal.aborted) continue;
-            const v = document.createElement("video");
+            while (trailers.length < want && cIdx < cands.length && !ac.signal.aborted) {
+              const it = cands[cIdx++];
+              try {
+                const full = await withTimeout(ctx.deps.getItem(it.Id), 6e3);
+                if (!full || !(full.LocalTrailerCount > 0)) continue;
+                const url = await withTimeout(ctx.deps.loadTrailer(full), 6e3);
+                if (url && !ac.signal.aborted) trailers.push({ id: it.Id, title: it.Name, item: full, url });
+              } catch {
+              }
+            }
+          } finally {
+            discovering = null;
+          }
+        })();
+        return discovering;
+      }
+      function playVideo(v) {
+        let pr;
+        try {
+          pr = v.play();
+        } catch {
+          pr = null;
+        }
+        if (!pr || !pr.catch) return;
+        pr.catch((e) => {
+          if (!trailer || trailer.video !== v || e && e.name === "AbortError") return;
+          if (!v.muted) {
             v.muted = true;
-            v.defaultMuted = true;
-            v.loop = true;
-            v.playsInline = true;
-            v.preload = "auto";
-            v.setAttribute("playsinline", "");
-            v.setAttribute("muted", "");
-            v.crossOrigin = "anonymous";
-            const ok = await new Promise((res) => {
-              const done = (val) => {
-                clearTimeout(tm);
-                v.removeEventListener("canplay", onOk);
-                v.removeEventListener("error", onErr);
-                res(val);
-              };
-              const onOk = () => done(true);
-              const onErr = () => done(false);
-              const tm = setTimeout(() => done(false), 9e3);
-              v.addEventListener("canplay", onOk);
-              v.addEventListener("error", onErr);
-              v.src = url;
-            });
-            if (ok && !ac.signal.aborted) {
-              v.addEventListener("error", () => {
-                if (trailer && trailer.video === v) {
-                  if (state === "trailer") begin("slide");
-                  killVideo();
-                }
-              });
-              trailer = { video: v, id: it.Id, title: it.Name };
-              return;
+            userMuted = true;
+            refreshUi();
+            playVideo(v);
+          } else begin("slide");
+        });
+      }
+      function playQuiet(v) {
+        try {
+          const pr = v.play();
+          if (pr && pr.catch) pr.catch(() => {
+          });
+        } catch {
+        }
+      }
+      async function openTrailer(i) {
+        const e = trailers[i];
+        if (!e || disposed) return false;
+        const tk = ++vtoken;
+        trailer = null;
+        if (!vid) {
+          const nv = document.createElement("video");
+          nv.muted = true;
+          nv.defaultMuted = true;
+          nv.loop = true;
+          nv.playsInline = true;
+          nv.preload = "auto";
+          nv.setAttribute("playsinline", "");
+          nv.setAttribute("muted", "");
+          nv.crossOrigin = "anonymous";
+          nv.addEventListener("error", () => {
+            if (trailer && trailer.video === nv) {
+              trailer = null;
+              if (state === "trailer") begin("slide");
             }
-            try {
-              v.removeAttribute("src");
-              v.load();
-            } catch {
-            }
+          });
+          vid = nv;
+        }
+        const v = vid;
+        applyAudio(v);
+        const ok = await new Promise((res) => {
+          const done = (val) => {
+            clearTimeout(tm);
+            v.removeEventListener("canplay", onOk);
+            v.removeEventListener("error", onErr);
+            res(val);
+          };
+          const onOk = () => done(true);
+          const onErr = () => done(false);
+          const tm = setTimeout(() => done(false), 9e3);
+          v.addEventListener("canplay", onOk);
+          v.addEventListener("error", onErr);
+          v.src = e.url;
+          if (seat === "in") playQuiet(v);
+        });
+        if (tk !== vtoken || disposed || ac.signal.aborted) return false;
+        if (!ok) {
+          const k = trailers.indexOf(e);
+          if (k >= 0) trailers.splice(k, 1);
+          try {
+            v.pause();
+            v.removeAttribute("src");
+            v.load();
           } catch {
           }
+          return false;
         }
+        trailer = { video: v, id: e.id, title: e.title, item: e.item };
+        trIdx = trailers.indexOf(e);
+        return true;
+      }
+      function autoStart() {
+        if (autoTried || reduced || level === "low" || suspended) return;
+        autoTried = true;
+        discover(1).then(() => {
+          if (!ac.signal.aborted && !trailer && trailers.length && !suspended) openTrailer(0);
+        });
       }
       let state = "slide";
       let after = "slide";
@@ -35055,11 +35664,24 @@ void main() {
         }
       }
       function current() {
-        if (state === "trailer" && trailer) return { id: trailer.id, title: trailer.title };
+        if (state === "trailer" && trailer) return { id: trailer.id, title: trailer.title, item: trailer.item };
         const s = slides[idx % slides.length];
-        return s ? { id: s.id, title: s.title } : null;
+        return s ? { id: s.id, title: s.title, item: s.it } : null;
+      }
+      function gotoSlide(n) {
+        idx = n;
+        loadSlide(idx);
+        loadSlide(idx + 1);
+        loadSlide(idx + 2);
+        if (seat === "in") updateBig();
       }
       function checkVisible() {
+        if (seat === "in") {
+          near = true;
+          visible = true;
+          canVideo = !suspended;
+          return;
+        }
         const e = cam.matrixWorld.elements;
         const fx = -e[8];
         const fz = -e[10];
@@ -35076,47 +35698,49 @@ void main() {
       }
       function frame() {
         if (!slides.length) return;
+        const k = W / SW;
         const s = slides[idx % slides.length];
-        sx.imageSmoothingEnabled = state !== "static";
+        const sitting = seat === "in";
+        gx.imageSmoothingEnabled = state !== "static";
         if (state === "static") {
-          sx.imageSmoothingEnabled = false;
-          sx.drawImage(noise[Math.floor(Math.random() * 3)], 0, 0, SW, SH);
+          gx.imageSmoothingEnabled = false;
+          gx.drawImage(noise[Math.floor(Math.random() * 3)], 0, 0, W, H);
         } else if (state === "trailer" && trailer && trailer.video.readyState >= 2) {
           const v = trailer.video;
           const vw = v.videoWidth || 16;
           const vh = v.videoHeight || 9;
-          const k = Math.max(SW / vw, SH / vh);
-          sx.fillStyle = "#000";
-          sx.fillRect(0, 0, SW, SH);
-          sx.drawImage(v, (SW - vw * k) / 2, (SH - vh * k) / 2, vw * k, vh * k);
-        } else if (s && s.canvas) {
-          sx.drawImage(s.canvas, 0, 0);
+          const kk = sitting ? Math.min(W / vw, H / vh) : Math.max(W / vw, H / vh);
+          gx.fillStyle = "#000";
+          gx.fillRect(0, 0, W, H);
+          gx.drawImage(v, (W - vw * kk) / 2, (H - vh * kk) / 2, vw * kk, vh * kk);
+        } else if (s && (sitting && s.big || s.canvas)) {
+          gx.drawImage(sitting && s.big || s.canvas, 0, 0, W, H);
         } else {
-          fallbackArt(sx, s && s.title);
+          fallbackArt(gx, s && s.title, W, H);
         }
         if (state !== "static") {
           const cur = current();
-          sx.fillStyle = "rgba(0,0,0,0.55)";
-          sx.fillRect(0, SH - 34, SW, 34);
-          sx.fillStyle = "#f4f6ff";
-          sx.textAlign = "left";
-          sx.textBaseline = "middle";
-          sx.font = `bold 15px ${FONT}`;
-          sx.fillText(String(cur && cur.title || "").slice(0, 30), 12, SH - 17);
-          sx.fillStyle = "#ffd23f";
-          sx.textAlign = "right";
-          sx.font = `12px ${FONT}`;
-          sx.fillText(state === "trailer" ? "VORSCHAU" : "KANAL " + chan, SW - 12, SH - 17);
+          gx.fillStyle = "rgba(0,0,0,0.55)";
+          gx.fillRect(0, H - 34 * k, W, 34 * k);
+          gx.fillStyle = "#f4f6ff";
+          gx.textAlign = "left";
+          gx.textBaseline = "middle";
+          gx.font = `bold ${15 * k}px ${FONT}`;
+          gx.fillText(String(cur && cur.title || "").slice(0, 30), 12 * k, H - 17 * k);
+          gx.fillStyle = "#ffd23f";
+          gx.textAlign = "right";
+          gx.font = `${12 * k}px ${FONT}`;
+          gx.fillText(state === "trailer" ? "VORSCHAU" : "KANAL " + chan, W - 12 * k, H - 17 * k);
         }
         if (osdT > 0) {
-          sx.fillStyle = "#6dff8a";
-          sx.textAlign = "left";
-          sx.textBaseline = "top";
-          sx.font = `bold 22px "Courier New",monospace`;
-          sx.fillText("CH " + String(chan).padStart(2, "0"), 14, 12);
+          gx.fillStyle = "#6dff8a";
+          gx.textAlign = "left";
+          gx.textBaseline = "top";
+          gx.font = `bold ${22 * k}px "Courier New",monospace`;
+          gx.fillText("CH " + String(chan).padStart(2, "0"), 14 * k, 12 * k);
         }
-        sx.drawImage(over, 0, 0);
-        tex.needsUpdate = true;
+        gx.drawImage(over, 0, 0, W, H);
+        (bigTex || tex).needsUpdate = true;
       }
       ctx.addInteractable({
         box: { min: { x: backX - 0.7, y: 0, z: zc - 0.62 }, max: { x: backX, y: 1.3, z: zc + 0.62 } },
@@ -35127,6 +35751,12 @@ void main() {
           if (c && c.id) ctx.items.take(c.id, { from: "counter" });
         }
       });
+      const removeSofa = ctx.addInteractable({
+        box: { min: { x: backEdge, y: 0.1, z: zc - 0.95 }, max: { x: sofaX + 0.45, y: 0.8, z: zc + 0.95 } },
+        label: "Sofa",
+        hint: "E / Klick: Hinsetzen",
+        onUse: () => sitDown()
+      });
       frame();
       function pauseVideo() {
         if (trailer) {
@@ -35136,8 +35766,228 @@ void main() {
           }
         }
       }
+      let snap = null;
+      let ui = null;
+      let instantLeave = false;
+      let afterLeave = null;
+      let settled = false;
+      let fitKey = "";
+      let flyToken = 0;
+      const screenX = xf - 0.014;
+      const SIT = { x: sofaX, y: 1, z: zc };
+      const LOOK = { x: screenX, y: 0.93, z: zc };
+      const keyOf = () => `${cam.fov.toFixed(2)}|${cam.aspect.toFixed(3)}`;
+      function flyClose(ms) {
+        const tk = ++flyToken;
+        fitKey = keyOf();
+        settled = false;
+        const d = fitDistance(cam.fov, cam.aspect);
+        return ctx.player.camera.flyTo({ x: screenX - d, y: 0.93, z: zc }, LOOK, ms).then((ok) => {
+          if (ok && tk === flyToken) settled = true;
+          return ok;
+        });
+      }
+      function eyeTarget(p) {
+        const cp = Math.cos(p.pitch || 0);
+        return { x: p.x - Math.sin(p.yaw) * cp, y: EYE3 + Math.sin(p.pitch || 0), z: p.z - Math.cos(p.yaw) * cp };
+      }
+      function refit() {
+        if (seat !== "in" || !settled || keyOf() === fitKey) return;
+        flyClose(250);
+      }
+      function buildUi() {
+        const root = h("div", "lfx-store-couch");
+        const bar = h("div", "lfx-store-couch-bar");
+        bar.setAttribute("role", "group");
+        bar.setAttribute("aria-label", "Fernseher");
+        const info = h("div", "lfx-store-couch-info");
+        const title = h("span", "lfx-store-couch-title", "");
+        const tag = h("span", "lfx-store-couch-tag", "");
+        info.append(title, tag);
+        const row = h("div", "lfx-store-couch-btns");
+        const bStand = button("Aufstehen", "lfx-store-couch-btn", () => ctx.overlay.close());
+        const bNext = button("N\xE4chster", "lfx-store-couch-btn", () => next());
+        const bSnd = button("Ton aus", "lfx-store-couch-btn", () => {
+          userMuted = !userMuted;
+          applyAudio(trailer && trailer.video);
+          if (trailer && trailer.video.paused) playVideo(trailer.video);
+          refreshUi();
+        });
+        const bDn = button("Leiser", "lfx-store-couch-btn", () => setVol(vol - 0.15));
+        const bUp = button("Lauter", "lfx-store-couch-btn", () => setVol(vol + 0.15));
+        const bWatch = button("Diesen Film ansehen", "lfx-store-couch-btn is-main", () => watch());
+        row.append(bStand, bNext, bSnd, bDn, bUp, bWatch);
+        bar.append(info, row);
+        root.appendChild(bar);
+        return { root, title, tag, bSnd, bDn, bUp, last: "" };
+      }
+      function refreshUi() {
+        if (!ui) return;
+        const cur = current();
+        const playing = state === "trailer" && !!trailer;
+        const sig = `${cur && cur.title || ""}|${playing}|${userMuted}`;
+        if (sig === ui.last) return;
+        ui.last = sig;
+        ui.title.textContent = cur && cur.title || "VIDEOTHEK LENZ";
+        ui.tag.textContent = playing ? "Vorschau" : "Diashow";
+        ui.bSnd.hidden = !playing;
+        ui.bDn.hidden = !playing;
+        ui.bUp.hidden = !playing;
+        ui.bSnd.textContent = userMuted ? "Ton an" : "Ton aus";
+      }
+      function setVol(v) {
+        vol = clamp2(v, 0, 1);
+        try {
+          sessionStorage.setItem(VOL_KEY, String(vol));
+        } catch {
+        }
+        if (vol > 0) userMuted = false;
+        applyAudio(trailer && trailer.video);
+        if (trailer && trailer.video.paused) playVideo(trailer.video);
+        refreshUi();
+      }
+      function sitDown() {
+        if (seat !== "idle" || disposed || suspended || ctx.overlay.isOpen() || !slides.length) return;
+        seat = "in";
+        snap = { ...ctx.player.getPose() };
+        instantLeave = false;
+        afterLeave = null;
+        settled = false;
+        ctx.player.freeze(true);
+        sitAc = new AbortController();
+        useBig(true);
+        userMuted = false;
+        ui = buildUi();
+        ctx.overlay.open(ui.root, { onClose: onClosed });
+        const snd = ctx.use("sound");
+        if (snd && snd.duck) snd.duck(true);
+        checkVisible();
+        loadSlide(idx);
+        loadSlide(idx + 1);
+        updateBig();
+        if (trailer) {
+          applyAudio(trailer.video);
+          begin("trailer");
+          playQuiet(trailer.video);
+        } else {
+          begin("slide");
+          discover(trailers.length ? 0 : 1).then(() => {
+            if (seat !== "in" || trailer || !trailers.length) return;
+            openTrailer(0).then((ok) => {
+              if (ok && seat === "in") {
+                begin("trailer");
+                if (trailer) playVideo(trailer.video);
+              }
+            });
+          });
+        }
+        frame();
+        refreshUi();
+        ctx.player.camera.flyTo(SIT, LOOK, 750).then((ok) => {
+          if (ok && seat === "in") flyClose(800);
+        });
+      }
+      function next() {
+        if (seat !== "in") return;
+        const nextSlide = () => {
+          gotoSlide(idx + 1);
+          after = "slide";
+          begin("static");
+        };
+        const target = trIdx + 1;
+        const openAt = (i) => {
+          begin("static");
+          after = "slide";
+          openTrailer(i).then((ok) => {
+            if (seat !== "in") return;
+            if (ok) {
+              begin("trailer");
+              if (trailer) playVideo(trailer.video);
+            } else nextSlide();
+          });
+        };
+        if (target < trailers.length) {
+          openAt(target);
+          return;
+        }
+        if (cIdx < cands.length && ctx.deps.getItem && ctx.deps.loadTrailer) {
+          begin("static");
+          after = "slide";
+          discover(trailers.length + 1).then(() => {
+            if (seat !== "in") return;
+            if (target < trailers.length) openAt(target);
+            else if (trailers.length > 1) openAt(0);
+            else nextSlide();
+          });
+          return;
+        }
+        if (trailers.length > 1) {
+          openAt(0);
+          return;
+        }
+        nextSlide();
+      }
+      function watch() {
+        const c = current();
+        if (!c || !c.id) return;
+        const item = c.item || { Id: c.id, Name: c.title };
+        instantLeave = true;
+        afterLeave = () => {
+          try {
+            ctx.deps.play(item, { resume: false });
+          } catch {
+            if (ctx.deps.toast) ctx.deps.toast("Wiedergabe nicht m\xF6glich");
+          }
+        };
+        ctx.overlay.close();
+      }
+      function restoreCam() {
+        if (snap) ctx.player.teleport(snap.x, snap.z, snap.yaw, snap.pitch);
+        ctx.player.camera.release();
+      }
+      function finishLeave() {
+        seat = "idle";
+        ctx.player.freeze(false);
+        const a = afterLeave;
+        afterLeave = null;
+        if (a && !disposed) a();
+      }
+      function onClosed() {
+        const u = ui;
+        ui = null;
+        if (!u || seat === "idle") return;
+        seat = "leaving";
+        flyToken++;
+        settled = false;
+        if (sitAc) sitAc.abort();
+        sitAc = null;
+        applyAudio(trailer && trailer.video);
+        freeBig(null);
+        useBig(false);
+        visT = 1;
+        frame();
+        const snd = ctx.use("sound");
+        if (snd && snd.duck) snd.duck(false);
+        if (disposed) {
+          ctx.player.camera.release();
+          ctx.player.freeze(false);
+          seat = "idle";
+          return;
+        }
+        if (instantLeave || !snap) {
+          restoreCam();
+          finishLeave();
+          return;
+        }
+        const s = snap;
+        ctx.player.camera.flyTo({ x: s.x, y: EYE3, z: s.z }, eyeTarget(s), 600).then(() => {
+          if (!disposed) restoreCam();
+          finishLeave();
+        });
+      }
       return {
         update(dt) {
+          if (seat === "in") refit();
           if (!slides.length || suspended) return;
           visT += dt;
           if (visT > 0.25) {
@@ -35149,27 +35999,24 @@ void main() {
               loadSlide(1);
               loadSlide(2);
               if (!reduced) setTimeout(() => {
-                if (!ac.signal.aborted && near && level !== "low") findTrailer();
+                if (!ac.signal.aborted && near && level !== "low") autoStart();
               }, 5e3);
             }
             if (state === "trailer" && !canVideo) begin("slide");
-            if (state === "trailer" && trailer && canVideo && trailer.video.paused) {
-              const pr = trailer.video.play();
-              if (pr && pr.catch) pr.catch(() => begin("slide"));
-            }
+            if (state === "trailer" && trailer && canVideo && trailer.video.paused) playVideo(trailer.video);
             if (!canVideo || state !== "trailer") pauseVideo();
             if (!trailer && state === "trailer") begin("slide");
+            refreshUi();
           }
           if (!visible) return;
           stateT += dt;
           osdT = Math.max(0, osdT - dt);
+          const sitting = seat === "in";
           if (state === "slide") {
             if (stateT >= SLIDE_S) {
               shown++;
-              idx++;
-              loadSlide(idx + 1);
-              loadSlide(idx + 2);
-              after = trailer && canVideo && shown % 4 === 0 ? "trailer" : "slide";
+              gotoSlide(idx + 1);
+              after = trailer && canVideo && (sitting || shown % 4 === 0) ? "trailer" : "slide";
               begin(reduced ? after : "static");
               if (reduced) {
                 stateT = 0;
@@ -35179,18 +36026,15 @@ void main() {
           } else if (state === "static") {
             if (stateT >= STATIC_S) {
               begin(after);
-              if (state === "trailer" && trailer) {
-                const pr = trailer.video.play();
-                if (pr && pr.catch) pr.catch(() => begin("slide"));
-              }
+              if (state === "trailer" && trailer) playVideo(trailer.video);
             }
-          } else if (state === "trailer" && stateT >= TRAILER_S) {
-            idx++;
+          } else if (state === "trailer" && !sitting && stateT >= TRAILER_S) {
+            gotoSlide(idx + 1);
             begin("static");
             after = "slide";
           }
           drawT += dt;
-          if (drawT >= (state === "trailer" ? 1 / 24 : 1 / 12)) {
+          if (drawT >= (state === "trailer" ? sitting ? 1 / 30 : 1 / 24 : 1 / 12)) {
             drawT = 0;
             frame();
           }
@@ -35198,22 +36042,42 @@ void main() {
         onQuality(lv) {
           level = lv;
           if (lv === "low") {
-            if (state === "trailer") begin("slide");
-            pauseVideo();
+            if (seat !== "in") {
+              if (state === "trailer") begin("slide");
+              pauseVideo();
+            }
           }
         },
         onSuspend() {
           suspended = true;
+          if (seat === "in" && ui) {
+            instantLeave = true;
+            ctx.overlay.close();
+          }
           killVideo();
           if (state === "trailer") begin("slide");
         },
         onResume() {
           suspended = false;
           near = false;
-          trailerTried = false;
+          autoTried = false;
         },
         dispose() {
+          disposed = true;
           ac.abort();
+          removeSofa();
+          if (seat !== "idle") {
+            ui = null;
+            if (sitAc) sitAc.abort();
+            sitAc = null;
+            freeBig(null);
+            useBig(false);
+            const snd = ctx.use("sound");
+            if (snd && snd.duck) snd.duck(false);
+            ctx.player.camera.release();
+            ctx.player.freeze(false);
+            seat = "idle";
+          }
           killVideo();
         }
       };
@@ -35655,18 +36519,21 @@ void main() {
     const hintSub = el("div", "lfx-store-hint-sub");
     hint.append(hintTitle, hintSub);
     const prompt = el("div", "lfx-store-prompt");
-    const pTitle = el("div", "lfx-store-prompt-title", touch ? "Tippen zum Gehen" : "Klicken zum Losgehen");
+    const pTitle = el("div", "lfx-store-prompt-title", touch ? "Gedr\xFCckt halten zum Laufen" : "Klicken zum Losgehen");
     const pSub = el(
       "div",
       "lfx-store-prompt-sub",
-      touch ? "Ziehen zum Umsehen \xB7 H\xFClle antippen zum Nehmen" : "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 E nehmen \xB7 Esc Pause"
+      touch ? "Wischen zum Umsehen \xB7 Tippen zum Nehmen" : "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 E nehmen \xB7 Esc Pause"
     );
     prompt.append(pTitle, pSub);
     const lost = el("div", "lfx-store-lost", "Grafik wird neu aufgebaut\u2026");
     lost.hidden = true;
     const toast = el("div", "lfx-store-note");
     toast.hidden = true;
-    root.append(cross, hint, prompt, lost, toast);
+    const fps = el("div", "lfx-store-fps");
+    fps.setAttribute("aria-hidden", "true");
+    fps.hidden = true;
+    root.append(cross, hint, prompt, lost, toast, fps);
     let menuBtn = null;
     if (touch) {
       menuBtn = el("button", "lfx-store-menubtn");
@@ -35701,6 +36568,15 @@ void main() {
       },
       showPrompt(on) {
         prompt.classList.toggle("is-on", !!on);
+      },
+      /** FPS-Kachel: Text setzen (null/leer blendet aus). */
+      setFps(text) {
+        if (!text) {
+          fps.hidden = true;
+          return;
+        }
+        if (fps.textContent !== text) fps.textContent = text;
+        fps.hidden = false;
       },
       showLost(on) {
         lost.hidden = !on;
@@ -35756,11 +36632,21 @@ void main() {
       a.onSound(!a.getSound());
       refresh();
     });
+    const f = mk("", () => {
+      a.onFps(!a.getFps());
+      refresh();
+    });
+    const bc = mk("", () => {
+      a.onBigCovers(!a.getBigCovers());
+      refresh();
+    });
     mk("Design wechseln", () => a.onTheme());
     mk("Men\xFC", (b) => a.onMenu(b));
     function refresh() {
       q.textContent = `Qualit\xE4t: ${QUALITY_LABEL[a.getQuality()] || "Auto"}`;
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
+      f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
+      bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
     }
     root.appendChild(panel);
     root.addEventListener("click", (e) => {
@@ -35994,8 +36880,9 @@ void main() {
       const side = new MeshLambertMaterial({ color: SIDE_COLOR[media] || 1916828, depthTest: false, transparent: true });
       const front = new MeshBasicMaterial({ map: this.frontTex, depthTest: false, transparent: true, toneMapped: false });
       const back = new MeshBasicMaterial({ map: this.backTex, depthTest: false, transparent: true, toneMapped: false });
-      const w = media === "box" ? 0.15 : COVER.w;
-      const h2 = media === "box" ? 0.205 : COVER.h;
+      const C = this.layout && this.layout.spec && this.layout.spec.cover || COVER;
+      const w = media === "box" ? C.boxW : C.w;
+      const h2 = media === "box" ? C.boxH : C.h;
       this.mesh = new Mesh(new BoxGeometry(w, h2, th), [side, side, side, side, front, back]);
       this.mesh.renderOrder = 999;
       this.group = new Group();
@@ -36249,7 +37136,9 @@ void main() {
         this.camera.getWorldQuaternion(this.from.quat).invert().multiply(TMP_Q);
       }
       this.group.position.lerpVectors(this.from.pos, tg.pos, k);
-      this.group.scale.setScalar(1 + (tg.scale - 1) * k);
+      const C = this.layout && this.layout.spec && this.layout.spec.cover;
+      const norm2 = C ? COVER.h / C.h : 1;
+      this.group.scale.setScalar(1 + (tg.scale * norm2 - 1) * k);
       this.group.quaternion.copy(this.from.quat).slerp(IDENT, k);
     }
     update(dt) {
@@ -36356,6 +37245,11 @@ void main() {
       this.touch = !!this.opts.touch;
       this.qualitySetting = ["auto", "low", "mid", "high"].includes(this.opts.quality) ? this.opts.quality : "auto";
       this.sound = !!this.opts.sound;
+      this.showFps = this.opts.showFps === true;
+      this.bigCovers = this.opts.bigCovers !== false;
+      this.zoomTarget = 1;
+      this.zoom = 1;
+      this.lastFps = 0;
       this.disposed = false;
       this.suspended = false;
       this.ready = false;
@@ -36400,16 +37294,23 @@ void main() {
         onClassic: () => this.deps.classicView(),
         onQuality: (q) => {
           this.setQuality(q);
-          this.deps.onPrefs({ quality: q, sound: this.sound });
+          this.savePrefs();
         },
         onSound: (on) => {
           this.setSound(on);
-          this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound });
+          this.savePrefs();
         },
+        onFps: (on) => {
+          this.setShowFps(on);
+          this.savePrefs();
+        },
+        onBigCovers: (on) => this.setBigCovers(on),
         onTheme: () => this.deps.openThemePicker(),
         onMenu: (anchor) => this.deps.openMenu(anchor),
         getQuality: () => this.qualitySetting,
-        getSound: () => this.sound
+        getSound: () => this.sound,
+        getFps: () => this.showFps,
+        getBigCovers: () => this.bigCovers
       });
       this.boot().catch((err) => this.fail(err));
     }
@@ -36434,7 +37335,8 @@ void main() {
       const { deps, engine } = this;
       const preset = engine.preset;
       this.progress(0.02, "Grundriss wird berechnet");
-      this.layout = buildLayout(deps.catalog && deps.catalog.departments || []);
+      const big = this.opts.bigCovers !== false;
+      this.layout = buildLayout(deps.catalog && deps.catalog.departments || [], { big });
       const L = this.layout;
       await yieldFrame();
       if (this.disposed) return;
@@ -36477,7 +37379,8 @@ void main() {
         preset,
         blankTex: this.blank,
         renderer: engine.renderer,
-        phone: this.phone
+        phone: this.phone,
+        spec: L.spec
       });
       this.holdview = new HoldView({
         host: this.host,
@@ -36499,13 +37402,15 @@ void main() {
         onLockLost: () => this.openPause(),
         onLockChange: () => this.syncUi(),
         onTake: () => this.takeAimed(),
+        onZoom: (z) => this.setZoom(z),
+        getZoom: () => this.zoom,
         onEscape: () => {
           if (this.mode === "hold") this.holdview.close(true);
           else if (this.mode === "overlay") this.mods.overlayClose();
           else this.resumeFromPause();
         }
       });
-      this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y) }) : null;
+      this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget }) : null;
       this.progress(0.86, "Module werden geladen");
       await this.mods.init((f) => this.progress(0.86 + f * 0.05, "Module werden geladen"));
       if (this.disposed) return;
@@ -36515,7 +37420,7 @@ void main() {
         this.player.teleport(free.x, free.z, Number.isFinite(r.yaw) ? r.yaw : 0, Number.isFinite(r.pitch) ? r.pitch : 0);
       }
       this.player.applyCamera(engine.camera);
-      this.covers.update(this.player.x, this.player.z, this.player.yaw);
+      this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
       await yieldFrame();
       if (this.disposed) return;
       this.progress(0.92, "Erste Cover werden gezeichnet");
@@ -36689,17 +37594,31 @@ void main() {
       this.pendingTake = null;
       const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
       const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
+      const far = "Halte gedr\xFCckt, um hinzulaufen";
+      const p = this.player;
       if (iaHit && (!hit || iaHit.t < hit.t)) {
-        this.approachInteractable(iaHit.ia);
+        const { min, max } = iaHit.ia.box;
+        const d = Math.hypot(p.x - Math.min(Math.max(p.x, min.x), max.x), p.z - Math.min(Math.max(p.z, min.z), max.z));
+        if (d > 3) {
+          this.hud.note(far);
+          return;
+        }
+        p.cancelPath();
+        this.lookAtPoint((min.x + max.x) / 2, (min.y + max.y) / 2, (min.z + max.z) / 2);
+        this.pendingUse = { ia: iaHit.ia, at: performance.now() + 250 };
         return;
       }
       if (hit) {
-        this.approachCover(hit);
-        return;
-      }
-      if (direction.y < -0.02) {
-        const t = -origin.y / direction.y;
-        if (t < 30) this.walkTo({ x: origin.x + direction.x * t, z: origin.z + direction.z * t });
+        const f = hit.fv.face;
+        const pos = slotWorld(hit.fv, hit.info, this._v, this._q).pos;
+        const dist = Math.hypot(pos.x - p.x, pos.z - p.z);
+        if (dist > 3 || (p.x - f.x) * f.nx + (p.z - f.z) * f.nz <= 0.2) {
+          this.hud.note(far);
+          return;
+        }
+        p.cancelPath();
+        this.lookAtPoint(pos.x, pos.y, pos.z);
+        this.pendingTake = { id: hit.info.itemId, at: performance.now() + 280 };
       }
     }
     walkTo(pt) {
@@ -36784,7 +37703,12 @@ void main() {
       const p = this.player;
       if (!p) return;
       this.mods.flushNav();
-      if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop ? this.desktop.input : null);
+      this.stepZoom(dt);
+      if (now - this.lastFps >= 500) {
+        this.lastFps = now;
+        this.updateFps();
+      }
+      if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
       else p.update(dt, null);
       this.mods.update(dt, now);
       p.applyCamera(this.engine.camera);
@@ -36817,7 +37741,7 @@ void main() {
       }
       if (now - this.lastCover > 250) {
         this.lastCover = now;
-        this.covers.update(p.x, p.z, p.yaw);
+        this.covers.update(p.x, p.z, p.yaw, { zoom: this.zoom, pitch: p.pitch });
       }
       if (p.moved !== this.lastMoved && now - this.lastNotify >= 500) this.notifyState(false, now);
       if (!this.ready && ++this.readyFrames >= 2) {
@@ -36871,6 +37795,55 @@ void main() {
       this.engine.setAuto(q === "auto");
       const level = q === "auto" ? this.engine.preset.level : q;
       this.applyPreset(this.engine.setLevel(level));
+    }
+    savePrefs() {
+      try {
+        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers });
+      } catch {
+      }
+    }
+    setShowFps(on) {
+      this.showFps = !!on;
+      this.lastFps = 0;
+      if (this.hud && !this.showFps) this.hud.setFps(null);
+      if (this.pause) this.pause.refresh();
+    }
+    updateFps() {
+      if (!this.hud) return;
+      if (!this.showFps) return;
+      const lv = { low: "Niedrig", mid: "Mittel", high: "Hoch" }[this.engine.preset.level] || "";
+      this.hud.setFps(`${Math.round(this.engine.fps)} FPS \xB7 ${lv}${this.qualitySetting === "auto" ? " (Auto)" : ""}`);
+    }
+    /** Hüllengröße umschalten: Prefs sichern, dann baut die Hülle die Szene neu auf. */
+    setBigCovers(on) {
+      on = !!on;
+      if (on === this.bigCovers) return;
+      this.bigCovers = on;
+      if (this.pause) this.pause.refresh();
+      this.savePrefs();
+      this.notifyState(true);
+      try {
+        if (this.deps.onBigCovers) this.deps.onBigCovers(on);
+      } catch {
+      }
+    }
+    /** Zoom-Ziel (1..3): Desktop rechte Maustaste/Q, Touch Pinch. */
+    setZoom(z) {
+      const v = Number(z);
+      this.zoomTarget = Number.isFinite(v) ? Math.min(3, Math.max(1, v)) : 1;
+    }
+    stepZoom(dt) {
+      if (this.mode !== "play" || this.mods && this.mods.locked) this.zoomTarget = 1;
+      const d = this.zoomTarget - this.zoom;
+      if (Math.abs(d) < 1e-3) {
+        if (this.zoom !== this.zoomTarget) {
+          this.zoom = this.zoomTarget;
+          this.engine.setZoom(this.zoom);
+        }
+        return;
+      }
+      this.zoom += d * (1 - Math.exp(-dt / 0.12 * 1));
+      this.engine.setZoom(this.zoom);
     }
     setSound(on) {
       this.sound = !!on;

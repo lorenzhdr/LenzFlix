@@ -29,6 +29,8 @@ Die Hülle lädt es per `core/themejs.js` (`ensureThemeJs('store')`, Basis wie `
 {
   quality: 'auto' | 'low' | 'mid' | 'high',
   sound: false,             // Standard aus
+  showFps: false,           // FPS-Kachel oben rechts (Pause-Menü „FPS-Anzeige“), Standard aus
+  bigCovers: true,          // große Hüllen (Standard); false = „Normal“. Wechsel im Pause-Menü baut die Szene neu auf
   skipIntro: false,         // true = Intro (Rollladen) in dieser Sitzung schon gesehen
   restore: null | State,    // letzte Position (sessionStorage) → genau dort starten
   openItemId: null | string,// Route #/home?lfx=title&id=… → mit dieser Hülle in der Hand starten
@@ -70,7 +72,8 @@ Die Hülle lädt es per `core/themejs.js` (`ensureThemeJs('store')`, Basis wie `
   onProgress(fraction 0..1, label),
   onReady(),
   onState(State),                              // bei Bewegung gedrosselt (≤ 2/s) und bei suspend
-  onPrefs({ quality, sound }),
+  onPrefs({ quality, sound, fps, bigCovers }),  // volles Objekt; Hülle speichert pro Benutzer (localStorage, bigCovers Standard true)
+  onBigCovers(on),                             // Pause-Menü „Hüllen: Groß/Normal“: Hülle speichert die Pref, disposed die Instanz und erstellt sie neu (Ladebildschirm, skipIntro, restore = aktuelle Position/gehaltene Hülle)
   onFatal(error),                              // z. B. kein WebGL → Hülle zeigt Fallback mit „Zu LENZFLIX wechseln“
 }
 ```
@@ -122,6 +125,15 @@ Regeln (gemessen auf dem Entwicklungs-Server: 674 Filme, 157 Serien; Freigaben `
 - Filme (Rest): Abteilung nach erstem Genre; Genres mit < 8 Filmen → `misc` („Querbeet“). Ohne Genre → `misc`.
 - Innerhalb einer Abteilung alphabetisch nach `SortName || Name`.
 
+## Hüllengrößen und Schärfestufe (`world/layout.js`, `covers/*`)
+
+- `shelfSpec(big)` (rein, konstant) beschreibt Regalseite und Hülle: `cols`, `rowsTall`/`rowsLow`, `capTall`/`capLow`, `stepTall`/`stepLow` (Fachabstand), `cover` `{ w, h, boxW, boxH, pitch, tilt, zBottom, thick }`, Atlas-Zelle `cellW × cellH` (Raster 1024²).
+  - Normal (`bigCovers: false`): 7 Spalten, Hülle 0,14 × 0,20 m, 5 bzw. 3 Fächer, Zelle 146 × 200.
+  - Groß (Standard, `opts.bigCovers !== false`): 6 Spalten, Hülle 0,17 × 0,24 m (Pitch 0,19), hohe Regale 4 Fächer à 0,42 m, niedrige 3 à 0,33 m (Kapazität 24 bzw. 18 je Seite), Zelle 170 × 240 (4 × 240 + Farbfeldstreifen ab y = 1004 passen in 1024).
+- `buildLayout(departments, { big })` setzt Segmentzahl, Slots und Kapazität nach der Spezifikation und hängt sie als `layout.spec` an. Alle Verbraucher (`build-shelves`, `covers/atlasmap|atlas|manager`, `ui/holdview`) lesen sie von dort bzw. bekommen sie als Parameter (`spec`) – kein modulglobaler Zustand. `COVER`/`COLS`/`CAP_*` bleiben nur als Normal-Werte exportiert.
+- Holdview: Mesh in Hüllengröße der Spezifikation (Regal → Hand ohne Sprung), Hand-Zielgröße wird durch `COVER.h / spec.cover.h` unabhängig von der Hüllengröße gehalten.
+- Schärfestufe (`CoverManager`): für die nächsten Regalseiten im Blickfeld (Betrachter vor dem Regal, ≤ 6,5 m, Blickwinkel; bei `zoom > 1,3` ≤ 11 m und nur nahe der Blickachse, `update(x, z, yaw, { zoom, pitch })`) zusätzlich ein Atlas 2048² mit Bildern `maxWidth: 400` (`HI_SIZE`, `HI_WIDTH`). Nicht bei Qualität `low`, nur mit `renderer.capabilities.maxTextureSize >= 2048`. Höchstens 8 Seiten (Handy 4), zusätzlich höchstens die Hälfte des Atlas-Budgets (`preset.maxAtlases`; 2048² = `HI_COST` = 4 Einheiten, wird vom Grund-Budget abgezogen). Hochstufen erst bei fertigem Grund-Atlas; Herabstufen tauscht zuerst auf den Grund-Atlas zurück, dann `dispose()` der großen Textur; laufende Loads werden abgebrochen. Ein Atlas-Upload je `tick()`, Hi-Jobs nach den Grund-Atlanten.
+
 ## Lebenszyklus (Ausnahme vom Unmount-Vertrag)
 
 - Hülle `unmount()` (z. B. Route wechselt in den Player) → `instance.suspend()`, Canvas raus aus dem DOM, Instanz bleibt
@@ -136,7 +148,14 @@ Regeln (gemessen auf dem Entwicklungs-Server: 674 Filme, 157 Serien; Freigaben `
   E/Linksklick nimmt die anvisierte Hülle (Fadenkreuz), Esc/Lock-Verlust → Pause-Menü. Tasten nur während
   der Szene aktiv ist, im Capture-Listener mit `stopPropagation()` (Jellyfins globale Tastenkürzel dürfen nichts sehen),
   nie in `input`/`textarea`. Kein Kopfwippen, weiche Beschleunigung.
-- Touch: Tippen auf den Boden → A* zum Punkt; Tippen auf eine Hülle → hinlaufen und nehmen; Ziehen → Umsehen.
+  Zoom: rechte Maustaste oder `Q` gehalten → `onZoom(2.6)`, loslassen → `onZoom(1)`; Maus-Empfindlichkeit wird durch den Zoom geteilt;
+  Rechtsklick öffnet kein Kontextmenü. `StoreApp.setZoom(z)` (1..3) glättet (~0.12 s) und setzt `engine.setZoom` (FOV = Basis-FOV / Zoom); in Terminal/Intro/Couch/Pause wird auf 1 zurückgesetzt.
+  Pointer-Lock: Chrome lehnt `requestPointerLock()` ~1 s nach Esc ab → `requestLock()` wartet bis `unlockAt + 1150 ms`, bei Fehler kurz nach Esc genau ein verzögerter Retry (kein Zieh-Fallback); bleibt er erfolglos, zeigt der HUD-Hinweis „Klicken …“, ein Canvas-Klick lockt.
+- Touch (`controls/touch.js`): Finger gedrückt halten (> 220 ms, < 9 px Bewegung) → vorwärts in Blickrichtung laufen
+  (`touchCtl.input = { fwd: 1 }`, Ring `.lfx-store-walkring` am Finger), Ziehen beim Halten lenkt. Bewegung > 9 px
+  vor Ablauf → nur Umsehen („Szene greifen“). Kurzes Tippen → `onTap`: Hülle/Objekt in Reichweite (≤ 3 m) nehmen/benutzen,
+  weiter weg nur Hinweis (kein Auto-Pfad mehr; `walkTo`/`approach*` bleiben für Module/Terminal). Zwei Finger = Pinch-Zoom
+  1..3 (`onZoom`), danach weder Laufen noch Umsehen/Tippen bis alle Finger oben sind; Zoom fällt beim nächsten Loslaufen auf 1.
   Canvas `touch-action:none`, `overscroll-behavior:none`. Hoch- und Querformat.
 
 ## Debug (`opts.debug`)
@@ -166,13 +185,22 @@ export default { name: 'beispiel', init(ctx) { …; return { update(dt, t) {}, o
 - `loadTexture(url,{maxWidth})` → `Promise<Texture|null>` (Queue ≤ 4, automatisch freigegeben), `track(obj)` → `obj` (dispose bei `dispose()`).
 - `provide(name, impl)` → `remove()`, `use(name)`. Provider `terminal { open(q) }` (sonst Toast bei `instance.openTerminal`), `intro { run() → Promise }` (Boot ruft ihn nach dem ersten Bild, wenn `!opts.skipIntro`; danach Event `'enter'`).
 
+### Couch / TV-Vollbild (`modules/tv.js`)
+
+Interactable „Sofa“ (E / Klick / Touch-Tipp) setzt den Spieler vor den Röhren-TV. Ablauf: `player.freeze(true)`, `overlay.open` (Knopfleiste unten, CSS `themes/store/couch.css`), `camera.flyTo` zuerst auf die Sofamitte (Augenhöhe 1,0 m), dann nah vor den Schirm. Abstand: `couch-util.js` `fitDistance(fov, aspect)` – die engere Achse bestimmt (Querformat: Höhe 90 %, Hochformat: Breite 92 %); bei Resize/FOV-Änderung während des Sitzens fährt die Kamera kurz nach. Die Near-Plane (0,05) bleibt unverändert (Abstand ≥ 0,25 m, Wölbung 0,03 m).
+- Schärfe: nur beim Sitzen läuft der Schirm mit eigener 960×720-Canvas-Textur (Backdrops mit `maxWidth 1280`, nur aktuelle + nächste Folie im Cache, Trailer als Letterbox mit 30 fps); beim Aufstehen wird sie samt Cache verworfen (zurück auf 320×240).
+- Trailer: `pickCandidates` (Highlights + Zufallstitel, höchstens 12, nie Ab-18) → lazy per `deps.getItem` (`LocalTrailerCount > 0`) + `deps.loadTrailer`; „Nächster“ springt zum nächsten gefundenen Trailer (sonst nächste Diashow-Folie). Genau ein `<video>`-Element; die URL (api_key) wird nie geloggt.
+- Ton: Hinsetzen/„Nächster“ sind die Nutzergeste (`muted=false` + `play()` im selben Call-Stack); schlägt Ton-Autoplay fehl, startet das Video stumm und „Ton an“ ist sichtbar. Lautstärke in `sessionStorage` (`lfx-store-tv-vol`). Provider `sound.duck(on)` dämpft Ambiente/Effekte beim Sitzen. Beim Aufstehen ist das Video wieder stumm.
+- „Diesen Film ansehen“: wie am Kassen-PC sofort aufstehen (ohne Rückfahrt) und `deps.play(item, { resume: false })` – dieselbe Rückkehr-Logik der Hülle.
+- Aufräumen: `onSuspend`, `onQuality('low')` (Sitzen bei `low` nicht möglich, Toast) und `dispose` stehen sofort auf (Overlay zu, `freeze(false)`, Kamera zurück, Video entladen).
+
 ### Provider und Module (Stand M2–M4)
 
 | Provider | Form | Modul | Zweck |
 |---|---|---|---|
 | `terminal` | `{ open(q) }` | `modules/terminal.js` | Kassen-PC (Overlay mit Suche, Hinführen, „Über den Tresen“); `instance.openTerminal(q)` delegiert hierher, sonst Toast. Ergebnisse werden clientseitig mit `modules/search-rank.js` gerankt (exakt > beginnt mit > Wortanfang > enthält > Rest; Rest entfällt ab 5 Titeltreffern). |
 | `intro` | `{ run() → Promise }` | `modules/intro.js` | Rollladen-Intro von draußen; öffnet die echten Türflügel `lfx-door-left`/`lfx-door-right`. Läuft nur ohne `opts.skipIntro`/`restore`/`openItemId`/`openTerminal`. |
-| `sound` | `{ play(name, opts), ambient(on) }` | `modules/sound.js` | Web-Audio (synthetisch); folgt `onSound(on)` und `ctx.soundOn()`. Startwert `opts.sound`; der Pause-Menü-Schalter ruft `setSound` → Module `onSound` + `deps.onPrefs`. |
+| `sound` | `{ play(name, opts), ambient(on), duck(on) }` | `modules/sound.js` | Web-Audio (synthetisch); folgt `onSound(on)` und `ctx.soundOn()`. Startwert `opts.sound`; der Pause-Menü-Schalter ruft `setSound` → Module `onSound` + `deps.onPrefs`. |
 | `weather` | `{ tod: 'day'\|'dusk'\|'night', raining, hour? }` | `modules/daytime.js` | Tageszeit/Regen für Kulisse und Stimmung; andere Module lesen sie (`ctx.use('weather')`). |
 
 Benannte Szenenobjekte (Module greifen per `scene.getObjectByName`): `lfx-door` (Gruppe), `lfx-door-left`, `lfx-door-right` (Pivot am Scharnier, Rotation um y; Kinder `lfx-door-frame`, `lfx-door-glass`), `lfx-backdrop` und `lfx-street` (alte Nachtkulisse, wird von `modules/outdoor.js` ausgeblendet). Der Kassen-PC steht in `layout.pc` (`build-props.js` und `terminal.js` lesen dieselbe Position).

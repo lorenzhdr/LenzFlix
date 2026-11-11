@@ -1,11 +1,12 @@
 // VIDEOTHEK LENZ · Grundriss (rein, ohne three, deterministisch).
 // Koordinaten: x nach Osten, z nach Süden (Eingang an der Südwand z = D), y nach oben. Alles in Metern.
 // Yaw-Konvention (wie three.js rotation.y): Vorwärts = (-sin yaw, -cos yaw); yaw 0 blickt nach Norden (-z).
-// Ein "Face" ist eine Regalseite (ein Segment, 7 Hüllen breit); seine Frontebene liegt bei (x, z), die
+// Ein "Face" ist eine Regalseite (ein Segment, spec.cols Hüllen breit); seine Frontebene liegt bei (x, z), die
 // Normale zeigt nach (nx, nz) = (sin yaw, cos yaw), "rechts" in Blickrichtung auf das Face ist (nz, -nx).
 import { makeNavGrid } from '../nav/path.js';
 
 export const SEG_W = 1.2;
+// Normal-Werte (kleine Hüllen); für die Platzierung gilt immer die Spezifikation `layout.spec` (siehe shelfSpec).
 export const COLS = 7;
 export const ROWS_TALL = 5;
 export const ROWS_LOW = 3;
@@ -28,17 +29,44 @@ const MIN_W = 12.5;
 
 const HALF_PI = Math.PI / 2;
 
-/** Verteilt `m` Hüllen auf `rows` Fachböden (oben beginnend) und zentriert jede Reihe: Slot-Array rows*COLS. */
-export function fillSlots(items, rows) {
-  const slots = new Array(rows * COLS).fill(null);
+const THICK = { vhs: 0.025, dvd: 0.014, box: 0.05 };
+const SPECS = {
+  // Normal: 7 Spalten, Hülle 0,14 × 0,20 m, 5 (hoch) bzw. 3 (niedrig) Fächer à 0,33 m, Atlas-Zelle 146 × 200
+  normal: {
+    big: false, cols: 7, rowsTall: 5, rowsLow: 3, capTall: 35, capLow: 21, base: 0.26, stepTall: 0.33, stepLow: 0.33,
+    cover: { w: 0.14, h: 0.2, boxW: 0.15, boxH: 0.205, pitch: 0.16, tilt: 0.1, zBottom: -0.03, thick: THICK },
+    cellW: 146, cellH: 200,
+  },
+  // Groß: 6 Spalten, Hülle 0,17 × 0,24 m (Seitenverhältnis wie die Atlas-Zelle 170 × 240), hohe Regale 4 Fächer à 0,42 m
+  // (4 × 240 px + Farbfeldstreifen passen in 1024²), niedrige 3 Fächer à 0,33 m.
+  big: {
+    big: true, cols: 6, rowsTall: 4, rowsLow: 3, capTall: 24, capLow: 18, base: 0.26, stepTall: 0.42, stepLow: 0.33,
+    cover: { w: 0.17, h: 0.24, boxW: 0.18, boxH: 0.249, pitch: 0.19, tilt: 0.1, zBottom: -0.03, thick: THICK },
+    cellW: 170, cellH: 240,
+  },
+};
+
+/** Regal-/Hüllen-Spezifikation (rein, konstant): Spalten, Fächer, Kapazität, Hüllenmaße, Atlas-Zellen. */
+export function shelfSpec(big) {
+  return big ? SPECS.big : SPECS.normal;
+}
+
+/** Y der Fachboden-Oberkante; `level` 0 = unterstes Fach. */
+export function levelY(spec, level, low) {
+  return spec.base + (low ? spec.stepLow : spec.stepTall) * level;
+}
+
+/** Verteilt `m` Hüllen auf `rows` Fachböden (oben beginnend) und zentriert jede Reihe: Slot-Array rows*cols. */
+export function fillSlots(items, rows, cols = COLS) {
+  const slots = new Array(rows * cols).fill(null);
   const m = items.length;
   const base = Math.floor(m / rows);
   const extra = m % rows;
   let cur = 0;
   for (let r = 0; r < rows; r++) {
     const q = base + (r < extra ? 1 : 0);
-    const start = Math.floor((COLS - q) / 2);
-    for (let k = 0; k < q; k++) slots[r * COLS + start + k] = items[cur++];
+    const start = Math.floor((cols - q) / 2);
+    for (let k = 0; k < q; k++) slots[r * cols + start + k] = items[cur++];
   }
   return slots;
 }
@@ -57,28 +85,31 @@ function chunk(items, parts) {
 }
 
 /** Slot-Mittelpunkt im Face-Koordinatensystem (x rechts, y oben, z aus dem Regal). */
-export function slotLocal(idx, rows) {
-  const row = Math.floor(idx / COLS);
-  const col = idx % COLS;
+export function slotLocal(idx, rows, spec = SPECS.normal, low = false) {
+  const row = Math.floor(idx / spec.cols);
+  const col = idx % spec.cols;
   const level = rows - 1 - row; // 0 = unterstes Fach
-  return { x: (col - (COLS - 1) / 2) * 0.16, y: levelBase(level) + 0.1, z: -0.05 };
+  return { x: (col - (spec.cols - 1) / 2) * spec.cover.pitch, y: levelY(spec, level, low) + spec.cover.h / 2, z: -0.05 };
 }
 
+/** Normal-Fachhöhe (Abstand 0,33 m); für andere Spezifikationen `levelY`. */
 export function levelBase(level) {
   return 0.26 + 0.33 * level;
 }
 
-function runSegCount(dept, double) {
+function runSegCount(dept, double, spec) {
   const n = dept.itemIds.length;
-  const cap = dept.kind === 'kids' ? CAP_LOW : CAP_TALL;
+  const cap = dept.kind === 'kids' ? spec.capLow : spec.capTall;
   return Math.max(1, double ? Math.ceil(n / (2 * cap)) : Math.ceil(n / cap));
 }
 
 /**
  * Baut den Grundriss. `departments`: [{ id, label, kind, color, itemIds }] in Laufreihenfolge.
+ * `opts.big`: große Hüllen (siehe shelfSpec); die Spezifikation hängt als `layout.spec` am Ergebnis.
  * @returns {object} { w, d, ceilH, runs, faces, walls, colliders, signs, zones, nav, spawn, door, panels, placements }
  */
-export function buildLayout(departments) {
+export function buildLayout(departments, opts = {}) {
+  const spec = shelfSpec(!!(opts && opts.big));
   const depts = (departments || []).filter((x) => x && x.itemIds && x.itemIds.length);
   const newD = depts.filter((x) => x.kind === 'new');
   const kidsD = depts.filter((x) => x.kind === 'kids');
@@ -87,10 +118,10 @@ export function buildLayout(departments) {
   const freeD = depts.filter((x) => !['new', 'kids', 'adult', 'series'].includes(x.kind));
 
   // --- Segmentbedarf ---
-  const sFree = freeD.reduce((a, x) => a + runSegCount(x, true), 0);
-  const sWall = seriesD.reduce((a, x) => a + runSegCount(x, false), 0);
-  const sKids = kidsD.reduce((a, x) => a + runSegCount(x, true), 0);
-  const sAdult = adultD.reduce((a, x) => a + runSegCount(x, true), 0);
+  const sFree = freeD.reduce((a, x) => a + runSegCount(x, true, spec), 0);
+  const sWall = seriesD.reduce((a, x) => a + runSegCount(x, false, spec), 0);
+  const sKids = kidsD.reduce((a, x) => a + runSegCount(x, true, spec), 0);
+  const sAdult = adultD.reduce((a, x) => a + runSegCount(x, true, spec), 0);
 
   // Hauptzone: Segmente pro Gang r, Gänge k
   const rMinWall = Math.ceil(sWall / 2);
@@ -126,14 +157,14 @@ export function buildLayout(departments) {
   function makeRun(o) {
     const run = {
       id: `r${runs.length}`, axis: o.axis, cx: o.cx, cz: o.cz, segs: o.segs.length, depth: o.double ? UNIT_DEPTH : WALL_DEPTH,
-      double: o.double, low: !!o.low, h: o.low ? H_LOW : H_TALL, yaw: o.yaw, rev: !!o.rev, style: o.style, segments: [],
+      double: o.double, low: !!o.low, rows: o.low ? spec.rowsLow : spec.rowsTall, h: o.low ? H_LOW : H_TALL, yaw: o.yaw, rev: !!o.rev, style: o.style, segments: [],
     };
     const S = run.segs;
     const dx = Math.cos(o.yaw);
     const dz = -Math.sin(o.yaw);
     const nx = Math.sin(o.yaw);
     const nz = Math.cos(o.yaw);
-    const rows = run.low ? ROWS_LOW : ROWS_TALL;
+    const rows = run.low ? spec.rowsLow : spec.rowsTall;
     o.segs.forEach((sg, j) => {
       const lx = (o.rev ? -1 : 1) * (j - (S - 1) / 2) * SEG_W;
       const sx = o.cx + dx * lx;
@@ -151,7 +182,7 @@ export function buildLayout(departments) {
         const face = {
           index: faces.length, id: `f${faces.length}`, run: run.id, seg: j, side, dept: sg.dept.id, kind: sg.dept.kind, color: sg.dept.color,
           x: fx, z: fz, yaw: ((yaw % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), nx: Math.round(fnx * 1e6) / 1e6, nz: Math.round(fnz * 1e6) / 1e6,
-          rows, low: run.low, slots: fillSlots(items, rows),
+          rows, low: run.low, slots: fillSlots(items, rows, spec.cols),
           stand: { x: fx + fnx * 0.85, z: fz + fnz * 0.85, yaw },
         };
         face.slots.forEach((id, idx) => {
@@ -171,7 +202,7 @@ export function buildLayout(departments) {
 
   // Segmentlisten je Abteilung: [{ dept, A:[items], B:[items] }]
   function deptSegs(dept, double) {
-    const S = runSegCount(dept, double);
+    const S = runSegCount(dept, double, spec);
     const out = [];
     if (double) {
       const parts = chunk(dept.itemIds, S * 2);
@@ -338,7 +369,7 @@ export function buildLayout(departments) {
   }
 
   return {
-    w: W, d: D, ceilH: CEIL_H, band, zMainN, zMainS, rowSegs: r, rows: k, aisle,
+    spec, w: W, d: D, ceilH: CEIL_H, band, zMainN, zMainS, rowSegs: r, rows: k, aisle,
     runs, faces, walls, colliders, signs, zones, nav, panels, placements,
     spawn: { x: W / 2, z: D - 1.4, yaw: 0 },
     pc: { x: W - 3.5, z: (counter.z0 + counter.z1) / 2 }, // Kassen-PC (build-props.js und modules/terminal.js)

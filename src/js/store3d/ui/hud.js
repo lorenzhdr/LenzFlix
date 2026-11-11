@@ -16,18 +16,21 @@ export function createHud(host, { touch, onMenu }) {
   const hintSub = el('div', 'lfx-store-hint-sub');
   hint.append(hintTitle, hintSub);
   const prompt = el('div', 'lfx-store-prompt');
-  const pTitle = el('div', 'lfx-store-prompt-title', touch ? 'Tippen zum Gehen' : 'Klicken zum Losgehen');
+  const pTitle = el('div', 'lfx-store-prompt-title', touch ? 'Gedrückt halten zum Laufen' : 'Klicken zum Losgehen');
   const pSub = el(
     'div',
     'lfx-store-prompt-sub',
-    touch ? 'Ziehen zum Umsehen · Hülle antippen zum Nehmen' : 'WASD laufen · Maus umsehen · Shift rennen · E nehmen · Esc Pause',
+    touch ? 'Wischen zum Umsehen · Tippen zum Nehmen' : 'WASD laufen · Maus umsehen · Shift rennen · E nehmen · Esc Pause',
   );
   prompt.append(pTitle, pSub);
   const lost = el('div', 'lfx-store-lost', 'Grafik wird neu aufgebaut…');
   lost.hidden = true;
   const toast = el('div', 'lfx-store-note');
   toast.hidden = true;
-  root.append(cross, hint, prompt, lost, toast);
+  const fps = el('div', 'lfx-store-fps');
+  fps.setAttribute('aria-hidden', 'true');
+  fps.hidden = true;
+  root.append(cross, hint, prompt, lost, toast, fps);
   let menuBtn = null;
   if (touch) {
     menuBtn = el('button', 'lfx-store-menubtn');
@@ -56,6 +59,12 @@ export function createHud(host, { touch, onMenu }) {
       cross.classList.toggle('is-aimed', !!aimed);
     },
     showPrompt(on) { prompt.classList.toggle('is-on', !!on); },
+    /** FPS-Kachel: Text setzen (null/leer blendet aus). */
+    setFps(text) {
+      if (!text) { fps.hidden = true; return; }
+      if (fps.textContent !== text) fps.textContent = text;
+      fps.hidden = false;
+    },
     showLost(on) { lost.hidden = !on; },
     showMenuBtn(on) { if (menuBtn) menuBtn.hidden = !on; },
     note(text, ms = 2200) {

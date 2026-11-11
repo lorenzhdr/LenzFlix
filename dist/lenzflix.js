@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.7.2";
+  var VERSION = "1.7.3";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -17051,7 +17051,7 @@
 
   // src/js/features/store/prefs.js
   var KEY3 = "lfx.store.";
-  var DEFAULTS2 = { quality: "auto", sound: false };
+  var DEFAULTS2 = { quality: "auto", sound: false, fps: false, bigCovers: true };
   var QUALITIES = ["auto", "low", "mid", "high"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
@@ -17076,10 +17076,19 @@
   function getSound() {
     return read("localStorage", storageKey2("sound")) === "1";
   }
+  function getFps() {
+    return read("localStorage", storageKey2("fps")) === "1";
+  }
+  function getBigCovers() {
+    const v = read("localStorage", storageKey2("bigCovers"));
+    return v === null ? DEFAULTS2.bigCovers : v !== "0";
+  }
   function savePrefs(p) {
     if (!p) return;
     if (QUALITIES.includes(p.quality)) write("localStorage", storageKey2("quality"), p.quality);
     if (typeof p.sound === "boolean") write("localStorage", storageKey2("sound"), p.sound ? "1" : "0");
+    if (typeof p.fps === "boolean") write("localStorage", storageKey2("fps"), p.fps ? "1" : "0");
+    if (typeof p.bigCovers === "boolean") write("localStorage", storageKey2("bigCovers"), p.bigCovers ? "1" : "0");
   }
   var getIntroSeen = () => read("sessionStorage", SESSION_INTRO) === "1";
   var setIntroSeen = () => write("sessionStorage", SESSION_INTRO, "1");
@@ -17276,7 +17285,7 @@
       return "";
     }
   }
-  function buildDeps(catalog, name, onFatal) {
+  function buildDeps(catalog, name, onFatal, onBigCovers) {
     const ret = (f) => (...a) => {
       try {
         return f(...a);
@@ -17345,6 +17354,7 @@
       }),
       onState: ret((s) => saveState(s)),
       onPrefs: ret((p) => savePrefs(p)),
+      onBigCovers: ret((on) => onBigCovers(on)),
       onFatal: ret(onFatal)
     };
   }
@@ -17352,6 +17362,8 @@
     return {
       quality: getQuality(),
       sound: getSound(),
+      showFps: getFps(),
+      bigCovers: getBigCovers(),
       skipIntro: getIntroSeen(),
       restore: getState(),
       openItemId: r && r.kind === "title" ? r.id : null,
@@ -17385,7 +17397,7 @@
       fatal = true;
       disposeInstance();
       showFallback("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText(err) });
-    });
+    }, (on) => rebuild(on));
     const opts = buildOpts(route);
     setIntroSeen();
     try {
@@ -17406,6 +17418,19 @@
     } catch (e) {
       if (myGen === gen5 && ui) showFallback("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText(e) });
     }
+  }
+  function rebuild(on) {
+    if (!ui || !inst || !shown) return;
+    savePrefs({ bigCovers: Boolean(on) });
+    const g = gen5;
+    setTimeout(() => {
+      if (g !== gen5 || !ui || !inst || !shown) return;
+      disposeInstance();
+      attachLoading();
+      ui.searchBtn.disabled = true;
+      gen5 += 1;
+      boot(gen5, storeHomeRoute(parseCurrent()));
+    }, 0);
   }
   function retryBoot() {
     if (!ui) return;

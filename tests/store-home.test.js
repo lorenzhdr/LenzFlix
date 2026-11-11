@@ -102,10 +102,10 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: false, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: false, showFps: false, bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
-      'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onFatal']) {
+      'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal']) {
       expect(captured.deps[k]).toBeDefined();
     }
     expect(captured.deps.user).toEqual({ name: 'Lenz' });
@@ -154,6 +154,50 @@ describe('mount', () => {
     expect(inst.openTerminal).toHaveBeenCalledWith('');
     document.querySelector('.lfx-store-btn--classic').click();
     expect(window.location.hash).toBe('#/home?lfx=classic');
+  });
+});
+
+describe('Hüllengröße', () => {
+  it('Prefs: fps Standard aus, bigCovers Standard an, onPrefs speichert beide', async () => {
+    await mountOk();
+    expect(captured.opts.showFps).toBe(false);
+    expect(captured.opts.bigCovers).toBe(true);
+    captured.deps.onPrefs({ quality: 'auto', sound: false, fps: true, bigCovers: false });
+    expect(localStorage.getItem('lfx.store.fps.u1')).toBe('1');
+    expect(localStorage.getItem('lfx.store.bigCovers.u1')).toBe('0');
+    feature.unmount();
+    destroyStore();
+    create.mockClear();
+    await mountOk();
+    expect(captured.opts).toMatchObject({ showFps: true, bigCovers: false });
+  });
+
+  it('onBigCovers: dispose, Ladebildschirm, neues create mit bigCovers:false, ohne Intro und mit Position', async () => {
+    await mountOk();
+    captured.deps.onState({ x: 3, z: 4, yaw: 1, pitch: 0, heldId: 'h' });
+    captured.deps.onReady();
+    const first = inst;
+    const second = { suspend: vi.fn(), resume: vi.fn(), dispose: vi.fn(), openItem: vi.fn(), openTerminal: vi.fn() };
+    create.mockImplementationOnce((host, deps, opts) => { captured = { host, deps, opts }; return second; });
+    captured.deps.onBigCovers(false);
+    expect(localStorage.getItem('lfx.store.bigCovers.u1')).toBe('0');
+    await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(captured.opts).toMatchObject({ bigCovers: false, skipIntro: true, restore: { x: 3, z: 4, heldId: 'h' } });
+    expect(document.querySelector('.lfx-store-loading')).not.toBeNull();
+    expect(document.querySelectorAll('#lfx-store-home').length).toBe(1);
+    expect(second.dispose).not.toHaveBeenCalled();
+  });
+
+  it('onBigCovers nach unmount baut nichts neu auf', async () => {
+    await mountOk();
+    const { deps } = captured;
+    feature.unmount();
+    deps.onBigCovers(false);
+    await tick();
+    await tick();
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(inst.dispose).not.toHaveBeenCalled();
   });
 });
 

@@ -1,0 +1,106 @@
+/* VIDEOTHEK LENZ · Couch/TV-Vollbild (store3d/modules/tv.js): schlanke Knopfleiste unten über der 3D-Szene.
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv). Kein backdrop-filter (Leistung). */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  box-sizing: border-box;
+  color: var(--lfx-store-text, #f4f6ff);
+  font: 600 15px/1.2 var(--lfx-font, system-ui, sans-serif);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch *,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch *::before,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch *::after {
+  box-sizing: border-box;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-bar {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  border-radius: 14px;
+  background: rgba(8, 12, 34, 0.84);
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-info {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-tag {
+  flex: none;
+  color: var(--lfx-store-yellow, #ffd23f);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn {
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn.is-main {
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  background: var(--lfx-store-yellow, #ffd23f);
+  color: #1a1400;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn.is-main:hover {
+    background: #ffe27a;
+  }
+}
+@media (max-width: 640px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-bar {
+    padding: 6px 8px;
+    border-radius: 12px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btns {
+    width: 100%;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn {
+    flex: 1 1 auto;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+}

@@ -1,14 +1,26 @@
-// VIDEOTHEK LENZ · Touch-Steuerung: Ziehen (ein Finger) = Umsehen, Tippen = Gehen/Hülle nehmen (Logik in store.js).
+// VIDEOTHEK LENZ · Touch-Steuerung: Gedrückt halten = vorwärts laufen (Ziehen lenkt), kurzes Wischen = Umsehen,
+// kurzes Tippen = Hülle nehmen/benutzen (Logik in store.js), Pinch = Zoom.
 
-/** Bogenmaß pro Pixel beim Wischen. */
+/** Bogenmaß pro Pixel beim Wischen/Lenken. */
 export const TOUCH_LOOK = 0.0045;
+/** Haltezeit (ms), ab der ein ruhender Finger zum Laufen wird. */
+export const TOUCH_HOLD_MS = 220;
+/** Bewegungsschwelle (px) für „Finger ruht“. */
+export const TOUCH_SLOP = 9;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(clientX, clientY) } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?() } */
   constructor(ctx) {
     this.ctx = ctx;
     this.pointers = new Map();
     this.attached = false;
+    this.walkId = null; // pointerId des Fingers, der gerade läuft
+    this.timer = 0;
+    this.zoom = 1;
+    this.pinch = null; // { d0, z0 }
+    this.ring = null;
     this.h = {
       down: (e) => this.onDown(e),
       move: (e) => this.onMove(e),
@@ -16,6 +28,12 @@ export class TouchControls {
       cancel: (e) => this.onUp(e, true),
       noCtx: (e) => e.preventDefault(),
     };
+  }
+
+  /** Eingabe für Player.update(): läuft nur im Laufmodus. */
+  get input() {
+    if (this.walkId !== null && this.ctx.getMode() !== 'play') this.stopWalk();
+    return { fwd: this.walkId !== null ? 1 : 0, strafe: 0, run: false };
   }
 
   attach() {
@@ -40,13 +58,64 @@ export class TouchControls {
     c.removeEventListener('pointerup', this.h.up);
     c.removeEventListener('pointercancel', this.h.cancel);
     c.removeEventListener('contextmenu', this.h.noCtx);
+    this.reset();
+    if (this.ring) { this.ring.remove(); this.ring = null; }
+  }
+
+  reset() {
+    this.clearTimer();
+    this.walkId = null;
+    this.pinch = null;
     this.pointers.clear();
+    this.hideRing();
+  }
+
+  clearTimer() {
+    if (this.timer) { clearTimeout(this.timer); this.timer = 0; }
+  }
+
+  stopWalk() {
+    this.walkId = null;
+    this.hideRing();
   }
 
   onDown(e) {
     if (this.ctx.getMode() !== 'play') return;
     try { this.ctx.canvas.setPointerCapture(e.pointerId); } catch { /* egal */ }
-    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false });
+    this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, dead: false, walked: false });
+    this.clearTimer();
+    if (this.pointers.size === 1) {
+      const id = e.pointerId;
+      this.timer = setTimeout(() => { this.timer = 0; this.startWalk(id); }, TOUCH_HOLD_MS);
+    } else if (this.pointers.size === 2) {
+      // Pinch: kein Laufen, kein Umsehen, kein Tippen
+      this.stopWalk();
+      for (const p of this.pointers.values()) p.dead = true;
+      const [a, b] = [...this.pointers.values()];
+      this.pinch = { d0: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), z0: this.currentZoom() };
+    } else {
+      for (const p of this.pointers.values()) p.dead = true;
+    }
+  }
+
+  currentZoom() {
+    const z = this.ctx.getZoom ? this.ctx.getZoom() : this.zoom;
+    return Number.isFinite(z) ? z : this.zoom;
+  }
+
+  setZoom(z) {
+    this.zoom = z;
+    if (this.ctx.onZoom) this.ctx.onZoom(z);
+  }
+
+  startWalk(id) {
+    const p = this.pointers.get(id);
+    if (!p || p.dead || p.moved || this.pointers.size !== 1 || this.ctx.getMode() !== 'play') return;
+    this.walkId = id;
+    p.walked = true;
+    if (this.currentZoom() !== 1) this.setZoom(1);
+    this.showRing(p.x, p.y);
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch { /* egal */ }
   }
 
   onMove(e) {
@@ -55,16 +124,53 @@ export class TouchControls {
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
-    if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 9) p.moved = true;
+    if (this.pointers.size >= 2) {
+      if (this.pinch && this.pointers.size === 2) {
+        const [a, b] = [...this.pointers.values()];
+        const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.pinch.z0 * (Math.hypot(a.x - b.x, a.y - b.y) / this.pinch.d0)));
+        this.setZoom(z);
+      }
+      return;
+    }
+    if (p.dead) return;
+    if (!p.moved && !p.walked && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > TOUCH_SLOP) {
+      p.moved = true;
+      this.clearTimer();
+    }
     // Touch = „Szene greifen“ (wie bei Karten/360°-Fotos): Finger nach rechts zieht das Bild mit → Blick dreht nach links;
     // Finger nach unten → Blick nach oben. (Maus/Pointer-Lock in desktop.js bleibt Kamera-Konvention.)
-    if (p.moved && this.pointers.size === 1) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
+    if (p.moved || p.walked) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
+    if (p.walked) this.moveRing(e.clientX, e.clientY);
   }
 
   onUp(e, cancelled) {
     const p = this.pointers.get(e.pointerId);
     this.pointers.delete(e.pointerId);
-    if (!p || cancelled || p.moved || this.ctx.getMode() !== 'play') return;
-    if (performance.now() - p.t < 600 && this.pointers.size === 0) this.ctx.onTap(e.clientX, e.clientY);
+    this.clearTimer();
+    if (this.walkId === e.pointerId) this.stopWalk();
+    if (this.pointers.size < 2) this.pinch = null;
+    if (!p || cancelled || p.dead || p.moved || p.walked || this.ctx.getMode() !== 'play') return;
+    if (this.pointers.size === 0) this.ctx.onTap(e.clientX, e.clientY);
+  }
+
+  // --- Ring am Finger ---
+  showRing(x, y) {
+    if (!this.ring) {
+      const host = this.ctx.canvas.parentElement || document.body;
+      const r = document.createElement('div');
+      r.className = 'lfx-store-walkring';
+      host.appendChild(r);
+      this.ring = r;
+    }
+    this.moveRing(x, y);
+    this.ring.classList.add('is-on');
+  }
+
+  moveRing(x, y) {
+    if (this.ring) this.ring.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -50%)`;
+  }
+
+  hideRing() {
+    if (this.ring) this.ring.classList.remove('is-on');
   }
 }
