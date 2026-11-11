@@ -370,7 +370,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.9.2";
+  var VERSION = "1.9.3";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";

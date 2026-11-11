@@ -274,7 +274,10 @@ ctx = {
 Tasten (normalisiert, von Fernbedienung und Tastatur): `power, 0…9, ch+, ch-, vol+, vol-, mute, epg, info, ok, up, down, left, right,
 back, menu, txt, red, green, yellow, blue, audio, subs, restart, fullscreen, guide`.
 Tastatur am Desktop (`ui/keys.js`): ↑/↓ = ch± (ohne Overlay) bzw. up/down, ←/→, Ziffern, `+`/`-`, `M`, `G` (epg), `I`, `T` (txt),
-`Z` (guide = Fernsehzeitung), `F` (fullscreen), `Esc` (back), `Enter` (ok), Leertaste wird verschluckt. Nicht in Eingabefeldern, nicht bei offenem Picker.
+`Z` (guide = Fernsehzeitung), `F` (fullscreen), `Esc` (esc), `Backspace` (back), `Enter` (ok), Leertaste wird verschluckt. Nicht in Eingabefeldern, nicht bei offenem Picker.
+`esc` (nur Tastatur, ab 1.9.3): bei offenem Overlay oder im Vollbild wie `back`, sonst öffnet es das Menü – auch im Standby.
+Standby (ab 1.9.3): `menu` und `guide` öffnen ihr Overlay ohne Einschalten; bei offenem Overlay gehen alle Tasten außer `power`/`fullscreen` an das Overlay;
+Klick auf den Bildschirm schaltet bei offenem Overlay nicht ein; `ctx.tune(no)` im Standby schaltet auf diesem Sender ein.
 
 ## CSS (`src/css/themes/live/`), Scope `html.lfx-js.lfx-theme-live:not(.layout-tv)`
 `index.css` importiert in dieser Reihenfolge: `tokens.css, shell.css, tv-crt80.css, tv-silver.css, tv-flat.css, tv-plain.css,

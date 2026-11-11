@@ -28,7 +28,8 @@ export function keyName(e, overlayOpen = false) {
     case '+': case '=': return 'vol+';
     case '-': case '_': return 'vol-';
     case 'Enter': return 'ok';
-    case 'Escape': case 'Backspace': return 'back';
+    case 'Escape': return 'esc';   // App: in Overlay/Vollbild wie back, sonst Menü öffnen
+    case 'Backspace': return 'back';
     case 'm': case 'M': return 'mute';
     case 'g': case 'G': return 'epg';
     case 'z': case 'Z': return 'guide';

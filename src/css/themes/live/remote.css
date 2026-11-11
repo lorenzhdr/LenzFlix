@@ -161,8 +161,8 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-remote__btn.is-yellow { background: #e2b319; }
   .lfx-live-remote__btn.is-blue { background: #2a6bd1; }
 
-  /* Standby: bis auf Power und Vollbild gedämpft */
-  .lfx-live-app:not(.is-on) .lfx-live-remote__btn:not([data-key="power"]):not([data-key="fullscreen"]) { opacity: 0.5; }
+  /* Standby: bis auf Power, Vollbild, Menü und Heft gedämpft; bei offenem Menü/Heft alles bedienbar */
+  .lfx-live-app:not(.is-on):not(.has-menu):not(.has-guide) .lfx-live-remote__btn:not([data-key="power"]):not([data-key="fullscreen"]):not([data-key="menu"]):not([data-key="guide"]) { opacity: 0.5; }
 
   /* ---------- 80er: schwarz, bunte Gummitasten, leicht schräg ---------- */
   .lfx-live--style-crt80 .lfx-live-remote {

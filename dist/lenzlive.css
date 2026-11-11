@@ -1200,7 +1200,7 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-remote__btn.is-blue {
   background: #2a6bd1;
 }
 
-html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app:not(.is-on) .lfx-live-remote__btn:not([data-key="power"]):not([data-key="fullscreen"]) {
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app:not(.is-on):not(.has-menu):not(.has-guide) .lfx-live-remote__btn:not([data-key="power"]):not([data-key="fullscreen"]):not([data-key="menu"]):not([data-key="guide"]) {
   opacity: .5;
 }
 

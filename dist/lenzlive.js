@@ -7032,6 +7032,8 @@
       case "Enter":
         return "ok";
       case "Escape":
+        return "esc";
+      // App: in Overlay/Vollbild wie back, sonst Menü öffnen
       case "Backspace":
         return "back";
       case "m":
@@ -8024,7 +8026,15 @@
       now: clock,
       channels: () => scheduler.channels(),
       currentChannel: () => channel,
-      tune: (no) => tune(no),
+      // Senderliste im Standby-Menü: direkt auf diesem Sender einschalten
+      tune: (no) => {
+        if (on) {
+          tune(no);
+          return;
+        }
+        if (no >= 1 && no <= NCH()) channel = Math.round(no);
+        powerOn();
+      },
       closeOverlay: () => closeOverlays(),
       formatClock: formatClock2,
       formatDay: time.formatDay,
@@ -8593,14 +8603,44 @@
       }
       savePrefs({ style });
     }
+    function routeOverlay(open, key) {
+      const consumed = safe2(() => made[open].onKey(key));
+      syncOverlayClasses();
+      if (consumed) return true;
+      if (key === "back") {
+        closeOverlays();
+        return true;
+      }
+      if (OVERLAY_CLASS[key]) {
+        if (key === open) closeOverlays();
+        else openOverlay(key);
+        return true;
+      }
+      return false;
+    }
     function press(key) {
       if (disposed || suspended) return;
       if (key === "fullscreen") {
         fs.toggle();
         return;
       }
+      if (key === "esc") key = openName() || fs.isOn() ? "back" : "menu";
       if (!on) {
-        if (key === "power" || key === "ok") powerOn();
+        if (key === "power") {
+          powerOn();
+          return;
+        }
+        const openOff = openName();
+        if (openOff) {
+          routeOverlay(openOff, key);
+          return;
+        }
+        if (key === "menu" || key === "guide") {
+          openOverlay(key);
+          return;
+        }
+        if (key === "ok") powerOn();
+        else if (key === "back" && fs.isOn()) fs.exit();
         return;
       }
       if ((needsTap || mutedByPolicy) && userGesture(key)) return;
@@ -8610,20 +8650,7 @@
       }
       if (pendingRestart && key !== "ok") cancelRestart();
       const open = openName();
-      if (open) {
-        const consumed = safe2(() => made[open].onKey(key));
-        syncOverlayClasses();
-        if (consumed) return;
-        if (key === "back") {
-          closeOverlays();
-          return;
-        }
-        if (OVERLAY_CLASS[key]) {
-          if (key === open) closeOverlays();
-          else openOverlay(key);
-          return;
-        }
-      }
+      if (open && routeOverlay(open, key)) return;
       if (key !== "back" && digitBuf && !/^[0-9]$/.test(key)) {
         unlater("digit");
         cancelDigits();
@@ -8700,8 +8727,9 @@
     app.addEventListener("pointerdown", onPointer);
     const onDbl = () => press("fullscreen");
     const onScreenClick = () => {
-      if (!on) press("power");
-      else if (!suspended && !disposed && (needsTap || mutedByPolicy)) userGesture(null);
+      if (!on) {
+        if (!openName()) press("power");
+      } else if (!suspended && !disposed && (needsTap || mutedByPolicy)) userGesture(null);
     };
     const onCtx = (e) => e.preventDefault();
     screen.addEventListener("dblclick", onDbl);

@@ -61,7 +61,17 @@ function makeEnv(over = {}) {
     onKey: vi.fn(() => false),
   };
   const ctxs = {};
+  const menuEl = document.createElement('div');
+  const menu = { open: false, el: menuEl };
+  menu.inst = {
+    el: menuEl,
+    open: vi.fn(() => { menu.open = true; }),
+    close: vi.fn(() => { menu.open = false; }),
+    isOpen: () => menu.open,
+    onKey: vi.fn(() => false),
+  };
   const overlays = { guide: vi.fn((ctx) => { ctxs.guide = ctx; return guide.inst; }) };
+  if (over.withMenu) overlays.menu = vi.fn((ctx) => { ctxs.menu = ctx; return menu.inst; });
   const music = {
     unlock: vi.fn(), setStyle: vi.fn(), setLevel: vi.fn(), setEnabled: vi.fn(), setIdle: vi.fn(), isPlaying: vi.fn(() => false), dispose: vi.fn(),
   };
@@ -82,8 +92,10 @@ function makeEnv(over = {}) {
   };
   const opts = { style: 'crt80', volume: 0.5, muted: false, lastChannel: 1, now: () => clock.t, ...(over.opts || {}) };
   const app = createApp(host, { scheduler, player, watch: null, pickFiller: async () => ({ kind: 'card' }), overlays, music, pdf, deps, opts, time });
-  return { host, clock, scheduler, player, ctxs, guide, music, pdf, deps, app, opts };
+  return { host, clock, scheduler, player, ctxs, guide, menu, music, pdf, deps, app, opts };
 }
+
+const esc = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
 
 const flush = (ms = 0) => vi.advanceTimersByTimeAsync(ms);
 const q = (env, sel) => env.host.querySelector(sel);
@@ -143,6 +155,65 @@ describe('Fernsehzeitung (guide)', () => {
     env.guide.inst.open.mockClear();
     env.ctxs.guide.openOverlay('guide', { autoPdf: true });
     expect(env.guide.inst.open).toHaveBeenCalledWith({ autoPdf: true });
+  });
+
+  it('Standby: Heft per Taste, Z und Prop-Klick, ohne einzuschalten; Tasten gehen ans Heft; Zurück schließt', async () => {
+    const env = makeEnv();
+    q(env, '.lfx-live-mag-prop').click();
+    expect(env.guide.inst.open).toHaveBeenCalledTimes(1);
+    expect(env.app.isOn()).toBe(false);
+    expect(root(env).classList.contains('has-guide')).toBe(true);
+    env.app.press('right');
+    env.app.press('ok');
+    expect(env.guide.inst.onKey).toHaveBeenCalledWith('right');
+    expect(env.guide.inst.onKey).toHaveBeenCalledWith('ok');
+    expect(env.app.isOn()).toBe(false);
+    env.app.press('back');
+    expect(env.guide.inst.close).toHaveBeenCalledTimes(1);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', bubbles: true, cancelable: true }));
+    expect(env.guide.inst.open).toHaveBeenCalledTimes(2);
+    env.app.press('guide');
+    expect(env.guide.inst.close).toHaveBeenCalledTimes(2);
+    expect(env.player.play).not.toHaveBeenCalled();
+    env.app.press('ok');   // ohne offenes Overlay schaltet OK weiterhin ein
+    expect(env.app.isOn()).toBe(true);
+  });
+
+  it('Esc öffnet das Menü an und aus, schließt es wieder; im Vollbild nur Zurück (Vollbild verlassen)', async () => {
+    const env = makeEnv({ withMenu: true });
+    esc();
+    expect(env.menu.inst.open).toHaveBeenCalledTimes(1);
+    expect(env.app.isOn()).toBe(false);
+    esc();
+    expect(env.menu.inst.close).toHaveBeenCalledTimes(1);
+    env.app.press('menu');
+    expect(env.menu.inst.open).toHaveBeenCalledTimes(2);
+    q(env, '.lfx-live-screen').click();          // Klick im Standby-Menü schaltet nicht ein
+    expect(env.app.isOn()).toBe(false);
+    env.app.press('back');
+    env.app.press('power');
+    await flush();
+    esc();
+    expect(env.menu.inst.open).toHaveBeenCalledTimes(3);
+    esc();
+    expect(env.menu.inst.close).toHaveBeenCalledTimes(3);
+    env.app.press('fullscreen');
+    expect(root(env).classList.contains('is-fullscreen')).toBe(true);
+    esc();
+    expect(env.menu.inst.open).toHaveBeenCalledTimes(3);
+    expect(root(env).classList.contains('is-fullscreen')).toBe(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    expect(env.menu.inst.open).toHaveBeenCalledTimes(3);
+  });
+
+  it('Standby-Menü: Senderwahl schaltet direkt auf diesem Sender ein', async () => {
+    const env = makeEnv({ withMenu: true });
+    env.app.press('menu');
+    env.ctxs.menu.tune(7);
+    await flush();
+    expect(env.app.isOn()).toBe(true);
+    expect(env.app.channel()).toBe(7);
+    expect(env.player.unlock).toHaveBeenCalled();
   });
 
   it('Prop-Klick öffnet das Heft (Ein-Zustand)', async () => {
