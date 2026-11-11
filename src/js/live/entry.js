@@ -5,6 +5,9 @@ import { createPlayer, createWatchTracker, pickFiller } from './player/index.js'
 import { createEpg } from './ui/epg.js';
 import { createTeletext } from './ui/teletext.js';
 import { createMenu } from './ui/menu.js';
+import { createMagazine } from './magazine/view.js';
+import { createPdfExport } from './magazine/pdf-export.js';
+import { createMusic } from './player/music.js';
 import { createApp } from './ui/app.js';
 
 const ENGINE_MARK = '__LFX_LIVE_ENGINE__';
@@ -37,15 +40,19 @@ export function create(host, deps, opts = {}) {
         progress(0.1 + (0.85 * (i + 1)) / DAYS, 'Sendersuchlauf …');
       }
       const watch = createWatchTracker({ setPlayed: deps.setPlayed, now });
+      const time = { formatClock, formatDay, broadcastDayOf, dayBounds };
+      const doc = curHost.ownerDocument || document;
       app = createApp(curHost, {
         scheduler,
         player: ({ video, canvas, getInfo }) => createPlayer({ video, deps, now, fake: !!o.fakePlayer, canvas, getInfo }),
         watch,
         pickFiller,
-        overlays: { epg: createEpg, ttx: createTeletext, menu: createMenu },
+        overlays: { epg: createEpg, ttx: createTeletext, menu: createMenu, guide: createMagazine },
+        music: createMusic({ doc }),
+        pdf: createPdfExport({ imageUrl: deps.imageUrl, doc, now, time }),
         deps,
         opts: o,
-        time: { formatClock, formatDay, broadcastDayOf, dayBounds },
+        time,
       });
       if (wantSuspend) app.suspend();
       progress(1, 'Sendersuchlauf …');

@@ -71,6 +71,15 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-remote__btn.is-small { font-size: 13px; }
   .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-remote__btn.is-color { height: var(--lfx-live-rb-h); }
   .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-remote__btn { min-height: 44px; }
+  /* Heft-Taste am Handy immer sichtbar (kein Heft-Objekt im Raum) */
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-remote__btn[data-key="guide"] { display: block; }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-remote__group--extras { grid-template-columns: repeat(3, 1fr); }
+
+  /* Seitenspalte löst sich auf: die Fernbedienung ist wieder direktes Kind des Raums, das Heft-Objekt entfällt */
+  .lfx-live-app.is-phone .lfx-live-side { display: contents; }
+  .lfx-live-app.is-phone .lfx-live-side::after,
+  .lfx-live-app.is-phone .lfx-live-side__slot,
+  .lfx-live-app.is-phone .lfx-live-room__prop { display: none !important; }
 
   /* Schmales Fenster am Desktop (ohne Handy-Erkennung): Fernbedienung unter dem Bild */
   @media (max-width: 760px) {
@@ -86,5 +95,9 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
       padding: 16px 16px 24px;
     }
     .lfx-live-app:not(.is-phone) .lfx-live-remote { max-height: none; transform: none; width: 100%; max-width: 360px; }
+    .lfx-live-app:not(.is-phone) .lfx-live-side { display: contents; }
+    .lfx-live-app:not(.is-phone) .lfx-live-side::after,
+    .lfx-live-app:not(.is-phone) .lfx-live-side__slot,
+    .lfx-live-app:not(.is-phone) .lfx-live-room__prop { display: none !important; }
   }
 }

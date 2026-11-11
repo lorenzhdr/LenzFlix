@@ -88,7 +88,7 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   }
 
   .lfx-live-epg__top {
-    flex: 0 0 29%;
+    flex: 0 0 25%;
     display: flex;
     flex-direction: column;
     gap: 0.6em;
@@ -96,10 +96,24 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     padding-right: 32%; /* Platz für das Bild-im-Bild */
     min-width: 0;
   }
+  .lfx-live-epg__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    min-width: 0;
+  }
   .lfx-live-epg__days {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35em;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    gap: 0.25em;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 1.6em), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 1.6em), transparent);
+    font-size: 0.72em;
   }
   .lfx-live-epg__day {
     appearance: none;
@@ -107,9 +121,11 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     background: var(--lfx-live-ov-bg-2);
     color: var(--lfx-live-ov-dim);
     font: inherit;
-    padding: 0.25em 0.6em;
+    padding: 0.2em 0.5em;
     border-radius: 0.3em;
     cursor: pointer;
+    white-space: nowrap;
+    flex: 0 1 auto;
   }
   .lfx-live-epg__day:hover {
     color: var(--lfx-live-ov-fg);
@@ -119,6 +135,27 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     color: var(--lfx-live-ov-accent-fg);
     border-color: var(--lfx-live-ov-accent);
     font-weight: 700;
+  }
+  .lfx-live-epg__nav {
+    display: flex;
+    flex: none;
+    gap: 0.25em;
+    font-size: 0.8em;
+  }
+  .lfx-live-epg__navbtn {
+    appearance: none;
+    border: 1px solid var(--lfx-live-ov-line);
+    background: var(--lfx-live-ov-bg-2);
+    color: var(--lfx-live-ov-fg);
+    font: inherit;
+    padding: 0.2em 0.6em;
+    border-radius: 0.3em;
+    cursor: pointer;
+  }
+  .lfx-live-epg__navbtn:hover {
+    background: var(--lfx-live-ov-accent);
+    color: var(--lfx-live-ov-accent-fg);
+    border-color: var(--lfx-live-ov-accent);
   }
   .lfx-live-epg__info {
     margin-top: auto;
@@ -143,6 +180,17 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     scroll-padding-left: var(--lfx-live-epg-chan);
     scrollbar-width: thin;
     border-top: 2px solid var(--lfx-live-ov-line);
+    touch-action: pan-x pan-y;
+    overscroll-behavior: contain;
+    cursor: grab;
+  }
+  .lfx-live-epg__scroller.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+  .lfx-live-epg__scroller.is-dragging .lfx-live-epg__ev,
+  .lfx-live-epg__scroller.is-dragging .lfx-live-epg__chan {
+    cursor: grabbing;
   }
   .lfx-live-epg__inner {
     position: relative;
@@ -214,6 +262,20 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     flex: 1 1 auto;
     background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.03) 6px 12px);
   }
+  /* Tagesabschnitt je Zeile: trägt nur die Einträge seines Tages (lazy) */
+  .lfx-live-epg__daysec {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+  }
+  .lfx-live-epg__tick.is-daymark {
+    border-left: 2px solid var(--lfx-live-ov-accent);
+  }
+  .lfx-live-epg__daymark {
+    color: var(--lfx-live-ov-accent);
+    font-weight: 700;
+    white-space: nowrap;
+  }
   .lfx-live-epg__tick {
     position: absolute;
     top: 0;
@@ -234,11 +296,24 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     border: 1px solid var(--lfx-live-ov-line);
     border-radius: 0.25em;
     overflow: hidden;
+    overflow: clip; /* kein Scroll-Container, damit die Textbox am Scroller klebt */
     display: flex;
     flex-direction: column;
     justify-content: center;
     cursor: pointer;
     outline: none;
+  }
+  /* Mitlaufender Text: klebt rechts neben der Senderspalte, solange der Block links hineinragt; stoppt am Blockende */
+  .lfx-live-epg__ev-text {
+    position: sticky;
+    left: calc(var(--lfx-live-epg-chan) + 0.3em);
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    max-width: min(100%, var(--lfx-live-epg-vis, 100%));
+    min-width: 0;
+    overflow: hidden;
   }
   .lfx-live-epg__ev:hover {
     border-color: var(--lfx-live-ov-fg);
@@ -302,7 +377,7 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     width: 2px;
     margin-left: -1px;
     background: var(--lfx-live-ov-now);
-    z-index: 3;
+    z-index: 1;
     pointer-events: none;
   }
   .lfx-live-epg__nowline[hidden] {

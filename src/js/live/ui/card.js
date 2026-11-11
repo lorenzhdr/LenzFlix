@@ -24,7 +24,7 @@ function mmss(ms) {
  * @param {HTMLElement} container  .lfx-live-screen
  * @param {object} o { formatClock(t), doc?, win? }
  */
-export function createCard(container, { formatClock = (t) => new Date(t).toTimeString().slice(0, 5), doc = document, win = window } = {}) {
+export function createCard(container, { formatClock = (t) => new Date(t).toTimeString().slice(0, 5), doc = document, win = window, onKind } = {}) {
   const el = h(doc, 'div', 'lfx-live-card');
   el.hidden = true;
   const banner = h(doc, 'div', 'lfx-live-banner');
@@ -36,6 +36,11 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
   let clockEl = null;
   let countEl = null;
   let bannerT = null;
+
+  // Kartenwechsel melden: onKind(kind|null, reason|null) – die App steuert damit die Pausenmusik.
+  function notify() {
+    if (typeof onKind === 'function') { try { onKind(kind, kind === 'error' ? el.dataset.reason || null : null); } catch { /* egal */ } }
+  }
 
   function reset(k) {
     el.textContent = '';
@@ -62,6 +67,7 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       countEl = h(doc, 'div', 'lfx-live-card__count');
       el.append(countEl);
       this.tick(now == null ? Date.now() : now);
+      notify();
     },
 
     /** { channel, text, sub, now } – eigenes Testbild: Farbbalken, Kreis, Logo, Uhrzeit. */
@@ -78,6 +84,7 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       if (sub) el.append(h(doc, 'div', 'lfx-live-card__sub', sub));
       el.append(clockEl);
       this.tick(now == null ? Date.now() : now);
+      notify();
     },
 
     /** Störbild je Grund (video|browser|audio|network). */
@@ -89,6 +96,7 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       if (channel) el.append(createLogo(channel, { doc, number: true }));
       el.append(h(doc, 'div', 'lfx-live-card__title', t.title));
       if (t.sub) el.append(h(doc, 'div', 'lfx-live-card__sub', t.sub));
+      notify();
     },
 
     showBanner(text, ms = 10000) {
@@ -100,12 +108,14 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
     hideBanner() { win.clearTimeout(bannerT); banner.hidden = true; },
 
     hide() {
+      const was = kind;
       el.hidden = true;
       el.textContent = '';
       delete el.dataset.kind;
       kind = null;
       clockEl = null;
       countEl = null;
+      if (was) notify();
     },
 
     /** Jede Sekunde: Countdown bzw. Uhr im Testbild. */

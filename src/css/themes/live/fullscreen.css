@@ -8,6 +8,22 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     background: #000;
   }
 
+  /* Seitenspalte (Heft-Objekt + Fernbedienung) löst sich auf; Heft-Taste nur in der Handy-Leiste */
+  .lfx-live-app.is-fullscreen .lfx-live-side { display: contents; }
+  .lfx-live-app.is-fullscreen .lfx-live-side::after,
+  .lfx-live-app.is-fullscreen .lfx-live-side__slot,
+  .lfx-live-app.is-fullscreen .lfx-live-room__prop { display: none !important; }
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn[data-key="guide"] { display: block; }
+  .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote__btn[data-key="guide"] { display: none; }
+  /* Handy-Querformat (Leiste ohne Vollbild): Gruppen lösen sich auf, „Heft“ liegt direkt hinter EPG im ersten Bildschirm */
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__group { display: contents; }
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__btn { order: 10; }
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__btn[data-key="power"] { order: 1; }
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__btn[data-key="mute"] { order: 2; }
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__btn[data-key="fullscreen"] { order: 3; }
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__btn[data-key="epg"] { order: 4; }
+  .lfx-live-app.is-phone.is-landscape:not(.is-fullscreen) .lfx-live-remote__btn[data-key="guide"] { order: 5; }
+
   .lfx-live-app.is-fullscreen .lfx-live-room,
   .lfx-live-app.is-phone.is-landscape .lfx-live-room {
     display: block;
@@ -174,6 +190,7 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="restart"] { order: 65; }
   .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="audio"] { order: 66; }
   .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="subs"] { order: 67; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="guide"] { order: 68; }
   .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote {
     row-gap: 0;
     column-gap: calc(5 * var(--lfx-live-u));

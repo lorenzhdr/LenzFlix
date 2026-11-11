@@ -4,6 +4,82 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-app {
     --lfx-live-u: clamp(1px, min(0.078125vw, 0.125vh), 1.6px);
   }
+  /* Seitenspalte neben dem Fernseher: oben der freie Raum (Slot) für das Heft-Objekt, darunter die Fernbedienung.
+     Handy, Vollbild und schmale Fenster lösen sie per display:contents auf (mobile.css, fullscreen.css). */
+  .lfx-live-side {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 0;
+  }
+  .lfx-live-side__slot {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    container-type: size; /* Heft-Objekt skaliert mit der Slot-Höhe (cqh), ragt nie über den Slot hinaus */
+  }
+  /* Heft-Objekt über der Fernbedienung (Slot): 88 % der Breite, damit die gedrehte Bounding-Box weder Viewport noch TV berührt */
+  .lfx-live-side__slot > .lfx-live-mag-prop { flex: 0 0 auto; width: min(76%, 100cqh); }
+  /* Sicherheitsabstand oben, damit die perspektivische Ausdehnung des Hefts nie am Rand abgeschnitten wird */
+  .lfx-live-side__slot { box-sizing: border-box; padding-top: 14px; }
+  /* Platz über der Fernbedienung: die Seitenspalte darf ein Stück in den oberen Rand des Raums reichen (app.js setzt data-prop) */
+  .lfx-live-app[data-prop^="above"] .lfx-live-side { margin-top: -1vh; }
+  .lfx-live-app[data-prop^="above"].lfx-live--style-crt80 .lfx-live-side,
+  .lfx-live-app[data-prop^="above"].lfx-live--style-silver .lfx-live-side { margin-top: -4vh; }
+  .lfx-live-app[data-prop^="above"].lfx-live--style-plain .lfx-live-side { margin-top: -10px; }
+  /* Schlicht: Fernbedienung mittig, der Slot belegt die obere Hälfte; reicht das nicht (above-low), sitzt die Fernbedienung unten */
+  .lfx-live--style-plain .lfx-live-side::after { content: ""; flex: 1 1 0; min-height: 0; }
+  .lfx-live-app[data-prop="above-low"].lfx-live--style-plain .lfx-live-side::after { display: none; }
+
+  /* Röhre und Silber, erste Wahl: das Heft steht auf dem Lowboard links neben dem Fernseher (Slot .lfx-live-room__prop).
+     Breite = freier Raum links (Raum − TV − Abstand − Fernbedienung) / 2 − Lowboard-Rand (3 %) − 40 px, max. 240 px;
+     quadratisch, damit der Platzwächter (Höhe ≥ 110 px) genau „Breite ≥ 110 px“ prüft. Sonst folgt der Slot über der Fernbedienung. */
+  .lfx-live-room__prop { display: none; }
+  .lfx-live-app[data-prop="lowboard"].lfx-live--style-crt80 .lfx-live-room__prop,
+  .lfx-live-app[data-prop="lowboard"].lfx-live--style-silver .lfx-live-room__prop {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    left: calc(3% + 20px);
+    bottom: calc(12vh - 3px);
+    width: max(0px, min(240px, calc((100% - var(--lfx-live-tv-w) - 28px - 176 * var(--lfx-live-u)) / 2 - 3% - 40px)));
+    aspect-ratio: 1 / 1;
+    container-type: size;
+    pointer-events: none;
+  }
+  /* weicher Kontaktschatten auf dem Holz */
+  .lfx-live-room__prop::after {
+    content: "";
+    position: absolute;
+    left: 2%;
+    right: -6%;
+    bottom: -5px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 0.55), transparent 70%);
+    filter: blur(2px);
+    pointer-events: none;
+  }
+  .lfx-live-room__prop > .lfx-live-mag-prop {
+    width: 100%;
+    pointer-events: auto;
+    /* angelehnt: leicht nach hinten gekippt, Fuß auf dem Holz */
+    transform-origin: 50% 100%;
+    transform: perspective(600px) rotateX(10deg) rotate(-5deg);
+  }
+  .lfx-live-room__prop > .lfx-live-mag-prop:hover {
+    transform: perspective(600px) rotateX(10deg) rotate(-5deg) translateY(-4%);
+  }
+
   .lfx-live-remote {
     --lfx-live-rb-bg: #2b2b2e;
     --lfx-live-rb-ink: #f1f1f1;
@@ -47,6 +123,9 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-remote__group--nav { grid-template-columns: repeat(3, 1fr); }
   .lfx-live-remote__group--colors { grid-template-columns: repeat(4, 1fr); }
   .lfx-live-remote__group--extras { grid-template-columns: 1fr 1fr; }
+  /* Heft-Taste: am Desktop nur, wenn das Heft-Objekt nicht in die Seitenspalte passt (is-guide-key, gesetzt von app.js) */
+  .lfx-live-app:not(.is-guide-key) .lfx-live-remote__btn[data-key="guide"] { display: none; }
+  .lfx-live-app.is-guide-key .lfx-live-remote__group--extras { grid-template-columns: repeat(3, 1fr); }
 
   .lfx-live-remote__btn {
     min-width: 0;

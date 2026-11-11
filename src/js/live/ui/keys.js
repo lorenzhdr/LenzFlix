@@ -31,6 +31,7 @@ export function keyName(e, overlayOpen = false) {
     case 'Escape': case 'Backspace': return 'back';
     case 'm': case 'M': return 'mute';
     case 'g': case 'G': return 'epg';
+    case 'z': case 'Z': return 'guide';
     case 'i': case 'I': return 'info';
     case 't': case 'T': return 'txt';
     case 'f': case 'F': return 'fullscreen';

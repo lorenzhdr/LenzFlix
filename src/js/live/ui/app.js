@@ -1,14 +1,17 @@
 // LENZ LIVE · Controller. Alles Zustandsbehaftete und alle Module kommen per Injektion (testbar ohne echte Module).
-// createApp(host, { scheduler, player, watch, pickFiller, overlays, deps, opts, time }) → instance
+// createApp(host, { scheduler, player, watch, pickFiller, overlays, music, pdf, deps, opts, time }) → instance
 //   player: Objekt ODER Fabrik ({ video, canvas }) → Player (das <video> entsteht hier im DOM-Gerüst).
-//   overlays: { epg, ttx, menu } – Fabriken createX(ctx) → Overlay.   time: { formatClock, formatDay, broadcastDayOf, dayBounds }.
-import { buildTv, createNoise, STYLES, normStyle } from './tv.js';
+//   overlays: { epg, ttx, menu, guide } – Fabriken createX(ctx) → Overlay.   music: createMusic()-Instanz (optional, Pausenmusik).
+//   pdf: { downloadPdf(magazine, style, onProgress) } (optional, Fernsehzeitung als PDF).   time: { formatClock, formatDay, broadcastDayOf, dayBounds }.
+import { buildTv, createNoise, STYLES, normStyle, h } from './tv.js';
 import { createRemote } from './remote.js';
 import { createKeys } from './keys.js';
 import { createOsd } from './osd.js';
 import { createCard } from './card.js';
 import { createFullscreen } from './fullscreen.js';
 import { genreLabels } from './overlay-util.js';
+import { buildMagazine as buildMagazineModel, collectTipIds, loadOverviews } from '../magazine/model.js';
+import { createMagazineProp, PROP_MIN_PX } from '../magazine/prop.js';
 
 export const DEBOUNCE_MS = 400;
 export const DIGIT_WAIT_MS = 1500;
@@ -17,8 +20,9 @@ export const SYNC_MS = 30000;
 const MAX_TIMEOUT = 2147483647;
 const VOL_STEP = 5;
 const PLAYABLE = ['program', 'fill', 'nightfill'];
-const OVERLAY_FACTORY = { epg: 'epg', txt: 'ttx', menu: 'menu' };
-const OVERLAY_CLASS = { epg: 'has-epg', txt: 'has-ttx', menu: 'has-menu' };
+const OVERLAY_FACTORY = { epg: 'epg', txt: 'ttx', menu: 'menu', guide: 'guide' };
+const OVERLAY_CLASS = { epg: 'has-epg', txt: 'has-ttx', menu: 'has-menu', guide: 'has-guide' };
+const IDLE_KINDS = ['pause', 'test', 'error'];
 
 const p2 = (n) => String(n).padStart(2, '0');
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -52,7 +56,7 @@ export function itemFields(it, scheduler) {
   };
 }
 
-export function createApp(host, { scheduler, player: playerArg, watch, pickFiller, overlays = {}, deps = {}, opts = {}, time = {} }) {
+export function createApp(host, { scheduler, player: playerArg, watch, pickFiller, overlays = {}, music = null, pdf = null, deps = {}, opts = {}, time = {} }) {
   const doc = host.ownerDocument || document;
   const win = typeof window !== 'undefined' ? window : doc.defaultView;
   const clock = typeof opts.now === 'function' ? opts.now : () => Date.now();
@@ -63,12 +67,23 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   const refs = buildTv({ style: opts.style, fakePlayer: !!opts.fakePlayer, doc });
   const { app, room, screen, video, overlay: overlayEl } = refs;
   const noise = createNoise(refs.noise, { win });
-  const card = createCard(screen, { formatClock, doc, win });
+  const card = createCard(screen, { formatClock, doc, win, onKind: () => syncMusic() });
   const osd = createOsd(screen, { doc, win });
   screen.append(overlayEl); // Overlays liegen über OSD/Karte
   const remote = createRemote({ onKey: (k) => press(k), doc });
-  room.append(remote.el);
+  // Seitenspalte: Heft-Objekt (Prop) im freien Raum über der Fernbedienung; Handy-/Vollbild-/Spalten-Layouts lösen sie per CSS auf.
+  const side = h(doc, 'div', 'lfx-live-side');
+  const slot = h(doc, 'div', 'lfx-live-side__slot');
+  const propSlot = h(doc, 'div', 'lfx-live-room__prop'); // Lowboard-Slot (Röhre/Silber), per CSS absolut
+  side.append(slot, remote.el);
+  room.append(side, propSlot);
   host.append(app);
+  let prop = null;
+  if (overlays.guide) {
+    prop = createMagazineProp({ doc, onOpen: () => press('guide'), imageUrl: deps.imageUrl });
+    slot.append(prop.el);
+    prop.setStyle(normStyle(opts.style));
+  }
   if (opts.phone) app.classList.add('is-phone');
   if (opts.touch) app.classList.add('is-touch');
 
@@ -90,6 +105,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   let stallArmed = false;
   let tickCount = 0;
   let lastDay = null;
+  let musicOn = opts.music !== false;
+  let magCache = null; // { D, base, full: Promise<Magazine>|null }
   const T = {};
   let tickIv = null;
   const made = {}; // name → Overlay-Instanz
@@ -198,6 +215,14 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     logout: () => deps.logout && deps.logout(),
     imageUrl: deps.imageUrl,
     toast: (t) => deps.toast && deps.toast(t),
+    buildMagazine: () => buildFullMagazine(),
+    downloadPdf: (mag, onProgress) => {
+      if (!pdf || typeof pdf.downloadPdf !== 'function') return Promise.reject(new Error('kein PDF-Export'));
+      return pdf.downloadPdf(mag, style, onProgress);
+    },
+    openOverlay: (name, o) => openOverlay(name, o),
+    musicEnabled: () => musicOn,
+    toggleMusic: () => toggleMusic(),
   };
 
   function overlayInst(name) {
@@ -206,7 +231,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (!factory) return null;
     const inst = factory(ctx);
     made[name] = inst;
-    if (inst && inst.el) overlayEl.append(inst.el);
+    // Die Fernsehzeitung liegt über der ganzen Szene (Wurzel), die übrigen Overlays im Fernsehbild
+    if (inst && inst.el) (name === 'guide' ? app : overlayEl).append(inst.el);
     return inst;
   }
 
@@ -226,18 +252,110 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     syncOverlayClasses();
   }
 
-  function openOverlay(name) {
+  function openOverlay(name, o) {
     const inst = overlayInst(name);
     if (!inst) return;
     for (const n of Object.keys(made)) if (n !== name && made[n] && made[n].isOpen()) made[n].close();
-    inst.open();
+    if (o === undefined) inst.open(); else inst.open(o);
     syncOverlayClasses();
+  }
+
+  // ---------- Fernsehzeitung (Heftmodell, Cache pro Sendetag) ----------
+  function magInput(overviews) {
+    const D = time.broadcastDayOf(clock());
+    return { scheduler, today: D, formatClock, formatDay: time.formatDay, dayBounds: time.dayBounds, overviews };
+  }
+
+  // Heft ohne Inhaltsangaben (Titelbild des Hefts im Raum, kein Netzwerk); pro Sendetag gecacht.
+  function baseMagazine() {
+    if (!time.broadcastDayOf || !time.formatDay || !time.dayBounds) return null;
+    const D = time.broadcastDayOf(clock());
+    if (magCache && magCache.D === D) return magCache.base;
+    const base = buildMagazineModel(magInput(undefined));
+    magCache = { D, base, full: null };
+    return base;
+  }
+
+  // Mit Inhaltsangaben (eine Anfrage beim ersten Öffnen); erneuter Aufruf am selben Sendetag liefert den Cache.
+  function buildFullMagazine() {
+    let base;
+    try { base = baseMagazine(); } catch (e) { return Promise.reject(e); }
+    if (!base) return Promise.reject(new Error('kein Zeitmodul'));
+    const cache = magCache;
+    if (cache.full) return cache.full;
+    const full = (async () => {
+      const overviews = await loadOverviews(collectTipIds(base), deps.itemDetails);
+      return buildMagazineModel(magInput(overviews));
+    })();
+    cache.full = full;
+    full.catch(() => { if (cache.full === full) cache.full = null; });
+    return full;
+  }
+
+  function refreshPropCover() {
+    if (!prop) return;
+    try {
+      const m = baseMagazine();
+      prop.setCover(m && m.cover ? m.cover.hero : null);
+    } catch { /* Titelbild bleibt leer */ }
+  }
+
+  // ---------- Heft-Objekt: der Slot, der passt ----------
+  // Reihenfolge je Stil; app[data-prop] schaltet die CSS-Lage. Passt keiner, bleibt nur die Heft-Taste (is-guide-key).
+  //   Röhre/Silber: Lowboard links neben dem TV, sonst über der Fernbedienung. Flat: über der Fernbedienung.
+  //   Schlicht: über der Fernbedienung (mittig), sonst mit unten sitzender Fernbedienung (above-low).
+  function propCandidates() {
+    if (style === 'crt80' || style === 'silver') return [['lowboard', propSlot], ['above', slot]];
+    if (style === 'plain') return [['above', slot], ['above-low', slot]];
+    return [['above', slot]];
+  }
+  function placeProp() {
+    if (!prop || disposed) return;
+    let found = null;
+    for (const [name, el] of propCandidates()) {
+      app.dataset.prop = name;
+      if (el.clientHeight >= PROP_MIN_PX) { found = [name, el]; break; }
+    }
+    if (found) {
+      app.dataset.prop = found[0];
+      if (prop.el.parentNode !== found[1]) found[1].append(prop.el);
+      prop.el.hidden = false;
+      app.classList.remove('is-guide-key');
+    } else {
+      delete app.dataset.prop;
+      prop.el.hidden = true;
+      app.classList.add('is-guide-key');
+    }
+  }
+  let propRo = null;
+  let propRaf = 0;
+  function schedulePlace() {
+    if (propRaf) return;
+    const raf = win.requestAnimationFrame ? (f) => win.requestAnimationFrame(f) : (f) => setTimeout(f, 16);
+    propRaf = raf(() => { propRaf = 0; placeProp(); }) || 1;
+  }
+
+  // ---------- Pausenmusik ----------
+  function syncMusic() {
+    if (!music) return;
+    const kind = card.kind();
+    const reason = card.el && card.el.dataset ? card.el.dataset.reason : null;
+    const idle = on && !suspended && !disposed && IDLE_KINDS.includes(kind) && !needsTap && !(kind === 'error' && reason === 'gesture');
+    safe(() => music.setIdle(idle ? kind : null));
+  }
+
+  function toggleMusic() {
+    musicOn = !musicOn;
+    if (music) safe(() => music.setEnabled(musicOn));
+    savePrefs({ music: musicOn });
+    return musicOn;
   }
 
   // ---------- Lautstärke ----------
   function applyVolume() {
     safe(() => player.setVolume && player.setVolume(vol / 100));
     safe(() => player.setMuted && player.setMuted(muted));
+    if (music) safe(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted || mutedByPolicy));
   }
 
   function savePrefs(partial) { if (deps.savePrefs) safe(() => deps.savePrefs(partial)); }
@@ -299,14 +417,16 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       if (key === 'power' || key === 'fullscreen') return false;
       needsTap = false;
       safe(() => player.unlock && player.unlock()); // SYNCHRON in der Geste
-      applyVolume(); // Nutzer-Stumm-Zustand wiederherstellen (der Versuch hat video.muted gesetzt)
+      if (music) safe(() => music.unlock());
       mutedByPolicy = false;
+      applyVolume(); // Nutzer-Stumm-Zustand wiederherstellen (der Versuch hat video.muted gesetzt)
       card.hide();
       start(++gen, false);
       return true;
     }
     if (mutedByPolicy) {
       mutedByPolicy = false;
+      if (music) safe(() => music.unlock());
       osd.hideMessage();
       applyVolume(); // Ton wieder an, sofern der Nutzer nicht selbst stumm geschaltet hatte
       return key === 'mute' && !muted;
@@ -447,6 +567,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
         const ds = [0, 1, 2, 3, 4, 5, 6].map((i) => D + i);
         Promise.resolve(safe(() => scheduler.prepare(ds))).catch(() => {});
       }
+      if (lastDay != null && D !== lastDay) refreshPropCover();
       lastDay = D;
     }
     syncOverlayClasses();
@@ -456,6 +577,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (on) return;
     // SYNCHRON im Klick-Handler: Autoplay-Freigabe für das eine <video> (iOS).
     safe(() => player.unlock && player.unlock());
+    if (music) safe(() => music.unlock());
     on = true;
     app.classList.add('is-on', 'is-powering-on');
     app.classList.remove('is-powering-off');
@@ -483,6 +605,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     closeOverlays();
     playing = false;
     entry = null;
+    if (music) safe(() => music.setIdle(null));
   }
 
   function powerOff() {
@@ -578,6 +701,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     app.classList.remove(`lfx-live--style-${style}`);
     style = s;
     app.classList.add(`lfx-live--style-${style}`);
+    if (music) safe(() => music.setStyle(style));
+    if (prop) { prop.setStyle(style); placeProp(); }
     savePrefs({ style });
   }
 
@@ -606,7 +731,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       case 'vol+': case 'right': changeVolume('vol+'); break;
       case 'vol-': case 'left': changeVolume('vol-'); break;
       case 'mute': changeVolume('mute'); break;
-      case 'epg': case 'txt': case 'menu': openOverlay(key); break;
+      case 'epg': case 'txt': case 'menu': case 'guide': openOverlay(key); break;
       case 'info': if (entry) osd.showInfo(describe(channel, entry, clock())); break;
       case 'audio': cycleAudio(); break;
       case 'subs': cycleSubs(); break;
@@ -678,6 +803,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     offs.push(player.on('autoplay-muted', () => {
       if (!on) return;
       mutedByPolicy = true;
+      if (music) safe(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, true));
       if (!muted) osd.showMessage('Ton aus – zum Einschalten tippen oder Stumm-Taste drücken', 8000);
     }));
     offs.push(player.on('error', (err) => {
@@ -695,12 +821,34 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   });
   keys.attach();
 
+  // ---------- Musik / Heft initial ----------
+  if (music) {
+    safe(() => music.setStyle(style));
+    safe(() => music.setEnabled(musicOn));
+  }
+  if (prop) {
+    placeProp();
+    if (typeof ResizeObserver === 'function') { propRo = new ResizeObserver(() => schedulePlace()); propRo.observe(room); }
+    // Titelbild erst nach dem Aufbau (kein Netz außer dem Cover-Bild; Inhaltsangaben erst beim Öffnen des Hefts)
+    later('propcover', refreshPropCover, 0);
+  }
+
   // ---------- Debug ----------
   const instance = {
     el: app,
     press,
     tune: (no) => tune(no),
     isOn: () => on,
+    /** Nur Harness/Debug: zeigt eine Leerlaufkarte zur Ansicht (pause|test|error); Musik folgt wie im Betrieb. */
+    debugCard(kind) {
+      if (!on) return;
+      const t = clock();
+      const ch = channelOf(channel);
+      safe(() => player.stop());
+      if (kind === 'pause') card.showPause({ channel: ch, title: 'Platzhalter-Film', at: t + 300000, until: t + 300000, now: t });
+      else if (kind === 'test') card.showTest({ channel: ch, text: 'Sendeschluss', now: t });
+      else if (kind === 'error') card.showError('network', ch);
+    },
     channel: () => channel,
     style: () => style,
     suspend() {
@@ -743,6 +891,11 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       osd.dispose();
       card.dispose();
       remote.destroy();
+      if (propRo) propRo.disconnect();
+      if (prop) prop.destroy();
+      propSlot.remove();
+      side.remove();
+      if (music) safe(() => music.dispose());
       if (watch) safe(() => watch.dispose && watch.dispose());
       if (player) safe(() => player.dispose && player.dispose());
       app.remove();

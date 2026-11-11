@@ -44,7 +44,7 @@
     return { weekday: WD_SHORT[wd], long: WD_LONG[wd], date: two(dt.getUTCDate()) + "." + two(dt.getUTCMonth() + 1) + "." };
   };
   var weekOf = (D) => Math.floor((D + 3) / 7);
-  var weekStart = (W) => 7 * W - 3;
+  var weekStart = (W2) => 7 * W2 - 3;
   var admitDay = (t) => broadcastDayOf(t) + 1;
   var parseDate = (s) => {
     if (typeof s === "number") return Number.isFinite(s) ? s : null;
@@ -263,9 +263,9 @@
     for (const [n, m] of labelCounts) {
       let best = null;
       let bc = -1;
-      for (const [lab, c] of m) if (c > bc || c === bc && cmpStr(lab, best) < 0) {
+      for (const [lab, c2] of m) if (c2 > bc || c2 === bc && cmpStr(lab, best) < 0) {
         best = lab;
-        bc = c;
+        bc = c2;
       }
       labels.set(n, best);
     }
@@ -312,13 +312,13 @@
     return lo;
   }
   function bucket(sorted, C, D) {
-    const c = log2i(C);
+    const c2 = log2i(C);
     const b = D & C - 1;
     let lo = 0;
     let hi = sorted.length;
-    if (c > 0) {
-      const r = bitrev32(b) >>> 32 - c;
-      const span = 2 ** (32 - c);
+    if (c2 > 0) {
+      const r = bitrev32(b) >>> 32 - c2;
+      const span = 2 ** (32 - c2);
       lo = lowerBound(sorted, r * span);
       hi = lowerBound(sorted, (r + 1) * span);
     }
@@ -354,19 +354,19 @@
     const n = sizes.length;
     cap = Math.max(0, Math.min(cap, 1200));
     if (!n || !cap) return [];
-    const W = cap + 1;
-    const suf = new Uint8Array((n + 1) * W);
-    suf[n * W] = 1;
+    const W2 = cap + 1;
+    const suf = new Uint8Array((n + 1) * W2);
+    suf[n * W2] = 1;
     for (let i = n - 1; i >= 0; i--) {
       const s = sizes[i];
-      for (let c = 0; c <= cap; c++) suf[i * W + c] = suf[(i + 1) * W + c] || s <= c && suf[(i + 1) * W + c - s] ? 1 : 0;
+      for (let c2 = 0; c2 <= cap; c2++) suf[i * W2 + c2] = suf[(i + 1) * W2 + c2] || s <= c2 && suf[(i + 1) * W2 + c2 - s] ? 1 : 0;
     }
     let best = cap;
     while (best > 0 && !suf[best]) best--;
     const out = [];
     let rem = best;
     for (let i = 0; i < n && rem > 0; i++) {
-      if (sizes[i] <= rem && suf[(i + 1) * W + rem - sizes[i]]) {
+      if (sizes[i] <= rem && suf[(i + 1) * W2 + rem - sizes[i]]) {
         out.push(i);
         rem -= sizes[i];
       }
@@ -496,29 +496,29 @@
   }
   function fillSegment(builder, cands, { limit, strict = true }) {
     const pending = cands.slice();
-    const valid = (c, l) => builder.canPlaceBlock(c.pieces, { limit: l });
-    const take = (c) => {
-      pending.splice(pending.indexOf(c), 1);
+    const valid = (c2, l) => builder.canPlaceBlock(c2.pieces, { limit: l });
+    const take = (c2) => {
+      pending.splice(pending.indexOf(c2), 1);
     };
     if (!strict) {
       while (builder.cursor < limit) {
-        const c = pending.find((x) => valid(x));
-        if (!c) break;
-        builder.placeBlock(c.pieces);
-        take(c);
+        const c2 = pending.find((x) => valid(x));
+        if (!c2) break;
+        builder.placeBlock(c2.pieces);
+        take(c2);
       }
       if (builder.cursor < limit) builder.fillUntil(limit);
       return;
     }
     while (builder.cursor < limit && limit - builder.cursor > DP_HORIZON) {
-      const c = pending.find((x) => valid(x, limit));
-      if (!c) break;
-      builder.placeBlock(c.pieces, { limit });
-      take(c);
+      const c2 = pending.find((x) => valid(x, limit));
+      if (!c2) break;
+      builder.placeBlock(c2.pieces, { limit });
+      take(c2);
     }
     if (builder.cursor < limit) {
       const cand = pending.filter((x) => valid(x, limit)).slice(0, DP_MAX_CANDS);
-      const idx = packSubset(cand.map((c) => Math.round(c.size / GRID)), Math.floor((limit - builder.cursor) / GRID));
+      const idx = packSubset(cand.map((c2) => Math.round(c2.size / GRID)), Math.floor((limit - builder.cursor) / GRID));
       for (const i of idx) {
         builder.placeBlock(cand[i].pieces, { limit });
         take(cand[i]);
@@ -750,7 +750,7 @@
           list.push(g ? { no, key: "genre:" + g, name: "LIVE " + catalog.genreLabel(g), kind: "genre", genreLabel: catalog.genreLabel(g) } : { no, key: "genre:", name: "LIVE " + no, kind: "genre" });
         }
       }
-      P.chList = Object.freeze(list.map((c) => Object.freeze(c)));
+      P.chList = Object.freeze(list.map((c2) => Object.freeze(c2)));
       return P.chList;
     }
     function builder(no, D, used) {
@@ -815,9 +815,9 @@
       const b = B.bounds;
       const candsA = streamCands2(D, cp.A, CAP_MS.A);
       const candsB = streamCands2(D, cp.B, CAP_MS.B);
-      const anchor = candsA.find((c) => c.movie && b.a2015 + c.size <= b.end);
+      const anchor = candsA.find((c2) => c2.movie && b.a2015 + c2.size <= b.end);
       if (anchor) {
-        fillSegment(B, candsA.filter((c) => c !== anchor), { limit: b.a2015, strict: true });
+        fillSegment(B, candsA.filter((c2) => c2 !== anchor), { limit: b.a2015, strict: true });
         B.placeBlock(anchor.pieces);
       }
       fillSegment(B, candsA, { limit: b.a2200, strict: false });
@@ -825,10 +825,10 @@
       return B.finish();
     }
     const weekTables = /* @__PURE__ */ new Map();
-    function weekTable(W) {
-      let t = weekTables.get(W);
+    function weekTable(W2) {
+      let t = weekTables.get(W2);
       if (t) return t;
-      const Ws = weekStart(W);
+      const Ws = weekStart(W2);
       const svs = seriesAt(Ws);
       const slots = [];
       const streamsOf = { A: [], B: [] };
@@ -838,7 +838,7 @@
         const sorted = makeEntries("serie", streamsOf[S], (w) => w.v.slotLen);
         const cap = S === "A" ? CAP_MS.A : B_SLOT_CAP;
         const Cw = sorted.length ? bucketCount(poolMs(sorted), cap) : 1;
-        const { home, borrow } = rotationWithBorrow(sorted, Cw, W);
+        const { home, borrow } = rotationWithBorrow(sorted, Cw, W2);
         const list = home.concat(borrow);
         if (S === "B") off = Math.max(off, CAP_MS.A);
         const deferred = [];
@@ -864,14 +864,14 @@
           }
         }
       }
-      weekTables.set(W, t = slots);
+      weekTables.set(W2, t = slots);
       return t;
     }
     function slotPieces(slot, D) {
       const { s, v, Cw, admitW } = slot;
-      const W = weekOf(D);
+      const W2 = weekOf(D);
       const baseW = Math.floor(admitW / Cw);
-      const k = 7 * (Math.floor(W / Cw) - baseW) + (D - weekStart(W));
+      const k = 7 * (Math.floor(W2 / Cw) - baseW) + (D - weekStart(W2));
       const wkey = s.id + "|w|" + Cw + "|" + v.admit + "|" + v.b;
       const eps = tools.block(s, wkey, Math.max(0, k), v.b, (kk) => Math.max(v.admit, weekStart((baseW + Math.floor(kk / 7)) * Cw) + kk % 7));
       return eps.map((e) => ({ itemId: e.id, durMs: e.durMs, seriesId: s.id, age: v.age }));
@@ -1061,10 +1061,10 @@
   }
   function rerunPool(info, D) {
     const avail = info.units.filter((u) => u.day < D && !(info.pday.has(u.id) && info.pday.get(u.id) >= D));
-    for (const W of WINDOWS) {
+    for (const W2 of WINDOWS) {
       let ms = 0;
-      for (const u of avail) if (u.day >= D - W) ms += u.ms;
-      if (ms >= MIN_POOL_MS || W === 365) return avail.filter((u) => u.day >= D - W);
+      for (const u of avail) if (u.day >= D - W2) ms += u.ms;
+      if (ms >= MIN_POOL_MS || W2 === 365) return avail.filter((u) => u.day >= D - W2);
     }
     return [];
   }
@@ -1097,8 +1097,8 @@
       const late = P && P.age != null && P.age > 12;
       if (late) {
         const at = P.age >= 18 ? b.a2300 : b.a2200;
-        const anchor = candsA.find((c) => c.size <= b.a2200 - b.a2015);
-        fillSegment(B, candsA.filter((c) => c !== anchor), { limit: b.a2015, strict: true });
+        const anchor = candsA.find((c2) => c2.size <= b.a2200 - b.a2015);
+        fillSegment(B, candsA.filter((c2) => c2 !== anchor), { limit: b.a2015, strict: true });
         if (anchor) B.placeBlock(anchor.pieces, { limit: b.a2200 });
         fillSegment(B, candsA, { limit: b.a2200, strict: true });
         if (at > b.a2200) fillSegment(B, candsB, { limit: at, strict: true });
@@ -1107,8 +1107,8 @@
         fillSegment(B, candsB, { limit: b.end, strict: true });
         return B.finish();
       }
-      const anchorMovie = P ? null : candsA.find((c) => c.movie && b.a2015 + c.size <= b.end);
-      fillSegment(B, candsA.filter((c) => c !== anchorMovie), { limit: b.a2015, strict: true });
+      const anchorMovie = P ? null : candsA.find((c2) => c2.movie && b.a2015 + c2.size <= b.end);
+      fillSegment(B, candsA.filter((c2) => c2 !== anchorMovie), { limit: b.a2015, strict: true });
       if (P) B.placeBlock(premPieces);
       else if (anchorMovie) B.placeBlock(anchorMovie.pieces);
       fillSegment(B, candsA, { limit: b.a2200, strict: false });
@@ -1200,11 +1200,11 @@
   function computeTheme(ctx, kind, D) {
     if (kind === "boxset") {
       const cache = stateOf(ctx).boxsets;
-      for (const c of boxsetCands(ctx, D)) {
-        const ids = cache.get(c.id);
+      for (const c2 of boxsetCands(ctx, D)) {
+        const ids = cache.get(c2.id);
         if (!ids) continue;
         const items = boxsetItems(ctx, ids, D);
-        if (items.length >= MIN_ITEMS) return { kind, name: "Filmreihe: " + c.name, items: items.sort(chrono) };
+        if (items.length >= MIN_ITEMS) return { kind, name: "Filmreihe: " + c2.name, items: items.sort(chrono) };
       }
       return null;
     }
@@ -1238,8 +1238,8 @@
     if (!memo.has(key)) memo.set(key, computeTheme(ctx, kind, D));
     return memo.get(key);
   }
-  function weekOrder(ctx, W) {
-    const D0 = weekStart(W);
+  function weekOrder(ctx, W2) {
+    const D0 = weekStart(W2);
     const cache = stateOf(ctx).boxsets;
     const avail = KINDS.filter((k) => {
       if (k === "boxset") {
@@ -1248,7 +1248,7 @@
       }
       return themeFor(ctx, k, D0) != null;
     });
-    return avail.map((k) => ({ k, h: keyHash("themeday", W + ":" + k) })).sort((a, b) => a.h - b.h || cmpStr(a.k, b.k)).map((x) => x.k);
+    return avail.map((k) => ({ k, h: keyHash("themeday", W2 + ":" + k) })).sort((a, b) => a.h - b.h || cmpStr(a.k, b.k)).map((x) => x.k);
   }
   function themesFor(ctx, D) {
     const order = weekOrder(ctx, weekOf(D));
@@ -1306,18 +1306,18 @@
       const days = [...new Set((Array.isArray(Ds) ? Ds : []).filter(Number.isInteger))].sort((a, b) => a - b);
       for (const D of days) {
         let loads = 0;
-        for (const c of boxsetCands(ctx, D)) {
-          if (!cache.has(c.id)) {
+        for (const c2 of boxsetCands(ctx, D)) {
+          if (!cache.has(c2.id)) {
             if (loads++ >= MAX_LOADS_PER_DAY) break;
             try {
-              const r = await ctx.getBoxSetItems(c.id);
-              cache.set(c.id, Array.isArray(r) ? r.map(String) : null);
+              const r = await ctx.getBoxSetItems(c2.id);
+              cache.set(c2.id, Array.isArray(r) ? r.map(String) : null);
             } catch {
-              cache.set(c.id, null);
+              cache.set(c2.id, null);
             }
             stateOf(ctx).themes.clear();
           }
-          const ids = cache.get(c.id);
+          const ids = cache.get(c2.id);
           if (ids && boxsetItems(ctx, ids, D).length >= MIN_ITEMS) break;
         }
       }
@@ -1808,8 +1808,8 @@
     return -1;
   }
   function isPlainAudioCodec(codec) {
-    const c = String(codec || "").toLowerCase();
-    return c === "aac" || c === "mp3";
+    const c2 = String(codec || "").toLowerCase();
+    return c2 === "aac" || c2 === "mp3";
   }
 
   // src/js/live/player/stream.js
@@ -1943,8 +1943,8 @@
       const w = canvas.width || 640;
       const h3 = canvas.height || 360;
       const bw = w / BARS.length;
-      BARS.forEach((c, i) => {
-        ctx.fillStyle = c;
+      BARS.forEach((c2, i) => {
+        ctx.fillStyle = c2;
         ctx.fillRect(i * bw, 0, bw + 1, h3 * 0.7);
       });
       for (let i = 0; i < 8; i++) {
@@ -2300,9 +2300,9 @@
     }
     const name = it.title || "";
     const series = it.seriesTitle || null;
-    const known = (n) => n != null && n !== 9999 ? n : null;
-    const season = known(it.season);
-    const ep = known(it.episode);
+    const known2 = (n) => n != null && n !== 9999 ? n : null;
+    const season = known2(it.season);
+    const ep = known2(it.episode);
     if (it.kind === "episode") {
       out.kind = "episode";
       let se = "";
@@ -2342,7 +2342,9 @@
   var COL_MIN = 30;
   var DAYS = 7;
   var MIN2 = 6e4;
-  function boundsOf(ctx, D, rows) {
+  var DRAG_PX = 6;
+  var STEP_MIN = 120;
+  function boundsOf(ctx, D) {
     let b;
     try {
       b = ctx.dayBounds(D);
@@ -2355,12 +2357,7 @@
       s = b.start != null ? b.start : b.from;
       e = b.end != null ? b.end : b.to;
     }
-    if (!(e > s)) {
-      const all = rows.flat();
-      s = all.length ? all[0].start : 0;
-      e = all.length ? all[all.length - 1].end : s + 24 * 60 * MIN2;
-    }
-    return { start: s, end: e };
+    return e > s ? { start: s, end: e } : null;
   }
   function createEpg(ctx) {
     const el = h("div", "lfx-live-epg");
@@ -2371,11 +2368,31 @@
     const days = h("div", "lfx-live-epg__days");
     days.setAttribute("role", "group");
     days.setAttribute("aria-label", "Sendetag");
+    const nav = h("div", "lfx-live-epg__nav");
+    nav.setAttribute("role", "group");
+    nav.setAttribute("aria-label", "Zeitleiste verschieben");
+    [
+      ["back", "\u25C0", "2 Stunden zur\xFCck"],
+      ["fwd", "\u25B6", "2 Stunden vor"],
+      ["now", "Jetzt", "Zu jetzt springen"]
+    ].forEach(([act, label, aria]) => {
+      const b = h("button", "lfx-live-epg__navbtn", label);
+      b.type = "button";
+      b.dataset.act = act;
+      b.setAttribute("aria-label", aria);
+      b.addEventListener("click", () => {
+        if (act === "now") onKey("yellow");
+        else scrollByMin(act === "back" ? -STEP_MIN : STEP_MIN);
+      });
+      nav.append(b);
+    });
     const info = h("div", "lfx-live-epg__info");
     const infoTitle = h("div", "lfx-live-epg__info-title");
     const infoMeta = h("div", "lfx-live-epg__info-meta");
     info.append(infoTitle, infoMeta);
-    top.append(days, info);
+    const bar = h("div", "lfx-live-epg__bar");
+    bar.append(days, nav);
+    top.append(bar, info);
     const scroller = h("div", "lfx-live-epg__scroller");
     scroller.setAttribute("role", "grid");
     scroller.setAttribute("aria-label", "Programm");
@@ -2387,8 +2404,8 @@
       ["green", "Tag vor", "green"],
       ["yellow", "Jetzt", "yellow"],
       ["blue", "Details", "blue"]
-    ].forEach(([c, t, key]) => {
-      const b = h("button", "lfx-live-epg__key is-" + c, t);
+    ].forEach(([c2, t, key]) => {
+      const b = h("button", "lfx-live-epg__key is-" + c2, t);
       b.type = "button";
       b.addEventListener("click", () => onKey(key));
       legend.append(b);
@@ -2400,38 +2417,145 @@
     detail.setAttribute("aria-label", "Sendungsdetails");
     el.append(top, scroller, legend, detail);
     let opened = false;
+    let gen = 0;
     let day = 0;
     let today = 0;
-    let model = {};
+    let dayInfo = [];
+    let totalStart = 0;
+    let totalMin = 1;
+    let rowsByNo = {};
+    const rendered = /* @__PURE__ */ new Set();
+    let corner = null;
     let focus = { no: 1, start: 0 };
     let anchorT = 0;
     let nowLine = null;
-    let dayStart = 0;
     let lastMinute = -1;
     let detailEntry = null;
     let detailBtns = [];
     let detailIdx = 0;
+    let rafId = 0;
+    let lock = null;
+    let lockTimer = 0;
+    let drag = null;
+    let suppressClick = false;
     const prepared = /* @__PURE__ */ new Set();
+    const planCache = /* @__PURE__ */ new Map();
     const now = () => ctx.now();
-    const channelList = () => {
-      const l = ctx.channels ? ctx.channels() : ctx.scheduler.channels();
-      return Array.isArray(l) ? l : [];
-    };
     const clock = (t) => ctx.formatClock(t);
     const dayLabel = (D) => {
       const f = ctx.formatDay(D);
       return f.weekday + " " + f.date;
     };
-    function ensurePrepared(D) {
+    const clampI = (i) => Math.max(0, Math.min(DAYS - 1, i));
+    const channelsFor = (D) => {
+      let l;
+      try {
+        l = ctx.scheduler && typeof ctx.scheduler.channels === "function" ? ctx.scheduler.channels(D) : ctx.channels();
+      } catch {
+        l = null;
+      }
+      return Array.isArray(l) ? l : [];
+    };
+    const planFor = (no, i) => {
+      const key = no + ":" + i;
+      let p = planCache.get(key);
+      if (!p) {
+        try {
+          p = Array.from(ctx.scheduler.planDay(no, today + i) || []);
+        } catch {
+          p = [];
+        }
+        planCache.set(key, p);
+      }
+      return p;
+    };
+    function metrics() {
+      const tick2 = inner.querySelector(".lfx-live-epg__tick");
+      const pm = tick2 ? tick2.getBoundingClientRect().width / COL_MIN : 0;
+      const chanW = corner ? corner.getBoundingClientRect().width : 0;
+      return { pm, chanW, visible: Math.max(0, scroller.clientWidth - chanW) };
+    }
+    const reduced = () => {
+      try {
+        return !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      } catch {
+        return true;
+      }
+    };
+    function scrollX(x, smooth) {
+      x = Math.max(0, x);
+      if (smooth && !reduced() && typeof scroller.scrollTo === "function") scroller.scrollTo({ left: x, behavior: "smooth" });
+      else scroller.scrollLeft = x;
+    }
+    function setLock(i, ms) {
+      lock = { i, until: Date.now() + ms };
+      clearTimeout(lockTimer);
+      lockTimer = setTimeout(scheduleSync, ms + 30);
+    }
+    function scrollByMin(min) {
+      const { pm } = metrics();
+      if (pm <= 0) return;
+      lock = null;
+      scrollX(scroller.scrollLeft + min * pm, true);
+    }
+    function revealRow(no) {
+      const r = rowsByNo[no];
+      if (!r) return;
+      const ruler = inner.querySelector(".lfx-live-epg__ruler");
+      const rh = ruler ? ruler.offsetHeight : 0;
+      const t = r.row.offsetTop;
+      const hh = r.row.offsetHeight;
+      if (t - rh < scroller.scrollTop) scroller.scrollTop = Math.max(0, t - rh);
+      else if (t + hh > scroller.scrollTop + scroller.clientHeight) scroller.scrollTop = t + hh - scroller.clientHeight;
+    }
+    function scrollToDay(D, smooth) {
+      const i = D - today;
+      if (!dayInfo[i]) return;
+      setLock(i, smooth && !reduced() ? 1e3 : 150);
+      revealRow(focus.no);
+      const { pm, visible } = metrics();
+      if (pm <= 0) return;
+      const x = D === today ? (now() - totalStart) / MIN2 * pm - visible * 0.22 : dayInfo[i].off * pm;
+      scrollX(x, smooth);
+    }
+    function entriesOf(no) {
+      const r = rowsByNo[no];
+      const out = [];
+      if (!r) return out;
+      [...r.byDay.keys()].sort((a, b) => a - b).forEach((di) => {
+        const d = r.byDay.get(di);
+        d.entries.forEach((en, k) => out.push({ en, node: d.els[k], di }));
+      });
+      return out;
+    }
+    const findFocus = () => entriesOf(focus.no).find((x) => x.en.start === focus.start) || null;
+    function dayIndexOfTime(t) {
+      let r = 0;
+      dayInfo.forEach((d, i) => {
+        if (d.start <= t) r = i;
+      });
+      return r;
+    }
+    function ensurePrepared(i) {
       const s = ctx.scheduler;
+      const D = today + i;
       if (!s || typeof s.prepare !== "function" || prepared.has(D)) return;
       prepared.add(D);
+      const g = gen;
       try {
         const p = s.prepare([D]);
         if (p && typeof p.then === "function") {
           p.then(
             () => {
-              if (opened && day === D) render();
+              if (!opened || g !== gen) return;
+              [...planCache.keys()].filter((k) => k.endsWith(":" + i)).forEach((k) => planCache.delete(k));
+              if (rendered.has(i)) {
+                Object.values(rowsByNo).forEach((r) => renderRowDay(r, i));
+                lastMinute = -1;
+                refreshNow();
+                syncFocus(false);
+              }
+              if (i === day - today) updateChanHeads();
             },
             () => {
             }
@@ -2440,110 +2564,193 @@
       } catch {
       }
     }
-    function renderDays() {
+    function buildDays() {
       days.textContent = "";
       for (let i = 0; i < DAYS; i++) {
         const D = today + i;
         const b = h("button", "lfx-live-epg__day", dayLabel(D));
         b.type = "button";
         b.dataset.day = String(D);
-        if (D === day) {
-          b.classList.add("is-active");
-          b.setAttribute("aria-pressed", "true");
-        } else b.setAttribute("aria-pressed", "false");
         b.addEventListener("click", () => setDay(D));
         days.append(b);
       }
+      updateDays();
     }
-    function render() {
-      renderDays();
-      const chans = channelList();
-      const plans = chans.map((ch) => {
-        let p;
-        try {
-          p = ctx.scheduler.planDay(ch.no, day) || [];
-        } catch {
-          p = [];
+    function updateDays() {
+      days.querySelectorAll(".lfx-live-epg__day").forEach((b) => {
+        const on = Number(b.dataset.day) === day;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+        if (on) {
+          const l = b.offsetLeft;
+          const r = l + b.offsetWidth;
+          if (l < days.scrollLeft) days.scrollLeft = Math.max(0, l - 8);
+          else if (days.clientWidth && r > days.scrollLeft + days.clientWidth) days.scrollLeft = r - days.clientWidth + 8;
         }
-        return Array.from(p);
       });
-      const b = boundsOf(ctx, day, plans);
-      dayStart = b.start;
-      const totalMin = Math.max(1, Math.round((b.end - b.start) / MIN2));
-      const cols = Math.ceil(totalMin / COL_MIN);
+      if (corner) corner.textContent = dayLabel(day);
+    }
+    function updateChanHeads() {
+      const map = new Map(channelsFor(day).map((c2) => [c2.no, c2]));
+      const i = day - today;
+      Object.keys(rowsByNo).forEach((no) => {
+        const r = rowsByNo[no];
+        r.ch = map.get(r.ch.no) || r.ch;
+        r.nameEl.textContent = shortName(r.ch) || r.ch.name || "";
+        const themed = planFor(r.ch.no, i).find((e) => e.theme);
+        if (themed) {
+          if (!r.themeEl) {
+            r.themeEl = h("span", "lfx-live-epg__theme");
+            r.headEl.append(r.themeEl);
+          }
+          r.themeEl.textContent = themed.theme;
+        } else if (r.themeEl) {
+          r.themeEl.remove();
+          r.themeEl = null;
+        }
+      });
+    }
+    function build() {
+      dayInfo = [];
+      let prevEnd = null;
+      for (let i = 0; i < DAYS; i++) {
+        let b = boundsOf(ctx, today + i);
+        if (!b) {
+          const s0 = prevEnd != null ? prevEnd : 0;
+          b = { start: s0, end: s0 + 24 * 60 * MIN2 };
+        }
+        dayInfo.push({ D: today + i, start: b.start, end: b.end, off: 0, len: Math.max(1, Math.round((b.end - b.start) / MIN2)) });
+        prevEnd = b.end;
+      }
+      totalStart = dayInfo[0].start;
+      dayInfo.forEach((d) => {
+        d.off = (d.start - totalStart) / MIN2;
+      });
+      const last = dayInfo[DAYS - 1];
+      totalMin = Math.max(1, last.off + last.len);
       inner.textContent = "";
       inner.style.setProperty("--lfx-live-epg-total", String(totalMin));
-      model = {};
+      rowsByNo = {};
+      rendered.clear();
       const ruler = h("div", "lfx-live-epg__row lfx-live-epg__ruler");
       ruler.setAttribute("role", "row");
-      const corner = h("div", "lfx-live-epg__chan lfx-live-epg__corner", dayLabel(day));
+      corner = h("div", "lfx-live-epg__chan lfx-live-epg__corner", dayLabel(day));
       corner.setAttribute("role", "columnheader");
       const rtrack = h("div", "lfx-live-epg__track");
-      for (let i = 0; i < cols; i++) {
-        const c = h("div", "lfx-live-epg__tick", clock(b.start + i * COL_MIN * MIN2));
-        c.setAttribute("role", "columnheader");
-        c.style.left = `calc(var(--lfx-live-epg-pm) * ${i * COL_MIN})`;
-        c.style.width = `calc(var(--lfx-live-epg-pm) * ${COL_MIN})`;
-        rtrack.append(c);
-      }
+      dayInfo.forEach((d) => {
+        const cols = Math.ceil(d.len / COL_MIN);
+        for (let c2 = 0; c2 < cols; c2++) {
+          const first = c2 === 0;
+          const t = h("div", "lfx-live-epg__tick" + (first ? " is-daymark" : ""));
+          t.setAttribute("role", "columnheader");
+          if (first) {
+            t.dataset.day = String(d.D);
+            t.append(h("span", "lfx-live-epg__daymark", dayLabel(d.D)));
+          } else t.textContent = clock(d.start + c2 * COL_MIN * MIN2);
+          t.style.left = `calc(var(--lfx-live-epg-pm) * ${d.off + c2 * COL_MIN})`;
+          t.style.width = `calc(var(--lfx-live-epg-pm) * ${Math.min(COL_MIN, d.len - c2 * COL_MIN)})`;
+          rtrack.append(t);
+        }
+      });
       ruler.append(corner, rtrack);
       inner.append(ruler);
       const cur = ctx.currentChannel();
-      chans.forEach((ch, i) => {
-        const plan = plans[i];
+      channelsFor(day).forEach((ch) => {
         const row2 = h("div", "lfx-live-epg__row");
         row2.setAttribute("role", "row");
         row2.dataset.no = String(ch.no);
         if (ch.no === cur) row2.classList.add("is-current");
         const head = h("div", "lfx-live-epg__chan");
         head.setAttribute("role", "rowheader");
-        head.append(h("span", "lfx-live-epg__no", String(ch.no)), h("span", "lfx-live-epg__name", shortName(ch) || ch.name || ""));
-        const themed = plan.find((e) => e.theme);
-        if (themed) head.append(h("span", "lfx-live-epg__theme", themed.theme));
+        const nameEl = h("span", "lfx-live-epg__name", shortName(ch) || ch.name || "");
+        head.append(h("span", "lfx-live-epg__no", String(ch.no)), nameEl);
+        const r = { ch, row: row2, headEl: head, nameEl, themeEl: null, secs: [], byDay: /* @__PURE__ */ new Map() };
         head.addEventListener("click", () => {
-          ctx.tune(ch.no);
+          ctx.tune(r.ch.no);
           ctx.closeOverlay();
         });
         const track = h("div", "lfx-live-epg__track");
-        const entries = [];
-        const els = [];
-        plan.forEach((en) => {
-          if (en.type === "filler") return;
-          entries.push(en);
-          const node = blockFor(ch, en);
-          els.push(node);
-          track.append(node);
+        dayInfo.forEach((d, i) => {
+          const sec = h("div", "lfx-live-epg__daysec");
+          sec.dataset.day = String(d.D);
+          sec.style.left = `calc(var(--lfx-live-epg-pm) * ${d.off})`;
+          sec.style.width = `calc(var(--lfx-live-epg-pm) * ${d.len})`;
+          r.secs[i] = sec;
+          track.append(sec);
         });
         row2.append(head, track);
         inner.append(row2);
-        model[ch.no] = { ch, entries, els };
+        rowsByNo[ch.no] = r;
       });
       nowLine = h("div", "lfx-live-epg__nowline");
       nowLine.setAttribute("aria-hidden", "true");
       inner.append(nowLine);
       lastMinute = -1;
-      refreshNow();
-      syncFocus(false);
+      setWindow(0);
+      updateChanHeads();
     }
-    function blockFor(ch, en) {
+    function renderRowDay(r, i) {
+      const sec = r.secs[i];
+      sec.textContent = "";
+      const entries = [];
+      const els = [];
+      planFor(r.ch.no, i).forEach((en) => {
+        if (en.type === "filler") return;
+        entries.push(en);
+        const node = blockFor(r, en, i);
+        els.push(node);
+        sec.append(node);
+      });
+      r.byDay.set(i, { entries, els });
+    }
+    function setWindow(c2) {
+      c2 = clampI(c2);
+      const want = new Set([c2 - 1, c2, c2 + 1].filter((i) => i >= 0 && i < DAYS));
+      let changed = false;
+      [...rendered].forEach((i) => {
+        if (want.has(i)) return;
+        Object.values(rowsByNo).forEach((r) => {
+          r.secs[i].textContent = "";
+          r.byDay.delete(i);
+        });
+        rendered.delete(i);
+        changed = true;
+      });
+      want.forEach((i) => {
+        if (rendered.has(i)) return;
+        Object.values(rowsByNo).forEach((r) => renderRowDay(r, i));
+        rendered.add(i);
+        ensurePrepared(i);
+        changed = true;
+      });
+      if (changed) {
+        lastMinute = -1;
+        refreshNow();
+        syncFocus(false);
+      }
+    }
+    function blockFor(r, en, i) {
+      const ch = r.ch;
       const d = describe(ctx.scheduler, en);
       const node = h("div", "lfx-live-epg__ev is-" + en.type);
       node.setAttribute("role", "gridcell");
       node.tabIndex = -1;
       node.dataset.no = String(ch.no);
       node.dataset.start = String(en.start);
-      const minFrom = (en.start - dayStart) / MIN2;
+      const minFrom = (en.start - dayInfo[i].start) / MIN2;
       const dur = (en.end - en.start) / MIN2;
       node.style.left = `calc(var(--lfx-live-epg-pm) * ${minFrom})`;
       node.style.width = `calc(var(--lfx-live-epg-pm) * ${dur})`;
+      const text = h("span", "lfx-live-epg__ev-text");
       const title = h("span", "lfx-live-epg__ev-title", d.title);
       const meta = h("span", "lfx-live-epg__ev-meta");
       meta.append(h("span", "lfx-live-epg__time", clock(en.start)));
       badges(en).forEach((b) => meta.append(h("span", "lfx-live-epg__badge", b)));
-      node.append(title, meta);
+      text.append(title, meta);
       if (en.type === "fill" || en.type === "nightfill") {
-        node.append(h("span", "lfx-live-epg__hint", "F\xFCllprogramm"));
+        text.append(h("span", "lfx-live-epg__hint", "F\xFCllprogramm"));
       }
+      node.append(text);
       node.setAttribute("aria-label", `${clock(en.start)} ${d.title}${badges(en).length ? ", " + badges(en).join(", ") : ""}`);
       node.addEventListener("click", () => {
         focus = { no: ch.no, start: en.start };
@@ -2558,31 +2765,27 @@
       const min = Math.floor(t / MIN2);
       if (min === lastMinute) return;
       lastMinute = min;
-      const isToday = day === today;
-      Object.keys(model).forEach((no) => {
-        const m = model[no];
-        m.entries.forEach((en, i) => {
-          m.els[i].classList.toggle("is-now", isToday && en.start <= t && t < en.end);
+      Object.values(rowsByNo).forEach((r) => {
+        r.byDay.forEach((d) => {
+          d.entries.forEach((en, k) => d.els[k].classList.toggle("is-now", en.start <= t && t < en.end));
         });
       });
       if (nowLine) {
-        const inDay = t >= dayStart;
-        nowLine.hidden = !inDay || !isToday;
-        nowLine.style.left = `calc(var(--lfx-live-epg-chan) + var(--lfx-live-epg-pm) * ${(t - dayStart) / MIN2})`;
+        nowLine.hidden = t < totalStart || t > totalStart + totalMin * MIN2;
+        nowLine.style.left = `calc(var(--lfx-live-epg-chan) + var(--lfx-live-epg-pm) * ${(t - totalStart) / MIN2})`;
       }
       const cur = ctx.currentChannel();
       inner.querySelectorAll(".lfx-live-epg__row[data-no]").forEach((r) => r.classList.toggle("is-current", Number(r.dataset.no) === cur));
     }
     function syncFocus(scroll) {
-      const m = model[focus.no];
-      if (!m) return;
-      const idx = m.entries.findIndex((e) => e.start === focus.start);
+      const f = findFocus();
+      const r = rowsByNo[focus.no];
+      if (!f || !r) return;
       inner.querySelectorAll(".lfx-live-epg__ev.is-focus").forEach((n) => {
         n.classList.remove("is-focus");
         n.tabIndex = -1;
       });
-      const node = idx >= 0 ? m.els[idx] : null;
-      if (!node) return;
+      const node = f.node;
       node.classList.add("is-focus");
       node.tabIndex = 0;
       if (opened && !detailEntry) {
@@ -2592,16 +2795,16 @@
         }
       }
       if (scroll && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest", inline: "nearest" });
-      const d = describe(ctx.scheduler, m.entries[idx]);
+      const d = describe(ctx.scheduler, f.en);
       infoTitle.textContent = d.title;
-      infoMeta.textContent = `${clock(m.entries[idx].start)}\u2013${clock(m.entries[idx].end)} \xB7 ${m.ch.no} ${m.ch.name}`;
+      infoMeta.textContent = `${clock(f.en.start)}\u2013${clock(f.en.end)} \xB7 ${r.ch.no} ${r.ch.name}`;
     }
     function pickAt(no, t) {
-      const m = model[no];
-      if (!m || !m.entries.length) return null;
-      let best = m.entries[0];
+      const list = entriesOf(no);
+      if (!list.length) return null;
+      let best = list[0].en;
       let bd = Infinity;
-      for (const e of m.entries) {
+      for (const { en: e } of list) {
         if (e.start <= t && t < e.end) return e;
         const dist = t < e.start ? e.start - t : t - e.end;
         if (dist < bd) {
@@ -2612,36 +2815,75 @@
       return best;
     }
     function focusDefault() {
-      const t = day === today ? now() : dayStart + 20 * 60 * MIN2;
+      const t = day === today ? now() : dayInfo[day - today].start;
       const cur = ctx.currentChannel();
-      const no = model[cur] ? cur : Number(Object.keys(model)[0]) || 1;
+      const no = rowsByNo[cur] ? cur : Number(Object.keys(rowsByNo)[0]) || 1;
       const e = pickAt(no, t);
       focus = { no, start: e ? e.start : 0 };
       anchorT = t;
     }
-    function scrollToNow() {
-      const t = day === today ? now() : dayStart + 20 * 60 * MIN2;
-      const node = inner.querySelector(".lfx-live-epg__ev.is-focus");
-      if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "nearest", inline: "nearest" });
-      const tick2 = inner.querySelector(".lfx-live-epg__tick");
-      const pm = tick2 ? tick2.getBoundingClientRect().width / COL_MIN : 0;
-      if (pm > 0) {
-        const corner = inner.querySelector(".lfx-live-epg__corner");
-        const chanW = corner ? corner.getBoundingClientRect().width : 0;
-        const visible = Math.max(0, scroller.clientWidth - chanW);
-        scroller.scrollLeft = Math.max(0, (t - dayStart) / MIN2 * pm - visible * 0.22);
+    function scheduleSync() {
+      if (!opened || rafId) return;
+      const raf = window.requestAnimationFrame ? (f) => window.requestAnimationFrame(f) : (f) => setTimeout(f, 16);
+      rafId = 1;
+      const id = raf(() => {
+        rafId = 0;
+        syncView();
+      });
+      if (rafId) rafId = id || 1;
+    }
+    function updateVis() {
+      const { chanW } = metrics();
+      const edge = scroller.getBoundingClientRect().left + chanW;
+      let em = 16;
+      let pad = 0;
+      inner.querySelectorAll(".lfx-live-epg__ev").forEach((node) => {
+        const r = node.getBoundingClientRect();
+        if (r.left < edge && r.right > edge) {
+          const cs = typeof getComputedStyle === "function" ? getComputedStyle(node) : null;
+          if (cs) {
+            em = parseFloat(cs.fontSize) || em;
+            pad = parseFloat(cs.paddingRight) || 0;
+          }
+          const vis = Math.max(0, r.right - edge - 0.3 * em - pad);
+          node.style.setProperty("--lfx-live-epg-vis", Math.round(vis) + "px");
+        } else if (node.style.getPropertyValue("--lfx-live-epg-vis")) {
+          node.style.removeProperty("--lfx-live-epg-vis");
+        }
+      });
+    }
+    function syncView() {
+      if (!opened || !dayInfo.length) return;
+      updateVis();
+      if (lock && Date.now() < lock.until) {
+        setWindow(lock.i);
+        return;
+      }
+      lock = null;
+      const { pm, visible } = metrics();
+      if (pm <= 0) return;
+      const centerMin = (scroller.scrollLeft + visible / 2) / pm;
+      let c2 = 0;
+      dayInfo.forEach((d, i) => {
+        if (d.off <= centerMin) c2 = i;
+      });
+      setWindow(c2);
+      if (today + c2 !== day) {
+        day = today + c2;
+        updateDays();
+        updateChanHeads();
       }
     }
     function setDay(D) {
       D = Math.max(today, Math.min(today + DAYS - 1, D));
-      if (D === day && Object.keys(model).length) return;
       day = D;
       closeDetail();
-      render();
+      setWindow(D - today);
+      updateDays();
+      updateChanHeads();
       focusDefault();
-      syncFocus(true);
-      scrollToNow();
-      ensurePrepared(D);
+      syncFocus(false);
+      scrollToDay(D, true);
     }
     function statusText(en) {
       const t = now();
@@ -2653,9 +2895,10 @@
       return "bereits gelaufen";
     }
     function openDetail() {
-      const m = model[focus.no];
-      const en = m && m.entries.find((e) => e.start === focus.start);
-      if (!en) return;
+      const f = findFocus();
+      if (!f) return;
+      const m = rowsByNo[focus.no];
+      const en = f.en;
       detailEntry = { no: focus.no, entry: en };
       const d = describe(ctx.scheduler, en);
       detail.textContent = "";
@@ -2670,9 +2913,9 @@
       lines.filter(Boolean).forEach((l) => detail.append(h("p", "lfx-live-epg__d-line", l)));
       const bs = badges(en);
       if (bs.length) {
-        const wrap = h("p", "lfx-live-epg__d-badges");
-        bs.forEach((b) => wrap.append(h("span", "lfx-live-epg__badge", b)));
-        detail.append(wrap);
+        const wrap2 = h("p", "lfx-live-epg__d-badges");
+        bs.forEach((b) => wrap2.append(h("span", "lfx-live-epg__badge", b)));
+        detail.append(wrap2);
       }
       const acts = h("div", "lfx-live-epg__d-actions");
       detailBtns = [];
@@ -2723,18 +2966,31 @@
       return true;
     }
     function moveH(dx) {
-      const m = model[focus.no];
-      if (!m) return;
-      const i = m.entries.findIndex((e) => e.start === focus.start);
-      const n = m.entries[i + dx];
-      if (!n) return;
-      focus.start = n.start;
-      anchorT = n.start;
+      let list = entriesOf(focus.no);
+      let i = list.findIndex((x) => x.en.start === focus.start);
+      if (i < 0) {
+        setWindow(dayIndexOfTime(focus.start));
+        list = entriesOf(focus.no);
+        i = list.findIndex((x) => x.en.start === focus.start);
+        if (i < 0) return;
+      }
+      let n = list[i + dx];
+      if (!n) {
+        const target = list[i].di + dx;
+        if (target < 0 || target >= DAYS) return;
+        setWindow(target);
+        list = entriesOf(focus.no);
+        i = list.findIndex((x) => x.en.start === focus.start);
+        n = list[i + dx];
+        if (!n) return;
+      }
+      focus.start = n.en.start;
+      anchorT = n.en.start;
       syncFocus(true);
     }
     function moveV(dy) {
       const no = focus.no + dy;
-      if (!model[no]) return;
+      if (!rowsByNo[no]) return;
       const e = pickAt(no, anchorT);
       if (!e) return;
       focus = { no, start: e.start };
@@ -2781,40 +3037,105 @@
           openDetail();
           return true;
         case "red":
-          setDay(day - 1);
+          if (day > today) setDay(day - 1);
           return true;
         case "green":
-          setDay(day + 1);
+          if (day < today + DAYS - 1) setDay(day + 1);
           return true;
         case "yellow":
-          if (day !== today) setDay(today);
-          focusDefault();
-          syncFocus(true);
-          scrollToNow();
+          setDay(today);
           return true;
         default:
           return false;
       }
     }
+    scroller.addEventListener("scroll", scheduleSync, { passive: true });
+    scroller.addEventListener("pointerdown", (e) => {
+      lock = null;
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop, active: false };
+    });
+    scroller.addEventListener("pointermove", (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      if (!drag.active) {
+        if (Math.hypot(dx, dy) < DRAG_PX) return;
+        drag.active = true;
+        scroller.classList.add("is-dragging");
+        try {
+          scroller.setPointerCapture(e.pointerId);
+        } catch {
+        }
+      }
+      scroller.scrollLeft = Math.max(0, drag.sl - dx);
+      scroller.scrollTop = Math.max(0, drag.st - dy);
+    });
+    const endDrag = (e) => {
+      if (!drag || e && e.pointerId != null && e.pointerId !== drag.id) return;
+      const was = drag.active;
+      try {
+        if (was) scroller.releasePointerCapture(drag.id);
+      } catch {
+      }
+      drag = null;
+      scroller.classList.remove("is-dragging");
+      if (was) {
+        suppressClick = true;
+        setTimeout(() => {
+          suppressClick = false;
+        }, 0);
+      }
+    };
+    scroller.addEventListener("pointerup", endDrag);
+    scroller.addEventListener("pointercancel", endDrag);
+    scroller.addEventListener(
+      "click",
+      (e) => {
+        if (!suppressClick) return;
+        suppressClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      true
+    );
+    scroller.addEventListener(
+      "wheel",
+      (e) => {
+        lock = null;
+        if (e.shiftKey || !e.target || !e.target.closest || !e.target.closest(".lfx-live-epg__ruler")) return;
+        if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+        e.preventDefault();
+        scroller.scrollLeft = Math.max(0, scroller.scrollLeft + e.deltaY * (e.deltaMode === 1 ? 16 : 1));
+      },
+      { passive: false }
+    );
     function open() {
       opened = true;
+      gen++;
       el.hidden = false;
       el.classList.add("is-open");
       today = ctx.broadcastDayOf(now());
       day = today;
       prepared.clear();
+      planCache.clear();
       detailEntry = null;
+      lock = null;
       detail.hidden = true;
       el.classList.remove("has-detail");
-      render();
+      buildDays();
+      build();
       focusDefault();
       syncFocus(true);
-      scrollToNow();
-      ensurePrepared(day);
+      scrollToDay(day, false);
     }
     function close() {
       opened = false;
       detailEntry = null;
+      drag = null;
+      clearTimeout(lockTimer);
+      if (rafId && window.cancelAnimationFrame) window.cancelAnimationFrame(rafId);
+      rafId = 0;
       el.hidden = true;
       el.classList.remove("is-open", "has-detail");
       detail.hidden = true;
@@ -2860,7 +3181,7 @@
       const l = ctx.channels ? ctx.channels() : ctx.scheduler.channels();
       return Array.isArray(l) ? l : [];
     };
-    const chanOf = (no) => chans().find((c) => c.no === no) || { no, name: "Sender " + no };
+    const chanOf = (no) => chans().find((c2) => c2.no === no) || { no, name: "Sender " + no };
     function ensurePrepared() {
       const D = ctx.broadcastDayOf(now());
       const s = ctx.scheduler;
@@ -2910,9 +3231,9 @@
       const half = Math.ceil(cs.length / 2);
       for (let i = 0; i < half; i++) {
         const segs = [];
-        [cs[i], cs[i + half]].forEach((c) => {
-          if (!c) return;
-          segs.push(seg(fit(300 + c.no + " " + shortName(c), 20), "cyan", { act: { page: 300 + c.no } }));
+        [cs[i], cs[i + half]].forEach((c2) => {
+          if (!c2) return;
+          segs.push(seg(fit(300 + c2.no + " " + shortName(c2), 20), "cyan", { act: { page: 300 + c2.no } }));
         });
         out.push(row(segs));
       }
@@ -2929,27 +3250,27 @@
       subCount = Math.max(1, Math.ceil(cs.length / CH_PER_SUB));
       sub = Math.min(sub, subCount - 1);
       const out = [row([seg(fit("JETZT & DANACH", 28), "yellow"), seg(fit(sub + 1 + "/" + subCount, 12).trimEnd(), "white")], { dbl: true, bg: "blue" })];
-      cs.slice(sub * CH_PER_SUB, (sub + 1) * CH_PER_SUB).forEach((c) => {
+      cs.slice(sub * CH_PER_SUB, (sub + 1) * CH_PER_SUB).forEach((c2) => {
         let cur = null;
         let nxt = null;
         try {
-          const n = ctx.scheduler.nowOn(c.no, t);
+          const n = ctx.scheduler.nowOn(c2.no, t);
           cur = n && n.entry;
-          const list = ctx.scheduler.upcoming(c.no, t, 3) || [];
+          const list = ctx.scheduler.upcoming(c2.no, t, 3) || [];
           nxt = list.find((e) => cur && e.start >= cur.end) || null;
         } catch {
         }
         const a = lineFor(cur);
         const b = lineFor(nxt);
-        const act = { tune: c.no };
-        out.push(row([seg(fit(c.no, 3).slice(0, 3), "yellow", { act }), seg(fit(shortName(c), 10) + " ", "cyan", { act, nocursor: true }), seg(a.start + " ", "white", { act, nocursor: true }), seg(fit(a.title, 20), "white", { act, nocursor: true })]));
+        const act = { tune: c2.no };
+        out.push(row([seg(fit(c2.no, 3).slice(0, 3), "yellow", { act }), seg(fit(shortName(c2), 10) + " ", "cyan", { act, nocursor: true }), seg(a.start + " ", "white", { act, nocursor: true }), seg(fit(a.title, 20), "white", { act, nocursor: true })]));
         out.push(row([seg(fit("", 4), "white"), seg(fit("Danach " + b.start + " " + b.title, 36), "green", { act, nocursor: true })]));
       });
       return out;
     }
     function pageChannel() {
       const no = page - 300;
-      const c = chanOf(no);
+      const c2 = chanOf(no);
       const D = ctx.broadcastDayOf(now());
       let plan;
       try {
@@ -2960,7 +3281,7 @@
       subCount = Math.max(1, Math.ceil(plan.length / ROWS_PER_SUB));
       sub = Math.min(sub, subCount - 1);
       const f = ctx.formatDay(D);
-      const out = [row([seg(fit(page + " " + shortName(c), 28), "yellow"), seg(sub + 1 + "/" + subCount, "white")], { dbl: true, bg: "blue" })];
+      const out = [row([seg(fit(page + " " + shortName(c2), 28), "yellow"), seg(sub + 1 + "/" + subCount, "white")], { dbl: true, bg: "blue" })];
       const theme = plan.find((e) => e.theme);
       out.push(row(seg(fit(f.weekday + " " + f.date + (theme ? "  Thema: " + theme.theme : ""), COLS), "green")));
       const t = now();
@@ -3217,6 +3538,21 @@
         { label: "TV-Stil", value: (ctx.styles.find((s) => s.id === ctx.style()) || {}).name || "", act: () => push("style") },
         { label: "Senderliste", act: () => push("channels") }
       ];
+      if (ctx.toggleMusic) {
+        const musicLabel = () => ctx.musicEnabled && ctx.musicEnabled() ? "An" : "Aus";
+        items.push({
+          label: "Pausenmusik",
+          value: musicLabel(),
+          act: () => {
+            const on = ctx.toggleMusic();
+            ctx.toast(on ? "Pausenmusik an." : "Pausenmusik aus.");
+            render();
+          }
+        });
+      }
+      if (ctx.openOverlay) {
+        items.push({ label: "Fernsehzeitung als PDF", act: () => closeThen(() => ctx.openOverlay("guide", { autoPdf: true })) });
+      }
       if (isAdmin()) items.push({ label: "Senderbelegung", act: () => {
         loadSel();
         push("assign");
@@ -3245,10 +3581,10 @@
       const cur = ctx.currentChannel();
       return {
         title: "Senderliste",
-        items: chans().map((c) => ({
-          label: `${c.no}  ${shortName(c) || c.name}`,
-          check: c.no === cur,
-          act: () => closeThen(() => ctx.tune(c.no))
+        items: chans().map((c2) => ({
+          label: `${c2.no}  ${shortName(c2) || c2.name}`,
+          check: c2.no === cur,
+          act: () => closeThen(() => ctx.tune(c2.no))
         }))
       };
     }
@@ -3256,8 +3592,8 @@
       const cs = chans();
       const items = [];
       for (let no = FIRST; no <= LAST; no++) {
-        const c = cs.find((x) => x.no === no) || {};
-        const cur = c.genreLabel || shortName(c);
+        const c2 = cs.find((x) => x.no === no) || {};
+        const cur = c2.genreLabel || shortName(c2);
         items.push({
           label: `Platz ${no}`,
           value: sel[no] ? sel[no] : `Automatisch${cur ? " (derzeit " + cur + ")" : ""}`,
@@ -3459,8 +3795,3013 @@
     return { el, open, close, isOpen: () => opened, onKey };
   }
 
+  // src/js/live/magazine/view.js
+  var FLIP_MS = 600;
+  var SINGLE_MS = 320;
+  var SWIPE_PX = 40;
+  function reducedMotion() {
+    try {
+      return !!(globalThis.matchMedia && globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch {
+      return false;
+    }
+  }
+  function pairSpreads(pages, mode) {
+    const n = pages.length;
+    if (mode === "single") return pages.map((_, i) => [null, i]);
+    const out = [];
+    if (!n) return out;
+    out.push([null, 0]);
+    let end = n;
+    const hasBack = n > 1 && pages[n - 1].kind === "back";
+    if (hasBack) end = n - 1;
+    for (let i = 1; i < end; i += 2) out.push([i, i + 1 < end ? i + 1 : null]);
+    if (hasBack) out.push([n - 1, null]);
+    return out;
+  }
+  function createMagazine(ctx) {
+    const el = h("div", "lfx-live-mag");
+    el.hidden = true;
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-label", "Fernsehzeitung");
+    el.dataset.style = "flat";
+    const bar = h("div", "lfx-live-mag__bar");
+    const mast = h("div", "lfx-live-mag__mast", "LIVE Programm");
+    const pageInfo = h("div", "lfx-live-mag__pageinfo");
+    pageInfo.setAttribute("aria-live", "polite");
+    const daysEl = h("div", "lfx-live-mag__days");
+    daysEl.setAttribute("role", "group");
+    daysEl.setAttribute("aria-label", "Tag w\xE4hlen");
+    const pdfBtn = h("button", "lfx-live-mag__btn lfx-live-mag__pdfbtn", "Als PDF herunterladen");
+    pdfBtn.type = "button";
+    pdfBtn.setAttribute("aria-label", "Als PDF herunterladen");
+    const pdfLink = h("a", "lfx-live-mag__pdf", "PDF fertig \u2013 herunterladen");
+    pdfLink.hidden = true;
+    const closeBtn = h("button", "lfx-live-mag__btn lfx-live-mag__close", "Schlie\xDFen");
+    closeBtn.type = "button";
+    closeBtn.setAttribute("aria-label", "Fernsehzeitung schlie\xDFen");
+    pdfBtn.setAttribute("title", "Als PDF herunterladen");
+    bar.append(mast, pageInfo, daysEl, pdfBtn, pdfLink, closeBtn);
+    const stage = h("div", "lfx-live-mag__stage");
+    const book = h("div", "lfx-live-mag__book");
+    const slotL = h("div", "lfx-live-mag__slot is-left");
+    const slotR = h("div", "lfx-live-mag__slot is-right");
+    const edgePrev = h("div", "lfx-live-mag__edge is-prev");
+    const edgeNext = h("div", "lfx-live-mag__edge is-next");
+    edgePrev.setAttribute("aria-hidden", "true");
+    edgeNext.setAttribute("aria-hidden", "true");
+    const fold = h("div", "lfx-live-mag__fold");
+    book.append(slotL, slotR, fold, edgePrev, edgeNext);
+    const status = h("div", "lfx-live-mag__status");
+    status.setAttribute("role", "status");
+    stage.append(book, status);
+    el.append(bar, stage);
+    let opened = false;
+    let magazine = null;
+    let spreads = [];
+    let cur = 0;
+    let mode = "single";
+    let token = 0;
+    let busy = false;
+    let queued = 0;
+    let flipTimer = null;
+    let leaf = null;
+    let pdfState = "idle";
+    let wantAuto = false;
+    let barFocus = -1;
+    let ro = null;
+    let rafs = /* @__PURE__ */ new Set();
+    const pages = () => magazine ? magazine.pages : [];
+    const animOn = () => ctx.animate !== false && !reducedMotion();
+    function resolveMode() {
+      const m = typeof ctx.mode === "function" ? ctx.mode() : ctx.mode;
+      if (m === "double" || m === "single") return m;
+      if (el.closest && el.closest(".lfx-live-app.is-phone")) return "single";
+      const w = el.clientWidth;
+      const hh = el.clientHeight;
+      return w > 760 && w > hh ? "double" : "single";
+    }
+    function img(tip, maxWidth) {
+      const fig = h("span", "lfx-live-mag__img");
+      const initial = h("span", "lfx-live-mag__initial", String(tip && tip.title || "?").trim().charAt(0).toUpperCase());
+      fig.append(initial);
+      if (tip && tip.imageId) {
+        const im = document.createElement("img");
+        im.loading = "lazy";
+        im.decoding = "async";
+        im.alt = "";
+        im.src = ctx.imageUrl(tip.imageId, { maxWidth });
+        im.addEventListener("error", () => {
+          fig.classList.add("is-failed");
+          im.remove();
+        });
+        fig.append(im);
+      } else fig.classList.add("is-failed");
+      return fig;
+    }
+    function badgeEls(list) {
+      const w = h("span", "lfx-live-mag__badges");
+      (list || []).forEach((b) => w.append(h("span", "lfx-live-mag__badge" + (/^ab \d+/.test(b) ? " is-age" : ""), b)));
+      return w;
+    }
+    function dayTag(p) {
+      return p.weekday ? p.weekday + (p.date ? " " + p.date : "") : "";
+    }
+    function head(p) {
+      const hd = h("div", "lfx-live-mag__head");
+      hd.append(h("span", "lfx-live-mag__head-title", magazine.title || "LIVE Programm"), h("span", "lfx-live-mag__head-day", dayTag(p)));
+      return hd;
+    }
+    function foot(p) {
+      const f = h("div", "lfx-live-mag__foot");
+      const n = h("span", "lfx-live-mag__foot-no", String(p.no));
+      const d = h("span", "lfx-live-mag__foot-day", dayTag(p));
+      f.append(p.no % 2 === 0 ? n : d, p.no % 2 === 0 ? d : n);
+      return f;
+    }
+    function meta(t) {
+      return [t.kindLabel, t.year, (t.genres || []).join(", "), t.runMin ? t.runMin + " Min." : ""].filter(Boolean).join(" \xB7 ");
+    }
+    function bodyCover(p, body) {
+      const c2 = magazine.cover || {};
+      const mh = h("div", "lfx-live-mag__masthead");
+      mh.append(h("h2", "lfx-live-mag__mh-title", magazine.title || "LIVE Programm"), h("div", "lfx-live-mag__mh-sub", magazine.subtitle || ""));
+      body.append(mh);
+      if (c2.hero) {
+        const t = c2.hero;
+        const hero = h("div", "lfx-live-mag__hero");
+        const txt = h("div", "lfx-live-mag__hero-text");
+        txt.append(
+          h("div", "lfx-live-mag__kicker", t.kindLabel || "Tipp der Woche"),
+          h("h3", "lfx-live-mag__hero-title", t.title),
+          h("div", "lfx-live-mag__when", [t.time, t.channelName].filter(Boolean).join(" \xB7 ")),
+          h("div", "lfx-live-mag__meta", meta(t))
+        );
+        if (t.overview) txt.append(h("p", "lfx-live-mag__overview", t.overview));
+        txt.append(badgeEls(t.badges));
+        hero.append(img(t, 600), txt);
+        body.append(hero);
+      }
+      const ts = c2.teasers || [];
+      if (ts.length) {
+        const box = h("div", "lfx-live-mag__teasers");
+        box.append(h("div", "lfx-live-mag__teasers-h", "Thementage"));
+        const ul = h("ul", "lfx-live-mag__teasers-l");
+        ts.forEach((t) => {
+          const li = h("li");
+          li.append(h("b", null, t.weekday), document.createTextNode(" " + (t.label || "")));
+          ul.append(li);
+        });
+        box.append(ul);
+        body.append(box);
+      }
+    }
+    function bodyTips(p, body) {
+      const list = h("ol", "lfx-live-mag__tips");
+      (p.tips || []).forEach((t) => {
+        const li = h("li", "lfx-live-mag__tip");
+        const txt = h("div", "lfx-live-mag__tip-text");
+        txt.append(
+          h("div", "lfx-live-mag__when", [t.time, t.channelName].filter(Boolean).join(" \xB7 ")),
+          h("h3", "lfx-live-mag__tip-title", t.title)
+        );
+        if (t.sub) txt.append(h("div", "lfx-live-mag__sub", t.sub));
+        txt.append(h("div", "lfx-live-mag__meta", meta(t)), badgeEls(t.badges));
+        if (t.overview) txt.append(h("p", "lfx-live-mag__overview", t.overview));
+        li.append(img(t, 300), txt);
+        list.append(li);
+      });
+      if (p.theme) body.append(h("div", "lfx-live-mag__theme", p.theme));
+      body.append(list);
+    }
+    function rowEl(r) {
+      const li = h("li", "lfx-live-mag__row is-" + (r.kind || "program"));
+      li.append(h("b", "lfx-live-mag__time", r.time || ""));
+      const t = h("span", "lfx-live-mag__rt");
+      t.append(h("span", "lfx-live-mag__rtitle", r.title || ""));
+      if (r.sub) t.append(h("span", "lfx-live-mag__rsub", " " + r.sub));
+      li.append(t);
+      (r.badges || []).forEach((b) => li.append(h("span", "lfx-live-mag__badge is-mini" + (/^ab \d+/.test(b) ? " is-age" : ""), b)));
+      return li;
+    }
+    function cellEl(ch) {
+      const cell = h("section", "lfx-live-mag__cell");
+      const hd = h("h4", "lfx-live-mag__cell-h");
+      hd.append(h("b", "lfx-live-mag__cell-no", String(ch.no)), document.createTextNode(" " + String(ch.name || "").replace(/^LIVE\s+/i, "")));
+      cell.append(hd);
+      if (ch.theme) cell.append(h("div", "lfx-live-mag__cell-theme", ch.theme));
+      const ul = h("ul", "lfx-live-mag__rows");
+      (ch.rows || []).forEach((r) => ul.append(rowEl(r)));
+      cell.append(ul);
+      return cell;
+    }
+    function bodyGrid(p, body, cls, title) {
+      if (title) body.append(h("div", "lfx-live-mag__section", title));
+      const grid = h("div", "lfx-live-mag__grid " + cls);
+      (p.channels || []).forEach((ch) => grid.append(cellEl(ch)));
+      body.append(grid);
+    }
+    function bodyBack(p, body) {
+      body.append(h("h3", "lfx-live-mag__back-h", "Hinweise"));
+      const ul = h("ul", "lfx-live-mag__notes");
+      [
+        "F\xFCr alle Zuschauer l\xE4uft zur selben Zeit dasselbe Programm \u2013 wer einschaltet, steigt mitten in der Sendung ein.",
+        "Sendungen ab 16 und ab 18 Jahren sind gekennzeichnet. Das Abendprogramm ab 22 Uhr (ab 18 ab 23 Uhr) ist f\xFCr Erwachsene gedacht.",
+        "Nachts l\xE4uft ein F\xFCllprogramm, einige Sender beenden ihren Sendetag mit dem Sendeschluss.",
+        "\xC4nderungen der Mediathek k\xF6nnen das Programm verschieben; ma\xDFgeblich ist die Anzeige am Fernseher.",
+        "Diese Zeitung l\xE4sst sich als PDF herunterladen, zum Ausdrucken im A4-Format."
+      ].forEach((t) => ul.append(h("li", null, t)));
+      body.append(ul, h("div", "lfx-live-mag__imprint", (magazine.title || "LIVE Programm") + " \xB7 " + (magazine.subtitle || "")));
+    }
+    function buildPage(i) {
+      const p = pages()[i];
+      const page = h("article", "lfx-live-mag__page");
+      page.dataset.kind = p.kind;
+      page.dataset.no = String(p.no);
+      page.dataset.index = String(i);
+      page.setAttribute("aria-label", "Seite " + p.no);
+      const body = h("div", "lfx-live-mag__body");
+      if (p.kind === "cover") bodyCover(p, body);
+      else if (p.kind === "tips") bodyTips(p, body);
+      else if (p.kind === "evening") bodyGrid(p, body, "is-evening", "Abendprogramm ab 20:15 Uhr");
+      else if (p.kind === "day") bodyGrid(p, body, "is-day", "Tagesprogramm \xB7 Sender " + (p.part === 2 ? "10\u201318" : "1\u20139"));
+      else if (p.kind === "back") bodyBack(p, body);
+      if (p.kind === "cover" || p.kind === "back") page.append(body);
+      else page.append(head(p), body, foot(p));
+      if (p.kind === "day" || p.kind === "evening") scheduleFit(page);
+      return page;
+    }
+    function scheduleFit(page) {
+      const raf = globalThis.requestAnimationFrame;
+      if (typeof raf !== "function") return;
+      const id = raf(() => {
+        rafs.delete(id);
+        fitCells(page);
+      });
+      rafs.add(id);
+    }
+    function fitCells(page) {
+      page.querySelectorAll(".lfx-live-mag__rows").forEach((ul) => {
+        if (ul.scrollHeight <= ul.clientHeight + 1) return;
+        const more = h("li", "lfx-live-mag__row is-more", "\u2026");
+        ul.append(more);
+        while (ul.scrollHeight > ul.clientHeight + 1 && ul.children.length > 2) ul.children[ul.children.length - 2].remove();
+      });
+    }
+    function slotFill(slot, idx) {
+      slot.textContent = "";
+      slot.classList.toggle("is-empty", idx == null);
+      if (idx != null) slot.append(buildPage(idx));
+    }
+    function showSpread(i) {
+      const s = spreads[i] || [null, null];
+      slotFill(slotL, s[0]);
+      slotFill(slotR, s[1]);
+      updateChrome();
+    }
+    function pagesOf(i) {
+      return (spreads[i] || []).filter((x) => x != null);
+    }
+    function currentDayIdx() {
+      const ps = pagesOf(cur).map((x) => pages()[x]);
+      const withD = ps.find((p) => p.D != null);
+      if (!withD) return -1;
+      return (magazine.days || []).findIndex((d) => d.D === withD.D);
+    }
+    function updateChrome() {
+      const ps = pagesOf(cur).map((x) => pages()[x]);
+      const total = pages().length;
+      if (ps.length) {
+        const nos = ps.map((p) => p.no);
+        pageInfo.textContent = "Seite " + (nos.length > 1 ? nos[0] + "\u2013" + nos[nos.length - 1] : nos[0]) + " von " + total;
+      } else pageInfo.textContent = "";
+      const di = currentDayIdx();
+      [...daysEl.children].forEach((b, k) => {
+        b.classList.toggle("is-active", k === di);
+        if (k === di) b.setAttribute("aria-current", "true");
+        else b.removeAttribute("aria-current");
+      });
+      book.classList.toggle("is-first", cur <= 0);
+      book.classList.toggle("is-last", cur >= spreads.length - 1);
+      book.dataset.spread = String(cur);
+    }
+    function buildDays() {
+      daysEl.textContent = "";
+      (magazine.days || []).forEach((d, k) => {
+        const b = h("button", "lfx-live-mag__day", d.weekday);
+        b.type = "button";
+        b.setAttribute("aria-label", "Zu " + d.weekday + " " + (d.date || ""));
+        b.title = d.weekday + " " + (d.date || "");
+        b.addEventListener("click", () => jumpDay(k));
+        daysEl.append(b);
+      });
+    }
+    function applyMode(keepPage) {
+      const m = resolveMode();
+      book.classList.toggle("is-double", m === "double");
+      book.classList.toggle("is-single", m !== "double");
+      el.dataset.mode = m;
+      if (m === mode && spreads.length) return;
+      const pageIdx = spreads.length ? pagesOf(cur)[0] : 0;
+      mode = m;
+      spreads = pairSpreads(pages(), mode);
+      if (keepPage && pageIdx != null) {
+        const f = spreads.findIndex((s) => s.includes(pageIdx));
+        cur = f < 0 ? 0 : f;
+      } else cur = 0;
+      if (magazine) {
+        finishFlip();
+        showSpread(cur);
+      }
+    }
+    function finishFlip() {
+      if (flipTimer) {
+        clearTimeout(flipTimer);
+        flipTimer = null;
+      }
+      if (leaf) {
+        leaf.remove();
+        leaf = null;
+      }
+      slotR.classList.remove("is-flipping-in-next", "is-flipping-in-prev");
+      slotL.classList.remove("is-flipping-in-next", "is-flipping-in-prev");
+      book.classList.remove("is-flipping");
+      busy = false;
+    }
+    function goTo(target) {
+      if (!magazine || !spreads.length) return;
+      target = Math.max(0, Math.min(spreads.length - 1, target));
+      if (target === cur) return;
+      if (busy) {
+        queued = target > cur ? 1 : -1;
+        return;
+      }
+      const dir = target > cur ? 1 : -1;
+      const from = spreads[cur];
+      const to = spreads[target];
+      const adjacent = Math.abs(target - cur) === 1;
+      const ms = ctx.flipMs != null ? ctx.flipMs : mode === "double" ? FLIP_MS : SINGLE_MS;
+      if (!animOn() || !adjacent || ms <= 0) {
+        cur = target;
+        showSpread(cur);
+        return;
+      }
+      busy = true;
+      book.classList.add("is-flipping");
+      const prev = cur;
+      if (mode === "double") {
+        leaf = h("div", "lfx-live-mag__leaf " + (dir > 0 ? "is-next" : "is-prev"));
+        const front = h("div", "lfx-live-mag__face is-front");
+        const back = h("div", "lfx-live-mag__face is-back");
+        const fi = dir > 0 ? from[1] : from[0];
+        const bi = dir > 0 ? to[0] : to[1];
+        if (fi != null) front.append(buildPage(fi));
+        if (bi != null) back.append(buildPage(bi));
+        const shade = h("div", "lfx-live-mag__leaf-shade");
+        leaf.append(front, back, shade);
+        leaf.style.transitionDuration = ms + "ms";
+        book.append(leaf);
+        if (dir > 0) slotFill(slotR, to[1]);
+        else slotFill(slotL, to[0]);
+        void leaf.offsetWidth;
+        leaf.classList.add("is-turning");
+      } else {
+        showSpread(target);
+        slotR.classList.add(dir > 0 ? "is-flipping-in-next" : "is-flipping-in-prev");
+      }
+      cur = target;
+      flipTimer = setTimeout(() => {
+        flipTimer = null;
+        finishFlip();
+        showSpread(cur);
+        const q = queued;
+        queued = 0;
+        if (q && cur + q >= 0 && cur + q < spreads.length && prev !== cur) goTo(cur + q);
+      }, ms + 30);
+      updateChrome();
+    }
+    const step = (d) => goTo(cur + d);
+    function pageSpread(pageIdx) {
+      const f = spreads.findIndex((s) => s.includes(pageIdx));
+      return f < 0 ? 0 : f;
+    }
+    function jumpDay(k) {
+      const d = (magazine.days || [])[k];
+      if (!d) return;
+      const idx = pages().findIndex((p) => p.kind === "tips" && p.D === d.D);
+      if (idx >= 0) goTo(pageSpread(idx));
+    }
+    function stepDay(dir) {
+      if (!magazine) return;
+      const n = (magazine.days || []).length;
+      let di = currentDayIdx();
+      if (di < 0) {
+        const onBack = pagesOf(cur).some((x) => pages()[x].kind === "back");
+        di = onBack ? n : -1;
+      }
+      const t = di + dir;
+      if (t < 0 || t >= n) return;
+      jumpDay(t);
+    }
+    function setStatus(text, kind) {
+      status.textContent = text || "";
+      status.dataset.kind = kind || "";
+      status.hidden = !text;
+    }
+    function resetPdf() {
+      if (pdfLink.href && /^blob:/.test(pdfLink.getAttribute("href") || "")) {
+        try {
+          URL.revokeObjectURL(pdfLink.getAttribute("href"));
+        } catch {
+        }
+      }
+      pdfState = "idle";
+      pdfLink.hidden = true;
+      pdfLink.removeAttribute("href");
+      pdfLink.removeAttribute("download");
+      pdfBtn.hidden = false;
+      pdfBtn.disabled = false;
+      pdfBtn.textContent = "Als PDF herunterladen";
+    }
+    async function startPdf() {
+      if (pdfState !== "idle" || !magazine) return;
+      pdfState = "busy";
+      pdfBtn.disabled = true;
+      const myMag = magazine;
+      const total = myMag.pages.length;
+      pdfBtn.textContent = "PDF wird erstellt \u2026 0/" + total;
+      try {
+        const r = await ctx.downloadPdf(myMag, (done, tot) => {
+          if (magazine === myMag && pdfState === "busy") pdfBtn.textContent = "PDF wird erstellt \u2026 " + done + "/" + (tot || total);
+        });
+        if (magazine !== myMag || !opened) {
+          if (r && r.url && /^blob:/.test(r.url)) {
+            try {
+              URL.revokeObjectURL(r.url);
+            } catch {
+            }
+          }
+          return;
+        }
+        pdfLink.href = r.url;
+        pdfLink.setAttribute("download", r.fileName);
+        pdfLink.hidden = false;
+        pdfBtn.hidden = true;
+        pdfState = "done";
+        if (ctx.toast) ctx.toast("PDF fertig.");
+      } catch {
+        if (magazine !== myMag) return;
+        pdfState = "idle";
+        pdfBtn.disabled = false;
+        pdfBtn.textContent = "Als PDF herunterladen";
+        if (ctx.toast) ctx.toast("Das PDF konnte nicht erstellt werden.");
+        else setStatus("Das PDF konnte nicht erstellt werden.", "error");
+      }
+    }
+    function open(opts) {
+      const o = opts || {};
+      opened = true;
+      el.hidden = false;
+      el.dataset.style = ctx.style() || "flat";
+      wantAuto = !!o.autoPdf;
+      barFocus = -1;
+      finishFlip();
+      queued = 0;
+      const my = ++token;
+      magazine = null;
+      spreads = [];
+      cur = 0;
+      mode = "";
+      slotL.textContent = "";
+      slotR.textContent = "";
+      daysEl.textContent = "";
+      pageInfo.textContent = "";
+      resetPdf();
+      pdfBtn.disabled = true;
+      book.hidden = true;
+      el.classList.add("is-loading");
+      setStatus("Heft wird gedruckt \u2026", "loading");
+      let p;
+      try {
+        p = Promise.resolve(ctx.buildMagazine());
+      } catch (e) {
+        p = Promise.reject(e);
+      }
+      p.then(
+        (m) => {
+          if (my !== token || !opened) return;
+          if (!m || !Array.isArray(m.pages) || !m.pages.length) {
+            el.classList.remove("is-loading");
+            setStatus("Das Heft konnte nicht gedruckt werden.", "error");
+            return;
+          }
+          magazine = m;
+          el.classList.remove("is-loading");
+          setStatus("");
+          book.hidden = false;
+          pdfBtn.disabled = false;
+          buildDays();
+          applyMode(false);
+          if (wantAuto) {
+            wantAuto = false;
+            startPdf();
+          }
+        },
+        () => {
+          if (my !== token || !opened) return;
+          el.classList.remove("is-loading");
+          setStatus("Das Heft konnte nicht gedruckt werden. Bitte sp\xE4ter noch einmal versuchen.", "error");
+        }
+      );
+      if (typeof ResizeObserver === "function" && !ro) {
+        ro = new ResizeObserver(() => {
+          if (opened && magazine) applyMode(true);
+        });
+        ro.observe(el);
+      }
+    }
+    function close() {
+      if (!opened) return;
+      opened = false;
+      token++;
+      finishFlip();
+      el.hidden = true;
+      if (ro) {
+        ro.disconnect();
+        ro = null;
+      }
+      const cancel = globalThis.cancelAnimationFrame;
+      rafs.forEach((id) => typeof cancel === "function" && cancel(id));
+      rafs.clear();
+      slotL.textContent = "";
+      slotR.textContent = "";
+      magazine = null;
+      resetPdf();
+    }
+    const barButtons = () => [...daysEl.children, pdfBtn, pdfLink, closeBtn].filter((b) => !b.hidden && !b.disabled);
+    function focusBar(i) {
+      const bs = barButtons();
+      if (!bs.length) return;
+      barFocus = Math.max(0, Math.min(bs.length - 1, i));
+      bs[barFocus].focus();
+    }
+    function onKey(key) {
+      if (!opened) return false;
+      switch (key) {
+        case "left":
+        case "right": {
+          if (barFocus >= 0) {
+            focusBar(barFocus + (key === "right" ? 1 : -1));
+            return true;
+          }
+          step(key === "right" ? 1 : -1);
+          return true;
+        }
+        case "red":
+          stepDay(-1);
+          return true;
+        case "green":
+          stepDay(1);
+          return true;
+        case "up":
+          focusBar(barFocus < 0 ? barButtons().length - 1 : barFocus);
+          return true;
+        case "down":
+          if (barFocus >= 0 && document.activeElement && el.contains(document.activeElement)) document.activeElement.blur();
+          barFocus = -1;
+          return true;
+        case "ok": {
+          if (barFocus < 0) return false;
+          const b = barButtons()[barFocus];
+          if (b) b.click();
+          return true;
+        }
+        default:
+          return false;
+      }
+    }
+    pdfBtn.addEventListener("click", startPdf);
+    closeBtn.addEventListener("click", () => {
+      close();
+      if (ctx.closeOverlay) ctx.closeOverlay();
+    });
+    el.addEventListener("click", (e) => {
+      if (e.target === el || e.target === stage) {
+        close();
+        if (ctx.closeOverlay) ctx.closeOverlay();
+      }
+    });
+    bar.addEventListener("focusin", (e) => {
+      const i = barButtons().indexOf(e.target);
+      if (i >= 0) barFocus = i;
+    });
+    bar.addEventListener("focusout", () => {
+      barFocus = -1;
+    });
+    let swiped = false;
+    let down = null;
+    edgePrev.addEventListener("click", () => {
+      if (!swiped) step(-1);
+    });
+    edgeNext.addEventListener("click", () => {
+      if (!swiped) step(1);
+    });
+    book.addEventListener("pointerdown", (e) => {
+      swiped = false;
+      down = { x: e.clientX, y: e.clientY };
+    });
+    const endSwipe = (e) => {
+      if (!down) return;
+      const dx = e.clientX - down.x;
+      const dy = e.clientY - down.y;
+      down = null;
+      if (Math.abs(dx) >= SWIPE_PX && Math.abs(dx) > Math.abs(dy)) {
+        swiped = true;
+        step(dx < 0 ? 1 : -1);
+      }
+    };
+    book.addEventListener("pointerup", endSwipe);
+    book.addEventListener("pointercancel", () => {
+      down = null;
+    });
+    return { el, open, close, isOpen: () => opened, onKey };
+  }
+
+  // src/js/live/pdf/winansi.js
+  var C1 = {
+    8364: 128,
+    8218: 130,
+    402: 131,
+    8222: 132,
+    8230: 133,
+    8224: 134,
+    8225: 135,
+    710: 136,
+    8240: 137,
+    352: 138,
+    8249: 139,
+    338: 140,
+    381: 142,
+    8216: 145,
+    8217: 146,
+    8220: 147,
+    8221: 148,
+    8226: 149,
+    8211: 150,
+    8212: 151,
+    732: 152,
+    8482: 153,
+    353: 154,
+    8250: 155,
+    339: 156,
+    382: 158,
+    376: 159
+  };
+  function codeOf(cp) {
+    if (cp >= 32 && cp <= 126) return cp;
+    if (cp >= 160 && cp <= 255) return cp;
+    return C1[cp] || 0;
+  }
+  function encodeWinAnsi(str) {
+    const out = [];
+    for (const ch of String(str == null ? "" : str)) {
+      const cp = ch.codePointAt(0);
+      if (cp < 32 || cp === 127) {
+        out.push(32);
+        continue;
+      }
+      let c2 = codeOf(cp);
+      if (c2) {
+        out.push(c2);
+        continue;
+      }
+      const base = ch.normalize("NFKD");
+      let any = false;
+      for (const b of base) {
+        const bp = b.codePointAt(0);
+        if (bp >= 768 && bp <= 879) continue;
+        const bc = codeOf(bp);
+        out.push(bc || 63);
+        any = true;
+      }
+      if (!any) out.push(63);
+    }
+    return Uint8Array.from(out);
+  }
+
+  // src/js/live/pdf/writer.js
+  var BASE = {
+    "sans": "Helvetica",
+    "sans-bold": "Helvetica-Bold",
+    "serif": "Times-Roman",
+    "serif-bold": "Times-Bold",
+    "mono": "Courier"
+  };
+  var FONT_KEYS = Object.keys(BASE);
+  function num2(n) {
+    n = Number(n);
+    if (!Number.isFinite(n)) return "0";
+    const s = (Math.round(n * 1e3) / 1e3).toFixed(3).replace(/\.?0+$/, "");
+    return s === "-0" || s === "" ? "0" : s;
+  }
+  function color(r, g, b) {
+    if (typeof r === "string") {
+      const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(r);
+      if (m) return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)].map((v) => num2(v / 255)).join(" ");
+      return "0 0 0";
+    }
+    const c2 = (v) => num2(Math.max(0, Math.min(255, Number(v) || 0)) / 255);
+    return c2(r) + " " + c2(g) + " " + c2(b);
+  }
+  function pdfString(str) {
+    const b = encodeWinAnsi(str);
+    let s = "(";
+    for (let i = 0; i < b.length; i++) {
+      const c2 = b[i];
+      if (c2 === 40 || c2 === 41 || c2 === 92) s += "\\" + String.fromCharCode(c2);
+      else if (c2 < 32 || c2 > 126) s += "\\" + c2.toString(8).padStart(3, "0");
+      else s += String.fromCharCode(c2);
+    }
+    return s + ")";
+  }
+  function parseJpeg(bytes) {
+    if (!(bytes instanceof Uint8Array) || bytes.length < 4 || bytes[0] !== 255 || bytes[1] !== 216) return null;
+    let i = 2;
+    while (i + 3 < bytes.length) {
+      if (bytes[i] !== 255) {
+        i++;
+        continue;
+      }
+      let m = bytes[i + 1];
+      if (m === 255) {
+        i++;
+        continue;
+      }
+      i += 2;
+      if (m === 216 || m === 1 || m >= 208 && m <= 215) continue;
+      if (m === 217 || m === 218) return null;
+      const len = bytes[i] << 8 | bytes[i + 1];
+      if (len < 2 || i + len > bytes.length) return null;
+      if (m === 192 || m === 193 || m === 194) {
+        if (len < 8) return null;
+        const precision = bytes[i + 2];
+        const height = bytes[i + 3] << 8 | bytes[i + 4];
+        const width = bytes[i + 5] << 8 | bytes[i + 6];
+        const comps = bytes[i + 7];
+        if (precision !== 8 || !width || !height || comps !== 1 && comps !== 3 && comps !== 4) return null;
+        return { width, height, comps };
+      }
+      i += len;
+    }
+    return null;
+  }
+  var ascii = (s) => {
+    const b = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 255;
+    return b;
+  };
+  function createPdf(opts = {}) {
+    const pages = [];
+    const images = [];
+    const title = opts && opts.title ? String(opts.title) : "";
+    function addJpeg(bytes) {
+      const info = parseJpeg(bytes);
+      if (!info) return null;
+      const ref = { index: images.length, name: "Im" + (images.length + 1), ...info, bytes };
+      images.push(ref);
+      return ref;
+    }
+    function addPage(w, h3) {
+      const W2 = Number(w) || 595;
+      const H = Number(h3) || 842;
+      const ops = [];
+      const used = /* @__PURE__ */ new Set();
+      const usedImgs = /* @__PURE__ */ new Set();
+      const page = {
+        width: W2,
+        height: H,
+        setFill(r, g, b) {
+          ops.push(color(r, g, b) + " rg");
+        },
+        setStroke(r, g, b) {
+          ops.push(color(r, g, b) + " RG");
+        },
+        rect(x, y, rw, rh, o = {}) {
+          const stroke = !!o.stroke;
+          const fill = o.fill === void 0 ? !stroke : !!o.fill;
+          if (!fill && !stroke) return;
+          if (stroke && o.lineWidth) ops.push(num2(o.lineWidth) + " w");
+          ops.push(num2(x) + " " + num2(H - y - rh) + " " + num2(rw) + " " + num2(rh) + " re " + (fill && stroke ? "B" : fill ? "f" : "S"));
+        },
+        line(x1, y1, x2, y2, lw = 1) {
+          ops.push(num2(lw) + " w " + num2(x1) + " " + num2(H - y1) + " m " + num2(x2) + " " + num2(H - y2) + " l S");
+        },
+        text(str, x, y, o = {}) {
+          const font = FONT_KEYS.includes(o.font) ? o.font : "sans";
+          const size = Number(o.size) || 10;
+          used.add(font);
+          ops.push("BT /F" + (FONT_KEYS.indexOf(font) + 1) + " " + num2(size) + " Tf " + num2(x) + " " + num2(H - y) + " Td " + pdfString(str) + " Tj ET");
+        },
+        image(ref, x, y, iw, ih) {
+          if (!ref || !ref.name) return;
+          usedImgs.add(ref.index);
+          ops.push("q " + num2(iw) + " 0 0 " + num2(ih) + " " + num2(x) + " " + num2(H - y - ih) + " cm /" + ref.name + " Do Q");
+        },
+        _ops: ops,
+        _imgs: usedImgs
+      };
+      pages.push(page);
+      return page;
+    }
+    function toBytes() {
+      const fontNo = (k) => 4 + k;
+      const imgNo = (i) => 4 + FONT_KEYS.length + i;
+      const pageBase = 4 + FONT_KEYS.length + images.length;
+      const pageNo = (p) => pageBase + p * 2;
+      const chunks = [];
+      const offsets = [];
+      let pos = 0;
+      const push = (b) => {
+        chunks.push(b);
+        pos += b.length;
+      };
+      const pushStr = (s) => push(ascii(s));
+      const beginObj = (n) => {
+        offsets[n] = pos;
+        pushStr(n + " 0 obj\n");
+      };
+      const endObj = () => pushStr("\nendobj\n");
+      pushStr("%PDF-1.4\n");
+      push(Uint8Array.from([37, 226, 227, 207, 211, 10]));
+      beginObj(1);
+      pushStr("<< /Type /Catalog /Pages 2 0 R >>");
+      endObj();
+      beginObj(2);
+      pushStr("<< /Type /Pages /Count " + pages.length + " /Kids [" + pages.map((_, i) => pageNo(i) + " 0 R").join(" ") + "] >>");
+      endObj();
+      beginObj(3);
+      pushStr("<< /Producer " + pdfString("LENZ LIVE") + (title ? " /Title " + pdfString(title) : "") + " >>");
+      endObj();
+      FONT_KEYS.forEach((k, i) => {
+        beginObj(fontNo(i));
+        pushStr("<< /Type /Font /Subtype /Type1 /BaseFont /" + BASE[k] + " /Encoding /WinAnsiEncoding >>");
+        endObj();
+      });
+      images.forEach((im, i) => {
+        beginObj(imgNo(i));
+        const cs = im.comps === 1 ? "/DeviceGray" : im.comps === 4 ? "/DeviceCMYK" : "/DeviceRGB";
+        const dec = im.comps === 4 ? " /Decode [1 0 1 0 1 0 1 0]" : "";
+        pushStr("<< /Type /XObject /Subtype /Image /Width " + im.width + " /Height " + im.height + " /ColorSpace " + cs + dec + " /BitsPerComponent 8 /Filter /DCTDecode /Length " + im.bytes.length + " >>\nstream\n");
+        push(im.bytes);
+        pushStr("\nendstream");
+        endObj();
+      });
+      pages.forEach((p, i) => {
+        const fonts = FONT_KEYS.map((_, k) => "/F" + (k + 1) + " " + fontNo(k) + " 0 R").join(" ");
+        const xo = [...p._imgs].sort((a, b) => a - b).map((idx) => "/" + images[idx].name + " " + imgNo(idx) + " 0 R").join(" ");
+        beginObj(pageNo(i));
+        pushStr("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + num2(p.width) + " " + num2(p.height) + "] /Resources << /Font << " + fonts + " >>" + (xo ? " /XObject << " + xo + " >>" : "") + " >> /Contents " + (pageNo(i) + 1) + " 0 R >>");
+        endObj();
+        const content = p._ops.join("\n");
+        beginObj(pageNo(i) + 1);
+        pushStr("<< /Length " + content.length + " >>\nstream\n" + content + "\nendstream");
+        endObj();
+      });
+      const size = pageBase + pages.length * 2;
+      const xrefPos = pos;
+      let x = "xref\n0 " + size + "\n0000000000 65535 f \n";
+      for (let n = 1; n < size; n++) x += String(offsets[n]).padStart(10, "0") + " 00000 n \n";
+      pushStr(x);
+      pushStr("trailer\n<< /Size " + size + " /Root 1 0 R /Info 3 0 R >>\nstartxref\n" + xrefPos + "\n%%EOF\n");
+      const out = new Uint8Array(pos);
+      let o = 0;
+      for (const c2 of chunks) {
+        out.set(c2, o);
+        o += c2.length;
+      }
+      return out;
+    }
+    return { addPage, addJpeg, toBytes };
+  }
+
+  // src/js/live/pdf/metrics.js
+  var FIRST2 = 32;
+  var W = {
+    "sans": [
+      278,
+      278,
+      355,
+      556,
+      556,
+      889,
+      667,
+      191,
+      333,
+      333,
+      389,
+      584,
+      278,
+      333,
+      278,
+      278,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      278,
+      278,
+      584,
+      584,
+      584,
+      556,
+      1015,
+      667,
+      667,
+      722,
+      722,
+      667,
+      611,
+      778,
+      722,
+      278,
+      500,
+      667,
+      556,
+      833,
+      722,
+      778,
+      667,
+      778,
+      722,
+      667,
+      611,
+      722,
+      667,
+      944,
+      667,
+      667,
+      611,
+      278,
+      278,
+      278,
+      469,
+      556,
+      333,
+      556,
+      556,
+      500,
+      556,
+      556,
+      278,
+      556,
+      556,
+      222,
+      222,
+      500,
+      222,
+      833,
+      556,
+      556,
+      556,
+      556,
+      333,
+      500,
+      278,
+      556,
+      500,
+      722,
+      500,
+      500,
+      500,
+      334,
+      260,
+      334,
+      584,
+      350,
+      556,
+      350,
+      222,
+      556,
+      333,
+      1e3,
+      556,
+      556,
+      333,
+      1e3,
+      667,
+      333,
+      1e3,
+      350,
+      611,
+      350,
+      350,
+      222,
+      222,
+      333,
+      333,
+      350,
+      556,
+      1e3,
+      333,
+      1e3,
+      500,
+      333,
+      944,
+      350,
+      500,
+      667,
+      278,
+      333,
+      556,
+      556,
+      556,
+      556,
+      260,
+      556,
+      333,
+      737,
+      370,
+      556,
+      584,
+      333,
+      737,
+      333,
+      400,
+      584,
+      333,
+      333,
+      333,
+      556,
+      537,
+      278,
+      333,
+      333,
+      365,
+      556,
+      834,
+      834,
+      834,
+      611,
+      667,
+      667,
+      667,
+      667,
+      667,
+      667,
+      1e3,
+      722,
+      667,
+      667,
+      667,
+      667,
+      278,
+      278,
+      278,
+      278,
+      722,
+      722,
+      778,
+      778,
+      778,
+      778,
+      778,
+      584,
+      778,
+      722,
+      722,
+      722,
+      722,
+      667,
+      667,
+      611,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      889,
+      500,
+      556,
+      556,
+      556,
+      556,
+      278,
+      278,
+      278,
+      278,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      584,
+      611,
+      556,
+      556,
+      556,
+      556,
+      500,
+      556,
+      500
+    ],
+    "sans-bold": [
+      278,
+      333,
+      474,
+      556,
+      556,
+      889,
+      722,
+      238,
+      333,
+      333,
+      389,
+      584,
+      278,
+      333,
+      278,
+      278,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      333,
+      333,
+      584,
+      584,
+      584,
+      611,
+      975,
+      722,
+      722,
+      722,
+      722,
+      667,
+      611,
+      778,
+      722,
+      278,
+      556,
+      722,
+      611,
+      833,
+      722,
+      778,
+      667,
+      778,
+      722,
+      667,
+      611,
+      722,
+      667,
+      944,
+      667,
+      667,
+      611,
+      333,
+      278,
+      333,
+      584,
+      556,
+      333,
+      556,
+      611,
+      556,
+      611,
+      556,
+      333,
+      611,
+      611,
+      278,
+      278,
+      556,
+      278,
+      889,
+      611,
+      611,
+      611,
+      611,
+      389,
+      556,
+      333,
+      611,
+      556,
+      778,
+      556,
+      556,
+      500,
+      389,
+      280,
+      389,
+      584,
+      350,
+      556,
+      350,
+      278,
+      556,
+      500,
+      1e3,
+      556,
+      556,
+      333,
+      1e3,
+      667,
+      333,
+      1e3,
+      350,
+      611,
+      350,
+      350,
+      278,
+      278,
+      500,
+      500,
+      350,
+      556,
+      1e3,
+      333,
+      1e3,
+      556,
+      333,
+      944,
+      350,
+      500,
+      667,
+      278,
+      333,
+      556,
+      556,
+      556,
+      556,
+      280,
+      556,
+      333,
+      737,
+      370,
+      556,
+      584,
+      333,
+      737,
+      333,
+      400,
+      584,
+      333,
+      333,
+      333,
+      611,
+      556,
+      278,
+      333,
+      333,
+      365,
+      556,
+      834,
+      834,
+      834,
+      611,
+      722,
+      722,
+      722,
+      722,
+      722,
+      722,
+      1e3,
+      722,
+      667,
+      667,
+      667,
+      667,
+      278,
+      278,
+      278,
+      278,
+      722,
+      722,
+      778,
+      778,
+      778,
+      778,
+      778,
+      584,
+      778,
+      722,
+      722,
+      722,
+      722,
+      667,
+      667,
+      611,
+      556,
+      556,
+      556,
+      556,
+      556,
+      556,
+      889,
+      556,
+      556,
+      556,
+      556,
+      556,
+      278,
+      278,
+      278,
+      278,
+      611,
+      611,
+      611,
+      611,
+      611,
+      611,
+      611,
+      584,
+      611,
+      611,
+      611,
+      611,
+      611,
+      556,
+      611,
+      556
+    ],
+    "serif": [
+      250,
+      333,
+      408,
+      500,
+      500,
+      833,
+      778,
+      180,
+      333,
+      333,
+      500,
+      564,
+      250,
+      333,
+      250,
+      278,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      278,
+      278,
+      564,
+      564,
+      564,
+      444,
+      921,
+      722,
+      667,
+      667,
+      722,
+      611,
+      556,
+      722,
+      722,
+      333,
+      389,
+      722,
+      611,
+      889,
+      722,
+      722,
+      556,
+      722,
+      667,
+      556,
+      611,
+      722,
+      722,
+      944,
+      722,
+      722,
+      611,
+      333,
+      278,
+      333,
+      469,
+      500,
+      333,
+      444,
+      500,
+      444,
+      500,
+      444,
+      333,
+      500,
+      500,
+      278,
+      278,
+      500,
+      278,
+      778,
+      500,
+      500,
+      500,
+      500,
+      333,
+      389,
+      278,
+      500,
+      500,
+      722,
+      500,
+      500,
+      444,
+      480,
+      200,
+      480,
+      541,
+      350,
+      500,
+      350,
+      333,
+      500,
+      444,
+      1e3,
+      500,
+      500,
+      333,
+      1e3,
+      556,
+      333,
+      889,
+      350,
+      611,
+      350,
+      350,
+      333,
+      333,
+      444,
+      444,
+      350,
+      500,
+      1e3,
+      333,
+      980,
+      389,
+      333,
+      722,
+      350,
+      444,
+      722,
+      250,
+      333,
+      500,
+      500,
+      500,
+      500,
+      200,
+      500,
+      333,
+      760,
+      276,
+      500,
+      564,
+      333,
+      760,
+      333,
+      400,
+      564,
+      300,
+      300,
+      333,
+      500,
+      453,
+      250,
+      333,
+      300,
+      310,
+      500,
+      750,
+      750,
+      750,
+      444,
+      722,
+      722,
+      722,
+      722,
+      722,
+      722,
+      889,
+      667,
+      611,
+      611,
+      611,
+      611,
+      333,
+      333,
+      333,
+      333,
+      722,
+      722,
+      722,
+      722,
+      722,
+      722,
+      722,
+      564,
+      722,
+      722,
+      722,
+      722,
+      722,
+      722,
+      556,
+      500,
+      444,
+      444,
+      444,
+      444,
+      444,
+      444,
+      667,
+      444,
+      444,
+      444,
+      444,
+      444,
+      278,
+      278,
+      278,
+      278,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      564,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500
+    ],
+    "serif-bold": [
+      250,
+      333,
+      555,
+      500,
+      500,
+      1e3,
+      833,
+      278,
+      333,
+      333,
+      500,
+      570,
+      250,
+      333,
+      250,
+      278,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      333,
+      333,
+      570,
+      570,
+      570,
+      500,
+      930,
+      722,
+      667,
+      722,
+      722,
+      667,
+      611,
+      778,
+      778,
+      389,
+      500,
+      778,
+      667,
+      944,
+      722,
+      778,
+      611,
+      778,
+      722,
+      556,
+      667,
+      722,
+      722,
+      1e3,
+      722,
+      722,
+      667,
+      333,
+      278,
+      333,
+      581,
+      500,
+      333,
+      500,
+      556,
+      444,
+      556,
+      444,
+      333,
+      500,
+      556,
+      278,
+      333,
+      556,
+      278,
+      833,
+      556,
+      500,
+      556,
+      556,
+      444,
+      389,
+      333,
+      556,
+      500,
+      722,
+      500,
+      500,
+      444,
+      394,
+      220,
+      394,
+      520,
+      350,
+      500,
+      350,
+      333,
+      500,
+      500,
+      1e3,
+      500,
+      500,
+      333,
+      1e3,
+      556,
+      333,
+      1e3,
+      350,
+      667,
+      350,
+      350,
+      333,
+      333,
+      500,
+      500,
+      350,
+      500,
+      1e3,
+      333,
+      1e3,
+      389,
+      333,
+      722,
+      350,
+      444,
+      722,
+      250,
+      333,
+      500,
+      500,
+      500,
+      500,
+      220,
+      500,
+      333,
+      747,
+      300,
+      500,
+      570,
+      333,
+      747,
+      333,
+      400,
+      570,
+      300,
+      300,
+      333,
+      556,
+      540,
+      250,
+      333,
+      300,
+      330,
+      500,
+      750,
+      750,
+      750,
+      500,
+      722,
+      722,
+      722,
+      722,
+      722,
+      722,
+      1e3,
+      722,
+      667,
+      667,
+      667,
+      667,
+      389,
+      389,
+      389,
+      389,
+      722,
+      722,
+      778,
+      778,
+      778,
+      778,
+      778,
+      570,
+      778,
+      722,
+      722,
+      722,
+      722,
+      722,
+      611,
+      556,
+      500,
+      500,
+      500,
+      500,
+      500,
+      500,
+      722,
+      444,
+      444,
+      444,
+      444,
+      444,
+      278,
+      278,
+      278,
+      278,
+      500,
+      556,
+      500,
+      500,
+      500,
+      500,
+      500,
+      570,
+      500,
+      556,
+      556,
+      556,
+      556,
+      500,
+      556,
+      500
+    ]
+  };
+  var widthOf = (font, code) => {
+    if (font === "mono") return 600;
+    const t = W[font] || W.sans;
+    const w = t[code - FIRST2];
+    return w == null ? t[0] : w;
+  };
+  function textWidth(str, font, size) {
+    const b = encodeWinAnsi(String(str == null ? "" : str));
+    let w = 0;
+    for (let i = 0; i < b.length; i++) w += widthOf(font, b[i]);
+    return w * size / 1e3;
+  }
+  function charWidths(str, font, size) {
+    const out = [];
+    for (const ch of String(str)) out.push(textWidth(ch, font, size));
+    return out;
+  }
+  function ellipsize(str, font, size, maxW) {
+    str = String(str == null ? "" : str);
+    if (textWidth(str, font, size) <= maxW) return str;
+    const ell = "\u2026";
+    const ew = textWidth(ell, font, size);
+    const chars = Array.from(str);
+    const cw = charWidths(str, font, size);
+    let w = 0;
+    let n = 0;
+    while (n < chars.length && w + cw[n] + ew <= maxW) {
+      w += cw[n];
+      n++;
+    }
+    const head = chars.slice(0, n).join("").replace(/\s+$/, "");
+    return n === 0 && ew > maxW ? "" : head + ell;
+  }
+  function wrap(str, font, size, maxW) {
+    const lines = [];
+    const words = String(str == null ? "" : str).split(/\s+/).filter(Boolean);
+    const space = textWidth(" ", font, size);
+    let cur = "";
+    let curW = 0;
+    const flush = () => {
+      if (cur) lines.push(cur);
+      cur = "";
+      curW = 0;
+    };
+    for (const word of words) {
+      const ww = textWidth(word, font, size);
+      if (ww > maxW) {
+        flush();
+        let piece = "";
+        let pw = 0;
+        for (const ch of Array.from(word)) {
+          const cwid = textWidth(ch, font, size);
+          if (piece && pw + cwid > maxW) {
+            lines.push(piece);
+            piece = "";
+            pw = 0;
+          }
+          piece += ch;
+          pw += cwid;
+        }
+        cur = piece;
+        curW = pw;
+        continue;
+      }
+      if (!cur) {
+        cur = word;
+        curW = ww;
+      } else if (curW + space + ww <= maxW) {
+        cur += " " + word;
+        curW += space + ww;
+      } else {
+        flush();
+        cur = word;
+        curW = ww;
+      }
+    }
+    flush();
+    return lines;
+  }
+
+  // src/js/live/pdf/render.js
+  var PW = 595;
+  var PH = 842;
+  var M = 28;
+  var CW = PW - 2 * M;
+  var TOP = 88;
+  var BOT = 806;
+  var hex = (s) => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+  var STYLES = {
+    crt80: {
+      bg: hex("#f3e9cf"),
+      ink: hex("#1d1710"),
+      muted: hex("#6b5d44"),
+      accent: hex("#c8281e"),
+      accent2: hex("#f2b705"),
+      head: hex("#c8281e"),
+      headInk: hex("#fff4d6"),
+      zebra: hex("#eadfc0"),
+      panel: hex("#e4d6ad"),
+      rule: hex("#1d1710"),
+      bandInk: hex("#fff4d6"),
+      title: "serif-bold",
+      body: "sans",
+      bold: "sans-bold",
+      chipInk: hex("#fff4d6")
+    },
+    silver: {
+      bg: hex("#ffffff"),
+      ink: hex("#1a2230"),
+      muted: hex("#5d6b7e"),
+      accent: hex("#1f5fbf"),
+      accent2: hex("#9cc2ff"),
+      head: hex("#1f5fbf"),
+      headInk: hex("#ffffff"),
+      zebra: hex("#eef1f5"),
+      panel: hex("#dde4ee"),
+      rule: hex("#b8c2d1"),
+      bandInk: hex("#ffffff"),
+      title: "sans-bold",
+      body: "sans",
+      bold: "sans-bold",
+      chipInk: hex("#ffffff")
+    },
+    flat: {
+      bg: hex("#141414"),
+      ink: hex("#ffffff"),
+      muted: hex("#a8a8a8"),
+      accent: hex("#e50914"),
+      accent2: null,
+      head: hex("#2b2b2b"),
+      headInk: hex("#ffffff"),
+      zebra: hex("#1e1e1e"),
+      panel: hex("#2b2b2b"),
+      rule: hex("#3a3a3a"),
+      bandInk: hex("#ffffff"),
+      title: "sans-bold",
+      body: "sans",
+      bold: "sans-bold",
+      chipInk: hex("#ffffff")
+    },
+    plain: {
+      bg: hex("#ffffff"),
+      ink: hex("#000000"),
+      muted: hex("#666666"),
+      accent: hex("#000000"),
+      accent2: null,
+      head: hex("#e6e6e6"),
+      headInk: hex("#000000"),
+      zebra: hex("#f4f4f4"),
+      panel: hex("#e6e6e6"),
+      rule: hex("#999999"),
+      bandInk: hex("#ffffff"),
+      title: "sans-bold",
+      body: "sans",
+      bold: "sans-bold",
+      chipInk: hex("#ffffff")
+    }
+  };
+  var BADGE_SHORT = { "Premiere": "Prem.", "Neue Folge": "Neu", "Wdh.": "Wdh.", "ab 16": "16", "ab 18": "18" };
+  function makeCtx(P, st) {
+    const fill = (c2) => P.setFill(c2[0], c2[1], c2[2]);
+    const T = (str, x, y, font, size, col) => {
+      fill(col || st.ink);
+      P.text(str, x, y, { font, size });
+    };
+    const TR = (str, xr, y, font, size, col) => T(str, xr - textWidth(str, font, size), y, font, size, col);
+    const TC = (str, xc, y, font, size, col) => T(str, xc - textWidth(str, font, size) / 2, y, font, size, col);
+    const R2 = (x, y, w, h3, col) => {
+      fill(col);
+      P.rect(x, y, w, h3, { fill: true });
+    };
+    const para = (text, x, y, w, font, size, lead, maxLines, col) => {
+      let lines = wrap(text, font, size, w);
+      if (lines.length > maxLines) {
+        lines = lines.slice(0, maxLines);
+        const last = lines[maxLines - 1].replace(/[\s.,;:!?–-]+$/, "") + "\u2026";
+        lines[maxLines - 1] = ellipsize(last, font, size, w);
+      }
+      for (const l of lines) {
+        T(l, x, y, font, size, col);
+        y += lead;
+      }
+      return y;
+    };
+    return { fill, T, TR, TC, R: R2, para };
+  }
+  var ageText = (age) => age != null && age > 0 ? "ab " + age : "";
+  function metaLine(tip) {
+    return [tip.year, (tip.genres || []).slice(0, 3).join(", "), tip.runMin ? tip.runMin + " Min." : "", ageText(tip.age)].filter(Boolean).join(" \xB7 ");
+  }
+  function dayLabelOf(mag, tip) {
+    if (!tip || !(tip.start > 0)) return "";
+    const D = Math.floor((tip.start - 3 * 36e5) / 864e5);
+    const d = (mag.days || []).find((x) => x.D === D);
+    return d ? d.weekday + " " + d.date : "";
+  }
+  function chips(c2, st, list, x, y) {
+    for (const b of list.slice(0, 4)) {
+      const w = textWidth(b, st.bold, 6.5) + 7;
+      c2.R(x, y - 8, w, 10.5, st.accent);
+      c2.T(b, x + 3.5, y - 0.5, st.bold, 6.5, st.chipInk);
+      x += w + 4;
+    }
+  }
+  function frame(c2, P, st, mag, page, label, total) {
+    c2.R(0, 0, PW, PH, st.bg);
+    c2.R(0, 0, PW, 14, st.accent);
+    if (st.accent2) c2.R(0, 14, PW, 3, st.accent2);
+    c2.T("LIVE Programm", M, 30, st.bold, 8, st.accent);
+    if (label) c2.TR(label, PW - M, 30, st.body, 8, st.muted);
+    P.setStroke(...st.rule);
+    P.line(M, 818, PW - M, 818, 0.5);
+    c2.T(mag.subtitle || "", M, 830, st.body, 7, st.muted);
+    c2.TR("Seite " + page.no + " von " + total, PW - M, 830, st.bold, 7.5, st.muted);
+  }
+  function pageTitle(c2, P, st, text, sub) {
+    c2.T(ellipsize(text, st.title, 22, CW), M, 66, st.title, 22, st.ink);
+    if (sub) c2.TR(ellipsize(sub, st.body, 9, 200), PW - M, 66, st.body, 9, st.muted);
+    c2.R(M, 72, CW, 2.5, st.accent);
+  }
+  function drawImage(c2, P, st, ref, x, y, w, h3, initial) {
+    c2.R(x, y, w, h3, st.panel);
+    if (ref) {
+      const s = Math.min(w / ref.width, h3 / ref.height);
+      const iw = ref.width * s;
+      const ih = ref.height * s;
+      P.image(ref, x + (w - iw) / 2, y + (h3 - ih) / 2, iw, ih);
+    } else {
+      const ch = String(initial || "").trim().charAt(0).toUpperCase() || "L";
+      c2.TC(ch, x + w / 2, y + h3 / 2 + h3 * 0.12, st.title, Math.min(w, h3) * 0.5, st.muted);
+    }
+  }
+  function cover(c2, P, st, mag, getImg) {
+    return (async () => {
+      c2.R(0, 0, PW, PH, st.bg);
+      c2.R(0, 0, PW, 172, st.accent);
+      if (st.accent2) c2.R(0, 172, PW, 8, st.accent2);
+      else {
+        P.setStroke(...st.rule);
+        P.line(0, 172, PW, 172, 1);
+      }
+      c2.T("LIVE", M, 108, st.title, 60, st.bandInk);
+      c2.T("Programm", M + textWidth("LIVE ", st.title, 60) + 2, 108, st.title, 60, st.bandInk);
+      c2.T(ellipsize(mag.subtitle || "", st.body, 15, CW), M, 148, st.body, 15, st.bandInk);
+      const hero = mag.cover && mag.cover.hero;
+      if (hero) {
+        const ref = await getImg(hero.imageId);
+        drawImage(c2, P, st, ref, M, 200, 230, 345, hero.title);
+        const x = M + 230 + 18;
+        const w = PW - M - x;
+        let y = 214;
+        c2.T(String(hero.kindLabel || "").toUpperCase(), x, y, st.bold, 9, st.accent);
+        y += 16;
+        const when = [dayLabelOf(mag, hero), hero.time, hero.channelName].filter(Boolean).join(" \xB7 ");
+        c2.T(ellipsize(when, st.bold, 10, w), x, y, st.bold, 10, st.muted);
+        y += 26;
+        const tl = wrap(hero.title, st.title, 24, w).slice(0, 3);
+        for (const l of tl) {
+          c2.T(l, x, y, st.title, 24, st.ink);
+          y += 27;
+        }
+        if (hero.sub) {
+          y = c2.para(hero.sub, x, y + 2, w, st.body, 10, 13, 2, st.muted);
+        }
+        const meta = metaLine(hero);
+        if (meta) {
+          y += 4;
+          c2.T(ellipsize(meta, st.body, 9.5, w), x, y, st.body, 9.5, st.ink);
+          y += 8;
+        }
+        if (hero.badges && hero.badges.length) {
+          y += 12;
+          chips(c2, st, hero.badges, x, y);
+          y += 6;
+        }
+        if (hero.overview) {
+          y += 22;
+          c2.para(hero.overview, x, y, w, st.body, 10, 13.5, Math.max(3, Math.floor((545 - y) / 13.5)), st.ink);
+        }
+      } else {
+        c2.T("Das Programm der Woche", M, 260, st.title, 26, st.ink);
+      }
+      const teasers = mag.cover && mag.cover.teasers || [];
+      c2.R(M, 566, CW, 2.5, st.accent);
+      c2.T("Thementage der Woche", M, 590, st.title, 14, st.ink);
+      if (!teasers.length) c2.T("Diese Woche keine Thementage.", M, 612, st.body, 9.5, st.muted);
+      const cols = 4;
+      const gap = 8;
+      const bw = (CW - gap * (cols - 1)) / cols;
+      const bh = 78;
+      teasers.slice(0, 8).forEach((t, i) => {
+        const x = M + i % cols * (bw + gap);
+        const y = 604 + Math.floor(i / cols) * (bh + gap);
+        c2.R(x, y, bw, bh, st.panel);
+        c2.R(x, y, 3, bh, st.accent);
+        c2.T(t.weekday || "", x + 10, y + 18, st.bold, 12, st.accent);
+        c2.para(t.label || "", x + 10, y + 34, bw - 16, st.body, 8.5, 10.5, 4, st.ink);
+      });
+      P.setStroke(...st.rule);
+      P.line(M, 818, PW - M, 818, 0.5);
+      c2.T("Das Programm ist f\xFCr alle gleich \xB7 LENZ LIVE", M, 830, st.body, 7, st.muted);
+      c2.TR("Seite 1 von " + mag.pages.length, PW - M, 830, st.bold, 7.5, st.muted);
+    })();
+  }
+  function tipsPage(c2, P, st, mag, page, getImg) {
+    return (async () => {
+      pageTitle(c2, P, st, "Tipps des Tages", page.weekday + " " + page.date);
+      let y = TOP;
+      if (page.theme) {
+        c2.T(ellipsize("Thementag: " + page.theme, st.bold, 9, CW), M, y + 6, st.bold, 9, st.accent);
+        y += 14;
+      }
+      const tips = page.tips || [];
+      if (!tips.length) c2.T("F\xFCr diesen Tag gibt es keine Programmtipps.", M, y + 20, st.body, 10, st.muted);
+      const pitch = page.theme ? 134 : 138;
+      const ih = pitch - 10;
+      const iw = 86;
+      for (let i = 0; i < tips.length; i++) {
+        const t = tips[i];
+        const by = y + i * pitch;
+        const ref = await getImg(t.imageId);
+        drawImage(c2, P, st, ref, M, by, iw, ih, t.title);
+        const x = M + iw + 14;
+        const w = PW - M - x;
+        let ty = by + 11;
+        const head = [t.time, t.channelName, t.kindLabel].filter(Boolean).join(" \xB7 ");
+        c2.T(ellipsize(head, st.bold, 9, w), x, ty, st.bold, 9, st.accent);
+        ty += 17;
+        const tl = wrap(t.title, st.title, 14.5, w);
+        const shown = tl.slice(0, 2);
+        if (tl.length > 2) shown[1] = ellipsize(shown[1] + "\u2026", st.title, 14.5, w);
+        for (const l of shown) {
+          c2.T(l, x, ty, st.title, 14.5, st.ink);
+          ty += 16.5;
+        }
+        if (t.sub) {
+          c2.T(ellipsize(t.sub, st.body, 9, w), x, ty - 2, st.body, 9, st.muted);
+          ty += 11;
+        }
+        const meta = metaLine(t);
+        if (meta) {
+          c2.T(ellipsize(meta, st.body, 8.5, w), x, ty - 2, st.body, 8.5, st.ink);
+          ty += 11;
+        }
+        if (t.badges && t.badges.length) {
+          chips(c2, st, t.badges, x, ty + 3);
+          ty += 14;
+        }
+        if (t.overview) {
+          const room = Math.floor((by + ih - ty + 2) / 11);
+          if (room >= 1) c2.para(t.overview, x, ty, w, st.body, 8.5, 11, room, st.ink);
+        }
+        if (i < tips.length - 1) {
+          P.setStroke(...st.rule);
+          P.line(M, by + pitch - 5, PW - M, by + pitch - 5, 0.4);
+        }
+      }
+    })();
+  }
+  function channelBlock(c2, P, st, x, y, w, h3, ch, size) {
+    const headH = size + 7;
+    c2.R(x, y, w, headH, st.head);
+    c2.T(String(ch.no), x + 4, y + headH - 4, st.bold, size + 1.5, st.headInk);
+    const nm = String(ch.name || "").replace(/^LIVE\s+/i, "");
+    c2.T(ellipsize(nm, st.bold, size + 1, w - 24), x + 20, y + headH - 4, st.bold, size + 1, st.headInk);
+    const pitch = size + 1.8;
+    let ry = y + headH;
+    const rows = ch.rows || [];
+    let extra = 0;
+    if (ch.theme) extra = 1;
+    const maxRows = Math.max(1, Math.floor((h3 - headH - 1) / pitch) - extra);
+    const cut = rows.length > maxRows;
+    const list = cut ? rows.slice(0, maxRows - 1) : rows;
+    if (ch.theme) {
+      c2.T(ellipsize(ch.theme, st.bold, size, w - 6), x + 3, ry + size + 0.2, st.bold, size, st.accent);
+      ry += pitch;
+    }
+    const tw = textWidth("00:00", st.bold, size) + 3;
+    list.forEach((r, i) => {
+      if (i % 2 === 1) c2.R(x, ry, w, pitch, st.zebra);
+      const base = ry + size + 0.3;
+      const closed = r.kind === "closedown" || r.kind === "fill";
+      c2.T(r.time, x + 2, base, st.bold, size, closed ? st.muted : st.accent);
+      const badge = (r.badges || []).filter((b) => BADGE_SHORT[b]).map((b) => BADGE_SHORT[b]).join(" ");
+      const bw = badge ? textWidth(badge, st.bold, size - 0.5) + 2 : 0;
+      if (badge) c2.TR(badge, x + w - 2, base, st.bold, size - 0.5, st.accent);
+      const tx = x + 2 + tw;
+      const avail = w - 4 - tw - bw;
+      const title = closed ? r.title : ellipsize(r.title, st.body, size, avail);
+      c2.T(closed ? ellipsize(title, st.body, size, avail) : title, tx, base, st.body, size, closed ? st.muted : st.ink);
+      if (r.sub && !closed) {
+        const used = textWidth(title, st.body, size) + 3;
+        const rest = avail - used;
+        if (rest > 18) c2.T(ellipsize(r.sub, st.body, size - 0.5, rest), tx + used, base, st.body, size - 0.5, st.muted);
+      }
+      ry += pitch;
+    });
+    if (cut) c2.T("\u2026", x + 2 + tw, ry + size, st.bold, size, st.muted);
+    P.setStroke(...st.rule);
+    P.line(x, y + h3, x + w, y + h3, 0.3);
+  }
+  function fitSize(channels, h3, min, max) {
+    for (let s = max; s > min; s -= 0.2) {
+      const pitch = s + 1.8;
+      if (channels.every((ch) => s + 7 + ((ch.rows || []).length + (ch.theme ? 1 : 0)) * pitch + 1 <= h3)) return s;
+    }
+    return min;
+  }
+  function eveningPage(c2, P, st, page) {
+    pageTitle(c2, P, st, "Abendprogramm", page.weekday + " " + page.date + " \xB7 ab 20:15");
+    const cols = 3;
+    const gap = 10;
+    const bw = (CW - gap * (cols - 1)) / cols;
+    const rows = Math.ceil((page.channels || []).length / cols) || 1;
+    const bh = (BOT - TOP - gap * (rows - 1)) / rows;
+    const size = fitSize(page.channels || [], bh, 6.8, 8.6);
+    (page.channels || []).forEach((ch, i) => {
+      channelBlock(c2, P, st, M + i % cols * (bw + gap), TOP + Math.floor(i / cols) * (bh + gap), bw, bh, ch, size);
+    });
+  }
+  function dayPage(c2, P, st, page) {
+    pageTitle(c2, P, st, "Tagesprogramm", page.weekday + " " + page.date + (page.part === 1 ? " \xB7 Sender 1\u20139" : " \xB7 Sender 10\u201318"));
+    const cols = 3;
+    const gap = 10;
+    const bw = (CW - gap * (cols - 1)) / cols;
+    const rows = Math.ceil((page.channels || []).length / cols) || 1;
+    const bh = (BOT - TOP - gap * (rows - 1)) / rows;
+    const size = fitSize(page.channels || [], bh, 6.6, 8.4);
+    (page.channels || []).forEach((ch, i) => {
+      channelBlock(c2, P, st, M + i % cols * (bw + gap), TOP + Math.floor(i / cols) * (bh + gap), bw, bh, ch, size);
+    });
+  }
+  function backPage(c2, P, st, mag, opts) {
+    pageTitle(c2, P, st, "Hinweise", "LIVE Programm");
+    const paras = [
+      ["Programm f\xFCr alle gleich", "Das Programm wird aus der Mediathek berechnet und ist auf allen Ger\xE4ten identisch: Wer um 20:15 einschaltet, sieht dieselbe Sendung an derselben Stelle."],
+      ["Jugendschutz", "Titel ab 16 Jahren laufen fr\xFChestens ab 22 Uhr, Titel ab 18 Jahren fr\xFChestens ab 23 Uhr."],
+      ["F\xFCllprogramm", "Nachts und in Programml\xFCcken l\xE4uft F\xFCllprogramm mit kurzen Titeln. Das regul\xE4re Programm beginnt jeden Sendetag um 5:00 Uhr."],
+      ["Premieren und Thementage", "Auf LIVE Premiere laufen neu hinzugekommene Titel zum ersten Mal um 20:15 Uhr, auf dem Thementag-Sender wechselt das Motto t\xE4glich."],
+      ["\xC4nderungen vorbehalten", "Die Fernsehzeitung zeigt den Stand beim Erzeugen. Kommen Titel hinzu oder fallen weg, kann sich das Programm \xE4ndern."]
+    ];
+    let y = TOP + 8;
+    for (const [h3, t] of paras) {
+      c2.T(h3, M, y, st.title, 13, st.accent);
+      y = c2.para(t, M, y + 17, CW, st.body, 10.5, 14.5, 5, st.ink) + 14;
+    }
+    const range = String(mag.subtitle || "").replace(/^Die Fernsehwoche\s*·\s*/, "");
+    c2.R(M, y + 6, CW, 1, st.rule);
+    c2.T("Sendewoche " + range + (opts && opts.created ? " \xB7 erzeugt am " + opts.created : ""), M, y + 26, st.bold, 9.5, st.ink);
+    c2.T("Als PDF erzeugt von LENZ LIVE.", M, y + 42, st.body, 9, st.muted);
+  }
+  async function renderMagazinePdf(magazine, opts = {}) {
+    const st = STYLES[opts.style] || STYLES.flat;
+    const pdf = createPdf({ title: magazine.title || "LIVE Programm" });
+    const cache = /* @__PURE__ */ new Map();
+    const getImg = async (id) => {
+      if (!id || typeof opts.loadImage !== "function") return null;
+      if (cache.has(id)) return cache.get(id);
+      let ref;
+      try {
+        const bytes = await opts.loadImage(id);
+        ref = bytes ? pdf.addJpeg(bytes) : null;
+      } catch {
+        ref = null;
+      }
+      cache.set(id, ref);
+      return ref;
+    };
+    const pages = magazine.pages || [];
+    const total = pages.length;
+    for (let i = 0; i < total; i++) {
+      const pg = pages[i];
+      const P = pdf.addPage(PW, PH);
+      const c2 = makeCtx(P, st);
+      if (pg.kind === "cover") await cover(c2, P, st, magazine, getImg);
+      else {
+        const label = { tips: "Tipps des Tages", evening: "Abendprogramm", day: "Tagesprogramm", back: "Hinweise" }[pg.kind] || "";
+        frame(c2, P, st, magazine, pg, label, total);
+        if (pg.kind === "tips") await tipsPage(c2, P, st, magazine, pg, getImg);
+        else if (pg.kind === "evening") eveningPage(c2, P, st, pg);
+        else if (pg.kind === "day") dayPage(c2, P, st, pg);
+        else if (pg.kind === "back") backPage(c2, P, st, magazine, opts);
+      }
+      if (typeof opts.onProgress === "function") {
+        try {
+          opts.onProgress(i + 1, total);
+        } catch {
+        }
+      }
+    }
+    return pdf.toBytes();
+  }
+
+  // src/js/live/magazine/pdf-export.js
+  var IMG_MAX_W = 360;
+  var IMG_TIMEOUT_MS = 8e3;
+  var JPEG_QUALITY = 0.8;
+  function createPdfExport({ imageUrl, doc = document, win = null, now = null, time = {} } = {}) {
+    const w = win || doc.defaultView || (typeof window !== "undefined" ? window : null);
+    const clockNow = typeof now === "function" ? now : () => Date.now();
+    function loadImage(imageId) {
+      return new Promise((resolve) => {
+        if (!imageId || typeof imageUrl !== "function") {
+          resolve(null);
+          return;
+        }
+        let done = false;
+        let timer = null;
+        const finish = (v) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(v);
+        };
+        timer = setTimeout(() => finish(null), IMG_TIMEOUT_MS);
+        try {
+          const img = new (w && w.Image ? w.Image : Image)();
+          img.crossOrigin = "anonymous";
+          img.onerror = () => finish(null);
+          img.onload = () => {
+            try {
+              const iw = img.naturalWidth || img.width;
+              const ih = img.naturalHeight || img.height;
+              if (!iw || !ih) {
+                finish(null);
+                return;
+              }
+              const k = Math.min(1, IMG_MAX_W / iw);
+              const cw = Math.max(1, Math.round(iw * k));
+              const ch = Math.max(1, Math.round(ih * k));
+              const canvas = doc.createElement("canvas");
+              canvas.width = cw;
+              canvas.height = ch;
+              const c2 = canvas.getContext("2d");
+              if (!c2) {
+                finish(null);
+                return;
+              }
+              c2.fillStyle = "#fff";
+              c2.fillRect(0, 0, cw, ch);
+              c2.drawImage(img, 0, 0, cw, ch);
+              canvas.toBlob((blob) => {
+                if (!blob) {
+                  finish(null);
+                  return;
+                }
+                blobBytes(blob).then(finish, () => finish(null));
+              }, "image/jpeg", JPEG_QUALITY);
+            } catch {
+              finish(null);
+            }
+          };
+          img.src = imageUrl(imageId, { maxWidth: IMG_MAX_W });
+        } catch {
+          finish(null);
+        }
+      });
+    }
+    async function blobBytes(blob) {
+      if (typeof blob.arrayBuffer === "function") return new Uint8Array(await blob.arrayBuffer());
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(new Uint8Array(r.result));
+        r.onerror = () => rej(r.error);
+        r.readAsArrayBuffer(blob);
+      });
+    }
+    function createdText() {
+      try {
+        const t = clockNow();
+        if (!time.formatDay || !time.broadcastDayOf || !time.formatClock) return void 0;
+        const d = time.formatDay(time.broadcastDayOf(t));
+        return `${d.date} ${time.formatClock(t)} Uhr`;
+      } catch {
+        return void 0;
+      }
+    }
+    async function downloadPdf(magazine, style, onProgress) {
+      const bytes = await renderMagazinePdf(magazine, { style, loadImage, onProgress, created: createdText() });
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      return { url: URL.createObjectURL(blob), fileName: magazine.fileName || "LIVE-Programm.pdf" };
+    }
+    return { downloadPdf, loadImage };
+  }
+
+  // src/js/live/player/music-presets.js
+  var QUALITIES = {
+    maj: [0, 4, 7],
+    m: [0, 3, 7],
+    maj7: [0, 4, 7, 11],
+    m7: [0, 3, 7, 10],
+    7: [0, 4, 7, 10],
+    m7b5: [0, 3, 6, 10]
+  };
+  function mulberry322(seed) {
+    let a = seed >>> 0;
+    return function next() {
+      a = a + 1831565813 >>> 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function midiToHz(m) {
+    return 440 * Math.pow(2, (m - 69) / 12);
+  }
+  function chordTone(chord, i, octShift = 0) {
+    const iv = QUALITIES[chord.q] || QUALITIES.maj;
+    const n = iv.length;
+    const oct = Math.floor(i / n);
+    return chord.r + octShift + iv[(i % n + n) % n] + 12 * oct;
+  }
+  function loopBars(preset) {
+    return preset.chords.length;
+  }
+  var c = (r, q) => ({ r, q });
+  var R = { C: 36, D: 38, E: 40, F: 41, G: 43, A: 45, B: 47 };
+  var crt80 = {
+    id: "crt80",
+    bpm: 100,
+    swing: 0,
+    cutoff: 3200,
+    reverb: 0.22,
+    chords: [
+      c(R.A, "m"),
+      c(R.F, "maj"),
+      c(R.C, "maj"),
+      c(R.G, "maj"),
+      c(R.A, "m"),
+      c(R.F, "maj"),
+      c(R.C, "maj"),
+      c(R.G, "maj"),
+      c(R.F, "maj"),
+      c(R.C, "maj"),
+      c(R.D, "m"),
+      c(R.A, "m"),
+      c(R.F, "maj"),
+      c(R.G, "maj"),
+      c(R.E, "m"),
+      c(R.A, "m")
+    ],
+    layers: [
+      { k: "pad", oct: 12, vol: 0.06, wave: "sawtooth", detune: 9, cutoff: 1300, attack: 0.7, voices: [0, 1, 2], pattern: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], len: 16 },
+      { k: "arp", oct: 24, vol: 0.045, wave: "square", cutoff: 2100, len: 1.7, pattern: [0, -1, 1, -1, 2, -1, 1, -1, 3, -1, 2, -1, 1, -1, 2, -1] },
+      { k: "bass", oct: 0, vol: 0.15, wave: "sawtooth", cutoff: 480, len: 1.8, pattern: [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 8, 0] },
+      { k: "snare", vol: 0.05, pattern: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0] }
+    ]
+  };
+  var silver = {
+    id: "silver",
+    bpm: 88,
+    swing: 0.1,
+    cutoff: 4200,
+    reverb: 0.3,
+    chords: [
+      c(R.C, "maj7"),
+      c(R.A, "m7"),
+      c(R.D, "m7"),
+      c(R.G, "7"),
+      c(R.E, "m7"),
+      c(R.A, "7"),
+      c(R.D, "m7"),
+      c(R.G, "7"),
+      c(R.C, "maj7"),
+      c(R.A, "m7"),
+      c(R.F, "maj7"),
+      c(R.B, "m7b5"),
+      c(R.E, "7"),
+      c(R.A, "m7"),
+      c(R.D, "m7"),
+      c(R.G, "7")
+    ],
+    layers: [
+      { k: "epiano", oct: 24, vol: 0.06, ratio: 1, index: 1.6, len: 4, voicing: [1, 2, 3, 4], strum: 0.014, pattern: [1, 0, 0, 0, 0, 0, 0.7, 0, 0, 0, 0.8, 0, 0, 0, 0, 0] },
+      { k: "bass", oct: 0, vol: 0.2, wave: "sine", cutoff: 600, len: 2.4, pattern: [1, 0, 0, 0, 0, 0, 5, 0, 0, 0, 1, 0, 0, 0, 0, 0] },
+      { k: "kick", vol: 0.2, pattern: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, 0, 0, 0, 0] },
+      { k: "hat", vol: 0.025, pattern: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5] }
+    ]
+  };
+  var flat = {
+    id: "flat",
+    bpm: 108,
+    swing: 0,
+    cutoff: 3800,
+    reverb: 0.26,
+    chords: [
+      c(R.D, "m7"),
+      c(R.G, "7"),
+      c(R.C, "maj7"),
+      c(R.A, "m7"),
+      c(R.D, "m7"),
+      c(R.G, "7"),
+      c(R.C, "maj7"),
+      c(R.A, "m7"),
+      c(R.E, "m7"),
+      c(R.A, "7"),
+      c(R.D, "m7"),
+      c(R.G, "7"),
+      c(R.C, "maj7"),
+      c(R.A, "7"),
+      c(R.D, "m7"),
+      c(R.G, "7")
+    ],
+    layers: [
+      { k: "epiano", oct: 24, vol: 0.06, ratio: 1, index: 1.3, len: 2.4, voicing: [1, 2, 3, 4], strum: 0.012, pattern: [1, 0, 0, 0.8, 0, 0, 0.9, 0, 0, 0, 0.8, 0, 0, 0.7, 0, 0] },
+      { k: "bass", oct: 0, vol: 0.2, wave: "sine", cutoff: 600, len: 3, pattern: [1, 0, 0, 0, 0, 0, 5, 0, 1, 0, 0, 0, 0, 0, 5, 0] },
+      { k: "brush", vol: 0.03, pattern: [1, 0, 0.4, 0, 0.7, 0, 0.4, 0, 1, 0, 0.4, 0, 0.7, 0, 0.4, 0] }
+    ]
+  };
+  var plain = {
+    id: "plain",
+    bpm: 72,
+    swing: 0,
+    cutoff: 3e3,
+    reverb: 0.34,
+    tremolo: { rate: 5.2, depth: 0.28 },
+    chords: [
+      c(R.C, "maj7"),
+      c(R.A, "m7"),
+      c(R.F, "maj7"),
+      c(R.G, "7"),
+      c(R.C, "maj7"),
+      c(R.E, "m7"),
+      c(R.A, "m7"),
+      c(R.D, "m7"),
+      c(R.F, "maj7"),
+      c(R.E, "m7"),
+      c(R.D, "m7"),
+      c(R.G, "7"),
+      c(R.C, "maj7"),
+      c(R.A, "m7"),
+      c(R.D, "m7"),
+      c(R.G, "7")
+    ],
+    layers: [
+      { k: "vibes", oct: 36, vol: 0.07, len: 6, pattern: [3, -1, -1, -1, 2, -1, 4, -1, -1, -1, 1, -1, 2, -1, -1, -1] },
+      { k: "upright", oct: 0, vol: 0.2, len: 4, pattern: [1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 3, 0] }
+    ]
+  };
+  var PRESETS = { crt80, silver, flat, plain };
+
+  // src/js/live/player/music.js
+  var TICK_MS = 25;
+  var LOOKAHEAD = 0.12;
+  var FADE_IN = 1.5;
+  var FADE_OUT = 0.6;
+  var SWITCH_OUT = 0.3;
+  var SWITCH_IN = 0.8;
+  var GAIN_SCALE = 0.45;
+  var MIN_G = 1e-4;
+  var safe = (fn) => {
+    try {
+      const r = fn();
+      if (r && typeof r.catch === "function") r.catch(() => {
+      });
+    } catch {
+    }
+  };
+  function createMusic({ AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext, doc = globalThis.document } = {}) {
+    let ctx = null;
+    let master = null;
+    let bus = null;
+    let lp = null;
+    let wet = null;
+    let tail = [];
+    let noiseBuf = null;
+    let aux = null;
+    let timer = null;
+    let stopTimer = null;
+    let switchTimer = null;
+    let disposed = false;
+    let enabled = true;
+    let vol = 0.7;
+    let muted = false;
+    let idle = null;
+    let styleId = "flat";
+    let preset = PRESETS.flat;
+    let playing = false;
+    let switching = false;
+    let nextTime = 0;
+    let step = 0;
+    let noiseCount = 0;
+    const target = () => muted ? 0 : vol * GAIN_SCALE;
+    const wantsMusic = () => !!(ctx && enabled && idle && target() > 0);
+    function buildReverbImpulse(sr) {
+      const len = Math.floor(sr * 2.2);
+      const buf = ctx.createBuffer(2, len, sr);
+      const rnd = mulberry322(2046620);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+          const k = 1 - i / len;
+          d[i] = (rnd() * 2 - 1) * k * k * k;
+        }
+      }
+      return buf;
+    }
+    function buildNoise(sr) {
+      const len = Math.floor(sr * 1.2);
+      const buf = ctx.createBuffer(1, len, sr);
+      const d = buf.getChannelData(0);
+      const rnd = mulberry322(5369127);
+      for (let i = 0; i < len; i++) d[i] = rnd() * 2 - 1;
+      return buf;
+    }
+    function ensureCtx() {
+      if (ctx || !AudioCtx || disposed) return;
+      try {
+        ctx = new AudioCtx();
+        const sr = ctx.sampleRate || 44100;
+        master = ctx.createGain();
+        master.gain.value = target();
+        bus = ctx.createGain();
+        bus.gain.value = 0;
+        lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = preset.cutoff;
+        lp.Q.value = 0.5;
+        const dry = ctx.createGain();
+        dry.gain.value = 0.85;
+        wet = ctx.createGain();
+        wet.gain.value = preset.reverb;
+        const conv = ctx.createConvolver();
+        conv.buffer = buildReverbImpulse(sr);
+        noiseBuf = buildNoise(sr);
+        bus.connect(lp);
+        lp.connect(dry);
+        lp.connect(conv);
+        conv.connect(wet);
+        let out = master;
+        tail = [dry, conv, wet];
+        if (typeof ctx.createDynamicsCompressor === "function") {
+          const comp = ctx.createDynamicsCompressor();
+          comp.connect(master);
+          out = comp;
+          tail.push(comp);
+        }
+        dry.connect(out);
+        wet.connect(out);
+        master.connect(ctx.destination);
+      } catch {
+        ctx = null;
+      }
+    }
+    function cleanup(first, nodes) {
+      first.onended = () => {
+        for (const n of nodes) safe(() => n.disconnect());
+      };
+    }
+    function voice({ waves, freq, t, dur, a = 0.01, vol: v, cutoff, sustain = false, dest = bus }) {
+      const env = ctx.createGain();
+      const nodes = [env];
+      const end = t + dur;
+      env.gain.setValueAtTime(MIN_G, t);
+      env.gain.linearRampToValueAtTime(v, t + a);
+      if (sustain) {
+        env.gain.setValueAtTime(v, Math.max(t + a, end - 0.25));
+        env.gain.linearRampToValueAtTime(MIN_G, end);
+      } else {
+        env.gain.exponentialRampToValueAtTime(MIN_G, end);
+      }
+      let out = env;
+      if (cutoff) {
+        const f = ctx.createBiquadFilter();
+        f.type = "lowpass";
+        f.frequency.value = cutoff;
+        env.connect(f);
+        nodes.push(f);
+        out = f;
+      }
+      out.connect(dest);
+      let first = null;
+      for (const w of waves) {
+        const o = ctx.createOscillator();
+        o.type = w.type;
+        o.frequency.setValueAtTime(freq * (w.mul || 1), t);
+        if (w.detune) o.detune.value = w.detune;
+        let src = o;
+        if (w.vol !== void 0) {
+          const wg = ctx.createGain();
+          wg.gain.value = w.vol;
+          o.connect(wg);
+          nodes.push(wg);
+          src = wg;
+        }
+        src.connect(env);
+        o.start(t);
+        o.stop(end + 0.05);
+        nodes.push(o);
+        if (!first) first = o;
+      }
+      cleanup(first, nodes);
+    }
+    function noiseHit({ t, dur, type, freq, q = 0.8, vol: v, a = 4e-3, dest = bus }) {
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuf;
+      src.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(MIN_G, t);
+      env.gain.linearRampToValueAtTime(v, t + a);
+      env.gain.exponentialRampToValueAtTime(MIN_G, t + dur);
+      src.connect(f);
+      f.connect(env);
+      env.connect(dest);
+      noiseCount = (noiseCount + 1) % 7;
+      src.start(t, noiseCount * 0.13);
+      src.stop(t + dur + 0.05);
+      cleanup(src, [src, f, env]);
+    }
+    function epianoNote({ freq, t, dur, vol: v, ratio, index }) {
+      const car = ctx.createOscillator();
+      car.type = "sine";
+      car.frequency.setValueAtTime(freq, t);
+      const mod = ctx.createOscillator();
+      mod.type = "sine";
+      mod.frequency.setValueAtTime(freq * ratio, t);
+      const mg = ctx.createGain();
+      mg.gain.setValueAtTime(index * freq, t);
+      mg.gain.exponentialRampToValueAtTime(freq * 0.02, t + dur * 0.55);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(MIN_G, t);
+      env.gain.linearRampToValueAtTime(v, t + 8e-3);
+      env.gain.exponentialRampToValueAtTime(MIN_G, t + dur);
+      mod.connect(mg);
+      mg.connect(car.frequency);
+      car.connect(env);
+      env.connect(bus);
+      car.start(t);
+      mod.start(t);
+      car.stop(t + dur + 0.05);
+      mod.stop(t + dur + 0.05);
+      cleanup(car, [car, mod, mg, env]);
+    }
+    const LAYERS = {
+      pad(L, ch, st, t, sd, vel) {
+        const dur = sd * (L.len || 16);
+        for (const i of L.voices) {
+          const f = midiToHz(chordTone(ch, i, L.oct));
+          voice({
+            waves: [
+              { type: L.wave, detune: -L.detune },
+              { type: L.wave, detune: L.detune }
+            ],
+            freq: f,
+            t,
+            dur,
+            a: L.attack,
+            vol: L.vol * vel,
+            cutoff: L.cutoff,
+            sustain: true
+          });
+        }
+      },
+      arp(L, ch, st, t, sd, vel, idx) {
+        voice({
+          waves: [{ type: L.wave }],
+          freq: midiToHz(chordTone(ch, idx, L.oct)),
+          t,
+          dur: sd * L.len,
+          a: 0.02,
+          vol: L.vol,
+          cutoff: L.cutoff
+        });
+      },
+      bass(L, ch, st, t, sd, vel, code) {
+        const off = { 1: 0, 3: 3, 5: 7, 8: 12 }[code];
+        const third = code === 3 ? ch.q.startsWith("m") ? 3 : 4 : off;
+        voice({
+          waves: [{ type: L.wave }, { type: "sine", mul: 0.5, vol: 0.6 }],
+          freq: midiToHz(ch.r + L.oct + third),
+          t,
+          dur: sd * L.len,
+          a: 0.015,
+          vol: L.vol,
+          cutoff: L.cutoff
+        });
+      },
+      epiano(L, ch, st, t, sd, vel) {
+        L.voicing.forEach((i, k) => {
+          epianoNote({
+            freq: midiToHz(chordTone(ch, i, L.oct)),
+            t: t + k * L.strum,
+            dur: sd * L.len,
+            vol: L.vol * vel * (1 - k * 0.08),
+            ratio: L.ratio,
+            index: L.index
+          });
+        });
+      },
+      vibes(L, ch, st, t, sd, vel, idx) {
+        const f = midiToHz(chordTone(ch, idx, L.oct));
+        const dest = aux ? aux.trem : bus;
+        voice({
+          waves: [{ type: "sine" }, { type: "sine", mul: 4, vol: 0.12 }],
+          freq: f,
+          t,
+          dur: sd * L.len * 0.5,
+          a: 6e-3,
+          vol: L.vol,
+          dest
+        });
+      },
+      upright(L, ch, st, t, sd, vel, code) {
+        const off = { 1: 0, 3: ch.q.startsWith("m") ? 3 : 4, 5: 7 }[code] || 0;
+        voice({
+          waves: [{ type: "triangle" }, { type: "sine", mul: 2, vol: 0.2 }],
+          freq: midiToHz(ch.r + L.oct + off),
+          t,
+          dur: sd * L.len,
+          a: 0.02,
+          vol: L.vol,
+          cutoff: 520
+        });
+      },
+      kick(L, ch, st, t, sd, vel) {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(130, t);
+        o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(MIN_G, t);
+        env.gain.linearRampToValueAtTime(L.vol * vel, t + 5e-3);
+        env.gain.exponentialRampToValueAtTime(MIN_G, t + 0.32);
+        o.connect(env);
+        env.connect(bus);
+        o.start(t);
+        o.stop(t + 0.36);
+        cleanup(o, [o, env]);
+      },
+      snare(L, ch, st, t, sd, vel) {
+        noiseHit({ t, dur: 0.14, type: "bandpass", freq: 1800, q: 0.7, vol: L.vol * vel });
+      },
+      hat(L, ch, st, t, sd, vel) {
+        noiseHit({ t, dur: 0.05, type: "highpass", freq: 7e3, q: 0.5, vol: L.vol * vel });
+      },
+      brush(L, ch, st, t, sd, vel) {
+        noiseHit({ t, dur: 0.16, type: "bandpass", freq: 4200, q: 0.6, vol: L.vol * vel, a: 0.05 });
+      }
+    };
+    const PITCHED_IDX = { arp: 1, vibes: 1 };
+    function scheduleStep(s, t) {
+      const sd = 60 / preset.bpm / 4;
+      const bar = Math.floor(s / 16) % loopBars(preset);
+      const st = s % 16;
+      const ch = preset.chords[bar];
+      const tt = t + st % 2 * (preset.swing || 0) * sd;
+      for (const L of preset.layers) {
+        const v = L.pattern[st];
+        if (PITCHED_IDX[L.k] ? !(v >= 0) : !v) continue;
+        LAYERS[L.k](L, ch, st, tt, sd, PITCHED_IDX[L.k] ? 1 : v, v);
+      }
+    }
+    function tick() {
+      if (!ctx || !playing || switching) return;
+      const now = ctx.currentTime;
+      if (nextTime < now - 0.5) nextTime = now + 0.05;
+      const sd = 60 / preset.bpm / 4;
+      while (nextTime < now + LOOKAHEAD) {
+        scheduleStep(step, nextTime);
+        step = (step + 1) % (loopBars(preset) * 16);
+        nextTime += sd;
+      }
+    }
+    function fadeBus(to, secs) {
+      const g = bus.gain;
+      const now = ctx.currentTime;
+      safe(() => g.cancelScheduledValues(now));
+      g.setValueAtTime(g.value, now);
+      g.linearRampToValueAtTime(to, now + secs);
+    }
+    function startAux() {
+      if (aux || !preset.tremolo) return;
+      const trem = ctx.createGain();
+      trem.gain.value = 1 - preset.tremolo.depth;
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = preset.tremolo.rate;
+      const depth = ctx.createGain();
+      depth.gain.value = preset.tremolo.depth;
+      lfo.connect(depth);
+      depth.connect(trem.gain);
+      trem.connect(bus);
+      lfo.start();
+      aux = { trem, lfo, depth };
+    }
+    function stopAux() {
+      if (!aux) return;
+      const a = aux;
+      aux = null;
+      safe(() => a.lfo.stop());
+      for (const n of [a.lfo, a.depth, a.trem]) safe(() => n.disconnect());
+    }
+    function applyPreset() {
+      preset = PRESETS[styleId] || PRESETS.flat;
+      lp.frequency.setTargetAtTime(preset.cutoff, ctx.currentTime, 0.05);
+      wet.gain.setTargetAtTime(preset.reverb, ctx.currentTime, 0.05);
+      stopAux();
+      startAux();
+      step = 0;
+      nextTime = ctx.currentTime + 0.05;
+    }
+    function start() {
+      clearTimeout(stopTimer);
+      stopTimer = null;
+      playing = true;
+      if (!timer) {
+        applyPreset();
+        timer = setInterval(tick, TICK_MS);
+      }
+      fadeBus(1, FADE_IN);
+    }
+    function stopFade() {
+      playing = false;
+      clearTimeout(switchTimer);
+      switchTimer = null;
+      switching = false;
+      fadeBus(0, FADE_OUT);
+      clearTimeout(stopTimer);
+      stopTimer = setTimeout(() => {
+        stopTimer = null;
+        clearInterval(timer);
+        timer = null;
+        stopAux();
+      }, FADE_OUT * 1e3 + 50);
+    }
+    function sync() {
+      if (disposed) return;
+      const want = wantsMusic();
+      if (want && !playing) start();
+      else if (!want && playing) stopFade();
+    }
+    function onVisibility() {
+      if (disposed || !ctx) return;
+      if (doc && doc.hidden) safe(() => ctx.suspend());
+      else if (wantsMusic()) safe(() => ctx.resume());
+    }
+    if (doc && typeof doc.addEventListener === "function") doc.addEventListener("visibilitychange", onVisibility);
+    return {
+      unlock() {
+        if (disposed || !AudioCtx) return;
+        ensureCtx();
+        if (!ctx) return;
+        if (ctx.state !== "running") safe(() => ctx.resume());
+        sync();
+      },
+      setStyle(id) {
+        if (disposed) return;
+        const next = PRESETS[id] ? id : "flat";
+        if (next === styleId) return;
+        styleId = next;
+        if (!playing || !ctx) {
+          preset = PRESETS[styleId];
+          return;
+        }
+        switching = true;
+        fadeBus(0, SWITCH_OUT);
+        clearTimeout(switchTimer);
+        switchTimer = setTimeout(() => {
+          switchTimer = null;
+          applyPreset();
+          switching = false;
+          if (playing) fadeBus(1, SWITCH_IN);
+        }, SWITCH_OUT * 1e3 + 30);
+      },
+      setLevel(v, m) {
+        if (disposed) return;
+        vol = Math.max(0, Math.min(1, Number(v) || 0));
+        muted = !!m;
+        if (ctx) master.gain.setTargetAtTime(target(), ctx.currentTime, 0.05);
+        sync();
+      },
+      setEnabled(on) {
+        if (disposed) return;
+        enabled = !!on;
+        sync();
+      },
+      setIdle(kind) {
+        if (disposed) return;
+        idle = kind === "pause" || kind === "test" || kind === "error" ? kind : null;
+        sync();
+      },
+      isPlaying() {
+        return !disposed && playing;
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        playing = false;
+        clearInterval(timer);
+        clearTimeout(stopTimer);
+        clearTimeout(switchTimer);
+        timer = stopTimer = switchTimer = null;
+        if (doc && typeof doc.removeEventListener === "function") doc.removeEventListener("visibilitychange", onVisibility);
+        if (ctx) {
+          stopAux();
+          for (const n of [bus, lp, ...tail, master]) safe(() => n.disconnect());
+          safe(() => ctx.close());
+          ctx = null;
+        }
+      }
+    };
+  }
+
   // src/js/live/ui/tv.js
-  var STYLES = [
+  var STYLES2 = [
     { id: "flat", name: "Flachbild" },
     { id: "crt80", name: "R\xF6hre 80er" },
     { id: "silver", name: "Silber-R\xF6hre" },
@@ -3468,7 +6809,7 @@
   ];
   var DEFAULT_STYLE = "flat";
   function normStyle(id) {
-    return STYLES.some((s) => s.id === id) ? id : DEFAULT_STYLE;
+    return STYLES2.some((s) => s.id === id) ? id : DEFAULT_STYLE;
   }
   function h2(doc, tag, cls, text) {
     const e = doc.createElement(tag);
@@ -3612,7 +6953,7 @@
       ["yellow", "", "Gelb", "is-color is-yellow"],
       ["blue", "", "Blau", "is-color is-blue"]
     ]],
-    ["extras", [["audio", "Ton", "Tonspur wechseln", "is-small"], ["subs", "UT", "Untertitel wechseln", "is-small"]]]
+    ["extras", [["audio", "Ton", "Tonspur wechseln", "is-small"], ["subs", "UT", "Untertitel wechseln", "is-small"], ["guide", "Heft", "Fernsehzeitung", "is-small is-guide"]]]
   ];
   var REMOTE_KEYS = GROUPS.reduce((acc, g) => acc.concat(g[1].map((b) => b[0])), []);
   function createRemote({ onKey, doc = document }) {
@@ -3699,6 +7040,9 @@
       case "g":
       case "G":
         return "epg";
+      case "z":
+      case "Z":
+        return "guide";
       case "i":
       case "I":
         return "info";
@@ -3784,10 +7128,10 @@
     return LOGO_COLORS[(n - 1) % LOGO_COLORS.length];
   }
   function channelInk(no) {
-    const c = channelColor(no).slice(1);
-    const r = parseInt(c.slice(0, 2), 16);
-    const g = parseInt(c.slice(2, 4), 16);
-    const b = parseInt(c.slice(4, 6), 16);
+    const c2 = channelColor(no).slice(1);
+    const r = parseInt(c2.slice(0, 2), 16);
+    const g = parseInt(c2.slice(2, 4), 16);
+    const b = parseInt(c2.slice(4, 6), 16);
     return (r * 299 + g * 587 + b * 114) / 1e3 > 150 ? "#1a1a1a" : "#ffffff";
   }
   function shortName2(channel) {
@@ -3968,7 +7312,7 @@
     const m = Math.floor(s / 60);
     return `${m}:${String(s % 60).padStart(2, "0")}`;
   }
-  function createCard(container, { formatClock: formatClock2 = (t) => new Date(t).toTimeString().slice(0, 5), doc = document, win = window } = {}) {
+  function createCard(container, { formatClock: formatClock2 = (t) => new Date(t).toTimeString().slice(0, 5), doc = document, win = window, onKind } = {}) {
     const el = h2(doc, "div", "lfx-live-card");
     el.hidden = true;
     const banner = h2(doc, "div", "lfx-live-banner");
@@ -3979,6 +7323,14 @@
     let clockEl = null;
     let countEl = null;
     let bannerT = null;
+    function notify() {
+      if (typeof onKind === "function") {
+        try {
+          onKind(kind, kind === "error" ? el.dataset.reason || null : null);
+        } catch {
+        }
+      }
+    }
     function reset(k) {
       el.textContent = "";
       el.hidden = false;
@@ -4002,6 +7354,7 @@
         countEl = h2(doc, "div", "lfx-live-card__count");
         el.append(countEl);
         this.tick(now == null ? Date.now() : now);
+        notify();
       },
       /** { channel, text, sub, now } – eigenes Testbild: Farbbalken, Kreis, Logo, Uhrzeit. */
       showTest({ channel, text, sub, now }) {
@@ -4017,6 +7370,7 @@
         if (sub) el.append(h2(doc, "div", "lfx-live-card__sub", sub));
         el.append(clockEl);
         this.tick(now == null ? Date.now() : now);
+        notify();
       },
       /** Störbild je Grund (video|browser|audio|network). */
       showError(reason, channel) {
@@ -4027,6 +7381,7 @@
         if (channel) el.append(createLogo(channel, { doc, number: true }));
         el.append(h2(doc, "div", "lfx-live-card__title", t.title));
         if (t.sub) el.append(h2(doc, "div", "lfx-live-card__sub", t.sub));
+        notify();
       },
       showBanner(text, ms = 1e4) {
         banner.textContent = text;
@@ -4041,12 +7396,14 @@
         banner.hidden = true;
       },
       hide() {
+        const was = kind;
         el.hidden = true;
         el.textContent = "";
         delete el.dataset.kind;
         kind = null;
         clockEl = null;
         countEl = null;
+        if (was) notify();
       },
       /** Jede Sekunde: Countdown bzw. Uhr im Testbild. */
       tick(now) {
@@ -4131,6 +7488,365 @@
     };
   }
 
+  // src/js/live/magazine/model.js
+  var DAYS2 = 7;
+  var OVERVIEW_MAX = 240;
+  var known = (n) => n != null && n !== 9999 ? n : null;
+  function episodeSpan(a, b) {
+    const sa = known(a.season);
+    const ea = known(a.episode);
+    const sb = known(b.season);
+    const eb = known(b.episode);
+    const one = (s, e) => [s != null ? "S" + s : "", e != null ? "E" + e : ""].filter(Boolean).join(" ");
+    if (a === b || sa === sb && ea === eb) return one(sa, ea);
+    if (sa != null && sb != null && (sb < sa || sb === sa && ea != null && eb != null && eb < ea)) return "ab " + one(sa, ea);
+    if (sa === sb) {
+      if (ea == null || eb == null) return one(sa, ea != null ? ea : eb);
+      return (sa != null ? "S" + sa + " " : "") + "E" + ea + "\u2013E" + eb;
+    }
+    return one(sa, ea) + " \u2013 " + one(sb, eb);
+  }
+  var sigOf = (e) => (e.premiere || "") + "|" + (e.rerun ? "r" : "") + "|" + (e.age || "") + "|" + (e.theme || "");
+  function badgesOf(entry) {
+    const b = badges(entry);
+    if (entry.theme) b.push("Thementag");
+    return b;
+  }
+  function buildRows(scheduler, formatClock2, entries) {
+    const list = entries.filter((e) => e.type !== "filler");
+    const rows = [];
+    for (let i = 0; i < list.length; ) {
+      const e = list[i];
+      if (e.type === "fill" || e.type === "nightfill") {
+        let j = i + 1;
+        while (j < list.length && (list[j].type === "fill" || list[j].type === "nightfill")) j++;
+        rows.push({ time: formatClock2(e.start), start: e.start, title: "F\xFCllprogramm", sub: "", badges: [], kind: "fill" });
+        i = j;
+        continue;
+      }
+      if (e.type === "closedown") {
+        let j = i + 1;
+        while (j < list.length && list[j].type === "closedown") j++;
+        rows.push({ time: formatClock2(e.start), start: e.start, title: "Sendeschluss", sub: "", badges: [], kind: "closedown" });
+        i = j;
+        continue;
+      }
+      const it = e.itemId && scheduler.item ? scheduler.item(e.itemId) : null;
+      if (e.type === "program" && it && it.kind === "episode") {
+        const sid = e.seriesId || it.seriesId || null;
+        let j = i + 1;
+        let last = it;
+        while (j < list.length) {
+          const n = list[j];
+          const ni = n.type === "program" && n.itemId ? scheduler.item(n.itemId) : null;
+          if (!ni || ni.kind !== "episode" || (n.seriesId || ni.seriesId || null) !== sid || sigOf(n) !== sigOf(e)) break;
+          last = ni;
+          j++;
+        }
+        rows.push({ time: formatClock2(e.start), start: e.start, title: it.seriesTitle || it.title || "", sub: episodeSpan(it, last), badges: badgesOf(e), kind: "program" });
+        i = j;
+        continue;
+      }
+      const d = describe(scheduler, e);
+      rows.push({ time: formatClock2(e.start), start: e.start, title: d.title || "\u2013", sub: "", badges: badgesOf(e), kind: "program" });
+      i++;
+    }
+    return rows;
+  }
+  function makeTip(ctx, ch, list, idx, kindLabel, overviews) {
+    const { scheduler, formatClock: formatClock2 } = ctx;
+    const e = list[idx];
+    const d = describe(scheduler, e);
+    const it = e.itemId ? scheduler.item(e.itemId) : null;
+    const isEp = it && it.kind === "episode";
+    let title = d.title;
+    let sub = "";
+    let imageId = e.itemId || null;
+    if (isEp) {
+      const sid = e.seriesId || it.seriesId || null;
+      let last = it;
+      for (let j = idx + 1; j < list.length; j++) {
+        const n = list[j];
+        if (n.type === "filler") continue;
+        const ni = n.type === "program" && n.itemId ? scheduler.item(n.itemId) : null;
+        if (!ni || ni.kind !== "episode" || (n.seriesId || ni.seriesId || null) !== sid) break;
+        last = ni;
+      }
+      title = it.seriesTitle || it.title || "";
+      const span = episodeSpan(it, last);
+      sub = it === last && it.title && it.title !== title ? [span, it.title].filter(Boolean).join(" \xB7 ") : span;
+      imageId = sid || e.itemId;
+    }
+    if (e.theme) sub = [e.theme, sub].filter(Boolean).join(" \xB7 ");
+    const age = e.age != null ? e.age : it && it.age != null ? it.age : null;
+    return {
+      imageId,
+      itemId: e.itemId || null,
+      title,
+      sub,
+      year: d.year,
+      genres: d.genres,
+      runMin: d.runMin,
+      channelNo: ch.no,
+      channelName: ch.name,
+      time: formatClock2(e.start),
+      start: e.start,
+      badges: badgesOf(e),
+      age,
+      overview: overviews && e.itemId && overviews.get(e.itemId) || null,
+      kindLabel: kindLabel || (isEp ? "Serie" : "Film")
+    };
+  }
+  function dayTips(ctx, D, chans, overviews) {
+    const { scheduler, dayBounds: dayBounds2 } = ctx;
+    const b = dayBounds2(D);
+    const chOf = (no) => chans.find((c2) => c2.no === no);
+    const plan = (no) => scheduler.planDay(no, D);
+    const tips = [];
+    for (const no of [1, 2]) {
+      const ch = chOf(no);
+      if (!ch) continue;
+      const list = plan(no);
+      let idx = list.findIndex((e) => e.type === "program" && e.itemId && e.start === b.a2015);
+      if (idx < 0) idx = list.findIndex((e) => e.type === "program" && e.itemId && e.start >= b.a2015);
+      if (idx >= 0) tips.push(makeTip(ctx, ch, list, idx, null, overviews));
+    }
+    const ch17 = chOf(17);
+    if (ch17) {
+      const list = plan(17);
+      const idx = list.findIndex((e) => e.type === "program" && e.itemId && e.premiere);
+      if (idx >= 0) tips.push(makeTip(ctx, ch17, list, idx, "Premiere", overviews));
+    }
+    let theme = null;
+    const ch18 = chOf(18);
+    if (ch18) {
+      const list = plan(18);
+      const first = list.find((e) => e.theme);
+      theme = first ? first.theme : null;
+      const idx = list.findIndex((e) => e.type === "program" && e.itemId && e.theme);
+      if (idx >= 0) tips.push(makeTip(ctx, ch18, list, idx, "Thementag", overviews));
+    }
+    const ch4 = chOf(4);
+    if (ch4) {
+      const list = plan(4);
+      const count = /* @__PURE__ */ new Map();
+      list.forEach((e, i) => {
+        if (e.type !== "program" || !e.itemId) return;
+        const it = scheduler.item(e.itemId);
+        const key = it && it.kind === "episode" ? e.seriesId || it.seriesId : e.itemId;
+        const c2 = count.get(key);
+        if (c2) c2.n++;
+        else count.set(key, { n: 1, i });
+      });
+      let best = null;
+      for (const c2 of count.values()) if (!best || c2.n > best.n || c2.n === best.n && c2.i < best.i) best = c2;
+      if (best) tips.push(makeTip(ctx, ch4, list, best.i, "Marathon", overviews));
+    }
+    return { tips: tips.slice(0, 5), theme };
+  }
+  function rangeText(D0, D1) {
+    const a = new Date(D0 * 864e5);
+    const b = new Date(D1 * 864e5);
+    const [da, ma, ya] = [a.getUTCDate(), a.getUTCMonth() + 1, a.getUTCFullYear()];
+    const [db, mb, yb] = [b.getUTCDate(), b.getUTCMonth() + 1, b.getUTCFullYear()];
+    if (ya !== yb) return da + "." + ma + "." + ya + "\u2013" + db + "." + mb + "." + yb;
+    if (ma !== mb) return da + "." + ma + ".\u2013" + db + "." + mb + "." + yb;
+    return da + ".\u2013" + db + "." + mb + "." + yb;
+  }
+  var p2 = (n) => (n < 10 ? "0" : "") + n;
+  function buildMagazine(ctx) {
+    const { scheduler, today: D0, formatDay: formatDay2, formatClock: formatClock2, dayBounds: dayBounds2 } = ctx;
+    const overviews = ctx.overviews instanceof Map ? ctx.overviews : null;
+    const c2 = { scheduler, formatClock: formatClock2, dayBounds: dayBounds2, formatDay: formatDay2 };
+    const days = [];
+    const pages = [{ kind: "cover", no: 1 }];
+    const teasers = [];
+    let premiereTip = null;
+    let kinoTip = null;
+    for (let i = 0; i < DAYS2; i++) {
+      const D = D0 + i;
+      const fd = formatDay2(D);
+      days.push({ D, weekday: fd.weekday, date: fd.date });
+      const chans = scheduler.channels(D);
+      const { tips, theme } = dayTips(c2, D, chans, overviews);
+      if (theme) teasers.push({ D, weekday: fd.weekday, label: theme });
+      if (!premiereTip) premiereTip = tips.find((t) => t.kindLabel === "Premiere") || null;
+      if (i === 0) kinoTip = tips.find((t) => t.channelNo === 1) || null;
+      const b = dayBounds2(D);
+      const head = { D, weekday: fd.weekday, date: fd.date };
+      pages.push({ kind: "tips", no: pages.length + 1, ...head, tips, theme });
+      pages.push({
+        kind: "evening",
+        no: pages.length + 1,
+        ...head,
+        channels: chans.map((ch) => ({
+          no: ch.no,
+          name: ch.name,
+          rows: buildRows(scheduler, formatClock2, scheduler.planDay(ch.no, D).filter((e) => e.end > b.a2015))
+        }))
+      });
+      for (const part of [1, 2]) {
+        const sel = chans.filter((ch) => part === 1 ? ch.no <= 9 : ch.no >= 10);
+        pages.push({
+          kind: "day",
+          no: pages.length + 1,
+          part,
+          ...head,
+          channels: sel.map((ch) => {
+            const plan = scheduler.planDay(ch.no, D);
+            const th = plan.find((e) => e.theme);
+            return { no: ch.no, name: ch.name, theme: th ? th.theme : null, rows: buildRows(scheduler, formatClock2, plan) };
+          })
+        });
+      }
+    }
+    pages.push({ kind: "back", no: pages.length + 1 });
+    const hero = premiereTip || kinoTip;
+    const d0 = new Date(D0 * 864e5);
+    return {
+      title: "LIVE Programm",
+      subtitle: "Die Fernsehwoche \xB7 " + rangeText(D0, D0 + DAYS2 - 1),
+      fileName: "LIVE-Programm_" + d0.getUTCFullYear() + "-" + p2(d0.getUTCMonth() + 1) + "-" + p2(d0.getUTCDate()) + ".pdf",
+      days,
+      cover: { hero: hero ? { ...hero } : null, teasers },
+      pages
+    };
+  }
+  function collectTipIds(magazine) {
+    const seen = /* @__PURE__ */ new Set();
+    const add = (t) => {
+      if (t && t.itemId) seen.add(t.itemId);
+    };
+    if (!magazine) return [];
+    add(magazine.cover && magazine.cover.hero);
+    for (const p of magazine.pages || []) if (p.kind === "tips") for (const t of p.tips || []) add(t);
+    return [...seen];
+  }
+  function shorten(text) {
+    const s = String(text || "").replace(/\s+/g, " ").trim();
+    if (s.length <= OVERVIEW_MAX) return s;
+    const cut = s.slice(0, OVERVIEW_MAX);
+    let end = -1;
+    const re = /[.!?…](?=\s|$)/g;
+    let m;
+    while (m = re.exec(cut)) end = m.index;
+    if (end >= 80) return cut.slice(0, end + 1);
+    const sp = cut.lastIndexOf(" ");
+    return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[\s,;:–-]+$/, "") + "\u2026";
+  }
+  async function loadOverviews(ids, itemDetails) {
+    const out = /* @__PURE__ */ new Map();
+    const list = [...new Set((ids || []).filter(Boolean))];
+    if (!list.length || typeof itemDetails !== "function") return out;
+    try {
+      const res = await itemDetails(list);
+      const entries = res instanceof Map ? [...res.entries()] : res && typeof res === "object" ? Object.entries(res) : [];
+      for (const [id, v] of entries) {
+        const raw = typeof v === "string" ? v : v && v.overview;
+        const t = raw ? shorten(raw) : "";
+        if (t) out.set(id, t);
+      }
+    } catch {
+      return /* @__PURE__ */ new Map();
+    }
+    return out;
+  }
+
+  // src/js/live/magazine/prop.js
+  var PROP_MIN_PX = 110;
+  function createMagazineProp({ doc = document, onOpen, imageUrl, onFit, slot } = {}) {
+    const el = doc.createElement("button");
+    el.type = "button";
+    el.className = "lfx-live-mag-prop";
+    el.setAttribute("aria-label", "Fernsehzeitung \xF6ffnen");
+    el.dataset.style = "flat";
+    const sheet = doc.createElement("span");
+    sheet.className = "lfx-live-mag-prop__sheet";
+    const mast = doc.createElement("span");
+    mast.className = "lfx-live-mag-prop__mast";
+    mast.textContent = "LIVE Programm";
+    const pic = doc.createElement("span");
+    pic.className = "lfx-live-mag-prop__pic";
+    const week = doc.createElement("span");
+    week.className = "lfx-live-mag-prop__week";
+    week.textContent = "Mo Di Mi Do Fr Sa So";
+    sheet.append(mast, pic, week);
+    el.append(sheet);
+    let cover2 = null;
+    let imgEl = null;
+    let fit2 = true;
+    let ro = null;
+    let watched = null;
+    let dead = false;
+    function setCover(tip) {
+      cover2 = tip || null;
+      if (imgEl) {
+        imgEl.remove();
+        imgEl = null;
+      }
+      pic.classList.toggle("has-img", false);
+      if (!cover2 || !cover2.imageId || typeof imageUrl !== "function") return;
+      const im = doc.createElement("img");
+      im.loading = "lazy";
+      im.decoding = "async";
+      im.alt = "";
+      im.src = imageUrl(cover2.imageId, { maxWidth: 200 });
+      im.addEventListener("error", () => {
+        im.remove();
+        if (imgEl === im) imgEl = null;
+        pic.classList.remove("has-img");
+      });
+      imgEl = im;
+      pic.append(im);
+      pic.classList.add("has-img");
+    }
+    function setStyle(id) {
+      el.dataset.style = id || "flat";
+    }
+    function measure() {
+      if (dead) return fit2;
+      const s = watched || slot || el.parentElement;
+      if (!s) return fit2;
+      const next = s.clientHeight >= PROP_MIN_PX;
+      if (next !== fit2) {
+        fit2 = next;
+        if (typeof onFit === "function") onFit(fit2);
+      }
+      return fit2;
+    }
+    function watch(s) {
+      if (dead || !s || s === watched) return;
+      if (ro) ro.disconnect();
+      watched = s;
+      if (typeof ResizeObserver === "function") {
+        ro = new ResizeObserver(() => measure());
+        ro.observe(s);
+      }
+      measure();
+    }
+    const click = () => {
+      if (typeof onOpen === "function") onOpen();
+    };
+    el.addEventListener("click", click);
+    if (slot) watch(slot);
+    return {
+      el,
+      setCover,
+      setStyle,
+      fits: () => fit2,
+      measure,
+      watch,
+      destroy() {
+        dead = true;
+        if (ro) ro.disconnect();
+        ro = null;
+        el.removeEventListener("click", click);
+        el.remove();
+        imgEl = null;
+      }
+    };
+  }
+
   // src/js/live/ui/app.js
   var DEBOUNCE_MS = 400;
   var DIGIT_WAIT_MS = 1500;
@@ -4139,13 +7855,14 @@
   var MAX_TIMEOUT = 2147483647;
   var VOL_STEP = 5;
   var PLAYABLE = ["program", "fill", "nightfill"];
-  var OVERLAY_FACTORY = { epg: "epg", txt: "ttx", menu: "menu" };
-  var OVERLAY_CLASS = { epg: "has-epg", txt: "has-ttx", menu: "has-menu" };
-  var p2 = (n) => String(n).padStart(2, "0");
+  var OVERLAY_FACTORY = { epg: "epg", txt: "ttx", menu: "menu", guide: "guide" };
+  var OVERLAY_CLASS = { epg: "has-epg", txt: "has-ttx", menu: "has-menu", guide: "has-guide" };
+  var IDLE_KINDS = ["pause", "test", "error"];
+  var p22 = (n) => String(n).padStart(2, "0");
   var clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   function defaultClock(t) {
     const d = new Date(t);
-    return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+    return `${p22(d.getHours())}:${p22(d.getMinutes())}`;
   }
   function pick(it, ...keys) {
     for (const k of keys) if (it[k] != null && it[k] !== "") return it[k];
@@ -4153,13 +7870,13 @@
   }
   function itemFields(it, scheduler) {
     if (!it) return { genres: [] };
-    const known = (n) => n != null && n !== 9999 ? n : null;
+    const known2 = (n) => n != null && n !== 9999 ? n : null;
     const g = Array.isArray(it.genres) ? it.genres : [];
     return {
       title: pick(it, "title"),
       seriesName: pick(it, "seriesTitle"),
-      season: known(pick(it, "season")),
-      episode: known(pick(it, "episode")),
+      season: known2(pick(it, "season")),
+      episode: known2(pick(it, "episode")),
       year: pick(it, "year"),
       genres: scheduler ? genreLabels(scheduler, g) : g,
       runtimeMs: pick(it, "durMs"),
@@ -4168,7 +7885,7 @@
       type: pick(it, "kind")
     };
   }
-  function createApp(host, { scheduler, player: playerArg, watch, pickFiller: pickFiller2, overlays = {}, deps = {}, opts = {}, time = {} }) {
+  function createApp(host, { scheduler, player: playerArg, watch, pickFiller: pickFiller2, overlays = {}, music = null, pdf = null, deps = {}, opts = {}, time = {} }) {
     const doc = host.ownerDocument || document;
     const win = typeof window !== "undefined" ? window : doc.defaultView;
     const clock = typeof opts.now === "function" ? opts.now : () => Date.now();
@@ -4177,12 +7894,22 @@
     const refs = buildTv({ style: opts.style, fakePlayer: !!opts.fakePlayer, doc });
     const { app, room, screen, video, overlay: overlayEl } = refs;
     const noise = createNoise(refs.noise, { win });
-    const card = createCard(screen, { formatClock: formatClock2, doc, win });
+    const card = createCard(screen, { formatClock: formatClock2, doc, win, onKind: () => syncMusic() });
     const osd = createOsd(screen, { doc, win });
     screen.append(overlayEl);
     const remote = createRemote({ onKey: (k) => press(k), doc });
-    room.append(remote.el);
+    const side = h2(doc, "div", "lfx-live-side");
+    const slot = h2(doc, "div", "lfx-live-side__slot");
+    const propSlot = h2(doc, "div", "lfx-live-room__prop");
+    side.append(slot, remote.el);
+    room.append(side, propSlot);
     host.append(app);
+    let prop = null;
+    if (overlays.guide) {
+      prop = createMagazineProp({ doc, onOpen: () => press("guide"), imageUrl: deps.imageUrl });
+      slot.append(prop.el);
+      prop.setStyle(normStyle(opts.style));
+    }
     if (opts.phone) app.classList.add("is-phone");
     if (opts.touch) app.classList.add("is-touch");
     let style = normStyle(opts.style);
@@ -4202,6 +7929,8 @@
     let stallArmed = false;
     let tickCount = 0;
     let lastDay = null;
+    let musicOn = opts.music !== false;
+    let magCache = null;
     const T = {};
     let tickIv = null;
     const made = {};
@@ -4213,7 +7942,7 @@
       clearTimeout(T[name]);
       T[name] = null;
     };
-    const safe = (fn) => {
+    const safe2 = (fn) => {
       try {
         return fn();
       } catch {
@@ -4227,7 +7956,7 @@
     }) : playerArg;
     function channelOf(no) {
       const list = scheduler.channels && scheduler.channels() || [];
-      return list.find((c) => c.no === no) || { no, key: "", name: `LIVE ${no}` };
+      return list.find((c2) => c2.no === no) || { no, key: "", name: `LIVE ${no}` };
     }
     function titleOf(e) {
       if (!e) return { title: "", sub: null };
@@ -4235,13 +7964,13 @@
       if (e.type === "filler") return { title: "Kurze Pause", sub: null };
       const f = itemFields(e.itemId ? scheduler.item(e.itemId) : null, scheduler);
       if (f.seriesName) {
-        const code = f.season != null && f.episode != null ? `S${p2(f.season)}E${p2(f.episode)}` : null;
+        const code = f.season != null && f.episode != null ? `S${p22(f.season)}E${p22(f.episode)}` : null;
         const sub = [code, f.title && f.title !== f.seriesName ? f.title : null].filter(Boolean).join(" \xB7 ");
         return { title: f.seriesName, sub: sub || null };
       }
       return { title: f.title || "Unbekannter Titel", sub: null };
     }
-    function badgesOf(e) {
+    function badgesOf2(e) {
       const b = [];
       if (e.rerun) b.push("Wdh.");
       if (e.premiere === "film") b.push("Premiere");
@@ -4278,16 +8007,16 @@
         sub,
         from: formatClock2(e.start),
         to: formatClock2(e.end),
-        badges: badgesOf(e),
+        badges: badgesOf2(e),
         progress: clamp((t - e.start) / Math.max(1, e.end - e.start), 0, 1),
         next: nx ? { title: titleOf(nx).title, from: formatClock2(nx.start) } : null,
         meta: []
       };
       const f = itemFields(e.itemId ? scheduler.item(e.itemId) : null, scheduler);
       const age = e.age != null ? e.age : f.age;
-      const ageText = typeof age === "number" && age > 0 ? `ab ${age}` : null;
+      const ageText2 = typeof age === "number" && age > 0 ? `ab ${age}` : null;
       const mins = f.runtimeMs ? Math.round(Number(f.runtimeMs) / 6e4) : null;
-      data.meta = [f.year, f.genres.length ? f.genres.slice(0, 3).join(", ") : null, mins ? `${mins} Min.` : null, ageText].filter((x) => x != null && x !== "");
+      data.meta = [f.year, f.genres.length ? f.genres.slice(0, 3).join(", ") : null, mins ? `${mins} Min.` : null, ageText2].filter((x) => x != null && x !== "");
       return data;
     }
     const ctx = {
@@ -4303,7 +8032,7 @@
       dayBounds: time.dayBounds,
       style: () => style,
       setStyle: (id) => setStyle(id),
-      styles: STYLES,
+      styles: STYLES2,
       user: deps.user,
       isAdmin: !!(deps.user && deps.user.isAdmin),
       channelConfig: deps.channelConfig || {},
@@ -4313,7 +8042,15 @@
       openDashboard: () => deps.openDashboard && deps.openDashboard(),
       logout: () => deps.logout && deps.logout(),
       imageUrl: deps.imageUrl,
-      toast: (t) => deps.toast && deps.toast(t)
+      toast: (t) => deps.toast && deps.toast(t),
+      buildMagazine: () => buildFullMagazine(),
+      downloadPdf: (mag, onProgress) => {
+        if (!pdf || typeof pdf.downloadPdf !== "function") return Promise.reject(new Error("kein PDF-Export"));
+        return pdf.downloadPdf(mag, style, onProgress);
+      },
+      openOverlay: (name, o) => openOverlay(name, o),
+      musicEnabled: () => musicOn,
+      toggleMusic: () => toggleMusic()
     };
     function overlayInst(name) {
       if (made[name]) return made[name];
@@ -4321,7 +8058,7 @@
       if (!factory) return null;
       const inst = factory(ctx);
       made[name] = inst;
-      if (inst && inst.el) overlayEl.append(inst.el);
+      if (inst && inst.el) (name === "guide" ? app : overlayEl).append(inst.el);
       return inst;
     }
     function syncOverlayClasses() {
@@ -4334,22 +8071,113 @@
       return null;
     }
     function closeOverlays() {
-      for (const n of Object.keys(made)) if (made[n] && made[n].isOpen()) safe(() => made[n].close());
+      for (const n of Object.keys(made)) if (made[n] && made[n].isOpen()) safe2(() => made[n].close());
       syncOverlayClasses();
     }
-    function openOverlay(name) {
+    function openOverlay(name, o) {
       const inst = overlayInst(name);
       if (!inst) return;
       for (const n of Object.keys(made)) if (n !== name && made[n] && made[n].isOpen()) made[n].close();
-      inst.open();
+      if (o === void 0) inst.open();
+      else inst.open(o);
       syncOverlayClasses();
     }
+    function magInput(overviews) {
+      const D = time.broadcastDayOf(clock());
+      return { scheduler, today: D, formatClock: formatClock2, formatDay: time.formatDay, dayBounds: time.dayBounds, overviews };
+    }
+    function baseMagazine() {
+      if (!time.broadcastDayOf || !time.formatDay || !time.dayBounds) return null;
+      const D = time.broadcastDayOf(clock());
+      if (magCache && magCache.D === D) return magCache.base;
+      const base = buildMagazine(magInput(void 0));
+      magCache = { D, base, full: null };
+      return base;
+    }
+    function buildFullMagazine() {
+      let base;
+      try {
+        base = baseMagazine();
+      } catch (e) {
+        return Promise.reject(e);
+      }
+      if (!base) return Promise.reject(new Error("kein Zeitmodul"));
+      const cache = magCache;
+      if (cache.full) return cache.full;
+      const full = (async () => {
+        const overviews = await loadOverviews(collectTipIds(base), deps.itemDetails);
+        return buildMagazine(magInput(overviews));
+      })();
+      cache.full = full;
+      full.catch(() => {
+        if (cache.full === full) cache.full = null;
+      });
+      return full;
+    }
+    function refreshPropCover() {
+      if (!prop) return;
+      try {
+        const m = baseMagazine();
+        prop.setCover(m && m.cover ? m.cover.hero : null);
+      } catch {
+      }
+    }
+    function propCandidates() {
+      if (style === "crt80" || style === "silver") return [["lowboard", propSlot], ["above", slot]];
+      if (style === "plain") return [["above", slot], ["above-low", slot]];
+      return [["above", slot]];
+    }
+    function placeProp() {
+      if (!prop || disposed) return;
+      let found = null;
+      for (const [name, el] of propCandidates()) {
+        app.dataset.prop = name;
+        if (el.clientHeight >= PROP_MIN_PX) {
+          found = [name, el];
+          break;
+        }
+      }
+      if (found) {
+        app.dataset.prop = found[0];
+        if (prop.el.parentNode !== found[1]) found[1].append(prop.el);
+        prop.el.hidden = false;
+        app.classList.remove("is-guide-key");
+      } else {
+        delete app.dataset.prop;
+        prop.el.hidden = true;
+        app.classList.add("is-guide-key");
+      }
+    }
+    let propRo = null;
+    let propRaf = 0;
+    function schedulePlace() {
+      if (propRaf) return;
+      const raf = win.requestAnimationFrame ? (f) => win.requestAnimationFrame(f) : (f) => setTimeout(f, 16);
+      propRaf = raf(() => {
+        propRaf = 0;
+        placeProp();
+      }) || 1;
+    }
+    function syncMusic() {
+      if (!music) return;
+      const kind = card.kind();
+      const reason = card.el && card.el.dataset ? card.el.dataset.reason : null;
+      const idle = on && !suspended && !disposed && IDLE_KINDS.includes(kind) && !needsTap && !(kind === "error" && reason === "gesture");
+      safe2(() => music.setIdle(idle ? kind : null));
+    }
+    function toggleMusic() {
+      musicOn = !musicOn;
+      if (music) safe2(() => music.setEnabled(musicOn));
+      savePrefs({ music: musicOn });
+      return musicOn;
+    }
     function applyVolume() {
-      safe(() => player.setVolume && player.setVolume(vol / 100));
-      safe(() => player.setMuted && player.setMuted(muted));
+      safe2(() => player.setVolume && player.setVolume(vol / 100));
+      safe2(() => player.setMuted && player.setMuted(muted));
+      if (music) safe2(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted || mutedByPolicy));
     }
     function savePrefs(partial) {
-      if (deps.savePrefs) safe(() => deps.savePrefs(partial));
+      if (deps.savePrefs) safe2(() => deps.savePrefs(partial));
     }
     function changeVolume(key) {
       if (player.volumeSupported === false) {
@@ -4371,10 +8199,10 @@
     function watchTune() {
       if (!watch || !entry) return;
       const off = Math.max(0, clock() - entry.start);
-      safe(() => watch.tune(entry, off));
+      safe2(() => watch.tune(entry, off));
     }
     function watchLeave(silent) {
-      if (watch) safe(() => watch.leave(silent));
+      if (watch) safe2(() => watch.leave(silent));
     }
     function clearStall() {
       stallArmed = false;
@@ -4407,15 +8235,17 @@
       if (needsTap) {
         if (key === "power" || key === "fullscreen") return false;
         needsTap = false;
-        safe(() => player.unlock && player.unlock());
-        applyVolume();
+        safe2(() => player.unlock && player.unlock());
+        if (music) safe2(() => music.unlock());
         mutedByPolicy = false;
+        applyVolume();
         card.hide();
         start(++gen, false);
         return true;
       }
       if (mutedByPolicy) {
         mutedByPolicy = false;
+        if (music) safe2(() => music.unlock());
         osd.hideMessage();
         applyVolume();
         return key === "mute" && !muted;
@@ -4475,13 +8305,13 @@
         return;
       }
       if (e.type === "fill" || e.type === "nightfill") {
-        safe(() => player.stop());
+        safe2(() => player.stop());
         const nx = nextProgram(channel, e);
         const nt = nx && PLAYABLE.includes(nx.type) ? titleOf(nx).title : null;
         card.showPause({ channel: channelOf(channel), title: nt, at: nx ? nx.start : 0, until: e.end, now: clock() });
         return;
       }
-      safe(() => player.stop());
+      safe2(() => player.stop());
       card.showTest({
         channel: channelOf(channel),
         text: e.type === "closedown" && e.reason === "empty" ? "Auf diesem Sender l\xE4uft gerade nichts" : "Sendeschluss",
@@ -4517,7 +8347,7 @@
           return;
         }
       }
-      safe(() => player.stop());
+      safe2(() => player.stop());
       const nt = next && PLAYABLE.includes(next.type) ? titleOf(next).title : null;
       card.showPause({ channel: channelOf(channel), title: nt, at: next ? next.start : 0, until: e.end, now: clock() });
       const ts = pickRes && pickRes.trailerStartMs;
@@ -4554,7 +8384,7 @@
       clearStall();
       needsTap = false;
       watchLeave();
-      if (!immediate) safe(() => player.stop());
+      if (!immediate) safe2(() => player.stop());
       playing = false;
       entry = null;
       card.hide();
@@ -4583,26 +8413,28 @@
       const t = clock();
       card.tick(t);
       if (entry) osd.setProgress(clamp((t - entry.start) / Math.max(1, entry.end - entry.start), 0, 1));
-      for (const n of Object.keys(made)) if (made[n] && made[n].isOpen() && made[n].tick) safe(() => made[n].tick(t));
-      if (watch) safe(() => watch.tick());
+      for (const n of Object.keys(made)) if (made[n] && made[n].isOpen() && made[n].tick) safe2(() => made[n].tick(t));
+      if (watch) safe2(() => watch.tick());
       tickCount++;
       if (tickCount % (SYNC_MS / 1e3) === 0 && playing && entry && PLAYABLE.includes(entry.type) && entry.itemId) {
-        safe(() => player.syncTo(t - entry.start));
+        safe2(() => player.syncTo(t - entry.start));
       }
       if (time.broadcastDayOf) {
         const D = time.broadcastDayOf(t);
         if (lastDay != null && D !== lastDay && scheduler.prepare) {
           const ds = [0, 1, 2, 3, 4, 5, 6].map((i) => D + i);
-          Promise.resolve(safe(() => scheduler.prepare(ds))).catch(() => {
+          Promise.resolve(safe2(() => scheduler.prepare(ds))).catch(() => {
           });
         }
+        if (lastDay != null && D !== lastDay) refreshPropCover();
         lastDay = D;
       }
       syncOverlayClasses();
     }
     function powerOn() {
       if (on) return;
-      safe(() => player.unlock && player.unlock());
+      safe2(() => player.unlock && player.unlock());
+      if (music) safe2(() => music.unlock());
       on = true;
       app.classList.add("is-on", "is-powering-on");
       app.classList.remove("is-powering-off");
@@ -4621,7 +8453,7 @@
       needsTap = false;
       mutedByPolicy = false;
       watchLeave();
-      safe(() => player.stop());
+      safe2(() => player.stop());
       noise.stop();
       card.hide();
       card.hideBanner();
@@ -4629,6 +8461,7 @@
       closeOverlays();
       playing = false;
       entry = null;
+      if (music) safe2(() => music.setIdle(null));
     }
     function powerOff() {
       if (!on) return;
@@ -4709,7 +8542,7 @@
       return !!res && res.ok === false;
     }
     async function cycleAudio() {
-      const tr = safe(() => player.tracks && player.tracks());
+      const tr = safe2(() => player.tracks && player.tracks());
       const list = tr && tr.audio || [];
       if (list.length < 2) {
         osd.showMessage("Keine weiteren Tonspuren");
@@ -4727,7 +8560,7 @@
       if (resultFailed(res)) osd.showMessage("Diese Tonspur ist nicht verf\xFCgbar");
     }
     async function cycleSubs() {
-      const tr = safe(() => player.tracks && player.tracks());
+      const tr = safe2(() => player.tracks && player.tracks());
       const subs = tr && tr.subs || [];
       if (!subs.length) {
         osd.showMessage("Keine Untertitel verf\xFCgbar");
@@ -4753,6 +8586,11 @@
       app.classList.remove(`lfx-live--style-${style}`);
       style = s;
       app.classList.add(`lfx-live--style-${style}`);
+      if (music) safe2(() => music.setStyle(style));
+      if (prop) {
+        prop.setStyle(style);
+        placeProp();
+      }
       savePrefs({ style });
     }
     function press(key) {
@@ -4773,7 +8611,7 @@
       if (pendingRestart && key !== "ok") cancelRestart();
       const open = openName();
       if (open) {
-        const consumed = safe(() => made[open].onKey(key));
+        const consumed = safe2(() => made[open].onKey(key));
         syncOverlayClasses();
         if (consumed) return;
         if (key === "back") {
@@ -4817,6 +8655,7 @@
         case "epg":
         case "txt":
         case "menu":
+        case "guide":
           openOverlay(key);
           break;
         case "info":
@@ -4868,7 +8707,7 @@
     screen.addEventListener("dblclick", onDbl);
     screen.addEventListener("click", onScreenClick);
     video.addEventListener("contextmenu", onCtx);
-    const mq = win.matchMedia ? safe(() => win.matchMedia("(orientation: landscape)")) : null;
+    const mq = win.matchMedia ? safe2(() => win.matchMedia("(orientation: landscape)")) : null;
     const applyOrient = () => app.classList.toggle("is-landscape", !!(opts.phone && mq && mq.matches));
     applyOrient();
     if (mq) {
@@ -4900,6 +8739,7 @@
       offs.push(player.on("autoplay-muted", () => {
         if (!on) return;
         mutedByPolicy = true;
+        if (music) safe2(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, true));
         if (!muted) osd.showMessage("Ton aus \u2013 zum Einschalten tippen oder Stumm-Taste dr\xFCcken", 8e3);
       }));
       offs.push(player.on("error", (err) => {
@@ -4914,11 +8754,33 @@
       win
     });
     keys.attach();
+    if (music) {
+      safe2(() => music.setStyle(style));
+      safe2(() => music.setEnabled(musicOn));
+    }
+    if (prop) {
+      placeProp();
+      if (typeof ResizeObserver === "function") {
+        propRo = new ResizeObserver(() => schedulePlace());
+        propRo.observe(room);
+      }
+      later("propcover", refreshPropCover, 0);
+    }
     const instance = {
       el: app,
       press,
       tune: (no) => tune(no),
       isOn: () => on,
+      /** Nur Harness/Debug: zeigt eine Leerlaufkarte zur Ansicht (pause|test|error); Musik folgt wie im Betrieb. */
+      debugCard(kind) {
+        if (!on) return;
+        const t = clock();
+        const ch = channelOf(channel);
+        safe2(() => player.stop());
+        if (kind === "pause") card.showPause({ channel: ch, title: "Platzhalter-Film", at: t + 3e5, until: t + 3e5, now: t });
+        else if (kind === "test") card.showTest({ channel: ch, text: "Sendeschluss", now: t });
+        else if (kind === "error") card.showError("network", ch);
+      },
       channel: () => channel,
       style: () => style,
       suspend() {
@@ -4955,11 +8817,11 @@
           if (mq.removeEventListener) mq.removeEventListener("change", applyOrient);
           else if (mq.removeListener) mq.removeListener(applyOrient);
         }
-        for (const off of offs) if (typeof off === "function") safe(off);
+        for (const off of offs) if (typeof off === "function") safe2(off);
         for (const n of Object.keys(made)) {
           const o = made[n];
           if (o) {
-            safe(() => o.close());
+            safe2(() => o.close());
             if (o.el) o.el.remove();
           }
         }
@@ -4967,8 +8829,13 @@
         osd.dispose();
         card.dispose();
         remote.destroy();
-        if (watch) safe(() => watch.dispose && watch.dispose());
-        if (player) safe(() => player.dispose && player.dispose());
+        if (propRo) propRo.disconnect();
+        if (prop) prop.destroy();
+        propSlot.remove();
+        side.remove();
+        if (music) safe2(() => music.dispose());
+        if (watch) safe2(() => watch.dispose && watch.dispose());
+        if (player) safe2(() => player.dispose && player.dispose());
         app.remove();
         if (win.__lfxLive && win.__lfxLive.app === instance) delete win.__lfxLive;
       }
@@ -4988,7 +8855,7 @@
   // src/js/live/entry.js
   var ENGINE_MARK = "__LFX_LIVE_ENGINE__";
   var VERSION = 1;
-  var DAYS2 = 7;
+  var DAYS3 = 7;
   function create(host, deps, opts = {}) {
     const o = opts || {};
     const now = typeof o.now === "function" ? o.now : () => Date.now();
@@ -5008,21 +8875,25 @@
         const catalog = normalizeCatalog(deps.catalog);
         const scheduler = createScheduler(catalog, { channelConfig: deps.channelConfig || {}, getBoxSetItems: deps.getBoxSetItems, now });
         const D = broadcastDayOf(now());
-        for (let i = 0; i < DAYS2; i++) {
+        for (let i = 0; i < DAYS3; i++) {
           await scheduler.prepare([D + i]);
           if (disposed) return;
-          progress(0.1 + 0.85 * (i + 1) / DAYS2, "Sendersuchlauf \u2026");
+          progress(0.1 + 0.85 * (i + 1) / DAYS3, "Sendersuchlauf \u2026");
         }
         const watch = createWatchTracker({ setPlayed: deps.setPlayed, now });
+        const time = { formatClock, formatDay, broadcastDayOf, dayBounds };
+        const doc = curHost.ownerDocument || document;
         app = createApp(curHost, {
           scheduler,
           player: ({ video, canvas, getInfo }) => createPlayer({ video, deps, now, fake: !!o.fakePlayer, canvas, getInfo }),
           watch,
           pickFiller,
-          overlays: { epg: createEpg, ttx: createTeletext, menu: createMenu },
+          overlays: { epg: createEpg, ttx: createTeletext, menu: createMenu, guide: createMagazine },
+          music: createMusic({ doc }),
+          pdf: createPdfExport({ imageUrl: deps.imageUrl, doc, now, time }),
           deps,
           opts: o,
-          time: { formatClock, formatDay, broadcastDayOf, dayBounds }
+          time
         });
         if (wantSuspend) app.suspend();
         progress(1, "Sendersuchlauf \u2026");

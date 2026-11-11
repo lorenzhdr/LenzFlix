@@ -25,7 +25,7 @@ const GROUPS = [
     ['red', '', 'Rot', 'is-color is-red'], ['green', '', 'Grün', 'is-color is-green'],
     ['yellow', '', 'Gelb', 'is-color is-yellow'], ['blue', '', 'Blau', 'is-color is-blue'],
   ]],
-  ['extras', [['audio', 'Ton', 'Tonspur wechseln', 'is-small'], ['subs', 'UT', 'Untertitel wechseln', 'is-small']]],
+  ['extras', [['audio', 'Ton', 'Tonspur wechseln', 'is-small'], ['subs', 'UT', 'Untertitel wechseln', 'is-small'], ['guide', 'Heft', 'Fernsehzeitung', 'is-small is-guide']]],
 ];
 
 export const REMOTE_KEYS = GROUPS.reduce((acc, g) => acc.concat(g[1].map((b) => b[0])), []);

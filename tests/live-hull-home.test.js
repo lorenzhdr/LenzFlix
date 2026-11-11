@@ -123,7 +123,7 @@ describe('mount', () => {
     expect(ensureThemeJs).toHaveBeenCalledWith('live');
     expect(loadCatalog).toHaveBeenCalledTimes(1);
     expect(captured.opts).toEqual({
-      style: 'flat', volume: 0.8, muted: false, lastChannel: 1, audioPref: null, phone: false, touch: false, debug: false, now: null, fakePlayer: false,
+      style: 'flat', volume: 0.8, muted: false, lastChannel: 1, music: true, audioPref: null, phone: false, touch: false, debug: false, now: null, fakePlayer: false,
     });
     for (const k of ['catalog', 'user', 'server', 'request', 'streamUrl', 'imageUrl', 'getBoxSetItems', 'loadTrailer', 'setPlayed', 'channelConfig',
       'savePrefs', 'leaveToLibrary', 'previousThemeName', 'openThemePicker', 'openDashboard', 'logout', 'toast', 'onProgress', 'onReady', 'onFatal']) {
@@ -151,6 +151,34 @@ describe('mount', () => {
     expect(d.channelConfig).toEqual({ 5: 'Action' });
     expect(d.previousThemeName).toBe('LENZ+');
     expect(d.catalog.loadedAt).toBe(1);
+  });
+
+  it('Pref music (Standard an) landet in opts.music', async () => {
+    localStorage.setItem('lfx.live.music.u1', '0');
+    await mountOk();
+    expect(captured.opts.music).toBe(false);
+  });
+
+  it('deps.itemDetails: eine Anfrage /Items mit Ids, Fields=Overview und userId; Map id → { overview }; keine Tokens', async () => {
+    await mountOk();
+    vi.mocked(api.requestJson).mockResolvedValueOnce({ Items: [{ Id: 'a', Overview: 'Text A' }, { Id: 'b' }] });
+    const m = await captured.deps.itemDetails(['a', 'b', '']);
+    expect(api.requestJson).toHaveBeenLastCalledWith('GET', '/Items', {
+      params: { userId: 'u1', Ids: 'a,b', Fields: 'Overview', EnableImages: false, EnableUserData: false },
+    });
+    expect(m.get('a')).toEqual({ overview: 'Text A' });
+    expect(m.get('b')).toEqual({ overview: '' });
+    expect(JSON.stringify([...m])).not.toMatch(/TOK123/);
+  });
+
+  it('deps.itemDetails: Fehler → leere Map, ohne Ids keine Anfrage', async () => {
+    await mountOk();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.mocked(api.requestJson).mockClear();
+    expect((await captured.deps.itemDetails([])).size).toBe(0);
+    expect(api.requestJson).not.toHaveBeenCalled();
+    vi.mocked(api.requestJson).mockRejectedValueOnce(new Error('HTTP 500'));
+    expect((await captured.deps.itemDetails(['a'])).size).toBe(0);
   });
 
   it('deps: request/streamUrl/imageUrl/getBoxSetItems/loadTrailer/setPlayed/leave/savePrefs', async () => {

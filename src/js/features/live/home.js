@@ -203,6 +203,21 @@ function buildDeps(raw, user, onFatal) {
         return null;
       }
     },
+    // Inhaltsangaben für die Fernsehzeitung: eine Anfrage, Fehler → leere Map
+    itemDetails: async (ids) => {
+      const out = new Map();
+      const list = (Array.isArray(ids) ? ids : []).filter(Boolean);
+      if (!list.length) return out;
+      try {
+        const res = await api.requestJson('GET', '/Items', {
+          params: { userId: api.getUserId(), Ids: list.join(','), Fields: 'Overview', EnableImages: false, EnableUserData: false },
+        });
+        for (const it of asItems(res)) if (it && it.Id) out.set(it.Id, { overview: typeof it.Overview === 'string' ? it.Overview : '' });
+      } catch (e) {
+        console.warn('[LenzFlix] live itemDetails', fatalText(e));
+      }
+      return out;
+    },
     setPlayed: (id, v) => api.setPlayed(id, v),
     channelConfig: getChannelConfig(),
     savePrefs: ret((p) => prefs.savePrefs(p)),
@@ -233,6 +248,7 @@ function buildOpts() {
     volume: prefs.getVolume(),
     muted: prefs.getMuted(),
     lastChannel: prefs.getLastChannel(),
+    music: prefs.getMusic(),
     audioPref: null,
     phone: isMobile(),
     touch: coarse(),

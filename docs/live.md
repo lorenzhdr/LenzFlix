@@ -272,13 +272,13 @@ ctx = {
 }
 ```
 Tasten (normalisiert, von Fernbedienung und Tastatur): `power, 0…9, ch+, ch-, vol+, vol-, mute, epg, info, ok, up, down, left, right,
-back, menu, txt, red, green, yellow, blue, audio, subs, restart, fullscreen`.
+back, menu, txt, red, green, yellow, blue, audio, subs, restart, fullscreen, guide`.
 Tastatur am Desktop (`ui/keys.js`): ↑/↓ = ch± (ohne Overlay) bzw. up/down, ←/→, Ziffern, `+`/`-`, `M`, `G` (epg), `I`, `T` (txt),
-`F` (fullscreen), `Esc` (back), `Enter` (ok), Leertaste wird verschluckt. Nicht in Eingabefeldern, nicht bei offenem Picker.
+`Z` (guide = Fernsehzeitung), `F` (fullscreen), `Esc` (back), `Enter` (ok), Leertaste wird verschluckt. Nicht in Eingabefeldern, nicht bei offenem Picker.
 
 ## CSS (`src/css/themes/live/`), Scope `html.lfx-js.lfx-theme-live:not(.layout-tv)`
 `index.css` importiert in dieser Reihenfolge: `tokens.css, shell.css, tv-crt80.css, tv-silver.css, tv-flat.css, tv-plain.css,
-remote.css, osd.css, card.css, epg.css, teletext.css, menu.css, mobile.css, fullscreen.css`.
+remote.css, osd.css, card.css, epg.css, magazine.css, teletext.css, menu.css, mobile.css, fullscreen.css`.
 Nur `--lfx-*`-Tokens aus `tokens.css` (eigene Live-Tokens heißen `--lfx-live-*`). Keine externen Assets, keine Webfonts.
 
 ## Hülle (`src/js/features/live/`)
@@ -313,5 +313,73 @@ Nur `--lfx-*`-Tokens aus `tokens.css` (eigene Live-Tokens heißen `--lfx-live-*`
 - Hülle `src/js/features/live/`: `home.js`, `home-route.js`, `guard.js`, `leave.js`, `config.js`, `prefs.js`, `data.js`, `index.js`.
 - Harness `build/live-dev.html|js` (Fake-Katalog, kein Netzwerk; Route `/live-dev.html` über `build/serve.mjs`). Query: `phone=1`, `admin=1`,
   `now=<ISO>` (Testuhr, ohne Zone = lokal), `channels=5=Action;6=Komödie`, `style=`, `channel=`, `debug=1`, `real=1` (echter Player statt Testbild),
-  `autopower=1` (mit `zap=`, `overlay=`, `page=`, `fullscreen=1`), `clean=1`.
+  `autopower=1` (mit `zap=`, `overlay=epg|ttx|menu|guide`, `page=`, `fullscreen=1`), `clean=1`, `idle=pause|test|error`, `music=0`, `remote=1`.
 - Tests: `tests/live-*.test.js` (Hülle `live-hull-*`, Planer `live-schedule-*`/`live-special-*`, Player `live-player-*`, UI `live-ui-*`, Overlays `live-overlay-*`).
+
+## Erweiterungen 1.9.1 (Vertrag für Pausenmusik, Fernsehzeitung, PDF)
+
+### Pausenmusik `src/js/live/player/music.js` (+ `player/music-presets.js`)
+```js
+createMusic({ AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext, doc = document } = {})
+  → { unlock(), setStyle(id), setLevel(vol01, muted), setEnabled(bool), setIdle(kind|null), isPlaying(), dispose() }
+```
+- `unlock()` wird **synchron in einer Nutzergeste** gerufen (Power, `userGesture`): legt den AudioContext lazy an bzw. ruft `resume()`. Vorher entsteht kein Context. Ohne `AudioCtx` ist alles ein No-op.
+- `setIdle('pause'|'test'|'error')` startet (1,5 s Einblenden), `setIdle(null)` stoppt (0,6 s Ausblenden). Ohne Context, bei `setEnabled(false)` oder Pegel 0 klingt nichts.
+- `setLevel(vol01, muted)`: Ziel-Gain = `muted ? 0 : vol01 * 0.45`, per `setTargetAtTime`.
+- `setStyle('crt80'|'silver'|'flat'|'plain')`: wechselt das Preset (unbekannt → `flat`); läuft Musik, wird auf das neue Stück übergeblendet.
+- `visibilitychange` (hidden) → `ctx.suspend()`, sichtbar und idle → `resume()`. `dispose()` stoppt, entfernt Listener, `ctx.close()`.
+- `music-presets.js` exportiert `PRESETS = { crt80, silver, flat, plain }` als reine Daten (Tempo, Akkordfolge, Pattern, Instrument-Parameter). Kein `Math.random` (Rauschen/Hall per eigenem Seed-PRNG). Keine Instrumenten-Markennamen.
+- Hülle: Pref `music` (Standard `true`, Schlüssel `lfx.live.music.<uid>`), an die Engine als `opts.music`, gespeichert über `deps.savePrefs({ music })`.
+
+### Heftmodell `src/js/live/magazine/model.js` (rein, deterministisch, kein DOM)
+```js
+buildMagazine({ scheduler, today, formatClock, formatDay, dayBounds, overviews? }) → Magazine
+collectTipIds(magazine) → string[]                     // Item-IDs aller Tipps + Titelseite (für Inhaltsangaben)
+loadOverviews(ids, itemDetails) → Promise<Map<id, string>>   // eine Anfrage, gekürzt ~240 Zeichen an Satzgrenze, Fehler → leere Map
+```
+- `today` = Sendetag D (Zahl aus `broadcastDayOf`). Umfasst D … D+6. `overviews` (Map id→Text) ist optional; fehlt sie, bleibt `overview: null`.
+- `Magazine = { title: 'LIVE Programm', subtitle: 'Die Fernsehwoche · 11.–17.11.2026', fileName: 'LIVE-Programm_2026-11-11.pdf', days: [{ D, weekday, date }], cover: CoverData, pages: Page[] }`
+- `pages` (30): Index 0 `cover`, dann je Tag `tips`, `evening`, `day` (part 1: Sender 1–9), `day` (part 2: Sender 10–18), zuletzt `back`. Jede Seite hat `{ kind, no (1-basiert), D? }`.
+- `Tip = { imageId (itemId oder bei Folgen seriesId), itemId, title, sub, year, genres: string[] (Anzeige-Labels), runMin, channelNo, channelName, time ('20:15'), start, badges: string[], age, overview|null, kindLabel ('Film'|'Serie'|'Premiere'|'Thementag'|'Marathon') }`
+- `CoverData = { hero: Tip|null, teasers: [{ D, weekday, label }] }` (Thementage der Woche).
+- `tips`-Seite: `{ kind:'tips', D, weekday, date, tips: Tip[] (≤5), theme: string|null }`.
+- `evening`-Seite: `{ kind:'evening', D, weekday, date, channels: [{ no, name, rows: Row[] }] }` (Einträge mit Start ≥ 20:15 bzw. laufend um 20:15, bis Tagesende).
+- `day`-Seite: `{ kind:'day', D, part: 1|2, weekday, date, channels: [{ no, name, theme|null, rows: Row[] }] }`.
+- `Row = { time ('HH:MM'), start, title, sub ('' oder z. B. 'S1 E3–E7'), badges: string[], kind: 'program'|'fill'|'closedown' }`. `filler` fehlt; aufeinanderfolgende `fill`/`nightfill` → eine Zeile „Füllprogramm“; `closedown` → „Sendeschluss“; direkt aufeinanderfolgende Folgen derselben Serie → eine Zeile (Titel = Serie, sub = Folgenspanne).
+- `back`-Seite: `{ kind:'back' }` (Impressum/Hinweise, Download-Hinweis).
+- Hülle: `deps.itemDetails(ids) → Promise<Map<id, { overview }>>` (eine Anfrage `GET /Items?Ids=…&Fields=Overview&userId=…`).
+
+### Heft-Ansicht `src/js/live/magazine/view.js`, Objekt `magazine/prop.js`, CSS `src/css/themes/live/magazine.css`
+```js
+createMagazine(ctx) → { el, open(opts?), close(), isOpen(), onKey(key) → boolean, tick?(t) }   // Overlay-Vertrag, Name 'guide'
+createMagazineProp({ doc, onOpen, imageUrl }) → { el, setCover(tip|null), setStyle(id), destroy() }
+```
+- ctx wie andere Overlays plus `ctx.buildMagazine()` → `Promise<Magazine>` (mit Inhaltsangaben) und `ctx.downloadPdf(magazine, onProgress) → Promise<{ url, fileName }>`.
+- `open({ autoPdf: true })` startet sofort die PDF-Erzeugung (Menüeintrag „Fernsehzeitung als PDF“).
+- Wurzel `.lfx-live-mag` mit `data-style`; Seiten `.lfx-live-mag__page[data-kind]`; Kopfleiste `.lfx-live-mag__bar` (Seitenzahl, Tage, „Als PDF herunterladen“, danach Link `a.lfx-live-mag__pdf[download]`, Schließen).
+- Tasten: `left/right` blättern, `red/green` Tag zurück/vor, `back` schließt (`false` zurückgeben, damit app schließt), `ok` auf fokussiertem Knopf.
+
+### PDF `src/js/live/pdf/` (`writer.js`, `winansi.js`, `metrics.js`, `render.js`)
+```js
+createPdf() → { addPage(w, h) → Page, addJpeg(bytes: Uint8Array) → imgRef, toBytes() → Uint8Array }
+Page: { setFill(r,g,b), setStroke(r,g,b), rect(x,y,w,h,{fill,stroke}), line(x1,y1,x2,y2,w), text(str, x, y, { font, size }), image(imgRef, x, y, w, h) }
+// font: 'sans' | 'sans-bold' | 'serif' | 'serif-bold' | 'mono'  (Basisschrift-Namen nur in writer.js)
+textWidth(str, font, size) → pt;  wrap(str, font, size, maxW) → string[]   (metrics.js)
+encodeWinAnsi(str) → Uint8Array   (winansi.js)
+renderMagazinePdf(magazine, { style, loadImage(imageId) → Promise<Uint8Array|null>, onProgress(done,total) }) → Promise<Uint8Array>   (render.js)
+```
+- A4 hoch 595×842 pt, Koordinaten oben-links in der API (writer rechnet um). Bilder als JPEG (`/DCTDecode`, Maße aus SOF). Keine URLs/Tokens im Ergebnis.
+
+### Verdrahtung (Integration 1.9.1)
+- `entry.js`: `overlays.guide = createMagazine`, `music = createMusic()`, `pdf = createPdfExport({ imageUrl, doc, now, time })` (`magazine/pdf-export.js`: Bild per `<img crossOrigin=anonymous>` → Canvas ≤ 360 px → JPEG 0,8; Fehler, Timeout 8 s oder tainted → `null` = Heft ohne Bild; Ergebnis Blob-URL) gehen als Parameter an `createApp`.
+- `ui/app.js`: Overlay `guide` (Klasse `has-guide`, Taste `Z`, Fernbedienungstaste „Heft“); `openOverlay(name, opts)` reicht Optionen an `open()` durch. ctx zusätzlich: `buildMagazine()` (Heft für den aktuellen Sendetag, Inhaltsangaben per `loadOverviews` erst beim ersten Öffnen, Cache pro Sendetag), `downloadPdf(mag, onProgress)`, `openOverlay`, `musicEnabled()`, `toggleMusic()` (speichert `deps.savePrefs({ music })`).
+- Musik: `card.js` meldet Kartenwechsel (`onKind(kind, reason)`); die App ruft `music.setIdle(kind)` nur bei `pause|test|error` und eingeschaltetem Gerät, nie bei „Zum Starten tippen“. `music.unlock()` synchron neben `player.unlock()` (Power, Tippen nach Autoplay-Sperre); `setLevel(vol/100, muted || mutedByPolicy)` (ohne Lautstärke-Unterstützung 1); `setStyle` mit dem TV-Stil; Aus/`stopAll`/Suspend → `setIdle(null)`, `dispose` → `music.dispose()`.
+- Heft-Objekt: `.lfx-live-side` (Flex-Spalte neben dem Fernseher) enthält `.lfx-live-side__slot` (freier Raum, `container-type: size`) mit `createMagazineProp` und darunter die Fernbedienung. Passt das Objekt nicht (Slot < 110 px), setzt `onFit(false)` die Klasse `is-guide-key` am App-Wurzelelement, blendet das Objekt aus, und die Heft-Taste erscheint in der Fernbedienung. Handy, Vollbild und ≤ 760 px lösen die Seitenspalte per `display: contents` auf (Fernbedienung wie vorher). Heft-Taste: Desktop nur mit `is-guide-key`, Handy-Hoch- und -Querformat immer, Desktop-Vollbild nie.
+- Menü: „Pausenmusik“ (Wert An/Aus, nach „Senderliste“) und „Fernsehzeitung als PDF“ (öffnet `guide` mit `{ autoPdf: true }`).
+- Hülle: Pref `music` (`lfx.live.music.<uid>`, Standard an) → `opts.music`; `deps.itemDetails(ids)` → `GET /Items?userId&Ids&Fields=Overview` über `api.requestJson`, `Map(id → { overview })`, Fehler → leere Map.
+- Harness: `?overlay=guide` (mit `?page=N` N-mal blättern), `?idle=pause|test|error` (Leerlaufkarte per `app.debugCard`), `?music=0`, `?remote=1` (Leiste einblenden); `deps.itemDetails` liefert Platzhaltertexte.
+
+### Runde 2 (Fernsehzeitung vor der Szene, Heft auf dem Lowboard)
+- Das Overlay `guide` hängt an der App-Wurzel (`.lfx-live-app`, `z-index: 40`, abgedunkelter und unscharfer Hintergrund, Doppelseite ~96 % der Höhe, Klick auf den Hintergrund schließt, am Handy Einzelseite bildschirmfüllend); EPG/Videotext/Menü bleiben im Fernsehbild. Tasten gehen weiter über `onKey` ans Heft.
+- Röhre und Silber: das Heft-Objekt liegt per `position: absolute` auf dem Lowboard links neben dem Fernseher; der Slot ist quadratisch mit der Breite des freien Raums links (max. 240 px), der Platzwächter (Höhe ≥ 110 px) prüft damit „Breite ≥ 110 px“. Flat und Schlicht: weiter über der Fernbedienung (mit 14 px Sicherheitsabstand oben).
+- EPG: Tagesleiste und ◀ ▶ Jetzt in einer Zeile (`.lfx-live-epg__bar`); Blöcke, die links über den sichtbaren Rand ragen, bekommen `--lfx-live-epg-vis` (Restbreite), der mitlaufende Text kürzt sich damit statt unter die Senderspalte zu rutschen.

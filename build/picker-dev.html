@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de" class="lfx-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Design-Menü · Dev-Harness</title>
+  <!-- Sicht-Harness des Design-Menüs (src/js/core/themepicker.js) ohne Jellyfin, keine Netzwerkzugriffe (fetch ist gefälscht,
+       Cover sind per Canvas erzeugte data-URLs). Start: npm run build && npm run serve → http://localhost:5179/picker-dev.html
+       Der ECHTE Picker wird als ES-Modul direkt aus src/js/ geladen (serve liefert dafür /src/js/ aus); CSS aus dist/lenzflix.css.
+       Parameter: ?charts=0 (ohne Charts → Fallback „neueste Titel“), ?api=0 (API nicht bereit → nur Platzhalter),
+       ?delay=1 (Cover einzeln verzögert einblenden), ?min=1 (.min.css), ?day=2026-11-12 (anderer Tag → andere Auswahl) -->
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #0b0b0e; color: #eee; font-family: system-ui, sans-serif; }
+    #dev-open { position: fixed; left: 12px; bottom: 12px; z-index: 5; padding: 6px 12px; }
+  </style>
+  <link rel="stylesheet" id="css">
+</head>
+<body>
+  <button id="dev-open" type="button">Design-Menü öffnen</button>
+  <script>document.getElementById('css').href = '/dist/lenzflix' + (/[?&]min=1(&|$)/.test(location.search) ? '.min' : '') + '.css';</script>
+  <script type="module" src="/picker-dev.js"></script>
+</body>
+</html>

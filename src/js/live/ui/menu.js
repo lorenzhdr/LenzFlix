@@ -1,4 +1,4 @@
-// TV-OSD-Menü: TV-Stil, Senderliste, Senderbelegung (Admin), Mediathek, Design, Dashboard (Admin), Abmelden.
+// TV-OSD-Menü: TV-Stil, Senderliste, Pausenmusik, Fernsehzeitung als PDF, Senderbelegung (Admin), Mediathek, Design, Dashboard (Admin), Abmelden.
 import { h, flag, labelOk, buildChannelLine, shortName } from './overlay-util.js';
 
 const FIRST = 5;
@@ -52,6 +52,21 @@ export function createMenu(ctx) {
       { label: 'TV-Stil', value: (ctx.styles.find((s) => s.id === ctx.style()) || {}).name || '', act: () => push('style') },
       { label: 'Senderliste', act: () => push('channels') },
     ];
+    if (ctx.toggleMusic) {
+      const musicLabel = () => (ctx.musicEnabled && ctx.musicEnabled() ? 'An' : 'Aus');
+      items.push({
+        label: 'Pausenmusik',
+        value: musicLabel(),
+        act: () => {
+          const on = ctx.toggleMusic();
+          ctx.toast(on ? 'Pausenmusik an.' : 'Pausenmusik aus.');
+          render();
+        },
+      });
+    }
+    if (ctx.openOverlay) {
+      items.push({ label: 'Fernsehzeitung als PDF', act: () => closeThen(() => ctx.openOverlay('guide', { autoPdf: true })) });
+    }
     if (isAdmin()) items.push({ label: 'Senderbelegung', act: () => { loadSel(); push('assign'); } });
     items.push({ label: `Mediathek (${prev()})`, act: () => closeThen(() => ctx.leaveToLibrary(null)) });
     items.push({ label: 'Design wechseln', act: () => closeThen(() => ctx.openThemePicker()) });

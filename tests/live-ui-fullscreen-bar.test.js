@@ -20,8 +20,8 @@ describe('Vollbild-Leiste', () => {
     ]);
   });
 
-  it('Reihe 2: EPG, Menü, OK, Zurück, Anfang, Ton, UT (nach dem Zeilenumbruch order 50)', () => {
-    expect(sorted((o) => o > 50)).toEqual(['epg', 'menu', 'ok', 'back', 'restart', 'audio', 'subs']);
+  it('Reihe 2: EPG, Menü, OK, Zurück, Anfang, Ton, UT, Heft (Heft nur im Handy-Querformat sichtbar; nach dem Zeilenumbruch order 50)', () => {
+    expect(sorted((o) => o > 50)).toEqual(['epg', 'menu', 'ok', 'back', 'restart', 'audio', 'subs', 'guide']);
     expect(css).toMatch(/\.lfx-live-remote::after\s*\{[^}]*order:\s*50;[^}]*flex:\s*0 0 100%/);
   });
 

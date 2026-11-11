@@ -370,7 +370,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.9.0";
+  var VERSION = "1.9.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -1485,8 +1485,271 @@
     };
   }
 
+  // src/js/core/itemstore.js
+  var store2 = /* @__PURE__ */ new Map();
+  var MAX = 2e3;
+  function putItems(items) {
+    for (const it of items || []) {
+      if (!it || !it.Id) continue;
+      store2.delete(it.Id);
+      store2.set(it.Id, it);
+    }
+    while (store2.size > MAX) store2.delete(store2.keys().next().value);
+  }
+  function getStoredItem(id) {
+    return store2.get(id) || null;
+  }
+
+  // src/js/features/rows/logic.js
+  var NEW_DAYS = 14;
+  var DAY_MS = 864e5;
+  var ITEM_FIELDS = [
+    "PrimaryImageAspectRatio",
+    "Overview",
+    "Genres",
+    "DateCreated",
+    "ParentId",
+    "ImageTags",
+    "BackdropImageTags",
+    "ParentThumbItemId",
+    "ParentThumbImageTag",
+    "ParentBackdropItemId",
+    "ParentBackdropImageTags",
+    "SeriesId",
+    "SeriesPrimaryImageTag",
+    "ChildCount",
+    "RecursiveItemCount",
+    "OfficialRating",
+    "ProductionYear",
+    "RunTimeTicks",
+    "ParentLogoItemId",
+    "ParentLogoImageTag"
+  ].join(",");
+  var BASE_PARAMS = {
+    Fields: ITEM_FIELDS,
+    EnableUserData: true,
+    ImageTypeLimit: 1,
+    EnableImageTypes: "Primary,Backdrop,Thumb,Logo"
+  };
+  var NEW_EPISODE_AIRED_DAYS = 365;
+  function newSeriesIdsFrom(episodes, now = Date.now()) {
+    const ids = /* @__PURE__ */ new Set();
+    for (const e of episodes || []) {
+      if (!e || !e.SeriesId) continue;
+      if (!isRecent(e.DateCreated, now, NEW_DAYS)) continue;
+      if (!isRecent(e.PremiereDate, now, NEW_EPISODE_AIRED_DAYS)) continue;
+      ids.add(e.SeriesId);
+    }
+    return ids;
+  }
+  function isRecent(dateStr, now = Date.now(), days = NEW_DAYS) {
+    const t = Date.parse(dateStr);
+    if (Number.isNaN(t)) return false;
+    return now - t < days * DAY_MS;
+  }
+  function badgeFor(item, newSeriesIds, now = Date.now()) {
+    if (!item) return null;
+    if (item.Type === "Movie") return isRecent(item.DateCreated, now) ? "Neu hinzugef\xFCgt" : null;
+    if (item.Type === "Series") {
+      if (isRecent(item.DateCreated, now)) return "Neu hinzugef\xFCgt";
+      const has = newSeriesIds && (typeof newSeriesIds.has === "function" ? newSeriesIds.has(item.Id) : newSeriesIds.includes(item.Id));
+      return has ? "Neue Folgen" : null;
+    }
+    return null;
+  }
+  function selectTop10(items) {
+    const seen = /* @__PURE__ */ new Set();
+    const list = [];
+    for (const it of items || []) {
+      if (!it || !it.Id || it.Type !== "Movie" && it.Type !== "Series" || seen.has(it.Id)) continue;
+      seen.add(it.Id);
+      list.push(it);
+    }
+    const ts = (it) => {
+      const t = Date.parse(it.DateCreated);
+      return Number.isNaN(t) ? -Infinity : t;
+    };
+    return list.map((it, i) => ({ it, i })).sort((a, b) => ts(b.it) - ts(a.it) || a.i - b.i).slice(0, 10).map((x) => x.it);
+  }
+  function progressPercent(item) {
+    const ud = item && item.UserData;
+    if (!ud) return 0;
+    let p = Number(ud.PlayedPercentage);
+    if (!(p > 0) && ud.PlaybackPositionTicks && item.RunTimeTicks) p = ud.PlaybackPositionTicks / item.RunTimeTicks * 100;
+    if (!(p > 0)) return 0;
+    return Math.min(100, Math.max(0, p));
+  }
+  function dayKey(date = /* @__PURE__ */ new Date()) {
+    const p = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+  }
+  function hashString(str) {
+    let h2 = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h2 ^= str.charCodeAt(i);
+      h2 = Math.imul(h2, 16777619);
+    }
+    return h2 >>> 0;
+  }
+  function mulberry32(a) {
+    return () => {
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function seededShuffle(arr, seed) {
+    const out = arr.slice();
+    const rnd = mulberry32(hashString(String(seed)));
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+  function pickGenres(genres, { seed, count = 6, minTitles = 8 } = {}) {
+    const names = [];
+    for (const g of genres || []) {
+      const name = typeof g === "string" ? g : g && g.Name;
+      if (!name) continue;
+      if (typeof g === "object") {
+        const known = g.MovieCount != null || g.SeriesCount != null;
+        if (known && (g.MovieCount || 0) + (g.SeriesCount || 0) < minTitles) continue;
+      }
+      if (!names.includes(name)) names.push(name);
+    }
+    names.sort((a, b) => a.localeCompare(b, "de"));
+    return seededShuffle(names, seed).slice(0, count);
+  }
+
+  // src/js/core/charts.js
+  var TIMEOUT_MS = 8e3;
+  var TTL_MS = 5 * 60 * 1e3;
+  function getChartsUrl() {
+    const clean2 = (raw) => {
+      const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
+      return /^https:\/\/[^\s"']+$/i.test(s) ? s : null;
+    };
+    const fromConfig = clean2(window.LenzFlixConfig && window.LenzFlixConfig.chartsUrl);
+    if (fromConfig) return fromConfig;
+    try {
+      return clean2(getComputedStyle(document.documentElement).getPropertyValue("--lfx-charts-url"));
+    } catch {
+      return null;
+    }
+  }
+  var warned = false;
+  function warnOnce(msg) {
+    if (warned) return;
+    warned = true;
+    console.warn(`[LenzFlix] Charts nicht verf\xFCgbar: ${msg}`);
+  }
+  function validEntries(list) {
+    return Array.isArray(list) ? list.filter((e) => e && typeof e.id === "string" && e.id) : null;
+  }
+  function validate(json) {
+    if (!json || typeof json !== "object" || json.version !== 1) return null;
+    const movies = validEntries(json.movies);
+    const series = validEntries(json.series);
+    const all = validEntries(json.all);
+    if (!movies || !series || !all) return null;
+    const days = Number(json.windowDays);
+    return { ...json, movies, series, all, windowDays: days > 0 ? days : 30 };
+  }
+  async function fetchCharts() {
+    const base = getChartsUrl();
+    if (!base) return null;
+    const { token: token2 } = getAuth();
+    if (!token2) return null;
+    const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS) : null;
+    try {
+      const res = await fetch(`${base}/charts`, {
+        headers: { "X-Emby-Token": token2, Accept: "application/json" },
+        signal: ctrl ? ctrl.signal : void 0
+      });
+      if (!res.ok) {
+        warnOnce(`HTTP ${res.status}`);
+        return null;
+      }
+      const data = validate(await res.json());
+      if (!data) warnOnce("ung\xFCltige Antwort");
+      return data;
+    } catch (e) {
+      warnOnce(e && e.name === "AbortError" ? "Zeit\xFCberschreitung" : "Netzwerkfehler");
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  function getCharts() {
+    if (!getChartsUrl()) return Promise.resolve(null);
+    return cached("charts", fetchCharts, TTL_MS);
+  }
+  var normId = (id) => String(id || "").replace(/-/g, "").toLowerCase();
+  async function resolveChartItems(entries, { type, limit = 10 } = {}) {
+    const list = (Array.isArray(entries) ? entries : []).filter((e) => e && e.id && (!type || e.type === type));
+    if (!list.length) return [];
+    const res = await getItems({ Ids: list.map((e) => e.id).join(","), ...BASE_PARAMS });
+    const found = Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+    const byId = new Map(found.filter((i) => i && i.Id).map((i) => [normId(i.Id), i]));
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const e of list) {
+      const key = normId(e.id);
+      const item = byId.get(key);
+      if (!item || seen.has(key)) continue;
+      seen.add(key);
+      item._lfxViewers = e.viewers;
+      item._lfxPlays = e.plays;
+      out.push(item);
+      if (out.length >= limit) break;
+    }
+    putItems(out);
+    return out;
+  }
+
+  // src/js/core/dayseed.js
+  function dayKey2(date = /* @__PURE__ */ new Date()) {
+    const p = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+  }
+  function hashString2(str) {
+    let h2 = 2166136261;
+    const s = String(str);
+    for (let i = 0; i < s.length; i++) {
+      h2 ^= s.charCodeAt(i);
+      h2 = Math.imul(h2, 16777619);
+    }
+    return h2 >>> 0;
+  }
+  function seededRandom(seed) {
+    let a = hashString2(seed);
+    return () => {
+      a = a + 1831565813 >>> 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function seededShuffle2(list, seed) {
+    const out = Array.isArray(list) ? list.slice() : [];
+    const rnd = seededRandom(seed);
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
   // src/js/core/themepicker.js
   var ID2 = "lfx-themepicker";
+  var BETA = /* @__PURE__ */ new Set(["retro", "store", "live"]);
+  var STORE_ROWS = [7, 6];
+  var STORE_COVERS = STORE_ROWS.reduce((a, b) => a + b, 0);
+  var COVER_TTL_MS = 6 * 60 * 60 * 1e3;
   var OPEN_CLASS = "lfx-themepicker-open";
   var MOBILE_QUERY = "(max-width: 799px)";
   var current = null;
@@ -1522,8 +1785,9 @@
     } else if (id === "retro") {
       root7.append(span("lfx-tp__sun"), span("lfx-tp__grid"), span("lfx-tp__scan"));
     } else if (id === "store") {
-      const shelf = (n) => span("lfx-tp__shelf", Array.from({ length: n }, (_, i) => span(`lfx-tp__cover lfx-tp__cover--${i % 6}`)));
-      root7.append(span("lfx-tp__shopsign", ["VIDEOTHEK LENZ"]), shelf(7), shelf(6), span("lfx-tp__carpet"));
+      let k = 0;
+      const shelf = (n) => span("lfx-tp__shelf", Array.from({ length: n }, () => span(`lfx-tp__cover lfx-tp__cover--${k++ % 6}`)));
+      root7.append(span("lfx-tp__shopsign", ["VIDEOTHEK LENZ"]), ...STORE_ROWS.map(shelf), span("lfx-tp__carpet"));
     } else if (id === "live") {
       root7.append(
         span("lfx-tp__tv", [span("lfx-tp__screen", [span("lfx-tp__chno", ["5"]), span("lfx-tp__rec")]), span("lfx-tp__ant")]),
@@ -1552,6 +1816,104 @@
     }
     return span("lfx-tp__mark lfx-tp__mark--flix", [name]);
   }
+  var normId2 = (id) => String(id || "").replace(/-/g, "").toLowerCase();
+  function chartIds(charts) {
+    if (!charts) return [];
+    const movies = Array.isArray(charts.movies) ? charts.movies : [];
+    const series = Array.isArray(charts.series) ? charts.series : [];
+    const out = [];
+    for (let i = 0; out.length < 20 && (i < movies.length || i < series.length); i++) {
+      for (const e of [movies[i], series[i]]) if (e && e.id && out.length < 20) out.push(String(e.id));
+    }
+    return out;
+  }
+  var itemList = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  function coverUrls(items) {
+    const out = [];
+    for (const it of items) {
+      const tag = it && it.Id && it.ImageTags && it.ImageTags.Primary;
+      if (!tag) continue;
+      const url = imageUrlFor(it.Id, { maxWidth: 160, quality: 80, tag });
+      if (url) out.push(url);
+    }
+    return out;
+  }
+  async function loadCoverUrls(day) {
+    const want = STORE_COVERS;
+    const urls = [];
+    const used = /* @__PURE__ */ new Set();
+    const take = (items) => {
+      for (const it of items) {
+        if (urls.length >= want) return;
+        const key = normId2(it && it.Id);
+        if (!key || used.has(key)) continue;
+        const u = coverUrls([it]);
+        if (!u.length) continue;
+        used.add(key);
+        urls.push(u[0]);
+      }
+    };
+    const charts = await getCharts().catch(() => null);
+    const ids = seededShuffle2(chartIds(charts), `${day}:charts`);
+    if (ids.length) {
+      try {
+        const res = await getItems({ Ids: ids.join(","), IncludeItemTypes: "Movie,Series", Fields: "ImageTags", EnableImageTypes: "Primary", ImageTypeLimit: 1 });
+        const byId = new Map(itemList(res).filter((i) => i && i.Id).map((i) => [normId2(i.Id), i]));
+        take(ids.map((id) => byId.get(normId2(id))).filter(Boolean));
+      } catch {
+      }
+    }
+    if (urls.length < want) {
+      try {
+        const res = await getItems({
+          IncludeItemTypes: "Movie,Series",
+          Recursive: true,
+          SortBy: "DateCreated",
+          SortOrder: "Descending",
+          Limit: 30,
+          Fields: "ImageTags",
+          EnableImageTypes: "Primary",
+          ImageTypeLimit: 1
+        });
+        take(seededShuffle2(itemList(res), `${day}:latest`));
+      } catch {
+      }
+    }
+    return urls;
+  }
+  function loadStoreCoverUrls() {
+    try {
+      if (!isReady()) return Promise.resolve([]);
+      const day = dayKey2();
+      const key = `tp-store-covers:${getUserId()}:${day}`;
+      return cached(key, () => loadCoverUrls(day), COVER_TTL_MS).then((urls) => {
+        if (!urls.length) clearCache(key);
+        return urls;
+      }, () => []);
+    } catch {
+      return Promise.resolve([]);
+    }
+  }
+  function fillStoreCovers(c) {
+    const card3 = c.cards.get("store");
+    if (!card3) return;
+    loadStoreCoverUrls().then((urls) => {
+      if (current !== c || !card3.isConnected) return;
+      const covers = card3.querySelectorAll(".lfx-tp__cover");
+      urls.slice(0, covers.length).forEach((url, i) => {
+        const img = document.createElement("img");
+        img.className = "lfx-tp__coverimg";
+        img.alt = "";
+        img.decoding = "async";
+        img.draggable = false;
+        img.addEventListener("load", () => img.classList.add("is-in"));
+        img.addEventListener("error", () => img.remove());
+        img.src = url;
+        covers[i].append(img);
+      });
+    }).catch(() => {
+    });
+  }
   function buildCard(c, id) {
     const meta = THEME_META[id] || { id, name: id, tagline: "", palette: [] };
     const btn2 = h("button", {
@@ -1567,10 +1929,9 @@
         span("lfx-tp__palette", (meta.palette || []).map((hex) => h("span", { class: "lfx-tp__swatch", style: { background: hex } })))
       ]),
       span("lfx-tp__state", [span("lfx-tp__active", ["Aktiv"]), span("lfx-tp__spin")]),
-      id !== "flix" ? span("lfx-tp__beta", ["Beta"]) : null
-      // alle Designs außer LENZFLIX sind Beta
+      BETA.has(id) ? span("lfx-tp__beta", ["Beta"]) : null
     ]);
-    btn2.setAttribute("aria-label", `${meta.name}${id !== "flix" ? " (Beta)" : ""}${meta.tagline ? `, ${meta.tagline}` : ""}`);
+    btn2.setAttribute("aria-label", `${meta.name}${BETA.has(id) ? " (Beta)" : ""}${meta.tagline ? `, ${meta.tagline}` : ""}`);
     btn2.addEventListener("click", () => choose(c, id));
     return btn2;
   }
@@ -1695,6 +2056,7 @@
     document.documentElement.classList.add(OPEN_CLASS);
     current = c;
     refresh(c);
+    fillStoreCovers(c);
     const activeCard = c.cards.get(getChosenTheme()) || grid2.querySelector("button");
     if (activeCard) activeCard.focus({ preventScroll: true });
     const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
@@ -2198,21 +2560,6 @@
   function ambientFromPixels(rgba) {
     const dom = dominantColor(rgba);
     return dom ? clampAmbient(dom) : DEFAULT_AMBIENT.slice();
-  }
-
-  // src/js/core/itemstore.js
-  var store2 = /* @__PURE__ */ new Map();
-  var MAX = 2e3;
-  function putItems(items) {
-    for (const it of items || []) {
-      if (!it || !it.Id) continue;
-      store2.delete(it.Id);
-      store2.set(it.Id, it);
-    }
-    while (store2.size > MAX) store2.delete(store2.keys().next().value);
-  }
-  function getStoredItem(id) {
-    return store2.get(id) || null;
   }
 
   // src/js/core/icons.js
@@ -2905,11 +3252,11 @@
 
   // src/js/features/modal/data.js
   var TTL = 5 * 6e4;
-  var ITEM_FIELDS = "Overview,Genres,People,Studios,Taglines,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,RemoteTrailers,MediaSources,Width,ImageTags,BackdropImageTags,UserData";
+  var ITEM_FIELDS2 = "Overview,Genres,People,Studios,Taglines,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,RemoteTrailers,MediaSources,Width,ImageTags,BackdropImageTags,UserData";
   var LIST_FIELDS = "Overview,UserData,ImageTags,RunTimeTicks,ProductionYear,OfficialRating";
   var itemsOf = (res) => res && res.Items || [];
   async function loadItem(id) {
-    const item = await cached(`lfx:modal:item:${id}`, () => getItem(id, { Fields: ITEM_FIELDS }), TTL);
+    const item = await cached(`lfx:modal:item:${id}`, () => getItem(id, { Fields: ITEM_FIELDS2 }), TTL);
     if (item) putItems([item]);
     return item;
   }
@@ -3007,7 +3354,7 @@
     }
     return out;
   }
-  function progressPercent(item) {
+  function progressPercent2(item) {
     const ud = item && item.UserData;
     if (!ud) return 0;
     if (ud.PlaybackPositionTicks > 0 && item.RunTimeTicks > 0) {
@@ -3257,7 +3604,7 @@
   }
   function episodeRow(ep, selectedId, H, siblings) {
     const img = imageUrl(ep, { type: "Primary", maxWidth: 400 }) || landscapeImage(ep, { maxWidth: 400 });
-    const pct = progressPercent(ep);
+    const pct = progressPercent2(ep);
     const rt = formatRuntime(ep.RunTimeTicks);
     const seen = Boolean(ep.UserData && ep.UserData.Played === true);
     const playedBtn = playedButton(ep, { small: true, scope: "item", onclick: (e) => {
@@ -4081,7 +4428,7 @@
 
   // src/js/features/billboard/format.js
   var DAY = 864e5;
-  var NEW_DAYS = 14;
+  var NEW_DAYS2 = 14;
   function hasLogoAndBackdrop(it) {
     return Boolean(it && it.Id && it.ImageTags && it.ImageTags.Logo && it.BackdropImageTags && it.BackdropImageTags.length);
   }
@@ -4156,9 +4503,9 @@
     const g = item && Array.isArray(item.Genres) ? item.Genres.filter(Boolean).slice(0, 3) : [];
     return g.join(" \u2022 ");
   }
-  function badgeFor(item, now = Date.now()) {
+  function badgeFor2(item, now = Date.now()) {
     const t = item && item.DateCreated ? Date.parse(item.DateCreated) : NaN;
-    if (Number.isFinite(t) && now - t >= 0 && now - t < NEW_DAYS * DAY) return "Neu hinzugef\xFCgt";
+    if (Number.isFinite(t) && now - t >= 0 && now - t < NEW_DAYS2 * DAY) return "Neu hinzugef\xFCgt";
     return null;
   }
   function hasProgress(item) {
@@ -4364,7 +4711,7 @@
       infoBtn.addEventListener("click", () => openModal(item));
       const listBtn = buildListButton(item);
       const genres = genreLine(item);
-      const badgeText = badgeFor(item);
+      const badgeText = badgeFor2(item);
       return h("div", null, [
         h("div", { class: "lfx-bb__text" }, [
           logo ? h("img", { class: "lfx-bb__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("h2", { class: "lfx-bb__title" }, item.Name || ""),
@@ -4585,129 +4932,6 @@
     render: () => render4
   });
 
-  // src/js/features/rows/logic.js
-  var NEW_DAYS2 = 14;
-  var DAY_MS = 864e5;
-  var ITEM_FIELDS2 = [
-    "PrimaryImageAspectRatio",
-    "Overview",
-    "Genres",
-    "DateCreated",
-    "ParentId",
-    "ImageTags",
-    "BackdropImageTags",
-    "ParentThumbItemId",
-    "ParentThumbImageTag",
-    "ParentBackdropItemId",
-    "ParentBackdropImageTags",
-    "SeriesId",
-    "SeriesPrimaryImageTag",
-    "ChildCount",
-    "RecursiveItemCount",
-    "OfficialRating",
-    "ProductionYear",
-    "RunTimeTicks",
-    "ParentLogoItemId",
-    "ParentLogoImageTag"
-  ].join(",");
-  var BASE_PARAMS = {
-    Fields: ITEM_FIELDS2,
-    EnableUserData: true,
-    ImageTypeLimit: 1,
-    EnableImageTypes: "Primary,Backdrop,Thumb,Logo"
-  };
-  var NEW_EPISODE_AIRED_DAYS = 365;
-  function newSeriesIdsFrom(episodes, now = Date.now()) {
-    const ids = /* @__PURE__ */ new Set();
-    for (const e of episodes || []) {
-      if (!e || !e.SeriesId) continue;
-      if (!isRecent(e.DateCreated, now, NEW_DAYS2)) continue;
-      if (!isRecent(e.PremiereDate, now, NEW_EPISODE_AIRED_DAYS)) continue;
-      ids.add(e.SeriesId);
-    }
-    return ids;
-  }
-  function isRecent(dateStr, now = Date.now(), days = NEW_DAYS2) {
-    const t = Date.parse(dateStr);
-    if (Number.isNaN(t)) return false;
-    return now - t < days * DAY_MS;
-  }
-  function badgeFor2(item, newSeriesIds, now = Date.now()) {
-    if (!item) return null;
-    if (item.Type === "Movie") return isRecent(item.DateCreated, now) ? "Neu hinzugef\xFCgt" : null;
-    if (item.Type === "Series") {
-      if (isRecent(item.DateCreated, now)) return "Neu hinzugef\xFCgt";
-      const has = newSeriesIds && (typeof newSeriesIds.has === "function" ? newSeriesIds.has(item.Id) : newSeriesIds.includes(item.Id));
-      return has ? "Neue Folgen" : null;
-    }
-    return null;
-  }
-  function selectTop10(items) {
-    const seen = /* @__PURE__ */ new Set();
-    const list = [];
-    for (const it of items || []) {
-      if (!it || !it.Id || it.Type !== "Movie" && it.Type !== "Series" || seen.has(it.Id)) continue;
-      seen.add(it.Id);
-      list.push(it);
-    }
-    const ts = (it) => {
-      const t = Date.parse(it.DateCreated);
-      return Number.isNaN(t) ? -Infinity : t;
-    };
-    return list.map((it, i) => ({ it, i })).sort((a, b) => ts(b.it) - ts(a.it) || a.i - b.i).slice(0, 10).map((x) => x.it);
-  }
-  function progressPercent2(item) {
-    const ud = item && item.UserData;
-    if (!ud) return 0;
-    let p = Number(ud.PlayedPercentage);
-    if (!(p > 0) && ud.PlaybackPositionTicks && item.RunTimeTicks) p = ud.PlaybackPositionTicks / item.RunTimeTicks * 100;
-    if (!(p > 0)) return 0;
-    return Math.min(100, Math.max(0, p));
-  }
-  function dayKey(date = /* @__PURE__ */ new Date()) {
-    const p = (n) => String(n).padStart(2, "0");
-    return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
-  }
-  function hashString(str) {
-    let h2 = 2166136261;
-    for (let i = 0; i < str.length; i++) {
-      h2 ^= str.charCodeAt(i);
-      h2 = Math.imul(h2, 16777619);
-    }
-    return h2 >>> 0;
-  }
-  function mulberry32(a) {
-    return () => {
-      a = a + 1831565813 | 0;
-      let t = Math.imul(a ^ a >>> 15, 1 | a);
-      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
-    };
-  }
-  function seededShuffle(arr, seed) {
-    const out = arr.slice();
-    const rnd = mulberry32(hashString(String(seed)));
-    for (let i = out.length - 1; i > 0; i--) {
-      const j = Math.floor(rnd() * (i + 1));
-      [out[i], out[j]] = [out[j], out[i]];
-    }
-    return out;
-  }
-  function pickGenres(genres, { seed, count = 6, minTitles = 8 } = {}) {
-    const names = [];
-    for (const g of genres || []) {
-      const name = typeof g === "string" ? g : g && g.Name;
-      if (!name) continue;
-      if (typeof g === "object") {
-        const known = g.MovieCount != null || g.SeriesCount != null;
-        if (known && (g.MovieCount || 0) + (g.SeriesCount || 0) < minTitles) continue;
-      }
-      if (!names.includes(name)) names.push(name);
-    }
-    names.sort((a, b) => a.localeCompare(b, "de"));
-    return seededShuffle(names, seed).slice(0, count);
-  }
-
   // src/js/features/rows/card.js
   function detailHref2(item) {
     const serverId = item.ServerId || getAuth().serverId || "";
@@ -4779,7 +5003,7 @@
     card3.append(link);
     if (badge3) card3.append(h("span", { class: "lfx-badge" }, badge3));
     if (kind2 === "resume") {
-      const p = progressPercent2(item);
+      const p = progressPercent(item);
       if (p > 0) {
         card3.append(h("div", { class: "lfx-progress" }, [
           h("div", { class: "lfx-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })
@@ -4884,93 +5108,6 @@
       track.removeEventListener("keydown", onKey3);
       window.removeEventListener("resize", schedule2);
     };
-  }
-
-  // src/js/core/charts.js
-  var TIMEOUT_MS = 8e3;
-  var TTL_MS = 5 * 60 * 1e3;
-  function getChartsUrl() {
-    const clean2 = (raw) => {
-      const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
-      return /^https:\/\/[^\s"']+$/i.test(s) ? s : null;
-    };
-    const fromConfig = clean2(window.LenzFlixConfig && window.LenzFlixConfig.chartsUrl);
-    if (fromConfig) return fromConfig;
-    try {
-      return clean2(getComputedStyle(document.documentElement).getPropertyValue("--lfx-charts-url"));
-    } catch {
-      return null;
-    }
-  }
-  var warned = false;
-  function warnOnce(msg) {
-    if (warned) return;
-    warned = true;
-    console.warn(`[LenzFlix] Charts nicht verf\xFCgbar: ${msg}`);
-  }
-  function validEntries(list) {
-    return Array.isArray(list) ? list.filter((e) => e && typeof e.id === "string" && e.id) : null;
-  }
-  function validate(json) {
-    if (!json || typeof json !== "object" || json.version !== 1) return null;
-    const movies = validEntries(json.movies);
-    const series = validEntries(json.series);
-    const all = validEntries(json.all);
-    if (!movies || !series || !all) return null;
-    const days = Number(json.windowDays);
-    return { ...json, movies, series, all, windowDays: days > 0 ? days : 30 };
-  }
-  async function fetchCharts() {
-    const base = getChartsUrl();
-    if (!base) return null;
-    const { token: token2 } = getAuth();
-    if (!token2) return null;
-    const ctrl = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS) : null;
-    try {
-      const res = await fetch(`${base}/charts`, {
-        headers: { "X-Emby-Token": token2, Accept: "application/json" },
-        signal: ctrl ? ctrl.signal : void 0
-      });
-      if (!res.ok) {
-        warnOnce(`HTTP ${res.status}`);
-        return null;
-      }
-      const data = validate(await res.json());
-      if (!data) warnOnce("ung\xFCltige Antwort");
-      return data;
-    } catch (e) {
-      warnOnce(e && e.name === "AbortError" ? "Zeit\xFCberschreitung" : "Netzwerkfehler");
-      return null;
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-  function getCharts() {
-    if (!getChartsUrl()) return Promise.resolve(null);
-    return cached("charts", fetchCharts, TTL_MS);
-  }
-  var normId = (id) => String(id || "").replace(/-/g, "").toLowerCase();
-  async function resolveChartItems(entries, { type, limit = 10 } = {}) {
-    const list = (Array.isArray(entries) ? entries : []).filter((e) => e && e.id && (!type || e.type === type));
-    if (!list.length) return [];
-    const res = await getItems({ Ids: list.map((e) => e.id).join(","), ...BASE_PARAMS });
-    const found = Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
-    const byId = new Map(found.filter((i) => i && i.Id).map((i) => [normId(i.Id), i]));
-    const out = [];
-    const seen = /* @__PURE__ */ new Set();
-    for (const e of list) {
-      const key = normId(e.id);
-      const item = byId.get(key);
-      if (!item || seen.has(key)) continue;
-      seen.add(key);
-      item._lfxViewers = e.viewers;
-      item._lfxPlays = e.plays;
-      out.push(item);
-      if (out.length >= limit) break;
-    }
-    putItems(out);
-    return out;
   }
 
   // src/js/features/rows/sources.js
@@ -5145,7 +5282,7 @@
     const cards = items.map((it, i) => createCard(it, {
       kind: def.kind,
       rank: def.kind === "top10" ? i + 1 : 0,
-      badge: badgeFor2(it, newSeries, now)
+      badge: badgeFor(it, newSeries, now)
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": def.title || "" }, cards);
     const prev = chevronButton("prev", "Zur\xFCck");
@@ -6227,7 +6364,7 @@
     const cards = items.map((it, i) => createCard(it, {
       kind: kind2,
       rank: kind2 === "top10" ? i + 1 : 0,
-      badge: badgeFor2(it, newSeries, now)
+      badge: badgeFor(it, newSeries, now)
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": title }, cards);
     const prev = chevronButton("prev", "Zur\xFCck");
@@ -7491,7 +7628,7 @@
   // src/js/shared/newcontent.js
   var TTL_MS2 = 5 * 60 * 1e3;
   var asArr = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
-  function newContentFrom(episodes, now = Date.now(), { days = NEW_DAYS2 } = {}) {
+  function newContentFrom(episodes, now = Date.now(), { days = NEW_DAYS } = {}) {
     const map = /* @__PURE__ */ new Map();
     for (const e of episodes || []) {
       if (!e || !e.SeriesId || !isRecent(e.DateCreated, now, days)) continue;
@@ -7635,7 +7772,7 @@
     const media = [];
     if (img) media.push(h("img", { class: "lfx-card__img", src: img.url, alt: "", loading: "lazy", decoding: "async" }));
     else media.push(h("span", { class: "lfx-card__title lfx-plus-card__fallback" }, displayTitle2(item)));
-    const p = progressPercent2(item);
+    const p = progressPercent(item);
     if (p > 0) {
       media.push(h("div", { class: "lfx-plus-progress" }, [
         h("div", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })
@@ -8571,7 +8708,7 @@
   }
   function episodeCard(ep, selected, onPlay) {
     const img = imageUrl(ep, { type: "Primary", maxWidth: 640, quality: 85 }) || (landscapeFor(ep, 640) || {}).url || null;
-    const p = progressPercent(ep);
+    const p = progressPercent2(ep);
     const played = ep.UserData && ep.UserData.Played === true;
     const mins = formatRuntime(ep.RunTimeTicks);
     const media = h("span", { class: "lfx-plus-ep__media" }, [
@@ -8650,7 +8787,7 @@
     const paintPlay2 = () => {
       playLabel2.textContent = target().label;
       const it = isSeries ? c.focusEp || c.nextUp : main;
-      const p = it ? progressPercent(it) : 0;
+      const p = it ? progressPercent2(it) : 0;
       progressSlot.replaceChildren();
       progressSlot.hidden = !(p > 0);
       if (p > 0) {
@@ -10735,10 +10872,10 @@
       const started2 = resume2 || next.IndexNumber > 1 || next.ParentIndexNumber > 1;
       if (!started2) return { line1: "Abspielen", line2: null, progress: 0 };
       const n = next.IndexNumber != null ? `Folge ${next.IndexNumber}` : "N\xE4chste Folge";
-      return { line1: n, line2: resume2 ? "Fortsetzen" : "weiter ansehen", progress: resume2 ? progressPercent(next) : 0 };
+      return { line1: n, line2: resume2 ? "Fortsetzen" : "weiter ansehen", progress: resume2 ? progressPercent2(next) : 0 };
     }
     const resume = hasResume(item);
-    return { line1: resume ? "Fortsetzen" : "Abspielen", line2: null, progress: resume ? progressPercent(item) : 0 };
+    return { line1: resume ? "Fortsetzen" : "Abspielen", line2: null, progress: resume ? progressPercent2(item) : 0 };
   }
 
   // src/js/features/prime/preview-gate.js
@@ -11271,7 +11408,7 @@
     if (badge3) children.push(h("span", { class: "lfx-prime-badge" }, badge3));
     children.push(h("span", { class: "lfx-prime-card__mark", "aria-hidden": "true" }));
     if (kind2 === "resume") {
-      const p = progressPercent2(item);
+      const p = progressPercent(item);
       if (p > 0) {
         children.push(h("div", { class: "lfx-prime-card__progress" }, [
           h("div", { class: "lfx-prime-card__bar", style: { width: `${Math.round(p * 10) / 10}%` } })
@@ -11770,7 +11907,7 @@
     if (active3 || blocked()) return;
     const a = { card: card3, kind: "popup", el: null, preview: null, video: null, timers: [] };
     const pic = landscapeFor(item, 900);
-    const p = progressPercent2(item);
+    const p = progressPercent(item);
     const media = h("a", { class: "lfx-prime-hover__media", href: titleHref(item.Id), "aria-label": item.Name || "" }, [
       pic ? h("img", { class: "lfx-prime-hover__img", src: pic.url, alt: "" }) : null,
       p > 0 ? h("div", { class: "lfx-prime-card__progress" }, [h("div", { class: "lfx-prime-card__bar", style: { width: `${Math.round(p)}%` } })]) : null
@@ -12011,7 +12148,7 @@
       return {
         label: resume2 ? "Fortsetzen" : n != null ? `Folge ${n}` : "Abspielen",
         sub: resume2 ? code : "Jetzt ansehen",
-        progress: resume2 ? progressPercent(nextUp) : 0,
+        progress: resume2 ? progressPercent2(nextUp) : 0,
         target: nextUp,
         resume: resume2
       };
@@ -12020,7 +12157,7 @@
     return {
       label: resume ? "Fortsetzen" : "Abspielen",
       sub: "",
-      progress: resume ? progressPercent(main) : 0,
+      progress: resume ? progressPercent2(main) : 0,
       target: main,
       resume
     };
@@ -12130,7 +12267,7 @@
   }
   function buildEpisode(ep, { onPlay, selected = false } = {}) {
     const img = landscapeFor(ep, 640);
-    const p = progressPercent(ep);
+    const p = progressPercent2(ep);
     const remaining = remainingLabel2(ep);
     const media = h("button", { type: "button", class: "lfx-pt__ep-media", "aria-label": `${episodeTitle(ep)} abspielen` }, [
       img ? h("img", { class: "lfx-pt__ep-img", src: img.url, alt: "", loading: "lazy", decoding: "async" }) : null,
@@ -13716,7 +13853,7 @@
   }
   function progressOf(item, progress) {
     if (typeof progress === "number" && progress > 0) return Math.min(100, progress);
-    return progress === void 0 ? progressPercent2(item) : 0;
+    return progress === void 0 ? progressPercent(item) : 0;
   }
   function createTapeCard(item, { variant = "spine", progress } = {}) {
     const v = TAPE_VARIANTS.includes(variant) ? variant : "spine";
@@ -14199,7 +14336,7 @@
     return out;
   }
   function buildEpisode2(ep, { selected = false, next = false, onPlay } = {}) {
-    const p = progressPercent(ep);
+    const p = progressPercent2(ep);
     const played = Boolean(ep.UserData && ep.UserData.Played === true);
     const fill3 = played ? 1 : Math.max(0, Math.min(1, p / 100));
     const code = episodeCode2(ep);
@@ -18432,7 +18569,7 @@
   // src/js/features/live/prefs.js
   var KEY4 = "lfx.live.";
   var STYLES = ["flat", "crt80", "silver", "plain"];
-  var DEFAULTS3 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1 };
+  var DEFAULTS3 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1, music: true };
   var storageKey3 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
   function read2(key) {
     try {
@@ -18460,6 +18597,9 @@
   function getMuted() {
     return read2(storageKey3("muted")) === "1";
   }
+  function getMusic() {
+    return read2(storageKey3("music")) !== "0";
+  }
   function getLastChannel() {
     const v = Number(read2(storageKey3("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS3.lastChannel;
@@ -18469,6 +18609,7 @@
     if (STYLES.includes(p.style)) write2(storageKey3("tvstyle"), p.style);
     if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write2(storageKey3("volume"), String(p.volume));
     if (typeof p.muted === "boolean") write2(storageKey3("muted"), p.muted ? "1" : "0");
+    if (typeof p.music === "boolean") write2(storageKey3("music"), p.music ? "1" : "0");
     if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write2(storageKey3("lastChannel"), String(p.lastChannel));
   }
 
@@ -18652,6 +18793,21 @@
           return null;
         }
       },
+      // Inhaltsangaben für die Fernsehzeitung: eine Anfrage, Fehler → leere Map
+      itemDetails: async (ids) => {
+        const out = /* @__PURE__ */ new Map();
+        const list = (Array.isArray(ids) ? ids : []).filter(Boolean);
+        if (!list.length) return out;
+        try {
+          const res = await requestJson("GET", "/Items", {
+            params: { userId: getUserId(), Ids: list.join(","), Fields: "Overview", EnableImages: false, EnableUserData: false }
+          });
+          for (const it of asItems11(res)) if (it && it.Id) out.set(it.Id, { overview: typeof it.Overview === "string" ? it.Overview : "" });
+        } catch (e) {
+          console.warn("[LenzFlix] live itemDetails", fatalText2(e));
+        }
+        return out;
+      },
       setPlayed: (id, v) => setPlayed(id, v),
       channelConfig: getChannelConfig(),
       savePrefs: ret((p) => savePrefs2(p)),
@@ -18686,6 +18842,7 @@
       volume: getVolume(),
       muted: getMuted(),
       lastChannel: getLastChannel(),
+      music: getMusic(),
       audioPref: null,
       phone: isMobile(),
       touch: coarse2(),

@@ -15,7 +15,9 @@ const extra = { '/store-dev.html': 'build/store-dev.html', '/store-dev.js': 'bui
   // Dev-Harness der LENZ LIVE (docs/live.md)
   '/live-dev.html': 'build/live-dev.html', '/live-dev.js': 'build/live-dev.js', '/boot.js': 'build/dev-boot.js',
   // VR-Kino-Harness: echte Bridge der Hülle (Modul) und der lokale Emulator (nur .tmp/, nie im Repo; fehlt er, gibt es 404)
-  '/cinema-bridge.js': 'src/js/features/store/cinema-bridge.js', '/xr-emu.js': '.tmp/xr-emu.js' };
+  '/cinema-bridge.js': 'src/js/features/store/cinema-bridge.js', '/xr-emu.js': '.tmp/xr-emu.js',
+  // Sicht-Harness des Design-Menüs: lädt den echten Picker als ES-Modul aus src/js/ (siehe srcJs)
+  '/picker-dev.html': 'build/picker-dev.html', '/picker-dev.js': 'build/picker-dev.js' };
 
 createServer(async (req, res) => {
   const headers = {
@@ -27,7 +29,9 @@ createServer(async (req, res) => {
   const rawPath = new URL(req.url, 'http://x').pathname;
   const path = extra[rawPath] || normalize(decodeURIComponent(rawPath)).replace(/^[\\/]+/, '');
   const top = path.split(/[\\/]/)[0];
-  if (!extra[rawPath] && (!allowed.includes(top) || path.includes('..'))) {
+  // src/js/ nur lesend und nur .js-Module (Picker-Harness)
+  const srcJs = /^src[\\/]js[\\/]/.test(path) && extname(path) === '.js';
+  if (!extra[rawPath] && !srcJs && (!allowed.includes(top) || path.includes('..'))) {
     res.writeHead(404, headers); return res.end('not found');
   }
   try {

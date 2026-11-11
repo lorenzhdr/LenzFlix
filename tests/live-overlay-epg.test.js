@@ -41,7 +41,7 @@ describe('EPG', () => {
 
   it('rendert filler nicht als Block; fill mit Füllprogramm-Hinweis', () => {
     expect(epg.el.querySelectorAll('.is-filler')).toHaveLength(0);
-    expect(rows()[0].querySelectorAll('.lfx-live-epg__ev')).toHaveLength(4);
+    expect(rows()[0].querySelector('.lfx-live-epg__daysec').querySelectorAll('.lfx-live-epg__ev')).toHaveLength(4); // je Tag
     const fill = rows()[0].querySelector('.is-fill');
     expect(fill.textContent).toContain('Füllprogramm');
   });
@@ -73,7 +73,8 @@ describe('EPG', () => {
     await flush();
     expect(epg.el.querySelector('.lfx-live-epg__day.is-active').textContent).toBe('Do 12.11.');
     expect(rows()).toHaveLength(18);
-    expect(epg.el.querySelectorAll('.is-now')).toHaveLength(0);
+    // durchgehende Zeitachse: Tag 2 hat keine laufende Sendung (heute bleibt als Nachbarabschnitt im DOM)
+    expect(epg.el.querySelectorAll(`.lfx-live-epg__daysec[data-day="${dayOf(NOW) + 1}"] .is-now`)).toHaveLength(0);
     for (let i = 0; i < 10; i++) epg.onKey('green');
     expect(epg.el.querySelector('.lfx-live-epg__day.is-active').textContent).toBe('Di 17.11.');
     epg.onKey('yellow');

@@ -17,7 +17,7 @@ describe('Tastatur', () => {
   it('Tastenzuordnung laut Vertrag', () => {
     const map = {
       ArrowUp: 'ch+', ArrowDown: 'ch-', ArrowLeft: 'left', ArrowRight: 'right', 5: '5', '+': 'vol+', '-': 'vol-',
-      m: 'mute', M: 'mute', g: 'epg', i: 'info', t: 'txt', f: 'fullscreen', Escape: 'back', Enter: 'ok', F1: 'red', F4: 'blue',
+      m: 'mute', M: 'mute', g: 'epg', z: 'guide', Z: 'guide', i: 'info', t: 'txt', f: 'fullscreen', Escape: 'back', Enter: 'ok', F1: 'red', F4: 'blue',
     };
     for (const [k, v] of Object.entries(map)) expect(keyName({ key: k }), k).toBe(v);
     expect(keyName({ key: 'ArrowUp' }, true)).toBe('up');

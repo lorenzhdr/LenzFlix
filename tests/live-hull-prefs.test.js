@@ -63,6 +63,19 @@ describe('live prefs', () => {
     expect(prefs.getLastChannel()).toBe(1);
   });
 
+  it('Pausenmusik: Standard an, speichert lfx.live.music.<uid>, nur Boolean', () => {
+    expect(prefs.getMusic()).toBe(true);
+    expect(prefs.DEFAULTS.music).toBe(true);
+    prefs.savePrefs({ music: false });
+    expect(localStorage.getItem('lfx.live.music.u1')).toBe('0');
+    expect(prefs.getMusic()).toBe(false);
+    prefs.savePrefs({ music: 'nein' });
+    expect(prefs.getMusic()).toBe(false);
+    prefs.savePrefs({ music: true });
+    expect(localStorage.getItem('lfx.live.music.u1')).toBe('1');
+    expect(prefs.getMusic()).toBe(true);
+  });
+
   it('gesperrter Speicher wirft nicht', () => {
     const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('voll'); });
     const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('gesperrt'); });

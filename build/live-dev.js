@@ -173,6 +173,16 @@
     loadTrailer: function () { return Promise.resolve(rand() < 0.3 ? { url: 'fake://trailer', durMs: 120000 } : null); },
     setPlayed: function (id) { console.info('[live-dev] setPlayed', id); played.push(id); return Promise.resolve(); },
     channelConfig: parseChannels(q.get('channels')),
+    // Inhaltsangaben der Fernsehzeitung (Platzhaltertexte, keine echten Inhalte)
+    itemDetails: function (ids) {
+      var out = new Map();
+      var T1 = ['Eine Geschichte voller Wendungen, erzählt in ruhigen Bildern.', 'Platzhaltertext für die Inhaltsangabe dieses Titels.', 'Zwei Welten treffen aufeinander. Nichts bleibt, wie es war.'];
+      (ids || []).forEach(function (id, i) {
+        out.set(id, { overview: T1[i % T1.length] + ' Dies ist ein Beispieltext aus dem Dev-Harness. Er dient nur zur Ansicht der Fernsehzeitung und enthält keine echten Inhalte.' });
+      });
+      requests.push({ method: 'GET', path: '/Items?Ids=' + (ids || []).length + ' Stück' });
+      return Promise.resolve(out);
+    },
     savePrefs: function (partial) {
       Object.keys(partial || {}).forEach(function (k) { prefs[k] = partial[k]; });
       try { sessionStorage.setItem('lfx.liveDev.prefs', JSON.stringify(prefs)); } catch { /* egal */ }
@@ -209,7 +219,7 @@
   var opts = {
     style: style, volume: prefs.volume != null ? prefs.volume : 0.5, muted: prefs.muted != null ? prefs.muted : false,
     lastChannel: Number(q.get('channel')) || prefs.lastChannel || 1, audioPref: null,
-    phone: phone, touch: phone, debug: q.get('debug') === '1', now: nowFn, fakePlayer: q.get('real') !== '1',
+    phone: phone, touch: phone, debug: q.get('debug') === '1' || !!q.get('idle'), music: q.get('music') !== '0' && prefs.music !== false, now: nowFn, fakePlayer: q.get('real') !== '1',
   };
   if (opts.debug) window.__lfxLiveDebug = true;
   if (phone) document.documentElement.classList.add('lfx-phone');
@@ -231,12 +241,21 @@
       var zap = Number(q.get('zap')) || 0;
       for (var z = 0; z < zap; z++) steps = steps.then(function () { key('ch+'); return wait(450); });
       var ov = q.get('overlay');
-      if (ov === 'epg' || ov === 'ttx' || ov === 'menu') {
-        steps = steps.then(function () { key(ov === 'ttx' ? 'txt' : ov); return wait(400); });
+      if (ov === 'epg' || ov === 'ttx' || ov === 'menu' || ov === 'guide') {
+        steps = steps.then(function () { key(ov === 'ttx' ? 'txt' : ov); return wait(ov === 'guide' ? 900 : 400); });
         var page = q.get('page');
         if (ov === 'ttx' && page) {
           page.split('').forEach(function (d) { steps = steps.then(function () { key(d); return wait(150); }); });
         }
+        if (ov === 'guide' && Number(page) > 1) {
+          // Heft: pro Doppelseite einmal blättern (rechts); ?page=N = N-te Seite (1-basiert, grob)
+          for (var pg = 1; pg < Number(page); pg++) steps = steps.then(function () { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return wait(250); });
+        }
+      }
+      if (q.get('remote') === '1') steps = steps.then(function () { var ap = stage.querySelector('.lfx-live-app'); setInterval(function () { if (ap) ap.classList.add('show-remote'); }, 200); return wait(900); });
+      var idle = q.get('idle');
+      if (idle === 'pause' || idle === 'test' || idle === 'error') {
+        steps = steps.then(function () { var a = window.__lfxLive && window.__lfxLive.app; if (a && a.debugCard) a.debugCard(idle); return wait(300); });
       }
       if (q.get('fullscreen') === '1') {
         steps = steps.then(function () { if (!key('fullscreen')) { var app = stage.querySelector('.lfx-live-app'); if (app) app.classList.add('is-fullscreen'); } return wait(300); });
