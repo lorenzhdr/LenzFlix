@@ -85,9 +85,9 @@ function buildCard(c, id) {
       span('lfx-tp__palette', (meta.palette || []).map((hex) => h('span', { class: 'lfx-tp__swatch', style: { background: hex } }))),
     ]),
     span('lfx-tp__state', [span('lfx-tp__active', ['Aktiv']), span('lfx-tp__spin')]),
-    id === 'store' ? span('lfx-tp__beta', ['Beta']) : null,
+    id !== 'flix' ? span('lfx-tp__beta', ['Beta']) : null, // alle Designs außer LENZFLIX sind Beta
   ]);
-  btn.setAttribute('aria-label', `${meta.name}${meta.tagline ? `, ${meta.tagline}` : ''}`);
+  btn.setAttribute('aria-label', `${meta.name}${id !== 'flix' ? ' (Beta)' : ''}${meta.tagline ? `, ${meta.tagline}` : ''}`);
   btn.addEventListener('click', () => choose(c, id));
   return btn;
 }
@@ -121,7 +121,12 @@ function choose(c, id) {
     done();
     return;
   }
-  p.then(done, done);
+  // Erfolg: Dialog schließt sich automatisch (Ladezustand bleibt bis dahin sichtbar); Fehler: bleibt offen.
+  const ok = () => {
+    done();
+    if (current === c && getChosenTheme() === id) closeThemePicker();
+  };
+  p.then(ok, done);
 }
 
 export function closeThemePicker() {

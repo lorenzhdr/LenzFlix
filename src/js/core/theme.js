@@ -15,7 +15,7 @@ export const THEME_META = {
   plus: { id: 'plus', name: 'LENZ+', tagline: 'Karussell, Poster und Marken-Hubs', palette: ['#10131f', '#050507', '#1bb3e8', '#f5f5f7'] },
   prime: { id: 'prime', name: 'LENZPRIME', tagline: 'Vollbild-Hero, Badges und Trailer', palette: ['#0a0e17', '#1a98ff', '#ffffff', '#3a3d45'] },
   retro: { id: 'retro', name: 'LENZ//84', tagline: 'Bernstein-Terminal, Kassetten und Neon-Gitter', palette: ['#0a0603', '#ffb000', '#ff5a1f', '#ffe2a8'] },
-  store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek (Beta)', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
+  store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
 };
 
 const KEY_USER = 'lfx.theme.';

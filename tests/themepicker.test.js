@@ -9,7 +9,7 @@ vi.mock('../src/js/core/theme.js', () => ({
     flix: { id: 'flix', name: 'LENZFLIX', tagline: 'Klassisch', palette: ['#000', '#e50914', '#fff', '#333'] },
     plus: { id: 'plus', name: 'LENZ+', tagline: 'Magisch', palette: ['#0a1230', '#4f7bff', '#fff', '#000'] },
     prime: { id: 'prime', name: 'LENZPRIME', tagline: 'Kinoabend', palette: ['#0f171e', '#1a98ff', '#fff', '#000'] },
-    store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek (Beta)', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
+    store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
   },
   getChosenTheme: () => themeState.chosen,
   setTheme: vi.fn((id) => themeState.setImpl(id)),
@@ -61,7 +61,8 @@ describe('themepicker', () => {
     expect(document.querySelectorAll('.lfx-tp__card').length).toBe(4);
     expect(card('store').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
     expect(card('store').querySelector('.lfx-tp__preview--store .lfx-tp__shopsign').textContent).toBe('VIDEOTHEK LENZ');
-    expect(card('plus').querySelector('.lfx-tp__beta')).toBeNull();
+    expect(card('plus').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
+    expect(card('flix').querySelector('.lfx-tp__beta')).toBeNull();
     expect(document.activeElement).toBe(card('flix'));
     closeThemePicker();
     expect(isThemePickerOpen()).toBe(false);
@@ -106,21 +107,21 @@ describe('themepicker', () => {
     expect(document.activeElement).toBe(last);
   });
 
-  it('Klick ruft setTheme, zeigt Ladezustand, Dialog bleibt offen, Markierung folgt', async () => {
+  it('Klick ruft setTheme, zeigt Ladezustand, Markierung folgt, nach Erfolg schließt der Dialog', async () => {
     let resolve;
     themeState.setImpl = () => new Promise((r) => { resolve = r; });
     openThemePicker();
     card('plus').click();
     expect(setTheme).toHaveBeenCalledWith('plus', { source: 'user' });
     expect(card('plus').getAttribute('aria-busy')).toBe('true');
-    expect(isThemePickerOpen()).toBe(true);
+    expect(isThemePickerOpen()).toBe(true); // während des Ladens offen
     themeState.chosen = 'plus';
     for (const fn of themeState.listeners) fn({ theme: 'plus', previous: 'flix' });
-    resolve();
-    await vi.waitFor(() => expect(card('plus').hasAttribute('aria-busy')).toBe(false));
     expect(card('plus').getAttribute('aria-pressed')).toBe('true');
     expect(card('flix').getAttribute('aria-pressed')).toBe('false');
-    expect(isThemePickerOpen()).toBe(true);
+    resolve();
+    await vi.waitFor(() => expect(isThemePickerOpen()).toBe(false));
+    expect(document.getElementById('lfx-themepicker')).toBeNull();
   });
 
   it('Fehler: Markierung bleibt bei der alten Auswahl', async () => {

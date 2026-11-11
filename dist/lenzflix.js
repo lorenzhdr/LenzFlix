@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.7.0";
+  var VERSION = "1.7.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -640,7 +640,7 @@
     plus: { id: "plus", name: "LENZ+", tagline: "Karussell, Poster und Marken-Hubs", palette: ["#10131f", "#050507", "#1bb3e8", "#f5f5f7"] },
     prime: { id: "prime", name: "LENZPRIME", tagline: "Vollbild-Hero, Badges und Trailer", palette: ["#0a0e17", "#1a98ff", "#ffffff", "#3a3d45"] },
     retro: { id: "retro", name: "LENZ//84", tagline: "Bernstein-Terminal, Kassetten und Neon-Gitter", palette: ["#0a0603", "#ffb000", "#ff5a1f", "#ffe2a8"] },
-    store: { id: "store", name: "VIDEOTHEK LENZ", tagline: "Begehbare 3D-Videothek (Beta)", palette: ["#0d1330", "#ffd23f", "#ff3d7f", "#2446a8"] }
+    store: { id: "store", name: "VIDEOTHEK LENZ", tagline: "Begehbare 3D-Videothek", palette: ["#0d1330", "#ffd23f", "#ff3d7f", "#2446a8"] }
   };
   var KEY_USER = "lfx.theme.";
   var KEY_LAST = "lfx.theme.last";
@@ -1516,9 +1516,10 @@
         span("lfx-tp__palette", (meta.palette || []).map((hex) => h("span", { class: "lfx-tp__swatch", style: { background: hex } })))
       ]),
       span("lfx-tp__state", [span("lfx-tp__active", ["Aktiv"]), span("lfx-tp__spin")]),
-      id === "store" ? span("lfx-tp__beta", ["Beta"]) : null
+      id !== "flix" ? span("lfx-tp__beta", ["Beta"]) : null
+      // alle Designs außer LENZFLIX sind Beta
     ]);
-    btn2.setAttribute("aria-label", `${meta.name}${meta.tagline ? `, ${meta.tagline}` : ""}`);
+    btn2.setAttribute("aria-label", `${meta.name}${id !== "flix" ? " (Beta)" : ""}${meta.tagline ? `, ${meta.tagline}` : ""}`);
     btn2.addEventListener("click", () => choose(c, id));
     return btn2;
   }
@@ -1550,7 +1551,11 @@
       done();
       return;
     }
-    p.then(done, done);
+    const ok = () => {
+      done();
+      if (current === c && getChosenTheme() === id) closeThemePicker();
+    };
+    p.then(ok, done);
   }
   function closeThemePicker() {
     const c = current;
