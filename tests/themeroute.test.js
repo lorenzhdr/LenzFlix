@@ -91,3 +91,33 @@ describe('themeroute', () => {
     expect(window.location.hash).toBe('#/home?lfx=hub&lib=1');
   });
 });
+
+describe('themeroute im Design store', () => {
+  it('match nur bei hub|browse; title/search/new/classic bleiben der 3D-Videothek', () => {
+    theme = 'store';
+    expect(themeroute.match(route('#/home?lfx=hub&lib=1'))).toBe(true);
+    expect(themeroute.match(route('#/home?lfx=browse&lib=1'))).toBe(true);
+    expect(themeroute.match(route('#/home?lfx=title&id=1'))).toBe(false);
+    expect(themeroute.match(route('#/home?lfx=search'))).toBe(false);
+    expect(themeroute.match(route('#/home?lfx=new'))).toBe(false);
+    expect(themeroute.match(route('#/home?lfx=classic'))).toBe(false);
+    expect(themeroute.match(route('#/home'))).toBe(false);
+  });
+
+  it('hub/browse -> native Bibliothek, ohne bzw. mit unbekannter Bibliothek -> klassische Startseite', async () => {
+    theme = 'store';
+    window.location.hash = '#/home?lfx=hub&lib=lib1';
+    themeroute.mount(route('#/home?lfx=hub&lib=lib1'));
+    await flush();
+    expect(window.location.hash).toBe('#/movies?topParentId=lib1&collectionType=movies');
+    themeroute.unmount();
+    window.location.hash = '#/home?lfx=browse&lib=nope';
+    themeroute.mount(route('#/home?lfx=browse&lib=nope'));
+    await flush();
+    expect(window.location.hash).toBe('#/home?lfx=classic');
+    themeroute.unmount();
+    window.location.hash = '#/home?lfx=browse';
+    themeroute.mount(route('#/home?lfx=browse'));
+    expect(window.location.hash).toBe('#/home?lfx=classic');
+  });
+});

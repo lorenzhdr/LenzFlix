@@ -1,0 +1,663 @@
+/* VIDEOTHEK LENZ · M3 Kasse & Orte: Kassen-PC (90er-Datenbank-Oberfläche), Rückgabe-Wagen, Reservierungen, Mitarbeiter-Tür, Schaufenster (store3d/modules)
+   Alle Overlays hängen im Host (.lfx-store-stage); Selektoren unter html.lfx-js.lfx-theme-store:not(.layout-tv). */
+
+@font-face {
+  font-family: "LenzStore Mono";
+  src: url("../assets/fonts/lenzretro-mono-latin-400.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: "LenzStore Mono";
+  src: url("../assets/fonts/lenzretro-mono-latin-700.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* ---------- gemeinsamer Modal-Rahmen ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  background: rgba(5, 8, 24, 0.58);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: var(--lfx-store-text, #f4f6ff);
+  font-family: var(--lfx-font, system-ui, sans-serif);
+  pointer-events: auto;
+  animation: lfx-store-fade 0.25s ease both;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 *,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 *::before,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 *::after {
+  box-sizing: border-box;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3-panel {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- Kassen-PC: blau-weiße Textoberfläche ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-crt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 1000px);
+  height: min(100%, 660px);
+  padding: 8px 14px 10px;
+  overflow: hidden;
+  background: #14208f;
+  color: #e3e9ff;
+  font-family: "LenzStore Mono", ui-monospace, "Courier New", monospace;
+  font-size: 16px;
+  line-height: 1.3;
+  text-shadow: 0 0 3px rgba(150, 175, 255, 0.55);
+  border: 4px double #e3e9ff;
+  border-radius: 26px / 20px;
+  box-shadow: 0 0 0 7px #080c4a, 0 0 0 9px #3c4a9a, 0 0 50px rgba(90, 130, 255, 0.5), inset 0 0 90px rgba(0, 0, 50, 0.75);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-crt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 30, 0.55) 100%);
+  animation: lfx-store-term-flick 5s steps(1) infinite;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 10px;
+  background: #e3e9ff;
+  color: #14208f;
+  font-weight: 700;
+  text-shadow: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-clock {
+  white-space: pre;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 4px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-prompt {
+  color: #9fb0ff;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 10px;
+  border: 2px solid #e3e9ff;
+  border-radius: 0;
+  outline: none;
+  background: #0c1470;
+  color: #fff;
+  caret-color: #ffd23f;
+  font: inherit;
+  font-size: 18px;
+  text-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-input::placeholder {
+  color: #7f90e0;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-input:focus {
+  box-shadow: 0 0 0 2px #ffd23f;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-status {
+  min-height: 1.4em;
+  margin: 2px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(227, 233, 255, 0.35);
+  color: #9fb0ff;
+  font-size: 14px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #e3e9ff #0c1470;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-sec {
+  padding: 8px 4px 3px;
+  color: #ffd23f;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-empty {
+  padding: 18px 8px;
+  color: #9fb0ff;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5ch 8ch minmax(16ch, 30%);
+  column-gap: 12px;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px dotted rgba(227, 233, 255, 0.2);
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row:hover {
+  background: rgba(227, 233, 255, 0.12);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row.is-sel {
+  background: #e3e9ff;
+  color: #14208f;
+  text-shadow: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-subname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  opacity: 0.75;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-year,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-type {
+  opacity: 0.85;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-loc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffd23f;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-loc.is-stock {
+  color: #9fb0ff;
+  font-style: italic;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row.is-sel .lfx-store-term-loc {
+  color: #a10f44;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row.is-sel .lfx-store-term-loc.is-stock {
+  color: #4a58b8;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-acts {
+  display: none;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0 4px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row.is-sel .lfx-store-term-acts {
+  display: flex;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-btn {
+  margin: 0;
+  padding: 6px 14px;
+  min-height: 36px;
+  border: 2px solid #14208f;
+  border-radius: 0;
+  background: #14208f;
+  color: #e3e9ff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-btn.is-main {
+  background: #ffd23f;
+  color: #14208f;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-btn:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-btn:focus-visible {
+  outline: 2px solid #a10f44;
+  outline-offset: 1px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-help {
+  margin: 6px 0;
+  padding: 8px 12px;
+  border: 2px solid #e3e9ff;
+  background: #0c1470;
+  font-size: 14px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px solid #e3e9ff;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key {
+  margin: 0;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 0;
+  background: #e3e9ff;
+  color: #14208f;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: none;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:focus-visible {
+  background: #fff;
+  outline: 2px solid #ffd23f;
+}
+
+@media (pointer: coarse) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row {
+    min-height: 56px;
+    padding: 10px 10px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-btn {
+    min-height: 48px;
+    padding: 8px 16px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-input {
+    min-height: 46px;
+  }
+}
+@media (max-width: 640px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 {
+    padding: max(6px, env(safe-area-inset-top, 0px)) max(6px, env(safe-area-inset-right, 0px)) max(6px, env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-crt {
+    width: 100%;
+    height: 100%;
+    padding: 6px 8px 8px;
+    font-size: 15px;
+    border-width: 3px;
+    border-radius: 16px / 12px;
+    box-shadow: 0 0 0 4px #080c4a, 0 0 30px rgba(90, 130, 255, 0.45), inset 0 0 60px rgba(0, 0, 50, 0.7);
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-clock {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-prompt {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 1px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-year {
+    grid-area: 1 / 2;
+    text-align: right;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-loc {
+    grid-area: 2 / 1;
+    font-size: 14px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-type {
+    grid-area: 2 / 2;
+    text-align: right;
+    font-size: 14px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-acts {
+    grid-row: 3;
+  }
+}
+@media (max-height: 480px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-crt {
+    padding: 4px 8px 6px;
+    font-size: 13px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-field {
+    margin: 4px 0 2px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-input {
+    padding: 3px 8px;
+    min-height: 0;
+    font-size: 16px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-status {
+    margin: 0 0 2px;
+    padding-bottom: 2px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-keys {
+    margin-top: 4px;
+    padding-top: 4px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key {
+    padding: 3px 8px;
+    font-size: 13px;
+  }
+}
+@keyframes lfx-store-term-flick {
+  0% { opacity: 1; }
+  92% { opacity: 0.93; }
+  94% { opacity: 1; }
+  97% { opacity: 0.95; }
+  100% { opacity: 1; }
+}
+
+/* ---------- Rückgabe-Wagen: Lieferschein-Karte ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret .lfx-store-m3-panel {
+  position: relative;
+  width: min(92vw, 420px);
+  padding: 22px 22px 18px;
+  background: #f6efd6 repeating-linear-gradient(0deg, transparent 0 27px, rgba(40, 60, 160, 0.18) 27px 28px);
+  color: #1c2a6b;
+  font-family: "LenzStore Mono", ui-monospace, "Courier New", monospace;
+  border-top: 14px solid #c4182b;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-stamp {
+  margin-bottom: 10px;
+  color: #c4182b;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-title {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-bar {
+  height: 10px;
+  border: 2px solid #1c2a6b;
+  background: rgba(255, 255, 255, 0.6);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-bar i {
+  display: block;
+  height: 100%;
+  background: #c4182b;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-sub {
+  margin: 6px 0 14px;
+  font-size: 13px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-actions .lfx-store-act {
+  flex: 1 1 auto;
+  color: #1c2a6b;
+  background: rgba(28, 42, 107, 0.08);
+  border-color: rgba(28, 42, 107, 0.4);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ret-actions .lfx-store-act--primary {
+  background: #ffd23f;
+  border-color: transparent;
+}
+
+/* ---------- Reservierungen: Karteikarten ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res .lfx-store-m3-panel {
+  width: min(96vw, 860px);
+  padding: 18px 20px 20px;
+  background: #f6efd6 repeating-linear-gradient(0deg, transparent 0 31px, rgba(40, 60, 160, 0.14) 31px 32px);
+  color: #1c2a6b;
+  font-family: "LenzStore Mono", ui-monospace, "Courier New", monospace;
+  border-left: 10px solid #c4182b;
+  border-radius: 4px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-stamp {
+  padding: 2px 10px;
+  border: 3px solid #c4182b;
+  color: #c4182b;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transform: rotate(-3deg);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 22px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-close {
+  margin-left: auto;
+  color: #1c2a6b;
+  background: rgba(28, 42, 107, 0.08);
+  border-color: rgba(28, 42, 107, 0.4);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-sub {
+  margin: 8px 0 14px;
+  font-size: 14px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-empty {
+  margin: 26px 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 12px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #c9b98a;
+  border-top: 12px solid #d33a3a;
+  background: #fffbea;
+  color: #1c2a6b;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(60, 40, 10, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-card:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-card:focus-visible {
+  outline: 2px solid #ffd23f;
+  transform: translateY(-3px) rotate(-1deg);
+  box-shadow: 0 8px 16px rgba(60, 40, 10, 0.35);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: #d8cfae;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-year {
+  font-size: 12px;
+  opacity: 0.7;
+}
+@media (max-width: 640px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-title {
+    flex: 1 1 100%;
+    order: 3;
+  }
+}
+@media (pointer: coarse) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-grid {
+    grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  }
+}
+
+/* ---------- Personalraum: Pinnwand ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff .lfx-store-m3-panel {
+  width: min(94vw, 640px);
+  padding: 18px 18px 16px;
+  background: radial-gradient(rgba(70, 40, 10, 0.22) 1px, transparent 1.5px) 0 0 / 7px 7px, #b5854f;
+  border: 10px solid #6b4423;
+  border-radius: 6px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 0 30px rgba(60, 30, 5, 0.45);
+  font-family: "LenzStore Mono", ui-monospace, "Courier New", monospace;
+  color: #2a2a2a;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-title {
+  align-self: flex-start;
+  padding: 6px 16px;
+  background: #f6efd6;
+  color: #c4182b;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transform: rotate(-1.5deg);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-sub {
+  color: #fff3d6;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  padding: 6px 4px 12px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-height: 82px;
+  margin: 0;
+  padding: 16px 14px 12px;
+  border: 0;
+  border-radius: 2px;
+  color: #2a2a2a;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note.n0 { background: #fff1a8; transform: rotate(-1.6deg); }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note.n1 { background: #ffc9de; transform: rotate(1.2deg); }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note.n2 { background: #c8f0ff; transform: rotate(-0.8deg); }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note.n3 { background: #d4f7c4; transform: rotate(1.8deg); }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note.is-out { background: #ffb8b0; }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note:focus-visible {
+  outline: 2px solid #ffd23f;
+  transform: rotate(0deg) scale(1.04);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-pin {
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 11px;
+  height: 11px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff9a8a, #c4182b 70%);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-label {
+  font-size: 18px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-hint {
+  font-size: 13px;
+  opacity: 0.75;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-confirm {
+  margin: 8px 4px 14px;
+  padding: 18px;
+  background: #f6efd6;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transform: rotate(-0.8deg);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-q {
+  margin-bottom: 12px;
+  font-size: 20px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-back {
+  display: block;
+  margin: 0 auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-confirm .lfx-store-act {
+  color: #1c2a6b;
+  background: rgba(28, 42, 107, 0.08);
+  border-color: rgba(28, 42, 107, 0.4);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-confirm .lfx-store-act--primary {
+  background: #ffd23f;
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 {
+    animation: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-crt::after {
+    animation: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-res-card,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-staff-note {
+    transition: none;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 [hidden] {
+  display: none !important;
+}

@@ -45,6 +45,9 @@ function buildPreview(id) {
     );
   } else if (id === 'retro') {
     root.append(span('lfx-tp__sun'), span('lfx-tp__grid'), span('lfx-tp__scan'));
+  } else if (id === 'store') {
+    const shelf = (n) => span('lfx-tp__shelf', Array.from({ length: n }, (_, i) => span(`lfx-tp__cover lfx-tp__cover--${i % 6}`)));
+    root.append(span('lfx-tp__shopsign', ['VIDEOTHEK LENZ']), shelf(7), shelf(6), span('lfx-tp__carpet'));
   } else {
     root.append(span('lfx-tp__logo'), span('lfx-tp__hero'), span('lfx-tp__row', tiles(4)));
   }
@@ -60,6 +63,9 @@ function buildMark(id, name) {
   }
   if (id === 'retro') {
     return span('lfx-tp__mark lfx-tp__mark--retro', [name]);
+  }
+  if (id === 'store') {
+    return span('lfx-tp__mark lfx-tp__mark--store', [span('lfx-tp__mark-store-a', ['VIDEOTHEK']), span('lfx-tp__mark-store-b', ['LENZ'])]);
   }
   return span('lfx-tp__mark lfx-tp__mark--flix', [name]);
 }
@@ -79,6 +85,7 @@ function buildCard(c, id) {
       span('lfx-tp__palette', (meta.palette || []).map((hex) => h('span', { class: 'lfx-tp__swatch', style: { background: hex } }))),
     ]),
     span('lfx-tp__state', [span('lfx-tp__active', ['Aktiv']), span('lfx-tp__spin')]),
+    id === 'store' ? span('lfx-tp__beta', ['Beta']) : null,
   ]);
   btn.setAttribute('aria-label', `${meta.name}${meta.tagline ? `, ${meta.tagline}` : ''}`);
   btn.addEventListener('click', () => choose(c, id));

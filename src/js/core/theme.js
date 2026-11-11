@@ -1,6 +1,6 @@
-// LenzFlix: Design-Umschalter (LENZFLIX 'flix', LENZ+ 'plus', LENZPRIME 'prime', LENZ//84 'retro').
+// LenzFlix: Design-Umschalter (LENZFLIX 'flix', LENZ+ 'plus', LENZPRIME 'prime', LENZ//84 'retro', VIDEOTHEK LENZ 'store').
 // Wahl pro Jellyfin-Benutzer in eigenen DisplayPreferences ('lenzflix'), lokal gespiegelt (localStorage, gegen Flackern).
-// TV-Layout ist immer 'flix'. Design-CSS für plus/prime/retro wird per core/themecss.js nachgeladen.
+// TV-Layout ist immer 'flix'. Design-CSS für plus/prime/retro/store wird per core/themecss.js nachgeladen.
 // Jedes wirksame Design setzt genau eine Klasse html.lfx-theme-<id>; 'lfx-theme-loading' blendet beim ersten Start aus.
 import { getAuth, getUserId, getJson, buildUrl, isReady } from './api.js';
 import { parseHash, reevaluate } from './router.js';
@@ -8,13 +8,14 @@ import { ensureThemeCss, removeThemeCss } from './themecss.js';
 import { applyFavicon } from './favicon.js';
 import { toast } from './toast.js';
 
-export const THEMES = ['flix', 'plus', 'prime', 'retro'];
+export const THEMES = ['flix', 'plus', 'prime', 'retro', 'store'];
 
 export const THEME_META = {
   flix: { id: 'flix', name: 'LENZFLIX', tagline: 'Klassisch: rote Akzente, Querformat-Karten', palette: ['#141414', '#e50914', '#ffffff', '#808080'] },
   plus: { id: 'plus', name: 'LENZ+', tagline: 'Karussell, Poster und Marken-Hubs', palette: ['#10131f', '#050507', '#1bb3e8', '#f5f5f7'] },
   prime: { id: 'prime', name: 'LENZPRIME', tagline: 'Vollbild-Hero, Badges und Trailer', palette: ['#0a0e17', '#1a98ff', '#ffffff', '#3a3d45'] },
   retro: { id: 'retro', name: 'LENZ//84', tagline: 'Bernstein-Terminal, Kassetten und Neon-Gitter', palette: ['#0a0603', '#ffb000', '#ff5a1f', '#ffe2a8'] },
+  store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek (Beta)', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
 };
 
 const KEY_USER = 'lfx.theme.';
@@ -254,7 +255,7 @@ function abortEarly() {
 }
 
 /**
- * Direkt beim Skriptstart (vor cssActive/startTheme): Ist das wirksame Ziel ein Design-CSS-Design (plus/prime/retro, kein TV), sofort
+ * Direkt beim Skriptstart (vor cssActive/startTheme): Ist das wirksame Ziel ein Design-CSS-Design (plus/prime/retro/store, kein TV), sofort
  * ausblenden (Inline-Style + Klasse) und das Design-CSS vorladen. LENZFLIX/TV: tut nichts.
  * Kommt startTheme() bis REVEAL_MS nicht (CSS nie aktiv), wird alles wieder aufgeräumt.
  */

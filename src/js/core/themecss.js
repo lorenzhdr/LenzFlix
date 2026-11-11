@@ -1,4 +1,4 @@
-// LenzFlix: lädt das Design-CSS (dist/lenzplus(.min).css, dist/lenzprime(.min).css, dist/lenzretro(.min).css) nach.
+// LenzFlix: lädt das Design-CSS (dist/lenzplus(.min).css, dist/lenzprime(.min).css, dist/lenzretro(.min).css, dist/lenzstore(.min).css) nach.
 // Die Basis-URL wird aus dem Ort abgeleitet, von dem das Kern-CSS/-JS kommt (siehe resolveThemeCssBase).
 import { VERSION } from './version.js';
 
@@ -6,7 +6,7 @@ const CLASS = 'lfx-theme-css';
 const ACTIVE_ID = 'lfx-theme-css';
 const CORE_RE = /lenzflix(\.min)?\.(css|js)(?=$|[?#])/i;
 const CORE_CSS_RE = /lenzflix(\.min)?\.css(?=$|[?#])/i;
-const FILES = { plus: 'lenzplus', prime: 'lenzprime', retro: 'lenzretro' };
+const FILES = { plus: 'lenzplus', prime: 'lenzprime', retro: 'lenzretro', store: 'lenzstore' };
 
 // Beim Laden des Bundles gilt document.currentScript noch (später ist es null).
 const BOOT_SCRIPT_SRC = (() => {

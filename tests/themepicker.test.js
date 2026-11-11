@@ -4,11 +4,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const themeState = vi.hoisted(() => ({ chosen: 'flix', listeners: new Set(), setImpl: null }));
 
 vi.mock('../src/js/core/theme.js', () => ({
-  THEMES: ['flix', 'plus', 'prime'],
+  THEMES: ['flix', 'plus', 'prime', 'store'],
   THEME_META: {
     flix: { id: 'flix', name: 'LENZFLIX', tagline: 'Klassisch', palette: ['#000', '#e50914', '#fff', '#333'] },
     plus: { id: 'plus', name: 'LENZ+', tagline: 'Magisch', palette: ['#0a1230', '#4f7bff', '#fff', '#000'] },
     prime: { id: 'prime', name: 'LENZPRIME', tagline: 'Kinoabend', palette: ['#0f171e', '#1a98ff', '#fff', '#000'] },
+    store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek (Beta)', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
   },
   getChosenTheme: () => themeState.chosen,
   setTheme: vi.fn((id) => themeState.setImpl(id)),
@@ -57,7 +58,10 @@ describe('themepicker', () => {
     expect(dlg.getAttribute('aria-modal')).toBe('true');
     expect(document.getElementById(dlg.getAttribute('aria-labelledby')).textContent).toBe('Design');
     expect(mount.classList.contains('lfx-tp--sheet')).toBe(false);
-    expect(document.querySelectorAll('.lfx-tp__card').length).toBe(3);
+    expect(document.querySelectorAll('.lfx-tp__card').length).toBe(4);
+    expect(card('store').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
+    expect(card('store').querySelector('.lfx-tp__preview--store .lfx-tp__shopsign').textContent).toBe('VIDEOTHEK LENZ');
+    expect(card('plus').querySelector('.lfx-tp__beta')).toBeNull();
     expect(document.activeElement).toBe(card('flix'));
     closeThemePicker();
     expect(isThemePickerOpen()).toBe(false);

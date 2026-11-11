@@ -58,13 +58,16 @@ afterEach(() => {
 describe('Metadaten', () => {
   it('THEMES, THEME_META, normalizeTheme, brandName', async () => {
     const t = await load();
-    expect(t.THEMES).toEqual(['flix', 'plus', 'prime', 'retro']);
+    expect(t.THEMES).toEqual(['flix', 'plus', 'prime', 'retro', 'store']);
     expect(t.THEME_META.plus.name).toBe('LENZ+');
     expect(t.normalizeTheme('prime')).toBe('prime');
     expect(t.normalizeTheme('x')).toBe('flix');
     expect(t.normalizeTheme(undefined)).toBe('flix');
     expect(t.normalizeTheme('retro')).toBe('retro');
     expect(t.brandName('retro')).toBe('LENZ//84');
+    expect(t.normalizeTheme('store')).toBe('store');
+    expect(t.brandName('store')).toBe('VIDEOTHEK LENZ');
+    expect(t.THEME_META.store.palette).toHaveLength(4);
     expect(t.brandName('prime')).toBe('LENZPRIME');
     expect(t.brandName()).toBe('LENZFLIX');
   });

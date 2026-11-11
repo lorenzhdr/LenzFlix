@@ -1,0 +1,53 @@
+/* VIDEOTHEK LENZ · Tokens (Hülle). Überschreiben die Kern-Tokens (src/css/tokens.css) mit höherer Spezifität (Klasse lfx-theme-store).
+   Eigene Tokens tragen das Präfix --lfx-store-*. Nie auf TV. */
+html.lfx-js.lfx-theme-store:not(.layout-tv) {
+  /* ---- Jellyfin-Palette (MUI): Nachtblau mit Neon-Gelb ---- */
+  --jf-palette-primary-main: #ffd23f;
+  --jf-palette-primary-light: #ffe58a;
+  --jf-palette-primary-dark: #c79a00;
+  --jf-palette-primary-mainChannel: 255 210 63;
+  --jf-palette-primary-contrastText: #0d1330;
+  --jf-palette-primary-contrastTextChannel: 13 19 48;
+  --jf-palette-secondary-main: #ff3d7f;
+  --jf-palette-background-default: #0d1330;
+  --jf-palette-background-defaultChannel: 13 19 48;
+  --jf-palette-background-paper: #141c48;
+  --jf-palette-background-paperChannel: 20 28 72;
+  --jf-palette-AppBar-defaultBg: #0d1330;
+  --jf-palette-AppBar-darkBg: #0d1330;
+
+  /* ---- Kern-Tokens (Alias auf VIDEOTHEK-Werte) ---- */
+  --lfx-red: #ff3d7f;
+  --lfx-red-hover: #ff6a9f;
+  --lfx-red-active: #c92a60;
+  --lfx-accent: #ffd23f;
+  --lfx-link: #ffe58a;
+  --lfx-bg: #0d1330;
+  --lfx-bg-deep: #070a1c;
+  --lfx-surface: #141c48;
+  --lfx-surface-2: #1a2458;
+  --lfx-surface-3: #232f6c;
+  --lfx-border: #2f3d86;
+  --lfx-glass: rgba(13, 19, 48, 0.86);
+  --lfx-glass-hover: rgba(255, 210, 63, 0.18);
+
+  /* ---- Hülle ---- */
+  --lfx-store-night: #0d1330;
+  --lfx-store-night-2: #141c48;
+  --lfx-store-yellow: #ffd23f;
+  --lfx-store-pink: #ff3d7f;
+  --lfx-store-carpet: #2446a8;
+  --lfx-store-text: #f4f6ff;
+  --lfx-store-muted: #aab4e8;
+  --lfx-store-hud-h: 44px;
+  --lfx-store-bar-h: 40px;
+  --lfx-store-glass: rgba(13, 19, 48, 0.62);
+  --lfx-store-glass-border: rgba(255, 255, 255, 0.14);
+  --lfx-store-neon-font: "Arial Black", Impact, "Segoe UI", system-ui, sans-serif;
+  --lfx-store-z-stage: 1200;
+  --lfx-store-z-loading: 1210;
+  --lfx-store-z-hud: 1220;
+  --lfx-store-z-bar: 1250;
+  --lfx-store-safe-top: env(safe-area-inset-top, 0px);
+  --lfx-store-safe-x: max(12px, env(safe-area-inset-left, 0px));
+}

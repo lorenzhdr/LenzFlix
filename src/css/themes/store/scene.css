@@ -1,0 +1,407 @@
+/* VIDEOTHEK LENZ · Overlays des 3D-Bundles (store3d): Fadenkreuz, Hinweise, Pause-Menü, Hülle in der Hand, Serien-Liste.
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv). Klassen-Präfix lfx-store-*; die Hülle (shell.css) besitzt
+   .lfx-store-hud/-btn/-sign/-bar …, deshalb heißen die Overlay-Klassen hier -ov/-act/… */
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  overscroll-behavior: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- Overlay-Ebene ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ov {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  color: var(--lfx-store-text, #f4f6ff);
+  font-family: var(--lfx-font, system-ui, sans-serif);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ov [hidden] {
+  display: none !important;
+}
+
+/* Fadenkreuz */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-cross.is-aimed {
+  transform: scale(1.5);
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  background: rgba(255, 210, 63, 0.35);
+}
+
+/* Titel-Hinweis unten */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 13%;
+  transform: translateX(-50%);
+  max-width: min(80vw, 520px);
+  padding: 8px 16px;
+  text-align: center;
+  border-radius: 12px;
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hint-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hint-sub {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--lfx-store-muted, #aab4e8);
+}
+
+/* Start-Hinweis */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-prompt {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, 0);
+  padding: 16px 26px;
+  text-align: center;
+  border-radius: 16px;
+  background: rgba(13, 19, 48, 0.72);
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-prompt.is-on {
+  opacity: 1;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-prompt-title {
+  font-family: var(--lfx-store-neon-font, "Arial Black", Impact, sans-serif);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  color: var(--lfx-store-yellow, #ffd23f);
+  text-shadow: 0 0 12px rgba(255, 210, 63, 0.6);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-prompt-sub {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--lfx-store-muted, #aab4e8);
+}
+
+/* Kontextverlust / Hinweise */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-lost {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 10, 28, 0.82);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-note {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 12px);
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(13, 19, 48, 0.85);
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  font-size: 0.9rem;
+}
+
+/* Menü-Knopf (Touch) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-menubtn {
+  position: absolute;
+  left: var(--lfx-store-safe-x, 12px);
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-menubtn span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: #fff;
+}
+
+/* ---------- Aktions-Knöpfe ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  padding: 10px 16px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.18));
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lfx-store-text, #f4f6ff);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+  outline: 2px solid var(--lfx-store-yellow, #ffd23f);
+  outline-offset: 1px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:active {
+  transform: scale(0.97);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary {
+  background: var(--lfx-store-yellow, #ffd23f);
+  border-color: transparent;
+  color: #0d1330;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary:focus-visible {
+  background: #ffe58a;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act.is-on {
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  color: var(--lfx-store-yellow, #ffd23f);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary.is-on {
+  color: #0d1330;
+}
+
+/* ---------- Pause-Menü ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 10, 28, 0.6);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(86vw, 340px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--lfx-store-night-2, #141c48);
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-title {
+  margin-bottom: 4px;
+  text-align: center;
+  font-family: var(--lfx-store-neon-font, "Arial Black", Impact, sans-serif);
+  font-size: 1.4rem;
+  letter-spacing: 0.06em;
+  color: var(--lfx-store-pink, #ff3d7f);
+  text-shadow: 0 0 14px rgba(255, 61, 127, 0.6);
+}
+
+/* ---------- Hülle in der Hand ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 30% 50%, rgba(7, 10, 28, 0.1), rgba(7, 10, 28, 0.62));
+  animation: lfx-store-fade 0.3s ease both;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag:active {
+  cursor: grabbing;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(380px, 38vw);
+  max-height: 82vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  -webkit-overflow-scrolling: touch;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-meta {
+  color: var(--lfx-store-yellow, #ffd23f);
+  font-size: 0.9rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-actions .lfx-store-act {
+  flex: 1 1 auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-tab {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 7px 12px;
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.18));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-tab.is-on {
+  background: var(--lfx-store-yellow, #ffd23f);
+  color: #0d1330;
+  border-color: transparent;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-eps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 34vh;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  color: var(--lfx-store-muted, #aab4e8);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 12px;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lfx-store-text, #f4f6ff);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep:focus-visible {
+  background: rgba(255, 210, 63, 0.22);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep-tag {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  color: var(--lfx-store-yellow, #ffd23f);
+}
+
+/* Hochformat / schmale Fenster: Panel unten */
+@media (max-aspect-ratio: 6/5), (max-width: 800px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
+    background: linear-gradient(to bottom, rgba(7, 10, 28, 0.15), rgba(7, 10, 28, 0.7));
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    transform: none;
+    width: auto;
+    max-height: 48vh;
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    border-radius: 18px 18px 0 0;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-title {
+    font-size: 1.15rem;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-eps {
+    max-height: 18vh;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hint {
+    bottom: 22%;
+  }
+}
+
+@keyframes lfx-store-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
+    animation: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-cross,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act {
+    transition: none;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause[hidden] {
+  display: none !important;
+}

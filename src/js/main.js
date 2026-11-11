@@ -10,6 +10,7 @@ import { cssActive } from './core/csscheck.js';
 import { VERSION } from './core/version.js';
 import { earlyTheme, startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
 import { features } from './features/index.js';
+import { destroyStore } from './features/store/home.js';
 
 const WATCH_MS = 1000;
 const FAST_MS = 100; // Start: Kern-CSS (Custom CSS) lädt erst nach dem Skript, schnell erkennen
@@ -41,6 +42,7 @@ function init() {
     running = false;
     clearInterval(refreshTimer);
     resetRouter(); // unmount aller Features
+    destroyStore(); // VIDEOTHEK LENZ: suspendierte 3D-Instanz sofort freigeben
     removeAllMounts();
     destroyLayout();
     stopTheme();

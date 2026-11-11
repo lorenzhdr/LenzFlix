@@ -6,6 +6,8 @@ import { isTheme } from '../core/theme.js';
 import { parseLfxRoute } from '../shared/routes.js';
 
 const REDIRECT_KINDS = ['title', 'hub', 'browse', 'search'];
+// VIDEOTHEK LENZ (store) zeigt title/search/new/classic selbst (3D-Bühne); nur Hub/Browse gehen auf die native Bibliothek.
+const STORE_REDIRECT_KINDS = ['hub', 'browse'];
 let lastKey = null;
 let seq = 0;
 
@@ -31,8 +33,26 @@ function replaceTo(hash) {
   window.location.replace(`${pathname}${search}${hash}`);
 }
 
+function toLibrary(lib, key, mine) {
+  const stillHere = () => mine === seq && window.location.hash.replace(/^#!?/, '') === key.replace(/^#!?/, '');
+  const home = isTheme('store') ? '#/home?lfx=classic' : '#/home';
+  Promise.resolve()
+    .then(() => getViews())
+    .then((views) => {
+      const items = (views && views.Items) || [];
+      const v = items.find((x) => x.Id === lib);
+      return v ? libraryUrl(v.Id, v.CollectionType) : home;
+    })
+    .catch(() => `#/list?parentId=${encodeURIComponent(lib)}`)
+    .then((hash) => {
+      if (stillHere()) replaceTo(hash);
+    });
+}
+
 function redirect(route) {
   const r = parseLfxRoute(route);
+  const store = isTheme('store');
+  const home = store ? '#/home?lfx=classic' : '#/home';
   const key = route.hash;
   if (key === lastKey) return; // gleiche Route: nicht doppelt umleiten
   lastKey = key;
@@ -42,30 +62,22 @@ function redirect(route) {
     const { serverId } = getAuth();
     replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ''}`);
   } else if (r.kind === 'hub') {
-    replaceTo('#/home');
+    if (store && r.lib) return toLibrary(r.lib, key, mine);
+    replaceTo(home);
   } else if (r.kind === 'search') {
     replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : '#/search');
   } else if (r.kind === 'browse') {
-    if (!r.lib) return replaceTo('#/home');
-    const lib = r.lib;
-    const stillHere = () => mine === seq && window.location.hash.replace(/^#!?/, '') === key.replace(/^#!?/, '');
-    Promise.resolve()
-      .then(() => getViews())
-      .then((views) => {
-        const items = (views && views.Items) || [];
-        const v = items.find((x) => x.Id === lib);
-        return v ? libraryUrl(v.Id, v.CollectionType) : '#/home';
-      })
-      .catch(() => `#/list?parentId=${encodeURIComponent(lib)}`)
-      .then((hash) => {
-        if (stillHere()) replaceTo(hash);
-      });
+    if (!r.lib) return replaceTo(home);
+    toLibrary(r.lib, key, mine);
   }
 }
 
 const themeroute = {
   name: 'themeroute',
-  match: (route) => isTheme('flix') && REDIRECT_KINDS.includes(parseLfxRoute(route).kind),
+  match: (route) => {
+    const kind = parseLfxRoute(route).kind;
+    return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind));
+  },
   mount: (route) => redirect(route),
   update: (route) => redirect(route),
   unmount: () => {

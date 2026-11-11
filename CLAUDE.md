@@ -1,21 +1,29 @@
 # LenzFlix – CLAUDE.md
 
-Inoffizielles Netflix-artiges Theme für Jellyfin-Web 12.4: CSS-Kern (wirkt allein) + optionales JS (Billboard, Zeilen, Hovercard, Modal, „Neu und beliebt“, Handy-Nav, Ambient). Ausgabe: `dist/lenzflix(.min).css|js`. Keine fremden Marken-/Dienstnamen, -Logos oder -Assets im Code und in Texten (Repo ist öffentlich; Marken „LENZFLIX“, „LENZ+“, „LENZPRIME“, „LENZ//84“); UI-Sprache Deutsch.
+Inoffizielles Netflix-artiges Theme für Jellyfin-Web 12.4: CSS-Kern (wirkt allein) + optionales JS (Billboard, Zeilen, Hovercard, Modal, „Neu und beliebt“, Handy-Nav, Ambient) + optionales begehbares 3D-Design (VIDEOTHEK LENZ). Ausgabe: `dist/lenzflix(.min).css|js`, `dist/lenzstore(.min).css|js`. Keine fremden Marken-/Dienstnamen, -Logos oder -Assets im Code und in Texten (Repo ist öffentlich; Marken „LENZFLIX“, „LENZ+“, „LENZPRIME“, „LENZ//84“, „VIDEOTHEK LENZ“); UI-Sprache Deutsch.
 
 ## Befehle
-- `npm run build` (lightningcss → CSS, esbuild → IIFE-JS), `npm run dev` (Watch, unminifiziert), `npm test` (vitest + jsdom, `// @vitest-environment jsdom` pro Datei), `npm run lint`, `npm run serve` (Dev-Server :5179, bindet nur 127.0.0.1, liefert nur `dist/` und `assets/`).
+- `npm run build` (lightningcss → CSS, esbuild → IIFE-JS), `npm run dev` (Watch, unminifiziert), `npm test` (vitest + jsdom, `// @vitest-environment jsdom` pro Datei), `npm run lint`, `npm run serve` (Dev-Server :5179, bindet nur 127.0.0.1, liefert nur `dist/` und `assets/` plus explizit `/store-dev.html|js` und `/boot.js` aus `build/`; Port per `PORT=`).
 - `src/css/index.css`: keine Globs, neue CSS-Dateien dort eintragen (Reihenfolge = Kaskade). Neue Features in `src/js/features/index.js` eintragen.
 - CSS-Asset-URLs relativ zu `dist/` schreiben (`../assets/...`), der Build schreibt sie nicht um.
 - Keine Netzwerkzugriffe in Tests (fetch/ApiClient mocken).
+- `npm i`-Falle: npm entfernt optionale `@rolldown/binding-*`-Einträge aus `package-lock.json` → Lockfile nach `npm i` prüfen (Diff).
 
 ## Dev-Loop
 `build/dev-inject.js` per Konsole/`javascript_tool` in einen eingeloggten Jellyfin-Tab einfügen: entfernt Fremd-Spotlight, ruft `window.LenzFlix.destroy()`, lädt CSS+JS von `http://localhost:5179`. `window.__lfxNoJs = true` → nur CSS. Chrome muss „Lokales Netzwerk“ für die Seite erlauben. Der Dev-`<link>` steht nach Jellyfins Theme-CSS und dem Custom-CSS-`<style>` (Kaskade wie live); `window.__lfxDevNoLiveCss = true` entfernt zusätzlich nur die `@import`-Regel des Custom-CSS (`--lfx-stats-url`/`--lfx-charts-url` bleiben).
-Im Claude-in-Chrome-Tab sind Requests an localhost aktuell gesperrt (seit Nov 2026). Workaround: temporärer cloudflared-Tunnel (`cloudflared tunnel --no-autoupdate --url http://127.0.0.1:5179`, nur mit Zustimmung des Nutzers, nach dem Test beenden) und vor dem Loader `window.__lfxDevBase = '<tunnel-url>/'` setzen.
+Im Claude-in-Chrome-Tab sind Requests an localhost aktuell gesperrt (seit Nov 2026). Kurz-Loader `build/dev-boot.js` (über serve als `/boot.js`, leitet die Basis-URL aus der Skript-Adresse ab, tut dasselbe wie `dev-inject.js`): `document.head.appendChild(Object.assign(document.createElement('script'),{src:'<base>/boot.js?'+Date.now()}))`; `window.__lfxDevTheme` wählt das Design (Standard `store`); entfernt altes `window.LenzFlixStore3D`.
+Workaround: temporärer cloudflared-Tunnel (`cloudflared tunnel --no-autoupdate --url http://127.0.0.1:5179`, nur mit Zustimmung des Nutzers, nach dem Test beenden) und vor dem Loader `window.__lfxDevBase = '<tunnel-url>/'` setzen.
 
-## Designs (LENZFLIX `flix` Standard, LENZ+ `plus`, LENZPRIME `prime`, LENZ//84 `retro`, Beta)
+## Designs (LENZFLIX `flix` Standard, LENZ+ `plus`, LENZPRIME `prime`, LENZ//84 `retro`, VIDEOTHEK LENZ `store`; retro/store Beta)
 - Design-Kern `core/theme.js` (+ `themecss.js`, `themepicker.js`, `popover.js`), Features in `features/plus|prime|retro/`, CSS in `src/css/themes/<id>/` (eigene Bundles `dist/lenzplus|lenzprime|lenzretro(.min).css`, per JS nachgeladen). `core/` und `shared/` gehören allen Designs, Änderungen dort wirken auf alle: nie Verhalten von LENZFLIX brechen. Details und Regeln: `docs/js-contracts.md` („Designs“).
 - Design-CSS nur unter `html.lfx-js.lfx-theme-<id>:not(.layout-tv)`; TV ist immer LENZFLIX. Design-Features matchen per `isTheme(id)`, Router ist zweiphasig (erst alle Unmounts, dann Mounts).
 - LENZ//84 (`retro`, Beta; Menüeintrag „Design Einstellungen“ trägt `badge: 'Beta'`): Alle Schleifen/globalen Listener (CRT, Boot, Glitch, Sound, Cheat-Code, Terminal, Code-Regen) gehören `features/retro/fx/`, andere retro-Features melden nur per `emitFx` aus `features/retro/prefs.js`; fx ist im Player und auf dem Dashboard aus. Sound standardmäßig aus. Texte ohne fremde Marken („Kassette“, „Cheat-Code“, „Code-Regen“). Die Statistik-Seite führt die retro-Schriften/Logo als eigene Kopien in `charts-worker/public/lenzflix-stats/`.
+- VIDEOTHEK LENZ (`store`, Beta, begehbare 3D-Videothek), Vertrag: `docs/store3d.md`:
+  - Zwei Bundles: Hülle `features/store/` im Hauptbundle (importiert nie `three`, Build-Wächter in `build/build.mjs`); 3D `src/js/store3d/**` → lazy `dist/lenzstore.js` per `core/themejs.js`, importiert nur `three` + eigene Dateien, alles Zustandsbehaftete (Jellyfin, Theme, Router) per `deps` von der Hülle.
+  - Erweiterungen als Module (`store3d/modules/`, Registry `modules/index.js`, ctx-API).
+  - Lebenszyklus-Ausnahme: `unmount()` → suspend, nach 3 min dispose; Design-Wechsel/`destroy()` → dispose sofort.
+  - Dev-Harness `build/store-dev.html` (über serve `/store-dev.html`); Debug: `window.__lfxStoreDebug = true` → `window.__lfxStore`.
+  - Die Statistik-Seite kennt `store` nicht und zeigt den LENZFLIX-Look.
 - Statistik-Seite lokal: `node build/stats-dev.mjs` (127.0.0.1:5180), `/lenzflix-stats/dev-login.html?theme=flix|plus|prime|retro`; Produktiv-CSP (keine Inline-Skripte) beachten. Style-Regression: `build/style-snapshot.js` in der Konsole vor/nach der Änderung, dann `node build/style-diff.mjs alt.json neu.json`.
 
 ## Architektur & Verträge

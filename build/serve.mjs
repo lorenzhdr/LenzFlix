@@ -7,8 +7,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const port = Number(process.env.PORT || 5179);
-const types = { '.css': 'text/css', '.js': 'text/javascript', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
 const allowed = ['dist', 'assets'];
+// Nur diese Dateien aus build/ (Dev-Harness der VIDEOTHEK LENZ, docs/store3d.md; Kurz-Loader für Konsole/Lesezeichen)
+// – sonst wird aus build/ nichts ausgeliefert.
+const extra = { '/store-dev.html': 'build/store-dev.html', '/store-dev.js': 'build/store-dev.js', '/boot.js': 'build/dev-boot.js' };
 
 createServer(async (req, res) => {
   const headers = {
@@ -17,9 +20,10 @@ createServer(async (req, res) => {
     'Cache-Control': 'no-store',
   };
   if (req.method === 'OPTIONS') { res.writeHead(204, headers); return res.end(); }
-  const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^[\\/]+/, '');
+  const rawPath = new URL(req.url, 'http://x').pathname;
+  const path = extra[rawPath] || normalize(decodeURIComponent(rawPath)).replace(/^[\\/]+/, '');
   const top = path.split(/[\\/]/)[0];
-  if (!allowed.includes(top) || path.includes('..')) {
+  if (!extra[rawPath] && (!allowed.includes(top) || path.includes('..'))) {
     res.writeHead(404, headers); return res.end('not found');
   }
   try {
