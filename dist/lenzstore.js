@@ -29629,13 +29629,26 @@ void main() {
     }
     part(cur, x1, 0, CEIL_H);
   }
+  function wallTrimSpans(layout, side, D) {
+    const GAP = 2e-3;
+    const W = layout.w;
+    const cuts = (layout.runs || []).filter((r) => r.style === "wall" && r.rect && (side === "w" ? r.rect.x0 < W / 2 : r.rect.x1 > W / 2)).map((r) => [Math.max(0, r.rect.z0 - GAP), Math.min(D, r.rect.z1 + GAP)]).sort((a, b) => a[0] - b[0]);
+    const spans = [];
+    let cur = 0;
+    for (const [a, b] of cuts) {
+      if (a - cur > 0.01) spans.push([cur, a]);
+      cur = Math.max(cur, b);
+    }
+    if (D - cur > 0.01) spans.push([cur, D]);
+    return spans;
+  }
   function buildDoorLeaf(dir) {
     const parts = [];
     const dark = [0.2, 0.22, 0.26];
-    parts.push(box({ w: 1.08, h: 0.26, d: 0.05, x: dir * 0.54, y: 0.13, z: 0, color: dark }));
-    parts.push(box({ w: 1.08, h: 0.12, d: 0.05, x: dir * 0.54, y: 2.29, z: 0, color: METAL }));
-    parts.push(box({ w: 0.08, h: 2.35, d: 0.05, x: dir * 0.04, y: 1.175, z: 0, color: METAL }));
-    parts.push(box({ w: 0.08, h: 2.35, d: 0.05, x: dir * 1.04, y: 1.175, z: 0, color: METAL }));
+    parts.push(box({ w: 1.06, h: 0.26, d: 0.05, x: dir * 0.54, y: 0.13, z: 0, color: dark }));
+    parts.push(box({ w: 1.06, h: 0.12, d: 0.054, x: dir * 0.54, y: 2.29, z: 0, color: METAL }));
+    parts.push(box({ w: 0.08, h: 2.35, d: 0.058, x: dir * 0.04, y: 1.175, z: 0, color: METAL }));
+    parts.push(box({ w: 0.078, h: 2.35, d: 0.058, x: dir * 1.039, y: 1.175, z: 0, color: METAL }));
     parts.push(box({ w: 0.03, h: 0.5, d: 0.06, x: dir * 0.9, y: 1.05, z: 0.02, color: [0.88, 0.88, 0.92] }));
     const frame = new Mesh(merge(parts), new MeshBasicMaterial({ vertexColors: true }));
     frame.name = "lfx-door-frame";
@@ -29699,10 +29712,10 @@ void main() {
       trimParts.push(box({ w: w + (w > d ? 0 : 0.02), h: 0.1, d: d + (w > d ? 0.02 : 0), x: (x0 + x1) / 2, y: 0.05, z: (z0 + z1) / 2, color: TRIM_DARK }));
     };
     dado(0, 0.015, W, 0.015);
-    dado(0.015, 0, 0.015, D);
-    dado(W - 0.015, 0, W - 0.015, D);
-    dado(0, D - 0.015, door.x0, D - 0.015);
-    dado(door.x1, D - 0.015, W, D - 0.015);
+    for (const [z0, z1] of wallTrimSpans(layout, "w", D)) dado(0.015, z0, 0.015, z1);
+    for (const [z0, z1] of wallTrimSpans(layout, "e", D)) dado(W - 0.015, z0, W - 0.015, z1);
+    dado(0, D - 0.015, door.x0 - 0.01, D - 0.015);
+    dado(door.x1 + 0.01, D - 0.015, W, D - 0.015);
     if (layout.adultRoom) {
       const a = layout.adultRoom;
       trimParts.push(box({ w: 0.03, h: 0.9, d: a.z1, x: a.x0 - 0.015, y: 0.45, z: a.z1 / 2, color: [0.25, 0.08, 0.12] }));
@@ -30487,9 +30500,13 @@ void main() {
       ctx.fillText(String(item.ProductionYear), cx, y + h2 * 0.78);
     }
   }
-  function drawAtlas({ face, items, bitmaps, size, spec = shelfSpec(false) }) {
+  function drawAtlas({ face, items, bitmaps, size, spec = shelfSpec(false), canvas = null }) {
     const s = size / BASE;
-    const c = makeCanvas(size, size);
+    const c = canvas || makeCanvas(size, size);
+    if (canvas) {
+      c.width = size;
+      c.height = size;
+    }
     const ctx = c.getContext("2d");
     ctx.fillStyle = "#101014";
     ctx.fillRect(0, 0, size, size);
@@ -30605,10 +30622,165 @@ void main() {
     }
   }
 
+  // src/js/store3d/covers/preload.js
+  var PRE_WIDTH = 64;
+  var PRE_QUALITY = 60;
+  function coverUrl(deps, id, item, maxWidth, quality) {
+    if (!item || !item.ImageTags || !item.ImageTags.Primary) return null;
+    try {
+      return deps.imageUrl(id, { type: "Primary", maxWidth, tag: item.ImageTags.Primary, quality }) || null;
+    } catch {
+      return null;
+    }
+  }
+  async function defaultResize(bm, w) {
+    const sw = bm.width || bm.naturalWidth;
+    if (!sw || sw <= w || typeof createImageBitmap !== "function") return bm;
+    try {
+      return await createImageBitmap(bm, { resizeWidth: w, resizeQuality: "medium" });
+    } catch {
+      return bm;
+    }
+  }
+  var CoverPreloader = class {
+    /**
+     * @param {object} o { faces: [{x,z,slots}], items: Map, deps, targetW, px, pz, concurrency, onProgress(done,total), onItem(id),
+     *   loadBitmap, closeBitmap, resize, now }
+     */
+    constructor(o) {
+      this.deps = o.deps;
+      this.items = o.items;
+      this.targetW = o.targetW || 43;
+      this.concurrency = o.concurrency || 12;
+      this.onProgress = o.onProgress || null;
+      this.onItem = o.onItem || null;
+      this.load = o.loadBitmap || loadBitmap;
+      this.close = o.closeBitmap || closeBitmap;
+      this.resize = o.resize || defaultResize;
+      this.now = o.now || (() => Date.now());
+      this.cache = /* @__PURE__ */ new Map();
+      this.ac = new AbortController();
+      this.disposed = false;
+      this.active = 0;
+      this.done = 0;
+      this.finished = false;
+      this.t0 = 0;
+      this.t1 = 0;
+      this.waiters = [];
+      const px = o.px || 0;
+      const pz = o.pz || 0;
+      const faces = (o.faces || []).slice().sort((a, b) => Math.hypot(a.x - px, a.z - pz) - Math.hypot(b.x - px, b.z - pz));
+      const seen = /* @__PURE__ */ new Set();
+      this.ids = [];
+      for (const f of faces) for (const id of f.slots || []) if (id != null && !seen.has(id)) {
+        seen.add(id);
+        this.ids.push(id);
+      }
+      this.total = this.ids.length;
+      this.next = 0;
+    }
+    start() {
+      if (this.t0) return this;
+      this.t0 = this.now();
+      if (!this.total) this.finish();
+      else this.pump();
+      return this;
+    }
+    pump() {
+      while (!this.disposed && this.active < this.concurrency && this.next < this.total) {
+        const id = this.ids[this.next++];
+        const url = coverUrl(this.deps, id, this.items.get(id), PRE_WIDTH, PRE_QUALITY);
+        if (!url) {
+          this.complete(id, null);
+          continue;
+        }
+        this.active++;
+        this.run(id, url);
+      }
+    }
+    async run(id, url) {
+      let out = null;
+      try {
+        const bm = await this.load(url, this.ac.signal);
+        if (this.disposed) {
+          this.close(bm);
+          return;
+        }
+        if (bm) {
+          out = await this.resize(bm, this.targetW);
+          if (out !== bm) this.close(bm);
+          if (this.disposed) {
+            this.close(out);
+            return;
+          }
+        }
+      } catch {
+        out = null;
+      }
+      this.active--;
+      this.complete(id, out || null);
+      this.pump();
+    }
+    complete(id, bm) {
+      this.cache.set(id, bm);
+      this.done++;
+      try {
+        if (this.onProgress) this.onProgress(this.done, this.total);
+      } catch {
+      }
+      try {
+        if (this.onItem) this.onItem(id, bm);
+      } catch {
+      }
+      if (this.done >= this.total) this.finish();
+    }
+    finish() {
+      if (this.finished) return;
+      this.finished = true;
+      this.t1 = this.now();
+      const w = this.waiters;
+      this.waiters = [];
+      w.forEach((r) => r());
+    }
+    /** Löst bei Fertigstellung oder nach `ms` auf (Laden läuft danach im Hintergrund weiter). */
+    wait(ms) {
+      if (this.finished || this.disposed) return Promise.resolve();
+      return new Promise((resolve) => {
+        let timer = null;
+        const fin = () => {
+          if (timer) clearTimeout(timer);
+          resolve();
+        };
+        timer = setTimeout(fin, ms);
+        this.waiters.push(fin);
+      });
+    }
+    stats() {
+      return { done: this.done, total: this.total, ms: this.t0 ? (this.t1 || this.now()) - this.t0 : 0 };
+    }
+    dispose() {
+      if (this.disposed) return;
+      this.disposed = true;
+      try {
+        this.ac.abort();
+      } catch {
+      }
+      this.cache.forEach((b) => this.close(b));
+      this.cache.clear();
+      this.finish();
+    }
+  };
+
   // src/js/store3d/covers/manager.js
   var HI_SIZE = 2048;
   var HI_WIDTH = 400;
   var HI_COST = (HI_SIZE / 1024) ** 2;
+  var LOW_SIZE = 256;
+  var LOW_SIZE_SMALL = 128;
+  function lowSizeFor(faceCount, phone, level) {
+    if (phone || level === "low" || faceCount > 160) return LOW_SIZE_SMALL;
+    return LOW_SIZE;
+  }
   var CoverManager = class {
     /**
      * @param {object} o { faceViews, items: Map, deps, preset, blankTex, renderer, phone, spec (shelfSpec), onFirst }
@@ -30625,6 +30797,12 @@ void main() {
       this.concurrency = o.phone ? 4 : 8;
       this.maxLoadingFaces = o.phone ? 2 : 5;
       this.onFirst = o.onFirst || null;
+      this.lowSize = lowSizeFor(o.faceViews.filter((fv) => fv.mesh).length, this.phone, this.preset.level);
+      this.lowEnabled = false;
+      this.pre = null;
+      this.lowCanvas = null;
+      this.evictSync = 0;
+      this.itemFaces = null;
       this.faces = o.faceViews.filter((fv) => fv.mesh).map((fv) => ({
         fv,
         face: fv.face,
@@ -30640,7 +30818,8 @@ void main() {
         hiScore: Infinity,
         d: Infinity,
         front: 0,
-        dot: 0
+        dot: 0,
+        lowDirty: false
       }));
       this.byFace = new Map(this.faces.map((f) => [f.face.index, f]));
       this.queue = [];
@@ -30650,8 +30829,15 @@ void main() {
       this.disposed = false;
       this.first = false;
     }
+    /** Atlanten im Grund-Budget (ph/full; Low-Atlanten haben ein eigenes Budget). */
     get loadedCount() {
-      return this.faces.reduce((n, f) => n + (f.tex ? 1 : 0), 0);
+      return this.faces.reduce((n, f) => n + (f.tex && f.state !== "low" ? 1 : 0), 0);
+    }
+    get lowCount() {
+      return this.faces.reduce((n, f) => n + (f.state === "low" ? 1 : 0), 0);
+    }
+    get preloadStats() {
+      return this.pre ? this.pre.stats() : { done: 0, total: 0, ms: 0 };
     }
     get fullCount() {
       return this.faces.reduce((n, f) => n + (f.state === "full" ? 1 : 0), 0);
@@ -30678,8 +30864,14 @@ void main() {
     setPreset(p) {
       const sizeChanged = p.atlas !== this.preset.atlas;
       this.preset = p;
+      const ls = lowSizeFor(this.faces.length, this.phone, p.level);
+      const lowChanged = ls !== this.lowSize;
+      this.lowSize = ls;
       if (sizeChanged) this.evictAll();
       else for (const f of this.faces) if (f.tex) f.tex.anisotropy = p.anisotropy;
+      if (lowChanged && this.lowEnabled) {
+        for (const f of this.faces) if (f.state === "low") f.lowDirty = true;
+      }
     }
     pause() {
       this.paused = true;
@@ -30693,6 +30885,7 @@ void main() {
       if (this.disposed) return;
       const zoom = extra && extra.zoom || 1;
       const pitch = extra && extra.pitch || 0;
+      this.evictSync = 2;
       const vx = -Math.sin(yaw);
       const vz = -Math.cos(yaw);
       for (const f of this.faces) {
@@ -30712,7 +30905,7 @@ void main() {
       const max = Math.max(4, this.preset.maxAtlases - this.hiPending * HI_COST);
       const wanted = this.faces.filter((f) => f.score < radius).sort((a, b) => a.score - b.score).slice(0, max);
       const wantedSet = new Set(wanted);
-      const loaded = this.faces.filter((f) => f.tex);
+      const loaded = this.faces.filter((f) => f.tex && f.state !== "low");
       if (loaded.length > max) {
         loaded.sort((a, b) => b.score - a.score);
         for (const f of loaded) {
@@ -30724,7 +30917,7 @@ void main() {
       let loadingNow = this.faces.reduce((n, f) => n + (f.loading ? 1 : 0), 0);
       let ph = 0;
       for (const f of wanted) {
-        if (f.state === "flat" && !f.queued && ph < 2) {
+        if (f.state === "flat" && !f.queued && !this.lowEnabled && ph < 2) {
           this.queueCompose(f, "ph");
           ph++;
         }
@@ -30771,11 +30964,20 @@ void main() {
       for (const f of this.faces) if ((f.hiTex || f.hiLoading) && !set.has(f)) this.dropHi(f);
       return wanted;
     }
-    /** Pro Frame höchstens ein Atlas zeichnen + hochladen. */
+    /** Pro Frame höchstens ein Atlas zeichnen + hochladen (Grund-Atlas vor Low-Nachzügler vor Schärfestufe). */
     tick() {
-      if (this.disposed || !this.composeQueue.length) return;
+      if (this.disposed) return;
+      const low = this.lowEnabled ? this.pickLow() : null;
+      if (!this.composeQueue.length) {
+        if (low) this.composeLowSafe(low);
+        return;
+      }
       const rank = (j) => j.f.score + (j.kind === "hi" ? 100 : 0);
       this.composeQueue.sort((a, b) => rank(a) - rank(b));
+      if (low && this.composeQueue[0].kind === "hi") {
+        this.composeLowSafe(low);
+        return;
+      }
       const job = this.composeQueue.shift();
       if (job.kind !== "hi") job.f.queued = false;
       try {
@@ -30808,11 +31010,7 @@ void main() {
         if (id == null) return;
         const it = this.items.get(id);
         if (!it || !it.ImageTags || !it.ImageTags.Primary) return;
-        let url;
-        try {
-          url = this.deps.imageUrl(id, { type: "Primary", maxWidth: hi ? HI_WIDTH : 200, tag: it.ImageTags.Primary, quality: hi ? 85 : 80 });
-        } catch {
-        }
+        const url = coverUrl(this.deps, id, it, hi ? HI_WIDTH : 200, hi ? 85 : 80);
         if (url) jobs.push({ f, idx, url, loading });
       });
       loading.pending = jobs.length;
@@ -30878,8 +31076,105 @@ void main() {
         });
       }
     }
+    // --- Low-Stufe ---
+    /** Startet den Vorlader (Mini-Bilder aller Seiten, nahe zuerst). */
+    startPreload({ px = 0, pz = 0, onProgress, loadBitmap: loadBitmap2, closeBitmap: closeBitmap2, resize, now } = {}) {
+      if (this.pre) this.pre.dispose();
+      const pl = new CoverPreloader({
+        faces: this.faces.map((f) => f.face),
+        items: this.items,
+        deps: this.deps,
+        px,
+        pz,
+        onProgress,
+        concurrency: this.phone ? 6 : 12,
+        targetW: Math.max(8, Math.round(this.spec.cellW * this.lowSize / BASE)),
+        onItem: (id) => this.markLowItem(id),
+        loadBitmap: loadBitmap2,
+        closeBitmap: closeBitmap2,
+        resize,
+        now
+      });
+      this.pre = pl;
+      return pl.start();
+    }
+    /** Low-Atlanten aller Seiten (nah zuerst) zeichnen und hochladen; `yieldFn` gibt dem Ladebalken Luft. Seiten mit 'full' entfallen. */
+    async buildLowAll(yieldFn) {
+      if (!this.pre || this.disposed) return;
+      this.lowEnabled = true;
+      this.composeQueue = this.composeQueue.filter((j) => j.kind !== "ph");
+      for (const f of this.faces) f.queued = false;
+      const list = this.faces.filter((f) => f.state !== "full").sort((a, b) => a.score < b.score ? -1 : a.score > b.score ? 1 : 0);
+      let n = 0;
+      for (const f of list) {
+        if (this.disposed) return;
+        if (f.state === "full") continue;
+        this.composeLowSafe(f);
+        if (++n % 4 === 0 && yieldFn) await yieldFn();
+      }
+      this.releaseLowCanvas();
+    }
+    /** Nachzügler: Titel hat jetzt ein Mini-Bild → betroffene Seiten neu zeichnen (tick: höchstens 1 pro Frame). */
+    markLowItem(id) {
+      if (!this.lowEnabled || this.disposed) return;
+      if (!this.itemFaces) {
+        this.itemFaces = /* @__PURE__ */ new Map();
+        for (const f of this.faces) {
+          for (const sid of f.face.slots) {
+            if (sid == null) continue;
+            const a = this.itemFaces.get(sid);
+            if (a) a.push(f);
+            else this.itemFaces.set(sid, [f]);
+          }
+        }
+      }
+      for (const f of this.itemFaces.get(id) || []) if (f.state !== "full") f.lowDirty = true;
+    }
+    pickLow() {
+      let best = null;
+      for (const f of this.faces) {
+        if (!f.lowDirty) continue;
+        if (f.state === "full") {
+          f.lowDirty = false;
+          continue;
+        }
+        if (!best || f.score < best.score) best = f;
+      }
+      if (!best) this.releaseLowCanvas();
+      return best;
+    }
+    composeLowSafe(f) {
+      try {
+        this.composeLow(f);
+      } catch {
+      }
+    }
+    composeLow(f) {
+      f.lowDirty = false;
+      if (f.state === "full" || !this.pre || this.disposed) return;
+      const cache = this.pre.cache;
+      const bitmaps = /* @__PURE__ */ new Map();
+      f.face.slots.forEach((id, idx) => {
+        const b = id != null ? cache.get(id) : null;
+        if (b) bitmaps.set(idx, b);
+      });
+      const shared2 = !!this.renderer;
+      if (shared2 && !this.lowCanvas) this.lowCanvas = makeCanvas(1, 1);
+      const canvas = drawAtlas({ face: f.face, items: this.items, bitmaps, size: this.lowSize, spec: this.spec, canvas: shared2 ? this.lowCanvas : null });
+      this.applyTexture(f, canvas, "low", shared2);
+    }
+    releaseLowCanvas() {
+      if (this.lowCanvas) {
+        try {
+          this.lowCanvas.width = 1;
+          this.lowCanvas.height = 1;
+        } catch {
+        }
+        this.lowCanvas = null;
+      }
+    }
     composePlaceholder(f) {
-      if (f.state !== "flat") return;
+      if (f.state !== "flat" || this.lowEnabled) return;
       const size = Math.min(512, this.preset.atlas);
       this.applyTexture(f, drawAtlas({ face: f.face, items: this.items, bitmaps: null, size, spec: this.spec }), "ph");
     }
@@ -30911,21 +31206,21 @@ void main() {
       } catch {
       }
     }
-    makeTexture(canvas) {
+    makeTexture(canvas, keepCanvas) {
       const tex = new CanvasTexture(canvas);
       tex.colorSpace = SRGBColorSpace;
       tex.anisotropy = this.preset.anisotropy;
       tex.generateMipmaps = true;
       tex.minFilter = LinearMipmapLinearFilter;
-      tex.onUpdate = () => {
+      if (!keepCanvas) tex.onUpdate = () => {
         tex.onUpdate = null;
         canvas.width = 1;
         canvas.height = 1;
       };
       return tex;
     }
-    applyTexture(f, canvas, state) {
-      const tex = this.makeTexture(canvas);
+    applyTexture(f, canvas, state, keepCanvas) {
+      const tex = this.makeTexture(canvas, keepCanvas);
       const mat = f.fv.material;
       mat.map = tex;
       if (f.hiTex && state === "full") this.dropHi(f);
@@ -30943,10 +31238,14 @@ void main() {
         if (this.onFirst) this.onFirst();
       }
     }
-    evict(f) {
+    /** Soft: full/ph fällt auf low zurück (Low-Seiten bleiben); hard (dispose/Kontextverlust): alles weg. */
+    evict(f, hard = false) {
       this.cancelLoad(f);
       this.dropHi(f);
       f.hiSkip = false;
+      this.composeQueue = this.composeQueue.filter((j) => j.f !== f);
+      f.queued = false;
+      if (!hard && f.state === "low") return;
       const mat = f.fv.material;
       mat.map = this.blank;
       mat.color.copy(f.fv.flatColor);
@@ -30955,10 +31254,16 @@ void main() {
         f.tex = null;
       }
       f.state = "flat";
-      this.composeQueue = this.composeQueue.filter((j) => j.f !== f);
-      f.queued = false;
+      if (!hard && this.lowEnabled) {
+        f.lowDirty = true;
+        if (this.evictSync > 0) {
+          this.evictSync--;
+          this.composeLowSafe(f);
+        }
+      }
     }
     evictAll() {
+      this.evictSync = 2;
       for (const f of this.faces) this.evict(f);
     }
     /** Nach Kontextverlust: GPU-Texturen sind weg, alte Objekte nicht mehr dispose()n (sonst WebGL-Warnungen), nur vergessen. */
@@ -30972,13 +31277,18 @@ void main() {
           f.hiTex.onUpdate = null;
           f.hiTex = null;
         }
-        this.evict(f);
+        this.evict(f, true);
+        if (this.lowEnabled) f.lowDirty = true;
       }
     }
     /** Aufkleber/Gesehen-Status geändert: betroffene Atlanten neu zeichnen. */
     refreshItem(itemId) {
       for (const f of this.faces) {
         if (!f.tex || f.loading || !f.face.slots.includes(itemId)) continue;
+        if (f.state === "low") {
+          f.lowDirty = true;
+          continue;
+        }
         this.startLoad(f);
       }
       this.pump();
@@ -30987,7 +31297,13 @@ void main() {
       this.disposed = true;
       this.queue = [];
       this.composeQueue = [];
-      for (const f of this.faces) this.evict(f);
+      this.lowEnabled = false;
+      for (const f of this.faces) this.evict(f, true);
+      if (this.pre) {
+        this.pre.dispose();
+        this.pre = null;
+      }
+      this.releaseLowCanvas();
     }
   };
 
@@ -31150,6 +31466,13 @@ void main() {
   var ZOOM_IN = 2.6;
   var LOCK_COOLDOWN = 1150;
   var LOCK_RECENT = 3e3;
+  var LOCK_SILENT = 400;
+  var ESC_DEBOUNCE = 300;
+  function typingText(t) {
+    if (!t || !t.tagName) return false;
+    const n = t.tagName;
+    return n === "INPUT" || n === "TEXTAREA" || !!t.isContentEditable;
+  }
   function typing(t) {
     if (!t || !t.tagName) return false;
     const n = t.tagName;
@@ -31171,6 +31494,11 @@ void main() {
       this.lockTimer = 0;
       this.inflight = false;
       this.retried = false;
+      this.clickOrigin = false;
+      this.everLocked = false;
+      this.relockArmed = false;
+      this.failTimer = 0;
+      this.escAt = -Infinity;
       this.zoomKey = false;
       this.zoomBtn = false;
       this.zoomSent = 1;
@@ -31248,9 +31576,16 @@ void main() {
         clearTimeout(this.lockTimer);
         this.lockTimer = 0;
       }
+      if (this.failTimer) {
+        clearTimeout(this.failTimer);
+        this.failTimer = 0;
+      }
     }
-    /** Pointer-Lock anfordern; kurz nach einem Esc-Exit verzögert (sonst lehnt Chrome ab). */
-    requestLock() {
+    /**
+     * Pointer-Lock anfordern; kurz nach einem Esc-Exit verzögert (sonst lehnt Chrome ab).
+     * opts.click: Versuch stammt von einem echten Klick; nur dann darf ein Fehlschlag auf den Zieh-Modus (dragLook) ausweichen.
+     */
+    requestLock(opts) {
       const c = this.ctx.canvas;
       this.clearLockTimer();
       if (this.locked) return;
@@ -31260,6 +31595,7 @@ void main() {
         return;
       }
       this.retried = false;
+      this.clickOrigin = !!(opts && opts.click);
       this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 0);
     }
     scheduleLock(wait, min) {
@@ -31277,6 +31613,11 @@ void main() {
     doLock() {
       const c = this.ctx.canvas;
       this.inflight = true;
+      if (this.failTimer) clearTimeout(this.failTimer);
+      this.failTimer = setTimeout(() => {
+        this.failTimer = 0;
+        if (this.attached && this.inflight && !this.locked) this.onLockFail();
+      }, LOCK_SILENT);
       try {
         const p = c.requestPointerLock();
         if (p && typeof p.catch === "function") p.catch(() => this.onLockFail());
@@ -31287,16 +31628,19 @@ void main() {
     onLockFail() {
       if (!this.inflight) return;
       this.inflight = false;
-      const since = performance.now() - this.unlockAt;
-      if (since < LOCK_RECENT) {
-        if (!this.retried && this.attached) {
-          this.retried = true;
-          this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 150);
-        }
-        this.ctx.onLockChange(false);
-        return;
+      if (this.failTimer) {
+        clearTimeout(this.failTimer);
+        this.failTimer = 0;
       }
-      this.dragLook = true;
+      const since = performance.now() - this.unlockAt;
+      if (since < LOCK_RECENT && !this.retried && this.attached) {
+        this.retried = true;
+        this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 150);
+      } else if (this.clickOrigin && !this.everLocked && since >= LOCK_RECENT) {
+        this.dragLook = true;
+      } else {
+        this.relockArmed = true;
+      }
       this.ctx.onLockChange(false);
     }
     /** Lock absichtlich freigeben (öffnet kein Pause-Menü). */
@@ -31318,12 +31662,17 @@ void main() {
         this.syncZoom();
         const wasIntentional = this.exiting;
         this.exiting = false;
-        if (!wasIntentional) this.unlockAt = performance.now();
+        if (!wasIntentional) {
+          this.unlockAt = performance.now();
+          this.escAt = this.unlockAt;
+        }
         this.down.clear();
         if (!wasIntentional && this.ctx.getMode() === "play") this.ctx.onLockLost();
       } else {
         this.dragLook = false;
         this.retried = false;
+        this.everLocked = true;
+        this.relockArmed = false;
         this.clearLockTimer();
       }
       this.ctx.onLockChange(locked);
@@ -31353,7 +31702,7 @@ void main() {
         this.drag = { x: e.clientX, y: e.clientY, moved: 0 };
         return;
       }
-      this.requestLock();
+      this.requestLock({ click: true });
     }
     onMove(e) {
       const p = this.ctx.player;
@@ -31370,12 +31719,13 @@ void main() {
     }
     onKey(e, isDown) {
       const mode = this.ctx.getMode();
-      if (typing(e.target)) return;
-      if (isDown && e.code === "Escape") {
+      const esc = isDown && e.code === "Escape";
+      if (esc ? typingText(e.target) : typing(e.target)) return;
+      if (esc) {
         if (mode === "hold" || mode === "paused" || mode === "overlay") {
           e.preventDefault();
           e.stopPropagation();
-          this.ctx.onEscape();
+          if (performance.now() - this.escAt >= ESC_DEBOUNCE) this.ctx.onEscape();
         } else if (mode === "play" && this.dragLook && !this.locked) {
           e.preventDefault();
           e.stopPropagation();
@@ -31383,6 +31733,7 @@ void main() {
         }
         return;
       }
+      if (isDown && !e.repeat && mode === "play" && this.relockArmed && !this.locked && !this.dragLook && !this.inflight && e.code !== "Escape") this.requestLock();
       const k = KEYS[e.code];
       if (k) {
         if (mode !== "play" && e.code.startsWith("Arrow")) return;
@@ -33352,13 +33703,13 @@ void main() {
         s.loop = true;
         const hp = ac.createBiquadFilter();
         hp.type = "highpass";
-        hp.frequency.value = 700;
+        hp.frequency.value = 400;
         const lp = ac.createBiquadFilter();
         lp.type = "lowpass";
-        lp.frequency.value = 5200;
+        lp.frequency.value = 2600;
         const g = ac.createGain();
         g.gain.value = 1e-4;
-        g.gain.setTargetAtTime(0.03, ac.currentTime, 1.2);
+        g.gain.setTargetAtTime(0.015, ac.currentTime, 1.2);
         s.connect(hp);
         hp.connect(lp);
         lp.connect(g);
@@ -34748,21 +35099,28 @@ void main() {
     if (males.length) return { voice: males[0].v, pitch: 1 };
     return { voice: list.find(isDeDE) || list[0], pitch: 0.8 };
   }
+  var START_WAIT = 2e3;
+  var PENDING_MAX = 15e3;
   function createVoice({ soundOn = () => true, synth, Utterance } = {}) {
     const S = synth !== void 0 ? synth : typeof window !== "undefined" ? window.speechSynthesis : null;
     const U = Utterance !== void 0 ? Utterance : typeof window !== "undefined" ? window.SpeechSynthesisUtterance : null;
     let picked = null;
     let current = null;
+    let unlockUtt = null;
     let speaking = false;
     let finish = null;
     let disposed = false;
     let timer = 0;
     let safety = 0;
+    let startWatch = 0;
     let reload = 0;
     let reloads = 0;
     let unlocked = false;
-    const unlockFns = /* @__PURE__ */ new Set();
-    const gestureEvents = ["pointerdown", "keydown", "touchend", "click"];
+    let unlockTry = 0;
+    let notStarted = false;
+    let lastError = "";
+    let pending = null;
+    const gestureEvents = ["touchend", "click", "keydown"];
     const refresh = () => {
       if (!S || picked) return;
       try {
@@ -34797,12 +35155,89 @@ void main() {
       finish = null;
       if (f) f();
     };
+    function removeGestures() {
+      for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
+    }
+    function started() {
+      clearTimeout(startWatch);
+      startWatch = 0;
+      notStarted = false;
+      lastError = "";
+      if (unlockUtt) unlockUtt = null;
+      if (!unlocked) {
+        unlocked = true;
+        removeGestures();
+      }
+    }
+    function noteError(e) {
+      const code = e && typeof e.error === "string" ? e.error : "";
+      if (code && code !== "canceled" && code !== "interrupted") lastError = code;
+    }
+    function watchStart() {
+      clearTimeout(startWatch);
+      startWatch = setTimeout(() => {
+        startWatch = 0;
+        if (!disposed) {
+          notStarted = true;
+          unlockUtt = null;
+        }
+      }, START_WAIT);
+    }
+    function mkUtt(str, volume) {
+      const u = new U(str);
+      u.voice = picked.voice;
+      u.lang = picked.voice.lang || "de-DE";
+      u.rate = 1;
+      u.pitch = picked.pitch;
+      u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
+      return u;
+    }
+    function begin(str, volume) {
+      try {
+        const u = mkUtt(str, volume);
+        current = u;
+        const done = () => {
+          if (current === u) {
+            current = null;
+            settle();
+          }
+        };
+        u.onstart = () => {
+          if (current === u) speaking = true;
+          started();
+        };
+        u.onend = done;
+        u.onerror = (e) => {
+          noteError(e);
+          done();
+        };
+        speaking = true;
+        safety = setTimeout(() => {
+          if (current === u) {
+            current = null;
+            settle();
+          }
+        }, str.length * 90 + 1500);
+        watchStart();
+        S.speak(u);
+      } catch {
+        current = null;
+        settle();
+      }
+    }
     function say(text, { volume = 1 } = {}) {
       if (disposed || !S || !U) return Promise.resolve();
       refresh();
       if (!picked) return Promise.resolve();
       const str = String(text || "");
       if (!str.trim()) return Promise.resolve();
+      if (!current && !timer && !speaking) {
+        pending = null;
+        return new Promise((resolve) => {
+          finish = resolve;
+          begin(str, volume);
+        });
+      }
       cancel();
       return new Promise((resolve) => {
         finish = resolve;
@@ -34812,44 +35247,16 @@ void main() {
             settle();
             return;
           }
-          let u;
-          try {
-            u = new U(str);
-            u.voice = picked.voice;
-            u.lang = picked.voice.lang || "de-DE";
-            u.rate = 1;
-            u.pitch = picked.pitch;
-            u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
-            current = u;
-            const done = () => {
-              if (current === u) {
-                current = null;
-                settle();
-              }
-            };
-            u.onstart = () => {
-              if (current === u) speaking = true;
-            };
-            u.onend = done;
-            u.onerror = done;
-            speaking = true;
-            safety = setTimeout(() => {
-              if (current === u) {
-                current = null;
-                settle();
-              }
-            }, str.length * 90 + 1500);
-            S.speak(u);
-          } catch {
-            current = null;
-            settle();
-          }
+          begin(str, volume);
         }, 0);
       });
     }
     function cancel() {
       clearTimeout(timer);
       timer = 0;
+      clearTimeout(startWatch);
+      startWatch = 0;
+      pending = null;
       current = null;
       try {
         if (S && S.cancel) S.cancel();
@@ -34857,31 +35264,50 @@ void main() {
       }
       settle();
     }
-    const onGesture = () => {
-      if (unlocked || !soundOn()) return;
-      unlocked = true;
-      removeGestures();
-      if (!S || !U) return;
+    function setPending(text, { volume = 1, onBegin, onEnd } = {}) {
+      if (disposed || unlocked) return;
+      pending = { text: String(text || ""), volume, at: Date.now(), onBegin, onEnd };
+    }
+    function clearPending() {
+      pending = null;
+    }
+    function onGesture(e) {
+      if (unlocked || disposed || !soundOn() || !S || !U) return;
+      if (e && e.type === "keydown" && (e.key === "Escape" || e.code === "Escape")) return;
+      const t = Date.now();
+      if (unlockTry && t - unlockTry < START_WAIT) return;
       refresh();
       if (!picked) return;
+      unlockTry = t;
+      const w = pending;
+      if (w && t - w.at < PENDING_MAX && w.text.trim() && !current && !timer && !speaking) {
+        pending = null;
+        finish = () => {
+          if (w.onEnd) {
+            try {
+              w.onEnd();
+            } catch {
+            }
+          }
+        };
+        if (w.onBegin) {
+          try {
+            w.onBegin();
+          } catch {
+          }
+        }
+        begin(w.text, w.volume);
+        return;
+      }
       try {
-        const u = new U(" ");
-        u.volume = 0;
-        u.voice = picked.voice;
-        u.lang = picked.voice.lang || "de-DE";
+        const u = mkUtt("\xA0", 0.01);
+        unlockUtt = u;
+        u.onstart = () => started();
+        u.onerror = (ev) => noteError(ev);
+        watchStart();
         S.speak(u);
       } catch {
       }
-      for (const fn of [...unlockFns]) {
-        try {
-          fn();
-        } catch {
-        }
-      }
-      unlockFns.clear();
-    };
-    function removeGestures() {
-      for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
     }
     function unlock() {
       if (unlocked || disposed || !S || !U) return;
@@ -34892,7 +35318,6 @@ void main() {
       cancel();
       disposed = true;
       removeGestures();
-      unlockFns.clear();
       clearInterval(reload);
       reload = 0;
       try {
@@ -34900,18 +35325,20 @@ void main() {
       } catch {
       }
     }
+    const allVoices = () => {
+      try {
+        return Array.from(S && S.getVoices && S.getVoices() || []);
+      } catch {
+        return [];
+      }
+    };
     return {
       say,
       cancel,
       unlock,
       dispose,
-      /** fn() wird einmal nach der ersten Freischalt-Geste aufgerufen → remover. */
-      onUnlock(fn) {
-        if (unlocked || disposed) return () => {
-        };
-        unlockFns.add(fn);
-        return () => unlockFns.delete(fn);
-      },
+      setPending,
+      clearPending,
       get unlocked() {
         return unlocked;
       },
@@ -34919,7 +35346,25 @@ void main() {
         return speaking;
       },
       get voiceName() {
+        refresh();
         return picked ? picked.voice.name : "";
+      },
+      get lang() {
+        return picked ? String(picked.voice.lang || "") : "";
+      },
+      /** Anzahl deutscher Nicht-Lokal-Stimmen (werden aus Datenschutzgründen nicht benutzt). */
+      get onlineDe() {
+        return allVoices().filter((v) => v && isDe(v) && v.localService !== true).length;
+      },
+      /** 'unsupported' | 'novoices' | 'noLocalDe' | 'error:<code>' | 'notStarted' | 'locked' | 'ok' */
+      get diag() {
+        if (!S || !U) return "unsupported";
+        refresh();
+        if (!picked) return allVoices().length ? "noLocalDe" : "novoices";
+        if (lastError) return `error:${lastError}`;
+        if (notStarted) return "notStarted";
+        if (!unlocked) return "locked";
+        return "ok";
       }
     };
   }
@@ -35042,29 +35487,20 @@ void main() {
         if (s && s.duck) s.duck("talk", on);
       };
       function stopVoice() {
-        waiting = null;
         talkId++;
         voice.cancel();
         duck(false);
       }
-      let waiting = null;
-      let offUnlock = null;
       function voiceSay(text, dist) {
         if (!ctx.soundOn() || dist > VOICE_DIST) return;
-        if (!voice.unlocked) {
-          waiting = { text, dist, at: performance.now() };
-          if (!offUnlock) {
-            offUnlock = voice.onUnlock(() => {
-              offUnlock = null;
-              const w = waiting;
-              waiting = null;
-              if (w && performance.now() - w.at < 15e3) voiceSay(w.text, w.dist);
-            });
-          }
-          return;
-        }
         const vol = dist < 3 ? 1 : 1 - (dist - 3) / (VOICE_DIST - 3) * 0.5;
         const id = ++talkId;
+        if (!voice.unlocked) {
+          voice.setPending(text, { volume: vol, onBegin: () => duck(true), onEnd: () => {
+            if (id === talkId) duck(false);
+          } });
+          return;
+        }
         duck(true);
         voice.say(text, { volume: vol }).then(() => {
           if (id === talkId) duck(false);
@@ -35280,6 +35716,10 @@ void main() {
       const offProvide = ctx.provide("cashier", {
         event(name) {
           if (name === "couchSit" || name === "couchStand") speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
+        },
+        /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
+        voiceInfo() {
+          return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe };
         }
       });
       if (ctx.opts.debug) {
@@ -37093,8 +37533,9 @@ void main() {
         cross.hidden = !on;
         cross.classList.toggle("is-aimed", !!aimed);
       },
-      showPrompt(on) {
+      showPrompt(on, again) {
         prompt.classList.toggle("is-on", !!on);
+        pTitle.textContent = touch ? "Gedr\xFCckt halten zum Laufen" : again ? "Klicken zum Weiterspielen" : "Klicken zum Losgehen";
       },
       /** FPS-Kachel: Text setzen (null/leer blendet aus). */
       setFps(text) {
@@ -37129,6 +37570,19 @@ void main() {
   // src/js/store3d/ui/pause.js
   var QUALITY_LABEL = { auto: "Auto", low: "Niedrig", mid: "Mittel", high: "Hoch" };
   var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "auto" };
+  function voiceNote(info) {
+    if (!info || !info.diag) return "";
+    const d = String(info.diag);
+    const name = info.voiceName || "";
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})`;
+    if (d === "locked") return "Stimme: wartet auf ersten Tipp";
+    if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
+    if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
+    if (d === "novoices") return "Stimme: keine Stimmen gefunden";
+    if (d === "unsupported") return "Stimme: vom Browser nicht unterst\xFCtzt";
+    if (d.startsWith("error:")) return `Stimme: Fehler (${d.slice(6)})`;
+    return "";
+  }
   function createPause(host, a) {
     const root = el("div", "lfx-store-pause");
     root.hidden = true;
@@ -37159,6 +37613,9 @@ void main() {
       a.onSound(!a.getSound());
       refresh();
     });
+    const note = el("div", "lfx-store-pause-note");
+    note.hidden = true;
+    panel.appendChild(note);
     const f = mk("", () => {
       a.onFps(!a.getFps());
       refresh();
@@ -37178,6 +37635,9 @@ void main() {
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
+      const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null) : "";
+      note.textContent = vt;
+      note.hidden = !vt;
       const fk = a.fullscreenKind ? a.fullscreenKind() : "none";
       fs.hidden = fk !== "api" && fk !== "guide";
       fs.textContent = fk === "guide" ? "Vollbild \u2026" : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? "An" : "Aus"}`;
@@ -38151,6 +38611,10 @@ void main() {
         getSound: () => this.sound,
         getFps: () => this.showFps,
         getBigCovers: () => this.bigCovers,
+        getVoiceInfo: () => {
+          const c = this.mods && this.mods.ctx.use("cashier");
+          return c && c.voiceInfo ? c.voiceInfo() : null;
+        },
         onFullscreen: () => this.fs.toggle(),
         getFullscreen: () => this.fs.isOn(),
         fullscreenKind: () => this.fs.kind
@@ -38266,7 +38730,18 @@ void main() {
       this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
       await yieldFrame();
       if (this.disposed) return;
-      this.progress(0.92, "Erste Cover werden gezeichnet");
+      this.progress(0.92, "Cover werden vorgeladen");
+      const pre = this.covers.startPreload({
+        px: this.player.x,
+        pz: this.player.z,
+        onProgress: (done, total) => this.progress(0.92 + 0.07 * (total ? done / total : 1), "Cover werden vorgeladen")
+      });
+      await pre.wait(15e3);
+      if (this.disposed) return;
+      this.progress(0.99, "Erste Cover werden gezeichnet");
+      this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
+      await this.covers.buildLowAll(yieldFrame);
+      if (this.disposed) return;
       for (let i = 0; i < 3; i++) this.covers.tick();
       if (!r && engine.camera.aspect < 1) this.player.pitch = -0.25;
       this.mode = "play";
@@ -38326,7 +38801,7 @@ void main() {
       const play = this.mode === "play";
       const locked = this.desktop ? this.desktop.locked || this.desktop.dragLook : true;
       this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
-      this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended);
+      this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
       this.hud.showMenuBtn(play);
       if (!play || !this.aim) this.hud.setHint(null);
       if (this.pause && this.mode !== "paused" && this.pause.visible) this.pause.hide();
@@ -38831,6 +39306,10 @@ void main() {
             geometries: info.memory.geometries,
             coverSegmentsLoaded: app.covers ? app.covers.loadedCount : 0,
             coverFull: app.covers ? app.covers.fullCount : 0,
+            coversLow: app.covers ? app.covers.lowCount : 0,
+            coversFull: app.covers ? app.covers.fullCount : 0,
+            coversHi: app.covers ? app.covers.hiCount : 0,
+            preload: app.covers ? app.covers.preloadStats : { done: 0, total: 0, ms: 0 },
             quality: app.engine.preset.level,
             qualitySetting: app.qualitySetting
           };

@@ -10,6 +10,15 @@ const KEYS = {
 const ZOOM_IN = 2.6; // Zoom-Faktor bei gehaltener rechter Maustaste / Q
 const LOCK_COOLDOWN = 1150; // Chrome lehnt requestPointerLock() kurz nach dem Verlassen per Esc ab
 const LOCK_RECENT = 3000;
+const LOCK_SILENT = 400; // kommt nach requestPointerLock() so lange weder Lock noch Fehler, gilt der Versuch als gescheitert
+const ESC_DEBOUNCE = 300; // Esc, das den Lock beendet hat, darf das Pause-Menü nicht sofort wieder schließen
+
+/** Texteingabe, in der Esc nicht abgefangen wird (Knöpfe, Auswahllisten u. Ä. zählen nicht). */
+function typingText(t) {
+  if (!t || !t.tagName) return false;
+  const n = t.tagName;
+  return n === 'INPUT' || n === 'TEXTAREA' || !!t.isContentEditable;
+}
 
 function typing(t) {
   if (!t || !t.tagName) return false;
@@ -33,6 +42,11 @@ export class DesktopControls {
     this.lockTimer = 0;
     this.inflight = false;
     this.retried = false;
+    this.clickOrigin = false; // aktueller Lock-Versuch stammt von einem echten Klick (nur dann darf dragLook greifen)
+    this.everLocked = false; // in dieser Sitzung war Pointer-Lock schon einmal aktiv
+    this.relockArmed = false; // Lock verloren/gescheitert: nächster Mausklick oder Nicht-Esc-Taste fordert ihn synchron neu an
+    this.failTimer = 0;
+    this.escAt = -Infinity; // Zeitpunkt des letzten unbeabsichtigten Lock-Verlusts (Esc)
     this.zoomKey = false;
     this.zoomBtn = false;
     this.zoomSent = 1;
@@ -102,15 +116,20 @@ export class DesktopControls {
 
   clearLockTimer() {
     if (this.lockTimer) { clearTimeout(this.lockTimer); this.lockTimer = 0; }
+    if (this.failTimer) { clearTimeout(this.failTimer); this.failTimer = 0; }
   }
 
-  /** Pointer-Lock anfordern; kurz nach einem Esc-Exit verzögert (sonst lehnt Chrome ab). */
-  requestLock() {
+  /**
+   * Pointer-Lock anfordern; kurz nach einem Esc-Exit verzögert (sonst lehnt Chrome ab).
+   * opts.click: Versuch stammt von einem echten Klick; nur dann darf ein Fehlschlag auf den Zieh-Modus (dragLook) ausweichen.
+   */
+  requestLock(opts) {
     const c = this.ctx.canvas;
     this.clearLockTimer();
     if (this.locked) return;
     if (!c.requestPointerLock) { this.dragLook = true; this.ctx.onLockChange(false); return; }
     this.retried = false;
+    this.clickOrigin = !!(opts && opts.click);
     this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 0);
   }
 
@@ -127,6 +146,8 @@ export class DesktopControls {
   doLock() {
     const c = this.ctx.canvas;
     this.inflight = true;
+    if (this.failTimer) clearTimeout(this.failTimer);
+    this.failTimer = setTimeout(() => { this.failTimer = 0; if (this.attached && this.inflight && !this.locked) this.onLockFail(); }, LOCK_SILENT);
     try {
       const p = c.requestPointerLock();
       if (p && typeof p.catch === 'function') p.catch(() => this.onLockFail());
@@ -136,17 +157,19 @@ export class DesktopControls {
   onLockFail() {
     if (!this.inflight) return; // pointerlockerror und Promise-Ablehnung melden denselben Fehler
     this.inflight = false;
+    if (this.failTimer) { clearTimeout(this.failTimer); this.failTimer = 0; }
     const since = performance.now() - this.unlockAt;
-    if (since < LOCK_RECENT) {
+    if (since < LOCK_RECENT && !this.retried && this.attached) {
       // Kürzlich per Esc verlassen: einmal verzögert wiederholen, danach bleibt der Klick-Hinweis
-      if (!this.retried && this.attached) {
-        this.retried = true;
-        this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 150);
-      }
-      this.ctx.onLockChange(false);
-      return;
+      this.retried = true;
+      this.scheduleLock(this.unlockAt + LOCK_COOLDOWN - performance.now(), 150);
+    } else if (this.clickOrigin && !this.everLocked && since >= LOCK_RECENT) {
+      // Allererster Versuch der Sitzung per echtem Klick scheitert: Pointer-Lock ist grundsätzlich nicht möglich
+      this.dragLook = true;
+    } else {
+      // Resume (Esc/Knopf) oder Wiederholung: Spielmodus bleibt, Hinweis „Klicken zum Weiterspielen“, Re-Lock beim nächsten Klick/Tastendruck
+      this.relockArmed = true;
     }
-    this.dragLook = true;
     this.ctx.onLockChange(false);
   }
 
@@ -166,12 +189,14 @@ export class DesktopControls {
       this.syncZoom();
       const wasIntentional = this.exiting;
       this.exiting = false;
-      if (!wasIntentional) this.unlockAt = performance.now(); // Esc-Exit: Chrome sperrt neue Anfragen ~1 s
+      if (!wasIntentional) { this.unlockAt = performance.now(); this.escAt = this.unlockAt; } // Esc-Exit: Chrome sperrt neue Anfragen ~1 s
       this.down.clear();
       if (!wasIntentional && this.ctx.getMode() === 'play') this.ctx.onLockLost();
     } else {
       this.dragLook = false;
       this.retried = false;
+      this.everLocked = true;
+      this.relockArmed = false;
       this.clearLockTimer();
     }
     this.ctx.onLockChange(locked);
@@ -194,7 +219,7 @@ export class DesktopControls {
     if (mode !== 'play') return;
     if (this.locked) { this.ctx.onTake(); return; }
     if (this.dragLook) { this.drag = { x: e.clientX, y: e.clientY, moved: 0 }; return; }
-    this.requestLock();
+    this.requestLock({ click: true });
   }
 
   onMove(e) {
@@ -212,12 +237,14 @@ export class DesktopControls {
 
   onKey(e, isDown) {
     const mode = this.ctx.getMode();
-    if (typing(e.target)) return;
-    if (isDown && e.code === 'Escape') {
+    const esc = isDown && e.code === 'Escape';
+    if (esc ? typingText(e.target) : typing(e.target)) return;
+    if (esc) {
       if (mode === 'hold' || mode === 'paused' || mode === 'overlay') {
         e.preventDefault();
         e.stopPropagation();
-        this.ctx.onEscape();
+        // Das Esc, das gerade den Pointer-Lock beendet hat, darf das Menü nicht gleich wieder schließen
+        if (performance.now() - this.escAt >= ESC_DEBOUNCE) this.ctx.onEscape();
       } else if (mode === 'play' && this.dragLook && !this.locked) {
         e.preventDefault();
         e.stopPropagation();
@@ -225,6 +252,8 @@ export class DesktopControls {
       }
       return;
     }
+    // Re-Lock: Tastendruck ist (anders als Esc) eine Nutzeraktivierung, requestPointerLock() läuft synchron im Handler
+    if (isDown && !e.repeat && mode === 'play' && this.relockArmed && !this.locked && !this.dragLook && !this.inflight && e.code !== 'Escape') this.requestLock();
     const k = KEYS[e.code];
     if (k) {
       if (mode !== 'play' && e.code.startsWith('Arrow')) return;

@@ -104,9 +104,17 @@ describe('Pointer-Lock nach Esc', () => {
     expect(ctl.dragLook).toBe(false);
   });
 
-  it('Fehler ohne kuerzlichen Exit: dragLook', () => {
-    ctl.requestLock();
+  it('allererster Klick-Versuch scheitert ohne kuerzlichen Exit: dragLook', () => {
+    ctl.requestLock({ click: true });
     document.dispatchEvent(new Event('pointerlockerror'));
+    expect(ctl.dragLook).toBe(true);
+  });
+
+  it('stilles Ausbleiben von Lock und Fehler zaehlt nach 400 ms als Fehlschlag', () => {
+    ctl.requestLock({ click: true });
+    vi.advanceTimersByTime(390);
+    expect(ctl.dragLook).toBe(false);
+    vi.advanceTimersByTime(20);
     expect(ctl.dragLook).toBe(true);
   });
 
@@ -114,6 +122,80 @@ describe('Pointer-Lock nach Esc', () => {
     canvas.requestPointerLock = undefined;
     ctl.requestLock();
     expect(ctl.dragLook).toBe(true);
+  });
+});
+
+describe('Esc und Re-Lock', () => {
+  const key = (code, target) => {
+    const e = new KeyboardEvent('keydown', { code, cancelable: true, bubbles: true });
+    (target || window).dispatchEvent(e);
+    return e;
+  };
+
+  it('Esc im Modus paused ruft onEscape, auch mit Fokus auf einem Knopf', () => {
+    mode = 'paused';
+    const b = document.createElement('button');
+    document.body.appendChild(b);
+    b.focus();
+    const e = key('Escape', b);
+    expect(ctx.onEscape).toHaveBeenCalledTimes(1);
+    expect(e.defaultPrevented).toBe(true);
+    b.remove();
+  });
+
+  it('Esc in einem Textfeld wird nicht abgefangen', () => {
+    mode = 'paused';
+    const i = document.createElement('input');
+    document.body.appendChild(i);
+    key('Escape', i);
+    expect(ctx.onEscape).not.toHaveBeenCalled();
+    i.remove();
+  });
+
+  it('Entprellung: Esc direkt nach dem Lock-Verlust schliesst das Menue nicht', () => {
+    setLock(true);
+    vi.advanceTimersByTime(2000);
+    setLock(false); // Esc beendet den Lock
+    mode = 'paused';
+    vi.advanceTimersByTime(100);
+    key('Escape');
+    expect(ctx.onEscape).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(300);
+    key('Escape');
+    expect(ctx.onEscape).toHaveBeenCalledTimes(1);
+  });
+
+  it('Lock-Fehler nach Resume (Menue lange offen): kein dragLook, Re-Lock per Taste W', () => {
+    setLock(true);
+    setLock(false);
+    vi.advanceTimersByTime(10000); // Menue lange offen
+    ctl.requestLock(); // Resume per Esc
+    expect(canvas.requestPointerLock).toHaveBeenCalledTimes(1);
+    document.dispatchEvent(new Event('pointerlockerror'));
+    expect(ctl.dragLook).toBe(false);
+    expect(ctl.relockArmed).toBe(true);
+    expect(ctx.onLockChange).toHaveBeenLastCalledWith(false);
+    key('KeyW');
+    expect(canvas.requestPointerLock).toHaveBeenCalledTimes(2);
+    setLock(true);
+    expect(ctl.relockArmed).toBe(false);
+  });
+
+  it('Re-Lock per Mausklick auf dem Canvas', () => {
+    setLock(true);
+    setLock(false);
+    vi.advanceTimersByTime(10000);
+    ctl.requestLock();
+    document.dispatchEvent(new Event('pointerlockerror'));
+    canvas.dispatchEvent(new MouseEvent('mousedown', { button: 0, bubbles: true }));
+    expect(canvas.requestPointerLock).toHaveBeenCalledTimes(2);
+    expect(ctl.dragLook).toBe(false);
+  });
+
+  it('Esc loest den Re-Lock nicht aus', () => {
+    ctl.relockArmed = true;
+    key('Escape');
+    expect(canvas.requestPointerLock).not.toHaveBeenCalled();
   });
 });
 

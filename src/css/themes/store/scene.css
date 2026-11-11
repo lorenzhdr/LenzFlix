@@ -255,6 +255,15 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-title {
   color: var(--lfx-store-pink, #ff3d7f);
   text-shadow: 0 0 14px rgba(255, 61, 127, 0.6);
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note {
+  margin: -2px 4px 2px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  user-select: none;
+}
 
 /* ---------- Hülle in der Hand ---------- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {

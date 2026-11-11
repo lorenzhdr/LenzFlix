@@ -175,10 +175,10 @@ export default {
       if (rain || !w || !w.raining) return;
       const s = ac.createBufferSource();
       s.buffer = noiseBuf; s.loop = true;
-      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 700;
-      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 400;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; // v1.7.5: weicher und halb so laut
       const g = ac.createGain(); g.gain.value = 0.0001;
-      g.gain.setTargetAtTime(0.03, ac.currentTime, 1.2);
+      g.gain.setTargetAtTime(0.015, ac.currentTime, 1.2);
       s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master);
       s.start();
       rain = { s, g };

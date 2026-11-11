@@ -120,12 +120,13 @@ function placeholderCell(ctx, item, x, y, w, h, s, color) {
 
 /**
  * Zeichnet den Atlas eines Faces.
- * @param {object} p { face, items: Map, bitmaps: Map<slotIdx, Image|ImageBitmap>, size, spec? (shelfSpec, Standard normal) }
+ * @param {object} p { face, items: Map, bitmaps: Map<slotIdx, Image|ImageBitmap>, size, spec? (shelfSpec, Standard normal), canvas? (wiederverwenden) }
  * @returns {HTMLCanvasElement}
  */
-export function drawAtlas({ face, items, bitmaps, size, spec = shelfSpec(false) }) {
+export function drawAtlas({ face, items, bitmaps, size, spec = shelfSpec(false), canvas = null }) {
   const s = size / BASE;
-  const c = makeCanvas(size, size);
+  const c = canvas || makeCanvas(size, size);
+  if (canvas) { c.width = size; c.height = size; } // wiederverwendetes Canvas: Größe setzen (leert auch)
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#101014';
   ctx.fillRect(0, 0, size, size);

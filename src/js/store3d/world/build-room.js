@@ -78,14 +78,36 @@ function wallAlongX(list, x0, x1, z0, z1, openings, color) {
   part(cur, x1, 0, CEIL_H);
 }
 
+/**
+ * Freie z-Abschnitte einer Seitenwand ('w' = x≈0, 'e' = x≈W), an denen kein Wandregal (run.style 'wall') steht.
+ * Zwischen Leiste und Regalkante bleiben 2 mm, damit keine Stirnflächen zusammenfallen.
+ */
+export function wallTrimSpans(layout, side, D) {
+  const GAP = 0.002;
+  const W = layout.w;
+  const cuts = (layout.runs || [])
+    .filter((r) => r.style === 'wall' && r.rect && (side === 'w' ? r.rect.x0 < W / 2 : r.rect.x1 > W / 2))
+    .map((r) => [Math.max(0, r.rect.z0 - GAP), Math.min(D, r.rect.z1 + GAP)])
+    .sort((a, b) => a[0] - b[0]);
+  const spans = [];
+  let cur = 0;
+  for (const [a, b] of cuts) {
+    if (a - cur > 0.01) spans.push([cur, a]);
+    cur = Math.max(cur, b);
+  }
+  if (D - cur > 0.01) spans.push([cur, D]);
+  return spans;
+}
+
 /** Ein Türflügel (Pivot = Scharnier an x = 0, öffnet nach +x/-x je nach dir). Benannt von buildRoom, Intro dreht ihn um y. */
 export function buildDoorLeaf(dir) {
   const parts = [];
   const dark = [0.2, 0.22, 0.26];
-  parts.push(box({ w: 1.08, h: 0.26, d: 0.05, x: dir * 0.54, y: 0.13, z: 0, color: dark }));
-  parts.push(box({ w: 1.08, h: 0.12, d: 0.05, x: dir * 0.54, y: 2.29, z: 0, color: METAL }));
-  parts.push(box({ w: 0.08, h: 2.35, d: 0.05, x: dir * 0.04, y: 1.175, z: 0, color: METAL }));
-  parts.push(box({ w: 0.08, h: 2.35, d: 0.05, x: dir * 1.04, y: 1.175, z: 0, color: METAL }));
+  // Tiefen gestaffelt (Fußleiste 0.05 < Oberschiene 0.054 < Stile 0.058), sonst koplanare Flächen → Flackern
+  parts.push(box({ w: 1.06, h: 0.26, d: 0.05, x: dir * 0.54, y: 0.13, z: 0, color: dark }));
+  parts.push(box({ w: 1.06, h: 0.12, d: 0.054, x: dir * 0.54, y: 2.29, z: 0, color: METAL }));
+  parts.push(box({ w: 0.08, h: 2.35, d: 0.058, x: dir * 0.04, y: 1.175, z: 0, color: METAL }));
+  parts.push(box({ w: 0.078, h: 2.35, d: 0.058, x: dir * 1.039, y: 1.175, z: 0, color: METAL }));
   parts.push(box({ w: 0.03, h: 0.5, d: 0.06, x: dir * 0.9, y: 1.05, z: 0.02, color: [0.88, 0.88, 0.92] }));
   const frame = new Mesh(merge(parts), new MeshBasicMaterial({ vertexColors: true }));
   frame.name = 'lfx-door-frame';
@@ -148,10 +170,12 @@ export function buildRoom(layout, tex) {
     trimParts.push(box({ w: w + (w > d ? 0 : 0.02), h: 0.1, d: d + (w > d ? 0.02 : 0), x: (x0 + x1) / 2, y: 0.05, z: (z0 + z1) / 2, color: TRIM_DARK }));
   };
   dado(0, 0.015, W, 0.015);
-  dado(0.015, 0, 0.015, D);
-  dado(W - 0.015, 0, W - 0.015, D);
-  dado(0, D - 0.015, door.x0, D - 0.015);
-  dado(door.x1, D - 0.015, W, D - 0.015);
+  // Seitenwände: hinter Wandregalen (Serien) aussparen – Dado und Regal-Rückwand lägen sonst deckungsgleich (Z-Fighting).
+  for (const [z0, z1] of wallTrimSpans(layout, 'w', D)) dado(0.015, z0, 0.015, z1);
+  for (const [z0, z1] of wallTrimSpans(layout, 'e', D)) dado(W - 0.015, z0, W - 0.015, z1);
+  // Eingangsfront: Leisten enden knapp vor der Türlaibung (sonst koplanare Stirnflächen → Flackern)
+  dado(0, D - 0.015, door.x0 - 0.01, D - 0.015);
+  dado(door.x1 + 0.01, D - 0.015, W, D - 0.015);
   if (layout.adultRoom) {
     const a = layout.adultRoom;
     trimParts.push(box({ w: 0.03, h: 0.9, d: a.z1, x: a.x0 - 0.015, y: 0.45, z: a.z1 / 2, color: [0.25, 0.08, 0.12] }));

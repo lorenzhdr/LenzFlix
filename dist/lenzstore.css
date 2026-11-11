@@ -785,6 +785,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-title {
   font-size: 1.4rem;
 }
 
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note {
+  text-align: center;
+  color: rgba(255, 255, 255, .6);
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  margin: -2px 4px 2px;
+  font-size: .72rem;
+  line-height: 1.35;
+}
+
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
   z-index: 4;
   pointer-events: none;

@@ -63,13 +63,11 @@ describe('createVoice', () => {
     expect(synth.speak).not.toHaveBeenCalled();
     v.dispose();
   });
-  it('say bricht ab und spricht einen Tick später', async () => {
+  it('say im Leerlauf spricht synchron ohne cancel', async () => {
     const synth = mockSynth([V('Markus')]);
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
     const p = v.say('Hallo Welt', { volume: 0.5 });
-    expect(synth.cancel).toHaveBeenCalled();
-    expect(synth.speak).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(1);
+    expect(synth.cancel).not.toHaveBeenCalled();
     expect(synth.speak).toHaveBeenCalledTimes(1);
     const u = synth.spoken[0];
     expect(u.text).toBe('Hallo Welt');
@@ -83,28 +81,40 @@ describe('createVoice', () => {
     expect(v.speaking).toBe(false);
     v.dispose();
   });
-  it('Sicherheitstimeout setzt speaking zurück', async () => {
+  it('say waehrend einer Rede bricht ab und spricht einen Tick spaeter', async () => {
+    const synth = mockSynth([V('Markus')]);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    v.say('Eins');
+    const p2 = v.say('Zwei');
+    expect(synth.cancel).toHaveBeenCalled();
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(1);
+    expect(synth.speak).toHaveBeenCalledTimes(2);
+    expect(synth.spoken[1].text).toBe('Zwei');
+    synth.spoken[1].onend();
+    await p2;
+    v.dispose();
+  });
+  it('Sicherheitstimeout setzt speaking zurueck', async () => {
     const synth = mockSynth([V('Markus')]);
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
     const p = v.say('abc');
-    vi.advanceTimersByTime(1);
     expect(v.speaking).toBe(true);
     vi.advanceTimersByTime(3 * 90 + 1500 + 5);
     await p;
     expect(v.speaking).toBe(false);
     v.dispose();
   });
-  it('cancel beendet die Rede und löst das Versprechen auf', async () => {
+  it('cancel beendet die Rede und loest das Versprechen auf', async () => {
     const synth = mockSynth([V('Markus')]);
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
     const p = v.say('abc');
-    vi.advanceTimersByTime(1);
     v.cancel();
     await p;
     expect(v.speaking).toBe(false);
     v.dispose();
   });
-  it('lädt Stimmen nach (voiceschanged-Listener, Abfragen im 500-ms-Takt)', async () => {
+  it('laedt Stimmen nach (voiceschanged-Listener, Abfragen im 500-ms-Takt)', async () => {
     const voices = [];
     const synth = mockSynth(voices);
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
@@ -112,22 +122,66 @@ describe('createVoice', () => {
     voices.push(V('Markus'));
     vi.advanceTimersByTime(500);
     const p = v.say('x');
-    vi.advanceTimersByTime(1);
     expect(synth.speak).toHaveBeenCalled();
     synth.spoken[0].onend();
     await p;
     v.dispose();
     expect(synth.removeEventListener).toHaveBeenCalled();
   });
-  it('unlock spricht bei der ersten Geste einmal leer und entfernt die Listener', () => {
+  it('pointerdown und Escape schalten nicht frei', () => {
     const synth = mockSynth([V('Markus')]);
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
     v.unlock();
     document.dispatchEvent(new Event('pointerdown'));
-    document.dispatchEvent(new Event('keydown'));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
+    expect(synth.speak).not.toHaveBeenCalled();
+    expect(v.unlocked).toBe(false);
+    v.dispose();
+  });
+  it('unlock: Geste spricht NBSP leise; unlocked erst nach onstart', () => {
+    const synth = mockSynth([V('Markus')]);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    v.unlock();
+    document.dispatchEvent(new Event('touchend'));
     expect(synth.speak).toHaveBeenCalledTimes(1);
-    expect(synth.spoken[0].text).toBe(' ');
-    expect(synth.spoken[0].volume).toBe(0);
+    expect(synth.spoken[0].text).toBe(' ');
+    expect(synth.spoken[0].volume).toBe(0.01);
+    expect(v.unlocked).toBe(false);
+    expect(v.diag).toBe('locked');
+    synth.spoken[0].onstart();
+    expect(v.unlocked).toBe(true);
+    expect(v.diag).toBe('ok');
+    document.dispatchEvent(new Event('click'));
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    v.dispose();
+  });
+  it('ohne onstart: kein Doppelversuch innerhalb 2 s, danach neuer Versuch (notStarted)', () => {
+    const synth = mockSynth([V('Markus')]);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    v.unlock();
+    document.dispatchEvent(new Event('click'));
+    document.dispatchEvent(new Event('click'));
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(2100);
+    expect(v.diag).toBe('notStarted');
+    document.dispatchEvent(new Event('click'));
+    expect(synth.speak).toHaveBeenCalledTimes(2);
+    synth.spoken[1].onstart();
+    expect(v.unlocked).toBe(true);
+    expect(v.diag).toBe('ok');
+    v.dispose();
+  });
+  it('ohne Stimme bleibt die Freischaltung offen', () => {
+    const voices = [];
+    const synth = mockSynth(voices);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    v.unlock();
+    document.dispatchEvent(new Event('click'));
+    expect(synth.speak).not.toHaveBeenCalled();
+    expect(v.unlocked).toBe(false);
+    voices.push(V('Markus'));
+    document.dispatchEvent(new Event('click'));
+    expect(synth.speak).toHaveBeenCalledTimes(1);
     v.dispose();
   });
   it('unlock verbraucht sich nicht bei ausgeschaltetem Ton', () => {
@@ -142,20 +196,73 @@ describe('createVoice', () => {
     expect(synth.speak).toHaveBeenCalledTimes(1);
     v.dispose();
   });
-  it('onUnlock: wartende Zeile startet erst nach der Freischalt-Äußerung', () => {
+  it('wartende Zeile wird synchron in der Geste als Freischaltung gesprochen', () => {
     const synth = mockSynth([V('Markus')]);
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
     v.unlock();
-    const fn = vi.fn(() => { expect(synth.spoken.map((u) => u.text)).toEqual([' ']); v.say('Hallo'); });
-    v.onUnlock(fn);
+    const onBegin = vi.fn();
+    const onEnd = vi.fn();
+    v.setPending('Hallo', { volume: 0.7, onBegin, onEnd });
+    document.dispatchEvent(new Event('touchend'));
+    expect(synth.cancel).not.toHaveBeenCalled();
+    expect(synth.spoken.map((u) => u.text)).toEqual(['Hallo']);
+    expect(synth.spoken[0].volume).toBe(0.7);
+    expect(onBegin).toHaveBeenCalledTimes(1);
     expect(v.unlocked).toBe(false);
-    document.dispatchEvent(new Event('click'));
+    synth.spoken[0].onstart();
     expect(v.unlocked).toBe(true);
-    expect(fn).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(1);
-    expect(synth.spoken.map((u) => u.text)).toEqual([' ', 'Hallo']);
+    synth.spoken[0].onend();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    v.dispose();
+  });
+  it('veraltete oder abgebrochene wartende Zeile wird nicht gesprochen', () => {
+    const synth = mockSynth([V('Markus')]);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    v.unlock();
+    v.setPending('Alt');
+    vi.advanceTimersByTime(16000);
     document.dispatchEvent(new Event('click'));
-    expect(fn).toHaveBeenCalledTimes(1);
+    expect(synth.spoken.map((u) => u.text)).toEqual([' ']);
+    v.dispose();
+    const synth2 = mockSynth([V('Markus')]);
+    const v2 = createVoice({ soundOn: () => true, synth: synth2, Utterance: Utt });
+    v2.unlock();
+    v2.setPending('x');
+    v2.cancel();
+    document.dispatchEvent(new Event('click'));
+    expect(synth2.spoken.map((u) => u.text)).toEqual([' ']);
+    v2.dispose();
+  });
+  it('diag trennt die Zustaende', () => {
+    const none = createVoice({ synth: null, Utterance: null });
+    expect(none.diag).toBe('unsupported');
+    const empty = createVoice({ synth: mockSynth([]), Utterance: Utt });
+    expect(empty.diag).toBe('novoices');
+    empty.dispose();
+    const online = createVoice({ synth: mockSynth([V('Markus', 'de-DE', false), V('Anna', 'de-AT', false)]), Utterance: Utt });
+    expect(online.diag).toBe('noLocalDe');
+    expect(online.onlineDe).toBe(2);
+    online.dispose();
+    const synth = mockSynth([V('Markus')]);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    expect(v.diag).toBe('locked');
+    expect(v.voiceName).toBe('Markus');
+    expect(v.lang).toBe('de-DE');
+    v.say('x');
+    synth.spoken[0].onerror({ error: 'synthesis-failed' });
+    expect(v.diag).toBe('error:synthesis-failed');
+    v.say('y');
+    synth.spoken[1].onerror({ error: 'canceled' });
+    synth.spoken[1].onstart();
+    expect(v.diag).toBe('ok');
+    v.dispose();
+  });
+  it('notStarted: speak ohne onstart innerhalb des Timeouts', () => {
+    const synth = mockSynth([V('Markus')]);
+    const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    v.say('x');
+    vi.advanceTimersByTime(2100);
+    expect(v.diag).toBe('notStarted');
     v.dispose();
   });
   it('dispose entfernt die Gesten-Listener', () => {
@@ -163,7 +270,7 @@ describe('createVoice', () => {
     const v = createVoice({ soundOn: () => true, synth, Utterance: Utt });
     v.unlock();
     v.dispose();
-    document.dispatchEvent(new Event('pointerdown'));
+    document.dispatchEvent(new Event('click'));
     expect(synth.speak).not.toHaveBeenCalled();
   });
 });

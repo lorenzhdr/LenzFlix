@@ -122,31 +122,21 @@ export default {
     let talkId = 0;
     const duck = (on) => { const s = ctx.use('sound'); if (s && s.duck) s.duck('talk', on); };
     function stopVoice() {
-      waiting = null;
       talkId++;
-      voice.cancel();
+      voice.cancel(); // verwirft auch eine wartende Zeile
       duck(false);
     }
     /** Liest `text` vor (nur bei Ton an). dist = Abstand zum Spieler in m oder 0 (Dialog: man steht davor). */
-    // Vor der ersten Nutzergeste (z. B. Begrüßung bei „Klicken zum Losgehen“) darf der Browser nicht sprechen:
-    // dann die letzte Zeile merken und direkt nach der Freischalt-Geste vorlesen (höchstens 15 s alt).
-    let waiting = null;
-    let offUnlock = null;
+    // Vor der Freischaltung (iOS: erst nach echter Geste, z. B. Begrüßung bei „Klicken zum Losgehen“) darf der Browser
+    // nicht sprechen: die letzte Zeile wird in voice.js gemerkt und bei der nächsten Geste synchron als Freischalt-Äußerung gesprochen.
     function voiceSay(text, dist) {
       if (!ctx.soundOn() || dist > VOICE_DIST) return;
-      if (!voice.unlocked) {
-        waiting = { text, dist, at: performance.now() };
-        if (!offUnlock) {
-          offUnlock = voice.onUnlock(() => {
-            offUnlock = null;
-            const w = waiting; waiting = null;
-            if (w && performance.now() - w.at < 15000) voiceSay(w.text, w.dist);
-          });
-        }
-        return;
-      }
       const vol = dist < 3 ? 1 : 1 - ((dist - 3) / (VOICE_DIST - 3)) * 0.5;
       const id = ++talkId;
+      if (!voice.unlocked) {
+        voice.setPending(text, { volume: vol, onBegin: () => duck(true), onEnd: () => { if (id === talkId) duck(false); } });
+        return;
+      }
       duck(true);
       voice.say(text, { volume: vol }).then(() => { if (id === talkId) duck(false); });
     }
@@ -323,6 +313,10 @@ export default {
     const offProvide = ctx.provide('cashier', {
       event(name) {
         if (name === 'couchSit' || name === 'couchStand') speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
+      },
+      /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
+      voiceInfo() {
+        return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe };
       },
     });
 

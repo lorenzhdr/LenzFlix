@@ -4,9 +4,25 @@ import { el } from './hud.js';
 const QUALITY_LABEL = { auto: 'Auto', low: 'Niedrig', mid: 'Mittel', high: 'Hoch' };
 const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
 
+/** Diagnosezeile zur Kassierer-Stimme (nur Zustand, nie Gesprochenes). */
+export function voiceNote(info) {
+  if (!info || !info.diag) return '';
+  const d = String(info.diag);
+  const name = info.voiceName || '';
+  if (d === 'ok') return `Stimme: ${name} (${info.lang || ''})`;
+  if (d === 'locked') return 'Stimme: wartet auf ersten Tipp';
+  if (d === 'notStarted') return `Stimme: ${name} – Gerät hat nicht gesprochen (Stummschalter?)`;
+  if (d === 'noLocalDe') return 'Stimme: keine deutsche Gerätestimme – Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch';
+  if (d === 'novoices') return 'Stimme: keine Stimmen gefunden';
+  if (d === 'unsupported') return 'Stimme: vom Browser nicht unterstützt';
+  if (d.startsWith('error:')) return `Stimme: Fehler (${d.slice(6)})`;
+  return '';
+}
+
 /**
  * @param {HTMLElement} host
  * @param {object} a { onResume, onSearch, onClassic, onQuality(q), onSound(on), onFps(on), onBigCovers(on), onTheme, onMenu(anchor), getQuality, getSound, getFps, getBigCovers,
+ *   getVoiceInfo?() → { diag, voiceName, lang, onlineDe } | null (Diagnosezeile unter „Ton“, nur bei Ton an),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
 export function createPause(host, a) {
@@ -33,6 +49,9 @@ export function createPause(host, a) {
     refresh();
   });
   const s = mk('', () => { a.onSound(!a.getSound()); refresh(); });
+  const note = el('div', 'lfx-store-pause-note');
+  note.hidden = true;
+  panel.appendChild(note);
   const f = mk('', () => { a.onFps(!a.getFps()); refresh(); });
   const bc = mk('', () => { a.onBigCovers(!a.getBigCovers()); refresh(); });
   const fs = mk('', () => { if (a.onFullscreen) a.onFullscreen(); refresh(); }, 'lfx-store-act--fs');
@@ -43,6 +62,9 @@ export function createPause(host, a) {
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
     f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;
     bc.textContent = `Hüllen: ${a.getBigCovers() ? 'Groß' : 'Normal'}`;
+    const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null) : '';
+    note.textContent = vt;
+    note.hidden = !vt;
     const fk = a.fullscreenKind ? a.fullscreenKind() : 'none';
     fs.hidden = fk !== 'api' && fk !== 'guide';
     fs.textContent = fk === 'guide' ? 'Vollbild …' : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? 'An' : 'Aus'}`;

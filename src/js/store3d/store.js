@@ -97,6 +97,7 @@ class StoreApp {
       getSound: () => this.sound,
       getFps: () => this.showFps,
       getBigCovers: () => this.bigCovers,
+      getVoiceInfo: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voiceInfo ? c.voiceInfo() : null; },
       onFullscreen: () => this.fs.toggle(),
       getFullscreen: () => this.fs.isOn(),
       fullscreenKind: () => this.fs.kind,
@@ -199,7 +200,18 @@ class StoreApp {
     await yieldFrame();
     if (this.disposed) return;
 
-    this.progress(0.92, 'Erste Cover werden gezeichnet');
+    // Cover aller Regale in niedriger Qualität vorladen (höchstens 15 s, der Rest lädt im Hintergrund weiter)
+    this.progress(0.92, 'Cover werden vorgeladen');
+    const pre = this.covers.startPreload({
+      px: this.player.x, pz: this.player.z,
+      onProgress: (done, total) => this.progress(0.92 + 0.07 * (total ? done / total : 1), 'Cover werden vorgeladen'),
+    });
+    await pre.wait(15000);
+    if (this.disposed) return;
+    this.progress(0.99, 'Erste Cover werden gezeichnet');
+    this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
+    await this.covers.buildLowAll(yieldFrame);
+    if (this.disposed) return;
     for (let i = 0; i < 3; i++) this.covers.tick();
     if (!r && engine.camera.aspect < 1) this.player.pitch = -0.25; // Hochformat: weniger Decke, mehr Regal
     this.mode = 'play';
@@ -250,7 +262,7 @@ class StoreApp {
     const play = this.mode === 'play';
     const locked = this.desktop ? this.desktop.locked || this.desktop.dragLook : true;
     this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
-    this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended);
+    this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
     this.hud.showMenuBtn(play);
     if (!play || !this.aim) this.hud.setHint(null);
     if (this.pause && this.mode !== 'paused' && this.pause.visible) this.pause.hide();
@@ -688,6 +700,8 @@ class StoreApp {
           fps: Math.round(app.engine.fps), frameMs: +app.engine.frameMs.toFixed(1), calls: info.render.calls, triangles: info.render.triangles,
           textures: info.memory.textures, programs: info.programs ? info.programs.length : 0, tickMs: +app.engine.tickMs.toFixed(2), renderMs: +app.engine.renderMs.toFixed(2), geometries: info.memory.geometries,
           coverSegmentsLoaded: app.covers ? app.covers.loadedCount : 0, coverFull: app.covers ? app.covers.fullCount : 0,
+          coversLow: app.covers ? app.covers.lowCount : 0, coversFull: app.covers ? app.covers.fullCount : 0, coversHi: app.covers ? app.covers.hiCount : 0,
+          preload: app.covers ? app.covers.preloadStats : { done: 0, total: 0, ms: 0 },
           quality: app.engine.preset.level, qualitySetting: app.qualitySetting,
         };
       },

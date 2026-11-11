@@ -58,7 +58,10 @@ export function createHud(host, { touch, onMenu }) {
       cross.hidden = !on;
       cross.classList.toggle('is-aimed', !!aimed);
     },
-    showPrompt(on) { prompt.classList.toggle('is-on', !!on); },
+    showPrompt(on, again) {
+      prompt.classList.toggle('is-on', !!on);
+      pTitle.textContent = touch ? 'Gedrückt halten zum Laufen' : again ? 'Klicken zum Weiterspielen' : 'Klicken zum Losgehen';
+    },
     /** FPS-Kachel: Text setzen (null/leer blendet aus). */
     setFps(text) {
       if (!text) { fps.hidden = true; return; }
