@@ -281,7 +281,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ic
   height: 100%;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search {
   background: var(--lfx-plus-circle);
   color: rgba(255, 255, 255, .7);
   border-radius: 50%;
@@ -295,12 +295,17 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__se
   display: inline-flex;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search .lfx-plus-header__icon {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv {
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv .lfx-plus-header__icon, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search .lfx-plus-header__icon {
   width: 20px;
   height: 20px;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv.is-active, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
   color: #101010;
   background: #fff;
 }
@@ -325,7 +330,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header button:focus-visible
     background: rgba(255, 255, 255, .08);
   }
 
-  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search:hover:not(.is-active) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv:hover:not(.is-active), html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search:hover:not(.is-active) {
     color: #fff;
     background: #3a3a42;
   }
@@ -3092,6 +3097,32 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
     white-space: nowrap;
     margin: 0;
     overflow: hidden;
+  }
+
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__tv {
+    box-sizing: border-box;
+    color: #fff;
+    background: rgba(16, 19, 31, .55);
+    border-radius: 50%;
+    flex: none;
+    align-items: center;
+    justify-items: center;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
+    text-decoration: none;
+    display: grid;
+  }
+
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__tv.is-active {
+    color: #101010;
+    background: #fff;
+  }
+
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__tv svg {
+    width: 24px;
+    height: 24px;
+    display: block;
   }
 
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher {

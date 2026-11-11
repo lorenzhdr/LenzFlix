@@ -159,6 +159,8 @@ function teardown() {
 export function closeModal(opts = {}) {
   if (!state) return;
   if (opts.after) state.after = opts.after;
+  if (state.closing) return; // schon im Abbau: kein zweites history.back()
+  state.closing = true;
   if (state.pushed) {
     // history.back() löst popstate aus -> onPopState schließt. Fallback, falls das Event ausbleibt.
     state.fallback = setTimeout(() => finish(), 600);
@@ -447,6 +449,9 @@ async function seriesEpisodeCount(s) {
 function makeHandlers(s, token) {
   const main = s.main;
   const stale = () => state !== s || s.token !== token;
+  // Wiedergabe-Start läuft (Doppelklick-Schutz). Erst Modal samt History-Eintrag abbauen, dann Proxy-Klick.
+  let starting = false;
+  const startPlayback = (target, resume) => closeModal({ after: () => { play(target, { resume }).catch(() => {}); } });
   const askBulk = ({ btn, n, next, targetId, isSeries }) => {
     const verb = next ? 'gesehen' : 'ungesehen';
     confirmAction({
@@ -514,17 +519,24 @@ function makeHandlers(s, token) {
       askBulk({ btn, n: s.episodes.length, next: !s.episodes.every(isPlayed), targetId: s.seasonId, isSeries: false });
     },
     async play() {
+      if (starting) return;
+      starting = true;
       let target = main;
       let resume = hasResume(main);
-      if (main.Type === 'Series') {
-        target = await data.loadNextUp(main.Id).catch(() => null);
-        if (!target) {
-          const eps = s.seasons.length ? await data.loadEpisodes(main.Id, pickInitialSeason(s.seasons, null)).catch(() => []) : [];
-          target = eps[0] || null;
+      try {
+        if (main.Type === 'Series') {
+          target = await data.loadNextUp(main.Id).catch(() => null);
+          if (!target && !stale()) {
+            const eps = s.seasons.length ? await data.loadEpisodes(main.Id, pickInitialSeason(s.seasons, null)).catch(() => []) : [];
+            target = eps[0] || null;
+          }
+          resume = hasResume(target);
         }
-        resume = hasResume(target);
+      } catch {
+        target = null;
       }
-      if (target) await play(target, { resume });
+      if (!target || stale()) { starting = false; return; }
+      startPlayback(target, resume);
     },
     toggleFav: (btn) => toggleFavGeneric(main, btn),
     toggleFavOf: (item, btn) => toggleFavGeneric(item, btn),
@@ -551,7 +563,11 @@ function makeHandlers(s, token) {
       s.selectedEpisodeId = null;
       await showSeason(s, token, H).catch(() => {});
     },
-    playItem: (ep) => play(ep, { resume: hasResume(ep) }),
+    playItem(ep) {
+      if (starting) return;
+      starting = true;
+      startPlayback(ep, hasResume(ep));
+    },
   };
   return H;
 }

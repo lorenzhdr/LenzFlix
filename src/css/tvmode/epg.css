@@ -1,0 +1,483 @@
+/* TV-Modus · Programm-Raster und Info-Karte (Eigentümer G). Vertrag: docs/tvmode.md.
+   Breite je Minute: --lfx-tvm-ppm (Desktop 5 px, Handy 3 px). Layout-Umschaltung nur über .is-phone am Root. */
+
+html.lfx-js:not(.layout-tv) .lfx-tvm {
+  --lfx-tvm-ppm: 5;
+  --lfx-tvm-chan-w: 138px;
+  --lfx-tvm-epg-row-h: 54px;
+  --lfx-tvm-epg-scale-h: 34px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone {
+  --lfx-tvm-ppm: 3;
+  --lfx-tvm-chan-w: 84px;
+  --lfx-tvm-epg-row-h: 56px;
+}
+
+/* ---------- Kopf: Tage + Jetzt ---------- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-days {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-days::-webkit-scrollbar {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__day,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--lfx-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lfx-text-body);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease), color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__day.is-active {
+  border-color: transparent;
+  background: var(--lfx-text);
+  color: var(--lfx-bg);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now {
+  border-color: var(--lfx-red);
+  color: var(--lfx-text);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__day:focus-visible,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now:focus-visible,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 1px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__day:not(.is-active):hover {
+    background: var(--lfx-surface-2);
+  }
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now:hover {
+    background: var(--lfx-red);
+  }
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__day,
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-now {
+  min-height: 44px;
+}
+
+/* ---------- Raster ---------- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-scroll {
+  position: relative;
+  box-sizing: border-box;
+  /* Desktop: ca. 8 bis 9 Senderzeilen sichtbar, intern senkrecht scrollend */
+  max-height: calc(var(--lfx-tvm-epg-scale-h) + var(--lfx-tvm-epg-row-h) * 8.5);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 10px;
+  background: var(--lfx-bg-deep);
+  scrollbar-width: thin;
+  scrollbar-color: var(--lfx-surface-3) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-scroll {
+  max-height: none;
+  overflow-y: visible;
+  overflow-x: auto;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-inner {
+  position: relative;
+  width: calc(var(--lfx-tvm-chan-w) + var(--tvm-total, 1440) * var(--lfx-tvm-ppm) * 1px);
+}
+
+/* Zeitleiste (sticky oben) */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-scale {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  height: var(--lfx-tvm-epg-scale-h);
+  background: var(--lfx-bg-deep);
+  border-bottom: 1px solid var(--lfx-border);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-corner {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  display: block;
+  width: var(--lfx-tvm-chan-w);
+  height: 100%;
+  background: var(--lfx-bg-deep);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-hour {
+  position: absolute;
+  top: 0;
+  left: calc(var(--lfx-tvm-chan-w) + var(--tvm-s, 0) * var(--lfx-tvm-ppm) * 1px);
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 0 0 6px;
+  border-left: 1px solid var(--lfx-border);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: var(--lfx-tvm-epg-scale-h);
+  color: var(--lfx-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-hour--half {
+  border-left-color: transparent;
+  color: var(--lfx-text-soft);
+  font-weight: 500;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-hour--half {
+  display: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-rows {
+  display: block;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-row {
+  position: relative;
+  display: flex;
+  height: var(--lfx-tvm-epg-row-h);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-row.is-current-channel .lfx-tvm__epg-chan {
+  box-shadow: inset 3px 0 0 var(--lfx-red);
+}
+
+/* Senderspalte (sticky links) */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex: 0 0 var(--lfx-tvm-chan-w);
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: var(--lfx-tvm-chan-w);
+  padding: 0 8px 0 10px;
+  background: var(--lfx-bg-deep);
+  border-right: 1px solid var(--lfx-border);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan-no {
+  flex: 0 0 auto;
+  min-width: 18px;
+  font-size: var(--lfx-fs-meta);
+  font-weight: 700;
+  text-align: right;
+  color: var(--lfx-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan .lfx-tvm__chan-badge {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  font-size: 11px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-chan {
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 0 4px 0 6px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-chan .lfx-tvm__chan-badge {
+  min-height: 15px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-chan-no {
+  min-width: 0;
+  font-size: 15px;
+  text-align: left;
+  color: var(--lfx-text);
+}
+
+/* Spur und Zellen */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-track {
+  position: relative;
+  flex: 1 1 auto;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: calc(var(--tvm-s, 0) * var(--lfx-tvm-ppm) * 1px + 1px);
+  width: calc(var(--tvm-w, 30) * var(--lfx-tvm-ppm) * 1px - 2px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: var(--lfx-surface-2);
+  color: var(--lfx-text-body);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell-title {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: var(--lfx-fw-row-title);
+  line-height: 1.2;
+  color: var(--lfx-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell-time {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--lfx-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--short {
+  padding: 0 6px;
+}
+/* schmaler als ca. 48 px (bzw. Füller unter 90 px): kein Text, nur title/aria-label */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--tiny {
+  padding: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--tiny .lfx-tvm__epg-cell-title,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--tiny .lfx-tvm__epg-cell-time {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--filler.lfx-tvm__epg-cell--tiny {
+  box-shadow: none;
+  background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(255, 255, 255, 0.07) 4px 8px);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--short .lfx-tvm__epg-cell-time {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--short .lfx-tvm__epg-cell-title {
+  font-size: 12px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell.is-past {
+  background: var(--lfx-surface);
+  opacity: 0.6;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell.is-current {
+  background: var(--lfx-surface-3);
+  opacity: 1;
+  /* Fortschritt als dezente Fläche unter dem Text */
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.12) var(--tvm-p, 0%), transparent var(--tvm-p, 0%));
+  box-shadow: inset 0 -3px 0 var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--filler,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--closedown {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--lfx-border);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--filler .lfx-tvm__epg-cell-title,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--closedown .lfx-tvm__epg-cell-title {
+  color: var(--lfx-text-soft);
+  font-weight: 500;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--filler.is-current,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--closedown.is-current {
+  background-color: var(--lfx-surface);
+  box-shadow: inset 0 -3px 0 var(--lfx-red);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell:hover {
+    background-color: var(--lfx-glass-hover);
+    opacity: 1;
+  }
+}
+
+/* Jetzt-Linie */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-nowline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  left: calc(var(--lfx-tvm-chan-w) + var(--tvm-s, 0) * var(--lfx-tvm-ppm) * 1px);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--lfx-red);
+  pointer-events: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-nowline[hidden] {
+  display: none;
+}
+
+/* ---------- Info-Karte ---------- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--lfx-gutter);
+  box-sizing: border-box;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard[hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-sizing: border-box;
+  width: min(560px, 100%);
+  max-height: 100%;
+  padding: 0 24px 24px;
+  overflow-y: auto;
+  border-radius: var(--lfx-modal-radius);
+  background: var(--lfx-surface);
+  color: var(--lfx-text-body);
+  box-shadow: var(--lfx-shadow-modal);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard.is-open .lfx-tvm__infocard-box {
+  animation: lfx-tvm-card-in var(--lfx-dur) var(--lfx-ease-out) both;
+}
+@keyframes lfx-tvm-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-img {
+  margin: 0 -24px 8px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-img .lfx-tvm__thumb {
+  border-radius: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-img .lfx-tvm__thumb-no {
+  font-size: 64px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-chan {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lfx-text-muted);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--lfx-text);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-sub {
+  font-size: var(--lfx-fs-body);
+  color: var(--lfx-text-body);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-time {
+  font-size: var(--lfx-fs-body);
+  font-weight: 600;
+  color: var(--lfx-text);
+  font-variant-numeric: tabular-nums;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-meta {
+  font-size: 14px;
+  color: var(--lfx-text-muted);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard .lfx-tvm__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard .lfx-tvm__badges[hidden],
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard [hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-text {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--lfx-text-body);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-text.is-loading,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-text.is-empty {
+  color: var(--lfx-text-soft);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lfx-btn-gap);
+  margin-top: 12px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--lfx-text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-close:focus-visible {
+  outline: 2px solid var(--lfx-text);
+}
+
+/* Handy: Bottom-Sheet */
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__infocard {
+  align-items: flex-end;
+  padding: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__infocard-box {
+  width: 100%;
+  max-height: 88%;
+  padding: 0 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--lfx-modal-radius) var(--lfx-modal-radius) 0 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__infocard-img {
+  margin: 0 -16px 8px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__infocard.is-open .lfx-tvm__infocard-box {
+  animation-name: lfx-tvm-sheet-in;
+}
+@keyframes lfx-tvm-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__infocard-actions .lfx-tvm__btn {
+  flex: 1 1 100%;
+  min-height: 48px;
+}

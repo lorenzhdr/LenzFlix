@@ -24,6 +24,7 @@ const cssEntries = [
   ['src/css/themes/retro/index.css', 'lenzretro'],
   ['src/css/themes/store/index.css', 'lenzstore'],
   ['src/css/themes/live/index.css', 'lenzlive'],
+  ['src/css/tvmode/index.css', 'lenztvmode'], // TV-Modus (flix/plus/prime, lazy über core/addoncss.js, docs/tvmode.md)
 ];
 
 function buildCss() {
@@ -41,6 +42,7 @@ const jsEntries = [
   ['src/js/main.js', 'lenzflix'],
   ['src/js/store3d/entry.js', 'lenzstore'],
   ['src/js/live/entry.js', 'lenzlive'], // LENZ LIVE: Engine (lazy, docs/live.md)
+  ['src/js/live/tvmode/entry.js', 'lenztvmode'], // TV-Modus: Engine (lazy, docs/tvmode.md)
 ];
 
 async function buildJs() {
@@ -68,7 +70,23 @@ function checkMainBundle() {
   if (code.includes('__LFX_LIVE_ENGINE__')) {
     throw new Error('dist/lenzflix.min.js enthält die LENZ-LIVE-Engine – sie darf nur lazy (lenzlive.min.js) geladen werden');
   }
+  if (code.includes('__LFX_TVMODE_ENGINE__')) {
+    throw new Error('dist/lenzflix.min.js enthält die TV-Modus-Engine – sie darf nur lazy (lenztvmode.min.js) geladen werden');
+  }
   if (code.length > MAIN_MIN_BUDGET) console.warn(`WARNUNG: lenzflix.min.js ist ${code.length} B (Budget ${MAIN_MIN_BUDGET} B)`);
+}
+
+// Wächter: die TV-Modus-Engine importiert nichts aus der LENZ-LIVE-Engine-UI (Marker/Fernbedienungs-Klassen), bleibt unter 120 KB.
+const TVMODE_MIN_BUDGET = 120 * 1024;
+function checkTvModeBundle() {
+  const code = readFileSync(resolve(dist, 'lenztvmode.min.js'), 'utf8');
+  if (code.includes('__LFX_LIVE_ENGINE__')) {
+    throw new Error('dist/lenztvmode.min.js enthält die LENZ-LIVE-Engine – der TV-Modus darf nur Dateien aus src/js/live/{schedule,player,ui/logos,…} einzeln importieren');
+  }
+  if (code.includes('lfx-live-remote')) {
+    throw new Error('dist/lenztvmode.min.js enthält die LENZ-LIVE-Fernbedienung (lfx-live-remote) – ui/app.js/remote.js dürfen nicht importiert werden');
+  }
+  if (code.length > TVMODE_MIN_BUDGET) console.warn(`WARNUNG: lenztvmode.min.js ist ${code.length} B (Budget ${TVMODE_MIN_BUDGET} B)`);
 }
 
 mkdirSync(dist, { recursive: true });
@@ -82,5 +100,6 @@ if (watch) {
   console.log('watching…');
 } else {
   checkMainBundle();
+  checkTvModeBundle();
   console.log(`built dist/ (${readFileSync(resolve(dist, 'lenzflix.min.css')).length} B css min)`);
 }

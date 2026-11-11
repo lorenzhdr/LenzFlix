@@ -4,7 +4,7 @@ import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import { isReady } from '../../core/api.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
-import { parseLfxRoute } from '../../shared/routes.js';
+import { parseLfxRoute, tvModeHref, isTvModeRoute } from '../../shared/routes.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { ICONS } from './header-icons.js';
 import { isPhone } from './mobile.js';
@@ -32,6 +32,7 @@ export function headerTitle(route, libs) {
     if (kind === 'hub' || kind === 'browse') return libName(lib) || (kind === 'browse' ? 'Bibliothek' : '');
     if (kind === 'new') return 'Neu & beliebt';
     if (kind === 'search') return 'Suche';
+    if (kind === 'tv') return 'TV';
     if (kind) return '';
     return route.params.get('tab') === '1' ? 'Meine Liste' : 'Für dich';
   }
@@ -43,7 +44,7 @@ export function headerTitle(route, libs) {
   return '';
 }
 
-const state = { root: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
+const state = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
 
 function render() {
   if (!state.root) return;
@@ -51,6 +52,10 @@ function render() {
   state.backEl.hidden = !back;
   state.root.classList.toggle('has-back', back);
   state.titleEl.textContent = headerTitle(state.route, state.libs);
+  const on = isTvModeRoute(state.route);
+  state.tvEl.classList.toggle('is-active', on);
+  if (on) state.tvEl.setAttribute('aria-current', 'page');
+  else state.tvEl.removeAttribute('aria-current');
 }
 
 function scrollTick() {
@@ -91,7 +96,11 @@ export const plusMobileHead = {
     backEl.innerHTML = ICONS.back;
     backEl.addEventListener('click', () => window.history.back());
     const titleEl = h('h1', { class: 'lfx-plus-mhead__title' });
-    root.append(backEl, titleEl);
+    const tv = h('a', { class: 'lfx-plus-mhead__tv', href: tvModeHref, 'aria-label': 'TV', title: 'TV', dataset: { key: 'tv' } });
+    tv.innerHTML = ICONS.tvmode;
+    tv.addEventListener('click', () => window.dispatchEvent(new CustomEvent('lfx:tvmode-intent')));
+    root.append(backEl, titleEl, tv);
+    state.tvEl = tv;
     state.root = root;
     state.backEl = backEl;
     state.titleEl = titleEl;
@@ -116,6 +125,7 @@ export const plusMobileHead = {
     state.root = null;
     state.backEl = null;
     state.titleEl = null;
+    state.tvEl = null;
     state.libs = [];
   },
 };

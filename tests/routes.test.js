@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { titleHref, hubHref, browseHref, searchHref, parseLfxRoute } from '../src/js/shared/routes.js';
+import { titleHref, hubHref, browseHref, searchHref, parseLfxRoute, tvModeHref, isTvModeRoute } from '../src/js/shared/routes.js';
 import { parseHash } from '../src/js/core/router.js';
 
 const parse = (href) => parseLfxRoute(parseHash(href));
@@ -28,5 +28,14 @@ describe('shared/routes', () => {
     expect(parse('#/home?lfx=foo').kind).toBeNull();
     expect(parse('#/movies?lfx=title&id=1').kind).toBeNull();
     expect(parseLfxRoute(null).kind).toBeNull();
+  });
+
+  it('TV-Modus: tvModeHref, kind tv, isTvModeRoute', () => {
+    expect(tvModeHref).toBe('#/home?lfx=tv');
+    expect(parse(tvModeHref)).toMatchObject({ kind: 'tv', id: null });
+    expect(isTvModeRoute(parseHash(tvModeHref))).toBe(true);
+    expect(isTvModeRoute(parseHash('#/home?lfx=new'))).toBe(false);
+    expect(isTvModeRoute(parseHash('#/movies?lfx=tv'))).toBe(false);
+    expect(isTvModeRoute(null)).toBe(false);
   });
 });

@@ -2,12 +2,15 @@
 // Ist das wirksame Design 'flix' (z. B. geteilter Link, TV, Design gewechselt), wird per location.replace auf das
 // native Ziel umgeleitet – ohne neuen History-Eintrag.
 import { getViews, getAuth } from '../core/api.js';
+import { isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
 import { parseLfxRoute } from '../shared/routes.js';
 
 const REDIRECT_KINDS = ['title', 'hub', 'browse', 'search'];
 // VIDEOTHEK LENZ (store) zeigt title/search/new/classic selbst (3D-Bühne); nur Hub/Browse gehen auf die native Bibliothek.
 const STORE_REDIRECT_KINDS = ['hub', 'browse'];
+// TV-Modus (#/home?lfx=tv) gibt es nur in flix/plus/prime auf Modern: retro/store/live und layout-tv gehen zurück auf #/home.
+const tvModeUnavailable = () => isTheme('retro') || isTheme('store') || isTheme('live') || isTv();
 let lastKey = null;
 let seq = 0;
 
@@ -57,7 +60,9 @@ function redirect(route) {
   if (key === lastKey) return; // gleiche Route: nicht doppelt umleiten
   lastKey = key;
   const mine = ++seq;
-  if (r.kind === 'title') {
+  if (r.kind === 'tv') {
+    replaceTo('#/home');
+  } else if (r.kind === 'title') {
     if (!r.id) return replaceTo('#/home');
     const { serverId } = getAuth();
     replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ''}`);
@@ -76,6 +81,7 @@ const themeroute = {
   name: 'themeroute',
   match: (route) => {
     const kind = parseLfxRoute(route).kind;
+    if (kind === 'tv') return tvModeUnavailable();
     return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind));
   },
   mount: (route) => redirect(route),

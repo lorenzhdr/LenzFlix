@@ -1,0 +1,7 @@
+/* TV-Modus (dist/lenztvmode.css, lazy über core/addoncss.js). Vertrag: docs/tvmode.md. Reihenfolge = Kaskade. */
+@import "./layout.css";
+@import "./player.css";
+@import "./list.css";
+@import "./epg.css";
+@import "./phone.css";
+@import "./designs.css";

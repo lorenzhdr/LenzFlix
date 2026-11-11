@@ -5,7 +5,7 @@ import { isReady } from '../../core/api.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme, brandName } from '../../core/theme.js';
 import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js';
-import { parseLfxRoute, browseHref, searchHref } from '../../shared/routes.js';
+import { parseLfxRoute, browseHref, searchHref, tvModeHref } from '../../shared/routes.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { ICONS } from './header-icons.js';
@@ -46,6 +46,7 @@ export function activeKey(route, libs) {
   if (route.path === '/home') {
     if (kind === 'new') return 'new';
     if (kind === 'search') return 'search';
+    if (kind === 'tv') return 'tv';
     if (kind === 'browse') {
       if (movies && lib === movies.id) return 'movies';
       if (series && lib === series.id) return 'series';
@@ -266,7 +267,10 @@ export const plusHeader = {
     const nav = h('nav', { class: 'lfx-plus-header__nav', 'aria-label': 'Hauptnavigation' });
     const search = h('a', { class: 'lfx-plus-header__search', href: searchHref(), 'aria-label': 'Suche', dataset: { key: 'search' } });
     search.append(icon('search', 'lfx-plus-header__icon'));
-    root.append(h('div', { class: 'lfx-plus-header__left' }, [brand, chip]), nav, search);
+    const tv = h('a', { class: 'lfx-plus-header__tv', href: tvModeHref, 'aria-label': 'TV', title: 'TV', dataset: { key: 'tv' } });
+    tv.append(icon('tvmode', 'lfx-plus-header__icon'));
+    tv.addEventListener('click', () => window.dispatchEvent(new CustomEvent('lfx:tvmode-intent')));
+    root.append(h('div', { class: 'lfx-plus-header__left' }, [brand, chip]), nav, tv, search);
     state.nav = nav;
     state.chip = chip;
 

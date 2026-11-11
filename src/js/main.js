@@ -12,6 +12,7 @@ import { earlyTheme, startTheme, stopTheme, syncThemeUser, destroyTheme, getThem
 import { features } from './features/index.js';
 import { destroyStore } from './features/store/home.js';
 import { destroyLive } from './features/live/home.js';
+import { destroyTvMode, initUnlock } from './features/tvmode/index.js';
 
 const WATCH_MS = 1000;
 const FAST_MS = 100; // Start: Kern-CSS (Custom CSS) lädt erst nach dem Skript, schnell erkennen
@@ -29,6 +30,7 @@ function init() {
     if (running || destroyed) return;
     running = true;
     initLayout();
+    initUnlock(); // TV-Modus: lfx:tvmode-intent (idempotent; stopFeatures entfernt den Listener)
     for (const f of features) registerFeature(f);
     // Der MUI-Header wird von React evtl. erst nach dem ersten Route-Event gerendert.
     let n = 0;
@@ -45,6 +47,7 @@ function init() {
     resetRouter(); // unmount aller Features
     destroyStore(); // VIDEOTHEK LENZ: suspendierte 3D-Instanz sofort freigeben
     destroyLive(); // LENZ LIVE: suspendierte Engine-Instanz sofort freigeben
+    destroyTvMode(); // TV-Modus: Instanz (auch im Bild-in-Bild), CSS, Intent-Listener freigeben
     removeAllMounts();
     destroyLayout();
     stopTheme();

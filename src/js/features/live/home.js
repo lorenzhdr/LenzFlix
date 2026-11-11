@@ -10,9 +10,8 @@ import { openThemePicker } from '../../core/themepicker.js';
 import { ensureThemeJs, removeThemeJs } from '../../core/themejs.js';
 import { toast } from '../../core/toast.js';
 import { logout } from '../../shared/profile.js';
-import { loadLocalTrailer, trailerUrl } from '../../shared/trailer.js';
-import { getChannelConfig } from './config.js';
 import { loadCatalog } from './data.js';
+import { buildApiDeps, fatalText, loadUser } from './deps.js';
 import { findHomeTab, liveHomeRoute, ON_CLASS, ROOT_ID } from './home-route.js';
 import { leaveToLibrary } from './leave.js';
 import * as prefs from './prefs.js';
@@ -113,11 +112,6 @@ function teardownUi() {
   shown = false;
 }
 
-function fatalText(err) {
-  const m = err && err.message ? String(err.message) : '';
-  return m.replace(/(api_key|ApiKey)=[^&\s]+/gi, '$1=…').slice(0, 200);
-}
-
 function openDashboard() {
   window.location.hash = '#/dashboard';
 }
@@ -155,71 +149,10 @@ function showFallback(message, { retry = false, detail = '' } = {}) {
 
 // ------------------------------------------------------------------ Deps / Start
 
-const asItems = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
-
-async function loadUser() {
-  const u = await Promise.resolve().then(() => api.getUser()).catch(() => null);
-  const cfg = (u && u.Configuration) || {};
-  return {
-    id: (u && u.Id) || api.getUserId() || '',
-    name: (u && u.Name) || '',
-    isAdmin: Boolean(u && u.Policy && u.Policy.IsAdministrator),
-    audioLang: cfg.AudioLanguagePreference || '',
-    subLang: cfg.SubtitleLanguagePreference || '',
-    subMode: cfg.SubtitleMode || '',
-  };
-}
-
-function deviceId() {
-  try {
-    const c = window.ApiClient;
-    return (c && typeof c.deviceId === 'function' && c.deviceId()) || '';
-  } catch {
-    return '';
-  }
-}
-
 function buildDeps(raw, user, onFatal) {
   const ret = (f) => (...a) => { try { return f(...a); } catch (e) { console.warn('[LenzFlix] live dep', e && e.message); return undefined; } };
   return {
-    catalog: raw,
-    user,
-    server: { deviceId: deviceId() },
-    request: (method, path, o = {}) => api.requestJson(method, path, o),
-    streamUrl: (path, params) => api.buildUrl(path, { ...(params || {}), ApiKey: api.getAuth().token }),
-    imageUrl: (id, o = {}) => api.imageUrlFor(id, o),
-    getBoxSetItems: async (id) => {
-      const res = await api.getItems({ ParentId: id, Fields: '', EnableImages: false, EnableUserData: false });
-      return asItems(res).map((x) => x.Id).filter(Boolean);
-    },
-    loadTrailer: async (itemId) => {
-      try {
-        const item = await api.getItem(itemId);
-        const t = await loadLocalTrailer(item);
-        if (!t) return null;
-        const ticks = Number(t.RunTimeTicks);
-        return { url: trailerUrl(t.Id), durMs: ticks > 0 ? Math.round(ticks / 10000) : null };
-      } catch {
-        return null;
-      }
-    },
-    // Inhaltsangaben für die Fernsehzeitung: eine Anfrage, Fehler → leere Map
-    itemDetails: async (ids) => {
-      const out = new Map();
-      const list = (Array.isArray(ids) ? ids : []).filter(Boolean);
-      if (!list.length) return out;
-      try {
-        const res = await api.requestJson('GET', '/Items', {
-          params: { userId: api.getUserId(), Ids: list.join(','), Fields: 'Overview', EnableImages: false, EnableUserData: false },
-        });
-        for (const it of asItems(res)) if (it && it.Id) out.set(it.Id, { overview: typeof it.Overview === 'string' ? it.Overview : '' });
-      } catch (e) {
-        console.warn('[LenzFlix] live itemDetails', fatalText(e));
-      }
-      return out;
-    },
-    setPlayed: (id, v) => api.setPlayed(id, v),
-    channelConfig: getChannelConfig(),
+    ...buildApiDeps(raw, user),
     savePrefs: ret((p) => prefs.savePrefs(p)),
     leaveToLibrary: (id, meta) => leaveToLibrary(id, meta || {}),
     previousThemeName: prevName(),

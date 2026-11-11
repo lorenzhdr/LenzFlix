@@ -45,6 +45,7 @@ describe('plus-header: Modell', () => {
     expect(k('#/home?lfx=browse&lib=t1&genre=5')).toBe('series');
     expect(k('#/home?lfx=browse&lib=zz')).toBeNull();
     expect(k('#/home?lfx=search')).toBe('search');
+    expect(k('#/home?lfx=tv')).toBe('tv');
     expect(k('#/home?lfx=title&id=1')).toBeNull();
     expect(k('#/movies?topParentId=m1')).toBe('movies');
     expect(k('#/details?id=5')).toBeNull();
@@ -81,6 +82,18 @@ describe('plus-header: Feature', () => {
     expect([...root.querySelectorAll('.lfx-plus-header__item')].map((a) => a.dataset.key)).toEqual(['home', 'list', 'movies', 'series', 'new']);
     expect(root.querySelector('[data-key="list"]').classList.contains('is-active')).toBe(true);
     expect(root.querySelector('.lfx-plus-header__search').getAttribute('href')).toBe('#/home?lfx=search');
+    const tvEl = root.querySelector('.lfx-plus-header__tv');
+    expect(tvEl.getAttribute('href')).toBe('#/home?lfx=tv');
+    expect(tvEl.getAttribute('aria-label')).toBe('TV');
+    expect(tvEl.nextElementSibling).toBe(root.querySelector('.lfx-plus-header__search'));
+    expect(tvEl.classList.contains('is-active')).toBe(false);
+    const intent = vi.fn();
+    window.addEventListener('lfx:tvmode-intent', intent);
+    tvEl.click();
+    window.removeEventListener('lfx:tvmode-intent', intent);
+    expect(intent).toHaveBeenCalledTimes(1);
+    header.update(R('#/home?lfx=tv'));
+    expect(tvEl.getAttribute('aria-current')).toBe('page');
     header.update(R('#/home?lfx=browse&lib=m1'));
     expect(root.querySelector('[data-key="movies"]').getAttribute('aria-current')).toBe('page');
     expect(root.querySelector('[data-key="list"]').classList.contains('is-active')).toBe(false);

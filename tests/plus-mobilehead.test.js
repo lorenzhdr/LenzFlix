@@ -31,6 +31,7 @@ describe('plus-mobilehead: Modell', () => {
     expect(headerTitle(R('#/home?lfx=browse&lib=m1'), libs)).toBe('Filme');
     expect(headerTitle(R('#/home?lfx=new'), libs)).toBe('Neu & beliebt');
     expect(headerTitle(R('#/home?lfx=search'), libs)).toBe('Suche');
+    expect(headerTitle(R('#/home?lfx=tv'), libs)).toBe('TV');
     expect(headerTitle(R('#/home?lfx=title&id=1'), libs)).toBe('');
     expect(headerTitle(R('#/mypreferencesmenu'), libs)).toBe('Einstellungen');
   });
@@ -40,6 +41,7 @@ describe('plus-mobilehead: Modell', () => {
     expect(showsBack(R('#/home?lfx=hub&lib=m1'))).toBe(false);
     expect(showsBack(R('#/home?lfx=title&id=1'))).toBe(true);
     expect(showsBack(R('#/home?lfx=search'))).toBe(true);
+    expect(showsBack(R('#/home?lfx=tv'))).toBe(true);
     expect(showsBack(R('#/movies?topParentId=m1'))).toBe(true);
     expect(showsBack(R('#/mypreferencesmenu'))).toBe(true);
   });
@@ -75,6 +77,18 @@ describe('plus-mobilehead: Feature', () => {
     expect(root).toBeTruthy();
     expect(root.querySelector('.lfx-plus-mhead__title').textContent).toBe('Filme');
     expect(root.querySelector('.lfx-plus-mhead__back').hidden).toBe(true);
+    const tv = root.querySelector('.lfx-plus-mhead__tv');
+    expect(tv.getAttribute('href')).toBe('#/home?lfx=tv');
+    expect(tv.dataset.key).toBe('tv');
+    expect(tv.classList.contains('is-active')).toBe(false);
+    const intent = vi.fn();
+    window.addEventListener('lfx:tvmode-intent', intent);
+    tv.click();
+    window.removeEventListener('lfx:tvmode-intent', intent);
+    expect(intent).toHaveBeenCalledTimes(1);
+    head.update(R('#/home?lfx=tv'));
+    expect(tv.getAttribute('aria-current')).toBe('page');
+    expect(root.querySelector('.lfx-plus-mhead__title').textContent).toBe('TV');
     head.update(R('#/home?lfx=search'));
     expect(root.querySelector('.lfx-plus-mhead__title').textContent).toBe('Suche');
     const btn = root.querySelector('.lfx-plus-mhead__back');

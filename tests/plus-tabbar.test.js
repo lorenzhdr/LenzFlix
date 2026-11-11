@@ -50,6 +50,7 @@ describe('plus-tabbar: Modell', () => {
     expect(tabKey(R('#/home?lfx=hub&lib=m1'))).toBe('home');
     expect(tabKey(R('#/home?tab=1'))).toBe('list');
     expect(tabKey(R('#/home?lfx=search'))).toBe('search');
+    expect(tabKey(R('#/home?lfx=tv'))).toBeNull();
     expect(tabKey(R('#/home?lfx=new'))).toBe('profile');
     expect(tabKey(R('#/mypreferencesmenu'))).toBe('profile');
     expect(tabKey(R('#/home?lfx=title&id=1'))).toBeNull();

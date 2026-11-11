@@ -1,0 +1,20 @@
+/* TV-Modus · Feinschliff je Design (flix = Basis). Die Designs überschreiben dieselben Kern-Tokens, daher nur Abstände/Rundungen. */
+
+/* LENZ+: höhere Kopfleiste (66 px), runde Pillen, etwas luftiger */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-tvm { --lfx-tvm-side-w: clamp(340px, 30vw, 460px); }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-tvm .lfx-tvm__player { box-shadow: 0 20px 24px rgba(0, 0, 0, 0.55); }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-tvm .lfx-tvm__info-title { font-weight: 400; }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-tvm .lfx-tvm__btn--primary { background: var(--lfx-pill-active); color: var(--lfx-bg-deep); }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-tvm .lfx-tvm__tab.is-active { background: var(--lfx-pill-active); color: var(--lfx-bg-deep); }
+/* Handy: Kopf = --lfx-header-h (56 px + Safe-Area, plus/mobile.css); Tab-Leiste 46 px + Safe-Area (--plus-m-tabbar) */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-tvm.is-phone { --lfx-tvm-foot: calc(var(--plus-m-tabbar, calc(46px + env(safe-area-inset-bottom, 0px))) + 16px); }
+
+/* LENZPRIME: dunkelste Fläche, Standardknöpfe mit 8 px Rundung */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm { --lfx-tvm-panel: var(--lfx-surface); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm .lfx-tvm__player { box-shadow: var(--lfx-shadow-card); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm .lfx-tvm__info .lfx-tvm__btn { height: 42px; font-weight: 600; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm .lfx-tvm__btn--primary { color: var(--lfx-bg-deep); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm .lfx-tvm__badge { border-radius: 4px; background: var(--lfx-surface-2); border-color: transparent; color: var(--lfx-text-body); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm .lfx-tvm__tab.is-active { background: var(--lfx-surface-2); }
+/* Handy: Kopf = --lfx-header-h (52 px + Safe-Area, prime/mobile.css); Tab-Pille 58 px + 21 px Abstand + Safe-Area */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-tvm.is-phone { --lfx-tvm-foot: calc(79px + env(safe-area-inset-bottom, 0px) + 16px); }

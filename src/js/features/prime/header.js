@@ -9,7 +9,7 @@ import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js'
 import { getLibraries } from '../../shared/libraries.js';
 import { getCollections } from '../../shared/collections.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
-import { hubHref, titleHref } from '../../shared/routes.js';
+import { hubHref, titleHref, tvModeHref } from '../../shared/routes.js';
 import { openPrimeSearch, closePrimeSearch, isPrimeSearchOpen } from './search.js';
 import { openMenus } from './header-menus.js';
 import { openProfileSheet, closeProfileSheet } from './profile-sheet.js';
@@ -29,6 +29,7 @@ const ICONS = {
   search: 'M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z',
   grid: 'M5 4h3v3H5V4Zm5.5 0h3v3h-3V4ZM16 4h3v3h-3V4ZM5 10.5h3v3H5v-3Zm5.5 0h3v3h-3v-3Zm5.5 0h3v3h-3v-3ZM5 17h3v3H5v-3Zm5.5 0h3v3h-3v-3Zm5.5 0h3v3h-3v-3Z',
   back: 'M15.5 4.5 8 12l7.5 7.5-1.6 1.6L4.8 12l9.1-9.1z',
+  tv: 'M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-3.5l.8 2H17v2H7v-2h.7l.8-2H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3ZM5 6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1ZM12 8.8a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4Z',
   bookmark: 'M6 3h12a1 1 0 0 1 1 1v17l-7-4.6L5 21V4a1 1 0 0 1 1-1Zm1 2v12.2l5-3.3 5 3.3V5H7Z',
 };
 
@@ -55,12 +56,13 @@ export function navItems(libs) {
   return items;
 }
 
-/** Aktiver Schlüssel: home | new | lib:<id> | list | null. */
+/** Aktiver Schlüssel: home | new | tv | lib:<id> | list | null. */
 export function activeKey(route) {
   if (!route || route.path !== '/home') return null;
   const p = route.params;
   const lfx = p.get('lfx');
   if (lfx === 'new') return 'new';
+  if (lfx === 'tv') return 'tv';
   if (lfx === 'hub' && p.get('lib')) return `lib:${p.get('lib')}`;
   if (lfx) return null;
   return p.get('tab') === '1' ? 'list' : 'home';
@@ -105,6 +107,7 @@ export function mobileTitle(route, libs = []) {
     const lfx = p.get('lfx');
     if (p.get('tab') === '1') return 'Meine Liste';
     if (lfx === 'new') return 'Neu & beliebt';
+    if (lfx === 'tv') return 'TV';
     if (lfx === 'search') return 'Suche';
     if (lfx === 'title') return domText('.lfx-pt__title') || domText('.lfx-pt__logo', 'alt');
     if (lfx === 'browse') {
@@ -214,6 +217,15 @@ async function toggleProfile(btn) {
   }
 }
 
+/** TV-Symbol: Klick meldet synchron die Absicht (die TV-Hülle entsperrt das Video in der Geste), Navigation per href. */
+function tvLink() {
+  const a = h('a', {
+    class: 'lfx-prime-header__icon', href: tvModeHref, 'aria-label': 'TV', title: 'TV', dataset: { key: 'tv' },
+  }, [icon('tv')]);
+  a.addEventListener('click', () => window.dispatchEvent(new CustomEvent('lfx:tvmode-intent')));
+  return a;
+}
+
 function build() {
   const logo = h('a', { class: 'lfx-prime-header__logo', href: '#/home', 'aria-label': 'LENZPRIME – Startseite' });
   const nav = h('nav', { class: 'lfx-prime-header__nav', 'aria-label': 'Hauptnavigation' });
@@ -244,7 +256,7 @@ function build() {
   });
   avatar.addEventListener('click', () => toggleProfile(avatar));
 
-  const right = h('div', { class: 'lfx-prime-header__right' }, [searchBtn, gridWrap, listLink, avatar]);
+  const right = h('div', { class: 'lfx-prime-header__right' }, [searchBtn, tvLink(), gridWrap, listLink, avatar]);
   const bar = h('div', { class: 'lfx-prime-header__bar' }, [logo, nav, right]);
   state.el.replaceChildren(bar);
   state.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
@@ -270,7 +282,7 @@ function buildMobile(route) {
     back.addEventListener('click', goBack);
     left = [back, h('h1', { class: 'lfx-prime-header__title' }, mobileTitle(route, state.libs))];
   }
-  const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [avatar])]);
+  const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [tvLink(), avatar])]);
   const kids = [bar];
   if (kind === 'home') kids.push(h('nav', { class: 'lfx-prime-header__pills', 'aria-label': 'Filme und Serien' }));
   state.el.replaceChildren(...kids);
@@ -371,6 +383,7 @@ function render() {
   applyScroll();
   renderNav();
   renderPills();
+  applyActive();
   loadLibs(seq);
   loadAvatar(seq, parts.avatar);
   startTitlePoll();

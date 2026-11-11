@@ -30,6 +30,7 @@
   if (window.LenzFlix?.destroy) window.LenzFlix.destroy();
   delete window.LenzFlixStore3D; // altes 3D-Bundle (VIDEOTHEK LENZ) verwerfen, damit der frische Stand nachgeladen wird
   delete window.LenzFlixLive; // altes Engine-Bundle (LENZ LIVE) verwerfen
+  delete window.LenzFlixTvMode; // altes TV-Modus-Bundle verwerfen
   document.getElementById('lfx-dev-js')?.remove();
   const s = Object.assign(document.createElement('script'), { id: 'lfx-dev-js', src: `${base}dist/lenzflix.js?${ts}` });
   document.head.appendChild(s);

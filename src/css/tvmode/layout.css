@@ -1,0 +1,240 @@
+/* TV-Modus · Gerüst, Grid (Desktop), gemeinsame Bausteine, Info-Bereich, Toast. Vertrag: docs/tvmode.md.
+   Alles unter html.lfx-js:not(.layout-tv) .lfx-tvm; Layoutumschaltung nur über .is-phone / .is-landscape am Root. */
+
+html.lfx-js:not(.layout-tv) .lfx-tvm {
+  --lfx-tvm-gap: var(--lfx-gutter);
+  --lfx-tvm-head: var(--lfx-header-h);
+  --lfx-tvm-side-w: clamp(320px, 30vw, 440px);
+  --lfx-tvm-line: var(--lfx-border);
+  --lfx-tvm-panel: var(--lfx-surface);
+  --lfx-tvm-panel-hi: var(--lfx-surface-2);
+  --lfx-tvm-accent: var(--lfx-red);
+  --lfx-tvm-ring: 0 0 0 2px var(--lfx-bg), 0 0 0 4px var(--lfx-text);
+  --lfx-tvm-z-full: 1290; /* über den Kopfleisten (1100/1101) und Tabbars, unter Dialogen (1300) */
+  position: relative;
+  box-sizing: border-box;
+  padding: var(--lfx-tvm-pad, var(--lfx-tvm-head)) var(--lfx-gutter) calc(var(--lfx-gutter) * 1.2);
+  background: var(--lfx-bg);
+  color: var(--lfx-text-body);
+  font-family: var(--lfx-font);
+  font-size: var(--lfx-fs-body);
+  line-height: 1.4;
+  min-height: 100vh;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm *,
+html.lfx-js:not(.layout-tv) .lfx-tvm *::before,
+html.lfx-js:not(.layout-tv) .lfx-tvm *::after { box-sizing: border-box; }
+
+/* ---- Grid (Desktop): Player+Info links, Senderliste rechts, Programm darunter ---- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--lfx-tvm-side-w);
+  grid-template-rows: auto auto;
+  gap: var(--lfx-tvm-gap);
+  align-items: stretch;
+  padding-top: calc(var(--lfx-gutter) * 0.5);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__main { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__side { position: relative; min-width: 0; min-height: 280px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg { grid-column: 1 / -1; min-width: 0; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tabs { display: none; }
+/* Höhe der Liste = Höhe von Player + Info: absolut in der Spalte, scrollt intern */
+html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__list {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ---- Player (Rahmen; Innenleben in player.css) ---- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--lfx-card-radius);
+  box-shadow: var(--lfx-shadow-card);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--lfx-tvm-z-full);
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__fake {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* ---- Gemeinsame Bausteine: Knopf ---- */
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--lfx-btn-radius);
+  background: var(--lfx-tvm-panel-hi);
+  color: var(--lfx-text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: var(--lfx-fw-button);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease), transform var(--lfx-dur-fast) var(--lfx-ease), opacity var(--lfx-dur-fast) var(--lfx-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn:active { transform: scale(0.97); }
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn:focus-visible { outline: none; box-shadow: var(--lfx-tvm-ring); }
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn[disabled] { opacity: 0.4; cursor: default; transform: none; }
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn[hidden] { display: none; }
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn--primary { background: var(--lfx-tvm-accent); color: var(--lfx-bg-deep); }
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn--ghost { background: var(--lfx-glass); }
+:where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn--icon { width: 40px; padding: 0; background: var(--lfx-icon-circle); }
+
+/* Gemeinsame Bausteine: Badge, Sender-Badge, Spinner */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__badge {
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--lfx-badge-h) + 6px);
+  padding: 0 10px;
+  border: 1px solid var(--lfx-tvm-line);
+  border-radius: 999px;
+  color: var(--lfx-text-muted);
+  font-size: var(--lfx-fs-badge);
+  line-height: 1;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--lfx-progress-rail);
+  border-top-color: var(--lfx-tvm-accent);
+  border-radius: 50%;
+  animation: lfx-tvm-spin 0.9s linear infinite;
+}
+@keyframes lfx-tvm-spin { to { transform: rotate(360deg); } }
+
+/* ---- Info unter dem Player ---- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-no { color: var(--lfx-text-soft); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-badge { display: inline-flex; min-width: 0; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-title {
+  margin: 0;
+  color: var(--lfx-text);
+  font-size: clamp(22px, 2.2vw, 32px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-sub { color: var(--lfx-text-body); font-size: 16px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-time { color: var(--lfx-text-muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-bar {
+  width: 100%;
+  max-width: 420px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--lfx-progress-rail);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-fill { height: 100%; width: 0; border-radius: 2px; background: var(--lfx-tvm-accent); }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__badges { display: flex; flex-wrap: wrap; gap: 6px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__badges[hidden],
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-sub[hidden],
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-next[hidden] { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-text {
+  margin: 0;
+  max-width: 70ch;
+  color: var(--lfx-text-body);
+  font-size: 15px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-text:empty { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info.is-expanded .lfx-tvm__info-text { -webkit-line-clamp: unset; display: block; }
+/* „Mehr“: dezenter Text-Link, linksbündig unter dem Text */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more {
+  appearance: none;
+  align-self: flex-start;
+  margin: -4px 0 0;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--lfx-text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more[hidden] { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more:focus-visible { outline: none; box-shadow: var(--lfx-tvm-ring); border-radius: 4px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-next { color: var(--lfx-text-muted); font-size: 14px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions { display: flex; flex-wrap: wrap; gap: var(--lfx-tvm-gap-btn, 10px); margin-top: 6px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__btn-ico { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__btn-ico svg { display: block; }
+/* Zu wenig Platz (JS setzt .is-compact): nur Icons */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions.is-compact .lfx-tvm__btn-ico { display: inline-flex; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions.is-compact .lfx-tvm__btn-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions.is-compact .lfx-tvm__btn { padding: 0; }
+
+/* ---- Toast ---- */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: calc(var(--lfx-tvm-z-full) + 5);
+  max-width: min(90vw, 460px);
+  padding: 12px 20px;
+  border-radius: var(--lfx-popup-radius);
+  background: var(--lfx-surface-3);
+  color: var(--lfx-text);
+  font-size: 15px;
+  box-shadow: var(--lfx-shadow-card);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 12px);
+  transition: opacity var(--lfx-dur) var(--lfx-ease), transform var(--lfx-dur) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---- Hover (nur Maus) ---- */
+@media (hover: hover) and (pointer: fine) {
+  :where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn:hover:not([disabled]) { background: var(--lfx-glass-hover); }
+  :where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn--primary:hover:not([disabled]) { background: var(--lfx-red-hover); }
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more:hover { color: var(--lfx-text); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__spinner { animation-duration: 2.4s; }
+  :where(html.lfx-js:not(.layout-tv)) .lfx-tvm .lfx-tvm__btn,
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__toast { transition: none; }
+}

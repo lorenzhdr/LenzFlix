@@ -91,6 +91,14 @@ Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 - `leave.js`: `leaveToLibrary(itemId, meta)` wechselt dauerhaft ins vorherige Design (`getPreviousTheme()` aus `core/theme.js`, nie `live`) und navigiert danach zum Titel.
 - `modal` und `newpopular` matchen unter `live` nicht (kein Detail-Overlay, keine „Neu und beliebt“-Seite).
 
+### TV-Modus (`lfx=tv`, `features/tvmode/`, nur flix/plus/prime)
+- Eigene Vollseite `#/home?lfx=tv` (Route-Kind `tv` in `shared/routes.js`, `tvModeHref`/`isTvModeRoute`), Einstieg über ein TV-Symbol in der Kopfleiste (flix: `features/tvbtn.js`, plus/prime im eigenen Kopf). Vertrag, Engine, DOM und Lebenszyklus: `docs/tvmode.md`.
+- Zwei Bundles: Hülle `features/tvmode/` im Hauptbundle (Server-deps aus `features/live/deps.js`, geteilt mit LENZ LIVE), Engine `src/js/live/tvmode/**` als lazy `dist/lenztvmode(.min).js` (nur Dateien aus `src/js/live/`, Marker `__LFX_TVMODE_ENGINE__`), CSS lazy als `dist/lenztvmode(.min).css`.
+- `core/addoncss.js`: `ensureAddonCss(name, {timeout})` lädt ein Zusatz-CSS (Klasse `lfx-addon-css`) aus demselben Ort wie das Kern-CSS (`addonCssUrl(name)`), `removeAddonCss(name)` entfernt es. Anders als `themecss.js` gehört es nicht zum Design-Wechsel (kein `lfx-theme-css`).
+- Ereignisse auf `window`: `lfx:play` (`core/playback.js` `play()` feuert es synchron vor dem Proxy-Klick, `detail: { id }`; stoppt den TV-Modus bei jedem normalen Abspielweg) und `lfx:tvmode-intent` (TV-Symbole feuern es synchron im Klick, damit `features/tvmode/unlock.js` ein `<video>` in der Geste entsperrt).
+- Wiedergabe-Ausnahme: Wie LENZ LIVE spielt der TV-Modus mit eigenem `<video>` ohne Fortschrittsmeldung, nicht über den Proxy-Klick. „Von vorne“ und „In der Mediathek ansehen“ stoppen den TV und gehen dann normal über `core/playback.js` (`resume:false`).
+- Umleitung unter retro/store/live und `html.layout-tv` per `features/themeroute.js` auf `#/home`.
+
 ### Regeln für Design-Features (`features/plus|prime|retro`)
 - `match(route)` beginnt mit `isTheme('plus'|'prime'|'retro')` und prüft `isModern()`/nicht TV; ohne passendes Design mountet nichts.
 - Eigene Mount-IDs und Klassen mit Präfix `lfx-plus-*`, `lfx-prime-*` bzw. `lfx-retro-*` (z. B. `#lfx-plus-home`, `html.lfx-plus-home-on`); die Mounts von LENZFLIX (`#lfx-home`, `#lfx-nav` …) nicht mitbenutzen. Native Elemente nur per CSS-Klasse verstecken, `unmount()` räumt vollständig auf.

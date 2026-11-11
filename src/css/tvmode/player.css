@@ -1,0 +1,520 @@
+/* TV-Modus · Player (Welle F): Video-Slot, Karten, Zapp-Einblendung, Bedienleiste, Ton-Menü.
+   Vertrag: docs/tvmode.md. Layout-Umschaltung nur über .is-phone/.is-landscape am Root, kein @media fürs Layout. */
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--lfx-modal-radius);
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+  /* Nur im Player: Der Browser behält das horizontale Wischen, senkrechte Gesten kommen bei uns an
+     (Wischen hoch/runter = Senderwechsel) und scrollen die Seite nicht mit. */
+  touch-action: pan-x;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player {
+  border-radius: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__video-slot {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__video-slot > video,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* Ladezustand */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: var(--lfx-fs-meta);
+  color: var(--lfx-text-muted);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__loading[hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__loading .lfx-tvm__spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--lfx-progress-rail);
+  border-top-color: var(--lfx-red);
+  animation: lfx-tvm-spin 0.9s linear infinite;
+}
+@keyframes lfx-tvm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Hinweis „Füllprogramm …“ oben links */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: calc(100% - 140px);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: var(--lfx-fs-meta);
+  color: var(--lfx-text);
+  pointer-events: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__banner[hidden] {
+  display: none;
+}
+
+/* Zustandskarten */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card-host {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__pip-card {
+  max-width: min(520px, calc(100% - 32px));
+  padding: 20px 28px;
+  border-radius: var(--lfx-popup-radius);
+  background: rgba(20, 20, 20, 0.82);
+  text-align: center;
+  pointer-events: auto;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card--next,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card--pause,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card--closedown,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card--empty {
+  pointer-events: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card-title {
+  font-size: var(--lfx-fs-row-title);
+  font-weight: var(--lfx-fw-row-title);
+  line-height: 1.25;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card-text {
+  margin-top: 6px;
+  color: var(--lfx-text-muted);
+  font-size: var(--lfx-fs-meta);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__pip-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  background: rgba(20, 20, 20, 0.92);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__pip-card[hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__pip-card-text {
+  font-size: var(--lfx-fs-row-title);
+  font-weight: var(--lfx-fw-row-title);
+}
+
+/* Knöpfe im Player (Karten, Ton an, Zum Starten tippen, Zurückholen) */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
+  appearance: none;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--lfx-btn-radius);
+  background: var(--lfx-red);
+  color: #fff;
+  font: inherit;
+  font-weight: var(--lfx-fw-row-title);
+  cursor: pointer;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn:hover,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn:hover,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute:hover,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap:hover {
+  background: var(--lfx-red-hover);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  min-height: 48px;
+  padding: 0 28px;
+  box-shadow: var(--lfx-shadow-card);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-height: 56px;
+  padding: 0 36px;
+  font-size: var(--lfx-fs-row-title);
+  box-shadow: var(--lfx-shadow-card);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute[hidden],
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap[hidden],
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__digits[hidden] {
+  display: none;
+}
+
+/* Zapp-Einblendung: schlanke Karte unten links (Nummer, Sender-Badge, Zeit in einer Zeile; darunter Titel) */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  width: min(420px, calc(100% - 32px));
+  padding: 10px 14px 12px;
+  border-radius: var(--lfx-popup-radius);
+  background: rgba(15, 15, 15, 0.82);
+  box-shadow: var(--lfx-shadow-card);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--lfx-dur) var(--lfx-ease), transform var(--lfx-dur) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-zapping .lfx-tvm__zap {
+  opacity: 1;
+  transform: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-no {
+  font-size: 24px;
+  font-weight: var(--lfx-fw-row-title);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-name {
+  display: inline-flex;
+  min-width: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-time {
+  margin: 0 0 0 auto;
+  font-size: var(--lfx-fs-meta);
+  color: var(--lfx-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-title {
+  font-size: var(--lfx-fs-meta);
+  font-weight: var(--lfx-fw-row-title);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-sub {
+  margin-top: 2px;
+  font-size: var(--lfx-fs-meta);
+  color: var(--lfx-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-sub[hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-bar {
+  height: 3px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-fill {
+  height: 100%;
+  width: 0;
+  background: var(--lfx-red);
+}
+/* Handy hochkant: kompakt, höchstens ein Drittel des Bildes (kein Untertitel, Titel einzeilig) */
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap {
+  left: 10px;
+  bottom: 10px;
+  width: auto;
+  max-width: 72%;
+  min-width: 0;
+  padding: 10px 12px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap-head { gap: 8px; margin-bottom: 4px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap-no { font-size: 22px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap-title { font-size: 15px; line-height: 1.25; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap-time { font-size: 13px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap-sub { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zap-bar { margin-top: 6px; height: 2px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-controls .lfx-tvm__zap { bottom: 58px; }
+
+/* Ziffernanzeige oben rechts */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__digits {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  padding: 2px 14px;
+  border-radius: var(--lfx-popup-radius);
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 44px;
+  font-weight: var(--lfx-fw-row-title);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Bedienleiste */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 28px calc(12px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0));
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity var(--lfx-dur) var(--lfx-ease), transform var(--lfx-dur) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-controls .lfx-tvm__controls,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls:focus-within {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+/* Während die Leiste sichtbar ist, weicht die Zapp-Karte nach oben aus */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-controls .lfx-tvm__zap {
+  bottom: 72px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls-left,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls-right,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--lfx-text);
+  cursor: pointer;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon[hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon[aria-pressed='true'],
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon[aria-expanded='true'] {
+  background: var(--lfx-glass);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls .lfx-tvm__btn--icon,
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-touch .lfx-tvm__controls .lfx-tvm__btn--icon {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+/* Lautstärke-Regler */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__volume {
+  display: flex;
+  align-items: center;
+  width: 96px;
+  padding: 0 6px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__volume {
+  width: 72px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--lfx-progress-rail);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--lfx-progress-rail);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lfx-red);
+}
+
+/* Ton/Untertitel-Menü über der Leiste */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  min-width: 220px;
+  max-width: min(320px, calc(100% - 24px));
+  max-height: calc(100% - 84px);
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: var(--lfx-popup-radius);
+  background: rgba(20, 20, 20, 0.94);
+  box-shadow: var(--lfx-shadow-card);
+  z-index: 2;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu[hidden] {
+  display: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu-title {
+  padding: 8px 10px 4px;
+  font-size: var(--lfx-fs-meta);
+  font-weight: var(--lfx-fw-row-title);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lfx-text-muted);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu-item {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--lfx-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu-item.is-active {
+  font-weight: var(--lfx-fw-row-title);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu-check {
+  width: 1.2em;
+  flex: none;
+  color: var(--lfx-red);
+}
+
+/* Fokus und Hover */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player button:focus-visible,
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon:hover,
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__menu-item:hover {
+    background: var(--lfx-glass);
+  }
+}
+
+/* Handy-Querformat: Player füllt den Schirm (Gerüst: E), Leiste mit Safe-Area-Abständen */
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__player {
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__controls {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__zap {
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(360px, 50%);
+  max-width: none;
+  padding: 10px 14px 12px;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__zap-no { font-size: 26px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__zap-title { font-size: 17px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__zap-time { font-size: 14px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__zap-sub { display: block; font-size: 14px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__zap-sub[hidden] { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__player.is-controls .lfx-tvm__zap {
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__digits {
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__banner {
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__menu {
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__zap,
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls {
+    transition: none;
+  }
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__loading .lfx-tvm__spinner {
+    animation-duration: 3s;
+  }
+}

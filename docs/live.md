@@ -15,6 +15,8 @@ Keine fremden Marken-, Sender-, Geräte- oder Dienstnamen in Code und Texten. UI
 - Die Engine importiert nichts aus `core/`/`shared/`/`features/` (doppelter Modul-State). Alles Zustandsbehaftete über `deps`.
 - Einstieg `src/js/live/entry.js` registriert `window.LenzFlixLive = { version: 1, create }` und enthält den Marker-String
   `'__LFX_LIVE_ENGINE__'` (Build-Wächter: darf nie im Hauptbundle stehen).
+- **Drittes Bundle (1.10.0):** Der TV-Modus (`dist/lenztvmode(.min).js`, `docs/tvmode.md`) verwendet `schedule/*`, `player/*` (`index, stream, profile, tracks, video, watch, filler, events, fake`), `ui/logos.js`, `ui/overlay-util.js` und `ui/fullscreen.js` mit. Änderungen an diesen Dateien wirken auf zwei Bundles (`lenzlive` und `lenztvmode`), beide danach bauen und testen.
+- Die Server-deps (`buildApiDeps`, `loadUser`, `fatalText`) liegen seit 1.10.0 in `src/js/features/live/deps.js` (vorher in `home.js`) und werden mit dem TV-Modus geteilt.
 - CSS: `src/css/themes/live/index.css` → `dist/lenzlive(.min).css` (Design-CSS, per `core/themecss.js` geladen).
 - Kein hls.js: Chrome (≥ 142) und Safari spielen HLS nativ, Chrome spielt MKV (h264/aac) direkt. Browser ohne
   beides (z. B. Firefox) → Störbild mit Hinweis (bekannte Grenze, Beta).
@@ -80,7 +82,7 @@ Keine fremden Marken-, Sender-, Geräte- oder Dienstnamen in Code und Texten. UI
 }
 ```
 
-### `deps` (von `features/live/home.js` gebaut)
+### `deps` (von `features/live/home.js` gebaut; die gemeinsamen Server-deps liefert `features/live/deps.js`)
 ```js
 {
   catalog: RawCatalog,                       // siehe unten, von der Hülle geladen (IndexedDB-Cache pro Sendetag)

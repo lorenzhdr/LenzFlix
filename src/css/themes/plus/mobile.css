@@ -85,6 +85,29 @@
     white-space: nowrap;
   }
 
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__tv {
+    flex: none;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: rgb(16 19 31 / 0.55);
+    color: #fff;
+    text-decoration: none;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__tv.is-active {
+    background: #fff;
+    color: #101010;
+  }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__tv svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+  }
+
   /* ---------- Chip-Reihe (Umschalter): scrollt mit, nicht fixiert ---------- */
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher {
     position: absolute;

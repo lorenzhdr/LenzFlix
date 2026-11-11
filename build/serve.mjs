@@ -14,6 +14,8 @@ const allowed = ['dist', 'assets'];
 const extra = { '/store-dev.html': 'build/store-dev.html', '/store-dev.js': 'build/store-dev.js',
   // Dev-Harness der LENZ LIVE (docs/live.md)
   '/live-dev.html': 'build/live-dev.html', '/live-dev.js': 'build/live-dev.js', '/boot.js': 'build/dev-boot.js',
+  // Dev-Harness des TV-Modus (docs/tvmode.md)
+  '/tvmode-dev.html': 'build/tvmode-dev.html', '/tvmode-dev.js': 'build/tvmode-dev.js',
   // VR-Kino-Harness: echte Bridge der Hülle (Modul) und der lokale Emulator (nur .tmp/, nie im Repo; fehlt er, gibt es 404)
   '/cinema-bridge.js': 'src/js/features/store/cinema-bridge.js', '/xr-emu.js': '.tmp/xr-emu.js',
   // Sicht-Harness des Design-Menüs: lädt den echten Picker als ES-Modul aus src/js/ (siehe srcJs)

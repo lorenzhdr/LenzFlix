@@ -145,7 +145,8 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ic
   height: 100%;
 }
 
-/* rechts: runder Such-Button */
+/* rechts: runde Buttons TV und Suche */
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search {
   flex: none;
   display: inline-flex;
@@ -159,10 +160,16 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__se
   text-decoration: none;
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv {
+  margin-left: auto; /* Kopf nutzt space-between: ohne auto landet das Symbol in der Mitte */
+  margin-right: 10px;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv .lfx-plus-header__icon,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search .lfx-plus-header__icon {
   width: 20px;
   height: 20px;
 }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv.is-active,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
   background: #fff;
   color: #101010;
@@ -182,6 +189,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header button:focus-visible
     background: rgb(255 255 255 / 0.08);
     color: #fff;
   }
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv:hover:not(.is-active),
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search:hover:not(.is-active) {
     background: #3a3a42;
     color: #fff;

@@ -16,7 +16,7 @@ const { STATS_LABEL } = stats;
 const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref() : stats.getStatsUrl());
 
 const NAV_ID = 'lfx-nav';
-const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
+export const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 const SCROLL_THRESHOLD = 10;
 
 /** Route-URL einer Bibliothek (spiegelt appRouter.getRouteUrl für das Modern-Layout). */
@@ -51,11 +51,12 @@ export function buildNavModel(views) {
   return { series, movies, more };
 }
 
-/** Aktiver Schlüssel: home | series | movies | new | list | more | null */
+/** Aktiver Schlüssel: home | series | movies | new | tv | list | more | null */
 export function activeKey(route, model) {
   const { path, params } = route;
   if (path === '/home') {
     if (params.get('lfx') === 'new') return 'new';
+    if (params.get('lfx') === 'tv') return 'tv';
     return params.get('tab') === '1' ? 'list' : 'home';
   }
   const lib = params.get('topParentId') || params.get('parentId');

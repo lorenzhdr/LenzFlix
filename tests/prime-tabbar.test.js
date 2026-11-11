@@ -71,6 +71,7 @@ describe('prime-tabbar: Aktivierung', () => {
     expect(activeTab(route('#/home?lfx=hub&lib=m1'))).toBe('home');
     expect(activeTab(route('#/home?tab=1'))).toBe('list');
     expect(activeTab(route('#/home?lfx=new'))).toBeNull();
+    expect(activeTab(route('#/home?lfx=tv'))).toBeNull();
     expect(activeTab(route('#/home'), true)).toBe('search');
   });
 });
@@ -185,7 +186,9 @@ describe('prime-header am Handy', () => {
     expect(html.classList.contains('lfx-prime-header-pills')).toBe(true);
     expect(el.querySelector('.lfx-prime-header__logo')).not.toBeNull();
     expect(el.querySelector('.lfx-prime-header__nav')).toBeNull();
-    expect(el.querySelector('.lfx-prime-header__icon')).toBeNull();
+    const right = [...el.querySelector('.lfx-prime-header__right').children];
+    expect(right.map((n) => n.dataset.key || n.className)).toEqual(['tv', 'lfx-prime-header__avatar']);
+    expect(right[0].getAttribute('aria-label')).toBe('TV');
     const pills = [...el.querySelectorAll('.lfx-prime-header__pill')];
     expect(pills.map((p) => p.textContent)).toEqual(['Filme', 'Serien']);
     expect(pills[0].getAttribute('href')).toBe('#/home?lfx=hub&lib=m1');
@@ -207,6 +210,26 @@ describe('prime-header am Handy', () => {
     expect(el.querySelector('.lfx-prime-header__title').textContent).toBe('Neu & beliebt');
     header.update(route('#/home'));
     expect(el.querySelector('.lfx-prime-header__pills')).not.toBeNull();
+  });
+
+  it('TV-Route: Zurück + Titel TV, TV-Symbol aktiv, Event beim Klick, Profil-Blatt ohne TV', async () => {
+    header.mount(route('#/home?lfx=tv'));
+    await flush();
+    const el = document.getElementById('lfx-prime-header');
+    expect(mobileKind(route('#/home?lfx=tv'))).toBe('sub');
+    expect(el.querySelector('.lfx-prime-header__title').textContent).toBe('TV');
+    const tv = el.querySelector('a[data-key="tv"]');
+    expect(tv.classList.contains('is-active')).toBe(true);
+    const seen = vi.fn();
+    window.addEventListener('lfx:tvmode-intent', seen);
+    tv.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    window.removeEventListener('lfx:tvmode-intent', seen);
+    expect(seen).toHaveBeenCalledTimes(1);
+    document.querySelector('.lfx-prime-header__avatar').click();
+    await flush();
+    expect(document.querySelector('.lfx-prime-psheet [href="#/home?lfx=tv"]')).toBeNull();
+    header.unmount();
+    expect(document.querySelector('a[data-key="tv"]')).toBeNull();
   });
 
   it('Zurück ruft history.back()', () => {

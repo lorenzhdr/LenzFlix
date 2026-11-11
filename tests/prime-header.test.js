@@ -61,6 +61,7 @@ describe('prime-header: Modell', () => {
     expect(activeKey(route('#/home?tab=1'))).toBe('list');
     expect(activeKey(route('#/home?lfx=new'))).toBe('new');
     expect(activeKey(route('#/home?lfx=hub&lib=m1'))).toBe('lib:m1');
+    expect(activeKey(route('#/home?lfx=tv'))).toBe('tv');
     expect(activeKey(route('#/home?lfx=title&id=5'))).toBeNull();
     expect(activeKey(route('#/movies?topParentId=m1'))).toBeNull();
   });
@@ -150,6 +151,30 @@ describe('prime-header: Feature', () => {
     expect(document.getElementById('lfx-prime-grid').hidden).toBe(true);
   });
 
+  it('TV-Symbol: nach der Suche, aktiv auf tv, Klick meldet die Absicht synchron', async () => {
+    header.mount(route('#/home'));
+    await flush();
+    const icons = [...document.querySelectorAll('.lfx-prime-header__right > .lfx-prime-header__icon')];
+    const tv = document.querySelector('a[data-key="tv"]');
+    expect(tv.getAttribute('href')).toBe('#/home?lfx=tv');
+    expect(tv.getAttribute('aria-label')).toBe('TV');
+    expect(icons[0].getAttribute('aria-label')).toBe('Suche');
+    expect(icons[1]).toBe(tv);
+    expect(tv.classList.contains('is-active')).toBe(false);
+    const seen = vi.fn();
+    window.addEventListener('lfx:tvmode-intent', seen);
+    const ev = new MouseEvent('click', { bubbles: true, cancelable: true });
+    tv.dispatchEvent(ev);
+    window.removeEventListener('lfx:tvmode-intent', seen);
+    expect(seen).toHaveBeenCalledTimes(1);
+    expect(ev.defaultPrevented).toBe(false);
+    header.update(route('#/home?lfx=tv'));
+    expect(tv.classList.contains('is-active')).toBe(true);
+    expect(tv.getAttribute('aria-current')).toBe('page');
+    header.unmount();
+    expect(document.querySelector('a[data-key="tv"]')).toBeNull();
+  });
+
   it('Lupe öffnet das Such-Overlay, unmount schließt es', async () => {
     header.mount(route('#/home'));
     document.querySelector('[aria-label="Suche"]').click();
@@ -182,6 +207,7 @@ describe('prime-header: Handy-Titel (nie Servername)', () => {
   it('feste Titel und Bibliotheksnamen', () => {
     expect(mobileTitle(route('#/home?tab=1'))).toBe('Meine Liste');
     expect(mobileTitle(route('#/home?lfx=new'))).toBe('Neu & beliebt');
+    expect(mobileTitle(route('#/home?lfx=tv'))).toBe('TV');
     expect(mobileTitle(route('#/mypreferencesmenu'))).toBe('Einstellungen');
     expect(mobileTitle(route('#/music?topParentId=x1'), libs)).toBe('Musik');
     expect(mobileTitle(route('#/list?parentId=m1'), libs)).toBe('Filme');

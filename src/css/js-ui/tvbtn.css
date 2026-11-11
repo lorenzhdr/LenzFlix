@@ -1,0 +1,54 @@
+/* LenzFlix · js-ui/tvbtn: TV-Symbol links neben der nativen Suche (flix, Modern). Greift nur mit html.lfx-js.
+   Die native Suche bekommt links 40 px Luft, das Symbol steht fixiert genau in dieser Lücke.
+   Rechter Abstand = Toolbar-Rand + User-Menü (Desktop 32+8+18 px, Handy 40+4 px) + Suche (40 px). */
+html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"] {
+  margin-inline-start: 40px;
+}
+
+html.lfx-js #lfx-tvm-btn {
+  position: fixed;
+  top: 0;
+  right: calc(var(--lfx-gutter) + 98px);
+  z-index: 1101; /* über der AppBar (1100), unter Menüs/Dialogen */
+  box-sizing: border-box;
+  width: 40px;
+  height: var(--lfx-header-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lfx-text);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js #lfx-tvm-btn svg {
+  box-sizing: content-box;
+  width: 24px;
+  height: 24px;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js #lfx-tvm-btn:hover svg {
+  background-color: rgb(255 255 255 / 0.1);
+}
+html.lfx-js #lfx-tvm-btn.is-active svg {
+  background-color: var(--lfx-pill-active);
+}
+html.lfx-js #lfx-tvm-btn:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: -4px;
+  border-radius: 50%;
+}
+
+@media (max-width: 899px) {
+  html.lfx-js #lfx-tvm-btn {
+    top: env(safe-area-inset-top, 0px);
+    height: 56px;
+    right: calc(4vw + 98px);
+  }
+}
+@media (max-width: 799px) {
+  html.lfx-js #lfx-tvm-btn {
+    right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 84px);
+  }
+}

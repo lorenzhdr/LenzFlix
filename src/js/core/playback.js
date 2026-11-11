@@ -54,6 +54,8 @@ function playViaDetails(item, resume, timeoutMs) {
  */
 export async function play(item, { resume = false, timeoutMs = 8000 } = {}) {
   if (!item || !item.Id) return false;
+  // Signal für den TV-Modus (docs/tvmode.md): stoppt dessen Stream, bevor der Jellyfin-Player startet (synchron, vor Proxy-Klick/Fallback).
+  window.dispatchEvent(new CustomEvent('lfx:play', { detail: { id: item.Id } }));
   const container = findProxyContainer();
   if (container) {
     const proxy = buildProxy(item, resume);

@@ -120,4 +120,39 @@ describe('themeroute im Design store', () => {
     themeroute.mount(route('#/home?lfx=browse'));
     expect(window.location.hash).toBe('#/home?lfx=classic');
   });
+
+  describe('TV-Modus (lfx=tv)', () => {
+    afterEach(() => document.documentElement.classList.remove('layout-tv'));
+
+    it('match nur unter retro/store/live und layout-tv; flix/plus/prime nie', () => {
+      const r = route('#/home?lfx=tv');
+      for (const t of ['flix', 'plus', 'prime']) {
+        theme = t;
+        expect(themeroute.match(r)).toBe(false);
+      }
+      for (const t of ['retro', 'store', 'live']) {
+        theme = t;
+        expect(themeroute.match(r)).toBe(true);
+      }
+      theme = 'flix';
+      document.documentElement.classList.add('layout-tv');
+      expect(themeroute.match(r)).toBe(true);
+    });
+
+    it.each(['retro', 'store', 'live'])('%s: lfx=tv -> #/home (replace, ohne neuen History-Eintrag)', (t) => {
+      theme = t;
+      window.location.hash = '#/home?lfx=tv';
+      const before = window.history.length;
+      themeroute.mount(route('#/home?lfx=tv'));
+      expect(window.location.hash).toBe('#/home');
+      expect(window.history.length).toBe(before);
+    });
+
+    it('layout-tv: lfx=tv -> #/home', () => {
+      document.documentElement.classList.add('layout-tv');
+      window.location.hash = '#/home?lfx=tv';
+      themeroute.mount(route('#/home?lfx=tv'));
+      expect(window.location.hash).toBe('#/home');
+    });
+  });
 });

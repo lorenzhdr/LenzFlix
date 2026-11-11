@@ -1,0 +1,61 @@
+/* LenzFlix · js-ui/tvmode – Kern des TV-Modus (#lfx-tvm, flix/plus/prime): versteckt native Startseiten-Teile, Lade- und Fehlerkarte.
+   Die eigentliche UI liegt lazy in dist/lenztvmode.css. Nur mit aktivem JS, nie auf TV. */
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > .sections,
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-home,
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-newpopular,
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-plus-home,
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-prime-home {
+  display: none !important;
+}
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage { padding-top: 0 !important; }
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage,
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab { background: transparent !important; }
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-loading { color: var(--lfx-text); font-family: var(--lfx-font); }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-loading > :not(.lfx-tvm__boot):not(.lfx-tvm__fallback) { display: none !important; }
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot,
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 50vh;
+  padding: 0 var(--lfx-gutter);
+  text-align: center;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-loading) > .lfx-tvm__boot { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-spin {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--lfx-progress-rail);
+  border-top-color: var(--lfx-red);
+  border-radius: 50%;
+  animation: lfx-tvm-spin 0.9s linear infinite;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-text,
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-text { margin: 0; color: var(--lfx-text-muted); }
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-bar {
+  width: min(280px, 60vw);
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--lfx-progress-rail);
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-fill { height: 100%; background: var(--lfx-red); transition: width var(--lfx-dur) var(--lfx-ease); }
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--lfx-btn-gap); }
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn {
+  height: var(--lfx-btn-h);
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--lfx-btn-radius);
+  background: var(--lfx-glass);
+  color: var(--lfx-text);
+  font: inherit;
+  cursor: pointer;
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn.is-primary { background: var(--lfx-red); }
+@keyframes lfx-tvm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm__boot-spin { animation-duration: 3s; }
+}

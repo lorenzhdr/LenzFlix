@@ -5937,6 +5937,104 @@ html.lfx-js .lfx-np__genres {
   }
 }
 
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > .sections, html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-home, html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-newpopular, html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-plus-home, html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab > #lfx-prime-home {
+  display: none !important;
+}
+
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage {
+  padding-top: 0 !important;
+}
+
+html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage, html.lfx-js.lfx-tvm-on:not(.layout-tv) #indexPage #homeTab {
+  background: none !important;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-loading {
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-loading > :not(.lfx-tvm__boot):not(.lfx-tvm__fallback) {
+  display: none !important;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot, html.lfx-js:not(.layout-tv) .lfx-tvm__fallback {
+  min-height: 50vh;
+  padding: 0 var(--lfx-gutter);
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-loading) > .lfx-tvm__boot {
+  display: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-spin {
+  border: 3px solid var(--lfx-progress-rail);
+  border-top-color: var(--lfx-red);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  animation: .9s linear infinite lfx-tvm-spin;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-text, html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-text {
+  color: var(--lfx-text-muted);
+  margin: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-bar {
+  background: var(--lfx-progress-rail);
+  border-radius: 2px;
+  width: min(280px, 60vw);
+  height: 3px;
+  overflow: hidden;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__boot-fill {
+  background: var(--lfx-red);
+  height: 100%;
+  transition: width var(--lfx-dur) var(--lfx-ease);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-actions {
+  justify-content: center;
+  gap: var(--lfx-btn-gap);
+  flex-wrap: wrap;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn {
+  height: var(--lfx-btn-h);
+  border-radius: var(--lfx-btn-radius);
+  background: var(--lfx-glass);
+  color: var(--lfx-text);
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  padding: 0 20px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn.is-primary {
+  background: var(--lfx-red);
+}
+
+@keyframes lfx-tvm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm__boot-spin {
+    animation-duration: 3s;
+  }
+}
+
 html.lfx-js .lfx-mnav {
   display: contents;
 }
@@ -6527,6 +6625,75 @@ html.lfx-js .lfx-card__link picture {
 
   html.lfx-js .lfx-row--poster .lfx-card__logo, html.lfx-js .lfx-row--poster .lfx-card__title, html.lfx-js .lfx-row--poster .lfx-card__link--titled:after {
     display: none;
+  }
+}
+
+html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:not(:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))) {
+  margin-left: 40px;
+}
+
+html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:not(:is(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))) {
+  margin-left: 40px;
+}
+
+html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)) {
+  margin-right: 40px;
+}
+
+html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:is(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)) {
+  margin-right: 40px;
+}
+
+html.lfx-js #lfx-tvm-btn {
+  top: 0;
+  right: calc(var(--lfx-gutter) + 98px);
+  z-index: 1101;
+  box-sizing: border-box;
+  width: 40px;
+  height: var(--lfx-header-h);
+  color: var(--lfx-text);
+  -webkit-tap-highlight-color: transparent;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+  display: flex;
+  position: fixed;
+}
+
+html.lfx-js #lfx-tvm-btn svg {
+  box-sizing: content-box;
+  width: 24px;
+  height: 24px;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+  border-radius: 50%;
+  padding: 8px;
+}
+
+html.lfx-js #lfx-tvm-btn:hover svg {
+  background-color: rgba(255, 255, 255, .1);
+}
+
+html.lfx-js #lfx-tvm-btn.is-active svg {
+  background-color: var(--lfx-pill-active);
+}
+
+html.lfx-js #lfx-tvm-btn:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: -4px;
+  border-radius: 50%;
+}
+
+@media (max-width: 899px) {
+  html.lfx-js #lfx-tvm-btn {
+    top: env(safe-area-inset-top, 0px);
+    height: 56px;
+    right: calc(4vw + 98px);
+  }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js #lfx-tvm-btn {
+    right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 84px);
   }
 }
 

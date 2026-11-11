@@ -204,9 +204,8 @@ describe('open/close', () => {
     const btn = document.querySelector('.lfx-modal__play');
     expect(btn.textContent).toContain('Fortsetzen');
     btn.click();
-    await flush();
+    await wait(() => play.mock.calls.length > 0, 100);
     expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'M1' }), { resume: true });
-    closeModal();
   });
 });
 
@@ -238,7 +237,7 @@ describe('Serien', () => {
     await openModal('S1');
     await wait(() => document.querySelector('.lfx-modal__play-text').textContent === 'Fortsetzen');
     document.querySelector('.lfx-modal__play').click();
-    await flush(); await flush();
+    await wait(() => play.mock.calls.length > 0, 100);
     expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'N1' }), { resume: true });
   });
 
@@ -344,7 +343,82 @@ describe('Aktionen, Menü, Download', () => {
     expect(btn).toBe(more);
     expect(opts.siblings.length).toBe(14);
     row.click();
+    await wait(() => play.mock.calls.length > 0, 100);
     expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'SE1-E1' }), expect.anything());
+    expect(document.querySelector('.lfx-modal-overlay')).toBeNull();
+  });
+});
+
+describe('Abspielen schließt zuerst das Modal', () => {
+  const overlay = () => document.querySelector('.lfx-modal-overlay');
+  const trackOrder = () => {
+    const seen = [];
+    play.mockImplementation(async () => { seen.push(overlay() === null ? 'closed' : 'open'); return true; });
+    return seen;
+  };
+  const waitPlay = () => wait(() => play.mock.calls.length > 0, 100);
+
+  it('Serie: Overlay weg, play genau einmal mit der Folge, erst nach dem Schließen', async () => {
+    api.getNextUp.mockResolvedValue({ Items: [{ Id: 'N1', Type: 'Episode', UserData: {} }] });
+    const seen = trackOrder();
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    document.querySelector('.lfx-modal__play').click();
+    await waitPlay();
+    await flush();
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'N1' }), { resume: false });
+    expect(seen).toEqual(['closed']);
+    expect(overlay()).toBeNull();
+  });
+
+  it('Film: Overlay weg, play genau einmal, erst nach dem Schließen', async () => {
+    const seen = trackOrder();
+    await openModal('M1');
+    document.querySelector('.lfx-modal__play').click();
+    await waitPlay();
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'M1' }), { resume: true });
+    expect(seen).toEqual(['closed']);
+  });
+
+  it('Folgenzeile: Overlay weg, play genau einmal, erst nach dem Schließen', async () => {
+    const seen = trackOrder();
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    document.querySelector('.lfx-modal__ep').click();
+    await waitPlay();
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'SE1-E1' }), expect.anything());
+    expect(seen).toEqual(['closed']);
+  });
+
+  it('Modal während loadNextUp geschlossen: kein play', async () => {
+    let resolve;
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    clearCache();
+    api.getNextUp.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    document.querySelector('.lfx-modal__play').click();
+    await flush();
+    closeModal();
+    await wait(() => !overlay(), 100);
+    resolve({ Items: [{ Id: 'N1', Type: 'Episode', UserData: {} }] });
+    await flush(); await flush();
+    expect(overlay()).toBeNull();
+    expect(play).not.toHaveBeenCalled();
+  });
+
+  it('Doppelklick: genau ein play', async () => {
+    api.getNextUp.mockResolvedValue({ Items: [{ Id: 'N1', Type: 'Episode', UserData: {} }] });
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const btn = document.querySelector('.lfx-modal__play');
+    btn.click();
+    btn.click();
+    await waitPlay();
+    await flush(); await flush();
+    expect(play).toHaveBeenCalledTimes(1);
   });
 });
 

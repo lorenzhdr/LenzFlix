@@ -44,4 +44,25 @@ describe('playback', () => {
     await clicked;
     expect(await p).toBe(true);
   });
+
+  it('lfx:play: synchron am Anfang, vor dem Proxy-Klick', async () => {
+    document.body.innerHTML = '<div class="itemsContainer"><div class="card"></div></div>';
+    const order = [];
+    const onPlay = (e) => order.push(['play', e.detail.id]);
+    window.addEventListener('lfx:play', onPlay);
+    document.querySelector('.itemsContainer').addEventListener('click', () => order.push(['click']));
+    const p = play(item);
+    expect(order).toEqual([['play', 'i1'], ['click']]); // schon vor dem Auflösen des Promise
+    await p;
+    window.removeEventListener('lfx:play', onPlay);
+  });
+
+  it('lfx:play: nicht ohne Item/Id', async () => {
+    const spy = vi.fn();
+    window.addEventListener('lfx:play', spy);
+    expect(await play(null)).toBe(false);
+    expect(await play({})).toBe(false);
+    window.removeEventListener('lfx:play', spy);
+    expect(spy).not.toHaveBeenCalled();
+  });
 });

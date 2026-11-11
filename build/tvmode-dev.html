@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="de" class="lfx-js lfx-theme-flix">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TV-Modus · Dev-Harness</title>
+  <!-- Dev-Harness des TV-Modus (docs/tvmode.md) ohne Jellyfin, keine Netzwerkzugriffe. Start: npm run build && npm run serve → http://localhost:5179/tvmode-dev.html
+       Parameter siehe Kopfkommentar in tvmode-dev.js (design, phone, now, channel, state, tab, info, img, chrome, min, autostart, real, landscape, debug). -->
+  <style>
+    html, body { margin: 0; min-height: 100%; background: #0b0b0e; color: #eee; font-family: system-ui, sans-serif; }
+    body { background: var(--lfx-bg, #141414); }
+    #dev-chrome { position: fixed; left: 0; right: 0; top: 0; z-index: 1000; height: var(--lfx-header-h, 80px); box-sizing: border-box; display: none; align-items: center; justify-content: space-between; padding: 0 var(--lfx-gutter, 36px); background: linear-gradient(#000c, #0000); color: #fff; }
+    html.dev-chrome #dev-chrome { display: flex; }
+    #dev-chrome b { font-size: 22px; letter-spacing: .08em; color: var(--lfx-red, #e50914); }
+    #dev-chrome span { display: flex; gap: 14px; }
+    #dev-chrome i { width: 24px; height: 24px; border-radius: 50%; background: #fff4; display: block; }
+    html.dev-phone #dev-chrome { height: 56px; padding: 0 14px; background: #0b0b0e; }
+    #dev-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; height: 64px; display: none; align-items: center; justify-content: space-around; background: #111; border-top: 1px solid #333; }
+    html.dev-phone.dev-tabbar #dev-tabbar { display: flex; }
+    #dev-tabbar i { width: 28px; height: 28px; border-radius: 8px; background: #fff3; display: block; }
+    #dev-page { box-sizing: border-box; padding: 0 var(--lfx-gutter, 36px); }
+    html.dev-phone.dev-tabbar #dev-page { padding-bottom: 64px; }
+    #dev-load { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1300; text-align: center; font-size: 14px; }
+    #dev-load div { width: 260px; height: 6px; margin-top: 8px; background: #333; border-radius: 3px; overflow: hidden; }
+    #dev-load i { display: block; height: 100%; width: 0; background: #ffd23f; transition: width .2s; }
+    #dev-toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 1400; padding: 8px 16px; border-radius: 999px; background: #1c1c22; border: 1px solid #444; display: none; }
+    #dev-fatal { position: fixed; inset: 0; z-index: 1500; display: none; align-items: center; justify-content: center; background: #2a0808; color: #ffb4b4; padding: 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="dev-chrome"><b id="dev-logo">LENZFLIX</b><span><i></i><i></i><i></i></span></div>
+  <div id="dev-page"><div id="lfx-tvm" class="lfx-tvm is-loading"></div></div>
+  <div id="dev-tabbar"><i></i><i></i><i></i><i></i><i></i></div>
+  <div id="dev-load"><span id="dev-load-text">Lade …</span><div><i id="dev-load-bar"></i></div></div>
+  <div id="dev-toast"></div>
+  <div id="dev-fatal"></div>
+  <script>
+    // Design, Handy, Chrome-Attrappe und Dateien aus der Query – synchron, damit die Tokens vor dem ersten Paint greifen.
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var design = ['flix', 'plus', 'prime'].indexOf(q.get('design')) >= 0 ? q.get('design') : 'flix';
+      var m = q.get('min') === '1' ? '.min' : '';
+      var h = document.documentElement;
+      h.className = 'lfx-js lfx-theme-' + design;
+      var phone = q.get('phone') === '1';
+      if (phone) h.classList.add('dev-phone');
+      if (q.get('chrome') !== '0') h.classList.add('dev-chrome');
+      if (design !== 'flix') h.classList.add('dev-tabbar');
+      document.getElementById('dev-logo').textContent = design === 'plus' ? 'LENZ+' : design === 'prime' ? 'LENZPRIME' : 'LENZFLIX';
+      if (q.get('chrome') !== '0' && phone) h.style.setProperty('--lfx-header-h', '56px'); // Handy-Kopfleiste 56 px; Abstand oben macht der Root selbst
+      var css = ['/dist/lenzflix' + m + '.css'];
+      if (design !== 'flix') css.push('/dist/lenz' + design + m + '.css');
+      css.push('/dist/lenztvmode' + m + '.css');
+      css.forEach(function (href) { document.write('<link rel="stylesheet" href="' + href + '">'); });
+      document.write('<script src="/dist/lenztvmode' + m + '.js"><\/script>');
+    })();
+  </script>
+  <script src="/tvmode-dev.js"></script>
+</body>
+</html>
