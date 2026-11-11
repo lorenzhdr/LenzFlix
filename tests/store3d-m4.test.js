@@ -3,7 +3,7 @@ import {
   timeOfDay, hourOf, isLate, rainDecision, seeded, skyPalette, createLimiter, RAIN_CHANCE, adultIds,
 } from '../src/js/store3d/modules/m4-util.js';
 import {
-  LINES, fillTemplate, pickLine, categoryFor, greetingCategory, tipText,
+  LINES, fillTemplate, pickLine, categoryFor, greetingCategory, tipText, dialogPicks,
 } from '../src/js/store3d/modules/cashier-lines.js';
 
 describe('M4 Tageszeit', () => {
@@ -72,6 +72,22 @@ describe('M4 Kassierer-Sprüche', () => {
       for (const l of list) expect(l.replace(/\{(name|title|dept)\}/g, '')).not.toMatch(/[{}]/);
     }
   });
+  it('alle Zeilen sind sauber: keine Auslassungspunkte, keine Emojis, Duzen', () => {
+    for (const list of Object.values(LINES)) {
+      for (const l of list) {
+        expect(l).not.toMatch(/…|\.\.\./);
+        expect(l).not.toMatch(/\p{Extended_Pictographic}/u);
+        expect(l).not.toMatch(/\b(Sie|Ihnen|Ihr)\b/);
+      }
+    }
+  });
+  it('neue Kategorien sind vorhanden und nicht leer', () => {
+    const keys = ['intro', 'rain', 'put', 'couchSit', 'couchStand', 'adultLong', 'kidsEnter', 'dialogHello', 'dialogBye', 'tipComedy', 'tipHorror', 'tipKids', 'tipNew', 'tipRandom', 'tipResume', 'noTip'];
+    for (const k of keys) expect(Array.isArray(LINES[k]) && LINES[k].length >= 2, k).toBe(true);
+    for (const k of ['tipComedy', 'tipHorror', 'tipKids', 'tipNew', 'tipRandom']) {
+      for (const l of LINES[k]) expect(l).toContain('{title}');
+    }
+  });
   it('wählt Zeilen, ohne die letzte zu wiederholen', () => {
     const list = ['a', 'b', 'c'];
     let last = -1;
@@ -103,6 +119,39 @@ describe('M4 Kassierer-Sprüche', () => {
   it('Tipp-Text nennt Titel und Abteilung', () => {
     expect(tipText('Zeitsprung', 'Action')).toBe('Mein Tipp: Zeitsprung – steht bei Action.');
     expect(tipText('X', '')).toContain('Neuheiten');
+  });
+});
+
+describe('M4 Dialog-Kandidaten', () => {
+  const mk = (id, Genres = []) => ({ Id: id, Name: id, Genres });
+  const items = new Map([
+    ['c1', mk('c1', ['Komödie'])], ['c2', mk('c2', ['Comedy'])], ['ca', mk('ca', ['Komödie'])],
+    ['h1', mk('h1', ['Horror'])], ['k1', mk('k1')], ['n1', mk('n1')], ['x', mk('x')],
+  ]);
+  const catalog = {
+    items,
+    departments: [
+      { kind: 'adult', itemIds: ['ca'] },
+      { kind: 'kids', itemIds: ['k1', 'k1'] },
+      { kind: 'new', itemIds: ['n1', 'ca'] },
+      { kind: 'genre', itemIds: ['x'] },
+    ],
+    highlights: [items.get('x'), items.get('ca'), items.get('x')],
+    resume: [items.get('c1')],
+  };
+  it('sortiert nach Kategorie, ohne Ab-18 und Dubletten', () => {
+    const p = dialogPicks(catalog, new Map());
+    expect(p.comedy.map((i) => i.Id)).toEqual(['c1', 'c2']);
+    expect(p.horror.map((i) => i.Id)).toEqual(['h1']);
+    expect(p.kids.map((i) => i.Id)).toEqual(['k1']);
+    expect(p.new.map((i) => i.Id)).toEqual(['n1']);
+    expect(p.random.map((i) => i.Id)).toEqual(['x']);
+    expect(p.resume.map((i) => i.Id)).toEqual(['c1']);
+    for (const list of Object.values(p)) expect(list.some((i) => i.Id === 'ca')).toBe(false);
+  });
+  it('liefert bei leerem Katalog leere Listen', () => {
+    const p = dialogPicks(null, null);
+    expect(Object.values(p).every((l) => l.length === 0)).toBe(true);
   });
 });
 

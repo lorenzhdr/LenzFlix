@@ -33154,7 +33154,7 @@ void main() {
       let hum = null;
       let rain = null;
       let ambientWanted = false;
-      let ducked = false;
+      const duckKeys = /* @__PURE__ */ new Set();
       let ambientRunning = false;
       let suspended = false;
       let nextStep = 0;
@@ -33162,7 +33162,7 @@ void main() {
       let lastFilterCheck = 0;
       let filterTarget = 2600;
       const gestureEvents = ["pointerdown", "keydown", "touchend"];
-      const level = () => ctx.soundOn() ? ducked ? MASTER * 0.12 : MASTER : 0;
+      const level = () => ctx.soundOn() ? duckKeys.has("tv") ? MASTER * 0.12 : duckKeys.has("talk") ? MASTER * 0.45 : MASTER : 0;
       function buildGraph() {
         master = ac.createGain();
         master.gain.value = level();
@@ -33455,8 +33455,13 @@ void main() {
       ctx.provide("sound", {
         play,
         /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
-        duck(on) {
-          ducked = !!on;
+        duck(key, on) {
+          if (arguments.length < 2) {
+            on = key;
+            key = "tv";
+          }
+          if (on) duckKeys.add(String(key));
+          else duckKeys.delete(String(key));
           if (ac && master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.25);
         },
         ambient(on) {
@@ -34478,70 +34483,188 @@ void main() {
     greetDay: [
       "Moin, {name}! Frisch eingetroffen: Kaffee und Kassetten.",
       "Hallo {name}! Heute schon was gesehen oder noch Vorfreude?",
-      "Willkommen, {name}! Der Teppich freut sich auch."
+      "Willkommen, {name}! Der Teppich freut sich auch.",
+      "Sch\xF6n, dass du da bist, {name}. Die Regale sind frisch abgestaubt.",
+      "Hey {name}! Heute ist ein guter Tag f\xFCr einen guten Film.",
+      "Tag, {name}! Nimm dir Zeit, hier dr\xE4ngelt keiner."
     ],
     greetDusk: [
       "Guten Abend, {name}! Die beste Zeit f\xFCr einen Filmabend.",
       "Hey {name}! Das Neonlicht wartet schon auf dich.",
-      "Sch\xF6n, dass du da bist, {name}. Gleich wird es gem\xFCtlich."
+      "Sch\xF6n, dass du da bist, {name}. Gleich wird es gem\xFCtlich.",
+      "Abend, {name}! Jetzt passt jeder Film besser als tags\xFCber.",
+      "Hallo {name}! Das Popcorn ist so gut wie fertig."
     ],
     greetNight: [
       "Na {name}, noch wach? Die besten Filme laufen nachts.",
       "Nachtschicht! Hallo {name}, such dir was Sch\xF6nes aus.",
-      "Hallo {name}! Die Regale schlafen nie."
+      "Hallo {name}! Die Regale schlafen nie.",
+      "Mitternachtskunde! Willkommen, {name}.",
+      "Hey {name}, um diese Zeit geh\xF6rt die Videothek uns allein."
     ],
     late: [
-      "Wir haben eigentlich schon zu \u2026 aber f\xFCr dich, {name}, dr\xFCcke ich ein Auge zu.",
-      "Es ist verd\xE4chtig sp\xE4t, {name}. Ich schlie\xDFe nur ganz langsam ab."
+      "Wir haben eigentlich schon zu, aber f\xFCr dich, {name}, dr\xFCcke ich ein Auge zu.",
+      "Es ist verd\xE4chtig sp\xE4t, {name}. Ich schlie\xDFe nur ganz langsam ab.",
+      "Eigentlich ist Feierabend, {name}. Aber ein Film geht noch.",
+      "So sp\xE4t noch unterwegs, {name}? Dann bitte nur gute Filme.",
+      "Letzte Runde, {name}! Such dir etwas aus, ich bleibe wach."
+    ],
+    intro: [
+      "Ich bin Richard und passe hier auf die Kassetten auf. Frag mich einfach, wenn du einen Tipp brauchst.",
+      "Ich bin Richard, der Mann an der Kasse. Wenn du nicht weiter wei\xDFt, red mit mir.",
+      "Mein Name ist Richard. Ich kenne hier jedes Regal und jeden Film, also sprich mich ruhig an."
+    ],
+    rain: [
+      "Bei dem Wetter bleibst du am besten gleich hier, {name}.",
+      "Regen drau\xDFen, Film drinnen. Besser geht es nicht.",
+      "Sch\xF6nes Schmuddelwetter, {name}. Perfekt f\xFCr einen Filmabend.",
+      "H\xF6r mal, der Regen trommelt aufs Dach. Fehlt nur noch das Popcorn."
     ],
     horror: [
       "Horror, {name}? Bitte danach das Licht anlassen.",
       "{title}? Mutig! Ich schaue nur durch die Finger.",
-      "Gruselig. Ich leihe dir dazu gern eine Kuscheldecke."
+      "Gruselig. Ich leihe dir dazu gern eine Kuscheldecke.",
+      "Da schl\xE4ft heute keiner gut. Viel Spa\xDF, {name}!",
+      "Ein Gruselfilm, ja? Ich gehe lieber nicht allein ins Lager."
     ],
     comedy: [
       "Eine Kom\xF6die! Lachen ist gesund, sagt mein Arzt.",
       "{title} \u2013 damit kann der Abend nur gut werden.",
-      "Gute Wahl, {name}. Bitte nicht beim Lachen verschlucken."
+      "Gute Wahl, {name}. Bitte nicht beim Lachen verschlucken.",
+      "Den habe ich auch schon zweimal gesehen. Und zweimal gelacht.",
+      "Das ist ein Film f\xFCr gute Laune, {name}."
     ],
     kids: [
       "F\xFCr die Kleinen? Die Popcorn-Pflicht gilt auch dort.",
       "Ein Klassiker f\xFCr die Kinder-Ecke. Gute Wahl!",
-      "{title}? Das schaue ich heimlich auch."
+      "{title}? Das schaue ich heimlich auch.",
+      "Kinderfilme sind die ehrlichsten, finde ich.",
+      "Prima, {name}! Der Film ist ein Dauerbrenner bei den Kleinen."
     ],
     adult: [
       "Ab 18, aha. Ich sage nichts, {name}. Ich sehe gar nichts.",
       "Hinter dem Vorhang, ja? Diskretion ist unser zweiter Vorname.",
-      "Der Vorhang ist dicker als er aussieht, {name}."
+      "Der Vorhang ist dicker als er aussieht, {name}.",
+      "Ich habe nichts gesehen und nichts geh\xF6rt, {name}.",
+      "Ab 18 braucht keine Erkl\xE4rung. Viel Vergn\xFCgen."
     ],
     series: [
       "Eine ganze Staffel? Mutig!",
       "Serien-Box! Plane lieber ein verl\xE4ngertes Wochenende ein.",
-      "{title}: Nur noch eine Folge, ich kenne das."
+      "{title}: Nur noch eine Folge, ich kenne das.",
+      "Das ist kein Film, das ist ein Lebensabschnitt, {name}.",
+      "Eine Serie, ja? Dann hol dir gleich Vorr\xE4te."
     ],
     vhs: [
       "Kassette! Echte Handarbeit, bitte zur\xFCckspulen.",
-      "Ein Klassiker aus der Kassettenzeit. Respekt, {name}."
+      "Ein Klassiker aus der Kassettenzeit. Respekt, {name}.",
+      "Die gute alte Kassette. Das Knacken beim Einlegen geh\xF6rt dazu.",
+      "Zur\xFCckspulen nicht vergessen, sonst gibt es einen b\xF6sen Blick von mir."
     ],
     generic: [
       "{title}? Gute Wahl, {name}.",
       "Davon habe ich schon viel geh\xF6rt. Nur Gutes, versprochen.",
       "Passt perfekt zu {dept}, w\xFCrde ich sagen.",
-      "Ich wette, das wird heute Abend dein Favorit."
+      "Ich wette, das wird heute Abend dein Favorit.",
+      "Den hat neulich jemand dreimal hintereinander ausgeliehen.",
+      "Du hast Geschmack, {name}."
     ],
     play: [
       "Viel Spa\xDF! Und bitte zur\xFCckspulen.",
       "Licht aus, Ton an. Viel Spa\xDF, {name}!",
-      "Gute Unterhaltung, {name}! Popcorn nicht vergessen."
+      "Gute Unterhaltung, {name}! Popcorn nicht vergessen.",
+      "Und Action! Viel Vergn\xFCgen, {name}.",
+      "Ich dr\xFCcke die Daumen, dass er dir gef\xE4llt."
     ],
     idle: [
       "Suchst du was Bestimmtes, {name}? Frag ruhig.",
       "Keine Eile. Die Regale laufen nicht weg.",
-      "Kleiner Tipp: Der Tresen bei\xDFt nicht."
+      "Kleiner Tipp: Der Tresen bei\xDFt nicht.",
+      "Wenn du nicht weiterwei\xDFt, red einfach mit mir.",
+      "St\xF6bern ist die halbe Miete, {name}.",
+      "Ich habe hier alle Zeit der Welt, {name}."
     ],
     resume: [
       "Du hast noch was offen: {title}. Weiterschauen?",
-      "{title} wartet noch auf dich, {name}."
+      "{title} wartet noch auf dich, {name}.",
+      "Wolltest du nicht {title} zu Ende schauen?",
+      "Dein angefangener Film {title} liegt noch bereit."
+    ],
+    put: [
+      "Nicht gefunden? Kein Problem, stell ihn einfach zur\xFCck.",
+      "Wieder einsortiert. Vorbildlich, {name}.",
+      "Ordnung muss sein, danke dir.",
+      "Zur\xFCck ins Regal, wo er hingeh\xF6rt."
+    ],
+    couchSit: [
+      "Mach es dir gem\xFCtlich, {name}.",
+      "Viel Spa\xDF auf dem Sofa. Fernsehen ist hier Ehrensache.",
+      "Das Sofa ist der beste Platz im Laden.",
+      "Bequem sitzen, Trailer gucken, besser geht es nicht."
+    ],
+    couchStand: [
+      "Und, was Sch\xF6nes gesehen?",
+      "Wieder da, {name}? Dann such dir was aus.",
+      "Bereit f\xFCr den n\xE4chsten Film?",
+      "Das Sofa l\xE4uft nicht weg, du kannst jederzeit wiederkommen."
+    ],
+    adultLong: [
+      "Alles in Ordnung hinter dem Vorhang, {name}?",
+      "Lass dir ruhig Zeit, {name}. Ich sage nichts.",
+      "Du bist ganz sch\xF6n lange da hinten. Brauchst du Hilfe bei der Auswahl?",
+      "Keine Eile, {name}. Es gibt viel zu entdecken."
+    ],
+    kidsEnter: [
+      "Die Kinder-Ecke! Hier wird es bunt.",
+      "Willkommen bei den Kleinen, {name}.",
+      "Hier stehen die echten Klassiker, glaub mir.",
+      "Vorsicht, hier liegt vielleicht noch ein Kuscheltier."
+    ],
+    dialogHello: [
+      "Hallo {name}! Ich bin Richard. Wobei kann ich dir helfen?",
+      "Na, {name}? Suchst du einen Tipp f\xFCr heute Abend?",
+      "Sch\xF6n, dass du vorbeikommst, {name}. Was darf es sein?",
+      "Hey {name}, ich h\xF6re. Wonach ist dir heute?"
+    ],
+    dialogBye: [
+      "Bis gleich, {name}. Viel Spa\xDF beim St\xF6bern!",
+      "Tsch\xFCss, {name}! Und bitte zur\xFCckspulen.",
+      "Mach es gut, {name}. Ich bin hier, wenn du mich brauchst.",
+      "Bis sp\xE4ter, {name}!"
+    ],
+    tipComedy: [
+      "Wenn du lachen willst: {title}. Das steht bei {dept}.",
+      "Probier mal {title}. Der bringt jeden zum Lachen, steht bei {dept}.",
+      "F\xFCr gute Laune empfehle ich {title}. Du findest ihn bei {dept}."
+    ],
+    tipHorror: [
+      "Du willst gruseln? Dann nimm {title}. Der steht bei {dept}.",
+      "F\xFCr Mutige: {title}. Zu finden bei {dept}. Licht anlassen!",
+      "Mein Gruseltipp ist {title}. Du findest ihn bei {dept}."
+    ],
+    tipKids: [
+      "F\xFCr die Kleinen passt {title} richtig gut. Das steht bei {dept}.",
+      "Wie w\xE4re es mit {title}? Der kommt bei Kindern immer gut an, steht bei {dept}.",
+      "Probier {title} aus, den lieben die Kleinen. Zu finden bei {dept}."
+    ],
+    tipNew: [
+      "Ganz frisch eingetroffen: {title}. Das liegt bei {dept}.",
+      "Schau dir mal {title} an. Der ist neu bei {dept}.",
+      "Brandneu im Regal: {title}. Zu finden bei {dept}."
+    ],
+    tipRandom: [
+      "Mein Tipp heute: {title}. Der steht bei {dept}.",
+      "Ich w\xFCrde {title} nehmen. Du findest ihn bei {dept}.",
+      "Wie w\xE4re es mit {title}? Das ist mein Favorit, steht bei {dept}."
+    ],
+    tipResume: [
+      "Du hast {title} angefangen. Willst du nicht weiterschauen?",
+      "Mach doch mit {title} weiter, {name}. Der wartet auf dich.",
+      "Dein angefangener Film {title} liegt noch bereit. Weiterschauen?"
+    ],
+    noTip: [
+      "Gerade f\xE4llt mir nichts ein, {name}. St\xF6bere ruhig selbst.",
+      "Heute habe ich leider keinen Tipp. Schau dich einfach um."
     ]
   };
   function fillTemplate(text, vars = {}) {
@@ -34573,8 +34696,232 @@ void main() {
     if (late) return "late";
     return tod === "night" ? "greetNight" : tod === "dusk" ? "greetDusk" : "greetDay";
   }
-  function tipText(title, deptLabel) {
-    return `Mein Tipp: ${title} \u2013 steht bei ${deptLabel || "den Neuheiten"}.`;
+  function dialogPicks(catalog, deptOf) {
+    const out = { comedy: [], horror: [], kids: [], new: [], random: [], resume: [] };
+    const cat = catalog || {};
+    const adult = /* @__PURE__ */ new Set();
+    for (const d of cat.departments || []) if (d && d.kind === "adult") for (const id of d.itemIds || []) adult.add(id);
+    const items = cat.items;
+    const byId = (id) => items && typeof items.get === "function" ? items.get(id) : null;
+    const ok = (it) => {
+      if (!it || !it.Id || adult.has(it.Id)) return false;
+      const d = deptOf && typeof deptOf.get === "function" ? deptOf.get(it.Id) : null;
+      return !(d && d.kind === "adult");
+    };
+    const add = (list, it) => {
+      if (ok(it) && !list.some((x) => x.Id === it.Id)) list.push(it);
+    };
+    if (items && typeof items.values === "function") {
+      for (const it of items.values()) {
+        const genres = (it && it.Genres || []).join(" ");
+        if (COMEDY.test(genres)) add(out.comedy, it);
+        if (HORROR.test(genres)) add(out.horror, it);
+      }
+    }
+    for (const d of cat.departments || []) {
+      if (!d || d.kind !== "kids" && d.kind !== "new") continue;
+      for (const id of d.itemIds || []) add(d.kind === "kids" ? out.kids : out.new, byId(id));
+    }
+    for (const it of cat.highlights || []) add(out.random, it);
+    const r = cat.resume && cat.resume[0];
+    if (r) add(out.resume, r);
+    return out;
+  }
+
+  // src/js/store3d/modules/voice.js
+  var MALE = ["markus", "martin", "stefan", "conrad", "killian", "florian", "yannick", "viktor", "jonas"];
+  var NOVELTY = ["eddy", "reed", "rocko", "grandpa", "eloquence"];
+  var isDe = (v) => /^de([-_]|$)/i.test(String(v && v.lang || ""));
+  var isDeDE = (v) => /^de[-_]de$/i.test(String(v && v.lang || ""));
+  var nameOf = (v) => String(v && v.name || "").toLowerCase();
+  function pickVoice(voices) {
+    const list = Array.from(voices || []).filter((v) => v && v.localService === true && isDe(v));
+    if (!list.length) return null;
+    const key = (v) => {
+      const n = nameOf(v);
+      const mi = MALE.findIndex((m) => n.includes(m));
+      if (mi < 0) return null;
+      return [NOVELTY.some((x) => n.includes(x)) ? 1 : 0, isDeDE(v) ? 0 : 1, mi];
+    };
+    const cmp = (x, y) => x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+    const males = list.map((v) => ({ v, k: key(v) })).filter((e) => e.k).sort((p, q) => cmp(p.k, q.k));
+    if (males.length) return { voice: males[0].v, pitch: 1 };
+    return { voice: list.find(isDeDE) || list[0], pitch: 0.8 };
+  }
+  function createVoice({ soundOn = () => true, synth, Utterance } = {}) {
+    const S = synth !== void 0 ? synth : typeof window !== "undefined" ? window.speechSynthesis : null;
+    const U = Utterance !== void 0 ? Utterance : typeof window !== "undefined" ? window.SpeechSynthesisUtterance : null;
+    let picked = null;
+    let current = null;
+    let speaking = false;
+    let finish = null;
+    let disposed = false;
+    let timer = 0;
+    let safety = 0;
+    let reload = 0;
+    let reloads = 0;
+    let unlocked = false;
+    const unlockFns = /* @__PURE__ */ new Set();
+    const gestureEvents = ["pointerdown", "keydown", "touchend", "click"];
+    const refresh = () => {
+      if (!S || picked) return;
+      try {
+        picked = pickVoice(S.getVoices ? S.getVoices() : []);
+      } catch {
+        picked = null;
+      }
+    };
+    const onVoices = () => refresh();
+    if (S && U) {
+      refresh();
+      try {
+        if (S.addEventListener) S.addEventListener("voiceschanged", onVoices);
+      } catch {
+      }
+      if (!picked) {
+        reload = setInterval(() => {
+          reloads++;
+          refresh();
+          if (picked || reloads >= 5 || disposed) {
+            clearInterval(reload);
+            reload = 0;
+          }
+        }, 500);
+      }
+    }
+    const settle = () => {
+      speaking = false;
+      clearTimeout(safety);
+      safety = 0;
+      const f = finish;
+      finish = null;
+      if (f) f();
+    };
+    function say(text, { volume = 1 } = {}) {
+      if (disposed || !S || !U) return Promise.resolve();
+      refresh();
+      if (!picked) return Promise.resolve();
+      const str = String(text || "");
+      if (!str.trim()) return Promise.resolve();
+      cancel();
+      return new Promise((resolve) => {
+        finish = resolve;
+        timer = setTimeout(() => {
+          timer = 0;
+          if (disposed) {
+            settle();
+            return;
+          }
+          let u;
+          try {
+            u = new U(str);
+            u.voice = picked.voice;
+            u.lang = picked.voice.lang || "de-DE";
+            u.rate = 1;
+            u.pitch = picked.pitch;
+            u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
+            current = u;
+            const done = () => {
+              if (current === u) {
+                current = null;
+                settle();
+              }
+            };
+            u.onstart = () => {
+              if (current === u) speaking = true;
+            };
+            u.onend = done;
+            u.onerror = done;
+            speaking = true;
+            safety = setTimeout(() => {
+              if (current === u) {
+                current = null;
+                settle();
+              }
+            }, str.length * 90 + 1500);
+            S.speak(u);
+          } catch {
+            current = null;
+            settle();
+          }
+        }, 0);
+      });
+    }
+    function cancel() {
+      clearTimeout(timer);
+      timer = 0;
+      current = null;
+      try {
+        if (S && S.cancel) S.cancel();
+      } catch {
+      }
+      settle();
+    }
+    const onGesture = () => {
+      if (unlocked || !soundOn()) return;
+      unlocked = true;
+      removeGestures();
+      if (!S || !U) return;
+      refresh();
+      if (!picked) return;
+      try {
+        const u = new U(" ");
+        u.volume = 0;
+        u.voice = picked.voice;
+        u.lang = picked.voice.lang || "de-DE";
+        S.speak(u);
+      } catch {
+      }
+      for (const fn of [...unlockFns]) {
+        try {
+          fn();
+        } catch {
+        }
+      }
+      unlockFns.clear();
+    };
+    function removeGestures() {
+      for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
+    }
+    function unlock() {
+      if (unlocked || disposed || !S || !U) return;
+      for (const ev of gestureEvents) document.addEventListener(ev, onGesture, { capture: true, passive: true });
+    }
+    function dispose() {
+      if (disposed) return;
+      cancel();
+      disposed = true;
+      removeGestures();
+      unlockFns.clear();
+      clearInterval(reload);
+      reload = 0;
+      try {
+        if (S && S.removeEventListener) S.removeEventListener("voiceschanged", onVoices);
+      } catch {
+      }
+    }
+    return {
+      say,
+      cancel,
+      unlock,
+      dispose,
+      /** fn() wird einmal nach der ersten Freischalt-Geste aufgerufen → remover. */
+      onUnlock(fn) {
+        if (unlocked || disposed) return () => {
+        };
+        unlockFns.add(fn);
+        return () => unlockFns.delete(fn);
+      },
+      get unlocked() {
+        return unlocked;
+      },
+      get speaking() {
+        return speaking;
+      },
+      get voiceName() {
+        return picked ? picked.voice.name : "";
+      }
+    };
   }
 
   // src/js/store3d/modules/cashier.js
@@ -34584,6 +34931,8 @@ void main() {
   var NAVY = [0.14, 0.16, 0.3];
   var HAIR = [0.24, 0.13, 0.1];
   var BUBBLE_MS = 4500;
+  var VOICE_DIST = 10;
+  var INTRO_KEY = "lfx.store.richardIntro";
   function nameTag() {
     const c = makeCanvas(128, 56);
     const x = c.getContext("2d");
@@ -34594,8 +34943,15 @@ void main() {
     x.fillStyle = "#222";
     x.textAlign = "center";
     x.textBaseline = "middle";
-    x.font = `bold 30px ${FONT}`;
-    x.fillText("Team", 64, 36);
+    let px = 30;
+    x.font = `bold ${px}px ${FONT}`;
+    if (x.measureText) {
+      while (px > 12 && x.measureText("Richard").width > 116) {
+        px -= 2;
+        x.font = `bold ${px}px ${FONT}`;
+      }
+    }
+    x.fillText("Richard", 64, 36);
     return c;
   }
   function buildFigure(ctx) {
@@ -34616,11 +34972,13 @@ void main() {
       sph(0.133, 0, 0.165, 0.016, HAIR, 1, 1, 1, 8, 5, 1.95),
       box({ w: 0.028, h: 0.034, d: 0.012, x: -0.045, y: 0.16, z: -0.113, color: [0.08, 0.08, 0.1] }),
       box({ w: 0.028, h: 0.034, d: 0.012, x: 0.045, y: 0.16, z: -0.113, color: [0.08, 0.08, 0.1] }),
-      box({ w: 0.05, h: 0.012, d: 0.012, x: 0, y: 0.095, z: -0.113, color: [0.62, 0.25, 0.25] }),
       box({ w: 0.02, h: 0.03, d: 0.02, x: 0, y: 0.13, z: -0.122, color: [0.88, 0.68, 0.55] })
     ];
     const headMesh = new Mesh(merge(head), lam());
     headMesh.position.set(0, 1.44, 0);
+    const mouth = new Mesh(merge([box({ w: 0.05, h: 0.012, d: 0.012, x: 0, y: 0, z: 0, color: [0.62, 0.25, 0.25] })]), lam());
+    mouth.position.set(0, 0.095, -0.113);
+    headMesh.add(mouth);
     const arm = () => {
       const m = new Mesh(merge([
         box({ w: 0.09, h: 0.3, d: 0.09, x: 0, y: -0.15, z: 0, color: SHIRT }),
@@ -34641,8 +34999,16 @@ void main() {
     tag.rotation.y = Math.PI;
     root.add(bodyMesh, headMesh, armL, armR, tag);
     ctx.track(root);
-    return { root, head: headMesh, armL, armR };
+    return { root, head: headMesh, mouth, armL, armR };
   }
+  var ANSWERS = [
+    { key: "comedy", label: "Was Lustiges?", cat: "tipComedy" },
+    { key: "horror", label: "Was Gruseliges?", cat: "tipHorror" },
+    { key: "kids", label: "Was f\xFCr Kinder?", cat: "tipKids" },
+    { key: "new", label: "Was ist neu?", cat: "tipNew" },
+    { key: "random", label: "\xDCberrasch mich!", cat: "tipRandom" },
+    { key: "resume", label: "Weiterschauen?", cat: "tipResume" }
+  ];
   var cashier_default = {
     name: "cashier",
     init(ctx) {
@@ -34668,13 +35034,49 @@ void main() {
           if (!cur || cur.kind === "new") deptOf.set(id, d);
         }
       }
+      const voice = createVoice({ soundOn: () => ctx.soundOn() });
+      voice.unlock();
+      let talkId = 0;
+      const duck = (on) => {
+        const s = ctx.use("sound");
+        if (s && s.duck) s.duck("talk", on);
+      };
+      function stopVoice() {
+        waiting = null;
+        talkId++;
+        voice.cancel();
+        duck(false);
+      }
+      let waiting = null;
+      let offUnlock = null;
+      function voiceSay(text, dist) {
+        if (!ctx.soundOn() || dist > VOICE_DIST) return;
+        if (!voice.unlocked) {
+          waiting = { text, dist, at: performance.now() };
+          if (!offUnlock) {
+            offUnlock = voice.onUnlock(() => {
+              offUnlock = null;
+              const w = waiting;
+              waiting = null;
+              if (w && performance.now() - w.at < 15e3) voiceSay(w.text, w.dist);
+            });
+          }
+          return;
+        }
+        const vol = dist < 3 ? 1 : 1 - (dist - 3) / (VOICE_DIST - 3) * 0.5;
+        const id = ++talkId;
+        duck(true);
+        voice.say(text, { volume: vol }).then(() => {
+          if (id === talkId) duck(false);
+        });
+      }
       const bubble = document.createElement("div");
       bubble.className = "lfx-store-bubble" + (ctx.isTouch ? " is-touch" : "");
       bubble.hidden = true;
       bubble.setAttribute("role", "status");
       const who = document.createElement("span");
       who.className = "lfx-store-bubble-who";
-      who.textContent = "Kasse";
+      who.textContent = "Richard";
       const txt = document.createElement("span");
       txt.className = "lfx-store-bubble-text";
       bubble.append(who, txt);
@@ -34687,21 +35089,42 @@ void main() {
         const w = weather();
         return w && Number.isFinite(w.hour) ? w.hour : void 0;
       };
-      function speak(cat, vars, { force = false, maxDist = 16 } = {}) {
-        if (ctx.overlay.isOpen() && !force) return false;
+      const distToPlayer = () => {
         const p = ctx.player.getPose();
-        if (!force && Math.hypot(p.x - cx, p.z - cz) > maxDist) return false;
+        return Math.hypot(p.x - cx, p.z - cz);
+      };
+      const seated = () => {
+        const c = ctx.use("couch");
+        return !!(c && c.seated && c.seated());
+      };
+      function speak(cat, vars, { force = false, maxDist = 16, voice: withVoice = true, also = null, overOverlay = false } = {}) {
+        if (ctx.overlay.isOpen() && !force) return false;
+        if (!force && seated()) return false;
+        const dist = distToPlayer();
+        if (!force && dist > maxDist) return false;
         if (!limiter.can(now, { force })) return false;
-        const picked = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]);
+        const all = { name: user, ...vars };
+        const picked = pickLine(LINES[cat], rand, all, lastIdx[cat]);
         if (!picked) return false;
         lastIdx[cat] = picked.index;
-        txt.textContent = picked.text;
+        let text = picked.text;
+        if (also) {
+          const extra = pickLine(LINES[also], rand, all, lastIdx[also]);
+          if (extra) {
+            lastIdx[also] = extra.index;
+            text += " " + extra.text;
+          }
+        }
+        txt.textContent = text;
         bubble.hidden = false;
+        bubbleSticky = overOverlay;
         bubbleLeft = (ctx.isTouch ? BUBBLE_MS + 500 : BUBBLE_MS) / 1e3;
         limiter.mark(now);
         placeBubble();
+        if (withVoice && cat !== "play") voiceSay(text, dist);
         return true;
       }
+      let bubbleSticky = false;
       function placeBubble() {
         if (bubble.hidden || !host) return;
         v.set(cx, 1.95, cz).project(ctx.camera);
@@ -34738,8 +35161,12 @@ void main() {
         const dept = deptOf.get(id);
         speak(categoryFor(it, dept), { title: it && it.Name, dept: dept && dept.label });
       }));
+      offs.push(ctx.on("put", () => {
+        speak("put", {});
+      }));
       offs.push(ctx.on("play", () => {
         speak("play", {}, { force: true });
+        stopVoice();
       }));
       let resumeSaid = false;
       offs.push(ctx.on("zone", (id) => {
@@ -34748,60 +35175,130 @@ void main() {
         const r = ctx.catalog.resume && ctx.catalog.resume[0];
         if (r && !resumeSaid && speak("resume", { title: r.Name })) resumeSaid = true;
       }));
-      function openTip() {
-        const adult = adultIds(ctx.catalog);
-        const list = (ctx.catalog.highlights || []).filter((i) => i && i.Id && !adult.has(i.Id));
-        if (!list.length) {
-          speak("idle", {}, { force: true });
-          return;
+      function greet() {
+        const h2 = hourNow();
+        const late = isLate(h2);
+        const w = weather();
+        let cat = greetingCategory(timeOfDay(h2), late);
+        if (!late && w && w.raining && rand() < 0.4) cat = "rain";
+        let first;
+        try {
+          first = !sessionStorage.getItem(INTRO_KEY);
+          if (first) sessionStorage.setItem(INTRO_KEY, "1");
+        } catch {
+          first = false;
         }
-        const it = list[Math.floor(rand() * list.length)];
-        const dept = deptOf.get(it.Id);
+        speak(cat, {}, { force: true, also: first ? "intro" : null });
+      }
+      let lastTipId = null;
+      function openDialog() {
+        const picks = dialogPicks(ctx.catalog, deptOf);
         const el2 = document.createElement("div");
-        el2.className = "lfx-store-tip" + (ctx.isTouch ? " is-touch" : "");
+        el2.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
         const card = document.createElement("div");
         card.className = "lfx-store-tip-card";
         const h2 = document.createElement("div");
         h2.className = "lfx-store-tip-title";
-        h2.textContent = "Team \u2013 Kasse";
+        h2.textContent = "Richard \u2013 Kasse";
         const p = document.createElement("div");
         p.className = "lfx-store-tip-text";
-        p.textContent = tipText(it.Name, dept ? dept.label : "");
         const row = document.createElement("div");
-        row.className = "lfx-store-tip-btns";
-        const go = document.createElement("button");
-        go.type = "button";
-        go.className = "lfx-store-tip-btn is-primary";
-        go.textContent = "Zeig mal";
-        const no = document.createElement("button");
-        no.type = "button";
-        no.className = "lfx-store-tip-btn";
-        no.textContent = "Sp\xE4ter";
-        row.append(go, no);
+        row.className = "lfx-store-tip-btns lfx-store-dialog-btns";
         card.append(h2, p, row);
         el2.appendChild(card);
-        go.addEventListener("click", () => {
+        const line = (cat, vars) => {
+          const r = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]);
+          if (r) lastIdx[cat] = r.index;
+          return r ? r.text : "";
+        };
+        const say = (text) => {
+          p.textContent = text;
+          voiceSay(text, 0);
+        };
+        const btn = (label, fn, primary) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "lfx-store-tip-btn" + (primary ? " is-primary" : "");
+          b.textContent = label;
+          b.addEventListener("click", fn);
+          row.appendChild(b);
+          return b;
+        };
+        const bye = () => {
           ctx.overlay.close();
-          ctx.items.take(it.Id, { from: "counter" });
-        });
-        no.addEventListener("click", () => ctx.overlay.close());
+          speak("dialogBye", {}, { force: true });
+        };
+        function choices(first) {
+          row.textContent = "";
+          row.classList.add("is-choices");
+          const avail = ANSWERS.filter((a) => picks[a.key].length);
+          if (!avail.length) {
+            say(line("noTip"));
+            btn("Tsch\xFCss", bye, true);
+            return;
+          }
+          say(line("dialogHello"));
+          for (const a of avail) btn(a.label, () => answer(a), false);
+          btn("Tsch\xFCss", bye, false);
+          if (first) {
+            const f = row.querySelector("button");
+            if (f && !ctx.isTouch) f.focus({ preventScroll: true });
+          }
+        }
+        function answer(a) {
+          const list = picks[a.key];
+          let pool = list.filter((i) => i.Id !== lastTipId);
+          if (!pool.length) pool = list;
+          const it = pool[Math.floor(rand() * pool.length)];
+          lastTipId = it.Id;
+          const dept = deptOf.get(it.Id);
+          row.textContent = "";
+          row.classList.remove("is-choices");
+          say(line(a.cat, { title: it.Name, dept: dept && dept.label }));
+          btn("Zeig mal", () => {
+            ctx.overlay.close();
+            ctx.items.take(it.Id, { from: "counter" });
+          }, true);
+          btn("Was anderes", () => choices(false), false);
+          btn("Tsch\xFCss", bye, false);
+        }
         el2.addEventListener("pointerdown", (e) => {
           if (e.target === el2) ctx.overlay.close();
         });
-        ctx.overlay.open(el2);
+        ctx.overlay.open(el2, { onClose: () => {
+          stopVoice();
+        } });
         bubble.hidden = true;
+        choices(true);
       }
-      ctx.addInteractable({
+      const offIa = ctx.addInteractable({
         box: { min: { x: cx - 0.5, y: 0.2, z: cz - 0.6 }, max: { x: cx + 0.5, y: 2, z: cz + 0.4 } },
-        label: "Personal",
-        hint: "E / Klick: Mit dem Personal reden",
-        onUse: openTip
+        label: "Richard",
+        hint: "E / Klick: Mit Richard reden",
+        onUse: openDialog
       });
-      if (ctx.opts.debug) window.__lfxM4 = { ...window.__lfxM4, say: (cat, vars) => speak(cat, vars || {}, { force: true }), tip: openTip };
+      const offProvide = ctx.provide("cashier", {
+        event(name) {
+          if (name === "couchSit" || name === "couchStand") speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
+        }
+      });
+      if (ctx.opts.debug) {
+        window.__lfxM4 = {
+          ...window.__lfxM4,
+          say: (cat, vars) => speak(cat, vars || {}, { force: true }),
+          tip: openDialog,
+          voice: () => ({ speaking: voice.speaking, voiceName: voice.voiceName })
+        };
+      }
+      const inR = (r, p) => r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1;
       let poll = 0;
       let lastX = 0;
       let lastZ = 0;
       let still = 0;
+      let adultSecs = 0;
+      let adultSaid = false;
+      let inKids = false;
+      let lastKids = -Infinity;
       return {
         update(dt, t) {
           now = t;
@@ -34818,6 +35315,10 @@ void main() {
             fig.head.position.y = 1.44 + Math.sin(t * 1.7) * 4e-3;
             fig.root.scale.y = 1 + Math.sin(t * 1.7) * 5e-3;
           }
+          if (voice.speaking) {
+            const open = Math.abs(Math.sin(t * 15) * (0.65 + 0.35 * Math.sin(t * 6.1 + 1.3))) + Math.abs(Math.sin(t * 23.7)) * 0.25;
+            fig.mouth.scale.y = 1 + Math.min(1, open) * (reduced ? 0.6 : 2.2);
+          } else if (fig.mouth.scale.y !== 1) fig.mouth.scale.y = 1;
           if (waveT >= 0) {
             waveT += dt;
             const u = waveT / WAVE;
@@ -34844,21 +35345,18 @@ void main() {
           }
           if (pendingGreet >= 0) {
             pendingGreet -= dt;
-            if (pendingGreet < 0) {
-              const h2 = hourNow();
-              const tod = timeOfDay(h2);
-              speak(greetingCategory(tod, isLate(h2)), {}, { force: true });
-            }
+            if (pendingGreet < 0) greet();
           }
           if (bubbleLeft > 0) {
             bubbleLeft -= dt;
-            if (bubbleLeft <= 0 || ctx.overlay.isOpen()) {
+            if (bubbleLeft <= 0 || ctx.overlay.isOpen() && !bubbleSticky) {
               bubble.hidden = true;
               bubbleLeft = 0;
             } else placeBubble();
           }
           poll += dt;
           if (poll > 1) {
+            const step = poll;
             poll = 0;
             if (Math.hypot(p.x - lastX, p.z - lastZ) > 0.3) {
               still = 0;
@@ -34872,18 +35370,37 @@ void main() {
                 if (speak("resume", { title: r.Name })) resumeSaid = true;
               } else speak("idle", {});
             }
+            if (inR(L.adultRoom, p)) {
+              adultSecs += step;
+              if (adultSecs >= 30 && !adultSaid && speak("adultLong", {}, { maxDist: Infinity })) adultSaid = true;
+            } else {
+              adultSecs = 0;
+              adultSaid = false;
+            }
+            const k = !!inR(L.kidsRoom, p);
+            if (k && !inKids && now - lastKids > 120 && speak("kidsEnter", {}, { maxDist: Infinity })) lastKids = now;
+            inKids = k;
           }
+        },
+        onSound(on) {
+          if (!on) stopVoice();
         },
         onSuspend() {
           bubble.hidden = true;
           bubbleLeft = 0;
+          stopVoice();
         },
         dispose() {
           offs.forEach((o) => o());
+          offIa();
+          offProvide();
+          stopVoice();
+          voice.dispose();
           bubble.remove();
           if (window.__lfxM4) {
             delete window.__lfxM4.say;
             delete window.__lfxM4.tip;
+            delete window.__lfxM4.voice;
           }
         }
       };
@@ -35502,6 +36019,7 @@ void main() {
       let suspended = false;
       let disposed = false;
       let seat = "idle";
+      const offCouch = ctx.provide("couch", { seated: () => seat === "in" });
       let userMuted = false;
       let vol = 0.7;
       try {
@@ -35860,7 +36378,11 @@ void main() {
         ui = buildUi();
         ctx.overlay.open(ui.root, { onClose: onClosed });
         const snd = ctx.use("sound");
-        if (snd && snd.duck) snd.duck(true);
+        if (snd && snd.duck) snd.duck("tv", true);
+        {
+          const c = ctx.use("cashier");
+          if (c && c.event) c.event("couchSit");
+        }
         checkVisible();
         loadSlide(idx);
         loadSlide(idx + 1);
@@ -35951,6 +36473,10 @@ void main() {
         const a = afterLeave;
         afterLeave = null;
         if (a && !disposed) a();
+        if (!disposed) {
+          const c = ctx.use("cashier");
+          if (c && c.event) c.event("couchStand");
+        }
       }
       function onClosed() {
         const u = ui;
@@ -35967,7 +36493,7 @@ void main() {
         visT = 1;
         frame();
         const snd = ctx.use("sound");
-        if (snd && snd.duck) snd.duck(false);
+        if (snd && snd.duck) snd.duck("tv", false);
         if (disposed) {
           ctx.player.camera.release();
           ctx.player.freeze(false);
@@ -36066,6 +36592,7 @@ void main() {
           disposed = true;
           ac.abort();
           removeSofa();
+          offCouch();
           if (seat !== "idle") {
             ui = null;
             if (sitAc) sitAc.abort();
@@ -36073,7 +36600,7 @@ void main() {
             freeBig(null);
             useBig(false);
             const snd = ctx.use("sound");
-            if (snd && snd.duck) snd.duck(false);
+            if (snd && snd.duck) snd.duck("tv", false);
             ctx.player.camera.release();
             ctx.player.freeze(false);
             seat = "idle";
@@ -36640,6 +37167,10 @@ void main() {
       a.onBigCovers(!a.getBigCovers());
       refresh();
     });
+    const fs = mk("", () => {
+      if (a.onFullscreen) a.onFullscreen();
+      refresh();
+    }, "lfx-store-act--fs");
     mk("Design wechseln", () => a.onTheme());
     mk("Men\xFC", (b) => a.onMenu(b));
     function refresh() {
@@ -36647,6 +37178,9 @@ void main() {
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
+      const fk = a.fullscreenKind ? a.fullscreenKind() : "none";
+      fs.hidden = fk !== "api" && fk !== "guide";
+      fs.textContent = fk === "guide" ? "Vollbild \u2026" : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? "An" : "Aus"}`;
     }
     root.appendChild(panel);
     root.addEventListener("click", (e) => {
@@ -37230,6 +37764,302 @@ void main() {
     }
   };
 
+  // src/js/store3d/ui/fullscreen.js
+  var SWIPE_COUNT_KEY = "lfx.store.swipeShown";
+  var TIP_KEY = "lfx.store.fsTip.";
+  var TIP_TEXT = "Tipp: \xDCber Teilen \u2192 Zum Home-Bildschirm startet die Videothek ganz ohne Leiste.";
+  function isStandalone(win = window) {
+    try {
+      if (win.navigator && win.navigator.standalone === true) return true;
+      if (typeof win.matchMedia === "function") {
+        return !!(win.matchMedia("(display-mode: standalone)").matches || win.matchMedia("(display-mode: fullscreen)").matches);
+      }
+    } catch {
+    }
+    return false;
+  }
+  function canElementFullscreen(doc = document) {
+    const de = doc.documentElement;
+    if (!de) return false;
+    const enabled = !!(doc.fullscreenEnabled || doc.webkitFullscreenEnabled);
+    return enabled && (typeof de.requestFullscreen === "function" || typeof de.webkitRequestFullscreen === "function");
+  }
+  function isIPhoneSafari(ua, maxTouchPoints = 0) {
+    return /iPhone|iPod/.test(String(ua || ""));
+  }
+  function barVisible({ innerHeight, screenShort, landscape }) {
+    return !!landscape && innerHeight < screenShort - 24;
+  }
+  function sget(store, key) {
+    try {
+      return window[store].getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  function sset(store, key, v) {
+    try {
+      window[store].setItem(key, v);
+    } catch {
+    }
+  }
+  function createFullscreen({ host, isTouch, getMode, userId, hud, onChange, win = window, doc = document }) {
+    const nav = win.navigator || {};
+    const standalone = isStandalone(win);
+    const iphone = isIPhoneSafari(nav.userAgent, nav.maxTouchPoints);
+    const api = canElementFullscreen(doc);
+    let kind = "none";
+    if (isTouch && !standalone) {
+      if (api) kind = "api";
+      else if (iphone) kind = "guide";
+    }
+    const swipeEligible = iphone && !standalone;
+    let hostEl = host;
+    let guide = null;
+    let guideKeyHandler = null;
+    let spacer = null;
+    let hint = null;
+    let collapsed = false;
+    let dismissed = false;
+    let suspended = false;
+    let destroyed = false;
+    let tipDone = false;
+    const fsElement = () => doc.fullscreenElement || doc.webkitFullscreenElement || null;
+    const isOn = () => !!fsElement();
+    function toggle() {
+      if (kind === "guide") {
+        showGuide();
+        return;
+      }
+      if (kind !== "api") return;
+      try {
+        if (isOn()) {
+          const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+          const r = exit && exit.call(doc);
+          if (r && r.catch) r.catch(() => {
+          });
+        } else {
+          const de = doc.documentElement;
+          const req = de.requestFullscreen || de.webkitRequestFullscreen;
+          const r = req && req.call(de);
+          if (r && r.catch) r.catch(() => {
+          });
+        }
+      } catch {
+      }
+    }
+    const onFsChange = () => {
+      if (onChange) {
+        try {
+          onChange(isOn());
+        } catch {
+        }
+      }
+    };
+    function showGuide() {
+      if (guide || destroyed) return;
+      const root = el("div", "lfx-store-fs-guide");
+      const panel = el("div", "lfx-store-fs-panel");
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-label", "Vollbild am iPhone");
+      panel.append(
+        el("div", "lfx-store-fs-title", "Vollbild am iPhone"),
+        el("p", "lfx-store-fs-text", "Teilen \u2192 \u201EZum Home-Bildschirm\u201C \u2192 \u201EAls Web-App \xF6ffnen\u201C: Dann startet Jellyfin ohne Safari-Leisten."),
+        el("p", "lfx-store-fs-text", "Alternativ: im Querformat einmal nach oben wischen."),
+        el("p", "lfx-store-fs-text lfx-store-fs-text--muted", "Kein Ton? Stummschalter am iPhone pr\xFCfen.")
+      );
+      const ok = el("button", "lfx-store-act lfx-store-act--primary", "Verstanden");
+      ok.type = "button";
+      ok.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hideGuide();
+      });
+      panel.appendChild(ok);
+      root.appendChild(panel);
+      root.addEventListener("click", (e) => {
+        if (e.target === root) hideGuide();
+      });
+      hostEl.appendChild(root);
+      guide = root;
+      guideKeyHandler = (e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          hideGuide();
+        }
+      };
+      doc.addEventListener("keydown", guideKeyHandler, true);
+      try {
+        ok.focus({ preventScroll: true });
+      } catch {
+      }
+      update();
+    }
+    function hideGuide() {
+      if (!guide) return;
+      guide.remove();
+      guide = null;
+      if (guideKeyHandler) doc.removeEventListener("keydown", guideKeyHandler, true);
+      guideKeyHandler = null;
+      update();
+    }
+    const geom = () => {
+      const scr = win.screen || {};
+      return {
+        innerHeight: win.innerHeight,
+        screenShort: Math.min(scr.width || Infinity, scr.height || Infinity),
+        landscape: win.innerWidth > win.innerHeight
+      };
+    };
+    const scrollY = () => win.scrollY || win.pageYOffset || 0;
+    function ensureActive() {
+      if (!spacer) {
+        spacer = el("div", "lfx-store-swipe-spacer");
+        spacer.setAttribute("aria-hidden", "true");
+        doc.body.appendChild(spacer);
+      }
+      doc.documentElement.classList.add("lfx-store-swipe");
+    }
+    function removeActive() {
+      if (spacer) {
+        spacer.remove();
+        spacer = null;
+      }
+      const was = doc.documentElement.classList.contains("lfx-store-swipe");
+      doc.documentElement.classList.remove("lfx-store-swipe");
+      if (was) {
+        try {
+          win.scrollTo(0, 0);
+        } catch {
+        }
+      }
+    }
+    function showHint() {
+      if (hint) return;
+      hint = el("div", "lfx-store-swipe-hint");
+      const arrow = el("div", "lfx-store-swipe-arrow", "\u2191");
+      arrow.setAttribute("aria-hidden", "true");
+      const text = el("div", "lfx-store-swipe-text", "Nach oben wischen f\xFCr Vollbild");
+      const row = el("div", "lfx-store-swipe-actions");
+      const perma = el("button", "lfx-store-act", "Dauerhaft ohne Leiste");
+      perma.type = "button";
+      perma.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showGuide();
+      });
+      const close = el("button", "lfx-store-act lfx-store-swipe-close", "\xD7");
+      close.type = "button";
+      close.setAttribute("aria-label", "Schlie\xDFen");
+      close.addEventListener("click", (e) => {
+        e.stopPropagation();
+        dismissed = true;
+        sset("sessionStorage", SWIPE_COUNT_KEY, "99");
+        hideHint();
+        removeActive();
+      });
+      row.append(perma, close);
+      hint.append(arrow, text, row);
+      doc.body.appendChild(hint);
+    }
+    function hideHint() {
+      if (hint) {
+        hint.remove();
+        hint = null;
+      }
+    }
+    function teardown() {
+      hideHint();
+      removeActive();
+    }
+    function maybeTip() {
+      if (tipDone || !hud || typeof hud.note !== "function") return;
+      tipDone = true;
+      const key = TIP_KEY + (userId || "anon");
+      if (sget("localStorage", key) === "1") return;
+      sset("localStorage", key, "1");
+      hud.note(TIP_TEXT, 6500);
+    }
+    function update() {
+      if (destroyed) return;
+      if (suspended || !swipeEligible) {
+        teardown();
+        return;
+      }
+      const g = geom();
+      if (!g.landscape) {
+        teardown();
+        collapsed = false;
+        return;
+      }
+      maybeTip();
+      if (dismissed) return;
+      const bar = barVisible(g);
+      const play = getMode() === "play";
+      if (!bar || scrollY() > 0) {
+        if (!bar) collapsed = true;
+        if (scrollY() > 0) collapsed = true;
+        hideHint();
+        return;
+      }
+      if (!play || guide) {
+        hideHint();
+        return;
+      }
+      ensureActive();
+      if (hint) return;
+      if (collapsed) {
+        const n = Number(sget("sessionStorage", SWIPE_COUNT_KEY)) || 0;
+        if (n >= 2) return;
+        sset("sessionStorage", SWIPE_COUNT_KEY, String(n + 1));
+        collapsed = false;
+      }
+      showHint();
+    }
+    const onViewport = () => update();
+    win.addEventListener("resize", onViewport);
+    win.addEventListener("orientationchange", onViewport);
+    win.addEventListener("scroll", onViewport, { passive: true });
+    const vv = win.visualViewport;
+    if (vv && vv.addEventListener) vv.addEventListener("resize", onViewport);
+    doc.addEventListener("fullscreenchange", onFsChange);
+    doc.addEventListener("webkitfullscreenchange", onFsChange);
+    return {
+      get kind() {
+        return kind;
+      },
+      isOn,
+      toggle,
+      showGuide,
+      hideGuide,
+      update,
+      setHost(h2) {
+        if (h2 && h2 !== hostEl) {
+          hostEl = h2;
+          if (guide) h2.appendChild(guide);
+        }
+      },
+      suspend() {
+        suspended = true;
+        teardown();
+      },
+      resume() {
+        suspended = false;
+        update();
+      },
+      destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        hideGuide();
+        teardown();
+        win.removeEventListener("resize", onViewport);
+        win.removeEventListener("orientationchange", onViewport);
+        win.removeEventListener("scroll", onViewport);
+        if (vv && vv.removeEventListener) vv.removeEventListener("resize", onViewport);
+        doc.removeEventListener("fullscreenchange", onFsChange);
+        doc.removeEventListener("webkitfullscreenchange", onFsChange);
+      }
+    };
+  }
+
   // src/js/store3d/store.js
   var yieldFrame = () => new Promise((r) => setTimeout(r, 0));
   function resolveLevel(setting) {
@@ -37285,6 +38115,16 @@ void main() {
         return;
       }
       this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause() });
+      this.fs = createFullscreen({
+        host,
+        isTouch: this.touch,
+        getMode: () => this.mods && this.mods.locked ? "locked" : this.mode,
+        userId: deps.user && (deps.user.id || deps.user.name) || "anon",
+        hud: this.hud,
+        onChange: () => {
+          if (this.pause) this.pause.refresh();
+        }
+      });
       this.pause = createPause(host, {
         onResume: () => this.resumeFromPause(),
         onSearch: () => {
@@ -37310,7 +38150,10 @@ void main() {
         getQuality: () => this.qualitySetting,
         getSound: () => this.sound,
         getFps: () => this.showFps,
-        getBigCovers: () => this.bigCovers
+        getBigCovers: () => this.bigCovers,
+        onFullscreen: () => this.fs.toggle(),
+        getFullscreen: () => this.fs.isOn(),
+        fullscreenKind: () => this.fs.kind
       });
       this.boot().catch((err) => this.fail(err));
     }
@@ -37476,6 +38319,7 @@ void main() {
     setMode(m) {
       this.mode = m;
       this.syncUi();
+      if (this.fs) this.fs.update();
     }
     syncUi() {
       if (!this.hud) return;
@@ -37707,6 +38551,7 @@ void main() {
       if (now - this.lastFps >= 500) {
         this.lastFps = now;
         this.updateFps();
+        if (this.fs) this.fs.update();
       }
       if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
       else p.update(dt, null);
@@ -37885,6 +38730,7 @@ void main() {
       if (this.covers) this.covers.pause();
       if (this.mods) this.mods.hook("onSuspend");
       if (this.hud) this.hud.showPrompt(false);
+      if (this.fs) this.fs.suspend();
       this.notifyState(true);
     }
     resume(host) {
@@ -37895,6 +38741,7 @@ void main() {
         this.host = host;
         if (this.engine) this.engine.setHost(host);
         if (this.holdview) this.holdview.setHost(host);
+        if (this.fs) this.fs.setHost(host);
       }
       if (!this.ready && !this.player) return;
       if (this.desktop) this.desktop.attach();
@@ -37905,6 +38752,7 @@ void main() {
         this.engine.resize();
         this.engine.start((dt, now) => this.tick(dt, now));
       }
+      if (this.fs) this.fs.resume();
       this.syncUi();
     }
     dispose() {
@@ -37939,6 +38787,7 @@ void main() {
       if (this.lights) this.lights.dispose();
       if (this.tex) this.tex.dispose();
       if (this.blank) this.blank.dispose();
+      if (this.fs) this.fs.destroy();
       if (this.hud) this.hud.destroy();
       if (this.pause) this.pause.destroy();
       if (this.engine) this.engine.dispose();

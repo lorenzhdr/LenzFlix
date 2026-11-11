@@ -1,6 +1,6 @@
 // VIDEOTHEK LENZ · M4 Ton: WebAudio-Synthese (Türglocke, Kassen-Piep, Schublade, Klack, Rollladen) und Ambiente
-// (leise Lounge-Musik mit Lo-Fi-Beat, Leuchtstoffröhren-Brummen, bei Regen leises Rauschen). Standardmäßig aus.
-// Provider 'sound' { play(name, opts), ambient(on), duck(on) }. Der AudioContext entsteht erst in einer Nutzergeste.
+// (leise Lounge-Musik mit Lo-Fi-Beat, Leuchtstoffröhren-Brummen, bei Regen leises Rauschen). Standardmäßig an (ab v1.7.4).
+// Provider 'sound' { play(name, opts), ambient(on), duck(key, on) }. Der AudioContext entsteht erst in einer Nutzergeste.
 
 const MASTER = 0.9;
 const BPM = 74;
@@ -27,7 +27,7 @@ export default {
     let hum = null;
     let rain = null;
     let ambientWanted = false;
-    let ducked = false;
+    const duckKeys = new Set(); // aktive Dämpfungs-Schlüssel: 'tv' (stark), 'talk' (mittel)
     let ambientRunning = false;
     let suspended = false;
     let nextStep = 0;
@@ -36,7 +36,7 @@ export default {
     let filterTarget = 2600;
     const gestureEvents = ['pointerdown', 'keydown', 'touchend'];
 
-    const level = () => (ctx.soundOn() ? (ducked ? MASTER * 0.12 : MASTER) : 0);
+    const level = () => (ctx.soundOn() ? (duckKeys.has('tv') ? MASTER * 0.12 : duckKeys.has('talk') ? MASTER * 0.45 : MASTER) : 0);
 
     function buildGraph() {
       master = ac.createGain();
@@ -259,8 +259,9 @@ export default {
     ctx.provide('sound', {
       play,
       /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */
-      duck(on) {
-        ducked = !!on;
+      duck(key, on) {
+        if (arguments.length < 2) { on = key; key = 'tv'; } // abwärtskompatibel: duck(bool)
+        if (on) duckKeys.add(String(key)); else duckKeys.delete(String(key));
         if (ac && master) master.gain.setTargetAtTime(level(), ac.currentTime, 0.25);
       },
       ambient(on) {

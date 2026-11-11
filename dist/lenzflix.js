@@ -354,7 +354,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.7.3";
+  var VERSION = "1.7.4";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -17051,7 +17051,7 @@
 
   // src/js/features/store/prefs.js
   var KEY3 = "lfx.store.";
-  var DEFAULTS2 = { quality: "auto", sound: false, fps: false, bigCovers: true };
+  var DEFAULTS2 = { quality: "auto", sound: true, fps: false, bigCovers: true };
   var QUALITIES = ["auto", "low", "mid", "high"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
@@ -17074,7 +17074,12 @@
     return QUALITIES.includes(v) ? v : DEFAULTS2.quality;
   }
   function getSound() {
-    return read("localStorage", storageKey2("sound")) === "1";
+    try {
+      window.localStorage.removeItem(storageKey2("sound"));
+    } catch {
+    }
+    const v = read("localStorage", storageKey2("soundOn"));
+    return v === null ? DEFAULTS2.sound : v !== "0";
   }
   function getFps() {
     return read("localStorage", storageKey2("fps")) === "1";
@@ -17086,7 +17091,7 @@
   function savePrefs(p) {
     if (!p) return;
     if (QUALITIES.includes(p.quality)) write("localStorage", storageKey2("quality"), p.quality);
-    if (typeof p.sound === "boolean") write("localStorage", storageKey2("sound"), p.sound ? "1" : "0");
+    if (typeof p.sound === "boolean") write("localStorage", storageKey2("soundOn"), p.sound ? "1" : "0");
     if (typeof p.fps === "boolean") write("localStorage", storageKey2("fps"), p.fps ? "1" : "0");
     if (typeof p.bigCovers === "boolean") write("localStorage", storageKey2("bigCovers"), p.bigCovers ? "1" : "0");
   }

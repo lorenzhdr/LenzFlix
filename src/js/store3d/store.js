@@ -19,6 +19,7 @@ import { ModuleHost } from './modules/runtime.js';
 import { createHud } from './ui/hud.js';
 import { createPause } from './ui/pause.js';
 import { HoldView } from './ui/holdview.js';
+import { createFullscreen } from './ui/fullscreen.js';
 
 const yieldFrame = () => new Promise((r) => setTimeout(r, 0));
 
@@ -78,6 +79,10 @@ class StoreApp {
       return;
     }
     this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause() });
+    this.fs = createFullscreen({
+      host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
+      onChange: () => { if (this.pause) this.pause.refresh(); },
+    });
     this.pause = createPause(host, {
       onResume: () => this.resumeFromPause(),
       onSearch: () => { this.resumeFromPause(); this.openTerminal(''); },
@@ -92,6 +97,9 @@ class StoreApp {
       getSound: () => this.sound,
       getFps: () => this.showFps,
       getBigCovers: () => this.bigCovers,
+      onFullscreen: () => this.fs.toggle(),
+      getFullscreen: () => this.fs.isOn(),
+      fullscreenKind: () => this.fs.kind,
     });
     this.boot().catch((err) => this.fail(err));
   }
@@ -235,7 +243,7 @@ class StoreApp {
   }
 
   // --- Modus / UI ---
-  setMode(m) { this.mode = m; this.syncUi(); }
+  setMode(m) { this.mode = m; this.syncUi(); if (this.fs) this.fs.update(); }
 
   syncUi() {
     if (!this.hud) return;
@@ -450,7 +458,7 @@ class StoreApp {
     if (!p) return;
     this.mods.flushNav();
     this.stepZoom(dt);
-    if (now - this.lastFps >= 500) { this.lastFps = now; this.updateFps(); }
+    if (now - this.lastFps >= 500) { this.lastFps = now; this.updateFps(); if (this.fs) this.fs.update(); }
     if (this.mode === 'play' && !this.mods.locked) p.update(dt, (this.desktop || this.touchCtl) ? (this.desktop || this.touchCtl).input : null);
     else p.update(dt, null);
     this.mods.update(dt, now);
@@ -609,6 +617,7 @@ class StoreApp {
     if (this.covers) this.covers.pause();
     if (this.mods) this.mods.hook('onSuspend');
     if (this.hud) this.hud.showPrompt(false);
+    if (this.fs) this.fs.suspend();
     this.notifyState(true);
   }
 
@@ -620,6 +629,7 @@ class StoreApp {
       this.host = host;
       if (this.engine) this.engine.setHost(host);
       if (this.holdview) this.holdview.setHost(host);
+      if (this.fs) this.fs.setHost(host);
     }
     if (!this.ready && !this.player) return; // Boot läuft noch: boot() startet den Rest selbst
     if (this.desktop) this.desktop.attach();
@@ -627,6 +637,7 @@ class StoreApp {
     if (this.covers) this.covers.resume();
     if (this.mods) this.mods.hook('onResume');
     if (this.engine) { this.engine.resize(); this.engine.start((dt, now) => this.tick(dt, now)); }
+    if (this.fs) this.fs.resume();
     this.syncUi();
   }
 
@@ -647,6 +658,7 @@ class StoreApp {
     if (this.lights) this.lights.dispose();
     if (this.tex) this.tex.dispose();
     if (this.blank) this.blank.dispose();
+    if (this.fs) this.fs.destroy();
     if (this.hud) this.hud.destroy();
     if (this.pause) this.pause.destroy();
     if (this.engine) this.engine.dispose();

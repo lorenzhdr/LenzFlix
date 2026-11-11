@@ -17,7 +17,8 @@
 //   items.take(id,{from:'shelf'|'counter'}) · slotOf(id) → {x,y,z,dept,face,run,stand} | null · highlight(id,on)
 //   on(event, fn) → off()   Events: 'enter' | 'take'(id) | 'put'(id) | 'play'(item,{resume}) | 'zone'(name) | 'frame'(dt,t)
 //   loadTexture(url,{maxWidth}) → Promise<Texture|null> · track(obj) → obj (Geometrie/Material/Textur/Object3D, dispose automatisch)
-//   provide(name, impl) → remove() · use(name) → impl|undefined   Provider: 'terminal' { open(q) }, 'intro' { run() → Promise }
+//   provide(name, impl) → remove() · use(name) → impl|undefined   Provider: 'terminal' { open(q) }, 'intro' { run() → Promise },
+//   'cashier' { event('couchSit'|'couchStand') }, 'couch' { seated() → bool }, 'sound' { play, ambient(on), duck(key, on) }
 // Imports bitte nur im eigenen Block ergänzen (parallele Arbeit, Konflikte vermeiden).
 // --- M3 Kasse & Orte: imports ---
 import terminal from './terminal.js';

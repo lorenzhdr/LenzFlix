@@ -202,3 +202,32 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fps {
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Richard: Dialog mit Antwortknöpfen ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog .lfx-store-tip-card {
+  width: min(94vw, 460px);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog .lfx-store-tip-text {
+  min-height: 3.2em;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog-btns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog-btns .lfx-store-tip-btn {
+  min-height: 44px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog.is-touch .lfx-store-dialog-btns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog.is-touch .lfx-store-dialog-btns .lfx-store-tip-btn {
+  min-height: 48px;
+}
+@media (max-width: 480px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog-btns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

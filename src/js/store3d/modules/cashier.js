@@ -1,12 +1,14 @@
-// VIDEOTHEK LENZ · M4 Kassen-Personal: stilisierte Low-Poly-Figur hinter dem Tresen (Zone „cashier“), Idle-Animation
-// (Atmen, Kopf folgt dem Spieler < 6 m, Tresen wischen, Winken), Sprechblasen (DOM, projiziert) mit lockeren Sprüchen
-// und „Mit dem Personal reden“ (Tipp aus catalog.highlights, Knopf „Zeig mal“). Sprüche: cashier-lines.js.
+// VIDEOTHEK LENZ · M4 Kassierer Richard: stilisierte Low-Poly-Figur hinter dem Tresen (Zone „cashier“), Idle-Animation
+// (Atmen, Kopf folgt dem Spieler < 6 m, Tresen wischen, Winken, Mundbewegung beim Sprechen), Sprechblasen (DOM, projiziert)
+// mit lockeren Sprüchen, echter Gerätestimme (voice.js, nur wenn der Ton an ist) und „Mit Richard reden“ (Dialog mit
+// Antwortknöpfen). Sprüche und Kandidatenwahl: cashier-lines.js. Provider 'cashier' { event(name) }; liest 'couch' { seated() }.
 import { Group, Mesh, MeshLambertMaterial, MeshBasicMaterial, Vector3 } from 'three';
 import { box, quad, merge } from '../util/geo.js';
 import { sph } from './m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
-import { LINES, pickLine, categoryFor, greetingCategory, tipText } from './cashier-lines.js';
-import { timeOfDay, isLate, createLimiter, clamp, prefersReducedMotion, adultIds } from './m4-util.js';
+import { LINES, pickLine, categoryFor, greetingCategory, dialogPicks } from './cashier-lines.js';
+import { timeOfDay, isLate, createLimiter, clamp, prefersReducedMotion } from './m4-util.js';
+import { createVoice } from './voice.js';
 
 const SKIN = [0.93, 0.74, 0.6];
 const VEST = [0.12, 0.45, 0.52];
@@ -14,6 +16,8 @@ const SHIRT = [0.95, 0.95, 0.97];
 const NAVY = [0.14, 0.16, 0.3];
 const HAIR = [0.24, 0.13, 0.1];
 const BUBBLE_MS = 4500;
+const VOICE_DIST = 10;
+const INTRO_KEY = 'lfx.store.richardIntro';
 
 function nameTag() {
   const c = makeCanvas(128, 56);
@@ -21,7 +25,12 @@ function nameTag() {
   x.fillStyle = '#f7f3e4'; x.fillRect(0, 0, 128, 56);
   x.fillStyle = '#b3261e'; x.fillRect(0, 0, 128, 12);
   x.fillStyle = '#222'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.font = `bold 30px ${FONT}`; x.fillText('Team', 64, 36);
+  let px = 30;
+  x.font = `bold ${px}px ${FONT}`;
+  if (x.measureText) {
+    while (px > 12 && x.measureText('Richard').width > 116) { px -= 2; x.font = `bold ${px}px ${FONT}`; }
+  }
+  x.fillText('Richard', 64, 36);
   return c;
 }
 
@@ -43,11 +52,14 @@ function buildFigure(ctx) {
     sph(0.133, 0, 0.165, 0.016, HAIR, 1, 1, 1, 8, 5, 1.95),
     box({ w: 0.028, h: 0.034, d: 0.012, x: -0.045, y: 0.16, z: -0.113, color: [0.08, 0.08, 0.1] }),
     box({ w: 0.028, h: 0.034, d: 0.012, x: 0.045, y: 0.16, z: -0.113, color: [0.08, 0.08, 0.1] }),
-    box({ w: 0.05, h: 0.012, d: 0.012, x: 0, y: 0.095, z: -0.113, color: [0.62, 0.25, 0.25] }),
     box({ w: 0.02, h: 0.03, d: 0.02, x: 0, y: 0.13, z: -0.122, color: [0.88, 0.68, 0.55] }),
   ];
   const headMesh = new Mesh(merge(head), lam());
   headMesh.position.set(0, 1.44, 0);
+  // Mund als eigenes Mesh (skaliert beim Sprechen in y)
+  const mouth = new Mesh(merge([box({ w: 0.05, h: 0.012, d: 0.012, x: 0, y: 0, z: 0, color: [0.62, 0.25, 0.25] })]), lam());
+  mouth.position.set(0, 0.095, -0.113);
+  headMesh.add(mouth);
   const arm = () => {
     const m = new Mesh(merge([
       box({ w: 0.09, h: 0.3, d: 0.09, x: 0, y: -0.15, z: 0, color: SHIRT }),
@@ -68,8 +80,17 @@ function buildFigure(ctx) {
   tag.rotation.y = Math.PI;
   root.add(bodyMesh, headMesh, armL, armR, tag);
   ctx.track(root);
-  return { root, head: headMesh, armL, armR };
+  return { root, head: headMesh, mouth, armL, armR };
 }
+
+const ANSWERS = [
+  { key: 'comedy', label: 'Was Lustiges?', cat: 'tipComedy' },
+  { key: 'horror', label: 'Was Gruseliges?', cat: 'tipHorror' },
+  { key: 'kids', label: 'Was für Kinder?', cat: 'tipKids' },
+  { key: 'new', label: 'Was ist neu?', cat: 'tipNew' },
+  { key: 'random', label: 'Überrasch mich!', cat: 'tipRandom' },
+  { key: 'resume', label: 'Weiterschauen?', cat: 'tipResume' },
+];
 
 export default {
   name: 'cashier',
@@ -95,6 +116,41 @@ export default {
       for (const id of d.itemIds || []) { const cur = deptOf.get(id); if (!cur || cur.kind === 'new') deptOf.set(id, d); }
     }
 
+    // --- Stimme ---
+    const voice = createVoice({ soundOn: () => ctx.soundOn() });
+    voice.unlock();
+    let talkId = 0;
+    const duck = (on) => { const s = ctx.use('sound'); if (s && s.duck) s.duck('talk', on); };
+    function stopVoice() {
+      waiting = null;
+      talkId++;
+      voice.cancel();
+      duck(false);
+    }
+    /** Liest `text` vor (nur bei Ton an). dist = Abstand zum Spieler in m oder 0 (Dialog: man steht davor). */
+    // Vor der ersten Nutzergeste (z. B. Begrüßung bei „Klicken zum Losgehen“) darf der Browser nicht sprechen:
+    // dann die letzte Zeile merken und direkt nach der Freischalt-Geste vorlesen (höchstens 15 s alt).
+    let waiting = null;
+    let offUnlock = null;
+    function voiceSay(text, dist) {
+      if (!ctx.soundOn() || dist > VOICE_DIST) return;
+      if (!voice.unlocked) {
+        waiting = { text, dist, at: performance.now() };
+        if (!offUnlock) {
+          offUnlock = voice.onUnlock(() => {
+            offUnlock = null;
+            const w = waiting; waiting = null;
+            if (w && performance.now() - w.at < 15000) voiceSay(w.text, w.dist);
+          });
+        }
+        return;
+      }
+      const vol = dist < 3 ? 1 : 1 - ((dist - 3) / (VOICE_DIST - 3)) * 0.5;
+      const id = ++talkId;
+      duck(true);
+      voice.say(text, { volume: vol }).then(() => { if (id === talkId) duck(false); });
+    }
+
     // --- Blase ---
     const bubble = document.createElement('div');
     bubble.className = 'lfx-store-bubble' + (ctx.isTouch ? ' is-touch' : '');
@@ -102,7 +158,7 @@ export default {
     bubble.setAttribute('role', 'status');
     const who = document.createElement('span');
     who.className = 'lfx-store-bubble-who';
-    who.textContent = 'Kasse';
+    who.textContent = 'Richard';
     const txt = document.createElement('span');
     txt.className = 'lfx-store-bubble-text';
     bubble.append(who, txt);
@@ -113,22 +169,32 @@ export default {
     let now = 0;
     const weather = () => ctx.use('weather');
     const hourNow = () => { const w = weather(); return w && Number.isFinite(w.hour) ? w.hour : undefined; };
+    const distToPlayer = () => { const p = ctx.player.getPose(); return Math.hypot(p.x - cx, p.z - cz); };
+    const seated = () => { const c = ctx.use('couch'); return !!(c && c.seated && c.seated()); };
 
-    function speak(cat, vars, { force = false, maxDist = 16 } = {}) {
+    /** Blase + (bei Ton an, nah genug) Stimme. opts.also: zweite Kategorie, an den Text angehängt. */
+    function speak(cat, vars, { force = false, maxDist = 16, voice: withVoice = true, also = null, overOverlay = false } = {}) {
       if (ctx.overlay.isOpen() && !force) return false;
-      const p = ctx.player.getPose();
-      if (!force && Math.hypot(p.x - cx, p.z - cz) > maxDist) return false;
+      if (!force && seated()) return false;
+      const dist = distToPlayer();
+      if (!force && dist > maxDist) return false;
       if (!limiter.can(now, { force })) return false;
-      const picked = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]);
+      const all = { name: user, ...vars };
+      const picked = pickLine(LINES[cat], rand, all, lastIdx[cat]);
       if (!picked) return false;
       lastIdx[cat] = picked.index;
-      txt.textContent = picked.text;
+      let text = picked.text;
+      if (also) { const extra = pickLine(LINES[also], rand, all, lastIdx[also]); if (extra) { lastIdx[also] = extra.index; text += ' ' + extra.text; } }
+      txt.textContent = text;
       bubble.hidden = false;
+      bubbleSticky = overOverlay;
       bubbleLeft = (ctx.isTouch ? BUBBLE_MS + 500 : BUBBLE_MS) / 1000;
       limiter.mark(now);
       placeBubble();
+      if (withVoice && cat !== 'play') voiceSay(text, dist);
       return true;
     }
+    let bubbleSticky = false; // Blase bleibt trotz offenem Overlay (Couch-Sprüche)
     function placeBubble() {
       if (bubble.hidden || !host) return;
       v.set(cx, 1.95, cz).project(ctx.camera);
@@ -162,7 +228,8 @@ export default {
       const dept = deptOf.get(id);
       speak(categoryFor(it, dept), { title: it && it.Name, dept: dept && dept.label });
     }));
-    offs.push(ctx.on('play', () => { speak('play', {}, { force: true }); }));
+    offs.push(ctx.on('put', () => { speak('put', {}); }));
+    offs.push(ctx.on('play', () => { speak('play', {}, { force: true }); stopVoice(); }));
     let resumeSaid = false;
     offs.push(ctx.on('zone', (id) => {
       if (id !== 'register') return;
@@ -171,49 +238,112 @@ export default {
       if (r && !resumeSaid && speak('resume', { title: r.Name })) resumeSaid = true;
     }));
 
-    // --- „Mit dem Personal reden“ ---
-    function openTip() {
-      const adult = adultIds(ctx.catalog);
-      const list = (ctx.catalog.highlights || []).filter((i) => i && i.Id && !adult.has(i.Id));
-      if (!list.length) { speak('idle', {}, { force: true }); return; }
-      const it = list[Math.floor(rand() * list.length)];
-      const dept = deptOf.get(it.Id);
+    function greet() {
+      const h = hourNow();
+      const late = isLate(h);
+      const w = weather();
+      let cat = greetingCategory(timeOfDay(h), late);
+      if (!late && w && w.raining && rand() < 0.4) cat = 'rain';
+      let first;
+      try { first = !sessionStorage.getItem(INTRO_KEY); if (first) sessionStorage.setItem(INTRO_KEY, '1'); } catch { first = false; }
+      speak(cat, {}, { force: true, also: first ? 'intro' : null });
+    }
+
+    // --- „Mit Richard reden“: Dialog ---
+    let lastTipId = null;
+    function openDialog() {
+      const picks = dialogPicks(ctx.catalog, deptOf);
       const el = document.createElement('div');
-      el.className = 'lfx-store-tip' + (ctx.isTouch ? ' is-touch' : '');
+      el.className = 'lfx-store-tip lfx-store-dialog' + (ctx.isTouch ? ' is-touch' : '');
       const card = document.createElement('div');
       card.className = 'lfx-store-tip-card';
       const h = document.createElement('div');
       h.className = 'lfx-store-tip-title';
-      h.textContent = 'Team – Kasse';
+      h.textContent = 'Richard – Kasse';
       const p = document.createElement('div');
       p.className = 'lfx-store-tip-text';
-      p.textContent = tipText(it.Name, dept ? dept.label : '');
       const row = document.createElement('div');
-      row.className = 'lfx-store-tip-btns';
-      const go = document.createElement('button');
-      go.type = 'button'; go.className = 'lfx-store-tip-btn is-primary'; go.textContent = 'Zeig mal';
-      const no = document.createElement('button');
-      no.type = 'button'; no.className = 'lfx-store-tip-btn'; no.textContent = 'Später';
-      row.append(go, no);
+      row.className = 'lfx-store-tip-btns lfx-store-dialog-btns';
       card.append(h, p, row);
       el.appendChild(card);
-      go.addEventListener('click', () => { ctx.overlay.close(); ctx.items.take(it.Id, { from: 'counter' }); });
-      no.addEventListener('click', () => ctx.overlay.close());
+
+      const line = (cat, vars) => { const r = pickLine(LINES[cat], rand, { name: user, ...vars }, lastIdx[cat]); if (r) lastIdx[cat] = r.index; return r ? r.text : ''; };
+      const say = (text) => { p.textContent = text; voiceSay(text, 0); };
+      const btn = (label, fn, primary) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'lfx-store-tip-btn' + (primary ? ' is-primary' : '');
+        b.textContent = label;
+        b.addEventListener('click', fn);
+        row.appendChild(b);
+        return b;
+      };
+      const bye = () => {
+        ctx.overlay.close();
+        speak('dialogBye', {}, { force: true });
+      };
+      function choices(first) {
+        row.textContent = '';
+        row.classList.add('is-choices');
+        const avail = ANSWERS.filter((a) => picks[a.key].length);
+        if (!avail.length) {
+          say(line('noTip'));
+          btn('Tschüss', bye, true);
+          return;
+        }
+        say(line('dialogHello'));
+        for (const a of avail) btn(a.label, () => answer(a), false);
+        btn('Tschüss', bye, false);
+        if (first) { const f = row.querySelector('button'); if (f && !ctx.isTouch) f.focus({ preventScroll: true }); }
+      }
+      function answer(a) {
+        const list = picks[a.key];
+        let pool = list.filter((i) => i.Id !== lastTipId);
+        if (!pool.length) pool = list;
+        const it = pool[Math.floor(rand() * pool.length)];
+        lastTipId = it.Id;
+        const dept = deptOf.get(it.Id);
+        row.textContent = '';
+        row.classList.remove('is-choices');
+        say(line(a.cat, { title: it.Name, dept: dept && dept.label }));
+        btn('Zeig mal', () => { ctx.overlay.close(); ctx.items.take(it.Id, { from: 'counter' }); }, true);
+        btn('Was anderes', () => choices(false), false);
+        btn('Tschüss', bye, false);
+      }
       el.addEventListener('pointerdown', (e) => { if (e.target === el) ctx.overlay.close(); });
-      ctx.overlay.open(el);
+      ctx.overlay.open(el, { onClose: () => { stopVoice(); } });
       bubble.hidden = true;
+      choices(true);
     }
-    ctx.addInteractable({
+    const offIa = ctx.addInteractable({
       box: { min: { x: cx - 0.5, y: 0.2, z: cz - 0.6 }, max: { x: cx + 0.5, y: 2.0, z: cz + 0.4 } },
-      label: 'Personal', hint: 'E / Klick: Mit dem Personal reden', onUse: openTip,
+      label: 'Richard', hint: 'E / Klick: Mit Richard reden', onUse: openDialog,
     });
 
-    if (ctx.opts.debug) window.__lfxM4 = { ...window.__lfxM4, say: (cat, vars) => speak(cat, vars || {}, { force: true }), tip: openTip };
+    const offProvide = ctx.provide('cashier', {
+      event(name) {
+        if (name === 'couchSit' || name === 'couchStand') speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
+      },
+    });
 
+    if (ctx.opts.debug) {
+      window.__lfxM4 = {
+        ...window.__lfxM4,
+        say: (cat, vars) => speak(cat, vars || {}, { force: true }),
+        tip: openDialog,
+        voice: () => ({ speaking: voice.speaking, voiceName: voice.voiceName }),
+      };
+    }
+
+    const inR = (r, p) => r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1;
     let poll = 0;
     let lastX = 0;
     let lastZ = 0;
     let still = 0;
+    let adultSecs = 0;
+    let adultSaid = false;
+    let inKids = false;
+    let lastKids = -Infinity;
     return {
       update(dt, t) {
         now = t;
@@ -231,6 +361,11 @@ export default {
           fig.head.position.y = 1.44 + Math.sin(t * 1.7) * 0.004;
           fig.root.scale.y = 1 + Math.sin(t * 1.7) * 0.005;
         }
+        // Mund: flattert beim Sprechen
+        if (voice.speaking) {
+          const open = Math.abs(Math.sin(t * 15) * (0.65 + 0.35 * Math.sin(t * 6.1 + 1.3))) + Math.abs(Math.sin(t * 23.7)) * 0.25;
+          fig.mouth.scale.y = 1 + Math.min(1, open) * (reduced ? 0.6 : 2.2);
+        } else if (fig.mouth.scale.y !== 1) fig.mouth.scale.y = 1;
         // Arme
         if (waveT >= 0) {
           waveT += dt;
@@ -249,33 +384,44 @@ export default {
 
         if (pendingGreet >= 0) {
           pendingGreet -= dt;
-          if (pendingGreet < 0) {
-            const h = hourNow();
-            const tod = timeOfDay(h);
-            speak(greetingCategory(tod, isLate(h)), {}, { force: true });
-          }
+          if (pendingGreet < 0) greet();
         }
         if (bubbleLeft > 0) {
           bubbleLeft -= dt;
-          if (bubbleLeft <= 0 || ctx.overlay.isOpen()) { bubble.hidden = true; bubbleLeft = 0; } else placeBubble();
+          if (bubbleLeft <= 0 || (ctx.overlay.isOpen() && !bubbleSticky)) { bubble.hidden = true; bubbleLeft = 0; } else placeBubble();
         }
-        // Lange herumstehen
         poll += dt;
         if (poll > 1) {
+          const step = poll;
           poll = 0;
+          // Lange herumstehen
           if (Math.hypot(p.x - lastX, p.z - lastZ) > 0.3) { still = 0; lastX = p.x; lastZ = p.z; } else still++;
           if (still >= 45) {
             still = 0;
             const r = ctx.catalog.resume && ctx.catalog.resume[0];
             if (r && !resumeSaid) { if (speak('resume', { title: r.Name })) resumeSaid = true; } else speak('idle', {});
           }
+          // Ab-18-Raum: einmal pro Aufenthalt nach 30 s
+          if (inR(L.adultRoom, p)) {
+            adultSecs += step;
+            if (adultSecs >= 30 && !adultSaid && speak('adultLong', {}, { maxDist: Infinity })) adultSaid = true;
+          } else { adultSecs = 0; adultSaid = false; }
+          // Kinder-Ecke betreten: höchstens alle 2 min
+          const k = !!inR(L.kidsRoom, p);
+          if (k && !inKids && now - lastKids > 120 && speak('kidsEnter', {}, { maxDist: Infinity })) lastKids = now;
+          inKids = k;
         }
       },
-      onSuspend() { bubble.hidden = true; bubbleLeft = 0; },
+      onSound(on) { if (!on) stopVoice(); },
+      onSuspend() { bubble.hidden = true; bubbleLeft = 0; stopVoice(); },
       dispose() {
         offs.forEach((o) => o());
+        offIa();
+        offProvide();
+        stopVoice();
+        voice.dispose();
         bubble.remove();
-        if (window.__lfxM4) { delete window.__lfxM4.say; delete window.__lfxM4.tip; }
+        if (window.__lfxM4) { delete window.__lfxM4.say; delete window.__lfxM4.tip; delete window.__lfxM4.voice; }
       },
     };
   },

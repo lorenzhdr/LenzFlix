@@ -2026,6 +2026,40 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fps {
   position: absolute;
 }
 
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog .lfx-store-tip-card {
+  width: min(94vw, 460px);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog .lfx-store-tip-text {
+  min-height: 3.2em;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog-btns {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  display: grid;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog-btns .lfx-store-tip-btn {
+  min-height: 44px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog.is-touch .lfx-store-dialog-btns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog.is-touch .lfx-store-dialog-btns .lfx-store-tip-btn {
+  min-height: 48px;
+}
+
+@media (max-width: 480px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-dialog-btns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch {
   z-index: 6;
   pointer-events: none;
@@ -2145,4 +2179,141 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-couch-btn:focus-visible {
     padding: 0 10px;
     font-size: 14px;
   }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-guide {
+  z-index: 7;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  pointer-events: auto;
+  background: rgba(7, 10, 28, .82);
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-panel {
+  background: var(--lfx-store-night-2, #141c48);
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
+  border-radius: 18px;
+  flex-direction: column;
+  gap: 8px;
+  width: min(86vw, 380px);
+  max-height: 90vh;
+  padding: 20px;
+  display: flex;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-title {
+  text-align: center;
+  font-family: var(--lfx-store-neon-font, "Arial Black", Impact, sans-serif);
+  letter-spacing: .06em;
+  color: var(--lfx-store-pink, #ff3d7f);
+  text-shadow: 0 0 14px rgba(255, 61, 127, .6);
+  font-size: 1.25rem;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-text {
+  color: var(--lfx-store-text, #f4f6ff);
+  margin: 0;
+  font-size: .95rem;
+  line-height: 1.4;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-text--muted {
+  color: var(--lfx-store-muted, #aab4e8);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-swipe.lfx-store-home-on {
+  overscroll-behavior: none;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-swipe.lfx-store-home-on body:not(.dashboardDocument) {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-spacer {
+  visibility: hidden;
+  pointer-events: none;
+  width: 1px;
+  height: calc(100vh + 120px);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-hint {
+  z-index: calc(var(--lfx-store-z-bar, 1250) + 5);
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  color: var(--lfx-store-text, #f4f6ff);
+  font-family: var(--lfx-font, system-ui, sans-serif);
+  touch-action: pan-y;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  background: rgba(7, 10, 28, .55);
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  display: flex;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-arrow {
+  color: var(--lfx-store-yellow, #ffd23f);
+  text-shadow: 0 0 14px rgba(255, 210, 63, .6);
+  font-size: 3rem;
+  line-height: 1;
+  animation: 1.2s ease-in-out infinite lfx-store-swipe-bob;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-text {
+  font-family: var(--lfx-store-neon-font, "Arial Black", Impact, sans-serif);
+  letter-spacing: .04em;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-actions {
+  gap: 8px;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-close {
+  min-width: 44px;
+}
+
+@keyframes lfx-store-swipe-bob {
+  0%, 100% {
+    transform: translateY(4px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-swipe-arrow {
+    animation: none;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel .lfx-store-act[hidden] {
+  display: none !important;
 }

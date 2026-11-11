@@ -102,7 +102,7 @@ describe('mount', () => {
     expect(tab.firstElementChild.contains(captured.host)).toBe(true);
     expect(document.documentElement.classList.contains('lfx-store-home-on')).toBe(true);
     expect(captured.opts).toEqual({
-      quality: 'auto', sound: false, showFps: false, bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
+      quality: 'auto', sound: true, showFps: false, bigCovers: true, skipIntro: false, restore: null, openItemId: null, openTerminal: false, query: '', phone: false, touch: false, debug: false,
     });
     for (const k of ['catalog', 'user', 'imageUrl', 'getItem', 'getSeasons', 'getEpisodes', 'setFavorite', 'setPlayed', 'search', 'loadTrailer', 'play', 'toast',
       'classicView', 'openLibraries', 'openMenu', 'openSettings', 'openThemePicker', 'logout', 'onProgress', 'onReady', 'onState', 'onPrefs', 'onBigCovers', 'onFatal']) {
@@ -117,11 +117,11 @@ describe('mount', () => {
     sessionStorage.setItem('lfx.store.introSeen', '1');
     sessionStorage.setItem('lfx.store.state', JSON.stringify({ x: 1, z: 2, yaw: 0.5, pitch: 0, heldId: 'h' }));
     localStorage.setItem('lfx.store.quality.u1', 'low');
-    localStorage.setItem('lfx.store.sound.u1', '1');
+    localStorage.setItem('lfx.store.soundOn.u1', '0');
     window.__lfxStoreDebug = true;
     await mountOk('lfx=title&id=a1');
     expect(captured.opts).toMatchObject({
-      quality: 'low', sound: true, skipIntro: true, restore: { x: 1, z: 2, yaw: 0.5, pitch: 0, heldId: 'h' }, openItemId: 'a1', debug: true,
+      quality: 'low', sound: false, skipIntro: true, restore: { x: 1, z: 2, yaw: 0.5, pitch: 0, heldId: 'h' }, openItemId: 'a1', debug: true,
     });
     feature.unmount();
     destroyStore();
@@ -140,7 +140,7 @@ describe('mount', () => {
     expect(JSON.parse(sessionStorage.getItem('lfx.store.state')).x).toBe(3);
     captured.deps.onPrefs({ quality: 'high', sound: true });
     expect(localStorage.getItem('lfx.store.quality.u1')).toBe('high');
-    expect(localStorage.getItem('lfx.store.sound.u1')).toBe('1');
+    expect(localStorage.getItem('lfx.store.soundOn.u1')).toBe('1');
     captured.deps.onReady();
     expect(root.querySelector('.lfx-store-loading').classList.contains('is-done')).toBe(true);
     expect(root.querySelector('.lfx-store-btn--search').disabled).toBe(false);
@@ -154,6 +154,22 @@ describe('mount', () => {
     expect(inst.openTerminal).toHaveBeenCalledWith('');
     document.querySelector('.lfx-store-btn--classic').click();
     expect(window.location.hash).toBe('#/home?lfx=classic');
+  });
+});
+
+describe('Ton', () => {
+  it('Standard an; alter Schlüssel „sound“ wird ignoriert und entfernt; Aus bleibt aus', async () => {
+    localStorage.setItem('lfx.store.sound.u1', '0');
+    await mountOk();
+    expect(captured.opts.sound).toBe(true);
+    expect(localStorage.getItem('lfx.store.sound.u1')).toBeNull();
+    captured.deps.onPrefs({ sound: false });
+    expect(localStorage.getItem('lfx.store.soundOn.u1')).toBe('0');
+    feature.unmount();
+    destroyStore();
+    create.mockClear();
+    await mountOk();
+    expect(captured.opts.sound).toBe(false);
   });
 });
 

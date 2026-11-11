@@ -2,7 +2,7 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: false, fps: false, bigCovers: true };
+const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true };
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
 const SESSION_INTRO = 'lfx.store.introSeen';
 const SESSION_STATE = 'lfx.store.state';
@@ -21,8 +21,11 @@ export function getQuality() {
   return QUALITIES.includes(v) ? v : DEFAULTS.quality;
 }
 
+/** Ton (Standard an). Neuer Schlüssel „soundOn“; der alte Schlüssel „sound“ (Standard aus) wird ignoriert und entfernt. */
 export function getSound() {
-  return read('localStorage', storageKey('sound')) === '1';
+  try { window.localStorage.removeItem(storageKey('sound')); } catch { /* egal */ }
+  const v = read('localStorage', storageKey('soundOn'));
+  return v === null ? DEFAULTS.sound : v !== '0';
 }
 
 export function getFps() {
@@ -39,7 +42,7 @@ export function getBigCovers() {
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
-  if (typeof p.sound === 'boolean') write('localStorage', storageKey('sound'), p.sound ? '1' : '0');
+  if (typeof p.sound === 'boolean') write('localStorage', storageKey('soundOn'), p.sound ? '1' : '0');
   if (typeof p.fps === 'boolean') write('localStorage', storageKey('fps'), p.fps ? '1' : '0');
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
 }

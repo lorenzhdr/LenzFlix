@@ -28,7 +28,7 @@ Die Hülle lädt es per `core/themejs.js` (`ensureThemeJs('store')`, Basis wie `
 ```js
 {
   quality: 'auto' | 'low' | 'mid' | 'high',
-  sound: false,             // Standard aus
+  sound: true,              // Standard an (ab v1.7.4; Hülle: localStorage lfx.store.soundOn.<uid>, alter Schlüssel lfx.store.sound.<uid> wird ignoriert und entfernt)
   showFps: false,           // FPS-Kachel oben rechts (Pause-Menü „FPS-Anzeige“), Standard aus
   bigCovers: true,          // große Hüllen (Standard); false = „Normal“. Wechsel im Pause-Menü baut die Szene neu auf
   skipIntro: false,         // true = Intro (Rollladen) in dieser Sitzung schon gesehen
@@ -190,9 +190,22 @@ export default { name: 'beispiel', init(ctx) { …; return { update(dt, t) {}, o
 Interactable „Sofa“ (E / Klick / Touch-Tipp) setzt den Spieler vor den Röhren-TV. Ablauf: `player.freeze(true)`, `overlay.open` (Knopfleiste unten, CSS `themes/store/couch.css`), `camera.flyTo` zuerst auf die Sofamitte (Augenhöhe 1,0 m), dann nah vor den Schirm. Abstand: `couch-util.js` `fitDistance(fov, aspect)` – die engere Achse bestimmt (Querformat: Höhe 90 %, Hochformat: Breite 92 %); bei Resize/FOV-Änderung während des Sitzens fährt die Kamera kurz nach. Die Near-Plane (0,05) bleibt unverändert (Abstand ≥ 0,25 m, Wölbung 0,03 m).
 - Schärfe: nur beim Sitzen läuft der Schirm mit eigener 960×720-Canvas-Textur (Backdrops mit `maxWidth 1280`, nur aktuelle + nächste Folie im Cache, Trailer als Letterbox mit 30 fps); beim Aufstehen wird sie samt Cache verworfen (zurück auf 320×240).
 - Trailer: `pickCandidates` (Highlights + Zufallstitel, höchstens 12, nie Ab-18) → lazy per `deps.getItem` (`LocalTrailerCount > 0`) + `deps.loadTrailer`; „Nächster“ springt zum nächsten gefundenen Trailer (sonst nächste Diashow-Folie). Genau ein `<video>`-Element; die URL (api_key) wird nie geloggt.
-- Ton: Hinsetzen/„Nächster“ sind die Nutzergeste (`muted=false` + `play()` im selben Call-Stack); schlägt Ton-Autoplay fehl, startet das Video stumm und „Ton an“ ist sichtbar. Lautstärke in `sessionStorage` (`lfx-store-tv-vol`). Provider `sound.duck(on)` dämpft Ambiente/Effekte beim Sitzen. Beim Aufstehen ist das Video wieder stumm.
+- Ton: Hinsetzen/„Nächster“ sind die Nutzergeste (`muted=false` + `play()` im selben Call-Stack); schlägt Ton-Autoplay fehl, startet das Video stumm und „Ton an“ ist sichtbar. Lautstärke in `sessionStorage` (`lfx-store-tv-vol`). Provider `sound.duck('tv', on)` dämpft Ambiente/Effekte beim Sitzen. Beim Aufstehen ist das Video wieder stumm.
 - „Diesen Film ansehen“: wie am Kassen-PC sofort aufstehen (ohne Rückfahrt) und `deps.play(item, { resume: false })` – dieselbe Rückkehr-Logik der Hülle.
-- Aufräumen: `onSuspend`, `onQuality('low')` (Sitzen bei `low` nicht möglich, Toast) und `dispose` stehen sofort auf (Overlay zu, `freeze(false)`, Kamera zurück, Video entladen).
+- Aufräumen: `onSuspend` und `dispose` stehen sofort auf (Overlay zu, `freeze(false)`, Kamera zurück, Video entladen); `onQuality('low')` stoppt nur den Auto-Trailer, wenn man nicht sitzt (Sitzen geht auch bei `low`).
+- Provider `couch { seated() }`; beim Hinsetzen/Aufstehen ruft das Modul `cashier.event('couchSit'|'couchStand')`.
+
+### Kassierer Richard (`modules/cashier.js`, `cashier-lines.js`, `voice.js`)
+
+- Sprechblase (Untertitel) + echte Stimme über `speechSynthesis`, wenn `soundOn()` und Abstand ≤ 10 m (weiter weg nur Blase; Lautstärke 1 unter 3 m, linear bis 0,5 bei 10 m). Während der Rede `sound.duck('talk')`, Mund (`mouth.scale.y`) flattert. Von sich aus höchstens alle 20 s (Limiter), Hörweite der Blase 16 m. Die `play`-Zeile ist nur Blase, Wiedergabestart bricht die Stimme ab; ebenso Ton aus, suspend, dispose.
+- `voice.js` (Hilfsdatei, kein Registry-Modul): `pickVoice(voices)` → `{ voice, pitch } | null` – **nur `localService === true`** (Online-Stimmen würden Profilname/Titel an Dritte senden), nur `de*`; männliche Namen zuerst (Markus, Martin, Stefan, Conrad, …, pitch 1,0), Novelty-Stimmen zuletzt, sonst irgendeine lokale deutsche mit pitch 0,8; keine → nur Blase. `createVoice({ soundOn, synth, Utterance })` → `{ say(text, { volume }) → Promise, cancel(), speaking, voiceName, unlock(), dispose() }`: `say` bricht ab und spricht einen Tick später (Chrome), hält die Utterance referenziert, Sicherheitstimeout `len×90+1500 ms`; `unlock()` spricht bei der ersten Geste (pointerdown/keydown/touchend/click, nur wenn Ton an) einmal leer mit volume 0 (iOS). Texte werden nie geloggt.
+- Dialog „Mit Richard reden“ (Overlay `.lfx-store-tip.lfx-store-dialog`): Antwortknöpfe Lustiges/Gruseliges/Kinder/Neu/Überrasch mich/Weiterschauen/Tschüss – ein Knopf nur bei Kandidaten (`dialogPicks(catalog, deptOf)`, Ab-18 immer ausgeschlossen); Antwort mit „Zeig mal“ (`items.take(id, { from: 'counter' })`), „Was anderes“, „Tschüss“. Esc/Klick daneben schließt und bricht die Stimme ab.
+- Anlässe: Begrüßung (+ `intro` einmal pro Sitzung, `sessionStorage lfx.store.richardIntro`; bei Regen teils `rain`), `take`, `put`, `zone register`, langes Herumstehen, `adultLong` (> 30 s im Ab-18-Raum, einmal pro Aufenthalt), `kidsEnter` (höchstens alle 2 min), Couch hinsetzen/aufstehen.
+
+### Vollbild und Safari-Leiste (`ui/fullscreen.js`)
+
+- Pause-Menü „Vollbild“ nur auf Touch-Geräten (Callbacks `onFullscreen()`, `getFullscreen()`, `fullscreenKind()` → `'api'|'guide'|'none'`; bei `none` ausgeblendet). `api` (Android, iPad): Fullscreen-API am `documentElement`. `guide` (iPhone-Safari, nicht standalone): Panel `.lfx-store-fs-guide` mit Anleitung „Zum Home-Bildschirm → Als Web-App öffnen“. Standalone/Desktop: kein Knopf (Desktop: F11; Esc würde Vollbild und Pointer-Lock zugleich beenden).
+- Wisch-Trick (experimentell, nur iPhone-Safari, nicht standalone, Querformat, Modus `play` ohne Modul-Sperre, Leiste sichtbar = `innerHeight < min(screen.w, screen.h) − 24`): `html.lfx-store-swipe` hebt `overflow:hidden` auf, `div.lfx-store-swipe-spacer` am `body` macht die Seite scrollbar, Overlay `.lfx-store-swipe-hint` am `body` („Nach oben wischen für Vollbild“). Erfolg = Leiste weg oder `scrollY > 0` → Overlay weg, Klasse/Spacer bleiben. Wiederanzeige höchstens 2× pro Sitzung (`sessionStorage lfx.store.swipeShown`), „×“ = für die Sitzung aus. Hochformat/suspend/dispose räumen alles ab (`scrollTo(0,0)`). Einmaliger Home-Bildschirm-Tipp per `hud.note` (`localStorage lfx.store.fsTip.<user>`).
 
 ### Provider und Module (Stand M2–M4)
 
@@ -200,7 +213,9 @@ Interactable „Sofa“ (E / Klick / Touch-Tipp) setzt den Spieler vor den Röhr
 |---|---|---|---|
 | `terminal` | `{ open(q) }` | `modules/terminal.js` | Kassen-PC (Overlay mit Suche, Hinführen, „Über den Tresen“); `instance.openTerminal(q)` delegiert hierher, sonst Toast. Ergebnisse werden clientseitig mit `modules/search-rank.js` gerankt (exakt > beginnt mit > Wortanfang > enthält > Rest; Rest entfällt ab 5 Titeltreffern). |
 | `intro` | `{ run() → Promise }` | `modules/intro.js` | Rollladen-Intro von draußen; öffnet die echten Türflügel `lfx-door-left`/`lfx-door-right`. Läuft nur ohne `opts.skipIntro`/`restore`/`openItemId`/`openTerminal`. |
-| `sound` | `{ play(name, opts), ambient(on), duck(on) }` | `modules/sound.js` | Web-Audio (synthetisch); folgt `onSound(on)` und `ctx.soundOn()`. Startwert `opts.sound`; der Pause-Menü-Schalter ruft `setSound` → Module `onSound` + `deps.onPrefs`. |
+| `sound` | `{ play(name, opts), ambient(on), duck(key, on) }` | `modules/sound.js` | Web-Audio (synthetisch); folgt `onSound(on)` und `ctx.soundOn()`. Startwert `opts.sound` (Standard an); der Pause-Menü-Schalter ruft `setSound` → Module `onSound` + `deps.onPrefs`. `duck`: Set aktiver Schlüssel, stärkste Dämpfung gilt (`'tv'` ×0,12, `'talk'` ×0,45); `duck(bool)` = `duck('tv', bool)`. Lautlos-Schalter am iPhone wird respektiert (kein `navigator.audioSession`). |
+| `cashier` | `{ event('couchSit'\|'couchStand') }` | `modules/cashier.js` | Kassierer Richard: erzwungene Zeile als Blase (auch über offenem Overlay). |
+| `couch` | `{ seated() }` | `modules/tv.js` | Solange man sitzt, spricht Richard nicht von sich aus. |
 | `weather` | `{ tod: 'day'\|'dusk'\|'night', raining, hour? }` | `modules/daytime.js` | Tageszeit/Regen für Kulisse und Stimmung; andere Module lesen sie (`ctx.use('weather')`). |
 
 Benannte Szenenobjekte (Module greifen per `scene.getObjectByName`): `lfx-door` (Gruppe), `lfx-door-left`, `lfx-door-right` (Pivot am Scharnier, Rotation um y; Kinder `lfx-door-frame`, `lfx-door-glass`), `lfx-backdrop` und `lfx-street` (alte Nachtkulisse, wird von `modules/outdoor.js` ausgeblendet). Der Kassen-PC steht in `layout.pc` (`build-props.js` und `terminal.js` lesen dieselbe Position).
@@ -210,4 +225,4 @@ Zonen: `layout.zones[id]` hat Objektposition `x, z, yaw` und optional `view = { 
 Debug (nur bei `opts.debug`, nie im Produktivbetrieb):
 - `window.__lfxStore` (`teleport, lookAt, take, put, stats, state, zones`; `stats()` zusätzlich `programs, tickMs, renderMs`).
 - `window.__lfxStore.m3.<modul>` (terminal, returns, reserve, staff, showcase) – wird beim Event `'enter'` gesetzt (`modules/m3-debug.js`).
-- `window.__lfxM4` (`scene, outdoor, ctx, say, tip, sound(), intro()`) – von `daytime`, `cashier`, `sound`, `intro` gesetzt. Dev-Harness-Parameter: `?hour=23&rain=0|1&intro=1&sound=1`.
+- `window.__lfxM4` (`scene, outdoor, ctx, say, tip, voice(), sound(), intro()`) – von `daytime`, `cashier`, `sound`, `intro` gesetzt. Dev-Harness-Parameter: `?hour=23&rain=0|1&intro=1&sound=0`.

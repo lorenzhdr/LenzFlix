@@ -287,6 +287,7 @@ export default {
     let suspended = false;
     let disposed = false;
     let seat = 'idle'; // idle | in | leaving
+    const offCouch = ctx.provide('couch', { seated: () => seat === 'in' });
     let userMuted = false;
     let vol = 0.7;
     try { const sv = parseFloat(sessionStorage.getItem(VOL_KEY)); if (Number.isFinite(sv)) vol = clamp(sv, 0, 1); } catch { /* egal */ }
@@ -567,7 +568,8 @@ export default {
       ui = buildUi();
       ctx.overlay.open(ui.root, { onClose: onClosed });
       const snd = ctx.use('sound');
-      if (snd && snd.duck) snd.duck(true);
+      if (snd && snd.duck) snd.duck('tv', true);
+      { const c = ctx.use('cashier'); if (c && c.event) c.event('couchSit'); }
       checkVisible();
       loadSlide(idx); loadSlide(idx + 1);
       updateBig();
@@ -634,6 +636,7 @@ export default {
       const a = afterLeave;
       afterLeave = null;
       if (a && !disposed) a();
+      if (!disposed) { const c = ctx.use('cashier'); if (c && c.event) c.event('couchStand'); }
     }
     /** Overlay wurde geschlossen (Aufstehen, Esc, Suspend, Qualität low, Abspielen). */
     function onClosed() {
@@ -651,7 +654,7 @@ export default {
       visT = 1; // Auto-Betrieb prüft Sichtbarkeit im nächsten Takt neu
       frame();
       const snd = ctx.use('sound');
-      if (snd && snd.duck) snd.duck(false);
+      if (snd && snd.duck) snd.duck('tv', false);
       if (disposed) { ctx.player.camera.release(); ctx.player.freeze(false); seat = 'idle'; return; }
       if (instantLeave || !snap) { restoreCam(); finishLeave(); return; }
       const s = snap;
@@ -719,6 +722,7 @@ export default {
         disposed = true;
         ac.abort();
         removeSofa();
+        offCouch();
         if (seat !== 'idle') {
           ui = null; // runtime.dispose schließt das Overlay danach; onClosed ist dann ein No-op
           if (sitAc) sitAc.abort();
@@ -726,7 +730,7 @@ export default {
           freeBig(null);
           useBig(false);
           const snd = ctx.use('sound');
-          if (snd && snd.duck) snd.duck(false);
+          if (snd && snd.duck) snd.duck('tv', false);
           ctx.player.camera.release();
           ctx.player.freeze(false);
           seat = 'idle';
