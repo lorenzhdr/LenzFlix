@@ -526,6 +526,114 @@ html.lfx-js .lfx-tp__mark-store-b {
   line-height: 26px;
   text-shadow: 0 0 8px rgb(255 61 127 / 0.7);
 }
+/* live (LENZ LIVE): dunkler Raum, Röhrenfernseher mit Bild und Kanalnummer, kleine Fernbedienung */
+html.lfx-js .lfx-tp__preview--live {
+  background: radial-gradient(ellipse at 40% 45%, #1a1f2c 0%, #0b0d12 70%);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__tv {
+  position: absolute;
+  left: 9%;
+  top: 14%;
+  width: 58%;
+  height: 68%;
+  box-sizing: border-box;
+  padding: 5%;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f4f1e8, #cfc9b8);
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.5);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__screen {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 8px / 10px;
+  background:
+    repeating-linear-gradient(180deg, rgb(0 0 0 / 0.18) 0 1px, transparent 1px 3px),
+    linear-gradient(135deg, #3a7bd5 0%, #1c3f7a 60%, #0f2447 100%);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__chno {
+  position: absolute;
+  left: 8%;
+  top: 8%;
+  color: #8dff8d;
+  font: 800 clamp(8px, 1.8vw, 13px) / 1 "Courier New", monospace;
+  text-shadow: 0 0 4px rgb(141 255 141 / 0.7);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rec {
+  position: absolute;
+  right: 9%;
+  top: 9%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e03a2f;
+  box-shadow: 0 0 6px #e03a2f;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__ant {
+  position: absolute;
+  left: 50%;
+  top: -9%;
+  width: 28%;
+  height: 12%;
+  transform: translateX(-50%);
+  border-top: 2px solid #8a8573;
+  border-radius: 100% 100% 0 0;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__remote {
+  position: absolute;
+  right: 9%;
+  top: 22%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6%;
+  width: 15%;
+  height: 56%;
+  box-sizing: border-box;
+  padding: 6% 0;
+  border-radius: 6px;
+  background: #23272f;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn {
+  display: block;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #8a8f9b;
+}
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn--power {
+  background: #e03a2f;
+}
+html.lfx-js .lfx-tp__mark--live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  color: #f4f1e8;
+  font: 800 16px / 48px system-ui, "Segoe UI", sans-serif;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+html.lfx-js .lfx-tp__mark-live-b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: #e03a2f;
+  color: #fff;
+  font-size: 13px;
+  line-height: 24px;
+}
+html.lfx-js .lfx-tp__mark-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+}
 html.lfx-js .lfx-tp__beta {
   position: absolute;
   top: 20px;

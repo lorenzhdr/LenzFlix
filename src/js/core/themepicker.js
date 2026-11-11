@@ -48,6 +48,11 @@ function buildPreview(id) {
   } else if (id === 'store') {
     const shelf = (n) => span('lfx-tp__shelf', Array.from({ length: n }, (_, i) => span(`lfx-tp__cover lfx-tp__cover--${i % 6}`)));
     root.append(span('lfx-tp__shopsign', ['VIDEOTHEK LENZ']), shelf(7), shelf(6), span('lfx-tp__carpet'));
+  } else if (id === 'live') {
+    root.append(
+      span('lfx-tp__tv', [span('lfx-tp__screen', [span('lfx-tp__chno', ['5']), span('lfx-tp__rec')]), span('lfx-tp__ant')]),
+      span('lfx-tp__remote', [span('lfx-tp__rbtn lfx-tp__rbtn--power'), span('lfx-tp__rbtn'), span('lfx-tp__rbtn'), span('lfx-tp__rbtn')]),
+    );
   } else {
     root.append(span('lfx-tp__logo'), span('lfx-tp__hero'), span('lfx-tp__row', tiles(4)));
   }
@@ -66,6 +71,9 @@ function buildMark(id, name) {
   }
   if (id === 'store') {
     return span('lfx-tp__mark lfx-tp__mark--store', [span('lfx-tp__mark-store-a', ['VIDEOTHEK']), span('lfx-tp__mark-store-b', ['LENZ'])]);
+  }
+  if (id === 'live') {
+    return span('lfx-tp__mark lfx-tp__mark--live', [span('lfx-tp__mark-live-a', ['LENZ']), span('lfx-tp__mark-live-b', [span('lfx-tp__mark-live-dot'), 'LIVE'])]);
   }
   return span('lfx-tp__mark lfx-tp__mark--flix', [name]);
 }

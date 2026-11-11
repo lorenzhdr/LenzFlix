@@ -162,6 +162,15 @@ Genutzt von `features/store/cinema-bridge.js` (Verhalten: `docs/store3d.md`, „
 - ActionSheet: `.dialog.actionSheet` → `.actionSheetContent` mit `h1.actionSheetTitle`, `button.actionSheetMenuItem` und `.actionSheetItemText`.
 - MUI-Menüs: `.MuiPopover-root .MuiMenu-paper`. Live-IDs: `#app-user-menu`, `#app-sync-play-menu`, `#app-remote-play-menu`.
 
+## Eigener Player (LENZ LIVE, live geprüft 11.11.2026)
+Kein DOM-Befund, sondern Server-Verhalten für den eigenen `<video>`-Player (Jellyfin 12.x); vollständige Liste in `docs/live.md` („Live geprüfte Server-Befunde“).
+- `POST /Items/{id}/PlaybackInfo?userId=` mit eigenem DeviceProfile; im Body immer `SubtitleStreamIndex: -1` (sonst wählt der Server evtl. einen brennenden Standard-Untertitel).
+- Token als `ApiKey` (der Server nutzt es selbst in `TranscodingUrl`); `api_key` wird ebenfalls akzeptiert.
+- Direktwiedergabe (`/Videos/{id}/stream?static=true&MediaSourceId=…`) bedient Range-Anfragen, Sprung per `currentTime` genügt.
+- HLS-Remux: Playlist umfasst den ganzen Titel (absolute Zeitbasis); Start per `currentTime` nach `loadedmetadata`. `&StartTimeTicks=` an der URL bricht die Playlist (Fehler 4), nie anhängen.
+- `DELETE /Videos/ActiveEncodings?deviceId=&playSessionId=` → 204; fordert der Client danach weiter Segmente an, startet der Job neu: erst `<video>` leeren, dann DELETE.
+- Ein Player ohne Fortschrittsmeldung hinterlässt keine Spuren (UserData, `/UserItems/Resume` unverändert). Personendaten (`Fields=People`, `/Persons`) sind für den Katalog zu langsam.
+
 ## Fremd-Elemente auf dem Entwicklungs-Server (Beispiel für Konflikte mit anderen Themes/Plugins)
 - Server-Custom-CSS mit `@import` von `ahza-code/Netflin` war im Testkonto über „Server-CSS deaktivieren“ aus.
 - `/web/ui/spotlight-loader.js` („Abyss Spotlight“) ist ins `index.html` eingebaut. Es erzeugt `iframe.featurediframe` in `#homeTab`, `#abyss-spotlight-backdrop`, `html.abyss-spotlight-visible` und `.abyss-spotlight-active`.

@@ -67,6 +67,22 @@
     }
     throw new Error("LenzFlix API: kein ApiClient/Token verf\xFCgbar");
   }
+  async function requestJson(method, path, { params, body, signal } = {}) {
+    const { token: token2 } = getAuth();
+    const headers = { Accept: "application/json" };
+    if (token2) headers.Authorization = `MediaBrowser Token="${token2}"`;
+    const init2 = { method: String(method || "GET").toUpperCase(), headers, signal };
+    if (body !== void 0 && body !== null) {
+      headers["Content-Type"] = "application/json";
+      init2.body = typeof body === "string" ? body : JSON.stringify(body);
+    }
+    const res = await fetch(buildUrl(path, params), init2);
+    if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} f\xFCr ${path}`);
+    if (res.status === 204) return null;
+    if (typeof res.text !== "function") return res.json();
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
   function getItems(params) {
     return getJson("/Items", { userId: getUserId(), ...params });
   }
@@ -354,14 +370,14 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.8.0";
+  var VERSION = "1.9.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
   var ACTIVE_ID = "lfx-theme-css";
   var CORE_RE = /lenzflix(\.min)?\.(css|js)(?=$|[?#])/i;
   var CORE_CSS_RE = /lenzflix(\.min)?\.css(?=$|[?#])/i;
-  var FILES = { plus: "lenzplus", prime: "lenzprime", retro: "lenzretro", store: "lenzstore" };
+  var FILES = { plus: "lenzplus", prime: "lenzprime", retro: "lenzretro", store: "lenzstore", live: "lenzlive" };
   var BOOT_SCRIPT_SRC = (() => {
     try {
       const s = document.currentScript;
@@ -506,7 +522,8 @@
   // src/js/core/favicon.js
   var FLIX_HREF = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACKElEQVR42u3az2oTQQDH8V801SY2LUoOwryCF1/Ji4+lL+HVJ2hToo2xHqXRy0IPha40Ch6cQgjJRSo07ucLc1kYdpf5sH9getmRFoPxWZLLJJMkx0lOk8xL2/yK/rreDgG4SFLWDl8lma6gmCeZlrZZWtpuANjUzyTnFcVJHcelbX5Y7m4A2NQyyZc1FJPSNtcAdAPANhTn9VvibWmb910E0O8w/r0kL+pYJOkkgAfegt0OAAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAAIAAEgAAQAAJAAAiArvV8MRg/6+KN93blQheD8UWS8o9Pc5lkluRTHSdJpqVtrgDoBoBtfa8gZitAJqVtrgHoBoBNLZN8TfI5yVmFMU/yobTNDQD/P4Bt3aw8KWZJPiY5LW3z7T5ebN/33533KMnLOm57k+SVvwABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgABR7ApPkdZJRksMke0kOkjxOMkwySLKf5Ek9Nqr3dlSRH9U5o5W52iUApW3e5W53Ge9XOMOKZ1jxHObPbumnSR5WPP2KZx3c7dyDCmsVXH8F673tN5bcY1gLzpx6AAAAAElFTkSuQmCC";
   var STORE_HREF = "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%20role=%22img%22%3E%3Ctitle%3EVIDEOTHEK%20LENZ%3C/title%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2212%22%20fill=%22%230d1330%22/%3E%3Crect%20x=%224%22%20y=%224%22%20width=%2256%22%20height=%2256%22%20rx=%229%22%20fill=%22none%22%20stroke=%22%23ff3d7f%22%20stroke-width=%222.5%22/%3E%3Cpath%20d=%22M12%2018l9%2028%209-28h-5.5L21%2033.5%2017.5%2018zM34%2018h5.5v23H52v5H34z%22%20fill=%22%23ffd23f%22/%3E%3C/svg%3E";
-  var FAVICONS = { flix: FLIX_HREF, plus: FLIX_HREF, prime: FLIX_HREF, retro: FLIX_HREF, store: STORE_HREF };
+  var LIVE_HREF = "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%3E%3Ctitle%3ELENZ%20LIVE%3C/title%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2212%22%20fill=%22%230b0d12%22/%3E%3Cpath%20d=%22M22%2011l8%208M42%2011l-8%208%22%20stroke=%22%23f4f1e8%22%20stroke-width=%223%22%20stroke-linecap=%22round%22%20fill=%22none%22/%3E%3Crect%20x=%228%22%20y=%2219%22%20width=%2248%22%20height=%2234%22%20rx=%228%22%20fill=%22%23f4f1e8%22/%3E%3Crect%20x=%2213%22%20y=%2224%22%20width=%2230%22%20height=%2224%22%20rx=%226%22%20fill=%22%233a7bd5%22/%3E%3Ccircle%20cx=%2250%22%20cy=%2231%22%20r=%223.2%22%20fill=%22%23e03a2f%22/%3E%3Crect%20x=%2246.5%22%20y=%2238%22%20width=%227%22%20height=%223%22%20rx=%221.5%22%20fill=%22%230b0d12%22/%3E%3Crect%20x=%2246.5%22%20y=%2243%22%20width=%227%22%20height=%223%22%20rx=%221.5%22%20fill=%22%230b0d12%22/%3E%3C/svg%3E";
+  var FAVICONS = { flix: FLIX_HREF, plus: FLIX_HREF, prime: FLIX_HREF, retro: FLIX_HREF, store: STORE_HREF, live: LIVE_HREF };
   var typeFor = (href) => href.startsWith("data:image/svg") ? "image/svg+xml" : "image/png";
   var ATTR = "data-lfx-orig";
   var created = null;
@@ -615,15 +632,15 @@
   }
   function toast(text, { duration = 3e3 } = {}) {
     clearTimers();
-    const root6 = mountPoint(ID, { className: "lfx-toast" });
-    root6.classList.remove("is-leaving");
-    root6.setAttribute("role", "status");
-    root6.setAttribute("aria-live", "polite");
-    root6.replaceChildren(h("div", { class: "lfx-toast__msg" }, [String(text)]));
+    const root7 = mountPoint(ID, { className: "lfx-toast" });
+    root7.classList.remove("is-leaving");
+    root7.setAttribute("role", "status");
+    root7.setAttribute("aria-live", "polite");
+    root7.replaceChildren(h("div", { class: "lfx-toast__msg" }, [String(text)]));
     hideTimer = setTimeout(() => {
-      root6.classList.add("is-leaving");
+      root7.classList.add("is-leaving");
       removeTimer = setTimeout(() => {
-        unmountPoint(root6);
+        unmountPoint(root7);
         hideTimer = removeTimer = null;
       }, 200);
     }, duration);
@@ -634,16 +651,18 @@
   }
 
   // src/js/core/theme.js
-  var THEMES = ["flix", "plus", "prime", "retro", "store"];
+  var THEMES = ["flix", "plus", "prime", "retro", "store", "live"];
   var THEME_META = {
     flix: { id: "flix", name: "LENZFLIX", tagline: "Klassisch: rote Akzente, Querformat-Karten", palette: ["#141414", "#e50914", "#ffffff", "#808080"] },
     plus: { id: "plus", name: "LENZ+", tagline: "Karussell, Poster und Marken-Hubs", palette: ["#10131f", "#050507", "#1bb3e8", "#f5f5f7"] },
     prime: { id: "prime", name: "LENZPRIME", tagline: "Vollbild-Hero, Badges und Trailer", palette: ["#0a0e17", "#1a98ff", "#ffffff", "#3a3d45"] },
     retro: { id: "retro", name: "LENZ//84", tagline: "Bernstein-Terminal, Kassetten und Neon-Gitter", palette: ["#0a0603", "#ffb000", "#ff5a1f", "#ffe2a8"] },
-    store: { id: "store", name: "VIDEOTHEK LENZ", tagline: "Begehbare 3D-Videothek", palette: ["#0d1330", "#ffd23f", "#ff3d7f", "#2446a8"] }
+    store: { id: "store", name: "VIDEOTHEK LENZ", tagline: "Begehbare 3D-Videothek", palette: ["#0d1330", "#ffd23f", "#ff3d7f", "#2446a8"] },
+    live: { id: "live", name: "LENZ LIVE", tagline: "Lineares Fernsehen mit 18 Sendern", palette: ["#0b0d12", "#e03a2f", "#f4f1e8", "#3a7bd5"] }
   };
   var KEY_USER = "lfx.theme.";
   var KEY_LAST = "lfx.theme.last";
+  var KEY_PREV = "lfx.theme.prev.";
   var PREFS_ID = "lenzflix";
   var PREFS_CLIENT = "lenzflix";
   var HASH_PARAM = "lfxtheme";
@@ -719,6 +738,19 @@
     if (uk) lsSet(uk, id);
     lsSet(KEY_LAST, id);
   }
+  function prevKey() {
+    return KEY_PREV + (getUserId() || "last");
+  }
+  function strictPrev(x) {
+    return THEMES.includes(x) && x !== "live" ? x : null;
+  }
+  function getPreviousTheme() {
+    return strictPrev(lsGet(prevKey())) || "flix";
+  }
+  function savePrevious(id) {
+    const p = strictPrev(id);
+    if (p) lsSet(prevKey(), p);
+  }
   function takeHashChoice(consume = true) {
     let r;
     try {
@@ -763,6 +795,8 @@
     try {
       const prefs = await fetchPrefs(uid) || {};
       prefs.CustomPrefs = { ...prefs.CustomPrefs || {}, theme: id };
+      const prev = strictPrev(lsGet(KEY_PREV + uid));
+      if (prev) prefs.CustomPrefs.prevTheme = prev;
       if (!prefs.Id) prefs.Id = PREFS_ID;
       await postPrefs(uid, prefs);
     } catch (e) {
@@ -784,9 +818,11 @@
   async function loadRemoteTheme(uid) {
     const startTouched = touched;
     let remote;
+    let remotePrev;
     try {
       const prefs = await fetchPrefs(uid);
       remote = strictTheme(prefs && prefs.CustomPrefs && prefs.CustomPrefs.theme);
+      remotePrev = strictPrev(prefs && prefs.CustomPrefs && prefs.CustomPrefs.prevTheme);
     } catch (e) {
       console.warn("[LenzFlix] Design konnte nicht vom Server geladen werden:", e && e.message ? e.message : e);
       return;
@@ -796,6 +832,7 @@
       scheduleUpload(chosen);
       return;
     }
+    if (remotePrev) lsSet(KEY_PREV + uid, remotePrev);
     if (remote) {
       if (remote !== chosen) await setTheme(remote, { source: "server" });
     } else if (lsGet(KEY_USER + uid) || chosen !== "flix") {
@@ -941,14 +978,19 @@
   }
   async function setTheme(id, { source = "user" } = {}) {
     const next = normalizeTheme(id);
+    const before = effective || chosen || resolveLocalChoice();
     chosen = next;
     if (source === "user") touched++;
     if (!started) {
       saveLocal(next);
-      if (source === "user") scheduleUpload(next);
+      if (source === "user") {
+        if (next === "live") savePrevious(before);
+        scheduleUpload(next);
+      }
       return;
     }
     const ok = await transition(desired());
+    if (ok && source === "user" && next === "live" && before !== "live") savePrevious(before);
     if (ok || chosen === next) {
       saveLocal(chosen);
       if (source === "user") scheduleUpload(chosen);
@@ -975,6 +1017,7 @@
     lastUid = getUserId() || null;
     const fromHash = takeHashChoice();
     if (fromHash) {
+      if (fromHash === "live") savePrevious(resolveLocalChoice());
       chosen = fromHash;
       touched++;
       saveLocal(fromHash);
@@ -1457,10 +1500,10 @@
   var span = (cls, children) => h("span", { class: cls }, children);
   function buildPreview(id) {
     const tiles = (n) => Array.from({ length: n }, () => span("lfx-tp__tile"));
-    const root6 = span(`lfx-tp__preview lfx-tp__preview--${id}`);
-    root6.setAttribute("aria-hidden", "true");
+    const root7 = span(`lfx-tp__preview lfx-tp__preview--${id}`);
+    root7.setAttribute("aria-hidden", "true");
     if (id === "plus") {
-      root6.append(
+      root7.append(
         span("lfx-tp__bar", [span("lfx-tp__dot"), span("lfx-tp__dot"), span("lfx-tp__dot"), span("lfx-tp__dot")]),
         span("lfx-tp__hero lfx-tp__hero--side lfx-tp__hero--l"),
         span("lfx-tp__hero"),
@@ -1469,7 +1512,7 @@
         span("lfx-tp__row", tiles(5))
       );
     } else if (id === "prime") {
-      root6.append(
+      root7.append(
         span("lfx-tp__hero", [span("lfx-tp__line"), span("lfx-tp__line lfx-tp__line--s"), span("lfx-tp__btn")]),
         span("lfx-tp__row", tiles(4).map((t) => {
           t.append(span("lfx-tp__badge-mini"));
@@ -1477,14 +1520,19 @@
         }))
       );
     } else if (id === "retro") {
-      root6.append(span("lfx-tp__sun"), span("lfx-tp__grid"), span("lfx-tp__scan"));
+      root7.append(span("lfx-tp__sun"), span("lfx-tp__grid"), span("lfx-tp__scan"));
     } else if (id === "store") {
       const shelf = (n) => span("lfx-tp__shelf", Array.from({ length: n }, (_, i) => span(`lfx-tp__cover lfx-tp__cover--${i % 6}`)));
-      root6.append(span("lfx-tp__shopsign", ["VIDEOTHEK LENZ"]), shelf(7), shelf(6), span("lfx-tp__carpet"));
+      root7.append(span("lfx-tp__shopsign", ["VIDEOTHEK LENZ"]), shelf(7), shelf(6), span("lfx-tp__carpet"));
+    } else if (id === "live") {
+      root7.append(
+        span("lfx-tp__tv", [span("lfx-tp__screen", [span("lfx-tp__chno", ["5"]), span("lfx-tp__rec")]), span("lfx-tp__ant")]),
+        span("lfx-tp__remote", [span("lfx-tp__rbtn lfx-tp__rbtn--power"), span("lfx-tp__rbtn"), span("lfx-tp__rbtn"), span("lfx-tp__rbtn")])
+      );
     } else {
-      root6.append(span("lfx-tp__logo"), span("lfx-tp__hero"), span("lfx-tp__row", tiles(4)));
+      root7.append(span("lfx-tp__logo"), span("lfx-tp__hero"), span("lfx-tp__row", tiles(4)));
     }
-    return root6;
+    return root7;
   }
   function buildMark(id, name) {
     if (id === "plus") {
@@ -1498,6 +1546,9 @@
     }
     if (id === "store") {
       return span("lfx-tp__mark lfx-tp__mark--store", [span("lfx-tp__mark-store-a", ["VIDEOTHEK"]), span("lfx-tp__mark-store-b", ["LENZ"])]);
+    }
+    if (id === "live") {
+      return span("lfx-tp__mark lfx-tp__mark--live", [span("lfx-tp__mark-live-a", ["LENZ"]), span("lfx-tp__mark-live-b", [span("lfx-tp__mark-live-dot"), "LIVE"])]);
     }
     return span("lfx-tp__mark lfx-tp__mark--flix", [name]);
   }
@@ -1822,9 +1873,9 @@
   }
   function onScroll() {
     const y = window.scrollY || document.documentElement.scrollTop || 0;
-    const root6 = document.documentElement;
+    const root7 = document.documentElement;
     const on = y > SCROLL_THRESHOLD;
-    if (root6.classList.contains("lfx-scrolled") !== on) root6.classList.toggle("lfx-scrolled", on);
+    if (root7.classList.contains("lfx-scrolled") !== on) root7.classList.toggle("lfx-scrolled", on);
   }
   function onDocClick(e) {
     if (state2.menuOpen && state2.nav && !state2.nav.contains(e.target)) setMenu(false);
@@ -2337,15 +2388,15 @@
   }
   var session = null;
   function clearMarker() {
-    const root6 = document.documentElement;
-    root6.classList.remove("lfx-menu-open");
-    root6.style.removeProperty("--lfx-menu-x");
-    root6.style.removeProperty("--lfx-menu-y");
+    const root7 = document.documentElement;
+    root7.classList.remove("lfx-menu-open");
+    root7.style.removeProperty("--lfx-menu-x");
+    root7.style.removeProperty("--lfx-menu-y");
   }
   function setPosition(pos) {
-    const root6 = document.documentElement;
-    root6.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
-    root6.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
+    const root7 = document.documentElement;
+    root7.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
+    root7.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
   }
   var isTouchSheet = () => typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches;
   function attachSheetSwipe(s, sheet) {
@@ -3307,11 +3358,11 @@
       return;
     }
     const selIdx = episodes.findIndex((e) => e.Id === selectedEpisodeId);
-    let shown2 = Math.max(EPISODES_INITIAL, selIdx + 1);
+    let shown3 = Math.max(EPISODES_INITIAL, selIdx + 1);
     const draw = () => {
-      listEl.replaceChildren(...episodes.slice(0, shown2).map((e) => episodeRow(e, selectedEpisodeId, H, episodes)));
-      if (shown2 < episodes.length) listEl.append(moreButton(() => {
-        shown2 = episodes.length;
+      listEl.replaceChildren(...episodes.slice(0, shown3).map((e) => episodeRow(e, selectedEpisodeId, H, episodes)));
+      if (shown3 < episodes.length) listEl.append(moreButton(() => {
+        shown3 = episodes.length;
         draw();
       }));
     };
@@ -3369,12 +3420,12 @@
     slot.append(h("h3", { class: "lfx-modal__h" }, title));
     const grid2 = h("div", { class: "lfx-modal__grid" });
     slot.append(grid2);
-    let shown2 = initial;
+    let shown3 = initial;
     const draw = () => {
-      grid2.replaceChildren(...items.slice(0, shown2).map((it) => card(it, H)));
+      grid2.replaceChildren(...items.slice(0, shown3).map((it) => card(it, H)));
       slot.querySelector(".lfx-modal__more")?.remove();
-      if (shown2 < items.length) slot.append(moreButton(() => {
-        shown2 = items.length;
+      if (shown3 < items.length) slot.append(moreButton(() => {
+        shown3 = items.length;
         draw();
       }));
     };
@@ -3906,7 +3957,7 @@
   }
   var modalFeature = {
     name: "modal",
-    match: (route) => !isBlockedRoute(route) && !isTv(),
+    match: (route) => !isBlockedRoute(route) && !isTv() && !isTheme("live"),
     mount() {
       if (!clickInstalled) {
         document.addEventListener("click", onDocumentClick, true);
@@ -3980,7 +4031,7 @@
       cleanup();
       if (wasStarted && typeof onEnd === "function") onEnd();
     };
-    const start8 = async () => {
+    const start9 = async () => {
       timer = null;
       if (dead || !container) return;
       let src;
@@ -4016,7 +4067,7 @@
         finish3();
       }
     };
-    let timer = setTimeout(start8, delay);
+    let timer = setTimeout(start9, delay);
     return {
       cancel() {
         if (dead) return;
@@ -4195,7 +4246,7 @@
     let disposed = false;
     let pool = [];
     let index = 0;
-    let gen6 = 0;
+    let gen7 = 0;
     let hovering = false;
     let trailerActive = false;
     let rotateTimer = null;
@@ -4356,7 +4407,7 @@
         const curGone = cur3 && removed.includes(cur3.Id);
         pool = pool.filter((it) => !removed.includes(it.Id));
         if (!pool.length) {
-          gen6 += 1;
+          gen7 += 1;
           stopTrailer();
           clearTimeout(rotateTimer);
           clearTimeout(trailerTimer);
@@ -4386,16 +4437,16 @@
       muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     async function startTrailer(item, myGen) {
-      if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen6) return;
+      if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen7) return;
       try {
         const t = await loadLocalTrailer(item);
-        if (myGen !== gen6 || disposed) return;
+        if (myGen !== gen7 || disposed) return;
         if (!t) return;
         const v = h("video", { class: "lfx-bb__video", playsinline: true, preload: "auto", "aria-hidden": "true" });
         v.muted = true;
         v.setAttribute("muted", "");
         v.addEventListener("playing", () => {
-          if (myGen !== gen6 || video !== v) return;
+          if (myGen !== gen7 || video !== v) return;
           trailerActive = true;
           v.classList.add("is-in");
           card3.classList.add("is-trailer");
@@ -4421,8 +4472,8 @@
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen6 += 1;
-      const myGen = gen6;
+      gen7 += 1;
+      const myGen = gen7;
       stopTrailer();
       updateDots();
       const pic = buildImage(item);
@@ -4436,7 +4487,7 @@
         later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS + 50);
       }
       const swap = () => {
-        if (disposed || myGen !== gen6) return;
+        if (disposed || myGen !== gen7) return;
         content.replaceChildren(...buildContent(item).childNodes);
         content.classList.remove("is-out");
       };
@@ -4446,7 +4497,7 @@
         later(swap, TEXT_FADE_MS);
       }
       putItems([item]);
-      loadAmbient(item, () => myGen === gen6 && !disposed);
+      loadAmbient(item, () => myGen === gen7 && !disposed);
       scheduleRotate();
       clearTimeout(trailerTimer);
       trailerTimer = setTimeout(() => startTrailer(item, myGen), TRAILER_DELAY_MS);
@@ -4515,7 +4566,7 @@
     init2();
     return () => {
       disposed = true;
-      gen6 += 1;
+      gen7 += 1;
       clearTimeout(rotateTimer);
       clearTimeout(trailerTimer);
       timers.forEach(clearTimeout);
@@ -5218,10 +5269,10 @@
     teardown3();
     const billboardSlot = h("section", { id: "lfx-billboard", class: "lfx-billboard", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { id: "lfx-rows", class: "lfx-rows" });
-    const root6 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: HOME_ID, class: "lfx-home" }, [billboardSlot, rowsSlot]);
+    tab2.prepend(root7);
     document.documentElement.classList.add("lfx-home-on");
-    const ctx2 = { root: root6 };
+    const ctx2 = { root: root7 };
     for (const [mod, slot] of [[billboard_exports, billboardSlot], [rows_exports, rowsSlot]]) {
       try {
         cleanups.push(mod.render(slot, ctx2));
@@ -6219,8 +6270,8 @@
       pills.set(d.id, pill);
       nav.append(pill);
     }
-    const root6 = h("div", { id: ROOT_ID3, class: "lfx-np" }, [nav, ...sections.values()]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID3, class: "lfx-np" }, [nav, ...sections.values()]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS);
     setActive("new");
     let raf = 0;
@@ -6251,9 +6302,9 @@
     let newSeriesIds = /* @__PURE__ */ new Set();
     function onChanged2({ removed = [], updated = [] }) {
       if (disposed) return;
-      const list = root6.querySelector(".lfx-np__list");
+      const list = root7.querySelector(".lfx-np__list");
       for (const id of removed) {
-        root6.querySelectorAll("[data-lfx-id]").forEach((el) => {
+        root7.querySelectorAll("[data-lfx-id]").forEach((el) => {
           if (el.dataset.lfxId === id) el.remove();
         });
       }
@@ -6338,7 +6389,7 @@
   }
   var newPopularFeature = {
     name: "newpopular",
-    match: (route) => isNewRoute(route) && !isTv(),
+    match: (route) => isNewRoute(route) && !isTv() && !isTheme("live"),
     mount: () => ensure2(),
     update: () => ensure2(),
     unmount: () => {
@@ -6560,26 +6611,26 @@
       e.preventDefault();
       leave2();
     });
-    const root6 = mountPoint(ID4, { className: "lfx-statshint" });
-    root6.classList.remove("is-leaving");
+    const root7 = mountPoint(ID4, { className: "lfx-statshint" });
+    root7.classList.remove("is-leaving");
     const top = !isMobile();
-    root6.classList.toggle("lfx-statshint--top", top);
+    root7.classList.toggle("lfx-statshint--top", top);
     const nav = top ? document.getElementById("lfx-nav") : null;
     const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
-    root6.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
-    root6.setAttribute("role", "status");
-    root6.setAttribute("aria-live", "polite");
-    root6.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
-    state5.el = root6;
+    root7.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
+    root7.setAttribute("role", "status");
+    root7.setAttribute("aria-live", "polite");
+    root7.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
+    state5.el = root7;
     if (canHover()) {
-      root6.addEventListener("mouseenter", () => {
+      root7.addEventListener("mouseenter", () => {
         if (!state5.hideTimer) return;
         state5.remaining = Math.max(500, state5.deadline - Date.now());
         clearTimeout(state5.hideTimer);
         state5.hideTimer = null;
       });
-      root6.addEventListener("mouseleave", () => {
-        if (state5.el !== root6 || state5.hideTimer || state5.removeTimer) return;
+      root7.addEventListener("mouseleave", () => {
+        if (state5.el !== root7 || state5.hideTimer || state5.removeTimer) return;
         startHideTimer(state5.remaining || HINT_DURATION);
       });
     }
@@ -7021,15 +7072,15 @@
   }
   function scrollTick() {
     state6.raf = 0;
-    const root6 = state6.root;
-    if (!root6) return;
+    const root7 = state6.root;
+    if (!root7) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
     const dy = y - state6.lastY;
-    root6.classList.toggle("is-solid", y > SOLID_AT);
+    root7.classList.toggle("is-solid", y > SOLID_AT);
     if (y <= SOLID_AT) {
       setHidden(false);
     } else if (dy >= SCROLL_DELTA && y > HIDE_AFTER) {
-      if (!root6.contains(document.activeElement) && !menuOpen()) setHidden(true);
+      if (!root7.contains(document.activeElement) && !menuOpen()) setHidden(true);
     } else if (dy <= -SCROLL_DELTA) {
       setHidden(false);
     }
@@ -7060,9 +7111,9 @@
       state6.route = route;
       state6.libs = [];
       state6.pinned = false;
-      const root6 = mountPoint(ROOT_ID4, { tag: "header", className: "lfx-plus-header" });
-      root6.textContent = "";
-      state6.root = root6;
+      const root7 = mountPoint(ROOT_ID4, { tag: "header", className: "lfx-plus-header" });
+      root7.textContent = "";
+      state6.root = root7;
       const brand = h("a", { class: "lfx-plus-header__brand", href: "#/home", "aria-label": `${brandName("plus")} Startseite` });
       const chip = h("button", {
         type: "button",
@@ -7076,7 +7127,7 @@
       const nav = h("nav", { class: "lfx-plus-header__nav", "aria-label": "Hauptnavigation" });
       const search = h("a", { class: "lfx-plus-header__search", href: searchHref(), "aria-label": "Suche", dataset: { key: "search" } });
       search.append(icon2("search", "lfx-plus-header__icon"));
-      root6.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, search);
+      root7.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, search);
       state6.nav = nav;
       state6.chip = chip;
       chip.addEventListener("click", onChipClick);
@@ -7192,14 +7243,14 @@
       const seq3 = ++state7.seq;
       state7.route = route;
       state7.libs = [];
-      const root6 = mountPoint(ROOT_ID5, { tag: "header", className: "lfx-plus-mhead" });
-      root6.textContent = "";
+      const root7 = mountPoint(ROOT_ID5, { tag: "header", className: "lfx-plus-mhead" });
+      root7.textContent = "";
       const backEl = h("button", { type: "button", class: "lfx-plus-mhead__back", "aria-label": "Zur\xFCck", hidden: true });
       backEl.innerHTML = ICONS3.back;
       backEl.addEventListener("click", () => window.history.back());
       const titleEl = h("h1", { class: "lfx-plus-mhead__title" });
-      root6.append(backEl, titleEl);
-      state7.root = root6;
+      root7.append(backEl, titleEl);
+      state7.root = root7;
       state7.backEl = backEl;
       state7.titleEl = titleEl;
       document.documentElement.classList.add(ON_CLASS3);
@@ -8066,8 +8117,8 @@
     const isHub = key.startsWith("hub:");
     const heroSlot = h("div", { class: "lfx-plus-home__hero is-loading" });
     const rowsSlot = h("div", { class: "lfx-plus-rows" });
-    const root6 = h("div", { id: ROOT_ID7, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID7, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS5);
     currentKey = key;
     currentPhone = isPhone();
@@ -8100,7 +8151,7 @@
         heroSlot.classList.remove("is-loading");
       }
     })();
-    if (!isHub) cleanups3.push(renderBrands(root6, rowsSlot));
+    if (!isHub) cleanups3.push(renderBrands(root7, rowsSlot));
     cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs()));
   }
   function ensure3(route) {
@@ -8546,7 +8597,7 @@
   async function load2(g) {
     const stale = stalenessOf(g);
     const s = state9;
-    const root6 = s.root;
+    const root7 = s.root;
     let sel;
     let main;
     try {
@@ -8556,8 +8607,8 @@
       if (!main) throw new Error("Titel nicht gefunden");
     } catch (e) {
       if (stale()) return;
-      root6.replaceChildren(errorBox(e && e.message ? "Der Server hat nicht geantwortet." : ""));
-      root6.classList.add("is-error");
+      root7.replaceChildren(errorBox(e && e.message ? "Der Server hat nicht geantwortet." : ""));
+      root7.classList.add("is-error");
       return;
     }
     if (stale()) return;
@@ -8719,8 +8770,8 @@
     });
     select(panels[0].id);
     const footer = h("footer", { class: "lfx-plus-title__footer" });
-    root6.classList.remove("is-loading");
-    root6.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
+    root7.classList.remove("is-loading");
+    root7.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
     paintPlay2();
     let raf = 0;
     const onScroll7 = () => {
@@ -8729,7 +8780,7 @@
         raf = 0;
         const vh = window.innerHeight || 800;
         const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
-        root6.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
+        root7.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
         tablist.classList.toggle("is-stuck", tablist.getBoundingClientRect().top <= 67);
       });
     };
@@ -8863,15 +8914,15 @@
     const s = state9;
     s.cancelWait = whenHomeTab((tab2) => {
       if (state9 !== s) return;
-      const root6 = h("div", { id: ROOT_ID8, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
+      const root7 = h("div", { id: ROOT_ID8, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-plus-title__skeleton" })
       ]);
-      s.root = root6;
-      tab2.prepend(root6);
+      s.root = root7;
+      tab2.prepend(root7);
       setPageOn(ON_CLASS6, true);
       if (!keepScroll) scrollTop();
       load2(g).then(() => {
-        if (state9 === s) root6.removeAttribute("aria-busy");
+        if (state9 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] plus-title", e));
     });
   }
@@ -9000,9 +9051,9 @@
     const grid2 = h("div", { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" });
     const status = h("div", { class: "lfx-plus-browse__status" });
     const sentinel = h("div", { class: "lfx-plus-browse__sentinel", "aria-hidden": "true" });
-    const root6 = h("div", { id: ROOT_ID9, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
-    Object.assign(s, { root: root6, chips, grid: grid2, status });
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID9, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
+    Object.assign(s, { root: root7, chips, grid: grid2, status });
+    tab2.prepend(root7);
     setPageOn(ON_CLASS7, true);
     scrollTop();
     const addChip = (label, genreId) => {
@@ -9295,12 +9346,12 @@
     clear.innerHTML = X;
     const results = h("div", { class: "lfx-plus-search__results", "aria-live": "polite" });
     const field = h("div", { class: "lfx-plus-search__field" }, [icon5, input, clear]);
-    const root6 = h("div", { id: ROOT_ID10, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
-    Object.assign(s, { root: root6, input, results });
+    const root7 = h("div", { id: ROOT_ID10, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
+    Object.assign(s, { root: root7, input, results });
     s.syncUi = () => {
       clear.hidden = !input.value;
     };
-    tab2.prepend(root6);
+    tab2.prepend(root7);
     setPageOn(ON_CLASS8, true);
     const writeHash = (term) => {
       try {
@@ -9516,11 +9567,11 @@
     mount(route) {
       state12.seq++;
       state12.route = route;
-      const root6 = mountPoint(ROOT_ID11, { tag: "nav", className: "lfx-plus-tabbar" });
-      root6.textContent = "";
-      root6.setAttribute("aria-label", "Hauptnavigation");
+      const root7 = mountPoint(ROOT_ID11, { tag: "nav", className: "lfx-plus-tabbar" });
+      root7.textContent = "";
+      root7.setAttribute("aria-label", "Hauptnavigation");
       for (const t of TABS) {
-        root6.append(h("a", { class: "lfx-plus-tabbar__tab", href: t.href, "aria-label": t.label, dataset: { key: t.key } }, [iconEl(t.icon)]));
+        root7.append(h("a", { class: "lfx-plus-tabbar__tab", href: t.href, "aria-label": t.label, dataset: { key: t.key } }, [iconEl(t.icon)]));
       }
       const profileBtn = h("button", {
         type: "button",
@@ -9530,8 +9581,8 @@
         dataset: { key: "profile" }
       }, [h("span", { class: "lfx-plus-tabbar__avatar", "aria-hidden": "true" })]);
       profileBtn.addEventListener("click", openProfile);
-      root6.append(profileBtn);
-      state12.root = root6;
+      root7.append(profileBtn);
+      state12.root = root7;
       state12.profileBtn = profileBtn;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
@@ -9839,10 +9890,10 @@
     }
     const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
     const mobile = isMobile();
-    const root6 = mountPoint(ID7, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
-    root6.setAttribute("role", "dialog");
-    root6.setAttribute("aria-modal", "true");
-    root6.setAttribute("aria-label", "Suche");
+    const root7 = mountPoint(ID7, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
+    root7.setAttribute("role", "dialog");
+    root7.setAttribute("aria-modal", "true");
+    root7.setAttribute("aria-label", "Suche");
     const input = h("input", {
       class: "lfx-prime-search__input",
       type: "search",
@@ -9859,8 +9910,8 @@
     const grid2 = h("div", { class: "lfx-prime-search__grid" });
     const status = h("p", { class: "lfx-prime-search__status", role: "status" });
     const panel = h("div", { class: "lfx-prime-search__panel" }, [head, suggest, status, grid2]);
-    root6.replaceChildren(panel);
-    const c = { root: root6, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
+    root7.replaceChildren(panel);
+    const c = { root: root7, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
     cur = c;
     const close2 = () => closePrimeSearch();
     const reset = () => {
@@ -9914,7 +9965,7 @@
       input.focus();
     });
     if (cancel) cancel.addEventListener("click", () => close2());
-    root6.addEventListener("mousedown", (e) => {
+    root7.addEventListener("mousedown", (e) => {
       if (!panel.contains(e.target)) close2();
     });
     c.onKeydown = (e) => {
@@ -9967,19 +10018,19 @@
     let loaded = false;
     let leaveTimer2 = null;
     let pinned = false;
-    let gen6 = 0;
+    let gen7 = 0;
     const items = () => [...flyout.querySelectorAll(ITEM)];
     async function ensureLoaded() {
       if (loaded) return;
       loaded = true;
-      const mine = ++gen6;
+      const mine = ++gen7;
       let data;
       try {
         data = await load6();
       } catch {
         data = { libraries: [], collections: [] };
       }
-      if (mine !== gen6) return;
+      if (mine !== gen7) return;
       flyout.replaceChildren(
         column("Bibliotheken", data.libraries),
         h("span", { class: "lfx-prime-flyout__sep", "aria-hidden": "true" }),
@@ -10076,7 +10127,7 @@
       close: close2,
       isOpen: () => opened,
       destroy() {
-        gen6++;
+        gen7++;
         close2();
         document.removeEventListener("click", onDocClick2, true);
         wrap.removeEventListener("mouseenter", onEnter);
@@ -10129,7 +10180,7 @@
   }
   function openProfileSheet({ returnFocus } = {}) {
     closeProfileSheet({ restoreFocus: false });
-    const root6 = mountPoint(ID8, { className: "lfx-prime-psheet-overlay" });
+    const root7 = mountPoint(ID8, { className: "lfx-prime-psheet-overlay" });
     const who = h("div", { class: "lfx-prime-psheet__who" });
     const body = h("div", { class: "lfx-prime-psheet__body" });
     const sheet = h("div", { class: "lfx-prime-psheet", role: "dialog", "aria-modal": "true", "aria-label": "Profil", tabindex: "-1" }, [
@@ -10137,8 +10188,8 @@
       who,
       body
     ]);
-    root6.replaceChildren(sheet);
-    const c = { root: root6, sheet, returnFocus: returnFocus || null };
+    root7.replaceChildren(sheet);
+    const c = { root: root7, sheet, returnFocus: returnFocus || null };
     cur2 = c;
     const close2 = (opts) => {
       if (cur2 === c) closeProfileSheet(opts);
@@ -10171,13 +10222,13 @@
       }
     };
     c.onHash = () => close2({ restoreFocus: false });
-    root6.addEventListener("click", (e) => {
-      if (e.target === root6) close2();
+    root7.addEventListener("click", (e) => {
+      if (e.target === root7) close2();
     });
     window.addEventListener("keydown", c.onKeydown, true);
     window.addEventListener("hashchange", c.onHash);
     if (typeof attachSwipeClose === "function") {
-      c.detachSwipe = attachSwipeClose(sheet, { onClose: () => close2(), backdrop: root6 });
+      c.detachSwipe = attachSwipeClose(sheet, { onClose: () => close2(), backdrop: root7 });
     }
     document.documentElement.classList.add(OPEN_CLASS2);
     sheet.focus({ preventScroll: true });
@@ -10800,7 +10851,7 @@
     let disposed = false;
     let pool = [];
     let index = 0;
-    let gen6 = 0;
+    let gen7 = 0;
     let hovering = false;
     let trailerActive = false;
     let rotateTimer = null;
@@ -10854,12 +10905,12 @@
       muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     function startTrailer(item, myGen) {
-      if (mobile || reducedMotion2() || disposed || myGen !== gen6) return;
+      if (mobile || reducedMotion2() || disposed || myGen !== gen7) return;
       preview = createMutedPreview(media, item, {
         delay: TRAILER_DELAY_MS2,
         startAt: 4,
         onStart: (v) => {
-          if (disposed || myGen !== gen6) return;
+          if (disposed || myGen !== gen7) return;
           video = v;
           gate = autoPause(v, { respectHold: true });
           trailerActive = true;
@@ -10869,7 +10920,7 @@
           setMuteIcon();
         },
         onEnd: () => {
-          if (disposed || myGen !== gen6) return;
+          if (disposed || myGen !== gen7) return;
           preview = null;
           stopTrailer();
           scheduleRotate();
@@ -10893,7 +10944,7 @@
       paint(playLabel(item));
       if (item.Type === "Series") {
         loadNextUp(item.Id).then((ep) => {
-          if (disposed || myGen !== gen6 || !btn2.isConnected) return;
+          if (disposed || myGen !== gen7 || !btn2.isConnected) return;
           paint(playLabel(item, ep));
         }, () => {
         });
@@ -10981,8 +11032,8 @@
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen6 += 1;
-      const myGen = gen6;
+      gen7 += 1;
+      const myGen = gen7;
       stopTrailer();
       updateDots();
       const pic = buildImage(item);
@@ -10996,7 +11047,7 @@
         later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS2 + 50);
       }
       const swap = () => {
-        if (disposed || myGen !== gen6) return;
+        if (disposed || myGen !== gen7) return;
         if (mobile) {
           const parts = buildMobileParts(item, myGen);
           logoBox.replaceChildren(parts.title);
@@ -11024,7 +11075,7 @@
       const curGone = cur3 && removed.includes(cur3.Id);
       pool = pool.filter((it) => !removed.includes(it.Id));
       if (!pool.length) {
-        gen6 += 1;
+        gen7 += 1;
         stopTrailer();
         clearTimeout(rotateTimer);
         slot.hidden = true;
@@ -11152,7 +11203,7 @@
     init2();
     return () => {
       disposed = true;
-      gen6 += 1;
+      gen7 += 1;
       clearTimeout(rotateTimer);
       timers.forEach(clearTimeout);
       timers.clear();
@@ -11439,8 +11490,8 @@
     const heroSlot = h("section", { id: "lfx-prime-hero", class: "lfx-prime-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-prime-rows" });
     const moreSlot = h("div", { class: "lfx-prime-moreslot" });
-    const root6 = h("div", { id: ROOT_ID12, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID12, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS10);
     current5 = route;
     builtMobile = isMobile();
@@ -13280,8 +13331,8 @@
         state17.clock.el
       ]));
       state17.top = top;
-      const root6 = mountPoint(ROOT_ID14, { tag: "nav", className: "lfx-retro-tabbar" });
-      root6.setAttribute("aria-label", "Hauptnavigation");
+      const root7 = mountPoint(ROOT_ID14, { tag: "nav", className: "lfx-retro-tabbar" });
+      root7.setAttribute("aria-label", "Hauptnavigation");
       const more = h("button", {
         type: "button",
         class: "lfx-retro-fkey",
@@ -13290,11 +13341,11 @@
         dataset: { key: "more" }
       }, [h("span", { class: "lfx-retro-fkey__n", "aria-hidden": "true" }, "F5"), h("span", { class: "lfx-retro-fkey__l", "aria-hidden": "true" }, "MEHR")]);
       more.addEventListener("click", openMore);
-      root6.replaceChildren(...KEYS.map(fkey), more);
-      root6.addEventListener("click", (e) => {
+      root7.replaceChildren(...KEYS.map(fkey), more);
+      root7.addEventListener("click", (e) => {
         if (e.target.closest && e.target.closest("a")) emitFx("nav");
       });
-      state17.root = root6;
+      state17.root = root7;
       state17.moreBtn = more;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
@@ -13418,7 +13469,7 @@
     let pool = [];
     let index = 0;
     let target = 0;
-    let gen6 = 0;
+    let gen7 = 0;
     let hovering = false;
     let inView = true;
     let rotateTimer = 0;
@@ -13461,7 +13512,7 @@
       }
       let n = 0;
       const step2 = () => {
-        if (disposed || myGen !== gen6) return;
+        if (disposed || myGen !== gen7) return;
         n += 1;
         setTitleText(el, text.slice(0, n));
         if (n % 3 === 1) emitFx("type");
@@ -13477,8 +13528,8 @@
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen6 += 1;
-      const myGen = gen6;
+      gen7 += 1;
+      const myGen = gen7;
       const src = imageUrl(item, { type: "Backdrop", maxWidth: phone ? 1280 : 1920, quality: 80 });
       bd.replaceChildren(...src ? [h("img", { class: "lfx-retro-hero__img", src, alt: "", decoding: "async" })] : []);
       refs.path.textContent = pathLine(item);
@@ -13504,12 +13555,12 @@
         apply(i);
         return;
       }
-      gen6 += 1;
-      const myGen = gen6;
+      gen7 += 1;
+      const myGen = gen7;
       emitFx("nav");
       hero.classList.add("is-changing");
       later(() => {
-        if (!disposed && myGen === gen6) apply(i);
+        if (!disposed && myGen === gen7) apply(i);
       }, CHANNEL_SWAP_MS);
       later(() => {
         hero.classList.remove("is-changing");
@@ -13629,7 +13680,7 @@
     init2();
     return () => {
       disposed = true;
-      gen6 += 1;
+      gen7 += 1;
       timers.forEach(clearTimeout);
       timers.clear();
       rotateTimer = 0;
@@ -13916,8 +13967,8 @@
     const heroSlot = h("section", { id: "lfx-retro-hero", class: "lfx-retro-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-retro-rows" });
     const moreSlot = h("div", { class: "lfx-retro-moreslot" });
-    const root6 = h("div", { id: ROOT_ID15, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
-    tab2.prepend(root6);
+    const root7 = h("div", { id: ROOT_ID15, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
+    tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS13);
     current6 = route;
     builtPhone = isPhone2();
@@ -14065,7 +14116,7 @@
       paint();
       el.classList.remove("lfx-retro-caret");
     };
-    const start8 = () => {
+    const start9 = () => {
       stop5();
       if (reducedMotion6() || full.length < 2) {
         finish3();
@@ -14081,7 +14132,7 @@
         if (pos >= full.length) finish3();
       }, TICK_MS);
     };
-    return { el, start: start8, finish: finish3, stop: stop5 };
+    return { el, start: start9, finish: finish3, stop: stop5 };
   }
 
   // src/js/features/retro/title-dom.js
@@ -14331,7 +14382,7 @@
   async function load4(g) {
     const stale = stalenessOf2(g);
     const s = state18;
-    const root6 = s.root;
+    const root7 = s.root;
     let sel;
     let main;
     try {
@@ -14345,9 +14396,9 @@
     } catch (e) {
       if (stale()) return;
       emitFx("error");
-      root6.replaceChildren(errorBox2(e && e.message ? "DER SERVER HAT NICHT GEANTWORTET." : ""));
-      root6.classList.add("is-error");
-      root6.classList.remove("is-loading");
+      root7.replaceChildren(errorBox2(e && e.message ? "DER SERVER HAT NICHT GEANTWORTET." : ""));
+      root7.classList.add("is-error");
+      root7.classList.remove("is-loading");
       return;
     }
     if (stale()) return;
@@ -14470,8 +14521,8 @@
       shelfRow
     ]);
     content.append(shelf);
-    root6.classList.remove("is-loading");
-    root6.replaceChildren(backdrop, content);
+    root7.classList.remove("is-loading");
+    root7.replaceChildren(backdrop, content);
     paintPlay2();
     emitFx("open");
     if (typed) {
@@ -14604,15 +14655,15 @@
     const s = state18;
     s.cancelWait = whenHomeTab2((tab2) => {
       if (state18 !== s) return;
-      const root6 = h("div", { id: ROOT_ID16, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
+      const root7 = h("div", { id: ROOT_ID16, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-rt__boot lfx-retro-caret" }, "LADE KASSETTE")
       ]);
-      s.root = root6;
-      tab2.prepend(root6);
+      s.root = root7;
+      tab2.prepend(root7);
       setPageOn2(ON_CLASS14, true);
       if (!keepScroll) scrollTop2();
       load4(g).then(() => {
-        if (state18 === s) root6.removeAttribute("aria-busy");
+        if (state18 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] retro-title", e));
     });
   }
@@ -14780,13 +14831,13 @@
     ]);
     const count = h("p", { class: "lfx-rs__count", "aria-live": "polite" });
     const results = h("div", { class: "lfx-rs__results" });
-    const root6 = h("div", { id: ROOT_ID17, class: "lfx-retro-page lfx-rs", role: "search" }, [
+    const root7 = h("div", { id: ROOT_ID17, class: "lfx-retro-page lfx-rs", role: "search" }, [
       h("p", { class: "lfx-rs__banner", "aria-hidden": "true" }, "LENZ//84 RECHERCHE-TERMINAL  \xB7  ENTER = SUCHEN"),
       cmd,
       count,
       results
     ]);
-    Object.assign(s, { root: root6, input, results, count });
+    Object.assign(s, { root: root7, input, results, count });
     const placeCaret = () => {
       const pos = typeof input.selectionStart === "number" ? input.selectionStart : input.value.length;
       cmd.style.setProperty("--rs-pos", String(Math.min(pos, 60)));
@@ -14796,7 +14847,7 @@
       clear.hidden = !input.value;
       placeCaret();
     };
-    tab2.prepend(root6);
+    tab2.prepend(root7);
     setPageOn2(ON_CLASS15, true);
     const writeHash = (term) => {
       try {
@@ -15119,7 +15170,7 @@
     const grid2 = h("div", { class: "lfx-rb__grid", role: "list" });
     const status = h("div", { class: "lfx-rb__status" });
     const sentinel = h("div", { class: "lfx-rb__sentinel", "aria-hidden": "true" });
-    const root6 = h("div", { id: ROOT_ID18, class: "lfx-retro-page lfx-rb" }, [
+    const root7 = h("div", { id: ROOT_ID18, class: "lfx-retro-page lfx-rb" }, [
       h("header", { class: "lfx-rb__head" }, [path, count]),
       opts,
       genres,
@@ -15127,8 +15178,8 @@
       status,
       sentinel
     ]);
-    Object.assign(s, { root: root6, path, count, opts, genres, genreBtn, grid: grid2, status });
-    tab2.prepend(root6);
+    Object.assign(s, { root: root7, path, count, opts, genres, genreBtn, grid: grid2, status });
+    tab2.prepend(root7);
     setPageOn2(ON_CLASS16, true);
     scrollTop2();
     const addGenre = (label, genreId) => {
@@ -15522,8 +15573,8 @@
     if (!r.width || !r.height) return false;
     return r.bottom > 0 && r.top < (window.innerHeight || 800) && r.right > 0 && r.left < (window.innerWidth || 1200);
   }
-  function pickTarget(root6 = document) {
-    const list = [...root6.querySelectorAll(TARGETS)].filter((el) => !el.closest("#videoOsdPage") && inViewport(el));
+  function pickTarget(root7 = document) {
+    const list = [...root7.querySelectorAll(TARGETS)].filter((el) => !el.closest("#videoOsdPage") && inViewport(el));
     return list.length ? list[Math.floor(Math.random() * list.length)] : null;
   }
   function createGlitch({ crt, enabled: enabled2 = () => true, minMs = 2e4, maxMs = 4e4 }) {
@@ -16083,7 +16134,7 @@
   var MAX_HISTORY = 50;
   function createTerminal(deps) {
     const timers = createTimers();
-    let root6 = null;
+    let root7 = null;
     let out = null;
     let input = null;
     let closeBtn = null;
@@ -16227,7 +16278,7 @@
         input.value = "";
         run(v);
       });
-      root6 = h("div", {
+      root7 = h("div", {
         id: TERMINAL_ID,
         class: "lfx-retro-term",
         role: "dialog",
@@ -16238,8 +16289,8 @@
         out,
         form
       ]);
-      root6.addEventListener("keydown", onKey3);
-      root6.addEventListener("pointerdown", (e) => {
+      root7.addEventListener("keydown", onKey3);
+      root7.addEventListener("pointerdown", (e) => {
         if (e.target === out && input) timers.timeout(() => {
           if (alive && !String(window.getSelection && window.getSelection()).length) input.focus({ preventScroll: true });
         }, 0);
@@ -16253,13 +16304,13 @@
       opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
       busy2 = false;
       build11();
-      document.body.append(root6);
+      document.body.append(root7);
       document.documentElement.classList.add("lfx-retro-term-open");
       alive = true;
       print("LENZ//84 TERMINAL \u2014 TIPPE 'HILFE' F\xDCR BEFEHLE.");
       emitFx("open");
       timers.timeout(() => {
-        if (root6) root6.classList.add("is-open");
+        if (root7) root7.classList.add("is-open");
         input.focus({ preventScroll: true });
       }, 20);
     }
@@ -16272,13 +16323,13 @@
       releaseSleepers();
       alive = false;
       busy2 = false;
-      if (root6) root6.remove();
-      root6 = out = input = closeBtn = null;
+      if (root7) root7.remove();
+      root7 = out = input = closeBtn = null;
       document.documentElement.classList.remove("lfx-retro-term-open");
     }
     function close2() {
       if (!alive) return;
-      const el = root6;
+      const el = root7;
       const back = opener;
       opener = null;
       emitFx("close");
@@ -16288,7 +16339,7 @@
       document.documentElement.classList.remove("lfx-retro-term-open");
       timers.clearAll();
       timers.timeout(() => {
-        if (root6 === el) teardown9();
+        if (root7 === el) teardown9();
       }, 260);
       if (back && back.isConnected && typeof back.focus === "function") {
         try {
@@ -16500,7 +16551,7 @@
       }
       run(false);
     }
-    function start8() {
+    function start9() {
       if (started2) return;
       started2 = true;
       lastInput = Date.now();
@@ -16518,7 +16569,7 @@
       swallowClickUntil = 0;
       timers.clearAll();
     }
-    return { start: start8, stop: stop5, run, end, isActive: () => active4 };
+    return { start: start9, stop: stop5, run, end, isActive: () => active4 };
   }
 
   // src/js/features/retro/fx/index.js
@@ -16747,8 +16798,8 @@
 
   // src/js/core/themejs.js
   var CLASS2 = "lfx-theme-js";
-  var FILES2 = { store: "lenzstore" };
-  var GLOBALS = { store: "LenzFlixStore3D" };
+  var FILES2 = { store: "lenzstore", live: "lenzlive" };
+  var GLOBALS = { store: "LenzFlixStore3D", live: "LenzFlixLive" };
   var inflight4 = /* @__PURE__ */ new Map();
   function themeJsUrl(id) {
     const file = FILES2[id];
@@ -16919,7 +16970,7 @@
   var asItems9 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   async function fetchAllTitles() {
     const out = [];
-    for (let start8 = 0; ; start8 += PAGE_SIZE) {
+    for (let start9 = 0; ; start9 += PAGE_SIZE) {
       const res = await getItems({
         Recursive: true,
         IncludeItemTypes: "Movie,Series",
@@ -16928,7 +16979,7 @@
         ImageTypeLimit: 1,
         SortBy: "SortName",
         SortOrder: "Ascending",
-        StartIndex: start8,
+        StartIndex: start9,
         Limit: PAGE_SIZE
       });
       const page = asItems9(res);
@@ -18117,8 +18168,695 @@
   // src/js/features/store/index.js
   var storeFeatures = [home_default5, bar_default];
 
+  // src/js/features/live/config.js
+  var MIN_NO = 5;
+  var MAX_NO = 16;
+  var stripQuotes = (s) => String(s == null ? "" : s).trim().replace(/^["'\s]+|["'\s]+$/g, "");
+  function put(out, no, label) {
+    const n = Number(no);
+    if (!Number.isInteger(n) || n < MIN_NO || n > MAX_NO) return;
+    const l = stripQuotes(label);
+    if (l) out[n] = l;
+  }
+  function parseChannelConfig(raw) {
+    const out = {};
+    if (raw && typeof raw === "object") {
+      for (const [k, v] of Object.entries(raw)) {
+        if (typeof v === "string") put(out, k, v);
+      }
+      return out;
+    }
+    const s = stripQuotes(raw);
+    if (!s) return out;
+    for (const part of s.split(";")) {
+      const i = part.indexOf("=");
+      if (i < 0) continue;
+      put(out, part.slice(0, i).trim(), part.slice(i + 1));
+    }
+    return out;
+  }
+  function getChannelConfig() {
+    const cfg = window.LenzFlixConfig && window.LenzFlixConfig.liveChannels;
+    if (cfg !== void 0 && cfg !== null && cfg !== "") {
+      const parsed = parseChannelConfig(cfg);
+      if (Object.keys(parsed).length) return parsed;
+    }
+    try {
+      return parseChannelConfig(getComputedStyle(document.documentElement).getPropertyValue("--lfx-live-channels"));
+    } catch {
+      return {};
+    }
+  }
+
+  // src/js/features/live/data.js
+  var PAGE_SIZE2 = 1e3;
+  var EPISODE_PAGE_SIZE = 2e3;
+  var MEM_TTL_MS = 6 * 60 * 60 * 1e3;
+  var DAY_START_SHIFT_MS = 5 * 60 * 60 * 1e3;
+  var DB_NAME = "lfx-live";
+  var STORE = "catalog";
+  var BASE_FIELDS = "Genres,OfficialRating,ProductionYear,PremiereDate,DateCreated,RunTimeTicks";
+  var KEEP = {
+    movies: ["Id", "Name", "RunTimeTicks", "Genres", "OfficialRating", "ProductionYear", "PremiereDate", "DateCreated", "LocalTrailerCount"],
+    series: ["Id", "Name", "Genres", "OfficialRating", "ProductionYear", "DateCreated"],
+    episodes: ["Id", "Name", "SeriesId", "SeriesName", "ParentIndexNumber", "IndexNumber", "RunTimeTicks", "PremiereDate", "DateCreated", "OfficialRating"],
+    boxsets: ["Id", "Name", "ChildCount"]
+  };
+  var SOURCES = [
+    { key: "movies", type: "Movie", fields: BASE_FIELDS, size: PAGE_SIZE2 },
+    { key: "series", type: "Series", fields: BASE_FIELDS, size: PAGE_SIZE2 },
+    { key: "episodes", type: "Episode", fields: "DateCreated,PremiereDate,RunTimeTicks,OfficialRating", size: EPISODE_PAGE_SIZE },
+    { key: "boxsets", type: "BoxSet", fields: "ChildCount", size: PAGE_SIZE2 }
+  ];
+  var asItems10 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  function compact(item, keys) {
+    const out = {};
+    for (const k of keys) if (item[k] !== void 0 && item[k] !== null) out[k] = item[k];
+    return out;
+  }
+  function broadcastDayKey(now = Date.now()) {
+    const d = new Date(now - DAY_START_SHIFT_MS);
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+  var cacheKey = (uid, now) => `${uid || "anon"}:${broadcastDayKey(now)}`;
+  async function fetchType(src, onPart) {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    let total = null;
+    for (let start9 = 0; ; start9 += src.size) {
+      const res = await getItems({
+        Recursive: true,
+        IncludeItemTypes: src.type,
+        Fields: src.fields,
+        EnableImages: false,
+        EnableUserData: false,
+        StartIndex: start9,
+        Limit: src.size
+      });
+      const page = asItems10(res);
+      for (const it of page) {
+        if (!it || !it.Id || seen.has(it.Id)) continue;
+        seen.add(it.Id);
+        out.push(compact(it, KEEP[src.key]));
+      }
+      if (res && typeof res.TotalRecordCount === "number") total = res.TotalRecordCount;
+      const done = page.length < src.size || total !== null && start9 + src.size >= total;
+      onPart(src.key, done ? 1 : total ? Math.min(0.99, (start9 + src.size) / total) : 0.5);
+      if (done) break;
+    }
+    return out;
+  }
+  async function fetchCatalog({ onProgress } = {}, now = Date.now()) {
+    const part = {};
+    const report = () => {
+      if (typeof onProgress !== "function") return;
+      const f = SOURCES.reduce((s, x) => s + (part[x.key] || 0), 0) / SOURCES.length;
+      try {
+        onProgress(f, "Sendersuchlauf \u2026");
+      } catch {
+      }
+    };
+    const results = await Promise.all(SOURCES.map((src) => fetchType(src, (k, f) => {
+      part[k] = f;
+      report();
+    })));
+    const [movies, series, episodes, boxsets] = results;
+    return { movies, series, episodes, boxsets, loadedAt: now };
+  }
+  function hasIdb() {
+    try {
+      return typeof indexedDB !== "undefined" && indexedDB !== null;
+    } catch {
+      return false;
+    }
+  }
+  function openDb() {
+    return new Promise((resolve2, reject) => {
+      let req;
+      try {
+        req = indexedDB.open(DB_NAME, 1);
+      } catch (e) {
+        reject(e);
+        return;
+      }
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve2(req.result);
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new Error("IndexedDB blockiert"));
+    });
+  }
+  var idbDone = (tx) => new Promise((resolve2, reject) => {
+    tx.oncomplete = () => resolve2();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+  async function idbGet(key) {
+    const db = await openDb();
+    try {
+      return await new Promise((resolve2, reject) => {
+        const r = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
+        r.onsuccess = () => resolve2(r.result || null);
+        r.onerror = () => reject(r.error);
+      });
+    } finally {
+      db.close();
+    }
+  }
+  async function idbPut(uid, key, value) {
+    const db = await openDb();
+    try {
+      const tx = db.transaction(STORE, "readwrite");
+      const os = tx.objectStore(STORE);
+      const prefix = `${uid || "anon"}:`;
+      const keys = await new Promise((resolve2, reject) => {
+        const r = os.getAllKeys();
+        r.onsuccess = () => resolve2(r.result || []);
+        r.onerror = () => reject(r.error);
+      });
+      for (const k of keys) if (typeof k === "string" && k.startsWith(prefix) && k !== key) os.delete(k);
+      os.put(value, key);
+      await idbDone(tx);
+    } finally {
+      db.close();
+    }
+  }
+  function validRaw(x) {
+    return Boolean(x && Array.isArray(x.movies) && Array.isArray(x.series) && Array.isArray(x.episodes) && Array.isArray(x.boxsets));
+  }
+  function loadCatalog2({ onProgress, now } = {}) {
+    const t = typeof now === "function" ? now() : Number.isFinite(now) ? now : Date.now();
+    const uid = getUserId();
+    const key = cacheKey(uid, t);
+    return cached(`live:catalog:${key}`, async () => {
+      if (hasIdb()) {
+        try {
+          const hit = await idbGet(key);
+          if (validRaw(hit)) {
+            if (typeof onProgress === "function") onProgress(1, "Sendersuchlauf \u2026");
+            return hit;
+          }
+        } catch {
+        }
+      }
+      const raw = await fetchCatalog({ onProgress }, t);
+      if (hasIdb()) {
+        try {
+          await idbPut(uid, key, raw);
+        } catch {
+        }
+      }
+      return raw;
+    }, MEM_TTL_MS);
+  }
+
+  // src/js/features/live/home-route.js
+  var ROOT_ID20 = "lfx-live-home";
+  var ON_CLASS18 = "lfx-live-home-on";
+  function liveHomeRoute(route) {
+    if (!route || route.path !== "/home" || !route.params) return false;
+    if (route.params.get("lfx")) return false;
+    return route.params.get("tab") !== "1";
+  }
+  function findHomeTab10() {
+    const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab2 && tab2.isConnected ? tab2 : null;
+  }
+
+  // src/js/features/live/leave.js
+  var THEME_WAIT_MS = 3e3;
+  function waitForTheme(target, ms = THEME_WAIT_MS) {
+    if (getTheme() === target) return Promise.resolve(true);
+    return new Promise((resolve2) => {
+      let done = false;
+      let off = () => {
+      };
+      let timer = null;
+      const finish3 = (ok) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        off();
+        resolve2(ok);
+      };
+      off = onThemeChange(({ theme }) => {
+        if (theme === target) finish3(true);
+      });
+      timer = setTimeout(() => finish3(getTheme() === target), ms);
+    });
+  }
+  function targetHash(theme, itemId, { seriesId } = {}) {
+    if (!itemId) return "#/home";
+    if (theme === "flix") {
+      const { serverId } = getAuth();
+      return `#/details?id=${encodeURIComponent(itemId)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`;
+    }
+    if (theme === "plus") return titleHref(itemId);
+    return titleHref(seriesId || itemId);
+  }
+  async function leaveToLibrary(itemId, { seriesId } = {}) {
+    const target = getPreviousTheme();
+    try {
+      await setTheme(target, { source: "user" });
+    } catch (e) {
+      console.warn("[LenzFlix] live leave", e && e.message ? e.message : e);
+      return false;
+    }
+    if (!await waitForTheme(target)) return false;
+    window.location.hash = targetHash(target, itemId || null, { seriesId });
+    return true;
+  }
+
+  // src/js/features/live/prefs.js
+  var KEY4 = "lfx.live.";
+  var STYLES = ["flat", "crt80", "silver", "plain"];
+  var DEFAULTS3 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1 };
+  var storageKey3 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
+  function read2(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  function write2(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+    }
+  }
+  function getStyle() {
+    const v = read2(storageKey3("tvstyle"));
+    return STYLES.includes(v) ? v : DEFAULTS3.style;
+  }
+  function getVolume() {
+    const raw = read2(storageKey3("volume"));
+    if (raw === null || raw === "") return DEFAULTS3.volume;
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS3.volume;
+  }
+  function getMuted() {
+    return read2(storageKey3("muted")) === "1";
+  }
+  function getLastChannel() {
+    const v = Number(read2(storageKey3("lastChannel")));
+    return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS3.lastChannel;
+  }
+  function savePrefs2(p) {
+    if (!p || typeof p !== "object") return;
+    if (STYLES.includes(p.style)) write2(storageKey3("tvstyle"), p.style);
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write2(storageKey3("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write2(storageKey3("muted"), p.muted ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write2(storageKey3("lastChannel"), String(p.lastChannel));
+  }
+
+  // src/js/features/live/home.js
+  var SUSPEND_MS2 = 3 * 60 * 1e3;
+  var FADE_MS2 = 450;
+  var CATALOG_SHARE = 0.65;
+  var gen6 = 0;
+  var waitTimer8 = null;
+  var fadeTimer2 = null;
+  var inst2 = null;
+  var ui2 = null;
+  var shown2 = false;
+  var root6 = () => document.documentElement;
+  var coarse2 = () => {
+    try {
+      return Boolean(window.matchMedia && window.matchMedia("(pointer:coarse)").matches);
+    } catch {
+      return false;
+    }
+  };
+  function clearDisposeTimer2() {
+    if (inst2 && inst2.disposeTimer) {
+      clearTimeout(inst2.disposeTimer);
+      inst2.disposeTimer = null;
+    }
+  }
+  function disposeInstance2() {
+    const cur3 = inst2;
+    if (!cur3) return;
+    inst2 = null;
+    clearTimeout(cur3.disposeTimer);
+    if (cur3.unsubTheme) cur3.unsubTheme();
+    try {
+      cur3.instance.dispose();
+    } catch (e) {
+      console.warn("[LenzFlix] live dispose", e && e.message);
+    }
+  }
+  var pad25 = (n) => String(n).padStart(2, "0");
+  function setProgress2(fraction, label) {
+    if (!ui2 || !ui2.fill) return;
+    const f = Math.max(0, Math.min(1, Number(fraction) || 0));
+    const prev = Number(ui2.fill.dataset.v || 0);
+    const v = Math.max(prev, f);
+    ui2.fill.dataset.v = String(v);
+    ui2.fill.style.width = `${Math.round(v * 100)}%`;
+    ui2.bar.setAttribute("aria-valuenow", String(Math.round(v * 100)));
+    if (ui2.ch) ui2.ch.textContent = pad25(Math.max(1, Math.min(18, Math.ceil(v * 18))));
+    if (label && ui2.label) ui2.label.textContent = label;
+  }
+  function buildLoading2() {
+    const ch = h("span", { class: "lfx-live-loading__ch", "aria-hidden": "true" }, "01");
+    const fill3 = h("div", { class: "lfx-live-loading__fill" });
+    fill3.style.width = "0%";
+    const bar = h("div", { class: "lfx-live-loading__bar", role: "progressbar", "aria-label": "Ladefortschritt", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, [fill3]);
+    const label = h("p", { class: "lfx-live-loading__label", "aria-live": "polite" }, "Sendersuchlauf \u2026");
+    const loading = h("div", { class: "lfx-live-loading" }, [
+      h("div", { class: "lfx-live-loading__screen" }, [
+        h("span", { class: "lfx-live-loading__tag", "aria-hidden": "true" }, "PR"),
+        ch,
+        h("span", { class: "lfx-live-loading__brand" }, "LENZ LIVE")
+      ]),
+      h("p", { class: "lfx-live-loading__title" }, "Sendersuchlauf \u2026"),
+      bar,
+      label
+    ]);
+    return { loading, fill: fill3, label, ch, bar };
+  }
+  function buildUi2() {
+    const stage = h("div", { class: "lfx-live-stage" });
+    const { loading, fill: fill3, label, ch, bar } = buildLoading2();
+    const el = h("div", { id: ROOT_ID20, class: "lfx-live-home" }, [stage, loading]);
+    return { root: el, stage, loading, fill: fill3, label, ch, bar };
+  }
+  function attachLoading2() {
+    if (!ui2) return;
+    ui2.loading.remove();
+    const { loading, fill: fill3, label, ch, bar } = buildLoading2();
+    ui2.root.append(loading);
+    Object.assign(ui2, { loading, fill: fill3, label, ch, bar });
+  }
+  function teardownUi2() {
+    clearTimeout(fadeTimer2);
+    fadeTimer2 = null;
+    if (ui2) ui2.root.remove();
+    ui2 = null;
+    document.getElementById(ROOT_ID20)?.remove();
+    root6().classList.remove(ON_CLASS18);
+    shown2 = false;
+  }
+  function fatalText2(err) {
+    const m = err && err.message ? String(err.message) : "";
+    return m.replace(/(api_key|ApiKey)=[^&\s]+/gi, "$1=\u2026").slice(0, 200);
+  }
+  function openDashboard() {
+    window.location.hash = "#/dashboard";
+  }
+  function prevName() {
+    const t = THEME_META[getPreviousTheme()];
+    return t ? t.name : "LENZFLIX";
+  }
+  function showFallback2(message, { retry = false, detail = "" } = {}) {
+    if (!ui2) return;
+    clearTimeout(fadeTimer2);
+    ui2.loading.remove();
+    ui2.root.querySelector(".lfx-live-fallback")?.remove();
+    const btn2 = (text, onClick, primary = false) => {
+      const b = h("button", { type: "button", class: `lfx-live-fallback__btn${primary ? " lfx-live-fallback__btn--primary" : ""}` }, text);
+      b.addEventListener("click", onClick);
+      return b;
+    };
+    const actions = [];
+    if (retry) actions.push(btn2("Erneut versuchen", () => retryBoot2(), true));
+    actions.push(btn2("Design wechseln", () => {
+      openThemePicker({});
+    }, !retry));
+    actions.push(btn2(`Zu ${prevName()}`, () => {
+      leaveToLibrary(null);
+    }));
+    actions.push(btn2("Abmelden", () => logout()));
+    const panel = h("div", { class: "lfx-live-fallback", role: "alert" }, [
+      h("div", { class: "lfx-live-fallback__box" }, [
+        h("h2", { class: "lfx-live-fallback__title" }, "LENZ LIVE"),
+        h("p", { class: "lfx-live-fallback__text" }, message),
+        detail ? h("p", { class: "lfx-live-fallback__detail" }, detail) : null,
+        h("div", { class: "lfx-live-fallback__actions" }, actions)
+      ])
+    ]);
+    ui2.root.append(panel);
+  }
+  var asItems11 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  async function loadUser() {
+    const u = await Promise.resolve().then(() => getUser()).catch(() => null);
+    const cfg = u && u.Configuration || {};
+    return {
+      id: u && u.Id || getUserId() || "",
+      name: u && u.Name || "",
+      isAdmin: Boolean(u && u.Policy && u.Policy.IsAdministrator),
+      audioLang: cfg.AudioLanguagePreference || "",
+      subLang: cfg.SubtitleLanguagePreference || "",
+      subMode: cfg.SubtitleMode || ""
+    };
+  }
+  function deviceId() {
+    try {
+      const c = window.ApiClient;
+      return c && typeof c.deviceId === "function" && c.deviceId() || "";
+    } catch {
+      return "";
+    }
+  }
+  function buildDeps2(raw, user, onFatal) {
+    const ret = (f) => (...a) => {
+      try {
+        return f(...a);
+      } catch (e) {
+        console.warn("[LenzFlix] live dep", e && e.message);
+        return void 0;
+      }
+    };
+    return {
+      catalog: raw,
+      user,
+      server: { deviceId: deviceId() },
+      request: (method, path, o = {}) => requestJson(method, path, o),
+      streamUrl: (path, params) => buildUrl(path, { ...params || {}, ApiKey: getAuth().token }),
+      imageUrl: (id, o = {}) => imageUrlFor(id, o),
+      getBoxSetItems: async (id) => {
+        const res = await getItems({ ParentId: id, Fields: "", EnableImages: false, EnableUserData: false });
+        return asItems11(res).map((x) => x.Id).filter(Boolean);
+      },
+      loadTrailer: async (itemId) => {
+        try {
+          const item = await getItem(itemId);
+          const t = await loadLocalTrailer(item);
+          if (!t) return null;
+          const ticks = Number(t.RunTimeTicks);
+          return { url: trailerUrl(t.Id), durMs: ticks > 0 ? Math.round(ticks / 1e4) : null };
+        } catch {
+          return null;
+        }
+      },
+      setPlayed: (id, v) => setPlayed(id, v),
+      channelConfig: getChannelConfig(),
+      savePrefs: ret((p) => savePrefs2(p)),
+      leaveToLibrary: (id, meta) => leaveToLibrary(id, meta || {}),
+      previousThemeName: prevName(),
+      openThemePicker: () => {
+        openThemePicker({});
+      },
+      openDashboard,
+      logout: () => logout(),
+      toast: (text) => toast(text),
+      onProgress: ret((f, label) => setProgress2(CATALOG_SHARE + (1 - CATALOG_SHARE) * (Number(f) || 0), label)),
+      onReady: ret(() => {
+        if (!ui2) return;
+        if (inst2) inst2.ready = true;
+        setProgress2(1);
+        ui2.stage.classList.add("is-ready");
+        ui2.loading.classList.add("is-done");
+        const el = ui2.loading;
+        clearTimeout(fadeTimer2);
+        fadeTimer2 = setTimeout(() => {
+          fadeTimer2 = null;
+          el.remove();
+        }, FADE_MS2);
+      }),
+      onFatal: ret(onFatal)
+    };
+  }
+  function buildOpts2() {
+    return {
+      style: getStyle(),
+      volume: getVolume(),
+      muted: getMuted(),
+      lastChannel: getLastChannel(),
+      audioPref: null,
+      phone: isMobile(),
+      touch: coarse2(),
+      debug: window.__lfxLiveDebug === true,
+      now: null,
+      fakePlayer: false
+    };
+  }
+  async function boot2(myGen) {
+    setProgress2(0.03, "Sendersuchlauf \u2026");
+    let loaded;
+    try {
+      const [ok, raw, user] = await Promise.all([
+        ensureThemeJs("live"),
+        loadCatalog2({ onProgress: (f, label) => setProgress2(0.05 + (CATALOG_SHARE - 0.05) * f, label) }),
+        loadUser()
+      ]);
+      if (!ok || !window.LenzFlixLive || typeof window.LenzFlixLive.create !== "function") throw new Error("Engine-Paket nicht geladen");
+      loaded = { raw, user };
+    } catch (e) {
+      if (myGen !== gen6 || !ui2) return;
+      showFallback2("LENZ LIVE konnte nicht geladen werden.", { retry: true, detail: fatalText2(e) });
+      return;
+    }
+    if (myGen !== gen6 || !ui2) return;
+    setProgress2(CATALOG_SHARE, "Programm wird zusammengestellt \u2026");
+    let fatal = false;
+    const deps = buildDeps2(loaded.raw, loaded.user, (err) => {
+      fatal = true;
+      disposeInstance2();
+      showFallback2("LENZ LIVE konnte nicht gestartet werden.", { retry: true, detail: fatalText2(err) });
+    });
+    try {
+      const instance = window.LenzFlixLive.create(ui2.stage, deps, buildOpts2());
+      if (!instance) throw new Error("create() lieferte keine Instanz");
+      if (fatal || myGen !== gen6 || !ui2) {
+        try {
+          instance.dispose();
+        } catch {
+        }
+        return;
+      }
+      const entry = { instance, ready: false, disposeTimer: null, unsubTheme: null };
+      entry.unsubTheme = onThemeChange(({ theme }) => {
+        if (theme !== "live") disposeInstance2();
+      });
+      inst2 = entry;
+    } catch (e) {
+      if (myGen === gen6 && ui2) showFallback2("LENZ LIVE konnte nicht gestartet werden.", { retry: true, detail: fatalText2(e) });
+    }
+  }
+  function retryBoot2() {
+    if (!ui2) return;
+    ui2.root.querySelector(".lfx-live-fallback")?.remove();
+    attachLoading2();
+    gen6 += 1;
+    boot2(gen6);
+  }
+  function start8(tab2, myGen) {
+    teardownUi2();
+    ui2 = buildUi2();
+    tab2.prepend(ui2.root);
+    root6().classList.add(ON_CLASS18);
+    shown2 = true;
+    if (inst2 && inst2.instance) {
+      clearDisposeTimer2();
+      ui2.loading.remove();
+      ui2.stage.classList.add("is-ready");
+      try {
+        inst2.instance.resume(ui2.stage);
+      } catch (e) {
+        console.warn("[LenzFlix] live resume", e && e.message);
+        disposeInstance2();
+        attachLoading2();
+        boot2(myGen);
+      }
+      return;
+    }
+    boot2(myGen);
+  }
+  function ensure7() {
+    clearTimeout(waitTimer8);
+    const tab2 = findHomeTab10();
+    const existing = document.getElementById(ROOT_ID20);
+    if (tab2 && existing && tab2.contains(existing) && ui2 && shown2) return;
+    gen6 += 1;
+    const myGen = gen6;
+    let tries = 0;
+    const poll = () => {
+      if (myGen !== gen6) return;
+      const t = findHomeTab10();
+      if (t) start8(t, myGen);
+      else if (++tries < 30) waitTimer8 = setTimeout(poll, 200);
+    };
+    if (tab2) poll();
+    else waitTimer8 = setTimeout(poll, 200);
+  }
+  function destroyLive() {
+    gen6 += 1;
+    clearTimeout(waitTimer8);
+    waitTimer8 = null;
+    disposeInstance2();
+    teardownUi2();
+    removeThemeJs();
+  }
+  var liveHome = {
+    name: "live-home",
+    match: (route) => isTheme("live") && isModern() && !isTv() && isReady() && liveHomeRoute(route),
+    mount() {
+      ensure7();
+    },
+    update() {
+      const tab2 = findHomeTab10();
+      if (!tab2 || !ui2 || tab2.contains(ui2.root)) return;
+      ensure7();
+    },
+    unmount() {
+      gen6 += 1;
+      clearTimeout(waitTimer8);
+      waitTimer8 = null;
+      if (inst2 && inst2.instance) {
+        try {
+          inst2.instance.suspend();
+        } catch (e) {
+          console.warn("[LenzFlix] live suspend", e && e.message);
+        }
+        clearDisposeTimer2();
+        inst2.disposeTimer = setTimeout(disposeInstance2, SUSPEND_MS2);
+      }
+      teardownUi2();
+    }
+  };
+  var home_default6 = liveHome;
+
+  // src/js/features/live/guard.js
+  var ALLOWED = ["/login", "/selectserver", "/addserver", "/startup", "/wizard", "/forgotpassword", "/resetpassword", "/video", "/queue"];
+  var ALLOWED_PREFIX = ["/dashboard", "/mypreferences", "/userprofile"];
+  var lastKey3 = null;
+  function isAllowedRoute(route) {
+    const path = route && route.path || "";
+    if (path === "/home") return liveHomeRoute(route);
+    if (ALLOWED.some((p) => path === p || path.startsWith(`${p}/`))) return true;
+    if (ALLOWED_PREFIX.some((p) => path.startsWith(p))) return true;
+    return Boolean(document.body && document.body.classList.contains("dashboardDocument"));
+  }
+  function replaceHome() {
+    const { pathname, search } = window.location;
+    window.location.replace(`${pathname}${search}#/home`);
+  }
+  function redirect2(route) {
+    const key = route.hash;
+    if (key === lastKey3) return;
+    lastKey3 = key;
+    replaceHome();
+  }
+  var liveGuard = {
+    name: "live-guard",
+    match: (route) => isTheme("live") && isModern() && !isTv() && isReady() && !isAllowedRoute(route),
+    mount: (route) => redirect2(route),
+    update: (route) => redirect2(route),
+    unmount: () => {
+      lastKey3 = null;
+    }
+  };
+  var guard_default = liveGuard;
+
+  // src/js/features/live/index.js
+  var liveFeatures = [home_default6, guard_default];
+
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, home_default, hovercard_default, modal_default, newpopular_default, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
 
   // src/js/main.js
   var WATCH_MS = 1e3;
@@ -18147,6 +18885,7 @@
       clearInterval(refreshTimer);
       resetRouter();
       destroyStore();
+      destroyLive();
       removeAllMounts();
       destroyLayout();
       stopTheme();

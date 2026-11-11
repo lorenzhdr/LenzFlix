@@ -1,0 +1,198 @@
+// LENZ LIVE Player: Steuerung des einen <video> (Start an Live-Position, Pause-Abwehr, Lautstärke, Untertitel-Track).
+// Keine URLs in Ereignissen/Fehlern: Payloads tragen nur { phase, reason }.
+const START_TIMEOUT_MS = 25000;
+const MEDIA_ACTIONS = ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack'];
+
+export function createVideoControl(video, { now = Date.now, emit = () => {} } = {}) {
+  let armed = false;          // eine Quelle ist geladen/lädt
+  let playedOnce = false;
+  let base = { off: 0, at: 0 };
+  let pending = null;         // resolve des laufenden start()
+  let timer = null;
+  let onMeta = null;
+  let trackEl = null;
+  let disposed = false;
+
+  video.setAttribute('playsinline', '');
+  video.setAttribute('disablepictureinpicture', '');
+  video.setAttribute('x-webkit-airplay', 'deny');
+  video.removeAttribute('controls');
+  try { video.disablePictureInPicture = true; } catch { /* egal */ }
+
+  const livePos = () => base.off + (now() - base.at);
+
+  const settle = (result) => {
+    clearTimeout(timer);
+    timer = null;
+    const p = pending;
+    pending = null;
+    if (p) p(result);
+  };
+  const fail = (reason) => {
+    if (!armed || disposed) return;
+    emit('state', { phase: 'error', reason });
+    emit('error', { reason });
+    settle({ ok: false, reason });
+  };
+  // Ablehnung je Name: AbortError (neue Quelle/Pause) ignorieren; NotAllowedError (Autoplay-Sperre) → einmal stumm
+  // erneut versuchen (Ereignis 'autoplay-muted'), scheitert auch das → reason 'gesture' („Zum Starten tippen“);
+  // alles andere (z. B. NotSupportedError) → 'browser'.
+  const callPlay = (retried = false) => {
+    const rejected = (e) => {
+      if (!armed || disposed) return;
+      const name = e && e.name;
+      if (name === 'AbortError') return;
+      if (name === 'NotAllowedError') {
+        if (retried) { fail('gesture'); return; }
+        try { video.muted = true; } catch { /* egal */ }
+        callPlay(true);
+        return;
+      }
+      fail('browser');
+    };
+    try {
+      const p = video.play();
+      if (p && p.then) {
+        p.then(() => { if (retried && armed && !disposed) emit('autoplay-muted', {}); }, rejected);
+      }
+    } catch (e) { rejected(e); }
+  };
+
+  // Volumen-Probe: iOS ignoriert volume.
+  let volumeSupported;
+  try {
+    const prev = video.volume;
+    video.volume = 0.5;
+    volumeSupported = video.volume === 0.5;
+    video.volume = prev;
+  } catch { volumeSupported = false; }
+
+  const listeners = {
+    playing: () => {
+      if (!armed) return;
+      playedOnce = true;
+      emit('state', { phase: 'playing' });
+      settle({ ok: true });
+    },
+    waiting: () => { if (armed && playedOnce) emit('state', { phase: 'stalled' }); },
+    stalled: () => { if (armed && playedOnce) emit('state', { phase: 'stalled' }); },
+    ended: () => { if (armed) emit('state', { phase: 'ended' }); },
+    error: () => {
+      if (!armed) return;
+      const code = video.error && video.error.code;
+      fail(code === 2 ? 'network' : 'video');
+    },
+    pause: () => {
+      // Nicht von uns (clear() setzt armed vorher zurück): zurück an die Live-Position und weiter.
+      if (!armed || !playedOnce || video.ended) return;
+      const d = video.duration;
+      const pos = livePos() / 1000;
+      if (Number.isFinite(d) && pos >= d - 0.5) return;
+      try { video.currentTime = pos; } catch { /* egal */ }
+      callPlay();
+    },
+  };
+  for (const [name, fn] of Object.entries(listeners)) video.addEventListener(name, fn);
+
+  const ms = typeof navigator !== 'undefined' ? navigator.mediaSession : null;
+  if (ms && typeof ms.setActionHandler === 'function') {
+    for (const a of MEDIA_ACTIONS) {
+      try { ms.setActionHandler(a, () => {}); } catch { /* Aktion nicht unterstützt */ }
+    }
+  }
+
+  function clearSubtitles() {
+    if (trackEl) {
+      try { trackEl.remove(); } catch { /* egal */ }
+      trackEl = null;
+    }
+  }
+
+  /** Stoppt sofort und synchron (pause, src weg, load). Danach darf der Aufrufer ein DELETE schicken. */
+  function clear(keepSubs) {
+    armed = false;
+    playedOnce = false;
+    if (onMeta) {
+      video.removeEventListener('loadedmetadata', onMeta);
+      onMeta = null;
+    }
+    settle({ ok: false, reason: 'aborted' });
+    if (!keepSubs) clearSubtitles();
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      if (typeof video.load === 'function') video.load();
+    } catch { /* jsdom: nicht implementiert */ }
+  }
+
+  /** Lädt url und startet an offsetMs (absolute Zeitbasis). Löst bei „playing“ auf. */
+  function start(url, offsetMs) {
+    clear(true); // gesetzten Untertitel-Track behalten
+    armed = true;
+    base = { off: Math.max(0, Number(offsetMs) || 0), at: now() };
+    return new Promise((resolve) => {
+      pending = resolve;
+      timer = setTimeout(() => fail('network'), START_TIMEOUT_MS);
+      onMeta = () => {
+        onMeta = null;
+        if (!armed) return;
+        // Position zum jetzigen Zeitpunkt (Laden kann Sekunden dauern), nicht die vom Start.
+        try { video.currentTime = livePos() / 1000; } catch { /* egal */ }
+        callPlay();
+      };
+      video.addEventListener('loadedmetadata', onMeta, { once: true });
+      video.src = url;
+    });
+  }
+
+  return {
+    volumeSupported,
+    /** Synchron im Klick-Handler: Freigabe für das <video> (iOS). */
+    unlock() {
+      try {
+        const p = video.play();
+        if (p && p.catch) p.catch(() => {});
+      } catch { /* egal */ }
+    },
+    start,
+    clear: () => clear(false),
+    positionMs: livePos,
+    syncTo(offsetMs) {
+      base = { off: Math.max(0, Number(offsetMs) || 0), at: now() };
+      if (!armed || !playedOnce) return;
+      if (Math.abs(video.currentTime * 1000 - base.off) > 10000) {
+        try { video.currentTime = base.off / 1000; } catch { /* egal */ }
+      }
+    },
+    setVolume(v) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return;
+      try { video.volume = Math.min(1, Math.max(0, n)); } catch { /* egal */ }
+    },
+    setMuted(b) { video.muted = !!b; },
+    setSubtitle({ url, label, lang }) {
+      clearSubtitles();
+      const el = document.createElement('track');
+      el.kind = 'subtitles';
+      el.label = label || '';
+      if (lang) el.srclang = lang;
+      el.default = true;
+      el.src = url;
+      video.appendChild(el);
+      trackEl = el;
+      try { if (el.track) el.track.mode = 'showing'; } catch { /* egal */ }
+    },
+    clearSubtitles,
+    dispose() {
+      if (disposed) return;
+      clear(false);
+      disposed = true;
+      for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
+      if (ms && typeof ms.setActionHandler === 'function') {
+        for (const a of MEDIA_ACTIONS) {
+          try { ms.setActionHandler(a, null); } catch { /* egal */ }
+        }
+      }
+    },
+  };
+}

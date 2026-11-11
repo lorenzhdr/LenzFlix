@@ -1,0 +1,422 @@
+/* LENZ LIVE · EPG (Programmgitter). Overlay-Variablen (--lfx-live-ov-*) gelten auch für Menü und Videotext. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  /* Stilvarianten des Fernsehers → Farben der Overlays */
+  .lfx-live-app {
+    --lfx-live-ov-bg: #0b1030;
+    --lfx-live-ov-bg-2: #141c4a;
+    --lfx-live-ov-fg: #f4f4f4;
+    --lfx-live-ov-dim: #9aa4d6;
+    --lfx-live-ov-accent: #ffe14a;
+    --lfx-live-ov-accent-fg: #0b1030;
+    --lfx-live-ov-line: #3a4690;
+    --lfx-live-ov-now: #ff4b3e;
+    --lfx-live-ov-font: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+  }
+  .lfx-live-app.lfx-live--style-crt80 {
+    --lfx-live-ov-bg: #0a0f33;
+    --lfx-live-ov-bg-2: #131b52;
+    --lfx-live-ov-accent: #ffe14a;
+    --lfx-live-ov-line: #2f3b9a;
+  }
+  .lfx-live-app.lfx-live--style-silver {
+    --lfx-live-ov-bg: #0f1c36;
+    --lfx-live-ov-bg-2: #1a2c50;
+    --lfx-live-ov-fg: #eaf0fa;
+    --lfx-live-ov-dim: #a9b8d4;
+    --lfx-live-ov-accent: #cfe0ff;
+    --lfx-live-ov-accent-fg: #0f1c36;
+    --lfx-live-ov-line: #53698f;
+    --lfx-live-ov-font: var(--lfx-font, system-ui, sans-serif);
+  }
+  .lfx-live-app.lfx-live--style-flat {
+    --lfx-live-ov-bg: var(--lfx-bg, #141414);
+    --lfx-live-ov-bg-2: var(--lfx-surface-2, #232323);
+    --lfx-live-ov-fg: #fff;
+    --lfx-live-ov-dim: var(--lfx-text-muted, #b3b3b3);
+    --lfx-live-ov-accent: var(--lfx-red, #e50914);
+    --lfx-live-ov-accent-fg: #fff;
+    --lfx-live-ov-line: var(--lfx-surface-3, #2f2f2f);
+    --lfx-live-ov-now: var(--lfx-red, #e50914);
+    --lfx-live-ov-font: var(--lfx-font, system-ui, sans-serif);
+  }
+  .lfx-live-app.lfx-live--style-plain {
+    --lfx-live-ov-bg: #1b1b1b;
+    --lfx-live-ov-bg-2: #2a2a2a;
+    --lfx-live-ov-fg: #f0f0f0;
+    --lfx-live-ov-dim: #a8a8a8;
+    --lfx-live-ov-accent: #e8e8e8;
+    --lfx-live-ov-accent-fg: #1b1b1b;
+    --lfx-live-ov-line: #4a4a4a;
+    --lfx-live-ov-font: var(--lfx-font, system-ui, sans-serif);
+  }
+
+  /* Videobild als Bild-im-Bild über dem Gitter (nicht umhängen, nur schrumpfen) */
+  .lfx-live-app.has-epg .lfx-live-video,
+  .lfx-live-app.has-epg .lfx-live-fake {
+    position: absolute;
+    top: 2.5%;
+    right: 2.5%;
+    left: auto;
+    bottom: auto;
+    width: 28%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+    z-index: 7;
+    background: #000;
+    box-shadow: 0 0 0 2px var(--lfx-live-ov-line, #3a4690), 0 6px 18px rgba(0, 0, 0, 0.6);
+  }
+
+  .lfx-live-epg {
+    --lfx-live-epg-chan: 20cqw;
+    --lfx-live-epg-pm: calc((100cqw - var(--lfx-live-epg-chan)) / 150); /* 2,5 h sichtbar */
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    container-type: size;
+    display: flex;
+    flex-direction: column;
+    background: var(--lfx-live-ov-bg);
+    color: var(--lfx-live-ov-fg);
+    font-family: var(--lfx-live-ov-font);
+    font-size: clamp(8px, 2.3cqw, 20px);
+    line-height: 1.25;
+    overflow: hidden;
+  }
+  .lfx-live-epg[hidden] {
+    display: none;
+  }
+
+  .lfx-live-epg__top {
+    flex: 0 0 29%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    padding: 1.2em 1.4em 0.6em;
+    padding-right: 32%; /* Platz für das Bild-im-Bild */
+    min-width: 0;
+  }
+  .lfx-live-epg__days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+  }
+  .lfx-live-epg__day {
+    appearance: none;
+    border: 1px solid var(--lfx-live-ov-line);
+    background: var(--lfx-live-ov-bg-2);
+    color: var(--lfx-live-ov-dim);
+    font: inherit;
+    padding: 0.25em 0.6em;
+    border-radius: 0.3em;
+    cursor: pointer;
+  }
+  .lfx-live-epg__day:hover {
+    color: var(--lfx-live-ov-fg);
+  }
+  .lfx-live-epg__day.is-active {
+    background: var(--lfx-live-ov-accent);
+    color: var(--lfx-live-ov-accent-fg);
+    border-color: var(--lfx-live-ov-accent);
+    font-weight: 700;
+  }
+  .lfx-live-epg__info {
+    margin-top: auto;
+    min-width: 0;
+  }
+  .lfx-live-epg__info-title {
+    font-size: 1.35em;
+    font-weight: 700;
+    color: var(--lfx-live-ov-accent);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lfx-live-epg__info-meta {
+    color: var(--lfx-live-ov-dim);
+  }
+
+  .lfx-live-epg__scroller {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    scroll-padding-left: var(--lfx-live-epg-chan);
+    scrollbar-width: thin;
+    border-top: 2px solid var(--lfx-live-ov-line);
+  }
+  .lfx-live-epg__inner {
+    position: relative;
+    width: calc(var(--lfx-live-epg-chan) + var(--lfx-live-epg-pm) * var(--lfx-live-epg-total, 1440));
+  }
+  .lfx-live-epg__row {
+    display: flex;
+    height: 3.1em;
+    border-bottom: 1px solid var(--lfx-live-ov-line);
+  }
+  .lfx-live-epg__row.is-current .lfx-live-epg__chan {
+    background: var(--lfx-live-ov-accent);
+    color: var(--lfx-live-ov-accent-fg);
+  }
+  .lfx-live-epg__ruler {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    height: 1.9em;
+    background: var(--lfx-live-ov-bg);
+  }
+  .lfx-live-epg__chan {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    flex: 0 0 var(--lfx-live-epg-chan);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 0.5em;
+    padding: 0 0.6em;
+    background: var(--lfx-live-ov-bg-2);
+    border-right: 2px solid var(--lfx-live-ov-line);
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .lfx-live-epg__corner {
+    cursor: default;
+    color: var(--lfx-live-ov-accent);
+    font-weight: 700;
+  }
+  .lfx-live-epg__ruler .lfx-live-epg__chan {
+    z-index: 4;
+  }
+  .lfx-live-epg__no {
+    font-weight: 700;
+    min-width: 1.6em;
+    color: var(--lfx-live-ov-accent);
+  }
+  .lfx-live-epg__row.is-current .lfx-live-epg__no {
+    color: inherit;
+  }
+  .lfx-live-epg__name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lfx-live-epg__theme {
+    flex: 1 0 100%;
+    font-size: 0.8em;
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lfx-live-epg__track {
+    position: relative;
+    flex: 1 1 auto;
+    background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, 0.03) 6px 12px);
+  }
+  .lfx-live-epg__tick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    box-sizing: border-box;
+    padding: 0.3em 0 0 0.4em;
+    border-left: 1px solid var(--lfx-live-ov-line);
+    color: var(--lfx-live-ov-dim);
+  }
+
+  .lfx-live-epg__ev {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    box-sizing: border-box;
+    padding: 0.2em 0.5em;
+    background: var(--lfx-live-ov-bg-2);
+    border: 1px solid var(--lfx-live-ov-line);
+    border-radius: 0.25em;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    cursor: pointer;
+    outline: none;
+  }
+  .lfx-live-epg__ev:hover {
+    border-color: var(--lfx-live-ov-fg);
+  }
+  .lfx-live-epg__ev.is-fill,
+  .lfx-live-epg__ev.is-nightfill {
+    opacity: 0.7;
+    border-style: dashed;
+  }
+  .lfx-live-epg__ev.is-closedown {
+    opacity: 0.55;
+    font-style: italic;
+  }
+  .lfx-live-epg__ev.is-now {
+    border-color: var(--lfx-live-ov-now);
+    box-shadow: inset 0 -3px 0 var(--lfx-live-ov-now);
+  }
+  .lfx-live-epg__ev.is-focus,
+  .lfx-live-epg__ev:focus-visible {
+    background: var(--lfx-live-ov-accent);
+    color: var(--lfx-live-ov-accent-fg);
+    border-color: var(--lfx-live-ov-accent);
+    z-index: 1;
+  }
+  .lfx-live-epg__ev.is-focus .lfx-live-epg__time,
+  .lfx-live-epg__ev.is-focus .lfx-live-epg__hint {
+    color: inherit;
+  }
+  .lfx-live-epg__ev-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lfx-live-epg__ev-meta {
+    display: flex;
+    gap: 0.4em;
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 0.82em;
+  }
+  .lfx-live-epg__time {
+    color: var(--lfx-live-ov-dim);
+  }
+  .lfx-live-epg__hint {
+    font-size: 0.75em;
+    color: var(--lfx-live-ov-dim);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .lfx-live-epg__badge {
+    padding: 0 0.4em;
+    border: 1px solid currentColor;
+    border-radius: 0.2em;
+    font-size: 0.9em;
+  }
+  .lfx-live-epg__nowline {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--lfx-live-ov-now);
+    z-index: 3;
+    pointer-events: none;
+  }
+  .lfx-live-epg__nowline[hidden] {
+    display: none;
+  }
+
+  .lfx-live-epg__legend {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.5em;
+    padding: 0.5em 1em;
+    border-top: 2px solid var(--lfx-live-ov-line);
+    background: var(--lfx-live-ov-bg);
+  }
+  .lfx-live-epg__key {
+    appearance: none;
+    border: 0;
+    font: inherit;
+    padding: 0.25em 0.9em;
+    border-radius: 0.2em;
+    cursor: pointer;
+    color: #fff;
+  }
+  .lfx-live-epg__key.is-red {
+    background: #c8261d;
+  }
+  .lfx-live-epg__key.is-green {
+    background: #1f9e3a;
+  }
+  .lfx-live-epg__key.is-yellow {
+    background: #e8c81a;
+    color: #111;
+  }
+  .lfx-live-epg__key.is-blue {
+    background: #2a5bd7;
+  }
+
+  .lfx-live-epg__detail {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 8;
+    width: min(88%, 38em);
+    box-sizing: border-box;
+    padding: 1.2em 1.5em;
+    background: var(--lfx-live-ov-bg);
+    border: 2px solid var(--lfx-live-ov-accent);
+    border-radius: 0.4em;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+  }
+  .lfx-live-epg__detail[hidden] {
+    display: none;
+  }
+  .lfx-live-epg__d-title {
+    margin: 0 0 0.4em;
+    font-size: 1.5em;
+    color: var(--lfx-live-ov-accent);
+  }
+  .lfx-live-epg__d-line {
+    margin: 0.15em 0;
+    color: var(--lfx-live-ov-dim);
+  }
+  .lfx-live-epg__d-badges {
+    display: flex;
+    gap: 0.4em;
+    margin: 0.5em 0 0;
+  }
+  .lfx-live-epg__d-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6em;
+    margin-top: 1em;
+  }
+  .lfx-live-epg__btn {
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font: inherit;
+    padding: 0.45em 1em;
+    background: var(--lfx-live-ov-bg-2);
+    color: var(--lfx-live-ov-fg);
+    border: 1px solid var(--lfx-live-ov-line);
+    border-radius: 0.3em;
+    cursor: pointer;
+  }
+  .lfx-live-epg__btn-label {
+    font-weight: 700;
+  }
+  .lfx-live-epg__btn-sub {
+    font-size: 0.78em;
+    opacity: 0.8;
+  }
+  .lfx-live-epg__btn.is-focus,
+  .lfx-live-epg__btn:hover {
+    background: var(--lfx-live-ov-accent);
+    color: var(--lfx-live-ov-accent-fg);
+    border-color: var(--lfx-live-ov-accent);
+  }
+
+  /* Flachbild: Tage als Pillen, weiche Ecken */
+  .lfx-live--style-flat .lfx-live-epg__day { border-radius: 999px; padding: 0.25em 0.8em; }
+  .lfx-live--style-flat .lfx-live-epg__ev { border-radius: 0.35em; }
+  .lfx-live--style-flat .lfx-live-epg__info-title,
+  .lfx-live--style-flat .lfx-live-epg__d-title { color: #fff; }
+  .lfx-live--style-flat .lfx-live-epg__detail { border-width: 1px; border-radius: 0.6em; }
+
+  .lfx-live-epg :is(button, [role="gridcell"]):focus-visible {
+    outline: 3px solid var(--lfx-live-ov-fg);
+    outline-offset: 1px;
+  }
+
+  .lfx-live-epg.has-detail .lfx-live-epg__scroller {
+    filter: brightness(0.55);
+  }
+}

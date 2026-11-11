@@ -1,0 +1,37 @@
+/* LENZ LIVE · Stil „Schlicht“ (plain): nur ein dezenter Rahmen, maximales Bild, kompakte Fernbedienung. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live--style-plain {
+    --lfx-live-osd-font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --lfx-live-osd-accent: #ffffff;
+    --lfx-live-osd-bg: rgba(0, 0, 0, 0.6);
+    --lfx-live-tv-w: min(calc(100vw - 280px), calc((100vh - 48px) * 1.7778), 1800px);
+    background: #09090a;
+  }
+  .lfx-live--style-plain .lfx-live-room {
+    align-items: center;
+    padding: 24px 16px;
+    gap: 16px;
+  }
+  .lfx-live--style-plain .lfx-live-room__lamp,
+  .lfx-live--style-plain .lfx-live-room__shelf,
+  .lfx-live--style-plain .lfx-live-tv__panel,
+  .lfx-live--style-plain .lfx-live-tv__brand,
+  .lfx-live--style-plain .lfx-live-tv__stand { display: none; }
+
+  .lfx-live--style-plain .lfx-live-tv {
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .lfx-live--style-plain .lfx-live-screen {
+    inset: 0;
+    border-radius: 8px;
+  }
+  .lfx-live--style-plain .lfx-live-tv__led {
+    left: 10px;
+    bottom: 10px;
+    width: 7px;
+    height: 7px;
+    z-index: 7;
+  }
+}

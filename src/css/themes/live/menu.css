@@ -1,0 +1,132 @@
+/* LENZ LIVE · TV-Menü (OSD). Farben aus den --lfx-live-ov-* (epg.css) je nach TV-Stil. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live-menu {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    container-type: size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3% 5%;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.5); /* Bild läuft dahinter normal weiter, nur abgedunkelt */
+    color: var(--lfx-live-ov-fg, #fff);
+    font-family: var(--lfx-live-ov-font, system-ui, sans-serif);
+    font-size: clamp(9px, 2.6cqw, 22px);
+    line-height: 1.25;
+  }
+  /* Sicherheitsrand wie beim Videotext: gewölbte Röhre schneidet die Ecken ab */
+  .lfx-live--style-crt80 .lfx-live-menu { padding: 8% 11%; }
+  .lfx-live--style-silver .lfx-live-menu { padding: 5% 7%; }
+  /* Flachbild: weiche Ecken, rote Auswahl, feine Linie */
+  .lfx-live--style-flat .lfx-live-menu__panel { border-width: 1px; border-radius: 0.6em; }
+  .lfx-live--style-flat .lfx-live-menu__item { border-radius: 0.4em; }
+  .lfx-live--style-flat .lfx-live-menu__title { color: #fff; font-weight: 700; }
+  .lfx-live-menu[hidden] {
+    display: none;
+  }
+  .lfx-live-menu__panel {
+    box-sizing: border-box;
+    width: min(92%, 30em);
+    max-height: 100%;
+    overflow: auto;
+    padding: 1em 1.1em;
+    background: rgba(11, 16, 48, 0.8);
+    background: color-mix(in srgb, var(--lfx-live-ov-bg, #0b1030) 80%, transparent);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    border: 2px solid var(--lfx-live-ov-line, #3a4690);
+    border-radius: 0.35em;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    scrollbar-width: thin;
+  }
+  .lfx-live-menu__panel.is-wide {
+    width: min(96%, 38em);
+  }
+  .lfx-live-menu__title {
+    margin: 0 0 0.6em;
+    padding-bottom: 0.4em;
+    font-size: 1.1em;
+    color: var(--lfx-live-ov-accent, #ffe14a);
+    border-bottom: 1px solid var(--lfx-live-ov-line, #3a4690);
+  }
+  .lfx-live-menu__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+  }
+  .lfx-live-menu__item {
+    appearance: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1em;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.4em 0.7em;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 0.25em;
+    cursor: pointer;
+  }
+  .lfx-live-menu__item:hover {
+    background: var(--lfx-live-ov-bg-2, #141c4a);
+  }
+  .lfx-live-menu__item.is-focus,
+  .lfx-live-menu__item:focus-visible {
+    background: var(--lfx-live-ov-accent, #ffe14a);
+    color: var(--lfx-live-ov-accent-fg, #0b1030);
+    outline: none;
+  }
+  .lfx-live-menu__item:focus-visible {
+    box-shadow: 0 0 0 2px var(--lfx-live-ov-fg, #fff);
+  }
+  .lfx-live-menu__item.is-checked .lfx-live-menu__label::before {
+    content: "● ";
+  }
+  .lfx-live-menu__item.is-primary {
+    margin-top: 0.4em;
+    font-weight: 700;
+    border: 1px solid var(--lfx-live-ov-line, #3a4690);
+  }
+  .lfx-live-menu__label {
+    white-space: nowrap;
+  }
+  .lfx-live-menu__value {
+    font-size: 0.85em;
+    opacity: 0.8;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lfx-live-menu__item.is-set .lfx-live-menu__value {
+    opacity: 1;
+    font-weight: 700;
+  }
+  .lfx-live-menu__line {
+    display: block;
+    margin: 0.8em 0 0.3em;
+    padding: 0.5em 0.6em;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+    font-size: 0.85em;
+    word-break: break-all;
+    user-select: all;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px dashed var(--lfx-live-ov-line, #3a4690);
+    border-radius: 0.25em;
+  }
+  .lfx-live-menu__note,
+  .lfx-live-menu__warn {
+    margin: 0.4em 0 0;
+    font-size: 0.82em;
+    color: var(--lfx-live-ov-dim, #9aa4d6);
+  }
+  .lfx-live-menu__warn {
+    color: var(--lfx-live-ov-accent, #ffe14a);
+  }
+}

@@ -7309,6 +7309,123 @@ html.lfx-js .lfx-tp__mark-store-b {
   line-height: 26px;
 }
 
+html.lfx-js .lfx-tp__preview--live {
+  background: radial-gradient(at 40% 45%, #1a1f2c 0%, #0b0d12 70%);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__tv {
+  box-sizing: border-box;
+  background: linear-gradient(#f4f1e8, #cfc9b8);
+  border-radius: 10px;
+  width: 58%;
+  height: 68%;
+  padding: 5%;
+  position: absolute;
+  top: 14%;
+  left: 9%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .5);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__screen {
+  background: repeating-linear-gradient(rgba(0, 0, 0, .18) 0, rgba(0, 0, 0, .18) 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 3px), linear-gradient(135deg, #3a7bd5 0%, #1c3f7a 60%, #0f2447 100%);
+  border-radius: 8px / 10px;
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__chno {
+  color: #8dff8d;
+  text-shadow: 0 0 4px rgba(141, 255, 141, .7);
+  font: 800 max(8px, min(1.8vw, 13px)) / 1 Courier New, monospace;
+  position: absolute;
+  top: 8%;
+  left: 8%;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rec {
+  background: #e03a2f;
+  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+  position: absolute;
+  top: 9%;
+  right: 9%;
+  box-shadow: 0 0 6px #e03a2f;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__ant {
+  border-top: 2px solid #8a8573;
+  border-radius: 100% 100% 0 0;
+  width: 28%;
+  height: 12%;
+  position: absolute;
+  top: -9%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__remote {
+  box-sizing: border-box;
+  background: #23272f;
+  border-radius: 6px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6%;
+  width: 15%;
+  height: 56%;
+  padding: 6% 0;
+  display: flex;
+  position: absolute;
+  top: 22%;
+  right: 9%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn {
+  aspect-ratio: 1;
+  background: #8a8f9b;
+  border-radius: 50%;
+  width: 46%;
+  display: block;
+}
+
+html.lfx-js .lfx-tp__preview--live .lfx-tp__rbtn--power {
+  background: #e03a2f;
+}
+
+html.lfx-js .lfx-tp__mark--live {
+  color: #f4f1e8;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  font: 800 16px / 48px system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, sans-serif;
+  display: flex;
+}
+
+html.lfx-js .lfx-tp__mark-live-b {
+  color: #fff;
+  background: #e03a2f;
+  border-radius: 4px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 24px;
+  display: inline-flex;
+}
+
+html.lfx-js .lfx-tp__mark-live-dot {
+  background: #fff;
+  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+}
+
 html.lfx-js .lfx-tp__beta {
   color: #ffd23f;
   font: 700 11px / 1.4 var(--lfx-font);

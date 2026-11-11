@@ -1,0 +1,149 @@
+/* LENZ LIVE · Fernbedienung (Struktur + je Stil: 80er schwarz mit bunten Gummitasten, silber, schlank dunkel, kompakt). */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  /* Einheit: skaliert mit dem Fenster (1px bei 1280x800 und kleiner, bis 1.6px auf großen Bildschirmen) */
+  .lfx-live-app {
+    --lfx-live-u: clamp(1px, min(0.078125vw, 0.125vh), 1.6px);
+  }
+  .lfx-live-remote {
+    --lfx-live-rb-bg: #2b2b2e;
+    --lfx-live-rb-ink: #f1f1f1;
+    --lfx-live-rb-h: calc(36 * var(--lfx-live-u));
+    position: relative;
+    flex: 0 0 auto;
+    width: calc(176 * var(--lfx-live-u));
+    max-height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: calc(8 * var(--lfx-live-u));
+    padding: calc(20 * var(--lfx-live-u)) calc(12 * var(--lfx-live-u)) calc(12 * var(--lfx-live-u));
+    border-radius: calc(26 * var(--lfx-live-u));
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: none;
+    z-index: 2;
+    background: linear-gradient(170deg, #202023, #0e0e10);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 18px 30px rgba(0, 0, 0, 0.55);
+  }
+  .lfx-live-remote::-webkit-scrollbar { display: none; }
+
+  .lfx-live-remote__led {
+    position: absolute;
+    top: calc(7 * var(--lfx-live-u));
+    left: 50%;
+    width: calc(34 * var(--lfx-live-u));
+    height: calc(6 * var(--lfx-live-u));
+    margin-left: calc(-17 * var(--lfx-live-u));
+    border-radius: 3px;
+    background: #3a0f0f;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+  .lfx-live-remote.is-on .lfx-live-remote__led { background: #7a1c1c; }
+
+  .lfx-live-remote__group { display: grid; gap: calc(5 * var(--lfx-live-u)); }
+  .lfx-live-remote__group--power { grid-template-columns: 1fr 1.3fr 1fr; }
+  .lfx-live-remote__group--digits { grid-template-columns: repeat(3, 1fr); }
+  .lfx-live-remote__group--rocker { grid-template-columns: 1fr 1fr; }
+  .lfx-live-remote__group--nav { grid-template-columns: repeat(3, 1fr); }
+  .lfx-live-remote__group--colors { grid-template-columns: repeat(4, 1fr); }
+  .lfx-live-remote__group--extras { grid-template-columns: 1fr 1fr; }
+
+  .lfx-live-remote__btn {
+    min-width: 0;
+    height: var(--lfx-live-rb-h);
+    padding: 0 calc(2 * var(--lfx-live-u));
+    border: 0;
+    border-radius: 999px;
+    color: var(--lfx-live-rb-ink);
+    background: var(--lfx-live-rb-bg);
+    font-size: calc(12 * var(--lfx-live-u));
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 3px rgba(0, 0, 0, 0.55);
+    transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  .lfx-live-remote__btn:hover { filter: brightness(1.25); }
+  .lfx-live-remote__btn:active { transform: scale(0.93); filter: brightness(1.45); }
+  .lfx-live-remote__btn:focus-visible { outline: 2px solid var(--lfx-live-accent); outline-offset: 1px; }
+  .lfx-live-remote__btn svg { display: block; margin: 0 auto; }
+
+  .lfx-live-remote__btn.is-power { background: #c4261e; }
+  .lfx-live-remote__btn.is-small { font-size: calc(12 * var(--lfx-live-u)); letter-spacing: 0; }
+  .lfx-live-remote__btn.is-rock { height: calc(var(--lfx-live-rb-h) * 1.15); border-radius: calc(12 * var(--lfx-live-u)); font-size: calc(14 * var(--lfx-live-u)); }
+  .lfx-live-remote__btn.is-ok { background: #4b4b52; color: #fff; }
+  .lfx-live-remote__btn.is-arrow { background: #3a3a40; }
+  .lfx-live-remote__btn.is-color { border-radius: calc(8 * var(--lfx-live-u)); }
+  .lfx-live-remote__btn.is-red { background: #d12b2b; }
+  .lfx-live-remote__btn.is-green { background: #2c9b45; }
+  .lfx-live-remote__btn.is-yellow { background: #e2b319; }
+  .lfx-live-remote__btn.is-blue { background: #2a6bd1; }
+
+  /* Standby: bis auf Power und Vollbild gedämpft */
+  .lfx-live-app:not(.is-on) .lfx-live-remote__btn:not([data-key="power"]):not([data-key="fullscreen"]) { opacity: 0.5; }
+
+  /* ---------- 80er: schwarz, bunte Gummitasten, leicht schräg ---------- */
+  .lfx-live--style-crt80 .lfx-live-remote {
+    transform: rotate(-2.5deg);
+    background: linear-gradient(165deg, #232326, #0c0c0d);
+    border-radius: 18px 18px 30px 30px;
+  }
+  .lfx-live--style-crt80 .lfx-live-remote__group--digits .lfx-live-remote__btn:not(.is-small) {
+    background: linear-gradient(180deg, #5a5a60, #38383d);
+  }
+  .lfx-live--style-crt80 .lfx-live-remote__btn.is-rock { background: linear-gradient(180deg, #e0842b, #b25b12); }
+  .lfx-live--style-crt80 .lfx-live-remote__btn.is-small { background: #7b3f98; }
+  .lfx-live--style-crt80 .lfx-live-remote__btn.is-arrow,
+  .lfx-live--style-crt80 .lfx-live-remote__btn.is-ok { background: #2f79b8; }
+
+  /* ---------- Silber ---------- */
+  .lfx-live--style-silver .lfx-live-remote {
+    background: linear-gradient(170deg, #eef1f4, #aab2bd);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 18px 30px rgba(0, 0, 0, 0.45);
+    --lfx-live-rb-bg: #c3cad3;
+    --lfx-live-rb-ink: #1f2733;
+  }
+  .lfx-live--style-silver .lfx-live-remote__btn { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(0, 0, 0, 0.4); }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-power { color: #fff; }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-ok,
+  .lfx-live--style-silver .lfx-live-remote__btn.is-rock { background: #2f6fc0; color: #fff; }
+  .lfx-live--style-silver .lfx-live-remote__btn.is-arrow { background: #9ba5b2; }
+
+  /* ---------- Flach: schlank, dunkel ---------- */
+  .lfx-live--style-flat .lfx-live-remote {
+    width: calc(182 * var(--lfx-live-u));
+    padding: calc(20 * var(--lfx-live-u)) calc(10 * var(--lfx-live-u)) calc(12 * var(--lfx-live-u));
+    border-radius: calc(40 * var(--lfx-live-u));
+    --lfx-live-rb-bg: var(--lfx-surface-2, #232323);
+    --lfx-live-rb-ink: var(--lfx-text-body, #e5e5e5);
+    background: linear-gradient(180deg, #161616, #0b0b0b);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2vh 4vh rgba(0, 0, 0, 0.7);
+  }
+  .lfx-live--style-flat .lfx-live-remote__btn { box-shadow: none; font-weight: 600; }
+  .lfx-live--style-flat .lfx-live-remote__btn:focus-visible { outline-color: var(--lfx-red, #e50914); }
+  .lfx-live--style-flat .lfx-live-remote__led { background: #2a2a2a; box-shadow: none; }
+  .lfx-live--style-flat .lfx-live-remote.is-on .lfx-live-remote__led { background: var(--lfx-red, #e50914); }
+  .lfx-live--style-flat .lfx-live-remote__btn.is-arrow { background: var(--lfx-surface-3, #2f2f2f); }
+  .lfx-live--style-flat .lfx-live-remote__btn.is-ok { background: var(--lfx-surface-3, #2f2f2f); color: #fff; box-shadow: inset 0 0 0 calc(2 * var(--lfx-live-u)) var(--lfx-red, #e50914); }
+  .lfx-live--style-flat .lfx-live-remote__btn.is-power { background: var(--lfx-red, #e50914); color: #fff; }
+  .lfx-live--style-flat .lfx-live-remote__btn.is-color { filter: saturate(0.8) brightness(0.9); }
+
+  /* ---------- Schlicht: kompakt ---------- */
+  .lfx-live--style-plain .lfx-live-remote {
+    gap: calc(6 * var(--lfx-live-u));
+    padding: calc(18 * var(--lfx-live-u)) calc(8 * var(--lfx-live-u)) calc(10 * var(--lfx-live-u));
+    border-radius: calc(14 * var(--lfx-live-u));
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+    align-self: center;
+  }
+  .lfx-live--style-plain .lfx-live-remote__btn { border-radius: calc(6 * var(--lfx-live-u)); box-shadow: none; background: rgba(255, 255, 255, 0.1); }
+  .lfx-live--style-plain .lfx-live-remote__btn.is-power { background: #c4261e; }
+  .lfx-live--style-plain .lfx-live-remote__btn.is-red { background: #d12b2b; }
+  .lfx-live--style-plain .lfx-live-remote__btn.is-green { background: #2c9b45; }
+  .lfx-live--style-plain .lfx-live-remote__btn.is-yellow { background: #e2b319; }
+  .lfx-live--style-plain .lfx-live-remote__btn.is-blue { background: #2a6bd1; }
+}

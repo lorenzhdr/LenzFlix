@@ -10,6 +10,12 @@ describe('store-Registrierung', () => {
     expect(names).toContain('store-home');
     expect(names).toContain('store-bar');
   });
+  it('live-home und live-guard sind registriert', () => {
+    const names = features.map((f) => f.name);
+    expect(names).toContain('live-home');
+    expect(names).toContain('live-guard');
+    expect(THEMES).toContain('live');
+  });
   it('Design store ist bekannt', () => {
     expect(THEMES).toContain('store');
     expect(THEME_META.store.name).toBe('VIDEOTHEK LENZ');

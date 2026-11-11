@@ -1,0 +1,70 @@
+/* LENZ LIVE · Stil „Flachbild“ (flat, Standard): LENZFLIX-Look. Tiefschwarzer Raum, fast randloser schwarzer Rahmen auf einem schlanken
+   Lowboard, rote Akzente (--lfx-red), klare Systemschrift. Der Fernseher nutzt die Fläche neben der Fernbedienung so weit wie möglich. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live--style-flat {
+    --lfx-live-osd-font: var(--lfx-font, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif);
+    --lfx-live-osd-accent: var(--lfx-red, #e50914);
+    --lfx-live-osd-bg: rgba(12, 12, 12, 0.78);
+    --lfx-live-accent: var(--lfx-red, #e50914);
+    --lfx-live-red: var(--lfx-red, #e50914);
+    --lfx-live-bg: var(--lfx-bg-deep, #0c0c0c);
+    --lfx-live-flat-shelf-h: 3.4vh;
+    /* Breite: Fenster minus Fernbedienung (182u), Abstand (28px) und Ränder (32px) bzw. Höhe (92 vh, Seitenverhältnis 1,75) */
+    --lfx-live-tv-w: min(calc(100vw - 182 * var(--lfx-live-u) - 68px), calc(92vh * 1.75), 2400px);
+    background:
+      radial-gradient(70% 60% at 50% 32%, var(--lfx-surface-2, #232323) 0%, var(--lfx-bg, #141414) 55%, var(--lfx-bg-deep, #0c0c0c) 100%),
+      var(--lfx-bg-deep, #0c0c0c);
+  }
+  .lfx-live--style-flat .lfx-live-room {
+    padding: 2.5vh 16px var(--lfx-live-flat-shelf-h);
+  }
+  .lfx-live--style-flat .lfx-live-room__lamp { display: none; }
+  /* Lowboard: schlanke, dunkle Platte mit feiner Kante */
+  .lfx-live--style-flat .lfx-live-room__shelf {
+    left: 7%;
+    right: 7%;
+    bottom: 0;
+    height: var(--lfx-live-flat-shelf-h);
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(180deg, var(--lfx-surface-3, #2f2f2f) 0, var(--lfx-surface-2, #232323) 2px, var(--lfx-surface, #181818) 100%);
+    box-shadow: 0 -12px 44px rgba(0, 0, 0, 0.55);
+  }
+
+  .lfx-live--style-flat .lfx-live-tv {
+    aspect-ratio: 1.75 / 1;
+    border-radius: 3px;
+    background: #000;
+    box-shadow: 0 0 0 1px #1d1d1d, inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2.4vh 5vh rgba(0, 0, 0, 0.75);
+  }
+  /* Fast randlos: Bild 16:9 bei 1 % seitlichem und 1,75 % senkrechtem Rand (bei Seitenverhältnis 1,75 gleich breit) */
+  .lfx-live--style-flat .lfx-live-screen {
+    inset: 1.75% 1%;
+    border-radius: 1px;
+  }
+  .lfx-live--style-flat .lfx-live-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+    background: linear-gradient(125deg, rgba(255, 255, 255, 0.04), transparent 26%);
+  }
+
+  .lfx-live--style-flat .lfx-live-tv__panel,
+  .lfx-live--style-flat .lfx-live-tv__brand { display: none; }
+  .lfx-live--style-flat .lfx-live-tv__led {
+    right: 2.2%;
+    bottom: 0.45%;
+    width: 0.45%;
+  }
+  /* Standfuß: schmaler Steg auf dem Lowboard */
+  .lfx-live--style-flat .lfx-live-tv__stand {
+    position: absolute;
+    left: 40%;
+    right: 40%;
+    top: 100%;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: linear-gradient(180deg, #3a3a3a, #121212);
+  }
+}

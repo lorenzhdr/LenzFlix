@@ -1,0 +1,210 @@
+/* LENZ LIVE · Vollbild (Fullscreen-API am Host bzw. CSS-Fallback .is-fullscreen) und Handy-Querformat:
+   Bild füllt das Fenster, die Fernbedienung wird zur Leiste, die bei Mausbewegung/Tippen einblendet (.show-remote). */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live-app.is-fullscreen,
+  .lfx-live-app.is-phone.is-landscape {
+    position: fixed;
+    inset: 0;
+    background: #000;
+  }
+
+  .lfx-live-app.is-fullscreen .lfx-live-room,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-room {
+    display: block;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  .lfx-live-app.is-fullscreen .lfx-live-room::before,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-room::before,
+  .lfx-live-app.is-fullscreen .lfx-live-room__lamp,
+  .lfx-live-app.is-fullscreen .lfx-live-room__shelf,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-room__lamp,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-room__shelf,
+  .lfx-live-app.is-fullscreen .lfx-live-tv__panel,
+  .lfx-live-app.is-fullscreen .lfx-live-tv__brand,
+  .lfx-live-app.is-fullscreen .lfx-live-tv__stand,
+  .lfx-live-app.is-fullscreen .lfx-live-tv__led,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-tv__panel,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-tv__brand,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-tv__stand,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-tv__led { display: none; }
+
+  .lfx-live-app.is-fullscreen .lfx-live-tv,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-tv {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    max-width: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: #000;
+    box-shadow: none;
+  }
+  .lfx-live-app.is-fullscreen .lfx-live-screen,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-screen {
+    inset: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .lfx-live-app.is-fullscreen .lfx-live-screen::before,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-screen::before { display: none; }
+
+  /* Fernbedienungsleiste */
+  .lfx-live-app.is-fullscreen .lfx-live-remote,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote {
+    --lfx-live-rb-h: calc(38 * var(--lfx-live-u));
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: calc(12 * var(--lfx-live-u));
+    padding: 10px calc(14px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(14px + env(safe-area-inset-left, 0px));
+    border-radius: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    transform: translateY(105%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s var(--lfx-live-ease), opacity 0.2s ease;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.82) 40%);
+    box-shadow: none;
+  }
+  .lfx-live-app.is-fullscreen.show-remote .lfx-live-remote,
+  .lfx-live-app.is-phone.is-landscape.show-remote .lfx-live-remote {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__led,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__led { display: none; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__group,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__group {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn {
+    flex: 0 0 auto;
+    min-width: calc(44 * var(--lfx-live-u));
+    padding: 0 calc(12 * var(--lfx-live-u));
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-power,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn.is-power { background: #c4261e; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-color,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn.is-color { min-width: calc(36 * var(--lfx-live-u)); }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-ok { background: var(--lfx-red, #e50914); }
+  .lfx-live--style-flat.is-fullscreen .lfx-live-remote__btn.is-power { background: var(--lfx-red, #e50914); }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-red,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn.is-red { background: #d12b2b; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-green,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn.is-green { background: #2c9b45; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-yellow,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn.is-yellow { background: #e2b319; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-blue,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-remote__btn.is-blue { background: #2a6bd1; }
+
+  .lfx-live-app.is-fullscreen,
+  .lfx-live-app.is-phone.is-landscape { --lfx-live-bar-h: calc(38 * var(--lfx-live-u) + 26px); }
+  .lfx-live-app.is-fullscreen:not(.is-phone) { --lfx-live-bar-h: calc(76 * var(--lfx-live-u) + 40px); }
+
+  /* Vollbild (Desktop): Leiste bricht um, alle Tasten bleiben sichtbar; sehr schmale Fenster scrollen waagerecht */
+  .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: calc(8 * var(--lfx-live-u));
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 45vh;
+  }
+  @media (max-width: 640px) {
+    .lfx-live-app.is-fullscreen:not(.is-phone) {
+      --lfx-live-bar-h: calc(38 * var(--lfx-live-u) + 26px);
+    }
+    .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote {
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+  }
+
+  /* Vollbild: reduzierte Leiste in zwei Reihen (nur .is-fullscreen; die Fernbedienung neben dem Fernseher bleibt unverändert).
+     Die Gruppen lösen sich per display:contents auf, die Tasten werden per order neu gereiht, ein Pseudo-Element bricht die Zeile um.
+     Reihe 1: Power, Stumm, Vollbild, 1 … 9, 0, TXT, i, V+, P+, V−, P−. Reihe 2: EPG, Menü, OK, Zurück, Anfang, Ton, UT.
+     Pfeil- und Farbtasten entfallen (Tastaturkürzel und Fernbedienungstasten im Normalbetrieb bleiben). */
+  .lfx-live-app.is-fullscreen .lfx-live-remote__group { display: contents; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn { order: 40; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-arrow,
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn.is-color { display: none; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="power"] { order: 1; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="mute"] { order: 2; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="fullscreen"] { order: 3; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="1"] { order: 4; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="2"] { order: 5; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="3"] { order: 6; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="4"] { order: 7; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="5"] { order: 8; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="6"] { order: 9; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="7"] { order: 10; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="8"] { order: 11; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="9"] { order: 12; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="0"] { order: 13; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="txt"] { order: 14; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="info"] { order: 15; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="vol+"] { order: 16; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="ch+"] { order: 17; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="vol-"] { order: 18; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="ch-"] { order: 19; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="epg"] { order: 61; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="menu"] { order: 62; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="ok"] { order: 63; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="back"] { order: 64; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="restart"] { order: 65; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="audio"] { order: 66; }
+  .lfx-live-app.is-fullscreen .lfx-live-remote__btn[data-key="subs"] { order: 67; }
+  .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote {
+    row-gap: 0;
+    column-gap: calc(5 * var(--lfx-live-u));
+  }
+  .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote__btn {
+    min-width: calc(40 * var(--lfx-live-u));
+    padding: 0 calc(10 * var(--lfx-live-u));
+    margin: calc(4 * var(--lfx-live-u)) 0;
+  }
+  .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote__btn.is-rock { height: var(--lfx-live-rb-h); border-radius: 999px; font-size: calc(12 * var(--lfx-live-u)); }
+  .lfx-live-app.is-fullscreen:not(.is-phone) { --lfx-live-bar-h: calc(92 * var(--lfx-live-u) + 24px); }
+  .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote::after {
+    content: "";
+    order: 50;
+    flex: 0 0 100%;
+    height: 0;
+  }
+  @media (max-width: 640px) {
+    .lfx-live-app.is-fullscreen:not(.is-phone) .lfx-live-remote::after { display: none; }
+  }
+
+  /* OSD und Overlays rücken über die Leiste, solange sie sichtbar ist */
+  .lfx-live-app.is-fullscreen .lfx-live-osd,
+  .lfx-live-app.is-fullscreen .lfx-live-overlay,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-osd,
+  .lfx-live-app.is-phone.is-landscape .lfx-live-overlay { transition: bottom 0.25s var(--lfx-live-ease); }
+  .lfx-live-app.is-fullscreen.show-remote .lfx-live-osd,
+  .lfx-live-app.is-fullscreen.show-remote .lfx-live-overlay,
+  .lfx-live-app.is-phone.is-landscape.show-remote .lfx-live-osd,
+  .lfx-live-app.is-phone.is-landscape.show-remote .lfx-live-overlay { bottom: var(--lfx-live-bar-h, 0px); }
+
+  /* Mauszeiger im Vollbild ohne Leiste ausblenden */
+  .lfx-live-app.is-fullscreen:not(.show-remote) { cursor: none; }
+}

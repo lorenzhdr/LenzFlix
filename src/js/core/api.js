@@ -73,6 +73,24 @@ export async function getJson(path, params, { signal } = {}) {
   throw new Error('LenzFlix API: kein ApiClient/Token verfügbar');
 }
 
+/** Beliebige Methode mit JSON-Body/-Antwort (Authorization-Header). 204 -> null. Fehlertext ohne Query/Token. */
+export async function requestJson(method, path, { params, body, signal } = {}) {
+  const { token } = getAuth();
+  const headers = { Accept: 'application/json' };
+  if (token) headers.Authorization = `MediaBrowser Token="${token}"`;
+  const init = { method: String(method || 'GET').toUpperCase(), headers, signal };
+  if (body !== undefined && body !== null) {
+    headers['Content-Type'] = 'application/json';
+    init.body = typeof body === 'string' ? body : JSON.stringify(body);
+  }
+  const res = await fetch(buildUrl(path, params), init);
+  if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} für ${path}`);
+  if (res.status === 204) return null;
+  if (typeof res.text !== 'function') return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
 export function getItems(params) {
   return getJson('/Items', { userId: getUserId(), ...params });
 }

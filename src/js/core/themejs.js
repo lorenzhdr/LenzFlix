@@ -1,10 +1,10 @@
-// LenzFlix: lädt das lazy JS-Bundle eines Designs nach (VIDEOTHEK LENZ: dist/lenzstore(.min).js → window.LenzFlixStore3D).
+// LenzFlix: lädt das lazy JS-Bundle eines Designs nach (VIDEOTHEK LENZ: dist/lenzstore(.min).js → window.LenzFlixStore3D; LENZ LIVE: dist/lenzlive(.min).js → window.LenzFlixLive).
 // Basis-URL wie beim Design-CSS (resolveThemeCssBase). Siehe docs/store3d.md.
 import { resolveThemeCssBase } from './themecss.js';
 
 const CLASS = 'lfx-theme-js';
-const FILES = { store: 'lenzstore' };
-const GLOBALS = { store: 'LenzFlixStore3D' };
+const FILES = { store: 'lenzstore', live: 'lenzlive' };
+const GLOBALS = { store: 'LenzFlixStore3D', live: 'LenzFlixLive' };
 
 const inflight = new Map(); // id -> Promise<boolean>
 

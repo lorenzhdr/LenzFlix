@@ -1,6 +1,7 @@
-// LenzFlix: Design-Umschalter (LENZFLIX 'flix', LENZ+ 'plus', LENZPRIME 'prime', LENZ//84 'retro', VIDEOTHEK LENZ 'store').
+// LenzFlix: Design-Umschalter (LENZFLIX 'flix', LENZ+ 'plus', LENZPRIME 'prime', LENZ//84 'retro', VIDEOTHEK LENZ 'store', LENZ LIVE 'live').
 // Wahl pro Jellyfin-Benutzer in eigenen DisplayPreferences ('lenzflix'), lokal gespiegelt (localStorage, gegen Flackern).
-// TV-Layout ist immer 'flix'. Design-CSS für plus/prime/retro/store wird per core/themecss.js nachgeladen.
+// TV-Layout ist immer 'flix'. Design-CSS für plus/prime/retro/store/live wird per core/themecss.js nachgeladen.
+// prevTheme: Beim Wechsel zu 'live' wird das bisherige Design gemerkt (lokal + CustomPrefs.prevTheme), damit LENZ LIVE zurückführen kann.
 // Jedes wirksame Design setzt genau eine Klasse html.lfx-theme-<id>; 'lfx-theme-loading' blendet beim ersten Start aus.
 import { getAuth, getUserId, getJson, buildUrl, isReady } from './api.js';
 import { parseHash, reevaluate } from './router.js';
@@ -8,7 +9,7 @@ import { ensureThemeCss, removeThemeCss } from './themecss.js';
 import { applyFavicon } from './favicon.js';
 import { toast } from './toast.js';
 
-export const THEMES = ['flix', 'plus', 'prime', 'retro', 'store'];
+export const THEMES = ['flix', 'plus', 'prime', 'retro', 'store', 'live'];
 
 export const THEME_META = {
   flix: { id: 'flix', name: 'LENZFLIX', tagline: 'Klassisch: rote Akzente, Querformat-Karten', palette: ['#141414', '#e50914', '#ffffff', '#808080'] },
@@ -16,10 +17,12 @@ export const THEME_META = {
   prime: { id: 'prime', name: 'LENZPRIME', tagline: 'Vollbild-Hero, Badges und Trailer', palette: ['#0a0e17', '#1a98ff', '#ffffff', '#3a3d45'] },
   retro: { id: 'retro', name: 'LENZ//84', tagline: 'Bernstein-Terminal, Kassetten und Neon-Gitter', palette: ['#0a0603', '#ffb000', '#ff5a1f', '#ffe2a8'] },
   store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
+  live: { id: 'live', name: 'LENZ LIVE', tagline: 'Lineares Fernsehen mit 18 Sendern', palette: ['#0b0d12', '#e03a2f', '#f4f1e8', '#3a7bd5'] },
 };
 
 const KEY_USER = 'lfx.theme.';
 const KEY_LAST = 'lfx.theme.last';
+const KEY_PREV = 'lfx.theme.prev.';
 const PREFS_ID = 'lenzflix';
 const PREFS_CLIENT = 'lenzflix';
 const HASH_PARAM = 'lfxtheme';
@@ -116,6 +119,25 @@ function saveLocal(id) {
   lsSet(KEY_LAST, id);
 }
 
+function prevKey() {
+  return KEY_PREV + (getUserId() || 'last');
+}
+
+/** Gültige Design-id, aber nie 'live' (das Zurück-Ziel von LENZ LIVE). */
+function strictPrev(x) {
+  return THEMES.includes(x) && x !== 'live' ? x : null;
+}
+
+/** Design, zu dem LENZ LIVE zurückführt (lokal gespeichert, nie 'live', Fallback 'flix'). */
+export function getPreviousTheme() {
+  return strictPrev(lsGet(prevKey())) || 'flix';
+}
+
+function savePrevious(id) {
+  const p = strictPrev(id);
+  if (p) lsSet(prevKey(), p);
+}
+
 /** Hash-Param lfxtheme=<id> lesen und aus dem Hash entfernen. Rückgabe: id oder null. */
 function takeHashChoice(consume = true) {
   let r;
@@ -166,6 +188,8 @@ async function uploadTheme(uid, id) {
   try {
     const prefs = (await fetchPrefs(uid)) || {};
     prefs.CustomPrefs = { ...(prefs.CustomPrefs || {}), theme: id };
+    const prev = strictPrev(lsGet(KEY_PREV + uid));
+    if (prev) prefs.CustomPrefs.prevTheme = prev;
     if (!prefs.Id) prefs.Id = PREFS_ID;
     await postPrefs(uid, prefs);
   } catch (e) {
@@ -189,9 +213,11 @@ function scheduleUpload(id) {
 async function loadRemoteTheme(uid) {
   const startTouched = touched;
   let remote;
+  let remotePrev;
   try {
     const prefs = await fetchPrefs(uid);
     remote = strictTheme(prefs && prefs.CustomPrefs && prefs.CustomPrefs.theme);
+    remotePrev = strictPrev(prefs && prefs.CustomPrefs && prefs.CustomPrefs.prevTheme);
   } catch (e) {
     console.warn('[LenzFlix] Design konnte nicht vom Server geladen werden:', e && e.message ? e.message : e);
     return;
@@ -201,6 +227,7 @@ async function loadRemoteTheme(uid) {
     scheduleUpload(chosen); // Nutzer war schneller
     return;
   }
+  if (remotePrev) lsSet(KEY_PREV + uid, remotePrev);
   if (remote) {
     if (remote !== chosen) await setTheme(remote, { source: 'server' });
   } else if (lsGet(KEY_USER + uid) || chosen !== 'flix') {
@@ -368,14 +395,19 @@ function transition(target) {
 /** Nutzer-/Server-Wahl setzen. Resolved, wenn das Design angewendet (bzw. gescheitert) ist. */
 export async function setTheme(id, { source = 'user' } = {}) {
   const next = normalizeTheme(id);
+  const before = effective || chosen || resolveLocalChoice(); // bisheriges Design (vor dem Wechsel)
   chosen = next;
   if (source === 'user') touched++;
   if (!started) {
     saveLocal(next);
-    if (source === 'user') scheduleUpload(next);
+    if (source === 'user') {
+      if (next === 'live') savePrevious(before);
+      scheduleUpload(next);
+    }
     return;
   }
   const ok = await transition(desired());
+  if (ok && source === 'user' && next === 'live' && before !== 'live') savePrevious(before);
   if (ok || chosen === next) {
     saveLocal(chosen);
     if (source === 'user') scheduleUpload(chosen);
@@ -405,6 +437,7 @@ export function startTheme() {
   lastUid = getUserId() || null;
   const fromHash = takeHashChoice();
   if (fromHash) {
+    if (fromHash === 'live') savePrevious(resolveLocalChoice());
     chosen = fromHash;
     touched++;
     saveLocal(fromHash);

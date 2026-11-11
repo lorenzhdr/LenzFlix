@@ -1,0 +1,128 @@
+/* LENZ LIVE · Videotext (40 Spalten, harte Farben, Systemschrift in Festbreite) */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live-ttx {
+    --lfx-live-ttx-black: #000;
+    --lfx-live-ttx-white: #fff;
+    --lfx-live-ttx-yellow: #ffff00;
+    --lfx-live-ttx-cyan: #00ffff;
+    --lfx-live-ttx-green: #00ff00;
+    --lfx-live-ttx-red: #ff0000;
+    --lfx-live-ttx-blue: #0000ff;
+    --lfx-live-ttx-magenta: #ff00ff;
+    position: absolute;
+    inset: 0;
+    z-index: 9; /* über Bild und Rauschen: deckt alles ab */
+    container-type: size;
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 2% 3%; /* Sicherheitsrand: Rundung des Röhrenbilds schneidet sonst Zeichen ab */
+    background: var(--lfx-live-ttx-black);
+    color: var(--lfx-live-ttx-white);
+    font-family: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+    overflow: hidden;
+  }
+  /* Flachbild: Rahmen fast randlos, kaum Sicherheitsrand */
+  .lfx-live--style-flat .lfx-live-ttx { padding: 1% 1.5%; }
+  .lfx-live-ttx[hidden] {
+    display: none;
+  }
+  .lfx-live-ttx__screen {
+    /* cq-Einheiten beziehen sich auf den Vorfahren-Container (.lfx-live-ttx), nie auf das Element selbst.
+       Schrift aus der Zeilenhöhe (Courier-Breite 0,6 em), Rest der Breite über Zeichenabstand: 40 Zeichen füllen die Bildbreite. */
+    --lfx-live-ttx-line: calc(100cqh / 25);
+    font-family: "Courier New", "Liberation Mono", Courier, monospace;
+    font-size: min(calc(100cqw / 40 / 0.6), calc(var(--lfx-live-ttx-line) / 1.1));
+    letter-spacing: max(0px, calc(100cqw / 40 - 0.6em - 0.02px));
+    line-height: var(--lfx-live-ttx-line);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .lfx-live-ttx__row {
+    height: var(--lfx-live-ttx-line);
+    white-space: pre;
+    overflow: hidden;
+  }
+  .lfx-live-ttx__row.is-dbl {
+    height: calc(var(--lfx-live-ttx-line) * 2);
+  }
+  .lfx-live-ttx__dbl {
+    display: inline-block;
+    transform: scaleY(2);
+    transform-origin: 0 0;
+    white-space: pre;
+  }
+  .lfx-live-ttx__foot {
+    margin-top: auto;
+    display: flex;
+  }
+  .lfx-live-ttx__seg {
+    appearance: none;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    font: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+    color: inherit;
+    white-space: pre;
+    text-align: left;
+  }
+  .lfx-live-ttx__seg.is-act {
+    cursor: pointer;
+  }
+  .lfx-live-ttx__seg.is-act:hover {
+    text-decoration: underline;
+  }
+  .lfx-live-ttx__seg:focus-visible {
+    outline: 2px solid var(--lfx-live-ttx-white);
+    outline-offset: -2px;
+  }
+
+  .lfx-live-ttx .c-white {
+    color: var(--lfx-live-ttx-white);
+  }
+  .lfx-live-ttx .c-yellow {
+    color: var(--lfx-live-ttx-yellow);
+  }
+  .lfx-live-ttx .c-cyan {
+    color: var(--lfx-live-ttx-cyan);
+  }
+  .lfx-live-ttx .c-green {
+    color: var(--lfx-live-ttx-green);
+  }
+  .lfx-live-ttx .c-red {
+    color: var(--lfx-live-ttx-red);
+  }
+  .lfx-live-ttx .c-blue {
+    color: var(--lfx-live-ttx-blue);
+  }
+  .lfx-live-ttx .c-magenta {
+    color: var(--lfx-live-ttx-magenta);
+  }
+  .lfx-live-ttx .c-black {
+    color: var(--lfx-live-ttx-black);
+  }
+  .lfx-live-ttx .b-red {
+    background: var(--lfx-live-ttx-red);
+  }
+  .lfx-live-ttx .b-green {
+    background: var(--lfx-live-ttx-green);
+  }
+  .lfx-live-ttx .b-yellow {
+    background: var(--lfx-live-ttx-yellow);
+  }
+  .lfx-live-ttx .b-blue {
+    background: var(--lfx-live-ttx-blue);
+  }
+  /* Markierung: invertierte Zeile (schwarz auf gelb), gewinnt gegen Farbklassen */
+  .lfx-live-ttx .lfx-live-ttx__seg.is-cursor {
+    background: var(--lfx-live-ttx-yellow);
+    color: var(--lfx-live-ttx-black);
+    text-decoration: none;
+  }
+  .lfx-live--style-crt80 .lfx-live-ttx { padding: 5% 8%; }
+  .lfx-live--style-silver .lfx-live-ttx { padding: 3% 5%; }
+}

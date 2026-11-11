@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de" class="lfx-js lfx-theme-live">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>LENZ LIVE · Dev-Harness</title>
+  <!-- Dev-Harness der LENZ LIVE (docs/live.md) ohne Jellyfin, keine Netzwerkzugriffe. Start: npm run build && npm run serve → http://localhost:5179/live-dev.html
+       Parameter: ?now=2026-11-11T20:10 (Testuhr), ?style=flat|crt80|silver|plain, ?phone=1 (Handy+Touch), ?channel=N, ?debug=1, ?admin=1,
+       ?channels=5=Action;6=Komödie, ?real=1 (kein fakePlayer), ?min=1 (.min-Dateien), ?clean=1 (ohne Dev-Panel),
+       Automatik: ?autopower=1, ?overlay=epg|ttx|menu, ?page=300, ?fullscreen=1, ?zap=3 → am Ende html[data-live-dev-ready="1"] -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0b0e; color: #eee; font-family: system-ui, sans-serif; }
+    #dev-load { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1300; text-align: center; font-size: 14px; }
+    #dev-load div { width: 260px; height: 6px; margin-top: 8px; background: #333; border-radius: 3px; overflow: hidden; }
+    #dev-load i { display: block; height: 100%; width: 0; background: #ffd23f; transition: width .2s; }
+    #dev-toast { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 1400; padding: 8px 16px; border-radius: 999px; background: #1c1c22; border: 1px solid #444; display: none; }
+    #dev-fatal { position: fixed; inset: 0; z-index: 1500; display: none; align-items: center; justify-content: center; background: #2a0808; color: #ffb4b4; padding: 24px; text-align: center; }
+    #dev-panel { position: fixed; left: 8px; bottom: 8px; z-index: 1600; font-size: 12px; background: rgba(20, 20, 26, .92); border: 1px solid #444; border-radius: 6px; padding: 4px 8px; }
+    #dev-panel summary { cursor: pointer; }
+    #dev-panel div { margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+  </style>
+  <link rel="stylesheet" id="live-css">
+</head>
+<body>
+  <div class="lfx-live-stage" id="stage" style="position:fixed;inset:0"></div>
+  <div id="dev-load"><span id="dev-load-text">Lade …</span><div><i id="dev-load-bar"></i></div></div>
+  <div id="dev-toast"></div>
+  <div id="dev-fatal"></div>
+  <script>
+    // ?min=1 → .min-Dateien; Pfade wie serve sie ausliefert (/dist/…)
+    (function () {
+      var m = /[?&]min=1(&|$)/.test(location.search) ? '.min' : '';
+      document.getElementById('live-css').href = '/dist/lenzlive' + m + '.css';
+      document.write('<script src="/dist/lenzlive' + m + '.js"><\/script>');
+    })();
+  </script>
+  <script src="/live-dev.js"></script>
+</body>
+</html>

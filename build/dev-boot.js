@@ -18,6 +18,7 @@
   else document.body.appendChild(link);
   if (window.LenzFlix?.destroy) window.LenzFlix.destroy();
   delete window.LenzFlixStore3D; // altes 3D-Bundle (VIDEOTHEK LENZ) verwerfen, damit der frische Stand nachgeladen wird
+  delete window.LenzFlixLive; // altes Engine-Bundle (LENZ LIVE) verwerfen
   document.getElementById('lfx-dev-js')?.remove();
   document.head.appendChild(Object.assign(document.createElement('script'), { id: 'lfx-dev-js', src: `${base}dist/lenzflix.js?${ts}` }));
 })();

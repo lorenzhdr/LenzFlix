@@ -1,0 +1,88 @@
+/* LENZ LIVE · Stil „Silber-Röhre“ (silver): silbernes 2000er-Gehäuse, flacheres Bild, OSD in Blau. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live--style-silver {
+    --lfx-live-osd-font: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    --lfx-live-osd-accent: #6ab7ff;
+    --lfx-live-osd-bg: rgba(8, 36, 88, 0.82);
+    background:
+      radial-gradient(70% 60% at 50% 0%, rgba(255, 255, 255, 0.16), transparent 70%),
+      linear-gradient(180deg, #8b95a6 0%, #5f6a7d 70%, #444d5e 100%);
+  }
+  .lfx-live--style-silver .lfx-live-room__lamp { display: none; }
+  .lfx-live--style-silver .lfx-live-room__shelf {
+    left: 3%;
+    right: 3%;
+    bottom: 0;
+    height: 12vh;
+    border-radius: 10px 10px 0 0;
+    background: linear-gradient(180deg, #f1f3f6 0, #d4d9e0 12px, #aab2bf 13px, #8d96a4 100%);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .lfx-live--style-silver .lfx-live-tv {
+    border-radius: 2.2% / 3.2%;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.75), transparent 12%),
+      linear-gradient(180deg, #e9edf1 0%, #bcc3cc 55%, #8f98a4 100%);
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), inset 0 -6px 14px rgba(0, 0, 0, 0.25), 0 24px 36px rgba(0, 0, 0, 0.5);
+  }
+  .lfx-live--style-silver .lfx-live-screen {
+    left: 5%;
+    right: 5%;
+    top: 6%;
+    bottom: 11%;
+    border-radius: 3% / 4%;
+    box-shadow: 0 0 0 0.8cqw #1b1f27, 0 0 0 1.2cqw #4b5464, inset 0 0 40px 8px rgba(0, 0, 0, 0.7);
+  }
+  .lfx-live--style-silver .lfx-live-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0 1px, transparent 1px 3px),
+      radial-gradient(130% 110% at 50% 45%, transparent 62%, rgba(0, 0, 0, 0.35) 100%),
+      linear-gradient(125deg, rgba(255, 255, 255, 0.08), transparent 30%);
+  }
+
+  .lfx-live--style-silver .lfx-live-tv__panel {
+    position: absolute;
+    right: 6%;
+    bottom: 2.6%;
+    height: 5%;
+    width: 16%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8%;
+  }
+  .lfx-live--style-silver .lfx-live-tv__knob {
+    height: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #f4f6f8, #8f98a4);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  .lfx-live--style-silver .lfx-live-tv__grille { display: none; }
+  .lfx-live--style-silver .lfx-live-tv__brand {
+    position: absolute;
+    left: 6%;
+    bottom: 3%;
+    font: 700 clamp(8px, 0.85vw, 12px) / 1 Arial, sans-serif;
+    letter-spacing: 0.35em;
+    color: #3b4452;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  .lfx-live--style-silver .lfx-live-tv__led { left: 50%; bottom: 3.4%; }
+  .lfx-live--style-silver .lfx-live-tv__stand {
+    position: absolute;
+    left: 30%;
+    right: 30%;
+    top: 100%;
+    height: 6px;
+    border-radius: 0 0 6px 6px;
+    background: linear-gradient(180deg, #8f98a4, #566070);
+  }
+}

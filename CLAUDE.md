@@ -1,9 +1,9 @@
 # LenzFlix – CLAUDE.md
 
-Inoffizielles Netflix-artiges Theme für Jellyfin-Web 12.4: CSS-Kern (wirkt allein) + optionales JS (Billboard, Zeilen, Hovercard, Modal, „Neu und beliebt“, Handy-Nav, Ambient) + optionales begehbares 3D-Design (VIDEOTHEK LENZ). Ausgabe: `dist/lenzflix(.min).css|js`, `dist/lenzstore(.min).css|js`. Keine fremden Marken-/Dienstnamen, -Logos oder -Assets im Code und in Texten (Repo ist öffentlich; Marken „LENZFLIX“, „LENZ+“, „LENZPRIME“, „LENZ//84“, „VIDEOTHEK LENZ“); UI-Sprache Deutsch.
+Inoffizielles Netflix-artiges Theme für Jellyfin-Web 12.4: CSS-Kern (wirkt allein) + optionales JS (Billboard, Zeilen, Hovercard, Modal, „Neu und beliebt“, Handy-Nav, Ambient) + optionales begehbares 3D-Design (VIDEOTHEK LENZ). Ausgabe: `dist/lenzflix(.min).css|js`, `dist/lenzstore(.min).css|js`, `dist/lenzlive(.min).css|js`. Keine fremden Marken-/Dienstnamen, -Logos oder -Assets im Code und in Texten (Repo ist öffentlich; Marken „LENZFLIX“, „LENZ+“, „LENZPRIME“, „LENZ//84“, „VIDEOTHEK LENZ“, „LENZ LIVE“); UI-Sprache Deutsch.
 
 ## Befehle
-- `npm run build` (lightningcss → CSS, esbuild → IIFE-JS), `npm run dev` (Watch, unminifiziert), `npm test` (vitest + jsdom, `// @vitest-environment jsdom` pro Datei), `npm run lint`, `npm run serve` (Dev-Server :5179, bindet nur 127.0.0.1, liefert nur `dist/` und `assets/` plus explizit `/store-dev.html|js` und `/boot.js` aus `build/`; Port per `PORT=`).
+- `npm run build` (lightningcss → CSS, esbuild → IIFE-JS), `npm run dev` (Watch, unminifiziert), `npm test` (vitest + jsdom, `// @vitest-environment jsdom` pro Datei), `npm run lint`, `npm run serve` (Dev-Server :5179, bindet nur 127.0.0.1, liefert nur `dist/` und `assets/` plus explizit `/store-dev.html|js`, `/live-dev.html|js` und `/boot.js` aus `build/`; Port per `PORT=`).
 - `src/css/index.css`: keine Globs, neue CSS-Dateien dort eintragen (Reihenfolge = Kaskade). Neue Features in `src/js/features/index.js` eintragen.
 - CSS-Asset-URLs relativ zu `dist/` schreiben (`../assets/...`), der Build schreibt sie nicht um.
 - Keine Netzwerkzugriffe in Tests (fetch/ApiClient mocken).
@@ -40,7 +40,7 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
    - Die Test-Tabs schließen.
    - Zum Schluss prüfen, dass weder `cloudflared` noch `serve.mjs` mehr läuft.
 
-## Designs (LENZFLIX `flix` Standard, LENZ+ `plus`, LENZPRIME `prime`, LENZ//84 `retro`, VIDEOTHEK LENZ `store`; retro/store Beta)
+## Designs (LENZFLIX `flix` Standard, LENZ+ `plus`, LENZPRIME `prime`, LENZ//84 `retro`, VIDEOTHEK LENZ `store`, LENZ LIVE `live`; retro/store/live Beta)
 - Design-Kern `core/theme.js` (+ `themecss.js`, `themepicker.js`, `popover.js`), Features in `features/plus|prime|retro/`, CSS in `src/css/themes/<id>/` (eigene Bundles `dist/lenzplus|lenzprime|lenzretro(.min).css`, per JS nachgeladen). `core/` und `shared/` gehören allen Designs, Änderungen dort wirken auf alle: nie Verhalten von LENZFLIX brechen. Details und Regeln: `docs/js-contracts.md` („Designs“).
 - Design-CSS nur unter `html.lfx-js.lfx-theme-<id>:not(.layout-tv)`; TV ist immer LENZFLIX. Design-Features matchen per `isTheme(id)`, Router ist zweiphasig (erst alle Unmounts, dann Mounts).
 - LENZ//84 (`retro`, Beta; Menüeintrag „Design Einstellungen“ trägt `badge: 'Beta'`): Alle Schleifen/globalen Listener (CRT, Boot, Glitch, Sound, Cheat-Code, Terminal, Code-Regen) gehören `features/retro/fx/`, andere retro-Features melden nur per `emitFx` aus `features/retro/prefs.js`; fx ist im Player und auf dem Dashboard aus. Sound standardmäßig aus. Texte ohne fremde Marken („Kassette“, „Cheat-Code“, „Code-Regen“). Die Statistik-Seite führt die retro-Schriften/Logo als eigene Kopien in `charts-worker/public/lenzflix-stats/`.
@@ -49,16 +49,23 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
   - Erweiterungen als Module (`store3d/modules/`, Registry `modules/index.js`, ctx-API).
   - Lebenszyklus-Ausnahme: `unmount()` → suspend, nach 3 min dispose; Design-Wechsel/`destroy()` → dispose sofort.
   - Dev-Harness `build/store-dev.html` (über serve `/store-dev.html`); Debug: `window.__lfxStoreDebug = true` → `window.__lfxStore`.
-  - Die Statistik-Seite kennt `store` nicht und zeigt den LENZFLIX-Look.
+  - Die Statistik-Seite kennt `store` (und `live`) nicht und zeigt den LENZFLIX-Look.
   - VR-Modus (Beta, WebXR): `store3d/xr/` + `store3d/cinema/` (Kino), Player-Bridge nur in der Hülle `features/store/cinema-bridge.js` (Jellyfin-DOM nie im 3D-Bundle); Vertrag in `docs/store3d.md` („VR-Modus“). Ohne XR-Session muss 2D bitgleich bleiben; keine Marken-/Gerätenamen von Brillen/Controllern (Texte: „VR-Brille“, „Controller“, „Hände“), kein UA-Sniffing.
   - Test ohne Brille: Harness `/store-dev.html?xremu=1&xrshot=1&cinema=1` (Fake-Player; `?cinema=series|fail`, `?subs=srt|ass|off`), Emulator-Bundle `.tmp/xr-emu.js` selbst bauen (nicht committen, `serve` liefert 404 ohne). Emulator-Canvas liegt unter der Bühne: `xrshot=1` blendet sie in XR aus. Fahrskript (CDP, Headless-Chrome, gitignored): `node .tmp/vr/e2e/xr-e2e.mjs --list` bzw. `--only enter,take`. Pro Chrome-Start einen eigenen CDP-Port nehmen, weil derselbe Port mit demselben Profil direkt nacheinander hängt.
   - Falle: `CanvasTexture` nach Größenwechsel der Canvas nie weiterverwenden (three legt den Speicher fest an) → alte Textur `dispose()`, neue anlegen (`xr/panel.js`, `cinema/subtitles.js`).
+- LENZ LIVE (`live`, Beta, lineares Fernsehen aus der Mediathek: 18 Sender, EPG, Videotext), Vertrag: `docs/live.md`:
+  - Zwei Bundles: Hülle `features/live/` im Hauptbundle, Engine `src/js/live/**` → lazy `dist/lenzlive.js` per `core/themejs.js`; die Engine importiert nur Dateien aus `src/js/live/` (Zustandsbehaftetes per `deps`). Marker `__LFX_LIVE_ENGINE__` in `live/entry.js`, Build-Wächter in `build/build.mjs` (nie im Hauptbundle).
+  - Eigener Player ohne Fortschrittsmeldung (keine Spuren in „Weiterschauen“). Server-Fallen: nie `StartTimeTicks` an die HLS-URL (bricht die Playlist), erst `<video>` leeren, dann `DELETE /Videos/ActiveEncodings` (sonst startet der Job neu), `ApiKey` statt `api_key`, im PlaybackInfo `SubtitleStreamIndex: -1` UND alle Untertitelformate als `External` im DeviceProfile (sonst brennt der Server Default-Untertitel ein = Video-Umwandlung); HEVC nur per Remux (fMP4-HLS), wenn der Browser HEVC kann.
+  - Admin-Senderbelegung (Plätze 5–16) per CSS-Variable `--lfx-live-channels` (Format `"5=Action;6=Komödie"`) oder `LenzFlixConfig.liveChannels`.
+  - `core/theme.js` merkt beim Wechsel zu `live` das vorherige Design (`prevTheme`, `getPreviousTheme()`, nie `live`, Fallback `flix`); `leaveToLibrary` wechselt dauerhaft dorthin. `modal` und `newpopular` matchen unter `live` nicht, `guard.js` leitet Mediathek-Routen auf `#/home`.
+  - Planer (`src/js/live/schedule/`) muss deterministisch bleiben (gleicher Plan auf allen Clients): kein `Math.random`, keine Lokalzeit, kein `Intl`; Zeit nur über `schedule/time.js` (MEZ/MESZ arithmetisch), Zufall nur über `schedule/hash.js`.
+  - Dev-Harness `build/live-dev.html` (über serve `/live-dev.html`, Fake-Katalog ohne Netzwerk): `?phone=1&admin=1&now=<ISO>&style=flat|crt80|silver|plain&channel=&autopower=1&overlay=epg|ttx|menu&fullscreen=1&real=1&debug=1`; Debug im Hauptbundle: `window.__lfxLiveDebug = true` → `window.__lfxLive`.
 - Statistik-Seite lokal: `node build/stats-dev.mjs` (127.0.0.1:5180), `/lenzflix-stats/dev-login.html?theme=flix|plus|prime|retro`; Produktiv-CSP (keine Inline-Skripte) beachten. Style-Regression: `build/style-snapshot.js` in der Konsole vor/nach der Änderung, dann `node build/style-diff.mjs alt.json neu.json`.
 
 ## Architektur & Verträge
 - Maßgeblich: `docs/dom-map.md` (live verifizierte Jellyfin-DOM-Karte, Proxy-Klick für Wiedergabe, Selektoren) und `docs/js-contracts.md` (Kartenmarkup, öffentliche Feature-Funktionen, Regeln für Feature-Autoren). Vor Änderungen dort nachlesen.
 - Keine React-Knoten mutieren; eigene Mount-Points (`#lfx-nav`, `#lfx-home`, `#lfx-newpopular`, `#lfx-hovercard`), native Elemente nur per CSS-Klasse (`html.lfx-nav-on`, `lfx-home-on`, …) verstecken.
-- Wiedergabe immer über `core/playback.js` (Proxy-Klick), nicht über `playbackManager` (nicht global).
+- Wiedergabe immer über `core/playback.js` (Proxy-Klick), nicht über `playbackManager` (nicht global). Ausnahme: LENZ LIVE spielt bewusst mit eigenem `<video>` ohne Fortschrittsmeldung (`src/js/live/player/`).
 - Jedes Feature räumt in `unmount()` alles auf; `destroy()` entfernt alles. Keine Tokens/Credentials loggen, Bild-URLs ohne api_key.
 - Nur `--lfx-*`-Tokens aus `tokens.css` nutzen.
 

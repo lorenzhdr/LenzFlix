@@ -1,0 +1,151 @@
+/* LENZ LIVE · Karten im Bild: Pausenbild, Testbild (eigenes Muster), Störbild, Füllprogramm-Banner. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  .lfx-live-card {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7em;
+    padding: 6%;
+    box-sizing: border-box;
+    text-align: center;
+    font-family: var(--lfx-live-osd-font);
+    font-size: 14px;
+    font-size: clamp(10px, 2.3cqw, 30px);
+    color: #fff;
+    background: #0b0c10;
+  }
+  .lfx-live-card__kicker { font-size: 0.8em; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0.7; }
+  .lfx-live-card__title { max-width: 90%; font-size: 1.7em; font-weight: 800; line-height: 1.2; }
+  .lfx-live-card__sub { max-width: 80%; font-size: 1em; opacity: 0.8; }
+  .lfx-live-card__count { font-size: 1.3em; font-variant-numeric: tabular-nums; color: var(--lfx-live-accent); }
+  .lfx-live-card .lfx-live-logo { font-size: 1.3em; }
+
+  /* Pausenbild: ruhiger, langsam wandernder Verlauf */
+  .lfx-live-card[data-kind="pause"] {
+    background:
+      radial-gradient(70% 90% at 20% 20%, rgba(255, 179, 0, 0.18), transparent 60%),
+      radial-gradient(60% 80% at 85% 85%, rgba(70, 120, 255, 0.2), transparent 60%),
+      #0b0c10;
+    background-size: 140% 140%, 140% 140%, auto;
+    animation: lfx-live-drift 14s ease-in-out infinite alternate;
+  }
+
+  .lfx-live--style-flat .lfx-live-card[data-kind="pause"] {
+    background:
+      radial-gradient(70% 90% at 20% 20%, rgba(229, 9, 20, 0.2), transparent 60%),
+      radial-gradient(60% 80% at 85% 85%, rgba(255, 255, 255, 0.05), transparent 60%),
+      #0b0b0b;
+    background-size: 140% 140%, 140% 140%, auto;
+  }
+
+  /* Testbild: Farbbalken, Kreis, Graustufen, Logo, Uhrzeit */
+  .lfx-live-card[data-kind="test"] { display: block; padding: 0; background: #2b2b2b; }
+  .lfx-live-card__bars { position: absolute; left: 0; right: 0; top: 0; height: 55%; display: flex; }
+  .lfx-live-card__bar { flex: 1; }
+  .lfx-live-card__bar--0 { background: #c8c8c8; }
+  .lfx-live-card__bar--1 { background: #c8c800; }
+  .lfx-live-card__bar--2 { background: #00c8c8; }
+  .lfx-live-card__bar--3 { background: #00c800; }
+  .lfx-live-card__bar--4 { background: #c800c8; }
+  .lfx-live-card__bar--5 { background: #c80000; }
+  .lfx-live-card__bar--6 { background: #0000c8; }
+  .lfx-live-card__mid {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 55%;
+    height: 27%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 8%),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 20%),
+      #1b1b1b;
+  }
+  .lfx-live-card__circle {
+    position: absolute;
+    height: 92%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 0.22em solid #f2f2f2;
+    box-sizing: border-box;
+  }
+  .lfx-live-card__mid .lfx-live-logo { position: relative; font-size: 1.15em; }
+  .lfx-live-card__grey { position: absolute; left: 0; right: 0; top: 82%; height: 8%; display: flex; }
+  .lfx-live-card__step { flex: 1; }
+  .lfx-live-card__step--0 { background: #000; }
+  .lfx-live-card__step--1 { background: #242424; }
+  .lfx-live-card__step--2 { background: #484848; }
+  .lfx-live-card__step--3 { background: #6c6c6c; }
+  .lfx-live-card__step--4 { background: #909090; }
+  .lfx-live-card__step--5 { background: #b4b4b4; }
+  .lfx-live-card__step--6 { background: #d8d8d8; }
+  .lfx-live-card__step--7 { background: #fff; }
+  .lfx-live-card[data-kind="test"] .lfx-live-card__title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 2.5%;
+    max-width: none;
+    font-size: 1.25em;
+    text-shadow: 0 0.08em 0.2em #000;
+  }
+  .lfx-live-card[data-kind="test"] .lfx-live-card__sub { position: absolute; left: 0; right: 0; bottom: 0; }
+  .lfx-live-card__clock {
+    position: absolute;
+    right: 3%;
+    top: 91.5%;
+    font-size: 1.1em;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    background: #000;
+    padding: 0 0.4em;
+  }
+
+  /* Störbild: Schnee */
+  .lfx-live-card[data-kind="error"] { background: #1a1a1a; overflow: hidden; }
+  .lfx-live-card__snow {
+    position: absolute;
+    inset: -20%;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 5px),
+      radial-gradient(circle at 30% 40%, #6a6a6a, #222 70%);
+    animation: lfx-live-snow 0.45s steps(5) infinite;
+  }
+  .lfx-live-card[data-kind="error"] > :not(.lfx-live-card__snow) { position: relative; text-shadow: 0 0.08em 0.3em #000; }
+  .lfx-live-card[data-kind="error"] .lfx-live-card__title,
+  .lfx-live-card[data-kind="error"] .lfx-live-card__sub { padding: 0.25em 0.7em; background: rgba(0, 0, 0, 0.65); border-radius: 0.3em; }
+
+  /* Hinweis-Banner (Füllprogramm) */
+  .lfx-live-banner {
+    position: absolute;
+    top: 5%;
+    left: 4.5%;
+    z-index: 4;
+    max-width: 70%;
+    padding: 0.35em 0.9em;
+    border-left: 0.3em solid var(--lfx-live-accent);
+    background: rgba(0, 0, 0, 0.62);
+    font-family: var(--lfx-live-osd-font);
+    font-size: 12px;
+    font-size: clamp(9px, 1.9cqw, 24px);
+    font-weight: 700;
+    color: #fff;
+    pointer-events: none;
+  }
+}
+
+@keyframes lfx-live-drift { to { background-position: 100% 60%, 0% 40%, 0 0; } }
+@keyframes lfx-live-snow {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-3%, 2%); }
+  50% { transform: translate(2%, -3%); }
+  75% { transform: translate(-1%, -1%); }
+  100% { transform: translate(3%, 3%); }
+}

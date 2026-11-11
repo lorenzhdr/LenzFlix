@@ -1,0 +1,211 @@
+/* LENZ LIVE · OSD im Bild und Senderlogos (geteilt mit card.css). Typografie je Stil über --lfx-live-osd-*. Größen skalieren mit der Bildbreite (cqw). */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  /* ---------- Senderlogo ---------- */
+  .lfx-live-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.28em 0.6em;
+    border-radius: 0.35em;
+    background: var(--lfx-live-logo-bg, #444);
+    color: var(--lfx-live-logo-ink, #fff);
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 0.12em 0.45em rgba(0, 0, 0, 0.5), inset 0 0 0 0.08em rgba(255, 255, 255, 0.22);
+  }
+  .lfx-live-logo__mark {
+    padding: 0.1em 0.38em;
+    border-radius: 0.22em;
+    background: var(--lfx-live-logo-ink, #fff);
+    color: var(--lfx-live-logo-bg, #444);
+    font-size: 0.68em;
+    letter-spacing: 0.12em;
+  }
+  .lfx-live-logo__no {
+    padding-left: 0.45em;
+    border-left: 0.08em solid currentColor;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- OSD ---------- */
+  .lfx-live-osd {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    font-family: var(--lfx-live-osd-font);
+    font-size: 14px;
+    font-size: clamp(10px, 2.3cqw, 30px);
+    color: #fff;
+    text-shadow: 0 0.08em 0.25em rgba(0, 0, 0, 0.85);
+  }
+  .lfx-live-osd > * { opacity: 0; transition: opacity 0.22s ease; }
+
+  .lfx-live-osd__ch {
+    position: absolute;
+    top: 5%;
+    right: 4.5%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4em;
+  }
+  .lfx-live-osd__no {
+    font-size: 3.2em;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--lfx-live-osd-accent, #fff);
+  }
+  .lfx-live-osd__logo { font-size: 0.95em; }
+  .lfx-live-osd.is-ch .lfx-live-osd__ch { opacity: 1; }
+
+  .lfx-live-osd__bar {
+    position: absolute;
+    left: 4.5%;
+    right: 4.5%;
+    bottom: 5%;
+    padding: 0.7em 1em 0.8em;
+    border-radius: 0.5em;
+    background: var(--lfx-live-osd-bg, rgba(0, 0, 0, 0.6));
+  }
+  .lfx-live-osd.is-ch .lfx-live-osd__bar { opacity: 1; }
+  .lfx-live-osd__row { display: flex; align-items: baseline; gap: 0.8em; min-width: 0; }
+  .lfx-live-osd__row--now { font-size: 1.15em; font-weight: 700; }
+  .lfx-live-osd__row--next { margin-top: 0.35em; font-size: 0.85em; opacity: 0.85; }
+  .lfx-live-osd__time {
+    flex: 0 0 auto;
+    color: var(--lfx-live-osd-accent, #fff);
+    font-variant-numeric: tabular-nums;
+  }
+  .lfx-live-osd__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lfx-live-osd__progress {
+    height: 0.3em;
+    margin-top: 0.5em;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.25);
+    overflow: hidden;
+  }
+  .lfx-live-osd__progress.is-empty { visibility: hidden; }
+  .lfx-live-osd__progress-fill { display: block; height: 100%; width: 0; background: var(--lfx-live-osd-accent, #fff); }
+
+  .lfx-live-osd__badges { flex: 0 0 auto; display: inline-flex; gap: 0.4em; font-size: 0.7em; }
+  .lfx-live-osd__badge {
+    padding: 0.18em 0.55em;
+    border-radius: 0.3em;
+    background: var(--lfx-live-osd-accent, #fff);
+    color: #111;
+    font-weight: 800;
+    text-shadow: none;
+    white-space: nowrap;
+  }
+
+  .lfx-live-osd__input {
+    position: absolute;
+    top: 5%;
+    left: 4.5%;
+    font-size: 3.6em;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--lfx-live-osd-accent, #fff);
+    letter-spacing: 0.08em;
+  }
+  .lfx-live-osd.is-input .lfx-live-osd__input { opacity: 1; }
+
+  .lfx-live-osd__msg {
+    position: absolute;
+    left: 50%;
+    bottom: 27%;
+    transform: translateX(-50%);
+    max-width: 88%;
+    padding: 0.55em 1.1em;
+    border-radius: 0.5em;
+    background: var(--lfx-live-osd-bg, rgba(0, 0, 0, 0.6));
+    font-size: 1.1em;
+    font-weight: 700;
+    text-align: center;
+  }
+  .lfx-live-osd.is-msg .lfx-live-osd__msg { opacity: 1; }
+
+  .lfx-live-osd__vol {
+    position: absolute;
+    left: 4.5%;
+    bottom: 27%;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 0.7em;
+    width: 46%;
+    padding: 0.55em 0.9em;
+    border-radius: 0.5em;
+    background: var(--lfx-live-osd-bg, rgba(0, 0, 0, 0.6));
+  }
+  .lfx-live-osd.is-vol .lfx-live-osd__vol { opacity: 1; }
+  .lfx-live-osd__vol-label { font-size: 0.85em; }
+  .lfx-live-osd__vol-rail { height: 0.5em; border-radius: 999px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+  .lfx-live-osd__vol-fill { display: block; height: 100%; width: 0; background: var(--lfx-live-osd-accent, #fff); }
+  .lfx-live-osd.is-muted .lfx-live-osd__vol-fill { width: 0 !important; }
+  .lfx-live-osd__vol-num { min-width: 2.6em; text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; }
+  .lfx-live-osd__vol-hint { grid-column: 1 / -1; font-size: 0.75em; opacity: 0.85; }
+  .lfx-live-osd__vol-hint:empty { display: none; }
+
+  .lfx-live-osd__info {
+    position: absolute;
+    left: 4.5%;
+    top: 18%;
+    max-width: 62%;
+    padding: 0.8em 1.1em;
+    border-radius: 0.5em;
+    background: var(--lfx-live-osd-bg, rgba(0, 0, 0, 0.6));
+  }
+  .lfx-live-osd.is-info .lfx-live-osd__info { opacity: 1; }
+  .lfx-live-osd__info-title { font-size: 1.5em; font-weight: 800; line-height: 1.15; }
+  .lfx-live-osd__info-sub { margin-top: 0.2em; font-size: 1.05em; opacity: 0.92; }
+  .lfx-live-osd__info-meta { margin-top: 0.4em; font-size: 0.85em; opacity: 0.85; }
+  .lfx-live-osd__info .lfx-live-osd__badges { margin-top: 0.5em; font-size: 0.8em; }
+  .lfx-live-osd__info .lfx-live-osd__badges:empty { display: none; }
+  .lfx-live-osd__info-time,
+  .lfx-live-osd__info-next { margin-top: 0.4em; font-size: 0.85em; color: var(--lfx-live-osd-accent, #fff); }
+  .lfx-live-osd__info-next { color: inherit; opacity: 0.85; }
+
+  /* Overlay offen: OSD im Hintergrund */
+  .lfx-live-app.has-epg .lfx-live-osd,
+  .lfx-live-app.has-ttx .lfx-live-osd,
+  .lfx-live-app.has-menu .lfx-live-osd { visibility: hidden; }
+
+  /* ---------- Stile ---------- */
+  .lfx-live--style-crt80 .lfx-live-osd { text-shadow: 0.1em 0.1em 0 #000, 0 0 0.5em rgba(80, 255, 80, 0.35); }
+  .lfx-live--style-crt80 .lfx-live-osd__bar { border-radius: 0; border: 0.1em solid rgba(157, 255, 157, 0.45); }
+  .lfx-live--style-silver .lfx-live-osd__bar,
+  .lfx-live--style-silver .lfx-live-osd__info,
+  .lfx-live--style-silver .lfx-live-osd__msg,
+  .lfx-live--style-silver .lfx-live-osd__vol { border: 0.08em solid rgba(106, 183, 255, 0.6); box-shadow: 0 0.2em 0.8em rgba(0, 20, 60, 0.6); }
+  .lfx-live--style-flat .lfx-live-osd__bar,
+  .lfx-live--style-plain .lfx-live-osd__bar { border-radius: 0.9em; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  /* Flachbild (LENZFLIX-Look): Systemschrift, Rot als Akzent, dünner roter Fortschrittsbalken, Senderlogo dezent */
+  .lfx-live--style-flat .lfx-live-osd { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+  .lfx-live--style-flat .lfx-live-osd__bar,
+  .lfx-live--style-flat .lfx-live-osd__info,
+  .lfx-live--style-flat .lfx-live-osd__msg,
+  .lfx-live--style-flat .lfx-live-osd__vol { border-radius: 0.4em; box-shadow: 0 0.2em 0.9em rgba(0, 0, 0, 0.5); }
+  .lfx-live--style-flat .lfx-live-osd__no { color: #fff; font-weight: 700; }
+  .lfx-live--style-flat .lfx-live-osd__time { font-weight: 700; }
+  .lfx-live--style-flat .lfx-live-osd__row--now { font-weight: 600; }
+  .lfx-live--style-flat .lfx-live-osd__progress,
+  .lfx-live--style-flat .lfx-live-osd__vol-rail { height: 0.22em; border-radius: 0; background: rgba(255, 255, 255, 0.28); }
+  .lfx-live--style-flat .lfx-live-osd__vol-rail { height: 0.3em; }
+  .lfx-live--style-flat .lfx-live-osd__badge { color: #fff; border-radius: 0.2em; }
+  .lfx-live--style-flat .lfx-live-logo {
+    background: rgba(20, 20, 20, 0.55);
+    color: #fff;
+    border-radius: 0.25em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    box-shadow: inset 0 0 0 0.07em rgba(255, 255, 255, 0.22);
+  }
+  .lfx-live--style-flat .lfx-live-logo__mark { background: var(--lfx-live-accent, #e50914); color: #fff; }
+  .lfx-live--style-flat .lfx-live-logo__no { border-left-color: rgba(255, 255, 255, 0.35); }
+  .lfx-live--style-plain .lfx-live-osd { font-size: clamp(10px, 2cqw, 26px); }
+}

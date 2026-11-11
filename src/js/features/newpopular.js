@@ -12,7 +12,7 @@ import { getCharts, resolveChartItems } from '../core/charts.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { createCard, detailHref, landscapeFor } from './rows/card.js';
-import { brandName } from '../core/theme.js';
+import { brandName, isTheme } from '../core/theme.js';
 import { BASE_PARAMS, badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
 import { asItems, getNewSeriesIds } from './rows/sources.js';
@@ -383,7 +383,7 @@ function ensure() {
 
 const newPopularFeature = {
   name: 'newpopular',
-  match: (route) => isNewRoute(route) && !isTv(),
+  match: (route) => isNewRoute(route) && !isTv() && !isTheme('live'),
   mount: () => ensure(),
   update: () => ensure(),
   unmount: () => { clearTimeout(waitTimer); teardown(); },

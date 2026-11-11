@@ -1,0 +1,174 @@
+/* LENZ LIVE · Tokens (--lfx-live-*) und Grundgerüst der Engine-UI (Raum, Fernseher, Bildschirm, Standby, Ein-/Ausschalt-Animation).
+   Stile (tv-*.css) setzen nur noch Optik drauf. Kein Webfont, keine externen Assets. Nie auf TV. */
+html.lfx-js.lfx-theme-live:not(.layout-tv) {
+  --lfx-live-bg: #120e10;
+  --lfx-live-ink: #f4efe9;
+  --lfx-live-text: var(--lfx-live-ink);
+  --lfx-live-muted: rgba(244, 239, 233, 0.6);
+  --lfx-live-red: #e03a2f;
+  --lfx-live-blue: #3a7bd5;
+  --lfx-live-z-stage: 50;
+  --lfx-live-z-loading: 60;
+  --lfx-live-accent: #ffb300;
+  --lfx-live-led-standby: #e3231c;
+  --lfx-live-led-on: #46d369;
+  --lfx-live-screen-bg: #000;
+  --lfx-live-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --lfx-live-osd-font: "Courier New", Courier, monospace;
+  --lfx-live-tv-w: min(calc(100vw - 330px), calc((100vh - 24vh) * 1.5), 1400px);
+
+  /* ---------- Gerüst ---------- */
+  .lfx-live-app {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    overflow: hidden;
+    color: var(--lfx-live-ink);
+    font-family: var(--lfx-font);
+    background: var(--lfx-live-bg);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .lfx-live-app button { font: inherit; }
+  .lfx-live-app [hidden] { display: none !important; }
+
+  .lfx-live-room {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 28px;
+    padding: 6vh 16px 12vh;
+    box-sizing: border-box;
+  }
+
+  .lfx-live-room__lamp,
+  .lfx-live-room__shelf { position: absolute; pointer-events: none; }
+
+  .lfx-live-tv {
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--lfx-live-tv-w);
+    aspect-ratio: 3 / 2;
+    z-index: 1;
+  }
+
+  .lfx-live-screen {
+    position: absolute;
+    overflow: hidden;
+    background: var(--lfx-live-screen-bg);
+    isolation: isolate;
+    container-type: inline-size;
+  }
+
+  .lfx-live-video,
+  .lfx-live-fake {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    z-index: 0;
+  }
+  .lfx-live-fake { z-index: 1; }
+
+  .lfx-live-noise {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .lfx-live-noise.is-active { opacity: 1; }
+  .lfx-live-noise.is-black { background: #000; }
+
+  .lfx-live-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+  }
+  .lfx-live-overlay > * { pointer-events: auto; }
+
+  /* Standby: dunkles Glas, Videobild unsichtbar */
+  .lfx-live-app:not(.is-on) .lfx-live-video,
+  .lfx-live-app:not(.is-on) .lfx-live-fake { visibility: hidden; }
+  .lfx-live-app:not(.is-on) .lfx-live-screen {
+    background:
+      radial-gradient(120% 90% at 28% 18%, rgba(255, 255, 255, 0.07), transparent 55%),
+      linear-gradient(160deg, #0b0d10, #020203);
+    cursor: pointer;
+  }
+
+  .lfx-live-tv__led {
+    position: absolute;
+    width: 1.1%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--lfx-live-led-standby);
+    box-shadow: 0 0 8px 2px rgba(227, 35, 28, 0.7);
+    animation: lfx-live-led 2.4s ease-in-out infinite;
+    z-index: 3;
+  }
+  .lfx-live-app.is-on .lfx-live-tv__led {
+    background: var(--lfx-live-led-on);
+    box-shadow: 0 0 6px 1px rgba(70, 211, 105, 0.55);
+    animation: none;
+  }
+
+  /* Laden / Wartezustand */
+  .lfx-live-app.is-loading .lfx-live-screen::after { animation: lfx-live-pulse 1.2s ease-in-out infinite; }
+
+  /* Ein-/Ausschalten: crt80/silver ziehen das Bild zusammen, flat/plain blenden kurz aus */
+  .lfx-live-screen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .lfx-live-app.is-powering-off .lfx-live-screen::after { animation: lfx-live-off 0.5s ease-in forwards; }
+  .lfx-live-app.is-powering-on .lfx-live-screen { animation: lfx-live-on 0.55s var(--lfx-live-ease); }
+  .lfx-live--style-flat.is-powering-off .lfx-live-screen::after,
+  .lfx-live--style-plain.is-powering-off .lfx-live-screen::after {
+    background: #000;
+    animation: lfx-live-fade-out 0.3s ease-out forwards;
+  }
+  .lfx-live--style-flat.is-powering-on .lfx-live-screen,
+  .lfx-live--style-plain.is-powering-on .lfx-live-screen { animation: lfx-live-fade-in 0.35s ease-out; }
+
+  /* Programmwechsel ohne Rauschen: kurze Blende */
+  .lfx-live-app.is-blend .lfx-live-video { animation: lfx-live-fade-in 0.4s ease-out; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lfx-live-app *,
+    .lfx-live-app *::before,
+    .lfx-live-app *::after,
+    .lfx-live-app { animation: none !important; transition: none !important; }
+  }
+}
+
+@keyframes lfx-live-led { 50% { opacity: 0.45; } }
+@keyframes lfx-live-pulse { 50% { opacity: 0.04; } }
+@keyframes lfx-live-on {
+  0% { transform: scale(1, 0.006); filter: brightness(4); }
+  55% { transform: scale(1, 0.006); filter: brightness(4); }
+  100% { transform: none; filter: none; }
+}
+@keyframes lfx-live-off {
+  0% { opacity: 0.9; transform: scale(1, 1); }
+  45% { opacity: 1; transform: scale(1, 0.01); }
+  100% { opacity: 0; transform: scale(0, 0.004); }
+}
+@keyframes lfx-live-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lfx-live-fade-out { from { opacity: 1; } to { opacity: 0; } }

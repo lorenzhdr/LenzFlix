@@ -23,6 +23,7 @@ const cssEntries = [
   ['src/css/themes/prime/index.css', 'lenzprime'],
   ['src/css/themes/retro/index.css', 'lenzretro'],
   ['src/css/themes/store/index.css', 'lenzstore'],
+  ['src/css/themes/live/index.css', 'lenzlive'],
 ];
 
 function buildCss() {
@@ -35,10 +36,11 @@ function buildCss() {
   }
 }
 
-// JS-Bundles: Hauptbundle (immer geladen) + 3D-Bundle der VIDEOTHEK LENZ (lazy, siehe core/themejs.js, docs/store3d.md).
+// JS-Bundles: Hauptbundle (immer geladen) + 3D-Bundle der VIDEOTHEK LENZ und Engine von LENZ LIVE (lazy, siehe core/themejs.js, docs/store3d.md).
 const jsEntries = [
   ['src/js/main.js', 'lenzflix'],
   ['src/js/store3d/entry.js', 'lenzstore'],
+  ['src/js/live/entry.js', 'lenzlive'], // LENZ LIVE: Engine (lazy, docs/live.md)
 ];
 
 async function buildJs() {
@@ -62,6 +64,9 @@ function checkMainBundle() {
   const code = readFileSync(resolve(dist, 'lenzflix.min.js'), 'utf8');
   if (/WebGLRenderer|THREE\.REVISION|three\.module/.test(code)) {
     throw new Error('dist/lenzflix.min.js enthält three.js – das 3D-Bundle darf nur lazy geladen werden');
+  }
+  if (code.includes('__LFX_LIVE_ENGINE__')) {
+    throw new Error('dist/lenzflix.min.js enthält die LENZ-LIVE-Engine – sie darf nur lazy (lenzlive.min.js) geladen werden');
   }
   if (code.length > MAIN_MIN_BUDGET) console.warn(`WARNUNG: lenzflix.min.js ist ${code.length} B (Budget ${MAIN_MIN_BUDGET} B)`);
 }
