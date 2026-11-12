@@ -13,6 +13,7 @@ vi.mock('../src/js/core/api.js', async () => {
 });
 
 import * as api from '../src/js/core/api.js';
+import { clearCache } from '../src/js/core/cache.js';
 import { createHero, taglineFor, loadHomeHeroPool, HERO_INTERVAL } from '../src/js/features/plus/hero.js';
 
 const mk = (n, extra = {}) => ({
@@ -111,6 +112,19 @@ describe('createHero', () => {
 });
 
 describe('loadHomeHeroPool', () => {
+  beforeEach(() => clearCache());
+  it('cached den Pool 10 min (gleiche Titel), nach clearCache("home:") neu', async () => {
+    api.getItems.mockReset();
+    api.getItems.mockImplementation(async (p) => ({ Items: p.SortBy === 'Random' ? [mk(5), mk(6)] : [mk(1)] }));
+    const a = await loadHomeHeroPool();
+    const n = api.getItems.mock.calls.length;
+    const b = await loadHomeHeroPool();
+    expect(b).toBe(a);
+    expect(api.getItems.mock.calls.length).toBe(n);
+    clearCache('home:');
+    await loadHomeHeroPool();
+    expect(api.getItems.mock.calls.length).toBeGreaterThan(n);
+  });
   it('baut Pool aus neu + zufällig', async () => {
     api.getItems.mockImplementation(async (p) => ({ Items: p.SortBy === 'Random' ? [mk(5), mk(6)] : [mk(1)] }));
     const pool = await loadHomeHeroPool();

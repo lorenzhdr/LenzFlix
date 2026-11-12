@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cached, clearCache, debounce } from '../src/js/core/cache.js';
+import { cached, clearCache, debounce, peekCached } from '../src/js/core/cache.js';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -29,6 +29,17 @@ describe('cache', () => {
     const loader = vi.fn().mockRejectedValueOnce(new Error('x')).mockResolvedValueOnce(5);
     await expect(cached('e', loader)).rejects.toThrow('x');
     expect(await cached('e', loader)).toBe(5);
+  });
+
+  it('peekCached: synchroner Treffer oder undefined, respektiert TTL und clearCache', async () => {
+    expect(peekCached('p')).toBeUndefined();
+    await cached('p', async () => 7, 1000);
+    expect(peekCached('p')).toBe(7);
+    vi.advanceTimersByTime(1001);
+    expect(peekCached('p')).toBeUndefined();
+    await cached('p', async () => 8, 1000);
+    clearCache('p');
+    expect(peekCached('p')).toBeUndefined();
   });
 
   it('debounce', () => {

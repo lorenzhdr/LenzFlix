@@ -7,7 +7,7 @@ import * as api from '../../core/api.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { buildHubRowDefs, getHubHeroPool } from '../../shared/hub.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
-import { buildRowDefs } from '../rows/sources.js';
+import { buildRowDefs, peekRowDefs } from '../rows/sources.js';
 import { createHero, loadHomeHeroPool } from './hero.js';
 import { renderBrands } from './brands.js';
 import { renderRows } from './rows.js';
@@ -96,7 +96,7 @@ async function build(tab, key) {
   if (!isHub) cleanups.push(renderBrands(root, rowsSlot));
 
   // Zeilen
-  cleanups.push(renderRows(rowsSlot, () => (isHub ? (lib ? buildHubRowDefs(lib) : []) : buildRowDefs())));
+  cleanups.push(renderRows(rowsSlot, () => (isHub ? (lib ? buildHubRowDefs(lib) : []) : buildRowDefs()), isHub ? null : () => peekRowDefs()));
 }
 
 function ensure(route) {

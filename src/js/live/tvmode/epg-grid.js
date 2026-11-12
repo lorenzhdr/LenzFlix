@@ -10,6 +10,8 @@ const TINY_PX = 48; // schmaler: kein Text (nur title/aria-label)
 const SHORT_PX = 90; // schmaler: nur Titel ohne Uhrzeit
 const LEAD_MIN = 30; // reveal(): Jetzt-Linie steht so viele Minuten nach dem linken Rand
 const DEFAULT_PPM = 5;
+const VIS_GAP = 4; // Abstand des nachrückenden Titels zur Senderspalte (px)
+const VIS_PAD = 8; // Reserve rechts in der Zelle (px)
 
 export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
   void deps;
@@ -57,6 +59,8 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
   let lastPpm = DEFAULT_PPM;
   let positioned = false;
   let ro = null;
+  let visRaf = 0;
+  let visCancel = null;
 
   const setMin = (node, startMs, endMs) => {
     node.style.setProperty('--tvm-s', String(+((startMs - bounds.start) / MIN).toFixed(3)));
@@ -140,10 +144,13 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
         const tm = doc.createElement('span');
         tm.className = 'lfx-tvm__epg-cell-time';
         tm.textContent = `${formatClock(c.entry.start)}–${formatClock(c.entry.end)}`;
-        btn.append(ti, tm);
+        const txt = doc.createElement('span');
+        txt.className = 'lfx-tvm__epg-cell-text';
+        txt.append(ti, tm);
+        btn.append(txt);
         btn.title = `${c.title} · ${tm.textContent}`;
         btn.setAttribute('aria-label', `Sender ${no}, ${c.title}, ${tm.textContent}`);
-        const rec = { btn, entry: c.entry, no, mins, filler: c.kind === 'filler', cur: false, past: false };
+        const rec = { btn, entry: c.entry, no, mins, filler: c.kind === 'filler', cur: false, past: false, vis: null };
         classify(rec, p);
         btn.addEventListener('click', () => onCell(rec));
         btn.addEventListener('keydown', (e) => onKey(e, rec));
@@ -156,7 +163,42 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
     }
     markCurrentChannel();
     applyTime(t, true);
+    updateVis();
   }
+
+  /** Links unter die Senderspalte ragende Zellen: sichtbare Restbreite als --tvm-vis, damit der Titel (sticky) mitrückt. */
+  function updateVis() {
+    if (!alive) return;
+    const chan = rowsEl.querySelector('.lfx-tvm__epg-chan');
+    const hidden = !(scroll.clientWidth > 0) || !chan;
+    const edge = hidden ? 0 : chan.getBoundingClientRect().right + VIS_GAP;
+    const writes = [];
+    for (const c of cells) {
+      let v = null;
+      if (!hidden) {
+        const r = c.btn.getBoundingClientRect();
+        if (r.width > 0 && r.left < edge) v = Math.max(0, Math.round(r.right - edge - VIS_PAD));
+      }
+      if (v !== c.vis) writes.push([c, v]);
+    }
+    for (const [c, v] of writes) {
+      c.vis = v;
+      if (v == null) c.btn.style.removeProperty('--tvm-vis');
+      else c.btn.style.setProperty('--tvm-vis', `${v}px`);
+    }
+  }
+  function scheduleVis() {
+    if (visRaf || !alive) return;
+    const w = doc.defaultView || window;
+    if (typeof w.requestAnimationFrame === 'function') {
+      visRaf = w.requestAnimationFrame(() => { visRaf = 0; updateVis(); });
+      visCancel = (id) => w.cancelAnimationFrame && w.cancelAnimationFrame(id);
+    } else {
+      visRaf = setTimeout(() => { visRaf = 0; updateVis(); }, 16);
+      visCancel = clearTimeout;
+    }
+  }
+  scroll.addEventListener('scroll', scheduleVis, { passive: true });
 
   function classify(rec, p) {
     const px = rec.mins * p;
@@ -291,6 +333,7 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
   if (typeof RO === 'function') {
     ro = new RO(() => {
       if (!alive || !(scroll.clientWidth > 0)) return;
+      updateVis();
       const p = ppm();
       if (p !== lastPpm) {
         lastPpm = p;
@@ -334,6 +377,9 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
     },
     destroy() {
       alive = false;
+      scroll.removeEventListener('scroll', scheduleVis);
+      if (visRaf && visCancel) visCancel(visRaf);
+      visRaf = 0;
       if (ro) ro.disconnect();
       ro = null;
       cells = [];

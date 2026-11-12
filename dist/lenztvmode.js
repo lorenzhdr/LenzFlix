@@ -1442,8 +1442,11 @@
   var START_TIMEOUT_MS = 25e3;
   var STALL_REPORT_MS = 1200;
   var MEDIA_ACTIONS = ["pause", "play", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"];
+  var JUMP_TOLERANCE_S = 1.5;
+  var normalizeVariant = (v) => v === 0 || v === 1 || v === 2 ? v : 1;
   function createVideoControl(video, { now = Date.now, emit = () => {
-  } } = {}) {
+  }, variant: variantOpt = 1 } = {}) {
+    const variant = normalizeVariant(variantOpt);
     let armed = false;
     let playedOnce = false;
     let base = { off: 0, at: 0 };
@@ -1458,6 +1461,44 @@
     let stallTimer = null;
     let stallShown = false;
     let phases = { src: null, meta: null, playing: null };
+    const newMetrics = () => ({
+      target: null,
+      jumped: false,
+      seekingAt: null,
+      seekedAt: null,
+      canplayAt: null,
+      waitN: 0,
+      waitMs: 0,
+      waitFrom: null,
+      bufSeeked: null,
+      bufPlaying: null,
+      dev: null
+    });
+    let m = newMetrics();
+    const measuring = () => armed && phases.meta != null && phases.playing == null;
+    const endWait = () => {
+      if (m.waitFrom != null) {
+        m.waitMs += Math.max(0, now() - m.waitFrom);
+        m.waitFrom = null;
+      }
+    };
+    const bufRange = () => {
+      try {
+        const b = video.buffered;
+        if (!b || !b.length || m.target == null) return null;
+        const t = video.currentTime;
+        let i = 0;
+        for (let k = 0; k < b.length; k++) {
+          if (b.start(k) <= t + 0.05 && b.end(k) >= t - 0.05) {
+            i = k;
+            break;
+          }
+        }
+        return [b.start(i) - m.target, b.end(i) - m.target];
+      } catch {
+        return null;
+      }
+    };
     video.setAttribute("playsinline", "");
     video.setAttribute("disablepictureinpicture", "");
     video.setAttribute("x-webkit-airplay", "deny");
@@ -1539,13 +1580,36 @@
       playing: () => {
         if (!armed) return;
         playedOnce = true;
-        if (pending && phases.playing == null) phases.playing = now();
+        if (pending && phases.playing == null) {
+          if (phases.meta != null) {
+            endWait();
+            m.bufPlaying = bufRange();
+            try {
+              m.dev = video.currentTime - livePos() / 1e3;
+            } catch {
+            }
+          }
+          phases.playing = now();
+        }
         resetStall();
         emit("state", { phase: "playing" });
         settle({ ok: true });
       },
       // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
+      seeking: () => {
+        if (measuring() && m.seekingAt == null) m.seekingAt = now();
+      },
+      seeked: () => {
+        if (measuring() && m.seekedAt == null) {
+          m.seekedAt = now();
+          m.bufSeeked = bufRange();
+        }
+      },
       waiting: () => {
+        if (measuring() && m.waitFrom == null) {
+          m.waitN += 1;
+          m.waitFrom = now();
+        }
         if (!armed || !playedOnce || waiting || stallShown) return;
         waiting = true;
         waitCt = video.currentTime;
@@ -1564,6 +1628,10 @@
         if ((waiting || stallShown) && armed && video.currentTime > waitCt + 0.05) recovered();
       },
       canplay: () => {
+        if (measuring()) {
+          if (m.canplayAt == null) m.canplayAt = now();
+          endWait();
+        }
         if (waiting || stallShown) recovered();
       },
       ended: () => {
@@ -1629,6 +1697,8 @@
       quiet = !!q;
       base = { off: Math.max(0, Number(offsetMs2) || 0), at: now() };
       phases = { src: null, meta: null, playing: null };
+      m = newMetrics();
+      let preset = false;
       return new Promise((resolve) => {
         pending = resolve;
         timer = setTimeout(() => fail2("network", "TIMEOUT"), START_TIMEOUT_MS);
@@ -1636,15 +1706,35 @@
           onMeta = null;
           if (!armed) return;
           phases.meta = now();
+          const want = livePos() / 1e3;
+          let cur = NaN;
           try {
-            video.currentTime = livePos() / 1e3;
+            cur = video.currentTime;
           } catch {
+          }
+          if (variant === 0 || !preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
+            m.jumped = true;
+            m.target = want;
+            try {
+              video.currentTime = want;
+            } catch {
+            }
+          } else {
+            m.target = cur;
           }
           callPlay();
         };
         video.addEventListener("loadedmetadata", onMeta, { once: true });
         phases.src = now();
-        video.src = url;
+        const aim = livePos() / 1e3;
+        video.src = variant === 2 ? `${String(url).split("#")[0]}#t=${aim.toFixed(1)}` : url;
+        if (variant >= 1) {
+          try {
+            video.currentTime = aim;
+            preset = true;
+          } catch {
+          }
+        }
       });
     }
     return {
@@ -1665,6 +1755,22 @@
       start,
       /** Zeitstempel (now()) des letzten start(): { src, meta, playing } (null = nicht erreicht). */
       phases: () => ({ ...phases }),
+      /** Zusatzmessung des letzten start() (Messanzeige): Zeiten in ms ab loadedmetadata, Puffer/Abweichung in s. */
+      metrics() {
+        const since = (t) => t != null && phases.meta != null ? Math.max(0, t - phases.meta) : null;
+        return {
+          variant,
+          jumped: phases.meta != null ? m.jumped : null,
+          seekingMs: since(m.seekingAt),
+          seekedMs: since(m.seekedAt),
+          canplayMs: since(m.canplayAt),
+          waitCount: m.waitN,
+          waitMs: Math.round(m.waitMs + (m.waitFrom != null ? Math.max(0, now() - m.waitFrom) : 0)),
+          bufSeeked: m.bufSeeked,
+          bufPlaying: m.bufPlaying,
+          devS: m.dev
+        };
+      },
       clear: () => clear(false),
       positionMs: livePos,
       syncTo(offsetMs2) {
@@ -1930,6 +2036,16 @@
     }
     return out;
   }
+  var short = (x, n = 12) => String(x == null ? "" : x).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, n);
+  function sourceInfo(ms, audioIdx, reasons) {
+    const a = (ms.MediaStreams || []).find((s) => s && s.Type === "Audio" && s.Index === audioIdx);
+    return {
+      container: short(String(ms.Container || "").split(",")[0]),
+      v: short(videoCodecOf(ms)),
+      a: short(a && a.Codec),
+      reasons: reasons.slice(0, 2).map((r) => String(r).replace(/NotSupported$/, "").replace(/[^A-Za-z0-9]/g, "").slice(0, 24)).filter(Boolean)
+    };
+  }
   function absolute(deps, rel) {
     let origin = "";
     try {
@@ -1976,7 +2092,8 @@
         if (!ms) return fail("network", "NET");
       }
       const audioIdx = want != null ? want : def;
-      const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
+      const reasons0 = ms.SupportsDirectPlay && !remux && !noDirect ? [] : reasonsOf(ms);
+      const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr, info: sourceInfo(ms, audioIdx, reasons0) };
       if (ms.SupportsDirectPlay && !remux && !noDirect) {
         const url2 = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });
         return { ok: true, mode: "direct", url: url2, ...base };
@@ -2219,7 +2336,10 @@
   function createPlayer({ video, deps, now = Date.now, fake = false, canvas, getInfo } = {}) {
     if (fake) return createFakePlayer({ canvas, now, getInfo });
     const em = createEmitter();
-    const vc = createVideoControl(video, { now, emit: em.emit });
+    const variant = normalizeVariant(deps && deps.zapVariant);
+    const forceHls = !!(deps && deps.forceHls);
+    const vc = createVideoControl(video, { now, emit: em.emit, variant });
+    const wantNoDirect = (itemId) => forceHls || directFailed.has(itemId);
     let gen = 0;
     let ac = null;
     let session = null;
@@ -2301,7 +2421,7 @@
       if (fresh(cache.get(itemId))) return Promise.resolve({ ok: true, cached: true });
       const running = inflight.get(itemId);
       if (running) return running;
-      const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: directFailed.has(itemId) }).then((r) => {
+      const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: wantNoDirect(itemId) }).then((r) => {
         if (!(signal && signal.aborted)) remember(itemId, r);
         return { ok: !!r.ok, mode: r.mode };
       }, () => ({ ok: false, reason: "network" })).finally(() => {
@@ -2328,7 +2448,7 @@
       }
       let r;
       try {
-        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: directFailed.has(itemId) });
+        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: wantNoDirect(itemId) });
       } catch {
         r = { ok: false, mode: "none", reason: signal.aborted ? "aborted" : "network", ...signal.aborted ? {} : { code: "NET" } };
       }
@@ -2345,12 +2465,16 @@
         startMs: dur(ph.meta, ph.playing),
         chain: tm.chain.join(">"),
         cached: tm.cached,
-        mode: tm.mode
+        mode: tm.mode,
+        ...extraTiming(tm.info || null)
       };
+    }
+    function extraTiming(src) {
+      return { ...vc.metrics(), forced: forceHls, src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null };
     }
     async function play(opts = {}) {
       if (disposed) return aborted();
-      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none" };
+      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none", info: null };
       const res = await playCore(opts, tm);
       if (res.reason === "aborted") return res;
       lastTiming = makeTiming(tm);
@@ -2389,6 +2513,7 @@
       for (let attempt = 1; ; attempt++) {
         chain.push(attemptLetter(cur));
         tm.mode = cur.mode;
+        tm.info = cur.info || null;
         res = await launch(cur, opts, offsetMs2, itemId, my);
         if (my !== gen) return aborted();
         if (res.ok) {
@@ -2459,7 +2584,7 @@
       if (my !== gen) return aborted();
       const ph = vc.phases();
       const dur = (a, b) => a != null && b != null ? Math.max(0, b - a) : null;
-      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct" };
+      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct", ...extraTiming(null) };
       if (!res.ok) {
         teardown();
         return { ...failResult(res), timing: lastTiming };
@@ -3486,6 +3611,28 @@
   ].join(";");
   var sec = (ms) => (Math.max(0, Number(ms) || 0) / 1e3).toFixed(1).replace(".", ",");
   var num2 = (n) => Number.isFinite(n) ? n.toFixed(2).replace(".", ",") : "\u2013";
+  var sec1 = (ms) => ms == null ? "\u2013" : sec(ms);
+  var sgn = (s) => Number.isFinite(s) ? `${s < 0 ? "-" : "+"}${Math.abs(s).toFixed(1).replace(".", ",")}` : "\u2013";
+  var range = (r) => Array.isArray(r) ? `${sgn(r[0])}\u2026${sgn(r[1])}` : "\u2013";
+  function detailLine(t) {
+    if (!t || t.variant == null) return "";
+    const p = [];
+    const s = t.src;
+    if (s) {
+      const q = [s.container, s.v, s.a].filter(Boolean).join("\xB7");
+      if (q) p.push(`Quelle ${q}`);
+      if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(",")}`);
+    }
+    p.push(`V${t.variant}${t.forced ? " HLS erzwungen" : ""}`);
+    if (t.jumped != null) {
+      p.push(`Sprung ${t.jumped ? "ja" : "nein"}`);
+      if (Number.isFinite(t.devS)) p.push(`Abw ${sgn(t.devS)}`);
+      p.push(`Seek ${sec1(t.seekingMs)}/${sec1(t.seekedMs)}`, `canplay ${sec1(t.canplayMs)}`);
+      p.push(`Puffer ${range(t.bufSeeked)} \u2192 ${range(t.bufPlaying)}`);
+      p.push(`Warten ${t.waitCount || 0}\xD7${t.waitCount ? ` ${sec(t.waitMs)} s` : ""}`);
+    }
+    return p.join(" \xB7 ");
+  }
   function createZapStats(parent, { getVideo = null, doc = null } = {}) {
     const d = doc || parent && parent.ownerDocument || document;
     const el = d.createElement("div");
@@ -3494,7 +3641,8 @@
     el.style.cssText = STYLE;
     const l1 = d.createElement("div");
     const l2 = d.createElement("div");
-    el.append(l1, l2);
+    const l3 = d.createElement("div");
+    el.append(l1, l2, l3);
     parent.append(el);
     const hist = [];
     let audio = { mode: "", level: null };
@@ -3534,6 +3682,7 @@
           if (hist.length) parts.push(`\xD8 ${sec(hist.reduce((a, b) => a + b, 0) / hist.length)} s (${hist.length})`);
         }
         l1.textContent = parts.join(" \xB7 ");
+        l3.textContent = detailLine(t);
         renderAudio();
       },
       updateAudio(info) {
@@ -4402,39 +4551,39 @@
     const muteBtn = btn("mute", "Ton aus", ICONS2.volume, () => ctl.toggleMute());
     left.appendChild(muteBtn);
     let volWrap = null;
-    let range = null;
+    let range2 = null;
     let dragging = false;
     function ensureRange(supported) {
       if (supported && !volWrap) {
         volWrap = doc.createElement("div");
         volWrap.className = "lfx-tvm__volume";
-        range = doc.createElement("input");
-        range.type = "range";
-        range.className = "lfx-tvm__range";
-        range.min = "0";
-        range.max = "100";
-        range.step = "5";
-        range.value = "100";
-        range.setAttribute("aria-label", "Lautst\xE4rke");
-        range.title = "Lautst\xE4rke";
-        range.addEventListener("input", onRange);
-        range.addEventListener("pointerdown", onDown);
-        range.addEventListener("pointerup", onUp);
-        range.addEventListener("pointercancel", onUp);
-        volWrap.appendChild(range);
+        range2 = doc.createElement("input");
+        range2.type = "range";
+        range2.className = "lfx-tvm__range";
+        range2.min = "0";
+        range2.max = "100";
+        range2.step = "5";
+        range2.value = "100";
+        range2.setAttribute("aria-label", "Lautst\xE4rke");
+        range2.title = "Lautst\xE4rke";
+        range2.addEventListener("input", onRange);
+        range2.addEventListener("pointerdown", onDown);
+        range2.addEventListener("pointerup", onUp);
+        range2.addEventListener("pointercancel", onUp);
+        volWrap.appendChild(range2);
         left.appendChild(volWrap);
       } else if (!supported && volWrap) {
-        range.removeEventListener("input", onRange);
-        range.removeEventListener("pointerdown", onDown);
-        range.removeEventListener("pointerup", onUp);
-        range.removeEventListener("pointercancel", onUp);
+        range2.removeEventListener("input", onRange);
+        range2.removeEventListener("pointerdown", onDown);
+        range2.removeEventListener("pointerup", onUp);
+        range2.removeEventListener("pointercancel", onUp);
         volWrap.remove();
-        volWrap = range = null;
+        volWrap = range2 = null;
       }
     }
     function onRange() {
       touchHook();
-      ctl.setVolume(Number(range.value));
+      ctl.setVolume(Number(range2.value));
     }
     function onDown() {
       dragging = true;
@@ -4493,9 +4642,9 @@
         muteBtn.innerHTML = muted ? ICONS2.muted : ICONS2.volume;
       }
       ensureRange(ctl.volumeSupported !== false);
-      if (range && !dragging) {
+      if (range2 && !dragging) {
         const v = String(muted ? 0 : Number.isFinite(snap.volume) ? snap.volume : 100);
-        if (range.value !== v) range.value = v;
+        if (range2.value !== v) range2.value = v;
       }
       const choice = menu.hasChoice();
       tracksBtn.hidden = !choice;
@@ -4526,6 +4675,8 @@
   var LOADING_DELAY_MS = 300;
   var SWIPE_PX = 50;
   var DOUBLE_TAP_MS = 320;
+  var MOUSE_HIDE_MS = 250;
+  var MOVE_GUARD_PX = 8;
   var INTERACTIVE = "button, input, a, .lfx-tvm__controls, .lfx-tvm__menu, .lfx-tvm__card, .lfx-tvm__pip-card, .lfx-tvm__unmute, .lfx-tvm__tap";
   function createPlayerView({ doc = document, ctl, model = null, opts = {} } = {}) {
     const pip = opts.pip || null;
@@ -4585,6 +4736,8 @@
     let lastTapAt = 0;
     let zapTimer = 0;
     let controlsTimer = 0;
+    let mouseHideTimer = 0;
+    let moveGuard = null;
     let loadingTimer = 0;
     let loadingShown = false;
     const cleanups = [];
@@ -4754,11 +4907,18 @@
         el.classList.remove("is-zapping");
       }, ZAP_MS);
     }
-    function hideControls() {
+    function hideAll() {
       clearTimeout(controlsTimer);
       controlsTimer = 0;
-      if (controlsPinned()) return;
-      el.classList.remove("is-controls");
+      clearTimeout(zapTimer);
+      zapTimer = 0;
+      try {
+        controls.closeMenu();
+      } catch {
+      }
+      const a = doc.activeElement;
+      if (a && a !== doc.body && typeof a.blur === "function" && (controls.el.contains(a) || controls.menu.el.contains(a))) a.blur();
+      el.classList.remove("is-controls", "is-zapping");
     }
     function fsDoubleTapAllowed() {
       if (!opts.fullscreen) return false;
@@ -4807,21 +4967,42 @@
           return;
         }
         if (!onZap && fsDoubleTapAllowed()) lastTapAt = t;
-        if (el.classList.contains("is-controls")) hideControls();
+        if (el.classList.contains("is-controls")) hideAll();
         else showControls();
         return;
       }
-      if (!interactive) showControls();
+      if (interactive) return;
+      if (mouseHideTimer) {
+        clearTimeout(mouseHideTimer);
+        mouseHideTimer = 0;
+        return;
+      }
+      if (el.classList.contains("is-controls")) {
+        const x = e.clientX;
+        const y = e.clientY;
+        mouseHideTimer = setTimeout(() => {
+          mouseHideTimer = 0;
+          if (!alive) return;
+          hideAll();
+          moveGuard = { x, y };
+        }, MOUSE_HIDE_MS);
+      } else showControls();
     }
     function onPointerCancel() {
       swipe = null;
     }
     function onPointerMove(e) {
       if (e.pointerType === "touch") return;
+      if (moveGuard) {
+        if (Math.hypot(e.clientX - moveGuard.x, e.clientY - moveGuard.y) < MOVE_GUARD_PX) return;
+        moveGuard = null;
+      }
       if (!el.classList.contains("is-controls")) showControls();
       else armControlsHide();
     }
     function onDblClick(e) {
+      clearTimeout(mouseHideTimer);
+      mouseHideTimer = 0;
       if (Date.now() - lastTouchAt < 700 || isInteractive(e.target)) return;
       if (opts.fullscreen) opts.fullscreen.toggle();
     }
@@ -4876,6 +5057,7 @@
         alive = false;
         clearTimeout(zapTimer);
         clearTimeout(controlsTimer);
+        clearTimeout(mouseHideTimer);
         clearTimeout(loadingTimer);
         cleanups.splice(0).forEach((fn) => fn());
         controls.destroy();
@@ -4892,6 +5074,8 @@
   var SHORT_PX = 90;
   var LEAD_MIN = 30;
   var DEFAULT_PPM = 5;
+  var VIS_GAP = 4;
+  var VIS_PAD = 8;
   function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
     void deps;
     const getNow = typeof opts.getNow === "function" ? opts.getNow : () => Date.now();
@@ -4935,6 +5119,8 @@
     let lastPpm = DEFAULT_PPM;
     let positioned = false;
     let ro = null;
+    let visRaf = 0;
+    let visCancel = null;
     const setMin = (node, startMs, endMs) => {
       node.style.setProperty("--tvm-s", String(+((startMs - bounds.start) / MIN).toFixed(3)));
       if (endMs != null) node.style.setProperty("--tvm-w", String(+((endMs - startMs) / MIN).toFixed(3)));
@@ -5013,10 +5199,13 @@
           const tm = doc.createElement("span");
           tm.className = "lfx-tvm__epg-cell-time";
           tm.textContent = `${formatClock(c.entry.start)}\u2013${formatClock(c.entry.end)}`;
-          btn.append(ti, tm);
+          const txt = doc.createElement("span");
+          txt.className = "lfx-tvm__epg-cell-text";
+          txt.append(ti, tm);
+          btn.append(txt);
           btn.title = `${c.title} \xB7 ${tm.textContent}`;
           btn.setAttribute("aria-label", `Sender ${no}, ${c.title}, ${tm.textContent}`);
-          const rec = { btn, entry: c.entry, no, mins, filler: c.kind === "filler", cur: false, past: false };
+          const rec = { btn, entry: c.entry, no, mins, filler: c.kind === "filler", cur: false, past: false, vis: null };
           classify(rec, p);
           btn.addEventListener("click", () => onCell(rec));
           btn.addEventListener("keydown", (e) => onKey(e, rec));
@@ -5029,7 +5218,46 @@
       }
       markCurrentChannel();
       applyTime(t, true);
+      updateVis();
     }
+    function updateVis() {
+      if (!alive) return;
+      const chan = rowsEl.querySelector(".lfx-tvm__epg-chan");
+      const hidden = !(scroll.clientWidth > 0) || !chan;
+      const edge = hidden ? 0 : chan.getBoundingClientRect().right + VIS_GAP;
+      const writes = [];
+      for (const c of cells) {
+        let v = null;
+        if (!hidden) {
+          const r = c.btn.getBoundingClientRect();
+          if (r.width > 0 && r.left < edge) v = Math.max(0, Math.round(r.right - edge - VIS_PAD));
+        }
+        if (v !== c.vis) writes.push([c, v]);
+      }
+      for (const [c, v] of writes) {
+        c.vis = v;
+        if (v == null) c.btn.style.removeProperty("--tvm-vis");
+        else c.btn.style.setProperty("--tvm-vis", `${v}px`);
+      }
+    }
+    function scheduleVis() {
+      if (visRaf || !alive) return;
+      const w = doc.defaultView || window;
+      if (typeof w.requestAnimationFrame === "function") {
+        visRaf = w.requestAnimationFrame(() => {
+          visRaf = 0;
+          updateVis();
+        });
+        visCancel = (id) => w.cancelAnimationFrame && w.cancelAnimationFrame(id);
+      } else {
+        visRaf = setTimeout(() => {
+          visRaf = 0;
+          updateVis();
+        }, 16);
+        visCancel = clearTimeout;
+      }
+    }
+    scroll.addEventListener("scroll", scheduleVis, { passive: true });
     function classify(rec, p) {
       const px = rec.mins * p;
       rec.btn.classList.toggle("lfx-tvm__epg-cell--tiny", px < TINY_PX || rec.filler && px < SHORT_PX);
@@ -5154,6 +5382,7 @@
     if (typeof RO === "function") {
       ro = new RO(() => {
         if (!alive || !(scroll.clientWidth > 0)) return;
+        updateVis();
         const p = ppm();
         if (p !== lastPpm) {
           lastPpm = p;
@@ -5196,6 +5425,9 @@
       },
       destroy() {
         alive = false;
+        scroll.removeEventListener("scroll", scheduleVis);
+        if (visRaf && visCancel) visCancel(visRaf);
+        visRaf = 0;
         if (ro) ro.disconnect();
         ro = null;
         cells = [];

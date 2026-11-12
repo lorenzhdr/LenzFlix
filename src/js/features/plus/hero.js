@@ -1,6 +1,7 @@
 // LENZ+: Hero-Karussell mit Seitenvorschau (Slide, ~7 s, Punkte, Randpfeile). Ganze Folie ist Link zur Titelseite.
 import { h } from '../../core/dom.js';
 import * as api from '../../core/api.js';
+import { cached, clearCache, peekCached, HOME_TTL, homeKey } from '../../core/cache.js';
 import { titleHref } from '../../shared/routes.js';
 import { plusBadge } from '../../shared/newcontent.js';
 import { BASE_PARAMS } from '../rows/logic.js';
@@ -23,8 +24,19 @@ export function taglineFor(item) {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 100)).replace(/[\s,.;:!?-]+$/, '')}…`;
 }
 
+let poolWarm = false; // letzter Pool kam aus dem Cache: Bilder ohne async-Dekodierung
+
+/** Hero-Kandidaten der Startseite, 10 min pro Nutzer gecacht (gleiche Titel bei Rückkehr). */
+export function loadHomeHeroPool() {
+  const key = homeKey(api.getUserId(), 'plus-hero');
+  poolWarm = peekCached(key) !== undefined;
+  const p = cached(key, fetchHomeHeroPool, HOME_TTL);
+  p.then((pool) => { if (!pool.length) clearCache(key); }, () => {});
+  return p;
+}
+
 /** Hero-Kandidaten der Startseite (Format wie buildPool im Billboard); Fallback: nur Backdrop. */
-export async function loadHomeHeroPool() {
+async function fetchHomeHeroPool() {
   const q = (params) => api.getItems({
     ...BASE_PARAMS, Fields: HERO_FIELDS, IncludeItemTypes: 'Movie,Series', Recursive: true, ...params,
   }).then(asItems);
@@ -42,7 +54,7 @@ export async function loadHomeHeroPool() {
   }).slice(0, 8);
 }
 
-function buildSlide(item, i, info, mobile) {
+function buildSlide(item, i, info, mobile, warm) {
   // Handy: Hochformat-Karte -> Poster, sonst Backdrop
   const bd = (mobile && api.imageUrl(item, { type: 'Primary', maxWidth: 900, quality: 80 }))
     || api.imageUrl(item, { type: 'Backdrop', maxWidth: mobile ? 1000 : 1920, quality: 80 });
@@ -57,12 +69,12 @@ function buildSlide(item, i, info, mobile) {
     dataset: { index: String(i) },
     'aria-label': item.Name || '',
   }, [
-    bd ? h('img', { class: 'lfx-plus-hero__img', src: bd, alt: '', decoding: 'async', loading: i < 3 ? 'eager' : 'lazy' }) : null,
+    bd ? h('img', { class: 'lfx-plus-hero__img', src: bd, alt: '', decoding: warm ? null : 'async', loading: i < 3 ? 'eager' : 'lazy' }) : null,
     h('div', { class: 'lfx-plus-hero__shade', 'aria-hidden': 'true' }),
     h('div', { class: 'lfx-plus-hero__content' }, [
       badge ? h('span', { class: 'lfx-plus-badge lfx-plus-hero__badge' }, badge) : null,
       logo
-        ? h('img', { class: 'lfx-plus-hero__logo', src: logo, alt: item.Name || '', decoding: 'async' })
+        ? h('img', { class: 'lfx-plus-hero__logo', src: logo, alt: item.Name || '', decoding: warm ? null : 'async' })
         : h('span', { class: 'lfx-plus-hero__title' }, item.Name || ''),
       tag ? h('p', { class: 'lfx-plus-hero__tagline' }, tag) : null,
       (rating || meta) ? h('div', { class: 'lfx-plus-hero__meta' }, [rating, meta ? h('span', null, meta) : null]) : null,
@@ -74,11 +86,11 @@ function buildSlide(item, i, info, mobile) {
  * Baut das Karussell. Rückgabe: { el, destroy, go(i), index() } oder null (leer).
  * Timer läuft nur bei sichtbarem Tab, ohne Hover und ohne Fokus in der Hero.
  */
-export function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone() } = {}) {
+export function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone(), warm = poolWarm } = {}) {
   const list = (items || []).filter((it) => it && it.Id);
   if (!list.length) return null;
   const n = list.length;
-  const slides = list.map((it, i) => buildSlide(it, i, info, mobile));
+  const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm));
   const track = h('div', { class: 'lfx-plus-hero__track' }, slides);
   const prev = h('button', { type: 'button', class: 'lfx-plus-hero__nav lfx-plus-hero__nav--prev', 'aria-label': 'Vorherige Empfehlung', tabindex: '-1' });
   const next = h('button', { type: 'button', class: 'lfx-plus-hero__nav lfx-plus-hero__nav--next', 'aria-label': 'Nächste Empfehlung', tabindex: '-1' });

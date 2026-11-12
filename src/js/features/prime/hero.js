@@ -1,5 +1,6 @@
 // LENZPRIME: Vollbreiter Hero mit Crossfade, stummem Hintergrund-Trailer, Abspielen/Meine Liste/Info und grüner Rangzeile.
-import { getItems, imageUrl, logoImage } from '../../core/api.js';
+import { getItems, getUserId, imageUrl, logoImage } from '../../core/api.js';
+import { cached, clearCache, peekCached, HOME_TTL, homeKey } from '../../core/cache.js';
 import { h } from '../../core/dom.js';
 import { isMobile, isNarrow } from '../../core/layout.js';
 import { putItems } from '../../core/itemstore.js';
@@ -51,8 +52,19 @@ function writeFirst(id) {
   try { sessionStorage.setItem(FIRST_KEY, id); } catch { /* ignorieren */ }
 }
 
+let poolWarm = false; // letzter Pool kam aus dem Cache: Bilder ohne async-Dekodierung
+
+/** Hero-Pool der Startseite, 10 min pro Nutzer gecacht (gleiche Titel bei Rückkehr; Rotation von FIRST_KEY nur beim Neuabruf). */
+export function fetchHomePool() {
+  const key = homeKey(getUserId(), 'prime-hero');
+  poolWarm = peekCached(key) !== undefined;
+  const p = cached(key, loadHomePool, HOME_TTL);
+  p.then((pool) => { if (!pool.length) clearCache(key); }, () => {});
+  return p;
+}
+
 /** Hero-Pool der Startseite (neueste + zufällige Titel mit Logo und Backdrop). */
-export async function fetchHomePool() {
+async function loadHomePool() {
   const base = { Recursive: true, IncludeItemTypes: 'Movie,Series', ImageTypes: 'Logo,Backdrop', Fields: FIELDS, EnableUserData: true, Limit: 40 };
   const [latest, random] = await Promise.all([
     getItems({ ...base, SortBy: 'DateCreated', SortOrder: 'Descending' }).catch(() => null),
@@ -236,7 +248,7 @@ export function renderHero(slot, { loadPool }) {
 
   function buildImage(item) {
     const bd = imageUrl(item, { type: 'Backdrop', maxWidth: 1920, quality: 90 });
-    return h('img', { class: 'lfx-prime-hero__img', src: bd, alt: '', decoding: 'async' });
+    return h('img', { class: 'lfx-prime-hero__img', src: bd, alt: '', decoding: poolWarm ? null : 'async' });
   }
 
   function updateDots() {

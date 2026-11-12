@@ -1,6 +1,6 @@
 // LENZ LIVE Player: öffentliche API (Vertrag: docs/live.md „Player“). Nie Fortschritt melden, nie URLs/Token loggen.
 import { createEmitter } from './events.js';
-import { createVideoControl } from './video.js';
+import { createVideoControl, normalizeVariant } from './video.js';
 import { resolveStream } from './stream.js';
 import { pickSubtitle } from './tracks.js';
 import { createFakePlayer } from './fake.js';
@@ -26,7 +26,11 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   if (fake) return createFakePlayer({ canvas, now, getInfo });
 
   const em = createEmitter();
-  const vc = createVideoControl(video, { now, emit: em.emit });
+  // Startvariante 0–2 (deps.zapVariant, Hash lfxzap) und erzwungenes HLS (deps.forceHls, Hash lfxhls, nur mit Messanzeige): docs/live.md „Startablauf“.
+  const variant = normalizeVariant(deps && deps.zapVariant);
+  const forceHls = !!(deps && deps.forceHls);
+  const vc = createVideoControl(video, { now, emit: em.emit, variant });
+  const wantNoDirect = (itemId) => forceHls || directFailed.has(itemId);
   let gen = 0;
   let ac = null;
   let session = null; // { kind:'item'|'url', itemId?, mode, playSessionId?, mediaSourceId? }
@@ -106,7 +110,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     if (fresh(cache.get(itemId))) return Promise.resolve({ ok: true, cached: true });
     const running = inflight.get(itemId);
     if (running) return running;
-    const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: directFailed.has(itemId) })
+    const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: wantNoDirect(itemId) })
       .then((r) => { if (!(signal && signal.aborted)) remember(itemId, r); return { ok: !!r.ok, mode: r.mode }; }, () => ({ ok: false, reason: 'network' }))
       .finally(() => { if (inflight.get(itemId) === p) inflight.delete(itemId); });
     inflight.set(itemId, p);
@@ -122,7 +126,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     }
     let r;
     try {
-      r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: directFailed.has(itemId) });
+      r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: wantNoDirect(itemId) });
     } catch {
       r = { ok: false, mode: 'none', reason: signal.aborted ? 'aborted' : 'network', ...(signal.aborted ? {} : { code: 'NET' }) };
     }
@@ -142,12 +146,18 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       chain: tm.chain.join('>'),
       cached: tm.cached,
       mode: tm.mode,
+      ...extraTiming(tm.info || null),
     };
+  }
+
+  /** Zusatzfelder der Messanzeige (Zeitpunkte nach den Metadaten, Puffer, Quelle, Variante): nie URL/Token. */
+  function extraTiming(src) {
+    return { ...vc.metrics(), forced: forceHls, src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null };
   }
 
   async function play(opts = {}) {
     if (disposed) return aborted();
-    const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: 'none' };
+    const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: 'none', info: null };
     const res = await playCore(opts, tm);
     if (res.reason === 'aborted') return res;
     lastTiming = makeTiming(tm);
@@ -192,6 +202,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     for (let attempt = 1; ; attempt++) {
       chain.push(attemptLetter(cur));
       tm.mode = cur.mode;
+      tm.info = cur.info || null;
       res = await launch(cur, opts, offsetMs, itemId, my);
       if (my !== gen) return aborted();
       if (res.ok) {
@@ -269,7 +280,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     if (my !== gen) return aborted();
     const ph = vc.phases();
     const dur = (a, b) => (a != null && b != null ? Math.max(0, b - a) : null);
-    lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: 'D', cached: false, mode: 'direct' };
+    lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: 'D', cached: false, mode: 'direct', ...extraTiming(null) };
     if (!res.ok) {
       teardown();
       return { ...failResult(res), timing: lastTiming };

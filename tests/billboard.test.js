@@ -35,6 +35,7 @@ import { openModal } from '../src/js/features/modal.js';
 import { canDownload, startDownload, isChooserOpen } from '../src/js/core/download.js';
 import { openItemMenu, isMenuOpen, onItemsChanged } from '../src/js/core/itemmenu.js';
 import { putItems } from '../src/js/core/itemstore.js';
+import { clearCache } from '../src/js/core/cache.js';
 
 describe('billboard format', () => {
   it('buildPool: Zufall zuerst, dann abwechselnd, max 4 neue + 8 zufällige, ohne Duplikate', () => {
@@ -95,6 +96,7 @@ describe('billboard render', () => {
     document.body.innerHTML = '<section id="s"></section>';
     document.documentElement.className = '';
     slot = document.getElementById('s');
+    clearCache(); // Startseiten-Cache (10 min) nicht zwischen Tests teilen
     api.getItems.mockReset();
     api.getItems.mockImplementation(async (p) => ({ Items: p.SortBy === 'Random' ? items('r', 3) : items('n', 3) }));
     window.ApiClient = { serverAddress: () => 'http://x', getCurrentUserId: () => 'u', accessToken: () => 't' };
@@ -103,6 +105,28 @@ describe('billboard render', () => {
 
   const title = () => slot.querySelector('.lfx-bb__logo')?.getAttribute('alt');
   const flush = async () => { await vi.advanceTimersByTimeAsync(0); };
+
+  it('Pool-Cache: Rückkehr innerhalb von 10 min zeigt denselben ersten Titel ohne Abruf, ohne async-Dekodierung', async () => {
+    const first = render(slot);
+    await flush();
+    const t = title();
+    first();
+    const n = api.getItems.mock.calls.length;
+    const second = render(slot);
+    // synchron aufgebaut (kein Skelett, kein Warten)
+    expect(slot.querySelector('.lfx-bb--skel')).toBeNull();
+    expect(title()).toBe(t);
+    expect(slot.querySelector('.lfx-bb__img').hasAttribute('decoding')).toBe(false);
+    await flush();
+    expect(api.getItems.mock.calls.length).toBe(n);
+    second();
+    clearCache('home:');
+    const third = render(slot);
+    await flush();
+    expect(api.getItems.mock.calls.length).toBeGreaterThan(n);
+    expect(title()).not.toBe(t); // frischer Abruf: Rotation (LAST_FIRST_KEY) greift wieder
+    third();
+  });
 
   it('rendert und rotiert nach 10 s, pausiert bei Hover und Modal', async () => {
     const cleanup = render(slot);
@@ -206,6 +230,7 @@ describe('billboard render', () => {
       render(slot);
       expect(slot.hidden).toBe(false);
       expect(slot.querySelector('.lfx-bb--skel')).not.toBeNull();
+      await flush(); // cached() ruft den Loader einen Microtask später auf
       releases.forEach((r) => r({ Items: [] }));
       await flush();
       expect(slot.hidden).toBe(true);

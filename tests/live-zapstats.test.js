@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createZapStats, sec } from '../src/js/live/ui/zapstats.js';
+import { createZapStats, sec, detailLine } from '../src/js/live/ui/zapstats.js';
 
 let host;
 beforeEach(() => { document.body.innerHTML = '<div id="h"></div>'; host = document.getElementById('h'); });
@@ -51,5 +51,26 @@ describe('Messanzeige', () => {
     z.update({ channel: 1 });
     z.updateAudio({ mode: 'native', level: 1 });
     expect(host.querySelector('.lfx-zapstats')).toBeNull();
+  });
+});
+
+describe('Messanzeige Zeile 3', () => {
+  const t = {
+    totalMs: 1800, infoMs: 300, loadMs: 1100, startMs: 200, chain: 'F', cached: false, mode: 'hls',
+    variant: 1, forced: false, jumped: false, devS: 0.3, seekingMs: 0, seekedMs: 300, canplayMs: 500,
+    bufSeeked: [0, 2], bufPlaying: [0, 12], waitCount: 2, waitMs: 1800, src: { container: 'mkv', v: 'hevc', a: 'eac3', reasons: ['Container'] },
+  };
+  it('zeigt Quelle, Grund, Variante, Sprung, Puffer und Warten', () => {
+    expect(detailLine(t)).toBe('Quelle mkv·hevc·eac3 · Grund Container · V1 · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s');
+    expect(detailLine({ ...t, forced: true, variant: 0, jumped: true, waitCount: 0, bufSeeked: null })).toContain('V0 HLS erzwungen · Sprung ja');
+  });
+  it('rendert als dritte Zeile; ohne Zusatzfelder leer; nie URL/Token', () => {
+    const z = createZapStats(host);
+    const el = host.querySelector('.lfx-zapstats');
+    z.update({ channel: 4, timing: t });
+    expect(el.children[2].textContent).toMatch(/^Quelle mkv·hevc·eac3/);
+    expect(el.children[2].textContent).not.toMatch(/http|ApiKey|token/i);
+    z.update({ channel: 5, timing: { totalMs: 1000, infoMs: 0, loadMs: 0, startMs: 0, chain: 'D', cached: false } });
+    expect(el.children[2].textContent).toBe('');
   });
 });

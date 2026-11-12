@@ -1442,8 +1442,11 @@
   var START_TIMEOUT_MS = 25e3;
   var STALL_REPORT_MS = 1200;
   var MEDIA_ACTIONS = ["pause", "play", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"];
+  var JUMP_TOLERANCE_S = 1.5;
+  var normalizeVariant = (v) => v === 0 || v === 1 || v === 2 ? v : 1;
   function createVideoControl(video, { now = Date.now, emit = () => {
-  } } = {}) {
+  }, variant: variantOpt = 1 } = {}) {
+    const variant = normalizeVariant(variantOpt);
     let armed = false;
     let playedOnce = false;
     let base = { off: 0, at: 0 };
@@ -1458,6 +1461,44 @@
     let stallTimer = null;
     let stallShown = false;
     let phases = { src: null, meta: null, playing: null };
+    const newMetrics = () => ({
+      target: null,
+      jumped: false,
+      seekingAt: null,
+      seekedAt: null,
+      canplayAt: null,
+      waitN: 0,
+      waitMs: 0,
+      waitFrom: null,
+      bufSeeked: null,
+      bufPlaying: null,
+      dev: null
+    });
+    let m = newMetrics();
+    const measuring = () => armed && phases.meta != null && phases.playing == null;
+    const endWait = () => {
+      if (m.waitFrom != null) {
+        m.waitMs += Math.max(0, now() - m.waitFrom);
+        m.waitFrom = null;
+      }
+    };
+    const bufRange = () => {
+      try {
+        const b = video.buffered;
+        if (!b || !b.length || m.target == null) return null;
+        const t = video.currentTime;
+        let i = 0;
+        for (let k = 0; k < b.length; k++) {
+          if (b.start(k) <= t + 0.05 && b.end(k) >= t - 0.05) {
+            i = k;
+            break;
+          }
+        }
+        return [b.start(i) - m.target, b.end(i) - m.target];
+      } catch {
+        return null;
+      }
+    };
     video.setAttribute("playsinline", "");
     video.setAttribute("disablepictureinpicture", "");
     video.setAttribute("x-webkit-airplay", "deny");
@@ -1539,13 +1580,36 @@
       playing: () => {
         if (!armed) return;
         playedOnce = true;
-        if (pending && phases.playing == null) phases.playing = now();
+        if (pending && phases.playing == null) {
+          if (phases.meta != null) {
+            endWait();
+            m.bufPlaying = bufRange();
+            try {
+              m.dev = video.currentTime - livePos() / 1e3;
+            } catch {
+            }
+          }
+          phases.playing = now();
+        }
         resetStall();
         emit("state", { phase: "playing" });
         settle({ ok: true });
       },
       // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
+      seeking: () => {
+        if (measuring() && m.seekingAt == null) m.seekingAt = now();
+      },
+      seeked: () => {
+        if (measuring() && m.seekedAt == null) {
+          m.seekedAt = now();
+          m.bufSeeked = bufRange();
+        }
+      },
       waiting: () => {
+        if (measuring() && m.waitFrom == null) {
+          m.waitN += 1;
+          m.waitFrom = now();
+        }
         if (!armed || !playedOnce || waiting || stallShown) return;
         waiting = true;
         waitCt = video.currentTime;
@@ -1564,6 +1628,10 @@
         if ((waiting || stallShown) && armed && video.currentTime > waitCt + 0.05) recovered();
       },
       canplay: () => {
+        if (measuring()) {
+          if (m.canplayAt == null) m.canplayAt = now();
+          endWait();
+        }
         if (waiting || stallShown) recovered();
       },
       ended: () => {
@@ -1629,6 +1697,8 @@
       quiet = !!q;
       base = { off: Math.max(0, Number(offsetMs2) || 0), at: now() };
       phases = { src: null, meta: null, playing: null };
+      m = newMetrics();
+      let preset = false;
       return new Promise((resolve) => {
         pending = resolve;
         timer = setTimeout(() => fail2("network", "TIMEOUT"), START_TIMEOUT_MS);
@@ -1636,15 +1706,35 @@
           onMeta = null;
           if (!armed) return;
           phases.meta = now();
+          const want = livePos() / 1e3;
+          let cur = NaN;
           try {
-            video.currentTime = livePos() / 1e3;
+            cur = video.currentTime;
           } catch {
+          }
+          if (variant === 0 || !preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
+            m.jumped = true;
+            m.target = want;
+            try {
+              video.currentTime = want;
+            } catch {
+            }
+          } else {
+            m.target = cur;
           }
           callPlay();
         };
         video.addEventListener("loadedmetadata", onMeta, { once: true });
         phases.src = now();
-        video.src = url;
+        const aim = livePos() / 1e3;
+        video.src = variant === 2 ? `${String(url).split("#")[0]}#t=${aim.toFixed(1)}` : url;
+        if (variant >= 1) {
+          try {
+            video.currentTime = aim;
+            preset = true;
+          } catch {
+          }
+        }
       });
     }
     return {
@@ -1665,6 +1755,22 @@
       start,
       /** Zeitstempel (now()) des letzten start(): { src, meta, playing } (null = nicht erreicht). */
       phases: () => ({ ...phases }),
+      /** Zusatzmessung des letzten start() (Messanzeige): Zeiten in ms ab loadedmetadata, Puffer/Abweichung in s. */
+      metrics() {
+        const since = (t) => t != null && phases.meta != null ? Math.max(0, t - phases.meta) : null;
+        return {
+          variant,
+          jumped: phases.meta != null ? m.jumped : null,
+          seekingMs: since(m.seekingAt),
+          seekedMs: since(m.seekedAt),
+          canplayMs: since(m.canplayAt),
+          waitCount: m.waitN,
+          waitMs: Math.round(m.waitMs + (m.waitFrom != null ? Math.max(0, now() - m.waitFrom) : 0)),
+          bufSeeked: m.bufSeeked,
+          bufPlaying: m.bufPlaying,
+          devS: m.dev
+        };
+      },
       clear: () => clear(false),
       positionMs: livePos,
       syncTo(offsetMs2) {
@@ -1930,6 +2036,16 @@
     }
     return out;
   }
+  var short = (x, n = 12) => String(x == null ? "" : x).toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, n);
+  function sourceInfo(ms, audioIdx, reasons) {
+    const a = (ms.MediaStreams || []).find((s) => s && s.Type === "Audio" && s.Index === audioIdx);
+    return {
+      container: short(String(ms.Container || "").split(",")[0]),
+      v: short(videoCodecOf(ms)),
+      a: short(a && a.Codec),
+      reasons: reasons.slice(0, 2).map((r) => String(r).replace(/NotSupported$/, "").replace(/[^A-Za-z0-9]/g, "").slice(0, 24)).filter(Boolean)
+    };
+  }
   function absolute(deps, rel) {
     let origin = "";
     try {
@@ -1976,7 +2092,8 @@
         if (!ms) return fail("network", "NET");
       }
       const audioIdx = want != null ? want : def;
-      const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
+      const reasons0 = ms.SupportsDirectPlay && !remux && !noDirect ? [] : reasonsOf(ms);
+      const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr, info: sourceInfo(ms, audioIdx, reasons0) };
       if (ms.SupportsDirectPlay && !remux && !noDirect) {
         const url2 = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });
         return { ok: true, mode: "direct", url: url2, ...base };
@@ -2219,7 +2336,10 @@
   function createPlayer({ video, deps, now = Date.now, fake = false, canvas, getInfo } = {}) {
     if (fake) return createFakePlayer({ canvas, now, getInfo });
     const em = createEmitter();
-    const vc = createVideoControl(video, { now, emit: em.emit });
+    const variant = normalizeVariant(deps && deps.zapVariant);
+    const forceHls = !!(deps && deps.forceHls);
+    const vc = createVideoControl(video, { now, emit: em.emit, variant });
+    const wantNoDirect = (itemId) => forceHls || directFailed.has(itemId);
     let gen = 0;
     let ac = null;
     let session = null;
@@ -2301,7 +2421,7 @@
       if (fresh(cache.get(itemId))) return Promise.resolve({ ok: true, cached: true });
       const running = inflight.get(itemId);
       if (running) return running;
-      const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: directFailed.has(itemId) }).then((r) => {
+      const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: wantNoDirect(itemId) }).then((r) => {
         if (!(signal && signal.aborted)) remember(itemId, r);
         return { ok: !!r.ok, mode: r.mode };
       }, () => ({ ok: false, reason: "network" })).finally(() => {
@@ -2328,7 +2448,7 @@
       }
       let r;
       try {
-        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: directFailed.has(itemId) });
+        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: wantNoDirect(itemId) });
       } catch {
         r = { ok: false, mode: "none", reason: signal.aborted ? "aborted" : "network", ...signal.aborted ? {} : { code: "NET" } };
       }
@@ -2345,12 +2465,16 @@
         startMs: dur(ph.meta, ph.playing),
         chain: tm.chain.join(">"),
         cached: tm.cached,
-        mode: tm.mode
+        mode: tm.mode,
+        ...extraTiming(tm.info || null)
       };
+    }
+    function extraTiming(src) {
+      return { ...vc.metrics(), forced: forceHls, src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null };
     }
     async function play(opts = {}) {
       if (disposed) return aborted();
-      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none" };
+      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none", info: null };
       const res = await playCore(opts, tm);
       if (res.reason === "aborted") return res;
       lastTiming = makeTiming(tm);
@@ -2389,6 +2513,7 @@
       for (let attempt = 1; ; attempt++) {
         chain.push(attemptLetter(cur));
         tm.mode = cur.mode;
+        tm.info = cur.info || null;
         res = await launch(cur, opts, offsetMs2, itemId, my);
         if (my !== gen) return aborted();
         if (res.ok) {
@@ -2459,7 +2584,7 @@
       if (my !== gen) return aborted();
       const ph = vc.phases();
       const dur = (a, b) => a != null && b != null ? Math.max(0, b - a) : null;
-      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct" };
+      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct", ...extraTiming(null) };
       if (!res.ok) {
         teardown();
         return { ...failResult(res), timing: lastTiming };
@@ -6315,9 +6440,9 @@
       c2.T(h3, M, y, st.title, 13, st.accent);
       y = c2.para(t, M, y + 17, CW, st.body, 10.5, 14.5, 5, st.ink) + 14;
     }
-    const range = String(mag.subtitle || "").replace(/^Die Fernsehwoche\s*·\s*/, "");
+    const range2 = String(mag.subtitle || "").replace(/^Die Fernsehwoche\s*·\s*/, "");
     c2.R(M, y + 6, CW, 1, st.rule);
-    c2.T("Sendewoche " + range + (opts && opts.created ? " \xB7 erzeugt am " + opts.created : ""), M, y + 26, st.bold, 9.5, st.ink);
+    c2.T("Sendewoche " + range2 + (opts && opts.created ? " \xB7 erzeugt am " + opts.created : ""), M, y + 26, st.bold, 9.5, st.ink);
     c2.T("Als PDF erzeugt von LENZ LIVE.", M, y + 42, st.body, 9, st.muted);
   }
   async function renderMagazinePdf(magazine, opts = {}) {
@@ -8499,6 +8624,28 @@
   ].join(";");
   var sec = (ms) => (Math.max(0, Number(ms) || 0) / 1e3).toFixed(1).replace(".", ",");
   var num22 = (n) => Number.isFinite(n) ? n.toFixed(2).replace(".", ",") : "\u2013";
+  var sec1 = (ms) => ms == null ? "\u2013" : sec(ms);
+  var sgn = (s) => Number.isFinite(s) ? `${s < 0 ? "-" : "+"}${Math.abs(s).toFixed(1).replace(".", ",")}` : "\u2013";
+  var range = (r) => Array.isArray(r) ? `${sgn(r[0])}\u2026${sgn(r[1])}` : "\u2013";
+  function detailLine(t) {
+    if (!t || t.variant == null) return "";
+    const p = [];
+    const s = t.src;
+    if (s) {
+      const q = [s.container, s.v, s.a].filter(Boolean).join("\xB7");
+      if (q) p.push(`Quelle ${q}`);
+      if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(",")}`);
+    }
+    p.push(`V${t.variant}${t.forced ? " HLS erzwungen" : ""}`);
+    if (t.jumped != null) {
+      p.push(`Sprung ${t.jumped ? "ja" : "nein"}`);
+      if (Number.isFinite(t.devS)) p.push(`Abw ${sgn(t.devS)}`);
+      p.push(`Seek ${sec1(t.seekingMs)}/${sec1(t.seekedMs)}`, `canplay ${sec1(t.canplayMs)}`);
+      p.push(`Puffer ${range(t.bufSeeked)} \u2192 ${range(t.bufPlaying)}`);
+      p.push(`Warten ${t.waitCount || 0}\xD7${t.waitCount ? ` ${sec(t.waitMs)} s` : ""}`);
+    }
+    return p.join(" \xB7 ");
+  }
   function createZapStats(parent, { getVideo = null, doc = null } = {}) {
     const d2 = doc || parent && parent.ownerDocument || document;
     const el = d2.createElement("div");
@@ -8507,7 +8654,8 @@
     el.style.cssText = STYLE;
     const l1 = d2.createElement("div");
     const l2 = d2.createElement("div");
-    el.append(l1, l2);
+    const l3 = d2.createElement("div");
+    el.append(l1, l2, l3);
     parent.append(el);
     const hist = [];
     let audio = { mode: "", level: null };
@@ -8547,6 +8695,7 @@
           if (hist.length) parts.push(`\xD8 ${sec(hist.reduce((a, b) => a + b, 0) / hist.length)} s (${hist.length})`);
         }
         l1.textContent = parts.join(" \xB7 ");
+        l3.textContent = detailLine(t);
         renderAudio();
       },
       updateAudio(info) {

@@ -10,10 +10,12 @@ const hlsRespond = (m, p, o) => (o && o.body && o.body.AudioStreamIndex === 2
   ? info(ms({ direct: false, transcodingUrl: hlsUrl('&AudioStreamIndex=2') }))
   : info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=AudioCodecNotSupported') })));
 
-function setup({ respond = directRespond, user, now, ...caps } = {}) {
+function setup({ respond = directRespond, user, now, zap, forceHls, ...caps } = {}) {
   const log = [];
   const video = makeVideo({ ...caps, log });
   const deps = makeDeps({ respond, log, user });
+  if (zap !== undefined) deps.zapVariant = zap;
+  if (forceHls) deps.forceHls = true;
   const clock = { t: 1000000 };
   const player = createPlayer({ video, deps, now: now || (() => clock.t) });
   return { log, video, deps, player, clock };
@@ -52,8 +54,8 @@ describe('Element-Attribute', () => {
 });
 
 describe('Start', () => {
-  it('direkt: Startposition per currentTime nach loadedmetadata, danach play(); nie StartTimeTicks in der URL', async () => {
-    const ctx = setup();
+  it('Variante 0 (alt): direkt: Startposition per currentTime nach loadedmetadata, danach play(); nie StartTimeTicks in der URL', async () => {
+    const ctx = setup({ zap: 0 });
     const p = ctx.player.play({ itemId: 'it1', offsetMs: 1800000 });
     await flush();
     expect(ctx.video.getAttribute('src')).toContain('/Videos/it1/stream?');
@@ -66,8 +68,8 @@ describe('Start', () => {
     expect(await p).toMatchObject({ ok: true, mode: 'direct' });
   });
 
-  it('HLS: gleiche Regel, Position ist die Live-Position zum Zeitpunkt der Metadaten', async () => {
-    const ctx = setup({ respond: hlsRespond });
+  it('Variante 0 (alt) HLS: gleiche Regel, Position ist die Live-Position zum Zeitpunkt der Metadaten', async () => {
+    const ctx = setup({ respond: hlsRespond, zap: 0 });
     const p = ctx.player.play({ itemId: 'it1', offsetMs: 600000 });
     await flush();
     expect(ctx.video.getAttribute('src')).toMatch(/^http:\/\/srv:8096\/videos\/it1\/master\.m3u8/);
@@ -475,5 +477,89 @@ describe('Autoplay-Sperre (NotAllowedError)', () => {
     await flush();
     fire(ctx.video, 'loadedmetadata');
     expect(await p).toMatchObject({ ok: false, reason: 'browser', code: 'B-PLAY·D' });
+  });
+});
+
+describe('Startvariante (Standard 1: Startposition vorab)', () => {
+  it('setzt currentTime direkt nach src (vor den Metadaten), kein zweiter Sprung bei Abweichung <= 1,5 s, dann play()', async () => {
+    const ctx = setup();
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 1800000 });
+    await flush();
+    expect(ctx.log.filter((e) => e[0] === 'currentTime')).toEqual([['currentTime', 1800]]);
+    expect(ctx.video.getAttribute('src')).not.toContain('#');
+    ctx.clock.t += 1200; // Laden: Abweichung 1,2 s
+    ctx.log.length = 0;
+    fire(ctx.video, 'loadedmetadata');
+    expect(ctx.log).toEqual([['play']]);
+    fire(ctx.video, 'playing');
+    const res = await p;
+    expect(res.timing).toMatchObject({ variant: 1, jumped: false, forced: false });
+  });
+
+  it('springt nach den Metadaten nach, wenn die Abweichung > 1,5 s ist', async () => {
+    const ctx = setup({ respond: hlsRespond });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 600000 });
+    await flush();
+    ctx.clock.t += 8000;
+    ctx.log.length = 0;
+    fire(ctx.video, 'loadedmetadata');
+    expect(ctx.log).toEqual([['currentTime', 608], ['play']]);
+    fire(ctx.video, 'playing');
+    expect((await p).timing).toMatchObject({ jumped: true });
+  });
+
+  it('Variante 0: nie vorab setzen, immer in loadedmetadata springen', async () => {
+    const ctx = setup({ zap: 0 });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 5000 });
+    await flush();
+    expect(ctx.log.some((e) => e[0] === 'currentTime')).toBe(false);
+    fire(ctx.video, 'loadedmetadata');
+    expect(ctx.log.filter((e) => e[0] === 'currentTime')).toEqual([['currentTime', 5]]);
+    fire(ctx.video, 'playing');
+    expect((await p).timing).toMatchObject({ variant: 0, jumped: true });
+  });
+
+  it('Variante 2: hängt #t=<Sekunden> nur an die <video>-Quelle, nie an Server-Requests', async () => {
+    const ctx = setup({ zap: 2 });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 90500 });
+    await flush();
+    expect(ctx.video.getAttribute('src')).toMatch(/#t=90\.5$/);
+    expect(ctx.log.filter((e) => e[0] === 'currentTime')).toEqual([['currentTime', 90.5]]);
+    expect(JSON.stringify(ctx.deps.request.mock.calls)).not.toContain('#t=');
+    fire(ctx.video, 'loadedmetadata');
+    fire(ctx.video, 'playing');
+    expect((await p).timing).toMatchObject({ variant: 2 });
+  });
+
+  it('forceHls: fordert Remux an (kein Direct), Timing meldet forced', async () => {
+    const seen = [];
+    const ctx = setup({ forceHls: true, respond: (m, p, o) => { seen.push(o.body); return info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=ContainerNotSupported') })); } });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    expect(seen[0].EnableDirectPlay).toBe(false);
+    expect(ctx.video.getAttribute('src')).toMatch(/master\.m3u8/);
+    fire(ctx.video, 'loadedmetadata');
+    fire(ctx.video, 'playing');
+    expect((await p).timing).toMatchObject({ forced: true, mode: 'hls' });
+  });
+
+  it('Messung: seeking/seeked/canplay, Warten, Puffer relativ zum Ziel, Abweichung; keine URL im Timing', async () => {
+    const ctx = setup();
+    const ranges = [[100, 112]];
+    Object.defineProperty(ctx.video, 'buffered', { get: () => ({ length: ranges.length, start: (i) => ranges[i][0], end: (i) => ranges[i][1] }), configurable: true });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 100000 });
+    await flush();
+    fire(ctx.video, 'loadedmetadata');
+    ctx.clock.t += 100; fire(ctx.video, 'seeking');
+    ctx.clock.t += 300; fire(ctx.video, 'seeked');
+    ctx.clock.t += 100; fire(ctx.video, 'waiting');
+    ctx.clock.t += 900; fire(ctx.video, 'canplay');
+    ctx.clock.t += 100; fire(ctx.video, 'playing');
+    const t = (await p).timing;
+    expect(t).toMatchObject({ seekingMs: 100, seekedMs: 400, canplayMs: 1400, waitCount: 1, waitMs: 900, jumped: false });
+    expect(t.bufSeeked).toEqual([0, 12]);
+    expect(t.bufPlaying).toEqual([0, 12]);
+    expect(t.devS).toBeCloseTo(-1.5, 1);
+    expect(JSON.stringify(t)).not.toMatch(/http|ApiKey|SECRET/);
   });
 });

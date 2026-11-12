@@ -1,5 +1,6 @@
 // LENZPRIME: Zeilen der Startseite/Hubs (lazy geladen). Zeilen-Defs im Format von rows/sources.js: { id, title, kind, load(def) }.
 import { h } from '../../core/dom.js';
+import { peekCached, HOME_TTL } from '../../core/cache.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
@@ -14,6 +15,10 @@ function arrow(dir, label) {
   b.innerHTML = CHEVRON;
   return b;
 }
+
+const EAGER_ROWS = 3; // Cache-Pfad: die ersten Zeilen ohne lazy/async-Bilder
+const EAGER_CARDS = 8;
+let lastInfo = null; // {v, at}: zuletzt geladene Neu-/Trend-Info, macht den Sofort-Pfad synchron
 
 /**
  * Wählt die Poster-Zeile. Hub: erste Zeile vom Typ 'poster'. Startseite: „Neu hinzugefügt: Filme“, sonst „Hochbewertet“,
@@ -47,6 +52,7 @@ export function createRows(slot, { posterId = null, moreHref = () => null } = {}
   const disposers = [];
   const pending = new Map();
   const rendered = new Set();
+  let shown = 0;
 
   const info = () => {
     if (!infoP) {
@@ -87,29 +93,35 @@ export function createRows(slot, { posterId = null, moreHref = () => null } = {}
     }, [head, h('div', { class: 'lfx-prime-row__viewport' }, [track])]);
   }
 
+  function fill(rowEl, def, kind, items, inf, eager) {
+    putItems(items);
+    const cards = items.map((it, i) => createPrimeCard(it, {
+      kind,
+      rank: kind === 'top10' ? i + 1 : 0,
+      badge: cardBadge(it, inf),
+      eager: eager && i < EAGER_CARDS,
+    }));
+    const track = rowEl.querySelector('.lfx-prime-row__track');
+    const prev = arrow('prev', 'Zurück');
+    const next = arrow('next', 'Weiter');
+    track.replaceChildren(...cards);
+    track.setAttribute('aria-label', def.title || '');
+    track.before(prev);
+    track.after(next);
+    rowEl.querySelector('.lfx-prime-row__title').textContent = def.title || '';
+    rowEl.classList.remove('is-loading');
+    disposers.push(attachScroller({ track, prev, next, indicator: null }));
+  }
+
   async function loadRow(rowEl, def, kind) {
     try {
       const items = (await def.load(def)).filter((i) => i && i.Id);
       if (disposed) return;
       if (!items.length) { rowEl.remove(); return; }
-      putItems(items);
-      const { newInfo, trend } = await info();
+      const inf = await info();
       if (disposed) return;
-      const cards = items.map((it, i) => createPrimeCard(it, {
-        kind,
-        rank: kind === 'top10' ? i + 1 : 0,
-        badge: cardBadge(it, { newInfo, trend }),
-      }));
-      const track = rowEl.querySelector('.lfx-prime-row__track');
-      const prev = arrow('prev', 'Zurück');
-      const next = arrow('next', 'Weiter');
-      track.replaceChildren(...cards);
-      track.setAttribute('aria-label', def.title || '');
-      track.before(prev);
-      track.after(next);
-      rowEl.querySelector('.lfx-prime-row__title').textContent = def.title || '';
-      rowEl.classList.remove('is-loading');
-      disposers.push(attachScroller({ track, prev, next, indicator: null }));
+      lastInfo = { v: inf, at: Date.now() };
+      fill(rowEl, def, kind, items, inf, false);
     } catch (e) {
       console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
       if (!disposed) rowEl.remove();
@@ -133,10 +145,21 @@ export function createRows(slot, { posterId = null, moreHref = () => null } = {}
     add(defs) {
       if (disposed) return;
       ensureObserver();
+      const inf = lastInfo && Date.now() - lastInfo.at < HOME_TTL ? lastInfo.v : null;
       for (const def of defs || []) {
         if (!def || rendered.has(def.id)) continue;
         rendered.add(def.id);
         const kind = displayKind(def, posterId);
+        const snap = inf && def.cacheKey ? peekCached(def.cacheKey) : undefined;
+        if (snap) { // Cache-Treffer: ohne Skeleton/Observer sofort füllen
+          const items = snap.items.filter((i) => i && i.Id);
+          if (!items.length) continue;
+          def.title = snap.title;
+          const el = skeleton(def, kind);
+          slot.append(el);
+          fill(el, def, kind, items, inf, shown++ < EAGER_ROWS);
+          continue;
+        }
         const el = skeleton(def, kind);
         slot.append(el);
         pending.set(el, { def, kind });

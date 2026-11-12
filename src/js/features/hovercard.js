@@ -166,6 +166,7 @@ function patchUserData(s, patch) {
   s.item = { ...s.item, UserData: { ...userData(s), ...patch } };
   putItems([s.item]);
   clearCache(`hc:${getUserId()}:${s.item.Id}`);
+  clearCache('home:'); // Startseiten-Zeilen (Meine Liste, Weiterschauen …) neu holen
 }
 
 async function toggleFavorite(s) {
@@ -282,6 +283,7 @@ async function askBulkPlayed(s) {
         }
         clearCache(`lfx:modal:item:${item.Id}`);
         clearCache(`lfx:modal:next:${item.Id}`);
+        clearCache('home:');
         clearCache(`lfx:modal:eps:${item.Type === 'Season' ? item.SeriesId || item.ParentId : item.Id}:`);
         toast(failed ? SAVE_ERROR : `${item.Type === 'Season' ? 'Staffel' : 'Serie'} als ${verb} markiert`);
       } catch (e) {

@@ -1,7 +1,7 @@
 // LenzFlix rows: Zeilen-Definitionen (Endpoints + Parameter). Jede Zeile: {id, title, kind, load()} -> Item-Array.
 import * as api from '../../core/api.js';
 import { brandName } from '../../core/theme.js';
-import { cached } from '../../core/cache.js';
+import { cached, clearCache, peekCached, HOME_TTL, homeKey } from '../../core/cache.js';
 import { getCharts, getChartsUrl, resolveChartItems } from '../../core/charts.js';
 import { BASE_PARAMS, dayKey, newSeriesIdsFrom, pickGenres, selectTop10 } from './logic.js';
 
@@ -105,12 +105,42 @@ export async function buildChartDefs() {
 
 const VIEWS_TTL = 5 * 60_000;
 
+const degraded = new WeakSet(); // Zeilenlisten ohne Bibliotheken/Genres: nicht cachen
+
+/** Zeilen-Ergebnis 10 min pro Nutzer cachen (Zufalls-Sortierung bleibt gleich); Snapshot {items, id, title} wegen Titel-/Id-Anpassungen. */
+function wrapRow(def) {
+  const key = homeKey(api.getUserId(), 'row', def.id);
+  const orig = def.load;
+  def.cacheKey = key;
+  def.load = async (d = def) => {
+    const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title }), HOME_TTL);
+    d.id = snap.id;
+    d.title = snap.title;
+    return snap.items;
+  };
+  return def;
+}
+
+const defsKey = ({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) =>
+  homeKey(api.getUserId(), 'defs', seed, genreCount, deferCharts ? 1 : 0);
+
+/** Sofort verfügbare Zeilenliste (Cache, < 10 min) oder undefined. */
+export const peekRowDefs = (opts) => peekCached(defsKey(opts));
+
+/** Gecachte Zeilenliste (10 min, pro Nutzer) – siehe computeRowDefs. */
+export function buildRowDefs(opts = {}) {
+  const key = defsKey(opts);
+  const p = cached(key, () => computeRowDefs(opts), HOME_TTL);
+  p.then((defs) => { if (degraded.has(defs)) clearCache(key); }, () => {});
+  return p;
+}
+
 /**
  * Baut die Zeilenliste (holt vorab Bibliotheken + Genres).
  * deferCharts: Charts blockieren nicht; zwei Platzhalter-Zeilen (Serien/Filme) füllen sich nach. Gibt es keine Charts,
  * zeigt die erste die „Neu auf“-Zeile (Titel/Id werden dann angepasst), die zweite bleibt leer (Zeile entfällt).
  */
-export async function buildRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
+async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
   const [viewsRes, genresRes] = await Promise.allSettled([
     cached(`views:${api.getUserId()}`, api.getViews, VIEWS_TTL),
     api.getJson('/Genres', { userId: api.getUserId(), IncludeItemTypes: MOVIE_SERIES, Recursive: true }),
@@ -210,5 +240,7 @@ export async function buildRowDefs({ seed = dayKey(), genreCount = 6, deferChart
       IncludeItemTypes: MOVIE_SERIES, Recursive: true, SortBy: 'CommunityRating', SortOrder: 'Descending', MinCommunityRating: 7.5, Limit: 20,
     }),
   });
+  defs.forEach(wrapRow);
+  if (viewsRes.status !== 'fulfilled' || genresRes.status !== 'fulfilled') degraded.add(defs);
   return defs;
 }

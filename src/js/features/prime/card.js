@@ -22,9 +22,10 @@ const ariaLabel = (item) => (item.Type === 'Episode' && item.SeriesName ? `${ite
 
 /**
  * kind: 'landscape' (16:9) | 'resume' (16:9 + Fortschritt) | 'top10' (16:9 + Rangziffer) | 'poster' (2:3).
- * opts: { kind, badge: string|null, rank: number }
+ * opts: { kind, badge: string|null, rank: number, eager: boolean (ohne lazy/async) }
  */
-export function createPrimeCard(item, { kind = 'landscape', badge = null, rank = 0 } = {}) {
+export function createPrimeCard(item, { kind = 'landscape', badge = null, rank = 0, eager = false } = {}) {
+  const lazy = eager ? {} : { loading: 'lazy', decoding: 'async' }; // eager: Cache-Pfad der Startseite
   const poster = kind === 'poster';
   const wide = landscapeFor(item);
   const pUrl = poster ? posterUrl(item, 400) : null;
@@ -32,11 +33,11 @@ export function createPrimeCard(item, { kind = 'landscape', badge = null, rank =
   // Titel/Logo nur, wenn kein echtes Querformat-Bild (Thumb) vorliegt; Poster tragen ihren Titel im Bild.
   const titled = !poster && (!wide || !wide.isThumb);
   const children = [];
-  if (src) children.push(h('img', { class: 'lfx-card__img', src, alt: '', loading: 'lazy', decoding: 'async' }));
+  if (src) children.push(h('img', { class: 'lfx-card__img', src, alt: '', ...lazy }));
   if (titled) {
     const logo = api.logoImage(item, { maxWidth: 400 });
     children.push(logo
-      ? h('img', { class: 'lfx-card__logo', src: logo, alt: '', loading: 'lazy', decoding: 'async' })
+      ? h('img', { class: 'lfx-card__logo', src: logo, alt: '', ...lazy })
       : h('span', { class: 'lfx-card__title' }, displayTitle(item)));
   }
   const classes = ['lfx-card', 'lfx-prime-card', poster ? 'lfx-prime-card--poster' : 'lfx-prime-card--wide'];

@@ -405,6 +405,7 @@ async function toggleFavGeneric(item, btn) {
   setFavState(btn, next);
   try {
     await setFavorite(item.Id, next);
+    clearCache('home:');
   } catch {
     item.UserData.IsFavorite = !next;
     setFavState(btn, !next);
@@ -418,6 +419,7 @@ const folgen = (n) => (n === 1 ? '1 Folge' : `${n} Folgen`);
 const SAVE_ERROR = 'Konnte nicht gespeichert werden';
 
 function clearPlayedCaches(itemId, seriesId) {
+  clearCache('home:');
   clearCache(`lfx:modal:item:${itemId}`);
   if (seriesId) {
     clearCache(`lfx:modal:next:${seriesId}`);

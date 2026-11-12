@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createPlayerView } from '../src/js/live/tvmode/player-view.js';
+import { createPlayerView, MOUSE_HIDE_MS } from '../src/js/live/tvmode/player-view.js';
 
 const ptr = (type, o = {}) => {
   const e = new Event(type, { bubbles: true, cancelable: true });
@@ -79,5 +79,95 @@ describe('Fehlerkarte mit Code', () => {
     expect(c.textContent).toBe('Code: V-RANGE');
     v.update({ on: true, channel: 1, entry: null, phase: 'error', reason: 'video', card: { ...card, code: undefined }, banner: null, needsTap: false, mutedByPolicy: false, volume: 100, muted: false });
     expect(v.el.querySelector('.lfx-tvm__card-code')).toBeNull();
+  });
+});
+
+describe('Tipp/Klick-Toggle: sichtbare Leiste → alles aus', () => {
+  const on = (v) => v.el.classList.contains('is-controls');
+  const zapping = (v) => v.el.classList.contains('is-zapping');
+
+  it('Touch: erster Tipp zeigt Leiste + Senderkarte, zweiter blendet beides sofort aus', () => {
+    const { v } = setup();
+    tapOn(v.el);
+    expect(on(v) && zapping(v)).toBe(true);
+    tapOn(v.el);
+    expect(on(v)).toBe(false);
+    expect(zapping(v)).toBe(false);
+    vi.advanceTimersByTime(10000);
+    expect(on(v) || zapping(v)).toBe(false);
+  });
+
+  it('Touch: nur Senderkarte sichtbar → Tipp zeigt die Leiste', () => {
+    const { v } = setup();
+    v.el.classList.add('is-zapping');
+    tapOn(v.el);
+    expect(on(v)).toBe(true);
+  });
+
+  it('Fokus in der Leiste blockiert das Ausblenden nicht (Fokus wird entfernt)', () => {
+    const { v } = setup();
+    tapOn(v.el);
+    const btn = v.controls.el.querySelector('button');
+    btn.focus();
+    expect(document.activeElement).toBe(btn);
+    tapOn(v.el);
+    expect(on(v)).toBe(false);
+    expect(document.activeElement).not.toBe(btn);
+  });
+
+  it('offenes Menü wird beim Ausblenden geschlossen', () => {
+    const { v } = setup();
+    tapOn(v.el);
+    const close = vi.spyOn(v.controls, 'closeMenu');
+    tapOn(v.el);
+    expect(close).toHaveBeenCalled();
+  });
+
+  it('Maus: Klick blendet erst nach der Verzögerung aus', () => {
+    const { v } = setup();
+    const click = () => { v.el.dispatchEvent(ptr('pointerup', { pointerType: 'mouse' })); };
+    click();
+    expect(on(v)).toBe(true);
+    click();
+    expect(on(v)).toBe(true);
+    vi.advanceTimersByTime(MOUSE_HIDE_MS - 10);
+    expect(on(v)).toBe(true);
+    vi.advanceTimersByTime(20);
+    expect(on(v)).toBe(false);
+    expect(zapping(v)).toBe(false);
+  });
+
+  it('Maus: dblclick bricht das Ausblenden ab (Vollbild)', () => {
+    const { v, fullscreen } = setup();
+    const mouse = (t) => v.el.dispatchEvent(ptr(t, { pointerType: 'mouse' }));
+    mouse('pointerup');
+    mouse('pointerup');
+    v.el.dispatchEvent(new Event('dblclick', { bubbles: true }));
+    vi.advanceTimersByTime(MOUSE_HIDE_MS * 2);
+    expect(fullscreen.toggle).toHaveBeenCalledTimes(1);
+    expect(on(v)).toBe(true);
+  });
+
+  it('Maus: zweiter Klick innerhalb der Verzögerung verwirft das Ausblenden', () => {
+    const { v } = setup();
+    const mouse = (t) => v.el.dispatchEvent(ptr(t, { pointerType: 'mouse' }));
+    mouse('pointerup'); // zeigt
+    mouse('pointerup'); // plant Ausblenden
+    mouse('pointerup'); // verwirft
+    vi.advanceTimersByTime(MOUSE_HIDE_MS * 2);
+    expect(on(v)).toBe(true);
+  });
+
+  it('Maus: nach dem Ausblenden blendet pointermove < 8 px nicht ein, ab 8 px schon', () => {
+    const { v } = setup();
+    const mouse = (t, o) => v.el.dispatchEvent(ptr(t, { pointerType: 'mouse', clientX: 200, clientY: 200, ...o }));
+    mouse('pointerup');
+    mouse('pointerup');
+    vi.advanceTimersByTime(MOUSE_HIDE_MS + 10);
+    expect(on(v)).toBe(false);
+    mouse('pointermove', { clientX: 204, clientY: 203 });
+    expect(on(v)).toBe(false);
+    mouse('pointermove', { clientX: 212, clientY: 200 });
+    expect(on(v)).toBe(true);
   });
 });

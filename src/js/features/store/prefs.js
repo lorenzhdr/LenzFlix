@@ -2,10 +2,11 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief', touchControl: 'joystick' };
+const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief', touchControl: 'touch' };
 export const TOUCH_CONTROLS = ['joystick', 'touch'];
 export const TOUCH_SENS = ['low', 'normal', 'high'];
-const TUNE_FLAGS = ['holdInvertY', 'holdInvertX', 'lookInvertY', 'lookInvertX'];
+const TUNE_FLAGS = ['holdInvertY', 'holdInvertX', 'lookFlipY', 'lookFlipX'];
+export const TOUCH_REGRIPS = ['off', 'short', 'long'];
 export const VOICE_PITCHES = ['normal', 'tief', 'sehrtief'];
 export const QUALITIES = ['auto', 'low', 'mid', 'high'];
 export const VR_TURNS = ['snap', 'smooth'];
@@ -56,15 +57,16 @@ export function getVoicePitch() {
   return VOICE_PITCHES.includes(v) ? v : DEFAULTS.voicePitch;
 }
 
-/** Touch-Steuerung: 'joystick' (Standard: Gehen-Knopf + Joystick) oder 'touch' (Halten = laufen, Wischen = umsehen). */
+/** Touch-Steuerung: 'touch' (Standard: Halten = laufen, Wischen = umsehen) oder 'joystick' (Gehen-Knopf + Joystick). */
 export function getTouchControl() {
   const v = read('localStorage', storageKey('touchControl'));
   return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS.touchControl;
 }
 
-/** Touch-Feineinstellung (Standard = unverändertes Verhalten): vier Umkehr-Schalter (false) und Empfindlichkeit 'low' | 'normal' | 'high'. */
+/** Touch-Feineinstellung: vier Umkehr-Schalter (Standard false), Empfindlichkeit 'low' | 'normal' | 'high', Umgreifen 'off' | 'short' (Standard) | 'long'. Alte Schlüssel lookInvertY/X (andere Konvention) werden entfernt. */
 export function getTouchTune() {
-  const t = { touchSens: readEnum('touchSens', TOUCH_SENS, 'normal') };
+  for (const k of ['lookInvertY', 'lookInvertX']) { try { window.localStorage.removeItem(storageKey(k)); } catch { /* egal */ } }
+  const t = { touchSens: readEnum('touchSens', TOUCH_SENS, 'normal'), touchRegrip: readEnum('touchRegrip', TOUCH_REGRIPS, 'short') };
   for (const k of TUNE_FLAGS) t[k] = read('localStorage', storageKey(k)) === '1';
   return t;
 }
@@ -91,7 +93,7 @@ export function getVr() {
   return { turn: getVrTurn(), vignette: getVrVignette(), height: getVrHeight(), quality: getVrQuality(), seat: getVrSeat() };
 }
 
-/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl?, holdInvertY?/holdInvertX?/lookInvertY?/lookInvertX? (bool), touchSens? ('low'|'normal'|'high'), vr? { turn, vignette, height, quality, seat } } (unbekannte/fehlende Felder werden ignoriert). */
+/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl?, holdInvertY?/holdInvertX?/lookFlipY?/lookFlipX? (bool), touchSens? ('low'|'normal'|'high'), touchRegrip? ('off'|'short'|'long'), vr? { turn, vignette, height, quality, seat } } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
@@ -103,6 +105,7 @@ export function savePrefs(p) {
   if (TOUCH_CONTROLS.includes(p.touchControl)) write('localStorage', storageKey('touchControl'), p.touchControl);
   for (const k of TUNE_FLAGS) if (typeof p[k] === 'boolean') write('localStorage', storageKey(k), p[k] ? '1' : '0');
   if (TOUCH_SENS.includes(p.touchSens)) write('localStorage', storageKey('touchSens'), p.touchSens);
+  if (TOUCH_REGRIPS.includes(p.touchRegrip)) write('localStorage', storageKey('touchRegrip'), p.touchRegrip);
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
   const vr = p.vr;
   if (vr && typeof vr === 'object') {

@@ -19,7 +19,7 @@ vi.mock('../src/js/core/themepicker.js', () => ({ openThemePicker: vi.fn() }));
 vi.mock('../src/js/core/stats.js', () => ({ statsHref: vi.fn(() => '/stats?theme=prime'), STATS_LABEL: 'Meine Statistik' }));
 vi.mock('../src/js/shared/libraries.js', () => ({ getLibraries: vi.fn() }));
 vi.mock('../src/js/shared/hub.js', () => ({ buildHubRowDefs: vi.fn(), getHubHeroPool: vi.fn(async () => []) }));
-vi.mock('../src/js/features/rows/sources.js', () => ({ buildRowDefs: vi.fn() }));
+vi.mock('../src/js/features/rows/sources.js', () => ({ buildRowDefs: vi.fn(), peekRowDefs: vi.fn(() => undefined) }));
 vi.mock('../src/js/shared/newcontent.js', () => ({
   getNewContentInfo: vi.fn(async () => ({ bySeries: new Map(), newMovieIds: new Set(['m1']), newSeriesIds: new Set() })),
   newBadge: (it, info) => (it.Type === 'Movie' && info && info.newMovieIds.has(it.Id) ? 'NEUER FILM' : null),

@@ -7,6 +7,7 @@ import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { cssActive } from './core/csscheck.js';
+import { initHomeCache, destroyHomeCache } from './core/homecache.js';
 import { VERSION } from './core/version.js';
 import { earlyTheme, startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
 import { features } from './features/index.js';
@@ -30,6 +31,7 @@ function init() {
     if (running || destroyed) return;
     running = true;
     initLayout();
+    initHomeCache(); // Startseiten-Cache: Invalidierung (lfx:play, Player-Route, Nutzerwechsel)
     initUnlock(); // TV-Modus: lfx:tvmode-intent (idempotent; stopFeatures entfernt den Listener)
     for (const f of features) registerFeature(f);
     // Der MUI-Header wird von React evtl. erst nach dem ersten Route-Event gerendert.
@@ -45,6 +47,7 @@ function init() {
     running = false;
     clearInterval(refreshTimer);
     resetRouter(); // unmount aller Features
+    destroyHomeCache();
     destroyStore(); // VIDEOTHEK LENZ: suspendierte 3D-Instanz sofort freigeben
     destroyLive(); // LENZ LIVE: suspendierte Engine-Instanz sofort freigeben
     destroyTvMode(); // TV-Modus: Instanz (auch im Bild-in-Bild), CSS, Intent-Listener freigeben

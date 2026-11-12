@@ -17,22 +17,31 @@ export const SCHEMES = ['joystick', 'touch'];
 /** Empfindlichkeit (Faktor auf Umschauen und Cover-Drehung). */
 export const SENS_FACTOR = { low: 0.7, normal: 1, high: 1.4 };
 
-/** Touch-Feineinstellung normalisieren: { holdInvertY, holdInvertX, lookInvertY, lookInvertX, touchSens }. Standard = unverändert. */
+/** Umgreifen: Nachlauf (ms) nach dem Loslassen am Rand. */
+export const REGRIP_MS = { off: 0, short: 400, long: 800 };
+/** Randzone (Anteil der Breite links/rechts), in der Loslassen den Nachlauf startet. */
+const REGRIP_EDGE = 0.2;
+
+/**
+ * Touch-Feineinstellung normalisieren: { holdInvertY, holdInvertX, lookFlipY, lookFlipX, touchSens, touchRegrip }.
+ * Standard: Umschauen „Normal“ (Flip aus), Umgreifen 'short'.
+ */
 export function normTune(t) {
   const o = t && typeof t === 'object' ? t : {};
   return {
     holdInvertY: o.holdInvertY === true,
     holdInvertX: o.holdInvertX === true,
-    lookInvertY: o.lookInvertY === true,
-    lookInvertX: o.lookInvertX === true,
+    lookFlipY: o.lookFlipY === true,
+    lookFlipX: o.lookFlipX === true,
     touchSens: Object.prototype.hasOwnProperty.call(SENS_FACTOR, o.touchSens) ? o.touchSens : 'normal',
+    touchRegrip: Object.prototype.hasOwnProperty.call(REGRIP_MS, o.touchRegrip) ? o.touchRegrip : 'short',
   };
 }
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
   constructor(ctx) {
     this.ctx = ctx;
     this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : 'touch';
@@ -44,6 +53,7 @@ export class TouchControls {
     this.attached = false;
     this.walkId = null; // pointerId des Fingers, der gerade läuft
     this.timer = 0;
+    this.coastUntil = 0; // Umgreifen: Laufen läuft bis zu diesem Zeitpunkt (ms, now()) nach dem Loslassen weiter
     this.zoom = 1;
     this.pinch = null; // { d0, z0 }
     this.ring = null;
@@ -59,21 +69,29 @@ export class TouchControls {
   /** Aktuelle Feineinstellung (ctx.getTune, zur Laufzeit änderbar). */
   tune() { return normTune(this.ctx.getTune ? this.ctx.getTune() : null); }
 
+  now() { return this.ctx.now ? this.ctx.now() : performance.now(); }
+
+  coasting() {
+    if (!this.coastUntil) return false;
+    if (this.ctx.getMode() !== 'play' || this.now() >= this.coastUntil) { this.coastUntil = 0; return false; }
+    return true;
+  }
+
   /** Eingabe für Player.update(): läuft nur im Laufmodus. */
   get input() {
     if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== 'play') { this.stopWalk(); if (this.pad) this.pad.reset(); }
-    return { fwd: this.walkId !== null || this.padWalk ? 1 : 0, strafe: 0, run: false };
+    return { fwd: this.walkId !== null || this.padWalk || this.coasting() ? 1 : 0, strafe: 0, run: false };
   }
 
-  /** Pro Frame (nur im Laufmodus aufrufen): Joystick-Auslenkung → Blickdrehung. Rechts = Blick rechts, oben = Blick oben. */
+  /** Pro Frame (nur im Laufmodus aufrufen): Joystick-Auslenkung → Blickdrehung. Rechts = Blick rechts, oben = Blick oben (lookFlip kehrt um). Bei Zoom schwächer. */
   tick(dt) {
     const { x, y } = this.stick;
     if ((!x && !y) || !(dt > 0)) return;
     if (this.ctx.getMode() !== 'play') return;
     const t = Math.min(dt, 0.1);
     const tu = this.tune();
-    const f = SENS_FACTOR[tu.touchSens];
-    this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookInvertX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookInvertY ? -1 : 1));
+    const f = SENS_FACTOR[tu.touchSens] / Math.max(1, this.currentZoom());
+    this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookFlipX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookFlipY ? -1 : 1));
   }
 
   /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
@@ -141,6 +159,7 @@ export class TouchControls {
 
   reset() {
     this.clearTimer();
+    this.coastUntil = 0;
     this.walkId = null;
     this.pinch = null;
     this.pointers.clear();
@@ -164,9 +183,12 @@ export class TouchControls {
     try { this.ctx.canvas.setPointerCapture(e.pointerId); } catch { /* egal */ }
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, dead: false, walked: false });
     this.clearTimer();
+    const wasCoasting = this.coasting();
+    this.coastUntil = 0;
     if (this.pointers.size === 1) {
       const id = e.pointerId;
-      if (this.scheme === 'touch') this.timer = setTimeout(() => { this.timer = 0; this.startWalk(id); }, TOUCH_HOLD_MS);
+      if (this.scheme === 'touch' && wasCoasting) this.startWalk(id); // Umgreifen: sofort weiterlaufen, keine Haltezeit
+      else if (this.scheme === 'touch') this.timer = setTimeout(() => { this.timer = 0; this.startWalk(id); }, TOUCH_HOLD_MS);
     } else if (this.pointers.size === 2) {
       // Pinch: kein Laufen, kein Umsehen, kein Tippen
       this.stopWalk();
@@ -217,12 +239,12 @@ export class TouchControls {
       p.moved = true;
       this.clearTimer();
     }
-    // Touch = „Szene greifen“ (wie bei Karten/360°-Fotos): Finger nach rechts zieht das Bild mit → Blick dreht nach links;
-    // Finger nach unten → Blick nach oben. (Maus/Pointer-Lock in desktop.js bleibt Kamera-Konvention.)
+    // Normal (Flip aus): Kamera-Konvention wie die Maus – Finger nach rechts → Blick nach rechts, Finger nach oben → Blick nach oben.
+    // Umgekehrt (Flip an) = „Szene greifen“. Bei Zoom schwächer (wie desktop.js).
     if (p.moved || p.walked) {
       const tu = this.tune();
-      const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens];
-      this.ctx.player.look(dx * k * (tu.lookInvertX ? -1 : 1), dy * k * (tu.lookInvertY ? -1 : 1));
+      const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens] / Math.max(1, this.currentZoom());
+      this.ctx.player.look(dx * k * (tu.lookFlipX ? 1 : -1), dy * k * (tu.lookFlipY ? 1 : -1));
     }
     if (p.walked) this.moveRing(e.clientX, e.clientY);
   }
@@ -231,7 +253,13 @@ export class TouchControls {
     const p = this.pointers.get(e.pointerId);
     this.pointers.delete(e.pointerId);
     this.clearTimer();
-    if (this.walkId === e.pointerId) this.stopWalk();
+    const wasWalk = this.walkId === e.pointerId;
+    if (wasWalk) this.stopWalk();
+    if (wasWalk && this.scheme === 'touch' && this.ctx.getMode() === 'play') { // auch pointercancel (System-Geste am Rand)
+      const ms = REGRIP_MS[this.tune().touchRegrip];
+      const w = window.innerWidth;
+      if (ms > 0 && w > 0 && (e.clientX < w * REGRIP_EDGE || e.clientX > w * (1 - REGRIP_EDGE))) this.coastUntil = this.now() + ms;
+    }
     if (this.pointers.size < 2) this.pinch = null;
     if (!p || cancelled || p.dead || p.moved || p.walked || this.ctx.getMode() !== 'play') return;
     if (this.pointers.size === 0) this.ctx.onTap(e.clientX, e.clientY);

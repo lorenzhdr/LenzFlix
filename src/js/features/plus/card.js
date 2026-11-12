@@ -49,6 +49,8 @@ export function ratingBox(item) {
   return r ? h('span', { class: 'lfx-plus-rating' }, r) : null;
 }
 
+const lz = (eager) => (eager ? {} : { loading: 'lazy', decoding: 'async' }); // eager: Cache-Pfad der Startseite
+
 function cardShell(item, kind, extraClass) {
   return h('div', {
     class: `lfx-card lfx-plus-card lfx-plus-card--${kind}${extraClass ? ` ${extraClass}` : ''}`,
@@ -64,16 +66,16 @@ function ariaFor(item) {
 }
 
 /** Poster-Karte (2:3). opts.badge: Text (plusBadge) -> Overlay unten mit Mini-Badge, Logo, Meta. */
-export function createPosterCard(item, { badge = null } = {}) {
+export function createPosterCard(item, { badge = null, eager = false } = {}) {
   const url = posterUrl(item, 400) || null;
   const media = [];
-  if (url) media.push(h('img', { class: 'lfx-card__img', src: url, alt: '', loading: 'lazy', decoding: 'async' }));
+  if (url) media.push(h('img', { class: 'lfx-card__img', src: url, alt: '', ...lz(eager) }));
   else media.push(h('span', { class: 'lfx-card__title lfx-plus-card__fallback' }, displayTitle(item)));
   if (badge) {
     const logo = api.logoImage(item, { maxWidth: 360 });
     media.push(h('div', { class: 'lfx-plus-card__new' }, [
       h('span', { class: 'lfx-plus-badge' }, badge),
-      logo ? h('img', { class: 'lfx-card__logo lfx-plus-card__logo', src: logo, alt: '', loading: 'lazy', decoding: 'async' }) : null,
+      logo ? h('img', { class: 'lfx-card__logo lfx-plus-card__logo', src: logo, alt: '', ...lz(eager) }) : null,
       h('span', { class: 'lfx-plus-card__meta' }, yearGenres(item)),
     ]));
   }
@@ -84,10 +86,10 @@ export function createPosterCard(item, { badge = null } = {}) {
 }
 
 /** Weiterschauen-Karte (16:9) mit Fortschritt, Play-Kreis und drei Infozeilen. */
-export function createResumeCard(item) {
+export function createResumeCard(item, { eager = false } = {}) {
   const img = landscapeFor(item, 600);
   const media = [];
-  if (img) media.push(h('img', { class: 'lfx-card__img', src: img.url, alt: '', loading: 'lazy', decoding: 'async' }));
+  if (img) media.push(h('img', { class: 'lfx-card__img', src: img.url, alt: '', ...lz(eager) }));
   else media.push(h('span', { class: 'lfx-card__title lfx-plus-card__fallback' }, displayTitle(item)));
   const p = progressPercent(item);
   if (p > 0) {
@@ -114,6 +116,6 @@ export function createResumeCard(item) {
   return card;
 }
 
-export function createPlusCard(item, { kind = 'poster', badge = null } = {}) {
-  return kind === 'resume' ? createResumeCard(item) : createPosterCard(item, { badge });
+export function createPlusCard(item, { kind = 'poster', badge = null, eager = false } = {}) {
+  return kind === 'resume' ? createResumeCard(item, { eager }) : createPosterCard(item, { badge, eager });
 }

@@ -4,10 +4,11 @@ import * as api from '../core/api.js';
 import { h } from '../core/dom.js';
 import { putItems } from '../core/itemstore.js';
 import { onItemsChanged } from '../core/itemmenu.js';
+import { peekCached } from '../core/cache.js';
 import { createCard, setCardBadge } from './rows/card.js';
 import { badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
-import { buildRowDefs, getNewSeriesIds, peekNewSeriesIds } from './rows/sources.js';
+import { buildRowDefs, getNewSeriesIds, peekNewSeriesIds, peekRowDefs } from './rows/sources.js';
 
 /** Signal für das Billboard (Trailer darf erst danach vorladen): erste Zeile ist gefüllt. */
 export const ROWS_READY_EVENT = 'lfx:rows-ready';
@@ -21,12 +22,16 @@ function skeleton(def) {
   ]);
 }
 
-function fill(rowEl, def, items, newSeries) {
+const EAGER_ROWS = 3; // Cache-Pfad: die ersten (sichtbaren) Zeilen ohne lazy/async-Bilder
+const EAGER_CARDS = 8;
+
+function fill(rowEl, def, items, newSeries, eager = false) {
   const now = Date.now();
   const cards = items.map((it, i) => createCard(it, {
     kind: def.kind,
     rank: def.kind === 'top10' ? i + 1 : 0,
     badge: badgeFor(it, newSeries, now),
+    eager: eager && i < EAGER_CARDS,
   }));
   const track = h('div', { class: 'lfx-row__track', role: 'list', 'aria-label': def.title || '' }, cards);
   const prev = chevronButton('prev', 'Zurück');
@@ -100,19 +105,23 @@ export function render(slot) {
     }, () => {});
   }
 
+  function showRow(rowEl, def, items, eager) {
+    putItems(items);
+    if (rowEl.dataset.lfxRow !== def.id) rowEl.dataset.lfxRow = def.id; // Platzhalter kann zur „Neu auf“-Zeile werden
+    disposers.push(fill(rowEl, def, items, newSeries, eager));
+    if (items.some((i) => i.Type === 'Series')) {
+      filled.push({ rowEl, items: new Map(items.map((i) => [i.Id, i])) });
+      loadNewSeriesLater();
+    }
+    signalReady();
+  }
+
   async function loadRow(rowEl, def) {
     try {
       const items = (await def.load(def)).filter((i) => i && i.Id);
       if (disposed) return;
       if (!items.length) { rowEl.remove(); return; }
-      putItems(items);
-      if (rowEl.dataset.lfxRow !== def.id) rowEl.dataset.lfxRow = def.id; // Platzhalter kann zur „Neu auf“-Zeile werden
-      disposers.push(fill(rowEl, def, items, newSeries));
-      if (items.some((i) => i.Type === 'Series')) {
-        filled.push({ rowEl, items: new Map(items.map((i) => [i.Id, i])) });
-        loadNewSeriesLater();
-      }
-      signalReady();
+      showRow(rowEl, def, items, false);
     } catch (e) {
       console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
       if (!disposed) rowEl.remove();
@@ -123,7 +132,7 @@ export function render(slot) {
     if (!api.isReady()) { console.warn('[LenzFlix] Zeilen: keine Anmeldung'); signalReady(); return; }
     let defs;
     try {
-      defs = await buildRowDefs({ deferCharts: true });
+      defs = peekRowDefs({ deferCharts: true }) || await buildRowDefs({ deferCharts: true }); // Cache: kein Warten, Zeilen sofort
     } catch (e) {
       console.warn('[LenzFlix] Zeilen konnten nicht aufgebaut werden', e && e.message);
       signalReady();
@@ -131,7 +140,20 @@ export function render(slot) {
     }
     if (disposed) return;
     const pending = new Map();
+    let shown = 0;
     for (const def of defs) {
+      // Zeile liegt im Cache (< 10 min): ohne Skeleton und ohne Observer direkt füllen, erste Zeilen mit sofort ladenden Bildern.
+      const snap = def.cacheKey ? peekCached(def.cacheKey) : undefined;
+      if (snap) {
+        const items = snap.items.filter((i) => i && i.Id);
+        if (!items.length) continue;
+        def.id = snap.id;
+        def.title = snap.title;
+        const el = skeleton(def);
+        slot.append(el);
+        showRow(el, def, items, shown++ < EAGER_ROWS);
+        continue;
+      }
       const el = skeleton(def);
       pending.set(el, def);
       slot.append(el);

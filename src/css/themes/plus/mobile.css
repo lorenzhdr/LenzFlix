@@ -129,6 +129,7 @@
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__list {
     gap: 8px;
     padding: 0 16px;
+    overflow-y: hidden; /* das ::after der Chips (inset -4px) ragt vertikal über: sonst lässt sich die Leiste in alle Richtungen ziehen */
   }
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__tab {
     position: relative;

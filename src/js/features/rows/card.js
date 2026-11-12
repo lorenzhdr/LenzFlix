@@ -56,16 +56,17 @@ export function posterUrl(item, maxWidth = 300) {
   return api.imageUrl(item, { type: 'Primary', maxWidth, quality: 85 });
 }
 
-/** opts: {badge: string|null, kind: 'landscape'|'resume'|'top10', rank: number} */
+/** opts: {badge: string|null, kind: 'landscape'|'resume'|'top10', rank: number, eager: boolean (ohne lazy/async)} */
 export function createCard(item, opts = {}) {
-  const { badge = null, kind = 'landscape', rank = 0 } = opts;
+  const { badge = null, kind = 'landscape', rank = 0, eager = false } = opts;
+  const lazy = eager ? {} : { loading: 'lazy', decoding: 'async' }; // eager: Cache-Pfad der Startseite (sofort sichtbar)
   const title = displayTitle(item);
   let link;
   if (kind === 'top10') {
     const url = api.imageUrl(item, { type: 'Primary', maxWidth: 300, quality: 85 }) || api.landscapeImage(item, { maxWidth: 300 });
     link = h('a', { class: 'lfx-card__link', href: detailHref(item), 'aria-label': ariaLabel(item) }, [
       url
-        ? h('img', { class: 'lfx-card__img', src: url, alt: '', loading: 'lazy', decoding: 'async' })
+        ? h('img', { class: 'lfx-card__img', src: url, alt: '', ...lazy })
         : h('span', { class: 'lfx-card__title' }, title),
     ]);
   } else {
@@ -74,7 +75,7 @@ export function createCard(item, opts = {}) {
     const children = [];
     const src = img ? img.url : poster;
     if (src) {
-      const imgEl = h('img', { class: 'lfx-card__img', src, alt: '', loading: 'lazy', decoding: 'async' });
+      const imgEl = h('img', { class: 'lfx-card__img', src, alt: '', ...lazy });
       children.push(poster
         ? h('picture', null, [h('source', { media: '(max-width: 799px)', srcset: poster }), imgEl])
         : imgEl);
@@ -83,7 +84,7 @@ export function createCard(item, opts = {}) {
     if (titled) {
       const logo = api.logoImage(item, { maxWidth: 400 });
       children.push(logo
-        ? h('img', { class: 'lfx-card__logo', src: logo, alt: '', loading: 'lazy', decoding: 'async' })
+        ? h('img', { class: 'lfx-card__logo', src: logo, alt: '', ...lazy })
         : h('span', { class: 'lfx-card__title' }, title));
     }
     link = h('a', {

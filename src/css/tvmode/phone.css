@@ -16,7 +16,8 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__stage {
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__main { display: contents; }
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player {
   position: sticky;
-  top: var(--lfx-tvm-head);
+  /* 2 px unter die Kopfleiste geschoben: die echte Leiste ist am iPhone bruchzahlig hoch, sonst blitzt ein Spalt (Leiste z-index >= 1100 verdeckt die Überlappung) */
+  top: calc(var(--lfx-tvm-head) - 2px);
   z-index: 3;
   border-radius: 0;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);

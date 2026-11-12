@@ -8,7 +8,7 @@ import { isTheme } from '../../core/theme.js';
 import { getHubHeroPool, buildHubRowDefs } from '../../shared/hub.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { hubHref } from '../../shared/routes.js';
-import { buildRowDefs } from '../rows/sources.js';
+import { buildRowDefs, peekRowDefs } from '../rows/sources.js';
 import { buildFooter, buildMoreButton } from './footer.js';
 import { fetchHomePool, renderHero } from './hero.js';
 import { findHomeTab, ON_CLASS, primeHomeRoute, ROOT_ID } from './home-route.js';
@@ -69,7 +69,7 @@ async function start(tab, route, myGen) {
 
   const getDefs = (genreCount) => (hub ? buildHubRowDefs(lib, { genreCount }) : buildRowDefs({ genreCount }));
   let defs = [];
-  try { defs = await getDefs(BASE_GENRES); } catch (e) {
+  try { defs = (!hub && peekRowDefs({ genreCount: BASE_GENRES })) || await getDefs(BASE_GENRES); } catch (e) {
     console.warn('[LenzFlix] Zeilen konnten nicht aufgebaut werden', e && e.message);
   }
   if (myGen !== gen || !api.isReady()) return;

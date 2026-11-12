@@ -1,5 +1,6 @@
 // Messanzeige für das Umschalten (geteilt: LENZ LIVE und TV-Modus, docs/live.md „Messanzeige“). Reines DOM mit Inline-Styles,
 // kein CSS-Bundle. Nur zum Diagnostizieren am iPhone (ohne Konsole): Hash-Parameter lfxdebug=1 in der Hülle.
+// Zeile 3 (detailLine): Quelle mkv·hevc·eac3 · Grund Container · V1 · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s
 // createZapStats(parent, { getVideo, doc }) → { update(zapInfo), updateAudio(info), destroy() }
 //   zapInfo: { channel, keyMs?, timing?, ok?, code?, reason? }   timing laut player.lastTiming()
 //   info: { mode, level } (Ton-Modus des Players, Reglerwert 0–100); muted/volume kommen direkt vom <video>.
@@ -15,6 +16,30 @@ const STYLE = [
 /** 1234 → „1,2“ (Sekunden, ein Dezimalkomma). */
 export const sec = (ms) => (Math.max(0, Number(ms) || 0) / 1000).toFixed(1).replace('.', ',');
 const num2 = (n) => (Number.isFinite(n) ? n.toFixed(2).replace('.', ',') : '–');
+const sec1 = (ms) => (ms == null ? '–' : sec(ms));
+const sgn = (s) => (Number.isFinite(s) ? `${s < 0 ? '-' : '+'}${Math.abs(s).toFixed(1).replace('.', ',')}` : '–');
+const range = (r) => (Array.isArray(r) ? `${sgn(r[0])}…${sgn(r[1])}` : '–');
+
+/** Zeile 3 aus timing (Quelle, Grund, Variante, Sprung, Puffer, Warten); leer, wenn timing keine Zusatzfelder trägt. Nur Kürzel, nie URL/Token. */
+export function detailLine(t) {
+  if (!t || t.variant == null) return '';
+  const p = [];
+  const s = t.src;
+  if (s) {
+    const q = [s.container, s.v, s.a].filter(Boolean).join('·');
+    if (q) p.push(`Quelle ${q}`);
+    if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(',')}`);
+  }
+  p.push(`V${t.variant}${t.forced ? ' HLS erzwungen' : ''}`);
+  if (t.jumped != null) {
+    p.push(`Sprung ${t.jumped ? 'ja' : 'nein'}`);
+    if (Number.isFinite(t.devS)) p.push(`Abw ${sgn(t.devS)}`);
+    p.push(`Seek ${sec1(t.seekingMs)}/${sec1(t.seekedMs)}`, `canplay ${sec1(t.canplayMs)}`);
+    p.push(`Puffer ${range(t.bufSeeked)} → ${range(t.bufPlaying)}`);
+    p.push(`Warten ${t.waitCount || 0}×${t.waitCount ? ` ${sec(t.waitMs)} s` : ''}`);
+  }
+  return p.join(' · ');
+}
 
 export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
   const d = doc || (parent && parent.ownerDocument) || document;
@@ -24,7 +49,8 @@ export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
   el.style.cssText = STYLE;
   const l1 = d.createElement('div');
   const l2 = d.createElement('div');
-  el.append(l1, l2);
+  const l3 = d.createElement('div');
+  el.append(l1, l2, l3);
   parent.append(el);
 
   const hist = []; // Gesamtzeiten (ms) der letzten erfolgreichen Starts
@@ -67,6 +93,7 @@ export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
         if (hist.length) parts.push(`Ø ${sec(hist.reduce((a, b) => a + b, 0) / hist.length)} s (${hist.length})`);
       }
       l1.textContent = parts.join(' · ');
+      l3.textContent = detailLine(t);
       renderAudio();
     },
     updateAudio(info) {

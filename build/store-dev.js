@@ -181,7 +181,7 @@
     },
   };
 
-  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0', voiceOnline: q.get('voice') === 'online', voiceName: '', voicePitch: 'tief', touchControl: q.get('ctl') === 'touch' ? 'touch' : 'joystick' };
+  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0', voiceOnline: q.get('voice') === 'online', voiceName: '', voicePitch: 'tief', touchControl: q.get('ctl') === 'joystick' ? 'joystick' : 'touch' };
   deps.onPrefs = function (p) {
     if (typeof p.fps === 'boolean') prefs.fps = p.fps;
     if (typeof p.voiceOnline === 'boolean') prefs.voiceOnline = p.voiceOnline;

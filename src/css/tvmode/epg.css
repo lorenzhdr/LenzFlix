@@ -232,6 +232,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell {
   margin: 0;
   padding: 0 10px;
   overflow: hidden;
+  overflow: clip; /* kein Scroll-Container: der Titel (sticky) bindet sich an das Raster, nicht an die Zelle */
   border: 0;
   border-radius: 8px;
   background: var(--lfx-surface-2);
@@ -241,6 +242,21 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background var(--lfx-dur-fast) var(--lfx-ease);
+}
+/* Titel + Zeit rücken nach rechts nach, wenn die Zelle links unter die Senderspalte ragt (--tvm-vis per JS, Rest: 100 %) */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell-text {
+  position: sticky;
+  left: calc(var(--lfx-tvm-chan-w) + 4px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  width: fit-content;
+  min-width: 0;
+  max-width: min(100%, var(--tvm-vis, 100%));
+}
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--tiny .lfx-tvm__epg-cell-text {
+  display: none;
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell-title {
   overflow: hidden;

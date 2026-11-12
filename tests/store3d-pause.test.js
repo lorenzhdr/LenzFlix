@@ -26,7 +26,7 @@ describe('Pause-Menue: Touch-Steuerung', () => {
     p.destroy();
   });
   it('Untermenue schaltet Werte', () => {
-    const tune = { holdInvertY: false, holdInvertX: false, lookInvertY: false, lookInvertX: false, touchSens: 'normal' };
+    const tune = { holdInvertY: false, holdInvertX: false, lookFlipY: false, lookFlipX: false, touchSens: 'normal', touchRegrip: 'short' };
     let scheme = 'joystick';
     const { host, p } = make({
       onTouchControl: (s) => { scheme = s; }, getTouchControl: () => scheme,
@@ -45,14 +45,26 @@ describe('Pause-Menue: Touch-Steuerung', () => {
     btn('Cover drehen').click();
     btn('Umschauen hoch/runter').click();
     btn('Umschauen links/rechts').click();
-    expect(tune).toMatchObject({ holdInvertX: true, lookInvertY: true, lookInvertX: true });
+    expect(tune).toMatchObject({ holdInvertX: true, lookFlipY: true, lookFlipX: true });
     btn('Empfindlichkeit').click();
     expect(tune.touchSens).toBe('high');
     btn('Empfindlichkeit').click();
     expect(tune.touchSens).toBe('low');
     expect(btn('Empfindlichkeit').textContent).toBe('Empfindlichkeit: Niedrig');
+    expect(btn('Umschauen hoch/runter').textContent).toBe('Umschauen hoch/runter: Umgekehrt');
+    expect(btn('Umgreifen').hidden).toBe(true); // Joystick: kein Umgreifen
     btn('Steuerung').click();
     expect(scheme).toBe('touch');
+    expect(btn('Umgreifen').hidden).toBe(false);
+    expect(btn('Umgreifen').textContent).toBe('Umgreifen: Kurz');
+    btn('Umgreifen').click();
+    expect(tune.touchRegrip).toBe('long');
+    expect(btn('Umgreifen').textContent).toBe('Umgreifen: Lang');
+    btn('Umgreifen').click();
+    expect(tune.touchRegrip).toBe('off');
+    expect(btn('Umgreifen').textContent).toBe('Umgreifen: Aus');
+    btn('Umgreifen').click();
+    expect(tune.touchRegrip).toBe('short');
     expect(btn('Steuerung').textContent).toBe('Steuerung: Touch');
     btn('Zurück').click();
     expect(p.pickOpen).toBe(false);

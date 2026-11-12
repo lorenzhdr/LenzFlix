@@ -1534,7 +1534,23 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell {
   padding: 0 10px;
   display: flex;
   position: absolute;
-  overflow: hidden;
+  overflow: clip;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell-text {
+  left: calc(var(--lfx-tvm-chan-w) + 4px);
+  box-sizing: border-box;
+  width: fit-content;
+  min-width: 0;
+  max-width: min(100%, var(--tvm-vis, 100%));
+  flex-direction: column;
+  gap: 2px;
+  display: flex;
+  position: sticky;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell--tiny .lfx-tvm__epg-cell-text {
+  display: none;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell-title {
@@ -1840,7 +1856,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__main {
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player {
-  top: var(--lfx-tvm-head);
+  top: calc(var(--lfx-tvm-head) - 2px);
   z-index: 3;
   border-radius: 0;
   position: sticky;

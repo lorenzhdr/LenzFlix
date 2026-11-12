@@ -1,6 +1,8 @@
 // LenzFlix: Zugriff auf die Jellyfin-API (window.ApiClient, Fallback: localStorage.jellyfin_credentials).
 // Sicherheit: Das Access-Token wird nie geloggt und taucht in keiner Fehlermeldung auf.
 
+import { clearCache } from './cache.js';
+
 let storedMemo = { raw: undefined, server: null };
 
 function readStoredServer() {
@@ -142,6 +144,7 @@ export function getViews() {
 }
 
 export async function setFavorite(id, isFavorite) {
+  clearCache('home:'); // Startseiten-Cache: „Meine Liste“ sofort frisch
   const client = window.ApiClient;
   const userId = getUserId();
   if (client && typeof client.updateFavoriteStatus === 'function') {
@@ -158,6 +161,7 @@ export async function setFavorite(id, isFavorite) {
 
 /** Gesehen-Status setzen (POST) oder zurücknehmen (DELETE). */
 export async function setPlayed(id, played) {
+  clearCache('home:'); // Startseiten-Cache: „Weiterschauen“/„Als Nächstes“ sofort frisch
   const userId = getUserId();
   const { token } = getAuth();
   const res = await fetch(buildUrl(`/Users/${userId}/PlayedItems/${id}`), {

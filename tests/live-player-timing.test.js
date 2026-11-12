@@ -51,7 +51,8 @@ describe('Timing im Player', () => {
     fire(ctx.video, 'playing');
     const res = await p;
     expect(res).toMatchObject({ ok: true, mode: 'direct' });
-    expect(res.timing).toEqual({ totalMs: 1600, infoMs: 300, loadMs: 1100, startMs: 200, chain: 'D', cached: false, mode: 'direct' });
+    expect(res.timing).toMatchObject({ totalMs: 1600, infoMs: 300, loadMs: 1100, startMs: 200, chain: 'D', cached: false, mode: 'direct' });
+    expect(res.timing).toMatchObject({ variant: 1, forced: false, jumped: false, waitCount: 0, src: { v: 'h264', a: 'aac', reasons: [] } });
     expect(ctx.player.lastTiming()).toEqual(res.timing);
     expect(JSON.stringify(res.timing)).not.toMatch(/http|ApiKey|SECRET/);
   });
@@ -159,5 +160,21 @@ describe('directFailed dauerhaft (deps.storage)', () => {
     const bad = { getItem: () => { throw new Error('x'); }, setItem: () => { throw new Error('x'); } };
     expect((await directFailsThenRemux(setup({ storage: bad }))).ok).toBe(true);
     expect((await directFailsThenRemux(setup({ storage: null }))).ok).toBe(true);
+  });
+});
+
+describe('Timing: Zusatzfelder (Quelle, Grund)', () => {
+  it('HLS: Kürzel aus PlaybackInfo (Container, Codecs, erste 2 Gründe), keine URL/Token', async () => {
+    const streams = [{ Index: 0, Type: 'Video', Codec: 'hevc' }, { Index: 1, Type: 'Audio', Codec: 'eac3', IsDefault: true }];
+    const src = { ...ms({ direct: false, streams, transcodingUrl: hlsUrl('&TranscodeReasons=ContainerNotSupported,AudioCodecNotSupported,Other') }), Container: 'mkv', TranscodeReasons: ['ContainerNotSupported', 'AudioCodecNotSupported', 'Third'] };
+    const ctx = setup({ respond: () => info(src) });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    fire(ctx.video, 'loadedmetadata');
+    fire(ctx.video, 'playing');
+    const t = (await p).timing;
+    expect(t.src).toEqual({ container: 'mkv', v: 'hevc', a: 'eac3', reasons: ['Container', 'AudioCodec'] });
+    expect(t.mode).toBe('hls');
+    expect(JSON.stringify(t)).not.toMatch(/http|ApiKey|SECRET|m3u8/);
   });
 });

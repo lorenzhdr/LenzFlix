@@ -5,6 +5,48 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // src/js/core/cache.js
+  var store = /* @__PURE__ */ new Map();
+  var inflight = /* @__PURE__ */ new Map();
+  function cached(key, loader, ttlMs = 6e4) {
+    const hit = store.get(key);
+    if (hit && hit.expires > Date.now()) return Promise.resolve(hit.value);
+    if (inflight.has(key)) return inflight.get(key);
+    const p = Promise.resolve().then(loader).then((value) => {
+      if (inflight.get(key) === p) store.set(key, { value, expires: Date.now() + ttlMs });
+      return value;
+    }).finally(() => {
+      if (inflight.get(key) === p) inflight.delete(key);
+    });
+    inflight.set(key, p);
+    return p;
+  }
+  function peekCached(key) {
+    const hit = store.get(key);
+    return hit && hit.expires > Date.now() ? hit.value : void 0;
+  }
+  var HOME_TTL = 10 * 6e4;
+  var homeKey = (userId, ...parts) => ["home", userId || "anon", ...parts].join(":");
+  function clearCache(prefix) {
+    for (const k of [...store.keys()]) if (!prefix || k.startsWith(prefix)) store.delete(k);
+    for (const k of [...inflight.keys()]) if (!prefix || k.startsWith(prefix)) inflight.delete(k);
+  }
+  function debounce(fn, ms) {
+    let t = null;
+    const wrapped = (...args) => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        t = null;
+        fn(...args);
+      }, ms);
+    };
+    wrapped.cancel = () => {
+      clearTimeout(t);
+      t = null;
+    };
+    return wrapped;
+  }
+
   // src/js/core/api.js
   var storedMemo = { raw: void 0, server: null };
   function readStoredServer() {
@@ -120,6 +162,7 @@
     return getJson("/UserViews", { userId: getUserId() });
   }
   async function setFavorite(id, isFavorite) {
+    clearCache("home:");
     const client = window.ApiClient;
     const userId = getUserId();
     if (client && typeof client.updateFavoriteStatus === "function") {
@@ -134,6 +177,7 @@
     return res.json();
   }
   async function setPlayed(id, played) {
+    clearCache("home:");
     const userId = getUserId();
     const { token: token2 } = getAuth();
     const res = await fetch(buildUrl(`/Users/${userId}/PlayedItems/${id}`), {
@@ -198,39 +242,6 @@
     } catch {
       return null;
     }
-  }
-
-  // src/js/core/cache.js
-  var store = /* @__PURE__ */ new Map();
-  var inflight = /* @__PURE__ */ new Map();
-  function cached(key, loader, ttlMs = 6e4) {
-    const hit = store.get(key);
-    if (hit && hit.expires > Date.now()) return Promise.resolve(hit.value);
-    if (inflight.has(key)) return inflight.get(key);
-    const p = Promise.resolve().then(loader).then((value) => {
-      store.set(key, { value, expires: Date.now() + ttlMs });
-      return value;
-    }).finally(() => inflight.delete(key));
-    inflight.set(key, p);
-    return p;
-  }
-  function clearCache(prefix) {
-    for (const k of [...store.keys()]) if (!prefix || k.startsWith(prefix)) store.delete(k);
-  }
-  function debounce(fn, ms) {
-    let t = null;
-    const wrapped = (...args) => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        t = null;
-        fn(...args);
-      }, ms);
-    };
-    wrapped.cancel = () => {
-      clearTimeout(t);
-      t = null;
-    };
-    return wrapped;
   }
 
   // src/js/core/router.js
@@ -379,7 +390,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.2";
+  var VERSION = "1.11.3";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -1165,155 +1176,267 @@
     }
   }
 
-  // src/js/shared/routes.js
-  var enc = encodeURIComponent;
-  var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
-  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
-  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
-  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
-  var KINDS = ["title", "hub", "browse", "search", "new", "tv"];
-  function parseLfxRoute(route) {
-    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null };
-    if (!route || !route.params || route.path !== "/home") return empty2;
-    const kind2 = route.params.get("lfx");
-    if (!KINDS.includes(kind2)) return empty2;
-    return {
-      kind: kind2,
-      id: route.params.get("id") || null,
-      lib: route.params.get("lib") || null,
-      genre: route.params.get("genre") || null,
-      q: route.params.get("q") || null
-    };
+  // src/js/core/startcover.js
+  var ID2 = "lfx-startcover";
+  var PAGE = '[id="videoOsdPage"]:not(.hide)';
+  var SAFETY_MS = 25e3;
+  var FADE_MS = 200;
+  var el = null;
+  var itemId = null;
+  var origin = null;
+  var allowed = null;
+  var mo = null;
+  var raf = 0;
+  var safety = 0;
+  var leaving = 0;
+  var watching = false;
+  var routePath = () => parseHash(window.location.hash).path;
+  function isActive() {
+    const cl2 = document.documentElement.classList;
+    return !cl2.contains("layout-tv") && !isTheme("live");
   }
-  var tvModeHref = "#/home?lfx=tv";
-  var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
-
-  // src/js/features/themeroute.js
-  var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
-  var STORE_REDIRECT_KINDS = ["hub", "browse"];
-  var tvModeUnavailable = () => isTheme("retro") || isTheme("store") || isTheme("live") || isTv();
-  var lastKey = null;
-  var seq2 = 0;
-  function libraryUrl(id, ct) {
-    const q = `topParentId=${id}&collectionType=${ct}`;
-    switch (ct) {
-      case "movies":
-        return `#/movies?${q}`;
-      case "tvshows":
-        return `#/tv?${q}`;
-      case "music":
-        return `#/music?${q}`;
-      case "books":
-        return `#/books?${q}`;
-      case "musicvideos":
-        return `#/musicvideos?${q}`;
-      case "boxsets":
-        return `#/boxsets?${q}`;
-      case "playlists":
-        return `#/playlists?${q}`;
-      case "homevideos":
-        return `#/homevideos?topParentId=${id}`;
-      case "livetv":
-        return "#/livetv";
-      default:
-        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
-    }
-  }
-  function replaceTo(hash2) {
-    const { pathname, search } = window.location;
-    window.location.replace(`${pathname}${search}${hash2}`);
-  }
-  function toLibrary(lib, key, mine) {
-    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
-    const home = isTheme("store") ? "#/home?lfx=classic" : "#/home";
-    Promise.resolve().then(() => getViews()).then((views) => {
-      const items = views && views.Items || [];
-      const v = items.find((x) => x.Id === lib);
-      return v ? libraryUrl(v.Id, v.CollectionType) : home;
-    }).catch(() => `#/list?parentId=${encodeURIComponent(lib)}`).then((hash2) => {
-      if (stillHere()) replaceTo(hash2);
-    });
-  }
-  function redirect(route) {
-    const r = parseLfxRoute(route);
-    const store3 = isTheme("store");
-    const home = store3 ? "#/home?lfx=classic" : "#/home";
-    const key = route.hash;
-    if (key === lastKey) return;
-    lastKey = key;
-    const mine = ++seq2;
-    if (r.kind === "tv") {
-      replaceTo("#/home");
-    } else if (r.kind === "title") {
-      if (!r.id) return replaceTo("#/home");
-      const { serverId } = getAuth();
-      replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`);
-    } else if (r.kind === "hub") {
-      if (store3 && r.lib) return toLibrary(r.lib, key, mine);
-      replaceTo(home);
-    } else if (r.kind === "search") {
-      replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : "#/search");
-    } else if (r.kind === "browse") {
-      if (!r.lib) return replaceTo(home);
-      toLibrary(r.lib, key, mine);
-    }
-  }
-  var themeroute = {
-    name: "themeroute",
-    match: (route) => {
-      const kind2 = parseLfxRoute(route).kind;
-      if (kind2 === "tv") return tvModeUnavailable();
-      return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2);
-    },
-    mount: (route) => redirect(route),
-    update: (route) => redirect(route),
-    unmount: () => {
-      lastKey = null;
-      seq2++;
-    }
-  };
-  var themeroute_default = themeroute;
-
-  // src/js/core/stats.js
-  var stats_exports = {};
-  __export(stats_exports, {
-    STATS_LABEL: () => STATS_LABEL,
-    getStatsUrl: () => getStatsUrl,
-    isStatsHref: () => isStatsHref,
-    statsHref: () => statsHref
-  });
-  function clean(raw) {
-    const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "");
-    if (!s || /[\s"'\\<>]/.test(s)) return null;
-    if (/^https:\/\/[^/]/i.test(s)) return s;
-    if (/^\/(?![/\\])/.test(s)) return s;
-    return null;
-  }
-  function getStatsUrl() {
-    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.statsUrl);
-    if (fromConfig) return fromConfig;
+  function isNarrow2() {
     try {
-      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-stats-url"));
-    } catch {
-      return null;
-    }
-  }
-  function statsHref(theme = getTheme() || "flix") {
-    const url = getStatsUrl();
-    if (!url) return null;
-    return `${url}${url.includes("?") ? "&" : "?"}theme=${encodeURIComponent(theme)}`;
-  }
-  var STATS_LABEL = "Meine Statistik";
-  function isStatsHref(href) {
-    const stats = getStatsUrl();
-    if (!stats || !href) return false;
-    try {
-      const a = new URL(href, window.location.href);
-      const b = new URL(stats, window.location.href);
-      return a.origin === b.origin && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
+      return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches;
     } catch {
       return false;
     }
+  }
+  function backdropUrl(item) {
+    const opts = { type: "Backdrop", maxWidth: isNarrow2() ? 900 : 1600, quality: 80 };
+    const parentTag = item.ParentBackdropImageTags && item.ParentBackdropImageTags[0];
+    if (item.Type !== "Episode") {
+      const own2 = imageUrl(item, opts);
+      if (own2) return own2;
+    }
+    if (item.ParentBackdropItemId && parentTag) return imageUrlFor(item.ParentBackdropItemId, { ...opts, tag: parentTag });
+    if (item.Type === "Episode" && item.SeriesId) return imageUrlFor(item.SeriesId, opts);
+    return imageUrl(item, opts) || landscapeImage(item, { maxWidth: opts.maxWidth, quality: 80 });
+  }
+  function labels(item) {
+    if (item.Type === "Episode") {
+      const parts = [];
+      if (item.ParentIndexNumber != null) parts.push(`S${item.ParentIndexNumber}`);
+      if (item.IndexNumber != null) parts.push(`F${item.IndexNumber}`);
+      if (item.Name) parts.push(item.Name);
+      return { title: item.SeriesName || item.Name || "", sub: item.SeriesName ? parts.join(" \xB7 ") : "" };
+    }
+    return { title: item.Name || "", sub: "" };
+  }
+  function div(cls, text) {
+    const d = document.createElement("div");
+    d.className = cls;
+    if (text) d.textContent = text;
+    return d;
+  }
+  function fill(item) {
+    const url = backdropUrl(item);
+    let bg = el.querySelector(".lfx-startcover__bg");
+    if (!bg || bg.dataset.src !== (url || "")) {
+      if (bg) bg.remove();
+      bg = div("lfx-startcover__bg");
+      bg.dataset.src = url || "";
+      if (url) {
+        const img = new Image();
+        img.alt = "";
+        img.decoding = "async";
+        img.addEventListener("load", () => bg.classList.add("is-loaded"));
+        img.addEventListener("error", () => img.remove());
+        img.src = url;
+        bg.append(img);
+        if (img.complete && img.naturalWidth > 0) bg.classList.add("is-loaded");
+      }
+      el.prepend(bg);
+    }
+    el.querySelector(".lfx-startcover__text")?.remove();
+    const { title, sub } = labels(item);
+    const text = div("lfx-startcover__text");
+    if (title) text.append(div("lfx-startcover__title", title));
+    if (sub) text.append(div("lfx-startcover__sub", sub));
+    el.append(text);
+  }
+  function videoPlaying() {
+    if (!document.querySelector(PAGE)) return false;
+    const v = document.querySelector("video.htmlvideoplayer");
+    if (!v) return false;
+    return !v.paused && v.currentTime > 0 || v.readyState >= 2;
+  }
+  function check() {
+    raf = 0;
+    if (!el) return;
+    if (document.querySelector(".dialogContainer .dialog.opened")) {
+      hide();
+      return;
+    }
+    const path = routePath();
+    if (path !== "/video" && path !== origin && !(allowed && allowed.has(path))) {
+      hide();
+      return;
+    }
+    if (videoPlaying()) hide();
+  }
+  function schedule() {
+    if (raf || !el) return;
+    raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(check) : setTimeout(check, 0);
+  }
+  function onKeydown(e) {
+    if (e.key !== "Escape" && e.key !== "BrowserBack") return;
+    e.stopPropagation();
+    e.preventDefault();
+    hide();
+  }
+  function watch(on) {
+    if (on === watching) return;
+    watching = on;
+    const fn = on ? "addEventListener" : "removeEventListener";
+    window[fn]("popstate", schedule);
+    window[fn]("hashchange", schedule);
+    document[fn]("playing", schedule, true);
+    document[fn]("timeupdate", schedule, true);
+    document[fn]("loadeddata", schedule, true);
+    document[fn]("keydown", onKeydown, true);
+    if (on) {
+      mo = new MutationObserver(schedule);
+      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    } else {
+      if (mo) mo.disconnect();
+      mo = null;
+      if (raf) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf);
+        clearTimeout(raf);
+      }
+      raf = 0;
+    }
+  }
+  function cleanup() {
+    clearTimeout(safety);
+    clearTimeout(leaving);
+    safety = 0;
+    leaving = 0;
+    watch(false);
+    document.documentElement.classList.remove(ON_CLASS);
+    unmountPoint(ID2);
+    el = null;
+    itemId = null;
+    origin = null;
+    allowed = null;
+  }
+  var ON_CLASS = "lfx-startcover-on";
+  function show({ item } = {}) {
+    if (!item || !item.Id || !isActive()) return;
+    clearTimeout(leaving);
+    leaving = 0;
+    if (!el) {
+      el = mountPoint(ID2, { className: "lfx-startcover" });
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-label", "Wiedergabe wird geladen");
+      el.append(div("lfx-startcover__spinner"));
+      origin = routePath();
+      allowed = /* @__PURE__ */ new Set();
+      itemId = null;
+    }
+    el.classList.remove("is-leaving");
+    document.documentElement.classList.add(ON_CLASS);
+    watch(true);
+    if (itemId !== item.Id) {
+      itemId = item.Id;
+      fill(item);
+    }
+    clearTimeout(safety);
+    safety = setTimeout(hide, SAFETY_MS);
+  }
+  function allowRoute(path) {
+    if (allowed) allowed.add(path);
+  }
+  function hide() {
+    if (!el) return;
+    const node = el;
+    clearTimeout(safety);
+    safety = 0;
+    watch(false);
+    document.documentElement.classList.remove(ON_CLASS);
+    node.classList.add("is-leaving");
+    leaving = setTimeout(() => {
+      if (el === node) cleanup();
+    }, FADE_MS);
+  }
+
+  // src/js/core/playback.js
+  function isVisible(el4) {
+    return el4.getClientRects().length > 0;
+  }
+  function findProxyContainer() {
+    const all = [...document.querySelectorAll(".itemsContainer")].filter((c) => c.querySelector(".card"));
+    return all.find(isVisible) || all[0] || null;
+  }
+  function buildProxy(item, resume) {
+    const el4 = document.createElement("div");
+    el4.className = "itemAction lfx-proxy";
+    el4.style.display = "none";
+    el4.setAttribute("data-action", resume ? "resume" : "play");
+    el4.setAttribute("data-id", item.Id);
+    el4.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el4.setAttribute("data-type", item.Type || "");
+    el4.setAttribute("data-mediatype", item.MediaType || "");
+    el4.setAttribute("data-isfolder", String(Boolean(item.IsFolder)));
+    const ticks = resume && item.UserData ? item.UserData.PlaybackPositionTicks || 0 : 0;
+    if (ticks) el4.setAttribute("data-positionticks", String(ticks));
+    return el4;
+  }
+  function playViaDetails(item, resume, timeoutMs) {
+    return new Promise((resolve2) => {
+      const serverId = item.ServerId || getAuth().serverId || "";
+      window.location.hash = `#/details?id=${item.Id}&serverId=${serverId}`;
+      const started2 = Date.now();
+      const timer2 = setInterval(() => {
+        const wrap = document.querySelector(".itemDetailPage:not(.hide) .mainDetailButtons");
+        const visible = (sel) => wrap && [...wrap.querySelectorAll(sel)].find((b) => !b.classList.contains("hide"));
+        const target = resume ? visible(".btnPlay") : visible(".btnReplay") || visible(".btnPlay");
+        if (target) {
+          clearInterval(timer2);
+          target.click();
+          resolve2(true);
+        } else if (Date.now() - started2 > timeoutMs) {
+          clearInterval(timer2);
+          resolve2(false);
+        }
+      }, 150);
+    });
+  }
+  async function play(item, { resume = false, timeoutMs = 8e3 } = {}) {
+    if (!item || !item.Id) return false;
+    window.dispatchEvent(new CustomEvent("lfx:play", { detail: { id: item.Id } }));
+    show({ item });
+    const container = findProxyContainer();
+    if (container) {
+      const proxy = buildProxy(item, resume);
+      container.append(proxy);
+      try {
+        proxy.click();
+      } finally {
+        proxy.remove();
+      }
+      return true;
+    }
+    allowRoute("/details");
+    const ok = await playViaDetails(item, resume, timeoutMs);
+    if (!ok) hide();
+    return ok;
+  }
+
+  // src/js/core/itemstore.js
+  var store2 = /* @__PURE__ */ new Map();
+  var MAX = 2e3;
+  function putItems(items) {
+    for (const it of items || []) {
+      if (!it || !it.Id) continue;
+      store2.delete(it.Id);
+      store2.set(it.Id, it);
+    }
+    while (store2.size > MAX) store2.delete(store2.keys().next().value);
+  }
+  function getStoredItem(id) {
+    return store2.get(id) || null;
   }
 
   // src/js/core/swipe.js
@@ -1512,19 +1635,488 @@
     };
   }
 
-  // src/js/core/itemstore.js
-  var store2 = /* @__PURE__ */ new Map();
-  var MAX = 2e3;
-  function putItems(items) {
-    for (const it of items || []) {
-      if (!it || !it.Id) continue;
-      store2.delete(it.Id);
-      store2.set(it.Id, it);
-    }
-    while (store2.size > MAX) store2.delete(store2.keys().next().value);
+  // src/js/core/itemmenu.js
+  var END_QUIET_MS = 800;
+  var NO_DIALOG_TIMEOUT_MS = 4e3;
+  var HIDDEN_FIRST = ["download", "downloadall", "multiSelect"];
+  var CHANGING_COMMANDS = ["delete", "edit", "editimages", "editsubtitles", "identify", "refresh", "addtocollection", "removefromcollection"];
+  var RETRY_COMMANDS = ["delete", "refresh"];
+  var RETRY_DELAYS = [1e3, 3e3, 8e3];
+  var FOLDER_TYPES = ["Series", "Season", "BoxSet"];
+  var EDGE = 8;
+  function rectOf(anchor) {
+    if (anchor && typeof anchor.getBoundingClientRect === "function") return anchor.getBoundingClientRect();
+    const x = Number(anchor && anchor.x) || 0;
+    const y = Number(anchor && anchor.y) || 0;
+    return { left: x, right: x, top: y, bottom: y, width: 0, height: 0 };
   }
-  function getStoredItem(id) {
-    return store2.get(id) || null;
+  function computeMenuPosition(anchorRect, viewport, menu = { w: 300, h: 320 }) {
+    const vp = viewport || { w: window.innerWidth, h: window.innerHeight };
+    const gap = 4;
+    const clamp2 = (v, min, max) => Math.max(min, Math.min(v, Math.max(min, max)));
+    const isPoint = anchorRect.right === anchorRect.left;
+    let x = isPoint ? anchorRect.left : anchorRect.right - menu.w;
+    x = clamp2(x, EDGE, vp.w - menu.w - EDGE);
+    let y = anchorRect.bottom + gap;
+    if (y + menu.h > vp.h - EDGE) {
+      const above = anchorRect.top - gap - menu.h;
+      y = above >= EDGE ? above : y;
+    }
+    y = clamp2(y, EDGE, vp.h - menu.h - EDGE);
+    return { x, y };
+  }
+  var listeners2 = /* @__PURE__ */ new Set();
+  var ownDeletes = /* @__PURE__ */ new Set();
+  function onItemsChanged(fn) {
+    listeners2.add(fn);
+    return () => listeners2.delete(fn);
+  }
+  function emit2({ removed = [], updated = [] }) {
+    if (!removed.length && !updated.length) return;
+    if (removed.some((id) => ownDeletes.has(id))) {
+      for (const id of removed) ownDeletes.delete(id);
+      toast("Gel\xF6scht");
+    }
+    for (const fn of [...listeners2]) {
+      try {
+        fn({ removed, updated });
+      } catch {
+      }
+    }
+  }
+  var retryTimers = [];
+  function clearRetries() {
+    retryTimers.forEach(clearTimeout);
+    retryTimers = [];
+  }
+  function isNetworkError(err) {
+    return err instanceof TypeError || /failed to fetch|network/i.test(String(err && err.message));
+  }
+  async function verifyItem(id, removalOnly = false) {
+    let item;
+    try {
+      item = await getItem(id);
+    } catch (err) {
+      if (isNetworkError(err) || !/\b404\b/.test(String(err && err.message))) return false;
+      emit2({ removed: [id], updated: [] });
+      return true;
+    }
+    if (!item || !item.Id) {
+      emit2({ removed: [id], updated: [] });
+      return true;
+    }
+    if (removalOnly) return false;
+    putItems([item]);
+    emit2({ removed: [], updated: [id] });
+    return false;
+  }
+  function afterSession(id, command) {
+    if (!id || !CHANGING_COMMANDS.includes(command)) return;
+    if (command === "delete") ownDeletes.add(id);
+    let done = false;
+    const run = async () => {
+      if (done) return;
+      if (await verifyItem(id, command === "delete")) done = true;
+    };
+    run();
+    if (RETRY_COMMANDS.includes(command)) {
+      const last = RETRY_DELAYS[RETRY_DELAYS.length - 1];
+      for (const delay of RETRY_DELAYS) {
+        retryTimers.push(
+          setTimeout(async () => {
+            await run();
+            if (delay === last && !done) ownDeletes.delete(id);
+          }, delay)
+        );
+      }
+    }
+  }
+  var session = null;
+  function clearMarker() {
+    const root7 = document.documentElement;
+    root7.classList.remove("lfx-menu-open");
+    root7.style.removeProperty("--lfx-menu-x");
+    root7.style.removeProperty("--lfx-menu-y");
+  }
+  function setPosition(pos) {
+    const root7 = document.documentElement;
+    root7.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
+    root7.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
+  }
+  var isTouchSheet = () => typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches;
+  function attachSheetSwipe(s, sheet) {
+    if (!isTouchSheet()) return;
+    const backdrop = document.querySelector(".dialogBackdrop");
+    s.detachSwipe = attachSwipeClose(sheet, {
+      backdrop,
+      onClose: () => {
+        if (s.escaped || !sheet.isConnected) return;
+        s.escaped = true;
+        history.back();
+      }
+    });
+  }
+  function teardown(s) {
+    if (s.detachSwipe) {
+      s.detachSwipe();
+      s.detachSwipe = null;
+    }
+    s.observer.disconnect();
+    clearTimeout(s.endTimer);
+    clearTimeout(s.startTimer);
+    document.removeEventListener("click", s.onClick, true);
+    window.removeEventListener("keydown", s.onKey, true);
+    s.wrapper.remove();
+    clearMarker();
+    if (session === s) session = null;
+  }
+  function finish(s) {
+    if (session !== s) return;
+    teardown(s);
+    const { anchor, opts, command, item } = s;
+    if (anchor && typeof anchor.focus === "function" && anchor.isConnected) {
+      try {
+        anchor.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    if (typeof opts.onClose === "function") {
+      try {
+        opts.onClose({ command });
+      } catch {
+      }
+    }
+    afterSession(item.Id, command);
+  }
+  function focusFirstEntry(sheet) {
+    const entries = [...sheet.querySelectorAll(".actionSheetMenuItem")].filter(
+      (el4) => !HIDDEN_FIRST.includes(el4.getAttribute("data-id")) && !el4.hidden && el4.style.display !== "none"
+    );
+    if (entries[0]) entries[0].focus({ preventScroll: true });
+  }
+  function onMutation(s) {
+    const containers = document.querySelectorAll(".dialogContainer");
+    if (containers.length) {
+      s.sawDialog = true;
+      clearTimeout(s.endTimer);
+      s.endTimer = null;
+      clearTimeout(s.startTimer);
+      s.startTimer = null;
+      if (!s.sheet) {
+        const sheet = document.querySelector(".dialogContainer .dialog.actionSheet");
+        if (sheet) {
+          s.sheet = sheet;
+          const w = sheet.offsetWidth;
+          const hgt = sheet.offsetHeight;
+          if (w && hgt) setPosition(computeMenuPosition(rectOf(s.anchor), void 0, { w, h: hgt }));
+          focusFirstEntry(sheet);
+          attachSheetSwipe(s, sheet);
+        }
+      }
+    }
+    if (s.sheet && !s.sheet.isConnected && !s.markerCleared) {
+      s.markerCleared = true;
+      clearMarker();
+    }
+    if (!containers.length && s.sawDialog && !s.endTimer) {
+      s.endTimer = setTimeout(() => finish(s), END_QUIET_MS);
+    }
+  }
+  function buildProxyFor(item) {
+    const isFolder = Boolean(item.IsFolder) || FOLDER_TYPES.includes(item.Type);
+    const el4 = document.createElement("div");
+    el4.className = "lfx-proxy itemAction";
+    el4.setAttribute("data-action", "menu");
+    el4.setAttribute("data-id", item.Id);
+    el4.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el4.setAttribute("data-type", item.Type || "");
+    el4.setAttribute("data-isfolder", String(isFolder));
+    el4.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
+    return el4;
+  }
+  function openItemMenu(item, anchor, opts = {}) {
+    if (!item || !item.Id) return false;
+    if (session) teardown(session);
+    const container = findProxyContainer();
+    if (!container) {
+      toast("Men\xFC hier nicht verf\xFCgbar");
+      return false;
+    }
+    const wrapper = document.createElement("div");
+    wrapper.className = "lfx-proxywrap itemsContainer";
+    wrapper.style.display = "none";
+    const list = Array.isArray(opts.siblings) && opts.siblings.some((s2) => s2 && s2.Id === item.Id) ? opts.siblings : [item];
+    let target = null;
+    for (const it of list) {
+      if (!it || !it.Id) continue;
+      const proxy = buildProxyFor(it);
+      wrapper.append(proxy);
+      if (it.Id === item.Id) target = proxy;
+    }
+    container.append(wrapper);
+    const s = {
+      item,
+      anchor,
+      opts,
+      wrapper,
+      command: null,
+      sheet: null,
+      sawDialog: false,
+      markerCleared: false,
+      endTimer: null,
+      startTimer: null,
+      observer: null,
+      onClick: null
+    };
+    s.onClick = (e) => {
+      if (s.command) return;
+      const entry = e.target && e.target.closest && e.target.closest(".actionSheetMenuItem[data-id]");
+      if (entry && (!s.sheet || s.sheet.contains(entry))) s.command = entry.getAttribute("data-id");
+    };
+    s.onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (s.sheet && !s.sheet.isConnected) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      if (!s.sheet || s.escaped) return;
+      s.escaped = true;
+      history.back();
+    };
+    window.addEventListener("keydown", s.onKey, true);
+    s.observer = new MutationObserver(() => onMutation(s));
+    s.observer.observe(document.body, { childList: true });
+    document.addEventListener("click", s.onClick, true);
+    s.startTimer = setTimeout(() => finish(s), NO_DIALOG_TIMEOUT_MS);
+    session = s;
+    setPosition(computeMenuPosition(rectOf(anchor)));
+    document.documentElement.classList.add("lfx-menu-open");
+    target.click();
+    return true;
+  }
+  function isMenuOpen() {
+    return session !== null;
+  }
+  function closeItemMenu() {
+    if (session) teardown(session);
+    else clearMarker();
+    clearRetries();
+    ownDeletes.clear();
+  }
+  var unsubscribeWatch = null;
+  function onLibraryChanged(msg) {
+    const data = msg && msg.Data || {};
+    const removed = Array.isArray(data.ItemsRemoved) ? data.ItemsRemoved.filter(Boolean) : [];
+    const updated = Array.isArray(data.ItemsUpdated) ? data.ItemsUpdated.filter(Boolean) : [];
+    emit2({ removed, updated });
+  }
+  function startItemWatch() {
+    if (unsubscribeWatch) return;
+    const client = window.ApiClient;
+    if (!client || typeof client.subscribe !== "function") return;
+    try {
+      const res = client.subscribe(["LibraryChanged"], onLibraryChanged);
+      unsubscribeWatch = typeof res === "function" ? res : () => {
+        if (typeof client.unsubscribe === "function") client.unsubscribe(["LibraryChanged"], onLibraryChanged);
+      };
+    } catch {
+      unsubscribeWatch = null;
+    }
+  }
+  function stopItemWatch() {
+    if (unsubscribeWatch) {
+      try {
+        unsubscribeWatch();
+      } catch {
+      }
+      unsubscribeWatch = null;
+    }
+    closeItemMenu();
+  }
+
+  // src/js/core/homecache.js
+  var stop = null;
+  function initHomeCache() {
+    if (stop) return;
+    const drop2 = () => clearCache("home:");
+    const inPlayer = () => parseHash(window.location.hash).path.startsWith("/video");
+    let wasPlayer = inPlayer();
+    let uid = getUserId();
+    const onRoute2 = () => {
+      const now = inPlayer();
+      if (now && !wasPlayer) drop2();
+      wasPlayer = now;
+      const u = getUserId();
+      if (u !== uid) {
+        uid = u;
+        drop2();
+      }
+    };
+    window.addEventListener("lfx:play", drop2);
+    window.addEventListener("hashchange", onRoute2);
+    window.addEventListener("popstate", onRoute2);
+    const off = onItemsChanged(drop2);
+    stop = () => {
+      window.removeEventListener("lfx:play", drop2);
+      window.removeEventListener("hashchange", onRoute2);
+      window.removeEventListener("popstate", onRoute2);
+      off();
+      stop = null;
+    };
+  }
+  function destroyHomeCache() {
+    if (stop) stop();
+  }
+
+  // src/js/shared/routes.js
+  var enc = encodeURIComponent;
+  var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
+  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
+  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
+  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
+  var KINDS = ["title", "hub", "browse", "search", "new", "tv"];
+  function parseLfxRoute(route) {
+    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null };
+    if (!route || !route.params || route.path !== "/home") return empty2;
+    const kind2 = route.params.get("lfx");
+    if (!KINDS.includes(kind2)) return empty2;
+    return {
+      kind: kind2,
+      id: route.params.get("id") || null,
+      lib: route.params.get("lib") || null,
+      genre: route.params.get("genre") || null,
+      q: route.params.get("q") || null
+    };
+  }
+  var tvModeHref = "#/home?lfx=tv";
+  var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
+
+  // src/js/features/themeroute.js
+  var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
+  var STORE_REDIRECT_KINDS = ["hub", "browse"];
+  var tvModeUnavailable = () => isTheme("retro") || isTheme("store") || isTheme("live") || isTv();
+  var lastKey = null;
+  var seq2 = 0;
+  function libraryUrl(id, ct) {
+    const q = `topParentId=${id}&collectionType=${ct}`;
+    switch (ct) {
+      case "movies":
+        return `#/movies?${q}`;
+      case "tvshows":
+        return `#/tv?${q}`;
+      case "music":
+        return `#/music?${q}`;
+      case "books":
+        return `#/books?${q}`;
+      case "musicvideos":
+        return `#/musicvideos?${q}`;
+      case "boxsets":
+        return `#/boxsets?${q}`;
+      case "playlists":
+        return `#/playlists?${q}`;
+      case "homevideos":
+        return `#/homevideos?topParentId=${id}`;
+      case "livetv":
+        return "#/livetv";
+      default:
+        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
+    }
+  }
+  function replaceTo(hash2) {
+    const { pathname, search } = window.location;
+    window.location.replace(`${pathname}${search}${hash2}`);
+  }
+  function toLibrary(lib, key, mine) {
+    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
+    const home = isTheme("store") ? "#/home?lfx=classic" : "#/home";
+    Promise.resolve().then(() => getViews()).then((views) => {
+      const items = views && views.Items || [];
+      const v = items.find((x) => x.Id === lib);
+      return v ? libraryUrl(v.Id, v.CollectionType) : home;
+    }).catch(() => `#/list?parentId=${encodeURIComponent(lib)}`).then((hash2) => {
+      if (stillHere()) replaceTo(hash2);
+    });
+  }
+  function redirect(route) {
+    const r = parseLfxRoute(route);
+    const store3 = isTheme("store");
+    const home = store3 ? "#/home?lfx=classic" : "#/home";
+    const key = route.hash;
+    if (key === lastKey) return;
+    lastKey = key;
+    const mine = ++seq2;
+    if (r.kind === "tv") {
+      replaceTo("#/home");
+    } else if (r.kind === "title") {
+      if (!r.id) return replaceTo("#/home");
+      const { serverId } = getAuth();
+      replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`);
+    } else if (r.kind === "hub") {
+      if (store3 && r.lib) return toLibrary(r.lib, key, mine);
+      replaceTo(home);
+    } else if (r.kind === "search") {
+      replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : "#/search");
+    } else if (r.kind === "browse") {
+      if (!r.lib) return replaceTo(home);
+      toLibrary(r.lib, key, mine);
+    }
+  }
+  var themeroute = {
+    name: "themeroute",
+    match: (route) => {
+      const kind2 = parseLfxRoute(route).kind;
+      if (kind2 === "tv") return tvModeUnavailable();
+      return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2);
+    },
+    mount: (route) => redirect(route),
+    update: (route) => redirect(route),
+    unmount: () => {
+      lastKey = null;
+      seq2++;
+    }
+  };
+  var themeroute_default = themeroute;
+
+  // src/js/core/stats.js
+  var stats_exports = {};
+  __export(stats_exports, {
+    STATS_LABEL: () => STATS_LABEL,
+    getStatsUrl: () => getStatsUrl,
+    isStatsHref: () => isStatsHref,
+    statsHref: () => statsHref
+  });
+  function clean(raw) {
+    const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "");
+    if (!s || /[\s"'\\<>]/.test(s)) return null;
+    if (/^https:\/\/[^/]/i.test(s)) return s;
+    if (/^\/(?![/\\])/.test(s)) return s;
+    return null;
+  }
+  function getStatsUrl() {
+    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.statsUrl);
+    if (fromConfig) return fromConfig;
+    try {
+      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-stats-url"));
+    } catch {
+      return null;
+    }
+  }
+  function statsHref(theme = getTheme() || "flix") {
+    const url = getStatsUrl();
+    if (!url) return null;
+    return `${url}${url.includes("?") ? "&" : "?"}theme=${encodeURIComponent(theme)}`;
+  }
+  var STATS_LABEL = "Meine Statistik";
+  function isStatsHref(href) {
+    const stats = getStatsUrl();
+    if (!stats || !href) return false;
+    try {
+      const a = new URL(href, window.location.href);
+      const b = new URL(stats, window.location.href);
+      return a.origin === b.origin && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
+    } catch {
+      return false;
+    }
   }
 
   // src/js/features/rows/logic.js
@@ -1772,7 +2364,7 @@
   }
 
   // src/js/core/themepicker.js
-  var ID2 = "lfx-themepicker";
+  var ID3 = "lfx-themepicker";
   var BETA = /* @__PURE__ */ new Set(["retro", "store", "live"]);
   var STORE_ROWS = [7, 6];
   var STORE_COVERS = STORE_ROWS.reduce((a, b) => a + b, 0);
@@ -2024,7 +2616,7 @@
   function openThemePicker({ returnFocus } = {}) {
     if (current) closeThemePicker();
     const sheet = isMobileViewport();
-    const overlay = mountPoint(ID2, { className: `lfx-tp${sheet ? " lfx-tp--sheet" : ""}` });
+    const overlay = mountPoint(ID3, { className: `lfx-tp${sheet ? " lfx-tp--sheet" : ""}` });
     overlay.className = `lfx-tp${sheet ? " lfx-tp--sheet" : ""}`;
     const c = { overlay, cards: /* @__PURE__ */ new Map(), loading: null, returnFocus: returnFocus || null };
     const closeBtn = h("button", { type: "button", class: "lfx-tp__close", "aria-label": "Schlie\xDFen" }, "\xD7");
@@ -2101,7 +2693,7 @@
   }
 
   // src/js/core/ambient.js
-  var ID3 = "lfx-ambient";
+  var ID4 = "lfx-ambient";
   var clamp = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
   var current2 = null;
   function setAmbient(r, g, b) {
@@ -2119,10 +2711,10 @@
     for (const p of ["--lfx-ambient-r", "--lfx-ambient-g", "--lfx-ambient-b", "--lfx-ambient"]) s.removeProperty(p);
   }
   function mountAmbient() {
-    return mountPoint(ID3, { before: document.body.firstChild, className: "lfx-ambient" });
+    return mountPoint(ID4, { before: document.body.firstChild, className: "lfx-ambient" });
   }
   function unmountAmbient() {
-    unmountPoint(ID3);
+    unmountPoint(ID4);
     resetAmbient();
   }
 
@@ -2546,15 +3138,15 @@
   );
 
   // src/js/features/tvbtn.js
-  var ID4 = "lfx-tvm-btn";
-  var el = null;
+  var ID5 = "lfx-tvm-btn";
+  var el2 = null;
   var intent = () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent"));
   function applyActive3(route) {
-    if (!el) return;
+    if (!el2) return;
     const on = isTvModeRoute(route);
-    el.classList.toggle("is-active", on);
-    if (on) el.setAttribute("aria-current", "page");
-    else el.removeAttribute("aria-current");
+    el2.classList.toggle("is-active", on);
+    if (on) el2.setAttribute("aria-current", "page");
+    else el2.removeAttribute("aria-current");
   }
   var tvbtnFeature = {
     name: "tvbtn",
@@ -2562,13 +3154,13 @@
       return isReady() && isModern() && !isTv() && isTheme("flix") && !EXCLUDED.test(route.path);
     },
     mount(route) {
-      el = mountPoint(ID4, { tag: "a", className: "lfx-tvbtn" });
-      el.href = tvModeHref;
-      el.setAttribute("aria-label", "TV");
-      el.title = "TV";
-      el.dataset.key = "tv";
-      el.innerHTML = ICON_TVMODE;
-      el.addEventListener("click", intent);
+      el2 = mountPoint(ID5, { tag: "a", className: "lfx-tvbtn" });
+      el2.href = tvModeHref;
+      el2.setAttribute("aria-label", "TV");
+      el2.title = "TV";
+      el2.dataset.key = "tv";
+      el2.innerHTML = ICON_TVMODE;
+      el2.addEventListener("click", intent);
       document.documentElement.classList.add("lfx-tvbtn-on");
       applyActive3(route);
     },
@@ -2576,17 +3168,17 @@
       applyActive3(route);
     },
     unmount() {
-      if (el) el.removeEventListener("click", intent);
-      unmountPoint(ID4);
+      if (el2) el2.removeEventListener("click", intent);
+      unmountPoint(ID5);
       document.documentElement.classList.remove("lfx-tvbtn-on");
-      el = null;
+      el2 = null;
     }
   };
   var tvbtn_default = tvbtnFeature;
 
   // src/js/features/osdcenter.js
-  var ID5 = "lfx-osdc";
-  var PAGE = '[id="videoOsdPage"]:not(.hide)';
+  var ID6 = "lfx-osdc";
+  var PAGE2 = '[id="videoOsdPage"]:not(.hide)';
   var svg2 = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
   var num = (n) => `<text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="inherit">${n}</text>`;
   var ICON = {
@@ -2596,13 +3188,13 @@
     pause: svg2('<path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/>')
   };
   var STOP = ["pointerdown", "pointerup", "mousedown", "mouseup", "touchstart", "touchend", "click"];
-  var el2 = null;
-  var mo = null;
-  var raf = 0;
+  var el3 = null;
+  var mo2 = null;
+  var raf2 = 0;
   var video = null;
   var paused = true;
   var btns = null;
-  var page = () => document.querySelector(PAGE);
+  var page = () => document.querySelector(PAGE2);
   function setPlayIcon() {
     if (!btns) return;
     btns.play.innerHTML = paused ? ICON.play : ICON.pause;
@@ -2621,23 +3213,23 @@
     onVideoState();
   }
   function sync() {
-    raf = 0;
-    if (!el2) return;
+    raf2 = 0;
+    if (!el3) return;
     bindVideo();
     const p = page();
     const bar = p && p.querySelector(".videoOsdBottom");
     const up = p && p.querySelector(".upNextContainer");
     const on = Boolean(bar) && !bar.classList.contains("videoOsdBottom-hidden") && !bar.classList.contains("hide") && !(up && !up.classList.contains("hide")) && !document.querySelector(".dialogContainer .dialog.opened");
-    el2.classList.toggle("is-visible", on);
-    el2.setAttribute("aria-hidden", on ? "false" : "true");
+    el3.classList.toggle("is-visible", on);
+    el3.setAttribute("aria-hidden", on ? "false" : "true");
     for (const [k, sel] of [["back", ".btnRewind"], ["play", ".btnPause"], ["fwd", ".btnFastForward"]]) {
       const proxy = p && p.querySelector(sel);
       btns[k].classList.toggle("is-off", !proxy || proxy.classList.contains("hide"));
     }
   }
-  function schedule() {
-    if (raf) return;
-    raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sync) : setTimeout(sync, 0);
+  function schedule2() {
+    if (raf2) return;
+    raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sync) : setTimeout(sync, 0);
   }
   function press(key, sel) {
     const proxy = page() && page().querySelector(sel);
@@ -2648,7 +3240,7 @@
     }
     proxy.click();
   }
-  function stop(e) {
+  function stop2(e) {
     if (!e.target.closest || !e.target.closest("button")) return;
     e.stopPropagation();
     if (e.type === "click") e.preventDefault();
@@ -2668,33 +3260,33 @@
       return !isTv() && !isTheme("live") && Boolean(page() || route && route.path === "/video");
     },
     mount() {
-      el2 = mountPoint(ID5, { className: "lfx-osdc" });
+      el3 = mountPoint(ID6, { className: "lfx-osdc" });
       btns = {
         back: btn("back", "10 Sekunden zur\xFCck", ".btnRewind"),
         play: btn("play", "Abspielen", ".btnPause"),
         fwd: btn("fwd", "30 Sekunden vor", ".btnFastForward")
       };
-      el2.append(btns.back, btns.play, btns.fwd);
-      for (const t of STOP) el2.addEventListener(t, stop);
-      mo = new MutationObserver(schedule);
-      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+      el3.append(btns.back, btns.play, btns.fwd);
+      for (const t of STOP) el3.addEventListener(t, stop2);
+      mo2 = new MutationObserver(schedule2);
+      mo2.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
       sync();
     },
     update() {
-      schedule();
+      schedule2();
     },
     unmount() {
-      if (mo) mo.disconnect();
-      mo = null;
-      if (raf) {
-        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf);
-        clearTimeout(raf);
+      if (mo2) mo2.disconnect();
+      mo2 = null;
+      if (raf2) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf2);
+        clearTimeout(raf2);
       }
-      raf = 0;
+      raf2 = 0;
       if (video) for (const t of ["play", "pause", "emptied"]) video.removeEventListener(t, onVideoState);
       video = null;
-      unmountPoint(ID5);
-      el2 = null;
+      unmountPoint(ID6);
+      el3 = null;
       btns = null;
     }
   };
@@ -2702,7 +3294,7 @@
 
   // src/js/features/playerbg.js
   var CLASS2 = "lfx-in-player";
-  var PAGE2 = '[id="videoOsdPage"]:not(.hide)';
+  var PAGE3 = '[id="videoOsdPage"]:not(.hide)';
   var OWN_ATTR = "data-lfx-playerbg";
   var meta = null;
   var prev = null;
@@ -2733,7 +3325,7 @@
   var playerbgFeature = {
     name: "playerbg",
     match(route) {
-      return !isTv() && Boolean(document.querySelector(PAGE2) || route && route.path === "/video");
+      return !isTv() && Boolean(document.querySelector(PAGE3) || route && route.path === "/video");
     },
     mount() {
       document.documentElement.classList.add(CLASS2);
@@ -2820,553 +3412,6 @@
   function ambientFromPixels(rgba) {
     const dom = dominantColor(rgba);
     return dom ? clampAmbient(dom) : DEFAULT_AMBIENT.slice();
-  }
-
-  // src/js/core/startcover.js
-  var ID6 = "lfx-startcover";
-  var PAGE3 = '[id="videoOsdPage"]:not(.hide)';
-  var SAFETY_MS = 25e3;
-  var FADE_MS = 200;
-  var el3 = null;
-  var itemId = null;
-  var origin = null;
-  var allowed = null;
-  var mo2 = null;
-  var raf2 = 0;
-  var safety = 0;
-  var leaving = 0;
-  var watching = false;
-  var routePath = () => parseHash(window.location.hash).path;
-  function isActive() {
-    const cl2 = document.documentElement.classList;
-    return !cl2.contains("layout-tv") && !isTheme("live");
-  }
-  function isNarrow2() {
-    try {
-      return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches;
-    } catch {
-      return false;
-    }
-  }
-  function backdropUrl(item) {
-    const opts = { type: "Backdrop", maxWidth: isNarrow2() ? 900 : 1600, quality: 80 };
-    const parentTag = item.ParentBackdropImageTags && item.ParentBackdropImageTags[0];
-    if (item.Type !== "Episode") {
-      const own2 = imageUrl(item, opts);
-      if (own2) return own2;
-    }
-    if (item.ParentBackdropItemId && parentTag) return imageUrlFor(item.ParentBackdropItemId, { ...opts, tag: parentTag });
-    if (item.Type === "Episode" && item.SeriesId) return imageUrlFor(item.SeriesId, opts);
-    return imageUrl(item, opts) || landscapeImage(item, { maxWidth: opts.maxWidth, quality: 80 });
-  }
-  function labels(item) {
-    if (item.Type === "Episode") {
-      const parts = [];
-      if (item.ParentIndexNumber != null) parts.push(`S${item.ParentIndexNumber}`);
-      if (item.IndexNumber != null) parts.push(`F${item.IndexNumber}`);
-      if (item.Name) parts.push(item.Name);
-      return { title: item.SeriesName || item.Name || "", sub: item.SeriesName ? parts.join(" \xB7 ") : "" };
-    }
-    return { title: item.Name || "", sub: "" };
-  }
-  function div(cls, text) {
-    const d = document.createElement("div");
-    d.className = cls;
-    if (text) d.textContent = text;
-    return d;
-  }
-  function fill(item) {
-    const url = backdropUrl(item);
-    let bg = el3.querySelector(".lfx-startcover__bg");
-    if (!bg || bg.dataset.src !== (url || "")) {
-      if (bg) bg.remove();
-      bg = div("lfx-startcover__bg");
-      bg.dataset.src = url || "";
-      if (url) {
-        const img = new Image();
-        img.alt = "";
-        img.decoding = "async";
-        img.addEventListener("load", () => bg.classList.add("is-loaded"));
-        img.addEventListener("error", () => img.remove());
-        img.src = url;
-        bg.append(img);
-        if (img.complete && img.naturalWidth > 0) bg.classList.add("is-loaded");
-      }
-      el3.prepend(bg);
-    }
-    el3.querySelector(".lfx-startcover__text")?.remove();
-    const { title, sub } = labels(item);
-    const text = div("lfx-startcover__text");
-    if (title) text.append(div("lfx-startcover__title", title));
-    if (sub) text.append(div("lfx-startcover__sub", sub));
-    el3.append(text);
-  }
-  function videoPlaying() {
-    if (!document.querySelector(PAGE3)) return false;
-    const v = document.querySelector("video.htmlvideoplayer");
-    if (!v) return false;
-    return !v.paused && v.currentTime > 0 || v.readyState >= 2;
-  }
-  function check() {
-    raf2 = 0;
-    if (!el3) return;
-    if (document.querySelector(".dialogContainer .dialog.opened")) {
-      hide();
-      return;
-    }
-    const path = routePath();
-    if (path !== "/video" && path !== origin && !(allowed && allowed.has(path))) {
-      hide();
-      return;
-    }
-    if (videoPlaying()) hide();
-  }
-  function schedule2() {
-    if (raf2 || !el3) return;
-    raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame(check) : setTimeout(check, 0);
-  }
-  function onKeydown(e) {
-    if (e.key !== "Escape" && e.key !== "BrowserBack") return;
-    e.stopPropagation();
-    e.preventDefault();
-    hide();
-  }
-  function watch(on) {
-    if (on === watching) return;
-    watching = on;
-    const fn = on ? "addEventListener" : "removeEventListener";
-    window[fn]("popstate", schedule2);
-    window[fn]("hashchange", schedule2);
-    document[fn]("playing", schedule2, true);
-    document[fn]("timeupdate", schedule2, true);
-    document[fn]("loadeddata", schedule2, true);
-    document[fn]("keydown", onKeydown, true);
-    if (on) {
-      mo2 = new MutationObserver(schedule2);
-      mo2.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-    } else {
-      if (mo2) mo2.disconnect();
-      mo2 = null;
-      if (raf2) {
-        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf2);
-        clearTimeout(raf2);
-      }
-      raf2 = 0;
-    }
-  }
-  function cleanup() {
-    clearTimeout(safety);
-    clearTimeout(leaving);
-    safety = 0;
-    leaving = 0;
-    watch(false);
-    document.documentElement.classList.remove(ON_CLASS);
-    unmountPoint(ID6);
-    el3 = null;
-    itemId = null;
-    origin = null;
-    allowed = null;
-  }
-  var ON_CLASS = "lfx-startcover-on";
-  function show({ item } = {}) {
-    if (!item || !item.Id || !isActive()) return;
-    clearTimeout(leaving);
-    leaving = 0;
-    if (!el3) {
-      el3 = mountPoint(ID6, { className: "lfx-startcover" });
-      el3.setAttribute("role", "status");
-      el3.setAttribute("aria-label", "Wiedergabe wird geladen");
-      el3.append(div("lfx-startcover__spinner"));
-      origin = routePath();
-      allowed = /* @__PURE__ */ new Set();
-      itemId = null;
-    }
-    el3.classList.remove("is-leaving");
-    document.documentElement.classList.add(ON_CLASS);
-    watch(true);
-    if (itemId !== item.Id) {
-      itemId = item.Id;
-      fill(item);
-    }
-    clearTimeout(safety);
-    safety = setTimeout(hide, SAFETY_MS);
-  }
-  function allowRoute(path) {
-    if (allowed) allowed.add(path);
-  }
-  function hide() {
-    if (!el3) return;
-    const node = el3;
-    clearTimeout(safety);
-    safety = 0;
-    watch(false);
-    document.documentElement.classList.remove(ON_CLASS);
-    node.classList.add("is-leaving");
-    leaving = setTimeout(() => {
-      if (el3 === node) cleanup();
-    }, FADE_MS);
-  }
-
-  // src/js/core/playback.js
-  function isVisible(el4) {
-    return el4.getClientRects().length > 0;
-  }
-  function findProxyContainer() {
-    const all = [...document.querySelectorAll(".itemsContainer")].filter((c) => c.querySelector(".card"));
-    return all.find(isVisible) || all[0] || null;
-  }
-  function buildProxy(item, resume) {
-    const el4 = document.createElement("div");
-    el4.className = "itemAction lfx-proxy";
-    el4.style.display = "none";
-    el4.setAttribute("data-action", resume ? "resume" : "play");
-    el4.setAttribute("data-id", item.Id);
-    el4.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
-    el4.setAttribute("data-type", item.Type || "");
-    el4.setAttribute("data-mediatype", item.MediaType || "");
-    el4.setAttribute("data-isfolder", String(Boolean(item.IsFolder)));
-    const ticks = resume && item.UserData ? item.UserData.PlaybackPositionTicks || 0 : 0;
-    if (ticks) el4.setAttribute("data-positionticks", String(ticks));
-    return el4;
-  }
-  function playViaDetails(item, resume, timeoutMs) {
-    return new Promise((resolve2) => {
-      const serverId = item.ServerId || getAuth().serverId || "";
-      window.location.hash = `#/details?id=${item.Id}&serverId=${serverId}`;
-      const started2 = Date.now();
-      const timer2 = setInterval(() => {
-        const wrap = document.querySelector(".itemDetailPage:not(.hide) .mainDetailButtons");
-        const visible = (sel) => wrap && [...wrap.querySelectorAll(sel)].find((b) => !b.classList.contains("hide"));
-        const target = resume ? visible(".btnPlay") : visible(".btnReplay") || visible(".btnPlay");
-        if (target) {
-          clearInterval(timer2);
-          target.click();
-          resolve2(true);
-        } else if (Date.now() - started2 > timeoutMs) {
-          clearInterval(timer2);
-          resolve2(false);
-        }
-      }, 150);
-    });
-  }
-  async function play(item, { resume = false, timeoutMs = 8e3 } = {}) {
-    if (!item || !item.Id) return false;
-    window.dispatchEvent(new CustomEvent("lfx:play", { detail: { id: item.Id } }));
-    show({ item });
-    const container = findProxyContainer();
-    if (container) {
-      const proxy = buildProxy(item, resume);
-      container.append(proxy);
-      try {
-        proxy.click();
-      } finally {
-        proxy.remove();
-      }
-      return true;
-    }
-    allowRoute("/details");
-    const ok = await playViaDetails(item, resume, timeoutMs);
-    if (!ok) hide();
-    return ok;
-  }
-
-  // src/js/core/itemmenu.js
-  var END_QUIET_MS = 800;
-  var NO_DIALOG_TIMEOUT_MS = 4e3;
-  var HIDDEN_FIRST = ["download", "downloadall", "multiSelect"];
-  var CHANGING_COMMANDS = ["delete", "edit", "editimages", "editsubtitles", "identify", "refresh", "addtocollection", "removefromcollection"];
-  var RETRY_COMMANDS = ["delete", "refresh"];
-  var RETRY_DELAYS = [1e3, 3e3, 8e3];
-  var FOLDER_TYPES = ["Series", "Season", "BoxSet"];
-  var EDGE = 8;
-  function rectOf(anchor) {
-    if (anchor && typeof anchor.getBoundingClientRect === "function") return anchor.getBoundingClientRect();
-    const x = Number(anchor && anchor.x) || 0;
-    const y = Number(anchor && anchor.y) || 0;
-    return { left: x, right: x, top: y, bottom: y, width: 0, height: 0 };
-  }
-  function computeMenuPosition(anchorRect, viewport, menu = { w: 300, h: 320 }) {
-    const vp = viewport || { w: window.innerWidth, h: window.innerHeight };
-    const gap = 4;
-    const clamp2 = (v, min, max) => Math.max(min, Math.min(v, Math.max(min, max)));
-    const isPoint = anchorRect.right === anchorRect.left;
-    let x = isPoint ? anchorRect.left : anchorRect.right - menu.w;
-    x = clamp2(x, EDGE, vp.w - menu.w - EDGE);
-    let y = anchorRect.bottom + gap;
-    if (y + menu.h > vp.h - EDGE) {
-      const above = anchorRect.top - gap - menu.h;
-      y = above >= EDGE ? above : y;
-    }
-    y = clamp2(y, EDGE, vp.h - menu.h - EDGE);
-    return { x, y };
-  }
-  var listeners2 = /* @__PURE__ */ new Set();
-  var ownDeletes = /* @__PURE__ */ new Set();
-  function onItemsChanged(fn) {
-    listeners2.add(fn);
-    return () => listeners2.delete(fn);
-  }
-  function emit2({ removed = [], updated = [] }) {
-    if (!removed.length && !updated.length) return;
-    if (removed.some((id) => ownDeletes.has(id))) {
-      for (const id of removed) ownDeletes.delete(id);
-      toast("Gel\xF6scht");
-    }
-    for (const fn of [...listeners2]) {
-      try {
-        fn({ removed, updated });
-      } catch {
-      }
-    }
-  }
-  var retryTimers = [];
-  function clearRetries() {
-    retryTimers.forEach(clearTimeout);
-    retryTimers = [];
-  }
-  function isNetworkError(err) {
-    return err instanceof TypeError || /failed to fetch|network/i.test(String(err && err.message));
-  }
-  async function verifyItem(id, removalOnly = false) {
-    let item;
-    try {
-      item = await getItem(id);
-    } catch (err) {
-      if (isNetworkError(err) || !/\b404\b/.test(String(err && err.message))) return false;
-      emit2({ removed: [id], updated: [] });
-      return true;
-    }
-    if (!item || !item.Id) {
-      emit2({ removed: [id], updated: [] });
-      return true;
-    }
-    if (removalOnly) return false;
-    putItems([item]);
-    emit2({ removed: [], updated: [id] });
-    return false;
-  }
-  function afterSession(id, command) {
-    if (!id || !CHANGING_COMMANDS.includes(command)) return;
-    if (command === "delete") ownDeletes.add(id);
-    let done = false;
-    const run = async () => {
-      if (done) return;
-      if (await verifyItem(id, command === "delete")) done = true;
-    };
-    run();
-    if (RETRY_COMMANDS.includes(command)) {
-      const last = RETRY_DELAYS[RETRY_DELAYS.length - 1];
-      for (const delay of RETRY_DELAYS) {
-        retryTimers.push(
-          setTimeout(async () => {
-            await run();
-            if (delay === last && !done) ownDeletes.delete(id);
-          }, delay)
-        );
-      }
-    }
-  }
-  var session = null;
-  function clearMarker() {
-    const root7 = document.documentElement;
-    root7.classList.remove("lfx-menu-open");
-    root7.style.removeProperty("--lfx-menu-x");
-    root7.style.removeProperty("--lfx-menu-y");
-  }
-  function setPosition(pos) {
-    const root7 = document.documentElement;
-    root7.style.setProperty("--lfx-menu-x", `${Math.round(pos.x)}px`);
-    root7.style.setProperty("--lfx-menu-y", `${Math.round(pos.y)}px`);
-  }
-  var isTouchSheet = () => typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches;
-  function attachSheetSwipe(s, sheet) {
-    if (!isTouchSheet()) return;
-    const backdrop = document.querySelector(".dialogBackdrop");
-    s.detachSwipe = attachSwipeClose(sheet, {
-      backdrop,
-      onClose: () => {
-        if (s.escaped || !sheet.isConnected) return;
-        s.escaped = true;
-        history.back();
-      }
-    });
-  }
-  function teardown(s) {
-    if (s.detachSwipe) {
-      s.detachSwipe();
-      s.detachSwipe = null;
-    }
-    s.observer.disconnect();
-    clearTimeout(s.endTimer);
-    clearTimeout(s.startTimer);
-    document.removeEventListener("click", s.onClick, true);
-    window.removeEventListener("keydown", s.onKey, true);
-    s.wrapper.remove();
-    clearMarker();
-    if (session === s) session = null;
-  }
-  function finish(s) {
-    if (session !== s) return;
-    teardown(s);
-    const { anchor, opts, command, item } = s;
-    if (anchor && typeof anchor.focus === "function" && anchor.isConnected) {
-      try {
-        anchor.focus({ preventScroll: true });
-      } catch {
-      }
-    }
-    if (typeof opts.onClose === "function") {
-      try {
-        opts.onClose({ command });
-      } catch {
-      }
-    }
-    afterSession(item.Id, command);
-  }
-  function focusFirstEntry(sheet) {
-    const entries = [...sheet.querySelectorAll(".actionSheetMenuItem")].filter(
-      (el4) => !HIDDEN_FIRST.includes(el4.getAttribute("data-id")) && !el4.hidden && el4.style.display !== "none"
-    );
-    if (entries[0]) entries[0].focus({ preventScroll: true });
-  }
-  function onMutation(s) {
-    const containers = document.querySelectorAll(".dialogContainer");
-    if (containers.length) {
-      s.sawDialog = true;
-      clearTimeout(s.endTimer);
-      s.endTimer = null;
-      clearTimeout(s.startTimer);
-      s.startTimer = null;
-      if (!s.sheet) {
-        const sheet = document.querySelector(".dialogContainer .dialog.actionSheet");
-        if (sheet) {
-          s.sheet = sheet;
-          const w = sheet.offsetWidth;
-          const hgt = sheet.offsetHeight;
-          if (w && hgt) setPosition(computeMenuPosition(rectOf(s.anchor), void 0, { w, h: hgt }));
-          focusFirstEntry(sheet);
-          attachSheetSwipe(s, sheet);
-        }
-      }
-    }
-    if (s.sheet && !s.sheet.isConnected && !s.markerCleared) {
-      s.markerCleared = true;
-      clearMarker();
-    }
-    if (!containers.length && s.sawDialog && !s.endTimer) {
-      s.endTimer = setTimeout(() => finish(s), END_QUIET_MS);
-    }
-  }
-  function buildProxyFor(item) {
-    const isFolder = Boolean(item.IsFolder) || FOLDER_TYPES.includes(item.Type);
-    const el4 = document.createElement("div");
-    el4.className = "lfx-proxy itemAction";
-    el4.setAttribute("data-action", "menu");
-    el4.setAttribute("data-id", item.Id);
-    el4.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
-    el4.setAttribute("data-type", item.Type || "");
-    el4.setAttribute("data-isfolder", String(isFolder));
-    el4.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
-    return el4;
-  }
-  function openItemMenu(item, anchor, opts = {}) {
-    if (!item || !item.Id) return false;
-    if (session) teardown(session);
-    const container = findProxyContainer();
-    if (!container) {
-      toast("Men\xFC hier nicht verf\xFCgbar");
-      return false;
-    }
-    const wrapper = document.createElement("div");
-    wrapper.className = "lfx-proxywrap itemsContainer";
-    wrapper.style.display = "none";
-    const list = Array.isArray(opts.siblings) && opts.siblings.some((s2) => s2 && s2.Id === item.Id) ? opts.siblings : [item];
-    let target = null;
-    for (const it of list) {
-      if (!it || !it.Id) continue;
-      const proxy = buildProxyFor(it);
-      wrapper.append(proxy);
-      if (it.Id === item.Id) target = proxy;
-    }
-    container.append(wrapper);
-    const s = {
-      item,
-      anchor,
-      opts,
-      wrapper,
-      command: null,
-      sheet: null,
-      sawDialog: false,
-      markerCleared: false,
-      endTimer: null,
-      startTimer: null,
-      observer: null,
-      onClick: null
-    };
-    s.onClick = (e) => {
-      if (s.command) return;
-      const entry = e.target && e.target.closest && e.target.closest(".actionSheetMenuItem[data-id]");
-      if (entry && (!s.sheet || s.sheet.contains(entry))) s.command = entry.getAttribute("data-id");
-    };
-    s.onKey = (e) => {
-      if (e.key !== "Escape") return;
-      if (s.sheet && !s.sheet.isConnected) return;
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      if (!s.sheet || s.escaped) return;
-      s.escaped = true;
-      history.back();
-    };
-    window.addEventListener("keydown", s.onKey, true);
-    s.observer = new MutationObserver(() => onMutation(s));
-    s.observer.observe(document.body, { childList: true });
-    document.addEventListener("click", s.onClick, true);
-    s.startTimer = setTimeout(() => finish(s), NO_DIALOG_TIMEOUT_MS);
-    session = s;
-    setPosition(computeMenuPosition(rectOf(anchor)));
-    document.documentElement.classList.add("lfx-menu-open");
-    target.click();
-    return true;
-  }
-  function isMenuOpen() {
-    return session !== null;
-  }
-  function closeItemMenu() {
-    if (session) teardown(session);
-    else clearMarker();
-    clearRetries();
-    ownDeletes.clear();
-  }
-  var unsubscribeWatch = null;
-  function onLibraryChanged(msg) {
-    const data = msg && msg.Data || {};
-    const removed = Array.isArray(data.ItemsRemoved) ? data.ItemsRemoved.filter(Boolean) : [];
-    const updated = Array.isArray(data.ItemsUpdated) ? data.ItemsUpdated.filter(Boolean) : [];
-    emit2({ removed, updated });
-  }
-  function startItemWatch() {
-    if (unsubscribeWatch) return;
-    const client = window.ApiClient;
-    if (!client || typeof client.subscribe !== "function") return;
-    try {
-      const res = client.subscribe(["LibraryChanged"], onLibraryChanged);
-      unsubscribeWatch = typeof res === "function" ? res : () => {
-        if (typeof client.unsubscribe === "function") client.unsubscribe(["LibraryChanged"], onLibraryChanged);
-      };
-    } catch {
-      unsubscribeWatch = null;
-    }
-  }
-  function stopItemWatch() {
-    if (unsubscribeWatch) {
-      try {
-        unsubscribeWatch();
-      } catch {
-      }
-      unsubscribeWatch = null;
-    }
-    closeItemMenu();
   }
 
   // src/js/core/sheet.js
@@ -4578,6 +4623,7 @@
     setFavState(btn3, next);
     try {
       await setFavorite(item.Id, next);
+      clearCache("home:");
     } catch {
       item.UserData.IsFavorite = !next;
       setFavState(btn3, !next);
@@ -4587,6 +4633,7 @@
   var folgen = (n) => n === 1 ? "1 Folge" : `${n} Folgen`;
   var SAVE_ERROR = "Konnte nicht gespeichert werden";
   function clearPlayedCaches(itemId2, seriesId) {
+    clearCache("home:");
     clearCache(`lfx:modal:item:${itemId2}`);
     if (seriesId) {
       clearCache(`lfx:modal:next:${seriesId}`);
@@ -5034,6 +5081,7 @@
     } catch {
     }
   }
+  var poolKey = () => homeKey(getUserId(), "billboard");
   async function fetchPool() {
     const base = {
       Recursive: true,
@@ -5052,6 +5100,15 @@
     const pool = buildPool(latest && latest.Items, random && random.Items, { avoidFirstId: readLastFirst() });
     if (pool[0]) writeLastFirst(pool[0].Id);
     return pool;
+  }
+  function loadPool() {
+    const key = poolKey();
+    const p = cached(key, fetchPool, HOME_TTL);
+    p.then((pool) => {
+      if (!pool.length) clearCache(key);
+    }, () => {
+    });
+    return p;
   }
   function reducedMotion() {
     return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5088,6 +5145,7 @@
     let rotateTimer = null;
     let slide = null;
     let rowsReady = false;
+    let warm = false;
     const timers = /* @__PURE__ */ new Set();
     let video2 = null;
     let card3 = null;
@@ -5148,6 +5206,7 @@
         paint();
         try {
           await setFavorite(item.Id, !prev2);
+          clearCache("home:");
         } catch {
           item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
           paint();
@@ -5204,7 +5263,7 @@
       const badgeText = badgeFor2(item);
       return h("div", null, [
         h("div", { class: "lfx-bb__text" }, [
-          logo ? h("img", { class: "lfx-bb__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("h2", { class: "lfx-bb__title" }, item.Name || ""),
+          logo ? h("img", { class: "lfx-bb__logo", src: logo, alt: item.Name || "", decoding: warm ? null : "async" }) : h("h2", { class: "lfx-bb__title" }, item.Name || ""),
           meta2,
           genres ? h("div", { class: "lfx-bb__genres" }, genres) : null,
           item.Overview ? h("p", { class: "lfx-bb__desc" }, item.Overview) : null
@@ -5214,12 +5273,13 @@
       ]);
     }
     function buildImage(item, first2 = false) {
+      const dec = warm ? null : "async";
       const bd = imageUrl(item, { type: "Backdrop", maxWidth: 1600, quality: 80 });
       const poster = imageUrl(item, { type: "Primary", maxWidth: 720, quality: 80 });
       return h("picture", { class: "lfx-bb__pic" }, [
         poster ? h("source", { media: "(max-width: 799px)", srcset: poster }) : null,
         // Erstes Bild: sofort und mit hoher Priorität laden (ohne Überblendung, siehe show()).
-        h("img", { class: "lfx-bb__img", src: bd, alt: "", decoding: "async", fetchpriority: first2 ? "high" : null })
+        h("img", { class: "lfx-bb__img", src: bd, alt: "", decoding: dec, fetchpriority: first2 ? "high" : null })
       ]);
     }
     function updateDots() {
@@ -5448,10 +5508,13 @@
       cleanupFns.push(onItemsChanged(onChanged2));
     }
     async function init2() {
-      let items = [];
-      try {
-        items = await fetchPool();
-      } catch {
+      let items = peekCached(poolKey()) || [];
+      warm = items.length > 0;
+      if (!warm) {
+        try {
+          items = await loadPool();
+        } catch {
+        }
       }
       if (disposed) return;
       if (!items.length) {
@@ -5460,7 +5523,7 @@
         resetAmbient();
         return;
       }
-      pool = items;
+      pool = items.slice();
       putItems(pool);
       build11();
       slot.hidden = false;
@@ -5539,13 +5602,14 @@
     return imageUrl(item, { type: "Primary", maxWidth, quality: 85 });
   }
   function createCard(item, opts = {}) {
-    const { badge: badge3 = null, kind: kind2 = "landscape", rank = 0 } = opts;
+    const { badge: badge3 = null, kind: kind2 = "landscape", rank = 0, eager = false } = opts;
+    const lazy = eager ? {} : { loading: "lazy", decoding: "async" };
     const title = displayTitle(item);
     let link;
     if (kind2 === "top10") {
       const url = imageUrl(item, { type: "Primary", maxWidth: 300, quality: 85 }) || landscapeImage(item, { maxWidth: 300 });
       link = h("a", { class: "lfx-card__link", href: detailHref2(item), "aria-label": ariaLabel(item) }, [
-        url ? h("img", { class: "lfx-card__img", src: url, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-card__title" }, title)
+        url ? h("img", { class: "lfx-card__img", src: url, alt: "", ...lazy }) : h("span", { class: "lfx-card__title" }, title)
       ]);
     } else {
       const img = landscapeFor(item);
@@ -5553,13 +5617,13 @@
       const children = [];
       const src = img ? img.url : poster;
       if (src) {
-        const imgEl = h("img", { class: "lfx-card__img", src, alt: "", loading: "lazy", decoding: "async" });
+        const imgEl = h("img", { class: "lfx-card__img", src, alt: "", ...lazy });
         children.push(poster ? h("picture", null, [h("source", { media: "(max-width: 799px)", srcset: poster }), imgEl]) : imgEl);
       }
       const titled = !img || !img.isThumb;
       if (titled) {
         const logo = logoImage(item, { maxWidth: 400 });
-        children.push(logo ? h("img", { class: "lfx-card__logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-card__title" }, title));
+        children.push(logo ? h("img", { class: "lfx-card__logo", src: logo, alt: "", ...lazy }) : h("span", { class: "lfx-card__title" }, title));
       }
       link = h("a", {
         class: `lfx-card__link${titled ? " lfx-card__link--titled" : ""}`,
@@ -5793,7 +5857,31 @@
     }
   }
   var VIEWS_TTL = 5 * 6e4;
-  async function buildRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
+  var degraded = /* @__PURE__ */ new WeakSet();
+  function wrapRow(def) {
+    const key = homeKey(getUserId(), "row", def.id);
+    const orig = def.load;
+    def.cacheKey = key;
+    def.load = async (d = def) => {
+      const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title }), HOME_TTL);
+      d.id = snap.id;
+      d.title = snap.title;
+      return snap.items;
+    };
+    return def;
+  }
+  var defsKey = ({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) => homeKey(getUserId(), "defs", seed, genreCount, deferCharts ? 1 : 0);
+  var peekRowDefs = (opts) => peekCached(defsKey(opts));
+  function buildRowDefs(opts = {}) {
+    const key = defsKey(opts);
+    const p = cached(key, () => computeRowDefs(opts), HOME_TTL);
+    p.then((defs) => {
+      if (degraded.has(defs)) clearCache(key);
+    }, () => {
+    });
+    return p;
+  }
+  async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
     const [viewsRes, genresRes] = await Promise.allSettled([
       cached(`views:${getUserId()}`, getViews, VIEWS_TTL),
       getJson("/Genres", { userId: getUserId(), IncludeItemTypes: MOVIE_SERIES, Recursive: true })
@@ -5923,6 +6011,8 @@
         Limit: 20
       })
     });
+    defs.forEach(wrapRow);
+    if (viewsRes.status !== "fulfilled" || genresRes.status !== "fulfilled") degraded.add(defs);
     return defs;
   }
 
@@ -5936,12 +6026,15 @@
       h("div", { class: "lfx-row__viewport" }, [h("div", { class: "lfx-row__skeleton" }, cards)])
     ]);
   }
-  function fill2(rowEl, def, items, newSeries) {
+  var EAGER_ROWS = 3;
+  var EAGER_CARDS = 8;
+  function fill2(rowEl, def, items, newSeries, eager = false) {
     const now = Date.now();
     const cards = items.map((it, i) => createCard(it, {
       kind: def.kind,
       rank: def.kind === "top10" ? i + 1 : 0,
-      badge: badgeFor(it, newSeries, now)
+      badge: badgeFor(it, newSeries, now),
+      eager: eager && i < EAGER_CARDS
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": def.title || "" }, cards);
     const prev2 = chevronButton("prev", "Zur\xFCck");
@@ -6008,6 +6101,16 @@
       }, () => {
       });
     }
+    function showRow(rowEl, def, items, eager) {
+      putItems(items);
+      if (rowEl.dataset.lfxRow !== def.id) rowEl.dataset.lfxRow = def.id;
+      disposers.push(fill2(rowEl, def, items, newSeries, eager));
+      if (items.some((i) => i.Type === "Series")) {
+        filled.push({ rowEl, items: new Map(items.map((i) => [i.Id, i])) });
+        loadNewSeriesLater();
+      }
+      signalReady();
+    }
     async function loadRow(rowEl, def) {
       try {
         const items = (await def.load(def)).filter((i) => i && i.Id);
@@ -6016,14 +6119,7 @@
           rowEl.remove();
           return;
         }
-        putItems(items);
-        if (rowEl.dataset.lfxRow !== def.id) rowEl.dataset.lfxRow = def.id;
-        disposers.push(fill2(rowEl, def, items, newSeries));
-        if (items.some((i) => i.Type === "Series")) {
-          filled.push({ rowEl, items: new Map(items.map((i) => [i.Id, i])) });
-          loadNewSeriesLater();
-        }
-        signalReady();
+        showRow(rowEl, def, items, false);
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -6037,7 +6133,7 @@
       }
       let defs;
       try {
-        defs = await buildRowDefs({ deferCharts: true });
+        defs = peekRowDefs({ deferCharts: true }) || await buildRowDefs({ deferCharts: true });
       } catch (e) {
         console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
         signalReady();
@@ -6045,7 +6141,19 @@
       }
       if (disposed) return;
       const pending = /* @__PURE__ */ new Map();
+      let shown3 = 0;
       for (const def of defs) {
+        const snap = def.cacheKey ? peekCached(def.cacheKey) : void 0;
+        if (snap) {
+          const items = snap.items.filter((i) => i && i.Id);
+          if (!items.length) continue;
+          def.id = snap.id;
+          def.title = snap.title;
+          const el5 = skeleton(def);
+          slot.append(el5);
+          showRow(el5, def, items, shown3++ < EAGER_ROWS);
+          continue;
+        }
         const el4 = skeleton(def);
         pending.set(el4, def);
         slot.append(el4);
@@ -6337,6 +6445,7 @@
     s.item = { ...s.item, UserData: { ...userData(s), ...patch } };
     putItems([s.item]);
     clearCache(`hc:${getUserId()}:${s.item.Id}`);
+    clearCache("home:");
   }
   async function toggleFavorite(s) {
     if (s.busyFav) return;
@@ -6443,6 +6552,7 @@
           }
           clearCache(`lfx:modal:item:${item.Id}`);
           clearCache(`lfx:modal:next:${item.Id}`);
+          clearCache("home:");
           clearCache(`lfx:modal:eps:${item.Type === "Season" ? item.SeriesId || item.ParentId : item.Id}:`);
           toast(failed ? SAVE_ERROR2 : `${item.Type === "Season" ? "Staffel" : "Serie"} als ${verb} markiert`);
         } catch (e) {
@@ -6827,7 +6937,7 @@
     add2(window, "hashchange", onHash);
     unsubItems = onItemsChanged(onItems);
   }
-  function stop2() {
+  function stop3() {
     active = false;
     wasHeld = false;
     lastOver = null;
@@ -6846,7 +6956,7 @@
       start();
     },
     unmount() {
-      stop2();
+      stop3();
     }
   };
   var hovercard_default = hovercardFeature;
@@ -7657,6 +7767,61 @@
     }
   }
 
+  // src/js/features/live/zapflag.js
+  var ZAP_KEY = "lfx-zapstats";
+  var ZAP_VARIANT_KEY = "lfx-zapvariant";
+  var FORCE_HLS_KEY = "lfx-forcehls";
+  function hashParam(name) {
+    try {
+      return parseHash(window.location.hash).params.get(name);
+    } catch {
+      return null;
+    }
+  }
+  function zapStatsEnabled() {
+    let v = null;
+    try {
+      v = parseHash(window.location.hash).params.get("lfxdebug");
+    } catch {
+    }
+    try {
+      if (v === "1") window.localStorage.setItem(ZAP_KEY, "1");
+      else if (v === "0") {
+        window.localStorage.removeItem(ZAP_KEY);
+        return false;
+      }
+      return window.localStorage.getItem(ZAP_KEY) === "1";
+    } catch {
+      return v === "1";
+    }
+  }
+  function zapVariant() {
+    const v = hashParam("lfxzap");
+    const valid = (x) => x === "0" || x === "1" || x === "2";
+    try {
+      if (v != null) {
+        if (valid(v) && v !== "1") window.localStorage.setItem(ZAP_VARIANT_KEY, v);
+        else window.localStorage.removeItem(ZAP_VARIANT_KEY);
+      }
+      const s = window.localStorage.getItem(ZAP_VARIANT_KEY);
+      return valid(s) ? Number(s) : 1;
+    } catch {
+      return valid(v) ? Number(v) : 1;
+    }
+  }
+  function forceHlsEnabled() {
+    const v = hashParam("lfxhls");
+    let on;
+    try {
+      if (v === "1") window.localStorage.setItem(FORCE_HLS_KEY, "1");
+      else if (v === "0") window.localStorage.removeItem(FORCE_HLS_KEY);
+      on = window.localStorage.getItem(FORCE_HLS_KEY) === "1";
+    } catch {
+      on = v === "1";
+    }
+    return on && zapStatsEnabled();
+  }
+
   // src/js/features/live/deps.js
   var asItems3 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function fatalText(err) {
@@ -7698,6 +7863,10 @@
       request: (method, path, o = {}) => requestJson(method, path, o),
       storage: safeStorage(),
       // Player: dauerhaft gemerkte Direct-Fehler
+      zapVariant: zapVariant(),
+      // Player: Startvariante 0–3 (Hash lfxzap, docs/live.md „Startablauf“)
+      forceHls: forceHlsEnabled(),
+      // Player: HLS erzwingen (Hash lfxhls, nur mit Messanzeige)
       streamUrl: (path, params) => buildUrl(path, { ...params || {}, ApiKey: getAuth().token }),
       imageUrl: (id, o = {}) => imageUrlFor(id, o),
       getBoxSetItems: async (id) => {
@@ -7733,26 +7902,6 @@
       setPlayed: (id, v) => setPlayed(id, v),
       channelConfig: getChannelConfig()
     };
-  }
-
-  // src/js/features/live/zapflag.js
-  var ZAP_KEY = "lfx-zapstats";
-  function zapStatsEnabled() {
-    let v = null;
-    try {
-      v = parseHash(window.location.hash).params.get("lfxdebug");
-    } catch {
-    }
-    try {
-      if (v === "1") window.localStorage.setItem(ZAP_KEY, "1");
-      else if (v === "0") {
-        window.localStorage.removeItem(ZAP_KEY);
-        return false;
-      }
-      return window.localStorage.getItem(ZAP_KEY) === "1";
-    } catch {
-      return v === "1";
-    }
   }
 
   // src/js/features/tvmode/prefs.js
@@ -8254,7 +8403,7 @@
     add2(window, "scroll", cancelPress, { capture: true, passive: true });
     add2(window, "click", onClickCapture2, true);
   }
-  function stop3() {
+  function stop4() {
     active2 = false;
     cancelPress();
     swallowUntil = 0;
@@ -8271,7 +8420,7 @@
       startItemWatch();
     },
     unmount() {
-      stop3();
+      stop4();
       stopItemWatch();
       closeChooser();
       cancelDownloads();
@@ -9252,6 +9401,7 @@
     const r = formatRating(item && item.OfficialRating);
     return r ? h("span", { class: "lfx-plus-rating" }, r) : null;
   }
+  var lz = (eager) => eager ? {} : { loading: "lazy", decoding: "async" };
   function cardShell(item, kind2, extraClass) {
     return h("div", {
       class: `lfx-card lfx-plus-card lfx-plus-card--${kind2}${extraClass ? ` ${extraClass}` : ""}`,
@@ -9264,16 +9414,16 @@
     if (item.Type === "Episode" && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
     return item.Name || "";
   }
-  function createPosterCard(item, { badge: badge3 = null } = {}) {
+  function createPosterCard(item, { badge: badge3 = null, eager = false } = {}) {
     const url = posterUrl(item, 400) || null;
     const media = [];
-    if (url) media.push(h("img", { class: "lfx-card__img", src: url, alt: "", loading: "lazy", decoding: "async" }));
+    if (url) media.push(h("img", { class: "lfx-card__img", src: url, alt: "", ...lz(eager) }));
     else media.push(h("span", { class: "lfx-card__title lfx-plus-card__fallback" }, displayTitle2(item)));
     if (badge3) {
       const logo = logoImage(item, { maxWidth: 360 });
       media.push(h("div", { class: "lfx-plus-card__new" }, [
         h("span", { class: "lfx-plus-badge" }, badge3),
-        logo ? h("img", { class: "lfx-card__logo lfx-plus-card__logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : null,
+        logo ? h("img", { class: "lfx-card__logo lfx-plus-card__logo", src: logo, alt: "", ...lz(eager) }) : null,
         h("span", { class: "lfx-plus-card__meta" }, yearGenres(item))
       ]));
     }
@@ -9282,10 +9432,10 @@
     card3.append(link);
     return card3;
   }
-  function createResumeCard(item) {
+  function createResumeCard(item, { eager = false } = {}) {
     const img = landscapeFor(item, 600);
     const media = [];
-    if (img) media.push(h("img", { class: "lfx-card__img", src: img.url, alt: "", loading: "lazy", decoding: "async" }));
+    if (img) media.push(h("img", { class: "lfx-card__img", src: img.url, alt: "", ...lz(eager) }));
     else media.push(h("span", { class: "lfx-card__title lfx-plus-card__fallback" }, displayTitle2(item)));
     const p = progressPercent(item);
     if (p > 0) {
@@ -9315,8 +9465,8 @@
     card3.append(h("div", { class: "lfx-plus-card__media" }, [link, playBtn]), info);
     return card3;
   }
-  function createPlusCard(item, { kind: kind2 = "poster", badge: badge3 = null } = {}) {
-    return kind2 === "resume" ? createResumeCard(item) : createPosterCard(item, { badge: badge3 });
+  function createPlusCard(item, { kind: kind2 = "poster", badge: badge3 = null, eager = false } = {}) {
+    return kind2 === "resume" ? createResumeCard(item, { eager }) : createPosterCard(item, { badge: badge3, eager });
   }
 
   // src/js/features/plus/hero.js
@@ -9332,7 +9482,18 @@
     const cut = o.slice(0, 150);
     return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 100)).replace(/[\s,.;:!?-]+$/, "")}\u2026`;
   }
-  async function loadHomeHeroPool() {
+  var poolWarm = false;
+  function loadHomeHeroPool() {
+    const key = homeKey(getUserId(), "plus-hero");
+    poolWarm = peekCached(key) !== void 0;
+    const p = cached(key, fetchHomeHeroPool, HOME_TTL);
+    p.then((pool) => {
+      if (!pool.length) clearCache(key);
+    }, () => {
+    });
+    return p;
+  }
+  async function fetchHomeHeroPool() {
     const q = (params) => getItems({
       ...BASE_PARAMS,
       Fields: HERO_FIELDS2,
@@ -9353,7 +9514,7 @@
       return true;
     }).slice(0, 8);
   }
-  function buildSlide(item, i, info, mobile) {
+  function buildSlide(item, i, info, mobile, warm) {
     const bd = mobile && imageUrl(item, { type: "Primary", maxWidth: 900, quality: 80 }) || imageUrl(item, { type: "Backdrop", maxWidth: mobile ? 1e3 : 1920, quality: 80 });
     const logo = logoImage(item, { maxWidth: 520 });
     const badge3 = plusBadge(item, info);
@@ -9366,21 +9527,21 @@
       dataset: { index: String(i) },
       "aria-label": item.Name || ""
     }, [
-      bd ? h("img", { class: "lfx-plus-hero__img", src: bd, alt: "", decoding: "async", loading: i < 3 ? "eager" : "lazy" }) : null,
+      bd ? h("img", { class: "lfx-plus-hero__img", src: bd, alt: "", decoding: warm ? null : "async", loading: i < 3 ? "eager" : "lazy" }) : null,
       h("div", { class: "lfx-plus-hero__shade", "aria-hidden": "true" }),
       h("div", { class: "lfx-plus-hero__content" }, [
         badge3 ? h("span", { class: "lfx-plus-badge lfx-plus-hero__badge" }, badge3) : null,
-        logo ? h("img", { class: "lfx-plus-hero__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("span", { class: "lfx-plus-hero__title" }, item.Name || ""),
+        logo ? h("img", { class: "lfx-plus-hero__logo", src: logo, alt: item.Name || "", decoding: warm ? null : "async" }) : h("span", { class: "lfx-plus-hero__title" }, item.Name || ""),
         tag ? h("p", { class: "lfx-plus-hero__tagline" }, tag) : null,
         rating || meta2 ? h("div", { class: "lfx-plus-hero__meta" }, [rating, meta2 ? h("span", null, meta2) : null]) : null
       ])
     ]);
   }
-  function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone() } = {}) {
+  function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone(), warm = poolWarm } = {}) {
     const list = (items || []).filter((it) => it && it.Id);
     if (!list.length) return null;
     const n = list.length;
-    const slides = list.map((it, i) => buildSlide(it, i, info, mobile));
+    const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm));
     const track = h("div", { class: "lfx-plus-hero__track" }, slides);
     const prev2 = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
     const next = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--next", "aria-label": "N\xE4chste Empfehlung", tabindex: "-1" });
@@ -9404,12 +9565,12 @@
     let hover = false;
     let focus = false;
     const running = () => !mobile && n > 1 && !hover && !focus && !document.hidden;
-    function stop6() {
+    function stop7() {
       clearTimeout(timer2);
       timer2 = null;
     }
     function schedule4() {
-      stop6();
+      stop7();
       if (running()) timer2 = setTimeout(() => go3(idx + 1), interval);
     }
     function paint() {
@@ -9480,7 +9641,7 @@
     };
     const onEnter = () => {
       hover = true;
-      stop6();
+      stop7();
     };
     const onLeave = () => {
       hover = false;
@@ -9488,7 +9649,7 @@
     };
     const onFocusIn = () => {
       focus = true;
-      stop6();
+      stop7();
     };
     const onFocusOut = (e) => {
       if (!el4.contains(e.relatedTarget)) {
@@ -9496,7 +9657,7 @@
         schedule4();
       }
     };
-    const onVis = () => document.hidden ? stop6() : schedule4();
+    const onVis = () => document.hidden ? stop7() : schedule4();
     const onKey3 = (e) => {
       if (e.key === "ArrowLeft") go3(idx - 1);
       else if (e.key === "ArrowRight") go3(idx + 1);
@@ -9518,7 +9679,7 @@
       go: go3,
       index: () => idx,
       destroy() {
-        stop6();
+        stop7();
         track.removeEventListener("scroll", onTrackScroll);
         if (scrollRaf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(scrollRaf);
         scrollRaf = 0;
@@ -9630,11 +9791,15 @@
       h("div", { class: "lfx-plus-row__viewport" }, [h("div", { class: "lfx-plus-row__skeleton" }, cells)])
     ]);
   }
-  function fill3(rowEl, def, items, info) {
+  var EAGER_ROWS2 = 3;
+  var EAGER_CARDS2 = 8;
+  var lastInfo = null;
+  function fill3(rowEl, def, items, info, eager = false) {
     const resume = def.kind === "resume";
-    const cards = items.map((it) => createPlusCard(it, {
+    const cards = items.map((it, i) => createPlusCard(it, {
       kind: resume ? "resume" : "poster",
-      badge: resume ? null : plusBadge(it, info)
+      badge: resume ? null : plusBadge(it, info),
+      eager: eager && i < EAGER_CARDS2
     }));
     const track = h("div", { class: "lfx-plus-row__track", role: "list", "aria-label": def.title || "" }, cards);
     const prev2 = chevronButton("prev", "Zur\xFCck");
@@ -9648,7 +9813,7 @@
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev: prev2, next, indicator: null });
   }
-  function renderRows(slot, getDefs) {
+  function renderRows(slot, getDefs, peekDefs) {
     let disposed = false;
     let observer2 = null;
     const disposers = [];
@@ -9682,6 +9847,7 @@
         putItems(items);
         const info = await getNewContentInfo();
         if (disposed) return;
+        lastInfo = { v: info, at: Date.now() };
         disposers.push(fill3(rowEl, def, items, info));
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
@@ -9691,14 +9857,28 @@
     (async () => {
       let defs;
       try {
-        defs = await getDefs();
+        defs = peekDefs && peekDefs() || await getDefs();
       } catch (e) {
         console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
         return;
       }
       if (disposed) return;
       const pending = /* @__PURE__ */ new Map();
+      let shown3 = 0;
+      const info = lastInfo && Date.now() - lastInfo.at < HOME_TTL ? lastInfo.v : null;
       for (const def of defs || []) {
+        const snap = info && def.cacheKey ? peekCached(def.cacheKey) : void 0;
+        if (snap) {
+          const items = snap.items.filter((i) => i && i.Id);
+          if (!items.length) continue;
+          def.id = snap.id;
+          def.title = snap.title;
+          const el5 = skeleton2(def);
+          slot.append(el5);
+          putItems(items);
+          disposers.push(fill3(el5, def, items, info, shown3++ < EAGER_ROWS2));
+          continue;
+        }
         const el4 = skeleton2(def);
         pending.set(el4, def);
         slot.append(el4);
@@ -9804,7 +9984,7 @@
       }
     })();
     if (!isHub) cleanups3.push(renderBrands(root7, rowsSlot));
-    cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs()));
+    cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs(), isHub ? null : () => peekRowDefs()));
   }
   function ensure4(route) {
     clearTimeout(waitTimer4);
@@ -12501,7 +12681,18 @@
     } catch {
     }
   }
-  async function fetchHomePool() {
+  var poolWarm2 = false;
+  function fetchHomePool() {
+    const key = homeKey(getUserId(), "prime-hero");
+    poolWarm2 = peekCached(key) !== void 0;
+    const p = cached(key, loadHomePool, HOME_TTL);
+    p.then((pool) => {
+      if (!pool.length) clearCache(key);
+    }, () => {
+    });
+    return p;
+  }
+  async function loadHomePool() {
     const base = { Recursive: true, IncludeItemTypes: "Movie,Series", ImageTypes: "Logo,Backdrop", Fields: FIELDS3, EnableUserData: true, Limit: 40 };
     const [latest, random] = await Promise.all([
       getItems({ ...base, SortBy: "DateCreated", SortOrder: "Descending" }).catch(() => null),
@@ -12511,7 +12702,7 @@
     if (pool[0]) writeFirst(pool[0].Id);
     return pool;
   }
-  function renderHero(slot, { loadPool }) {
+  function renderHero(slot, { loadPool: loadPool2 }) {
     const mobile = isMobile() && isNarrow();
     let newInfo = null;
     let logoBox = null;
@@ -12677,7 +12868,7 @@
     }
     function buildImage(item) {
       const bd = imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 90 });
-      return h("img", { class: "lfx-prime-hero__img", src: bd, alt: "", decoding: "async" });
+      return h("img", { class: "lfx-prime-hero__img", src: bd, alt: "", decoding: poolWarm2 ? null : "async" });
     }
     function updateDots() {
       if (!dots) return;
@@ -12837,7 +13028,7 @@
     async function init2() {
       let items = [];
       try {
-        items = await loadPool();
+        items = await loadPool2();
       } catch {
       }
       try {
@@ -12912,17 +13103,18 @@
   }
   var displayTitle3 = (item) => item.Type === "Episode" && item.SeriesName ? item.SeriesName : item.Name || "";
   var ariaLabel2 = (item) => item.Type === "Episode" && item.SeriesName ? `${item.SeriesName} \u2013 ${item.Name || ""}`.trim() : item.Name || "";
-  function createPrimeCard(item, { kind: kind2 = "landscape", badge: badge3 = null, rank = 0 } = {}) {
+  function createPrimeCard(item, { kind: kind2 = "landscape", badge: badge3 = null, rank = 0, eager = false } = {}) {
+    const lazy = eager ? {} : { loading: "lazy", decoding: "async" };
     const poster = kind2 === "poster";
     const wide = landscapeFor(item);
     const pUrl = poster ? posterUrl(item, 400) : null;
     const src = poster ? pUrl || wide && wide.url : wide ? wide.url : posterUrl(item, 400);
     const titled = !poster && (!wide || !wide.isThumb);
     const children = [];
-    if (src) children.push(h("img", { class: "lfx-card__img", src, alt: "", loading: "lazy", decoding: "async" }));
+    if (src) children.push(h("img", { class: "lfx-card__img", src, alt: "", ...lazy }));
     if (titled) {
       const logo = logoImage(item, { maxWidth: 400 });
-      children.push(logo ? h("img", { class: "lfx-card__logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-card__title" }, displayTitle3(item)));
+      children.push(logo ? h("img", { class: "lfx-card__logo", src: logo, alt: "", ...lazy }) : h("span", { class: "lfx-card__title" }, displayTitle3(item)));
     }
     const classes = ["lfx-card", "lfx-prime-card", poster ? "lfx-prime-card--poster" : "lfx-prime-card--wide"];
     if (kind2 === "top10") classes.push("lfx-prime-card--ranked");
@@ -12974,6 +13166,9 @@
     b.innerHTML = CHEVRON3;
     return b;
   }
+  var EAGER_ROWS3 = 3;
+  var EAGER_CARDS3 = 8;
+  var lastInfo2 = null;
   function pickPosterId(defs, hub) {
     const list = defs || [];
     if (hub) {
@@ -12996,6 +13191,7 @@
     const disposers = [];
     const pending = /* @__PURE__ */ new Map();
     const rendered = /* @__PURE__ */ new Set();
+    let shown3 = 0;
     const info = () => {
       if (!infoP) {
         infoP = Promise.all([getNewContentInfo().catch(() => null), getTrendInfo().catch(() => null)]).then(([newInfo, trend2]) => ({ newInfo, trend: trend2 }));
@@ -13034,6 +13230,25 @@
         dataset: { lfxRow: def.id }
       }, [head, h("div", { class: "lfx-prime-row__viewport" }, [track])]);
     }
+    function fill4(rowEl, def, kind2, items, inf, eager) {
+      putItems(items);
+      const cards = items.map((it, i) => createPrimeCard(it, {
+        kind: kind2,
+        rank: kind2 === "top10" ? i + 1 : 0,
+        badge: cardBadge(it, inf),
+        eager: eager && i < EAGER_CARDS3
+      }));
+      const track = rowEl.querySelector(".lfx-prime-row__track");
+      const prev2 = arrow("prev", "Zur\xFCck");
+      const next = arrow("next", "Weiter");
+      track.replaceChildren(...cards);
+      track.setAttribute("aria-label", def.title || "");
+      track.before(prev2);
+      track.after(next);
+      rowEl.querySelector(".lfx-prime-row__title").textContent = def.title || "";
+      rowEl.classList.remove("is-loading");
+      disposers.push(attachScroller({ track, prev: prev2, next, indicator: null }));
+    }
     async function loadRow(rowEl, def, kind2) {
       try {
         const items = (await def.load(def)).filter((i) => i && i.Id);
@@ -13042,24 +13257,10 @@
           rowEl.remove();
           return;
         }
-        putItems(items);
-        const { newInfo, trend: trend2 } = await info();
+        const inf = await info();
         if (disposed) return;
-        const cards = items.map((it, i) => createPrimeCard(it, {
-          kind: kind2,
-          rank: kind2 === "top10" ? i + 1 : 0,
-          badge: cardBadge(it, { newInfo, trend: trend2 })
-        }));
-        const track = rowEl.querySelector(".lfx-prime-row__track");
-        const prev2 = arrow("prev", "Zur\xFCck");
-        const next = arrow("next", "Weiter");
-        track.replaceChildren(...cards);
-        track.setAttribute("aria-label", def.title || "");
-        track.before(prev2);
-        track.after(next);
-        rowEl.querySelector(".lfx-prime-row__title").textContent = def.title || "";
-        rowEl.classList.remove("is-loading");
-        disposers.push(attachScroller({ track, prev: prev2, next, indicator: null }));
+        lastInfo2 = { v: inf, at: Date.now() };
+        fill4(rowEl, def, kind2, items, inf, false);
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -13081,10 +13282,21 @@
       add(defs) {
         if (disposed) return;
         ensureObserver();
+        const inf = lastInfo2 && Date.now() - lastInfo2.at < HOME_TTL ? lastInfo2.v : null;
         for (const def of defs || []) {
           if (!def || rendered.has(def.id)) continue;
           rendered.add(def.id);
           const kind2 = displayKind(def, posterId);
+          const snap = inf && def.cacheKey ? peekCached(def.cacheKey) : void 0;
+          if (snap) {
+            const items = snap.items.filter((i) => i && i.Id);
+            if (!items.length) continue;
+            def.title = snap.title;
+            const el5 = skeleton3(def, kind2);
+            slot.append(el5);
+            fill4(el5, def, kind2, items, inf, shown3++ < EAGER_ROWS3);
+            continue;
+          }
           const el4 = skeleton3(def, kind2);
           slot.append(el4);
           pending.set(el4, { def, kind: kind2 });
@@ -13166,7 +13378,7 @@
     const getDefs = (genreCount2) => hub ? buildHubRowDefs(lib, { genreCount: genreCount2 }) : buildRowDefs({ genreCount: genreCount2 });
     let defs = [];
     try {
-      defs = await getDefs(BASE_GENRES);
+      defs = !hub && peekRowDefs({ genreCount: BASE_GENRES }) || await getDefs(BASE_GENRES);
     } catch (e) {
       console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
     }
@@ -13614,7 +13826,7 @@
     add(window, "hashchange", closeNow2);
     add(window, "blur", closeNow2);
   }
-  function stop4() {
+  function stop5() {
     closeNow2();
     for (const off of listeners5.splice(0)) off();
     unmountPoint(POPUP_ID2);
@@ -13627,7 +13839,7 @@
     name: "prime-hover",
     match: (route) => isTheme("prime") && isModern() && !isTv() && !isMobile() && isReady() && hoverCapable2() && Boolean(primeHomeRoute(route)),
     mount: start5,
-    unmount: stop4
+    unmount: stop5
   };
   var hover_default = primeHover;
 
@@ -14322,7 +14534,7 @@
     }));
     await Promise.all(tasks);
   }
-  function stop5() {
+  function stop6() {
     clearTimeout(waitTimer6);
     waitTimer6 = null;
     teardownSession();
@@ -14369,7 +14581,7 @@
     match: (route) => isTheme("prime") && isModern() && !isTv() && isReady() && Boolean(isPlainRoute(route)),
     mount: (route) => start6(route),
     update: (route) => start6(route),
-    unmount: () => stop5()
+    unmount: () => stop6()
   };
 
   // src/js/features/prime/tabbar.js
@@ -15119,7 +15331,7 @@
     if (pool[0]) writeFirst2(pool[0].Id);
     return pool;
   }
-  function renderHero2(slot, { loadPool }) {
+  function renderHero2(slot, { loadPool: loadPool2 }) {
     const phone = isPhone2();
     let disposed = false;
     let pool = [];
@@ -15315,7 +15527,7 @@
     async function init2() {
       let items = [];
       try {
-        items = await loadPool();
+        items = await loadPool2();
       } catch {
       }
       if (disposed) return;
@@ -15762,18 +15974,18 @@
       typed.textContent = full.slice(0, pos);
       rest.textContent = full.slice(pos);
     };
-    const stop6 = () => {
+    const stop7 = () => {
       if (timer2) clearInterval(timer2);
       timer2 = null;
     };
     const finish3 = () => {
-      stop6();
+      stop7();
       pos = full.length;
       paint();
       el4.classList.remove("lfx-retro-caret");
     };
     const start10 = () => {
-      stop6();
+      stop7();
       if (reducedMotion6() || full.length < 2) {
         finish3();
         return;
@@ -15788,7 +16000,7 @@
         if (pos >= full.length) finish3();
       }, TICK_MS);
     };
-    return { el: el4, start: start10, finish: finish3, stop: stop6 };
+    return { el: el4, start: start10, finish: finish3, stop: stop7 };
   }
 
   // src/js/features/retro/title-dom.js
@@ -18215,7 +18427,7 @@
       window.addEventListener("click", onClickGuard, true);
       timers.interval(check3, 5e3);
     }
-    function stop6() {
+    function stop7() {
       end();
       if (started2) {
         for (const ev of idleEvents) window.removeEventListener(ev, noteInput, true);
@@ -18225,7 +18437,7 @@
       swallowClickUntil = 0;
       timers.clearAll();
     }
-    return { start: start10, stop: stop6, run, end, isActive: () => active4 };
+    return { start: start10, stop: stop7, run, end, isActive: () => active4 };
   }
 
   // src/js/features/retro/fx/index.js
@@ -18703,10 +18915,11 @@
 
   // src/js/features/store/prefs.js
   var KEY3 = "lfx.store.";
-  var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "joystick" };
+  var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "touch" };
   var TOUCH_CONTROLS = ["joystick", "touch"];
   var TOUCH_SENS = ["low", "normal", "high"];
-  var TUNE_FLAGS = ["holdInvertY", "holdInvertX", "lookInvertY", "lookInvertX"];
+  var TUNE_FLAGS = ["holdInvertY", "holdInvertX", "lookFlipY", "lookFlipX"];
+  var TOUCH_REGRIPS = ["off", "short", "long"];
   var VOICE_PITCHES = ["normal", "tief", "sehrtief"];
   var QUALITIES = ["auto", "low", "mid", "high"];
   var VR_TURNS = ["snap", "smooth"];
@@ -18759,7 +18972,13 @@
     return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS3.touchControl;
   }
   function getTouchTune() {
-    const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal") };
+    for (const k of ["lookInvertY", "lookInvertX"]) {
+      try {
+        window.localStorage.removeItem(storageKey4(k));
+      } catch {
+      }
+    }
+    const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal"), touchRegrip: readEnum("touchRegrip", TOUCH_REGRIPS, "short") };
     for (const k of TUNE_FLAGS) t[k] = read2("localStorage", storageKey4(k)) === "1";
     return t;
   }
@@ -18790,6 +19009,7 @@
     if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey4("touchControl"), p.touchControl);
     for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey4(k), p[k] ? "1" : "0");
     if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey4("touchSens"), p.touchSens);
+    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey4("touchRegrip"), p.touchRegrip);
     if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey4("bigCovers"), p.bigCovers ? "1" : "0");
     const vr = p.vr;
     if (vr && typeof vr === "object") {
@@ -19145,7 +19365,7 @@
       }
       return null;
     }
-    async function stop6() {
+    async function stop7() {
       if (routeOf3() !== "video" && !find()) {
         if (routeOf3() !== "home") {
           try {
@@ -19198,7 +19418,7 @@
       tracks: (kind2) => queued(() => readTracks(kind2)),
       selectTrack: (kind2, id) => queued(() => select(kind2, id)),
       upNext: (action) => click(action === "start" ? ".btnStartNow" : ".btnHide"),
-      stop: stop6,
+      stop: stop7,
       dispose: dispose7
     };
   }
@@ -20248,6 +20468,7 @@
       if (running || destroyed) return;
       running = true;
       initLayout();
+      initHomeCache();
       initUnlock();
       for (const f of features2) registerFeature(f);
       let n = 0;
@@ -20261,6 +20482,7 @@
       running = false;
       clearInterval(refreshTimer);
       resetRouter();
+      destroyHomeCache();
       destroyStore();
       destroyLive();
       destroyTvMode();

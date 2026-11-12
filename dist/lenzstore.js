@@ -32478,20 +32478,23 @@ void main() {
   var STICK_PITCH_RATE = 1.5;
   var SCHEMES = ["joystick", "touch"];
   var SENS_FACTOR = { low: 0.7, normal: 1, high: 1.4 };
+  var REGRIP_MS = { off: 0, short: 400, long: 800 };
+  var REGRIP_EDGE = 0.2;
   function normTune(t) {
     const o = t && typeof t === "object" ? t : {};
     return {
       holdInvertY: o.holdInvertY === true,
       holdInvertX: o.holdInvertX === true,
-      lookInvertY: o.lookInvertY === true,
-      lookInvertX: o.lookInvertX === true,
-      touchSens: Object.prototype.hasOwnProperty.call(SENS_FACTOR, o.touchSens) ? o.touchSens : "normal"
+      lookFlipY: o.lookFlipY === true,
+      lookFlipX: o.lookFlipX === true,
+      touchSens: Object.prototype.hasOwnProperty.call(SENS_FACTOR, o.touchSens) ? o.touchSens : "normal",
+      touchRegrip: Object.prototype.hasOwnProperty.call(REGRIP_MS, o.touchRegrip) ? o.touchRegrip : "short"
     };
   }
   var ZOOM_MIN = 1;
   var ZOOM_MAX = 3;
   var TouchControls = class {
-    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
+    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
     constructor(ctx) {
       this.ctx = ctx;
       this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : "touch";
@@ -32503,6 +32506,7 @@ void main() {
       this.attached = false;
       this.walkId = null;
       this.timer = 0;
+      this.coastUntil = 0;
       this.zoom = 1;
       this.pinch = null;
       this.ring = null;
@@ -32518,23 +32522,34 @@ void main() {
     tune() {
       return normTune(this.ctx.getTune ? this.ctx.getTune() : null);
     }
+    now() {
+      return this.ctx.now ? this.ctx.now() : performance.now();
+    }
+    coasting() {
+      if (!this.coastUntil) return false;
+      if (this.ctx.getMode() !== "play" || this.now() >= this.coastUntil) {
+        this.coastUntil = 0;
+        return false;
+      }
+      return true;
+    }
     /** Eingabe für Player.update(): läuft nur im Laufmodus. */
     get input() {
       if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== "play") {
         this.stopWalk();
         if (this.pad) this.pad.reset();
       }
-      return { fwd: this.walkId !== null || this.padWalk ? 1 : 0, strafe: 0, run: false };
+      return { fwd: this.walkId !== null || this.padWalk || this.coasting() ? 1 : 0, strafe: 0, run: false };
     }
-    /** Pro Frame (nur im Laufmodus aufrufen): Joystick-Auslenkung → Blickdrehung. Rechts = Blick rechts, oben = Blick oben. */
+    /** Pro Frame (nur im Laufmodus aufrufen): Joystick-Auslenkung → Blickdrehung. Rechts = Blick rechts, oben = Blick oben (lookFlip kehrt um). Bei Zoom schwächer. */
     tick(dt) {
       const { x, y } = this.stick;
       if (!x && !y || !(dt > 0)) return;
       if (this.ctx.getMode() !== "play") return;
       const t = Math.min(dt, 0.1);
       const tu = this.tune();
-      const f = SENS_FACTOR[tu.touchSens];
-      this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookInvertX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookInvertY ? -1 : 1));
+      const f = SENS_FACTOR[tu.touchSens] / Math.max(1, this.currentZoom());
+      this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookFlipX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookFlipY ? -1 : 1));
     }
     /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
     setScheme(s) {
@@ -32601,6 +32616,7 @@ void main() {
     }
     reset() {
       this.clearTimer();
+      this.coastUntil = 0;
       this.walkId = null;
       this.pinch = null;
       this.pointers.clear();
@@ -32627,9 +32643,12 @@ void main() {
       }
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, dead: false, walked: false });
       this.clearTimer();
+      const wasCoasting = this.coasting();
+      this.coastUntil = 0;
       if (this.pointers.size === 1) {
         const id = e.pointerId;
-        if (this.scheme === "touch") this.timer = setTimeout(() => {
+        if (this.scheme === "touch" && wasCoasting) this.startWalk(id);
+        else if (this.scheme === "touch") this.timer = setTimeout(() => {
           this.timer = 0;
           this.startWalk(id);
         }, TOUCH_HOLD_MS);
@@ -32684,8 +32703,8 @@ void main() {
       }
       if (p.moved || p.walked) {
         const tu = this.tune();
-        const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens];
-        this.ctx.player.look(dx * k * (tu.lookInvertX ? -1 : 1), dy * k * (tu.lookInvertY ? -1 : 1));
+        const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens] / Math.max(1, this.currentZoom());
+        this.ctx.player.look(dx * k * (tu.lookFlipX ? 1 : -1), dy * k * (tu.lookFlipY ? 1 : -1));
       }
       if (p.walked) this.moveRing(e.clientX, e.clientY);
     }
@@ -32693,7 +32712,13 @@ void main() {
       const p = this.pointers.get(e.pointerId);
       this.pointers.delete(e.pointerId);
       this.clearTimer();
-      if (this.walkId === e.pointerId) this.stopWalk();
+      const wasWalk = this.walkId === e.pointerId;
+      if (wasWalk) this.stopWalk();
+      if (wasWalk && this.scheme === "touch" && this.ctx.getMode() === "play") {
+        const ms = REGRIP_MS[this.tune().touchRegrip];
+        const w = window.innerWidth;
+        if (ms > 0 && w > 0 && (e.clientX < w * REGRIP_EDGE || e.clientX > w * (1 - REGRIP_EDGE))) this.coastUntil = this.now() + ms;
+      }
       if (this.pointers.size < 2) this.pinch = null;
       if (!p || cancelled || p.dead || p.moved || p.walked || this.ctx.getMode() !== "play") return;
       if (this.pointers.size === 0) this.ctx.onTap(e.clientX, e.clientY);
@@ -39126,6 +39151,8 @@ void main() {
   var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "auto" };
   var SENS_LABEL = { low: "Niedrig", normal: "Normal", high: "Hoch" };
   var SENS_NEXT = { low: "normal", normal: "high", high: "low" };
+  var REGRIP_LABEL = { off: "Aus", short: "Kurz", long: "Lang" };
+  var REGRIP_NEXT = { off: "short", short: "long", long: "off" };
   var PITCH_LABEL = { normal: "Normal", tief: "Tief", sehrtief: "Sehr tief" };
   var PITCH_NEXT = { normal: "tief", tief: "sehrtief", sehrtief: "normal" };
   var AUTO_DEVICE = "Automatisch (Ger\xE4testimme)";
@@ -39323,10 +39350,13 @@ void main() {
     };
     const tHoldY = mkT(flag("holdInvertY"));
     const tHoldX = mkT(flag("holdInvertX"));
-    const tLookY = mkT(flag("lookInvertY"));
-    const tLookX = mkT(flag("lookInvertX"));
+    const tLookY = mkT(flag("lookFlipY"));
+    const tLookX = mkT(flag("lookFlipX"));
     const tSens = mkT(() => {
       if (a.onTouchTune) a.onTouchTune({ touchSens: SENS_NEXT[tuneNow().touchSens] || "normal" });
+    });
+    const tRegrip = mkT(() => {
+      if (a.onTouchTune) a.onTouchTune({ touchRegrip: REGRIP_NEXT[tuneNow().touchRegrip || "short"] || "off" });
     });
     const tBack = el("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
     tBack.type = "button";
@@ -39342,8 +39372,11 @@ void main() {
       tSchemeB.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === "touch" ? "Touch" : "Joystick"}`;
       tHoldY.textContent = `Cover kippen: ${nr(t.holdInvertY)}`;
       tHoldX.textContent = `Cover drehen: ${nr(t.holdInvertX)}`;
-      tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookInvertY)}`;
-      tLookX.textContent = `Umschauen links/rechts: ${nr(t.lookInvertX)}`;
+      tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookFlipY)}`;
+      tLookX.textContent = `Umschauen links/rechts: ${nr(t.lookFlipX)}`;
+      const isTouch = !a.getTouchControl || a.getTouchControl() === "touch";
+      tRegrip.hidden = !isTouch;
+      tRegrip.textContent = `Umgreifen: ${REGRIP_LABEL[t.touchRegrip] || REGRIP_LABEL.short}`;
       tSens.textContent = `Empfindlichkeit: ${SENS_LABEL[t.touchSens] || SENS_LABEL.normal}`;
     }
     function openTouch() {
@@ -44827,7 +44860,7 @@ void main() {
       this.voiceName = typeof this.opts.voiceName === "string" ? this.opts.voiceName : "";
       this.voicePitch = ["normal", "tief", "sehrtief"].includes(this.opts.voicePitch) ? this.opts.voicePitch : "tief";
       this.bigCovers = this.opts.bigCovers !== false;
-      this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : "joystick";
+      this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : "touch";
       this.touchTune = normTune(this.opts.touchTune);
       this.zoomTarget = 1;
       this.zoom = 1;
@@ -45515,7 +45548,7 @@ void main() {
       const c = this.mods && this.mods.ctx.use("cashier");
       if (c && c.preview) c.preview();
     }
-    /** Touch-Steuerung: 'joystick' (Gehen-Knopf + Joystick, Standard) oder 'touch' (Halten = laufen, Wischen = umsehen). */
+    /** Touch-Steuerung: 'touch' (Halten = laufen, Wischen = umsehen, Standard) oder 'joystick' (Gehen-Knopf + Joystick). */
     setTouchControl(s) {
       if (!SCHEMES.includes(s)) return;
       this.touchScheme = s;
@@ -45523,7 +45556,7 @@ void main() {
       if (this.pause) this.pause.refresh();
       this.syncUi();
     }
-    /** Touch-Feineinstellung (Teilobjekt): holdInvertY/X, lookInvertY/X (bool), touchSens ('low'|'normal'|'high'). Wirkt sofort. */
+    /** Touch-Feineinstellung (Teilobjekt): holdInvertY/X, lookFlipY/X (bool), touchSens ('low'|'normal'|'high'), touchRegrip ('off'|'short'|'long'). Wirkt sofort. */
     setTouchTune(p) {
       if (!p) return;
       this.touchTune = normTune({ ...this.touchTune, ...p });

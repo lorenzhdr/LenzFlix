@@ -11,6 +11,8 @@ export const CONTROLS_MS = 3000;
 export const LOADING_DELAY_MS = 300;
 export const SWIPE_PX = 50;
 const DOUBLE_TAP_MS = 320;
+export const MOUSE_HIDE_MS = 250; // Maus: Ausblenden per Klick verzögert, damit ein Doppelklick (Vollbild) nicht flackert
+const MOVE_GUARD_PX = 8; // nach Maus-Ausblenden: erst ab so viel Zeigerweg wieder einblenden
 const INTERACTIVE = 'button, input, a, .lfx-tvm__controls, .lfx-tvm__menu, .lfx-tvm__card, .lfx-tvm__pip-card, .lfx-tvm__unmute, .lfx-tvm__tap';
 
 export function createPlayerView({ doc = document, ctl, model = null, opts = {} } = {}) {
@@ -82,6 +84,8 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
   let lastTapAt = 0;
   let zapTimer = 0;
   let controlsTimer = 0;
+  let mouseHideTimer = 0;
+  let moveGuard = null; // { x, y } Klickposition nach Maus-Ausblenden
   let loadingTimer = 0;
   let loadingShown = false;
   const cleanups = [];
@@ -266,11 +270,16 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
       el.classList.remove('is-zapping');
     }, ZAP_MS);
   }
-  function hideControls() {
+  // Nächster Tipp/Klick bei sichtbarer Leiste: alles weg (Leiste, Senderkarte, Menü, Fokus), auch bei Menü/Fokus in der Leiste.
+  function hideAll() {
     clearTimeout(controlsTimer);
     controlsTimer = 0;
-    if (controlsPinned()) return;
-    el.classList.remove('is-controls');
+    clearTimeout(zapTimer);
+    zapTimer = 0;
+    try { controls.closeMenu(); } catch { /* egal */ }
+    const a = doc.activeElement;
+    if (a && a !== doc.body && typeof a.blur === 'function' && (controls.el.contains(a) || controls.menu.el.contains(a))) a.blur();
+    el.classList.remove('is-controls', 'is-zapping');
   }
 
   // Doppeltipp = Vollbild nur mit echtem Element-Vollbild (nicht iOS-Video-Vollbild/CSS-Notlösung) oder wenn es schon an ist.
@@ -324,21 +333,44 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
         return;
       }
       if (!onZap && fsDoubleTapAllowed()) lastTapAt = t;
-      if (el.classList.contains('is-controls')) hideControls();
+      if (el.classList.contains('is-controls')) hideAll();
       else showControls();
       return;
     }
-    if (!interactive) showControls();
+    if (interactive) return;
+    // Maus: zweiter Klick innerhalb der Verzögerung gehört zum Doppelklick → Ausblenden verwerfen
+    if (mouseHideTimer) {
+      clearTimeout(mouseHideTimer);
+      mouseHideTimer = 0;
+      return;
+    }
+    if (el.classList.contains('is-controls')) {
+      const x = e.clientX;
+      const y = e.clientY;
+      mouseHideTimer = setTimeout(() => {
+        mouseHideTimer = 0;
+        if (!alive) return;
+        hideAll();
+        moveGuard = { x, y };
+      }, MOUSE_HIDE_MS);
+    } else showControls();
   }
   function onPointerCancel() {
     swipe = null;
   }
   function onPointerMove(e) {
     if (e.pointerType === 'touch') return;
+    if (moveGuard) {
+      // Chrome feuert nach Klicks Pseudo-Bewegungen: erst ab echtem Zeigerweg wieder einblenden
+      if (Math.hypot(e.clientX - moveGuard.x, e.clientY - moveGuard.y) < MOVE_GUARD_PX) return;
+      moveGuard = null;
+    }
     if (!el.classList.contains('is-controls')) showControls();
     else armControlsHide();
   }
   function onDblClick(e) {
+    clearTimeout(mouseHideTimer);
+    mouseHideTimer = 0;
     if (Date.now() - lastTouchAt < 700 || isInteractive(e.target)) return;
     if (opts.fullscreen) opts.fullscreen.toggle();
   }
@@ -400,6 +432,7 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
       alive = false;
       clearTimeout(zapTimer);
       clearTimeout(controlsTimer);
+      clearTimeout(mouseHideTimer);
       clearTimeout(loadingTimer);
       cleanups.splice(0).forEach((fn) => fn());
       controls.destroy();

@@ -59,7 +59,7 @@ class StoreApp {
     this.voiceName = typeof this.opts.voiceName === 'string' ? this.opts.voiceName : '';
     this.voicePitch = ['normal', 'tief', 'sehrtief'].includes(this.opts.voicePitch) ? this.opts.voicePitch : 'tief';
     this.bigCovers = this.opts.bigCovers !== false;
-    this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : 'joystick';
+    this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : 'touch';
     this.touchTune = normTune(this.opts.touchTune);
     this.zoomTarget = 1;
     this.zoom = 1;
@@ -669,7 +669,7 @@ class StoreApp {
     if (c && c.preview) c.preview();
   }
 
-  /** Touch-Steuerung: 'joystick' (Gehen-Knopf + Joystick, Standard) oder 'touch' (Halten = laufen, Wischen = umsehen). */
+  /** Touch-Steuerung: 'touch' (Halten = laufen, Wischen = umsehen, Standard) oder 'joystick' (Gehen-Knopf + Joystick). */
   setTouchControl(s) {
     if (!SCHEMES.includes(s)) return;
     this.touchScheme = s;
@@ -678,7 +678,7 @@ class StoreApp {
     this.syncUi();
   }
 
-  /** Touch-Feineinstellung (Teilobjekt): holdInvertY/X, lookInvertY/X (bool), touchSens ('low'|'normal'|'high'). Wirkt sofort. */
+  /** Touch-Feineinstellung (Teilobjekt): holdInvertY/X, lookFlipY/X (bool), touchSens ('low'|'normal'|'high'), touchRegrip ('off'|'short'|'long'). Wirkt sofort. */
   setTouchTune(p) {
     if (!p) return;
     this.touchTune = normTune({ ...this.touchTune, ...p });

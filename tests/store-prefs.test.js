@@ -8,17 +8,39 @@ import * as prefs from '../src/js/features/store/prefs.js';
 beforeEach(() => localStorage.clear());
 
 describe('Touch-Feineinstellung', () => {
-  it('Standard = unverändert', () => {
-    expect(prefs.getTouchTune()).toEqual({ touchSens: 'normal', holdInvertY: false, holdInvertX: false, lookInvertY: false, lookInvertX: false });
+  it('Standard: Touch-Steuerung, Umschauen normal, Umgreifen kurz', () => {
+    expect(prefs.getTouchControl()).toBe('touch');
+    expect(prefs.getTouchTune()).toEqual({ touchSens: 'normal', touchRegrip: 'short', holdInvertY: false, holdInvertX: false, lookFlipY: false, lookFlipX: false });
+  });
+  it('gespeichertes joystick bleibt', () => {
+    prefs.savePrefs({ touchControl: 'joystick' });
+    expect(prefs.getTouchControl()).toBe('joystick');
+  });
+  it('alte lookInvert-Schlüssel werden entfernt und nicht übernommen', () => {
+    localStorage.setItem('lfx.store.lookInvertY.u1', '1');
+    localStorage.setItem('lfx.store.lookInvertX.u1', '1');
+    const t = prefs.getTouchTune();
+    expect(t.lookFlipY).toBe(false);
+    expect(t.lookFlipX).toBe(false);
+    expect(localStorage.getItem('lfx.store.lookInvertY.u1')).toBeNull();
+    expect(localStorage.getItem('lfx.store.lookInvertX.u1')).toBeNull();
+  });
+  it('Umgreifen speichern und validieren', () => {
+    prefs.savePrefs({ touchRegrip: 'long' });
+    expect(prefs.getTouchTune().touchRegrip).toBe('long');
+    prefs.savePrefs({ touchRegrip: 'x' });
+    expect(prefs.getTouchTune().touchRegrip).toBe('long');
+    localStorage.setItem('lfx.store.touchRegrip.u1', 'zzz');
+    expect(prefs.getTouchTune().touchRegrip).toBe('short');
   });
   it('speichert und validiert', () => {
-    prefs.savePrefs({ holdInvertY: true, lookInvertX: true, touchSens: 'high' });
-    expect(prefs.getTouchTune()).toEqual({ touchSens: 'high', holdInvertY: true, holdInvertX: false, lookInvertY: false, lookInvertX: true });
-    prefs.savePrefs({ touchSens: 'wild', holdInvertY: 'ja', lookInvertX: false });
+    prefs.savePrefs({ holdInvertY: true, lookFlipX: true, touchSens: 'high' });
+    expect(prefs.getTouchTune()).toEqual({ touchSens: 'high', touchRegrip: 'short', holdInvertY: true, holdInvertX: false, lookFlipY: false, lookFlipX: true });
+    prefs.savePrefs({ touchSens: 'wild', holdInvertY: 'ja', lookFlipX: false });
     const t = prefs.getTouchTune();
     expect(t.touchSens).toBe('high');
     expect(t.holdInvertY).toBe(true);
-    expect(t.lookInvertX).toBe(false);
+    expect(t.lookFlipX).toBe(false);
   });
   it('ungültiger gespeicherter Wert fällt auf Standard', () => {
     localStorage.setItem('lfx.store.touchSens.u1', 'x');

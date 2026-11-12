@@ -24,6 +24,7 @@ vi.mock('../src/js/shared/trend.js', async () => {
 vi.mock('../src/js/shared/trailer.js', () => ({ createMutedPreview: vi.fn() }));
 
 import * as api from '../src/js/core/api.js';
+import { clearCache } from '../src/js/core/cache.js';
 import { play } from '../src/js/core/playback.js';
 import * as data from '../src/js/features/modal/data.js';
 import { createMutedPreview } from '../src/js/shared/trailer.js';
@@ -246,6 +247,19 @@ describe('Hero: Trailer', () => {
 });
 
 describe('Hero: Pool', () => {
+  beforeEach(() => clearCache());
+  it('fetchHomePool cached den Pool 10 min (gleicher erster Titel), nach clearCache("home:") neu', async () => {
+    api.getItems.mockReset();
+    api.getItems.mockImplementation(async (p) => ({ Items: p.SortBy === 'Random' ? [mk('r1'), mk('r2')] : [mk('n1'), mk('n2')] }));
+    const a = await fetchHomePool();
+    const n = api.getItems.mock.calls.length;
+    const b = await fetchHomePool();
+    expect(b).toBe(a);
+    expect(api.getItems.mock.calls.length).toBe(n);
+    clearCache('home:');
+    await fetchHomePool();
+    expect(api.getItems.mock.calls.length).toBeGreaterThan(n);
+  });
   it('fetchHomePool fragt Logo+Backdrop-Titel mit Trailer-Feldern ab und baut den Pool', async () => {
     api.getItems.mockReset();
     api.getItems.mockImplementation(async (p) => ({

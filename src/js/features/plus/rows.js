@@ -1,5 +1,6 @@
 // LENZ+: Zeilen der Startseite/Hubs. Zeilen laden lazy (IntersectionObserver); Fehler lassen die Zeile still weg.
 import { h } from '../../core/dom.js';
+import { peekCached, HOME_TTL } from '../../core/cache.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { plusBadge, getNewContentInfo } from '../../shared/newcontent.js';
@@ -19,11 +20,16 @@ function skeleton(def) {
   ]);
 }
 
-function fill(rowEl, def, items, info) {
+const EAGER_ROWS = 3; // Cache-Pfad: die ersten Zeilen ohne lazy/async-Bilder
+const EAGER_CARDS = 8;
+let lastInfo = null; // {v, at}: zuletzt geladene Neu-Info, macht den Sofort-Pfad synchron
+
+function fill(rowEl, def, items, info, eager = false) {
   const resume = def.kind === 'resume';
-  const cards = items.map((it) => createPlusCard(it, {
+  const cards = items.map((it, i) => createPlusCard(it, {
     kind: resume ? 'resume' : 'poster',
     badge: resume ? null : plusBadge(it, info),
+    eager: eager && i < EAGER_CARDS,
   }));
   const track = h('div', { class: 'lfx-plus-row__track', role: 'list', 'aria-label': def.title || '' }, cards);
   const prev = chevronButton('prev', 'Zurück');
@@ -40,8 +46,9 @@ function fill(rowEl, def, items, info) {
 
 /**
  * Rendert Zeilen für `getDefs()` (async, liefert {id,title,kind,load}) in den Slot. Rückgabe: Cleanup.
+ * `peekDefs()` (optional, sync): gecachte Zeilenliste; Zeilen mit Cache-Treffer (def.cacheKey) füllen sofort ohne Skeleton.
  */
-export function renderRows(slot, getDefs) {
+export function renderRows(slot, getDefs, peekDefs) {
   let disposed = false;
   let observer = null;
   const disposers = [];
@@ -71,6 +78,7 @@ export function renderRows(slot, getDefs) {
       putItems(items);
       const info = await getNewContentInfo();
       if (disposed) return;
+      lastInfo = { v: info, at: Date.now() };
       disposers.push(fill(rowEl, def, items, info));
     } catch (e) {
       console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
@@ -81,14 +89,28 @@ export function renderRows(slot, getDefs) {
   (async () => {
     let defs;
     try {
-      defs = await getDefs();
+      defs = (peekDefs && peekDefs()) || await getDefs();
     } catch (e) {
       console.warn('[LenzFlix] Zeilen konnten nicht aufgebaut werden', e && e.message);
       return;
     }
     if (disposed) return;
     const pending = new Map();
+    let shown = 0;
+    const info = lastInfo && Date.now() - lastInfo.at < HOME_TTL ? lastInfo.v : null;
     for (const def of defs || []) {
+      const snap = info && def.cacheKey ? peekCached(def.cacheKey) : undefined;
+      if (snap) {
+        const items = snap.items.filter((i) => i && i.Id);
+        if (!items.length) continue;
+        def.id = snap.id;
+        def.title = snap.title;
+        const el = skeleton(def);
+        slot.append(el);
+        putItems(items);
+        disposers.push(fill(el, def, items, info, shown++ < EAGER_ROWS));
+        continue;
+      }
       const el = skeleton(def);
       pending.set(el, def);
       slot.append(el);

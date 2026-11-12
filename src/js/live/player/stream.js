@@ -40,6 +40,19 @@ function reasonsOf(ms) {
   return out;
 }
 
+/** Kurzinfo zur Quelle für die Messanzeige: { container, v, a, reasons } (nur Kürzel, nie URL/Token/Pfade). */
+const short = (x, n = 12) => String(x == null ? '' : x).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, n);
+function sourceInfo(ms, audioIdx, reasons) {
+  const a = (ms.MediaStreams || []).find((s) => s && s.Type === 'Audio' && s.Index === audioIdx);
+  return {
+    container: short(String(ms.Container || '').split(',')[0]),
+    v: short(videoCodecOf(ms)),
+    a: short(a && a.Codec),
+    reasons: reasons.slice(0, 2).map((r) => String(r).replace(/NotSupported$/, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 24)).filter(Boolean),
+  };
+}
+
+
 function absolute(deps, rel) {
   let origin = '';
   try { origin = new URL(deps.streamUrl('/')).origin; } catch { /* Fallback unten */ }
@@ -51,7 +64,7 @@ function absolute(deps, rel) {
  * audioIndex (optional): gewünschte Tonspur; weicht sie vom Server-Standard ab, wird per Remux umgeschaltet.
  * noHevc (optional): Profil ohne HEVC (ts/h264) – Rückfall, wenn fMP4-HLS im <video> scheiterte.
  * noDirect (optional): keine Direktwiedergabe (leere DirectPlayProfiles, EnableDirectPlay false) → Remux (Rückfall, wenn Direct im <video> scheiterte).
- * Fehler tragen zusätzlich `code` (Kurzcode); Erfolg bei HLS trägt `videoCodec` und `offeredHevc`.
+ * Erfolg trägt `info` (Kürzel für die Messanzeige). Fehler tragen zusätzlich `code` (Kurzcode); Erfolg bei HLS trägt `videoCodec` und `offeredHevc`.
  */
 export async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false, noDirect = false }) {
   const post = async (extra) => {
@@ -87,7 +100,8 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal, n
       if (!ms) return fail('network', 'NET');
     }
     const audioIdx = want != null ? want : def;
-    const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
+    const reasons0 = ms.SupportsDirectPlay && !remux && !noDirect ? [] : reasonsOf(ms);
+    const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr, info: sourceInfo(ms, audioIdx, reasons0) };
 
     if (ms.SupportsDirectPlay && !remux && !noDirect) {
       const url = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });

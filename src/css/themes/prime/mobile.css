@@ -627,6 +627,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .lfx-pt__tabs {
   height: 48px;
   padding: 0 15px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
 }

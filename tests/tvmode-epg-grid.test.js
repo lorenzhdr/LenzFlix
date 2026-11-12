@@ -290,3 +290,49 @@ describe('tvmode epg-grid.js', () => {
     g.destroy();
   });
 });
+
+describe('tvmode epg-grid.js · Titel rückt nach', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+
+  it('Titel und Zeit stehen in einem Wrapper .lfx-tvm__epg-cell-text', () => {
+    const { grid } = make();
+    const cell = grid.el.querySelector('.lfx-tvm__epg-cell');
+    const txt = cell.querySelector(':scope > .lfx-tvm__epg-cell-text');
+    expect(txt).toBeTruthy();
+    expect(txt.querySelector('.lfx-tvm__epg-cell-title')).toBeTruthy();
+    expect(txt.querySelector('.lfx-tvm__epg-cell-time')).toBeTruthy();
+    grid.destroy();
+  });
+
+  it('setzt --tvm-vis nur auf links angeschnittene Zellen und entfernt es wieder', () => {
+    const { grid } = make();
+    const scroll = grid.el.querySelector('.lfx-tvm__epg-scroll');
+    const chan = grid.el.querySelector('.lfx-tvm__epg-chan');
+    Object.defineProperty(scroll, 'clientWidth', { value: 800, configurable: true });
+    const cells = [...grid.el.querySelectorAll('.lfx-tvm__epg-cell')].slice(0, 2);
+    const rect = (l, r) => ({ left: l, right: r, width: r - l, top: 0, bottom: 10, height: 10 });
+    chan.getBoundingClientRect = () => rect(0, 100);
+    cells[0].getBoundingClientRect = () => rect(40, 300); // ragt unter die Spalte
+    cells[1].getBoundingClientRect = () => rect(300, 500);
+    let raf;
+    const spy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((fn) => { raf = fn; return 1; });
+    scroll.dispatchEvent(new Event('scroll'));
+    raf();
+    expect(cells[0].style.getPropertyValue('--tvm-vis')).toBe('188px'); // 300 - (100 + 4) - 8
+    expect(cells[1].style.getPropertyValue('--tvm-vis')).toBe('');
+    cells[0].getBoundingClientRect = () => rect(120, 300);
+    scroll.dispatchEvent(new Event('scroll'));
+    raf();
+    expect(cells[0].style.getPropertyValue('--tvm-vis')).toBe('');
+    spy.mockRestore();
+    grid.destroy();
+  });
+
+  it('destroy entfernt den Scroll-Listener', () => {
+    const { grid } = make();
+    const scroll = grid.el.querySelector('.lfx-tvm__epg-scroll');
+    const spy = vi.spyOn(scroll, 'removeEventListener');
+    grid.destroy();
+    expect(spy).toHaveBeenCalledWith('scroll', expect.any(Function));
+  });
+});

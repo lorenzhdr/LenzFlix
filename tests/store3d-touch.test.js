@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// VIDEOTHEK LENZ: Touch = Halten läuft, Wischen = „Szene greifen“ (Finger rechts → Blick links), Tippen = onTap, Pinch = Zoom.
+// VIDEOTHEK LENZ: Touch = Halten läuft, Wischen = Umsehen (Normal: Finger rechts → Blick rechts; Umgekehrt = „Szene greifen“), Tippen = onTap, Pinch = Zoom.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TouchControls, TOUCH_LOOK, STICK_YAW_RATE, STICK_PITCH_RATE } from '../src/js/store3d/controls/touch.js';
 import { shapeStick } from '../src/js/store3d/ui/joypad.js';
@@ -13,7 +13,8 @@ function setup(extra = {}) {
   const onTap = vi.fn();
   const onZoom = vi.fn();
   const state = { mode: 'play' };
-  const tc = new TouchControls({ canvas, player, getMode: () => state.mode, onTap, onZoom, ...extra });
+  // Standard der Tests: Umgreifen aus (die Fenster-Tests schalten es ein)
+  const tc = new TouchControls({ canvas, player, getMode: () => state.mode, onTap, onZoom, getTune: () => ({ touchRegrip: 'off' }), ...extra });
   tc.attach();
   const fire = (type, x, y, id = 1) => {
     const e = new Event(type, { bubbles: true });
@@ -27,29 +28,165 @@ describe('TouchControls Feineinstellung', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
   const swipe = (fire) => { fire('pointerdown', 100, 100); fire('pointermove', 120, 120); fire('pointermove', 140, 150); };
-  it('Umkehr und Empfindlichkeit wirken auf Wischen', () => {
-    const tune = { lookInvertY: true, touchSens: 'high' };
+  it('Flip und Empfindlichkeit wirken auf Wischen', () => {
+    const tune = { lookFlipY: true, touchSens: 'high' };
     const { player, fire } = setup({ getTune: () => tune });
     swipe(fire);
     const [dyaw, dpitch] = player.look.mock.calls.at(-1);
-    expect(dyaw).toBeCloseTo(20 * TOUCH_LOOK * 1.4);
-    expect(dpitch).toBeCloseTo(-30 * TOUCH_LOOK * 1.4);
-    tune.lookInvertY = false; tune.lookInvertX = true; tune.touchSens = 'low'; // zur Laufzeit
+    expect(dyaw).toBeCloseTo(-20 * TOUCH_LOOK * 1.4); // X nicht geflippt (Normal)
+    expect(dpitch).toBeCloseTo(30 * TOUCH_LOOK * 1.4); // Y geflippt = Szene greifen
+    tune.lookFlipY = false; tune.lookFlipX = true; tune.touchSens = 'low'; // zur Laufzeit
     fire('pointermove', 160, 150);
-    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(-20 * TOUCH_LOOK * 0.7);
+    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(20 * TOUCH_LOOK * 0.7);
   });
-  it('Standard (ohne getTune) bleibt unverändert', () => {
+  it('Standard (ohne getTune) = Normal: Finger rechts -> Blick rechts (yaw sinkt), Finger hoch -> Blick hoch (pitch steigt)', () => {
     const { player, fire } = setup();
-    swipe(fire);
-    expect(player.look.mock.calls.at(-1)[1]).toBeCloseTo(30 * TOUCH_LOOK);
+    fire('pointerdown', 100, 100);
+    fire('pointermove', 120, 80);
+    fire('pointermove', 140, 50);
+    const [dyaw, dpitch] = player.look.mock.calls.at(-1);
+    expect(dyaw).toBeCloseTo(-20 * TOUCH_LOOK);
+    expect(dpitch).toBeCloseTo(30 * TOUCH_LOOK);
   });
-  it('Joystick-Achsen: lookInvert dreht das Vorzeichen', () => {
-    const { tc, player } = setup({ getTune: () => ({ lookInvertX: true, lookInvertY: true }) });
+  it('Joystick-Achsen: Normal = rechts/oben -> Blick rechts/oben, Flip dreht um', () => {
+    const tune = {};
+    const { tc, player } = setup({ getTune: () => tune });
     tc.stick = { x: 1, y: 1 };
     tc.tick(0.05);
-    const [yaw, pitch] = player.look.mock.calls.at(-1);
+    let [yaw, pitch] = player.look.mock.calls.at(-1);
+    expect(yaw).toBeCloseTo(-STICK_YAW_RATE * 0.05);
+    expect(pitch).toBeCloseTo(-STICK_PITCH_RATE * 0.05);
+    tune.lookFlipX = true; tune.lookFlipY = true;
+    tc.tick(0.05);
+    [yaw, pitch] = player.look.mock.calls.at(-1);
     expect(yaw).toBeCloseTo(STICK_YAW_RATE * 0.05);
     expect(pitch).toBeCloseTo(STICK_PITCH_RATE * 0.05);
+  });
+  it('Zoom teilt Wisch- und Stick-Umschauen', () => {
+    const { tc, player, fire } = setup({ getZoom: () => 2 });
+    fire('pointerdown', 100, 100);
+    fire('pointermove', 120, 100);
+    fire('pointermove', 140, 100);
+    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(-20 * TOUCH_LOOK / 2);
+    tc.stick = { x: 1, y: 0 };
+    tc.tick(0.05);
+    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(-STICK_YAW_RATE * 0.05 / 2);
+  });
+});
+
+describe('TouchControls: Umgreifen', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+  const W = 1000;
+  function rg(extra = {}) {
+    window.innerWidth = W;
+    let t = 0;
+    const s = setup({ now: () => t, getTune: () => ({}), ...extra });
+    const walk = (x, id = 1) => { s.fire('pointerdown', x, 300, id); vi.advanceTimersByTime(250); };
+    return { ...s, walk, adv: (ms) => { t += ms; } };
+  }
+  it('Loslassen am Rand: Laufen geht bis zum Fensterende weiter, Ring aus', () => {
+    const { tc, canvas, fire, walk, adv } = rg();
+    walk(950);
+    fire('pointerup', 950, 300);
+    expect(canvas.parentElement.querySelector('.lfx-store-walkring').classList.contains('is-on')).toBe(false);
+    expect(tc.input.fwd).toBe(1);
+    adv(399);
+    expect(tc.input.fwd).toBe(1);
+    adv(2);
+    expect(tc.input.fwd).toBe(0);
+    expect(tc.input.fwd).toBe(0);
+  });
+  it('Loslassen links am Rand zählt ebenso, Mitte stoppt sofort', () => {
+    const { tc, fire, walk } = rg();
+    walk(150);
+    fire('pointerup', 150, 300);
+    expect(tc.input.fwd).toBe(1);
+    tc.reset();
+    walk(500, 3);
+    fire('pointerup', 500, 300, 3);
+    expect(tc.input.fwd).toBe(0);
+  });
+  it('Neuaufsetzen im Fenster läuft sofort weiter (ohne 220 ms), ohne Tap; Loslassen in der Mitte stoppt', () => {
+    const { tc, onTap, fire, walk, adv, canvas } = rg();
+    walk(950);
+    fire('pointerup', 950, 300);
+    adv(100);
+    fire('pointerdown', 600, 300, 2);
+    expect(tc.walkId).toBe(2);
+    expect(canvas.parentElement.querySelector('.lfx-store-walkring').classList.contains('is-on')).toBe(true);
+    adv(1000); // alter Nachlauf wäre abgelaufen, Finger läuft weiter
+    expect(tc.input.fwd).toBe(1);
+    fire('pointerup', 600, 300, 2);
+    expect(tc.input.fwd).toBe(0);
+    expect(onTap).not.toHaveBeenCalled();
+  });
+  it('Neuaufsetzen nach Ablauf braucht wieder die Haltezeit', () => {
+    const { tc, fire, walk, adv } = rg();
+    walk(950);
+    fire('pointerup', 950, 300);
+    adv(500);
+    fire('pointerdown', 600, 300, 2);
+    expect(tc.input.fwd).toBe(0);
+    vi.advanceTimersByTime(250);
+    expect(tc.input.fwd).toBe(1);
+  });
+  it('Pinch (zweiter Finger) bricht den Nachlauf ab', () => {
+    const { tc, fire, walk } = rg();
+    walk(950);
+    fire('pointerup', 950, 300);
+    fire('pointerdown', 300, 300, 2);
+    fire('pointerdown', 400, 300, 3);
+    expect(tc.input.fwd).toBe(0);
+  });
+  it('Pinch-Abbruch des laufenden Fingers startet keinen Nachlauf', () => {
+    const { tc, fire, walk } = rg();
+    walk(950);
+    fire('pointerdown', 900, 300, 2); // Pinch
+    fire('pointerup', 950, 300, 1);
+    expect(tc.input.fwd).toBe(0);
+  });
+  it('pointercancel am Rand (System-Geste) läuft nach, in der Mitte nicht', () => {
+    const a = rg();
+    a.walk(950);
+    a.fire('pointercancel', 950, 300);
+    expect(a.tc.input.fwd).toBe(1);
+    const b = rg();
+    b.walk(500);
+    b.fire('pointercancel', 500, 300);
+    expect(b.tc.input.fwd).toBe(0);
+  });
+  it('Regrip off: kein Nachlauf; long: 800 ms', () => {
+    const off = rg({ getTune: () => ({ touchRegrip: 'off' }) });
+    off.walk(950);
+    off.fire('pointerup', 950, 300);
+    expect(off.tc.input.fwd).toBe(0);
+    const lg = rg({ getTune: () => ({ touchRegrip: 'long' }) });
+    lg.walk(950);
+    lg.fire('pointerup', 950, 300);
+    lg.adv(700);
+    expect(lg.tc.input.fwd).toBe(1);
+    lg.adv(150);
+    expect(lg.tc.input.fwd).toBe(0);
+  });
+  it('Moduswechsel, reset und setScheme beenden den Nachlauf', () => {
+    const a = rg();
+    a.walk(950);
+    a.fire('pointerup', 950, 300);
+    a.state.mode = 'pause';
+    expect(a.tc.input.fwd).toBe(0);
+    a.state.mode = 'play';
+    expect(a.tc.input.fwd).toBe(0);
+    const b = rg();
+    b.walk(950);
+    b.fire('pointerup', 950, 300);
+    b.tc.reset();
+    expect(b.tc.input.fwd).toBe(0);
+    const c = rg();
+    c.walk(950);
+    c.fire('pointerup', 950, 300);
+    c.tc.setScheme('joystick');
+    expect(c.tc.input.fwd).toBe(0);
   });
 });
 
@@ -57,8 +194,8 @@ describe('TouchControls', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });
 
-  it('Finger nach rechts dreht den Blick nach links (yaw steigt), Finger nach unten hebt den Blick (pitch steigt)', () => {
-    const { player, fire } = setup();
+  it('Umgekehrt (Flip an) = Szene greifen: Finger nach rechts -> yaw steigt, Finger nach unten -> pitch steigt', () => {
+    const { player, fire } = setup({ getTune: () => ({ touchRegrip: 'off', lookFlipX: true, lookFlipY: true }) });
     fire('pointerdown', 100, 100);
     fire('pointermove', 120, 100); // Schwelle überschreiten
     fire('pointermove', 140, 100);
@@ -99,7 +236,7 @@ describe('TouchControls', () => {
     fire('pointerdown', 100, 100);
     vi.advanceTimersByTime(250);
     fire('pointermove', 130, 100);
-    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(30 * TOUCH_LOOK);
+    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(-30 * TOUCH_LOOK);
     expect(tc.input.fwd).toBe(1);
   });
 
@@ -191,12 +328,12 @@ describe('TouchControls: Schema „Joystick“', () => {
     expect(onTap).toHaveBeenCalledWith(70, 80);
   });
 
-  it('Wischen auf dem Canvas sieht weiter um (Szene greifen), Pinch zoomt', () => {
+  it('Wischen auf dem Canvas sieht weiter um (Normal), Pinch zoomt', () => {
     const { player, onZoom, fire } = joy();
     fire('pointerdown', 100, 100);
     fire('pointermove', 120, 100);
     fire('pointermove', 140, 100);
-    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(20 * TOUCH_LOOK);
+    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(-20 * TOUCH_LOOK);
     fire('pointerup', 140, 100);
     fire('pointerdown', 100, 100, 1);
     fire('pointerdown', 200, 100, 2);

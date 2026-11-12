@@ -5,7 +5,16 @@ const START_TIMEOUT_MS = 25000;
 export const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
 const MEDIA_ACTIONS = ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack'];
 
-export function createVideoControl(video, { now = Date.now, emit = () => {} } = {}) {
+const JUMP_TOLERANCE_S = 1.5; // Variante ≥ 1: nach den Metadaten nur nachspringen, wenn die Position so weit von der Live-Position abweicht
+
+// Startvariante (docs/live.md „Startablauf“): 0 = altes Verhalten (Sprung erst in loadedmetadata), 1 = Standard (Startposition vorab
+// als Default-Startposition setzen), 2 = wie 1 + Media-Fragment #t=.
+// (Eine Variante mit SegmentLength an der HLS-URL wurde verworfen: der Server liefert damit unverändert 8-s-Segmente.)
+export const normalizeVariant = (v) => (v === 0 || v === 1 || v === 2 ? v : 1);
+
+/** createVideoControl(video, { now, emit, variant }): variant 0–2, Standard 1. */
+export function createVideoControl(video, { now = Date.now, emit = () => {}, variant: variantOpt = 1 } = {}) {
+  const variant = normalizeVariant(variantOpt);
   let armed = false;          // eine Quelle ist geladen/lädt
   let playedOnce = false;
   let base = { off: 0, at: 0 };
@@ -20,6 +29,29 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   let stallTimer = null;
   let stallShown = false;
   let phases = { src: null, meta: null, playing: null }; // Zeitstempel des letzten start() (Messanzeige, docs/live.md)
+  // Zusatzmessung zwischen loadedmetadata und playing (nur Messanzeige, ändert kein Verhalten).
+  const newMetrics = () => ({
+    target: null, jumped: false, seekingAt: null, seekedAt: null, canplayAt: null,
+    waitN: 0, waitMs: 0, waitFrom: null, bufSeeked: null, bufPlaying: null, dev: null,
+  });
+  let m = newMetrics();
+  const measuring = () => armed && phases.meta != null && phases.playing == null;
+  const endWait = () => {
+    if (m.waitFrom != null) { m.waitMs += Math.max(0, now() - m.waitFrom); m.waitFrom = null; }
+  };
+  /** Gepufferter Bereich um currentTime, relativ zum Sprungziel (s) oder null. */
+  const bufRange = () => {
+    try {
+      const b = video.buffered;
+      if (!b || !b.length || m.target == null) return null;
+      const t = video.currentTime;
+      let i = 0;
+      for (let k = 0; k < b.length; k++) {
+        if (b.start(k) <= t + 0.05 && b.end(k) >= t - 0.05) { i = k; break; }
+      }
+      return [b.start(i) - m.target, b.end(i) - m.target];
+    } catch { return null; }
+  };
 
   video.setAttribute('playsinline', '');
   video.setAttribute('disablepictureinpicture', '');
@@ -97,13 +129,25 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     playing: () => {
       if (!armed) return;
       playedOnce = true;
-      if (pending && phases.playing == null) phases.playing = now();
+      if (pending && phases.playing == null) {
+        if (phases.meta != null) {
+          endWait();
+          m.bufPlaying = bufRange();
+          try { m.dev = video.currentTime - livePos() / 1000; } catch { /* egal */ }
+        }
+        phases.playing = now();
+      }
       resetStall();
       emit('state', { phase: 'playing' });
       settle({ ok: true });
     },
     // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
+    seeking: () => { if (measuring() && m.seekingAt == null) m.seekingAt = now(); },
+    seeked: () => {
+      if (measuring() && m.seekedAt == null) { m.seekedAt = now(); m.bufSeeked = bufRange(); }
+    },
     waiting: () => {
+      if (measuring() && m.waitFrom == null) { m.waitN += 1; m.waitFrom = now(); }
       if (!armed || !playedOnce || waiting || stallShown) return;
       waiting = true;
       waitCt = video.currentTime;
@@ -118,7 +162,13 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     timeupdate: () => {
       if ((waiting || stallShown) && armed && video.currentTime > waitCt + 0.05) recovered();
     },
-    canplay: () => { if (waiting || stallShown) recovered(); },
+    canplay: () => {
+      if (measuring()) {
+        if (m.canplayAt == null) m.canplayAt = now();
+        endWait();
+      }
+      if (waiting || stallShown) recovered();
+    },
     ended: () => { if (armed) emit('state', { phase: 'ended' }); },
     error: () => {
       if (!armed) return;
@@ -176,6 +226,8 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     quiet = !!q;
     base = { off: Math.max(0, Number(offsetMs) || 0), at: now() };
     phases = { src: null, meta: null, playing: null };
+    m = newMetrics();
+    let preset = false; // Startposition vorab als Default-Startposition gesetzt (Variante ≥ 1)
     return new Promise((resolve) => {
       pending = resolve;
       timer = setTimeout(() => fail('network', 'TIMEOUT'), START_TIMEOUT_MS);
@@ -184,12 +236,29 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
         if (!armed) return;
         phases.meta = now();
         // Position zum jetzigen Zeitpunkt (Laden kann Sekunden dauern), nicht die vom Start.
-        try { video.currentTime = livePos() / 1000; } catch { /* egal */ }
+        const want = livePos() / 1000;
+        let cur = NaN;
+        try { cur = video.currentTime; } catch { /* egal */ }
+        // Variante 0: immer springen (alt). Sonst nur, wenn das Vorab-Setzen fehlte/nicht griff oder die Abweichung > 1,5 s ist.
+        if (variant === 0 || !preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
+          m.jumped = true;
+          m.target = want;
+          try { video.currentTime = want; } catch { /* egal */ }
+        } else {
+          m.target = cur;
+        }
         callPlay();
       };
       video.addEventListener('loadedmetadata', onMeta, { once: true });
       phases.src = now();
-      video.src = url;
+      const aim = livePos() / 1000;
+      // Variante 2: Media-Fragment nur an der <video>-Quelle (nie an einen Server-Request).
+      video.src = variant === 2 ? `${String(url).split('#')[0]}#t=${aim.toFixed(1)}` : url;
+      if (variant >= 1) {
+        // Default-Startposition (HTML-Spec, readyState HAVE_NOTHING): der Browser startet gleich dort statt bei 0 und springt nicht erst
+        // nach den Metadaten (bei HLS holte Safari sonst zuerst Segment 0, dann Sprung → Server startet ffmpeg neu).
+        try { video.currentTime = aim; preset = true; } catch { /* egal */ }
+      }
     });
   }
 
@@ -207,6 +276,22 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     start,
     /** Zeitstempel (now()) des letzten start(): { src, meta, playing } (null = nicht erreicht). */
     phases: () => ({ ...phases }),
+    /** Zusatzmessung des letzten start() (Messanzeige): Zeiten in ms ab loadedmetadata, Puffer/Abweichung in s. */
+    metrics() {
+      const since = (t) => (t != null && phases.meta != null ? Math.max(0, t - phases.meta) : null);
+      return {
+        variant,
+        jumped: phases.meta != null ? m.jumped : null,
+        seekingMs: since(m.seekingAt),
+        seekedMs: since(m.seekedAt),
+        canplayMs: since(m.canplayAt),
+        waitCount: m.waitN,
+        waitMs: Math.round(m.waitMs + (m.waitFrom != null ? Math.max(0, now() - m.waitFrom) : 0)),
+        bufSeeked: m.bufSeeked,
+        bufPlaying: m.bufPlaying,
+        devS: m.dev,
+      };
+    },
     clear: () => clear(false),
     positionMs: livePos,
     syncTo(offsetMs) {

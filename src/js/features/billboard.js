@@ -1,5 +1,6 @@
 // LenzFlix: Billboard (Hero) auf der Startseite. render(slot, ctx) -> Cleanup.
-import { getItems, imageUrl, logoImage, setFavorite } from '../core/api.js';
+import { getItems, getUserId, imageUrl, logoImage, setFavorite } from '../core/api.js';
+import { cached, clearCache, peekCached, HOME_TTL, homeKey } from '../core/cache.js';
 import { setAmbient, resetAmbient } from '../core/ambient.js';
 import { ambientFromPixels } from '../core/color.js';
 import { h } from '../core/dom.js';
@@ -51,6 +52,8 @@ function writeLastFirst(id) {
   try { sessionStorage.setItem(LAST_FIRST_KEY, id); } catch { /* ignorieren */ }
 }
 
+const poolKey = () => homeKey(getUserId(), 'billboard');
+
 async function fetchPool() {
   const base = {
     Recursive: true,
@@ -69,6 +72,14 @@ async function fetchPool() {
   const pool = buildPool(latest && latest.Items, random && random.Items, { avoidFirstId: readLastFirst() });
   if (pool[0]) writeLastFirst(pool[0].Id);
   return pool;
+}
+
+/** Pool 10 min pro Nutzer: innerhalb der TTL derselbe Pool/erste Titel; die Rotation (LAST_FIRST_KEY) greift nur beim Neuabruf. */
+function loadPool() {
+  const key = poolKey();
+  const p = cached(key, fetchPool, HOME_TTL);
+  p.then((pool) => { if (!pool.length) clearCache(key); }, () => {});
+  return p;
 }
 
 function reducedMotion() {
@@ -108,6 +119,7 @@ export function render(slot) {
   let rotateTimer = null;
   let slide = null; // aktuelle Folie: {item, gen, t0, imgAt, started, ready, failed, revealTimer}
   let rowsReady = false;
+  let warm = false; // Pool kam aus dem Cache (Rückkehr zur Startseite < 10 min)
   const timers = new Set();
   let video = null;
   let card = null;
@@ -178,6 +190,7 @@ export function render(slot) {
       paint();
       try {
         await setFavorite(item.Id, !prev);
+        clearCache('home:');
       } catch {
         item.UserData = { ...(item.UserData || {}), IsFavorite: prev };
         paint();
@@ -230,7 +243,7 @@ export function render(slot) {
     return h('div', null, [
       h('div', { class: 'lfx-bb__text' }, [
         logo
-          ? h('img', { class: 'lfx-bb__logo', src: logo, alt: item.Name || '', decoding: 'async' })
+          ? h('img', { class: 'lfx-bb__logo', src: logo, alt: item.Name || '', decoding: warm ? null : 'async' })
           : h('h2', { class: 'lfx-bb__title' }, item.Name || ''),
         meta,
         genres ? h('div', { class: 'lfx-bb__genres' }, genres) : null,
@@ -242,12 +255,13 @@ export function render(slot) {
   }
 
   function buildImage(item, first = false) {
+    const dec = warm ? null : 'async'; // Cache-Pfad: Bild sofort dekodieren, nichts blitzt leer auf
     const bd = imageUrl(item, { type: 'Backdrop', maxWidth: 1600, quality: 80 });
     const poster = imageUrl(item, { type: 'Primary', maxWidth: 720, quality: 80 });
     return h('picture', { class: 'lfx-bb__pic' }, [
       poster ? h('source', { media: '(max-width: 799px)', srcset: poster }) : null,
       // Erstes Bild: sofort und mit hoher Priorität laden (ohne Überblendung, siehe show()).
-      h('img', { class: 'lfx-bb__img', src: bd, alt: '', decoding: 'async', fetchpriority: first ? 'high' : null }),
+      h('img', { class: 'lfx-bb__img', src: bd, alt: '', decoding: dec, fetchpriority: first ? 'high' : null }),
     ]);
   }
 
@@ -472,10 +486,13 @@ export function render(slot) {
   }
 
   async function init() {
-    let items = [];
-    try {
-      items = await fetchPool();
-    } catch { /* leer */ }
+    let items = peekCached(poolKey()) || [];
+    warm = items.length > 0;
+    if (!warm) {
+      try {
+        items = await loadPool();
+      } catch { /* leer */ }
+    }
     if (disposed) return;
     if (!items.length) {
       slot.replaceChildren();
@@ -483,7 +500,7 @@ export function render(slot) {
       resetAmbient();
       return;
     }
-    pool = items;
+    pool = items.slice(); // Cache-Array nie mutieren (onChanged)
     putItems(pool);
     build();
     slot.hidden = false;

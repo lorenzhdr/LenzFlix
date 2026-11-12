@@ -38,6 +38,7 @@ vi.mock('../src/js/shared/newcontent.js', () => ({
 }));
 vi.mock('../src/js/features/rows/sources.js', () => ({
   buildRowDefs: vi.fn().mockResolvedValue([]),
+  peekRowDefs: vi.fn(() => undefined),
   getNewSeriesIds: vi.fn().mockResolvedValue(new Set()),
   asItems: (r) => (r && r.Items) || [],
 }));

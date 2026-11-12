@@ -6,6 +6,8 @@ const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
 
 const SENS_LABEL = { low: 'Niedrig', normal: 'Normal', high: 'Hoch' };
 const SENS_NEXT = { low: 'normal', normal: 'high', high: 'low' };
+const REGRIP_LABEL = { off: 'Aus', short: 'Kurz', long: 'Lang' };
+const REGRIP_NEXT = { off: 'short', short: 'long', long: 'off' };
 const PITCH_LABEL = { normal: 'Normal', tief: 'Tief', sehrtief: 'Sehr tief' };
 const PITCH_NEXT = { normal: 'tief', tief: 'sehrtief', sehrtief: 'normal' };
 const AUTO_DEVICE = 'Automatisch (Gerätestimme)';
@@ -51,7 +53,7 @@ export function voiceNote(info, wantOnline = false) {
  *   onVoice?({ name?, online?, pitch? }) (Stimmwahl/Tonlage; spricht danach die Probe), getVoicePrefs?() → { name, online, pitch },
  *   getVoiceList?() → [{ name, lang, online, male }] (deutsche Stimmen),
  *   onTouchControl?(scheme) / getTouchControl?() → 'joystick' | 'touch' (nur Touch; fehlt = Knopf ausgeblendet),
- *   onTouchTune?({ holdInvertY?, holdInvertX?, lookInvertY?, lookInvertX?, touchSens? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal'),
+ *   onTouchTune?({ holdInvertY?, holdInvertX?, lookFlipY?, lookFlipX?, touchSens?, touchRegrip? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal', Umgreifen 'short'),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
 export function createPause(host, a) {
@@ -176,9 +178,10 @@ export function createPause(host, a) {
   const flag = (key) => () => { if (a.onTouchTune) a.onTouchTune({ [key]: !tuneNow()[key] }); };
   const tHoldY = mkT(flag('holdInvertY'));
   const tHoldX = mkT(flag('holdInvertX'));
-  const tLookY = mkT(flag('lookInvertY'));
-  const tLookX = mkT(flag('lookInvertX'));
+  const tLookY = mkT(flag('lookFlipY'));
+  const tLookX = mkT(flag('lookFlipX'));
   const tSens = mkT(() => { if (a.onTouchTune) a.onTouchTune({ touchSens: SENS_NEXT[tuneNow().touchSens] || 'normal' }); });
+  const tRegrip = mkT(() => { if (a.onTouchTune) a.onTouchTune({ touchRegrip: REGRIP_NEXT[tuneNow().touchRegrip || 'short'] || 'off' }); });
   const tBack = el('button', 'lfx-store-act lfx-store-act--primary', 'Zurück');
   tBack.type = 'button';
   tBack.addEventListener('click', (e) => { e.stopPropagation(); closeTouch(); });
@@ -190,8 +193,11 @@ export function createPause(host, a) {
     tSchemeB.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === 'touch' ? 'Touch' : 'Joystick'}`;
     tHoldY.textContent = `Cover kippen: ${nr(t.holdInvertY)}`;
     tHoldX.textContent = `Cover drehen: ${nr(t.holdInvertX)}`;
-    tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookInvertY)}`;
-    tLookX.textContent = `Umschauen links/rechts: ${nr(t.lookInvertX)}`;
+    tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookFlipY)}`;
+    tLookX.textContent = `Umschauen links/rechts: ${nr(t.lookFlipX)}`;
+    const isTouch = !a.getTouchControl || a.getTouchControl() === 'touch';
+    tRegrip.hidden = !isTouch;
+    tRegrip.textContent = `Umgreifen: ${REGRIP_LABEL[t.touchRegrip] || REGRIP_LABEL.short}`;
     tSens.textContent = `Empfindlichkeit: ${SENS_LABEL[t.touchSens] || SENS_LABEL.normal}`;
   }
   function openTouch() {
