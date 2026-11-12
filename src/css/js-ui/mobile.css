@@ -2,7 +2,8 @@
    Nur Overrides, geladen nach allen anderen js-ui-Dateien. Greift nur mit html.lfx-js.
    Die mobilenav-Elemente (#lfx-mnav, #lfx-mnav-overlay) existieren nur, wenn das Feature mobil läuft. */
 
-/* ---------- mobilenav: Logo, Pills, Mehr-Overlay ---------- */
+/* ---------- mobilenav: Logo, Pills, Mehr-Overlay (nur < 900 px; ab 900 px gilt die große Leiste #lfx-nav) ---------- */
+@media (max-width: 899px) {
 html.lfx-js .lfx-mnav {
   display: contents;
 }
@@ -174,6 +175,7 @@ html.lfx-js .lfx-mnav-overlay__close {
 html.lfx-js .lfx-mnav-overlay__close:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
+}
 }
 
 /* ---------- Handy-Layout ---------- */
@@ -523,4 +525,11 @@ html.lfx-js .lfx-card__link picture { display: contents; }
   html.lfx-js .lfx-row--poster .lfx-card__logo,
   html.lfx-js .lfx-row--poster .lfx-card__title { display: none; }
   html.lfx-js .lfx-row--poster .lfx-card__link--titled::after { display: none; }
+}
+
+/* 800–899 px mit layout-mobile (Handy quer, schmal): Handy-Menü mit Pills, Billboard darunter */
+@media (min-width: 800px) and (max-width: 899px) {
+  html.lfx-js.lfx-mnav-pills #lfx-billboard {
+    margin-top: 48px;
+  }
 }

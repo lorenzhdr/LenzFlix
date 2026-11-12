@@ -1,6 +1,7 @@
 // LenzFlix: Wiedergabe über „Proxy-Klick“ auf ein verstecktes .itemAction in einem echten .itemsContainer.
 // (playbackManager ist nicht global; Jellyfins shortcuts.onClick startet die Wiedergabe.)
 import { getAuth } from './api.js';
+import { show as showCover, hide as hideCover, allowRoute as allowCoverRoute } from './startcover.js';
 
 function isVisible(el) {
   return el.getClientRects().length > 0;
@@ -56,6 +57,8 @@ export async function play(item, { resume = false, timeoutMs = 8000 } = {}) {
   if (!item || !item.Id) return false;
   // Signal für den TV-Modus (docs/tvmode.md): stoppt dessen Stream, bevor der Jellyfin-Player startet (synchron, vor Proxy-Klick/Fallback).
   window.dispatchEvent(new CustomEvent('lfx:play', { detail: { id: item.Id } }));
+  // Ladebild vor dem Klick (idempotent, wenn das Info-Fenster es schon gezeigt hat).
+  showCover({ item });
   const container = findProxyContainer();
   if (container) {
     const proxy = buildProxy(item, resume);
@@ -67,5 +70,8 @@ export async function play(item, { resume = false, timeoutMs = 8000 } = {}) {
     }
     return true;
   }
-  return playViaDetails(item, resume, timeoutMs);
+  allowCoverRoute('/details');
+  const ok = await playViaDetails(item, resume, timeoutMs);
+  if (!ok) hideCover();
+  return ok;
 }

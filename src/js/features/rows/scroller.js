@@ -13,6 +13,28 @@ export function chevronButton(dir, label) {
   return b;
 }
 
+// Ein gemeinsamer, rAF-gebündelter resize-Listener für alle Zeilen.
+const resizeSubs = new Set();
+let resizeRaf = 0;
+function onResize() {
+  if (resizeRaf) return;
+  resizeRaf = requestAnimationFrame(() => {
+    resizeRaf = 0;
+    for (const fn of [...resizeSubs]) fn();
+  });
+}
+function subscribeResize(fn) {
+  if (!resizeSubs.size) window.addEventListener('resize', onResize);
+  resizeSubs.add(fn);
+  return () => {
+    resizeSubs.delete(fn);
+    if (resizeSubs.size) return;
+    window.removeEventListener('resize', onResize);
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = 0;
+  };
+}
+
 /** Hängt Blätter-Logik an. Rückgabe: destroy(). */
 export function attachScroller({ track, prev, next, indicator }) {
   let raf = 0;
@@ -80,7 +102,10 @@ export function attachScroller({ track, prev, next, indicator }) {
   track.addEventListener('scroll', schedule, { passive: true });
   track.addEventListener('focusin', onFocusIn);
   track.addEventListener('keydown', onKey);
-  window.addEventListener('resize', schedule);
+  const unsubResize = subscribeResize(() => {
+    if (raf) cancelAnimationFrame(raf);
+    update();
+  });
 
   const ls = links();
   ls.forEach((l, i) => { l.tabIndex = i === 0 ? 0 : -1; });
@@ -94,6 +119,6 @@ export function attachScroller({ track, prev, next, indicator }) {
     track.removeEventListener('scroll', schedule);
     track.removeEventListener('focusin', onFocusIn);
     track.removeEventListener('keydown', onKey);
-    window.removeEventListener('resize', schedule);
+    unsubResize();
   };
 }

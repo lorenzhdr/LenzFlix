@@ -8,6 +8,7 @@ import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { isTv } from '../core/layout.js';
 import { parseHash } from '../core/router.js';
 import { play } from '../core/playback.js';
+import { show as showCover, hide as hideCover } from '../core/startcover.js';
 import { setFavorite, setPlayed, getAuth } from '../core/api.js';
 import { onItemsChanged } from '../core/itemmenu.js';
 import { isChooserOpen } from '../core/download.js';
@@ -115,13 +116,14 @@ function create(opener) {
   };
   overlay.addEventListener('click', onOverlayClick);
 
-  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, autoScroll: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
   state.unsub = onItemsChanged(onChanged);
   if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 799px)').matches) {
     // Handy: Modal per Wischgeste nach unten schließen (nur am Anfang des Inhalts, nicht über Menü/Auswahl).
     state.detachSwipe = attachSwipeClose(modal, {
       backdrop: overlay,
       canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
+      holdBackdrop: true, // Hintergrund bleibt beim Wegwischen abgedunkelt, bis die Scrollposition der Seite wiederhergestellt ist
       onClose: () => closeModal(),
     });
   }
@@ -141,7 +143,6 @@ function teardown() {
   const s = state;
   state = null;
   clearTimeout(s.fallback);
-  cancelAutoScroll(s);
   if (typeof s.unsub === 'function') s.unsub();
   if (s.detachSwipe) s.detachSwipe();
   s.overlay.removeEventListener('click', s.onOverlayClick);
@@ -170,9 +171,19 @@ export function closeModal(opts = {}) {
   }
 }
 
+/** Stellt die Scrollposition der Seite wieder her (Jellyfin/Router setzt sie beim history.back() ggf. zurück). */
+function restoreScroll(y) {
+  const fix = () => { if (Math.abs((window.scrollY || 0) - y) > 1) window.scrollTo(0, y); };
+  fix();
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fix);
+  setTimeout(fix, 150);
+}
+
 function finish() {
+  const y = state ? state.scrollY : 0;
   const after = teardown();
   if (after) after();
+  else restoreScroll(y);
 }
 
 function onPopState() {
@@ -241,7 +252,6 @@ async function loadInto(id, hint, replace, refresh = false) {
   const s = state;
   const token = ++s.token;
   const stale = () => state !== s || s.token !== token;
-  if (!refresh) cancelAutoScroll(s);
   if (refresh) {
     // Aktualisierung: bisherigen Inhalt stehen lassen, kein Skeleton, kein Scroll-Reset, keine History-Änderung.
   } else if (replace) {
@@ -279,7 +289,7 @@ async function loadInto(id, hint, replace, refresh = false) {
 
   const tasks = [];
   if (isSeries) {
-    tasks.push(loadSeriesParts(s, token, H, refresh));
+    tasks.push(loadSeriesParts(s, token, H));
     tasks.push(data.loadNextUp(main.Id).then((ep) => {
       if (!stale() && ep && hasResume(ep)) setPlayLabel(parts.playBtn, 'Fortsetzen');
     }).catch(() => {}));
@@ -296,51 +306,19 @@ async function loadInto(id, hint, replace, refresh = false) {
   await Promise.all(tasks);
 }
 
-async function loadSeriesParts(s, token, H, refresh = false) {
+async function loadSeriesParts(s, token, H) {
   const stale = () => state !== s || s.token !== token;
   try {
     s.seasons = await data.loadSeasons(s.main.Id);
     if (stale()) return;
     s.seasonId = pickInitialSeason(s.seasons, s.seasonId);
     if (!s.seasonId) return;
-    await showSeason(s, token, H, { reveal: !refresh });
+    await showSeason(s, token, H);
   } catch { /* Folgenliste bleibt aus */ }
 }
 
-const USER_SCROLL_EVENTS = ['wheel', 'touchstart', 'pointerdown', 'keydown'];
-
-/** Bricht ein geplantes automatisches Scrollen ab und entfernt die Nutzereingriff-Listener. */
-function cancelAutoScroll(s) {
-  const a = s && s.autoScroll;
-  if (!a) return;
-  s.autoScroll = null;
-  a.cancelled = true;
-  if (a.raf != null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(a.raf);
-  for (const t of USER_SCROLL_EVENTS) s.overlay.removeEventListener(t, a.onUser);
-}
-
-/** Scrollt das Overlay sanft zur markierten Folge (einmalig, bricht bei Nutzereingriff ab). */
-function scheduleRevealScroll(s, token, row) {
-  cancelAutoScroll(s);
-  const a = { cancelled: false, raf: null, onUser: null };
-  a.onUser = () => cancelAutoScroll(s);
-  s.autoScroll = a;
-  for (const t of USER_SCROLL_EVENTS) s.overlay.addEventListener(t, a.onUser, { passive: true });
-  const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-  a.raf = raf(() => {
-    a.raf = null;
-    if (a.cancelled || state !== s || s.token !== token || s.autoScroll !== a || !row.isConnected) { cancelAutoScroll(s); return; }
-    cancelAutoScroll(s);
-    const top = Math.max(0, Math.round(row.getBoundingClientRect().top - s.overlay.getBoundingClientRect().top + s.overlay.scrollTop - 24));
-    let reduce = false;
-    try { reduce = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { /* egal */ }
-    if (typeof s.overlay.scrollTo === 'function') s.overlay.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
-    else s.overlay.scrollTop = top;
-  });
-}
-
-/** opts.reveal: markierte Folge nach dem ersten Laden sanft ins Bild scrollen (nicht bei Staffelwechsel/Refresh). */
-async function showSeason(s, token, H, opts = {}) {
+/** Das Info-Fenster öffnet immer oben; die gewählte Folge ist nur per .is-selected markiert (kein automatisches Scrollen des Overlays). */
+async function showSeason(s, token, H) {
   const episodes = await data.loadEpisodes(s.main.Id, s.seasonId);
   if (state !== s || s.token !== token) return;
   s.episodes = episodes;
@@ -354,7 +332,6 @@ async function showSeason(s, token, H, opts = {}) {
     const rr = row.getBoundingClientRect();
     if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop = Math.max(0, rr.top - lr.top + list.scrollTop - (list.clientHeight - rr.height) / 2);
   }
-  if (opts.reveal && s.selectedEpisodeId) scheduleRevealScroll(s, token, row);
 }
 
 /** Reaktion auf Bibliotheksänderungen (core/itemmenu.js). */
@@ -451,7 +428,22 @@ function makeHandlers(s, token) {
   const stale = () => state !== s || s.token !== token;
   // Wiedergabe-Start läuft (Doppelklick-Schutz). Erst Modal samt History-Eintrag abbauen, dann Proxy-Klick.
   let starting = false;
-  const startPlayback = (target, resume) => closeModal({ after: () => { play(target, { resume }).catch(() => {}); } });
+  // Ladebild sofort (verdeckt die Startseite, die beim Schließen kurz aufblitzt), dann Modal schließen, dann Proxy-Klick.
+  const coverFor = (it) => {
+    if (!it || it.Type !== 'Episode') return it;
+    const hasBd = main.Type === 'Series' && (main.BackdropImageTags || []).length > 0;
+    return {
+      ...it,
+      SeriesName: it.SeriesName || main.Name,
+      SeriesId: it.SeriesId || (main.Type === 'Series' ? main.Id : undefined),
+      ParentBackdropItemId: it.ParentBackdropItemId || (hasBd ? main.Id : undefined),
+      ParentBackdropImageTags: it.ParentBackdropImageTags || (hasBd ? main.BackdropImageTags : undefined),
+    };
+  };
+  const startPlayback = (target, resume) => {
+    showCover({ item: coverFor(target) });
+    closeModal({ after: () => { play(target, { resume }).catch(() => {}); } });
+  };
   const askBulk = ({ btn, n, next, targetId, isSeries }) => {
     const verb = next ? 'gesehen' : 'ungesehen';
     confirmAction({
@@ -521,6 +513,7 @@ function makeHandlers(s, token) {
     async play() {
       if (starting) return;
       starting = true;
+      showCover({ item: main });
       let target = main;
       let resume = hasResume(main);
       try {
@@ -535,7 +528,7 @@ function makeHandlers(s, token) {
       } catch {
         target = null;
       }
-      if (!target || stale()) { starting = false; return; }
+      if (!target || stale()) { starting = false; hideCover(); return; }
       startPlayback(target, resume);
     },
     toggleFav: (btn) => toggleFavGeneric(main, btn),

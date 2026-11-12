@@ -50,6 +50,20 @@ afterEach(() => {
   setWidth(1024);
 });
 
+describe('prime: Querformat am Handy', () => {
+  it('layout-mobile bei 932 px: weder Tabbar noch Handy-Kopf', async () => {
+    html.classList.add('layout-mobile');
+    setWidth(932);
+    expect(tabbar.match(route('#/home'))).toBe(false);
+    header.mount(route('#/home'));
+    await flush();
+    expect(html.classList.contains('lfx-prime-mobile')).toBe(false);
+    header.unmount();
+    setWidth(430);
+    expect(tabbar.match(route('#/home'))).toBe(true);
+  });
+});
+
 describe('prime-tabbar: Aktivierung', () => {
   it('match nur mobil + prime + Modern + nicht TV + nicht Player/Login', () => {
     expect(tabbar.match(route('#/home'))).toBe(true);

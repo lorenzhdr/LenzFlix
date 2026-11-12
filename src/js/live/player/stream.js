@@ -1,6 +1,6 @@
 // LENZ LIVE Player: Stream-Auflösung (PlaybackInfo → direkt / HLS-Remux / nicht empfangbar).
 // Stream-URLs enthalten das Token: nie loggen, nie in Fehlertexte oder Ereignisse.
-import { buildDeviceProfile, canHls } from './profile.js';
+import { buildDeviceProfile, canHls, canHevc } from './profile.js';
 import { buildTracks, pickAudio, serverDefaultAudio, isPlainAudioCodec } from './tracks.js';
 
 export const VIDEO_REASONS = new Set([
@@ -10,7 +10,22 @@ export const VIDEO_REASONS = new Set([
   'ContainerBitrateExceedsLimit', 'SubtitleCodecNotSupported',
 ]);
 
-const fail = (reason) => ({ ok: false, mode: 'none', reason });
+const fail = (reason, code) => (code ? { ok: false, mode: 'none', reason, code } : { ok: false, mode: 'none', reason });
+
+// Kurzcodes für die Fehlerkarte (nie URL/Token): V-* Video, A-* Ton, B-* Browser, NET/TIMEOUT, M<n> = MediaError am <video>.
+const CODE_BY_REASON = [
+  ['VideoCodecNotSupported', 'V-CODEC'], ['VideoCodecTagNotSupported', 'V-CODEC'], ['VideoProfileNotSupported', 'V-CODEC'],
+  ['VideoRangeTypeNotSupported', 'V-RANGE'], ['VideoBitDepthNotSupported', 'V-10BIT'], ['SubtitleCodecNotSupported', 'V-SUB'],
+];
+function videoCode(reasons) {
+  for (const [r, c] of CODE_BY_REASON) if (reasons.includes(r)) return c;
+  return 'V-OTHER';
+}
+
+function videoCodecOf(ms) {
+  const v = (ms.MediaStreams || []).find((s) => s && s.Type === 'Video');
+  return v && v.Codec ? String(v.Codec).toLowerCase() : '';
+}
 
 function reasonsOf(ms) {
   const out = [];
@@ -34,12 +49,14 @@ function absolute(deps, rel) {
 /**
  * → { ok, mode:'direct'|'hls'|'none', reason?, url?, playSessionId?, mediaSource?, mediaSourceId?, audioIndex?, tracks? }
  * audioIndex (optional): gewünschte Tonspur; weicht sie vom Server-Standard ab, wird per Remux umgeschaltet.
+ * noHevc (optional): Profil ohne HEVC (ts/h264) – Rückfall, wenn fMP4-HLS im <video> scheiterte.
+ * Fehler tragen zusätzlich `code` (Kurzcode); Erfolg bei HLS trägt `videoCodec` und `offeredHevc`.
  */
-export async function resolveStream({ deps, video, itemId, audioIndex, signal }) {
+export async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false }) {
   const post = async (extra) => {
     const body = {
       UserId: deps.user.id,
-      DeviceProfile: buildDeviceProfile(video),
+      DeviceProfile: buildDeviceProfile(video, { noHevc }),
       StartTimeTicks: 0,
       SubtitleStreamIndex: -1,
       EnableDirectPlay: true,
@@ -55,7 +72,7 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal })
   try {
     let info = await post({});
     const sources = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
-    if (!sources.length) return fail(info && info.ErrorCode ? 'video' : 'network');
+    if (!sources.length) return info && info.ErrorCode ? fail('video', 'V-NOSRC') : fail('network', 'NET');
     const first = sources[0];
     const tr = buildTracks(first);
     const def = serverDefaultAudio(first, tr.audio);
@@ -66,7 +83,7 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal })
       info = await post({ AudioStreamIndex: want, MediaSourceId: first.Id, EnableDirectPlay: false });
       const list = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
       ms = list.find((s) => s.Id === first.Id) || list[0];
-      if (!ms) return fail('network');
+      if (!ms) return fail('network', 'NET');
     }
     const audioIdx = want != null ? want : def;
     const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
@@ -76,18 +93,18 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal })
       return { ok: true, mode: 'direct', url, ...base };
     }
     const reasons = reasonsOf(ms);
-    if (reasons.some((r) => VIDEO_REASONS.has(r))) return fail('video');
+    if (reasons.some((r) => VIDEO_REASONS.has(r))) return fail('video', videoCode(reasons));
     // Schutz: Einbrennen von Untertiteln wäre eine Video-Umwandlung.
-    if (ms.TranscodingUrl && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail('video');
+    if (ms.TranscodingUrl && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail('video', 'V-SUB');
     if (!ms.TranscodingUrl) {
       const a = tr.audio.find((x) => x.index === audioIdx);
-      return fail(a && !isPlainAudioCodec(a.codec) ? 'audio' : 'video');
+      return a && !isPlainAudioCodec(a.codec) ? fail('audio', 'A-CODEC') : fail('video', 'V-NOURL');
     }
-    if (!canHls(video)) return fail('browser');
+    if (!canHls(video)) return fail('browser', 'B-HLS');
     const url = absolute(deps, ms.TranscodingUrl);
-    if (!url) return fail('network');
-    return { ok: true, mode: 'hls', url, ...base };
+    if (!url) return fail('network', 'NET');
+    return { ok: true, mode: 'hls', url, videoCodec: videoCodecOf(ms), offeredHevc: !noHevc && canHevc(video), ...base };
   } catch {
-    return fail(signal && signal.aborted ? 'aborted' : 'network');
+    return signal && signal.aborted ? fail('aborted') : fail('network', 'NET');
   }
 }

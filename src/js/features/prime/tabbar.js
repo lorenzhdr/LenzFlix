@@ -3,7 +3,7 @@
 // Ausgeblendet (Klasse is-hidden) im Player, bei offenen Dialogen/Sheets/Menüs und solange das Suchfeld Fokus hat (Tastatur).
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import { isReady } from '../../core/api.js';
-import { isMobile, isModern, isTv } from '../../core/layout.js';
+import { isMobile, isNarrow, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { openPrimeSearch, closePrimeSearch, isPrimeSearchOpen } from './search.js';
 import { activeKey } from './header.js';
@@ -112,7 +112,7 @@ function build() {
 export default {
   name: 'prime-tabbar',
   match(route) {
-    return isTheme('prime') && isModern() && !isTv() && isMobile() && isReady() && !EXCLUDED.test(route.path);
+    return isTheme('prime') && isModern() && !isTv() && isMobile() && isNarrow() && isReady() && !EXCLUDED.test(route.path);
   },
   mount(route) {
     state.route = route;

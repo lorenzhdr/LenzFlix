@@ -1,0 +1,77 @@
+/* LenzFlix · js-ui/startcover – Ladebild beim Start der Wiedergabe (core/startcover.js). Nur Modern, nicht TV, nicht live.
+   z-index 1250: über dem Info-Fenster (1200), unter MUI-Menüs (1300) und Jellyfin-Dialogen (999999). */
+html.lfx-js:not(.layout-tv) .lfx-startcover {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  overflow: hidden;
+  background: var(--lfx-bg, #000);
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+html.lfx-js:not(.layout-tv) .lfx-startcover.is-leaving { opacity: 0; pointer-events: none; }
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg.is-loaded { opacity: 1; }
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  filter: brightness(0.55);
+}
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--lfx-bg, #000) 0%, rgba(0, 0, 0, 0) 55%), linear-gradient(to right, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 60%);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__text {
+  position: absolute;
+  left: 4%;
+  right: 20%;
+  bottom: 9%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+html.lfx-js:not(.layout-tv) .lfx-startcover__title { font-size: clamp(22px, 3.6vw, 44px); font-weight: 700; line-height: 1.1; }
+html.lfx-js:not(.layout-tv) .lfx-startcover__sub { font-size: clamp(14px, 1.7vw, 20px); color: var(--lfx-text-muted); }
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__spinner {
+  position: absolute;
+  right: 4%;
+  bottom: 9%;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--lfx-red);
+  border-radius: 50%;
+  animation: lfx-startcover-spin 0.9s linear infinite;
+}
+@keyframes lfx-startcover-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 799px) {
+  html.lfx-js:not(.layout-tv) .lfx-startcover__text { left: 6%; right: 22%; bottom: calc(8% + env(safe-area-inset-bottom, 0px)); }
+  html.lfx-js:not(.layout-tv) .lfx-startcover__spinner { right: 6%; bottom: calc(8% + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-startcover__spinner { animation-duration: 3s; }
+}
+
+/* Solange das Ladebild steht, zeigt nur es einen Ladekreis (Jellyfins .docspinner läge mit z-index 9999999 darüber). */
+html.lfx-startcover-on .docspinner {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}

@@ -61,10 +61,12 @@ describe('mobilenav (DOM)', () => {
     clearCache();
     document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
     document.documentElement.className = 'layout-mobile';
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
   });
   afterEach(() => {
     mobilenav.unmount();
     document.documentElement.className = '';
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true });
   });
 
   it('match: nur mobil + modern + nicht TV', () => {
@@ -76,6 +78,18 @@ describe('mobilenav (DOM)', () => {
     Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
     expect(mobilenav.match(route)).toBe(false);
     expect(mobilenav.match(parseHash('#/login'))).toBe(false);
+  });
+
+  it('match: Querformat (layout-mobile, 932 px) zeigt die Desktop-Leiste, nicht die Handy-Pills', () => {
+    const w = window.innerWidth;
+    try {
+      Object.defineProperty(window, 'innerWidth', { value: 932, configurable: true });
+      expect(mobilenav.match(parseHash('#/home'))).toBe(false);
+      Object.defineProperty(window, 'innerWidth', { value: 430, configurable: true });
+      expect(mobilenav.match(parseHash('#/home'))).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
+    }
   });
 
   it('match nur im Design flix', () => {

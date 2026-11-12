@@ -11,6 +11,10 @@ html.lfx-js {
     --lfx-ambient-g 600ms var(--lfx-ease),
     --lfx-ambient-b 600ms var(--lfx-ease);
 }
+/* Handy: keine Ambient-Überblendung (großer Verlauf, teuer auf iPhone) */
+@media (max-width: 799px) {
+  html.lfx-js { transition: none; }
+}
 
 /* Ambient-Verlauf: fixiert oben, unter dem Content (erstes Kind von body) */
 html.lfx-js #lfx-ambient {
@@ -160,6 +164,19 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item--design {
 @media (max-width: 899px) {
   html.lfx-js #lfx-nav {
     display: none;
+  }
+}
+
+/* Handy-Querformat (Jellyfin setzt layout-mobile, Breite >= 900 px): Punkte enger, damit die Leiste
+   sichtbar von den Symbolen rechts (Cast, TV, Suche, Profil) getrennt bleibt */
+@media (min-width: 900px) and (max-width: 1100px) {
+  html.lfx-js.layout-mobile #lfx-nav {
+    gap: 0;
+    left: calc(var(--lfx-gutter) + 80px);
+    font-size: 14px;
+  }
+  html.lfx-js.layout-mobile #lfx-nav .lfx-nav__item {
+    padding: 0 7px;
   }
 }
 

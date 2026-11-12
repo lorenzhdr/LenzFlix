@@ -39,6 +39,27 @@ describe('layout', () => {
     expect(root.classList.contains('lfx-js')).toBe(false);
   });
 
+  it('Breitenwechsel über 800 px mit layout-mobile wertet neu aus (auch orientationchange)', () => {
+    vi.useFakeTimers();
+    const setW = (w) => Object.defineProperty(window, 'innerWidth', { configurable: true, value: w });
+    try {
+      const update = vi.fn();
+      registerFeature({ name: 't', match: () => true, mount: () => {}, unmount: () => {}, update });
+      document.documentElement.classList.add('layout-mobile');
+      setW(430);
+      initLayout();
+      setW(932);
+      window.dispatchEvent(new Event('orientationchange'));
+      vi.advanceTimersByTime(250);
+      expect(update).toHaveBeenCalledTimes(1);
+      destroyLayout();
+    } finally {
+      document.documentElement.className = '';
+      resetRouter();
+      vi.useRealTimers();
+    }
+  });
+
   it('Resize über den Breakpoint wertet Features neu aus (entprellt), destroy entfernt Listener', () => {
     vi.useFakeTimers();
     const setW = (w) => Object.defineProperty(window, 'innerWidth', { configurable: true, value: w });

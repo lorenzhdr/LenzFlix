@@ -21,6 +21,7 @@ export const DEBOUNCE_MS = 400;
 export const DIGIT_WAIT_MS = 1500;
 export const RETRY_MS = 10000;
 export const SYNC_MS = 30000;
+export const LOADING_DELAY_MS = 400;
 const MAX_TIMEOUT = 2147483647;
 const VOL_STEP = 5;
 const PLAYABLE = ['program', 'fill', 'nightfill'];
@@ -387,21 +388,33 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   }
 
   // ---------- Lautstärke ----------
+  // Nur Stumm/Ton an möglich (feste Gerätelautstärke, iOS ohne WebAudio-Gain)? Dynamisch lesen: der Modus kann sich nach der ersten Geste ändern.
+  //   player.volumeMode() → 'native' | 'gain' | 'mute-only'; ohne diese API gilt die Eigenschaft volumeSupported.
+  function muteOnly() {
+    if (player && typeof player.volumeMode === 'function') {
+      const m = safe(() => player.volumeMode());
+      if (m === 'native' || m === 'gain') return false;
+      if (m === 'mute-only') return true;
+    }
+    return !!player && player.volumeSupported === false;
+  }
+  const level = () => (muteOnly() ? 1 : vol / 100);
+
   function applyVolume() {
     safe(() => player.setVolume && player.setVolume(vol / 100));
     safe(() => player.setMuted && player.setMuted(muted));
-    if (music) safe(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted || mutedByPolicy));
-    if (sfx) safe(() => sfx.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted));
+    if (music) safe(() => music.setLevel(level(), muted || mutedByPolicy));
+    if (sfx) safe(() => sfx.setLevel(level(), muted));
     safe(() => knobs.setVolume(vol));
   }
 
   function savePrefs(partial) { if (deps.savePrefs) safe(() => deps.savePrefs(partial)); }
 
   function changeVolume(key) {
-    if (player.volumeSupported === false) {
+    if (muteOnly()) {
       muted = key === 'vol+' ? false : key === 'vol-' ? true : !muted;
       applyVolume();
-      if (on) osd.showVolume({ percent: vol, muted, hint: 'Lautstärke bitte am Gerät einstellen' });
+      if (on) osd.showVolume({ percent: vol, muted, hint: 'Lautstärke bitte am Gerät einstellen', hintOnly: true });
       savePrefs({ muted });
       return;
     }
@@ -419,7 +432,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   function setVolumeAbs(v) {
     if (disposed || suspended) return;
     v = clamp(Math.round(Number(v) || 0), 0, 100);
-    if (player.volumeSupported === false) { if (v !== vol) changeVolume(v > vol ? 'vol+' : 'vol-'); return; }
+    if (muteOnly()) { if (v !== vol) changeVolume(v > vol ? 'vol+' : 'vol-'); return; }
     vol = v;
     muted = false;
     applyVolume();
@@ -463,12 +476,12 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   function watchLeave(silent) { if (watch) safe(() => watch.leave(silent)); }
   function clearStall() { stallArmed = false; unlater('stall'); }
 
-  function showError(reason, g) {
+  function showError(reason, g, code) {
     playing = false;
     clearStall();
     watchLeave(true); // Störbild/Ausfall: nie als gesehen werten
     needsTap = reason === 'gesture';
-    card.showError(reason, channelOf(channel));
+    card.showError(reason, channelOf(channel), code || (reason === 'network' ? 'NET' : undefined));
     unlater('retry');
     if (reason === 'network') later('retry', () => { if (g === gen && on) start(g, false); }, RETRY_MS);
   }
@@ -477,7 +490,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (g !== gen) return false;
     if (res && res.ok === false) {
       if (res.reason === 'aborted') return false;
-      showError(res.reason || 'network', g);
+      showError(res.reason || 'network', g, res.code);
       return false;
     }
     card.hide();
@@ -691,6 +704,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     on = false;
     syncDecor();
     stopIntervals();
+    unlater('loading');
     app.classList.remove('is-on', 'is-powering-on', 'is-blend', 'is-loading');
     app.classList.add('is-powering-off');
     remote.setOn(false);
@@ -855,6 +869,26 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   };
   app.addEventListener('pointermove', onPointer);
   app.addEventListener('pointerdown', onPointer);
+  // Tippen außerhalb des Menüs (nicht Panel, Fernbedienung, Gerätetasten) schließt es; der folgende click wird verschluckt
+  // (sonst schaltet onScreenClick im Standby den Fernseher ein). Gilt nur fürs Menü.
+  let swallowClick = false;
+  const onOutsidePointer = (e) => {
+    if (disposed || suspended || openName() !== 'menu') return;
+    const t = e.target;
+    if (t && t.closest && t.closest('.lfx-live-menu__panel, .lfx-live-remote, [data-action]')) return;
+    closeOverlays();
+    swallowClick = true;
+    later('swallow', () => { swallowClick = false; }, 700);
+  };
+  const onOutsideClick = (e) => {
+    if (!swallowClick) return;
+    swallowClick = false;
+    unlater('swallow');
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  app.addEventListener('pointerdown', onOutsidePointer, true);
+  app.addEventListener('click', onOutsideClick, true);
   const onDbl = () => press('fullscreen');
   const onScreenClick = () => {
     if (!on) { if (!openName()) press('power'); }   // Klick ins Standby-Menü schaltet nicht ein
@@ -878,7 +912,15 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   if (player && typeof player.on === 'function') {
     offs.push(player.on('state', (s) => {
       const phase = s && s.phase;
-      app.classList.toggle('is-loading', phase === 'loading' || phase === 'stalled');
+      // Ladeanimation erst nach LOADING_DELAY_MS (kurze Zustände unsichtbar), jede andere Phase entfernt sie sofort.
+      if (phase === 'loading' || phase === 'stalled') {
+        if (!T.loading && !app.classList.contains('is-loading')) {
+          later('loading', () => { T.loading = null; app.classList.add('is-loading'); }, LOADING_DELAY_MS);
+        }
+      } else {
+        unlater('loading');
+        app.classList.remove('is-loading');
+      }
       if (phase === 'stalled') {
         // Stillstand > 60 s: Ausstrahlung gilt als unterbrochen (ohne Prüfung verlassen).
         if (!stallArmed && on && entry) { stallArmed = true; later('stall', () => watchLeave(true), 60000); }
@@ -898,12 +940,12 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     offs.push(player.on('autoplay-muted', () => {
       if (!on) return;
       mutedByPolicy = true;
-      if (music) safe(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, true));
+      if (music) safe(() => music.setLevel(level(), true));
       if (!muted) osd.showMessage('Ton aus – zum Einschalten tippen oder Stumm-Taste drücken', 8000);
     }));
     offs.push(player.on('error', (err) => {
       if (!on || !entry || entry.type === 'filler' || card.kind() === 'error') return;
-      showError((err && err.reason) || 'network', gen);
+      showError((err && err.reason) || 'network', gen, err && err.code);
     }));
   }
 
@@ -985,6 +1027,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       fs.destroy();
       app.removeEventListener('pointermove', onPointer);
       app.removeEventListener('pointerdown', onPointer);
+      app.removeEventListener('pointerdown', onOutsidePointer, true);
+      app.removeEventListener('click', onOutsideClick, true);
       screen.removeEventListener('dblclick', onDbl);
       screen.removeEventListener('click', onScreenClick);
       video.removeEventListener('contextmenu', onCtx);

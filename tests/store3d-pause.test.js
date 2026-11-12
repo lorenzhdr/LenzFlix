@@ -18,6 +18,48 @@ function make(over = {}) {
 }
 const note = (host) => host.querySelector('.lfx-store-pause-note');
 
+describe('Pause-Menue: Touch-Steuerung', () => {
+  const entryOf = (host) => [...host.querySelectorAll('.lfx-store-pause-panel > button')].find((b) => b.textContent === 'Touch-Steuerung …');
+  it('Eintrag nur mit Touch-Callbacks', () => {
+    const { host, p } = make();
+    expect(entryOf(host).hidden).toBe(true);
+    p.destroy();
+  });
+  it('Untermenue schaltet Werte', () => {
+    const tune = { holdInvertY: false, holdInvertX: false, lookInvertY: false, lookInvertX: false, touchSens: 'normal' };
+    let scheme = 'joystick';
+    const { host, p } = make({
+      onTouchControl: (s) => { scheme = s; }, getTouchControl: () => scheme,
+      onTouchTune: (t) => Object.assign(tune, t), getTouchTune: () => tune,
+    });
+    const entry = entryOf(host);
+    expect(entry.hidden).toBe(false);
+    expect(p.pickOpen).toBe(false);
+    entry.click();
+    expect(p.pickOpen).toBe(true);
+    const btn = (t) => [...host.querySelectorAll('.lfx-store-touchpick button')].find((b) => b.textContent.startsWith(t));
+    expect(btn('Cover kippen').textContent).toBe('Cover kippen: Normal');
+    btn('Cover kippen').click();
+    expect(tune.holdInvertY).toBe(true);
+    expect(btn('Cover kippen').textContent).toBe('Cover kippen: Umgekehrt');
+    btn('Cover drehen').click();
+    btn('Umschauen hoch/runter').click();
+    btn('Umschauen links/rechts').click();
+    expect(tune).toMatchObject({ holdInvertX: true, lookInvertY: true, lookInvertX: true });
+    btn('Empfindlichkeit').click();
+    expect(tune.touchSens).toBe('high');
+    btn('Empfindlichkeit').click();
+    expect(tune.touchSens).toBe('low');
+    expect(btn('Empfindlichkeit').textContent).toBe('Empfindlichkeit: Niedrig');
+    btn('Steuerung').click();
+    expect(scheme).toBe('touch');
+    expect(btn('Steuerung').textContent).toBe('Steuerung: Touch');
+    btn('Zurück').click();
+    expect(p.pickOpen).toBe(false);
+    p.destroy();
+  });
+});
+
 describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
   it('zeigt bei Ton an den Zustand, aktualisiert bei refresh/show', () => {
     const { host, p, setInfo } = make();
@@ -151,28 +193,6 @@ describe('Pause-Menue: Stimmenauswahl', () => {
     btn(empty.host, /^Stimme:/).click();
     expect(empty.host.querySelector('.lfx-store-voicelist').textContent).toContain('Keine deutschen Stimmen gefunden');
     empty.p.destroy();
-  });
-});
-
-describe('Pause-Menue: Steuerung (Touch)', () => {
-  const btn = (host) => [...host.querySelectorAll('.lfx-store-act')].find((b) => b.textContent.startsWith('Steuerung'));
-  it('ist ohne onTouchControl (Desktop) versteckt', () => {
-    const { host, p } = make({ onTouchControl: null });
-    expect(btn(host).hidden).toBe(true);
-    p.destroy();
-  });
-  it('zeigt die Wahl und schaltet Joystick ↔ Touch', () => {
-    let scheme = 'joystick';
-    const { host, p } = make({ onTouchControl: (s) => { scheme = s; }, getTouchControl: () => scheme });
-    const b = btn(host);
-    expect(b.hidden).toBe(false);
-    expect(b.textContent).toBe('Steuerung: Joystick');
-    b.click();
-    expect(scheme).toBe('touch');
-    expect(b.textContent).toBe('Steuerung: Touch');
-    b.click();
-    expect(scheme).toBe('joystick');
-    p.destroy();
   });
 });
 

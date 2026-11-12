@@ -998,6 +998,15 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__menu {
   }
 }
 
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.has-error .lfx-tvm__zap {
+  display: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card-code {
+  letter-spacing: .02em;
+  margin-top: 4px;
+}
+
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__thumb {
   aspect-ratio: 16 / 9;
   background: var(--lfx-surface-2);

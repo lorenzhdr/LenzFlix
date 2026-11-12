@@ -46,6 +46,7 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
     el.textContent = '';
     el.hidden = false;
     el.dataset.kind = k;
+    delete el.dataset.code;
     kind = k;
     clockEl = null;
     countEl = null;
@@ -87,15 +88,22 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       notify();
     },
 
-    /** Störbild je Grund (video|browser|audio|network). */
-    showError(reason, channel) {
+    /** Störbild je Grund (video|browser|audio|network); code (optional): Kurzcode, erscheint klein als „Code: X“. */
+    showError(reason, channel, code) {
       reset('error');
       const t = errorText(reason);
       el.dataset.reason = ERROR_TEXTS[reason] ? reason : 'network';
+      if (code) el.dataset.code = String(code);
       el.append(h(doc, 'div', 'lfx-live-card__snow'));
       if (channel) el.append(createLogo(channel, { doc, number: true }));
       el.append(h(doc, 'div', 'lfx-live-card__title', t.title));
       if (t.sub) el.append(h(doc, 'div', 'lfx-live-card__sub', t.sub));
+      if (code) {
+        const c = h(doc, 'div', 'lfx-live-card__code', `Code: ${code}`);
+        c.style.fontSize = '0.7em';
+        c.style.opacity = '0.7';
+        el.append(c);
+      }
       notify();
     },
 
@@ -112,6 +120,7 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       el.hidden = true;
       el.textContent = '';
       delete el.dataset.kind;
+      delete el.dataset.code;
       kind = null;
       clockEl = null;
       countEl = null;

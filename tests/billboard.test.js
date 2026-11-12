@@ -11,6 +11,10 @@ vi.mock('../src/js/core/api.js', async () => {
   const actual = await vi.importActual('../src/js/core/api.js');
   return { ...actual, getItems: vi.fn(), getJson: vi.fn(async () => []), getUserId: () => 'u' };
 });
+vi.mock('../src/js/shared/trailer.js', () => ({
+  loadLocalTrailer: vi.fn(async () => ({ Id: 'tr1' })),
+  trailerUrl: (id) => `http://x/Videos/${id}/stream.mp4`,
+}));
 vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn() }));
 vi.mock('../src/js/core/download.js', () => ({
@@ -169,6 +173,106 @@ describe('billboard render', () => {
     await flush();
     slot.querySelector('.lfx-bb__media').click();
     expect(openModal).toHaveBeenCalledTimes(1);
+  });
+
+  describe('Trailer: erst Bild, dann unsichtbar vorladen, dann einblenden', () => {
+    let play;
+    const video = () => slot.querySelector('.lfx-bb__video');
+    const img = () => slot.querySelector('.lfx-bb__pic .lfx-bb__img');
+    beforeEach(() => {
+      play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+      vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+      api.getItems.mockImplementation(async (p) => ({
+        Items: (p.SortBy === 'Random' ? items('r', 3) : items('n', 3)).map((it) => ({ ...it, LocalTrailerCount: 1 })),
+      }));
+    });
+
+    it('Fields/Limit schlank, erstes Bild mit fetchpriority=high und kleinerer Auflösung', async () => {
+      render(slot);
+      await flush();
+      const p = api.getItems.mock.calls[0][0];
+      expect(p.Limit).toBe(12);
+      expect(p.Fields).not.toContain('Overview');
+      expect(img().getAttribute('fetchpriority')).toBe('high');
+      expect(img().getAttribute('src')).toContain('maxWidth=1600');
+      expect(img().getAttribute('src')).toContain('quality=80');
+      expect(slot.querySelector('.lfx-bb__pic source').getAttribute('srcset')).toContain('maxWidth=720');
+    });
+
+    it('Skelett in Billboard-Größe, solange der Pool lädt', async () => {
+      const releases = [];
+      api.getItems.mockImplementation(() => new Promise((r) => { releases.push(r); }));
+      render(slot);
+      expect(slot.hidden).toBe(false);
+      expect(slot.querySelector('.lfx-bb--skel')).not.toBeNull();
+      releases.forEach((r) => r({ Items: [] }));
+      await flush();
+      expect(slot.hidden).toBe(true);
+      expect(slot.children.length).toBe(0);
+    });
+
+    it('kein Vorladen ohne geladenes Bild und ohne lfx:rows-ready; Einblenden frühestens 5 s nach dem Bild', async () => {
+      const cleanup = render(slot);
+      await flush();
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(video()).toBeNull();
+      img().dispatchEvent(new Event('load')); // Bild geladen (t = 3 s), Zeilen noch nicht bereit
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(video()).toBeNull();
+      document.dispatchEvent(new Event('lfx:rows-ready'));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(video()).not.toBeNull();
+      expect(video().classList.contains('is-in')).toBe(false);
+      expect(video().muted).toBe(true);
+      video().dispatchEvent(new Event('canplaythrough')); // bereit bei 4 s, Bild stand erst 1 s
+      await vi.advanceTimersByTimeAsync(3900);
+      expect(play).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(play).toHaveBeenCalledTimes(1);
+      video().dispatchEvent(new Event('playing'));
+      expect(video().classList.contains('is-in')).toBe(true);
+      expect(slot.querySelector('.lfx-bb').classList.contains('is-trailer')).toBe(true);
+      cleanup();
+      expect(slot.children.length).toBe(0);
+    });
+
+    it('ohne Abspielbereitschaft bleibt das Bild stehen (Rotation wartet), danach sofort einblenden', async () => {
+      render(slot);
+      await flush();
+      img().dispatchEvent(new Event('load'));
+      document.dispatchEvent(new Event('lfx:rows-ready'));
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(15000);
+      expect(play).not.toHaveBeenCalled();
+      expect(title()).toBe('r0'); // keine Rotation, solange der Trailer lädt
+      video().dispatchEvent(new Event('canplaythrough'));
+      expect(play).toHaveBeenCalledTimes(1); // Bild stand > 5 s -> sofort
+    });
+
+    it('Folienwechsel bricht das Vorladen ab (src leer, load())', async () => {
+      render(slot);
+      await flush();
+      img().dispatchEvent(new Event('load'));
+      document.dispatchEvent(new Event('lfx:rows-ready'));
+      await vi.advanceTimersByTimeAsync(0);
+      const v = video();
+      expect(v).not.toBeNull();
+      slot.querySelectorAll('.lfx-bb__dotbtn')[1].click();
+      expect(v.isConnected).toBe(false);
+      expect(v.hasAttribute('src')).toBe(false);
+      expect(HTMLMediaElement.prototype.load).toHaveBeenCalled();
+    });
+
+    it('Rückfall: nach 8 s startet das Vorladen auch ohne lfx:rows-ready', async () => {
+      render(slot);
+      await flush();
+      img().dispatchEvent(new Event('load'));
+      await vi.advanceTimersByTimeAsync(7900);
+      expect(video()).toBeNull();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(video()).not.toBeNull();
+    });
   });
 
   describe('Download- und Mehr-Button', () => {

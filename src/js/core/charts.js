@@ -5,7 +5,7 @@ import { cached } from './cache.js';
 import { putItems } from './itemstore.js';
 import { BASE_PARAMS } from '../features/rows/logic.js';
 
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 3000;
 const TTL_MS = 5 * 60 * 1000;
 
 /** Charts-URL: window.LenzFlixConfig.chartsUrl -> CSS-Var --lfx-charts-url -> null. Nur https. */

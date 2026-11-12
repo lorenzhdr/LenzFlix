@@ -32,6 +32,7 @@ export function attachSwipeClose(el, opts = {}) {
   const threshold = opts.threshold ?? 0.3;
   const velocity = opts.velocity ?? 0.5;
   const backdrop = opts.backdrop || null;
+  const holdBackdrop = Boolean(opts.holdBackdrop); // beim Schließen den Hintergrund nicht aufdecken (Seite dahinter kann noch springen)
   const reduced = opts.reducedMotion || defaultReducedMotion;
   const now = () => Date.now();
 
@@ -97,7 +98,7 @@ export function attachSwipeClose(el, opts = {}) {
     }
     el.style.transition = ANIM;
     el.style.transform = 'translateY(100%)';
-    setBackdrop(0.3, true);
+    if (!holdBackdrop) setBackdrop(0.3, true);
     animateThen(250, () => onClose());
   }
 

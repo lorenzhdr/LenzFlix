@@ -79,6 +79,9 @@ export function createFakePlayer({ canvas, now = Date.now, getInfo } = {}) {
 
   return {
     volumeSupported: true,
+    volumeMode: () => 'native',
+    volumeCanTry: () => false,
+    prefetch: async () => ({ ok: true }),
     unlock() {},
     async play({ offsetMs = 0, audioIndex: a, subtitleIndex: s } = {}) {
       audioIndex = typeof a === 'number' ? a : 1;

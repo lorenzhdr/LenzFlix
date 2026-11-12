@@ -755,3 +755,119 @@ describe('Gerätetasten und Drehknöpfe', () => {
     env.app.dispose();
   });
 });
+
+describe('Lautstärke-Modus (volumeMode)', () => {
+  it("'gain': normale Stufen wie am PC, kein Hinweis", async () => {
+    const env = makeEnv({ player: { volumeSupported: false, volumeMode: vi.fn(() => 'gain') } });
+    env.app.press('power');
+    await flush();
+    env.app.press('vol+');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.55);
+    expect(env.deps.savePrefs).toHaveBeenLastCalledWith({ volume: 0.55, muted: false });
+    expect(q(env, '.lfx-live-osd__vol-hint').textContent).toBe('');
+    expect(q(env, '.lfx-live-osd__vol').classList.contains('is-hint-only')).toBe(false);
+  });
+
+  it("'mute-only': nur Stumm/Ton an, Hinweis ohne Pegelbalken", async () => {
+    const env = makeEnv({ player: { volumeMode: vi.fn(() => 'mute-only') } });
+    env.app.press('power');
+    await flush();
+    env.player.setVolume.mockClear();
+    env.app.press('vol-');
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
+    expect(q(env, '.lfx-live-osd__vol').classList.contains('is-hint-only')).toBe(true);
+    expect(q(env, '.lfx-live-osd__vol-label').textContent).toBe('Stumm');
+    expect(q(env, '.lfx-live-osd__vol-hint').textContent).toBe('Lautstärke bitte am Gerät einstellen');
+    env.app.press('vol+');
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
+    expect(q(env, '.lfx-live-osd__vol-label').textContent).toBe('Ton an');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
+  });
+
+  it('Modus wird dynamisch gelesen (mute-only → gain nach Geste)', async () => {
+    let mode = 'mute-only';
+    const env = makeEnv({ player: { volumeMode: () => mode } });
+    env.app.press('power');
+    await flush();
+    env.app.press('vol+');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
+    mode = 'gain';
+    env.app.press('vol+');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.55);
+  });
+});
+
+describe('Ladeanimation', () => {
+  function withState() {
+    const h = {};
+    const env = makeEnv({ player: { on: vi.fn((ev, fn) => { h[ev] = fn; return () => {}; }) } });
+    return { env, h };
+  }
+  it('is-loading erst nach 400 ms, sofort weg bei playing', async () => {
+    const { env, h } = withState();
+    env.app.press('power');
+    await flush();
+    const app = q(env, '.lfx-live-app');
+    h.state({ phase: 'loading' });
+    await flush(300);
+    expect(app.classList.contains('is-loading')).toBe(false);
+    await flush(150);
+    expect(app.classList.contains('is-loading')).toBe(true);
+    h.state({ phase: 'playing' });
+    expect(app.classList.contains('is-loading')).toBe(false);
+  });
+
+  it('kurzer Ladezustand zeigt nie die Animation; Taste i ändert nichts', async () => {
+    const { env, h } = withState();
+    env.app.press('power');
+    await flush();
+    const app = q(env, '.lfx-live-app');
+    h.state({ phase: 'loading' });
+    await flush(100);
+    h.state({ phase: 'playing' });
+    await flush(1000);
+    expect(app.classList.contains('is-loading')).toBe(false);
+    h.state({ phase: 'loading' });
+    await flush(500);
+    expect(app.classList.contains('is-loading')).toBe(true);
+    env.app.press('info');
+    expect(app.classList.contains('is-loading')).toBe(true);
+  });
+});
+
+describe('Menü: Tippen außerhalb schließt', () => {
+  const down = (el) => el.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  it('schließt bei Tippen auf den Bildschirm und verschluckt den click (Standby bleibt aus)', async () => {
+    const env = makeEnv();
+    env.app.press('menu');
+    expect(env.ov.menu.open).toBe(true);
+    const screen = q(env, '.lfx-live-screen');
+    down(screen);
+    expect(env.ov.menu.open).toBe(false);
+    screen.click();
+    expect(env.app.isOn()).toBe(false);
+    screen.click(); // zweiter Klick wirkt wieder normal
+    expect(env.app.isOn()).toBe(true);
+  });
+
+  it('Panel und Fernbedienung schließen nicht', () => {
+    const env = makeEnv();
+    const panel = document.createElement('div');
+    panel.className = 'lfx-live-menu__panel';
+    env.ov.menu.el.append(panel);
+    env.app.press('menu');
+    down(panel);
+    expect(env.ov.menu.open).toBe(true);
+    down(q(env, '.lfx-live-remote'));
+    expect(env.ov.menu.open).toBe(true);
+  });
+
+  it('EPG schließt nicht bei Tippen außerhalb', async () => {
+    const env = makeEnv();
+    env.app.press('power');
+    await flush();
+    env.app.press('epg');
+    down(q(env, '.lfx-live-screen'));
+    expect(env.ov.epg.open).toBe(true);
+  });
+});

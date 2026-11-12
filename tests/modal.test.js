@@ -28,6 +28,7 @@ vi.mock('../src/js/core/download.js', () => ({
   isChooserOpen: vi.fn(() => false),
 }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn(async () => true) }));
+vi.mock('../src/js/core/startcover.js', () => ({ show: vi.fn(), hide: vi.fn() }));
 const themeState = vi.hoisted(() => ({ id: null }));
 vi.mock('../src/js/core/theme.js', () => ({
   getTheme: () => themeState.id,
@@ -38,6 +39,7 @@ vi.mock('../src/js/core/theme.js', () => ({
 
 import * as api from '../src/js/core/api.js';
 import { play } from '../src/js/core/playback.js';
+import { show as showCover, hide as hideCover } from '../src/js/core/startcover.js';
 import { openItemMenu, onItemsChanged } from '../src/js/core/itemmenu.js';
 import { startDownload, canDownload, isChooserOpen } from '../src/js/core/download.js';
 import { confirmAction } from '../src/js/core/sheet.js';
@@ -422,6 +424,93 @@ describe('Abspielen schließt zuerst das Modal', () => {
   });
 });
 
+describe('Ladebild beim Abspielen', () => {
+  const waitPlay = () => wait(() => play.mock.calls.length > 0, 100);
+
+  it('Film: Ladebild sofort mit dem Ziel-Item, noch vor play', async () => {
+    const order = [];
+    showCover.mockImplementation(() => order.push('cover'));
+    play.mockImplementation(async () => { order.push('play'); return true; });
+    await openModal('M1');
+    document.querySelector('.lfx-modal__play').click();
+    expect(showCover).toHaveBeenCalledWith({ item: expect.objectContaining({ Id: 'M1' }) });
+    await waitPlay();
+    expect(order[0]).toBe('cover');
+    expect(order.at(-1)).toBe('play');
+    play.mockImplementation(async () => true);
+    showCover.mockReset();
+  });
+
+  it('Folgenzeile: Ladebild mit Serienname und Serien-Backdrop', async () => {
+    api.getItem.mockImplementation(async (id) => ({ S1: { ...series, BackdropImageTags: ['bt'] }, M1: movie }[id]));
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    document.querySelector('.lfx-modal__ep').click();
+    expect(showCover).toHaveBeenCalledWith({ item: expect.objectContaining({ Id: 'SE1-E1', SeriesName: 'Serie', ParentBackdropItemId: 'S1', ParentBackdropImageTags: ['bt'] }) });
+    await waitPlay();
+  });
+
+  it('Serie: Abbruch beim Laden (Modal geschlossen) entfernt das Ladebild wieder', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    clearCache();
+    let resolve;
+    api.getNextUp.mockImplementationOnce(() => new Promise((r) => { resolve = r; }));
+    document.querySelector('.lfx-modal__play').click();
+    await flush();
+    expect(showCover).toHaveBeenCalledWith({ item: expect.objectContaining({ Id: 'S1' }) });
+    closeModal();
+    await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
+    resolve({ Items: [{ Id: 'N1', Type: 'Episode', UserData: {} }] });
+    await flush(); await flush();
+    expect(hideCover).toHaveBeenCalled();
+    expect(play).not.toHaveBeenCalled();
+  });
+});
+
+describe('Folgennummer und Scrollposition', () => {
+  it('Folgenzeile trägt data-num „n.“ am Titel (Handy zeigt es per ::before)', async () => {
+    await openModal('S1');
+    await wait(() => document.querySelector('.lfx-modal__ep'));
+    const t = document.querySelectorAll('.lfx-modal__ep-title');
+    expect(t[0].dataset.num).toBe('1.');
+    expect(t[2].dataset.num).toBe('3.');
+  });
+
+  it('Schließen stellt window.scrollY wieder her, wenn die Seite gesprungen ist', async () => {
+    const st = vi.fn();
+    const orig = window.scrollTo;
+    window.scrollTo = st;
+    Object.defineProperty(window, 'scrollY', { value: 300, configurable: true });
+    try {
+      await openModal('M1');
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+      closeModal();
+      await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
+      expect(st).toHaveBeenCalledWith(0, 300);
+      await new Promise((r) => setTimeout(r, 200)); // Nachkorrektur-Timer abwarten
+    } finally {
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
+      window.scrollTo = orig;
+    }
+  });
+
+  it('Kein scrollTo, wenn die Position stimmt', async () => {
+    const st = vi.fn();
+    const orig = window.scrollTo;
+    window.scrollTo = st;
+    try {
+      await openModal('M1');
+      closeModal();
+      await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
+      await new Promise((r) => setTimeout(r, 200));
+      expect(st).not.toHaveBeenCalled();
+    } finally {
+      window.scrollTo = orig;
+    }
+  });
+});
+
 describe('Gesehen-Button', () => {
   const lastConfirm = () => confirmAction.mock.calls.at(-1)[0];
 
@@ -635,17 +724,15 @@ describe('Scrollverhalten', () => {
     delete Element.prototype.scrollIntoView;
   });
 
-  it('Episoden-Karte: Overlay bleibt oben, danach genau ein sanftes scrollTo, kein scrollIntoView', async () => {
+  it('Episoden-Karte: Overlay bleibt oben (scrollTop 0), Folge markiert, kein scrollTo/scrollIntoView', async () => {
     await openModal(epCard);
     await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
+    runRaf();
     const overlay = document.getElementById('lfx-modal');
+    expect(document.querySelector('.lfx-modal__ep.is-selected').dataset.id).toBe('SE2-E2');
     expect(overlay.scrollTop).toBe(0);
     expect(scrollTo).not.toHaveBeenCalled();
-    runRaf();
-    expect(scrollTo).toHaveBeenCalledTimes(1);
-    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
     expect(scrollIntoView).not.toHaveBeenCalled();
-    expect(overlay.scrollTop).toBe(0);
   });
 
   it('Film und Serie ohne Episodenwahl: kein scrollTo', async () => {
@@ -697,35 +784,6 @@ describe('Scrollverhalten', () => {
     expect(scrollTo).not.toHaveBeenCalled();
     expect(scrollIntoView).not.toHaveBeenCalled();
     expect(document.getElementById('lfx-modal').scrollTop).toBe(0);
-  });
-
-  it('Nutzereingriff (wheel) vor rAF: kein scrollTo', async () => {
-    await openModal(epCard);
-    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
-    document.getElementById('lfx-modal').dispatchEvent(new Event('wheel', { bubbles: true }));
-    runRaf();
-    expect(scrollTo).not.toHaveBeenCalled();
-  });
-
-  it('Schließen vor rAF: kein scrollTo', async () => {
-    await openModal(epCard);
-    await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
-    modal.unmount();
-    runRaf();
-    expect(scrollTo).not.toHaveBeenCalled();
-  });
-
-  it('prefers-reduced-motion: behavior auto', async () => {
-    const mm = window.matchMedia;
-    window.matchMedia = vi.fn((q) => ({ matches: /reduced-motion/.test(q), media: q, addEventListener() {}, removeEventListener() {} }));
-    try {
-      await openModal(epCard);
-      await wait(() => document.querySelector('.lfx-modal__ep.is-selected'));
-      runRaf();
-      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
-    } finally {
-      window.matchMedia = mm;
-    }
   });
 });
 

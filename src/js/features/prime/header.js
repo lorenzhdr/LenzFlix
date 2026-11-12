@@ -3,7 +3,7 @@
 // die native AppBar wird nur per html.lfx-prime-header-on ausgeblendet.
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import { isReady } from '../../core/api.js';
-import { isMobile, isModern, isTv } from '../../core/layout.js';
+import { isMobile, isNarrow, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js';
 import { getLibraries } from '../../shared/libraries.js';
@@ -375,7 +375,7 @@ function render() {
   state.menus = null;
   closeProfile();
   closeProfileSheet({ restoreFocus: false });
-  state.mobile = isMobile();
+  state.mobile = isMobile() && isNarrow();
   state.kind = null;
   const parts = state.mobile ? buildMobile(state.route) : build();
   state.el.className = `lfx-prime-header${state.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state.kind}` : ''}`;
@@ -406,7 +406,7 @@ export default {
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
     if (!state.el) return;
-    const mobileNow = isMobile();
+    const mobileNow = isMobile() && isNarrow();
     if (mobileNow !== state.mobile || (mobileNow && mobileKind(route) !== state.kind)) {
       // Fensterwechsel Desktop <-> Handy bzw. Startseite <-> Unterseite am Handy: Kopfzeile neu aufbauen
       closePrimeSearch({ restoreFocus: false });

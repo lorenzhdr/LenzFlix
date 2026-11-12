@@ -8,7 +8,11 @@ import { broadcastDayOf, formatClock } from '../schedule/time.js';
 import { createEmitter } from '../player/events.js';
 import { nextProgram, titleOf } from './model.js';
 
-export const DEBOUNCE_MS = 400;
+export const DEBOUNCE_MS = 250;
+export const NEIGHBOR_MS = 3000; // stabiles „playing“, danach Nachbarsender vorauflösen
+export const PREFETCH_MAX_AGE_MS = 30000;
+const NEIGHBOR_MAX = 2;
+const STATS_MAX = 10;
 export const RETRY_MS = 10000;
 export const SYNC_MS = 30000;
 export const STALL_MS = 60000;
@@ -52,6 +56,10 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   let lastDay = null;
   let tickIv = null;
   let snap = null;
+  let pfAc = null;       // AbortController der Vorauflösung des Zielsenders (Entprellung)
+  let tuneAt = 0;
+  const zaps = [];       // letzte Umschaltungen: { channel, ms } (tune → playing)
+  const neighborDone = new Set();
   const T = {};
   const offs = [];
 
@@ -94,7 +102,9 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     safe(() => player.setVolume && player.setVolume(vol / 100));
     safe(() => player.setMuted && player.setMuted(muted));
   }
-  const volumeSupported = () => player.volumeSupported !== false;
+  // iOS: ohne natives volume ist die Lautstärke per WebAudio-Gain möglich (player.volumeMode() === 'gain');
+  // solange ein Versuch noch offen ist (volumeCanTry), wird sie optimistisch angeboten und bei Scheitern zurückgenommen.
+  const volumeSupported = () => player.volumeSupported !== false || !!safe(() => player.volumeCanTry && player.volumeCanTry());
 
   function setVolume(v) {
     if (disposed) return;
@@ -173,7 +183,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     changed();
   }
 
-  function showError(why, g) {
+  function showError(why, g, code) {
     playing = false;
     clearStall();
     watchLeave(true); // Störbild/Ausfall: nie als gesehen werten
@@ -181,7 +191,8 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     const key = ERROR_TEXTS[why] ? why : 'network';
     phase = 'error';
     reason = key;
-    card = frozen({ kind: 'error', reason: key, title: ERROR_TEXTS[key].title, sub: ERROR_TEXTS[key].sub });
+    const shown = code || (key === 'network' ? 'NET' : '');
+    card = frozen({ kind: 'error', reason: key, title: ERROR_TEXTS[key].title, sub: ERROR_TEXTS[key].sub, ...(shown ? { code: String(shown) } : {}) });
     unlater('retry');
     if (key === 'network') later('retry', () => { if (g === gen && on) start(g, false); }, RETRY_MS);
     changed();
@@ -191,7 +202,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (g !== gen) return false;
     if (res && res.ok === false) {
       if (res.reason === 'aborted') return false;
-      showError(res.reason || 'network', g);
+      showError(res.reason || 'network', g, res.code);
       return false;
     }
     card = null;
@@ -199,8 +210,41 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     phase = 'playing';
     playing = true;
     if (e === entry) watchTune();
+    if (tuneAt) {
+      zaps.push({ channel, ms: Math.max(0, clock() - tuneAt) });
+      if (zaps.length > STATS_MAX) zaps.shift();
+      tuneAt = 0;
+    }
+    if (e === entry && e.type === 'program') later('neigh', () => prefetchNeighbors(g), NEIGHBOR_MS);
     changed();
     return true;
+  }
+
+  // ---------- Vorauflösung (schnelleres Zappen) ----------
+  function abortPrefetch() {
+    if (pfAc) { try { pfAc.abort(); } catch { /* egal */ } pfAc = null; }
+  }
+  const prefetchItem = (itemId, signal) => {
+    if (!player || typeof player.prefetch !== 'function') return;
+    const p = safe(() => player.prefetch(itemId, signal ? { signal } : {}));
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  };
+  // Nach stabilem „playing“: laufende Sendung der Sender ±1 vorauflösen (nur Programm, einmal je Sendung, max. 2 Anfragen).
+  function prefetchNeighbors(g) {
+    if (g !== gen || !on || disposed || !playing || phase !== 'playing') return;
+    let n = 0;
+    for (const ch of [((channel - 2 + NCH) % NCH) + 1, (channel % NCH) + 1]) {
+      if (n >= NEIGHBOR_MAX || ch === channel) continue;
+      const cur = safe(() => scheduler.nowOn(ch, clock()));
+      const e = cur && cur.entry;
+      if (!e || e.type !== 'program' || !e.itemId) continue;
+      const key = `${ch}:${e.start}:${e.itemId}`;
+      if (neighborDone.has(key)) continue;
+      neighborDone.add(key);
+      if (neighborDone.size > 200) neighborDone.delete(neighborDone.values().next().value);
+      n++;
+      prefetchItem(e.itemId, null);
+    }
   }
 
   // ---------- Abspielen ----------
@@ -225,6 +269,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     playing = false;
     unlater('retry');
     unlater('trailer');
+    unlater('neigh');
     armAdvance(e, g);
     needsTap = false;
     clearStall();
@@ -283,7 +328,9 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (no === channel && entry) return;
     channel = no;
     const g = ++gen;
-    for (const k of ['zap', 'advance', 'retry', 'trailer']) unlater(k);
+    for (const k of ['zap', 'advance', 'retry', 'trailer', 'neigh']) unlater(k);
+    abortPrefetch();
+    tuneAt = clock();
     clearStall();
     needsTap = false;
     watchLeave();
@@ -297,7 +344,14 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     phase = 'loading';
     changed();
     if (immediate) start(g);
-    else later('zap', () => start(g), DEBOUNCE_MS);
+    else {
+      // Schon während der Entprellung die PlaybackInfo des Ziels anstoßen (Folgedruck bricht ab).
+      if (view && view.itemId && PLAYABLE.includes(view.type)) {
+        pfAc = typeof AbortController === 'function' ? new AbortController() : null;
+        prefetchItem(view.itemId, pfAc && pfAc.signal);
+      }
+      later('zap', () => start(g), DEBOUNCE_MS);
+    }
   }
 
   function zap(delta) { tune(channel + (Number(delta) || 0)); }
@@ -337,7 +391,9 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   function stop() {
     if (!on) return;
     gen++;
-    for (const k of ['zap', 'advance', 'retry', 'trailer']) unlater(k);
+    for (const k of ['zap', 'advance', 'retry', 'trailer', 'neigh']) unlater(k);
+    abortPrefetch();
+    tuneAt = 0;
     clearStall();
     if (tickIv) { clearInterval(tickIv); tickIv = null; }
     watchLeave();
@@ -436,7 +492,18 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     }));
     offs.push(player.on('error', (err) => {
       if (!on || !entry || entry.type === 'filler' || phase === 'error') return;
-      showError((err && err.reason) || 'network', gen);
+      showError((err && err.reason) || 'network', gen, err && err.code);
+    }));
+    // Lautstärke-Modus kippt (Gain-Versuch gescheitert): Pegel zurück auf 100, Anzeige aktualisieren.
+    offs.push(player.on('volume-mode', (m) => {
+      if (disposed) return;
+      if (m && m.mode === 'mute-only') {
+        const had = vol !== 100;
+        vol = 100;
+        applyVolume();
+        if (had) message('Lautstärke lässt sich hier nur stumm schalten');
+      }
+      changed();
     }));
   }
 
@@ -456,11 +523,17 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     setSubtitle,
     restartTarget,
     state,
+    /** Messung für das Debug-Fenster: letzte Umschaltungen (tune → playing) in ms. */
+    stats() {
+      const ms = zaps.map((z) => z.ms);
+      return { zaps: zaps.map((z) => ({ ...z })), lastMs: ms.length ? ms[ms.length - 1] : null, avgMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null };
+    },
     on: (name, fn) => em.on(name, fn),
     dispose() {
       if (disposed) return;
       stop();
       disposed = true;
+      abortPrefetch();
       for (const k of Object.keys(T)) clearTimeout(T[k]);
       if (tickIv) { clearInterval(tickIv); tickIv = null; }
       for (const off of offs) if (typeof off === 'function') safe(off);

@@ -118,10 +118,13 @@ export function createOsd(container, { doc = document, win = window } = {}) {
     clearInput() { win.clearTimeout(T.input); el.classList.remove('is-input'); },
 
     /** { percent, muted, hint } */
-    showVolume({ percent, muted, hint }) {
+    showVolume({ percent, muted, hint, hintOnly }) {
       volFill.style.width = `${muted ? 0 : percent}%`;
       volNum.textContent = muted ? 'Stumm' : `${percent}`;
       volHint.textContent = hint || '';
+      // hintOnly (feste Gerätelautstärke): kein Balken/Pegel, nur Stumm/Ton an + Hinweis
+      volLabel.textContent = hintOnly ? (muted ? 'Stumm' : 'Ton an') : 'Lautstärke';
+      vol.classList.toggle('is-hint-only', !!hintOnly);
       el.classList.toggle('is-muted', !!muted);
       timer('vol', 'is-vol', hint ? 4000 : 2000);
     },

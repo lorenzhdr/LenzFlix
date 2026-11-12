@@ -309,6 +309,7 @@ function buildOpts(r) {
     voicePitch: prefs.getVoicePitch(),
     bigCovers: prefs.getBigCovers(),
     touchControl: prefs.getTouchControl(),
+    touchTune: prefs.getTouchTune(),
     vr: prefs.getVr(),
     skipIntro: prefs.getIntroSeen(),
     restore: prefs.getState(),

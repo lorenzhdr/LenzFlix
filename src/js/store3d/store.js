@@ -13,7 +13,7 @@ import { buildProps } from './world/build-props.js';
 import { CoverManager } from './covers/manager.js';
 import { Player, EYE } from './controls/player.js';
 import { DesktopControls } from './controls/desktop.js';
-import { TouchControls, SCHEMES } from './controls/touch.js';
+import { TouchControls, SCHEMES, normTune } from './controls/touch.js';
 import { createRotateHint } from './ui/rotate.js';
 import { pickCover, pickBoxes } from './controls/pick.js';
 import { ModuleHost } from './modules/runtime.js';
@@ -60,6 +60,7 @@ class StoreApp {
     this.voicePitch = ['normal', 'tief', 'sehrtief'].includes(this.opts.voicePitch) ? this.opts.voicePitch : 'tief';
     this.bigCovers = this.opts.bigCovers !== false;
     this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : 'joystick';
+    this.touchTune = normTune(this.opts.touchTune);
     this.zoomTarget = 1;
     this.zoom = 1;
     this.lastFps = 0;
@@ -121,6 +122,8 @@ class StoreApp {
       onBigCovers: (on) => this.setBigCovers(on),
       onTouchControl: this.touch ? (s) => { this.setTouchControl(s); this.savePrefs(); } : null,
       getTouchControl: () => this.touchScheme,
+      onTouchTune: this.touch ? (p) => { this.setTouchTune(p); this.savePrefs(); } : null,
+      getTouchTune: () => this.touchTune,
       onTheme: () => this.deps.openThemePicker(),
       onMenu: (anchor) => this.deps.openMenu(anchor),
       getQuality: () => this.qualitySetting,
@@ -199,6 +202,7 @@ class StoreApp {
       onClosed: () => this.onHoldClosed(),
       openPanel: (spec) => this.xr.openPanel(spec),
       isXr: () => !!(this.xr && this.xr.presenting),
+      getTune: () => this.touchTune,
       onPlay: (item, resume) => this.mods && this.mods.emit('play', item, { resume }),
     });
     this.mods = new ModuleHost(this);
@@ -218,7 +222,7 @@ class StoreApp {
         else this.resumeFromPause();
       },
     });
-    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme }) : null;
+    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune }) : null;
 
     this.progress(0.86, 'Module werden geladen');
     this.mods.ctx.on('xr', (on) => this.onXrHold(on));
@@ -640,7 +644,7 @@ class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, vr: { ...this.vr } }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, ...this.touchTune, vr: { ...this.vr } }); } catch { /* egal */ }
   }
 
   /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
@@ -672,6 +676,13 @@ class StoreApp {
     if (this.touchCtl) this.touchCtl.setScheme(s);
     if (this.pause) this.pause.refresh();
     this.syncUi();
+  }
+
+  /** Touch-Feineinstellung (Teilobjekt): holdInvertY/X, lookInvertY/X (bool), touchSens ('low'|'normal'|'high'). Wirkt sofort. */
+  setTouchTune(p) {
+    if (!p) return;
+    this.touchTune = normTune({ ...this.touchTune, ...p });
+    if (this.pause) this.pause.refresh();
   }
 
   setShowFps(on) {

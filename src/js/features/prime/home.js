@@ -3,7 +3,7 @@
 // die nativen Sektionen verschwinden per html.lfx-prime-home-on. Wechsel Startseite <-> Hub läuft über update().
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
-import { isMobile, isModern, isTv } from '../../core/layout.js';
+import { isMobile, isNarrow, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { getHubHeroPool, buildHubRowDefs } from '../../shared/hub.js';
 import { getLibraries } from '../../shared/libraries.js';
@@ -63,7 +63,7 @@ async function start(tab, route, myGen) {
   tab.prepend(root);
   document.documentElement.classList.add(ON_CLASS);
   current = route;
-  builtMobile = isMobile();
+  builtMobile = isMobile() && isNarrow();
 
   cleanups.push(renderHero(heroSlot, { loadPool: () => (hub ? getHubHeroPool(lib) : fetchHomePool()) }));
 
@@ -105,7 +105,7 @@ function ensure(route) {
   clearTimeout(waitTimer);
   const tab = findHomeTab();
   const existing = document.getElementById(ROOT_ID);
-  if (tab && existing && tab.contains(existing) && current && current.key === route.key && builtMobile === isMobile()) return;
+  if (tab && existing && tab.contains(existing) && current && current.key === route.key && builtMobile === (isMobile() && isNarrow())) return;
   gen += 1;
   const myGen = gen;
   let tries = 0;

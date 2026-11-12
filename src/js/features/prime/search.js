@@ -2,7 +2,7 @@
 // Glas-Panel mit Eingabefeld, Textvorschlägen (Titelnamen) und Karten-Raster. Kein eigener Hash.
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import * as api from '../../core/api.js';
-import { isMobile } from '../../core/layout.js';
+import { isMobile, isNarrow } from '../../core/layout.js';
 import { searchItems } from '../../shared/search.js';
 import { titleHref } from '../../shared/routes.js';
 
@@ -94,7 +94,7 @@ export function openPrimeSearch({ returnFocus } = {}) {
     return;
   }
   const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
-  const mobile = isMobile();
+  const mobile = isMobile() && isNarrow();
   const root = mountPoint(ID, { className: `lfx-prime-search${mobile ? ' lfx-prime-search--full' : ''}` });
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');

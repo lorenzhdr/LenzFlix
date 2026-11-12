@@ -1,7 +1,7 @@
 // LENZPRIME Titelseite: DOM-Bausteine (Icons, Kreis-Buttons, Folgen-Karten, Info-Kacheln, Staffel-Auswahl).
 import { h } from '../../core/dom.js';
 import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js';
-import { isMobile } from '../../core/layout.js';
+import { isMobile, isNarrow } from '../../core/layout.js';
 import { createCard, landscapeFor } from '../rows/card.js';
 import { createPrimeCard } from './card.js';
 import { progressPercent } from '../modal/format.js';
@@ -103,7 +103,7 @@ export function formatDate(iso) {
 /** Raster aus LENZFLIX-Karten (.lfx-card-Vertrag, Klick läuft über den Modal-Abfang). */
 export function buildCardGrid(items, { trend, newInfo } = {}) {
   // Handy: Posterraster (3 Spalten, per CSS); Poster-Karten tragen denselben Kartenvertrag
-  const make = isMobile()
+  const make = isMobile() && isNarrow()
     ? (it) => createPrimeCard(it, { kind: 'poster', badge: cardBadge(it, { newInfo, trend }) })
     : (it) => createCard(it, { badge: cardBadge(it, { newInfo, trend }) });
   return h('div', { class: 'lfx-pt__grid', role: 'list' }, items.map(make));

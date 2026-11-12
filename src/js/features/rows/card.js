@@ -17,8 +17,23 @@ function ariaLabel(item) {
   return item.Name || '';
 }
 
+/** Handy (< 800 px): kleineres Querformat-Bild (spart Daten). */
+function landscapeWidth() {
+  return typeof matchMedia === 'function' && matchMedia('(max-width: 799px)').matches ? 420 : 600;
+}
+
+/** Hängt nachträglich ein Badge an (nur wenn die Karte noch keins hat). */
+export function setCardBadge(card, text) {
+  if (!text || card.querySelector('.lfx-badge')) return;
+  const el = document.createElement('span');
+  el.className = 'lfx-badge';
+  el.textContent = text;
+  const progress = card.querySelector('.lfx-progress');
+  card.insertBefore(el, progress);
+}
+
 /** Querformat-Bild; Episoden bevorzugen ihr eigenes Bild. Rückgabe {url, isThumb} oder null. */
-export function landscapeFor(item, maxWidth = 600) {
+export function landscapeFor(item, maxWidth = landscapeWidth()) {
   if (item.Type === 'Episode') {
     for (const type of ['Thumb', 'Primary']) {
       const url = api.imageUrl(item, { type, maxWidth, quality: 85 });

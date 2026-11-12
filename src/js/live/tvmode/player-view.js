@@ -151,6 +151,8 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
     if (key === cardKey) return;
     cardKey = key;
     cardHost.textContent = '';
+    // Fehlerkarte: die Zapp-Einblendung würde sie verdecken (CSS blendet sie bei .has-error aus)
+    el.classList.toggle('has-error', !!(card && card.kind === 'error'));
     if (!card) return;
     const c = mk('div', `lfx-tvm__card lfx-tvm__card--${card.kind}`, cardHost);
     const title = mk('div', 'lfx-tvm__card-title', c);
@@ -172,6 +174,12 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
     text.hidden = !text_;
     if (card.kind === 'error') {
       c.setAttribute('role', 'alert');
+      if (card.code) {
+        const code = mk('div', 'lfx-tvm__card-code', c);
+        code.textContent = `Code: ${card.code}`;
+        code.style.fontSize = '0.7em';
+        code.style.opacity = '0.7';
+      }
       const act = mk('div', 'lfx-tvm__card-actions', c);
       const b = mk('button', 'lfx-tvm__btn lfx-tvm__btn--primary', act);
       b.type = 'button';
@@ -265,6 +273,18 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
     el.classList.remove('is-controls');
   }
 
+  // Doppeltipp = Vollbild nur mit echtem Element-Vollbild (nicht iOS-Video-Vollbild/CSS-Notlösung) oder wenn es schon an ist.
+  function fsDoubleTapAllowed() {
+    if (!opts.fullscreen) return false;
+    if (typeof opts.canNativeFullscreen === 'function') return !!opts.canNativeFullscreen();
+    try {
+      if (opts.fullscreen.isOn && opts.fullscreen.isOn()) return true;
+      const root = doc.documentElement;
+      const enabled = doc.fullscreenEnabled === true || doc.webkitFullscreenEnabled === true;
+      return enabled && !!root && (typeof root.requestFullscreen === 'function' || typeof root.webkitRequestFullscreen === 'function');
+    } catch { return false; }
+  }
+
   // ---- Zeigergesten ----
   // touch-action: pan-x (CSS, nur im Player): der Browser behält das horizontale Wischen, senkrechte Gesten
   // kommen als Pointer-Events bei uns an und lösen das Zappen aus, ohne dass die Seite scrollt.
@@ -295,13 +315,15 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
       }
       if (Math.abs(dy) > 10 || Math.abs(dx) > 10) return; // Wischen in andere Richtung: nichts auslösen
       const t = Date.now();
-      if (t - lastTapAt < DOUBLE_TAP_MS) {
+      // Ein Tipp auf die Zapp-Einblendung ist weder erster noch zweiter Tipp eines Doppeltipps.
+      const onZap = !!(e.target && e.target.closest && e.target.closest('.lfx-tvm__zap'));
+      if (!onZap && fsDoubleTapAllowed() && t - lastTapAt < DOUBLE_TAP_MS) {
         lastTapAt = 0;
         if (opts.fullscreen) opts.fullscreen.toggle();
         showControls();
         return;
       }
-      lastTapAt = t;
+      if (!onZap && fsDoubleTapAllowed()) lastTapAt = t;
       if (el.classList.contains('is-controls')) hideControls();
       else showControls();
       return;

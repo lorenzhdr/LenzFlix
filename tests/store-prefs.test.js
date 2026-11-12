@@ -7,6 +7,25 @@ import * as prefs from '../src/js/features/store/prefs.js';
 
 beforeEach(() => localStorage.clear());
 
+describe('Touch-Feineinstellung', () => {
+  it('Standard = unverändert', () => {
+    expect(prefs.getTouchTune()).toEqual({ touchSens: 'normal', holdInvertY: false, holdInvertX: false, lookInvertY: false, lookInvertX: false });
+  });
+  it('speichert und validiert', () => {
+    prefs.savePrefs({ holdInvertY: true, lookInvertX: true, touchSens: 'high' });
+    expect(prefs.getTouchTune()).toEqual({ touchSens: 'high', holdInvertY: true, holdInvertX: false, lookInvertY: false, lookInvertX: true });
+    prefs.savePrefs({ touchSens: 'wild', holdInvertY: 'ja', lookInvertX: false });
+    const t = prefs.getTouchTune();
+    expect(t.touchSens).toBe('high');
+    expect(t.holdInvertY).toBe(true);
+    expect(t.lookInvertX).toBe(false);
+  });
+  it('ungültiger gespeicherter Wert fällt auf Standard', () => {
+    localStorage.setItem('lfx.store.touchSens.u1', 'x');
+    expect(prefs.getTouchTune().touchSens).toBe('normal');
+  });
+});
+
 describe('VR-Prefs', () => {
   it('Standardwerte', () => {
     expect(prefs.getVr()).toEqual({ turn: 'snap', vignette: true, height: 'auto', quality: 'mid', seat: 'mid' });

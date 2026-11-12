@@ -150,6 +150,12 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   .lfx-live-osd__vol-num { min-width: 2.6em; text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; }
   .lfx-live-osd__vol-hint { grid-column: 1 / -1; font-size: 0.75em; opacity: 0.85; }
   .lfx-live-osd__vol-hint:empty { display: none; }
+  /* Feste Gerätelautstärke (iOS ohne Pegelregelung): kein Balken, gut lesbarer Hinweis */
+  .lfx-live-osd__vol.is-hint-only { grid-template-columns: 1fr; width: auto; max-width: 70%; row-gap: 0.25em; }
+  .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-rail,
+  .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-num { display: none; }
+  .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-label { font-size: 1em; font-weight: 800; }
+  .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-hint { font-size: 0.95em; opacity: 1; }
 
   .lfx-live-osd__info {
     position: absolute;

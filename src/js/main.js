@@ -14,7 +14,7 @@ import { destroyStore } from './features/store/home.js';
 import { destroyLive } from './features/live/home.js';
 import { destroyTvMode, initUnlock } from './features/tvmode/index.js';
 
-const WATCH_MS = 1000;
+const WATCH_MS = 3000; // nach der Startphase; Routenwechsel lösen sync() zusätzlich sofort aus
 const FAST_MS = 100; // Start: Kern-CSS (Custom CSS) lädt erst nach dem Skript, schnell erkennen
 const FAST_TICKS = 50; // = 5 s
 
@@ -82,12 +82,16 @@ function init() {
     sync();
   }, FAST_MS);
   window.addEventListener('hashchange', sync);
+  window.addEventListener('popstate', sync);
+  document.addEventListener('viewshow', sync);
   sync();
 
   function destroy() {
     destroyed = true;
     clearInterval(watchTimer);
     window.removeEventListener('hashchange', sync);
+    window.removeEventListener('popstate', sync);
+    document.removeEventListener('viewshow', sync);
     stopFeatures();
     destroyTheme();
     removeFavicon();

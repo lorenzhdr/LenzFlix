@@ -4,10 +4,13 @@ import * as api from '../core/api.js';
 import { h } from '../core/dom.js';
 import { putItems } from '../core/itemstore.js';
 import { onItemsChanged } from '../core/itemmenu.js';
-import { createCard } from './rows/card.js';
+import { createCard, setCardBadge } from './rows/card.js';
 import { badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
-import { buildRowDefs, getNewSeriesIds } from './rows/sources.js';
+import { buildRowDefs, getNewSeriesIds, peekNewSeriesIds } from './rows/sources.js';
+
+/** Signal für das Billboard (Trailer darf erst danach vorladen): erste Zeile ist gefüllt. */
+export const ROWS_READY_EVENT = 'lfx:rows-ready';
 
 function skeleton(def) {
   const cards = [];
@@ -63,15 +66,53 @@ export function render(slot) {
     }
   }));
 
+  // „Neue Folgen“-Set: blockiert nie das Füllen. Liegt es schon vor (Speicher/sessionStorage), gilt es sofort,
+  // sonst werden die Badges nach dem Hintergrund-Abruf nachgetragen.
+  let newSeries = peekNewSeriesIds();
+  let newSeriesStarted = false;
+  const filled = []; // {items: Map id -> item, rowEl}
+  let readySent = false;
+
+  function signalReady() {
+    if (readySent || disposed) return;
+    readySent = true;
+    document.dispatchEvent(new CustomEvent(ROWS_READY_EVENT));
+  }
+
+  function applyNewSeries(set) {
+    const now = Date.now();
+    for (const { items, rowEl } of filled) {
+      if (!rowEl.isConnected) continue;
+      for (const card of rowEl.querySelectorAll('.lfx-card[data-lfx-id]')) {
+        const it = items.get(card.dataset.lfxId);
+        if (it && it.Type === 'Series') setCardBadge(card, badgeFor(it, set, now));
+      }
+    }
+  }
+
+  function loadNewSeriesLater() {
+    if (newSeries || newSeriesStarted) return;
+    newSeriesStarted = true;
+    getNewSeriesIds().then((set) => {
+      if (disposed) return;
+      newSeries = set;
+      applyNewSeries(set);
+    }, () => {});
+  }
+
   async function loadRow(rowEl, def) {
     try {
       const items = (await def.load(def)).filter((i) => i && i.Id);
       if (disposed) return;
       if (!items.length) { rowEl.remove(); return; }
       putItems(items);
-      const newSeries = await getNewSeriesIds();
-      if (disposed) return;
+      if (rowEl.dataset.lfxRow !== def.id) rowEl.dataset.lfxRow = def.id; // Platzhalter kann zur „Neu auf“-Zeile werden
       disposers.push(fill(rowEl, def, items, newSeries));
+      if (items.some((i) => i.Type === 'Series')) {
+        filled.push({ rowEl, items: new Map(items.map((i) => [i.Id, i])) });
+        loadNewSeriesLater();
+      }
+      signalReady();
     } catch (e) {
       console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
       if (!disposed) rowEl.remove();
@@ -79,12 +120,13 @@ export function render(slot) {
   }
 
   (async () => {
-    if (!api.isReady()) { console.warn('[LenzFlix] Zeilen: keine Anmeldung'); return; }
+    if (!api.isReady()) { console.warn('[LenzFlix] Zeilen: keine Anmeldung'); signalReady(); return; }
     let defs;
     try {
-      defs = await buildRowDefs();
+      defs = await buildRowDefs({ deferCharts: true });
     } catch (e) {
       console.warn('[LenzFlix] Zeilen konnten nicht aufgebaut werden', e && e.message);
+      signalReady();
       return;
     }
     if (disposed) return;

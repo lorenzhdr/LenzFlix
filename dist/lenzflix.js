@@ -6,11 +6,16 @@
   };
 
   // src/js/core/api.js
+  var storedMemo = { raw: void 0, server: null };
   function readStoredServer() {
     try {
-      const raw = JSON.parse(window.localStorage.getItem("jellyfin_credentials") || "null");
-      const servers = raw && raw.Servers || [];
-      return servers.find((s) => s && s.AccessToken && s.UserId) || servers[0] || null;
+      const raw = window.localStorage.getItem("jellyfin_credentials");
+      if (storedMemo.raw === raw) return storedMemo.server;
+      const parsed = JSON.parse(raw || "null");
+      const servers = parsed && parsed.Servers || [];
+      const server = servers.find((s) => s && s.AccessToken && s.UserId) || servers[0] || null;
+      storedMemo = { raw, server };
+      return server;
     } catch {
       return null;
     }
@@ -23,11 +28,15 @@
   }
   function getAuth() {
     const client = window.ApiClient;
-    const stored = readStoredServer();
-    const address = trimSlash(call(client, "serverAddress") || stored && (stored.ManualAddress || stored.LocalAddress) || "");
-    const userId = call(client, "getCurrentUserId") || stored && stored.UserId || null;
-    const token2 = call(client, "accessToken") || stored && stored.AccessToken || null;
-    const serverId = call(client, "serverId") || stored && stored.Id || null;
+    const addr = call(client, "serverAddress");
+    const uid = call(client, "getCurrentUserId");
+    const tok = call(client, "accessToken");
+    const sid = call(client, "serverId");
+    const stored = addr && uid && tok && sid ? null : readStoredServer();
+    const address = trimSlash(addr || stored && (stored.ManualAddress || stored.LocalAddress) || "");
+    const userId = uid || stored && stored.UserId || null;
+    const token2 = tok || stored && stored.AccessToken || null;
+    const serverId = sid || stored && stored.Id || null;
     return { address, userId, token: token2, serverId };
   }
   function getUserId() {
@@ -168,8 +177,8 @@
   }
   function logoImage(item, { maxWidth = 500, quality = 90 } = {}) {
     if (!item) return null;
-    const own = item.ImageTags && item.ImageTags.Logo;
-    if (own) return imageUrlFor(item.Id, { type: "Logo", tag: own, maxWidth, quality });
+    const own2 = item.ImageTags && item.ImageTags.Logo;
+    if (own2) return imageUrlFor(item.Id, { type: "Logo", tag: own2, maxWidth, quality });
     if (item.ParentLogoItemId && item.ParentLogoImageTag) {
       return imageUrlFor(item.ParentLogoItemId, { type: "Logo", tag: item.ParentLogoImageTag, maxWidth, quality });
     }
@@ -370,7 +379,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.10.1";
+  var VERSION = "1.11.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -575,20 +584,20 @@
 
   // src/js/core/dom.js
   function h(tag, attrs, children) {
-    const el3 = document.createElement(tag);
+    const el4 = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
       if (v === void 0 || v === null || v === false) continue;
-      if (k === "class") el3.className = v;
-      else if (k === "style" && typeof v === "object") Object.assign(el3.style, v);
-      else if (k === "dataset") Object.assign(el3.dataset, v);
-      else if (k.startsWith("on") && typeof v === "function") el3.addEventListener(k.slice(2).toLowerCase(), v);
-      else el3.setAttribute(k, v === true ? "" : String(v));
+      if (k === "class") el4.className = v;
+      else if (k === "style" && typeof v === "object") Object.assign(el4.style, v);
+      else if (k === "dataset") Object.assign(el4.dataset, v);
+      else if (k.startsWith("on") && typeof v === "function") el4.addEventListener(k.slice(2).toLowerCase(), v);
+      else el4.setAttribute(k, v === true ? "" : String(v));
     }
     for (const c of [].concat(children ?? [])) {
       if (c === null || c === void 0 || c === false) continue;
-      el3.append(c instanceof Node ? c : document.createTextNode(String(c)));
+      el4.append(c instanceof Node ? c : document.createTextNode(String(c)));
     }
-    return el3;
+    return el4;
   }
   function badgePill(text) {
     return h("span", { class: "lfx-beta", "aria-hidden": "true" }, text);
@@ -598,26 +607,26 @@
   }
   var mounts = /* @__PURE__ */ new Set();
   function mountPoint(id, { parent = document.body, before = null, className = "", tag = "div" } = {}) {
-    let el3 = document.getElementById(id);
-    if (!el3) {
-      el3 = document.createElement(tag);
-      el3.id = id;
-      if (className) el3.className = className;
-      if (before && before.parentNode === parent) parent.insertBefore(el3, before);
-      else parent.append(el3);
+    let el4 = document.getElementById(id);
+    if (!el4) {
+      el4 = document.createElement(tag);
+      el4.id = id;
+      if (className) el4.className = className;
+      if (before && before.parentNode === parent) parent.insertBefore(el4, before);
+      else parent.append(el4);
     }
-    mounts.add(el3);
-    return el3;
+    mounts.add(el4);
+    return el4;
   }
   function unmountPoint(elOrId) {
-    const el3 = typeof elOrId === "string" ? document.getElementById(elOrId) : elOrId;
-    if (el3) {
-      el3.remove();
-      mounts.delete(el3);
+    const el4 = typeof elOrId === "string" ? document.getElementById(elOrId) : elOrId;
+    if (el4) {
+      el4.remove();
+      mounts.delete(el4);
     }
   }
   function removeAllMounts() {
-    for (const el3 of mounts) el3.remove();
+    for (const el4 of mounts) el4.remove();
     mounts.clear();
   }
 
@@ -795,8 +804,8 @@
     try {
       const prefs = await fetchPrefs(uid) || {};
       prefs.CustomPrefs = { ...prefs.CustomPrefs || {}, theme: id };
-      const prev = strictPrev(lsGet(KEY_PREV + uid));
-      if (prev) prefs.CustomPrefs.prevTheme = prev;
+      const prev2 = strictPrev(lsGet(KEY_PREV + uid));
+      if (prev2) prefs.CustomPrefs.prevTheme = prev2;
       if (!prefs.Id) prefs.Id = PREFS_ID;
       await postPrefs(uid, prefs);
     } catch (e) {
@@ -859,8 +868,8 @@
     removePrehide();
   }
   function removePrehide() {
-    const el3 = document.getElementById(PREHIDE_ID);
-    if (el3) el3.remove();
+    const el4 = document.getElementById(PREHIDE_ID);
+    if (el4) el4.remove();
   }
   function endEarly() {
     clearTimeout(earlyTimer);
@@ -1088,6 +1097,12 @@
   function isMobile() {
     return root2().classList.contains("layout-mobile") || window.innerWidth < 800;
   }
+  function isNarrow() {
+    return window.innerWidth < 800;
+  }
+  function isNavCompact() {
+    return window.innerWidth < 900;
+  }
   function setClass(name, on) {
     const cl2 = root2().classList;
     if (cl2.contains(name) !== on) cl2.toggle(name, on);
@@ -1102,8 +1117,11 @@
   var resizeHandler = null;
   var lastMobile = null;
   var RESIZE_DEBOUNCE_MS = 200;
+  function layoutKey() {
+    return `${isMobile()}|${isNarrow()}|${isNavCompact()}`;
+  }
   function onResizeDebounced() {
-    const now = isMobile();
+    const now = layoutKey();
     if (now === lastMobile) return;
     lastMobile = now;
     applyLayoutClasses();
@@ -1116,9 +1134,10 @@
       observer.observe(root2(), { attributes: true, attributeFilter: ["class"] });
     }
     if (!resizeHandler) {
-      lastMobile = isMobile();
+      lastMobile = layoutKey();
       resizeHandler = debounce(onResizeDebounced, RESIZE_DEBOUNCE_MS);
       window.addEventListener("resize", resizeHandler);
+      window.addEventListener("orientationchange", resizeHandler);
     }
     return destroyLayout;
   }
@@ -1127,6 +1146,7 @@
     observer = null;
     if (resizeHandler) {
       window.removeEventListener("resize", resizeHandler);
+      window.removeEventListener("orientationchange", resizeHandler);
       resizeHandler.cancel();
     }
     resizeHandler = null;
@@ -1309,22 +1329,23 @@
       return false;
     }
   }
-  function scrolledAncestor(target, el3) {
+  function scrolledAncestor(target, el4) {
     let n = target && target.nodeType === 1 ? target : target && target.parentElement;
     while (n) {
       if (n.scrollTop > 0) return true;
-      if (n === el3) break;
+      if (n === el4) break;
       n = n.parentElement;
     }
     return false;
   }
-  function attachSwipeClose(el3, opts = {}) {
+  function attachSwipeClose(el4, opts = {}) {
     const onClose = opts.onClose;
     const handleZone = opts.handleZone ?? 32;
     const canStart = opts.canStart || (() => true);
     const threshold = opts.threshold ?? 0.3;
     const velocity = opts.velocity ?? 0.5;
     const backdrop = opts.backdrop || null;
+    const holdBackdrop = Boolean(opts.holdBackdrop);
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
     let state21 = "idle";
@@ -1335,15 +1356,15 @@
     let timer2 = 0;
     let detached = false;
     let finishFn = null;
-    const height = () => el3.offsetHeight || el3.getBoundingClientRect().height || 0;
+    const height = () => el4.offsetHeight || el4.getBoundingClientRect().height || 0;
     function clearTimer() {
       if (timer2) clearTimeout(timer2);
       timer2 = 0;
     }
     function resetStyles() {
-      el3.classList.remove("lfx-dragging");
-      el3.style.removeProperty("transform");
-      el3.style.removeProperty("transition");
+      el4.classList.remove("lfx-dragging");
+      el4.style.removeProperty("transform");
+      el4.style.removeProperty("transition");
       if (backdrop) {
         backdrop.style.removeProperty("opacity");
         backdrop.style.removeProperty("transition");
@@ -1356,18 +1377,18 @@
         if (done) return;
         done = true;
         clearTimer();
-        el3.removeEventListener("transitionend", onEnd2);
+        el4.removeEventListener("transitionend", onEnd2);
         finishFn = null;
         fn();
       };
       const onEnd2 = (e) => {
-        if (e.target === el3) finish3();
+        if (e.target === el4) finish3();
       };
       finishFn = () => {
         done = true;
-        el3.removeEventListener("transitionend", onEnd2);
+        el4.removeEventListener("transitionend", onEnd2);
       };
-      el3.addEventListener("transitionend", onEnd2);
+      el4.addEventListener("transitionend", onEnd2);
       timer2 = setTimeout(finish3, ms);
     }
     function setBackdrop(v, animate) {
@@ -1381,15 +1402,15 @@
         onClose();
         return;
       }
-      el3.style.transition = ANIM;
-      el3.style.transform = "translateY(100%)";
-      setBackdrop(0.3, true);
+      el4.style.transition = ANIM;
+      el4.style.transform = "translateY(100%)";
+      if (!holdBackdrop) setBackdrop(0.3, true);
       animateThen(250, () => onClose());
     }
     function springBack() {
       state21 = "closing";
-      el3.style.transition = ANIM;
-      el3.style.transform = "translateY(0px)";
+      el4.style.transition = ANIM;
+      el4.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
@@ -1412,9 +1433,9 @@
         return;
       }
       const t = touches[0];
-      const rect = el3.getBoundingClientRect();
+      const rect = el4.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
-      if (!inHandle && scrolledAncestor(e.target, el3)) {
+      if (!inHandle && scrolledAncestor(e.target, el4)) {
         state21 = "ignored";
         return;
       }
@@ -1443,8 +1464,8 @@
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
           state21 = "dragging";
-          el3.classList.add("lfx-dragging");
-          el3.style.transition = "none";
+          el4.classList.add("lfx-dragging");
+          el4.style.transition = "none";
         } else {
           state21 = "ignored";
           return;
@@ -1455,7 +1476,7 @@
       const ts = now();
       samples.push({ t: ts, y: t.clientY });
       while (samples.length > 2 && ts - samples[0].t > SAMPLE_MS) samples.shift();
-      el3.style.transform = `translateY(${dy}px)`;
+      el4.style.transform = `translateY(${dy}px)`;
       const h2 = height() || 300;
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
@@ -1473,19 +1494,19 @@
       if (state21 === "dragging") springBack();
       else if (state21 !== "closing") state21 = "idle";
     }
-    el3.addEventListener("touchstart", onStart, { passive: true });
-    el3.addEventListener("touchmove", onMove2, { passive: false });
-    el3.addEventListener("touchend", onEnd);
-    el3.addEventListener("touchcancel", onCancel);
+    el4.addEventListener("touchstart", onStart, { passive: true });
+    el4.addEventListener("touchmove", onMove2, { passive: false });
+    el4.addEventListener("touchend", onEnd);
+    el4.addEventListener("touchcancel", onCancel);
     return function detach() {
       if (detached) return;
       detached = true;
       clearTimer();
       if (finishFn) finishFn();
-      el3.removeEventListener("touchstart", onStart);
-      el3.removeEventListener("touchmove", onMove2);
-      el3.removeEventListener("touchend", onEnd);
-      el3.removeEventListener("touchcancel", onCancel);
+      el4.removeEventListener("touchstart", onStart);
+      el4.removeEventListener("touchmove", onMove2);
+      el4.removeEventListener("touchend", onEnd);
+      el4.removeEventListener("touchcancel", onCancel);
       resetStyles();
       state21 = "idle";
     };
@@ -1630,7 +1651,7 @@
   }
 
   // src/js/core/charts.js
-  var TIMEOUT_MS = 8e3;
+  var TIMEOUT_MS = 3e3;
   var TTL_MS = 5 * 60 * 1e3;
   function getChartsUrl() {
     const clean2 = (raw) => {
@@ -1928,7 +1949,7 @@
     });
   }
   function buildCard(c, id) {
-    const meta = THEME_META[id] || { id, name: id, tagline: "", palette: [] };
+    const meta2 = THEME_META[id] || { id, name: id, tagline: "", palette: [] };
     const btn3 = h("button", {
       type: "button",
       class: `lfx-tp__card lfx-tp__card--${id}`,
@@ -1937,14 +1958,14 @@
     }, [
       buildPreview(id),
       span("lfx-tp__info", [
-        buildMark(id, meta.name),
-        span("lfx-tp__tagline", [meta.tagline || ""]),
-        span("lfx-tp__palette", (meta.palette || []).map((hex) => h("span", { class: "lfx-tp__swatch", style: { background: hex } })))
+        buildMark(id, meta2.name),
+        span("lfx-tp__tagline", [meta2.tagline || ""]),
+        span("lfx-tp__palette", (meta2.palette || []).map((hex) => h("span", { class: "lfx-tp__swatch", style: { background: hex } })))
       ]),
       span("lfx-tp__state", [span("lfx-tp__active", ["Aktiv"]), span("lfx-tp__spin")]),
       BETA.has(id) ? span("lfx-tp__beta", ["Beta"]) : null
     ]);
-    btn3.setAttribute("aria-label", `${meta.name}${BETA.has(id) ? " (Beta)" : ""}${meta.tagline ? `, ${meta.tagline}` : ""}`);
+    btn3.setAttribute("aria-label", `${meta2.name}${BETA.has(id) ? " (Beta)" : ""}${meta2.tagline ? `, ${meta2.tagline}` : ""}`);
     btn3.addEventListener("click", () => choose(c, id));
     return btn3;
   }
@@ -2072,8 +2093,8 @@
     fillStoreCovers(c);
     const activeCard = c.cards.get(getChosenTheme()) || grid2.querySelector("button");
     if (activeCard) activeCard.focus({ preventScroll: true });
-    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
-    raf2(() => {
+    const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+    raf3(() => {
       if (current === c) overlay.classList.add("is-open");
     });
     return c;
@@ -2188,12 +2209,12 @@
   function applyActive() {
     if (!state2.nav || !state2.route) return;
     const key = activeKey(state2.route, state2.model);
-    for (const el3 of state2.nav.querySelectorAll("[data-key]")) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (el3.tagName === "A") {
-        if (on) el3.setAttribute("aria-current", "page");
-        else el3.removeAttribute("aria-current");
+    for (const el4 of state2.nav.querySelectorAll("[data-key]")) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (el4.tagName === "A") {
+        if (on) el4.setAttribute("aria-current", "page");
+        else el4.removeAttribute("aria-current");
       }
     }
   }
@@ -2384,13 +2405,13 @@
   function applyActive2() {
     if (!state3.route) return;
     const key = activeKey(state3.route, state3.model);
-    for (const el3 of document.querySelectorAll(`#${ROOT_ID} [data-key], #${OVERLAY_ID} [data-key]`)) {
-      if (el3.dataset.key === "cats") continue;
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (el3.tagName === "A") {
-        if (on) el3.setAttribute("aria-current", "page");
-        else el3.removeAttribute("aria-current");
+    for (const el4 of document.querySelectorAll(`#${ROOT_ID} [data-key], #${OVERLAY_ID} [data-key]`)) {
+      if (el4.dataset.key === "cats") continue;
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (el4.tagName === "A") {
+        if (on) el4.setAttribute("aria-current", "page");
+        else el4.removeAttribute("aria-current");
       }
     }
   }
@@ -2446,7 +2467,7 @@
   var mobilenavFeature = {
     name: "mobilenav",
     match(route) {
-      return isReady() && isModern() && !isTv() && isMobile() && isTheme("flix") && !EXCLUDED2.test(route.path);
+      return isReady() && isModern() && !isTv() && isMobile() && isNavCompact() && isTheme("flix") && !EXCLUDED2.test(route.path);
     },
     mount(route) {
       const seq3 = ++state3.seq;
@@ -2679,11 +2700,60 @@
   };
   var osdcenter_default = osdcenterFeature;
 
+  // src/js/features/playerbg.js
+  var CLASS2 = "lfx-in-player";
+  var PAGE2 = '[id="videoOsdPage"]:not(.hide)';
+  var OWN_ATTR = "data-lfx-playerbg";
+  var meta = null;
+  var prev = null;
+  var own = false;
+  function applyMeta() {
+    meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      prev = meta.getAttribute("content");
+      own = false;
+    } else {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      meta.setAttribute(OWN_ATTR, "");
+      document.head.appendChild(meta);
+      own = true;
+    }
+    meta.setAttribute("content", "#000000");
+  }
+  function restoreMeta() {
+    if (!meta) return;
+    if (own) meta.remove();
+    else if (prev === null) meta.removeAttribute("content");
+    else meta.setAttribute("content", prev);
+    meta = null;
+    prev = null;
+    own = false;
+  }
+  var playerbgFeature = {
+    name: "playerbg",
+    match(route) {
+      return !isTv() && Boolean(document.querySelector(PAGE2) || route && route.path === "/video");
+    },
+    mount() {
+      document.documentElement.classList.add(CLASS2);
+      applyMeta();
+    },
+    unmount() {
+      document.documentElement.classList.remove(CLASS2);
+      restoreMeta();
+    }
+  };
+  var playerbg_default = playerbgFeature;
+
   // src/js/features/billboard.js
   var billboard_exports = {};
   __export(billboard_exports, {
     ROTATE_MS: () => ROTATE_MS,
-    TRAILER_DELAY_MS: () => TRAILER_DELAY_MS,
+    ROWS_WAIT_MAX_MS: () => ROWS_WAIT_MAX_MS,
+    TRAILER_BUFFER_S: () => TRAILER_BUFFER_S,
+    TRAILER_MIN_IMAGE_MS: () => TRAILER_MIN_IMAGE_MS,
+    TRAILER_WAIT_MAX_MS: () => TRAILER_WAIT_MAX_MS,
     render: () => render3
   });
 
@@ -2751,27 +2821,212 @@
     return dom ? clampAmbient(dom) : DEFAULT_AMBIENT.slice();
   }
 
+  // src/js/core/startcover.js
+  var ID6 = "lfx-startcover";
+  var PAGE3 = '[id="videoOsdPage"]:not(.hide)';
+  var SAFETY_MS = 25e3;
+  var FADE_MS = 200;
+  var el3 = null;
+  var itemId = null;
+  var origin = null;
+  var allowed = null;
+  var mo2 = null;
+  var raf2 = 0;
+  var safety = 0;
+  var leaving = 0;
+  var watching = false;
+  var routePath = () => parseHash(window.location.hash).path;
+  function isActive() {
+    const cl2 = document.documentElement.classList;
+    return !cl2.contains("layout-tv") && !isTheme("live");
+  }
+  function isNarrow2() {
+    try {
+      return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches;
+    } catch {
+      return false;
+    }
+  }
+  function backdropUrl(item) {
+    const opts = { type: "Backdrop", maxWidth: isNarrow2() ? 900 : 1600, quality: 80 };
+    const parentTag = item.ParentBackdropImageTags && item.ParentBackdropImageTags[0];
+    if (item.Type !== "Episode") {
+      const own2 = imageUrl(item, opts);
+      if (own2) return own2;
+    }
+    if (item.ParentBackdropItemId && parentTag) return imageUrlFor(item.ParentBackdropItemId, { ...opts, tag: parentTag });
+    if (item.Type === "Episode" && item.SeriesId) return imageUrlFor(item.SeriesId, opts);
+    return imageUrl(item, opts) || landscapeImage(item, { maxWidth: opts.maxWidth, quality: 80 });
+  }
+  function labels(item) {
+    if (item.Type === "Episode") {
+      const parts = [];
+      if (item.ParentIndexNumber != null) parts.push(`S${item.ParentIndexNumber}`);
+      if (item.IndexNumber != null) parts.push(`F${item.IndexNumber}`);
+      if (item.Name) parts.push(item.Name);
+      return { title: item.SeriesName || item.Name || "", sub: item.SeriesName ? parts.join(" \xB7 ") : "" };
+    }
+    return { title: item.Name || "", sub: "" };
+  }
+  function div(cls, text) {
+    const d = document.createElement("div");
+    d.className = cls;
+    if (text) d.textContent = text;
+    return d;
+  }
+  function fill(item) {
+    const url = backdropUrl(item);
+    let bg = el3.querySelector(".lfx-startcover__bg");
+    if (!bg || bg.dataset.src !== (url || "")) {
+      if (bg) bg.remove();
+      bg = div("lfx-startcover__bg");
+      bg.dataset.src = url || "";
+      if (url) {
+        const img = new Image();
+        img.alt = "";
+        img.decoding = "async";
+        img.addEventListener("load", () => bg.classList.add("is-loaded"));
+        img.addEventListener("error", () => img.remove());
+        img.src = url;
+        bg.append(img);
+        if (img.complete && img.naturalWidth > 0) bg.classList.add("is-loaded");
+      }
+      el3.prepend(bg);
+    }
+    el3.querySelector(".lfx-startcover__text")?.remove();
+    const { title, sub } = labels(item);
+    const text = div("lfx-startcover__text");
+    if (title) text.append(div("lfx-startcover__title", title));
+    if (sub) text.append(div("lfx-startcover__sub", sub));
+    el3.append(text);
+  }
+  function videoPlaying() {
+    if (!document.querySelector(PAGE3)) return false;
+    const v = document.querySelector("video.htmlvideoplayer");
+    if (!v) return false;
+    return !v.paused && v.currentTime > 0 || v.readyState >= 2;
+  }
+  function check() {
+    raf2 = 0;
+    if (!el3) return;
+    if (document.querySelector(".dialogContainer .dialog.opened")) {
+      hide();
+      return;
+    }
+    const path = routePath();
+    if (path !== "/video" && path !== origin && !(allowed && allowed.has(path))) {
+      hide();
+      return;
+    }
+    if (videoPlaying()) hide();
+  }
+  function schedule2() {
+    if (raf2 || !el3) return;
+    raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame(check) : setTimeout(check, 0);
+  }
+  function onKeydown(e) {
+    if (e.key !== "Escape" && e.key !== "BrowserBack") return;
+    e.stopPropagation();
+    e.preventDefault();
+    hide();
+  }
+  function watch(on) {
+    if (on === watching) return;
+    watching = on;
+    const fn = on ? "addEventListener" : "removeEventListener";
+    window[fn]("popstate", schedule2);
+    window[fn]("hashchange", schedule2);
+    document[fn]("playing", schedule2, true);
+    document[fn]("timeupdate", schedule2, true);
+    document[fn]("loadeddata", schedule2, true);
+    document[fn]("keydown", onKeydown, true);
+    if (on) {
+      mo2 = new MutationObserver(schedule2);
+      mo2.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    } else {
+      if (mo2) mo2.disconnect();
+      mo2 = null;
+      if (raf2) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf2);
+        clearTimeout(raf2);
+      }
+      raf2 = 0;
+    }
+  }
+  function cleanup() {
+    clearTimeout(safety);
+    clearTimeout(leaving);
+    safety = 0;
+    leaving = 0;
+    watch(false);
+    document.documentElement.classList.remove(ON_CLASS);
+    unmountPoint(ID6);
+    el3 = null;
+    itemId = null;
+    origin = null;
+    allowed = null;
+  }
+  var ON_CLASS = "lfx-startcover-on";
+  function show({ item } = {}) {
+    if (!item || !item.Id || !isActive()) return;
+    clearTimeout(leaving);
+    leaving = 0;
+    if (!el3) {
+      el3 = mountPoint(ID6, { className: "lfx-startcover" });
+      el3.setAttribute("role", "status");
+      el3.setAttribute("aria-label", "Wiedergabe wird geladen");
+      el3.append(div("lfx-startcover__spinner"));
+      origin = routePath();
+      allowed = /* @__PURE__ */ new Set();
+      itemId = null;
+    }
+    el3.classList.remove("is-leaving");
+    document.documentElement.classList.add(ON_CLASS);
+    watch(true);
+    if (itemId !== item.Id) {
+      itemId = item.Id;
+      fill(item);
+    }
+    clearTimeout(safety);
+    safety = setTimeout(hide, SAFETY_MS);
+  }
+  function allowRoute(path) {
+    if (allowed) allowed.add(path);
+  }
+  function hide() {
+    if (!el3) return;
+    const node = el3;
+    clearTimeout(safety);
+    safety = 0;
+    watch(false);
+    document.documentElement.classList.remove(ON_CLASS);
+    node.classList.add("is-leaving");
+    leaving = setTimeout(() => {
+      if (el3 === node) cleanup();
+    }, FADE_MS);
+  }
+
   // src/js/core/playback.js
-  function isVisible(el3) {
-    return el3.getClientRects().length > 0;
+  function isVisible(el4) {
+    return el4.getClientRects().length > 0;
   }
   function findProxyContainer() {
     const all = [...document.querySelectorAll(".itemsContainer")].filter((c) => c.querySelector(".card"));
     return all.find(isVisible) || all[0] || null;
   }
   function buildProxy(item, resume) {
-    const el3 = document.createElement("div");
-    el3.className = "itemAction lfx-proxy";
-    el3.style.display = "none";
-    el3.setAttribute("data-action", resume ? "resume" : "play");
-    el3.setAttribute("data-id", item.Id);
-    el3.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
-    el3.setAttribute("data-type", item.Type || "");
-    el3.setAttribute("data-mediatype", item.MediaType || "");
-    el3.setAttribute("data-isfolder", String(Boolean(item.IsFolder)));
+    const el4 = document.createElement("div");
+    el4.className = "itemAction lfx-proxy";
+    el4.style.display = "none";
+    el4.setAttribute("data-action", resume ? "resume" : "play");
+    el4.setAttribute("data-id", item.Id);
+    el4.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el4.setAttribute("data-type", item.Type || "");
+    el4.setAttribute("data-mediatype", item.MediaType || "");
+    el4.setAttribute("data-isfolder", String(Boolean(item.IsFolder)));
     const ticks = resume && item.UserData ? item.UserData.PlaybackPositionTicks || 0 : 0;
-    if (ticks) el3.setAttribute("data-positionticks", String(ticks));
-    return el3;
+    if (ticks) el4.setAttribute("data-positionticks", String(ticks));
+    return el4;
   }
   function playViaDetails(item, resume, timeoutMs) {
     return new Promise((resolve2) => {
@@ -2796,6 +3051,7 @@
   async function play(item, { resume = false, timeoutMs = 8e3 } = {}) {
     if (!item || !item.Id) return false;
     window.dispatchEvent(new CustomEvent("lfx:play", { detail: { id: item.Id } }));
+    show({ item });
     const container = findProxyContainer();
     if (container) {
       const proxy = buildProxy(item, resume);
@@ -2807,7 +3063,10 @@
       }
       return true;
     }
-    return playViaDetails(item, resume, timeoutMs);
+    allowRoute("/details");
+    const ok = await playViaDetails(item, resume, timeoutMs);
+    if (!ok) hide();
+    return ok;
   }
 
   // src/js/core/itemmenu.js
@@ -2965,7 +3224,7 @@
   }
   function focusFirstEntry(sheet) {
     const entries = [...sheet.querySelectorAll(".actionSheetMenuItem")].filter(
-      (el3) => !HIDDEN_FIRST.includes(el3.getAttribute("data-id")) && !el3.hidden && el3.style.display !== "none"
+      (el4) => !HIDDEN_FIRST.includes(el4.getAttribute("data-id")) && !el4.hidden && el4.style.display !== "none"
     );
     if (entries[0]) entries[0].focus({ preventScroll: true });
   }
@@ -2999,15 +3258,15 @@
   }
   function buildProxyFor(item) {
     const isFolder = Boolean(item.IsFolder) || FOLDER_TYPES.includes(item.Type);
-    const el3 = document.createElement("div");
-    el3.className = "lfx-proxy itemAction";
-    el3.setAttribute("data-action", "menu");
-    el3.setAttribute("data-id", item.Id);
-    el3.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
-    el3.setAttribute("data-type", item.Type || "");
-    el3.setAttribute("data-isfolder", String(isFolder));
-    el3.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
-    return el3;
+    const el4 = document.createElement("div");
+    el4.className = "lfx-proxy itemAction";
+    el4.setAttribute("data-action", "menu");
+    el4.setAttribute("data-id", item.Id);
+    el4.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el4.setAttribute("data-type", item.Type || "");
+    el4.setAttribute("data-isfolder", String(isFolder));
+    el4.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
+    return el4;
   }
   function openItemMenu(item, anchor, opts = {}) {
     if (!item || !item.Id) return false;
@@ -3614,8 +3873,8 @@
     season: ["Staffel als gesehen markieren", "Staffel als ungesehen markieren"]
   };
   function setPlayedState(btn3, on) {
-    const labels = PLAYED_LABELS[btn3.dataset.scope] || PLAYED_LABELS.item;
-    const label = on ? labels[1] : labels[0];
+    const labels2 = PLAYED_LABELS[btn3.dataset.scope] || PLAYED_LABELS.item;
+    const label = on ? labels2[1] : labels2[0];
     btn3.classList.toggle("is-on", on);
     btn3.setAttribute("aria-pressed", String(on));
     btn3.setAttribute("aria-label", label);
@@ -3699,7 +3958,7 @@
       ])
     ]);
     const m = metaParts(item);
-    const meta = h("div", { class: "lfx-modal__meta" }, [
+    const meta2 = h("div", { class: "lfx-modal__meta" }, [
       m.year ? h("span", { class: "lfx-modal__year" }, m.year) : null,
       m.length ? h("span", { class: "lfx-modal__length" }, m.length) : null,
       badge(m.quality),
@@ -3707,7 +3966,7 @@
     ]);
     const tagline = (item.Taglines || [])[0];
     const left = h("div", { class: "lfx-modal__main" }, [
-      meta,
+      meta2,
       tagline ? h("p", { class: "lfx-modal__tagline" }, tagline) : null,
       item.Overview ? h("p", { class: "lfx-modal__overview" }, item.Overview) : null
     ]);
@@ -3739,8 +3998,8 @@
         H.navigate(href);
       } }, "Zur Detailseite")
     ]);
-    const el3 = h("div", { class: "lfx-modal__detail" }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
-    return { el: el3, playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
+    const el4 = h("div", { class: "lfx-modal__detail" }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
+    return { el: el4, playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
   }
   function personLinks(people, H) {
     const span2 = h("span", { class: "lfx-modal__value" });
@@ -3809,7 +4068,7 @@
         seen ? seenMark() : null
       ]),
       h("div", { class: "lfx-modal__ep-text" }, [
-        h("div", { class: "lfx-modal__ep-head" }, [h("span", { class: "lfx-modal__ep-title" }, ep.Name || ""), rt ? h("span", { class: "lfx-modal__ep-rt" }, rt) : null]),
+        h("div", { class: "lfx-modal__ep-head" }, [h("span", { class: "lfx-modal__ep-title", "data-num": ep.IndexNumber != null ? `${ep.IndexNumber}.` : null }, ep.Name || ""), rt ? h("span", { class: "lfx-modal__ep-rt" }, rt) : null]),
         ep.Overview ? h("p", { class: "lfx-modal__ep-desc" }, ep.Overview) : null
       ]),
       h("div", { class: "lfx-modal__epactions" }, [
@@ -4028,17 +4287,19 @@
       closeModal();
     };
     overlay.addEventListener("click", onOverlayClick);
-    state4 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, autoScroll: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    state4 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
     state4.unsub = onItemsChanged(onChanged);
     if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
       state4.detachSwipe = attachSwipeClose(modal, {
         backdrop: overlay,
         canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
+        holdBackdrop: true,
+        // Hintergrund bleibt beim Wegwischen abgedunkelt, bis die Scrollposition der Seite wiederhergestellt ist
         onClose: () => closeModal()
       });
     }
     rootEl().classList.add("lfx-modal-open");
-    document.addEventListener("keydown", onKeydown, true);
+    document.addEventListener("keydown", onKeydown2, true);
     window.addEventListener("popstate", onPopState);
     window.addEventListener("hashchange", onHashChange);
     try {
@@ -4053,11 +4314,10 @@
     const s = state4;
     state4 = null;
     clearTimeout(s.fallback);
-    cancelAutoScroll(s);
     if (typeof s.unsub === "function") s.unsub();
     if (s.detachSwipe) s.detachSwipe();
     s.overlay.removeEventListener("click", s.onOverlayClick);
-    document.removeEventListener("keydown", onKeydown, true);
+    document.removeEventListener("keydown", onKeydown2, true);
     window.removeEventListener("popstate", onPopState);
     window.removeEventListener("hashchange", onHashChange);
     rootEl().classList.remove("lfx-modal-open");
@@ -4078,9 +4338,19 @@
       finish2();
     }
   }
+  function restoreScroll(y) {
+    const fix = () => {
+      if (Math.abs((window.scrollY || 0) - y) > 1) window.scrollTo(0, y);
+    };
+    fix();
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(fix);
+    setTimeout(fix, 150);
+  }
   function finish2() {
+    const y = state4 ? state4.scrollY : 0;
     const after = teardown2();
     if (after) after();
+    else restoreScroll(y);
   }
   function onPopState() {
     if (!state4) return;
@@ -4099,9 +4369,9 @@
   function focusables() {
     if (!state4) return [];
     const sel = 'button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]';
-    return [...state4.modal.querySelectorAll(sel)].filter((el3) => !el3.closest("[hidden]"));
+    return [...state4.modal.querySelectorAll(sel)].filter((el4) => !el4.closest("[hidden]"));
   }
-  function onKeydown(e) {
+  function onKeydown2(e) {
     if (!state4) return;
     if (overlayOnTop()) return;
     if (e.key === "Escape") {
@@ -4152,7 +4422,6 @@
     const s = state4;
     const token2 = ++s.token;
     const stale = () => state4 !== s || s.token !== token2;
-    if (!refresh2) cancelAutoScroll(s);
     if (refresh2) {
     } else if (replace) {
       s.content.replaceChildren(buildSkeleton());
@@ -4192,7 +4461,7 @@
     if (!refresh2) s.overlay.scrollTop = 0;
     const tasks = [];
     if (isSeries) {
-      tasks.push(loadSeriesParts(s, token2, H, refresh2));
+      tasks.push(loadSeriesParts(s, token2, H));
       tasks.push(loadNextUp(main.Id).then((ep) => {
         if (!stale() && ep && hasResume(ep)) setPlayLabel(parts.playBtn, "Fortsetzen");
       }).catch(() => {
@@ -4211,51 +4480,18 @@
     }
     await Promise.all(tasks);
   }
-  async function loadSeriesParts(s, token2, H, refresh2 = false) {
+  async function loadSeriesParts(s, token2, H) {
     const stale = () => state4 !== s || s.token !== token2;
     try {
       s.seasons = await loadSeasons(s.main.Id);
       if (stale()) return;
       s.seasonId = pickInitialSeason(s.seasons, s.seasonId);
       if (!s.seasonId) return;
-      await showSeason(s, token2, H, { reveal: !refresh2 });
+      await showSeason(s, token2, H);
     } catch {
     }
   }
-  var USER_SCROLL_EVENTS = ["wheel", "touchstart", "pointerdown", "keydown"];
-  function cancelAutoScroll(s) {
-    const a = s && s.autoScroll;
-    if (!a) return;
-    s.autoScroll = null;
-    a.cancelled = true;
-    if (a.raf != null && typeof cancelAnimationFrame === "function") cancelAnimationFrame(a.raf);
-    for (const t of USER_SCROLL_EVENTS) s.overlay.removeEventListener(t, a.onUser);
-  }
-  function scheduleRevealScroll(s, token2, row) {
-    cancelAutoScroll(s);
-    const a = { cancelled: false, raf: null, onUser: null };
-    a.onUser = () => cancelAutoScroll(s);
-    s.autoScroll = a;
-    for (const t of USER_SCROLL_EVENTS) s.overlay.addEventListener(t, a.onUser, { passive: true });
-    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    a.raf = raf2(() => {
-      a.raf = null;
-      if (a.cancelled || state4 !== s || s.token !== token2 || s.autoScroll !== a || !row.isConnected) {
-        cancelAutoScroll(s);
-        return;
-      }
-      cancelAutoScroll(s);
-      const top = Math.max(0, Math.round(row.getBoundingClientRect().top - s.overlay.getBoundingClientRect().top + s.overlay.scrollTop - 24));
-      let reduce = false;
-      try {
-        reduce = Boolean(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-      } catch {
-      }
-      if (typeof s.overlay.scrollTo === "function") s.overlay.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
-      else s.overlay.scrollTop = top;
-    });
-  }
-  async function showSeason(s, token2, H, opts = {}) {
+  async function showSeason(s, token2, H) {
     const episodes = await loadEpisodes2(s.main.Id, s.seasonId);
     if (state4 !== s || s.token !== token2) return;
     s.episodes = episodes;
@@ -4268,7 +4504,6 @@
       const rr = row.getBoundingClientRect();
       if (rr.top < lr.top || rr.bottom > lr.bottom) list.scrollTop = Math.max(0, rr.top - lr.top + list.scrollTop - (list.clientHeight - rr.height) / 2);
     }
-    if (opts.reveal && s.selectedEpisodeId) scheduleRevealScroll(s, token2, row);
   }
   function onChanged({ removed = [], updated = [] } = {}) {
     const s = state4;
@@ -4314,8 +4549,8 @@
   var isPlayed = (it) => Boolean(it && it.UserData && it.UserData.Played === true);
   var folgen = (n) => n === 1 ? "1 Folge" : `${n} Folgen`;
   var SAVE_ERROR = "Konnte nicht gespeichert werden";
-  function clearPlayedCaches(itemId, seriesId) {
-    clearCache(`lfx:modal:item:${itemId}`);
+  function clearPlayedCaches(itemId2, seriesId) {
+    clearCache(`lfx:modal:item:${itemId2}`);
     if (seriesId) {
       clearCache(`lfx:modal:next:${seriesId}`);
       clearCache(`lfx:modal:eps:${seriesId}:`);
@@ -4358,10 +4593,24 @@
     const main = s.main;
     const stale = () => state4 !== s || s.token !== token2;
     let starting = false;
-    const startPlayback2 = (target, resume) => closeModal({ after: () => {
-      play(target, { resume }).catch(() => {
-      });
-    } });
+    const coverFor = (it) => {
+      if (!it || it.Type !== "Episode") return it;
+      const hasBd = main.Type === "Series" && (main.BackdropImageTags || []).length > 0;
+      return {
+        ...it,
+        SeriesName: it.SeriesName || main.Name,
+        SeriesId: it.SeriesId || (main.Type === "Series" ? main.Id : void 0),
+        ParentBackdropItemId: it.ParentBackdropItemId || (hasBd ? main.Id : void 0),
+        ParentBackdropImageTags: it.ParentBackdropImageTags || (hasBd ? main.BackdropImageTags : void 0)
+      };
+    };
+    const startPlayback2 = (target, resume) => {
+      show({ item: coverFor(target) });
+      closeModal({ after: () => {
+        play(target, { resume }).catch(() => {
+        });
+      } });
+    };
     const askBulk = ({ btn: btn3, n, next, targetId, isSeries }) => {
       const verb = next ? "gesehen" : "ungesehen";
       confirmAction({
@@ -4393,10 +4642,10 @@
     };
     const H = {
       async togglePlayed(item, btn3) {
-        const prev = { ...item.UserData || {} };
-        const next = prev.Played !== true;
+        const prev2 = { ...item.UserData || {} };
+        const next = prev2.Played !== true;
         const row = btn3.closest(".lfx-modal__ep");
-        item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
+        item.UserData = { ...prev2, Played: next, PlaybackPositionTicks: 0 };
         delete item.UserData.PlayedPercentage;
         setPlayedState(btn3, next);
         setEpisodeSeen(row, next);
@@ -4404,7 +4653,7 @@
         try {
           await setPlayed(item.Id, next);
         } catch {
-          item.UserData = prev;
+          item.UserData = prev2;
           setPlayedState(btn3, !next);
           setEpisodeSeen(row, !next);
           if (!stale()) syncSeasonBtn(s);
@@ -4432,6 +4681,7 @@
       async play() {
         if (starting) return;
         starting = true;
+        show({ item: main });
         let target = main;
         let resume = hasResume(main);
         try {
@@ -4448,6 +4698,7 @@
         }
         if (!target || stale()) {
           starting = false;
+          hide();
           return;
         }
         startPlayback2(target, resume);
@@ -4469,8 +4720,8 @@
       openItem: (id) => loadInto(id, null, true),
       navigate,
       scrollToInfo() {
-        const el3 = s.parts && s.parts.infoSlot;
-        if (el3 && el3.scrollIntoView) el3.scrollIntoView({ behavior: "smooth", block: "start" });
+        const el4 = s.parts && s.parts.infoSlot;
+        if (el4 && el4.scrollIntoView) el4.scrollIntoView({ behavior: "smooth", block: "start" });
       },
       async season(seasonId) {
         s.seasonId = seasonId;
@@ -4551,7 +4802,7 @@
     let dead = false;
     let video2 = null;
     let started2 = false;
-    const cleanup = () => {
+    const cleanup2 = () => {
       if (video2) {
         const v = video2;
         video2 = null;
@@ -4569,7 +4820,7 @@
       dead = true;
       clearTimeout(timer2);
       const wasStarted = started2;
-      cleanup();
+      cleanup2();
       if (wasStarted && typeof onEnd === "function") onEnd();
     };
     const start10 = async () => {
@@ -4615,7 +4866,7 @@
         dead = true;
         clearTimeout(timer2);
         timer2 = null;
-        cleanup();
+        cleanup2();
       }
     };
   }
@@ -4708,18 +4959,22 @@
 
   // src/js/features/billboard.js
   var ROTATE_MS = 1e4;
-  var TRAILER_DELAY_MS = 4e3;
+  var TRAILER_MIN_IMAGE_MS = 5e3;
+  var TRAILER_BUFFER_S = 6;
+  var TRAILER_WAIT_MAX_MS = 25e3;
+  var ROWS_WAIT_MAX_MS = 8e3;
+  var ROWS_READY_EVENT = "lfx:rows-ready";
   var IMG_FADE_MS = 1e3;
   var TEXT_FADE_MS = 400;
-  var FIELDS = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount";
+  var FIELDS = "Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,LocalTrailerCount";
   var NS = "http://www.w3.org/2000/svg";
   function svg3(html2, cls) {
-    const el3 = document.createElementNS(NS, "svg");
-    el3.setAttribute("viewBox", "0 0 24 24");
-    el3.setAttribute("aria-hidden", "true");
-    if (cls) el3.setAttribute("class", cls);
-    el3.innerHTML = html2;
-    return el3;
+    const el4 = document.createElementNS(NS, "svg");
+    el4.setAttribute("viewBox", "0 0 24 24");
+    el4.setAttribute("aria-hidden", "true");
+    if (cls) el4.setAttribute("class", cls);
+    el4.innerHTML = html2;
+    return el4;
   }
   var ICON_PLAY = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
   var ICON_MUTED = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>';
@@ -4748,7 +5003,9 @@
       ImageTypes: "Logo,Backdrop",
       Fields: FIELDS,
       EnableUserData: true,
-      Limit: 40
+      EnableImageTypes: "Logo,Backdrop,Primary",
+      ImageTypeLimit: 1,
+      Limit: 12
     };
     const [latest, random] = await Promise.all([
       getItems({ ...base, SortBy: "DateCreated", SortOrder: "Descending" }).catch(() => null),
@@ -4791,7 +5048,8 @@
     let hovering = false;
     let trailerActive = false;
     let rotateTimer = null;
-    let trailerTimer = null;
+    let slide = null;
+    let rowsReady = false;
     const timers = /* @__PURE__ */ new Set();
     let video2 = null;
     let card3 = null;
@@ -4808,10 +5066,10 @@
       timers.add(t);
       return t;
     };
-    const paused2 = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
+    const paused2 = () => hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
-      clearTimeout(trailerTimer);
-      trailerTimer = null;
+      if (slide) clearTimeout(slide.revealTimer);
       trailerActive = false;
       if (video2) {
         const v = video2;
@@ -4834,7 +5092,7 @@
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
         if (paused2()) scheduleRotate();
-        else show2((index + 1) % pool.length);
+        else show3((index + 1) % pool.length);
       }, ROTATE_MS);
     }
     function buildListButton(item) {
@@ -4847,13 +5105,13 @@
       };
       paint();
       btn3.addEventListener("click", async () => {
-        const prev = Boolean(item.UserData && item.UserData.IsFavorite);
-        item.UserData = { ...item.UserData || {}, IsFavorite: !prev };
+        const prev2 = Boolean(item.UserData && item.UserData.IsFavorite);
+        item.UserData = { ...item.UserData || {}, IsFavorite: !prev2 };
         paint();
         try {
-          await setFavorite(item.Id, !prev);
+          await setFavorite(item.Id, !prev2);
         } catch {
-          item.UserData = { ...item.UserData || {}, IsFavorite: prev };
+          item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
           paint();
         }
       });
@@ -4894,10 +5152,10 @@
     }
     function buildContent(item) {
       const logo = logoImage(item, { maxWidth: 720 });
-      const meta = h("div", { class: "lfx-bb__meta" });
+      const meta2 = h("div", { class: "lfx-bb__meta" });
       metaParts2(item).forEach((p, i) => {
-        if (i) meta.append(h("span", { class: "lfx-bb__dot", "aria-hidden": "true" }, "\u2022"));
-        meta.append(h("span", { class: p.rating ? "lfx-bb__rating" : null }, p.text));
+        if (i) meta2.append(h("span", { class: "lfx-bb__dot", "aria-hidden": "true" }, "\u2022"));
+        meta2.append(h("span", { class: p.rating ? "lfx-bb__rating" : null }, p.text));
       });
       const playBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--play" }, [svg3(ICON_PLAY), h("span", null, "Abspielen")]);
       playBtn.addEventListener("click", () => play(item, { resume: hasProgress(item) }));
@@ -4909,7 +5167,7 @@
       return h("div", null, [
         h("div", { class: "lfx-bb__text" }, [
           logo ? h("img", { class: "lfx-bb__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("h2", { class: "lfx-bb__title" }, item.Name || ""),
-          meta,
+          meta2,
           genres ? h("div", { class: "lfx-bb__genres" }, genres) : null,
           item.Overview ? h("p", { class: "lfx-bb__desc" }, item.Overview) : null
         ]),
@@ -4917,12 +5175,13 @@
         badgeText ? h("span", { class: "lfx-bb__badge" }, [svg3(ICON_BADGE), badgeText]) : null
       ]);
     }
-    function buildImage(item) {
-      const bd = imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 90 });
-      const poster = imageUrl(item, { type: "Primary", maxWidth: 900, quality: 90 });
+    function buildImage(item, first2 = false) {
+      const bd = imageUrl(item, { type: "Backdrop", maxWidth: 1600, quality: 80 });
+      const poster = imageUrl(item, { type: "Primary", maxWidth: 720, quality: 80 });
       return h("picture", { class: "lfx-bb__pic" }, [
         poster ? h("source", { media: "(max-width: 799px)", srcset: poster }) : null,
-        h("img", { class: "lfx-bb__img", src: bd, alt: "", decoding: "async" })
+        // Erstes Bild: sofort und mit hoher Priorität laden (ohne Überblendung, siehe show()).
+        h("img", { class: "lfx-bb__img", src: bd, alt: "", decoding: "async", fetchpriority: first2 ? "high" : null })
       ]);
     }
     function updateDots() {
@@ -4935,7 +5194,7 @@
     function fillDots() {
       dots.replaceChildren(...pool.map((it, i) => {
         const b = h("button", { type: "button", class: "lfx-bb__dotbtn", "aria-label": `Empfehlung ${i + 1}: ${it.Name || ""}` });
-        b.addEventListener("click", () => show2(i));
+        b.addEventListener("click", () => show3(i));
         return b;
       }));
       dots.hidden = pool.length < 2;
@@ -4951,7 +5210,6 @@
           gen8 += 1;
           stopTrailer();
           clearTimeout(rotateTimer);
-          clearTimeout(trailerTimer);
           timers.forEach(clearTimeout);
           timers.clear();
           content.replaceChildren();
@@ -4961,7 +5219,7 @@
         }
         index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur3);
         fillDots();
-        if (curGone) show2(index);
+        if (curGone) show3(index);
         return;
       }
       if (cur3 && updated.includes(cur3.Id)) {
@@ -4977,17 +5235,26 @@
       muteBtn.replaceChildren(svg3(video2.muted ? ICON_MUTED : ICON_SOUND));
       muteBtn.setAttribute("aria-label", video2.muted ? "Ton einschalten" : "Ton ausschalten");
     }
-    async function startTrailer(item, myGen) {
-      if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen8) return;
+    function tryPreload() {
+      const sl = slide;
+      if (!sl || disposed || sl.gen !== gen8 || sl.started || sl.failed) return;
+      if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
+      sl.started = true;
+      startTrailer(sl);
+    }
+    async function startTrailer(sl) {
       try {
-        const t = await loadLocalTrailer(item);
-        if (myGen !== gen8 || disposed) return;
-        if (!t) return;
+        const t = await loadLocalTrailer(sl.item);
+        if (sl.gen !== gen8 || disposed) return;
+        if (!t) {
+          sl.failed = true;
+          return;
+        }
         const v = h("video", { class: "lfx-bb__video", playsinline: true, preload: "auto", "aria-hidden": "true" });
         v.muted = true;
         v.setAttribute("muted", "");
         v.addEventListener("playing", () => {
-          if (myGen !== gen8 || video2 !== v) return;
+          if (sl.gen !== gen8 || video2 !== v) return;
           trailerActive = true;
           v.classList.add("is-in");
           card3.classList.add("is-trailer");
@@ -4996,20 +5263,43 @@
         });
         const end = () => {
           if (video2 !== v) return;
+          sl.failed = true;
           stopTrailer();
           scheduleRotate();
         };
+        const buffered = () => {
+          try {
+            return v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0;
+          } catch {
+            return 0;
+          }
+        };
+        const enough = () => v.readyState >= 4 || buffered() - (v.currentTime || 0) >= TRAILER_BUFFER_S || Number.isFinite(v.duration) && v.duration > 0 && buffered() >= v.duration - 0.3;
+        const reveal = () => {
+          if (video2 !== v || sl.gen !== gen8 || disposed) return;
+          const p = v.play && v.play();
+          if (p && p.catch) p.catch(end);
+        };
+        const check3 = (force = false) => {
+          if (sl.ready || video2 !== v || sl.gen !== gen8 || !(force === true || enough())) return;
+          sl.ready = true;
+          const wait = sl.imgAt + TRAILER_MIN_IMAGE_MS - Date.now();
+          if (wait > 0) sl.revealTimer = later(reveal, wait);
+          else reveal();
+        };
         v.addEventListener("ended", end);
         v.addEventListener("error", end);
+        v.addEventListener("canplaythrough", () => check3(true));
+        for (const ev of ["canplay", "loadeddata", "progress", "durationchange"]) v.addEventListener(ev, () => check3());
         v.src = trailerUrl(t.Id);
         video2 = v;
         media.append(v);
-        const p = v.play && v.play();
-        if (p && p.catch) p.catch(end);
+        check3();
       } catch {
+        sl.failed = true;
       }
     }
-    function show2(i, immediate = false) {
+    function show3(i, immediate = false) {
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
@@ -5017,8 +5307,9 @@
       const myGen = gen8;
       stopTrailer();
       updateDots();
-      const pic = buildImage(item);
       const olds = [...media.querySelectorAll(".lfx-bb__pic")];
+      const firstPic = !olds.length;
+      const pic = buildImage(item, firstPic);
       media.append(pic);
       if (immediate || !olds.length) {
         olds.forEach((o) => o.remove());
@@ -5040,8 +5331,19 @@
       putItems([item]);
       loadAmbient(item, () => myGen === gen8 && !disposed);
       scheduleRotate();
-      clearTimeout(trailerTimer);
-      trailerTimer = setTimeout(() => startTrailer(item, myGen), TRAILER_DELAY_MS);
+      const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
+      slide = sl;
+      const img = pic.querySelector(".lfx-bb__img");
+      const onLoaded = () => {
+        if (disposed || sl.gen !== gen8 || sl.imgAt) return;
+        sl.imgAt = Date.now();
+        tryPreload();
+      };
+      if (img.complete && img.naturalWidth > 0) onLoaded();
+      else {
+        img.addEventListener("load", onLoaded, { once: true });
+        img.addEventListener("error", onLoaded, { once: true });
+      }
     }
     function build11() {
       media = h("div", { class: "lfx-bb__media" });
@@ -5093,6 +5395,7 @@
       }
       if (disposed) return;
       if (!items.length) {
+        slot.replaceChildren();
         slot.hidden = true;
         resetAmbient();
         return;
@@ -5101,15 +5404,22 @@
       putItems(pool);
       build11();
       slot.hidden = false;
-      show2(0, true);
+      show3(0, true);
     }
-    slot.hidden = true;
+    slot.replaceChildren(h("div", { class: "lfx-bb lfx-bb--skel", "aria-hidden": "true" }));
+    slot.hidden = false;
+    const onRowsReady = () => {
+      rowsReady = true;
+      tryPreload();
+    };
+    document.addEventListener(ROWS_READY_EVENT, onRowsReady);
+    cleanupFns.push(() => document.removeEventListener(ROWS_READY_EVENT, onRowsReady));
+    later(onRowsReady, ROWS_WAIT_MAX_MS);
     init2();
     return () => {
       disposed = true;
       gen8 += 1;
       clearTimeout(rotateTimer);
-      clearTimeout(trailerTimer);
       timers.forEach(clearTimeout);
       timers.clear();
       stopTrailer();
@@ -5123,6 +5433,7 @@
   // src/js/features/rows.js
   var rows_exports = {};
   __export(rows_exports, {
+    ROWS_READY_EVENT: () => ROWS_READY_EVENT2,
     render: () => render4
   });
 
@@ -5138,7 +5449,18 @@
     if (item.Type === "Episode" && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
     return item.Name || "";
   }
-  function landscapeFor(item, maxWidth = 600) {
+  function landscapeWidth() {
+    return typeof matchMedia === "function" && matchMedia("(max-width: 799px)").matches ? 420 : 600;
+  }
+  function setCardBadge(card3, text) {
+    if (!text || card3.querySelector(".lfx-badge")) return;
+    const el4 = document.createElement("span");
+    el4.className = "lfx-badge";
+    el4.textContent = text;
+    const progress = card3.querySelector(".lfx-progress");
+    card3.insertBefore(el4, progress);
+  }
+  function landscapeFor(item, maxWidth = landscapeWidth()) {
     if (item.Type === "Episode") {
       for (const type of ["Thumb", "Primary"]) {
         const url2 = imageUrl(item, { type, maxWidth, quality: 85 });
@@ -5219,8 +5541,28 @@
     b.innerHTML = CHEVRON;
     return b;
   }
-  function attachScroller({ track, prev, next, indicator }) {
-    let raf2 = 0;
+  var resizeSubs = /* @__PURE__ */ new Set();
+  var resizeRaf = 0;
+  function onResize() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = 0;
+      for (const fn of [...resizeSubs]) fn();
+    });
+  }
+  function subscribeResize(fn) {
+    if (!resizeSubs.size) window.addEventListener("resize", onResize);
+    resizeSubs.add(fn);
+    return () => {
+      resizeSubs.delete(fn);
+      if (resizeSubs.size) return;
+      window.removeEventListener("resize", onResize);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = 0;
+    };
+  }
+  function attachScroller({ track, prev: prev2, next, indicator }) {
+    let raf3 = 0;
     let shownPages = 0;
     const cards = () => Array.from(track.querySelectorAll(".lfx-card"));
     const visible = () => {
@@ -5233,12 +5575,12 @@
       return track.clientWidth || 1;
     }
     function update() {
-      raf2 = 0;
+      raf3 = 0;
       const left = track.scrollLeft;
       const max = track.scrollWidth - track.clientWidth;
       const pw = pageWidth();
       const pages = Math.max(1, Math.ceil(cards().length / visible()));
-      prev.hidden = left <= 2;
+      prev2.hidden = left <= 2;
       next.hidden = !(max > 2) || left >= max - 2;
       if (indicator) {
         if (pages !== shownPages) {
@@ -5251,8 +5593,8 @@
         Array.from(indicator.children).forEach((s, i) => s.classList.toggle("is-active", i === page2));
       }
     }
-    const schedule3 = () => {
-      if (!raf2) raf2 = requestAnimationFrame(update);
+    const schedule4 = () => {
+      if (!raf3) raf3 = requestAnimationFrame(update);
     };
     function go3(dir) {
       const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5281,26 +5623,29 @@
         t.focus();
       }
     }
-    prev.addEventListener("click", onPrev);
+    prev2.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
-    track.addEventListener("scroll", schedule3, { passive: true });
+    track.addEventListener("scroll", schedule4, { passive: true });
     track.addEventListener("focusin", onFocusIn);
     track.addEventListener("keydown", onKey3);
-    window.addEventListener("resize", schedule3);
+    const unsubResize = subscribeResize(() => {
+      if (raf3) cancelAnimationFrame(raf3);
+      update();
+    });
     const ls = links();
     ls.forEach((l, i) => {
       l.tabIndex = i === 0 ? 0 : -1;
     });
-    schedule3();
+    schedule4();
     return () => {
-      if (raf2) cancelAnimationFrame(raf2);
-      raf2 = 0;
-      prev.removeEventListener("click", onPrev);
+      if (raf3) cancelAnimationFrame(raf3);
+      raf3 = 0;
+      prev2.removeEventListener("click", onPrev);
       next.removeEventListener("click", onNext);
-      track.removeEventListener("scroll", schedule3);
+      track.removeEventListener("scroll", schedule4);
       track.removeEventListener("focusin", onFocusIn);
       track.removeEventListener("keydown", onKey3);
-      window.removeEventListener("resize", schedule3);
+      unsubResize();
     };
   }
 
@@ -5310,10 +5655,37 @@
     if (Array.isArray(res)) return res;
     return res && Array.isArray(res.Items) ? res.Items : [];
   }
-  var newSeriesCache = { at: 0, promise: null };
+  var newSeriesCache = { at: 0, promise: null, value: null };
   var TEN_MIN = 10 * 60 * 1e3;
+  var NEW_SERIES_LIMIT = 200;
+  function storageKey() {
+    return `lfx-newseries:${getUserId() || "anon"}`;
+  }
+  function readStored(now) {
+    try {
+      const raw = JSON.parse(sessionStorage.getItem(storageKey()) || "null");
+      if (raw && Array.isArray(raw.ids) && now - raw.at >= 0 && now - raw.at < TEN_MIN) return new Set(raw.ids);
+    } catch {
+    }
+    return null;
+  }
+  function writeStored(now, set) {
+    try {
+      sessionStorage.setItem(storageKey(), JSON.stringify({ at: now, ids: [...set] }));
+    } catch {
+    }
+  }
+  function peekNewSeriesIds(now = Date.now()) {
+    if (newSeriesCache.value && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.value;
+    return readStored(now);
+  }
   function getNewSeriesIds(now = Date.now()) {
     if (newSeriesCache.promise && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.promise;
+    const stored = readStored(now);
+    if (stored) {
+      newSeriesCache = { at: now, promise: Promise.resolve(stored), value: stored };
+      return newSeriesCache.promise;
+    }
     const promise = getItems({
       IncludeItemTypes: "Episode",
       Recursive: true,
@@ -5322,38 +5694,48 @@
       Fields: "SeriesId,DateCreated,PremiereDate",
       EnableImages: false,
       EnableUserData: false,
-      Limit: 500
-    }).then((res) => newSeriesIdsFrom(asItems(res), now)).catch((e) => {
+      Limit: NEW_SERIES_LIMIT
+    }).then((res) => {
+      const set = newSeriesIdsFrom(asItems(res), now);
+      if (newSeriesCache.promise === promise) newSeriesCache.value = set;
+      writeStored(now, set);
+      return set;
+    }).catch((e) => {
       console.warn("[LenzFlix] Neue-Folgen-Abfrage fehlgeschlagen", e && e.message);
-      newSeriesCache = { at: 0, promise: null };
+      if (newSeriesCache.promise === promise) newSeriesCache = { at: 0, promise: null, value: null };
       return /* @__PURE__ */ new Set();
     });
-    newSeriesCache = { at: now, promise };
+    newSeriesCache = { at: now, promise, value: null };
     return promise;
   }
   var MIN_CHART_ROW = 5;
+  function chartSpecs() {
+    return [
+      { id: "top10-series", title: `Top 10 Serien auf ${brandName()}`, key: "series" },
+      { id: "top10-movies", title: `Top 10 Filme auf ${brandName()}`, key: "movies" }
+    ];
+  }
   async function buildChartDefs() {
     try {
       const charts = await getCharts();
       if (!charts) return [];
-      const specs = [
-        { id: "top10-series", title: `Top 10 Serien auf ${brandName()}`, key: "series" },
-        { id: "top10-movies", title: `Top 10 Filme auf ${brandName()}`, key: "movies" }
-      ];
+      const specs = chartSpecs();
+      const lists = await Promise.all(specs.map((s) => resolveChartItems(charts[s.key], { limit: 10 })));
       const defs = [];
-      for (const s of specs) {
-        const list = await resolveChartItems(charts[s.key], { limit: 10 });
+      specs.forEach((s, i) => {
+        const list = lists[i];
         if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: "top10", load: () => list });
-      }
+      });
       return defs;
     } catch (e) {
       console.warn("[LenzFlix] Chart-Zeilen nicht aufgebaut", e && e.message);
       return [];
     }
   }
-  async function buildRowDefs({ seed = dayKey(), genreCount = 6 } = {}) {
+  var VIEWS_TTL = 5 * 6e4;
+  async function buildRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
     const [viewsRes, genresRes] = await Promise.allSettled([
-      getViews(),
+      cached(`views:${getUserId()}`, getViews, VIEWS_TTL),
       getJson("/Genres", { userId: getUserId(), IncludeItemTypes: MOVIE_SERIES, Recursive: true })
     ]);
     const views = viewsRes.status === "fulfilled" ? asItems(viewsRes.value) : [];
@@ -5374,21 +5756,43 @@
       kind: "landscape",
       load: () => getNextUp({ ...BASE_PARAMS, Limit: 20, EnableResumable: false, EnableRewatching: false }).then(asItems)
     });
-    const chartDefs = await buildChartDefs();
-    if (chartDefs.length) defs.push(...chartDefs);
-    else {
-      defs.push({
-        id: "top10",
-        title: `Top 10: Neu auf ${brandName()}`,
-        kind: "top10",
-        load: () => items({
-          IncludeItemTypes: MOVIE_SERIES,
-          Recursive: true,
-          SortBy: "DateCreated",
-          SortOrder: "Descending",
-          Limit: 10
-        }).then(selectTop10)
-      });
+    const newTop10 = () => items({
+      IncludeItemTypes: MOVIE_SERIES,
+      Recursive: true,
+      SortBy: "DateCreated",
+      SortOrder: "Descending",
+      Limit: 10
+    }).then(selectTop10);
+    const fallbackDef = () => ({ id: "top10", title: `Top 10: Neu auf ${brandName()}`, kind: "top10", load: newTop10 });
+    if (deferCharts) {
+      if (!getChartsUrl()) defs.push(fallbackDef());
+      else {
+        const chartDefs = buildChartDefs();
+        const specs = chartSpecs();
+        specs.forEach((s, i) => {
+          defs.push({
+            id: s.id,
+            title: s.title,
+            kind: "top10",
+            async load(def) {
+              const found = await chartDefs;
+              if (found.length) {
+                const hit = found.find((d) => d.id === s.id);
+                return hit ? hit.load() : [];
+              }
+              if (i !== 0) return [];
+              const fb = fallbackDef();
+              def.id = fb.id;
+              def.title = fb.title;
+              return fb.load();
+            }
+          });
+        });
+      }
+    } else {
+      const chartDefs = await buildChartDefs();
+      if (chartDefs.length) defs.push(...chartDefs);
+      else defs.push(fallbackDef());
     }
     if (movieView) {
       defs.push({
@@ -5463,6 +5867,7 @@
   }
 
   // src/js/features/rows.js
+  var ROWS_READY_EVENT2 = "lfx:rows-ready";
   function skeleton(def) {
     const cards = [];
     for (let i = 0; i < 6; i++) cards.push(h("div", { class: "lfx-skel" }));
@@ -5471,7 +5876,7 @@
       h("div", { class: "lfx-row__viewport" }, [h("div", { class: "lfx-row__skeleton" }, cards)])
     ]);
   }
-  function fill(rowEl, def, items, newSeries) {
+  function fill2(rowEl, def, items, newSeries) {
     const now = Date.now();
     const cards = items.map((it, i) => createCard(it, {
       kind: def.kind,
@@ -5479,16 +5884,16 @@
       badge: badgeFor(it, newSeries, now)
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": def.title || "" }, cards);
-    const prev = chevronButton("prev", "Zur\xFCck");
+    const prev2 = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
     const indicator = h("div", { class: "lfx-row__pages", "aria-hidden": "true", hidden: true });
     rowEl.querySelector(".lfx-row__head").append(indicator);
     const viewport = rowEl.querySelector(".lfx-row__viewport");
     viewport.textContent = "";
-    viewport.append(prev, track, next);
+    viewport.append(prev2, track, next);
     rowEl.querySelector(".lfx-row__title").textContent = def.title || "";
     rowEl.classList.remove("is-loading");
-    return attachScroller({ track, prev, next, indicator });
+    return attachScroller({ track, prev: prev2, next, indicator });
   }
   function render4(slot) {
     let disposed = false;
@@ -5514,6 +5919,35 @@
         else track.dispatchEvent(new Event("scroll"));
       }
     }));
+    let newSeries = peekNewSeriesIds();
+    let newSeriesStarted = false;
+    const filled = [];
+    let readySent = false;
+    function signalReady() {
+      if (readySent || disposed) return;
+      readySent = true;
+      document.dispatchEvent(new CustomEvent(ROWS_READY_EVENT2));
+    }
+    function applyNewSeries(set) {
+      const now = Date.now();
+      for (const { items, rowEl } of filled) {
+        if (!rowEl.isConnected) continue;
+        for (const card3 of rowEl.querySelectorAll(".lfx-card[data-lfx-id]")) {
+          const it = items.get(card3.dataset.lfxId);
+          if (it && it.Type === "Series") setCardBadge(card3, badgeFor(it, set, now));
+        }
+      }
+    }
+    function loadNewSeriesLater() {
+      if (newSeries || newSeriesStarted) return;
+      newSeriesStarted = true;
+      getNewSeriesIds().then((set) => {
+        if (disposed) return;
+        newSeries = set;
+        applyNewSeries(set);
+      }, () => {
+      });
+    }
     async function loadRow(rowEl, def) {
       try {
         const items = (await def.load(def)).filter((i) => i && i.Id);
@@ -5523,9 +5957,13 @@
           return;
         }
         putItems(items);
-        const newSeries = await getNewSeriesIds();
-        if (disposed) return;
-        disposers.push(fill(rowEl, def, items, newSeries));
+        if (rowEl.dataset.lfxRow !== def.id) rowEl.dataset.lfxRow = def.id;
+        disposers.push(fill2(rowEl, def, items, newSeries));
+        if (items.some((i) => i.Type === "Series")) {
+          filled.push({ rowEl, items: new Map(items.map((i) => [i.Id, i])) });
+          loadNewSeriesLater();
+        }
+        signalReady();
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -5534,21 +5972,23 @@
     (async () => {
       if (!isReady()) {
         console.warn("[LenzFlix] Zeilen: keine Anmeldung");
+        signalReady();
         return;
       }
       let defs;
       try {
-        defs = await buildRowDefs();
+        defs = await buildRowDefs({ deferCharts: true });
       } catch (e) {
         console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
+        signalReady();
         return;
       }
       if (disposed) return;
       const pending = /* @__PURE__ */ new Map();
       for (const def of defs) {
-        const el3 = skeleton(def);
-        pending.set(el3, def);
-        slot.append(el3);
+        const el4 = skeleton(def);
+        pending.set(el4, def);
+        slot.append(el4);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
@@ -5560,9 +6000,9 @@
             loadRow(en.target, def);
           }
         }, { rootMargin: "600px 0px" });
-        for (const el3 of pending.keys()) observer2.observe(el3);
+        for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
-        for (const [el3, def] of pending) loadRow(el3, def);
+        for (const [el4, def] of pending) loadRow(el4, def);
       }
     })();
     return () => {
@@ -5747,12 +6187,12 @@
   var SCALE = 1.5;
   var MIN_WIDTH = 300;
   var ITEM_TTL = 5 * 6e4;
-  function resolveTarget2(el3) {
-    if (!el3 || typeof el3.closest !== "function") return null;
-    if (el3.closest(`#${POPUP_ID}, #lfx-modal, .lfx-modal, .vertical-wrap`)) return null;
-    const own = el3.closest(".lfx-card[data-lfx-id]");
-    if (own) return { card: own, id: own.dataset.lfxId, type: own.dataset.lfxType || "", own: true };
-    const card3 = el3.closest(".emby-scroller .card[data-id]");
+  function resolveTarget2(el4) {
+    if (!el4 || typeof el4.closest !== "function") return null;
+    if (el4.closest(`#${POPUP_ID}, #lfx-modal, .lfx-modal, .vertical-wrap`)) return null;
+    const own2 = el4.closest(".lfx-card[data-lfx-id]");
+    if (own2) return { card: own2, id: own2.dataset.lfxId, type: own2.dataset.lfxType || "", own: true };
+    const card3 = el4.closest(".emby-scroller .card[data-id]");
     if (!card3 || !NATIVE_TYPES.has(card3.dataset.type)) return null;
     return { card: card3, id: card3.dataset.id, type: card3.dataset.type, own: false };
   }
@@ -6149,12 +6589,12 @@
       s.btns.more.wrap
     ]);
     const info = h("div", { class: "lfx-hc__info" }, [actions, body]);
-    const el3 = h("div", { id: POPUP_ID, class: "lfx-hc", role: "dialog", "aria-label": "Titel" }, [media, info]);
-    s.el = el3;
+    const el4 = h("div", { id: POPUP_ID, class: "lfx-hc", role: "dialog", "aria-label": "Titel" }, [media, info]);
+    s.el = el4;
     s.img = img;
     s.overlay = overlay;
     s.body = body;
-    return el3;
+    return el4;
   }
   function open(target) {
     if (!enabled() || !target.card.isConnected) return;
@@ -6172,26 +6612,26 @@
       busyLike: false,
       busyPlayed: false
     };
-    const el3 = buildPopup(s);
+    const el4 = buildPopup(s);
     session2 = s;
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = window.innerHeight;
     const rect = computePopupRect(cardRect, vw, SCALE, { minWidth: MIN_WIDTH, viewportH: vh });
-    el3.style.left = `${rect.left}px`;
-    el3.style.top = `${rect.top}px`;
-    el3.style.width = `${rect.width}px`;
+    el4.style.left = `${rect.left}px`;
+    el4.style.top = `${rect.top}px`;
+    el4.style.width = `${rect.width}px`;
     render5(s);
-    document.body.append(el3);
-    const total = el3.offsetHeight;
+    document.body.append(el4);
+    const total = el4.offsetHeight;
     let top = rect.top;
     if (total && top + total > vh - 8) top = Math.max(8, vh - 8 - total);
-    el3.style.top = `${top}px`;
+    el4.style.top = `${top}px`;
     const k = cardRect.width / rect.width;
     const dx = cardRect.left - rect.left;
     const dy = cardRect.top + cardRect.height / 2 - (top + rect.imageHeight * k / 2);
-    el3.style.setProperty("--lfx-hc-from", `translate(${dx}px, ${dy}px) scale(${k})`);
-    void el3.offsetWidth;
-    el3.classList.add("is-open");
+    el4.style.setProperty("--lfx-hc-from", `translate(${dx}px, ${dy}px) scale(${k})`);
+    void el4.offsetWidth;
+    el4.classList.add("is-open");
     hydrate(s);
   }
   function removeSession(s) {
@@ -6225,8 +6665,8 @@
     if (holdOpen()) return;
     if (session2) scheduleClose();
   }
-  function pointerStillInside(s, el3) {
-    if (el3 && el3.isConnected && (s.el.contains(el3) || s.card.contains(el3))) return true;
+  function pointerStillInside(s, el4) {
+    if (el4 && el4.isConnected && (s.el.contains(el4) || s.card.contains(el4))) return true;
     try {
       return s.el.matches(":hover") || s.card.matches(":hover");
     } catch {
@@ -6389,7 +6829,7 @@
 
   // src/js/features/newpopular.js
   var ROOT_ID3 = "lfx-newpopular";
-  var ON_CLASS = "lfx-newpopular-on";
+  var ON_CLASS2 = "lfx-newpopular-on";
   var TYPES = "Movie,Series";
   var sectionDefs = () => [
     { id: "new", label: `Neu bei ${brandName()}`, icon: "\u{1F37F}" },
@@ -6415,7 +6855,7 @@
       }
     }
     document.getElementById(ROOT_ID3)?.remove();
-    document.documentElement.classList.remove(ON_CLASS);
+    document.documentElement.classList.remove(ON_CLASS2);
   }
   var query = (params) => getItems({
     ...BASE_PARAMS,
@@ -6561,16 +7001,16 @@
       badge: badgeFor(it, newSeries, now)
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": title }, cards);
-    const prev = chevronButton("prev", "Zur\xFCck");
+    const prev2 = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
     const indicator = h("div", { class: "lfx-row__pages", "aria-hidden": "true", hidden: true });
-    const el3 = h("div", { class: "lfx-rows" }, [
+    const el4 = h("div", { class: "lfx-rows" }, [
       h("section", { class: `lfx-row lfx-row--${kind2}` }, [
         h("div", { class: "lfx-row__head" }, [h("h2", { class: "lfx-row__title" }, title), indicator]),
-        h("div", { class: "lfx-row__viewport" }, [prev, track, next])
+        h("div", { class: "lfx-row__viewport" }, [prev2, track, next])
       ])
     ]);
-    return { el: el3, scroller: { track, prev, next, indicator } };
+    return { el: el4, scroller: { track, prev: prev2, next, indicator } };
   }
   function sectionShell(def) {
     return h("section", { class: "lfx-np__section", id: `lfx-np-${def.id}`, dataset: { np: def.id } }, [
@@ -6603,13 +7043,13 @@
     }
     const root7 = h("div", { id: ROOT_ID3, class: "lfx-np" }, [nav, ...sections.values()]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS);
+    document.documentElement.classList.add(ON_CLASS2);
     setActive("new");
-    let raf2 = 0;
+    let raf3 = 0;
     const onScroll7 = () => {
-      if (raf2) return;
-      raf2 = requestAnimationFrame(() => {
-        raf2 = 0;
+      if (raf3) return;
+      raf3 = requestAnimationFrame(() => {
+        raf3 = 0;
         let current7 = null;
         for (const [id, sec] of sections) {
           if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current7 = id;
@@ -6635,25 +7075,25 @@
       if (disposed) return;
       const list = root7.querySelector(".lfx-np__list");
       for (const id of removed) {
-        root7.querySelectorAll("[data-lfx-id]").forEach((el3) => {
-          if (el3.dataset.lfxId === id) el3.remove();
+        root7.querySelectorAll("[data-lfx-id]").forEach((el4) => {
+          if (el4.dataset.lfxId === id) el4.remove();
         });
       }
       if (list && removed.length && !list.children.length) drop2("new");
       if (list) {
         for (const id of updated) {
           const fresh = getStoredItem(id);
-          const entry = [...list.children].find((el3) => el3.dataset.lfxId === id);
+          const entry = [...list.children].find((el4) => el4.dataset.lfxId === id);
           if (fresh && entry) entry.replaceWith(createNewEntry(fresh, newSeriesIds));
         }
       }
     }
     cleanups2.push(onItemsChanged(onChanged2));
-    async function fill3(id, loader, renderer, fallbackLabel) {
+    async function fill4(id, loader, renderer, fallbackLabel) {
       try {
         const res = await loader();
         const items = Array.isArray(res) ? res : res.items;
-        const meta = Array.isArray(res) ? {} : res;
+        const meta2 = Array.isArray(res) ? {} : res;
         if (disposed) return;
         if (!items.length) {
           drop2(id);
@@ -6663,36 +7103,36 @@
         const newSeries = await getNewSeriesIds();
         if (disposed) return;
         newSeriesIds = newSeries;
-        if (fallbackLabel && !meta.charted) relabel(id, fallbackLabel);
-        renderer(sections.get(id), items, newSeries, meta);
+        if (fallbackLabel && !meta2.charted) relabel(id, fallbackLabel);
+        renderer(sections.get(id), items, newSeries, meta2);
       } catch (e) {
         console.warn(`[LenzFlix] Neu und beliebt "${id}" nicht geladen`, e && e.message);
         if (!disposed) drop2(id);
       }
     }
-    const rowRenderer = (title, kind2, fallbackTitle) => (sec, items, newSeries, meta = {}) => {
-      const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind2, newSeries);
+    const rowRenderer = (title, kind2, fallbackTitle) => (sec, items, newSeries, meta2 = {}) => {
+      const row = createRow(meta2.charted || !fallbackTitle ? title : fallbackTitle, items, kind2, newSeries);
       sec.querySelector(".lfx-np__heading")?.remove();
-      if (meta.charted) {
-        row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub" }, chartSubtitle(meta.windowDays)));
+      if (meta2.charted) {
+        row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub" }, chartSubtitle(meta2.windowDays)));
       }
       sec.append(row.el);
       scrollers.push(attachScroller(row.scroller));
     };
     if (isReady()) {
-      fill3("new", loadNew, (sec, items, newSeries) => {
+      fill4("new", loadNew, (sec, items, newSeries) => {
         sec.append(h("div", { class: "lfx-np__list" }, items.map((it) => createNewEntry(it, newSeries))));
       });
-      fill3("watched", loadMostWatchedSection, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
-      fill3("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien"), "Neueste Serien");
-      fill3("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme"), "Neueste Filme");
+      fill4("watched", loadMostWatchedSection, rowRenderer("Am h\xE4ufigsten geschaut", "landscape"));
+      fill4("top-series", () => loadTopSection("Series"), rowRenderer("Top 10 Serien", "top10", "Neueste Serien"), "Neueste Serien");
+      fill4("top-movies", () => loadTopSection("Movie"), rowRenderer("Top 10 Filme", "top10", "Neueste Filme"), "Neueste Filme");
     } else {
       console.warn("[LenzFlix] Neu und beliebt: keine Anmeldung");
     }
     cleanups2.push(() => {
       disposed = true;
       window.removeEventListener("scroll", onScroll7);
-      if (raf2) cancelAnimationFrame(raf2);
+      if (raf3) cancelAnimationFrame(raf3);
       for (const d of scrollers.splice(0)) {
         try {
           d && d();
@@ -6731,7 +7171,7 @@
   var newpopular_default = newPopularFeature;
 
   // src/js/core/popover.js
-  var ID6 = "lfx-popover";
+  var ID7 = "lfx-popover";
   var GAP = 8;
   var MARGIN = 8;
   var current4 = null;
@@ -6758,25 +7198,25 @@
       }
     }
   }
-  function place(el3, anchorEl, align) {
+  function place(el4, anchorEl, align) {
     const vw = window.innerWidth || document.documentElement.clientWidth || 0;
     const vh = window.innerHeight || document.documentElement.clientHeight || 0;
     const a = anchorEl.getBoundingClientRect();
-    const w = el3.offsetWidth;
-    const hgt = el3.offsetHeight;
+    const w = el4.offsetWidth;
+    const hgt = el4.offsetHeight;
     let left = align === "start" ? a.left : a.right - w;
     let top = a.bottom + GAP;
     if (vw) left = Math.max(MARGIN, Math.min(left, vw - w - MARGIN));
     if (vh && top + hgt > vh - MARGIN) top = Math.max(MARGIN, a.top - GAP - hgt);
-    el3.style.left = `${Math.round(left)}px`;
-    el3.style.top = `${Math.round(top)}px`;
+    el4.style.left = `${Math.round(left)}px`;
+    el4.style.top = `${Math.round(top)}px`;
   }
   function openPopover(anchorEl, { label, items = [], align = "end", className = "" } = {}) {
     closePopover();
-    const el3 = mountPoint(ID6, { className: `lfx-popover${className ? ` ${className}` : ""}` });
-    el3.className = `lfx-popover${className ? ` ${className}` : ""}`;
-    el3.setAttribute("role", "menu");
-    if (label) el3.setAttribute("aria-label", label);
+    const el4 = mountPoint(ID7, { className: `lfx-popover${className ? ` ${className}` : ""}` });
+    el4.className = `lfx-popover${className ? ` ${className}` : ""}`;
+    el4.setAttribute("role", "menu");
+    if (label) el4.setAttribute("aria-label", label);
     const list = items.filter((it) => it && !it.hidden);
     const nodes = list.map((it) => {
       const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ""}`;
@@ -6796,8 +7236,8 @@
       });
       return node;
     });
-    el3.replaceChildren(...nodes);
-    const c = { el: el3, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
+    el4.replaceChildren(...nodes);
+    const c = { el: el4, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
     c.close = () => {
       if (current4 === c) closePopover({ restoreFocus: true });
     };
@@ -6805,11 +7245,11 @@
       if (current4 === c) closePopover();
     };
     c.onScroll = (e) => {
-      if (e.target && e.target !== document && el3.contains(e.target)) return;
+      if (e.target && e.target !== document && el4.contains(e.target)) return;
       c.onClose();
     };
     c.onDocClick = (e) => {
-      if (el3.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
+      if (el4.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
       c.onClose();
     };
     c.onKeydown = (e) => {
@@ -6837,17 +7277,17 @@
     document.addEventListener("click", c.onDocClick, true);
     window.addEventListener("resize", c.onClose);
     window.addEventListener("scroll", c.onScroll, true);
-    if (anchorEl) place(el3, anchorEl, align);
+    if (anchorEl) place(el4, anchorEl, align);
     if (nodes[0]) nodes[0].focus({ preventScroll: true });
-    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
-    raf2(() => {
-      if (current4 === c) el3.classList.add("is-open");
+    const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+    raf3(() => {
+      if (current4 === c) el4.classList.add("is-open");
     });
-    return { el: el3, close: c.close };
+    return { el: el4, close: c.close };
   }
 
   // src/js/core/themejs.js
-  var CLASS2 = "lfx-theme-js";
+  var CLASS3 = "lfx-theme-js";
   var FILES2 = { store: "lenzstore", live: "lenzlive", tvmode: "lenztvmode" };
   var GLOBALS = { store: "LenzFlixStore3D", live: "LenzFlixLive", tvmode: "LenzFlixTvMode" };
   var inflight4 = /* @__PURE__ */ new Map();
@@ -6859,7 +7299,7 @@
   }
   var hasGlobal = (id) => Boolean(window[GLOBALS[id]]);
   function findTag(id) {
-    for (const s of document.querySelectorAll(`script.${CLASS2}`)) {
+    for (const s of document.querySelectorAll(`script.${CLASS3}`)) {
       if (s.getAttribute("data-lfx-theme") === id) return s;
     }
     return null;
@@ -6870,7 +7310,7 @@
     if (inflight4.has(id)) return inflight4.get(id);
     findTag(id)?.remove();
     const script = document.createElement("script");
-    script.className = CLASS2;
+    script.className = CLASS3;
     script.setAttribute("data-lfx-theme", id);
     script.async = true;
     const p = new Promise((resolve2) => {
@@ -6895,21 +7335,21 @@
     return p;
   }
   function removeThemeJs() {
-    for (const s of [...document.querySelectorAll(`script.${CLASS2}`)]) {
+    for (const s of [...document.querySelectorAll(`script.${CLASS3}`)]) {
       inflight4.delete(s.getAttribute("data-lfx-theme"));
       s.remove();
     }
   }
 
   // src/js/core/addoncss.js
-  var CLASS3 = "lfx-addon-css";
+  var CLASS4 = "lfx-addon-css";
   var inflight5 = /* @__PURE__ */ new Map();
   function addonCssUrl(name) {
     const { base, min, query: query2 } = resolveThemeCssBase();
     return `${base}${name}${min ? ".min" : ""}.css${query2 || ""}`;
   }
   function findLink(name) {
-    for (const l of document.querySelectorAll(`link.${CLASS3}`)) {
+    for (const l of document.querySelectorAll(`link.${CLASS4}`)) {
       if (l.getAttribute("data-lfx-addon") === name) return l;
     }
     return null;
@@ -6921,7 +7361,7 @@
     existing?.remove();
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.className = CLASS3;
+    link.className = CLASS4;
     link.setAttribute("data-lfx-addon", name);
     const p = new Promise((resolve2) => {
       let done = false;
@@ -6946,7 +7386,7 @@
     return p;
   }
   function removeAddonCss(name) {
-    for (const l of [...document.querySelectorAll(`link.${CLASS3}`)]) {
+    for (const l of [...document.querySelectorAll(`link.${CLASS4}`)]) {
       if (name && l.getAttribute("data-lfx-addon") !== name) continue;
       inflight5.delete(l.getAttribute("data-lfx-addon"));
       l.remove();
@@ -7195,9 +7635,9 @@
         const res = await getItems({ ParentId: id, Fields: "", EnableImages: false, EnableUserData: false });
         return asItems3(res).map((x) => x.Id).filter(Boolean);
       },
-      loadTrailer: async (itemId) => {
+      loadTrailer: async (itemId2) => {
         try {
-          const item = await getItem(itemId);
+          const item = await getItem(itemId2);
           const t = await loadLocalTrailer(item);
           if (!t) return null;
           const ticks = Number(t.RunTimeTicks);
@@ -7228,7 +7668,7 @@
 
   // src/js/features/tvmode/prefs.js
   var DEFAULTS = { volume: 0.8, muted: false, lastChannel: 1 };
-  var storageKey = (name) => `lfx.tvm.${name}.${getUserId() || "anon"}`;
+  var storageKey2 = (name) => `lfx.tvm.${name}.${getUserId() || "anon"}`;
   var read = (key) => {
     try {
       return window.localStorage.getItem(key);
@@ -7243,26 +7683,26 @@
     }
   };
   function getVolume() {
-    const raw = read(storageKey("volume"));
+    const raw = read(storageKey2("volume"));
     if (raw === null || raw === "") return DEFAULTS.volume;
     const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS.volume;
   }
-  var getMuted = () => read(storageKey("muted")) === "1";
+  var getMuted = () => read(storageKey2("muted")) === "1";
   function getLastChannel() {
-    const v = Number(read(storageKey("lastChannel")));
+    const v = Number(read(storageKey2("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS.lastChannel;
   }
   function savePrefs(p) {
     if (!p || typeof p !== "object") return;
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write(storageKey("muted"), p.muted ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey("lastChannel"), String(p.lastChannel));
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey2("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write(storageKey2("muted"), p.muted ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey2("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/tvmode/route.js
   var ROOT_ID4 = "lfx-tvm";
-  var ON_CLASS2 = "lfx-tvm-on";
+  var ON_CLASS3 = "lfx-tvm-on";
   var TV_THEMES = ["flix", "plus", "prime"];
   var findHomeTab3 = () => {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
@@ -7416,15 +7856,15 @@
     if (label && ui.label) ui.label.textContent = label;
   }
   function buildBoot() {
-    const fill3 = h("div", { class: "lfx-tvm__boot-fill" });
-    fill3.style.width = "0%";
+    const fill4 = h("div", { class: "lfx-tvm__boot-fill" });
+    fill4.style.width = "0%";
     const label = h("p", { class: "lfx-tvm__boot-text", "aria-live": "polite" }, "TV wird vorbereitet \u2026");
     const boot4 = h("div", { class: "lfx-tvm__boot", role: "status" }, [
       h("span", { class: "lfx-tvm__boot-spin", "aria-hidden": "true" }),
       label,
-      h("div", { class: "lfx-tvm__boot-bar" }, [fill3])
+      h("div", { class: "lfx-tvm__boot-bar" }, [fill4])
     ]);
-    return { boot: boot4, fill: fill3, label };
+    return { boot: boot4, fill: fill4, label };
   }
   function attachBoot() {
     if (!ui) return;
@@ -7438,7 +7878,7 @@
     if (ui) ui.root.remove();
     ui = null;
     document.getElementById(ROOT_ID4)?.remove();
-    html().classList.remove(ON_CLASS2);
+    html().classList.remove(ON_CLASS3);
   }
   function showFallback(err) {
     if (!ui) return;
@@ -7597,10 +8037,10 @@
   }
   function start2(tab2, myGen) {
     teardownUi();
-    const { boot: bootEl, fill: fill3, label } = buildBoot();
-    ui = { root: h("div", { id: ROOT_ID4, class: "lfx-tvm is-loading" }, [bootEl]), boot: bootEl, fill: fill3, label };
+    const { boot: bootEl, fill: fill4, label } = buildBoot();
+    ui = { root: h("div", { id: ROOT_ID4, class: "lfx-tvm is-loading" }, [bootEl]), boot: bootEl, fill: fill4, label };
     tab2.prepend(ui.root);
-    html().classList.add(ON_CLASS2);
+    html().classList.add(ON_CLASS3);
     watchTheme();
     if (inst && inst.instance) {
       if (inst.ready) {
@@ -7692,34 +8132,34 @@
   var press2 = null;
   var swallowUntil = 0;
   var lastLongPressAt = -Infinity;
-  function resolve(el3) {
-    if (!el3 || typeof el3.closest !== "function") return null;
-    return el3.closest(TARGET);
+  function resolve(el4) {
+    if (!el4 || typeof el4.closest !== "function") return null;
+    return el4.closest(TARGET);
   }
-  function itemFor(el3, fallbackType) {
-    const id = el3.dataset.lfxId;
-    return getStoredItem(id) || { Id: id, Type: el3.dataset.lfxType || fallbackType || void 0 };
+  function itemFor(el4, fallbackType) {
+    const id = el4.dataset.lfxId;
+    return getStoredItem(id) || { Id: id, Type: el4.dataset.lfxType || fallbackType || void 0 };
   }
-  function openFor(el3, x, y) {
-    const item = itemFor(el3);
+  function openFor(el4, x, y) {
+    const item = itemFor(el4);
     const opts = {};
-    if (el3.classList.contains("lfx-modal__ep") && el3.parentElement) {
-      opts.siblings = [...el3.parentElement.children].filter((n) => n.matches(".lfx-modal__ep[data-lfx-id]")).map((n) => itemFor(n, "Episode"));
+    if (el4.classList.contains("lfx-modal__ep") && el4.parentElement) {
+      opts.siblings = [...el4.parentElement.children].filter((n) => n.matches(".lfx-modal__ep[data-lfx-id]")).map((n) => itemFor(n, "Episode"));
     }
     openItemMenu(item, { x, y }, opts);
   }
-  function inNativeDialog(el3) {
-    return Boolean(el3.closest && el3.closest(".dialogContainer, .dialog"));
+  function inNativeDialog(el4) {
+    return Boolean(el4.closest && el4.closest(".dialogContainer, .dialog"));
   }
   function onContextMenu(e) {
-    const el3 = resolve(e.target);
-    if (!el3) return;
+    const el4 = resolve(e.target);
+    if (!el4) return;
     if (e.shiftKey) return;
-    if (isMenuOpen() && inNativeDialog(el3)) return;
+    if (isMenuOpen() && inNativeDialog(el4)) return;
     e.preventDefault();
     e.stopPropagation();
     if (Date.now() - lastLongPressAt < DOUBLE_OPEN_MS) return;
-    openFor(el3, e.clientX, e.clientY);
+    openFor(el4, e.clientX, e.clientY);
   }
   function cancelPress() {
     if (pressTimer) clearTimeout(pressTimer);
@@ -7732,18 +8172,18 @@
       return;
     }
     cancelPress();
-    const el3 = resolve(e.target);
-    if (!el3) return;
-    if (isMenuOpen() && inNativeDialog(el3)) return;
+    const el4 = resolve(e.target);
+    if (!el4) return;
+    if (isMenuOpen() && inNativeDialog(el4)) return;
     const t = e.touches && e.touches[0] || e;
     const state21 = { x: t.clientX, y: t.clientY, fired: false };
     press2 = state21;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press2 !== state21 || !el3.isConnected) return;
+      if (press2 !== state21 || !el4.isConnected) return;
       state21.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el3, state21.x, state21.y);
+      openFor(el4, state21.x, state21.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -7808,7 +8248,7 @@
   var contextmenu_default = contextmenuFeature;
 
   // src/js/features/statshint.js
-  var ID7 = "lfx-statshint";
+  var ID8 = "lfx-statshint";
   var KEY = "lfx.statsHint";
   var SESSION_KEY = "lfx.statsHint.shown";
   var HINT_DURATION = 7e3;
@@ -7860,13 +8300,13 @@
   }
   function leave2() {
     if (!state5.el) return;
-    const el3 = state5.el;
+    const el4 = state5.el;
     clearTimeout(state5.hideTimer);
     state5.hideTimer = null;
-    el3.classList.add("is-leaving");
+    el4.classList.add("is-leaving");
     state5.removeTimer = setTimeout(() => {
       state5.removeTimer = null;
-      if (state5.el === el3) removeHint();
+      if (state5.el === el4) removeHint();
     }, LEAVE_MS);
   }
   function startHideTimer(ms) {
@@ -7877,7 +8317,7 @@
   function canHover() {
     return typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
-  function show() {
+  function show2() {
     state5.showTimer = null;
     const url = statsHref() || getStatsUrl();
     if (!url || state5.el || !shouldShow()) return;
@@ -7891,7 +8331,7 @@
       e.preventDefault();
       leave2();
     });
-    const root7 = mountPoint(ID7, { className: "lfx-statshint" });
+    const root7 = mountPoint(ID8, { className: "lfx-statshint" });
     root7.classList.remove("is-leaving");
     const top = !isMobile();
     root7.classList.toggle("lfx-statshint--top", top);
@@ -7923,7 +8363,7 @@
   }
   function sync2(route) {
     if (isHomeRoute2(route)) {
-      if (!state5.el && !state5.showTimer && shouldShow()) state5.showTimer = setTimeout(show, HINT_DELAY);
+      if (!state5.el && !state5.showTimer && shouldShow()) state5.showTimer = setTimeout(show2, HINT_DELAY);
     } else {
       removeHint();
     }
@@ -8065,7 +8505,7 @@
 
   // src/js/features/plus/header.js
   var ROOT_ID5 = "lfx-plus-header";
-  var ON_CLASS3 = "lfx-plus-header-on";
+  var ON_CLASS4 = "lfx-plus-header-on";
   var HIDDEN_CLASS = "lfx-plus-header-hidden";
   var EXCLUDED6 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SOLID_AT = 10;
@@ -8137,11 +8577,11 @@
   function applyActive4() {
     if (!state6.root) return;
     const key = state6.route ? activeKey2(state6.route, state6.libs) : null;
-    for (const el3 of state6.root.querySelectorAll("[data-key]")) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (on) el3.setAttribute("aria-current", "page");
-      else el3.removeAttribute("aria-current");
+    for (const el4 of state6.root.querySelectorAll("[data-key]")) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (on) el4.setAttribute("aria-current", "page");
+      else el4.removeAttribute("aria-current");
     }
   }
   function renderNav() {
@@ -8254,8 +8694,8 @@
   }
   function onScroll2() {
     if (state6.raf) return;
-    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state6.raf = raf2(scrollTick);
+    const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    state6.raf = raf3(scrollTick);
   }
   async function loadLibraries(mountSeq) {
     let libs = [];
@@ -8310,7 +8750,7 @@
           openMenu2();
         }
       });
-      document.documentElement.classList.add(ON_CLASS3);
+      document.documentElement.classList.add(ON_CLASS4);
       renderNav();
       window.addEventListener("scroll", onScroll2, { passive: true });
       state6.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
@@ -8335,7 +8775,7 @@
       if (state6.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state6.raf);
       state6.raf = 0;
       unmountPoint(ROOT_ID5);
-      document.documentElement.classList.remove(ON_CLASS3, HIDDEN_CLASS);
+      document.documentElement.classList.remove(ON_CLASS4, HIDDEN_CLASS);
       state6.root = null;
       state6.nav = null;
       state6.chip = null;
@@ -8346,7 +8786,7 @@
 
   // src/js/features/plus/mobilehead.js
   var ROOT_ID6 = "lfx-plus-mhead";
-  var ON_CLASS4 = "lfx-plus-mhead-on";
+  var ON_CLASS5 = "lfx-plus-mhead-on";
   var EXCLUDED7 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SOLID_AT2 = 8;
   function showsBack(route) {
@@ -8395,8 +8835,8 @@
   }
   function onScroll3() {
     if (state7.raf) return;
-    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state7.raf = raf2(scrollTick2);
+    const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    state7.raf = raf3(scrollTick2);
   }
   async function loadLibraries2(seq3) {
     let libs = [];
@@ -8431,7 +8871,7 @@
       state7.root = root7;
       state7.backEl = backEl;
       state7.titleEl = titleEl;
-      document.documentElement.classList.add(ON_CLASS4);
+      document.documentElement.classList.add(ON_CLASS5);
       window.addEventListener("scroll", onScroll3, { passive: true });
       state7.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
       render6();
@@ -8448,7 +8888,7 @@
       if (state7.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state7.raf);
       state7.raf = 0;
       unmountPoint(ROOT_ID6);
-      document.documentElement.classList.remove(ON_CLASS4);
+      document.documentElement.classList.remove(ON_CLASS5);
       state7.root = null;
       state7.backEl = null;
       state7.titleEl = null;
@@ -8460,7 +8900,7 @@
 
   // src/js/features/plus/switcher.js
   var ROOT_ID7 = "lfx-plus-switcher";
-  var ON_CLASS5 = "lfx-plus-switcher-on";
+  var ON_CLASS6 = "lfx-plus-switcher-on";
   function isSwitcherRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return false;
     const { kind: kind2 } = parseLfxRoute(route);
@@ -8486,12 +8926,12 @@
     if (!state8.root || !state8.route) return;
     const key = activeTab(state8.route);
     let active4 = null;
-    for (const el3 of state8.root.querySelectorAll('[role="tab"]')) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      el3.setAttribute("aria-selected", String(on));
-      el3.tabIndex = on ? 0 : -1;
-      if (on) active4 = el3;
+    for (const el4 of state8.root.querySelectorAll('[role="tab"]')) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      el4.setAttribute("aria-selected", String(on));
+      el4.tabIndex = on ? 0 : -1;
+      if (on) active4 = el4;
     }
     const list = state8.root.querySelector(".lfx-plus-switcher__list");
     if (active4 && list && list.scrollWidth > list.clientWidth) {
@@ -8537,7 +8977,7 @@
       state8.route = route;
       state8.libs = [];
       state8.root = mountPoint(ROOT_ID7, { className: "lfx-plus-switcher" });
-      document.documentElement.classList.add(ON_CLASS5);
+      document.documentElement.classList.add(ON_CLASS6);
       render7();
       loadLibraries3(seq3);
     },
@@ -8548,7 +8988,7 @@
     unmount() {
       state8.seq++;
       unmountPoint(ROOT_ID7);
-      document.documentElement.classList.remove(ON_CLASS5);
+      document.documentElement.classList.remove(ON_CLASS6);
       state8.root = null;
       state8.libs = [];
     }
@@ -8885,7 +9325,7 @@
     const logo = logoImage(item, { maxWidth: 520 });
     const badge3 = plusBadge(item, info);
     const tag = taglineFor(item);
-    const meta = yearGenres(item);
+    const meta2 = yearGenres(item);
     const rating = ratingBox(item);
     return h("a", {
       class: "lfx-plus-hero__slide",
@@ -8899,7 +9339,7 @@
         badge3 ? h("span", { class: "lfx-plus-badge lfx-plus-hero__badge" }, badge3) : null,
         logo ? h("img", { class: "lfx-plus-hero__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("span", { class: "lfx-plus-hero__title" }, item.Name || ""),
         tag ? h("p", { class: "lfx-plus-hero__tagline" }, tag) : null,
-        rating || meta ? h("div", { class: "lfx-plus-hero__meta" }, [rating, meta ? h("span", null, meta) : null]) : null
+        rating || meta2 ? h("div", { class: "lfx-plus-hero__meta" }, [rating, meta2 ? h("span", null, meta2) : null]) : null
       ])
     ]);
   }
@@ -8909,9 +9349,9 @@
     const n = list.length;
     const slides = list.map((it, i) => buildSlide(it, i, info, mobile));
     const track = h("div", { class: "lfx-plus-hero__track" }, slides);
-    const prev = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
+    const prev2 = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
     const next = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--next", "aria-label": "N\xE4chste Empfehlung", tabindex: "-1" });
-    prev.innerHTML = CHEVRON2;
+    prev2.innerHTML = CHEVRON2;
     next.innerHTML = CHEVRON2;
     const dots = list.map((it, i) => h("button", {
       type: "button",
@@ -8920,9 +9360,9 @@
       onclick: () => go3(i)
     }));
     const dotsEl = h("div", { class: "lfx-plus-hero__dots" }, n > 1 ? dots : []);
-    const el3 = h("section", { class: `lfx-plus-hero${mobile ? " lfx-plus-hero--m" : ""}`, "aria-roledescription": "carousel", "aria-label": "Empfehlungen" }, [
+    const el4 = h("section", { class: `lfx-plus-hero${mobile ? " lfx-plus-hero--m" : ""}`, "aria-roledescription": "carousel", "aria-label": "Empfehlungen" }, [
       h("div", { class: "lfx-plus-hero__viewport" }, [track]),
-      n > 1 && !mobile ? prev : null,
+      n > 1 && !mobile ? prev2 : null,
       n > 1 && !mobile ? next : null,
       mobile ? null : dotsEl
     ]);
@@ -8935,12 +9375,12 @@
       clearTimeout(timer2);
       timer2 = null;
     }
-    function schedule3() {
+    function schedule4() {
       stop6();
       if (running()) timer2 = setTimeout(() => go3(idx + 1), interval);
     }
     function paint() {
-      el3.style.setProperty("--i", String(idx));
+      el4.style.setProperty("--i", String(idx));
       slides.forEach((s, i) => {
         const active4 = i === idx;
         s.classList.toggle("is-active", active4);
@@ -8965,13 +9405,13 @@
       idx = (i % n + n) % n;
       paint();
       if (mobile) scrollToSlide(idx);
-      schedule3();
+      schedule4();
     }
     let scrollRaf = 0;
     function onTrackScroll() {
       if (scrollRaf) return;
-      const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-      scrollRaf = raf2(() => {
+      const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+      scrollRaf = raf3(() => {
         scrollRaf = 0;
         const tr = track.getBoundingClientRect();
         const mid = tr.left + tr.width / 2;
@@ -9011,37 +9451,37 @@
     };
     const onLeave = () => {
       hover = false;
-      schedule3();
+      schedule4();
     };
     const onFocusIn = () => {
       focus = true;
       stop6();
     };
     const onFocusOut = (e) => {
-      if (!el3.contains(e.relatedTarget)) {
+      if (!el4.contains(e.relatedTarget)) {
         focus = false;
-        schedule3();
+        schedule4();
       }
     };
-    const onVis = () => document.hidden ? stop6() : schedule3();
+    const onVis = () => document.hidden ? stop6() : schedule4();
     const onKey3 = (e) => {
       if (e.key === "ArrowLeft") go3(idx - 1);
       else if (e.key === "ArrowRight") go3(idx + 1);
     };
-    prev.addEventListener("click", onPrev);
+    prev2.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
     track.addEventListener("click", onSlideClick);
     if (mobile) track.addEventListener("scroll", onTrackScroll, { passive: true });
-    el3.addEventListener("mouseenter", onEnter);
-    el3.addEventListener("mouseleave", onLeave);
-    el3.addEventListener("focusin", onFocusIn);
-    el3.addEventListener("focusout", onFocusOut);
-    el3.addEventListener("keydown", onKey3);
+    el4.addEventListener("mouseenter", onEnter);
+    el4.addEventListener("mouseleave", onLeave);
+    el4.addEventListener("focusin", onFocusIn);
+    el4.addEventListener("focusout", onFocusOut);
+    el4.addEventListener("keydown", onKey3);
     document.addEventListener("visibilitychange", onVis);
     paint();
-    schedule3();
+    schedule4();
     return {
-      el: el3,
+      el: el4,
       go: go3,
       index: () => idx,
       destroy() {
@@ -9049,16 +9489,16 @@
         track.removeEventListener("scroll", onTrackScroll);
         if (scrollRaf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(scrollRaf);
         scrollRaf = 0;
-        prev.removeEventListener("click", onPrev);
+        prev2.removeEventListener("click", onPrev);
         next.removeEventListener("click", onNext);
         track.removeEventListener("click", onSlideClick);
-        el3.removeEventListener("mouseenter", onEnter);
-        el3.removeEventListener("mouseleave", onLeave);
-        el3.removeEventListener("focusin", onFocusIn);
-        el3.removeEventListener("focusout", onFocusOut);
-        el3.removeEventListener("keydown", onKey3);
+        el4.removeEventListener("mouseenter", onEnter);
+        el4.removeEventListener("mouseleave", onLeave);
+        el4.removeEventListener("focusin", onFocusIn);
+        el4.removeEventListener("focusout", onFocusOut);
+        el4.removeEventListener("keydown", onKey3);
         document.removeEventListener("visibilitychange", onVis);
-        el3.remove();
+        el4.remove();
       }
     };
   }
@@ -9125,13 +9565,13 @@
   }
   function renderBrands(parent, before) {
     let disposed = false;
-    let el3 = buildPlaceholder();
-    parent.insertBefore(el3, before && before.parentNode === parent ? before : null);
+    let el4 = buildPlaceholder();
+    parent.insertBefore(el4, before && before.parentNode === parent ? before : null);
     const swap = (next) => {
       if (disposed) return;
-      if (next) el3.replaceWith(next);
-      else el3.remove();
-      el3 = next;
+      if (next) el4.replaceWith(next);
+      else el4.remove();
+      el4 = next;
     };
     getCollections().then((list) => swap(buildBrandRow(list))).catch((e) => {
       console.warn("[LenzFlix] Sammlungen nicht geladen", e && e.message);
@@ -9139,8 +9579,8 @@
     });
     return () => {
       disposed = true;
-      if (el3) el3.remove();
-      el3 = null;
+      if (el4) el4.remove();
+      el4 = null;
     };
   }
 
@@ -9157,23 +9597,23 @@
       h("div", { class: "lfx-plus-row__viewport" }, [h("div", { class: "lfx-plus-row__skeleton" }, cells)])
     ]);
   }
-  function fill2(rowEl, def, items, info) {
+  function fill3(rowEl, def, items, info) {
     const resume = def.kind === "resume";
     const cards = items.map((it) => createPlusCard(it, {
       kind: resume ? "resume" : "poster",
       badge: resume ? null : plusBadge(it, info)
     }));
     const track = h("div", { class: "lfx-plus-row__track", role: "list", "aria-label": def.title || "" }, cards);
-    const prev = chevronButton("prev", "Zur\xFCck");
+    const prev2 = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
-    prev.classList.add("lfx-plus-row__arrow");
+    prev2.classList.add("lfx-plus-row__arrow");
     next.classList.add("lfx-plus-row__arrow");
     const viewport = rowEl.querySelector(".lfx-plus-row__viewport");
     viewport.textContent = "";
-    viewport.append(prev, track, next);
+    viewport.append(prev2, track, next);
     rowEl.querySelector(".lfx-plus-row__title").textContent = def.title || "";
     rowEl.classList.remove("is-loading");
-    return attachScroller({ track, prev, next, indicator: null });
+    return attachScroller({ track, prev: prev2, next, indicator: null });
   }
   function renderRows(slot, getDefs) {
     let disposed = false;
@@ -9209,7 +9649,7 @@
         putItems(items);
         const info = await getNewContentInfo();
         if (disposed) return;
-        disposers.push(fill2(rowEl, def, items, info));
+        disposers.push(fill3(rowEl, def, items, info));
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -9226,9 +9666,9 @@
       if (disposed) return;
       const pending = /* @__PURE__ */ new Map();
       for (const def of defs || []) {
-        const el3 = skeleton2(def);
-        pending.set(el3, def);
-        slot.append(el3);
+        const el4 = skeleton2(def);
+        pending.set(el4, def);
+        slot.append(el4);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
@@ -9240,9 +9680,9 @@
             loadRow(en.target, def);
           }
         }, { rootMargin: "600px 0px" });
-        for (const el3 of pending.keys()) observer2.observe(el3);
+        for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
-        for (const [el3, def] of pending) loadRow(el3, def);
+        for (const [el4, def] of pending) loadRow(el4, def);
       }
     })();
     return () => {
@@ -9256,7 +9696,7 @@
 
   // src/js/features/plus/home.js
   var ROOT_ID8 = "lfx-plus-home";
-  var ON_CLASS6 = "lfx-plus-home-on";
+  var ON_CLASS7 = "lfx-plus-home-on";
   var cleanups3 = [];
   var waitTimer4 = null;
   var token = 0;
@@ -9286,7 +9726,7 @@
       }
     }
     document.getElementById(ROOT_ID8)?.remove();
-    document.documentElement.classList.remove(ON_CLASS6);
+    document.documentElement.classList.remove(ON_CLASS7);
     currentKey = null;
     currentPhone = false;
   }
@@ -9298,7 +9738,7 @@
     const rowsSlot = h("div", { class: "lfx-plus-rows" });
     const root7 = h("div", { id: ROOT_ID8, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS6);
+    document.documentElement.classList.add(ON_CLASS7);
     currentKey = key;
     currentPhone = isPhone();
     const alive = () => my === token;
@@ -9364,8 +9804,8 @@
   var SAVE_ERROR3 = "Konnte nicht gespeichert werden";
   var isPlayed2 = (it) => Boolean(it && it.UserData && it.UserData.Played === true);
   var folgen3 = (n) => n === 1 ? "1 Folge" : `${n} Folgen`;
-  function clearPlayedCaches2(itemId, seriesId) {
-    clearCache(`lfx:modal:item:${itemId}`);
+  function clearPlayedCaches2(itemId2, seriesId) {
+    clearCache(`lfx:modal:item:${itemId2}`);
     if (seriesId) {
       clearCache(`lfx:modal:next:${seriesId}`);
       clearCache(`lfx:modal:eps:${seriesId}:`);
@@ -9428,8 +9868,8 @@
       episodeLists = episodeLists || [];
     }
     const eps = episodeLists.flat();
-    const prev = isPlayed2(item);
-    const next = isSeries ? !prev : !(eps.length > 0 && eps.every(isPlayed2));
+    const prev2 = isPlayed2(item);
+    const next = isSeries ? !prev2 : !(eps.length > 0 && eps.every(isPlayed2));
     const n = eps.length;
     const verb = next ? "gesehen" : "ungesehen";
     const ok = await askConfirm({
@@ -9437,12 +9877,12 @@
       confirmLabel: `Als ${verb} markieren`,
       anchorEl
     });
-    if (!ok) return prev;
+    if (!ok) return prev2;
     try {
       const failed = await bulkPlayed2(seriesId, item.Id, seasonIds, next);
       if (failed) {
         toast(SAVE_ERROR3);
-        return prev;
+        return prev2;
       }
       item.UserData = { ...item.UserData || {}, Played: next };
       putItems([item]);
@@ -9450,22 +9890,22 @@
       return next;
     } catch {
       toast(SAVE_ERROR3);
-      return prev;
+      return prev2;
     }
   }
   async function togglePlayed2(item, { anchorEl } = {}) {
     if (!item || !item.Id) return false;
     if (item.Type === "Series" || item.Type === "Season") return bulkToggle(item, anchorEl);
-    const prev = { ...item.UserData || {} };
-    const next = prev.Played !== true;
-    item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
+    const prev2 = { ...item.UserData || {} };
+    const next = prev2.Played !== true;
+    item.UserData = { ...prev2, Played: next, PlaybackPositionTicks: 0 };
     delete item.UserData.PlayedPercentage;
     try {
       await setPlayed(item.Id, next);
     } catch {
-      item.UserData = prev;
+      item.UserData = prev2;
       toast(SAVE_ERROR3);
-      return prev.Played === true;
+      return prev2.Played === true;
     }
     putItems([item]);
     clearPlayedCaches2(item.Id, item.Type === "Episode" ? item.SeriesId : null);
@@ -9473,14 +9913,14 @@
   }
   async function toggleFavorite2(item) {
     if (!item || !item.Id) return false;
-    const prev = Boolean(item.UserData && item.UserData.IsFavorite);
-    const next = !prev;
+    const prev2 = Boolean(item.UserData && item.UserData.IsFavorite);
+    const next = !prev2;
     item.UserData = { ...item.UserData || {}, IsFavorite: next };
     try {
       await setFavorite(item.Id, next);
     } catch {
-      item.UserData = { ...item.UserData || {}, IsFavorite: prev };
-      return prev;
+      item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
+      return prev2;
     }
     putItems([item]);
     return next;
@@ -9556,10 +9996,10 @@
     if (text) {
       const ep = item.Type === "Episode";
       const code = ep ? episodeCode(item) : "";
-      const meta = ep ? [item.SeriesName, code].filter(Boolean).join(" \u2022 ") : "";
+      const meta2 = ep ? [item.SeriesName, code].filter(Boolean).join(" \u2022 ") : "";
       card3.append(h("div", { class: "lfx-plus-result__text" }, [
         h("div", { class: "lfx-plus-result__title" }, item.Name || ""),
-        ep ? h("div", { class: "lfx-plus-meta" }, [h("span", { class: "lfx-plus-meta__text" }, meta)]) : metaLine(item)
+        ep ? h("div", { class: "lfx-plus-meta" }, [h("span", { class: "lfx-plus-meta__text" }, meta2)]) : metaLine(item)
       ]));
     }
     return card3;
@@ -9568,7 +10008,7 @@
   // src/js/features/plus/title.js
   var ROOT_ID9 = "lfx-plus-title";
   var TRAILER_ID = "lfx-plus-trailer";
-  var ON_CLASS7 = "lfx-plus-title-on";
+  var ON_CLASS8 = "lfx-plus-title-on";
   var TICKS_PER_MIN3 = 6e8;
   var svg7 = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
   var ICON_PLAY3 = svg7('<path d="M7 4.5v15l12-7.5z"/>');
@@ -9585,9 +10025,9 @@
   };
   var stalenessOf = (g) => () => !state9 || state9.g !== g;
   function closeTrailer() {
-    const el3 = document.getElementById(TRAILER_ID);
-    if (!el3) return;
-    const v = el3.querySelector("video");
+    const el4 = document.getElementById(TRAILER_ID);
+    if (!el4) return;
+    const v = el4.querySelector("video");
     if (v) {
       try {
         v.pause();
@@ -9596,8 +10036,8 @@
       } catch {
       }
     }
-    if (typeof el3.__lfxCleanup === "function") el3.__lfxCleanup();
-    unmountPoint(el3);
+    if (typeof el4.__lfxCleanup === "function") el4.__lfxCleanup();
+    unmountPoint(el4);
   }
   function dispose() {
     gen2 += 1;
@@ -9620,7 +10060,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID9)?.remove();
-    setPageOn(ON_CLASS7, false);
+    setPageOn(ON_CLASS8, false);
   }
   function circle(mod, label, icon5, onClick) {
     const b = h("button", { type: "button", class: `lfx-plus-circle lfx-plus-circle--${mod}`, "aria-label": label, title: label });
@@ -9647,7 +10087,7 @@
     const left = Math.round((total - pos) / TICKS_PER_MIN3);
     return total && pos && left > 0 ? `Noch ${left} Min.` : "";
   };
-  function backdropUrl(item) {
+  function backdropUrl2(item) {
     return imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 80 }) || landscapeImage(item, { maxWidth: 1920, quality: 80 });
   }
   function errorBox(message) {
@@ -9794,7 +10234,7 @@
     const isSeries = main.Type === "Series";
     const isBox = main.Type === "BoxSet";
     const c = { main, seasons: [], seasonId: sel.seasonId, selectedEp: sel.episodeId, focusEp: null, nextUp: null, trailerSrc: null };
-    const bg = backdropUrl(main);
+    const bg = backdropUrl2(main);
     const backdrop = h("div", { class: "lfx-plus-title__backdrop", "aria-hidden": "true" }, [
       bg ? h("img", { class: "lfx-plus-title__bgimg", src: bg, alt: "", decoding: "async" }) : null,
       h("div", { class: "lfx-plus-title__shade" }),
@@ -9952,11 +10392,11 @@
     root7.classList.remove("is-loading");
     root7.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
     paintPlay2();
-    let raf2 = 0;
+    let raf3 = 0;
     const onScroll7 = () => {
-      if (raf2) return;
-      raf2 = requestAnimationFrame(() => {
-        raf2 = 0;
+      if (raf3) return;
+      raf3 = requestAnimationFrame(() => {
+        raf3 = 0;
         const vh = window.innerHeight || 800;
         const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
         root7.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
@@ -9966,7 +10406,7 @@
     window.addEventListener("scroll", onScroll7, { passive: true });
     s.cleanups.push(() => {
       window.removeEventListener("scroll", onScroll7);
-      if (raf2) cancelAnimationFrame(raf2);
+      if (raf3) cancelAnimationFrame(raf3);
     });
     const playEpisode = (ep) => play(ep, { resume: hasResume(ep) });
     async function showSeason2() {
@@ -10098,7 +10538,7 @@
       ]);
       s.root = root7;
       tab2.prepend(root7);
-      setPageOn(ON_CLASS7, true);
+      setPageOn(ON_CLASS8, true);
       if (!keepScroll) scrollTop();
       load2(g).then(() => {
         if (state9 === s) root7.removeAttribute("aria-busy");
@@ -10123,8 +10563,8 @@
 
   // src/js/features/plus/browse.js
   var ROOT_ID10 = "lfx-plus-browse";
-  var ON_CLASS8 = "lfx-plus-browse-on";
-  var PAGE2 = 40;
+  var ON_CLASS9 = "lfx-plus-browse-on";
+  var PAGE4 = 40;
   var state10 = null;
   var routeOf = (route) => {
     const r = parseLfxRoute(route);
@@ -10146,7 +10586,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID10)?.remove();
-    setPageOn(ON_CLASS8, false);
+    setPageOn(ON_CLASS9, false);
   }
   function paintChips(s) {
     for (const chip of s.chips.querySelectorAll(".lfx-plus-chip")) {
@@ -10183,7 +10623,7 @@
         SortOrder: "Ascending",
         GenreIds: s.genreId || void 0,
         StartIndex: s.items.length,
-        Limit: PAGE2
+        Limit: PAGE4
       });
       if (stale()) return;
       const items = asItems7(res);
@@ -10195,7 +10635,7 @@
         if (stale()) return;
       }
       for (const it of items) s.grid.append(gridCard(it, { badge: s.info ? plusBadge(it, s.info) : null }));
-      s.done = items.length < PAGE2 || s.total != null && s.items.length >= s.total;
+      s.done = items.length < PAGE4 || s.total != null && s.items.length >= s.total;
       if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-plus-empty" }, "Keine Titel gefunden."));
     } catch (e) {
       if (stale()) return;
@@ -10233,7 +10673,7 @@
     const root7 = h("div", { id: ROOT_ID10, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
     Object.assign(s, { root: root7, chips, grid: grid2, status });
     tab2.prepend(root7);
-    setPageOn(ON_CLASS8, true);
+    setPageOn(ON_CLASS9, true);
     scrollTop();
     const addChip = (label, genreId) => {
       chips.append(h("a", {
@@ -10339,8 +10779,8 @@
     return out;
   }
   async function tileFor(genre, parentId) {
-    const own = genre.ImageTags && (genre.ImageTags.Thumb ? "Thumb" : genre.ImageTags.Primary ? "Primary" : null);
-    if (own) return imageUrlFor(genre.Id, { type: own, tag: genre.ImageTags[own], maxWidth: 640 });
+    const own2 = genre.ImageTags && (genre.ImageTags.Thumb ? "Thumb" : genre.ImageTags.Primary ? "Primary" : null);
+    if (own2) return imageUrlFor(genre.Id, { type: own2, tag: genre.ImageTags[own2], maxWidth: 640 });
     const top = asItems8(await getItems({
       ParentId: parentId || void 0,
       GenreIds: genre.Id,
@@ -10380,7 +10820,7 @@
 
   // src/js/features/plus/search.js
   var ROOT_ID11 = "lfx-plus-search";
-  var ON_CLASS9 = "lfx-plus-search-on";
+  var ON_CLASS10 = "lfx-plus-search-on";
   var DEBOUNCE_MS = 300;
   var MIN_LEN2 = 2;
   var LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
@@ -10407,13 +10847,13 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID11)?.remove();
-    setPageOn(ON_CLASS9, false);
+    setPageOn(ON_CLASS10, false);
   }
   function tile(href, label, imageUrl2, { nameOnImage = true } = {}) {
-    const hide = !!imageUrl2 && !nameOnImage;
+    const hide2 = !!imageUrl2 && !nameOnImage;
     return h("a", { class: "lfx-plus-tile", href, "aria-label": label, title: label }, [
       imageUrl2 ? h("img", { class: "lfx-plus-tile__img", src: imageUrl2, alt: "", loading: "lazy", decoding: "async" }) : null,
-      h("span", { class: `lfx-plus-tile__name${imageUrl2 ? hide ? " is-sr" : " has-img" : ""}` }, label)
+      h("span", { class: `lfx-plus-tile__name${imageUrl2 ? hide2 ? " is-sr" : " has-img" : ""}` }, label)
     ]);
   }
   function section(title, body, mod = "") {
@@ -10531,7 +10971,7 @@
       clear.hidden = !input.value;
     };
     tab2.prepend(root7);
-    setPageOn(ON_CLASS9, true);
+    setPageOn(ON_CLASS10, true);
     const writeHash = (term) => {
       try {
         history.replaceState(history.state, "", searchHref(term));
@@ -10613,7 +11053,7 @@
 
   // src/js/features/plus/tabbar.js
   var ROOT_ID12 = "lfx-plus-tabbar";
-  var ON_CLASS10 = "lfx-plus-tabbar-on";
+  var ON_CLASS11 = "lfx-plus-tabbar-on";
   var KB_CLASS = "lfx-plus-kb";
   var HIDE_CLASS = "lfx-plus-tabbar-hide";
   var EXCLUDED8 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
@@ -10676,12 +11116,12 @@
   function applyActive6() {
     if (!state12.root) return;
     const key = tabKey(state12.route);
-    for (const el3 of state12.root.querySelectorAll("[data-key]")) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (on) el3.setAttribute("aria-current", "page");
-      else el3.removeAttribute("aria-current");
-      if (el3.dataset.key === "home") el3.querySelector(".lfx-plus-tabbar__icon").innerHTML = ICONS3[on ? "homeFill" : "home"];
+    for (const el4 of state12.root.querySelectorAll("[data-key]")) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (on) el4.setAttribute("aria-current", "page");
+      else el4.removeAttribute("aria-current");
+      if (el4.dataset.key === "home") el4.querySelector(".lfx-plus-tabbar__icon").innerHTML = ICONS3[on ? "homeFill" : "home"];
     }
   }
   function closeProfile() {
@@ -10782,7 +11222,7 @@
         cl2.remove(HIDE_CLASS);
       });
       cl2.remove(HIDE_CLASS);
-      cl2.add(ON_CLASS10);
+      cl2.add(ON_CLASS11);
       applyActive6();
       fillAvatar();
     },
@@ -10796,7 +11236,7 @@
       closeProfile();
       for (const fn of state12.cleanups.splice(0)) fn();
       unmountPoint(ROOT_ID12);
-      document.documentElement.classList.remove(ON_CLASS10);
+      document.documentElement.classList.remove(ON_CLASS11);
       state12.root = null;
       state12.profileBtn = null;
     }
@@ -10805,18 +11245,18 @@
 
   // src/js/features/plus/nativedetail.js
   var URL_RE = /url\(\s*["']?([^"')]+)["']?\s*\)/;
-  var bgUrl = (el3) => {
-    if (!el3) return null;
-    const css = el3.style && el3.style.backgroundImage || (typeof getComputedStyle === "function" ? getComputedStyle(el3).backgroundImage : "");
+  var bgUrl = (el4) => {
+    if (!el4) return null;
+    const css = el4.style && el4.style.backgroundImage || (typeof getComputedStyle === "function" ? getComputedStyle(el4).backgroundImage : "");
     const m = URL_RE.exec(css || "");
     return m ? m[1] : null;
   };
-  function setClass2(el3, cls, on) {
-    if (el3.classList.contains(cls) !== on) el3.classList.toggle(cls, on);
+  function setClass2(el4, cls, on) {
+    if (el4.classList.contains(cls) !== on) el4.classList.toggle(cls, on);
   }
-  function logoHidden(el3) {
+  function logoHidden(el4) {
     if (typeof getComputedStyle !== "function") return false;
-    return getComputedStyle(el3).display === "none";
+    return getComputedStyle(el4).display === "none";
   }
   function createNativeDetail({ name, theme, nologoClass, nobdClass = null }) {
     const NOLOGO = nologoClass;
@@ -10850,13 +11290,13 @@
       setClass2(page2, NOLOGO, noLogo);
       if (NOBD) {
         const bd = page2.querySelector(".itemBackdrop");
-        const own = bd && !bd.classList.contains("hide") && bgUrl(bd);
+        const own2 = bd && !bd.classList.contains("hide") && bgUrl(bd);
         const global = !!document.querySelector(".backdropContainer .displayingBackdropImage");
         const wide = typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1000px)").matches;
-        setClass2(page2, NOBD, !own && !(wide && global));
+        setClass2(page2, NOBD, !own2 && !(wide && global));
       }
     }
-    function schedule3() {
+    function schedule4() {
       if (state21.timer) return;
       state21.timer = setTimeout(() => {
         state21.timer = 0;
@@ -10888,7 +11328,7 @@
       state21.page = page2;
       state21.obs = new MutationObserver((records) => {
         if (records.every((r) => r.type === "attributes" && r.target === page2)) return;
-        schedule3();
+        schedule4();
       });
       state21.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
       evaluate3();
@@ -10923,7 +11363,7 @@
   var nativedetail_default = plus.feature;
 
   // src/js/features/plus/favempty.js
-  var ID8 = "lfx-plus-favempty";
+  var ID9 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
   var state13 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
@@ -10933,20 +11373,20 @@
     return tab2 && tab2.isConnected ? tab2 : null;
   }
   var hasCards = (tab2) => !!tab2.querySelector(".card, .listItem");
-  function check() {
+  function check2() {
     state13.timer = 0;
     const tab2 = state13.tab;
     if (!tab2 || !tab2.isConnected) return;
-    const mine = document.getElementById(ID8);
+    const mine = document.getElementById(ID9);
     if (hasCards(tab2)) {
       if (mine) mine.remove();
     } else if (!mine) {
-      tab2.prepend(h("p", { id: ID8, class: "lfx-plus-favempty" }, EMPTY_TEXT));
+      tab2.prepend(h("p", { id: ID9, class: "lfx-plus-favempty" }, EMPTY_TEXT));
     }
   }
-  function schedule2(delay = SETTLE_MS) {
+  function schedule3(delay = SETTLE_MS) {
     clearTimeout(state13.timer);
-    state13.timer = setTimeout(check, delay);
+    state13.timer = setTimeout(check2, delay);
   }
   function teardown6() {
     if (state13.obs) state13.obs.disconnect();
@@ -10956,7 +11396,7 @@
     state13.timer = 0;
     state13.poll = 0;
     state13.tab = null;
-    document.getElementById(ID8)?.remove();
+    document.getElementById(ID9)?.remove();
   }
   function attach() {
     const tab2 = findTab();
@@ -10968,11 +11408,11 @@
     teardown6();
     state13.tab = tab2;
     state13.obs = new MutationObserver((records) => {
-      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID8))) return;
-      schedule2();
+      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID9))) return;
+      schedule3();
     });
     state13.obs.observe(tab2, { childList: true, subtree: true });
-    schedule2();
+    schedule3();
   }
   var favempty_default = {
     name: "plus-favempty",
@@ -10992,7 +11432,7 @@
   var plusFeatures = [header_default, mobilehead_default, switcher_default, home_default2, title_default, browse_default, search_default, tabbar_default, nativedetail_default, favempty_default];
 
   // src/js/features/prime/search.js
-  var ID9 = "lfx-prime-search";
+  var ID10 = "lfx-prime-search";
   var DEBOUNCE_MS2 = 300;
   var MAX_CARDS = 8;
   var MAX_CARDS_MOBILE = 18;
@@ -11067,9 +11507,9 @@
       cur.input.focus();
       return;
     }
-    const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
-    const mobile = isMobile();
-    const root7 = mountPoint(ID9, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
+    const prev2 = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    const mobile = isMobile() && isNarrow();
+    const root7 = mountPoint(ID10, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
     root7.setAttribute("role", "dialog");
     root7.setAttribute("aria-modal", "true");
     root7.setAttribute("aria-label", "Suche");
@@ -11090,7 +11530,7 @@
     const status = h("p", { class: "lfx-prime-search__status", role: "status" });
     const panel = h("div", { class: "lfx-prime-search__panel" }, [head, suggest, status, grid2]);
     root7.replaceChildren(panel);
-    const c = { root: root7, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
+    const c = { root: root7, input, panel, timer: null, ctrl: null, returnFocus: prev2, seq: 0 };
     cur = c;
     const close2 = () => closePrimeSearch();
     const reset = () => {
@@ -11154,7 +11594,7 @@
         e.stopImmediatePropagation();
         close2();
       } else if (e.key === "Tab") {
-        const list = [...panel.querySelectorAll(FOCUSABLE2)].filter((el3) => !el3.hidden);
+        const list = [...panel.querySelectorAll(FOCUSABLE2)].filter((el4) => !el4.hidden);
         if (!list.length) return;
         const first2 = list[0];
         const last = list[list.length - 1];
@@ -11263,7 +11703,7 @@
     const onFlyoutClick = (e) => {
       if (e.target.closest && e.target.closest(ITEM)) close2();
     };
-    const onKeydown2 = (e) => {
+    const onKeydown3 = (e) => {
       if (!opened) {
         if (e.key === "ArrowDown" && e.target === button) {
           e.preventDefault();
@@ -11298,7 +11738,7 @@
     wrap.addEventListener("mouseleave", onLeave);
     button.addEventListener("click", onClick);
     flyout.addEventListener("click", onFlyoutClick);
-    wrap.addEventListener("keydown", onKeydown2);
+    wrap.addEventListener("keydown", onKeydown3);
     wrap.addEventListener("focusout", onFocusOut);
     document.addEventListener("click", onDocClick2, true);
     return {
@@ -11311,14 +11751,14 @@
         document.removeEventListener("click", onDocClick2, true);
         wrap.removeEventListener("mouseenter", onEnter);
         wrap.removeEventListener("mouseleave", onLeave);
-        wrap.removeEventListener("keydown", onKeydown2);
+        wrap.removeEventListener("keydown", onKeydown3);
         wrap.removeEventListener("focusout", onFocusOut);
       }
     };
   }
 
   // src/js/features/prime/profile-sheet.js
-  var ID10 = "lfx-prime-profilesheet";
+  var ID11 = "lfx-prime-profilesheet";
   var OPEN_CLASS2 = "lfx-prime-profilesheet-open";
   var FOCUSABLE3 = "a[href], button:not([disabled])";
   var cur2 = null;
@@ -11359,7 +11799,7 @@
   }
   function openProfileSheet({ returnFocus } = {}) {
     closeProfileSheet({ restoreFocus: false });
-    const root7 = mountPoint(ID10, { className: "lfx-prime-psheet-overlay" });
+    const root7 = mountPoint(ID11, { className: "lfx-prime-psheet-overlay" });
     const who = h("div", { class: "lfx-prime-psheet__who" });
     const body = h("div", { class: "lfx-prime-psheet__body" });
     const sheet = h("div", { class: "lfx-prime-psheet", role: "dialog", "aria-modal": "true", "aria-label": "Profil", tabindex: "-1" }, [
@@ -11438,7 +11878,7 @@
   }
 
   // src/js/features/prime/header.js
-  var ID11 = "lfx-prime-header";
+  var ID12 = "lfx-prime-header";
   var HTML_CLASS = "lfx-prime-header-on";
   var MOBILE_CLASS = "lfx-prime-mobile";
   var PILLS_CLASS = "lfx-prime-header-pills";
@@ -11502,9 +11942,9 @@
     "/queue": "Warteschlange"
   };
   function domText(selector, attr) {
-    const el3 = document.querySelector(selector);
-    if (!el3) return "";
-    return String((attr ? el3.getAttribute(attr) : el3.textContent) || "").trim();
+    const el4 = document.querySelector(selector);
+    if (!el4) return "";
+    return String((attr ? el4.getAttribute(attr) : el4.textContent) || "").trim();
   }
   function mobileTitle(route, libs = []) {
     if (!route) return "";
@@ -11570,11 +12010,11 @@
   function applyActive7() {
     if (!state14.el || !state14.route) return;
     const key = activeKey3(state14.route);
-    for (const el3 of state14.el.querySelectorAll("[data-key]")) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (on) el3.setAttribute("aria-current", "page");
-      else el3.removeAttribute("aria-current");
+    for (const el4 of state14.el.querySelectorAll("[data-key]")) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (on) el4.setAttribute("aria-current", "page");
+      else el4.removeAttribute("aria-current");
     }
   }
   function renderNav2() {
@@ -11588,8 +12028,8 @@
     applyActive7();
   }
   function profileIsOpen() {
-    const el3 = document.getElementById("lfx-popover");
-    return isPopoverOpen() && Boolean(el3 && el3.classList.contains("lfx-prime-profile"));
+    const el4 = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el4 && el4.classList.contains("lfx-prime-profile"));
   }
   function closeProfile2() {
     if (profileIsOpen()) closePopover();
@@ -11774,7 +12214,7 @@
     state14.menus = null;
     closeProfile2();
     closeProfileSheet({ restoreFocus: false });
-    state14.mobile = isMobile();
+    state14.mobile = isMobile() && isNarrow();
     state14.kind = null;
     const parts = state14.mobile ? buildMobile(state14.route) : build6();
     state14.el.className = `lfx-prime-header${state14.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state14.kind}` : ""}`;
@@ -11794,7 +12234,7 @@
     },
     mount(route) {
       state14.route = route;
-      state14.el = mountPoint(ID11, { tag: "header", className: "lfx-prime-header" });
+      state14.el = mountPoint(ID12, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
       state14.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
@@ -11804,7 +12244,7 @@
       const changed = !state14.route || state14.route.hash !== route.hash;
       state14.route = route;
       if (!state14.el) return;
-      const mobileNow = isMobile();
+      const mobileNow = isMobile() && isNarrow();
       if (mobileNow !== state14.mobile || mobileNow && mobileKind(route) !== state14.kind) {
         closePrimeSearch({ restoreFocus: false });
         render8();
@@ -11828,7 +12268,7 @@
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
-      unmountPoint(ID11);
+      unmountPoint(ID12);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
       state14.el = null;
       state14.libs = [];
@@ -11989,19 +12429,19 @@
 
   // src/js/features/prime/hero.js
   var ROTATE_MS2 = 2e4;
-  var TRAILER_DELAY_MS2 = 3e3;
+  var TRAILER_DELAY_MS = 3e3;
   var IMG_FADE_MS2 = 1e3;
   var TEXT_FADE_MS2 = 350;
   var FIELDS3 = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount";
   var FIRST_KEY = "lfx-prime-hero-first";
   var NS2 = "http://www.w3.org/2000/svg";
   function svg8(html2, cls) {
-    const el3 = document.createElementNS(NS2, "svg");
-    el3.setAttribute("viewBox", "0 0 24 24");
-    el3.setAttribute("aria-hidden", "true");
-    if (cls) el3.setAttribute("class", cls);
-    el3.innerHTML = html2;
-    return el3;
+    const el4 = document.createElementNS(NS2, "svg");
+    el4.setAttribute("viewBox", "0 0 24 24");
+    el4.setAttribute("aria-hidden", "true");
+    if (cls) el4.setAttribute("class", cls);
+    el4.innerHTML = html2;
+    return el4;
   }
   var ICON_PLAY4 = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
   var ICON_PLUS4 = '<path fill="currentColor" d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/>';
@@ -12039,7 +12479,7 @@
     return pool;
   }
   function renderHero(slot, { loadPool }) {
-    const mobile = isMobile();
+    const mobile = isMobile() && isNarrow();
     let newInfo = null;
     let logoBox = null;
     let disposed = false;
@@ -12090,7 +12530,7 @@
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
         if (paused2()) scheduleRotate();
-        else show2((index + 1) % pool.length);
+        else show3((index + 1) % pool.length);
       }, ROTATE_MS2);
     }
     function setMuteIcon() {
@@ -12101,7 +12541,7 @@
     function startTrailer(item, myGen) {
       if (mobile || reducedMotion2() || disposed || myGen !== gen8) return;
       preview = createMutedPreview(media, item, {
-        delay: TRAILER_DELAY_MS2,
+        delay: TRAILER_DELAY_MS,
         startAt: 4,
         onStart: (v) => {
           if (disposed || myGen !== gen8) return;
@@ -12216,13 +12656,13 @@
     function fillDots() {
       dots.replaceChildren(...pool.map((it, i) => {
         const b = h("button", { type: "button", class: "lfx-prime-hero__dot", "aria-label": `Empfehlung ${i + 1}: ${it.Name || ""}` });
-        b.addEventListener("click", () => show2(i));
+        b.addEventListener("click", () => show3(i));
         return b;
       }));
       dots.hidden = pool.length < 2;
       updateDots();
     }
-    function show2(i, immediate = false) {
+    function show3(i, immediate = false) {
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
@@ -12261,7 +12701,7 @@
       startTrailer(item, myGen);
     }
     function step(dir) {
-      if (pool.length > 1) show2((index + dir + pool.length) % pool.length);
+      if (pool.length > 1) show3((index + dir + pool.length) % pool.length);
     }
     function onChanged2({ removed = [] }) {
       if (disposed || !hero || !removed.length || !pool.some((it) => removed.includes(it.Id))) return;
@@ -12277,7 +12717,7 @@
       }
       index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur3);
       fillDots();
-      if (curGone) show2(index);
+      if (curGone) show3(index);
     }
     function buildMobile2() {
       logoBox = h("div", { class: "lfx-prime-hero__mlogo" });
@@ -12326,18 +12766,18 @@
         buildMobile2();
         return;
       }
-      const prev = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--prev", "aria-label": "Vorherige Empfehlung" });
+      const prev2 = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--prev", "aria-label": "Vorherige Empfehlung" });
       const next = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--next", "aria-label": "N\xE4chste Empfehlung" });
-      prev.append(svg8(ICON_CHEV));
+      prev2.append(svg8(ICON_CHEV));
       next.append(svg8(ICON_CHEV));
-      prev.addEventListener("click", () => step(-1));
+      prev2.addEventListener("click", () => step(-1));
       next.addEventListener("click", () => step(1));
       fillDots();
       hero = h("div", { class: "lfx-prime-hero" }, [
         media,
         h("div", { class: "lfx-prime-hero__shade", "aria-hidden": "true" }),
         h("div", { class: "lfx-prime-hero__shade lfx-prime-hero__shade--corner", "aria-hidden": "true" }),
-        prev,
+        prev2,
         next,
         muteBtn,
         content,
@@ -12390,7 +12830,7 @@
       build11();
       slot.hidden = false;
       slot.classList.remove("is-loading");
-      show2(0, true);
+      show3(0, true);
     }
     slot.hidden = false;
     slot.classList.add("is-loading");
@@ -12411,7 +12851,7 @@
 
   // src/js/features/prime/home-route.js
   var ROOT_ID13 = "lfx-prime-home";
-  var ON_CLASS11 = "lfx-prime-home-on";
+  var ON_CLASS12 = "lfx-prime-home-on";
   function primeHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return null;
     const lfx = route.params.get("lfx");
@@ -12578,15 +13018,15 @@
           badge: cardBadge(it, { newInfo, trend: trend2 })
         }));
         const track = rowEl.querySelector(".lfx-prime-row__track");
-        const prev = arrow("prev", "Zur\xFCck");
+        const prev2 = arrow("prev", "Zur\xFCck");
         const next = arrow("next", "Weiter");
         track.replaceChildren(...cards);
         track.setAttribute("aria-label", def.title || "");
-        track.before(prev);
+        track.before(prev2);
         track.after(next);
         rowEl.querySelector(".lfx-prime-row__title").textContent = def.title || "";
         rowEl.classList.remove("is-loading");
-        disposers.push(attachScroller({ track, prev, next, indicator: null }));
+        disposers.push(attachScroller({ track, prev: prev2, next, indicator: null }));
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -12612,11 +13052,11 @@
           if (!def || rendered.has(def.id)) continue;
           rendered.add(def.id);
           const kind2 = displayKind(def, posterId);
-          const el3 = skeleton3(def, kind2);
-          slot.append(el3);
-          pending.set(el3, { def, kind: kind2 });
-          if (observer2) observer2.observe(el3);
-          else loadRow(el3, def, kind2);
+          const el4 = skeleton3(def, kind2);
+          slot.append(el4);
+          pending.set(el4, { def, kind: kind2 });
+          if (observer2) observer2.observe(el4);
+          else loadRow(el4, def, kind2);
         }
       },
       ids: () => [...rendered],
@@ -12648,7 +13088,7 @@
       }
     }
     document.getElementById(ROOT_ID13)?.remove();
-    document.documentElement.classList.remove(ON_CLASS11);
+    document.documentElement.classList.remove(ON_CLASS12);
   }
   var isGenreDef = (d) => /(^|-)genre-/.test(d.id);
   function moreHrefFor(def, { hub, libs, lib }) {
@@ -12686,9 +13126,9 @@
     const moreSlot = h("div", { class: "lfx-prime-moreslot" });
     const root7 = h("div", { id: ROOT_ID13, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS11);
+    document.documentElement.classList.add(ON_CLASS12);
     current5 = route;
-    builtMobile = isMobile();
+    builtMobile = isMobile() && isNarrow();
     cleanups4.push(renderHero(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool() }));
     const getDefs = (genreCount2) => hub ? buildHubRowDefs(lib, { genreCount: genreCount2 }) : buildRowDefs({ genreCount: genreCount2 });
     let defs = [];
@@ -12728,7 +13168,7 @@
     clearTimeout(waitTimer5);
     const tab2 = findHomeTab6();
     const existing = document.getElementById(ROOT_ID13);
-    if (tab2 && existing && tab2.contains(existing) && current5 && current5.key === route.key && builtMobile === isMobile()) return;
+    if (tab2 && existing && tab2.contains(existing) && current5 && current5.key === route.key && builtMobile === (isMobile() && isNarrow())) return;
     gen3 += 1;
     const myGen = gen3;
     let tries = 0;
@@ -12944,11 +13384,11 @@
   }
   function scheduleLeave() {
     clearTimeout(leaveTimer);
-    leaveTimer = setTimeout(function check2() {
+    leaveTimer = setTimeout(function check3() {
       leaveTimer = null;
       if (!active3 || pointerInside) return;
       if (holdOpen2()) {
-        leaveTimer = setTimeout(check2, HOLD_POLL_MS);
+        leaveTimer = setTimeout(check3, HOLD_POLL_MS);
         return;
       }
       closeNow2();
@@ -12972,33 +13412,33 @@
     const info = h("div", { class: "lfx-prime-hover__info" }, [
       buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active3 === a })
     ]);
-    const el3 = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
-    el3.className = "lfx-prime-hover";
-    el3.replaceChildren(media, info);
-    el3.dataset.lfxId = item.Id;
-    a.el = el3;
+    const el4 = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
+    el4.className = "lfx-prime-hover";
+    el4.replaceChildren(media, info);
+    el4.dataset.lfxId = item.Id;
+    a.el = el4;
     const r = link.getBoundingClientRect();
     const width = Math.max(Math.round(r.width * SCALE2), MIN_WIDTH2);
-    el3.style.width = `${width}px`;
-    el3.style.visibility = "hidden";
-    el3.style.left = "0px";
-    el3.style.top = "0px";
+    el4.style.width = `${width}px`;
+    el4.style.visibility = "hidden";
+    el4.style.left = "0px";
+    el4.style.top = "0px";
     const imgH = Math.round(width * 9 / 16);
     media.style.height = `${imgH}px`;
-    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el3.offsetHeight - imgH));
-    el3.style.left = `${g.left}px`;
-    el3.style.top = `${g.top}px`;
-    el3.style.transformOrigin = `${g.originX}px ${g.originY}px`;
-    el3.style.setProperty("--lfx-prime-s0", String(g.scale));
-    el3.style.visibility = "";
+    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el4.offsetHeight - imgH));
+    el4.style.left = `${g.left}px`;
+    el4.style.top = `${g.top}px`;
+    el4.style.transformOrigin = `${g.originX}px ${g.originY}px`;
+    el4.style.setProperty("--lfx-prime-s0", String(g.scale));
+    el4.style.visibility = "";
     active3 = a;
     pointerInside = true;
     const go3 = () => {
-      if (active3 === a) el3.classList.add("is-in");
+      if (active3 === a) el4.classList.add("is-in");
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go3));
     else go3();
-    el3.addEventListener("click", (e) => {
+    el4.addEventListener("click", (e) => {
       if (e.target.closest("button, a")) return;
       closeNow2();
       window.location.hash = titleHref(item.Id);
@@ -13025,9 +13465,9 @@
       mute.setAttribute("aria-label", a.video.muted ? "Ton einschalten" : "Ton ausschalten");
     });
     const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active3 === a })]);
-    const el3 = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
-    a.el = el3;
-    card3.append(el3);
+    const el4 = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
+    a.el = el4;
+    card3.append(el4);
     card3.classList.add("is-expanded");
     active3 = a;
     pointerInside = true;
@@ -13042,7 +13482,7 @@
         if (typeof track.scrollBy === "function") track.scrollBy({ left: over, behavior: reducedMotion3() ? "auto" : "smooth" });
       }
       if (Date.now() - lastUserScroll < USER_SCROLL_QUIET_MS) return;
-      const pr = el3.getBoundingClientRect();
+      const pr = el4.getBoundingClientRect();
       const dy = scrollDeltaForBottom(Math.max(pr.bottom, cr.bottom), Math.min(pr.top, cr.top), window.innerHeight);
       if (dy > 0 && typeof window.scrollBy === "function") {
         selfScrollUntil = Date.now() + 900;
@@ -13061,7 +13501,7 @@
           a.holding = true;
           setPreviewHold(true);
           v.classList.add("is-in");
-          el3.classList.add("is-video");
+          el4.classList.add("is-video");
           mute.hidden = false;
           mute.replaceChildren(svgIcon(ICON_MUTED2));
         },
@@ -13073,7 +13513,7 @@
             a.holding = false;
             setPreviewHold(false);
           }
-          el3.classList.remove("is-video");
+          el4.classList.remove("is-video");
           mute.hidden = true;
         }
       });
@@ -13285,9 +13725,9 @@
     trend: svg9('<path d="M3 17.6 9.5 11l4 4 6.3-6.6L21 9.7V5h-4.7l1.4 1.4-4.2 4.4-4-4L1.6 15.8z"/>')
   };
   function iconEl2(markup, cls = "lfx-pt__ico") {
-    const el3 = h("span", { class: cls, "aria-hidden": "true" });
-    el3.innerHTML = markup;
-    return el3;
+    const el4 = h("span", { class: cls, "aria-hidden": "true" });
+    el4.innerHTML = markup;
+    return el4;
   }
   function circleButton2({ label, icon: icon5, mod = "", onClick, hidden = false }) {
     const b = h("button", {
@@ -13333,7 +13773,7 @@
       p > 0 ? h("span", { class: "lfx-pt__ep-progress", "aria-hidden": "true" }, [h("span", { style: { width: `${Math.round(p)}%` } })]) : null
     ]);
     media.addEventListener("click", () => onPlay && onPlay(ep));
-    const meta = [
+    const meta2 = [
       ratingChipEl(ep.OfficialRating),
       episodeRuntime(ep) ? h("span", null, episodeRuntime(ep)) : null,
       ep.PremiereDate ? h("span", null, formatDate(ep.PremiereDate)) : null
@@ -13345,7 +13785,7 @@
       media,
       h("h3", { class: "lfx-pt__ep-title" }, episodeTitle(ep)),
       ep.Overview ? h("p", { class: "lfx-pt__ep-desc" }, ep.Overview) : null,
-      meta.length ? h("div", { class: "lfx-pt__ep-meta" }, meta) : null
+      meta2.length ? h("div", { class: "lfx-pt__ep-meta" }, meta2) : null
     ]);
   }
   function formatDate(iso) {
@@ -13354,7 +13794,7 @@
     return new Date(t).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" });
   }
   function buildCardGrid(items, { trend: trend2, newInfo } = {}) {
-    const make = isMobile() ? (it) => createPrimeCard(it, { kind: "poster", badge: cardBadge(it, { newInfo, trend: trend2 }) }) : (it) => createCard(it, { badge: cardBadge(it, { newInfo, trend: trend2 }) });
+    const make = isMobile() && isNarrow() ? (it) => createPrimeCard(it, { kind: "poster", badge: cardBadge(it, { newInfo, trend: trend2 }) }) : (it) => createCard(it, { badge: cardBadge(it, { newInfo, trend: trend2 }) });
     return h("div", { class: "lfx-pt__grid", role: "list" }, items.map(make));
   }
   function buildSeasonSelect(seasons, seasonId, onPick) {
@@ -13388,8 +13828,8 @@
 
   // src/js/features/prime/title.js
   var ROOT_ID14 = "lfx-prime-title";
-  var ON_CLASS12 = "lfx-prime-title-on";
-  var TRAILER_DELAY_MS3 = 1200;
+  var ON_CLASS13 = "lfx-prime-title-on";
+  var TRAILER_DELAY_MS2 = 1200;
   var HEADER_H2 = 80;
   var root3 = null;
   var session3 = null;
@@ -13536,17 +13976,17 @@
     const logo = logoImage(main, { maxWidth: 720 });
     const title = logo ? h("img", { class: "lfx-pt__logo", src: logo, alt: main.Name || "", decoding: "async" }) : h("h1", { class: "lfx-pt__title" }, main.Name || "");
     s.rankEl = h("div", { class: "lfx-pt__rank", hidden: true });
-    const meta = h("div", { class: "lfx-pt__meta" });
-    const fill3 = (seasonCount) => {
+    const meta2 = h("div", { class: "lfx-pt__meta" });
+    const fill4 = (seasonCount) => {
       const parts = metaItems(main, seasonCount);
       const chip = ratingChipEl(main.OfficialRating);
-      meta.replaceChildren(
+      meta2.replaceChildren(
         ...chip ? [chip] : [],
         ...parts.map((p) => h("span", { class: "lfx-pt__meta-item" }, p))
       );
     };
-    fill3(0);
-    s.fillMeta = fill3;
+    fill4(0);
+    s.fillMeta = fill4;
     s.playBtn = h("button", { type: "button", class: "lfx-pt__play" });
     s.playBtn.addEventListener("click", () => {
       const info = s.playInfo;
@@ -13596,7 +14036,7 @@
     const content = h("div", { class: "lfx-pt__content" }, [
       title,
       s.rankEl,
-      meta,
+      meta2,
       main.Overview ? h("p", { class: "lfx-pt__desc" }, main.Overview) : null,
       h("div", { class: "lfx-pt__actions" }, [s.playWrap, s.circles])
     ]);
@@ -13826,7 +14266,7 @@
       s.trailerSrc = src;
       s.trailerBtn.hidden = false;
       if (reducedMotion4() || isMobile()) return;
-      const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS3);
+      const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS2);
       s.cleanups.push(() => clearTimeout(t));
     }).catch(() => {
     });
@@ -13867,12 +14307,12 @@
     if (root3) root3.remove();
     root3 = null;
     document.getElementById(ROOT_ID14)?.remove();
-    document.documentElement.classList.remove(ON_CLASS12);
+    document.documentElement.classList.remove(ON_CLASS13);
   }
-  function pullToTop(el3) {
-    el3.style.marginTop = "";
-    const top = el3.getBoundingClientRect().top + (window.scrollY || 0);
-    if (top > 2 && top < 240) el3.style.marginTop = `-${Math.round(top)}px`;
+  function pullToTop(el4) {
+    el4.style.marginTop = "";
+    const top = el4.getBoundingClientRect().top + (window.scrollY || 0);
+    if (top > 2 && top < 240) el4.style.marginTop = `-${Math.round(top)}px`;
   }
   function start6(route) {
     const r = isPlainRoute(route);
@@ -13885,7 +14325,7 @@
         root3 = h("div", { id: ROOT_ID14, class: "lfx-pt" });
         tab3.prepend(root3);
       }
-      document.documentElement.classList.add(ON_CLASS12);
+      document.documentElement.classList.add(ON_CLASS13);
       pullToTop(root3);
       load3(r.id);
     };
@@ -13911,7 +14351,7 @@
   };
 
   // src/js/features/prime/tabbar.js
-  var ID12 = "lfx-prime-tabbar";
+  var ID13 = "lfx-prime-tabbar";
   var HTML_CLASS2 = "lfx-prime-tabbar-on";
   var EXCLUDED10 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var HIDE_CLASSES = ["lfx-sheet-open", "lfx-themepicker-open", "lfx-popover-open", "lfx-modal-open", "lfx-prime-profilesheet-open"];
@@ -13968,13 +14408,13 @@
     return inputFocused();
   }
   function applyState() {
-    const el3 = state15.el;
-    if (!el3) return;
-    const hide = shouldHide();
-    if (el3.classList.contains("is-hidden") !== hide) el3.classList.toggle("is-hidden", hide);
-    el3.toggleAttribute("inert", hide);
+    const el4 = state15.el;
+    if (!el4) return;
+    const hide2 = shouldHide();
+    if (el4.classList.contains("is-hidden") !== hide2) el4.classList.toggle("is-hidden", hide2);
+    el4.toggleAttribute("inert", hide2);
     const active4 = state15.route ? activeTab2(state15.route, isPrimeSearchOpen()) : null;
-    for (const t of el3.querySelectorAll("[data-tab]")) {
+    for (const t of el4.querySelectorAll("[data-tab]")) {
       const on = t.dataset.tab === active4;
       t.classList.toggle("is-active", on);
       if (on) {
@@ -14014,11 +14454,11 @@
   var tabbar_default2 = {
     name: "prime-tabbar",
     match(route) {
-      return isTheme("prime") && isModern() && !isTv() && isMobile() && isReady() && !EXCLUDED10.test(route.path);
+      return isTheme("prime") && isModern() && !isTv() && isMobile() && isNarrow() && isReady() && !EXCLUDED10.test(route.path);
     },
     mount(route) {
       state15.route = route;
-      state15.el = mountPoint(ID12, { tag: "nav", className: "lfx-prime-tabbar" });
+      state15.el = mountPoint(ID13, { tag: "nav", className: "lfx-prime-tabbar" });
       build7();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
@@ -14055,7 +14495,7 @@
         state15.raf = 0;
       }
       for (const fn of state15.cleanups.splice(0)) fn();
-      unmountPoint(ID12);
+      unmountPoint(ID13);
       document.documentElement.classList.remove(HTML_CLASS2);
       state15.el = null;
       state15.route = null;
@@ -14073,12 +14513,12 @@
   var DEFAULTS2 = { sound: false, crt: true };
   var PREFS_EVENT = "lfx-retro-prefs";
   var FX_EVENT = "lfx-retro-fx";
-  function storageKey2(name) {
+  function storageKey3(name) {
     return `${KEY2}${name}.${getUserId() || "anon"}`;
   }
   function getPref(name) {
     try {
-      const v = window.localStorage.getItem(storageKey2(name));
+      const v = window.localStorage.getItem(storageKey3(name));
       if (v === "1") return true;
       if (v === "0") return false;
     } catch {
@@ -14088,7 +14528,7 @@
   function setPref(name, value) {
     const on = Boolean(value);
     try {
-      window.localStorage.setItem(storageKey2(name), on ? "1" : "0");
+      window.localStorage.setItem(storageKey3(name), on ? "1" : "0");
     } catch {
     }
     document.dispatchEvent(new CustomEvent(PREFS_EVENT, { detail: { name, value: on } }));
@@ -14169,17 +14609,17 @@
   function createClock() {
     const hh = h("span", { class: "lfx-retro-clock__h" });
     const mm = h("span", { class: "lfx-retro-clock__m" });
-    const el3 = h("time", { class: "lfx-retro-clock", "aria-label": "Uhrzeit" }, [hh, h("span", { class: "lfx-retro-clock__c" }, ":"), mm]);
+    const el4 = h("time", { class: "lfx-retro-clock", "aria-label": "Uhrzeit" }, [hh, h("span", { class: "lfx-retro-clock__c" }, ":"), mm]);
     let timer2 = 0;
     const tick = () => {
       const d = /* @__PURE__ */ new Date();
       hh.textContent = pad2(d.getHours());
       mm.textContent = pad2(d.getMinutes());
-      el3.setAttribute("datetime", formatClock(d));
+      el4.setAttribute("datetime", formatClock(d));
       timer2 = setTimeout(tick, 6e4 - (d.getSeconds() * 1e3 + d.getMilliseconds()) + 20);
     };
     tick();
-    return { el: el3, destroy() {
+    return { el: el4, destroy() {
       clearTimeout(timer2);
       timer2 = 0;
     } };
@@ -14190,7 +14630,7 @@
   };
   function createToggle(pref) {
     const cfg = TOGGLES[pref];
-    const el3 = h("button", {
+    const el4 = h("button", {
       type: "button",
       class: `lfx-retro-switch lfx-retro-switch--${pref}`,
       "aria-label": cfg.label,
@@ -14198,22 +14638,22 @@
     }, [svgIcon2(cfg.icon)]);
     const sync3 = () => {
       const on = getPref(pref);
-      el3.setAttribute("aria-pressed", on ? "true" : "false");
-      el3.classList.toggle("is-on", on);
+      el4.setAttribute("aria-pressed", on ? "true" : "false");
+      el4.classList.toggle("is-on", on);
     };
     const onPrefs = () => sync3();
-    el3.addEventListener("click", () => {
+    el4.addEventListener("click", () => {
       togglePref(pref);
     });
     document.addEventListener(PREFS_EVENT, onPrefs);
     sync3();
-    return { el: el3, sync: sync3, destroy() {
+    return { el: el4, sync: sync3, destroy() {
       document.removeEventListener(PREFS_EVENT, onPrefs);
     } };
   }
 
   // src/js/features/retro/header.js
-  var ID13 = "lfx-retro-header";
+  var ID14 = "lfx-retro-header";
   var HTML_CLASS3 = "lfx-retro-header-on";
   var SCROLL_THRESHOLD3 = 10;
   var HOVER_GAP_MS = 140;
@@ -14230,11 +14670,11 @@
   function applyActive8() {
     if (!state16.el || !state16.route) return;
     const key = activeKey4(state16.route);
-    for (const el3 of state16.el.querySelectorAll("[data-key]")) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (on) el3.setAttribute("aria-current", "page");
-      else el3.removeAttribute("aria-current");
+    for (const el4 of state16.el.querySelectorAll("[data-key]")) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (on) el4.setAttribute("aria-current", "page");
+      else el4.removeAttribute("aria-current");
     }
   }
   function renderNav3() {
@@ -14248,8 +14688,8 @@
     applyActive8();
   }
   function profileIsOpen2() {
-    const el3 = document.getElementById("lfx-popover");
-    return isPopoverOpen() && Boolean(el3 && el3.classList.contains("lfx-retro-profile"));
+    const el4 = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el4 && el4.classList.contains("lfx-retro-profile"));
   }
   async function toggleProfile2(btn3) {
     if (profileIsOpen2()) {
@@ -14339,7 +14779,7 @@
     mount(route) {
       const seq3 = ++state16.seq;
       state16.route = route;
-      state16.el = mountPoint(ID13, { tag: "header", className: "lfx-retro-header" });
+      state16.el = mountPoint(ID14, { tag: "header", className: "lfx-retro-header" });
       const { avatar } = build8();
       document.documentElement.classList.add(HTML_CLASS3);
       window.addEventListener("scroll", onScroll6, { passive: true });
@@ -14362,7 +14802,7 @@
       if (state16.raf) cancelAnimationFrame(state16.raf);
       state16.raf = 0;
       if (profileIsOpen2()) closePopover();
-      unmountPoint(ID13);
+      unmountPoint(ID14);
       document.documentElement.classList.remove(HTML_CLASS3);
       state16.el = null;
       state16.route = null;
@@ -14374,7 +14814,7 @@
   // src/js/features/retro/tabbar.js
   var ROOT_ID15 = "lfx-retro-tabbar";
   var TOP_ID = "lfx-retro-topbar";
-  var ON_CLASS13 = "lfx-retro-tabbar-on";
+  var ON_CLASS14 = "lfx-retro-tabbar-on";
   var MOBILE_CLASS2 = "lfx-retro-mobile";
   var KB_CLASS2 = "lfx-retro-kb";
   var HIDE_CLASS2 = "lfx-retro-tabbar-hide";
@@ -14437,11 +14877,11 @@
     if (!state17.root) return;
     const sheetOpen = Boolean(state17.sheet && isCurrent(state17.sheet));
     const key = sheetOpen ? "more" : tabKey2(state17.route);
-    for (const el3 of state17.root.querySelectorAll("[data-key]")) {
-      const on = el3.dataset.key === key;
-      el3.classList.toggle("is-active", on);
-      if (on) el3.setAttribute("aria-current", "page");
-      else el3.removeAttribute("aria-current");
+    for (const el4 of state17.root.querySelectorAll("[data-key]")) {
+      const on = el4.dataset.key === key;
+      el4.classList.toggle("is-active", on);
+      if (on) el4.setAttribute("aria-current", "page");
+      else el4.removeAttribute("aria-current");
     }
   }
   function closeMore() {
@@ -14560,7 +15000,7 @@
         cl2.remove(KB_CLASS2, HIDE_CLASS2);
       });
       cl2.remove(HIDE_CLASS2);
-      cl2.add(ON_CLASS13, MOBILE_CLASS2);
+      cl2.add(ON_CLASS14, MOBILE_CLASS2);
       applyActive9();
       fillTopbar();
     },
@@ -14577,7 +15017,7 @@
       state17.clock = null;
       unmountPoint(ROOT_ID15);
       unmountPoint(TOP_ID);
-      document.documentElement.classList.remove(ON_CLASS13, MOBILE_CLASS2);
+      document.documentElement.classList.remove(ON_CLASS14, MOBILE_CLASS2);
       state17.root = null;
       state17.top = null;
       state17.moreBtn = null;
@@ -14595,15 +15035,15 @@
   var FIRST_KEY2 = "lfx-retro-hero-first";
   var MAX_NAME = 22;
   var reducedMotion5 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function setTitleText(el3, text) {
-    el3.textContent = "";
+  function setTitleText(el4, text) {
+    el4.textContent = "";
     const cut = text.lastIndexOf("_") + 1;
     const head = text.slice(0, cut);
     const tail = text.slice(cut);
     head.split(/(?<=_)/).filter(Boolean).forEach((seg) => {
-      el3.append(document.createTextNode(seg), document.createElement("wbr"));
+      el4.append(document.createTextNode(seg), document.createElement("wbr"));
     });
-    if (tail) el3.append(h("span", { class: "lfx-retro-hero__seg" }, tail));
+    if (tail) el4.append(h("span", { class: "lfx-retro-hero__seg" }, tail));
   }
   function titleSize(text) {
     const n = String(text || "").length;
@@ -14693,22 +15133,22 @@
       rotateTimer = later(() => {
         rotateTimer = 0;
         if (paused2()) scheduleRotate();
-        else show2((target + 1) % pool.length);
+        else show3((target + 1) % pool.length);
       }, ROTATE_MS3);
     }
     function typeText(text, myGen) {
-      const el3 = refs.title;
-      el3.textContent = "";
+      const el4 = refs.title;
+      el4.textContent = "";
       refs.heading.dataset.size = String(titleSize(text));
       if (reducedMotion5()) {
-        setTitleText(el3, text);
+        setTitleText(el4, text);
         return;
       }
       let n = 0;
       const step2 = () => {
         if (disposed || myGen !== gen8) return;
         n += 1;
-        setTitleText(el3, text.slice(0, n));
+        setTitleText(el4, text.slice(0, n));
         if (n % 3 === 1) emitFx("type");
         if (n < text.length) later(step2, TYPE_MS);
       };
@@ -14742,7 +15182,7 @@
       typeText(fileName(item), myGen);
       scheduleRotate();
     }
-    function show2(i, { immediate = false } = {}) {
+    function show3(i, { immediate = false } = {}) {
       if (disposed || !pool[i]) return;
       target = i;
       if (immediate || reducedMotion5() || !hero) {
@@ -14761,7 +15201,7 @@
       }, CHANNEL_END_MS);
     }
     const step = (dir) => {
-      if (pool.length > 1) show2((target + dir + pool.length) % pool.length);
+      if (pool.length > 1) show3((target + dir + pool.length) % pool.length);
     };
     function arrow3(dir, label) {
       const b = h("button", { type: "button", class: `lfx-retro-hero__arrow lfx-retro-hero__arrow--${dir}`, "aria-label": label }, [svgIcon2(dir)]);
@@ -15028,17 +15468,17 @@
         });
         const track = rowEl.querySelector(".lfx-retro-shelf");
         const title = rowLabel(def);
-        const prev = arrow2("prev", "Zur\xFCck");
+        const prev2 = arrow2("prev", "Zur\xFCck");
         const next = arrow2("next", "Weiter");
         track.replaceChildren(...cards);
         track.setAttribute("aria-label", title);
         track.style.setProperty("--lfx-cards-visible", variant === "spine" ? "6" : "4");
-        track.before(prev);
+        track.before(prev2);
         track.after(next);
         rowEl.querySelector(".lfx-retro-row__title").textContent = title;
         rowEl.classList.remove("is-loading");
         rowEl.dataset.variant = variant;
-        disposers.push(attachScroller({ track, prev, next, indicator: null }));
+        disposers.push(attachScroller({ track, prev: prev2, next, indicator: null }));
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -15064,11 +15504,11 @@
           if (!def || rendered.has(def.id)) continue;
           rendered.add(def.id);
           const kind2 = displayKind2(def);
-          const el3 = skeleton3(def, kind2);
-          slot.append(el3);
-          pending.set(el3, { def, kind: kind2 });
-          if (observer2) observer2.observe(el3);
-          else loadRow(el3, def, kind2);
+          const el4 = skeleton3(def, kind2);
+          slot.append(el4);
+          pending.set(el4, { def, kind: kind2 });
+          if (observer2) observer2.observe(el4);
+          else loadRow(el4, def, kind2);
         }
       },
       ids: () => [...rendered],
@@ -15085,7 +15525,7 @@
 
   // src/js/features/retro/home-route.js
   var ROOT_ID16 = "lfx-retro-home";
-  var ON_CLASS14 = "lfx-retro-home-on";
+  var ON_CLASS15 = "lfx-retro-home-on";
   function retroHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return null;
     const lfx = route.params.get("lfx");
@@ -15119,7 +15559,7 @@
       }
     }
     document.getElementById(ROOT_ID16)?.remove();
-    document.documentElement.classList.remove(ON_CLASS14);
+    document.documentElement.classList.remove(ON_CLASS15);
   }
   var isGenreDef2 = (d) => /(^|-)genre-/.test(d.id);
   function moreHrefFor2(def, { hub, libs, lib }) {
@@ -15163,7 +15603,7 @@
     const moreSlot = h("div", { class: "lfx-retro-moreslot" });
     const root7 = h("div", { id: ROOT_ID16, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS14);
+    document.documentElement.classList.add(ON_CLASS15);
     current6 = route;
     builtPhone = isPhone2();
     cleanups5.push(renderHero2(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool2() }));
@@ -15292,7 +15732,7 @@
     const sr = h("span", { class: "lfx-rt__sr" }, full);
     const typed = h("span", { class: "lfx-rt__typed", "aria-hidden": "true" });
     const rest = h("span", { class: "lfx-rt__rest", "aria-hidden": "true" }, full);
-    const el3 = h("p", { class: `${className} lfx-retro-caret`.trim() }, [sr, typed, rest]);
+    const el4 = h("p", { class: `${className} lfx-retro-caret`.trim() }, [sr, typed, rest]);
     let timer2 = null;
     let pos = 0;
     const tick = throttle(() => emitFx("type"), 110);
@@ -15308,7 +15748,7 @@
       stop6();
       pos = full.length;
       paint();
-      el3.classList.remove("lfx-retro-caret");
+      el4.classList.remove("lfx-retro-caret");
     };
     const start10 = () => {
       stop6();
@@ -15326,7 +15766,7 @@
         if (pos >= full.length) finish3();
       }, TICK_MS);
     };
-    return { el: el3, start: start10, finish: finish3, stop: stop6 };
+    return { el: el4, start: start10, finish: finish3, stop: stop6 };
   }
 
   // src/js/features/retro/title-dom.js
@@ -15346,7 +15786,7 @@
     const hh = Math.floor(mins / 60);
     return hh ? `${hh}H${pad23(mins % 60)}` : `${mins} MIN`;
   }
-  function backdropUrl2(item) {
+  function backdropUrl3(item) {
     return imageUrl(item, { type: "Backdrop", maxWidth: 1920, quality: 70 }) || landscapeImage(item, { maxWidth: 1920, quality: 70 });
   }
   function buildStickers(main) {
@@ -15395,7 +15835,7 @@
   function buildEpisode2(ep, { selected = false, next = false, onPlay } = {}) {
     const p = progressPercent2(ep);
     const played = Boolean(ep.UserData && ep.UserData.Played === true);
-    const fill3 = played ? 1 : Math.max(0, Math.min(1, p / 100));
+    const fill4 = played ? 1 : Math.max(0, Math.min(1, p / 100));
     const code = episodeCode2(ep);
     const src = imageUrl(ep, { type: "Primary", maxWidth: 480, quality: 80 }) || (landscapeFor(ep, 480) || {}).url || null;
     const mins = episodeRuntime(ep);
@@ -15423,16 +15863,16 @@
       ]),
       next ? h("span", { class: "lfx-rt__ep-next" }, "N\xC4CHSTE") : null
     ]);
-    btn3.style.setProperty("--rt-fill", String(Math.round(fill3 * 100) / 100));
+    btn3.style.setProperty("--rt-fill", String(Math.round(fill4 * 100) / 100));
     return h("li", { class: "lfx-rt__ep-item" }, [btn3]);
   }
 
   // src/js/features/retro/title-trailer.js
   var TRAILER_ID2 = "lfx-retro-trailer";
   function closeTrailer2() {
-    const el3 = document.getElementById(TRAILER_ID2);
-    if (!el3) return;
-    const v = el3.querySelector("video");
+    const el4 = document.getElementById(TRAILER_ID2);
+    if (!el4) return;
+    const v = el4.querySelector("video");
     if (v) {
       try {
         v.pause();
@@ -15441,8 +15881,8 @@
       } catch {
       }
     }
-    if (typeof el3.__lfxCleanup === "function") el3.__lfxCleanup();
-    unmountPoint(el3);
+    if (typeof el4.__lfxCleanup === "function") el4.__lfxCleanup();
+    unmountPoint(el4);
   }
   function openTrailer2(src, returnFocus) {
     closeTrailer2();
@@ -15498,7 +15938,7 @@
 
   // src/js/features/retro/title.js
   var ROOT_ID17 = "lfx-retro-title";
-  var ON_CLASS15 = "lfx-retro-title-on";
+  var ON_CLASS16 = "lfx-retro-title-on";
   var state18 = null;
   var gen5 = 0;
   var routeId2 = (route) => {
@@ -15527,7 +15967,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID17)?.remove();
-    setPageOn2(ON_CLASS15, false);
+    setPageOn2(ON_CLASS16, false);
   }
   function errorBox2(message) {
     return h("div", { class: "lfx-rt__error lfx-retro-frame", role: "alert" }, [
@@ -15599,7 +16039,7 @@
     const isSeries = main.Type === "Series";
     const isBox = main.Type === "BoxSet";
     const c = { main, seasons: [], seasonId: sel.seasonId, selectedEp: sel.episodeId, nextUp: null, trailerSrc: null, episodes: [] };
-    const bg = backdropUrl2(main);
+    const bg = backdropUrl3(main);
     const backdrop = h("div", { class: "lfx-rt__bg", "aria-hidden": "true" }, [
       bg ? h("img", { class: "lfx-rt__bg-img", src: bg, alt: "", decoding: "async" }) : null,
       h("div", { class: "lfx-rt__bg-tint" }),
@@ -15619,7 +16059,7 @@
     }
     const tagline = main.Taglines && main.Taglines[0] || (isSeries ? "SERIE" : isBox ? "SAMMLUNG" : main.Genres && main.Genres[0] || "FILM");
     const stripes = h("div", { class: "lfx-rt__stripes", "aria-hidden": "true" }, [h("span", { class: "lfx-rt__stripes-text" }, String(tagline).toUpperCase())]);
-    const meta = h("ul", { class: "lfx-rt__meta", "aria-label": "Eckdaten" }, metaList(main).map((m) => h("li", null, m)));
+    const meta2 = h("ul", { class: "lfx-rt__meta", "aria-label": "Eckdaten" }, metaList(main).map((m) => h("li", null, m)));
     const typed = main.Overview ? createTyped(main.Overview, "lfx-rt__text") : null;
     const cast = buildCast(main);
     const progress = h("div", { class: "lfx-rt__progress", hidden: true });
@@ -15694,7 +16134,7 @@
       h("div", { class: "lfx-rt__sheet" }, [
         brand,
         stripes,
-        meta,
+        meta2,
         typed ? typed.el : null,
         cast,
         buildSpecs(main),
@@ -15854,7 +16294,7 @@
       ]);
       s.root = root7;
       tab2.prepend(root7);
-      setPageOn2(ON_CLASS15, true);
+      setPageOn2(ON_CLASS16, true);
       if (!keepScroll) scrollTop2();
       load4(g).then(() => {
         if (state18 === s) root7.removeAttribute("aria-busy");
@@ -15879,7 +16319,7 @@
 
   // src/js/features/retro/search.js
   var ROOT_ID18 = "lfx-retro-search";
-  var ON_CLASS16 = "lfx-retro-search-on";
+  var ON_CLASS17 = "lfx-retro-search-on";
   var DEBOUNCE_MS3 = 300;
   var MIN_LEN4 = 2;
   var state19 = null;
@@ -15905,7 +16345,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID18)?.remove();
-    setPageOn2(ON_CLASS16, false);
+    setPageOn2(ON_CLASS17, false);
   }
   function group(title, body, mod = "") {
     return h("section", { class: `lfx-rs__group ${mod}`.trim() }, [h("h2", { class: "lfx-retro-label" }, title), body]);
@@ -16042,7 +16482,7 @@
       placeCaret();
     };
     tab2.prepend(root7);
-    setPageOn2(ON_CLASS16, true);
+    setPageOn2(ON_CLASS17, true);
     const writeHash = (term) => {
       try {
         history.replaceState(history.state, "", searchHref(term));
@@ -16150,8 +16590,8 @@
 
   // src/js/features/retro/browse.js
   var ROOT_ID19 = "lfx-retro-browse";
-  var ON_CLASS17 = "lfx-retro-browse-on";
-  var PAGE3 = 40;
+  var ON_CLASS18 = "lfx-retro-browse-on";
+  var PAGE5 = 40;
   var VIEW_KEY = "lfx.retro.browseview";
   var SORTS = {
     name: { label: "NAME", by: "SortName", order: "Ascending" },
@@ -16197,7 +16637,7 @@
       if (s.root) s.root.remove();
     }
     document.getElementById(ROOT_ID19)?.remove();
-    setPageOn2(ON_CLASS17, false);
+    setPageOn2(ON_CLASS18, false);
   }
   function listRow(it) {
     const genre = it.Genres && it.Genres[0] || "";
@@ -16271,7 +16711,7 @@
         SortOrder: sort.order,
         GenreIds: s.genreId || void 0,
         StartIndex: s.items.length,
-        Limit: PAGE3
+        Limit: PAGE5
       });
       if (stale()) return;
       const items = asItems10(res);
@@ -16279,7 +16719,7 @@
       s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       s.items.push(...items);
       for (const it of items) s.grid.append(itemNode(s, it));
-      s.done = items.length < PAGE3 || s.total != null && s.items.length >= s.total;
+      s.done = items.length < PAGE5 || s.total != null && s.items.length >= s.total;
       if (s.total == null) s.total = s.done ? s.items.length : null;
       if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-rb__empty lfx-retro-caret" }, "DATEI NICHT GEFUNDEN"));
       else if (s.done) s.status.replaceChildren(h("p", { class: "lfx-rb__end" }, `${s.items.length} DATEI(EN)  \xB7  ENDE DES VERZEICHNISSES`));
@@ -16374,7 +16814,7 @@
     ]);
     Object.assign(s, { root: root7, path, count, opts, genres, genreBtn, grid: grid2, status });
     tab2.prepend(root7);
-    setPageOn2(ON_CLASS17, true);
+    setPageOn2(ON_CLASS18, true);
     scrollTop2();
     const addGenre = (label, genreId) => {
       genres.append(h("a", {
@@ -16473,12 +16913,12 @@
   // src/js/features/retro/fx/crt.js
   var CRT_ID = "lfx-retro-crt";
   function createCrt() {
-    let el3 = null;
+    let el4 = null;
     let stripTimer = 0;
     let shakeTimer = 0;
     function mount2() {
-      if (el3 && el3.isConnected) return el3;
-      el3 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
+      if (el4 && el4.isConnected) return el4;
+      el4 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
         h("div", { class: "lfx-retro-crt__flicker" }),
         h("div", { class: "lfx-retro-crt__scan" }),
         h("div", { class: "lfx-retro-crt__mask" }),
@@ -16486,15 +16926,15 @@
         h("div", { class: "lfx-retro-crt__roll" }),
         h("div", { class: "lfx-retro-crt__strip" })
       ]);
-      document.body.append(el3);
-      return el3;
+      document.body.append(el4);
+      return el4;
     }
     function unmount2() {
       clearTimeout(stripTimer);
       clearTimeout(shakeTimer);
       stripTimer = shakeTimer = 0;
-      if (el3) el3.remove();
-      el3 = null;
+      if (el4) el4.remove();
+      el4 = null;
     }
     function sync3(on) {
       document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
@@ -16502,27 +16942,27 @@
       else unmount2();
     }
     function glitchStrip(ms = 180) {
-      if (!el3) return;
-      const strip = el3.querySelector(".lfx-retro-crt__strip");
+      if (!el4) return;
+      const strip = el4.querySelector(".lfx-retro-crt__strip");
       if (!strip) return;
       strip.style.top = `${Math.round(8 + Math.random() * 80)}%`;
       strip.style.height = `${Math.round(2 + Math.random() * 7)}%`;
-      el3.classList.add("is-strip");
+      el4.classList.add("is-strip");
       clearTimeout(stripTimer);
       stripTimer = setTimeout(() => {
-        if (el3) el3.classList.remove("is-strip");
+        if (el4) el4.classList.remove("is-strip");
       }, ms);
     }
     function shake(ms = 700) {
-      if (!el3) return;
-      el3.classList.add("is-shaking");
+      if (!el4) return;
+      el4.classList.add("is-shaking");
       clearTimeout(shakeTimer);
       shakeTimer = setTimeout(() => {
-        if (el3) el3.classList.remove("is-shaking");
+        if (el4) el4.classList.remove("is-shaking");
       }, ms);
     }
     return { mount: mount2, unmount: unmount2, sync: sync3, glitchStrip, shake, get el() {
-      return el3;
+      return el4;
     } };
   }
 
@@ -16642,7 +17082,7 @@
     const bot = h("div", { class: "lfx-retro-boot__half lfx-retro-boot__half--bottom" });
     const line = h("div", { class: "lfx-retro-boot__line" });
     const hint = h("div", { class: "lfx-retro-boot__hint" }, "TASTE / TIPPEN ZUM \xDCBERSPRINGEN");
-    const el3 = h("div", { id: BOOT_ID, class: `lfx-retro-boot${reduced ? " is-reduced" : ""}`, role: "presentation", "aria-hidden": "true" }, [top, bot, text, line, hint]);
+    const el4 = h("div", { id: BOOT_ID, class: `lfx-retro-boot${reduced ? " is-reduced" : ""}`, role: "presentation", "aria-hidden": "true" }, [top, bot, text, line, hint]);
     let done = false;
     let name = "";
     let nameKnown = false;
@@ -16653,15 +17093,15 @@
       nameKnown = true;
     });
     const skipEvents = ["keydown", "pointerdown", "touchstart"];
-    function cleanup() {
+    function cleanup2() {
       timers.clearAll();
       for (const ev of skipEvents) document.removeEventListener(ev, skip, true);
-      el3.remove();
+      el4.remove();
     }
     function finish3() {
       if (done) return;
       done = true;
-      cleanup();
+      cleanup2();
       try {
         onDone();
       } catch {
@@ -16704,11 +17144,11 @@
       opening = true;
       timers.clearAll();
       caret(false);
-      el3.classList.add("is-open");
+      el4.classList.add("is-open");
       timers.timeout(finish3, fast ? 420 : 640);
       timers.timeout(finish3, HARD_TIMEOUT_MS);
     }
-    document.body.append(el3);
+    document.body.append(el4);
     for (const ev of skipEvents) document.addEventListener(ev, skip, { capture: true, passive: false });
     timers.timeout(finish3, HARD_TIMEOUT_MS);
     try {
@@ -16719,12 +17159,12 @@
       for (const s of [`LENZ//84 BIOS ${BOOT_VERSION}`, "SPEICHERTEST ... 640K OK", "LADE MEDIATHEK ... OK", "BEREIT."]) addLine().textContent = s;
       timers.timeout(() => {
         caret(false);
-        el3.classList.add("is-open");
+        el4.classList.add("is-open");
       }, REDUCED_MS - 300);
       timers.timeout(finish3, REDUCED_MS);
       return { cancel() {
         done = true;
-        cleanup();
+        cleanup2();
       } };
     }
     timers.timeout(() => {
@@ -16756,19 +17196,19 @@
     timers.timeout(() => openUp(false), 2450);
     return { cancel() {
       done = true;
-      cleanup();
+      cleanup2();
     } };
   }
 
   // src/js/features/retro/fx/glitch.js
   var TARGETS = ".lfx-retro-glitch, #lfx-retro-home h1, .lfx-retro-hero__title, h1, h2.sectionTitle, .lfx-retro-label";
-  function inViewport(el3) {
-    const r = el3.getBoundingClientRect();
+  function inViewport(el4) {
+    const r = el4.getBoundingClientRect();
     if (!r.width || !r.height) return false;
     return r.bottom > 0 && r.top < (window.innerHeight || 800) && r.right > 0 && r.left < (window.innerWidth || 1200);
   }
   function pickTarget(root7 = document) {
-    const list = [...root7.querySelectorAll(TARGETS)].filter((el3) => !el3.closest("#videoOsdPage") && inViewport(el3));
+    const list = [...root7.querySelectorAll(TARGETS)].filter((el4) => !el4.closest("#videoOsdPage") && inViewport(el4));
     return list.length ? list[Math.floor(Math.random() * list.length)] : null;
   }
   function createGlitch({ crt, enabled: enabled2 = () => true, minMs = 2e4, maxMs = 4e4 }) {
@@ -16788,21 +17228,21 @@
         }
         crt.glitchStrip();
       }
-      schedule3();
+      schedule4();
     }
-    function schedule3() {
+    function schedule4() {
       if (running) timers.timeout(fire, rand(minMs, maxMs));
     }
     return {
       start() {
         if (running) return;
         running = true;
-        schedule3();
+        schedule4();
       },
       stop() {
         running = false;
         timers.clearAll();
-        for (const el3 of document.querySelectorAll(".is-glitching")) el3.classList.remove("is-glitching");
+        for (const el4 of document.querySelectorAll(".is-glitching")) el4.classList.remove("is-glitching");
       },
       fire
     };
@@ -17523,17 +17963,17 @@
     }
     function close2() {
       if (!alive) return;
-      const el3 = root7;
+      const el4 = root7;
       const back = opener;
       opener = null;
       emitFx("close");
       alive = false;
       releaseSleepers();
-      if (el3) el3.classList.remove("is-open");
+      if (el4) el4.classList.remove("is-open");
       document.documentElement.classList.remove("lfx-retro-term-open");
       timers.clearAll();
       timers.timeout(() => {
-        if (root7 === el3) teardown9();
+        if (root7 === el4) teardown9();
       }, 260);
       if (back && back.isConnected && typeof back.focus === "function") {
         try {
@@ -17571,11 +18011,11 @@
     let started2 = false;
     let active4 = false;
     let lastInput = Date.now();
-    let el3 = null;
+    let el4 = null;
     let canvas = null;
     let ctx2 = null;
     let titleEl = null;
-    let raf2 = 0;
+    let raf3 = 0;
     let lastFrame = 0;
     let drops = [];
     let cols = 0;
@@ -17612,9 +18052,9 @@
       }
     }
     function frame(now) {
-      raf2 = 0;
+      raf3 = 0;
       if (!active4 || !ctx2) return;
-      raf2 = requestAnimationFrame(frame);
+      raf3 = requestAnimationFrame(frame);
       if (document.hidden) return;
       const step = reduced ? FRAME_MS * 2 : FRAME_MS;
       if (now - lastFrame < step) return;
@@ -17652,15 +18092,15 @@
       titleEl.classList.add("is-flash");
       nextFlash = t + 5e3 + Math.random() * 4e3;
     }
-    function onResize() {
+    function onResize2() {
       size();
     }
     function onVisibility() {
       if (!active4) return;
       if (document.hidden) {
-        cancelAnimationFrame(raf2);
-        raf2 = 0;
-      } else if (!raf2) raf2 = requestAnimationFrame(frame);
+        cancelAnimationFrame(raf3);
+        raf3 = 0;
+      } else if (!raf3) raf3 = requestAnimationFrame(frame);
     }
     function swallow(e) {
       if (e.cancelable) e.preventDefault();
@@ -17702,16 +18142,16 @@
       }
       ctx2 = c;
       titleEl = h("div", { class: "lfx-retro-rain__title", "aria-hidden": "true" });
-      el3 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
-      document.body.append(el3);
+      el4 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
+      document.body.append(el4);
       active4 = true;
       lastMove = null;
       nextFlash = Date.now() + 1500;
       size();
       for (const ev of activeEvents) window.addEventListener(ev, onActiveInput, { capture: true, passive: false });
-      window.addEventListener("resize", onResize);
+      window.addEventListener("resize", onResize2);
       document.addEventListener("visibilitychange", onVisibility);
-      raf2 = requestAnimationFrame(frame);
+      raf3 = requestAnimationFrame(frame);
       try {
         onStart(manual);
       } catch {
@@ -17721,13 +18161,13 @@
     function end() {
       if (!active4) return;
       active4 = false;
-      if (raf2) cancelAnimationFrame(raf2);
-      raf2 = 0;
+      if (raf3) cancelAnimationFrame(raf3);
+      raf3 = 0;
       for (const ev of activeEvents) window.removeEventListener(ev, onActiveInput, true);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onResize2);
       document.removeEventListener("visibilitychange", onVisibility);
-      if (el3) el3.remove();
-      el3 = canvas = ctx2 = titleEl = null;
+      if (el4) el4.remove();
+      el4 = canvas = ctx2 = titleEl = null;
       drops = [];
       lastInput = Date.now();
       try {
@@ -17735,7 +18175,7 @@
       } catch {
       }
     }
-    function check2() {
+    function check3() {
       if (active4 || document.hidden) return;
       if (reduced) return;
       if (Date.now() - lastInput < idleMs) return;
@@ -17751,7 +18191,7 @@
       lastInput = Date.now();
       for (const ev of idleEvents) window.addEventListener(ev, noteInput, { capture: true, passive: true });
       window.addEventListener("click", onClickGuard, true);
-      timers.interval(check2, 5e3);
+      timers.interval(check3, 5e3);
     }
     function stop6() {
       end();
@@ -17974,8 +18414,8 @@
     const html2 = document.documentElement;
     html2.classList.remove(OVERDRIVE_CLASS, NO_CRT_CLASS, "lfx-retro-term-open");
     for (const id of ["lfx-retro-crt", "lfx-retro-boot", "lfx-retro-terminal", "lfx-retro-rain", TOAST_ID]) {
-      const el3 = document.getElementById(id);
-      if (el3) el3.remove();
+      const el4 = document.getElementById(id);
+      if (el4) el4.remove();
     }
   }
   var fx_default = {
@@ -18179,8 +18619,8 @@
   var PROFILE_CLASS = "lfx-store-profile";
   var busy = false;
   function profileIsOpen3() {
-    const el3 = document.getElementById("lfx-popover");
-    return isPopoverOpen() && Boolean(el3 && el3.classList.contains(PROFILE_CLASS));
+    const el4 = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el4 && el4.classList.contains(PROFILE_CLASS));
   }
   function closeProfileMenu() {
     if (profileIsOpen3()) closePopover();
@@ -18221,7 +18661,7 @@
 
   // src/js/features/store/home-route.js
   var ROOT_ID20 = "lfx-store-home";
-  var ON_CLASS18 = "lfx-store-home-on";
+  var ON_CLASS19 = "lfx-store-home-on";
   var BAR_ID = "lfx-store-bar";
   var BAR_CLASS = "lfx-store-bar-on";
   function storeHomeRoute(route) {
@@ -18243,6 +18683,8 @@
   var KEY3 = "lfx.store.";
   var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "joystick" };
   var TOUCH_CONTROLS = ["joystick", "touch"];
+  var TOUCH_SENS = ["low", "normal", "high"];
+  var TUNE_FLAGS = ["holdInvertY", "holdInvertX", "lookInvertY", "lookInvertX"];
   var VOICE_PITCHES = ["normal", "tief", "sehrtief"];
   var QUALITIES = ["auto", "low", "mid", "high"];
   var VR_TURNS = ["snap", "smooth"];
@@ -18251,7 +18693,7 @@
   var VR_SEATS = ["front", "mid", "back"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
-  var storageKey3 = (name) => `${KEY3}${name}.${getUserId() || "anon"}`;
+  var storageKey4 = (name) => `${KEY3}${name}.${getUserId() || "anon"}`;
   function read2(store3, key) {
     try {
       return window[store3].getItem(key);
@@ -18266,44 +18708,49 @@
     }
   }
   function getQuality() {
-    const v = read2("localStorage", storageKey3("quality"));
+    const v = read2("localStorage", storageKey4("quality"));
     return QUALITIES.includes(v) ? v : DEFAULTS3.quality;
   }
   function getSound() {
     try {
-      window.localStorage.removeItem(storageKey3("sound"));
+      window.localStorage.removeItem(storageKey4("sound"));
     } catch {
     }
-    const v = read2("localStorage", storageKey3("soundOn"));
+    const v = read2("localStorage", storageKey4("soundOn"));
     return v === null ? DEFAULTS3.sound : v !== "0";
   }
   function getFps() {
-    return read2("localStorage", storageKey3("fps")) === "1";
+    return read2("localStorage", storageKey4("fps")) === "1";
   }
   function getVoiceOnline() {
-    return read2("localStorage", storageKey3("voiceOnline")) === "1";
+    return read2("localStorage", storageKey4("voiceOnline")) === "1";
   }
   function getVoiceName() {
-    return read2("localStorage", storageKey3("voiceName")) || "";
+    return read2("localStorage", storageKey4("voiceName")) || "";
   }
   function getVoicePitch() {
-    const v = read2("localStorage", storageKey3("voicePitch"));
+    const v = read2("localStorage", storageKey4("voicePitch"));
     return VOICE_PITCHES.includes(v) ? v : DEFAULTS3.voicePitch;
   }
   function getTouchControl() {
-    const v = read2("localStorage", storageKey3("touchControl"));
+    const v = read2("localStorage", storageKey4("touchControl"));
     return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS3.touchControl;
   }
+  function getTouchTune() {
+    const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal") };
+    for (const k of TUNE_FLAGS) t[k] = read2("localStorage", storageKey4(k)) === "1";
+    return t;
+  }
   function getBigCovers() {
-    const v = read2("localStorage", storageKey3("bigCovers"));
+    const v = read2("localStorage", storageKey4("bigCovers"));
     return v === null ? DEFAULTS3.bigCovers : v !== "0";
   }
   function readEnum(name, list, def) {
-    const v = read2("localStorage", storageKey3(name));
+    const v = read2("localStorage", storageKey4(name));
     return list.includes(v) ? v : def;
   }
   var getVrTurn = () => readEnum("vrTurn", VR_TURNS, "snap");
-  var getVrVignette = () => read2("localStorage", storageKey3("vrVignette")) !== "0";
+  var getVrVignette = () => read2("localStorage", storageKey4("vrVignette")) !== "0";
   var getVrHeight = () => readEnum("vrHeight", VR_HEIGHTS, "auto");
   var getVrQuality = () => readEnum("vrQuality", VR_QUALITIES, "mid");
   var getVrSeat = () => readEnum("vrSeat", VR_SEATS, "mid");
@@ -18312,21 +18759,23 @@
   }
   function savePrefs2(p) {
     if (!p) return;
-    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey3("quality"), p.quality);
-    if (typeof p.sound === "boolean") write2("localStorage", storageKey3("soundOn"), p.sound ? "1" : "0");
-    if (typeof p.fps === "boolean") write2("localStorage", storageKey3("fps"), p.fps ? "1" : "0");
-    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey3("voiceOnline"), p.voiceOnline ? "1" : "0");
-    if (typeof p.voiceName === "string") write2("localStorage", storageKey3("voiceName"), p.voiceName);
-    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey3("voicePitch"), p.voicePitch);
-    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey3("touchControl"), p.touchControl);
-    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey3("bigCovers"), p.bigCovers ? "1" : "0");
+    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey4("quality"), p.quality);
+    if (typeof p.sound === "boolean") write2("localStorage", storageKey4("soundOn"), p.sound ? "1" : "0");
+    if (typeof p.fps === "boolean") write2("localStorage", storageKey4("fps"), p.fps ? "1" : "0");
+    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey4("voiceOnline"), p.voiceOnline ? "1" : "0");
+    if (typeof p.voiceName === "string") write2("localStorage", storageKey4("voiceName"), p.voiceName);
+    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey4("voicePitch"), p.voicePitch);
+    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey4("touchControl"), p.touchControl);
+    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey4(k), p[k] ? "1" : "0");
+    if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey4("touchSens"), p.touchSens);
+    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey4("bigCovers"), p.bigCovers ? "1" : "0");
     const vr = p.vr;
     if (vr && typeof vr === "object") {
-      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey3("vrTurn"), vr.turn);
-      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey3("vrVignette"), vr.vignette ? "1" : "0");
-      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey3("vrHeight"), vr.height);
-      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey3("vrQuality"), vr.quality);
-      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey3("vrSeat"), vr.seat);
+      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey4("vrTurn"), vr.turn);
+      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey4("vrVignette"), vr.vignette ? "1" : "0");
+      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey4("vrHeight"), vr.height);
+      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey4("vrQuality"), vr.quality);
+      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey4("vrSeat"), vr.seat);
     }
   }
   var getIntroSeen = () => read2("sessionStorage", SESSION_INTRO) === "1";
@@ -18421,9 +18870,9 @@
     }
     function upNextState() {
       try {
-        const el3 = osd(".upNextContainer");
-        if (!el3 || el3.classList.contains("hide")) return null;
-        const text = String(el3.textContent || "").replace(/\s+/g, " ").trim();
+        const el4 = osd(".upNextContainer");
+        if (!el4 || el4.classList.contains("hide")) return null;
+        const text = String(el4.textContent || "").replace(/\s+/g, " ").trim();
         const m = /(\d+)\s*Sek/i.exec(text) || /(\d+)/.exec(text);
         return { text, seconds: m ? Number(m[1]) : 0 };
       } catch {
@@ -18746,17 +19195,17 @@
     stageEl = stage;
   }
   function unparkStage() {
-    const el3 = stageEl;
+    const el4 = stageEl;
     stageEl = null;
     const box = document.getElementById(PARK_ID);
     if (box) box.remove();
-    return el3;
+    return el4;
   }
 
   // src/js/features/store/home.js
   var SUSPEND_MS = 3 * 60 * 1e3;
   var CLASSIC_HASH = "#/home?lfx=classic";
-  var FADE_MS = 450;
+  var FADE_MS2 = 450;
   var gen6 = 0;
   var waitTimer8 = null;
   var fadeTimer = null;
@@ -18847,16 +19296,16 @@
   function setProgress2(fraction, label) {
     if (!ui2 || !ui2.fill) return;
     const f = Math.max(0, Math.min(1, Number(fraction) || 0));
-    const prev = Number(ui2.fill.dataset.v || 0);
-    const v = Math.max(prev, f);
+    const prev2 = Number(ui2.fill.dataset.v || 0);
+    const v = Math.max(prev2, f);
     ui2.fill.dataset.v = String(v);
     ui2.fill.style.width = `${Math.round(v * 100)}%`;
     ui2.loading.querySelector(".lfx-store-tape").setAttribute("aria-valuenow", String(Math.round(v * 100)));
     if (label && ui2.label) ui2.label.textContent = label;
   }
   function buildLoading() {
-    const fill3 = h("div", { class: "lfx-store-tape__fill" });
-    fill3.style.width = "0%";
+    const fill4 = h("div", { class: "lfx-store-tape__fill" });
+    fill4.style.width = "0%";
     const label = h("p", { class: "lfx-store-loading__label", "aria-live": "polite" }, "Videothek wird aufgeschlossen \u2026");
     const loading = h("div", { class: "lfx-store-loading" }, [
       h("div", { class: "lfx-store-sign", role: "img", "aria-label": "VIDEOTHEK LENZ, Verleih und Verkauf" }, [
@@ -18865,16 +19314,16 @@
       ]),
       h("div", { class: "lfx-store-tape", role: "progressbar", "aria-label": "Ladefortschritt", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, [
         h("div", { class: "lfx-store-tape__reel lfx-store-tape__reel--l", "aria-hidden": "true" }),
-        h("div", { class: "lfx-store-tape__band" }, [fill3]),
+        h("div", { class: "lfx-store-tape__band" }, [fill4]),
         h("div", { class: "lfx-store-tape__reel lfx-store-tape__reel--r", "aria-hidden": "true" })
       ]),
       label
     ]);
-    return { loading, fill: fill3, label };
+    return { loading, fill: fill4, label };
   }
   function buildUi() {
     const stage = h("div", { class: "lfx-store-stage" });
-    const { loading, fill: fill3, label } = buildLoading();
+    const { loading, fill: fill4, label } = buildLoading();
     const searchBtn = hudButton("lfx-store-btn--search", "Suche", "search");
     searchBtn.disabled = true;
     searchBtn.addEventListener("click", () => {
@@ -18892,16 +19341,16 @@
       classicBtn,
       avatar.el
     ]);
-    const el3 = h("div", { id: ROOT_ID20, class: "lfx-store-home" }, [stage, loading, hud]);
-    return { root: el3, stage, loading, fill: fill3, label, hud, avatar, searchBtn };
+    const el4 = h("div", { id: ROOT_ID20, class: "lfx-store-home" }, [stage, loading, hud]);
+    return { root: el4, stage, loading, fill: fill4, label, hud, avatar, searchBtn };
   }
   function attachLoading() {
     if (!ui2) return;
     ui2.loading.remove();
-    const { loading, fill: fill3, label } = buildLoading();
+    const { loading, fill: fill4, label } = buildLoading();
     ui2.root.insertBefore(loading, ui2.hud);
     ui2.loading = loading;
-    ui2.fill = fill3;
+    ui2.fill = fill4;
     ui2.label = label;
     ui2.stage.classList.remove("is-ready");
   }
@@ -18915,7 +19364,7 @@
     }
     ui2 = null;
     document.getElementById(ROOT_ID20)?.remove();
-    root5().classList.remove(ON_CLASS18);
+    root5().classList.remove(ON_CLASS19);
     shown = false;
   }
   function showFallback2(message, { retry = false, detail = "" } = {}) {
@@ -19030,12 +19479,12 @@
         ui2.searchBtn.disabled = false;
         ui2.stage.classList.add("is-ready");
         ui2.loading.classList.add("is-done");
-        const el3 = ui2.loading;
+        const el4 = ui2.loading;
         clearTimeout(fadeTimer);
         fadeTimer = setTimeout(() => {
           fadeTimer = null;
-          el3.remove();
-        }, FADE_MS);
+          el4.remove();
+        }, FADE_MS2);
       }),
       onState: ret2((s) => saveState(s)),
       onPrefs: ret2((p) => savePrefs2(p)),
@@ -19055,6 +19504,7 @@
       voicePitch: getVoicePitch(),
       bigCovers: getBigCovers(),
       touchControl: getTouchControl(),
+      touchTune: getTouchTune(),
       vr: getVr(),
       skipIntro: getIntroSeen(),
       restore: getState(),
@@ -19164,7 +19614,7 @@
     teardownUi2();
     ui2 = buildUi();
     tab2.prepend(ui2.root);
-    root5().classList.add(ON_CLASS18);
+    root5().classList.add(ON_CLASS19);
     shown = true;
     const r = storeHomeRoute(route);
     if (inst2 && inst2.instance) {
@@ -19290,12 +19740,12 @@
     name: "store-bar",
     match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && !storeHomeRoute(route) && !blocked3(route),
     mount() {
-      const el3 = mountPoint(BAR_ID, { tag: "header", className: "lfx-store-bar" });
+      const el4 = mountPoint(BAR_ID, { tag: "header", className: "lfx-store-bar" });
       profile = profileButton();
       const enter = hudLink("lfx-store-btn--enter", "Videothek betreten", "enter", "#/home");
       const search = hudLink("lfx-store-btn--search", "Suche", "search", searchHref());
       const brand = h("a", { class: "lfx-store-bar__brand", href: "#/home", "aria-label": "VIDEOTHEK LENZ: Videothek betreten" }, [wordmark()]);
-      el3.replaceChildren(h("div", { class: "lfx-store-bar__inner" }, [brand, h("span", { class: "lfx-store-bar__spacer" }), enter, search, profile.el]));
+      el4.replaceChildren(h("div", { class: "lfx-store-bar__inner" }, [brand, h("span", { class: "lfx-store-bar__spacer" }), enter, search, profile.el]));
       document.documentElement.classList.add(BAR_CLASS);
     },
     update() {
@@ -19314,7 +19764,7 @@
 
   // src/js/features/live/home-route.js
   var ROOT_ID21 = "lfx-live-home";
-  var ON_CLASS19 = "lfx-live-home-on";
+  var ON_CLASS20 = "lfx-live-home-on";
   function liveHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return false;
     if (route.params.get("lfx")) return false;
@@ -19347,16 +19797,16 @@
       timer2 = setTimeout(() => finish3(getTheme() === target), ms);
     });
   }
-  function targetHash(theme, itemId, { seriesId } = {}) {
-    if (!itemId) return "#/home";
+  function targetHash(theme, itemId2, { seriesId } = {}) {
+    if (!itemId2) return "#/home";
     if (theme === "flix") {
       const { serverId } = getAuth();
-      return `#/details?id=${encodeURIComponent(itemId)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`;
+      return `#/details?id=${encodeURIComponent(itemId2)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`;
     }
-    if (theme === "plus") return titleHref(itemId);
-    return titleHref(seriesId || itemId);
+    if (theme === "plus") return titleHref(itemId2);
+    return titleHref(seriesId || itemId2);
   }
-  async function leaveToLibrary(itemId, { seriesId } = {}) {
+  async function leaveToLibrary(itemId2, { seriesId } = {}) {
     const target = getPreviousTheme();
     try {
       await setTheme(target, { source: "user" });
@@ -19365,7 +19815,7 @@
       return false;
     }
     if (!await waitForTheme(target)) return false;
-    window.location.hash = targetHash(target, itemId || null, { seriesId });
+    window.location.hash = targetHash(target, itemId2 || null, { seriesId });
     return true;
   }
 
@@ -19373,7 +19823,7 @@
   var KEY4 = "lfx.live.";
   var STYLES = ["flat", "crt80", "silver", "plain"];
   var DEFAULTS4 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1, music: true, fx: true };
-  var storageKey4 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
+  var storageKey5 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
   function read3(key) {
     try {
       return window.localStorage.getItem(key);
@@ -19388,41 +19838,41 @@
     }
   }
   function getStyle() {
-    const v = read3(storageKey4("tvstyle"));
+    const v = read3(storageKey5("tvstyle"));
     return STYLES.includes(v) ? v : DEFAULTS4.style;
   }
   function getVolume2() {
-    const raw = read3(storageKey4("volume"));
+    const raw = read3(storageKey5("volume"));
     if (raw === null || raw === "") return DEFAULTS4.volume;
     const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS4.volume;
   }
   function getMuted2() {
-    return read3(storageKey4("muted")) === "1";
+    return read3(storageKey5("muted")) === "1";
   }
   function getMusic() {
-    return read3(storageKey4("music")) !== "0";
+    return read3(storageKey5("music")) !== "0";
   }
   function getFx() {
-    return read3(storageKey4("fx")) !== "0";
+    return read3(storageKey5("fx")) !== "0";
   }
   function getLastChannel2() {
-    const v = Number(read3(storageKey4("lastChannel")));
+    const v = Number(read3(storageKey5("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS4.lastChannel;
   }
   function savePrefs3(p) {
     if (!p || typeof p !== "object") return;
-    if (STYLES.includes(p.style)) write3(storageKey4("tvstyle"), p.style);
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write3(storageKey4("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write3(storageKey4("muted"), p.muted ? "1" : "0");
-    if (typeof p.music === "boolean") write3(storageKey4("music"), p.music ? "1" : "0");
-    if (typeof p.fx === "boolean") write3(storageKey4("fx"), p.fx ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write3(storageKey4("lastChannel"), String(p.lastChannel));
+    if (STYLES.includes(p.style)) write3(storageKey5("tvstyle"), p.style);
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write3(storageKey5("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write3(storageKey5("muted"), p.muted ? "1" : "0");
+    if (typeof p.music === "boolean") write3(storageKey5("music"), p.music ? "1" : "0");
+    if (typeof p.fx === "boolean") write3(storageKey5("fx"), p.fx ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write3(storageKey5("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/live/home.js
   var SUSPEND_MS2 = 3 * 60 * 1e3;
-  var FADE_MS2 = 450;
+  var FADE_MS3 = 450;
   var CATALOG_SHARE2 = 0.65;
   var gen7 = 0;
   var waitTimer9 = null;
@@ -19460,8 +19910,8 @@
   function setProgress3(fraction, label) {
     if (!ui3 || !ui3.fill) return;
     const f = Math.max(0, Math.min(1, Number(fraction) || 0));
-    const prev = Number(ui3.fill.dataset.v || 0);
-    const v = Math.max(prev, f);
+    const prev2 = Number(ui3.fill.dataset.v || 0);
+    const v = Math.max(prev2, f);
     ui3.fill.dataset.v = String(v);
     ui3.fill.style.width = `${Math.round(v * 100)}%`;
     ui3.bar.setAttribute("aria-valuenow", String(Math.round(v * 100)));
@@ -19470,9 +19920,9 @@
   }
   function buildLoading2() {
     const ch = h("span", { class: "lfx-live-loading__ch", "aria-hidden": "true" }, "01");
-    const fill3 = h("div", { class: "lfx-live-loading__fill" });
-    fill3.style.width = "0%";
-    const bar = h("div", { class: "lfx-live-loading__bar", role: "progressbar", "aria-label": "Ladefortschritt", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, [fill3]);
+    const fill4 = h("div", { class: "lfx-live-loading__fill" });
+    fill4.style.width = "0%";
+    const bar = h("div", { class: "lfx-live-loading__bar", role: "progressbar", "aria-label": "Ladefortschritt", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, [fill4]);
     const label = h("p", { class: "lfx-live-loading__label", "aria-live": "polite" }, "Sendersuchlauf \u2026");
     const loading = h("div", { class: "lfx-live-loading" }, [
       h("div", { class: "lfx-live-loading__screen" }, [
@@ -19484,20 +19934,20 @@
       bar,
       label
     ]);
-    return { loading, fill: fill3, label, ch, bar };
+    return { loading, fill: fill4, label, ch, bar };
   }
   function buildUi2() {
     const stage = h("div", { class: "lfx-live-stage" });
-    const { loading, fill: fill3, label, ch, bar } = buildLoading2();
-    const el3 = h("div", { id: ROOT_ID21, class: "lfx-live-home" }, [stage, loading]);
-    return { root: el3, stage, loading, fill: fill3, label, ch, bar };
+    const { loading, fill: fill4, label, ch, bar } = buildLoading2();
+    const el4 = h("div", { id: ROOT_ID21, class: "lfx-live-home" }, [stage, loading]);
+    return { root: el4, stage, loading, fill: fill4, label, ch, bar };
   }
   function attachLoading2() {
     if (!ui3) return;
     ui3.loading.remove();
-    const { loading, fill: fill3, label, ch, bar } = buildLoading2();
+    const { loading, fill: fill4, label, ch, bar } = buildLoading2();
     ui3.root.append(loading);
-    Object.assign(ui3, { loading, fill: fill3, label, ch, bar });
+    Object.assign(ui3, { loading, fill: fill4, label, ch, bar });
   }
   function teardownUi3() {
     clearTimeout(fadeTimer2);
@@ -19505,7 +19955,7 @@
     if (ui3) ui3.root.remove();
     ui3 = null;
     document.getElementById(ROOT_ID21)?.remove();
-    root6().classList.remove(ON_CLASS19);
+    root6().classList.remove(ON_CLASS20);
     shown2 = false;
   }
   function openDashboard() {
@@ -19556,7 +20006,7 @@
     return {
       ...buildApiDeps(raw, user),
       savePrefs: ret2((p) => savePrefs3(p)),
-      leaveToLibrary: (id, meta) => leaveToLibrary(id, meta || {}),
+      leaveToLibrary: (id, meta2) => leaveToLibrary(id, meta2 || {}),
       previousThemeName: prevName(),
       openThemePicker: () => {
         openThemePicker({});
@@ -19571,12 +20021,12 @@
         setProgress3(1);
         ui3.stage.classList.add("is-ready");
         ui3.loading.classList.add("is-done");
-        const el3 = ui3.loading;
+        const el4 = ui3.loading;
         clearTimeout(fadeTimer2);
         fadeTimer2 = setTimeout(() => {
           fadeTimer2 = null;
-          el3.remove();
-        }, FADE_MS2);
+          el4.remove();
+        }, FADE_MS3);
       }),
       onFatal: ret2(onFatal)
     };
@@ -19651,7 +20101,7 @@
     teardownUi3();
     ui3 = buildUi2();
     tab2.prepend(ui3.root);
-    root6().classList.add(ON_CLASS19);
+    root6().classList.add(ON_CLASS20);
     shown2 = true;
     if (inst3 && inst3.instance) {
       clearDisposeTimer2();
@@ -19759,10 +20209,10 @@
   var liveFeatures = [home_default6, guard_default];
 
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, osdcenter_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, osdcenter_default, playerbg_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
 
   // src/js/main.js
-  var WATCH_MS = 1e3;
+  var WATCH_MS = 3e3;
   var FAST_MS = 100;
   var FAST_TICKS = 50;
   function init() {
@@ -19821,11 +20271,15 @@
       sync3();
     }, FAST_MS);
     window.addEventListener("hashchange", sync3);
+    window.addEventListener("popstate", sync3);
+    document.addEventListener("viewshow", sync3);
     sync3();
     function destroy() {
       destroyed = true;
       clearInterval(watchTimer);
       window.removeEventListener("hashchange", sync3);
+      window.removeEventListener("popstate", sync3);
+      document.removeEventListener("viewshow", sync3);
       stopFeatures();
       destroyTheme();
       removeFavicon();

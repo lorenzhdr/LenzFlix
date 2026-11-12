@@ -178,4 +178,12 @@ describe('attachSwipeClose', () => {
     vi.advanceTimersByTime(300);
     expect(bd.style.opacity).toBe('');
   });
+
+  it('holdBackdrop: beim Schliessen wird der Hintergrund nicht aufgedeckt (Opacity bleibt)', () => {
+    const bd = document.createElement('div');
+    attach({ backdrop: bd, holdBackdrop: true });
+    drag(el, 10, 200);
+    expect(Number(bd.style.opacity)).toBeGreaterThan(0.3);
+    expect(bd.style.opacity).not.toBe('0.3');
+  });
 });

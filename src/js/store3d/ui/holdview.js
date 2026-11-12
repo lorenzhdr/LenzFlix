@@ -9,6 +9,7 @@ import { makeCanvas, FONT } from '../world/textures.js';
 import { loadBitmap, closeBitmap } from '../covers/loader.js';
 import { COVER, slotWorld } from '../world/build-shelves.js';
 import { hash } from '../util/geo.js';
+import { normTune, SENS_FACTOR } from '../controls/touch.js';
 
 const TMP_Q = new Quaternion();
 const TMP_V = new Vector3();
@@ -232,6 +233,7 @@ export class HoldView {
     this.series = null; // { seasons, sel, eps, status }
     this.hidden = false;
     this.deps = o.deps;
+    this.getTune = o.getTune || null; // Touch-Feineinstellung (Umkehr/Empfindlichkeit), nur für Touch-Pointer
     this.items = o.items;
     this.shelves = o.shelves; // { faceViews, setHidden }
     this.covers = o.covers;
@@ -393,8 +395,15 @@ export class HoldView {
     drag.addEventListener('pointerdown', (e) => { last = { x: e.clientX, y: e.clientY }; try { drag.setPointerCapture(e.pointerId); } catch { /* egal */ } });
     drag.addEventListener('pointermove', (e) => {
       if (!last) return;
-      this.rot.y += (e.clientX - last.x) * 0.012;
-      this.rot.x = Math.max(-0.8, Math.min(0.8, this.rot.x + (e.clientY - last.y) * 0.008));
+      let kx = 0.012; let ky = 0.008;
+      if (e.pointerType === 'touch' && this.getTune) {
+        const tu = normTune(this.getTune());
+        const f = SENS_FACTOR[tu.touchSens];
+        kx *= f * (tu.holdInvertX ? -1 : 1);
+        ky *= f * (tu.holdInvertY ? -1 : 1);
+      }
+      this.rot.y += (e.clientX - last.x) * kx;
+      this.rot.x = Math.max(-0.8, Math.min(0.8, this.rot.x + (e.clientY - last.y) * ky));
       this.rotTargetY = this.rot.y;
       last = { x: e.clientX, y: e.clientY };
     });

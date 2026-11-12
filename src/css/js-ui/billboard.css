@@ -293,3 +293,6 @@ html.lfx-js .lfx-bb__btn--menu svg { display: block; width: 22px; height: 22px; 
   html.lfx-js .lfx-bb__btn--dl svg,
   html.lfx-js .lfx-bb__btn--menu svg { width: 20px; height: 20px; }
 }
+
+/* Skelett bis der Pool geladen ist (gleiche Größe wie die Karte, dunkel) */
+html.lfx-js .lfx-bb--skel { background: #141414; box-shadow: none; }

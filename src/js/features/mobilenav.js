@@ -1,5 +1,5 @@
 // LenzFlix: Handy-Navigation im Netflix-App-Stil (Feature "mobilenav").
-// Nur Modern-Layout, nicht TV, nur bei Breite < 800 px bzw. html.layout-mobile.
+// Nur Modern-Layout, nicht TV, nur bei Breite < 800 px (html.layout-mobile allein genügt nicht: im Querformat gilt die Desktop-Leiste).
 //  - Logo-Link (fixed im Header; der MUI-Drawer-Button wird per CSS ausgeblendet, solange das Feature läuft)
 //  - Filter-Pills (Serien · Filme · Meine Liste · Mehr ▾) unter dem Header, nur auf der Startseite
 //  - Vollbild-Overlay „Mehr“ mit Startseite/Bibliotheken als zentrierte Textliste
@@ -7,7 +7,7 @@
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
-import { isModern, isTv, isMobile } from '../core/layout.js';
+import { isModern, isTv, isMobile, isNavCompact } from '../core/layout.js';
 import * as stats from '../core/stats.js';
 import { isTheme } from '../core/theme.js';
 import { openThemePicker } from '../core/themepicker.js';
@@ -165,7 +165,7 @@ async function loadViews(seq) {
 export const mobilenavFeature = {
   name: 'mobilenav',
   match(route) {
-    return isReady() && isModern() && !isTv() && isMobile() && isTheme('flix') && !EXCLUDED.test(route.path);
+    return isReady() && isModern() && !isTv() && isMobile() && isNavCompact() && isTheme('flix') && !EXCLUDED.test(route.path);
   },
   mount(route) {
     const seq = ++state.seq;

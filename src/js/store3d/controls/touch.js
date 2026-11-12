@@ -14,11 +14,25 @@ export const TOUCH_SLOP = 9;
 export const STICK_YAW_RATE = 2.4;
 export const STICK_PITCH_RATE = 1.5;
 export const SCHEMES = ['joystick', 'touch'];
+/** Empfindlichkeit (Faktor auf Umschauen und Cover-Drehung). */
+export const SENS_FACTOR = { low: 0.7, normal: 1, high: 1.4 };
+
+/** Touch-Feineinstellung normalisieren: { holdInvertY, holdInvertX, lookInvertY, lookInvertX, touchSens }. Standard = unverändert. */
+export function normTune(t) {
+  const o = t && typeof t === 'object' ? t : {};
+  return {
+    holdInvertY: o.holdInvertY === true,
+    holdInvertX: o.holdInvertX === true,
+    lookInvertY: o.lookInvertY === true,
+    lookInvertX: o.lookInvertX === true,
+    touchSens: Object.prototype.hasOwnProperty.call(SENS_FACTOR, o.touchSens) ? o.touchSens : 'normal',
+  };
+}
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), scheme?: 'touch' | 'joystick', padHost? } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
   constructor(ctx) {
     this.ctx = ctx;
     this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : 'touch';
@@ -42,6 +56,9 @@ export class TouchControls {
     };
   }
 
+  /** Aktuelle Feineinstellung (ctx.getTune, zur Laufzeit änderbar). */
+  tune() { return normTune(this.ctx.getTune ? this.ctx.getTune() : null); }
+
   /** Eingabe für Player.update(): läuft nur im Laufmodus. */
   get input() {
     if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== 'play') { this.stopWalk(); if (this.pad) this.pad.reset(); }
@@ -54,7 +71,9 @@ export class TouchControls {
     if ((!x && !y) || !(dt > 0)) return;
     if (this.ctx.getMode() !== 'play') return;
     const t = Math.min(dt, 0.1);
-    this.ctx.player.look(-x * STICK_YAW_RATE * t, -y * STICK_PITCH_RATE * t);
+    const tu = this.tune();
+    const f = SENS_FACTOR[tu.touchSens];
+    this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookInvertX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookInvertY ? -1 : 1));
   }
 
   /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
@@ -200,7 +219,11 @@ export class TouchControls {
     }
     // Touch = „Szene greifen“ (wie bei Karten/360°-Fotos): Finger nach rechts zieht das Bild mit → Blick dreht nach links;
     // Finger nach unten → Blick nach oben. (Maus/Pointer-Lock in desktop.js bleibt Kamera-Konvention.)
-    if (p.moved || p.walked) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
+    if (p.moved || p.walked) {
+      const tu = this.tune();
+      const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens];
+      this.ctx.player.look(dx * k * (tu.lookInvertX ? -1 : 1), dy * k * (tu.lookInvertY ? -1 : 1));
+    }
     if (p.walked) this.moveRing(e.clientX, e.clientY);
   }
 

@@ -105,6 +105,12 @@ Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 - Sichtbar (`.is-visible`) nur bei sichtbarer `.videoOsdBottom` (weder `videoOsdBottom-hidden` noch `hide`), ohne offenen Dialog (`.dialogContainer .dialog.opened`) und ohne `.upNextContainer` ohne `.hide`; Proxy mit `.hide` blendet den Knopf aus.
 - Erkennung: `match` per Router (viewshow/hashchange) bzw. aktive Seite; gemountet beobachtet ein MutationObserver (childList + `class`) auf body, per rAF gebündelt.
 
+### Ladebild beim Abspielen (`core/startcover.js`, alle Designs außer `live`, nicht `layout-tv`)
+- `play()` in `core/playback.js` zeigt vor dem Proxy-Klick `#lfx-startcover` (`show({item})`, idempotent je Item-Id; `hide()`, `destroy()`, `allowRoute(path)`): Backdrop (bei Folgen der Serie), Titel unten links (Folge: Serienname + „S1 · F3 · Titel“), Ladekreis; nur Kern-Tokens. z-index 1250 (über Info-Fenster 1200, unter MUI-Menüs 1300 und Jellyfin-Dialogen). CSS `js-ui/startcover.css`.
+- Das Info-Fenster (`features/modal.js`) zeigt es sofort beim Klick auf Abspielen/Folge, dann `closeModal({after: play})`; Abbruch beim Laden von „Nächste Folge“ entfernt es wieder.
+- Abbau (Fade 200 ms, MutationObserver auf body nur solange es steht, rAF-gebündelt): sichtbare `[id="videoOsdPage"]:not(.hide)` UND `video.htmlvideoplayer` spielt; offener `.dialogContainer .dialog.opened`; Route weder `/video` noch Ausgangsroute (Fallback `playViaDetails` erlaubt `/details`); anderes Item ersetzt den Inhalt; Sicherheitsnetz 25 s; Esc schließt nur das Ladebild (Event verschluckt).
+- Info-Fenster: öffnet immer oben (kein Auto-Scroll zur markierten Folge); am Handy steht die Folgennummer als „1. Titel“ (`data-num` am `.lfx-modal__ep-title`, `::before`); beim Schließen (X, Wischen, Esc) wird `window.scrollY` der Seite wiederhergestellt (sofort, rAF, 150 ms); `attachSwipeClose({holdBackdrop:true})` deckt den Hintergrund beim Wegwischen nicht auf.
+
 ### Regeln für Design-Features (`features/plus|prime|retro`)
 - `match(route)` beginnt mit `isTheme('plus'|'prime'|'retro')` und prüft `isModern()`/nicht TV; ohne passendes Design mountet nichts.
 - Eigene Mount-IDs und Klassen mit Präfix `lfx-plus-*`, `lfx-prime-*` bzw. `lfx-retro-*` (z. B. `#lfx-plus-home`, `html.lfx-plus-home-on`); die Mounts von LENZFLIX (`#lfx-home`, `#lfx-nav` …) nicht mitbenutzen. Native Elemente nur per CSS-Klasse verstecken, `unmount()` räumt vollständig auf.

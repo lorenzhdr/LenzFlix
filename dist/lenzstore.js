@@ -32477,10 +32477,21 @@ void main() {
   var STICK_YAW_RATE = 2.4;
   var STICK_PITCH_RATE = 1.5;
   var SCHEMES = ["joystick", "touch"];
+  var SENS_FACTOR = { low: 0.7, normal: 1, high: 1.4 };
+  function normTune(t) {
+    const o = t && typeof t === "object" ? t : {};
+    return {
+      holdInvertY: o.holdInvertY === true,
+      holdInvertX: o.holdInvertX === true,
+      lookInvertY: o.lookInvertY === true,
+      lookInvertX: o.lookInvertX === true,
+      touchSens: Object.prototype.hasOwnProperty.call(SENS_FACTOR, o.touchSens) ? o.touchSens : "normal"
+    };
+  }
   var ZOOM_MIN = 1;
   var ZOOM_MAX = 3;
   var TouchControls = class {
-    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), scheme?: 'touch' | 'joystick', padHost? } */
+    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
     constructor(ctx) {
       this.ctx = ctx;
       this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : "touch";
@@ -32503,6 +32514,10 @@ void main() {
         noCtx: (e) => e.preventDefault()
       };
     }
+    /** Aktuelle Feineinstellung (ctx.getTune, zur Laufzeit änderbar). */
+    tune() {
+      return normTune(this.ctx.getTune ? this.ctx.getTune() : null);
+    }
     /** Eingabe für Player.update(): läuft nur im Laufmodus. */
     get input() {
       if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== "play") {
@@ -32517,7 +32532,9 @@ void main() {
       if (!x && !y || !(dt > 0)) return;
       if (this.ctx.getMode() !== "play") return;
       const t = Math.min(dt, 0.1);
-      this.ctx.player.look(-x * STICK_YAW_RATE * t, -y * STICK_PITCH_RATE * t);
+      const tu = this.tune();
+      const f = SENS_FACTOR[tu.touchSens];
+      this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookInvertX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookInvertY ? -1 : 1));
     }
     /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
     setScheme(s) {
@@ -32665,7 +32682,11 @@ void main() {
         p.moved = true;
         this.clearTimer();
       }
-      if (p.moved || p.walked) this.ctx.player.look(dx * TOUCH_LOOK, dy * TOUCH_LOOK);
+      if (p.moved || p.walked) {
+        const tu = this.tune();
+        const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens];
+        this.ctx.player.look(dx * k * (tu.lookInvertX ? -1 : 1), dy * k * (tu.lookInvertY ? -1 : 1));
+      }
       if (p.walked) this.moveRing(e.clientX, e.clientY);
     }
     onUp(e, cancelled) {
@@ -39103,6 +39124,8 @@ void main() {
   // src/js/store3d/ui/pause.js
   var QUALITY_LABEL = { auto: "Auto", low: "Niedrig", mid: "Mittel", high: "Hoch" };
   var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "auto" };
+  var SENS_LABEL = { low: "Niedrig", normal: "Normal", high: "Hoch" };
+  var SENS_NEXT = { low: "normal", normal: "high", high: "low" };
   var PITCH_LABEL = { normal: "Normal", tief: "Tief", sehrtief: "Sehr tief" };
   var PITCH_NEXT = { normal: "tief", tief: "sehrtief", sehrtief: "normal" };
   var AUTO_DEVICE = "Automatisch (Ger\xE4testimme)";
@@ -39177,11 +39200,7 @@ void main() {
       a.onBigCovers(!a.getBigCovers());
       refresh();
     });
-    const tc = mk2("", () => {
-      if (!a.onTouchControl) return;
-      a.onTouchControl(a.getTouchControl && a.getTouchControl() === "touch" ? "joystick" : "touch");
-      refresh();
-    });
+    const tc = mk2("Touch-Steuerung \u2026", () => openTouch());
     const fs = mk2("", () => {
       if (a.onFullscreen) a.onFullscreen();
       refresh();
@@ -39278,14 +39297,85 @@ void main() {
         closePick();
       }
     });
+    const tp = el("div", "lfx-store-voicepick lfx-store-touchpick");
+    tp.hidden = true;
+    const tpPanel = el("div", "lfx-store-voicepick-panel");
+    tpPanel.setAttribute("role", "dialog");
+    tpPanel.setAttribute("aria-label", "Touch-Steuerung");
+    tpPanel.appendChild(el("div", "lfx-store-pause-title", "Touch-Steuerung"));
+    const tuneNow = () => a.getTouchTune && a.getTouchTune() || {};
+    const mkT = (fn) => {
+      const b = el("button", "lfx-store-act");
+      b.type = "button";
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fn();
+        refreshTouch();
+      });
+      tpPanel.appendChild(b);
+      return b;
+    };
+    const tSchemeB = mkT(() => {
+      if (a.onTouchControl) a.onTouchControl(a.getTouchControl && a.getTouchControl() === "touch" ? "joystick" : "touch");
+    });
+    const flag = (key) => () => {
+      if (a.onTouchTune) a.onTouchTune({ [key]: !tuneNow()[key] });
+    };
+    const tHoldY = mkT(flag("holdInvertY"));
+    const tHoldX = mkT(flag("holdInvertX"));
+    const tLookY = mkT(flag("lookInvertY"));
+    const tLookX = mkT(flag("lookInvertX"));
+    const tSens = mkT(() => {
+      if (a.onTouchTune) a.onTouchTune({ touchSens: SENS_NEXT[tuneNow().touchSens] || "normal" });
+    });
+    const tBack = el("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
+    tBack.type = "button";
+    tBack.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeTouch();
+    });
+    tpPanel.appendChild(tBack);
+    tp.appendChild(tpPanel);
+    function refreshTouch() {
+      const t = tuneNow();
+      const nr = (on) => on ? "Umgekehrt" : "Normal";
+      tSchemeB.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === "touch" ? "Touch" : "Joystick"}`;
+      tHoldY.textContent = `Cover kippen: ${nr(t.holdInvertY)}`;
+      tHoldX.textContent = `Cover drehen: ${nr(t.holdInvertX)}`;
+      tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookInvertY)}`;
+      tLookX.textContent = `Umschauen links/rechts: ${nr(t.lookInvertX)}`;
+      tSens.textContent = `Empfindlichkeit: ${SENS_LABEL[t.touchSens] || SENS_LABEL.normal}`;
+    }
+    function openTouch() {
+      refreshTouch();
+      tp.hidden = false;
+      try {
+        tSchemeB.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    function closeTouch() {
+      if (tp.hidden) return;
+      tp.hidden = true;
+      try {
+        tc.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    tp.addEventListener("click", (e) => {
+      if (e.target === tp) {
+        e.stopPropagation();
+        closeTouch();
+      }
+    });
     function refresh() {
       vrb.hidden = !(a.getVr && a.getVr());
       q.textContent = `Qualit\xE4t: ${QUALITY_LABEL[a.getQuality()] || "Auto"}`;
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
-      tc.hidden = !a.onTouchControl;
-      tc.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === "touch" ? "Touch" : "Joystick"}`;
+      tc.hidden = !a.onTouchControl && !a.onTouchTune;
+      if (!tp.hidden) refreshTouch();
       const pr = prefsNow();
       const wantOnline = !!pr.online;
       vo.hidden = !a.onVoice || !a.getSound();
@@ -39300,6 +39390,7 @@ void main() {
     }
     root.appendChild(panel);
     root.appendChild(pick);
+    root.appendChild(tp);
     root.addEventListener("click", (e) => {
       if (e.target === root) a.onResume();
     });
@@ -39312,11 +39403,18 @@ void main() {
         return !root.hidden;
       },
       get pickOpen() {
-        return !pick.hidden;
+        return !pick.hidden || !tp.hidden;
       },
-      closePick,
+      get touchOpen() {
+        return !tp.hidden;
+      },
+      closePick() {
+        closePick();
+        closeTouch();
+      },
       show() {
         pick.hidden = true;
+        tp.hidden = true;
         refresh();
         focusBack = document.activeElement;
         root.hidden = false;
@@ -39331,6 +39429,7 @@ void main() {
       hide() {
         root.hidden = true;
         pick.hidden = true;
+        tp.hidden = true;
         if (focusBack && typeof focusBack.focus === "function") {
           try {
             focusBack.focus({ preventScroll: true });
@@ -39570,6 +39669,7 @@ void main() {
       this.series = null;
       this.hidden = false;
       this.deps = o.deps;
+      this.getTune = o.getTune || null;
       this.items = o.items;
       this.shelves = o.shelves;
       this.covers = o.covers;
@@ -39748,8 +39848,16 @@ void main() {
       });
       drag.addEventListener("pointermove", (e) => {
         if (!last) return;
-        this.rot.y += (e.clientX - last.x) * 0.012;
-        this.rot.x = Math.max(-0.8, Math.min(0.8, this.rot.x + (e.clientY - last.y) * 8e-3));
+        let kx = 0.012;
+        let ky = 8e-3;
+        if (e.pointerType === "touch" && this.getTune) {
+          const tu = normTune(this.getTune());
+          const f = SENS_FACTOR[tu.touchSens];
+          kx *= f * (tu.holdInvertX ? -1 : 1);
+          ky *= f * (tu.holdInvertY ? -1 : 1);
+        }
+        this.rot.y += (e.clientX - last.x) * kx;
+        this.rot.x = Math.max(-0.8, Math.min(0.8, this.rot.x + (e.clientY - last.y) * ky));
         this.rotTargetY = this.rot.y;
         last = { x: e.clientX, y: e.clientY };
       });
@@ -44720,6 +44828,7 @@ void main() {
       this.voicePitch = ["normal", "tief", "sehrtief"].includes(this.opts.voicePitch) ? this.opts.voicePitch : "tief";
       this.bigCovers = this.opts.bigCovers !== false;
       this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : "joystick";
+      this.touchTune = normTune(this.opts.touchTune);
       this.zoomTarget = 1;
       this.zoom = 1;
       this.lastFps = 0;
@@ -44808,6 +44917,11 @@ void main() {
           this.savePrefs();
         } : null,
         getTouchControl: () => this.touchScheme,
+        onTouchTune: this.touch ? (p) => {
+          this.setTouchTune(p);
+          this.savePrefs();
+        } : null,
+        getTouchTune: () => this.touchTune,
         onTheme: () => this.deps.openThemePicker(),
         onMenu: (anchor) => this.deps.openMenu(anchor),
         getQuality: () => this.qualitySetting,
@@ -44905,6 +45019,7 @@ void main() {
         onClosed: () => this.onHoldClosed(),
         openPanel: (spec) => this.xr.openPanel(spec),
         isXr: () => !!(this.xr && this.xr.presenting),
+        getTune: () => this.touchTune,
         onPlay: (item, resume) => this.mods && this.mods.emit("play", item, { resume })
       });
       this.mods = new ModuleHost(this);
@@ -44924,7 +45039,7 @@ void main() {
           else this.resumeFromPause();
         }
       });
-      this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme }) : null;
+      this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune }) : null;
       this.progress(0.86, "Module werden geladen");
       this.mods.ctx.on("xr", (on) => this.onXrHold(on));
       await this.mods.init((f) => this.progress(0.86 + f * 0.05, "Module werden geladen"));
@@ -45377,7 +45492,7 @@ void main() {
     }
     savePrefs() {
       try {
-        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, vr: { ...this.vr } });
+        this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, ...this.touchTune, vr: { ...this.vr } });
       } catch {
       }
     }
@@ -45407,6 +45522,12 @@ void main() {
       if (this.touchCtl) this.touchCtl.setScheme(s);
       if (this.pause) this.pause.refresh();
       this.syncUi();
+    }
+    /** Touch-Feineinstellung (Teilobjekt): holdInvertY/X, lookInvertY/X (bool), touchSens ('low'|'normal'|'high'). Wirkt sofort. */
+    setTouchTune(p) {
+      if (!p) return;
+      this.touchTune = normTune({ ...this.touchTune, ...p });
+      if (this.pause) this.pause.refresh();
     }
     setShowFps(on) {
       this.showFps = !!on;

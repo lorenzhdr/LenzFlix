@@ -277,7 +277,7 @@ function episodeRow(ep, selectedId, H, siblings) {
       seen ? seenMark() : null,
     ]),
     h('div', { class: 'lfx-modal__ep-text' }, [
-      h('div', { class: 'lfx-modal__ep-head' }, [h('span', { class: 'lfx-modal__ep-title' }, ep.Name || ''), rt ? h('span', { class: 'lfx-modal__ep-rt' }, rt) : null]),
+      h('div', { class: 'lfx-modal__ep-head' }, [h('span', { class: 'lfx-modal__ep-title', 'data-num': ep.IndexNumber != null ? `${ep.IndexNumber}.` : null }, ep.Name || ''), rt ? h('span', { class: 'lfx-modal__ep-rt' }, rt) : null]),
       ep.Overview ? h('p', { class: 'lfx-modal__ep-desc' }, ep.Overview) : null,
     ]),
     h('div', { class: 'lfx-modal__epactions' }, [

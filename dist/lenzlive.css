@@ -3914,6 +3914,31 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__vol-hint:empty {
   display: none;
 }
 
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__vol.is-hint-only {
+  grid-template-columns: 1fr;
+  row-gap: .25em;
+  width: auto;
+  max-width: 70%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-rail {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-num {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-label {
+  font-size: 1em;
+  font-weight: 800;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__vol.is-hint-only .lfx-live-osd__vol-hint {
+  opacity: 1;
+  font-size: .95em;
+}
+
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-osd__info {
   background: var(--lfx-live-osd-bg, rgba(0, 0, 0, .6));
   border-radius: .5em;
@@ -4624,8 +4649,8 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-epg__inner {
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-epg__row {
+  height: var(--lfx-live-epg-row, 3.1em);
   border-bottom: 1px solid var(--lfx-live-ov-line);
-  height: 3.1em;
   display: flex;
 }
 
@@ -4832,6 +4857,79 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-epg__badge {
   border-radius: .2em;
   padding: 0 .4em;
   font-size: .9em;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg {
+  --lfx-live-epg-row: 3.2em;
+  font-size: max(10px, min(3.2cqw, 14px));
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__top {
+  flex: none;
+  gap: .4em;
+  padding: .7em 27% .4em .8em;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone.has-epg .lfx-live-video {
+  width: 23%;
+  top: 1.5%;
+  right: 1.5%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone.has-epg .lfx-live-fake {
+  width: 23%;
+  top: 1.5%;
+  right: 1.5%;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__ev {
+  justify-content: flex-start;
+  min-height: 0;
+  padding-top: .25em;
+  overflow: hidden;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__ev-text {
+  min-height: 0;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__ev-title {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__ev-meta .lfx-live-epg__badge {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__ev .lfx-live-epg__hint {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__chan {
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  gap: 0 .35em;
+  padding: 0 .45em;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__no {
+  min-width: 1.2em;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__name {
+  min-width: 0;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__theme {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-app.is-phone .lfx-live-epg__corner {
+  text-overflow: ellipsis;
+  font-size: .85em;
+  overflow: hidden;
 }
 
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-epg__nowline {

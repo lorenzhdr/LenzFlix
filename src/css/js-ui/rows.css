@@ -239,6 +239,8 @@ html.lfx-js .lfx-skel {
   animation: lfx-shimmer 1.6s linear infinite;
 }
 @keyframes lfx-shimmer { to { background-position: -200% 0; } }
+/* Shimmer nur an den ersten drei Zeilen (weiter unten liegende Skelette sind nicht sichtbar) */
+html.lfx-js .lfx-rows > .lfx-row:nth-child(n+4) .lfx-skel { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js .lfx-skel { animation: none; }
 }

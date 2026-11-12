@@ -6,7 +6,7 @@ export const SECRET = 'SECRET-TOKEN-123';
 export const flush = async (n = 6) => { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); };
 
 /** <video> mit gestubbten Medienfunktionen. caps: { mkv, mp4, hls }. log: gemeinsames Ereignisprotokoll. */
-export function makeVideo({ mkv = true, mp4 = true, hls = true, hevc = false, hevcMkv = hevc, log = [] } = {}) {
+export function makeVideo({ mkv = true, mp4 = true, hls = true, hevc = false, hevcMkv = hevc, ac3 = false, log = [] } = {}) {
   const v = document.createElement('video');
   let ct = 0;
   let vol = 1;
@@ -18,6 +18,7 @@ export function makeVideo({ mkv = true, mp4 = true, hls = true, hevc = false, he
   v.pause = vi.fn(() => { log.push(['pause']); });
   v.load = vi.fn(() => { log.push(['load']); });
   v.canPlayType = vi.fn((t) => {
+    if (/ac-3|ec-3/.test(t)) return ac3 ? 'probably' : '';
     if (/hvc1/.test(t)) return /matroska/.test(t) ? (hevcMkv ? 'probably' : '') : (hevc ? 'probably' : '');
     if (/matroska/.test(t)) return mkv ? 'maybe' : '';
     if (/mpegurl/.test(t)) return hls ? 'maybe' : '';

@@ -14,10 +14,15 @@ import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
 import { buildPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
 
 export const ROTATE_MS = 10000;
-export const TRAILER_DELAY_MS = 4000;
+export const TRAILER_MIN_IMAGE_MS = 5000; // Titelbild steht mindestens so lange, bevor der Trailer eingeblendet wird
+export const TRAILER_BUFFER_S = 6; // so viel Vorlauf gilt als „abspielbereit“ (zusätzlich zu canplaythrough)
+export const TRAILER_WAIT_MAX_MS = 25000; // so lange hält die Rotation für einen ladenden Trailer an
+export const ROWS_WAIT_MAX_MS = 8000; // Trailer lädt spätestens dann vor, auch ohne „lfx:rows-ready“
+const ROWS_READY_EVENT = 'lfx:rows-ready';
 const IMG_FADE_MS = 1000;
 const TEXT_FADE_MS = 400;
-const FIELDS = 'Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount';
+// Nur, was Billboard/Modal-Hint brauchen (Overview/RemoteTrailers werden nicht angezeigt: das Modal lädt den Titel selbst).
+const FIELDS = 'Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,LocalTrailerCount';
 const NS = 'http://www.w3.org/2000/svg';
 
 function svg(html, cls) {
@@ -52,7 +57,9 @@ async function fetchPool() {
     ImageTypes: 'Logo,Backdrop',
     Fields: FIELDS,
     EnableUserData: true,
-    Limit: 40,
+    EnableImageTypes: 'Logo,Backdrop,Primary',
+    ImageTypeLimit: 1,
+    Limit: 12,
   };
   const [latest, random] = await Promise.all([
     getItems({ ...base, SortBy: 'DateCreated', SortOrder: 'Descending' }).catch(() => null),
@@ -98,7 +105,8 @@ export function render(slot) {
   let hovering = false;
   let trailerActive = false;
   let rotateTimer = null;
-  let trailerTimer = null;
+  let slide = null; // aktuelle Folie: {item, gen, t0, imgAt, started, ready, failed, revealTimer}
+  let rowsReady = false;
   const timers = new Set();
   let video = null;
   let card = null;
@@ -117,13 +125,17 @@ export function render(slot) {
     return t;
   };
 
+  // Ein ladender Trailer hält die Rotation an (höchstens TRAILER_WAIT_MAX_MS), damit das Bild stehen bleibt.
+  const trailerPending = () =>
+    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive
+      && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
+
   const paused = () =>
-    hovering || trailerActive || document.hidden || document.documentElement.classList.contains('lfx-modal-open')
+    hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains('lfx-modal-open')
     || isMenuOpen() || isChooserOpen();
 
   function stopTrailer() {
-    clearTimeout(trailerTimer);
-    trailerTimer = null;
+    if (slide) clearTimeout(slide.revealTimer);
     trailerActive = false;
     if (video) {
       const v = video;
@@ -228,12 +240,13 @@ export function render(slot) {
     ]);
   }
 
-  function buildImage(item) {
-    const bd = imageUrl(item, { type: 'Backdrop', maxWidth: 1920, quality: 90 });
-    const poster = imageUrl(item, { type: 'Primary', maxWidth: 900, quality: 90 });
+  function buildImage(item, first = false) {
+    const bd = imageUrl(item, { type: 'Backdrop', maxWidth: 1600, quality: 80 });
+    const poster = imageUrl(item, { type: 'Primary', maxWidth: 720, quality: 80 });
     return h('picture', { class: 'lfx-bb__pic' }, [
       poster ? h('source', { media: '(max-width: 799px)', srcset: poster }) : null,
-      h('img', { class: 'lfx-bb__img', src: bd, alt: '', decoding: 'async' }),
+      // Erstes Bild: sofort und mit hoher Priorität laden (ohne Überblendung, siehe show()).
+      h('img', { class: 'lfx-bb__img', src: bd, alt: '', decoding: 'async', fetchpriority: first ? 'high' : null }),
     ]);
   }
 
@@ -266,7 +279,6 @@ export function render(slot) {
         gen += 1;
         stopTrailer();
         clearTimeout(rotateTimer);
-        clearTimeout(trailerTimer);
         timers.forEach(clearTimeout);
         timers.clear();
         content.replaceChildren();
@@ -294,17 +306,26 @@ export function render(slot) {
     muteBtn.setAttribute('aria-label', video.muted ? 'Ton einschalten' : 'Ton ausschalten');
   }
 
-  async function startTrailer(item, myGen) {
-    if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen) return;
+  /** Vorladen starten: erst wenn das Titelbild geladen ist UND die ersten Zeilen gefüllt sind. */
+  function tryPreload() {
+    const sl = slide;
+    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed) return;
+    if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
+    sl.started = true;
+    startTrailer(sl);
+  }
+
+  /** Trailer unsichtbar und stumm vorladen; sichtbar erst, wenn das Bild >= 5 s stand UND er abspielbereit ist. */
+  async function startTrailer(sl) {
     try {
-      const t = await loadLocalTrailer(item);
-      if (myGen !== gen || disposed) return;
-      if (!t) return;
+      const t = await loadLocalTrailer(sl.item);
+      if (sl.gen !== gen || disposed) return;
+      if (!t) { sl.failed = true; return; }
       const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
       v.muted = true;
       v.setAttribute('muted', '');
       v.addEventListener('playing', () => {
-        if (myGen !== gen || video !== v) return;
+        if (sl.gen !== gen || video !== v) return;
         trailerActive = true;
         v.classList.add('is-in');
         card.classList.add('is-trailer');
@@ -313,17 +334,37 @@ export function render(slot) {
       });
       const end = () => {
         if (video !== v) return;
+        sl.failed = true;
         stopTrailer();
         scheduleRotate();
       };
+      const buffered = () => {
+        try { return v.buffered.length ? v.buffered.end(v.buffered.length - 1) : 0; } catch { return 0; }
+      };
+      const enough = () => v.readyState >= 4
+        || buffered() - (v.currentTime || 0) >= TRAILER_BUFFER_S
+        || (Number.isFinite(v.duration) && v.duration > 0 && buffered() >= v.duration - 0.3);
+      const reveal = () => {
+        if (video !== v || sl.gen !== gen || disposed) return;
+        const p = v.play && v.play();
+        if (p && p.catch) p.catch(end);
+      };
+      const check = (force = false) => {
+        if (sl.ready || video !== v || sl.gen !== gen || !(force === true || enough())) return;
+        sl.ready = true;
+        const wait = sl.imgAt + TRAILER_MIN_IMAGE_MS - Date.now();
+        if (wait > 0) sl.revealTimer = later(reveal, wait);
+        else reveal();
+      };
       v.addEventListener('ended', end);
       v.addEventListener('error', end);
+      v.addEventListener('canplaythrough', () => check(true));
+      for (const ev of ['canplay', 'loadeddata', 'progress', 'durationchange']) v.addEventListener(ev, () => check());
       v.src = trailerUrl(t.Id);
       video = v;
       media.append(v);
-      const p = v.play && v.play();
-      if (p && p.catch) p.catch(end);
-    } catch { /* still ignorieren */ }
+      check();
+    } catch { sl.failed = true; }
   }
 
   function show(i, immediate = false) {
@@ -335,8 +376,9 @@ export function render(slot) {
     stopTrailer();
     updateDots();
     // Bild: neues Bild blendet über dem alten ein (1 s), danach wird das alte entfernt.
-    const pic = buildImage(item);
     const olds = [...media.querySelectorAll('.lfx-bb__pic')];
+    const firstPic = !olds.length;
+    const pic = buildImage(item, firstPic);
     media.append(pic);
     if (immediate || !olds.length) {
       olds.forEach((o) => o.remove());
@@ -359,8 +401,20 @@ export function render(slot) {
     putItems([item]);
     loadAmbient(item, () => myGen === gen && !disposed);
     scheduleRotate();
-    clearTimeout(trailerTimer);
-    trailerTimer = setTimeout(() => startTrailer(item, myGen), TRAILER_DELAY_MS);
+    // Trailer: erst das Titelbild; Vorladen startet, sobald Bild geladen + Zeilen gefüllt (tryPreload).
+    const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
+    slide = sl;
+    const img = pic.querySelector('.lfx-bb__img');
+    const onLoaded = () => {
+      if (disposed || sl.gen !== gen || sl.imgAt) return;
+      sl.imgAt = Date.now();
+      tryPreload();
+    };
+    if (img.complete && img.naturalWidth > 0) onLoaded();
+    else {
+      img.addEventListener('load', onLoaded, { once: true });
+      img.addEventListener('error', onLoaded, { once: true });
+    }
   }
 
   function build() {
@@ -407,6 +461,7 @@ export function render(slot) {
     } catch { /* leer */ }
     if (disposed) return;
     if (!items.length) {
+      slot.replaceChildren();
       slot.hidden = true;
       resetAmbient();
       return;
@@ -418,14 +473,19 @@ export function render(slot) {
     show(0, true);
   }
 
-  slot.hidden = true;
+  // Skelett in Billboard-Größe, bis der Pool da ist (verhindert Layout-Sprung der Zeilen darunter).
+  slot.replaceChildren(h('div', { class: 'lfx-bb lfx-bb--skel', 'aria-hidden': 'true' }));
+  slot.hidden = false;
+  const onRowsReady = () => { rowsReady = true; tryPreload(); };
+  document.addEventListener(ROWS_READY_EVENT, onRowsReady);
+  cleanupFns.push(() => document.removeEventListener(ROWS_READY_EVENT, onRowsReady));
+  later(onRowsReady, ROWS_WAIT_MAX_MS);
   init();
 
   return () => {
     disposed = true;
     gen += 1;
     clearTimeout(rotateTimer);
-    clearTimeout(trailerTimer);
     timers.forEach(clearTimeout);
     timers.clear();
     stopTrailer();

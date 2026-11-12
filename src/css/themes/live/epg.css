@@ -198,7 +198,7 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
   }
   .lfx-live-epg__row {
     display: flex;
-    height: 3.1em;
+    height: var(--lfx-live-epg-row, 3.1em);
     border-bottom: 1px solid var(--lfx-live-ov-line);
   }
   .lfx-live-epg__row.is-current .lfx-live-epg__chan {
@@ -370,6 +370,54 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     border-radius: 0.2em;
     font-size: 0.9em;
   }
+  /* Handy: größere Schrift, höhere Zeilen, nur Titel + Uhrzeit (Badges/Füllprogramm-Zeile aus; Füllprogramm bleibt an
+     gestrichelter Umrandung/Opacity erkennbar), kleinere obere Zone mit kleinerem Mini-Bild → mehr Sender sichtbar */
+  .lfx-live-app.is-phone .lfx-live-epg {
+    --lfx-live-epg-row: 3.2em;
+    font-size: clamp(10px, 3.2cqw, 14px);
+  }
+  .lfx-live-app.is-phone .lfx-live-epg__top {
+    flex: 0 0 auto;
+    padding: 0.7em 0.8em 0.4em;
+    padding-right: 27%;
+    gap: 0.4em;
+  }
+  .lfx-live-app.is-phone.has-epg .lfx-live-video,
+  .lfx-live-app.is-phone.has-epg .lfx-live-fake {
+    width: 23%;
+    top: 1.5%;
+    right: 1.5%;
+  }
+  .lfx-live-app.is-phone .lfx-live-epg__ev {
+    justify-content: flex-start;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 0.25em;
+  }
+  .lfx-live-app.is-phone .lfx-live-epg__ev-text { min-height: 0; }
+  .lfx-live-app.is-phone .lfx-live-epg__ev-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .lfx-live-app.is-phone .lfx-live-epg__ev-meta .lfx-live-epg__badge,
+  .lfx-live-app.is-phone .lfx-live-epg__ev .lfx-live-epg__hint { display: none; }
+  /* Senderspalte einzeilig: Nummer + Name (gekürzt), Themenzeile aus; Datum in der Ecke ohne Umbruch */
+  .lfx-live-app.is-phone .lfx-live-epg__chan {
+    flex-wrap: nowrap;
+    gap: 0 0.35em;
+    padding: 0 0.45em;
+    white-space: nowrap;
+  }
+  .lfx-live-app.is-phone .lfx-live-epg__no { min-width: 1.2em; }
+  .lfx-live-app.is-phone .lfx-live-epg__name { min-width: 0; }
+  .lfx-live-app.is-phone .lfx-live-epg__theme { display: none; }
+  .lfx-live-app.is-phone .lfx-live-epg__corner {
+    font-size: 0.85em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .lfx-live-epg__nowline {
     position: absolute;
     top: 0;

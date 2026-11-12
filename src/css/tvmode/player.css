@@ -518,3 +518,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__menu {
     animation-duration: 3s;
   }
 }
+
+/* 1.11.0: Fehlerkarte nie von der Zapp-Einblendung verdecken; Kurzcode dezent unter dem Text */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.has-error .lfx-tvm__zap { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__card-code { margin-top: 4px; letter-spacing: 0.02em; }

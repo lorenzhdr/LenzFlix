@@ -4,6 +4,8 @@ import { el } from './hud.js';
 const QUALITY_LABEL = { auto: 'Auto', low: 'Niedrig', mid: 'Mittel', high: 'Hoch' };
 const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
 
+const SENS_LABEL = { low: 'Niedrig', normal: 'Normal', high: 'Hoch' };
+const SENS_NEXT = { low: 'normal', normal: 'high', high: 'low' };
 const PITCH_LABEL = { normal: 'Normal', tief: 'Tief', sehrtief: 'Sehr tief' };
 const PITCH_NEXT = { normal: 'tief', tief: 'sehrtief', sehrtief: 'normal' };
 const AUTO_DEVICE = 'Automatisch (Gerätestimme)';
@@ -49,6 +51,7 @@ export function voiceNote(info, wantOnline = false) {
  *   onVoice?({ name?, online?, pitch? }) (Stimmwahl/Tonlage; spricht danach die Probe), getVoicePrefs?() → { name, online, pitch },
  *   getVoiceList?() → [{ name, lang, online, male }] (deutsche Stimmen),
  *   onTouchControl?(scheme) / getTouchControl?() → 'joystick' | 'touch' (nur Touch; fehlt = Knopf ausgeblendet),
+ *   onTouchTune?({ holdInvertY?, holdInvertX?, lookInvertY?, lookInvertX?, touchSens? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal'),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
 export function createPause(host, a) {
@@ -83,11 +86,7 @@ export function createPause(host, a) {
   panel.appendChild(note);
   const f = mk('', () => { a.onFps(!a.getFps()); refresh(); });
   const bc = mk('', () => { a.onBigCovers(!a.getBigCovers()); refresh(); });
-  const tc = mk('', () => {
-    if (!a.onTouchControl) return;
-    a.onTouchControl(a.getTouchControl && a.getTouchControl() === 'touch' ? 'joystick' : 'touch');
-    refresh();
-  });
+  const tc = mk('Touch-Steuerung …', () => openTouch());
   const fs = mk('', () => { if (a.onFullscreen) a.onFullscreen(); refresh(); }, 'lfx-store-act--fs');
   mk('Design wechseln', () => a.onTheme());
   mk('Menü', (b) => a.onMenu(b));
@@ -158,14 +157,63 @@ export function createPause(host, a) {
   doneBtn.addEventListener('click', (e) => { e.stopPropagation(); closePick(); });
   pick.addEventListener('click', (e) => { if (e.target === pick) { e.stopPropagation(); closePick(); } });
 
+  // --- Touch-Steuerung (Panel über dem Pause-Menü, nur Touch) ---
+  const tp = el('div', 'lfx-store-voicepick lfx-store-touchpick');
+  tp.hidden = true;
+  const tpPanel = el('div', 'lfx-store-voicepick-panel');
+  tpPanel.setAttribute('role', 'dialog');
+  tpPanel.setAttribute('aria-label', 'Touch-Steuerung');
+  tpPanel.appendChild(el('div', 'lfx-store-pause-title', 'Touch-Steuerung'));
+  const tuneNow = () => (a.getTouchTune && a.getTouchTune()) || {};
+  const mkT = (fn) => {
+    const b = el('button', 'lfx-store-act');
+    b.type = 'button';
+    b.addEventListener('click', (e) => { e.stopPropagation(); fn(); refreshTouch(); });
+    tpPanel.appendChild(b);
+    return b;
+  };
+  const tSchemeB = mkT(() => { if (a.onTouchControl) a.onTouchControl(a.getTouchControl && a.getTouchControl() === 'touch' ? 'joystick' : 'touch'); });
+  const flag = (key) => () => { if (a.onTouchTune) a.onTouchTune({ [key]: !tuneNow()[key] }); };
+  const tHoldY = mkT(flag('holdInvertY'));
+  const tHoldX = mkT(flag('holdInvertX'));
+  const tLookY = mkT(flag('lookInvertY'));
+  const tLookX = mkT(flag('lookInvertX'));
+  const tSens = mkT(() => { if (a.onTouchTune) a.onTouchTune({ touchSens: SENS_NEXT[tuneNow().touchSens] || 'normal' }); });
+  const tBack = el('button', 'lfx-store-act lfx-store-act--primary', 'Zurück');
+  tBack.type = 'button';
+  tBack.addEventListener('click', (e) => { e.stopPropagation(); closeTouch(); });
+  tpPanel.appendChild(tBack);
+  tp.appendChild(tpPanel);
+  function refreshTouch() {
+    const t = tuneNow();
+    const nr = (on) => (on ? 'Umgekehrt' : 'Normal');
+    tSchemeB.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === 'touch' ? 'Touch' : 'Joystick'}`;
+    tHoldY.textContent = `Cover kippen: ${nr(t.holdInvertY)}`;
+    tHoldX.textContent = `Cover drehen: ${nr(t.holdInvertX)}`;
+    tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookInvertY)}`;
+    tLookX.textContent = `Umschauen links/rechts: ${nr(t.lookInvertX)}`;
+    tSens.textContent = `Empfindlichkeit: ${SENS_LABEL[t.touchSens] || SENS_LABEL.normal}`;
+  }
+  function openTouch() {
+    refreshTouch();
+    tp.hidden = false;
+    try { tSchemeB.focus({ preventScroll: true }); } catch { /* egal */ }
+  }
+  function closeTouch() {
+    if (tp.hidden) return;
+    tp.hidden = true;
+    try { tc.focus({ preventScroll: true }); } catch { /* egal */ }
+  }
+  tp.addEventListener('click', (e) => { if (e.target === tp) { e.stopPropagation(); closeTouch(); } });
+
   function refresh() {
     vrb.hidden = !(a.getVr && a.getVr());
     q.textContent = `Qualität: ${QUALITY_LABEL[a.getQuality()] || 'Auto'}`;
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
     f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;
     bc.textContent = `Hüllen: ${a.getBigCovers() ? 'Groß' : 'Normal'}`;
-    tc.hidden = !a.onTouchControl;
-    tc.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === 'touch' ? 'Touch' : 'Joystick'}`;
+    tc.hidden = !a.onTouchControl && !a.onTouchTune;
+    if (!tp.hidden) refreshTouch();
     const pr = prefsNow();
     const wantOnline = !!pr.online;
     vo.hidden = !a.onVoice || !a.getSound();
@@ -180,6 +228,7 @@ export function createPause(host, a) {
   }
   root.appendChild(panel);
   root.appendChild(pick);
+  root.appendChild(tp);
   root.addEventListener('click', (e) => { if (e.target === root) a.onResume(); });
 
   host.appendChild(root);
@@ -188,10 +237,12 @@ export function createPause(host, a) {
   return {
     root,
     get visible() { return !root.hidden; },
-    get pickOpen() { return !pick.hidden; },
-    closePick,
+    get pickOpen() { return !pick.hidden || !tp.hidden; },
+    get touchOpen() { return !tp.hidden; },
+    closePick() { closePick(); closeTouch(); },
     show() {
       pick.hidden = true;
+      tp.hidden = true;
       refresh();
       focusBack = document.activeElement;
       root.hidden = false;
@@ -201,6 +252,7 @@ export function createPause(host, a) {
     hide() {
       root.hidden = true;
       pick.hidden = true;
+      tp.hidden = true;
       if (focusBack && typeof focusBack.focus === 'function') { try { focusBack.focus({ preventScroll: true }); } catch { /* egal */ } }
       focusBack = null;
     },

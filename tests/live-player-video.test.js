@@ -28,6 +28,15 @@ async function begin(ctx, opts = { itemId: 'it1', offsetMs: 0 }) {
   return p;
 }
 
+/** Wie begin(), aber mit Fake-Timern (flush nutzt echte Timer). */
+async function beginT(ctx, opts = { itemId: 'it1', offsetMs: 0 }) {
+  const p = ctx.player.play(opts);
+  await vi.advanceTimersByTimeAsync(5);
+  fire(ctx.video, 'loadedmetadata');
+  fire(ctx.video, 'playing');
+  return p;
+}
+
 describe('Element-Attribute', () => {
   it('setzt playsinline, disablepictureinpicture, airplay deny, kein controls', () => {
     const { video } = setup();
@@ -70,15 +79,71 @@ describe('Start', () => {
     expect(await p).toEqual({ ok: true, mode: 'hls' });
   });
 
-  it('Zustände: loading → playing / stalled / ended', async () => {
+  it('Zustände: loading → playing / stalled (erst nach 1,2 s ohne Fortschritt) / ended', async () => {
+    vi.useFakeTimers();
     const ctx = setup();
     const phases = [];
     ctx.player.on('state', (s) => phases.push(s.phase));
-    await begin(ctx);
+    await beginT(ctx);
     fire(ctx.video, 'waiting');
+    expect(phases).toEqual(['loading', 'playing']);
+    await vi.advanceTimersByTimeAsync(1300);
     fire(ctx.video, 'playing');
     fire(ctx.video, 'ended');
     expect(phases).toEqual(['loading', 'playing', 'stalled', 'playing', 'ended']);
+  });
+
+  it('stalled-Ereignis wird ignoriert; waiting mit Fortschritt meldet keinen Stall', async () => {
+    vi.useFakeTimers();
+    const ctx = setup();
+    const phases = [];
+    ctx.player.on('state', (s) => phases.push(s.phase));
+    await beginT(ctx);
+    fire(ctx.video, 'stalled');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(phases).toEqual(['loading', 'playing']);
+    fire(ctx.video, 'waiting');
+    await vi.advanceTimersByTimeAsync(500);
+    ctx.video.currentTime = 12; // läuft weiter
+    fire(ctx.video, 'timeupdate');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(phases).toEqual(['loading', 'playing']);
+  });
+
+  it('echter Stall: timeupdate mit Fortschritt bzw. canplay meldet wieder playing', async () => {
+    vi.useFakeTimers();
+    const ctx = setup();
+    const phases = [];
+    ctx.player.on('state', (s) => phases.push(s.phase));
+    await beginT(ctx);
+    fire(ctx.video, 'waiting');
+    await vi.advanceTimersByTimeAsync(1250);
+    expect(phases.at(-1)).toBe('stalled');
+    fire(ctx.video, 'timeupdate'); // currentTime unverändert: noch Stall
+    expect(phases.at(-1)).toBe('stalled');
+    ctx.video.currentTime = 5;
+    fire(ctx.video, 'timeupdate');
+    expect(phases.slice(-2)).toEqual(['stalled', 'playing']);
+    fire(ctx.video, 'waiting');
+    await vi.advanceTimersByTimeAsync(1250);
+    expect(phases.at(-1)).toBe('stalled');
+    fire(ctx.video, 'canplay');
+    expect(phases.at(-1)).toBe('playing');
+  });
+
+  it('Seek (syncTo > 10 s) mit waiting folgt derselben Regel', async () => {
+    vi.useFakeTimers();
+    const ctx = setup();
+    const phases = [];
+    await beginT(ctx, { itemId: 'it1', offsetMs: 100000 });
+    ctx.player.on('state', (s) => phases.push(s.phase));
+    ctx.video.currentTime = 100;
+    ctx.player.syncTo(130000);
+    fire(ctx.video, 'waiting');
+    await vi.advanceTimersByTimeAsync(300);
+    fire(ctx.video, 'playing');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(phases).toEqual(['playing']);
   });
 
   it('Timeout: 25 s ohne playing → error/network', async () => {
@@ -90,16 +155,16 @@ describe('Start', () => {
     await vi.advanceTimersByTimeAsync(24000);
     expect(states.some((s) => s.phase === 'error')).toBe(false);
     await vi.advanceTimersByTimeAsync(1500);
-    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'network' });
-    expect(states.at(-1)).toEqual({ phase: 'error', reason: 'network' });
+    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'network', code: 'TIMEOUT' });
+    expect(states.at(-1)).toEqual({ phase: 'error', reason: 'network', code: 'TIMEOUT' });
   });
 
   it('Aufgelöste Fehler werden gemeldet (video, ohne Stream zu starten)', async () => {
     const ctx = setup({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=VideoCodecNotSupported') })) });
     const errors = [];
     ctx.player.on('error', (e) => errors.push(e));
-    expect(await ctx.player.play({ itemId: 'it1', offsetMs: 0 })).toEqual({ ok: false, mode: 'none', reason: 'video' });
-    expect(errors).toEqual([{ reason: 'video' }]);
+    expect(await ctx.player.play({ itemId: 'it1', offsetMs: 0 })).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'V-CODEC' });
+    expect(errors).toEqual([{ reason: 'video', code: 'V-CODEC' }]);
     expect(ctx.video.hasAttribute('src')).toBe(false);
   });
 
@@ -109,7 +174,7 @@ describe('Start', () => {
     await flush();
     Object.defineProperty(ctx.video, 'error', { value: { code: 4 }, configurable: true });
     fire(ctx.video, 'error');
-    expect(await p).toMatchObject({ ok: false, reason: 'video' });
+    expect(await p).toMatchObject({ ok: false, reason: 'video', code: 'M4' });
   });
 
   it('unlock(): play() synchron im Aufruf, Rejection wird geschluckt', async () => {
@@ -409,6 +474,6 @@ describe('Autoplay-Sperre (NotAllowedError)', () => {
     const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
     await flush();
     fire(ctx.video, 'loadedmetadata');
-    expect(await p).toMatchObject({ ok: false, reason: 'browser' });
+    expect(await p).toMatchObject({ ok: false, reason: 'browser', code: 'B-PLAY' });
   });
 });

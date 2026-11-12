@@ -82,7 +82,7 @@ describe('resolveStream', () => {
 
   it('HEVC mit VideoCodecNotSupported → none/video', async () => {
     const deps = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=VideoCodecNotSupported,AudioCodecNotSupported') })) });
-    expect(await resolve(deps, makeVideo())).toEqual({ ok: false, mode: 'none', reason: 'video' });
+    expect(await resolve(deps, makeVideo())).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'V-CODEC' });
   });
 
   it('Video-Grund im Feld TranscodeReasons (Array) → none/video', async () => {
@@ -93,7 +93,7 @@ describe('resolveStream', () => {
   it('SubtitleMethod=Encode in der TranscodingUrl (Groß-/Kleinschreibung egal) → none/video', async () => {
     for (const q of ['&SubtitleMethod=Encode', '&subtitlemethod=encode']) {
       const deps = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl(`&TranscodeReasons=AudioCodecNotSupported${q}`) })) });
-      expect(await resolve(deps, makeVideo())).toEqual({ ok: false, mode: 'none', reason: 'video' });
+      expect(await resolve(deps, makeVideo())).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'V-SUB' });
     }
   });
 
@@ -106,7 +106,7 @@ describe('resolveStream', () => {
 
   it('kein natives HLS → browser', async () => {
     const deps = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=AudioCodecNotSupported') })) });
-    expect(await resolve(deps, makeVideo({ hls: false }))).toEqual({ ok: false, mode: 'none', reason: 'browser' });
+    expect(await resolve(deps, makeVideo({ hls: false }))).toEqual({ ok: false, mode: 'none', reason: 'browser', code: 'B-HLS' });
   });
 
   it('fehlende TranscodingUrl + AC3 → audio; bei aac → video', async () => {
@@ -122,7 +122,7 @@ describe('resolveStream', () => {
   it('HTTP-Fehler / leere Antwort → network, Abbruch → aborted', async () => {
     let deps = makeDeps({ respond: () => { throw new Error(`HTTP 500 http://srv/?ApiKey=${SECRET}`); } });
     const r = await resolve(deps, makeVideo());
-    expect(r).toEqual({ ok: false, mode: 'none', reason: 'network' });
+    expect(r).toEqual({ ok: false, mode: 'none', reason: 'network', code: 'NET' });
     expect(JSON.stringify(r)).not.toContain(SECRET);
     deps = makeDeps({ respond: () => null });
     expect((await resolve(deps, makeVideo())).reason).toBe('network');

@@ -88,6 +88,23 @@ describe('getCharts', () => {
     expect(console.warn).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(console.warn.mock.calls)).not.toContain('SECRET-TOKEN');
   });
+  it('Zeitüberschreitung nach 3 s -> null (Abbruch per AbortSignal)', async () => {
+    vi.useFakeTimers();
+    try {
+      window.LenzFlixConfig = { chartsUrl: 'https://charts.example.com' };
+      vi.stubGlobal('fetch', vi.fn((_u, opts) => new Promise((_res, rej) => {
+        opts.signal.addEventListener('abort', () => rej(Object.assign(new Error('abort'), { name: 'AbortError' })));
+      })));
+      const p = getCharts();
+      await vi.advanceTimersByTimeAsync(2900);
+      let done = false;
+      p.then(() => { done = true; });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(200);
+      expect(await p).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
   it('ungültiges JSON/Schema -> null', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => { throw new Error('bad'); } }));
     expect(await getCharts()).toBeNull();

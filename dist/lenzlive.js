@@ -1438,8 +1438,186 @@
     };
   }
 
+  // src/js/live/player/gain.js
+  var graphs = /* @__PURE__ */ new WeakMap();
+  var RESUME_MS = 1e3;
+  var SAMPLE_MS = 250;
+  var CHECK_MS = 1500;
+  var audioCtor = () => typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext) || null;
+  function createGainControl(video, { emit = () => {
+  } } = {}) {
+    let wanted = 1;
+    let activating = false;
+    let disposed = false;
+    let checkIv = null;
+    let quietMs = 0;
+    const st = () => graphs.get(video) || null;
+    const active = () => {
+      const s = st();
+      return !!(s && s.gain && !s.failed);
+    };
+    const stopCheck = () => {
+      if (checkIv) {
+        clearInterval(checkIv);
+        checkIv = null;
+      }
+    };
+    function markFailed() {
+      stopCheck();
+      const s = st() || {};
+      s.failed = true;
+      if (s.gain) {
+        try {
+          s.gain.gain.value = 1;
+        } catch {
+        }
+      }
+      graphs.set(video, s);
+      emit("volume-mode", { mode: "mute-only" });
+    }
+    function sampleLoud(s) {
+      try {
+        const buf = new Uint8Array(s.analyser.fftSize || 256);
+        s.analyser.getByteTimeDomainData(buf);
+        for (let i = 0; i < buf.length; i++) if (Math.abs(buf[i] - 128) > 1) return true;
+      } catch {
+        return true;
+      }
+      return false;
+    }
+    function poke() {
+      if (disposed) return;
+      const s = st();
+      if (!s || !s.gain || s.failed) return;
+      if (s.ctx && s.ctx.state !== "running") {
+        try {
+          s.ctx.resume();
+        } catch {
+        }
+      }
+      if (s.checked || checkIv) return;
+      quietMs = 0;
+      checkIv = setInterval(() => {
+        const cur = st();
+        if (!cur || cur.failed || cur.checked) {
+          stopCheck();
+          return;
+        }
+        if (video.paused || video.muted || wanted <= 0) {
+          quietMs = 0;
+          return;
+        }
+        if (sampleLoud(cur)) {
+          cur.checked = true;
+          stopCheck();
+          return;
+        }
+        quietMs += SAMPLE_MS;
+        if (quietMs >= CHECK_MS) markFailed();
+      }, SAMPLE_MS);
+    }
+    function build(ctx) {
+      try {
+        const source = ctx.createMediaElementSource(video);
+        const gain = ctx.createGain();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(gain);
+        gain.connect(ctx.destination);
+        source.connect(analyser);
+        gain.gain.value = wanted;
+        graphs.set(video, { ctx, gain, analyser, source, failed: false, checked: false });
+        emit("volume-mode", { mode: "gain" });
+        poke();
+      } catch {
+        try {
+          ctx.close();
+        } catch {
+        }
+        markFailed();
+      }
+    }
+    function activate() {
+      const A = audioCtor();
+      if (!A) {
+        markFailed();
+        return;
+      }
+      let ctx;
+      try {
+        ctx = new A();
+      } catch {
+        markFailed();
+        return;
+      }
+      activating = true;
+      let settled = false;
+      let timer = null;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        activating = false;
+        if (ok && !disposed && ctx.state === "running") {
+          build(ctx);
+          return;
+        }
+        try {
+          ctx.close();
+        } catch {
+        }
+      };
+      timer = setTimeout(() => done(false), RESUME_MS);
+      let p = null;
+      try {
+        p = ctx.resume();
+      } catch {
+      }
+      if (p && typeof p.then === "function") p.then(() => done(true), () => done(false));
+      else done(true);
+    }
+    return {
+      /** v 0..1. Aktiviert den Pfad erst beim ersten Pegel < 1 (Aufruf idealerweise in einer Nutzergeste). */
+      setLevel(v) {
+        wanted = Math.min(1, Math.max(0, Number(v)));
+        if (!Number.isFinite(wanted)) wanted = 1;
+        const s = st();
+        if (s && s.failed) return;
+        if (s && s.gain) {
+          try {
+            s.gain.gain.value = wanted;
+          } catch {
+          }
+          poke();
+          return;
+        }
+        if (wanted >= 1 || activating || disposed) return;
+        activate();
+      },
+      mode: () => active() ? "gain" : "mute-only",
+      /** Lohnt sich ein Versuch? (nicht gescheitert, kein Graph, AudioContext vorhanden) */
+      canTry() {
+        const s = st();
+        return !(s && (s.failed || s.gain)) && !!audioCtor();
+      },
+      poke,
+      dispose() {
+        disposed = true;
+        stopCheck();
+        const s = st();
+        if (s && s.gain) {
+          try {
+            s.gain.gain.value = 1;
+          } catch {
+          }
+        }
+      }
+    };
+  }
+
   // src/js/live/player/video.js
   var START_TIMEOUT_MS = 25e3;
+  var STALL_REPORT_MS = 1200;
   var MEDIA_ACTIONS = ["pause", "play", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"];
   function createVideoControl(video, { now = Date.now, emit = () => {
   } } = {}) {
@@ -1451,6 +1629,11 @@
     let onMeta = null;
     let trackEl = null;
     let disposed = false;
+    let quiet = false;
+    let waiting = false;
+    let waitCt = 0;
+    let stallTimer = null;
+    let stallShown = false;
     video.setAttribute("playsinline", "");
     video.setAttribute("disablepictureinpicture", "");
     video.setAttribute("x-webkit-airplay", "deny");
@@ -1461,26 +1644,42 @@
     }
     const livePos = () => base.off + (now() - base.at);
     const settle = (result) => {
+      quiet = false;
       clearTimeout(timer);
       timer = null;
       const p = pending;
       pending = null;
       if (p) p(result);
     };
-    const fail2 = (reason) => {
+    const fail2 = (reason, code) => {
       if (!armed || disposed) return;
-      emit("state", { phase: "error", reason });
-      emit("error", { reason });
-      settle({ ok: false, reason });
+      const extra = code ? { code } : {};
+      if (!(quiet && pending)) {
+        emit("state", { phase: "error", reason, ...extra });
+        emit("error", { reason, ...extra });
+      }
+      settle({ ok: false, reason, ...extra });
     };
+    function resetStall() {
+      clearTimeout(stallTimer);
+      stallTimer = null;
+      waiting = false;
+      stallShown = false;
+    }
+    function recovered() {
+      const was = stallShown;
+      resetStall();
+      if (was && armed) emit("state", { phase: "playing" });
+    }
     const callPlay = (retried = false) => {
       const rejected = (e) => {
         if (!armed || disposed) return;
         const name = e && e.name;
         if (name === "AbortError") return;
+        const failPlay = (r, c2) => fail2(r, c2);
         if (name === "NotAllowedError") {
           if (retried) {
-            fail2("gesture");
+            failPlay("gesture");
             return;
           }
           try {
@@ -1490,7 +1689,7 @@
           callPlay(true);
           return;
         }
-        fail2("browser");
+        failPlay("browser", "B-PLAY");
       };
       try {
         const p = video.play();
@@ -1503,27 +1702,46 @@
         rejected(e);
       }
     };
-    let volumeSupported;
+    let nativeVolume;
     try {
       const prev = video.volume;
       video.volume = 0.5;
-      volumeSupported = video.volume === 0.5;
+      nativeVolume = video.volume === 0.5;
       video.volume = prev;
     } catch {
-      volumeSupported = false;
+      nativeVolume = false;
     }
+    const gain = nativeVolume ? null : createGainControl(video, { emit });
     const listeners = {
       playing: () => {
         if (!armed) return;
         playedOnce = true;
+        resetStall();
         emit("state", { phase: "playing" });
         settle({ ok: true });
+        if (gain) gain.poke();
       },
+      // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
       waiting: () => {
-        if (armed && playedOnce) emit("state", { phase: "stalled" });
+        if (!armed || !playedOnce || waiting || stallShown) return;
+        waiting = true;
+        waitCt = video.currentTime;
+        stallTimer = setTimeout(() => {
+          stallTimer = null;
+          if (!armed || !waiting) return;
+          if (video.currentTime > waitCt + 0.05) {
+            waiting = false;
+            return;
+          }
+          stallShown = true;
+          emit("state", { phase: "stalled" });
+        }, STALL_REPORT_MS);
       },
-      stalled: () => {
-        if (armed && playedOnce) emit("state", { phase: "stalled" });
+      timeupdate: () => {
+        if ((waiting || stallShown) && armed && video.currentTime > waitCt + 0.05) recovered();
+      },
+      canplay: () => {
+        if (waiting || stallShown) recovered();
       },
       ended: () => {
         if (armed) emit("state", { phase: "ended" });
@@ -1531,7 +1749,7 @@
       error: () => {
         if (!armed) return;
         const code = video.error && video.error.code;
-        fail2(code === 2 ? "network" : "video");
+        fail2(code === 2 ? "network" : "video", Number.isInteger(code) && code > 0 ? `M${code}` : "M0");
       },
       pause: () => {
         if (!armed || !playedOnce || video.ended) return;
@@ -1568,6 +1786,7 @@
     function clear(keepSubs) {
       armed = false;
       playedOnce = false;
+      resetStall();
       if (onMeta) {
         video.removeEventListener("loadedmetadata", onMeta);
         onMeta = null;
@@ -1581,13 +1800,14 @@
       } catch {
       }
     }
-    function start(url, offsetMs2) {
+    function start(url, offsetMs2, { quiet: q = false } = {}) {
       clear(true);
       armed = true;
+      quiet = !!q;
       base = { off: Math.max(0, Number(offsetMs2) || 0), at: now() };
       return new Promise((resolve) => {
         pending = resolve;
-        timer = setTimeout(() => fail2("network"), START_TIMEOUT_MS);
+        timer = setTimeout(() => fail2("network", "TIMEOUT"), START_TIMEOUT_MS);
         onMeta = () => {
           onMeta = null;
           if (!armed) return;
@@ -1602,9 +1822,16 @@
       });
     }
     return {
-      volumeSupported,
+      get volumeSupported() {
+        return nativeVolume || !!gain && gain.mode() === "gain";
+      },
+      /** 'native' | 'gain' (WebAudio aktiv) | 'mute-only' (nur Stumm). */
+      volumeMode: () => nativeVolume ? "native" : gain.mode(),
+      /** true, wenn ein Gain-Versuch möglich ist (noch nicht gescheitert, AudioContext vorhanden). */
+      volumeCanTry: () => !nativeVolume && gain.canTry(),
       /** Synchron im Klick-Handler: Freigabe für das <video> (iOS). */
       unlock() {
+        if (gain) gain.poke();
         try {
           const p = video.play();
           if (p && p.catch) p.catch(() => {
@@ -1628,13 +1855,17 @@
       setVolume(v) {
         const n = Number(v);
         if (!Number.isFinite(n)) return;
-        try {
-          video.volume = Math.min(1, Math.max(0, n));
-        } catch {
-        }
+        const c2 = Math.min(1, Math.max(0, n));
+        if (nativeVolume) {
+          try {
+            video.volume = c2;
+          } catch {
+          }
+        } else gain.setLevel(c2);
       },
       setMuted(b) {
         video.muted = !!b;
+        if (gain) gain.poke();
       },
       setSubtitle({ url, label, lang }) {
         clearSubtitles();
@@ -1656,6 +1887,7 @@
         if (disposed) return;
         clear(false);
         disposed = true;
+        if (gain) gain.dispose();
         for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
         if (ms && typeof ms.setActionHandler === "function") {
           for (const a of MEDIA_ACTIONS) {
@@ -1675,6 +1907,8 @@
   var HEVC_MP4 = 'video/mp4; codecs="hvc1.1.6.L120.90"';
   var HEVC_MKV = 'video/x-matroska; codecs="hvc1.1.6.L120.90"';
   var HLS = "application/vnd.apple.mpegurl";
+  var AC3 = 'audio/mp4; codecs="ac-3"';
+  var EAC3 = 'audio/mp4; codecs="ec-3"';
   function can(video, type) {
     try {
       return !!(video && typeof video.canPlayType === "function" && video.canPlayType(type));
@@ -1692,15 +1926,23 @@
     }
     return can(video, HEVC_MP4);
   }
+  function extraAudioCodecs(video) {
+    const out = [];
+    if (can(video, AC3)) out.push("ac3");
+    if (can(video, EAC3)) out.push("eac3");
+    return out;
+  }
   var SUB_FORMATS = ["vtt", "srt", "subrip", "ass", "ssa", "pgssub", "dvdsub", "dvbsub", "sub"];
-  function buildDeviceProfile(video) {
-    const hevc = canHevc(video);
+  function buildDeviceProfile(video, opts = {}) {
+    const hevc = !(opts && opts.noHevc) && canHevc(video);
+    const extra = extraAudioCodecs(video);
+    const directAudio = ["aac", "mp3", ...extra].join(",");
     const direct = [];
     if (can(video, MKV)) {
-      direct.push({ Container: "mkv", Type: "Video", VideoCodec: hevc && can(video, HEVC_MKV) ? "h264,hevc" : "h264", AudioCodec: "aac,mp3" });
+      direct.push({ Container: "mkv", Type: "Video", VideoCodec: hevc && can(video, HEVC_MKV) ? "h264,hevc" : "h264", AudioCodec: directAudio });
     }
     if (can(video, MP4) || hevc) {
-      direct.push({ Container: "mp4,m4v", Type: "Video", VideoCodec: hevc ? "h264,hevc" : "h264", AudioCodec: "aac,mp3" });
+      direct.push({ Container: "mp4,m4v", Type: "Video", VideoCodec: hevc ? "h264,hevc" : "h264", AudioCodec: directAudio });
     }
     return {
       Name: "LenzLive",
@@ -1713,8 +1955,8 @@
         Protocol: "hls",
         Context: "Streaming",
         VideoCodec: hevc ? "hevc,h264" : "h264",
-        AudioCodec: "aac",
-        MaxAudioChannels: "2",
+        AudioCodec: ["aac", ...extra].join(","),
+        MaxAudioChannels: extra.length ? "6" : "2",
         BreakOnNonKeyFrames: true,
         MinSegments: 1
       }],
@@ -1829,7 +2071,23 @@
     "ContainerBitrateExceedsLimit",
     "SubtitleCodecNotSupported"
   ]);
-  var fail = (reason) => ({ ok: false, mode: "none", reason });
+  var fail = (reason, code) => code ? { ok: false, mode: "none", reason, code } : { ok: false, mode: "none", reason };
+  var CODE_BY_REASON = [
+    ["VideoCodecNotSupported", "V-CODEC"],
+    ["VideoCodecTagNotSupported", "V-CODEC"],
+    ["VideoProfileNotSupported", "V-CODEC"],
+    ["VideoRangeTypeNotSupported", "V-RANGE"],
+    ["VideoBitDepthNotSupported", "V-10BIT"],
+    ["SubtitleCodecNotSupported", "V-SUB"]
+  ];
+  function videoCode(reasons) {
+    for (const [r, c2] of CODE_BY_REASON) if (reasons.includes(r)) return c2;
+    return "V-OTHER";
+  }
+  function videoCodecOf(ms) {
+    const v = (ms.MediaStreams || []).find((s) => s && s.Type === "Video");
+    return v && v.Codec ? String(v.Codec).toLowerCase() : "";
+  }
   function reasonsOf(ms) {
     const out = [];
     const add = (v) => {
@@ -1860,11 +2118,11 @@
       return null;
     }
   }
-  async function resolveStream({ deps, video, itemId, audioIndex, signal }) {
+  async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false }) {
     const post = async (extra) => {
       const body = {
         UserId: deps.user.id,
-        DeviceProfile: buildDeviceProfile(video),
+        DeviceProfile: buildDeviceProfile(video, { noHevc }),
         StartTimeTicks: 0,
         SubtitleStreamIndex: -1,
         EnableDirectPlay: true,
@@ -1880,7 +2138,7 @@
     try {
       let info = await post({});
       const sources = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
-      if (!sources.length) return fail(info && info.ErrorCode ? "video" : "network");
+      if (!sources.length) return info && info.ErrorCode ? fail("video", "V-NOSRC") : fail("network", "NET");
       const first = sources[0];
       const tr = buildTracks(first);
       const def = serverDefaultAudio(first, tr.audio);
@@ -1891,7 +2149,7 @@
         info = await post({ AudioStreamIndex: want, MediaSourceId: first.Id, EnableDirectPlay: false });
         const list = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
         ms = list.find((s) => s.Id === first.Id) || list[0];
-        if (!ms) return fail("network");
+        if (!ms) return fail("network", "NET");
       }
       const audioIdx = want != null ? want : def;
       const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
@@ -1900,18 +2158,18 @@
         return { ok: true, mode: "direct", url: url2, ...base };
       }
       const reasons = reasonsOf(ms);
-      if (reasons.some((r) => VIDEO_REASONS.has(r))) return fail("video");
-      if (ms.TranscodingUrl && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail("video");
+      if (reasons.some((r) => VIDEO_REASONS.has(r))) return fail("video", videoCode(reasons));
+      if (ms.TranscodingUrl && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail("video", "V-SUB");
       if (!ms.TranscodingUrl) {
         const a = tr.audio.find((x) => x.index === audioIdx);
-        return fail(a && !isPlainAudioCodec(a.codec) ? "audio" : "video");
+        return a && !isPlainAudioCodec(a.codec) ? fail("audio", "A-CODEC") : fail("video", "V-NOURL");
       }
-      if (!canHls(video)) return fail("browser");
+      if (!canHls(video)) return fail("browser", "B-HLS");
       const url = absolute(deps, ms.TranscodingUrl);
-      if (!url) return fail("network");
-      return { ok: true, mode: "hls", url, ...base };
+      if (!url) return fail("network", "NET");
+      return { ok: true, mode: "hls", url, videoCodec: videoCodecOf(ms), offeredHevc: !noHevc && canHevc(video), ...base };
     } catch {
-      return fail(signal && signal.aborted ? "aborted" : "network");
+      return signal && signal.aborted ? fail("aborted") : fail("network", "NET");
     }
   }
 
@@ -1989,6 +2247,9 @@
     }
     return {
       volumeSupported: true,
+      volumeMode: () => "native",
+      volumeCanTry: () => false,
+      prefetch: async () => ({ ok: true }),
       unlock() {
       },
       async play({ offsetMs: offsetMs2 = 0, audioIndex: a, subtitleIndex: s } = {}) {
@@ -2117,6 +2378,8 @@
 
   // src/js/live/player/index.js
   var aborted = () => ({ ok: false, mode: "none", reason: "aborted" });
+  var CACHE_TTL_MS = 10 * 60 * 1e3;
+  var CACHE_MAX = 24;
   function createPlayer({ video, deps, now = Date.now, fake = false, canvas, getInfo } = {}) {
     if (fake) return createFakePlayer({ canvas, now, getInfo });
     const em = createEmitter();
@@ -2126,6 +2389,9 @@
     let session = null;
     let tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
     let disposed = false;
+    let tsOnly = false;
+    const cache = /* @__PURE__ */ new Map();
+    const inflight = /* @__PURE__ */ new Map();
     const cancelRequests = () => {
       if (ac) {
         try {
@@ -2151,10 +2417,53 @@
       }
       return Promise.resolve();
     }
-    const failure = (reason) => {
-      em.emit("state", { phase: "error", reason });
-      em.emit("error", { reason });
+    const failure = (reason, code) => {
+      const extra = code ? { code } : {};
+      em.emit("state", { phase: "error", reason, ...extra });
+      em.emit("error", { reason, ...extra });
     };
+    const fresh = (e) => !!e && now() - e.at < CACHE_TTL_MS;
+    function remember(itemId, r) {
+      if (!r || !r.ok) return;
+      cache.set(itemId, { at: now(), mode: r.mode, r: r.mode === "direct" ? r : null });
+      while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
+    }
+    function prefetch(itemId, { signal } = {}) {
+      if (disposed || !itemId) return Promise.resolve({ ok: false, reason: "aborted" });
+      if (fresh(cache.get(itemId))) return Promise.resolve({ ok: true, cached: true });
+      const running = inflight.get(itemId);
+      if (running) return running;
+      const p = resolveStream({ deps, video, itemId, signal, noHevc: false }).then((r) => {
+        if (!(signal && signal.aborted)) remember(itemId, r);
+        return { ok: !!r.ok, mode: r.mode };
+      }, () => ({ ok: false, reason: "network" })).finally(() => {
+        if (inflight.get(itemId) === p) inflight.delete(itemId);
+      });
+      inflight.set(itemId, p);
+      return p;
+    }
+    async function resolveFor(itemId, opts, signal) {
+      if (opts.audioIndex == null && !opts.noCache) {
+        const pf = inflight.get(itemId);
+        if (pf) {
+          try {
+            await pf;
+          } catch {
+          }
+          if (signal.aborted) return { ok: false, mode: "none", reason: "aborted" };
+        }
+        const c2 = cache.get(itemId);
+        if (fresh(c2) && c2.mode === "direct" && c2.r) return c2.r;
+      }
+      let r;
+      try {
+        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc });
+      } catch {
+        r = { ok: false, mode: "none", reason: signal.aborted ? "aborted" : "network", ...signal.aborted ? {} : { code: "NET" } };
+      }
+      if (opts.audioIndex == null) remember(itemId, r);
+      return r;
+    }
     async function play(opts = {}) {
       if (disposed) return aborted();
       const { itemId, offsetMs: offsetMs2 = 0 } = opts;
@@ -2165,17 +2474,41 @@
       teardown();
       tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
       em.emit("state", { phase: "loading" });
-      let r;
-      try {
-        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal });
-      } catch {
-        r = { ok: false, mode: "none", reason: signal.aborted ? "aborted" : "network" };
-      }
+      let r = await resolveFor(itemId, opts, signal);
       if (my !== gen) return aborted();
-      if (!r.ok) {
-        failure(r.reason);
-        return { ok: false, mode: "none", reason: r.reason };
+      if (r.ok && r.mode === "hls" && tsOnly && r.offeredHevc && r.videoCodec === "h264") {
+        r = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
+        if (my !== gen) return aborted();
       }
+      if (!r.ok) {
+        failure(r.reason, r.code);
+        return failResult(r);
+      }
+      let res = await launch(r, opts, offsetMs2, itemId, my);
+      if (my !== gen) return aborted();
+      const canFallback = !res.ok && (res.reason === "video" || res.reason === "browser") && r.mode === "hls" && r.offeredHevc && r.videoCodec === "h264";
+      if (canFallback) {
+        teardown();
+        const r2 = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
+        if (my !== gen) return aborted();
+        if (r2.ok) {
+          res = await launch(r2, opts, offsetMs2, itemId, my);
+          if (my !== gen) return aborted();
+          if (res.ok) {
+            tsOnly = true;
+            return res;
+          }
+        }
+      }
+      if (!res.ok) {
+        teardown();
+        if (res.reason !== "aborted") failure(res.reason, res.code);
+        return failResult(res);
+      }
+      return res;
+    }
+    const failResult = (x) => x.code ? { ok: false, mode: "none", reason: x.reason, code: x.code } : { ok: false, mode: "none", reason: x.reason };
+    async function launch(r, opts, offsetMs2, itemId, my) {
       session = { kind: "item", itemId, mode: r.mode, playSessionId: r.playSessionId, mediaSourceId: r.mediaSourceId };
       tr = { audio: r.tracks.audio, subs: r.tracks.subs, audioIndex: r.audioIndex, subtitleIndex: -1 };
       const sub = typeof opts.subtitleIndex === "number" ? opts.subtitleIndex : pickSubtitle(tr.subs, deps.user);
@@ -2184,13 +2517,9 @@
         tr.subtitleIndex = sub;
         vc.setSubtitle({ url: subUrl(itemId, r.mediaSourceId, sub), label: subTrack.label, lang: subTrack.lang });
       }
-      const res = await vc.start(r.url, offsetMs2);
+      const res = await vc.start(r.url, offsetMs2, { quiet: true });
       if (my !== gen) return aborted();
-      if (!res.ok) {
-        teardown();
-        return { ok: false, mode: "none", reason: res.reason };
-      }
-      return { ok: true, mode: r.mode };
+      return res.ok ? { ok: true, mode: r.mode } : res;
     }
     const subUrl = (itemId, msid, index) => deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/${encodeURIComponent(msid)}/Subtitles/${index}/0/Stream.vtt`, {});
     async function playUrl(url, offsetMs2 = 0) {
@@ -2205,7 +2534,7 @@
       if (my !== gen) return aborted();
       if (!res.ok) {
         teardown();
-        return { ok: false, mode: "none", reason: res.reason };
+        return failResult(res);
       }
       return { ok: true, mode: "direct" };
     }
@@ -2213,6 +2542,7 @@
       unlock: () => vc.unlock(),
       play,
       playUrl,
+      prefetch,
       async stop() {
         gen++;
         cancelRequests();
@@ -2222,7 +2552,12 @@
       syncTo: (ms) => vc.syncTo(ms),
       setVolume: (v) => vc.setVolume(v),
       setMuted: (b) => vc.setMuted(b),
-      volumeSupported: vc.volumeSupported,
+      // Lautstärke: 'native' | 'gain' (WebAudio, iOS) | 'mute-only'. setVolume wirkt in den ersten beiden Modi.
+      get volumeSupported() {
+        return vc.volumeSupported;
+      },
+      volumeMode: () => vc.volumeMode(),
+      volumeCanTry: () => vc.volumeCanTry(),
       tracks() {
         return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
       },
@@ -2250,6 +2585,8 @@
         cancelRequests();
         teardown();
         vc.dispose();
+        cache.clear();
+        inflight.clear();
         em.clear();
       }
     };
@@ -7982,10 +8319,12 @@
         el.classList.remove("is-input");
       },
       /** { percent, muted, hint } */
-      showVolume({ percent, muted, hint }) {
+      showVolume({ percent, muted, hint, hintOnly }) {
         volFill.style.width = `${muted ? 0 : percent}%`;
         volNum.textContent = muted ? "Stumm" : `${percent}`;
         volHint.textContent = hint || "";
+        volLabel.textContent = hintOnly ? muted ? "Stumm" : "Ton an" : "Lautst\xE4rke";
+        vol.classList.toggle("is-hint-only", !!hintOnly);
         el.classList.toggle("is-muted", !!muted);
         timer("vol", "is-vol", hint ? 4e3 : 2e3);
       },
@@ -8047,6 +8386,7 @@
       el.textContent = "";
       el.hidden = false;
       el.dataset.kind = k;
+      delete el.dataset.code;
       kind = k;
       clockEl = null;
       countEl = null;
@@ -8084,15 +8424,22 @@
         this.tick(now == null ? Date.now() : now);
         notify();
       },
-      /** Störbild je Grund (video|browser|audio|network). */
-      showError(reason, channel) {
+      /** Störbild je Grund (video|browser|audio|network); code (optional): Kurzcode, erscheint klein als „Code: X“. */
+      showError(reason, channel, code) {
         reset("error");
         const t = errorText(reason);
         el.dataset.reason = ERROR_TEXTS[reason] ? reason : "network";
+        if (code) el.dataset.code = String(code);
         el.append(h2(doc, "div", "lfx-live-card__snow"));
         if (channel) el.append(createLogo(channel, { doc, number: true }));
         el.append(h2(doc, "div", "lfx-live-card__title", t.title));
         if (t.sub) el.append(h2(doc, "div", "lfx-live-card__sub", t.sub));
+        if (code) {
+          const c2 = h2(doc, "div", "lfx-live-card__code", `Code: ${code}`);
+          c2.style.fontSize = "0.7em";
+          c2.style.opacity = "0.7";
+          el.append(c2);
+        }
         notify();
       },
       showBanner(text, ms = 1e4) {
@@ -8112,6 +8459,7 @@
         el.hidden = true;
         el.textContent = "";
         delete el.dataset.kind;
+        delete el.dataset.code;
         kind = null;
         clockEl = null;
         countEl = null;
@@ -8564,6 +8912,7 @@
   var DIGIT_WAIT_MS = 1500;
   var RETRY_MS = 1e4;
   var SYNC_MS = 3e4;
+  var LOADING_DELAY_MS = 400;
   var MAX_TIMEOUT = 2147483647;
   var VOL_STEP2 = 5;
   var PLAYABLE = ["program", "fill", "nightfill"];
@@ -8915,21 +9264,30 @@
         scheduleClock();
       }, 6e4 - clock() % 6e4 + 50);
     }
+    function muteOnly() {
+      if (player && typeof player.volumeMode === "function") {
+        const m = safe2(() => player.volumeMode());
+        if (m === "native" || m === "gain") return false;
+        if (m === "mute-only") return true;
+      }
+      return !!player && player.volumeSupported === false;
+    }
+    const level = () => muteOnly() ? 1 : vol / 100;
     function applyVolume() {
       safe2(() => player.setVolume && player.setVolume(vol / 100));
       safe2(() => player.setMuted && player.setMuted(muted));
-      if (music) safe2(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted || mutedByPolicy));
-      if (sfx) safe2(() => sfx.setLevel(player.volumeSupported === false ? 1 : vol / 100, muted));
+      if (music) safe2(() => music.setLevel(level(), muted || mutedByPolicy));
+      if (sfx) safe2(() => sfx.setLevel(level(), muted));
       safe2(() => knobs.setVolume(vol));
     }
     function savePrefs(partial) {
       if (deps.savePrefs) safe2(() => deps.savePrefs(partial));
     }
     function changeVolume(key) {
-      if (player.volumeSupported === false) {
+      if (muteOnly()) {
         muted = key === "vol+" ? false : key === "vol-" ? true : !muted;
         applyVolume();
-        if (on) osd.showVolume({ percent: vol, muted, hint: "Lautst\xE4rke bitte am Ger\xE4t einstellen" });
+        if (on) osd.showVolume({ percent: vol, muted, hint: "Lautst\xE4rke bitte am Ger\xE4t einstellen", hintOnly: true });
         savePrefs({ muted });
         return;
       }
@@ -8945,7 +9303,7 @@
     function setVolumeAbs(v) {
       if (disposed || suspended) return;
       v = clamp2(Math.round(Number(v) || 0), 0, 100);
-      if (player.volumeSupported === false) {
+      if (muteOnly()) {
         if (v !== vol) changeVolume(v > vol ? "vol+" : "vol-");
         return;
       }
@@ -8997,12 +9355,12 @@
       stallArmed = false;
       unlater("stall");
     }
-    function showError(reason, g) {
+    function showError(reason, g, code) {
       playing = false;
       clearStall();
       watchLeave(true);
       needsTap = reason === "gesture";
-      card.showError(reason, channelOf(channel));
+      card.showError(reason, channelOf(channel), code || (reason === "network" ? "NET" : void 0));
       unlater("retry");
       if (reason === "network") later("retry", () => {
         if (g === gen && on) start(g, false);
@@ -9012,7 +9370,7 @@
       if (g !== gen) return false;
       if (res && res.ok === false) {
         if (res.reason === "aborted") return false;
-        showError(res.reason || "network", g);
+        showError(res.reason || "network", g, res.code);
         return false;
       }
       card.hide();
@@ -9260,6 +9618,7 @@
       on = false;
       syncDecor();
       stopIntervals();
+      unlater("loading");
       app.classList.remove("is-on", "is-powering-on", "is-blend", "is-loading");
       app.classList.add("is-powering-off");
       remote.setOn(false);
@@ -9509,6 +9868,26 @@
     };
     app.addEventListener("pointermove", onPointer);
     app.addEventListener("pointerdown", onPointer);
+    let swallowClick = false;
+    const onOutsidePointer = (e) => {
+      if (disposed || suspended || openName() !== "menu") return;
+      const t = e.target;
+      if (t && t.closest && t.closest(".lfx-live-menu__panel, .lfx-live-remote, [data-action]")) return;
+      closeOverlays();
+      swallowClick = true;
+      later("swallow", () => {
+        swallowClick = false;
+      }, 700);
+    };
+    const onOutsideClick = (e) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      unlater("swallow");
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    app.addEventListener("pointerdown", onOutsidePointer, true);
+    app.addEventListener("click", onOutsideClick, true);
     const onDbl = () => press("fullscreen");
     const onScreenClick = () => {
       if (!on) {
@@ -9530,7 +9909,17 @@
     if (player && typeof player.on === "function") {
       offs.push(player.on("state", (s) => {
         const phase = s && s.phase;
-        app.classList.toggle("is-loading", phase === "loading" || phase === "stalled");
+        if (phase === "loading" || phase === "stalled") {
+          if (!T.loading && !app.classList.contains("is-loading")) {
+            later("loading", () => {
+              T.loading = null;
+              app.classList.add("is-loading");
+            }, LOADING_DELAY_MS);
+          }
+        } else {
+          unlater("loading");
+          app.classList.remove("is-loading");
+        }
         if (phase === "stalled") {
           if (!stallArmed && on && entry) {
             stallArmed = true;
@@ -9551,12 +9940,12 @@
       offs.push(player.on("autoplay-muted", () => {
         if (!on) return;
         mutedByPolicy = true;
-        if (music) safe2(() => music.setLevel(player.volumeSupported === false ? 1 : vol / 100, true));
+        if (music) safe2(() => music.setLevel(level(), true));
         if (!muted) osd.showMessage("Ton aus \u2013 zum Einschalten tippen oder Stumm-Taste dr\xFCcken", 8e3);
       }));
       offs.push(player.on("error", (err) => {
         if (!on || !entry || entry.type === "filler" || card.kind() === "error") return;
-        showError(err && err.reason || "network", gen);
+        showError(err && err.reason || "network", gen, err && err.code);
       }));
     }
     const keys = createKeys({
@@ -9637,6 +10026,8 @@
         fs.destroy();
         app.removeEventListener("pointermove", onPointer);
         app.removeEventListener("pointerdown", onPointer);
+        app.removeEventListener("pointerdown", onOutsidePointer, true);
+        app.removeEventListener("click", onOutsideClick, true);
         screen.removeEventListener("dblclick", onDbl);
         screen.removeEventListener("click", onScreenClick);
         video.removeEventListener("contextmenu", onCtx);

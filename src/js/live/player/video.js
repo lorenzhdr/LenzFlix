@@ -1,6 +1,9 @@
 // LENZ LIVE Player: Steuerung des einen <video> (Start an Live-Position, Pause-Abwehr, Lautstärke, Untertitel-Track).
 // Keine URLs in Ereignissen/Fehlern: Payloads tragen nur { phase, reason }.
+import { createGainControl } from './gain.js';
+
 const START_TIMEOUT_MS = 25000;
+export const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
 const MEDIA_ACTIONS = ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack'];
 
 export function createVideoControl(video, { now = Date.now, emit = () => {} } = {}) {
@@ -12,6 +15,11 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   let onMeta = null;
   let trackEl = null;
   let disposed = false;
+  let quiet = false;          // während start(): Fehler nicht melden, der Aufrufer entscheidet (Rückfall)
+  let waiting = false;        // 'waiting' ohne Fortschritt seit waitCt
+  let waitCt = 0;
+  let stallTimer = null;
+  let stallShown = false;
 
   video.setAttribute('playsinline', '');
   video.setAttribute('disablepictureinpicture', '');
@@ -22,18 +30,33 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   const livePos = () => base.off + (now() - base.at);
 
   const settle = (result) => {
+    quiet = false;
     clearTimeout(timer);
     timer = null;
     const p = pending;
     pending = null;
     if (p) p(result);
   };
-  const fail = (reason) => {
+  const fail = (reason, code) => {
     if (!armed || disposed) return;
-    emit('state', { phase: 'error', reason });
-    emit('error', { reason });
-    settle({ ok: false, reason });
+    const extra = code ? { code } : {};
+    if (!(quiet && pending)) {
+      emit('state', { phase: 'error', reason, ...extra });
+      emit('error', { reason, ...extra });
+    }
+    settle({ ok: false, reason, ...extra });
   };
+  function resetStall() {
+    clearTimeout(stallTimer);
+    stallTimer = null;
+    waiting = false;
+    stallShown = false;
+  }
+  function recovered() {
+    const was = stallShown;
+    resetStall();
+    if (was && armed) emit('state', { phase: 'playing' });
+  }
   // Ablehnung je Name: AbortError (neue Quelle/Pause) ignorieren; NotAllowedError (Autoplay-Sperre) → einmal stumm
   // erneut versuchen (Ereignis 'autoplay-muted'), scheitert auch das → reason 'gesture' („Zum Starten tippen“);
   // alles andere (z. B. NotSupportedError) → 'browser'.
@@ -42,13 +65,14 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       if (!armed || disposed) return;
       const name = e && e.name;
       if (name === 'AbortError') return;
+      const failPlay = (r, c) => fail(r, c);
       if (name === 'NotAllowedError') {
-        if (retried) { fail('gesture'); return; }
+        if (retried) { failPlay('gesture'); return; }
         try { video.muted = true; } catch { /* egal */ }
         callPlay(true);
         return;
       }
-      fail('browser');
+      failPlay('browser', 'B-PLAY');
     };
     try {
       const p = video.play();
@@ -58,29 +82,47 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     } catch (e) { rejected(e); }
   };
 
-  // Volumen-Probe: iOS ignoriert volume.
-  let volumeSupported;
+  // Volumen-Probe: iOS ignoriert volume (dann optional WebAudio-Gain, siehe gain.js).
+  let nativeVolume;
   try {
     const prev = video.volume;
     video.volume = 0.5;
-    volumeSupported = video.volume === 0.5;
+    nativeVolume = video.volume === 0.5;
     video.volume = prev;
-  } catch { volumeSupported = false; }
+  } catch { nativeVolume = false; }
+  const gain = nativeVolume ? null : createGainControl(video, { emit });
 
   const listeners = {
     playing: () => {
       if (!armed) return;
       playedOnce = true;
+      resetStall();
       emit('state', { phase: 'playing' });
       settle({ ok: true });
+      if (gain) gain.poke();
     },
-    waiting: () => { if (armed && playedOnce) emit('state', { phase: 'stalled' }); },
-    stalled: () => { if (armed && playedOnce) emit('state', { phase: 'stalled' }); },
+    // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
+    waiting: () => {
+      if (!armed || !playedOnce || waiting || stallShown) return;
+      waiting = true;
+      waitCt = video.currentTime;
+      stallTimer = setTimeout(() => {
+        stallTimer = null;
+        if (!armed || !waiting) return;
+        if (video.currentTime > waitCt + 0.05) { waiting = false; return; }
+        stallShown = true;
+        emit('state', { phase: 'stalled' });
+      }, STALL_REPORT_MS);
+    },
+    timeupdate: () => {
+      if ((waiting || stallShown) && armed && video.currentTime > waitCt + 0.05) recovered();
+    },
+    canplay: () => { if (waiting || stallShown) recovered(); },
     ended: () => { if (armed) emit('state', { phase: 'ended' }); },
     error: () => {
       if (!armed) return;
       const code = video.error && video.error.code;
-      fail(code === 2 ? 'network' : 'video');
+      fail(code === 2 ? 'network' : 'video', Number.isInteger(code) && code > 0 ? `M${code}` : 'M0');
     },
     pause: () => {
       // Nicht von uns (clear() setzt armed vorher zurück): zurück an die Live-Position und weiter.
@@ -112,6 +154,7 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   function clear(keepSubs) {
     armed = false;
     playedOnce = false;
+    resetStall();
     if (onMeta) {
       video.removeEventListener('loadedmetadata', onMeta);
       onMeta = null;
@@ -126,13 +169,14 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   }
 
   /** Lädt url und startet an offsetMs (absolute Zeitbasis). Löst bei „playing“ auf. */
-  function start(url, offsetMs) {
+  function start(url, offsetMs, { quiet: q = false } = {}) {
     clear(true); // gesetzten Untertitel-Track behalten
     armed = true;
+    quiet = !!q;
     base = { off: Math.max(0, Number(offsetMs) || 0), at: now() };
     return new Promise((resolve) => {
       pending = resolve;
-      timer = setTimeout(() => fail('network'), START_TIMEOUT_MS);
+      timer = setTimeout(() => fail('network', 'TIMEOUT'), START_TIMEOUT_MS);
       onMeta = () => {
         onMeta = null;
         if (!armed) return;
@@ -146,9 +190,14 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   }
 
   return {
-    volumeSupported,
+    get volumeSupported() { return nativeVolume || (!!gain && gain.mode() === 'gain'); },
+    /** 'native' | 'gain' (WebAudio aktiv) | 'mute-only' (nur Stumm). */
+    volumeMode: () => (nativeVolume ? 'native' : gain.mode()),
+    /** true, wenn ein Gain-Versuch möglich ist (noch nicht gescheitert, AudioContext vorhanden). */
+    volumeCanTry: () => !nativeVolume && gain.canTry(),
     /** Synchron im Klick-Handler: Freigabe für das <video> (iOS). */
     unlock() {
+      if (gain) gain.poke();
       try {
         const p = video.play();
         if (p && p.catch) p.catch(() => {});
@@ -167,9 +216,10 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     setVolume(v) {
       const n = Number(v);
       if (!Number.isFinite(n)) return;
-      try { video.volume = Math.min(1, Math.max(0, n)); } catch { /* egal */ }
+      const c = Math.min(1, Math.max(0, n));
+      if (nativeVolume) { try { video.volume = c; } catch { /* egal */ } } else gain.setLevel(c);
     },
-    setMuted(b) { video.muted = !!b; },
+    setMuted(b) { video.muted = !!b; if (gain) gain.poke(); },
     setSubtitle({ url, label, lang }) {
       clearSubtitles();
       const el = document.createElement('track');
@@ -187,6 +237,7 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       if (disposed) return;
       clear(false);
       disposed = true;
+      if (gain) gain.dispose();
       for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
       if (ms && typeof ms.setActionHandler === 'function') {
         for (const a of MEDIA_ACTIONS) {

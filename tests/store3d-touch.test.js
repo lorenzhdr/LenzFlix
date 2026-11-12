@@ -23,6 +23,36 @@ function setup(extra = {}) {
   return { tc, canvas, player, onTap, onZoom, state, fire };
 }
 
+describe('TouchControls Feineinstellung', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+  const swipe = (fire) => { fire('pointerdown', 100, 100); fire('pointermove', 120, 120); fire('pointermove', 140, 150); };
+  it('Umkehr und Empfindlichkeit wirken auf Wischen', () => {
+    const tune = { lookInvertY: true, touchSens: 'high' };
+    const { player, fire } = setup({ getTune: () => tune });
+    swipe(fire);
+    const [dyaw, dpitch] = player.look.mock.calls.at(-1);
+    expect(dyaw).toBeCloseTo(20 * TOUCH_LOOK * 1.4);
+    expect(dpitch).toBeCloseTo(-30 * TOUCH_LOOK * 1.4);
+    tune.lookInvertY = false; tune.lookInvertX = true; tune.touchSens = 'low'; // zur Laufzeit
+    fire('pointermove', 160, 150);
+    expect(player.look.mock.calls.at(-1)[0]).toBeCloseTo(-20 * TOUCH_LOOK * 0.7);
+  });
+  it('Standard (ohne getTune) bleibt unverändert', () => {
+    const { player, fire } = setup();
+    swipe(fire);
+    expect(player.look.mock.calls.at(-1)[1]).toBeCloseTo(30 * TOUCH_LOOK);
+  });
+  it('Joystick-Achsen: lookInvert dreht das Vorzeichen', () => {
+    const { tc, player } = setup({ getTune: () => ({ lookInvertX: true, lookInvertY: true }) });
+    tc.stick = { x: 1, y: 1 };
+    tc.tick(0.05);
+    const [yaw, pitch] = player.look.mock.calls.at(-1);
+    expect(yaw).toBeCloseTo(STICK_YAW_RATE * 0.05);
+    expect(pitch).toBeCloseTo(STICK_PITCH_RATE * 0.05);
+  });
+});
+
 describe('TouchControls', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); });

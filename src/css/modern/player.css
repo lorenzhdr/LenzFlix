@@ -317,3 +317,12 @@ html #videoOsdPage,
 html #videoOsdPage.libraryPage {
   background: transparent !important;
 }
+
+/* Weiße Leiste unten im Player (iPhone-Safari): Seitenhintergrund solange der Player offen ist schwarz
+   (Feature playerbg setzt html.lfx-in-player; schlägt auch Jellyfins transparentDocument). */
+html.lfx-in-player:not(.layout-tv),
+html.lfx-in-player:not(.layout-tv) body,
+html.lfx-in-player:not(.layout-tv) body.transparentDocument {
+  background: #000 !important;
+  background-color: #000 !important;
+}

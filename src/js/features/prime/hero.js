@@ -1,7 +1,7 @@
 // LENZPRIME: Vollbreiter Hero mit Crossfade, stummem Hintergrund-Trailer, Abspielen/Meine Liste/Info und grüner Rangzeile.
 import { getItems, imageUrl, logoImage } from '../../core/api.js';
 import { h } from '../../core/dom.js';
-import { isMobile } from '../../core/layout.js';
+import { isMobile, isNarrow } from '../../core/layout.js';
 import { putItems } from '../../core/itemstore.js';
 import { isChooserOpen } from '../../core/download.js';
 import { isMenuOpen, onItemsChanged } from '../../core/itemmenu.js';
@@ -66,7 +66,7 @@ export async function fetchHomePool() {
 /** loadPool: () => Promise<Item[]>. Rückgabe: Cleanup-Funktion. */
 export function renderHero(slot, { loadPool }) {
   // Handy (<800 px): 16:9-Rahmen, Meta + Abspielen darunter, kein Autoplay-Trailer (Datenverbrauch). Wechsel baut home.js neu auf.
-  const mobile = isMobile();
+  const mobile = isMobile() && isNarrow();
   let newInfo = null;
   let logoBox = null;
   let disposed = false;

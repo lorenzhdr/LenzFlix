@@ -1764,6 +1764,10 @@ html #videoOsdPage, html #videoOsdPage.libraryPage {
   background: none !important;
 }
 
+html.lfx-in-player:not(.layout-tv), html.lfx-in-player:not(.layout-tv) body, html.lfx-in-player:not(.layout-tv) body.transparentDocument {
+  background: #000 !important;
+}
+
 html:not(.layout-tv):has(#loginPage:not(.hide)) {
   background: #000;
 }
@@ -3055,6 +3059,12 @@ html.lfx-js {
     --lfx-ambient-b .6s var(--lfx-ease);
 }
 
+@media (max-width: 799px) {
+  html.lfx-js {
+    transition: none;
+  }
+}
+
 html.lfx-js #lfx-ambient {
   z-index: 0;
   pointer-events: none;
@@ -3201,6 +3211,18 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item--design {
 @media (max-width: 899px) {
   html.lfx-js #lfx-nav {
     display: none;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1100px) {
+  html.lfx-js.layout-mobile #lfx-nav {
+    left: calc(var(--lfx-gutter) + 80px);
+    gap: 0;
+    font-size: 14px;
+  }
+
+  html.lfx-js.layout-mobile #lfx-nav .lfx-nav__item {
+    padding: 0 7px;
   }
 }
 
@@ -3675,6 +3697,11 @@ html.lfx-js .lfx-bb__btn--dl svg, html.lfx-js .lfx-bb__btn--menu svg {
   }
 }
 
+html.lfx-js .lfx-bb--skel {
+  box-shadow: none;
+  background: #141414;
+}
+
 html.lfx-js .lfx-rows {
   --lfx-card-w: calc((100vw - var(--lfx-gutter) - var(--lfx-cards-visible) * var(--lfx-card-gap) - var(--lfx-card-peek)) / var(--lfx-cards-visible));
   --lfx-card-h: calc(var(--lfx-card-w) * 9 / 16);
@@ -4004,6 +4031,10 @@ html.lfx-js .lfx-skel {
   to {
     background-position: -200% 0;
   }
+}
+
+html.lfx-js .lfx-rows > .lfx-row:nth-child(n+4) .lfx-skel {
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5236,6 +5267,10 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body {
     display: none;
   }
 
+  html.lfx-js .lfx-modal__ep-title[data-num]:before {
+    content: attr(data-num) " ";
+  }
+
   html.lfx-js .lfx-modal__ep-thumb {
     flex-basis: 30%;
   }
@@ -6066,200 +6101,202 @@ html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn.is-primary {
   }
 }
 
-html.lfx-js .lfx-mnav {
-  display: contents;
-}
+@media (max-width: 899px) {
+  html.lfx-js .lfx-mnav {
+    display: contents;
+  }
 
-html.lfx-js .lfx-mnav__logo {
-  z-index: 1101;
-  top: env(safe-area-inset-top, 0px);
-  left: max(4vw, env(safe-area-inset-left, 0px));
-  -webkit-tap-highlight-color: transparent;
-  background: url("../assets/logo/lenzflix.svg") 0 / 78px 22px no-repeat;
-  width: 78px;
-  height: 56px;
-  display: block;
-  position: fixed;
-}
+  html.lfx-js .lfx-mnav__logo {
+    z-index: 1101;
+    top: env(safe-area-inset-top, 0px);
+    left: max(4vw, env(safe-area-inset-left, 0px));
+    -webkit-tap-highlight-color: transparent;
+    background: url("../assets/logo/lenzflix.svg") 0 / 78px 22px no-repeat;
+    width: 78px;
+    height: 56px;
+    display: block;
+    position: fixed;
+  }
 
-html.lfx-js .lfx-mnav__logo:focus-visible {
-  outline-offset: -2px;
-  outline: 2px solid #fff;
-}
+  html.lfx-js .lfx-mnav__logo:focus-visible {
+    outline-offset: -2px;
+    outline: 2px solid #fff;
+  }
 
-html.lfx-js.lfx-mnav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child:before {
-  display: none;
-}
+  html.lfx-js.lfx-mnav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child:before {
+    display: none;
+  }
 
-html.lfx-js.lfx-mnav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child > .MuiIconButton-root:first-child:not([aria-label*="ück" i]) {
-  display: none;
-}
+  html.lfx-js.lfx-mnav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child > .MuiIconButton-root:first-child:not([aria-label*="ück" i]) {
+    display: none;
+  }
 
-html.lfx-js .lfx-mnav__pills {
-  z-index: 1099;
-  left: 0;
-  right: 0;
-  top: calc(56px + env(safe-area-inset-top, 0px));
-  height: 40px;
-  padding: 0 max(4vw, env(safe-area-inset-right, 0px)) 0 max(4vw, env(safe-area-inset-left, 0px));
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  align-items: center;
-  gap: 8px;
-  display: flex;
-  position: absolute;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
+  html.lfx-js .lfx-mnav__pills {
+    z-index: 1099;
+    left: 0;
+    right: 0;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    height: 40px;
+    padding: 0 max(4vw, env(safe-area-inset-right, 0px)) 0 max(4vw, env(safe-area-inset-left, 0px));
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    align-items: center;
+    gap: 8px;
+    display: flex;
+    position: absolute;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
 
-html.lfx-js .lfx-mnav__pills::-webkit-scrollbar {
-  display: none;
-}
+  html.lfx-js .lfx-mnav__pills::-webkit-scrollbar {
+    display: none;
+  }
 
-html.lfx-js .lfx-mnav__pills[hidden] {
-  display: none;
-}
+  html.lfx-js .lfx-mnav__pills[hidden] {
+    display: none;
+  }
 
-html.lfx-js .lfx-mnav__pill {
-  color: #fff;
-  height: 32px;
-  font: 500 14px / 1 var(--lfx-font);
-  white-space: nowrap;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  background: rgba(0, 0, 0, .25);
-  border: 1px solid rgba(255, 255, 255, .5);
-  border-radius: 16px;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  padding: 0 14px;
-  text-decoration: none;
-  display: inline-flex;
-  position: relative;
-}
+  html.lfx-js .lfx-mnav__pill {
+    color: #fff;
+    height: 32px;
+    font: 500 14px / 1 var(--lfx-font);
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    background: rgba(0, 0, 0, .25);
+    border: 1px solid rgba(255, 255, 255, .5);
+    border-radius: 16px;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    text-decoration: none;
+    display: inline-flex;
+    position: relative;
+  }
 
-html.lfx-js .lfx-mnav__pill:after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  left: -2px;
-  right: -2px;
-}
+  html.lfx-js .lfx-mnav__pill:after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    left: -2px;
+    right: -2px;
+  }
 
-html.lfx-js .lfx-mnav__pill.is-active {
-  color: #000;
-  background: #fff;
-  border-color: #fff;
-}
+  html.lfx-js .lfx-mnav__pill.is-active {
+    color: #000;
+    background: #fff;
+    border-color: #fff;
+  }
 
-html.lfx-js .lfx-mnav__pill:focus-visible {
-  outline-offset: 2px;
-  outline: 2px solid #fff;
-}
+  html.lfx-js .lfx-mnav__pill:focus-visible {
+    outline-offset: 2px;
+    outline: 2px solid #fff;
+  }
 
-html.lfx-js .lfx-mnav__caret {
-  border: 4px solid rgba(0, 0, 0, 0);
-  border-top-color: currentColor;
-  border-bottom-width: 0;
-  width: 0;
-  height: 0;
-}
+  html.lfx-js .lfx-mnav__caret {
+    border: 4px solid rgba(0, 0, 0, 0);
+    border-top-color: currentColor;
+    border-bottom-width: 0;
+    width: 0;
+    height: 0;
+  }
 
-html.lfx-js .lfx-mnav__pill[aria-expanded="true"] .lfx-mnav__caret {
-  transform: rotate(180deg);
-}
+  html.lfx-js .lfx-mnav__pill[aria-expanded="true"] .lfx-mnav__caret {
+    transform: rotate(180deg);
+  }
 
-html.lfx-js.lfx-mnav-open {
-  overflow: hidden;
-}
+  html.lfx-js.lfx-mnav-open {
+    overflow: hidden;
+  }
 
-html.lfx-js .lfx-mnav-overlay {
-  z-index: 1250;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  padding-top: env(safe-area-inset-top, 0px);
-  color: #b3b3b3;
-  font-family: var(--lfx-font);
-  background: rgba(0, 0, 0, .92);
-  flex-direction: column;
-  align-items: center;
-  display: flex;
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-}
+  html.lfx-js .lfx-mnav-overlay {
+    z-index: 1250;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    padding-top: env(safe-area-inset-top, 0px);
+    color: #b3b3b3;
+    font-family: var(--lfx-font);
+    background: rgba(0, 0, 0, .92);
+    flex-direction: column;
+    align-items: center;
+    display: flex;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
 
-html.lfx-js .lfx-mnav-overlay[hidden] {
-  display: none;
-}
+  html.lfx-js .lfx-mnav-overlay[hidden] {
+    display: none;
+  }
 
-html.lfx-js .lfx-mnav-overlay__list {
-  overscroll-behavior: contain;
-  text-align: center;
-  flex: auto;
-  width: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 56px 24px 24px;
-  list-style: none;
-  overflow-y: auto;
-}
+  html.lfx-js .lfx-mnav-overlay__list {
+    overscroll-behavior: contain;
+    text-align: center;
+    flex: auto;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 56px 24px 24px;
+    list-style: none;
+    overflow-y: auto;
+  }
 
-html.lfx-js .lfx-mnav-overlay__link {
-  box-sizing: border-box;
-  color: #b3b3b3;
-  min-height: 44px;
-  font: 400 20px / 1.3 var(--lfx-font);
-  padding: 10px 16px;
-  text-decoration: none;
-  display: block;
-}
+  html.lfx-js .lfx-mnav-overlay__link {
+    box-sizing: border-box;
+    color: #b3b3b3;
+    min-height: 44px;
+    font: 400 20px / 1.3 var(--lfx-font);
+    padding: 10px 16px;
+    text-decoration: none;
+    display: block;
+  }
 
-html.lfx-js .lfx-mnav-overlay__link.is-active {
-  color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-}
+  html.lfx-js .lfx-mnav-overlay__link.is-active {
+    color: #fff;
+    font-size: 22px;
+    font-weight: 700;
+  }
 
-html.lfx-js .lfx-mnav-overlay__link--stats {
-  color: var(--lfx-gold);
-}
+  html.lfx-js .lfx-mnav-overlay__link--stats {
+    color: var(--lfx-gold);
+  }
 
-html.lfx-js .lfx-mnav-overlay__link--design {
-  cursor: pointer;
-  background: none;
-  border: 0;
-  width: 100%;
-  margin: 0;
-}
+  html.lfx-js .lfx-mnav-overlay__link--design {
+    cursor: pointer;
+    background: none;
+    border: 0;
+    width: 100%;
+    margin: 0;
+  }
 
-html.lfx-js .lfx-mnav-overlay__link:focus-visible {
-  outline-offset: -2px;
-  outline: 2px solid #fff;
-}
+  html.lfx-js .lfx-mnav-overlay__link:focus-visible {
+    outline-offset: -2px;
+    outline: 2px solid #fff;
+  }
 
-html.lfx-js .lfx-mnav-overlay__close {
-  width: 56px;
-  height: 56px;
-  margin: 8px 0 calc(24px + env(safe-area-inset-bottom, 0px));
-  color: #000;
-  font: 300 36px / 1 var(--lfx-font);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  background: #fff;
-  border: 0;
-  border-radius: 50%;
-  flex: none;
-  padding: 0 0 4px;
-}
+  html.lfx-js .lfx-mnav-overlay__close {
+    width: 56px;
+    height: 56px;
+    margin: 8px 0 calc(24px + env(safe-area-inset-bottom, 0px));
+    color: #000;
+    font: 300 36px / 1 var(--lfx-font);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    background: #fff;
+    border: 0;
+    border-radius: 50%;
+    flex: none;
+    padding: 0 0 4px;
+  }
 
-html.lfx-js .lfx-mnav-overlay__close:focus-visible {
-  outline-offset: 3px;
-  outline: 2px solid #fff;
+  html.lfx-js .lfx-mnav-overlay__close:focus-visible {
+    outline-offset: 3px;
+    outline: 2px solid #fff;
+  }
 }
 
 @media (max-width: 799px) {
@@ -6659,6 +6696,12 @@ html.lfx-js .lfx-card__link picture {
   }
 }
 
+@media (min-width: 800px) and (max-width: 899px) {
+  html.lfx-js.lfx-mnav-pills #lfx-billboard {
+    margin-top: 48px;
+  }
+}
+
 html.lfx-js.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:not(:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))) {
   margin-left: 40px;
 }
@@ -6822,6 +6865,124 @@ html.lfx-js:not(.layout-tv) .lfx-osdc__btn:active {
     width: 72px;
     height: 72px;
   }
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover {
+  z-index: 1250;
+  background: var(--lfx-bg, #000);
+  color: var(--lfx-text);
+  font-family: var(--lfx-font);
+  opacity: 1;
+  transition: opacity .2s;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover.is-leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg {
+  opacity: 0;
+  transition: opacity .4s;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg.is-loaded {
+  opacity: 1;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg img {
+  object-fit: cover;
+  object-position: center 20%;
+  filter: brightness(.55);
+  width: 100%;
+  height: 100%;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__bg:after {
+  content: "";
+  background: linear-gradient(to top, var(--lfx-bg, #000) 0%, rgba(0, 0, 0, 0) 55%), linear-gradient(to right, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0) 60%);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__text {
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .7);
+  flex-direction: column;
+  gap: 6px;
+  display: flex;
+  position: absolute;
+  bottom: 9%;
+  left: 4%;
+  right: 20%;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__title {
+  font-size: max(22px, min(3.6vw, 44px));
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__sub {
+  color: var(--lfx-text-muted);
+  font-size: max(14px, min(1.7vw, 20px));
+}
+
+html.lfx-js:not(.layout-tv) .lfx-startcover__spinner {
+  z-index: 1;
+  box-sizing: border-box;
+  border: 3px solid rgba(255, 255, 255, .25);
+  border-top-color: var(--lfx-red);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  animation: .9s linear infinite lfx-startcover-spin;
+  position: absolute;
+  bottom: 9%;
+  right: 4%;
+}
+
+@keyframes lfx-startcover-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js:not(.layout-tv) .lfx-startcover__text {
+    left: 6%;
+    right: 22%;
+    bottom: calc(8% + env(safe-area-inset-bottom, 0px));
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-startcover__spinner {
+    right: 6%;
+    bottom: calc(8% + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-startcover__spinner {
+    animation-duration: 3s;
+  }
+}
+
+html.lfx-startcover-on .docspinner {
+  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-statshint {

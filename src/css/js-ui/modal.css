@@ -406,6 +406,7 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body { padding-top: 24px; }
   html.lfx-js .lfx-modal__footer { padding: 24px 1.2em 32px; }
   html.lfx-js .lfx-modal__grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   html.lfx-js .lfx-modal__ep-num { display: none; }
+  html.lfx-js .lfx-modal__ep-title[data-num]::before { content: attr(data-num) " "; }
   html.lfx-js .lfx-modal__ep-thumb { flex-basis: 30%; }
 }
 @keyframes lfx-modal-sheet {

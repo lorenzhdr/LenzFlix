@@ -477,6 +477,12 @@ Live getestet am 12.11.2026 (Testkonto, Chrome Desktop und 390-px-iframe, Screen
   `pushState` ohne Hash-Ereignis). Jetzt schließt das Modal zuerst (`closeModal({after})`), dann folgt der Proxy-Klick.
 - **Offen (ungetestet):** iPhone-Safari (Autostart mit Ton, Bild-in-Bild über `webkitSetPresentationMode`, Wischen, Querformat, Safe-Area), Touch an echten Geräten, mehrere Stunden Dauerbetrieb.
 
+## Schnelleres Zappen, Codes, Gain
+- `DEBOUNCE_MS` 250. Beim `tune()` stößt der Controller sofort `player.prefetch(itemId, { signal })` für das Ziel an (Folgedruck bricht ab); `play()` übernimmt Cache/laufende Anfrage (Details: `docs/live.md` „Player: Rückfall, Fehlercodes, Vorauflösung, Gain“). Nach 3 s stabilem `playing` (nur Programm) werden Sender ±1 vorausgelöst (max. 2, einmal je Sendung, nichts bei Füllern/Sendepause). `ctl.stats()` → `{ zaps:[{channel,ms}], lastMs, avgMs }` (letzte 10 Umschaltungen tune → playing; Debug: `window.__lfxTvm.ctl.stats()`).
+- Snapshot: `card.code` (Fehlerkarte, Kurzcode, `NET` bei network ohne Code); die Ansicht zeigt „Code: X“ (`.lfx-tvm__card-code`, Größe/Deckkraft inline gesetzt).
+- Doppeltipp (Touch) schaltet Vollbild nur mit echtem Element-Vollbild (`document.fullscreenEnabled`/`webkitFullscreenEnabled` + `requestFullscreen` am Root, oder Vollbild ist schon an; Override `opts.canNativeFullscreen()`). Tipps auf `.lfx-tvm__zap` zählen nicht zum Doppeltipp.
+- `ctl.volumeSupported` ist true bei nativem `volume`, aktivem Gain oder offenem Gain-Versuch (`player.volumeCanTry()`); scheitert er (`volume-mode` → `mute-only`), springt der Pegel auf 100 und der Hinweis „nur stumm“ erscheint.
+
 ## Tests (Wellen)
 Controller (Zappen, Offset, Sync, Füller/Sendeschluss, Gesehen, Autoplay, Aufräumen ActiveEncodings), Modell (`gridRows` über 05:00, `nowAll`), Hülle (match/mount/unmount/teardown,
 PiP-Ausnahme, keine Fortschrittsmeldung, Design-Matching, Umleitung), Importgrenzen-Test (Engine importiert nur `src/js/live/**`; Hülle/core/shared nie daraus),

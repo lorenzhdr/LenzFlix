@@ -1,11 +1,17 @@
 // LenzFlix: Zugriff auf die Jellyfin-API (window.ApiClient, Fallback: localStorage.jellyfin_credentials).
 // Sicherheit: Das Access-Token wird nie geloggt und taucht in keiner Fehlermeldung auf.
 
+let storedMemo = { raw: undefined, server: null };
+
 function readStoredServer() {
   try {
-    const raw = JSON.parse(window.localStorage.getItem('jellyfin_credentials') || 'null');
-    const servers = (raw && raw.Servers) || [];
-    return servers.find((s) => s && s.AccessToken && s.UserId) || servers[0] || null;
+    const raw = window.localStorage.getItem('jellyfin_credentials');
+    if (storedMemo.raw === raw) return storedMemo.server; // JSON.parse nur bei geändertem Rohtext
+    const parsed = JSON.parse(raw || 'null');
+    const servers = (parsed && parsed.Servers) || [];
+    const server = servers.find((s) => s && s.AccessToken && s.UserId) || servers[0] || null;
+    storedMemo = { raw, server };
+    return server;
   } catch {
     return null;
   }
@@ -19,14 +25,21 @@ function trimSlash(s) {
   return String(s || '').replace(/\/+$/, '');
 }
 
-/** Interner Auth-Zustand. Enthält das Token: niemals ausgeben/loggen. */
+/**
+ * Interner Auth-Zustand. Enthält das Token: niemals ausgeben/loggen.
+ * Liefert der ApiClient alle Werte, wird localStorage gar nicht gelesen; sonst nur bei geändertem Rohtext neu geparst.
+ */
 export function getAuth() {
   const client = window.ApiClient;
-  const stored = readStoredServer();
-  const address = trimSlash(call(client, 'serverAddress') || (stored && (stored.ManualAddress || stored.LocalAddress)) || '');
-  const userId = call(client, 'getCurrentUserId') || (stored && stored.UserId) || null;
-  const token = call(client, 'accessToken') || (stored && stored.AccessToken) || null;
-  const serverId = call(client, 'serverId') || (stored && stored.Id) || null;
+  const addr = call(client, 'serverAddress');
+  const uid = call(client, 'getCurrentUserId');
+  const tok = call(client, 'accessToken');
+  const sid = call(client, 'serverId');
+  const stored = addr && uid && tok && sid ? null : readStoredServer();
+  const address = trimSlash(addr || (stored && (stored.ManualAddress || stored.LocalAddress)) || '');
+  const userId = uid || (stored && stored.UserId) || null;
+  const token = tok || (stored && stored.AccessToken) || null;
+  const serverId = sid || (stored && stored.Id) || null;
   return { address, userId, token, serverId };
 }
 
