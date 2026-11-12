@@ -5,6 +5,7 @@
 import * as M from './model.js';
 import { createDetails } from './details.js';
 import { createFullscreen } from '../ui/fullscreen.js';
+import { createZapStats } from '../ui/zapstats.js';
 import { createKeys } from './keys.js';
 import { createInfo } from './info.js';
 import { createPlayerView } from './player-view.js';
@@ -121,6 +122,19 @@ export function createApp(host, { scheduler, ctl, video, pip = null, deps = {}, 
   list.el.classList.add('lfx-tvm__list');
   epg.el.classList.add('lfx-tvm__epg');
   infoCard.el.classList.add('lfx-tvm__infocard');
+
+  // Messanzeige (opts.zapStats, Hash lfxdebug=1): ohne Option kein DOM
+  let zapStats = null;
+  if (opts.zapStats) {
+    zapStats = createZapStats(playerEl, { getVideo: () => video, doc });
+    const audio = () => {
+      const st = ctl.state();
+      zapStats.updateAudio({ mode: typeof ctl.volumeMode === 'function' ? ctl.volumeMode() : '', level: st.volume });
+    };
+    audio();
+    offs.push(ctl.on('zap', (z) => { zapStats.update(z); audio(); }));
+    offs.push(ctl.on('change', audio));
+  }
 
   main.append(playerEl, info.el);
   side.append(tabs, list.el);
@@ -280,6 +294,7 @@ export function createApp(host, { scheduler, ctl, video, pip = null, deps = {}, 
       for (const off of offs) { try { off(); } catch { /* egal */ } }
       offs.length = 0;
       keys.destroy();
+      if (zapStats) zapStats.destroy();
       try { fullscreen.destroy(); } catch { /* egal */ }
       for (const c of comps) { try { c.destroy(); } catch { /* egal */ } }
       details.dispose();

@@ -12,6 +12,7 @@ import { toast } from '../../core/toast.js';
 import { loadCatalog } from '../live/data.js';
 import { buildApiDeps, fatalText, loadUser } from '../live/deps.js';
 import { openModal } from '../modal.js';
+import { zapStatsEnabled } from '../live/zapflag.js';
 import * as prefs from './prefs.js';
 import { ON_CLASS, ROOT_ID, TV_THEMES, findHomeTab, tvModeMatch } from './route.js';
 import { destroyUnlock, initUnlock, takeIntentVideo } from './unlock.js';
@@ -163,6 +164,7 @@ function buildOpts(video) {
     phone: isMobile(),
     touch: coarse(),
     debug: window.__lfxTvmDebug === true,
+    zapStats: zapStatsEnabled(),
   };
 }
 

@@ -63,7 +63,7 @@ describe('Start', () => {
     fire(ctx.video, 'loadedmetadata');
     expect(ctx.log).toEqual([['currentTime', 1800], ['play']]);
     fire(ctx.video, 'playing');
-    expect(await p).toEqual({ ok: true, mode: 'direct' });
+    expect(await p).toMatchObject({ ok: true, mode: 'direct' });
   });
 
   it('HLS: gleiche Regel, Position ist die Live-Position zum Zeitpunkt der Metadaten', async () => {
@@ -76,7 +76,7 @@ describe('Start', () => {
     fire(ctx.video, 'loadedmetadata');
     expect(ctx.video.currentTime).toBe(608);
     fire(ctx.video, 'playing');
-    expect(await p).toEqual({ ok: true, mode: 'hls' });
+    expect(await p).toMatchObject({ ok: true, mode: 'hls' });
   });
 
   it('Zustände: loading → playing / stalled (erst nach 1,2 s ohne Fortschritt) / ended', async () => {
@@ -155,7 +155,7 @@ describe('Start', () => {
     await vi.advanceTimersByTimeAsync(24000);
     expect(states.some((s) => s.phase === 'error')).toBe(false);
     await vi.advanceTimersByTimeAsync(1500);
-    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'network', code: 'TIMEOUT' });
+    expect(await p).toMatchObject({ ok: false, mode: 'none', reason: 'network', code: 'TIMEOUT' });
     expect(states.at(-1)).toEqual({ phase: 'error', reason: 'network', code: 'TIMEOUT' });
   });
 
@@ -163,7 +163,7 @@ describe('Start', () => {
     const ctx = setup({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=VideoCodecNotSupported') })) });
     const errors = [];
     ctx.player.on('error', (e) => errors.push(e));
-    expect(await ctx.player.play({ itemId: 'it1', offsetMs: 0 })).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'V-CODEC' });
+    expect(await ctx.player.play({ itemId: 'it1', offsetMs: 0 })).toMatchObject({ ok: false, mode: 'none', reason: 'video', code: 'V-CODEC' });
     expect(errors).toEqual([{ reason: 'video', code: 'V-CODEC' }]);
     expect(ctx.video.hasAttribute('src')).toBe(false);
   });
@@ -225,7 +225,7 @@ describe('Stop und Zappen', () => {
     fire(ctx.video, 'playing');
     release();
     expect(await a).toEqual({ ok: false, mode: 'none', reason: 'aborted' });
-    expect(await b).toEqual({ ok: true, mode: 'direct' });
+    expect(await b).toMatchObject({ ok: true, mode: 'direct' });
     expect(ctx.video.getAttribute('src')).toContain('/Videos/B/stream');
   });
 
@@ -365,7 +365,7 @@ describe('Spuren im Player', () => {
     fire(ctx.video, 'loadedmetadata');
     expect(ctx.video.currentTime).toBe(140);
     fire(ctx.video, 'playing');
-    expect(await p).toEqual({ ok: true, mode: 'hls' });
+    expect(await p).toMatchObject({ ok: true, mode: 'hls' });
     expect(ctx.player.tracks().audioIndex).toBe(2);
   });
 });
@@ -378,7 +378,7 @@ describe('Trailer und dispose', () => {
     fire(ctx.video, 'loadedmetadata');
     expect(ctx.video.currentTime).toBe(4);
     fire(ctx.video, 'playing');
-    expect(await p).toEqual({ ok: true, mode: 'direct' });
+    expect(await p).toMatchObject({ ok: true, mode: 'direct' });
     expect(ctx.video.getAttribute('src')).toBe('http://srv/trailer.mp4');
   });
 

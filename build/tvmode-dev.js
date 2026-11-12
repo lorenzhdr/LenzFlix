@@ -8,7 +8,7 @@
 //   channel=N                opts.lastChannel (Standard 1)   min=1  .min-Dateien   chrome=0  Kopfleisten-/Tabbar-Attrappe aus (Standard an)
 //   autostart=0              kein instance.start() nach onReady   real=1  kein fakePlayer (Standard fakePlayer)   debug=1  window.__lfxTvm
 //   tab=now|epg              Klick auf .lfx-tvm__tab--now|--epg (Handy)   info=1  Info-Karte einer künftigen Sendung (Klick auf EPG-Zelle, am Handy nach Tab Programm)
-//   img=0                    imageUrl → null (Platzhalter testen)   muted=1  opts.muted
+//   img=0                    imageUrl → null (Platzhalter testen)   muted=1  opts.muted   zapstats=1  Messanzeige (opts.zapStats)
 //   state=playing|loading|pause|closedown|error|gesture|tap|muted   Zustand erzwingen (siehe unten)
 //
 // Zustände erzwingen (state=… schaltet debug automatisch ein):
@@ -239,6 +239,7 @@
     now: nowFn,
     fakePlayer: q.get('real') === '1' ? false : (state === 'error' ? false : true),
     debug: q.get('debug') === '1' || forced,
+    zapStats: q.get('zapstats') === '1',
   };
   if (opts.debug) window.__lfxTvmDebug = true;
 

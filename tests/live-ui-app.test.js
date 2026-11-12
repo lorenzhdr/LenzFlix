@@ -798,6 +798,65 @@ describe('Lautstärke-Modus (volumeMode)', () => {
   });
 });
 
+describe('Pegel 0 ist in jedem Modus stumm (iOS-Fehlklassifikation)', () => {
+  // iOS-Probe: speichert den Wert, gibt ihn zurück (Modus 'native'), ignoriert ihn aber akustisch.
+  const nativeLike = (extra = {}) => ({ volumeSupported: true, volumeMode: () => 'native', ...extra });
+
+  it('native: V− bis 0 → setMuted(true), Anzeige Stumm', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.app.press('power');
+    await flush();
+    for (let i = 0; i < 10; i++) env.app.press('vol-');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0);
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
+    expect(q(env, '.lfx-live-osd__vol-num').textContent).toBe('Stumm');
+  });
+
+  it('Autoplay-gesperrter Start bei Pegel > 0: Absicherung entstummt nicht', async () => {
+    const handlers = {};
+    const env = makeEnv({ player: nativeLike({ on: vi.fn((n, cb) => { handlers[n] = cb; return () => {}; }) }) });
+    env.player.play.mockImplementation(async () => { handlers['autoplay-muted']({}); return { ok: true, mode: 'direct' }; });
+    env.app.press('power');
+    await flush();
+    expect(env.player.play).toHaveBeenCalled();
+    expect(env.player.setMuted).not.toHaveBeenCalledWith(true);
+  });
+
+  it('Pegel 0 beim Start: nach erfolgreichem Start setMuted(true)', async () => {
+    const env = makeEnv({ opts: { volume: 0 }, player: nativeLike() });
+    env.app.press('power');
+    await flush();
+    env.player.setMuted.mockClear();
+    env.app.press('ch+');
+    await flush(2000);
+    expect(env.player.setMuted).toHaveBeenCalledWith(true);
+    expect(env.player.setMuted).not.toHaveBeenCalledWith(false);
+  });
+
+  it('Entstummen bei Pegel 0 (Stumm-Taste) stellt den letzten Pegel > 0 wieder her', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.app.press('power');
+    await flush();
+    env.app.press('vol-'); // 45
+    env.clock.t += 2000; // 45 steht ≥ 1 s → gilt als letzter Pegel
+    for (let i = 0; i < 9; i++) env.app.press('vol-'); // schnell bis 0: Zwischenwerte zählen nicht
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
+    env.app.press('mute'); // bei Pegel 0 entstummen → letzter stehender Pegel (45)
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.45);
+    expect(env.deps.savePrefs).toHaveBeenLastCalledWith({ volume: 0.45, muted: false });
+  });
+
+  it('V− schnell von 50 bis 0: Stumm-Taste stellt 50 wieder her (nicht 5)', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.app.press('power');
+    await flush();
+    for (let i = 0; i < 10; i++) env.app.press('vol-');
+    env.app.press('mute');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
+  });
+});
+
 describe('Ladeanimation', () => {
   function withState() {
     const h = {};
@@ -870,5 +929,28 @@ describe('Menü: Tippen außerhalb schließt', () => {
     env.app.press('epg');
     down(q(env, '.lfx-live-screen'));
     expect(env.ov.epg.open).toBe(true);
+  });
+});
+
+describe('Messanzeige (opts.zapStats)', () => {
+  it('ohne Option kein DOM', () => {
+    const env = makeEnv();
+    expect(q(env, '.lfx-zapstats')).toBeNull();
+  });
+
+  it('mit Option: Box im Bild, nach Start und Lautstärke gefüttert, dispose räumt ab', async () => {
+    const timing = { totalMs: 1500, infoMs: 200, loadMs: 1000, startMs: 300, chain: 'D', cached: false, mode: 'direct' };
+    const env = makeEnv({ opts: { zapStats: true }, player: { volumeMode: () => 'native', play: vi.fn(async () => ({ ok: true, mode: 'direct', timing })) } });
+    const box = q(env, '.lfx-live-screen .lfx-zapstats');
+    expect(box).not.toBeNull();
+    env.app.press('power');
+    await flush();
+    expect(box.children[0].textContent).toContain('Sender 1 · 1,5 s · D · Info 0,2');
+    expect(box.children[1].textContent).toContain('Ton: native');
+    expect(box.children[1].textContent).toContain('Regler 50');
+    env.app.press('vol-');
+    expect(box.children[1].textContent).toContain('Regler 45');
+    env.app.dispose();
+    expect(document.querySelector('.lfx-zapstats')).toBeNull();
   });
 });

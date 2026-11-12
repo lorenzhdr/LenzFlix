@@ -22,6 +22,8 @@ export function createFakePlayer({ canvas, now = Date.now, getInfo } = {}) {
   let subtitleIndex = -1;
   let volume = 1;
   let muted = false;
+  let lastTiming = null;
+  let zapNo = 0;
 
   const position = () => base.off + (now() - base.at);
 
@@ -74,12 +76,19 @@ export function createFakePlayer({ canvas, now = Date.now, getInfo } = {}) {
     em.emit('state', { phase: 'loading' });
     loop();
     em.emit('state', { phase: 'playing' });
-    return { ok: true, mode: 'direct' };
+    // Attrappe der Messwerte (Harness): plausible, leicht schwankende Zeiten
+    zapNo += 1;
+    const info = 200 + ((zapNo * 37) % 5) * 100;
+    const load = 700 + ((zapNo * 53) % 7) * 150;
+    const start = 150 + ((zapNo * 29) % 4) * 50;
+    lastTiming = { totalMs: info + load + start, infoMs: info, loadMs: load, startMs: start, chain: 'D', cached: zapNo % 3 === 0, mode: 'direct' };
+    return { ok: true, mode: 'direct', timing: { ...lastTiming } };
   }
 
   return {
     volumeSupported: true,
     volumeMode: () => 'native',
+    lastTiming: () => (lastTiming ? { ...lastTiming } : null),
     prefetch: async () => ({ ok: true }),
     unlock() {},
     async play({ offsetMs = 0, audioIndex: a, subtitleIndex: s } = {}) {

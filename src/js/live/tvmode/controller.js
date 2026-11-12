@@ -9,7 +9,7 @@ import { createEmitter } from '../player/events.js';
 import { nextProgram, titleOf } from './model.js';
 
 export const DEBOUNCE_MS = 250;
-export const NEIGHBOR_MS = 3000; // stabiles „playing“, danach Nachbarsender vorauflösen
+export const NEIGHBOR_MS = 1000; // stabiles „playing“, danach Nachbarsender vorauflösen
 export const PREFETCH_MAX_AGE_MS = 30000;
 const NEIGHBOR_MAX = 2;
 const STATS_MAX = 10;
@@ -18,6 +18,7 @@ export const SYNC_MS = 30000;
 export const STALL_MS = 60000;
 const MAX_TIMEOUT = 2147483647;
 const VOL_STEP = 5;
+const VOL_SETTLE_MS = 1000; // so lange muss ein Pegel stehen, um als „letzter Pegel“ fürs Entstummen zu gelten
 const PLAYABLE = ['program', 'fill', 'nightfill'];
 const NCH = 18;
 
@@ -58,7 +59,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   let snap = null;
   let pfAc = null;       // AbortController der Vorauflösung des Zielsenders (Entprellung)
   let tuneAt = 0;
-  const zaps = [];       // letzte Umschaltungen: { channel, ms } (tune → playing)
+  const zaps = [];       // letzte Umschaltungen: { channel, ms, timing? } (tune → playing; timing = player.lastTiming-Form)
   const neighborDone = new Set();
   const T = {};
   const offs = [];
@@ -100,9 +101,23 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   // ---------- Lautstärke ----------
   // iOS: video.volume ist fest (player.volumeMode() === 'mute-only'): der Regler bleibt, wirkt aber nur als Stumm/Ton an
   // (0 → stumm, ab 5 → voller Ton, video.volume bleibt 1). Der gewählte Wert bleibt angezeigt.
+  // Pegel 0 ist in JEDEM Modus stumm (über `muted`): die Volumen-Probe kann auf iOS fälschlich 'native' melden.
   const muteOnly = () => safe(() => (player.volumeMode ? player.volumeMode() : player.volumeSupported === false ? 'mute-only' : 'native')) === 'mute-only';
-  const silent = () => muted || (muteOnly() && vol === 0);
+  const silent = () => muted || vol === 0;
+  // Letzter Pegel > 0 fürs Entstummen bei 0: nur ein Pegel, der mindestens VOL_SETTLE_MS stand
+  // (Regler bis 0 ziehen merkt sich sonst einen Zwischenwert statt des Ausgangspegels).
+  let lastVol = vol > 0 ? vol : 50;
+  let volPrev = vol;
+  let volAt = clock();
+  function noteVol() {
+    if (vol === volPrev) return;
+    const t = clock();
+    if (volPrev > 0 && t - volAt >= VOL_SETTLE_MS) lastVol = volPrev;
+    volPrev = vol;
+    volAt = t;
+  }
   function applyVolume() {
+    noteVol();
     safe(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
     safe(() => player.setMuted && player.setMuted(silent()));
   }
@@ -123,8 +138,10 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (disposed) return;
     muted = !!b;
     mutedByPolicy = false;
+    const restore = !muted && vol === 0; // Entstummen bei Pegel 0: zurück auf den letzten Pegel > 0
+    if (restore) vol = lastVol;
     applyVolume();
-    savePrefs({ muted });
+    savePrefs(restore ? { volume: vol / 100, muted } : { muted });
     changed();
   }
 
@@ -136,7 +153,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       applyVolume();
       if (!muted) { changed(); return; }
     }
-    setMuted(!muted);
+    setMuted(!silent()); // bei Pegel 0 (stumm angezeigt) entstummt die Taste
   }
 
   // ---------- Gesehen-Zählung ----------
@@ -197,18 +214,23 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (res && res.ok === false) {
       if (res.reason === 'aborted') return false;
       showError(res.reason || 'network', g, res.code);
+      if (e === entry) em.emit('zap', { channel, ok: false, reason: res.reason || 'network', code: res.code, keyMs: tuneAt ? Math.max(0, clock() - tuneAt) : null, timing: res.timing || null });
       return false;
     }
     card = null;
     reason = null;
     phase = 'playing';
     playing = true;
+    // iOS kann `muted` beim src-Wechsel verlieren: nur in Richtung stumm absichern, nie ohne Geste entstummen
+    if (silent()) safe(() => player.setMuted && player.setMuted(true));
     if (e === entry) watchTune();
+    const keyMs = tuneAt ? Math.max(0, clock() - tuneAt) : null;
     if (tuneAt) {
-      zaps.push({ channel, ms: Math.max(0, clock() - tuneAt) });
+      zaps.push({ channel, ms: keyMs, ...(res && res.timing ? { timing: { ...res.timing } } : {}) });
       if (zaps.length > STATS_MAX) zaps.shift();
       tuneAt = 0;
     }
+    if (e === entry) em.emit('zap', { channel, ok: true, keyMs, timing: (res && res.timing) || null });
     if (e === entry && e.type === 'program') later('neigh', () => prefetchNeighbors(g), NEIGHBOR_MS);
     changed();
     return true;
@@ -501,6 +523,8 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     setMuted,
     toggleMute,
     get volumeSupported() { return volumeSupported(); },
+    /** 'native' | 'mute-only' (Messanzeige). */
+    volumeMode: () => (muteOnly() ? 'mute-only' : 'native'),
     tracks,
     setAudio,
     setSubtitle,
@@ -509,7 +533,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     /** Messung für das Debug-Fenster: letzte Umschaltungen (tune → playing) in ms. */
     stats() {
       const ms = zaps.map((z) => z.ms);
-      return { zaps: zaps.map((z) => ({ ...z })), lastMs: ms.length ? ms[ms.length - 1] : null, avgMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null };
+      return { zaps: zaps.map((z) => ({ ...z, ...(z.timing ? { timing: { ...z.timing } } : {}) })), lastMs: ms.length ? ms[ms.length - 1] : null, avgMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null };
     },
     on: (name, fn) => em.on(name, fn),
     dispose() {

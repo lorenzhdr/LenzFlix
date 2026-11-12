@@ -1457,6 +1457,7 @@
     let waitCt = 0;
     let stallTimer = null;
     let stallShown = false;
+    let phases = { src: null, meta: null, playing: null };
     video.setAttribute("playsinline", "");
     video.setAttribute("disablepictureinpicture", "");
     video.setAttribute("x-webkit-airplay", "deny");
@@ -1538,6 +1539,7 @@
       playing: () => {
         if (!armed) return;
         playedOnce = true;
+        if (pending && phases.playing == null) phases.playing = now();
         resetStall();
         emit("state", { phase: "playing" });
         settle({ ok: true });
@@ -1626,12 +1628,14 @@
       armed = true;
       quiet = !!q;
       base = { off: Math.max(0, Number(offsetMs2) || 0), at: now() };
+      phases = { src: null, meta: null, playing: null };
       return new Promise((resolve) => {
         pending = resolve;
         timer = setTimeout(() => fail2("network", "TIMEOUT"), START_TIMEOUT_MS);
         onMeta = () => {
           onMeta = null;
           if (!armed) return;
+          phases.meta = now();
           try {
             video.currentTime = livePos() / 1e3;
           } catch {
@@ -1639,6 +1643,7 @@
           callPlay();
         };
         video.addEventListener("loadedmetadata", onMeta, { once: true });
+        phases.src = now();
         video.src = url;
       });
     }
@@ -1658,6 +1663,8 @@
         }
       },
       start,
+      /** Zeitstempel (now()) des letzten start(): { src, meta, playing } (null = nicht erreicht). */
+      phases: () => ({ ...phases }),
       clear: () => clear(false),
       positionMs: livePos,
       syncTo(offsetMs2) {
@@ -2010,6 +2017,8 @@
     let subtitleIndex = -1;
     let volume = 1;
     let muted = false;
+    let lastTiming = null;
+    let zapNo = 0;
     const position = () => base.off + (now() - base.at);
     function draw() {
       if (!canvas) return;
@@ -2060,11 +2069,17 @@
       em.emit("state", { phase: "loading" });
       loop();
       em.emit("state", { phase: "playing" });
-      return { ok: true, mode: "direct" };
+      zapNo += 1;
+      const info = 200 + zapNo * 37 % 5 * 100;
+      const load = 700 + zapNo * 53 % 7 * 150;
+      const start = 150 + zapNo * 29 % 4 * 50;
+      lastTiming = { totalMs: info + load + start, infoMs: info, loadMs: load, startMs: start, chain: "D", cached: zapNo % 3 === 0, mode: "direct" };
+      return { ok: true, mode: "direct", timing: { ...lastTiming } };
     }
     return {
       volumeSupported: true,
       volumeMode: () => "native",
+      lastTiming: () => lastTiming ? { ...lastTiming } : null,
       prefetch: async () => ({ ok: true }),
       unlock() {
       },
@@ -2198,6 +2213,9 @@
   var CACHE_MAX = 24;
   var MAX_ATTEMPTS = 3;
   var RETRY_DELAY_MS = 500;
+  var DF_KEY = "lfx-directfailed";
+  var DF_TTL_MS = 7 * 24 * 3600 * 1e3;
+  var DF_MAX = 200;
   function createPlayer({ video, deps, now = Date.now, fake = false, canvas, getInfo } = {}) {
     if (fake) return createFakePlayer({ canvas, now, getInfo });
     const em = createEmitter();
@@ -2210,10 +2228,36 @@
     let tsOnly = false;
     const directFailed = /* @__PURE__ */ new Set();
     const rememberDirectFailed = (itemId) => {
-      if (directFailed.size >= 200) directFailed.clear();
+      if (directFailed.size >= DF_MAX) directFailed.clear();
       directFailed.add(itemId);
       cache.delete(itemId);
     };
+    const store = deps && deps.storage && typeof deps.storage.getItem === "function" ? deps.storage : null;
+    const readDf = () => {
+      try {
+        const o = JSON.parse(store.getItem(DF_KEY) || "{}");
+        return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+      } catch {
+        return {};
+      }
+    };
+    if (store) {
+      const t = now();
+      for (const [id, at] of Object.entries(readDf())) if (typeof at === "number" && t - at < DF_TTL_MS && directFailed.size < DF_MAX) directFailed.add(id);
+    }
+    const persistDirectFailed = (itemId) => {
+      if (!store) return;
+      try {
+        const t = now();
+        const all = readDf();
+        all[itemId] = t;
+        const live = Object.entries(all).filter(([, at]) => typeof at === "number" && t - at < DF_TTL_MS).sort((a, b) => b[1] - a[1]).slice(0, DF_MAX);
+        store.setItem(DF_KEY, JSON.stringify(Object.fromEntries(live)));
+      } catch {
+      }
+    };
+    let lastCached = false;
+    let lastTiming = null;
     const cache = /* @__PURE__ */ new Map();
     const inflight = /* @__PURE__ */ new Map();
     const cancelRequests = () => {
@@ -2277,7 +2321,10 @@
           if (signal.aborted) return { ok: false, mode: "none", reason: "aborted" };
         }
         const c2 = cache.get(itemId);
-        if (fresh(c2) && c2.mode === "direct" && c2.r && !directFailed.has(itemId)) return c2.r;
+        if (fresh(c2) && c2.mode === "direct" && c2.r && !directFailed.has(itemId)) {
+          lastCached = true;
+          return c2.r;
+        }
       }
       let r;
       try {
@@ -2288,7 +2335,28 @@
       if (opts.audioIndex == null) remember(itemId, r);
       return r;
     }
+    function makeTiming(tm) {
+      const ph = vc.phases();
+      const dur = (a, b) => a != null && b != null ? Math.max(0, b - a) : null;
+      return {
+        totalMs: Math.max(0, now() - tm.t0),
+        infoMs: tm.infoAt != null ? Math.max(0, tm.infoAt - tm.t0) : null,
+        loadMs: dur(ph.src, ph.meta),
+        startMs: dur(ph.meta, ph.playing),
+        chain: tm.chain.join(">"),
+        cached: tm.cached,
+        mode: tm.mode
+      };
+    }
     async function play(opts = {}) {
+      if (disposed) return aborted();
+      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none" };
+      const res = await playCore(opts, tm);
+      if (res.reason === "aborted") return res;
+      lastTiming = makeTiming(tm);
+      return { ...res, timing: lastTiming };
+    }
+    async function playCore(opts, tm) {
       if (disposed) return aborted();
       const { itemId, offsetMs: offsetMs2 = 0 } = opts;
       const my = ++gen;
@@ -2298,8 +2366,11 @@
       teardown();
       tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
       em.emit("state", { phase: "loading" });
+      lastCached = false;
       let r = await resolveFor(itemId, opts, signal);
       if (my !== gen) return aborted();
+      tm.cached = lastCached;
+      tm.infoAt = now();
       if (r.ok && r.mode === "hls" && tsOnly && r.offeredHevc && r.videoCodec === "h264") {
         r = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
         if (my !== gen) return aborted();
@@ -2308,23 +2379,27 @@
         failure(r.reason, r.code);
         return failResult(r);
       }
-      const chain = [];
+      const chain = tm.chain;
       let cur = r;
       let noHevc = !!opts.noHevc;
       let res;
       let fromFmp4 = false;
       let tsRetried = false;
+      let directMediaError = false;
       for (let attempt = 1; ; attempt++) {
         chain.push(attemptLetter(cur));
+        tm.mode = cur.mode;
         res = await launch(cur, opts, offsetMs2, itemId, my);
         if (my !== gen) return aborted();
         if (res.ok) {
           if (fromFmp4) tsOnly = true;
+          if (directMediaError) persistDirectFailed(itemId);
           return res;
         }
         if (res.reason !== "video" && res.reason !== "browser" || attempt >= MAX_ATTEMPTS) break;
         let delay = 0;
         if (cur.mode === "direct") {
+          if (res.reason === "video" && (res.code === "M3" || res.code === "M4")) directMediaError = true;
           rememberDirectFailed(itemId);
         } else if (cur.mode === "hls" && cur.offeredHevc && cur.videoCodec === "h264") {
           noHevc = true;
@@ -2379,13 +2454,17 @@
       tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
       session = { kind: "url", mode: "direct" };
       em.emit("state", { phase: "loading" });
+      const t0 = now();
       const res = await vc.start(url, offsetMs2);
       if (my !== gen) return aborted();
+      const ph = vc.phases();
+      const dur = (a, b) => a != null && b != null ? Math.max(0, b - a) : null;
+      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct" };
       if (!res.ok) {
         teardown();
-        return failResult(res);
+        return { ...failResult(res), timing: lastTiming };
       }
-      return { ok: true, mode: "direct" };
+      return { ok: true, mode: "direct", timing: lastTiming };
     }
     return {
       unlock: () => vc.unlock(),
@@ -2406,6 +2485,8 @@
         return vc.volumeSupported;
       },
       volumeMode: () => vc.volumeMode(),
+      /** Messung des letzten play()/playUrl(): { totalMs, infoMs, loadMs, startMs, chain, cached, mode } oder null. */
+      lastTiming: () => lastTiming ? { ...lastTiming } : null,
       tracks() {
         return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
       },
@@ -2856,12 +2937,12 @@
         });
         const track = h("div", "lfx-live-epg__track");
         dayInfo.forEach((d2, i) => {
-          const sec = h("div", "lfx-live-epg__daysec");
-          sec.dataset.day = String(d2.D);
-          sec.style.left = `calc(var(--lfx-live-epg-pm) * ${d2.off})`;
-          sec.style.width = `calc(var(--lfx-live-epg-pm) * ${d2.len})`;
-          r.secs[i] = sec;
-          track.append(sec);
+          const sec2 = h("div", "lfx-live-epg__daysec");
+          sec2.dataset.day = String(d2.D);
+          sec2.style.left = `calc(var(--lfx-live-epg-pm) * ${d2.off})`;
+          sec2.style.width = `calc(var(--lfx-live-epg-pm) * ${d2.len})`;
+          r.secs[i] = sec2;
+          track.append(sec2);
         });
         row2.append(head, track);
         inner.append(row2);
@@ -2875,8 +2956,8 @@
       updateChanHeads();
     }
     function renderRowDay(r, i) {
-      const sec = r.secs[i];
-      sec.textContent = "";
+      const sec2 = r.secs[i];
+      sec2.textContent = "";
       const entries = [];
       const els = [];
       planFor(r.ch.no, i).forEach((en) => {
@@ -2884,7 +2965,7 @@
         entries.push(en);
         const node = blockFor(r, en, i);
         els.push(node);
-        sec.append(node);
+        sec2.append(node);
       });
       r.byDay.set(i, { entries, els });
     }
@@ -8398,6 +8479,89 @@
     };
   }
 
+  // src/js/live/ui/zapstats.js
+  var AVG_MAX = 10;
+  var STYLE = [
+    "position:absolute",
+    "top:6px",
+    "left:6px",
+    "z-index:50",
+    "max-width:calc(100% - 12px)",
+    "box-sizing:border-box",
+    "padding:4px 6px",
+    "border-radius:4px",
+    "background:rgba(0,0,0,.62)",
+    "color:#e8e8e8",
+    "font:11px/1.35 ui-monospace,Menlo,Consolas,monospace",
+    "white-space:pre-wrap",
+    "overflow-wrap:anywhere",
+    "pointer-events:none"
+  ].join(";");
+  var sec = (ms) => (Math.max(0, Number(ms) || 0) / 1e3).toFixed(1).replace(".", ",");
+  var num22 = (n) => Number.isFinite(n) ? n.toFixed(2).replace(".", ",") : "\u2013";
+  function createZapStats(parent, { getVideo = null, doc = null } = {}) {
+    const d2 = doc || parent && parent.ownerDocument || document;
+    const el = d2.createElement("div");
+    el.className = "lfx-zapstats";
+    el.setAttribute("aria-hidden", "true");
+    el.style.cssText = STYLE;
+    const l1 = d2.createElement("div");
+    const l2 = d2.createElement("div");
+    el.append(l1, l2);
+    parent.append(el);
+    const hist = [];
+    let audio = { mode: "", level: null };
+    let destroyed = false;
+    function renderAudio() {
+      const v = typeof getVideo === "function" ? getVideo() : null;
+      const mode = audio.mode || "?";
+      const muted = v ? v.muted ? "ja" : "nein" : "?";
+      const vol = v ? num22(Number(v.volume)) : "?";
+      const level = audio.level == null ? "?" : String(Math.round(Number(audio.level)));
+      l2.textContent = `Ton: ${mode} \xB7 muted ${muted} \xB7 vol ${vol} \xB7 Regler ${level}`;
+    }
+    renderAudio();
+    return {
+      el,
+      update(z) {
+        if (destroyed || !z) return;
+        const t = z.timing || null;
+        const parts = [`Sender ${z.channel == null ? "?" : z.channel}`];
+        if (z.ok === false) {
+          parts.push("FEHLER", [z.code, t && t.chain].filter(Boolean).join(" ") || z.reason || "?");
+          if (t) parts.push(`${sec(t.totalMs)} s`);
+        } else {
+          const total = t ? t.totalMs : z.totalMs;
+          if (total != null) {
+            hist.push(total);
+            if (hist.length > AVG_MAX) hist.shift();
+          }
+          parts.push(`${total != null ? sec(total) : "?"} s`);
+          if (t) {
+            if (t.chain) parts.push(t.chain);
+            parts.push(`Info ${sec(t.infoMs)}${t.cached ? " Cache" : ""}`);
+            if (t.loadMs != null) parts.push(`Laden ${sec(t.loadMs)}`);
+            if (t.startMs != null) parts.push(`Start ${sec(t.startMs)}`);
+          }
+          if (z.keyMs != null) parts.push(`ab Taste ${sec(z.keyMs)} s`);
+          if (hist.length) parts.push(`\xD8 ${sec(hist.reduce((a, b) => a + b, 0) / hist.length)} s (${hist.length})`);
+        }
+        l1.textContent = parts.join(" \xB7 ");
+        renderAudio();
+      },
+      updateAudio(info) {
+        if (destroyed) return;
+        if (info) audio = { mode: info.mode || audio.mode, level: info.level == null ? audio.level : info.level };
+        renderAudio();
+      },
+      destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        el.remove();
+      }
+    };
+  }
+
   // src/js/live/magazine/model.js
   var DAYS2 = 7;
   var OVERVIEW_MAX = 240;
@@ -8765,6 +8929,7 @@
   var LOADING_DELAY_MS = 400;
   var MAX_TIMEOUT = 2147483647;
   var VOL_STEP2 = 5;
+  var VOL_SETTLE_MS = 1e3;
   var PLAYABLE = ["program", "fill", "nightfill"];
   var OVERLAY_FACTORY = { epg: "epg", txt: "ttx", menu: "menu", guide: "guide" };
   var OVERLAY_CLASS = { epg: "has-epg", txt: "has-ttx", menu: "has-menu", guide: "has-guide" };
@@ -8871,6 +9036,11 @@
       canvas: refs.fake,
       getInfo: () => ({ channel: channelOf(channel).name, title: entry ? titleOf(entry).title : "" })
     }) : playerArg;
+    const zapStats = opts.zapStats ? createZapStats(screen, { getVideo: () => video, doc }) : null;
+    let tuneAt = 0;
+    const zapAudio = () => {
+      if (zapStats) safe2(() => zapStats.updateAudio({ mode: player && player.volumeMode ? player.volumeMode() : "", level: vol }));
+    };
     function channelOf(no) {
       const list = scheduler.channels && scheduler.channels() || [];
       return list.find((c2) => c2.no === no) || { no, key: "", name: `LIVE ${no}` };
@@ -9123,14 +9293,26 @@
       return !!player && player.volumeSupported === false;
     }
     const level = () => muteOnly() ? 1 : vol / 100;
-    const silent = () => muted || muteOnly() && vol === 0;
+    const silent = () => muted || vol === 0;
+    let lastVol = vol > 0 ? vol : 50;
+    let volPrev = vol;
+    let volAt = clock();
+    function noteVol() {
+      if (vol === volPrev) return;
+      const t = clock();
+      if (volPrev > 0 && t - volAt >= VOL_SETTLE_MS) lastVol = volPrev;
+      volPrev = vol;
+      volAt = t;
+    }
     let volHintShown = false;
     function applyVolume() {
+      noteVol();
       safe2(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
       safe2(() => player.setMuted && player.setMuted(silent()));
       if (music) safe2(() => music.setLevel(level(), silent() || mutedByPolicy));
       if (sfx) safe2(() => sfx.setLevel(level(), silent()));
       safe2(() => knobs.setVolume(vol));
+      zapAudio();
     }
     function savePrefs(partial) {
       if (deps.savePrefs) safe2(() => deps.savePrefs(partial));
@@ -9142,8 +9324,10 @@
       osd.showVolume({ percent: vol, muted: silent(), hint });
     }
     function changeVolume(key) {
-      if (key === "mute") muted = !muted;
-      else {
+      if (key === "mute") {
+        muted = !silent();
+        if (!muted && vol === 0) vol = lastVol;
+      } else {
         vol = clamp2(vol + (key === "vol+" ? VOL_STEP2 : -VOL_STEP2), 0, 100);
         muted = false;
       }
@@ -9218,10 +9402,17 @@
       if (res && res.ok === false) {
         if (res.reason === "aborted") return false;
         showError(res.reason || "network", g, res.code);
+        if (zapStats && e === entry) safe2(() => zapStats.update({ channel, ok: false, reason: res.reason || "network", code: res.code, keyMs: tuneAt ? clock() - tuneAt : null, timing: res.timing || null }));
         return false;
       }
       card.hide();
       playing = true;
+      if (zapStats && e === entry) {
+        safe2(() => zapStats.update({ channel, ok: true, keyMs: tuneAt ? clock() - tuneAt : null, timing: res && res.timing || null }));
+        zapAudio();
+      }
+      tuneAt = 0;
+      if (silent()) safe2(() => player.setMuted && player.setMuted(true));
       if (e === entry) watchTune();
       return true;
     }
@@ -9370,6 +9561,7 @@
       }
       channel = no;
       const g = ++gen;
+      tuneAt = clock();
       unlater("zap");
       unlater("advance");
       unlater("retry");
@@ -9891,6 +10083,7 @@
           }
         }
         noise.dispose();
+        if (zapStats) zapStats.destroy();
         knobs.dispose();
         decor.dispose();
         if (sfx && sfxArg === void 0) safe2(() => sfx.dispose());

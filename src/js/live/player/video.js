@@ -19,6 +19,7 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   let waitCt = 0;
   let stallTimer = null;
   let stallShown = false;
+  let phases = { src: null, meta: null, playing: null }; // Zeitstempel des letzten start() (Messanzeige, docs/live.md)
 
   video.setAttribute('playsinline', '');
   video.setAttribute('disablepictureinpicture', '');
@@ -82,6 +83,8 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   };
 
   // Volumen-Probe: iOS ignoriert volume (dann nur Stumm/Ton an, 'mute-only'; WebAudio-Gain taugt dort in der Praxis nicht).
+  // Achtung: iOS liest den gesetzten Wert oft zurück, ignoriert ihn aber akustisch → die Probe kann fälschlich 'native'
+  // liefern. Pegel 0 läuft deshalb in allen Modi immer über `muted` (Controller/App: silent() = muted || vol === 0).
   let nativeVolume;
   try {
     const prev = video.volume;
@@ -94,6 +97,7 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     playing: () => {
       if (!armed) return;
       playedOnce = true;
+      if (pending && phases.playing == null) phases.playing = now();
       resetStall();
       emit('state', { phase: 'playing' });
       settle({ ok: true });
@@ -171,17 +175,20 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     armed = true;
     quiet = !!q;
     base = { off: Math.max(0, Number(offsetMs) || 0), at: now() };
+    phases = { src: null, meta: null, playing: null };
     return new Promise((resolve) => {
       pending = resolve;
       timer = setTimeout(() => fail('network', 'TIMEOUT'), START_TIMEOUT_MS);
       onMeta = () => {
         onMeta = null;
         if (!armed) return;
+        phases.meta = now();
         // Position zum jetzigen Zeitpunkt (Laden kann Sekunden dauern), nicht die vom Start.
         try { video.currentTime = livePos() / 1000; } catch { /* egal */ }
         callPlay();
       };
       video.addEventListener('loadedmetadata', onMeta, { once: true });
+      phases.src = now();
       video.src = url;
     });
   }
@@ -198,6 +205,8 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       } catch { /* egal */ }
     },
     start,
+    /** Zeitstempel (now()) des letzten start(): { src, meta, playing } (null = nicht erreicht). */
+    phases: () => ({ ...phases }),
     clear: () => clear(false),
     positionMs: livePos,
     syncTo(offsetMs) {

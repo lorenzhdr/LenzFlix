@@ -379,7 +379,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.1";
+  var VERSION = "1.11.2";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -7675,6 +7675,13 @@
       subMode: cfg.SubtitleMode || ""
     };
   }
+  function safeStorage() {
+    try {
+      return window.localStorage || null;
+    } catch {
+      return null;
+    }
+  }
   function deviceId() {
     try {
       const c = window.ApiClient;
@@ -7689,6 +7696,8 @@
       user,
       server: { deviceId: deviceId() },
       request: (method, path, o = {}) => requestJson(method, path, o),
+      storage: safeStorage(),
+      // Player: dauerhaft gemerkte Direct-Fehler
       streamUrl: (path, params) => buildUrl(path, { ...params || {}, ApiKey: getAuth().token }),
       imageUrl: (id, o = {}) => imageUrlFor(id, o),
       getBoxSetItems: async (id) => {
@@ -7724,6 +7733,26 @@
       setPlayed: (id, v) => setPlayed(id, v),
       channelConfig: getChannelConfig()
     };
+  }
+
+  // src/js/features/live/zapflag.js
+  var ZAP_KEY = "lfx-zapstats";
+  function zapStatsEnabled() {
+    let v = null;
+    try {
+      v = parseHash(window.location.hash).params.get("lfxdebug");
+    } catch {
+    }
+    try {
+      if (v === "1") window.localStorage.setItem(ZAP_KEY, "1");
+      else if (v === "0") {
+        window.localStorage.removeItem(ZAP_KEY);
+        return false;
+      }
+      return window.localStorage.getItem(ZAP_KEY) === "1";
+    } catch {
+      return v === "1";
+    }
   }
 
   // src/js/features/tvmode/prefs.js
@@ -7967,7 +7996,8 @@
       muted: getMuted(),
       phone: isMobile(),
       touch: coarse(),
-      debug: window.__lfxTvmDebug === true
+      debug: window.__lfxTvmDebug === true,
+      zapStats: zapStatsEnabled()
     };
   }
   async function boot(myGen) {
@@ -20035,6 +20065,7 @@
       phone: isMobile(),
       touch: coarse3(),
       debug: window.__lfxLiveDebug === true,
+      zapStats: zapStatsEnabled(),
       now: null,
       fakePlayer: false
     };

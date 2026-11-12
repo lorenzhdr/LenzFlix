@@ -107,6 +107,37 @@ describe('tvmode match', () => {
   });
 });
 
+describe('tvmode Messanzeige (lfxdebug)', () => {
+  it('ohne Parameter/Speicher: zapStats false; lfxdebug=1 → true und gemerkt; lfxdebug=0 löscht', async () => {
+    feature.mount(route('#/home?lfx=tv'));
+    await flush();
+    expect(created.opts.zapStats).toBe(false);
+    feature.unmount();
+    destroyTvMode();
+
+    window.location.hash = '#/home?lfx=tv&lfxdebug=1';
+    feature.mount(route('#/home?lfx=tv&lfxdebug=1'));
+    await flush();
+    expect(created.opts.zapStats).toBe(true);
+    expect(localStorage.getItem('lfx-zapstats')).toBe('1');
+    feature.unmount();
+    destroyTvMode();
+
+    window.location.hash = '#/home?lfx=tv';
+    feature.mount(route('#/home?lfx=tv'));
+    await flush();
+    expect(created.opts.zapStats).toBe(true); // gemerkt
+    feature.unmount();
+    destroyTvMode();
+
+    window.location.hash = '#/home?lfx=tv&lfxdebug=0';
+    feature.mount(route('#/home?lfx=tv&lfxdebug=0'));
+    await flush();
+    expect(created.opts.zapStats).toBe(false);
+    expect(localStorage.getItem('lfx-zapstats')).toBeNull();
+  });
+});
+
 describe('tvmode mount', () => {
   it('hängt #lfx-tvm vorn in #homeTab, setzt Klasse und zeigt die Ladeanzeige', async () => {
     feature.mount();

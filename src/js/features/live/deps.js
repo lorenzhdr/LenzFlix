@@ -27,6 +27,11 @@ export async function loadUser() {
   };
 }
 
+/** localStorage oder null (gesperrt). */
+function safeStorage() {
+  try { return window.localStorage || null; } catch { return null; }
+}
+
 export function deviceId() {
   try {
     const c = window.ApiClient;
@@ -43,6 +48,7 @@ export function buildApiDeps(raw, user) {
     user,
     server: { deviceId: deviceId() },
     request: (method, path, o = {}) => api.requestJson(method, path, o),
+    storage: safeStorage(), // Player: dauerhaft gemerkte Direct-Fehler
     streamUrl: (path, params) => api.buildUrl(path, { ...(params || {}), ApiKey: api.getAuth().token }),
     imageUrl: (id, o = {}) => api.imageUrlFor(id, o),
     getBoxSetItems: async (id) => {

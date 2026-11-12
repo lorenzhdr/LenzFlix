@@ -13,6 +13,7 @@ import { createKeys } from './keys.js';
 import { createOsd } from './osd.js';
 import { createCard } from './card.js';
 import { createFullscreen } from './fullscreen.js';
+import { createZapStats } from './zapstats.js';
 import { genreLabels } from './overlay-util.js';
 import { buildMagazine as buildMagazineModel, collectTipIds, loadOverviews } from '../magazine/model.js';
 import { createMagazineProp, PROP_MIN_PX } from '../magazine/prop.js';
@@ -24,6 +25,7 @@ export const SYNC_MS = 30000;
 export const LOADING_DELAY_MS = 400;
 const MAX_TIMEOUT = 2147483647;
 const VOL_STEP = 5;
+const VOL_SETTLE_MS = 1000; // so lange muss ein Pegel stehen, um als „letzter Pegel“ fürs Entstummen zu gelten
 const PLAYABLE = ['program', 'fill', 'nightfill'];
 const OVERLAY_FACTORY = { epg: 'epg', txt: 'ttx', menu: 'menu', guide: 'guide' };
 const OVERLAY_CLASS = { epg: 'has-epg', txt: 'has-ttx', menu: 'has-menu', guide: 'has-guide' };
@@ -134,6 +136,10 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       getInfo: () => ({ channel: channelOf(channel).name, title: entry ? titleOf(entry).title : '' }),
     })
     : playerArg;
+  // Messanzeige (opts.zapStats, Hash lfxdebug=1): ohne Option kein DOM. Gefüttert aus handleResult/showError und applyVolume.
+  const zapStats = opts.zapStats ? createZapStats(screen, { getVideo: () => video, doc }) : null;
+  let tuneAt = 0;
+  const zapAudio = () => { if (zapStats) safe(() => zapStats.updateAudio({ mode: player && player.volumeMode ? player.volumeMode() : '', level: vol })); };
 
   // ---------- Beschreibung von Einträgen ----------
   function channelOf(no) {
@@ -400,15 +406,30 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     return !!player && player.volumeSupported === false;
   }
   const level = () => (muteOnly() ? 1 : vol / 100);
-  const silent = () => muted || (muteOnly() && vol === 0);
+  // Pegel 0 ist in JEDEM Modus stumm (über `muted`): die Volumen-Probe kann auf iOS fälschlich 'native' melden.
+  const silent = () => muted || vol === 0;
+  // Letzter Pegel > 0 fürs Entstummen bei 0: nur ein Pegel, der mindestens VOL_SETTLE_MS stand
+  // (schnelles V− bis 0 merkt sich sonst die 5 statt des Ausgangspegels).
+  let lastVol = vol > 0 ? vol : 50;
+  let volPrev = vol;
+  let volAt = clock();
+  function noteVol() {
+    if (vol === volPrev) return;
+    const t = clock();
+    if (volPrev > 0 && t - volAt >= VOL_SETTLE_MS) lastVol = volPrev;
+    volPrev = vol;
+    volAt = t;
+  }
   let volHintShown = false; // Hinweis „am Gerät“ höchstens einmal pro Sitzung
 
   function applyVolume() {
+    noteVol();
     safe(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
     safe(() => player.setMuted && player.setMuted(silent()));
     if (music) safe(() => music.setLevel(level(), silent() || mutedByPolicy));
     if (sfx) safe(() => sfx.setLevel(level(), silent()));
     safe(() => knobs.setVolume(vol));
+    zapAudio();
   }
 
   function savePrefs(partial) { if (deps.savePrefs) safe(() => deps.savePrefs(partial)); }
@@ -421,8 +442,10 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   }
 
   function changeVolume(key) {
-    if (key === 'mute') muted = !muted;
-    else {
+    if (key === 'mute') {
+      muted = !silent(); // bei Pegel 0 (stumm angezeigt) entstummt die Taste
+      if (!muted && vol === 0) vol = lastVol; // Entstummen bei Pegel 0: letzter Pegel > 0
+    } else {
       vol = clamp(vol + (key === 'vol+' ? VOL_STEP : -VOL_STEP), 0, 100);
       muted = false;
     }
@@ -493,10 +516,18 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (res && res.ok === false) {
       if (res.reason === 'aborted') return false;
       showError(res.reason || 'network', g, res.code);
+      if (zapStats && e === entry) safe(() => zapStats.update({ channel, ok: false, reason: res.reason || 'network', code: res.code, keyMs: tuneAt ? clock() - tuneAt : null, timing: res.timing || null }));
       return false;
     }
     card.hide();
     playing = true;
+    if (zapStats && e === entry) {
+      safe(() => zapStats.update({ channel, ok: true, keyMs: tuneAt ? clock() - tuneAt : null, timing: (res && res.timing) || null }));
+      zapAudio();
+    }
+    tuneAt = 0;
+    // iOS kann `muted` beim src-Wechsel verlieren: nur in Richtung stumm absichern, nie ohne Geste entstummen
+    if (silent()) safe(() => player.setMuted && player.setMuted(true));
     if (e === entry) watchTune();
     return true;
   }
@@ -616,6 +647,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     if (no === channel && entry) { osd.showChannel(describe(channel, entry, clock())); return; }
     channel = no;
     const g = ++gen;
+    tuneAt = clock();
     unlater('zap'); unlater('advance'); unlater('retry'); unlater('trailer');
     cancelRestart();
     clearStall();
@@ -1041,6 +1073,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       for (const off of offs) if (typeof off === 'function') safe(off);
       for (const n of Object.keys(made)) { const o = made[n]; if (o) { safe(() => o.close()); if (o.el) o.el.remove(); } }
       noise.dispose();
+      if (zapStats) zapStats.destroy();
       knobs.dispose();
       decor.dispose();
       if (sfx && sfxArg === undefined) safe(() => sfx.dispose());

@@ -51,7 +51,7 @@ describe('Rückfall ts/h264', () => {
     Object.defineProperty(ctx.video, 'error', { value: null, configurable: true });
     fire(ctx.video, 'loadedmetadata');
     fire(ctx.video, 'playing');
-    expect(await p).toEqual({ ok: true, mode: 'hls' });
+    expect(await p).toMatchObject({ ok: true, mode: 'hls' });
     expect(events).toEqual([]);
   });
 
@@ -90,7 +90,7 @@ describe('Rückfall ts/h264', () => {
     await wait(700); // ts-Neuversuch nach ~500 ms
     fire(ctx.video, 'loadedmetadata');
     mediaError(ctx.video, 4);
-    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'M4·F>T>T' });
+    expect(await p).toMatchObject({ ok: false, mode: 'none', reason: 'video', code: 'M4·F>T>T' });
     expect(errors).toEqual([{ reason: 'video', code: 'M4·F>T>T' }]);
     expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(3); // max. 3 Versuche
   });
@@ -164,7 +164,7 @@ describe('Rückfall ts/h264', () => {
     expect(posts(ctx).length).toBe(3);
     fire(ctx.video, 'loadedmetadata');
     mediaError(ctx.video, 3);
-    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'M3·D>T>T' });
+    expect(await p).toMatchObject({ ok: false, mode: 'none', reason: 'video', code: 'M3·D>T>T' });
     expect(errors).toEqual([{ reason: 'video', code: 'M3·D>T>T' }]);
     expect(posts(ctx).length).toBe(3);
   });
@@ -199,7 +199,7 @@ describe('Rückfall ts/h264', () => {
   it('Andere Codes (NET) bekommen keine Kette', async () => {
     const ctx = setup({ respond: () => { throw new Error('x'); } });
     const r = await ctx.player.play({ itemId: 'it1', offsetMs: 0 });
-    expect(r).toEqual({ ok: false, mode: 'none', reason: 'network', code: 'NET' });
+    expect(r).toMatchObject({ ok: false, mode: 'none', reason: 'network', code: 'NET' });
   });
 });
 
@@ -283,7 +283,7 @@ describe('prefetch und Cache', () => {
     expect(ctx.video.getAttribute('src')).toContain('/Videos/it1/stream?');
     fire(ctx.video, 'loadedmetadata');
     fire(ctx.video, 'playing');
-    expect(await p).toEqual({ ok: true, mode: 'direct' });
+    expect(await p).toMatchObject({ ok: true, mode: 'direct' });
   });
 
   it('play() wartet auf eine laufende prefetch-Auflösung statt doppelt anzufragen', async () => {

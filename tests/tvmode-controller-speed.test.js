@@ -152,3 +152,102 @@ describe('Lautstärke ohne natives volume (iOS, mute-only)', () => {
     expect(env.ctl.volumeSupported).toBe(true);
   });
 });
+
+describe('Pegel 0 ist in jedem Modus stumm (iOS-Fehlklassifikation)', () => {
+  // iOS-Probe: speichert den Wert, gibt ihn zurück (Modus 'native'), ignoriert ihn aber akustisch.
+  const nativeLike = () => ({ volumeSupported: true, volumeMode: () => 'native' });
+
+  it('native: setVolume(0) → setMuted(true), Anzeige stumm', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.ctl.start();
+    await flush();
+    env.ctl.setVolume(0);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0);
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
+    expect(env.ctl.state().muted).toBe(true);
+  });
+
+  it('Autoplay-gesperrter Start (stumm) bei Pegel > 0: Absicherung entstummt nicht', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.player.play.mockImplementation(async () => { env.emit('autoplay-muted', {}); return { ok: true, mode: 'direct' }; });
+    env.ctl.start();
+    await flush();
+    expect(env.ctl.state()).toMatchObject({ mutedByPolicy: true, phase: 'playing' });
+    expect(env.player.setMuted).not.toHaveBeenCalledWith(true);
+  });
+
+  it('Pegel 0 nach erfolgreichem Start: setMuted(true) abgesichert', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.ctl.start();
+    await flush();
+    env.ctl.setVolume(0);
+    env.player.setMuted.mockClear();
+    env.ctl.zap(1);
+    await flush(DEBOUNCE_MS + 50);
+    expect(env.player.setMuted).toHaveBeenCalledWith(true);
+    expect(env.player.setMuted).not.toHaveBeenCalledWith(false);
+  });
+
+  it('Entstummen bei Pegel 0 stellt den letzten Pegel > 0 wieder her', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.ctl.start();
+    await flush();
+    env.ctl.setVolume(35);
+    await flush(1000); // Pegel steht ≥ 1 s → gilt als letzter Pegel
+    env.ctl.setVolume(0);
+    env.ctl.toggleMute();
+    expect(env.ctl.state()).toMatchObject({ volume: 35, muted: false });
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.35);
+  });
+
+  it('Regler schnell bis 0 ziehen: Entstummen nimmt den Ausgangspegel, nicht den letzten Zwischenwert', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.ctl.start();
+    await flush();
+    env.ctl.setVolume(70);
+    await flush(2000);
+    for (const v of [60, 40, 20, 5, 0]) env.ctl.setVolume(v); // Ziehen: Zwischenwerte < 1 s
+    env.ctl.toggleMute();
+    expect(env.ctl.state()).toMatchObject({ volume: 70, muted: false });
+  });
+
+  it('Entstummen bei Pegel 0 ohne frühere Lautstärke: Fallback 50', async () => {
+    const env = makeEnv({ player: nativeLike() });
+    env.ctl.start();
+    env.ctl.setVolume(0);
+    env.ctl.setVolume(0);
+    env.ctl.setMuted(false);
+    expect(env.ctl.state().volume).toBeGreaterThan(0);
+  });
+});
+
+describe('Messanzeige: zap-Ereignis und timing in stats()', () => {
+  it('feuert nach Erfolg mit Sender, keyMs und timing; stats() trägt timing', async () => {
+    const timing = { totalMs: 900, infoMs: 100, loadMs: 600, startMs: 200, chain: 'D', cached: false, mode: 'direct' };
+    const env = makeEnv({ player: { play: vi.fn(async () => ({ ok: true, mode: 'direct', timing })) } });
+    const got = [];
+    env.ctl.on('zap', (z) => got.push(z));
+    env.ctl.start();
+    await flush();
+    env.ctl.zap(1);
+    await flush(DEBOUNCE_MS);
+    expect(got.at(-1)).toMatchObject({ channel: 6, ok: true, timing });
+    expect(got.at(-1).keyMs).toBeGreaterThanOrEqual(DEBOUNCE_MS);
+    expect(env.ctl.stats().zaps.at(-1).timing).toEqual(timing);
+  });
+
+  it('feuert nach Fehler mit Code und timing', async () => {
+    const env = makeEnv({ player: { play: vi.fn(async () => ({ ok: false, reason: 'video', code: 'M3·D>T', timing: { totalMs: 5000, chain: 'D>T' } })) } });
+    const got = [];
+    env.ctl.on('zap', (z) => got.push(z));
+    env.ctl.start();
+    await flush();
+    expect(got.at(-1)).toMatchObject({ ok: false, reason: 'video', code: 'M3·D>T', timing: { chain: 'D>T' } });
+  });
+
+  it('volumeMode() spiegelt den Player', () => {
+    const env = makeEnv({ player: { volumeMode: () => 'mute-only' } });
+    expect(env.ctl.volumeMode()).toBe('mute-only');
+  });
+});

@@ -172,7 +172,7 @@ describe('Fake-Player', () => {
     const phases = [];
     p.on('state', (s) => phases.push(s.phase));
     expect(p.volumeSupported).toBe(true);
-    expect(await p.play({ itemId: 'x', offsetMs: 3661000 })).toEqual({ ok: true, mode: 'direct' });
+    expect(await p.play({ itemId: 'x', offsetMs: 3661000 })).toMatchObject({ ok: true, mode: 'direct' });
     expect(phases).toEqual(['loading', 'playing']);
     const texts = calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
     expect(texts).toContain('LIVE Kino');

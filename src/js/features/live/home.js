@@ -14,6 +14,7 @@ import { loadCatalog } from './data.js';
 import { buildApiDeps, fatalText, loadUser } from './deps.js';
 import { findHomeTab, liveHomeRoute, ON_CLASS, ROOT_ID } from './home-route.js';
 import { leaveToLibrary } from './leave.js';
+import { zapStatsEnabled } from './zapflag.js';
 import * as prefs from './prefs.js';
 
 export const SUSPEND_MS = 3 * 60 * 1000;
@@ -187,6 +188,7 @@ function buildOpts() {
     phone: isMobile(),
     touch: coarse(),
     debug: window.__lfxLiveDebug === true,
+    zapStats: zapStatsEnabled(),
     now: null,
     fakePlayer: false,
   };

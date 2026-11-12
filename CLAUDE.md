@@ -100,8 +100,12 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 12.11.2026 (1.11.1). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/live.md`, `docs/store3d.md` und `docs/tvmode.md`.
-- **Version:** v1.11.1 (Tag `v1.11.1`, jsDelivr), 2211 Tests, Lint und Build grün. Hauptbundle-Budget 440 KiB (`build/build.mjs`).
+Stand 12.11.2026 (1.11.2). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/live.md`, `docs/store3d.md` und `docs/tvmode.md`.
+- **Version:** v1.11.2 (Tag `v1.11.2`, jsDelivr), 2247 Tests, Lint und Build grün. Hauptbundle 435 KiB von 440 KiB Budget (`build/build.mjs`).
+- **Inhalt 1.11.2 (iPhone-Rückmeldung zu 1.11.1, live geprüft 12.11.2026 in Chrome, Konto claude, Desktop):**
+  - **Lautstärke 0 = immer stumm** (LIVE `ui/app.js`, TV `tvmode/controller.js`): `silent() = muted || vol === 0` in jedem Modus, weil die Volumen-Probe (`player/video.js`) am iPhone fälschlich `native` meldet (Hinweis „am Gerät“ kam nie, Ton lief bei 0). Stumm-Taste bei 0 → letzter Pegel, der ≥ 1 s stand (`VOL_SETTLE_MS`). Nach jedem Start nur Richtung stumm absichern.
+  - **Messanzeige** `lfxdebug=1` im Hash (`#/home?lfx=tv&lfxdebug=1`, LIVE `#/home?lfxdebug=1`; `localStorage` `lfx-zapstats`, `lfxdebug=0` aus; Hülle `features/live/zapflag.js`): Box `live/ui/zapstats.js` oben links mit Umschaltzeit (Info = PlaybackInfo, Laden = src→Metadaten, Start = Metadaten→playing, Kette D/F/T, Cache) und Ton-Zeile (`volumeMode`, `video.muted/volume`, Regler). Player: `timing` am Ergebnis, `lastTiming()`. Harness `?zapstats=1`.
+  - **Umschalten:** Nachbarsender-Vorauflösung nach 1 s statt 3 s (`NEIGHBOR_MS`), Direct-Fehler M3/M4 mit danach laufendem Remux 7 Tage gemerkt (`deps.storage`, Key `lfx-directfailed`). PC-Messung: Direct ~1,4–2,5 s, davon „Start“ (Metadaten→playing, Seek + Puffer) 1–3 s der größte Anteil.
 - **Inhalt 1.11.1 (iPhone-Rückmeldungen Runde 2, live geprüft 12.11.2026 in Chrome, Konto claude, Desktop + 390/932-px-iframe):**
   - **TV-Modus „Details“** öffnet in flix/plus/prime die Karte (`openModal(id, { overlay: true })`) über dem weiterlaufenden TV (Bild + Ton, kein Stopp/Neustart mehr); plus/prime mit Skin `src/css/themes/<id>/modal.css` und Link „Zur Titelseite“; ähnliche Titel bleiben in der Karte. Abspielen stoppt weiter per `lfx:play`.
   - **LIVE/TV-Player:** Rückfallkette beim Start (Direct → Remux per `noDirect` → fMP4→ts nur h264 → ein ts-Neuversuch), gescheitertes Direct pro Item gemerkt; Fehlercode mit Kette (`M3·D>T`). Lautstärke am iPhone ohne WebAudio (`gain.js` entfernt): Modus `mute-only`, Regler 0 = stumm, ab 5 = voller Ton.
@@ -119,18 +123,9 @@ Stand 12.11.2026 (1.11.1). Bei jedem Release aktualisieren, knapp halten. Vertr�
 - **Inhalt 1.10.1 (iPhone-Rückmeldungen):** Knöpfe in der Bildmitte des normalen Players (⟲10 · Play/Pause · ⟳30, `features/osdcenter.js`, Proxy-Klick, sichtbar mit der Leiste, alle Modern-Designs außer live). Player-Kopf am Handy einzeilig (Titel kürzt, die rechten Knöpfe wurden vorher in eine abgeschnittene zweite Zeile geschoben; `modern/player.css`). TV-Modus ohne eigenen Bild-in-Bild-Knopf unter dem Player (nur noch in der Leiste). Live geprüft in Chrome (Desktop-Klicks, 390-px-iframe); Touch am iPhone offen.
 - **Inhalt 1.10.0:** TV-Modus für LENZFLIX/LENZ+/LENZPRIME (IPTV-Seite `#/home?lfx=tv`: 18 Sender und Plan von LENZ LIVE, Senderliste, Info, 7-Tage-EPG, Bild-in-Bild, Handy-Layout; Vertrag `docs/tvmode.md`, live getestet am 12.11.2026 mit Chrome Desktop und 390-px-iframe). Bugfix LENZFLIX: Das Info-Fenster (`features/modal.js`) schließt nach „Abspielen“ zuerst (`closeModal({after})`), dann folgt der Proxy-Klick. Die Server-deps sind aus `features/live/home.js` nach `features/live/deps.js` umgezogen; `dist/lenzlive.*` ist byte-gleich.
 - **Inhalt 1.9.5:** bedienbare Geräte an den Röhren-TVs (`ui/knobs.js`, `player/sfx.js`, decor-Aktionen; siehe `docs/live.md` „Bedienbare Geräte (1.9.5)“), Videorekorder zeigt immer die Uhrzeit, Fernsehzeitung bei flat/plain angelehnt. Offen: echtes Touch und Klickgeräusch am Gerät testen.
-- **Inhalt 1.9.4:**
-  - VR-Kino:
-    - „Lauter“ rechnet jetzt wie Jellyfin kubisch (Pegel = ∛`video.volume`).
-    - Ein pausierter Start (Autoplay blockiert) zeigt „Weiter“ statt abzubrechen.
-    - Der Watchdog wartet bei Fortschritt bis 60 s.
-    - Fehlercodes P/T1/T2/D/B stehen auf der Leinwand und im Toast.
-  - LENZ LIVE:
-    - „Röhre 80er“ ist als Holz-Truhe im Wohnzimmer um 1982 neu gestaltet.
-    - „Silber-Röhre“ ist als Silbergerät auf einem Glas-Rack um 2000 neu gestaltet.
-    - Neues Raum-Dekor-System und Schalter „Röhren-Effekte“.
+- **Inhalt 1.9.4:** VR-Kino („Lauter“ kubisch, pausierter Start zeigt „Weiter“, Watchdog bis 60 s, Fehlercodes P/T1/T2/D/B), LENZ LIVE (Röhre 80er als Holz-Truhe, Silber-Röhre auf Glas-Rack, Raum-Dekor + „Röhren-Effekte“).
 - **Offen:**
-  - Am iPhone ungeprüft (1.11.1): M3-Rückfall/Code-Kette (bei Fehler Code notieren), Lautstärke 0/5 in LIVE und TV, Trailer am Handy, Wegwischen ohne Startseiten-Blitz, Karte über dem TV am Handy. LENZ LIVE „i“ zweimal nur per Test geprüft.
+  - iPhone-Rückmeldung 1.11.1 (12.11.2026): Tests 1, 3–11 ok (kein „Kein Empfang“ mehr gesehen), Test 2 (Lautstärke 0 in LIVE) fehlgeschlagen → in 1.11.2 behoben, am iPhone ungeprüft; TV-Modus-Lautstärke dort nie getestet. Umschalten am iPhone „je nach Sender“ langsamer als am PC (gleiches WLAN): Messwerte per `lfxdebug=1` abwarten, dann gezielt optimieren (Verdacht: Remux/HLS bzw. Seek nach `loadedmetadata`).
   - Test mit echter VR-Brille: „Lauter“ und Kino-Start beim ersten Versuch. Scheitert der Start, den angezeigten Code (z. B. „T2“) notieren. Bedeutung siehe `docs/store3d.md`.
   - Die Autoplay-Ursache für „erst beim zweiten Mal“ ist nur aus dem Code hergeleitet, mit Brille noch nicht bestätigt.
   - iPhone-Safari (aus 1.9.1): Pausenmusik bei Stummschalter, PDF-Download.

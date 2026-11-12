@@ -24,7 +24,7 @@ sind Entstehungshistorie.
 
 - **Importgrenze:** Die Engine (`src/js/live/tvmode/**`) importiert **nur** Dateien aus `src/js/live/**` (und eigene). Erlaubt/vorgesehen:
   `schedule/*`, `player/{index,stream,profile,tracks,video,watch,filler,events,fake}.js`, `ui/logos.js`, `ui/overlay-util.js`
-  (`describe`, `badges`, `genreLabels`), `ui/fullscreen.js`. **Nicht** importieren: `ui/app.js`, `ui/remote.js`, `ui/tv.js`, `ui/decor*.js`,
+  (`describe`, `badges`, `genreLabels`), `ui/fullscreen.js`, `ui/zapstats.js`. **Nicht** importieren: `ui/app.js`, `ui/remote.js`, `ui/tv.js`, `ui/decor*.js`,
   `ui/knobs.js`, `player/music*.js`, `player/sfx.js`, `magazine/*`, `pdf/*`, `live/entry.js`. Hülle, `core/` und `shared/` importieren **nie** aus `src/js/live/`.
   Alles Zustandsbehaftete (Jellyfin, Theme, Router, Prefs) kommt per `deps` von der Hülle.
 - `src/js/live/{ui,schedule,player,magazine,pdf}/**`, `live/entry.js`, `src/css/themes/live/**` und die `tests/live-*.test.js` bleiben unangetastet
@@ -478,7 +478,7 @@ Live getestet am 12.11.2026 (Testkonto, Chrome Desktop und 390-px-iframe, Screen
 - **Offen (ungetestet):** iPhone-Safari (Autostart mit Ton, Bild-in-Bild über `webkitSetPresentationMode`, Wischen, Querformat, Safe-Area), Touch an echten Geräten, mehrere Stunden Dauerbetrieb.
 
 ## Schnelleres Zappen, Codes, Gain
-- `DEBOUNCE_MS` 250. Beim `tune()` stößt der Controller sofort `player.prefetch(itemId, { signal })` für das Ziel an (Folgedruck bricht ab); `play()` übernimmt Cache/laufende Anfrage (Details: `docs/live.md` „Player: Rückfall, Fehlercodes, Vorauflösung, Gain“). Nach 3 s stabilem `playing` (nur Programm) werden Sender ±1 vorausgelöst (max. 2, einmal je Sendung, nichts bei Füllern/Sendepause). `ctl.stats()` → `{ zaps:[{channel,ms}], lastMs, avgMs }` (letzte 10 Umschaltungen tune → playing; Debug: `window.__lfxTvm.ctl.stats()`).
+- `DEBOUNCE_MS` 250. Beim `tune()` stößt der Controller sofort `player.prefetch(itemId, { signal })` für das Ziel an (Folgedruck bricht ab); `play()` übernimmt Cache/laufende Anfrage (Details: `docs/live.md` „Player: Rückfall, Fehlercodes, Vorauflösung, Gain“). Nach 1 s stabilem `playing` (nur Programm) werden Sender ±1 vorausgelöst (max. 2, einmal je Sendung, nichts bei Füllern/Sendepause). `ctl.stats()` → `{ zaps:[{channel,ms}], lastMs, avgMs }` (letzte 10 Umschaltungen tune → playing; Debug: `window.__lfxTvm.ctl.stats()`).
 - Snapshot: `card.code` (Fehlerkarte, Kurzcode, `NET` bei network ohne Code); die Ansicht zeigt „Code: X“ (`.lfx-tvm__card-code`, Größe/Deckkraft inline gesetzt).
 - Doppeltipp (Touch) schaltet Vollbild nur mit echtem Element-Vollbild (`document.fullscreenEnabled`/`webkitFullscreenEnabled` + `requestFullscreen` am Root, oder Vollbild ist schon an; Override `opts.canNativeFullscreen()`). Tipps auf `.lfx-tvm__zap` zählen nicht zum Doppeltipp.
 - `ctl.volumeSupported` ist true bei nativem `volume`, aktivem Gain oder offenem Gain-Versuch (`player.volumeCanTry()`); scheitert er (`volume-mode` → `mute-only`), springt der Pegel auf 100 und der Hinweis „nur stumm“ erscheint.
@@ -493,3 +493,11 @@ Token-Test (nur Kern-`--lfx-*`), Build-Wächter. `// @vitest-environment jsdom` 
 - Die Tasten bleiben gesperrt (`BLOCK` enthält `.lfx-modal-open`), damit Zappen nicht im Modal greift.
 - plus/prime zeigen die Karte im Look des Designs (`src/css/themes/plus|prime/modal.css`) und im Fuß einen Link „Zur Titelseite“ (schließt, dann `titleHref`). Das Verlassen der Seite stoppt den TV wie üblich.
 - „Abspielen“ in der Karte geht über `core/playback.js` und feuert `lfx:play`; die Engine (`live/tvmode/entry.js`) stoppt dann den TV.
+
+### Lautstärke 0 (1.11.2)
+
+Pegel 0 ist in jedem Modus stumm und läuft immer über `muted` (`silent() = muted || vol === 0`), da die Volumen-Probe auf iOS fälschlich `native` liefern kann. `setMuted(false)`/`toggleMute` bei Pegel 0 stellt den letzten Pegel > 0 wieder her, der mindestens 1 s stand (`VOL_SETTLE_MS`; Zwischenwerte beim Ziehen zählen nicht; Fallback Startpegel bzw. 50, Pref `volume` wird gespeichert). Nach jedem erfolgreichen Start wird nur in Richtung stumm abgesichert (`if (silent()) player.setMuted(true)`), nie ohne Nutzergeste entstummt (Autoplay-Sperre `mutedByPolicy` bleibt erhalten).
+
+### Messanzeige und Vorauflösung (1.11.2)
+- `NEIGHBOR_MS` ist 1000 (Nachbarsender ±1 schon 1 s nach stabilem `playing` vorauflösen).
+- `opts.zapStats` (Hülle: Hash `lfxdebug=1`/`0`, gemerkt in `localStorage` `lfx-zapstats`; Harness `?zapstats=1`) mountet `ui/zapstats.js` (geteilte Datei, wirkt auf LIVE und TV-Modus, Klasse `lfx-zapstats`) in `.lfx-tvm__player`. Der Controller feuert dafür `zap` (`{ channel, ok, keyMs, timing, code?, reason? }`; `keyMs` = ab Tastendruck inkl. Entprellung, `timing` = `res.timing` des Players) und bietet `ctl.volumeMode()`. `ctl.stats().zaps[]` trägt zusätzlich `timing`. Details: `docs/live.md` „Messung, Messanzeige …“.

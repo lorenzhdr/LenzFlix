@@ -206,3 +206,25 @@ describe('bindModel', () => {
     expect(m.days(T)).toHaveLength(7);
   });
 });
+
+describe('app: Messanzeige (opts.zapStats)', () => {
+  it('ohne Option kein DOM', () => {
+    mount();
+    expect(host.querySelector('.lfx-zapstats')).toBeNull();
+  });
+
+  it('mit Option: Box im Player, gefüttert aus zap und change, destroy räumt ab', () => {
+    ctl.volumeMode = () => 'mute-only';
+    const app = mount({ zapStats: true });
+    const box = host.querySelector('.lfx-tvm__player .lfx-zapstats');
+    expect(box).not.toBeNull();
+    expect(box.children[1].textContent).toContain('Ton: mute-only');
+    emit('zap', { channel: 3, ok: true, keyMs: 1500, timing: { totalMs: 1200, infoMs: 100, loadMs: 900, startMs: 200, chain: 'D', cached: false } });
+    expect(box.children[0].textContent).toContain('Sender 3 · 1,2 s · D');
+    snap = { ...snap, volume: 0 };
+    emit('change', snap);
+    expect(box.children[1].textContent).toContain('Regler 0');
+    app.dispose();
+    expect(host.querySelector('.lfx-zapstats')).toBeNull();
+  });
+});
