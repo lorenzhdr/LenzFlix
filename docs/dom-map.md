@@ -127,6 +127,7 @@ Quellen:
   - Buttons in `.buttons.focuscontainer-x`: `.btnPreviousTrack`, `.btnRewind`, `.btnPause`, `.btnFastForward`, `.btnNextTrack`, `.btnPreviousChapter/.btnNextChapter`, `.btnUserRating`, `.btnSubtitles`, `.btnAudio`, `.buttonMute`, `.osdVolumeSlider`, `.btnVideoOsdSettings`, `.btnAirPlay`, `.btnPip`, `.btnFullscreen`, `.osdTimeText > .endsAtText`
   - Icon-Größen: `.xlargePaperIconButton/.largePaperIconButton`
 - Mausruhe: `.hide-mouse-idle-tv`, `.mouseIdle`.
+- Live geprüft 2026-11-12 (Jellyfin 12.4): Aktive Seite `[id="videoOsdPage"]:not(.hide)` (alte versteckte Seiten behalten die ID); Kinder `.syncPlayContainer`, `.upNextContainer` (`.hide` wenn aus), `.videoOsdBottom`. Ausgeblendete Leiste trägt `videoOsdBottom-hidden` UND `hide`. Proxy-Knöpfe `.btnRewind` (−10 s), `.btnPause`, `.btnFastForward` (+30 s) wirken per `.click()`, können `.hide` tragen. Wechsel auf `#/video` per pushState (kein hashchange). Dialoge: `.dialogContainer > .dialog.opened`. Genutzt von `features/osdcenter.js`.
 
 ### Player für das VR-Kino (live geprüft 2026-11-11, Desktop-Chrome ✅)
 Genutzt von `features/store/cinema-bridge.js` (Verhalten: `docs/store3d.md`, „VR-Modus“). Getestet mit HLS/MSE (Audio-Transkodierung, SRT), Direktstream mkv (ASS) und einer Serienfolge mit Up-Next.

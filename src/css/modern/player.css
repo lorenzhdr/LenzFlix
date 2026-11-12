@@ -34,6 +34,34 @@ html:not(.layout-tv) .osdHeader .MuiTypography-root {
   font-size: 18px;
   font-weight: var(--lfx-fw-row-title);
 }
+/* Live-Fix 1.10.1: Die MUI-Toolbar bricht am Handy um (flex-wrap:wrap); ein langer Titel schob die rechten
+   Knöpfe (Synchronwiedergabe, Auf Gerät wiedergeben) in eine zweite Zeile, die die Kopfhöhe abschnitt.
+   Eine Zeile erzwingen, Titel kürzt mit „…“, rechte Knöpfe behalten ihre Breite. */
+html:not(.layout-tv) .osdHeader .videoOsd-appBar {
+  flex-wrap: nowrap;
+}
+html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiTypography-root {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiBox-root {
+  flex: 0 0 auto;
+  width: auto;
+}
+@media (max-width: 700px) {
+  html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiTypography-root {
+    font-size: 16px;
+  }
+  html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiBox-root .MuiIconButton-root {
+    padding: 8px;
+  }
+  html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiBox-root .MuiIconButton-root .MuiSvgIcon-root {
+    font-size: 28px;
+  }
+}
 
 /* ---------- Unterer Rand: Verlauf + Layout ---------- */
 html:not(.layout-tv) #videoOsdPage {

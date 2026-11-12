@@ -1,7 +1,7 @@
 // TV-Modus · Info unter dem Player (Vertrag: docs/tvmode.md „Info unter dem Player“).
 // createInfo({ doc, ctl, model, deps, opts }) → { el, update(snap), tick(t), destroy() }
-//   opts: { details (createDetails-Instanz), pip (pip.js), getNow() }
-// Knöpfe: [Von vorne] (TV stoppen, dann deps.playFromStart), [Details] (deps.openDetails), [Bild-in-Bild] (opts.pip.toggle()).
+//   opts: { details (createDetails-Instanz), getNow() }
+// Knöpfe: [Von vorne] (TV stoppen, dann deps.playFromStart), [Details] (deps.openDetails). Bild-in-Bild gibt es nur in der Player-Leiste (controls.js), seit 1.10.1.
 import { broadcastDayOf, formatClock } from '../schedule/time.js';
 import { channelName } from './model.js';
 import { createChannelBadge } from './channel-list.js';
@@ -12,13 +12,11 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const ICONS = {
   restart: 'M12 5V2L7 6.5 12 11V8a5 5 0 1 1-5 5H5a7 7 0 1 0 7-8Z',
   details: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z',
-  pip: 'M19 7H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Zm0 10h-6v-4h6v4Z',
 };
 
 export function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } = {}) {
   const getNow = typeof opts.getNow === 'function' ? opts.getNow : () => Date.now();
   const details = opts.details || null;
-  const pip = opts.pip || null;
   const offs = [];
   let snap = null;
   let key = '';
@@ -78,8 +76,7 @@ export function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } 
   const actions = mk('div', 'lfx-tvm__info-actions');
   const restartBtn = btn('lfx-tvm__btn--primary lfx-tvm__btn--restart', 'Von vorne', 'restart');
   const detailsBtn = btn('lfx-tvm__btn--ghost lfx-tvm__btn--details', 'Details', 'details');
-  const pipBtn = btn('lfx-tvm__btn--ghost lfx-tvm__btn--info-pip', 'Bild-in-Bild', 'pip');
-  actions.append(restartBtn, detailsBtn, pipBtn);
+  actions.append(restartBtn, detailsBtn);
   el.append(head, titleEl, subEl, metaEl, bar, textEl, moreBtn, nextEl, actions);
 
   // „Mehr“ nur zeigen, wenn der Text abgeschnitten ist (oder gerade aufgeklappt); ohne Layout (jsdom) bleibt er sichtbar.
@@ -116,7 +113,6 @@ export function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } 
     if (!target || !target.itemId) return;
     if (typeof deps.openDetails === 'function') deps.openDetails(target.itemId);
   });
-  pipBtn.addEventListener('click', () => { if (pip) pip.toggle(); });
 
   function channelOf(no, t) {
     try {
@@ -138,7 +134,6 @@ export function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } 
     if (!entry) {
       key = '';
       for (const b of [restartBtn, detailsBtn]) b.disabled = true;
-      pipBtn.hidden = !(pip && pip.supported());
       return;
     }
     const t = getNow();
@@ -177,7 +172,6 @@ export function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } 
     detailsBtn.disabled = !can;
     restartBtn.hidden = !can && (d.kind === 'filler' || d.kind === 'closedown');
     detailsBtn.hidden = restartBtn.hidden;
-    pipBtn.hidden = !(pip && pip.supported());
     fitActions();
   }
 

@@ -1,0 +1,58 @@
+/* Knöpfe in der Bildmitte des Players (features/osdcenter.js). Nur Modern, nicht TV.
+   z-index 900: über Video und Jellyfins Player-Seite, unter Dialogen/Action-Sheets (≥ 1000). */
+html.lfx-js:not(.layout-tv) .lfx-osdc {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+html.lfx-js:not(.layout-tv) .lfx-osdc.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s ease;
+}
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.4));
+  color: #fff;
+  cursor: pointer;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  width: 60px;
+  height: 60px;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn--play { width: 88px; height: 88px; }
+html.lfx-js:not(.layout-tv) .lfx-osdc.is-visible .lfx-osdc__btn { pointer-events: auto; }
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn.is-off { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn svg { width: 62%; height: 62%; display: block; }
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn:focus-visible {
+  outline: 3px solid var(--lfx-red);
+  outline-offset: 3px;
+}
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn:active { transform: scale(0.94); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-osdc__btn:hover { background: rgba(0, 0, 0, 0.7); transform: scale(1.06); }
+}
+@media (max-width: 700px), (pointer: coarse) {
+  html.lfx-js:not(.layout-tv) .lfx-osdc { gap: 28px; }
+  html.lfx-js:not(.layout-tv) .lfx-osdc__btn { width: 52px; height: 52px; }
+  html.lfx-js:not(.layout-tv) .lfx-osdc__btn--play { width: 72px; height: 72px; }
+}

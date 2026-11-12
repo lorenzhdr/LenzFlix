@@ -3,6 +3,7 @@ import themeroute from './themeroute.js';
 import nav from './nav.js';
 import mobilenav from './mobilenav.js';
 import tvbtn from './tvbtn.js';
+import osdcenter from './osdcenter.js';
 import home from './home.js';
 import hovercard from './hovercard.js';
 import modal from './modal.js';
@@ -16,4 +17,4 @@ import { retroFeatures } from './retro/index.js';
 import { storeFeatures } from './store/index.js';
 import { liveFeatures } from './live/index.js';
 
-export const features = [themeroute, nav, mobilenav, tvbtn, home, hovercard, modal, newpopular, ...tvmodeFeatures, contextmenu, statshint, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
+export const features = [themeroute, nav, mobilenav, tvbtn, osdcenter, home, hovercard, modal, newpopular, ...tvmodeFeatures, contextmenu, statshint, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];

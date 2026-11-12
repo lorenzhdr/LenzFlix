@@ -99,6 +99,12 @@ Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 - Wiedergabe-Ausnahme: Wie LENZ LIVE spielt der TV-Modus mit eigenem `<video>` ohne Fortschrittsmeldung, nicht über den Proxy-Klick. „Von vorne“ und „In der Mediathek ansehen“ stoppen den TV und gehen dann normal über `core/playback.js` (`resume:false`).
 - Umleitung unter retro/store/live und `html.layout-tv` per `features/themeroute.js` auf `#/home`.
 
+### Player-Bildmitte (`features/osdcenter.js`, Modern, alle Designs außer `live`, nicht `layout-tv`)
+- Eigener Container `#lfx-osdc` (body, `position:fixed`, z-index 900: über Video/Player-Seite, unter Dialogen ≥ 1000) mit drei Knöpfen ⟲10 · Play/Pause · ⟳30. CSS `js-ui/osdcenter.css`.
+- Klick = Proxy-Klick auf `.btnRewind`/`.btnPause`/`.btnFastForward` der aktiven Seite (`[id="videoOsdPage"]:not(.hide)`); Events der Knöpfe werden nicht weitergereicht (kein Leisten-Toggle durch Tippen aufs Bild). Play-Symbol folgt `play`/`pause` des `video.htmlvideoplayer`.
+- Sichtbar (`.is-visible`) nur bei sichtbarer `.videoOsdBottom` (weder `videoOsdBottom-hidden` noch `hide`), ohne offenen Dialog (`.dialogContainer .dialog.opened`) und ohne `.upNextContainer` ohne `.hide`; Proxy mit `.hide` blendet den Knopf aus.
+- Erkennung: `match` per Router (viewshow/hashchange) bzw. aktive Seite; gemountet beobachtet ein MutationObserver (childList + `class`) auf body, per rAF gebündelt.
+
 ### Regeln für Design-Features (`features/plus|prime|retro`)
 - `match(route)` beginnt mit `isTheme('plus'|'prime'|'retro')` und prüft `isModern()`/nicht TV; ohne passendes Design mountet nichts.
 - Eigene Mount-IDs und Klassen mit Präfix `lfx-plus-*`, `lfx-prime-*` bzw. `lfx-retro-*` (z. B. `#lfx-plus-home`, `html.lfx-plus-home-on`); die Mounts von LENZFLIX (`#lfx-home`, `#lfx-nav` …) nicht mitbenutzen. Native Elemente nur per CSS-Klasse verstecken, `unmount()` räumt vollständig auf.

@@ -109,7 +109,7 @@ export function createApp(host, { scheduler, ctl, video, pip = null, deps = {}, 
   const onInfo = (...a) => { if (infoCard && typeof infoCard.open === 'function') infoCard.open(...a); };
 
   const playerView = createPlayerView({ ...base, opts: { ...common, video, pip, digits, fullscreen: fsProxy, onInfo } });
-  const info = createInfo({ ...base, opts: { ...common, pip } });
+  const info = createInfo({ ...base, opts: common });
   const list = createChannelList({ ...base, opts: { ...common, onInfo } });
   const epg = createEpgGrid({ ...base, opts: { ...common, onInfo } });
   infoCard = createInfoCard({ ...base, opts: { ...common, onInfo } });

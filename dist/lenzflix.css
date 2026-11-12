@@ -1429,6 +1429,37 @@ html:not(.layout-tv) .osdHeader .MuiTypography-root {
   font-weight: var(--lfx-fw-row-title);
 }
 
+html:not(.layout-tv) .osdHeader .videoOsd-appBar {
+  flex-wrap: nowrap;
+}
+
+html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiTypography-root {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiBox-root {
+  flex: none;
+  width: auto;
+}
+
+@media (max-width: 700px) {
+  html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiTypography-root {
+    font-size: 16px;
+  }
+
+  html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiBox-root .MuiIconButton-root {
+    padding: 8px;
+  }
+
+  html:not(.layout-tv) .osdHeader .videoOsd-appBar > .MuiBox-root .MuiIconButton-root .MuiSvgIcon-root {
+    font-size: 28px;
+  }
+}
+
 html:not(.layout-tv) #videoOsdPage {
   --lfx-osd-pad: clamp(16px, 3vw, 36px);
 }
@@ -6694,6 +6725,102 @@ html.lfx-js #lfx-tvm-btn:focus-visible {
 @media (max-width: 799px) {
   html.lfx-js #lfx-tvm-btn {
     right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 84px);
+  }
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc {
+  z-index: 900;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  transition: opacity .2s, visibility 0s linear .2s;
+  display: flex;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .2s;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn {
+  box-sizing: border-box;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  filter: drop-shadow(0 1px 6px rgba(0, 0, 0, .4));
+  color: #fff;
+  cursor: pointer;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  background: rgba(0, 0, 0, .5);
+  border: 0;
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0;
+  padding: 0;
+  transition: background .15s, transform .15s;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn--play {
+  width: 88px;
+  height: 88px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc.is-visible .lfx-osdc__btn {
+  pointer-events: auto;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn.is-off {
+  display: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn svg {
+  width: 62%;
+  height: 62%;
+  display: block;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn:focus-visible {
+  outline: 3px solid var(--lfx-red);
+  outline-offset: 3px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-osdc__btn:active {
+  transform: scale(.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-osdc__btn:hover {
+    background: rgba(0, 0, 0, .7);
+    transform: scale(1.06);
+  }
+}
+
+@media (max-width: 700px), (pointer: coarse) {
+  html.lfx-js:not(.layout-tv) .lfx-osdc {
+    gap: 28px;
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-osdc__btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-osdc__btn--play {
+    width: 72px;
+    height: 72px;
   }
 }
 

@@ -370,7 +370,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.10.0";
+  var VERSION = "1.10.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -575,20 +575,20 @@
 
   // src/js/core/dom.js
   function h(tag, attrs, children) {
-    const el2 = document.createElement(tag);
+    const el3 = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
       if (v === void 0 || v === null || v === false) continue;
-      if (k === "class") el2.className = v;
-      else if (k === "style" && typeof v === "object") Object.assign(el2.style, v);
-      else if (k === "dataset") Object.assign(el2.dataset, v);
-      else if (k.startsWith("on") && typeof v === "function") el2.addEventListener(k.slice(2).toLowerCase(), v);
-      else el2.setAttribute(k, v === true ? "" : String(v));
+      if (k === "class") el3.className = v;
+      else if (k === "style" && typeof v === "object") Object.assign(el3.style, v);
+      else if (k === "dataset") Object.assign(el3.dataset, v);
+      else if (k.startsWith("on") && typeof v === "function") el3.addEventListener(k.slice(2).toLowerCase(), v);
+      else el3.setAttribute(k, v === true ? "" : String(v));
     }
     for (const c of [].concat(children ?? [])) {
       if (c === null || c === void 0 || c === false) continue;
-      el2.append(c instanceof Node ? c : document.createTextNode(String(c)));
+      el3.append(c instanceof Node ? c : document.createTextNode(String(c)));
     }
-    return el2;
+    return el3;
   }
   function badgePill(text) {
     return h("span", { class: "lfx-beta", "aria-hidden": "true" }, text);
@@ -598,26 +598,26 @@
   }
   var mounts = /* @__PURE__ */ new Set();
   function mountPoint(id, { parent = document.body, before = null, className = "", tag = "div" } = {}) {
-    let el2 = document.getElementById(id);
-    if (!el2) {
-      el2 = document.createElement(tag);
-      el2.id = id;
-      if (className) el2.className = className;
-      if (before && before.parentNode === parent) parent.insertBefore(el2, before);
-      else parent.append(el2);
+    let el3 = document.getElementById(id);
+    if (!el3) {
+      el3 = document.createElement(tag);
+      el3.id = id;
+      if (className) el3.className = className;
+      if (before && before.parentNode === parent) parent.insertBefore(el3, before);
+      else parent.append(el3);
     }
-    mounts.add(el2);
-    return el2;
+    mounts.add(el3);
+    return el3;
   }
   function unmountPoint(elOrId) {
-    const el2 = typeof elOrId === "string" ? document.getElementById(elOrId) : elOrId;
-    if (el2) {
-      el2.remove();
-      mounts.delete(el2);
+    const el3 = typeof elOrId === "string" ? document.getElementById(elOrId) : elOrId;
+    if (el3) {
+      el3.remove();
+      mounts.delete(el3);
     }
   }
   function removeAllMounts() {
-    for (const el2 of mounts) el2.remove();
+    for (const el3 of mounts) el3.remove();
     mounts.clear();
   }
 
@@ -859,8 +859,8 @@
     removePrehide();
   }
   function removePrehide() {
-    const el2 = document.getElementById(PREHIDE_ID);
-    if (el2) el2.remove();
+    const el3 = document.getElementById(PREHIDE_ID);
+    if (el3) el3.remove();
   }
   function endEarly() {
     clearTimeout(earlyTimer);
@@ -1309,16 +1309,16 @@
       return false;
     }
   }
-  function scrolledAncestor(target, el2) {
+  function scrolledAncestor(target, el3) {
     let n = target && target.nodeType === 1 ? target : target && target.parentElement;
     while (n) {
       if (n.scrollTop > 0) return true;
-      if (n === el2) break;
+      if (n === el3) break;
       n = n.parentElement;
     }
     return false;
   }
-  function attachSwipeClose(el2, opts = {}) {
+  function attachSwipeClose(el3, opts = {}) {
     const onClose = opts.onClose;
     const handleZone = opts.handleZone ?? 32;
     const canStart = opts.canStart || (() => true);
@@ -1335,15 +1335,15 @@
     let timer2 = 0;
     let detached = false;
     let finishFn = null;
-    const height = () => el2.offsetHeight || el2.getBoundingClientRect().height || 0;
+    const height = () => el3.offsetHeight || el3.getBoundingClientRect().height || 0;
     function clearTimer() {
       if (timer2) clearTimeout(timer2);
       timer2 = 0;
     }
     function resetStyles() {
-      el2.classList.remove("lfx-dragging");
-      el2.style.removeProperty("transform");
-      el2.style.removeProperty("transition");
+      el3.classList.remove("lfx-dragging");
+      el3.style.removeProperty("transform");
+      el3.style.removeProperty("transition");
       if (backdrop) {
         backdrop.style.removeProperty("opacity");
         backdrop.style.removeProperty("transition");
@@ -1356,18 +1356,18 @@
         if (done) return;
         done = true;
         clearTimer();
-        el2.removeEventListener("transitionend", onEnd2);
+        el3.removeEventListener("transitionend", onEnd2);
         finishFn = null;
         fn();
       };
       const onEnd2 = (e) => {
-        if (e.target === el2) finish3();
+        if (e.target === el3) finish3();
       };
       finishFn = () => {
         done = true;
-        el2.removeEventListener("transitionend", onEnd2);
+        el3.removeEventListener("transitionend", onEnd2);
       };
-      el2.addEventListener("transitionend", onEnd2);
+      el3.addEventListener("transitionend", onEnd2);
       timer2 = setTimeout(finish3, ms);
     }
     function setBackdrop(v, animate) {
@@ -1381,15 +1381,15 @@
         onClose();
         return;
       }
-      el2.style.transition = ANIM;
-      el2.style.transform = "translateY(100%)";
+      el3.style.transition = ANIM;
+      el3.style.transform = "translateY(100%)";
       setBackdrop(0.3, true);
       animateThen(250, () => onClose());
     }
     function springBack() {
       state21 = "closing";
-      el2.style.transition = ANIM;
-      el2.style.transform = "translateY(0px)";
+      el3.style.transition = ANIM;
+      el3.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
@@ -1412,9 +1412,9 @@
         return;
       }
       const t = touches[0];
-      const rect = el2.getBoundingClientRect();
+      const rect = el3.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
-      if (!inHandle && scrolledAncestor(e.target, el2)) {
+      if (!inHandle && scrolledAncestor(e.target, el3)) {
         state21 = "ignored";
         return;
       }
@@ -1443,8 +1443,8 @@
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
           state21 = "dragging";
-          el2.classList.add("lfx-dragging");
-          el2.style.transition = "none";
+          el3.classList.add("lfx-dragging");
+          el3.style.transition = "none";
         } else {
           state21 = "ignored";
           return;
@@ -1455,7 +1455,7 @@
       const ts = now();
       samples.push({ t: ts, y: t.clientY });
       while (samples.length > 2 && ts - samples[0].t > SAMPLE_MS) samples.shift();
-      el2.style.transform = `translateY(${dy}px)`;
+      el3.style.transform = `translateY(${dy}px)`;
       const h2 = height() || 300;
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
@@ -1473,19 +1473,19 @@
       if (state21 === "dragging") springBack();
       else if (state21 !== "closing") state21 = "idle";
     }
-    el2.addEventListener("touchstart", onStart, { passive: true });
-    el2.addEventListener("touchmove", onMove2, { passive: false });
-    el2.addEventListener("touchend", onEnd);
-    el2.addEventListener("touchcancel", onCancel);
+    el3.addEventListener("touchstart", onStart, { passive: true });
+    el3.addEventListener("touchmove", onMove2, { passive: false });
+    el3.addEventListener("touchend", onEnd);
+    el3.addEventListener("touchcancel", onCancel);
     return function detach() {
       if (detached) return;
       detached = true;
       clearTimer();
       if (finishFn) finishFn();
-      el2.removeEventListener("touchstart", onStart);
-      el2.removeEventListener("touchmove", onMove2);
-      el2.removeEventListener("touchend", onEnd);
-      el2.removeEventListener("touchcancel", onCancel);
+      el3.removeEventListener("touchstart", onStart);
+      el3.removeEventListener("touchmove", onMove2);
+      el3.removeEventListener("touchend", onEnd);
+      el3.removeEventListener("touchcancel", onCancel);
       resetStyles();
       state21 = "idle";
     };
@@ -1929,7 +1929,7 @@
   }
   function buildCard(c, id) {
     const meta = THEME_META[id] || { id, name: id, tagline: "", palette: [] };
-    const btn2 = h("button", {
+    const btn3 = h("button", {
       type: "button",
       class: `lfx-tp__card lfx-tp__card--${id}`,
       "aria-pressed": "false",
@@ -1944,20 +1944,20 @@
       span("lfx-tp__state", [span("lfx-tp__active", ["Aktiv"]), span("lfx-tp__spin")]),
       BETA.has(id) ? span("lfx-tp__beta", ["Beta"]) : null
     ]);
-    btn2.setAttribute("aria-label", `${meta.name}${BETA.has(id) ? " (Beta)" : ""}${meta.tagline ? `, ${meta.tagline}` : ""}`);
-    btn2.addEventListener("click", () => choose(c, id));
-    return btn2;
+    btn3.setAttribute("aria-label", `${meta.name}${BETA.has(id) ? " (Beta)" : ""}${meta.tagline ? `, ${meta.tagline}` : ""}`);
+    btn3.addEventListener("click", () => choose(c, id));
+    return btn3;
   }
   function refresh(c) {
     const chosen2 = getChosenTheme();
-    for (const [id, btn2] of c.cards) {
+    for (const [id, btn3] of c.cards) {
       const on = id === chosen2;
-      btn2.setAttribute("aria-pressed", String(on));
-      btn2.classList.toggle("is-active", on);
+      btn3.setAttribute("aria-pressed", String(on));
+      btn3.classList.toggle("is-active", on);
       const busy2 = c.loading === id;
-      if (busy2) btn2.setAttribute("aria-busy", "true");
-      else btn2.removeAttribute("aria-busy");
-      btn2.classList.toggle("is-loading", busy2);
+      if (busy2) btn3.setAttribute("aria-busy", "true");
+      else btn3.removeAttribute("aria-busy");
+      btn3.classList.toggle("is-loading", busy2);
     }
   }
   function choose(c, id) {
@@ -2072,8 +2072,8 @@
     fillStoreCovers(c);
     const activeCard = c.cards.get(getChosenTheme()) || grid2.querySelector("button");
     if (activeCard) activeCard.focus({ preventScroll: true });
-    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
-    raf(() => {
+    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+    raf2(() => {
       if (current === c) overlay.classList.add("is-open");
     });
     return c;
@@ -2182,18 +2182,18 @@
     const wrap = state2.nav && state2.nav.querySelector(".lfx-nav__more");
     if (!wrap) return;
     wrap.classList.toggle("is-open", open2);
-    const btn2 = wrap.querySelector(".lfx-nav__more-btn");
-    if (btn2) btn2.setAttribute("aria-expanded", String(open2));
+    const btn3 = wrap.querySelector(".lfx-nav__more-btn");
+    if (btn3) btn3.setAttribute("aria-expanded", String(open2));
   }
   function applyActive() {
     if (!state2.nav || !state2.route) return;
     const key = activeKey(state2.route, state2.model);
-    for (const el2 of state2.nav.querySelectorAll("[data-key]")) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (el2.tagName === "A") {
-        if (on) el2.setAttribute("aria-current", "page");
-        else el2.removeAttribute("aria-current");
+    for (const el3 of state2.nav.querySelectorAll("[data-key]")) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (el3.tagName === "A") {
+        if (on) el3.setAttribute("aria-current", "page");
+        else el3.removeAttribute("aria-current");
       }
     }
   }
@@ -2212,7 +2212,7 @@
       const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--design", role: "menuitem", "aria-label": badgedName("Design Einstellungen", "Beta") }, ["Design Einstellungen", badgePill("Beta")]);
       entries.push(designBtn);
       const menu = h("div", { class: "lfx-nav__menu", role: "menu", id: "lfx-nav-menu" }, entries);
-      const btn2 = h("button", {
+      const btn3 = h("button", {
         type: "button",
         class: "lfx-nav__item lfx-nav__more-btn",
         "aria-haspopup": "true",
@@ -2220,14 +2220,14 @@
         "aria-controls": "lfx-nav-menu",
         dataset: { key: "more" }
       }, ["Mehr", h("span", { class: "lfx-nav__caret", "aria-hidden": "true" })]);
-      const wrap = h("div", { class: "lfx-nav__more" }, [btn2, menu]);
-      btn2.addEventListener("click", () => setMenu(!state2.menuOpen));
+      const wrap = h("div", { class: "lfx-nav__more" }, [btn3, menu]);
+      btn3.addEventListener("click", () => setMenu(!state2.menuOpen));
       wrap.addEventListener("mouseenter", () => setMenu(true));
       wrap.addEventListener("mouseleave", () => setMenu(false));
       wrap.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           setMenu(false);
-          btn2.focus();
+          btn3.focus();
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           const items = [...menu.querySelectorAll('[role="menuitem"]')];
           const i = items.indexOf(document.activeElement);
@@ -2240,7 +2240,7 @@
       menu.addEventListener("click", () => setMenu(false));
       designBtn.addEventListener("click", () => {
         setMenu(false);
-        openThemePicker({ returnFocus: btn2 });
+        openThemePicker({ returnFocus: btn3 });
       });
       nav.append(wrap);
       if (state2.menuOpen) setMenu(true);
@@ -2384,13 +2384,13 @@
   function applyActive2() {
     if (!state3.route) return;
     const key = activeKey(state3.route, state3.model);
-    for (const el2 of document.querySelectorAll(`#${ROOT_ID} [data-key], #${OVERLAY_ID} [data-key]`)) {
-      if (el2.dataset.key === "cats") continue;
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (el2.tagName === "A") {
-        if (on) el2.setAttribute("aria-current", "page");
-        else el2.removeAttribute("aria-current");
+    for (const el3 of document.querySelectorAll(`#${ROOT_ID} [data-key], #${OVERLAY_ID} [data-key]`)) {
+      if (el3.dataset.key === "cats") continue;
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (el3.tagName === "A") {
+        if (on) el3.setAttribute("aria-current", "page");
+        else el3.removeAttribute("aria-current");
       }
     }
   }
@@ -2563,6 +2563,122 @@
   };
   var tvbtn_default = tvbtnFeature;
 
+  // src/js/features/osdcenter.js
+  var ID5 = "lfx-osdc";
+  var PAGE = '[id="videoOsdPage"]:not(.hide)';
+  var svg2 = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
+  var num = (n) => `<text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="inherit">${n}</text>`;
+  var ICON = {
+    back: svg2(`<path fill="currentColor" d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/>${num(10)}`),
+    fwd: svg2(`<path fill="currentColor" d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/>${num(30)}`),
+    play: svg2('<path fill="currentColor" d="M8 5v14l11-7z"/>'),
+    pause: svg2('<path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/>')
+  };
+  var STOP = ["pointerdown", "pointerup", "mousedown", "mouseup", "touchstart", "touchend", "click"];
+  var el2 = null;
+  var mo = null;
+  var raf = 0;
+  var video = null;
+  var paused = true;
+  var btns = null;
+  var page = () => document.querySelector(PAGE);
+  function setPlayIcon() {
+    if (!btns) return;
+    btns.play.innerHTML = paused ? ICON.play : ICON.pause;
+    btns.play.setAttribute("aria-label", paused ? "Abspielen" : "Pause");
+  }
+  function onVideoState() {
+    if (video) paused = video.paused;
+    setPlayIcon();
+  }
+  function bindVideo() {
+    const v = document.querySelector("video.htmlvideoplayer");
+    if (v === video) return;
+    if (video) for (const t of ["play", "pause", "emptied"]) video.removeEventListener(t, onVideoState);
+    video = v;
+    if (video) for (const t of ["play", "pause", "emptied"]) video.addEventListener(t, onVideoState);
+    onVideoState();
+  }
+  function sync() {
+    raf = 0;
+    if (!el2) return;
+    bindVideo();
+    const p = page();
+    const bar = p && p.querySelector(".videoOsdBottom");
+    const up = p && p.querySelector(".upNextContainer");
+    const on = Boolean(bar) && !bar.classList.contains("videoOsdBottom-hidden") && !bar.classList.contains("hide") && !(up && !up.classList.contains("hide")) && !document.querySelector(".dialogContainer .dialog.opened");
+    el2.classList.toggle("is-visible", on);
+    el2.setAttribute("aria-hidden", on ? "false" : "true");
+    for (const [k, sel] of [["back", ".btnRewind"], ["play", ".btnPause"], ["fwd", ".btnFastForward"]]) {
+      const proxy = p && p.querySelector(sel);
+      btns[k].classList.toggle("is-off", !proxy || proxy.classList.contains("hide"));
+    }
+  }
+  function schedule() {
+    if (raf) return;
+    raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sync) : setTimeout(sync, 0);
+  }
+  function press(key, sel) {
+    const proxy = page() && page().querySelector(sel);
+    if (!proxy) return;
+    if (key === "play") {
+      paused = !paused;
+      setPlayIcon();
+    }
+    proxy.click();
+  }
+  function stop(e) {
+    if (!e.target.closest || !e.target.closest("button")) return;
+    e.stopPropagation();
+    if (e.type === "click") e.preventDefault();
+  }
+  function btn(key, label, sel) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = `lfx-osdc__btn lfx-osdc__btn--${key}`;
+    b.setAttribute("aria-label", label);
+    b.innerHTML = ICON[key] || "";
+    b.addEventListener("click", () => press(key, sel));
+    return b;
+  }
+  var osdcenterFeature = {
+    name: "osdcenter",
+    match(route) {
+      return !isTv() && !isTheme("live") && Boolean(page() || route && route.path === "/video");
+    },
+    mount() {
+      el2 = mountPoint(ID5, { className: "lfx-osdc" });
+      btns = {
+        back: btn("back", "10 Sekunden zur\xFCck", ".btnRewind"),
+        play: btn("play", "Abspielen", ".btnPause"),
+        fwd: btn("fwd", "30 Sekunden vor", ".btnFastForward")
+      };
+      el2.append(btns.back, btns.play, btns.fwd);
+      for (const t of STOP) el2.addEventListener(t, stop);
+      mo = new MutationObserver(schedule);
+      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+      sync();
+    },
+    update() {
+      schedule();
+    },
+    unmount() {
+      if (mo) mo.disconnect();
+      mo = null;
+      if (raf) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf);
+        clearTimeout(raf);
+      }
+      raf = 0;
+      if (video) for (const t of ["play", "pause", "emptied"]) video.removeEventListener(t, onVideoState);
+      video = null;
+      unmountPoint(ID5);
+      el2 = null;
+      btns = null;
+    }
+  };
+  var osdcenter_default = osdcenterFeature;
+
   // src/js/features/billboard.js
   var billboard_exports = {};
   __export(billboard_exports, {
@@ -2636,26 +2752,26 @@
   }
 
   // src/js/core/playback.js
-  function isVisible(el2) {
-    return el2.getClientRects().length > 0;
+  function isVisible(el3) {
+    return el3.getClientRects().length > 0;
   }
   function findProxyContainer() {
     const all = [...document.querySelectorAll(".itemsContainer")].filter((c) => c.querySelector(".card"));
     return all.find(isVisible) || all[0] || null;
   }
   function buildProxy(item, resume) {
-    const el2 = document.createElement("div");
-    el2.className = "itemAction lfx-proxy";
-    el2.style.display = "none";
-    el2.setAttribute("data-action", resume ? "resume" : "play");
-    el2.setAttribute("data-id", item.Id);
-    el2.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
-    el2.setAttribute("data-type", item.Type || "");
-    el2.setAttribute("data-mediatype", item.MediaType || "");
-    el2.setAttribute("data-isfolder", String(Boolean(item.IsFolder)));
+    const el3 = document.createElement("div");
+    el3.className = "itemAction lfx-proxy";
+    el3.style.display = "none";
+    el3.setAttribute("data-action", resume ? "resume" : "play");
+    el3.setAttribute("data-id", item.Id);
+    el3.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el3.setAttribute("data-type", item.Type || "");
+    el3.setAttribute("data-mediatype", item.MediaType || "");
+    el3.setAttribute("data-isfolder", String(Boolean(item.IsFolder)));
     const ticks = resume && item.UserData ? item.UserData.PlaybackPositionTicks || 0 : 0;
-    if (ticks) el2.setAttribute("data-positionticks", String(ticks));
-    return el2;
+    if (ticks) el3.setAttribute("data-positionticks", String(ticks));
+    return el3;
   }
   function playViaDetails(item, resume, timeoutMs) {
     return new Promise((resolve2) => {
@@ -2849,7 +2965,7 @@
   }
   function focusFirstEntry(sheet) {
     const entries = [...sheet.querySelectorAll(".actionSheetMenuItem")].filter(
-      (el2) => !HIDDEN_FIRST.includes(el2.getAttribute("data-id")) && !el2.hidden && el2.style.display !== "none"
+      (el3) => !HIDDEN_FIRST.includes(el3.getAttribute("data-id")) && !el3.hidden && el3.style.display !== "none"
     );
     if (entries[0]) entries[0].focus({ preventScroll: true });
   }
@@ -2883,15 +2999,15 @@
   }
   function buildProxyFor(item) {
     const isFolder = Boolean(item.IsFolder) || FOLDER_TYPES.includes(item.Type);
-    const el2 = document.createElement("div");
-    el2.className = "lfx-proxy itemAction";
-    el2.setAttribute("data-action", "menu");
-    el2.setAttribute("data-id", item.Id);
-    el2.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
-    el2.setAttribute("data-type", item.Type || "");
-    el2.setAttribute("data-isfolder", String(isFolder));
-    el2.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
-    return el2;
+    const el3 = document.createElement("div");
+    el3.className = "lfx-proxy itemAction";
+    el3.setAttribute("data-action", "menu");
+    el3.setAttribute("data-id", item.Id);
+    el3.setAttribute("data-serverid", item.ServerId || getAuth().serverId || "");
+    el3.setAttribute("data-type", item.Type || "");
+    el3.setAttribute("data-isfolder", String(isFolder));
+    el3.setAttribute("data-mediatype", item.MediaType || (isFolder ? "" : "Video"));
+    return el3;
   }
   function openItemMenu(item, anchor, opts = {}) {
     if (!item || !item.Id) return false;
@@ -3482,36 +3598,36 @@
   function roundButton(label, iconName, onclick, extra = "") {
     return h("button", { type: "button", class: `lfx-modal__round ${extra}`.trim(), "aria-label": label, title: label, onclick }, [icon(iconName)]);
   }
-  function setFavState(btn2, on) {
-    btn2.classList.toggle("is-on", on);
-    btn2.setAttribute("aria-pressed", String(on));
-    btn2.replaceChildren(icon(on ? "check" : "plus"));
+  function setFavState(btn3, on) {
+    btn3.classList.toggle("is-on", on);
+    btn3.setAttribute("aria-pressed", String(on));
+    btn3.replaceChildren(icon(on ? "check" : "plus"));
   }
-  function setLikeState(btn2, on) {
-    btn2.classList.toggle("is-on", on);
-    btn2.setAttribute("aria-pressed", String(on));
-    btn2.replaceChildren(icon(on ? ICON_LIKE : ICON_LIKE_OUTLINE));
+  function setLikeState(btn3, on) {
+    btn3.classList.toggle("is-on", on);
+    btn3.setAttribute("aria-pressed", String(on));
+    btn3.replaceChildren(icon(on ? ICON_LIKE : ICON_LIKE_OUTLINE));
   }
   var PLAYED_LABELS = {
     item: ["Als gesehen markieren", "Als ungesehen markieren"],
     series: ["Ganze Serie als gesehen markieren", "Ganze Serie als ungesehen markieren"],
     season: ["Staffel als gesehen markieren", "Staffel als ungesehen markieren"]
   };
-  function setPlayedState(btn2, on) {
-    const labels = PLAYED_LABELS[btn2.dataset.scope] || PLAYED_LABELS.item;
+  function setPlayedState(btn3, on) {
+    const labels = PLAYED_LABELS[btn3.dataset.scope] || PLAYED_LABELS.item;
     const label = on ? labels[1] : labels[0];
-    btn2.classList.toggle("is-on", on);
-    btn2.setAttribute("aria-pressed", String(on));
-    btn2.setAttribute("aria-label", label);
-    btn2.setAttribute("title", label);
-    btn2.replaceChildren(icon(on ? ICON_EYE_CHECK : ICON_EYE));
+    btn3.classList.toggle("is-on", on);
+    btn3.setAttribute("aria-pressed", String(on));
+    btn3.setAttribute("aria-label", label);
+    btn3.setAttribute("title", label);
+    btn3.replaceChildren(icon(on ? ICON_EYE_CHECK : ICON_EYE));
   }
   function playedButton(item, { small = false, scope = null, on = null, onclick = null } = {}) {
     const sc = scope || (item.Type === "Series" ? "series" : "item");
-    const btn2 = roundButton(PLAYED_LABELS[sc][0], ICON_EYE, onclick, `${small ? "lfx-modal__round--small " : ""}lfx-modal__round--played`);
-    btn2.dataset.scope = sc;
-    setPlayedState(btn2, on === null ? Boolean(item.UserData && item.UserData.Played === true) : on);
-    return btn2;
+    const btn3 = roundButton(PLAYED_LABELS[sc][0], ICON_EYE, onclick, `${small ? "lfx-modal__round--small " : ""}lfx-modal__round--played`);
+    btn3.dataset.scope = sc;
+    setPlayedState(btn3, on === null ? Boolean(item.UserData && item.UserData.Played === true) : on);
+    return btn3;
   }
   function setEpisodeSeen(row, on) {
     if (!row) return;
@@ -3530,31 +3646,31 @@
   var isFolderType = (item) => item.Type === "Series" || item.Type === "Season";
   function downloadButton(item, small = false, label = null) {
     const text = label || (isFolderType(item) ? "Episoden herunterladen" : "Herunterladen");
-    const btn2 = roundButton(text, ICON_DOWNLOAD, (e) => {
+    const btn3 = roundButton(text, ICON_DOWNLOAD, (e) => {
       e.stopPropagation();
-      startDownload(item, btn2);
+      startDownload(item, btn3);
     }, `${small ? "lfx-modal__round--small " : ""}lfx-modal__round--dl`);
-    btn2.hidden = true;
+    btn3.hidden = true;
     Promise.resolve(canDownload(item)).then((ok) => {
-      if (ok && btn2.isConnected) btn2.hidden = false;
+      if (ok && btn3.isConnected) btn3.hidden = false;
     }).catch(() => {
     });
-    return btn2;
+    return btn3;
   }
   function menuButton(item, small = false, label = "Mehr", opts = null) {
-    const btn2 = roundButton(label, ICON_MORE, (e) => {
+    const btn3 = roundButton(label, ICON_MORE, (e) => {
       e.stopPropagation();
-      opts ? openItemMenu(item, btn2, opts) : openItemMenu(item, btn2);
+      opts ? openItemMenu(item, btn3, opts) : openItemMenu(item, btn3);
     }, `${small ? "lfx-modal__round--small " : ""}lfx-modal__round--menu`);
-    btn2.setAttribute("aria-haspopup", "menu");
-    return btn2;
+    btn3.setAttribute("aria-haspopup", "menu");
+    return btn3;
   }
-  var stopKeys = (btn2) => {
-    btn2.addEventListener("keydown", (e) => e.stopPropagation());
-    return btn2;
+  var stopKeys = (btn3) => {
+    btn3.addEventListener("keydown", (e) => e.stopPropagation());
+    return btn3;
   };
-  function setPlayLabel(btn2, label) {
-    const t = btn2.querySelector(".lfx-modal__play-text");
+  function setPlayLabel(btn3, label) {
+    const t = btn3.querySelector(".lfx-modal__play-text");
     if (t) t.textContent = label;
   }
   function buildDetail(item, H, { playLabel: playLabel2 = "Abspielen" } = {}) {
@@ -3623,8 +3739,8 @@
         H.navigate(href);
       } }, "Zur Detailseite")
     ]);
-    const el2 = h("div", { class: "lfx-modal__detail" }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
-    return { el: el2, playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
+    const el3 = h("div", { class: "lfx-modal__detail" }, [hero, body, episodesSlot, extraSlot, similarSlot, infoSlot, footer]);
+    return { el: el3, playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn, episodesSlot, extraSlot, similarSlot, infoSlot };
   }
   function personLinks(people, H) {
     const span2 = h("span", { class: "lfx-modal__value" });
@@ -3727,7 +3843,7 @@
     }
     if (seasons.length > 1) {
       const list = h("ul", { class: "lfx-modal__seasonlist", role: "listbox", hidden: true });
-      const btn2 = h("button", {
+      const btn3 = h("button", {
         type: "button",
         class: "lfx-modal__seasonbtn",
         "aria-haspopup": "listbox",
@@ -3736,7 +3852,7 @@
       }, [h("span", {}, current7 && current7.Name || "Staffel"), icon("chevron")]);
       const toggle = (open2) => {
         list.hidden = !open2;
-        btn2.setAttribute("aria-expanded", String(open2));
+        btn3.setAttribute("aria-expanded", String(open2));
       };
       for (const s of seasons) {
         list.append(h("li", { role: "presentation" }, [h("button", {
@@ -3751,7 +3867,7 @@
           }
         }, s.Name || `Staffel ${s.IndexNumber}`)]));
       }
-      tools.append(h("div", { class: "lfx-modal__dropdown" }, [btn2, list]));
+      tools.append(h("div", { class: "lfx-modal__dropdown" }, [btn3, list]));
       if (tools.querySelector(".lfx-modal__round--played")) tools.classList.add("lfx-modal__eps-tools--joined");
     }
     slot.append(head);
@@ -3983,7 +4099,7 @@
   function focusables() {
     if (!state4) return [];
     const sel = 'button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]';
-    return [...state4.modal.querySelectorAll(sel)].filter((el2) => !el2.closest("[hidden]"));
+    return [...state4.modal.querySelectorAll(sel)].filter((el3) => !el3.closest("[hidden]"));
   }
   function onKeydown(e) {
     if (!state4) return;
@@ -4121,8 +4237,8 @@
     a.onUser = () => cancelAutoScroll(s);
     s.autoScroll = a;
     for (const t of USER_SCROLL_EVENTS) s.overlay.addEventListener(t, a.onUser, { passive: true });
-    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    a.raf = raf(() => {
+    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    a.raf = raf2(() => {
       a.raf = null;
       if (a.cancelled || state4 !== s || s.token !== token2 || s.autoScroll !== a || !row.isConnected) {
         cancelAutoScroll(s);
@@ -4183,16 +4299,16 @@
       location.hash = hash2;
     } });
   }
-  async function toggleFavGeneric(item, btn2) {
+  async function toggleFavGeneric(item, btn3) {
     item.UserData = item.UserData || {};
     const next = !item.UserData.IsFavorite;
     item.UserData.IsFavorite = next;
-    setFavState(btn2, next);
+    setFavState(btn3, next);
     try {
       await setFavorite(item.Id, next);
     } catch {
       item.UserData.IsFavorite = !next;
-      setFavState(btn2, !next);
+      setFavState(btn3, !next);
     }
   }
   var isPlayed = (it) => Boolean(it && it.UserData && it.UserData.Played === true);
@@ -4206,8 +4322,8 @@
     }
   }
   function syncSeasonBtn(s) {
-    const btn2 = s.parts && s.parts.episodesSlot.querySelector('.lfx-modal__round--played[data-scope="season"]');
-    if (btn2) setPlayedState(btn2, s.episodes.length > 0 && s.episodes.every(isPlayed));
+    const btn3 = s.parts && s.parts.episodesSlot.querySelector('.lfx-modal__round--played[data-scope="season"]');
+    if (btn3) setPlayedState(btn3, s.episodes.length > 0 && s.episodes.every(isPlayed));
   }
   async function bulkPlayed(s, targetId, next) {
     const seriesId = s.main.Id;
@@ -4246,15 +4362,15 @@
       play(target, { resume }).catch(() => {
       });
     } });
-    const askBulk = ({ btn: btn2, n, next, targetId, isSeries }) => {
+    const askBulk = ({ btn: btn3, n, next, targetId, isSeries }) => {
       const verb = next ? "gesehen" : "ungesehen";
       confirmAction({
         title: n ? `${folgen(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`,
         confirmLabel: `Als ${verb} markieren`,
-        anchorEl: btn2,
+        anchorEl: btn3,
         onConfirm: async () => {
           if (stale()) return;
-          btn2.disabled = true;
+          btn3.disabled = true;
           try {
             const failed = await bulkPlayed(s, targetId, next);
             if (stale()) return;
@@ -4270,26 +4386,26 @@
           } catch {
             toast(SAVE_ERROR);
           } finally {
-            btn2.disabled = false;
+            btn3.disabled = false;
           }
         }
       });
     };
     const H = {
-      async togglePlayed(item, btn2) {
+      async togglePlayed(item, btn3) {
         const prev = { ...item.UserData || {} };
         const next = prev.Played !== true;
-        const row = btn2.closest(".lfx-modal__ep");
+        const row = btn3.closest(".lfx-modal__ep");
         item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
         delete item.UserData.PlayedPercentage;
-        setPlayedState(btn2, next);
+        setPlayedState(btn3, next);
         setEpisodeSeen(row, next);
         syncSeasonBtn(s);
         try {
           await setPlayed(item.Id, next);
         } catch {
           item.UserData = prev;
-          setPlayedState(btn2, !next);
+          setPlayedState(btn3, !next);
           setEpisodeSeen(row, !next);
           if (!stale()) syncSeasonBtn(s);
           toast(SAVE_ERROR);
@@ -4303,15 +4419,15 @@
           if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, false);
         }
       },
-      async toggleSeriesPlayed(btn2) {
+      async toggleSeriesPlayed(btn3) {
         const next = !isPlayed(main);
         const n = await seriesEpisodeCount(s);
         if (stale()) return;
-        askBulk({ btn: btn2, n, next, targetId: main.Id, isSeries: true });
+        askBulk({ btn: btn3, n, next, targetId: main.Id, isSeries: true });
       },
-      toggleSeasonPlayed(btn2) {
+      toggleSeasonPlayed(btn3) {
         if (!s.seasonId || !s.episodes.length) return;
-        askBulk({ btn: btn2, n: s.episodes.length, next: !s.episodes.every(isPlayed), targetId: s.seasonId, isSeries: false });
+        askBulk({ btn: btn3, n: s.episodes.length, next: !s.episodes.every(isPlayed), targetId: s.seasonId, isSeries: false });
       },
       async play() {
         if (starting) return;
@@ -4336,25 +4452,25 @@
         }
         startPlayback2(target, resume);
       },
-      toggleFav: (btn2) => toggleFavGeneric(main, btn2),
-      toggleFavOf: (item, btn2) => toggleFavGeneric(item, btn2),
-      async toggleLike(btn2) {
+      toggleFav: (btn3) => toggleFavGeneric(main, btn3),
+      toggleFavOf: (item, btn3) => toggleFavGeneric(item, btn3),
+      async toggleLike(btn3) {
         main.UserData = main.UserData || {};
         const next = main.UserData.Likes !== true;
         main.UserData.Likes = next ? true : null;
-        setLikeState(btn2, next);
+        setLikeState(btn3, next);
         try {
           await setLike(main.Id, next);
         } catch {
           main.UserData.Likes = next ? null : true;
-          setLikeState(btn2, !next);
+          setLikeState(btn3, !next);
         }
       },
       openItem: (id) => loadInto(id, null, true),
       navigate,
       scrollToInfo() {
-        const el2 = s.parts && s.parts.infoSlot;
-        if (el2 && el2.scrollIntoView) el2.scrollIntoView({ behavior: "smooth", block: "start" });
+        const el3 = s.parts && s.parts.infoSlot;
+        if (el3 && el3.scrollIntoView) el3.scrollIntoView({ behavior: "smooth", block: "start" });
       },
       async season(seasonId) {
         s.seasonId = seasonId;
@@ -4433,12 +4549,12 @@
   }
   function createMutedPreview(container, item, { delay = 1500, onStart, onEnd, startAt = 0 } = {}) {
     let dead = false;
-    let video = null;
+    let video2 = null;
     let started2 = false;
     const cleanup = () => {
-      if (video) {
-        const v = video;
-        video = null;
+      if (video2) {
+        const v = video2;
+        video2 = null;
         try {
           v.pause();
           v.removeAttribute("src");
@@ -4475,13 +4591,13 @@
       v.muted = true;
       v.setAttribute("muted", "");
       v.addEventListener("playing", () => {
-        if (dead || video !== v || started2) return;
+        if (dead || video2 !== v || started2) return;
         started2 = true;
         if (typeof onStart === "function") onStart(v);
       });
       v.addEventListener("ended", finish3);
       v.addEventListener("error", finish3);
-      video = v;
+      video2 = v;
       applyStartAt(v, startAt);
       v.src = src;
       container.append(v);
@@ -4597,13 +4713,13 @@
   var TEXT_FADE_MS = 400;
   var FIELDS = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount";
   var NS = "http://www.w3.org/2000/svg";
-  function svg2(html2, cls) {
-    const el2 = document.createElementNS(NS, "svg");
-    el2.setAttribute("viewBox", "0 0 24 24");
-    el2.setAttribute("aria-hidden", "true");
-    if (cls) el2.setAttribute("class", cls);
-    el2.innerHTML = html2;
-    return el2;
+  function svg3(html2, cls) {
+    const el3 = document.createElementNS(NS, "svg");
+    el3.setAttribute("viewBox", "0 0 24 24");
+    el3.setAttribute("aria-hidden", "true");
+    if (cls) el3.setAttribute("class", cls);
+    el3.innerHTML = html2;
+    return el3;
   }
   var ICON_PLAY = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
   var ICON_MUTED = '<path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>';
@@ -4677,7 +4793,7 @@
     let rotateTimer = null;
     let trailerTimer = null;
     const timers = /* @__PURE__ */ new Set();
-    let video = null;
+    let video2 = null;
     let card3 = null;
     let media = null;
     let content = null;
@@ -4692,14 +4808,14 @@
       timers.add(t);
       return t;
     };
-    const paused = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    const paused2 = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       clearTimeout(trailerTimer);
       trailerTimer = null;
       trailerActive = false;
-      if (video) {
-        const v = video;
-        video = null;
+      if (video2) {
+        const v = video2;
+        video2 = null;
         try {
           v.pause();
           v.removeAttribute("src");
@@ -4717,20 +4833,20 @@
       if (disposed || pool.length < 2 || reducedMotion()) return;
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
-        if (paused()) scheduleRotate();
+        if (paused2()) scheduleRotate();
         else show2((index + 1) % pool.length);
       }, ROTATE_MS);
     }
     function buildListButton(item) {
-      const btn2 = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--list", "aria-label": "Meine Liste" });
+      const btn3 = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--list", "aria-label": "Meine Liste" });
       const paint = () => {
         const on = Boolean(item.UserData && item.UserData.IsFavorite);
-        btn2.replaceChildren(svg2(on ? ICON_CHECK : ICON_PLUS), h("span", null, "Meine Liste"));
-        btn2.classList.toggle("is-on", on);
-        btn2.setAttribute("aria-pressed", on ? "true" : "false");
+        btn3.replaceChildren(svg3(on ? ICON_CHECK : ICON_PLUS), h("span", null, "Meine Liste"));
+        btn3.classList.toggle("is-on", on);
+        btn3.setAttribute("aria-pressed", on ? "true" : "false");
       };
       paint();
-      btn2.addEventListener("click", async () => {
+      btn3.addEventListener("click", async () => {
         const prev = Boolean(item.UserData && item.UserData.IsFavorite);
         item.UserData = { ...item.UserData || {}, IsFavorite: !prev };
         paint();
@@ -4741,7 +4857,7 @@
           paint();
         }
       });
-      return btn2;
+      return btn3;
     }
     function buildRoundButtons(item) {
       const folder = item.Type === "Series" || item.Type === "Season";
@@ -4783,7 +4899,7 @@
         if (i) meta.append(h("span", { class: "lfx-bb__dot", "aria-hidden": "true" }, "\u2022"));
         meta.append(h("span", { class: p.rating ? "lfx-bb__rating" : null }, p.text));
       });
-      const playBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--play" }, [svg2(ICON_PLAY), h("span", null, "Abspielen")]);
+      const playBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--play" }, [svg3(ICON_PLAY), h("span", null, "Abspielen")]);
       playBtn.addEventListener("click", () => play(item, { resume: hasProgress(item) }));
       const infoBtn = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--info" }, [h("span", null, "Weitere Infos")]);
       infoBtn.addEventListener("click", () => openModal(item));
@@ -4798,7 +4914,7 @@
           item.Overview ? h("p", { class: "lfx-bb__desc" }, item.Overview) : null
         ]),
         h("div", { class: "lfx-bb__buttons" }, [playBtn, infoBtn, listBtn, ...buildRoundButtons(item)]),
-        badgeText ? h("span", { class: "lfx-bb__badge" }, [svg2(ICON_BADGE), badgeText]) : null
+        badgeText ? h("span", { class: "lfx-bb__badge" }, [svg3(ICON_BADGE), badgeText]) : null
       ]);
     }
     function buildImage(item) {
@@ -4857,9 +4973,9 @@
       }
     }
     function setMuteIcon() {
-      if (!video) return;
-      muteBtn.replaceChildren(svg2(video.muted ? ICON_MUTED : ICON_SOUND));
-      muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
+      if (!video2) return;
+      muteBtn.replaceChildren(svg3(video2.muted ? ICON_MUTED : ICON_SOUND));
+      muteBtn.setAttribute("aria-label", video2.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     async function startTrailer(item, myGen) {
       if (!(item.LocalTrailerCount > 0) || disposed || myGen !== gen8) return;
@@ -4871,7 +4987,7 @@
         v.muted = true;
         v.setAttribute("muted", "");
         v.addEventListener("playing", () => {
-          if (myGen !== gen8 || video !== v) return;
+          if (myGen !== gen8 || video2 !== v) return;
           trailerActive = true;
           v.classList.add("is-in");
           card3.classList.add("is-trailer");
@@ -4879,14 +4995,14 @@
           setMuteIcon();
         });
         const end = () => {
-          if (video !== v) return;
+          if (video2 !== v) return;
           stopTrailer();
           scheduleRotate();
         };
         v.addEventListener("ended", end);
         v.addEventListener("error", end);
         v.src = trailerUrl(t.Id);
-        video = v;
+        video2 = v;
         media.append(v);
         const p = v.play && v.play();
         if (p && p.catch) p.catch(end);
@@ -4932,8 +5048,8 @@
       content = h("div", { class: "lfx-bb__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-bb__mute", hidden: true, "aria-label": "Ton einschalten" });
       muteBtn.addEventListener("click", () => {
-        if (!video) return;
-        video.muted = !video.muted;
+        if (!video2) return;
+        video2.muted = !video2.muted;
         setMuteIcon();
       });
       dots = h("div", { class: "lfx-bb__dots", role: "group", "aria-label": "Empfehlung w\xE4hlen" });
@@ -5104,7 +5220,7 @@
     return b;
   }
   function attachScroller({ track, prev, next, indicator }) {
-    let raf = 0;
+    let raf2 = 0;
     let shownPages = 0;
     const cards = () => Array.from(track.querySelectorAll(".lfx-card"));
     const visible = () => {
@@ -5117,7 +5233,7 @@
       return track.clientWidth || 1;
     }
     function update() {
-      raf = 0;
+      raf2 = 0;
       const left = track.scrollLeft;
       const max = track.scrollWidth - track.clientWidth;
       const pw = pageWidth();
@@ -5131,12 +5247,12 @@
           for (let i = 0; i < pages; i++) indicator.append(document.createElement("span"));
         }
         indicator.hidden = pages <= 1;
-        const page = left >= max - 2 && max > 2 ? pages - 1 : Math.min(pages - 1, Math.round(left / pw));
-        Array.from(indicator.children).forEach((s, i) => s.classList.toggle("is-active", i === page));
+        const page2 = left >= max - 2 && max > 2 ? pages - 1 : Math.min(pages - 1, Math.round(left / pw));
+        Array.from(indicator.children).forEach((s, i) => s.classList.toggle("is-active", i === page2));
       }
     }
-    const schedule2 = () => {
-      if (!raf) raf = requestAnimationFrame(update);
+    const schedule3 = () => {
+      if (!raf2) raf2 = requestAnimationFrame(update);
     };
     function go3(dir) {
       const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -5167,24 +5283,24 @@
     }
     prev.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
-    track.addEventListener("scroll", schedule2, { passive: true });
+    track.addEventListener("scroll", schedule3, { passive: true });
     track.addEventListener("focusin", onFocusIn);
     track.addEventListener("keydown", onKey3);
-    window.addEventListener("resize", schedule2);
+    window.addEventListener("resize", schedule3);
     const ls = links();
     ls.forEach((l, i) => {
       l.tabIndex = i === 0 ? 0 : -1;
     });
-    schedule2();
+    schedule3();
     return () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
+      if (raf2) cancelAnimationFrame(raf2);
+      raf2 = 0;
       prev.removeEventListener("click", onPrev);
       next.removeEventListener("click", onNext);
-      track.removeEventListener("scroll", schedule2);
+      track.removeEventListener("scroll", schedule3);
       track.removeEventListener("focusin", onFocusIn);
       track.removeEventListener("keydown", onKey3);
-      window.removeEventListener("resize", schedule2);
+      window.removeEventListener("resize", schedule3);
     };
   }
 
@@ -5430,9 +5546,9 @@
       if (disposed) return;
       const pending = /* @__PURE__ */ new Map();
       for (const def of defs) {
-        const el2 = skeleton(def);
-        pending.set(el2, def);
-        slot.append(el2);
+        const el3 = skeleton(def);
+        pending.set(el3, def);
+        slot.append(el3);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
@@ -5444,9 +5560,9 @@
             loadRow(en.target, def);
           }
         }, { rootMargin: "600px 0px" });
-        for (const el2 of pending.keys()) observer2.observe(el2);
+        for (const el3 of pending.keys()) observer2.observe(el3);
       } else {
-        for (const [el2, def] of pending) loadRow(el2, def);
+        for (const [el3, def] of pending) loadRow(el3, def);
       }
     })();
     return () => {
@@ -5631,12 +5747,12 @@
   var SCALE = 1.5;
   var MIN_WIDTH = 300;
   var ITEM_TTL = 5 * 6e4;
-  function resolveTarget2(el2) {
-    if (!el2 || typeof el2.closest !== "function") return null;
-    if (el2.closest(`#${POPUP_ID}, #lfx-modal, .lfx-modal, .vertical-wrap`)) return null;
-    const own = el2.closest(".lfx-card[data-lfx-id]");
+  function resolveTarget2(el3) {
+    if (!el3 || typeof el3.closest !== "function") return null;
+    if (el3.closest(`#${POPUP_ID}, #lfx-modal, .lfx-modal, .vertical-wrap`)) return null;
+    const own = el3.closest(".lfx-card[data-lfx-id]");
     if (own) return { card: own, id: own.dataset.lfxId, type: own.dataset.lfxType || "", own: true };
-    const card3 = el2.closest(".emby-scroller .card[data-id]");
+    const card3 = el3.closest(".emby-scroller .card[data-id]");
     if (!card3 || !NATIVE_TYPES.has(card3.dataset.type)) return null;
     return { card: card3, id: card3.dataset.id, type: card3.dataset.type, own: false };
   }
@@ -5668,7 +5784,7 @@
     check: '<path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>',
     chevron: '<path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z"/>'
   };
-  function svg3(name) {
+  function svg4(name) {
     return `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${ICONS2[name]}</svg>`;
   }
   var active = false;
@@ -5862,13 +5978,13 @@
     openModal(item);
   }
   function circleButton(cls, label, onClick) {
-    const btn2 = h("button", { type: "button", class: `lfx-hc__btn ${cls}`, "aria-label": label });
+    const btn3 = h("button", { type: "button", class: `lfx-hc__btn ${cls}`, "aria-label": label });
     const tip = h("span", { class: "lfx-hc__tip", "aria-hidden": "true" }, label);
-    btn2.addEventListener("click", (e) => {
+    btn3.addEventListener("click", (e) => {
       e.stopPropagation();
       onClick();
     });
-    return { btn: btn2, tip, wrap: h("span", { class: "lfx-hc__btnwrap" }, [btn2, tip]) };
+    return { btn: btn3, tip, wrap: h("span", { class: "lfx-hc__btnwrap" }, [btn3, tip]) };
   }
   function setButton(b, label, iconHtml, pressed) {
     b.btn.setAttribute("aria-label", label);
@@ -5879,11 +5995,11 @@
     b.btn.classList.toggle("is-on", Boolean(pressed));
   }
   function updateButtons(s) {
-    setButton(s.btns.play, "Abspielen", svg3("play"));
+    setButton(s.btns.play, "Abspielen", svg4("play"));
     setButton(
       s.btns.list,
       s.fav ? "Aus Meiner Liste entfernen" : "Zu Meiner Liste hinzuf\xFCgen",
-      s.fav ? svg3("check") : svg3("plus"),
+      s.fav ? svg4("check") : svg4("plus"),
       Boolean(s.fav)
     );
     setButton(
@@ -5894,7 +6010,7 @@
     );
     setButton(s.btns.dl, /^(Series|Season)$/.test(s.item.Type) ? "Episoden herunterladen" : "Herunterladen", ICON_DOWNLOAD);
     setButton(s.btns.menu, "Mehr", ICON_MORE);
-    setButton(s.btns.more, "Weitere Infos", svg3("chevron"));
+    setButton(s.btns.more, "Weitere Infos", svg4("chevron"));
     const bulk = isBulk(s.item);
     const pb = s.btns.played;
     const what = s.item.Type === "Season" ? "Staffel" : "Ganze Serie";
@@ -6033,12 +6149,12 @@
       s.btns.more.wrap
     ]);
     const info = h("div", { class: "lfx-hc__info" }, [actions, body]);
-    const el2 = h("div", { id: POPUP_ID, class: "lfx-hc", role: "dialog", "aria-label": "Titel" }, [media, info]);
-    s.el = el2;
+    const el3 = h("div", { id: POPUP_ID, class: "lfx-hc", role: "dialog", "aria-label": "Titel" }, [media, info]);
+    s.el = el3;
     s.img = img;
     s.overlay = overlay;
     s.body = body;
-    return el2;
+    return el3;
   }
   function open(target) {
     if (!enabled() || !target.card.isConnected) return;
@@ -6056,26 +6172,26 @@
       busyLike: false,
       busyPlayed: false
     };
-    const el2 = buildPopup(s);
+    const el3 = buildPopup(s);
     session2 = s;
     const vw = document.documentElement.clientWidth || window.innerWidth;
     const vh = window.innerHeight;
     const rect = computePopupRect(cardRect, vw, SCALE, { minWidth: MIN_WIDTH, viewportH: vh });
-    el2.style.left = `${rect.left}px`;
-    el2.style.top = `${rect.top}px`;
-    el2.style.width = `${rect.width}px`;
+    el3.style.left = `${rect.left}px`;
+    el3.style.top = `${rect.top}px`;
+    el3.style.width = `${rect.width}px`;
     render5(s);
-    document.body.append(el2);
-    const total = el2.offsetHeight;
+    document.body.append(el3);
+    const total = el3.offsetHeight;
     let top = rect.top;
     if (total && top + total > vh - 8) top = Math.max(8, vh - 8 - total);
-    el2.style.top = `${top}px`;
+    el3.style.top = `${top}px`;
     const k = cardRect.width / rect.width;
     const dx = cardRect.left - rect.left;
     const dy = cardRect.top + cardRect.height / 2 - (top + rect.imageHeight * k / 2);
-    el2.style.setProperty("--lfx-hc-from", `translate(${dx}px, ${dy}px) scale(${k})`);
-    void el2.offsetWidth;
-    el2.classList.add("is-open");
+    el3.style.setProperty("--lfx-hc-from", `translate(${dx}px, ${dy}px) scale(${k})`);
+    void el3.offsetWidth;
+    el3.classList.add("is-open");
     hydrate(s);
   }
   function removeSession(s) {
@@ -6109,8 +6225,8 @@
     if (holdOpen()) return;
     if (session2) scheduleClose();
   }
-  function pointerStillInside(s, el2) {
-    if (el2 && el2.isConnected && (s.el.contains(el2) || s.card.contains(el2))) return true;
+  function pointerStillInside(s, el3) {
+    if (el3 && el3.isConnected && (s.el.contains(el3) || s.card.contains(el3))) return true;
     try {
       return s.el.matches(":hover") || s.card.matches(":hover");
     } catch {
@@ -6211,7 +6327,7 @@
     add2(window, "hashchange", onHash);
     unsubItems = onItemsChanged(onItems);
   }
-  function stop() {
+  function stop2() {
     active = false;
     wasHeld = false;
     lastOver = null;
@@ -6230,7 +6346,7 @@
       start();
     },
     unmount() {
-      stop();
+      stop2();
     }
   };
   var hovercard_default = hovercardFeature;
@@ -6344,7 +6460,7 @@
     SortOrder: "Descending",
     Limit: 10
   }).then((l) => uniqueTitles(l, 10));
-  function svg4(path) {
+  function svg5(path) {
     const w = h("span", { class: "lfx-np__ico", "aria-hidden": "true" });
     w.innerHTML = `<svg viewBox="0 0 24 24" focusable="false">${path}</svg>`;
     return w;
@@ -6355,7 +6471,7 @@
   var ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
   function roundButton2(label, icon5, onClick, extra = "") {
     const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick });
-    b.append(svg4(icon5));
+    b.append(svg5(icon5));
     return b;
   }
   function iconButton(mod, label, icon5, onClick) {
@@ -6384,13 +6500,13 @@
     let fav = Boolean(item.UserData && item.UserData.IsFavorite);
     function paint() {
       const label = fav ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen";
-      btn2.setAttribute("aria-label", label);
-      btn2.title = label;
-      btn2.querySelector("svg").innerHTML = fav ? ICON_CHECK2 : ICON_PLUS2;
-      btn2.classList.toggle("is-on", fav);
-      btn2.setAttribute("aria-pressed", String(fav));
+      btn3.setAttribute("aria-label", label);
+      btn3.title = label;
+      btn3.querySelector("svg").innerHTML = fav ? ICON_CHECK2 : ICON_PLUS2;
+      btn3.classList.toggle("is-on", fav);
+      btn3.setAttribute("aria-pressed", String(fav));
     }
-    const btn2 = roundButton2("Meine Liste", ICON_PLUS2, async () => {
+    const btn3 = roundButton2("Meine Liste", ICON_PLUS2, async () => {
       const next = !fav;
       try {
         await setFavorite(item.Id, next);
@@ -6402,7 +6518,7 @@
       }
     }, "lfx-np__btn--fav");
     paint();
-    return btn2;
+    return btn3;
   }
   function createNewEntry(item, newSeries) {
     const parts = dateParts(item.DateCreated);
@@ -6448,13 +6564,13 @@
     const prev = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
     const indicator = h("div", { class: "lfx-row__pages", "aria-hidden": "true", hidden: true });
-    const el2 = h("div", { class: "lfx-rows" }, [
+    const el3 = h("div", { class: "lfx-rows" }, [
       h("section", { class: `lfx-row lfx-row--${kind2}` }, [
         h("div", { class: "lfx-row__head" }, [h("h2", { class: "lfx-row__title" }, title), indicator]),
         h("div", { class: "lfx-row__viewport" }, [prev, track, next])
       ])
     ]);
-    return { el: el2, scroller: { track, prev, next, indicator } };
+    return { el: el3, scroller: { track, prev, next, indicator } };
   }
   function sectionShell(def) {
     return h("section", { class: "lfx-np__section", id: `lfx-np-${def.id}`, dataset: { np: def.id } }, [
@@ -6489,11 +6605,11 @@
     tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS);
     setActive("new");
-    let raf = 0;
+    let raf2 = 0;
     const onScroll7 = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
+      if (raf2) return;
+      raf2 = requestAnimationFrame(() => {
+        raf2 = 0;
         let current7 = null;
         for (const [id, sec] of sections) {
           if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current7 = id;
@@ -6519,15 +6635,15 @@
       if (disposed) return;
       const list = root7.querySelector(".lfx-np__list");
       for (const id of removed) {
-        root7.querySelectorAll("[data-lfx-id]").forEach((el2) => {
-          if (el2.dataset.lfxId === id) el2.remove();
+        root7.querySelectorAll("[data-lfx-id]").forEach((el3) => {
+          if (el3.dataset.lfxId === id) el3.remove();
         });
       }
       if (list && removed.length && !list.children.length) drop2("new");
       if (list) {
         for (const id of updated) {
           const fresh = getStoredItem(id);
-          const entry = [...list.children].find((el2) => el2.dataset.lfxId === id);
+          const entry = [...list.children].find((el3) => el3.dataset.lfxId === id);
           if (fresh && entry) entry.replaceWith(createNewEntry(fresh, newSeriesIds));
         }
       }
@@ -6576,7 +6692,7 @@
     cleanups2.push(() => {
       disposed = true;
       window.removeEventListener("scroll", onScroll7);
-      if (raf) cancelAnimationFrame(raf);
+      if (raf2) cancelAnimationFrame(raf2);
       for (const d of scrollers.splice(0)) {
         try {
           d && d();
@@ -6615,7 +6731,7 @@
   var newpopular_default = newPopularFeature;
 
   // src/js/core/popover.js
-  var ID5 = "lfx-popover";
+  var ID6 = "lfx-popover";
   var GAP = 8;
   var MARGIN = 8;
   var current4 = null;
@@ -6642,25 +6758,25 @@
       }
     }
   }
-  function place(el2, anchorEl, align) {
+  function place(el3, anchorEl, align) {
     const vw = window.innerWidth || document.documentElement.clientWidth || 0;
     const vh = window.innerHeight || document.documentElement.clientHeight || 0;
     const a = anchorEl.getBoundingClientRect();
-    const w = el2.offsetWidth;
-    const hgt = el2.offsetHeight;
+    const w = el3.offsetWidth;
+    const hgt = el3.offsetHeight;
     let left = align === "start" ? a.left : a.right - w;
     let top = a.bottom + GAP;
     if (vw) left = Math.max(MARGIN, Math.min(left, vw - w - MARGIN));
     if (vh && top + hgt > vh - MARGIN) top = Math.max(MARGIN, a.top - GAP - hgt);
-    el2.style.left = `${Math.round(left)}px`;
-    el2.style.top = `${Math.round(top)}px`;
+    el3.style.left = `${Math.round(left)}px`;
+    el3.style.top = `${Math.round(top)}px`;
   }
   function openPopover(anchorEl, { label, items = [], align = "end", className = "" } = {}) {
     closePopover();
-    const el2 = mountPoint(ID5, { className: `lfx-popover${className ? ` ${className}` : ""}` });
-    el2.className = `lfx-popover${className ? ` ${className}` : ""}`;
-    el2.setAttribute("role", "menu");
-    if (label) el2.setAttribute("aria-label", label);
+    const el3 = mountPoint(ID6, { className: `lfx-popover${className ? ` ${className}` : ""}` });
+    el3.className = `lfx-popover${className ? ` ${className}` : ""}`;
+    el3.setAttribute("role", "menu");
+    if (label) el3.setAttribute("aria-label", label);
     const list = items.filter((it) => it && !it.hidden);
     const nodes = list.map((it) => {
       const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ""}`;
@@ -6680,8 +6796,8 @@
       });
       return node;
     });
-    el2.replaceChildren(...nodes);
-    const c = { el: el2, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
+    el3.replaceChildren(...nodes);
+    const c = { el: el3, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
     c.close = () => {
       if (current4 === c) closePopover({ restoreFocus: true });
     };
@@ -6689,11 +6805,11 @@
       if (current4 === c) closePopover();
     };
     c.onScroll = (e) => {
-      if (e.target && e.target !== document && el2.contains(e.target)) return;
+      if (e.target && e.target !== document && el3.contains(e.target)) return;
       c.onClose();
     };
     c.onDocClick = (e) => {
-      if (el2.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
+      if (el3.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
       c.onClose();
     };
     c.onKeydown = (e) => {
@@ -6721,13 +6837,13 @@
     document.addEventListener("click", c.onDocClick, true);
     window.addEventListener("resize", c.onClose);
     window.addEventListener("scroll", c.onScroll, true);
-    if (anchorEl) place(el2, anchorEl, align);
+    if (anchorEl) place(el3, anchorEl, align);
     if (nodes[0]) nodes[0].focus({ preventScroll: true });
-    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
-    raf(() => {
-      if (current4 === c) el2.classList.add("is-open");
+    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+    raf2(() => {
+      if (current4 === c) el3.classList.add("is-open");
     });
-    return { el: el2, close: c.close };
+    return { el: el3, close: c.close };
   }
 
   // src/js/core/themejs.js
@@ -6883,14 +6999,14 @@
         StartIndex: start10,
         Limit: src.size
       });
-      const page = asItems2(res);
-      for (const it of page) {
+      const page2 = asItems2(res);
+      for (const it of page2) {
         if (!it || !it.Id || seen.has(it.Id)) continue;
         seen.add(it.Id);
         out.push(compact(it, KEEP[src.key]));
       }
       if (res && typeof res.TotalRecordCount === "number") total = res.TotalRecordCount;
-      const done = page.length < src.size || total !== null && start10 + src.size >= total;
+      const done = page2.length < src.size || total !== null && start10 + src.size >= total;
       onPart(src.key, done ? 1 : total ? Math.min(0.99, (start10 + src.size) / total) : 0.5);
       if (done) break;
     }
@@ -7329,13 +7445,13 @@
     ui.boot.remove();
     ui.root.classList.remove("is-loading");
     ui.root.querySelector(".lfx-tvm__fallback")?.remove();
-    const btn2 = (text, fn, primary) => h("button", { type: "button", class: `lfx-tvm__fallback-btn${primary ? " is-primary" : ""}`, onclick: fn }, text);
+    const btn3 = (text, fn, primary) => h("button", { type: "button", class: `lfx-tvm__fallback-btn${primary ? " is-primary" : ""}`, onclick: fn }, text);
     const detail = fatalText(err);
     ui.root.append(h("div", { class: "lfx-tvm__fallback", role: "alert" }, [
       h("p", { class: "lfx-tvm__fallback-text" }, detail ? `TV konnte nicht gestartet werden: ${detail}` : "TV konnte nicht gestartet werden."),
       h("div", { class: "lfx-tvm__fallback-actions" }, [
-        btn2("Erneut versuchen", () => restartBoot(), true),
-        btn2("Zur Startseite", () => {
+        btn3("Erneut versuchen", () => restartBoot(), true),
+        btn3("Zur Startseite", () => {
           window.location.hash = "#/home";
         })
       ])
@@ -7397,9 +7513,9 @@
       })
     };
   }
-  function buildOpts(video) {
+  function buildOpts(video2) {
     return {
-      video,
+      video: video2,
       lastChannel: getLastChannel(),
       volume: getVolume(),
       muted: getMuted(),
@@ -7573,42 +7689,42 @@
   var active2 = false;
   var listeners4 = [];
   var pressTimer = null;
-  var press = null;
+  var press2 = null;
   var swallowUntil = 0;
   var lastLongPressAt = -Infinity;
-  function resolve(el2) {
-    if (!el2 || typeof el2.closest !== "function") return null;
-    return el2.closest(TARGET);
+  function resolve(el3) {
+    if (!el3 || typeof el3.closest !== "function") return null;
+    return el3.closest(TARGET);
   }
-  function itemFor(el2, fallbackType) {
-    const id = el2.dataset.lfxId;
-    return getStoredItem(id) || { Id: id, Type: el2.dataset.lfxType || fallbackType || void 0 };
+  function itemFor(el3, fallbackType) {
+    const id = el3.dataset.lfxId;
+    return getStoredItem(id) || { Id: id, Type: el3.dataset.lfxType || fallbackType || void 0 };
   }
-  function openFor(el2, x, y) {
-    const item = itemFor(el2);
+  function openFor(el3, x, y) {
+    const item = itemFor(el3);
     const opts = {};
-    if (el2.classList.contains("lfx-modal__ep") && el2.parentElement) {
-      opts.siblings = [...el2.parentElement.children].filter((n) => n.matches(".lfx-modal__ep[data-lfx-id]")).map((n) => itemFor(n, "Episode"));
+    if (el3.classList.contains("lfx-modal__ep") && el3.parentElement) {
+      opts.siblings = [...el3.parentElement.children].filter((n) => n.matches(".lfx-modal__ep[data-lfx-id]")).map((n) => itemFor(n, "Episode"));
     }
     openItemMenu(item, { x, y }, opts);
   }
-  function inNativeDialog(el2) {
-    return Boolean(el2.closest && el2.closest(".dialogContainer, .dialog"));
+  function inNativeDialog(el3) {
+    return Boolean(el3.closest && el3.closest(".dialogContainer, .dialog"));
   }
   function onContextMenu(e) {
-    const el2 = resolve(e.target);
-    if (!el2) return;
+    const el3 = resolve(e.target);
+    if (!el3) return;
     if (e.shiftKey) return;
-    if (isMenuOpen() && inNativeDialog(el2)) return;
+    if (isMenuOpen() && inNativeDialog(el3)) return;
     e.preventDefault();
     e.stopPropagation();
     if (Date.now() - lastLongPressAt < DOUBLE_OPEN_MS) return;
-    openFor(el2, e.clientX, e.clientY);
+    openFor(el3, e.clientX, e.clientY);
   }
   function cancelPress() {
     if (pressTimer) clearTimeout(pressTimer);
     pressTimer = null;
-    press = null;
+    press2 = null;
   }
   function onTouchStart(e) {
     if (e.touches && e.touches.length > 1) {
@@ -7616,28 +7732,28 @@
       return;
     }
     cancelPress();
-    const el2 = resolve(e.target);
-    if (!el2) return;
-    if (isMenuOpen() && inNativeDialog(el2)) return;
+    const el3 = resolve(e.target);
+    if (!el3) return;
+    if (isMenuOpen() && inNativeDialog(el3)) return;
     const t = e.touches && e.touches[0] || e;
     const state21 = { x: t.clientX, y: t.clientY, fired: false };
-    press = state21;
+    press2 = state21;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press !== state21 || !el2.isConnected) return;
+      if (press2 !== state21 || !el3.isConnected) return;
       state21.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el2, state21.x, state21.y);
+      openFor(el3, state21.x, state21.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
-    if (!press || press.fired) return;
+    if (!press2 || press2.fired) return;
     const t = e.touches && e.touches[0];
     if (!t) return;
-    if (Math.hypot(t.clientX - press.x, t.clientY - press.y) > MOVE_TOLERANCE) cancelPress();
+    if (Math.hypot(t.clientX - press2.x, t.clientY - press2.y) > MOVE_TOLERANCE) cancelPress();
   }
   function onTouchEnd() {
-    if (press && press.fired) swallowUntil = Date.now() + CLICK_WINDOW_MS;
+    if (press2 && press2.fired) swallowUntil = Date.now() + CLICK_WINDOW_MS;
     cancelPress();
   }
   function onClickCapture2(e) {
@@ -7665,7 +7781,7 @@
     add2(window, "scroll", cancelPress, { capture: true, passive: true });
     add2(window, "click", onClickCapture2, true);
   }
-  function stop2() {
+  function stop3() {
     active2 = false;
     cancelPress();
     swallowUntil = 0;
@@ -7682,7 +7798,7 @@
       startItemWatch();
     },
     unmount() {
-      stop2();
+      stop3();
       stopItemWatch();
       closeChooser();
       cancelDownloads();
@@ -7692,7 +7808,7 @@
   var contextmenu_default = contextmenuFeature;
 
   // src/js/features/statshint.js
-  var ID6 = "lfx-statshint";
+  var ID7 = "lfx-statshint";
   var KEY = "lfx.statsHint";
   var SESSION_KEY = "lfx.statsHint.shown";
   var HINT_DURATION = 7e3;
@@ -7744,13 +7860,13 @@
   }
   function leave2() {
     if (!state5.el) return;
-    const el2 = state5.el;
+    const el3 = state5.el;
     clearTimeout(state5.hideTimer);
     state5.hideTimer = null;
-    el2.classList.add("is-leaving");
+    el3.classList.add("is-leaving");
     state5.removeTimer = setTimeout(() => {
       state5.removeTimer = null;
-      if (state5.el === el2) removeHint();
+      if (state5.el === el3) removeHint();
     }, LEAVE_MS);
   }
   function startHideTimer(ms) {
@@ -7775,7 +7891,7 @@
       e.preventDefault();
       leave2();
     });
-    const root7 = mountPoint(ID6, { className: "lfx-statshint" });
+    const root7 = mountPoint(ID7, { className: "lfx-statshint" });
     root7.classList.remove("is-leaving");
     const top = !isMobile();
     root7.classList.toggle("lfx-statshint--top", top);
@@ -7805,7 +7921,7 @@
     if (!readState().firstShown) writeState({ firstShown: Date.now() });
     startHideTimer(HINT_DURATION);
   }
-  function sync(route) {
+  function sync2(route) {
     if (isHomeRoute2(route)) {
       if (!state5.el && !state5.showTimer && shouldShow()) state5.showTimer = setTimeout(show, HINT_DELAY);
     } else {
@@ -7826,10 +7942,10 @@
         }
       };
       document.addEventListener("click", state5.onClick, true);
-      sync(route);
+      sync2(route);
     },
     update(route) {
-      sync(route);
+      sync2(route);
     },
     unmount() {
       if (state5.onClick) document.removeEventListener("click", state5.onClick, true);
@@ -7929,17 +8045,17 @@
   }
 
   // src/js/features/plus/header-icons.js
-  var svg5 = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+  var svg6 = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
   var ICONS3 = {
     tvmode: ICON_TVMODE,
-    home: svg5('<path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 10v9.5h5v-5.2h3v5.2h5V10"/>'),
+    home: svg6('<path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.5 10v9.5h5v-5.2h3v5.2h5V10"/>'),
     homeFill: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 11.2 12 4l8.5 7.2V20h-6v-5.7h-5V20h-6z"/></svg>',
-    back: svg5('<path d="m14.5 5-7 7 7 7"/>'),
-    list: svg5('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M12 8.8v6.4M8.8 12h6.4"/>'),
-    movies: svg5('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M16 4v16M4 8.5h4M4 15.5h4M16 8.5h4M16 15.5h4"/>'),
-    tv: svg5('<rect x="3" y="6.5" width="18" height="12" rx="2.5"/><path d="m8 3 4 3.5L16 3"/>'),
-    star: svg5('<path d="m12 3.8 2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8z"/>'),
-    search: svg5('<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>')
+    back: svg6('<path d="m14.5 5-7 7 7 7"/>'),
+    list: svg6('<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M12 8.8v6.4M8.8 12h6.4"/>'),
+    movies: svg6('<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 4v16M16 4v16M4 8.5h4M4 15.5h4M16 8.5h4M16 15.5h4"/>'),
+    tv: svg6('<rect x="3" y="6.5" width="18" height="12" rx="2.5"/><path d="m8 3 4 3.5L16 3"/>'),
+    star: svg6('<path d="m12 3.8 2.5 5.1 5.6.8-4.1 4 1 5.6-5-2.7-5 2.7 1-5.6-4.1-4 5.6-.8z"/>'),
+    search: svg6('<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>')
   };
 
   // src/js/features/plus/mobile.js
@@ -8021,11 +8137,11 @@
   function applyActive4() {
     if (!state6.root) return;
     const key = state6.route ? activeKey2(state6.route, state6.libs) : null;
-    for (const el2 of state6.root.querySelectorAll("[data-key]")) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (on) el2.setAttribute("aria-current", "page");
-      else el2.removeAttribute("aria-current");
+    for (const el3 of state6.root.querySelectorAll("[data-key]")) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (on) el3.setAttribute("aria-current", "page");
+      else el3.removeAttribute("aria-current");
     }
   }
   function renderNav() {
@@ -8138,8 +8254,8 @@
   }
   function onScroll2() {
     if (state6.raf) return;
-    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state6.raf = raf(scrollTick);
+    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    state6.raf = raf2(scrollTick);
   }
   async function loadLibraries(mountSeq) {
     let libs = [];
@@ -8279,8 +8395,8 @@
   }
   function onScroll3() {
     if (state7.raf) return;
-    const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state7.raf = raf(scrollTick2);
+    const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    state7.raf = raf2(scrollTick2);
   }
   async function loadLibraries2(seq3) {
     let libs = [];
@@ -8370,12 +8486,12 @@
     if (!state8.root || !state8.route) return;
     const key = activeTab(state8.route);
     let active4 = null;
-    for (const el2 of state8.root.querySelectorAll('[role="tab"]')) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      el2.setAttribute("aria-selected", String(on));
-      el2.tabIndex = on ? 0 : -1;
-      if (on) active4 = el2;
+    for (const el3 of state8.root.querySelectorAll('[role="tab"]')) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      el3.setAttribute("aria-selected", String(on));
+      el3.tabIndex = on ? 0 : -1;
+      if (on) active4 = el3;
     }
     const list = state8.root.querySelector(".lfx-plus-switcher__list");
     if (active4 && list && list.scrollWidth > list.clientWidth) {
@@ -8804,7 +8920,7 @@
       onclick: () => go3(i)
     }));
     const dotsEl = h("div", { class: "lfx-plus-hero__dots" }, n > 1 ? dots : []);
-    const el2 = h("section", { class: `lfx-plus-hero${mobile ? " lfx-plus-hero--m" : ""}`, "aria-roledescription": "carousel", "aria-label": "Empfehlungen" }, [
+    const el3 = h("section", { class: `lfx-plus-hero${mobile ? " lfx-plus-hero--m" : ""}`, "aria-roledescription": "carousel", "aria-label": "Empfehlungen" }, [
       h("div", { class: "lfx-plus-hero__viewport" }, [track]),
       n > 1 && !mobile ? prev : null,
       n > 1 && !mobile ? next : null,
@@ -8815,16 +8931,16 @@
     let hover = false;
     let focus = false;
     const running = () => !mobile && n > 1 && !hover && !focus && !document.hidden;
-    function stop5() {
+    function stop6() {
       clearTimeout(timer2);
       timer2 = null;
     }
-    function schedule2() {
-      stop5();
+    function schedule3() {
+      stop6();
       if (running()) timer2 = setTimeout(() => go3(idx + 1), interval);
     }
     function paint() {
-      el2.style.setProperty("--i", String(idx));
+      el3.style.setProperty("--i", String(idx));
       slides.forEach((s, i) => {
         const active4 = i === idx;
         s.classList.toggle("is-active", active4);
@@ -8849,13 +8965,13 @@
       idx = (i % n + n) % n;
       paint();
       if (mobile) scrollToSlide(idx);
-      schedule2();
+      schedule3();
     }
     let scrollRaf = 0;
     function onTrackScroll() {
       if (scrollRaf) return;
-      const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-      scrollRaf = raf(() => {
+      const raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+      scrollRaf = raf2(() => {
         scrollRaf = 0;
         const tr = track.getBoundingClientRect();
         const mid = tr.left + tr.width / 2;
@@ -8891,23 +9007,23 @@
     };
     const onEnter = () => {
       hover = true;
-      stop5();
+      stop6();
     };
     const onLeave = () => {
       hover = false;
-      schedule2();
+      schedule3();
     };
     const onFocusIn = () => {
       focus = true;
-      stop5();
+      stop6();
     };
     const onFocusOut = (e) => {
-      if (!el2.contains(e.relatedTarget)) {
+      if (!el3.contains(e.relatedTarget)) {
         focus = false;
-        schedule2();
+        schedule3();
       }
     };
-    const onVis = () => document.hidden ? stop5() : schedule2();
+    const onVis = () => document.hidden ? stop6() : schedule3();
     const onKey3 = (e) => {
       if (e.key === "ArrowLeft") go3(idx - 1);
       else if (e.key === "ArrowRight") go3(idx + 1);
@@ -8916,33 +9032,33 @@
     next.addEventListener("click", onNext);
     track.addEventListener("click", onSlideClick);
     if (mobile) track.addEventListener("scroll", onTrackScroll, { passive: true });
-    el2.addEventListener("mouseenter", onEnter);
-    el2.addEventListener("mouseleave", onLeave);
-    el2.addEventListener("focusin", onFocusIn);
-    el2.addEventListener("focusout", onFocusOut);
-    el2.addEventListener("keydown", onKey3);
+    el3.addEventListener("mouseenter", onEnter);
+    el3.addEventListener("mouseleave", onLeave);
+    el3.addEventListener("focusin", onFocusIn);
+    el3.addEventListener("focusout", onFocusOut);
+    el3.addEventListener("keydown", onKey3);
     document.addEventListener("visibilitychange", onVis);
     paint();
-    schedule2();
+    schedule3();
     return {
-      el: el2,
+      el: el3,
       go: go3,
       index: () => idx,
       destroy() {
-        stop5();
+        stop6();
         track.removeEventListener("scroll", onTrackScroll);
         if (scrollRaf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(scrollRaf);
         scrollRaf = 0;
         prev.removeEventListener("click", onPrev);
         next.removeEventListener("click", onNext);
         track.removeEventListener("click", onSlideClick);
-        el2.removeEventListener("mouseenter", onEnter);
-        el2.removeEventListener("mouseleave", onLeave);
-        el2.removeEventListener("focusin", onFocusIn);
-        el2.removeEventListener("focusout", onFocusOut);
-        el2.removeEventListener("keydown", onKey3);
+        el3.removeEventListener("mouseenter", onEnter);
+        el3.removeEventListener("mouseleave", onLeave);
+        el3.removeEventListener("focusin", onFocusIn);
+        el3.removeEventListener("focusout", onFocusOut);
+        el3.removeEventListener("keydown", onKey3);
         document.removeEventListener("visibilitychange", onVis);
-        el2.remove();
+        el3.remove();
       }
     };
   }
@@ -9009,13 +9125,13 @@
   }
   function renderBrands(parent, before) {
     let disposed = false;
-    let el2 = buildPlaceholder();
-    parent.insertBefore(el2, before && before.parentNode === parent ? before : null);
+    let el3 = buildPlaceholder();
+    parent.insertBefore(el3, before && before.parentNode === parent ? before : null);
     const swap = (next) => {
       if (disposed) return;
-      if (next) el2.replaceWith(next);
-      else el2.remove();
-      el2 = next;
+      if (next) el3.replaceWith(next);
+      else el3.remove();
+      el3 = next;
     };
     getCollections().then((list) => swap(buildBrandRow(list))).catch((e) => {
       console.warn("[LenzFlix] Sammlungen nicht geladen", e && e.message);
@@ -9023,8 +9139,8 @@
     });
     return () => {
       disposed = true;
-      if (el2) el2.remove();
-      el2 = null;
+      if (el3) el3.remove();
+      el3 = null;
     };
   }
 
@@ -9110,9 +9226,9 @@
       if (disposed) return;
       const pending = /* @__PURE__ */ new Map();
       for (const def of defs || []) {
-        const el2 = skeleton2(def);
-        pending.set(el2, def);
-        slot.append(el2);
+        const el3 = skeleton2(def);
+        pending.set(el3, def);
+        slot.append(el3);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
@@ -9124,9 +9240,9 @@
             loadRow(en.target, def);
           }
         }, { rootMargin: "600px 0px" });
-        for (const el2 of pending.keys()) observer2.observe(el2);
+        for (const el3 of pending.keys()) observer2.observe(el3);
       } else {
-        for (const [el2, def] of pending) loadRow(el2, def);
+        for (const [el3, def] of pending) loadRow(el3, def);
       }
     })();
     return () => {
@@ -9454,13 +9570,13 @@
   var TRAILER_ID = "lfx-plus-trailer";
   var ON_CLASS7 = "lfx-plus-title-on";
   var TICKS_PER_MIN3 = 6e8;
-  var svg6 = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
-  var ICON_PLAY3 = svg6('<path d="M7 4.5v15l12-7.5z"/>');
-  var ICON_PLUS3 = svg6('<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>');
-  var ICON_CHECK3 = svg6('<path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z"/>');
-  var ICON_TRAILER = svg6('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4 1.5 6 3.5-6 3.5z"/>');
-  var ICON_CHEVRON = svg6('<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/>');
-  var ICON_CLOSE = svg6('<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/>');
+  var svg7 = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
+  var ICON_PLAY3 = svg7('<path d="M7 4.5v15l12-7.5z"/>');
+  var ICON_PLUS3 = svg7('<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>');
+  var ICON_CHECK3 = svg7('<path d="M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z"/>');
+  var ICON_TRAILER = svg7('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4 1.5 6 3.5-6 3.5z"/>');
+  var ICON_CHEVRON = svg7('<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/>');
+  var ICON_CLOSE = svg7('<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/>');
   var state9 = null;
   var gen2 = 0;
   var routeId = (route) => {
@@ -9469,9 +9585,9 @@
   };
   var stalenessOf = (g) => () => !state9 || state9.g !== g;
   function closeTrailer() {
-    const el2 = document.getElementById(TRAILER_ID);
-    if (!el2) return;
-    const v = el2.querySelector("video");
+    const el3 = document.getElementById(TRAILER_ID);
+    if (!el3) return;
+    const v = el3.querySelector("video");
     if (v) {
       try {
         v.pause();
@@ -9480,8 +9596,8 @@
       } catch {
       }
     }
-    if (typeof el2.__lfxCleanup === "function") el2.__lfxCleanup();
-    unmountPoint(el2);
+    if (typeof el3.__lfxCleanup === "function") el3.__lfxCleanup();
+    unmountPoint(el3);
   }
   function dispose() {
     gen2 += 1;
@@ -9517,13 +9633,13 @@
     });
     return b;
   }
-  function setIcon(btn2, icon5) {
-    const ico = btn2.querySelector(".lfx-plus-circle__ico");
+  function setIcon(btn3, icon5) {
+    const ico = btn3.querySelector(".lfx-plus-circle__ico");
     if (ico) ico.innerHTML = icon5;
   }
-  function setLabel(btn2, label) {
-    btn2.setAttribute("aria-label", label);
-    btn2.title = label;
+  function setLabel(btn3, label) {
+    btn3.setAttribute("aria-label", label);
+    btn3.title = label;
   }
   var remainingText2 = (it) => {
     const total = Number(it && it.RunTimeTicks) || 0;
@@ -9545,7 +9661,7 @@
     closeTrailer();
     const overlay = mountPoint(TRAILER_ID, { className: "lfx-plus-trailer" });
     overlay.replaceChildren();
-    const video = h("video", { class: "lfx-plus-trailer__video", controls: true, autoplay: true, playsinline: true });
+    const video2 = h("video", { class: "lfx-plus-trailer__video", controls: true, autoplay: true, playsinline: true });
     const close2 = () => {
       closeTrailer();
       if (returnFocus && returnFocus.isConnected && returnFocus.focus) {
@@ -9562,7 +9678,7 @@
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Trailer");
-    overlay.append(video, closeBtn);
+    overlay.append(video2, closeBtn);
     const onKey3 = (e) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
@@ -9578,14 +9694,14 @@
       window.removeEventListener("keydown", onKey3, true);
       overlay.removeEventListener("click", onBackdrop);
     };
-    video.addEventListener("error", () => {
+    video2.addEventListener("error", () => {
       toast("Trailer konnte nicht abgespielt werden");
       close2();
     });
-    video.addEventListener("ended", close2);
-    video.src = src;
+    video2.addEventListener("ended", close2);
+    video2.src = src;
     try {
-      const p = video.play && video.play();
+      const p = video2.play && video2.play();
       if (p && p.catch) p.catch(() => {
       });
     } catch {
@@ -9642,20 +9758,20 @@
       played ? h("span", { class: "lfx-plus-ep__seen", "aria-label": "Gesehen", title: "Gesehen" }) : null,
       p > 0 ? h("span", { class: "lfx-plus-progress lfx-plus-ep__progress" }, [h("span", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })]) : null
     ]);
-    const num = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
-    const btn2 = h("button", {
+    const num2 = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
+    const btn3 = h("button", {
       type: "button",
       class: `lfx-plus-ep${selected ? " is-selected" : ""}`,
       dataset: { id: ep.Id },
-      "aria-label": `${num}${ep.Name || ""} abspielen`,
+      "aria-label": `${num2}${ep.Name || ""} abspielen`,
       onclick: () => onPlay(ep)
     }, [
       media,
-      h("span", { class: "lfx-plus-ep__title" }, `${num}${ep.Name || ""}`),
+      h("span", { class: "lfx-plus-ep__title" }, `${num2}${ep.Name || ""}`),
       mins ? h("span", { class: "lfx-plus-ep__dur" }, mins) : null,
       ep.Overview ? h("span", { class: "lfx-plus-ep__text" }, ep.Overview) : null
     ]);
-    return btn2;
+    return btn3;
   }
   async function load2(g) {
     const stale = stalenessOf(g);
@@ -9836,11 +9952,11 @@
     root7.classList.remove("is-loading");
     root7.replaceChildren(backdrop, h("div", { class: "lfx-plus-title__content" }, [hero, tablist, panelWrap, footer]));
     paintPlay2();
-    let raf = 0;
+    let raf2 = 0;
     const onScroll7 = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
+      if (raf2) return;
+      raf2 = requestAnimationFrame(() => {
+        raf2 = 0;
         const vh = window.innerHeight || 800;
         const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
         root7.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
@@ -9850,7 +9966,7 @@
     window.addEventListener("scroll", onScroll7, { passive: true });
     s.cleanups.push(() => {
       window.removeEventListener("scroll", onScroll7);
-      if (raf) cancelAnimationFrame(raf);
+      if (raf2) cancelAnimationFrame(raf2);
     });
     const playEpisode = (ep) => play(ep, { resume: hasResume(ep) });
     async function showSeason2() {
@@ -9893,9 +10009,9 @@
       const label = h("span", null, cur3.Name || "Staffel");
       const ico = h("span", { class: "lfx-plus-season__chev", "aria-hidden": "true" });
       ico.innerHTML = ICON_CHEVRON;
-      const btn2 = h("button", { type: "button", class: "lfx-plus-season", "aria-haspopup": "menu" }, [label, ico]);
-      btn2.addEventListener("click", () => {
-        openPopover(btn2, {
+      const btn3 = h("button", { type: "button", class: "lfx-plus-season", "aria-haspopup": "menu" }, [label, ico]);
+      btn3.addEventListener("click", () => {
+        openPopover(btn3, {
           label: "Staffel w\xE4hlen",
           align: "start",
           className: "lfx-plus-season-menu",
@@ -9914,7 +10030,7 @@
           }))
         });
       });
-      seasonBar.append(btn2);
+      seasonBar.append(btn3);
     }
     const tasks = [];
     if (isSeries) {
@@ -10008,7 +10124,7 @@
   // src/js/features/plus/browse.js
   var ROOT_ID10 = "lfx-plus-browse";
   var ON_CLASS8 = "lfx-plus-browse-on";
-  var PAGE = 40;
+  var PAGE2 = 40;
   var state10 = null;
   var routeOf = (route) => {
     const r = parseLfxRoute(route);
@@ -10067,7 +10183,7 @@
         SortOrder: "Ascending",
         GenreIds: s.genreId || void 0,
         StartIndex: s.items.length,
-        Limit: PAGE
+        Limit: PAGE2
       });
       if (stale()) return;
       const items = asItems7(res);
@@ -10079,7 +10195,7 @@
         if (stale()) return;
       }
       for (const it of items) s.grid.append(gridCard(it, { badge: s.info ? plusBadge(it, s.info) : null }));
-      s.done = items.length < PAGE || s.total != null && s.items.length >= s.total;
+      s.done = items.length < PAGE2 || s.total != null && s.items.length >= s.total;
       if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-plus-empty" }, "Keine Titel gefunden."));
     } catch (e) {
       if (stale()) return;
@@ -10560,12 +10676,12 @@
   function applyActive6() {
     if (!state12.root) return;
     const key = tabKey(state12.route);
-    for (const el2 of state12.root.querySelectorAll("[data-key]")) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (on) el2.setAttribute("aria-current", "page");
-      else el2.removeAttribute("aria-current");
-      if (el2.dataset.key === "home") el2.querySelector(".lfx-plus-tabbar__icon").innerHTML = ICONS3[on ? "homeFill" : "home"];
+    for (const el3 of state12.root.querySelectorAll("[data-key]")) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (on) el3.setAttribute("aria-current", "page");
+      else el3.removeAttribute("aria-current");
+      if (el3.dataset.key === "home") el3.querySelector(".lfx-plus-tabbar__icon").innerHTML = ICONS3[on ? "homeFill" : "home"];
     }
   }
   function closeProfile() {
@@ -10689,18 +10805,18 @@
 
   // src/js/features/plus/nativedetail.js
   var URL_RE = /url\(\s*["']?([^"')]+)["']?\s*\)/;
-  var bgUrl = (el2) => {
-    if (!el2) return null;
-    const css = el2.style && el2.style.backgroundImage || (typeof getComputedStyle === "function" ? getComputedStyle(el2).backgroundImage : "");
+  var bgUrl = (el3) => {
+    if (!el3) return null;
+    const css = el3.style && el3.style.backgroundImage || (typeof getComputedStyle === "function" ? getComputedStyle(el3).backgroundImage : "");
     const m = URL_RE.exec(css || "");
     return m ? m[1] : null;
   };
-  function setClass2(el2, cls, on) {
-    if (el2.classList.contains(cls) !== on) el2.classList.toggle(cls, on);
+  function setClass2(el3, cls, on) {
+    if (el3.classList.contains(cls) !== on) el3.classList.toggle(cls, on);
   }
-  function logoHidden(el2) {
+  function logoHidden(el3) {
     if (typeof getComputedStyle !== "function") return false;
-    return getComputedStyle(el2).display === "none";
+    return getComputedStyle(el3).display === "none";
   }
   function createNativeDetail({ name, theme, nologoClass, nobdClass = null }) {
     const NOLOGO = nologoClass;
@@ -10719,28 +10835,28 @@
       img.src = url;
     }
     function evaluate3() {
-      const page = state21.page;
-      if (!page || !page.isConnected) return;
-      const logoEl = page.querySelector(".detailLogo");
+      const page2 = state21.page;
+      if (!page2 || !page2.isConnected) return;
+      const logoEl = page2.querySelector(".detailLogo");
       const logoUrl = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
       if (logoUrl) probeLogo(logoUrl);
       let noLogo = !logoUrl || state21.probes.get(logoUrl) === "bad";
       if (!noLogo) {
-        const had = page.classList.contains(NOLOGO);
-        if (had) page.classList.remove(NOLOGO);
+        const had = page2.classList.contains(NOLOGO);
+        if (had) page2.classList.remove(NOLOGO);
         noLogo = logoHidden(logoEl);
-        if (had) page.classList.add(NOLOGO);
+        if (had) page2.classList.add(NOLOGO);
       }
-      setClass2(page, NOLOGO, noLogo);
+      setClass2(page2, NOLOGO, noLogo);
       if (NOBD) {
-        const bd = page.querySelector(".itemBackdrop");
+        const bd = page2.querySelector(".itemBackdrop");
         const own = bd && !bd.classList.contains("hide") && bgUrl(bd);
         const global = !!document.querySelector(".backdropContainer .displayingBackdropImage");
         const wide = typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1000px)").matches;
-        setClass2(page, NOBD, !own && !(wide && global));
+        setClass2(page2, NOBD, !own && !(wide && global));
       }
     }
-    function schedule2() {
+    function schedule3() {
       if (state21.timer) return;
       state21.timer = setTimeout(() => {
         state21.timer = 0;
@@ -10762,19 +10878,19 @@
       state21.probes.clear();
     }
     function attach2() {
-      const page = document.querySelector("#itemDetailPage:not(.hide)");
-      if (!page) {
+      const page2 = document.querySelector("#itemDetailPage:not(.hide)");
+      if (!page2) {
         if (++state21.tries < 30) state21.poll = setTimeout(attach2, 200);
         return;
       }
-      if (state21.page === page) return;
+      if (state21.page === page2) return;
       if (state21.obs) state21.obs.disconnect();
-      state21.page = page;
+      state21.page = page2;
       state21.obs = new MutationObserver((records) => {
-        if (records.every((r) => r.type === "attributes" && r.target === page)) return;
-        schedule2();
+        if (records.every((r) => r.type === "attributes" && r.target === page2)) return;
+        schedule3();
       });
-      state21.obs.observe(page, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
+      state21.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
       evaluate3();
     }
     const feature = {
@@ -10788,8 +10904,8 @@
         state21.tries = 0;
         clearTimeout(state21.poll);
         state21.probes.clear();
-        const page = document.querySelector("#itemDetailPage:not(.hide)");
-        if (page && page !== state21.page) clearPage();
+        const page2 = document.querySelector("#itemDetailPage:not(.hide)");
+        if (page2 && page2 !== state21.page) clearPage();
         attach2();
         evaluate3();
       },
@@ -10807,7 +10923,7 @@
   var nativedetail_default = plus.feature;
 
   // src/js/features/plus/favempty.js
-  var ID7 = "lfx-plus-favempty";
+  var ID8 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
   var state13 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
@@ -10821,14 +10937,14 @@
     state13.timer = 0;
     const tab2 = state13.tab;
     if (!tab2 || !tab2.isConnected) return;
-    const mine = document.getElementById(ID7);
+    const mine = document.getElementById(ID8);
     if (hasCards(tab2)) {
       if (mine) mine.remove();
     } else if (!mine) {
-      tab2.prepend(h("p", { id: ID7, class: "lfx-plus-favempty" }, EMPTY_TEXT));
+      tab2.prepend(h("p", { id: ID8, class: "lfx-plus-favempty" }, EMPTY_TEXT));
     }
   }
-  function schedule(delay = SETTLE_MS) {
+  function schedule2(delay = SETTLE_MS) {
     clearTimeout(state13.timer);
     state13.timer = setTimeout(check, delay);
   }
@@ -10840,7 +10956,7 @@
     state13.timer = 0;
     state13.poll = 0;
     state13.tab = null;
-    document.getElementById(ID7)?.remove();
+    document.getElementById(ID8)?.remove();
   }
   function attach() {
     const tab2 = findTab();
@@ -10852,11 +10968,11 @@
     teardown6();
     state13.tab = tab2;
     state13.obs = new MutationObserver((records) => {
-      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID7))) return;
-      schedule();
+      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID8))) return;
+      schedule2();
     });
     state13.obs.observe(tab2, { childList: true, subtree: true });
-    schedule();
+    schedule2();
   }
   var favempty_default = {
     name: "plus-favempty",
@@ -10876,7 +10992,7 @@
   var plusFeatures = [header_default, mobilehead_default, switcher_default, home_default2, title_default, browse_default, search_default, tabbar_default, nativedetail_default, favempty_default];
 
   // src/js/features/prime/search.js
-  var ID8 = "lfx-prime-search";
+  var ID9 = "lfx-prime-search";
   var DEBOUNCE_MS2 = 300;
   var MAX_CARDS = 8;
   var MAX_CARDS_MOBILE = 18;
@@ -10886,14 +11002,14 @@
   var FOCUSABLE2 = "a[href], button:not([disabled]), input:not([disabled])";
   var cur = null;
   function searchIcon() {
-    const svg10 = document.createElementNS(SVG_NS, "svg");
-    svg10.setAttribute("viewBox", "0 0 24 24");
-    svg10.setAttribute("aria-hidden", "true");
-    svg10.setAttribute("class", "lfx-prime-search__icon");
+    const svg11 = document.createElementNS(SVG_NS, "svg");
+    svg11.setAttribute("viewBox", "0 0 24 24");
+    svg11.setAttribute("aria-hidden", "true");
+    svg11.setAttribute("class", "lfx-prime-search__icon");
     const p = document.createElementNS(SVG_NS, "path");
     p.setAttribute("d", "M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z");
-    svg10.append(p);
-    return svg10;
+    svg11.append(p);
+    return svg11;
   }
   function formatRuntime3(ticks) {
     const min = Math.round((Number(ticks) || 0) / 6e8);
@@ -10953,7 +11069,7 @@
     }
     const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
     const mobile = isMobile();
-    const root7 = mountPoint(ID8, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
+    const root7 = mountPoint(ID9, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
     root7.setAttribute("role", "dialog");
     root7.setAttribute("aria-modal", "true");
     root7.setAttribute("aria-label", "Suche");
@@ -11038,7 +11154,7 @@
         e.stopImmediatePropagation();
         close2();
       } else if (e.key === "Tab") {
-        const list = [...panel.querySelectorAll(FOCUSABLE2)].filter((el2) => !el2.hidden);
+        const list = [...panel.querySelectorAll(FOCUSABLE2)].filter((el3) => !el3.hidden);
         if (!list.length) return;
         const first2 = list[0];
         const last = list[list.length - 1];
@@ -11202,7 +11318,7 @@
   }
 
   // src/js/features/prime/profile-sheet.js
-  var ID9 = "lfx-prime-profilesheet";
+  var ID10 = "lfx-prime-profilesheet";
   var OPEN_CLASS2 = "lfx-prime-profilesheet-open";
   var FOCUSABLE3 = "a[href], button:not([disabled])";
   var cur2 = null;
@@ -11243,7 +11359,7 @@
   }
   function openProfileSheet({ returnFocus } = {}) {
     closeProfileSheet({ restoreFocus: false });
-    const root7 = mountPoint(ID9, { className: "lfx-prime-psheet-overlay" });
+    const root7 = mountPoint(ID10, { className: "lfx-prime-psheet-overlay" });
     const who = h("div", { class: "lfx-prime-psheet__who" });
     const body = h("div", { class: "lfx-prime-psheet__body" });
     const sheet = h("div", { class: "lfx-prime-psheet", role: "dialog", "aria-modal": "true", "aria-label": "Profil", tabindex: "-1" }, [
@@ -11322,7 +11438,7 @@
   }
 
   // src/js/features/prime/header.js
-  var ID10 = "lfx-prime-header";
+  var ID11 = "lfx-prime-header";
   var HTML_CLASS = "lfx-prime-header-on";
   var MOBILE_CLASS = "lfx-prime-mobile";
   var PILLS_CLASS = "lfx-prime-header-pills";
@@ -11338,14 +11454,14 @@
     bookmark: "M6 3h12a1 1 0 0 1 1 1v17l-7-4.6L5 21V4a1 1 0 0 1 1-1Zm1 2v12.2l5-3.3 5 3.3V5H7Z"
   };
   function icon3(name) {
-    const svg10 = document.createElementNS(SVG_NS2, "svg");
-    svg10.setAttribute("viewBox", "0 0 24 24");
-    svg10.setAttribute("aria-hidden", "true");
-    svg10.setAttribute("focusable", "false");
+    const svg11 = document.createElementNS(SVG_NS2, "svg");
+    svg11.setAttribute("viewBox", "0 0 24 24");
+    svg11.setAttribute("aria-hidden", "true");
+    svg11.setAttribute("focusable", "false");
     const p = document.createElementNS(SVG_NS2, "path");
     p.setAttribute("d", ICONS4[name]);
-    svg10.append(p);
-    return svg10;
+    svg11.append(p);
+    return svg11;
   }
   function navItems3(libs) {
     const list = Array.isArray(libs) ? libs : [];
@@ -11386,9 +11502,9 @@
     "/queue": "Warteschlange"
   };
   function domText(selector, attr) {
-    const el2 = document.querySelector(selector);
-    if (!el2) return "";
-    return String((attr ? el2.getAttribute(attr) : el2.textContent) || "").trim();
+    const el3 = document.querySelector(selector);
+    if (!el3) return "";
+    return String((attr ? el3.getAttribute(attr) : el3.textContent) || "").trim();
   }
   function mobileTitle(route, libs = []) {
     if (!route) return "";
@@ -11454,11 +11570,11 @@
   function applyActive7() {
     if (!state14.el || !state14.route) return;
     const key = activeKey3(state14.route);
-    for (const el2 of state14.el.querySelectorAll("[data-key]")) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (on) el2.setAttribute("aria-current", "page");
-      else el2.removeAttribute("aria-current");
+    for (const el3 of state14.el.querySelectorAll("[data-key]")) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (on) el3.setAttribute("aria-current", "page");
+      else el3.removeAttribute("aria-current");
     }
   }
   function renderNav2() {
@@ -11472,13 +11588,13 @@
     applyActive7();
   }
   function profileIsOpen() {
-    const el2 = document.getElementById("lfx-popover");
-    return isPopoverOpen() && Boolean(el2 && el2.classList.contains("lfx-prime-profile"));
+    const el3 = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el3 && el3.classList.contains("lfx-prime-profile"));
   }
   function closeProfile2() {
     if (profileIsOpen()) closePopover();
   }
-  async function toggleProfile(btn2) {
+  async function toggleProfile(btn3) {
     if (profileIsOpen()) {
       closePopover({ restoreFocus: true });
       return;
@@ -11487,9 +11603,9 @@
     state14.profileBusy = true;
     try {
       state14.menus.close();
-      const items = await profileEntries({ theme: "prime", returnFocus: btn2 });
-      if (!state14.el || !btn2.isConnected) return;
-      openPopover(btn2, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
+      const items = await profileEntries({ theme: "prime", returnFocus: btn3 });
+      if (!state14.el || !btn3.isConnected) return;
+      openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
     } finally {
       state14.profileBusy = false;
     }
@@ -11678,7 +11794,7 @@
     },
     mount(route) {
       state14.route = route;
-      state14.el = mountPoint(ID10, { tag: "header", className: "lfx-prime-header" });
+      state14.el = mountPoint(ID11, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
       state14.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
@@ -11712,7 +11828,7 @@
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
-      unmountPoint(ID10);
+      unmountPoint(ID11);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
       state14.el = null;
       state14.libs = [];
@@ -11724,9 +11840,9 @@
 
   // src/js/features/prime/footer.js
   function buildMoreButton(onClick) {
-    const btn2 = h("button", { type: "button", class: "lfx-prime-more" }, "Mehr");
-    btn2.addEventListener("click", () => onClick(btn2));
-    return btn2;
+    const btn3 = h("button", { type: "button", class: "lfx-prime-more" }, "Mehr");
+    btn3.addEventListener("click", () => onClick(btn3));
+    return btn3;
   }
   function buildFooter() {
     const href = statsHref("prime");
@@ -11825,38 +11941,38 @@
   function setPreviewHold(on) {
     document.dispatchEvent(new CustomEvent(HOLD_EVENT, { detail: { on: Boolean(on) } }));
   }
-  function autoPause(video, { respectHold = false } = {}) {
+  function autoPause(video2, { respectHold = false } = {}) {
     let visible = true;
     let held2 = false;
     let stopped = false;
     let io = null;
-    const sync2 = () => {
-      if (stopped || !video) return;
+    const sync3 = () => {
+      if (stopped || !video2) return;
       const want = visible && !held2 && !document.hidden;
       try {
-        if (want && video.paused) {
-          const p = video.play && video.play();
+        if (want && video2.paused) {
+          const p = video2.play && video2.play();
           if (p && p.catch) p.catch(() => {
           });
-        } else if (!want && !video.paused) {
-          video.pause();
+        } else if (!want && !video2.paused) {
+          video2.pause();
         }
       } catch {
       }
     };
-    const onVis = () => sync2();
+    const onVis = () => sync3();
     const onHold = (e) => {
       held2 = Boolean(e.detail && e.detail.on);
-      sync2();
+      sync3();
     };
     if (typeof IntersectionObserver === "function") {
       io = new IntersectionObserver((entries) => {
         const e = entries[entries.length - 1];
         if (!e) return;
         visible = e.isIntersecting && e.intersectionRatio >= VISIBLE_RATIO;
-        sync2();
+        sync3();
       }, { threshold: [0, VISIBLE_RATIO, 1] });
-      io.observe(video);
+      io.observe(video2);
     }
     document.addEventListener("visibilitychange", onVis);
     if (respectHold) document.addEventListener(HOLD_EVENT, onHold);
@@ -11879,13 +11995,13 @@
   var FIELDS3 = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated,RemoteTrailers,LocalTrailerCount";
   var FIRST_KEY = "lfx-prime-hero-first";
   var NS2 = "http://www.w3.org/2000/svg";
-  function svg7(html2, cls) {
-    const el2 = document.createElementNS(NS2, "svg");
-    el2.setAttribute("viewBox", "0 0 24 24");
-    el2.setAttribute("aria-hidden", "true");
-    if (cls) el2.setAttribute("class", cls);
-    el2.innerHTML = html2;
-    return el2;
+  function svg8(html2, cls) {
+    const el3 = document.createElementNS(NS2, "svg");
+    el3.setAttribute("viewBox", "0 0 24 24");
+    el3.setAttribute("aria-hidden", "true");
+    if (cls) el3.setAttribute("class", cls);
+    el3.innerHTML = html2;
+    return el3;
   }
   var ICON_PLAY4 = '<path fill="currentColor" d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/>';
   var ICON_PLUS4 = '<path fill="currentColor" d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/>';
@@ -11896,7 +12012,7 @@
   var ICON_TREND = '<path fill="currentColor" d="M3 17.6 9.5 11l4 4L21 7.5V12h2V4h-8v2h4.6l-6.1 6.1-4-4L1.6 16.2z"/>';
   var ICON_CHEV = '<polyline points="8,3 17,12 8,21" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>';
   function svgIcon(html2, cls) {
-    return svg7(html2, cls);
+    return svg8(html2, cls);
   }
   var reducedMotion2 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function readFirst() {
@@ -11935,7 +12051,7 @@
     let rotateTimer = null;
     let preview = null;
     let gate = null;
-    let video = null;
+    let video2 = null;
     let trend2 = null;
     let media = null;
     let content = null;
@@ -11952,7 +12068,7 @@
       timers.add(t);
       return t;
     };
-    const paused = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    const paused2 = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       if (gate) {
         gate.stop();
@@ -11962,7 +12078,7 @@
         preview.cancel();
         preview = null;
       }
-      video = null;
+      video2 = null;
       trailerActive = false;
       if (muteBtn) muteBtn.hidden = true;
       if (hero) hero.classList.remove("is-trailer");
@@ -11973,14 +12089,14 @@
       if (disposed || pool.length < 2 || reducedMotion2()) return;
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
-        if (paused()) scheduleRotate();
+        if (paused2()) scheduleRotate();
         else show2((index + 1) % pool.length);
       }, ROTATE_MS2);
     }
     function setMuteIcon() {
-      if (!video) return;
-      muteBtn.replaceChildren(svg7(video.muted ? ICON_MUTED2 : ICON_SOUND2));
-      muteBtn.setAttribute("aria-label", video.muted ? "Ton einschalten" : "Ton ausschalten");
+      if (!video2) return;
+      muteBtn.replaceChildren(svg8(video2.muted ? ICON_MUTED2 : ICON_SOUND2));
+      muteBtn.setAttribute("aria-label", video2.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     function startTrailer(item, myGen) {
       if (mobile || reducedMotion2() || disposed || myGen !== gen8) return;
@@ -11989,7 +12105,7 @@
         startAt: 4,
         onStart: (v) => {
           if (disposed || myGen !== gen8) return;
-          video = v;
+          video2 = v;
           gate = autoPause(v, { respectHold: true });
           trailerActive = true;
           v.classList.add("is-in");
@@ -12007,7 +12123,7 @@
     }
     function playButton(item, myGen) {
       const label = h("span", { class: "lfx-prime-hero__label" });
-      const btn2 = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg7(ICON_PLAY4), label]);
+      const btn3 = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg8(ICON_PLAY4), label]);
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
       const paint = (state21) => {
@@ -12015,38 +12131,38 @@
           h("span", { class: "lfx-prime-hero__label1" }, state21.line1),
           state21.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state21.line2) : null
         ].filter(Boolean));
-        btn2.classList.toggle("is-two", Boolean(state21.line2));
+        btn3.classList.toggle("is-two", Boolean(state21.line2));
         progress.hidden = !(state21.progress > 0);
         bar.style.width = `${Math.round(state21.progress)}%`;
       };
       paint(playLabel(item));
       if (item.Type === "Series") {
         loadNextUp(item.Id).then((ep) => {
-          if (disposed || myGen !== gen8 || !btn2.isConnected) return;
+          if (disposed || myGen !== gen8 || !btn3.isConnected) return;
           paint(playLabel(item, ep));
         }, () => {
         });
       }
-      btn2.addEventListener("click", () => {
+      btn3.addEventListener("click", () => {
         playTitle(item);
       });
-      return h("div", { class: "lfx-prime-hero__playwrap" }, [btn2, progress]);
+      return h("div", { class: "lfx-prime-hero__playwrap" }, [btn3, progress]);
     }
     function listButton(item) {
-      const btn2 = h("button", { type: "button", class: "lfx-prime-hero__round lfx-prime-hero__round--list", title: "Meine Liste" });
+      const btn3 = h("button", { type: "button", class: "lfx-prime-hero__round lfx-prime-hero__round--list", title: "Meine Liste" });
       const paint = () => {
         const on = Boolean(item.UserData && item.UserData.IsFavorite);
-        btn2.replaceChildren(svg7(on ? ICON_CHECK4 : ICON_PLUS4));
-        btn2.classList.toggle("is-on", on);
-        btn2.setAttribute("aria-pressed", on ? "true" : "false");
-        btn2.setAttribute("aria-label", on ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen");
+        btn3.replaceChildren(svg8(on ? ICON_CHECK4 : ICON_PLUS4));
+        btn3.classList.toggle("is-on", on);
+        btn3.setAttribute("aria-pressed", on ? "true" : "false");
+        btn3.setAttribute("aria-label", on ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen");
       };
       paint();
-      btn2.addEventListener("click", async () => {
+      btn3.addEventListener("click", async () => {
         await toggleFavorite2(item);
-        if (btn2.isConnected) paint();
+        if (btn3.isConnected) paint();
       });
-      return btn2;
+      return btn3;
     }
     function buildContent(item, myGen) {
       const logo = logoImage(item, { maxWidth: 720 });
@@ -12056,12 +12172,12 @@
         href: titleHref(item.Id),
         "aria-label": "Weitere Informationen",
         title: "Weitere Informationen"
-      }, [svg7(ICON_INFO)]);
+      }, [svg8(ICON_INFO)]);
       const fsk = formatRating(item.OfficialRating);
       return h("div", null, [
         h("div", { class: "lfx-prime-hero__text" }, [
           logo ? h("img", { class: "lfx-prime-hero__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("h2", { class: "lfx-prime-hero__title" }, item.Name || ""),
-          rank ? h("div", { class: "lfx-prime-hero__rank" }, [svg7(ICON_TREND), h("span", null, rank)]) : null,
+          rank ? h("div", { class: "lfx-prime-hero__rank" }, [svg8(ICON_TREND), h("span", null, rank)]) : null,
           h("div", { class: "lfx-prime-hero__actions" }, [playButton(item, myGen), listButton(item), info])
         ]),
         fsk ? h("span", { class: "lfx-prime-chip lfx-prime-hero__fsk" }, fsk) : null
@@ -12081,7 +12197,7 @@
           fsk ? h("span", { class: "lfx-prime-chip lfx-prime-hero__fsk" }, fsk) : null,
           text ? h("span", { class: "lfx-prime-hero__metatext" }, text) : null
         ]),
-        rank ? h("div", { class: "lfx-prime-hero__rank" }, [svg7(ICON_TREND), h("span", null, rank)]) : null,
+        rank ? h("div", { class: "lfx-prime-hero__rank" }, [svg8(ICON_TREND), h("span", null, rank)]) : null,
         h("div", { class: "lfx-prime-hero__actions" }, [playButton(item, myGen)])
       ]);
       return { title, info };
@@ -12201,8 +12317,8 @@
       content = h("div", { class: "lfx-prime-hero__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-prime-hero__mute", hidden: true, "aria-label": "Ton einschalten" });
       muteBtn.addEventListener("click", () => {
-        if (!video) return;
-        video.muted = !video.muted;
+        if (!video2) return;
+        video2.muted = !video2.muted;
         setMuteIcon();
       });
       dots = h("div", { class: "lfx-prime-hero__dots", role: "group", "aria-label": "Empfehlung w\xE4hlen" });
@@ -12212,8 +12328,8 @@
       }
       const prev = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--prev", "aria-label": "Vorherige Empfehlung" });
       const next = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--next", "aria-label": "N\xE4chste Empfehlung" });
-      prev.append(svg7(ICON_CHEV));
-      next.append(svg7(ICON_CHEV));
+      prev.append(svg8(ICON_CHEV));
+      next.append(svg8(ICON_CHEV));
       prev.addEventListener("click", () => step(-1));
       next.addEventListener("click", () => step(1));
       fillDots();
@@ -12496,11 +12612,11 @@
           if (!def || rendered.has(def.id)) continue;
           rendered.add(def.id);
           const kind2 = displayKind(def, posterId);
-          const el2 = skeleton3(def, kind2);
-          slot.append(el2);
-          pending.set(el2, { def, kind: kind2 });
-          if (observer2) observer2.observe(el2);
-          else loadRow(el2, def, kind2);
+          const el3 = skeleton3(def, kind2);
+          slot.append(el3);
+          pending.set(el3, { def, kind: kind2 });
+          if (observer2) observer2.observe(el3);
+          else loadRow(el3, def, kind2);
         }
       },
       ids: () => [...rendered],
@@ -12589,9 +12705,9 @@
     cleanups4.push(() => rows.destroy());
     rows.add(defs);
     let genreCount = BASE_GENRES;
-    const moreBtn = buildMoreButton(async (btn2) => {
-      if (btn2.disabled) return;
-      btn2.disabled = true;
+    const moreBtn = buildMoreButton(async (btn3) => {
+      if (btn3.disabled) return;
+      btn3.disabled = true;
       genreCount += MORE_STEP;
       try {
         const all = await getDefs(genreCount);
@@ -12599,11 +12715,11 @@
         const have = new Set(rows.ids());
         const fresh = all.filter((d) => isGenreDef(d) && !have.has(d.id)).slice(0, MORE_STEP);
         rows.add(fresh);
-        if (fresh.length < MORE_STEP) btn2.hidden = true;
+        if (fresh.length < MORE_STEP) btn3.hidden = true;
       } catch (e) {
         console.warn("[LenzFlix] Weitere Zeilen nicht geladen", e && e.message);
       }
-      btn2.disabled = false;
+      btn3.disabled = false;
     });
     if (!defs.some(isGenreDef)) moreBtn.hidden = true;
     moreSlot.append(moreBtn);
@@ -12856,33 +12972,33 @@
     const info = h("div", { class: "lfx-prime-hover__info" }, [
       buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active3 === a })
     ]);
-    const el2 = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
-    el2.className = "lfx-prime-hover";
-    el2.replaceChildren(media, info);
-    el2.dataset.lfxId = item.Id;
-    a.el = el2;
+    const el3 = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
+    el3.className = "lfx-prime-hover";
+    el3.replaceChildren(media, info);
+    el3.dataset.lfxId = item.Id;
+    a.el = el3;
     const r = link.getBoundingClientRect();
     const width = Math.max(Math.round(r.width * SCALE2), MIN_WIDTH2);
-    el2.style.width = `${width}px`;
-    el2.style.visibility = "hidden";
-    el2.style.left = "0px";
-    el2.style.top = "0px";
+    el3.style.width = `${width}px`;
+    el3.style.visibility = "hidden";
+    el3.style.left = "0px";
+    el3.style.top = "0px";
     const imgH = Math.round(width * 9 / 16);
     media.style.height = `${imgH}px`;
-    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el2.offsetHeight - imgH));
-    el2.style.left = `${g.left}px`;
-    el2.style.top = `${g.top}px`;
-    el2.style.transformOrigin = `${g.originX}px ${g.originY}px`;
-    el2.style.setProperty("--lfx-prime-s0", String(g.scale));
-    el2.style.visibility = "";
+    const g = popupGeometry(r, window.innerWidth, window.innerHeight, Math.max(0, el3.offsetHeight - imgH));
+    el3.style.left = `${g.left}px`;
+    el3.style.top = `${g.top}px`;
+    el3.style.transformOrigin = `${g.originX}px ${g.originY}px`;
+    el3.style.setProperty("--lfx-prime-s0", String(g.scale));
+    el3.style.visibility = "";
     active3 = a;
     pointerInside = true;
     const go3 = () => {
-      if (active3 === a) el2.classList.add("is-in");
+      if (active3 === a) el3.classList.add("is-in");
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go3));
     else go3();
-    el2.addEventListener("click", (e) => {
+    el3.addEventListener("click", (e) => {
       if (e.target.closest("button, a")) return;
       closeNow2();
       window.location.hash = titleHref(item.Id);
@@ -12909,9 +13025,9 @@
       mute.setAttribute("aria-label", a.video.muted ? "Ton einschalten" : "Ton ausschalten");
     });
     const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active3 === a })]);
-    const el2 = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
-    a.el = el2;
-    card3.append(el2);
+    const el3 = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
+    a.el = el3;
+    card3.append(el3);
     card3.classList.add("is-expanded");
     active3 = a;
     pointerInside = true;
@@ -12926,7 +13042,7 @@
         if (typeof track.scrollBy === "function") track.scrollBy({ left: over, behavior: reducedMotion3() ? "auto" : "smooth" });
       }
       if (Date.now() - lastUserScroll < USER_SCROLL_QUIET_MS) return;
-      const pr = el2.getBoundingClientRect();
+      const pr = el3.getBoundingClientRect();
       const dy = scrollDeltaForBottom(Math.max(pr.bottom, cr.bottom), Math.min(pr.top, cr.top), window.innerHeight);
       if (dy > 0 && typeof window.scrollBy === "function") {
         selfScrollUntil = Date.now() + 900;
@@ -12945,7 +13061,7 @@
           a.holding = true;
           setPreviewHold(true);
           v.classList.add("is-in");
-          el2.classList.add("is-video");
+          el3.classList.add("is-video");
           mute.hidden = false;
           mute.replaceChildren(svgIcon(ICON_MUTED2));
         },
@@ -12957,7 +13073,7 @@
             a.holding = false;
             setPreviewHold(false);
           }
-          el2.classList.remove("is-video");
+          el3.classList.remove("is-video");
           mute.hidden = true;
         }
       });
@@ -13025,7 +13141,7 @@
     add(window, "hashchange", closeNow2);
     add(window, "blur", closeNow2);
   }
-  function stop3() {
+  function stop4() {
     closeNow2();
     for (const off of listeners5.splice(0)) off();
     unmountPoint(POPUP_ID2);
@@ -13038,7 +13154,7 @@
     name: "prime-hover",
     match: (route) => isTheme("prime") && isModern() && !isTv() && !isMobile() && isReady() && hoverCapable2() && Boolean(primeHomeRoute(route)),
     mount: start5,
-    unmount: stop3
+    unmount: stop4
   };
   var hover_default = primeHover;
 
@@ -13157,21 +13273,21 @@
   }
 
   // src/js/features/prime/title-dom.js
-  var svg8 = (p) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
+  var svg9 = (p) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
   var ICONS5 = {
-    play: svg8('<path d="M7 4.2v15.6a1 1 0 0 0 1.5.86l13-7.8a1 1 0 0 0 0-1.72l-13-7.8A1 1 0 0 0 7 4.2z"/>'),
-    plus: svg8('<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>'),
-    check: svg8('<path d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>'),
-    trailer: svg8('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4.5 2.2 5 2.8-5 2.8z"/>'),
-    muted: svg8('<path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>'),
-    sound: svg8('<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/>'),
-    chevron: svg8('<path d="M6.7 9.3 12 14.6l5.3-5.3 1.4 1.4-6.7 6.7-6.7-6.7z"/>'),
-    trend: svg8('<path d="M3 17.6 9.5 11l4 4 6.3-6.6L21 9.7V5h-4.7l1.4 1.4-4.2 4.4-4-4L1.6 15.8z"/>')
+    play: svg9('<path d="M7 4.2v15.6a1 1 0 0 0 1.5.86l13-7.8a1 1 0 0 0 0-1.72l-13-7.8A1 1 0 0 0 7 4.2z"/>'),
+    plus: svg9('<path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/>'),
+    check: svg9('<path d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>'),
+    trailer: svg9('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4.5 2.2 5 2.8-5 2.8z"/>'),
+    muted: svg9('<path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/>'),
+    sound: svg9('<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/>'),
+    chevron: svg9('<path d="M6.7 9.3 12 14.6l5.3-5.3 1.4 1.4-6.7 6.7-6.7-6.7z"/>'),
+    trend: svg9('<path d="M3 17.6 9.5 11l4 4 6.3-6.6L21 9.7V5h-4.7l1.4 1.4-4.2 4.4-4-4L1.6 15.8z"/>')
   };
   function iconEl2(markup, cls = "lfx-pt__ico") {
-    const el2 = h("span", { class: cls, "aria-hidden": "true" });
-    el2.innerHTML = markup;
-    return el2;
+    const el3 = h("span", { class: cls, "aria-hidden": "true" });
+    el3.innerHTML = markup;
+    return el3;
   }
   function circleButton2({ label, icon: icon5, mod = "", onClick, hidden = false }) {
     const b = h("button", {
@@ -13190,8 +13306,8 @@
     }
     return b;
   }
-  function setIcon2(btn2, markup) {
-    const ico = btn2.querySelector(".lfx-pt__ico");
+  function setIcon2(btn3, markup) {
+    const ico = btn3.querySelector(".lfx-pt__ico");
     if (ico) ico.innerHTML = markup;
   }
   function ratingChipEl(rating) {
@@ -13243,19 +13359,19 @@
   }
   function buildSeasonSelect(seasons, seasonId, onPick) {
     const cur3 = seasons.find((s) => s.Id === seasonId) || seasons[0];
-    const btn2 = h("button", {
+    const btn3 = h("button", {
       type: "button",
       class: "lfx-pt__season",
       "aria-haspopup": "menu",
       "aria-label": "Staffel w\xE4hlen"
     }, [h("span", { class: "lfx-pt__season-label" }, seasonName(cur3)), iconEl2(ICONS5.chevron, "lfx-pt__season-chev")]);
-    btn2.addEventListener("click", () => {
+    btn3.addEventListener("click", () => {
       if (isPopoverOpen()) {
         closePopover({ restoreFocus: true });
         return;
       }
-      btn2.setAttribute("aria-expanded", "true");
-      openPopover(btn2, {
+      btn3.setAttribute("aria-expanded", "true");
+      openPopover(btn3, {
         label: "Staffeln",
         align: "start",
         className: "lfx-pt-popover",
@@ -13267,7 +13383,7 @@
         }))
       });
     });
-    return btn2;
+    return btn3;
   }
 
   // src/js/features/prime/title.js
@@ -13380,16 +13496,16 @@
     return imageUrl(main, { type: "Backdrop", maxWidth: 1920, quality: 85 }) || landscapeImage(main, { maxWidth: 1920, quality: 85 }) || imageUrl(main, { type: "Primary", maxWidth: 900, quality: 85 });
   }
   function paintPlay(s, info) {
-    const btn2 = s.playBtn;
-    if (!btn2) return;
-    btn2.replaceChildren(
+    const btn3 = s.playBtn;
+    if (!btn3) return;
+    btn3.replaceChildren(
       iconEl2(ICONS5.play),
       h("span", { class: "lfx-pt__play-text" }, [
         h("span", { class: "lfx-pt__play-label" }, info.label),
         info.sub ? h("span", { class: "lfx-pt__play-sub" }, info.sub) : null
       ])
     );
-    btn2.classList.toggle("is-two-line", Boolean(info.sub));
+    btn3.classList.toggle("is-two-line", Boolean(info.sub));
     s.playInfo = info;
     const wrap = s.playWrap;
     const old = wrap.querySelector(".lfx-pt__progress");
@@ -13507,10 +13623,10 @@
     const bar = h("div", { class: "lfx-pt__tabs", role: "tablist" });
     const panels = h("div", { class: "lfx-pt__panels" });
     const sentinel = h("div", { class: "lfx-pt__sentinel", "aria-hidden": "true" });
-    const btns = /* @__PURE__ */ new Map();
+    const btns2 = /* @__PURE__ */ new Map();
     const panelEls = /* @__PURE__ */ new Map();
     function select(id) {
-      for (const [pid, b] of btns) {
+      for (const [pid, b] of btns2) {
         const on = pid === id;
         b.classList.toggle("is-active", on);
         b.setAttribute("aria-selected", String(on));
@@ -13532,9 +13648,9 @@
         const ids = defs.map((x) => x.id);
         const next = ids[(ids.indexOf(d.id) + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length];
         select(next);
-        btns.get(next).focus();
+        btns2.get(next).focus();
       });
-      btns.set(d.id, b);
+      btns2.set(d.id, b);
       bar.append(b);
       const p = h("div", {
         class: "lfx-pt__panel",
@@ -13606,12 +13722,12 @@
       let seasonId = pickInitialSeason(seasons, sel.seasonId);
       const head = h("div", { class: "lfx-pt__eps-head" });
       const mountSelect = () => {
-        const btn2 = buildSeasonSelect(seasons, seasonId, (id) => {
+        const btn3 = buildSeasonSelect(seasons, seasonId, (id) => {
           seasonId = id;
           mountSelect();
           showSeason2(id);
         });
-        head.replaceChildren(btn2);
+        head.replaceChildren(btn3);
       };
       if (seasons.length > 1) mountSelect();
       panel.replaceChildren(head, h("div", { class: "lfx-pt__eps" }));
@@ -13744,7 +13860,7 @@
     }));
     await Promise.all(tasks);
   }
-  function stop4() {
+  function stop5() {
     clearTimeout(waitTimer6);
     waitTimer6 = null;
     teardownSession();
@@ -13753,10 +13869,10 @@
     document.getElementById(ROOT_ID14)?.remove();
     document.documentElement.classList.remove(ON_CLASS12);
   }
-  function pullToTop(el2) {
-    el2.style.marginTop = "";
-    const top = el2.getBoundingClientRect().top + (window.scrollY || 0);
-    if (top > 2 && top < 240) el2.style.marginTop = `-${Math.round(top)}px`;
+  function pullToTop(el3) {
+    el3.style.marginTop = "";
+    const top = el3.getBoundingClientRect().top + (window.scrollY || 0);
+    if (top > 2 && top < 240) el3.style.marginTop = `-${Math.round(top)}px`;
   }
   function start6(route) {
     const r = isPlainRoute(route);
@@ -13791,11 +13907,11 @@
     match: (route) => isTheme("prime") && isModern() && !isTv() && isReady() && Boolean(isPlainRoute(route)),
     mount: (route) => start6(route),
     update: (route) => start6(route),
-    unmount: () => stop4()
+    unmount: () => stop5()
   };
 
   // src/js/features/prime/tabbar.js
-  var ID11 = "lfx-prime-tabbar";
+  var ID12 = "lfx-prime-tabbar";
   var HTML_CLASS2 = "lfx-prime-tabbar-on";
   var EXCLUDED10 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var HIDE_CLASSES = ["lfx-sheet-open", "lfx-themepicker-open", "lfx-popover-open", "lfx-modal-open", "lfx-prime-profilesheet-open"];
@@ -13815,14 +13931,14 @@
     search: "M10.5 3a7.5 7.5 0 0 1 5.9 12.1l4.3 4.3-1.4 1.4-4.3-4.3A7.5 7.5 0 1 1 10.5 3Zm0 2a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"
   };
   function icon4(name) {
-    const svg10 = document.createElementNS(SVG_NS3, "svg");
-    svg10.setAttribute("viewBox", "0 0 24 24");
-    svg10.setAttribute("aria-hidden", "true");
-    svg10.setAttribute("focusable", "false");
+    const svg11 = document.createElementNS(SVG_NS3, "svg");
+    svg11.setAttribute("viewBox", "0 0 24 24");
+    svg11.setAttribute("aria-hidden", "true");
+    svg11.setAttribute("focusable", "false");
     const p = document.createElementNS(SVG_NS3, "path");
     p.setAttribute("d", ICONS6[name]);
-    svg10.append(p);
-    return svg10;
+    svg11.append(p);
+    return svg11;
   }
   function activeTab2(route, searchOpen = false) {
     if (searchOpen) return "search";
@@ -13852,13 +13968,13 @@
     return inputFocused();
   }
   function applyState() {
-    const el2 = state15.el;
-    if (!el2) return;
+    const el3 = state15.el;
+    if (!el3) return;
     const hide = shouldHide();
-    if (el2.classList.contains("is-hidden") !== hide) el2.classList.toggle("is-hidden", hide);
-    el2.toggleAttribute("inert", hide);
+    if (el3.classList.contains("is-hidden") !== hide) el3.classList.toggle("is-hidden", hide);
+    el3.toggleAttribute("inert", hide);
     const active4 = state15.route ? activeTab2(state15.route, isPrimeSearchOpen()) : null;
-    for (const t of el2.querySelectorAll("[data-tab]")) {
+    for (const t of el3.querySelectorAll("[data-tab]")) {
       const on = t.dataset.tab === active4;
       t.classList.toggle("is-active", on);
       if (on) {
@@ -13902,7 +14018,7 @@
     },
     mount(route) {
       state15.route = route;
-      state15.el = mountPoint(ID11, { tag: "nav", className: "lfx-prime-tabbar" });
+      state15.el = mountPoint(ID12, { tag: "nav", className: "lfx-prime-tabbar" });
       build7();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
@@ -13939,7 +14055,7 @@
         state15.raf = 0;
       }
       for (const fn of state15.cleanups.splice(0)) fn();
-      unmountPoint(ID11);
+      unmountPoint(ID12);
       document.documentElement.classList.remove(HTML_CLASS2);
       state15.el = null;
       state15.route = null;
@@ -14035,13 +14151,13 @@
     info: '<circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10.9 10.5h2.2v7h-2.2zM10.9 6.3h2.2v2.2h-2.2z" fill="currentColor"/>'
   };
   function svgIcon2(name, cls) {
-    const svg10 = document.createElementNS(NS3, "svg");
-    svg10.setAttribute("viewBox", "0 0 24 24");
-    svg10.setAttribute("aria-hidden", "true");
-    svg10.setAttribute("focusable", "false");
-    if (cls) svg10.setAttribute("class", cls);
-    svg10.innerHTML = ICONS7[name] || "";
-    return svg10;
+    const svg11 = document.createElementNS(NS3, "svg");
+    svg11.setAttribute("viewBox", "0 0 24 24");
+    svg11.setAttribute("aria-hidden", "true");
+    svg11.setAttribute("focusable", "false");
+    if (cls) svg11.setAttribute("class", cls);
+    svg11.innerHTML = ICONS7[name] || "";
+    return svg11;
   }
   function createLogo(className) {
     return h("a", { class: className, href: "#/home", "aria-label": "LENZ//84 \u2013 Startseite", [LOGO_ATTR]: "" });
@@ -14053,17 +14169,17 @@
   function createClock() {
     const hh = h("span", { class: "lfx-retro-clock__h" });
     const mm = h("span", { class: "lfx-retro-clock__m" });
-    const el2 = h("time", { class: "lfx-retro-clock", "aria-label": "Uhrzeit" }, [hh, h("span", { class: "lfx-retro-clock__c" }, ":"), mm]);
+    const el3 = h("time", { class: "lfx-retro-clock", "aria-label": "Uhrzeit" }, [hh, h("span", { class: "lfx-retro-clock__c" }, ":"), mm]);
     let timer2 = 0;
     const tick = () => {
       const d = /* @__PURE__ */ new Date();
       hh.textContent = pad2(d.getHours());
       mm.textContent = pad2(d.getMinutes());
-      el2.setAttribute("datetime", formatClock(d));
+      el3.setAttribute("datetime", formatClock(d));
       timer2 = setTimeout(tick, 6e4 - (d.getSeconds() * 1e3 + d.getMilliseconds()) + 20);
     };
     tick();
-    return { el: el2, destroy() {
+    return { el: el3, destroy() {
       clearTimeout(timer2);
       timer2 = 0;
     } };
@@ -14074,30 +14190,30 @@
   };
   function createToggle(pref) {
     const cfg = TOGGLES[pref];
-    const el2 = h("button", {
+    const el3 = h("button", {
       type: "button",
       class: `lfx-retro-switch lfx-retro-switch--${pref}`,
       "aria-label": cfg.label,
       title: cfg.label
     }, [svgIcon2(cfg.icon)]);
-    const sync2 = () => {
+    const sync3 = () => {
       const on = getPref(pref);
-      el2.setAttribute("aria-pressed", on ? "true" : "false");
-      el2.classList.toggle("is-on", on);
+      el3.setAttribute("aria-pressed", on ? "true" : "false");
+      el3.classList.toggle("is-on", on);
     };
-    const onPrefs = () => sync2();
-    el2.addEventListener("click", () => {
+    const onPrefs = () => sync3();
+    el3.addEventListener("click", () => {
       togglePref(pref);
     });
     document.addEventListener(PREFS_EVENT, onPrefs);
-    sync2();
-    return { el: el2, sync: sync2, destroy() {
+    sync3();
+    return { el: el3, sync: sync3, destroy() {
       document.removeEventListener(PREFS_EVENT, onPrefs);
     } };
   }
 
   // src/js/features/retro/header.js
-  var ID12 = "lfx-retro-header";
+  var ID13 = "lfx-retro-header";
   var HTML_CLASS3 = "lfx-retro-header-on";
   var SCROLL_THRESHOLD3 = 10;
   var HOVER_GAP_MS = 140;
@@ -14114,11 +14230,11 @@
   function applyActive8() {
     if (!state16.el || !state16.route) return;
     const key = activeKey4(state16.route);
-    for (const el2 of state16.el.querySelectorAll("[data-key]")) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (on) el2.setAttribute("aria-current", "page");
-      else el2.removeAttribute("aria-current");
+    for (const el3 of state16.el.querySelectorAll("[data-key]")) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (on) el3.setAttribute("aria-current", "page");
+      else el3.removeAttribute("aria-current");
     }
   }
   function renderNav3() {
@@ -14132,10 +14248,10 @@
     applyActive8();
   }
   function profileIsOpen2() {
-    const el2 = document.getElementById("lfx-popover");
-    return isPopoverOpen() && Boolean(el2 && el2.classList.contains("lfx-retro-profile"));
+    const el3 = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el3 && el3.classList.contains("lfx-retro-profile"));
   }
-  async function toggleProfile2(btn2) {
+  async function toggleProfile2(btn3) {
     if (profileIsOpen2()) {
       closePopover({ restoreFocus: true });
       return;
@@ -14143,9 +14259,9 @@
     if (state16.busy) return;
     state16.busy = true;
     try {
-      const items = await profileEntries({ theme: "retro", returnFocus: btn2 });
-      if (!state16.el || !btn2.isConnected) return;
-      openPopover(btn2, { label: "Profil", items, align: "end", className: "lfx-retro-profile" });
+      const items = await profileEntries({ theme: "retro", returnFocus: btn3 });
+      if (!state16.el || !btn3.isConnected) return;
+      openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-retro-profile" });
     } finally {
       state16.busy = false;
     }
@@ -14223,7 +14339,7 @@
     mount(route) {
       const seq3 = ++state16.seq;
       state16.route = route;
-      state16.el = mountPoint(ID12, { tag: "header", className: "lfx-retro-header" });
+      state16.el = mountPoint(ID13, { tag: "header", className: "lfx-retro-header" });
       const { avatar } = build8();
       document.documentElement.classList.add(HTML_CLASS3);
       window.addEventListener("scroll", onScroll6, { passive: true });
@@ -14246,7 +14362,7 @@
       if (state16.raf) cancelAnimationFrame(state16.raf);
       state16.raf = 0;
       if (profileIsOpen2()) closePopover();
-      unmountPoint(ID12);
+      unmountPoint(ID13);
       document.documentElement.classList.remove(HTML_CLASS3);
       state16.el = null;
       state16.route = null;
@@ -14306,11 +14422,11 @@
     return entries;
   }
   var state17 = { root: null, top: null, route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
-  function paintToggle(btn2, pref) {
+  function paintToggle(btn3, pref) {
     const on = getPref(pref);
-    btn2.dataset.pref = pref;
-    btn2.setAttribute("aria-pressed", on ? "true" : "false");
-    btn2.textContent = `${PREF_LABEL[pref]}: ${on ? "AN" : "AUS"}`;
+    btn3.dataset.pref = pref;
+    btn3.setAttribute("aria-pressed", on ? "true" : "false");
+    btn3.textContent = `${PREF_LABEL[pref]}: ${on ? "AN" : "AUS"}`;
   }
   function syncSheetToggles() {
     const c = state17.sheet;
@@ -14321,11 +14437,11 @@
     if (!state17.root) return;
     const sheetOpen = Boolean(state17.sheet && isCurrent(state17.sheet));
     const key = sheetOpen ? "more" : tabKey2(state17.route);
-    for (const el2 of state17.root.querySelectorAll("[data-key]")) {
-      const on = el2.dataset.key === key;
-      el2.classList.toggle("is-active", on);
-      if (on) el2.setAttribute("aria-current", "page");
-      else el2.removeAttribute("aria-current");
+    for (const el3 of state17.root.querySelectorAll("[data-key]")) {
+      const on = el3.dataset.key === key;
+      el3.classList.toggle("is-active", on);
+      if (on) el3.setAttribute("aria-current", "page");
+      else el3.removeAttribute("aria-current");
     }
   }
   function closeMore() {
@@ -14479,15 +14595,15 @@
   var FIRST_KEY2 = "lfx-retro-hero-first";
   var MAX_NAME = 22;
   var reducedMotion5 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function setTitleText(el2, text) {
-    el2.textContent = "";
+  function setTitleText(el3, text) {
+    el3.textContent = "";
     const cut = text.lastIndexOf("_") + 1;
     const head = text.slice(0, cut);
     const tail = text.slice(cut);
     head.split(/(?<=_)/).filter(Boolean).forEach((seg) => {
-      el2.append(document.createTextNode(seg), document.createElement("wbr"));
+      el3.append(document.createTextNode(seg), document.createElement("wbr"));
     });
-    if (tail) el2.append(h("span", { class: "lfx-retro-hero__seg" }, tail));
+    if (tail) el3.append(h("span", { class: "lfx-retro-hero__seg" }, tail));
   }
   function titleSize(text) {
     const n = String(text || "").length;
@@ -14569,30 +14685,30 @@
       clearTimeout(t);
       timers.delete(t);
     };
-    const paused = () => hovering || !inView || document.hidden || document.documentElement.classList.contains("lfx-modal-open");
+    const paused2 = () => hovering || !inView || document.hidden || document.documentElement.classList.contains("lfx-modal-open");
     function scheduleRotate() {
       if (rotateTimer) clearLater(rotateTimer);
       rotateTimer = 0;
       if (disposed || pool.length < 2 || reducedMotion5()) return;
       rotateTimer = later(() => {
         rotateTimer = 0;
-        if (paused()) scheduleRotate();
+        if (paused2()) scheduleRotate();
         else show2((target + 1) % pool.length);
       }, ROTATE_MS3);
     }
     function typeText(text, myGen) {
-      const el2 = refs.title;
-      el2.textContent = "";
+      const el3 = refs.title;
+      el3.textContent = "";
       refs.heading.dataset.size = String(titleSize(text));
       if (reducedMotion5()) {
-        setTitleText(el2, text);
+        setTitleText(el3, text);
         return;
       }
       let n = 0;
       const step2 = () => {
         if (disposed || myGen !== gen8) return;
         n += 1;
-        setTitleText(el2, text.slice(0, n));
+        setTitleText(el3, text.slice(0, n));
         if (n % 3 === 1) emitFx("type");
         if (n < text.length) later(step2, TYPE_MS);
       };
@@ -14948,11 +15064,11 @@
           if (!def || rendered.has(def.id)) continue;
           rendered.add(def.id);
           const kind2 = displayKind2(def);
-          const el2 = skeleton3(def, kind2);
-          slot.append(el2);
-          pending.set(el2, { def, kind: kind2 });
-          if (observer2) observer2.observe(el2);
-          else loadRow(el2, def, kind2);
+          const el3 = skeleton3(def, kind2);
+          slot.append(el3);
+          pending.set(el3, { def, kind: kind2 });
+          if (observer2) observer2.observe(el3);
+          else loadRow(el3, def, kind2);
         }
       },
       ids: () => [...rendered],
@@ -15176,7 +15292,7 @@
     const sr = h("span", { class: "lfx-rt__sr" }, full);
     const typed = h("span", { class: "lfx-rt__typed", "aria-hidden": "true" });
     const rest = h("span", { class: "lfx-rt__rest", "aria-hidden": "true" }, full);
-    const el2 = h("p", { class: `${className} lfx-retro-caret`.trim() }, [sr, typed, rest]);
+    const el3 = h("p", { class: `${className} lfx-retro-caret`.trim() }, [sr, typed, rest]);
     let timer2 = null;
     let pos = 0;
     const tick = throttle(() => emitFx("type"), 110);
@@ -15184,18 +15300,18 @@
       typed.textContent = full.slice(0, pos);
       rest.textContent = full.slice(pos);
     };
-    const stop5 = () => {
+    const stop6 = () => {
       if (timer2) clearInterval(timer2);
       timer2 = null;
     };
     const finish3 = () => {
-      stop5();
+      stop6();
       pos = full.length;
       paint();
-      el2.classList.remove("lfx-retro-caret");
+      el3.classList.remove("lfx-retro-caret");
     };
     const start10 = () => {
-      stop5();
+      stop6();
       if (reducedMotion6() || full.length < 2) {
         finish3();
         return;
@@ -15210,7 +15326,7 @@
         if (pos >= full.length) finish3();
       }, TICK_MS);
     };
-    return { el: el2, start: start10, finish: finish3, stop: stop5 };
+    return { el: el3, start: start10, finish: finish3, stop: stop6 };
   }
 
   // src/js/features/retro/title-dom.js
@@ -15284,8 +15400,8 @@
     const src = imageUrl(ep, { type: "Primary", maxWidth: 480, quality: 80 }) || (landscapeFor(ep, 480) || {}).url || null;
     const mins = episodeRuntime(ep);
     const left = remainingLabel2(ep);
-    const num = ep.IndexNumber != null ? pad23(ep.IndexNumber) : "--";
-    const btn2 = h("button", {
+    const num2 = ep.IndexNumber != null ? pad23(ep.IndexNumber) : "--";
+    const btn3 = h("button", {
       type: "button",
       class: `lfx-rt__ep${selected ? " is-selected" : ""}${next ? " is-next" : ""}${played ? " is-played" : ""}`,
       dataset: { id: ep.Id },
@@ -15294,11 +15410,11 @@
         if (onPlay) onPlay(ep);
       }
     }, [
-      h("span", { class: "lfx-rt__ep-no", "aria-hidden": "true" }, num),
+      h("span", { class: "lfx-rt__ep-no", "aria-hidden": "true" }, num2),
       h("span", { class: "lfx-rt__ep-thumb", "aria-hidden": "true" }, src ? [h("img", { src, alt: "", loading: "lazy", decoding: "async" })] : []),
       h("span", { class: "lfx-rt__ep-label" }, [
         h("span", { class: "lfx-rt__ep-meta" }, [code, mins, left].filter(Boolean).join("  \xB7  ")),
-        h("span", { class: "lfx-rt__ep-title" }, ep.Name || `Folge ${num}`),
+        h("span", { class: "lfx-rt__ep-title" }, ep.Name || `Folge ${num2}`),
         ep.Overview ? h("span", { class: "lfx-rt__ep-text" }, ep.Overview) : null
       ]),
       h("span", { class: "lfx-rt__ep-reels", "aria-hidden": "true" }, [
@@ -15307,16 +15423,16 @@
       ]),
       next ? h("span", { class: "lfx-rt__ep-next" }, "N\xC4CHSTE") : null
     ]);
-    btn2.style.setProperty("--rt-fill", String(Math.round(fill3 * 100) / 100));
-    return h("li", { class: "lfx-rt__ep-item" }, [btn2]);
+    btn3.style.setProperty("--rt-fill", String(Math.round(fill3 * 100) / 100));
+    return h("li", { class: "lfx-rt__ep-item" }, [btn3]);
   }
 
   // src/js/features/retro/title-trailer.js
   var TRAILER_ID2 = "lfx-retro-trailer";
   function closeTrailer2() {
-    const el2 = document.getElementById(TRAILER_ID2);
-    if (!el2) return;
-    const v = el2.querySelector("video");
+    const el3 = document.getElementById(TRAILER_ID2);
+    if (!el3) return;
+    const v = el3.querySelector("video");
     if (v) {
       try {
         v.pause();
@@ -15325,14 +15441,14 @@
       } catch {
       }
     }
-    if (typeof el2.__lfxCleanup === "function") el2.__lfxCleanup();
-    unmountPoint(el2);
+    if (typeof el3.__lfxCleanup === "function") el3.__lfxCleanup();
+    unmountPoint(el3);
   }
   function openTrailer2(src, returnFocus) {
     closeTrailer2();
     const overlay = mountPoint(TRAILER_ID2, { className: "lfx-retro-trailer" });
     overlay.replaceChildren();
-    const video = h("video", { class: "lfx-retro-trailer__video", controls: true, autoplay: true, playsinline: true });
+    const video2 = h("video", { class: "lfx-retro-trailer__video", controls: true, autoplay: true, playsinline: true });
     const close2 = () => {
       closeTrailer2();
       emitFx("close");
@@ -15347,7 +15463,7 @@
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Trailer");
-    overlay.append(h("div", { class: "lfx-retro-trailer__tube" }, [h("p", { class: "lfx-retro-trailer__tag lfx-retro-label" }, "Trailer"), video]), closeBtn);
+    overlay.append(h("div", { class: "lfx-retro-trailer__tube" }, [h("p", { class: "lfx-retro-trailer__tag lfx-retro-label" }, "Trailer"), video2]), closeBtn);
     const onKey3 = (e) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
@@ -15363,15 +15479,15 @@
       window.removeEventListener("keydown", onKey3, true);
       overlay.removeEventListener("click", onBackdrop);
     };
-    video.addEventListener("error", () => {
+    video2.addEventListener("error", () => {
       emitFx("error");
       toast("Trailer konnte nicht abgespielt werden");
       close2();
     });
-    video.addEventListener("ended", close2);
-    video.src = src;
+    video2.addEventListener("ended", close2);
+    video2.src = src;
     try {
-      const p = video.play && video.play();
+      const p = video2.play && video2.play();
       if (p && p.catch) p.catch(() => {
       });
     } catch {
@@ -15420,7 +15536,7 @@
       h("a", { class: "lfx-retro-btn", href: "#/home" }, "Zur Startseite")
     ]);
   }
-  function btn(mod, label, onClick) {
+  function btn2(mod, label, onClick) {
     const b = h("button", { type: "button", class: `lfx-retro-btn lfx-rt__btn lfx-rt__btn--${mod}` }, label);
     b.addEventListener("click", (e) => {
       e.preventDefault();
@@ -15507,7 +15623,7 @@
     const typed = main.Overview ? createTyped(main.Overview, "lfx-rt__text") : null;
     const cast = buildCast(main);
     const progress = h("div", { class: "lfx-rt__progress", hidden: true });
-    const playBtn = btn("play", "Abspielen", async () => {
+    const playBtn = btn2("play", "Abspielen", async () => {
       let t = playInfo(main, c.nextUp);
       let item = t.target;
       if (isSeries && item === main) {
@@ -15524,7 +15640,7 @@
       if (item) await play(item, { resume: Boolean(t.resume) });
     });
     playBtn.classList.add("lfx-rt__btn--primary");
-    const restartBtn = btn("restart", "Neu starten", async () => {
+    const restartBtn = btn2("restart", "Neu starten", async () => {
       const info = playInfo(main, c.nextUp);
       if (info.target) await play(info.target, { resume: false });
     });
@@ -15545,18 +15661,18 @@
         progress.append(bar, h("span", { class: "lfx-rt__tapeleft" }, left || `${Math.round(info.progress)} %`));
       }
     };
-    const trailerBtn = btn("trailer", "Trailer", (b) => {
+    const trailerBtn = btn2("trailer", "Trailer", (b) => {
       if (c.trailerSrc) openTrailer2(c.trailerSrc, b);
     });
     trailerBtn.hidden = true;
-    const favBtn = btn("fav", "Meine Liste", async (b) => {
+    const favBtn = btn2("fav", "Meine Liste", async (b) => {
       b.disabled = true;
       const on = await toggleFavorite2(main);
       b.disabled = false;
       if (!stale()) setToggle(b, on, "Auf der Liste", "Meine Liste");
     });
     setToggle(favBtn, Boolean(main.UserData && main.UserData.IsFavorite), "Auf der Liste", "Meine Liste");
-    const seenBtn = btn("seen", "Gesehen", async (b) => {
+    const seenBtn = btn2("seen", "Gesehen", async (b) => {
       b.disabled = true;
       const on = await togglePlayed2(main, { anchorEl: b });
       b.disabled = false;
@@ -15565,11 +15681,11 @@
       if (isSeries) showSeason2();
     });
     setToggle(seenBtn, Boolean(main.UserData && main.UserData.Played), "Gesehen", "Als gesehen");
-    const dlBtn = btn("dl", isSeries ? "Folgen laden" : "Herunterladen", (b) => {
+    const dlBtn = btn2("dl", isSeries ? "Folgen laden" : "Herunterladen", (b) => {
       startDownloadFor(main, { anchorEl: b });
     });
     dlBtn.hidden = true;
-    const moreBtn = btn("more", "Mehr", (b) => {
+    const moreBtn = btn2("more", "Mehr", (b) => {
       openTitleMenu(main, b);
     });
     moreBtn.setAttribute("aria-haspopup", "menu");
@@ -16035,7 +16151,7 @@
   // src/js/features/retro/browse.js
   var ROOT_ID19 = "lfx-retro-browse";
   var ON_CLASS17 = "lfx-retro-browse-on";
-  var PAGE2 = 40;
+  var PAGE3 = 40;
   var VIEW_KEY = "lfx.retro.browseview";
   var SORTS = {
     name: { label: "NAME", by: "SortName", order: "Ascending" },
@@ -16155,7 +16271,7 @@
         SortOrder: sort.order,
         GenreIds: s.genreId || void 0,
         StartIndex: s.items.length,
-        Limit: PAGE2
+        Limit: PAGE3
       });
       if (stale()) return;
       const items = asItems10(res);
@@ -16163,7 +16279,7 @@
       s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       s.items.push(...items);
       for (const it of items) s.grid.append(itemNode(s, it));
-      s.done = items.length < PAGE2 || s.total != null && s.items.length >= s.total;
+      s.done = items.length < PAGE3 || s.total != null && s.items.length >= s.total;
       if (s.total == null) s.total = s.done ? s.items.length : null;
       if (!s.items.length) s.status.replaceChildren(h("p", { class: "lfx-rb__empty lfx-retro-caret" }, "DATEI NICHT GEFUNDEN"));
       else if (s.done) s.status.replaceChildren(h("p", { class: "lfx-rb__end" }, `${s.items.length} DATEI(EN)  \xB7  ENDE DES VERZEICHNISSES`));
@@ -16357,12 +16473,12 @@
   // src/js/features/retro/fx/crt.js
   var CRT_ID = "lfx-retro-crt";
   function createCrt() {
-    let el2 = null;
+    let el3 = null;
     let stripTimer = 0;
     let shakeTimer = 0;
     function mount2() {
-      if (el2 && el2.isConnected) return el2;
-      el2 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
+      if (el3 && el3.isConnected) return el3;
+      el3 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
         h("div", { class: "lfx-retro-crt__flicker" }),
         h("div", { class: "lfx-retro-crt__scan" }),
         h("div", { class: "lfx-retro-crt__mask" }),
@@ -16370,43 +16486,43 @@
         h("div", { class: "lfx-retro-crt__roll" }),
         h("div", { class: "lfx-retro-crt__strip" })
       ]);
-      document.body.append(el2);
-      return el2;
+      document.body.append(el3);
+      return el3;
     }
     function unmount2() {
       clearTimeout(stripTimer);
       clearTimeout(shakeTimer);
       stripTimer = shakeTimer = 0;
-      if (el2) el2.remove();
-      el2 = null;
+      if (el3) el3.remove();
+      el3 = null;
     }
-    function sync2(on) {
+    function sync3(on) {
       document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
       if (on) mount2();
       else unmount2();
     }
     function glitchStrip(ms = 180) {
-      if (!el2) return;
-      const strip = el2.querySelector(".lfx-retro-crt__strip");
+      if (!el3) return;
+      const strip = el3.querySelector(".lfx-retro-crt__strip");
       if (!strip) return;
       strip.style.top = `${Math.round(8 + Math.random() * 80)}%`;
       strip.style.height = `${Math.round(2 + Math.random() * 7)}%`;
-      el2.classList.add("is-strip");
+      el3.classList.add("is-strip");
       clearTimeout(stripTimer);
       stripTimer = setTimeout(() => {
-        if (el2) el2.classList.remove("is-strip");
+        if (el3) el3.classList.remove("is-strip");
       }, ms);
     }
     function shake(ms = 700) {
-      if (!el2) return;
-      el2.classList.add("is-shaking");
+      if (!el3) return;
+      el3.classList.add("is-shaking");
       clearTimeout(shakeTimer);
       shakeTimer = setTimeout(() => {
-        if (el2) el2.classList.remove("is-shaking");
+        if (el3) el3.classList.remove("is-shaking");
       }, ms);
     }
-    return { mount: mount2, unmount: unmount2, sync: sync2, glitchStrip, shake, get el() {
-      return el2;
+    return { mount: mount2, unmount: unmount2, sync: sync3, glitchStrip, shake, get el() {
+      return el3;
     } };
   }
 
@@ -16526,7 +16642,7 @@
     const bot = h("div", { class: "lfx-retro-boot__half lfx-retro-boot__half--bottom" });
     const line = h("div", { class: "lfx-retro-boot__line" });
     const hint = h("div", { class: "lfx-retro-boot__hint" }, "TASTE / TIPPEN ZUM \xDCBERSPRINGEN");
-    const el2 = h("div", { id: BOOT_ID, class: `lfx-retro-boot${reduced ? " is-reduced" : ""}`, role: "presentation", "aria-hidden": "true" }, [top, bot, text, line, hint]);
+    const el3 = h("div", { id: BOOT_ID, class: `lfx-retro-boot${reduced ? " is-reduced" : ""}`, role: "presentation", "aria-hidden": "true" }, [top, bot, text, line, hint]);
     let done = false;
     let name = "";
     let nameKnown = false;
@@ -16540,7 +16656,7 @@
     function cleanup() {
       timers.clearAll();
       for (const ev of skipEvents) document.removeEventListener(ev, skip, true);
-      el2.remove();
+      el3.remove();
     }
     function finish3() {
       if (done) return;
@@ -16588,11 +16704,11 @@
       opening = true;
       timers.clearAll();
       caret(false);
-      el2.classList.add("is-open");
+      el3.classList.add("is-open");
       timers.timeout(finish3, fast ? 420 : 640);
       timers.timeout(finish3, HARD_TIMEOUT_MS);
     }
-    document.body.append(el2);
+    document.body.append(el3);
     for (const ev of skipEvents) document.addEventListener(ev, skip, { capture: true, passive: false });
     timers.timeout(finish3, HARD_TIMEOUT_MS);
     try {
@@ -16603,7 +16719,7 @@
       for (const s of [`LENZ//84 BIOS ${BOOT_VERSION}`, "SPEICHERTEST ... 640K OK", "LADE MEDIATHEK ... OK", "BEREIT."]) addLine().textContent = s;
       timers.timeout(() => {
         caret(false);
-        el2.classList.add("is-open");
+        el3.classList.add("is-open");
       }, REDUCED_MS - 300);
       timers.timeout(finish3, REDUCED_MS);
       return { cancel() {
@@ -16646,13 +16762,13 @@
 
   // src/js/features/retro/fx/glitch.js
   var TARGETS = ".lfx-retro-glitch, #lfx-retro-home h1, .lfx-retro-hero__title, h1, h2.sectionTitle, .lfx-retro-label";
-  function inViewport(el2) {
-    const r = el2.getBoundingClientRect();
+  function inViewport(el3) {
+    const r = el3.getBoundingClientRect();
     if (!r.width || !r.height) return false;
     return r.bottom > 0 && r.top < (window.innerHeight || 800) && r.right > 0 && r.left < (window.innerWidth || 1200);
   }
   function pickTarget(root7 = document) {
-    const list = [...root7.querySelectorAll(TARGETS)].filter((el2) => !el2.closest("#videoOsdPage") && inViewport(el2));
+    const list = [...root7.querySelectorAll(TARGETS)].filter((el3) => !el3.closest("#videoOsdPage") && inViewport(el3));
     return list.length ? list[Math.floor(Math.random() * list.length)] : null;
   }
   function createGlitch({ crt, enabled: enabled2 = () => true, minMs = 2e4, maxMs = 4e4 }) {
@@ -16672,21 +16788,21 @@
         }
         crt.glitchStrip();
       }
-      schedule2();
+      schedule3();
     }
-    function schedule2() {
+    function schedule3() {
       if (running) timers.timeout(fire, rand(minMs, maxMs));
     }
     return {
       start() {
         if (running) return;
         running = true;
-        schedule2();
+        schedule3();
       },
       stop() {
         running = false;
         timers.clearAll();
-        for (const el2 of document.querySelectorAll(".is-glitching")) el2.classList.remove("is-glitching");
+        for (const el3 of document.querySelectorAll(".is-glitching")) el3.classList.remove("is-glitching");
       },
       fire
     };
@@ -17407,17 +17523,17 @@
     }
     function close2() {
       if (!alive) return;
-      const el2 = root7;
+      const el3 = root7;
       const back = opener;
       opener = null;
       emitFx("close");
       alive = false;
       releaseSleepers();
-      if (el2) el2.classList.remove("is-open");
+      if (el3) el3.classList.remove("is-open");
       document.documentElement.classList.remove("lfx-retro-term-open");
       timers.clearAll();
       timers.timeout(() => {
-        if (root7 === el2) teardown9();
+        if (root7 === el3) teardown9();
       }, 260);
       if (back && back.isConnected && typeof back.focus === "function") {
         try {
@@ -17455,11 +17571,11 @@
     let started2 = false;
     let active4 = false;
     let lastInput = Date.now();
-    let el2 = null;
+    let el3 = null;
     let canvas = null;
     let ctx2 = null;
     let titleEl = null;
-    let raf = 0;
+    let raf2 = 0;
     let lastFrame = 0;
     let drops = [];
     let cols = 0;
@@ -17496,9 +17612,9 @@
       }
     }
     function frame(now) {
-      raf = 0;
+      raf2 = 0;
       if (!active4 || !ctx2) return;
-      raf = requestAnimationFrame(frame);
+      raf2 = requestAnimationFrame(frame);
       if (document.hidden) return;
       const step = reduced ? FRAME_MS * 2 : FRAME_MS;
       if (now - lastFrame < step) return;
@@ -17542,9 +17658,9 @@
     function onVisibility() {
       if (!active4) return;
       if (document.hidden) {
-        cancelAnimationFrame(raf);
-        raf = 0;
-      } else if (!raf) raf = requestAnimationFrame(frame);
+        cancelAnimationFrame(raf2);
+        raf2 = 0;
+      } else if (!raf2) raf2 = requestAnimationFrame(frame);
     }
     function swallow(e) {
       if (e.cancelable) e.preventDefault();
@@ -17586,8 +17702,8 @@
       }
       ctx2 = c;
       titleEl = h("div", { class: "lfx-retro-rain__title", "aria-hidden": "true" });
-      el2 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
-      document.body.append(el2);
+      el3 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
+      document.body.append(el3);
       active4 = true;
       lastMove = null;
       nextFlash = Date.now() + 1500;
@@ -17595,7 +17711,7 @@
       for (const ev of activeEvents) window.addEventListener(ev, onActiveInput, { capture: true, passive: false });
       window.addEventListener("resize", onResize);
       document.addEventListener("visibilitychange", onVisibility);
-      raf = requestAnimationFrame(frame);
+      raf2 = requestAnimationFrame(frame);
       try {
         onStart(manual);
       } catch {
@@ -17605,13 +17721,13 @@
     function end() {
       if (!active4) return;
       active4 = false;
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
+      if (raf2) cancelAnimationFrame(raf2);
+      raf2 = 0;
       for (const ev of activeEvents) window.removeEventListener(ev, onActiveInput, true);
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibility);
-      if (el2) el2.remove();
-      el2 = canvas = ctx2 = titleEl = null;
+      if (el3) el3.remove();
+      el3 = canvas = ctx2 = titleEl = null;
       drops = [];
       lastInput = Date.now();
       try {
@@ -17637,7 +17753,7 @@
       window.addEventListener("click", onClickGuard, true);
       timers.interval(check2, 5e3);
     }
-    function stop5() {
+    function stop6() {
       end();
       if (started2) {
         for (const ev of idleEvents) window.removeEventListener(ev, noteInput, true);
@@ -17647,7 +17763,7 @@
       swallowClickUntil = 0;
       timers.clearAll();
     }
-    return { start: start10, stop: stop5, run, end, isActive: () => active4 };
+    return { start: start10, stop: stop6, run, end, isActive: () => active4 };
   }
 
   // src/js/features/retro/fx/index.js
@@ -17858,8 +17974,8 @@
     const html2 = document.documentElement;
     html2.classList.remove(OVERDRIVE_CLASS, NO_CRT_CLASS, "lfx-retro-term-open");
     for (const id of ["lfx-retro-crt", "lfx-retro-boot", "lfx-retro-terminal", "lfx-retro-rain", TOAST_ID]) {
-      const el2 = document.getElementById(id);
-      if (el2) el2.remove();
+      const el3 = document.getElementById(id);
+      if (el3) el3.remove();
     }
   }
   var fx_default = {
@@ -18005,10 +18121,10 @@
         StartIndex: start10,
         Limit: PAGE_SIZE2
       });
-      const page = asItems11(res);
-      out.push(...page);
+      const page2 = asItems11(res);
+      out.push(...page2);
       const total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
-      if (page.length < PAGE_SIZE2 || total !== null && out.length >= total) break;
+      if (page2.length < PAGE_SIZE2 || total !== null && out.length >= total) break;
     }
     return out;
   }
@@ -18037,11 +18153,11 @@
   }
 
   // src/js/features/store/hud.js
-  var svg9 = (p) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
+  var svg10 = (p) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
   var ICONS8 = {
-    search: svg9('<path d="M10 3a7 7 0 1 0 4.2 12.6l4.6 4.6 1.4-1.4-4.6-4.6A7 7 0 0 0 10 3zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/>'),
-    classic: svg9('<path d="M3 4h8v7H3zm10 0h8v7h-8zM3 13h8v7H3zm10 0h8v7h-8z"/>'),
-    enter: svg9('<path d="M4 3h9v2H6v14h7v2H4zm11.6 5.4L21.2 12l-5.6 3.6V13H9v-2h6.600z"/>')
+    search: svg10('<path d="M10 3a7 7 0 1 0 4.2 12.6l4.6 4.6 1.4-1.4-4.6-4.6A7 7 0 0 0 10 3zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/>'),
+    classic: svg10('<path d="M3 4h8v7H3zm10 0h8v7h-8zM3 13h8v7H3zm10 0h8v7h-8z"/>'),
+    enter: svg10('<path d="M4 3h9v2H6v14h7v2H4zm11.6 5.4L21.2 12l-5.6 3.6V13H9v-2h6.600z"/>')
   };
   function buttonKids(label, icon5) {
     const ic = h("span", { class: "lfx-store-btn__icon", "aria-hidden": "true" });
@@ -18063,8 +18179,8 @@
   var PROFILE_CLASS = "lfx-store-profile";
   var busy = false;
   function profileIsOpen3() {
-    const el2 = document.getElementById("lfx-popover");
-    return isPopoverOpen() && Boolean(el2 && el2.classList.contains(PROFILE_CLASS));
+    const el3 = document.getElementById("lfx-popover");
+    return isPopoverOpen() && Boolean(el3 && el3.classList.contains(PROFILE_CLASS));
   }
   function closeProfileMenu() {
     if (profileIsOpen3()) closePopover();
@@ -18086,19 +18202,19 @@
   }
   function profileButton() {
     let alive = true;
-    const btn2 = h("button", { type: "button", class: "lfx-store-avatar", "aria-label": "Profil", "aria-haspopup": "true" }, [
+    const btn3 = h("button", { type: "button", class: "lfx-store-avatar", "aria-label": "Profil", "aria-haspopup": "true" }, [
       h("span", { class: "lfx-store-avatar__initial", "aria-hidden": "true" }, "?")
     ]);
-    btn2.addEventListener("click", () => toggleProfileMenu(btn2));
+    btn3.addEventListener("click", () => toggleProfileMenu(btn3));
     getUserChip({ retries: 20, isAlive: () => alive }).then((chip) => {
       if (!alive) return;
-      btn2.replaceChildren();
-      if (chip.imageUrl) btn2.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
-      else btn2.append(h("span", { class: "lfx-store-avatar__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
-      if (chip.name) btn2.setAttribute("aria-label", `Profil: ${chip.name}`);
+      btn3.replaceChildren();
+      if (chip.imageUrl) btn3.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
+      else btn3.append(h("span", { class: "lfx-store-avatar__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
+      if (chip.name) btn3.setAttribute("aria-label", `Profil: ${chip.name}`);
     }).catch(() => {
     });
-    return { el: btn2, destroy() {
+    return { el: btn3, destroy() {
       alive = false;
     } };
   }
@@ -18305,9 +18421,9 @@
     }
     function upNextState() {
       try {
-        const el2 = osd(".upNextContainer");
-        if (!el2 || el2.classList.contains("hide")) return null;
-        const text = String(el2.textContent || "").replace(/\s+/g, " ").trim();
+        const el3 = osd(".upNextContainer");
+        if (!el3 || el3.classList.contains("hide")) return null;
+        const text = String(el3.textContent || "").replace(/\s+/g, " ").trim();
         const m = /(\d+)\s*Sek/i.exec(text) || /(\d+)/.exec(text);
         return { text, seconds: m ? Number(m[1]) : 0 };
       } catch {
@@ -18463,9 +18579,9 @@
     };
     const kindSel = (kind2) => kind2 === "audio" ? ".btnAudio" : ".btnSubtitles";
     async function openSheet2(kind2) {
-      const btn2 = osd(kindSel(kind2));
-      if (!btn2) return null;
-      btn2.click();
+      const btn3 = osd(kindSel(kind2));
+      if (!btn3) return null;
+      btn3.click();
       return await waitFor(sheetEl, 2e3) ? sheetEl() : null;
     }
     async function closeSheet() {
@@ -18558,7 +18674,7 @@
       }
       return null;
     }
-    async function stop5() {
+    async function stop6() {
       if (routeOf3() !== "video" && !find()) {
         if (routeOf3() !== "home") {
           try {
@@ -18611,7 +18727,7 @@
       tracks: (kind2) => queued(() => readTracks(kind2)),
       selectTrack: (kind2, id) => queued(() => select(kind2, id)),
       upNext: (action) => click(action === "start" ? ".btnStartNow" : ".btnHide"),
-      stop: stop5,
+      stop: stop6,
       dispose: dispose7
     };
   }
@@ -18630,11 +18746,11 @@
     stageEl = stage;
   }
   function unparkStage() {
-    const el2 = stageEl;
+    const el3 = stageEl;
     stageEl = null;
     const box = document.getElementById(PARK_ID);
     if (box) box.remove();
-    return el2;
+    return el3;
   }
 
   // src/js/features/store/home.js
@@ -18776,8 +18892,8 @@
       classicBtn,
       avatar.el
     ]);
-    const el2 = h("div", { id: ROOT_ID20, class: "lfx-store-home" }, [stage, loading, hud]);
-    return { root: el2, stage, loading, fill: fill3, label, hud, avatar, searchBtn };
+    const el3 = h("div", { id: ROOT_ID20, class: "lfx-store-home" }, [stage, loading, hud]);
+    return { root: el3, stage, loading, fill: fill3, label, hud, avatar, searchBtn };
   }
   function attachLoading() {
     if (!ui2) return;
@@ -18914,11 +19030,11 @@
         ui2.searchBtn.disabled = false;
         ui2.stage.classList.add("is-ready");
         ui2.loading.classList.add("is-done");
-        const el2 = ui2.loading;
+        const el3 = ui2.loading;
         clearTimeout(fadeTimer);
         fadeTimer = setTimeout(() => {
           fadeTimer = null;
-          el2.remove();
+          el3.remove();
         }, FADE_MS);
       }),
       onState: ret2((s) => saveState(s)),
@@ -19174,12 +19290,12 @@
     name: "store-bar",
     match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && !storeHomeRoute(route) && !blocked3(route),
     mount() {
-      const el2 = mountPoint(BAR_ID, { tag: "header", className: "lfx-store-bar" });
+      const el3 = mountPoint(BAR_ID, { tag: "header", className: "lfx-store-bar" });
       profile = profileButton();
       const enter = hudLink("lfx-store-btn--enter", "Videothek betreten", "enter", "#/home");
       const search = hudLink("lfx-store-btn--search", "Suche", "search", searchHref());
       const brand = h("a", { class: "lfx-store-bar__brand", href: "#/home", "aria-label": "VIDEOTHEK LENZ: Videothek betreten" }, [wordmark()]);
-      el2.replaceChildren(h("div", { class: "lfx-store-bar__inner" }, [brand, h("span", { class: "lfx-store-bar__spacer" }), enter, search, profile.el]));
+      el3.replaceChildren(h("div", { class: "lfx-store-bar__inner" }, [brand, h("span", { class: "lfx-store-bar__spacer" }), enter, search, profile.el]));
       document.documentElement.classList.add(BAR_CLASS);
     },
     update() {
@@ -19373,8 +19489,8 @@
   function buildUi2() {
     const stage = h("div", { class: "lfx-live-stage" });
     const { loading, fill: fill3, label, ch, bar } = buildLoading2();
-    const el2 = h("div", { id: ROOT_ID21, class: "lfx-live-home" }, [stage, loading]);
-    return { root: el2, stage, loading, fill: fill3, label, ch, bar };
+    const el3 = h("div", { id: ROOT_ID21, class: "lfx-live-home" }, [stage, loading]);
+    return { root: el3, stage, loading, fill: fill3, label, ch, bar };
   }
   function attachLoading2() {
     if (!ui3) return;
@@ -19404,20 +19520,20 @@
     clearTimeout(fadeTimer2);
     ui3.loading.remove();
     ui3.root.querySelector(".lfx-live-fallback")?.remove();
-    const btn2 = (text, onClick, primary = false) => {
+    const btn3 = (text, onClick, primary = false) => {
       const b = h("button", { type: "button", class: `lfx-live-fallback__btn${primary ? " lfx-live-fallback__btn--primary" : ""}` }, text);
       b.addEventListener("click", onClick);
       return b;
     };
     const actions = [];
-    if (retry) actions.push(btn2("Erneut versuchen", () => retryBoot2(), true));
-    actions.push(btn2("Design wechseln", () => {
+    if (retry) actions.push(btn3("Erneut versuchen", () => retryBoot2(), true));
+    actions.push(btn3("Design wechseln", () => {
       openThemePicker({});
     }, !retry));
-    actions.push(btn2(`Zu ${prevName()}`, () => {
+    actions.push(btn3(`Zu ${prevName()}`, () => {
       leaveToLibrary(null);
     }));
-    actions.push(btn2("Abmelden", () => logout()));
+    actions.push(btn3("Abmelden", () => logout()));
     const panel = h("div", { class: "lfx-live-fallback", role: "alert" }, [
       h("div", { class: "lfx-live-fallback__box" }, [
         h("h2", { class: "lfx-live-fallback__title" }, "LENZ LIVE"),
@@ -19455,11 +19571,11 @@
         setProgress3(1);
         ui3.stage.classList.add("is-ready");
         ui3.loading.classList.add("is-done");
-        const el2 = ui3.loading;
+        const el3 = ui3.loading;
         clearTimeout(fadeTimer2);
         fadeTimer2 = setTimeout(() => {
           fadeTimer2 = null;
-          el2.remove();
+          el3.remove();
         }, FADE_MS2);
       }),
       onFatal: ret2(onFatal)
@@ -19643,7 +19759,7 @@
   var liveFeatures = [home_default6, guard_default];
 
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, osdcenter_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
 
   // src/js/main.js
   var WATCH_MS = 1e3;
@@ -19679,7 +19795,7 @@
       destroyLayout();
       stopTheme();
     }
-    function sync2() {
+    function sync3() {
       if (destroyed) return;
       if (cssActive()) {
         startTheme();
@@ -19700,16 +19816,16 @@
     watchTimer = setInterval(() => {
       if (++fastN >= FAST_TICKS) {
         clearInterval(watchTimer);
-        watchTimer = setInterval(sync2, WATCH_MS);
+        watchTimer = setInterval(sync3, WATCH_MS);
       }
-      sync2();
+      sync3();
     }, FAST_MS);
-    window.addEventListener("hashchange", sync2);
-    sync2();
+    window.addEventListener("hashchange", sync3);
+    sync3();
     function destroy() {
       destroyed = true;
       clearInterval(watchTimer);
-      window.removeEventListener("hashchange", sync2);
+      window.removeEventListener("hashchange", sync3);
       stopFeatures();
       destroyTheme();
       removeFavicon();

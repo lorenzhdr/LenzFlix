@@ -75,16 +75,12 @@ describe('info', () => {
     expect(ctl.stop).not.toHaveBeenCalled();
   });
 
-  it('Bild-in-Bild ruft pip.toggle und ist ohne Unterstützung ausgeblendet', () => {
+  it('hat keinen eigenen Bild-in-Bild-Knopf (nur in der Player-Leiste)', () => {
     const { info, pip } = make();
     info.update(snap);
-    const b = q(info, '.lfx-tvm__btn--info-pip');
-    expect(b.hidden).toBe(false);
-    b.click();
-    expect(pip.toggle).toHaveBeenCalled();
-    pip.supported.mockReturnValue(false);
-    info.update({ ...snap });
-    expect(b.hidden).toBe(true);
+    expect(q(info, '.lfx-tvm__btn--info-pip')).toBeNull();
+    expect(info.el.querySelectorAll('.lfx-tvm__info-actions .lfx-tvm__btn')).toHaveLength(2);
+    expect(pip.toggle).not.toHaveBeenCalled();
   });
 
   it('Sendepause/Füller: Knöpfe deaktiviert und ausgeblendet', () => {

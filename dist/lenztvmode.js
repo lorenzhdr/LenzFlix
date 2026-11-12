@@ -3584,13 +3584,11 @@
   var SVG_NS = "http://www.w3.org/2000/svg";
   var ICONS = {
     restart: "M12 5V2L7 6.5 12 11V8a5 5 0 1 1-5 5H5a7 7 0 1 0 7-8Z",
-    details: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z",
-    pip: "M19 7H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Zm0 10h-6v-4h6v4Z"
+    details: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z"
   };
   function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } = {}) {
     const getNow = typeof opts.getNow === "function" ? opts.getNow : () => Date.now();
     const details = opts.details || null;
-    const pip = opts.pip || null;
     const offs = [];
     let snap = null;
     let key = "";
@@ -3646,8 +3644,7 @@
     const actions = mk("div", "lfx-tvm__info-actions");
     const restartBtn = btn("lfx-tvm__btn--primary lfx-tvm__btn--restart", "Von vorne", "restart");
     const detailsBtn = btn("lfx-tvm__btn--ghost lfx-tvm__btn--details", "Details", "details");
-    const pipBtn = btn("lfx-tvm__btn--ghost lfx-tvm__btn--info-pip", "Bild-in-Bild", "pip");
-    actions.append(restartBtn, detailsBtn, pipBtn);
+    actions.append(restartBtn, detailsBtn);
     el.append(head, titleEl, subEl, metaEl, bar, textEl, moreBtn, nextEl, actions);
     function syncMore() {
       if (destroyed) return;
@@ -3683,9 +3680,6 @@
       if (!target || !target.itemId) return;
       if (typeof deps.openDetails === "function") deps.openDetails(target.itemId);
     });
-    pipBtn.addEventListener("click", () => {
-      if (pip) pip.toggle();
-    });
     function channelOf(no, t) {
       try {
         const list = model.channels(broadcastDayOf(t));
@@ -3706,7 +3700,6 @@
       if (!entry) {
         key = "";
         for (const b of [restartBtn, detailsBtn]) b.disabled = true;
-        pipBtn.hidden = !(pip && pip.supported());
         return;
       }
       const t = getNow();
@@ -3745,7 +3738,6 @@
       detailsBtn.disabled = !can2;
       restartBtn.hidden = !can2 && (d.kind === "filler" || d.kind === "closedown");
       detailsBtn.hidden = restartBtn.hidden;
-      pipBtn.hidden = !(pip && pip.supported());
       fitActions();
     }
     if (details) offs.push(details.on(() => render()));
@@ -5109,7 +5101,7 @@
       if (infoCard && typeof infoCard.open === "function") infoCard.open(...a);
     };
     const playerView = createPlayerView({ ...base, opts: { ...common, video, pip, digits, fullscreen: fsProxy, onInfo } });
-    const info = createInfo({ ...base, opts: { ...common, pip } });
+    const info = createInfo({ ...base, opts: common });
     const list = createChannelList({ ...base, opts: { ...common, onInfo } });
     const epg = createEpgGrid({ ...base, opts: { ...common, onInfo } });
     infoCard = createInfoCard({ ...base, opts: { ...common, onInfo } });

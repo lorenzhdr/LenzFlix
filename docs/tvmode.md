@@ -246,7 +246,7 @@ Alle Dateien der Tabelle sind umgesetzt (Spalte „Welle“ = Entstehungshistori
 | `app.js` | E | Gerüst/Grid, Root-Modifier (`is-phone`, `is-landscape`, `is-touch`, `is-on`, `is-playing`, `is-paused-card`, `is-error`, `is-pip`, `is-fullscreen`, `is-tab-*`), `matchMedia`, Tabs (`__tabs`, nur Handy), `bindModel`, Verdrahtung aller Komponenten, Toast, Info-Karte öffnen/schließen |
 | `pip.js` | E | Bild-in-Bild-Steuerung (`createPip`), Halter `#lfx-tvm-bg`, Umhängen, `isPip` |
 | `keys.js` | E | Tastatur: ↑/↓ (und PageUp/Down) zappen, Ziffern (`createDigits`), `M` Stumm, `F` Vollbild; greift nur, wenn der Fokus im Root oder auf `body` liegt und `deps.keysBlocked()` nicht gilt |
-| `info.js` | E | Info unter dem Player (`__info`) inkl. Knöpfen [Von vorne] [Details] [Bild-in-Bild]; Aktionen über `deps.playFromStart(itemId)`/`deps.openDetails(itemId)` (Ziel = `ctl.restartTarget().itemId`) und `opts.pip.toggle()` |
+| `info.js` | E | Info unter dem Player (`__info`) inkl. Knöpfen [Von vorne] [Details] (seit 1.10.1 ohne eigenen Bild-in-Bild-Knopf); Aktionen über `deps.playFromStart(itemId)`/`deps.openDetails(itemId)` (Ziel = `ctl.restartTarget().itemId`) |
 | `player-view.js` | F | `<video>`-Slot (`opts.video`), Ladezustand, Zustandskarten, „Ton an“, PiP-Karte „Läuft im Bild-in-Bild“, **Zapp-Einblendung** (≈ 4 s), **Wischgesten** (nur Touch: hoch = `ctl.zap(1)`, runter = `ctl.zap(-1)`), Ziffernanzeige, Klick/Tippen blendet Bedienung ein (`is-controls`) |
 | `controls.js` | F | Leiste: Stumm/Lautstärke, Ton/Untertitel-Knopf, **Bild-in-Bild-Knopf `--pip`**, Vollbild |
 | `track-menu.js` | F | Popover für Ton- und Untertitelwahl |
@@ -310,7 +310,7 @@ Zustände, die F selbst verwaltet, stehen **am Element `.lfx-tvm__player`** (F d
   .lfx-tvm__toast                    // kurzer Hinweis (ctl 'message')
 ```
 **Desktop-Layout (final, Nutzerentscheidung):** Player 16:9 links, Senderliste rechts (Zeile = Nummer, Sender-Badge, kleines 16:9-Bild, Titel, Fortschritt, „Danach“), unter dem Player der
-Info-Bereich mit den Knöpfen [Von vorne] [Details] [Bild-in-Bild], darunter direkt das EPG-Raster über die volle Breite **ohne Tabs**, mit Tagesauswahl (7 Tage) und „Jetzt“-Knopf.
+Info-Bereich mit den Knöpfen [Von vorne] [Details] (Bild-in-Bild nur in der Player-Leiste), darunter direkt das EPG-Raster über die volle Breite **ohne Tabs**, mit Tagesauswahl (7 Tage) und „Jetzt“-Knopf.
 Umsetzung: `.lfx-tvm__stage` Grid mit zwei Spalten `minmax(0, 1fr) clamp(320px, 30vw, 440px)`, `gap: var(--lfx-gutter)`; `__main` links, `__side` rechts
 (Höhe an `__main` gebunden, Liste scrollt intern); `__epg` darunter über die volle Breite (`grid-column: 1 / -1`); `__tabs` ist auf dem Desktop `display:none`, Liste und EPG sind immer sichtbar.
 **Handy hochkant** (`is-phone`): eine Spalte; `__player` `position: sticky; top: var(--lfx-header-h)` (16:9), darunter `__info`, dann `__tabs` ([Jetzt im TV] [Programm], nur Handy), dann je nach Tab
@@ -348,10 +348,10 @@ Root-Hintergrund `var(--lfx-bg)`, oberer Abstand für die Kopfleiste `var(--lfx-
   .lfx-tvm__info-bar > .lfx-tvm__info-fill
   .lfx-tvm__badges > .lfx-tvm__badge // describe/badges: „Premiere“, „Neue Folge“, „Wdh.“, „ab 16“
   .lfx-tvm__info-text                // kurze Inhaltsangabe (opts.details, lazy über deps.itemDetails)
-  .lfx-tvm__info-actions             // .lfx-tvm__btn.lfx-tvm__btn--restart „Von vorne“, --details „Details“, --info-pip „Bild-in-Bild“
+  .lfx-tvm__info-actions             // .lfx-tvm__btn.lfx-tvm__btn--restart „Von vorne“, --details „Details“
 ```
 Knöpfe `--restart`/`--details` sind deaktiviert (`disabled`), wenn `ctl.restartTarget()` null ist (Pause/Sendeschluss); Aktionen: `deps.playFromStart(target.itemId)` bzw. `deps.openDetails(target.itemId)`.
-`--info-pip` ruft `opts.pip.toggle()` und ist ausgeblendet, wenn `!pip.supported()`. (Der Knopf `--pip` in der Leiste `controls.js` ist ein anderer, F gehört; die Klassen sind bewusst verschieden.)
+Seit 1.10.1 gibt es unter dem Player keinen eigenen Bild-in-Bild-Knopf mehr (Nutzerwunsch): Bild-in-Bild nur über `--pip` in der Leiste (`controls.js`).
 
 ### Senderliste (G, `channel-list.js`)
 ```
