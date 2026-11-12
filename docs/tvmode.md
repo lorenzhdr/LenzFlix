@@ -85,7 +85,7 @@ Pflicht (wie LIVE, `docs/live.md`): `catalog`, `user`, `server`, `request`, `str
   imageUrl(id, { type?, maxWidth?, … }) → string,   // aus buildApiDeps (= core/api.js imageUrlFor); URL ohne api_key/Token (siehe „Bilder“)
   itemDetails(ids: string[]) → Promise<Map<id,{overview:string}>>,   // aus buildApiDeps (eine Anfrage, Fehler → leere Map); fehlt es, entfällt die Inhaltsangabe
   savePrefs(partial),                                // { volume, muted, lastChannel } → Hülle speichert pro Nutzer (lfx.tvm.<name>.<uid>)
-  openDetails(itemId),                               // flix: openModal (Stop/Resume macht die Hülle), plus/prime: titleHref (= Verlassen)
+  openDetails(itemId),                               // alle Designs: openModal(id, {overlay:true}) – Karte über dem weiterlaufenden TV (Bild und Ton laufen weiter)
   playFromStart(itemId),                             // TV-Stopp ist bereits erfolgt; Jellyfin-Player ab Anfang über core/playback.js play(item,{resume:false})
   keysBlocked() → boolean,                           // optional: Picker/Popover/Modal offen → keys.js greift nicht
   toast(text),                                       // optional
@@ -487,3 +487,9 @@ Live getestet am 12.11.2026 (Testkonto, Chrome Desktop und 390-px-iframe, Screen
 Controller (Zappen, Offset, Sync, Füller/Sendeschluss, Gesehen, Autoplay, Aufräumen ActiveEncodings), Modell (`gridRows` über 05:00, `nowAll`), Hülle (match/mount/unmount/teardown,
 PiP-Ausnahme, keine Fortschrittsmeldung, Design-Matching, Umleitung), Importgrenzen-Test (Engine importiert nur `src/js/live/**`; Hülle/core/shared nie daraus),
 Token-Test (nur Kern-`--lfx-*`), Build-Wächter. `// @vitest-environment jsdom` pro Datei, keine Netzwerkzugriffe.
+
+## Details-Karte (seit 1.11.1)
+- „Details“ (Info-Bereich, Info-Karte) öffnet in flix, plus und prime die Detailkarte (`features/modal.js`) als Overlay über dem laufenden TV: `openModal(id, { overlay: true })`. Der TV wird weder gestoppt noch neu gestartet, Bild und Ton laufen weiter (die frühere Stopp/Resume-Logik in `features/tvmode/page.js` ist entfernt).
+- Die Tasten bleiben gesperrt (`BLOCK` enthält `.lfx-modal-open`), damit Zappen nicht im Modal greift.
+- plus/prime zeigen die Karte im Look des Designs (`src/css/themes/plus|prime/modal.css`) und im Fuß einen Link „Zur Titelseite“ (schließt, dann `titleHref`). Das Verlassen der Seite stoppt den TV wie üblich.
+- „Abspielen“ in der Karte geht über `core/playback.js` und feuert `lfx:play`; die Engine (`live/tvmode/entry.js`) stoppt dann den TV.

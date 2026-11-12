@@ -174,7 +174,7 @@ describe('Start', () => {
     await flush();
     Object.defineProperty(ctx.video, 'error', { value: { code: 4 }, configurable: true });
     fire(ctx.video, 'error');
-    expect(await p).toMatchObject({ ok: false, reason: 'video', code: 'M4' });
+    expect(await p).toMatchObject({ ok: false, reason: 'video', code: 'M4·D' });
   });
 
   it('unlock(): play() synchron im Aufruf, Rejection wird geschluckt', async () => {
@@ -474,6 +474,6 @@ describe('Autoplay-Sperre (NotAllowedError)', () => {
     const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
     await flush();
     fire(ctx.video, 'loadedmetadata');
-    expect(await p).toMatchObject({ ok: false, reason: 'browser', code: 'B-PLAY' });
+    expect(await p).toMatchObject({ ok: false, reason: 'browser', code: 'B-PLAY·D' });
   });
 });

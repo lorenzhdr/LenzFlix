@@ -510,17 +510,17 @@ describe('Lautstärke und Ton', () => {
     expect(env.ctl.state()).toMatchObject({ mutedByPolicy: false, muted: false });
   });
 
-  it('iOS (volumeSupported=false): nur stumm schaltbar, Hinweis, Pegel bleibt', () => {
+  it('iOS (volumeSupported=false): Regler bleibt, 0 → stumm, ab 5 Ton an, kein Hinweis, video.volume bleibt 1', () => {
     const env = makeEnv({ player: { volumeSupported: false } });
     const msgs = [];
     env.ctl.on('message', (m) => msgs.push(m));
-    expect(env.ctl.volumeSupported).toBe(false);
+    expect(env.ctl.volumeSupported).toBe(true);
+    env.ctl.setVolume(0);
+    expect(env.ctl.state()).toMatchObject({ volume: 0, muted: true });
     env.ctl.setVolume(30);
-    expect(env.ctl.state()).toMatchObject({ volume: 100, muted: true });
-    expect(msgs).toEqual(['Lautstärke lässt sich hier nur stumm schalten']);
-    env.ctl.setVolume(100);
-    expect(env.ctl.state().muted).toBe(false);
-    expect(env.ctl.state().volume).toBe(100);
+    expect(env.ctl.state()).toMatchObject({ volume: 30, muted: false });
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
+    expect(msgs).toEqual([]);
   });
 
   it('Ton- und Untertitelwahl werden an den Player weitergereicht', async () => {

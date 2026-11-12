@@ -28,6 +28,7 @@
 
 ## Öffentliche Funktionen zwischen Features
 - `openModal(itemOrId)` aus `src/js/features/modal.js` (Platzhalter navigiert zur Detailseite).
+  - Option `{ overlay: true }`: öffnet die Karte auch unter plus/prime als Overlay (statt Weiterleitung auf `titleHref`); bleibt für alle Öffnungen innerhalb dieses Modals bestehen, ergänzt unter plus/prime den Fußlink „Zur Titelseite“. Nutzer: TV-Modus „Details“ (`docs/tvmode.md`). Am Handy (< 800 px) hält das Modal die Seite per `body{position:fixed}` fest und löst die Sperre in `teardown()` vor dem Entfernen des Overlays.
 - `play(item, {resume})` aus `src/js/core/playback.js` (Proxy-Klick; funktioniert auch, wenn die nativen Home-Sektionen per CSS `display:none` sind – der Container muss nur im DOM sein).
 - `setAmbient(r,g,b)` aus `src/js/core/ambient.js`.
 - `setFavorite(id,bool)` aus `src/js/core/api.js`; Likes: `POST /Users/{userId}/Items/{id}/Rating?likes=true|false`, `DELETE …/Rating`.

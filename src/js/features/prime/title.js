@@ -311,7 +311,6 @@ const empty = (text) => h('p', { class: 'lfx-pt__empty' }, text);
 function fillEpisodes(s, main, panel, sel) {
   let seasons = [];
   let seq = 0;
-  let firstReveal = Boolean(sel.episodeId);
 
   async function showSeason(seasonId) {
     const mine = ++seq;
@@ -328,13 +327,6 @@ function fillEpisodes(s, main, panel, sel) {
     if (!eps.length) { slot.replaceChildren(empty('Keine Folgen vorhanden.')); return; }
     const onPlay = (ep) => play(ep, { resume: hasResume(ep) });
     slot.replaceChildren(...eps.map((ep) => buildEpisode(ep, { onPlay, selected: ep.Id === sel.episodeId })));
-    if (firstReveal) {
-      firstReveal = false;
-      const row = slot.querySelector('.is-selected');
-      if (row && typeof row.scrollIntoView === 'function') {
-        try { row.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' }); } catch { /* egal */ }
-      }
-    }
   }
 
   return (async () => {

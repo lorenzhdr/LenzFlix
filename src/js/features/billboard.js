@@ -14,8 +14,9 @@ import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
 import { buildPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
 
 export const ROTATE_MS = 10000;
-export const TRAILER_MIN_IMAGE_MS = 5000; // Titelbild steht mindestens so lange, bevor der Trailer eingeblendet wird
+export const TRAILER_MIN_IMAGE_MS = 3000; // Titelbild steht mindestens so lange, bevor der Trailer eingeblendet wird
 export const TRAILER_BUFFER_S = 6; // so viel Vorlauf gilt als „abspielbereit“ (zusätzlich zu canplaythrough)
+export const TRAILER_STALL_MS = 1500; // ohne Pufferfortschritt so lange -> play() trotzdem versuchen (iOS puffert ohne play() nicht)
 export const TRAILER_WAIT_MAX_MS = 25000; // so lange hält die Rotation für einen ladenden Trailer an
 export const ROWS_WAIT_MAX_MS = 8000; // Trailer lädt spätestens dann vor, auch ohne „lfx:rows-ready“
 const ROWS_READY_EVENT = 'lfx:rows-ready';
@@ -315,7 +316,7 @@ export function render(slot) {
     startTrailer(sl);
   }
 
-  /** Trailer unsichtbar und stumm vorladen; sichtbar erst, wenn das Bild >= 5 s stand UND er abspielbereit ist. */
+  /** Trailer unsichtbar und stumm vorladen; sichtbar erst, wenn das Bild >= 3 s stand UND er abspielbereit ist. */
   async function startTrailer(sl) {
     try {
       const t = await loadLocalTrailer(sl.item);
@@ -356,10 +357,26 @@ export function render(slot) {
         if (wait > 0) sl.revealTimer = later(reveal, wait);
         else reveal();
       };
+      // Rückfall (iOS-Safari puffert ohne play() nicht): nach der Mindestzeit und TRAILER_STALL_MS ohne
+      // Fortschritt trotzdem play() (stumm, playsinline); eingeblendet wird erst bei „playing“, bei Ablehnung gibt end() auf.
+      let lastProgress = Date.now();
+      const touch = () => { lastProgress = Date.now(); };
+      const stallCheck = () => {
+        if (sl.ready || video !== v || sl.gen !== gen || disposed) return;
+        if (v.readyState < 3 && Date.now() - lastProgress >= TRAILER_STALL_MS) {
+          sl.ready = true;
+          reveal();
+          return;
+        }
+        later(stallCheck, 500);
+      };
       v.addEventListener('ended', end);
       v.addEventListener('error', end);
-      v.addEventListener('canplaythrough', () => check(true));
-      for (const ev of ['canplay', 'loadeddata', 'progress', 'durationchange']) v.addEventListener(ev, () => check());
+      v.addEventListener('canplaythrough', () => { touch(); check(true); });
+      for (const ev of ['canplay', 'loadeddata', 'loadedmetadata', 'progress', 'durationchange']) {
+        v.addEventListener(ev, () => { touch(); check(); });
+      }
+      later(stallCheck, Math.max(0, sl.imgAt + TRAILER_MIN_IMAGE_MS - Date.now()));
       v.src = trailerUrl(t.Id);
       video = v;
       media.append(v);

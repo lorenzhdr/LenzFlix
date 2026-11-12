@@ -180,6 +180,9 @@ export function createApp(host, { scheduler, ctl, video, pip = null, deps = {}, 
   function measureHead() {
     if (!root || !root.isConnected) return;
     try {
+      // Gesperrter Body (Info-Karte am Handy: position:fixed, scrollY = 0) liefert falsche Werte → nicht messen.
+      const body = win.document && win.document.body;
+      if (body && body.style.position === 'fixed') return;
       const head = probe.getBoundingClientRect().height || parseFloat(win.getComputedStyle(root).getPropertyValue('--lfx-tvm-head')) || 0;
       const top = root.getBoundingClientRect().top + (win.scrollY || win.pageYOffset || 0);
       const pad = Math.max(0, Math.round(head - top));

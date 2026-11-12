@@ -97,9 +97,14 @@ export function createOsd(container, { doc = document, win = window } = {}) {
       fill.style.width = `${Math.round(Math.max(0, Math.min(1, f)) * 100)}%`;
     },
 
-    /** Erweitertes OSD; erneuter Aufruf bei sichtbarem Info schließt es. */
+    /** Erweitertes OSD; erneuter Aufruf bei sichtbarem Info schließt Info UND Kanalnummer/Titel (Lautstärke/Meldung bleiben). */
     showInfo(data) {
-      if (el.classList.contains('is-info')) { this.hideInfo(); return; }
+      if (el.classList.contains('is-info')) {
+        this.hideInfo();
+        win.clearTimeout(T.ch);
+        el.classList.remove('is-ch');
+        return;
+      }
       infoTitle.textContent = data.title || '';
       infoSub.textContent = data.sub || '';
       infoMeta.textContent = (data.meta || []).join(' · ');

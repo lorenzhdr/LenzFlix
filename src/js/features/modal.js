@@ -89,18 +89,20 @@ export function openModal(itemOrId, opts = {}) {
     return Promise.resolve();
   }
   // Designs ohne Modal (plus/prime): eigene Titelseite. Theme noch offen (null) -> Standardverhalten (Modal).
+  // opts.overlay (TV-Modus): Karte trotzdem als Overlay öffnen; gilt für alle Öffnungen in diesem Modal.
   const theme = getTheme();
-  if (theme && theme !== 'flix') {
+  if (opts.overlay && state) state.overlayMode = true;
+  if (theme && theme !== 'flix' && !opts.overlay && !(state && state.overlayMode)) {
     location.hash = titleHref(id);
     return Promise.resolve();
   }
   const hint = typeof itemOrId === 'object' ? itemOrId : null;
   if (state) return loadInto(id, hint, true);
-  create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null));
+  create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay));
   return loadInto(id, hint, false);
 }
 
-function create(opener) {
+function create(opener, overlayMode = false) {
   const overlay = mountPoint(ROOT_ID, { className: 'lfx-modal-overlay' });
   overlay.replaceChildren();
   const closeBtn = h('button', { type: 'button', class: 'lfx-modal__close', 'aria-label': 'Schließen', title: 'Schließen', onclick: () => closeModal() }, [icon('close')]);
@@ -116,9 +118,10 @@ function create(opener) {
   };
   overlay.addEventListener('click', onOverlayClick);
 
-  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
   state.unsub = onItemsChanged(onChanged);
   if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 799px)').matches) {
+    lockScroll(state);
     // Handy: Modal per Wischgeste nach unten schließen (nur am Anfang des Inhalts, nicht über Menü/Auswahl).
     state.detachSwipe = attachSwipeClose(modal, {
       backdrop: overlay,
@@ -138,6 +141,34 @@ function create(opener) {
   closeBtn.focus({ preventScroll: true });
 }
 
+/** Handy: Seite per position:fixed an Ort und Stelle halten (iOS setzt sonst scrollY zurück, beim Wischen scheint die falsche Stelle durch). */
+function lockScroll(s) {
+  const b = document.body;
+  if (!b) return;
+  const st = b.style;
+  const y = s.scrollY;
+  s.lock = { y, pos: st.position, top: st.top, left: st.left, right: st.right, width: st.width };
+  st.position = 'fixed';
+  st.top = `-${y}px`;
+  st.left = '0';
+  st.right = '0';
+  st.width = '100%';
+}
+
+/** Sperre lösen und Position setzen, solange das Overlay noch da ist (kein Frame bei scrollY 0). */
+function unlockScroll(s) {
+  const l = s.lock;
+  if (!l) return;
+  s.lock = null;
+  const st = document.body.style;
+  st.position = l.pos;
+  st.top = l.top;
+  st.left = l.left;
+  st.right = l.right;
+  st.width = l.width;
+  window.scrollTo(0, l.y);
+}
+
 function teardown() {
   if (!state) return null;
   const s = state;
@@ -149,6 +180,7 @@ function teardown() {
   document.removeEventListener('keydown', onKeydown, true);
   window.removeEventListener('popstate', onPopState);
   window.removeEventListener('hashchange', onHashChange);
+  unlockScroll(s);
   rootEl().classList.remove('lfx-modal-open');
   unmountPoint(s.overlay);
   const op = s.opener;
@@ -284,6 +316,13 @@ async function loadInto(id, hint, replace, refresh = false) {
   const isSeries = main.Type === 'Series';
   const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? 'Fortsetzen' : 'Abspielen' });
   s.parts = parts;
+  if (s.overlayMode && getTheme() && getTheme() !== 'flix') {
+    // plus/prime: Overlay statt Titelseite -> Weg zur Titelseite anbieten
+    const tHref = titleHref(main.Id);
+    const link = h('a', { class: 'lfx-modal__link lfx-modal__link--title', href: tHref, onclick: (e) => { e.preventDefault(); H.navigate(tHref); } }, 'Zur Titelseite');
+    const footer = parts.el.querySelector('.lfx-modal__footer');
+    if (footer) footer.prepend(link, ' · ');
+  }
   s.content.replaceChildren(parts.el);
   if (!refresh) s.overlay.scrollTop = 0;
 

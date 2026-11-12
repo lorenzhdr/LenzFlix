@@ -1,0 +1,39 @@
+/* LENZPRIME · Detailkarte (#lfx-modal, z. B. über dem TV-Modus): nur Aussehen an die Titelseite angleichen, kein Layout-Umbau. */
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal.lfx-modal-overlay {
+  background: rgba(0, 5, 13, 0.8);
+  font-family: var(--lfx-font);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal {
+  background: #17191c;
+  border-radius: 12px;
+  box-shadow: var(--lfx-prime-shadow);
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__play {
+  height: 52px;
+  padding: 8px 21px;
+  border-radius: 8px;
+  background: #fff;
+  color: #00050d;
+  font: 500 18px/1.15 var(--lfx-font);
+  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round {
+  border: 0;
+  background: rgba(25, 30, 37, 0.8);
+  transition: background-color 0.2s, transform 0.2s;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round:hover,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on { background: rgba(255, 255, 255, 0.2); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__play:focus-visible,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round:focus-visible,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__close:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover,
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected { background: #33373d; }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__link { color: var(--lfx-link); }
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__link:hover { color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__play:hover { background: #ebecee; transform: scale(1.04); }
+}

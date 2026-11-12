@@ -55,7 +55,7 @@ html.lfx-js.lfx-nav-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAp
 html.lfx-js #lfx-nav {
   position: fixed;
   top: 0;
-  left: calc(var(--lfx-gutter) + 88px);
+  left: calc(var(--lfx-gutter) + 96px); /* Logo 88 px + 8 px Abstand, damit die Pill das Logo nicht berührt */
   height: var(--lfx-header-h);
   z-index: 1101; /* über der AppBar (1100), unter Menüs/Dialogen (1300) */
   display: flex;
@@ -172,11 +172,11 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item--design {
 @media (min-width: 900px) and (max-width: 1100px) {
   html.lfx-js.layout-mobile #lfx-nav {
     gap: 0;
-    left: calc(var(--lfx-gutter) + 80px);
+    left: calc(var(--lfx-gutter) + 96px);
     font-size: 14px;
   }
   html.lfx-js.layout-mobile #lfx-nav .lfx-nav__item {
-    padding: 0 7px;
+    padding: 0 6px;
   }
 }
 

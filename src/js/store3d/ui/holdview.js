@@ -646,7 +646,8 @@ export class HoldView {
       this.rot.y += (this.rotTargetY - this.rot.y) * Math.min(1, dt * 8);
     }
     const sway = this.state === 'held' && !this.xr ? Math.sin(performance.now() / 1400) * 0.04 : 0;
-    TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, 'YXZ');
+    // 'XYZ' (R = Rx·Ry): Kippen um die feste Bildschirm-X-Achse, vorne wie hinten (mit 'YXZ' drehte die Kippachse mit dem Yaw mit)
+    TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, 'XYZ');
     this.mesh.quaternion.setFromEuler(TMP_E);
   }
 

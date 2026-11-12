@@ -388,55 +388,57 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   }
 
   // ---------- Lautstärke ----------
-  // Nur Stumm/Ton an möglich (feste Gerätelautstärke, iOS ohne WebAudio-Gain)? Dynamisch lesen: der Modus kann sich nach der ersten Geste ändern.
-  //   player.volumeMode() → 'native' | 'gain' | 'mute-only'; ohne diese API gilt die Eigenschaft volumeSupported.
+  // Feste Gerätelautstärke (iOS: video.volume ist wirkungslos)? Dann gilt nur Stumm/Ton an: Pegel 0 → stumm, sonst voller Ton.
+  // Die Anzeige 0–100 wird trotzdem normal geführt. Dynamisch lesen.
+  //   player.volumeMode() → 'native' | 'mute-only'; ohne diese API gilt die Eigenschaft volumeSupported.
   function muteOnly() {
     if (player && typeof player.volumeMode === 'function') {
       const m = safe(() => player.volumeMode());
-      if (m === 'native' || m === 'gain') return false;
+      if (m === 'native') return false;
       if (m === 'mute-only') return true;
     }
     return !!player && player.volumeSupported === false;
   }
   const level = () => (muteOnly() ? 1 : vol / 100);
+  const silent = () => muted || (muteOnly() && vol === 0);
+  let volHintShown = false; // Hinweis „am Gerät“ höchstens einmal pro Sitzung
 
   function applyVolume() {
-    safe(() => player.setVolume && player.setVolume(vol / 100));
-    safe(() => player.setMuted && player.setMuted(muted));
-    if (music) safe(() => music.setLevel(level(), muted || mutedByPolicy));
-    if (sfx) safe(() => sfx.setLevel(level(), muted));
+    safe(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
+    safe(() => player.setMuted && player.setMuted(silent()));
+    if (music) safe(() => music.setLevel(level(), silent() || mutedByPolicy));
+    if (sfx) safe(() => sfx.setLevel(level(), silent()));
     safe(() => knobs.setVolume(vol));
   }
 
   function savePrefs(partial) { if (deps.savePrefs) safe(() => deps.savePrefs(partial)); }
 
+  function showVol() {
+    if (!on) return;
+    const hint = muteOnly() && !volHintShown ? 'Lautstärke bitte am Gerät einstellen' : '';
+    if (hint) volHintShown = true;
+    osd.showVolume({ percent: vol, muted: silent(), hint });
+  }
+
   function changeVolume(key) {
-    if (muteOnly()) {
-      muted = key === 'vol+' ? false : key === 'vol-' ? true : !muted;
-      applyVolume();
-      if (on) osd.showVolume({ percent: vol, muted, hint: 'Lautstärke bitte am Gerät einstellen', hintOnly: true });
-      savePrefs({ muted });
-      return;
-    }
     if (key === 'mute') muted = !muted;
     else {
       vol = clamp(vol + (key === 'vol+' ? VOL_STEP : -VOL_STEP), 0, 100);
       muted = false;
     }
     applyVolume();
-    if (on) osd.showVolume({ percent: vol, muted });
+    showVol();
     savePrefs({ volume: vol / 100, muted });
   }
 
-  // Absolute Lautstärke (Drehknopf, 0–100); bei fester Gerätelautstärke (iOS) nur Richtung
+  // Absolute Lautstärke (Drehknopf, 0–100)
   function setVolumeAbs(v) {
     if (disposed || suspended) return;
     v = clamp(Math.round(Number(v) || 0), 0, 100);
-    if (muteOnly()) { if (v !== vol) changeVolume(v > vol ? 'vol+' : 'vol-'); return; }
     vol = v;
     muted = false;
     applyVolume();
-    if (on) osd.showVolume({ percent: vol, muted });
+    showVol();
     savePrefs({ volume: vol / 100, muted });
   }
 

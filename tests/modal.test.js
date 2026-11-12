@@ -149,6 +149,34 @@ describe('open/close', () => {
     } finally { themeState.id = null; }
   });
 
+  it('overlay: Theme plus öffnet das Modal statt der Titelseite, interne Öffnung bleibt im Modal', async () => {
+    themeState.id = 'plus';
+    try {
+      await openModal('M1', { overlay: true });
+      expect(document.querySelector('.lfx-modal')).not.toBeNull();
+      expect(window.location.hash).toBe('#/home');
+      const link = document.querySelector('.lfx-modal__link--title');
+      expect(link).not.toBeNull();
+      expect(link.textContent).toBe('Zur Titelseite');
+      // zweite Öffnung ohne Option im offenen Overlay-Modal: keine Navigation
+      await openModal('S1');
+      expect(window.location.hash).toBe('#/home');
+      expect(document.querySelector('.lfx-modal')).not.toBeNull();
+      // Link führt (nach dem Schließen) zur Titelseite
+      link.click();
+      await wait(() => window.location.hash.includes('lfx=title'), 100);
+      expect(window.location.hash).toBe('#/home?lfx=title&id=M1');
+    } finally { closeModal(); themeState.id = null; window.location.hash = '#/home'; }
+  });
+
+  it('overlay unter flix: kein Titelseiten-Link', async () => {
+    themeState.id = 'flix';
+    try {
+      await openModal('M1', { overlay: true });
+      expect(document.querySelector('.lfx-modal__link--title')).toBeNull();
+    } finally { themeState.id = null; }
+  });
+
   it('ohne lfx-js: Fallback auf Detailseite', () => {
     document.documentElement.className = '';
     openModal('M1');
@@ -507,6 +535,57 @@ describe('Folgennummer und Scrollposition', () => {
       expect(st).not.toHaveBeenCalled();
     } finally {
       window.scrollTo = orig;
+    }
+  });
+});
+
+describe('Scroll-Sperre am Handy', () => {
+  const withMq = (matches) => {
+    const orig = window.matchMedia;
+    window.matchMedia = () => ({ matches, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} });
+    return () => { window.matchMedia = orig; };
+  };
+
+  it('schmal: body fixiert, teardown löst zuerst und scrollt, dann Overlay weg', async () => {
+    const restoreMq = withMq(true);
+    const orig = window.scrollTo;
+    const order = [];
+    window.scrollTo = vi.fn(() => {
+      order.push({ overlay: Boolean(document.querySelector('.lfx-modal-overlay')), pos: document.body.style.position });
+    });
+    Object.defineProperty(window, 'scrollY', { value: 420, configurable: true });
+    document.body.style.left = '5px';
+    try {
+      await openModal('M1');
+      expect(document.body.style.position).toBe('fixed');
+      expect(document.body.style.top).toBe('-420px');
+      closeModal();
+      await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 420);
+      expect(order[0]).toEqual({ overlay: true, pos: '' });
+      expect(document.body.style.position).toBe('');
+      expect(document.body.style.top).toBe('');
+      expect(document.body.style.left).toBe('5px');
+      await new Promise((r) => setTimeout(r, 200));
+    } finally {
+      document.body.style.left = '';
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
+      window.scrollTo = orig;
+      restoreMq();
+    }
+  });
+
+  it('breit: keine Inline-Styles am body', async () => {
+    const restoreMq = withMq(false);
+    Object.defineProperty(window, 'scrollY', { value: 420, configurable: true });
+    try {
+      await openModal('M1');
+      expect(document.body.style.position).toBe('');
+      expect(document.body.style.top).toBe('');
+    } finally {
+      closeModal();
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
+      restoreMq();
     }
   });
 });

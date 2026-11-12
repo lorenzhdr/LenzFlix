@@ -2286,6 +2286,83 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-trailer__close:focus-visibl
   outline: 3px solid #fff;
 }
 
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal.lfx-modal-overlay {
+  font-family: var(--lfx-font);
+  letter-spacing: -.1px;
+  background: rgba(8, 10, 18, .78);
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal {
+  background: var(--lfx-surface);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .6);
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__title {
+  letter-spacing: -.4px;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play {
+  color: #000;
+  height: 48px;
+  font: 700 15px/1 var(--lfx-font);
+  letter-spacing: 1.76px;
+  text-transform: uppercase;
+  background: #fff;
+  border-radius: 9999px;
+  padding: 0 24px 0 18px;
+  transition: background-color .2s ease-in-out;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:hover {
+  background: #d9d9de;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round {
+  background: var(--lfx-plus-circle);
+  border: 0;
+  border-radius: 9999px;
+  width: 48px;
+  height: 48px;
+  transition: background-color .2s ease-in-out;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round--small {
+  width: 36px;
+  height: 36px;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on {
+  background: rgba(255, 255, 255, .18);
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:focus-visible {
+  outline-offset: 3px;
+  outline: 3px solid #fff;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:focus-visible {
+  outline-offset: 3px;
+  outline: 3px solid #fff;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__close:focus-visible {
+  outline-offset: 3px;
+  outline: 3px solid #fff;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected {
+  background: var(--lfx-surface-2);
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link {
+  color: var(--lfx-accent);
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link:hover {
+  color: var(--lfx-red-hover);
+}
+
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-browse__title {
   color: #fff;
   letter-spacing: .11px;

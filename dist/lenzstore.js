@@ -40128,7 +40128,7 @@ void main() {
         this.rot.y += (this.rotTargetY - this.rot.y) * Math.min(1, dt * 8);
       }
       const sway = this.state === "held" && !this.xr ? Math.sin(performance.now() / 1400) * 0.04 : 0;
-      TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, "YXZ");
+      TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, "XYZ");
       this.mesh.quaternion.setFromEuler(TMP_E);
     }
     /** Zurückstellen (animiert) bzw. sofort schließen. */

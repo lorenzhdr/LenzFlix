@@ -1,6 +1,5 @@
 // LENZ LIVE Player: Steuerung des einen <video> (Start an Live-Position, Pause-Abwehr, Lautstärke, Untertitel-Track).
 // Keine URLs in Ereignissen/Fehlern: Payloads tragen nur { phase, reason }.
-import { createGainControl } from './gain.js';
 
 const START_TIMEOUT_MS = 25000;
 export const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
@@ -82,7 +81,7 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     } catch (e) { rejected(e); }
   };
 
-  // Volumen-Probe: iOS ignoriert volume (dann optional WebAudio-Gain, siehe gain.js).
+  // Volumen-Probe: iOS ignoriert volume (dann nur Stumm/Ton an, 'mute-only'; WebAudio-Gain taugt dort in der Praxis nicht).
   let nativeVolume;
   try {
     const prev = video.volume;
@@ -90,7 +89,6 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
     nativeVolume = video.volume === 0.5;
     video.volume = prev;
   } catch { nativeVolume = false; }
-  const gain = nativeVolume ? null : createGainControl(video, { emit });
 
   const listeners = {
     playing: () => {
@@ -99,7 +97,6 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       resetStall();
       emit('state', { phase: 'playing' });
       settle({ ok: true });
-      if (gain) gain.poke();
     },
     // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
     waiting: () => {
@@ -190,14 +187,11 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   }
 
   return {
-    get volumeSupported() { return nativeVolume || (!!gain && gain.mode() === 'gain'); },
-    /** 'native' | 'gain' (WebAudio aktiv) | 'mute-only' (nur Stumm). */
-    volumeMode: () => (nativeVolume ? 'native' : gain.mode()),
-    /** true, wenn ein Gain-Versuch möglich ist (noch nicht gescheitert, AudioContext vorhanden). */
-    volumeCanTry: () => !nativeVolume && gain.canTry(),
+    get volumeSupported() { return nativeVolume; },
+    /** 'native' | 'mute-only' (feste Gerätelautstärke, nur Stumm). */
+    volumeMode: () => (nativeVolume ? 'native' : 'mute-only'),
     /** Synchron im Klick-Handler: Freigabe für das <video> (iOS). */
     unlock() {
-      if (gain) gain.poke();
       try {
         const p = video.play();
         if (p && p.catch) p.catch(() => {});
@@ -217,9 +211,9 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       const n = Number(v);
       if (!Number.isFinite(n)) return;
       const c = Math.min(1, Math.max(0, n));
-      if (nativeVolume) { try { video.volume = c; } catch { /* egal */ } } else gain.setLevel(c);
+      if (nativeVolume) { try { video.volume = c; } catch { /* egal */ } } // mute-only: volume bleibt fest (voller Ton)
     },
-    setMuted(b) { video.muted = !!b; if (gain) gain.poke(); },
+    setMuted(b) { video.muted = !!b; },
     setSubtitle({ url, label, lang }) {
       clearSubtitles();
       const el = document.createElement('track');
@@ -237,7 +231,6 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       if (disposed) return;
       clear(false);
       disposed = true;
-      if (gain) gain.dispose();
       for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
       if (ms && typeof ms.setActionHandler === 'function') {
         for (const a of MEDIA_ACTIONS) {

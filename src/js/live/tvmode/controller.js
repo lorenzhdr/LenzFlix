@@ -83,7 +83,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       needsTap,
       mutedByPolicy,
       volume: vol,
-      muted: muted || mutedByPolicy,
+      muted: silent() || mutedByPolicy,
     });
   }
   function state() { return snap || (snap = build()); }
@@ -98,26 +98,20 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   const savePrefs = (partial) => { if (deps && deps.savePrefs) safe(() => deps.savePrefs(partial)); };
 
   // ---------- Lautstärke ----------
+  // iOS: video.volume ist fest (player.volumeMode() === 'mute-only'): der Regler bleibt, wirkt aber nur als Stumm/Ton an
+  // (0 → stumm, ab 5 → voller Ton, video.volume bleibt 1). Der gewählte Wert bleibt angezeigt.
+  const muteOnly = () => safe(() => (player.volumeMode ? player.volumeMode() : player.volumeSupported === false ? 'mute-only' : 'native')) === 'mute-only';
+  const silent = () => muted || (muteOnly() && vol === 0);
   function applyVolume() {
-    safe(() => player.setVolume && player.setVolume(vol / 100));
-    safe(() => player.setMuted && player.setMuted(muted));
+    safe(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
+    safe(() => player.setMuted && player.setMuted(silent()));
   }
-  // iOS: ohne natives volume ist die Lautstärke per WebAudio-Gain möglich (player.volumeMode() === 'gain');
-  // solange ein Versuch noch offen ist (volumeCanTry), wird sie optimistisch angeboten und bei Scheitern zurückgenommen.
-  const volumeSupported = () => player.volumeSupported !== false || !!safe(() => player.volumeCanTry && player.volumeCanTry());
+  const volumeSupported = () => true; // der Regler bleibt in allen Modi sichtbar
 
   function setVolume(v) {
     if (disposed) return;
     v = clamp(Math.round((Number(v) || 0) / VOL_STEP) * VOL_STEP, 0, 100);
     mutedByPolicy = false;
-    if (!volumeSupported()) {
-      muted = v < vol; // fester Pegel: alles darunter = stumm, sonst Ton an
-      message('Lautstärke lässt sich hier nur stumm schalten');
-      applyVolume();
-      savePrefs({ muted });
-      changed();
-      return;
-    }
     vol = v;
     muted = false;
     applyVolume();
@@ -493,17 +487,6 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     offs.push(player.on('error', (err) => {
       if (!on || !entry || entry.type === 'filler' || phase === 'error') return;
       showError((err && err.reason) || 'network', gen, err && err.code);
-    }));
-    // Lautstärke-Modus kippt (Gain-Versuch gescheitert): Pegel zurück auf 100, Anzeige aktualisieren.
-    offs.push(player.on('volume-mode', (m) => {
-      if (disposed) return;
-      if (m && m.mode === 'mute-only') {
-        const had = vol !== 100;
-        vol = 100;
-        applyVolume();
-        if (had) message('Lautstärke lässt sich hier nur stumm schalten');
-      }
-      changed();
     }));
   }
 

@@ -5,6 +5,8 @@ import { resolveStream } from '../src/js/live/player/stream.js';
 import { buildDeviceProfile } from '../src/js/live/player/profile.js';
 import { makeVideo, makeDeps, ms, info, hlsUrl, fire, flush } from './live-player-helpers.js';
 
+const wait = (t) => new Promise((r) => setTimeout(r, t));
+
 afterEach(() => { vi.restoreAllMocks(); });
 
 const HEVC_STREAMS = [
@@ -74,7 +76,7 @@ describe('Rückfall ts/h264', () => {
     expect((await p).ok).toBe(true);
   });
 
-  it('scheitert auch der Rückfall: Fehler mit Code (M4), genau ein Fehler-Ereignis', async () => {
+  it('scheitert auch der Rückfall: ein ts-Neuversuch, dann Kettencode (M4·F>T>T), genau ein Fehler-Ereignis', async () => {
     const ctx = setup({ respond: hlsRespond() });
     const errors = [];
     ctx.player.on('error', (e) => errors.push(e));
@@ -85,9 +87,12 @@ describe('Rückfall ts/h264', () => {
     await flush();
     fire(ctx.video, 'loadedmetadata');
     mediaError(ctx.video, 4);
-    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'M4' });
-    expect(errors).toEqual([{ reason: 'video', code: 'M4' }]);
-    expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(2); // nur einmal wiederholt
+    await wait(700); // ts-Neuversuch nach ~500 ms
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 4);
+    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'M4·F>T>T' });
+    expect(errors).toEqual([{ reason: 'video', code: 'M4·F>T>T' }]);
+    expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(3); // max. 3 Versuche
   });
 
   it('HEVC-Quelle: kein ts-Rückfall', async () => {
@@ -98,19 +103,24 @@ describe('Rückfall ts/h264', () => {
     await flush();
     fire(ctx.video, 'loadedmetadata');
     mediaError(ctx.video, 4);
-    expect(await p).toMatchObject({ ok: false, reason: 'video', code: 'M4' });
+    expect(await p).toMatchObject({ ok: false, reason: 'video', code: 'M4·F' });
     expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(1);
     expect(errors.length).toBe(1);
   });
 
-  it('Browser ohne HEVC (Profil schon ts): kein zweiter Versuch', async () => {
+  it('Browser ohne HEVC (Profil schon ts): genau ein Neuversuch nach ~500 ms mit frischer Auflösung', async () => {
     const ctx = setup({ respond: hlsRespond(), hevc: false });
     const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
     await flush();
     fire(ctx.video, 'loadedmetadata');
     mediaError(ctx.video, 4);
-    expect((await p).reason).toBe('video');
-    expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(1);
+    await flush();
+    expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(1); // wartet noch
+    await wait(700);
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 4);
+    expect(await p).toMatchObject({ reason: 'video', code: 'M4·T>T' });
+    expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(2);
   });
 
   it('play()-NotSupportedError im HLS-Modus löst den Rückfall ebenfalls aus', async () => {
@@ -128,14 +138,91 @@ describe('Rückfall ts/h264', () => {
     expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(2);
   });
 
-  it('Direktwiedergabe: kein Rückfall, Code M4', async () => {
-    const ctx = setup({ respond: () => info(ms()) });
+  // Direct → Remux (noDirect) → ts-Neuversuch; der Code trägt die Kette.
+  const directThenHls = () => (m, p, o) => (o.body.EnableDirectPlay === false
+    ? info(ms({ direct: false, transcodingUrl: hlsUrl('&SegmentContainer=ts&TranscodeReasons=ContainerNotSupported') }))
+    : info(ms()));
+  const posts = (ctx) => ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST');
+
+  it('Direct scheitert (M3): zweite Auflösung mit noDirect; scheitert auch ts: ein Neuversuch, Code M3·D>T>T', async () => {
+    const ctx = setup({ respond: directThenHls(), hevc: false });
+    const errors = [];
+    ctx.player.on('error', (e) => errors.push(e));
     const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
     await flush();
     fire(ctx.video, 'loadedmetadata');
-    mediaError(ctx.video, 4);
-    expect(await p).toMatchObject({ reason: 'video', code: 'M4' });
-    expect(ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').length).toBe(1);
+    mediaError(ctx.video, 3);
+    await flush();
+    const second = posts(ctx)[1][2].body;
+    expect(second.EnableDirectPlay).toBe(false);
+    expect(second.DeviceProfile.DirectPlayProfiles).toEqual([]);
+    expect(ctx.deps.request.mock.calls.some((c) => c[0] === 'DELETE')).toBe(false); // Direct hat keine Sitzung
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 3);
+    await wait(700);
+    expect(ctx.deps.request.mock.calls.some((c) => c[0] === 'DELETE')).toBe(true); // gescheiterte ts-Sitzung beendet
+    expect(posts(ctx).length).toBe(3);
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 3);
+    expect(await p).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'M3·D>T>T' });
+    expect(errors).toEqual([{ reason: 'video', code: 'M3·D>T>T' }]);
+    expect(posts(ctx).length).toBe(3);
+  });
+
+  it('Direct gescheitert wird gemerkt: nächstes play() desselben Items fragen gleich mit noDirect', async () => {
+    const ctx = setup({ respond: directThenHls(), hevc: false });
+    let p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 3);
+    await flush();
+    Object.defineProperty(ctx.video, 'error', { value: null, configurable: true });
+    fire(ctx.video, 'loadedmetadata');
+    fire(ctx.video, 'playing');
+    expect((await p).ok).toBe(true);
+    ctx.deps.request.mockClear();
+    p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    expect(posts(ctx).length).toBe(1);
+    expect(posts(ctx)[0][2].body.EnableDirectPlay).toBe(false);
+    fire(ctx.video, 'loadedmetadata');
+    fire(ctx.video, 'playing');
+    expect((await p).ok).toBe(true);
+    ctx.deps.request.mockClear();
+    const p2 = ctx.player.play({ itemId: 'it2', offsetMs: 0 }); // anderes Item bleibt Direct
+    await flush();
+    expect(posts(ctx)[0][2].body.EnableDirectPlay).toBe(true);
+    ctx.player.stop();
+    await p2;
+  });
+
+  it('Andere Codes (NET) bekommen keine Kette', async () => {
+    const ctx = setup({ respond: () => { throw new Error('x'); } });
+    const r = await ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    expect(r).toEqual({ ok: false, mode: 'none', reason: 'network', code: 'NET' });
+  });
+});
+
+describe('Lautstärke ohne natives volume (iOS): mute-only', () => {
+  it('volumeMode mute-only, setVolume ändert volume nicht, setMuted wirkt', () => {
+    const video = makeVideo();
+    Object.defineProperty(video, 'volume', { get: () => 1, set() { /* iOS: ignoriert */ }, configurable: true });
+    const player = createPlayer({ video, deps: makeDeps({}) });
+    expect(player.volumeMode()).toBe('mute-only');
+    expect(player.volumeSupported).toBe(false);
+    player.setVolume(0.2);
+    expect(video.volume).toBe(1);
+    player.setMuted(true);
+    expect(video.muted).toBe(true);
+    player.setMuted(false);
+    expect(video.muted).toBe(false);
+    player.dispose();
+  });
+  it('native bleibt native', () => {
+    const player = createPlayer({ video: makeVideo(), deps: makeDeps({}) });
+    expect(player.volumeMode()).toBe('native');
+    player.setVolume(0.2);
+    player.dispose();
   });
 });
 
@@ -171,6 +258,11 @@ describe('Profil: Ton und noHevc', () => {
   it('ohne ac3/eac3: nur aac, 2 Kanäle', () => {
     const p = buildDeviceProfile(makeVideo());
     expect(p.TranscodingProfiles[0]).toMatchObject({ AudioCodec: 'aac', MaxAudioChannels: '2' });
+  });
+  it('noDirect: keine DirectPlay-Profile, Transcoding (inkl. HEVC) unverändert', () => {
+    const p = buildDeviceProfile(makeVideo({ hevc: true }), { noDirect: true });
+    expect(p.DirectPlayProfiles).toEqual([]);
+    expect(p.TranscodingProfiles[0]).toMatchObject({ Container: 'mp4', VideoCodec: 'hevc,h264' });
   });
   it('noHevc: ts/h264 trotz HEVC-Fähigkeit', () => {
     const p = buildDeviceProfile(makeVideo({ hevc: true }), { noHevc: true });

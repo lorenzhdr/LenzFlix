@@ -379,7 +379,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.0";
+  var VERSION = "1.11.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -2753,6 +2753,7 @@
     ROWS_WAIT_MAX_MS: () => ROWS_WAIT_MAX_MS,
     TRAILER_BUFFER_S: () => TRAILER_BUFFER_S,
     TRAILER_MIN_IMAGE_MS: () => TRAILER_MIN_IMAGE_MS,
+    TRAILER_STALL_MS: () => TRAILER_STALL_MS,
     TRAILER_WAIT_MAX_MS: () => TRAILER_WAIT_MAX_MS,
     render: () => render3
   });
@@ -4263,16 +4264,17 @@
       return Promise.resolve();
     }
     const theme = getTheme();
-    if (theme && theme !== "flix") {
+    if (opts.overlay && state4) state4.overlayMode = true;
+    if (theme && theme !== "flix" && !opts.overlay && !(state4 && state4.overlayMode)) {
       location.hash = titleHref(id);
       return Promise.resolve();
     }
     const hint = typeof itemOrId === "object" ? itemOrId : null;
     if (state4) return loadInto(id, hint, true);
-    create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null));
+    create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay));
     return loadInto(id, hint, false);
   }
-  function create(opener) {
+  function create(opener, overlayMode = false) {
     const overlay = mountPoint(ROOT_ID2, { className: "lfx-modal-overlay" });
     overlay.replaceChildren();
     const closeBtn = h("button", { type: "button", class: "lfx-modal__close", "aria-label": "Schlie\xDFen", title: "Schlie\xDFen", onclick: () => closeModal() }, [icon("close")]);
@@ -4287,9 +4289,10 @@
       closeModal();
     };
     overlay.addEventListener("click", onOverlayClick);
-    state4 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    state4 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
     state4.unsub = onItemsChanged(onChanged);
     if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
+      lockScroll(state4);
       state4.detachSwipe = attachSwipeClose(modal, {
         backdrop: overlay,
         canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
@@ -4309,6 +4312,30 @@
     }
     closeBtn.focus({ preventScroll: true });
   }
+  function lockScroll(s) {
+    const b = document.body;
+    if (!b) return;
+    const st = b.style;
+    const y = s.scrollY;
+    s.lock = { y, pos: st.position, top: st.top, left: st.left, right: st.right, width: st.width };
+    st.position = "fixed";
+    st.top = `-${y}px`;
+    st.left = "0";
+    st.right = "0";
+    st.width = "100%";
+  }
+  function unlockScroll(s) {
+    const l = s.lock;
+    if (!l) return;
+    s.lock = null;
+    const st = document.body.style;
+    st.position = l.pos;
+    st.top = l.top;
+    st.left = l.left;
+    st.right = l.right;
+    st.width = l.width;
+    window.scrollTo(0, l.y);
+  }
   function teardown2() {
     if (!state4) return null;
     const s = state4;
@@ -4320,6 +4347,7 @@
     document.removeEventListener("keydown", onKeydown2, true);
     window.removeEventListener("popstate", onPopState);
     window.removeEventListener("hashchange", onHashChange);
+    unlockScroll(s);
     rootEl().classList.remove("lfx-modal-open");
     unmountPoint(s.overlay);
     const op = s.opener;
@@ -4457,6 +4485,15 @@
     const isSeries = main.Type === "Series";
     const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? "Fortsetzen" : "Abspielen" });
     s.parts = parts;
+    if (s.overlayMode && getTheme() && getTheme() !== "flix") {
+      const tHref = titleHref(main.Id);
+      const link = h("a", { class: "lfx-modal__link lfx-modal__link--title", href: tHref, onclick: (e) => {
+        e.preventDefault();
+        H.navigate(tHref);
+      } }, "Zur Titelseite");
+      const footer = parts.el.querySelector(".lfx-modal__footer");
+      if (footer) footer.prepend(link, " \xB7 ");
+    }
     s.content.replaceChildren(parts.el);
     if (!refresh2) s.overlay.scrollTop = 0;
     const tasks = [];
@@ -4959,8 +4996,9 @@
 
   // src/js/features/billboard.js
   var ROTATE_MS = 1e4;
-  var TRAILER_MIN_IMAGE_MS = 5e3;
+  var TRAILER_MIN_IMAGE_MS = 3e3;
   var TRAILER_BUFFER_S = 6;
+  var TRAILER_STALL_MS = 1500;
   var TRAILER_WAIT_MAX_MS = 25e3;
   var ROWS_WAIT_MAX_MS = 8e3;
   var ROWS_READY_EVENT = "lfx:rows-ready";
@@ -5287,10 +5325,32 @@
           if (wait > 0) sl.revealTimer = later(reveal, wait);
           else reveal();
         };
+        let lastProgress = Date.now();
+        const touch = () => {
+          lastProgress = Date.now();
+        };
+        const stallCheck = () => {
+          if (sl.ready || video2 !== v || sl.gen !== gen8 || disposed) return;
+          if (v.readyState < 3 && Date.now() - lastProgress >= TRAILER_STALL_MS) {
+            sl.ready = true;
+            reveal();
+            return;
+          }
+          later(stallCheck, 500);
+        };
         v.addEventListener("ended", end);
         v.addEventListener("error", end);
-        v.addEventListener("canplaythrough", () => check3(true));
-        for (const ev of ["canplay", "loadeddata", "progress", "durationchange"]) v.addEventListener(ev, () => check3());
+        v.addEventListener("canplaythrough", () => {
+          touch();
+          check3(true);
+        });
+        for (const ev of ["canplay", "loadeddata", "loadedmetadata", "progress", "durationchange"]) {
+          v.addEventListener(ev, () => {
+            touch();
+            check3();
+          });
+        }
+        later(stallCheck, Math.max(0, sl.imgAt + TRAILER_MIN_IMAGE_MS - Date.now()));
         v.src = trailerUrl(t.Id);
         video2 = v;
         media.append(v);
@@ -7709,7 +7769,6 @@
     return tab2 && tab2.isConnected ? tab2 : null;
   };
   var tvModeMatch = (route) => isTvModeRoute(route) && TV_THEMES.some(isTheme) && isModern() && !isTv() && isReady();
-  var onTvRoute = () => isTvModeRoute(parseHash(window.location.hash));
 
   // src/js/features/tvmode/unlock.js
   var INTENT_TTL_MS = 3e4;
@@ -7760,10 +7819,6 @@
   var inst = null;
   var ui = null;
   var themeOff = null;
-  var modalObs = null;
-  var modalOpen = false;
-  var resumeAfter = false;
-  var playSeen = false;
   var html = () => document.documentElement;
   var coarse = () => {
     try {
@@ -7773,57 +7828,9 @@
     }
   };
   initUnlock();
-  var onPlayEvt = () => {
-    playSeen = true;
-  };
-  function onModalChange() {
-    const open2 = html().classList.contains("lfx-modal-open");
-    if (open2 === modalOpen) return;
-    modalOpen = open2;
-    if (!inst || !ui) return;
-    if (open2) {
-      playSeen = false;
-      let on = false;
-      try {
-        on = Boolean(inst.instance.isOn());
-      } catch {
-      }
-      resumeAfter = inst.ready && on;
-      try {
-        inst.instance.stop("modal");
-      } catch {
-      }
-      return;
-    }
-    const go3 = resumeAfter && !playSeen && onTvRoute() && !document.querySelector("#videoOsdPage:not(.hide)");
-    resumeAfter = false;
-    if (go3) {
-      try {
-        inst.instance.start();
-      } catch {
-      }
-    }
-  }
-  function attachWatchers() {
-    if (modalObs) return;
-    modalOpen = html().classList.contains("lfx-modal-open");
-    resumeAfter = false;
-    playSeen = false;
-    window.addEventListener("lfx:play", onPlayEvt);
-    if (typeof MutationObserver === "function") {
-      modalObs = new MutationObserver(onModalChange);
-      modalObs.observe(html(), { attributes: true, attributeFilter: ["class"] });
-    }
-  }
-  function detachWatchers() {
-    window.removeEventListener("lfx:play", onPlayEvt);
-    if (modalObs) modalObs.disconnect();
-    modalObs = null;
-  }
   function disposeInstance() {
     const cur3 = inst;
     inst = null;
-    detachWatchers();
     if (!cur3) return;
     try {
       cur3.instance.dispose();
@@ -7936,10 +7943,9 @@
     return {
       ...buildApiDeps(raw, user),
       savePrefs: ret((p) => savePrefs(p)),
-      // flix: Modal über der TV-Seite (Stopp/Resume per Beobachter); plus/prime: Titelseite = Verlassen
+      // alle Designs: Detailkarte als Overlay über dem weiterlaufenden TV (plus/prime mit „Zur Titelseite“)
       openDetails: ret((id) => {
-        if (isTheme("flix")) openModal(id);
-        else window.location.hash = titleHref(id);
+        openModal(id, { overlay: true });
       }),
       playFromStart: ret(playFromStart),
       keysBlocked: ret(blocked),
@@ -8022,7 +8028,6 @@
         return;
       }
       inst = { instance, ready: false, pip: false };
-      attachWatchers();
       if (early) finishReady();
     } catch (e) {
       if (myGen === gen && ui) showFallback(e);
@@ -8049,7 +8054,6 @@
       }
       try {
         inst.instance.resume(ui.root);
-        attachWatchers();
         if (inst.ready && !inst.pip && !inst.instance.isOn()) inst.instance.start();
       } catch (e) {
         console.warn("[LenzFlix] tvmode resume", fatalText(e));
@@ -8107,7 +8111,6 @@
         } catch (e) {
           console.warn("[LenzFlix] tvmode suspend", fatalText(e));
         }
-        detachWatchers();
         if (!kept) disposeInstance();
       }
       teardownUi();
@@ -14116,7 +14119,6 @@
   function fillEpisodes(s, main, panel, sel) {
     let seasons = [];
     let seq3 = 0;
-    let firstReveal = Boolean(sel.episodeId);
     async function showSeason2(seasonId) {
       const mine = ++seq3;
       const slot = panel.querySelector(".lfx-pt__eps");
@@ -14135,16 +14137,6 @@
       }
       const onPlay = (ep) => play(ep, { resume: hasResume(ep) });
       slot.replaceChildren(...eps.map((ep) => buildEpisode(ep, { onPlay, selected: ep.Id === sel.episodeId })));
-      if (firstReveal) {
-        firstReveal = false;
-        const row = slot.querySelector(".is-selected");
-        if (row && typeof row.scrollIntoView === "function") {
-          try {
-            row.scrollIntoView({ block: "center", behavior: reducedMotion4() ? "auto" : "smooth" });
-          } catch {
-          }
-        }
-      }
     }
     return (async () => {
       try {

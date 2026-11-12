@@ -3092,7 +3092,7 @@ html.lfx-js.lfx-nav-on body:not(.dashboardDocument) header.MuiAppBar-root:before
 
 html.lfx-js #lfx-nav {
   top: 0;
-  left: calc(var(--lfx-gutter) + 88px);
+  left: calc(var(--lfx-gutter) + 96px);
   height: var(--lfx-header-h);
   z-index: 1101;
   font: var(--lfx-fw-nav) var(--lfx-fs-nav) / 1 var(--lfx-font);
@@ -3216,13 +3216,13 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item--design {
 
 @media (min-width: 900px) and (max-width: 1100px) {
   html.lfx-js.layout-mobile #lfx-nav {
-    left: calc(var(--lfx-gutter) + 80px);
+    left: calc(var(--lfx-gutter) + 96px);
     gap: 0;
     font-size: 14px;
   }
 
   html.lfx-js.layout-mobile #lfx-nav .lfx-nav__item {
-    padding: 0 7px;
+    padding: 0 6px;
   }
 }
 

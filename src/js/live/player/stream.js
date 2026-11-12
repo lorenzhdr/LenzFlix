@@ -50,16 +50,17 @@ function absolute(deps, rel) {
  * → { ok, mode:'direct'|'hls'|'none', reason?, url?, playSessionId?, mediaSource?, mediaSourceId?, audioIndex?, tracks? }
  * audioIndex (optional): gewünschte Tonspur; weicht sie vom Server-Standard ab, wird per Remux umgeschaltet.
  * noHevc (optional): Profil ohne HEVC (ts/h264) – Rückfall, wenn fMP4-HLS im <video> scheiterte.
+ * noDirect (optional): keine Direktwiedergabe (leere DirectPlayProfiles, EnableDirectPlay false) → Remux (Rückfall, wenn Direct im <video> scheiterte).
  * Fehler tragen zusätzlich `code` (Kurzcode); Erfolg bei HLS trägt `videoCodec` und `offeredHevc`.
  */
-export async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false }) {
+export async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false, noDirect = false }) {
   const post = async (extra) => {
     const body = {
       UserId: deps.user.id,
-      DeviceProfile: buildDeviceProfile(video, { noHevc }),
+      DeviceProfile: buildDeviceProfile(video, { noHevc, noDirect }),
       StartTimeTicks: 0,
       SubtitleStreamIndex: -1,
-      EnableDirectPlay: true,
+      EnableDirectPlay: !noDirect,
       EnableDirectStream: true,
       EnableTranscoding: true,
       AllowVideoStreamCopy: true,
@@ -88,7 +89,7 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal, n
     const audioIdx = want != null ? want : def;
     const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
 
-    if (ms.SupportsDirectPlay && !remux) {
+    if (ms.SupportsDirectPlay && !remux && !noDirect) {
       const url = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });
       return { ok: true, mode: 'direct', url, ...base };
     }

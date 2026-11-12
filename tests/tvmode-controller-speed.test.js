@@ -125,26 +125,30 @@ describe('Fehlerkarte mit Code', () => {
   });
 });
 
-describe('Lautstärke mit Gain (iOS)', () => {
-  it('volumeSupported: optimistisch bei offenem Versuch, true bei gain, zurück bei Scheitern', async () => {
-    const mode = { m: 'mute-only', can: true };
-    const env = makeEnv({ player: { volumeSupported: false, volumeCanTry: () => mode.can, volumeMode: () => mode.m } });
+describe('Lautstärke ohne natives volume (iOS, mute-only)', () => {
+  it('Regler bleibt; 0 → stumm, ab 5 → Ton an mit voller video.volume, gewählter Wert bleibt', async () => {
+    const env = makeEnv({ player: { volumeSupported: false, volumeMode: () => 'mute-only' } });
     env.ctl.start();
     await flush();
     expect(env.ctl.volumeSupported).toBe(true);
-    env.ctl.setVolume(50);
-    expect(env.ctl.state().volume).toBe(50);
-    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
-    mode.can = false; // Versuch gescheitert
-    env.emit('volume-mode', { mode: 'mute-only' });
-    expect(env.ctl.volumeSupported).toBe(false);
-    expect(env.ctl.state().volume).toBe(100);
+    env.ctl.setVolume(0);
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
+    expect(env.ctl.state().muted).toBe(true);
+    env.ctl.setVolume(5);
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
     expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
+    expect(env.ctl.state().volume).toBe(5);
+    expect(env.ctl.state().muted).toBe(false);
+    env.ctl.setVolume(50);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
+    expect(env.ctl.state().volume).toBe(50);
   });
 
-  it('gain aktiv: volumeSupported über player.volumeSupported', async () => {
-    const env = makeEnv({ player: { volumeSupported: true, volumeMode: () => 'gain' } });
+  it('native: Pegel wird durchgereicht', async () => {
+    const env = makeEnv({ player: { volumeSupported: true, volumeMode: () => 'native' } });
     env.ctl.start();
+    env.ctl.setVolume(50);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
     expect(env.ctl.volumeSupported).toBe(true);
   });
 });

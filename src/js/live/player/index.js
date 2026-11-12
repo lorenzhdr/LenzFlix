@@ -12,6 +12,8 @@ export { createFakePlayer } from './fake.js';
 const aborted = () => ({ ok: false, mode: 'none', reason: 'aborted' });
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX = 24;
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 500;
 
 /**
  * createPlayer({ video, deps, now, fake, canvas, getInfo }) → Player
@@ -29,6 +31,12 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   let disposed = false;
   let tsOnly = false; // fMP4-HLS scheiterte bei h264 schon einmal: für h264-Quellen gleich ts/h264 anfordern
   // Auflösungs-Cache: nur Direct-Ergebnisse (statische URL) werden wiederverwendet; bei HLS merkt er nur „HLS nötig“.
+  const directFailed = new Set(); // Items, deren Direktwiedergabe im <video> scheiterte: gleich per Remux (noDirect) anfragen
+  const rememberDirectFailed = (itemId) => {
+    if (directFailed.size >= 200) directFailed.clear();
+    directFailed.add(itemId);
+    cache.delete(itemId);
+  };
   const cache = new Map(); // itemId → { at, mode, r? }
   const inflight = new Map(); // itemId → Promise (laufende prefetch-Auflösung)
 
@@ -61,7 +69,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   const fresh = (e) => !!e && now() - e.at < CACHE_TTL_MS;
   function remember(itemId, r) {
     if (!r || !r.ok) return;
-    cache.set(itemId, { at: now(), mode: r.mode, r: r.mode === 'direct' ? r : null });
+    cache.set(itemId, { at: now(), mode: r.mode, r: r.mode === 'direct' && !directFailed.has(itemId) ? r : null });
     while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
   }
 
@@ -71,7 +79,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     if (fresh(cache.get(itemId))) return Promise.resolve({ ok: true, cached: true });
     const running = inflight.get(itemId);
     if (running) return running;
-    const p = resolveStream({ deps, video, itemId, signal, noHevc: false })
+    const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: directFailed.has(itemId) })
       .then((r) => { if (!(signal && signal.aborted)) remember(itemId, r); return { ok: !!r.ok, mode: r.mode }; }, () => ({ ok: false, reason: 'network' }))
       .finally(() => { if (inflight.get(itemId) === p) inflight.delete(itemId); });
     inflight.set(itemId, p);
@@ -83,11 +91,11 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       const pf = inflight.get(itemId);
       if (pf) { try { await pf; } catch { /* egal */ } if (signal.aborted) return { ok: false, mode: 'none', reason: 'aborted' }; }
       const c = cache.get(itemId);
-      if (fresh(c) && c.mode === 'direct' && c.r) return c.r;
+      if (fresh(c) && c.mode === 'direct' && c.r && !directFailed.has(itemId)) return c.r;
     }
     let r;
     try {
-      r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc });
+      r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: directFailed.has(itemId) });
     } catch {
       r = { ok: false, mode: 'none', reason: signal.aborted ? 'aborted' : 'network', ...(signal.aborted ? {} : { code: 'NET' }) };
     }
@@ -118,28 +126,58 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       return failResult(r);
     }
 
-    let res = await launch(r, opts, offsetMs, itemId, my);
-    if (my !== gen) return aborted();
-    const canFallback = !res.ok && (res.reason === 'video' || res.reason === 'browser')
-      && r.mode === 'hls' && r.offeredHevc && r.videoCodec === 'h264';
-    if (canFallback) {
-      // EINMAL ohne HEVC (ts/h264) neu auflösen und starten; für HEVC-Quellen gibt es keinen ts-Rückfall (Safari).
-      teardown();
-      const r2 = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
+    // Rückfallkette (max. MAX_ATTEMPTS Starts): Direct → Remux (noDirect) → fMP4 → ts → ein ts-Neuversuch.
+    // Nie eine echte Video-Umwandlung erzwingen: HEVC-Quellen bekommen keinen ts-Rückfall (Safari).
+    const chain = [];
+    let cur = r;
+    let noHevc = !!opts.noHevc;
+    let res;
+    let fromFmp4 = false;
+    let tsRetried = false;
+    for (let attempt = 1; ; attempt++) {
+      chain.push(attemptLetter(cur));
+      res = await launch(cur, opts, offsetMs, itemId, my);
       if (my !== gen) return aborted();
-      if (r2.ok) {
-        res = await launch(r2, opts, offsetMs, itemId, my);
-        if (my !== gen) return aborted();
-        if (res.ok) { tsOnly = true; return res; }
+      if (res.ok) {
+        if (fromFmp4) tsOnly = true;
+        return res;
       }
+      if ((res.reason !== 'video' && res.reason !== 'browser') || attempt >= MAX_ATTEMPTS) break;
+      let delay = 0;
+      if (cur.mode === 'direct') {
+        rememberDirectFailed(itemId);
+      } else if (cur.mode === 'hls' && cur.offeredHevc && cur.videoCodec === 'h264') {
+        noHevc = true;
+        fromFmp4 = true;
+      } else if (cur.mode === 'hls' && !cur.offeredHevc && !tsRetried) {
+        tsRetried = true;
+        noHevc = true; // war ts wegen Rückfall: nicht wieder fMP4 anbieten
+        delay = RETRY_DELAY_MS; // ts-HLS: genau ein Neuversuch mit frischer Sitzung
+      } else {
+        break;
+      }
+      await teardown(); // DELETE der gescheiterten Sitzung abwarten, bevor neu aufgelöst wird
+      if (my !== gen) return aborted();
+      if (delay) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        if (my !== gen) return aborted();
+      }
+      const next = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? cur.audioIndex, noHevc, noCache: true }, signal);
+      if (my !== gen) return aborted();
+      if (!next.ok) break; // gemeldet wird der letzte Startfehler (aussagekräftiger als „Auflösung gescheitert“)
+      cur = next;
     }
-    if (!res.ok) {
-      teardown();
-      if (res.reason !== 'aborted') failure(res.reason, res.code);
-      return failResult(res);
+    teardown();
+    if (res.reason !== 'aborted') {
+      const code = res.code && /^(M\d+|B-PLAY)$/.test(res.code) ? `${res.code}·${chain.join('>')}` : res.code;
+      failure(res.reason, code);
+      return failResult({ ...res, code });
     }
-    return res;
+    return failResult(res);
   }
+
+  // D = Direktwiedergabe, F = fMP4-HLS (HEVC angeboten), T = ts-HLS.
+  const attemptLetter = (x) => (x.mode === 'direct' ? 'D' : x.offeredHevc ? 'F' : 'T');
 
   const failResult = (x) => (x.code ? { ok: false, mode: 'none', reason: x.reason, code: x.code } : { ok: false, mode: 'none', reason: x.reason });
 
@@ -191,10 +229,9 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     syncTo: (ms) => vc.syncTo(ms),
     setVolume: (v) => vc.setVolume(v),
     setMuted: (b) => vc.setMuted(b),
-    // Lautstärke: 'native' | 'gain' (WebAudio, iOS) | 'mute-only'. setVolume wirkt in den ersten beiden Modi.
+    // Lautstärke: 'native' | 'mute-only' (iOS: video.volume ist fest, nur Stumm/Ton an). setVolume wirkt nur bei 'native'.
     get volumeSupported() { return vc.volumeSupported; },
     volumeMode: () => vc.volumeMode(),
-    volumeCanTry: () => vc.volumeCanTry(),
     tracks() {
       return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
     },

@@ -35,16 +35,18 @@ export function extraAudioCodecs(video) {
 // auch bei SubtitleStreamIndex -1. Angezeigt werden weiterhin nur Text-Untertitel (tracks.js).
 const SUB_FORMATS = ['vtt', 'srt', 'subrip', 'ass', 'ssa', 'pgssub', 'dvdsub', 'dvbsub', 'sub'];
 
-/** opts.noHevc: HEVC nicht anbieten (Rückfall auf ts/h264, wenn fMP4-HLS im <video> scheitert). */
+/** opts.noHevc: HEVC nicht anbieten (Rückfall auf ts/h264, wenn fMP4-HLS im <video> scheitert).
+ *  opts.noDirect: keine DirectPlay-Profile (Rückfall auf Remux, wenn Direktwiedergabe im <video> scheitert). */
 export function buildDeviceProfile(video, opts = {}) {
   const hevc = !(opts && opts.noHevc) && canHevc(video);
   const extra = extraAudioCodecs(video);
   const directAudio = ['aac', 'mp3', ...extra].join(',');
   const direct = [];
-  if (can(video, MKV)) {
+  const allowDirect = !(opts && opts.noDirect);
+  if (allowDirect && can(video, MKV)) {
     direct.push({ Container: 'mkv', Type: 'Video', VideoCodec: hevc && can(video, HEVC_MKV) ? 'h264,hevc' : 'h264', AudioCodec: directAudio });
   }
-  if (can(video, MP4) || hevc) {
+  if (allowDirect && (can(video, MP4) || hevc)) {
     direct.push({ Container: 'mp4,m4v', Type: 'Video', VideoCodec: hevc ? 'h264,hevc' : 'h264', AudioCodec: directAudio });
   }
   return {

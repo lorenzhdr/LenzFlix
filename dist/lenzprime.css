@@ -2678,6 +2678,71 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt-popover .lfx-popover__item.i
   }
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal.lfx-modal-overlay {
+  font-family: var(--lfx-font);
+  background: rgba(0, 5, 13, .8);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal {
+  box-shadow: var(--lfx-prime-shadow);
+  background: #17191c;
+  border-radius: 12px;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__play {
+  color: #00050d;
+  height: 52px;
+  font: 500 18px/1.15 var(--lfx-font);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 21px;
+  transition: transform .2s cubic-bezier(.25, 1, .5, 1), background-color .2s;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round {
+  background: rgba(25, 30, 37, .8);
+  border: 0;
+  transition: background-color .2s, transform .2s;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round:hover, html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on {
+  background: rgba(255, 255, 255, .2);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__play:focus-visible {
+  outline-offset: 2px;
+  outline: 3px solid #fff;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__round:focus-visible {
+  outline-offset: 2px;
+  outline: 3px solid #fff;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__close:focus-visible {
+  outline-offset: 2px;
+  outline: 3px solid #fff;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover, html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected {
+  background: #33373d;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__link {
+  color: var(--lfx-link);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__link:hover {
+  color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-modal .lfx-modal__play:hover {
+    background: #ebecee;
+    transform: scale(1.04);
+  }
+}
+
 html.lfx-theme-prime:not(.layout-tv) {
   --nat-bg: #00050d;
   --nat-glass: rgba(25, 30, 37, .92);

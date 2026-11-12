@@ -30,7 +30,7 @@ vi.mock('../src/js/core/itemmenu.js', () => ({
 
 import * as api from '../src/js/core/api.js';
 import { buildPool, formatRuntime, formatRating, metaParts, genreLine, badgeFor } from '../src/js/features/billboard/format.js';
-import { render } from '../src/js/features/billboard.js';
+import { render, TRAILER_MIN_IMAGE_MS, TRAILER_STALL_MS, ROTATE_MS } from '../src/js/features/billboard.js';
 import { openModal } from '../src/js/features/modal.js';
 import { canDownload, startDownload, isChooserOpen } from '../src/js/core/download.js';
 import { openItemMenu, isMenuOpen, onItemsChanged } from '../src/js/core/itemmenu.js';
@@ -212,7 +212,7 @@ describe('billboard render', () => {
       expect(slot.children.length).toBe(0);
     });
 
-    it('kein Vorladen ohne geladenes Bild und ohne lfx:rows-ready; Einblenden frühestens 5 s nach dem Bild', async () => {
+    it('kein Vorladen ohne geladenes Bild und ohne lfx:rows-ready; Einblenden frühestens 3 s nach dem Bild', async () => {
       const cleanup = render(slot);
       await flush();
       await vi.advanceTimersByTimeAsync(3000);
@@ -226,7 +226,7 @@ describe('billboard render', () => {
       expect(video().classList.contains('is-in')).toBe(false);
       expect(video().muted).toBe(true);
       video().dispatchEvent(new Event('canplaythrough')); // bereit bei 4 s, Bild stand erst 1 s
-      await vi.advanceTimersByTimeAsync(3900);
+      await vi.advanceTimersByTimeAsync(1900);
       expect(play).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(200);
       expect(play).toHaveBeenCalledTimes(1);
@@ -243,11 +243,62 @@ describe('billboard render', () => {
       img().dispatchEvent(new Event('load'));
       document.dispatchEvent(new Event('lfx:rows-ready'));
       await vi.advanceTimersByTimeAsync(0);
-      await vi.advanceTimersByTimeAsync(15000);
+      for (let i = 0; i < 15; i++) { // lädt langsam, aber mit Fortschritt (kein Rückfall)
+        await vi.advanceTimersByTimeAsync(1000);
+        video().dispatchEvent(new Event('progress'));
+      }
       expect(play).not.toHaveBeenCalled();
       expect(title()).toBe('r0'); // keine Rotation, solange der Trailer lädt
       video().dispatchEvent(new Event('canplaythrough'));
-      expect(play).toHaveBeenCalledTimes(1); // Bild stand > 5 s -> sofort
+      expect(play).toHaveBeenCalledTimes(1); // Bild stand > 3 s -> sofort
+    });
+
+    it('Konstante: Titelbild steht mindestens 3 s', () => {
+      expect(TRAILER_MIN_IMAGE_MS).toBe(3000);
+    });
+
+    it('puffert nie (iOS): nach Mindestzeit + Rückfallzeit play(), eingeblendet erst bei playing', async () => {
+      render(slot);
+      await flush();
+      img().dispatchEvent(new Event('load'));
+      document.dispatchEvent(new Event('lfx:rows-ready'));
+      await vi.advanceTimersByTimeAsync(0);
+      const v = video();
+      expect(v).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(TRAILER_MIN_IMAGE_MS - 100); // vor der Mindestzeit nie
+      expect(play).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(TRAILER_STALL_MS + 600);
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(v.classList.contains('is-in')).toBe(false);
+      v.dispatchEvent(new Event('playing'));
+      expect(v.classList.contains('is-in')).toBe(true);
+    });
+
+    it('play() abgelehnt: Trailer aufgegeben, Rotation frei', async () => {
+      play.mockRejectedValue(new Error('NotAllowedError'));
+      render(slot);
+      await flush();
+      img().dispatchEvent(new Event('load'));
+      document.dispatchEvent(new Event('lfx:rows-ready'));
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(TRAILER_MIN_IMAGE_MS + TRAILER_STALL_MS + 600);
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(video()).toBeNull();
+      await vi.advanceTimersByTimeAsync(ROTATE_MS + 500);
+      expect(title()).toBe('n0');
+    });
+
+    it('puffert sofort: wie bisher, Einblenden 3 s nach dem Bild', async () => {
+      render(slot);
+      await flush();
+      img().dispatchEvent(new Event('load'));
+      document.dispatchEvent(new Event('lfx:rows-ready'));
+      await vi.advanceTimersByTimeAsync(0);
+      video().dispatchEvent(new Event('canplaythrough'));
+      await vi.advanceTimersByTimeAsync(2900);
+      expect(play).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(200);
+      expect(play).toHaveBeenCalledTimes(1);
     });
 
     it('Folienwechsel bricht das Vorladen ab (src leer, load())', async () => {

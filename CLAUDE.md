@@ -100,8 +100,14 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 12.11.2026 (1.11.0). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/live.md`, `docs/store3d.md` und `docs/tvmode.md`.
-- **Version:** v1.11.0 (Tag `v1.11.0`, jsDelivr), 2209 Tests, Lint und Build grün. Hauptbundle-Budget 440 KiB (`build/build.mjs`).
+Stand 12.11.2026 (1.11.1). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/live.md`, `docs/store3d.md` und `docs/tvmode.md`.
+- **Version:** v1.11.1 (Tag `v1.11.1`, jsDelivr), 2211 Tests, Lint und Build grün. Hauptbundle-Budget 440 KiB (`build/build.mjs`).
+- **Inhalt 1.11.1 (iPhone-Rückmeldungen Runde 2, live geprüft 12.11.2026 in Chrome, Konto claude, Desktop + 390/932-px-iframe):**
+  - **TV-Modus „Details“** öffnet in flix/plus/prime die Karte (`openModal(id, { overlay: true })`) über dem weiterlaufenden TV (Bild + Ton, kein Stopp/Neustart mehr); plus/prime mit Skin `src/css/themes/<id>/modal.css` und Link „Zur Titelseite“; ähnliche Titel bleiben in der Karte. Abspielen stoppt weiter per `lfx:play`.
+  - **LIVE/TV-Player:** Rückfallkette beim Start (Direct → Remux per `noDirect` → fMP4→ts nur h264 → ein ts-Neuversuch), gescheitertes Direct pro Item gemerkt; Fehlercode mit Kette (`M3·D>T`). Lautstärke am iPhone ohne WebAudio (`gain.js` entfernt): Modus `mute-only`, Regler 0 = stumm, ab 5 = voller Ton.
+  - **LENZ LIVE:** zweites „i“ blendet Info und Kanalnummer/Titel sofort aus; EPG am Handy-Hochformat verdichtet (crt80/silver 5, flat/plain 3 Zeilen).
+  - **Info-Fenster am Handy (≤ 799 px):** Scroll-Sperre per `body{position:fixed;top:-y}`, Wiederherstellen vor dem Entfernen (gegen Startseiten-Blitz beim Wischen). LENZPRIME-Titelseite scrollt nicht mehr zur Folge.
+  - **Sonstiges:** flix-Kopfleiste 8 px Abstand zum Logo (`header.css`, auch 900–1100 px `layout-mobile`), Trailer frühestens 3 s nach dem Titelbild, Safari-Rückfall (`play()` ohne Pufferfortschritt nach `TRAILER_STALL_MS`, abgelehntes `play()` gibt sofort auf), Videothek-Cover kippt vorne wie hinten gleich.
 - **Inhalt 1.11.0 (iPhone-Rückmeldungen, live geprüft 12.11.2026 in Chrome mit Konto claude, Desktop + 390/844/932-px-iframe):**
   - **Ladebild beim Abspielen** in allen Designs (`core/startcover.js`, aus `core/playback.js` `play()`): Titelbild + Ladekreis bis der Player läuft bzw. das erste Bild bereit ist; Jellyfins `.docspinner` ist solange aus (`html.lfx-startcover-on`). flix-Info-Fenster: Ladebild vor `closeModal({after})`, die Startseite blitzt nicht mehr auf.
   - **Info-Fenster (flix)** öffnet immer oben (kein Auto-Scroll zur Folge, Folge bleibt markiert), am Handy „1. Titel“, Wegwischen stellt `scrollY` wieder her (`core/swipe.js` `holdBackdrop`).
@@ -124,6 +130,7 @@ Stand 12.11.2026 (1.11.0). Bei jedem Release aktualisieren, knapp halten. Vertr�
     - „Silber-Röhre“ ist als Silbergerät auf einem Glas-Rack um 2000 neu gestaltet.
     - Neues Raum-Dekor-System und Schalter „Röhren-Effekte“.
 - **Offen:**
+  - Am iPhone ungeprüft (1.11.1): M3-Rückfall/Code-Kette (bei Fehler Code notieren), Lautstärke 0/5 in LIVE und TV, Trailer am Handy, Wegwischen ohne Startseiten-Blitz, Karte über dem TV am Handy. LENZ LIVE „i“ zweimal nur per Test geprüft.
   - Test mit echter VR-Brille: „Lauter“ und Kino-Start beim ersten Versuch. Scheitert der Start, den angezeigten Code (z. B. „T2“) notieren. Bedeutung siehe `docs/store3d.md`.
   - Die Autoplay-Ursache für „erst beim zweiten Mal“ ist nur aus dem Code hergeleitet, mit Brille noch nicht bestätigt.
   - iPhone-Safari (aus 1.9.1): Pausenmusik bei Stummschalter, PDF-Download.

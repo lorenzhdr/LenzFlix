@@ -252,58 +252,28 @@ describe('tvmode Lebenszyklus', () => {
   });
 });
 
-describe('tvmode Details (flix-Modal)', () => {
+describe('tvmode Details (Karte über dem laufenden TV)', () => {
   const setModal = async (open) => {
     document.documentElement.classList.toggle('lfx-modal-open', open);
     await flush();
   };
 
-  it('openDetails: flix → openModal, plus → Titelseite', async () => {
+  it('openDetails: in allen Designs openModal mit overlay, kein Seitenwechsel', async () => {
     await mountReady();
+    const hash = window.location.hash;
     created.deps.openDetails('abc');
-    expect(openModal).toHaveBeenCalledWith('abc');
+    expect(openModal).toHaveBeenCalledWith('abc', { overlay: true });
     theme = 'plus';
-    created.deps.openDetails('abc');
-    expect(window.location.hash).toBe('#/home?lfx=title&id=abc');
+    created.deps.openDetails('abc2');
+    expect(openModal).toHaveBeenLastCalledWith('abc2', { overlay: true });
+    expect(window.location.hash).toBe(hash);
   });
 
-  it('Modal auf → stop, zu ohne lfx:play → start', async () => {
+  it('Modal auf/zu stoppt und startet den TV nicht', async () => {
     await mountReady();
     instance.start.mockClear();
     await setModal(true);
-    expect(instance.stop).toHaveBeenCalledWith('modal');
-    await setModal(false);
-    expect(instance.start).toHaveBeenCalledTimes(1);
-  });
-
-  it('Modal zu mit lfx:play → kein start', async () => {
-    await mountReady();
-    instance.start.mockClear();
-    await setModal(true);
-    window.dispatchEvent(new CustomEvent('lfx:play', { detail: { id: 'x' } }));
-    await setModal(false);
-    expect(instance.start).not.toHaveBeenCalled();
-  });
-
-  it('Modal zu, Player offen bzw. Route nicht mehr tv → kein start', async () => {
-    await mountReady();
-    instance.start.mockClear();
-    await setModal(true);
-    document.body.insertAdjacentHTML('beforeend', '<div id="videoOsdPage"></div>');
-    await setModal(false);
-    expect(instance.start).not.toHaveBeenCalled();
-    document.getElementById('videoOsdPage').remove();
-    await setModal(true);
-    window.location.hash = '#/home';
-    await setModal(false);
-    expect(instance.start).not.toHaveBeenCalled();
-  });
-
-  it('war TV vor dem Modal aus, bleibt es aus', async () => {
-    await mountReady();
-    instance.start.mockClear();
-    instance.isOn.mockReturnValue(false);
-    await setModal(true);
+    expect(instance.stop).not.toHaveBeenCalled();
     await setModal(false);
     expect(instance.start).not.toHaveBeenCalled();
   });

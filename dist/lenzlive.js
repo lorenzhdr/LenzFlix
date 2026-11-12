@@ -1438,183 +1438,6 @@
     };
   }
 
-  // src/js/live/player/gain.js
-  var graphs = /* @__PURE__ */ new WeakMap();
-  var RESUME_MS = 1e3;
-  var SAMPLE_MS = 250;
-  var CHECK_MS = 1500;
-  var audioCtor = () => typeof window !== "undefined" && (window.AudioContext || window.webkitAudioContext) || null;
-  function createGainControl(video, { emit = () => {
-  } } = {}) {
-    let wanted = 1;
-    let activating = false;
-    let disposed = false;
-    let checkIv = null;
-    let quietMs = 0;
-    const st = () => graphs.get(video) || null;
-    const active = () => {
-      const s = st();
-      return !!(s && s.gain && !s.failed);
-    };
-    const stopCheck = () => {
-      if (checkIv) {
-        clearInterval(checkIv);
-        checkIv = null;
-      }
-    };
-    function markFailed() {
-      stopCheck();
-      const s = st() || {};
-      s.failed = true;
-      if (s.gain) {
-        try {
-          s.gain.gain.value = 1;
-        } catch {
-        }
-      }
-      graphs.set(video, s);
-      emit("volume-mode", { mode: "mute-only" });
-    }
-    function sampleLoud(s) {
-      try {
-        const buf = new Uint8Array(s.analyser.fftSize || 256);
-        s.analyser.getByteTimeDomainData(buf);
-        for (let i = 0; i < buf.length; i++) if (Math.abs(buf[i] - 128) > 1) return true;
-      } catch {
-        return true;
-      }
-      return false;
-    }
-    function poke() {
-      if (disposed) return;
-      const s = st();
-      if (!s || !s.gain || s.failed) return;
-      if (s.ctx && s.ctx.state !== "running") {
-        try {
-          s.ctx.resume();
-        } catch {
-        }
-      }
-      if (s.checked || checkIv) return;
-      quietMs = 0;
-      checkIv = setInterval(() => {
-        const cur = st();
-        if (!cur || cur.failed || cur.checked) {
-          stopCheck();
-          return;
-        }
-        if (video.paused || video.muted || wanted <= 0) {
-          quietMs = 0;
-          return;
-        }
-        if (sampleLoud(cur)) {
-          cur.checked = true;
-          stopCheck();
-          return;
-        }
-        quietMs += SAMPLE_MS;
-        if (quietMs >= CHECK_MS) markFailed();
-      }, SAMPLE_MS);
-    }
-    function build(ctx) {
-      try {
-        const source = ctx.createMediaElementSource(video);
-        const gain = ctx.createGain();
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(gain);
-        gain.connect(ctx.destination);
-        source.connect(analyser);
-        gain.gain.value = wanted;
-        graphs.set(video, { ctx, gain, analyser, source, failed: false, checked: false });
-        emit("volume-mode", { mode: "gain" });
-        poke();
-      } catch {
-        try {
-          ctx.close();
-        } catch {
-        }
-        markFailed();
-      }
-    }
-    function activate() {
-      const A = audioCtor();
-      if (!A) {
-        markFailed();
-        return;
-      }
-      let ctx;
-      try {
-        ctx = new A();
-      } catch {
-        markFailed();
-        return;
-      }
-      activating = true;
-      let settled = false;
-      let timer = null;
-      const done = (ok) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        activating = false;
-        if (ok && !disposed && ctx.state === "running") {
-          build(ctx);
-          return;
-        }
-        try {
-          ctx.close();
-        } catch {
-        }
-      };
-      timer = setTimeout(() => done(false), RESUME_MS);
-      let p = null;
-      try {
-        p = ctx.resume();
-      } catch {
-      }
-      if (p && typeof p.then === "function") p.then(() => done(true), () => done(false));
-      else done(true);
-    }
-    return {
-      /** v 0..1. Aktiviert den Pfad erst beim ersten Pegel < 1 (Aufruf idealerweise in einer Nutzergeste). */
-      setLevel(v) {
-        wanted = Math.min(1, Math.max(0, Number(v)));
-        if (!Number.isFinite(wanted)) wanted = 1;
-        const s = st();
-        if (s && s.failed) return;
-        if (s && s.gain) {
-          try {
-            s.gain.gain.value = wanted;
-          } catch {
-          }
-          poke();
-          return;
-        }
-        if (wanted >= 1 || activating || disposed) return;
-        activate();
-      },
-      mode: () => active() ? "gain" : "mute-only",
-      /** Lohnt sich ein Versuch? (nicht gescheitert, kein Graph, AudioContext vorhanden) */
-      canTry() {
-        const s = st();
-        return !(s && (s.failed || s.gain)) && !!audioCtor();
-      },
-      poke,
-      dispose() {
-        disposed = true;
-        stopCheck();
-        const s = st();
-        if (s && s.gain) {
-          try {
-            s.gain.gain.value = 1;
-          } catch {
-          }
-        }
-      }
-    };
-  }
-
   // src/js/live/player/video.js
   var START_TIMEOUT_MS = 25e3;
   var STALL_REPORT_MS = 1200;
@@ -1711,7 +1534,6 @@
     } catch {
       nativeVolume = false;
     }
-    const gain = nativeVolume ? null : createGainControl(video, { emit });
     const listeners = {
       playing: () => {
         if (!armed) return;
@@ -1719,7 +1541,6 @@
         resetStall();
         emit("state", { phase: "playing" });
         settle({ ok: true });
-        if (gain) gain.poke();
       },
       // 'stalled' feuert auf iOS auch ohne echte Unterbrechung: ignorieren. 'waiting' erst nach ~1,2 s ohne Fortschritt melden.
       waiting: () => {
@@ -1823,15 +1644,12 @@
     }
     return {
       get volumeSupported() {
-        return nativeVolume || !!gain && gain.mode() === "gain";
+        return nativeVolume;
       },
-      /** 'native' | 'gain' (WebAudio aktiv) | 'mute-only' (nur Stumm). */
-      volumeMode: () => nativeVolume ? "native" : gain.mode(),
-      /** true, wenn ein Gain-Versuch möglich ist (noch nicht gescheitert, AudioContext vorhanden). */
-      volumeCanTry: () => !nativeVolume && gain.canTry(),
+      /** 'native' | 'mute-only' (feste Gerätelautstärke, nur Stumm). */
+      volumeMode: () => nativeVolume ? "native" : "mute-only",
       /** Synchron im Klick-Handler: Freigabe für das <video> (iOS). */
       unlock() {
-        if (gain) gain.poke();
         try {
           const p = video.play();
           if (p && p.catch) p.catch(() => {
@@ -1861,11 +1679,10 @@
             video.volume = c2;
           } catch {
           }
-        } else gain.setLevel(c2);
+        }
       },
       setMuted(b) {
         video.muted = !!b;
-        if (gain) gain.poke();
       },
       setSubtitle({ url, label, lang }) {
         clearSubtitles();
@@ -1887,7 +1704,6 @@
         if (disposed) return;
         clear(false);
         disposed = true;
-        if (gain) gain.dispose();
         for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
         if (ms && typeof ms.setActionHandler === "function") {
           for (const a of MEDIA_ACTIONS) {
@@ -1938,10 +1754,11 @@
     const extra = extraAudioCodecs(video);
     const directAudio = ["aac", "mp3", ...extra].join(",");
     const direct = [];
-    if (can(video, MKV)) {
+    const allowDirect = !(opts && opts.noDirect);
+    if (allowDirect && can(video, MKV)) {
       direct.push({ Container: "mkv", Type: "Video", VideoCodec: hevc && can(video, HEVC_MKV) ? "h264,hevc" : "h264", AudioCodec: directAudio });
     }
-    if (can(video, MP4) || hevc) {
+    if (allowDirect && (can(video, MP4) || hevc)) {
       direct.push({ Container: "mp4,m4v", Type: "Video", VideoCodec: hevc ? "h264,hevc" : "h264", AudioCodec: directAudio });
     }
     return {
@@ -2118,14 +1935,14 @@
       return null;
     }
   }
-  async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false }) {
+  async function resolveStream({ deps, video, itemId, audioIndex, signal, noHevc = false, noDirect = false }) {
     const post = async (extra) => {
       const body = {
         UserId: deps.user.id,
-        DeviceProfile: buildDeviceProfile(video, { noHevc }),
+        DeviceProfile: buildDeviceProfile(video, { noHevc, noDirect }),
         StartTimeTicks: 0,
         SubtitleStreamIndex: -1,
-        EnableDirectPlay: true,
+        EnableDirectPlay: !noDirect,
         EnableDirectStream: true,
         EnableTranscoding: true,
         AllowVideoStreamCopy: true,
@@ -2153,7 +1970,7 @@
       }
       const audioIdx = want != null ? want : def;
       const base = { mediaSource: ms, mediaSourceId: ms.Id, playSessionId: info.PlaySessionId, audioIndex: audioIdx, tracks: tr };
-      if (ms.SupportsDirectPlay && !remux) {
+      if (ms.SupportsDirectPlay && !remux && !noDirect) {
         const url2 = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });
         return { ok: true, mode: "direct", url: url2, ...base };
       }
@@ -2248,7 +2065,6 @@
     return {
       volumeSupported: true,
       volumeMode: () => "native",
-      volumeCanTry: () => false,
       prefetch: async () => ({ ok: true }),
       unlock() {
       },
@@ -2380,6 +2196,8 @@
   var aborted = () => ({ ok: false, mode: "none", reason: "aborted" });
   var CACHE_TTL_MS = 10 * 60 * 1e3;
   var CACHE_MAX = 24;
+  var MAX_ATTEMPTS = 3;
+  var RETRY_DELAY_MS = 500;
   function createPlayer({ video, deps, now = Date.now, fake = false, canvas, getInfo } = {}) {
     if (fake) return createFakePlayer({ canvas, now, getInfo });
     const em = createEmitter();
@@ -2390,6 +2208,12 @@
     let tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
     let disposed = false;
     let tsOnly = false;
+    const directFailed = /* @__PURE__ */ new Set();
+    const rememberDirectFailed = (itemId) => {
+      if (directFailed.size >= 200) directFailed.clear();
+      directFailed.add(itemId);
+      cache.delete(itemId);
+    };
     const cache = /* @__PURE__ */ new Map();
     const inflight = /* @__PURE__ */ new Map();
     const cancelRequests = () => {
@@ -2425,7 +2249,7 @@
     const fresh = (e) => !!e && now() - e.at < CACHE_TTL_MS;
     function remember(itemId, r) {
       if (!r || !r.ok) return;
-      cache.set(itemId, { at: now(), mode: r.mode, r: r.mode === "direct" ? r : null });
+      cache.set(itemId, { at: now(), mode: r.mode, r: r.mode === "direct" && !directFailed.has(itemId) ? r : null });
       while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
     }
     function prefetch(itemId, { signal } = {}) {
@@ -2433,7 +2257,7 @@
       if (fresh(cache.get(itemId))) return Promise.resolve({ ok: true, cached: true });
       const running = inflight.get(itemId);
       if (running) return running;
-      const p = resolveStream({ deps, video, itemId, signal, noHevc: false }).then((r) => {
+      const p = resolveStream({ deps, video, itemId, signal, noHevc: false, noDirect: directFailed.has(itemId) }).then((r) => {
         if (!(signal && signal.aborted)) remember(itemId, r);
         return { ok: !!r.ok, mode: r.mode };
       }, () => ({ ok: false, reason: "network" })).finally(() => {
@@ -2453,11 +2277,11 @@
           if (signal.aborted) return { ok: false, mode: "none", reason: "aborted" };
         }
         const c2 = cache.get(itemId);
-        if (fresh(c2) && c2.mode === "direct" && c2.r) return c2.r;
+        if (fresh(c2) && c2.mode === "direct" && c2.r && !directFailed.has(itemId)) return c2.r;
       }
       let r;
       try {
-        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc });
+        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: directFailed.has(itemId) });
       } catch {
         r = { ok: false, mode: "none", reason: signal.aborted ? "aborted" : "network", ...signal.aborted ? {} : { code: "NET" } };
       }
@@ -2484,29 +2308,54 @@
         failure(r.reason, r.code);
         return failResult(r);
       }
-      let res = await launch(r, opts, offsetMs2, itemId, my);
-      if (my !== gen) return aborted();
-      const canFallback = !res.ok && (res.reason === "video" || res.reason === "browser") && r.mode === "hls" && r.offeredHevc && r.videoCodec === "h264";
-      if (canFallback) {
-        teardown();
-        const r2 = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
+      const chain = [];
+      let cur = r;
+      let noHevc = !!opts.noHevc;
+      let res;
+      let fromFmp4 = false;
+      let tsRetried = false;
+      for (let attempt = 1; ; attempt++) {
+        chain.push(attemptLetter(cur));
+        res = await launch(cur, opts, offsetMs2, itemId, my);
         if (my !== gen) return aborted();
-        if (r2.ok) {
-          res = await launch(r2, opts, offsetMs2, itemId, my);
-          if (my !== gen) return aborted();
-          if (res.ok) {
-            tsOnly = true;
-            return res;
-          }
+        if (res.ok) {
+          if (fromFmp4) tsOnly = true;
+          return res;
         }
+        if (res.reason !== "video" && res.reason !== "browser" || attempt >= MAX_ATTEMPTS) break;
+        let delay = 0;
+        if (cur.mode === "direct") {
+          rememberDirectFailed(itemId);
+        } else if (cur.mode === "hls" && cur.offeredHevc && cur.videoCodec === "h264") {
+          noHevc = true;
+          fromFmp4 = true;
+        } else if (cur.mode === "hls" && !cur.offeredHevc && !tsRetried) {
+          tsRetried = true;
+          noHevc = true;
+          delay = RETRY_DELAY_MS;
+        } else {
+          break;
+        }
+        await teardown();
+        if (my !== gen) return aborted();
+        if (delay) {
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          if (my !== gen) return aborted();
+        }
+        const next = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? cur.audioIndex, noHevc, noCache: true }, signal);
+        if (my !== gen) return aborted();
+        if (!next.ok) break;
+        cur = next;
       }
-      if (!res.ok) {
-        teardown();
-        if (res.reason !== "aborted") failure(res.reason, res.code);
-        return failResult(res);
+      teardown();
+      if (res.reason !== "aborted") {
+        const code = res.code && /^(M\d+|B-PLAY)$/.test(res.code) ? `${res.code}\xB7${chain.join(">")}` : res.code;
+        failure(res.reason, code);
+        return failResult({ ...res, code });
       }
-      return res;
+      return failResult(res);
     }
+    const attemptLetter = (x) => x.mode === "direct" ? "D" : x.offeredHevc ? "F" : "T";
     const failResult = (x) => x.code ? { ok: false, mode: "none", reason: x.reason, code: x.code } : { ok: false, mode: "none", reason: x.reason };
     async function launch(r, opts, offsetMs2, itemId, my) {
       session = { kind: "item", itemId, mode: r.mode, playSessionId: r.playSessionId, mediaSourceId: r.mediaSourceId };
@@ -2552,12 +2401,11 @@
       syncTo: (ms) => vc.syncTo(ms),
       setVolume: (v) => vc.setVolume(v),
       setMuted: (b) => vc.setMuted(b),
-      // Lautstärke: 'native' | 'gain' (WebAudio, iOS) | 'mute-only'. setVolume wirkt in den ersten beiden Modi.
+      // Lautstärke: 'native' | 'mute-only' (iOS: video.volume ist fest, nur Stumm/Ton an). setVolume wirkt nur bei 'native'.
       get volumeSupported() {
         return vc.volumeSupported;
       },
       volumeMode: () => vc.volumeMode(),
-      volumeCanTry: () => vc.volumeCanTry(),
       tracks() {
         return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
       },
@@ -8291,10 +8139,12 @@
         if (f == null) return;
         fill.style.width = `${Math.round(Math.max(0, Math.min(1, f)) * 100)}%`;
       },
-      /** Erweitertes OSD; erneuter Aufruf bei sichtbarem Info schließt es. */
+      /** Erweitertes OSD; erneuter Aufruf bei sichtbarem Info schließt Info UND Kanalnummer/Titel (Lautstärke/Meldung bleiben). */
       showInfo(data) {
         if (el.classList.contains("is-info")) {
           this.hideInfo();
+          win.clearTimeout(T.ch);
+          el.classList.remove("is-ch");
           return;
         }
         infoTitle.textContent = data.title || "";
@@ -9267,50 +9117,47 @@
     function muteOnly() {
       if (player && typeof player.volumeMode === "function") {
         const m = safe2(() => player.volumeMode());
-        if (m === "native" || m === "gain") return false;
+        if (m === "native") return false;
         if (m === "mute-only") return true;
       }
       return !!player && player.volumeSupported === false;
     }
     const level = () => muteOnly() ? 1 : vol / 100;
+    const silent = () => muted || muteOnly() && vol === 0;
+    let volHintShown = false;
     function applyVolume() {
-      safe2(() => player.setVolume && player.setVolume(vol / 100));
-      safe2(() => player.setMuted && player.setMuted(muted));
-      if (music) safe2(() => music.setLevel(level(), muted || mutedByPolicy));
-      if (sfx) safe2(() => sfx.setLevel(level(), muted));
+      safe2(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
+      safe2(() => player.setMuted && player.setMuted(silent()));
+      if (music) safe2(() => music.setLevel(level(), silent() || mutedByPolicy));
+      if (sfx) safe2(() => sfx.setLevel(level(), silent()));
       safe2(() => knobs.setVolume(vol));
     }
     function savePrefs(partial) {
       if (deps.savePrefs) safe2(() => deps.savePrefs(partial));
     }
+    function showVol() {
+      if (!on) return;
+      const hint = muteOnly() && !volHintShown ? "Lautst\xE4rke bitte am Ger\xE4t einstellen" : "";
+      if (hint) volHintShown = true;
+      osd.showVolume({ percent: vol, muted: silent(), hint });
+    }
     function changeVolume(key) {
-      if (muteOnly()) {
-        muted = key === "vol+" ? false : key === "vol-" ? true : !muted;
-        applyVolume();
-        if (on) osd.showVolume({ percent: vol, muted, hint: "Lautst\xE4rke bitte am Ger\xE4t einstellen", hintOnly: true });
-        savePrefs({ muted });
-        return;
-      }
       if (key === "mute") muted = !muted;
       else {
         vol = clamp2(vol + (key === "vol+" ? VOL_STEP2 : -VOL_STEP2), 0, 100);
         muted = false;
       }
       applyVolume();
-      if (on) osd.showVolume({ percent: vol, muted });
+      showVol();
       savePrefs({ volume: vol / 100, muted });
     }
     function setVolumeAbs(v) {
       if (disposed || suspended) return;
       v = clamp2(Math.round(Number(v) || 0), 0, 100);
-      if (muteOnly()) {
-        if (v !== vol) changeVolume(v > vol ? "vol+" : "vol-");
-        return;
-      }
       vol = v;
       muted = false;
       applyVolume();
-      if (on) osd.showVolume({ percent: vol, muted });
+      showVol();
       savePrefs({ volume: vol / 100, muted });
     }
     function onDeviceAction(action) {
@@ -9348,8 +9195,8 @@
       const off = Math.max(0, clock() - entry.start);
       safe2(() => watch.tune(entry, off));
     }
-    function watchLeave(silent) {
-      if (watch) safe2(() => watch.leave(silent));
+    function watchLeave(silent2) {
+      if (watch) safe2(() => watch.leave(silent2));
     }
     function clearStall() {
       stallArmed = false;

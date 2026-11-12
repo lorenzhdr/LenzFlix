@@ -417,6 +417,28 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Handy Hochformat: im Fernseher-Rahmen verdichten (mehr Sendungszeilen): flacherer Kopf ohne Info-Zeile,
+     kleineres Mini-Bild, niedrigere Zeilen/Zeitleiste/Farbtasten. Querformat und Desktop bleiben unberührt. */
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg {
+    --lfx-live-epg-row: 2.7em;
+  }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__top {
+    padding: 0.45em 0.6em 0.35em;
+    padding-right: 19%;
+    gap: 0;
+    min-height: calc(9cqw + 2.2cqh); /* Platz für das Mini-Bild, damit es die Zeitleiste nicht verdeckt */
+    box-sizing: border-box;
+  }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__info { display: none; }
+  .lfx-live-app.is-phone:not(.is-landscape).has-epg .lfx-live-video,
+  .lfx-live-app.is-phone:not(.is-landscape).has-epg .lfx-live-fake {
+    width: 16%;
+  }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__ruler { height: 1.5em; }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__tick { padding-top: 0.15em; }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__ev { padding-top: 0.1em; padding-bottom: 0.1em; }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__legend { padding: 0.25em 0.6em; gap: 0.4em; }
+  .lfx-live-app.is-phone:not(.is-landscape) .lfx-live-epg__key { padding: 0.1em 0.6em; font-size: 0.9em; }
 
   .lfx-live-epg__nowline {
     position: absolute;

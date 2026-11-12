@@ -373,18 +373,15 @@ describe('Lautstärke', () => {
     expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
   });
 
-  it('volumeSupported=false: vol± schalten Stumm/Laut mit Hinweis', async () => {
+  it('volumeSupported=false (ohne volumeMode): wie mute-only, Pegel 0 → stumm, volume fest 1', async () => {
     const env = makeEnv({ player: { volumeSupported: false } });
     env.app.press('power');
     await flush();
-    env.player.setVolume.mockClear();
     env.app.press('vol-');
-    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
-    expect(q(env, '.lfx-live-osd__vol-hint').textContent).toBe('Lautstärke bitte am Gerät einstellen');
-    expect(env.deps.savePrefs).toHaveBeenLastCalledWith({ muted: true });
-    env.app.press('vol+');
     expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
-    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5); // Pegel bleibt unverändert
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
+    expect(env.deps.savePrefs).toHaveBeenLastCalledWith({ volume: 0.45, muted: false });
+    expect(q(env, '.lfx-live-osd__vol-hint').textContent).toBe('Lautstärke bitte am Gerät einstellen');
   });
 
   it('Ton- und Untertiteltasten zyklisch, ohne Spuren mit Hinweis', async () => {
@@ -757,8 +754,8 @@ describe('Gerätetasten und Drehknöpfe', () => {
 });
 
 describe('Lautstärke-Modus (volumeMode)', () => {
-  it("'gain': normale Stufen wie am PC, kein Hinweis", async () => {
-    const env = makeEnv({ player: { volumeSupported: false, volumeMode: vi.fn(() => 'gain') } });
+  it("'native': normale Stufen wie am PC, kein Hinweis", async () => {
+    const env = makeEnv({ player: { volumeSupported: false, volumeMode: vi.fn(() => 'native') } });
     env.app.press('power');
     await flush();
     env.app.press('vol+');
@@ -768,32 +765,36 @@ describe('Lautstärke-Modus (volumeMode)', () => {
     expect(q(env, '.lfx-live-osd__vol').classList.contains('is-hint-only')).toBe(false);
   });
 
-  it("'mute-only': nur Stumm/Ton an, Hinweis ohne Pegelbalken", async () => {
+  it("'mute-only': Anzeige 0–100 normal, Pegel 0 → stumm, sonst Ton an (volume fest 1), Hinweis nur einmal", async () => {
     const env = makeEnv({ player: { volumeMode: vi.fn(() => 'mute-only') } });
     env.app.press('power');
     await flush();
-    env.player.setVolume.mockClear();
-    env.app.press('vol-');
-    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
-    expect(q(env, '.lfx-live-osd__vol').classList.contains('is-hint-only')).toBe(true);
-    expect(q(env, '.lfx-live-osd__vol-label').textContent).toBe('Stumm');
+    env.app.press('vol+');
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
+    expect(env.deps.savePrefs).toHaveBeenLastCalledWith({ volume: 0.55, muted: false });
+    expect(q(env, '.lfx-live-osd__vol').classList.contains('is-hint-only')).toBe(false);
+    expect(q(env, '.lfx-live-osd__vol-label').textContent).toBe('Lautstärke');
     expect(q(env, '.lfx-live-osd__vol-hint').textContent).toBe('Lautstärke bitte am Gerät einstellen');
     env.app.press('vol+');
+    expect(q(env, '.lfx-live-osd__vol-hint').textContent).toBe('');
+    for (let i = 0; i < 12; i++) env.app.press('vol-');
+    expect(env.player.setMuted).toHaveBeenLastCalledWith(true);
+    env.app.press('vol+');
     expect(env.player.setMuted).toHaveBeenLastCalledWith(false);
-    expect(q(env, '.lfx-live-osd__vol-label').textContent).toBe('Ton an');
-    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
   });
 
-  it('Modus wird dynamisch gelesen (mute-only → gain nach Geste)', async () => {
+  it('Modus wird dynamisch gelesen (mute-only → native)', async () => {
     let mode = 'mute-only';
     const env = makeEnv({ player: { volumeMode: () => mode } });
     env.app.press('power');
     await flush();
     env.app.press('vol+');
-    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.5);
-    mode = 'gain';
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(1);
+    mode = 'native';
     env.app.press('vol+');
-    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.55);
+    expect(env.player.setVolume).toHaveBeenLastCalledWith(0.6);
   });
 });
 

@@ -4,17 +4,16 @@ import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile } from '../../core/layout.js';
 import { isPopoverOpen } from '../../core/popover.js';
-import { getTheme, isTheme, onThemeChange } from '../../core/theme.js';
+import { getTheme, onThemeChange } from '../../core/theme.js';
 import { ensureThemeJs, removeThemeJs } from '../../core/themejs.js';
 import { ensureAddonCss, removeAddonCss } from '../../core/addoncss.js';
 import { play } from '../../core/playback.js';
 import { toast } from '../../core/toast.js';
-import { titleHref } from '../../shared/routes.js';
 import { loadCatalog } from '../live/data.js';
 import { buildApiDeps, fatalText, loadUser } from '../live/deps.js';
 import { openModal } from '../modal.js';
 import * as prefs from './prefs.js';
-import { ON_CLASS, ROOT_ID, TV_THEMES, findHomeTab, onTvRoute, tvModeMatch } from './route.js';
+import { ON_CLASS, ROOT_ID, TV_THEMES, findHomeTab, tvModeMatch } from './route.js';
 import { destroyUnlock, initUnlock, takeIntentVideo } from './unlock.js';
 
 const ADDON = 'lenztvmode';
@@ -26,10 +25,6 @@ let waitTimer = null;
 let inst = null; // { instance, ready, pip }
 let ui = null; // { root, boot, fill, label }
 let themeOff = null;
-let modalObs = null;
-let modalOpen = false;
-let resumeAfter = false;
-let playSeen = false;
 
 const html = () => document.documentElement;
 const coarse = () => {
@@ -40,50 +35,11 @@ initUnlock(); // einmal beim Laden des Features; destroyTvMode() entfernt den Li
 
 // ------------------------------------------------------------------ Instanz / Beobachter
 
-const onPlayEvt = () => { playSeen = true; };
-
-function onModalChange() {
-  const open = html().classList.contains('lfx-modal-open');
-  if (open === modalOpen) return;
-  modalOpen = open;
-  if (!inst || !ui) return;
-  if (open) {
-    playSeen = false;
-    let on = false;
-    try { on = Boolean(inst.instance.isOn()); } catch { /* egal */ }
-    resumeAfter = inst.ready && on;
-    try { inst.instance.stop('modal'); } catch { /* egal */ }
-    return;
-  }
-  const go = resumeAfter && !playSeen && onTvRoute() && !document.querySelector('#videoOsdPage:not(.hide)');
-  resumeAfter = false;
-  if (go) {
-    try { inst.instance.start(); } catch { /* egal */ }
-  }
-}
-
-function attachWatchers() {
-  if (modalObs) return;
-  modalOpen = html().classList.contains('lfx-modal-open');
-  resumeAfter = false;
-  playSeen = false;
-  window.addEventListener('lfx:play', onPlayEvt);
-  if (typeof MutationObserver === 'function') {
-    modalObs = new MutationObserver(onModalChange);
-    modalObs.observe(html(), { attributes: true, attributeFilter: ['class'] });
-  }
-}
-
-function detachWatchers() {
-  window.removeEventListener('lfx:play', onPlayEvt);
-  if (modalObs) modalObs.disconnect();
-  modalObs = null;
-}
+// Die Detailkarte (Modal) liegt über dem weiterlaufenden TV; Abspielen stoppt die Engine selbst (lfx:play in der Engine).
 
 function disposeInstance() {
   const cur = inst;
   inst = null;
-  detachWatchers();
   if (!cur) return;
   try { cur.instance.dispose(); } catch (e) { console.warn('[LenzFlix] tvmode dispose', fatalText(e)); }
 }
@@ -185,11 +141,8 @@ function buildDeps(raw, user, hooks) {
   return {
     ...buildApiDeps(raw, user),
     savePrefs: ret((p) => prefs.savePrefs(p)),
-    // flix: Modal über der TV-Seite (Stopp/Resume per Beobachter); plus/prime: Titelseite = Verlassen
-    openDetails: ret((id) => {
-      if (isTheme('flix')) openModal(id);
-      else window.location.hash = titleHref(id);
-    }),
+    // alle Designs: Detailkarte als Overlay über dem weiterlaufenden TV (plus/prime mit „Zur Titelseite“)
+    openDetails: ret((id) => { openModal(id, { overlay: true }); }),
     playFromStart: ret(playFromStart),
     keysBlocked: ret(blocked),
     toast: ret((text) => toast(text)),
@@ -262,7 +215,6 @@ async function boot(myGen) {
       return;
     }
     inst = { instance, ready: false, pip: false };
-    attachWatchers();
     if (early) finishReady();
   } catch (e) {
     if (myGen === gen && ui) showFallback(e);
@@ -292,7 +244,6 @@ function start(tab, myGen) {
     }
     try {
       inst.instance.resume(ui.root);
-      attachWatchers();
       if (inst.ready && !inst.pip && !inst.instance.isOn()) inst.instance.start();
     } catch (e) {
       console.warn('[LenzFlix] tvmode resume', fatalText(e));
@@ -351,7 +302,6 @@ const tvModeFeature = {
     if (inst) {
       let kept = false;
       try { kept = inst.instance.suspend() === true; } catch (e) { console.warn('[LenzFlix] tvmode suspend', fatalText(e)); }
-      detachWatchers();
       if (!kept) disposeInstance();
     }
     teardownUi();

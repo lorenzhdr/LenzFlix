@@ -401,7 +401,9 @@ describe('Pausenmusik-Anbindung', () => {
     env.app.press('power');
     await flush();
     expect(env.music.setLevel).toHaveBeenLastCalledWith(1, false);
-    env.app.press('vol-');
+    env.app.press('vol-'); // Pegel 45, Ton bleibt an (voller Gerätepegel)
+    expect(env.music.setLevel).toHaveBeenLastCalledWith(1, false);
+    env.app.press('mute');
     expect(env.music.setLevel).toHaveBeenLastCalledWith(1, true);
   });
 
