@@ -24,11 +24,13 @@ export function initHomeCache() {
   window.addEventListener('lfx:play', drop);
   window.addEventListener('hashchange', onRoute);
   window.addEventListener('popstate', onRoute);
+  document.addEventListener('viewshow', onRoute); // Jellyfin navigiert per pushState ohne hashchange (wie core/router.js)
   const off = onItemsChanged(drop);
   stop = () => {
     window.removeEventListener('lfx:play', drop);
     window.removeEventListener('hashchange', onRoute);
     window.removeEventListener('popstate', onRoute);
+    document.removeEventListener('viewshow', onRoute);
     off();
     stop = null;
   };

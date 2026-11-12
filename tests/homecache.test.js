@@ -37,6 +37,14 @@ describe('Startseiten-Cache: Invalidierung', () => {
     expect(peekCached(KEY)).toBeUndefined();
   });
 
+  it('Player per pushState (ohne hashchange) + viewshow leert', () => {
+    history.pushState(null, '', '#/video');
+    expect(peekCached(KEY)).toBe(1);
+    document.dispatchEvent(new Event('viewshow'));
+    expect(peekCached(KEY)).toBeUndefined();
+    history.pushState(null, '', '#/home');
+  });
+
   it('Player-Route leert, TV-Modus nicht', () => {
     hash('#/home?lfx=tv');
     expect(peekCached(KEY)).toBe(1);

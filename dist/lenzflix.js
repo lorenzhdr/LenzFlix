@@ -390,7 +390,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.3";
+  var VERSION = "1.11.4";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -1955,11 +1955,13 @@
     window.addEventListener("lfx:play", drop2);
     window.addEventListener("hashchange", onRoute2);
     window.addEventListener("popstate", onRoute2);
+    document.addEventListener("viewshow", onRoute2);
     const off = onItemsChanged(drop2);
     stop = () => {
       window.removeEventListener("lfx:play", drop2);
       window.removeEventListener("hashchange", onRoute2);
       window.removeEventListener("popstate", onRoute2);
+      document.removeEventListener("viewshow", onRoute2);
       off();
       stop = null;
     };

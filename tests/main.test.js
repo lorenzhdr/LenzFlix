@@ -44,7 +44,7 @@ describe('main', () => {
     expect(document.getElementById('lfx-ambient')).toBeNull();
     expect(document.documentElement.classList.contains('lfx-js')).toBe(false);
     expect(document.documentElement.classList.contains('lfx-nav-on')).toBe(false);
-  });
+  }, 15000); // erster Test lädt main.js kalt (~4 s allein), unter Volllast sonst Timeout
 
   it('startet nicht ohne LenzFlix-CSS, stoppt bei CSS-Abschaltung und startet bei Rückkehr neu', async () => {
     vi.useFakeTimers();
