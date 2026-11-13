@@ -52,7 +52,7 @@ describe('Timing im Player', () => {
     const res = await p;
     expect(res).toMatchObject({ ok: true, mode: 'direct' });
     expect(res.timing).toMatchObject({ totalMs: 1600, infoMs: 300, loadMs: 1100, startMs: 200, chain: 'D', cached: false, mode: 'direct' });
-    expect(res.timing).toMatchObject({ variant: 1, forced: false, jumped: false, waitCount: 0, src: { v: 'h264', a: 'aac', reasons: [] } });
+    expect(res.timing).toMatchObject({ forced: false, jumped: false, waitCount: 0, src: { v: 'h264', a: 'aac', reasons: [] } });
     expect(ctx.player.lastTiming()).toEqual(res.timing);
     expect(JSON.stringify(res.timing)).not.toMatch(/http|ApiKey|SECRET/);
   });

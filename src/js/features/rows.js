@@ -8,6 +8,7 @@ import { peekCached } from '../core/cache.js';
 import { createCard, setCardBadge } from './rows/card.js';
 import { badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
+import { startRowPrefetch } from './rows/prefetch.js';
 import { buildRowDefs, getNewSeriesIds, peekNewSeriesIds, peekRowDefs } from './rows/sources.js';
 
 /** Signal für das Billboard (Trailer darf erst danach vorladen): erste Zeile ist gefüllt. */
@@ -50,6 +51,7 @@ function fill(rowEl, def, items, newSeries, eager = false) {
 export function render(slot) {
   let disposed = false;
   let observer = null;
+  let prefetch = null;
   const disposers = [];
   slot.hidden = false;
   slot.textContent = '';
@@ -170,12 +172,21 @@ export function render(slot) {
       }, { rootMargin: '600px 0px' });
       for (const el of pending.keys()) observer.observe(el);
     } else {
-      for (const [el, def] of pending) loadRow(el, def);
+      for (const [el, def] of [...pending]) { pending.delete(el); loadRow(el, def); }
     }
+    // Hintergrund-Vorladen der übrigen Zeilen, sobald oben alles fertig ist (Hero, erste Zeilen, Trailer).
+    prefetch = startRowPrefetch({
+      slot,
+      pending,
+      hero: () => document.getElementById('lfx-billboard'),
+      load: (el, def) => { if (observer) observer.unobserve(el); return loadRow(el, def); },
+    });
   })();
 
   return () => {
     disposed = true;
+    if (prefetch) prefetch.stop();
+    prefetch = null;
     if (observer) observer.disconnect();
     observer = null;
     for (const d of disposers.splice(0)) d();

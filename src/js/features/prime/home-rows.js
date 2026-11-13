@@ -5,6 +5,7 @@ import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
 import { cardBadge, getTrendInfo } from '../../shared/trend.js';
+import { startRowPrefetch } from '../rows/prefetch.js';
 import { attachScroller } from '../rows/scroller.js';
 import { createPrimeCard } from './card.js';
 
@@ -42,12 +43,13 @@ function displayKind(def, posterId) {
 }
 
 /**
- * Rendert Zeilen in `slot`. opts: { posterId, moreHref(def) -> string|null }.
+ * Rendert Zeilen in `slot`. opts: { posterId, moreHref(def) -> string|null, prefetch (nur Startseite), hero() -> Hero-Slot }.
  * Rückgabe: { add(defs), ids(), destroy() }.
  */
-export function createRows(slot, { posterId = null, moreHref = () => null } = {}) {
+export function createRows(slot, { posterId = null, moreHref = () => null, prefetch: wantPrefetch = false, hero = null } = {}) {
   let disposed = false;
   let observer = null;
+  let prefetch = null;
   let infoP = null;
   const disposers = [];
   const pending = new Map();
@@ -164,12 +166,23 @@ export function createRows(slot, { posterId = null, moreHref = () => null } = {}
         slot.append(el);
         pending.set(el, { def, kind });
         if (observer) observer.observe(el);
-        else loadRow(el, def, kind);
+        else { pending.delete(el); loadRow(el, def, kind); }
+      }
+      if (prefetch) prefetch.notify();
+      else if (wantPrefetch) {
+        prefetch = startRowPrefetch({
+          slot,
+          pending,
+          hero,
+          load: (el, p) => { if (observer) observer.unobserve(el); return loadRow(el, p.def, p.kind); },
+        });
       }
     },
     ids: () => [...rendered],
     destroy() {
       disposed = true;
+      if (prefetch) prefetch.stop();
+      prefetch = null;
       if (observer) observer.disconnect();
       observer = null;
       pending.clear();

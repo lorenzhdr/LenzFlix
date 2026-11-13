@@ -4,7 +4,7 @@
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
-import { isModern, isTv } from '../core/layout.js';
+import { isModern, isTv, isNavCompact } from '../core/layout.js';
 import * as stats from '../core/stats.js';
 import { isTheme } from '../core/theme.js';
 import { openThemePicker } from '../core/themepicker.js';
@@ -18,6 +18,14 @@ const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref
 const NAV_ID = 'lfx-nav';
 export const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 const SCROLL_THRESHOLD = 10;
+// Einklapp-Reihenfolge ins „Mehr“-Menü, wenn die Leiste die Symbole rechts berühren würde (zuerst der letzte Punkt)
+const FOLD_ORDER = ['list', 'new', 'movies', 'series'];
+const MENU_ORDER = ['series', 'movies', 'new', 'list'];
+const FOLD_GAP = 16;
+const FOLD_RESERVE = 180;
+// Rechte Symbolgruppe der AppBar (SyncPlay, Cast, Suche, Avatar) + unser TV-Symbol (liegt fest im body)
+const TOOLBAR_SEL = 'header.MuiAppBar-root > .MuiToolbar-root:first-child';
+const RIGHT_SEL = `${TOOLBAR_SEL} .MuiIconButton-root, ${TOOLBAR_SEL} a[href="#/search"], ${TOOLBAR_SEL} button[aria-haspopup], .lfx-tvbtn`;
 
 /** Route-URL einer Bibliothek (spiegelt appRouter.getRouteUrl für das Modern-Layout). */
 export function viewUrl(view) {
@@ -84,6 +92,9 @@ const state = {
   cleanups: [],
   menuOpen: false,
   seq: 0,
+  raf: 0,
+  watch: [],
+  toolbar: null,
 };
 
 function setMenu(open) {
@@ -106,6 +117,71 @@ function applyActive() {
       else el.removeAttribute('aria-current');
     }
   }
+  // Eingeklappter Punkt aktiv -> „Mehr“ aktiv
+  if (key && state.nav.querySelector(`.lfx-nav__item[data-key="${key}"][hidden]`)) {
+    state.nav.querySelector('.lfx-nav__more-btn').classList.add('is-active');
+  }
+}
+
+/** Rechte Kante, bis zu der die Leiste reichen darf (links vom ersten sichtbaren rechten Symbol). */
+function rightLimit(navLeft) {
+  let min = window.innerWidth - FOLD_RESERVE + FOLD_GAP;
+  for (const el of document.querySelectorAll(RIGHT_SEL)) {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.left > navLeft && r.left < min) min = r.left;
+  }
+  return min - FOLD_GAP;
+}
+
+/** Klappt Punkte von hinten ins Mehr-Menü, bis die Leiste passt (synchron, ein Durchgang). */
+function fit() {
+  const nav = state.nav;
+  const wrap = nav && nav.querySelector('.lfx-nav__more');
+  if (!wrap) return;
+  const items = FOLD_ORDER.map((k) => nav.querySelector(`.lfx-nav__item[data-key="${k}"]`)).filter(Boolean);
+  const fold = (n) => {
+    const off = new Set(items.slice(0, n).map((el) => el.dataset.key));
+    for (const el of items) el.hidden = off.has(el.dataset.key);
+    for (const el of nav.querySelectorAll('.lfx-nav__menu-item--fold')) el.hidden = !off.has(el.dataset.key);
+  };
+  fold(0);
+  if (!isNavCompact()) {
+    const limit = rightLimit(nav.getBoundingClientRect().left);
+    let n = 0;
+    while (n < items.length && wrap.getBoundingClientRect().right > limit) fold(++n);
+  }
+  applyActive();
+}
+
+function scheduleFit() {
+  if (state.raf || !state.nav) return;
+  state.raf = requestAnimationFrame(() => {
+    state.raf = 0;
+    fit();
+  });
+}
+
+function unwatch() {
+  for (const o of state.watch.splice(0)) o.disconnect();
+  state.toolbar = null;
+}
+
+function watchToolbar() {
+  const tb = document.querySelector(TOOLBAR_SEL);
+  if (tb === state.toolbar) return;
+  unwatch();
+  state.toolbar = tb;
+  if (!tb) return;
+  if (typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(scheduleFit);
+    ro.observe(tb);
+    state.watch.push(ro);
+  }
+  if (typeof MutationObserver === 'function') {
+    const mo = new MutationObserver(scheduleFit);
+    mo.observe(tb, { childList: true, subtree: true });
+    state.watch.push(mo);
+  }
 }
 
 function render() {
@@ -118,7 +194,11 @@ function render() {
   const more = state.model.more;
   const statsUrl = statsLink();
   {
-    const entries = more.map((m) => h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
+    // Eingeklappte Punkte (fit() blendet sie ein) stehen oben im Menü
+    const all = navItems(state.model);
+    const entries = MENU_ORDER.map((k) => all.find((it) => it.key === k)).filter(Boolean)
+      .map((it) => h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--fold', role: 'menuitem', href: it.href, hidden: true, dataset: { key: it.key } }, it.label));
+    for (const m of more) entries.push(h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
     // Eigenständige Seite (kein Hash-Link, kein data-key -> nie „aktiv“)
     if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
     const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem', 'aria-label': badgedName('Design Einstellungen', 'Beta') }, ['Design Einstellungen', badgePill('Beta')]);
@@ -141,7 +221,7 @@ function render() {
         setMenu(false);
         btn.focus();
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const items = [...menu.querySelectorAll('[role="menuitem"]')];
+        const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden])')];
         const i = items.indexOf(document.activeElement);
         const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
         setMenu(true);
@@ -159,7 +239,7 @@ function render() {
     // (die Maus steht schon darüber, ein neues mouseenter feuert nicht).
     if (state.menuOpen) setMenu(true);
   }
-  applyActive();
+  fit();
 }
 
 function onScroll() {
@@ -204,6 +284,10 @@ export const navFeature = {
       () => window.removeEventListener('scroll', onScroll),
       () => document.removeEventListener('click', onDocClick, true),
     );
+    window.addEventListener('resize', scheduleFit);
+    state.cleanups.push(() => window.removeEventListener('resize', scheduleFit));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFit);
+    watchToolbar();
     onScroll();
     loadViews(seq);
   },
@@ -214,10 +298,15 @@ export const navFeature = {
     state.route = route;
     if (changed) setMenu(false);
     applyActive();
+    watchToolbar();
+    scheduleFit();
   },
   unmount() {
     state.seq++;
     for (const fn of state.cleanups.splice(0)) fn();
+    if (state.raf) cancelAnimationFrame(state.raf);
+    state.raf = 0;
+    unwatch();
     unmountPoint(NAV_ID);
     unmountAmbient();
     const cl = document.documentElement.classList;

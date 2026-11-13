@@ -92,6 +92,19 @@ describe('mobilenav (DOM)', () => {
     }
   });
 
+  it('match: Desktop (layout-desktop) unter 900 px zeigt den Handy-Kopf, ab 900 px nicht', () => {
+    const w = window.innerWidth;
+    try {
+      document.documentElement.className = 'layout-desktop';
+      for (const [width, want] of [[850, true], [800, true], [899, true], [900, false], [950, false]]) {
+        Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+        expect(mobilenav.match(parseHash('#/home'))).toBe(want);
+      }
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
+    }
+  });
+
   it('match nur im Design flix', () => {
     expect(mobilenav.match(parseHash('#/home'))).toBe(true);
     isTheme.mockReturnValueOnce(false);

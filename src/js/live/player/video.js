@@ -5,16 +5,14 @@ const START_TIMEOUT_MS = 25000;
 export const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
 const MEDIA_ACTIONS = ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack'];
 
-const JUMP_TOLERANCE_S = 1.5; // Variante ≥ 1: nach den Metadaten nur nachspringen, wenn die Position so weit von der Live-Position abweicht
+const JUMP_TOLERANCE_S = 1.5; // nach den Metadaten nur nachspringen, wenn die Position so weit von der Live-Position abweicht
 
-// Startvariante (docs/live.md „Startablauf“): 0 = altes Verhalten (Sprung erst in loadedmetadata), 1 = Standard (Startposition vorab
-// als Default-Startposition setzen), 2 = wie 1 + Media-Fragment #t=.
+// Startablauf (docs/live.md „Startablauf“): Startposition direkt nach src als Default-Startposition setzen, in loadedmetadata nur bei
+// größerer Abweichung nachspringen.
 // (Eine Variante mit SegmentLength an der HLS-URL wurde verworfen: der Server liefert damit unverändert 8-s-Segmente.)
-export const normalizeVariant = (v) => (v === 0 || v === 1 || v === 2 ? v : 1);
 
-/** createVideoControl(video, { now, emit, variant }): variant 0–2, Standard 1. */
-export function createVideoControl(video, { now = Date.now, emit = () => {}, variant: variantOpt = 1 } = {}) {
-  const variant = normalizeVariant(variantOpt);
+/** createVideoControl(video, { now, emit }) */
+export function createVideoControl(video, { now = Date.now, emit = () => {} } = {}) {
   let armed = false;          // eine Quelle ist geladen/lädt
   let playedOnce = false;
   let base = { off: 0, at: 0 };
@@ -227,7 +225,7 @@ export function createVideoControl(video, { now = Date.now, emit = () => {}, var
     base = { off: Math.max(0, Number(offsetMs) || 0), at: now() };
     phases = { src: null, meta: null, playing: null };
     m = newMetrics();
-    let preset = false; // Startposition vorab als Default-Startposition gesetzt (Variante ≥ 1)
+    let preset = false; // Startposition vorab als Default-Startposition gesetzt
     return new Promise((resolve) => {
       pending = resolve;
       timer = setTimeout(() => fail('network', 'TIMEOUT'), START_TIMEOUT_MS);
@@ -239,8 +237,8 @@ export function createVideoControl(video, { now = Date.now, emit = () => {}, var
         const want = livePos() / 1000;
         let cur = NaN;
         try { cur = video.currentTime; } catch { /* egal */ }
-        // Variante 0: immer springen (alt). Sonst nur, wenn das Vorab-Setzen fehlte/nicht griff oder die Abweichung > 1,5 s ist.
-        if (variant === 0 || !preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
+        // Nur springen, wenn das Vorab-Setzen fehlte/nicht griff oder die Abweichung > 1,5 s ist.
+        if (!preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
           m.jumped = true;
           m.target = want;
           try { video.currentTime = want; } catch { /* egal */ }
@@ -252,13 +250,10 @@ export function createVideoControl(video, { now = Date.now, emit = () => {}, var
       video.addEventListener('loadedmetadata', onMeta, { once: true });
       phases.src = now();
       const aim = livePos() / 1000;
-      // Variante 2: Media-Fragment nur an der <video>-Quelle (nie an einen Server-Request).
-      video.src = variant === 2 ? `${String(url).split('#')[0]}#t=${aim.toFixed(1)}` : url;
-      if (variant >= 1) {
-        // Default-Startposition (HTML-Spec, readyState HAVE_NOTHING): der Browser startet gleich dort statt bei 0 und springt nicht erst
-        // nach den Metadaten (bei HLS holte Safari sonst zuerst Segment 0, dann Sprung → Server startet ffmpeg neu).
-        try { video.currentTime = aim; preset = true; } catch { /* egal */ }
-      }
+      video.src = url;
+      // Default-Startposition (HTML-Spec, readyState HAVE_NOTHING): der Browser startet gleich dort statt bei 0 und springt nicht erst
+      // nach den Metadaten (bei HLS holte Safari sonst zuerst Segment 0, dann Sprung → Server startet ffmpeg neu).
+      try { video.currentTime = aim; preset = true; } catch { /* egal */ }
     });
   }
 
@@ -280,7 +275,6 @@ export function createVideoControl(video, { now = Date.now, emit = () => {}, var
     metrics() {
       const since = (t) => (t != null && phases.meta != null ? Math.max(0, t - phases.meta) : null);
       return {
-        variant,
         jumped: phases.meta != null ? m.jumped : null,
         seekingMs: since(m.seekingAt),
         seekedMs: since(m.seekedAt),

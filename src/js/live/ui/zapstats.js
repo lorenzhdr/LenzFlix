@@ -1,6 +1,7 @@
 // Messanzeige für das Umschalten (geteilt: LENZ LIVE und TV-Modus, docs/live.md „Messanzeige“). Reines DOM mit Inline-Styles,
 // kein CSS-Bundle. Nur zum Diagnostizieren am iPhone (ohne Konsole): Hash-Parameter lfxdebug=1 in der Hülle.
-// Zeile 3 (detailLine): Quelle mkv·hevc·eac3 · Grund Container · V1 · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s
+// Zeile 3 (detailLine): Quelle mkv·hevc·eac3 · Grund Container · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s
+// Zeile 4 (warmLine, nur mit timing.warm): Vorwärmen an · genutzt ja · Alter 12 s · Liste 0,3 · Init 0,2 · Seg 1. Byte 4,8 · Res 3/5,1 s
 // createZapStats(parent, { getVideo, doc }) → { update(zapInfo), updateAudio(info), destroy() }
 //   zapInfo: { channel, keyMs?, timing?, ok?, code?, reason? }   timing laut player.lastTiming()
 //   info: { mode, level } (Ton-Modus des Players, Reglerwert 0–100); muted/volume kommen direkt vom <video>.
@@ -20,9 +21,9 @@ const sec1 = (ms) => (ms == null ? '–' : sec(ms));
 const sgn = (s) => (Number.isFinite(s) ? `${s < 0 ? '-' : '+'}${Math.abs(s).toFixed(1).replace('.', ',')}` : '–');
 const range = (r) => (Array.isArray(r) ? `${sgn(r[0])}…${sgn(r[1])}` : '–');
 
-/** Zeile 3 aus timing (Quelle, Grund, Variante, Sprung, Puffer, Warten); leer, wenn timing keine Zusatzfelder trägt. Nur Kürzel, nie URL/Token. */
+/** Zeile 3 aus timing (Quelle, Grund, Sprung, Puffer, Warten); leer, wenn timing keine Zusatzfelder trägt. Nur Kürzel, nie URL/Token. */
 export function detailLine(t) {
-  if (!t || t.variant == null) return '';
+  if (!t || t.jumped === undefined) return '';
   const p = [];
   const s = t.src;
   if (s) {
@@ -30,7 +31,7 @@ export function detailLine(t) {
     if (q) p.push(`Quelle ${q}`);
     if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(',')}`);
   }
-  p.push(`V${t.variant}${t.forced ? ' HLS erzwungen' : ''}`);
+  if (t.forced) p.push('HLS erzwungen');
   if (t.jumped != null) {
     p.push(`Sprung ${t.jumped ? 'ja' : 'nein'}`);
     if (Number.isFinite(t.devS)) p.push(`Abw ${sgn(t.devS)}`);
@@ -39,6 +40,21 @@ export function detailLine(t) {
     p.push(`Warten ${t.waitCount || 0}×${t.waitCount ? ` ${sec(t.waitMs)} s` : ''}`);
   }
   return p.join(' · ');
+}
+
+/** Zeile 4 (Vorwärmen-Test): nur wenn timing.warm vorhanden. Nur Zahlen/Kürzel, nie URL/Token. */
+export function warmLine(t) {
+  const w = t && t.warm;
+  if (!w) return '';
+  const r = t.res;
+  const res = r ? `Res ${r.n}/${r.firstSegMs == null ? '–' : `${sec(r.firstSegMs)} s`}` : 'Res –';
+  if (!w.on) return `Vorwärmen aus · ${res}`;
+  const vw = w.started == null ? [] : [`Vw ${w.done || 0}/${w.started}`];
+  if (!w.used) return ['Vorwärmen an', 'genutzt nein', ...vw, `Grund ${w.skip || '–'}`, res].join(' · ');
+  return [
+    'Vorwärmen an', w.partial ? 'genutzt teilweise' : 'genutzt ja', `Alter ${w.ageMs == null ? '–' : `${Math.round(w.ageMs / 1000)} s`}`,
+    `Liste ${sec1(w.playlistMs)}`, `Init ${sec1(w.initMs)}`, `Seg 1. Byte ${sec1(w.segFirstByteMs)}`, ...vw, res,
+  ].join(' · ');
 }
 
 export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
@@ -50,7 +66,8 @@ export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
   const l1 = d.createElement('div');
   const l2 = d.createElement('div');
   const l3 = d.createElement('div');
-  el.append(l1, l2, l3);
+  const l4 = d.createElement('div');
+  el.append(l1, l2, l3, l4);
   parent.append(el);
 
   const hist = []; // Gesamtzeiten (ms) der letzten erfolgreichen Starts
@@ -94,6 +111,7 @@ export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
       }
       l1.textContent = parts.join(' · ');
       l3.textContent = detailLine(t);
+      l4.textContent = warmLine(t);
       renderAudio();
     },
     updateAudio(info) {

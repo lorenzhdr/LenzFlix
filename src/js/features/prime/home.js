@@ -76,6 +76,8 @@ async function start(tab, route, myGen) {
   const rows = createRows(rowsSlot, {
     posterId: pickPosterId(defs, hub),
     moreHref: (def) => moreHrefFor(def, { hub, libs, lib }),
+    prefetch: !hub,
+    hero: () => heroSlot,
   });
   cleanups.push(() => rows.destroy());
   rows.add(defs);

@@ -33,6 +33,12 @@ vi.mock('../src/js/features/prime/hero.js', () => ({
   fetchHomePool: vi.fn(async () => []),
 }));
 
+vi.mock('../src/js/features/rows/prefetch.js', () => ({
+  startRowPrefetch: vi.fn(() => ({ stop: vi.fn(), notify: vi.fn() })),
+  allowPrefetch: () => true,
+  heroSettled: () => true,
+}));
+
 import feature, { moreHrefFor } from '../src/js/features/prime/home.js';
 import { pickPosterId } from '../src/js/features/prime/home-rows.js';
 import { primeHomeRoute } from '../src/js/features/prime/home-route.js';
@@ -43,6 +49,7 @@ import { buildHubRowDefs } from '../src/js/shared/hub.js';
 import { buildRowDefs } from '../src/js/features/rows/sources.js';
 import { renderHero } from '../src/js/features/prime/hero.js';
 import { openThemePicker } from '../src/js/core/themepicker.js';
+import { startRowPrefetch } from '../src/js/features/rows/prefetch.js';
 
 const route = (q) => ({ path: '/home', params: new URLSearchParams(q) });
 const mk = (id, type = 'Movie', extra = {}) => ({
@@ -163,6 +170,22 @@ describe('Feature prime-home', () => {
     feature.unmount();
     expect(document.getElementById('lfx-prime-home')).toBeNull();
     expect(document.documentElement.classList.contains('lfx-prime-home-on')).toBe(false);
+  });
+
+  it('Vorladen: Startseite ja, Hub nein; „Mehr“ meldet neue Zeilen', async () => {
+    vi.mocked(startRowPrefetch).mockClear();
+    feature.mount(route(''));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-prime-row:not(.is-loading)').length).toBe(9));
+    expect(startRowPrefetch).toHaveBeenCalledTimes(1);
+    const handle = vi.mocked(startRowPrefetch).mock.results[0].value;
+    document.querySelector('.lfx-prime-more').click();
+    await vi.waitFor(() => expect(handle.notify).toHaveBeenCalled());
+    feature.unmount();
+    expect(handle.stop).toHaveBeenCalled();
+    vi.mocked(startRowPrefetch).mockClear();
+    feature.mount(route('lfx=hub&lib=L1'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-prime-row:not(.is-loading)').length).toBe(2));
+    expect(startRowPrefetch).not.toHaveBeenCalled();
   });
 
   it('Mehr-Button lädt weitere Genre-Zeilen und verschwindet am Ende', async () => {

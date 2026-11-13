@@ -96,7 +96,7 @@ async function build(tab, key) {
   if (!isHub) cleanups.push(renderBrands(root, rowsSlot));
 
   // Zeilen
-  cleanups.push(renderRows(rowsSlot, () => (isHub ? (lib ? buildHubRowDefs(lib) : []) : buildRowDefs()), isHub ? null : () => peekRowDefs()));
+  cleanups.push(renderRows(rowsSlot, () => (isHub ? (lib ? buildHubRowDefs(lib) : []) : buildRowDefs()), isHub ? null : () => peekRowDefs(), { prefetch: !isHub, hero: () => heroSlot }));
 }
 
 function ensure(route) {

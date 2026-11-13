@@ -24,7 +24,14 @@ vi.mock('../src/js/core/theme.js', () => ({
   brandName: () => ({ flix: 'LENZFLIX', plus: 'LENZ+', prime: 'LENZPRIME' })[themeState.id],
 }));
 
+vi.mock('../src/js/features/rows/prefetch.js', () => ({
+  startRowPrefetch: vi.fn(() => ({ stop: vi.fn(), notify: vi.fn() })),
+  allowPrefetch: () => true,
+  heroSettled: () => true,
+}));
+
 import * as api from '../src/js/core/api.js';
+import { startRowPrefetch } from '../src/js/features/rows/prefetch.js';
 import { badgeFor, selectTop10, pickGenres, seededShuffle, dayKey, progressPercent } from '../src/js/features/rows/logic.js';
 import { createCard } from '../src/js/features/rows/card.js';
 import { resetSourceCache, buildRowDefs, getNewSeriesIds } from '../src/js/features/rows/sources.js';
@@ -178,6 +185,18 @@ describe('render', () => {
     expect(slot.querySelector('[data-lfx-row="latest-movies"]').classList.contains('lfx-row--poster')).toBe(true);
     cleanup();
     expect(slot.children).toHaveLength(0);
+  });
+
+  it('startet das Vorladen der übrigen Zeilen und stoppt es beim Aufräumen', async () => {
+    vi.mocked(startRowPrefetch).mockClear();
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const cleanup = render(slot);
+    await vi.waitFor(() => expect(startRowPrefetch).toHaveBeenCalledTimes(1));
+    const handle = vi.mocked(startRowPrefetch).mock.results[0].value;
+    expect(vi.mocked(startRowPrefetch).mock.calls[0][0].slot).toBe(slot);
+    cleanup();
+    expect(handle.stop).toHaveBeenCalled();
   });
 
   it('Zeilen füllen sich, ohne auf die Neue-Folgen-Abfrage zu warten; Badge kommt nachträglich', async () => {

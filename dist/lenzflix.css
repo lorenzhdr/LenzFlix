@@ -3184,6 +3184,15 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item {
   display: block;
 }
 
+html.lfx-js #lfx-nav .lfx-nav__item[hidden], html.lfx-js #lfx-nav .lfx-nav__menu-item[hidden] {
+  display: none;
+}
+
+html.lfx-js #lfx-nav .lfx-nav__menu-item.is-active {
+  color: var(--lfx-text);
+  background: var(--lfx-pill-active);
+}
+
 html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   color: var(--lfx-text);
   background: rgba(255, 255, 255, .1);

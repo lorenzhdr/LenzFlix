@@ -129,6 +129,9 @@ export function render(slot) {
   let dots = null;
   const cleanupFns = [];
 
+  // Signal fürs Vorladen der Zeilen (rows/prefetch.js): „wait“ = Trailer steht noch aus, „on“ = läuft, leer = keiner/aufgegeben.
+  const setTr = (v) => { if (v) slot.dataset.lfxTr = v; else delete slot.dataset.lfxTr; };
+
   const later = (fn, ms) => {
     const t = setTimeout(() => {
       timers.delete(t);
@@ -335,13 +338,14 @@ export function render(slot) {
     try {
       const t = await loadLocalTrailer(sl.item);
       if (sl.gen !== gen || disposed) return;
-      if (!t) { sl.failed = true; return; }
+      if (!t) { sl.failed = true; setTr(''); return; }
       const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
       v.muted = true;
       v.setAttribute('muted', '');
       v.addEventListener('playing', () => {
         if (sl.gen !== gen || video !== v) return;
         trailerActive = true;
+        setTr('on');
         v.classList.add('is-in');
         card.classList.add('is-trailer');
         muteBtn.hidden = false;
@@ -350,6 +354,7 @@ export function render(slot) {
       const end = () => {
         if (video !== v) return;
         sl.failed = true;
+        setTr('');
         stopTrailer();
         scheduleRotate();
       };
@@ -395,7 +400,7 @@ export function render(slot) {
       video = v;
       media.append(v);
       check();
-    } catch { sl.failed = true; }
+    } catch { sl.failed = true; setTr(''); }
   }
 
   function show(i, immediate = false) {
@@ -435,6 +440,7 @@ export function render(slot) {
     // Trailer: erst das Titelbild; Vorladen startet, sobald Bild geladen + Zeilen gefüllt (tryPreload).
     const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
     slide = sl;
+    setTr(item.LocalTrailerCount > 0 ? 'wait' : '');
     const img = pic.querySelector('.lfx-bb__img');
     const onLoaded = () => {
       if (disposed || sl.gen !== gen || sl.imgAt) return;
@@ -523,6 +529,7 @@ export function render(slot) {
     timers.forEach(clearTimeout);
     timers.clear();
     stopTrailer();
+    setTr('');
     cleanupFns.forEach((f) => f());
     slot.replaceChildren();
     slot.removeAttribute('aria-roledescription');

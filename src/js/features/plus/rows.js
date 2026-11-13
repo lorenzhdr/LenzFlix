@@ -4,6 +4,7 @@ import { peekCached, HOME_TTL } from '../../core/cache.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { plusBadge, getNewContentInfo } from '../../shared/newcontent.js';
+import { startRowPrefetch } from '../rows/prefetch.js';
 import { attachScroller, chevronButton } from '../rows/scroller.js';
 import { createPlusCard } from './card.js';
 
@@ -47,10 +48,12 @@ function fill(rowEl, def, items, info, eager = false) {
 /**
  * Rendert Zeilen für `getDefs()` (async, liefert {id,title,kind,load}) in den Slot. Rückgabe: Cleanup.
  * `peekDefs()` (optional, sync): gecachte Zeilenliste; Zeilen mit Cache-Treffer (def.cacheKey) füllen sofort ohne Skeleton.
+ * `opts.prefetch` (nur Startseite, nicht Hubs) + `opts.hero()` (Hero-Slot): übrige Zeilen im Hintergrund vorladen.
  */
-export function renderRows(slot, getDefs, peekDefs) {
+export function renderRows(slot, getDefs, peekDefs, opts = {}) {
   let disposed = false;
   let observer = null;
+  let prefetch = null;
   const disposers = [];
   slot.textContent = '';
 
@@ -127,12 +130,22 @@ export function renderRows(slot, getDefs, peekDefs) {
       }, { rootMargin: '600px 0px' });
       for (const el of pending.keys()) observer.observe(el);
     } else {
-      for (const [el, def] of pending) loadRow(el, def);
+      for (const [el, def] of [...pending]) { pending.delete(el); loadRow(el, def); }
+    }
+    if (opts.prefetch) {
+      prefetch = startRowPrefetch({
+        slot,
+        pending,
+        hero: opts.hero,
+        load: (el, def) => { if (observer) observer.unobserve(el); return loadRow(el, def); },
+      });
     }
   })();
 
   return () => {
     disposed = true;
+    if (prefetch) prefetch.stop();
+    prefetch = null;
     if (observer) observer.disconnect();
     observer = null;
     for (const d of disposers.splice(0)) d();

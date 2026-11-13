@@ -43,11 +43,18 @@ vi.mock('../src/js/features/rows/sources.js', () => ({
   asItems: (r) => (r && r.Items) || [],
 }));
 
+vi.mock('../src/js/features/rows/prefetch.js', () => ({
+  startRowPrefetch: vi.fn(() => ({ stop: vi.fn(), notify: vi.fn() })),
+  allowPrefetch: () => true,
+  heroSettled: () => true,
+}));
+
 import home, { routeKey } from '../src/js/features/plus/home.js';
 import { parseHash } from '../src/js/core/router.js';
 import { buildHubRowDefs, getHubHeroPool } from '../src/js/shared/hub.js';
 import { buildRowDefs } from '../src/js/features/rows/sources.js';
 import * as api from '../src/js/core/api.js';
+import { startRowPrefetch } from '../src/js/features/rows/prefetch.js';
 
 const route = (hash) => parseHash(hash);
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -75,6 +82,19 @@ describe('routeKey / match', () => {
     expect(home.match(route('#/home'))).toBe(true);
     themeState.id = 'flix';
     expect(home.match(route('#/home'))).toBe(false);
+  });
+});
+
+describe('Vorladen der Startseite', () => {
+  it('Startseite startet das Vorladen, der Hub nicht', async () => {
+    vi.mocked(startRowPrefetch).mockClear();
+    home.mount(route('#/home'));
+    await flush(); await flush();
+    expect(startRowPrefetch).toHaveBeenCalledTimes(1);
+    vi.mocked(startRowPrefetch).mockClear();
+    home.update(route('#/home?lfx=hub&lib=lib1'));
+    await flush(); await flush(); await flush();
+    expect(startRowPrefetch).not.toHaveBeenCalled();
   });
 });
 

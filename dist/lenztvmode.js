@@ -1443,10 +1443,8 @@
   var STALL_REPORT_MS = 1200;
   var MEDIA_ACTIONS = ["pause", "play", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"];
   var JUMP_TOLERANCE_S = 1.5;
-  var normalizeVariant = (v) => v === 0 || v === 1 || v === 2 ? v : 1;
   function createVideoControl(video, { now = Date.now, emit = () => {
-  }, variant: variantOpt = 1 } = {}) {
-    const variant = normalizeVariant(variantOpt);
+  } } = {}) {
     let armed = false;
     let playedOnce = false;
     let base = { off: 0, at: 0 };
@@ -1712,7 +1710,7 @@
             cur = video.currentTime;
           } catch {
           }
-          if (variant === 0 || !preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
+          if (!preset || !(Math.abs(cur - want) <= JUMP_TOLERANCE_S)) {
             m.jumped = true;
             m.target = want;
             try {
@@ -1727,13 +1725,11 @@
         video.addEventListener("loadedmetadata", onMeta, { once: true });
         phases.src = now();
         const aim = livePos() / 1e3;
-        video.src = variant === 2 ? `${String(url).split("#")[0]}#t=${aim.toFixed(1)}` : url;
-        if (variant >= 1) {
-          try {
-            video.currentTime = aim;
-            preset = true;
-          } catch {
-          }
+        video.src = url;
+        try {
+          video.currentTime = aim;
+          preset = true;
+        } catch {
         }
       });
     }
@@ -1759,7 +1755,6 @@
       metrics() {
         const since = (t) => t != null && phases.meta != null ? Math.max(0, t - phases.meta) : null;
         return {
-          variant,
           jumped: phases.meta != null ? m.jumped : null,
           seekingMs: since(m.seekingAt),
           seekedMs: since(m.seekedAt),
@@ -2247,6 +2242,76 @@
     };
   }
 
+  // src/js/live/player/warm.js
+  var abs = (rel, base) => {
+    try {
+      return new URL(rel, base).href;
+    } catch {
+      return null;
+    }
+  };
+  var lines = (text) => String(text || "").split(/\r?\n/).map((l) => l.trim());
+  function parseMaster(text, base) {
+    const ls = lines(text);
+    for (let i = 0; i < ls.length; i++) {
+      if (!ls[i].startsWith("#EXT-X-STREAM-INF")) continue;
+      for (let j = i + 1; j < ls.length; j++) {
+        if (ls[j] && !ls[j].startsWith("#")) return abs(ls[j], base);
+      }
+    }
+    return null;
+  }
+  function parseMedia(text, base) {
+    let init = null;
+    const segments = [];
+    let dur = null;
+    let at = 0;
+    for (const l of lines(text)) {
+      if (!l) continue;
+      if (l.startsWith("#EXT-X-MAP")) {
+        const m = /URI="([^"]+)"/.exec(l);
+        if (m) init = abs(m[1], base);
+      } else if (l.startsWith("#EXTINF:")) {
+        const d = parseFloat(l.slice(8));
+        dur = Number.isFinite(d) && d > 0 ? d : 0;
+      } else if (!l.startsWith("#")) {
+        const url = abs(l, base);
+        if (url && dur != null) {
+          segments.push({ url, start: at, dur });
+          at += dur;
+        }
+        dur = null;
+      }
+    }
+    return { init, segments };
+  }
+  function pickSegment(segments, offsetS) {
+    if (!segments || !segments.length) return null;
+    const t = Math.max(0, Number(offsetS) || 0);
+    for (const s of segments) if (t < s.start + s.dur) return s;
+    return segments[segments.length - 1];
+  }
+  function resourceStats(perf, srcPerf) {
+    try {
+      const list = perf.getEntriesByType("resource") || [];
+      let n = 0;
+      let first = null;
+      for (const e of list) {
+        if (!(e.startTime >= srcPerf)) continue;
+        const name = String(e.name || "");
+        const playlist = /\.m3u8(?:[?#]|$)/i.test(name);
+        const seg = !playlist && (/\/hls\d*\//i.test(name) || /\/videos\/[^?#]*\.(?:mp4|ts|m4s)(?:[?#]|$)/i.test(name));
+        if (!playlist && !seg) continue;
+        n++;
+        if (seg && e.responseStart > 0 && (first == null || e.responseStart < first)) first = e.responseStart;
+      }
+      if (!n) return null;
+      return { n, firstSegMs: first == null ? null : Math.max(0, Math.round(first - srcPerf)) };
+    } catch {
+      return null;
+    }
+  }
+
   // src/js/live/player/watch.js
   var LATE_MS = 10 * 6e4;
   var GAP_MS = 6e4;
@@ -2333,12 +2398,15 @@
   var DF_KEY = "lfx-directfailed";
   var DF_TTL_MS = 7 * 24 * 3600 * 1e3;
   var DF_MAX = 200;
+  var WARM_TTL_MS = 40 * 1e3;
+  var WARM_MAX = 2;
+  var WARM_REFRESH_MAX = 10;
+  var WARM_PENDING_MAX_MS = 25 * 1e3;
   function createPlayer({ video, deps, now = Date.now, fake = false, canvas, getInfo } = {}) {
     if (fake) return createFakePlayer({ canvas, now, getInfo });
     const em = createEmitter();
-    const variant = normalizeVariant(deps && deps.zapVariant);
     const forceHls = !!(deps && deps.forceHls);
-    const vc = createVideoControl(video, { now, emit: em.emit, variant });
+    const vc = createVideoControl(video, { now, emit: em.emit });
     const wantNoDirect = (itemId) => forceHls || directFailed.has(itemId);
     let gen = 0;
     let ac = null;
@@ -2377,6 +2445,7 @@
       }
     };
     let lastCached = false;
+    let lastWarm = null;
     let lastTiming = null;
     const cache = /* @__PURE__ */ new Map();
     const inflight = /* @__PURE__ */ new Map();
@@ -2430,8 +2499,280 @@
       inflight.set(itemId, p);
       return p;
     }
+    const warm = /* @__PURE__ */ new Map();
+    const warmPending = /* @__PURE__ */ new Map();
+    let warmStarted = 0;
+    let warmDone = 0;
+    let warmSkip = null;
+    const noteSkip = (c) => {
+      warmSkip = c || null;
+    };
+    function armPendingTimeout(itemId, rec) {
+      const t = setTimeout(() => {
+        if (warmPending.get(itemId) !== rec || rec.taken) return;
+        warmSkip = "timeout";
+        abortWarmPending(itemId);
+      }, WARM_PENDING_MAX_MS);
+      return () => clearTimeout(t);
+    }
+    let warmTimer = null;
+    const warmFresh = (e) => now() - e.at < WARM_TTL_MS;
+    const doFetch = (url, o) => {
+      const f = deps && deps.fetch || (typeof fetch === "function" ? fetch : null);
+      if (!f) throw new Error("kein fetch");
+      return f(url, o);
+    };
+    async function getText(url, signal) {
+      const res = await doFetch(url, { signal });
+      if (!res.ok) throw new Error("http");
+      return res.text();
+    }
+    async function firstByte(url, signal) {
+      const c = new AbortController();
+      const onAbort = () => c.abort();
+      signal.addEventListener("abort", onAbort, { once: true });
+      const t = now();
+      try {
+        const res = await doFetch(url, { signal: c.signal });
+        if (!res.ok) return { ok: false };
+        const reader = res.body && typeof res.body.getReader === "function" ? res.body.getReader() : null;
+        if (reader) await reader.read();
+        return { ok: true, ms: Math.max(0, now() - t) };
+      } finally {
+        signal.removeEventListener("abort", onAbort);
+        try {
+          c.abort();
+        } catch {
+        }
+      }
+    }
+    async function warmFetch(r, offsetMs2, signal, part) {
+      const t0 = now();
+      const text = await getText(r.url, signal);
+      const variantUrl = parseMaster(text, r.url);
+      const mediaText = variantUrl ? await getText(variantUrl, signal) : text;
+      const playlistMs = Math.max(0, now() - t0);
+      part.playlistMs = playlistMs;
+      const { init, segments } = parseMedia(mediaText, variantUrl || r.url);
+      let initMs = null;
+      if (init) {
+        const t1 = now();
+        const res = await doFetch(init, { signal });
+        if (!res.ok) throw new Error("http");
+        await res.arrayBuffer();
+        initMs = Math.max(0, now() - t1);
+        part.initMs = initMs;
+      }
+      const seg = pickSegment(segments, offsetMs2 / 1e3);
+      let segFirstByteMs = null;
+      if (seg) {
+        const fb = await firstByte(seg.url, signal);
+        if (fb.ok) {
+          segFirstByteMs = fb.ms;
+          part.segFirstByteMs = fb.ms;
+        }
+      }
+      return { r, at: now(), offsetMs: offsetMs2, timing: { playlistMs, initMs, segFirstByteMs }, refreshes: 0, segments };
+    }
+    function deleteWarmSession(r) {
+      if (!r || !r.playSessionId) return;
+      try {
+        Promise.resolve(deps.request("DELETE", "/Videos/ActiveEncodings", {
+          params: { deviceId: deps.server && deps.server.deviceId, playSessionId: r.playSessionId }
+        })).then(() => {
+        }, () => {
+        });
+      } catch {
+      }
+    }
+    function abortWarmPending(itemId) {
+      const rec = warmPending.get(itemId);
+      if (!rec) return;
+      warmPending.delete(itemId);
+      try {
+        rec.ac.abort();
+      } catch {
+      }
+    }
+    function dropWarm(itemId) {
+      const e = warm.get(itemId);
+      warm.delete(itemId);
+      abortWarmPending(itemId);
+      if (e) deleteWarmSession(e.r);
+    }
+    function armWarmTimer() {
+      clearTimeout(warmTimer);
+      warmTimer = null;
+      if (disposed || !warm.size) return;
+      const t = now();
+      let next = Infinity;
+      for (const e of warm.values()) next = Math.min(next, e.at + WARM_TTL_MS - t);
+      warmTimer = setTimeout(() => {
+        warmTimer = null;
+        const t2 = now();
+        for (const [id, e] of [...warm]) if (t2 - e.at >= WARM_TTL_MS) dropWarm(id);
+        armWarmTimer();
+      }, Math.max(50, next + 20));
+    }
+    function storeWarm(itemId, entry) {
+      warm.set(itemId, entry);
+      while (warm.size > WARM_MAX) {
+        let oldest = null;
+        for (const [id, e] of warm) if (id !== itemId && (oldest == null || e.at < warm.get(oldest).at)) oldest = id;
+        if (oldest == null) break;
+        dropWarm(oldest);
+      }
+      armWarmTimer();
+    }
+    function takeWarm(itemId) {
+      const e = warm.get(itemId);
+      const rec = warmPending.get(itemId);
+      const fits = (r) => !(tsOnly && r.offeredHevc && r.videoCodec === "h264");
+      if (!e && rec && rec.r && fits(rec.r)) {
+        rec.taken = true;
+        warmPending.delete(itemId);
+        try {
+          rec.ac.abort();
+        } catch {
+        }
+        return { r: rec.r, at: rec.at, timing: { ...rec.part }, partial: true };
+      }
+      abortWarmPending(itemId);
+      if (!e) return null;
+      if (!warmFresh(e) || !fits(e.r)) {
+        dropWarm(itemId);
+        return null;
+      }
+      warm.delete(itemId);
+      armWarmTimer();
+      return e;
+    }
+    async function runWarm(itemId, offsetMs2, rec) {
+      const signal = rec.ac.signal;
+      const pf = inflight.get(itemId);
+      if (pf) {
+        try {
+          await pf;
+        } catch {
+        }
+      }
+      if (signal.aborted || disposed) return aborted();
+      const c = cache.get(itemId);
+      if (fresh(c) && c.mode === "direct" && !directFailed.has(itemId)) {
+        noteSkip("direct");
+        return { ok: true, mode: "direct" };
+      }
+      rec.resolving = resolveStream({ deps, video, itemId, signal, noHevc: tsOnly, noDirect: wantNoDirect(itemId) }).then((x) => {
+        if (x.ok && x.mode === "hls" && !signal.aborted && !disposed) {
+          rec.r = x;
+          rec.at = now();
+          rec.part = {};
+          warmStarted++;
+          warmSkip = null;
+        }
+        return x;
+      });
+      const r = await rec.resolving;
+      if (signal.aborted || disposed) return aborted();
+      remember(itemId, r);
+      if (!r.ok) {
+        noteSkip("err");
+        return { ok: false, mode: r.mode };
+      }
+      if (r.mode !== "hls") {
+        noteSkip("direct");
+        return { ok: true, mode: r.mode };
+      }
+      let stored = false;
+      try {
+        const entry = await warmFetch(r, offsetMs2, signal, rec.part);
+        if (signal.aborted || disposed) return aborted();
+        storeWarm(itemId, entry);
+        warmDone++;
+        stored = true;
+        return { ok: true, mode: "hls", warmed: true };
+      } finally {
+        if (!stored && !rec.taken) deleteWarmSession(r);
+      }
+    }
+    function refreshWarm(itemId, e, offsetMs2) {
+      const running = warmPending.get(itemId);
+      if (running) {
+        noteSkip("pending");
+        return running.p;
+      }
+      const seg = pickSegment(e.segments, offsetMs2 / 1e3);
+      if (e.refreshes >= WARM_REFRESH_MAX || !seg) {
+        noteSkip("max");
+        return Promise.resolve({ ok: true, skipped: true });
+      }
+      const ac2 = new AbortController();
+      const rec = { ac: ac2, p: null };
+      const clearTo = armPendingTimeout(itemId, rec);
+      rec.p = (async () => {
+        try {
+          const fb = await firstByte(seg.url, ac2.signal);
+          if (ac2.signal.aborted || disposed || warm.get(itemId) !== e) return aborted();
+          if (!fb.ok) {
+            noteSkip("err");
+            dropWarm(itemId);
+            return { ok: false, reason: "network" };
+          }
+          e.at = now();
+          e.offsetMs = offsetMs2;
+          e.refreshes++;
+          armWarmTimer();
+          return { ok: true, refreshed: true };
+        } catch {
+          if (!ac2.signal.aborted) noteSkip("err");
+          return { ok: false, reason: "network" };
+        }
+      })().finally(() => {
+        clearTo();
+        if (warmPending.get(itemId) === rec) warmPending.delete(itemId);
+      });
+      warmPending.set(itemId, rec);
+      return rec.p;
+    }
+    function prewarm(itemId, offsetMs2 = 0) {
+      if (!(deps && deps.zapWarm) || disposed || !itemId) return Promise.resolve({ ok: false, reason: "off" });
+      const off = Number(offsetMs2) || 0;
+      const e = warm.get(itemId);
+      if (e && warmFresh(e)) return refreshWarm(itemId, e, off);
+      if (e) dropWarm(itemId);
+      const running = warmPending.get(itemId);
+      if (running) {
+        noteSkip("pending");
+        return running.p;
+      }
+      const ac2 = new AbortController();
+      const rec = { ac: ac2, p: null };
+      const clearTo = armPendingTimeout(itemId, rec);
+      rec.p = runWarm(itemId, off, rec).catch(() => {
+        if (!ac2.signal.aborted) noteSkip("err");
+        return { ok: false, reason: "network" };
+      }).finally(() => {
+        clearTo();
+        if (warmPending.get(itemId) === rec) warmPending.delete(itemId);
+      });
+      warmPending.set(itemId, rec);
+      return rec.p;
+    }
     async function resolveFor(itemId, opts, signal) {
       if (opts.audioIndex == null && !opts.noCache) {
+        const rec0 = warmPending.get(itemId);
+        if (rec0 && rec0.resolving && !rec0.r && !warm.has(itemId)) {
+          try {
+            await rec0.resolving;
+          } catch {
+          }
+          if (signal.aborted) return { ok: false, mode: "none", reason: "aborted" };
+        }
+        const w = takeWarm(itemId);
+        if (w) {
+          lastWarm = { ageMs: Math.max(0, now() - w.at), timing: w.timing, partial: !!w.partial };
+          return w.r;
+        }
         const pf = inflight.get(itemId);
         if (pf) {
           try {
@@ -2466,11 +2807,31 @@
         chain: tm.chain.join(">"),
         cached: tm.cached,
         mode: tm.mode,
-        ...extraTiming(tm.info || null)
+        ...extraTiming(tm.info || null, tm.warm)
       };
     }
-    function extraTiming(src) {
-      return { ...vc.metrics(), forced: forceHls, src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null };
+    function extraTiming(src, wm) {
+      return {
+        ...vc.metrics(),
+        forced: forceHls,
+        src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null,
+        warm: warmTiming(wm),
+        res: resTiming()
+      };
+    }
+    function warmTiming(wm) {
+      if (!(deps && deps.zapWarm)) return { on: false };
+      const t = wm && wm.timing || {};
+      return { on: true, used: !!wm, skip: warmSkip, partial: !!(wm && wm.partial), started: warmStarted, done: warmDone, ageMs: wm ? wm.ageMs : null, playlistMs: t.playlistMs ?? null, initMs: t.initMs ?? null, segFirstByteMs: t.segFirstByteMs ?? null };
+    }
+    function resTiming() {
+      try {
+        const at = vc.phases().src;
+        if (at == null || typeof performance === "undefined" || typeof performance.getEntriesByType !== "function") return null;
+        return resourceStats(performance, performance.now() - (now() - at));
+      } catch {
+        return null;
+      }
     }
     async function play(opts = {}) {
       if (disposed) return aborted();
@@ -2491,9 +2852,11 @@
       tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
       em.emit("state", { phase: "loading" });
       lastCached = false;
+      lastWarm = null;
       let r = await resolveFor(itemId, opts, signal);
       if (my !== gen) return aborted();
       tm.cached = lastCached;
+      tm.warm = lastWarm;
       tm.infoAt = now();
       if (r.ok && r.mode === "hls" && tsOnly && r.offeredHevc && r.videoCodec === "h264") {
         r = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
@@ -2584,7 +2947,7 @@
       if (my !== gen) return aborted();
       const ph = vc.phases();
       const dur = (a, b) => a != null && b != null ? Math.max(0, b - a) : null;
-      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct", ...extraTiming(null) };
+      lastTiming = { totalMs: Math.max(0, now() - t0), infoMs: null, loadMs: dur(ph.src, ph.meta), startMs: dur(ph.meta, ph.playing), chain: "D", cached: false, mode: "direct", ...extraTiming(null, null) };
       if (!res.ok) {
         teardown();
         return { ...failResult(res), timing: lastTiming };
@@ -2596,6 +2959,9 @@
       play,
       playUrl,
       prefetch,
+      prewarm,
+      /** Vom Controller: Grund, warum gerade nicht vorgewärmt wird (Messanzeige 'Grund'). */
+      warmNote: noteSkip,
       async stop() {
         gen++;
         cancelRequests();
@@ -2638,6 +3004,16 @@
         gen++;
         cancelRequests();
         teardown();
+        for (const rec of warmPending.values()) {
+          try {
+            rec.ac.abort();
+          } catch {
+          }
+        }
+        warmPending.clear();
+        for (const id of [...warm.keys()]) dropWarm(id);
+        clearTimeout(warmTimer);
+        warmTimer = null;
         vc.dispose();
         cache.clear();
         inflight.clear();
@@ -2860,6 +3236,10 @@
   // src/js/live/tvmode/controller.js
   var DEBOUNCE_MS = 250;
   var NEIGHBOR_MS = 1e3;
+  var WARM_TICK_MS = 35e3;
+  var WARM_TICK_MAX = 10;
+  var NEIGH_RETRY_MS = 1e3;
+  var NEIGH_RETRY_MAX = 20;
   var NEIGHBOR_MAX = 2;
   var STATS_MAX = 10;
   var RETRY_MS = 1e4;
@@ -3076,7 +3456,7 @@
         tuneAt = 0;
       }
       if (e === entry) em.emit("zap", { channel, ok: true, keyMs, timing: res && res.timing || null });
-      if (e === entry && e.type === "program") later("neigh", () => prefetchNeighbors(g), NEIGHBOR_MS);
+      if (e === entry && e.type === "program") later("neigh", () => neighStep(g, 0), NEIGHBOR_MS);
       changed();
       return true;
     }
@@ -3111,6 +3491,52 @@
         prefetchItem(e.itemId, null);
       }
     }
+    let warmTicks = 0;
+    function warmNeighbors() {
+      let started = 0;
+      for (const ch of [(channel - 2 + NCH) % NCH + 1, channel % NCH + 1]) {
+        if (ch === channel) continue;
+        const cur = safe(() => scheduler.nowOn(ch, clock()));
+        const e = cur && cur.entry;
+        if (!e || e.type !== "program" || !e.itemId) continue;
+        started++;
+        const p = safe(() => player.prewarm(e.itemId, cur.offsetMs));
+        if (p && typeof p.catch === "function") p.catch(() => {
+        });
+      }
+      if (!started) note("filler");
+    }
+    const warmEnabled = () => !!(deps && deps.zapWarm && player && typeof player.prewarm === "function");
+    const note = (c) => {
+      if (player && typeof player.warmNote === "function") safe(() => player.warmNote(c));
+    };
+    function startWarm(g) {
+      if (!warmEnabled()) return;
+      warmTicks = 0;
+      warmTick(g);
+    }
+    function neighStep(g, tries) {
+      if (g !== gen || !on || disposed) return;
+      if (!playing || phase !== "playing") {
+        note("phase");
+        if (tries < NEIGH_RETRY_MAX) later("neigh", () => neighStep(g, tries + 1), NEIGH_RETRY_MS);
+        return;
+      }
+      if (warmEnabled()) startWarm(g);
+      else prefetchNeighbors(g);
+    }
+    function warmTick(g, retry2 = 0) {
+      if (g !== gen || !on || disposed) return;
+      if (!playing || phase !== "playing") {
+        note("phase");
+        if (retry2 < NEIGH_RETRY_MAX) later("warm", () => warmTick(g, retry2 + 1), NEIGH_RETRY_MS);
+        return;
+      }
+      warmNeighbors();
+      if (warmTicks >= WARM_TICK_MAX) return;
+      warmTicks++;
+      later("warm", () => warmTick(g), WARM_TICK_MS);
+    }
     function armAdvance(e, g) {
       later("advance", () => advance(g), clamp2(e.end - clock() + 30, 50, MAX_TIMEOUT));
     }
@@ -3139,6 +3565,7 @@
       unlater("retry");
       unlater("trailer");
       unlater("neigh");
+      unlater("warm");
       armAdvance(e, g);
       needsTap = false;
       clearStall();
@@ -3231,7 +3658,7 @@
       if (no === channel && entry) return;
       channel = no;
       const g = ++gen;
-      for (const k of ["zap", "advance", "retry", "trailer", "neigh"]) unlater(k);
+      for (const k of ["zap", "advance", "retry", "trailer", "neigh", "warm"]) unlater(k);
       abortPrefetch();
       tuneAt = clock();
       clearStall();
@@ -3293,7 +3720,7 @@
     function stop() {
       if (!on) return;
       gen++;
-      for (const k of ["zap", "advance", "retry", "trailer", "neigh"]) unlater(k);
+      for (const k of ["zap", "advance", "retry", "trailer", "neigh", "warm"]) unlater(k);
       abortPrefetch();
       tuneAt = 0;
       clearStall();
@@ -3615,7 +4042,7 @@
   var sgn = (s) => Number.isFinite(s) ? `${s < 0 ? "-" : "+"}${Math.abs(s).toFixed(1).replace(".", ",")}` : "\u2013";
   var range = (r) => Array.isArray(r) ? `${sgn(r[0])}\u2026${sgn(r[1])}` : "\u2013";
   function detailLine(t) {
-    if (!t || t.variant == null) return "";
+    if (!t || t.jumped === void 0) return "";
     const p = [];
     const s = t.src;
     if (s) {
@@ -3623,7 +4050,7 @@
       if (q) p.push(`Quelle ${q}`);
       if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(",")}`);
     }
-    p.push(`V${t.variant}${t.forced ? " HLS erzwungen" : ""}`);
+    if (t.forced) p.push("HLS erzwungen");
     if (t.jumped != null) {
       p.push(`Sprung ${t.jumped ? "ja" : "nein"}`);
       if (Number.isFinite(t.devS)) p.push(`Abw ${sgn(t.devS)}`);
@@ -3632,6 +4059,25 @@
       p.push(`Warten ${t.waitCount || 0}\xD7${t.waitCount ? ` ${sec(t.waitMs)} s` : ""}`);
     }
     return p.join(" \xB7 ");
+  }
+  function warmLine(t) {
+    const w = t && t.warm;
+    if (!w) return "";
+    const r = t.res;
+    const res = r ? `Res ${r.n}/${r.firstSegMs == null ? "\u2013" : `${sec(r.firstSegMs)} s`}` : "Res \u2013";
+    if (!w.on) return `Vorw\xE4rmen aus \xB7 ${res}`;
+    const vw = w.started == null ? [] : [`Vw ${w.done || 0}/${w.started}`];
+    if (!w.used) return ["Vorw\xE4rmen an", "genutzt nein", ...vw, `Grund ${w.skip || "\u2013"}`, res].join(" \xB7 ");
+    return [
+      "Vorw\xE4rmen an",
+      w.partial ? "genutzt teilweise" : "genutzt ja",
+      `Alter ${w.ageMs == null ? "\u2013" : `${Math.round(w.ageMs / 1e3)} s`}`,
+      `Liste ${sec1(w.playlistMs)}`,
+      `Init ${sec1(w.initMs)}`,
+      `Seg 1. Byte ${sec1(w.segFirstByteMs)}`,
+      ...vw,
+      res
+    ].join(" \xB7 ");
   }
   function createZapStats(parent, { getVideo = null, doc = null } = {}) {
     const d = doc || parent && parent.ownerDocument || document;
@@ -3642,7 +4088,8 @@
     const l1 = d.createElement("div");
     const l2 = d.createElement("div");
     const l3 = d.createElement("div");
-    el.append(l1, l2, l3);
+    const l4 = d.createElement("div");
+    el.append(l1, l2, l3, l4);
     parent.append(el);
     const hist = [];
     let audio = { mode: "", level: null };
@@ -3683,6 +4130,7 @@
         }
         l1.textContent = parts.join(" \xB7 ");
         l3.textContent = detailLine(t);
+        l4.textContent = warmLine(t);
         renderAudio();
       },
       updateAudio(info) {

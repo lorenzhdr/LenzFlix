@@ -100,6 +100,9 @@ export function renderHero(slot, { loadPool }) {
   const timers = new Set();
   const cleanupFns = [];
 
+  // Signal fürs Vorladen der Zeilen (rows/prefetch.js): „wait“ = Trailer steht noch aus, „on“ = läuft, leer = keiner/aufgegeben.
+  const setTr = (v) => { if (v) slot.dataset.lfxTr = v; else delete slot.dataset.lfxTr; };
+
   const later = (fn, ms) => {
     const t = setTimeout(() => { timers.delete(t); fn(); }, ms);
     timers.add(t);
@@ -114,6 +117,7 @@ export function renderHero(slot, { loadPool }) {
     if (preview) { preview.cancel(); preview = null; }
     video = null;
     trailerActive = false;
+    setTr('');
     if (muteBtn) muteBtn.hidden = true;
     if (hero) hero.classList.remove('is-trailer');
   }
@@ -145,6 +149,7 @@ export function renderHero(slot, { loadPool }) {
         video = v;
         gate = autoPause(v, { respectHold: true });
         trailerActive = true;
+        setTr('on');
         v.classList.add('is-in');
         hero.classList.add('is-trailer');
         muteBtn.hidden = false;
@@ -157,6 +162,8 @@ export function renderHero(slot, { loadPool }) {
         scheduleRotate();
       },
     });
+    setTr('wait');
+    later(() => { if (myGen === gen && slot.dataset.lfxTr === 'wait') setTr(''); }, TRAILER_DELAY_MS + 4000); // kein Trailer gefunden: still aufgegeben
   }
 
   function playButton(item, myGen) {

@@ -390,7 +390,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.4";
+  var VERSION = "1.11.5";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -2726,6 +2726,12 @@
   var NAV_ID = "lfx-nav";
   var EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SCROLL_THRESHOLD = 10;
+  var FOLD_ORDER = ["list", "new", "movies", "series"];
+  var MENU_ORDER = ["series", "movies", "new", "list"];
+  var FOLD_GAP = 16;
+  var FOLD_RESERVE = 180;
+  var TOOLBAR_SEL = "header.MuiAppBar-root > .MuiToolbar-root:first-child";
+  var RIGHT_SEL = `${TOOLBAR_SEL} .MuiIconButton-root, ${TOOLBAR_SEL} a[href="#/search"], ${TOOLBAR_SEL} button[aria-haspopup], .lfx-tvbtn`;
   function viewUrl(view) {
     const id = view.Id;
     const ct = view.CollectionType;
@@ -2790,7 +2796,10 @@
     route: null,
     cleanups: [],
     menuOpen: false,
-    seq: 0
+    seq: 0,
+    raf: 0,
+    watch: [],
+    toolbar: null
   };
   function setMenu(open2) {
     state2.menuOpen = open2;
@@ -2811,6 +2820,63 @@
         else el4.removeAttribute("aria-current");
       }
     }
+    if (key && state2.nav.querySelector(`.lfx-nav__item[data-key="${key}"][hidden]`)) {
+      state2.nav.querySelector(".lfx-nav__more-btn").classList.add("is-active");
+    }
+  }
+  function rightLimit(navLeft) {
+    let min = window.innerWidth - FOLD_RESERVE + FOLD_GAP;
+    for (const el4 of document.querySelectorAll(RIGHT_SEL)) {
+      const r = el4.getBoundingClientRect();
+      if (r.width > 0 && r.left > navLeft && r.left < min) min = r.left;
+    }
+    return min - FOLD_GAP;
+  }
+  function fit() {
+    const nav = state2.nav;
+    const wrap = nav && nav.querySelector(".lfx-nav__more");
+    if (!wrap) return;
+    const items = FOLD_ORDER.map((k) => nav.querySelector(`.lfx-nav__item[data-key="${k}"]`)).filter(Boolean);
+    const fold = (n) => {
+      const off = new Set(items.slice(0, n).map((el4) => el4.dataset.key));
+      for (const el4 of items) el4.hidden = off.has(el4.dataset.key);
+      for (const el4 of nav.querySelectorAll(".lfx-nav__menu-item--fold")) el4.hidden = !off.has(el4.dataset.key);
+    };
+    fold(0);
+    if (!isNavCompact()) {
+      const limit = rightLimit(nav.getBoundingClientRect().left);
+      let n = 0;
+      while (n < items.length && wrap.getBoundingClientRect().right > limit) fold(++n);
+    }
+    applyActive();
+  }
+  function scheduleFit() {
+    if (state2.raf || !state2.nav) return;
+    state2.raf = requestAnimationFrame(() => {
+      state2.raf = 0;
+      fit();
+    });
+  }
+  function unwatch() {
+    for (const o of state2.watch.splice(0)) o.disconnect();
+    state2.toolbar = null;
+  }
+  function watchToolbar() {
+    const tb = document.querySelector(TOOLBAR_SEL);
+    if (tb === state2.toolbar) return;
+    unwatch();
+    state2.toolbar = tb;
+    if (!tb) return;
+    if (typeof ResizeObserver === "function") {
+      const ro = new ResizeObserver(scheduleFit);
+      ro.observe(tb);
+      state2.watch.push(ro);
+    }
+    if (typeof MutationObserver === "function") {
+      const mo3 = new MutationObserver(scheduleFit);
+      mo3.observe(tb, { childList: true, subtree: true });
+      state2.watch.push(mo3);
+    }
   }
   function render() {
     const nav = state2.nav;
@@ -2822,7 +2888,9 @@
     const more = state2.model.more;
     const statsUrl = statsLink();
     {
-      const entries = more.map((m) => h("a", { class: "lfx-nav__menu-item", role: "menuitem", href: m.href, dataset: { id: m.id } }, m.label));
+      const all = navItems(state2.model);
+      const entries = MENU_ORDER.map((k) => all.find((it) => it.key === k)).filter(Boolean).map((it) => h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--fold", role: "menuitem", href: it.href, hidden: true, dataset: { key: it.key } }, it.label));
+      for (const m of more) entries.push(h("a", { class: "lfx-nav__menu-item", role: "menuitem", href: m.href, dataset: { id: m.id } }, m.label));
       if (statsUrl) entries.push(h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--stats", role: "menuitem", href: statsUrl }, STATS_LABEL2));
       const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--design", role: "menuitem", "aria-label": badgedName("Design Einstellungen", "Beta") }, ["Design Einstellungen", badgePill("Beta")]);
       entries.push(designBtn);
@@ -2844,7 +2912,7 @@
           setMenu(false);
           btn3.focus();
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          const items = [...menu.querySelectorAll('[role="menuitem"]')];
+          const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden])')];
           const i = items.indexOf(document.activeElement);
           const next = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
           setMenu(true);
@@ -2860,7 +2928,7 @@
       nav.append(wrap);
       if (state2.menuOpen) setMenu(true);
     }
-    applyActive();
+    fit();
   }
   function onScroll() {
     const y = window.scrollY || document.documentElement.scrollTop || 0;
@@ -2901,6 +2969,10 @@
         () => window.removeEventListener("scroll", onScroll),
         () => document.removeEventListener("click", onDocClick, true)
       );
+      window.addEventListener("resize", scheduleFit);
+      state2.cleanups.push(() => window.removeEventListener("resize", scheduleFit));
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFit);
+      watchToolbar();
       onScroll();
       loadViews(seq3);
     },
@@ -2909,10 +2981,15 @@
       state2.route = route;
       if (changed) setMenu(false);
       applyActive();
+      watchToolbar();
+      scheduleFit();
     },
     unmount() {
       state2.seq++;
       for (const fn of state2.cleanups.splice(0)) fn();
+      if (state2.raf) cancelAnimationFrame(state2.raf);
+      state2.raf = 0;
+      unwatch();
       unmountPoint(NAV_ID);
       unmountAmbient();
       const cl2 = document.documentElement.classList;
@@ -3061,7 +3138,7 @@
   var mobilenavFeature = {
     name: "mobilenav",
     match(route) {
-      return isReady() && isModern() && !isTv() && isMobile() && isNavCompact() && isTheme("flix") && !EXCLUDED2.test(route.path);
+      return isReady() && isModern() && !isTv() && isNavCompact() && isTheme("flix") && !EXCLUDED2.test(route.path);
     },
     mount(route) {
       const seq3 = ++state3.seq;
@@ -5156,6 +5233,10 @@
     let muteBtn = null;
     let dots = null;
     const cleanupFns = [];
+    const setTr = (v) => {
+      if (v) slot.dataset.lfxTr = v;
+      else delete slot.dataset.lfxTr;
+    };
     const later = (fn, ms) => {
       const t = setTimeout(() => {
         timers.delete(t);
@@ -5348,6 +5429,7 @@
         if (sl.gen !== gen8 || disposed) return;
         if (!t) {
           sl.failed = true;
+          setTr("");
           return;
         }
         const v = h("video", { class: "lfx-bb__video", playsinline: true, preload: "auto", "aria-hidden": "true" });
@@ -5356,6 +5438,7 @@
         v.addEventListener("playing", () => {
           if (sl.gen !== gen8 || video2 !== v) return;
           trailerActive = true;
+          setTr("on");
           v.classList.add("is-in");
           card3.classList.add("is-trailer");
           muteBtn.hidden = false;
@@ -5364,6 +5447,7 @@
         const end = () => {
           if (video2 !== v) return;
           sl.failed = true;
+          setTr("");
           stopTrailer();
           scheduleRotate();
         };
@@ -5419,6 +5503,7 @@
         check3();
       } catch {
         sl.failed = true;
+        setTr("");
       }
     }
     function show3(i, immediate = false) {
@@ -5455,6 +5540,7 @@
       scheduleRotate();
       const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
       slide = sl;
+      setTr(item.LocalTrailerCount > 0 ? "wait" : "");
       const img = pic.querySelector(".lfx-bb__img");
       const onLoaded = () => {
         if (disposed || sl.gen !== gen8 || sl.imgAt) return;
@@ -5548,6 +5634,7 @@
       timers.forEach(clearTimeout);
       timers.clear();
       stopTrailer();
+      setTr("");
       cleanupFns.forEach((f) => f());
       slot.replaceChildren();
       slot.removeAttribute("aria-roledescription");
@@ -5772,6 +5859,139 @@
       track.removeEventListener("focusin", onFocusIn);
       track.removeEventListener("keydown", onKey3);
       unsubResize();
+    };
+  }
+
+  // src/js/features/rows/prefetch.js
+  var MAX_WAIT = 15e3;
+  var IMG_WAIT = 4e3;
+  var POLL = 250;
+  var TOP_ROWS = 3;
+  var TOP_CARDS = 8;
+  function allowPrefetch() {
+    const c = typeof navigator !== "undefined" ? navigator.connection : null;
+    if (!c) return true;
+    return !(c.saveData || c.type === "cellular" || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""));
+  }
+  function heroSettled(slot) {
+    if (!slot || slot.hidden) return true;
+    if (slot.classList.contains("is-loading") || slot.querySelector(".lfx-bb--skel")) return false;
+    if (slot.dataset.lfxTr === "wait") return false;
+    return [...slot.querySelectorAll("img")].every((i) => i.getAttribute("loading") === "lazy" || i.complete);
+  }
+  var cardImgs = (row) => [...row.querySelectorAll(".lfx-card")].slice(0, TOP_CARDS).flatMap((c) => [...c.querySelectorAll("img")]);
+  function startRowPrefetch({ slot, pending, load: load6, hero }) {
+    if (!allowPrefetch()) return { stop() {
+    }, notify() {
+    } };
+    const t0 = Date.now();
+    const offs = [];
+    let dead = false;
+    let go3 = false;
+    let busy2 = false;
+    let imgSince = 0;
+    let timer2 = null;
+    let idleId = null;
+    const later = (fn, ms) => {
+      clearTimeout(timer2);
+      timer2 = setTimeout(fn, ms);
+    };
+    const idle = (fn) => {
+      if (dead) return;
+      if (typeof requestIdleCallback === "function") idleId = requestIdleCallback(fn, { timeout: 1e3 });
+      else later(fn, 150);
+    };
+    function topReady() {
+      const rows = [...slot.children].filter((c) => c.dataset && c.dataset.lfxRow !== void 0).slice(0, TOP_ROWS);
+      if (!slot.querySelector(".lfx-card")) return !pending.size;
+      const imgs = [];
+      for (const r of rows) {
+        if (r.classList.contains("is-loading")) {
+          if (!pending.has(r)) return false;
+          continue;
+        }
+        imgs.push(...cardImgs(r));
+      }
+      if (!imgSince) imgSince = Date.now();
+      return Date.now() - imgSince >= IMG_WAIT || imgs.every((i) => i.complete);
+    }
+    function waitImgs(imgs, done) {
+      let left = 0;
+      let fin = false;
+      const end = () => {
+        if (fin) return;
+        fin = true;
+        clearTimeout(tm);
+        done();
+      };
+      const tm = setTimeout(end, IMG_WAIT);
+      offs.push(() => clearTimeout(tm));
+      for (const i of imgs) {
+        i.loading = "eager";
+        if (i.complete) continue;
+        left++;
+        const one = () => {
+          if (--left <= 0) end();
+        };
+        i.addEventListener("load", one, { once: true });
+        i.addEventListener("error", one, { once: true });
+        offs.push(() => {
+          i.removeEventListener("load", one);
+          i.removeEventListener("error", one);
+        });
+      }
+      if (!left) end();
+    }
+    function next() {
+      if (dead || busy2 || document.hidden) return;
+      let el4 = null;
+      for (const e of pending.keys()) {
+        if (!e.isConnected || !e.classList.contains("is-loading")) {
+          pending.delete(e);
+          continue;
+        }
+        if (!el4 || el4.compareDocumentPosition(e) & 2) el4 = e;
+      }
+      if (!el4) return;
+      const entry = pending.get(el4);
+      pending.delete(el4);
+      busy2 = true;
+      Promise.resolve().then(() => load6(el4, entry)).catch(() => {
+      }).then(() => {
+        if (dead) return;
+        waitImgs(cardImgs(el4), () => {
+          busy2 = false;
+          idle(next);
+        });
+      });
+    }
+    function tick() {
+      if (dead || document.hidden) return;
+      if (!go3) {
+        go3 = Date.now() - t0 >= MAX_WAIT || heroSettled(hero && hero()) && topReady();
+        if (!go3) {
+          later(tick, POLL);
+          return;
+        }
+      }
+      next();
+    }
+    const onVis = () => {
+      if (!document.hidden && !dead && !busy2) later(tick, 0);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    later(tick, POLL);
+    return {
+      stop() {
+        dead = true;
+        clearTimeout(timer2);
+        if (idleId != null && typeof cancelIdleCallback === "function") cancelIdleCallback(idleId);
+        document.removeEventListener("visibilitychange", onVis);
+        offs.splice(0).forEach((f) => f());
+      },
+      notify() {
+        if (go3 && !busy2 && !dead) idle(next);
+      }
     };
   }
 
@@ -6053,6 +6273,7 @@
   function render4(slot) {
     let disposed = false;
     let observer2 = null;
+    let prefetch = null;
     const disposers = [];
     slot.hidden = false;
     slot.textContent = "";
@@ -6172,11 +6393,25 @@
         }, { rootMargin: "600px 0px" });
         for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
-        for (const [el4, def] of pending) loadRow(el4, def);
+        for (const [el4, def] of [...pending]) {
+          pending.delete(el4);
+          loadRow(el4, def);
+        }
       }
+      prefetch = startRowPrefetch({
+        slot,
+        pending,
+        hero: () => document.getElementById("lfx-billboard"),
+        load: (el4, def) => {
+          if (observer2) observer2.unobserve(el4);
+          return loadRow(el4, def);
+        }
+      });
     })();
     return () => {
       disposed = true;
+      if (prefetch) prefetch.stop();
+      prefetch = null;
       if (observer2) observer2.disconnect();
       observer2 = null;
       for (const d of disposers.splice(0)) d();
@@ -7771,8 +8006,12 @@
 
   // src/js/features/live/zapflag.js
   var ZAP_KEY = "lfx-zapstats";
-  var ZAP_VARIANT_KEY = "lfx-zapvariant";
+  var ZAP_WARM_KEY = "lfx-zapwarm";
   var FORCE_HLS_KEY = "lfx-forcehls";
+  try {
+    window.localStorage.removeItem("lfx-zapvariant");
+  } catch {
+  }
   function hashParam(name) {
     try {
       return parseHash(window.location.hash).params.get(name);
@@ -7797,18 +8036,14 @@
       return v === "1";
     }
   }
-  function zapVariant() {
-    const v = hashParam("lfxzap");
-    const valid = (x) => x === "0" || x === "1" || x === "2";
+  function zapWarmEnabled() {
+    const v = hashParam("lfxwarm");
     try {
-      if (v != null) {
-        if (valid(v) && v !== "1") window.localStorage.setItem(ZAP_VARIANT_KEY, v);
-        else window.localStorage.removeItem(ZAP_VARIANT_KEY);
-      }
-      const s = window.localStorage.getItem(ZAP_VARIANT_KEY);
-      return valid(s) ? Number(s) : 1;
+      if (v === "1") window.localStorage.setItem(ZAP_WARM_KEY, "1");
+      else if (v === "0") window.localStorage.removeItem(ZAP_WARM_KEY);
+      return window.localStorage.getItem(ZAP_WARM_KEY) === "1";
     } catch {
-      return valid(v) ? Number(v) : 1;
+      return v === "1";
     }
   }
   function forceHlsEnabled() {
@@ -7865,8 +8100,8 @@
       request: (method, path, o = {}) => requestJson(method, path, o),
       storage: safeStorage(),
       // Player: dauerhaft gemerkte Direct-Fehler
-      zapVariant: zapVariant(),
-      // Player: Startvariante 0–3 (Hash lfxzap, docs/live.md „Startablauf“)
+      zapWarm: zapWarmEnabled(),
+      // Player/TV-Modus: Nachbarsender vorwärmen (Test, Hash lfxwarm, docs/live.md „Vorwärmen“)
       forceHls: forceHlsEnabled(),
       // Player: HLS erzwingen (Hash lfxhls, nur mit Messanzeige)
       streamUrl: (path, params) => buildUrl(path, { ...params || {}, ApiKey: getAuth().token }),
@@ -9815,9 +10050,10 @@
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev: prev2, next, indicator: null });
   }
-  function renderRows(slot, getDefs, peekDefs) {
+  function renderRows(slot, getDefs, peekDefs, opts = {}) {
     let disposed = false;
     let observer2 = null;
+    let prefetch = null;
     const disposers = [];
     slot.textContent = "";
     disposers.push(onItemsChanged(({ removed }) => {
@@ -9897,11 +10133,27 @@
         }, { rootMargin: "600px 0px" });
         for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
-        for (const [el4, def] of pending) loadRow(el4, def);
+        for (const [el4, def] of [...pending]) {
+          pending.delete(el4);
+          loadRow(el4, def);
+        }
+      }
+      if (opts.prefetch) {
+        prefetch = startRowPrefetch({
+          slot,
+          pending,
+          hero: opts.hero,
+          load: (el4, def) => {
+            if (observer2) observer2.unobserve(el4);
+            return loadRow(el4, def);
+          }
+        });
       }
     })();
     return () => {
       disposed = true;
+      if (prefetch) prefetch.stop();
+      prefetch = null;
       if (observer2) observer2.disconnect();
       observer2 = null;
       for (const d of disposers.splice(0)) d();
@@ -9986,7 +10238,7 @@
       }
     })();
     if (!isHub) cleanups3.push(renderBrands(root7, rowsSlot));
-    cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs(), isHub ? null : () => peekRowDefs()));
+    cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs(), isHub ? null : () => peekRowDefs(), { prefetch: !isHub, hero: () => heroSlot }));
   }
   function ensure4(route) {
     clearTimeout(waitTimer4);
@@ -12726,6 +12978,10 @@
     let hero = null;
     const timers = /* @__PURE__ */ new Set();
     const cleanupFns = [];
+    const setTr = (v) => {
+      if (v) slot.dataset.lfxTr = v;
+      else delete slot.dataset.lfxTr;
+    };
     const later = (fn, ms) => {
       const t = setTimeout(() => {
         timers.delete(t);
@@ -12746,6 +13002,7 @@
       }
       video2 = null;
       trailerActive = false;
+      setTr("");
       if (muteBtn) muteBtn.hidden = true;
       if (hero) hero.classList.remove("is-trailer");
     }
@@ -12774,6 +13031,7 @@
           video2 = v;
           gate = autoPause(v, { respectHold: true });
           trailerActive = true;
+          setTr("on");
           v.classList.add("is-in");
           hero.classList.add("is-trailer");
           muteBtn.hidden = false;
@@ -12786,6 +13044,10 @@
           scheduleRotate();
         }
       });
+      setTr("wait");
+      later(() => {
+        if (myGen === gen8 && slot.dataset.lfxTr === "wait") setTr("");
+      }, TRAILER_DELAY_MS + 4e3);
     }
     function playButton(item, myGen) {
       const label = h("span", { class: "lfx-prime-hero__label" });
@@ -13186,9 +13448,10 @@
     if (def.kind === "resume") return "resume";
     return def.id === posterId ? "poster" : "landscape";
   }
-  function createRows(slot, { posterId = null, moreHref = () => null } = {}) {
+  function createRows(slot, { posterId = null, moreHref = () => null, prefetch: wantPrefetch = false, hero = null } = {}) {
     let disposed = false;
     let observer2 = null;
+    let prefetch = null;
     let infoP = null;
     const disposers = [];
     const pending = /* @__PURE__ */ new Map();
@@ -13303,12 +13566,29 @@
           slot.append(el4);
           pending.set(el4, { def, kind: kind2 });
           if (observer2) observer2.observe(el4);
-          else loadRow(el4, def, kind2);
+          else {
+            pending.delete(el4);
+            loadRow(el4, def, kind2);
+          }
+        }
+        if (prefetch) prefetch.notify();
+        else if (wantPrefetch) {
+          prefetch = startRowPrefetch({
+            slot,
+            pending,
+            hero,
+            load: (el4, p) => {
+              if (observer2) observer2.unobserve(el4);
+              return loadRow(el4, p.def, p.kind);
+            }
+          });
         }
       },
       ids: () => [...rendered],
       destroy() {
         disposed = true;
+        if (prefetch) prefetch.stop();
+        prefetch = null;
         if (observer2) observer2.disconnect();
         observer2 = null;
         pending.clear();
@@ -13387,7 +13667,9 @@
     if (myGen !== gen3 || !isReady()) return;
     const rows = createRows(rowsSlot, {
       posterId: pickPosterId(defs, hub),
-      moreHref: (def) => moreHrefFor(def, { hub, libs, lib })
+      moreHref: (def) => moreHrefFor(def, { hub, libs, lib }),
+      prefetch: !hub,
+      hero: () => heroSlot
     });
     cleanups4.push(() => rows.destroy());
     rows.add(defs);

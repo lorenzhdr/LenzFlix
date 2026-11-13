@@ -135,6 +135,15 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item {
   text-decoration: none;
   white-space: nowrap;
 }
+/* Eingeklappte Punkte (nav.js fit()): Leiste bzw. Menü-Eintrag nur sichtbar, wenn nicht hidden */
+html.lfx-js #lfx-nav .lfx-nav__item[hidden],
+html.lfx-js #lfx-nav .lfx-nav__menu-item[hidden] {
+  display: none;
+}
+html.lfx-js #lfx-nav .lfx-nav__menu-item.is-active {
+  color: var(--lfx-text);
+  background: var(--lfx-pill-active);
+}
 html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   background: rgb(255 255 255 / 0.1);
   color: var(--lfx-text);

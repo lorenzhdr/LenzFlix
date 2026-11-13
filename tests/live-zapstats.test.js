@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createZapStats, sec, detailLine } from '../src/js/live/ui/zapstats.js';
+import { createZapStats, sec, detailLine, warmLine } from '../src/js/live/ui/zapstats.js';
 
 let host;
 beforeEach(() => { document.body.innerHTML = '<div id="h"></div>'; host = document.getElementById('h'); });
@@ -57,12 +57,12 @@ describe('Messanzeige', () => {
 describe('Messanzeige Zeile 3', () => {
   const t = {
     totalMs: 1800, infoMs: 300, loadMs: 1100, startMs: 200, chain: 'F', cached: false, mode: 'hls',
-    variant: 1, forced: false, jumped: false, devS: 0.3, seekingMs: 0, seekedMs: 300, canplayMs: 500,
+    forced: false, jumped: false, devS: 0.3, seekingMs: 0, seekedMs: 300, canplayMs: 500,
     bufSeeked: [0, 2], bufPlaying: [0, 12], waitCount: 2, waitMs: 1800, src: { container: 'mkv', v: 'hevc', a: 'eac3', reasons: ['Container'] },
   };
-  it('zeigt Quelle, Grund, Variante, Sprung, Puffer und Warten', () => {
-    expect(detailLine(t)).toBe('Quelle mkv·hevc·eac3 · Grund Container · V1 · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s');
-    expect(detailLine({ ...t, forced: true, variant: 0, jumped: true, waitCount: 0, bufSeeked: null })).toContain('V0 HLS erzwungen · Sprung ja');
+  it('zeigt Quelle, Grund, Sprung, Puffer und Warten', () => {
+    expect(detailLine(t)).toBe('Quelle mkv·hevc·eac3 · Grund Container · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s');
+    expect(detailLine({ ...t, forced: true, jumped: true, waitCount: 0, bufSeeked: null })).toContain('HLS erzwungen · Sprung ja');
   });
   it('rendert als dritte Zeile; ohne Zusatzfelder leer; nie URL/Token', () => {
     const z = createZapStats(host);
@@ -72,5 +72,31 @@ describe('Messanzeige Zeile 3', () => {
     expect(el.children[2].textContent).not.toMatch(/http|ApiKey|token/i);
     z.update({ channel: 5, timing: { totalMs: 1000, infoMs: 0, loadMs: 0, startMs: 0, chain: 'D', cached: false } });
     expect(el.children[2].textContent).toBe('');
+  });
+});
+
+describe('Messanzeige Zeile 4 (Vorwärmen)', () => {
+  it('ohne timing.warm leer', () => {
+    expect(warmLine({ totalMs: 1 })).toBe('');
+    expect(warmLine(null)).toBe('');
+  });
+  it('aus / an ungenutzt / an genutzt, deutsches Zahlenformat', () => {
+    expect(warmLine({ warm: { on: false }, res: null })).toBe('Vorwärmen aus · Res –');
+    expect(warmLine({ warm: { on: true, used: false }, res: { n: 2, firstSegMs: null } })).toBe('Vorwärmen an · genutzt nein · Grund – · Res 2/–');
+    const t = { warm: { on: true, used: true, ageMs: 12400, playlistMs: 300, initMs: 200, segFirstByteMs: 4800 }, res: { n: 3, firstSegMs: 5100 } };
+    expect(warmLine(t)).toBe('Vorwärmen an · genutzt ja · Alter 12 s · Liste 0,3 · Init 0,2 · Seg 1. Byte 4,8 · Res 3/5,1 s');
+  });
+  it('teilweise genutzt und Zähler Vw fertig/gestartet', () => {
+    const t = { warm: { on: true, used: true, partial: true, started: 3, done: 2, ageMs: 4000, playlistMs: 300, initMs: null, segFirstByteMs: null }, res: null };
+    expect(warmLine(t)).toBe('Vorwärmen an · genutzt teilweise · Alter 4 s · Liste 0,3 · Init – · Seg 1. Byte – · Vw 2/3 · Res –');
+    expect(warmLine({ warm: { on: true, used: false, started: 1, done: 0, skip: 'pending' }, res: null })).toBe('Vorwärmen an · genutzt nein · Vw 0/1 · Grund pending · Res –');
+  });
+  it('wird als vierte Zeile gerendert', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const z = createZapStats(host);
+    z.update({ channel: 3, timing: { totalMs: 1000, chain: 'F', warm: { on: false }, res: null } });
+    expect(host.querySelector('.lfx-zapstats').children[3].textContent).toBe('Vorwärmen aus · Res –');
+    host.remove();
   });
 });
