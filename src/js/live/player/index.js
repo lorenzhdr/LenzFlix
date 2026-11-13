@@ -1,7 +1,7 @@
 // LENZ LIVE Player: öffentliche API (Vertrag: docs/live.md „Player“). Nie Fortschritt melden, nie URLs/Token loggen.
 import { createEmitter } from './events.js';
 import { createVideoControl } from './video.js';
-import { resolveStream } from './stream.js';
+import { resolveStream, videoFormatHint } from './stream.js';
 import { pickSubtitle } from './tracks.js';
 import { createFakePlayer } from './fake.js';
 import { parseMaster, parseMedia, pickSegment, resourceStats } from './warm.js';
@@ -18,6 +18,8 @@ const RETRY_DELAY_MS = 500;
 const DF_KEY = 'lfx-directfailed'; // dauerhaft gemerkte Direct-Fehler (deps.storage): { id: Zeitstempel }
 const DF_TTL_MS = 7 * 24 * 3600 * 1000;
 const DF_MAX = 200;
+const FF_KEY = 'lfx-fmp4failed'; // dauerhaft gemerkte fMP4-Fehler (h264-Titel, deren ts-Rückfall lief), gleiches Format
+const WARM_LOG_MAX = 20;
 const WARM_TTL_MS = 40 * 1000; // Vorwärmen (Test): der Server beendet untätige HLS-Jobs nach ~60 s
 const WARM_MAX = 2;
 const WARM_REFRESH_MAX = 10;
@@ -40,7 +42,19 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   let session = null; // { kind:'item'|'url', itemId?, mode, playSessionId?, mediaSourceId? }
   let tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
   let disposed = false;
-  let tsOnly = false; // fMP4-HLS scheiterte bei h264 schon einmal: für h264-Quellen gleich ts/h264 anfordern
+  // fMP4-HLS (F) scheiterte bei diesem h264-Titel, der ts-Rückfall (T) lief: Titel gleich mit noHevc anfragen. Nur gezählt, wenn T danach lief.
+  const fmp4Failed = new Set();
+  const fmp4Fails = new Set(); // Titel mit gezähltem F-Fehler in dieser Sitzung
+  let fmp4Ok = false; // F (h264) lief in dieser Sitzung mindestens einmal
+  const codecs = new Map(); // itemId → Videocodec (nur HLS-Ergebnisse): der geräteweite ts-Modus erkennt so h264 ohne Doppelanfrage
+  const deviceTs = () => !fmp4Ok && fmp4Fails.size >= 2; // geräteweit (nur Sitzung): F geht hier offenbar nicht
+  const wantTs = (id, r) => !!r && !!r.offeredHevc && r.videoCodec === 'h264' && (fmp4Failed.has(id) || deviceTs());
+  const noHevcFor = (id) => fmp4Failed.has(id) || (deviceTs() && codecs.get(id) === 'h264');
+  const noteCodec = (id, r) => {
+    if (!r || !r.ok || r.mode !== 'hls') return;
+    if (codecs.size >= DF_MAX) codecs.clear();
+    codecs.set(id, r.videoCodec);
+  };
   // Auflösungs-Cache: nur Direct-Ergebnisse (statische URL) werden wiederverwendet; bei HLS merkt er nur „HLS nötig“.
   const directFailed = new Set(); // Items, deren Direktwiedergabe im <video> scheiterte: gleich per Remux (noDirect) anfragen
   const rememberDirectFailed = (itemId) => {
@@ -50,26 +64,29 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   };
   // Dauerhaft (deps.storage, z. B. localStorage): nur Direct mit Medienfehler (M3/M4), dessen Remux danach lief. Max. 200 IDs, 7 Tage.
   const store = deps && deps.storage && typeof deps.storage.getItem === 'function' ? deps.storage : null;
-  const readDf = () => {
+  const readDf = (key) => {
     try {
-      const o = JSON.parse(store.getItem(DF_KEY) || '{}');
+      const o = JSON.parse(store.getItem(key) || '{}');
       return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
     } catch { return {}; }
   };
   if (store) {
     const t = now();
-    for (const [id, at] of Object.entries(readDf())) if (typeof at === 'number' && t - at < DF_TTL_MS && directFailed.size < DF_MAX) directFailed.add(id);
+    for (const [key, set] of [[DF_KEY, directFailed], [FF_KEY, fmp4Failed]]) {
+      for (const [id, at] of Object.entries(readDf(key))) if (typeof at === 'number' && t - at < DF_TTL_MS && set.size < DF_MAX) set.add(id);
+    }
   }
-  const persistDirectFailed = (itemId) => {
+  const persistId = (key, itemId) => {
     if (!store) return;
     try {
       const t = now();
-      const all = readDf();
+      const all = readDf(key);
       all[itemId] = t;
       const live = Object.entries(all).filter(([, at]) => typeof at === 'number' && t - at < DF_TTL_MS).sort((a, b) => b[1] - a[1]).slice(0, DF_MAX);
-      store.setItem(DF_KEY, JSON.stringify(Object.fromEntries(live)));
+      store.setItem(key, JSON.stringify(Object.fromEntries(live)));
     } catch { /* Speicher gesperrt/voll */ }
   };
+  const persistDirectFailed = (itemId) => persistId(DF_KEY, itemId);
   let lastCached = false; // resolveFor: Ergebnis aus Cache/Vorauflösung wiederverwendet
   let lastWarm = null;    // resolveFor: vorgewärmter HLS-Eintrag übernommen { ageMs, timing }
   let lastTiming = null;
@@ -96,8 +113,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     return Promise.resolve();
   }
 
-  const failure = (reason, code) => {
-    const extra = code ? { code } : {};
+  const failure = (reason, code, hint) => {
+    const extra = { ...(code ? { code } : {}), ...(hint ? { hint } : {}) };
     em.emit('state', { phase: 'error', reason, ...extra });
     em.emit('error', { reason, ...extra });
   };
@@ -130,13 +147,22 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   const warmPending = new Map(); // itemId → { ac, p, r?, part?, at?, taken? } (r/part: schon aufgelöstes HLS-Ergebnis und bisherige Messwerte)
   let warmStarted = 0;
   let warmDone = 0;
-  let warmSkip = null; // letzter Grund, warum nicht (weiter) vorgewärmt wurde: pending|direct|err|timeout|max|phase|filler (nur Messanzeige)
-  const noteSkip = (c) => { warmSkip = c || null; };
+  // Grund je Titel, warum nicht (weiter) vorgewärmt/übernommen wurde (nur Messanzeige, max. WARM_LOG_MAX):
+  // pending|direct|err|fehler|timeout|max|kette|alt|verdrängt. Controller-Notiz (phase|filler) gilt nur ohne Titelgrund, bis zum nächsten Start.
+  const warmLog = new Map();
+  const logWarm = (id, c) => {
+    if (!id) return;
+    warmLog.delete(id);
+    warmLog.set(id, c);
+    while (warmLog.size > WARM_LOG_MAX) warmLog.delete(warmLog.keys().next().value);
+  };
+  let ctlNote = null;
+  const noteSkip = (c) => { ctlNote = c || null; };
   /** Pending-Vorgang nach WARM_PENDING_MAX_MS abbrechen (Grund 'timeout'); liefert die Aufräumfunktion. */
   function armPendingTimeout(itemId, rec) {
     const t = setTimeout(() => {
       if (warmPending.get(itemId) !== rec || rec.taken) return;
-      warmSkip = 'timeout';
+      logWarm(itemId, 'timeout');
       abortWarmPending(itemId);
     }, WARM_PENDING_MAX_MS);
     return () => clearTimeout(t);
@@ -211,7 +237,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     try { rec.ac.abort(); } catch { /* egal */ }
   }
   /** Eintrag verwerfen, laufende Abrufe abbrechen, Server-Job beenden. */
-  function dropWarm(itemId) {
+  function dropWarm(itemId, why) {
+    if (why) logWarm(itemId, why);
     const e = warm.get(itemId);
     warm.delete(itemId);
     abortWarmPending(itemId);
@@ -227,7 +254,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     warmTimer = setTimeout(() => {
       warmTimer = null;
       const t2 = now();
-      for (const [id, e] of [...warm]) if (t2 - e.at >= WARM_TTL_MS) dropWarm(id);
+      for (const [id, e] of [...warm]) if (t2 - e.at >= WARM_TTL_MS) dropWarm(id, 'alt');
       armWarmTimer();
     }, Math.max(50, next + 20));
   }
@@ -237,7 +264,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       let oldest = null;
       for (const [id, e] of warm) if (id !== itemId && (oldest == null || e.at < warm.get(oldest).at)) oldest = id;
       if (oldest == null) break;
-      dropWarm(oldest);
+      dropWarm(oldest, 'verdrängt');
     }
     armWarmTimer();
   }
@@ -245,17 +272,21 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   function takeWarm(itemId) {
     const e = warm.get(itemId);
     const rec = warmPending.get(itemId);
-    const fits = (r) => !(tsOnly && r.offeredHevc && r.videoCodec === 'h264');
-    if (!e && rec && rec.r && fits(rec.r)) {
-      // Vorwärmen noch unterwegs, PlaybackInfo aber da: die (evtl. schon gestartete) Sitzung übernehmen, Abrufe abbrechen, nicht löschen.
-      rec.taken = true;
-      warmPending.delete(itemId);
-      try { rec.ac.abort(); } catch { /* egal */ }
-      return { r: rec.r, at: rec.at, timing: { ...rec.part }, partial: true };
+    const fits = (r) => !wantTs(itemId, r);
+    if (!e && rec && rec.r) {
+      if (fits(rec.r)) {
+        // Vorwärmen noch unterwegs, PlaybackInfo aber da: die (evtl. schon gestartete) Sitzung übernehmen, Abrufe abbrechen, nicht löschen.
+        rec.taken = true;
+        warmPending.delete(itemId);
+        try { rec.ac.abort(); } catch { /* egal */ }
+        return { r: rec.r, at: rec.at, timing: { ...rec.part }, partial: true };
+      }
+      logWarm(itemId, 'kette');
     }
     abortWarmPending(itemId);
     if (!e) return null;
-    if (!warmFresh(e) || !fits(e.r)) { dropWarm(itemId); return null; }
+    if (!warmFresh(e)) { dropWarm(itemId, 'alt'); return null; }
+    if (!fits(e.r)) { dropWarm(itemId, 'kette'); return null; }
     warm.delete(itemId);
     armWarmTimer();
     return e;
@@ -266,23 +297,24 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     if (pf) { try { await pf; } catch { /* egal */ } }
     if (signal.aborted || disposed) return aborted();
     const c = cache.get(itemId);
-    if (fresh(c) && c.mode === 'direct' && !directFailed.has(itemId)) { noteSkip('direct'); return { ok: true, mode: 'direct' }; } // Direct braucht kein Vorwärmen
+    if (fresh(c) && c.mode === 'direct' && !directFailed.has(itemId)) { logWarm(itemId, 'direct'); return { ok: true, mode: 'direct' }; } // Direct braucht kein Vorwärmen
     // rec.resolving: play() wartet darauf, statt den Vorgang abzubrechen und neu aufzulösen (rec.r ist dann schon gesetzt).
-    rec.resolving = resolveStream({ deps, video, itemId, signal, noHevc: tsOnly, noDirect: wantNoDirect(itemId) }).then((x) => {
+    rec.resolving = resolveStream({ deps, video, itemId, signal, noHevc: noHevcFor(itemId), noDirect: wantNoDirect(itemId) }).then((x) => {
       if (x.ok && x.mode === 'hls' && !signal.aborted && !disposed) {
         rec.r = x;
         rec.at = now();
         rec.part = {};
         warmStarted++;
-        warmSkip = null;
+        warmLog.delete(itemId);
+        noteCodec(itemId, x);
       }
       return x;
     });
     const r = await rec.resolving;
     if (signal.aborted || disposed) return aborted();
     remember(itemId, r);
-    if (!r.ok) { noteSkip('err'); return { ok: false, mode: r.mode }; }
-    if (r.mode !== 'hls') { noteSkip('direct'); return { ok: true, mode: r.mode }; }
+    if (!r.ok) { logWarm(itemId, 'err'); return { ok: false, mode: r.mode }; }
+    if (r.mode !== 'hls') { logWarm(itemId, 'direct'); return { ok: true, mode: r.mode }; }
     let stored = false;
     try {
       const entry = await warmFetch(r, offsetMs, signal, rec.part);
@@ -297,9 +329,9 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   }
   function refreshWarm(itemId, e, offsetMs) {
     const running = warmPending.get(itemId);
-    if (running) { noteSkip('pending'); return running.p; }
+    if (running) { logWarm(itemId, 'pending'); return running.p; }
     const seg = pickSegment(e.segments, offsetMs / 1000);
-    if (e.refreshes >= WARM_REFRESH_MAX || !seg) { noteSkip('max'); return Promise.resolve({ ok: true, skipped: true }); }
+    if (e.refreshes >= WARM_REFRESH_MAX || !seg) { logWarm(itemId, 'max'); return Promise.resolve({ ok: true, skipped: true }); }
     const ac = new AbortController();
     const rec = { ac, p: null };
     const clearTo = armPendingTimeout(itemId, rec);
@@ -307,13 +339,13 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       try {
         const fb = await firstByte(seg.url, ac.signal);
         if (ac.signal.aborted || disposed || warm.get(itemId) !== e) return aborted();
-        if (!fb.ok) { noteSkip('err'); dropWarm(itemId); return { ok: false, reason: 'network' }; }
+        if (!fb.ok) { dropWarm(itemId, 'err'); return { ok: false, reason: 'network' }; }
         e.at = now();
         e.offsetMs = offsetMs;
         e.refreshes++;
         armWarmTimer();
         return { ok: true, refreshed: true };
-      } catch { if (!ac.signal.aborted) noteSkip('err'); return { ok: false, reason: 'network' }; }
+      } catch { if (!ac.signal.aborted) logWarm(itemId, 'err'); return { ok: false, reason: 'network' }; }
     })().finally(() => { clearTo(); if (warmPending.get(itemId) === rec) warmPending.delete(itemId); });
     warmPending.set(itemId, rec);
     return rec.p;
@@ -324,14 +356,14 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     const off = Number(offsetMs) || 0;
     const e = warm.get(itemId);
     if (e && warmFresh(e)) return refreshWarm(itemId, e, off);
-    if (e) dropWarm(itemId);
+    if (e) dropWarm(itemId, 'alt');
     const running = warmPending.get(itemId);
-    if (running) { noteSkip('pending'); return running.p; }
+    if (running) { logWarm(itemId, 'pending'); return running.p; }
     const ac = new AbortController();
     const rec = { ac, p: null };
     const clearTo = armPendingTimeout(itemId, rec);
     rec.p = runWarm(itemId, off, rec)
-      .catch(() => { if (!ac.signal.aborted) noteSkip('err'); return { ok: false, reason: 'network' }; })
+      .catch(() => { if (!ac.signal.aborted) logWarm(itemId, 'fehler'); return { ok: false, reason: 'network' }; })
       .finally(() => { clearTo(); if (warmPending.get(itemId) === rec) warmPending.delete(itemId); });
     warmPending.set(itemId, rec);
     return rec.p;
@@ -354,7 +386,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     }
     let r;
     try {
-      r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: wantNoDirect(itemId) });
+      r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc || noHevcFor(itemId), noDirect: wantNoDirect(itemId) });
+      noteCodec(itemId, r);
     } catch {
       r = { ok: false, mode: 'none', reason: signal.aborted ? 'aborted' : 'network', ...(signal.aborted ? {} : { code: 'NET' }) };
     }
@@ -374,24 +407,27 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       chain: tm.chain.join('>'),
       cached: tm.cached,
       mode: tm.mode,
-      ...extraTiming(tm.info || null, tm.warm),
+      ...(tm.hint ? { hint: tm.hint } : {}),
+      ...extraTiming(tm.info || null, tm.warm, tm.itemId),
     };
   }
 
   /** Zusatzfelder der Messanzeige (Zeitpunkte nach den Metadaten, Puffer, Quelle, Vorwärmen, Ressourcen): nie URL/Token. */
-  function extraTiming(src, wm) {
+  function extraTiming(src, wm, itemId) {
     return {
       ...vc.metrics(),
       forced: forceHls,
-      src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null,
-      warm: warmTiming(wm),
+      src: src ? { container: src.container, v: src.v, a: src.a, fmt: src.fmt || '', reasons: [...src.reasons] } : null,
+      warm: warmTiming(wm, itemId),
       res: resTiming(),
     };
   }
-  function warmTiming(wm) {
+  function warmTiming(wm, itemId) {
     if (!(deps && deps.zapWarm)) return { on: false };
     const t = (wm && wm.timing) || {};
-    return { on: true, used: !!wm, skip: warmSkip, partial: !!(wm && wm.partial), started: warmStarted, done: warmDone, ageMs: wm ? wm.ageMs : null, playlistMs: t.playlistMs ?? null, initMs: t.initMs ?? null, segFirstByteMs: t.segFirstByteMs ?? null };
+    // Grund nur ohne Übernahme: Titelgrund, sonst Notiz des Controllers seit dem letzten Umschalten, sonst 'keiner'.
+    const skip = wm ? null : warmLog.get(itemId) || ctlNote || 'keiner';
+    return { on: true, used: !!wm, skip, partial: !!(wm && wm.partial), started: warmStarted, done: warmDone, ageMs: wm ? wm.ageMs : null, playlistMs: t.playlistMs ?? null, initMs: t.initMs ?? null, segFirstByteMs: t.segFirstByteMs ?? null };
   }
   /** Best effort: Anzahl Playlist-/Segment-Abrufe seit src-Setzen und Zeit bis zum ersten Segment-Byte (nur Zahlen, nie Namen). */
   function resTiming() {
@@ -404,10 +440,11 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
 
   async function play(opts = {}) {
     if (disposed) return aborted();
-    const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: 'none', info: null };
+    const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: 'none', info: null, hint: null, itemId: opts.itemId };
     const res = await playCore(opts, tm);
     if (res.reason === 'aborted') return res;
     lastTiming = makeTiming(tm);
+    ctlNote = null;
     return { ...res, timing: lastTiming };
   }
 
@@ -429,8 +466,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     tm.cached = lastCached;
     tm.warm = lastWarm;
     tm.infoAt = now();
-    // Rückfall gemerkt: h264 mit fMP4-HLS lief hier nicht → gleich ohne HEVC anfragen.
-    if (r.ok && r.mode === 'hls' && tsOnly && r.offeredHevc && r.videoCodec === 'h264') {
+    // Rückfall gemerkt (Titel oder geräteweit): h264 mit fMP4-HLS lief hier nicht → ohne HEVC anfragen (bekannte Titel gleich in resolveFor).
+    if (r.ok && r.mode === 'hls' && wantTs(itemId, r)) {
       r = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
       if (my !== gen) return aborted();
     }
@@ -446,16 +483,26 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     let noHevc = !!opts.noHevc;
     let res;
     let fromFmp4 = false;
+    let fmp4MediaErr = false;
+    let hint = null;
     let tsRetried = false;
     let directMediaError = false;
     for (let attempt = 1; ; attempt++) {
       chain.push(attemptLetter(cur));
       tm.mode = cur.mode;
       tm.info = cur.info || null;
+      const wasWarm = attempt === 1 && !!tm.warm; // übernommene Vorwärm-Sitzung (nicht frisch aufgelöst)
       res = await launch(cur, opts, offsetMs, itemId, my);
       if (my !== gen) return aborted();
       if (res.ok) {
-        if (fromFmp4) tsOnly = true;
+        if (cur.mode === 'hls' && cur.offeredHevc && cur.videoCodec === 'h264') fmp4Ok = true;
+        if (fromFmp4) {
+          // F scheiterte, T lief: Titel merken (Speicher); dauerhaft nur nach M3/M4 an einer frisch aufgelösten F-Sitzung.
+          if (fmp4Failed.size >= DF_MAX) fmp4Failed.clear();
+          fmp4Failed.add(itemId);
+          fmp4Fails.add(itemId);
+          if (fmp4MediaErr) persistId(FF_KEY, itemId);
+        }
         if (directMediaError) persistDirectFailed(itemId); // Remux nach M3/M4 im Direct lief: dauerhaft merken
         return res;
       }
@@ -465,8 +512,12 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
         if (res.reason === 'video' && (res.code === 'M3' || res.code === 'M4')) directMediaError = true;
         rememberDirectFailed(itemId);
       } else if (cur.mode === 'hls' && cur.offeredHevc && cur.videoCodec === 'h264') {
+        // M3 mit bekannt ungeeignetem Bildformat: auch ts würde scheitern (oder umwandeln) → sofort Fehler mit Grund.
+        hint = res.reason === 'video' && res.code === 'M3' ? videoFormatHint(cur.mediaSource) : null;
+        if (hint) break;
         noHevc = true;
         fromFmp4 = true;
+        fmp4MediaErr = !wasWarm && res.reason === 'video' && (res.code === 'M3' || res.code === 'M4');
       } else if (cur.mode === 'hls' && !cur.offeredHevc && !tsRetried) {
         tsRetried = true;
         noHevc = true; // war ts wegen Rückfall: nicht wieder fMP4 anbieten
@@ -488,8 +539,11 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     teardown();
     if (res.reason !== 'aborted') {
       const code = res.code && /^(M\d+|B-PLAY)$/.test(res.code) ? `${res.code}·${chain.join('>')}` : res.code;
-      failure(res.reason, code);
-      return failResult({ ...res, code });
+      // Kette ohne F (z. B. Gerät ohne HEVC startet mit ts) endet mit M3: Grund trotzdem nennen, falls erkennbar
+      if (!hint && res.reason === 'video' && res.code === 'M3') hint = videoFormatHint(cur.mediaSource);
+      tm.hint = hint;
+      failure(res.reason, code, hint);
+      return failResult({ ...res, code }, hint);
     }
     return failResult(res);
   }
@@ -497,7 +551,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
   // D = Direktwiedergabe, F = fMP4-HLS (HEVC angeboten), T = ts-HLS.
   const attemptLetter = (x) => (x.mode === 'direct' ? 'D' : x.offeredHevc ? 'F' : 'T');
 
-  const failResult = (x) => (x.code ? { ok: false, mode: 'none', reason: x.reason, code: x.code } : { ok: false, mode: 'none', reason: x.reason });
+  /** hint (nur bei M3 mit ungeeignetem Bildformat): kurzer deutscher Grund, z. B. „Bildformat h264 10 Bit“. */
+  const failResult = (x, hint) => ({ ok: false, mode: 'none', reason: x.reason, ...(x.code ? { code: x.code } : {}), ...(hint ? { hint } : {}) });
 
   /** Quelle setzen, Spuren übernehmen, starten. Fehler werden NICHT gemeldet (quiet), das macht play(). */
   async function launch(r, opts, offsetMs, itemId, my) {

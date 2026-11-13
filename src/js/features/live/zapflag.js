@@ -25,16 +25,33 @@ export function zapStatsEnabled() {
   }
 }
 
-/** Testschalter Vorwärmen (Hash lfxwarm=1|0, localStorage lfx-zapwarm), unabhängig von lfxdebug. Standard aus. docs/live.md „Vorwärmen“. */
+/** false bei Datensparen, Mobilfunk oder langsamem Netz; ohne API (Safari/Firefox) true (Regel wie features/rows/prefetch.js). */
+function netOk() {
+  const c = typeof navigator !== 'undefined' ? navigator.connection : null;
+  if (!c) return true;
+  return !(c.saveData || c.type === 'cellular' || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ''));
+}
+
+/**
+ * Vorwärmen der Nachbarsender: Standard AN. Hash lfxwarm=0 schaltet dauerhaft aus (localStorage lfx-zapwarm = '0'), lfxwarm=1 wieder an.
+ * Aus bei Datensparen/Mobilfunk/langsamem Netz. Wird zur Laufzeit ausgewertet (deps.zapWarm ist ein Getter). docs/live.md „Vorwärmen“.
+ */
 export function zapWarmEnabled() {
   const v = hashParam('lfxwarm');
+  let off;
   try {
-    if (v === '1') window.localStorage.setItem(ZAP_WARM_KEY, '1');
-    else if (v === '0') window.localStorage.removeItem(ZAP_WARM_KEY);
-    return window.localStorage.getItem(ZAP_WARM_KEY) === '1';
+    if (v === '1' || v === '0') window.localStorage.setItem(ZAP_WARM_KEY, v);
+    off = window.localStorage.getItem(ZAP_WARM_KEY) === '0';
   } catch {
-    return v === '1'; // Speicher gesperrt: nur für diese Sitzung
+    off = v === '0'; // Speicher gesperrt: nur für diese Sitzung
   }
+  return !off && netOk();
+}
+
+/** Setzt deps.zapWarm als Getter (Spread kopiert Getter nur als Wert, daher nach dem Zusammenbauen der deps aufrufen). */
+export function defineZapWarm(deps) {
+  Object.defineProperty(deps, 'zapWarm', { get: zapWarmEnabled, enumerable: true, configurable: true });
+  return deps;
 }
 
 /** Debug: HLS erzwingen (Hash lfxhls=1|0, localStorage lfx-forcehls). Wirkt nur bei eingeschalteter Messanzeige (lfxdebug). */

@@ -4,7 +4,7 @@
 import * as api from '../../core/api.js';
 import { loadLocalTrailer, trailerUrl } from '../../shared/trailer.js';
 import { getChannelConfig } from './config.js';
-import { forceHlsEnabled, zapWarmEnabled } from './zapflag.js';
+import { defineZapWarm, forceHlsEnabled } from './zapflag.js';
 
 const asItems = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
 
@@ -44,13 +44,12 @@ export function deviceId() {
 
 /** Gemeinsame Engine-deps: { catalog, user, server, request, streamUrl, imageUrl, getBoxSetItems, loadTrailer, itemDetails, setPlayed, channelConfig }. */
 export function buildApiDeps(raw, user) {
-  return {
+  return defineZapWarm({
     catalog: raw,
     user,
     server: { deviceId: deviceId() },
     request: (method, path, o = {}) => api.requestJson(method, path, o),
     storage: safeStorage(), // Player: dauerhaft gemerkte Direct-Fehler
-    zapWarm: zapWarmEnabled(), // Player/TV-Modus: Nachbarsender vorwärmen (Test, Hash lfxwarm, docs/live.md „Vorwärmen“)
     forceHls: forceHlsEnabled(), // Player: HLS erzwingen (Hash lfxhls, nur mit Messanzeige)
     streamUrl: (path, params) => api.buildUrl(path, { ...(params || {}), ApiKey: api.getAuth().token }),
     imageUrl: (id, o = {}) => api.imageUrlFor(id, o),
@@ -86,5 +85,5 @@ export function buildApiDeps(raw, user) {
     },
     setPlayed: (id, v) => api.setPlayed(id, v),
     channelConfig: getChannelConfig(),
-  };
+  }); // zapWarm: Getter (Standard an, Hash lfxwarm=0 aus, docs/live.md „Vorwärmen“); Aufrufer mit Spread rufen defineZapWarm erneut
 }

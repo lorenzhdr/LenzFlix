@@ -148,6 +148,10 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   background: rgb(255 255 255 / 0.1);
   color: var(--lfx-text);
 }
+/* Aktiver Eintrag bleibt beim Drüberfahren markiert (Menü öffnet per mouseenter) */
+html.lfx-js #lfx-nav .lfx-nav__menu-item.is-active:hover {
+  background: var(--lfx-pill-active);
+}
 
 /* „Meine Statistik“: leicht goldener Farbton, hebt den Eintrag dezent hervor */
 html.lfx-js #lfx-nav .lfx-nav__menu-item--stats {

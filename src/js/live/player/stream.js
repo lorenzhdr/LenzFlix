@@ -22,9 +22,59 @@ function videoCode(reasons) {
   return 'V-OTHER';
 }
 
+const videoOf = (ms) => (ms && ms.MediaStreams || []).find((s) => s && s.Type === 'Video');
 function videoCodecOf(ms) {
-  const v = (ms.MediaStreams || []).find((s) => s && s.Type === 'Video');
+  const v = videoOf(ms);
   return v && v.Codec ? String(v.Codec).toLowerCase() : '';
+}
+
+/** HDR-Kennzeichnung des Videostreams: 'HDR10', 'HLG', 'DOVI…' usw.; '' bei SDR/unbekannt. */
+function rangeOf(v) {
+  const t = String(v.VideoRangeType || '');
+  if (/^(HDR|HLG|DOVI)/i.test(t)) return short(t, 16).toUpperCase();
+  if (/smpte2084/i.test(v.ColorTransfer || '')) return 'HDR10';
+  if (/arib-std-b67/i.test(v.ColorTransfer || '')) return 'HLG';
+  return String(v.VideoRange || '').toUpperCase() === 'HDR' ? 'HDR' : '';
+}
+
+/** Für Apple-/Browser-Decoder bekannt ungeeignetes Bildformat (h264 10 Bit/4:2:2/4:4:4/Level > 5.2, Breite > 4096) → kurzer Grund oder null. */
+export function videoFormatHint(ms) {
+  const v = videoOf(ms);
+  if (!v) return null;
+  const prof = String(v.Profile || '').toLowerCase();
+  const pf = String(v.PixelFormat || '').toLowerCase();
+  const bd = Number(v.BitDepth) || 0;
+  const lv = Number(v.Level) || 0;
+  const w = Number(v.Width) || 0;
+  if (videoCodecOf(ms) === 'h264') {
+    if (bd > 8 || /high ?10|hi10/.test(prof)) return `Bildformat h264 ${bd > 8 ? bd : 10} Bit`;
+    if (/4:2:2/.test(prof) || /422/.test(pf)) return 'Bildformat h264 4:2:2';
+    if (/4:4:4/.test(prof) || /444/.test(pf)) return 'Bildformat h264 4:4:4';
+    if (pf && !/420|nv12|nv21/.test(pf)) return `Bildformat h264 ${short(pf)}`;
+    const hdr = rangeOf(v);
+    if (hdr) return `Bildformat h264 ${hdr === 'HLG' ? 'HLG' : 'HDR'}`;
+    if (lv > 52) return `Bildformat h264 Level ${(lv / 10).toFixed(1)}`;
+  }
+  return w > 4096 ? `Auflösung ${w}×${Number(v.Height) || '?'}` : null;
+}
+
+/** Dateiinfos für die Messanzeige, z. B. „High 10 L5.1 10 Bit 3840×1600“ (fehlende Werte entfallen). */
+function formatInfo(ms) {
+  const v = videoOf(ms);
+  if (!v) return '';
+  const lv = Number(v.Level) || 0;
+  const pf = String(v.PixelFormat || '').toLowerCase();
+  const w = Number(v.Width) || 0;
+  const h = Number(v.Height) || 0;
+  return [
+    v.Profile ? String(v.Profile).replace(/[^\w :.-]/g, '').slice(0, 16) : '',
+    lv > 0 ? `L${videoCodecOf(ms) === 'h264' ? +(lv / 10).toFixed(1) : lv}` : '',
+    Number(v.BitDepth) > 0 ? `${Number(v.BitDepth)} Bit` : '',
+    pf && !/^yuvj?420p(10|12)?(le|be)?$/.test(pf) ? short(pf, 12) : '',
+    w && h ? `${w}×${h}` : '',
+    v.IsInterlaced ? 'interlaced' : '',
+    rangeOf(v),
+  ].filter(Boolean).join(' ');
 }
 
 function reasonsOf(ms) {
@@ -48,6 +98,7 @@ function sourceInfo(ms, audioIdx, reasons) {
     container: short(String(ms.Container || '').split(',')[0]),
     v: short(videoCodecOf(ms)),
     a: short(a && a.Codec),
+    fmt: formatInfo(ms),
     reasons: reasons.slice(0, 2).map((r) => String(r).replace(/NotSupported$/, '').replace(/[^A-Za-z0-9]/g, '').slice(0, 24)).filter(Boolean),
   };
 }
@@ -94,7 +145,8 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal, n
     const remux = want != null && def != null && want !== def;
     let ms = first;
     if (remux) {
-      info = await post({ AudioStreamIndex: want, MediaSourceId: first.Id, EnableDirectPlay: false });
+      // Kein MediaSourceId im Body: sonst brennt der Server die erzwungene Standard-Untertitelspur ein (SubtitleMethod=Encode → V-SUB).
+      info = await post({ AudioStreamIndex: want, EnableDirectPlay: false });
       const list = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
       ms = list.find((s) => s.Id === first.Id) || list[0];
       if (!ms) return fail('network', 'NET');

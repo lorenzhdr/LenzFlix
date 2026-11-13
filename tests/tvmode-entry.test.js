@@ -167,6 +167,51 @@ describe('entry', () => {
     delete document.pictureInPictureElement;
   });
 
+  describe('Klasse lfx-tvm-bgplay', () => {
+    const has = () => document.documentElement.classList.contains('lfx-tvm-bgplay');
+    afterEach(() => { document.documentElement.classList.remove('lfx-tvm-bgplay'); delete document.pictureInPictureElement; });
+
+    it('gesetzt bei suspend im PiP, weg bei Rückkehr (resume)', async () => {
+      const video = await suspendInPip();
+      expect(has()).toBe(true);
+      const h2 = document.createElement('div');
+      document.body.append(h2);
+      inst.resume(h2);
+      expect(has()).toBe(false);
+      expect(video).toBeTruthy();
+    });
+
+    it('weg bei PiP-Ende', async () => {
+      const video = await suspendInPip();
+      expect(has()).toBe(true);
+      document.pictureInPictureElement = null;
+      video.dispatchEvent(new Event('leavepictureinpicture'));
+      expect(has()).toBe(false);
+      inst = null;
+    });
+
+    it('weg bei lfx:play', async () => {
+      await suspendInPip();
+      window.dispatchEvent(new Event('lfx:play'));
+      expect(has()).toBe(false);
+    });
+
+    it('weg bei dispose', async () => {
+      await suspendInPip();
+      inst.dispose();
+      expect(has()).toBe(false);
+      inst = null;
+    });
+
+    it('nicht gesetzt ohne Hintergrund-PiP', async () => {
+      await boot();
+      inst.start();
+      expect(has()).toBe(false);
+      inst.suspend();
+      expect(has()).toBe(false);
+    });
+  });
+
   it('dispose räumt Halter, Listener und Host', async () => {
     await boot();
     inst.start();

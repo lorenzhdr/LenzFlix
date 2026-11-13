@@ -17,3 +17,14 @@ describe('LENZ LIVE Fehlerkarte: Kurzcode', () => {
     expect(card.el.dataset.code).toBeUndefined();
   });
 });
+
+describe('LENZ LIVE Fehlerkarte: Grund (hint)', () => {
+  it('zeigt eine Zeile mit dem Grund, ohne hint keine', () => {
+    const card = createCard(document.createElement('div'));
+    card.showError('video', null, 'M3', 'Bildformat h264 HDR');
+    expect(card.el.querySelector('.lfx-live-card__hint').textContent).toBe('Bildformat h264 HDR wird von diesem Gerät nicht unterstützt');
+    expect(card.el.querySelector('.lfx-live-card__code').textContent).toBe('Code: M3');
+    card.showError('video', null, 'M3');
+    expect(card.el.querySelector('.lfx-live-card__hint')).toBeNull();
+  });
+});

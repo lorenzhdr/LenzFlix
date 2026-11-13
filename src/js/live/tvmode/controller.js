@@ -6,16 +6,12 @@
 // Meldet nie Fortschritt (kein /Sessions/Playing). Importiert nur Dateien aus src/js/live/.
 import { broadcastDayOf, formatClock } from '../schedule/time.js';
 import { createEmitter } from '../player/events.js';
+import { createNeighbors, prefetchItem, WARM_AFTER_ERROR } from '../player/neighbors.js';
 import { nextProgram, titleOf } from './model.js';
 
 export const DEBOUNCE_MS = 250;
-export const NEIGHBOR_MS = 1000; // stabiles „playing“, danach Nachbarsender vorauflösen
+export { NEIGHBOR_MS, WARM_TICK_MS } from '../player/neighbors.js'; // stabiles „playing“ → Nachbarsender vorauflösen/vorwärmen
 export const PREFETCH_MAX_AGE_MS = 30000;
-export const WARM_TICK_MS = 35000; // Vorwärmen (Test, deps.zapWarm): Nachbarsender alle 35 s auffrischen
-const WARM_TICK_MAX = 10;
-const NEIGH_RETRY_MS = 1000; // kurzes Puffern (phase 'loading') direkt nach dem Start: Nachbar-Vorauflösung/Vorwärmen nach 1 s erneut versuchen
-const NEIGH_RETRY_MAX = 20;
-const NEIGHBOR_MAX = 2;
 const STATS_MAX = 10;
 export const RETRY_MS = 10000;
 export const SYNC_MS = 30000;
@@ -64,7 +60,6 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   let pfAc = null;       // AbortController der Vorauflösung des Zielsenders (Entprellung)
   let tuneAt = 0;
   const zaps = [];       // letzte Umschaltungen: { channel, ms, timing? } (tune → playing; timing = player.lastTiming-Form)
-  const neighborDone = new Set();
   const T = {};
   const offs = [];
 
@@ -198,7 +193,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     changed();
   }
 
-  function showError(why, g, code) {
+  function showError(why, g, code, hint) {
     playing = false;
     clearStall();
     watchLeave(true); // Störbild/Ausfall: nie als gesehen werten
@@ -207,9 +202,10 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     phase = 'error';
     reason = key;
     const shown = code || (key === 'network' ? 'NET' : '');
-    card = frozen({ kind: 'error', reason: key, title: ERROR_TEXTS[key].title, sub: ERROR_TEXTS[key].sub, ...(shown ? { code: String(shown) } : {}) });
+    card = frozen({ kind: 'error', reason: key, title: ERROR_TEXTS[key].title, sub: ERROR_TEXTS[key].sub, ...(shown ? { code: String(shown) } : {}), ...(hint ? { hint: `${hint} wird von diesem Gerät nicht unterstützt` } : {}) });
     unlater('retry');
     if (key === 'network') later('retry', () => { if (g === gen && on) start(g, false); }, RETRY_MS);
+    if (WARM_AFTER_ERROR.includes(key)) nb.arm('error'); // Nachbarn auch nach der Fehlerkarte vorwärmen
     changed();
   }
 
@@ -217,7 +213,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (g !== gen) return false;
     if (res && res.ok === false) {
       if (res.reason === 'aborted') return false;
-      showError(res.reason || 'network', g, res.code);
+      showError(res.reason || 'network', g, res.code, res.hint);
       if (e === entry) em.emit('zap', { channel, ok: false, reason: res.reason || 'network', code: res.code, keyMs: tuneAt ? Math.max(0, clock() - tuneAt) : null, timing: res.timing || null });
       return false;
     }
@@ -235,87 +231,21 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       tuneAt = 0;
     }
     if (e === entry) em.emit('zap', { channel, ok: true, keyMs, timing: (res && res.timing) || null });
-    if (e === entry && e.type === 'program') later('neigh', () => neighStep(g, 0), NEIGHBOR_MS);
+    if (e === entry && e.type === 'program') nb.arm('play');
     changed();
     return true;
   }
 
-  // ---------- Vorauflösung (schnelleres Zappen) ----------
+  // ---------- Vorauflösung/Vorwärmen der Nachbarsender (live/player/neighbors.js) ----------
   function abortPrefetch() {
     if (pfAc) { try { pfAc.abort(); } catch { /* egal */ } pfAc = null; }
   }
-  const prefetchItem = (itemId, signal) => {
-    if (!player || typeof player.prefetch !== 'function') return;
-    const p = safe(() => player.prefetch(itemId, signal ? { signal } : {}));
-    if (p && typeof p.catch === 'function') p.catch(() => {});
-  };
-  // Nach stabilem „playing“: laufende Sendung der Sender ±1 vorauflösen (nur Programm, einmal je Sendung, max. 2 Anfragen).
-  function prefetchNeighbors(g) {
-    if (g !== gen || !on || disposed || !playing || phase !== 'playing') return;
-    let n = 0;
-    for (const ch of [((channel - 2 + NCH) % NCH) + 1, (channel % NCH) + 1]) {
-      if (n >= NEIGHBOR_MAX || ch === channel) continue;
-      const cur = safe(() => scheduler.nowOn(ch, clock()));
-      const e = cur && cur.entry;
-      if (!e || e.type !== 'program' || !e.itemId) continue;
-      const key = `${ch}:${e.start}:${e.itemId}`;
-      if (neighborDone.has(key)) continue;
-      neighborDone.add(key);
-      if (neighborDone.size > 200) neighborDone.delete(neighborDone.values().next().value);
-      n++;
-      prefetchItem(e.itemId, null);
-    }
-  }
-
-  // Vorwärmen (Test, deps.zapWarm): player.prewarm für die Nachbarsender mit deren aktueller Planposition (wie beim Zappen),
-  // danach alle WARM_TICK_MS erneut (max. WARM_TICK_MAX×). Stoppt bei Zappen, neuer Sendung, Pause/Stopp, Verlassen, dispose.
-  let warmTicks = 0;
-  function warmNeighbors() {
-    let started = 0;
-    for (const ch of [((channel - 2 + NCH) % NCH) + 1, (channel % NCH) + 1]) {
-      if (ch === channel) continue;
-      const cur = safe(() => scheduler.nowOn(ch, clock()));
-      const e = cur && cur.entry;
-      if (!e || e.type !== 'program' || !e.itemId) continue;
-      started++;
-      const p = safe(() => player.prewarm(e.itemId, cur.offsetMs));
-      if (p && typeof p.catch === 'function') p.catch(() => {});
-    }
-    if (!started) note('filler'); // beide Nachbarn ohne Programm (Füller/Nachtprogramm/Sendepause)
-  }
-  const warmEnabled = () => !!(deps && deps.zapWarm && player && typeof player.prewarm === 'function');
-  const note = (c) => { if (player && typeof player.warmNote === 'function') safe(() => player.warmNote(c)); };
-  function startWarm(g) {
-    if (!warmEnabled()) return;
-    warmTicks = 0;
-    warmTick(g);
-  }
-  // Nachbar-Vorauflösung + Start des Vorwärmens; steht der Sender gerade im kurzen Puffern (phase 'loading'), nach 1 s erneut (max. 20×).
-  function neighStep(g, tries) {
-    if (g !== gen || !on || disposed) return;
-    if (!playing || phase !== 'playing') {
-      note('phase');
-      if (tries < NEIGH_RETRY_MAX) later('neigh', () => neighStep(g, tries + 1), NEIGH_RETRY_MS);
-      return;
-    }
-    // Mit Vorwärmen löst player.prewarm die Nachbarn selbst auf (und merkt Direct im Cache): kein zusätzlicher prefetch, sonst
-    // würde PlaybackInfo je Nachbar zweimal hintereinander gefragt (am Pi mehrere Sekunden).
-    if (warmEnabled()) startWarm(g);
-    else prefetchNeighbors(g);
-  }
-  // retry zählt nur die Wiederholungen beim Puffern und verbraucht den 35-s-Takt (warmTicks) nicht.
-  function warmTick(g, retry = 0) {
-    if (g !== gen || !on || disposed) return;
-    if (!playing || phase !== 'playing') {
-      note('phase');
-      if (retry < NEIGH_RETRY_MAX) later('warm', () => warmTick(g, retry + 1), NEIGH_RETRY_MS);
-      return;
-    }
-    warmNeighbors();
-    if (warmTicks >= WARM_TICK_MAX) return;
-    warmTicks++;
-    later('warm', () => warmTick(g), WARM_TICK_MS);
-  }
+  const prefetchTarget = (itemId, signal) => prefetchItem(player, itemId, signal);
+  const nb = createNeighbors({
+    player, scheduler, clock, deps, nch: NCH,
+    getChannel: () => channel,
+    getPhase: () => (phase === 'error' ? 'error' : playing ? phase : 'loading'),
+  });
 
   // ---------- Abspielen ----------
   function armAdvance(e, g) {
@@ -339,8 +269,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     playing = false;
     unlater('retry');
     unlater('trailer');
-    unlater('neigh');
-    unlater('warm');
+    nb.stop();
     armAdvance(e, g);
     needsTap = false;
     clearStall();
@@ -399,7 +328,8 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (no === channel && entry) return;
     channel = no;
     const g = ++gen;
-    for (const k of ['zap', 'advance', 'retry', 'trailer', 'neigh', 'warm']) unlater(k);
+    for (const k of ['zap', 'advance', 'retry', 'trailer']) unlater(k);
+    nb.stop();
     abortPrefetch();
     tuneAt = clock();
     clearStall();
@@ -419,7 +349,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       // Schon während der Entprellung die PlaybackInfo des Ziels anstoßen (Folgedruck bricht ab).
       if (view && view.itemId && PLAYABLE.includes(view.type)) {
         pfAc = typeof AbortController === 'function' ? new AbortController() : null;
-        prefetchItem(view.itemId, pfAc && pfAc.signal);
+        prefetchTarget(view.itemId, pfAc && pfAc.signal);
       }
       later('zap', () => start(g), DEBOUNCE_MS);
     }
@@ -462,7 +392,8 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   function stop() {
     if (!on) return;
     gen++;
-    for (const k of ['zap', 'advance', 'retry', 'trailer', 'neigh', 'warm']) unlater(k);
+    for (const k of ['zap', 'advance', 'retry', 'trailer']) unlater(k);
+    nb.stop();
     abortPrefetch();
     tuneAt = 0;
     clearStall();
@@ -563,7 +494,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     }));
     offs.push(player.on('error', (err) => {
       if (!on || !entry || entry.type === 'filler' || phase === 'error') return;
-      showError((err && err.reason) || 'network', gen, err && err.code);
+      showError((err && err.reason) || 'network', gen, err && err.code, err && err.hint);
     }));
   }
 
@@ -596,6 +527,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       stop();
       disposed = true;
       abortPrefetch();
+      nb.dispose();
       for (const k of Object.keys(T)) clearTimeout(T[k]);
       if (tickIv) { clearInterval(tickIv); tickIv = null; }
       for (const off of offs) if (typeof off === 'function') safe(off);

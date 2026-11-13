@@ -2009,9 +2009,53 @@
     for (const [r, c] of CODE_BY_REASON) if (reasons.includes(r)) return c;
     return "V-OTHER";
   }
+  var videoOf = (ms) => (ms && ms.MediaStreams || []).find((s) => s && s.Type === "Video");
   function videoCodecOf(ms) {
-    const v = (ms.MediaStreams || []).find((s) => s && s.Type === "Video");
+    const v = videoOf(ms);
     return v && v.Codec ? String(v.Codec).toLowerCase() : "";
+  }
+  function rangeOf(v) {
+    const t = String(v.VideoRangeType || "");
+    if (/^(HDR|HLG|DOVI)/i.test(t)) return short(t, 16).toUpperCase();
+    if (/smpte2084/i.test(v.ColorTransfer || "")) return "HDR10";
+    if (/arib-std-b67/i.test(v.ColorTransfer || "")) return "HLG";
+    return String(v.VideoRange || "").toUpperCase() === "HDR" ? "HDR" : "";
+  }
+  function videoFormatHint(ms) {
+    const v = videoOf(ms);
+    if (!v) return null;
+    const prof = String(v.Profile || "").toLowerCase();
+    const pf = String(v.PixelFormat || "").toLowerCase();
+    const bd = Number(v.BitDepth) || 0;
+    const lv = Number(v.Level) || 0;
+    const w = Number(v.Width) || 0;
+    if (videoCodecOf(ms) === "h264") {
+      if (bd > 8 || /high ?10|hi10/.test(prof)) return `Bildformat h264 ${bd > 8 ? bd : 10} Bit`;
+      if (/4:2:2/.test(prof) || /422/.test(pf)) return "Bildformat h264 4:2:2";
+      if (/4:4:4/.test(prof) || /444/.test(pf)) return "Bildformat h264 4:4:4";
+      if (pf && !/420|nv12|nv21/.test(pf)) return `Bildformat h264 ${short(pf)}`;
+      const hdr = rangeOf(v);
+      if (hdr) return `Bildformat h264 ${hdr === "HLG" ? "HLG" : "HDR"}`;
+      if (lv > 52) return `Bildformat h264 Level ${(lv / 10).toFixed(1)}`;
+    }
+    return w > 4096 ? `Aufl\xF6sung ${w}\xD7${Number(v.Height) || "?"}` : null;
+  }
+  function formatInfo(ms) {
+    const v = videoOf(ms);
+    if (!v) return "";
+    const lv = Number(v.Level) || 0;
+    const pf = String(v.PixelFormat || "").toLowerCase();
+    const w = Number(v.Width) || 0;
+    const h = Number(v.Height) || 0;
+    return [
+      v.Profile ? String(v.Profile).replace(/[^\w :.-]/g, "").slice(0, 16) : "",
+      lv > 0 ? `L${videoCodecOf(ms) === "h264" ? +(lv / 10).toFixed(1) : lv}` : "",
+      Number(v.BitDepth) > 0 ? `${Number(v.BitDepth)} Bit` : "",
+      pf && !/^yuvj?420p(10|12)?(le|be)?$/.test(pf) ? short(pf, 12) : "",
+      w && h ? `${w}\xD7${h}` : "",
+      v.IsInterlaced ? "interlaced" : "",
+      rangeOf(v)
+    ].filter(Boolean).join(" ");
   }
   function reasonsOf(ms) {
     const out = [];
@@ -2038,6 +2082,7 @@
       container: short(String(ms.Container || "").split(",")[0]),
       v: short(videoCodecOf(ms)),
       a: short(a && a.Codec),
+      fmt: formatInfo(ms),
       reasons: reasons.slice(0, 2).map((r) => String(r).replace(/NotSupported$/, "").replace(/[^A-Za-z0-9]/g, "").slice(0, 24)).filter(Boolean)
     };
   }
@@ -2081,7 +2126,7 @@
       const remux = want != null && def != null && want !== def;
       let ms = first;
       if (remux) {
-        info = await post({ AudioStreamIndex: want, MediaSourceId: first.Id, EnableDirectPlay: false });
+        info = await post({ AudioStreamIndex: want, EnableDirectPlay: false });
         const list = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
         ms = list.find((s) => s.Id === first.Id) || list[0];
         if (!ms) return fail("network", "NET");
@@ -2398,6 +2443,8 @@
   var DF_KEY = "lfx-directfailed";
   var DF_TTL_MS = 7 * 24 * 3600 * 1e3;
   var DF_MAX = 200;
+  var FF_KEY = "lfx-fmp4failed";
+  var WARM_LOG_MAX = 20;
   var WARM_TTL_MS = 40 * 1e3;
   var WARM_MAX = 2;
   var WARM_REFRESH_MAX = 10;
@@ -2413,7 +2460,18 @@
     let session = null;
     let tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
     let disposed = false;
-    let tsOnly = false;
+    const fmp4Failed = /* @__PURE__ */ new Set();
+    const fmp4Fails = /* @__PURE__ */ new Set();
+    let fmp4Ok = false;
+    const codecs = /* @__PURE__ */ new Map();
+    const deviceTs = () => !fmp4Ok && fmp4Fails.size >= 2;
+    const wantTs = (id, r) => !!r && !!r.offeredHevc && r.videoCodec === "h264" && (fmp4Failed.has(id) || deviceTs());
+    const noHevcFor = (id) => fmp4Failed.has(id) || deviceTs() && codecs.get(id) === "h264";
+    const noteCodec = (id, r) => {
+      if (!r || !r.ok || r.mode !== "hls") return;
+      if (codecs.size >= DF_MAX) codecs.clear();
+      codecs.set(id, r.videoCodec);
+    };
     const directFailed = /* @__PURE__ */ new Set();
     const rememberDirectFailed = (itemId) => {
       if (directFailed.size >= DF_MAX) directFailed.clear();
@@ -2421,9 +2479,9 @@
       cache.delete(itemId);
     };
     const store = deps && deps.storage && typeof deps.storage.getItem === "function" ? deps.storage : null;
-    const readDf = () => {
+    const readDf = (key) => {
       try {
-        const o = JSON.parse(store.getItem(DF_KEY) || "{}");
+        const o = JSON.parse(store.getItem(key) || "{}");
         return o && typeof o === "object" && !Array.isArray(o) ? o : {};
       } catch {
         return {};
@@ -2431,19 +2489,22 @@
     };
     if (store) {
       const t = now();
-      for (const [id, at] of Object.entries(readDf())) if (typeof at === "number" && t - at < DF_TTL_MS && directFailed.size < DF_MAX) directFailed.add(id);
+      for (const [key, set] of [[DF_KEY, directFailed], [FF_KEY, fmp4Failed]]) {
+        for (const [id, at] of Object.entries(readDf(key))) if (typeof at === "number" && t - at < DF_TTL_MS && set.size < DF_MAX) set.add(id);
+      }
     }
-    const persistDirectFailed = (itemId) => {
+    const persistId = (key, itemId) => {
       if (!store) return;
       try {
         const t = now();
-        const all = readDf();
+        const all = readDf(key);
         all[itemId] = t;
         const live = Object.entries(all).filter(([, at]) => typeof at === "number" && t - at < DF_TTL_MS).sort((a, b) => b[1] - a[1]).slice(0, DF_MAX);
-        store.setItem(DF_KEY, JSON.stringify(Object.fromEntries(live)));
+        store.setItem(key, JSON.stringify(Object.fromEntries(live)));
       } catch {
       }
     };
+    const persistDirectFailed = (itemId) => persistId(DF_KEY, itemId);
     let lastCached = false;
     let lastWarm = null;
     let lastTiming = null;
@@ -2474,8 +2535,8 @@
       }
       return Promise.resolve();
     }
-    const failure = (reason, code) => {
-      const extra = code ? { code } : {};
+    const failure = (reason, code, hint) => {
+      const extra = { ...code ? { code } : {}, ...hint ? { hint } : {} };
       em.emit("state", { phase: "error", reason, ...extra });
       em.emit("error", { reason, ...extra });
     };
@@ -2503,14 +2564,21 @@
     const warmPending = /* @__PURE__ */ new Map();
     let warmStarted = 0;
     let warmDone = 0;
-    let warmSkip = null;
+    const warmLog = /* @__PURE__ */ new Map();
+    const logWarm = (id, c) => {
+      if (!id) return;
+      warmLog.delete(id);
+      warmLog.set(id, c);
+      while (warmLog.size > WARM_LOG_MAX) warmLog.delete(warmLog.keys().next().value);
+    };
+    let ctlNote = null;
     const noteSkip = (c) => {
-      warmSkip = c || null;
+      ctlNote = c || null;
     };
     function armPendingTimeout(itemId, rec) {
       const t = setTimeout(() => {
         if (warmPending.get(itemId) !== rec || rec.taken) return;
-        warmSkip = "timeout";
+        logWarm(itemId, "timeout");
         abortWarmPending(itemId);
       }, WARM_PENDING_MAX_MS);
       return () => clearTimeout(t);
@@ -2594,7 +2662,8 @@
       } catch {
       }
     }
-    function dropWarm(itemId) {
+    function dropWarm(itemId, why) {
+      if (why) logWarm(itemId, why);
       const e = warm.get(itemId);
       warm.delete(itemId);
       abortWarmPending(itemId);
@@ -2610,7 +2679,7 @@
       warmTimer = setTimeout(() => {
         warmTimer = null;
         const t2 = now();
-        for (const [id, e] of [...warm]) if (t2 - e.at >= WARM_TTL_MS) dropWarm(id);
+        for (const [id, e] of [...warm]) if (t2 - e.at >= WARM_TTL_MS) dropWarm(id, "alt");
         armWarmTimer();
       }, Math.max(50, next + 20));
     }
@@ -2620,27 +2689,34 @@
         let oldest = null;
         for (const [id, e] of warm) if (id !== itemId && (oldest == null || e.at < warm.get(oldest).at)) oldest = id;
         if (oldest == null) break;
-        dropWarm(oldest);
+        dropWarm(oldest, "verdr\xE4ngt");
       }
       armWarmTimer();
     }
     function takeWarm(itemId) {
       const e = warm.get(itemId);
       const rec = warmPending.get(itemId);
-      const fits = (r) => !(tsOnly && r.offeredHevc && r.videoCodec === "h264");
-      if (!e && rec && rec.r && fits(rec.r)) {
-        rec.taken = true;
-        warmPending.delete(itemId);
-        try {
-          rec.ac.abort();
-        } catch {
+      const fits = (r) => !wantTs(itemId, r);
+      if (!e && rec && rec.r) {
+        if (fits(rec.r)) {
+          rec.taken = true;
+          warmPending.delete(itemId);
+          try {
+            rec.ac.abort();
+          } catch {
+          }
+          return { r: rec.r, at: rec.at, timing: { ...rec.part }, partial: true };
         }
-        return { r: rec.r, at: rec.at, timing: { ...rec.part }, partial: true };
+        logWarm(itemId, "kette");
       }
       abortWarmPending(itemId);
       if (!e) return null;
-      if (!warmFresh(e) || !fits(e.r)) {
-        dropWarm(itemId);
+      if (!warmFresh(e)) {
+        dropWarm(itemId, "alt");
+        return null;
+      }
+      if (!fits(e.r)) {
+        dropWarm(itemId, "kette");
         return null;
       }
       warm.delete(itemId);
@@ -2659,16 +2735,17 @@
       if (signal.aborted || disposed) return aborted();
       const c = cache.get(itemId);
       if (fresh(c) && c.mode === "direct" && !directFailed.has(itemId)) {
-        noteSkip("direct");
+        logWarm(itemId, "direct");
         return { ok: true, mode: "direct" };
       }
-      rec.resolving = resolveStream({ deps, video, itemId, signal, noHevc: tsOnly, noDirect: wantNoDirect(itemId) }).then((x) => {
+      rec.resolving = resolveStream({ deps, video, itemId, signal, noHevc: noHevcFor(itemId), noDirect: wantNoDirect(itemId) }).then((x) => {
         if (x.ok && x.mode === "hls" && !signal.aborted && !disposed) {
           rec.r = x;
           rec.at = now();
           rec.part = {};
           warmStarted++;
-          warmSkip = null;
+          warmLog.delete(itemId);
+          noteCodec(itemId, x);
         }
         return x;
       });
@@ -2676,11 +2753,11 @@
       if (signal.aborted || disposed) return aborted();
       remember(itemId, r);
       if (!r.ok) {
-        noteSkip("err");
+        logWarm(itemId, "err");
         return { ok: false, mode: r.mode };
       }
       if (r.mode !== "hls") {
-        noteSkip("direct");
+        logWarm(itemId, "direct");
         return { ok: true, mode: r.mode };
       }
       let stored = false;
@@ -2698,12 +2775,12 @@
     function refreshWarm(itemId, e, offsetMs2) {
       const running = warmPending.get(itemId);
       if (running) {
-        noteSkip("pending");
+        logWarm(itemId, "pending");
         return running.p;
       }
       const seg = pickSegment(e.segments, offsetMs2 / 1e3);
       if (e.refreshes >= WARM_REFRESH_MAX || !seg) {
-        noteSkip("max");
+        logWarm(itemId, "max");
         return Promise.resolve({ ok: true, skipped: true });
       }
       const ac2 = new AbortController();
@@ -2714,8 +2791,7 @@
           const fb = await firstByte(seg.url, ac2.signal);
           if (ac2.signal.aborted || disposed || warm.get(itemId) !== e) return aborted();
           if (!fb.ok) {
-            noteSkip("err");
-            dropWarm(itemId);
+            dropWarm(itemId, "err");
             return { ok: false, reason: "network" };
           }
           e.at = now();
@@ -2724,7 +2800,7 @@
           armWarmTimer();
           return { ok: true, refreshed: true };
         } catch {
-          if (!ac2.signal.aborted) noteSkip("err");
+          if (!ac2.signal.aborted) logWarm(itemId, "err");
           return { ok: false, reason: "network" };
         }
       })().finally(() => {
@@ -2739,17 +2815,17 @@
       const off = Number(offsetMs2) || 0;
       const e = warm.get(itemId);
       if (e && warmFresh(e)) return refreshWarm(itemId, e, off);
-      if (e) dropWarm(itemId);
+      if (e) dropWarm(itemId, "alt");
       const running = warmPending.get(itemId);
       if (running) {
-        noteSkip("pending");
+        logWarm(itemId, "pending");
         return running.p;
       }
       const ac2 = new AbortController();
       const rec = { ac: ac2, p: null };
       const clearTo = armPendingTimeout(itemId, rec);
       rec.p = runWarm(itemId, off, rec).catch(() => {
-        if (!ac2.signal.aborted) noteSkip("err");
+        if (!ac2.signal.aborted) logWarm(itemId, "fehler");
         return { ok: false, reason: "network" };
       }).finally(() => {
         clearTo();
@@ -2789,7 +2865,8 @@
       }
       let r;
       try {
-        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc, noDirect: wantNoDirect(itemId) });
+        r = await resolveStream({ deps, video, itemId, audioIndex: opts.audioIndex, signal, noHevc: !!opts.noHevc || noHevcFor(itemId), noDirect: wantNoDirect(itemId) });
+        noteCodec(itemId, r);
       } catch {
         r = { ok: false, mode: "none", reason: signal.aborted ? "aborted" : "network", ...signal.aborted ? {} : { code: "NET" } };
       }
@@ -2807,22 +2884,24 @@
         chain: tm.chain.join(">"),
         cached: tm.cached,
         mode: tm.mode,
-        ...extraTiming(tm.info || null, tm.warm)
+        ...tm.hint ? { hint: tm.hint } : {},
+        ...extraTiming(tm.info || null, tm.warm, tm.itemId)
       };
     }
-    function extraTiming(src, wm) {
+    function extraTiming(src, wm, itemId) {
       return {
         ...vc.metrics(),
         forced: forceHls,
-        src: src ? { container: src.container, v: src.v, a: src.a, reasons: [...src.reasons] } : null,
-        warm: warmTiming(wm),
+        src: src ? { container: src.container, v: src.v, a: src.a, fmt: src.fmt || "", reasons: [...src.reasons] } : null,
+        warm: warmTiming(wm, itemId),
         res: resTiming()
       };
     }
-    function warmTiming(wm) {
+    function warmTiming(wm, itemId) {
       if (!(deps && deps.zapWarm)) return { on: false };
       const t = wm && wm.timing || {};
-      return { on: true, used: !!wm, skip: warmSkip, partial: !!(wm && wm.partial), started: warmStarted, done: warmDone, ageMs: wm ? wm.ageMs : null, playlistMs: t.playlistMs ?? null, initMs: t.initMs ?? null, segFirstByteMs: t.segFirstByteMs ?? null };
+      const skip = wm ? null : warmLog.get(itemId) || ctlNote || "keiner";
+      return { on: true, used: !!wm, skip, partial: !!(wm && wm.partial), started: warmStarted, done: warmDone, ageMs: wm ? wm.ageMs : null, playlistMs: t.playlistMs ?? null, initMs: t.initMs ?? null, segFirstByteMs: t.segFirstByteMs ?? null };
     }
     function resTiming() {
       try {
@@ -2835,10 +2914,11 @@
     }
     async function play(opts = {}) {
       if (disposed) return aborted();
-      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none", info: null };
+      const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none", info: null, hint: null, itemId: opts.itemId };
       const res = await playCore(opts, tm);
       if (res.reason === "aborted") return res;
       lastTiming = makeTiming(tm);
+      ctlNote = null;
       return { ...res, timing: lastTiming };
     }
     async function playCore(opts, tm) {
@@ -2858,7 +2938,7 @@
       tm.cached = lastCached;
       tm.warm = lastWarm;
       tm.infoAt = now();
-      if (r.ok && r.mode === "hls" && tsOnly && r.offeredHevc && r.videoCodec === "h264") {
+      if (r.ok && r.mode === "hls" && wantTs(itemId, r)) {
         r = await resolveFor(itemId, { ...opts, audioIndex: opts.audioIndex ?? r.audioIndex, noHevc: true, noCache: true }, signal);
         if (my !== gen) return aborted();
       }
@@ -2871,16 +2951,25 @@
       let noHevc = !!opts.noHevc;
       let res;
       let fromFmp4 = false;
+      let fmp4MediaErr = false;
+      let hint = null;
       let tsRetried = false;
       let directMediaError = false;
       for (let attempt = 1; ; attempt++) {
         chain.push(attemptLetter(cur));
         tm.mode = cur.mode;
         tm.info = cur.info || null;
+        const wasWarm = attempt === 1 && !!tm.warm;
         res = await launch(cur, opts, offsetMs2, itemId, my);
         if (my !== gen) return aborted();
         if (res.ok) {
-          if (fromFmp4) tsOnly = true;
+          if (cur.mode === "hls" && cur.offeredHevc && cur.videoCodec === "h264") fmp4Ok = true;
+          if (fromFmp4) {
+            if (fmp4Failed.size >= DF_MAX) fmp4Failed.clear();
+            fmp4Failed.add(itemId);
+            fmp4Fails.add(itemId);
+            if (fmp4MediaErr) persistId(FF_KEY, itemId);
+          }
           if (directMediaError) persistDirectFailed(itemId);
           return res;
         }
@@ -2890,8 +2979,11 @@
           if (res.reason === "video" && (res.code === "M3" || res.code === "M4")) directMediaError = true;
           rememberDirectFailed(itemId);
         } else if (cur.mode === "hls" && cur.offeredHevc && cur.videoCodec === "h264") {
+          hint = res.reason === "video" && res.code === "M3" ? videoFormatHint(cur.mediaSource) : null;
+          if (hint) break;
           noHevc = true;
           fromFmp4 = true;
+          fmp4MediaErr = !wasWarm && res.reason === "video" && (res.code === "M3" || res.code === "M4");
         } else if (cur.mode === "hls" && !cur.offeredHevc && !tsRetried) {
           tsRetried = true;
           noHevc = true;
@@ -2913,13 +3005,15 @@
       teardown();
       if (res.reason !== "aborted") {
         const code = res.code && /^(M\d+|B-PLAY)$/.test(res.code) ? `${res.code}\xB7${chain.join(">")}` : res.code;
-        failure(res.reason, code);
-        return failResult({ ...res, code });
+        if (!hint && res.reason === "video" && res.code === "M3") hint = videoFormatHint(cur.mediaSource);
+        tm.hint = hint;
+        failure(res.reason, code, hint);
+        return failResult({ ...res, code }, hint);
       }
       return failResult(res);
     }
     const attemptLetter = (x) => x.mode === "direct" ? "D" : x.offeredHevc ? "F" : "T";
-    const failResult = (x) => x.code ? { ok: false, mode: "none", reason: x.reason, code: x.code } : { ok: false, mode: "none", reason: x.reason };
+    const failResult = (x, hint) => ({ ok: false, mode: "none", reason: x.reason, ...x.code ? { code: x.code } : {}, ...hint ? { hint } : {} });
     async function launch(r, opts, offsetMs2, itemId, my) {
       session = { kind: "item", itemId, mode: r.mode, playSessionId: r.playSessionId, mediaSourceId: r.mediaSourceId };
       tr = { audio: r.tracks.audio, subs: r.tracks.subs, audioIndex: r.audioIndex, subtitleIndex: -1 };
@@ -3019,6 +3113,107 @@
         inflight.clear();
         em.clear();
       }
+    };
+  }
+
+  // src/js/live/player/neighbors.js
+  var NEIGHBOR_MS = 1e3;
+  var ERROR_WARM_MS = 2e3;
+  var WARM_TICK_MS = 35e3;
+  var WARM_TICK_MAX = 10;
+  var WARM_AFTER_ERROR = ["video", "browser", "audio"];
+  var RETRY_MS = 1e3;
+  var RETRY_MAX = 20;
+  var safe = (fn) => {
+    try {
+      return fn();
+    } catch {
+      return void 0;
+    }
+  };
+  function prefetchItem(player, itemId, signal) {
+    if (!player || typeof player.prefetch !== "function") return;
+    const p = safe(() => player.prefetch(itemId, signal ? { signal } : {}));
+    if (p && typeof p.catch === "function") p.catch(() => {
+    });
+  }
+  function createNeighbors({ player, scheduler, clock = Date.now, deps = {}, getChannel, getPhase, nch = 18 }) {
+    let timer = null;
+    let tok = 0;
+    let ticks = 0;
+    const done = /* @__PURE__ */ new Set();
+    const warmOn = () => !!(deps && deps.zapWarm && player && typeof player.prewarm === "function");
+    const note = (c) => {
+      if (player && typeof player.warmNote === "function") safe(() => player.warmNote(c));
+    };
+    const wait = (fn, ms) => {
+      clearTimeout(timer);
+      timer = setTimeout(fn, ms);
+    };
+    const count = () => Math.max(1, Number(typeof nch === "function" ? nch() : nch) || 18);
+    function neighbors() {
+      const ch = getChannel();
+      const n = count();
+      const out = [];
+      for (const no of [(ch - 2 + n) % n + 1, ch % n + 1]) {
+        if (no === ch) continue;
+        const cur = safe(() => scheduler.nowOn(no, clock()));
+        const e = cur && cur.entry;
+        if (e && e.type === "program" && e.itemId) out.push({ no, e, off: cur.offsetMs });
+      }
+      return out;
+    }
+    function warm() {
+      const list = neighbors();
+      for (const x of list) {
+        const p = safe(() => player.prewarm(x.e.itemId, x.off));
+        if (p && typeof p.catch === "function") p.catch(() => {
+        });
+      }
+      if (!list.length) note("filler");
+    }
+    function prefetch() {
+      for (const x of neighbors()) {
+        const key = `${x.no}:${x.e.start}:${x.e.itemId}`;
+        if (done.has(key)) continue;
+        done.add(key);
+        if (done.size > 200) done.delete(done.values().next().value);
+        prefetchItem(player, x.e.itemId, null);
+      }
+    }
+    function step(t, mode, tries) {
+      if (t !== tok) return;
+      const ph = getPhase();
+      if (ph !== (mode === "error" ? "error" : "playing")) {
+        if (mode === "error") return;
+        note("phase");
+        if (tries < RETRY_MAX) wait(() => step(t, mode, tries + 1), RETRY_MS);
+        return;
+      }
+      if (!warmOn()) {
+        if (mode === "play") prefetch();
+        return;
+      }
+      warm();
+      if (ticks >= WARM_TICK_MAX) return;
+      ticks++;
+      wait(() => step(t, mode, 0), WARM_TICK_MS);
+    }
+    function stop() {
+      tok++;
+      clearTimeout(timer);
+      timer = null;
+    }
+    return {
+      arm(mode = "play") {
+        if (mode === "error" && !warmOn()) return;
+        stop();
+        ticks = 0;
+        const t = tok;
+        wait(() => step(t, mode, 0), mode === "error" ? ERROR_WARM_MS : NEIGHBOR_MS);
+      },
+      stop,
+      dispose: stop
     };
   }
 
@@ -3235,14 +3430,8 @@
 
   // src/js/live/tvmode/controller.js
   var DEBOUNCE_MS = 250;
-  var NEIGHBOR_MS = 1e3;
-  var WARM_TICK_MS = 35e3;
-  var WARM_TICK_MAX = 10;
-  var NEIGH_RETRY_MS = 1e3;
-  var NEIGH_RETRY_MAX = 20;
-  var NEIGHBOR_MAX = 2;
   var STATS_MAX = 10;
-  var RETRY_MS = 1e4;
+  var RETRY_MS2 = 1e4;
   var SYNC_MS = 3e4;
   var STALL_MS = 6e4;
   var MAX_TIMEOUT = 2147483647;
@@ -3258,7 +3447,7 @@
     gesture: { title: "Zum Starten tippen", sub: "Der Browser braucht einmal ein Tippen" },
     network: { title: "Empfangsst\xF6rung \u2013 erneuter Versuch \u2026", sub: "" }
   };
-  var safe = (fn) => {
+  var safe2 = (fn) => {
     try {
       return fn();
     } catch {
@@ -3290,7 +3479,6 @@
     let pfAc = null;
     let tuneAt = 0;
     const zaps = [];
-    const neighborDone = /* @__PURE__ */ new Set();
     const T = {};
     const offs = [];
     const volRaw = o.volume == null ? 1 : Number(o.volume);
@@ -3332,9 +3520,9 @@
     };
     const frozen = (c) => Object.freeze(c);
     const savePrefs = (partial) => {
-      if (deps && deps.savePrefs) safe(() => deps.savePrefs(partial));
+      if (deps && deps.savePrefs) safe2(() => deps.savePrefs(partial));
     };
-    const muteOnly = () => safe(() => player.volumeMode ? player.volumeMode() : player.volumeSupported === false ? "mute-only" : "native") === "mute-only";
+    const muteOnly = () => safe2(() => player.volumeMode ? player.volumeMode() : player.volumeSupported === false ? "mute-only" : "native") === "mute-only";
     const silent = () => muted || vol === 0;
     let lastVol = vol > 0 ? vol : 50;
     let volPrev = vol;
@@ -3348,8 +3536,8 @@
     }
     function applyVolume() {
       noteVol();
-      safe(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
-      safe(() => player.setMuted && player.setMuted(silent()));
+      safe2(() => player.setVolume && player.setVolume(muteOnly() ? 1 : vol / 100));
+      safe2(() => player.setMuted && player.setMuted(silent()));
     }
     const volumeSupported = () => true;
     function setVolume(v) {
@@ -3387,10 +3575,10 @@
     function watchTune() {
       if (!watch || !entry) return;
       const off = Math.max(0, clock() - entry.start);
-      safe(() => watch.tune(entry, off));
+      safe2(() => watch.tune(entry, off));
     }
     const watchLeave = (silent2) => {
-      if (watch) safe(() => watch.leave(silent2));
+      if (watch) safe2(() => watch.leave(silent2));
     };
     function clearStall() {
       stallArmed = false;
@@ -3419,7 +3607,7 @@
       }
       changed();
     }
-    function showError(why, g, code) {
+    function showError(why, g, code, hint) {
       playing = false;
       clearStall();
       watchLeave(true);
@@ -3428,18 +3616,19 @@
       phase = "error";
       reason = key;
       const shown = code || (key === "network" ? "NET" : "");
-      card = frozen({ kind: "error", reason: key, title: ERROR_TEXTS[key].title, sub: ERROR_TEXTS[key].sub, ...shown ? { code: String(shown) } : {} });
+      card = frozen({ kind: "error", reason: key, title: ERROR_TEXTS[key].title, sub: ERROR_TEXTS[key].sub, ...shown ? { code: String(shown) } : {}, ...hint ? { hint: `${hint} wird von diesem Ger\xE4t nicht unterst\xFCtzt` } : {} });
       unlater("retry");
       if (key === "network") later("retry", () => {
         if (g === gen && on) start(g, false);
-      }, RETRY_MS);
+      }, RETRY_MS2);
+      if (WARM_AFTER_ERROR.includes(key)) nb.arm("error");
       changed();
     }
     function handleResult(res, g, e) {
       if (g !== gen) return false;
       if (res && res.ok === false) {
         if (res.reason === "aborted") return false;
-        showError(res.reason || "network", g, res.code);
+        showError(res.reason || "network", g, res.code, res.hint);
         if (e === entry) em.emit("zap", { channel, ok: false, reason: res.reason || "network", code: res.code, keyMs: tuneAt ? Math.max(0, clock() - tuneAt) : null, timing: res.timing || null });
         return false;
       }
@@ -3447,7 +3636,7 @@
       reason = null;
       phase = "playing";
       playing = true;
-      if (silent()) safe(() => player.setMuted && player.setMuted(true));
+      if (silent()) safe2(() => player.setMuted && player.setMuted(true));
       if (e === entry) watchTune();
       const keyMs = tuneAt ? Math.max(0, clock() - tuneAt) : null;
       if (tuneAt) {
@@ -3456,7 +3645,7 @@
         tuneAt = 0;
       }
       if (e === entry) em.emit("zap", { channel, ok: true, keyMs, timing: res && res.timing || null });
-      if (e === entry && e.type === "program") later("neigh", () => neighStep(g, 0), NEIGHBOR_MS);
+      if (e === entry && e.type === "program") nb.arm("play");
       changed();
       return true;
     }
@@ -3469,74 +3658,16 @@
         pfAc = null;
       }
     }
-    const prefetchItem = (itemId, signal) => {
-      if (!player || typeof player.prefetch !== "function") return;
-      const p = safe(() => player.prefetch(itemId, signal ? { signal } : {}));
-      if (p && typeof p.catch === "function") p.catch(() => {
-      });
-    };
-    function prefetchNeighbors(g) {
-      if (g !== gen || !on || disposed || !playing || phase !== "playing") return;
-      let n = 0;
-      for (const ch of [(channel - 2 + NCH) % NCH + 1, channel % NCH + 1]) {
-        if (n >= NEIGHBOR_MAX || ch === channel) continue;
-        const cur = safe(() => scheduler.nowOn(ch, clock()));
-        const e = cur && cur.entry;
-        if (!e || e.type !== "program" || !e.itemId) continue;
-        const key = `${ch}:${e.start}:${e.itemId}`;
-        if (neighborDone.has(key)) continue;
-        neighborDone.add(key);
-        if (neighborDone.size > 200) neighborDone.delete(neighborDone.values().next().value);
-        n++;
-        prefetchItem(e.itemId, null);
-      }
-    }
-    let warmTicks = 0;
-    function warmNeighbors() {
-      let started = 0;
-      for (const ch of [(channel - 2 + NCH) % NCH + 1, channel % NCH + 1]) {
-        if (ch === channel) continue;
-        const cur = safe(() => scheduler.nowOn(ch, clock()));
-        const e = cur && cur.entry;
-        if (!e || e.type !== "program" || !e.itemId) continue;
-        started++;
-        const p = safe(() => player.prewarm(e.itemId, cur.offsetMs));
-        if (p && typeof p.catch === "function") p.catch(() => {
-        });
-      }
-      if (!started) note("filler");
-    }
-    const warmEnabled = () => !!(deps && deps.zapWarm && player && typeof player.prewarm === "function");
-    const note = (c) => {
-      if (player && typeof player.warmNote === "function") safe(() => player.warmNote(c));
-    };
-    function startWarm(g) {
-      if (!warmEnabled()) return;
-      warmTicks = 0;
-      warmTick(g);
-    }
-    function neighStep(g, tries) {
-      if (g !== gen || !on || disposed) return;
-      if (!playing || phase !== "playing") {
-        note("phase");
-        if (tries < NEIGH_RETRY_MAX) later("neigh", () => neighStep(g, tries + 1), NEIGH_RETRY_MS);
-        return;
-      }
-      if (warmEnabled()) startWarm(g);
-      else prefetchNeighbors(g);
-    }
-    function warmTick(g, retry2 = 0) {
-      if (g !== gen || !on || disposed) return;
-      if (!playing || phase !== "playing") {
-        note("phase");
-        if (retry2 < NEIGH_RETRY_MAX) later("warm", () => warmTick(g, retry2 + 1), NEIGH_RETRY_MS);
-        return;
-      }
-      warmNeighbors();
-      if (warmTicks >= WARM_TICK_MAX) return;
-      warmTicks++;
-      later("warm", () => warmTick(g), WARM_TICK_MS);
-    }
+    const prefetchTarget = (itemId, signal) => prefetchItem(player, itemId, signal);
+    const nb = createNeighbors({
+      player,
+      scheduler,
+      clock,
+      deps,
+      nch: NCH,
+      getChannel: () => channel,
+      getPhase: () => phase === "error" ? "error" : playing ? phase : "loading"
+    });
     function armAdvance(e, g) {
       later("advance", () => advance(g), clamp2(e.end - clock() + 30, 50, MAX_TIMEOUT));
     }
@@ -3564,8 +3695,7 @@
       playing = false;
       unlater("retry");
       unlater("trailer");
-      unlater("neigh");
-      unlater("warm");
+      nb.stop();
       armAdvance(e, g);
       needsTap = false;
       clearStall();
@@ -3593,7 +3723,7 @@
         await runFiller(e, g);
         return;
       }
-      safe(() => player.stop());
+      safe2(() => player.stop());
       if (e.type === "fill" || e.type === "nightfill") {
         showPause(e);
         return;
@@ -3632,7 +3762,7 @@
           return;
         }
       }
-      safe(() => player.stop());
+      safe2(() => player.stop());
       showPause(e);
       const ts = pick && pick.trailerStartMs;
       if (ts && ts > clock()) later("trailer", () => {
@@ -3658,13 +3788,14 @@
       if (no === channel && entry) return;
       channel = no;
       const g = ++gen;
-      for (const k of ["zap", "advance", "retry", "trailer", "neigh", "warm"]) unlater(k);
+      for (const k of ["zap", "advance", "retry", "trailer"]) unlater(k);
+      nb.stop();
       abortPrefetch();
       tuneAt = clock();
       clearStall();
       needsTap = false;
       watchLeave();
-      if (!immediate) safe(() => player.stop());
+      if (!immediate) safe2(() => player.stop());
       playing = false;
       entry = null;
       try {
@@ -3681,7 +3812,7 @@
       else {
         if (view && view.itemId && PLAYABLE.includes(view.type)) {
           pfAc = typeof AbortController === "function" ? new AbortController() : null;
-          prefetchItem(view.itemId, pfAc && pfAc.signal);
+          prefetchTarget(view.itemId, pfAc && pfAc.signal);
         }
         later("zap", () => start(g), DEBOUNCE_MS);
       }
@@ -3692,14 +3823,14 @@
     function onTick() {
       if (!on || disposed) return;
       const t = clock();
-      if (watch) safe(() => watch.tick());
+      if (watch) safe2(() => watch.tick());
       tickCount++;
       if (tickCount % (SYNC_MS / 1e3) === 0 && playing && entry && PLAYABLE.includes(entry.type) && entry.itemId) {
-        safe(() => player.syncTo(t - entry.start));
+        safe2(() => player.syncTo(t - entry.start));
       }
       const D = broadcastDayOf(t);
       if (lastDay != null && D !== lastDay) {
-        if (scheduler.prepare) Promise.resolve(safe(() => scheduler.prepare([0, 1, 2, 3, 4, 5, 6].map((i) => D + i)))).catch(() => {
+        if (scheduler.prepare) Promise.resolve(safe2(() => scheduler.prepare([0, 1, 2, 3, 4, 5, 6].map((i) => D + i)))).catch(() => {
         });
         em.emit("day", D);
       }
@@ -3708,7 +3839,7 @@
     }
     function start0() {
       if (disposed) return;
-      safe(() => player.unlock && player.unlock());
+      safe2(() => player.unlock && player.unlock());
       if (on) return;
       on = true;
       tickCount = 0;
@@ -3720,7 +3851,8 @@
     function stop() {
       if (!on) return;
       gen++;
-      for (const k of ["zap", "advance", "retry", "trailer", "neigh", "warm"]) unlater(k);
+      for (const k of ["zap", "advance", "retry", "trailer"]) unlater(k);
+      nb.stop();
       abortPrefetch();
       tuneAt = 0;
       clearStall();
@@ -3729,7 +3861,7 @@
         tickIv = null;
       }
       watchLeave();
-      safe(() => player.stop());
+      safe2(() => player.stop());
       on = false;
       playing = false;
       needsTap = false;
@@ -3744,7 +3876,7 @@
     }
     function gesture() {
       if (disposed) return;
-      safe(() => player.unlock && player.unlock());
+      safe2(() => player.unlock && player.unlock());
       if (!on) return;
       const retry2 = needsTap;
       const policy = mutedByPolicy;
@@ -3770,7 +3902,7 @@
       start(++gen, false);
     }
     function tracks() {
-      const tr = safe(() => player.tracks && player.tracks());
+      const tr = safe2(() => player.tracks && player.tracks());
       return tr || { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
     }
     async function setAudio(i) {
@@ -3793,7 +3925,7 @@
     function restartTarget() {
       const e = view;
       if (!on || !e || !e.itemId || !PLAYABLE.includes(e.type)) return null;
-      const it = safe(() => scheduler.item(e.itemId));
+      const it = safe2(() => scheduler.item(e.itemId));
       const seriesId = e.seriesId || it && it.seriesId || null;
       const type = it && it.kind ? String(it.kind).toLowerCase() : seriesId ? "episode" : "movie";
       return { itemId: e.itemId, type, seriesId };
@@ -3837,7 +3969,7 @@
       }));
       offs.push(player.on("error", (err) => {
         if (!on || !entry || entry.type === "filler" || phase === "error") return;
-        showError(err && err.reason || "network", gen, err && err.code);
+        showError(err && err.reason || "network", gen, err && err.code, err && err.hint);
       }));
     }
     return {
@@ -3871,15 +4003,16 @@
         stop();
         disposed = true;
         abortPrefetch();
+        nb.dispose();
         for (const k of Object.keys(T)) clearTimeout(T[k]);
         if (tickIv) {
           clearInterval(tickIv);
           tickIv = null;
         }
-        for (const off of offs) if (typeof off === "function") safe(off);
+        for (const off of offs) if (typeof off === "function") safe2(off);
         offs.length = 0;
-        if (watch) safe(() => watch.dispose && watch.dispose());
-        if (player) safe(() => player.dispose && player.dispose());
+        if (watch) safe2(() => watch.dispose && watch.dispose());
+        if (player) safe2(() => player.dispose && player.dispose());
         em.clear();
       }
     };
@@ -4047,7 +4180,7 @@
     const s = t.src;
     if (s) {
       const q = [s.container, s.v, s.a].filter(Boolean).join("\xB7");
-      if (q) p.push(`Quelle ${q}`);
+      if (q) p.push(`Quelle ${q}${s.fmt ? ` \xB7 ${s.fmt}` : ""}`);
       if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(",")}`);
     }
     if (t.forced) p.push("HLS erzwungen");
@@ -4110,7 +4243,9 @@
         const t = z.timing || null;
         const parts = [`Sender ${z.channel == null ? "?" : z.channel}`];
         if (z.ok === false) {
-          parts.push("FEHLER", [z.code, t && t.chain].filter(Boolean).join(" ") || z.reason || "?");
+          const ch = t && t.chain && !String(z.code || "").includes(t.chain) ? t.chain : "";
+          parts.push("FEHLER", [z.code, ch].filter(Boolean).join(" ") || z.reason || "?");
+          if (z.hint || t && t.hint) parts.push(z.hint || t.hint);
           if (t) parts.push(`${sec(t.totalMs)} s`);
         } else {
           const total = t ? t.totalMs : z.totalMs;
@@ -5267,6 +5402,12 @@
       text.hidden = !text_;
       if (card.kind === "error") {
         c.setAttribute("role", "alert");
+        if (card.hint) {
+          const hint = mk("div", "lfx-tvm__card-hint", c);
+          hint.textContent = card.hint;
+          hint.style.fontSize = "0.85em";
+          hint.style.opacity = "0.8";
+        }
         if (card.code) {
           const code = mk("div", "lfx-tvm__card-code", c);
           code.textContent = `Code: ${card.code}`;
@@ -6654,6 +6795,7 @@
     function stop(reason) {
       if (disposed) return;
       wantStart = false;
+      bgCls(false);
       const was = isOn();
       if (ctl) ctl.stop();
       if (pip && pip.active()) pip.exit();
@@ -6664,6 +6806,7 @@
       return VIDEO_ROUTE.test(hash) || !!doc.querySelector("#videoOsdPage:not(.hide)");
     }
     const bgPip = () => suspended && !!(pip && pip.active());
+    const bgCls = (on) => doc.documentElement.classList.toggle("lfx-tvm-bgplay", on);
     function bail(reason) {
       if (bgPip()) {
         stopped(reason);
@@ -6739,6 +6882,7 @@
           getSlot: () => app ? app.slot() : null,
           onChange: (active, info) => {
             if (disposed) return;
+            bgCls(bgPip());
             if (app) app.setPip(active);
             if (d.onPip) {
               try {
@@ -6794,6 +6938,7 @@
         wantStart = false;
         if (app) app.suspend();
         if (pip && pip.active()) {
+          bgCls(true);
           armWatch();
           return true;
         }
@@ -6805,6 +6950,7 @@
         if (disposed) return;
         if (h) curHost = h;
         suspended = false;
+        bgCls(false);
         if (!app) return;
         app.resume(h);
         if (pip) pip.hold();
@@ -6815,6 +6961,7 @@
       dispose() {
         if (disposed) return;
         disposed = true;
+        bgCls(false);
         disarmWatch();
         for (const off of unsub) {
           try {

@@ -78,7 +78,7 @@ function checkMainBundle() {
 }
 
 // Wächter: die TV-Modus-Engine importiert nichts aus der LENZ-LIVE-Engine-UI (Marker/Fernbedienungs-Klassen), bleibt unter 120 KB.
-const TVMODE_MIN_BUDGET = 124 * 1024; // 1.11.5: +Vorwärmen (Test, lazy Engine)
+const TVMODE_MIN_BUDGET = 128 * 1024; // 1.11.5: +Vorwärmen (lazy Engine); 1.11.6: +fMP4 pro Titel, Gründe, Formatprüfung (Nutzer-OK bis 128 KiB)
 function checkTvModeBundle() {
   const code = readFileSync(resolve(dist, 'lenztvmode.min.js'), 'utf8');
   if (code.includes('__LFX_LIVE_ENGINE__')) {

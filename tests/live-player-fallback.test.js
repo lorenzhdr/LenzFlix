@@ -20,10 +20,28 @@ const hlsRespond = (streams) => (m, p, o) => info(ms({
   direct: false, streams, transcodingUrl: hlsUrl(`&SegmentContainer=${container(o) === 'mp4' ? 'mp4' : 'ts'}&TranscodeReasons=ContainerNotSupported`),
 }));
 
-function setup({ respond, ...caps } = {}) {
+function setup({ respond, storage, ...caps } = {}) {
   const video = makeVideo({ hevc: true, ...caps });
   const deps = makeDeps({ respond });
+  if (storage) deps.storage = storage;
   return { video, deps, player: createPlayer({ video, deps }) };
+}
+/** Start gelingt: Fehler zurücksetzen, loadedmetadata + playing. */
+const started = async (ctx, p) => {
+  Object.defineProperty(ctx.video, 'error', { value: null, configurable: true });
+  fire(ctx.video, 'loadedmetadata');
+  fire(ctx.video, 'playing');
+  return p;
+};
+/** F scheitert (M4), ts läuft. */
+async function fToT(ctx, id) {
+  Object.defineProperty(ctx.video, 'error', { value: null, configurable: true });
+  const p = ctx.player.play({ itemId: id, offsetMs: 0 });
+  await flush();
+  fire(ctx.video, 'loadedmetadata');
+  mediaError(ctx.video, 4);
+  await flush();
+  return started(ctx, p);
 }
 const mediaError = (video, code) => {
   Object.defineProperty(video, 'error', { value: { code }, configurable: true });
@@ -55,25 +73,127 @@ describe('Rückfall ts/h264', () => {
     expect(events).toEqual([]);
   });
 
-  it('Rückfall merkt sich: nächster h264-Titel wird gleich ohne HEVC angefragt', async () => {
+  const posts2 = (ctx) => ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST').map((c) => container(c[2]));
+  const memStorage = () => {
+    const mem = {};
+    return { mem, getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
+  };
+
+  it('Rückfall gilt pro Titel: Titel B startet wieder mit F (ein PlaybackInfo), Titel A beim nächsten Mal direkt mit ts (ein PlaybackInfo)', async () => {
     const ctx = setup({ respond: hlsRespond() });
-    let p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await fToT(ctx, 'it1');
+    ctx.deps.request.mockClear();
+    let p = ctx.player.play({ itemId: 'it2', offsetMs: 0 });
+    await flush();
+    expect(posts2(ctx)).toEqual(['mp4']);
+    await started(ctx, p);
+    ctx.deps.request.mockClear();
+    p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    expect(posts2(ctx)).toEqual(['ts']);
+    expect((await started(ctx, p)).ok).toBe(true);
+  });
+
+  it('dauerhaft (lfx-fmp4failed) bei M3/M4 an frischem F; ein neuer Player kennt den Titel', async () => {
+    const st = memStorage();
+    const a = setup({ respond: hlsRespond(), storage: st });
+    await fToT(a, 'it1');
+    expect(Object.keys(JSON.parse(st.mem['lfx-fmp4failed']))).toEqual(['it1']);
+    expect(st.mem['lfx-directfailed']).toBeUndefined();
+    a.player.dispose();
+    const b = setup({ respond: hlsRespond(), storage: st });
+    const p = b.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    expect(posts2(b)).toEqual(['ts']);
+    await started(b, p);
+  });
+
+  it('F>T>T-Fehler zählt nie (weder Speicher noch dauerhaft)', async () => {
+    const st = memStorage();
+    const ctx = setup({ respond: hlsRespond(), storage: st });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
     await flush();
     fire(ctx.video, 'loadedmetadata');
     mediaError(ctx.video, 4);
     await flush();
-    Object.defineProperty(ctx.video, 'error', { value: null, configurable: true });
     fire(ctx.video, 'loadedmetadata');
-    fire(ctx.video, 'playing');
-    await p;
+    mediaError(ctx.video, 4);
+    await wait(700);
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 4);
+    expect((await p).code).toBe('M4·F>T>T');
+    expect(st.mem['lfx-fmp4failed']).toBeUndefined();
     ctx.deps.request.mockClear();
-    p = ctx.player.play({ itemId: 'it2', offsetMs: 0 });
+    const p2 = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
     await flush();
-    const posts = ctx.deps.request.mock.calls.filter((c) => c[0] === 'POST');
-    expect(posts.map((c) => container(c[2]))).toEqual(['mp4', 'ts']);
+    expect(posts2(ctx)).toEqual(['mp4']);
+    ctx.player.stop();
+    await p2;
+  });
+
+  it('geräteweiter ts-Modus: nach 2 gezählten F-Fehlern ohne F-Erfolg; nach einem F-Erfolg nie', async () => {
+    const bad = setup({ respond: hlsRespond() });
+    await fToT(bad, 'a');
+    await fToT(bad, 'b');
+    bad.deps.request.mockClear();
+    let p = bad.player.play({ itemId: 'c', offsetMs: 0 }); // Codec unbekannt: erst F, dann ts (h264)
+    await flush();
+    expect(posts2(bad)).toEqual(['mp4', 'ts']);
+    await started(bad, p);
+
+    const good = setup({ respond: hlsRespond() });
+    p = good.player.play({ itemId: 'x', offsetMs: 0 });
+    await flush();
+    await started(good, p); // F läuft
+    await fToT(good, 'a');
+    await fToT(good, 'b');
+    good.deps.request.mockClear();
+    p = good.player.play({ itemId: 'c', offsetMs: 0 });
+    await flush();
+    expect(posts2(good)).toEqual(['mp4']);
+    await started(good, p);
+  });
+
+  const badFormat = (extra) => hlsRespond([
+    { Index: 0, Type: 'Video', Codec: 'h264', Profile: 'High 10', BitDepth: 10, Width: 1920, Height: 1080, ...extra },
+    { Index: 1, Type: 'Audio', Codec: 'aac', Language: 'eng', IsDefault: true },
+  ]);
+  it('M3 an F mit ungeeignetem Bildformat: sofort Fehler mit hint, kein ts-Versuch, nicht gezählt', async () => {
+    const ctx = setup({ respond: badFormat() });
+    const errors = [];
+    ctx.player.on('error', (e) => errors.push(e));
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
     fire(ctx.video, 'loadedmetadata');
-    fire(ctx.video, 'playing');
-    expect((await p).ok).toBe(true);
+    mediaError(ctx.video, 3);
+    const res = await p;
+    expect(res).toMatchObject({ ok: false, reason: 'video', code: 'M3·F', hint: 'Bildformat h264 10 Bit' });
+    expect(res.timing.hint).toBe('Bildformat h264 10 Bit');
+    expect(errors).toEqual([{ reason: 'video', code: 'M3·F', hint: 'Bildformat h264 10 Bit' }]);
+    expect(posts2(ctx).length).toBe(1);
+    ctx.deps.request.mockClear();
+    const p2 = ctx.player.play({ itemId: 'it1', offsetMs: 0 }); // nicht gemerkt: wieder F
+    await flush();
+    expect(posts2(ctx)).toEqual(['mp4']);
+    ctx.player.stop();
+    await p2;
+  });
+
+  it('M3 ohne erkanntes Merkmal: Kette wie bisher (M3·F>T>T), kein hint', async () => {
+    const ctx = setup({ respond: hlsRespond() });
+    const p = ctx.player.play({ itemId: 'it1', offsetMs: 0 });
+    await flush();
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 3);
+    await flush();
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 3);
+    await wait(700);
+    fire(ctx.video, 'loadedmetadata');
+    mediaError(ctx.video, 3);
+    const res = await p;
+    expect(res.code).toBe('M3·F>T>T');
+    expect(res.hint).toBeUndefined();
   });
 
   it('scheitert auch der Rückfall: ein ts-Neuversuch, dann Kettencode (M4·F>T>T), genau ein Fehler-Ereignis', async () => {

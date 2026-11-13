@@ -88,8 +88,8 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       notify();
     },
 
-    /** Störbild je Grund (video|browser|audio|network); code (optional): Kurzcode, erscheint klein als „Code: X“. */
-    showError(reason, channel, code) {
+    /** Störbild je Grund (video|browser|audio|network); code (optional): Kurzcode („Code: X“); hint (optional): Grund, z. B. „Bildformat h264 HDR“. */
+    showError(reason, channel, code, hint) {
       reset('error');
       const t = errorText(reason);
       el.dataset.reason = ERROR_TEXTS[reason] ? reason : 'network';
@@ -98,6 +98,12 @@ export function createCard(container, { formatClock = (t) => new Date(t).toTimeS
       if (channel) el.append(createLogo(channel, { doc, number: true }));
       el.append(h(doc, 'div', 'lfx-live-card__title', t.title));
       if (t.sub) el.append(h(doc, 'div', 'lfx-live-card__sub', t.sub));
+      if (hint) {
+        const x = h(doc, 'div', 'lfx-live-card__hint', `${hint} wird von diesem Gerät nicht unterstützt`);
+        x.style.fontSize = '0.85em';
+        x.style.opacity = '0.8';
+        el.append(x);
+      }
       if (code) {
         const c = h(doc, 'div', 'lfx-live-card__code', `Code: ${code}`);
         c.style.fontSize = '0.7em';

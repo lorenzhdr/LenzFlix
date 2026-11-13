@@ -3198,6 +3198,10 @@ html.lfx-js #lfx-nav .lfx-nav__menu-item:hover {
   background: rgba(255, 255, 255, .1);
 }
 
+html.lfx-js #lfx-nav .lfx-nav__menu-item.is-active:hover {
+  background: var(--lfx-pill-active);
+}
+
 html.lfx-js #lfx-nav .lfx-nav__menu-item--stats {
   color: var(--lfx-gold);
 }

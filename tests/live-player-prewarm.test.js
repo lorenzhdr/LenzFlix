@@ -35,7 +35,7 @@ function makeFetch({ failSeg = false } = {}) {
 const itemPath = (p) => /Items\/([^/]+)\/PlaybackInfo/.exec(p)[1];
 
 /** respond: je Item eigene PlaySessionId (psid-<item>); HLS-Remux. */
-function setup({ warmOn = true, direct = [], fetchOpts } = {}) {
+function setup({ warmOn = true, direct = [], fetchOpts, hevc = false, storage } = {}) {
   const log = [];
   const f = makeFetch(fetchOpts);
   const respond = (method, path) => {
@@ -44,9 +44,10 @@ function setup({ warmOn = true, direct = [], fetchOpts } = {}) {
     if (direct.includes(id)) return info(ms({ id: 'msd' }), { PlaySessionId: sid });
     return info(ms({ direct: false, transcodingUrl: `/videos/${id}/master.m3u8?MediaSourceId=ms1&PlaySessionId=${sid}&ApiKey=${SECRET}` }), { PlaySessionId: sid });
   };
-  const video = makeVideo({ log });
+  const video = makeVideo({ log, hevc });
   const deps = makeDeps({ respond, log });
   deps.fetch = f.fn;
+  if (storage) deps.storage = storage;
   if (warmOn) deps.zapWarm = true;
   const clock = { t: 5000000 };
   const player = createPlayer({ video, deps, now: () => clock.t });
@@ -369,13 +370,14 @@ describe('prewarm', () => {
       fire(c.video, 'playing');
       return (await p).timing.warm;
     };
-    expect((await run('x1')).skip).toBe('direct');
+    expect((await run('d1')).skip).toBe('direct');
     c.player.warmNote('phase');
     expect((await run('x2')).skip).toBe('phase');
+    expect((await run('x3')).skip).toBe('keiner'); // Controller-Notiz gilt nur bis zum nächsten Umschalten
     const p1 = c.player.prewarm('h1', 0);
     const p2 = c.player.prewarm('h1', 0);
     await Promise.all([p1, p2]);
-    expect((await run('x3')).skip).toBeNull(); // gestartetes Vorwärmen löscht den Grund
+    expect((await run('h1')).skip).toBeNull(); // Übernahme: kein Grund
   });
 
   it('hängender Vorwärm-Vorgang wird nach 25 s abgebrochen (Grund timeout) und die Sitzung beendet', async () => {
@@ -395,10 +397,108 @@ describe('prewarm', () => {
     await p;
     expect(deps.request.mock.calls.filter((c) => c[0] === 'DELETE').map((c) => c[2].params)).toEqual([{ deviceId: 'dev1', playSessionId: 'ps-h' }]);
     // Grund 'timeout' steht danach in der Messung
-    const pl = player.play({ itemId: 'z', offsetMs: 0 });
+    const pl = player.play({ itemId: 'h', offsetMs: 0 });
     await vi.advanceTimersByTimeAsync(10);
     fire(video, 'loadedmetadata');
     fire(video, 'playing');
     expect((await pl).timing.warm).toMatchObject({ used: false, skip: 'timeout' });
+    const pz = player.play({ itemId: 'z', offsetMs: 0 }); // anderer Titel: kein Titelgrund
+    await vi.advanceTimersByTimeAsync(10);
+    fire(video, 'loadedmetadata');
+    fire(video, 'playing');
+    expect((await pz).timing.warm).toMatchObject({ used: false, skip: 'keiner' });
   });
 });
+
+describe('Vorwärmen: Grund pro Umschalten und fMP4 pro Titel', () => {
+  const run = async (c, item) => {
+    Object.defineProperty(c.video, 'error', { value: null, configurable: true });
+    const p = c.player.play({ itemId: item, offsetMs: 0 });
+    await flush();
+    fire(c.video, 'loadedmetadata');
+    fire(c.video, 'playing');
+    return (await p).timing.warm;
+  };
+  const failF = (c) => {
+    Object.defineProperty(c.video, 'error', { value: { code: 4 }, configurable: true });
+    fire(c.video, 'error');
+  };
+  // F scheitert (M4), ts läuft
+  const fToT = async (c, item) => {
+    Object.defineProperty(c.video, 'error', { value: null, configurable: true });
+    const p = c.player.play({ itemId: item, offsetMs: 0 });
+    await flush();
+    fire(c.video, 'loadedmetadata');
+    failF(c);
+    await flush();
+    Object.defineProperty(c.video, 'error', { value: null, configurable: true });
+    fire(c.video, 'loadedmetadata');
+    fire(c.video, 'playing');
+    return p;
+  };
+  const containers = (c) => c.deps.request.mock.calls.filter((x) => x[0] === 'POST').map((x) => x[2].body.DeviceProfile.TranscodingProfiles[0].Container);
+
+  it('F-gewärmter Eintrag bleibt nutzbar, wenn bei einem anderen Titel F>T lief', async () => {
+    const c = setup({ hevc: true });
+    await c.player.prewarm('b', 0);
+    expect((await fToT(c, 'a')).ok).toBe(true);
+    const w = await run(c, 'b');
+    expect(w).toMatchObject({ used: true, skip: null });
+  });
+
+  it('Grund kette: Eintrag mit F passt nicht mehr (geräteweiter ts-Modus)', async () => {
+    const c = setup({ hevc: true });
+    await c.player.prewarm('a', 0);
+    await fToT(c, 'b');
+    await fToT(c, 'c');
+    expect(await run(c, 'a')).toMatchObject({ used: false, skip: 'kette' });
+    expect(c.deletes().some((d) => d.playSessionId === 'ps-a')).toBe(true);
+  });
+
+  it('Grund alt (TTL), verdrängt (max. 2), fehler (Vorwärmen scheiterte), keiner', async () => {
+    const c = setup();
+    await c.player.prewarm('a', 0);
+    c.clock.t += 41000;
+    expect(await run(c, 'a')).toMatchObject({ used: false, skip: 'alt' });
+
+    await c.player.prewarm('v1', 0);
+    c.clock.t += 1000;
+    await c.player.prewarm('v2', 0);
+    c.clock.t += 1000;
+    await c.player.prewarm('v3', 0);
+    expect(await run(c, 'v1')).toMatchObject({ used: false, skip: 'verdrängt' });
+
+    c.f.fn.mockImplementationOnce(async () => { throw new Error('netz'); });
+    await c.player.prewarm('f1', 0);
+    expect(await run(c, 'f1')).toMatchObject({ used: false, skip: 'fehler' });
+
+    expect(await run(c, 'nie')).toMatchObject({ used: false, skip: 'keiner' });
+  });
+
+  it('Controller-Notiz greift nur ohne Titelgrund und nur einmal', async () => {
+    const c = setup();
+    await c.player.prewarm('a', 0);
+    c.clock.t += 41000;
+    c.player.warmNote('phase');
+    expect(await run(c, 'a')).toMatchObject({ skip: 'alt' });
+    c.player.warmNote('filler');
+    expect(await run(c, 'q')).toMatchObject({ skip: 'filler' });
+    expect(await run(c, 'r')).toMatchObject({ skip: 'keiner' });
+  });
+
+  it('übernommene Vorwärm-Sitzung + F-Fehler (M4, ts läuft): nur Speicher, nicht dauerhaft', async () => {
+    const mem = {};
+    const storage = { getItem: (k) => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; } };
+    const c = setup({ hevc: true, storage });
+    await c.player.prewarm('a', 0);
+    expect((await fToT(c, 'a')).ok).toBe(true);
+    expect(mem['lfx-fmp4failed']).toBeUndefined();
+    c.deps.request.mockClear();
+    const p = c.player.play({ itemId: 'a', offsetMs: 0 });
+    await flush();
+    expect(containers(c)).toEqual(['ts']); // im Speicher gemerkt: ein PlaybackInfo, gleich ts
+    c.player.stop();
+    await p;
+  });
+});
+

@@ -175,3 +175,74 @@ describe('Vorwärmen der Nachbarsender (Test)', () => {
     expect(env.player.prewarm).not.toHaveBeenCalled();
   });
 });
+
+describe('Vorwärmen nach Fehlerkarte und Grund auf der Karte', () => {
+  const fail = (env, res) => { env.player.play.mockResolvedValue({ ok: false, ...res }); };
+
+  it('Fehlerkarte (video): nach 2 s Nachbarn vorwärmen, mit Takt; hint steht auf der Karte', async () => {
+    const env = makeEnv();
+    fail(env, { reason: 'video', code: 'M3', hint: 'Bildformat h264 HDR' });
+    env.ctl.start();
+    await flush(10);
+    const c = env.ctl.state().card;
+    expect(c.kind).toBe('error');
+    expect(c.hint).toBe('Bildformat h264 HDR wird von diesem Gerät nicht unterstützt');
+    expect(c.code).toBe('M3');
+    await flush(1900);
+    expect(env.player.prewarm).not.toHaveBeenCalled();
+    await flush(200);
+    expect(env.player.prewarm.mock.calls.map((x) => x[0]).sort()).toEqual(['it-4', 'it-6']);
+    env.player.prewarm.mockClear();
+    await flush(WARM_TICK_MS);
+    expect(env.player.prewarm).toHaveBeenCalledTimes(2);
+  });
+
+  it('ohne hint keine hint-Eigenschaft (Karte wie bisher)', async () => {
+    const env = makeEnv();
+    fail(env, { reason: 'video', code: 'M3' });
+    env.ctl.start();
+    await flush(10);
+    expect('hint' in env.ctl.state().card).toBe(false);
+  });
+
+  it('Netzwerkfehler und Tippen-Karte: nicht vorwärmen', async () => {
+    for (const reason of ['network', 'gesture']) {
+      const env = makeEnv();
+      fail(env, { reason });
+      env.ctl.start();
+      await flush(5000);
+      expect(env.ctl.state().card.kind).toBe('error');
+      expect(env.player.prewarm, reason).not.toHaveBeenCalled();
+    }
+  });
+
+  it('Fehlerkarte ohne Vorwärmen: nichts', async () => {
+    const env = makeEnv({ warm: false });
+    fail(env, { reason: 'browser', code: 'B' });
+    env.ctl.start();
+    await flush(5000);
+    expect(env.player.prewarm).not.toHaveBeenCalled();
+  });
+
+  it('Zappen von der Fehlerkarte stoppt das Vorwärmen des alten Senders', async () => {
+    const env = makeEnv();
+    fail(env, { reason: 'audio' });
+    env.ctl.start();
+    await flush(1000);
+    env.player.play.mockResolvedValue({ ok: true, mode: 'direct' });
+    env.ctl.zap(1);
+    await flush(1100); // Fehler-Vorwärmen des Senders 5 wäre jetzt fällig; der neue Sender startet erst 1 s nach dem Start
+    expect(env.player.prewarm).not.toHaveBeenCalled();
+  });
+
+  it('error-Ereignis während der Wiedergabe: auch hier hint und Vorwärmen', async () => {
+    const env = makeEnv();
+    env.ctl.start();
+    await flush(10);
+    env.player.prewarm.mockClear();
+    env.em.emit('error', { reason: 'video', code: 'M4', hint: 'Auflösung 7680×4320' });
+    expect(env.ctl.state().card.hint).toBe('Auflösung 7680×4320 wird von diesem Gerät nicht unterstützt');
+    await flush(2100);
+    expect(env.player.prewarm).toHaveBeenCalledTimes(2);
+  });
+});

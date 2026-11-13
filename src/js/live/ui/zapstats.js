@@ -1,6 +1,6 @@
 // Messanzeige für das Umschalten (geteilt: LENZ LIVE und TV-Modus, docs/live.md „Messanzeige“). Reines DOM mit Inline-Styles,
 // kein CSS-Bundle. Nur zum Diagnostizieren am iPhone (ohne Konsole): Hash-Parameter lfxdebug=1 in der Hülle.
-// Zeile 3 (detailLine): Quelle mkv·hevc·eac3 · Grund Container · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s
+// Zeile 3 (detailLine): Quelle mkv·hevc·eac3 · High 10 L5.1 10 Bit 3840×1600 · Grund Container · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s
 // Zeile 4 (warmLine, nur mit timing.warm): Vorwärmen an · genutzt ja · Alter 12 s · Liste 0,3 · Init 0,2 · Seg 1. Byte 4,8 · Res 3/5,1 s
 // createZapStats(parent, { getVideo, doc }) → { update(zapInfo), updateAudio(info), destroy() }
 //   zapInfo: { channel, keyMs?, timing?, ok?, code?, reason? }   timing laut player.lastTiming()
@@ -28,7 +28,7 @@ export function detailLine(t) {
   const s = t.src;
   if (s) {
     const q = [s.container, s.v, s.a].filter(Boolean).join('·');
-    if (q) p.push(`Quelle ${q}`);
+    if (q) p.push(`Quelle ${q}${s.fmt ? ` · ${s.fmt}` : ''}`);
     if (s.reasons && s.reasons.length) p.push(`Grund ${s.reasons.join(',')}`);
   }
   if (t.forced) p.push('HLS erzwungen');
@@ -91,7 +91,10 @@ export function createZapStats(parent, { getVideo = null, doc = null } = {}) {
       const t = z.timing || null;
       const parts = [`Sender ${z.channel == null ? '?' : z.channel}`];
       if (z.ok === false) {
-        parts.push('FEHLER', [z.code, t && t.chain].filter(Boolean).join(' ') || z.reason || '?');
+        // Der Code trägt bei M<n>/B-PLAY die Kette schon („M3·F>T>T“): nicht doppelt anhängen.
+        const ch = t && t.chain && !String(z.code || '').includes(t.chain) ? t.chain : '';
+        parts.push('FEHLER', [z.code, ch].filter(Boolean).join(' ') || z.reason || '?');
+        if (z.hint || (t && t.hint)) parts.push(z.hint || t.hint);
         if (t) parts.push(`${sec(t.totalMs)} s`);
       } else {
         const total = t ? t.totalMs : z.totalMs;

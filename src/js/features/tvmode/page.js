@@ -12,7 +12,7 @@ import { toast } from '../../core/toast.js';
 import { loadCatalog } from '../live/data.js';
 import { buildApiDeps, fatalText, loadUser } from '../live/deps.js';
 import { openModal } from '../modal.js';
-import { zapStatsEnabled } from '../live/zapflag.js';
+import { defineZapWarm, zapStatsEnabled } from '../live/zapflag.js';
 import * as prefs from './prefs.js';
 import { ON_CLASS, ROOT_ID, TV_THEMES, findHomeTab, tvModeMatch } from './route.js';
 import { destroyUnlock, initUnlock, takeIntentVideo } from './unlock.js';
@@ -139,7 +139,7 @@ async function playFromStart(id) {
 }
 
 function buildDeps(raw, user, hooks) {
-  return {
+  return defineZapWarm({ // Spread kopiert den Getter zapWarm nur als Wert: neu setzen
     ...buildApiDeps(raw, user),
     savePrefs: ret((p) => prefs.savePrefs(p)),
     // alle Designs: Detailkarte als Overlay über dem weiterlaufenden TV (plus/prime mit „Zur Titelseite“)
@@ -152,7 +152,7 @@ function buildDeps(raw, user, hooks) {
     onFatal: ret(hooks.fatal),
     onStopped: ret(hooks.stopped),
     onPip: ret((active) => { if (inst) inst.pip = Boolean(active); }),
-  };
+  });
 }
 
 function buildOpts(video) {

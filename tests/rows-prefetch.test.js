@@ -269,6 +269,100 @@ describe('rows/prefetch', () => {
     });
   });
 
+  describe('Pause (Info-Fenster, Hintergrund-TV)', () => {
+    const root = document.documentElement;
+    const open = async () => { root.classList.add('lfx-modal-open'); await tick(0); };
+    const close = async () => { root.classList.remove('lfx-modal-open'); await tick(0); };
+    afterEach(() => { root.classList.remove('lfx-modal-open', 'lfx-tvm-bgplay'); });
+
+    it('Fenster offen vor go: nichts startet; nach Schließen erst nach 2 s', async () => {
+      await open();
+      addPending('a');
+      start();
+      await tick(20000);
+      expect(calls).toEqual([]);
+      await close();
+      await tick(1900);
+      expect(calls).toEqual([]);
+      await tick(300);
+      expect(calls).toEqual(['a']);
+    });
+
+    it('öffnet mitten in einer Zeile: sie wird fertig, die nächste wartet', async () => {
+      addPending('a', 'b');
+      start();
+      await tick(1000);
+      expect(calls).toEqual(['a']);
+      await open();
+      resolvers[0]();
+      await tick(10000);
+      expect(calls).toEqual(['a']);
+      await close();
+      await tick(2300);
+      expect(calls).toEqual(['a', 'b']);
+    });
+
+    it('Schließen: nach 2 s lädt die oberste offene Zeile im DOM', async () => {
+      addPending('a', 'b', 'c');
+      await open();
+      start();
+      await tick(5000);
+      await close();
+      await tick(2300);
+      expect(calls).toEqual(['a']);
+    });
+
+    it('erneutes Öffnen innerhalb der 2 s hält die Pause', async () => {
+      await open();
+      addPending('a');
+      start();
+      await tick(1000);
+      await close();
+      await tick(1000);
+      await open();
+      await tick(10000);
+      expect(calls).toEqual([]);
+      await close();
+      await tick(2300);
+      expect(calls).toEqual(['a']);
+    });
+
+    it('Schließen, dann stop() innerhalb der 2 s: keine neue Zeile', async () => {
+      await open();
+      addPending('a');
+      start();
+      await tick(1000);
+      await close();
+      await tick(500);
+      inst.stop();
+      await tick(10000);
+      expect(calls).toEqual([]);
+    });
+
+    it('Hintergrund-PiP: Klasse + Video pausiert; nur Klasse nicht', async () => {
+      root.classList.add('lfx-tvm-bgplay');
+      addPending('a');
+      start();
+      await tick(2000);
+      expect(calls).toEqual(['a']); // Klasse ohne Video: kein Halt
+      resolvers[0]();
+      await tick(6000);
+      addPending('b');
+      const bg = document.createElement('div');
+      bg.id = 'lfx-tvm-bg';
+      bg.append(document.createElement('video'));
+      document.body.append(bg);
+      inst.notify();
+      await tick(3000);
+      expect(calls).toEqual(['a']);
+      bg.remove();
+      root.classList.remove('lfx-tvm-bgplay');
+      await tick(0);
+      await tick(2300);
+      expect(calls).toEqual(['a', 'b']);
+    });
+  });
+
   describe('heroSettled', () => {
     it('ohne Slot oder versteckt: fertig', () => {
       expect(heroSettled(null)).toBe(true);

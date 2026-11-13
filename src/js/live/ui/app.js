@@ -14,6 +14,7 @@ import { createOsd } from './osd.js';
 import { createCard } from './card.js';
 import { createFullscreen } from './fullscreen.js';
 import { createZapStats } from './zapstats.js';
+import { createNeighbors, WARM_AFTER_ERROR } from '../player/neighbors.js';
 import { genreLabels } from './overlay-util.js';
 import { buildMagazine as buildMagazineModel, collectTipIds, loadOverviews } from '../magazine/model.js';
 import { createMagazineProp, PROP_MIN_PX } from '../magazine/prop.js';
@@ -137,6 +138,13 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     })
     : playerArg;
   // Messanzeige (opts.zapStats, Hash lfxdebug=1): ohne Option kein DOM. Gefüttert aus handleResult/showError und applyVolume.
+  // Nachbarsender vorwärmen/vorauflösen (player/neighbors.js): läuft nach stabilem „playing“ eines Programms und nach einer Fehlerkarte.
+  let lastPh = null; // letzte Player-Phase (Puffern/Stillstand zählt nicht als stabil)
+  const nb = createNeighbors({
+    player, scheduler, clock, deps, nch: NCH,
+    getChannel: () => channel,
+    getPhase: () => (card.kind() === 'error' ? 'error' : on && playing && lastPh !== 'loading' && lastPh !== 'stalled' ? 'playing' : 'loading'),
+  });
   const zapStats = opts.zapStats ? createZapStats(screen, { getVideo: () => video, doc }) : null;
   let tuneAt = 0;
   const zapAudio = () => { if (zapStats) safe(() => zapStats.updateAudio({ mode: player && player.volumeMode ? player.volumeMode() : '', level: vol })); };
@@ -501,21 +509,22 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   function watchLeave(silent) { if (watch) safe(() => watch.leave(silent)); }
   function clearStall() { stallArmed = false; unlater('stall'); }
 
-  function showError(reason, g, code) {
+  function showError(reason, g, code, hint) {
     playing = false;
     clearStall();
     watchLeave(true); // Störbild/Ausfall: nie als gesehen werten
     needsTap = reason === 'gesture';
-    card.showError(reason, channelOf(channel), code || (reason === 'network' ? 'NET' : undefined));
+    card.showError(reason, channelOf(channel), code || (reason === 'network' ? 'NET' : undefined), hint);
     unlater('retry');
     if (reason === 'network') later('retry', () => { if (g === gen && on) start(g, false); }, RETRY_MS);
+    if (on && WARM_AFTER_ERROR.includes(reason)) nb.arm('error');
   }
 
   function handleResult(res, g, e) {
     if (g !== gen) return false;
     if (res && res.ok === false) {
       if (res.reason === 'aborted') return false;
-      showError(res.reason || 'network', g, res.code);
+      showError(res.reason || 'network', g, res.code, res.hint);
       if (zapStats && e === entry) safe(() => zapStats.update({ channel, ok: false, reason: res.reason || 'network', code: res.code, keyMs: tuneAt ? clock() - tuneAt : null, timing: res.timing || null }));
       return false;
     }
@@ -526,6 +535,8 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       zapAudio();
     }
     tuneAt = 0;
+    lastPh = null;
+    if (e === entry && e.type === 'program') nb.arm('play');
     // iOS kann `muted` beim src-Wechsel verlieren: nur in Richtung stumm absichern, nie ohne Geste entstummen
     if (silent()) safe(() => player.setMuted && player.setMuted(true));
     if (e === entry) watchTune();
@@ -574,6 +585,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   async function playEntry(e, offsetMs, g, { blend = false } = {}) {
     entry = e;
     playing = false;
+    nb.stop();
     unlater('retry');
     unlater('trailer');
     armAdvance(e, g);
@@ -649,6 +661,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     const g = ++gen;
     tuneAt = clock();
     unlater('zap'); unlater('advance'); unlater('retry'); unlater('trailer');
+    nb.stop();
     cancelRestart();
     clearStall();
     needsTap = false;
@@ -714,6 +727,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
 
   function stopAll() {
     gen++;
+    nb.stop();
     for (const k of ['zap', 'advance', 'retry', 'trailer', 'digit', 'restart', 'blend']) unlater(k);
     digitBuf = '';
     pendingRestart = null;
@@ -946,6 +960,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   if (player && typeof player.on === 'function') {
     offs.push(player.on('state', (s) => {
       const phase = s && s.phase;
+      lastPh = phase || null;
       // Ladeanimation erst nach LOADING_DELAY_MS (kurze Zustände unsichtbar), jede andere Phase entfernt sie sofort.
       if (phase === 'loading' || phase === 'stalled') {
         if (!T.loading && !app.classList.contains('is-loading')) {
@@ -979,7 +994,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     }));
     offs.push(player.on('error', (err) => {
       if (!on || !entry || entry.type === 'filler' || card.kind() === 'error') return;
-      showError((err && err.reason) || 'network', gen, err && err.code);
+      showError((err && err.reason) || 'network', gen, err && err.code, err && err.hint);
     }));
   }
 
@@ -1054,6 +1069,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       if (disposed) return;
       powerOff();
       stopAll();
+      nb.dispose();
       disposed = true;
       stopIntervals();
       for (const k of Object.keys(T)) clearTimeout(T[k]);

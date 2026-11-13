@@ -14,7 +14,7 @@ import { loadCatalog } from './data.js';
 import { buildApiDeps, fatalText, loadUser } from './deps.js';
 import { findHomeTab, liveHomeRoute, ON_CLASS, ROOT_ID } from './home-route.js';
 import { leaveToLibrary } from './leave.js';
-import { zapStatsEnabled } from './zapflag.js';
+import { defineZapWarm, zapStatsEnabled } from './zapflag.js';
 import * as prefs from './prefs.js';
 
 export const SUSPEND_MS = 3 * 60 * 1000;
@@ -152,7 +152,7 @@ function showFallback(message, { retry = false, detail = '' } = {}) {
 
 function buildDeps(raw, user, onFatal) {
   const ret = (f) => (...a) => { try { return f(...a); } catch (e) { console.warn('[LenzFlix] live dep', e && e.message); return undefined; } };
-  return {
+  return defineZapWarm({ // Spread kopiert den Getter zapWarm nur als Wert: neu setzen
     ...buildApiDeps(raw, user),
     savePrefs: ret((p) => prefs.savePrefs(p)),
     leaveToLibrary: (id, meta) => leaveToLibrary(id, meta || {}),
@@ -173,7 +173,7 @@ function buildDeps(raw, user, onFatal) {
       fadeTimer = setTimeout(() => { fadeTimer = null; el.remove(); }, FADE_MS);
     }),
     onFatal: ret(onFatal),
-  };
+  });
 }
 
 function buildOpts() {

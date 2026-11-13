@@ -178,6 +178,12 @@ export function createPlayerView({ doc = document, ctl, model = null, opts = {} 
     text.hidden = !text_;
     if (card.kind === 'error') {
       c.setAttribute('role', 'alert');
+      if (card.hint) {
+        const hint = mk('div', 'lfx-tvm__card-hint', c);
+        hint.textContent = card.hint;
+        hint.style.fontSize = '0.85em';
+        hint.style.opacity = '0.8';
+      }
       if (card.code) {
         const code = mk('div', 'lfx-tvm__card-code', c);
         code.textContent = `Code: ${card.code}`;

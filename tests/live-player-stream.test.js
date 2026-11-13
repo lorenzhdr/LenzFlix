@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { resolveStream } from '../src/js/live/player/stream.js';
+import { resolveStream, videoFormatHint } from '../src/js/live/player/stream.js';
 import { buildDeviceProfile } from '../src/js/live/player/profile.js';
 import { buildTracks, pickAudio, pickSubtitle, serverDefaultAudio } from '../src/js/live/player/tracks.js';
 import { makeVideo, makeDeps, ms, info, hlsUrl, SECRET } from './live-player-helpers.js';
@@ -145,7 +145,8 @@ describe('resolveStream', () => {
     });
     const r = await resolve(deps, makeVideo());
     expect(calls.length).toBe(2);
-    expect(calls[1]).toMatchObject({ AudioStreamIndex: 2, MediaSourceId: 'ms1', EnableDirectPlay: false, SubtitleStreamIndex: -1 });
+    expect(calls[1]).toMatchObject({ AudioStreamIndex: 2, EnableDirectPlay: false, SubtitleStreamIndex: -1 });
+    expect(calls[1]).not.toHaveProperty('MediaSourceId'); // sonst Einbrennen (V-SUB)
     expect(r).toMatchObject({ ok: true, mode: 'hls', audioIndex: 2 });
   });
 
@@ -182,5 +183,36 @@ describe('Spuren', () => {
     expect(pickSubtitle(subs, { subMode: 'OnlyForced', subLang: '' })).toBe(5);
     expect(pickSubtitle(subs, { subMode: 'Default', subLang: 'ger' })).toBe(-1);
     expect(pickSubtitle(subs, {})).toBe(-1);
+  });
+});
+
+describe('videoFormatHint und Dateiinfos', () => {
+  const m = (v) => ({ MediaStreams: [{ Type: 'Video', Codec: 'h264', Profile: 'High', Level: 41, BitDepth: 8, PixelFormat: 'yuv420p', Width: 1920, Height: 1080, ...v }] });
+  it('normales High L4.1 8 Bit, yuvj420p, SDR → null', () => {
+    expect(videoFormatHint(m())).toBeNull();
+    expect(videoFormatHint(m({ PixelFormat: 'yuvj420p', VideoRange: 'SDR', VideoRangeType: 'SDR' }))).toBeNull();
+    expect(videoFormatHint({ MediaStreams: [] })).toBeNull();
+  });
+  it('10 Bit, 4:2:2, 4:4:4, Level 6.1, 8K, HDR/HLG', () => {
+    expect(videoFormatHint(m({ Profile: 'High 10', BitDepth: 10, PixelFormat: 'yuv420p10le' }))).toBe('Bildformat h264 10 Bit');
+    expect(videoFormatHint(m({ Profile: 'High 4:2:2', PixelFormat: 'yuv422p' }))).toBe('Bildformat h264 4:2:2');
+    expect(videoFormatHint(m({ PixelFormat: 'yuv444p' }))).toBe('Bildformat h264 4:4:4');
+    expect(videoFormatHint(m({ Level: 61 }))).toBe('Bildformat h264 Level 6.1');
+    expect(videoFormatHint(m({ Width: 7680, Height: 4320 }))).toBe('Auflösung 7680×4320');
+    expect(videoFormatHint(m({ VideoRangeType: 'HDR10' }))).toBe('Bildformat h264 HDR');
+    expect(videoFormatHint(m({ VideoRange: 'HDR' }))).toBe('Bildformat h264 HDR');
+    expect(videoFormatHint(m({ ColorTransfer: 'smpte2084' }))).toBe('Bildformat h264 HDR');
+    expect(videoFormatHint(m({ VideoRangeType: 'DOVIWithHDR10' }))).toBe('Bildformat h264 HDR');
+    expect(videoFormatHint(m({ ColorTransfer: 'arib-std-b67' }))).toBe('Bildformat h264 HLG');
+  });
+  it('info.fmt: kompakt, fehlende Werte entfallen, Bereich nur wenn nicht SDR', async () => {
+    const run = async (v) => {
+      const streams = [{ Index: 0, Type: 'Video', Codec: 'h264', ...v }, { Index: 1, Type: 'Audio', Codec: 'aac', IsDefault: true }];
+      const r = await resolveStream({ deps: makeDeps({ respond: () => info(ms({ streams })) }), video: makeVideo(), itemId: 'it1' });
+      return r.info.fmt;
+    };
+    expect(await run({ Profile: 'High 10', Level: 51, BitDepth: 10, PixelFormat: 'yuv420p10le', Width: 3840, Height: 1600 })).toBe('High 10 L5.1 10 Bit 3840×1600');
+    expect(await run({ Profile: 'High', Level: 31, BitDepth: 8, PixelFormat: 'yuvj420p', Width: 1280, Height: 720, VideoRangeType: 'HDR10' })).toBe('High L3.1 8 Bit 1280×720 HDR10');
+    expect(await run({})).toBe('');
   });
 });

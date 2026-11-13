@@ -5,12 +5,20 @@ const IMG_WAIT = 4000;
 const POLL = 250;
 const TOP_ROWS = 3;
 const TOP_CARDS = 8;
+const RESUME_MS = 2000; // nach Info-Fenster/Hintergrund-TV erst nach so viel Ruhe weiter
 
 /** false bei Datensparen, Mobilfunk oder langsamem Netz; ohne API (Safari/Firefox) true. */
 export function allowPrefetch() {
   const c = typeof navigator !== 'undefined' ? navigator.connection : null;
   if (!c) return true;
   return !(c.saveData || c.type === 'cellular' || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ''));
+}
+
+/** Pause: Tab versteckt, Info-Fenster offen oder TV läuft im Hintergrund-PiP (Klasse + Video, gegen hängende Klasse). */
+function paused() {
+  const cl = document.documentElement.classList;
+  return document.hidden || cl.contains('lfx-modal-open')
+    || (cl.contains('lfx-tvm-bgplay') && !!document.querySelector('#lfx-tvm-bg video'));
 }
 
 /** Hero fertig: kein Skeleton, Bilder (außer lazy) geladen, kein wartender Trailer (data-lfx-tr="wait"). */
@@ -37,7 +45,12 @@ export function startRowPrefetch({ slot, pending, load, hero }) {
   let imgSince = 0;
   let timer = null;
   let idleId = null;
+  let rTimer = null;
+  let mo = null;
+  let wasPaused = false;
 
+  // merkt sich jede beobachtete Pause (auch ohne Klassenwechsel, z. B. Halter erscheint später)
+  const hold = () => { const p = paused(); if (p) wasPaused = true; return p; };
   const later = (fn, ms) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
   const idle = (fn) => {
     if (dead) return;
@@ -76,7 +89,7 @@ export function startRowPrefetch({ slot, pending, load, hero }) {
   }
 
   function next() {
-    if (dead || busy || document.hidden) return;
+    if (dead || busy || hold()) return;
     let el = null;
     for (const e of pending.keys()) {
       if (!e.isConnected || !e.classList.contains('is-loading')) { pending.delete(e); continue; }
@@ -93,7 +106,7 @@ export function startRowPrefetch({ slot, pending, load, hero }) {
   }
 
   function tick() {
-    if (dead || document.hidden) return;
+    if (dead || hold()) return;
     if (!go) {
       go = Date.now() - t0 >= MAX_WAIT || (heroSettled(hero && hero()) && topReady());
       if (!go) { later(tick, POLL); return; }
@@ -101,14 +114,28 @@ export function startRowPrefetch({ slot, pending, load, hero }) {
     next();
   }
 
-  const onVis = () => { if (!document.hidden && !dead && !busy) later(tick, 0); };
+  const onVis = () => { if (!paused() && !dead && !busy) later(tick, 0); };
   document.addEventListener('visibilitychange', onVis);
+  const resume = () => { if (!dead && !busy && !paused()) later(tick, 0); };
+  if (typeof MutationObserver === 'function') {
+    wasPaused = paused();
+    mo = new MutationObserver(() => {
+      const p = paused();
+      if (p === wasPaused) return;
+      wasPaused = p;
+      clearTimeout(rTimer);
+      if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  }
   later(tick, POLL);
 
   return {
     stop() {
       dead = true;
       clearTimeout(timer);
+      clearTimeout(rTimer);
+      if (mo) mo.disconnect();
       if (idleId != null && typeof cancelIdleCallback === 'function') cancelIdleCallback(idleId);
       document.removeEventListener('visibilitychange', onVis);
       offs.splice(0).forEach((f) => f());

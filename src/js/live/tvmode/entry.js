@@ -59,6 +59,7 @@ export function create(host, deps, opts = {}) {
   function stop(reason) {
     if (disposed) return;
     wantStart = false;
+    bgCls(false);
     const was = isOn();
     if (ctl) ctl.stop();
     if (pip && pip.active()) pip.exit();
@@ -71,6 +72,7 @@ export function create(host, deps, opts = {}) {
   }
 
   const bgPip = () => suspended && !!(pip && pip.active()); // Seite verlassen, TV läuft im PiP-Fenster weiter
+  const bgCls = (on) => doc.documentElement.classList.toggle('lfx-tvm-bgplay', on); // Signal fürs Startseiten-Vorladen
 
   /** Abbruch: im Vordergrund normaler Stopp, im PiP-Hintergrund endet die Instanz (kein Zurück auf die Seite). */
   function bail(reason) {
@@ -126,6 +128,7 @@ export function create(host, deps, opts = {}) {
         getSlot: () => (app ? app.slot() : null),
         onChange: (active, info) => {
           if (disposed) return;
+          bgCls(bgPip());
           if (app) app.setPip(active);
           if (d.onPip) { try { d.onPip(active); } catch { /* egal */ } }
           if (!active && !info.restored) { // Seite nicht gemountet: Instanz endet
@@ -173,7 +176,7 @@ export function create(host, deps, opts = {}) {
       suspended = true;
       wantStart = false;
       if (app) app.suspend();
-      if (pip && pip.active()) { armWatch(); return true; } // läuft im Hintergrund weiter, Route/Video-Wächter bleibt
+      if (pip && pip.active()) { bgCls(true); armWatch(); return true; } // läuft im Hintergrund weiter, Route/Video-Wächter bleibt
       disarmWatch();
       stop('leave');
       return false;
@@ -182,6 +185,7 @@ export function create(host, deps, opts = {}) {
       if (disposed) return;
       if (h) curHost = h;
       suspended = false;
+      bgCls(false);
       if (!app) return;
       app.resume(h);
       if (pip) pip.hold();
@@ -192,6 +196,7 @@ export function create(host, deps, opts = {}) {
     dispose() {
       if (disposed) return;
       disposed = true;
+      bgCls(false);
       disarmWatch();
       for (const off of unsub) { try { off(); } catch { /* egal */ } }
       unsub.length = 0;

@@ -390,7 +390,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.5";
+  var VERSION = "1.11.6";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -5246,7 +5246,7 @@
       return t;
     };
     const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
-    const paused2 = () => hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    const paused3 = () => hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       if (slide) clearTimeout(slide.revealTimer);
       trailerActive = false;
@@ -5270,7 +5270,7 @@
       if (disposed || pool.length < 2 || reducedMotion()) return;
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
-        if (paused2()) scheduleRotate();
+        if (paused3()) scheduleRotate();
         else show3((index + 1) % pool.length);
       }, ROTATE_MS);
     }
@@ -5868,10 +5868,15 @@
   var POLL = 250;
   var TOP_ROWS = 3;
   var TOP_CARDS = 8;
+  var RESUME_MS = 2e3;
   function allowPrefetch() {
     const c = typeof navigator !== "undefined" ? navigator.connection : null;
     if (!c) return true;
     return !(c.saveData || c.type === "cellular" || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""));
+  }
+  function paused2() {
+    const cl2 = document.documentElement.classList;
+    return document.hidden || cl2.contains("lfx-modal-open") || cl2.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
   }
   function heroSettled(slot) {
     if (!slot || slot.hidden) return true;
@@ -5892,6 +5897,14 @@
     let imgSince = 0;
     let timer2 = null;
     let idleId = null;
+    let rTimer = null;
+    let mo3 = null;
+    let wasPaused = false;
+    const hold = () => {
+      const p = paused2();
+      if (p) wasPaused = true;
+      return p;
+    };
     const later = (fn, ms) => {
       clearTimeout(timer2);
       timer2 = setTimeout(fn, ms);
@@ -5943,7 +5956,7 @@
       if (!left) end();
     }
     function next() {
-      if (dead || busy2 || document.hidden) return;
+      if (dead || busy2 || hold()) return;
       let el4 = null;
       for (const e of pending.keys()) {
         if (!e.isConnected || !e.classList.contains("is-loading")) {
@@ -5966,7 +5979,7 @@
       });
     }
     function tick() {
-      if (dead || document.hidden) return;
+      if (dead || hold()) return;
       if (!go3) {
         go3 = Date.now() - t0 >= MAX_WAIT || heroSettled(hero && hero()) && topReady();
         if (!go3) {
@@ -5977,14 +5990,30 @@
       next();
     }
     const onVis = () => {
-      if (!document.hidden && !dead && !busy2) later(tick, 0);
+      if (!paused2() && !dead && !busy2) later(tick, 0);
     };
     document.addEventListener("visibilitychange", onVis);
+    const resume = () => {
+      if (!dead && !busy2 && !paused2()) later(tick, 0);
+    };
+    if (typeof MutationObserver === "function") {
+      wasPaused = paused2();
+      mo3 = new MutationObserver(() => {
+        const p = paused2();
+        if (p === wasPaused) return;
+        wasPaused = p;
+        clearTimeout(rTimer);
+        if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
+      });
+      mo3.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    }
     later(tick, POLL);
     return {
       stop() {
         dead = true;
         clearTimeout(timer2);
+        clearTimeout(rTimer);
+        if (mo3) mo3.disconnect();
         if (idleId != null && typeof cancelIdleCallback === "function") cancelIdleCallback(idleId);
         document.removeEventListener("visibilitychange", onVis);
         offs.splice(0).forEach((f) => f());
@@ -8036,15 +8065,25 @@
       return v === "1";
     }
   }
+  function netOk() {
+    const c = typeof navigator !== "undefined" ? navigator.connection : null;
+    if (!c) return true;
+    return !(c.saveData || c.type === "cellular" || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""));
+  }
   function zapWarmEnabled() {
     const v = hashParam("lfxwarm");
+    let off;
     try {
-      if (v === "1") window.localStorage.setItem(ZAP_WARM_KEY, "1");
-      else if (v === "0") window.localStorage.removeItem(ZAP_WARM_KEY);
-      return window.localStorage.getItem(ZAP_WARM_KEY) === "1";
+      if (v === "1" || v === "0") window.localStorage.setItem(ZAP_WARM_KEY, v);
+      off = window.localStorage.getItem(ZAP_WARM_KEY) === "0";
     } catch {
-      return v === "1";
+      off = v === "0";
     }
+    return !off && netOk();
+  }
+  function defineZapWarm(deps) {
+    Object.defineProperty(deps, "zapWarm", { get: zapWarmEnabled, enumerable: true, configurable: true });
+    return deps;
   }
   function forceHlsEnabled() {
     const v = hashParam("lfxhls");
@@ -8093,15 +8132,13 @@
     }
   }
   function buildApiDeps(raw, user) {
-    return {
+    return defineZapWarm({
       catalog: raw,
       user,
       server: { deviceId: deviceId() },
       request: (method, path, o = {}) => requestJson(method, path, o),
       storage: safeStorage(),
       // Player: dauerhaft gemerkte Direct-Fehler
-      zapWarm: zapWarmEnabled(),
-      // Player/TV-Modus: Nachbarsender vorwärmen (Test, Hash lfxwarm, docs/live.md „Vorwärmen“)
       forceHls: forceHlsEnabled(),
       // Player: HLS erzwingen (Hash lfxhls, nur mit Messanzeige)
       streamUrl: (path, params) => buildUrl(path, { ...params || {}, ApiKey: getAuth().token }),
@@ -8138,7 +8175,7 @@
       },
       setPlayed: (id, v) => setPlayed(id, v),
       channelConfig: getChannelConfig()
-    };
+    });
   }
 
   // src/js/features/tvmode/prefs.js
@@ -8355,7 +8392,8 @@
     return ok;
   }
   function buildDeps(raw, user, hooks) {
-    return {
+    return defineZapWarm({
+      // Spread kopiert den Getter zapWarm nur als Wert: neu setzen
       ...buildApiDeps(raw, user),
       savePrefs: ret((p) => savePrefs(p)),
       // alle Designs: Detailkarte als Overlay über dem weiterlaufenden TV (plus/prime mit „Zur Titelseite“)
@@ -8372,7 +8410,7 @@
       onPip: ret((active4) => {
         if (inst) inst.pip = Boolean(active4);
       })
-    };
+    });
   }
   function buildOpts(video2) {
     return {
@@ -12990,7 +13028,7 @@
       timers.add(t);
       return t;
     };
-    const paused2 = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    const paused3 = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       if (gate) {
         gate.stop();
@@ -13012,7 +13050,7 @@
       if (disposed || pool.length < 2 || reducedMotion2()) return;
       rotateTimer = setTimeout(() => {
         rotateTimer = null;
-        if (paused2()) scheduleRotate();
+        if (paused3()) scheduleRotate();
         else show3((index + 1) % pool.length);
       }, ROTATE_MS2);
     }
@@ -15643,14 +15681,14 @@
       clearTimeout(t);
       timers.delete(t);
     };
-    const paused2 = () => hovering || !inView || document.hidden || document.documentElement.classList.contains("lfx-modal-open");
+    const paused3 = () => hovering || !inView || document.hidden || document.documentElement.classList.contains("lfx-modal-open");
     function scheduleRotate() {
       if (rotateTimer) clearLater(rotateTimer);
       rotateTimer = 0;
       if (disposed || pool.length < 2 || reducedMotion5()) return;
       rotateTimer = later(() => {
         rotateTimer = 0;
-        if (paused2()) scheduleRotate();
+        if (paused3()) scheduleRotate();
         else show3((target + 1) % pool.length);
       }, ROTATE_MS3);
     }
@@ -20529,7 +20567,8 @@
         return void 0;
       }
     };
-    return {
+    return defineZapWarm({
+      // Spread kopiert den Getter zapWarm nur als Wert: neu setzen
       ...buildApiDeps(raw, user),
       savePrefs: ret2((p) => savePrefs3(p)),
       leaveToLibrary: (id, meta2) => leaveToLibrary(id, meta2 || {}),
@@ -20555,7 +20594,7 @@
         }, FADE_MS3);
       }),
       onFatal: ret2(onFatal)
-    };
+    });
   }
   function buildOpts3() {
     return {

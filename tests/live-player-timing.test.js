@@ -173,7 +173,7 @@ describe('Timing: Zusatzfelder (Quelle, Grund)', () => {
     fire(ctx.video, 'loadedmetadata');
     fire(ctx.video, 'playing');
     const t = (await p).timing;
-    expect(t.src).toEqual({ container: 'mkv', v: 'hevc', a: 'eac3', reasons: ['Container', 'AudioCodec'] });
+    expect(t.src).toEqual({ container: 'mkv', v: 'hevc', a: 'eac3', fmt: '', reasons: ['Container', 'AudioCodec'] });
     expect(t.mode).toBe('hls');
     expect(JSON.stringify(t)).not.toMatch(/http|ApiKey|SECRET|m3u8/);
   });

@@ -28,7 +28,9 @@ describe('Messanzeige', () => {
     const l1 = host.querySelector('.lfx-zapstats').children[0];
     expect(l1.textContent).toContain('Ø 1,0 s (10)');
     z.update({ channel: 2, ok: false, code: 'M3·D>T', reason: 'video', timing: { totalMs: 5000, chain: 'D>T' } });
-    expect(l1.textContent).toMatch(/^Sender 2 · FEHLER · M3·D>T D>T/);
+    expect(l1.textContent).toMatch(/^Sender 2 · FEHLER · M3·D>T · 5,0 s$/); // Kette nur einmal
+    z.update({ channel: 3, ok: false, code: 'V-SUB', reason: 'video', timing: { totalMs: 1000, chain: 'T', hint: 'Bildformat h264 HDR' } });
+    expect(l1.textContent).toBe('Sender 3 · FEHLER · V-SUB T · Bildformat h264 HDR · 1,0 s');
     expect(l1.textContent).not.toContain('Ø');
   });
 
@@ -64,6 +66,10 @@ describe('Messanzeige Zeile 3', () => {
     expect(detailLine(t)).toBe('Quelle mkv·hevc·eac3 · Grund Container · Sprung nein · Abw +0,3 · Seek 0,0/0,3 · canplay 0,5 · Puffer +0,0…+2,0 → +0,0…+12,0 · Warten 2× 1,8 s');
     expect(detailLine({ ...t, forced: true, jumped: true, waitCount: 0, bufSeeked: null })).toContain('HLS erzwungen · Sprung ja');
   });
+  it('hängt Dateiinfos an die Quelle', () => {
+    const x = { ...t, src: { ...t.src, v: 'h264', fmt: 'High 10 L5.1 10 Bit 3840×1600' } };
+    expect(detailLine(x)).toContain('Quelle mkv·h264·eac3 · High 10 L5.1 10 Bit 3840×1600 · Grund Container');
+  });
   it('rendert als dritte Zeile; ohne Zusatzfelder leer; nie URL/Token', () => {
     const z = createZapStats(host);
     const el = host.querySelector('.lfx-zapstats');
@@ -85,6 +91,11 @@ describe('Messanzeige Zeile 4 (Vorwärmen)', () => {
     expect(warmLine({ warm: { on: true, used: false }, res: { n: 2, firstSegMs: null } })).toBe('Vorwärmen an · genutzt nein · Grund – · Res 2/–');
     const t = { warm: { on: true, used: true, ageMs: 12400, playlistMs: 300, initMs: 200, segFirstByteMs: 4800 }, res: { n: 3, firstSegMs: 5100 } };
     expect(warmLine(t)).toBe('Vorwärmen an · genutzt ja · Alter 12 s · Liste 0,3 · Init 0,2 · Seg 1. Byte 4,8 · Res 3/5,1 s');
+  });
+  it('neue Gründe in Zeile 4', () => {
+    for (const g of ['kette', 'alt', 'verdrängt', 'fehler', 'keiner']) {
+      expect(warmLine({ warm: { on: true, used: false, skip: g }, res: null })).toContain(`Grund ${g}`);
+    }
   });
   it('teilweise genutzt und Zähler Vw fertig/gestartet', () => {
     const t = { warm: { on: true, used: true, partial: true, started: 3, done: 2, ageMs: 4000, playlistMs: 300, initMs: null, segFirstByteMs: null }, res: null };
