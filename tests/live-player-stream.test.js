@@ -145,8 +145,11 @@ describe('resolveStream', () => {
     });
     const r = await resolve(deps, makeVideo());
     expect(calls.length).toBe(2);
-    expect(calls[1]).toMatchObject({ AudioStreamIndex: 2, EnableDirectPlay: false, SubtitleStreamIndex: -1 });
-    expect(calls[1]).not.toHaveProperty('MediaSourceId'); // sonst Einbrennen (V-SUB)
+    expect(calls[0]).toMatchObject({ SubtitleStreamIndex: -1 });
+    expect(calls[0]).not.toHaveProperty('MediaSourceId');
+    // MediaSourceId nötig (sonst ignoriert der Server die Tonspur), dann aber kein SubtitleStreamIndex -1 (sonst Einbrennen, V-SUB)
+    expect(calls[1]).toMatchObject({ AudioStreamIndex: 2, EnableDirectPlay: false, MediaSourceId: 'ms1' });
+    expect(calls[1]).not.toHaveProperty('SubtitleStreamIndex');
     expect(r).toMatchObject({ ok: true, mode: 'hls', audioIndex: 2 });
   });
 

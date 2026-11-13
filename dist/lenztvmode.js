@@ -2113,6 +2113,7 @@
         AutoOpenLiveStream: false,
         ...extra
       };
+      if (body.SubtitleStreamIndex === void 0) delete body.SubtitleStreamIndex;
       return deps.request("POST", `/Items/${encodeURIComponent(itemId)}/PlaybackInfo`, { params: { userId: deps.user.id }, body, signal });
     };
     try {
@@ -2126,7 +2127,7 @@
       const remux = want != null && def != null && want !== def;
       let ms = first;
       if (remux) {
-        info = await post({ AudioStreamIndex: want, EnableDirectPlay: false });
+        info = await post({ AudioStreamIndex: want, MediaSourceId: first.Id, EnableDirectPlay: false, SubtitleStreamIndex: void 0 });
         const list = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
         ms = list.find((s) => s.Id === first.Id) || list[0];
         if (!ms) return fail("network", "NET");

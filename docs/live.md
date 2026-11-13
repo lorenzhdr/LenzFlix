@@ -31,7 +31,11 @@ Keine fremden Marken-, Sender-, Geräte- oder Dienstnamen in Code und Texten. UI
   **alle** Formate (`vtt, srt, subrip, ass, ssa, pgssub, dvdsub, dvbsub, sub`); dann fehlen `SubtitleStreamIndex`/`SubtitleMethod`, und
   `TranscodeReasons` ist nur noch `AudioCodecNotSupported` (live bestätigt). Angezeigt werden weiter nur Text-Untertitel. Schutz in
   `stream.js`: `SubtitleMethod=Encode` in der `TranscodingUrl` → „Kein Empfang“.
-- **Kein `MediaSourceId` im Body der zweiten PlaybackInfo-Anfrage (Tonspurwahl, 1.11.6):** Mit `MediaSourceId` antwortete der Server bei Babylon Berlin (mkv, h264, ac3 5.1 deu/eng, eingebettete SRT, darunter „deu forced + default“) trotz `SubtitleStreamIndex: -1` mit `SubtitleMethod=Encode` (`V-SUB`, Einbrennen). Ohne `MediaSourceId` kommt eine saubere Antwort; `AlwaysBurnInSubtitleWhenTranscoding: false` und die Methode `Hls` helfen nicht. Die Quelle wird danach über die Id der ersten Antwort aus `MediaSources` gewählt (`stream.js`).
+- **Zweite PlaybackInfo-Anfrage (Tonspurwahl): `MediaSourceId` mitschicken, `SubtitleStreamIndex` weglassen (1.11.7, live geprüft 13.11.2026):**
+  - Ohne `MediaSourceId` ignoriert der Server `AudioStreamIndex` (Body wie Query) und liefert die Standardspur. Das war die Regression in 1.11.6.
+  - `MediaSourceId` zusammen mit `SubtitleStreamIndex: -1` → `SubtitleMethod=Encode` (`V-SUB`, Einbrennen der erzwungenen Standard-Untertitelspur; Befund Babylon Berlin: mkv, h264, ac3 5.1 deu/eng, eingebettete SRT „deu forced + default“). `AlwaysBurnInSubtitleWhenTranscoding: false` und die Methode `Hls` helfen nicht.
+  - `MediaSourceId` **ohne** `SubtitleStreamIndex` (oder `null`): richtige Tonspur, keine Untertitel, kein Einbrennen (PC- und iOS-Profil, Babylon Berlin + 24 zufällige Titel mit Untertiteln; Tonspurwechsel 1↔2 im echten Player).
+  - Die erste Anfrage bleibt ohne `MediaSourceId` und mit `SubtitleStreamIndex: -1` (`stream.js` `post`, ein `undefined`-Wert wird aus dem Body entfernt).
 - **HEVC-Remux:** Mit HEVC im Profil (DirectPlay `h264,hevc`; Transcoding `mp4`/fMP4, hls, `hevc,h264`, aac) liefert der Server für HEVC+AC3
   `SegmentContainer=mp4`, `VideoCodec=hevc,h264`, nur `AudioCodecNotSupported`; Chrome 157 spielt das nativ (≈ 3 s ab Minute 10).
   Ohne HEVC im Profil: `VideoCodecNotSupported` → „Kein Empfang“. Erkennung: `MediaSource.isTypeSupported` oder `canPlayType`

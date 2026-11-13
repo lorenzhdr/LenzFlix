@@ -335,7 +335,9 @@ describe('Spuren im Player', () => {
     ctx.clock.t += 20000;
     const p = ctx.player.setAudio(2);
     await flush();
-    expect(calls.at(-1)).toMatchObject({ AudioStreamIndex: 2, EnableDirectPlay: false, SubtitleStreamIndex: -1 });
+    // MediaSourceId (sonst ignoriert der Server die Tonspur), aber kein SubtitleStreamIndex -1 (sonst Einbrennen, V-SUB)
+    expect(calls.at(-1)).toMatchObject({ AudioStreamIndex: 2, EnableDirectPlay: false, MediaSourceId: 'ms1' });
+    expect(calls.at(-1)).not.toHaveProperty('SubtitleStreamIndex');
     fire(ctx.video, 'loadedmetadata');
     expect(ctx.video.currentTime).toBe(140);
     fire(ctx.video, 'playing');

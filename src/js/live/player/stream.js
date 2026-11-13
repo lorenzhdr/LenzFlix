@@ -132,6 +132,7 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal, n
       AutoOpenLiveStream: false,
       ...extra,
     };
+    if (body.SubtitleStreamIndex === undefined) delete body.SubtitleStreamIndex;
     return deps.request('POST', `/Items/${encodeURIComponent(itemId)}/PlaybackInfo`, { params: { userId: deps.user.id }, body, signal });
   };
   try {
@@ -145,8 +146,10 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal, n
     const remux = want != null && def != null && want !== def;
     let ms = first;
     if (remux) {
-      // Kein MediaSourceId im Body: sonst brennt der Server die erzwungene Standard-Untertitelspur ein (SubtitleMethod=Encode → V-SUB).
-      info = await post({ AudioStreamIndex: want, EnableDirectPlay: false });
+      // MediaSourceId ist nötig, sonst ignoriert der Server AudioStreamIndex (liefert die Standardspur). Zusammen mit
+      // SubtitleStreamIndex -1 brennt Jellyfin aber die erzwungene Standard-Untertitelspur ein (SubtitleMethod=Encode → V-SUB);
+      // ohne SubtitleStreamIndex nicht (live geprüft 13.11.2026, Babylon Berlin + 24 Titel mit Untertiteln).
+      info = await post({ AudioStreamIndex: want, MediaSourceId: first.Id, EnableDirectPlay: false, SubtitleStreamIndex: undefined });
       const list = info && Array.isArray(info.MediaSources) ? info.MediaSources : [];
       ms = list.find((s) => s.Id === first.Id) || list[0];
       if (!ms) return fail('network', 'NET');
