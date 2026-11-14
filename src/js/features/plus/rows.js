@@ -1,6 +1,7 @@
 // LENZ+: Zeilen der Startseite/Hubs. Zeilen laden lazy (IntersectionObserver); Fehler lassen die Zeile still weg.
 import { h } from '../../core/dom.js';
 import { peekCached, HOME_TTL } from '../../core/cache.js';
+import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { plusBadge, getNewContentInfo } from '../../shared/newcontent.js';
@@ -127,7 +128,7 @@ export function renderRows(slot, getDefs, peekDefs, opts = {}) {
           observer.unobserve(en.target);
           loadRow(en.target, def);
         }
-      }, { rootMargin: '600px 0px' });
+      }, { rootMargin: isDataSaver() ? '100px 0px' : '600px 0px' });
       for (const el of pending.keys()) observer.observe(el);
     } else {
       for (const [el, def] of [...pending]) { pending.delete(el); loadRow(el, def); }

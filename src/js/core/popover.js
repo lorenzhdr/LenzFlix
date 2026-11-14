@@ -2,6 +2,7 @@
 // Für Profil-/Bibliotheksmenüs der Designs. Klicks auf den Anker selbst zählen nicht als „außerhalb“,
 // der Aufrufer schaltet dort per isPopoverOpen()/closePopover() um.
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from './dom.js';
+import { switchButton } from './switch.js';
 
 const ID = 'lfx-popover';
 const GAP = 8;
@@ -49,7 +50,11 @@ function place(el, anchorEl, align) {
   el.style.top = `${Math.round(top)}px`;
 }
 
-/** items: [{ key, label, href?, onClick?, className?, icon? (SVG-String), badge? (z. B. 'Beta'), hidden? }] */
+/**
+ * items: [{ key, label, href?, onClick?, className?, icon? (SVG-String), badge? (z. B. 'Beta'), hidden? }]
+ * Varianten: { switch:true, checked, onToggle(next), watch? } = Schalter (role=menuitemcheckbox, Klick schließt NICHT);
+ * { note:true, label } = nicht fokussierbarer Hinweistext (nicht in der Pfeiltasten-Liste).
+ */
 export function openPopover(anchorEl, { label, items = [], align = 'end', className = '' } = {}) {
   closePopover();
   const el = mountPoint(ID, { className: `lfx-popover${className ? ` ${className}` : ''}` });
@@ -59,7 +64,11 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
 
   const list = items.filter((it) => it && !it.hidden);
   const nodes = list.map((it) => {
+    if (it.note) return h('div', { class: 'lfx-popover__note', role: 'none', dataset: { key: it.key || '' } }, it.label);
     const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ''}`;
+    if (it.switch) {
+      return switchButton(it, { className: `${cls} lfx-popover__item--switch`, labelClass: 'lfx-popover__label' });
+    }
     const kids = [];
     if (it.icon) {
       const ic = h('span', { class: 'lfx-popover__icon', 'aria-hidden': 'true' });
@@ -79,6 +88,7 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
     return node;
   });
   el.replaceChildren(...nodes);
+  const focusable = nodes.filter((n) => !n.classList.contains('lfx-popover__note'));
 
   const c = { el, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute('aria-expanded') : null };
   c.close = () => {
@@ -103,15 +113,15 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
       c.close();
     } else if (e.key === 'Tab') {
       closePopover({ restoreFocus: true });
-    } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) && nodes.length) {
-      const i = nodes.indexOf(document.activeElement);
+    } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) && focusable.length) {
+      const i = focusable.indexOf(document.activeElement);
       let next;
       if (e.key === 'Home') next = 0;
-      else if (e.key === 'End') next = nodes.length - 1;
-      else if (e.key === 'ArrowDown') next = i < 0 ? 0 : (i + 1) % nodes.length;
-      else next = i < 0 ? nodes.length - 1 : (i - 1 + nodes.length) % nodes.length;
+      else if (e.key === 'End') next = focusable.length - 1;
+      else if (e.key === 'ArrowDown') next = i < 0 ? 0 : (i + 1) % focusable.length;
+      else next = i < 0 ? focusable.length - 1 : (i - 1 + focusable.length) % focusable.length;
       e.preventDefault();
-      nodes[next].focus();
+      focusable[next].focus();
     }
   };
   current = c;
@@ -121,7 +131,7 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
   window.addEventListener('resize', c.onClose);
   window.addEventListener('scroll', c.onScroll, true);
   if (anchorEl) place(el, anchorEl, align);
-  if (nodes[0]) nodes[0].focus({ preventScroll: true });
+  if (focusable[0]) focusable[0].focus({ preventScroll: true });
   const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
   raf(() => { if (current === c) el.classList.add('is-open'); });
   return { el, close: c.close };

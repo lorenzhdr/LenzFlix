@@ -5,7 +5,8 @@ import { cached, clearCache, peekCached, HOME_TTL, homeKey } from '../../core/ca
 import { titleHref } from '../../shared/routes.js';
 import { plusBadge } from '../../shared/newcontent.js';
 import { BASE_PARAMS } from '../rows/logic.js';
-import { buildPool } from '../billboard/format.js';
+import { isDataSaver } from '../../core/datasaver.js';
+import { buildPool, saverPool } from '../billboard/format.js';
 import { yearGenres, ratingBox } from './card.js';
 import { isPhone } from './mobile.js';
 
@@ -54,7 +55,7 @@ async function fetchHomeHeroPool() {
   }).slice(0, 8);
 }
 
-function buildSlide(item, i, info, mobile, warm) {
+function buildSlide(item, i, info, mobile, warm, eagerN = 3) {
   // Handy: Hochformat-Karte -> Poster, sonst Backdrop
   const bd = (mobile && api.imageUrl(item, { type: 'Primary', maxWidth: 900, quality: 80 }))
     || api.imageUrl(item, { type: 'Backdrop', maxWidth: mobile ? 1000 : 1920, quality: 80 });
@@ -69,7 +70,7 @@ function buildSlide(item, i, info, mobile, warm) {
     dataset: { index: String(i) },
     'aria-label': item.Name || '',
   }, [
-    bd ? h('img', { class: 'lfx-plus-hero__img', src: bd, alt: '', decoding: warm ? null : 'async', loading: i < 3 ? 'eager' : 'lazy' }) : null,
+    bd ? h('img', { class: 'lfx-plus-hero__img', src: bd, alt: '', decoding: warm ? null : 'async', loading: i < eagerN ? 'eager' : 'lazy' }) : null,
     h('div', { class: 'lfx-plus-hero__shade', 'aria-hidden': 'true' }),
     h('div', { class: 'lfx-plus-hero__content' }, [
       badge ? h('span', { class: 'lfx-plus-badge lfx-plus-hero__badge' }, badge) : null,
@@ -87,10 +88,12 @@ function buildSlide(item, i, info, mobile, warm) {
  * Timer läuft nur bei sichtbarem Tab, ohne Hover und ohne Fokus in der Hero.
  */
 export function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone(), warm = poolWarm } = {}) {
-  const list = (items || []).filter((it) => it && it.Id);
+  const all = (items || []).filter((it) => it && it.Id);
+  const saver = isDataSaver(); // Datensparmodus: nur 5 Titel, nur das erste Bild eager (Rest lazy)
+  const list = saver ? saverPool(all) : all;
   if (!list.length) return null;
   const n = list.length;
-  const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm));
+  const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm, saver ? 1 : 3));
   const track = h('div', { class: 'lfx-plus-hero__track' }, slides);
   const prev = h('button', { type: 'button', class: 'lfx-plus-hero__nav lfx-plus-hero__nav--prev', 'aria-label': 'Vorherige Empfehlung', tabindex: '-1' });
   const next = h('button', { type: 'button', class: 'lfx-plus-hero__nav lfx-plus-hero__nav--next', 'aria-label': 'Nächste Empfehlung', tabindex: '-1' });

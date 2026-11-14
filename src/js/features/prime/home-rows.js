@@ -1,6 +1,7 @@
 // LENZPRIME: Zeilen der Startseite/Hubs (lazy geladen). Zeilen-Defs im Format von rows/sources.js: { id, title, kind, load(def) }.
 import { h } from '../../core/dom.js';
 import { peekCached, HOME_TTL } from '../../core/cache.js';
+import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
@@ -140,7 +141,7 @@ export function createRows(slot, { posterId = null, moreHref = () => null, prefe
         observer.unobserve(en.target);
         loadRow(en.target, p.def, p.kind);
       }
-    }, { rootMargin: '600px 0px' });
+    }, { rootMargin: isDataSaver() ? '100px 0px' : '600px 0px' });
   }
 
   return {

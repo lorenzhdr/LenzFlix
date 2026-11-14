@@ -36,6 +36,11 @@ vi.mock('../src/js/shared/trailer.js', () => ({
   directRemoteTrailerUrl: vi.fn(() => null),
   applyStartAt: vi.fn(),
 }));
+const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
+vi.mock('../src/js/core/datasaver.js', () => ({
+  isDataSaver: () => ds.on,
+  onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+}));
 vi.mock('../src/js/shared/titleactions.js', () => ({
   togglePlayed: vi.fn(async () => true),
   toggleFavorite: vi.fn(async (item) => {
@@ -207,6 +212,25 @@ describe('prime-title Feature', () => {
       expect(root.querySelector('.lfx-pt__circle--trailer').hidden).toBe(false);
       feature.unmount();
       expect(document.querySelector('video')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('prime-title: Datensparmodus', () => {
+  afterEach(() => { ds.on = false; });
+  it('an: kein Trailer-Autoplay, der Trailer-Knopf bleibt sichtbar', async () => {
+    vi.useFakeTimers();
+    try {
+      ds.on = true;
+      loadLocalTrailer.mockResolvedValueOnce({ Id: 'tr1' });
+      feature.mount(route('m1'));
+      await vi.advanceTimersByTimeAsync(2500);
+      const root = document.getElementById('lfx-prime-title');
+      expect(root.querySelector('video.lfx-pt__video')).toBeNull();
+      expect(root.querySelector('.lfx-pt__circle--trailer').hidden).toBe(false);
+      feature.unmount();
     } finally {
       vi.useRealTimers();
     }

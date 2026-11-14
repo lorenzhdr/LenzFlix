@@ -27,6 +27,11 @@ vi.mock('../src/js/shared/trend.js', async () => {
   return { ...actual, getTrendInfo: vi.fn(async () => ({ available: true, rank: new Map([['m1', { rank: 3, type: 'Movie' }]]) })) };
 });
 vi.mock('../src/js/shared/trailer.js', () => ({ createMutedPreview: vi.fn() }));
+const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
+vi.mock('../src/js/core/datasaver.js', () => ({
+  isDataSaver: () => ds.on,
+  onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+}));
 
 import * as api from '../src/js/core/api.js';
 import { play } from '../src/js/core/playback.js';
@@ -318,5 +323,19 @@ describe('prime-hover: Poster', () => {
     await tick(INTENT_POSTER_MS + 50);
     expect(second.classList.contains('is-expanded')).toBe(true);
     expect(poster.querySelector('.lfx-prime-expand')).toBeNull();
+  });
+});
+
+describe('prime-hover: Datensparmodus', () => {
+  afterEach(() => { ds.on = false; });
+  it('an: Poster klappt auf, aber keine Trailer-Vorschau (und kein Nachladen der Trailer-Felder)', async () => {
+    ds.on = true;
+    over(poster.querySelector('a'));
+    await tick(INTENT_POSTER_MS + 20);
+    expect(poster.classList.contains('is-expanded')).toBe(true);
+    expect(poster.querySelector('.lfx-prime-expand')).not.toBeNull();
+    await tick(PREVIEW_MS + 200);
+    expect(createMutedPreview).not.toHaveBeenCalled();
+    expect(api.getItem).not.toHaveBeenCalled();
   });
 });

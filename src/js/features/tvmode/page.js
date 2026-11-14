@@ -5,6 +5,7 @@ import { h } from '../../core/dom.js';
 import { isMobile } from '../../core/layout.js';
 import { isPopoverOpen } from '../../core/popover.js';
 import { getTheme, onThemeChange } from '../../core/theme.js';
+import { onDataSaverChange } from '../../core/datasaver.js';
 import { ensureThemeJs, removeThemeJs } from '../../core/themejs.js';
 import { ensureAddonCss, removeAddonCss } from '../../core/addoncss.js';
 import { play } from '../../core/playback.js';
@@ -26,6 +27,7 @@ let waitTimer = null;
 let inst = null; // { instance, ready, pip }
 let ui = null; // { root, boot, fill, label }
 let themeOff = null;
+let saverOff = null;
 
 const html = () => document.documentElement;
 const coarse = () => {
@@ -47,11 +49,15 @@ function disposeInstance() {
 
 function watchTheme() {
   if (!themeOff) themeOff = onThemeChange(onTheme);
+  // Datensparmodus an: vorgewärmte Nachbarsitzungen sofort beenden (sonst Ablauf nach <= 40 s)
+  if (!saverOff) saverOff = onDataSaverChange((active) => { if (active && inst) { try { inst.instance.releaseWarm(); } catch { /* egal */ } } });
 }
 
 function unwatchTheme() {
   if (themeOff) themeOff();
   themeOff = null;
+  if (saverOff) saverOff();
+  saverOff = null;
 }
 
 /** Design-Wechsel: Instanz sofort verwerfen; bleibt die Seite gültig (flix/plus/prime), neu laden. */

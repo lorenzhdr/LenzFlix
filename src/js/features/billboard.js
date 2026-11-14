@@ -12,7 +12,8 @@ import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
-import { buildPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
+import { isDataSaver, onDataSaverChange } from '../core/datasaver.js';
+import { buildPool, saverPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
 
 export const ROTATE_MS = 10000;
 export const TRAILER_MIN_IMAGE_MS = 3000; // Titelbild steht mindestens so lange, bevor der Trailer eingeblendet wird
@@ -143,7 +144,7 @@ export function render(slot) {
 
   // Ein ladender Trailer hält die Rotation an (höchstens TRAILER_WAIT_MAX_MS), damit das Bild stehen bleibt.
   const trailerPending = () =>
-    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive
+    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver()
       && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
 
   const paused = () =>
@@ -327,7 +328,7 @@ export function render(slot) {
   /** Vorladen starten: erst wenn das Titelbild geladen ist UND die ersten Zeilen gefüllt sind. */
   function tryPreload() {
     const sl = slide;
-    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed) return;
+    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed || isDataSaver()) return; // Datensparmodus: kein Trailer
     if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
     sl.started = true;
     startTrailer(sl);
@@ -338,6 +339,7 @@ export function render(slot) {
     try {
       const t = await loadLocalTrailer(sl.item);
       if (sl.gen !== gen || disposed) return;
+      if (isDataSaver()) { sl.failed = true; setTr(''); return; } // zwischenzeitlich eingeschaltet
       if (!t) { sl.failed = true; setTr(''); return; }
       const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
       v.muted = true;
@@ -440,7 +442,7 @@ export function render(slot) {
     // Trailer: erst das Titelbild; Vorladen startet, sobald Bild geladen + Zeilen gefüllt (tryPreload).
     const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
     slide = sl;
-    setTr(item.LocalTrailerCount > 0 ? 'wait' : '');
+    setTr(item.LocalTrailerCount > 0 && !isDataSaver() ? 'wait' : '');
     const img = pic.querySelector('.lfx-bb__img');
     const onLoaded = () => {
       if (disposed || sl.gen !== gen || sl.imgAt) return;
@@ -489,6 +491,20 @@ export function render(slot) {
     document.addEventListener('visibilitychange', onVis);
     cleanupFns.push(() => document.removeEventListener('visibilitychange', onVis));
     cleanupFns.push(onItemsChanged(onChanged));
+    cleanupFns.push(onDataSaverChange(onSaver));
+  }
+
+  /** Datensparmodus an: Trailer (auch vorpuffernd) abbauen, Cover bleibt, Pool kürzen, Rotation läuft weiter. */
+  function onSaver(active) {
+    if (disposed || !card || !active) return;
+    if (slide) slide.failed = true;
+    stopTrailer();
+    setTr('');
+    const cur = pool[index];
+    pool = saverPool(pool, cur && cur.Id);
+    index = Math.max(0, cur ? pool.indexOf(cur) : 0);
+    fillDots();
+    scheduleRotate();
   }
 
   async function init() {
@@ -506,7 +522,7 @@ export function render(slot) {
       resetAmbient();
       return;
     }
-    pool = items.slice(); // Cache-Array nie mutieren (onChanged)
+    pool = isDataSaver() ? saverPool(items) : items.slice(); // Cache-Array nie mutieren (onChanged); Datensparmodus: nur 5 Titel
     putItems(pool);
     build();
     slot.hidden = false;

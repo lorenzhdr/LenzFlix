@@ -7,6 +7,7 @@ import { isMobile, isNarrow, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js';
 import { getLibraries } from '../../shared/libraries.js';
+import { createDataSaverButton } from '../../shared/dsbtn.js';
 import { getCollections } from '../../shared/collections.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { hubHref, titleHref, tvModeHref } from '../../shared/routes.js';
@@ -226,6 +227,9 @@ function tvLink() {
   return a;
 }
 
+/** Datensparmodus-Symbol (nur mit html.lfx-datasaver sichtbar, CSS). */
+const dsLink = () => createDataSaverButton({ className: 'lfx-prime-header__icon' });
+
 function build() {
   const logo = h('a', { class: 'lfx-prime-header__logo', href: '#/home', 'aria-label': 'LENZPRIME – Startseite' });
   const nav = h('nav', { class: 'lfx-prime-header__nav', 'aria-label': 'Hauptnavigation' });
@@ -256,7 +260,7 @@ function build() {
   });
   avatar.addEventListener('click', () => toggleProfile(avatar));
 
-  const right = h('div', { class: 'lfx-prime-header__right' }, [searchBtn, tvLink(), gridWrap, listLink, avatar]);
+  const right = h('div', { class: 'lfx-prime-header__right' }, [searchBtn, tvLink(), dsLink(), gridWrap, listLink, avatar]);
   const bar = h('div', { class: 'lfx-prime-header__bar' }, [logo, nav, right]);
   state.el.replaceChildren(bar);
   state.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
@@ -282,7 +286,7 @@ function buildMobile(route) {
     back.addEventListener('click', goBack);
     left = [back, h('h1', { class: 'lfx-prime-header__title' }, mobileTitle(route, state.libs))];
   }
-  const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [tvLink(), avatar])]);
+  const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [tvLink(), dsLink(), avatar])]);
   const kids = [bar];
   if (kind === 'home') kids.push(h('nav', { class: 'lfx-prime-header__pills', 'aria-label': 'Filme und Serien' }));
   state.el.replaceChildren(...kids);

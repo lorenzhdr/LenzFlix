@@ -11,6 +11,8 @@ import { isModern, isTv, isNavCompact } from '../core/layout.js';
 import * as stats from '../core/stats.js';
 import { isTheme } from '../core/theme.js';
 import { openThemePicker } from '../core/themepicker.js';
+import { dataSaverAvailable } from '../core/datasaver.js';
+import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
 import { buildNavModel, navItems, activeKey } from './nav.js';
 
 const { STATS_LABEL } = stats;
@@ -38,6 +40,7 @@ export function overlayItems(model) {
   const statsUrl = statsLink();
   if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
   items.push({ key: 'design', label: 'Design Einstellungen', badge: 'Beta', action: 'design' });
+  if (dataSaverAvailable()) items.push({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver' });
   return items;
 }
 
@@ -138,6 +141,7 @@ function render() {
 
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
+      it.action === 'datasaver' ? switchButton(dataSaverItem(), { className: 'lfx-mnav-overlay__link lfx-mnav-overlay__link--datasaver', role: 'switch' }) :
       it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, 'aria-label': badgedName(it.label, it.badge), dataset: { action: it.action } }, [it.label, it.badge ? badgePill(it.badge) : null]) :
       // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
       h('a', { class: `lfx-mnav-overlay__link${it.external ? ' lfx-mnav-overlay__link--stats' : ''}`, href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
@@ -186,7 +190,7 @@ export const mobilenavFeature = {
     // Klick auf einen Eintrag navigiert (Hash) und schließt das Overlay
     const onOverlayClick = (e) => {
       const t = e.target.closest && e.target.closest('a, button[data-action]');
-      if (!t) return;
+      if (!t || (t.dataset && t.dataset.key === 'datasaver')) return; // Schalter: Overlay bleibt offen
       const opener = state.returnFocus || state.catBtn;
       closeOverlay({ restoreFocus: false });
       if (t.dataset && t.dataset.action === 'design') openThemePicker({ returnFocus: opener });

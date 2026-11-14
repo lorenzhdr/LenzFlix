@@ -2,6 +2,7 @@
 // Einträge: Nutzer-Chip, „Neu & beliebt“, Bibliotheken, dann profileEntries() (Statistik, Design, Einstellungen, Dashboard, Abmelden).
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../../core/dom.js';
 import { attachSwipeClose } from '../../core/swipe.js';
+import { switchButton } from '../../core/switch.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { hubHref } from '../../shared/routes.js';
@@ -32,6 +33,9 @@ export function closeProfileSheet({ restoreFocus = true } = {}) {
 }
 
 function entryNode(it, close) {
+  if (it.switch) {
+    return switchButton(it, { className: 'lfx-prime-psheet__item lfx-prime-psheet__item--switch', role: 'switch', labelClass: 'lfx-prime-psheet__label' });
+  }
   const kids = [h('span', { class: 'lfx-prime-psheet__label' }, it.label)];
   if (it.badge) kids.push(badgePill(it.badge));
   const aria = badgedName(it.label, it.badge);

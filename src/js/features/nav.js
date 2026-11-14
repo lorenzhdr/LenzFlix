@@ -9,6 +9,8 @@ import * as stats from '../core/stats.js';
 import { isTheme } from '../core/theme.js';
 import { openThemePicker } from '../core/themepicker.js';
 import { mountAmbient, unmountAmbient, setAmbient } from '../core/ambient.js';
+import { dataSaverAvailable, DATASAVER_EVENT } from '../core/datasaver.js';
+import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
 
 export { setAmbient };
 
@@ -25,7 +27,7 @@ const FOLD_GAP = 16;
 const FOLD_RESERVE = 180;
 // Rechte Symbolgruppe der AppBar (SyncPlay, Cast, Suche, Avatar) + unser TV-Symbol (liegt fest im body)
 const TOOLBAR_SEL = 'header.MuiAppBar-root > .MuiToolbar-root:first-child';
-const RIGHT_SEL = `${TOOLBAR_SEL} .MuiIconButton-root, ${TOOLBAR_SEL} a[href="#/search"], ${TOOLBAR_SEL} button[aria-haspopup], .lfx-tvbtn`;
+const RIGHT_SEL = `${TOOLBAR_SEL} .MuiIconButton-root, ${TOOLBAR_SEL} a[href="#/search"], ${TOOLBAR_SEL} button[aria-haspopup], .lfx-tvbtn, .lfx-dsbtn`;
 
 /** Route-URL einer Bibliothek (spiegelt appRouter.getRouteUrl für das Modern-Layout). */
 export function viewUrl(view) {
@@ -206,6 +208,9 @@ function render() {
     if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
     const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem', 'aria-label': badgedName('Design Einstellungen', 'Beta') }, ['Design Einstellungen', badgePill('Beta')]);
     entries.push(designBtn);
+    // Datensparmodus: Schalterzeile (kein Nav-Punkt, nie eingeklappt); Klick schließt das Menü nicht
+    const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: 'lfx-nav__menu-item lfx-nav__menu-item--datasaver' }) : null;
+    if (dsBtn) entries.push(dsBtn);
     const menu = h('div', { class: 'lfx-nav__menu', role: 'menu', id: 'lfx-nav-menu' }, entries);
     const btn = h('button', {
       type: 'button',
@@ -224,7 +229,7 @@ function render() {
         setMenu(false);
         btn.focus();
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden])')];
+        const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden]), [role="menuitemcheckbox"]')];
         const i = items.indexOf(document.activeElement);
         const next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
         setMenu(true);
@@ -232,7 +237,9 @@ function render() {
         e.preventDefault();
       }
     });
-    menu.addEventListener('click', () => setMenu(false));
+    menu.addEventListener('click', (e) => {
+      if (!(dsBtn && dsBtn.contains(e.target))) setMenu(false);
+    });
     designBtn.addEventListener('click', () => {
       setMenu(false);
       openThemePicker({ returnFocus: btn });
@@ -289,6 +296,9 @@ export const navFeature = {
     );
     window.addEventListener('resize', scheduleFit);
     state.cleanups.push(() => window.removeEventListener('resize', scheduleFit));
+    // Datensparmodus-Symbol erscheint/verschwindet (CSS): Leiste neu einpassen; Menüzeile bei Design-Wechsel nachziehen
+    window.addEventListener(DATASAVER_EVENT, scheduleFit);
+    state.cleanups.push(() => window.removeEventListener(DATASAVER_EVENT, scheduleFit));
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFit);
     watchToolbar();
     onScroll();

@@ -139,6 +139,10 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header_
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__flyout-wrap.is-open > .lfx-prime-header__icon {
   background: var(--lfx-pill-active);
 }
+/* Datensparmodus-Symbol: nur bei aktivem Modus sichtbar (erbt die Icon-Optik) */
+html.lfx-js.lfx-theme-prime:not(.layout-tv):not(.lfx-datasaver) #lfx-prime-header .lfx-dsbtn {
+  display: none;
+}
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__avatar {
   width: 34px;
   height: 34px;

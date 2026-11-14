@@ -1,0 +1,138 @@
+/* LenzFlix · js-ui/switch: iOS-Schalter (core/switch.js) in Menüzeilen + Datensparmodus-Symbol (.lfx-dsbtn) der Kopfleisten.
+   Greift nur unter html.lfx-js:not(.layout-tv). AN-Farbe = Akzent des Designs (--lfx-red: flix rot, plus/prime blau). */
+html.lfx-js:not(.layout-tv) .lfx-switch {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 42px;
+  height: 26px;
+  border-radius: 13px;
+  background: rgb(120 120 128 / 0.45);
+}
+html.lfx-js:not(.layout-tv) .lfx-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+html.lfx-js:not(.layout-tv) .is-on > .lfx-switch {
+  background: var(--lfx-red);
+}
+html.lfx-js:not(.layout-tv) .is-on > .lfx-switch .lfx-switch__knob {
+  transform: translateX(16px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.lfx-js:not(.layout-tv) .lfx-switch {
+    transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+  }
+  html.lfx-js:not(.layout-tv) .lfx-switch__knob {
+    transition: transform var(--lfx-dur-fast) var(--lfx-ease);
+  }
+}
+
+/* Schalter-Zeilen: Beschriftung links, Schieber rechts */
+html.lfx-js:not(.layout-tv) .lfx-popover__item--switch,
+html.lfx-js:not(.layout-tv) .lfx-sheet__item--switch,
+html.lfx-js:not(.layout-tv) .lfx-prime-psheet__item--switch {
+  justify-content: space-between;
+  gap: 16px;
+}
+html.lfx-js #lfx-nav .lfx-nav__menu-item--datasaver {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+html.lfx-js .lfx-mnav-overlay__link--datasaver {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* Hinweiszeile im Mini-Popover des Symbols */
+html.lfx-js .lfx-popover__note {
+  box-sizing: border-box;
+  padding: 8px 12px 6px;
+  color: var(--lfx-text-muted);
+  font: 400 var(--lfx-fs-meta) / 1.3 var(--lfx-font);
+  white-space: nowrap;
+}
+
+/* Symbol: standardmäßig weg, sichtbar nur bei aktivem Modus (html.lfx-datasaver) */
+html.lfx-js:not(.layout-tv) .lfx-dsbtn {
+  display: none;
+}
+html.lfx-js.lfx-datasaver:not(.layout-tv) .lfx-dsbtn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* flix: fixiert links neben dem TV-Symbol (#lfx-tvm-btn: Gutter + 98 px), native Suche rückt 40 px weiter ab */
+html.lfx-js.lfx-datasaver.lfx-dsbtn-on.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"] {
+  margin-inline-start: 80px;
+}
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
+  position: fixed;
+  top: 0;
+  right: calc(var(--lfx-gutter) + 138px);
+  z-index: 1101;
+  box-sizing: border-box;
+  width: 40px;
+  height: var(--lfx-header-h);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lfx-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn svg {
+  box-sizing: content-box;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg,
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn[aria-expanded="true"] svg {
+  background-color: rgb(255 255 255 / 0.1);
+}
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: -4px;
+  border-radius: 50%;
+}
+@media (max-width: 899px) {
+  html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
+    top: env(safe-area-inset-top, 0px);
+    height: 56px;
+    right: calc(4vw + 138px);
+  }
+}
+@media (max-width: 799px) {
+  html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
+    right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 124px);
+  }
+}

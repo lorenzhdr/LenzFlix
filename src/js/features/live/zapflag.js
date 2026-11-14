@@ -1,6 +1,8 @@
 // Messanzeige für LENZ LIVE und TV-Modus: Hash-Parameter lfxdebug=1 schaltet sie ein und merkt sich das in localStorage
 // (Key lfx-zapstats), lfxdebug=0 löscht es. Ohne Parameter gilt der gespeicherte Wert. Vertrag: docs/live.md („Messanzeige“).
 import { parseHash } from '../../core/router.js';
+import { netOk } from '../../core/net.js';
+import { isDataSaver } from '../../core/datasaver.js';
 
 export const ZAP_KEY = 'lfx-zapstats';
 export const ZAP_WARM_KEY = 'lfx-zapwarm';
@@ -25,13 +27,6 @@ export function zapStatsEnabled() {
   }
 }
 
-/** false bei Datensparen, Mobilfunk oder langsamem Netz; ohne API (Safari/Firefox) true (Regel wie features/rows/prefetch.js). */
-function netOk() {
-  const c = typeof navigator !== 'undefined' ? navigator.connection : null;
-  if (!c) return true;
-  return !(c.saveData || c.type === 'cellular' || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ''));
-}
-
 /**
  * Vorwärmen der Nachbarsender: Standard AN. Hash lfxwarm=0 schaltet dauerhaft aus (localStorage lfx-zapwarm = '0'), lfxwarm=1 wieder an.
  * Aus bei Datensparen/Mobilfunk/langsamem Netz. Wird zur Laufzeit ausgewertet (deps.zapWarm ist ein Getter). docs/live.md „Vorwärmen“.
@@ -45,12 +40,16 @@ export function zapWarmEnabled() {
   } catch {
     off = v === '0'; // Speicher gesperrt: nur für diese Sitzung
   }
-  return !off && netOk();
+  return !off && netOk() && !isDataSaver(); // isDataSaver: nur flix/plus/prime, unter LENZ LIVE immer false
 }
 
-/** Setzt deps.zapWarm als Getter (Spread kopiert Getter nur als Wert, daher nach dem Zusammenbauen der deps aufrufen). */
+/**
+ * Setzt deps.zapWarm und deps.zapPrefetch als Getter (Spread kopiert Getter nur als Wert, daher nach dem Zusammenbauen der deps aufrufen).
+ * zapPrefetch = false bei aktivem Datensparmodus (TV-Modus sperrt dann die PlaybackInfo-Vorauflösung der Nachbarn; unter LENZ LIVE immer true).
+ */
 export function defineZapWarm(deps) {
   Object.defineProperty(deps, 'zapWarm', { get: zapWarmEnabled, enumerable: true, configurable: true });
+  Object.defineProperty(deps, 'zapPrefetch', { get: () => !isDataSaver(), enumerable: true, configurable: true });
   return deps;
 }
 

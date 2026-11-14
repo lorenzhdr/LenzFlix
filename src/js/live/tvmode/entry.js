@@ -191,6 +191,7 @@ export function create(host, deps, opts = {}) {
       if (pip) pip.hold();
       if (isOn()) armWatch();
     },
+    releaseWarm() { if (ctl && !disposed) { try { ctl.releaseWarm(); } catch { /* egal */ } } },
     isOn,
     isPip: () => !!(pip && pip.active()),
     dispose() {

@@ -5,6 +5,7 @@ import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
+import { isDataSaver } from '../../core/datasaver.js';
 import { play } from '../../core/playback.js';
 import { canDownload } from '../../core/download.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
@@ -452,7 +453,7 @@ async function load(id) {
     if (s.dead || !src) return;
     s.trailerSrc = src;
     s.trailerBtn.hidden = false;
-    if (reducedMotion() || isMobile()) return; // Handy: kein Autoplay (Datenverbrauch), der Trailer-Knopf startet ihn
+    if (reducedMotion() || isMobile() || isDataSaver()) return; // Handy/Datensparmodus: kein Autoplay, der Trailer-Knopf startet ihn
     const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS);
     s.cleanups.push(() => clearTimeout(t));
   }).catch(() => {});

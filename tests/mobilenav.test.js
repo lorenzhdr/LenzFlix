@@ -35,15 +35,16 @@ describe('mobilenav (rein)', () => {
   const model = buildNavModel(views);
   it('Pills und Overlay-Einträge', () => {
     expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
-    expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik', 'Design Einstellungen']);
+    expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik', 'Design Einstellungen', 'Datensparmodus']);
   });
   it('Statistik-Eintrag nur mit Konfiguration, nicht in den Pills', () => {
     expect(overlayItems(model).some((i) => i.label === 'Meine Statistik')).toBe(false);
     window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
     try {
       const items = overlayItems(model);
-      expect(items.at(-1)).toMatchObject({ key: 'design', label: 'Design Einstellungen', badge: 'Beta', action: 'design' });
-      expect(items.at(-2)).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/?theme=flix' });
+      expect(items.at(-1)).toMatchObject({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver' });
+      expect(items.at(-2)).toMatchObject({ key: 'design', label: 'Design Einstellungen', badge: 'Beta', action: 'design' });
+      expect(items.at(-3)).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/?theme=flix' });
       expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
     } finally {
       delete window.LenzFlixConfig;
@@ -111,13 +112,13 @@ describe('mobilenav (DOM)', () => {
     expect(mobilenav.match(parseHash('#/home'))).toBe(false);
   });
 
-  it('Design-Eintrag ist letzter Button; Klick schließt das Overlay und öffnet den Picker', async () => {
+  it('Design-Eintrag ist vorletzter Button (danach der Datensparmodus-Schalter); Klick schließt das Overlay und öffnet den Picker', async () => {
     mobilenav.mount(parseHash('#/home'));
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(7));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(8));
     const overlay = document.getElementById('lfx-mnav-overlay');
     document.querySelector('.lfx-mnav__pill--cats').click();
     expect(overlay.hidden).toBe(false);
-    const btn = [...overlay.querySelectorAll('.lfx-mnav-overlay__link')].at(-1);
+    const btn = [...overlay.querySelectorAll('.lfx-mnav-overlay__link')].at(-2);
     expect(btn.tagName).toBe('BUTTON');
     expect(btn.type).toBe('button');
     expect(btn.dataset.action).toBe('design');
@@ -153,7 +154,7 @@ describe('mobilenav (DOM)', () => {
     window.LenzFlixConfig = { statsUrl: '/lenzflix-stats/' };
     try {
       mobilenav.mount(parseHash('#/home'));
-      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(8));
+      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(9));
       const a = [...document.querySelectorAll('.lfx-mnav-overlay__link')].find((x) => x.textContent === 'Meine Statistik');
       expect(a.getAttribute('href')).toBe('/lenzflix-stats/?theme=flix');
       expect(a.dataset.key).toBeUndefined();
@@ -203,7 +204,7 @@ describe('mobilenav (DOM)', () => {
 
   it('Overlay ohne Konfiguration: kein Statistik-Link', async () => {
     mobilenav.mount(parseHash('#/home'));
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(7));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-overlay__link').length).toBe(8));
     expect([...document.querySelectorAll('.lfx-mnav-overlay__link')].some((x) => x.textContent === 'Meine Statistik')).toBe(false);
   });
 });

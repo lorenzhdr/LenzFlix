@@ -201,7 +201,7 @@ describe('prime-header am Handy', () => {
     expect(el.querySelector('.lfx-prime-header__logo')).not.toBeNull();
     expect(el.querySelector('.lfx-prime-header__nav')).toBeNull();
     const right = [...el.querySelector('.lfx-prime-header__right').children];
-    expect(right.map((n) => n.dataset.key || n.className)).toEqual(['tv', 'lfx-prime-header__avatar']);
+    expect(right.map((n) => n.dataset.key || n.className)).toEqual(['tv', 'lfx-dsbtn lfx-prime-header__icon', 'lfx-prime-header__avatar']);
     expect(right[0].getAttribute('aria-label')).toBe('TV');
     const pills = [...el.querySelectorAll('.lfx-prime-header__pill')];
     expect(pills.map((p) => p.textContent)).toEqual(['Filme', 'Serien']);

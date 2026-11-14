@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
+vi.mock('../src/js/core/datasaver.js', () => ({
+  isDataSaver: () => ds.on,
+  onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+}));
+const setSaver = (v) => { ds.on = v; [...ds.subs].forEach((cb) => cb(v)); };
+
 import { allowPrefetch, heroSettled, startRowPrefetch } from '../src/js/features/rows/prefetch.js';
 
 function setConn(c) {
@@ -266,6 +273,47 @@ describe('rows/prefetch', () => {
       inst = startRowPrefetch({ slot, pending, load: bad, hero: () => hero });
       await tick(8000);
       expect(calls).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('Datensparmodus (Pause-Grund)', () => {
+    afterEach(() => { ds.on = false; ds.subs.clear(); });
+
+    it('an vor go: nichts startet; aus: nach 2 s lädt die oberste offene Zeile', async () => {
+      ds.on = true;
+      addPending('a', 'b');
+      start();
+      await tick(20000);
+      expect(calls).toEqual([]);
+      setSaver(false);
+      await tick(1900);
+      expect(calls).toEqual([]);
+      await tick(300);
+      expect(calls).toEqual(['a']);
+    });
+
+    it('an mitten in einer Zeile: sie wird fertig, die nächste wartet; aus: weiter an derselben Stelle', async () => {
+      addPending('a', 'b');
+      start();
+      await tick(1000);
+      expect(calls).toEqual(['a']);
+      setSaver(true);
+      resolvers[0]();
+      await tick(10000);
+      expect(calls).toEqual(['a']);
+      setSaver(false);
+      await tick(2300);
+      expect(calls).toEqual(['a', 'b']);
+    });
+
+    it('stop() meldet das Abo ab; Netzregel bleibt über core/net.js (saveData sperrt weiter)', async () => {
+      addPending('a');
+      start();
+      expect(ds.subs.size).toBe(1);
+      inst.stop();
+      expect(ds.subs.size).toBe(0);
+      setConn({ saveData: true });
+      expect(allowPrefetch()).toBe(false);
     });
   });
 

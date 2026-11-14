@@ -3672,8 +3672,11 @@
       }
     }
     const prefetchTarget = (itemId, signal) => prefetchItem(player, itemId, signal);
+    const nbPlayer = player && typeof player === "object" && typeof player.prefetch === "function" ? Object.assign(Object.create(player), {
+      prefetch: (id, o2) => deps && deps.zapPrefetch === false ? Promise.resolve({ ok: false, reason: "off" }) : player.prefetch(id, o2)
+    }) : player;
     const nb = createNeighbors({
-      player,
+      player: nbPlayer,
       scheduler,
       clock,
       deps,
@@ -4011,6 +4014,11 @@
         return { zaps: zaps.map((z) => ({ ...z, ...z.timing ? { timing: { ...z.timing } } : {} })), lastMs: ms.length ? ms[ms.length - 1] : null, avgMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null };
       },
       on: (name, fn) => em.on(name, fn),
+      /** Datensparmodus an: Nachbar-Takt stoppen, vorgewärmte Sitzungen sofort beenden (läuft der Sender, bleibt er unberührt). */
+      releaseWarm() {
+        nb.stop();
+        if (player) safe2(() => player.releaseWarm && player.releaseWarm());
+      },
       dispose() {
         if (disposed) return;
         stop();
@@ -6968,6 +6976,14 @@
         app.resume(h);
         if (pip) pip.hold();
         if (isOn()) armWatch();
+      },
+      releaseWarm() {
+        if (ctl && !disposed) {
+          try {
+            ctl.releaseWarm();
+          } catch {
+          }
+        }
       },
       isOn,
       isPip: () => !!(pip && pip.active()),

@@ -12,6 +12,12 @@ vi.mock('../src/js/core/api.js', async () => {
   };
 });
 
+const ds = vi.hoisted(() => ({ on: false }));
+vi.mock('../src/js/core/datasaver.js', () => ({
+  isDataSaver: () => ds.on,
+  onDataSaverChange: () => () => {},
+}));
+
 import * as api from '../src/js/core/api.js';
 import { clearCache } from '../src/js/core/cache.js';
 import { createHero, taglineFor, loadHomeHeroPool, HERO_INTERVAL } from '../src/js/features/plus/hero.js';
@@ -130,5 +136,27 @@ describe('loadHomeHeroPool', () => {
     const pool = await loadHomeHeroPool();
     expect(pool.map((i) => i.Id).sort()).toEqual(['id1', 'id5', 'id6']);
     expect(api.getItems.mock.calls[0][0].Fields).toContain('Taglines');
+  });
+});
+
+describe('createHero: Datensparmodus', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); document.body.innerHTML = ''; ds.on = false; });
+  const many = Array.from({ length: 10 }, (_, i) => mk(i + 1));
+  const loading = (hero) => [...hero.el.querySelectorAll('.lfx-plus-hero__img')].map((i) => i.getAttribute('loading'));
+
+  it('aus: alle Titel, die ersten 3 Bilder eager', () => {
+    const hero = createHero(many);
+    expect(hero.el.querySelectorAll('.lfx-plus-hero__slide')).toHaveLength(10);
+    expect(loading(hero).slice(0, 4)).toEqual(['eager', 'eager', 'eager', 'lazy']);
+    hero.destroy();
+  });
+  it('an: höchstens 5 Titel, nur das erste Bild eager', () => {
+    ds.on = true;
+    const hero = createHero(many);
+    expect(hero.el.querySelectorAll('.lfx-plus-hero__slide')).toHaveLength(5);
+    expect(loading(hero)).toEqual(['eager', 'lazy', 'lazy', 'lazy', 'lazy']);
+    expect(hero.el.querySelectorAll('.lfx-plus-hero__dot')).toHaveLength(5);
+    hero.destroy();
   });
 });

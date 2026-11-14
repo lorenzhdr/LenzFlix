@@ -19,7 +19,7 @@ Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dun
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.11.8/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.12.0/dist/lenzflix.min.css");
 ```
 
 - `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.11.8/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.12.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -59,6 +59,13 @@ Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das einge
 
 **Wichtig bei Updates:** CSS-`@import` und JS-URL immer auf **denselben** Release-Tag setzen. Das Design-CSS wird aus dem Pfad des eingebundenen CSS abgeleitet. Steht das CSS noch auf einer älteren Version (ohne `lenzplus`/`lenzprime`/`lenzretro`), schlägt das Nachladen fehl. Dann fällt LenzFlix auf LENZFLIX zurück, und der Design-Dialog ist ungestylt.
 
+### Datensparmodus (LENZFLIX, LENZ+, LENZPRIME)
+
+Für Mobilfunk und knappe Leitungen: Die Zeile **Datensparmodus** mit Schieber steht direkt unter „Design Einstellungen“ (LENZFLIX: „Mehr“ bzw. Handy-Menü, LENZ+/LENZPRIME: Profilmenü). Solange er an ist, zeigt die Kopfleiste ein kleines Symbol zum schnellen Ausschalten.
+
+- **Weniger Daten im Hintergrund:** keine automatischen Trailer (die Trailer-Knöpfe funktionieren weiter), nur 5 Titel in der Hero-Rotation, Bilder in 2/3 der Größe, keine Vorladung unterer Startseiten-Zeilen, im TV-Modus kein Vorwärmen der Nachbarsender (Umschalten dauert dadurch etwas länger).
+- **Unverändert:** Videoqualität beim Abspielen. Der Modus gilt pro Gerät und Benutzer und ist standardmäßig aus; in LENZ//84, VIDEOTHEK LENZ und LENZ LIVE gibt es ihn nicht.
+
 ### TV-Modus (LENZFLIX, LENZ+, LENZPRIME)
 
 Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (neben der Suche, am Desktop und am Handy) öffnet `#/home?lfx=tv`. Dort laufen dieselben 18 Sender mit demselben Programm wie in LENZ LIVE, aber ohne Fernseher-Optik.
@@ -76,7 +83,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Im Menü von LENZ LIVE (Administratoren) gibt es eine Kopierzeile mit der gewünschten Belegung. Diese Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.11.8/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.12.0/dist/lenzflix.min.css");
 :root { --lfx-live-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -151,7 +158,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.11.8/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.12.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

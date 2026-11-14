@@ -190,9 +190,14 @@
   function first(arr) {
     return Array.isArray(arr) && arr.length ? arr[0] : null;
   }
+  var imageScale = 1;
+  function setImageScale(f) {
+    imageScale = f > 0 && f <= 1 ? f : 1;
+  }
+  var scaled = (v) => v && imageScale !== 1 ? Math.max(1, Math.round(v * imageScale)) : v;
   function imageUrlFor(id, { type = "Primary", maxWidth, maxHeight, quality = 90, tag } = {}) {
     if (!id) return null;
-    return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth, maxHeight, quality, tag });
+    return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth: scaled(maxWidth), maxHeight: scaled(maxHeight), quality, tag });
   }
   function imageUrl(item, { type = "Primary", maxWidth, maxHeight, quality = 90 } = {}) {
     if (!item) return null;
@@ -391,7 +396,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.8";
+  var VERSION = "1.12.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -1971,6 +1976,67 @@
     if (stop) stop();
   }
 
+  // src/js/core/datasaver.js
+  var KEY = "lfx.datasaver.";
+  var DATASAVER_EVENT = "lfx:datasaver";
+  var DATASAVER_CLASS = "lfx-datasaver";
+  var DATASAVER_THEMES = ["flix", "plus", "prime"];
+  var DATASAVER_SCALE = 2 / 3;
+  var active = false;
+  var lastUid2;
+  var offTheme = null;
+  var storageKey = () => `${KEY}${getUserId() || "anon"}`;
+  function isDataSaverOn() {
+    try {
+      return window.localStorage.getItem(storageKey()) === "1";
+    } catch {
+      return false;
+    }
+  }
+  function dataSaverAvailable() {
+    return DATASAVER_THEMES.includes(getTheme());
+  }
+  function isDataSaver() {
+    return dataSaverAvailable() && isDataSaverOn();
+  }
+  function apply() {
+    const next = isDataSaver();
+    document.documentElement.classList.toggle(DATASAVER_CLASS, next);
+    setImageScale(next ? DATASAVER_SCALE : 1);
+    if (next === active) return;
+    active = next;
+    window.dispatchEvent(new CustomEvent(DATASAVER_EVENT, { detail: { active } }));
+  }
+  function setDataSaver(on) {
+    try {
+      window.localStorage.setItem(storageKey(), on ? "1" : "0");
+    } catch {
+    }
+    apply();
+    return isDataSaverOn();
+  }
+  function onDataSaverChange(cb) {
+    const fn = (e) => cb(!!(e && e.detail && e.detail.active));
+    window.addEventListener(DATASAVER_EVENT, fn);
+    return () => window.removeEventListener(DATASAVER_EVENT, fn);
+  }
+  function syncDataSaver() {
+    if (!offTheme) offTheme = onThemeChange(() => apply());
+    const uid = getUserId() || null;
+    if (uid !== lastUid2) {
+      lastUid2 = uid;
+      apply();
+    }
+  }
+  function destroyDataSaver() {
+    if (offTheme) offTheme();
+    offTheme = null;
+    lastUid2 = void 0;
+    active = false;
+    document.documentElement.classList.remove(DATASAVER_CLASS);
+    setImageScale(1);
+  }
+
   // src/js/shared/routes.js
   var enc = encodeURIComponent;
   var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
@@ -2657,14 +2723,14 @@
       }
       const first2 = nodes[0];
       const last = nodes[nodes.length - 1];
-      const active4 = document.activeElement;
-      if (!dialog.contains(active4) || active4 === dialog) {
+      const active5 = document.activeElement;
+      if (!dialog.contains(active5) || active5 === dialog) {
         e.preventDefault();
         (e.shiftKey ? last : first2).focus();
-      } else if (e.shiftKey && active4 === first2) {
+      } else if (e.shiftKey && active5 === first2) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && active4 === last) {
+      } else if (!e.shiftKey && active5 === last) {
         e.preventDefault();
         first2.focus();
       }
@@ -2721,6 +2787,45 @@
     resetAmbient();
   }
 
+  // src/js/core/switch.js
+  var switchVisual = () => h("span", { class: "lfx-switch", "aria-hidden": "true" }, [h("span", { class: "lfx-switch__knob" })]);
+  function setSwitchState(btn3, on) {
+    btn3.classList.toggle("is-on", Boolean(on));
+    btn3.setAttribute("aria-checked", String(Boolean(on)));
+  }
+  function bindSwitch(btn3, item) {
+    setSwitchState(btn3, item.checked);
+    btn3.addEventListener("click", () => {
+      const next = btn3.getAttribute("aria-checked") !== "true";
+      setSwitchState(btn3, next);
+      if (typeof item.onToggle === "function") item.onToggle(next);
+    });
+    if (typeof item.watch === "function") {
+      const off = item.watch((on) => {
+        if (!btn3.isConnected) off();
+        else setSwitchState(btn3, on);
+      });
+    }
+    return btn3;
+  }
+  function switchButton(item, { className, role = "menuitemcheckbox", labelClass } = {}) {
+    const btn3 = h("button", { type: "button", class: className, role, "aria-label": item.label, dataset: { key: item.key || "" } }, [
+      labelClass ? h("span", { class: labelClass }, item.label) : item.label,
+      switchVisual()
+    ]);
+    return bindSwitch(btn3, item);
+  }
+
+  // src/js/shared/dsswitch.js
+  var dataSaverItem = () => ({
+    key: "datasaver",
+    label: "Datensparmodus",
+    switch: true,
+    checked: isDataSaverOn(),
+    onToggle: (next) => setDataSaver(next),
+    watch: (cb) => onDataSaverChange(() => cb(isDataSaverOn()))
+  });
+
   // src/js/features/nav.js
   var { STATS_LABEL: STATS_LABEL2 } = stats_exports;
   var statsLink = () => typeof statsHref === "function" ? statsHref() : getStatsUrl();
@@ -2732,7 +2837,7 @@
   var FOLD_GAP = 16;
   var FOLD_RESERVE = 180;
   var TOOLBAR_SEL = "header.MuiAppBar-root > .MuiToolbar-root:first-child";
-  var RIGHT_SEL = `${TOOLBAR_SEL} .MuiIconButton-root, ${TOOLBAR_SEL} a[href="#/search"], ${TOOLBAR_SEL} button[aria-haspopup], .lfx-tvbtn`;
+  var RIGHT_SEL = `${TOOLBAR_SEL} .MuiIconButton-root, ${TOOLBAR_SEL} a[href="#/search"], ${TOOLBAR_SEL} button[aria-haspopup], .lfx-tvbtn, .lfx-dsbtn`;
   function viewUrl(view) {
     const id = view.Id;
     const ct = view.CollectionType;
@@ -2897,6 +3002,8 @@
       if (statsUrl) entries.push(h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--stats", role: "menuitem", href: statsUrl }, STATS_LABEL2));
       const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--design", role: "menuitem", "aria-label": badgedName("Design Einstellungen", "Beta") }, ["Design Einstellungen", badgePill("Beta")]);
       entries.push(designBtn);
+      const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: "lfx-nav__menu-item lfx-nav__menu-item--datasaver" }) : null;
+      if (dsBtn) entries.push(dsBtn);
       const menu = h("div", { class: "lfx-nav__menu", role: "menu", id: "lfx-nav-menu" }, entries);
       const btn3 = h("button", {
         type: "button",
@@ -2915,7 +3022,7 @@
           setMenu(false);
           btn3.focus();
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden])')];
+          const items = [...menu.querySelectorAll('[role="menuitem"]:not([hidden]), [role="menuitemcheckbox"]')];
           const i = items.indexOf(document.activeElement);
           const next = e.key === "ArrowDown" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
           setMenu(true);
@@ -2923,7 +3030,9 @@
           e.preventDefault();
         }
       });
-      menu.addEventListener("click", () => setMenu(false));
+      menu.addEventListener("click", (e) => {
+        if (!(dsBtn && dsBtn.contains(e.target))) setMenu(false);
+      });
       designBtn.addEventListener("click", () => {
         setMenu(false);
         openThemePicker({ returnFocus: btn3 });
@@ -2974,6 +3083,8 @@
       );
       window.addEventListener("resize", scheduleFit);
       state2.cleanups.push(() => window.removeEventListener("resize", scheduleFit));
+      window.addEventListener(DATASAVER_EVENT, scheduleFit);
+      state2.cleanups.push(() => window.removeEventListener(DATASAVER_EVENT, scheduleFit));
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFit);
       watchToolbar();
       onScroll();
@@ -3022,6 +3133,7 @@
     const statsUrl = statsLink2();
     if (statsUrl) items.push({ key: "stats", label: STATS_LABEL3, href: statsUrl, external: true });
     items.push({ key: "design", label: "Design Einstellungen", badge: "Beta", action: "design" });
+    if (dataSaverAvailable()) items.push({ key: "datasaver", label: "Datensparmodus", action: "datasaver" });
     return items;
   }
   var state3 = {
@@ -3114,7 +3226,7 @@
       "ul",
       { class: "lfx-mnav-overlay__list" },
       overlayItems(state3.model).map((it) => h("li", null, [
-        it.action ? h("button", { type: "button", class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, "aria-label": badgedName(it.label, it.badge), dataset: { action: it.action } }, [it.label, it.badge ? badgePill(it.badge) : null]) : (
+        it.action === "datasaver" ? switchButton(dataSaverItem(), { className: "lfx-mnav-overlay__link lfx-mnav-overlay__link--datasaver", role: "switch" }) : it.action ? h("button", { type: "button", class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, "aria-label": badgedName(it.label, it.badge), dataset: { action: it.action } }, [it.label, it.badge ? badgePill(it.badge) : null]) : (
           // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
           h("a", { class: `lfx-mnav-overlay__link${it.external ? " lfx-mnav-overlay__link--stats" : ""}`, href: it.href, ...it.external ? {} : { dataset: { key: it.key } } }, it.label)
         )
@@ -3161,7 +3273,7 @@
       state3.overlay.addEventListener("keydown", onOverlayKey);
       const onOverlayClick = (e) => {
         const t = e.target.closest && e.target.closest("a, button[data-action]");
-        if (!t) return;
+        if (!t || t.dataset && t.dataset.key === "datasaver") return;
         const opener = state3.returnFocus || state3.catBtn;
         closeOverlay({ restoreFocus: false });
         if (t.dataset && t.dataset.action === "design") openThemePicker({ returnFocus: opener });
@@ -3218,6 +3330,7 @@
   var ICON_TVMODE = svg(
     '<path fill-rule="evenodd" d="M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-3.5l.8 2H17v2H7v-2h.7l.8-2H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1z"/><circle cx="12" cy="11" r="2.2"/>'
   );
+  var ICON_DATASAVER = svg('<path d="M5 3h14v2H5z"/><path d="M11 8h2v7.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4 3.6 3.6z"/>');
 
   // src/js/features/tvbtn.js
   var ID5 = "lfx-tvm-btn";
@@ -3258,8 +3371,175 @@
   };
   var tvbtn_default = tvbtnFeature;
 
+  // src/js/core/popover.js
+  var ID6 = "lfx-popover";
+  var GAP = 8;
+  var MARGIN = 8;
+  var current3 = null;
+  function isPopoverOpen() {
+    return current3 !== null;
+  }
+  function closePopover({ restoreFocus = false } = {}) {
+    const c = current3;
+    if (!c) return;
+    current3 = null;
+    window.removeEventListener("keydown", c.onKeydown, true);
+    document.removeEventListener("click", c.onDocClick, true);
+    window.removeEventListener("resize", c.onClose);
+    window.removeEventListener("scroll", c.onScroll, true);
+    unmountPoint(c.el);
+    if (c.anchorEl) {
+      c.anchorEl.removeAttribute("aria-expanded");
+      if (c.hadExpanded !== null) c.anchorEl.setAttribute("aria-expanded", c.hadExpanded);
+      if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === "function") {
+        try {
+          c.anchorEl.focus({ preventScroll: true });
+        } catch {
+        }
+      }
+    }
+  }
+  function place(el4, anchorEl, align) {
+    const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    const a = anchorEl.getBoundingClientRect();
+    const w = el4.offsetWidth;
+    const hgt = el4.offsetHeight;
+    let left = align === "start" ? a.left : a.right - w;
+    let top = a.bottom + GAP;
+    if (vw) left = Math.max(MARGIN, Math.min(left, vw - w - MARGIN));
+    if (vh && top + hgt > vh - MARGIN) top = Math.max(MARGIN, a.top - GAP - hgt);
+    el4.style.left = `${Math.round(left)}px`;
+    el4.style.top = `${Math.round(top)}px`;
+  }
+  function openPopover(anchorEl, { label, items = [], align = "end", className = "" } = {}) {
+    closePopover();
+    const el4 = mountPoint(ID6, { className: `lfx-popover${className ? ` ${className}` : ""}` });
+    el4.className = `lfx-popover${className ? ` ${className}` : ""}`;
+    el4.setAttribute("role", "menu");
+    if (label) el4.setAttribute("aria-label", label);
+    const list = items.filter((it) => it && !it.hidden);
+    const nodes = list.map((it) => {
+      if (it.note) return h("div", { class: "lfx-popover__note", role: "none", dataset: { key: it.key || "" } }, it.label);
+      const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ""}`;
+      if (it.switch) {
+        return switchButton(it, { className: `${cls} lfx-popover__item--switch`, labelClass: "lfx-popover__label" });
+      }
+      const kids = [];
+      if (it.icon) {
+        const ic = h("span", { class: "lfx-popover__icon", "aria-hidden": "true" });
+        ic.innerHTML = it.icon;
+        kids.push(ic);
+      }
+      kids.push(h("span", { class: "lfx-popover__label" }, it.label));
+      if (it.badge) kids.push(badgePill(it.badge));
+      const aria = badgedName(it.label, it.badge);
+      const node = it.href ? h("a", { class: cls, role: "menuitem", href: it.href, "aria-label": aria, dataset: { key: it.key } }, kids) : h("button", { type: "button", class: cls, role: "menuitem", "aria-label": aria, dataset: { key: it.key } }, kids);
+      node.addEventListener("click", () => {
+        closePopover();
+        if (typeof it.onClick === "function") it.onClick();
+      });
+      return node;
+    });
+    el4.replaceChildren(...nodes);
+    const focusable = nodes.filter((n) => !n.classList.contains("lfx-popover__note"));
+    const c = { el: el4, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
+    c.close = () => {
+      if (current3 === c) closePopover({ restoreFocus: true });
+    };
+    c.onClose = () => {
+      if (current3 === c) closePopover();
+    };
+    c.onScroll = (e) => {
+      if (e.target && e.target !== document && el4.contains(e.target)) return;
+      c.onClose();
+    };
+    c.onDocClick = (e) => {
+      if (el4.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
+      c.onClose();
+    };
+    c.onKeydown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        c.close();
+      } else if (e.key === "Tab") {
+        closePopover({ restoreFocus: true });
+      } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && focusable.length) {
+        const i = focusable.indexOf(document.activeElement);
+        let next;
+        if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = focusable.length - 1;
+        else if (e.key === "ArrowDown") next = i < 0 ? 0 : (i + 1) % focusable.length;
+        else next = i < 0 ? focusable.length - 1 : (i - 1 + focusable.length) % focusable.length;
+        e.preventDefault();
+        focusable[next].focus();
+      }
+    };
+    current3 = c;
+    if (anchorEl) anchorEl.setAttribute("aria-expanded", "true");
+    window.addEventListener("keydown", c.onKeydown, true);
+    document.addEventListener("click", c.onDocClick, true);
+    window.addEventListener("resize", c.onClose);
+    window.addEventListener("scroll", c.onScroll, true);
+    if (anchorEl) place(el4, anchorEl, align);
+    if (focusable[0]) focusable[0].focus({ preventScroll: true });
+    const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+    raf3(() => {
+      if (current3 === c) el4.classList.add("is-open");
+    });
+    return { el: el4, close: c.close };
+  }
+
+  // src/js/shared/dsbtn.js
+  var LABEL = "Datensparmodus an";
+  function createDataSaverButton({ className = "", el: el4 } = {}) {
+    const btn3 = el4 || h("button", { type: "button" });
+    btn3.classList.add("lfx-dsbtn");
+    if (className) btn3.classList.add(...className.split(" "));
+    btn3.setAttribute("aria-label", LABEL);
+    btn3.setAttribute("aria-haspopup", "menu");
+    btn3.title = LABEL;
+    btn3.innerHTML = ICON_DATASAVER;
+    btn3.addEventListener("click", () => {
+      if (isPopoverOpen() && btn3.getAttribute("aria-expanded") === "true") {
+        closePopover({ restoreFocus: true });
+        return;
+      }
+      openPopover(btn3, {
+        label: "Datensparmodus",
+        items: [
+          { note: true, key: "ds-note", label: "Datensparmodus ist an" },
+          { key: "ds-off", label: "Ausschalten", onClick: () => setDataSaver(false) }
+        ]
+      });
+    });
+    return btn3;
+  }
+
+  // src/js/features/dsbtn.js
+  var ID7 = "lfx-ds-btn";
+  var dsbtnFeature = {
+    name: "dsbtn",
+    match(route) {
+      return isReady() && isModern() && !isTv() && isTheme("flix") && !EXCLUDED.test(route.path);
+    },
+    mount() {
+      const el4 = mountPoint(ID7, { tag: "button" });
+      el4.type = "button";
+      createDataSaverButton({ el: el4 });
+      document.documentElement.classList.add("lfx-dsbtn-on");
+    },
+    unmount() {
+      unmountPoint(ID7);
+      document.documentElement.classList.remove("lfx-dsbtn-on");
+    }
+  };
+  var dsbtn_default = dsbtnFeature;
+
   // src/js/features/osdcenter.js
-  var ID6 = "lfx-osdc";
+  var ID8 = "lfx-osdc";
   var PAGE2 = '[id="videoOsdPage"]:not(.hide)';
   var svg2 = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
   var num = (n) => `<text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="inherit">${n}</text>`;
@@ -3342,7 +3622,7 @@
       return !isTv() && !isTheme("live") && Boolean(page() || route && route.path === "/video");
     },
     mount() {
-      el3 = mountPoint(ID6, { className: "lfx-osdc" });
+      el3 = mountPoint(ID8, { className: "lfx-osdc" });
       btns = {
         back: btn("back", "10 Sekunden zur\xFCck", ".btnRewind"),
         play: btn("play", "Abspielen", ".btnPause"),
@@ -3367,7 +3647,7 @@
       raf2 = 0;
       if (video) for (const t of ["play", "pause", "emptied"]) video.removeEventListener(t, onVideoState);
       video = null;
-      unmountPoint(ID6);
+      unmountPoint(ID8);
       el3 = null;
       btns = null;
     }
@@ -3498,17 +3778,17 @@
 
   // src/js/core/sheet.js
   var SHEET_ID = "lfx-sheet";
-  var current3 = null;
+  var current4 = null;
   function isChooserOpen() {
-    return current3 !== null;
+    return current4 !== null;
   }
   function isCurrent(c) {
-    return current3 !== null && current3 === c;
+    return current4 !== null && current4 === c;
   }
   function closeChooser() {
-    const c = current3;
+    const c = current4;
     if (!c) return;
-    current3 = null;
+    current4 = null;
     if (c.detachSwipe) c.detachSwipe();
     window.removeEventListener("keydown", c.onKeydown, true);
     c.overlay.removeEventListener("click", c.onOverlayClick);
@@ -3526,7 +3806,7 @@
     c.title.textContent = title;
     c.list.replaceChildren(
       ...entries.map(
-        ({ label, note, onClick, disabled, primary, badge: badge3 }) => h(
+        ({ label, note, onClick, disabled, primary, badge: badge3, ...rest }) => rest.switch ? switchButton({ label, ...rest }, { className: "lfx-sheet__item lfx-sheet__item--switch", role: "switch" }) : h(
           "button",
           {
             type: "button",
@@ -3572,14 +3852,14 @@
       }
       const firstEl = focusable[0];
       const lastEl = focusable[focusable.length - 1];
-      const active4 = document.activeElement;
-      if (!sheet.contains(active4)) {
+      const active5 = document.activeElement;
+      if (!sheet.contains(active5)) {
         e.preventDefault();
         firstEl.focus();
-      } else if (e.shiftKey && active4 === firstEl) {
+      } else if (e.shiftKey && active5 === firstEl) {
         e.preventDefault();
         lastEl.focus();
-      } else if (!e.shiftKey && active4 === lastEl) {
+      } else if (!e.shiftKey && active5 === lastEl) {
         e.preventDefault();
         firstEl.focus();
       }
@@ -3591,11 +3871,11 @@
     overlay.addEventListener("click", c.onOverlayClick);
     if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches) {
       c.detachSwipe = attachSwipeClose(sheet, { onClose: () => {
-        if (current3 === c) closeChooser();
+        if (current4 === c) closeChooser();
       } });
     }
     document.documentElement.classList.add("lfx-sheet-open");
-    current3 = c;
+    current4 = c;
     sheet.setAttribute("tabindex", "-1");
     sheet.focus({ preventScroll: true });
     return c;
@@ -4550,14 +4830,14 @@
     }
     const first2 = list[0];
     const last = list[list.length - 1];
-    const active4 = document.activeElement;
-    if (!state4.modal.contains(active4)) {
+    const active5 = document.activeElement;
+    if (!state4.modal.contains(active5)) {
       e.preventDefault();
       first2.focus();
-    } else if (e.shiftKey && active4 === first2) {
+    } else if (e.shiftKey && active5 === first2) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && active4 === last) {
+    } else if (!e.shiftKey && active5 === last) {
       e.preventDefault();
       first2.focus();
     }
@@ -4973,7 +5253,7 @@
   }
   function applyStartAt(v, startAt) {
     if (!(startAt > 0)) return;
-    const apply = () => {
+    const apply2 = () => {
       const d = v.duration;
       if (Number.isFinite(d) && d > 30 && d > startAt + 20) {
         try {
@@ -4982,8 +5262,8 @@
         }
       }
     };
-    if (v.readyState >= 1) apply();
-    else v.addEventListener("loadedmetadata", apply, { once: true });
+    if (v.readyState >= 1) apply2();
+    else v.addEventListener("loadedmetadata", apply2, { once: true });
   }
   function createMutedPreview(container, item, { delay = 1500, onStart, onEnd, startAt = 0 } = {}) {
     let dead = false;
@@ -5097,6 +5377,17 @@
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
       if (b[i]) out.push(b[i]);
       if (a[i]) out.push(a[i]);
+    }
+    return out;
+  }
+  var SAVER_POOL = 5;
+  function saverPool(pool, keepId = null) {
+    const list = Array.isArray(pool) ? pool : [];
+    if (list.length <= SAVER_POOL) return list.slice();
+    const out = list.slice(0, SAVER_POOL);
+    if (keepId && !out.some((it) => it.Id === keepId)) {
+      const cur3 = list.find((it) => it.Id === keepId);
+      if (cur3) out[SAVER_POOL - 1] = cur3;
     }
     return out;
   }
@@ -5269,7 +5560,7 @@
       timers.add(t);
       return t;
     };
-    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
+    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver() && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
     const paused3 = () => hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       if (slide) clearTimeout(slide.revealTimer);
@@ -5442,7 +5733,7 @@
     }
     function tryPreload() {
       const sl = slide;
-      if (!sl || disposed || sl.gen !== gen8 || sl.started || sl.failed) return;
+      if (!sl || disposed || sl.gen !== gen8 || sl.started || sl.failed || isDataSaver()) return;
       if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
       sl.started = true;
       startTrailer(sl);
@@ -5451,6 +5742,11 @@
       try {
         const t = await loadLocalTrailer(sl.item);
         if (sl.gen !== gen8 || disposed) return;
+        if (isDataSaver()) {
+          sl.failed = true;
+          setTr("");
+          return;
+        }
         if (!t) {
           sl.failed = true;
           setTr("");
@@ -5564,7 +5860,7 @@
       scheduleRotate();
       const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
       slide = sl;
-      setTr(item.LocalTrailerCount > 0 ? "wait" : "");
+      setTr(item.LocalTrailerCount > 0 && !isDataSaver() ? "wait" : "");
       const img = pic.querySelector(".lfx-bb__img");
       const onLoaded = () => {
         if (disposed || sl.gen !== gen8 || sl.imgAt) return;
@@ -5618,6 +5914,18 @@
       document.addEventListener("visibilitychange", onVis);
       cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
       cleanupFns.push(onItemsChanged(onChanged2));
+      cleanupFns.push(onDataSaverChange(onSaver));
+    }
+    function onSaver(active5) {
+      if (disposed || !card3 || !active5) return;
+      if (slide) slide.failed = true;
+      stopTrailer();
+      setTr("");
+      const cur3 = pool[index];
+      pool = saverPool(pool, cur3 && cur3.Id);
+      index = Math.max(0, cur3 ? pool.indexOf(cur3) : 0);
+      fillDots();
+      scheduleRotate();
     }
     async function init2() {
       let items = peekCached(poolKey()) || [];
@@ -5635,7 +5943,7 @@
         resetAmbient();
         return;
       }
-      pool = items.slice();
+      pool = isDataSaver() ? saverPool(items) : items.slice();
       putItems(pool);
       build11();
       slot.hidden = false;
@@ -5886,6 +6194,13 @@
     };
   }
 
+  // src/js/core/net.js
+  function netOk() {
+    const c = typeof navigator !== "undefined" ? navigator.connection : null;
+    if (!c) return true;
+    return !(c.saveData || c.type === "cellular" || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""));
+  }
+
   // src/js/features/rows/prefetch.js
   var MAX_WAIT = 15e3;
   var IMG_WAIT = 4e3;
@@ -5894,13 +6209,11 @@
   var TOP_CARDS = 8;
   var RESUME_MS = 2e3;
   function allowPrefetch() {
-    const c = typeof navigator !== "undefined" ? navigator.connection : null;
-    if (!c) return true;
-    return !(c.saveData || c.type === "cellular" || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""));
+    return netOk();
   }
   function paused2() {
     const cl2 = document.documentElement.classList;
-    return document.hidden || cl2.contains("lfx-modal-open") || cl2.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
+    return document.hidden || isDataSaver() || cl2.contains("lfx-modal-open") || cl2.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
   }
   function heroSettled(slot) {
     if (!slot || slot.hidden) return true;
@@ -6031,6 +6344,12 @@
       });
       mo3.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     }
+    offs.push(onDataSaverChange(() => {
+      const p = paused2();
+      wasPaused = p;
+      clearTimeout(rTimer);
+      if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
+    }));
     later(tick, POLL);
     return {
       stop() {
@@ -6057,12 +6376,12 @@
   var newSeriesCache = { at: 0, promise: null, value: null };
   var TEN_MIN = 10 * 60 * 1e3;
   var NEW_SERIES_LIMIT = 200;
-  function storageKey() {
+  function storageKey2() {
     return `lfx-newseries:${getUserId() || "anon"}`;
   }
   function readStored(now) {
     try {
-      const raw = JSON.parse(sessionStorage.getItem(storageKey()) || "null");
+      const raw = JSON.parse(sessionStorage.getItem(storageKey2()) || "null");
       if (raw && Array.isArray(raw.ids) && now - raw.at >= 0 && now - raw.at < TEN_MIN) return new Set(raw.ids);
     } catch {
     }
@@ -6070,7 +6389,7 @@
   }
   function writeStored(now, set) {
     try {
-      sessionStorage.setItem(storageKey(), JSON.stringify({ at: now, ids: [...set] }));
+      sessionStorage.setItem(storageKey2(), JSON.stringify({ at: now, ids: [...set] }));
     } catch {
     }
   }
@@ -6443,7 +6762,7 @@
             observer2.unobserve(en.target);
             loadRow(en.target, def);
           }
-        }, { rootMargin: "600px 0px" });
+        }, { rootMargin: isDataSaver() ? "100px 0px" : "600px 0px" });
         for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
         for (const [el4, def] of [...pending]) {
@@ -6685,7 +7004,7 @@
   function svg4(name) {
     return `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${ICONS2[name]}</svg>`;
   }
-  var active = false;
+  var active2 = false;
   var session2 = null;
   var openTimer = null;
   var closeTimer = null;
@@ -7211,8 +7530,8 @@
     onAbort();
   }
   function start() {
-    if (active) return;
-    active = true;
+    if (active2) return;
+    active2 = true;
     const add2 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       listeners3.push(() => target.removeEventListener(type, fn, opts));
@@ -7228,7 +7547,7 @@
     unsubItems = onItemsChanged(onItems);
   }
   function stop3() {
-    active = false;
+    active2 = false;
     wasHeld = false;
     lastOver = null;
     if (typeof unsubItems === "function") unsubItems();
@@ -7630,122 +7949,6 @@
   };
   var newpopular_default = newPopularFeature;
 
-  // src/js/core/popover.js
-  var ID7 = "lfx-popover";
-  var GAP = 8;
-  var MARGIN = 8;
-  var current4 = null;
-  function isPopoverOpen() {
-    return current4 !== null;
-  }
-  function closePopover({ restoreFocus = false } = {}) {
-    const c = current4;
-    if (!c) return;
-    current4 = null;
-    window.removeEventListener("keydown", c.onKeydown, true);
-    document.removeEventListener("click", c.onDocClick, true);
-    window.removeEventListener("resize", c.onClose);
-    window.removeEventListener("scroll", c.onScroll, true);
-    unmountPoint(c.el);
-    if (c.anchorEl) {
-      c.anchorEl.removeAttribute("aria-expanded");
-      if (c.hadExpanded !== null) c.anchorEl.setAttribute("aria-expanded", c.hadExpanded);
-      if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === "function") {
-        try {
-          c.anchorEl.focus({ preventScroll: true });
-        } catch {
-        }
-      }
-    }
-  }
-  function place(el4, anchorEl, align) {
-    const vw = window.innerWidth || document.documentElement.clientWidth || 0;
-    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-    const a = anchorEl.getBoundingClientRect();
-    const w = el4.offsetWidth;
-    const hgt = el4.offsetHeight;
-    let left = align === "start" ? a.left : a.right - w;
-    let top = a.bottom + GAP;
-    if (vw) left = Math.max(MARGIN, Math.min(left, vw - w - MARGIN));
-    if (vh && top + hgt > vh - MARGIN) top = Math.max(MARGIN, a.top - GAP - hgt);
-    el4.style.left = `${Math.round(left)}px`;
-    el4.style.top = `${Math.round(top)}px`;
-  }
-  function openPopover(anchorEl, { label, items = [], align = "end", className = "" } = {}) {
-    closePopover();
-    const el4 = mountPoint(ID7, { className: `lfx-popover${className ? ` ${className}` : ""}` });
-    el4.className = `lfx-popover${className ? ` ${className}` : ""}`;
-    el4.setAttribute("role", "menu");
-    if (label) el4.setAttribute("aria-label", label);
-    const list = items.filter((it) => it && !it.hidden);
-    const nodes = list.map((it) => {
-      const cls = `lfx-popover__item${it.className ? ` ${it.className}` : ""}`;
-      const kids = [];
-      if (it.icon) {
-        const ic = h("span", { class: "lfx-popover__icon", "aria-hidden": "true" });
-        ic.innerHTML = it.icon;
-        kids.push(ic);
-      }
-      kids.push(h("span", { class: "lfx-popover__label" }, it.label));
-      if (it.badge) kids.push(badgePill(it.badge));
-      const aria = badgedName(it.label, it.badge);
-      const node = it.href ? h("a", { class: cls, role: "menuitem", href: it.href, "aria-label": aria, dataset: { key: it.key } }, kids) : h("button", { type: "button", class: cls, role: "menuitem", "aria-label": aria, dataset: { key: it.key } }, kids);
-      node.addEventListener("click", () => {
-        closePopover();
-        if (typeof it.onClick === "function") it.onClick();
-      });
-      return node;
-    });
-    el4.replaceChildren(...nodes);
-    const c = { el: el4, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
-    c.close = () => {
-      if (current4 === c) closePopover({ restoreFocus: true });
-    };
-    c.onClose = () => {
-      if (current4 === c) closePopover();
-    };
-    c.onScroll = (e) => {
-      if (e.target && e.target !== document && el4.contains(e.target)) return;
-      c.onClose();
-    };
-    c.onDocClick = (e) => {
-      if (el4.contains(e.target) || anchorEl && anchorEl.contains(e.target)) return;
-      c.onClose();
-    };
-    c.onKeydown = (e) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        c.close();
-      } else if (e.key === "Tab") {
-        closePopover({ restoreFocus: true });
-      } else if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && nodes.length) {
-        const i = nodes.indexOf(document.activeElement);
-        let next;
-        if (e.key === "Home") next = 0;
-        else if (e.key === "End") next = nodes.length - 1;
-        else if (e.key === "ArrowDown") next = i < 0 ? 0 : (i + 1) % nodes.length;
-        else next = i < 0 ? nodes.length - 1 : (i - 1 + nodes.length) % nodes.length;
-        e.preventDefault();
-        nodes[next].focus();
-      }
-    };
-    current4 = c;
-    if (anchorEl) anchorEl.setAttribute("aria-expanded", "true");
-    window.addEventListener("keydown", c.onKeydown, true);
-    document.addEventListener("click", c.onDocClick, true);
-    window.addEventListener("resize", c.onClose);
-    window.addEventListener("scroll", c.onScroll, true);
-    if (anchorEl) place(el4, anchorEl, align);
-    if (nodes[0]) nodes[0].focus({ preventScroll: true });
-    const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
-    raf3(() => {
-      if (current4 === c) el4.classList.add("is-open");
-    });
-    return { el: el4, close: c.close };
-  }
-
   // src/js/core/themejs.js
   var CLASS3 = "lfx-theme-js";
   var FILES2 = { store: "lenzstore", live: "lenzlive", tvmode: "lenztvmode" };
@@ -8097,11 +8300,6 @@
       return v === "1";
     }
   }
-  function netOk() {
-    const c = typeof navigator !== "undefined" ? navigator.connection : null;
-    if (!c) return true;
-    return !(c.saveData || c.type === "cellular" || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ""));
-  }
   function zapWarmEnabled() {
     const v = hashParam("lfxwarm");
     let off;
@@ -8111,10 +8309,11 @@
     } catch {
       off = v === "0";
     }
-    return !off && netOk();
+    return !off && netOk() && !isDataSaver();
   }
   function defineZapWarm(deps) {
     Object.defineProperty(deps, "zapWarm", { get: zapWarmEnabled, enumerable: true, configurable: true });
+    Object.defineProperty(deps, "zapPrefetch", { get: () => !isDataSaver(), enumerable: true, configurable: true });
     return deps;
   }
   function forceHlsEnabled() {
@@ -8228,7 +8427,7 @@
 
   // src/js/features/tvmode/prefs.js
   var DEFAULTS = { volume: 0.8, muted: false, lastChannel: 1 };
-  var storageKey2 = (name) => `lfx.tvm.${name}.${getUserId() || "anon"}`;
+  var storageKey3 = (name) => `lfx.tvm.${name}.${getUserId() || "anon"}`;
   var read = (key) => {
     try {
       return window.localStorage.getItem(key);
@@ -8243,21 +8442,21 @@
     }
   };
   function getVolume() {
-    const raw = read(storageKey2("volume"));
+    const raw = read(storageKey3("volume"));
     if (raw === null || raw === "") return DEFAULTS.volume;
     const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS.volume;
   }
-  var getMuted = () => read(storageKey2("muted")) === "1";
+  var getMuted = () => read(storageKey3("muted")) === "1";
   function getLastChannel() {
-    const v = Number(read(storageKey2("lastChannel")));
+    const v = Number(read(storageKey3("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS.lastChannel;
   }
   function savePrefs(p) {
     if (!p || typeof p !== "object") return;
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey2("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write(storageKey2("muted"), p.muted ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey2("lastChannel"), String(p.lastChannel));
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey3("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write(storageKey3("muted"), p.muted ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey3("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/tvmode/route.js
@@ -8319,6 +8518,7 @@
   var inst = null;
   var ui = null;
   var themeOff = null;
+  var saverOff = null;
   var html = () => document.documentElement;
   var coarse = () => {
     try {
@@ -8340,10 +8540,20 @@
   }
   function watchTheme() {
     if (!themeOff) themeOff = onThemeChange(onTheme);
+    if (!saverOff) saverOff = onDataSaverChange((active5) => {
+      if (active5 && inst) {
+        try {
+          inst.instance.releaseWarm();
+        } catch {
+        }
+      }
+    });
   }
   function unwatchTheme() {
     if (themeOff) themeOff();
     themeOff = null;
+    if (saverOff) saverOff();
+    saverOff = null;
   }
   function onTheme() {
     const mounted = Boolean(ui);
@@ -8455,8 +8665,8 @@
       onReady: ret(hooks.ready),
       onFatal: ret(hooks.fatal),
       onStopped: ret(hooks.stopped),
-      onPip: ret((active4) => {
-        if (inst) inst.pip = Boolean(active4);
+      onPip: ret((active5) => {
+        if (inst) inst.pip = Boolean(active5);
       })
     });
   }
@@ -8631,7 +8841,7 @@
   var MOVE_TOLERANCE = 10;
   var CLICK_WINDOW_MS = 700;
   var DOUBLE_OPEN_MS = 800;
-  var active2 = false;
+  var active3 = false;
   var listeners4 = [];
   var pressTimer = null;
   var press2 = null;
@@ -8712,8 +8922,8 @@
     e.stopImmediatePropagation();
   }
   function start3() {
-    if (active2) return;
-    active2 = true;
+    if (active3) return;
+    active3 = true;
     const add2 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       listeners4.push(() => target.removeEventListener(type, fn, opts));
@@ -8727,7 +8937,7 @@
     add2(window, "click", onClickCapture2, true);
   }
   function stop4() {
-    active2 = false;
+    active3 = false;
     cancelPress();
     swallowUntil = 0;
     lastLongPressAt = -Infinity;
@@ -8753,8 +8963,8 @@
   var contextmenu_default = contextmenuFeature;
 
   // src/js/features/statshint.js
-  var ID8 = "lfx-statshint";
-  var KEY = "lfx.statsHint";
+  var ID9 = "lfx-statshint";
+  var KEY2 = "lfx.statsHint";
   var SESSION_KEY = "lfx.statsHint.shown";
   var HINT_DURATION = 7e3;
   var HINT_DELAY = 1500;
@@ -8763,7 +8973,7 @@
   var EXCLUDED5 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video)/;
   function readState() {
     try {
-      const v = JSON.parse(localStorage.getItem(KEY));
+      const v = JSON.parse(localStorage.getItem(KEY2));
       return v && typeof v === "object" ? v : {};
     } catch {
       return {};
@@ -8771,7 +8981,7 @@
   }
   function writeState(patch) {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ ...readState(), ...patch }));
+      localStorage.setItem(KEY2, JSON.stringify({ ...readState(), ...patch }));
     } catch {
     }
   }
@@ -8836,7 +9046,7 @@
       e.preventDefault();
       leave2();
     });
-    const root7 = mountPoint(ID8, { className: "lfx-statshint" });
+    const root7 = mountPoint(ID9, { className: "lfx-statshint" });
     root7.classList.remove("is-leaving");
     const top = !isMobile();
     root7.classList.toggle("lfx-statshint--top", top);
@@ -8915,6 +9125,7 @@
       entries.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme) || getStatsUrl(), className: "is-stats" });
     }
     entries.push({ key: "design", label: "Design Einstellungen", badge: "Beta", onClick: () => openThemePicker({ returnFocus }) });
+    if (DATASAVER_THEMES.includes(theme || getTheme() || "flix")) entries.push(dataSaverItem());
     entries.push({ key: "settings", label: "Einstellungen", href: "#/mypreferencesmenu" });
     let user = null;
     try {
@@ -9241,7 +9452,8 @@
       const tv = h("a", { class: "lfx-plus-header__tv", href: tvModeHref, "aria-label": "TV", title: "TV", dataset: { key: "tv" } });
       tv.append(icon2("tvmode", "lfx-plus-header__icon"));
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
-      root7.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, tv, search);
+      const ds = createDataSaverButton({ className: "lfx-plus-header__ds" });
+      root7.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, ds, tv, search);
       state6.nav = nav;
       state6.chip = chip;
       chip.addEventListener("click", onChipClick);
@@ -9371,7 +9583,8 @@
       const tv = h("a", { class: "lfx-plus-mhead__tv", href: tvModeHref, "aria-label": "TV", title: "TV", dataset: { key: "tv" } });
       tv.innerHTML = ICONS3.tvmode;
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
-      root7.append(backEl, titleEl, tv);
+      const ds = createDataSaverButton({ className: "lfx-plus-mhead__ds" });
+      root7.append(backEl, titleEl, ds, tv);
       state7.tvEl = tv;
       state7.root = root7;
       state7.backEl = backEl;
@@ -9430,17 +9643,17 @@
   function applyActive5() {
     if (!state8.root || !state8.route) return;
     const key = activeTab(state8.route);
-    let active4 = null;
+    let active5 = null;
     for (const el4 of state8.root.querySelectorAll('[role="tab"]')) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       el4.setAttribute("aria-selected", String(on));
       el4.tabIndex = on ? 0 : -1;
-      if (on) active4 = el4;
+      if (on) active5 = el4;
     }
     const list = state8.root.querySelector(".lfx-plus-switcher__list");
-    if (active4 && list && list.scrollWidth > list.clientWidth) {
-      list.scrollLeft = Math.max(0, active4.offsetLeft - (list.clientWidth - active4.offsetWidth) / 2);
+    if (active5 && list && list.scrollWidth > list.clientWidth) {
+      list.scrollLeft = Math.max(0, active5.offsetLeft - (list.clientWidth - active5.offsetWidth) / 2);
     }
   }
   function render7() {
@@ -9837,7 +10050,7 @@
       return true;
     }).slice(0, 8);
   }
-  function buildSlide(item, i, info, mobile, warm) {
+  function buildSlide(item, i, info, mobile, warm, eagerN = 3) {
     const bd = mobile && imageUrl(item, { type: "Primary", maxWidth: 900, quality: 80 }) || imageUrl(item, { type: "Backdrop", maxWidth: mobile ? 1e3 : 1920, quality: 80 });
     const logo = logoImage(item, { maxWidth: 520 });
     const badge3 = plusBadge(item, info);
@@ -9850,7 +10063,7 @@
       dataset: { index: String(i) },
       "aria-label": item.Name || ""
     }, [
-      bd ? h("img", { class: "lfx-plus-hero__img", src: bd, alt: "", decoding: warm ? null : "async", loading: i < 3 ? "eager" : "lazy" }) : null,
+      bd ? h("img", { class: "lfx-plus-hero__img", src: bd, alt: "", decoding: warm ? null : "async", loading: i < eagerN ? "eager" : "lazy" }) : null,
       h("div", { class: "lfx-plus-hero__shade", "aria-hidden": "true" }),
       h("div", { class: "lfx-plus-hero__content" }, [
         badge3 ? h("span", { class: "lfx-plus-badge lfx-plus-hero__badge" }, badge3) : null,
@@ -9861,10 +10074,12 @@
     ]);
   }
   function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone(), warm = poolWarm } = {}) {
-    const list = (items || []).filter((it) => it && it.Id);
+    const all = (items || []).filter((it) => it && it.Id);
+    const saver = isDataSaver();
+    const list = saver ? saverPool(all) : all;
     if (!list.length) return null;
     const n = list.length;
-    const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm));
+    const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm, saver ? 1 : 3));
     const track = h("div", { class: "lfx-plus-hero__track" }, slides);
     const prev2 = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
     const next = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--next", "aria-label": "N\xE4chste Empfehlung", tabindex: "-1" });
@@ -9899,10 +10114,10 @@
     function paint() {
       el4.style.setProperty("--i", String(idx));
       slides.forEach((s, i) => {
-        const active4 = i === idx;
-        s.classList.toggle("is-active", active4);
-        s.setAttribute("aria-hidden", active4 ? "false" : "true");
-        s.tabIndex = active4 ? 0 : -1;
+        const active5 = i === idx;
+        s.classList.toggle("is-active", active5);
+        s.setAttribute("aria-hidden", active5 ? "false" : "true");
+        s.tabIndex = active5 ? 0 : -1;
       });
       dots.forEach((d, i) => {
         d.classList.toggle("is-active", i === idx);
@@ -10216,7 +10431,7 @@
             observer2.unobserve(en.target);
             loadRow(en.target, def);
           }
-        }, { rootMargin: "600px 0px" });
+        }, { rootMargin: isDataSaver() ? "100px 0px" : "600px 0px" });
         for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
         for (const [el4, def] of [...pending]) {
@@ -11645,7 +11860,8 @@
       } });
     }
     for (const p of Array.isArray(profile2) ? profile2 : []) {
-      if (p.href) entries.push({ label: p.label, badge: p.badge, onClick: () => {
+      if (p.switch) entries.push(p);
+      else if (p.href) entries.push({ label: p.label, badge: p.badge, onClick: () => {
         close2();
         go3(p.href);
       }, stats: p.key === "stats" });
@@ -11916,7 +12132,7 @@
   var nativedetail_default = plus.feature;
 
   // src/js/features/plus/favempty.js
-  var ID9 = "lfx-plus-favempty";
+  var ID10 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
   var state13 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
@@ -11930,11 +12146,11 @@
     state13.timer = 0;
     const tab2 = state13.tab;
     if (!tab2 || !tab2.isConnected) return;
-    const mine = document.getElementById(ID9);
+    const mine = document.getElementById(ID10);
     if (hasCards(tab2)) {
       if (mine) mine.remove();
     } else if (!mine) {
-      tab2.prepend(h("p", { id: ID9, class: "lfx-plus-favempty" }, EMPTY_TEXT));
+      tab2.prepend(h("p", { id: ID10, class: "lfx-plus-favempty" }, EMPTY_TEXT));
     }
   }
   function schedule3(delay = SETTLE_MS) {
@@ -11949,7 +12165,7 @@
     state13.timer = 0;
     state13.poll = 0;
     state13.tab = null;
-    document.getElementById(ID9)?.remove();
+    document.getElementById(ID10)?.remove();
   }
   function attach() {
     const tab2 = findTab();
@@ -11961,7 +12177,7 @@
     teardown6();
     state13.tab = tab2;
     state13.obs = new MutationObserver((records) => {
-      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID9))) return;
+      if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID10))) return;
       schedule3();
     });
     state13.obs.observe(tab2, { childList: true, subtree: true });
@@ -11985,7 +12201,7 @@
   var plusFeatures = [header_default, mobilehead_default, switcher_default, home_default2, title_default, browse_default, search_default, tabbar_default, nativedetail_default, favempty_default];
 
   // src/js/features/prime/search.js
-  var ID10 = "lfx-prime-search";
+  var ID11 = "lfx-prime-search";
   var DEBOUNCE_MS2 = 300;
   var MAX_CARDS = 8;
   var MAX_CARDS_MOBILE = 18;
@@ -12062,7 +12278,7 @@
     }
     const prev2 = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
     const mobile = isMobile() && isNarrow();
-    const root7 = mountPoint(ID10, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
+    const root7 = mountPoint(ID11, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
     root7.setAttribute("role", "dialog");
     root7.setAttribute("aria-modal", "true");
     root7.setAttribute("aria-label", "Suche");
@@ -12151,14 +12367,14 @@
         if (!list.length) return;
         const first2 = list[0];
         const last = list[list.length - 1];
-        const active4 = document.activeElement;
-        if (!panel.contains(active4)) {
+        const active5 = document.activeElement;
+        if (!panel.contains(active5)) {
           e.preventDefault();
           first2.focus();
-        } else if (e.shiftKey && active4 === first2) {
+        } else if (e.shiftKey && active5 === first2) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active4 === last) {
+        } else if (!e.shiftKey && active5 === last) {
           e.preventDefault();
           first2.focus();
         }
@@ -12311,7 +12527,7 @@
   }
 
   // src/js/features/prime/profile-sheet.js
-  var ID11 = "lfx-prime-profilesheet";
+  var ID12 = "lfx-prime-profilesheet";
   var OPEN_CLASS2 = "lfx-prime-profilesheet-open";
   var FOCUSABLE3 = "a[href], button:not([disabled])";
   var cur2 = null;
@@ -12333,6 +12549,9 @@
     }
   }
   function entryNode(it, close2) {
+    if (it.switch) {
+      return switchButton(it, { className: "lfx-prime-psheet__item lfx-prime-psheet__item--switch", role: "switch", labelClass: "lfx-prime-psheet__label" });
+    }
     const kids = [h("span", { class: "lfx-prime-psheet__label" }, it.label)];
     if (it.badge) kids.push(badgePill(it.badge));
     const aria = badgedName(it.label, it.badge);
@@ -12352,7 +12571,7 @@
   }
   function openProfileSheet({ returnFocus } = {}) {
     closeProfileSheet({ restoreFocus: false });
-    const root7 = mountPoint(ID11, { className: "lfx-prime-psheet-overlay" });
+    const root7 = mountPoint(ID12, { className: "lfx-prime-psheet-overlay" });
     const who = h("div", { class: "lfx-prime-psheet__who" });
     const body = h("div", { class: "lfx-prime-psheet__body" });
     const sheet = h("div", { class: "lfx-prime-psheet", role: "dialog", "aria-modal": "true", "aria-label": "Profil", tabindex: "-1" }, [
@@ -12380,14 +12599,14 @@
         }
         const first2 = list[0];
         const last = list[list.length - 1];
-        const active4 = document.activeElement;
-        if (!sheet.contains(active4)) {
+        const active5 = document.activeElement;
+        if (!sheet.contains(active5)) {
           e.preventDefault();
           first2.focus();
-        } else if (e.shiftKey && active4 === first2) {
+        } else if (e.shiftKey && active5 === first2) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active4 === last) {
+        } else if (!e.shiftKey && active5 === last) {
           e.preventDefault();
           first2.focus();
         }
@@ -12431,7 +12650,7 @@
   }
 
   // src/js/features/prime/header.js
-  var ID12 = "lfx-prime-header";
+  var ID13 = "lfx-prime-header";
   var HTML_CLASS = "lfx-prime-header-on";
   var MOBILE_CLASS = "lfx-prime-mobile";
   var PILLS_CLASS = "lfx-prime-header-pills";
@@ -12614,6 +12833,7 @@
     a.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
     return a;
   }
+  var dsLink = () => createDataSaverButton({ className: "lfx-prime-header__icon" });
   function build6() {
     const logo = h("a", { class: "lfx-prime-header__logo", href: "#/home", "aria-label": "LENZPRIME \u2013 Startseite" });
     const nav = h("nav", { class: "lfx-prime-header__nav", "aria-label": "Hauptnavigation" });
@@ -12652,7 +12872,7 @@
       "aria-haspopup": "true"
     });
     avatar.addEventListener("click", () => toggleProfile(avatar));
-    const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, tvLink(), gridWrap, listLink, avatar]);
+    const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, tvLink(), dsLink(), gridWrap, listLink, avatar]);
     const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
     state14.el.replaceChildren(bar);
     state14.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
@@ -12680,7 +12900,7 @@
       back.addEventListener("click", goBack);
       left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state14.libs))];
     }
-    const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), avatar])]);
+    const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), dsLink(), avatar])]);
     const kids = [bar];
     if (kind2 === "home") kids.push(h("nav", { class: "lfx-prime-header__pills", "aria-label": "Filme und Serien" }));
     state14.el.replaceChildren(...kids);
@@ -12787,7 +13007,7 @@
     },
     mount(route) {
       state14.route = route;
-      state14.el = mountPoint(ID12, { tag: "header", className: "lfx-prime-header" });
+      state14.el = mountPoint(ID13, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
       state14.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
@@ -12821,7 +13041,7 @@
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
-      unmountPoint(ID12);
+      unmountPoint(ID13);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
       state14.el = null;
       state14.libs = [];
@@ -13108,7 +13328,7 @@
       muteBtn.setAttribute("aria-label", video2.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     function startTrailer(item, myGen) {
-      if (mobile || reducedMotion2() || disposed || myGen !== gen8) return;
+      if (mobile || reducedMotion2() || isDataSaver() || disposed || myGen !== gen8) return;
       preview = createMutedPreview(media, item, {
         delay: TRAILER_DELAY_MS,
         startAt: 4,
@@ -13274,6 +13494,15 @@
       scheduleRotate();
       startTrailer(item, myGen);
     }
+    function onSaver(active5) {
+      if (disposed || !hero || !active5) return;
+      stopTrailer();
+      const cur3 = pool[index];
+      pool = saverPool(pool, cur3 && cur3.Id);
+      index = Math.max(0, cur3 ? pool.indexOf(cur3) : 0);
+      fillDots();
+      scheduleRotate();
+    }
     function step(dir) {
       if (pool.length > 1) show3((index + dir + pool.length) % pool.length);
     }
@@ -13399,9 +13628,10 @@
         slot.hidden = true;
         return;
       }
-      pool = items;
+      pool = isDataSaver() ? saverPool(items) : items;
       putItems(pool);
       build11();
+      cleanupFns.push(onDataSaverChange(onSaver));
       slot.hidden = false;
       slot.classList.remove("is-loading");
       show3(0, true);
@@ -13627,7 +13857,7 @@
           observer2.unobserve(en.target);
           loadRow(en.target, p.def, p.kind);
         }
-      }, { rootMargin: "600px 0px" });
+      }, { rootMargin: isDataSaver() ? "100px 0px" : "600px 0px" });
     }
     return {
       add(defs) {
@@ -13951,7 +14181,7 @@
     return Math.max(0, Math.min(dy, top - HEADER_H));
   }
   var lastUserScroll = 0;
-  var active3 = null;
+  var active4 = null;
   var intent2 = null;
   var leaveTimer = null;
   var pointerInside = false;
@@ -13984,8 +14214,8 @@
     clearIntent();
     clearTimeout(leaveTimer);
     leaveTimer = null;
-    const a = active3;
-    active3 = null;
+    const a = active4;
+    active4 = null;
     if (!a) return;
     a.timers.forEach(clearTimeout);
     if (a.preview) a.preview.cancel();
@@ -14001,7 +14231,7 @@
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(function check3() {
       leaveTimer = null;
-      if (!active3 || pointerInside) return;
+      if (!active4 || pointerInside) return;
       if (holdOpen2()) {
         leaveTimer = setTimeout(check3, HOLD_POLL_MS);
         return;
@@ -14016,7 +14246,7 @@
     const trendInfo = await trend();
     if (!intent2 || intent2.card !== card3) return;
     clearIntent();
-    if (active3 || blocked2()) return;
+    if (active4 || blocked2()) return;
     const a = { card: card3, kind: "popup", el: null, preview: null, video: null, timers: [] };
     const pic = landscapeFor(item, 900);
     const p = progressPercent(item);
@@ -14025,7 +14255,7 @@
       p > 0 ? h("div", { class: "lfx-prime-card__progress" }, [h("div", { class: "lfx-prime-card__bar", style: { width: `${Math.round(p)}%` } })]) : null
     ]);
     const info = h("div", { class: "lfx-prime-hover__info" }, [
-      buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active3 === a })
+      buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active4 === a })
     ]);
     const el4 = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
     el4.className = "lfx-prime-hover";
@@ -14046,10 +14276,10 @@
     el4.style.transformOrigin = `${g.originX}px ${g.originY}px`;
     el4.style.setProperty("--lfx-prime-s0", String(g.scale));
     el4.style.visibility = "";
-    active3 = a;
+    active4 = a;
     pointerInside = true;
     const go3 = () => {
-      if (active3 === a) el4.classList.add("is-in");
+      if (active4 === a) el4.classList.add("is-in");
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go3));
     else go3();
@@ -14065,7 +14295,7 @@
     const trendInfo = await trend();
     if (!intent2 || intent2.card !== card3) return;
     clearIntent();
-    if (active3 || blocked2()) return;
+    if (active4 || blocked2()) return;
     const a = { card: card3, kind: "poster", el: null, preview: null, video: null, timers: [], t0: Date.now() };
     const pic = landscapeFor(item, 1e3);
     const mediaEl = h("div", { class: "lfx-prime-expand__media" }, [
@@ -14079,16 +14309,16 @@
       mute.replaceChildren(svgIcon(a.video.muted ? ICON_MUTED2 : ICON_SOUND2));
       mute.setAttribute("aria-label", a.video.muted ? "Ton einschalten" : "Ton ausschalten");
     });
-    const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active3 === a })]);
+    const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active4 === a })]);
     const el4 = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
     a.el = el4;
     card3.append(el4);
     card3.classList.add("is-expanded");
-    active3 = a;
+    active4 = a;
     pointerInside = true;
     a.timers.push(setTimeout(() => {
       const track = card3.closest(".lfx-prime-row__track");
-      if (!track || active3 !== a) return;
+      if (!track || active4 !== a) return;
       const cr = card3.getBoundingClientRect();
       const tr = track.getBoundingClientRect();
       const over = cr.right - (tr.right - EDGE2 * 2);
@@ -14104,14 +14334,14 @@
         window.scrollBy({ top: dy, behavior: reducedMotion3() ? "auto" : "smooth" });
       }
     }, 340));
-    if (reducedMotion3()) return;
+    if (reducedMotion3() || isDataSaver()) return;
     loadDetail(item.Id).then((detail) => {
-      if (active3 !== a || !detail) return;
+      if (active4 !== a || !detail) return;
       a.preview = createMutedPreview(mediaEl, detail, {
         delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
         startAt: 4,
         onStart: (v) => {
-          if (active3 !== a) return;
+          if (active4 !== a) return;
           a.video = v;
           a.holding = true;
           setPreviewHold(true);
@@ -14121,7 +14351,7 @@
           mute.replaceChildren(svgIcon(ICON_MUTED2));
         },
         onEnd: () => {
-          if (active3 !== a) return;
+          if (active4 !== a) return;
           a.preview = null;
           a.video = null;
           if (a.holding) {
@@ -14153,36 +14383,36 @@
     const t = e.target;
     const inPopup = Boolean(t && t.closest && t.closest(`#${POPUP_ID2}`));
     const card3 = inPopup ? null : cardOf(t);
-    if (inPopup || card3 && active3 && active3.card === card3) {
+    if (inPopup || card3 && active4 && active4.card === card3) {
       pointerInside = true;
       clearTimeout(leaveTimer);
       leaveTimer = null;
       return;
     }
     pointerInside = false;
-    if (active3) {
-      if (!card3 || card3 !== active3.card) {
+    if (active4) {
+      if (!card3 || card3 !== active4.card) {
         if (card3) closeNow2();
         else scheduleLeave();
       }
     }
-    if (card3 && !active3) scheduleOpen2(card3);
+    if (card3 && !active4) scheduleOpen2(card3);
     else if (!card3) clearIntent();
   }
   function onOut2(e) {
     if (e.relatedTarget) return;
     pointerInside = false;
     clearIntent();
-    if (active3) scheduleLeave();
+    if (active4) scheduleLeave();
   }
   function onScroll5() {
     if (Date.now() < selfScrollUntil) return;
     lastUserScroll = Date.now();
-    if (!active3 && !intent2) return;
+    if (!active4 && !intent2) return;
     closeNow2();
   }
   function onKey2(e) {
-    if (e.key === "Escape" && active3) closeNow2();
+    if (e.key === "Escape" && active4) closeNow2();
   }
   function add(target, type, fn, opts) {
     target.addEventListener(type, fn, opts);
@@ -14869,7 +15099,7 @@
       if (s.dead || !src) return;
       s.trailerSrc = src;
       s.trailerBtn.hidden = false;
-      if (reducedMotion4() || isMobile()) return;
+      if (reducedMotion4() || isMobile() || isDataSaver()) return;
       const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS2);
       s.cleanups.push(() => clearTimeout(t));
     }).catch(() => {
@@ -14955,7 +15185,7 @@
   };
 
   // src/js/features/prime/tabbar.js
-  var ID13 = "lfx-prime-tabbar";
+  var ID14 = "lfx-prime-tabbar";
   var HTML_CLASS2 = "lfx-prime-tabbar-on";
   var EXCLUDED10 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var HIDE_CLASSES = ["lfx-sheet-open", "lfx-themepicker-open", "lfx-popover-open", "lfx-modal-open", "lfx-prime-profilesheet-open"];
@@ -15017,9 +15247,9 @@
     const hide2 = shouldHide();
     if (el4.classList.contains("is-hidden") !== hide2) el4.classList.toggle("is-hidden", hide2);
     el4.toggleAttribute("inert", hide2);
-    const active4 = state15.route ? activeTab2(state15.route, isPrimeSearchOpen()) : null;
+    const active5 = state15.route ? activeTab2(state15.route, isPrimeSearchOpen()) : null;
     for (const t of el4.querySelectorAll("[data-tab]")) {
-      const on = t.dataset.tab === active4;
+      const on = t.dataset.tab === active5;
       t.classList.toggle("is-active", on);
       if (on) {
         if (t.getAttribute("aria-current") !== "page") t.setAttribute("aria-current", "page");
@@ -15062,7 +15292,7 @@
     },
     mount(route) {
       state15.route = route;
-      state15.el = mountPoint(ID13, { tag: "nav", className: "lfx-prime-tabbar" });
+      state15.el = mountPoint(ID14, { tag: "nav", className: "lfx-prime-tabbar" });
       build7();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
@@ -15099,7 +15329,7 @@
         state15.raf = 0;
       }
       for (const fn of state15.cleanups.splice(0)) fn();
-      unmountPoint(ID13);
+      unmountPoint(ID14);
       document.documentElement.classList.remove(HTML_CLASS2);
       state15.el = null;
       state15.route = null;
@@ -15113,16 +15343,16 @@
   var primeFeatures = [header_default2, home_default3, hover_default, title_default2, tabbar_default2, nativedetail_default2];
 
   // src/js/features/retro/prefs.js
-  var KEY2 = "lfx.retro.";
+  var KEY3 = "lfx.retro.";
   var DEFAULTS2 = { sound: false, crt: true };
   var PREFS_EVENT = "lfx-retro-prefs";
   var FX_EVENT = "lfx-retro-fx";
-  function storageKey3(name) {
-    return `${KEY2}${name}.${getUserId() || "anon"}`;
+  function storageKey4(name) {
+    return `${KEY3}${name}.${getUserId() || "anon"}`;
   }
   function getPref(name) {
     try {
-      const v = window.localStorage.getItem(storageKey3(name));
+      const v = window.localStorage.getItem(storageKey4(name));
       if (v === "1") return true;
       if (v === "0") return false;
     } catch {
@@ -15132,7 +15362,7 @@
   function setPref(name, value) {
     const on = Boolean(value);
     try {
-      window.localStorage.setItem(storageKey3(name), on ? "1" : "0");
+      window.localStorage.setItem(storageKey4(name), on ? "1" : "0");
     } catch {
     }
     document.dispatchEvent(new CustomEvent(PREFS_EVENT, { detail: { name, value: on } }));
@@ -15257,7 +15487,7 @@
   }
 
   // src/js/features/retro/header.js
-  var ID14 = "lfx-retro-header";
+  var ID15 = "lfx-retro-header";
   var HTML_CLASS3 = "lfx-retro-header-on";
   var SCROLL_THRESHOLD3 = 10;
   var HOVER_GAP_MS = 140;
@@ -15383,7 +15613,7 @@
     mount(route) {
       const seq3 = ++state16.seq;
       state16.route = route;
-      state16.el = mountPoint(ID14, { tag: "header", className: "lfx-retro-header" });
+      state16.el = mountPoint(ID15, { tag: "header", className: "lfx-retro-header" });
       const { avatar } = build8();
       document.documentElement.classList.add(HTML_CLASS3);
       window.addEventListener("scroll", onScroll6, { passive: true });
@@ -15406,7 +15636,7 @@
       if (state16.raf) cancelAnimationFrame(state16.raf);
       state16.raf = 0;
       if (profileIsOpen2()) closePopover();
-      unmountPoint(ID14);
+      unmountPoint(ID15);
       document.documentElement.classList.remove(HTML_CLASS3);
       state16.el = null;
       state16.route = null;
@@ -15762,7 +15992,7 @@
       refs.count.textContent = `${pad22(index + 1)}/${pad22(pool.length)}`;
       refs.nav.hidden = pool.length < 2;
     }
-    function apply(i) {
+    function apply2(i) {
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
@@ -15790,7 +16020,7 @@
       if (disposed || !pool[i]) return;
       target = i;
       if (immediate || reducedMotion5() || !hero) {
-        apply(i);
+        apply2(i);
         return;
       }
       gen8 += 1;
@@ -15798,7 +16028,7 @@
       emitFx("nav");
       hero.classList.add("is-changing");
       later(() => {
-        if (!disposed && myGen === gen8) apply(i);
+        if (!disposed && myGen === gen8) apply2(i);
       }, CHANNEL_SWAP_MS);
       later(() => {
         hero.classList.remove("is-changing");
@@ -15911,7 +16141,7 @@
       build11();
       slot.hidden = false;
       slot.classList.remove("is-loading");
-      apply(0);
+      apply2(0);
     }
     slot.hidden = false;
     slot.classList.add("is-loading");
@@ -18613,7 +18843,7 @@
   } } = {}) {
     const timers = createTimers();
     let started2 = false;
-    let active4 = false;
+    let active5 = false;
     let lastInput = Date.now();
     let el4 = null;
     let canvas = null;
@@ -18630,7 +18860,7 @@
     let nextFlash = 0;
     const idleEvents = ["pointermove", "keydown", "touchstart", "wheel", "scroll", "pointerdown"];
     function noteInput(e) {
-      if (active4) return;
+      if (active5) return;
       if (e && e.type === "pointermove") {
         const p = { x: e.clientX, y: e.clientY };
         if (lastMove && Math.abs(p.x - lastMove.x) + Math.abs(p.y - lastMove.y) < 3) return;
@@ -18657,7 +18887,7 @@
     }
     function frame(now) {
       raf3 = 0;
-      if (!active4 || !ctx2) return;
+      if (!active5 || !ctx2) return;
       raf3 = requestAnimationFrame(frame);
       if (document.hidden) return;
       const step = reduced ? FRAME_MS * 2 : FRAME_MS;
@@ -18700,7 +18930,7 @@
       size();
     }
     function onVisibility() {
-      if (!active4) return;
+      if (!active5) return;
       if (document.hidden) {
         cancelAnimationFrame(raf3);
         raf3 = 0;
@@ -18712,7 +18942,7 @@
       if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     }
     function onActiveInput(e) {
-      if (!active4) return;
+      if (!active5) return;
       if (e.type === "pointermove" || e.type === "mousemove") {
         const p = { x: e.clientX, y: e.clientY };
         if (!lastMove) {
@@ -18731,7 +18961,7 @@
     }
     const activeEvents = ["keydown", "pointerdown", "mousedown", "touchstart", "wheel", "pointermove"];
     function run(manual = true) {
-      if (active4) return true;
+      if (active5) return true;
       if (typeof requestAnimationFrame !== "function") return false;
       canvas = h("canvas", { class: "lfx-retro-rain__canvas" });
       let c;
@@ -18748,7 +18978,7 @@
       titleEl = h("div", { class: "lfx-retro-rain__title", "aria-hidden": "true" });
       el4 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
       document.body.append(el4);
-      active4 = true;
+      active5 = true;
       lastMove = null;
       nextFlash = Date.now() + 1500;
       size();
@@ -18763,8 +18993,8 @@
       return true;
     }
     function end() {
-      if (!active4) return;
-      active4 = false;
+      if (!active5) return;
+      active5 = false;
       if (raf3) cancelAnimationFrame(raf3);
       raf3 = 0;
       for (const ev of activeEvents) window.removeEventListener(ev, onActiveInput, true);
@@ -18780,7 +19010,7 @@
       }
     }
     function check3() {
-      if (active4 || document.hidden) return;
+      if (active5 || document.hidden) return;
       if (reduced) return;
       if (Date.now() - lastInput < idleMs) return;
       if (isBlocked()) {
@@ -18807,7 +19037,7 @@
       swallowClickUntil = 0;
       timers.clearAll();
     }
-    return { start: start10, stop: stop7, run, end, isActive: () => active4 };
+    return { start: start10, stop: stop7, run, end, isActive: () => active5 };
   }
 
   // src/js/features/retro/fx/index.js
@@ -19284,7 +19514,7 @@
   }
 
   // src/js/features/store/prefs.js
-  var KEY3 = "lfx.store.";
+  var KEY4 = "lfx.store.";
   var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "touch" };
   var TOUCH_CONTROLS = ["joystick", "touch"];
   var TOUCH_SENS = ["low", "normal", "high"];
@@ -19298,7 +19528,7 @@
   var VR_SEATS = ["front", "mid", "back"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
-  var storageKey4 = (name) => `${KEY3}${name}.${getUserId() || "anon"}`;
+  var storageKey5 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
   function read2(store3, key) {
     try {
       return window[store3].getItem(key);
@@ -19313,55 +19543,55 @@
     }
   }
   function getQuality() {
-    const v = read2("localStorage", storageKey4("quality"));
+    const v = read2("localStorage", storageKey5("quality"));
     return QUALITIES.includes(v) ? v : DEFAULTS3.quality;
   }
   function getSound() {
     try {
-      window.localStorage.removeItem(storageKey4("sound"));
+      window.localStorage.removeItem(storageKey5("sound"));
     } catch {
     }
-    const v = read2("localStorage", storageKey4("soundOn"));
+    const v = read2("localStorage", storageKey5("soundOn"));
     return v === null ? DEFAULTS3.sound : v !== "0";
   }
   function getFps() {
-    return read2("localStorage", storageKey4("fps")) === "1";
+    return read2("localStorage", storageKey5("fps")) === "1";
   }
   function getVoiceOnline() {
-    return read2("localStorage", storageKey4("voiceOnline")) === "1";
+    return read2("localStorage", storageKey5("voiceOnline")) === "1";
   }
   function getVoiceName() {
-    return read2("localStorage", storageKey4("voiceName")) || "";
+    return read2("localStorage", storageKey5("voiceName")) || "";
   }
   function getVoicePitch() {
-    const v = read2("localStorage", storageKey4("voicePitch"));
+    const v = read2("localStorage", storageKey5("voicePitch"));
     return VOICE_PITCHES.includes(v) ? v : DEFAULTS3.voicePitch;
   }
   function getTouchControl() {
-    const v = read2("localStorage", storageKey4("touchControl"));
+    const v = read2("localStorage", storageKey5("touchControl"));
     return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS3.touchControl;
   }
   function getTouchTune() {
     for (const k of ["lookInvertY", "lookInvertX"]) {
       try {
-        window.localStorage.removeItem(storageKey4(k));
+        window.localStorage.removeItem(storageKey5(k));
       } catch {
       }
     }
     const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal"), touchRegrip: readEnum("touchRegrip", TOUCH_REGRIPS, "short") };
-    for (const k of TUNE_FLAGS) t[k] = read2("localStorage", storageKey4(k)) === "1";
+    for (const k of TUNE_FLAGS) t[k] = read2("localStorage", storageKey5(k)) === "1";
     return t;
   }
   function getBigCovers() {
-    const v = read2("localStorage", storageKey4("bigCovers"));
+    const v = read2("localStorage", storageKey5("bigCovers"));
     return v === null ? DEFAULTS3.bigCovers : v !== "0";
   }
   function readEnum(name, list, def) {
-    const v = read2("localStorage", storageKey4(name));
+    const v = read2("localStorage", storageKey5(name));
     return list.includes(v) ? v : def;
   }
   var getVrTurn = () => readEnum("vrTurn", VR_TURNS, "snap");
-  var getVrVignette = () => read2("localStorage", storageKey4("vrVignette")) !== "0";
+  var getVrVignette = () => read2("localStorage", storageKey5("vrVignette")) !== "0";
   var getVrHeight = () => readEnum("vrHeight", VR_HEIGHTS, "auto");
   var getVrQuality = () => readEnum("vrQuality", VR_QUALITIES, "mid");
   var getVrSeat = () => readEnum("vrSeat", VR_SEATS, "mid");
@@ -19370,24 +19600,24 @@
   }
   function savePrefs2(p) {
     if (!p) return;
-    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey4("quality"), p.quality);
-    if (typeof p.sound === "boolean") write2("localStorage", storageKey4("soundOn"), p.sound ? "1" : "0");
-    if (typeof p.fps === "boolean") write2("localStorage", storageKey4("fps"), p.fps ? "1" : "0");
-    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey4("voiceOnline"), p.voiceOnline ? "1" : "0");
-    if (typeof p.voiceName === "string") write2("localStorage", storageKey4("voiceName"), p.voiceName);
-    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey4("voicePitch"), p.voicePitch);
-    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey4("touchControl"), p.touchControl);
-    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey4(k), p[k] ? "1" : "0");
-    if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey4("touchSens"), p.touchSens);
-    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey4("touchRegrip"), p.touchRegrip);
-    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey4("bigCovers"), p.bigCovers ? "1" : "0");
+    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey5("quality"), p.quality);
+    if (typeof p.sound === "boolean") write2("localStorage", storageKey5("soundOn"), p.sound ? "1" : "0");
+    if (typeof p.fps === "boolean") write2("localStorage", storageKey5("fps"), p.fps ? "1" : "0");
+    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey5("voiceOnline"), p.voiceOnline ? "1" : "0");
+    if (typeof p.voiceName === "string") write2("localStorage", storageKey5("voiceName"), p.voiceName);
+    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey5("voicePitch"), p.voicePitch);
+    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey5("touchControl"), p.touchControl);
+    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey5(k), p[k] ? "1" : "0");
+    if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey5("touchSens"), p.touchSens);
+    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey5("touchRegrip"), p.touchRegrip);
+    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey5("bigCovers"), p.bigCovers ? "1" : "0");
     const vr = p.vr;
     if (vr && typeof vr === "object") {
-      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey4("vrTurn"), vr.turn);
-      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey4("vrVignette"), vr.vignette ? "1" : "0");
-      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey4("vrHeight"), vr.height);
-      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey4("vrQuality"), vr.quality);
-      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey4("vrSeat"), vr.seat);
+      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey5("vrTurn"), vr.turn);
+      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey5("vrVignette"), vr.vignette ? "1" : "0");
+      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey5("vrHeight"), vr.height);
+      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey5("vrQuality"), vr.quality);
+      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey5("vrSeat"), vr.seat);
     }
   }
   var getIntroSeen = () => read2("sessionStorage", SESSION_INTRO) === "1";
@@ -20432,10 +20662,10 @@
   }
 
   // src/js/features/live/prefs.js
-  var KEY4 = "lfx.live.";
+  var KEY5 = "lfx.live.";
   var STYLES = ["flat", "crt80", "silver", "plain"];
   var DEFAULTS4 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1, music: true, fx: true };
-  var storageKey5 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
+  var storageKey6 = (name) => `${KEY5}${name}.${getUserId() || "anon"}`;
   function read3(key) {
     try {
       return window.localStorage.getItem(key);
@@ -20450,36 +20680,36 @@
     }
   }
   function getStyle() {
-    const v = read3(storageKey5("tvstyle"));
+    const v = read3(storageKey6("tvstyle"));
     return STYLES.includes(v) ? v : DEFAULTS4.style;
   }
   function getVolume2() {
-    const raw = read3(storageKey5("volume"));
+    const raw = read3(storageKey6("volume"));
     if (raw === null || raw === "") return DEFAULTS4.volume;
     const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS4.volume;
   }
   function getMuted2() {
-    return read3(storageKey5("muted")) === "1";
+    return read3(storageKey6("muted")) === "1";
   }
   function getMusic() {
-    return read3(storageKey5("music")) !== "0";
+    return read3(storageKey6("music")) !== "0";
   }
   function getFx() {
-    return read3(storageKey5("fx")) !== "0";
+    return read3(storageKey6("fx")) !== "0";
   }
   function getLastChannel2() {
-    const v = Number(read3(storageKey5("lastChannel")));
+    const v = Number(read3(storageKey6("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS4.lastChannel;
   }
   function savePrefs3(p) {
     if (!p || typeof p !== "object") return;
-    if (STYLES.includes(p.style)) write3(storageKey5("tvstyle"), p.style);
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write3(storageKey5("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write3(storageKey5("muted"), p.muted ? "1" : "0");
-    if (typeof p.music === "boolean") write3(storageKey5("music"), p.music ? "1" : "0");
-    if (typeof p.fx === "boolean") write3(storageKey5("fx"), p.fx ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write3(storageKey5("lastChannel"), String(p.lastChannel));
+    if (STYLES.includes(p.style)) write3(storageKey6("tvstyle"), p.style);
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write3(storageKey6("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write3(storageKey6("muted"), p.muted ? "1" : "0");
+    if (typeof p.music === "boolean") write3(storageKey6("music"), p.music ? "1" : "0");
+    if (typeof p.fx === "boolean") write3(storageKey6("fx"), p.fx ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write3(storageKey6("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/live/home.js
@@ -20823,7 +21053,7 @@
   var liveFeatures = [home_default6, guard_default];
 
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, osdcenter_default, playerbg_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, osdcenter_default, playerbg_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
 
   // src/js/main.js
   var WATCH_MS = 3e3;
@@ -20866,6 +21096,7 @@
       if (cssActive()) {
         startTheme();
         syncThemeUser();
+        syncDataSaver();
         applyFavicon(getTheme() || "flix");
         if (!running && window.ApiClient && isReady()) startFeatures();
       } else if (running || document.documentElement.classList.contains("lfx-js")) {
@@ -20897,6 +21128,7 @@
       window.removeEventListener("popstate", sync3);
       document.removeEventListener("viewshow", sync3);
       stopFeatures();
+      destroyDataSaver();
       destroyTheme();
       removeFavicon();
       delete window.LenzFlix;

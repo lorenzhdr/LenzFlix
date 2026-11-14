@@ -7,6 +7,7 @@ vi.mock('../src/js/core/theme.js', () => ({
   THEME_META: { flix: { name: 'LENZFLIX' }, plus: { name: 'LENZ+' } },
   getPreviousTheme: vi.fn(() => themeState.prev),
   isTheme: vi.fn((id) => id === 'live'),
+  getTheme: vi.fn(() => 'live'),
   onThemeChange: vi.fn((fn) => {
     themeState.listeners.add(fn);
     return () => themeState.listeners.delete(fn);

@@ -219,6 +219,10 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header_
   background: var(--lfx-pill-active);
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv):not(.lfx-datasaver) #lfx-prime-header .lfx-dsbtn {
+  display: none;
+}
+
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__avatar {
   background: var(--lfx-prime-chip);
   width: 34px;

@@ -22,6 +22,12 @@ vi.mock('../src/js/shared/trend.js', async () => {
   return { ...actual, getTrendInfo: vi.fn() };
 });
 vi.mock('../src/js/shared/trailer.js', () => ({ createMutedPreview: vi.fn() }));
+const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
+vi.mock('../src/js/core/datasaver.js', () => ({
+  isDataSaver: () => ds.on,
+  onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+}));
+const setSaver = (v) => { ds.on = v; [...ds.subs].forEach((cb) => cb(v)); };
 
 import * as api from '../src/js/core/api.js';
 import { clearCache } from '../src/js/core/cache.js';
@@ -276,5 +282,46 @@ describe('Hero: Pool', () => {
     expect(ids).toContain('r1');
     expect(ids).not.toContain('x');
     expect(pool[0].Id).toBe('r1'); // Zufallstitel mit Trailer zuerst
+  });
+});
+
+describe('Hero: Datensparmodus', () => {
+  afterEach(() => { ds.on = false; ds.subs.clear(); });
+
+  it('an: keine Vorschau, Pool auf 5 Titel gekürzt, data-lfx-tr leer', async () => {
+    ds.on = true;
+    const pool = Array.from({ length: 10 }, (_, i) => mk(`m${i}`, 'Movie', { LocalTrailerCount: 1 }));
+    const cleanup = await mount(pool);
+    expect(createMutedPreview).not.toHaveBeenCalled();
+    expect(slot.querySelectorAll('.lfx-prime-hero__dot').length).toBe(5);
+    expect(slot.dataset.lfxTr).toBeUndefined();
+    await tick(ROTATE_MS + 100); // Rotation läuft ohne Trailer weiter
+    expect(slot.querySelector('.lfx-prime-hero__dot.is-active')).toBe(slot.querySelectorAll('.lfx-prime-hero__dot')[1]);
+    cleanup();
+  });
+
+  it('aus: Pool bleibt voll und die Vorschau startet', async () => {
+    const pool = Array.from({ length: 10 }, (_, i) => mk(`m${i}`, 'Movie', { LocalTrailerCount: 1 }));
+    const cleanup = await mount(pool);
+    expect(createMutedPreview).toHaveBeenCalledTimes(1);
+    expect(slot.querySelectorAll('.lfx-prime-hero__dot').length).toBe(10);
+    cleanup();
+  });
+
+  it('Einschalten stoppt die laufende Vorschau, kürzt den Pool und setzt die Rotation fort', async () => {
+    let opts;
+    createMutedPreview.mockImplementation((container, item, o) => { opts = o; return preview; });
+    const pool = Array.from({ length: 10 }, (_, i) => mk(`m${i}`, 'Movie', { LocalTrailerCount: 1 }));
+    const cleanup = await mount(pool);
+    opts.onStart(document.createElement('video'));
+    expect(slot.querySelector('.lfx-prime-hero').classList.contains('is-trailer')).toBe(true);
+    setSaver(true);
+    expect(preview.cancel).toHaveBeenCalled();
+    expect(slot.querySelector('.lfx-prime-hero').classList.contains('is-trailer')).toBe(false);
+    expect(slot.querySelectorAll('.lfx-prime-hero__dot').length).toBe(5);
+    await tick(ROTATE_MS + 100);
+    expect(slot.querySelector('.lfx-prime-hero__dot.is-active')).toBe(slot.querySelectorAll('.lfx-prime-hero__dot')[1]);
+    cleanup();
+    expect(ds.subs.size).toBe(0);
   });
 });

@@ -8,6 +8,7 @@ import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js'
 import { parseLfxRoute, browseHref, searchHref, tvModeHref } from '../../shared/routes.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { getLibraries } from '../../shared/libraries.js';
+import { createDataSaverButton } from '../../shared/dsbtn.js';
 import { ICONS } from './header-icons.js';
 import { isPhone } from './mobile.js';
 
@@ -270,7 +271,8 @@ export const plusHeader = {
     const tv = h('a', { class: 'lfx-plus-header__tv', href: tvModeHref, 'aria-label': 'TV', title: 'TV', dataset: { key: 'tv' } });
     tv.append(icon('tvmode', 'lfx-plus-header__icon'));
     tv.addEventListener('click', () => window.dispatchEvent(new CustomEvent('lfx:tvmode-intent')));
-    root.append(h('div', { class: 'lfx-plus-header__left' }, [brand, chip]), nav, tv, search);
+    const ds = createDataSaverButton({ className: 'lfx-plus-header__ds' });
+    root.append(h('div', { class: 'lfx-plus-header__left' }, [brand, chip]), nav, ds, tv, search);
     state.nav = nav;
     state.chip = chip;
 

@@ -32,17 +32,27 @@ describe('profileEntries', () => {
   it('Reihenfolge mit Statistik und Admin', async () => {
     h.user.Policy.IsAdministrator = true;
     const e = await profileEntries({ theme: 'plus' });
-    expect(e.map((x) => x.key)).toEqual(['stats', 'design', 'settings', 'dashboard', 'logout']);
-    expect(e.map((x) => x.label)).toEqual(['Meine Statistik', 'Design Einstellungen', 'Einstellungen', 'Dashboard', 'Abmelden']);
+    expect(e.map((x) => x.key)).toEqual(['stats', 'design', 'datasaver', 'settings', 'dashboard', 'logout']);
+    expect(e.map((x) => x.label)).toEqual(['Meine Statistik', 'Design Einstellungen', 'Datensparmodus', 'Einstellungen', 'Dashboard', 'Abmelden']);
     expect(e[1].badge).toBe('Beta');
     expect(e[0]).toMatchObject({ href: 'https://stats.example/me?theme=plus', className: 'is-stats' });
-    expect(e[2].href).toBe('#/mypreferencesmenu');
-    expect(e[3].href).toBe('#/dashboard');
+    expect(e[2]).toMatchObject({ switch: true, checked: false });
+    expect(e[3].href).toBe('#/mypreferencesmenu');
+    expect(e[4].href).toBe('#/dashboard');
   });
 
   it('kein Dashboard ohne Admin-Policy', async () => {
     const e = await profileEntries();
-    expect(e.map((x) => x.key)).toEqual(['stats', 'design', 'settings', 'logout']);
+    expect(e.map((x) => x.key)).toEqual(['stats', 'design', 'datasaver', 'settings', 'logout']);
+  });
+
+  it('Datensparmodus nur bei flix/plus/prime (kein hidden-Eintrag bei retro/store)', async () => {
+    for (const theme of ['flix', 'plus', 'prime']) {
+      expect((await profileEntries({ theme })).map((x) => x.key)).toContain('datasaver');
+    }
+    for (const theme of ['retro', 'store', 'live']) {
+      expect((await profileEntries({ theme })).map((x) => x.key)).not.toContain('datasaver');
+    }
   });
 
   it('ohne statsUrl kein Stats-Eintrag', async () => {

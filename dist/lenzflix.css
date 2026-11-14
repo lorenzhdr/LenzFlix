@@ -8323,6 +8323,162 @@ html.lfx-js .lfx-popover__item:focus-visible {
   }
 }
 
+html.lfx-js:not(.layout-tv) .lfx-switch {
+  box-sizing: border-box;
+  background: rgba(120, 120, 128, .45);
+  border-radius: 13px;
+  flex: none;
+  width: 42px;
+  height: 26px;
+  display: inline-block;
+  position: relative;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-switch__knob {
+  background: #fff;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+}
+
+html.lfx-js:not(.layout-tv) .is-on > .lfx-switch {
+  background: var(--lfx-red);
+}
+
+html.lfx-js:not(.layout-tv) .is-on > .lfx-switch .lfx-switch__knob {
+  transform: translateX(16px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html.lfx-js:not(.layout-tv) .lfx-switch {
+    transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-switch__knob {
+    transition: transform var(--lfx-dur-fast) var(--lfx-ease);
+  }
+}
+
+html.lfx-js:not(.layout-tv) .lfx-popover__item--switch, html.lfx-js:not(.layout-tv) .lfx-sheet__item--switch, html.lfx-js:not(.layout-tv) .lfx-prime-psheet__item--switch {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+html.lfx-js #lfx-nav .lfx-nav__menu-item--datasaver {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin: 0;
+  display: flex;
+}
+
+html.lfx-js .lfx-mnav-overlay__link--datasaver {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  display: flex;
+}
+
+html.lfx-js .lfx-popover__note {
+  box-sizing: border-box;
+  color: var(--lfx-text-muted);
+  font: 400 var(--lfx-fs-meta) / 1.3 var(--lfx-font);
+  white-space: nowrap;
+  padding: 8px 12px 6px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-dsbtn {
+  display: none;
+}
+
+html.lfx-js.lfx-datasaver:not(.layout-tv) .lfx-dsbtn svg {
+  width: 24px;
+  height: 24px;
+}
+
+html.lfx-js.lfx-datasaver.lfx-dsbtn-on.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:not(:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))) {
+  margin-left: 80px;
+}
+
+html.lfx-js.lfx-datasaver.lfx-dsbtn-on.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:not(:is(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))) {
+  margin-left: 80px;
+}
+
+html.lfx-js.lfx-datasaver.lfx-dsbtn-on.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)) {
+  margin-right: 80px;
+}
+
+html.lfx-js.lfx-datasaver.lfx-dsbtn-on.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:is(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi)) {
+  margin-right: 80px;
+}
+
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
+  top: 0;
+  right: calc(var(--lfx-gutter) + 138px);
+  z-index: 1101;
+  box-sizing: border-box;
+  width: 40px;
+  height: var(--lfx-header-h);
+  color: var(--lfx-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: none;
+  border: 0;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  position: fixed;
+}
+
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn svg {
+  box-sizing: content-box;
+  transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
+  border-radius: 50%;
+  padding: 8px;
+}
+
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg, html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn[aria-expanded="true"] svg {
+  background-color: rgba(255, 255, 255, .1);
+}
+
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: -4px;
+  border-radius: 50%;
+}
+
+@media (max-width: 899px) {
+  html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
+    top: env(safe-area-inset-top, 0px);
+    height: 56px;
+    right: calc(4vw + 138px);
+  }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
+    right: calc(max(4vw, env(safe-area-inset-right, 0px)) + 124px);
+  }
+}
+
 html.lfx-js .lfx-beta {
   letter-spacing: .08em;
   text-transform: uppercase;

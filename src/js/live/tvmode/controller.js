@@ -241,8 +241,15 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     if (pfAc) { try { pfAc.abort(); } catch { /* egal */ } pfAc = null; }
   }
   const prefetchTarget = (itemId, signal) => prefetchItem(player, itemId, signal);
+  // Datensparmodus (deps.zapPrefetch === false): Nachbarn werden nicht vorab aufgelöst. Delegations-Player statt Änderung an
+  // live/player/neighbors.js (von LENZ LIVE mitgenutzt); prewarm/warmNote usw. laufen über den Prototyp weiter.
+  const nbPlayer = player && typeof player === 'object' && typeof player.prefetch === 'function'
+    ? Object.assign(Object.create(player), {
+      prefetch: (id, o) => (deps && deps.zapPrefetch === false ? Promise.resolve({ ok: false, reason: 'off' }) : player.prefetch(id, o)),
+    })
+    : player;
   const nb = createNeighbors({
-    player, scheduler, clock, deps, nch: NCH,
+    player: nbPlayer, scheduler, clock, deps, nch: NCH,
     getChannel: () => channel,
     getPhase: () => (phase === 'error' ? 'error' : playing ? phase : 'loading'),
   });
@@ -522,6 +529,11 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       return { zaps: zaps.map((z) => ({ ...z, ...(z.timing ? { timing: { ...z.timing } } : {}) })), lastMs: ms.length ? ms[ms.length - 1] : null, avgMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null };
     },
     on: (name, fn) => em.on(name, fn),
+    /** Datensparmodus an: Nachbar-Takt stoppen, vorgewärmte Sitzungen sofort beenden (läuft der Sender, bleibt er unberührt). */
+    releaseWarm() {
+      nb.stop();
+      if (player) safe(() => player.releaseWarm && player.releaseWarm());
+    },
     dispose() {
       if (disposed) return;
       stop();

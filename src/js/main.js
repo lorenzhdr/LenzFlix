@@ -10,6 +10,7 @@ import { cssActive } from './core/csscheck.js';
 import { initHomeCache, destroyHomeCache } from './core/homecache.js';
 import { VERSION } from './core/version.js';
 import { earlyTheme, startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
+import { syncDataSaver, destroyDataSaver } from './core/datasaver.js';
 import { features } from './features/index.js';
 import { destroyStore } from './features/store/home.js';
 import { destroyLive } from './features/live/home.js';
@@ -63,6 +64,7 @@ function init() {
     if (cssActive()) {
       startTheme();
       syncThemeUser();
+      syncDataSaver();
       applyFavicon(getTheme() || 'flix');
       if (!running && window.ApiClient && isReady()) startFeatures();
     } else if (running || document.documentElement.classList.contains('lfx-js')) {
@@ -96,6 +98,7 @@ function init() {
     window.removeEventListener('popstate', sync);
     document.removeEventListener('viewshow', sync);
     stopFeatures();
+    destroyDataSaver();
     destroyTheme();
     removeFavicon();
     delete window.LenzFlix;

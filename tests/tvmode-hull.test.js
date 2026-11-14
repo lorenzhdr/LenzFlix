@@ -54,6 +54,7 @@ function makeEngine() {
     resume: vi.fn(),
     isOn: vi.fn(() => true),
     isPip: vi.fn(() => false),
+    releaseWarm: vi.fn(),
     dispose: vi.fn(),
   };
   window.LenzFlixTvMode = {
@@ -280,6 +281,32 @@ describe('tvmode Lebenszyklus', () => {
     expect(document.getElementById('lfx-tvm')).toBe(null);
     expect(document.documentElement.classList.contains('lfx-tvm-on')).toBe(false);
     expect(themeListeners.size).toBe(0);
+  });
+});
+
+describe('tvmode Datensparmodus', () => {
+  const saver = (active) => window.dispatchEvent(new CustomEvent('lfx:datasaver', { detail: { active } }));
+  it('Einschalten beendet vorgewärmte Sitzungen sofort (instance.releaseWarm), Ausschalten tut nichts', async () => {
+    await mountReady();
+    saver(true);
+    expect(instance.releaseWarm).toHaveBeenCalledTimes(1);
+    saver(false);
+    expect(instance.releaseWarm).toHaveBeenCalledTimes(1);
+  });
+  it('nach unmount/destroy ist das Abo abgemeldet', async () => {
+    await mountReady();
+    feature.unmount();
+    saver(true);
+    expect(instance.releaseWarm).not.toHaveBeenCalled();
+    await mountReady();
+    destroyTvMode();
+    saver(true);
+    expect(instance.releaseWarm).not.toHaveBeenCalled();
+  });
+  it('deps.zapPrefetch ist ein Getter (an, solange der Modus nicht aktiv ist)', async () => {
+    await mountReady();
+    expect(created.deps.zapPrefetch).toBe(true);
+    expect(created.deps.zapWarm).toBe(true);
   });
 });
 

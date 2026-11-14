@@ -3,6 +3,7 @@
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from './dom.js';
 import { computeMenuPosition, anchorRect } from './itemmenu.js';
 import { attachSwipeClose } from './swipe.js';
+import { switchButton } from './switch.js';
 
 const SHEET_ID = 'lfx-sheet';
 
@@ -44,8 +45,8 @@ export function closeChooser() {
 export function renderSheet(c, title, entries) {
   c.title.textContent = title;
   c.list.replaceChildren(
-    ...entries.map(({ label, note, onClick, disabled, primary, badge }) =>
-      h(
+    ...entries.map(({ label, note, onClick, disabled, primary, badge, ...rest }) =>
+      rest.switch ? switchButton({ label, ...rest }, { className: 'lfx-sheet__item lfx-sheet__item--switch', role: 'switch' }) : h(
         'button',
         {
           type: 'button',

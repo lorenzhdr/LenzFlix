@@ -63,6 +63,17 @@ describe('entry', () => {
     expect(host.classList.contains('is-on')).toBe(false);
   });
 
+  it('releaseWarm: wirft weder vor dem Boot, noch laufend, noch nach dispose; der laufende Sender bleibt an', async () => {
+    inst = create(host, deps, { now, fakePlayer: true });
+    expect(() => inst.releaseWarm()).not.toThrow(); // vor dem Boot: noch kein Controller
+    await ready();
+    inst.start();
+    expect(() => inst.releaseWarm()).not.toThrow();
+    expect(inst.isOn()).toBe(true);
+    inst.dispose();
+    expect(() => inst.releaseWarm()).not.toThrow();
+  });
+
   it('start vor onReady wird nachgeholt', async () => {
     inst = create(host, deps, { now, fakePlayer: true });
     inst.start();

@@ -32,3 +32,6 @@ export const ICON_EYE_CHECK = svg(
 export const ICON_TVMODE = svg(
   '<path fill-rule="evenodd" d="M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-3.5l.8 2H17v2H7v-2h.7l.8-2H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1z"/><circle cx="12" cy="11" r="2.2"/>',
 );
+
+/** Pfeil nach unten unter einem Querstrich (Datensparmodus). */
+export const ICON_DATASAVER = svg('<path d="M5 3h14v2H5z"/><path d="M11 8h2v7.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4 3.6 3.6z"/>');

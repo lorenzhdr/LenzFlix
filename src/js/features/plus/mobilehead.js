@@ -6,6 +6,7 @@ import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { parseLfxRoute, tvModeHref, isTvModeRoute } from '../../shared/routes.js';
 import { getLibraries } from '../../shared/libraries.js';
+import { createDataSaverButton } from '../../shared/dsbtn.js';
 import { ICONS } from './header-icons.js';
 import { isPhone } from './mobile.js';
 
@@ -99,7 +100,8 @@ export const plusMobileHead = {
     const tv = h('a', { class: 'lfx-plus-mhead__tv', href: tvModeHref, 'aria-label': 'TV', title: 'TV', dataset: { key: 'tv' } });
     tv.innerHTML = ICONS.tvmode;
     tv.addEventListener('click', () => window.dispatchEvent(new CustomEvent('lfx:tvmode-intent')));
-    root.append(backEl, titleEl, tv);
+    const ds = createDataSaverButton({ className: 'lfx-plus-mhead__ds' });
+    root.append(backEl, titleEl, ds, tv);
     state.tvEl = tv;
     state.root = root;
     state.backEl = backEl;

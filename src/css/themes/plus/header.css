@@ -169,6 +169,35 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__se
   width: 20px;
   height: 20px;
 }
+/* Datensparmodus-Symbol (nur bei aktivem Modus sichtbar) links neben dem TV-Symbol; die auto-Marge wandert vom TV-Symbol hierher */
+html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin: 0 10px 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--lfx-plus-circle);
+  color: rgb(255 255 255 / 0.7);
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds svg {
+  width: 20px;
+  height: 20px;
+}
+html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds + .lfx-plus-header__tv {
+  margin-left: 0;
+}
+html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds[aria-expanded="true"] {
+  background: #3a3a42;
+  color: #fff;
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv.is-active,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
   background: #fff;
@@ -189,6 +218,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header button:focus-visible
     background: rgb(255 255 255 / 0.08);
     color: #fff;
   }
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds:hover,
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv:hover:not(.is-active),
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search:hover:not(.is-active) {
     background: #3a3a42;

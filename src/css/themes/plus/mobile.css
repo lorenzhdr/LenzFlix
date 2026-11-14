@@ -107,6 +107,29 @@
     width: 24px;
     height: 24px;
   }
+  /* Datensparmodus-Symbol (nur bei aktivem Modus sichtbar) links neben dem TV-Symbol */
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds {
+    flex: none;
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    margin: 0 8px 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(16 19 31 / 0.55);
+    color: #fff;
+  }
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+  }
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds + .lfx-plus-mhead__tv {
+    margin-left: 0;
+  }
 
   /* ---------- Chip-Reihe (Umschalter): scrollt mit, nicht fixiert ---------- */
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher {

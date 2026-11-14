@@ -9,6 +9,7 @@ import { isChooserOpen } from '../../core/download.js';
 import { getStoredItem, putItems } from '../../core/itemstore.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
+import { isDataSaver } from '../../core/datasaver.js';
 import { titleHref } from '../../shared/routes.js';
 import { createMutedPreview } from '../../shared/trailer.js';
 import { getTrendInfo } from '../../shared/trend.js';
@@ -224,7 +225,7 @@ async function openPoster(card) {
       window.scrollBy({ top: dy, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
   }, 340));
-  if (reducedMotion()) return;
+  if (reducedMotion() || isDataSaver()) return; // Datensparmodus: keine Trailer-Vorschau (die Hover-Karte bleibt)
   loadDetail(item.Id).then((detail) => {
     if (active !== a || !detail) return;
     a.preview = createMutedPreview(mediaEl, detail, {

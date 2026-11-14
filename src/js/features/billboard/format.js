@@ -51,6 +51,23 @@ export function buildPool(latest, random, opts = {}) {
   return out;
 }
 
+export const SAVER_POOL = 5;
+
+/**
+ * Datensparmodus: Hero-Pool auf SAVER_POOL Titel kürzen (die ersten fünf der Reihe Z N Z N Z = 3 zufällige + 2 neue).
+ * `keepId` (aktuell gezeigter Titel) bleibt enthalten (ersetzt den letzten Platz), falls er sonst herausfiele.
+ */
+export function saverPool(pool, keepId = null) {
+  const list = Array.isArray(pool) ? pool : [];
+  if (list.length <= SAVER_POOL) return list.slice();
+  const out = list.slice(0, SAVER_POOL);
+  if (keepId && !out.some((it) => it.Id === keepId)) {
+    const cur = list.find((it) => it.Id === keepId);
+    if (cur) out[SAVER_POOL - 1] = cur;
+  }
+  return out;
+}
+
 /** "1 Std. 46 Min." */
 export function formatRuntime(ticks) {
   const total = Math.round((Number(ticks) || 0) / 600000000);

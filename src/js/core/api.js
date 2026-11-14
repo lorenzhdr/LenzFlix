@@ -178,10 +178,17 @@ function first(arr) {
   return Array.isArray(arr) && arr.length ? arr[0] : null;
 }
 
+// Datensparmodus (core/datasaver.js setzt die Skala): maxWidth/maxHeight × Skala, quality unverändert.
+let imageScale = 1;
+export function setImageScale(f) {
+  imageScale = f > 0 && f <= 1 ? f : 1;
+}
+const scaled = (v) => (v && imageScale !== 1 ? Math.max(1, Math.round(v * imageScale)) : v);
+
 /** Bild-URL für eine konkrete Item-Id + Typ. */
 export function imageUrlFor(id, { type = 'Primary', maxWidth, maxHeight, quality = 90, tag } = {}) {
   if (!id) return null;
-  return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth, maxHeight, quality, tag });
+  return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth: scaled(maxWidth), maxHeight: scaled(maxHeight), quality, tag });
 }
 
 /** Eigenes Bild des Items (ImageTags bzw. Backdrop-Tags). Null, wenn nicht vorhanden. */

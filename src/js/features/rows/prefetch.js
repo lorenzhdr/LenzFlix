@@ -1,5 +1,8 @@
 // Startseiten-Zeilen im Hintergrund vorladen, sobald oben alles fertig ist (Hero, erste Zeilen, Trailer).
 // Gemeinsam für flix/plus/prime (nur Startseite, nie Hubs). Eine Zeile nach der anderen, von oben nach unten.
+import { netOk } from '../../core/net.js';
+import { isDataSaver, onDataSaverChange } from '../../core/datasaver.js';
+
 const MAX_WAIT = 15000; // spätestens dann starten, auch wenn „oben“ nicht fertig meldet
 const IMG_WAIT = 4000;
 const POLL = 250;
@@ -7,17 +10,15 @@ const TOP_ROWS = 3;
 const TOP_CARDS = 8;
 const RESUME_MS = 2000; // nach Info-Fenster/Hintergrund-TV erst nach so viel Ruhe weiter
 
-/** false bei Datensparen, Mobilfunk oder langsamem Netz; ohne API (Safari/Firefox) true. */
+/** false bei Datensparen, Mobilfunk oder langsamem Netz; ohne API (Safari/Firefox) true (Regel: core/net.js). */
 export function allowPrefetch() {
-  const c = typeof navigator !== 'undefined' ? navigator.connection : null;
-  if (!c) return true;
-  return !(c.saveData || c.type === 'cellular' || /^(slow-2g|2g|3g)$/.test(c.effectiveType || ''));
+  return netOk();
 }
 
-/** Pause: Tab versteckt, Info-Fenster offen oder TV läuft im Hintergrund-PiP (Klasse + Video, gegen hängende Klasse). */
+/** Pause: Tab versteckt, Datensparmodus an, Info-Fenster offen oder TV läuft im Hintergrund-PiP (Klasse + Video, gegen hängende Klasse). */
 function paused() {
   const cl = document.documentElement.classList;
-  return document.hidden || cl.contains('lfx-modal-open')
+  return document.hidden || isDataSaver() || cl.contains('lfx-modal-open')
     || (cl.contains('lfx-tvm-bgplay') && !!document.querySelector('#lfx-tvm-bg video'));
 }
 
@@ -128,6 +129,13 @@ export function startRowPrefetch({ slot, pending, load, hero }) {
     });
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   }
+  // Datensparmodus: an -> pausieren (laufende Zeile lädt fertig), aus -> nach RESUME_MS an derselben Stelle weiter
+  offs.push(onDataSaverChange(() => {
+    const p = paused();
+    wasPaused = p;
+    clearTimeout(rTimer);
+    if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
+  }));
   later(tick, POLL);
 
   return {
