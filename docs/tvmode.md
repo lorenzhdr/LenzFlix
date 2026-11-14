@@ -265,6 +265,7 @@ Jede Datei hat genau einen Eigentümer; fehlt einem Worker Klasse oder Funktion 
 - URL über `deps.imageUrl(id, { type, maxWidth })` (= `imageUrlFor`; Signatur siehe `features/live/deps.js`). Reihenfolge der Typen: **`Thumb` → `Backdrop` → `Primary`**, `maxWidth` 480
   (Liste/Karte; Info-Karte 960). Bei `onerror` des `<img>` wird der nächste Typ versucht; nach dem letzten ein Platzhalter: `.lfx-tvm__thumb--ph` mit Hintergrund
   `channelColor(no)` aus `ui/logos.js` (Textfarbe `channelInk(no)`) und Sendernummer. Das Ergebnis wird je `id` im `thumb.js` gemerkt (kein erneutes Durchprobieren).
+- **Bild-Kennung `tag`** (Browser-Cache, Server antwortet mit `max-age=31536000, immutable`; ohne `tag` nur `public` = Rückfrage je Anzeige): Die Hülle (`features/live/deps.js` `taggedImageUrl`) ergänzt `tag` aus dem Katalog (`features/live/data.js`: Filme/Serien laden `ImageTags` Thumb/Primary + erstes `BackdropImageTags`; Folgen nutzen die Serien-Id). Unbekannt (z. B. Cache-Eintrag von vor 1.11.8, Typ fehlt) → URL ohne `tag`, nie `null` (sonst Platzhalter statt Typ-Fallback). Gilt auch für LENZ LIVE (Fernsehzeitung/PDF).
 - Bild-URLs ohne `api_key`/Token (CLAUDE.md): niemals `streamUrl`, nie `ApiKey`/`api_key` anhängen oder loggen; die Bild-Endpunkte sind ohne Schlüssel erreichbar.
 - Lazy: `loading="lazy"`/`IntersectionObserver` in der Liste; Rasterzellen haben keine Bilder.
 

@@ -35,6 +35,11 @@ export function heroImage(item) {
   return api.imageUrl(item, { type: 'Backdrop', maxWidth: 1280 }) || api.landscapeImage(item, { maxWidth: 1280 });
 }
 
+/** Logo-URL des Info-Fensters (eine Quelle für buildDetail und das frühe Vorladen in modal.js). */
+export function logoUrl(item) {
+  return api.logoImage(item, { maxWidth: 500 });
+}
+
 export function detailHref(id, serverId) {
   return `#/details?id=${id}&serverId=${serverId || api.getAuth().serverId || ''}`;
 }
@@ -146,7 +151,7 @@ export function setPlayLabel(btn, label) {
  */
 export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
   const ud = item.UserData || {};
-  const logo = api.logoImage(item, { maxWidth: 500 });
+  const logo = logoUrl(item);
   const img = heroImage(item);
 
   const playBtn = h('button', { type: 'button', class: 'lfx-modal__play', onclick: () => H.play() }, [

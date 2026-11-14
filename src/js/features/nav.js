@@ -145,11 +145,14 @@ function fit() {
     for (const el of nav.querySelectorAll('.lfx-nav__menu-item--fold')) el.hidden = !off.has(el.dataset.key);
   };
   fold(0);
+  let n = 0;
   if (!isNavCompact()) {
     const limit = rightLimit(nav.getBoundingClientRect().left);
-    let n = 0;
     while (n < items.length && wrap.getBoundingClientRect().right > limit) fold(++n);
   }
+  // Leichte Pille am „Mehr“-Knopf, sobald mindestens ein Punkt eingeklappt ist
+  const moreBtn = wrap.querySelector('.lfx-nav__more-btn');
+  if (moreBtn) moreBtn.classList.toggle('has-fold', n > 0);
   applyActive();
 }
 

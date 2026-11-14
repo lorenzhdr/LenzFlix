@@ -45,6 +45,7 @@ import { startDownload, canDownload, isChooserOpen } from '../src/js/core/downlo
 import { confirmAction } from '../src/js/core/sheet.js';
 import { toast } from '../src/js/core/toast.js';
 import { clearCache } from '../src/js/core/cache.js';
+import { putItems, clearItemStore } from '../src/js/core/itemstore.js';
 import modal, { openModal, closeModal, findInterceptTarget } from '../src/js/features/modal.js';
 import { formatRuntime, metaParts, qualityLabel, seasonsLabel, ratingText } from '../src/js/features/modal/format.js';
 
@@ -981,5 +982,55 @@ describe('Modal-Wischgeste', () => {
     swipeDown(m);
     vi.advanceTimersByTime(500);
     expect(backSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('Bilder früh vorladen', () => {
+  const full = { Id: 'P1', Type: 'Movie', Name: 'P', ServerId: 'srv', ImageTags: { Logo: 'lt' }, BackdropImageTags: ['bt'], UserData: {} };
+  let srcs;
+  let Orig;
+  beforeEach(() => {
+    srcs = [];
+    clearItemStore();
+    Orig = window.Image;
+    window.Image = class { set src(v) { srcs.push(v); } };
+  });
+  afterEach(() => { window.Image = Orig; });
+
+  it('bekanntes Item: Hero und Logo vor loadItem, gleiche URLs wie im Detail', async () => {
+    putItems([full]);
+    let release;
+    api.getItem.mockImplementation(() => new Promise((r) => { release = () => r(full); }));
+    const p = openModal('P1');
+    expect(srcs).toHaveLength(2);
+    expect(srcs[0]).toContain('/Images/Backdrop');
+    expect(srcs[1]).toContain('/Images/Logo');
+    expect(srcs.join(' ')).not.toContain('api_key');
+    await flush();
+    release();
+    await p;
+    const heroSrc = document.querySelector('.lfx-modal__hero-img').getAttribute('src');
+    const logoSrc = document.querySelector('.lfx-modal__logo').getAttribute('src');
+    expect(heroSrc).toBe(srcs[0]);
+    expect(logoSrc).toBe(srcs[1]);
+  });
+
+  it('unbekanntes Item: kein Vorladen', async () => {
+    api.getItem.mockImplementation(async () => full);
+    await openModal('P1');
+    expect(srcs).toHaveLength(0);
+  });
+
+  it('Episode: Bilder der gespeicherten Serie, sonst nichts', async () => {
+    const ep = { Id: 'E9', Type: 'Episode', SeriesId: 'P1', ImageTags: {}, BackdropImageTags: ['x'] };
+    api.getItem.mockImplementation(async () => full);
+    await openModal(ep);
+    expect(srcs).toHaveLength(0);
+    modal.unmount();
+    setup();
+    clearItemStore();
+    putItems([full]);
+    await openModal(ep);
+    expect(srcs[0]).toContain('/Items/P1/Images/Backdrop');
   });
 });

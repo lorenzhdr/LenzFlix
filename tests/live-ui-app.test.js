@@ -597,6 +597,40 @@ describe('Info, Handy, Vollbild, Lebenszyklus', () => {
     expect(env.app.isOn()).toBe(true);
   });
 
+  it('suspend beendet vorgewärmte Sitzungen (releaseWarm), Ausschalten nicht; Einschalten danach geht', async () => {
+    const env = makeEnv({ player: { releaseWarm: vi.fn(), setKeepalive: vi.fn() } });
+    env.app.press('power');
+    await flush();
+    env.app.press('power'); // Ausschalten am Gerät
+    expect(env.app.isOn()).toBe(false);
+    expect(env.player.releaseWarm).not.toHaveBeenCalled();
+    env.app.press('power');
+    await flush();
+    expect(env.app.isOn()).toBe(true);
+    env.app.suspend();
+    expect(env.player.releaseWarm).toHaveBeenCalledTimes(1);
+    expect(env.player.stop).toHaveBeenCalled();
+  });
+
+  it('pagehide: wie suspend mit keepalive; pageshow (bfcache) hängt wieder ein, Gerät aus; dispose entfernt Listener', async () => {
+    const env = makeEnv({ player: { releaseWarm: vi.fn(), setKeepalive: vi.fn() } });
+    env.app.press('power');
+    await flush();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(env.app.isOn()).toBe(false);
+    expect(env.player.releaseWarm).toHaveBeenCalledTimes(1);
+    expect(env.player.setKeepalive.mock.calls.map((c) => c[0])).toEqual([true, false]);
+    env.app.press('power');
+    expect(env.app.isOn()).toBe(false); // ausgesetzt
+    window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+    env.app.press('power');
+    expect(env.app.isOn()).toBe(true);
+    env.app.dispose();
+    env.player.releaseWarm.mockClear();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(env.player.releaseWarm).not.toHaveBeenCalled();
+  });
+
   it('Debug: window.__lfxLive nur mit opts.debug, wird bei dispose entfernt', async () => {
     const off = makeEnv();
     expect(window.__lfxLive).toBeUndefined();

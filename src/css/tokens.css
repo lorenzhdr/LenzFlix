@@ -60,6 +60,7 @@
   --lfx-glass: rgba(109, 109, 110, 0.7);
   --lfx-glass-hover: rgba(109, 109, 110, 0.4);
   --lfx-pill-active: rgba(255, 255, 255, 0.2);
+  --lfx-pill-soft: rgba(255, 255, 255, 0.12);
   --lfx-icon-circle: rgba(42, 42, 42, 0.6);
   --lfx-icon-circle-border: rgba(255, 255, 255, 0.5);
   --lfx-progress-rail: rgba(255, 255, 255, 0.85);

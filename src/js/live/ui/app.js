@@ -1007,6 +1007,21 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
   });
   keys.attach();
 
+  // Seite schließen/verlassen: wie suspend() (alle Sitzungen enden, DELETE mit keepalive); bfcache-Rückkehr setzt es zurück (Gerät aus).
+  let hideSuspended = false;
+  function onPageHide() {
+    if (disposed || suspended) return;
+    hideSuspended = true;
+    safe(() => player.setKeepalive && player.setKeepalive(true));
+    try { instance.suspend(); } finally { safe(() => player.setKeepalive && player.setKeepalive(false)); }
+  }
+  function onPageShow(e) {
+    if (!hideSuspended) return;
+    hideSuspended = false;
+    if (e && e.persisted && !disposed) instance.resume();
+  }
+  if (win.addEventListener) { win.addEventListener('pagehide', onPageHide); win.addEventListener('pageshow', onPageShow); }
+
   // ---------- Dekor / Musik / Heft initial ----------
   // Drehknöpfe der Röhre 80er (lesen den Zustand per getState; erst hier, weil sie sofort synchronisieren)
   knobs = createKnobs({
@@ -1052,6 +1067,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     suspend() {
       if (disposed) return;
       powerOff();
+      safe(() => player.releaseWarm && player.releaseWarm()); // Verlassen: auch vorgewärmte Sitzungen sofort beenden (Ausschalten: Ablaufzeit)
       closeOverlays();
       app.classList.remove('is-powering-off');
       suspended = true;
@@ -1075,6 +1091,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
       for (const k of Object.keys(T)) clearTimeout(T[k]);
       keys.destroy();
       fs.destroy();
+      if (win.removeEventListener) { win.removeEventListener('pagehide', onPageHide); win.removeEventListener('pageshow', onPageShow); }
       app.removeEventListener('pointermove', onPointer);
       app.removeEventListener('pointerdown', onPointer);
       app.removeEventListener('pointerdown', onOutsidePointer, true);

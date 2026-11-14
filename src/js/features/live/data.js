@@ -15,15 +15,15 @@ const BASE_FIELDS = 'Genres,OfficialRating,ProductionYear,PremiereDate,DateCreat
 
 // Welche Felder je Typ in den Katalog (und Cache) wandern.
 export const KEEP = {
-  movies: ['Id', 'Name', 'RunTimeTicks', 'Genres', 'OfficialRating', 'ProductionYear', 'PremiereDate', 'DateCreated', 'LocalTrailerCount'],
-  series: ['Id', 'Name', 'Genres', 'OfficialRating', 'ProductionYear', 'DateCreated'],
+  movies: ['Id', 'Name', 'RunTimeTicks', 'Genres', 'OfficialRating', 'ProductionYear', 'PremiereDate', 'DateCreated', 'LocalTrailerCount', 'ImageTags', 'BackdropImageTags'],
+  series: ['Id', 'Name', 'Genres', 'OfficialRating', 'ProductionYear', 'DateCreated', 'ImageTags', 'BackdropImageTags'],
   episodes: ['Id', 'Name', 'SeriesId', 'SeriesName', 'ParentIndexNumber', 'IndexNumber', 'RunTimeTicks', 'PremiereDate', 'DateCreated', 'OfficialRating'],
   boxsets: ['Id', 'Name', 'ChildCount'],
 };
 
 const SOURCES = [
-  { key: 'movies', type: 'Movie', fields: BASE_FIELDS, size: PAGE_SIZE },
-  { key: 'series', type: 'Series', fields: BASE_FIELDS, size: PAGE_SIZE },
+  { key: 'movies', type: 'Movie', fields: BASE_FIELDS, size: PAGE_SIZE, tags: true },
+  { key: 'series', type: 'Series', fields: BASE_FIELDS, size: PAGE_SIZE, tags: true },
   { key: 'episodes', type: 'Episode', fields: 'DateCreated,PremiereDate,RunTimeTicks,OfficialRating', size: EPISODE_PAGE_SIZE },
   { key: 'boxsets', type: 'BoxSet', fields: 'ChildCount', size: PAGE_SIZE },
 ];
@@ -33,6 +33,13 @@ const asItems = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.I
 function compact(item, keys) {
   const out = {};
   for (const k of keys) if (item[k] !== undefined && item[k] !== null) out[k] = item[k];
+  if (out.ImageTags) { // schlank: nur Thumb/Primary (Bild-Kennung `tag` → Browser-Cache, docs/tvmode.md „Bilder“)
+    const t = {};
+    if (out.ImageTags.Thumb) t.Thumb = out.ImageTags.Thumb;
+    if (out.ImageTags.Primary) t.Primary = out.ImageTags.Primary;
+    out.ImageTags = t;
+  }
+  if (Array.isArray(out.BackdropImageTags)) out.BackdropImageTags = out.BackdropImageTags.slice(0, 1);
   return out;
 }
 
@@ -54,7 +61,8 @@ async function fetchType(src, onPart) {
       Recursive: true,
       IncludeItemTypes: src.type,
       Fields: src.fields,
-      EnableImages: false,
+      // Filme/Serien liefern Bild-Tags (ImageTypeLimit 1); Folgen/Sammlungen ohne Bilder
+      ...(src.tags ? { EnableImages: true, ImageTypeLimit: 1, EnableImageTypes: 'Primary,Thumb,Backdrop' } : { EnableImages: false }),
       EnableUserData: false,
       StartIndex: start,
       Limit: src.size,

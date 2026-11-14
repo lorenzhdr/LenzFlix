@@ -67,6 +67,7 @@
   --lfx-glass: rgba(109, 109, 110, .7);
   --lfx-glass-hover: rgba(109, 109, 110, .4);
   --lfx-pill-active: rgba(255, 255, 255, .2);
+  --lfx-pill-soft: rgba(255, 255, 255, .12);
   --lfx-icon-circle: rgba(42, 42, 42, .6);
   --lfx-icon-circle-border: rgba(255, 255, 255, .5);
   --lfx-progress-rail: rgba(255, 255, 255, .85);
@@ -3124,7 +3125,15 @@ html.lfx-js #lfx-nav .lfx-nav__item:hover {
   background: rgba(255, 255, 255, .08);
 }
 
-html.lfx-js #lfx-nav .lfx-nav__item.is-active {
+html.lfx-js #lfx-nav .lfx-nav__more-btn.has-fold {
+  background: var(--lfx-pill-soft);
+}
+
+html.lfx-js #lfx-nav .lfx-nav__more-btn.has-fold:hover {
+  background: rgba(255, 255, 255, .16);
+}
+
+html.lfx-js #lfx-nav .lfx-nav__item.is-active, html.lfx-js #lfx-nav .lfx-nav__more-btn.has-fold.is-active {
   background: var(--lfx-pill-active);
   color: var(--lfx-text);
 }

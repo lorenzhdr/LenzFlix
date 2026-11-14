@@ -42,8 +42,28 @@ export function deviceId() {
   }
 }
 
+/** id → { ImageTags, BackdropImageTags } aus dem Katalog (Filme/Serien; ältere Cache-Einträge ohne Tags → leer). */
+export function imageTagMap(raw) {
+  const m = new Map();
+  for (const list of [raw && raw.movies, raw && raw.series]) {
+    for (const it of Array.isArray(list) ? list : []) {
+      if (it && it.Id && (it.ImageTags || it.BackdropImageTags)) m.set(it.Id, it);
+    }
+  }
+  return m;
+}
+
+/** Bild-URL mit tag (immutable-Cache), wenn der Katalog den Tag kennt; sonst wie bisher ohne (nie null → Typ-Fallback der Engine bleibt). */
+export function taggedImageUrl(tags, id, o = {}) {
+  const it = id ? tags.get(id) : null;
+  const type = o.type || 'Primary';
+  const tag = it && (type === 'Backdrop' ? (it.BackdropImageTags || [])[0] : it.ImageTags && it.ImageTags[type]);
+  return api.imageUrlFor(id, tag ? { ...o, tag } : o);
+}
+
 /** Gemeinsame Engine-deps: { catalog, user, server, request, streamUrl, imageUrl, getBoxSetItems, loadTrailer, itemDetails, setPlayed, channelConfig }. */
 export function buildApiDeps(raw, user) {
+  const tags = imageTagMap(raw);
   return defineZapWarm({
     catalog: raw,
     user,
@@ -52,7 +72,7 @@ export function buildApiDeps(raw, user) {
     storage: safeStorage(), // Player: dauerhaft gemerkte Direct-Fehler
     forceHls: forceHlsEnabled(), // Player: HLS erzwingen (Hash lfxhls, nur mit Messanzeige)
     streamUrl: (path, params) => api.buildUrl(path, { ...(params || {}), ApiKey: api.getAuth().token }),
-    imageUrl: (id, o = {}) => api.imageUrlFor(id, o),
+    imageUrl: (id, o = {}) => taggedImageUrl(tags, id, o),
     getBoxSetItems: async (id) => {
       const res = await api.getItems({ ParentId: id, Fields: '', EnableImages: false, EnableUserData: false });
       return asItems(res).map((x) => x.Id).filter(Boolean);

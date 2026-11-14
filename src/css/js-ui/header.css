@@ -84,7 +84,14 @@ html.lfx-js #lfx-nav .lfx-nav__item:hover {
   background: rgb(255 255 255 / 0.08);
   color: var(--lfx-text);
 }
-html.lfx-js #lfx-nav .lfx-nav__item.is-active {
+html.lfx-js #lfx-nav .lfx-nav__more-btn.has-fold {
+  background: var(--lfx-pill-soft);
+}
+html.lfx-js #lfx-nav .lfx-nav__more-btn.has-fold:hover {
+  background: rgb(255 255 255 / 0.16);
+}
+html.lfx-js #lfx-nav .lfx-nav__item.is-active,
+html.lfx-js #lfx-nav .lfx-nav__more-btn.has-fold.is-active {
   background: var(--lfx-pill-active);
   color: var(--lfx-text);
 }

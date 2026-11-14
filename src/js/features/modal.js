@@ -21,7 +21,7 @@ import { getTheme, isTheme } from '../core/theme.js';
 import { titleHref } from '../shared/routes.js';
 import * as data from './modal/data.js';
 import { hasResume, pickInitialSeason } from './modal/format.js';
-import { TITLE_ID, buildSkeleton, buildError, buildDetail, renderEpisodes, renderCards, icon, setFavState, setLikeState, setPlayLabel, setPlayedState, setEpisodeSeen, detailHref } from './modal/render.js';
+import { TITLE_ID, buildSkeleton, buildError, buildDetail, heroImage, logoUrl, renderEpisodes, renderCards, icon, setFavState, setLikeState, setPlayLabel, setPlayedState, setEpisodeSeen, detailHref } from './modal/render.js';
 
 const ROOT_ID = 'lfx-modal';
 const ALLOWED_TYPES = new Set(['Movie', 'Series', 'Episode', 'Season', 'BoxSet', 'Video', 'MusicVideo']);
@@ -280,6 +280,22 @@ async function resolveTarget(id, hint) {
   return { targetId, sel };
 }
 
+/** Bekanntes Ziel-Item (Zeilen-/Billboard-Daten): Hero und Logo schon vor dem Laden der Details anfordern (gleiche URLs wie buildDetail). */
+function preloadImages(id, hint) {
+  const item = hint || data.getStoredItem(id);
+  if (!item) return;
+  let target = item;
+  if (item.Type === 'Episode' || item.Type === 'Season') {
+    const tid = item.SeriesId || item.ParentId;
+    target = tid ? data.getStoredItem(tid) : null;
+    if (!target) return;
+  }
+  for (const url of [heroImage(target), logoUrl(target)]) {
+    if (!url) continue;
+    try { new Image().src = url; } catch { /* egal */ }
+  }
+}
+
 async function loadInto(id, hint, replace, refresh = false) {
   const s = state;
   const token = ++s.token;
@@ -293,6 +309,7 @@ async function loadInto(id, hint, replace, refresh = false) {
   } else {
     s.content.replaceChildren(buildSkeleton());
   }
+  if (!refresh) preloadImages(id, hint);
   let main;
   let sel;
   try {

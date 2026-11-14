@@ -40,6 +40,7 @@ function setup(width) {
 
 const visible = () => [...document.querySelectorAll('#lfx-nav > .lfx-nav__item:not(.lfx-nav__more-btn)')].filter((e) => !e.hidden).map((e) => e.dataset.key);
 const folded = () => [...document.querySelectorAll('.lfx-nav__menu-item--fold')].filter((e) => !e.hidden).map((e) => e.dataset.key);
+const hasFold = () => document.querySelector('.lfx-nav__more-btn').classList.contains('has-fold');
 
 describe('nav: Einklappen ins Mehr-Menü', () => {
   beforeEach(() => {
@@ -59,6 +60,21 @@ describe('nav: Einklappen ins Mehr-Menü', () => {
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-nav__menu-item--fold').length).toBe(4));
     expect(visible()).toEqual(['home', 'series', 'movies', 'new', 'list']);
     expect(folded()).toEqual([]);
+    expect(hasFold()).toBe(false);
+  });
+
+  it('has-fold am Mehr-Knopf: an bei eingeklappten Punkten, aus bei genug Breite; is-active nicht gesetzt', async () => {
+    setup(1400);
+    nav.mount(parseHash('#/home'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-nav__menu-item--fold').length).toBe(4));
+    expect(hasFold()).toBe(false);
+    iconsLeft = 520;
+    window.dispatchEvent(new Event('resize'));
+    await vi.waitFor(() => expect(hasFold()).toBe(true));
+    expect(document.querySelector('.lfx-nav__more-btn').classList.contains('is-active')).toBe(false);
+    iconsLeft = 1000;
+    window.dispatchEvent(new Event('resize'));
+    await vi.waitFor(() => expect(hasFold()).toBe(false));
   });
 
   it('klappt von hinten ein: Liste, Neu und beliebt, Filme, Serien; Startseite bleibt', async () => {
@@ -99,6 +115,7 @@ describe('nav: Einklappen ins Mehr-Menü', () => {
     expect(entry.hidden).toBe(false);
     expect(entry.classList.contains('is-active')).toBe(true);
     expect(document.querySelector('.lfx-nav__more-btn').classList.contains('is-active')).toBe(true);
+    expect(hasFold()).toBe(true);
   });
 
   it('ohne rechte Symbole: Fensterbreite minus Reserve; unmount räumt auf', async () => {
@@ -120,5 +137,6 @@ describe('nav: Einklappen ins Mehr-Menü', () => {
     nav.mount(parseHash('#/home'));
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-nav__menu-item--fold').length).toBe(4));
     expect(folded()).toEqual([]);
+    expect(hasFold()).toBe(false);
   });
 });

@@ -89,11 +89,12 @@ export async function getJson(path, params, { signal } = {}) {
 }
 
 /** Beliebige Methode mit JSON-Body/-Antwort (Authorization-Header). 204 -> null. Fehlertext ohne Query/Token. */
-export async function requestJson(method, path, { params, body, signal } = {}) {
+export async function requestJson(method, path, { params, body, signal, keepalive } = {}) {
   const { token } = getAuth();
   const headers = { Accept: 'application/json' };
   if (token) headers.Authorization = `MediaBrowser Token="${token}"`;
   const init = { method: String(method || 'GET').toUpperCase(), headers, signal };
+  if (keepalive) init.keepalive = true;
   if (body !== undefined && body !== null) {
     headers['Content-Type'] = 'application/json';
     init.body = typeof body === 'string' ? body : JSON.stringify(body);

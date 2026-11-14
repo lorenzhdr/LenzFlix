@@ -9,7 +9,7 @@ let data; // type -> Item[]
 
 function makeItems(type, n) {
   return Array.from({ length: n }, (_, i) => {
-    const base = { Id: `${type}-${i}`, Name: `${type} ${i}`, Overview: 'lang lang lang', ImageTags: { Primary: 'x' }, UserData: { Played: true }, MediaSources: [{}] };
+    const base = { Id: `${type}-${i}`, Name: `${type} ${i}`, Overview: 'lang lang lang', ImageTags: { Primary: 'x', Logo: 'l', Thumb: 't' }, BackdropImageTags: ['b1', 'b2'], UserData: { Played: true }, MediaSources: [{}] };
     if (type === 'Movie') return { ...base, RunTimeTicks: 5e10, Genres: ['Action'], OfficialRating: 'FSK-12', ProductionYear: 1999, PremiereDate: '1999-01-01', DateCreated: '2020-01-01', LocalTrailerCount: 1 };
     if (type === 'Series') return { ...base, Genres: ['Drama'], OfficialRating: 'FSK-16', ProductionYear: 2010, DateCreated: '2020-01-01' };
     if (type === 'Episode') return { ...base, SeriesId: 's-1', SeriesName: 'Serie', ParentIndexNumber: 1, IndexNumber: i + 1, RunTimeTicks: 1e10, PremiereDate: '2011-01-01', DateCreated: '2020-01-01', OfficialRating: 'FSK-12', Genres: ['x'] };
@@ -64,7 +64,7 @@ describe('fetchCatalog', () => {
     expect(calls.map((c) => c.type).sort()).toEqual(['BoxSet', 'Episode', 'Movie', 'Series']);
     for (const c of calls) {
       expect(c.params.get('Recursive')).toBe('true');
-      expect(c.params.get('EnableImages')).toBe('false');
+      expect(c.params.get('EnableImages')).toBe(c.type === 'Movie' || c.type === 'Series' ? 'true' : 'false');
       expect(c.params.get('EnableUserData')).toBe('false');
       expect(c.params.get('userId')).toBe('u1');
       expect(c.params.get('Fields')).not.toContain('Overview');
@@ -76,6 +76,9 @@ describe('fetchCatalog', () => {
 
   it('übernimmt nur die Vertragsfelder (kompakt)', async () => {
     const raw = await fetchCatalog();
+    expect(raw.movies[0].ImageTags).toEqual({ Primary: 'x', Thumb: 't' });
+    expect(raw.movies[0].BackdropImageTags).toEqual(['b1']);
+    expect(raw.episodes[0]).not.toHaveProperty('ImageTags');
     expect(Object.keys(raw.episodes[0]).sort()).toEqual([...KEEP.episodes].sort());
     expect(Object.keys(raw.movies[0]).sort()).toEqual([...KEEP.movies].sort());
     expect(Object.keys(raw.series[0]).sort()).toEqual([...KEEP.series].sort());

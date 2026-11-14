@@ -118,11 +118,12 @@
     }
     throw new Error("LenzFlix API: kein ApiClient/Token verf\xFCgbar");
   }
-  async function requestJson(method, path, { params, body, signal } = {}) {
+  async function requestJson(method, path, { params, body, signal, keepalive } = {}) {
     const { token: token2 } = getAuth();
     const headers = { Accept: "application/json" };
     if (token2) headers.Authorization = `MediaBrowser Token="${token2}"`;
     const init2 = { method: String(method || "GET").toUpperCase(), headers, signal };
+    if (keepalive) init2.keepalive = true;
     if (body !== void 0 && body !== null) {
       headers["Content-Type"] = "application/json";
       init2.body = typeof body === "string" ? body : JSON.stringify(body);
@@ -390,7 +391,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.11.7";
+  var VERSION = "1.11.8";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -2837,17 +2838,19 @@
     const wrap = nav && nav.querySelector(".lfx-nav__more");
     if (!wrap) return;
     const items = FOLD_ORDER.map((k) => nav.querySelector(`.lfx-nav__item[data-key="${k}"]`)).filter(Boolean);
-    const fold = (n) => {
-      const off = new Set(items.slice(0, n).map((el4) => el4.dataset.key));
+    const fold = (n2) => {
+      const off = new Set(items.slice(0, n2).map((el4) => el4.dataset.key));
       for (const el4 of items) el4.hidden = off.has(el4.dataset.key);
       for (const el4 of nav.querySelectorAll(".lfx-nav__menu-item--fold")) el4.hidden = !off.has(el4.dataset.key);
     };
     fold(0);
+    let n = 0;
     if (!isNavCompact()) {
       const limit = rightLimit(nav.getBoundingClientRect().left);
-      let n = 0;
       while (n < items.length && wrap.getBoundingClientRect().right > limit) fold(++n);
     }
+    const moreBtn = wrap.querySelector(".lfx-nav__more-btn");
+    if (moreBtn) moreBtn.classList.toggle("has-fold", n > 0);
     applyActive();
   }
   function scheduleFit() {
@@ -3956,6 +3959,9 @@
   function heroImage(item) {
     return imageUrl(item, { type: "Backdrop", maxWidth: 1280 }) || landscapeImage(item, { maxWidth: 1280 });
   }
+  function logoUrl(item) {
+    return logoImage(item, { maxWidth: 500 });
+  }
   function detailHref(id, serverId) {
     return `#/details?id=${id}&serverId=${serverId || getAuth().serverId || ""}`;
   }
@@ -4059,7 +4065,7 @@
   }
   function buildDetail(item, H, { playLabel: playLabel2 = "Abspielen" } = {}) {
     const ud = item.UserData || {};
-    const logo = logoImage(item, { maxWidth: 500 });
+    const logo = logoUrl(item);
     const img = heroImage(item);
     const playBtn = h("button", { type: "button", class: "lfx-modal__play", onclick: () => H.play() }, [
       icon("play"),
@@ -4570,6 +4576,23 @@
     }
     return { targetId, sel };
   }
+  function preloadImages(id, hint) {
+    const item = hint || getStoredItem(id);
+    if (!item) return;
+    let target = item;
+    if (item.Type === "Episode" || item.Type === "Season") {
+      const tid = item.SeriesId || item.ParentId;
+      target = tid ? getStoredItem(tid) : null;
+      if (!target) return;
+    }
+    for (const url of [heroImage(target), logoUrl(target)]) {
+      if (!url) continue;
+      try {
+        new Image().src = url;
+      } catch {
+      }
+    }
+  }
   async function loadInto(id, hint, replace, refresh2 = false) {
     const s = state4;
     const token2 = ++s.token;
@@ -4587,6 +4610,7 @@
     } else {
       s.content.replaceChildren(buildSkeleton());
     }
+    if (!refresh2) preloadImages(id, hint);
     let main;
     let sel;
     try {
@@ -7838,14 +7862,14 @@
   var STORE = "catalog";
   var BASE_FIELDS = "Genres,OfficialRating,ProductionYear,PremiereDate,DateCreated,RunTimeTicks";
   var KEEP = {
-    movies: ["Id", "Name", "RunTimeTicks", "Genres", "OfficialRating", "ProductionYear", "PremiereDate", "DateCreated", "LocalTrailerCount"],
-    series: ["Id", "Name", "Genres", "OfficialRating", "ProductionYear", "DateCreated"],
+    movies: ["Id", "Name", "RunTimeTicks", "Genres", "OfficialRating", "ProductionYear", "PremiereDate", "DateCreated", "LocalTrailerCount", "ImageTags", "BackdropImageTags"],
+    series: ["Id", "Name", "Genres", "OfficialRating", "ProductionYear", "DateCreated", "ImageTags", "BackdropImageTags"],
     episodes: ["Id", "Name", "SeriesId", "SeriesName", "ParentIndexNumber", "IndexNumber", "RunTimeTicks", "PremiereDate", "DateCreated", "OfficialRating"],
     boxsets: ["Id", "Name", "ChildCount"]
   };
   var SOURCES = [
-    { key: "movies", type: "Movie", fields: BASE_FIELDS, size: PAGE_SIZE },
-    { key: "series", type: "Series", fields: BASE_FIELDS, size: PAGE_SIZE },
+    { key: "movies", type: "Movie", fields: BASE_FIELDS, size: PAGE_SIZE, tags: true },
+    { key: "series", type: "Series", fields: BASE_FIELDS, size: PAGE_SIZE, tags: true },
     { key: "episodes", type: "Episode", fields: "DateCreated,PremiereDate,RunTimeTicks,OfficialRating", size: EPISODE_PAGE_SIZE },
     { key: "boxsets", type: "BoxSet", fields: "ChildCount", size: PAGE_SIZE }
   ];
@@ -7853,6 +7877,13 @@
   function compact(item, keys) {
     const out = {};
     for (const k of keys) if (item[k] !== void 0 && item[k] !== null) out[k] = item[k];
+    if (out.ImageTags) {
+      const t = {};
+      if (out.ImageTags.Thumb) t.Thumb = out.ImageTags.Thumb;
+      if (out.ImageTags.Primary) t.Primary = out.ImageTags.Primary;
+      out.ImageTags = t;
+    }
+    if (Array.isArray(out.BackdropImageTags)) out.BackdropImageTags = out.BackdropImageTags.slice(0, 1);
     return out;
   }
   function broadcastDayKey(now = Date.now()) {
@@ -7870,7 +7901,8 @@
         Recursive: true,
         IncludeItemTypes: src.type,
         Fields: src.fields,
-        EnableImages: false,
+        // Filme/Serien liefern Bild-Tags (ImageTypeLimit 1); Folgen/Sammlungen ohne Bilder
+        ...src.tags ? { EnableImages: true, ImageTypeLimit: 1, EnableImageTypes: "Primary,Thumb,Backdrop" } : { EnableImages: false },
         EnableUserData: false,
         StartIndex: start10,
         Limit: src.size
@@ -8131,7 +8163,23 @@
       return "";
     }
   }
+  function imageTagMap(raw) {
+    const m = /* @__PURE__ */ new Map();
+    for (const list of [raw && raw.movies, raw && raw.series]) {
+      for (const it of Array.isArray(list) ? list : []) {
+        if (it && it.Id && (it.ImageTags || it.BackdropImageTags)) m.set(it.Id, it);
+      }
+    }
+    return m;
+  }
+  function taggedImageUrl(tags, id, o = {}) {
+    const it = id ? tags.get(id) : null;
+    const type = o.type || "Primary";
+    const tag = it && (type === "Backdrop" ? (it.BackdropImageTags || [])[0] : it.ImageTags && it.ImageTags[type]);
+    return imageUrlFor(id, tag ? { ...o, tag } : o);
+  }
   function buildApiDeps(raw, user) {
+    const tags = imageTagMap(raw);
     return defineZapWarm({
       catalog: raw,
       user,
@@ -8142,7 +8190,7 @@
       forceHls: forceHlsEnabled(),
       // Player: HLS erzwingen (Hash lfxhls, nur mit Messanzeige)
       streamUrl: (path, params) => buildUrl(path, { ...params || {}, ApiKey: getAuth().token }),
-      imageUrl: (id, o = {}) => imageUrlFor(id, o),
+      imageUrl: (id, o = {}) => taggedImageUrl(tags, id, o),
       getBoxSetItems: async (id) => {
         const res = await getItems({ ParentId: id, Fields: "", EnableImages: false, EnableUserData: false });
         return asItems3(res).map((x) => x.Id).filter(Boolean);
@@ -11783,9 +11831,9 @@
       const page2 = state21.page;
       if (!page2 || !page2.isConnected) return;
       const logoEl = page2.querySelector(".detailLogo");
-      const logoUrl = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
-      if (logoUrl) probeLogo(logoUrl);
-      let noLogo = !logoUrl || state21.probes.get(logoUrl) === "bad";
+      const logoUrl2 = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
+      if (logoUrl2) probeLogo(logoUrl2);
+      let noLogo = !logoUrl2 || state21.probes.get(logoUrl2) === "bad";
       if (!noLogo) {
         const had = page2.classList.contains(NOLOGO);
         if (had) page2.classList.remove(NOLOGO);
@@ -16602,14 +16650,14 @@
       h("div", { class: "lfx-rt__bg-scan" }),
       h("div", { class: "lfx-rt__bg-vig" })
     ]);
-    const logoUrl = logoImage(main, { maxWidth: 720 });
-    const brand = h("h1", { class: `lfx-rt__brand${logoUrl ? " has-logo" : ""}` });
+    const logoUrl2 = logoImage(main, { maxWidth: 720 });
+    const brand = h("h1", { class: `lfx-rt__brand${logoUrl2 ? " has-logo" : ""}` });
     const textTitle = () => {
       brand.classList.remove("has-logo");
       brand.replaceChildren(h("span", { class: "lfx-rt__chrome", "data-text": main.Name || "" }, main.Name || ""));
     };
-    if (logoUrl) {
-      brand.append(h("img", { class: "lfx-rt__logo", src: logoUrl, alt: main.Name || "", onerror: textTitle }));
+    if (logoUrl2) {
+      brand.append(h("img", { class: "lfx-rt__logo", src: logoUrl2, alt: main.Name || "", onerror: textTitle }));
     } else {
       textTitle();
     }

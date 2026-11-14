@@ -98,6 +98,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     ac = null;
   };
 
+  let keep = false; // nur beim Seite-Verlassen (pagehide): DELETE mit keepalive
   /** <video> sofort leeren, DANACH (bei HLS) den Encoding-Job beenden. */
   function teardown() {
     const s = session;
@@ -107,6 +108,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       try {
         return Promise.resolve(deps.request('DELETE', '/Videos/ActiveEncodings', {
           params: { deviceId: deps.server && deps.server.deviceId, playSessionId: s.playSessionId },
+          ...(keep ? { keepalive: true } : {}),
         })).then(() => {}, () => {});
       } catch { /* egal */ }
     }
@@ -227,6 +229,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     try {
       Promise.resolve(deps.request('DELETE', '/Videos/ActiveEncodings', {
         params: { deviceId: deps.server && deps.server.deviceId, playSessionId: r.playSessionId },
+        ...(keep ? { keepalive: true } : {}),
       })).then(() => {}, () => {});
     } catch { /* egal */ }
   }
@@ -243,6 +246,15 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     warm.delete(itemId);
     abortWarmPending(itemId);
     if (e) deleteWarmSession(e.r);
+  }
+  function releaseWarm() {
+    for (const [id, rec] of [...warmPending]) {
+      if (rec.r && !rec.taken) { rec.released = true; deleteWarmSession(rec.r); } // Job könnte schon laufen
+      abortWarmPending(id);
+    }
+    for (const id of [...warm.keys()]) dropWarm(id, 'weg');
+    clearTimeout(warmTimer);
+    warmTimer = null;
   }
   function armWarmTimer() {
     clearTimeout(warmTimer);
@@ -324,7 +336,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       stored = true;
       return { ok: true, mode: 'hls', warmed: true };
     } finally {
-      if (!stored && !rec.taken) deleteWarmSession(r); // Abbruch/Fehler: der Job könnte schon laufen (übernommen: bleibt die aktive Sitzung)
+      if (!stored && !rec.taken && !rec.released) deleteWarmSession(r); // Abbruch/Fehler: der Job könnte schon laufen (übernommen: bleibt die aktive Sitzung)
     }
   }
   function refreshWarm(itemId, e, offsetMs) {
@@ -634,17 +646,17 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       tr.subtitleIndex = index;
     },
     on: em.on,
+    /** Verlassen: alle vorgewärmten Sitzungen (und laufende Vorwärm-Abrufe) sofort beenden; Vorwärmen bleibt danach möglich. */
+    releaseWarm,
+    /** Nur synchron um stop()/releaseWarm() beim Seite-Verlassen: DELETE mit keepalive. */
+    setKeepalive(b) { keep = !!b; },
     dispose() {
       if (disposed) return;
       disposed = true;
       gen++;
       cancelRequests();
       teardown();
-      for (const rec of warmPending.values()) { try { rec.ac.abort(); } catch { /* egal */ } }
-      warmPending.clear();
-      for (const id of [...warm.keys()]) dropWarm(id);
-      clearTimeout(warmTimer);
-      warmTimer = null;
+      releaseWarm();
       vc.dispose();
       cache.clear();
       inflight.clear();

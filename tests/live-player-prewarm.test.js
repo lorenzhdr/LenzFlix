@@ -502,3 +502,40 @@ describe('Vorwärmen: Grund pro Umschalten und fMP4 pro Titel', () => {
   });
 });
 
+
+describe('Vorwärmen: releaseWarm (Verlassen)', () => {
+  it('beendet alle vorgewärmten Sitzungen per DELETE, danach geht prewarm wieder; stop() lässt warm unberührt', async () => {
+    const c = setup();
+    await c.player.prewarm('a', 0);
+    await c.player.prewarm('b', 0);
+    await c.player.stop();
+    expect(c.deletes()).toEqual([]);
+    c.player.setKeepalive(true);
+    c.player.releaseWarm();
+    c.player.setKeepalive(false);
+    expect(c.deletes().map((p) => p.playSessionId).sort()).toEqual(['ps-a', 'ps-b']);
+    expect(c.deps.request.mock.calls.filter((x) => x[0] === 'DELETE').every((x) => x[2].keepalive === true)).toBe(true);
+    c.player.releaseWarm();
+    expect(c.deletes()).toHaveLength(2);
+    const r = await c.player.prewarm('c', 0);
+    expect(r).toMatchObject({ ok: true, warmed: true });
+    c.player.releaseWarm();
+    expect(c.deletes().map((p) => p.playSessionId)).toContain('ps-c');
+    expect(c.deps.request.mock.calls.filter((x) => x[0] === 'DELETE' && x[2].params.playSessionId === 'ps-c')[0][2].keepalive).toBeUndefined();
+  });
+  it('laufender Vorwärm-Vorgang mit aufgelöster Sitzung wird sofort beendet (einmal)', async () => {
+    vi.useFakeTimers();
+    const log = [];
+    const deps = makeDeps({ respond: (m, p) => info(ms({ direct: false, transcodingUrl: `/videos/${itemPath(p)}/master.m3u8?PlaySessionId=ps-${itemPath(p)}&ApiKey=${SECRET}` }), { PlaySessionId: `ps-${itemPath(p)}` }), log });
+    deps.fetch = vi.fn((url, o) => new Promise((resolve, reject) => { o.signal.addEventListener('abort', () => reject(new Error('abort'))); }));
+    deps.zapWarm = true;
+    const player = createPlayer({ video: makeVideo({ log }), deps });
+    players.push(player);
+    const p = player.prewarm('h', 0);
+    await vi.advanceTimersByTimeAsync(100);
+    player.releaseWarm();
+    await vi.advanceTimersByTimeAsync(10);
+    await p;
+    expect(deps.request.mock.calls.filter((c) => c[0] === 'DELETE').map((c) => c[2].params.playSessionId)).toEqual(['ps-h']);
+  });
+});
