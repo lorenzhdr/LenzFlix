@@ -62,7 +62,8 @@ async function buildJs() {
 
 // Wächter: das Hauptbundle darf three.js nie enthalten (3D nur im lazy Bundle).
 // 1.11.0: 420 → 440 KiB (Ladebild, Player-Hintergrund, Startseiten-Umbau; die Startseite spart dafür Netzwerk-Sekunden).
-const MAIN_MIN_BUDGET = 440 * 1024;
+// 1.13.0: 440 → 496 KiB (Serien-/Filme-Seite, Meine Liste, Geheimmenü).
+const MAIN_MIN_BUDGET = 496 * 1024;
 function checkMainBundle() {
   const code = readFileSync(resolve(dist, 'lenzflix.min.js'), 'utf8');
   if (/WebGLRenderer|THREE\.REVISION|three\.module/.test(code)) {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { titleHref, hubHref, browseHref, searchHref, parseLfxRoute, tvModeHref, isTvModeRoute } from '../src/js/shared/routes.js';
+import { titleHref, hubHref, browseHref, searchHref, parseLfxRoute, tvModeHref, isTvModeRoute, libraryHref, myListHref, isLibraryRoute, isMyListRoute } from '../src/js/shared/routes.js';
 import { parseHash } from '../src/js/core/router.js';
 
 const parse = (href) => parseLfxRoute(parseHash(href));
@@ -16,11 +16,26 @@ describe('shared/routes', () => {
   });
 
   it('Round-Trip über parseHash', () => {
-    expect(parse(titleHref('x y'))).toEqual({ kind: 'title', id: 'x y', lib: null, genre: null, q: null });
+    expect(parse(titleHref('x y'))).toEqual({ kind: 'title', id: 'x y', lib: null, genre: null, q: null, view: null, sort: null, type: null });
     expect(parse(hubHref('L'))).toMatchObject({ kind: 'hub', lib: 'L' });
     expect(parse(browseHref('L', 'G'))).toMatchObject({ kind: 'browse', lib: 'L', genre: 'G' });
     expect(parse(searchHref('ä&b'))).toMatchObject({ kind: 'search', q: 'ä&b' });
     expect(parse('#/home?lfx=new')).toMatchObject({ kind: 'new' });
+  });
+
+  it('libraryHref/myListHref: Standardwerte entfallen, Round-Trip', () => {
+    expect(libraryHref('series')).toBe('#/home?lfx=series');
+    expect(libraryHref('movies', { genre: 'g 1', view: 'grid', sort: 'az' })).toBe('#/home?lfx=movies&genre=g%201&view=grid&sort=az');
+    expect(libraryHref('movies', { view: 'list', sort: 'bogus' })).toBe('#/home?lfx=movies');
+    expect(myListHref()).toBe('#/home?lfx=mylist');
+    expect(myListHref({ type: 'series', sort: 'year' })).toBe('#/home?lfx=mylist&type=series&sort=year');
+    expect(myListHref({ type: 'x' })).toBe('#/home?lfx=mylist');
+    expect(parse(libraryHref('movies', { genre: 'G', view: 'grid', sort: 'new' }))).toMatchObject({ kind: 'movies', genre: 'G', view: 'grid', sort: 'new' });
+    expect(parse('#/home?lfx=mylist&type=series&sort=za')).toMatchObject({ kind: 'mylist', type: 'series', sort: 'za' });
+    expect(parse('#/home?lfx=series&view=x&sort=y')).toMatchObject({ view: null, sort: null });
+    expect(isLibraryRoute(parseHash('#/home?lfx=series'))).toBe(true);
+    expect(isLibraryRoute(parseHash('#/home?lfx=mylist'))).toBe(false);
+    expect(isMyListRoute(parseHash('#/home?lfx=mylist'))).toBe(true);
   });
 
   it('keine LenzFlix-Route: kind null', () => {

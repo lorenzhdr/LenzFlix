@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 let theme = 'flix';
-let views = { Items: [{ Id: 'lib1', CollectionType: 'movies' }] };
+let views = { Items: [{ Id: 'lib1', CollectionType: 'movies' }, { Id: 'lib2', CollectionType: 'tvshows' }, { Id: 'lib3', CollectionType: 'music' }] };
 
 vi.mock('../src/js/core/theme.js', () => ({ isTheme: (id) => theme === id }));
 vi.mock('../src/js/core/api.js', () => ({
@@ -47,9 +47,10 @@ describe('themeroute', () => {
     expect(len).toBeGreaterThanOrEqual(before);
   });
 
-  it('hub -> #/home, search -> #/search?query=', () => {
+  it('hub (unbekannte Bibliothek) -> #/home, search -> #/search?query=', async () => {
     window.location.hash = '#/home?lfx=hub&lib=1';
     themeroute.mount(route('#/home?lfx=hub&lib=1'));
+    await flush();
     expect(window.location.hash).toBe('#/home');
     themeroute.unmount();
     window.location.hash = '#/home?lfx=search&q=a%20b';
@@ -65,7 +66,19 @@ describe('themeroute', () => {
     window.location.hash = '#/home?lfx=browse&lib=lib1&genre=g';
     themeroute.mount(route('#/home?lfx=browse&lib=lib1&genre=g'));
     await flush();
-    expect(window.location.hash).toBe('#/movies?topParentId=lib1&collectionType=movies');
+    expect(window.location.hash).toBe('#/home?lfx=movies&genre=g');
+  });
+
+  it('browse/hub: Serienbibliothek -> Serien-Seite, Musik -> native Ansicht (flix)', async () => {
+    window.location.hash = '#/home?lfx=hub&lib=lib2';
+    themeroute.mount(route('#/home?lfx=hub&lib=lib2'));
+    await flush();
+    expect(window.location.hash).toBe('#/home?lfx=series');
+    themeroute.unmount();
+    window.location.hash = '#/home?lfx=browse&lib=lib3';
+    themeroute.mount(route('#/home?lfx=browse&lib=lib3'));
+    await flush();
+    expect(window.location.hash).toBe('#/music?topParentId=lib3&collectionType=music');
   });
 
   it('browse: unbekannte Bibliothek -> #/home; Route inzwischen gewechselt -> keine Umleitung', async () => {
@@ -81,10 +94,11 @@ describe('themeroute', () => {
     expect(window.location.hash).toBe('#/tv');
   });
 
-  it('update leitet dieselbe Route nicht doppelt um', () => {
+  it('update leitet dieselbe Route nicht doppelt um', async () => {
     window.location.hash = '#/home?lfx=hub&lib=1';
     const r = route('#/home?lfx=hub&lib=1');
     themeroute.mount(r);
+    await flush();
     expect(window.location.hash).toBe('#/home');
     window.location.hash = '#/home?lfx=hub&lib=1';
     themeroute.update(r);
@@ -124,13 +138,13 @@ describe('themeroute im Design store', () => {
   describe('TV-Modus (lfx=tv)', () => {
     afterEach(() => document.documentElement.classList.remove('layout-tv'));
 
-    it('match nur unter retro/store/live und layout-tv; flix/plus/prime nie', () => {
+    it('match nur unter store/live und layout-tv; flix/plus/prime/retro nie', () => {
       const r = route('#/home?lfx=tv');
-      for (const t of ['flix', 'plus', 'prime']) {
+      for (const t of ['flix', 'plus', 'prime', 'retro']) {
         theme = t;
         expect(themeroute.match(r)).toBe(false);
       }
-      for (const t of ['retro', 'store', 'live']) {
+      for (const t of ['store', 'live']) {
         theme = t;
         expect(themeroute.match(r)).toBe(true);
       }
@@ -139,7 +153,7 @@ describe('themeroute im Design store', () => {
       expect(themeroute.match(r)).toBe(true);
     });
 
-    it.each(['retro', 'store', 'live'])('%s: lfx=tv -> #/home (replace, ohne neuen History-Eintrag)', (t) => {
+    it.each(['store', 'live'])('%s: lfx=tv -> #/home (replace, ohne neuen History-Eintrag)', (t) => {
       theme = t;
       window.location.hash = '#/home?lfx=tv';
       const before = window.history.length;
@@ -154,5 +168,74 @@ describe('themeroute im Design store', () => {
       themeroute.mount(route('#/home?lfx=tv'));
       expect(window.location.hash).toBe('#/home');
     });
+  });
+});
+
+describe('themeroute: Seiten Serien/Filme/Meine Liste (1.13.0)', () => {
+  afterEach(() => document.documentElement.classList.remove('layout-tv'));
+  const go = (h) => { window.location.hash = h; themeroute.mount(route(h)); };
+
+  it('flix: series|movies|mylist bleiben (match false)', () => {
+    for (const k of ['series', 'movies', 'mylist']) expect(themeroute.match(route(`#/home?lfx=${k}`))).toBe(false);
+  });
+
+  it('flix und retro: native Favoriten (tab=1) -> Meine Liste', () => {
+    for (const t of ['flix', 'retro']) {
+      theme = t;
+      expect(themeroute.match(route('#/home?tab=1'))).toBe(true);
+      go('#/home?tab=1');
+      expect(window.location.hash).toBe('#/home?lfx=mylist');
+      themeroute.unmount();
+    }
+    theme = 'plus';
+    expect(themeroute.match(route('#/home?tab=1'))).toBe(false);
+  });
+
+  it('retro: mylist erlaubt, series/movies -> Hub der ersten passenden Bibliothek', async () => {
+    theme = 'retro';
+    expect(themeroute.match(route('#/home?lfx=mylist'))).toBe(false);
+    expect(themeroute.match(route('#/home?lfx=series'))).toBe(true);
+    go('#/home?lfx=series');
+    await flush();
+    expect(window.location.hash).toBe('#/home?lfx=hub&lib=lib2');
+    themeroute.unmount();
+    go('#/home?lfx=movies');
+    await flush();
+    expect(window.location.hash).toBe('#/home?lfx=hub&lib=lib1');
+  });
+
+  it('plus/prime: series -> Hub (Fallback #/home), mylist -> #/home?tab=1', async () => {
+    for (const t of ['plus', 'prime']) {
+      theme = t;
+      go('#/home?lfx=series');
+      await flush();
+      expect(window.location.hash).toBe('#/home?lfx=hub&lib=lib2');
+      themeroute.unmount();
+      go('#/home?lfx=mylist');
+      expect(window.location.hash).toBe('#/home?tab=1');
+      themeroute.unmount();
+    }
+    const saved = views;
+    views = { Items: [] };
+    go('#/home?lfx=movies');
+    await flush();
+    expect(window.location.hash).toBe('#/home');
+    views = saved;
+  });
+
+  it('store/live/layout-tv: alle drei -> #/home', () => {
+    for (const t of ['store', 'live']) {
+      theme = t;
+      for (const k of ['series', 'movies', 'mylist']) {
+        go(`#/home?lfx=${k}`);
+        expect(window.location.hash).toBe('#/home');
+        themeroute.unmount();
+      }
+    }
+    theme = 'flix';
+    document.documentElement.classList.add('layout-tv');
+    expect(themeroute.match(route('#/home?lfx=series'))).toBe(true);
+    go('#/home?lfx=mylist');
+    expect(window.location.hash).toBe('#/home');
   });
 });

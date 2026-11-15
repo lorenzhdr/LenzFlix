@@ -61,13 +61,13 @@ describe('datasaver (Kern)', () => {
   it('aktiv nur bei flix/plus/prime', () => {
     syncDataSaver();
     setDataSaver(true);
-    for (const id of ['flix', 'plus', 'prime']) {
+    for (const id of ['flix', 'plus', 'prime', 'retro']) {
       setTheme(id);
       expect(dataSaverAvailable()).toBe(true);
       expect(isDataSaver()).toBe(true);
       expect(cls()).toBe(true);
     }
-    for (const id of ['retro', 'store', 'live']) {
+    for (const id of ['store', 'live']) {
       setTheme(id);
       expect(dataSaverAvailable()).toBe(false);
       expect(isDataSaver()).toBe(false);
@@ -102,13 +102,13 @@ describe('datasaver (Kern)', () => {
     expect(fn.mock.calls[0][0].detail).toEqual({ active: true });
   });
 
-  it('Design-Wechsel auf retro deaktiviert (Event, Klasse, Skala), Rückkehr aktiviert wieder', () => {
+  it('Design-Wechsel auf store deaktiviert (Event, Klasse, Skala), Rückkehr aktiviert wieder', () => {
     syncDataSaver();
     setDataSaver(true);
     expect(imageUrlFor('x', { maxWidth: 300 })).toContain('maxWidth=200');
     const seen = vi.fn();
     onDataSaverChange(seen);
-    setTheme('retro');
+    setTheme('store');
     expect(seen).toHaveBeenLastCalledWith(false);
     expect(cls()).toBe(false);
     expect(imageUrlFor('x', { maxWidth: 300 })).toContain('maxWidth=300');

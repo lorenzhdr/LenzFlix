@@ -178,25 +178,26 @@ function first(arr) {
   return Array.isArray(arr) && arr.length ? arr[0] : null;
 }
 
-// Datensparmodus (core/datasaver.js setzt die Skala): maxWidth/maxHeight × Skala, quality unverändert.
+// Bild-Skala (core/datasaver.js setzt sie aus core/imgscale.js bzw. Datensparmodus): maxWidth/maxHeight × Skala, quality unverändert.
 let imageScale = 1;
 export function setImageScale(f) {
-  imageScale = f > 0 && f <= 1 ? f : 1;
+  imageScale = f > 0 && f <= 2 ? f : 1;
 }
-const scaled = (v) => (v && imageScale !== 1 ? Math.max(1, Math.round(v * imageScale)) : v);
+const scaled = (v, on = true) => (v && on && imageScale !== 1 ? Math.max(1, Math.round(v * imageScale)) : v);
 
-/** Bild-URL für eine konkrete Item-Id + Typ. */
-export function imageUrlFor(id, { type = 'Primary', maxWidth, maxHeight, quality = 90, tag } = {}) {
+/** Bild-URL für eine konkrete Item-Id + Typ. `scale: false` = unskaliert (z. B. VIDEOTHEK). */
+export function imageUrlFor(id, { type = 'Primary', maxWidth, maxHeight, quality = 90, tag, scale } = {}) {
   if (!id) return null;
-  return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth: scaled(maxWidth), maxHeight: scaled(maxHeight), quality, tag });
+  const on = scale !== false;
+  return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth: scaled(maxWidth, on), maxHeight: scaled(maxHeight, on), quality, tag });
 }
 
 /** Eigenes Bild des Items (ImageTags bzw. Backdrop-Tags). Null, wenn nicht vorhanden. */
-export function imageUrl(item, { type = 'Primary', maxWidth, maxHeight, quality = 90 } = {}) {
+export function imageUrl(item, { type = 'Primary', maxWidth, maxHeight, quality = 90, scale } = {}) {
   if (!item) return null;
   const tag = type === 'Backdrop' ? first(item.BackdropImageTags) : item.ImageTags && item.ImageTags[type];
   if (!tag) return null;
-  return imageUrlFor(item.Id, { type, maxWidth, maxHeight, quality, tag });
+  return imageUrlFor(item.Id, { type, maxWidth, maxHeight, quality, tag, scale });
 }
 
 /**
@@ -221,17 +222,17 @@ export function pickLandscape(item) {
   return null;
 }
 
-export function landscapeImage(item, { maxWidth = 780, quality = 85 } = {}) {
+export function landscapeImage(item, { maxWidth = 780, quality = 85, scale } = {}) {
   const pick = pickLandscape(item);
-  return pick ? imageUrlFor(pick.id, { ...pick, maxWidth, quality }) : null;
+  return pick ? imageUrlFor(pick.id, { ...pick, maxWidth, quality, scale }) : null;
 }
 
-export function logoImage(item, { maxWidth = 500, quality = 90 } = {}) {
+export function logoImage(item, { maxWidth = 500, quality = 90, scale } = {}) {
   if (!item) return null;
   const own = item.ImageTags && item.ImageTags.Logo;
-  if (own) return imageUrlFor(item.Id, { type: 'Logo', tag: own, maxWidth, quality });
+  if (own) return imageUrlFor(item.Id, { type: 'Logo', tag: own, maxWidth, quality, scale });
   if (item.ParentLogoItemId && item.ParentLogoImageTag) {
-    return imageUrlFor(item.ParentLogoItemId, { type: 'Logo', tag: item.ParentLogoImageTag, maxWidth, quality });
+    return imageUrlFor(item.ParentLogoItemId, { type: 'Logo', tag: item.ParentLogoImageTag, maxWidth, quality, scale });
   }
   return null;
 }

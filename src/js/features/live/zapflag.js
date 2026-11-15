@@ -40,7 +40,7 @@ export function zapWarmEnabled() {
   } catch {
     off = v === '0'; // Speicher gesperrt: nur für diese Sitzung
   }
-  return !off && netOk() && !isDataSaver(); // isDataSaver: nur flix/plus/prime, unter LENZ LIVE immer false
+  return !off && netOk() && !isDataSaver('tvwarm'); // isDataSaver: nur flix/plus/prime/retro, unter LENZ LIVE immer false
 }
 
 /**
@@ -49,7 +49,7 @@ export function zapWarmEnabled() {
  */
 export function defineZapWarm(deps) {
   Object.defineProperty(deps, 'zapWarm', { get: zapWarmEnabled, enumerable: true, configurable: true });
-  Object.defineProperty(deps, 'zapPrefetch', { get: () => !isDataSaver(), enumerable: true, configurable: true });
+  Object.defineProperty(deps, 'zapPrefetch', { get: () => !isDataSaver('tvwarm'), enumerable: true, configurable: true });
   return deps;
 }
 
@@ -66,3 +66,26 @@ export function forceHlsEnabled() {
   }
   return on && zapStatsEnabled();
 }
+
+// Geheimmenü: Schalter ohne Hash-Parameter (gleiche Schlüssel wie lfxdebug/lfxwarm/lfxhls).
+function readKey(key) {
+  try { return window.localStorage.getItem(key); } catch { return null; }
+}
+function writeFlag(key, on) {
+  try {
+    if (on) window.localStorage.setItem(key, '1');
+    else window.localStorage.removeItem(key);
+  } catch { /* Speicher gesperrt */ }
+}
+
+export const isZapStatsOn = () => readKey(ZAP_KEY) === '1';
+export const setZapStats = (on) => writeFlag(ZAP_KEY, on);
+export const isZapWarmOn = () => readKey(ZAP_WARM_KEY) !== '0';
+export function setZapWarm(on) {
+  try {
+    if (on) window.localStorage.removeItem(ZAP_WARM_KEY);
+    else window.localStorage.setItem(ZAP_WARM_KEY, '0');
+  } catch { /* Speicher gesperrt */ }
+}
+export const isForceHlsOn = () => readKey(FORCE_HLS_KEY) === '1';
+export const setForceHls = (on) => writeFlag(FORCE_HLS_KEY, on);

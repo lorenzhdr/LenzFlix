@@ -1,4 +1,4 @@
-// TV-Modus (flix/plus/prime): Routen-Konstanten und Match. Vertrag: docs/tvmode.md „Hülle“.
+// TV-Modus (flix/plus/prime/retro): Routen-Konstanten und Match. Vertrag: docs/tvmode.md „Hülle“.
 import { isReady } from '../../core/api.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
@@ -7,7 +7,7 @@ import { isTvModeRoute } from '../../shared/routes.js';
 
 export const ROOT_ID = 'lfx-tvm';
 export const ON_CLASS = 'lfx-tvm-on';
-export const TV_THEMES = ['flix', 'plus', 'prime'];
+export const TV_THEMES = ['flix', 'plus', 'prime', 'retro'];
 
 export const findHomeTab = () => {
   const tab = document.querySelector('#indexPage:not(.hide) #homeTab');

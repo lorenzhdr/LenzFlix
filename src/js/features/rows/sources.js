@@ -77,7 +77,7 @@ export function resetSourceCache() {
 
 export const MIN_CHART_ROW = 5;
 
-function chartSpecs() {
+export function chartSpecs() {
   return [
     { id: 'top10-series', title: `Top 10 Serien auf ${brandName()}`, key: 'series' },
     { id: 'top10-movies', title: `Top 10 Filme auf ${brandName()}`, key: 'movies' },
@@ -108,7 +108,7 @@ const VIEWS_TTL = 5 * 60_000;
 const degraded = new WeakSet(); // Zeilenlisten ohne Bibliotheken/Genres: nicht cachen
 
 /** Zeilen-Ergebnis 10 min pro Nutzer cachen (Zufalls-Sortierung bleibt gleich); Snapshot {items, id, title} wegen Titel-/Id-Anpassungen. */
-function wrapRow(def) {
+export function wrapRow(def) {
   const key = homeKey(api.getUserId(), 'row', def.id);
   const orig = def.load;
   def.cacheKey = key;

@@ -4,13 +4,23 @@
 import { getViews, getAuth } from '../core/api.js';
 import { isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
-import { parseLfxRoute } from '../shared/routes.js';
+import { parseLfxRoute, libraryHref, myListHref, hubHref } from '../shared/routes.js';
 
 const REDIRECT_KINDS = ['title', 'hub', 'browse', 'search'];
 // VIDEOTHEK LENZ (store) zeigt title/search/new/classic selbst (3D-Bühne); nur Hub/Browse gehen auf die native Bibliothek.
 const STORE_REDIRECT_KINDS = ['hub', 'browse'];
-// TV-Modus (#/home?lfx=tv) gibt es nur in flix/plus/prime auf Modern: retro/store/live und layout-tv gehen zurück auf #/home.
-const tvModeUnavailable = () => isTheme('retro') || isTheme('store') || isTheme('live') || isTv();
+// TV-Modus (#/home?lfx=tv) gibt es nur in flix/plus/prime/retro auf Modern: store/live und layout-tv gehen zurück auf #/home.
+const tvModeUnavailable = () => isTheme('store') || isTheme('live') || isTv();
+// 1.13.0: Seiten Serien/Filme (nur flix) und Meine Liste (flix, retro); sonst native Ziele bzw. #/home.
+const PAGE_KINDS = ['series', 'movies', 'mylist'];
+const CT_OF = { series: 'tvshows', movies: 'movies' };
+const isFavTab = (route) => route && route.path === '/home' && route.params && !route.params.get('lfx') && route.params.get('tab') === '1';
+function pageUnavailable(kind) {
+  if (isTv() || isTheme('store') || isTheme('live')) return true;
+  if (isTheme('flix')) return false;
+  if (isTheme('retro')) return kind !== 'mylist';
+  return true;
+}
 let lastKey = null;
 let seq = 0;
 
@@ -36,7 +46,7 @@ function replaceTo(hash) {
   window.location.replace(`${pathname}${search}${hash}`);
 }
 
-function toLibrary(lib, key, mine) {
+function toLibrary(lib, key, mine, genre) {
   const stillHere = () => mine === seq && window.location.hash.replace(/^#!?/, '') === key.replace(/^#!?/, '');
   const home = isTheme('store') ? '#/home?lfx=classic' : '#/home';
   Promise.resolve()
@@ -44,9 +54,27 @@ function toLibrary(lib, key, mine) {
     .then((views) => {
       const items = (views && views.Items) || [];
       const v = items.find((x) => x.Id === lib);
+      if (v && isTheme('flix') && (v.CollectionType === 'movies' || v.CollectionType === 'tvshows')) {
+        return libraryHref(v.CollectionType === 'movies' ? 'movies' : 'series', { genre });
+      }
       return v ? libraryUrl(v.Id, v.CollectionType) : home;
     })
     .catch(() => `#/list?parentId=${encodeURIComponent(lib)}`)
+    .then((hash) => {
+      if (stillHere()) replaceTo(hash);
+    });
+}
+
+/** Erste Bibliothek der Art (series -> tvshows, movies -> movies) als Hub, sonst #/home. */
+function toFirstHub(kind, key, mine) {
+  const stillHere = () => mine === seq && window.location.hash.replace(/^#!?/, '') === key.replace(/^#!?/, '');
+  Promise.resolve()
+    .then(() => getViews())
+    .then((views) => {
+      const v = ((views && views.Items) || []).find((x) => x.CollectionType === CT_OF[kind]);
+      return v ? hubHref(v.Id) : '#/home';
+    })
+    .catch(() => '#/home')
     .then((hash) => {
       if (stillHere()) replaceTo(hash);
     });
@@ -60,20 +88,27 @@ function redirect(route) {
   if (key === lastKey) return; // gleiche Route: nicht doppelt umleiten
   lastKey = key;
   const mine = ++seq;
-  if (r.kind === 'tv') {
+  if (isFavTab(route)) {
+    replaceTo(myListHref());
+  } else if (PAGE_KINDS.includes(r.kind)) {
+    if (isTv() || isTheme('store') || isTheme('live')) return replaceTo('#/home');
+    if (r.kind === 'mylist') return replaceTo('#/home?tab=1');
+    if (isTheme('retro') || isTheme('plus') || isTheme('prime')) return toFirstHub(r.kind, key, mine);
+    replaceTo('#/home');
+  } else if (r.kind === 'tv') {
     replaceTo('#/home');
   } else if (r.kind === 'title') {
     if (!r.id) return replaceTo('#/home');
     const { serverId } = getAuth();
     replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ''}`);
   } else if (r.kind === 'hub') {
-    if (store && r.lib) return toLibrary(r.lib, key, mine);
+    if ((store || isTheme('flix')) && r.lib) return toLibrary(r.lib, key, mine, r.genre);
     replaceTo(home);
   } else if (r.kind === 'search') {
     replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : '#/search');
   } else if (r.kind === 'browse') {
     if (!r.lib) return replaceTo(home);
-    toLibrary(r.lib, key, mine);
+    toLibrary(r.lib, key, mine, r.genre);
   }
 }
 
@@ -82,6 +117,8 @@ const themeroute = {
   match: (route) => {
     const kind = parseLfxRoute(route).kind;
     if (kind === 'tv') return tvModeUnavailable();
+    if (PAGE_KINDS.includes(kind)) return pageUnavailable(kind);
+    if (isFavTab(route)) return !isTv() && (isTheme('flix') || isTheme('retro'));
     return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind));
   },
   mount: (route) => redirect(route),

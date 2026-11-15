@@ -192,18 +192,19 @@
   }
   var imageScale = 1;
   function setImageScale(f) {
-    imageScale = f > 0 && f <= 1 ? f : 1;
+    imageScale = f > 0 && f <= 2 ? f : 1;
   }
-  var scaled = (v) => v && imageScale !== 1 ? Math.max(1, Math.round(v * imageScale)) : v;
-  function imageUrlFor(id, { type = "Primary", maxWidth, maxHeight, quality = 90, tag } = {}) {
+  var scaled = (v, on = true) => v && on && imageScale !== 1 ? Math.max(1, Math.round(v * imageScale)) : v;
+  function imageUrlFor(id, { type = "Primary", maxWidth, maxHeight, quality = 90, tag, scale } = {}) {
     if (!id) return null;
-    return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth: scaled(maxWidth), maxHeight: scaled(maxHeight), quality, tag });
+    const on = scale !== false;
+    return buildUrl(`/Items/${id}/Images/${type}`, { maxWidth: scaled(maxWidth, on), maxHeight: scaled(maxHeight, on), quality, tag });
   }
-  function imageUrl(item, { type = "Primary", maxWidth, maxHeight, quality = 90 } = {}) {
+  function imageUrl(item, { type = "Primary", maxWidth, maxHeight, quality = 90, scale } = {}) {
     if (!item) return null;
     const tag = type === "Backdrop" ? first(item.BackdropImageTags) : item.ImageTags && item.ImageTags[type];
     if (!tag) return null;
-    return imageUrlFor(item.Id, { type, maxWidth, maxHeight, quality, tag });
+    return imageUrlFor(item.Id, { type, maxWidth, maxHeight, quality, tag, scale });
   }
   function pickLandscape(item) {
     if (!item) return null;
@@ -221,16 +222,16 @@
     }
     return null;
   }
-  function landscapeImage(item, { maxWidth = 780, quality = 85 } = {}) {
+  function landscapeImage(item, { maxWidth = 780, quality = 85, scale } = {}) {
     const pick = pickLandscape(item);
-    return pick ? imageUrlFor(pick.id, { ...pick, maxWidth, quality }) : null;
+    return pick ? imageUrlFor(pick.id, { ...pick, maxWidth, quality, scale }) : null;
   }
-  function logoImage(item, { maxWidth = 500, quality = 90 } = {}) {
+  function logoImage(item, { maxWidth = 500, quality = 90, scale } = {}) {
     if (!item) return null;
     const own2 = item.ImageTags && item.ImageTags.Logo;
-    if (own2) return imageUrlFor(item.Id, { type: "Logo", tag: own2, maxWidth, quality });
+    if (own2) return imageUrlFor(item.Id, { type: "Logo", tag: own2, maxWidth, quality, scale });
     if (item.ParentLogoItemId && item.ParentLogoImageTag) {
-      return imageUrlFor(item.ParentLogoItemId, { type: "Logo", tag: item.ParentLogoImageTag, maxWidth, quality });
+      return imageUrlFor(item.ParentLogoItemId, { type: "Logo", tag: item.ParentLogoImageTag, maxWidth, quality, scale });
     }
     return null;
   }
@@ -1659,16 +1660,16 @@
   function computeMenuPosition(anchorRect, viewport, menu = { w: 300, h: 320 }) {
     const vp = viewport || { w: window.innerWidth, h: window.innerHeight };
     const gap = 4;
-    const clamp2 = (v, min, max) => Math.max(min, Math.min(v, Math.max(min, max)));
+    const clamp3 = (v, min, max) => Math.max(min, Math.min(v, Math.max(min, max)));
     const isPoint = anchorRect.right === anchorRect.left;
     let x = isPoint ? anchorRect.left : anchorRect.right - menu.w;
-    x = clamp2(x, EDGE, vp.w - menu.w - EDGE);
+    x = clamp3(x, EDGE, vp.w - menu.w - EDGE);
     let y = anchorRect.bottom + gap;
     if (y + menu.h > vp.h - EDGE) {
       const above = anchorRect.top - gap - menu.h;
       y = above >= EDGE ? above : y;
     }
-    y = clamp2(y, EDGE, vp.h - menu.h - EDGE);
+    y = clamp3(y, EDGE, vp.h - menu.h - EDGE);
     return { x, y };
   }
   var listeners2 = /* @__PURE__ */ new Set();
@@ -1976,19 +1977,60 @@
     if (stop) stop();
   }
 
+  // src/js/core/imgscale.js
+  var KEY = "lfx.imgscale.";
+  var IMGSCALE_EVENT = "lfx:imgscale";
+  var DATASAVER_SCALE = 2 / 3;
+  var NORMAL_RANGE = [0.5, 2];
+  var SAVER_RANGE = [0.25, 1];
+  var storageKey = () => `${KEY}${getUserId() || "anon"}`;
+  var clamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, v));
+  var round05 = (v) => Math.round(v * 20) / 20;
+  var fix = (v, range) => clamp(round05(v), range);
+  function read() {
+    try {
+      const raw = window.localStorage.getItem(storageKey());
+      if (!raw) return {};
+      const o = JSON.parse(raw);
+      return o && typeof o === "object" ? o : {};
+    } catch {
+      return {};
+    }
+  }
+  var num = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
+  function getNormalScale() {
+    const v = num(read().normal);
+    return v === null ? 1 : fix(v, NORMAL_RANGE);
+  }
+  function getSaverScale() {
+    const v = num(read().saver);
+    return v === null ? DATASAVER_SCALE : fix(v, SAVER_RANGE);
+  }
+  function onImageScaleChange(cb) {
+    const fn = (e) => cb(e && e.detail);
+    window.addEventListener(IMGSCALE_EVENT, fn);
+    return () => window.removeEventListener(IMGSCALE_EVENT, fn);
+  }
+
   // src/js/core/datasaver.js
-  var KEY = "lfx.datasaver.";
+  var KEY2 = "lfx.datasaver.";
   var DATASAVER_EVENT = "lfx:datasaver";
   var DATASAVER_CLASS = "lfx-datasaver";
-  var DATASAVER_THEMES = ["flix", "plus", "prime"];
-  var DATASAVER_SCALE = 2 / 3;
+  var DATASAVER_THEMES = ["flix", "plus", "prime", "retro"];
+  var PARTS_KEY = "lfx.datasaver.parts.";
+  var PARTS_EVENT = "lfx:datasaver-parts";
+  var FLASH_CLASS = "lfx-ds-flash";
+  var DATASAVER_PARTS = ["trailer", "hero", "images", "prefetch", "lazy", "tvwarm"];
   var active = false;
   var lastUid2;
   var offTheme = null;
-  var storageKey = () => `${KEY}${getUserId() || "anon"}`;
+  var offScale = null;
+  var offParts = null;
+  var flashTimer = 0;
+  var storageKey2 = () => `${KEY2}${getUserId() || "anon"}`;
   function isDataSaverOn() {
     try {
-      return window.localStorage.getItem(storageKey()) === "1";
+      return window.localStorage.getItem(storageKey2()) === "1";
     } catch {
       return false;
     }
@@ -1996,23 +2038,49 @@
   function dataSaverAvailable() {
     return DATASAVER_THEMES.includes(getTheme());
   }
-  function isDataSaver() {
-    return dataSaverAvailable() && isDataSaverOn();
+  var partsKey = () => `${PARTS_KEY}${getUserId() || "anon"}`;
+  function disabledParts() {
+    try {
+      const arr = JSON.parse(window.localStorage.getItem(partsKey()) || "[]");
+      return Array.isArray(arr) ? arr.filter((p) => DATASAVER_PARTS.includes(p)) : [];
+    } catch {
+      return [];
+    }
+  }
+  function isDataSaver(part) {
+    if (!(dataSaverAvailable() && isDataSaverOn())) return false;
+    return !part || !disabledParts().includes(part);
+  }
+  function onDataSaverPartsChange(cb) {
+    const fn = (e) => cb(e && e.detail && e.detail.parts);
+    window.addEventListener(PARTS_EVENT, fn);
+    return () => window.removeEventListener(PARTS_EVENT, fn);
   }
   function apply() {
     const next = isDataSaver();
     document.documentElement.classList.toggle(DATASAVER_CLASS, next);
-    setImageScale(next ? DATASAVER_SCALE : 1);
+    setImageScale(isDataSaver("images") ? getSaverScale() : getNormalScale());
     if (next === active) return;
     active = next;
     window.dispatchEvent(new CustomEvent(DATASAVER_EVENT, { detail: { active } }));
   }
+  function flash() {
+    const cl2 = document.documentElement.classList;
+    clearTimeout(flashTimer);
+    cl2.add(FLASH_CLASS);
+    flashTimer = setTimeout(() => {
+      flashTimer = 0;
+      cl2.remove(FLASH_CLASS);
+    }, 1200);
+  }
   function setDataSaver(on) {
+    const was = isDataSaver();
     try {
-      window.localStorage.setItem(storageKey(), on ? "1" : "0");
+      window.localStorage.setItem(storageKey2(), on ? "1" : "0");
     } catch {
     }
     apply();
+    if (on && !was && isDataSaver()) flash();
     return isDataSaverOn();
   }
   function onDataSaverChange(cb) {
@@ -2022,6 +2090,8 @@
   }
   function syncDataSaver() {
     if (!offTheme) offTheme = onThemeChange(() => apply());
+    if (!offScale) offScale = onImageScaleChange(() => apply());
+    if (!offParts) offParts = onDataSaverPartsChange(() => apply());
     const uid = getUserId() || null;
     if (uid !== lastUid2) {
       lastUid2 = uid;
@@ -2031,9 +2101,15 @@
   function destroyDataSaver() {
     if (offTheme) offTheme();
     offTheme = null;
+    if (offScale) offScale();
+    offScale = null;
+    if (offParts) offParts();
+    offParts = null;
+    clearTimeout(flashTimer);
+    flashTimer = 0;
     lastUid2 = void 0;
     active = false;
-    document.documentElement.classList.remove(DATASAVER_CLASS);
+    document.documentElement.classList.remove(DATASAVER_CLASS, FLASH_CLASS);
     setImageScale(1);
   }
 
@@ -2043,9 +2119,18 @@
   var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
   var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
   var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
-  var KINDS = ["title", "hub", "browse", "search", "new", "tv"];
+  var KINDS = ["title", "hub", "browse", "search", "new", "tv", "series", "movies", "mylist"];
+  var SORTS = ["az", "za", "new", "year"];
+  var TYPES = ["movies", "series"];
+  function libraryHref(kind2, { genre, view, sort } = {}) {
+    const k = kind2 === "series" ? "series" : "movies";
+    return `#/home?lfx=${k}${genre ? `&genre=${enc(genre)}` : ""}${view === "grid" ? "&view=grid" : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
+  }
+  function myListHref({ type, sort } = {}) {
+    return `#/home?lfx=mylist${TYPES.includes(type) ? `&type=${type}` : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
+  }
   function parseLfxRoute(route) {
-    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null };
+    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null, view: null, sort: null, type: null };
     if (!route || !route.params || route.path !== "/home") return empty2;
     const kind2 = route.params.get("lfx");
     if (!KINDS.includes(kind2)) return empty2;
@@ -2054,7 +2139,10 @@
       id: route.params.get("id") || null,
       lib: route.params.get("lib") || null,
       genre: route.params.get("genre") || null,
-      q: route.params.get("q") || null
+      q: route.params.get("q") || null,
+      view: route.params.get("view") === "grid" ? "grid" : null,
+      sort: SORTS.includes(route.params.get("sort")) ? route.params.get("sort") : null,
+      type: TYPES.includes(route.params.get("type")) ? route.params.get("type") : null
     };
   }
   var tvModeHref = "#/home?lfx=tv";
@@ -2063,7 +2151,16 @@
   // src/js/features/themeroute.js
   var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
   var STORE_REDIRECT_KINDS = ["hub", "browse"];
-  var tvModeUnavailable = () => isTheme("retro") || isTheme("store") || isTheme("live") || isTv();
+  var tvModeUnavailable = () => isTheme("store") || isTheme("live") || isTv();
+  var PAGE_KINDS = ["series", "movies", "mylist"];
+  var CT_OF = { series: "tvshows", movies: "movies" };
+  var isFavTab = (route) => route && route.path === "/home" && route.params && !route.params.get("lfx") && route.params.get("tab") === "1";
+  function pageUnavailable(kind2) {
+    if (isTv() || isTheme("store") || isTheme("live")) return true;
+    if (isTheme("flix")) return false;
+    if (isTheme("retro")) return kind2 !== "mylist";
+    return true;
+  }
   var lastKey = null;
   var seq2 = 0;
   function libraryUrl(id, ct) {
@@ -2095,14 +2192,26 @@
     const { pathname, search } = window.location;
     window.location.replace(`${pathname}${search}${hash2}`);
   }
-  function toLibrary(lib, key, mine) {
+  function toLibrary(lib, key, mine, genre) {
     const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
     const home = isTheme("store") ? "#/home?lfx=classic" : "#/home";
     Promise.resolve().then(() => getViews()).then((views) => {
       const items = views && views.Items || [];
       const v = items.find((x) => x.Id === lib);
+      if (v && isTheme("flix") && (v.CollectionType === "movies" || v.CollectionType === "tvshows")) {
+        return libraryHref(v.CollectionType === "movies" ? "movies" : "series", { genre });
+      }
       return v ? libraryUrl(v.Id, v.CollectionType) : home;
     }).catch(() => `#/list?parentId=${encodeURIComponent(lib)}`).then((hash2) => {
+      if (stillHere()) replaceTo(hash2);
+    });
+  }
+  function toFirstHub(kind2, key, mine) {
+    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
+    Promise.resolve().then(() => getViews()).then((views) => {
+      const v = (views && views.Items || []).find((x) => x.CollectionType === CT_OF[kind2]);
+      return v ? hubHref(v.Id) : "#/home";
+    }).catch(() => "#/home").then((hash2) => {
       if (stillHere()) replaceTo(hash2);
     });
   }
@@ -2114,20 +2223,27 @@
     if (key === lastKey) return;
     lastKey = key;
     const mine = ++seq2;
-    if (r.kind === "tv") {
+    if (isFavTab(route)) {
+      replaceTo(myListHref());
+    } else if (PAGE_KINDS.includes(r.kind)) {
+      if (isTv() || isTheme("store") || isTheme("live")) return replaceTo("#/home");
+      if (r.kind === "mylist") return replaceTo("#/home?tab=1");
+      if (isTheme("retro") || isTheme("plus") || isTheme("prime")) return toFirstHub(r.kind, key, mine);
+      replaceTo("#/home");
+    } else if (r.kind === "tv") {
       replaceTo("#/home");
     } else if (r.kind === "title") {
       if (!r.id) return replaceTo("#/home");
       const { serverId } = getAuth();
       replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`);
     } else if (r.kind === "hub") {
-      if (store3 && r.lib) return toLibrary(r.lib, key, mine);
+      if ((store3 || isTheme("flix")) && r.lib) return toLibrary(r.lib, key, mine, r.genre);
       replaceTo(home);
     } else if (r.kind === "search") {
       replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : "#/search");
     } else if (r.kind === "browse") {
       if (!r.lib) return replaceTo(home);
-      toLibrary(r.lib, key, mine);
+      toLibrary(r.lib, key, mine, r.genre);
     }
   }
   var themeroute = {
@@ -2135,6 +2251,8 @@
     match: (route) => {
       const kind2 = parseLfxRoute(route).kind;
       if (kind2 === "tv") return tvModeUnavailable();
+      if (PAGE_KINDS.includes(kind2)) return pageUnavailable(kind2);
+      if (isFavTab(route)) return !isTv() && (isTheme("flix") || isTheme("retro"));
       return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2);
     },
     mount: (route) => redirect(route),
@@ -2763,10 +2881,10 @@
 
   // src/js/core/ambient.js
   var ID4 = "lfx-ambient";
-  var clamp = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
+  var clamp2 = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
   var current2 = null;
   function setAmbient(r, g, b) {
-    const [R, G, B] = [clamp(r), clamp(g), clamp(b)];
+    const [R, G, B] = [clamp2(r), clamp2(g), clamp2(b)];
     current2 = [R, G, B];
     const s = document.documentElement.style;
     s.setProperty("--lfx-ambient-r", String(R));
@@ -3330,7 +3448,9 @@
   var ICON_TVMODE = svg(
     '<path fill-rule="evenodd" d="M5 4h14a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-3.5l.8 2H17v2H7v-2h.7l.8-2H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1z"/><circle cx="12" cy="11" r="2.2"/>'
   );
-  var ICON_DATASAVER = svg('<path d="M5 3h14v2H5z"/><path d="M11 8h2v7.2l3.6-3.6 1.4 1.4-6 6-6-6 1.4-1.4 3.6 3.6z"/>');
+  var ICON_DATASAVER = svg(
+    '<path d="M3 15a9 9 0 0 1 18 0h-2a7 7 0 0 0-14 0z"/><circle cx="12" cy="15" r="1.9"/><path d="M6.4 11.6l6.05 2.6-.9 1.6z"/><path d="M11 4.2h2v2.2h-2z"/>'
+  );
 
   // src/js/features/tvbtn.js
   var ID5 = "lfx-tvm-btn";
@@ -3542,10 +3662,10 @@
   var ID8 = "lfx-osdc";
   var PAGE2 = '[id="videoOsdPage"]:not(.hide)';
   var svg2 = (inner) => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
-  var num = (n) => `<text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="inherit">${n}</text>`;
+  var num2 = (n) => `<text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" fill="currentColor" font-family="inherit">${n}</text>`;
   var ICON = {
-    back: svg2(`<path fill="currentColor" d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/>${num(10)}`),
-    fwd: svg2(`<path fill="currentColor" d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/>${num(30)}`),
+    back: svg2(`<path fill="currentColor" d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/>${num2(10)}`),
+    fwd: svg2(`<path fill="currentColor" d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/>${num2(30)}`),
     play: svg2('<path fill="currentColor" d="M8 5v14l11-7z"/>'),
     pause: svg2('<path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/>')
   };
@@ -4777,12 +4897,12 @@
     }
   }
   function restoreScroll(y) {
-    const fix = () => {
+    const fix2 = () => {
       if (Math.abs((window.scrollY || 0) - y) > 1) window.scrollTo(0, y);
     };
-    fix();
-    if (typeof requestAnimationFrame === "function") requestAnimationFrame(fix);
-    setTimeout(fix, 150);
+    fix2();
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(fix2);
+    setTimeout(fix2, 150);
   }
   function finish2() {
     const y = state4 ? state4.scrollY : 0;
@@ -6376,12 +6496,12 @@
   var newSeriesCache = { at: 0, promise: null, value: null };
   var TEN_MIN = 10 * 60 * 1e3;
   var NEW_SERIES_LIMIT = 200;
-  function storageKey2() {
+  function storageKey3() {
     return `lfx-newseries:${getUserId() || "anon"}`;
   }
   function readStored(now) {
     try {
-      const raw = JSON.parse(sessionStorage.getItem(storageKey2()) || "null");
+      const raw = JSON.parse(sessionStorage.getItem(storageKey3()) || "null");
       if (raw && Array.isArray(raw.ids) && now - raw.at >= 0 && now - raw.at < TEN_MIN) return new Set(raw.ids);
     } catch {
     }
@@ -6389,7 +6509,7 @@
   }
   function writeStored(now, set) {
     try {
-      sessionStorage.setItem(storageKey2(), JSON.stringify({ at: now, ids: [...set] }));
+      sessionStorage.setItem(storageKey3(), JSON.stringify({ at: now, ids: [...set] }));
     } catch {
     }
   }
@@ -7570,6 +7690,32 @@
   };
   var hovercard_default = hovercardFeature;
 
+  // src/js/features/library.js
+  var library = {
+    name: "library",
+    match: () => false,
+    mount() {
+    },
+    update() {
+    },
+    unmount() {
+    }
+  };
+  var library_default = library;
+
+  // src/js/features/mylist.js
+  var mylist = {
+    name: "mylist",
+    match: () => false,
+    mount() {
+    },
+    update() {
+    },
+    unmount() {
+    }
+  };
+  var mylist_default = mylist;
+
   // src/js/features/newpopular/format.js
   var MONTHS = ["JAN", "FEB", "M\xC4R", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
   function dateParts(iso) {
@@ -7609,7 +7755,7 @@
   // src/js/features/newpopular.js
   var ROOT_ID3 = "lfx-newpopular";
   var ON_CLASS2 = "lfx-newpopular-on";
-  var TYPES = "Movie,Series";
+  var TYPES2 = "Movie,Series";
   var sectionDefs = () => [
     { id: "new", label: `Neu bei ${brandName()}`, icon: "\u{1F37F}" },
     { id: "watched", label: "Am h\xE4ufigsten geschaut", icon: "\u{1F525}" },
@@ -7638,7 +7784,7 @@
   }
   var query = (params) => getItems({
     ...BASE_PARAMS,
-    IncludeItemTypes: TYPES,
+    IncludeItemTypes: TYPES2,
     Recursive: true,
     ...params
   }).then(asItems);
@@ -8309,11 +8455,11 @@
     } catch {
       off = v === "0";
     }
-    return !off && netOk() && !isDataSaver();
+    return !off && netOk() && !isDataSaver("tvwarm");
   }
   function defineZapWarm(deps) {
     Object.defineProperty(deps, "zapWarm", { get: zapWarmEnabled, enumerable: true, configurable: true });
-    Object.defineProperty(deps, "zapPrefetch", { get: () => !isDataSaver(), enumerable: true, configurable: true });
+    Object.defineProperty(deps, "zapPrefetch", { get: () => !isDataSaver("tvwarm"), enumerable: true, configurable: true });
     return deps;
   }
   function forceHlsEnabled() {
@@ -8427,8 +8573,8 @@
 
   // src/js/features/tvmode/prefs.js
   var DEFAULTS = { volume: 0.8, muted: false, lastChannel: 1 };
-  var storageKey3 = (name) => `lfx.tvm.${name}.${getUserId() || "anon"}`;
-  var read = (key) => {
+  var storageKey4 = (name) => `lfx.tvm.${name}.${getUserId() || "anon"}`;
+  var read2 = (key) => {
     try {
       return window.localStorage.getItem(key);
     } catch {
@@ -8442,27 +8588,27 @@
     }
   };
   function getVolume() {
-    const raw = read(storageKey3("volume"));
+    const raw = read2(storageKey4("volume"));
     if (raw === null || raw === "") return DEFAULTS.volume;
     const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS.volume;
   }
-  var getMuted = () => read(storageKey3("muted")) === "1";
+  var getMuted = () => read2(storageKey4("muted")) === "1";
   function getLastChannel() {
-    const v = Number(read(storageKey3("lastChannel")));
+    const v = Number(read2(storageKey4("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS.lastChannel;
   }
   function savePrefs(p) {
     if (!p || typeof p !== "object") return;
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey3("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write(storageKey3("muted"), p.muted ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey3("lastChannel"), String(p.lastChannel));
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey4("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write(storageKey4("muted"), p.muted ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey4("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/tvmode/route.js
   var ROOT_ID4 = "lfx-tvm";
   var ON_CLASS3 = "lfx-tvm-on";
-  var TV_THEMES = ["flix", "plus", "prime"];
+  var TV_THEMES = ["flix", "plus", "prime", "retro"];
   var findHomeTab3 = () => {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
@@ -8962,9 +9108,22 @@
   };
   var contextmenu_default = contextmenuFeature;
 
+  // src/js/features/secretmenu.js
+  var secretmenu = {
+    name: "secretmenu",
+    match: () => false,
+    mount() {
+    },
+    update() {
+    },
+    unmount() {
+    }
+  };
+  var secretmenu_default = secretmenu;
+
   // src/js/features/statshint.js
   var ID9 = "lfx-statshint";
-  var KEY2 = "lfx.statsHint";
+  var KEY3 = "lfx.statsHint";
   var SESSION_KEY = "lfx.statsHint.shown";
   var HINT_DURATION = 7e3;
   var HINT_DELAY = 1500;
@@ -8973,7 +9132,7 @@
   var EXCLUDED5 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video)/;
   function readState() {
     try {
-      const v = JSON.parse(localStorage.getItem(KEY2));
+      const v = JSON.parse(localStorage.getItem(KEY3));
       return v && typeof v === "object" ? v : {};
     } catch {
       return {};
@@ -8981,7 +9140,7 @@
   }
   function writeState(patch) {
     try {
-      localStorage.setItem(KEY2, JSON.stringify({ ...readState(), ...patch }));
+      localStorage.setItem(KEY3, JSON.stringify({ ...readState(), ...patch }));
     } catch {
     }
   }
@@ -10100,9 +10259,9 @@
     ]);
     let idx = 0;
     let timer2 = null;
-    let hover = false;
+    let hover2 = false;
     let focus = false;
-    const running = () => !mobile && n > 1 && !hover && !focus && !document.hidden;
+    const running = () => !mobile && n > 1 && !hover2 && !focus && !document.hidden;
     function stop7() {
       clearTimeout(timer2);
       timer2 = null;
@@ -10178,11 +10337,11 @@
       go3(Number(s.dataset.index));
     };
     const onEnter = () => {
-      hover = true;
+      hover2 = true;
       stop7();
     };
     const onLeave = () => {
-      hover = false;
+      hover2 = false;
       schedule4();
     };
     const onFocusIn = () => {
@@ -10966,16 +11125,16 @@
       played ? h("span", { class: "lfx-plus-ep__seen", "aria-label": "Gesehen", title: "Gesehen" }) : null,
       p > 0 ? h("span", { class: "lfx-plus-progress lfx-plus-ep__progress" }, [h("span", { class: "lfx-plus-progress__bar", style: { width: `${Math.round(p * 10) / 10}%` } })]) : null
     ]);
-    const num2 = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
+    const num3 = ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
     const btn3 = h("button", {
       type: "button",
       class: `lfx-plus-ep${selected ? " is-selected" : ""}`,
       dataset: { id: ep.Id },
-      "aria-label": `${num2}${ep.Name || ""} abspielen`,
+      "aria-label": `${num3}${ep.Name || ""} abspielen`,
       onclick: () => onPlay(ep)
     }, [
       media,
-      h("span", { class: "lfx-plus-ep__title" }, `${num2}${ep.Name || ""}`),
+      h("span", { class: "lfx-plus-ep__title" }, `${num3}${ep.Name || ""}`),
       mins ? h("span", { class: "lfx-plus-ep__dur" }, mins) : null,
       ep.Overview ? h("span", { class: "lfx-plus-ep__text" }, ep.Overview) : null
     ]);
@@ -15343,16 +15502,16 @@
   var primeFeatures = [header_default2, home_default3, hover_default, title_default2, tabbar_default2, nativedetail_default2];
 
   // src/js/features/retro/prefs.js
-  var KEY3 = "lfx.retro.";
+  var KEY4 = "lfx.retro.";
   var DEFAULTS2 = { sound: false, crt: true };
   var PREFS_EVENT = "lfx-retro-prefs";
   var FX_EVENT = "lfx-retro-fx";
-  function storageKey4(name) {
-    return `${KEY3}${name}.${getUserId() || "anon"}`;
+  function storageKey5(name) {
+    return `${KEY4}${name}.${getUserId() || "anon"}`;
   }
   function getPref(name) {
     try {
-      const v = window.localStorage.getItem(storageKey4(name));
+      const v = window.localStorage.getItem(storageKey5(name));
       if (v === "1") return true;
       if (v === "0") return false;
     } catch {
@@ -15362,7 +15521,7 @@
   function setPref(name, value) {
     const on = Boolean(value);
     try {
-      window.localStorage.setItem(storageKey4(name), on ? "1" : "0");
+      window.localStorage.setItem(storageKey5(name), on ? "1" : "0");
     } catch {
     }
     document.dispatchEvent(new CustomEvent(PREFS_EVENT, { detail: { name, value: on } }));
@@ -16674,7 +16833,7 @@
     const src = imageUrl(ep, { type: "Primary", maxWidth: 480, quality: 80 }) || (landscapeFor(ep, 480) || {}).url || null;
     const mins = episodeRuntime(ep);
     const left = remainingLabel2(ep);
-    const num2 = ep.IndexNumber != null ? pad23(ep.IndexNumber) : "--";
+    const num3 = ep.IndexNumber != null ? pad23(ep.IndexNumber) : "--";
     const btn3 = h("button", {
       type: "button",
       class: `lfx-rt__ep${selected ? " is-selected" : ""}${next ? " is-next" : ""}${played ? " is-played" : ""}`,
@@ -16684,11 +16843,11 @@
         if (onPlay) onPlay(ep);
       }
     }, [
-      h("span", { class: "lfx-rt__ep-no", "aria-hidden": "true" }, num2),
+      h("span", { class: "lfx-rt__ep-no", "aria-hidden": "true" }, num3),
       h("span", { class: "lfx-rt__ep-thumb", "aria-hidden": "true" }, src ? [h("img", { src, alt: "", loading: "lazy", decoding: "async" })] : []),
       h("span", { class: "lfx-rt__ep-label" }, [
         h("span", { class: "lfx-rt__ep-meta" }, [code, mins, left].filter(Boolean).join("  \xB7  ")),
-        h("span", { class: "lfx-rt__ep-title" }, ep.Name || `Folge ${num2}`),
+        h("span", { class: "lfx-rt__ep-title" }, ep.Name || `Folge ${num3}`),
         ep.Overview ? h("span", { class: "lfx-rt__ep-text" }, ep.Overview) : null
       ]),
       h("span", { class: "lfx-rt__ep-reels", "aria-hidden": "true" }, [
@@ -17427,7 +17586,7 @@
   var ON_CLASS18 = "lfx-retro-browse-on";
   var PAGE5 = 40;
   var VIEW_KEY = "lfx.retro.browseview";
-  var SORTS = {
+  var SORTS2 = {
     name: { label: "NAME", by: "SortName", order: "Ascending" },
     date: { label: "DATUM", by: "DateCreated", order: "Descending" },
     rating: { label: "WERTUNG", by: "CommunityRating,SortName", order: "Descending" }
@@ -17534,7 +17693,7 @@
     s.root.setAttribute("aria-busy", "true");
     paintHead(s);
     const stale = () => state20 !== s || s.seq !== seq3;
-    const sort = SORTS[s.sort] || SORTS.name;
+    const sort = SORTS2[s.sort] || SORTS2.name;
     try {
       const res = await getItems({
         ...BASE_PARAMS,
@@ -17608,7 +17767,7 @@
       b.setAttribute("aria-expanded", String(open2));
     });
     const opts = h("div", { class: "lfx-rb__opts", role: "toolbar", "aria-label": "Anzeigeoptionen" }, [
-      ...Object.entries(SORTS).map(([key, v]) => optBtn({ dataset: { sort: key } }, `/S:${v.label}`, () => {
+      ...Object.entries(SORTS2).map(([key, v]) => optBtn({ dataset: { sort: key } }, `/S:${v.label}`, () => {
         if (s.sort === key) return;
         s.sort = key;
         reload2(s);
@@ -17743,6 +17902,32 @@
     nologoClass: "lfx-retro-nologo",
     nobdClass: "lfx-retro-nobackdrop"
   }).feature;
+
+  // src/js/features/retro/hover.js
+  var hover = {
+    name: "retro-hover",
+    match: () => false,
+    mount() {
+    },
+    update() {
+    },
+    unmount() {
+    }
+  };
+  var hover_default2 = hover;
+
+  // src/js/features/retro/tvlook.js
+  var tvlook = {
+    name: "retro-tvlook",
+    match: () => false,
+    mount() {
+    },
+    update() {
+    },
+    unmount() {
+    }
+  };
+  var tvlook_default = tvlook;
 
   // src/js/features/retro/fx/crt.js
   var CRT_ID = "lfx-retro-crt";
@@ -19262,7 +19447,7 @@
   };
 
   // src/js/features/retro/index.js
-  var retroFeatures = [header_default3, tabbar_default3, home_default4, title_default3, search_default2, browse_default2, nativedetail_default3, fx_default];
+  var retroFeatures = [header_default3, tabbar_default3, home_default4, title_default3, search_default2, browse_default2, nativedetail_default3, hover_default2, tvlook_default, fx_default];
 
   // src/js/features/store/departments.js
   var NEW_DAYS3 = 14;
@@ -19514,7 +19699,7 @@
   }
 
   // src/js/features/store/prefs.js
-  var KEY4 = "lfx.store.";
+  var KEY5 = "lfx.store.";
   var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "touch" };
   var TOUCH_CONTROLS = ["joystick", "touch"];
   var TOUCH_SENS = ["low", "normal", "high"];
@@ -19528,8 +19713,8 @@
   var VR_SEATS = ["front", "mid", "back"];
   var SESSION_INTRO = "lfx.store.introSeen";
   var SESSION_STATE = "lfx.store.state";
-  var storageKey5 = (name) => `${KEY4}${name}.${getUserId() || "anon"}`;
-  function read2(store3, key) {
+  var storageKey6 = (name) => `${KEY5}${name}.${getUserId() || "anon"}`;
+  function read3(store3, key) {
     try {
       return window[store3].getItem(key);
     } catch {
@@ -19543,55 +19728,55 @@
     }
   }
   function getQuality() {
-    const v = read2("localStorage", storageKey5("quality"));
+    const v = read3("localStorage", storageKey6("quality"));
     return QUALITIES.includes(v) ? v : DEFAULTS3.quality;
   }
   function getSound() {
     try {
-      window.localStorage.removeItem(storageKey5("sound"));
+      window.localStorage.removeItem(storageKey6("sound"));
     } catch {
     }
-    const v = read2("localStorage", storageKey5("soundOn"));
+    const v = read3("localStorage", storageKey6("soundOn"));
     return v === null ? DEFAULTS3.sound : v !== "0";
   }
   function getFps() {
-    return read2("localStorage", storageKey5("fps")) === "1";
+    return read3("localStorage", storageKey6("fps")) === "1";
   }
   function getVoiceOnline() {
-    return read2("localStorage", storageKey5("voiceOnline")) === "1";
+    return read3("localStorage", storageKey6("voiceOnline")) === "1";
   }
   function getVoiceName() {
-    return read2("localStorage", storageKey5("voiceName")) || "";
+    return read3("localStorage", storageKey6("voiceName")) || "";
   }
   function getVoicePitch() {
-    const v = read2("localStorage", storageKey5("voicePitch"));
+    const v = read3("localStorage", storageKey6("voicePitch"));
     return VOICE_PITCHES.includes(v) ? v : DEFAULTS3.voicePitch;
   }
   function getTouchControl() {
-    const v = read2("localStorage", storageKey5("touchControl"));
+    const v = read3("localStorage", storageKey6("touchControl"));
     return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS3.touchControl;
   }
   function getTouchTune() {
     for (const k of ["lookInvertY", "lookInvertX"]) {
       try {
-        window.localStorage.removeItem(storageKey5(k));
+        window.localStorage.removeItem(storageKey6(k));
       } catch {
       }
     }
     const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal"), touchRegrip: readEnum("touchRegrip", TOUCH_REGRIPS, "short") };
-    for (const k of TUNE_FLAGS) t[k] = read2("localStorage", storageKey5(k)) === "1";
+    for (const k of TUNE_FLAGS) t[k] = read3("localStorage", storageKey6(k)) === "1";
     return t;
   }
   function getBigCovers() {
-    const v = read2("localStorage", storageKey5("bigCovers"));
+    const v = read3("localStorage", storageKey6("bigCovers"));
     return v === null ? DEFAULTS3.bigCovers : v !== "0";
   }
   function readEnum(name, list, def) {
-    const v = read2("localStorage", storageKey5(name));
+    const v = read3("localStorage", storageKey6(name));
     return list.includes(v) ? v : def;
   }
   var getVrTurn = () => readEnum("vrTurn", VR_TURNS, "snap");
-  var getVrVignette = () => read2("localStorage", storageKey5("vrVignette")) !== "0";
+  var getVrVignette = () => read3("localStorage", storageKey6("vrVignette")) !== "0";
   var getVrHeight = () => readEnum("vrHeight", VR_HEIGHTS, "auto");
   var getVrQuality = () => readEnum("vrQuality", VR_QUALITIES, "mid");
   var getVrSeat = () => readEnum("vrSeat", VR_SEATS, "mid");
@@ -19600,30 +19785,30 @@
   }
   function savePrefs2(p) {
     if (!p) return;
-    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey5("quality"), p.quality);
-    if (typeof p.sound === "boolean") write2("localStorage", storageKey5("soundOn"), p.sound ? "1" : "0");
-    if (typeof p.fps === "boolean") write2("localStorage", storageKey5("fps"), p.fps ? "1" : "0");
-    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey5("voiceOnline"), p.voiceOnline ? "1" : "0");
-    if (typeof p.voiceName === "string") write2("localStorage", storageKey5("voiceName"), p.voiceName);
-    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey5("voicePitch"), p.voicePitch);
-    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey5("touchControl"), p.touchControl);
-    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey5(k), p[k] ? "1" : "0");
-    if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey5("touchSens"), p.touchSens);
-    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey5("touchRegrip"), p.touchRegrip);
-    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey5("bigCovers"), p.bigCovers ? "1" : "0");
+    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey6("quality"), p.quality);
+    if (typeof p.sound === "boolean") write2("localStorage", storageKey6("soundOn"), p.sound ? "1" : "0");
+    if (typeof p.fps === "boolean") write2("localStorage", storageKey6("fps"), p.fps ? "1" : "0");
+    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey6("voiceOnline"), p.voiceOnline ? "1" : "0");
+    if (typeof p.voiceName === "string") write2("localStorage", storageKey6("voiceName"), p.voiceName);
+    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey6("voicePitch"), p.voicePitch);
+    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey6("touchControl"), p.touchControl);
+    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey6(k), p[k] ? "1" : "0");
+    if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey6("touchSens"), p.touchSens);
+    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey6("touchRegrip"), p.touchRegrip);
+    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey6("bigCovers"), p.bigCovers ? "1" : "0");
     const vr = p.vr;
     if (vr && typeof vr === "object") {
-      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey5("vrTurn"), vr.turn);
-      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey5("vrVignette"), vr.vignette ? "1" : "0");
-      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey5("vrHeight"), vr.height);
-      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey5("vrQuality"), vr.quality);
-      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey5("vrSeat"), vr.seat);
+      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey6("vrTurn"), vr.turn);
+      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey6("vrVignette"), vr.vignette ? "1" : "0");
+      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey6("vrHeight"), vr.height);
+      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey6("vrQuality"), vr.quality);
+      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey6("vrSeat"), vr.seat);
     }
   }
-  var getIntroSeen = () => read2("sessionStorage", SESSION_INTRO) === "1";
+  var getIntroSeen = () => read3("sessionStorage", SESSION_INTRO) === "1";
   var setIntroSeen = () => write2("sessionStorage", SESSION_INTRO, "1");
   function getState() {
-    const raw = read2("sessionStorage", SESSION_STATE);
+    const raw = read3("sessionStorage", SESSION_STATE);
     if (!raw) return null;
     try {
       const s = JSON.parse(raw);
@@ -20274,7 +20459,7 @@
     return {
       catalog,
       user: { name },
-      imageUrl: (id, o = {}) => imageUrlFor(id, o),
+      imageUrl: (id, o = {}) => imageUrlFor(id, { ...o, scale: false }),
       getItem: (id) => getItem(id),
       getSeasons: (seriesId) => getSeasons(seriesId).then(items),
       getEpisodes: (seriesId, seasonId) => getEpisodes(seriesId, { SeasonId: seasonId, Fields: "Overview,RunTimeTicks", EnableUserData: true }).then(items),
@@ -20662,11 +20847,11 @@
   }
 
   // src/js/features/live/prefs.js
-  var KEY5 = "lfx.live.";
+  var KEY6 = "lfx.live.";
   var STYLES = ["flat", "crt80", "silver", "plain"];
   var DEFAULTS4 = { style: "flat", volume: 0.8, muted: false, lastChannel: 1, music: true, fx: true };
-  var storageKey6 = (name) => `${KEY5}${name}.${getUserId() || "anon"}`;
-  function read3(key) {
+  var storageKey7 = (name) => `${KEY6}${name}.${getUserId() || "anon"}`;
+  function read4(key) {
     try {
       return window.localStorage.getItem(key);
     } catch {
@@ -20680,36 +20865,36 @@
     }
   }
   function getStyle() {
-    const v = read3(storageKey6("tvstyle"));
+    const v = read4(storageKey7("tvstyle"));
     return STYLES.includes(v) ? v : DEFAULTS4.style;
   }
   function getVolume2() {
-    const raw = read3(storageKey6("volume"));
+    const raw = read4(storageKey7("volume"));
     if (raw === null || raw === "") return DEFAULTS4.volume;
     const v = Number(raw);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS4.volume;
   }
   function getMuted2() {
-    return read3(storageKey6("muted")) === "1";
+    return read4(storageKey7("muted")) === "1";
   }
   function getMusic() {
-    return read3(storageKey6("music")) !== "0";
+    return read4(storageKey7("music")) !== "0";
   }
   function getFx() {
-    return read3(storageKey6("fx")) !== "0";
+    return read4(storageKey7("fx")) !== "0";
   }
   function getLastChannel2() {
-    const v = Number(read3(storageKey6("lastChannel")));
+    const v = Number(read4(storageKey7("lastChannel")));
     return Number.isInteger(v) && v >= 1 && v <= 18 ? v : DEFAULTS4.lastChannel;
   }
   function savePrefs3(p) {
     if (!p || typeof p !== "object") return;
-    if (STYLES.includes(p.style)) write3(storageKey6("tvstyle"), p.style);
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write3(storageKey6("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write3(storageKey6("muted"), p.muted ? "1" : "0");
-    if (typeof p.music === "boolean") write3(storageKey6("music"), p.music ? "1" : "0");
-    if (typeof p.fx === "boolean") write3(storageKey6("fx"), p.fx ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write3(storageKey6("lastChannel"), String(p.lastChannel));
+    if (STYLES.includes(p.style)) write3(storageKey7("tvstyle"), p.style);
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write3(storageKey7("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write3(storageKey7("muted"), p.muted ? "1" : "0");
+    if (typeof p.music === "boolean") write3(storageKey7("music"), p.music ? "1" : "0");
+    if (typeof p.fx === "boolean") write3(storageKey7("fx"), p.fx ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write3(storageKey7("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/live/home.js
@@ -21053,7 +21238,7 @@
   var liveFeatures = [home_default6, guard_default];
 
   // src/js/features/index.js
-  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, osdcenter_default, playerbg_default, home_default, hovercard_default, modal_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
+  var features2 = [themeroute_default, nav_default, mobilenav_default, tvbtn_default, dsbtn_default, osdcenter_default, playerbg_default, home_default, hovercard_default, modal_default, library_default, mylist_default, newpopular_default, ...tvmodeFeatures, contextmenu_default, secretmenu_default, statshint_default, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
 
   // src/js/main.js
   var WATCH_MS = 3e3;

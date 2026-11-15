@@ -247,7 +247,7 @@ function buildDeps(catalog, name, onFatal, onBigCovers) {
   return {
     catalog,
     user: { name },
-    imageUrl: (id, o = {}) => api.imageUrlFor(id, o),
+    imageUrl: (id, o = {}) => api.imageUrlFor(id, { ...o, scale: false }),
     getItem: (id) => api.getItem(id),
     getSeasons: (seriesId) => api.getSeasons(seriesId).then(items),
     getEpisodes: (seriesId, seasonId) => api.getEpisodes(seriesId, { SeasonId: seasonId, Fields: 'Overview,RunTimeTicks', EnableUserData: true }).then(items),

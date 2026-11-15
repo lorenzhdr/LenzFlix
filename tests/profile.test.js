@@ -46,11 +46,11 @@ describe('profileEntries', () => {
     expect(e.map((x) => x.key)).toEqual(['stats', 'design', 'datasaver', 'settings', 'logout']);
   });
 
-  it('Datensparmodus nur bei flix/plus/prime (kein hidden-Eintrag bei retro/store)', async () => {
-    for (const theme of ['flix', 'plus', 'prime']) {
+  it('Datensparmodus bei flix/plus/prime/retro (kein Eintrag bei store/live)', async () => {
+    for (const theme of ['flix', 'plus', 'prime', 'retro']) {
       expect((await profileEntries({ theme })).map((x) => x.key)).toContain('datasaver');
     }
-    for (const theme of ['retro', 'store', 'live']) {
+    for (const theme of ['store', 'live']) {
       expect((await profileEntries({ theme })).map((x) => x.key)).not.toContain('datasaver');
     }
   });

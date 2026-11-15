@@ -7,6 +7,8 @@ import title from './title.js';
 import search from './search.js';
 import browse from './browse.js';
 import nativedetail from './nativedetail.js';
+import hover from './hover.js';
+import tvlook from './tvlook.js';
 import fx from './fx/index.js';
 
-export const retroFeatures = [header, tabbar, home, title, search, browse, nativedetail, fx];
+export const retroFeatures = [header, tabbar, home, title, search, browse, nativedetail, hover, tvlook, fx];

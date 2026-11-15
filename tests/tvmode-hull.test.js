@@ -96,8 +96,9 @@ describe('tvmode match', () => {
   it('flix/plus/prime ja', () => {
     for (const t of ['flix', 'plus', 'prime']) { theme = t; expect(m()).toBe(true); }
   });
-  it('retro/store/live nein', () => {
-    for (const t of ['retro', 'store', 'live']) { theme = t; expect(m()).toBe(false); }
+  it('store/live nein, retro ja', () => {
+    theme = 'retro'; expect(m()).toBe(true);
+    for (const t of ['store', 'live']) { theme = t; expect(m()).toBe(false); }
   });
   it('layout-tv / nicht modern nein, andere Routen nein', () => {
     tv = true; expect(m()).toBe(false);
@@ -267,7 +268,7 @@ describe('tvmode Lebenszyklus', () => {
 
   it('Design-Wechsel: dispose und removeAddonCss', async () => {
     await mountReady();
-    theme = 'retro';
+    theme = 'store';
     for (const fn of [...themeListeners]) fn({ theme });
     expect(instance.dispose).toHaveBeenCalledTimes(1);
     expect(removeAddonCss).toHaveBeenCalledWith('lenztvmode');
