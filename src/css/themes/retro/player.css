@@ -1,1 +1,175 @@
-/* LENZ//84 · player: Platzhalter v1.13.0, Inhalt folgt. */
+/* LENZ//84 · Player-Bedienleiste im Retro-Look (Bernstein, eckig, Terminal-Schrift).
+   Gescoped auf [id="videoOsdPage"]:not(.hide) (Jellyfin behält alte, versteckte Player-Seiten mit derselben ID).
+   Nie video/.htmlvideoplayer stylen, keine Scanlines/Overlays über dem Bild, Untertitel unberührt.
+   Ergänzt/überstimmt die Akzent-Regeln am Ende von native.css (dort ohne .lfx-js, daher schwächer). */
+
+/* ---- Texte: Titel, Zeiten, Endzeit ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.osdTitle, .osdMediaStatus, .osdSecondaryMediaInfo, .osdPositionText, .osdDurationText, .osdTimeText, .endsAtText, .pageTitle) {
+  font-family: var(--lfx-retro-font-mono);
+  color: var(--lfx-retro-amber);
+  text-shadow: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .osdTitle {
+  font-family: var(--lfx-retro-font-pixel);
+  font-size: 1.5em;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow);
+}
+
+/* ---- Kopfzeile (Zurück-Pfeil, Titel) und Bedienleiste: Grund dunkel statt Jellyfin-Verlauf ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .skinHeader.osdHeader {
+  background: linear-gradient(to bottom, rgba(10, 6, 3, 0.85), rgba(10, 6, 3, 0));
+  color: var(--lfx-retro-amber);
+  font-family: var(--lfx-retro-font-mono);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .videoOsdBottom {
+  background: linear-gradient(to top, rgba(10, 6, 3, 0.9), rgba(10, 6, 3, 0));
+}
+
+/* ---- Knöpfe (Material-Icons) ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.paper-icon-button-light, .osdControls button, .osdHeader button) {
+  color: var(--lfx-retro-amber);
+  border-radius: 2px;
+  font-family: var(--lfx-retro-font-mono);
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.paper-icon-button-light, .osdControls button, .osdHeader button) :is(.material-icons, .md-icon) {
+  color: inherit;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.paper-icon-button-light, .osdControls button, .osdHeader button):focus-visible {
+  outline: 2px solid var(--lfx-retro-amber);
+  outline-offset: 1px;
+  background-color: var(--lfx-retro-amber-dim);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.paper-icon-button-light, .osdControls button, .osdHeader button):hover {
+    color: var(--lfx-retro-amber-hi);
+    background-color: var(--lfx-retro-amber-dim);
+  }
+}
+
+/* ---- Zeitleiste und Lautstärke ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.osdPositionSlider, .osdVolumeSlider, .mdl-slider) {
+  color: var(--lfx-retro-amber);
+  accent-color: var(--lfx-retro-amber);
+  background: transparent;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider-background-flex {
+  background: transparent;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider-background-upper {
+  background-color: rgba(255, 176, 0, 0.16);
+  border-radius: 0;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider-background-lower {
+  background-color: var(--lfx-retro-amber);
+  border-radius: 0;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.mdl-slider-background-upper, .mdl-slider-background-lower, .mdl-slider-background-flex) {
+  border-radius: 0;
+}
+/* Puffer-Bereiche (Jellyfin zeichnet sie in .mdl-slider-background-flex > div) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider-background-flex > div:not(.mdl-slider-background-lower):not(.mdl-slider-background-upper) {
+  background-color: rgba(255, 176, 0, 0.38);
+  border-radius: 0;
+}
+/* Thumb eckig, Bernstein */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider::-webkit-slider-thumb {
+  background: var(--lfx-retro-amber);
+  border: 1px solid var(--lfx-retro-ink);
+  border-radius: 0;
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.7);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider::-moz-range-thumb {
+  background: var(--lfx-retro-amber);
+  border: 1px solid var(--lfx-retro-ink);
+  border-radius: 0;
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.7);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider:focus::-webkit-slider-thumb {
+  background: var(--lfx-retro-amber-hi);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .mdl-slider:focus::-moz-range-thumb {
+  background: var(--lfx-retro-amber-hi);
+}
+/* Vorschau-Blase */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .sliderBubble {
+  background: var(--lfx-retro-bg);
+  color: var(--lfx-retro-amber-hi);
+  border: 1px solid var(--lfx-retro-line);
+  border-radius: 2px;
+  font-family: var(--lfx-retro-font-mono);
+  box-shadow: var(--lfx-retro-box-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.sliderMarker, .sliderMarkerContainer > *) {
+  background-color: var(--lfx-retro-amber-hi);
+  border-radius: 0;
+}
+
+/* ---- Mitte-Knöpfe (#lfx-osdc hängt unter <body>, nicht im Player) ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-osdc__btn {
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 2px;
+  background: rgba(10, 6, 3, 0.82);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  filter: none;
+  color: var(--lfx-retro-amber);
+  box-shadow: var(--lfx-retro-box-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-osdc__btn:focus-visible {
+  outline: 2px solid var(--lfx-retro-amber-hi);
+  outline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-osdc__btn:hover {
+    background: var(--lfx-retro-amber);
+    color: var(--lfx-retro-ink);
+    transform: none;
+  }
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-osdc__btn text {
+  fill: currentColor;
+  font-family: var(--lfx-retro-font-mono);
+}
+
+/* ---- Ladebild (#lfx-startcover hängt unter <body>) ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-startcover {
+  font-family: var(--lfx-retro-font-mono);
+  color: var(--lfx-retro-amber);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-startcover__bg img {
+  filter: sepia(0.4) brightness(0.5);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-startcover__text {
+  text-shadow: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-startcover__title {
+  font-family: var(--lfx-retro-font-pixel);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-startcover__sub {
+  color: var(--lfx-retro-amber-lo);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-startcover__spinner {
+  border-radius: 0;
+  border-color: rgba(255, 176, 0, 0.25);
+  border-top-color: var(--lfx-retro-amber);
+}
+
+/* Kern (modern/player.css) färbt die Knöpfe per #videoOsdPage weiß – gleiche ID-Spezifität nötig. */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #videoOsdPage:not(.hide) .videoOsdBottom .buttons button,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #videoOsdPage:not(.hide) .btnUserRating .ratingbutton-icon-withrating,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #videoOsdPage:not(.hide) .osdDurationText {
+  color: var(--lfx-retro-amber);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #videoOsdPage:not(.hide) .videoOsdBottom .buttons button:hover {
+    color: var(--lfx-retro-amber-hi);
+  }
+}

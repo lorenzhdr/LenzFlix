@@ -1,1 +1,192 @@
-/* LENZ//84 · tvmode: Platzhalter v1.13.0, Inhalt folgt. */
+/* LENZ//84 · TV-Modus (Engine src/js/live/tvmode/, Basis-CSS src/css/tvmode/): Bernstein-Terminal-Look, Röhren-Schein, Schnee beim Umschalten.
+   Nur Engine-Klassen (lfx-tvm__*), kein Nesting, kein :has. Scanlines/Vignette nur bei html.lfx-retro-tvcrt (setzt features/retro/tvlook.js nach der CRT-Vorliebe). */
+
+/* ---- Rahmen: eckig, Bernstein-Linie ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm {
+  --lfx-tvm-panel: var(--lfx-retro-panel);
+  --lfx-tvm-panel-hi: var(--lfx-retro-amber-dim);
+  --lfx-tvm-line: var(--lfx-retro-line);
+  --lfx-tvm-ring: 0 0 0 2px var(--lfx-retro-bg), 0 0 0 4px var(--lfx-retro-amber);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player {
+  border: 1px solid var(--lfx-retro-line);
+  border-radius: 0;
+  box-shadow: var(--lfx-retro-box-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-fullscreen { border: 0; box-shadow: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__list,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-scroll {
+  border: 1px solid var(--lfx-retro-line);
+  border-radius: 0;
+  background: var(--lfx-retro-panel);
+}
+
+/* ---- Überschriften und Ziffern: Pixelschrift, Glimmen ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-title,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-title,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-title,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__card-title {
+  font-family: var(--lfx-retro-font-pixel);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-title { font-size: clamp(28px, 2.8vw, 40px); line-height: 1.05; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-no,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-no,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan-no,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__thumb-no,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-no {
+  font-family: var(--lfx-retro-font-pixel);
+  font-weight: 400;
+  color: var(--lfx-retro-amber);
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-hour,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__day,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-corner {
+  font-family: var(--lfx-retro-font-pixel);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---- Senderliste und Programm ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row { border-radius: 0; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-title { font-family: var(--lfx-retro-font-pixel); font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row.is-current { background: var(--lfx-retro-amber-dim); box-shadow: inset 2px 0 0 var(--lfx-retro-amber); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-fill,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-fill,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-fill { background: var(--lfx-retro-amber); box-shadow: 0 0 6px rgba(255, 176, 0, 0.6); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell { border-radius: 0; border: 1px solid var(--lfx-retro-line); background: var(--lfx-retro-panel); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-cell.is-current { background: var(--lfx-retro-amber-dim); border-color: var(--lfx-retro-amber); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-nowline { background: var(--lfx-retro-hot); box-shadow: 0 0 8px var(--lfx-retro-hot); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__badge { border-radius: 0; text-transform: uppercase; letter-spacing: 0.06em; color: var(--lfx-retro-amber); }
+
+/* ---- Knöpfe und Tabs: eckig, Linie, bei Hover invertiert ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__btn,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__tap,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn {
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 0;
+  background: var(--lfx-retro-panel);
+  color: var(--lfx-retro-amber);
+  font-family: var(--lfx-retro-font-pixel);
+  font-size: 19px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__btn--primary,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
+  background: var(--lfx-retro-amber);
+  color: var(--lfx-retro-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__btn:hover,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute:hover,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__tap:hover,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn:hover,
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn:hover {
+    background: var(--lfx-retro-amber-hi);
+    color: var(--lfx-retro-ink);
+    box-shadow: var(--lfx-retro-box-glow);
+  }
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__btn--icon { width: 40px; padding: 0; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__tabs { border: 1px solid var(--lfx-retro-line); border-radius: 0; background: var(--lfx-retro-panel); padding: 3px; gap: 3px; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__tab {
+  border-radius: 0;
+  font-family: var(--lfx-retro-font-pixel);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lfx-retro-amber-lo);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__tab.is-active { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }
+
+/* ---- Info-Karte (Klick auf Programmzelle) ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-box {
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 0;
+  background: var(--lfx-retro-bg-2);
+  box-shadow: var(--lfx-shadow-modal);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-backdrop { background: rgba(5, 3, 1, 0.82); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard-close { border-radius: 0; border: 1px solid var(--lfx-retro-amber); color: var(--lfx-retro-amber); background: var(--lfx-retro-panel); }
+
+/* ---- Zapp-Einblendung unten ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap {
+  border: 1px solid var(--lfx-retro-line);
+  border-radius: 0;
+  background: rgba(10, 6, 3, 0.88);
+  box-shadow: var(--lfx-retro-box-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-no { font-size: 30px; }
+
+/* ---- Sendernummer groß oben im Bild („P07“, nur beim Umschalten; data-tvm-no setzt die Engine) ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player::after {
+  content: "P" attr(data-tvm-no);
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 4;
+  font: 400 clamp(44px, 7vw, 92px)/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.06em;
+  color: var(--lfx-retro-amber);
+  text-shadow: 0 0 4px rgba(255, 226, 168, 0.9), 0 0 16px rgba(255, 176, 0, 0.75), 3px 3px 0 rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s linear;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-zapping:not(.has-error)::after { opacity: 1; transition: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player::after { top: 8px; right: 12px; font-size: 44px; }
+
+/* ---- Schnee statt Ladekreis ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__loading { display: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background-color: #1a1208;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='.33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='3.2' intercept='-1.15'/%3E%3CfeFuncG type='linear' slope='3.2' intercept='-1.15'/%3E%3CfeFuncB type='linear' slope='3.2' intercept='-1.15'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 220px 220px;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-loading::before {
+  opacity: 0.94;
+  animation: lfx-tvm-retro-snow 0.36s steps(1) infinite;
+}
+@keyframes lfx-tvm-retro-snow {
+  0% { background-position: 0 0; }
+  16% { background-position: -73px 41px; }
+  33% { background-position: 118px -67px; }
+  50% { background-position: -31px 152px; }
+  66% { background-position: 96px 23px; }
+  83% { background-position: -140px -88px; }
+  100% { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-loading::before { animation: none; }
+}
+
+/* ---- Röhren-Schein über dem Bild (nur bei CRT an): Scanlines + Vignette ---- */
+html.lfx-js.lfx-theme-retro.lfx-retro-tvcrt:not(.layout-tv) .lfx-tvm .lfx-tvm__video-slot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.55) 100%),
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.16) 3px, rgba(0, 0, 0, 0) 4px);
+}
+
+/* ---- Handy: Fußabstand über der F-Tasten-Leiste (58 px + Safe-Area, mobile-home.css) ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone { --lfx-tvm-foot: calc(var(--lfx-retro-fh, calc(58px + env(safe-area-inset-bottom, 0px))) + 16px); }

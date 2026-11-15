@@ -148,16 +148,21 @@ export async function setFavorite(id, isFavorite) {
   clearCache('home:'); // Startseiten-Cache: „Meine Liste“ sofort frisch
   const client = window.ApiClient;
   const userId = getUserId();
+  let out;
   if (client && typeof client.updateFavoriteStatus === 'function') {
-    return client.updateFavoriteStatus(userId, id, Boolean(isFavorite));
+    out = await client.updateFavoriteStatus(userId, id, Boolean(isFavorite));
+  } else {
+    const { token } = getAuth();
+    const res = await fetch(buildUrl(`/Users/${userId}/FavoriteItems/${id}`), {
+      method: isFavorite ? 'POST' : 'DELETE',
+      headers: { Authorization: `MediaBrowser Token="${token}"` },
+    });
+    if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
+    out = await res.json();
   }
-  const { token } = getAuth();
-  const res = await fetch(buildUrl(`/Users/${userId}/FavoriteItems/${id}`), {
-    method: isFavorite ? 'POST' : 'DELETE',
-    headers: { Authorization: `MediaBrowser Token="${token}"` },
-  });
-  if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
-  return res.json();
+  // Seite „Meine Liste“ (features/mylist.js) lädt darauf neu.
+  document.dispatchEvent(new CustomEvent('lfx:favorite', { detail: { id, value: Boolean(isFavorite) } }));
+  return out;
 }
 
 /** Gesehen-Status setzen (POST) oder zurücknehmen (DELETE). */

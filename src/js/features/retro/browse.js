@@ -6,6 +6,7 @@ import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
+import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
 import { parseLfxRoute, browseHref, titleHref } from '../../shared/routes.js';
 import { getLibraries } from '../../shared/libraries.js';
@@ -252,13 +253,13 @@ async function build(tab, s) {
   if (typeof IntersectionObserver === 'function') {
     const io = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) loadMore(s);
-    }, { rootMargin: '900px 0px' });
+    }, { rootMargin: isDataSaver('lazy') ? '100px 0px' : '900px 0px' });
     io.observe(sentinel);
     s.cleanups.push(() => io.disconnect());
   } else {
     const onScroll = () => {
       const r = sentinel.getBoundingClientRect();
-      if (r.top < (window.innerHeight || 800) + 900) loadMore(s);
+      if (r.top < (window.innerHeight || 800) + (isDataSaver('lazy') ? 100 : 900)) loadMore(s);
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     s.cleanups.push(() => window.removeEventListener('scroll', onScroll));

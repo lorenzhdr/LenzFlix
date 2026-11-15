@@ -169,6 +169,7 @@ describe('Zapp-Einblendung', () => {
     v.update(snap());
     expect(v.el.classList.contains('is-zapping')).toBe(true);
     expect(v.el.querySelector('.lfx-tvm__zap-no').textContent).toBe('3');
+    expect(v.el.dataset.tvmNo).toBe('03');
     expect(v.el.querySelector('.lfx-tvm__zap-name').textContent).toBe('KINO');
     expect(v.el.querySelector('.lfx-tvm__zap-title').textContent).toBe('Titel A');
     expect(v.el.querySelector('.lfx-tvm__zap-time').textContent).toBe('20:15–22:05');

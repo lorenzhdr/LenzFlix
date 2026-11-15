@@ -1,1 +1,111 @@
-/* LENZ//84 · mylist: Platzhalter v1.13.0, Inhalt folgt. */
+/* LENZ//84 · mylist.css – „Meine Liste“ (#lfx-mylist, Klassen aus js-ui/mylist.css) im Terminal-Look.
+   Seitenhülle .lfx-retro-page + Verstecken der Startseite kommen aus title.css (html.lfx-retro-page-on):
+   Inhalt beginnt unter der festen Kopfzeile (--rt-top), unten Platz für die Handy-F-Tasten.
+   Alle Regeln unter html.lfx-js.lfx-theme-retro:not(.layout-tv). */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) {
+  & .lfx-ml { max-width: 1480px; margin: 0 auto; }
+  & .lfx-ml__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 24px;
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--lfx-retro-line);
+  }
+  & .lfx-ml__title {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font: 400 clamp(34px, 4vw, 56px)/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.05em;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow-strong);
+  }
+  & .lfx-ml__cursor { display: inline-block; margin-left: 2px; animation: lfx-ml-blink 1s steps(1, end) infinite; }
+  & .lfx-ml__count { margin: 0; font: 400 26px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.1em; color: var(--lfx-retro-amber-lo); }
+
+  & .lfx-ml__bar { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px 24px; padding: 14px 0 6px; }
+  & .lfx-ml__chips,
+  & .lfx-ml__sorts { gap: 8px; }
+  & .lfx-ml__chip,
+  & .lfx-ml__sort {
+    height: auto;
+    min-height: 36px;
+    padding: 2px 12px 0;
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 22px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: background-color 120ms steps(2, end), color 120ms steps(2, end);
+  }
+  & .lfx-ml__sort::before { content: "/S:"; opacity: 0.5; margin-right: 2px; }
+  & .lfx-ml__chip.is-active,
+  & .lfx-ml__chip.is-active:hover,
+  & .lfx-ml__sort.is-active {
+    background: var(--lfx-retro-amber);
+    color: var(--lfx-retro-ink);
+    border-color: var(--lfx-retro-amber);
+    box-shadow: 0 0 14px rgba(255, 176, 0, 0.4);
+  }
+  & .lfx-ml__chip:focus-visible,
+  & .lfx-ml__sort:focus-visible,
+  & .lfx-ml__empty-link:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-ml__chip:not(.is-active):hover,
+    & .lfx-ml__sort:not(.is-active):hover { background: var(--lfx-retro-amber-dim); color: var(--lfx-retro-amber-hi); }
+  }
+
+  /* Leerzustand im Terminal-Ton */
+  & .lfx-ml__empty { padding: 14vh 0 0; }
+  & .lfx-ml__empty-title {
+    font: 400 38px/1.05 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.1em;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow-strong);
+  }
+  & .lfx-ml__empty-hint { font: 400 15px/1.5 var(--lfx-retro-font-mono); color: var(--lfx-retro-amber); }
+  & .lfx-ml__empty-link {
+    height: auto;
+    min-height: 36px;
+    padding: 2px 14px 0;
+    border: 1px solid var(--lfx-retro-amber);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--lfx-retro-amber);
+    font: 400 22px/1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.08em;
+  }
+
+  /* Kartenskin: flix-Kartenmarkup eckig, Bernsteinrahmen, Retro-Schrift */
+  & .lfx-ml .lfx-grid__list { gap: 18px 14px; margin-top: 18px; }
+  & .lfx-ml .lfx-card,
+  & .lfx-ml .lfx-card__link,
+  & .lfx-ml .lfx-card__img { border-radius: 0; }
+  & .lfx-ml .lfx-card__link { border: 1px solid var(--lfx-retro-amber-lo); }
+  & .lfx-ml .lfx-card__img { filter: sepia(0.35) saturate(0.9) contrast(1.05); }
+  & .lfx-ml .lfx-card__title {
+    font-family: var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    color: var(--lfx-retro-amber);
+    text-transform: uppercase;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-ml .lfx-card:hover .lfx-card__link { border-color: var(--lfx-retro-amber-hi); box-shadow: 0 0 14px rgba(255, 176, 0, 0.35); }
+  }
+
+  @media (max-width: 799px) {
+    & .lfx-ml__bar { flex-direction: row; align-items: center; }
+    & .lfx-ml__chip,
+    & .lfx-ml__sort { min-height: 44px; }
+    & .lfx-ml__title { font-size: 34px; }
+    & .lfx-ml__count { font-size: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    & .lfx-ml__cursor { animation: none; }
+  }
+}
+@keyframes lfx-ml-blink { 50% { opacity: 0; } }

@@ -5471,6 +5471,7 @@
       const no = snap.channel;
       if (!channelObj || channelObj.no !== no) channelObj = findChannel(no) || { no };
       zapNo.textContent = String(no);
+      el.dataset.tvmNo = String(no).padStart(2, "0");
       zapName.replaceChildren(createChannelBadge(doc, channelObj));
       zapName.setAttribute("title", channelName(channelObj));
       const d = describeNow(snap);

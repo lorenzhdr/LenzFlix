@@ -16,6 +16,11 @@ vi.mock('../src/js/core/api.js', () => ({
 vi.mock('../src/js/core/theme.js', () => ({ isTheme: vi.fn(() => true), getTheme: () => 'flix' }));
 vi.mock('../src/js/core/themepicker.js', () => ({ openThemePicker: vi.fn() }));
 
+vi.mock('../src/js/features/library/sources.js', () => ({
+  getLibraryGenres: vi.fn(async () => [{ id: 'g1', name: 'Krimi' }, { id: 'g2', name: 'Komödie' }]),
+}));
+
+import { getLibraryGenres } from '../src/js/features/library/sources.js';
 import { isTheme } from '../src/js/core/theme.js';
 import { openThemePicker } from '../src/js/core/themepicker.js';
 import mobilenav, { showsPills, pillItems, overlayItems } from '../src/js/features/mobilenav.js';
@@ -50,10 +55,21 @@ describe('mobilenav (rein)', () => {
       delete window.LenzFlixConfig;
     }
   });
-  it('Pills nur auf der Startseite', () => {
+  it('Pills nur auf Startseite, Serien-/Filme-Seiten und Meine Liste', () => {
     expect(showsPills(parseHash('#/home'))).toBe(true);
+    expect(showsPills(parseHash('#/home?lfx=series'))).toBe(true);
+    expect(showsPills(parseHash('#/home?lfx=movies&genre=g1&view=grid'))).toBe(true);
+    expect(showsPills(parseHash('#/home?lfx=mylist'))).toBe(true);
+    expect(showsPills(parseHash('#/home?lfx=new'))).toBe(false);
     expect(showsPills(parseHash('#/home?tab=1'))).toBe(false);
     expect(showsPills(parseHash('#/movies?topParentId=m1'))).toBe(false);
+  });
+  it('Pill-Ziele zeigen auf die neuen Seiten', () => {
+    expect(pillItems(model).map((i) => i.href)).toEqual(['#/home?lfx=series', '#/home?lfx=movies', '#/home?lfx=mylist']);
+  });
+  it('Mehr-Liste führt keine weiteren Film-/Serienbibliotheken', () => {
+    const m = buildNavModel({ Items: [...views.Items, { Id: 'm2', Name: 'Filme 4K', CollectionType: 'movies' }] });
+    expect(overlayItems(m).some((i) => i.label === 'Filme 4K')).toBe(false);
   });
 });
 
@@ -200,6 +216,82 @@ describe('mobilenav (DOM)', () => {
     expect(overlay.hidden).toBe(false);
     expect(document.querySelector('.lfx-mnav__pill--cats').getAttribute('aria-expanded')).toBe('true');
     expect(overlay.querySelectorAll('.lfx-mnav-overlay__link').length).toBeGreaterThan(3);
+  });
+
+  describe('Serien/Filme/Meine Liste', () => {
+    const labels = () => [...document.querySelectorAll('.lfx-mnav__pill')].map((p) => p.textContent);
+
+    it('Serien-Seite: ✕ · Serien (aktiv) · Kategorien; Klasse lfx-mnav-pills gesetzt', async () => {
+      mobilenav.mount(parseHash('#/home?lfx=series'));
+      await vi.waitFor(() => expect(labels()).toEqual(['×', 'Serien', 'Kategorien']));
+      expect(document.documentElement.classList.contains('lfx-mnav-pills')).toBe(true);
+      const [x, s] = document.querySelectorAll('.lfx-mnav__pill');
+      expect(x.getAttribute('href')).toBe('#/home');
+      expect(s.getAttribute('href')).toBe('#/home?lfx=series');
+      expect(s.classList.contains('is-active')).toBe(true);
+    });
+
+    it('Filme mit Genre: Genre-Name statt „Kategorien“; Pille führt ohne Genre zurück', async () => {
+      mobilenav.mount(parseHash('#/home?lfx=movies&genre=g1'));
+      await vi.waitFor(() => expect(labels()).toEqual(['×', 'Filme', 'Krimi']));
+      expect(document.querySelectorAll('.lfx-mnav__pill')[1].getAttribute('href')).toBe('#/home?lfx=movies');
+      expect(getLibraryGenres).toHaveBeenCalledWith('movies');
+    });
+
+    it('Meine Liste: ✕ · Meine Liste', async () => {
+      mobilenav.mount(parseHash('#/home?lfx=mylist'));
+      await vi.waitFor(() => expect(labels()).toEqual(['×', 'Meine Liste']));
+      expect(document.querySelectorAll('.lfx-mnav__pill')[1].classList.contains('is-active')).toBe(true);
+    });
+
+    it('Kategorienliste: öffnet, lädt Genres, markiert aktives Genre, navigiert und schließt (Scroll-Sperre zurück)', async () => {
+      mobilenav.mount(parseHash('#/home?lfx=series&genre=g2'));
+      await vi.waitFor(() => expect(labels()).toEqual(['×', 'Serien', 'Komödie']));
+      const cats = document.getElementById('lfx-mnav-cats');
+      expect(cats.hidden).toBe(true);
+      document.querySelector('.lfx-mnav__pill--genre').click();
+      expect(cats.hidden).toBe(false);
+      expect(document.documentElement.classList.contains('lfx-mnav-cats-open')).toBe(true);
+      const links = [...cats.querySelectorAll('.lfx-mnav-cats__link')];
+      expect(links.map((a) => a.textContent)).toEqual(['Alle Serien', 'Krimi', 'Komödie']);
+      expect(links.map((a) => a.getAttribute('href'))).toEqual(['#/home?lfx=series', '#/home?lfx=series&genre=g1', '#/home?lfx=series&genre=g2']);
+      expect(links.map((a) => a.classList.contains('is-active'))).toEqual([false, false, true]);
+      links[1].click();
+      expect(cats.hidden).toBe(true);
+      expect(document.documentElement.classList.contains('lfx-mnav-cats-open')).toBe(false);
+    });
+
+    it('Kategorienliste: Esc und ✕ schließen, Route-Wechsel und unmount setzen die Sperre zurück', async () => {
+      mobilenav.mount(parseHash('#/home?lfx=movies'));
+      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-cats__link').length).toBe(3));
+      const cats = document.getElementById('lfx-mnav-cats');
+      const open = () => document.querySelector('.lfx-mnav__pill--genre').click();
+      open();
+      expect(cats.querySelector('.lfx-mnav-cats__link').textContent).toBe('Alle Filme');
+      cats.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(cats.hidden).toBe(true);
+      open();
+      cats.querySelector('.lfx-mnav-cats__close').click();
+      expect(cats.hidden).toBe(true);
+      open();
+      mobilenav.update(parseHash('#/home?lfx=movies&genre=g1'));
+      expect(cats.hidden).toBe(true);
+      expect(document.documentElement.classList.contains('lfx-mnav-cats-open')).toBe(false);
+      document.querySelector('.lfx-mnav__pill--genre').click();
+      expect(document.documentElement.classList.contains('lfx-mnav-cats-open')).toBe(true);
+      mobilenav.unmount();
+      expect(document.documentElement.classList.contains('lfx-mnav-cats-open')).toBe(false);
+      expect(document.getElementById('lfx-mnav-cats')).toBeNull();
+    });
+
+    it('Wechsel Startseite -> Serien -> Startseite baut die Pillen jeweils neu', async () => {
+      mobilenav.mount(parseHash('#/home'));
+      await vi.waitFor(() => expect(labels()).toEqual(['Serien', 'Filme', 'Meine Liste', 'Mehr']));
+      mobilenav.update(parseHash('#/home?lfx=series'));
+      expect(labels()).toEqual(['×', 'Serien', 'Kategorien']);
+      mobilenav.update(parseHash('#/home'));
+      expect(labels()).toEqual(['Serien', 'Filme', 'Meine Liste', 'Mehr']);
+    });
   });
 
   it('Overlay ohne Konfiguration: kein Statistik-Link', async () => {

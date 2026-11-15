@@ -7,9 +7,9 @@ import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { getHubHeroPool, buildHubRowDefs } from '../../shared/hub.js';
 import { getLibraries } from '../../shared/libraries.js';
-import { browseHref, hubHref } from '../../shared/routes.js';
+import { browseHref, hubHref, myListHref } from '../../shared/routes.js';
 import { buildRowDefs } from '../rows/sources.js';
-import { fetchHomePool, renderHero } from './home-hero.js';
+import { fetchCachedHomePool, peekHomePool, renderHero } from './home-hero.js';
 import { createRows } from './home-rows.js';
 import { findHomeTab, ON_CLASS, retroHomeRoute, ROOT_ID } from './home-route.js';
 import { isPhone } from './header-nav.js';
@@ -43,7 +43,7 @@ export function moreHrefFor(def, { hub, libs, lib }) {
   const byType = (t) => libs.find((l) => l.collectionType === t && l.hubCapable);
   if (def.id === 'latest-movies') { const l = byType('movies'); return l ? hubHref(l.id) : null; }
   if (def.id === 'latest-series') { const l = byType('tvshows'); return l ? hubHref(l.id) : null; }
-  if (def.id === 'favorites') return '#/home?tab=1';
+  if (def.id === 'favorites') return myListHref();
   if (def.kind === 'top10') return '#/home?lfx=new';
   return null;
 }
@@ -74,7 +74,7 @@ async function start(tab, route, myGen) {
   current = route;
   builtPhone = isPhone();
 
-  cleanups.push(renderHero(heroSlot, { loadPool: () => (hub ? getHubHeroPool(lib) : fetchHomePool()) }));
+  cleanups.push(renderHero(heroSlot, { loadPool: () => (hub ? getHubHeroPool(lib) : fetchCachedHomePool()), peekPool: hub ? null : peekHomePool }));
 
   const getDefs = (genreCount) => (hub ? buildHubRowDefs(lib, { genreCount }) : buildRowDefs({ genreCount }));
   let defs = [];
@@ -82,7 +82,7 @@ async function start(tab, route, myGen) {
     console.warn('[LenzFlix] Zeilen konnten nicht aufgebaut werden', e && e.message);
   }
   if (myGen !== gen || !api.isReady()) return;
-  const rows = createRows(rowsSlot, { moreHref: (def) => moreHrefFor(def, { hub, libs, lib }) });
+  const rows = createRows(rowsSlot, { moreHref: (def) => moreHrefFor(def, { hub, libs, lib }), prefetch: !hub, hero: () => heroSlot });
   cleanups.push(() => rows.destroy());
   rows.add(defs);
 

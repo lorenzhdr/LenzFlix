@@ -44,6 +44,25 @@ describe('nav', () => {
     expect(k('#/music?topParentId=x1')).toBe('more');
     expect(k('#/details?id=5')).toBeNull();
   });
+  it('Links der Kopfleiste zeigen auf die neuen Seiten', () => {
+    const href = (key) => navItems(model).find((i) => i.key === key).href;
+    expect(href('series')).toBe('#/home?lfx=series');
+    expect(href('movies')).toBe('#/home?lfx=movies');
+    expect(href('list')).toBe('#/home?lfx=mylist');
+  });
+  it('aktiver Eintrag für lfx=series|movies|mylist (mit Genre/Raster)', () => {
+    const k = (h) => activeKey(parseHash(h), model);
+    expect(k('#/home?lfx=series')).toBe('series');
+    expect(k('#/home?lfx=series&genre=g1&view=grid')).toBe('series');
+    expect(k('#/home?lfx=movies&genre=g1')).toBe('movies');
+    expect(k('#/home?lfx=mylist')).toBe('list');
+    expect(k('#/home?lfx=mylist&type=movies&sort=az')).toBe('list');
+  });
+  it('„Mehr“ führt keine Film-/Serienbibliotheken auf', () => {
+    const m = buildNavModel({ Items: [...views.Items, { Id: 'm2', Name: 'Filme 4K', CollectionType: 'movies' }, { Id: 't2', Name: 'Anime', CollectionType: 'tvshows' }] });
+    expect(m.more.map((x) => x.label)).toEqual(['Sammlungen', 'Musik']);
+    expect(activeKey(parseHash('#/movies?topParentId=m2'), m)).toBe('movies');
+  });
 });
 
 describe('nav: Meine Statistik', () => {
@@ -140,6 +159,66 @@ describe('nav: Meine Statistik', () => {
     expect(wrap().querySelector('.lfx-nav__more-btn').getAttribute('aria-expanded')).toBe('true');
     nav.update(parseHash('#/movies?topParentId=m1&collectionType=movies'));
     expect(wrap().classList.contains('is-open')).toBe(false);
+  });
+
+  describe('Mehr: Hover und Klick', () => {
+    let now;
+    let spy;
+    beforeEach(() => {
+      now = 1_000_000;
+      spy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    });
+    afterEach(() => spy.mockRestore());
+
+    const setup = async () => {
+      nav.mount(parseHash('#/home'));
+      await vi.waitFor(() => expect(document.querySelectorAll('.lfx-nav__item').length).toBe(5));
+      await vi.waitFor(() => expect(document.querySelector('.lfx-nav__more')).not.toBeNull());
+      // zweiter Render (loadViews) abwarten
+      await new Promise((r) => setTimeout(r, 10));
+      const wrap = document.querySelector('.lfx-nav__more');
+      return { wrap, btn: wrap.querySelector('.lfx-nav__more-btn') };
+    };
+
+    it('Klick direkt nach dem Hover-Öffnen schließt nicht', async () => {
+      const { wrap, btn } = await setup();
+      wrap.dispatchEvent(new MouseEvent('mouseenter'));
+      now += 100;
+      btn.click();
+      expect(wrap.classList.contains('is-open')).toBe(true);
+      expect(btn.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('Klick bei länger offenem Menü schließt, nächster Klick öffnet', async () => {
+      const { wrap, btn } = await setup();
+      wrap.dispatchEvent(new MouseEvent('mouseenter'));
+      now += 1500;
+      btn.click();
+      expect(wrap.classList.contains('is-open')).toBe(false);
+      btn.click();
+      expect(wrap.classList.contains('is-open')).toBe(true);
+      now += 50;
+      btn.click(); // ohne Hover geöffnet -> normaler Toggle
+      expect(wrap.classList.contains('is-open')).toBe(false);
+    });
+
+    it('Touch (emuliertes mouseenter vor click) öffnet; zweiter Tap später schließt', async () => {
+      const { wrap, btn } = await setup();
+      wrap.dispatchEvent(new MouseEvent('mouseenter'));
+      btn.click();
+      expect(wrap.classList.contains('is-open')).toBe(true);
+      now += 3000;
+      btn.click();
+      expect(wrap.classList.contains('is-open')).toBe(false);
+    });
+
+    it('Tastatur: Esc schließt unverändert', async () => {
+      const { wrap, btn } = await setup();
+      btn.click();
+      expect(wrap.classList.contains('is-open')).toBe(true);
+      wrap.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(wrap.classList.contains('is-open')).toBe(false);
+    });
   });
 
   it('geschlossenes Menü bleibt nach dem erneuten Rendern geschlossen', async () => {

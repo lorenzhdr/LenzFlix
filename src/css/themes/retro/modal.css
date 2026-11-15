@@ -1,1 +1,48 @@
-/* LENZ//84 · modal: Platzhalter v1.13.0, Inhalt folgt. */
+/* LENZ//84 · Detailkarte (#lfx-modal, z. B. über dem TV-Modus): nur Aussehen an das Terminal angleichen, kein Layout-Umbau. */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal.lfx-modal-overlay {
+  background: rgba(5, 3, 1, 0.84);
+  font-family: var(--lfx-font);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal {
+  background: var(--lfx-retro-bg-2);
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 0;
+  box-shadow: var(--lfx-shadow-modal);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__title,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__h {
+  font-family: var(--lfx-retro-font-pixel);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lfx-retro-amber-hi);
+  text-shadow: var(--lfx-retro-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__play {
+  height: 46px;
+  padding: 0 22px 0 16px;
+  border: 1px solid var(--lfx-retro-amber);
+  border-radius: 0;
+  background: var(--lfx-retro-amber);
+  color: var(--lfx-retro-ink);
+  font: 400 22px/1 var(--lfx-retro-font-pixel);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__play:hover { background: var(--lfx-retro-amber-hi); box-shadow: var(--lfx-retro-box-glow); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__round {
+  border: 1px solid var(--lfx-retro-line);
+  border-radius: 0;
+  background: var(--lfx-retro-panel);
+  color: var(--lfx-retro-amber);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__round:hover,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on { background: var(--lfx-retro-amber-dim); border-color: var(--lfx-retro-amber); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__close { border-radius: 0; border: 1px solid var(--lfx-retro-amber); color: var(--lfx-retro-amber); background: var(--lfx-retro-panel); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__play:focus-visible,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__round:focus-visible,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__close:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); outline-offset: 2px; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected { background: var(--lfx-retro-amber-dim); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__link { color: var(--lfx-link); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-modal .lfx-modal__link:hover { color: var(--lfx-retro-amber-hi); }

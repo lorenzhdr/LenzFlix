@@ -166,16 +166,20 @@
     clearCache("home:");
     const client = window.ApiClient;
     const userId = getUserId();
+    let out;
     if (client && typeof client.updateFavoriteStatus === "function") {
-      return client.updateFavoriteStatus(userId, id, Boolean(isFavorite));
+      out = await client.updateFavoriteStatus(userId, id, Boolean(isFavorite));
+    } else {
+      const { token: token2 } = getAuth();
+      const res = await fetch(buildUrl(`/Users/${userId}/FavoriteItems/${id}`), {
+        method: isFavorite ? "POST" : "DELETE",
+        headers: { Authorization: `MediaBrowser Token="${token2}"` }
+      });
+      if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
+      out = await res.json();
     }
-    const { token: token2 } = getAuth();
-    const res = await fetch(buildUrl(`/Users/${userId}/FavoriteItems/${id}`), {
-      method: isFavorite ? "POST" : "DELETE",
-      headers: { Authorization: `MediaBrowser Token="${token2}"` }
-    });
-    if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
-    return res.json();
+    document.dispatchEvent(new CustomEvent("lfx:favorite", { detail: { id, value: Boolean(isFavorite) } }));
+    return out;
   }
   async function setPlayed(id, played) {
     clearCache("home:");
@@ -1478,7 +1482,7 @@
     const holdBackdrop = Boolean(opts.holdBackdrop);
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state22 = "idle";
+    let state24 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -1527,7 +1531,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state22 = "closing";
+      state24 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -1538,13 +1542,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state22 = "closing";
+      state24 = "closing";
       el4.style.transition = ANIM;
       el4.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state22 = "idle";
+        state24 = "idle";
       });
     }
     function velocityNow() {
@@ -1555,49 +1559,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state22 === "closing") return;
-      state22 = "idle";
+      if (state24 === "closing") return;
+      state24 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state22 = "ignored";
+        state24 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el4.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el4)) {
-        state22 = "ignored";
+        state24 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state22 = "ignored";
+        state24 = "ignored";
         return;
       }
-      state22 = "tracking";
+      state24 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state22 !== "tracking" && state22 !== "dragging") return;
+      if (state24 !== "tracking" && state24 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state22 === "dragging") springBack();
-        else state22 = "ignored";
+        if (state24 === "dragging") springBack();
+        else state24 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state22 === "tracking") {
+      if (state24 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state22 = "dragging";
+          state24 = "dragging";
           el4.classList.add("lfx-dragging");
           el4.style.transition = "none";
         } else {
-          state22 = "ignored";
+          state24 = "ignored";
           return;
         }
       }
@@ -1611,18 +1615,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state22 === "dragging") {
+      if (state24 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state22 !== "closing") {
-        state22 = "idle";
+      } else if (state24 !== "closing") {
+        state24 = "idle";
       }
     }
     function onCancel() {
-      if (state22 === "dragging") springBack();
-      else if (state22 !== "closing") state22 = "idle";
+      if (state24 === "dragging") springBack();
+      else if (state24 !== "closing") state24 = "idle";
     }
     el4.addEventListener("touchstart", onStart, { passive: true });
     el4.addEventListener("touchmove", onMove2, { passive: false });
@@ -1638,7 +1642,7 @@
       el4.removeEventListener("touchend", onEnd);
       el4.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state22 = "idle";
+      state24 = "idle";
     };
   }
 
@@ -2208,6 +2212,8 @@
   }
   var tvModeHref = "#/home?lfx=tv";
   var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
+  var isLibraryRoute = (route) => ["series", "movies"].includes(parseLfxRoute(route).kind);
+  var isMyListRoute = (route) => parseLfxRoute(route).kind === "mylist";
 
   // src/js/features/themeroute.js
   var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
@@ -2902,14 +2908,14 @@
       }
       const first2 = nodes[0];
       const last = nodes[nodes.length - 1];
-      const active5 = document.activeElement;
-      if (!dialog.contains(active5) || active5 === dialog) {
+      const active6 = document.activeElement;
+      if (!dialog.contains(active6) || active6 === dialog) {
         e.preventDefault();
         (e.shiftKey ? last : first2).focus();
-      } else if (e.shiftKey && active5 === first2) {
+      } else if (e.shiftKey && active6 === first2) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && active5 === last) {
+      } else if (!e.shiftKey && active6 === last) {
         e.preventDefault();
         first2.focus();
       }
@@ -3013,6 +3019,7 @@
   var SCROLL_THRESHOLD = 10;
   var FOLD_ORDER = ["list", "new", "movies", "series"];
   var MENU_ORDER = ["series", "movies", "new", "list"];
+  var HOVER_CLICK_GRACE = 800;
   var FOLD_GAP = 16;
   var FOLD_RESERVE = 180;
   var TOOLBAR_SEL = "header.MuiAppBar-root > .MuiToolbar-root:first-child";
@@ -3049,19 +3056,22 @@
     const items = views && views.Items || (Array.isArray(views) ? views : []);
     const series = items.find((v) => v.CollectionType === "tvshows") || null;
     const movies = items.find((v) => v.CollectionType === "movies") || null;
-    const more = items.filter((v) => v !== series && v !== movies).map((v) => ({ id: v.Id, label: VIEW_LABELS[v.CollectionType] || v.Name, href: viewUrl(v) }));
+    const more = items.filter((v) => v.CollectionType !== "tvshows" && v.CollectionType !== "movies").map((v) => ({ id: v.Id, label: VIEW_LABELS[v.CollectionType] || v.Name, href: viewUrl(v) }));
     return { series, movies, more };
   }
   function activeKey(route, model) {
     const { path, params } = route;
     if (path === "/home") {
-      if (params.get("lfx") === "new") return "new";
-      if (params.get("lfx") === "tv") return "tv";
+      const kind2 = parseLfxRoute(route).kind;
+      if (kind2 === "new") return "new";
+      if (kind2 === "tv") return "tv";
+      if (kind2 === "series" || kind2 === "movies") return kind2;
+      if (kind2 === "mylist") return "list";
       return params.get("tab") === "1" ? "list" : "home";
     }
     const lib = params.get("topParentId") || params.get("parentId");
-    if (path === "/tv") return !lib || model.series && lib === model.series.Id ? "series" : "more";
-    if (path === "/movies") return !lib || model.movies && lib === model.movies.Id ? "movies" : "more";
+    if (path === "/tv") return "series";
+    if (path === "/movies") return "movies";
     if (lib && model.series && lib === model.series.Id) return "series";
     if (lib && model.movies && lib === model.movies.Id) return "movies";
     if (lib && model.more.some((m) => m.id === lib)) return "more";
@@ -3069,10 +3079,10 @@
   }
   function navItems(model) {
     const items = [{ key: "home", label: "Startseite", href: "#/home" }];
-    if (model.series) items.push({ key: "series", label: "Serien", href: viewUrl(model.series) });
-    if (model.movies) items.push({ key: "movies", label: "Filme", href: viewUrl(model.movies) });
+    if (model.series) items.push({ key: "series", label: "Serien", href: libraryHref("series") });
+    if (model.movies) items.push({ key: "movies", label: "Filme", href: libraryHref("movies") });
     items.push({ key: "new", label: "Neu und beliebt", href: "#/home?lfx=new" });
-    items.push({ key: "list", label: "Meine Liste", href: "#/home?tab=1" });
+    items.push({ key: "list", label: "Meine Liste", href: myListHref() });
     return items;
   }
   var state2 = {
@@ -3081,18 +3091,20 @@
     route: null,
     cleanups: [],
     menuOpen: false,
+    hoverOpenedAt: 0,
     seq: 0,
     raf: 0,
     watch: [],
     toolbar: null
   };
-  function setMenu(open2) {
-    state2.menuOpen = open2;
+  function setMenu(open3) {
+    state2.menuOpen = open3;
+    if (!open3) state2.hoverOpenedAt = 0;
     const wrap = state2.nav && state2.nav.querySelector(".lfx-nav__more");
     if (!wrap) return;
-    wrap.classList.toggle("is-open", open2);
+    wrap.classList.toggle("is-open", open3);
     const btn3 = wrap.querySelector(".lfx-nav__more-btn");
-    if (btn3) btn3.setAttribute("aria-expanded", String(open2));
+    if (btn3) btn3.setAttribute("aria-expanded", String(open3));
   }
   function applyActive() {
     if (!state2.nav || !state2.route) return;
@@ -3193,8 +3205,17 @@
         dataset: { key: "more" }
       }, ["Mehr", h("span", { class: "lfx-nav__caret", "aria-hidden": "true" })]);
       const wrap = h("div", { class: "lfx-nav__more" }, [btn3, menu]);
-      btn3.addEventListener("click", () => setMenu(!state2.menuOpen));
-      wrap.addEventListener("mouseenter", () => setMenu(true));
+      btn3.addEventListener("click", () => {
+        if (state2.menuOpen && state2.hoverOpenedAt && Date.now() - state2.hoverOpenedAt < HOVER_CLICK_GRACE) {
+          state2.hoverOpenedAt = 0;
+          return;
+        }
+        setMenu(!state2.menuOpen);
+      });
+      wrap.addEventListener("mouseenter", () => {
+        if (!state2.menuOpen) state2.hoverOpenedAt = Date.now();
+        setMenu(true);
+      });
       wrap.addEventListener("mouseleave", () => setMenu(false));
       wrap.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
@@ -3293,15 +3314,578 @@
   };
   var nav_default = navFeature;
 
+  // src/js/features/billboard/format.js
+  var DAY = 864e5;
+  var NEW_DAYS2 = 14;
+  function hasLogoAndBackdrop(it) {
+    return Boolean(it && it.Id && it.ImageTags && it.ImageTags.Logo && it.BackdropImageTags && it.BackdropImageTags.length);
+  }
+  function shuffled(arr, rng) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function buildPool(latest, random, opts = {}) {
+    const { newCount = 4, randomCount = 8, avoidFirstId = null, rng = Math.random } = opts;
+    const uniq2 = (list, skip) => {
+      const seen = new Set(skip);
+      const out2 = [];
+      for (const it of list || []) {
+        if (hasLogoAndBackdrop(it) && !seen.has(it.Id)) {
+          seen.add(it.Id);
+          out2.push(it);
+        }
+      }
+      return out2;
+    };
+    const a = shuffled(uniq2(latest, []).slice(0, newCount), rng);
+    const b = uniq2(random, a.map((it) => it.Id)).slice(0, randomCount);
+    const fresh = b.filter((it) => it.Id !== avoidFirstId);
+    const first2 = fresh.find((it) => it.LocalTrailerCount > 0) || fresh[0];
+    if (first2) {
+      b.splice(b.indexOf(first2), 1);
+      b.unshift(first2);
+    }
+    const out = [];
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      if (b[i]) out.push(b[i]);
+      if (a[i]) out.push(a[i]);
+    }
+    return out;
+  }
+  var SAVER_POOL = 5;
+  function saverPool(pool, keepId = null) {
+    const list = Array.isArray(pool) ? pool : [];
+    if (list.length <= SAVER_POOL) return list.slice();
+    const out = list.slice(0, SAVER_POOL);
+    if (keepId && !out.some((it) => it.Id === keepId)) {
+      const cur3 = list.find((it) => it.Id === keepId);
+      if (cur3) out[SAVER_POOL - 1] = cur3;
+    }
+    return out;
+  }
+  function formatRuntime(ticks) {
+    const total = Math.round((Number(ticks) || 0) / 6e8);
+    if (total <= 0) return "";
+    const hrs = Math.floor(total / 60);
+    const min = total % 60;
+    if (!hrs) return `${min} Min.`;
+    return min ? `${hrs} Std. ${min} Min.` : `${hrs} Std.`;
+  }
+  function formatRating(rating) {
+    const s = String(rating || "").trim();
+    if (!s) return "";
+    const m = /^(?:FSK|DE)[\s-]*(\d{1,2})$/i.exec(s);
+    return m ? m[1] : s;
+  }
+  function formatSeasons(n) {
+    const c = Number(n) || 0;
+    if (c <= 0) return "";
+    return c === 1 ? "1 Staffel" : `${c} Staffeln`;
+  }
+  function metaParts(item) {
+    const parts = [];
+    const isSeries = item.Type === "Series";
+    parts.push({ text: isSeries ? "Serie" : "Film" });
+    if (item.Genres && item.Genres[0]) parts.push({ text: item.Genres[0] });
+    if (item.ProductionYear) parts.push({ text: String(item.ProductionYear) });
+    const extra = isSeries ? formatSeasons(item.ChildCount) : formatRuntime(item.RunTimeTicks);
+    if (extra) parts.push({ text: extra });
+    const rating = formatRating(item.OfficialRating);
+    if (rating) parts.push({ text: rating, rating: true });
+    return parts;
+  }
+  function genreLine(item) {
+    const g = item && Array.isArray(item.Genres) ? item.Genres.filter(Boolean).slice(0, 3) : [];
+    return g.join(" \u2022 ");
+  }
+  function badgeFor2(item, now = Date.now()) {
+    const t = item && item.DateCreated ? Date.parse(item.DateCreated) : NaN;
+    if (Number.isFinite(t) && now - t >= 0 && now - t < NEW_DAYS2 * DAY) return "Neu hinzugef\xFCgt";
+    return null;
+  }
+  function hasProgress(item) {
+    return Boolean(item && item.UserData && item.UserData.PlaybackPositionTicks > 0);
+  }
+
+  // src/js/features/rows/sources.js
+  var MOVIE_SERIES = "Movie,Series";
+  function asItems(res) {
+    if (Array.isArray(res)) return res;
+    return res && Array.isArray(res.Items) ? res.Items : [];
+  }
+  var newSeriesCache = { at: 0, promise: null, value: null };
+  var TEN_MIN = 10 * 60 * 1e3;
+  var NEW_SERIES_LIMIT = 200;
+  function storageKey3() {
+    return `lfx-newseries:${getUserId() || "anon"}`;
+  }
+  function readStored(now) {
+    try {
+      const raw = JSON.parse(sessionStorage.getItem(storageKey3()) || "null");
+      if (raw && Array.isArray(raw.ids) && now - raw.at >= 0 && now - raw.at < TEN_MIN) return new Set(raw.ids);
+    } catch {
+    }
+    return null;
+  }
+  function writeStored(now, set) {
+    try {
+      sessionStorage.setItem(storageKey3(), JSON.stringify({ at: now, ids: [...set] }));
+    } catch {
+    }
+  }
+  function peekNewSeriesIds(now = Date.now()) {
+    if (newSeriesCache.value && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.value;
+    return readStored(now);
+  }
+  function getNewSeriesIds(now = Date.now()) {
+    if (newSeriesCache.promise && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.promise;
+    const stored = readStored(now);
+    if (stored) {
+      newSeriesCache = { at: now, promise: Promise.resolve(stored), value: stored };
+      return newSeriesCache.promise;
+    }
+    const promise = getItems({
+      IncludeItemTypes: "Episode",
+      Recursive: true,
+      SortBy: "DateCreated",
+      SortOrder: "Descending",
+      Fields: "SeriesId,DateCreated,PremiereDate",
+      EnableImages: false,
+      EnableUserData: false,
+      Limit: NEW_SERIES_LIMIT
+    }).then((res) => {
+      const set = newSeriesIdsFrom(asItems(res), now);
+      if (newSeriesCache.promise === promise) newSeriesCache.value = set;
+      writeStored(now, set);
+      return set;
+    }).catch((e) => {
+      console.warn("[LenzFlix] Neue-Folgen-Abfrage fehlgeschlagen", e && e.message);
+      if (newSeriesCache.promise === promise) newSeriesCache = { at: 0, promise: null, value: null };
+      return /* @__PURE__ */ new Set();
+    });
+    newSeriesCache = { at: now, promise, value: null };
+    return promise;
+  }
+  var MIN_CHART_ROW = 5;
+  function chartSpecs() {
+    return [
+      { id: "top10-series", title: `Top 10 Serien auf ${brandName()}`, key: "series" },
+      { id: "top10-movies", title: `Top 10 Filme auf ${brandName()}`, key: "movies" }
+    ];
+  }
+  async function buildChartDefs() {
+    try {
+      const charts = await getCharts();
+      if (!charts) return [];
+      const specs = chartSpecs();
+      const lists = await Promise.all(specs.map((s) => resolveChartItems(charts[s.key], { limit: 10 })));
+      const defs = [];
+      specs.forEach((s, i) => {
+        const list = lists[i];
+        if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: "top10", load: () => list });
+      });
+      return defs;
+    } catch (e) {
+      console.warn("[LenzFlix] Chart-Zeilen nicht aufgebaut", e && e.message);
+      return [];
+    }
+  }
+  var VIEWS_TTL = 5 * 6e4;
+  var degraded = /* @__PURE__ */ new WeakSet();
+  function wrapRow(def) {
+    const key = homeKey(getUserId(), "row", def.id);
+    const orig = def.load;
+    def.cacheKey = key;
+    def.load = async (d = def) => {
+      const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title }), HOME_TTL);
+      d.id = snap.id;
+      d.title = snap.title;
+      return snap.items;
+    };
+    return def;
+  }
+  var defsKey = ({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) => homeKey(getUserId(), "defs", seed, genreCount, deferCharts ? 1 : 0);
+  var peekRowDefs = (opts) => peekCached(defsKey(opts));
+  function buildRowDefs(opts = {}) {
+    const key = defsKey(opts);
+    const p = cached(key, () => computeRowDefs(opts), HOME_TTL);
+    p.then((defs) => {
+      if (degraded.has(defs)) clearCache(key);
+    }, () => {
+    });
+    return p;
+  }
+  async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
+    const [viewsRes, genresRes] = await Promise.allSettled([
+      cached(`views:${getUserId()}`, getViews, VIEWS_TTL),
+      getJson("/Genres", { userId: getUserId(), IncludeItemTypes: MOVIE_SERIES, Recursive: true })
+    ]);
+    const views = viewsRes.status === "fulfilled" ? asItems(viewsRes.value) : [];
+    const genres = genresRes.status === "fulfilled" ? asItems(genresRes.value) : [];
+    const movieView = views.find((v) => v.CollectionType === "movies");
+    const tvView = views.find((v) => v.CollectionType === "tvshows");
+    const items = (params) => getItems({ ...BASE_PARAMS, ...params }).then(asItems);
+    const defs = [];
+    defs.push({
+      id: "resume",
+      title: "Weiterschauen",
+      kind: "resume",
+      load: () => getResume({ ...BASE_PARAMS, MediaTypes: "Video", Limit: 20 }).then(asItems)
+    });
+    defs.push({
+      id: "nextup",
+      title: "Als N\xE4chstes",
+      kind: "landscape",
+      load: () => getNextUp({ ...BASE_PARAMS, Limit: 20, EnableResumable: false, EnableRewatching: false }).then(asItems)
+    });
+    const newTop10 = () => items({
+      IncludeItemTypes: MOVIE_SERIES,
+      Recursive: true,
+      SortBy: "DateCreated",
+      SortOrder: "Descending",
+      Limit: 10
+    }).then(selectTop10);
+    const fallbackDef = () => ({ id: "top10", title: `Top 10: Neu auf ${brandName()}`, kind: "top10", load: newTop10 });
+    if (deferCharts) {
+      if (!getChartsUrl()) defs.push(fallbackDef());
+      else {
+        const chartDefs = buildChartDefs();
+        const specs = chartSpecs();
+        specs.forEach((s, i) => {
+          defs.push({
+            id: s.id,
+            title: s.title,
+            kind: "top10",
+            async load(def) {
+              const found = await chartDefs;
+              if (found.length) {
+                const hit = found.find((d) => d.id === s.id);
+                return hit ? hit.load() : [];
+              }
+              if (i !== 0) return [];
+              const fb = fallbackDef();
+              def.id = fb.id;
+              def.title = fb.title;
+              return fb.load();
+            }
+          });
+        });
+      }
+    } else {
+      const chartDefs = await buildChartDefs();
+      if (chartDefs.length) defs.push(...chartDefs);
+      else defs.push(fallbackDef());
+    }
+    if (movieView) {
+      defs.push({
+        id: "latest-movies",
+        title: "Neu hinzugef\xFCgt: Filme",
+        kind: "landscape",
+        load: () => getLatest({ ...BASE_PARAMS, ParentId: movieView.Id, GroupItems: true, Limit: 20 }).then(asItems)
+      });
+    }
+    if (tvView) {
+      defs.push({
+        id: "latest-series",
+        title: "Neu hinzugef\xFCgt: Serien",
+        kind: "landscape",
+        load: () => getLatest({ ...BASE_PARAMS, ParentId: tvView.Id, GroupItems: true, Limit: 20 }).then(asItems)
+      });
+    }
+    defs.push({
+      id: "favorites",
+      title: "Meine Liste",
+      kind: "landscape",
+      load: () => items({ IncludeItemTypes: MOVIE_SERIES, Recursive: true, IsFavorite: true, SortBy: "SortName", Limit: 50 })
+    });
+    defs.push({
+      id: "because",
+      title: null,
+      kind: "landscape",
+      async load(def) {
+        const played = await items({
+          IncludeItemTypes: "Movie,Episode",
+          Recursive: true,
+          Filters: "IsPlayed",
+          SortBy: "DatePlayed",
+          SortOrder: "Descending",
+          Limit: 1
+        });
+        const last = played[0];
+        if (!last) return [];
+        const baseId = last.Type === "Episode" ? last.SeriesId : last.Id;
+        const name = last.Type === "Episode" ? last.SeriesName : last.Name;
+        if (!baseId || !name) return [];
+        const similar = await getSimilar(baseId, { ...BASE_PARAMS, Limit: 20 }).then(asItems);
+        if (similar.length) def.title = `Weil du ${name} angesehen hast`;
+        return similar.filter((i) => i.Id !== baseId);
+      }
+    });
+    for (const name of pickGenres(genres, { seed, count: genreCount })) {
+      defs.push({
+        id: `genre-${name}`,
+        title: name,
+        kind: "landscape",
+        async load() {
+          const list = await items({ IncludeItemTypes: MOVIE_SERIES, Recursive: true, Genres: name, SortBy: "Random", Limit: 20 });
+          return list.length >= 8 ? list : [];
+        }
+      });
+    }
+    defs.push({
+      id: "toprated",
+      title: "Hochbewertet",
+      kind: "landscape",
+      load: () => items({
+        IncludeItemTypes: MOVIE_SERIES,
+        Recursive: true,
+        SortBy: "CommunityRating",
+        SortOrder: "Descending",
+        MinCommunityRating: 7.5,
+        Limit: 20
+      })
+    });
+    defs.forEach(wrapRow);
+    if (viewsRes.status !== "fulfilled" || genresRes.status !== "fulfilled") degraded.add(defs);
+    return defs;
+  }
+
+  // src/js/features/library/sources.js
+  var LIB_TYPES = { series: "Series", movies: "Movie" };
+  var RESUME_TYPES = { series: "Episode", movies: "Movie" };
+  var MIN_ROW = 8;
+  var DECADES = [2020, 2010, 2e3, 1990, 1980];
+  var HERO_FIELDS = `${BASE_PARAMS.Fields},RemoteTrailers,LocalTrailerCount`;
+  var typeOf = (kind2) => LIB_TYPES[kind2] || LIB_TYPES.movies;
+  var idPrefix = (kind2, genre) => `lib:${kind2}:${genre || "all"}:`;
+  var newSort = (kind2) => kind2 === "series" ? "DateLastContentAdded" : "DateCreated";
+  function libraryPoolKey(kind2, genre) {
+    return homeKey(getUserId(), "lib", kind2, genre || "all", "pool");
+  }
+  function getLibraryGenres(kind2) {
+    const key = homeKey(getUserId(), "lib", kind2, "genres");
+    return cached(key, async () => {
+      const res = await getJson("/Genres", {
+        userId: getUserId(),
+        IncludeItemTypes: typeOf(kind2),
+        Recursive: true,
+        SortBy: "SortName"
+      });
+      return asItems(res).filter((g) => g && g.Id && g.Name).map((g) => ({ id: g.Id, name: g.Name })).sort((a, b) => a.name.localeCompare(b.name, "de"));
+    }, HOME_TTL);
+  }
+  var normId3 = (id) => String(id || "").replace(/-/g, "").toLowerCase();
+  function itemInGenre(it, genreId, genreName2) {
+    const items = Array.isArray(it.GenreItems) ? it.GenreItems : null;
+    if (items && items.length) return items.some((g) => normId3(g.Id) === normId3(genreId));
+    const names = Array.isArray(it.Genres) ? it.Genres : null;
+    if (names && names.length) return names.includes(genreName2);
+    return null;
+  }
+  async function filterByGenre(list, kind2, genre, genreName2) {
+    const keep = [];
+    const unknown = [];
+    for (const it of list) {
+      const r = itemInGenre(it, genre, genreName2);
+      if (r === true) keep.push(it);
+      else if (r === null) unknown.push(it);
+    }
+    if (unknown.length) {
+      const baseId = (it) => it.Type === "Episode" ? it.SeriesId : it.Id;
+      const ids = [...new Set(unknown.map(baseId).filter(Boolean))];
+      if (ids.length) {
+        try {
+          const hits = new Set(asItems(await getItems({
+            Ids: ids.join(","),
+            GenreIds: genre,
+            EnableImages: false,
+            EnableUserData: false
+          })).map((x) => normId3(x.Id)));
+          for (const it of unknown) if (hits.has(normId3(baseId(it)))) keep.push(it);
+        } catch {
+        }
+      }
+    }
+    const order = new Map(list.map((it, i) => [it, i]));
+    return keep.sort((a, b) => order.get(a) - order.get(b));
+  }
+  async function buildLibraryRowDefs(kind2, { genre, genreName: genreName2 } = {}) {
+    const type = typeOf(kind2);
+    const pre = idPrefix(kind2, genre);
+    const items = (params) => getItems({
+      ...BASE_PARAMS,
+      IncludeItemTypes: type,
+      Recursive: true,
+      ...params
+    }).then(asItems);
+    const gp = genre ? { GenreIds: genre } : {};
+    const genres = await getLibraryGenres(kind2).catch(() => []);
+    const name = genreName2 || genre && (genres.find((g) => g.id === genre) || {}).name || "Genre";
+    const resume = {
+      id: `${pre}resume`,
+      title: "Weiterschauen",
+      kind: "resume",
+      async load() {
+        const list = asItems(await getResume({
+          ...BASE_PARAMS,
+          MediaTypes: "Video",
+          IncludeItemTypes: RESUME_TYPES[kind2] || "Movie",
+          Limit: 20
+        })).filter((it) => it && it.Type === (RESUME_TYPES[kind2] || "Movie"));
+        return genre ? filterByGenre(list, kind2, genre, name) : list;
+      }
+    };
+    const latest = {
+      id: `${pre}latest`,
+      title: "Neu hinzugef\xFCgt",
+      kind: "landscape",
+      load: genre ? () => items({ ...gp, SortBy: newSort(kind2), SortOrder: "Descending", Limit: 20 }) : () => getLatest({ ...BASE_PARAMS, IncludeItemTypes: type, GroupItems: true, Limit: 20 }).then(asItems)
+    };
+    const toprated = {
+      id: `${pre}toprated`,
+      title: "Hochbewertet",
+      kind: "landscape",
+      load: () => items({ ...gp, SortBy: "CommunityRating", SortOrder: "Descending", MinCommunityRating: 7.5, Limit: 20 })
+    };
+    const random = {
+      id: `${pre}random`,
+      title: "Zuf\xE4llige Auswahl",
+      kind: "landscape",
+      load: () => items({ ...gp, SortBy: "Random", Limit: 20 })
+    };
+    if (genre) {
+      const defs2 = [resume, latest, toprated, random];
+      for (const start11 of DECADES) {
+        const years = Array.from({ length: 10 }, (_, i) => start11 + i).join(",");
+        defs2.push({
+          id: `${pre}decade-${start11}`,
+          title: `${name} der ${start11}er`,
+          kind: "landscape",
+          async load() {
+            const list = await items({ ...gp, Years: years, SortBy: "Random", Limit: 20 });
+            return list.length >= MIN_ROW ? list : [];
+          }
+        });
+      }
+      return defs2.map(wrapRow);
+    }
+    const defs = [resume];
+    if (kind2 === "series") {
+      defs.push({
+        id: `${pre}nextup`,
+        title: "Als N\xE4chstes",
+        kind: "landscape",
+        load: () => getNextUp({ ...BASE_PARAMS, Limit: 20, EnableResumable: false, EnableRewatching: false }).then(asItems)
+      });
+    }
+    const chartKey = (chartSpecs().find((s) => s.key === kind2) || { key: kind2 }).key;
+    const chartTitle = (chartSpecs().find((s) => s.key === kind2) || {}).title;
+    defs.push({
+      id: `${pre}top10`,
+      title: chartTitle || `Top 10 auf ${brandName()}`,
+      kind: "top10",
+      async load(def) {
+        try {
+          const charts = await getCharts();
+          if (charts && (charts[chartKey] || []).length) {
+            const list = await resolveChartItems(charts[chartKey], { limit: 10 });
+            const own2 = list.filter((it) => it.Type === type);
+            if (own2.length >= MIN_CHART_ROW) return own2;
+          }
+        } catch (e) {
+          console.warn("[LenzFlix] Top 10 nicht aufgebaut", e && e.message);
+        }
+        def.title = `Top 10: Neu auf ${brandName()}`;
+        return selectTop10(await items({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 10 }));
+      }
+    });
+    defs.push(latest);
+    defs.push({
+      id: `${pre}because`,
+      title: null,
+      kind: "landscape",
+      async load(def) {
+        const played = await getItems({
+          ...BASE_PARAMS,
+          IncludeItemTypes: RESUME_TYPES[kind2],
+          Recursive: true,
+          Filters: "IsPlayed",
+          SortBy: "DatePlayed",
+          SortOrder: "Descending",
+          Limit: 1
+        }).then(asItems);
+        const last = played[0];
+        if (!last) return [];
+        const baseId = last.Type === "Episode" ? last.SeriesId : last.Id;
+        const baseName = last.Type === "Episode" ? last.SeriesName : last.Name;
+        if (!baseId || !baseName) return [];
+        const similar = asItems(await getSimilar(baseId, { ...BASE_PARAMS, Limit: 20 })).filter((i) => i.Id !== baseId && i.Type === type);
+        if (similar.length) def.title = `Weil du ${baseName} angesehen hast`;
+        return similar;
+      }
+    });
+    const picked = pickGenres(genres.map((g) => ({ Name: g.name })), { seed: `${dayKey()}:${kind2}`, count: 6 });
+    const idByName = new Map(genres.map((g) => [g.name, g.id]));
+    const genreDefs = picked.filter((n) => idByName.get(n)).map((n) => ({
+      id: `${pre}genre-${idByName.get(n)}`,
+      title: n,
+      kind: "landscape",
+      async load() {
+        const list = await items({ GenreIds: idByName.get(n), SortBy: "Random", Limit: 20 });
+        return list.length >= MIN_ROW ? list : [];
+      }
+    }));
+    defs.push(...genreDefs.slice(0, 2), toprated, ...genreDefs.slice(2, 4), random, ...genreDefs.slice(4, 6));
+    return defs.map(wrapRow);
+  }
+  async function fetchLibraryHeroPool(kind2, { genre } = {}) {
+    const q = (params) => getItems({
+      ...BASE_PARAMS,
+      Fields: HERO_FIELDS,
+      IncludeItemTypes: typeOf(kind2),
+      Recursive: true,
+      ...genre ? { GenreIds: genre } : {},
+      ...params
+    }).then(asItems);
+    const [latest, random] = await Promise.all([
+      q({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 30 }).catch(() => []),
+      q({ SortBy: "Random", Limit: 40 }).catch(() => [])
+    ]);
+    const pool = buildPool(latest, random, { newCount: 3, randomCount: 7 });
+    if (pool.length) {
+      putItems(pool);
+      return pool;
+    }
+    const seen = /* @__PURE__ */ new Set();
+    const fallback = [...latest, ...random].filter((it) => {
+      if (!it || !it.Id || seen.has(it.Id) || !(it.BackdropImageTags && it.BackdropImageTags.length)) return false;
+      seen.add(it.Id);
+      return true;
+    }).slice(0, 8);
+    putItems(fallback);
+    return fallback;
+  }
+
   // src/js/features/mobilenav.js
   var { STATS_LABEL: STATS_LABEL3 } = stats_exports;
   var statsLink2 = () => typeof statsHref === "function" ? statsHref() : getStatsUrl();
   var ROOT_ID = "lfx-mnav";
   var OVERLAY_ID = "lfx-mnav-overlay";
+  var CATS_ID = "lfx-mnav-cats";
   var EXCLUDED2 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var FOCUSABLE = "a[href], button:not([disabled])";
+  function pillsMode(route) {
+    if (!route || route.path !== "/home") return null;
+    if (isLibraryRoute(route)) return "library";
+    if (isMyListRoute(route)) return "mylist";
+    return route.params.get("tab") !== "1" && !route.params.get("lfx") ? "home" : null;
+  }
   function showsPills(route) {
-    return route.path === "/home" && route.params.get("tab") !== "1" && !route.params.get("lfx");
+    return pillsMode(route) !== null;
   }
   function pillItems(model) {
     return navItems(model).filter((it) => it.key === "series" || it.key === "movies" || it.key === "list");
@@ -3322,10 +3906,43 @@
     pills: null,
     overlay: null,
     catBtn: null,
+    cats: null,
+    genreBtn: null,
+    catsReturnFocus: null,
+    genres: { series: null, movies: null },
+    genresLoading: /* @__PURE__ */ new Set(),
     returnFocus: null,
     cleanups: [],
     seq: 0
   };
+  var isCatsOpen = () => Boolean(state3.cats && !state3.cats.hidden);
+  function openCats() {
+    if (!state3.cats || isCatsOpen()) return;
+    state3.catsReturnFocus = document.activeElement;
+    state3.cats.hidden = false;
+    cl().add("lfx-mnav-cats-open");
+    if (state3.genreBtn) state3.genreBtn.setAttribute("aria-expanded", "true");
+    const active6 = state3.cats.querySelector(".is-active") || state3.cats.querySelector(".lfx-mnav-cats__link");
+    const target = active6 || state3.cats.querySelector(".lfx-mnav-cats__close");
+    if (target) target.focus();
+  }
+  function closeCats({ restoreFocus = true } = {}) {
+    if (!state3.cats || !isCatsOpen()) return;
+    state3.cats.hidden = true;
+    cl().remove("lfx-mnav-cats-open");
+    if (state3.genreBtn) state3.genreBtn.setAttribute("aria-expanded", "false");
+    const back = state3.catsReturnFocus;
+    state3.catsReturnFocus = null;
+    if (restoreFocus && back && typeof back.focus === "function" && back.isConnected) back.focus();
+  }
+  function onCatsKey(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeCats();
+      return;
+    }
+    trapTab(e, state3.cats);
+  }
   var cl = () => document.documentElement.classList;
   function isOpen() {
     return Boolean(state3.overlay && !state3.overlay.hidden);
@@ -3354,8 +3971,11 @@
       closeOverlay();
       return;
     }
-    if (e.key !== "Tab") return;
-    const nodes = [...state3.overlay.querySelectorAll(FOCUSABLE)];
+    trapTab(e, state3.overlay);
+  }
+  function trapTab(e, root7) {
+    if (e.key !== "Tab" || !root7) return;
+    const nodes = [...root7.querySelectorAll(FOCUSABLE)];
     if (!nodes.length) return;
     const first2 = nodes[0];
     const last = nodes[nodes.length - 1];
@@ -3385,22 +4005,98 @@
     if (state3.pills) state3.pills.hidden = !on;
     if (cl().contains("lfx-mnav-pills") !== on) cl().toggle("lfx-mnav-pills", on);
   }
+  var caret = () => h("span", { class: "lfx-mnav__caret", "aria-hidden": "true" });
+  function libraryKind(route) {
+    const k = route && isLibraryRoute(route) ? parseLfxRoute(route).kind : null;
+    return k === "series" || k === "movies" ? k : null;
+  }
+  function genreName(kind2, id) {
+    const g = (state3.genres[kind2] || []).find((x) => x.id === id);
+    return g ? g.name : null;
+  }
+  function renderPills() {
+    if (!state3.pills) return;
+    const mode = state3.route ? pillsMode(state3.route) : null;
+    state3.pills.textContent = "";
+    state3.catBtn = null;
+    state3.genreBtn = null;
+    const closeX = () => h("a", { class: "lfx-mnav__pill lfx-mnav__pill--x", href: "#/home", "aria-label": "Schlie\xDFen" }, "\xD7");
+    if (mode === "library") {
+      const kind2 = libraryKind(state3.route);
+      const route = parseLfxRoute(state3.route);
+      const gname = route.genre ? genreName(kind2, route.genre) : null;
+      state3.genreBtn = h("button", {
+        type: "button",
+        class: `lfx-mnav__pill lfx-mnav__pill--genre${gname ? " has-genre" : ""}`,
+        "aria-haspopup": "dialog",
+        "aria-expanded": String(isCatsOpen()),
+        "aria-controls": CATS_ID,
+        dataset: { key: "cats" }
+      }, [gname || "Kategorien", caret()]);
+      state3.genreBtn.addEventListener("click", () => isCatsOpen() ? closeCats() : openCats());
+      state3.pills.append(
+        closeX(),
+        h("a", { class: "lfx-mnav__pill", href: libraryHref(kind2), dataset: { key: kind2 } }, kind2 === "series" ? "Serien" : "Filme"),
+        state3.genreBtn
+      );
+    } else if (mode === "mylist") {
+      state3.pills.append(closeX(), h("a", { class: "lfx-mnav__pill", href: myListHref(), dataset: { key: "list" } }, "Meine Liste"));
+    } else {
+      for (const it of pillItems(state3.model)) {
+        state3.pills.append(h("a", { class: "lfx-mnav__pill", href: it.href, dataset: { key: it.key } }, it.label));
+      }
+      state3.catBtn = h("button", {
+        type: "button",
+        class: "lfx-mnav__pill lfx-mnav__pill--cats",
+        "aria-haspopup": "dialog",
+        "aria-expanded": String(isOpen()),
+        "aria-controls": OVERLAY_ID,
+        dataset: { key: "cats" }
+      }, ["Mehr", caret()]);
+      state3.catBtn.addEventListener("click", () => isOpen() ? closeOverlay() : openOverlay());
+      state3.pills.append(state3.catBtn);
+    }
+  }
+  function renderCats() {
+    if (!state3.cats) return;
+    const kind2 = libraryKind(state3.route);
+    state3.cats.textContent = "";
+    if (!kind2) {
+      closeCats({ restoreFocus: false });
+      return;
+    }
+    const genre = parseLfxRoute(state3.route).genre;
+    const entries = [{ id: null, name: kind2 === "series" ? "Alle Serien" : "Alle Filme" }, ...state3.genres[kind2] || []];
+    const list = h("ul", { class: "lfx-mnav-cats__list" }, entries.map((g) => h(
+      "li",
+      null,
+      h("a", {
+        class: `lfx-mnav-cats__link${(g.id || null) === (genre || null) ? " is-active" : ""}`,
+        href: libraryHref(kind2, g.id ? { genre: g.id } : {}),
+        ...(g.id || null) === (genre || null) ? { "aria-current": "page" } : {}
+      }, g.name)
+    )));
+    const close2 = h("button", { type: "button", class: "lfx-mnav-cats__close", "aria-label": "Schlie\xDFen" }, "\xD7");
+    close2.addEventListener("click", () => closeCats());
+    state3.cats.append(list, close2);
+  }
+  function ensureGenres(kind2) {
+    if (!kind2 || state3.genres[kind2] || state3.genresLoading.has(kind2)) return;
+    const seq3 = state3.seq;
+    state3.genresLoading.add(kind2);
+    Promise.resolve().then(() => getLibraryGenres(kind2)).then((g) => Array.isArray(g) ? g : [], () => []).then((g) => {
+      if (seq3 !== state3.seq || !state3.root) return;
+      state3.genresLoading.delete(kind2);
+      state3.genres[kind2] = g;
+      renderPills();
+      renderCats();
+      applyActive2();
+    });
+  }
   function render2() {
     if (!state3.pills || !state3.overlay) return;
-    state3.pills.textContent = "";
-    for (const it of pillItems(state3.model)) {
-      state3.pills.append(h("a", { class: "lfx-mnav__pill", href: it.href, dataset: { key: it.key } }, it.label));
-    }
-    state3.catBtn = h("button", {
-      type: "button",
-      class: "lfx-mnav__pill lfx-mnav__pill--cats",
-      "aria-haspopup": "dialog",
-      "aria-expanded": String(isOpen()),
-      "aria-controls": OVERLAY_ID,
-      dataset: { key: "cats" }
-    }, ["Mehr", h("span", { class: "lfx-mnav__caret", "aria-hidden": "true" })]);
-    state3.catBtn.addEventListener("click", () => isOpen() ? closeOverlay() : openOverlay());
-    state3.pills.append(state3.catBtn);
+    renderPills();
+    renderCats();
     const list = h(
       "ul",
       { class: "lfx-mnav-overlay__list" },
@@ -3462,28 +4158,56 @@
         () => state3.overlay && state3.overlay.removeEventListener("keydown", onOverlayKey),
         () => state3.overlay && state3.overlay.removeEventListener("click", onOverlayClick)
       );
+      state3.cats = mountPoint(CATS_ID, { className: "lfx-mnav-cats" });
+      state3.cats.setAttribute("role", "dialog");
+      state3.cats.setAttribute("aria-modal", "true");
+      state3.cats.setAttribute("aria-label", "Kategorien");
+      state3.cats.hidden = true;
+      state3.cats.addEventListener("keydown", onCatsKey);
+      const onCatsClick = (e) => {
+        if (e.target.closest && e.target.closest("a")) closeCats({ restoreFocus: false });
+      };
+      state3.cats.addEventListener("click", onCatsClick);
+      state3.cleanups.push(
+        () => state3.cats && state3.cats.removeEventListener("keydown", onCatsKey),
+        () => state3.cats && state3.cats.removeEventListener("click", onCatsClick)
+      );
       cl().add("lfx-mnav-on");
       render2();
+      ensureGenres(libraryKind(route));
       loadViews2(seq3);
     },
     update(route) {
       const changed = !state3.route || state3.route.hash !== route.hash;
       state3.route = route;
-      if (changed) closeOverlay({ restoreFocus: false });
+      if (changed) {
+        closeOverlay({ restoreFocus: false });
+        closeCats({ restoreFocus: false });
+        renderPills();
+        renderCats();
+        ensureGenres(libraryKind(route));
+      }
       applyActive2();
       applyPillsVisibility();
     },
     unmount() {
       state3.seq++;
       closeOverlay({ restoreFocus: false });
+      closeCats({ restoreFocus: false });
       for (const fn of state3.cleanups.splice(0)) fn();
       unmountPoint(ROOT_ID);
       unmountPoint(OVERLAY_ID);
-      cl().remove("lfx-mnav-on", "lfx-mnav-pills", "lfx-mnav-open");
+      unmountPoint(CATS_ID);
+      cl().remove("lfx-mnav-on", "lfx-mnav-pills", "lfx-mnav-open", "lfx-mnav-cats-open");
       state3.root = null;
       state3.pills = null;
       state3.overlay = null;
       state3.catBtn = null;
+      state3.cats = null;
+      state3.genreBtn = null;
+      state3.catsReturnFocus = null;
+      state3.genres = { series: null, movies: null };
+      state3.genresLoading.clear();
       state3.returnFocus = null;
       state3.model = { series: null, movies: null, more: [] };
     }
@@ -4033,14 +4757,14 @@
       }
       const firstEl = focusable[0];
       const lastEl = focusable[focusable.length - 1];
-      const active5 = document.activeElement;
-      if (!sheet.contains(active5)) {
+      const active6 = document.activeElement;
+      if (!sheet.contains(active6)) {
         e.preventDefault();
         firstEl.focus();
-      } else if (e.shiftKey && active5 === firstEl) {
+      } else if (e.shiftKey && active6 === firstEl) {
         e.preventDefault();
         lastEl.focus();
-      } else if (!e.shiftKey && active5 === lastEl) {
+      } else if (!e.shiftKey && active6 === lastEl) {
         e.preventDefault();
         firstEl.focus();
       }
@@ -4317,7 +5041,7 @@
 
   // src/js/features/modal/format.js
   var TICKS_PER_MIN = 6e8;
-  function formatRuntime(ticks) {
+  function formatRuntime2(ticks) {
     const mins = Math.round((Number(ticks) || 0) / TICKS_PER_MIN);
     if (mins < 1) return "";
     const hh = Math.floor(mins / 60);
@@ -4355,12 +5079,12 @@
     const n = Number(m[1]);
     return n === 0 ? "Ohne Altersbeschr\xE4nkung" : `Freigegeben ab ${n} Jahren`;
   }
-  function metaParts(item) {
+  function metaParts2(item) {
     if (!item) return { year: "", length: "", quality: "", rating: "" };
     const isSeries = item.Type === "Series";
     return {
       year: item.ProductionYear ? String(item.ProductionYear) : "",
-      length: isSeries ? seasonsLabel(item.ChildCount) : formatRuntime(item.RunTimeTicks),
+      length: isSeries ? seasonsLabel(item.ChildCount) : formatRuntime2(item.RunTimeTicks),
       quality: qualityLabel(item),
       rating: item.OfficialRating || ""
     };
@@ -4549,7 +5273,7 @@
         h("div", { class: "lfx-modal__actions" }, [playBtn, favBtn, likeBtn, dlBtn, menuBtn, playedBtn])
       ])
     ]);
-    const m = metaParts(item);
+    const m = metaParts2(item);
     const meta2 = h("div", { class: "lfx-modal__meta" }, [
       m.year ? h("span", { class: "lfx-modal__year" }, m.year) : null,
       m.length ? h("span", { class: "lfx-modal__length" }, m.length) : null,
@@ -4629,7 +5353,7 @@
   function episodeRow(ep, selectedId, H, siblings) {
     const img = imageUrl(ep, { type: "Primary", maxWidth: 400 }) || landscapeImage(ep, { maxWidth: 400 });
     const pct2 = progressPercent2(ep);
-    const rt = formatRuntime(ep.RunTimeTicks);
+    const rt = formatRuntime2(ep.RunTimeTicks);
     const seen = Boolean(ep.UserData && ep.UserData.Played === true);
     const playedBtn = playedButton(ep, { small: true, scope: "item", onclick: (e) => {
       e.stopPropagation();
@@ -4675,10 +5399,10 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
-  function renderEpisodes(slot, state22, H) {
+  function renderEpisodes(slot, state24, H) {
     slot.hidden = false;
     slot.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state22;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state24;
     putItems(episodes);
     const current7 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
@@ -4701,9 +5425,9 @@
         "aria-expanded": "false",
         onclick: () => toggle(list.hidden)
       }, [h("span", {}, current7 && current7.Name || "Staffel"), icon("chevron")]);
-      const toggle = (open2) => {
-        list.hidden = !open2;
-        btn3.setAttribute("aria-expanded", String(open2));
+      const toggle = (open3) => {
+        list.hidden = !open3;
+        btn3.setAttribute("aria-expanded", String(open3));
       };
       for (const s of seasons) {
         list.append(h("li", { role: "presentation" }, [h("button", {
@@ -4741,7 +5465,7 @@
   }
   function card(item, H) {
     const img = landscapeImage(item, { maxWidth: 500 });
-    const rt = formatRuntime(item.RunTimeTicks);
+    const rt = formatRuntime2(item.RunTimeTicks);
     const fav = h("button", {
       type: "button",
       class: "lfx-modal__round lfx-modal__round--small lfx-modal__round--fav",
@@ -4753,18 +5477,18 @@
       }
     });
     setFavState(fav, Boolean(item.UserData && item.UserData.IsFavorite));
-    const open2 = () => H.openItem(item.Id);
+    const open3 = () => H.openItem(item.Id);
     return h("div", {
       class: "lfx-modal__card",
       role: "button",
       tabindex: "0",
       "data-id": item.Id,
       "aria-label": item.Name || "",
-      onclick: open2,
+      onclick: open3,
       onkeydown: (e) => {
         if (e.key === "Enter" && e.target === e.currentTarget) {
           e.preventDefault();
-          open2();
+          open3();
         }
       }
     }, [
@@ -4994,12 +5718,12 @@
     if (!state4) return;
     if (overlayOnTop()) return;
     if (e.key === "Escape") {
-      const open2 = state4.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
+      const open3 = state4.modal.querySelector('.lfx-modal__seasonbtn[aria-expanded="true"]');
       e.stopPropagation();
       e.preventDefault();
-      if (open2) {
-        open2.click();
-        open2.focus();
+      if (open3) {
+        open3.click();
+        open3.focus();
       } else closeModal();
       return;
     }
@@ -5011,14 +5735,14 @@
     }
     const first2 = list[0];
     const last = list[list.length - 1];
-    const active5 = document.activeElement;
-    if (!state4.modal.contains(active5)) {
+    const active6 = document.activeElement;
+    if (!state4.modal.contains(active6)) {
       e.preventDefault();
       first2.focus();
-    } else if (e.shiftKey && active5 === first2) {
+    } else if (e.shiftKey && active6 === first2) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && active5 === last) {
+    } else if (!e.shiftKey && active6 === last) {
       e.preventDefault();
       first2.focus();
     }
@@ -5434,7 +6158,7 @@
   }
   function applyStartAt(v, startAt) {
     if (!(startAt > 0)) return;
-    const apply2 = () => {
+    const apply3 = () => {
       const d = v.duration;
       if (Number.isFinite(d) && d > 30 && d > startAt + 20) {
         try {
@@ -5443,8 +6167,8 @@
         }
       }
     };
-    if (v.readyState >= 1) apply2();
-    else v.addEventListener("loadedmetadata", apply2, { once: true });
+    if (v.readyState >= 1) apply3();
+    else v.addEventListener("loadedmetadata", apply3, { once: true });
   }
   function createMutedPreview(container, item, { delay = 1500, onStart, onEnd, startAt = 0 } = {}) {
     let dead = false;
@@ -5471,7 +6195,7 @@
       cleanup2();
       if (wasStarted && typeof onEnd === "function") onEnd();
     };
-    const start10 = async () => {
+    const start11 = async () => {
       timer2 = null;
       if (dead || !container) return;
       let src;
@@ -5507,7 +6231,7 @@
         finish3();
       }
     };
-    let timer2 = setTimeout(start10, delay);
+    let timer2 = setTimeout(start11, delay);
     return {
       cancel() {
         if (dead) return;
@@ -5517,103 +6241,6 @@
         cleanup2();
       }
     };
-  }
-
-  // src/js/features/billboard/format.js
-  var DAY = 864e5;
-  var NEW_DAYS2 = 14;
-  function hasLogoAndBackdrop(it) {
-    return Boolean(it && it.Id && it.ImageTags && it.ImageTags.Logo && it.BackdropImageTags && it.BackdropImageTags.length);
-  }
-  function shuffled(arr, rng) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-  function buildPool(latest, random, opts = {}) {
-    const { newCount = 4, randomCount = 8, avoidFirstId = null, rng = Math.random } = opts;
-    const uniq2 = (list, skip) => {
-      const seen = new Set(skip);
-      const out2 = [];
-      for (const it of list || []) {
-        if (hasLogoAndBackdrop(it) && !seen.has(it.Id)) {
-          seen.add(it.Id);
-          out2.push(it);
-        }
-      }
-      return out2;
-    };
-    const a = shuffled(uniq2(latest, []).slice(0, newCount), rng);
-    const b = uniq2(random, a.map((it) => it.Id)).slice(0, randomCount);
-    const fresh = b.filter((it) => it.Id !== avoidFirstId);
-    const first2 = fresh.find((it) => it.LocalTrailerCount > 0) || fresh[0];
-    if (first2) {
-      b.splice(b.indexOf(first2), 1);
-      b.unshift(first2);
-    }
-    const out = [];
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      if (b[i]) out.push(b[i]);
-      if (a[i]) out.push(a[i]);
-    }
-    return out;
-  }
-  var SAVER_POOL = 5;
-  function saverPool(pool, keepId = null) {
-    const list = Array.isArray(pool) ? pool : [];
-    if (list.length <= SAVER_POOL) return list.slice();
-    const out = list.slice(0, SAVER_POOL);
-    if (keepId && !out.some((it) => it.Id === keepId)) {
-      const cur3 = list.find((it) => it.Id === keepId);
-      if (cur3) out[SAVER_POOL - 1] = cur3;
-    }
-    return out;
-  }
-  function formatRuntime2(ticks) {
-    const total = Math.round((Number(ticks) || 0) / 6e8);
-    if (total <= 0) return "";
-    const hrs = Math.floor(total / 60);
-    const min = total % 60;
-    if (!hrs) return `${min} Min.`;
-    return min ? `${hrs} Std. ${min} Min.` : `${hrs} Std.`;
-  }
-  function formatRating(rating) {
-    const s = String(rating || "").trim();
-    if (!s) return "";
-    const m = /^(?:FSK|DE)[\s-]*(\d{1,2})$/i.exec(s);
-    return m ? m[1] : s;
-  }
-  function formatSeasons(n) {
-    const c = Number(n) || 0;
-    if (c <= 0) return "";
-    return c === 1 ? "1 Staffel" : `${c} Staffeln`;
-  }
-  function metaParts2(item) {
-    const parts = [];
-    const isSeries = item.Type === "Series";
-    parts.push({ text: isSeries ? "Serie" : "Film" });
-    if (item.Genres && item.Genres[0]) parts.push({ text: item.Genres[0] });
-    if (item.ProductionYear) parts.push({ text: String(item.ProductionYear) });
-    const extra = isSeries ? formatSeasons(item.ChildCount) : formatRuntime2(item.RunTimeTicks);
-    if (extra) parts.push({ text: extra });
-    const rating = formatRating(item.OfficialRating);
-    if (rating) parts.push({ text: rating, rating: true });
-    return parts;
-  }
-  function genreLine(item) {
-    const g = item && Array.isArray(item.Genres) ? item.Genres.filter(Boolean).slice(0, 3) : [];
-    return g.join(" \u2022 ");
-  }
-  function badgeFor2(item, now = Date.now()) {
-    const t = item && item.DateCreated ? Date.parse(item.DateCreated) : NaN;
-    if (Number.isFinite(t) && now - t >= 0 && now - t < NEW_DAYS2 * DAY) return "Neu hinzugef\xFCgt";
-    return null;
-  }
-  function hasProgress(item) {
-    return Boolean(item && item.UserData && item.UserData.PlaybackPositionTicks > 0);
   }
 
   // src/js/features/billboard.js
@@ -5726,7 +6353,7 @@
     let disposed = false;
     let pool = [];
     let index = 0;
-    let gen8 = 0;
+    let gen9 = 0;
     let hovering = false;
     let trailerActive = false;
     let rotateTimer = null;
@@ -5784,23 +6411,23 @@
     }
     function buildListButton(item) {
       const btn3 = h("button", { type: "button", class: "lfx-bb__btn lfx-bb__btn--list", "aria-label": "Meine Liste" });
-      const paint = () => {
+      const paint2 = () => {
         const on = Boolean(item.UserData && item.UserData.IsFavorite);
         btn3.replaceChildren(svg3(on ? ICON_CHECK : ICON_PLUS), h("span", null, "Meine Liste"));
         btn3.classList.toggle("is-on", on);
         btn3.setAttribute("aria-pressed", on ? "true" : "false");
       };
-      paint();
+      paint2();
       btn3.addEventListener("click", async () => {
         const prev2 = Boolean(item.UserData && item.UserData.IsFavorite);
         item.UserData = { ...item.UserData || {}, IsFavorite: !prev2 };
-        paint();
+        paint2();
         try {
           await setFavorite(item.Id, !prev2);
           clearCache("home:");
         } catch {
           item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
-          paint();
+          paint2();
         }
       });
       return btn3;
@@ -5841,7 +6468,7 @@
     function buildContent(item) {
       const logo = logoImage(item, { maxWidth: 720 });
       const meta2 = h("div", { class: "lfx-bb__meta" });
-      metaParts2(item).forEach((p, i) => {
+      metaParts(item).forEach((p, i) => {
         if (i) meta2.append(h("span", { class: "lfx-bb__dot", "aria-hidden": "true" }, "\u2022"));
         meta2.append(h("span", { class: p.rating ? "lfx-bb__rating" : null }, p.text));
       });
@@ -5896,7 +6523,7 @@
         const curGone = cur3 && removed.includes(cur3.Id);
         pool = pool.filter((it) => !removed.includes(it.Id));
         if (!pool.length) {
-          gen8 += 1;
+          gen9 += 1;
           stopTrailer();
           clearTimeout(rotateTimer);
           timers.forEach(clearTimeout);
@@ -5926,7 +6553,7 @@
     }
     function tryPreload() {
       const sl = slide;
-      if (!sl || disposed || sl.gen !== gen8 || sl.started || sl.failed || isDataSaver("trailer")) return;
+      if (!sl || disposed || sl.gen !== gen9 || sl.started || sl.failed || isDataSaver("trailer")) return;
       if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
       sl.started = true;
       startTrailer(sl);
@@ -5934,7 +6561,7 @@
     async function startTrailer(sl) {
       try {
         const t = await loadLocalTrailer(sl.item);
-        if (sl.gen !== gen8 || disposed) return;
+        if (sl.gen !== gen9 || disposed) return;
         if (isDataSaver("trailer")) {
           sl.failed = true;
           setTr("");
@@ -5949,7 +6576,7 @@
         v.muted = true;
         v.setAttribute("muted", "");
         v.addEventListener("playing", () => {
-          if (sl.gen !== gen8 || video2 !== v) return;
+          if (sl.gen !== gen9 || video2 !== v) return;
           trailerActive = true;
           setTr("on");
           v.classList.add("is-in");
@@ -5973,12 +6600,12 @@
         };
         const enough = () => v.readyState >= 4 || buffered() - (v.currentTime || 0) >= TRAILER_BUFFER_S || Number.isFinite(v.duration) && v.duration > 0 && buffered() >= v.duration - 0.3;
         const reveal = () => {
-          if (video2 !== v || sl.gen !== gen8 || disposed) return;
+          if (video2 !== v || sl.gen !== gen9 || disposed) return;
           const p = v.play && v.play();
           if (p && p.catch) p.catch(end);
         };
         const check3 = (force = false) => {
-          if (sl.ready || video2 !== v || sl.gen !== gen8 || !(force === true || enough())) return;
+          if (sl.ready || video2 !== v || sl.gen !== gen9 || !(force === true || enough())) return;
           sl.ready = true;
           const wait = sl.imgAt + TRAILER_MIN_IMAGE_MS - Date.now();
           if (wait > 0) sl.revealTimer = later(reveal, wait);
@@ -5989,7 +6616,7 @@
           lastProgress = Date.now();
         };
         const stallCheck = () => {
-          if (sl.ready || video2 !== v || sl.gen !== gen8 || disposed) return;
+          if (sl.ready || video2 !== v || sl.gen !== gen9 || disposed) return;
           if (v.readyState < 3 && Date.now() - lastProgress >= TRAILER_STALL_MS) {
             sl.ready = true;
             reveal();
@@ -6023,8 +6650,8 @@
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen8 += 1;
-      const myGen = gen8;
+      gen9 += 1;
+      const myGen = gen9;
       stopTrailer();
       updateDots();
       const olds = [...media.querySelectorAll(".lfx-bb__pic")];
@@ -6039,7 +6666,7 @@
         later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS + 50);
       }
       const swap = () => {
-        if (disposed || myGen !== gen8) return;
+        if (disposed || myGen !== gen9) return;
         content.replaceChildren(...buildContent(item).childNodes);
         content.classList.remove("is-out");
       };
@@ -6049,14 +6676,14 @@
         later(swap, TEXT_FADE_MS);
       }
       putItems([item]);
-      loadAmbient(item, () => myGen === gen8 && !disposed);
+      loadAmbient(item, () => myGen === gen9 && !disposed);
       scheduleRotate();
       const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
       slide = sl;
       setTr(item.LocalTrailerCount > 0 && !isDataSaver("trailer") ? "wait" : "");
       const img = pic.querySelector(".lfx-bb__img");
       const onLoaded = () => {
-        if (disposed || sl.gen !== gen8 || sl.imgAt) return;
+        if (disposed || sl.gen !== gen9 || sl.imgAt) return;
         sl.imgAt = Date.now();
         tryPreload();
       };
@@ -6066,7 +6693,7 @@
         img.addEventListener("error", onLoaded, { once: true });
       }
     }
-    function build11() {
+    function build13() {
       media = h("div", { class: "lfx-bb__media" });
       content = h("div", { class: "lfx-bb__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-bb__mute", hidden: true, "aria-label": "Ton einschalten" });
@@ -6144,7 +6771,7 @@
       }
       pool = isDataSaver("hero") ? saverPool(items) : items.slice();
       putItems(pool);
-      build11();
+      build13();
       slot.hidden = false;
       show3(0, true);
     }
@@ -6160,7 +6787,7 @@
     init2();
     return () => {
       disposed = true;
-      gen8 += 1;
+      gen9 += 1;
       clearTimeout(rotateTimer);
       timers.forEach(clearTimeout);
       timers.clear();
@@ -6356,7 +6983,7 @@
       if (!a) return;
       for (const l of links()) l.tabIndex = l === a ? 0 : -1;
     }
-    function onKey3(e) {
+    function onKey4(e) {
       if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
       const a = e.target.closest && e.target.closest(".lfx-card__link");
       if (!a) return;
@@ -6371,7 +6998,7 @@
     next.addEventListener("click", onNext);
     track.addEventListener("scroll", schedule4, { passive: true });
     track.addEventListener("focusin", onFocusIn);
-    track.addEventListener("keydown", onKey3);
+    track.addEventListener("keydown", onKey4);
     const unsubResize = subscribeResize(() => {
       if (raf3) cancelAnimationFrame(raf3);
       update();
@@ -6388,7 +7015,7 @@
       next.removeEventListener("click", onNext);
       track.removeEventListener("scroll", schedule4);
       track.removeEventListener("focusin", onFocusIn);
-      track.removeEventListener("keydown", onKey3);
+      track.removeEventListener("keydown", onKey4);
       unsubResize();
     };
   }
@@ -6421,7 +7048,7 @@
     return [...slot.querySelectorAll("img")].every((i) => i.getAttribute("loading") === "lazy" || i.complete);
   }
   var cardImgs = (row) => [...row.querySelectorAll(".lfx-card")].slice(0, TOP_CARDS).flatMap((c) => [...c.querySelectorAll("img")]);
-  function startRowPrefetch({ slot, pending, load: load6, hero }) {
+  function startRowPrefetch({ slot, pending: pending2, load: load6, hero }) {
     if (!allowPrefetch()) return { stop() {
     }, notify() {
     } };
@@ -6452,11 +7079,11 @@
     };
     function topReady() {
       const rows = [...slot.children].filter((c) => c.dataset && c.dataset.lfxRow !== void 0).slice(0, TOP_ROWS);
-      if (!slot.querySelector(".lfx-card")) return !pending.size;
+      if (!slot.querySelector(".lfx-card")) return !pending2.size;
       const imgs = [];
       for (const r of rows) {
         if (r.classList.contains("is-loading")) {
-          if (!pending.has(r)) return false;
+          if (!pending2.has(r)) return false;
           continue;
         }
         imgs.push(...cardImgs(r));
@@ -6494,16 +7121,16 @@
     function next() {
       if (dead || busy2 || hold()) return;
       let el4 = null;
-      for (const e of pending.keys()) {
+      for (const e of pending2.keys()) {
         if (!e.isConnected || !e.classList.contains("is-loading")) {
-          pending.delete(e);
+          pending2.delete(e);
           continue;
         }
         if (!el4 || el4.compareDocumentPosition(e) & 2) el4 = e;
       }
       if (!el4) return;
-      const entry = pending.get(el4);
-      pending.delete(el4);
+      const entry = pending2.get(el4);
+      pending2.delete(el4);
       busy2 = true;
       Promise.resolve().then(() => load6(el4, entry)).catch(() => {
       }).then(() => {
@@ -6566,249 +7193,6 @@
         if (go3 && !busy2 && !dead) idle(next);
       }
     };
-  }
-
-  // src/js/features/rows/sources.js
-  var MOVIE_SERIES = "Movie,Series";
-  function asItems(res) {
-    if (Array.isArray(res)) return res;
-    return res && Array.isArray(res.Items) ? res.Items : [];
-  }
-  var newSeriesCache = { at: 0, promise: null, value: null };
-  var TEN_MIN = 10 * 60 * 1e3;
-  var NEW_SERIES_LIMIT = 200;
-  function storageKey3() {
-    return `lfx-newseries:${getUserId() || "anon"}`;
-  }
-  function readStored(now) {
-    try {
-      const raw = JSON.parse(sessionStorage.getItem(storageKey3()) || "null");
-      if (raw && Array.isArray(raw.ids) && now - raw.at >= 0 && now - raw.at < TEN_MIN) return new Set(raw.ids);
-    } catch {
-    }
-    return null;
-  }
-  function writeStored(now, set) {
-    try {
-      sessionStorage.setItem(storageKey3(), JSON.stringify({ at: now, ids: [...set] }));
-    } catch {
-    }
-  }
-  function peekNewSeriesIds(now = Date.now()) {
-    if (newSeriesCache.value && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.value;
-    return readStored(now);
-  }
-  function getNewSeriesIds(now = Date.now()) {
-    if (newSeriesCache.promise && now - newSeriesCache.at < TEN_MIN) return newSeriesCache.promise;
-    const stored = readStored(now);
-    if (stored) {
-      newSeriesCache = { at: now, promise: Promise.resolve(stored), value: stored };
-      return newSeriesCache.promise;
-    }
-    const promise = getItems({
-      IncludeItemTypes: "Episode",
-      Recursive: true,
-      SortBy: "DateCreated",
-      SortOrder: "Descending",
-      Fields: "SeriesId,DateCreated,PremiereDate",
-      EnableImages: false,
-      EnableUserData: false,
-      Limit: NEW_SERIES_LIMIT
-    }).then((res) => {
-      const set = newSeriesIdsFrom(asItems(res), now);
-      if (newSeriesCache.promise === promise) newSeriesCache.value = set;
-      writeStored(now, set);
-      return set;
-    }).catch((e) => {
-      console.warn("[LenzFlix] Neue-Folgen-Abfrage fehlgeschlagen", e && e.message);
-      if (newSeriesCache.promise === promise) newSeriesCache = { at: 0, promise: null, value: null };
-      return /* @__PURE__ */ new Set();
-    });
-    newSeriesCache = { at: now, promise, value: null };
-    return promise;
-  }
-  var MIN_CHART_ROW = 5;
-  function chartSpecs() {
-    return [
-      { id: "top10-series", title: `Top 10 Serien auf ${brandName()}`, key: "series" },
-      { id: "top10-movies", title: `Top 10 Filme auf ${brandName()}`, key: "movies" }
-    ];
-  }
-  async function buildChartDefs() {
-    try {
-      const charts = await getCharts();
-      if (!charts) return [];
-      const specs = chartSpecs();
-      const lists = await Promise.all(specs.map((s) => resolveChartItems(charts[s.key], { limit: 10 })));
-      const defs = [];
-      specs.forEach((s, i) => {
-        const list = lists[i];
-        if (list.length >= MIN_CHART_ROW) defs.push({ id: s.id, title: s.title, kind: "top10", load: () => list });
-      });
-      return defs;
-    } catch (e) {
-      console.warn("[LenzFlix] Chart-Zeilen nicht aufgebaut", e && e.message);
-      return [];
-    }
-  }
-  var VIEWS_TTL = 5 * 6e4;
-  var degraded = /* @__PURE__ */ new WeakSet();
-  function wrapRow(def) {
-    const key = homeKey(getUserId(), "row", def.id);
-    const orig = def.load;
-    def.cacheKey = key;
-    def.load = async (d = def) => {
-      const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title }), HOME_TTL);
-      d.id = snap.id;
-      d.title = snap.title;
-      return snap.items;
-    };
-    return def;
-  }
-  var defsKey = ({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) => homeKey(getUserId(), "defs", seed, genreCount, deferCharts ? 1 : 0);
-  var peekRowDefs = (opts) => peekCached(defsKey(opts));
-  function buildRowDefs(opts = {}) {
-    const key = defsKey(opts);
-    const p = cached(key, () => computeRowDefs(opts), HOME_TTL);
-    p.then((defs) => {
-      if (degraded.has(defs)) clearCache(key);
-    }, () => {
-    });
-    return p;
-  }
-  async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = false } = {}) {
-    const [viewsRes, genresRes] = await Promise.allSettled([
-      cached(`views:${getUserId()}`, getViews, VIEWS_TTL),
-      getJson("/Genres", { userId: getUserId(), IncludeItemTypes: MOVIE_SERIES, Recursive: true })
-    ]);
-    const views = viewsRes.status === "fulfilled" ? asItems(viewsRes.value) : [];
-    const genres = genresRes.status === "fulfilled" ? asItems(genresRes.value) : [];
-    const movieView = views.find((v) => v.CollectionType === "movies");
-    const tvView = views.find((v) => v.CollectionType === "tvshows");
-    const items = (params) => getItems({ ...BASE_PARAMS, ...params }).then(asItems);
-    const defs = [];
-    defs.push({
-      id: "resume",
-      title: "Weiterschauen",
-      kind: "resume",
-      load: () => getResume({ ...BASE_PARAMS, MediaTypes: "Video", Limit: 20 }).then(asItems)
-    });
-    defs.push({
-      id: "nextup",
-      title: "Als N\xE4chstes",
-      kind: "landscape",
-      load: () => getNextUp({ ...BASE_PARAMS, Limit: 20, EnableResumable: false, EnableRewatching: false }).then(asItems)
-    });
-    const newTop10 = () => items({
-      IncludeItemTypes: MOVIE_SERIES,
-      Recursive: true,
-      SortBy: "DateCreated",
-      SortOrder: "Descending",
-      Limit: 10
-    }).then(selectTop10);
-    const fallbackDef = () => ({ id: "top10", title: `Top 10: Neu auf ${brandName()}`, kind: "top10", load: newTop10 });
-    if (deferCharts) {
-      if (!getChartsUrl()) defs.push(fallbackDef());
-      else {
-        const chartDefs = buildChartDefs();
-        const specs = chartSpecs();
-        specs.forEach((s, i) => {
-          defs.push({
-            id: s.id,
-            title: s.title,
-            kind: "top10",
-            async load(def) {
-              const found = await chartDefs;
-              if (found.length) {
-                const hit = found.find((d) => d.id === s.id);
-                return hit ? hit.load() : [];
-              }
-              if (i !== 0) return [];
-              const fb = fallbackDef();
-              def.id = fb.id;
-              def.title = fb.title;
-              return fb.load();
-            }
-          });
-        });
-      }
-    } else {
-      const chartDefs = await buildChartDefs();
-      if (chartDefs.length) defs.push(...chartDefs);
-      else defs.push(fallbackDef());
-    }
-    if (movieView) {
-      defs.push({
-        id: "latest-movies",
-        title: "Neu hinzugef\xFCgt: Filme",
-        kind: "landscape",
-        load: () => getLatest({ ...BASE_PARAMS, ParentId: movieView.Id, GroupItems: true, Limit: 20 }).then(asItems)
-      });
-    }
-    if (tvView) {
-      defs.push({
-        id: "latest-series",
-        title: "Neu hinzugef\xFCgt: Serien",
-        kind: "landscape",
-        load: () => getLatest({ ...BASE_PARAMS, ParentId: tvView.Id, GroupItems: true, Limit: 20 }).then(asItems)
-      });
-    }
-    defs.push({
-      id: "favorites",
-      title: "Meine Liste",
-      kind: "landscape",
-      load: () => items({ IncludeItemTypes: MOVIE_SERIES, Recursive: true, IsFavorite: true, SortBy: "SortName", Limit: 50 })
-    });
-    defs.push({
-      id: "because",
-      title: null,
-      kind: "landscape",
-      async load(def) {
-        const played = await items({
-          IncludeItemTypes: "Movie,Episode",
-          Recursive: true,
-          Filters: "IsPlayed",
-          SortBy: "DatePlayed",
-          SortOrder: "Descending",
-          Limit: 1
-        });
-        const last = played[0];
-        if (!last) return [];
-        const baseId = last.Type === "Episode" ? last.SeriesId : last.Id;
-        const name = last.Type === "Episode" ? last.SeriesName : last.Name;
-        if (!baseId || !name) return [];
-        const similar = await getSimilar(baseId, { ...BASE_PARAMS, Limit: 20 }).then(asItems);
-        if (similar.length) def.title = `Weil du ${name} angesehen hast`;
-        return similar.filter((i) => i.Id !== baseId);
-      }
-    });
-    for (const name of pickGenres(genres, { seed, count: genreCount })) {
-      defs.push({
-        id: `genre-${name}`,
-        title: name,
-        kind: "landscape",
-        async load() {
-          const list = await items({ IncludeItemTypes: MOVIE_SERIES, Recursive: true, Genres: name, SortBy: "Random", Limit: 20 });
-          return list.length >= 8 ? list : [];
-        }
-      });
-    }
-    defs.push({
-      id: "toprated",
-      title: "Hochbewertet",
-      kind: "landscape",
-      load: () => items({
-        IncludeItemTypes: MOVIE_SERIES,
-        Recursive: true,
-        SortBy: "CommunityRating",
-        SortOrder: "Descending",
-        MinCommunityRating: 7.5,
-        Limit: 20
-      })
-    });
-    defs.forEach(wrapRow);
-    if (viewsRes.status !== "fulfilled" || genresRes.status !== "fulfilled") degraded.add(defs);
-    return defs;
   }
 
   // src/js/features/rows.js
@@ -6937,7 +7321,7 @@
         return;
       }
       if (disposed) return;
-      const pending = /* @__PURE__ */ new Map();
+      const pending2 = /* @__PURE__ */ new Map();
       let shown3 = 0;
       for (const def of defs) {
         const snap = def.cacheKey ? peekCached(def.cacheKey) : void 0;
@@ -6952,30 +7336,30 @@
           continue;
         }
         const el4 = skeleton(def);
-        pending.set(el4, def);
+        pending2.set(el4, def);
         slot.append(el4);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
           for (const en of entries) {
-            const def = pending.get(en.target);
+            const def = pending2.get(en.target);
             if (!en.isIntersecting || !def) continue;
-            pending.delete(en.target);
+            pending2.delete(en.target);
             observer2.unobserve(en.target);
             loadRow(en.target, def);
           }
         }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "600px 0px" });
-        for (const el4 of pending.keys()) observer2.observe(el4);
+        for (const el4 of pending2.keys()) observer2.observe(el4);
       } else {
-        for (const [el4, def] of [...pending]) {
-          pending.delete(el4);
+        for (const [el4, def] of [...pending2]) {
+          pending2.delete(el4);
           loadRow(el4, def);
         }
       }
       if (opts.prefetch === false) return;
       prefetch = startRowPrefetch({
         slot,
-        pending,
+        pending: pending2,
         hero: () => (typeof opts.hero === "function" ? opts.hero() : opts.hero) || document.getElementById("lfx-billboard"),
         load: (el4, def) => {
           if (observer2) observer2.unobserve(el4);
@@ -7735,18 +8119,18 @@
   function start() {
     if (active2) return;
     active2 = true;
-    const add2 = (target, type, fn, opts) => {
+    const add3 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       listeners3.push(() => target.removeEventListener(type, fn, opts));
     };
-    add2(document, "pointerover", onOver, { passive: true });
-    add2(document, "pointerout", onOut, { passive: true });
-    add2(document, "pointermove", onMove, { passive: true });
-    add2(document, "keydown", onKey);
-    add2(document, "click", onClickCapture, true);
-    add2(window, "scroll", onAbort, { capture: true, passive: true });
-    add2(window, "resize", onAbort, { passive: true });
-    add2(window, "hashchange", onHash);
+    add3(document, "pointerover", onOver, { passive: true });
+    add3(document, "pointerout", onOut, { passive: true });
+    add3(document, "pointermove", onMove, { passive: true });
+    add3(document, "keydown", onKey);
+    add3(document, "click", onClickCapture, true);
+    add3(window, "scroll", onAbort, { capture: true, passive: true });
+    add3(window, "resize", onAbort, { passive: true });
+    add3(window, "hashchange", onHash);
     unsubItems = onItemsChanged(onItems);
   }
   function stop3() {
@@ -7773,28 +8157,715 @@
   };
   var hovercard_default = hovercardFeature;
 
+  // src/js/features/library/grid.js
+  var asItems2 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  function sortParams(sort, query2) {
+    switch (sort) {
+      case "za":
+        return { SortBy: "SortName", SortOrder: "Descending" };
+      case "new": {
+        const seriesOnly = String(query2 && query2.IncludeItemTypes || "") === "Series";
+        return { SortBy: seriesOnly ? "DateLastContentAdded" : "DateCreated", SortOrder: "Descending" };
+      }
+      case "year":
+        return { SortBy: "ProductionYear,SortName", SortOrder: "Descending,Ascending" };
+      default:
+        return { SortBy: "SortName", SortOrder: "Ascending" };
+    }
+  }
+  var defaultCard = (item) => createCard(item, { kind: "landscape" });
+  function createGrid(opts = {}) {
+    const pageSize = opts.pageSize || 40;
+    const cardFactory = opts.cardFactory || defaultCard;
+    const emptyText = opts.emptyText || "Keine Titel gefunden.";
+    let query2 = opts.query || {};
+    let sort = opts.sort || "az";
+    let seq3 = 0;
+    let count = 0;
+    let done = false;
+    let loading = false;
+    let destroyed = false;
+    let failed = false;
+    const list = h("div", { class: "lfx-grid__list", role: "list" });
+    const status = h("div", { class: "lfx-grid__status" });
+    const sentinel = h("div", { class: "lfx-grid__more", "aria-hidden": "true" });
+    const el4 = h("div", { class: "lfx-grid" }, [list, status, sentinel]);
+    const margin = isDataSaver("lazy") ? 100 : 800;
+    let io = null;
+    let onScroll7 = null;
+    const check3 = () => {
+      if (destroyed || loading || done || failed) return;
+      const r = sentinel.getBoundingClientRect();
+      if (r.top < (window.innerHeight || 800) + margin) loadMore3();
+    };
+    if (typeof IntersectionObserver === "function") {
+      io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) loadMore3();
+      }, { rootMargin: `${margin}px 0px` });
+      io.observe(sentinel);
+    } else {
+      onScroll7 = check3;
+      window.addEventListener("scroll", onScroll7, { passive: true });
+    }
+    const recheck = () => {
+      if (destroyed || done) return;
+      if (io) {
+        io.unobserve(sentinel);
+        io.observe(sentinel);
+      } else check3();
+    };
+    function skeleton3() {
+      status.replaceChildren(h("div", { class: "lfx-grid__skel", "aria-hidden": "true" }));
+    }
+    function reset() {
+      seq3 += 1;
+      count = 0;
+      done = false;
+      loading = false;
+      failed = false;
+      list.replaceChildren();
+      status.replaceChildren();
+      el4.removeAttribute("aria-busy");
+      loadMore3();
+    }
+    async function loadMore3() {
+      if (destroyed || loading || done) return;
+      const mySeq = seq3;
+      loading = true;
+      el4.setAttribute("aria-busy", "true");
+      if (!count) skeleton3();
+      const stale = () => destroyed || seq3 !== mySeq;
+      try {
+        const res = await getItems({
+          ...BASE_PARAMS,
+          Recursive: true,
+          ...query2,
+          ...sortParams(sort, query2),
+          EnableTotalRecordCount: true,
+          StartIndex: count,
+          Limit: pageSize
+        });
+        if (stale()) return;
+        const items = asItems2(res);
+        putItems(items);
+        const total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
+        status.replaceChildren();
+        for (const it of items) {
+          const card3 = cardFactory(it);
+          if (card3) list.append(h("div", { class: "lfx-grid__item", role: "presentation" }, [card3]));
+        }
+        count += items.length;
+        done = items.length < pageSize || total != null && count >= total;
+        if (!count) status.replaceChildren(h("p", { class: "lfx-grid__empty" }, emptyText));
+        if (typeof opts.onCount === "function") opts.onCount(total != null ? total : count);
+      } catch (e) {
+        if (stale()) return;
+        console.warn("[LenzFlix] Raster konnte nicht laden", e && e.message);
+        failed = true;
+        status.replaceChildren(
+          h("p", { class: "lfx-grid__empty" }, "Titel konnten nicht geladen werden."),
+          h("button", {
+            type: "button",
+            class: "lfx-grid__retry",
+            onclick: () => {
+              failed = false;
+              status.replaceChildren();
+              loadMore3();
+            }
+          }, "Erneut versuchen")
+        );
+      } finally {
+        if (!stale()) {
+          loading = false;
+          el4.removeAttribute("aria-busy");
+          if (!failed) recheck();
+        }
+      }
+    }
+    reset();
+    return {
+      el: el4,
+      setSort(next) {
+        const s = next || "az";
+        if (s === sort) return;
+        sort = s;
+        reset();
+      },
+      setQuery(next) {
+        query2 = next || {};
+        reset();
+      },
+      refresh: reset,
+      destroy() {
+        destroyed = true;
+        seq3 += 1;
+        if (io) io.disconnect();
+        if (onScroll7) window.removeEventListener("scroll", onScroll7);
+        el4.remove();
+      }
+    };
+  }
+
+  // src/js/features/library/genres.js
+  function createGenresMenu() {
+    let kind2 = "series";
+    let genre = null;
+    let genres = [];
+    let open3 = false;
+    const btn3 = h("button", {
+      type: "button",
+      class: "lfx-lib__genres-btn",
+      "aria-haspopup": "true",
+      "aria-expanded": "false"
+    }, [h("span", {}, "Genres"), h("span", { class: "lfx-lib__caret", "aria-hidden": "true" }, "\u25BE")]);
+    const panel = h("div", { class: "lfx-lib__genres-panel", role: "menu", "aria-label": "Genres", hidden: true });
+    const el4 = h("div", { class: "lfx-lib__genres" }, [btn3, panel]);
+    const links = () => [...panel.querySelectorAll("a")];
+    function paint2() {
+      panel.replaceChildren(...genres.map((g) => h("a", {
+        class: `lfx-lib__genre${g.id === genre ? " is-current" : ""}`,
+        role: "menuitem",
+        href: libraryHref(kind2, { genre: g.id }),
+        "aria-current": g.id === genre ? "true" : null,
+        tabindex: "-1"
+      }, g.name)));
+      btn3.disabled = !genres.length;
+    }
+    function onDocDown(e) {
+      if (!el4.contains(e.target)) close2();
+    }
+    function setOpen(on, focusFirst) {
+      if (on === open3) return;
+      if (on && !genres.length) return;
+      open3 = on;
+      panel.hidden = !on;
+      btn3.setAttribute("aria-expanded", String(on));
+      el4.classList.toggle("is-open", on);
+      if (on) {
+        document.addEventListener("pointerdown", onDocDown, true);
+        if (focusFirst) {
+          const all = links();
+          (all.find((a) => a.classList.contains("is-current")) || all[0] || btn3).focus();
+        }
+      } else {
+        document.removeEventListener("pointerdown", onDocDown, true);
+      }
+    }
+    function close2() {
+      setOpen(false);
+    }
+    btn3.addEventListener("click", () => setOpen(!open3, true));
+    btn3.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setOpen(true, true);
+      }
+    });
+    panel.addEventListener("click", (e) => {
+      if (e.target.closest && e.target.closest("a")) close2();
+    });
+    el4.addEventListener("keydown", (e) => {
+      if (!open3) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        close2();
+        btn3.focus();
+        return;
+      }
+      const all = links();
+      if (!all.length) return;
+      const i = all.indexOf(document.activeElement);
+      let next = null;
+      if (e.key === "ArrowDown" || e.key === "ArrowRight") next = all[(i + 1) % all.length];
+      else if (e.key === "ArrowUp" || e.key === "ArrowLeft") next = all[(i <= 0 ? all.length : i) - 1];
+      else if (e.key === "Home") next = all[0];
+      else if (e.key === "End") next = all[all.length - 1];
+      else if (e.key === "Tab") close2();
+      if (next) {
+        e.preventDefault();
+        next.focus();
+      }
+    });
+    return {
+      el: el4,
+      setData(next) {
+        kind2 = next.kind || kind2;
+        genre = next.genre || null;
+        genres = next.genres || [];
+        paint2();
+      },
+      close: close2,
+      destroy() {
+        close2();
+        el4.remove();
+      }
+    };
+  }
+
+  // src/js/features/library/head.js
+  var SORTS2 = [
+    ["az", "A\u2013Z"],
+    ["za", "Z\u2013A"],
+    ["new", "Neu hinzugef\xFCgt"],
+    ["year", "Erscheinungsjahr"]
+  ];
+  var KIND_LABEL = { series: "Serien", movies: "Filme" };
+  var ICON_ROWS = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  var ICON_GRID = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="currentColor"/></svg>';
+  function iconLink(cls, label, svg11) {
+    const a = h("a", { class: `lfx-lib__view ${cls}`, "aria-label": label, title: label });
+    a.innerHTML = svg11;
+    return a;
+  }
+  function createHead() {
+    let state24 = { kind: "series", genre: null, view: null, sort: null };
+    let genres = [];
+    const menu = createGenresMenu();
+    const title = h("h1", { class: "lfx-lib__title" });
+    const rowsLink = iconLink("lfx-lib__view--rows", "Zeilenansicht", ICON_ROWS);
+    const gridLink = iconLink("lfx-lib__view--grid", "Rasteransicht", ICON_GRID);
+    const select = h(
+      "select",
+      { class: "lfx-lib__sort", "aria-label": "Sortierung" },
+      SORTS2.map(([v, t]) => h("option", { value: v }, t))
+    );
+    const count = h("span", { class: "lfx-lib__count", "aria-live": "polite" });
+    const tools = h("div", { class: "lfx-lib__tools" }, [count, select]);
+    const views = h("div", { class: "lfx-lib__views", role: "group", "aria-label": "Ansicht" }, [rowsLink, gridLink]);
+    const el4 = h("div", { class: "lfx-lib__head" }, [
+      h("div", { class: "lfx-lib__lead" }, [title, menu.el]),
+      h("div", { class: "lfx-lib__right" }, [tools, views])
+    ]);
+    const onSort = () => {
+      window.location.hash = libraryHref(state24.kind, { genre: state24.genre, view: "grid", sort: select.value });
+    };
+    select.addEventListener("change", onSort);
+    function paint2() {
+      const { kind: kind2, genre, view, sort } = state24;
+      const label = KIND_LABEL[kind2] || KIND_LABEL.movies;
+      title.replaceChildren();
+      if (genre) {
+        const name = (genres.find((g) => g.id === genre) || {}).name || "\u2026";
+        title.append(
+          h("a", { class: "lfx-lib__crumb", href: libraryHref(kind2) }, label),
+          h("span", { class: "lfx-lib__sep", "aria-hidden": "true" }, "\u203A"),
+          h("span", { class: "lfx-lib__current", "aria-current": "page" }, name)
+        );
+      } else {
+        title.append(h("span", { class: "lfx-lib__current" }, label));
+      }
+      const grid2 = view === "grid";
+      rowsLink.href = libraryHref(kind2, { genre });
+      gridLink.href = libraryHref(kind2, { genre, view: "grid", sort });
+      rowsLink.setAttribute("aria-pressed", String(!grid2));
+      gridLink.setAttribute("aria-pressed", String(grid2));
+      rowsLink.classList.toggle("is-active", !grid2);
+      gridLink.classList.toggle("is-active", grid2);
+      tools.hidden = !grid2;
+      select.value = sort || "az";
+      menu.setData({ kind: kind2, genre, genres });
+    }
+    return {
+      el: el4,
+      update(next) {
+        const changedView = state24.kind !== next.kind || state24.genre !== next.genre || state24.view !== next.view;
+        state24 = { kind: next.kind, genre: next.genre || null, view: next.view || null, sort: next.sort || null };
+        if (changedView) count.textContent = "";
+        menu.close();
+        paint2();
+      },
+      setGenres(list) {
+        genres = list || [];
+        paint2();
+      },
+      setCount(n) {
+        count.textContent = typeof n === "number" ? `${n} Titel` : "";
+      },
+      setStuck(on) {
+        el4.classList.toggle("is-stuck", Boolean(on));
+      },
+      destroy() {
+        select.removeEventListener("change", onSort);
+        menu.destroy();
+        el4.remove();
+      }
+    };
+  }
+
   // src/js/features/library.js
+  var ROOT_ID3 = "lfx-library";
+  var ON_CLASS2 = "lfx-library-on";
+  var state5 = null;
+  var waitTimer2 = null;
+  function findHomeTab2() {
+    const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab2 && tab2.isConnected ? tab2 : null;
+  }
+  function disposeContent(s) {
+    if (s.grid) {
+      try {
+        s.grid.destroy();
+      } catch {
+      }
+      s.grid = null;
+    }
+    for (const fn of s.content.splice(0)) {
+      try {
+        fn && fn();
+      } catch (e) {
+        console.error("[LenzFlix] library cleanup", e);
+      }
+    }
+    s.body.replaceChildren();
+  }
+  function teardown4() {
+    const s = state5;
+    state5 = null;
+    if (s) {
+      s.seq += 1;
+      disposeContent(s);
+      window.removeEventListener("scroll", s.onScroll);
+      if (s.raf) cancelAnimationFrame(s.raf);
+      s.head.destroy();
+    }
+    document.getElementById(ROOT_ID3)?.remove();
+    document.documentElement.classList.remove(ON_CLASS2);
+  }
+  function headerHeight() {
+    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lfx-header-h"));
+    return v > 0 ? v : 80;
+  }
+  function loadGenres(s, kind2) {
+    if (s.genresKind === kind2) return;
+    s.genresKind = kind2;
+    s.genres = [];
+    s.head.setGenres([]);
+    getLibraryGenres(kind2).then((list) => {
+      if (state5 !== s || s.genresKind !== kind2) return;
+      s.genres = list || [];
+      s.head.setGenres(s.genres);
+    }, () => {
+    });
+  }
+  function renderRowsView(s, { kind: kind2, genre }) {
+    const bbSlot = h("section", { id: "lfx-billboard", class: "lfx-billboard", "aria-label": "Empfehlung" });
+    const rowsSlot = h("div", { id: "lfx-rows", class: "lfx-rows" });
+    s.body.append(bbSlot, rowsSlot);
+    if (genre) {
+      s.body.append(h("div", { class: "lfx-lib__all" }, [
+        h("a", { class: "lfx-lib__all-btn", href: libraryHref(kind2, { genre, view: "grid" }) }, "Alle anzeigen")
+      ]));
+    }
+    const genreName2 = genre ? (s.genres.find((g) => g.id === genre) || {}).name : void 0;
+    const ctxBb = {
+      root: s.root,
+      pool: {
+        key: libraryPoolKey(kind2, genre),
+        fetch: () => fetchLibraryHeroPool(kind2, { genre }),
+        firstKey: `lfx-bb-first:lib:${kind2}`
+      }
+    };
+    const ctxRows = {
+      root: s.root,
+      defs: { build: () => buildLibraryRowDefs(kind2, { genre, genreName: genreName2 }) },
+      prefetch: false,
+      hero: () => bbSlot
+    };
+    for (const [mod, slot, ctx2] of [[billboard_exports, bbSlot, ctxBb], [rows_exports, rowsSlot, ctxRows]]) {
+      try {
+        s.content.push(mod.render(slot, ctx2));
+      } catch (e) {
+        console.error("[LenzFlix] library render", e);
+      }
+    }
+  }
+  function renderGridView(s, { kind: kind2, genre, sort }) {
+    const query2 = { IncludeItemTypes: LIB_TYPES[kind2] || LIB_TYPES.movies };
+    if (genre) query2.GenreIds = genre;
+    const grid2 = createGrid({
+      query: query2,
+      sort: sort || "az",
+      onCount: (n) => {
+        if (state5 === s) s.head.setCount(n);
+      }
+    });
+    s.grid = grid2;
+    s.body.append(grid2.el);
+  }
+  function apply2(s, route) {
+    const r = parseLfxRoute(route);
+    const kind2 = r.kind === "series" ? "series" : "movies";
+    const genre = r.genre || null;
+    const view = r.view;
+    const sort = r.sort;
+    s.head.update({ kind: kind2, genre, view, sort });
+    s.root.classList.toggle("is-grid", view === "grid");
+    loadGenres(s, kind2);
+    const key = `${kind2}|${genre || ""}|${view || ""}`;
+    if (key === s.key) {
+      if (s.grid) s.grid.setSort(sort || "az");
+      return;
+    }
+    s.key = key;
+    s.seq += 1;
+    disposeContent(s);
+    if (view === "grid") renderGridView(s, { kind: kind2, genre, sort });
+    else renderRowsView(s, { kind: kind2, genre });
+  }
+  function build2(tab2, route) {
+    teardown4();
+    const head = createHead();
+    const body = h("div", { class: "lfx-lib__body" });
+    const root7 = h("div", { id: ROOT_ID3, class: "lfx-lib" }, [head.el, body]);
+    const s = {
+      root: root7,
+      head,
+      body,
+      genres: [],
+      genresKind: null,
+      key: null,
+      grid: null,
+      content: [],
+      seq: 0,
+      raf: 0,
+      onScroll: null
+    };
+    state5 = s;
+    s.onScroll = () => {
+      if (s.raf) return;
+      s.raf = requestAnimationFrame(() => {
+        s.raf = 0;
+        if (state5 === s) head.setStuck(head.el.getBoundingClientRect().top <= headerHeight() + 1);
+      });
+    };
+    window.addEventListener("scroll", s.onScroll, { passive: true });
+    tab2.prepend(root7);
+    document.documentElement.classList.add(ON_CLASS2);
+    apply2(s, route);
+  }
+  function ensure2(route) {
+    clearTimeout(waitTimer2);
+    const tab2 = findHomeTab2();
+    if (tab2 && state5 && tab2.contains(state5.root)) {
+      apply2(state5, route);
+      return;
+    }
+    if (tab2) {
+      build2(tab2, route);
+      return;
+    }
+    let tries = 0;
+    const poll = () => {
+      const t = findHomeTab2();
+      if (t) build2(t, route);
+      else if (++tries < 30) waitTimer2 = setTimeout(poll, 200);
+    };
+    waitTimer2 = setTimeout(poll, 200);
+  }
   var library = {
     name: "library",
-    match: () => false,
-    mount() {
-    },
-    update() {
-    },
-    unmount() {
+    match: (route) => isTheme("flix") && isModern() && !isTv() && isReady() && isLibraryRoute(route),
+    mount: (route) => ensure2(route),
+    update: (route) => ensure2(route),
+    unmount: () => {
+      clearTimeout(waitTimer2);
+      teardown4();
     }
   };
   var library_default = library;
 
   // src/js/features/mylist.js
+  var ROOT_ID4 = "lfx-mylist";
+  var ON_CLASS3 = "lfx-mylist-on";
+  var RETRO_PAGE_ON = "lfx-retro-page-on";
+  var STALE_MS = 2e3;
+  var TYPE_QUERY = { movies: "Movie", series: "Series" };
+  var TYPES2 = [
+    { id: null, label: "Alle" },
+    { id: "movies", label: "Filme" },
+    { id: "series", label: "Serien" }
+  ];
+  var SORTS3 = [
+    { id: "az", label: "A\u2013Z" },
+    { id: "new", label: "Neu hinzugef\xFCgt" },
+    { id: "year", label: "Erscheinungsjahr" }
+  ];
+  var pending = null;
+  var state6 = null;
+  var queryFor = (type) => ({
+    IncludeItemTypes: type ? TYPE_QUERY[type] : "Movie,Series",
+    Filters: "IsFavorite"
+  });
+  var routeOf = (route) => {
+    const r = parseLfxRoute(route);
+    return { type: r.type || null, sort: r.sort && SORTS3.some((s) => s.id === r.sort) ? r.sort : "az" };
+  };
+  function findHomeTab3() {
+    const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab2 && tab2.isConnected ? tab2 : null;
+  }
+  function teardown5() {
+    const s = state6;
+    state6 = null;
+    if (s) {
+      for (const fn of s.cleanups.splice(0)) {
+        try {
+          fn && fn();
+        } catch (e) {
+          console.error("[LenzFlix] mylist cleanup", e);
+        }
+      }
+      if (s.grid) s.grid.destroy();
+      if (s.root) s.root.remove();
+    }
+    document.getElementById(ROOT_ID4)?.remove();
+    const cl2 = document.documentElement.classList;
+    cl2.remove(ON_CLASS3);
+    cl2.remove(RETRO_PAGE_ON);
+  }
+  function countText(n) {
+    return isTheme("retro") ? `${n} TITEL` : `${n} Titel`;
+  }
+  function paint(s) {
+    for (const a of s.chips.children) {
+      const on = (a.dataset.type || "") === (s.type || "");
+      a.classList.toggle("is-active", on);
+      if (on) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+      a.href = myListHref({ type: a.dataset.type || void 0, sort: s.sort === "az" ? void 0 : s.sort });
+    }
+    for (const a of s.sorts.children) {
+      const on = a.dataset.sort === s.sort;
+      a.classList.toggle("is-active", on);
+      if (on) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+      a.href = myListHref({ type: s.type || void 0, sort: a.dataset.sort === "az" ? void 0 : a.dataset.sort });
+    }
+  }
+  function emptyBlock() {
+    const retro = isTheme("retro");
+    return h("div", { class: "lfx-ml__empty", hidden: true }, [
+      h("p", { class: "lfx-ml__empty-title" }, retro ? "KEINE B\xC4NDER GEMERKT" : "Deine Liste ist leer"),
+      h("p", { class: "lfx-ml__empty-hint" }, "Mit \u201E+ Meine Liste\u201C merkst du dir Filme und Serien."),
+      h("a", { class: "lfx-ml__empty-link", href: "#/home" }, retro ? "ZUR\xDCCK ZUM STARTMEN\xDC" : "Zur Startseite")
+    ]);
+  }
+  function build3(tab2, r) {
+    teardown5();
+    const retro = isTheme("retro");
+    const s = {
+      root: null,
+      grid: null,
+      type: r.type,
+      sort: r.sort,
+      count: null,
+      chips: null,
+      sorts: null,
+      empty: null,
+      loadedAt: Date.now(),
+      cleanups: []
+    };
+    state6 = s;
+    const title = retro ? h("h1", { class: "lfx-ml__title" }, [
+      "C:\\LENZ84\\LISTE>",
+      h("span", { class: "lfx-ml__cursor", "aria-hidden": "true" }, "_")
+    ]) : h("h1", { class: "lfx-ml__title" }, "Meine Liste");
+    s.count = h("p", { class: "lfx-ml__count", "aria-live": "polite" });
+    s.chips = h(
+      "nav",
+      { class: "lfx-ml__chips", "aria-label": "Art" },
+      TYPES2.map((t) => h("a", { class: "lfx-ml__chip", href: myListHref(), dataset: { type: t.id || "" } }, t.label))
+    );
+    s.sorts = h(
+      "nav",
+      { class: "lfx-ml__sorts", "aria-label": "Sortierung" },
+      SORTS3.map((o) => h("a", { class: "lfx-ml__sort", href: myListHref(), dataset: { sort: o.id } }, o.label))
+    );
+    s.empty = emptyBlock();
+    s.grid = createGrid({
+      query: queryFor(s.type),
+      sort: s.sort,
+      emptyText: "",
+      onCount: (n) => {
+        s.loadedAt = Date.now();
+        s.count.textContent = countText(n);
+        s.empty.hidden = n > 0;
+        s.root.classList.toggle("is-empty", n === 0);
+      }
+    });
+    s.root = h("div", { id: ROOT_ID4, class: `lfx-ml${retro ? " lfx-retro-page" : ""}` }, [
+      h("header", { class: "lfx-ml__head" }, [title, s.count]),
+      h("div", { class: "lfx-ml__bar" }, [s.chips, s.sorts]),
+      s.empty,
+      h("div", { class: "lfx-ml__grid" }, [s.grid.el])
+    ]);
+    tab2.prepend(s.root);
+    const cl2 = document.documentElement.classList;
+    cl2.add(ON_CLASS3);
+    if (retro) cl2.add(RETRO_PAGE_ON);
+    paint(s);
+    const refresh2 = () => {
+      if (state6 === s) s.grid.refresh();
+    };
+    s.cleanups.push(onItemsChanged(({ removed = [] }) => {
+      if (state6 !== s || !removed.length) return;
+      s.root.querySelectorAll("[data-lfx-id]").forEach((el4) => {
+        if (removed.includes(el4.dataset.lfxId)) (el4.closest(".lfx-grid__item") || el4).remove();
+      });
+    }));
+    document.addEventListener("lfx:favorite", refresh2);
+    s.cleanups.push(() => document.removeEventListener("lfx:favorite", refresh2));
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh2();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    s.cleanups.push(() => document.removeEventListener("visibilitychange", onVisible));
+  }
+  function ensure3(route) {
+    clearTimeout(pending);
+    const r = routeOf(route);
+    const tab2 = findHomeTab3();
+    if (state6 && state6.root && state6.root.isConnected && tab2 && tab2.contains(state6.root)) {
+      const s = state6;
+      if (r.type !== s.type) {
+        s.type = r.type;
+        s.sort = r.sort;
+        paint(s);
+        s.grid.setQuery(queryFor(s.type));
+        s.grid.setSort(s.sort);
+      } else if (r.sort !== s.sort) {
+        s.sort = r.sort;
+        paint(s);
+        s.grid.setSort(s.sort);
+      } else if (Date.now() - s.loadedAt > STALE_MS) {
+        s.loadedAt = Date.now();
+        s.grid.refresh();
+      }
+      return;
+    }
+    if (tab2) {
+      build3(tab2, r);
+      return;
+    }
+    teardown5();
+    let tries = 0;
+    const poll = () => {
+      const t = findHomeTab3();
+      if (t) build3(t, r);
+      else if (++tries < 30) pending = setTimeout(poll, 200);
+    };
+    pending = setTimeout(poll, 200);
+  }
   var mylist = {
     name: "mylist",
-    match: () => false,
-    mount() {
-    },
-    update() {
-    },
-    unmount() {
+    match: (route) => (isTheme("flix") || isTheme("retro")) && isModern() && !isTv() && isReady() && isMyListRoute(route),
+    mount: (route) => ensure3(route),
+    update: (route) => ensure3(route),
+    unmount: () => {
+      clearTimeout(pending);
+      pending = null;
+      teardown5();
     }
   };
   var mylist_default = mylist;
@@ -7836,9 +8907,9 @@
   }
 
   // src/js/features/newpopular.js
-  var ROOT_ID3 = "lfx-newpopular";
-  var ON_CLASS2 = "lfx-newpopular-on";
-  var TYPES2 = "Movie,Series";
+  var ROOT_ID5 = "lfx-newpopular";
+  var ON_CLASS4 = "lfx-newpopular-on";
+  var TYPES3 = "Movie,Series";
   var sectionDefs = () => [
     { id: "new", label: `Neu bei ${brandName()}`, icon: "\u{1F37F}" },
     { id: "watched", label: "Am h\xE4ufigsten geschaut", icon: "\u{1F525}" },
@@ -7846,15 +8917,15 @@
     { id: "top-movies", label: "Top 10 Filme", icon: "\u{1F51F}" }
   ];
   var cleanups2 = [];
-  var waitTimer2 = null;
+  var waitTimer3 = null;
   function isNewRoute(route) {
     return route.path === "/home" && route.params.get("lfx") === "new";
   }
-  function findHomeTab2() {
+  function findHomeTab4() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
-  function teardown4() {
+  function teardown6() {
     for (const fn of cleanups2.splice(0)) {
       try {
         fn && fn();
@@ -7862,12 +8933,12 @@
         console.error("[LenzFlix] newpopular cleanup", e);
       }
     }
-    document.getElementById(ROOT_ID3)?.remove();
-    document.documentElement.classList.remove(ON_CLASS2);
+    document.getElementById(ROOT_ID5)?.remove();
+    document.documentElement.classList.remove(ON_CLASS4);
   }
   var query = (params) => getItems({
     ...BASE_PARAMS,
-    IncludeItemTypes: TYPES2,
+    IncludeItemTypes: TYPES3,
     Recursive: true,
     ...params
   }).then(asItems);
@@ -7946,7 +9017,7 @@
   }
   function favoriteButton(item) {
     let fav = Boolean(item.UserData && item.UserData.IsFavorite);
-    function paint() {
+    function paint2() {
       const label = fav ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen";
       btn3.setAttribute("aria-label", label);
       btn3.title = label;
@@ -7960,12 +9031,12 @@
         await setFavorite(item.Id, next);
         fav = next;
         if (item.UserData) item.UserData.IsFavorite = next;
-        paint();
+        paint2();
       } catch (e) {
         console.warn("[LenzFlix] Meine Liste fehlgeschlagen", e && e.message);
       }
     }, "lfx-np__btn--fav");
-    paint();
+    paint2();
     return btn3;
   }
   function createNewEntry(item, newSeries) {
@@ -7973,11 +9044,11 @@
     const title = item.Name || "";
     const bg = imageUrl(item, { type: "Backdrop", maxWidth: 1e3, quality: 85 }) || (landscapeFor(item, 1e3) || {}).url;
     const logo = logoImage(item, { maxWidth: 400 });
-    const open2 = (e) => {
+    const open3 = (e) => {
       if (e && e.preventDefault) e.preventDefault();
       openModal(item);
     };
-    const media = h("a", { class: "lfx-np__media", href: detailHref2(item), "aria-label": title, onclick: open2 }, [
+    const media = h("a", { class: "lfx-np__media", href: detailHref2(item), "aria-label": title, onclick: open3 }, [
       bg ? h("img", { class: "lfx-np__img", src: bg, alt: "", loading: "lazy", decoding: "async" }) : null,
       logo ? h("img", { class: "lfx-np__media-logo", src: logo, alt: "", loading: "lazy", decoding: "async" }) : h("span", { class: "lfx-np__media-title" }, title)
     ]);
@@ -7987,7 +9058,7 @@
       }),
       favoriteButton(item),
       ...extraButtons(item),
-      roundButton2("Weitere Infos", ICON_DOWN, open2)
+      roundButton2("Weitere Infos", ICON_DOWN, open3)
     ]);
     const genres = (item.Genres || []).slice(0, 4).join(" \u2022 ");
     const body = h("div", { class: "lfx-np__body" }, [
@@ -8025,8 +9096,8 @@
       h("h2", { class: "lfx-np__heading" }, def.label)
     ]);
   }
-  function build2(tab2) {
-    teardown4();
+  function build4(tab2) {
+    teardown6();
     let disposed = false;
     const scrollers = [];
     const sections = new Map(sectionDefs().map((d) => [d.id, sectionShell(d)]));
@@ -8049,9 +9120,9 @@
       pills.set(d.id, pill);
       nav.append(pill);
     }
-    const root7 = h("div", { id: ROOT_ID3, class: "lfx-np" }, [nav, ...sections.values()]);
+    const root7 = h("div", { id: ROOT_ID5, class: "lfx-np" }, [nav, ...sections.values()]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS2);
+    document.documentElement.classList.add(ON_CLASS4);
     setActive("new");
     let raf3 = 0;
     const onScroll7 = () => {
@@ -8149,31 +9220,31 @@
       }
     });
   }
-  function ensure2() {
-    clearTimeout(waitTimer2);
-    const existing = document.getElementById(ROOT_ID3);
-    const tab2 = findHomeTab2();
+  function ensure4() {
+    clearTimeout(waitTimer3);
+    const existing = document.getElementById(ROOT_ID5);
+    const tab2 = findHomeTab4();
     if (tab2 && existing && tab2.contains(existing)) return;
     if (tab2) {
-      build2(tab2);
+      build4(tab2);
       return;
     }
     let tries = 0;
     const poll = () => {
-      const t = findHomeTab2();
-      if (t) build2(t);
-      else if (++tries < 30) waitTimer2 = setTimeout(poll, 200);
+      const t = findHomeTab4();
+      if (t) build4(t);
+      else if (++tries < 30) waitTimer3 = setTimeout(poll, 200);
     };
-    waitTimer2 = setTimeout(poll, 200);
+    waitTimer3 = setTimeout(poll, 200);
   }
   var newPopularFeature = {
     name: "newpopular",
     match: (route) => isNewRoute(route) && !isTv() && !isTheme("live"),
-    mount: () => ensure2(),
-    update: () => ensure2(),
+    mount: () => ensure4(),
+    update: () => ensure4(),
     unmount: () => {
-      clearTimeout(waitTimer2);
-      teardown4();
+      clearTimeout(waitTimer3);
+      teardown6();
     }
   };
   var newpopular_default = newPopularFeature;
@@ -8305,7 +9376,7 @@
     { key: "episodes", type: "Episode", fields: "DateCreated,PremiereDate,RunTimeTicks,OfficialRating", size: EPISODE_PAGE_SIZE },
     { key: "boxsets", type: "BoxSet", fields: "ChildCount", size: PAGE_SIZE }
   ];
-  var asItems2 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems3 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function compact(item, keys) {
     const out = {};
     for (const k of keys) if (item[k] !== void 0 && item[k] !== null) out[k] = item[k];
@@ -8328,7 +9399,7 @@
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     let total = null;
-    for (let start10 = 0; ; start10 += src.size) {
+    for (let start11 = 0; ; start11 += src.size) {
       const res = await getItems({
         Recursive: true,
         IncludeItemTypes: src.type,
@@ -8336,18 +9407,18 @@
         // Filme/Serien liefern Bild-Tags (ImageTypeLimit 1); Folgen/Sammlungen ohne Bilder
         ...src.tags ? { EnableImages: true, ImageTypeLimit: 1, EnableImageTypes: "Primary,Thumb,Backdrop" } : { EnableImages: false },
         EnableUserData: false,
-        StartIndex: start10,
+        StartIndex: start11,
         Limit: src.size
       });
-      const page2 = asItems2(res);
+      const page2 = asItems3(res);
       for (const it of page2) {
         if (!it || !it.Id || seen.has(it.Id)) continue;
         seen.add(it.Id);
         out.push(compact(it, KEEP[src.key]));
       }
       if (res && typeof res.TotalRecordCount === "number") total = res.TotalRecordCount;
-      const done = page2.length < src.size || total !== null && start10 + src.size >= total;
-      onPart(src.key, done ? 1 : total ? Math.min(0.99, (start10 + src.size) / total) : 0.5);
+      const done = page2.length < src.size || total !== null && start11 + src.size >= total;
+      onPart(src.key, done ? 1 : total ? Math.min(0.99, (start11 + src.size) / total) : 0.5);
       if (done) break;
     }
     return out;
@@ -8600,7 +9671,7 @@
   var setForceHls = (on) => writeFlag(FORCE_HLS_KEY, on);
 
   // src/js/features/live/deps.js
-  var asItems3 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems4 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function fatalText(err) {
     const m = err && err.message ? String(err.message) : "";
     return m.replace(/(api_key|ApiKey)=[^&\s]+/gi, "$1=\u2026").slice(0, 200);
@@ -8662,7 +9733,7 @@
       imageUrl: (id, o = {}) => taggedImageUrl(tags, id, o),
       getBoxSetItems: async (id) => {
         const res = await getItems({ ParentId: id, Fields: "", EnableImages: false, EnableUserData: false });
-        return asItems3(res).map((x) => x.Id).filter(Boolean);
+        return asItems4(res).map((x) => x.Id).filter(Boolean);
       },
       loadTrailer: async (itemId2) => {
         try {
@@ -8684,7 +9755,7 @@
           const res = await requestJson("GET", "/Items", {
             params: { userId: getUserId(), Ids: list.join(","), Fields: "Overview", EnableImages: false, EnableUserData: false }
           });
-          for (const it of asItems3(res)) if (it && it.Id) out.set(it.Id, { overview: typeof it.Overview === "string" ? it.Overview : "" });
+          for (const it of asItems4(res)) if (it && it.Id) out.set(it.Id, { overview: typeof it.Overview === "string" ? it.Overview : "" });
         } catch (e) {
           console.warn("[LenzFlix] live itemDetails", fatalText(e));
         }
@@ -8730,10 +9801,10 @@
   }
 
   // src/js/features/tvmode/route.js
-  var ROOT_ID4 = "lfx-tvm";
-  var ON_CLASS3 = "lfx-tvm-on";
+  var ROOT_ID6 = "lfx-tvm";
+  var ON_CLASS5 = "lfx-tvm-on";
   var TV_THEMES = ["flix", "plus", "prime", "retro"];
-  var findHomeTab3 = () => {
+  var findHomeTab5 = () => {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   };
@@ -8784,7 +9855,7 @@
   var CATALOG_SHARE = 0.65;
   var BLOCK = ".lfx-modal-open,.lfx-themepicker-open,.lfx-sheet-open,.lfx-menu-open,.lfx-prime-search-open";
   var gen = 0;
-  var waitTimer3 = null;
+  var waitTimer4 = null;
   var inst = null;
   var ui = null;
   var themeOff = null;
@@ -8872,8 +9943,8 @@
   function teardownUi() {
     if (ui) ui.root.remove();
     ui = null;
-    document.getElementById(ROOT_ID4)?.remove();
-    html().classList.remove(ON_CLASS3);
+    document.getElementById(ROOT_ID6)?.remove();
+    html().classList.remove(ON_CLASS5);
   }
   function showFallback(err) {
     if (!ui) return;
@@ -8943,8 +10014,8 @@
       onReady: ret(hooks.ready),
       onFatal: ret(hooks.fatal),
       onStopped: ret(hooks.stopped),
-      onPip: ret((active5) => {
-        if (inst) inst.pip = Boolean(active5);
+      onPip: ret((active6) => {
+        if (inst) inst.pip = Boolean(active6);
       })
     });
   }
@@ -9033,9 +10104,9 @@
   function start2(tab2, myGen) {
     teardownUi();
     const { boot: bootEl, fill: fill4, label } = buildBoot();
-    ui = { root: h("div", { id: ROOT_ID4, class: "lfx-tvm is-loading" }, [bootEl]), boot: bootEl, fill: fill4, label };
+    ui = { root: h("div", { id: ROOT_ID6, class: "lfx-tvm is-loading" }, [bootEl]), boot: bootEl, fill: fill4, label };
     tab2.prepend(ui.root);
-    html().classList.add(ON_CLASS3);
+    html().classList.add(ON_CLASS5);
     watchTheme();
     if (inst && inst.instance) {
       if (inst.ready) {
@@ -9053,27 +10124,27 @@
     }
     boot(myGen);
   }
-  function ensure3() {
-    clearTimeout(waitTimer3);
-    const tab2 = findHomeTab3();
-    const existing = document.getElementById(ROOT_ID4);
+  function ensure5() {
+    clearTimeout(waitTimer4);
+    const tab2 = findHomeTab5();
+    const existing = document.getElementById(ROOT_ID6);
     if (tab2 && existing && ui && tab2.contains(existing)) return;
     gen += 1;
     const myGen = gen;
     let tries = 0;
     const poll = () => {
       if (myGen !== gen) return;
-      const t = findHomeTab3();
+      const t = findHomeTab5();
       if (t) start2(t, myGen);
-      else if (++tries < 30) waitTimer3 = setTimeout(poll, 200);
+      else if (++tries < 30) waitTimer4 = setTimeout(poll, 200);
     };
     if (tab2) poll();
-    else waitTimer3 = setTimeout(poll, 200);
+    else waitTimer4 = setTimeout(poll, 200);
   }
   function destroyTvMode() {
     gen += 1;
-    clearTimeout(waitTimer3);
-    waitTimer3 = null;
+    clearTimeout(waitTimer4);
+    waitTimer4 = null;
     disposeInstance();
     teardownUi();
     unwatchTheme();
@@ -9084,16 +10155,16 @@
   var tvModeFeature = {
     name: "tvmode",
     match: tvModeMatch,
-    mount: () => ensure3(),
+    mount: () => ensure5(),
     update() {
-      const tab2 = findHomeTab3();
+      const tab2 = findHomeTab5();
       if (!tab2 || ui && tab2.contains(ui.root)) return;
-      ensure3();
+      ensure5();
     },
     unmount() {
       gen += 1;
-      clearTimeout(waitTimer3);
-      waitTimer3 = null;
+      clearTimeout(waitTimer4);
+      waitTimer4 = null;
       if (inst) {
         let kept = false;
         try {
@@ -9169,14 +10240,14 @@
     if (!el4) return;
     if (isMenuOpen() && inNativeDialog(el4)) return;
     const t = e.touches && e.touches[0] || e;
-    const state22 = { x: t.clientX, y: t.clientY, fired: false };
-    press2 = state22;
+    const state24 = { x: t.clientX, y: t.clientY, fired: false };
+    press2 = state24;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press2 !== state22 || !el4.isConnected) return;
-      state22.fired = true;
+      if (press2 !== state24 || !el4.isConnected) return;
+      state24.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el4, state22.x, state22.y);
+      openFor(el4, state24.x, state24.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -9202,17 +10273,17 @@
   function start3() {
     if (active3) return;
     active3 = true;
-    const add2 = (target, type, fn, opts) => {
+    const add3 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       listeners4.push(() => target.removeEventListener(type, fn, opts));
     };
-    add2(document, "contextmenu", onContextMenu, true);
-    add2(document, "touchstart", onTouchStart, { passive: true });
-    add2(document, "touchmove", onTouchMove, { passive: true });
-    add2(document, "touchend", onTouchEnd, { passive: true });
-    add2(document, "touchcancel", cancelPress, { passive: true });
-    add2(window, "scroll", cancelPress, { capture: true, passive: true });
-    add2(window, "click", onClickCapture2, true);
+    add3(document, "contextmenu", onContextMenu, true);
+    add3(document, "touchstart", onTouchStart, { passive: true });
+    add3(document, "touchmove", onTouchMove, { passive: true });
+    add3(document, "touchend", onTouchEnd, { passive: true });
+    add3(document, "touchcancel", cancelPress, { passive: true });
+    add3(window, "scroll", cancelPress, { capture: true, passive: true });
+    add3(window, "click", onClickCapture2, true);
   }
   function stop4() {
     active3 = false;
@@ -9246,7 +10317,7 @@
   var WIDE_BASE_DESKTOP = 600;
   var WIDE_BASE_NARROW = 420;
   var NARROW_PX = 800;
-  var state5 = null;
+  var state7 = null;
   var pct = (v) => `${Math.round(v * 100)} %`;
   var isNarrowView = () => (window.innerWidth || 1024) < NARROW_PX;
   var wideBase = () => isNarrowView() ? WIDE_BASE_NARROW : WIDE_BASE_DESKTOP;
@@ -9376,9 +10447,9 @@
     return section("Info", [...rows, clear, msg, reload3]);
   }
   function closeSecretMenu() {
-    if (!state5) return;
-    const s = state5;
-    state5 = null;
+    if (!state7) return;
+    const s = state7;
+    state7 = null;
     document.removeEventListener("keydown", s.onKey, true);
     for (const off of s.offs) {
       try {
@@ -9392,7 +10463,7 @@
     if (prev2 && prev2.isConnected && typeof prev2.focus === "function") prev2.focus();
   }
   function openSecretMenu() {
-    if (state5) return;
+    if (state7) return;
     const offs = [];
     const close2 = () => closeSecretMenu();
     const title = h("h2", { class: "lfx-secret__title", id: `${PANEL_ID}-title` }, "Geheimmen\xFC");
@@ -9408,7 +10479,7 @@
     root7.addEventListener("click", (e) => {
       if (e.target === root7) close2();
     });
-    const onKey3 = (e) => {
+    const onKey4 = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
@@ -9428,8 +10499,8 @@
         first2.focus();
       }
     };
-    document.addEventListener("keydown", onKey3, true);
-    state5 = { root: root7, prevFocus: document.activeElement, offs, onKey: onKey3 };
+    document.addEventListener("keydown", onKey4, true);
+    state7 = { root: root7, prevFocus: document.activeElement, offs, onKey: onKey4 };
     document.body.append(root7);
     document.documentElement.classList.add("lfx-secret-open");
     panel.focus();
@@ -9514,41 +10585,41 @@
   function isHomeRoute2(route) {
     return route.path === "/home" && route.params.get("tab") !== "1" && !route.params.get("lfx");
   }
-  var state6 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
+  var state8 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
   function clearTimers2() {
-    clearTimeout(state6.showTimer);
-    clearTimeout(state6.hideTimer);
-    clearTimeout(state6.removeTimer);
-    state6.showTimer = state6.hideTimer = state6.removeTimer = null;
+    clearTimeout(state8.showTimer);
+    clearTimeout(state8.hideTimer);
+    clearTimeout(state8.removeTimer);
+    state8.showTimer = state8.hideTimer = state8.removeTimer = null;
   }
   function removeHint() {
     clearTimers2();
-    if (state6.el) unmountPoint(state6.el);
-    state6.el = null;
+    if (state8.el) unmountPoint(state8.el);
+    state8.el = null;
   }
   function leave2() {
-    if (!state6.el) return;
-    const el4 = state6.el;
-    clearTimeout(state6.hideTimer);
-    state6.hideTimer = null;
+    if (!state8.el) return;
+    const el4 = state8.el;
+    clearTimeout(state8.hideTimer);
+    state8.hideTimer = null;
     el4.classList.add("is-leaving");
-    state6.removeTimer = setTimeout(() => {
-      state6.removeTimer = null;
-      if (state6.el === el4) removeHint();
+    state8.removeTimer = setTimeout(() => {
+      state8.removeTimer = null;
+      if (state8.el === el4) removeHint();
     }, LEAVE_MS);
   }
   function startHideTimer(ms) {
-    clearTimeout(state6.hideTimer);
-    state6.deadline = Date.now() + ms;
-    state6.hideTimer = setTimeout(leave2, ms);
+    clearTimeout(state8.hideTimer);
+    state8.deadline = Date.now() + ms;
+    state8.hideTimer = setTimeout(leave2, ms);
   }
   function canHover() {
     return typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
   function show2() {
-    state6.showTimer = null;
+    state8.showTimer = null;
     const url = statsHref() || getStatsUrl();
-    if (!url || state6.el || !shouldShow()) return;
+    if (!url || state8.el || !shouldShow()) return;
     const link = h("a", { class: "lfx-statshint__link", href: url }, [
       h("span", { class: "lfx-statshint__badge" }, "Neu"),
       h("span", { class: "lfx-statshint__text" }, `${STATS_LABEL} \u2013 deine Sehgewohnheiten im \xDCberblick`),
@@ -9569,17 +10640,17 @@
     root7.setAttribute("role", "status");
     root7.setAttribute("aria-live", "polite");
     root7.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
-    state6.el = root7;
+    state8.el = root7;
     if (canHover()) {
       root7.addEventListener("mouseenter", () => {
-        if (!state6.hideTimer) return;
-        state6.remaining = Math.max(500, state6.deadline - Date.now());
-        clearTimeout(state6.hideTimer);
-        state6.hideTimer = null;
+        if (!state8.hideTimer) return;
+        state8.remaining = Math.max(500, state8.deadline - Date.now());
+        clearTimeout(state8.hideTimer);
+        state8.hideTimer = null;
       });
       root7.addEventListener("mouseleave", () => {
-        if (state6.el !== root7 || state6.hideTimer || state6.removeTimer) return;
-        startHideTimer(state6.remaining || HINT_DURATION);
+        if (state8.el !== root7 || state8.hideTimer || state8.removeTimer) return;
+        startHideTimer(state8.remaining || HINT_DURATION);
       });
     }
     try {
@@ -9591,7 +10662,7 @@
   }
   function sync2(route) {
     if (isHomeRoute2(route)) {
-      if (!state6.el && !state6.showTimer && shouldShow()) state6.showTimer = setTimeout(show2, HINT_DELAY);
+      if (!state8.el && !state8.showTimer && shouldShow()) state8.showTimer = setTimeout(show2, HINT_DELAY);
     } else {
       removeHint();
     }
@@ -9602,22 +10673,22 @@
       return isTheme("flix") && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED5.test(route.path);
     },
     mount(route) {
-      state6.onClick = (e) => {
+      state8.onClick = (e) => {
         const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
         if (a && isStatsHref(a.getAttribute("href"))) {
           markSeen();
           removeHint();
         }
       };
-      document.addEventListener("click", state6.onClick, true);
+      document.addEventListener("click", state8.onClick, true);
       sync2(route);
     },
     update(route) {
       sync2(route);
     },
     unmount() {
-      if (state6.onClick) document.removeEventListener("click", state6.onClick, true);
-      state6.onClick = null;
+      if (state8.onClick) document.removeEventListener("click", state8.onClick, true);
+      state8.onClick = null;
       removeHint();
     }
   };
@@ -9733,8 +10804,8 @@
   }
 
   // src/js/features/plus/header.js
-  var ROOT_ID5 = "lfx-plus-header";
-  var ON_CLASS4 = "lfx-plus-header-on";
+  var ROOT_ID7 = "lfx-plus-header";
+  var ON_CLASS6 = "lfx-plus-header-on";
   var HIDDEN_CLASS = "lfx-plus-header-hidden";
   var EXCLUDED6 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SOLID_AT = 10;
@@ -9780,7 +10851,7 @@
     if (route.path === "/tv" && (!parent || series && parent === series.id)) return "series";
     return null;
   }
-  var state7 = {
+  var state9 = {
     root: null,
     nav: null,
     chip: null,
@@ -9804,9 +10875,9 @@
     return span2;
   };
   function applyActive4() {
-    if (!state7.root) return;
-    const key = state7.route ? activeKey2(state7.route, state7.libs) : null;
-    for (const el4 of state7.root.querySelectorAll("[data-key]")) {
+    if (!state9.root) return;
+    const key = state9.route ? activeKey2(state9.route, state9.libs) : null;
+    for (const el4 of state9.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -9814,10 +10885,10 @@
     }
   }
   function renderNav() {
-    if (!state7.nav) return;
-    state7.nav.textContent = "";
-    for (const it of navItems2(state7.libs)) {
-      state7.nav.append(
+    if (!state9.nav) return;
+    state9.nav.textContent = "";
+    for (const it of navItems2(state9.libs)) {
+      state9.nav.append(
         h("a", { class: "lfx-plus-header__item", href: it.href, dataset: { key: it.key } }, [
           icon2(it.icon, "lfx-plus-header__icon"),
           h("span", { class: "lfx-plus-header__label" }, it.label)
@@ -9826,72 +10897,72 @@
     }
     applyActive4();
   }
-  var menuOpen = () => Boolean(state7.menu && state7.menu.el.isConnected && isPopoverOpen());
+  var menuOpen = () => Boolean(state9.menu && state9.menu.el.isConnected && isPopoverOpen());
   function clearTimers3() {
-    clearTimeout(state7.openTimer);
-    clearTimeout(state7.closeTimer);
-    state7.openTimer = null;
-    state7.closeTimer = null;
+    clearTimeout(state9.openTimer);
+    clearTimeout(state9.closeTimer);
+    state9.openTimer = null;
+    state9.closeTimer = null;
   }
   function closeMenu() {
     clearTimers3();
-    state7.seq++;
+    state9.seq++;
     if (menuOpen()) closePopover();
-    state7.menu = null;
-    state7.pinned = false;
+    state9.menu = null;
+    state9.pinned = false;
   }
   async function openMenu2() {
-    if (!state7.chip || menuOpen()) return;
-    const seq3 = ++state7.seq;
+    if (!state9.chip || menuOpen()) return;
+    const seq3 = ++state9.seq;
     let items;
     try {
-      items = await profileEntries({ theme: "plus", returnFocus: state7.chip });
+      items = await profileEntries({ theme: "plus", returnFocus: state9.chip });
     } catch {
       items = [];
     }
-    if (seq3 !== state7.seq || !state7.chip || menuOpen()) return;
-    const menu = openPopover(state7.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
-    state7.menu = menu;
-    menu.el.addEventListener("mouseenter", () => clearTimeout(state7.closeTimer));
+    if (seq3 !== state9.seq || !state9.chip || menuOpen()) return;
+    const menu = openPopover(state9.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
+    state9.menu = menu;
+    menu.el.addEventListener("mouseenter", () => clearTimeout(state9.closeTimer));
     menu.el.addEventListener("mouseleave", () => scheduleClose2());
   }
   function scheduleOpen() {
-    clearTimeout(state7.closeTimer);
-    if (menuOpen() || state7.openTimer) return;
-    state7.openTimer = setTimeout(() => {
-      state7.openTimer = null;
+    clearTimeout(state9.closeTimer);
+    if (menuOpen() || state9.openTimer) return;
+    state9.openTimer = setTimeout(() => {
+      state9.openTimer = null;
       openMenu2();
     }, OPEN_DELAY);
   }
   function scheduleClose2() {
-    clearTimeout(state7.openTimer);
-    state7.openTimer = null;
-    if (state7.pinned || !menuOpen()) return;
-    clearTimeout(state7.closeTimer);
-    state7.closeTimer = setTimeout(() => {
-      state7.closeTimer = null;
-      if (!state7.pinned) closeMenu();
+    clearTimeout(state9.openTimer);
+    state9.openTimer = null;
+    if (state9.pinned || !menuOpen()) return;
+    clearTimeout(state9.closeTimer);
+    state9.closeTimer = setTimeout(() => {
+      state9.closeTimer = null;
+      if (!state9.pinned) closeMenu();
     }, CLOSE_DELAY);
   }
   function onChipClick() {
     clearTimers3();
     if (menuOpen()) {
-      if (state7.pinned) closeMenu();
-      else state7.pinned = true;
+      if (state9.pinned) closeMenu();
+      else state9.pinned = true;
       return;
     }
-    state7.pinned = true;
+    state9.pinned = true;
     openMenu2();
   }
   async function fillChip(mountSeq) {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state7.mountSeq && Boolean(state7.chip) });
+      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state9.mountSeq && Boolean(state9.chip) });
     } catch {
     }
-    if (mountSeq !== state7.mountSeq || !state7.chip) return;
-    const avatar = state7.chip.querySelector(".lfx-plus-header__avatar");
-    const name = state7.chip.querySelector(".lfx-plus-header__name");
+    if (mountSeq !== state9.mountSeq || !state9.chip) return;
+    const avatar = state9.chip.querySelector(".lfx-plus-header__avatar");
+    const name = state9.chip.querySelector(".lfx-plus-header__name");
     name.textContent = user.name || "";
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
@@ -9899,18 +10970,18 @@
     } else {
       avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
     }
-    if (user.name) state7.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
+    if (user.name) state9.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
   }
   function setHidden(on) {
-    if (state7.root) state7.root.classList.toggle("is-hidden", on);
+    if (state9.root) state9.root.classList.toggle("is-hidden", on);
     document.documentElement.classList.toggle(HIDDEN_CLASS, on);
   }
   function scrollTick() {
-    state7.raf = 0;
-    const root7 = state7.root;
+    state9.raf = 0;
+    const root7 = state9.root;
     if (!root7) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-    const dy = y - state7.lastY;
+    const dy = y - state9.lastY;
     root7.classList.toggle("is-solid", y > SOLID_AT);
     if (y <= SOLID_AT) {
       setHidden(false);
@@ -9919,12 +10990,12 @@
     } else if (dy <= -SCROLL_DELTA) {
       setHidden(false);
     }
-    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state7.lastY = y;
+    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state9.lastY = y;
   }
   function onScroll2() {
-    if (state7.raf) return;
+    if (state9.raf) return;
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state7.raf = raf3(scrollTick);
+    state9.raf = raf3(scrollTick);
   }
   async function loadLibraries(mountSeq) {
     let libs = [];
@@ -9932,8 +11003,8 @@
       libs = await getLibraries() || [];
     } catch {
     }
-    if (mountSeq !== state7.mountSeq || !state7.root) return;
-    state7.libs = libs;
+    if (mountSeq !== state9.mountSeq || !state9.root) return;
+    state9.libs = libs;
     renderNav();
   }
   var plusHeader = {
@@ -9942,13 +11013,13 @@
       return isTheme("plus") && isModern() && !isTv() && !isPhone() && isReady() && !EXCLUDED6.test(route.path);
     },
     mount(route) {
-      const mountSeq = ++state7.mountSeq;
-      state7.route = route;
-      state7.libs = [];
-      state7.pinned = false;
-      const root7 = mountPoint(ROOT_ID5, { tag: "header", className: "lfx-plus-header" });
+      const mountSeq = ++state9.mountSeq;
+      state9.route = route;
+      state9.libs = [];
+      state9.pinned = false;
+      const root7 = mountPoint(ROOT_ID7, { tag: "header", className: "lfx-plus-header" });
       root7.textContent = "";
-      state7.root = root7;
+      state9.root = root7;
       const brand = h("a", { class: "lfx-plus-header__brand", href: "#/home", "aria-label": `${brandName("plus")} Startseite` });
       const chip = h("button", {
         type: "button",
@@ -9967,31 +11038,31 @@
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-header__ds" });
       root7.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, ds, tv, search);
-      state7.nav = nav;
-      state7.chip = chip;
+      state9.nav = nav;
+      state9.chip = chip;
       chip.addEventListener("click", onChipClick);
       chip.addEventListener("mouseenter", scheduleOpen);
       chip.addEventListener("mouseleave", scheduleClose2);
       chip.addEventListener("keydown", (e) => {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          state7.pinned = true;
+          state9.pinned = true;
           clearTimers3();
           openMenu2();
         }
       });
-      document.documentElement.classList.add(ON_CLASS4);
+      document.documentElement.classList.add(ON_CLASS6);
       renderNav();
       window.addEventListener("scroll", onScroll2, { passive: true });
-      state7.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
-      state7.lastY = Math.max(0, window.scrollY || 0);
+      state9.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
+      state9.lastY = Math.max(0, window.scrollY || 0);
       scrollTick();
       fillChip(mountSeq);
       loadLibraries(mountSeq);
     },
     update(route) {
-      const changed = !state7.route || state7.route.hash !== route.hash;
-      state7.route = route;
+      const changed = !state9.route || state9.route.hash !== route.hash;
+      state9.route = route;
       if (changed) {
         closeMenu();
         setHidden(false);
@@ -9999,24 +11070,24 @@
       applyActive4();
     },
     unmount() {
-      state7.mountSeq++;
+      state9.mountSeq++;
       closeMenu();
-      for (const fn of state7.cleanups.splice(0)) fn();
-      if (state7.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state7.raf);
-      state7.raf = 0;
-      unmountPoint(ROOT_ID5);
-      document.documentElement.classList.remove(ON_CLASS4, HIDDEN_CLASS);
-      state7.root = null;
-      state7.nav = null;
-      state7.chip = null;
-      state7.libs = [];
+      for (const fn of state9.cleanups.splice(0)) fn();
+      if (state9.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state9.raf);
+      state9.raf = 0;
+      unmountPoint(ROOT_ID7);
+      document.documentElement.classList.remove(ON_CLASS6, HIDDEN_CLASS);
+      state9.root = null;
+      state9.nav = null;
+      state9.chip = null;
+      state9.libs = [];
     }
   };
   var header_default = plusHeader;
 
   // src/js/features/plus/mobilehead.js
-  var ROOT_ID6 = "lfx-plus-mhead";
-  var ON_CLASS5 = "lfx-plus-mhead-on";
+  var ROOT_ID8 = "lfx-plus-mhead";
+  var ON_CLASS7 = "lfx-plus-mhead-on";
   var EXCLUDED7 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var SOLID_AT2 = 8;
   function showsBack(route) {
@@ -10045,28 +11116,28 @@
     if (/^\/(mypreferences|usermenu)/.test(route.path)) return "Einstellungen";
     return "";
   }
-  var state8 = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
+  var state10 = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
   function render6() {
-    if (!state8.root) return;
-    const back = showsBack(state8.route);
-    state8.backEl.hidden = !back;
-    state8.root.classList.toggle("has-back", back);
-    state8.titleEl.textContent = headerTitle(state8.route, state8.libs);
-    const on = isTvModeRoute(state8.route);
-    state8.tvEl.classList.toggle("is-active", on);
-    if (on) state8.tvEl.setAttribute("aria-current", "page");
-    else state8.tvEl.removeAttribute("aria-current");
+    if (!state10.root) return;
+    const back = showsBack(state10.route);
+    state10.backEl.hidden = !back;
+    state10.root.classList.toggle("has-back", back);
+    state10.titleEl.textContent = headerTitle(state10.route, state10.libs);
+    const on = isTvModeRoute(state10.route);
+    state10.tvEl.classList.toggle("is-active", on);
+    if (on) state10.tvEl.setAttribute("aria-current", "page");
+    else state10.tvEl.removeAttribute("aria-current");
   }
   function scrollTick2() {
-    state8.raf = 0;
-    if (!state8.root) return;
+    state10.raf = 0;
+    if (!state10.root) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-    state8.root.classList.toggle("is-solid", y > SOLID_AT2);
+    state10.root.classList.toggle("is-solid", y > SOLID_AT2);
   }
   function onScroll3() {
-    if (state8.raf) return;
+    if (state10.raf) return;
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state8.raf = raf3(scrollTick2);
+    state10.raf = raf3(scrollTick2);
   }
   async function loadLibraries2(seq3) {
     let libs = [];
@@ -10074,8 +11145,8 @@
       libs = await getLibraries() || [];
     } catch {
     }
-    if (seq3 !== state8.seq || !state8.root) return;
-    state8.libs = libs;
+    if (seq3 !== state10.seq || !state10.root) return;
+    state10.libs = libs;
     render6();
   }
   var plusMobileHead = {
@@ -10084,10 +11155,10 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED7.test(route.path);
     },
     mount(route) {
-      const seq3 = ++state8.seq;
-      state8.route = route;
-      state8.libs = [];
-      const root7 = mountPoint(ROOT_ID6, { tag: "header", className: "lfx-plus-mhead" });
+      const seq3 = ++state10.seq;
+      state10.route = route;
+      state10.libs = [];
+      const root7 = mountPoint(ROOT_ID8, { tag: "header", className: "lfx-plus-mhead" });
       root7.textContent = "";
       const backEl = h("button", { type: "button", class: "lfx-plus-mhead__back", "aria-label": "Zur\xFCck", hidden: true });
       backEl.innerHTML = ICONS3.back;
@@ -10098,40 +11169,40 @@
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-mhead__ds" });
       root7.append(backEl, titleEl, ds, tv);
-      state8.tvEl = tv;
-      state8.root = root7;
-      state8.backEl = backEl;
-      state8.titleEl = titleEl;
-      document.documentElement.classList.add(ON_CLASS5);
+      state10.tvEl = tv;
+      state10.root = root7;
+      state10.backEl = backEl;
+      state10.titleEl = titleEl;
+      document.documentElement.classList.add(ON_CLASS7);
       window.addEventListener("scroll", onScroll3, { passive: true });
-      state8.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
+      state10.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
       render6();
       scrollTick2();
       loadLibraries2(seq3);
     },
     update(route) {
-      state8.route = route;
+      state10.route = route;
       render6();
     },
     unmount() {
-      state8.seq++;
-      for (const fn of state8.cleanups.splice(0)) fn();
-      if (state8.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state8.raf);
-      state8.raf = 0;
-      unmountPoint(ROOT_ID6);
-      document.documentElement.classList.remove(ON_CLASS5);
-      state8.root = null;
-      state8.backEl = null;
-      state8.titleEl = null;
-      state8.tvEl = null;
-      state8.libs = [];
+      state10.seq++;
+      for (const fn of state10.cleanups.splice(0)) fn();
+      if (state10.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state10.raf);
+      state10.raf = 0;
+      unmountPoint(ROOT_ID8);
+      document.documentElement.classList.remove(ON_CLASS7);
+      state10.root = null;
+      state10.backEl = null;
+      state10.titleEl = null;
+      state10.tvEl = null;
+      state10.libs = [];
     }
   };
   var mobilehead_default = plusMobileHead;
 
   // src/js/features/plus/switcher.js
-  var ROOT_ID7 = "lfx-plus-switcher";
-  var ON_CLASS6 = "lfx-plus-switcher-on";
+  var ROOT_ID9 = "lfx-plus-switcher";
+  var ON_CLASS8 = "lfx-plus-switcher-on";
   function isSwitcherRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return false;
     const { kind: kind2 } = parseLfxRoute(route);
@@ -10152,27 +11223,27 @@
     if (kind2 === "hub" && lib) return `lib:${lib}`;
     return "foryou";
   }
-  var state9 = { root: null, route: null, libs: [], seq: 0 };
+  var state11 = { root: null, route: null, libs: [], seq: 0 };
   function applyActive5() {
-    if (!state9.root || !state9.route) return;
-    const key = activeTab(state9.route);
-    let active5 = null;
-    for (const el4 of state9.root.querySelectorAll('[role="tab"]')) {
+    if (!state11.root || !state11.route) return;
+    const key = activeTab(state11.route);
+    let active6 = null;
+    for (const el4 of state11.root.querySelectorAll('[role="tab"]')) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       el4.setAttribute("aria-selected", String(on));
       el4.tabIndex = on ? 0 : -1;
-      if (on) active5 = el4;
+      if (on) active6 = el4;
     }
-    const list = state9.root.querySelector(".lfx-plus-switcher__list");
-    if (active5 && list && list.scrollWidth > list.clientWidth) {
-      list.scrollLeft = Math.max(0, active5.offsetLeft - (list.clientWidth - active5.offsetWidth) / 2);
+    const list = state11.root.querySelector(".lfx-plus-switcher__list");
+    if (active6 && list && list.scrollWidth > list.clientWidth) {
+      list.scrollLeft = Math.max(0, active6.offsetLeft - (list.clientWidth - active6.offsetWidth) / 2);
     }
   }
   function render7() {
-    if (!state9.root) return;
+    if (!state11.root) return;
     const list = h("div", { class: "lfx-plus-switcher__list", role: "tablist", "aria-label": "Ansicht w\xE4hlen" });
-    for (const t of switcherTabs(state9.libs)) {
+    for (const t of switcherTabs(state11.libs)) {
       list.append(h("a", { class: "lfx-plus-switcher__tab", role: "tab", href: t.href, dataset: { key: t.key } }, t.label));
     }
     list.addEventListener("keydown", (e) => {
@@ -10185,7 +11256,7 @@
       next.tabIndex = 0;
       next.focus();
     });
-    state9.root.replaceChildren(list);
+    state11.root.replaceChildren(list);
     applyActive5();
   }
   async function loadLibraries3(seq3) {
@@ -10194,8 +11265,8 @@
       libs = await getLibraries() || [];
     } catch {
     }
-    if (seq3 !== state9.seq || !state9.root) return;
-    state9.libs = libs;
+    if (seq3 !== state11.seq || !state11.root) return;
+    state11.libs = libs;
     render7();
   }
   var plusSwitcher = {
@@ -10204,30 +11275,30 @@
       return isTheme("plus") && isModern() && !isTv() && isReady() && isSwitcherRoute(route);
     },
     mount(route) {
-      const seq3 = ++state9.seq;
-      state9.route = route;
-      state9.libs = [];
-      state9.root = mountPoint(ROOT_ID7, { className: "lfx-plus-switcher" });
-      document.documentElement.classList.add(ON_CLASS6);
+      const seq3 = ++state11.seq;
+      state11.route = route;
+      state11.libs = [];
+      state11.root = mountPoint(ROOT_ID9, { className: "lfx-plus-switcher" });
+      document.documentElement.classList.add(ON_CLASS8);
       render7();
       loadLibraries3(seq3);
     },
     update(route) {
-      state9.route = route;
+      state11.route = route;
       applyActive5();
     },
     unmount() {
-      state9.seq++;
-      unmountPoint(ROOT_ID7);
-      document.documentElement.classList.remove(ON_CLASS6);
-      state9.root = null;
-      state9.libs = [];
+      state11.seq++;
+      unmountPoint(ROOT_ID9);
+      document.documentElement.classList.remove(ON_CLASS8);
+      state11.root = null;
+      state11.libs = [];
     }
   };
   var switcher_default = plusSwitcher;
 
   // src/js/shared/hub.js
-  var asItems4 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems5 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function hubTypes(lib) {
     switch (lib && lib.collectionType) {
       case "movies":
@@ -10241,7 +11312,7 @@
     }
   }
   async function loadResume(lib, types) {
-    const list = asItems4(await getResume({
+    const list = asItems5(await getResume({
       ...BASE_PARAMS,
       ParentId: lib.id,
       MediaTypes: "Video",
@@ -10259,7 +11330,7 @@
       IncludeItemTypes: types.items,
       Recursive: true,
       ...params
-    }).then(asItems4);
+    }).then(asItems5);
     const defs = [
       { id: `${lib.id}-resume`, title: "Weiterschauen", kind: "resume", load: () => loadResume(lib, types) },
       {
@@ -10272,7 +11343,7 @@
           IncludeItemTypes: types.items,
           GroupItems: true,
           Limit: 20
-        }).then(asItems4)
+        }).then(asItems5)
       },
       {
         id: `${lib.id}-toprated`,
@@ -10283,7 +11354,7 @@
     ];
     let genres;
     try {
-      genres = asItems4(await getJson("/Genres", {
+      genres = asItems5(await getJson("/Genres", {
         userId: getUserId(),
         ParentId: lib.id,
         IncludeItemTypes: types.items,
@@ -10312,18 +11383,18 @@
     });
     return defs;
   }
-  var HERO_FIELDS = `${BASE_PARAMS.Fields},RemoteTrailers,LocalTrailerCount`;
+  var HERO_FIELDS2 = `${BASE_PARAMS.Fields},RemoteTrailers,LocalTrailerCount`;
   async function getHubHeroPool(lib) {
     if (!lib || !lib.id) return [];
     const types = hubTypes(lib);
     const q = (params) => getItems({
       ...BASE_PARAMS,
-      Fields: HERO_FIELDS,
+      Fields: HERO_FIELDS2,
       ParentId: lib.id,
       IncludeItemTypes: types.items,
       Recursive: true,
       ...params
-    }).then(asItems4);
+    }).then(asItems5);
     const [latest, random] = await Promise.all([
       q({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 30 }).catch(() => []),
       q({ SortBy: "Random", Limit: 40 }).catch(() => [])
@@ -10520,8 +11591,8 @@
 
   // src/js/features/plus/hero.js
   var HERO_INTERVAL = 7e3;
-  var HERO_FIELDS2 = `${BASE_PARAMS.Fields},Taglines`;
-  var asItems5 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var HERO_FIELDS3 = `${BASE_PARAMS.Fields},Taglines`;
+  var asItems6 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var CHEVRON2 = '<svg viewBox="0 0 14 27" aria-hidden="true" focusable="false"><polyline points="1.5,1.5 12.5,13.5 1.5,25.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function taglineFor(item) {
     const t = Array.isArray(item.Taglines) ? item.Taglines.find(Boolean) : "";
@@ -10545,11 +11616,11 @@
   async function fetchHomeHeroPool() {
     const q = (params) => getItems({
       ...BASE_PARAMS,
-      Fields: HERO_FIELDS2,
+      Fields: HERO_FIELDS3,
       IncludeItemTypes: "Movie,Series",
       Recursive: true,
       ...params
-    }).then(asItems5);
+    }).then(asItems6);
     const [latest, random] = await Promise.all([
       q({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 30 }).catch(() => []),
       q({ SortBy: "Random", Limit: 40 }).catch(() => [])
@@ -10616,21 +11687,21 @@
     let hover2 = false;
     let focus = false;
     const running = () => !mobile && n > 1 && !hover2 && !focus && !document.hidden;
-    function stop7() {
+    function stop8() {
       clearTimeout(timer2);
       timer2 = null;
     }
     function schedule4() {
-      stop7();
+      stop8();
       if (running()) timer2 = setTimeout(() => go3(idx + 1), interval);
     }
-    function paint() {
+    function paint2() {
       el4.style.setProperty("--i", String(idx));
       slides.forEach((s, i) => {
-        const active5 = i === idx;
-        s.classList.toggle("is-active", active5);
-        s.setAttribute("aria-hidden", active5 ? "false" : "true");
-        s.tabIndex = active5 ? 0 : -1;
+        const active6 = i === idx;
+        s.classList.toggle("is-active", active6);
+        s.setAttribute("aria-hidden", active6 ? "false" : "true");
+        s.tabIndex = active6 ? 0 : -1;
       });
       dots.forEach((d, i) => {
         d.classList.toggle("is-active", i === idx);
@@ -10648,7 +11719,7 @@
     }
     function go3(i) {
       idx = (i % n + n) % n;
-      paint();
+      paint2();
       if (mobile) scrollToSlide(idx);
       schedule4();
     }
@@ -10672,7 +11743,7 @@
         });
         if (best !== idx) {
           idx = best;
-          paint();
+          paint2();
         }
       });
     }
@@ -10692,7 +11763,7 @@
     };
     const onEnter = () => {
       hover2 = true;
-      stop7();
+      stop8();
     };
     const onLeave = () => {
       hover2 = false;
@@ -10700,7 +11771,7 @@
     };
     const onFocusIn = () => {
       focus = true;
-      stop7();
+      stop8();
     };
     const onFocusOut = (e) => {
       if (!el4.contains(e.relatedTarget)) {
@@ -10708,8 +11779,8 @@
         schedule4();
       }
     };
-    const onVis = () => document.hidden ? stop7() : schedule4();
-    const onKey3 = (e) => {
+    const onVis = () => document.hidden ? stop8() : schedule4();
+    const onKey4 = (e) => {
       if (e.key === "ArrowLeft") go3(idx - 1);
       else if (e.key === "ArrowRight") go3(idx + 1);
     };
@@ -10721,16 +11792,16 @@
     el4.addEventListener("mouseleave", onLeave);
     el4.addEventListener("focusin", onFocusIn);
     el4.addEventListener("focusout", onFocusOut);
-    el4.addEventListener("keydown", onKey3);
+    el4.addEventListener("keydown", onKey4);
     document.addEventListener("visibilitychange", onVis);
-    paint();
+    paint2();
     schedule4();
     return {
       el: el4,
       go: go3,
       index: () => idx,
       destroy() {
-        stop7();
+        stop8();
         track.removeEventListener("scroll", onTrackScroll);
         if (scrollRaf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(scrollRaf);
         scrollRaf = 0;
@@ -10741,7 +11812,7 @@
         el4.removeEventListener("mouseleave", onLeave);
         el4.removeEventListener("focusin", onFocusIn);
         el4.removeEventListener("focusout", onFocusOut);
-        el4.removeEventListener("keydown", onKey3);
+        el4.removeEventListener("keydown", onKey4);
         document.removeEventListener("visibilitychange", onVis);
         el4.remove();
       }
@@ -10749,7 +11820,7 @@
   }
 
   // src/js/shared/collections.js
-  var asItems6 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems7 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var FIELDS2 = "ChildCount,ImageTags,BackdropImageTags";
   function pickImage(b) {
     const tags = b.ImageTags || {};
@@ -10769,7 +11840,7 @@
         EnableImageTypes: "Primary,Backdrop,Thumb",
         EnableUserData: false,
         ...params
-      }).then(asItems6);
+      }).then(asItems7);
       let list = tag ? await q({ Tags: tag, SortBy: "SortName", SortOrder: "Ascending" }) : [];
       if (!list.length) {
         const all = await q({ SortBy: "SortName", SortOrder: "Ascending" });
@@ -10915,7 +11986,7 @@
         return;
       }
       if (disposed) return;
-      const pending = /* @__PURE__ */ new Map();
+      const pending2 = /* @__PURE__ */ new Map();
       let shown3 = 0;
       const info = lastInfo && Date.now() - lastInfo.at < HOME_TTL ? lastInfo.v : null;
       for (const def of defs || []) {
@@ -10932,30 +12003,30 @@
           continue;
         }
         const el4 = skeleton2(def);
-        pending.set(el4, def);
+        pending2.set(el4, def);
         slot.append(el4);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
           for (const en of entries) {
-            const def = pending.get(en.target);
+            const def = pending2.get(en.target);
             if (!en.isIntersecting || !def) continue;
-            pending.delete(en.target);
+            pending2.delete(en.target);
             observer2.unobserve(en.target);
             loadRow(en.target, def);
           }
         }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "600px 0px" });
-        for (const el4 of pending.keys()) observer2.observe(el4);
+        for (const el4 of pending2.keys()) observer2.observe(el4);
       } else {
-        for (const [el4, def] of [...pending]) {
-          pending.delete(el4);
+        for (const [el4, def] of [...pending2]) {
+          pending2.delete(el4);
           loadRow(el4, def);
         }
       }
       if (opts.prefetch) {
         prefetch = startRowPrefetch({
           slot,
-          pending,
+          pending: pending2,
           hero: opts.hero,
           load: (el4, def) => {
             if (observer2) observer2.unobserve(el4);
@@ -10976,10 +12047,10 @@
   }
 
   // src/js/features/plus/home.js
-  var ROOT_ID8 = "lfx-plus-home";
-  var ON_CLASS7 = "lfx-plus-home-on";
+  var ROOT_ID10 = "lfx-plus-home";
+  var ON_CLASS9 = "lfx-plus-home-on";
   var cleanups3 = [];
-  var waitTimer4 = null;
+  var waitTimer5 = null;
   var token = 0;
   var currentKey = null;
   var currentPhone = false;
@@ -10993,11 +12064,11 @@
     if (lfx || route.params.get("tab") === "1") return null;
     return "home";
   }
-  function findHomeTab4() {
+  function findHomeTab6() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
-  function teardown5() {
+  function teardown7() {
     token++;
     for (const fn of cleanups3.splice(0)) {
       try {
@@ -11006,20 +12077,20 @@
         console.error("[LenzFlix] plus-home cleanup", e);
       }
     }
-    document.getElementById(ROOT_ID8)?.remove();
-    document.documentElement.classList.remove(ON_CLASS7);
+    document.getElementById(ROOT_ID10)?.remove();
+    document.documentElement.classList.remove(ON_CLASS9);
     currentKey = null;
     currentPhone = false;
   }
-  async function build3(tab2, key) {
-    teardown5();
+  async function build5(tab2, key) {
+    teardown7();
     const my = token;
     const isHub = key.startsWith("hub:");
     const heroSlot = h("div", { class: "lfx-plus-home__hero is-loading" });
     const rowsSlot = h("div", { class: "lfx-plus-rows" });
-    const root7 = h("div", { id: ROOT_ID8, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
+    const root7 = h("div", { id: ROOT_ID10, class: `lfx-plus-home${isHub ? " lfx-plus-home--hub" : ""}` }, [heroSlot, rowsSlot]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS7);
+    document.documentElement.classList.add(ON_CLASS9);
     currentKey = key;
     currentPhone = isPhone();
     const alive = () => my === token;
@@ -11054,30 +12125,30 @@
     if (!isHub) cleanups3.push(renderBrands(root7, rowsSlot));
     cleanups3.push(renderRows(rowsSlot, () => isHub ? lib ? buildHubRowDefs(lib) : [] : buildRowDefs(), isHub ? null : () => peekRowDefs(), { prefetch: !isHub, hero: () => heroSlot }));
   }
-  function ensure4(route) {
-    clearTimeout(waitTimer4);
+  function ensure6(route) {
+    clearTimeout(waitTimer5);
     const key = routeKey(route);
     if (!key) return;
-    const existing = document.getElementById(ROOT_ID8);
-    const tab2 = findHomeTab4();
+    const existing = document.getElementById(ROOT_ID10);
+    const tab2 = findHomeTab6();
     if (tab2 && existing && tab2.contains(existing) && currentKey === key && currentPhone === isPhone()) return;
     let tries = 0;
     const poll = () => {
-      const t = findHomeTab4();
-      if (t) build3(t, key);
-      else if (++tries < 30) waitTimer4 = setTimeout(poll, 200);
+      const t = findHomeTab6();
+      if (t) build5(t, key);
+      else if (++tries < 30) waitTimer5 = setTimeout(poll, 200);
     };
-    if (tab2) build3(tab2, key);
-    else waitTimer4 = setTimeout(poll, 200);
+    if (tab2) build5(tab2, key);
+    else waitTimer5 = setTimeout(poll, 200);
   }
   var home_default2 = {
     name: "plus-home",
     match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeKey(route) !== null,
-    mount: (route) => ensure4(route),
-    update: (route) => ensure4(route),
+    mount: (route) => ensure6(route),
+    update: (route) => ensure6(route),
     unmount: () => {
-      clearTimeout(waitTimer4);
-      teardown5();
+      clearTimeout(waitTimer5);
+      teardown7();
     }
   };
 
@@ -11222,7 +12293,7 @@
 
   // src/js/features/plus/title-mount.js
   var ROOT = () => document.documentElement;
-  function findHomeTab5() {
+  function findHomeTab7() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -11233,7 +12304,7 @@
     const poll = () => {
       timer2 = null;
       if (dead) return;
-      const t = findHomeTab5();
+      const t = findHomeTab7();
       if (t) cb(t);
       else if (++n < tries) timer2 = setTimeout(poll, every);
     };
@@ -11263,7 +12334,7 @@
   }
   function metaText(item, { genres = 3 } = {}) {
     if (!item) return "";
-    const m = metaParts(item);
+    const m = metaParts2(item);
     const g = (item.Genres || []).slice(0, genres).join(", ");
     return [m.year, m.length, g].filter(Boolean).join(" \u2022 ");
   }
@@ -11287,9 +12358,9 @@
   }
 
   // src/js/features/plus/title.js
-  var ROOT_ID9 = "lfx-plus-title";
+  var ROOT_ID11 = "lfx-plus-title";
   var TRAILER_ID = "lfx-plus-trailer";
-  var ON_CLASS8 = "lfx-plus-title-on";
+  var ON_CLASS10 = "lfx-plus-title-on";
   var TICKS_PER_MIN3 = 6e8;
   var svg7 = (path) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${path}</svg>`;
   var ICON_PLAY3 = svg7('<path d="M7 4.5v15l12-7.5z"/>');
@@ -11298,13 +12369,13 @@
   var ICON_TRAILER = svg7('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4 1.5 6 3.5-6 3.5z"/>');
   var ICON_CHEVRON = svg7('<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/>');
   var ICON_CLOSE = svg7('<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/>');
-  var state10 = null;
+  var state12 = null;
   var gen2 = 0;
   var routeId = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" ? r.id : null;
   };
-  var stalenessOf = (g) => () => !state10 || state10.g !== g;
+  var stalenessOf = (g) => () => !state12 || state12.g !== g;
   function closeTrailer() {
     const el4 = document.getElementById(TRAILER_ID);
     if (!el4) return;
@@ -11322,8 +12393,8 @@
   }
   function dispose() {
     gen2 += 1;
-    const s = state10;
-    state10 = null;
+    const s = state12;
+    state12 = null;
     closeTrailer();
     try {
       closePopover();
@@ -11340,8 +12411,8 @@
       }
       if (s.root) s.root.remove();
     }
-    document.getElementById(ROOT_ID9)?.remove();
-    setPageOn(ON_CLASS8, false);
+    document.getElementById(ROOT_ID11)?.remove();
+    setPageOn(ON_CLASS10, false);
   }
   function circle(mod, label, icon5, onClick2) {
     const b = h("button", { type: "button", class: `lfx-plus-circle lfx-plus-circle--${mod}`, "aria-label": label, title: label });
@@ -11400,7 +12471,7 @@
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Trailer");
     overlay.append(video2, closeBtn);
-    const onKey3 = (e) => {
+    const onKey4 = (e) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
@@ -11409,10 +12480,10 @@
     const onBackdrop = (e) => {
       if (e.target === overlay) close2();
     };
-    window.addEventListener("keydown", onKey3, true);
+    window.addEventListener("keydown", onKey4, true);
     overlay.addEventListener("click", onBackdrop);
     overlay.__lfxCleanup = () => {
-      window.removeEventListener("keydown", onKey3, true);
+      window.removeEventListener("keydown", onKey4, true);
       overlay.removeEventListener("click", onBackdrop);
     };
     video2.addEventListener("error", () => {
@@ -11445,23 +12516,23 @@
   }
   function buildDetails(main) {
     const rows = [];
-    const add2 = (label, value) => {
+    const add3 = (label, value) => {
       if (!value) return;
       rows.push(h("div", { class: "lfx-plus-details__row" }, [h("dt", null, label), h("dd", null, value)]));
     };
-    const runtime = main.Type === "Series" ? "" : formatRuntime(main.RunTimeTicks);
-    add2("Laufzeit", runtime);
-    if (main.Type === "Series" && main.ChildCount) add2("Staffeln", String(main.ChildCount));
-    add2("Erscheinungsjahr", main.ProductionYear ? String(main.ProductionYear) : "");
-    add2("Altersfreigabe", ratingText(main.OfficialRating));
-    add2("Genres", (main.Genres || []).join(", "));
-    add2("Studio", (main.Studios || []).map((s) => s.Name).filter(Boolean).slice(0, 4).join(", "));
-    add2("Regie", peopleOf(main, "Director").map((p) => p.Name).slice(0, 4).join(", "));
-    add2("Besetzung", peopleOf(main, "Actor").map((p) => p.Name).slice(0, 12).join(", "));
+    const runtime = main.Type === "Series" ? "" : formatRuntime2(main.RunTimeTicks);
+    add3("Laufzeit", runtime);
+    if (main.Type === "Series" && main.ChildCount) add3("Staffeln", String(main.ChildCount));
+    add3("Erscheinungsjahr", main.ProductionYear ? String(main.ProductionYear) : "");
+    add3("Altersfreigabe", ratingText(main.OfficialRating));
+    add3("Genres", (main.Genres || []).join(", "));
+    add3("Studio", (main.Studios || []).map((s) => s.Name).filter(Boolean).slice(0, 4).join(", "));
+    add3("Regie", peopleOf(main, "Director").map((p) => p.Name).slice(0, 4).join(", "));
+    add3("Besetzung", peopleOf(main, "Actor").map((p) => p.Name).slice(0, 12).join(", "));
     const streams = main.MediaSources && main.MediaSources[0] && main.MediaSources[0].MediaStreams || [];
     const langs = (type) => [...new Set(streams.filter((s) => s.Type === type).map((s) => s.DisplayLanguage || s.Language).filter(Boolean))];
-    add2("Audio", langs("Audio").join(", "));
-    add2("Untertitel", langs("Subtitle").join(", "));
+    add3("Audio", langs("Audio").join(", "));
+    add3("Untertitel", langs("Subtitle").join(", "));
     const left = h("div", { class: "lfx-plus-details__main" }, [
       h("h2", { class: "lfx-plus-details__title" }, main.Name || ""),
       main.Taglines && main.Taglines[0] ? h("p", { class: "lfx-plus-details__tagline" }, main.Taglines[0]) : null,
@@ -11473,7 +12544,7 @@
     const img = imageUrl(ep, { type: "Primary", maxWidth: 640, quality: 85 }) || (landscapeFor(ep, 640) || {}).url || null;
     const p = progressPercent2(ep);
     const played = ep.UserData && ep.UserData.Played === true;
-    const mins = formatRuntime(ep.RunTimeTicks);
+    const mins = formatRuntime2(ep.RunTimeTicks);
     const media = h("span", { class: "lfx-plus-ep__media" }, [
       img ? h("img", { class: "lfx-plus-ep__img", src: img, alt: "", loading: "lazy", decoding: "async" }) : null,
       played ? h("span", { class: "lfx-plus-ep__seen", "aria-label": "Gesehen", title: "Gesehen" }) : null,
@@ -11496,7 +12567,7 @@
   }
   async function load2(g) {
     const stale = stalenessOf(g);
-    const s = state10;
+    const s = state12;
     const root7 = s.root;
     let sel;
     let main;
@@ -11810,19 +12881,19 @@
   function begin(id, { keepScroll = false } = {}) {
     dispose();
     const g = gen2;
-    state10 = { g, id, root: null, cleanups: [], cancelWait: null };
-    const s = state10;
+    state12 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state12;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state10 !== s) return;
-      const root7 = h("div", { id: ROOT_ID9, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
+      if (state12 !== s) return;
+      const root7 = h("div", { id: ROOT_ID11, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-plus-title__skeleton" })
       ]);
       s.root = root7;
       tab2.prepend(root7);
-      setPageOn(ON_CLASS8, true);
+      setPageOn(ON_CLASS10, true);
       if (!keepScroll) scrollTop();
       load2(g).then(() => {
-        if (state10 === s) root7.removeAttribute("aria-busy");
+        if (state12 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] plus-title", e));
     });
   }
@@ -11836,25 +12907,25 @@
     update(route) {
       const id = routeId(route);
       if (!id) return;
-      if (state10 && state10.id === id && state10.root && state10.root.isConnected) return;
+      if (state12 && state12.id === id && state12.root && state12.root.isConnected) return;
       begin(id);
     },
     unmount: dispose
   };
 
   // src/js/features/plus/browse.js
-  var ROOT_ID10 = "lfx-plus-browse";
-  var ON_CLASS9 = "lfx-plus-browse-on";
+  var ROOT_ID12 = "lfx-plus-browse";
+  var ON_CLASS11 = "lfx-plus-browse-on";
   var PAGE4 = 40;
-  var state11 = null;
-  var routeOf = (route) => {
+  var state13 = null;
+  var routeOf2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
   };
-  var asItems7 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems8 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function dispose2() {
-    const s = state11;
-    state11 = null;
+    const s = state13;
+    state13 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       for (const fn of s.cleanups.splice(0)) {
@@ -11866,8 +12937,8 @@
       }
       if (s.root) s.root.remove();
     }
-    document.getElementById(ROOT_ID10)?.remove();
-    setPageOn(ON_CLASS9, false);
+    document.getElementById(ROOT_ID12)?.remove();
+    setPageOn(ON_CLASS11, false);
   }
   function paintChips(s) {
     for (const chip of s.chips.querySelectorAll(".lfx-plus-chip")) {
@@ -11889,11 +12960,11 @@
     loadMore(s);
   }
   async function loadMore(s) {
-    if (state11 !== s || s.loading || s.done) return;
+    if (state13 !== s || s.loading || s.done) return;
     const seq3 = s.seq;
     s.loading = true;
     s.root.setAttribute("aria-busy", "true");
-    const stale = () => state11 !== s || s.seq !== seq3;
+    const stale = () => state13 !== s || s.seq !== seq3;
     try {
       const res = await getItems({
         ...BASE_PARAMS,
@@ -11907,7 +12978,7 @@
         Limit: PAGE4
       });
       if (stale()) return;
-      const items = asItems7(res);
+      const items = asItems8(res);
       putItems(items);
       s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       s.items.push(...items);
@@ -11937,8 +13008,8 @@
       }
     }
   }
-  async function build4(tab2, s) {
-    const stale = () => state11 !== s;
+  async function build6(tab2, s) {
+    const stale = () => state13 !== s;
     let lib = null;
     try {
       lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
@@ -11951,10 +13022,10 @@
     const grid2 = h("div", { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" });
     const status = h("div", { class: "lfx-plus-browse__status" });
     const sentinel = h("div", { class: "lfx-plus-browse__sentinel", "aria-hidden": "true" });
-    const root7 = h("div", { id: ROOT_ID10, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
+    const root7 = h("div", { id: ROOT_ID12, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
     Object.assign(s, { root: root7, chips, grid: grid2, status });
     tab2.prepend(root7);
-    setPageOn(ON_CLASS9, true);
+    setPageOn(ON_CLASS11, true);
     scrollTop();
     const addChip = (label, genreId) => {
       chips.append(h("a", {
@@ -11980,7 +13051,7 @@
     }
     reload(s);
     try {
-      const genres = asItems7(await getJson("/Genres", {
+      const genres = asItems8(await getJson("/Genres", {
         userId: getUserId(),
         ParentId: s.libId,
         IncludeItemTypes: s.types,
@@ -12008,42 +13079,42 @@
       cancelWait: null,
       root: null
     };
-    state11 = s;
+    state13 = s;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state11 === s) build4(tab2, s);
+      if (state13 === s) build6(tab2, s);
     });
   }
   var browse_default = {
     name: "plus-browse",
-    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeOf(route) != null,
+    match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && routeOf2(route) != null,
     mount(route) {
-      const r = routeOf(route);
+      const r = routeOf2(route);
       if (r) begin2(r);
     },
     update(route) {
-      const r = routeOf(route);
+      const r = routeOf2(route);
       if (!r) return;
-      if (!state11 || state11.libId !== r.lib || !state11.root || !state11.root.isConnected) {
+      if (!state13 || state13.libId !== r.lib || !state13.root || !state13.root.isConnected) {
         begin2(r);
         return;
       }
-      if ((r.genre || null) !== state11.genreId) {
-        state11.genreId = r.genre || null;
-        reload(state11);
+      if ((r.genre || null) !== state13.genreId) {
+        state13.genreId = r.genre || null;
+        reload(state13);
       }
     },
     unmount: dispose2
   };
 
   // src/js/shared/search.js
-  var asItems8 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems9 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var MIN_LEN = 2;
   async function searchItems(q, { limit = 40, signal } = {}) {
     const out = { movies: [], series: [], episodes: [], people: [] };
     const term = String(q == null ? "" : q).trim();
     if (term.length < MIN_LEN) return out;
     const userId = getUserId();
-    const get = (path, params) => getJson(path, { userId, ...params }, { signal }).then(asItems8);
+    const get = (path, params) => getJson(path, { userId, ...params }, { signal }).then(asItems9);
     const soft2 = (e) => {
       if (e && e.name === "AbortError") throw e;
       return [];
@@ -12062,7 +13133,7 @@
   async function tileFor(genre, parentId) {
     const own2 = genre.ImageTags && (genre.ImageTags.Thumb ? "Thumb" : genre.ImageTags.Primary ? "Primary" : null);
     if (own2) return imageUrlFor(genre.Id, { type: own2, tag: genre.ImageTags[own2], maxWidth: 640 });
-    const top = asItems8(await getItems({
+    const top = asItems9(await getItems({
       ParentId: parentId || void 0,
       GenreIds: genre.Id,
       IncludeItemTypes: "Movie,Series",
@@ -12087,7 +13158,7 @@
       SortBy: "SortName",
       Fields: "PrimaryImageAspectRatio"
     });
-    const genres = asItems8(res).filter((g) => g && g.Id && g.Name).slice(0, limit);
+    const genres = asItems9(res).filter((g) => g && g.Id && g.Name).slice(0, limit);
     return Promise.all(genres.map(async (g) => {
       let imageUrl2;
       try {
@@ -12100,20 +13171,20 @@
   }
 
   // src/js/features/plus/search.js
-  var ROOT_ID11 = "lfx-plus-search";
-  var ON_CLASS10 = "lfx-plus-search-on";
+  var ROOT_ID13 = "lfx-plus-search";
+  var ON_CLASS12 = "lfx-plus-search-on";
   var DEBOUNCE_MS = 300;
   var MIN_LEN2 = 2;
   var LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
   var X = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg>';
-  var state12 = null;
+  var state14 = null;
   var routeQ = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "search" ? r.q || "" : null;
   };
   function dispose3() {
-    const s = state12;
-    state12 = null;
+    const s = state14;
+    state14 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       clearTimeout(s.timer);
@@ -12127,8 +13198,8 @@
       }
       if (s.root) s.root.remove();
     }
-    document.getElementById(ROOT_ID11)?.remove();
-    setPageOn(ON_CLASS10, false);
+    document.getElementById(ROOT_ID13)?.remove();
+    setPageOn(ON_CLASS12, false);
   }
   function tile(href, label, imageUrl2, { nameOnImage = true } = {}) {
     const hide2 = !!imageUrl2 && !nameOnImage;
@@ -12149,7 +13220,7 @@
     }
   }
   async function renderEmpty(s, seq3) {
-    const stale = () => state12 !== s || s.seq !== seq3;
+    const stale = () => state14 !== s || s.seq !== seq3;
     s.results.replaceChildren();
     const [lib, genres, colls] = await Promise.all([
       genreLib(),
@@ -12191,7 +13262,7 @@
     const ctl = new AbortController();
     s.abort = ctl;
     s.root.setAttribute("aria-busy", "true");
-    const stale = () => state12 !== s || s.seq !== seq3;
+    const stale = () => state14 !== s || s.seq !== seq3;
     try {
       const [res, info] = await Promise.all([
         searchItems(term, { signal: ctl.signal }),
@@ -12229,7 +13300,7 @@
       s.root.removeAttribute("aria-busy");
     }
   }
-  function build5(tab2, s, q) {
+  function build7(tab2, s, q) {
     const input = h("input", {
       type: "search",
       class: "lfx-plus-search__input",
@@ -12246,13 +13317,13 @@
     clear.innerHTML = X;
     const results = h("div", { class: "lfx-plus-search__results", "aria-live": "polite" });
     const field = h("div", { class: "lfx-plus-search__field" }, [icon5, input, clear]);
-    const root7 = h("div", { id: ROOT_ID11, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
+    const root7 = h("div", { id: ROOT_ID13, class: "lfx-plus-page lfx-plus-search", role: "search" }, [field, results]);
     Object.assign(s, { root: root7, input, results });
     s.syncUi = () => {
       clear.hidden = !input.value;
     };
     tab2.prepend(root7);
-    setPageOn(ON_CLASS10, true);
+    setPageOn(ON_CLASS12, true);
     const writeHash = (term) => {
       try {
         history.replaceState(history.state, "", searchHref(term));
@@ -12275,7 +13346,7 @@
       runSearch(s, "");
       input.focus();
     };
-    const onKey3 = (e) => {
+    const onKey4 = (e) => {
       if (e.key === "Enter") {
         clearTimeout(s.timer);
         const term = input.value.trim();
@@ -12284,11 +13355,11 @@
       }
     };
     input.addEventListener("input", onInput);
-    input.addEventListener("keydown", onKey3);
+    input.addEventListener("keydown", onKey4);
     clear.addEventListener("click", onClear);
     s.cleanups.push(() => {
       input.removeEventListener("input", onInput);
-      input.removeEventListener("keydown", onKey3);
+      input.removeEventListener("keydown", onKey4);
       clear.removeEventListener("click", onClear);
     });
     try {
@@ -12301,9 +13372,9 @@
     dispose3();
     const s = { root: null, input: null, results: null, term: null, timer: null, abort: null, seq: 0, cleanups: [], cancelWait: null, syncUi: () => {
     } };
-    state12 = s;
+    state14 = s;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state12 === s) build5(tab2, s, q);
+      if (state14 === s) build7(tab2, s, q);
     });
   }
   var search_default = {
@@ -12315,17 +13386,17 @@
     update(route) {
       const q = routeQ(route);
       if (q == null) return;
-      if (!state12 || !state12.root || !state12.root.isConnected) {
+      if (!state14 || !state14.root || !state14.root.isConnected) {
         begin3(q);
         return;
       }
-      if (q.trim() !== (state12.term || "")) {
-        state12.input.value = q;
-        clearTimeout(state12.timer);
-        runSearch(state12, q.trim());
+      if (q.trim() !== (state14.term || "")) {
+        state14.input.value = q;
+        clearTimeout(state14.timer);
+        runSearch(state14, q.trim());
       }
       try {
-        state12.input.focus({ preventScroll: true });
+        state14.input.focus({ preventScroll: true });
       } catch {
       }
     },
@@ -12333,8 +13404,8 @@
   };
 
   // src/js/features/plus/tabbar.js
-  var ROOT_ID12 = "lfx-plus-tabbar";
-  var ON_CLASS11 = "lfx-plus-tabbar-on";
+  var ROOT_ID14 = "lfx-plus-tabbar";
+  var ON_CLASS13 = "lfx-plus-tabbar-on";
   var KB_CLASS = "lfx-plus-kb";
   var HIDE_CLASS = "lfx-plus-tabbar-hide";
   var EXCLUDED8 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
@@ -12389,16 +13460,16 @@
     if (String(href).startsWith("#")) window.location.hash = href;
     else window.location.assign(href);
   }
-  var state13 = { root: null, route: null, profileBtn: null, sheet: null, seq: 0, cleanups: [] };
+  var state15 = { root: null, route: null, profileBtn: null, sheet: null, seq: 0, cleanups: [] };
   var iconEl = (name) => {
     const span2 = h("span", { class: "lfx-plus-tabbar__icon", "aria-hidden": "true" });
     span2.innerHTML = ICONS3[name];
     return span2;
   };
   function applyActive6() {
-    if (!state13.root) return;
-    const key = tabKey(state13.route);
-    for (const el4 of state13.root.querySelectorAll("[data-key]")) {
+    if (!state15.root) return;
+    const key = tabKey(state15.route);
+    for (const el4 of state15.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -12407,18 +13478,18 @@
     }
   }
   function closeProfile() {
-    state13.seq++;
-    const c = state13.sheet;
-    state13.sheet = null;
+    state15.seq++;
+    const c = state15.sheet;
+    state15.sheet = null;
     if (c && isCurrent(c)) closeChooser();
   }
   async function openProfile() {
-    if (state13.sheet && isCurrent(state13.sheet)) {
+    if (state15.sheet && isCurrent(state15.sheet)) {
       closeProfile();
       return;
     }
-    const seq3 = ++state13.seq;
-    const anchor = state13.profileBtn;
+    const seq3 = ++state15.seq;
+    const anchor = state15.profileBtn;
     let libs = [];
     let profile2 = [];
     let user = { name: "" };
@@ -12434,9 +13505,9 @@
       user = await getUserChip();
     } catch {
     }
-    if (seq3 !== state13.seq || !state13.root) return;
+    if (seq3 !== state15.seq || !state15.root) return;
     const c = openSheet(anchor, "Profil");
-    state13.sheet = c;
+    state15.sheet = c;
     const entries = sheetEntries(libs, profile2, { go, close: () => closeChooser() });
     renderSheet(c, user && user.name || "Profil", entries);
     const buttons = c.list ? c.list.querySelectorAll(".lfx-sheet__item") : [];
@@ -12447,18 +13518,18 @@
   async function fillAvatar() {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state13.profileBtn) });
+      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state15.profileBtn) });
     } catch {
     }
-    if (!state13.profileBtn) return;
-    const avatar = state13.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
+    if (!state15.profileBtn) return;
+    const avatar = state15.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
       avatar.textContent = "";
     } else {
       avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
     }
-    if (user.name) state13.profileBtn.setAttribute("aria-label", `Profil: ${user.name}`);
+    if (user.name) state15.profileBtn.setAttribute("aria-label", `Profil: ${user.name}`);
   }
   var plusTabbar = {
     name: "plus-tabbar",
@@ -12466,9 +13537,9 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED8.test(route.path);
     },
     mount(route) {
-      state13.seq++;
-      state13.route = route;
-      const root7 = mountPoint(ROOT_ID12, { tag: "nav", className: "lfx-plus-tabbar" });
+      state15.seq++;
+      state15.route = route;
+      const root7 = mountPoint(ROOT_ID14, { tag: "nav", className: "lfx-plus-tabbar" });
       root7.textContent = "";
       root7.setAttribute("aria-label", "Hauptnavigation");
       for (const t of TABS) {
@@ -12483,8 +13554,8 @@
       }, [h("span", { class: "lfx-plus-tabbar__avatar", "aria-hidden": "true" })]);
       profileBtn.addEventListener("click", openProfile);
       root7.append(profileBtn);
-      state13.root = root7;
-      state13.profileBtn = profileBtn;
+      state15.root = root7;
+      state15.profileBtn = profileBtn;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
         if (e.target && e.target.matches && e.target.matches(TEXT_INPUT)) cl2.add(KB_CLASS);
@@ -12492,35 +13563,35 @@
       const onFocusOut = () => cl2.remove(KB_CLASS);
       document.addEventListener("focusin", onFocusIn);
       document.addEventListener("focusout", onFocusOut);
-      state13.cleanups.push(() => {
+      state15.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         cl2.remove(KB_CLASS);
       });
       const onHash2 = () => cl2.toggle(HIDE_CLASS, isVideoHash(window.location.hash));
       window.addEventListener("hashchange", onHash2);
-      state13.cleanups.push(() => {
+      state15.cleanups.push(() => {
         window.removeEventListener("hashchange", onHash2);
         cl2.remove(HIDE_CLASS);
       });
       cl2.remove(HIDE_CLASS);
-      cl2.add(ON_CLASS11);
+      cl2.add(ON_CLASS13);
       applyActive6();
       fillAvatar();
     },
     update(route) {
-      const changed = !state13.route || state13.route.hash !== route.hash;
-      state13.route = route;
+      const changed = !state15.route || state15.route.hash !== route.hash;
+      state15.route = route;
       if (changed) closeProfile();
       applyActive6();
     },
     unmount() {
       closeProfile();
-      for (const fn of state13.cleanups.splice(0)) fn();
-      unmountPoint(ROOT_ID12);
-      document.documentElement.classList.remove(ON_CLASS11);
-      state13.root = null;
-      state13.profileBtn = null;
+      for (const fn of state15.cleanups.splice(0)) fn();
+      unmountPoint(ROOT_ID14);
+      document.documentElement.classList.remove(ON_CLASS13);
+      state15.root = null;
+      state15.profileBtn = null;
     }
   };
   var tabbar_default = plusTabbar;
@@ -12544,25 +13615,25 @@
     const NOLOGO = nologoClass;
     const NOBD = nobdClass;
     const ALL = [NOLOGO, NOBD].filter(Boolean);
-    const state22 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
+    const state24 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
     function probeLogo(url) {
-      if (state22.probes.has(url) || typeof Image !== "function") return;
-      state22.probes.set(url, "pending");
+      if (state24.probes.has(url) || typeof Image !== "function") return;
+      state24.probes.set(url, "pending");
       const img = new Image();
-      img.onload = () => state22.probes.set(url, "ok");
+      img.onload = () => state24.probes.set(url, "ok");
       img.onerror = () => {
-        state22.probes.set(url, "bad");
+        state24.probes.set(url, "bad");
         evaluate3();
       };
       img.src = url;
     }
     function evaluate3() {
-      const page2 = state22.page;
+      const page2 = state24.page;
       if (!page2 || !page2.isConnected) return;
       const logoEl = page2.querySelector(".detailLogo");
       const logoUrl2 = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
       if (logoUrl2) probeLogo(logoUrl2);
-      let noLogo = !logoUrl2 || state22.probes.get(logoUrl2) === "bad";
+      let noLogo = !logoUrl2 || state24.probes.get(logoUrl2) === "bad";
       if (!noLogo) {
         const had = page2.classList.contains(NOLOGO);
         if (had) page2.classList.remove(NOLOGO);
@@ -12579,55 +13650,55 @@
       }
     }
     function schedule4() {
-      if (state22.timer) return;
-      state22.timer = setTimeout(() => {
-        state22.timer = 0;
+      if (state24.timer) return;
+      state24.timer = setTimeout(() => {
+        state24.timer = 0;
         evaluate3();
       }, 60);
     }
     function clearPage() {
-      if (state22.obs) state22.obs.disconnect();
-      state22.obs = null;
-      clearTimeout(state22.timer);
-      clearTimeout(state22.poll);
-      state22.timer = 0;
-      state22.poll = 0;
-      if (state22.page) {
-        state22.page.classList.remove(...ALL);
-        state22.page = null;
+      if (state24.obs) state24.obs.disconnect();
+      state24.obs = null;
+      clearTimeout(state24.timer);
+      clearTimeout(state24.poll);
+      state24.timer = 0;
+      state24.poll = 0;
+      if (state24.page) {
+        state24.page.classList.remove(...ALL);
+        state24.page = null;
       }
       for (const p of document.querySelectorAll(ALL.map((c) => `.${c}`).join(", "))) p.classList.remove(...ALL);
-      state22.probes.clear();
+      state24.probes.clear();
     }
     function attach2() {
       const page2 = document.querySelector("#itemDetailPage:not(.hide)");
       if (!page2) {
-        if (++state22.tries < 30) state22.poll = setTimeout(attach2, 200);
+        if (++state24.tries < 30) state24.poll = setTimeout(attach2, 200);
         return;
       }
-      if (state22.page === page2) return;
-      if (state22.obs) state22.obs.disconnect();
-      state22.page = page2;
-      state22.obs = new MutationObserver((records) => {
+      if (state24.page === page2) return;
+      if (state24.obs) state24.obs.disconnect();
+      state24.page = page2;
+      state24.obs = new MutationObserver((records) => {
         if (records.every((r) => r.type === "attributes" && r.target === page2)) return;
         schedule4();
       });
-      state22.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
+      state24.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
       evaluate3();
     }
     const feature = {
       name,
       match: (route) => isTheme(theme) && isModern() && !isTv() && isReady() && route.path === "/details",
       mount() {
-        state22.tries = 0;
+        state24.tries = 0;
         attach2();
       },
       update() {
-        state22.tries = 0;
-        clearTimeout(state22.poll);
-        state22.probes.clear();
+        state24.tries = 0;
+        clearTimeout(state24.poll);
+        state24.probes.clear();
         const page2 = document.querySelector("#itemDetailPage:not(.hide)");
-        if (page2 && page2 !== state22.page) clearPage();
+        if (page2 && page2 !== state24.page) clearPage();
         attach2();
         evaluate3();
       },
@@ -12648,7 +13719,7 @@
   var ID10 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
-  var state14 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
+  var state16 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
   var isFavRoute = (route) => route && route.path === "/home" && route.params.get("tab") === "1" && !route.params.get("lfx");
   function findTab() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #favoritesTab");
@@ -12656,8 +13727,8 @@
   }
   var hasCards = (tab2) => !!tab2.querySelector(".card, .listItem");
   function check2() {
-    state14.timer = 0;
-    const tab2 = state14.tab;
+    state16.timer = 0;
+    const tab2 = state16.tab;
     if (!tab2 || !tab2.isConnected) return;
     const mine = document.getElementById(ID10);
     if (hasCards(tab2)) {
@@ -12667,47 +13738,47 @@
     }
   }
   function schedule3(delay = SETTLE_MS) {
-    clearTimeout(state14.timer);
-    state14.timer = setTimeout(check2, delay);
+    clearTimeout(state16.timer);
+    state16.timer = setTimeout(check2, delay);
   }
-  function teardown6() {
-    if (state14.obs) state14.obs.disconnect();
-    state14.obs = null;
-    clearTimeout(state14.timer);
-    clearTimeout(state14.poll);
-    state14.timer = 0;
-    state14.poll = 0;
-    state14.tab = null;
+  function teardown8() {
+    if (state16.obs) state16.obs.disconnect();
+    state16.obs = null;
+    clearTimeout(state16.timer);
+    clearTimeout(state16.poll);
+    state16.timer = 0;
+    state16.poll = 0;
+    state16.tab = null;
     document.getElementById(ID10)?.remove();
   }
   function attach() {
     const tab2 = findTab();
     if (!tab2) {
-      if (++state14.tries < 30) state14.poll = setTimeout(attach, 200);
+      if (++state16.tries < 30) state16.poll = setTimeout(attach, 200);
       return;
     }
-    if (state14.tab === tab2) return;
-    teardown6();
-    state14.tab = tab2;
-    state14.obs = new MutationObserver((records) => {
+    if (state16.tab === tab2) return;
+    teardown8();
+    state16.tab = tab2;
+    state16.obs = new MutationObserver((records) => {
       if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID10))) return;
       schedule3();
     });
-    state14.obs.observe(tab2, { childList: true, subtree: true });
+    state16.obs.observe(tab2, { childList: true, subtree: true });
     schedule3();
   }
   var favempty_default = {
     name: "plus-favempty",
     match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && isFavRoute(route),
     mount() {
-      state14.tries = 0;
+      state16.tries = 0;
       attach();
     },
     update() {
-      state14.tries = 0;
+      state16.tries = 0;
       attach();
     },
-    unmount: teardown6
+    unmount: teardown8
   };
 
   // src/js/features/plus/index.js
@@ -12880,14 +13951,14 @@
         if (!list.length) return;
         const first2 = list[0];
         const last = list[list.length - 1];
-        const active5 = document.activeElement;
-        if (!panel.contains(active5)) {
+        const active6 = document.activeElement;
+        if (!panel.contains(active6)) {
           e.preventDefault();
           first2.focus();
-        } else if (e.shiftKey && active5 === first2) {
+        } else if (e.shiftKey && active6 === first2) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active5 === last) {
+        } else if (!e.shiftKey && active6 === last) {
           e.preventDefault();
           first2.focus();
         }
@@ -12917,29 +13988,29 @@
   function openMenus({ wrap, button, flyout, load: load6 }) {
     let opened = false;
     let loaded = false;
-    let leaveTimer2 = null;
+    let leaveTimer3 = null;
     let pinned = false;
-    let gen8 = 0;
+    let gen9 = 0;
     const items = () => [...flyout.querySelectorAll(ITEM)];
     async function ensureLoaded() {
       if (loaded) return;
       loaded = true;
-      const mine = ++gen8;
+      const mine = ++gen9;
       let data;
       try {
         data = await load6();
       } catch {
         data = { libraries: [], collections: [] };
       }
-      if (mine !== gen8) return;
+      if (mine !== gen9) return;
       flyout.replaceChildren(
         column("Bibliotheken", data.libraries),
         h("span", { class: "lfx-prime-flyout__sep", "aria-hidden": "true" }),
         column("Empfohlene Sammlungen", data.collections)
       );
     }
-    function open2({ focus = false } = {}) {
-      clearTimeout(leaveTimer2);
+    function open3({ focus = false } = {}) {
+      clearTimeout(leaveTimer3);
       if (!opened) {
         opened = true;
         flyout.hidden = false;
@@ -12955,7 +14026,7 @@
       });
     }
     function close2({ restoreFocus = false } = {}) {
-      clearTimeout(leaveTimer2);
+      clearTimeout(leaveTimer3);
       if (!opened) return;
       opened = false;
       pinned = false;
@@ -12964,21 +14035,21 @@
       button.setAttribute("aria-expanded", "false");
       if (restoreFocus) button.focus();
     }
-    const onEnter = () => open2();
+    const onEnter = () => open3();
     const onLeave = () => {
-      clearTimeout(leaveTimer2);
+      clearTimeout(leaveTimer3);
       if (pinned) return;
-      leaveTimer2 = setTimeout(() => close2(), LEAVE_MS2);
+      leaveTimer3 = setTimeout(() => close2(), LEAVE_MS2);
     };
     const onClick2 = (e) => {
       if (e.detail === 0) {
         if (opened) close2();
-        else open2({ focus: true });
+        else open3({ focus: true });
       } else if (opened && !pinned) {
         pinned = true;
       } else if (opened) close2();
       else {
-        open2();
+        open3();
         pinned = true;
       }
     };
@@ -12989,7 +14060,7 @@
       if (!opened) {
         if (e.key === "ArrowDown" && e.target === button) {
           e.preventDefault();
-          open2({ focus: true });
+          open3({ focus: true });
         }
         return;
       }
@@ -13024,11 +14095,11 @@
     wrap.addEventListener("focusout", onFocusOut);
     document.addEventListener("click", onDocClick2, true);
     return {
-      open: open2,
+      open: open3,
       close: close2,
       isOpen: () => opened,
       destroy() {
-        gen8++;
+        gen9++;
         close2();
         document.removeEventListener("click", onDocClick2, true);
         wrap.removeEventListener("mouseenter", onEnter);
@@ -13112,14 +14183,14 @@
         }
         const first2 = list[0];
         const last = list[list.length - 1];
-        const active5 = document.activeElement;
-        if (!sheet.contains(active5)) {
+        const active6 = document.activeElement;
+        if (!sheet.contains(active6)) {
           e.preventDefault();
           first2.focus();
-        } else if (e.shiftKey && active5 === first2) {
+        } else if (e.shiftKey && active6 === first2) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active5 === last) {
+        } else if (!e.shiftKey && active6 === last) {
           e.preventDefault();
           first2.focus();
         }
@@ -13258,7 +14329,7 @@
     if (window.history.length > 1) window.history.back();
     else window.location.hash = "#/home";
   }
-  var state15 = {
+  var state17 = {
     mobile: false,
     kind: null,
     el: null,
@@ -13272,30 +14343,30 @@
     titleTimer: 0
   };
   function refreshTitle() {
-    if (!state15.el || !state15.mobile || !state15.route) return;
-    const t = state15.el.querySelector(".lfx-prime-header__title");
+    if (!state17.el || !state17.mobile || !state17.route) return;
+    const t = state17.el.querySelector(".lfx-prime-header__title");
     if (!t) return;
-    const next = mobileTitle(state15.route, state15.libs);
+    const next = mobileTitle(state17.route, state17.libs);
     if (t.textContent !== next) t.textContent = next;
   }
   function stopTitlePoll() {
-    if (state15.titleTimer) clearInterval(state15.titleTimer);
-    state15.titleTimer = 0;
+    if (state17.titleTimer) clearInterval(state17.titleTimer);
+    state17.titleTimer = 0;
   }
   function startTitlePoll() {
     stopTitlePoll();
-    if (!state15.mobile || state15.kind !== "sub") return;
+    if (!state17.mobile || state17.kind !== "sub") return;
     let n = 0;
-    state15.titleTimer = setInterval(() => {
+    state17.titleTimer = setInterval(() => {
       refreshTitle();
       n += 1;
-      if (n >= 24 || !state15.el) stopTitlePoll();
+      if (n >= 24 || !state17.el) stopTitlePoll();
     }, 250);
   }
   function applyActive7() {
-    if (!state15.el || !state15.route) return;
-    const key = activeKey3(state15.route);
-    for (const el4 of state15.el.querySelectorAll("[data-key]")) {
+    if (!state17.el || !state17.route) return;
+    const key = activeKey3(state17.route);
+    for (const el4 of state17.el.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -13303,9 +14374,9 @@
     }
   }
   function renderNav2() {
-    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__nav");
+    const nav = state17.el && state17.el.querySelector(".lfx-prime-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems3(state15.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems3(state17.libs).map((it) => h("a", {
       class: "lfx-prime-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -13324,15 +14395,15 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state15.profileBusy) return;
-    state15.profileBusy = true;
+    if (state17.profileBusy) return;
+    state17.profileBusy = true;
     try {
-      state15.menus.close();
+      state17.menus.close();
       const items = await profileEntries({ theme: "prime", returnFocus: btn3 });
-      if (!state15.el || !btn3.isConnected) return;
+      if (!state17.el || !btn3.isConnected) return;
       openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
     } finally {
-      state15.profileBusy = false;
+      state17.profileBusy = false;
     }
   }
   function tvLink() {
@@ -13347,7 +14418,7 @@
     return a;
   }
   var dsLink = () => createDataSaverButton({ className: "lfx-prime-header__icon" });
-  function build6() {
+  function build8() {
     const logo = h("a", { class: "lfx-prime-header__logo", href: "#/home", "aria-label": "LENZPRIME \u2013 Startseite" });
     const nav = h("nav", { class: "lfx-prime-header__nav", "aria-label": "Hauptnavigation" });
     const searchBtn = h("button", {
@@ -13357,7 +14428,7 @@
       "aria-haspopup": "dialog"
     }, [icon3("search")]);
     searchBtn.addEventListener("click", () => {
-      state15.menus.close();
+      state17.menus.close();
       closeProfile2();
       if (isPrimeSearchOpen()) closePrimeSearch();
       else openPrimeSearch({ returnFocus: searchBtn });
@@ -13387,13 +14458,13 @@
     avatar.addEventListener("click", () => toggleProfile(avatar));
     const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, tvLink(), dsLink(), gridWrap, listLink, avatar]);
     const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
-    state15.el.replaceChildren(bar);
-    state15.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
+    state17.el.replaceChildren(bar);
+    state17.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
     return { avatar };
   }
   function buildMobile(route) {
     const kind2 = mobileKind(route);
-    state15.kind = kind2;
+    state17.kind = kind2;
     const avatar = h("button", {
       type: "button",
       class: "lfx-prime-header__avatar",
@@ -13411,18 +14482,18 @@
       const back = h("button", { type: "button", class: "lfx-prime-header__back", "aria-label": "Zur\xFCck" });
       back.append(icon3("back"));
       back.addEventListener("click", goBack);
-      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state15.libs))];
+      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state17.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), dsLink(), avatar])]);
     const kids = [bar];
     if (kind2 === "home") kids.push(h("nav", { class: "lfx-prime-header__pills", "aria-label": "Filme und Serien" }));
-    state15.el.replaceChildren(...kids);
+    state17.el.replaceChildren(...kids);
     return { avatar };
   }
-  function renderPills() {
-    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__pills");
+  function renderPills2() {
+    const nav = state17.el && state17.el.querySelector(".lfx-prime-header__pills");
     if (!nav) return;
-    const items = navItems3(state15.libs).filter((it) => it.key.startsWith("lib:"));
+    const items = navItems3(state17.libs).filter((it) => it.key.startsWith("lib:"));
     nav.replaceChildren(...items.map((it) => h("a", {
       class: "lfx-prime-header__pill",
       href: it.href,
@@ -13432,7 +14503,7 @@
     applyActive7();
   }
   async function loadFlyoutData() {
-    let libs = state15.libs;
+    let libs = state17.libs;
     let cols;
     try {
       cols = await getCollections();
@@ -13454,60 +14525,60 @@
   async function loadLibs(seq3) {
     try {
       const libs = await getLibraries();
-      if (seq3 !== state15.seq || !state15.el) return;
-      state15.libs = libs;
+      if (seq3 !== state17.seq || !state17.el) return;
+      state17.libs = libs;
     } catch {
-      if (seq3 !== state15.seq || !state15.el) return;
-      state15.libs = [];
+      if (seq3 !== state17.seq || !state17.el) return;
+      state17.libs = [];
     }
     renderNav2();
-    renderPills();
+    renderPills2();
     refreshTitle();
   }
   async function loadAvatar(seq3, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state15.seq && Boolean(state15.el) });
+      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state17.seq && Boolean(state17.el) });
     } catch {
     }
-    if (seq3 !== state15.seq || !state15.el) return;
+    if (seq3 !== state17.seq || !state17.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-prime-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function onScroll4() {
-    if (state15.raf) return;
-    state15.raf = requestAnimationFrame(() => {
-      state15.raf = 0;
+    if (state17.raf) return;
+    state17.raf = requestAnimationFrame(() => {
+      state17.raf = 0;
       applyScroll();
     });
   }
   function applyScroll() {
-    if (!state15.el || state15.mobile) return;
+    if (!state17.el || state17.mobile) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD2;
-    if (state15.el.classList.contains("is-scrolled") !== on) state15.el.classList.toggle("is-scrolled", on);
+    if (state17.el.classList.contains("is-scrolled") !== on) state17.el.classList.toggle("is-scrolled", on);
   }
   function syncHtmlClasses() {
     const cl2 = document.documentElement.classList;
-    cl2.toggle(MOBILE_CLASS, state15.mobile);
-    cl2.toggle(PILLS_CLASS, state15.mobile && state15.kind === "home");
+    cl2.toggle(MOBILE_CLASS, state17.mobile);
+    cl2.toggle(PILLS_CLASS, state17.mobile && state17.kind === "home");
   }
   function render8() {
-    const seq3 = ++state15.seq;
-    if (state15.menus) state15.menus.destroy();
-    state15.menus = null;
+    const seq3 = ++state17.seq;
+    if (state17.menus) state17.menus.destroy();
+    state17.menus = null;
     closeProfile2();
     closeProfileSheet({ restoreFocus: false });
-    state15.mobile = isMobile() && isNarrow();
-    state15.kind = null;
-    const parts = state15.mobile ? buildMobile(state15.route) : build6();
-    state15.el.className = `lfx-prime-header${state15.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state15.kind}` : ""}`;
+    state17.mobile = isMobile() && isNarrow();
+    state17.kind = null;
+    const parts = state17.mobile ? buildMobile(state17.route) : build8();
+    state17.el.className = `lfx-prime-header${state17.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state17.kind}` : ""}`;
     syncHtmlClasses();
     applyScroll();
     renderNav2();
-    renderPills();
+    renderPills2();
     applyActive7();
     loadLibs(seq3);
     loadAvatar(seq3, parts.avatar);
@@ -13519,48 +14590,48 @@
       return isTheme("prime") && isModern() && !isTv() && isReady() && !EXCLUDED9.test(route.path);
     },
     mount(route) {
-      state15.route = route;
-      state15.el = mountPoint(ID13, { tag: "header", className: "lfx-prime-header" });
+      state17.route = route;
+      state17.el = mountPoint(ID13, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
-      state15.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
+      state17.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
       render8();
     },
     update(route) {
-      const changed = !state15.route || state15.route.hash !== route.hash;
-      state15.route = route;
-      if (!state15.el) return;
+      const changed = !state17.route || state17.route.hash !== route.hash;
+      state17.route = route;
+      if (!state17.el) return;
       const mobileNow = isMobile() && isNarrow();
-      if (mobileNow !== state15.mobile || mobileNow && mobileKind(route) !== state15.kind) {
+      if (mobileNow !== state17.mobile || mobileNow && mobileKind(route) !== state17.kind) {
         closePrimeSearch({ restoreFocus: false });
         render8();
         return;
       }
-      if (changed && state15.menus) state15.menus.close();
-      if (state15.mobile) {
+      if (changed && state17.menus) state17.menus.close();
+      if (state17.mobile) {
         refreshTitle();
         if (changed) startTitlePoll();
       }
       applyActive7();
     },
     unmount() {
-      state15.seq++;
+      state17.seq++;
       stopTitlePoll();
-      for (const fn of state15.cleanups.splice(0)) fn();
-      if (state15.raf) cancelAnimationFrame(state15.raf);
-      state15.raf = 0;
-      if (state15.menus) state15.menus.destroy();
-      state15.menus = null;
+      for (const fn of state17.cleanups.splice(0)) fn();
+      if (state17.raf) cancelAnimationFrame(state17.raf);
+      state17.raf = 0;
+      if (state17.menus) state17.menus.destroy();
+      state17.menus = null;
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
       unmountPoint(ID13);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
-      state15.el = null;
-      state15.libs = [];
-      state15.mobile = false;
-      state15.kind = null;
-      state15.profileBusy = false;
+      state17.el = null;
+      state17.libs = [];
+      state17.mobile = false;
+      state17.kind = null;
+      state17.profileBusy = false;
     }
   };
 
@@ -13596,14 +14667,14 @@
       charts = null;
     }
     if (!charts) return { available: false, rank };
-    const add2 = (list, type) => {
+    const add3 = (list, type) => {
       (Array.isArray(list) ? list : []).forEach((e, i) => {
         const key = norm(e && e.id);
         if (key && !rank.has(key)) rank.set(key, { rank: i + 1, type });
       });
     };
-    add2(charts.movies, "Movie");
-    add2(charts.series, "Series");
+    add3(charts.movies, "Movie");
+    add3(charts.series, "Series");
     return { available: true, rank };
   }
   function entryFor(item, trend2) {
@@ -13672,7 +14743,7 @@
     let held2 = false;
     let stopped = false;
     let io = null;
-    const sync3 = () => {
+    const sync4 = () => {
       if (stopped || !video2) return;
       const want = visible && !held2 && !document.hidden;
       try {
@@ -13686,17 +14757,17 @@
       } catch {
       }
     };
-    const onVis = () => sync3();
+    const onVis = () => sync4();
     const onHold = (e) => {
       held2 = Boolean(e.detail && e.detail.on);
-      sync3();
+      sync4();
     };
     if (typeof IntersectionObserver === "function") {
       io = new IntersectionObserver((entries) => {
         const e = entries[entries.length - 1];
         if (!e) return;
         visible = e.isIntersecting && e.intersectionRatio >= VISIBLE_RATIO;
-        sync3();
+        sync4();
       }, { threshold: [0, VISIBLE_RATIO, 1] });
       io.observe(video2);
     }
@@ -13782,7 +14853,7 @@
     let disposed = false;
     let pool = [];
     let index = 0;
-    let gen8 = 0;
+    let gen9 = 0;
     let hovering = false;
     let trailerActive = false;
     let rotateTimer = null;
@@ -13841,12 +14912,12 @@
       muteBtn.setAttribute("aria-label", video2.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     function startTrailer(item, myGen) {
-      if (mobile || reducedMotion2() || isDataSaver("trailer") || disposed || myGen !== gen8) return;
+      if (mobile || reducedMotion2() || isDataSaver("trailer") || disposed || myGen !== gen9) return;
       preview = createMutedPreview(media, item, {
         delay: TRAILER_DELAY_MS,
         startAt: 4,
         onStart: (v) => {
-          if (disposed || myGen !== gen8) return;
+          if (disposed || myGen !== gen9) return;
           video2 = v;
           gate = autoPause(v, { respectHold: true });
           trailerActive = true;
@@ -13857,7 +14928,7 @@
           setMuteIcon();
         },
         onEnd: () => {
-          if (disposed || myGen !== gen8) return;
+          if (disposed || myGen !== gen9) return;
           preview = null;
           stopTrailer();
           scheduleRotate();
@@ -13865,7 +14936,7 @@
       });
       setTr("wait");
       later(() => {
-        if (myGen === gen8 && slot.dataset.lfxTr === "wait") setTr("");
+        if (myGen === gen9 && slot.dataset.lfxTr === "wait") setTr("");
       }, TRAILER_DELAY_MS + 4e3);
     }
     function playButton(item, myGen) {
@@ -13873,20 +14944,20 @@
       const btn3 = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg8(ICON_PLAY4), label]);
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
-      const paint = (state22) => {
+      const paint2 = (state24) => {
         label.replaceChildren(...[
-          h("span", { class: "lfx-prime-hero__label1" }, state22.line1),
-          state22.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state22.line2) : null
+          h("span", { class: "lfx-prime-hero__label1" }, state24.line1),
+          state24.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state24.line2) : null
         ].filter(Boolean));
-        btn3.classList.toggle("is-two", Boolean(state22.line2));
-        progress.hidden = !(state22.progress > 0);
-        bar.style.width = `${Math.round(state22.progress)}%`;
+        btn3.classList.toggle("is-two", Boolean(state24.line2));
+        progress.hidden = !(state24.progress > 0);
+        bar.style.width = `${Math.round(state24.progress)}%`;
       };
-      paint(playLabel(item));
+      paint2(playLabel(item));
       if (item.Type === "Series") {
         loadNextUp(item.Id).then((ep) => {
-          if (disposed || myGen !== gen8 || !btn3.isConnected) return;
-          paint(playLabel(item, ep));
+          if (disposed || myGen !== gen9 || !btn3.isConnected) return;
+          paint2(playLabel(item, ep));
         }, () => {
         });
       }
@@ -13897,17 +14968,17 @@
     }
     function listButton(item) {
       const btn3 = h("button", { type: "button", class: "lfx-prime-hero__round lfx-prime-hero__round--list", title: "Meine Liste" });
-      const paint = () => {
+      const paint2 = () => {
         const on = Boolean(item.UserData && item.UserData.IsFavorite);
         btn3.replaceChildren(svg8(on ? ICON_CHECK4 : ICON_PLUS4));
         btn3.classList.toggle("is-on", on);
         btn3.setAttribute("aria-pressed", on ? "true" : "false");
         btn3.setAttribute("aria-label", on ? "Aus Meine Liste entfernen" : "Zu Meine Liste hinzuf\xFCgen");
       };
-      paint();
+      paint2();
       btn3.addEventListener("click", async () => {
         await toggleFavorite2(item);
-        if (btn3.isConnected) paint();
+        if (btn3.isConnected) paint2();
       });
       return btn3;
     }
@@ -13935,7 +15006,7 @@
       const title = logo ? h("img", { class: "lfx-prime-hero__logo", src: logo, alt: item.Name || "", decoding: "async" }) : h("h2", { class: "lfx-prime-hero__title" }, item.Name || "");
       const badge3 = cardBadge(item, { newInfo, trend: trend2 });
       const fsk = formatRating(item.OfficialRating);
-      const extra = item.Type === "Series" ? formatSeasons(item.ChildCount) : formatRuntime2(item.RunTimeTicks);
+      const extra = item.Type === "Series" ? formatSeasons(item.ChildCount) : formatRuntime(item.RunTimeTicks);
       const text = [extra, item.ProductionYear ? String(item.ProductionYear) : "", item.Genres && item.Genres[0]].filter(Boolean).join("  ");
       const rank = heroTrendLine(item, trend2);
       const info = h("div", { class: "lfx-prime-hero__below" }, [
@@ -13973,8 +15044,8 @@
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen8 += 1;
-      const myGen = gen8;
+      gen9 += 1;
+      const myGen = gen9;
       stopTrailer();
       updateDots();
       const pic = buildImage(item);
@@ -13988,7 +15059,7 @@
         later(() => olds.forEach((o) => o.remove()), IMG_FADE_MS2 + 50);
       }
       const swap = () => {
-        if (disposed || myGen !== gen8) return;
+        if (disposed || myGen !== gen9) return;
         if (mobile) {
           const parts = buildMobileParts(item, myGen);
           logoBox.replaceChildren(parts.title);
@@ -14026,7 +15097,7 @@
       const curGone = cur3 && removed.includes(cur3.Id);
       pool = pool.filter((it) => !removed.includes(it.Id));
       if (!pool.length) {
-        gen8 += 1;
+        gen9 += 1;
         stopTrailer();
         clearTimeout(rotateTimer);
         slot.hidden = true;
@@ -14069,7 +15140,7 @@
       cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
       cleanupFns.push(onItemsChanged(onChanged2));
     }
-    function build11() {
+    function build13() {
       media = h("div", { class: "lfx-prime-hero__media" });
       content = h("div", { class: "lfx-prime-hero__live", "aria-live": "off" });
       muteBtn = h("button", { type: "button", class: "lfx-prime-hero__mute", hidden: true, "aria-label": "Ton einschalten" });
@@ -14144,7 +15215,7 @@
       }
       pool = isDataSaver("hero") ? saverPool(items) : items;
       putItems(pool);
-      build11();
+      build13();
       cleanupFns.push(onDataSaverChange(onSaver));
       cleanupFns.push(onDataSaverPartsChange(onSaver));
       slot.hidden = false;
@@ -14156,7 +15227,7 @@
     init2();
     return () => {
       disposed = true;
-      gen8 += 1;
+      gen9 += 1;
       clearTimeout(rotateTimer);
       timers.forEach(clearTimeout);
       timers.clear();
@@ -14169,8 +15240,8 @@
   }
 
   // src/js/features/prime/home-route.js
-  var ROOT_ID13 = "lfx-prime-home";
-  var ON_CLASS12 = "lfx-prime-home-on";
+  var ROOT_ID15 = "lfx-prime-home";
+  var ON_CLASS14 = "lfx-prime-home-on";
   function primeHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return null;
     const lfx = route.params.get("lfx");
@@ -14181,7 +15252,7 @@
     if (lfx || route.params.get("tab") === "1") return null;
     return { key: "home", kind: "home", lib: null };
   }
-  function findHomeTab6() {
+  function findHomeTab8() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -14285,7 +15356,7 @@
     let prefetch = null;
     let infoP = null;
     const disposers = [];
-    const pending = /* @__PURE__ */ new Map();
+    const pending2 = /* @__PURE__ */ new Map();
     const rendered = /* @__PURE__ */ new Set();
     let shown3 = 0;
     const info = () => {
@@ -14366,9 +15437,9 @@
       if (observer2 || typeof IntersectionObserver !== "function") return;
       observer2 = new IntersectionObserver((entries) => {
         for (const en of entries) {
-          const p = pending.get(en.target);
+          const p = pending2.get(en.target);
           if (!en.isIntersecting || !p) continue;
-          pending.delete(en.target);
+          pending2.delete(en.target);
           observer2.unobserve(en.target);
           loadRow(en.target, p.def, p.kind);
         }
@@ -14395,10 +15466,10 @@
           }
           const el4 = skeleton3(def, kind2);
           slot.append(el4);
-          pending.set(el4, { def, kind: kind2 });
+          pending2.set(el4, { def, kind: kind2 });
           if (observer2) observer2.observe(el4);
           else {
-            pending.delete(el4);
+            pending2.delete(el4);
             loadRow(el4, def, kind2);
           }
         }
@@ -14406,7 +15477,7 @@
         else if (wantPrefetch) {
           prefetch = startRowPrefetch({
             slot,
-            pending,
+            pending: pending2,
             hero,
             load: (el4, p) => {
               if (observer2) observer2.unobserve(el4);
@@ -14422,7 +15493,7 @@
         prefetch = null;
         if (observer2) observer2.disconnect();
         observer2 = null;
-        pending.clear();
+        pending2.clear();
         for (const d of disposers.splice(0)) d();
         slot.textContent = "";
       }
@@ -14433,11 +15504,11 @@
   var MORE_STEP = 4;
   var BASE_GENRES = 6;
   var cleanups4 = [];
-  var waitTimer5 = null;
+  var waitTimer6 = null;
   var gen3 = 0;
   var current5 = null;
   var builtMobile = false;
-  function teardown7() {
+  function teardown9() {
     for (const fn of cleanups4.splice(0)) {
       try {
         fn && fn();
@@ -14445,8 +15516,8 @@
         console.error("[LenzFlix] prime-home cleanup", e);
       }
     }
-    document.getElementById(ROOT_ID13)?.remove();
-    document.documentElement.classList.remove(ON_CLASS12);
+    document.getElementById(ROOT_ID15)?.remove();
+    document.documentElement.classList.remove(ON_CLASS14);
   }
   var isGenreDef = (d) => /(^|-)genre-/.test(d.id);
   function moreHrefFor(def, { hub, libs, lib }) {
@@ -14478,13 +15549,13 @@
     const hub = route.kind === "hub";
     const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
     if (hub && !lib) return;
-    teardown7();
+    teardown9();
     const heroSlot = h("section", { id: "lfx-prime-hero", class: "lfx-prime-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-prime-rows" });
     const moreSlot = h("div", { class: "lfx-prime-moreslot" });
-    const root7 = h("div", { id: ROOT_ID13, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
+    const root7 = h("div", { id: ROOT_ID15, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS12);
+    document.documentElement.classList.add(ON_CLASS14);
     current5 = route;
     builtMobile = isMobile() && isNarrow();
     cleanups4.push(renderHero(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool() }));
@@ -14524,33 +15595,33 @@
     if (!defs.some(isGenreDef)) moreBtn.hidden = true;
     moreSlot.append(moreBtn);
   }
-  function ensure5(route) {
-    clearTimeout(waitTimer5);
-    const tab2 = findHomeTab6();
-    const existing = document.getElementById(ROOT_ID13);
+  function ensure7(route) {
+    clearTimeout(waitTimer6);
+    const tab2 = findHomeTab8();
+    const existing = document.getElementById(ROOT_ID15);
     if (tab2 && existing && tab2.contains(existing) && current5 && current5.key === route.key && builtMobile === (isMobile() && isNarrow())) return;
     gen3 += 1;
     const myGen = gen3;
     let tries = 0;
     const poll = () => {
       if (myGen !== gen3) return;
-      const t = findHomeTab6();
+      const t = findHomeTab8();
       if (t) start4(t, route, myGen);
-      else if (++tries < 30) waitTimer5 = setTimeout(poll, 200);
+      else if (++tries < 30) waitTimer6 = setTimeout(poll, 200);
     };
     if (tab2) poll();
-    else waitTimer5 = setTimeout(poll, 200);
+    else waitTimer6 = setTimeout(poll, 200);
   }
   var primeHome = {
     name: "prime-home",
     match: (route) => isTheme("prime") && isModern() && !isTv() && isReady() && Boolean(primeHomeRoute(route)),
-    mount: (route) => ensure5(primeHomeRoute(route)),
-    update: (route) => ensure5(primeHomeRoute(route)),
+    mount: (route) => ensure7(primeHomeRoute(route)),
+    update: (route) => ensure7(primeHomeRoute(route)),
     unmount() {
       gen3 += 1;
-      clearTimeout(waitTimer5);
+      clearTimeout(waitTimer6);
       current5 = null;
-      teardown7();
+      teardown9();
     }
   };
   var home_default3 = primeHome;
@@ -14568,7 +15639,7 @@
     const rating = ratingLabel(item);
     if (rating) parts.push(h("span", { class: "lfx-prime-meta__rating" }, `\u2605 ${rating}`));
     if (item.ProductionYear) parts.push(h("span", null, String(item.ProductionYear)));
-    const extra = item.Type === "Series" ? formatSeasons(item.ChildCount) : formatRuntime2(item.RunTimeTicks);
+    const extra = item.Type === "Series" ? formatSeasons(item.ChildCount) : formatRuntime(item.RunTimeTicks);
     if (extra) parts.push(h("span", null, extra));
     return h("div", { class: "lfx-prime-meta" }, parts);
   }
@@ -14591,12 +15662,12 @@
     const logo = !popup ? logoImage(item, { maxWidth: 400 }) : null;
     const label = h("span", { class: "lfx-prime-hc__label" });
     const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
-    const paintPlay2 = (state22) => {
+    const paintPlay2 = (state24) => {
       label.replaceChildren(...[
-        h("span", null, state22.line1),
-        state22.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state22.line2) : null
+        h("span", null, state24.line1),
+        state24.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state24.line2) : null
       ].filter(Boolean));
-      play2.classList.toggle("is-two", Boolean(state22.line2));
+      play2.classList.toggle("is-two", Boolean(state24.line2));
     };
     paintPlay2(playLabel(item));
     if (item.Type === "Series") {
@@ -14719,7 +15790,7 @@
   function cardOf(target) {
     if (!target || !target.closest) return null;
     const card3 = target.closest(".lfx-prime-card");
-    return card3 && card3.closest(`#${ROOT_ID13}`) ? card3 : null;
+    return card3 && card3.closest(`#${ROOT_ID15}`) ? card3 : null;
   }
   function clearIntent() {
     if (intent2) clearTimeout(intent2.timer);
@@ -14990,7 +16061,7 @@
       const n = seasonCount || Number(item.ChildCount) || 0;
       if (n > 0) out.push(`${n} ${n === 1 ? "Staffel" : "Staffeln"}`);
     } else {
-      const rt = formatRuntime(item && item.RunTimeTicks);
+      const rt = formatRuntime2(item && item.RunTimeTicks);
       if (rt) out.push(rt);
     }
     return out;
@@ -15026,7 +16097,7 @@
     return left > 0 ? `Noch ${left} Min.` : "";
   }
   function episodeRuntime(ep) {
-    return formatRuntime(ep && ep.RunTimeTicks);
+    return formatRuntime2(ep && ep.RunTimeTicks);
   }
   function episodeTitle(ep) {
     const n = ep && ep.IndexNumber != null ? `${ep.IndexNumber}. ` : "";
@@ -15068,7 +16139,7 @@
     if (audio.length) tiles.push({ id: "audio", title: "Wiedergabesprachen", chips: audio });
     const subs = uniq(streamsOf(item, "Subtitle").map((s) => s.DisplayLanguage || s.Language));
     if (subs.length) tiles.push({ id: "subs", title: "Untertitel", chips: subs });
-    if (item.Type !== "Series" && item.RunTimeTicks > 0) tiles.push({ id: "runtime", title: "Laufzeit", lines: [formatRuntime(item.RunTimeTicks)] });
+    if (item.Type !== "Series" && item.RunTimeTicks > 0) tiles.push({ id: "runtime", title: "Laufzeit", lines: [formatRuntime2(item.RunTimeTicks)] });
     return tiles;
   }
 
@@ -15187,18 +16258,18 @@
   }
 
   // src/js/features/prime/title.js
-  var ROOT_ID14 = "lfx-prime-title";
-  var ON_CLASS13 = "lfx-prime-title-on";
+  var ROOT_ID16 = "lfx-prime-title";
+  var ON_CLASS15 = "lfx-prime-title-on";
   var TRAILER_DELAY_MS2 = 1200;
   var HEADER_H2 = 80;
   var root3 = null;
   var session3 = null;
-  var waitTimer6 = null;
+  var waitTimer7 = null;
   var isPlainRoute = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" && r.id ? r : null;
   };
-  function findHomeTab7() {
+  function findHomeTab9() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -15650,13 +16721,13 @@
     await Promise.all(tasks);
   }
   function stop6() {
-    clearTimeout(waitTimer6);
-    waitTimer6 = null;
+    clearTimeout(waitTimer7);
+    waitTimer7 = null;
     teardownSession();
     if (root3) root3.remove();
     root3 = null;
-    document.getElementById(ROOT_ID14)?.remove();
-    document.documentElement.classList.remove(ON_CLASS13);
+    document.getElementById(ROOT_ID16)?.remove();
+    document.documentElement.classList.remove(ON_CLASS15);
   }
   function pullToTop(el4) {
     el4.style.marginTop = "";
@@ -15666,30 +16737,30 @@
   function start6(route) {
     const r = isPlainRoute(route);
     if (!r) return;
-    clearTimeout(waitTimer6);
+    clearTimeout(waitTimer7);
     if (root3 && root3.isConnected && session3 && session3.id === r.id) return;
     const run = (tab3) => {
       if (!root3 || !root3.isConnected || !tab3.contains(root3)) {
-        document.getElementById(ROOT_ID14)?.remove();
-        root3 = h("div", { id: ROOT_ID14, class: "lfx-pt" });
+        document.getElementById(ROOT_ID16)?.remove();
+        root3 = h("div", { id: ROOT_ID16, class: "lfx-pt" });
         tab3.prepend(root3);
       }
-      document.documentElement.classList.add(ON_CLASS13);
+      document.documentElement.classList.add(ON_CLASS15);
       pullToTop(root3);
       load3(r.id);
     };
-    const tab2 = findHomeTab7();
+    const tab2 = findHomeTab9();
     if (tab2) {
       run(tab2);
       return;
     }
     let tries = 0;
     const poll = () => {
-      const t = findHomeTab7();
+      const t = findHomeTab9();
       if (t) run(t);
-      else if (++tries < 30) waitTimer6 = setTimeout(poll, 200);
+      else if (++tries < 30) waitTimer7 = setTimeout(poll, 200);
     };
-    waitTimer6 = setTimeout(poll, 200);
+    waitTimer7 = setTimeout(poll, 200);
   }
   var title_default2 = {
     name: "prime-title",
@@ -15736,14 +16807,14 @@
     if (key === "list") return "list";
     return null;
   }
-  var state16 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
+  var state18 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
   function scheduleApply() {
-    if (state16.raf) return;
+    if (state18.raf) return;
     const run = () => {
-      state16.raf = 0;
+      state18.raf = 0;
       applyState();
     };
-    state16.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
+    state18.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
   }
   function inputFocused() {
     const a = document.activeElement;
@@ -15757,14 +16828,14 @@
     return inputFocused();
   }
   function applyState() {
-    const el4 = state16.el;
+    const el4 = state18.el;
     if (!el4) return;
     const hide2 = shouldHide();
     if (el4.classList.contains("is-hidden") !== hide2) el4.classList.toggle("is-hidden", hide2);
     el4.toggleAttribute("inert", hide2);
-    const active5 = state16.route ? activeTab2(state16.route, isPrimeSearchOpen()) : null;
+    const active6 = state18.route ? activeTab2(state18.route, isPrimeSearchOpen()) : null;
     for (const t of el4.querySelectorAll("[data-tab]")) {
-      const on = t.dataset.tab === active5;
+      const on = t.dataset.tab === active6;
       t.classList.toggle("is-active", on);
       if (on) {
         if (t.getAttribute("aria-current") !== "page") t.setAttribute("aria-current", "page");
@@ -15780,7 +16851,7 @@
       ...attrs
     }, [icon4(iconName), h("span", { class: "lfx-prime-tabbar__label" }, label)]);
   }
-  function build7() {
+  function build9() {
     const home = tab("home", "Startseite", "home", { href: "#/home" });
     const list = tab("list", "Meine Liste", "list", { href: "#/home?tab=1" });
     const search = tab("search", "Suche", "search", { "aria-haspopup": "dialog" });
@@ -15797,8 +16868,8 @@
       else openPrimeSearch({ returnFocus: search });
       applyState();
     });
-    state16.el.replaceChildren(home, list, search);
-    state16.el.setAttribute("aria-label", "Hauptnavigation");
+    state18.el.replaceChildren(home, list, search);
+    state18.el.setAttribute("aria-label", "Hauptnavigation");
   }
   var tabbar_default2 = {
     name: "prime-tabbar",
@@ -15806,48 +16877,48 @@
       return isTheme("prime") && isModern() && !isTv() && isMobile() && isNarrow() && isReady() && !EXCLUDED10.test(route.path);
     },
     mount(route) {
-      state16.route = route;
-      state16.el = mountPoint(ID14, { tag: "nav", className: "lfx-prime-tabbar" });
-      build7();
+      state18.route = route;
+      state18.el = mountPoint(ID14, { tag: "nav", className: "lfx-prime-tabbar" });
+      build9();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
-        state16.observer = new MutationObserver(applyState);
-        state16.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        state16.observer.observe(document.body, { childList: true });
-        state16.bodyObserver = new MutationObserver((records) => {
-          if (state16.el && records.every((r) => state16.el.contains(r.target))) return;
+        state18.observer = new MutationObserver(applyState);
+        state18.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        state18.observer.observe(document.body, { childList: true });
+        state18.bodyObserver = new MutationObserver((records) => {
+          if (state18.el && records.every((r) => state18.el.contains(r.target))) return;
           scheduleApply();
         });
-        state16.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
+        state18.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
       }
       const onFocus = () => applyState();
       document.addEventListener("focusin", onFocus);
       document.addEventListener("focusout", onFocus);
-      state16.cleanups.push(() => {
+      state18.cleanups.push(() => {
         document.removeEventListener("focusin", onFocus);
         document.removeEventListener("focusout", onFocus);
       });
       applyState();
     },
     update(route) {
-      state16.route = route;
+      state18.route = route;
       applyState();
     },
     unmount() {
-      if (state16.observer) state16.observer.disconnect();
-      state16.observer = null;
-      if (state16.bodyObserver) state16.bodyObserver.disconnect();
-      state16.bodyObserver = null;
-      if (state16.raf) {
-        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state16.raf);
-        clearTimeout(state16.raf);
-        state16.raf = 0;
+      if (state18.observer) state18.observer.disconnect();
+      state18.observer = null;
+      if (state18.bodyObserver) state18.bodyObserver.disconnect();
+      state18.bodyObserver = null;
+      if (state18.raf) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state18.raf);
+        clearTimeout(state18.raf);
+        state18.raf = 0;
       }
-      for (const fn of state16.cleanups.splice(0)) fn();
+      for (const fn of state18.cleanups.splice(0)) fn();
       unmountPoint(ID14);
       document.documentElement.classList.remove(HTML_CLASS2);
-      state16.el = null;
-      state16.route = null;
+      state18.el = null;
+      state18.route = null;
     }
   };
 
@@ -16005,19 +17076,19 @@
       "aria-label": cfg.label,
       title: cfg.label
     }, [svgIcon2(cfg.icon)]);
-    const sync3 = () => {
+    const sync4 = () => {
       const on = getPref(pref);
       el4.setAttribute("aria-pressed", on ? "true" : "false");
       el4.classList.toggle("is-on", on);
     };
-    const onPrefs = () => sync3();
+    const onPrefs2 = () => sync4();
     el4.addEventListener("click", () => {
       togglePref(pref);
     });
-    document.addEventListener(PREFS_EVENT, onPrefs);
-    sync3();
-    return { el: el4, sync: sync3, destroy() {
-      document.removeEventListener(PREFS_EVENT, onPrefs);
+    document.addEventListener(PREFS_EVENT, onPrefs2);
+    sync4();
+    return { el: el4, sync: sync4, destroy() {
+      document.removeEventListener(PREFS_EVENT, onPrefs2);
     } };
   }
 
@@ -16026,7 +17097,7 @@
   var HTML_CLASS3 = "lfx-retro-header-on";
   var SCROLL_THRESHOLD3 = 10;
   var HOVER_GAP_MS = 140;
-  var state17 = {
+  var state19 = {
     el: null,
     ds: null,
     route: null,
@@ -16038,9 +17109,9 @@
     cleanups: []
   };
   function applyActive8() {
-    if (!state17.el || !state17.route) return;
-    const key = activeKey4(state17.route);
-    for (const el4 of state17.el.querySelectorAll("[data-key]")) {
+    if (!state19.el || !state19.route) return;
+    const key = activeKey4(state19.route);
+    for (const el4 of state19.el.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -16048,9 +17119,9 @@
     }
   }
   function renderNav3() {
-    const nav = state17.el && state17.el.querySelector(".lfx-retro-header__nav");
+    const nav = state19.el && state19.el.querySelector(".lfx-retro-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems4(state17.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems4(state19.libs).map((it) => h("a", {
       class: "lfx-retro-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -16058,7 +17129,7 @@
     applyActive8();
   }
   function closeDsPopover() {
-    if (state17.ds && state17.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
+    if (state19.ds && state19.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
   }
   function profileIsOpen2() {
     const el4 = document.getElementById("lfx-popover");
@@ -16069,17 +17140,17 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state17.busy) return;
-    state17.busy = true;
+    if (state19.busy) return;
+    state19.busy = true;
     try {
       const items = await profileEntries({ theme: "retro", returnFocus: btn3 });
-      if (!state17.el || !btn3.isConnected) return;
+      if (!state19.el || !btn3.isConnected) return;
       openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-retro-profile" });
     } finally {
-      state17.busy = false;
+      state19.busy = false;
     }
   }
-  function build8() {
+  function build10() {
     const logo = createLogo("lfx-retro-header__logo");
     const nav = h("nav", { class: "lfx-retro-header__nav", "aria-label": "Hauptnavigation" });
     const clock = createClock();
@@ -16094,10 +17165,10 @@
     avatar.addEventListener("click", () => toggleProfile2(avatar));
     const ds = createDsButton();
     const tv = createTvButton();
-    state17.ds = ds;
+    state19.ds = ds;
     const right = h("div", { class: "lfx-retro-header__right" }, [clock.el, ds, tv, sound.el, crt.el, avatar]);
-    state17.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
-    state17.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
+    state19.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
+    state19.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
     nav.addEventListener("click", (e) => {
       if (e.target.closest && e.target.closest("a")) emitFx("nav");
     });
@@ -16105,8 +17176,8 @@
       if (e.pointerType && e.pointerType !== "mouse") return;
       if (!e.target.closest || !e.target.closest("a")) return;
       const now = Date.now();
-      if (now - state17.lastHover < HOVER_GAP_MS) return;
-      state17.lastHover = now;
+      if (now - state19.lastHover < HOVER_GAP_MS) return;
+      state19.lastHover = now;
       emitFx("hover");
     });
     return { avatar };
@@ -16118,32 +17189,32 @@
     } catch {
       libs = [];
     }
-    if (seq3 !== state17.seq || !state17.el) return;
-    state17.libs = libs;
+    if (seq3 !== state19.seq || !state19.el) return;
+    state19.libs = libs;
     renderNav3();
   }
   async function loadAvatar2(seq3, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state17.seq && Boolean(state17.el) });
+      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state19.seq && Boolean(state19.el) });
     } catch {
     }
-    if (seq3 !== state17.seq || !state17.el) return;
+    if (seq3 !== state19.seq || !state19.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-retro-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function applyScroll2() {
-    if (!state17.el) return;
+    if (!state19.el) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD3;
-    if (state17.el.classList.contains("is-scrolled") !== on) state17.el.classList.toggle("is-scrolled", on);
+    if (state19.el.classList.contains("is-scrolled") !== on) state19.el.classList.toggle("is-scrolled", on);
   }
   function onScroll6() {
-    if (state17.raf) return;
-    state17.raf = requestAnimationFrame(() => {
-      state17.raf = 0;
+    if (state19.raf) return;
+    state19.raf = requestAnimationFrame(() => {
+      state19.raf = 0;
       applyScroll2();
     });
   }
@@ -16153,47 +17224,47 @@
       return isTheme("retro") && isModern() && !isTv() && !isPhone2() && isReady() && !EXCLUDED11.test(route.path);
     },
     mount(route) {
-      const seq3 = ++state17.seq;
-      state17.route = route;
-      state17.el = mountPoint(ID15, { tag: "header", className: "lfx-retro-header" });
-      const { avatar } = build8();
+      const seq3 = ++state19.seq;
+      state19.route = route;
+      state19.el = mountPoint(ID15, { tag: "header", className: "lfx-retro-header" });
+      const { avatar } = build10();
       document.documentElement.classList.add(HTML_CLASS3);
       window.addEventListener("scroll", onScroll6, { passive: true });
-      state17.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
+      state19.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
       renderNav3();
       applyScroll2();
       loadLibs2(seq3);
       loadAvatar2(seq3, avatar);
     },
     update(route) {
-      const changed = !state17.route || state17.route.hash !== route.hash;
-      state17.route = route;
-      if (!state17.el) return;
+      const changed = !state19.route || state19.route.hash !== route.hash;
+      state19.route = route;
+      if (!state19.el) return;
       if (changed && profileIsOpen2()) closePopover();
       if (changed) closeDsPopover();
       applyActive8();
     },
     unmount() {
-      state17.seq++;
-      for (const fn of state17.cleanups.splice(0)) fn();
-      if (state17.raf) cancelAnimationFrame(state17.raf);
-      state17.raf = 0;
+      state19.seq++;
+      for (const fn of state19.cleanups.splice(0)) fn();
+      if (state19.raf) cancelAnimationFrame(state19.raf);
+      state19.raf = 0;
       if (profileIsOpen2()) closePopover();
       closeDsPopover();
       unmountPoint(ID15);
       document.documentElement.classList.remove(HTML_CLASS3);
-      state17.el = null;
-      state17.ds = null;
-      state17.route = null;
-      state17.libs = [];
-      state17.busy = false;
+      state19.el = null;
+      state19.ds = null;
+      state19.route = null;
+      state19.libs = [];
+      state19.busy = false;
     }
   };
 
   // src/js/features/retro/tabbar.js
-  var ROOT_ID15 = "lfx-retro-tabbar";
+  var ROOT_ID17 = "lfx-retro-tabbar";
   var TOP_ID = "lfx-retro-topbar";
-  var ON_CLASS14 = "lfx-retro-tabbar-on";
+  var ON_CLASS16 = "lfx-retro-tabbar-on";
   var MOBILE_CLASS2 = "lfx-retro-mobile";
   var KB_CLASS2 = "lfx-retro-kb";
   var HIDE_CLASS2 = "lfx-retro-tabbar-hide";
@@ -16253,7 +17324,7 @@
     }
     return entries;
   }
-  var state18 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
+  var state20 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
   function paintToggle(btn3, pref) {
     const on = getPref(pref);
     btn3.dataset.pref = pref;
@@ -16265,24 +17336,24 @@
     btn3.textContent = switchText(label, on);
   }
   function syncSheetToggles() {
-    const c = state18.sheet;
+    const c = state20.sheet;
     if (!c || !isCurrent(c) || !c.list) return;
     for (const b of c.list.querySelectorAll("[data-pref]")) paintToggle(b, b.dataset.pref);
   }
   function applyActive9() {
-    if (!state18.root) return;
-    const sheetOpen = Boolean(state18.sheet && isCurrent(state18.sheet));
-    const key = sheetOpen ? "more" : tabKey2(state18.route);
-    if (state18.top) {
-      const tv = state18.top.querySelector('[data-key="tv"]');
-      const on = isTvModeRoute(state18.route);
+    if (!state20.root) return;
+    const sheetOpen = Boolean(state20.sheet && isCurrent(state20.sheet));
+    const key = sheetOpen ? "more" : tabKey2(state20.route);
+    if (state20.top) {
+      const tv = state20.top.querySelector('[data-key="tv"]');
+      const on = isTvModeRoute(state20.route);
       if (tv) {
         tv.classList.toggle("is-active", on);
         if (on) tv.setAttribute("aria-current", "page");
         else tv.removeAttribute("aria-current");
       }
     }
-    for (const el4 of state18.root.querySelectorAll("[data-key]")) {
+    for (const el4 of state20.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -16290,7 +17361,7 @@
     }
   }
   function releaseOffs() {
-    for (const off of state18.offs.splice(0)) {
+    for (const off of state20.offs.splice(0)) {
       try {
         off();
       } catch {
@@ -16298,23 +17369,23 @@
     }
   }
   function closeDsPopover2() {
-    if (state18.ds && state18.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
+    if (state20.ds && state20.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
   }
   function closeMore() {
-    state18.seq++;
+    state20.seq++;
     releaseOffs();
-    const c = state18.sheet;
-    state18.sheet = null;
+    const c = state20.sheet;
+    state20.sheet = null;
     if (c && isCurrent(c)) closeChooser();
     applyActive9();
   }
   async function openMore() {
-    if (state18.sheet && isCurrent(state18.sheet)) {
+    if (state20.sheet && isCurrent(state20.sheet)) {
       closeMore();
       return;
     }
-    const seq3 = ++state18.seq;
-    const anchor = state18.moreBtn;
+    const seq3 = ++state20.seq;
+    const anchor = state20.moreBtn;
     let libs = [];
     let profile2 = [];
     try {
@@ -16325,11 +17396,11 @@
       profile2 = await profileEntries({ theme: "retro", returnFocus: anchor });
     } catch {
     }
-    if (seq3 !== state18.seq || !state18.root) return;
+    if (seq3 !== state20.seq || !state20.root) return;
     emitFx("open");
     const c = openSheet(anchor, "Mehr");
     c.sheet.classList.add("lfx-retro-sheet");
-    state18.sheet = c;
+    state20.sheet = c;
     releaseOffs();
     const entries = moreEntries(libs, profile2, {
       go: go2,
@@ -16354,7 +17425,7 @@
           const off = sw.watch((on) => {
             if (b.isConnected) paintSwitch(b, sw.label, Boolean(on));
           });
-          if (typeof off === "function") state18.offs.push(off);
+          if (typeof off === "function") state20.offs.push(off);
         }
       }
     });
@@ -16371,11 +17442,11 @@
   async function fillTopbar() {
     let chip = { name: "" };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => Boolean(state18.top) });
+      chip = await getUserChip({ retries: 20, isAlive: () => Boolean(state20.top) });
     } catch {
     }
-    if (!state18.top || !chip.name) return;
-    const who = state18.top.querySelector(".lfx-retro-topbar__user");
+    if (!state20.top || !chip.name) return;
+    const who = state20.top.querySelector(".lfx-retro-topbar__user");
     if (who) who.textContent = chip.name;
   }
   var retroTabbar = {
@@ -16384,21 +17455,21 @@
       return isTheme("retro") && isModern() && !isTv() && isPhone2() && isReady() && !EXCLUDED11.test(route.path);
     },
     mount(route) {
-      state18.seq++;
-      state18.route = route;
+      state20.seq++;
+      state20.route = route;
       const top = mountPoint(TOP_ID, { tag: "header", className: "lfx-retro-topbar" });
-      state18.clock = createClock();
+      state20.clock = createClock();
       const ds = createDsButton("lfx-retro-topbar__ds");
       top.replaceChildren(h("div", { class: "lfx-retro-topbar__bar" }, [
         createLogo("lfx-retro-topbar__logo"),
         h("span", { class: "lfx-retro-topbar__user", "aria-hidden": "true" }),
-        state18.clock.el,
+        state20.clock.el,
         ds,
         createTvButton("lfx-retro-topbar__tv")
       ]));
-      state18.ds = ds;
-      state18.top = top;
-      const root7 = mountPoint(ROOT_ID15, { tag: "nav", className: "lfx-retro-tabbar" });
+      state20.ds = ds;
+      state20.top = top;
+      const root7 = mountPoint(ROOT_ID17, { tag: "nav", className: "lfx-retro-tabbar" });
       root7.setAttribute("aria-label", "Hauptnavigation");
       const more = h("button", {
         type: "button",
@@ -16412,34 +17483,34 @@
       root7.addEventListener("click", (e) => {
         if (e.target.closest && e.target.closest("a")) emitFx("nav");
       });
-      state18.root = root7;
-      state18.moreBtn = more;
+      state20.root = root7;
+      state20.moreBtn = more;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
         if (e.target && e.target.matches && e.target.matches(TEXT_INPUT2)) cl2.add(KB_CLASS2);
       };
       const onFocusOut = () => cl2.remove(KB_CLASS2);
       const onHash2 = () => cl2.toggle(HIDE_CLASS2, isVideoHash2(window.location.hash));
-      const onPrefs = () => syncSheetToggles();
+      const onPrefs2 = () => syncSheetToggles();
       document.addEventListener("focusin", onFocusIn);
       document.addEventListener("focusout", onFocusOut);
       window.addEventListener("hashchange", onHash2);
-      document.addEventListener(PREFS_EVENT, onPrefs);
-      state18.cleanups.push(() => {
+      document.addEventListener(PREFS_EVENT, onPrefs2);
+      state20.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         window.removeEventListener("hashchange", onHash2);
-        document.removeEventListener(PREFS_EVENT, onPrefs);
+        document.removeEventListener(PREFS_EVENT, onPrefs2);
         cl2.remove(KB_CLASS2, HIDE_CLASS2);
       });
       cl2.remove(HIDE_CLASS2);
-      cl2.add(ON_CLASS14, MOBILE_CLASS2);
+      cl2.add(ON_CLASS16, MOBILE_CLASS2);
       applyActive9();
       fillTopbar();
     },
     update(route) {
-      const changed = !state18.route || state18.route.hash !== route.hash;
-      state18.route = route;
+      const changed = !state20.route || state20.route.hash !== route.hash;
+      state20.route = route;
       if (changed) {
         closeMore();
         closeDsPopover2();
@@ -16449,17 +17520,17 @@
     unmount() {
       closeMore();
       closeDsPopover2();
-      state18.ds = null;
-      for (const fn of state18.cleanups.splice(0)) fn();
-      if (state18.clock) state18.clock.destroy();
-      state18.clock = null;
-      unmountPoint(ROOT_ID15);
+      state20.ds = null;
+      for (const fn of state20.cleanups.splice(0)) fn();
+      if (state20.clock) state20.clock.destroy();
+      state20.clock = null;
+      unmountPoint(ROOT_ID17);
       unmountPoint(TOP_ID);
-      document.documentElement.classList.remove(ON_CLASS14, MOBILE_CLASS2);
-      state18.root = null;
-      state18.top = null;
-      state18.moreBtn = null;
-      state18.route = null;
+      document.documentElement.classList.remove(ON_CLASS16, MOBILE_CLASS2);
+      state20.root = null;
+      state20.top = null;
+      state20.moreBtn = null;
+      state20.route = null;
     }
   };
   var tabbar_default3 = retroTabbar;
@@ -16535,13 +17606,21 @@
     if (pool[0]) writeFirst2(pool[0].Id);
     return pool;
   }
-  function renderHero2(slot, { loadPool: loadPool2 }) {
+  var heroKey = () => homeKey(getUserId(), "retro", "hero");
+  function fetchCachedHomePool() {
+    return cached(heroKey(), fetchHomePool2, HOME_TTL);
+  }
+  function peekHomePool() {
+    const p = peekCached(heroKey());
+    return Array.isArray(p) ? p : void 0;
+  }
+  function renderHero2(slot, { loadPool: loadPool2, peekPool = null }) {
     const phone = isPhone2();
     let disposed = false;
     let pool = [];
     let index = 0;
     let target = 0;
-    let gen8 = 0;
+    let gen9 = 0;
     let hovering = false;
     let inView = true;
     let rotateTimer = 0;
@@ -16584,7 +17663,7 @@
       }
       let n = 0;
       const step2 = () => {
-        if (disposed || myGen !== gen8) return;
+        if (disposed || myGen !== gen9) return;
         n += 1;
         setTitleText(el4, text.slice(0, n));
         if (n % 3 === 1) emitFx("type");
@@ -16596,12 +17675,12 @@
       refs.count.textContent = `${pad22(index + 1)}/${pad22(pool.length)}`;
       refs.nav.hidden = pool.length < 2;
     }
-    function apply2(i) {
+    function apply3(i) {
       if (disposed || !pool[i]) return;
       const item = pool[i];
       index = i;
-      gen8 += 1;
-      const myGen = gen8;
+      gen9 += 1;
+      const myGen = gen9;
       const src = imageUrl(item, { type: "Backdrop", maxWidth: phone ? 1280 : 1920, quality: 80 });
       bd.replaceChildren(...src ? [h("img", { class: "lfx-retro-hero__img", src, alt: "", decoding: "async" })] : []);
       refs.path.textContent = pathLine(item);
@@ -16624,15 +17703,15 @@
       if (disposed || !pool[i]) return;
       target = i;
       if (immediate || reducedMotion5() || !hero) {
-        apply2(i);
+        apply3(i);
         return;
       }
-      gen8 += 1;
-      const myGen = gen8;
+      gen9 += 1;
+      const myGen = gen9;
       emitFx("nav");
       hero.classList.add("is-changing");
       later(() => {
-        if (!disposed && myGen === gen8) apply2(i);
+        if (!disposed && myGen === gen9) apply3(i);
       }, CHANNEL_SWAP_MS);
       later(() => {
         hero.classList.remove("is-changing");
@@ -16646,7 +17725,7 @@
       b.addEventListener("click", () => step(dir === "next" ? 1 : -1));
       return b;
     }
-    function build11() {
+    function build13() {
       refs.path = h("span", { class: "lfx-retro-hero__path" });
       refs.title = h("span", { class: "lfx-retro-hero__typed lfx-retro-caret", "aria-hidden": "true" });
       refs.heading = h("h2", { class: "lfx-retro-hero__title" }, [refs.title]);
@@ -16728,11 +17807,28 @@
         cleanups6.push(() => io.disconnect());
       }
     }
+    function onSaver() {
+      if (disposed || !pool.length || !isDataSaver("hero") || pool.length <= saverPool(pool).length) return;
+      const cur3 = pool[index];
+      pool = saverPool(pool, cur3 && cur3.Id);
+      index = Math.max(0, pool.findIndex((it) => cur3 && it.Id === cur3.Id));
+      target = index;
+      if (hero) updateCounter();
+      scheduleRotate();
+    }
     async function init2() {
-      let items = [];
+      let items;
       try {
-        items = await loadPool2();
+        items = peekPool ? peekPool() : void 0;
       } catch {
+        items = void 0;
+      }
+      if (!Array.isArray(items) || !items.length) {
+        items = [];
+        try {
+          items = await loadPool2();
+        } catch {
+        }
       }
       if (disposed) return;
       if (!items || !items.length) {
@@ -16740,19 +17836,20 @@
         slot.hidden = true;
         return;
       }
-      pool = items;
+      pool = isDataSaver("hero") ? saverPool(items) : items.slice();
       putItems(pool);
-      build11();
+      build13();
       slot.hidden = false;
       slot.classList.remove("is-loading");
-      apply2(0);
+      apply3(0);
     }
+    cleanups6.push(onDataSaverChange(onSaver), onDataSaverPartsChange(onSaver));
     slot.hidden = false;
     slot.classList.add("is-loading");
     init2();
     return () => {
       disposed = true;
-      gen8 += 1;
+      gen9 += 1;
       timers.forEach(clearTimeout);
       timers.clear();
       rotateTimer = 0;
@@ -16850,12 +17947,13 @@
     const b = h("button", { type: "button", class: `lfx-retro-arrow lfx-retro-arrow--${dir}`, "aria-label": label, tabindex: "-1", hidden: true }, [svgIcon2(dir)]);
     return b;
   }
-  function createRows2(slot, { moreHref = () => null } = {}) {
+  function createRows2(slot, { moreHref = () => null, prefetch = false, hero = null } = {}) {
     let disposed = false;
+    let prefetcher = null;
     let observer2 = null;
     const phone = isPhone2();
     const disposers = [];
-    const pending = /* @__PURE__ */ new Map();
+    const pending2 = /* @__PURE__ */ new Map();
     const rendered = /* @__PURE__ */ new Set();
     disposers.push(onItemsChanged(({ removed } = {}) => {
       if (disposed || !removed || !removed.length) return;
@@ -16926,13 +18024,13 @@
       if (observer2 || typeof IntersectionObserver !== "function") return;
       observer2 = new IntersectionObserver((entries) => {
         for (const en of entries) {
-          const p = pending.get(en.target);
+          const p = pending2.get(en.target);
           if (!en.isIntersecting || !p) continue;
-          pending.delete(en.target);
+          pending2.delete(en.target);
           observer2.unobserve(en.target);
           loadRow(en.target, p.def, p.kind);
         }
-      }, { rootMargin: "600px 0px" });
+      }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "600px 0px" });
     }
     return {
       add(defs) {
@@ -16944,17 +18042,30 @@
           const kind2 = displayKind2(def);
           const el4 = skeleton3(def, kind2);
           slot.append(el4);
-          pending.set(el4, { def, kind: kind2 });
+          pending2.set(el4, { def, kind: kind2 });
           if (observer2) observer2.observe(el4);
           else loadRow(el4, def, kind2);
         }
+        if (prefetch && !prefetcher) {
+          prefetcher = startRowPrefetch({
+            slot,
+            pending: pending2,
+            hero,
+            load: (el4, p) => {
+              if (observer2) observer2.unobserve(el4);
+              return loadRow(el4, p.def, p.kind);
+            }
+          });
+        } else if (prefetcher) prefetcher.notify();
       },
       ids: () => [...rendered],
       destroy() {
         disposed = true;
+        if (prefetcher) prefetcher.stop();
+        prefetcher = null;
         if (observer2) observer2.disconnect();
         observer2 = null;
-        pending.clear();
+        pending2.clear();
         for (const d of disposers.splice(0)) d();
         slot.textContent = "";
       }
@@ -16962,8 +18073,8 @@
   }
 
   // src/js/features/retro/home-route.js
-  var ROOT_ID16 = "lfx-retro-home";
-  var ON_CLASS15 = "lfx-retro-home-on";
+  var ROOT_ID18 = "lfx-retro-home";
+  var ON_CLASS17 = "lfx-retro-home-on";
   function retroHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return null;
     const lfx = route.params.get("lfx");
@@ -16974,7 +18085,7 @@
     if (lfx || route.params.get("tab") === "1") return null;
     return { key: "home", kind: "home", lib: null };
   }
-  function findHomeTab8() {
+  function findHomeTab10() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -16984,11 +18095,11 @@
   var BASE_GENRES2 = 6;
   var SYSTEM_LINE = "LENZ//84 BIOS v1.6 \xB7 640K OK";
   var cleanups5 = [];
-  var waitTimer7 = null;
+  var waitTimer8 = null;
   var gen4 = 0;
   var current6 = null;
   var builtPhone = false;
-  function teardown8() {
+  function teardown10() {
     for (const fn of cleanups5.splice(0)) {
       try {
         fn && fn();
@@ -16996,8 +18107,8 @@
         console.error("[LenzFlix] retro-home cleanup", e);
       }
     }
-    document.getElementById(ROOT_ID16)?.remove();
-    document.documentElement.classList.remove(ON_CLASS15);
+    document.getElementById(ROOT_ID18)?.remove();
+    document.documentElement.classList.remove(ON_CLASS17);
   }
   var isGenreDef2 = (d) => /(^|-)genre-/.test(d.id);
   function moreHrefFor2(def, { hub, libs, lib }) {
@@ -17014,7 +18125,7 @@
       const l = byType("tvshows");
       return l ? hubHref(l.id) : null;
     }
-    if (def.id === "favorites") return "#/home?tab=1";
+    if (def.id === "favorites") return myListHref();
     if (def.kind === "top10") return "#/home?lfx=new";
     return null;
   }
@@ -17035,16 +18146,16 @@
     const hub = route.kind === "hub";
     const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
     if (hub && !lib) return;
-    teardown8();
+    teardown10();
     const heroSlot = h("section", { id: "lfx-retro-hero", class: "lfx-retro-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-retro-rows" });
     const moreSlot = h("div", { class: "lfx-retro-moreslot" });
-    const root7 = h("div", { id: ROOT_ID16, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
+    const root7 = h("div", { id: ROOT_ID18, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
     tab2.prepend(root7);
-    document.documentElement.classList.add(ON_CLASS15);
+    document.documentElement.classList.add(ON_CLASS17);
     current6 = route;
     builtPhone = isPhone2();
-    cleanups5.push(renderHero2(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool2() }));
+    cleanups5.push(renderHero2(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchCachedHomePool(), peekPool: hub ? null : peekHomePool }));
     const getDefs = (genreCount2) => hub ? buildHubRowDefs(lib, { genreCount: genreCount2 }) : buildRowDefs({ genreCount: genreCount2 });
     let defs = [];
     try {
@@ -17053,7 +18164,7 @@
       console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
     }
     if (myGen !== gen4 || !isReady()) return;
-    const rows = createRows2(rowsSlot, { moreHref: (def) => moreHrefFor2(def, { hub, libs, lib }) });
+    const rows = createRows2(rowsSlot, { moreHref: (def) => moreHrefFor2(def, { hub, libs, lib }), prefetch: !hub, hero: () => heroSlot });
     cleanups5.push(() => rows.destroy());
     rows.add(defs);
     let genreCount = BASE_GENRES2;
@@ -17077,34 +18188,34 @@
     if (!defs.some(isGenreDef2)) moreBtn.hidden = true;
     moreSlot.append(moreBtn);
   }
-  function ensure6(route) {
-    clearTimeout(waitTimer7);
-    const tab2 = findHomeTab8();
-    const existing = document.getElementById(ROOT_ID16);
+  function ensure8(route) {
+    clearTimeout(waitTimer8);
+    const tab2 = findHomeTab10();
+    const existing = document.getElementById(ROOT_ID18);
     if (tab2 && existing && tab2.contains(existing) && current6 && current6.key === route.key && builtPhone === isPhone2()) return;
     gen4 += 1;
     const myGen = gen4;
     let tries = 0;
     const poll = () => {
       if (myGen !== gen4) return;
-      const t = findHomeTab8();
+      const t = findHomeTab10();
       if (t) start7(t, route, myGen);
-      else if (++tries < 30) waitTimer7 = setTimeout(poll, 200);
+      else if (++tries < 30) waitTimer8 = setTimeout(poll, 200);
     };
     if (tab2) poll();
-    else waitTimer7 = setTimeout(poll, 200);
+    else waitTimer8 = setTimeout(poll, 200);
   }
   var retroHome = {
     name: "retro-home",
     match: (route) => isTheme("retro") && isModern() && !isTv() && isReady() && Boolean(retroHomeRoute(route)),
-    mount: (route) => ensure6(retroHomeRoute(route)),
-    update: (route) => ensure6(retroHomeRoute(route)),
+    mount: (route) => ensure8(retroHomeRoute(route)),
+    update: (route) => ensure8(retroHomeRoute(route)),
     unmount() {
       gen4 += 1;
-      clearTimeout(waitTimer7);
-      waitTimer7 = null;
+      clearTimeout(waitTimer8);
+      waitTimer8 = null;
       current6 = null;
-      teardown8();
+      teardown10();
     }
   };
   var home_default4 = retroHome;
@@ -17112,7 +18223,7 @@
   // src/js/features/retro/title-mount.js
   var root4 = () => document.documentElement;
   var PAGE_CLASS = "lfx-retro-page-on";
-  function findHomeTab9() {
+  function findHomeTab11() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -17123,7 +18234,7 @@
     const poll = () => {
       timer2 = null;
       if (dead) return;
-      const t = findHomeTab9();
+      const t = findHomeTab11();
       if (t) cb(t);
       else if (++n < tries) timer2 = setTimeout(poll, every);
     };
@@ -17174,37 +18285,37 @@
     let timer2 = null;
     let pos = 0;
     const tick = throttle(() => emitFx("type"), 110);
-    const paint = () => {
+    const paint2 = () => {
       typed.textContent = full.slice(0, pos);
       rest.textContent = full.slice(pos);
     };
-    const stop7 = () => {
+    const stop8 = () => {
       if (timer2) clearInterval(timer2);
       timer2 = null;
     };
     const finish3 = () => {
-      stop7();
+      stop8();
       pos = full.length;
-      paint();
+      paint2();
       el4.classList.remove("lfx-retro-caret");
     };
-    const start10 = () => {
-      stop7();
+    const start11 = () => {
+      stop8();
       if (reducedMotion6() || full.length < 2) {
         finish3();
         return;
       }
       const step = Math.max(1, Math.ceil(full.length / MAX_TICKS));
       pos = 0;
-      paint();
+      paint2();
       timer2 = setInterval(() => {
         pos = Math.min(full.length, pos + step);
-        paint();
+        paint2();
         tick();
         if (pos >= full.length) finish3();
       }, TICK_MS);
     };
-    return { el: el4, start: start10, finish: finish3, stop: stop7 };
+    return { el: el4, start: start11, finish: finish3, stop: stop8 };
   }
 
   // src/js/features/retro/title-dom.js
@@ -17261,7 +18372,7 @@
       const n = Number(main.ChildCount) || 0;
       if (n > 0) out.push(`${n} ${n === 1 ? "STAFFEL" : "STAFFELN"}`);
     } else {
-      const rt = formatRuntime(main.RunTimeTicks);
+      const rt = formatRuntime2(main.RunTimeTicks);
       if (rt) out.push(rt);
     }
     const g = (main.Genres || []).slice(0, 3).join(" / ");
@@ -17342,7 +18453,7 @@
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Trailer");
     overlay.append(h("div", { class: "lfx-retro-trailer__tube" }, [h("p", { class: "lfx-retro-trailer__tag lfx-retro-label" }, "Trailer"), video2]), closeBtn);
-    const onKey3 = (e) => {
+    const onKey4 = (e) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
@@ -17351,10 +18462,10 @@
     const onBackdrop = (e) => {
       if (e.target === overlay) close2();
     };
-    window.addEventListener("keydown", onKey3, true);
+    window.addEventListener("keydown", onKey4, true);
     overlay.addEventListener("click", onBackdrop);
     overlay.__lfxCleanup = () => {
-      window.removeEventListener("keydown", onKey3, true);
+      window.removeEventListener("keydown", onKey4, true);
       overlay.removeEventListener("click", onBackdrop);
     };
     video2.addEventListener("error", () => {
@@ -17375,19 +18486,19 @@
   }
 
   // src/js/features/retro/title.js
-  var ROOT_ID17 = "lfx-retro-title";
-  var ON_CLASS16 = "lfx-retro-title-on";
-  var state19 = null;
+  var ROOT_ID19 = "lfx-retro-title";
+  var ON_CLASS18 = "lfx-retro-title-on";
+  var state21 = null;
   var gen5 = 0;
   var routeId2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" ? r.id : null;
   };
-  var stalenessOf2 = (g) => () => !state19 || state19.g !== g;
+  var stalenessOf2 = (g) => () => !state21 || state21.g !== g;
   function dispose4() {
     gen5 += 1;
-    const s = state19;
-    state19 = null;
+    const s = state21;
+    state21 = null;
     closeTrailer2();
     try {
       closePopover();
@@ -17404,8 +18515,23 @@
       }
       if (s.root) s.root.remove();
     }
-    document.getElementById(ROOT_ID17)?.remove();
-    setPageOn2(ON_CLASS16, false);
+    document.getElementById(ROOT_ID19)?.remove();
+    setPageOn2(ON_CLASS18, false);
+  }
+  function preloadImages2(item) {
+    let target = item;
+    if (item && (item.Type === "Episode" || item.Type === "Season")) {
+      const tid = item.SeriesId || item.ParentId;
+      target = tid ? getStoredItem(tid) : null;
+    }
+    if (!target) return;
+    for (const url of [backdropUrl3(target), logoImage(target, { maxWidth: 720 }), imageUrl(target, { type: "Primary", maxWidth: 700, quality: 85 })]) {
+      if (!url) continue;
+      try {
+        new Image().src = url;
+      } catch {
+      }
+    }
   }
   function errorBox2(message) {
     return h("div", { class: "lfx-rt__error lfx-retro-frame", role: "alert" }, [
@@ -17453,12 +18579,14 @@
   }
   async function load4(g) {
     const stale = stalenessOf2(g);
-    const s = state19;
+    const s = state21;
     const root7 = s.root;
     let sel;
     let main;
     try {
-      const first2 = getStoredItem(s.id) || await loadItem(s.id);
+      const stored = getStoredItem(s.id);
+      if (stored) preloadImages2(stored);
+      const first2 = stored || await loadItem(s.id);
       if (!first2) throw new Error("Titel nicht gefunden");
       const r = resolveTarget4(first2, s.id);
       sel = r.sel;
@@ -17673,14 +18801,6 @@
         c.seasonId = pickInitialSeason(list, c.seasonId);
         paintTabs();
         await showSeason2();
-        if (stale()) return;
-        const hit = epList.querySelector(".lfx-rt__ep.is-selected");
-        if (hit && hit.scrollIntoView) {
-          try {
-            hit.scrollIntoView({ block: "center", behavior: "auto" });
-          } catch {
-          }
-        }
       }).catch(() => {
       }));
     }
@@ -17723,19 +18843,19 @@
   function begin4(id, { keepScroll = false } = {}) {
     dispose4();
     const g = gen5;
-    state19 = { g, id, root: null, cleanups: [], cancelWait: null };
-    const s = state19;
+    state21 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state21;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state19 !== s) return;
-      const root7 = h("div", { id: ROOT_ID17, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
+      if (state21 !== s) return;
+      const root7 = h("div", { id: ROOT_ID19, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-rt__boot lfx-retro-caret" }, "LADE KASSETTE")
       ]);
       s.root = root7;
       tab2.prepend(root7);
-      setPageOn2(ON_CLASS16, true);
+      setPageOn2(ON_CLASS18, true);
       if (!keepScroll) scrollTop2();
       load4(g).then(() => {
-        if (state19 === s) root7.removeAttribute("aria-busy");
+        if (state21 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] retro-title", e));
     });
   }
@@ -17749,26 +18869,26 @@
     update(route) {
       const id = routeId2(route);
       if (!id) return;
-      if (state19 && state19.id === id && state19.root && state19.root.isConnected) return;
+      if (state21 && state21.id === id && state21.root && state21.root.isConnected) return;
       begin4(id);
     },
     unmount: dispose4
   };
 
   // src/js/features/retro/search.js
-  var ROOT_ID18 = "lfx-retro-search";
-  var ON_CLASS17 = "lfx-retro-search-on";
+  var ROOT_ID20 = "lfx-retro-search";
+  var ON_CLASS19 = "lfx-retro-search-on";
   var DEBOUNCE_MS3 = 300;
   var MIN_LEN4 = 2;
-  var state20 = null;
-  var asItems9 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var state22 = null;
+  var asItems10 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var routeQ2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "search" ? r.q || "" : null;
   };
   function dispose5() {
-    const s = state20;
-    state20 = null;
+    const s = state22;
+    state22 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       clearTimeout(s.timer);
@@ -17782,8 +18902,8 @@
       }
       if (s.root) s.root.remove();
     }
-    document.getElementById(ROOT_ID18)?.remove();
-    setPageOn2(ON_CLASS17, false);
+    document.getElementById(ROOT_ID20)?.remove();
+    setPageOn2(ON_CLASS19, false);
   }
   function group(title, body, mod = "") {
     return h("section", { class: `lfx-rs__group ${mod}`.trim() }, [h("h2", { class: "lfx-retro-label" }, title), body]);
@@ -17805,7 +18925,7 @@
     }
   }
   async function renderStart(s, seq3) {
-    const stale = () => state20 !== s || s.seq !== seq3;
+    const stale = () => state22 !== s || s.seq !== seq3;
     s.results.replaceChildren(h("p", { class: "lfx-rs__hint lfx-retro-caret" }, "BEREIT"));
     s.count.textContent = "";
     const [lib, genres, colls, latest] = await Promise.all([
@@ -17819,7 +18939,7 @@
         SortBy: "DateCreated",
         SortOrder: "Descending",
         Limit: 14
-      }).then(asItems9).catch(() => [])
+      }).then(asItems10).catch(() => [])
     ]);
     if (stale()) return;
     const parts = [];
@@ -17853,7 +18973,7 @@
     s.abort = ctl;
     s.root.setAttribute("aria-busy", "true");
     s.count.textContent = "SUCHE L\xC4UFT\u2026";
-    const stale = () => state20 !== s || s.seq !== seq3;
+    const stale = () => state22 !== s || s.seq !== seq3;
     try {
       const res = await searchItems(term, { signal: ctl.signal });
       if (stale()) return;
@@ -17881,7 +19001,7 @@
       s.root.removeAttribute("aria-busy");
     }
   }
-  function build9(tab2, s, q) {
+  function build11(tab2, s, q) {
     const input = h("input", {
       type: "text",
       class: "lfx-rs__input",
@@ -17894,16 +19014,16 @@
       value: q
     });
     input.value = q;
-    const caret = h("span", { class: "lfx-rs__caret", "aria-hidden": "true" });
+    const caret2 = h("span", { class: "lfx-rs__caret", "aria-hidden": "true" });
     const clear = h("button", { type: "button", class: "lfx-rs__clear", "aria-label": "Eingabe l\xF6schen", title: "L\xF6schen", hidden: !q }, "ESC");
     const cmd = h("div", { class: "lfx-rs__cmd lfx-retro-frame" }, [
       h("span", { class: "lfx-rs__prompt", "aria-hidden": "true" }, "SUCHE>"),
-      h("span", { class: "lfx-rs__field" }, [input, caret]),
+      h("span", { class: "lfx-rs__field" }, [input, caret2]),
       clear
     ]);
     const count = h("p", { class: "lfx-rs__count", "aria-live": "polite" });
     const results = h("div", { class: "lfx-rs__results" });
-    const root7 = h("div", { id: ROOT_ID18, class: "lfx-retro-page lfx-rs", role: "search" }, [
+    const root7 = h("div", { id: ROOT_ID20, class: "lfx-retro-page lfx-rs", role: "search" }, [
       h("p", { class: "lfx-rs__banner", "aria-hidden": "true" }, "LENZ//84 RECHERCHE-TERMINAL  \xB7  ENTER = SUCHEN"),
       cmd,
       count,
@@ -17920,7 +19040,7 @@
       placeCaret();
     };
     tab2.prepend(root7);
-    setPageOn2(ON_CLASS17, true);
+    setPageOn2(ON_CLASS19, true);
     const writeHash = (term) => {
       try {
         history.replaceState(history.state, "", searchHref(term));
@@ -17945,7 +19065,7 @@
       runSearch2(s, "");
       input.focus();
     };
-    const onKey3 = (e) => {
+    const onKey4 = (e) => {
       if (e.key === "Enter") {
         clearTimeout(s.timer);
         emitFx("click");
@@ -17959,14 +19079,14 @@
     };
     const onCaret = () => placeCaret();
     input.addEventListener("input", onInput);
-    input.addEventListener("keydown", onKey3);
+    input.addEventListener("keydown", onKey4);
     input.addEventListener("keyup", onCaret);
     input.addEventListener("click", onCaret);
     input.addEventListener("focus", onCaret);
     clear.addEventListener("click", onClear);
     s.cleanups.push(() => {
       input.removeEventListener("input", onInput);
-      input.removeEventListener("keydown", onKey3);
+      input.removeEventListener("keydown", onKey4);
       input.removeEventListener("keyup", onCaret);
       input.removeEventListener("click", onCaret);
       input.removeEventListener("focus", onCaret);
@@ -17995,9 +19115,9 @@
       syncUi: () => {
       }
     };
-    state20 = s;
+    state22 = s;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state20 === s) build9(tab2, s, q);
+      if (state22 === s) build11(tab2, s, q);
     });
   }
   var search_default2 = {
@@ -18009,17 +19129,17 @@
     update(route) {
       const q = routeQ2(route);
       if (q == null) return;
-      if (!state20 || !state20.root || !state20.root.isConnected) {
+      if (!state22 || !state22.root || !state22.root.isConnected) {
         begin5(q);
         return;
       }
-      if (q.trim() !== (state20.term || "")) {
-        state20.input.value = q;
-        clearTimeout(state20.timer);
-        runSearch2(state20, q.trim());
+      if (q.trim() !== (state22.term || "")) {
+        state22.input.value = q;
+        clearTimeout(state22.timer);
+        runSearch2(state22, q.trim());
       }
       try {
-        state20.input.focus({ preventScroll: true });
+        state22.input.focus({ preventScroll: true });
       } catch {
       }
     },
@@ -18027,21 +19147,21 @@
   };
 
   // src/js/features/retro/browse.js
-  var ROOT_ID19 = "lfx-retro-browse";
-  var ON_CLASS18 = "lfx-retro-browse-on";
+  var ROOT_ID21 = "lfx-retro-browse";
+  var ON_CLASS20 = "lfx-retro-browse-on";
   var PAGE5 = 40;
   var VIEW_KEY = "lfx.retro.browseview";
-  var SORTS2 = {
+  var SORTS4 = {
     name: { label: "NAME", by: "SortName", order: "Ascending" },
     date: { label: "DATUM", by: "DateCreated", order: "Descending" },
     rating: { label: "WERTUNG", by: "CommunityRating,SortName", order: "Descending" }
   };
-  var state21 = null;
-  var routeOf2 = (route) => {
+  var state23 = null;
+  var routeOf3 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
   };
-  var asItems10 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var asItems11 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function fileName2(item) {
     const base = String(item.Name || "").toUpperCase().replace(/[^A-Z0-9ÄÖÜß \-_.]/g, "").trim() || "OHNE NAME";
     const ext = item.Type === "Series" ? "SER" : item.Type === "BoxSet" ? "BOX" : item.Type === "Movie" ? "MOV" : "VID";
@@ -18061,8 +19181,8 @@
     }
   }
   function dispose6() {
-    const s = state21;
-    state21 = null;
+    const s = state23;
+    state23 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       for (const fn of s.cleanups.splice(0)) {
@@ -18074,8 +19194,8 @@
       }
       if (s.root) s.root.remove();
     }
-    document.getElementById(ROOT_ID19)?.remove();
-    setPageOn2(ON_CLASS18, false);
+    document.getElementById(ROOT_ID21)?.remove();
+    setPageOn2(ON_CLASS20, false);
   }
   function listRow(it) {
     const genre = it.Genres && it.Genres[0] || "";
@@ -18132,13 +19252,13 @@
     loadMore2(s);
   }
   async function loadMore2(s) {
-    if (state21 !== s || s.loading || s.done) return;
+    if (state23 !== s || s.loading || s.done) return;
     const seq3 = s.seq;
     s.loading = true;
     s.root.setAttribute("aria-busy", "true");
     paintHead(s);
-    const stale = () => state21 !== s || s.seq !== seq3;
-    const sort = SORTS2[s.sort] || SORTS2.name;
+    const stale = () => state23 !== s || s.seq !== seq3;
+    const sort = SORTS4[s.sort] || SORTS4.name;
     try {
       const res = await getItems({
         ...BASE_PARAMS,
@@ -18152,7 +19272,7 @@
         Limit: PAGE5
       });
       if (stale()) return;
-      const items = asItems10(res);
+      const items = asItems11(res);
       putItems(items);
       s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       s.items.push(...items);
@@ -18186,8 +19306,8 @@
     s.grid.replaceChildren(...s.items.map((it) => itemNode(s, it)));
     paintHead(s);
   }
-  async function build10(tab2, s) {
-    const stale = () => state21 !== s;
+  async function build12(tab2, s) {
+    const stale = () => state23 !== s;
     let lib = null;
     try {
       lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
@@ -18207,12 +19327,12 @@
       return b;
     };
     const genreBtn = optBtn({ "aria-expanded": "false" }, "/F:GENRE", (b) => {
-      const open2 = genres.hidden;
-      genres.hidden = !open2;
-      b.setAttribute("aria-expanded", String(open2));
+      const open3 = genres.hidden;
+      genres.hidden = !open3;
+      b.setAttribute("aria-expanded", String(open3));
     });
     const opts = h("div", { class: "lfx-rb__opts", role: "toolbar", "aria-label": "Anzeigeoptionen" }, [
-      ...Object.entries(SORTS2).map(([key, v]) => optBtn({ dataset: { sort: key } }, `/S:${v.label}`, () => {
+      ...Object.entries(SORTS4).map(([key, v]) => optBtn({ dataset: { sort: key } }, `/S:${v.label}`, () => {
         if (s.sort === key) return;
         s.sort = key;
         reload2(s);
@@ -18242,7 +19362,7 @@
     const grid2 = h("div", { class: "lfx-rb__grid", role: "list" });
     const status = h("div", { class: "lfx-rb__status" });
     const sentinel = h("div", { class: "lfx-rb__sentinel", "aria-hidden": "true" });
-    const root7 = h("div", { id: ROOT_ID19, class: "lfx-retro-page lfx-rb" }, [
+    const root7 = h("div", { id: ROOT_ID21, class: "lfx-retro-page lfx-rb" }, [
       h("header", { class: "lfx-rb__head" }, [path, count]),
       opts,
       genres,
@@ -18252,7 +19372,7 @@
     ]);
     Object.assign(s, { root: root7, path, count, opts, genres, genreBtn, grid: grid2, status });
     tab2.prepend(root7);
-    setPageOn2(ON_CLASS18, true);
+    setPageOn2(ON_CLASS20, true);
     scrollTop2();
     const addGenre = (label, genreId) => {
       genres.append(h("a", {
@@ -18265,20 +19385,20 @@
     if (typeof IntersectionObserver === "function") {
       const io = new IntersectionObserver((entries) => {
         if (entries.some((e) => e.isIntersecting)) loadMore2(s);
-      }, { rootMargin: "900px 0px" });
+      }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "900px 0px" });
       io.observe(sentinel);
       s.cleanups.push(() => io.disconnect());
     } else {
       const onScroll7 = () => {
         const r = sentinel.getBoundingClientRect();
-        if (r.top < (window.innerHeight || 800) + 900) loadMore2(s);
+        if (r.top < (window.innerHeight || 800) + (isDataSaver("lazy") ? 100 : 900)) loadMore2(s);
       };
       window.addEventListener("scroll", onScroll7, { passive: true });
       s.cleanups.push(() => window.removeEventListener("scroll", onScroll7));
     }
     reload2(s);
     try {
-      const list = asItems10(await getJson("/Genres", {
+      const list = asItems11(await getJson("/Genres", {
         userId: getUserId(),
         ParentId: s.libId,
         IncludeItemTypes: s.types,
@@ -18311,30 +19431,30 @@
       cancelWait: null,
       root: null
     };
-    state21 = s;
+    state23 = s;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state21 === s) build10(tab2, s);
+      if (state23 === s) build12(tab2, s);
     });
   }
   var browse_default2 = {
     name: "retro-browse",
-    match: (route) => isTheme("retro") && isModern() && !isTv() && isReady() && routeOf2(route) != null,
+    match: (route) => isTheme("retro") && isModern() && !isTv() && isReady() && routeOf3(route) != null,
     mount(route) {
-      const r = routeOf2(route);
+      const r = routeOf3(route);
       if (r) begin6(r);
     },
     update(route) {
-      const r = routeOf2(route);
+      const r = routeOf3(route);
       if (!r) return;
-      if (!state21 || state21.libId !== r.lib || !state21.root || !state21.root.isConnected) {
+      if (!state23 || state23.libId !== r.lib || !state23.root || !state23.root.isConnected) {
         begin6(r);
         return;
       }
-      if ((r.genre || null) !== state21.genreId) {
-        state21.genreId = r.genre || null;
-        const chip = state21.genres.querySelector(`.lfx-rb__genre[data-genre="${state21.genreId || ""}"]`);
-        state21.genreName = chip && state21.genreId ? chip.textContent : null;
-        reload2(state21);
+      if ((r.genre || null) !== state23.genreId) {
+        state23.genreId = r.genre || null;
+        const chip = state23.genres.querySelector(`.lfx-rb__genre[data-genre="${state23.genreId || ""}"]`);
+        state23.genreName = chip && state23.genreId ? chip.textContent : null;
+        reload2(state23);
       }
     },
     unmount: dispose6
@@ -18347,88 +19467,6 @@
     nologoClass: "lfx-retro-nologo",
     nobdClass: "lfx-retro-nobackdrop"
   }).feature;
-
-  // src/js/features/retro/hover.js
-  var hover = {
-    name: "retro-hover",
-    match: () => false,
-    mount() {
-    },
-    update() {
-    },
-    unmount() {
-    }
-  };
-  var hover_default2 = hover;
-
-  // src/js/features/retro/tvlook.js
-  var tvlook = {
-    name: "retro-tvlook",
-    match: () => false,
-    mount() {
-    },
-    update() {
-    },
-    unmount() {
-    }
-  };
-  var tvlook_default = tvlook;
-
-  // src/js/features/retro/fx/crt.js
-  var CRT_ID = "lfx-retro-crt";
-  function createCrt() {
-    let el4 = null;
-    let stripTimer = 0;
-    let shakeTimer = 0;
-    function mount2() {
-      if (el4 && el4.isConnected) return el4;
-      el4 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
-        h("div", { class: "lfx-retro-crt__flicker" }),
-        h("div", { class: "lfx-retro-crt__scan" }),
-        h("div", { class: "lfx-retro-crt__mask" }),
-        h("div", { class: "lfx-retro-crt__vignette" }),
-        h("div", { class: "lfx-retro-crt__roll" }),
-        h("div", { class: "lfx-retro-crt__strip" })
-      ]);
-      document.body.append(el4);
-      return el4;
-    }
-    function unmount2() {
-      clearTimeout(stripTimer);
-      clearTimeout(shakeTimer);
-      stripTimer = shakeTimer = 0;
-      if (el4) el4.remove();
-      el4 = null;
-    }
-    function sync3(on) {
-      document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
-      if (on) mount2();
-      else unmount2();
-    }
-    function glitchStrip(ms = 180) {
-      if (!el4) return;
-      const strip = el4.querySelector(".lfx-retro-crt__strip");
-      if (!strip) return;
-      strip.style.top = `${Math.round(8 + Math.random() * 80)}%`;
-      strip.style.height = `${Math.round(2 + Math.random() * 7)}%`;
-      el4.classList.add("is-strip");
-      clearTimeout(stripTimer);
-      stripTimer = setTimeout(() => {
-        if (el4) el4.classList.remove("is-strip");
-      }, ms);
-    }
-    function shake(ms = 700) {
-      if (!el4) return;
-      el4.classList.add("is-shaking");
-      clearTimeout(shakeTimer);
-      shakeTimer = setTimeout(() => {
-        if (el4) el4.classList.remove("is-shaking");
-      }, ms);
-    }
-    return { mount: mount2, unmount: unmount2, sync: sync3, glitchStrip, shake, get el() {
-      return el4;
-    } };
-  }
 
   // src/js/features/retro/fx/util.js
   var EDITABLE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
@@ -18510,6 +19548,371 @@
         return set.size;
       }
     };
+  }
+
+  // src/js/features/retro/hover.js
+  var POPUP_ID3 = "lfx-retro-hover";
+  var TERMINAL_ID = "lfx-retro-terminal";
+  var INTENT_MS = 600;
+  var PREVIEW_MS2 = 1500;
+  var LEAVE_MS4 = 220;
+  var POPUP_W = 320;
+  var GAP2 = 10;
+  var EDGE3 = 12;
+  var FIELDS6 = "Genres,ProductionYear,RunTimeTicks,ChildCount,RemoteTrailers,LocalTrailerCount,UserData,ImageTags,BackdropImageTags,OfficialRating";
+  var hoverCapable3 = () => typeof window.matchMedia === "function" && window.matchMedia("(hover:hover) and (pointer:fine)").matches;
+  var reducedMotion7 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function placePopup(r, vw, vh, w, ph) {
+    let left = r.right + GAP2;
+    if (left + w > vw - EDGE3) left = r.left - GAP2 - w;
+    left = Math.max(EDGE3, Math.min(left, vw - EDGE3 - w));
+    let top = r.top + r.height / 2 - ph / 2;
+    top = Math.min(top, vh - EDGE3 - ph);
+    top = Math.max(EDGE3, top);
+    return { left, top };
+  }
+  var active5 = null;
+  var intent3 = null;
+  var leaveTimer2 = null;
+  var listeners6 = [];
+  var scrollOff = null;
+  var gen6 = 0;
+  var blocked3 = () => Boolean(
+    document.hidden || isMenuOpen() || isDialogOpen() || isPlayerVisible(null) || document.getElementById(TERMINAL_ID)
+  );
+  function loadDetail2(id) {
+    return cached(`lfx:retro:hover:${id}`, async () => {
+      const it = await getItem(id, { Fields: FIELDS6 });
+      if (it) putItems([it]);
+      return it;
+    }, 5 * 6e4);
+  }
+  function cardOf2(target) {
+    if (!target || !target.closest) return null;
+    const card3 = target.closest(".lfx-retro-card[data-lfx-id]");
+    if (!card3 || card3.closest(`#${POPUP_ID3}, #lfx-retro-title`)) return null;
+    return card3;
+  }
+  function add2(target, type, fn, opts) {
+    target.addEventListener(type, fn, opts);
+    return () => target.removeEventListener(type, fn, opts);
+  }
+  function syncScroll() {
+    const need = Boolean(active5 || intent3);
+    if (need && !scrollOff) scrollOff = add2(window, "scroll", closeNow3, { capture: true, passive: true });
+    else if (!need && scrollOff) {
+      scrollOff();
+      scrollOff = null;
+    }
+  }
+  function clearIntent2() {
+    if (intent3) clearTimeout(intent3.timer);
+    intent3 = null;
+  }
+  function closeNow3() {
+    clearIntent2();
+    clearTimeout(leaveTimer2);
+    leaveTimer2 = null;
+    gen6 += 1;
+    const a = active5;
+    active5 = null;
+    if (a) {
+      a.timers.forEach(clearTimeout);
+      if (a.preview) a.preview.cancel();
+      a.card.classList.remove("is-preview");
+    }
+    unmountPoint(POPUP_ID3);
+    syncScroll();
+  }
+  function scheduleLeave2() {
+    clearTimeout(leaveTimer2);
+    leaveTimer2 = setTimeout(() => {
+      leaveTimer2 = null;
+      closeNow3();
+    }, LEAVE_MS4);
+  }
+  function metaLine3(item) {
+    const m = metaParts2(item);
+    const genres = (Array.isArray(item.Genres) ? item.Genres : []).slice(0, 2).join(" / ");
+    return [m.year, m.length, genres].filter(Boolean).join(" \xB7 ");
+  }
+  function setFavLabel(btn3, on) {
+    btn3.textContent = on ? "\u2713 Gemerkt" : "+ Merken";
+    btn3.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  async function playTarget(item) {
+    if (item.Type !== "Series") return play(item, { resume: Boolean(item.UserData && item.UserData.PlaybackPositionTicks > 0) });
+    let ep;
+    try {
+      ep = await loadNextUp(item.Id);
+      if (!ep) {
+        const seasons = await loadSeasons(item.Id);
+        const eps = seasons.length ? await loadEpisodes2(item.Id, seasons[0].Id) : [];
+        ep = eps[0] || null;
+      }
+    } catch {
+      ep = null;
+    }
+    if (!ep) {
+      window.location.hash = titleHref(item.Id);
+      return false;
+    }
+    return play(ep, { resume: Boolean(ep.UserData && ep.UserData.PlaybackPositionTicks > 0) });
+  }
+  function open2(card3) {
+    const stored = getStoredItem(card3.dataset.lfxId);
+    if (!stored || active5 || blocked3()) return;
+    const g = ++gen6;
+    const a = { card: card3, item: stored, el: null, preview: null, timers: [], g, t0: Date.now() };
+    const pic = landscapeFor(stored, 640);
+    const media = h("div", { class: "lfx-retro-hover__media" }, [
+      pic ? h("img", { class: "lfx-retro-hover__img", src: pic.url, alt: "" }) : null
+    ]);
+    const meta2 = h("p", { class: "lfx-retro-hover__meta" }, metaLine3(stored));
+    const playBtn = h("button", { type: "button", class: "lfx-retro-btn lfx-retro-hover__play" }, "\u25B6 Abspielen");
+    const favBtn = h("button", { type: "button", class: "lfx-retro-btn lfx-retro-hover__fav" });
+    setFavLabel(favBtn, Boolean(stored.UserData && stored.UserData.IsFavorite));
+    const label = h("div", { class: "lfx-retro-hover__label" }, [
+      h("h3", { class: "lfx-retro-hover__title" }, displayTitle4(stored)),
+      meta2,
+      h("div", { class: "lfx-retro-hover__actions" }, [playBtn, favBtn])
+    ]);
+    const el4 = mountPoint(POPUP_ID3, { className: "lfx-retro-hover" });
+    el4.className = "lfx-retro-hover";
+    el4.setAttribute("role", "dialog");
+    el4.setAttribute("aria-label", displayTitle4(stored));
+    el4.replaceChildren(media, label);
+    el4.style.width = `${POPUP_W}px`;
+    el4.style.left = "0px";
+    el4.style.top = "0px";
+    a.el = el4;
+    const place2 = () => {
+      const pos = placePopup(card3.getBoundingClientRect(), window.innerWidth, window.innerHeight, el4.offsetWidth || POPUP_W, el4.offsetHeight || 220);
+      el4.style.left = `${Math.round(pos.left)}px`;
+      el4.style.top = `${Math.round(pos.top)}px`;
+    };
+    place2();
+    active5 = a;
+    card3.classList.add("is-preview");
+    syncScroll();
+    emitFx("open");
+    const go3 = () => {
+      if (active5 === a) el4.classList.add("is-in");
+    };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go3));
+    else go3();
+    el4.addEventListener("mouseenter", () => {
+      clearTimeout(leaveTimer2);
+      leaveTimer2 = null;
+    });
+    el4.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      const id = a.item.Id;
+      closeNow3();
+      window.location.hash = titleHref(id);
+    });
+    playBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const it = a.item;
+      emitFx("click");
+      closeNow3();
+      play_(it);
+    });
+    favBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      favBtn.disabled = true;
+      const on = await toggleFavorite2(a.item);
+      favBtn.disabled = false;
+      if (active5 === a) setFavLabel(favBtn, on);
+    });
+    loadDetail2(stored.Id).then((detail) => {
+      if (active5 !== a || !detail) return;
+      a.item = { ...stored, ...detail, UserData: detail.UserData || stored.UserData };
+      meta2.textContent = metaLine3(a.item);
+      setFavLabel(favBtn, Boolean(a.item.UserData && a.item.UserData.IsFavorite));
+      place2();
+      if (reducedMotion7() || isDataSaver("trailer")) return;
+      a.preview = createMutedPreview(media, a.item, {
+        delay: Math.max(0, PREVIEW_MS2 - (Date.now() - a.t0)),
+        startAt: 4,
+        onStart: (v) => {
+          if (active5 === a) {
+            v.classList.add("is-in");
+            el4.classList.add("is-video");
+          }
+        },
+        onEnd: () => {
+          if (active5 === a) {
+            a.preview = null;
+            el4.classList.remove("is-video");
+          }
+        }
+      });
+    }, () => {
+    });
+  }
+  function play_(item) {
+    return playTarget(item).catch(() => false);
+  }
+  function scheduleOpen3(card3) {
+    clearIntent2();
+    if (blocked3()) return;
+    const timer2 = setTimeout(() => {
+      if (!intent3 || intent3.card !== card3) return;
+      intent3 = null;
+      syncScroll();
+      if (!card3.isConnected) return;
+      open2(card3);
+    }, INTENT_MS);
+    intent3 = { card: card3, timer: timer2 };
+    syncScroll();
+  }
+  function onOver3(e) {
+    const t = e.target;
+    if (t && t.closest && t.closest(`#${POPUP_ID3}`)) {
+      clearTimeout(leaveTimer2);
+      leaveTimer2 = null;
+      return;
+    }
+    const card3 = cardOf2(t);
+    if (active5 && card3 === active5.card) {
+      clearTimeout(leaveTimer2);
+      leaveTimer2 = null;
+      return;
+    }
+    if (active5) {
+      if (card3) closeNow3();
+      else {
+        scheduleLeave2();
+        return;
+      }
+    }
+    if (card3) scheduleOpen3(card3);
+    else if (intent3) {
+      clearIntent2();
+      syncScroll();
+    }
+  }
+  function onOut3(e) {
+    if (e.relatedTarget) return;
+    clearIntent2();
+    if (active5) scheduleLeave2();
+    else syncScroll();
+  }
+  function onKey3(e) {
+    if (e.key === "Escape" && (active5 || intent3)) closeNow3();
+  }
+  function start8() {
+    if (listeners6.length) return;
+    listeners6 = [
+      add2(document, "mouseover", onOver3),
+      add2(document, "mouseout", onOut3),
+      add2(document, "keydown", onKey3),
+      add2(document, "visibilitychange", () => {
+        if (document.hidden) closeNow3();
+      }),
+      add2(window, "hashchange", closeNow3),
+      add2(window, "blur", closeNow3)
+    ];
+  }
+  function stop7() {
+    closeNow3();
+    for (const off of listeners6.splice(0)) off();
+  }
+  var hover = {
+    name: "retro-hover",
+    match: (route) => isTheme("retro") && isModern() && !isTv() && isReady() && hoverCapable3() && !isPlayerVisible(route),
+    mount: start8,
+    update() {
+      closeNow3();
+    },
+    unmount: stop7
+  };
+  var hover_default2 = hover;
+
+  // src/js/features/retro/tvlook.js
+  var TVCRT_CLASS = "lfx-retro-tvcrt";
+  var onPrefs = null;
+  function sync3() {
+    document.documentElement.classList.toggle(TVCRT_CLASS, getPref("crt"));
+  }
+  function mount() {
+    if (onPrefs) return;
+    onPrefs = (e) => {
+      const d = e && e.detail;
+      if (!d || d.name === "crt") sync3();
+    };
+    document.addEventListener(PREFS_EVENT, onPrefs);
+    sync3();
+  }
+  function unmount() {
+    if (onPrefs) document.removeEventListener(PREFS_EVENT, onPrefs);
+    onPrefs = null;
+    document.documentElement.classList.remove(TVCRT_CLASS);
+  }
+  var tvlook_default = {
+    name: "retro-tvlook",
+    match: (route) => isTheme("retro") && isModern() && !isTv() && isTvModeRoute(route),
+    mount,
+    update() {
+    },
+    unmount
+  };
+
+  // src/js/features/retro/fx/crt.js
+  var CRT_ID = "lfx-retro-crt";
+  function createCrt() {
+    let el4 = null;
+    let stripTimer = 0;
+    let shakeTimer = 0;
+    function mount3() {
+      if (el4 && el4.isConnected) return el4;
+      el4 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
+        h("div", { class: "lfx-retro-crt__flicker" }),
+        h("div", { class: "lfx-retro-crt__scan" }),
+        h("div", { class: "lfx-retro-crt__mask" }),
+        h("div", { class: "lfx-retro-crt__vignette" }),
+        h("div", { class: "lfx-retro-crt__roll" }),
+        h("div", { class: "lfx-retro-crt__strip" })
+      ]);
+      document.body.append(el4);
+      return el4;
+    }
+    function unmount3() {
+      clearTimeout(stripTimer);
+      clearTimeout(shakeTimer);
+      stripTimer = shakeTimer = 0;
+      if (el4) el4.remove();
+      el4 = null;
+    }
+    function sync4(on) {
+      document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
+      if (on) mount3();
+      else unmount3();
+    }
+    function glitchStrip(ms = 180) {
+      if (!el4) return;
+      const strip = el4.querySelector(".lfx-retro-crt__strip");
+      if (!strip) return;
+      strip.style.top = `${Math.round(8 + Math.random() * 80)}%`;
+      strip.style.height = `${Math.round(2 + Math.random() * 7)}%`;
+      el4.classList.add("is-strip");
+      clearTimeout(stripTimer);
+      stripTimer = setTimeout(() => {
+        if (el4) el4.classList.remove("is-strip");
+      }, ms);
+    }
+    function shake(ms = 700) {
+      if (!el4) return;
+      el4.classList.add("is-shaking");
+      clearTimeout(shakeTimer);
+      shakeTimer = setTimeout(() => {
+        if (el4) el4.classList.remove("is-shaking");
+      }, ms);
+    }
+    return { mount: mount3, unmount: unmount3, sync: sync4, glitchStrip, shake, get el() {
+      return el4;
+    } };
   }
 
   // src/js/features/retro/fx/boot.js
@@ -18598,7 +20001,7 @@
         }
       }, Math.max(8, Math.round(ms / n)));
     }
-    function caret(on) {
+    function caret2(on) {
       for (const c of text.querySelectorAll(".lfx-retro-boot__caret")) c.remove();
       if (on) text.append(h("span", { class: "lfx-retro-boot__caret" }));
     }
@@ -18607,7 +20010,7 @@
       if (opening || done) return;
       opening = true;
       timers.clearAll();
-      caret(false);
+      caret2(false);
       el4.classList.add("is-open");
       timers.timeout(finish3, fast ? 420 : 640);
       timers.timeout(finish3, HARD_TIMEOUT_MS);
@@ -18622,7 +20025,7 @@
     if (reduced) {
       for (const s of [`LENZ//84 BIOS ${BOOT_VERSION}`, "SPEICHERTEST ... 640K OK", "LADE MEDIATHEK ... OK", "BEREIT."]) addLine().textContent = s;
       timers.timeout(() => {
-        caret(false);
+        caret2(false);
         el4.classList.add("is-open");
       }, REDUCED_MS - 300);
       timers.timeout(finish3, REDUCED_MS);
@@ -18655,7 +20058,7 @@
       });
     }, 1700);
     timers.timeout(() => {
-      typeLine("BEREIT.", 160, () => caret(true));
+      typeLine("BEREIT.", 160, () => caret2(true));
     }, 2100);
     timers.timeout(() => openUp(false), 2450);
     return { cancel() {
@@ -19226,7 +20629,7 @@
   }
 
   // src/js/features/retro/fx/terminal.js
-  var TERMINAL_ID = "lfx-retro-terminal";
+  var TERMINAL_ID2 = "lfx-retro-terminal";
   var PROMPT = "LENZ84:\\>";
   var MAX_LINES = 400;
   var MAX_HISTORY = 50;
@@ -19305,7 +20708,7 @@
         if (input && alive) input.focus({ preventScroll: true });
       }
     }
-    function onKey3(e) {
+    function onKey4(e) {
       e.stopPropagation();
       if (e.key === "Escape") {
         e.preventDefault();
@@ -19349,7 +20752,7 @@
         emitFx("type");
       }
     }
-    function build11() {
+    function build13() {
       input = h("input", {
         class: "lfx-retro-term__input",
         type: "text",
@@ -19377,7 +20780,7 @@
         run(v);
       });
       root7 = h("div", {
-        id: TERMINAL_ID,
+        id: TERMINAL_ID2,
         class: "lfx-retro-term",
         role: "dialog",
         "aria-modal": "true",
@@ -19387,21 +20790,21 @@
         out,
         form
       ]);
-      root7.addEventListener("keydown", onKey3);
+      root7.addEventListener("keydown", onKey4);
       root7.addEventListener("pointerdown", (e) => {
         if (e.target === out && input) timers.timeout(() => {
           if (alive && !String(window.getSelection && window.getSelection()).length) input.focus({ preventScroll: true });
         }, 0);
       });
     }
-    function open2() {
+    function open3() {
       if (alive) {
         if (input) input.focus();
         return;
       }
       opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
       busy2 = false;
-      build11();
+      build13();
       document.body.append(root7);
       document.documentElement.classList.add("lfx-retro-term-open");
       alive = true;
@@ -19416,7 +20819,7 @@
       for (const r of [...sleepers]) r(false);
       sleepers.clear();
     }
-    function teardown9() {
+    function teardown11() {
       timers.clearAll();
       releaseSleepers();
       alive = false;
@@ -19437,7 +20840,7 @@
       document.documentElement.classList.remove("lfx-retro-term-open");
       timers.clearAll();
       timers.timeout(() => {
-        if (root7 === el4) teardown9();
+        if (root7 === el4) teardown11();
       }, 260);
       if (back && back.isConnected && typeof back.focus === "function") {
         try {
@@ -19447,18 +20850,18 @@
       }
     }
     return {
-      open: open2,
+      open: open3,
       close: close2,
       toggle() {
         if (alive) close2();
-        else open2();
+        else open3();
       },
       isOpen: () => alive,
       run,
       destroy() {
         alive = false;
         opener = null;
-        teardown9();
+        teardown11();
       }
     };
   }
@@ -19473,7 +20876,7 @@
   } } = {}) {
     const timers = createTimers();
     let started2 = false;
-    let active5 = false;
+    let active6 = false;
     let lastInput = Date.now();
     let el4 = null;
     let canvas = null;
@@ -19490,7 +20893,7 @@
     let nextFlash = 0;
     const idleEvents = ["pointermove", "keydown", "touchstart", "wheel", "scroll", "pointerdown"];
     function noteInput(e) {
-      if (active5) return;
+      if (active6) return;
       if (e && e.type === "pointermove") {
         const p = { x: e.clientX, y: e.clientY };
         if (lastMove && Math.abs(p.x - lastMove.x) + Math.abs(p.y - lastMove.y) < 3) return;
@@ -19517,7 +20920,7 @@
     }
     function frame(now) {
       raf3 = 0;
-      if (!active5 || !ctx2) return;
+      if (!active6 || !ctx2) return;
       raf3 = requestAnimationFrame(frame);
       if (document.hidden) return;
       const step = reduced ? FRAME_MS * 2 : FRAME_MS;
@@ -19560,7 +20963,7 @@
       size();
     }
     function onVisibility() {
-      if (!active5) return;
+      if (!active6) return;
       if (document.hidden) {
         cancelAnimationFrame(raf3);
         raf3 = 0;
@@ -19572,7 +20975,7 @@
       if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     }
     function onActiveInput(e) {
-      if (!active5) return;
+      if (!active6) return;
       if (e.type === "pointermove" || e.type === "mousemove") {
         const p = { x: e.clientX, y: e.clientY };
         if (!lastMove) {
@@ -19591,7 +20994,7 @@
     }
     const activeEvents = ["keydown", "pointerdown", "mousedown", "touchstart", "wheel", "pointermove"];
     function run(manual = true) {
-      if (active5) return true;
+      if (active6) return true;
       if (typeof requestAnimationFrame !== "function") return false;
       canvas = h("canvas", { class: "lfx-retro-rain__canvas" });
       let c;
@@ -19608,7 +21011,7 @@
       titleEl = h("div", { class: "lfx-retro-rain__title", "aria-hidden": "true" });
       el4 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
       document.body.append(el4);
-      active5 = true;
+      active6 = true;
       lastMove = null;
       nextFlash = Date.now() + 1500;
       size();
@@ -19623,8 +21026,8 @@
       return true;
     }
     function end() {
-      if (!active5) return;
-      active5 = false;
+      if (!active6) return;
+      active6 = false;
       if (raf3) cancelAnimationFrame(raf3);
       raf3 = 0;
       for (const ev of activeEvents) window.removeEventListener(ev, onActiveInput, true);
@@ -19640,7 +21043,7 @@
       }
     }
     function check3() {
-      if (active5 || document.hidden) return;
+      if (active6 || document.hidden) return;
       if (reduced) return;
       if (Date.now() - lastInput < idleMs) return;
       if (isBlocked()) {
@@ -19649,7 +21052,7 @@
       }
       run(false);
     }
-    function start10() {
+    function start11() {
       if (started2) return;
       started2 = true;
       lastInput = Date.now();
@@ -19657,7 +21060,7 @@
       window.addEventListener("click", onClickGuard, true);
       timers.interval(check3, 5e3);
     }
-    function stop7() {
+    function stop8() {
       end();
       if (started2) {
         for (const ev of idleEvents) window.removeEventListener(ev, noteInput, true);
@@ -19667,7 +21070,7 @@
       swallowClickUntil = 0;
       timers.clearAll();
     }
-    return { start: start10, stop: stop7, run, end, isActive: () => active5 };
+    return { start: start11, stop: stop8, run, end, isActive: () => active6 };
   }
 
   // src/js/features/retro/fx/index.js
@@ -19678,6 +21081,7 @@
   var S = null;
   function shouldRun(route) {
     if (!isTheme("retro") || !isModern() || isTv() || !isReady()) return false;
+    if (isTvModeRoute(route)) return false;
     if (document.body && document.body.classList.contains("dashboardDocument")) return false;
     return !isPlayerVisible(route);
   }
@@ -19685,7 +21089,7 @@
     const t = e.target;
     return t && t.closest ? t.closest(`[${LOGO_ATTR}]`) : null;
   }
-  function mount() {
+  function mount2() {
     if (S) return;
     const reduced = prefersReducedMotion();
     const timers = createTimers();
@@ -19862,7 +21266,7 @@
     if (!reduced) glitch.start();
     screensaver.start();
   }
-  function unmount() {
+  function unmount2() {
     if (!S) return;
     const s = S;
     S = null;
@@ -19885,10 +21289,10 @@
   var fx_default = {
     name: "retro-fx",
     match: (route) => shouldRun(route),
-    mount,
+    mount: mount2,
     update() {
     },
-    unmount
+    unmount: unmount2
   };
 
   // src/js/features/retro/index.js
@@ -20009,42 +21413,42 @@
   // src/js/features/store/data.js
   var PAGE_SIZE2 = 500;
   var TTL_MS3 = 5 * 60 * 1e3;
-  var FIELDS6 = "Overview,Genres,OfficialRating,ProductionYear,DateCreated,RunTimeTicks,CommunityRating,ChildCount,SortName,BackdropImageTags,PrimaryImageAspectRatio";
-  var asItems11 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+  var FIELDS7 = "Overview,Genres,OfficialRating,ProductionYear,DateCreated,RunTimeTicks,CommunityRating,ChildCount,SortName,BackdropImageTags,PrimaryImageAspectRatio";
+  var asItems12 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   async function fetchAllTitles() {
     const out = [];
-    for (let start10 = 0; ; start10 += PAGE_SIZE2) {
+    for (let start11 = 0; ; start11 += PAGE_SIZE2) {
       const res = await getItems({
         Recursive: true,
         IncludeItemTypes: "Movie,Series",
-        Fields: FIELDS6,
+        Fields: FIELDS7,
         EnableUserData: true,
         ImageTypeLimit: 1,
         SortBy: "SortName",
         SortOrder: "Ascending",
-        StartIndex: start10,
+        StartIndex: start11,
         Limit: PAGE_SIZE2
       });
-      const page2 = asItems11(res);
+      const page2 = asItems12(res);
       out.push(...page2);
       const total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       if (page2.length < PAGE_SIZE2 || total !== null && out.length >= total) break;
     }
     return out;
   }
-  var soft = (p) => p.then(asItems11).catch(() => []);
+  var soft = (p) => p.then(asItems12).catch(() => []);
   function loadCatalog2() {
     return cached(`store:catalog:${getUserId() || "anon"}`, load5, TTL_MS3);
   }
   async function load5() {
     const [items, resume, favorites] = await Promise.all([
       fetchAllTitles(),
-      soft(getResume({ Limit: 12, MediaTypes: "Video", Fields: FIELDS6, EnableUserData: true, ImageTypeLimit: 1 })),
+      soft(getResume({ Limit: 12, MediaTypes: "Video", Fields: FIELDS7, EnableUserData: true, ImageTypeLimit: 1 })),
       soft(getItems({
         Recursive: true,
         Filters: "IsFavorite",
         IncludeItemTypes: "Movie,Series",
-        Fields: FIELDS6,
+        Fields: FIELDS7,
         EnableUserData: true,
         ImageTypeLimit: 1,
         SortBy: "SortName"
@@ -20124,8 +21528,8 @@
   }
 
   // src/js/features/store/home-route.js
-  var ROOT_ID20 = "lfx-store-home";
-  var ON_CLASS19 = "lfx-store-home-on";
+  var ROOT_ID22 = "lfx-store-home";
+  var ON_CLASS21 = "lfx-store-home-on";
   var BAR_ID = "lfx-store-bar";
   var BAR_CLASS = "lfx-store-bar-on";
   function storeHomeRoute(route) {
@@ -20138,7 +21542,7 @@
     if (r.kind === "search") return { kind: "search", id: null, q: r.q || "" };
     return null;
   }
-  function findHomeTab10() {
+  function findHomeTab12() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -20262,9 +21666,9 @@
       return null;
     }
   }
-  function saveState(state22) {
-    if (!state22 || typeof state22 !== "object") return;
-    write2("sessionStorage", SESSION_STATE, JSON.stringify(state22));
+  function saveState(state24) {
+    if (!state24 || typeof state24 !== "object") return;
+    write2("sessionStorage", SESSION_STATE, JSON.stringify(state24));
   }
 
   // src/js/features/store/cinema-bridge.js
@@ -20316,7 +21720,7 @@
       const vol = Math.max(0, Math.min(1, finite(Number(v.volume))));
       return Math.round(Math.cbrt(vol) * 100) / 100;
     };
-    function routeOf3() {
+    function routeOf4() {
       let hash2 = "";
       try {
         hash2 = String(win.location.hash || "");
@@ -20356,7 +21760,7 @@
       return Boolean(b) && !b.classList.contains("hide");
     };
     function compute() {
-      const route = routeOf3();
+      const route = routeOf4();
       const v = videoEl && videoEl.isConnected !== false ? videoEl : find();
       let phase = "idle";
       let reloading = false;
@@ -20595,9 +21999,9 @@
       }
       return null;
     }
-    async function stop7() {
-      if (routeOf3() !== "video" && !find()) {
-        if (routeOf3() !== "home") {
+    async function stop8() {
+      if (routeOf4() !== "video" && !find()) {
+        if (routeOf4() !== "home") {
           try {
             win.location.hash = "#/home";
           } catch {
@@ -20611,8 +22015,8 @@
         else win.history.back();
       } catch {
       }
-      if (!await waitFor(() => routeOf3() !== "video", 5e3, 100)) return false;
-      if (routeOf3() !== "home") {
+      if (!await waitFor(() => routeOf4() !== "video", 5e3, 100)) return false;
+      if (routeOf4() !== "home") {
         try {
           win.location.hash = "#/home";
         } catch {
@@ -20648,7 +22052,7 @@
       tracks: (kind2) => queued(() => readTracks(kind2)),
       selectTrack: (kind2, id) => queued(() => select(kind2, id)),
       upNext: (action) => click(action === "start" ? ".btnStartNow" : ".btnHide"),
-      stop: stop7,
+      stop: stop8,
       dispose: dispose7
     };
   }
@@ -20678,8 +22082,8 @@
   var SUSPEND_MS = 3 * 60 * 1e3;
   var CLASSIC_HASH = "#/home?lfx=classic";
   var FADE_MS2 = 450;
-  var gen6 = 0;
-  var waitTimer8 = null;
+  var gen7 = 0;
+  var waitTimer9 = null;
   var fadeTimer = null;
   var inst2 = null;
   var ui2 = null;
@@ -20813,7 +22217,7 @@
       classicBtn,
       avatar.el
     ]);
-    const el4 = h("div", { id: ROOT_ID20, class: "lfx-store-home" }, [stage, loading, hud]);
+    const el4 = h("div", { id: ROOT_ID22, class: "lfx-store-home" }, [stage, loading, hud]);
     return { root: el4, stage, loading, fill: fill4, label, hud, avatar, searchBtn };
   }
   function attachLoading() {
@@ -20835,8 +22239,8 @@
       ui2.root.remove();
     }
     ui2 = null;
-    document.getElementById(ROOT_ID20)?.remove();
-    root5().classList.remove(ON_CLASS19);
+    document.getElementById(ROOT_ID22)?.remove();
+    root5().classList.remove(ON_CLASS21);
     shown = false;
   }
   function showFallback2(message, { retry = false, detail = "" } = {}) {
@@ -21000,11 +22404,11 @@
       if (!ok || !window.LenzFlixStore3D) throw new Error("3D-Paket nicht geladen");
       loaded = { catalog, name };
     } catch (e) {
-      if (myGen !== gen6 || !ui2) return;
+      if (myGen !== gen7 || !ui2) return;
       showFallback2("Die Videothek konnte nicht geladen werden.", { retry: true, detail: fatalText2(e) });
       return;
     }
-    if (myGen !== gen6 || !ui2) return;
+    if (myGen !== gen7 || !ui2) return;
     setProgress2(0.1, "Regale werden einger\xE4umt \u2026");
     let fatal = false;
     const deps = buildDeps2(loaded.catalog, loaded.name, (err) => {
@@ -21017,7 +22421,7 @@
     try {
       const instance = window.LenzFlixStore3D.create(ui2.stage, deps, opts);
       if (!instance) throw new Error("create() lieferte keine Instanz");
-      if (fatal || myGen !== gen6 || !ui2) {
+      if (fatal || myGen !== gen7 || !ui2) {
         try {
           instance.dispose();
         } catch {
@@ -21030,28 +22434,28 @@
       });
       inst2 = entry;
     } catch (e) {
-      if (myGen === gen6 && ui2) showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText2(e) });
+      if (myGen === gen7 && ui2) showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText2(e) });
     }
   }
   function rebuild(on) {
     if (!ui2 || !inst2 || !shown) return;
     savePrefs2({ bigCovers: Boolean(on) });
-    const g = gen6;
+    const g = gen7;
     setTimeout(() => {
-      if (g !== gen6 || !ui2 || !inst2 || !shown) return;
+      if (g !== gen7 || !ui2 || !inst2 || !shown) return;
       disposeInstance2();
       attachLoading();
       ui2.searchBtn.disabled = true;
-      gen6 += 1;
-      boot2(gen6, storeHomeRoute(parseCurrent()));
+      gen7 += 1;
+      boot2(gen7, storeHomeRoute(parseCurrent()));
     }, 0);
   }
   function retryBoot() {
     if (!ui2) return;
     ui2.root.querySelector(".lfx-store-fallback")?.remove();
     attachLoading();
-    gen6 += 1;
-    boot2(gen6, storeHomeRoute(parseCurrent()));
+    gen7 += 1;
+    boot2(gen7, storeHomeRoute(parseCurrent()));
   }
   function parseCurrent() {
     const hash2 = String(window.location.hash || "").replace(/^#!?/, "");
@@ -21082,11 +22486,11 @@
     }
     return true;
   }
-  function start8(tab2, route, myGen) {
+  function start9(tab2, route, myGen) {
     teardownUi2();
     ui2 = buildUi();
     tab2.prepend(ui2.root);
-    root5().classList.add(ON_CLASS19);
+    root5().classList.add(ON_CLASS21);
     shown = true;
     const r = storeHomeRoute(route);
     if (inst2 && inst2.instance) {
@@ -21115,27 +22519,27 @@
     }
     boot2(myGen, r);
   }
-  function ensure7(route) {
-    clearTimeout(waitTimer8);
-    const tab2 = findHomeTab10();
-    const existing = document.getElementById(ROOT_ID20);
+  function ensure9(route) {
+    clearTimeout(waitTimer9);
+    const tab2 = findHomeTab12();
+    const existing = document.getElementById(ROOT_ID22);
     if (tab2 && existing && tab2.contains(existing) && ui2 && shown) return;
-    gen6 += 1;
-    const myGen = gen6;
+    gen7 += 1;
+    const myGen = gen7;
     let tries = 0;
     const poll = () => {
-      if (myGen !== gen6) return;
-      const t = findHomeTab10();
-      if (t) start8(t, route, myGen);
-      else if (++tries < 30) waitTimer8 = setTimeout(poll, 200);
+      if (myGen !== gen7) return;
+      const t = findHomeTab12();
+      if (t) start9(t, route, myGen);
+      else if (++tries < 30) waitTimer9 = setTimeout(poll, 200);
     };
     if (tab2) poll();
-    else waitTimer8 = setTimeout(poll, 200);
+    else waitTimer9 = setTimeout(poll, 200);
   }
   function destroyStore() {
-    gen6 += 1;
-    clearTimeout(waitTimer8);
-    waitTimer8 = null;
+    gen7 += 1;
+    clearTimeout(waitTimer9);
+    waitTimer9 = null;
     disposeInstance2();
     unparkStage();
     if (bridge) {
@@ -21151,25 +22555,25 @@
     match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && Boolean(storeHomeRoute(route)),
     mount(route) {
       lastKey2 = routeKey2(route);
-      ensure7(route);
+      ensure9(route);
     },
     update(route) {
       const key = routeKey2(route);
       const same = key === lastKey2;
       lastKey2 = key;
       if (same) {
-        const tab2 = findHomeTab10();
+        const tab2 = findHomeTab12();
         if (!tab2 || !ui2 || tab2.contains(ui2.root)) return;
-        ensure7(route);
+        ensure9(route);
         return;
       }
       if (ui2 && inst2 && shown) applyRoute(storeHomeRoute(route));
-      else ensure7(route);
+      else ensure9(route);
     },
     unmount() {
-      gen6 += 1;
-      clearTimeout(waitTimer8);
-      waitTimer8 = null;
+      gen7 += 1;
+      clearTimeout(waitTimer9);
+      waitTimer9 = null;
       lastKey2 = null;
       if (inst2 && inst2.instance && !inst2.parked) {
         let parkedNow = false;
@@ -21203,14 +22607,14 @@
   // src/js/features/store/bar.js
   var EXCLUDED12 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var profile = null;
-  function blocked3(route) {
+  function blocked4(route) {
     if (EXCLUDED12.test(route.path)) return true;
     if (document.body && document.body.classList.contains("dashboardDocument")) return true;
     return Boolean(document.querySelector("#videoOsdPage:not(.hide)"));
   }
   var bar_default = {
     name: "store-bar",
-    match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && !storeHomeRoute(route) && !blocked3(route),
+    match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && !storeHomeRoute(route) && !blocked4(route),
     mount() {
       const el4 = mountPoint(BAR_ID, { tag: "header", className: "lfx-store-bar" });
       profile = profileButton();
@@ -21235,14 +22639,14 @@
   var storeFeatures = [home_default5, bar_default];
 
   // src/js/features/live/home-route.js
-  var ROOT_ID21 = "lfx-live-home";
-  var ON_CLASS20 = "lfx-live-home-on";
+  var ROOT_ID23 = "lfx-live-home";
+  var ON_CLASS22 = "lfx-live-home-on";
   function liveHomeRoute(route) {
     if (!route || route.path !== "/home" || !route.params) return false;
     if (route.params.get("lfx")) return false;
     return route.params.get("tab") !== "1";
   }
-  function findHomeTab11() {
+  function findHomeTab13() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -21346,8 +22750,8 @@
   var SUSPEND_MS2 = 3 * 60 * 1e3;
   var FADE_MS3 = 450;
   var CATALOG_SHARE2 = 0.65;
-  var gen7 = 0;
-  var waitTimer9 = null;
+  var gen8 = 0;
+  var waitTimer10 = null;
   var fadeTimer2 = null;
   var inst3 = null;
   var ui3 = null;
@@ -21411,7 +22815,7 @@
   function buildUi2() {
     const stage = h("div", { class: "lfx-live-stage" });
     const { loading, fill: fill4, label, ch, bar } = buildLoading2();
-    const el4 = h("div", { id: ROOT_ID21, class: "lfx-live-home" }, [stage, loading]);
+    const el4 = h("div", { id: ROOT_ID23, class: "lfx-live-home" }, [stage, loading]);
     return { root: el4, stage, loading, fill: fill4, label, ch, bar };
   }
   function attachLoading2() {
@@ -21426,8 +22830,8 @@
     fadeTimer2 = null;
     if (ui3) ui3.root.remove();
     ui3 = null;
-    document.getElementById(ROOT_ID21)?.remove();
-    root6().classList.remove(ON_CLASS20);
+    document.getElementById(ROOT_ID23)?.remove();
+    root6().classList.remove(ON_CLASS22);
     shown2 = false;
   }
   function openDashboard() {
@@ -21533,11 +22937,11 @@
       if (!ok || !window.LenzFlixLive || typeof window.LenzFlixLive.create !== "function") throw new Error("Engine-Paket nicht geladen");
       loaded = { raw, user };
     } catch (e) {
-      if (myGen !== gen7 || !ui3) return;
+      if (myGen !== gen8 || !ui3) return;
       showFallback3("LENZ LIVE konnte nicht geladen werden.", { retry: true, detail: fatalText(e) });
       return;
     }
-    if (myGen !== gen7 || !ui3) return;
+    if (myGen !== gen8 || !ui3) return;
     setProgress3(CATALOG_SHARE2, "Programm wird zusammengestellt \u2026");
     let fatal = false;
     const deps = buildDeps3(loaded.raw, loaded.user, (err) => {
@@ -21548,7 +22952,7 @@
     try {
       const instance = window.LenzFlixLive.create(ui3.stage, deps, buildOpts3());
       if (!instance) throw new Error("create() lieferte keine Instanz");
-      if (fatal || myGen !== gen7 || !ui3) {
+      if (fatal || myGen !== gen8 || !ui3) {
         try {
           instance.dispose();
         } catch {
@@ -21561,21 +22965,21 @@
       });
       inst3 = entry;
     } catch (e) {
-      if (myGen === gen7 && ui3) showFallback3("LENZ LIVE konnte nicht gestartet werden.", { retry: true, detail: fatalText(e) });
+      if (myGen === gen8 && ui3) showFallback3("LENZ LIVE konnte nicht gestartet werden.", { retry: true, detail: fatalText(e) });
     }
   }
   function retryBoot2() {
     if (!ui3) return;
     ui3.root.querySelector(".lfx-live-fallback")?.remove();
     attachLoading2();
-    gen7 += 1;
-    boot3(gen7);
+    gen8 += 1;
+    boot3(gen8);
   }
-  function start9(tab2, myGen) {
+  function start10(tab2, myGen) {
     teardownUi3();
     ui3 = buildUi2();
     tab2.prepend(ui3.root);
-    root6().classList.add(ON_CLASS20);
+    root6().classList.add(ON_CLASS22);
     shown2 = true;
     if (inst3 && inst3.instance) {
       clearDisposeTimer2();
@@ -21593,27 +22997,27 @@
     }
     boot3(myGen);
   }
-  function ensure8() {
-    clearTimeout(waitTimer9);
-    const tab2 = findHomeTab11();
-    const existing = document.getElementById(ROOT_ID21);
+  function ensure10() {
+    clearTimeout(waitTimer10);
+    const tab2 = findHomeTab13();
+    const existing = document.getElementById(ROOT_ID23);
     if (tab2 && existing && tab2.contains(existing) && ui3 && shown2) return;
-    gen7 += 1;
-    const myGen = gen7;
+    gen8 += 1;
+    const myGen = gen8;
     let tries = 0;
     const poll = () => {
-      if (myGen !== gen7) return;
-      const t = findHomeTab11();
-      if (t) start9(t, myGen);
-      else if (++tries < 30) waitTimer9 = setTimeout(poll, 200);
+      if (myGen !== gen8) return;
+      const t = findHomeTab13();
+      if (t) start10(t, myGen);
+      else if (++tries < 30) waitTimer10 = setTimeout(poll, 200);
     };
     if (tab2) poll();
-    else waitTimer9 = setTimeout(poll, 200);
+    else waitTimer10 = setTimeout(poll, 200);
   }
   function destroyLive() {
-    gen7 += 1;
-    clearTimeout(waitTimer9);
-    waitTimer9 = null;
+    gen8 += 1;
+    clearTimeout(waitTimer10);
+    waitTimer10 = null;
     disposeInstance3();
     teardownUi3();
     removeThemeJs();
@@ -21622,17 +23026,17 @@
     name: "live-home",
     match: (route) => isTheme("live") && isModern() && !isTv() && isReady() && liveHomeRoute(route),
     mount() {
-      ensure8();
+      ensure10();
     },
     update() {
-      const tab2 = findHomeTab11();
+      const tab2 = findHomeTab13();
       if (!tab2 || !ui3 || tab2.contains(ui3.root)) return;
-      ensure8();
+      ensure10();
     },
     unmount() {
-      gen7 += 1;
-      clearTimeout(waitTimer9);
-      waitTimer9 = null;
+      gen8 += 1;
+      clearTimeout(waitTimer10);
+      waitTimer10 = null;
       if (inst3 && inst3.instance) {
         try {
           inst3.instance.suspend();
@@ -21721,7 +23125,7 @@
       destroyLayout();
       stopTheme();
     }
-    function sync3() {
+    function sync4() {
       if (destroyed) return;
       if (cssActive()) {
         startTheme();
@@ -21743,20 +23147,20 @@
     watchTimer = setInterval(() => {
       if (++fastN >= FAST_TICKS) {
         clearInterval(watchTimer);
-        watchTimer = setInterval(sync3, WATCH_MS);
+        watchTimer = setInterval(sync4, WATCH_MS);
       }
-      sync3();
+      sync4();
     }, FAST_MS);
-    window.addEventListener("hashchange", sync3);
-    window.addEventListener("popstate", sync3);
-    document.addEventListener("viewshow", sync3);
-    sync3();
+    window.addEventListener("hashchange", sync4);
+    window.addEventListener("popstate", sync4);
+    document.addEventListener("viewshow", sync4);
+    sync4();
     function destroy() {
       destroyed = true;
       clearInterval(watchTimer);
-      window.removeEventListener("hashchange", sync3);
-      window.removeEventListener("popstate", sync3);
-      document.removeEventListener("viewshow", sync3);
+      window.removeEventListener("hashchange", sync4);
+      window.removeEventListener("popstate", sync4);
+      document.removeEventListener("viewshow", sync4);
       stopFeatures();
       destroyDataSaver();
       destroyTheme();

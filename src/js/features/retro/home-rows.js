@@ -1,8 +1,10 @@
 // LENZ//84 Kassetten-Regal: Zeilen der Startseite/Hubs (lazy geladen). Defs im Format von rows/sources.js: { id, title, kind, load(def) }.
 // Desktop: Kassettenrücken (spine) auf einem Regalboden, Weiterschauen/Folgen als wide; Handy: Cover-Kacheln. Gehört Worker P1.
 import { h } from '../../core/dom.js';
+import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
+import { startRowPrefetch } from '../rows/prefetch.js';
 import { attachScroller } from '../rows/scroller.js';
 import { createTapeCard } from './card.js';
 import { isPhone } from './header-nav.js';
@@ -38,11 +40,12 @@ function arrow(dir, label) {
 }
 
 /**
- * Rendert Zeilen in `slot`. opts: { moreHref(def) -> string|null }.
+ * Rendert Zeilen in `slot`. opts: { moreHref(def) -> string|null, prefetch (nur Startseite), hero() -> Hero-Slot }.
  * Rückgabe: { add(defs), ids(), destroy() }.
  */
-export function createRows(slot, { moreHref = () => null } = {}) {
+export function createRows(slot, { moreHref = () => null, prefetch = false, hero = null } = {}) {
   let disposed = false;
+  let prefetcher = null;
   let observer = null;
   const phone = isPhone();
   const disposers = [];
@@ -121,7 +124,7 @@ export function createRows(slot, { moreHref = () => null } = {}) {
         observer.unobserve(en.target);
         loadRow(en.target, p.def, p.kind);
       }
-    }, { rootMargin: '600px 0px' });
+    }, { rootMargin: isDataSaver('lazy') ? '100px 0px' : '600px 0px' });
   }
 
   return {
@@ -138,10 +141,20 @@ export function createRows(slot, { moreHref = () => null } = {}) {
         if (observer) observer.observe(el);
         else loadRow(el, def, kind);
       }
+      if (prefetch && !prefetcher) {
+        prefetcher = startRowPrefetch({
+          slot,
+          pending,
+          hero,
+          load: (el, p) => { if (observer) observer.unobserve(el); return loadRow(el, p.def, p.kind); },
+        });
+      } else if (prefetcher) prefetcher.notify();
     },
     ids: () => [...rendered],
     destroy() {
       disposed = true;
+      if (prefetcher) prefetcher.stop();
+      prefetcher = null;
       if (observer) observer.disconnect();
       observer = null;
       pending.clear();

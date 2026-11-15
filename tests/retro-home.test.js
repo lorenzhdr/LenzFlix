@@ -19,7 +19,13 @@ vi.mock('../src/js/shared/hub.js', () => ({ buildHubRowDefs: vi.fn(), getHubHero
 vi.mock('../src/js/features/rows/sources.js', () => ({ buildRowDefs: vi.fn() }));
 vi.mock('../src/js/features/retro/home-hero.js', () => ({
   renderHero: vi.fn(() => vi.fn()),
-  fetchHomePool: vi.fn(async () => []),
+  fetchCachedHomePool: vi.fn(async () => []),
+  peekHomePool: vi.fn(() => undefined),
+}));
+vi.mock('../src/js/features/rows/prefetch.js', () => ({
+  startRowPrefetch: vi.fn(() => ({ stop: vi.fn(), notify: vi.fn() })),
+  allowPrefetch: () => true,
+  heroSettled: () => true,
 }));
 
 import feature, { moreHrefFor, SYSTEM_LINE } from '../src/js/features/retro/home.js';
@@ -30,6 +36,7 @@ import { getLibraries } from '../src/js/shared/libraries.js';
 import { buildHubRowDefs } from '../src/js/shared/hub.js';
 import { buildRowDefs } from '../src/js/features/rows/sources.js';
 import { renderHero } from '../src/js/features/retro/home-hero.js';
+import { startRowPrefetch } from '../src/js/features/rows/prefetch.js';
 
 const route = (q) => ({ path: '/home', params: new URLSearchParams(q) });
 const setWidth = (w) => Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: w });
@@ -76,7 +83,7 @@ describe('Routen und Hilfen', () => {
     const ctx = { hub: false, libs, lib: null };
     expect(moreHrefFor(def('latest-movies'), ctx)).toBe('#/home?lfx=hub&lib=L1');
     expect(moreHrefFor(def('latest-series'), ctx)).toBe('#/home?lfx=hub&lib=L2');
-    expect(moreHrefFor(def('favorites'), ctx)).toBe('#/home?tab=1');
+    expect(moreHrefFor(def('favorites'), ctx)).toBe('#/home?lfx=mylist');
     expect(moreHrefFor(def('x', 'top10'), ctx)).toBe('#/home?lfx=new');
     expect(moreHrefFor(def('genre-Action'), ctx)).toBeNull();
     expect(moreHrefFor(def('L1-latest'), { hub: true, libs, lib: libs[0] })).toBe('#/home?lfx=browse&lib=L1');
@@ -98,6 +105,7 @@ describe('Feature retro-home', () => {
     buildHubRowDefs.mockReset();
     buildHubRowDefs.mockImplementation(async (lib) => [def(`${lib.id}-latest`), def(`${lib.id}-toprated`, 'poster')]);
     renderHero.mockClear();
+    startRowPrefetch.mockClear();
     document.documentElement.className = 'lfx-js lfx-theme-retro';
     document.body.innerHTML = '<header class="MuiAppBar-root"></header><div id="indexPage"><div id="homeTab"><div class="sections"></div></div></div>';
   });
@@ -153,6 +161,18 @@ describe('Feature retro-home', () => {
     feature.unmount();
     expect(document.getElementById('lfx-retro-home')).toBeNull();
     expect(document.documentElement.classList.contains('lfx-retro-home-on')).toBe(false);
+  });
+
+  it('Vorladen unterer Zeilen: nur auf der Startseite, nicht im Hub', async () => {
+    feature.mount(route(''));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-retro-row:not(.is-loading)').length).toBe(9));
+    expect(startRowPrefetch).toHaveBeenCalledTimes(1);
+    expect(startRowPrefetch.mock.calls[0][0].hero()).toBe(document.getElementById('lfx-retro-hero'));
+    feature.unmount();
+    startRowPrefetch.mockClear();
+    feature.mount(route('lfx=hub&lib=L1'));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-retro-row:not(.is-loading)').length).toBe(2));
+    expect(startRowPrefetch).not.toHaveBeenCalled();
   });
 
   it('Handy: Cover-Kacheln statt Rücken, Weiterschauen bleibt wide', async () => {

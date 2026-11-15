@@ -11,6 +11,7 @@ import { openThemePicker } from '../core/themepicker.js';
 import { mountAmbient, unmountAmbient, setAmbient } from '../core/ambient.js';
 import { dataSaverAvailable, DATASAVER_EVENT } from '../core/datasaver.js';
 import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
+import { parseLfxRoute, libraryHref, myListHref } from '../shared/routes.js';
 
 export { setAmbient };
 
@@ -23,6 +24,7 @@ const SCROLL_THRESHOLD = 10;
 // Einklapp-Reihenfolge ins „Mehr“-Menü, wenn die Leiste die Symbole rechts berühren würde (zuerst der letzte Punkt)
 const FOLD_ORDER = ['list', 'new', 'movies', 'series'];
 const MENU_ORDER = ['series', 'movies', 'new', 'list'];
+const HOVER_CLICK_GRACE = 800; // ms: Klick direkt nach dem Hover-Öffnen schließt „Mehr“ nicht
 const FOLD_GAP = 16;
 const FOLD_RESERVE = 180;
 // Rechte Symbolgruppe der AppBar (SyncPlay, Cast, Suche, Avatar) + unser TV-Symbol (liegt fest im body)
@@ -50,13 +52,13 @@ export function viewUrl(view) {
 
 const VIEW_LABELS = { boxsets: 'Sammlungen', playlists: 'Playlists' };
 
-/** Aus /UserViews-Items: erste Serien-/Filmbibliothek + Rest für „Mehr“. */
+/** Aus /UserViews-Items: erste Serien-/Filmbibliothek + Rest für „Mehr“ (Film-/Serienbibliotheken sind in „Serien“/„Filme“ zusammengeführt). */
 export function buildNavModel(views) {
   const items = (views && views.Items) || (Array.isArray(views) ? views : []);
   const series = items.find((v) => v.CollectionType === 'tvshows') || null;
   const movies = items.find((v) => v.CollectionType === 'movies') || null;
   const more = items
-    .filter((v) => v !== series && v !== movies)
+    .filter((v) => v.CollectionType !== 'tvshows' && v.CollectionType !== 'movies')
     .map((v) => ({ id: v.Id, label: VIEW_LABELS[v.CollectionType] || v.Name, href: viewUrl(v) }));
   return { series, movies, more };
 }
@@ -65,13 +67,16 @@ export function buildNavModel(views) {
 export function activeKey(route, model) {
   const { path, params } = route;
   if (path === '/home') {
-    if (params.get('lfx') === 'new') return 'new';
-    if (params.get('lfx') === 'tv') return 'tv';
+    const kind = parseLfxRoute(route).kind;
+    if (kind === 'new') return 'new';
+    if (kind === 'tv') return 'tv';
+    if (kind === 'series' || kind === 'movies') return kind;
+    if (kind === 'mylist') return 'list';
     return params.get('tab') === '1' ? 'list' : 'home';
   }
   const lib = params.get('topParentId') || params.get('parentId');
-  if (path === '/tv') return !lib || (model.series && lib === model.series.Id) ? 'series' : 'more';
-  if (path === '/movies') return !lib || (model.movies && lib === model.movies.Id) ? 'movies' : 'more';
+  if (path === '/tv') return 'series';
+  if (path === '/movies') return 'movies';
   if (lib && model.series && lib === model.series.Id) return 'series';
   if (lib && model.movies && lib === model.movies.Id) return 'movies';
   if (lib && model.more.some((m) => m.id === lib)) return 'more';
@@ -80,10 +85,10 @@ export function activeKey(route, model) {
 
 export function navItems(model) {
   const items = [{ key: 'home', label: 'Startseite', href: '#/home' }];
-  if (model.series) items.push({ key: 'series', label: 'Serien', href: viewUrl(model.series) });
-  if (model.movies) items.push({ key: 'movies', label: 'Filme', href: viewUrl(model.movies) });
+  if (model.series) items.push({ key: 'series', label: 'Serien', href: libraryHref('series') });
+  if (model.movies) items.push({ key: 'movies', label: 'Filme', href: libraryHref('movies') });
   items.push({ key: 'new', label: 'Neu und beliebt', href: '#/home?lfx=new' });
-  items.push({ key: 'list', label: 'Meine Liste', href: '#/home?tab=1' });
+  items.push({ key: 'list', label: 'Meine Liste', href: myListHref() });
   return items;
 }
 
@@ -93,6 +98,7 @@ const state = {
   route: null,
   cleanups: [],
   menuOpen: false,
+  hoverOpenedAt: 0,
   seq: 0,
   raf: 0,
   watch: [],
@@ -101,6 +107,7 @@ const state = {
 
 function setMenu(open) {
   state.menuOpen = open;
+  if (!open) state.hoverOpenedAt = 0;
   const wrap = state.nav && state.nav.querySelector('.lfx-nav__more');
   if (!wrap) return;
   wrap.classList.toggle('is-open', open);
@@ -221,8 +228,18 @@ function render() {
       dataset: { key: 'more' },
     }, ['Mehr', h('span', { class: 'lfx-nav__caret', 'aria-hidden': 'true' })]);
     const wrap = h('div', { class: 'lfx-nav__more' }, [btn, menu]);
-    btn.addEventListener('click', () => setMenu(!state.menuOpen));
-    wrap.addEventListener('mouseenter', () => setMenu(true));
+    // Hover öffnet das Menü; der Klick, der dem Hover (Maus oder Touch-Emulation) unmittelbar folgt, schließt es nicht wieder.
+    btn.addEventListener('click', () => {
+      if (state.menuOpen && state.hoverOpenedAt && Date.now() - state.hoverOpenedAt < HOVER_CLICK_GRACE) {
+        state.hoverOpenedAt = 0;
+        return;
+      }
+      setMenu(!state.menuOpen);
+    });
+    wrap.addEventListener('mouseenter', () => {
+      if (!state.menuOpen) state.hoverOpenedAt = Date.now();
+      setMenu(true);
+    });
     wrap.addEventListener('mouseleave', () => setMenu(false));
     wrap.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {

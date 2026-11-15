@@ -1,1 +1,223 @@
-/* Platzhalter v1.13.0, Inhalt folgt: flix Serien-/Filme-Seite. */
+/* LenzFlix · js-ui/library – Serien-/Filme-Seite (#lfx-library) und generisches Raster (.lfx-grid*). Nur mit aktivem JS. */
+
+/* ---------------------------------------------------------------- Seite */
+html.lfx-js.lfx-library-on:not(.layout-tv) #indexPage #homeTab > .sections,
+html.lfx-js.lfx-library-on:not(.layout-tv) #indexPage #homeTab > #lfx-home {
+  display: none !important;
+}
+html.lfx-js.lfx-library-on:not(.layout-tv) #indexPage { padding-top: 0 !important; }
+html.lfx-js:not(.layout-tv) #indexPage:has(.lfx-lib),
+html.lfx-js:not(.layout-tv) #indexPage:has(.lfx-lib) #homeTab { background: transparent !important; }
+html.lfx-js.lfx-library-on:not(.layout-tv) .backgroundContainer:not(.withBackdrop) { background: transparent !important; }
+
+html.lfx-js:not(.layout-tv) .lfx-lib {
+  position: relative;
+  z-index: 1;
+  padding-bottom: 64px;
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__body { position: relative; }
+
+/* Unterkopf (klebt unter der Kopfleiste, wird beim Scrollen dunkel) */
+html.lfx-js:not(.layout-tv) .lfx-lib__head {
+  position: sticky;
+  top: var(--lfx-header-h);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px var(--lfx-gutter);
+  background: linear-gradient(to bottom, rgba(20, 20, 20, 0.55), rgba(20, 20, 20, 0));
+  transition: background var(--lfx-dur) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__head.is-stuck { background: rgb(20, 20, 20); }
+html.lfx-js:not(.layout-tv) .lfx-lib__lead,
+html.lfx-js:not(.layout-tv) .lfx-lib__right { display: flex; align-items: center; gap: 18px; min-width: 0; }
+
+html.lfx-js:not(.layout-tv) .lfx-lib__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #fff;
+  font: 700 28px/1.1 var(--lfx-font);
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__crumb { color: #b3b3b3; text-decoration: none; }
+html.lfx-js:not(.layout-tv) .lfx-lib__crumb:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+html.lfx-js:not(.layout-tv) .lfx-lib__sep { color: #808080; }
+
+/* Genres-Dropdown */
+html.lfx-js:not(.layout-tv) .lfx-lib__genres { position: relative; }
+html.lfx-js:not(.layout-tv) .lfx-lib__genres-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font: 500 14px/1 var(--lfx-font);
+  cursor: pointer;
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__genres-btn:disabled { opacity: 0.5; cursor: default; }
+html.lfx-js:not(.layout-tv) .lfx-lib__genres-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+html.lfx-js:not(.layout-tv) .lfx-lib__caret { font-size: 11px; }
+html.lfx-js:not(.layout-tv) .lfx-lib__genres.is-open .lfx-lib__caret { transform: rotate(180deg); }
+html.lfx-js:not(.layout-tv) .lfx-lib__genres-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 2 * var(--lfx-gutter)));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 14px 8px;
+  column-count: 4;
+  column-gap: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.9);
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__genres-panel[hidden] { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-lib__genre {
+  display: block;
+  break-inside: avoid;
+  padding: 6px 10px;
+  color: #b3b3b3;
+  font: 400 14px/1.3 var(--lfx-font);
+  text-decoration: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__genre.is-current { color: #fff; font-weight: 700; }
+html.lfx-js:not(.layout-tv) .lfx-lib__genre:focus-visible { outline: 2px solid #fff; outline-offset: -2px; color: #fff; }
+@media (max-width: 1100px) {
+  html.lfx-js:not(.layout-tv) .lfx-lib__genres-panel { column-count: 3; }
+}
+
+/* Umschalter + Sortierung */
+html.lfx-js:not(.layout-tv) .lfx-lib__views {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 30px;
+  color: #fff;
+  background: transparent;
+  transition: background var(--lfx-dur-fast) var(--lfx-ease);
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__view svg { width: 18px; height: 18px; }
+html.lfx-js:not(.layout-tv) .lfx-lib__view.is-active { background: rgba(255, 255, 255, 0.25); }
+html.lfx-js:not(.layout-tv) .lfx-lib__view:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+html.lfx-js:not(.layout-tv) .lfx-lib__tools { display: flex; align-items: center; gap: 14px; }
+html.lfx-js:not(.layout-tv) .lfx-lib__tools[hidden] { display: none; }
+html.lfx-js:not(.layout-tv) .lfx-lib__count { color: #b3b3b3; font: 400 14px/1 var(--lfx-font); white-space: nowrap; }
+html.lfx-js:not(.layout-tv) .lfx-lib__sort {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font: 500 14px/1 var(--lfx-font);
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__sort:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-lib__genres-btn:not(:disabled):hover,
+  html.lfx-js:not(.layout-tv) .lfx-lib__view:hover { background: var(--lfx-pill-active); }
+  html.lfx-js:not(.layout-tv) .lfx-lib__crumb:hover,
+  html.lfx-js:not(.layout-tv) .lfx-lib__genre:hover { color: #fff; }
+  html.lfx-js:not(.layout-tv) .lfx-lib__genre:hover { text-decoration: underline; }
+}
+
+/* Raster-Ansicht: Inhalt beginnt direkt unter dem Unterkopf */
+html.lfx-js:not(.layout-tv) .lfx-lib.is-grid .lfx-lib__body { padding-top: 8px; }
+
+/* „Alle anzeigen“ */
+html.lfx-js:not(.layout-tv) .lfx-lib__all { margin: 0 var(--lfx-gutter); padding: 8px 0 0; }
+html.lfx-js:not(.layout-tv) .lfx-lib__all-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 4px;
+  background: rgba(109, 109, 110, 0.7);
+  color: #fff;
+  font: 700 16px/1 var(--lfx-font);
+  text-decoration: none;
+}
+html.lfx-js:not(.layout-tv) .lfx-lib__all-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-lib__all-btn:hover { background: rgba(109, 109, 110, 0.4); }
+}
+
+/* Handy / kompakte Kopfleiste: Unterkopf entfällt (dort übernehmen die Handy-Pillen) */
+@media (max-width: 899px) {
+  html.lfx-js:not(.layout-tv) .lfx-lib__head { display: none; }
+}
+html.lfx-js.lfx-mnav-on:not(.layout-tv) .lfx-lib__head { display: none; }
+
+/* ---------------------------------------------------------------- Raster (generisch, auch „Meine Liste“) */
+html.lfx-js .lfx-grid {
+  --lfx-grid-cols: 6;
+  --lfx-grid-gap: 12px;
+  --lfx-card-w: calc((100vw - 2 * var(--lfx-gutter) - (var(--lfx-grid-cols) - 1) * var(--lfx-grid-gap)) / var(--lfx-grid-cols));
+  --lfx-card-h: calc(var(--lfx-card-w) * 9 / 16);
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--lfx-gutter);
+}
+@media (max-width: 1399px) { html.lfx-js .lfx-grid { --lfx-grid-cols: 5; } }
+@media (max-width: 1099px) { html.lfx-js .lfx-grid { --lfx-grid-cols: 4; } }
+@media (max-width: 899px) { html.lfx-js .lfx-grid { --lfx-grid-cols: 3; } }
+@media (max-width: 599px) { html.lfx-js .lfx-grid { --lfx-grid-cols: 2; --lfx-grid-gap: 8px; } }
+
+html.lfx-js .lfx-grid__list {
+  display: grid;
+  grid-template-columns: repeat(var(--lfx-grid-cols), minmax(0, 1fr));
+  gap: 24px var(--lfx-grid-gap);
+}
+html.lfx-js .lfx-grid__item { min-width: 0; }
+html.lfx-js .lfx-grid .lfx-card { flex: none; width: 100%; }
+html.lfx-js .lfx-grid__status { min-height: 1px; }
+html.lfx-js .lfx-grid__more { height: 1px; }
+
+html.lfx-js .lfx-grid__empty {
+  margin: 48px 0;
+  color: #b3b3b3;
+  font: 400 16px/1.4 var(--lfx-font);
+  text-align: center;
+}
+html.lfx-js .lfx-grid__retry {
+  display: block;
+  margin: -24px auto 48px;
+  height: 36px;
+  padding: 0 20px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  font: 500 14px/1 var(--lfx-font);
+  cursor: pointer;
+}
+html.lfx-js .lfx-grid__retry:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-grid__retry:hover { background: var(--lfx-pill-active); }
+}
+
+/* Skelett: eine Reihe Platzhalter-Karten, solange die erste Seite lädt */
+html.lfx-js .lfx-grid__skel {
+  height: calc(var(--lfx-card-h) * 2 + 24px);
+  border-radius: var(--lfx-card-radius);
+  background:
+    linear-gradient(100deg, #232323 30%, #2b2b2b 50%, #232323 70%) 0 0 / 200% 100% #232323;
+  animation: lfx-shimmer 1.6s linear infinite;
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js .lfx-grid__skel { animation: none; }
+  html.lfx-js .lfx-lib__head { transition: none; }
+}

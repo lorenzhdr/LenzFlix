@@ -36,7 +36,7 @@ html.lfx-js #lfx-ambient {
   transition: opacity 300ms var(--lfx-ease);
 }
 /* Nur auf der Startseite (dort steht das Billboard) */
-html.lfx-js:not(.lfx-home-on) #lfx-ambient {
+html.lfx-js:not(.lfx-home-on):not(.lfx-library-on) #lfx-ambient {
   opacity: 0;
 }
 

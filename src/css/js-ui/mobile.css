@@ -176,6 +176,99 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
 }
+
+/* Pillen-Varianten (Serien/Filme/Meine Liste): ✕-Rundknopf, Kategorien/Genre mit ▾ */
+html.lfx-js .lfx-mnav__pill--x {
+  justify-content: center;
+  width: 32px;
+  padding: 0 0 2px;
+  font-size: 22px;
+  font-weight: 300;
+}
+html.lfx-js .lfx-mnav__pill--genre.has-genre {
+  border-color: #fff;
+}
+
+/* Kategorien-Vollbildliste: dunkler, leicht transparenter Hintergrund, zentrierte große Einträge */
+html.lfx-js.lfx-mnav-cats-open {
+  overflow: hidden;
+}
+html.lfx-js .lfx-mnav-cats {
+  position: fixed;
+  inset: 0;
+  z-index: 1250;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.82);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  color: #b3b3b3;
+  font-family: var(--lfx-font);
+}
+html.lfx-js .lfx-mnav-cats[hidden] {
+  display: none;
+}
+html.lfx-js .lfx-mnav-cats__list {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 56px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  text-align: center;
+}
+html.lfx-js .lfx-mnav-cats__link {
+  display: block;
+  padding: 10px 16px;
+  min-height: 48px;
+  box-sizing: border-box;
+  color: #b3b3b3;
+  font: 400 24px / 1.3 var(--lfx-font);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js .lfx-mnav-cats__link.is-active {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+}
+html.lfx-js .lfx-mnav-cats__link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+html.lfx-js .lfx-mnav-cats__close {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  margin: 8px 0 calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 0 0 4px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  font: 300 36px / 1 var(--lfx-font);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js .lfx-mnav-cats__close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.lfx-js .lfx-mnav-cats:not([hidden]) {
+    animation: lfx-mnav-cats-in 0.18s ease-out;
+  }
+}
+@keyframes lfx-mnav-cats-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 }
 
 /* ---------- Handy-Layout ---------- */

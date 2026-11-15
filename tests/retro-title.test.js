@@ -255,6 +255,30 @@ describe('Serie und Episode', () => {
     expect(document.querySelector('.lfx-rt__tab.is-active').dataset.id).toBe('se2');
   });
 
+  it('öffnet oben: kein scrollIntoView, nächste Folge bleibt markiert', async () => {
+    const spy = vi.fn();
+    Element.prototype.scrollIntoView = spy;
+    title.mount(route('#/home?lfx=title&id=e2'));
+    await flush();
+    expect(document.querySelector('.lfx-rt__ep.is-selected')).not.toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+    delete Element.prototype.scrollIntoView;
+  });
+
+  it('Bildvorlauf: Hintergrund, Logo und Cover vor loadItem, wenn das Item bekannt ist', async () => {
+    const urls = [];
+    const Orig = globalThis.Image;
+    globalThis.Image = class { set src(v) { urls.push(v); } };
+    data.getStoredItem.mockReturnValue({ ...movie, ImageTags: { Primary: 'p', Logo: 'l' }, BackdropImageTags: ['b'] });
+    data.loadItem.mockReturnValue(new Promise(() => {}));
+    title.mount(route('#/home?lfx=title&id=m1'));
+    await flush();
+    globalThis.Image = Orig;
+    expect(urls.some((u) => u.includes('/Images/Backdrop'))).toBe(true);
+    expect(urls.some((u) => u.includes('/Images/Logo'))).toBe(true);
+    expect(urls.some((u) => u.includes('/Images/Primary'))).toBe(true);
+  });
+
   it('Episoden-Id löst zur Serie auf und markiert die Folge', async () => {
     title.mount(route('#/home?lfx=title&id=e2'));
     await flush();

@@ -20,8 +20,8 @@ vi.mock('../src/js/core/charts.js', () => ({
 }));
 
 import * as api from '../src/js/core/api.js';
-import { clearCache } from '../src/js/core/cache.js';
-import { buildLibraryRowDefs, getLibraryHeroPool, getLibraryGenres, libraryPoolKey, LIB_TYPES } from '../src/js/features/library/sources.js';
+import { cached, clearCache } from '../src/js/core/cache.js';
+import { buildLibraryRowDefs, fetchLibraryHeroPool, getLibraryHeroPool, getLibraryGenres, libraryPoolKey, LIB_TYPES } from '../src/js/features/library/sources.js';
 
 const genres = Array.from({ length: 10 }, (_, i) => ({ Id: `g${i}`, Name: `Genre ${String.fromCharCode(65 + i)}` }));
 const mk = (n, extra = {}) => Array.from({ length: n }, (_, i) => ({ Id: `i${i}`, Name: `T${i}`, Type: 'Movie', ...extra }));
@@ -157,5 +157,13 @@ describe('getLibraryHeroPool', () => {
     expect(api.getItems.mock.calls.every(([p]) => p.GenreIds === 'g1' && p.IncludeItemTypes === 'Movie' && !p.ParentId)).toBe(true);
     await getLibraryHeroPool('movies', { genre: 'g1' });
     expect(api.getItems).toHaveBeenCalledTimes(2); // 2 Abfragen, 2. Aufruf aus dem Cache
+  });
+
+  it('Billboard-Muster: cached(libraryPoolKey, fetchLibraryHeroPool) löst auf (kein Selbst-Warten, live gefunden)', async () => {
+    api.getItems.mockResolvedValue({ Items: [hero('a'), hero('b'), hero('c')] });
+    const key = libraryPoolKey('series');
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('hängt')), 1000));
+    const pool = await Promise.race([cached(key, () => fetchLibraryHeroPool('series'), 60_000), timeout]);
+    expect(pool.length).toBeGreaterThan(0);
   });
 });

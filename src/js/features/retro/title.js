@@ -53,6 +53,20 @@ function dispose() {
   setPageOn(ON_CLASS, false);
 }
 
+/** Bekanntes Item (Zeilen-/Hero-Daten): Hintergrund, Logo und Cover schon vor dem Laden der Details anfordern (gleiche URLs wie load). */
+export function preloadImages(item) {
+  let target = item;
+  if (item && (item.Type === 'Episode' || item.Type === 'Season')) {
+    const tid = item.SeriesId || item.ParentId;
+    target = tid ? data.getStoredItem(tid) : null;
+  }
+  if (!target) return;
+  for (const url of [backdropUrl(target), api.logoImage(target, { maxWidth: 720 }), api.imageUrl(target, { type: 'Primary', maxWidth: 700, quality: 85 })]) {
+    if (!url) continue;
+    try { new Image().src = url; } catch { /* egal */ }
+  }
+}
+
 function errorBox(message) {
   return h('div', { class: 'lfx-rt__error lfx-retro-frame', role: 'alert' }, [
     h('h1', { class: 'lfx-rt__errtitle' }, 'FEHLER 404: KASSETTE NICHT GEFUNDEN'),
@@ -111,7 +125,9 @@ async function load(g) {
   let sel;
   let main;
   try {
-    const first = data.getStoredItem(s.id) || (await data.loadItem(s.id));
+    const stored = data.getStoredItem(s.id);
+    if (stored) preloadImages(stored);
+    const first = stored || (await data.loadItem(s.id));
     if (!first) throw new Error('Titel nicht gefunden');
     const r = resolveTarget(first, s.id);
     sel = r.sel;
@@ -319,12 +335,7 @@ async function load(g) {
       c.seasons = list;
       c.seasonId = pickInitialSeason(list, c.seasonId);
       paintTabs();
-      await showSeason();
-      if (stale()) return;
-      const hit = epList.querySelector('.lfx-rt__ep.is-selected');
-      if (hit && hit.scrollIntoView) {
-        try { hit.scrollIntoView({ block: 'center', behavior: 'auto' }); } catch { /* egal */ }
-      }
+      await showSeason(); // kein Scrollen: die Titelseite öffnet immer oben, die nächste Folge bleibt nur markiert
     }).catch(() => {}));
   }
 

@@ -1,7 +1,7 @@
 // LenzFlix: Handy-Navigation im Netflix-App-Stil (Feature "mobilenav").
 // Nur Modern-Layout, nicht TV, nur bei Breite < 900 px (auch am Desktop; ab 900 px gilt die große Leiste #lfx-nav, auch bei layout-mobile).
 //  - Logo-Link (fixed im Header; der MUI-Drawer-Button wird per CSS ausgeblendet, solange das Feature läuft)
-//  - Filter-Pills (Serien · Filme · Meine Liste · Mehr ▾) unter dem Header, nur auf der Startseite
+//  - Filter-Pills unter dem Header: Startseite (Serien · Filme · Meine Liste · Mehr ▾), Serien/Filme (✕ · Titel · Kategorien ▾ + Vollbild-Genreliste), Meine Liste (✕ · Meine Liste)
 //  - Vollbild-Overlay „Mehr“ mit Startseite/Bibliotheken als zentrierte Textliste
 // Eigene Knoten liegen außerhalb der React-Knoten; unmount() räumt alles auf.
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
@@ -13,6 +13,8 @@ import { isTheme } from '../core/theme.js';
 import { openThemePicker } from '../core/themepicker.js';
 import { dataSaverAvailable } from '../core/datasaver.js';
 import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
+import { parseLfxRoute, libraryHref, myListHref, isLibraryRoute, isMyListRoute } from '../shared/routes.js';
+import { getLibraryGenres } from './library/sources.js';
 import { buildNavModel, navItems, activeKey } from './nav.js';
 
 const { STATS_LABEL } = stats;
@@ -20,12 +22,21 @@ const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref
 
 const ROOT_ID = 'lfx-mnav';
 const OVERLAY_ID = 'lfx-mnav-overlay';
+const CATS_ID = 'lfx-mnav-cats';
 const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
 const FOCUSABLE = 'a[href], button:not([disabled])';
 
-/** Pills nur auf der echten Startseite (dort steht das Billboard). */
+/** Pills-Modus der Route: 'home' (Startseite), 'library' (Serien/Filme), 'mylist' oder null (keine Pills). */
+export function pillsMode(route) {
+  if (!route || route.path !== '/home') return null;
+  if (isLibraryRoute(route)) return 'library';
+  if (isMyListRoute(route)) return 'mylist';
+  return route.params.get('tab') !== '1' && !route.params.get('lfx') ? 'home' : null;
+}
+
+/** Pills auf der echten Startseite (dort steht das Billboard) sowie auf den Seiten Serien/Filme/Meine Liste. */
 export function showsPills(route) {
-  return route.path === '/home' && route.params.get('tab') !== '1' && !route.params.get('lfx');
+  return pillsMode(route) !== null;
 }
 
 /** Pill-Definitionen aus dem Nav-Modell (ohne „Mehr“). */
@@ -51,10 +62,47 @@ const state = {
   pills: null,
   overlay: null,
   catBtn: null,
+  cats: null,
+  genreBtn: null,
+  catsReturnFocus: null,
+  genres: { series: null, movies: null },
+  genresLoading: new Set(),
   returnFocus: null,
   cleanups: [],
   seq: 0,
 };
+
+const isCatsOpen = () => Boolean(state.cats && !state.cats.hidden);
+
+function openCats() {
+  if (!state.cats || isCatsOpen()) return;
+  state.catsReturnFocus = document.activeElement;
+  state.cats.hidden = false;
+  cl().add('lfx-mnav-cats-open');
+  if (state.genreBtn) state.genreBtn.setAttribute('aria-expanded', 'true');
+  const active = state.cats.querySelector('.is-active') || state.cats.querySelector('.lfx-mnav-cats__link');
+  const target = active || state.cats.querySelector('.lfx-mnav-cats__close');
+  if (target) target.focus();
+}
+
+function closeCats({ restoreFocus = true } = {}) {
+  if (!state.cats || !isCatsOpen()) return;
+  state.cats.hidden = true;
+  cl().remove('lfx-mnav-cats-open');
+  if (state.genreBtn) state.genreBtn.setAttribute('aria-expanded', 'false');
+  const back = state.catsReturnFocus;
+  state.catsReturnFocus = null;
+  if (restoreFocus && back && typeof back.focus === 'function' && back.isConnected) back.focus();
+}
+
+function onCatsKey(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeCats();
+    return;
+  }
+  trapTab(e, state.cats);
+}
 
 const cl = () => document.documentElement.classList;
 
@@ -88,8 +136,13 @@ function onOverlayKey(e) {
     closeOverlay();
     return;
   }
-  if (e.key !== 'Tab') return;
-  const nodes = [...state.overlay.querySelectorAll(FOCUSABLE)];
+  trapTab(e, state.overlay);
+}
+
+/** Fokus-Falle: Tab zyklisch innerhalb des Containers. */
+function trapTab(e, root) {
+  if (e.key !== 'Tab' || !root) return;
+  const nodes = [...root.querySelectorAll(FOCUSABLE)];
   if (!nodes.length) return;
   const first = nodes[0];
   const last = nodes[nodes.length - 1];
@@ -122,22 +175,108 @@ function applyPillsVisibility() {
   if (cl().contains('lfx-mnav-pills') !== on) cl().toggle('lfx-mnav-pills', on);
 }
 
+const caret = () => h('span', { class: 'lfx-mnav__caret', 'aria-hidden': 'true' });
+
+/** Aktuelle Bibliotheksart ('series'|'movies') bei Serien-/Filme-Seiten, sonst null. */
+function libraryKind(route) {
+  const k = route && isLibraryRoute(route) ? parseLfxRoute(route).kind : null;
+  return k === 'series' || k === 'movies' ? k : null;
+}
+
+function genreName(kind, id) {
+  const g = (state.genres[kind] || []).find((x) => x.id === id);
+  return g ? g.name : null;
+}
+
+/** Pillen-Leiste je Route: Startseite (Serien · Filme · Meine Liste · Mehr), Bibliothek (✕ · Serien · Kategorien), Meine Liste (✕ · Meine Liste). */
+function renderPills() {
+  if (!state.pills) return;
+  const mode = state.route ? pillsMode(state.route) : null;
+  state.pills.textContent = '';
+  state.catBtn = null;
+  state.genreBtn = null;
+  const closeX = () => h('a', { class: 'lfx-mnav__pill lfx-mnav__pill--x', href: '#/home', 'aria-label': 'Schließen' }, '×');
+  if (mode === 'library') {
+    const kind = libraryKind(state.route);
+    const route = parseLfxRoute(state.route);
+    const gname = route.genre ? genreName(kind, route.genre) : null;
+    state.genreBtn = h('button', {
+      type: 'button',
+      class: `lfx-mnav__pill lfx-mnav__pill--genre${gname ? ' has-genre' : ''}`,
+      'aria-haspopup': 'dialog',
+      'aria-expanded': String(isCatsOpen()),
+      'aria-controls': CATS_ID,
+      dataset: { key: 'cats' },
+    }, [gname || 'Kategorien', caret()]);
+    state.genreBtn.addEventListener('click', () => (isCatsOpen() ? closeCats() : openCats()));
+    state.pills.append(
+      closeX(),
+      h('a', { class: 'lfx-mnav__pill', href: libraryHref(kind), dataset: { key: kind } }, kind === 'series' ? 'Serien' : 'Filme'),
+      state.genreBtn,
+    );
+  } else if (mode === 'mylist') {
+    state.pills.append(closeX(), h('a', { class: 'lfx-mnav__pill', href: myListHref(), dataset: { key: 'list' } }, 'Meine Liste'));
+  } else {
+    for (const it of pillItems(state.model)) {
+      state.pills.append(h('a', { class: 'lfx-mnav__pill', href: it.href, dataset: { key: it.key } }, it.label));
+    }
+    state.catBtn = h('button', {
+      type: 'button',
+      class: 'lfx-mnav__pill lfx-mnav__pill--cats',
+      'aria-haspopup': 'dialog',
+      'aria-expanded': String(isOpen()),
+      'aria-controls': OVERLAY_ID,
+      dataset: { key: 'cats' },
+    }, ['Mehr', caret()]);
+    state.catBtn.addEventListener('click', () => (isOpen() ? closeOverlay() : openOverlay()));
+    state.pills.append(state.catBtn);
+  }
+}
+
+/** Vollbild-Kategorienliste (Genres der aktuellen Bibliotheksart). */
+function renderCats() {
+  if (!state.cats) return;
+  const kind = libraryKind(state.route);
+  state.cats.textContent = '';
+  if (!kind) {
+    closeCats({ restoreFocus: false });
+    return;
+  }
+  const genre = parseLfxRoute(state.route).genre;
+  const entries = [{ id: null, name: kind === 'series' ? 'Alle Serien' : 'Alle Filme' }, ...(state.genres[kind] || [])];
+  const list = h('ul', { class: 'lfx-mnav-cats__list' }, entries.map((g) => h('li', null,
+    h('a', {
+      class: `lfx-mnav-cats__link${(g.id || null) === (genre || null) ? ' is-active' : ''}`,
+      href: libraryHref(kind, g.id ? { genre: g.id } : {}),
+      ...((g.id || null) === (genre || null) ? { 'aria-current': 'page' } : {}),
+    }, g.name))));
+  const close = h('button', { type: 'button', class: 'lfx-mnav-cats__close', 'aria-label': 'Schließen' }, '×');
+  close.addEventListener('click', () => closeCats());
+  state.cats.append(list, close);
+}
+
+/** Genres der Bibliotheksart laden (einmal), danach Pille und Liste neu zeichnen. */
+function ensureGenres(kind) {
+  if (!kind || state.genres[kind] || state.genresLoading.has(kind)) return;
+  const seq = state.seq;
+  state.genresLoading.add(kind);
+  Promise.resolve()
+    .then(() => getLibraryGenres(kind))
+    .then((g) => (Array.isArray(g) ? g : []), () => [])
+    .then((g) => {
+      if (seq !== state.seq || !state.root) return;
+      state.genresLoading.delete(kind);
+      state.genres[kind] = g;
+      renderPills();
+      renderCats();
+      applyActive();
+    });
+}
+
 function render() {
   if (!state.pills || !state.overlay) return;
-  state.pills.textContent = '';
-  for (const it of pillItems(state.model)) {
-    state.pills.append(h('a', { class: 'lfx-mnav__pill', href: it.href, dataset: { key: it.key } }, it.label));
-  }
-  state.catBtn = h('button', {
-    type: 'button',
-    class: 'lfx-mnav__pill lfx-mnav__pill--cats',
-    'aria-haspopup': 'dialog',
-    'aria-expanded': String(isOpen()),
-    'aria-controls': OVERLAY_ID,
-    dataset: { key: 'cats' },
-  }, ['Mehr', h('span', { class: 'lfx-mnav__caret', 'aria-hidden': 'true' })]);
-  state.catBtn.addEventListener('click', () => (isOpen() ? closeOverlay() : openOverlay()));
-  state.pills.append(state.catBtn);
+  renderPills();
+  renderCats();
 
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
@@ -200,8 +339,24 @@ export const mobilenavFeature = {
       () => state.overlay && state.overlay.removeEventListener('keydown', onOverlayKey),
       () => state.overlay && state.overlay.removeEventListener('click', onOverlayClick),
     );
+    // Kategorienliste (Serien/Filme): eigenes Vollbild-Overlay mit Fokus-Falle und Scroll-Sperre
+    state.cats = mountPoint(CATS_ID, { className: 'lfx-mnav-cats' });
+    state.cats.setAttribute('role', 'dialog');
+    state.cats.setAttribute('aria-modal', 'true');
+    state.cats.setAttribute('aria-label', 'Kategorien');
+    state.cats.hidden = true;
+    state.cats.addEventListener('keydown', onCatsKey);
+    const onCatsClick = (e) => {
+      if (e.target.closest && e.target.closest('a')) closeCats({ restoreFocus: false });
+    };
+    state.cats.addEventListener('click', onCatsClick);
+    state.cleanups.push(
+      () => state.cats && state.cats.removeEventListener('keydown', onCatsKey),
+      () => state.cats && state.cats.removeEventListener('click', onCatsClick),
+    );
     cl().add('lfx-mnav-on');
     render();
+    ensureGenres(libraryKind(route));
     loadViews(seq);
   },
   update(route) {
@@ -209,21 +364,34 @@ export const mobilenavFeature = {
     // schließen, wenn sich die Route wirklich ändert, sonst klappt es direkt nach dem Öffnen wieder zu.
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
-    if (changed) closeOverlay({ restoreFocus: false });
+    if (changed) {
+      closeOverlay({ restoreFocus: false });
+      closeCats({ restoreFocus: false });
+      renderPills();
+      renderCats();
+      ensureGenres(libraryKind(route));
+    }
     applyActive();
     applyPillsVisibility();
   },
   unmount() {
     state.seq++;
     closeOverlay({ restoreFocus: false });
+    closeCats({ restoreFocus: false });
     for (const fn of state.cleanups.splice(0)) fn();
     unmountPoint(ROOT_ID);
     unmountPoint(OVERLAY_ID);
-    cl().remove('lfx-mnav-on', 'lfx-mnav-pills', 'lfx-mnav-open');
+    unmountPoint(CATS_ID);
+    cl().remove('lfx-mnav-on', 'lfx-mnav-pills', 'lfx-mnav-open', 'lfx-mnav-cats-open');
     state.root = null;
     state.pills = null;
     state.overlay = null;
     state.catBtn = null;
+    state.cats = null;
+    state.genreBtn = null;
+    state.catsReturnFocus = null;
+    state.genres = { series: null, movies: null };
+    state.genresLoading.clear();
     state.returnFocus = null;
     state.model = { series: null, movies: null, more: [] };
   },

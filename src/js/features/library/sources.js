@@ -189,25 +189,30 @@ export async function buildLibraryRowDefs(kind, { genre, genreName } = {}) {
 }
 
 /** Hero-Kandidaten für das Billboard der Seite (30 Neueste + 40 Zufällige, Format wie buildPool). 10 min gecacht. */
+/** Gecachter Hero-Pool (10 min). Das Billboard cacht selbst unter libraryPoolKey → dort fetchLibraryHeroPool nutzen
+ *  (gleicher Schlüssel in beiden Ebenen = cached() wartet auf sich selbst, Billboard bleibt im Skelett). */
 export function getLibraryHeroPool(kind, { genre } = {}) {
-  return cached(libraryPoolKey(kind, genre), async () => {
-    const q = (params) => api.getItems({
-      ...BASE_PARAMS, Fields: HERO_FIELDS, IncludeItemTypes: typeOf(kind), Recursive: true,
-      ...(genre ? { GenreIds: genre } : {}), ...params,
-    }).then(asItems);
-    const [latest, random] = await Promise.all([
-      q({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 30 }).catch(() => []),
-      q({ SortBy: 'Random', Limit: 40 }).catch(() => []),
-    ]);
-    const pool = buildPool(latest, random, { newCount: 3, randomCount: 7 });
-    if (pool.length) { putItems(pool); return pool; }
-    const seen = new Set();
-    const fallback = [...latest, ...random].filter((it) => {
-      if (!it || !it.Id || seen.has(it.Id) || !(it.BackdropImageTags && it.BackdropImageTags.length)) return false;
-      seen.add(it.Id);
-      return true;
-    }).slice(0, 8);
-    putItems(fallback);
-    return fallback;
-  }, HOME_TTL);
+  return cached(libraryPoolKey(kind, genre), () => fetchLibraryHeroPool(kind, { genre }), HOME_TTL);
+}
+
+/** Hero-Pool ohne Cache (für billboard.render ctx.pool.fetch). */
+export async function fetchLibraryHeroPool(kind, { genre } = {}) {
+  const q = (params) => api.getItems({
+    ...BASE_PARAMS, Fields: HERO_FIELDS, IncludeItemTypes: typeOf(kind), Recursive: true,
+    ...(genre ? { GenreIds: genre } : {}), ...params,
+  }).then(asItems);
+  const [latest, random] = await Promise.all([
+    q({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 30 }).catch(() => []),
+    q({ SortBy: 'Random', Limit: 40 }).catch(() => []),
+  ]);
+  const pool = buildPool(latest, random, { newCount: 3, randomCount: 7 });
+  if (pool.length) { putItems(pool); return pool; }
+  const seen = new Set();
+  const fallback = [...latest, ...random].filter((it) => {
+    if (!it || !it.Id || seen.has(it.Id) || !(it.BackdropImageTags && it.BackdropImageTags.length)) return false;
+    seen.add(it.Id);
+    return true;
+  }).slice(0, 8);
+  putItems(fallback);
+  return fallback;
 }

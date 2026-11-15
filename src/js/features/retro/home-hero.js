@@ -1,10 +1,12 @@
 // LENZ//84 Hero: Vollbreite Bühne (Backdrop in Bernstein, Retro-Sonne, Neon-Gitter) mit Terminal-Fenster.
 // Titel tippt sich als „TITEL.MOV“ ein, Rotation mit „Kanalwechsel“, Pause bei Hover/Fokus/versteckt/unsichtbar. Gehört Worker P1.
-import { getItems, imageUrl } from '../../core/api.js';
+import { getItems, getUserId, imageUrl } from '../../core/api.js';
+import { cached, peekCached, homeKey, HOME_TTL } from '../../core/cache.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { h } from '../../core/dom.js';
 import { putItems } from '../../core/itemstore.js';
 import { titleHref } from '../../shared/routes.js';
-import { buildPool, formatRating, formatSeasons } from '../billboard/format.js';
+import { buildPool, saverPool, formatRating, formatSeasons } from '../billboard/format.js';
 import { playLabel, playTitle } from '../prime/hero-play.js';
 import { emitFx } from './prefs.js';
 import { isPhone } from './header-nav.js';
@@ -97,8 +99,21 @@ export async function fetchHomePool() {
   return pool;
 }
 
-/** loadPool: () => Promise<Item[]>. Rückgabe: Cleanup-Funktion. */
-export function renderHero(slot, { loadPool }) {
+const heroKey = () => homeKey(getUserId(), 'retro', 'hero'); // „home:“-Präfix: leert sich mit dem Startseiten-Cache (core/homecache.js)
+
+/** Hero-Pool der Startseite, 10 min gecacht. */
+export function fetchCachedHomePool() {
+  return cached(heroKey(), fetchHomePool, HOME_TTL);
+}
+
+/** Sofort verfügbarer Pool aus dem Cache (oder undefined). */
+export function peekHomePool() {
+  const p = peekCached(heroKey());
+  return Array.isArray(p) ? p : undefined;
+}
+
+/** loadPool: () => Promise<Item[]>; peekPool (optional): () => Item[]|undefined (sofortige Anzeige). Rückgabe: Cleanup-Funktion. */
+export function renderHero(slot, { loadPool, peekPool = null }) {
   const phone = isPhone();
   let disposed = false;
   let pool = [];
@@ -273,18 +288,35 @@ export function renderHero(slot, { loadPool }) {
     }
   }
 
+  /** Datensparmodus (Teil „hero“): Pool auf 5 Titel kürzen, der gezeigte bleibt; wächst nicht zurück. */
+  function onSaver() {
+    if (disposed || !pool.length || !isDataSaver('hero') || pool.length <= saverPool(pool).length) return;
+    const cur = pool[index];
+    pool = saverPool(pool, cur && cur.Id);
+    index = Math.max(0, pool.findIndex((it) => cur && it.Id === cur.Id));
+    target = index;
+    if (hero) updateCounter();
+    scheduleRotate();
+  }
+
   async function init() {
-    let items = [];
-    try { items = await loadPool(); } catch { /* leer */ }
+    let items;
+    try { items = peekPool ? peekPool() : undefined; } catch { items = undefined; }
+    if (!Array.isArray(items) || !items.length) {
+      items = [];
+      try { items = await loadPool(); } catch { /* leer */ }
+    }
     if (disposed) return;
     if (!items || !items.length) { slot.classList.remove('is-loading'); slot.hidden = true; return; }
-    pool = items;
+    pool = isDataSaver('hero') ? saverPool(items) : items.slice(); // Cache-Array nie mutieren; Datensparmodus: nur 5 Titel
     putItems(pool);
     build();
     slot.hidden = false;
     slot.classList.remove('is-loading');
     apply(0);
   }
+
+  cleanups.push(onDataSaverChange(onSaver), onDataSaverPartsChange(onSaver));
 
   // Platz reservieren, bis der Pool geladen ist
   slot.hidden = false;

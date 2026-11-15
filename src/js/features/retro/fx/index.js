@@ -10,7 +10,7 @@ import { getStoredItem, putItems } from '../../../core/itemstore.js';
 import { getLibraries } from '../../../shared/libraries.js';
 import { getUserChip } from '../../../shared/profile.js';
 import { searchItems } from '../../../shared/search.js';
-import { searchHref, titleHref } from '../../../shared/routes.js';
+import { searchHref, titleHref, isTvModeRoute } from '../../../shared/routes.js';
 import { FX_EVENT, PREFS_EVENT, LOGO_ATTR, OVERDRIVE_CLASS, NO_CRT_CLASS, getPref, setPref } from '../prefs.js';
 import { createCrt } from './crt.js';
 import { runBoot, hasBooted, markBooted, clearBooted } from './boot.js';
@@ -31,6 +31,7 @@ let S = null; // Laufzeitzustand, null = nicht gemountet
 /** Dieses Feature ist aktiv (Retro, Modern, nicht TV, eingeloggt, kein Player/Dashboard)? */
 export function shouldRun(route) {
   if (!isTheme('retro') || !isModern() || isTv() || !isReady()) return false;
+  if (isTvModeRoute(route)) return false; // TV-Seite: keine Retro-Effekte
   if (document.body && document.body.classList.contains('dashboardDocument')) return false;
   return !isPlayerVisible(route);
 }
