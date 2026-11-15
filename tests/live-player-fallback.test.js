@@ -353,7 +353,7 @@ describe('Fehlercodes in resolveStream', () => {
     expect((await run(t('VideoCodecNotSupported'))).code).toBe('V-CODEC');
     expect((await run(t('VideoRangeTypeNotSupported'))).code).toBe('V-RANGE');
     expect((await run(t('VideoBitDepthNotSupported'))).code).toBe('V-10BIT');
-    expect((await run(t('SubtitleCodecNotSupported'))).code).toBe('V-SUB');
+    expect((await run(t('SubtitleCodecNotSupported&SubtitleStreamIndex=3'))).code).toBe('V-SUB');
     expect((await run(t('RefFramesNotSupported'))).code).toBe('V-OTHER');
     expect((await run(ms({ direct: false }))).code).toBe('V-NOURL');
     expect((await run(t('AudioCodecNotSupported'), makeVideo({ hls: false }))).code).toBe('B-HLS');

@@ -90,11 +90,23 @@ describe('resolveStream', () => {
     expect((await resolve(deps, makeVideo())).reason).toBe('video');
   });
 
-  it('SubtitleMethod=Encode in der TranscodingUrl (Groß-/Kleinschreibung egal) → none/video', async () => {
-    for (const q of ['&SubtitleMethod=Encode', '&subtitlemethod=encode']) {
+  it('SubtitleMethod=Encode MIT SubtitleStreamIndex (Groß-/Kleinschreibung egal) → none/video V-SUB', async () => {
+    for (const q of ['&SubtitleStreamIndex=3&SubtitleMethod=Encode', '&subtitlestreamindex=3&subtitlemethod=encode']) {
       const deps = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl(`&TranscodeReasons=AudioCodecNotSupported${q}`) })) });
       expect(await resolve(deps, makeVideo())).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'V-SUB' });
     }
+  });
+
+  it('SubtitleMethod=Encode OHNE SubtitleStreamIndex (erzwungene Standard-Spur, nichts eingebrannt) → hls', async () => {
+    const deps = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=AudioCodecNotSupported&SubtitleMethod=Encode') })) });
+    expect(await resolve(deps, makeVideo())).toMatchObject({ ok: true, mode: 'hls' });
+  });
+
+  it('SubtitleCodecNotSupported OHNE SubtitleStreamIndex → hls; MIT Index → V-SUB', async () => {
+    const without = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&TranscodeReasons=SubtitleCodecNotSupported,AudioCodecNotSupported&SubtitleMethod=Encode') })) });
+    expect(await resolve(without, makeVideo())).toMatchObject({ ok: true, mode: 'hls' });
+    const withIdx = makeDeps({ respond: () => info(ms({ direct: false, transcodingUrl: hlsUrl('&SubtitleStreamIndex=3&TranscodeReasons=SubtitleCodecNotSupported&SubtitleMethod=Encode') })) });
+    expect(await resolve(withIdx, makeVideo())).toEqual({ ok: false, mode: 'none', reason: 'video', code: 'V-SUB' });
   });
 
   it('nur AudioCodecNotSupported + SegmentContainer=mp4 → hls', async () => {

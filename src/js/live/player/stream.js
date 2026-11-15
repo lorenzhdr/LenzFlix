@@ -162,10 +162,14 @@ export async function resolveStream({ deps, video, itemId, audioIndex, signal, n
       const url = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });
       return { ok: true, mode: 'direct', url, ...base };
     }
-    const reasons = reasonsOf(ms);
+    // Einbrennen nur, wenn der Server eine Untertitelspur in die Adresse schreibt. SubtitleMethod=Encode bzw.
+    // SubtitleCodecNotSupported OHNE SubtitleStreamIndex brennt nichts ein (live geprüft 15.11.2026: IsVideoDirect=true,
+    // erzwungene Standard-Spur DVDSUB bzw. SRT) → dann kein V-SUB.
+    const burns = Boolean(ms.TranscodingUrl) && /[?&]SubtitleStreamIndex=\d/i.test(ms.TranscodingUrl);
+    const reasons = reasonsOf(ms).filter((r) => burns || r !== 'SubtitleCodecNotSupported');
     if (reasons.some((r) => VIDEO_REASONS.has(r))) return fail('video', videoCode(reasons));
     // Schutz: Einbrennen von Untertiteln wäre eine Video-Umwandlung.
-    if (ms.TranscodingUrl && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail('video', 'V-SUB');
+    if (burns && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail('video', 'V-SUB');
     if (!ms.TranscodingUrl) {
       const a = tr.audio.find((x) => x.index === audioIdx);
       return a && !isPlainAudioCodec(a.codec) ? fail('audio', 'A-CODEC') : fail('video', 'V-NOURL');

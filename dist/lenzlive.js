@@ -2139,9 +2139,10 @@
         const url2 = deps.streamUrl(`/Videos/${encodeURIComponent(itemId)}/stream`, { static: true, MediaSourceId: ms.Id });
         return { ok: true, mode: "direct", url: url2, ...base };
       }
-      const reasons = reasonsOf(ms);
+      const burns = Boolean(ms.TranscodingUrl) && /[?&]SubtitleStreamIndex=\d/i.test(ms.TranscodingUrl);
+      const reasons = reasonsOf(ms).filter((r) => burns || r !== "SubtitleCodecNotSupported");
       if (reasons.some((r) => VIDEO_REASONS.has(r))) return fail("video", videoCode(reasons));
-      if (ms.TranscodingUrl && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail("video", "V-SUB");
+      if (burns && /[?&]SubtitleMethod=Encode(?:&|$)/i.test(ms.TranscodingUrl)) return fail("video", "V-SUB");
       if (!ms.TranscodingUrl) {
         const a = tr.audio.find((x) => x.index === audioIdx);
         return a && !isPlainAudioCodec(a.codec) ? fail("audio", "A-CODEC") : fail("video", "V-NOURL");
