@@ -92,6 +92,26 @@ describe('placePopup', () => {
 });
 
 describe('Öffnen', () => {
+  it('Karte ohne Item-Daten im Speicher: lädt nach und öffnet (erster Hover nach dem Laden, live gefunden)', async () => {
+    clearItemStore();
+    over(card.querySelector('#inner'));
+    await tick(INTENT_MS + 10);
+    expect(api.getItem).toHaveBeenCalledTimes(1);
+    expect(popup()).not.toBeNull();
+  });
+
+  it('Karte ohne Item-Daten: Maus vorher weg → kein Öffnen nach dem Nachladen', async () => {
+    clearItemStore();
+    let resolve;
+    api.getItem.mockReturnValue(new Promise((r) => { resolve = r; }));
+    over(card.querySelector('#inner'));
+    await tick(INTENT_MS + 10);
+    over(document.getElementById('other'));
+    resolve({ ...item });
+    await tick(10);
+    expect(popup()).toBeNull();
+  });
+
   it('kurzer Hover öffnet nicht', async () => {
     over(card.querySelector('#inner'));
     await tick(INTENT_MS - 100);
@@ -192,6 +212,16 @@ describe('Schließen', () => {
   it('Routenwechsel', async () => {
     await openIt();
     window.dispatchEvent(new HashChangeEvent('hashchange'));
+    expect(popup()).toBeNull();
+  });
+
+  it('update() mit gleicher Route (viewshow) bricht Absicht und Vorschau nicht ab; neue Route schließt', async () => {
+    over(card);
+    await tick(INTENT_MS - 100);
+    hover.update(route); // gleiche Route: Jellyfin feuert viewshow nach dem Laden mehrfach
+    await tick(200);
+    expect(popup()).not.toBeNull();
+    hover.update({ path: '/home', params: new URLSearchParams('lfx=new'), hash: '/home?lfx=new' });
     expect(popup()).toBeNull();
   });
 

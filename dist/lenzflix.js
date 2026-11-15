@@ -19577,6 +19577,8 @@
   var listeners6 = [];
   var scrollOff = null;
   var gen6 = 0;
+  var overCard = null;
+  var lastHash = null;
   var blocked3 = () => Boolean(
     document.hidden || isMenuOpen() || isDialogOpen() || isPlayerVisible(null) || document.getElementById(TERMINAL_ID)
   );
@@ -19661,7 +19663,15 @@
   }
   function open2(card3) {
     const stored = getStoredItem(card3.dataset.lfxId);
-    if (!stored || active5 || blocked3()) return;
+    if (active5 || blocked3()) return;
+    if (!stored) {
+      const g0 = gen6;
+      loadDetail2(card3.dataset.lfxId).then((it) => {
+        if (it && g0 === gen6 && overCard === card3 && card3.isConnected && !active5) open2(card3);
+      }, () => {
+      });
+      return;
+    }
     const g = ++gen6;
     const a = { card: card3, item: stored, el: null, preview: null, timers: [], g, t0: Date.now() };
     const pic = landscapeFor(stored, 640);
@@ -19775,6 +19785,7 @@
       return;
     }
     const card3 = cardOf2(t);
+    overCard = card3;
     if (active5 && card3 === active5.card) {
       clearTimeout(leaveTimer2);
       leaveTimer2 = null;
@@ -19795,6 +19806,7 @@
   }
   function onOut3(e) {
     if (e.relatedTarget) return;
+    overCard = null;
     clearIntent2();
     if (active5) scheduleLeave2();
     else syncScroll();
@@ -19816,17 +19828,27 @@
     ];
   }
   function stop7() {
+    overCard = null;
     closeNow3();
     for (const off of listeners6.splice(0)) off();
   }
   var hover = {
     name: "retro-hover",
     match: (route) => isTheme("retro") && isModern() && !isTv() && isReady() && hoverCapable3() && !isPlayerVisible(route),
-    mount: start8,
-    update() {
+    mount(route) {
+      lastHash = route && route.hash;
+      start8();
+    },
+    update(route) {
+      const hash2 = route && route.hash;
+      if (hash2 === lastHash) return;
+      lastHash = hash2;
       closeNow3();
     },
-    unmount: stop7
+    unmount() {
+      lastHash = null;
+      stop7();
+    }
   };
   var hover_default2 = hover;
 

@@ -52,6 +52,8 @@ let leaveTimer = null;
 let listeners = [];
 let scrollOff = null;
 let gen = 0;
+let overCard = null; // Karte unter der Maus (für das Nachladen fehlender Item-Daten)
+let lastHash = null; // update() schließt nur bei echtem Routenwechsel (Jellyfin feuert viewshow mehrfach, vgl. retro/header.js)
 
 const blocked = () => Boolean(
   document.hidden || isMenuOpen() || isDialogOpen() || isPlayerVisible(null) || document.getElementById(TERMINAL_ID),
@@ -141,7 +143,16 @@ async function playTarget(item) {
 
 function open(card) {
   const stored = getStoredItem(card.dataset.lfxId);
-  if (!stored || active || blocked()) return;
+  if (active || blocked()) return;
+  if (!stored) {
+    // Karten aus dem Startseiten-Cache stehen evtl. (noch) nicht im Item-Speicher: nachladen, dann öffnen,
+    // falls die Maus noch auf derselben Karte steht (live gefunden: erster Hover nach dem Laden blieb stumm).
+    const g0 = gen;
+    loadDetail(card.dataset.lfxId).then((it) => {
+      if (it && g0 === gen && overCard === card && card.isConnected && !active) open(card);
+    }, () => {});
+    return;
+  }
   const g = ++gen;
   const a = { card, item: stored, el: null, preview: null, timers: [], g, t0: Date.now() };
   const pic = landscapeFor(stored, 640);
@@ -246,6 +257,7 @@ function onOver(e) {
     return;
   }
   const card = cardOf(t);
+  overCard = card;
   if (active && card === active.card) {
     clearTimeout(leaveTimer);
     leaveTimer = null;
@@ -261,6 +273,7 @@ function onOver(e) {
 
 function onOut(e) {
   if (e.relatedTarget) return; // innerhalb des Dokuments übernimmt mouseover
+  overCard = null;
   clearIntent();
   if (active) scheduleLeave();
   else syncScroll();
@@ -283,6 +296,7 @@ function start() {
 }
 
 function stop() {
+  overCard = null;
   closeNow();
   for (const off of listeners.splice(0)) off();
 }
@@ -290,9 +304,14 @@ function stop() {
 const hover = {
   name: 'retro-hover',
   match: (route) => isTheme('retro') && isModern() && !isTv() && api.isReady() && hoverCapable() && !isPlayerVisible(route),
-  mount: start,
-  update() { closeNow(); },
-  unmount: stop,
+  mount(route) { lastHash = route && route.hash; start(); },
+  update(route) {
+    const hash = route && route.hash;
+    if (hash === lastHash) return; // gleiche Seite (viewshow): Vorschau/Absicht nicht abbrechen
+    lastHash = hash;
+    closeNow();
+  },
+  unmount() { lastHash = null; stop(); },
 };
 
 export default hover;
