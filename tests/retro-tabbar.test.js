@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+const dsToggle = vi.hoisted(() => vi.fn());
+const dsWatchers = vi.hoisted(() => new Set());
 vi.mock('../src/js/core/api.js', () => ({ isReady: () => true, getUserId: () => 'u1' }));
 vi.mock('../src/js/core/theme.js', () => ({ isTheme: vi.fn((id) => id === 'retro'), getTheme: () => 'retro', brandName: () => 'LENZ//84' }));
 vi.mock('../src/js/shared/libraries.js', () => ({
@@ -15,6 +17,7 @@ vi.mock('../src/js/shared/profile.js', () => ({
   profileEntries: vi.fn(async () => [
     { key: 'design', label: 'Design Einstellungen', badge: 'Beta', onClick: () => {} },
     { key: 'logout', label: 'Abmelden', onClick: () => {} },
+    { key: 'datasaver', label: 'Datensparmodus', switch: true, checked: false, onToggle: (n) => dsToggle(n), watch: (cb) => { dsWatchers.add(cb); return () => dsWatchers.delete(cb); } },
   ]),
 }));
 
@@ -69,6 +72,8 @@ describe('retro-tabbar: Modell', () => {
     expect(tabKey(route('#/home?lfx=search'))).toBe('search');
     expect(tabKey(route('#/home?lfx=new'))).toBe('new');
     expect(tabKey(route('#/home?tab=1'))).toBe('list');
+    expect(tabKey(route('#/home?lfx=mylist'))).toBe('list');
+    expect(tabKey(route('#/home?lfx=tv'))).toBeNull();
     expect(tabKey(route('#/home?lfx=hub&lib=m1'))).toBe('more');
     expect(tabKey(route('#/mypreferencesmenu'))).toBe('more');
     expect(tabKey(route('#/home?lfx=title&id=5'))).toBeNull();
@@ -81,14 +86,21 @@ describe('retro-tabbar: Modell', () => {
     const go = vi.fn();
     const close = vi.fn();
     const toggle = vi.fn();
-    const e = moreEntries(libs, [{ key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' }], { go, close, toggle });
-    expect(e.map((x) => x.label)).toEqual(['Filme', 'Musik', 'Einstellungen', 'Sound', 'CRT-Effekt']);
+    const onToggle = vi.fn();
+    const e = moreEntries(libs, [
+      { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
+      { key: 'datasaver', label: 'Datensparmodus', switch: true, checked: false, onToggle },
+    ], { go, close, toggle });
+    expect(e.map((x) => x.label)).toEqual(['Filme', 'Musik', 'Einstellungen', 'Datensparmodus', 'Sound', 'CRT-Effekt']);
     e[0].onClick();
     expect(close).toHaveBeenCalled();
     expect(go).toHaveBeenCalledWith('#/home?lfx=hub&lib=m1');
     close.mockClear();
     e[3].onClick();
     expect(close).not.toHaveBeenCalled(); // Schalter lassen das Blatt offen
+    expect(onToggle).toHaveBeenCalledWith(true);
+    e[4].onClick();
+    expect(close).not.toHaveBeenCalled();
     expect(toggle).toHaveBeenCalledWith('sound');
   });
 });
@@ -105,9 +117,9 @@ describe('retro-tabbar: Feature', () => {
     expect(keys[0].classList.contains('is-active')).toBe(true);
     expect(keys[1].getAttribute('href')).toBe('#/home?lfx=search');
     expect(keys[2].getAttribute('href')).toBe('#/home?lfx=new');
-    expect(keys[3].getAttribute('href')).toBe('#/home?tab=1');
+    expect(keys[3].getAttribute('href')).toBe('#/home?lfx=mylist');
     expect(html.classList.contains('lfx-retro-tabbar-on')).toBe(true);
-    tabbar.update(route('#/home?tab=1'));
+    tabbar.update(route('#/home?lfx=mylist'));
     expect(document.querySelector('.lfx-retro-fkey.is-active').dataset.key).toBe('list');
   });
 
@@ -120,11 +132,11 @@ describe('retro-tabbar: Feature', () => {
     expect(sheet).toBeTruthy();
     const items = [...sheet.querySelectorAll('.lfx-sheet__item')];
     expect(items.map((b) => b.textContent.replace(/\s+/g, ' ').trim())).toEqual([
-      'Filme', 'Serien', 'Musik', 'Design EinstellungenBeta', 'Abmelden', 'Sound: AUS', 'CRT-Effekt: AN',
+      'Filme', 'Serien', 'Musik', 'Design EinstellungenBeta', 'Abmelden', 'Datensparmodus: AUS', 'Sound: AUS', 'CRT-Effekt: AN',
     ]);
     expect(items[3].querySelector('.lfx-beta')).toBeTruthy();
     expect(items[3].getAttribute('aria-label')).toBe('Design Einstellungen (Beta)');
-    const sound = items[5];
+    const sound = items[6];
     expect(sound.getAttribute('aria-pressed')).toBe('false');
     sound.click();
     expect(sound.getAttribute('aria-pressed')).toBe('true');
@@ -132,6 +144,49 @@ describe('retro-tabbar: Feature', () => {
     expect(localStorage.getItem('lfx.retro.sound.u1')).toBe('1');
     expect(document.getElementById('lfx-sheet')).toBeTruthy(); // bleibt offen
     expect(document.querySelector('[data-key="more"]').classList.contains('is-active')).toBe(true);
+  });
+
+  it('MEHR: Datensparmodus-Schalter zeigt AN/AUS, schaltet über onToggle, Blatt bleibt offen, folgt watch', async () => {
+    dsToggle.mockClear();
+    dsWatchers.clear();
+    tabbar.mount(route('#/home'));
+    await flush();
+    document.querySelector('[data-key="more"]').click();
+    await flush();
+    const sw = document.querySelector('#lfx-sheet [data-sw="datasaver"]');
+    expect(sw.textContent).toBe('Datensparmodus: AUS');
+    expect(sw.getAttribute('aria-pressed')).toBe('false');
+    sw.click();
+    expect(dsToggle).toHaveBeenCalledWith(true);
+    expect(sw.textContent).toBe('Datensparmodus: AN');
+    expect(document.getElementById('lfx-sheet')).toBeTruthy();
+    expect(dsWatchers.size).toBe(1);
+    [...dsWatchers][0](false);
+    expect(sw.textContent).toBe('Datensparmodus: AUS');
+    document.querySelector('[data-key="more"]').click();
+    expect(dsWatchers.size).toBe(0);
+  });
+
+  it('Kopfzeile: TV-Symbol feuert lfx:tvmode-intent synchron, Datensparsymbol eingebunden, TV aktiv auf der TV-Route', async () => {
+    tabbar.mount(route('#/home'));
+    await flush();
+    const top = document.getElementById('lfx-retro-topbar');
+    const tv = top.querySelector('.lfx-retro-tvbtn');
+    expect(tv.getAttribute('href')).toBe('#/home?lfx=tv');
+    expect(tv.getAttribute('aria-label')).toBe('TV-Modus');
+    const ds = top.querySelector('.lfx-dsbtn.lfx-retro-dsbtn');
+    expect(ds).toBeTruthy();
+    expect(ds.nextElementSibling).toBe(tv);
+    let seen = 0;
+    const on = () => { seen++; };
+    window.addEventListener('lfx:tvmode-intent', on);
+    tv.addEventListener('click', (e) => e.preventDefault());
+    tv.click();
+    window.removeEventListener('lfx:tvmode-intent', on);
+    expect(seen).toBe(1);
+    expect(tv.classList.contains('is-active')).toBe(false);
+    tabbar.update(route('#/home?lfx=tv'));
+    expect(tv.classList.contains('is-active')).toBe(true);
   });
 
   it('unmount räumt vollständig auf', async () => {

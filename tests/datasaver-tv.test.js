@@ -4,8 +4,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const ds = vi.hoisted(() => ({ on: false }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && (ds.off || []).includes(part)),
   onDataSaverChange: () => () => {},
+  onDataSaverPartsChange: () => () => {},
 }));
 
 import { createEmitter } from '../src/js/live/player/events.js';

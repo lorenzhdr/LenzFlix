@@ -55,13 +55,15 @@ describe('retro-header: Modell', () => {
     expect(items.map((i) => i.label)).toEqual(['Start', 'Filme', 'Serien', 'Neu & beliebt', 'Meine Liste', 'Suche']);
     expect(items[1].href).toBe('#/home?lfx=hub&lib=m1');
     expect(items[3].href).toBe('#/home?lfx=new');
-    expect(items[4].href).toBe('#/home?tab=1');
+    expect(items[4].href).toBe('#/home?lfx=mylist');
     expect(items[5].href).toBe('#/home?lfx=search');
     expect(navItems([]).map((i) => i.label)).toEqual(['Start', 'Neu & beliebt', 'Meine Liste', 'Suche']);
   });
   it('aktiver Schlüssel', () => {
     expect(activeKey(route('#/home'))).toBe('home');
     expect(activeKey(route('#/home?tab=1'))).toBe('list');
+    expect(activeKey(route('#/home?lfx=mylist'))).toBe('list');
+    expect(activeKey(route('#/home?lfx=tv'))).toBe('tv');
     expect(activeKey(route('#/home?lfx=new'))).toBe('new');
     expect(activeKey(route('#/home?lfx=search&q=x'))).toBe('search');
     expect(activeKey(route('#/home?lfx=hub&lib=m1'))).toBe('lib:m1');
@@ -120,7 +122,7 @@ describe('retro-header: Feature', () => {
     expect(el.querySelector('.is-active').textContent).toBe('Start');
     expect(el.querySelector('.lfx-retro-clock').textContent).toBe('23:41');
     expect(el.querySelector('.lfx-retro-header__initial').textContent).toBe('L');
-    header.update(route('#/home?tab=1'));
+    header.update(route('#/home?lfx=mylist'));
     expect(el.querySelector('.is-active').textContent).toBe('Meine Liste');
   });
 
@@ -153,6 +155,37 @@ describe('retro-header: Feature', () => {
     expect(crt.getAttribute('aria-pressed')).toBe('false');
     expect(localStorage.getItem('lfx.retro.sound.u1')).toBe('1');
     expect(localStorage.getItem('lfx.retro.crt.u1')).toBe('0');
+  });
+
+  it('TV-Symbol: feuert lfx:tvmode-intent synchron im Klick, Link auf TV-Modus, aktiv auf der TV-Route', async () => {
+    header.mount(route('#/home'));
+    await flush();
+    const tv = document.querySelector('#lfx-retro-header .lfx-retro-tvbtn');
+    expect(tv.getAttribute('href')).toBe('#/home?lfx=tv');
+    expect(tv.getAttribute('aria-label')).toBe('TV-Modus');
+    expect(tv.querySelector('svg')).toBeTruthy();
+    let seen = 0;
+    const on = () => { seen++; };
+    window.addEventListener('lfx:tvmode-intent', on);
+    tv.addEventListener('click', (e) => e.preventDefault());
+    tv.click();
+    window.removeEventListener('lfx:tvmode-intent', on);
+    expect(seen).toBe(1);
+    expect(tv.classList.contains('is-active')).toBe(false);
+    header.update(route('#/home?lfx=tv'));
+    expect(tv.classList.contains('is-active')).toBe(true);
+    expect(tv.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('Datensparsymbol ist links neben dem TV-Symbol eingebunden und öffnet das Popover', async () => {
+    header.mount(route('#/home'));
+    await flush();
+    const right = document.querySelector('.lfx-retro-header__right');
+    const ds = right.querySelector('.lfx-dsbtn.lfx-retro-dsbtn');
+    expect(ds).toBeTruthy();
+    expect(ds.nextElementSibling.classList.contains('lfx-retro-tvbtn')).toBe(true);
+    ds.click();
+    expect(document.getElementById('lfx-popover').textContent).toContain('Datensparmodus ist an');
   });
 
   it('Navigation meldet emitFx(nav)', async () => {

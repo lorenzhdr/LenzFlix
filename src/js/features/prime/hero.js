@@ -11,7 +11,7 @@ import { toggleFavorite } from '../../shared/titleactions.js';
 import { createMutedPreview } from '../../shared/trailer.js';
 import { getNewContentInfo } from '../../shared/newcontent.js';
 import { cardBadge, getTrendInfo, heroTrendLine } from '../../shared/trend.js';
-import { isDataSaver, onDataSaverChange } from '../../core/datasaver.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { buildPool, saverPool, formatRating, formatRuntime, formatSeasons } from '../billboard/format.js';
 import * as data from '../modal/data.js';
 import { playLabel, playTitle } from './hero-play.js';
@@ -141,7 +141,7 @@ export function renderHero(slot, { loadPool }) {
   }
 
   function startTrailer(item, myGen) {
-    if (mobile || reducedMotion() || isDataSaver() || disposed || myGen !== gen) return; // Datensparmodus: kein Trailer
+    if (mobile || reducedMotion() || isDataSaver('trailer') || disposed || myGen !== gen) return; // Datensparmodus: kein Trailer
     preview = createMutedPreview(media, item, {
       delay: TRAILER_DELAY_MS,
       startAt: 4,
@@ -317,9 +317,10 @@ export function renderHero(slot, { loadPool }) {
   }
 
   /** Datensparmodus an: laufende Vorschau abbauen (Cover bleibt), Pool kürzen, Rotation läuft weiter. */
-  function onSaver(active) {
-    if (disposed || !hero || !active) return;
-    stopTrailer();
+  function onSaver() {
+    if (disposed || !hero) return;
+    if (isDataSaver('trailer')) stopTrailer();
+    if (!isDataSaver('hero')) return; // Hero-Pool wächst nicht zurück (gilt ab nächstem Aufbau)
     const cur = pool[index];
     pool = saverPool(pool, cur && cur.Id);
     index = Math.max(0, cur ? pool.indexOf(cur) : 0);
@@ -421,10 +422,11 @@ export function renderHero(slot, { loadPool }) {
     if (mobile) { try { newInfo = await getNewContentInfo(); } catch { newInfo = null; } }
     if (disposed) return;
     if (!items || !items.length) { slot.classList.remove('is-loading'); slot.hidden = true; return; }
-    pool = isDataSaver() ? saverPool(items) : items; // Datensparmodus: nur 5 Titel
+    pool = isDataSaver('hero') ? saverPool(items) : items; // Datensparmodus: nur 5 Titel
     putItems(pool);
     build();
     cleanupFns.push(onDataSaverChange(onSaver));
+    cleanupFns.push(onDataSaverPartsChange(onSaver));
     slot.hidden = false;
     slot.classList.remove('is-loading');
     show(0, true);

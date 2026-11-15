@@ -12,8 +12,8 @@ import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
-import { isDataSaver, onDataSaverChange } from '../core/datasaver.js';
-import { buildPool, saverPool, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../core/datasaver.js';
+import { buildPool, saverPool, SAVER_POOL, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
 
 export const ROTATE_MS = 10000;
 export const TRAILER_MIN_IMAGE_MS = 3000; // Titelbild steht mindestens so lange, bevor der Trailer eingeblendet wird
@@ -45,12 +45,12 @@ const ICON_BADGE = '<defs><linearGradient id="lfx-bb-grad" x1="0" y1="0" x2="1" 
 
 const LAST_FIRST_KEY = 'lfx-bb-first';
 
-function readLastFirst() {
-  try { return sessionStorage.getItem(LAST_FIRST_KEY); } catch { return null; }
+function readLastFirst(key = LAST_FIRST_KEY) {
+  try { return sessionStorage.getItem(key); } catch { return null; }
 }
 
-function writeLastFirst(id) {
-  try { sessionStorage.setItem(LAST_FIRST_KEY, id); } catch { /* ignorieren */ }
+function writeLastFirst(id, key = LAST_FIRST_KEY) {
+  try { sessionStorage.setItem(key, id); } catch { /* ignorieren */ }
 }
 
 const poolKey = () => homeKey(getUserId(), 'billboard');
@@ -75,10 +75,26 @@ async function fetchPool() {
   return pool;
 }
 
-/** Pool 10 min pro Nutzer: innerhalb der TTL derselbe Pool/erste Titel; die Rotation (LAST_FIRST_KEY) greift nur beim Neuabruf. */
-function loadPool() {
-  const key = poolKey();
-  const p = cached(key, fetchPool, HOME_TTL);
+/**
+ * Pool 10 min pro Nutzer: innerhalb der TTL derselbe Pool/erste Titel; die Rotation (LAST_FIRST_KEY) greift nur beim Neuabruf.
+ * Mit `src` ({key, fetch, firstKey}, z. B. Bibliotheksseiten) ersetzt: key = Cache-Schlüssel (String oder Getter),
+ * fetch({avoidFirstId}) = Laden, firstKey = sessionStorage-Schlüssel für „zuletzt erster Titel“.
+ */
+function resolveSrc(src) {
+  if (!src) return { key: poolKey(), fetch: fetchPool };
+  const key = typeof src.key === 'function' ? src.key() : src.key;
+  const firstKey = src.firstKey || `${LAST_FIRST_KEY}:${key}`;
+  const fetch = async () => {
+    const pool = await src.fetch({ avoidFirstId: readLastFirst(firstKey) });
+    if (pool && pool[0]) writeLastFirst(pool[0].Id, firstKey);
+    return pool || [];
+  };
+  return { key, fetch };
+}
+
+function loadPool(src) {
+  const { key, fetch } = resolveSrc(src);
+  const p = cached(key, fetch, HOME_TTL);
   p.then((pool) => { if (!pool.length) clearCache(key); }, () => {});
   return p;
 }
@@ -110,7 +126,8 @@ function loadAmbient(item, isCurrent) {
   img.src = url;
 }
 
-export function render(slot) {
+export function render(slot, ctx = {}) {
+  const poolSrc = ctx && ctx.pool && ctx.pool.fetch ? ctx.pool : null; // Bibliotheksseiten: eigene Datenquelle
   let disposed = false;
   let pool = [];
   let index = 0;
@@ -144,7 +161,7 @@ export function render(slot) {
 
   // Ein ladender Trailer hält die Rotation an (höchstens TRAILER_WAIT_MAX_MS), damit das Bild stehen bleibt.
   const trailerPending = () =>
-    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver()
+    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver('trailer')
       && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
 
   const paused = () =>
@@ -328,7 +345,7 @@ export function render(slot) {
   /** Vorladen starten: erst wenn das Titelbild geladen ist UND die ersten Zeilen gefüllt sind. */
   function tryPreload() {
     const sl = slide;
-    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed || isDataSaver()) return; // Datensparmodus: kein Trailer
+    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed || isDataSaver('trailer')) return; // Datensparmodus: kein Trailer
     if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
     sl.started = true;
     startTrailer(sl);
@@ -339,7 +356,7 @@ export function render(slot) {
     try {
       const t = await loadLocalTrailer(sl.item);
       if (sl.gen !== gen || disposed) return;
-      if (isDataSaver()) { sl.failed = true; setTr(''); return; } // zwischenzeitlich eingeschaltet
+      if (isDataSaver('trailer')) { sl.failed = true; setTr(''); return; } // zwischenzeitlich eingeschaltet
       if (!t) { sl.failed = true; setTr(''); return; }
       const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
       v.muted = true;
@@ -442,7 +459,7 @@ export function render(slot) {
     // Trailer: erst das Titelbild; Vorladen startet, sobald Bild geladen + Zeilen gefüllt (tryPreload).
     const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
     slide = sl;
-    setTr(item.LocalTrailerCount > 0 && !isDataSaver() ? 'wait' : '');
+    setTr(item.LocalTrailerCount > 0 && !isDataSaver('trailer') ? 'wait' : '');
     const img = pic.querySelector('.lfx-bb__img');
     const onLoaded = () => {
       if (disposed || sl.gen !== gen || sl.imgAt) return;
@@ -492,27 +509,33 @@ export function render(slot) {
     cleanupFns.push(() => document.removeEventListener('visibilitychange', onVis));
     cleanupFns.push(onItemsChanged(onChanged));
     cleanupFns.push(onDataSaverChange(onSaver));
+    cleanupFns.push(onDataSaverPartsChange(onSaver));
   }
 
   /** Datensparmodus an: Trailer (auch vorpuffernd) abbauen, Cover bleibt, Pool kürzen, Rotation läuft weiter. */
-  function onSaver(active) {
-    if (disposed || !card || !active) return;
-    if (slide) slide.failed = true;
-    stopTrailer();
-    setTr('');
-    const cur = pool[index];
-    pool = saverPool(pool, cur && cur.Id);
-    index = Math.max(0, cur ? pool.indexOf(cur) : 0);
-    fillDots();
-    scheduleRotate();
+  function onSaver() {
+    if (disposed || !card) return;
+    if (isDataSaver('trailer')) {
+      if (slide) slide.failed = true;
+      stopTrailer();
+      setTr('');
+    }
+    if (isDataSaver('hero') && pool.length > SAVER_POOL) {
+      const cur = pool[index];
+      pool = saverPool(pool, cur && cur.Id);
+      index = Math.max(0, cur ? pool.indexOf(cur) : 0);
+      fillDots();
+      scheduleRotate();
+    }
   }
 
   async function init() {
-    let items = peekCached(poolKey()) || [];
+    const src = resolveSrc(poolSrc);
+    let items = peekCached(src.key) || [];
     warm = items.length > 0;
     if (!warm) {
       try {
-        items = await loadPool();
+        items = await loadPool(poolSrc);
       } catch { /* leer */ }
     }
     if (disposed) return;
@@ -522,7 +545,7 @@ export function render(slot) {
       resetAmbient();
       return;
     }
-    pool = isDataSaver() ? saverPool(items) : items.slice(); // Cache-Array nie mutieren (onChanged); Datensparmodus: nur 5 Titel
+    pool = isDataSaver('hero') ? saverPool(items) : items.slice(); // Cache-Array nie mutieren (onChanged); Datensparmodus: nur 5 Titel
     putItems(pool);
     build();
     slot.hidden = false;

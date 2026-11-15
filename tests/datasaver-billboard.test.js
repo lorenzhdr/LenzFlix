@@ -6,6 +6,7 @@ const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
 vi.mock('../src/js/core/datasaver.js', () => ({
   isDataSaver: () => ds.on,
   onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+  onDataSaverPartsChange: () => () => {},
 }));
 const setSaver = (v) => { ds.on = v; [...ds.subs].forEach((cb) => cb(v)); };
 

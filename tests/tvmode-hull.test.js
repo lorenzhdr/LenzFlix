@@ -287,11 +287,29 @@ describe('tvmode Lebenszyklus', () => {
 
 describe('tvmode Datensparmodus', () => {
   const saver = (active) => window.dispatchEvent(new CustomEvent('lfx:datasaver', { detail: { active } }));
+  const setStore = (on, off) => {
+    window.localStorage.setItem('lfx.datasaver.u1', on ? '1' : '0');
+    if (off) window.localStorage.setItem('lfx.datasaver.parts.u1', JSON.stringify(off)); else window.localStorage.removeItem('lfx.datasaver.parts.u1');
+  };
+  const parts = () => window.dispatchEvent(new CustomEvent('lfx:datasaver-parts', { detail: {} }));
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => window.localStorage.clear());
   it('Einschalten beendet vorgewärmte Sitzungen sofort (instance.releaseWarm), Ausschalten tut nichts', async () => {
     await mountReady();
+    setStore(true);
     saver(true);
     expect(instance.releaseWarm).toHaveBeenCalledTimes(1);
+    setStore(false);
     saver(false);
+    expect(instance.releaseWarm).toHaveBeenCalledTimes(1);
+  });
+  it('Modus an + Teil „tvwarm“ aus: nichts; Teil wieder an: releaseWarm', async () => {
+    await mountReady();
+    setStore(true, ['tvwarm']);
+    saver(true);
+    expect(instance.releaseWarm).not.toHaveBeenCalled();
+    setStore(true);
+    parts();
     expect(instance.releaseWarm).toHaveBeenCalledTimes(1);
   });
   it('nach unmount/destroy ist das Abo abgemeldet', async () => {

@@ -1,9 +1,9 @@
 // LENZ//84: reine Navigationslogik für Kopfzeile (Desktop) und Funktionstasten-Leiste (Handy). Gehört Worker P1.
-import { parseLfxRoute, hubHref, searchHref } from '../../shared/routes.js';
+import { parseLfxRoute, hubHref, searchHref, myListHref } from '../../shared/routes.js';
 
 /** Routen ohne eigene Kopfzeile/Leiste (Player, Anmeldung, Dashboard …). */
 export const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
-export const LIST_HREF = '#/home?tab=1';
+export const LIST_HREF = myListHref();
 export const NEW_HREF = '#/home?lfx=new';
 
 /** Handy-Layout: exakt das Komplement zur Desktop-Kopfzeile (deckungsgleich mit @media (max-width: 799px)). */
@@ -25,12 +25,14 @@ export function navItems(libs) {
   return items;
 }
 
-/** Aktiver Schlüssel: home | new | list | search | lib:<id> | null. */
+/** Aktiver Schlüssel: home | new | list | search | tv | lib:<id> | null (Altlast `tab=1` zählt weiter als list). */
 export function activeKey(route) {
   if (!route || route.path !== '/home' || !route.params) return null;
   const { kind, lib } = parseLfxRoute(route);
   if (kind === 'new') return 'new';
   if (kind === 'search') return 'search';
+  if (kind === 'mylist') return 'list';
+  if (kind === 'tv') return 'tv';
   if ((kind === 'hub' || kind === 'browse') && lib) return `lib:${lib}`;
   if (kind || route.params.get('lfx')) return null;
   return route.params.get('tab') === '1' ? 'list' : 'home';

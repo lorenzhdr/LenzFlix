@@ -38,8 +38,9 @@ vi.mock('../src/js/shared/trailer.js', () => ({
 }));
 const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && (ds.off || []).includes(part)),
   onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+  onDataSaverPartsChange: (cb) => { (ds.psubs ||= new Set()).add(cb); return () => ds.psubs.delete(cb); },
 }));
 vi.mock('../src/js/shared/titleactions.js', () => ({
   togglePlayed: vi.fn(async () => true),
@@ -219,7 +220,22 @@ describe('prime-title Feature', () => {
 });
 
 describe('prime-title: Datensparmodus', () => {
-  afterEach(() => { ds.on = false; });
+  afterEach(() => { ds.on = false; ds.off = []; });
+  it('an + Teil „trailer“ aus: Autoplay wie AUS', async () => {
+    vi.useFakeTimers();
+    try {
+      ds.on = true;
+      ds.off = ['trailer'];
+      loadLocalTrailer.mockResolvedValueOnce({ Id: 'tr1' });
+      feature.mount(route('m1'));
+      await vi.advanceTimersByTimeAsync(2500);
+      const root = document.getElementById('lfx-prime-title');
+      expect(root.querySelector('video.lfx-pt__video')).not.toBeNull();
+      feature.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('an: kein Trailer-Autoplay, der Trailer-Knopf bleibt sichtbar', async () => {
     vi.useFakeTimers();
     try {

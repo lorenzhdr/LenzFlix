@@ -225,7 +225,7 @@ async function openPoster(card) {
       window.scrollBy({ top: dy, behavior: reducedMotion() ? 'auto' : 'smooth' });
     }
   }, 340));
-  if (reducedMotion() || isDataSaver()) return; // Datensparmodus: keine Trailer-Vorschau (die Hover-Karte bleibt)
+  if (reducedMotion() || isDataSaver('trailer')) return; // Datensparmodus: keine Trailer-Vorschau (die Hover-Karte bleibt)
   loadDetail(item.Id).then((detail) => {
     if (active !== a || !detail) return;
     a.preview = createMutedPreview(mediaEl, detail, {

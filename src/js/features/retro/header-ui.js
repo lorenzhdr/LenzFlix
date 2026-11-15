@@ -1,6 +1,9 @@
 // LENZ//84: gemeinsame Bausteine von Kopfzeile und Funktionstasten-Leiste (Wortmarke, Uhr, Sound-/CRT-Schalter, Icons). Gehört Worker P1.
 import { h } from '../../core/dom.js';
-import { getPref, togglePref, PREFS_EVENT, LOGO_ATTR } from './prefs.js';
+import { ICON_TVMODE } from '../../core/icons.js';
+import { tvModeHref } from '../../shared/routes.js';
+import { createDataSaverButton } from '../../shared/dsbtn.js';
+import { emitFx, getPref, togglePref, PREFS_EVENT, LOGO_ATTR } from './prefs.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 /** 24er-Raster; stroke = currentColor. Sound = [♪] (Klammern + Note), CRT = Monitor mit Zeilen. */
@@ -55,6 +58,27 @@ const TOGGLES = {
   sound: { icon: 'sound', label: 'Ton' },
   crt: { icon: 'crt', label: 'CRT-Effekt' },
 };
+
+/**
+ * TV-Symbol (Link auf den TV-Modus). Das Intent-Ereignis feuert synchron im Klick (die TV-Hülle entsperrt dabei das Video),
+ * danach navigiert der Link normal. data-key="tv" → Aktiv-Markierung (is-active) durch die Aufrufer.
+ */
+export function createTvButton(className = '') {
+  const el = h('a', {
+    class: `lfx-retro-switch lfx-retro-tvbtn${className ? ` ${className}` : ''}`, href: tvModeHref, 'aria-label': 'TV-Modus', title: 'TV-Modus', dataset: { key: 'tv' },
+  });
+  el.innerHTML = ICON_TVMODE;
+  el.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('lfx:tvmode-intent'));
+    emitFx('nav');
+  });
+  return el;
+}
+
+/** Datensparsymbol (per CSS nur bei html.lfx-datasaver sichtbar); Popover „Ausschalten“ kommt aus shared/dsbtn.js. */
+export function createDsButton(className = '') {
+  return createDataSaverButton({ className: `lfx-retro-dsbtn${className ? ` ${className}` : ''}` });
+}
 
 /** Schalter für 'sound' | 'crt': aria-pressed folgt getPref + PREFS_EVENT. */
 export function createToggle(pref) {

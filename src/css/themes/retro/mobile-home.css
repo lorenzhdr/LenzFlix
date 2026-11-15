@@ -51,6 +51,9 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-topbar .lfx-retro-topbar_
 }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-topbar .lfx-retro-topbar__user:not(:empty)::before { content: "USER:"; margin-right: 0.5em; opacity: 0.7; }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-topbar .lfx-retro-clock { margin: 0 0 0 auto; font-size: 24px; }
+/* TV- und Datensparsymbol rechts neben der Uhr (Optik aus header.css) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-topbar .lfx-retro-topbar__tv { flex: none; width: 34px; height: 32px; }
+html.lfx-js.lfx-theme-retro.lfx-datasaver:not(.layout-tv) #lfx-retro-topbar .lfx-retro-topbar__ds { width: 28px; }
 
 /* ----- Funktionstasten-Leiste unten ----- */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-tabbar {
@@ -142,6 +145,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item {
   text-shadow: var(--lfx-retro-glow);
 }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item::before { content: ">"; margin-right: 0.6em; opacity: 0.4; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item[data-sw],
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item[data-pref="sound"],
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item[data-pref="crt"] { color: var(--lfx-retro-amber-hi); }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item:focus,

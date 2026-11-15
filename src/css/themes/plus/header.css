@@ -182,21 +182,26 @@ html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-p
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--lfx-plus-circle);
-  color: rgb(255 255 255 / 0.7);
+  background: none;
+  color: var(--lfx-red);
   cursor: pointer;
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds svg {
   width: 20px;
   height: 20px;
+  fill: currentcolor;
 }
 html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds + .lfx-plus-header__tv {
   margin-left: 0;
 }
 html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds[aria-expanded="true"] {
-  background: #3a3a42;
-  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  color: var(--lfx-red-hover);
+}
+html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds:focus-visible {
+  outline: 2px solid var(--lfx-red);
+  outline-offset: 3px;
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv.is-active,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
@@ -211,6 +216,10 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header button:focus-visible
 }
 
 @media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds:hover {
+    background: rgb(255 255 255 / 0.1);
+    color: var(--lfx-red-hover);
+  }
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__item:hover {
     color: #fff;
   }

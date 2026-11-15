@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
+const ds = vi.hoisted(() => ({ on: false, off: [], subs: new Set(), psubs: new Set() }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && ds.off.includes(part)),
   onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+  onDataSaverPartsChange: (cb) => { ds.psubs.add(cb); return () => ds.psubs.delete(cb); },
 }));
 const setSaver = (v) => { ds.on = v; [...ds.subs].forEach((cb) => cb(v)); };
+const setPart = (part, on) => { ds.off = on ? ds.off.filter((p) => p !== part) : [...ds.off, part]; [...ds.psubs].forEach((cb) => cb({})); };
 
 import { allowPrefetch, heroSettled, startRowPrefetch } from '../src/js/features/rows/prefetch.js';
 
@@ -306,12 +308,31 @@ describe('rows/prefetch', () => {
       expect(calls).toEqual(['a', 'b']);
     });
 
+    it('Modus an + Teil „prefetch“ aus: lädt wie AUS; Teil wieder an: Pause, Teil aus: nach 2 s weiter', async () => {
+      ds.on = true;
+      ds.off = ['prefetch'];
+      addPending('a', 'b');
+      start();
+      await tick(20000);
+      expect(calls).toEqual(['a']);
+      setPart('prefetch', true);
+      resolvers[0]();
+      await tick(10000);
+      expect(calls).toEqual(['a']);
+      setPart('prefetch', false);
+      await tick(2300);
+      expect(calls).toEqual(['a', 'b']);
+      ds.off = [];
+    });
+
     it('stop() meldet das Abo ab; Netzregel bleibt über core/net.js (saveData sperrt weiter)', async () => {
       addPending('a');
       start();
       expect(ds.subs.size).toBe(1);
+      expect(ds.psubs.size).toBe(1);
       inst.stop();
       expect(ds.subs.size).toBe(0);
+      expect(ds.psubs.size).toBe(0);
       setConn({ saveData: true });
       expect(allowPrefetch()).toBe(false);
     });

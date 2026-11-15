@@ -29,8 +29,9 @@ vi.mock('../src/js/shared/trend.js', async () => {
 vi.mock('../src/js/shared/trailer.js', () => ({ createMutedPreview: vi.fn() }));
 const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && (ds.off || []).includes(part)),
   onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+  onDataSaverPartsChange: (cb) => { (ds.psubs ||= new Set()).add(cb); return () => ds.psubs.delete(cb); },
 }));
 
 import * as api from '../src/js/core/api.js';
@@ -327,7 +328,15 @@ describe('prime-hover: Poster', () => {
 });
 
 describe('prime-hover: Datensparmodus', () => {
-  afterEach(() => { ds.on = false; });
+  afterEach(() => { ds.on = false; ds.off = []; });
+  it('an + Teil „trailer“ aus: Vorschau startet wie AUS', async () => {
+    ds.on = true;
+    ds.off = ['trailer'];
+    over(poster.querySelector('a'));
+    await tick(INTENT_POSTER_MS + 20);
+    await tick(PREVIEW_MS + 200);
+    expect(createMutedPreview).toHaveBeenCalled();
+  });
   it('an: Poster klappt auf, aber keine Trailer-Vorschau (und kein Nachladen der Trailer-Felder)', async () => {
     ds.on = true;
     over(poster.querySelector('a'));

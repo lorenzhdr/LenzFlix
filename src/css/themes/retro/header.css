@@ -187,6 +187,48 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-switch[aria-pressed="true
   }
 }
 
+/* TV-Symbol (Link, Optik wie die Schalter; aktiv auf der TV-Route = gefüllt wie ein eingeschalteter Schalter) */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-tvbtn { color: var(--lfx-retro-amber); border-color: var(--lfx-retro-amber-lo); text-decoration: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-tvbtn svg { fill: currentColor; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-tvbtn.is-active {
+  border-color: var(--lfx-retro-amber);
+  background: var(--lfx-retro-amber-dim);
+  color: var(--lfx-retro-amber-hi);
+  box-shadow: var(--lfx-retro-box-glow);
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-tvbtn:focus-visible,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-dsbtn:focus-visible { outline: 2px solid var(--lfx-retro-amber-hi); outline-offset: 2px; }
+
+/* Datensparsymbol (shared/dsbtn.js): nur bei aktivem Modus sichtbar, Bernstein, ohne Hintergrund, links neben dem TV-Symbol */
+html.lfx-js.lfx-theme-retro.lfx-datasaver:not(.layout-tv) .lfx-retro-dsbtn {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lfx-retro-amber);
+  cursor: pointer;
+  filter: drop-shadow(0 0 4px rgba(255, 176, 0, 0.45));
+}
+html.lfx-js.lfx-theme-retro.lfx-datasaver:not(.layout-tv) .lfx-retro-dsbtn svg { width: 22px; height: 22px; fill: currentColor; }
+html.lfx-js.lfx-theme-retro.lfx-datasaver:not(.layout-tv) .lfx-retro-dsbtn[aria-expanded="true"] { color: var(--lfx-retro-amber-hi); }
+@keyframes lfx-retro-ds-flash {
+  0%, 100% { color: var(--lfx-retro-amber); filter: drop-shadow(0 0 4px rgba(255, 176, 0, 0.45)); }
+  25%, 75% { color: var(--lfx-retro-amber-hi); filter: drop-shadow(0 0 10px rgba(255, 226, 168, 0.95)); }
+  50% { color: var(--lfx-retro-amber); filter: drop-shadow(0 0 4px rgba(255, 176, 0, 0.45)); }
+}
+html.lfx-js.lfx-theme-retro.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-retro-dsbtn svg { animation: none; transform: none; }
+html.lfx-js.lfx-theme-retro.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-retro-dsbtn { animation: lfx-retro-ds-flash 1.2s steps(6, end) 1; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-tvbtn:hover:not(.is-active) { border-color: var(--lfx-retro-amber); color: var(--lfx-retro-amber-hi); }
+  html.lfx-js.lfx-theme-retro.lfx-datasaver:not(.layout-tv) .lfx-retro-dsbtn:hover { color: var(--lfx-retro-amber-hi); }
+}
+
 /* Profil-Chip: quadratisches Terminal-Fenster */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__avatar {
   display: inline-grid;
@@ -214,10 +256,31 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header_
   text-shadow: var(--lfx-retro-glow);
 }
 
-/* Schmales Fenster (800–1000 px): Navigation rückt zusammen */
+/* Schmale Fenster (Handy-Umschaltpunkt 800 px bis ~1300 px, R4): mit TV- und Datensparsymbol läuft die Leiste sonst über.
+   Stufen: ≤1300 enger, ≤1200 ohne Uhr, ≤1000 kleinere Schrift, ≤900 kleinste Stufe (alles bleibt in einer Zeile, Navigation schrumpft zuletzt). */
+@media (max-width: 1300px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar { gap: clamp(10px, 1.4vw, 18px); }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__nav { gap: 0; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link { padding: 0 7px; font-size: 22px; letter-spacing: 0.04em; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__right { gap: 7px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-switch { width: 33px; }
+}
+@media (max-width: 1200px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-clock { display: none; }
+}
 @media (max-width: 1000px) {
-  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link { padding: 0 6px; font-size: 21px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link { padding: 0 5px; font-size: 20px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__logo { width: 92px; }
+}
+@media (max-width: 900px) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar { gap: 8px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link { padding: 0 4px; font-size: 18px; letter-spacing: 0.02em; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__link.is-active::before { margin-right: 0.2em; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__logo { width: 84px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__right { gap: 5px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-switch { width: 30px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-dsbtn { width: 28px; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__avatar { width: 32px; height: 32px; }
 }
 
 /* --- Profil-Popover (core/popover.js, className lfx-retro-profile) --- */
@@ -271,8 +334,36 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:hover::before { opacity: 1; }
 }
 
+/* Schalter-Zeile im Profil-Popover (core/switch.js, z. B. Datensparmodus): eckiger Terminal-Schalter statt iOS-Schieber */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item--switch { justify-content: space-between; gap: 12px; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item--switch::before { display: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-switch {
+  width: 40px;
+  height: 20px;
+  border: 1px solid var(--lfx-retro-amber-lo);
+  border-radius: 2px;
+  background: transparent;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-switch__knob {
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 0;
+  background: var(--lfx-retro-amber-lo);
+  box-shadow: none;
+}
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .is-on > .lfx-switch { border-color: var(--lfx-retro-amber); background: var(--lfx-retro-amber-dim); box-shadow: var(--lfx-retro-box-glow); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .is-on > .lfx-switch .lfx-switch__knob { background: var(--lfx-retro-amber-hi); transform: translateX(20px); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item--switch:focus .lfx-switch,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item--switch:focus-visible .lfx-switch { border-color: var(--lfx-retro-ink); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item--switch:focus .lfx-switch__knob,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item--switch:focus-visible .lfx-switch__knob { background: var(--lfx-retro-ink); }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__note { color: var(--lfx-retro-amber-lo); font: 400 18px/1.2 var(--lfx-retro-font-pixel); letter-spacing: 0.06em; text-transform: uppercase; }
+
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-clock__c { animation: none; }
+  html.lfx-js.lfx-theme-retro.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-retro-dsbtn { animation: none; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::before,
   html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-header .lfx-retro-header__bar::after { transition: none; }
 }

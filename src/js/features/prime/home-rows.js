@@ -141,7 +141,7 @@ export function createRows(slot, { posterId = null, moreHref = () => null, prefe
         observer.unobserve(en.target);
         loadRow(en.target, p.def, p.kind);
       }
-    }, { rootMargin: isDataSaver() ? '100px 0px' : '600px 0px' });
+    }, { rootMargin: isDataSaver('lazy') ? '100px 0px' : '600px 0px' });
   }
 
   return {

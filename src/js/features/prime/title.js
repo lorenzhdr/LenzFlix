@@ -453,7 +453,7 @@ async function load(id) {
     if (s.dead || !src) return;
     s.trailerSrc = src;
     s.trailerBtn.hidden = false;
-    if (reducedMotion() || isMobile() || isDataSaver()) return; // Handy/Datensparmodus: kein Autoplay, der Trailer-Knopf startet ihn
+    if (reducedMotion() || isMobile() || isDataSaver('trailer')) return; // Handy/Datensparmodus: kein Autoplay, der Trailer-Knopf startet ihn
     const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS);
     s.cleanups.push(() => clearTimeout(t));
   }).catch(() => {});

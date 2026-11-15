@@ -4,8 +4,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const ds = vi.hoisted(() => ({ on: false }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && (ds.off || []).includes(part)),
   onDataSaverChange: () => () => {},
+  onDataSaverPartsChange: () => () => {},
 }));
 vi.mock('../src/js/core/api.js', async () => {
   const actual = await vi.importActual('../src/js/core/api.js');
@@ -60,6 +61,14 @@ describe.each(Object.keys(cases))('Lazy-Rand (%s)', (name) => {
     const cleanup = await cases[name]();
     expect(margins).toEqual(['600px 0px']);
     cleanup();
+  });
+  it('an + Teil „lazy“ aus: 600px', async () => {
+    ds.on = true;
+    ds.off = ['lazy'];
+    const cleanup = await cases[name]();
+    expect(margins).toEqual(['600px 0px']);
+    cleanup();
+    ds.off = [];
   });
   it('an: 100px', async () => {
     ds.on = true;

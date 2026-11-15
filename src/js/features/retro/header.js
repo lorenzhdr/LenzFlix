@@ -9,7 +9,7 @@ import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { emitFx } from './prefs.js';
 import { EXCLUDED, activeKey, isPhone, navItems } from './header-nav.js';
-import { createClock, createLogo, createToggle } from './header-ui.js';
+import { createClock, createLogo, createToggle, createDsButton, createTvButton } from './header-ui.js';
 
 const ID = 'lfx-retro-header';
 const HTML_CLASS = 'lfx-retro-header-on';
@@ -17,7 +17,7 @@ const SCROLL_THRESHOLD = 10;
 const HOVER_GAP_MS = 140;
 
 const state = {
-  el: null, route: null, libs: [], seq: 0, raf: 0, busy: false, lastHover: 0, cleanups: [],
+  el: null, ds: null, route: null, libs: [], seq: 0, raf: 0, busy: false, lastHover: 0, cleanups: [],
 };
 
 function applyActive() {
@@ -38,6 +38,11 @@ function renderNav() {
     class: 'lfx-retro-header__link', href: it.href, dataset: { key: it.key },
   }, it.label)));
   applyActive();
+}
+
+/** Offenes Datensparsymbol-Popover schließen (Routenwechsel, unmount). */
+function closeDsPopover() {
+  if (state.ds && state.ds.getAttribute('aria-expanded') === 'true' && isPopoverOpen()) closePopover();
 }
 
 function profileIsOpen() {
@@ -68,7 +73,10 @@ function build() {
     type: 'button', class: 'lfx-retro-header__avatar', 'aria-label': 'Profil', 'aria-haspopup': 'true',
   }, [h('span', { class: 'lfx-retro-header__initial', 'aria-hidden': 'true' }, '?')]);
   avatar.addEventListener('click', () => toggleProfile(avatar));
-  const right = h('div', { class: 'lfx-retro-header__right' }, [clock.el, sound.el, crt.el, avatar]);
+  const ds = createDsButton();
+  const tv = createTvButton();
+  state.ds = ds;
+  const right = h('div', { class: 'lfx-retro-header__right' }, [clock.el, ds, tv, sound.el, crt.el, avatar]);
   state.el.replaceChildren(h('div', { class: 'lfx-retro-header__bar' }, [logo, nav, right]));
   state.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
 
@@ -141,6 +149,7 @@ export default {
     state.route = route;
     if (!state.el) return;
     if (changed && profileIsOpen()) closePopover();
+    if (changed) closeDsPopover();
     applyActive();
   },
   unmount() {
@@ -149,9 +158,11 @@ export default {
     if (state.raf) cancelAnimationFrame(state.raf);
     state.raf = 0;
     if (profileIsOpen()) closePopover();
+    closeDsPopover();
     unmountPoint(ID);
     document.documentElement.classList.remove(HTML_CLASS);
     state.el = null;
+    state.ds = null;
     state.route = null;
     state.libs = [];
     state.busy = false;

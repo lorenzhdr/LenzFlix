@@ -24,8 +24,9 @@ vi.mock('../src/js/shared/trend.js', async () => {
 vi.mock('../src/js/shared/trailer.js', () => ({ createMutedPreview: vi.fn() }));
 const ds = vi.hoisted(() => ({ on: false, subs: new Set() }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && (ds.off || []).includes(part)),
   onDataSaverChange: (cb) => { ds.subs.add(cb); return () => ds.subs.delete(cb); },
+  onDataSaverPartsChange: (cb) => { (ds.psubs ||= new Set()).add(cb); return () => ds.psubs.delete(cb); },
 }));
 const setSaver = (v) => { ds.on = v; [...ds.subs].forEach((cb) => cb(v)); };
 
@@ -286,7 +287,33 @@ describe('Hero: Pool', () => {
 });
 
 describe('Hero: Datensparmodus', () => {
-  afterEach(() => { ds.on = false; ds.subs.clear(); });
+  afterEach(() => { ds.on = false; ds.off = []; ds.subs.clear(); ds.psubs?.clear(); });
+
+  it('an + Teil „trailer“ aus: Vorschau startet; „hero“ aus: Pool voll', async () => {
+    ds.on = true;
+    ds.off = ['trailer', 'hero'];
+    const pool = Array.from({ length: 10 }, (_, i) => mk(`m${i}`, 'Movie', { LocalTrailerCount: 1 }));
+    const cleanup = await mount(pool);
+    expect(createMutedPreview).toHaveBeenCalledTimes(1);
+    expect(slot.querySelectorAll('.lfx-prime-hero__dot').length).toBe(10);
+    cleanup();
+  });
+
+  it('Teil „trailer“ wieder an: laufende Vorschau wird abgebaut, Pool bleibt', async () => {
+    let opts;
+    createMutedPreview.mockImplementation((container, item, o) => { opts = o; return preview; });
+    ds.on = true;
+    ds.off = ['trailer', 'hero'];
+    const pool = Array.from({ length: 10 }, (_, i) => mk(`m${i}`, 'Movie', { LocalTrailerCount: 1 }));
+    const cleanup = await mount(pool);
+    opts.onStart(document.createElement('video'));
+    ds.off = ['hero'];
+    [...ds.psubs].forEach((cb) => cb({}));
+    expect(preview.cancel).toHaveBeenCalled();
+    expect(slot.querySelectorAll('.lfx-prime-hero__dot').length).toBe(10);
+    cleanup();
+    expect(ds.psubs.size).toBe(0);
+  });
 
   it('an: keine Vorschau, Pool auf 5 Titel gekürzt, data-lfx-tr leer', async () => {
     ds.on = true;

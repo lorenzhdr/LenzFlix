@@ -1478,7 +1478,7 @@
     const holdBackdrop = Boolean(opts.holdBackdrop);
     const reduced = opts.reducedMotion || defaultReducedMotion;
     const now = () => Date.now();
-    let state21 = "idle";
+    let state22 = "idle";
     let startX = 0;
     let startY = 0;
     let dy = 0;
@@ -1527,7 +1527,7 @@
       backdrop.style.opacity = String(v);
     }
     function close2() {
-      state21 = "closing";
+      state22 = "closing";
       if (reduced()) {
         onClose();
         return;
@@ -1538,13 +1538,13 @@
       animateThen(250, () => onClose());
     }
     function springBack() {
-      state21 = "closing";
+      state22 = "closing";
       el4.style.transition = ANIM;
       el4.style.transform = "translateY(0px)";
       setBackdrop(1, true);
       animateThen(250, () => {
         resetStyles();
-        state21 = "idle";
+        state22 = "idle";
       });
     }
     function velocityNow() {
@@ -1555,49 +1555,49 @@
       return dt > 0 ? (last.y - first2.y) / dt : 0;
     }
     function onStart(e) {
-      if (state21 === "closing") return;
-      state21 = "idle";
+      if (state22 === "closing") return;
+      state22 = "idle";
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        state21 = "ignored";
+        state22 = "ignored";
         return;
       }
       const t = touches[0];
       const rect = el4.getBoundingClientRect();
       const inHandle = t.clientY - rect.top <= handleZone;
       if (!inHandle && scrolledAncestor(e.target, el4)) {
-        state21 = "ignored";
+        state22 = "ignored";
         return;
       }
       if (!canStart(e)) {
-        state21 = "ignored";
+        state22 = "ignored";
         return;
       }
-      state21 = "tracking";
+      state22 = "tracking";
       startX = t.clientX;
       startY = t.clientY;
       dy = 0;
       samples = [{ t: now(), y: startY }];
     }
     function onMove2(e) {
-      if (state21 !== "tracking" && state21 !== "dragging") return;
+      if (state22 !== "tracking" && state22 !== "dragging") return;
       const touches = e.touches || [];
       if (touches.length !== 1) {
-        if (state21 === "dragging") springBack();
-        else state21 = "ignored";
+        if (state22 === "dragging") springBack();
+        else state22 = "ignored";
         return;
       }
       const t = touches[0];
       const mx = t.clientX - startX;
       const my = t.clientY - startY;
-      if (state21 === "tracking") {
+      if (state22 === "tracking") {
         if (Math.hypot(mx, my) < DECIDE_PX) return;
         if (my > 0 && my > Math.abs(mx)) {
-          state21 = "dragging";
+          state22 = "dragging";
           el4.classList.add("lfx-dragging");
           el4.style.transition = "none";
         } else {
-          state21 = "ignored";
+          state22 = "ignored";
           return;
         }
       }
@@ -1611,18 +1611,18 @@
       setBackdrop(1 - 0.7 * Math.min(1, dy / h2), false);
     }
     function onEnd() {
-      if (state21 === "dragging") {
+      if (state22 === "dragging") {
         const h2 = height();
         const far = h2 > 0 ? dy > threshold * h2 : dy > FALLBACK_PX;
         if (far || velocityNow() > velocity) close2();
         else springBack();
-      } else if (state21 !== "closing") {
-        state21 = "idle";
+      } else if (state22 !== "closing") {
+        state22 = "idle";
       }
     }
     function onCancel() {
-      if (state21 === "dragging") springBack();
-      else if (state21 !== "closing") state21 = "idle";
+      if (state22 === "dragging") springBack();
+      else if (state22 !== "closing") state22 = "idle";
     }
     el4.addEventListener("touchstart", onStart, { passive: true });
     el4.addEventListener("touchmove", onMove2, { passive: false });
@@ -1638,7 +1638,7 @@
       el4.removeEventListener("touchend", onEnd);
       el4.removeEventListener("touchcancel", onCancel);
       resetStyles();
-      state21 = "idle";
+      state22 = "idle";
     };
   }
 
@@ -2006,6 +2006,29 @@
     const v = num(read().saver);
     return v === null ? DATASAVER_SCALE : fix(v, SAVER_RANGE);
   }
+  function emit3() {
+    window.dispatchEvent(new CustomEvent(IMGSCALE_EVENT, { detail: { normal: getNormalScale(), saver: getSaverScale() } }));
+  }
+  function setImageScales({ normal, saver } = {}) {
+    const o = read();
+    const next = {};
+    const n = num(normal) !== null ? fix(normal, NORMAL_RANGE) : num(o.normal);
+    const s = num(saver) !== null ? fix(saver, SAVER_RANGE) : num(o.saver);
+    if (n !== null) next.normal = n;
+    if (s !== null) next.saver = s;
+    try {
+      window.localStorage.setItem(storageKey(), JSON.stringify(next));
+    } catch {
+    }
+    emit3();
+  }
+  function resetImageScales() {
+    try {
+      window.localStorage.removeItem(storageKey());
+    } catch {
+    }
+    emit3();
+  }
   function onImageScaleChange(cb) {
     const fn = (e) => cb(e && e.detail);
     window.addEventListener(IMGSCALE_EVENT, fn);
@@ -2021,6 +2044,14 @@
   var PARTS_EVENT = "lfx:datasaver-parts";
   var FLASH_CLASS = "lfx-ds-flash";
   var DATASAVER_PARTS = ["trailer", "hero", "images", "prefetch", "lazy", "tvwarm"];
+  var DATASAVER_PART_LABELS = {
+    trailer: "Keine automatischen Trailer",
+    hero: "Hero nur 5 Titel",
+    images: "Kleinere Bilder",
+    prefetch: "Kein Vorladen der Startseite",
+    lazy: "Zeilen erst kurz vor Sichtbarkeit",
+    tvwarm: "TV: kein Vorw\xE4rmen"
+  };
   var active = false;
   var lastUid2;
   var offTheme = null;
@@ -2050,6 +2081,36 @@
   function isDataSaver(part) {
     if (!(dataSaverAvailable() && isDataSaverOn())) return false;
     return !part || !disabledParts().includes(part);
+  }
+  function getDataSaverParts() {
+    const off = disabledParts();
+    return Object.fromEntries(DATASAVER_PARTS.map((p) => [p, !off.includes(p)]));
+  }
+  function emitParts() {
+    window.dispatchEvent(new CustomEvent(PARTS_EVENT, { detail: { parts: getDataSaverParts() } }));
+  }
+  function setDataSaverPart(part, on) {
+    if (!DATASAVER_PARTS.includes(part)) return getDataSaverParts();
+    const off = new Set(disabledParts());
+    if (on) off.delete(part);
+    else off.add(part);
+    try {
+      if (off.size) window.localStorage.setItem(partsKey(), JSON.stringify([...off]));
+      else window.localStorage.removeItem(partsKey());
+    } catch {
+    }
+    apply();
+    emitParts();
+    return getDataSaverParts();
+  }
+  function resetDataSaverParts() {
+    try {
+      window.localStorage.removeItem(partsKey());
+    } catch {
+    }
+    apply();
+    emitParts();
+    return getDataSaverParts();
   }
   function onDataSaverPartsChange(cb) {
     const fn = (e) => cb(e && e.detail && e.detail.parts);
@@ -3926,17 +3987,17 @@
     c.title.textContent = title;
     c.list.replaceChildren(
       ...entries.map(
-        ({ label, note, onClick, disabled, primary, badge: badge3, ...rest }) => rest.switch ? switchButton({ label, ...rest }, { className: "lfx-sheet__item lfx-sheet__item--switch", role: "switch" }) : h(
+        ({ label, note: note2, onClick: onClick2, disabled, primary, badge: badge3, ...rest }) => rest.switch ? switchButton({ label, ...rest }, { className: "lfx-sheet__item lfx-sheet__item--switch", role: "switch" }) : h(
           "button",
           {
             type: "button",
             class: `lfx-sheet__item${primary ? " lfx-sheet__item--primary" : ""}`,
             disabled: disabled ? true : null,
             "aria-label": badgedName(label, badge3),
-            onclick: onClick
+            onclick: onClick2
           },
           [
-            note ? h("span", { class: "lfx-sheet__text" }, [h("span", null, [label]), h("span", { class: "lfx-sheet__note" }, [note])]) : label,
+            note2 ? h("span", { class: "lfx-sheet__text" }, [h("span", null, [label]), h("span", { class: "lfx-sheet__note" }, [note2])]) : label,
             badge3 ? badgePill(badge3) : null
           ]
         )
@@ -4567,7 +4628,7 @@
   }
   function episodeRow(ep, selectedId, H, siblings) {
     const img = imageUrl(ep, { type: "Primary", maxWidth: 400 }) || landscapeImage(ep, { maxWidth: 400 });
-    const pct = progressPercent2(ep);
+    const pct2 = progressPercent2(ep);
     const rt = formatRuntime(ep.RunTimeTicks);
     const seen = Boolean(ep.UserData && ep.UserData.Played === true);
     const playedBtn = playedButton(ep, { small: true, scope: "item", onclick: (e) => {
@@ -4595,7 +4656,7 @@
       h("div", { class: "lfx-modal__ep-thumb" }, [
         img ? h("img", { src: img, alt: "", loading: "lazy" }) : null,
         h("span", { class: "lfx-modal__ep-playicon" }, [icon("play")]),
-        pct > 0 && !seen ? h("div", { class: "lfx-progress" }, [h("div", { class: "lfx-progress__bar", style: { width: `${pct.toFixed(1)}%` } })]) : null,
+        pct2 > 0 && !seen ? h("div", { class: "lfx-progress" }, [h("div", { class: "lfx-progress__bar", style: { width: `${pct2.toFixed(1)}%` } })]) : null,
         seen ? seenMark() : null
       ]),
       h("div", { class: "lfx-modal__ep-text" }, [
@@ -4614,10 +4675,10 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
-  function renderEpisodes(slot, state21, H) {
+  function renderEpisodes(slot, state22, H) {
     slot.hidden = false;
     slot.replaceChildren();
-    const { seasons, seasonId, episodes, selectedEpisodeId } = state21;
+    const { seasons, seasonId, episodes, selectedEpisodeId } = state22;
     putItems(episodes);
     const current7 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
@@ -5582,16 +5643,16 @@
   var ICON_CHECK = '<path fill="currentColor" d="M9.2 16.6 4.9 12.3l-1.4 1.4 5.7 5.7L20.5 8.1l-1.4-1.4z"/>';
   var ICON_BADGE = '<defs><linearGradient id="lfx-bb-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5fa2"/><stop offset="1" stop-color="#e50914"/></linearGradient></defs><path fill="url(#lfx-bb-grad)" d="M3 10.5v3a1 1 0 0 0 1 1h1.5l2.5 5h2.2l-1.7-5H11l8 4.5v-13L11 10H4a1 1 0 0 0-1 .5zM21 9.5v5a2.5 2.5 0 0 0 0-5z"/>';
   var LAST_FIRST_KEY = "lfx-bb-first";
-  function readLastFirst() {
+  function readLastFirst(key = LAST_FIRST_KEY) {
     try {
-      return sessionStorage.getItem(LAST_FIRST_KEY);
+      return sessionStorage.getItem(key);
     } catch {
       return null;
     }
   }
-  function writeLastFirst(id) {
+  function writeLastFirst(id, key = LAST_FIRST_KEY) {
     try {
-      sessionStorage.setItem(LAST_FIRST_KEY, id);
+      sessionStorage.setItem(key, id);
     } catch {
     }
   }
@@ -5615,9 +5676,20 @@
     if (pool[0]) writeLastFirst(pool[0].Id);
     return pool;
   }
-  function loadPool() {
-    const key = poolKey();
-    const p = cached(key, fetchPool, HOME_TTL);
+  function resolveSrc(src) {
+    if (!src) return { key: poolKey(), fetch: fetchPool };
+    const key = typeof src.key === "function" ? src.key() : src.key;
+    const firstKey = src.firstKey || `${LAST_FIRST_KEY}:${key}`;
+    const fetch2 = async () => {
+      const pool = await src.fetch({ avoidFirstId: readLastFirst(firstKey) });
+      if (pool && pool[0]) writeLastFirst(pool[0].Id, firstKey);
+      return pool || [];
+    };
+    return { key, fetch: fetch2 };
+  }
+  function loadPool(src) {
+    const { key, fetch: fetch2 } = resolveSrc(src);
+    const p = cached(key, fetch2, HOME_TTL);
     p.then((pool) => {
       if (!pool.length) clearCache(key);
     }, () => {
@@ -5649,7 +5721,8 @@
     };
     img.src = url;
   }
-  function render3(slot) {
+  function render3(slot, ctx2 = {}) {
+    const poolSrc = ctx2 && ctx2.pool && ctx2.pool.fetch ? ctx2.pool : null;
     let disposed = false;
     let pool = [];
     let index = 0;
@@ -5680,7 +5753,7 @@
       timers.add(t);
       return t;
     };
-    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver() && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
+    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver("trailer") && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
     const paused3 = () => hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
     function stopTrailer() {
       if (slide) clearTimeout(slide.revealTimer);
@@ -5853,7 +5926,7 @@
     }
     function tryPreload() {
       const sl = slide;
-      if (!sl || disposed || sl.gen !== gen8 || sl.started || sl.failed || isDataSaver()) return;
+      if (!sl || disposed || sl.gen !== gen8 || sl.started || sl.failed || isDataSaver("trailer")) return;
       if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
       sl.started = true;
       startTrailer(sl);
@@ -5862,7 +5935,7 @@
       try {
         const t = await loadLocalTrailer(sl.item);
         if (sl.gen !== gen8 || disposed) return;
-        if (isDataSaver()) {
+        if (isDataSaver("trailer")) {
           sl.failed = true;
           setTr("");
           return;
@@ -5980,7 +6053,7 @@
       scheduleRotate();
       const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
       slide = sl;
-      setTr(item.LocalTrailerCount > 0 && !isDataSaver() ? "wait" : "");
+      setTr(item.LocalTrailerCount > 0 && !isDataSaver("trailer") ? "wait" : "");
       const img = pic.querySelector(".lfx-bb__img");
       const onLoaded = () => {
         if (disposed || sl.gen !== gen8 || sl.imgAt) return;
@@ -6035,24 +6108,30 @@
       cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
       cleanupFns.push(onItemsChanged(onChanged2));
       cleanupFns.push(onDataSaverChange(onSaver));
+      cleanupFns.push(onDataSaverPartsChange(onSaver));
     }
-    function onSaver(active5) {
-      if (disposed || !card3 || !active5) return;
-      if (slide) slide.failed = true;
-      stopTrailer();
-      setTr("");
-      const cur3 = pool[index];
-      pool = saverPool(pool, cur3 && cur3.Id);
-      index = Math.max(0, cur3 ? pool.indexOf(cur3) : 0);
-      fillDots();
-      scheduleRotate();
+    function onSaver() {
+      if (disposed || !card3) return;
+      if (isDataSaver("trailer")) {
+        if (slide) slide.failed = true;
+        stopTrailer();
+        setTr("");
+      }
+      if (isDataSaver("hero") && pool.length > SAVER_POOL) {
+        const cur3 = pool[index];
+        pool = saverPool(pool, cur3 && cur3.Id);
+        index = Math.max(0, cur3 ? pool.indexOf(cur3) : 0);
+        fillDots();
+        scheduleRotate();
+      }
     }
     async function init2() {
-      let items = peekCached(poolKey()) || [];
+      const src = resolveSrc(poolSrc);
+      let items = peekCached(src.key) || [];
       warm = items.length > 0;
       if (!warm) {
         try {
-          items = await loadPool();
+          items = await loadPool(poolSrc);
         } catch {
         }
       }
@@ -6063,7 +6142,7 @@
         resetAmbient();
         return;
       }
-      pool = isDataSaver() ? saverPool(items) : items.slice();
+      pool = isDataSaver("hero") ? saverPool(items) : items.slice();
       putItems(pool);
       build11();
       slot.hidden = false;
@@ -6333,7 +6412,7 @@
   }
   function paused2() {
     const cl2 = document.documentElement.classList;
-    return document.hidden || isDataSaver() || cl2.contains("lfx-modal-open") || cl2.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
+    return document.hidden || isDataSaver("prefetch") || cl2.contains("lfx-modal-open") || cl2.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
   }
   function heroSettled(slot) {
     if (!slot || slot.hidden) return true;
@@ -6464,12 +6543,14 @@
       });
       mo3.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     }
-    offs.push(onDataSaverChange(() => {
+    const onSaver = () => {
       const p = paused2();
       wasPaused = p;
       clearTimeout(rTimer);
       if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
-    }));
+    };
+    offs.push(onDataSaverChange(onSaver));
+    offs.push(onDataSaverPartsChange(onSaver));
     later(tick, POLL);
     return {
       stop() {
@@ -6762,7 +6843,8 @@
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev: prev2, next, indicator });
   }
-  function render4(slot) {
+  function render4(slot, ctx2 = {}) {
+    const opts = ctx2 || {};
     let disposed = false;
     let observer2 = null;
     let prefetch = null;
@@ -6848,7 +6930,7 @@
       }
       let defs;
       try {
-        defs = peekRowDefs({ deferCharts: true }) || await buildRowDefs({ deferCharts: true });
+        defs = opts.defs ? opts.defs.peek && opts.defs.peek() || await opts.defs.build() : peekRowDefs({ deferCharts: true }) || await buildRowDefs({ deferCharts: true });
       } catch (e) {
         console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
         signalReady();
@@ -6882,7 +6964,7 @@
             observer2.unobserve(en.target);
             loadRow(en.target, def);
           }
-        }, { rootMargin: isDataSaver() ? "100px 0px" : "600px 0px" });
+        }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "600px 0px" });
         for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
         for (const [el4, def] of [...pending]) {
@@ -6890,10 +6972,11 @@
           loadRow(el4, def);
         }
       }
+      if (opts.prefetch === false) return;
       prefetch = startRowPrefetch({
         slot,
         pending,
-        hero: () => document.getElementById("lfx-billboard"),
+        hero: () => (typeof opts.hero === "function" ? opts.hero() : opts.hero) || document.getElementById("lfx-billboard"),
         load: (el4, def) => {
           if (observer2) observer2.unobserve(el4);
           return loadRow(el4, def);
@@ -7036,10 +7119,10 @@
   function progressPercent3(item) {
     const ud = item && item.UserData;
     if (!ud) return 0;
-    let pct = 0;
-    if (item.RunTimeTicks > 0 && ud.PlaybackPositionTicks > 0) pct = ud.PlaybackPositionTicks / item.RunTimeTicks * 100;
-    else if (ud.PlayedPercentage > 0) pct = ud.PlayedPercentage;
-    return Math.max(0, Math.min(100, pct));
+    let pct2 = 0;
+    if (item.RunTimeTicks > 0 && ud.PlaybackPositionTicks > 0) pct2 = ud.PlaybackPositionTicks / item.RunTimeTicks * 100;
+    else if (ud.PlayedPercentage > 0) pct2 = ud.PlayedPercentage;
+    return Math.max(0, Math.min(100, pct2));
   }
   function remainingText(item) {
     const ud = item && item.UserData;
@@ -7316,12 +7399,12 @@
     closeNow();
     openModal(item);
   }
-  function circleButton(cls, label, onClick) {
+  function circleButton(cls, label, onClick2) {
     const btn3 = h("button", { type: "button", class: `lfx-hc__btn ${cls}`, "aria-label": label });
     const tip = h("span", { class: "lfx-hc__tip", "aria-hidden": "true" }, label);
     btn3.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClick();
+      onClick2();
     });
     return { btn: btn3, tip, wrap: h("span", { class: "lfx-hc__btnwrap" }, [btn3, tip]) };
   }
@@ -7367,20 +7450,20 @@
     const it = s.item;
     const body = s.body;
     body.textContent = "";
-    const pct = progressPercent3(it);
+    const pct2 = progressPercent3(it);
     if (it.Type === "Episode") {
       const label = episodeLabel2(it);
       if (label) body.append(h("div", { class: "lfx-hc__ep" }, label));
-      if (pct > 0) {
+      if (pct2 > 0) {
         body.append(
           h("div", { class: "lfx-hc__progress" }, [
-            h("div", { class: "lfx-hc__rail" }, h("div", { class: "lfx-hc__fill", style: { width: `${pct}%` } })),
+            h("div", { class: "lfx-hc__rail" }, h("div", { class: "lfx-hc__fill", style: { width: `${pct2}%` } })),
             h("span", { class: "lfx-hc__remain" }, remainingText(it))
           ])
         );
       }
     }
-    if (!(it.Type === "Episode" && pct > 0)) {
+    if (!(it.Type === "Episode" && pct2 > 0)) {
       const parts = [];
       const rating = formatRating2(it.OfficialRating);
       if (rating) parts.push(badge2(rating, "lfx-hc__badge--rating"));
@@ -7834,18 +7917,18 @@
   var ICON_PLUS2 = '<path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>';
   var ICON_CHECK2 = '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
   var ICON_DOWN = '<path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
-  function roundButton2(label, icon5, onClick, extra = "") {
-    const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick });
+  function roundButton2(label, icon5, onClick2, extra = "") {
+    const b = h("button", { type: "button", class: `lfx-np__btn ${extra}`.trim(), "aria-label": label, title: label, onclick: onClick2 });
     b.append(svg5(icon5));
     return b;
   }
-  function iconButton(mod, label, icon5, onClick) {
+  function iconButton(mod, label, icon5, onClick2) {
     const b = h("button", { type: "button", class: `lfx-np__btn lfx-np__btn--${mod}`, "aria-label": label, title: label });
     b.append(h("span", { class: "lfx-np__ico", "aria-hidden": "true" }));
     b.firstChild.innerHTML = icon5;
     b.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClick(b);
+      onClick2(b);
     });
     return b;
   }
@@ -8345,6 +8428,21 @@
       db.close();
     }
   }
+  async function clearCatalogCache() {
+    clearCache("live:catalog:");
+    if (!hasIdb()) return;
+    try {
+      const db = await openDb();
+      try {
+        const tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).clear();
+        await idbDone(tx);
+      } finally {
+        db.close();
+      }
+    } catch {
+    }
+  }
   function validRaw(x) {
     return Boolean(x && Array.isArray(x.movies) && Array.isArray(x.series) && Array.isArray(x.episodes) && Array.isArray(x.boxsets));
   }
@@ -8474,6 +8572,32 @@
     }
     return on && zapStatsEnabled();
   }
+  function readKey(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  function writeFlag(key, on) {
+    try {
+      if (on) window.localStorage.setItem(key, "1");
+      else window.localStorage.removeItem(key);
+    } catch {
+    }
+  }
+  var isZapStatsOn = () => readKey(ZAP_KEY) === "1";
+  var setZapStats = (on) => writeFlag(ZAP_KEY, on);
+  var isZapWarmOn = () => readKey(ZAP_WARM_KEY) !== "0";
+  function setZapWarm(on) {
+    try {
+      if (on) window.localStorage.removeItem(ZAP_WARM_KEY);
+      else window.localStorage.setItem(ZAP_WARM_KEY, "0");
+    } catch {
+    }
+  }
+  var isForceHlsOn = () => readKey(FORCE_HLS_KEY) === "1";
+  var setForceHls = (on) => writeFlag(FORCE_HLS_KEY, on);
 
   // src/js/features/live/deps.js
   var asItems3 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
@@ -8686,14 +8810,22 @@
   }
   function watchTheme() {
     if (!themeOff) themeOff = onThemeChange(onTheme);
-    if (!saverOff) saverOff = onDataSaverChange((active5) => {
-      if (active5 && inst) {
-        try {
-          inst.instance.releaseWarm();
-        } catch {
+    if (!saverOff) {
+      const rel = () => {
+        if (inst && isDataSaver("tvwarm")) {
+          try {
+            inst.instance.releaseWarm();
+          } catch {
+          }
         }
-      }
-    });
+      };
+      const offA = onDataSaverChange(rel);
+      const offB = onDataSaverPartsChange(rel);
+      saverOff = () => {
+        offA();
+        offB();
+      };
+    }
   }
   function unwatchTheme() {
     if (themeOff) themeOff();
@@ -9037,14 +9169,14 @@
     if (!el4) return;
     if (isMenuOpen() && inNativeDialog(el4)) return;
     const t = e.touches && e.touches[0] || e;
-    const state21 = { x: t.clientX, y: t.clientY, fired: false };
-    press2 = state21;
+    const state22 = { x: t.clientX, y: t.clientY, fired: false };
+    press2 = state22;
     pressTimer = setTimeout(() => {
       pressTimer = null;
-      if (press2 !== state21 || !el4.isConnected) return;
-      state21.fired = true;
+      if (press2 !== state22 || !el4.isConnected) return;
+      state22.fired = true;
       lastLongPressAt = Date.now();
-      openFor(el4, state21.x, state21.y);
+      openFor(el4, state22.x, state22.y);
     }, LONG_PRESS_MS);
   }
   function onTouchMove(e) {
@@ -9108,15 +9240,237 @@
   };
   var contextmenu_default = contextmenuFeature;
 
+  // src/js/features/secretmenu/panel.js
+  var PANEL_ID = "lfx-secret";
+  var POSTER_BASE = 300;
+  var WIDE_BASE_DESKTOP = 600;
+  var WIDE_BASE_NARROW = 420;
+  var NARROW_PX = 800;
+  var state5 = null;
+  var pct = (v) => `${Math.round(v * 100)} %`;
+  var isNarrowView = () => (window.innerWidth || 1024) < NARROW_PX;
+  var wideBase = () => isNarrowView() ? WIDE_BASE_NARROW : WIDE_BASE_DESKTOP;
+  var px = (base, scale) => Math.round(base * scale);
+  var de = (n, digits = 1) => n.toFixed(digits).replace(".", ",");
+  var section = (title, children) => h("section", { class: "lfx-secret__sec" }, [h("h3", { class: "lfx-secret__h" }, title), ...children]);
+  var note = (text) => h("p", { class: "lfx-secret__note" }, text);
+  function recommendScale() {
+    const dpr = window.devicePixelRatio || 1;
+    for (const img of document.querySelectorAll(".lfx-card img")) {
+      const r = img.getBoundingClientRect();
+      if (r.width < 40 || r.height < 10 || r.width / r.height < 1.3) continue;
+      const need = r.width * dpr;
+      const v = Math.ceil(need / wideBase() * 20) * 5;
+      return Math.min(NORMAL_RANGE[1] * 100, Math.max(NORMAL_RANGE[0] * 100, v));
+    }
+    return null;
+  }
+  function slider({ label, range, get, key, offs }) {
+    const id = `lfx-secret-${key}`;
+    const out = h("output", { class: "lfx-secret__val", for: id }, pct(get()));
+    const sizes = h("p", { class: "lfx-secret__note" });
+    const input = h("input", {
+      type: "range",
+      id,
+      min: Math.round(range[0] * 100),
+      max: Math.round(range[1] * 100),
+      step: 5,
+      value: Math.round(get() * 100)
+    });
+    const showSizes = (s) => {
+      sizes.textContent = `Poster ${px(POSTER_BASE, s)} px \xB7 Breitbild ${px(wideBase(), s)} px`;
+    };
+    const show3 = (s) => {
+      out.textContent = pct(s);
+      showSizes(s);
+    };
+    show3(get());
+    input.addEventListener("input", () => show3(Number(input.value) / 100));
+    input.addEventListener("change", () => setImageScales({ [key]: Number(input.value) / 100 }));
+    offs.push(onImageScaleChange(() => {
+      const s = get();
+      input.value = String(Math.round(s * 100));
+      show3(s);
+    }));
+    return h("div", { class: "lfx-secret__slider" }, [
+      h("label", { class: "lfx-secret__lbl", for: id }, [label, out]),
+      input,
+      sizes
+    ]);
+  }
+  function imageSection(offs) {
+    const dpr = window.devicePixelRatio || 1;
+    const kids = [
+      slider({ label: "Normal", range: NORMAL_RANGE, get: getNormalScale, key: "normal", offs }),
+      slider({ label: "Datensparmodus", range: SAVER_RANGE, get: getSaverScale, key: "saver", offs }),
+      note(`Bildschirm dieses Ger\xE4ts: ${de(dpr)}\xD7 sch\xE4rfer`)
+    ];
+    const rec = recommendScale();
+    if (rec !== null) kids.push(note(`F\xFCr scharfe Cover hier: ca. ${rec} %`));
+    kids.push(
+      h("button", { type: "button", class: "lfx-secret__btn", onclick: () => resetImageScales() }, "Zur\xFCcksetzen"),
+      note("Gilt f\xFCr neu geladene Bilder, in allen Designs au\xDFer VIDEOTHEK LENZ.")
+    );
+    return section("Bildgr\xF6\xDFen", kids);
+  }
+  function tvSection() {
+    const sw = (key, label, get, set) => switchButton(
+      { key, label, checked: get(), onToggle: (on) => set(on) },
+      { className: "lfx-secret__switch", role: "switch" }
+    );
+    return section("TV & LENZ LIVE (Test)", [
+      sw("zapstats", "Messanzeige", isZapStatsOn, setZapStats),
+      sw("zapwarm", "Vorw\xE4rmen der Nachbarsender", isZapWarmOn, setZapWarm),
+      sw("forcehls", "HLS erzwingen", isForceHlsOn, setForceHls),
+      note("\u201EHLS erzwingen\u201C wirkt nur mit Messanzeige."),
+      note("Wirkt beim n\xE4chsten \xD6ffnen des TV-Modus bzw. von LENZ LIVE.")
+    ]);
+  }
+  function saverSection(offs) {
+    const status = h("p", { class: "lfx-secret__note" });
+    const showStatus = () => {
+      status.textContent = isDataSaverOn() ? "Der Datensparmodus ist gerade an." : "Der Datensparmodus ist gerade aus.";
+    };
+    showStatus();
+    const btns2 = /* @__PURE__ */ new Map();
+    const parts = getDataSaverParts();
+    const list = DATASAVER_PARTS.map((p) => {
+      const b = switchButton(
+        { key: p, label: DATASAVER_PART_LABELS[p] || p, checked: parts[p], onToggle: (on) => setDataSaverPart(p, on) },
+        { className: "lfx-secret__switch", role: "switch" }
+      );
+      btns2.set(p, b);
+      return b;
+    });
+    offs.push(onDataSaverPartsChange((now) => {
+      const cur3 = now || getDataSaverParts();
+      for (const [p, b] of btns2) setSwitchState(b, cur3[p]);
+    }));
+    offs.push(onDataSaverChange(showStatus));
+    return section("Datensparmodus im Detail", [
+      status,
+      ...list,
+      h("button", { type: "button", class: "lfx-secret__btn", onclick: () => resetDataSaverParts() }, "Alle wieder an"),
+      note("Manche Teile wirken erst nach dem n\xE4chsten Seitenaufbau.")
+    ]);
+  }
+  function infoSection() {
+    const dpr = window.devicePixelRatio || 1;
+    const rows = [
+      ["LenzFlix-Version", VERSION],
+      ["Design", getTheme()],
+      ["Bildschirm", `${window.innerWidth || 0} \xD7 ${window.innerHeight || 0} px (${de(dpr)}\xD7)`]
+    ].map(([k, v]) => h("div", { class: "lfx-secret__row" }, [h("span", {}, k), h("span", { class: "lfx-secret__v" }, v)]));
+    const msg = h("p", { class: "lfx-secret__note", role: "status" });
+    const reload3 = h("button", { type: "button", class: "lfx-secret__btn", hidden: true, onclick: () => window.location.reload() }, "Neu laden");
+    const clear = h("button", {
+      type: "button",
+      class: "lfx-secret__btn",
+      onclick: async () => {
+        clearCache();
+        await clearCatalogCache();
+        msg.textContent = "Cache geleert \u2013 Seite neu laden f\xFCr frische Daten";
+        reload3.hidden = false;
+      }
+    }, "Cache leeren");
+    return section("Info", [...rows, clear, msg, reload3]);
+  }
+  function closeSecretMenu() {
+    if (!state5) return;
+    const s = state5;
+    state5 = null;
+    document.removeEventListener("keydown", s.onKey, true);
+    for (const off of s.offs) {
+      try {
+        off();
+      } catch {
+      }
+    }
+    s.root.remove();
+    document.documentElement.classList.remove("lfx-secret-open");
+    const prev2 = s.prevFocus;
+    if (prev2 && prev2.isConnected && typeof prev2.focus === "function") prev2.focus();
+  }
+  function openSecretMenu() {
+    if (state5) return;
+    const offs = [];
+    const close2 = () => closeSecretMenu();
+    const title = h("h2", { class: "lfx-secret__title", id: `${PANEL_ID}-title` }, "Geheimmen\xFC");
+    const closeBtn = h("button", { type: "button", class: "lfx-secret__close", "aria-label": "Schlie\xDFen", onclick: close2 }, "\u2715");
+    const panel = h("div", { class: "lfx-secret__panel", role: "dialog", "aria-modal": "true", "aria-labelledby": title.id, tabindex: "-1" }, [
+      h("div", { class: "lfx-secret__head" }, [title, closeBtn]),
+      h("div", { class: "lfx-secret__body" }, [imageSection(offs), tvSection(), saverSection(offs), infoSection()])
+    ]);
+    const root7 = h("div", { id: PANEL_ID, class: "lfx-secret" }, [panel]);
+    root7.addEventListener("mousedown", (e) => {
+      if (e.target === root7) close2();
+    });
+    root7.addEventListener("click", (e) => {
+      if (e.target === root7) close2();
+    });
+    const onKey3 = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        close2();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const f = [...panel.querySelectorAll("button:not([hidden]), input")];
+      if (!f.length) return;
+      const first2 = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first2 || document.activeElement === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first2.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey3, true);
+    state5 = { root: root7, prevFocus: document.activeElement, offs, onKey: onKey3 };
+    document.body.append(root7);
+    document.documentElement.classList.add("lfx-secret-open");
+    panel.focus();
+  }
+
   // src/js/features/secretmenu.js
+  var LOGO_SELECTOR = 'header.MuiAppBar-root a[href="#/"], .lfx-mnav__logo';
+  var CLICKS = 5;
+  var WINDOW_MS = 3e3;
+  var stamps = [];
+  var listening2 = false;
+  function onClick(e) {
+    const t = e.target;
+    if (!t || typeof t.closest !== "function" || !t.closest(LOGO_SELECTOR)) return;
+    const now = Date.now();
+    stamps = stamps.filter((s) => now - s <= WINDOW_MS);
+    stamps.push(now);
+    if (stamps.length < CLICKS) return;
+    stamps = [];
+    e.preventDefault();
+    e.stopPropagation();
+    openSecretMenu();
+  }
+  function listen(on) {
+    if (on === listening2) return;
+    listening2 = on;
+    if (on) document.addEventListener("click", onClick, true);
+    else document.removeEventListener("click", onClick, true);
+  }
   var secretmenu = {
     name: "secretmenu",
-    match: () => false,
+    match: () => isTheme("flix") && isModern() && !isTv() && isReady(),
     mount() {
+      listen(true);
     },
     update() {
+      listen(true);
     },
     unmount() {
+      listen(false);
+      closeSecretMenu();
     }
   };
   var secretmenu_default = secretmenu;
@@ -9160,41 +9514,41 @@
   function isHomeRoute2(route) {
     return route.path === "/home" && route.params.get("tab") !== "1" && !route.params.get("lfx");
   }
-  var state5 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
+  var state6 = { el: null, showTimer: null, hideTimer: null, removeTimer: null, deadline: 0, remaining: 0, onClick: null };
   function clearTimers2() {
-    clearTimeout(state5.showTimer);
-    clearTimeout(state5.hideTimer);
-    clearTimeout(state5.removeTimer);
-    state5.showTimer = state5.hideTimer = state5.removeTimer = null;
+    clearTimeout(state6.showTimer);
+    clearTimeout(state6.hideTimer);
+    clearTimeout(state6.removeTimer);
+    state6.showTimer = state6.hideTimer = state6.removeTimer = null;
   }
   function removeHint() {
     clearTimers2();
-    if (state5.el) unmountPoint(state5.el);
-    state5.el = null;
+    if (state6.el) unmountPoint(state6.el);
+    state6.el = null;
   }
   function leave2() {
-    if (!state5.el) return;
-    const el4 = state5.el;
-    clearTimeout(state5.hideTimer);
-    state5.hideTimer = null;
+    if (!state6.el) return;
+    const el4 = state6.el;
+    clearTimeout(state6.hideTimer);
+    state6.hideTimer = null;
     el4.classList.add("is-leaving");
-    state5.removeTimer = setTimeout(() => {
-      state5.removeTimer = null;
-      if (state5.el === el4) removeHint();
+    state6.removeTimer = setTimeout(() => {
+      state6.removeTimer = null;
+      if (state6.el === el4) removeHint();
     }, LEAVE_MS);
   }
   function startHideTimer(ms) {
-    clearTimeout(state5.hideTimer);
-    state5.deadline = Date.now() + ms;
-    state5.hideTimer = setTimeout(leave2, ms);
+    clearTimeout(state6.hideTimer);
+    state6.deadline = Date.now() + ms;
+    state6.hideTimer = setTimeout(leave2, ms);
   }
   function canHover() {
     return typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   }
   function show2() {
-    state5.showTimer = null;
+    state6.showTimer = null;
     const url = statsHref() || getStatsUrl();
-    if (!url || state5.el || !shouldShow()) return;
+    if (!url || state6.el || !shouldShow()) return;
     const link = h("a", { class: "lfx-statshint__link", href: url }, [
       h("span", { class: "lfx-statshint__badge" }, "Neu"),
       h("span", { class: "lfx-statshint__text" }, `${STATS_LABEL} \u2013 deine Sehgewohnheiten im \xDCberblick`),
@@ -9215,17 +9569,17 @@
     root7.setAttribute("role", "status");
     root7.setAttribute("aria-live", "polite");
     root7.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
-    state5.el = root7;
+    state6.el = root7;
     if (canHover()) {
       root7.addEventListener("mouseenter", () => {
-        if (!state5.hideTimer) return;
-        state5.remaining = Math.max(500, state5.deadline - Date.now());
-        clearTimeout(state5.hideTimer);
-        state5.hideTimer = null;
+        if (!state6.hideTimer) return;
+        state6.remaining = Math.max(500, state6.deadline - Date.now());
+        clearTimeout(state6.hideTimer);
+        state6.hideTimer = null;
       });
       root7.addEventListener("mouseleave", () => {
-        if (state5.el !== root7 || state5.hideTimer || state5.removeTimer) return;
-        startHideTimer(state5.remaining || HINT_DURATION);
+        if (state6.el !== root7 || state6.hideTimer || state6.removeTimer) return;
+        startHideTimer(state6.remaining || HINT_DURATION);
       });
     }
     try {
@@ -9237,7 +9591,7 @@
   }
   function sync2(route) {
     if (isHomeRoute2(route)) {
-      if (!state5.el && !state5.showTimer && shouldShow()) state5.showTimer = setTimeout(show2, HINT_DELAY);
+      if (!state6.el && !state6.showTimer && shouldShow()) state6.showTimer = setTimeout(show2, HINT_DELAY);
     } else {
       removeHint();
     }
@@ -9248,22 +9602,22 @@
       return isTheme("flix") && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED5.test(route.path);
     },
     mount(route) {
-      state5.onClick = (e) => {
+      state6.onClick = (e) => {
         const a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
         if (a && isStatsHref(a.getAttribute("href"))) {
           markSeen();
           removeHint();
         }
       };
-      document.addEventListener("click", state5.onClick, true);
+      document.addEventListener("click", state6.onClick, true);
       sync2(route);
     },
     update(route) {
       sync2(route);
     },
     unmount() {
-      if (state5.onClick) document.removeEventListener("click", state5.onClick, true);
-      state5.onClick = null;
+      if (state6.onClick) document.removeEventListener("click", state6.onClick, true);
+      state6.onClick = null;
       removeHint();
     }
   };
@@ -9426,7 +9780,7 @@
     if (route.path === "/tv" && (!parent || series && parent === series.id)) return "series";
     return null;
   }
-  var state6 = {
+  var state7 = {
     root: null,
     nav: null,
     chip: null,
@@ -9450,9 +9804,9 @@
     return span2;
   };
   function applyActive4() {
-    if (!state6.root) return;
-    const key = state6.route ? activeKey2(state6.route, state6.libs) : null;
-    for (const el4 of state6.root.querySelectorAll("[data-key]")) {
+    if (!state7.root) return;
+    const key = state7.route ? activeKey2(state7.route, state7.libs) : null;
+    for (const el4 of state7.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -9460,10 +9814,10 @@
     }
   }
   function renderNav() {
-    if (!state6.nav) return;
-    state6.nav.textContent = "";
-    for (const it of navItems2(state6.libs)) {
-      state6.nav.append(
+    if (!state7.nav) return;
+    state7.nav.textContent = "";
+    for (const it of navItems2(state7.libs)) {
+      state7.nav.append(
         h("a", { class: "lfx-plus-header__item", href: it.href, dataset: { key: it.key } }, [
           icon2(it.icon, "lfx-plus-header__icon"),
           h("span", { class: "lfx-plus-header__label" }, it.label)
@@ -9472,72 +9826,72 @@
     }
     applyActive4();
   }
-  var menuOpen = () => Boolean(state6.menu && state6.menu.el.isConnected && isPopoverOpen());
+  var menuOpen = () => Boolean(state7.menu && state7.menu.el.isConnected && isPopoverOpen());
   function clearTimers3() {
-    clearTimeout(state6.openTimer);
-    clearTimeout(state6.closeTimer);
-    state6.openTimer = null;
-    state6.closeTimer = null;
+    clearTimeout(state7.openTimer);
+    clearTimeout(state7.closeTimer);
+    state7.openTimer = null;
+    state7.closeTimer = null;
   }
   function closeMenu() {
     clearTimers3();
-    state6.seq++;
+    state7.seq++;
     if (menuOpen()) closePopover();
-    state6.menu = null;
-    state6.pinned = false;
+    state7.menu = null;
+    state7.pinned = false;
   }
   async function openMenu2() {
-    if (!state6.chip || menuOpen()) return;
-    const seq3 = ++state6.seq;
+    if (!state7.chip || menuOpen()) return;
+    const seq3 = ++state7.seq;
     let items;
     try {
-      items = await profileEntries({ theme: "plus", returnFocus: state6.chip });
+      items = await profileEntries({ theme: "plus", returnFocus: state7.chip });
     } catch {
       items = [];
     }
-    if (seq3 !== state6.seq || !state6.chip || menuOpen()) return;
-    const menu = openPopover(state6.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
-    state6.menu = menu;
-    menu.el.addEventListener("mouseenter", () => clearTimeout(state6.closeTimer));
+    if (seq3 !== state7.seq || !state7.chip || menuOpen()) return;
+    const menu = openPopover(state7.chip, { label: "Profilmen\xFC", items, align: "start", className: "lfx-plus-menu" });
+    state7.menu = menu;
+    menu.el.addEventListener("mouseenter", () => clearTimeout(state7.closeTimer));
     menu.el.addEventListener("mouseleave", () => scheduleClose2());
   }
   function scheduleOpen() {
-    clearTimeout(state6.closeTimer);
-    if (menuOpen() || state6.openTimer) return;
-    state6.openTimer = setTimeout(() => {
-      state6.openTimer = null;
+    clearTimeout(state7.closeTimer);
+    if (menuOpen() || state7.openTimer) return;
+    state7.openTimer = setTimeout(() => {
+      state7.openTimer = null;
       openMenu2();
     }, OPEN_DELAY);
   }
   function scheduleClose2() {
-    clearTimeout(state6.openTimer);
-    state6.openTimer = null;
-    if (state6.pinned || !menuOpen()) return;
-    clearTimeout(state6.closeTimer);
-    state6.closeTimer = setTimeout(() => {
-      state6.closeTimer = null;
-      if (!state6.pinned) closeMenu();
+    clearTimeout(state7.openTimer);
+    state7.openTimer = null;
+    if (state7.pinned || !menuOpen()) return;
+    clearTimeout(state7.closeTimer);
+    state7.closeTimer = setTimeout(() => {
+      state7.closeTimer = null;
+      if (!state7.pinned) closeMenu();
     }, CLOSE_DELAY);
   }
   function onChipClick() {
     clearTimers3();
     if (menuOpen()) {
-      if (state6.pinned) closeMenu();
-      else state6.pinned = true;
+      if (state7.pinned) closeMenu();
+      else state7.pinned = true;
       return;
     }
-    state6.pinned = true;
+    state7.pinned = true;
     openMenu2();
   }
   async function fillChip(mountSeq) {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state6.mountSeq && Boolean(state6.chip) });
+      user = await getUserChip({ retries: 20, isAlive: () => mountSeq === state7.mountSeq && Boolean(state7.chip) });
     } catch {
     }
-    if (mountSeq !== state6.mountSeq || !state6.chip) return;
-    const avatar = state6.chip.querySelector(".lfx-plus-header__avatar");
-    const name = state6.chip.querySelector(".lfx-plus-header__name");
+    if (mountSeq !== state7.mountSeq || !state7.chip) return;
+    const avatar = state7.chip.querySelector(".lfx-plus-header__avatar");
+    const name = state7.chip.querySelector(".lfx-plus-header__name");
     name.textContent = user.name || "";
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
@@ -9545,18 +9899,18 @@
     } else {
       avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
     }
-    if (user.name) state6.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
+    if (user.name) state7.chip.setAttribute("aria-label", `Profilmen\xFC: ${user.name}`);
   }
   function setHidden(on) {
-    if (state6.root) state6.root.classList.toggle("is-hidden", on);
+    if (state7.root) state7.root.classList.toggle("is-hidden", on);
     document.documentElement.classList.toggle(HIDDEN_CLASS, on);
   }
   function scrollTick() {
-    state6.raf = 0;
-    const root7 = state6.root;
+    state7.raf = 0;
+    const root7 = state7.root;
     if (!root7) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-    const dy = y - state6.lastY;
+    const dy = y - state7.lastY;
     root7.classList.toggle("is-solid", y > SOLID_AT);
     if (y <= SOLID_AT) {
       setHidden(false);
@@ -9565,12 +9919,12 @@
     } else if (dy <= -SCROLL_DELTA) {
       setHidden(false);
     }
-    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state6.lastY = y;
+    if (Math.abs(dy) >= SCROLL_DELTA || y <= SOLID_AT) state7.lastY = y;
   }
   function onScroll2() {
-    if (state6.raf) return;
+    if (state7.raf) return;
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state6.raf = raf3(scrollTick);
+    state7.raf = raf3(scrollTick);
   }
   async function loadLibraries(mountSeq) {
     let libs = [];
@@ -9578,8 +9932,8 @@
       libs = await getLibraries() || [];
     } catch {
     }
-    if (mountSeq !== state6.mountSeq || !state6.root) return;
-    state6.libs = libs;
+    if (mountSeq !== state7.mountSeq || !state7.root) return;
+    state7.libs = libs;
     renderNav();
   }
   var plusHeader = {
@@ -9588,13 +9942,13 @@
       return isTheme("plus") && isModern() && !isTv() && !isPhone() && isReady() && !EXCLUDED6.test(route.path);
     },
     mount(route) {
-      const mountSeq = ++state6.mountSeq;
-      state6.route = route;
-      state6.libs = [];
-      state6.pinned = false;
+      const mountSeq = ++state7.mountSeq;
+      state7.route = route;
+      state7.libs = [];
+      state7.pinned = false;
       const root7 = mountPoint(ROOT_ID5, { tag: "header", className: "lfx-plus-header" });
       root7.textContent = "";
-      state6.root = root7;
+      state7.root = root7;
       const brand = h("a", { class: "lfx-plus-header__brand", href: "#/home", "aria-label": `${brandName("plus")} Startseite` });
       const chip = h("button", {
         type: "button",
@@ -9613,15 +9967,15 @@
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-header__ds" });
       root7.append(h("div", { class: "lfx-plus-header__left" }, [brand, chip]), nav, ds, tv, search);
-      state6.nav = nav;
-      state6.chip = chip;
+      state7.nav = nav;
+      state7.chip = chip;
       chip.addEventListener("click", onChipClick);
       chip.addEventListener("mouseenter", scheduleOpen);
       chip.addEventListener("mouseleave", scheduleClose2);
       chip.addEventListener("keydown", (e) => {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          state6.pinned = true;
+          state7.pinned = true;
           clearTimers3();
           openMenu2();
         }
@@ -9629,15 +9983,15 @@
       document.documentElement.classList.add(ON_CLASS4);
       renderNav();
       window.addEventListener("scroll", onScroll2, { passive: true });
-      state6.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
-      state6.lastY = Math.max(0, window.scrollY || 0);
+      state7.cleanups.push(() => window.removeEventListener("scroll", onScroll2));
+      state7.lastY = Math.max(0, window.scrollY || 0);
       scrollTick();
       fillChip(mountSeq);
       loadLibraries(mountSeq);
     },
     update(route) {
-      const changed = !state6.route || state6.route.hash !== route.hash;
-      state6.route = route;
+      const changed = !state7.route || state7.route.hash !== route.hash;
+      state7.route = route;
       if (changed) {
         closeMenu();
         setHidden(false);
@@ -9645,17 +9999,17 @@
       applyActive4();
     },
     unmount() {
-      state6.mountSeq++;
+      state7.mountSeq++;
       closeMenu();
-      for (const fn of state6.cleanups.splice(0)) fn();
-      if (state6.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state6.raf);
-      state6.raf = 0;
+      for (const fn of state7.cleanups.splice(0)) fn();
+      if (state7.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state7.raf);
+      state7.raf = 0;
       unmountPoint(ROOT_ID5);
       document.documentElement.classList.remove(ON_CLASS4, HIDDEN_CLASS);
-      state6.root = null;
-      state6.nav = null;
-      state6.chip = null;
-      state6.libs = [];
+      state7.root = null;
+      state7.nav = null;
+      state7.chip = null;
+      state7.libs = [];
     }
   };
   var header_default = plusHeader;
@@ -9691,28 +10045,28 @@
     if (/^\/(mypreferences|usermenu)/.test(route.path)) return "Einstellungen";
     return "";
   }
-  var state7 = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
+  var state8 = { root: null, tvEl: null, backEl: null, titleEl: null, route: null, libs: [], seq: 0, raf: 0, cleanups: [] };
   function render6() {
-    if (!state7.root) return;
-    const back = showsBack(state7.route);
-    state7.backEl.hidden = !back;
-    state7.root.classList.toggle("has-back", back);
-    state7.titleEl.textContent = headerTitle(state7.route, state7.libs);
-    const on = isTvModeRoute(state7.route);
-    state7.tvEl.classList.toggle("is-active", on);
-    if (on) state7.tvEl.setAttribute("aria-current", "page");
-    else state7.tvEl.removeAttribute("aria-current");
+    if (!state8.root) return;
+    const back = showsBack(state8.route);
+    state8.backEl.hidden = !back;
+    state8.root.classList.toggle("has-back", back);
+    state8.titleEl.textContent = headerTitle(state8.route, state8.libs);
+    const on = isTvModeRoute(state8.route);
+    state8.tvEl.classList.toggle("is-active", on);
+    if (on) state8.tvEl.setAttribute("aria-current", "page");
+    else state8.tvEl.removeAttribute("aria-current");
   }
   function scrollTick2() {
-    state7.raf = 0;
-    if (!state7.root) return;
+    state8.raf = 0;
+    if (!state8.root) return;
     const y = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
-    state7.root.classList.toggle("is-solid", y > SOLID_AT2);
+    state8.root.classList.toggle("is-solid", y > SOLID_AT2);
   }
   function onScroll3() {
-    if (state7.raf) return;
+    if (state8.raf) return;
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-    state7.raf = raf3(scrollTick2);
+    state8.raf = raf3(scrollTick2);
   }
   async function loadLibraries2(seq3) {
     let libs = [];
@@ -9720,8 +10074,8 @@
       libs = await getLibraries() || [];
     } catch {
     }
-    if (seq3 !== state7.seq || !state7.root) return;
-    state7.libs = libs;
+    if (seq3 !== state8.seq || !state8.root) return;
+    state8.libs = libs;
     render6();
   }
   var plusMobileHead = {
@@ -9730,9 +10084,9 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED7.test(route.path);
     },
     mount(route) {
-      const seq3 = ++state7.seq;
-      state7.route = route;
-      state7.libs = [];
+      const seq3 = ++state8.seq;
+      state8.route = route;
+      state8.libs = [];
       const root7 = mountPoint(ROOT_ID6, { tag: "header", className: "lfx-plus-mhead" });
       root7.textContent = "";
       const backEl = h("button", { type: "button", class: "lfx-plus-mhead__back", "aria-label": "Zur\xFCck", hidden: true });
@@ -9744,33 +10098,33 @@
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-mhead__ds" });
       root7.append(backEl, titleEl, ds, tv);
-      state7.tvEl = tv;
-      state7.root = root7;
-      state7.backEl = backEl;
-      state7.titleEl = titleEl;
+      state8.tvEl = tv;
+      state8.root = root7;
+      state8.backEl = backEl;
+      state8.titleEl = titleEl;
       document.documentElement.classList.add(ON_CLASS5);
       window.addEventListener("scroll", onScroll3, { passive: true });
-      state7.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
+      state8.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
       render6();
       scrollTick2();
       loadLibraries2(seq3);
     },
     update(route) {
-      state7.route = route;
+      state8.route = route;
       render6();
     },
     unmount() {
-      state7.seq++;
-      for (const fn of state7.cleanups.splice(0)) fn();
-      if (state7.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state7.raf);
-      state7.raf = 0;
+      state8.seq++;
+      for (const fn of state8.cleanups.splice(0)) fn();
+      if (state8.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state8.raf);
+      state8.raf = 0;
       unmountPoint(ROOT_ID6);
       document.documentElement.classList.remove(ON_CLASS5);
-      state7.root = null;
-      state7.backEl = null;
-      state7.titleEl = null;
-      state7.tvEl = null;
-      state7.libs = [];
+      state8.root = null;
+      state8.backEl = null;
+      state8.titleEl = null;
+      state8.tvEl = null;
+      state8.libs = [];
     }
   };
   var mobilehead_default = plusMobileHead;
@@ -9798,27 +10152,27 @@
     if (kind2 === "hub" && lib) return `lib:${lib}`;
     return "foryou";
   }
-  var state8 = { root: null, route: null, libs: [], seq: 0 };
+  var state9 = { root: null, route: null, libs: [], seq: 0 };
   function applyActive5() {
-    if (!state8.root || !state8.route) return;
-    const key = activeTab(state8.route);
+    if (!state9.root || !state9.route) return;
+    const key = activeTab(state9.route);
     let active5 = null;
-    for (const el4 of state8.root.querySelectorAll('[role="tab"]')) {
+    for (const el4 of state9.root.querySelectorAll('[role="tab"]')) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       el4.setAttribute("aria-selected", String(on));
       el4.tabIndex = on ? 0 : -1;
       if (on) active5 = el4;
     }
-    const list = state8.root.querySelector(".lfx-plus-switcher__list");
+    const list = state9.root.querySelector(".lfx-plus-switcher__list");
     if (active5 && list && list.scrollWidth > list.clientWidth) {
       list.scrollLeft = Math.max(0, active5.offsetLeft - (list.clientWidth - active5.offsetWidth) / 2);
     }
   }
   function render7() {
-    if (!state8.root) return;
+    if (!state9.root) return;
     const list = h("div", { class: "lfx-plus-switcher__list", role: "tablist", "aria-label": "Ansicht w\xE4hlen" });
-    for (const t of switcherTabs(state8.libs)) {
+    for (const t of switcherTabs(state9.libs)) {
       list.append(h("a", { class: "lfx-plus-switcher__tab", role: "tab", href: t.href, dataset: { key: t.key } }, t.label));
     }
     list.addEventListener("keydown", (e) => {
@@ -9831,7 +10185,7 @@
       next.tabIndex = 0;
       next.focus();
     });
-    state8.root.replaceChildren(list);
+    state9.root.replaceChildren(list);
     applyActive5();
   }
   async function loadLibraries3(seq3) {
@@ -9840,8 +10194,8 @@
       libs = await getLibraries() || [];
     } catch {
     }
-    if (seq3 !== state8.seq || !state8.root) return;
-    state8.libs = libs;
+    if (seq3 !== state9.seq || !state9.root) return;
+    state9.libs = libs;
     render7();
   }
   var plusSwitcher = {
@@ -9850,24 +10204,24 @@
       return isTheme("plus") && isModern() && !isTv() && isReady() && isSwitcherRoute(route);
     },
     mount(route) {
-      const seq3 = ++state8.seq;
-      state8.route = route;
-      state8.libs = [];
-      state8.root = mountPoint(ROOT_ID7, { className: "lfx-plus-switcher" });
+      const seq3 = ++state9.seq;
+      state9.route = route;
+      state9.libs = [];
+      state9.root = mountPoint(ROOT_ID7, { className: "lfx-plus-switcher" });
       document.documentElement.classList.add(ON_CLASS6);
       render7();
       loadLibraries3(seq3);
     },
     update(route) {
-      state8.route = route;
+      state9.route = route;
       applyActive5();
     },
     unmount() {
-      state8.seq++;
+      state9.seq++;
       unmountPoint(ROOT_ID7);
       document.documentElement.classList.remove(ON_CLASS6);
-      state8.root = null;
-      state8.libs = [];
+      state9.root = null;
+      state9.libs = [];
     }
   };
   var switcher_default = plusSwitcher;
@@ -10234,7 +10588,7 @@
   }
   function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone(), warm = poolWarm } = {}) {
     const all = (items || []).filter((it) => it && it.Id);
-    const saver = isDataSaver();
+    const saver = isDataSaver("hero");
     const list = saver ? saverPool(all) : all;
     if (!list.length) return null;
     const n = list.length;
@@ -10590,7 +10944,7 @@
             observer2.unobserve(en.target);
             loadRow(en.target, def);
           }
-        }, { rootMargin: isDataSaver() ? "100px 0px" : "600px 0px" });
+        }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "600px 0px" });
         for (const el4 of pending.keys()) observer2.observe(el4);
       } else {
         for (const [el4, def] of [...pending]) {
@@ -10944,13 +11298,13 @@
   var ICON_TRAILER = svg7('<path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 2v10h14V7zm4 1.5 6 3.5-6 3.5z"/>');
   var ICON_CHEVRON = svg7('<path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/>');
   var ICON_CLOSE = svg7('<path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/>');
-  var state9 = null;
+  var state10 = null;
   var gen2 = 0;
   var routeId = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" ? r.id : null;
   };
-  var stalenessOf = (g) => () => !state9 || state9.g !== g;
+  var stalenessOf = (g) => () => !state10 || state10.g !== g;
   function closeTrailer() {
     const el4 = document.getElementById(TRAILER_ID);
     if (!el4) return;
@@ -10968,8 +11322,8 @@
   }
   function dispose() {
     gen2 += 1;
-    const s = state9;
-    state9 = null;
+    const s = state10;
+    state10 = null;
     closeTrailer();
     try {
       closePopover();
@@ -10989,14 +11343,14 @@
     document.getElementById(ROOT_ID9)?.remove();
     setPageOn(ON_CLASS8, false);
   }
-  function circle(mod, label, icon5, onClick) {
+  function circle(mod, label, icon5, onClick2) {
     const b = h("button", { type: "button", class: `lfx-plus-circle lfx-plus-circle--${mod}`, "aria-label": label, title: label });
     const ico = h("span", { class: "lfx-plus-circle__ico", "aria-hidden": "true" });
     ico.innerHTML = icon5;
     b.append(ico);
     b.addEventListener("click", (e) => {
       e.preventDefault();
-      onClick(b);
+      onClick2(b);
     });
     return b;
   }
@@ -11142,7 +11496,7 @@
   }
   async function load2(g) {
     const stale = stalenessOf(g);
-    const s = state9;
+    const s = state10;
     const root7 = s.root;
     let sel;
     let main;
@@ -11456,10 +11810,10 @@
   function begin(id, { keepScroll = false } = {}) {
     dispose();
     const g = gen2;
-    state9 = { g, id, root: null, cleanups: [], cancelWait: null };
-    const s = state9;
+    state10 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state10;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state9 !== s) return;
+      if (state10 !== s) return;
       const root7 = h("div", { id: ROOT_ID9, class: "lfx-plus-page lfx-plus-title is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-plus-title__skeleton" })
       ]);
@@ -11468,7 +11822,7 @@
       setPageOn(ON_CLASS8, true);
       if (!keepScroll) scrollTop();
       load2(g).then(() => {
-        if (state9 === s) root7.removeAttribute("aria-busy");
+        if (state10 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] plus-title", e));
     });
   }
@@ -11482,7 +11836,7 @@
     update(route) {
       const id = routeId(route);
       if (!id) return;
-      if (state9 && state9.id === id && state9.root && state9.root.isConnected) return;
+      if (state10 && state10.id === id && state10.root && state10.root.isConnected) return;
       begin(id);
     },
     unmount: dispose
@@ -11492,15 +11846,15 @@
   var ROOT_ID10 = "lfx-plus-browse";
   var ON_CLASS9 = "lfx-plus-browse-on";
   var PAGE4 = 40;
-  var state10 = null;
+  var state11 = null;
   var routeOf = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
   };
   var asItems7 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function dispose2() {
-    const s = state10;
-    state10 = null;
+    const s = state11;
+    state11 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       for (const fn of s.cleanups.splice(0)) {
@@ -11535,11 +11889,11 @@
     loadMore(s);
   }
   async function loadMore(s) {
-    if (state10 !== s || s.loading || s.done) return;
+    if (state11 !== s || s.loading || s.done) return;
     const seq3 = s.seq;
     s.loading = true;
     s.root.setAttribute("aria-busy", "true");
-    const stale = () => state10 !== s || s.seq !== seq3;
+    const stale = () => state11 !== s || s.seq !== seq3;
     try {
       const res = await getItems({
         ...BASE_PARAMS,
@@ -11584,7 +11938,7 @@
     }
   }
   async function build4(tab2, s) {
-    const stale = () => state10 !== s;
+    const stale = () => state11 !== s;
     let lib = null;
     try {
       lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
@@ -11654,9 +12008,9 @@
       cancelWait: null,
       root: null
     };
-    state10 = s;
+    state11 = s;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state10 === s) build4(tab2, s);
+      if (state11 === s) build4(tab2, s);
     });
   }
   var browse_default = {
@@ -11669,13 +12023,13 @@
     update(route) {
       const r = routeOf(route);
       if (!r) return;
-      if (!state10 || state10.libId !== r.lib || !state10.root || !state10.root.isConnected) {
+      if (!state11 || state11.libId !== r.lib || !state11.root || !state11.root.isConnected) {
         begin2(r);
         return;
       }
-      if ((r.genre || null) !== state10.genreId) {
-        state10.genreId = r.genre || null;
-        reload(state10);
+      if ((r.genre || null) !== state11.genreId) {
+        state11.genreId = r.genre || null;
+        reload(state11);
       }
     },
     unmount: dispose2
@@ -11752,14 +12106,14 @@
   var MIN_LEN2 = 2;
   var LUPE = '<svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="13.5" cy="13.5" r="8.5"/><path d="M20 20l8 8"/></svg>';
   var X = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"/></svg>';
-  var state11 = null;
+  var state12 = null;
   var routeQ = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "search" ? r.q || "" : null;
   };
   function dispose3() {
-    const s = state11;
-    state11 = null;
+    const s = state12;
+    state12 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       clearTimeout(s.timer);
@@ -11783,7 +12137,7 @@
       h("span", { class: `lfx-plus-tile__name${imageUrl2 ? hide2 ? " is-sr" : " has-img" : ""}` }, label)
     ]);
   }
-  function section(title, body, mod = "") {
+  function section2(title, body, mod = "") {
     return h("section", { class: `lfx-plus-section ${mod}`.trim() }, [h("h2", { class: "lfx-plus-section__title" }, title), body]);
   }
   async function genreLib() {
@@ -11795,7 +12149,7 @@
     }
   }
   async function renderEmpty(s, seq3) {
-    const stale = () => state11 !== s || s.seq !== seq3;
+    const stale = () => state12 !== s || s.seq !== seq3;
     s.results.replaceChildren();
     const [lib, genres, colls] = await Promise.all([
       genreLib(),
@@ -11805,14 +12159,14 @@
     if (stale()) return;
     const parts = [];
     if (genres.length) {
-      parts.push(section("Genres", h("div", { class: "lfx-plus-tilerow" }, genres.map((g) => tile(
+      parts.push(section2("Genres", h("div", { class: "lfx-plus-tilerow" }, genres.map((g) => tile(
         lib ? browseHref(lib.id, g.id) : searchHref(g.name),
         g.name,
         g.imageUrl
       )))));
     }
     if (colls.length) {
-      parts.push(section("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl, { nameOnImage: false })))));
+      parts.push(section2("Sammlungen", h("div", { class: "lfx-plus-tilerow" }, colls.map((c) => tile(titleHref(c.id), c.name, c.imageUrl, { nameOnImage: false })))));
     }
     s.results.replaceChildren(...parts);
   }
@@ -11837,7 +12191,7 @@
     const ctl = new AbortController();
     s.abort = ctl;
     s.root.setAttribute("aria-busy", "true");
-    const stale = () => state11 !== s || s.seq !== seq3;
+    const stale = () => state12 !== s || s.seq !== seq3;
     try {
       const [res, info] = await Promise.all([
         searchItems(term, { signal: ctl.signal }),
@@ -11848,21 +12202,21 @@
       putItems([...titles, ...res.episodes]);
       const parts = [];
       if (titles.length) {
-        parts.push(section("Filme und Serien", h(
+        parts.push(section2("Filme und Serien", h(
           "div",
           { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" },
           titles.map((it) => gridCard(it, { text: true, badge: info ? plusBadge(it, info) : null }))
         )));
       }
       if (res.episodes.length) {
-        parts.push(section("Folgen", h(
+        parts.push(section2("Folgen", h(
           "div",
           { class: "lfx-plus-grid lfx-plus-grid--cards", role: "list" },
           res.episodes.map((it) => gridCard(it, { text: true }))
         ), "lfx-plus-section--small"));
       }
       if (res.people.length) {
-        parts.push(section("Personen", h("div", { class: "lfx-plus-people" }, res.people.map(personCard)), "lfx-plus-section--small"));
+        parts.push(section2("Personen", h("div", { class: "lfx-plus-people" }, res.people.map(personCard)), "lfx-plus-section--small"));
       }
       if (!parts.length) parts.push(h("p", { class: "lfx-plus-empty" }, `Keine Ergebnisse f\xFCr \u201E${term}\u201C.`));
       s.results.replaceChildren(...parts);
@@ -11947,9 +12301,9 @@
     dispose3();
     const s = { root: null, input: null, results: null, term: null, timer: null, abort: null, seq: 0, cleanups: [], cancelWait: null, syncUi: () => {
     } };
-    state11 = s;
+    state12 = s;
     s.cancelWait = whenHomeTab((tab2) => {
-      if (state11 === s) build5(tab2, s, q);
+      if (state12 === s) build5(tab2, s, q);
     });
   }
   var search_default = {
@@ -11961,17 +12315,17 @@
     update(route) {
       const q = routeQ(route);
       if (q == null) return;
-      if (!state11 || !state11.root || !state11.root.isConnected) {
+      if (!state12 || !state12.root || !state12.root.isConnected) {
         begin3(q);
         return;
       }
-      if (q.trim() !== (state11.term || "")) {
-        state11.input.value = q;
-        clearTimeout(state11.timer);
-        runSearch(state11, q.trim());
+      if (q.trim() !== (state12.term || "")) {
+        state12.input.value = q;
+        clearTimeout(state12.timer);
+        runSearch(state12, q.trim());
       }
       try {
-        state11.input.focus({ preventScroll: true });
+        state12.input.focus({ preventScroll: true });
       } catch {
       }
     },
@@ -12035,16 +12389,16 @@
     if (String(href).startsWith("#")) window.location.hash = href;
     else window.location.assign(href);
   }
-  var state12 = { root: null, route: null, profileBtn: null, sheet: null, seq: 0, cleanups: [] };
+  var state13 = { root: null, route: null, profileBtn: null, sheet: null, seq: 0, cleanups: [] };
   var iconEl = (name) => {
     const span2 = h("span", { class: "lfx-plus-tabbar__icon", "aria-hidden": "true" });
     span2.innerHTML = ICONS3[name];
     return span2;
   };
   function applyActive6() {
-    if (!state12.root) return;
-    const key = tabKey(state12.route);
-    for (const el4 of state12.root.querySelectorAll("[data-key]")) {
+    if (!state13.root) return;
+    const key = tabKey(state13.route);
+    for (const el4 of state13.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -12053,18 +12407,18 @@
     }
   }
   function closeProfile() {
-    state12.seq++;
-    const c = state12.sheet;
-    state12.sheet = null;
+    state13.seq++;
+    const c = state13.sheet;
+    state13.sheet = null;
     if (c && isCurrent(c)) closeChooser();
   }
   async function openProfile() {
-    if (state12.sheet && isCurrent(state12.sheet)) {
+    if (state13.sheet && isCurrent(state13.sheet)) {
       closeProfile();
       return;
     }
-    const seq3 = ++state12.seq;
-    const anchor = state12.profileBtn;
+    const seq3 = ++state13.seq;
+    const anchor = state13.profileBtn;
     let libs = [];
     let profile2 = [];
     let user = { name: "" };
@@ -12080,9 +12434,9 @@
       user = await getUserChip();
     } catch {
     }
-    if (seq3 !== state12.seq || !state12.root) return;
+    if (seq3 !== state13.seq || !state13.root) return;
     const c = openSheet(anchor, "Profil");
-    state12.sheet = c;
+    state13.sheet = c;
     const entries = sheetEntries(libs, profile2, { go, close: () => closeChooser() });
     renderSheet(c, user && user.name || "Profil", entries);
     const buttons = c.list ? c.list.querySelectorAll(".lfx-sheet__item") : [];
@@ -12093,18 +12447,18 @@
   async function fillAvatar() {
     let user = { name: "", imageUrl: null };
     try {
-      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state12.profileBtn) });
+      user = await getUserChip({ retries: 20, isAlive: () => Boolean(state13.profileBtn) });
     } catch {
     }
-    if (!state12.profileBtn) return;
-    const avatar = state12.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
+    if (!state13.profileBtn) return;
+    const avatar = state13.profileBtn.querySelector(".lfx-plus-tabbar__avatar");
     if (user.imageUrl) {
       avatar.style.backgroundImage = `url("${user.imageUrl}")`;
       avatar.textContent = "";
     } else {
       avatar.textContent = (user.name || "?").trim().charAt(0).toUpperCase();
     }
-    if (user.name) state12.profileBtn.setAttribute("aria-label", `Profil: ${user.name}`);
+    if (user.name) state13.profileBtn.setAttribute("aria-label", `Profil: ${user.name}`);
   }
   var plusTabbar = {
     name: "plus-tabbar",
@@ -12112,8 +12466,8 @@
       return isTheme("plus") && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED8.test(route.path);
     },
     mount(route) {
-      state12.seq++;
-      state12.route = route;
+      state13.seq++;
+      state13.route = route;
       const root7 = mountPoint(ROOT_ID12, { tag: "nav", className: "lfx-plus-tabbar" });
       root7.textContent = "";
       root7.setAttribute("aria-label", "Hauptnavigation");
@@ -12129,8 +12483,8 @@
       }, [h("span", { class: "lfx-plus-tabbar__avatar", "aria-hidden": "true" })]);
       profileBtn.addEventListener("click", openProfile);
       root7.append(profileBtn);
-      state12.root = root7;
-      state12.profileBtn = profileBtn;
+      state13.root = root7;
+      state13.profileBtn = profileBtn;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
         if (e.target && e.target.matches && e.target.matches(TEXT_INPUT)) cl2.add(KB_CLASS);
@@ -12138,14 +12492,14 @@
       const onFocusOut = () => cl2.remove(KB_CLASS);
       document.addEventListener("focusin", onFocusIn);
       document.addEventListener("focusout", onFocusOut);
-      state12.cleanups.push(() => {
+      state13.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         cl2.remove(KB_CLASS);
       });
       const onHash2 = () => cl2.toggle(HIDE_CLASS, isVideoHash(window.location.hash));
       window.addEventListener("hashchange", onHash2);
-      state12.cleanups.push(() => {
+      state13.cleanups.push(() => {
         window.removeEventListener("hashchange", onHash2);
         cl2.remove(HIDE_CLASS);
       });
@@ -12155,18 +12509,18 @@
       fillAvatar();
     },
     update(route) {
-      const changed = !state12.route || state12.route.hash !== route.hash;
-      state12.route = route;
+      const changed = !state13.route || state13.route.hash !== route.hash;
+      state13.route = route;
       if (changed) closeProfile();
       applyActive6();
     },
     unmount() {
       closeProfile();
-      for (const fn of state12.cleanups.splice(0)) fn();
+      for (const fn of state13.cleanups.splice(0)) fn();
       unmountPoint(ROOT_ID12);
       document.documentElement.classList.remove(ON_CLASS11);
-      state12.root = null;
-      state12.profileBtn = null;
+      state13.root = null;
+      state13.profileBtn = null;
     }
   };
   var tabbar_default = plusTabbar;
@@ -12190,25 +12544,25 @@
     const NOLOGO = nologoClass;
     const NOBD = nobdClass;
     const ALL = [NOLOGO, NOBD].filter(Boolean);
-    const state21 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
+    const state22 = { page: null, obs: null, timer: 0, poll: 0, probes: /* @__PURE__ */ new Map(), tries: 0 };
     function probeLogo(url) {
-      if (state21.probes.has(url) || typeof Image !== "function") return;
-      state21.probes.set(url, "pending");
+      if (state22.probes.has(url) || typeof Image !== "function") return;
+      state22.probes.set(url, "pending");
       const img = new Image();
-      img.onload = () => state21.probes.set(url, "ok");
+      img.onload = () => state22.probes.set(url, "ok");
       img.onerror = () => {
-        state21.probes.set(url, "bad");
+        state22.probes.set(url, "bad");
         evaluate3();
       };
       img.src = url;
     }
     function evaluate3() {
-      const page2 = state21.page;
+      const page2 = state22.page;
       if (!page2 || !page2.isConnected) return;
       const logoEl = page2.querySelector(".detailLogo");
       const logoUrl2 = logoEl && !logoEl.classList.contains("hide") ? bgUrl(logoEl) : null;
       if (logoUrl2) probeLogo(logoUrl2);
-      let noLogo = !logoUrl2 || state21.probes.get(logoUrl2) === "bad";
+      let noLogo = !logoUrl2 || state22.probes.get(logoUrl2) === "bad";
       if (!noLogo) {
         const had = page2.classList.contains(NOLOGO);
         if (had) page2.classList.remove(NOLOGO);
@@ -12225,55 +12579,55 @@
       }
     }
     function schedule4() {
-      if (state21.timer) return;
-      state21.timer = setTimeout(() => {
-        state21.timer = 0;
+      if (state22.timer) return;
+      state22.timer = setTimeout(() => {
+        state22.timer = 0;
         evaluate3();
       }, 60);
     }
     function clearPage() {
-      if (state21.obs) state21.obs.disconnect();
-      state21.obs = null;
-      clearTimeout(state21.timer);
-      clearTimeout(state21.poll);
-      state21.timer = 0;
-      state21.poll = 0;
-      if (state21.page) {
-        state21.page.classList.remove(...ALL);
-        state21.page = null;
+      if (state22.obs) state22.obs.disconnect();
+      state22.obs = null;
+      clearTimeout(state22.timer);
+      clearTimeout(state22.poll);
+      state22.timer = 0;
+      state22.poll = 0;
+      if (state22.page) {
+        state22.page.classList.remove(...ALL);
+        state22.page = null;
       }
       for (const p of document.querySelectorAll(ALL.map((c) => `.${c}`).join(", "))) p.classList.remove(...ALL);
-      state21.probes.clear();
+      state22.probes.clear();
     }
     function attach2() {
       const page2 = document.querySelector("#itemDetailPage:not(.hide)");
       if (!page2) {
-        if (++state21.tries < 30) state21.poll = setTimeout(attach2, 200);
+        if (++state22.tries < 30) state22.poll = setTimeout(attach2, 200);
         return;
       }
-      if (state21.page === page2) return;
-      if (state21.obs) state21.obs.disconnect();
-      state21.page = page2;
-      state21.obs = new MutationObserver((records) => {
+      if (state22.page === page2) return;
+      if (state22.obs) state22.obs.disconnect();
+      state22.page = page2;
+      state22.obs = new MutationObserver((records) => {
         if (records.every((r) => r.type === "attributes" && r.target === page2)) return;
         schedule4();
       });
-      state21.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
+      state22.obs.observe(page2, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "style"] });
       evaluate3();
     }
     const feature = {
       name,
       match: (route) => isTheme(theme) && isModern() && !isTv() && isReady() && route.path === "/details",
       mount() {
-        state21.tries = 0;
+        state22.tries = 0;
         attach2();
       },
       update() {
-        state21.tries = 0;
-        clearTimeout(state21.poll);
-        state21.probes.clear();
+        state22.tries = 0;
+        clearTimeout(state22.poll);
+        state22.probes.clear();
         const page2 = document.querySelector("#itemDetailPage:not(.hide)");
-        if (page2 && page2 !== state21.page) clearPage();
+        if (page2 && page2 !== state22.page) clearPage();
         attach2();
         evaluate3();
       },
@@ -12294,7 +12648,7 @@
   var ID10 = "lfx-plus-favempty";
   var EMPTY_TEXT = "Noch nichts auf deiner Liste. F\xFCge Titel \xFCber + hinzu.";
   var SETTLE_MS = 1500;
-  var state13 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
+  var state14 = { tab: null, obs: null, timer: 0, poll: 0, tries: 0 };
   var isFavRoute = (route) => route && route.path === "/home" && route.params.get("tab") === "1" && !route.params.get("lfx");
   function findTab() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #favoritesTab");
@@ -12302,8 +12656,8 @@
   }
   var hasCards = (tab2) => !!tab2.querySelector(".card, .listItem");
   function check2() {
-    state13.timer = 0;
-    const tab2 = state13.tab;
+    state14.timer = 0;
+    const tab2 = state14.tab;
     if (!tab2 || !tab2.isConnected) return;
     const mine = document.getElementById(ID10);
     if (hasCards(tab2)) {
@@ -12313,44 +12667,44 @@
     }
   }
   function schedule3(delay = SETTLE_MS) {
-    clearTimeout(state13.timer);
-    state13.timer = setTimeout(check2, delay);
+    clearTimeout(state14.timer);
+    state14.timer = setTimeout(check2, delay);
   }
   function teardown6() {
-    if (state13.obs) state13.obs.disconnect();
-    state13.obs = null;
-    clearTimeout(state13.timer);
-    clearTimeout(state13.poll);
-    state13.timer = 0;
-    state13.poll = 0;
-    state13.tab = null;
+    if (state14.obs) state14.obs.disconnect();
+    state14.obs = null;
+    clearTimeout(state14.timer);
+    clearTimeout(state14.poll);
+    state14.timer = 0;
+    state14.poll = 0;
+    state14.tab = null;
     document.getElementById(ID10)?.remove();
   }
   function attach() {
     const tab2 = findTab();
     if (!tab2) {
-      if (++state13.tries < 30) state13.poll = setTimeout(attach, 200);
+      if (++state14.tries < 30) state14.poll = setTimeout(attach, 200);
       return;
     }
-    if (state13.tab === tab2) return;
+    if (state14.tab === tab2) return;
     teardown6();
-    state13.tab = tab2;
-    state13.obs = new MutationObserver((records) => {
+    state14.tab = tab2;
+    state14.obs = new MutationObserver((records) => {
       if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every((n) => n.id === ID10))) return;
       schedule3();
     });
-    state13.obs.observe(tab2, { childList: true, subtree: true });
+    state14.obs.observe(tab2, { childList: true, subtree: true });
     schedule3();
   }
   var favempty_default = {
     name: "plus-favempty",
     match: (route) => isTheme("plus") && isModern() && !isTv() && isReady() && isFavRoute(route),
     mount() {
-      state13.tries = 0;
+      state14.tries = 0;
       attach();
     },
     update() {
-      state13.tries = 0;
+      state14.tries = 0;
       attach();
     },
     unmount: teardown6
@@ -12616,7 +12970,7 @@
       if (pinned) return;
       leaveTimer2 = setTimeout(() => close2(), LEAVE_MS2);
     };
-    const onClick = (e) => {
+    const onClick2 = (e) => {
       if (e.detail === 0) {
         if (opened) close2();
         else open2({ focus: true });
@@ -12664,7 +13018,7 @@
     };
     wrap.addEventListener("mouseenter", onEnter);
     wrap.addEventListener("mouseleave", onLeave);
-    button.addEventListener("click", onClick);
+    button.addEventListener("click", onClick2);
     flyout.addEventListener("click", onFlyoutClick);
     wrap.addEventListener("keydown", onKeydown3);
     wrap.addEventListener("focusout", onFocusOut);
@@ -12722,7 +13076,7 @@
     });
     return node;
   }
-  function section2(title, nodes) {
+  function section3(title, nodes) {
     return h("section", { class: "lfx-prime-psheet__section" }, [
       title ? h("h3", { class: "lfx-prime-psheet__head" }, title) : null,
       ...nodes
@@ -12798,9 +13152,9 @@
       const nav = [{ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new" }];
       const libNodes = (libs || []).map((l) => ({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href }));
       body.replaceChildren(...[
-        section2(null, nav.map((it) => entryNode(it, close2))),
-        libNodes.length ? section2("Bibliotheken", libNodes.map((it) => entryNode(it, close2))) : null,
-        section2(null, entries.filter((it) => it && !it.hidden).map((it) => entryNode(it, close2)))
+        section3(null, nav.map((it) => entryNode(it, close2))),
+        libNodes.length ? section3("Bibliotheken", libNodes.map((it) => entryNode(it, close2))) : null,
+        section3(null, entries.filter((it) => it && !it.hidden).map((it) => entryNode(it, close2)))
       ].filter(Boolean));
       const first2 = body.querySelector(FOCUSABLE3);
       if (first2 && document.activeElement === sheet) first2.focus({ preventScroll: true });
@@ -12904,7 +13258,7 @@
     if (window.history.length > 1) window.history.back();
     else window.location.hash = "#/home";
   }
-  var state14 = {
+  var state15 = {
     mobile: false,
     kind: null,
     el: null,
@@ -12918,30 +13272,30 @@
     titleTimer: 0
   };
   function refreshTitle() {
-    if (!state14.el || !state14.mobile || !state14.route) return;
-    const t = state14.el.querySelector(".lfx-prime-header__title");
+    if (!state15.el || !state15.mobile || !state15.route) return;
+    const t = state15.el.querySelector(".lfx-prime-header__title");
     if (!t) return;
-    const next = mobileTitle(state14.route, state14.libs);
+    const next = mobileTitle(state15.route, state15.libs);
     if (t.textContent !== next) t.textContent = next;
   }
   function stopTitlePoll() {
-    if (state14.titleTimer) clearInterval(state14.titleTimer);
-    state14.titleTimer = 0;
+    if (state15.titleTimer) clearInterval(state15.titleTimer);
+    state15.titleTimer = 0;
   }
   function startTitlePoll() {
     stopTitlePoll();
-    if (!state14.mobile || state14.kind !== "sub") return;
+    if (!state15.mobile || state15.kind !== "sub") return;
     let n = 0;
-    state14.titleTimer = setInterval(() => {
+    state15.titleTimer = setInterval(() => {
       refreshTitle();
       n += 1;
-      if (n >= 24 || !state14.el) stopTitlePoll();
+      if (n >= 24 || !state15.el) stopTitlePoll();
     }, 250);
   }
   function applyActive7() {
-    if (!state14.el || !state14.route) return;
-    const key = activeKey3(state14.route);
-    for (const el4 of state14.el.querySelectorAll("[data-key]")) {
+    if (!state15.el || !state15.route) return;
+    const key = activeKey3(state15.route);
+    for (const el4 of state15.el.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -12949,9 +13303,9 @@
     }
   }
   function renderNav2() {
-    const nav = state14.el && state14.el.querySelector(".lfx-prime-header__nav");
+    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems3(state14.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems3(state15.libs).map((it) => h("a", {
       class: "lfx-prime-header__link",
       href: it.href,
       dataset: { key: it.key }
@@ -12970,15 +13324,15 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state14.profileBusy) return;
-    state14.profileBusy = true;
+    if (state15.profileBusy) return;
+    state15.profileBusy = true;
     try {
-      state14.menus.close();
+      state15.menus.close();
       const items = await profileEntries({ theme: "prime", returnFocus: btn3 });
-      if (!state14.el || !btn3.isConnected) return;
+      if (!state15.el || !btn3.isConnected) return;
       openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-prime-profile" });
     } finally {
-      state14.profileBusy = false;
+      state15.profileBusy = false;
     }
   }
   function tvLink() {
@@ -13003,7 +13357,7 @@
       "aria-haspopup": "dialog"
     }, [icon3("search")]);
     searchBtn.addEventListener("click", () => {
-      state14.menus.close();
+      state15.menus.close();
       closeProfile2();
       if (isPrimeSearchOpen()) closePrimeSearch();
       else openPrimeSearch({ returnFocus: searchBtn });
@@ -13033,13 +13387,13 @@
     avatar.addEventListener("click", () => toggleProfile(avatar));
     const right = h("div", { class: "lfx-prime-header__right" }, [searchBtn, tvLink(), dsLink(), gridWrap, listLink, avatar]);
     const bar = h("div", { class: "lfx-prime-header__bar" }, [logo, nav, right]);
-    state14.el.replaceChildren(bar);
-    state14.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
+    state15.el.replaceChildren(bar);
+    state15.menus = openMenus({ wrap: gridWrap, button: gridBtn, flyout, load: loadFlyoutData });
     return { avatar };
   }
   function buildMobile(route) {
     const kind2 = mobileKind(route);
-    state14.kind = kind2;
+    state15.kind = kind2;
     const avatar = h("button", {
       type: "button",
       class: "lfx-prime-header__avatar",
@@ -13057,18 +13411,18 @@
       const back = h("button", { type: "button", class: "lfx-prime-header__back", "aria-label": "Zur\xFCck" });
       back.append(icon3("back"));
       back.addEventListener("click", goBack);
-      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state14.libs))];
+      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state15.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), dsLink(), avatar])]);
     const kids = [bar];
     if (kind2 === "home") kids.push(h("nav", { class: "lfx-prime-header__pills", "aria-label": "Filme und Serien" }));
-    state14.el.replaceChildren(...kids);
+    state15.el.replaceChildren(...kids);
     return { avatar };
   }
   function renderPills() {
-    const nav = state14.el && state14.el.querySelector(".lfx-prime-header__pills");
+    const nav = state15.el && state15.el.querySelector(".lfx-prime-header__pills");
     if (!nav) return;
-    const items = navItems3(state14.libs).filter((it) => it.key.startsWith("lib:"));
+    const items = navItems3(state15.libs).filter((it) => it.key.startsWith("lib:"));
     nav.replaceChildren(...items.map((it) => h("a", {
       class: "lfx-prime-header__pill",
       href: it.href,
@@ -13078,7 +13432,7 @@
     applyActive7();
   }
   async function loadFlyoutData() {
-    let libs = state14.libs;
+    let libs = state15.libs;
     let cols;
     try {
       cols = await getCollections();
@@ -13100,11 +13454,11 @@
   async function loadLibs(seq3) {
     try {
       const libs = await getLibraries();
-      if (seq3 !== state14.seq || !state14.el) return;
-      state14.libs = libs;
+      if (seq3 !== state15.seq || !state15.el) return;
+      state15.libs = libs;
     } catch {
-      if (seq3 !== state14.seq || !state14.el) return;
-      state14.libs = [];
+      if (seq3 !== state15.seq || !state15.el) return;
+      state15.libs = [];
     }
     renderNav2();
     renderPills();
@@ -13113,43 +13467,43 @@
   async function loadAvatar(seq3, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state14.seq && Boolean(state14.el) });
+      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state15.seq && Boolean(state15.el) });
     } catch {
     }
-    if (seq3 !== state14.seq || !state14.el) return;
+    if (seq3 !== state15.seq || !state15.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-prime-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function onScroll4() {
-    if (state14.raf) return;
-    state14.raf = requestAnimationFrame(() => {
-      state14.raf = 0;
+    if (state15.raf) return;
+    state15.raf = requestAnimationFrame(() => {
+      state15.raf = 0;
       applyScroll();
     });
   }
   function applyScroll() {
-    if (!state14.el || state14.mobile) return;
+    if (!state15.el || state15.mobile) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD2;
-    if (state14.el.classList.contains("is-scrolled") !== on) state14.el.classList.toggle("is-scrolled", on);
+    if (state15.el.classList.contains("is-scrolled") !== on) state15.el.classList.toggle("is-scrolled", on);
   }
   function syncHtmlClasses() {
     const cl2 = document.documentElement.classList;
-    cl2.toggle(MOBILE_CLASS, state14.mobile);
-    cl2.toggle(PILLS_CLASS, state14.mobile && state14.kind === "home");
+    cl2.toggle(MOBILE_CLASS, state15.mobile);
+    cl2.toggle(PILLS_CLASS, state15.mobile && state15.kind === "home");
   }
   function render8() {
-    const seq3 = ++state14.seq;
-    if (state14.menus) state14.menus.destroy();
-    state14.menus = null;
+    const seq3 = ++state15.seq;
+    if (state15.menus) state15.menus.destroy();
+    state15.menus = null;
     closeProfile2();
     closeProfileSheet({ restoreFocus: false });
-    state14.mobile = isMobile() && isNarrow();
-    state14.kind = null;
-    const parts = state14.mobile ? buildMobile(state14.route) : build6();
-    state14.el.className = `lfx-prime-header${state14.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state14.kind}` : ""}`;
+    state15.mobile = isMobile() && isNarrow();
+    state15.kind = null;
+    const parts = state15.mobile ? buildMobile(state15.route) : build6();
+    state15.el.className = `lfx-prime-header${state15.mobile ? ` lfx-prime-header--mobile lfx-prime-header--${state15.kind}` : ""}`;
     syncHtmlClasses();
     applyScroll();
     renderNav2();
@@ -13165,55 +13519,55 @@
       return isTheme("prime") && isModern() && !isTv() && isReady() && !EXCLUDED9.test(route.path);
     },
     mount(route) {
-      state14.route = route;
-      state14.el = mountPoint(ID13, { tag: "header", className: "lfx-prime-header" });
+      state15.route = route;
+      state15.el = mountPoint(ID13, { tag: "header", className: "lfx-prime-header" });
       document.documentElement.classList.add(HTML_CLASS);
       window.addEventListener("scroll", onScroll4, { passive: true });
-      state14.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
+      state15.cleanups.push(() => window.removeEventListener("scroll", onScroll4));
       render8();
     },
     update(route) {
-      const changed = !state14.route || state14.route.hash !== route.hash;
-      state14.route = route;
-      if (!state14.el) return;
+      const changed = !state15.route || state15.route.hash !== route.hash;
+      state15.route = route;
+      if (!state15.el) return;
       const mobileNow = isMobile() && isNarrow();
-      if (mobileNow !== state14.mobile || mobileNow && mobileKind(route) !== state14.kind) {
+      if (mobileNow !== state15.mobile || mobileNow && mobileKind(route) !== state15.kind) {
         closePrimeSearch({ restoreFocus: false });
         render8();
         return;
       }
-      if (changed && state14.menus) state14.menus.close();
-      if (state14.mobile) {
+      if (changed && state15.menus) state15.menus.close();
+      if (state15.mobile) {
         refreshTitle();
         if (changed) startTitlePoll();
       }
       applyActive7();
     },
     unmount() {
-      state14.seq++;
+      state15.seq++;
       stopTitlePoll();
-      for (const fn of state14.cleanups.splice(0)) fn();
-      if (state14.raf) cancelAnimationFrame(state14.raf);
-      state14.raf = 0;
-      if (state14.menus) state14.menus.destroy();
-      state14.menus = null;
+      for (const fn of state15.cleanups.splice(0)) fn();
+      if (state15.raf) cancelAnimationFrame(state15.raf);
+      state15.raf = 0;
+      if (state15.menus) state15.menus.destroy();
+      state15.menus = null;
       closeProfile2();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
       unmountPoint(ID13);
       document.documentElement.classList.remove(HTML_CLASS, MOBILE_CLASS, PILLS_CLASS);
-      state14.el = null;
-      state14.libs = [];
-      state14.mobile = false;
-      state14.kind = null;
-      state14.profileBusy = false;
+      state15.el = null;
+      state15.libs = [];
+      state15.mobile = false;
+      state15.kind = null;
+      state15.profileBusy = false;
     }
   };
 
   // src/js/features/prime/footer.js
-  function buildMoreButton(onClick) {
+  function buildMoreButton(onClick2) {
     const btn3 = h("button", { type: "button", class: "lfx-prime-more" }, "Mehr");
-    btn3.addEventListener("click", () => onClick(btn3));
+    btn3.addEventListener("click", () => onClick2(btn3));
     return btn3;
   }
   function buildFooter() {
@@ -13487,7 +13841,7 @@
       muteBtn.setAttribute("aria-label", video2.muted ? "Ton einschalten" : "Ton ausschalten");
     }
     function startTrailer(item, myGen) {
-      if (mobile || reducedMotion2() || isDataSaver() || disposed || myGen !== gen8) return;
+      if (mobile || reducedMotion2() || isDataSaver("trailer") || disposed || myGen !== gen8) return;
       preview = createMutedPreview(media, item, {
         delay: TRAILER_DELAY_MS,
         startAt: 4,
@@ -13519,14 +13873,14 @@
       const btn3 = h("button", { type: "button", class: "lfx-prime-hero__play" }, [svg8(ICON_PLAY4), label]);
       const bar = h("span", { class: "lfx-prime-hero__bar" });
       const progress = h("span", { class: "lfx-prime-hero__progress", hidden: true }, [bar]);
-      const paint = (state21) => {
+      const paint = (state22) => {
         label.replaceChildren(...[
-          h("span", { class: "lfx-prime-hero__label1" }, state21.line1),
-          state21.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state21.line2) : null
+          h("span", { class: "lfx-prime-hero__label1" }, state22.line1),
+          state22.line2 ? h("span", { class: "lfx-prime-hero__label2" }, state22.line2) : null
         ].filter(Boolean));
-        btn3.classList.toggle("is-two", Boolean(state21.line2));
-        progress.hidden = !(state21.progress > 0);
-        bar.style.width = `${Math.round(state21.progress)}%`;
+        btn3.classList.toggle("is-two", Boolean(state22.line2));
+        progress.hidden = !(state22.progress > 0);
+        bar.style.width = `${Math.round(state22.progress)}%`;
       };
       paint(playLabel(item));
       if (item.Type === "Series") {
@@ -13653,9 +14007,10 @@
       scheduleRotate();
       startTrailer(item, myGen);
     }
-    function onSaver(active5) {
-      if (disposed || !hero || !active5) return;
-      stopTrailer();
+    function onSaver() {
+      if (disposed || !hero) return;
+      if (isDataSaver("trailer")) stopTrailer();
+      if (!isDataSaver("hero")) return;
       const cur3 = pool[index];
       pool = saverPool(pool, cur3 && cur3.Id);
       index = Math.max(0, cur3 ? pool.indexOf(cur3) : 0);
@@ -13787,10 +14142,11 @@
         slot.hidden = true;
         return;
       }
-      pool = isDataSaver() ? saverPool(items) : items;
+      pool = isDataSaver("hero") ? saverPool(items) : items;
       putItems(pool);
       build11();
       cleanupFns.push(onDataSaverChange(onSaver));
+      cleanupFns.push(onDataSaverPartsChange(onSaver));
       slot.hidden = false;
       slot.classList.remove("is-loading");
       show3(0, true);
@@ -14016,7 +14372,7 @@
           observer2.unobserve(en.target);
           loadRow(en.target, p.def, p.kind);
         }
-      }, { rootMargin: isDataSaver() ? "100px 0px" : "600px 0px" });
+      }, { rootMargin: isDataSaver("lazy") ? "100px 0px" : "600px 0px" });
     }
     return {
       add(defs) {
@@ -14216,12 +14572,12 @@
     if (extra) parts.push(h("span", null, extra));
     return h("div", { class: "lfx-prime-meta" }, parts);
   }
-  function roundButton3(mod, label, icon5, onClick) {
+  function roundButton3(mod, label, icon5, onClick2) {
     const b = h("button", { type: "button", class: `lfx-prime-hc__round lfx-prime-hc__round--${mod}`, title: label, "aria-label": label });
     if (icon5) b.append(icon5);
     b.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClick(b);
+      onClick2(b);
     });
     return b;
   }
@@ -14235,12 +14591,12 @@
     const logo = !popup ? logoImage(item, { maxWidth: 400 }) : null;
     const label = h("span", { class: "lfx-prime-hc__label" });
     const play2 = h("button", { type: "button", class: "lfx-prime-hc__play" }, [svgIcon(ICON_PLAY4), label]);
-    const paintPlay2 = (state21) => {
+    const paintPlay2 = (state22) => {
       label.replaceChildren(...[
-        h("span", null, state21.line1),
-        state21.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state21.line2) : null
+        h("span", null, state22.line1),
+        state22.line2 ? h("span", { class: "lfx-prime-hc__label2" }, state22.line2) : null
       ].filter(Boolean));
-      play2.classList.toggle("is-two", Boolean(state21.line2));
+      play2.classList.toggle("is-two", Boolean(state22.line2));
     };
     paintPlay2(playLabel(item));
     if (item.Type === "Series") {
@@ -14493,7 +14849,7 @@
         window.scrollBy({ top: dy, behavior: reducedMotion3() ? "auto" : "smooth" });
       }
     }, 340));
-    if (reducedMotion3() || isDataSaver()) return;
+    if (reducedMotion3() || isDataSaver("trailer")) return;
     loadDetail(item.Id).then((detail) => {
       if (active4 !== a || !detail) return;
       a.preview = createMutedPreview(mediaEl, detail, {
@@ -14733,7 +15089,7 @@
     el4.innerHTML = markup;
     return el4;
   }
-  function circleButton2({ label, icon: icon5, mod = "", onClick, hidden = false }) {
+  function circleButton2({ label, icon: icon5, mod = "", onClick: onClick2, hidden = false }) {
     const b = h("button", {
       type: "button",
       class: `lfx-pt__circle${mod ? ` lfx-pt__circle--${mod}` : ""}`,
@@ -14742,10 +15098,10 @@
       hidden: hidden || null
     });
     b.append(iconEl2(icon5));
-    if (onClick) {
+    if (onClick2) {
       b.addEventListener("click", (e) => {
         e.stopPropagation();
-        onClick(b, e);
+        onClick2(b, e);
       });
     }
     return b;
@@ -15258,7 +15614,7 @@
       if (s.dead || !src) return;
       s.trailerSrc = src;
       s.trailerBtn.hidden = false;
-      if (reducedMotion4() || isMobile() || isDataSaver()) return;
+      if (reducedMotion4() || isMobile() || isDataSaver("trailer")) return;
       const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS2);
       s.cleanups.push(() => clearTimeout(t));
     }).catch(() => {
@@ -15380,14 +15736,14 @@
     if (key === "list") return "list";
     return null;
   }
-  var state15 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
+  var state16 = { el: null, route: null, observer: null, bodyObserver: null, raf: 0, cleanups: [] };
   function scheduleApply() {
-    if (state15.raf) return;
+    if (state16.raf) return;
     const run = () => {
-      state15.raf = 0;
+      state16.raf = 0;
       applyState();
     };
-    state15.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
+    state16.raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame(run) : setTimeout(run, 0);
   }
   function inputFocused() {
     const a = document.activeElement;
@@ -15401,12 +15757,12 @@
     return inputFocused();
   }
   function applyState() {
-    const el4 = state15.el;
+    const el4 = state16.el;
     if (!el4) return;
     const hide2 = shouldHide();
     if (el4.classList.contains("is-hidden") !== hide2) el4.classList.toggle("is-hidden", hide2);
     el4.toggleAttribute("inert", hide2);
-    const active5 = state15.route ? activeTab2(state15.route, isPrimeSearchOpen()) : null;
+    const active5 = state16.route ? activeTab2(state16.route, isPrimeSearchOpen()) : null;
     for (const t of el4.querySelectorAll("[data-tab]")) {
       const on = t.dataset.tab === active5;
       t.classList.toggle("is-active", on);
@@ -15441,8 +15797,8 @@
       else openPrimeSearch({ returnFocus: search });
       applyState();
     });
-    state15.el.replaceChildren(home, list, search);
-    state15.el.setAttribute("aria-label", "Hauptnavigation");
+    state16.el.replaceChildren(home, list, search);
+    state16.el.setAttribute("aria-label", "Hauptnavigation");
   }
   var tabbar_default2 = {
     name: "prime-tabbar",
@@ -15450,48 +15806,48 @@
       return isTheme("prime") && isModern() && !isTv() && isMobile() && isNarrow() && isReady() && !EXCLUDED10.test(route.path);
     },
     mount(route) {
-      state15.route = route;
-      state15.el = mountPoint(ID14, { tag: "nav", className: "lfx-prime-tabbar" });
+      state16.route = route;
+      state16.el = mountPoint(ID14, { tag: "nav", className: "lfx-prime-tabbar" });
       build7();
       document.documentElement.classList.add(HTML_CLASS2);
       if (typeof MutationObserver === "function") {
-        state15.observer = new MutationObserver(applyState);
-        state15.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        state15.observer.observe(document.body, { childList: true });
-        state15.bodyObserver = new MutationObserver((records) => {
-          if (state15.el && records.every((r) => state15.el.contains(r.target))) return;
+        state16.observer = new MutationObserver(applyState);
+        state16.observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        state16.observer.observe(document.body, { childList: true });
+        state16.bodyObserver = new MutationObserver((records) => {
+          if (state16.el && records.every((r) => state16.el.contains(r.target))) return;
           scheduleApply();
         });
-        state15.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
+        state16.bodyObserver.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "aria-hidden", "hidden", "open"] });
       }
       const onFocus = () => applyState();
       document.addEventListener("focusin", onFocus);
       document.addEventListener("focusout", onFocus);
-      state15.cleanups.push(() => {
+      state16.cleanups.push(() => {
         document.removeEventListener("focusin", onFocus);
         document.removeEventListener("focusout", onFocus);
       });
       applyState();
     },
     update(route) {
-      state15.route = route;
+      state16.route = route;
       applyState();
     },
     unmount() {
-      if (state15.observer) state15.observer.disconnect();
-      state15.observer = null;
-      if (state15.bodyObserver) state15.bodyObserver.disconnect();
-      state15.bodyObserver = null;
-      if (state15.raf) {
-        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state15.raf);
-        clearTimeout(state15.raf);
-        state15.raf = 0;
+      if (state16.observer) state16.observer.disconnect();
+      state16.observer = null;
+      if (state16.bodyObserver) state16.bodyObserver.disconnect();
+      state16.bodyObserver = null;
+      if (state16.raf) {
+        if (typeof cancelAnimationFrame === "function") cancelAnimationFrame(state16.raf);
+        clearTimeout(state16.raf);
+        state16.raf = 0;
       }
-      for (const fn of state15.cleanups.splice(0)) fn();
+      for (const fn of state16.cleanups.splice(0)) fn();
       unmountPoint(ID14);
       document.documentElement.classList.remove(HTML_CLASS2);
-      state15.el = null;
-      state15.route = null;
+      state16.el = null;
+      state16.route = null;
     }
   };
 
@@ -15542,7 +15898,7 @@
 
   // src/js/features/retro/header-nav.js
   var EXCLUDED11 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
-  var LIST_HREF2 = "#/home?tab=1";
+  var LIST_HREF2 = myListHref();
   var NEW_HREF = "#/home?lfx=new";
   function isPhone2() {
     return window.innerWidth < 800;
@@ -15564,6 +15920,8 @@
     const { kind: kind2, lib } = parseLfxRoute(route);
     if (kind2 === "new") return "new";
     if (kind2 === "search") return "search";
+    if (kind2 === "mylist") return "list";
+    if (kind2 === "tv") return "tv";
     if ((kind2 === "hub" || kind2 === "browse") && lib) return `lib:${lib}`;
     if (kind2 || route.params.get("lfx")) return null;
     return route.params.get("tab") === "1" ? "list" : "home";
@@ -15621,6 +15979,24 @@
     sound: { icon: "sound", label: "Ton" },
     crt: { icon: "crt", label: "CRT-Effekt" }
   };
+  function createTvButton(className = "") {
+    const el4 = h("a", {
+      class: `lfx-retro-switch lfx-retro-tvbtn${className ? ` ${className}` : ""}`,
+      href: tvModeHref,
+      "aria-label": "TV-Modus",
+      title: "TV-Modus",
+      dataset: { key: "tv" }
+    });
+    el4.innerHTML = ICON_TVMODE;
+    el4.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("lfx:tvmode-intent"));
+      emitFx("nav");
+    });
+    return el4;
+  }
+  function createDsButton(className = "") {
+    return createDataSaverButton({ className: `lfx-retro-dsbtn${className ? ` ${className}` : ""}` });
+  }
   function createToggle(pref) {
     const cfg = TOGGLES[pref];
     const el4 = h("button", {
@@ -15650,8 +16026,9 @@
   var HTML_CLASS3 = "lfx-retro-header-on";
   var SCROLL_THRESHOLD3 = 10;
   var HOVER_GAP_MS = 140;
-  var state16 = {
+  var state17 = {
     el: null,
+    ds: null,
     route: null,
     libs: [],
     seq: 0,
@@ -15661,9 +16038,9 @@
     cleanups: []
   };
   function applyActive8() {
-    if (!state16.el || !state16.route) return;
-    const key = activeKey4(state16.route);
-    for (const el4 of state16.el.querySelectorAll("[data-key]")) {
+    if (!state17.el || !state17.route) return;
+    const key = activeKey4(state17.route);
+    for (const el4 of state17.el.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
@@ -15671,14 +16048,17 @@
     }
   }
   function renderNav3() {
-    const nav = state16.el && state16.el.querySelector(".lfx-retro-header__nav");
+    const nav = state17.el && state17.el.querySelector(".lfx-retro-header__nav");
     if (!nav) return;
-    nav.replaceChildren(...navItems4(state16.libs).map((it) => h("a", {
+    nav.replaceChildren(...navItems4(state17.libs).map((it) => h("a", {
       class: "lfx-retro-header__link",
       href: it.href,
       dataset: { key: it.key }
     }, it.label)));
     applyActive8();
+  }
+  function closeDsPopover() {
+    if (state17.ds && state17.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
   }
   function profileIsOpen2() {
     const el4 = document.getElementById("lfx-popover");
@@ -15689,14 +16069,14 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (state16.busy) return;
-    state16.busy = true;
+    if (state17.busy) return;
+    state17.busy = true;
     try {
       const items = await profileEntries({ theme: "retro", returnFocus: btn3 });
-      if (!state16.el || !btn3.isConnected) return;
+      if (!state17.el || !btn3.isConnected) return;
       openPopover(btn3, { label: "Profil", items, align: "end", className: "lfx-retro-profile" });
     } finally {
-      state16.busy = false;
+      state17.busy = false;
     }
   }
   function build8() {
@@ -15712,9 +16092,12 @@
       "aria-haspopup": "true"
     }, [h("span", { class: "lfx-retro-header__initial", "aria-hidden": "true" }, "?")]);
     avatar.addEventListener("click", () => toggleProfile2(avatar));
-    const right = h("div", { class: "lfx-retro-header__right" }, [clock.el, sound.el, crt.el, avatar]);
-    state16.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
-    state16.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
+    const ds = createDsButton();
+    const tv = createTvButton();
+    state17.ds = ds;
+    const right = h("div", { class: "lfx-retro-header__right" }, [clock.el, ds, tv, sound.el, crt.el, avatar]);
+    state17.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
+    state17.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
     nav.addEventListener("click", (e) => {
       if (e.target.closest && e.target.closest("a")) emitFx("nav");
     });
@@ -15722,8 +16105,8 @@
       if (e.pointerType && e.pointerType !== "mouse") return;
       if (!e.target.closest || !e.target.closest("a")) return;
       const now = Date.now();
-      if (now - state16.lastHover < HOVER_GAP_MS) return;
-      state16.lastHover = now;
+      if (now - state17.lastHover < HOVER_GAP_MS) return;
+      state17.lastHover = now;
       emitFx("hover");
     });
     return { avatar };
@@ -15735,32 +16118,32 @@
     } catch {
       libs = [];
     }
-    if (seq3 !== state16.seq || !state16.el) return;
-    state16.libs = libs;
+    if (seq3 !== state17.seq || !state17.el) return;
+    state17.libs = libs;
     renderNav3();
   }
   async function loadAvatar2(seq3, avatar) {
     let chip = { name: "", imageUrl: null };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state16.seq && Boolean(state16.el) });
+      chip = await getUserChip({ retries: 20, isAlive: () => seq3 === state17.seq && Boolean(state17.el) });
     } catch {
     }
-    if (seq3 !== state16.seq || !state16.el) return;
+    if (seq3 !== state17.seq || !state17.el) return;
     avatar.replaceChildren();
     if (chip.imageUrl) avatar.append(h("img", { src: chip.imageUrl, alt: "", draggable: "false" }));
     else avatar.append(h("span", { class: "lfx-retro-header__initial", "aria-hidden": "true" }, (chip.name || "?").trim().charAt(0).toUpperCase() || "?"));
     if (chip.name) avatar.setAttribute("aria-label", `Profil: ${chip.name}`);
   }
   function applyScroll2() {
-    if (!state16.el) return;
+    if (!state17.el) return;
     const y = window.scrollY || document.documentElement.scrollTop || 0;
     const on = y > SCROLL_THRESHOLD3;
-    if (state16.el.classList.contains("is-scrolled") !== on) state16.el.classList.toggle("is-scrolled", on);
+    if (state17.el.classList.contains("is-scrolled") !== on) state17.el.classList.toggle("is-scrolled", on);
   }
   function onScroll6() {
-    if (state16.raf) return;
-    state16.raf = requestAnimationFrame(() => {
-      state16.raf = 0;
+    if (state17.raf) return;
+    state17.raf = requestAnimationFrame(() => {
+      state17.raf = 0;
       applyScroll2();
     });
   }
@@ -15770,37 +16153,40 @@
       return isTheme("retro") && isModern() && !isTv() && !isPhone2() && isReady() && !EXCLUDED11.test(route.path);
     },
     mount(route) {
-      const seq3 = ++state16.seq;
-      state16.route = route;
-      state16.el = mountPoint(ID15, { tag: "header", className: "lfx-retro-header" });
+      const seq3 = ++state17.seq;
+      state17.route = route;
+      state17.el = mountPoint(ID15, { tag: "header", className: "lfx-retro-header" });
       const { avatar } = build8();
       document.documentElement.classList.add(HTML_CLASS3);
       window.addEventListener("scroll", onScroll6, { passive: true });
-      state16.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
+      state17.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
       renderNav3();
       applyScroll2();
       loadLibs2(seq3);
       loadAvatar2(seq3, avatar);
     },
     update(route) {
-      const changed = !state16.route || state16.route.hash !== route.hash;
-      state16.route = route;
-      if (!state16.el) return;
+      const changed = !state17.route || state17.route.hash !== route.hash;
+      state17.route = route;
+      if (!state17.el) return;
       if (changed && profileIsOpen2()) closePopover();
+      if (changed) closeDsPopover();
       applyActive8();
     },
     unmount() {
-      state16.seq++;
-      for (const fn of state16.cleanups.splice(0)) fn();
-      if (state16.raf) cancelAnimationFrame(state16.raf);
-      state16.raf = 0;
+      state17.seq++;
+      for (const fn of state17.cleanups.splice(0)) fn();
+      if (state17.raf) cancelAnimationFrame(state17.raf);
+      state17.raf = 0;
       if (profileIsOpen2()) closePopover();
+      closeDsPopover();
       unmountPoint(ID15);
       document.documentElement.classList.remove(HTML_CLASS3);
-      state16.el = null;
-      state16.route = null;
-      state16.libs = [];
-      state16.busy = false;
+      state17.el = null;
+      state17.ds = null;
+      state17.route = null;
+      state17.libs = [];
+      state17.busy = false;
     }
   };
 
@@ -15828,6 +16214,7 @@
   }
   var isVideoHash2 = (hash2) => /^#!?[/]video(?:[/?]|$)/.test(String(hash2 || ""));
   var PREF_LABEL = { sound: "Sound", crt: "CRT-Effekt" };
+  var switchText = (label, on) => `${label}: ${on ? "AN" : "AUS"}`;
   function moreEntries(libs, profile2, { go: goFn, close: close2, toggle }) {
     const entries = [];
     const order = { movies: 0, tvshows: 1 };
@@ -15840,7 +16227,19 @@
       } });
     }
     for (const p of Array.isArray(profile2) ? profile2 : []) {
-      if (p.href) entries.push({ key: p.key, label: p.label, badge: p.badge, stats: p.key === "stats", onClick: () => {
+      if (p.switch && typeof p.onToggle === "function") {
+        entries.push({
+          key: p.key,
+          label: p.label,
+          sw: p,
+          onClick: (ev) => {
+            const btn3 = ev && ev.currentTarget;
+            const next = btn3 ? btn3.getAttribute("aria-pressed") !== "true" : !p.checked;
+            p.onToggle(next);
+            if (btn3) paintSwitch(btn3, p.label, next);
+          }
+        });
+      } else if (p.href) entries.push({ key: p.key, label: p.label, badge: p.badge, stats: p.key === "stats", onClick: () => {
         close2();
         goFn(p.href);
       } });
@@ -15854,43 +16253,68 @@
     }
     return entries;
   }
-  var state17 = { root: null, top: null, route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
+  var state18 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
   function paintToggle(btn3, pref) {
     const on = getPref(pref);
     btn3.dataset.pref = pref;
     btn3.setAttribute("aria-pressed", on ? "true" : "false");
     btn3.textContent = `${PREF_LABEL[pref]}: ${on ? "AN" : "AUS"}`;
   }
+  function paintSwitch(btn3, label, on) {
+    btn3.setAttribute("aria-pressed", on ? "true" : "false");
+    btn3.textContent = switchText(label, on);
+  }
   function syncSheetToggles() {
-    const c = state17.sheet;
+    const c = state18.sheet;
     if (!c || !isCurrent(c) || !c.list) return;
     for (const b of c.list.querySelectorAll("[data-pref]")) paintToggle(b, b.dataset.pref);
   }
   function applyActive9() {
-    if (!state17.root) return;
-    const sheetOpen = Boolean(state17.sheet && isCurrent(state17.sheet));
-    const key = sheetOpen ? "more" : tabKey2(state17.route);
-    for (const el4 of state17.root.querySelectorAll("[data-key]")) {
+    if (!state18.root) return;
+    const sheetOpen = Boolean(state18.sheet && isCurrent(state18.sheet));
+    const key = sheetOpen ? "more" : tabKey2(state18.route);
+    if (state18.top) {
+      const tv = state18.top.querySelector('[data-key="tv"]');
+      const on = isTvModeRoute(state18.route);
+      if (tv) {
+        tv.classList.toggle("is-active", on);
+        if (on) tv.setAttribute("aria-current", "page");
+        else tv.removeAttribute("aria-current");
+      }
+    }
+    for (const el4 of state18.root.querySelectorAll("[data-key]")) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       if (on) el4.setAttribute("aria-current", "page");
       else el4.removeAttribute("aria-current");
     }
   }
+  function releaseOffs() {
+    for (const off of state18.offs.splice(0)) {
+      try {
+        off();
+      } catch {
+      }
+    }
+  }
+  function closeDsPopover2() {
+    if (state18.ds && state18.ds.getAttribute("aria-expanded") === "true" && isPopoverOpen()) closePopover();
+  }
   function closeMore() {
-    state17.seq++;
-    const c = state17.sheet;
-    state17.sheet = null;
+    state18.seq++;
+    releaseOffs();
+    const c = state18.sheet;
+    state18.sheet = null;
     if (c && isCurrent(c)) closeChooser();
     applyActive9();
   }
   async function openMore() {
-    if (state17.sheet && isCurrent(state17.sheet)) {
+    if (state18.sheet && isCurrent(state18.sheet)) {
       closeMore();
       return;
     }
-    const seq3 = ++state17.seq;
-    const anchor = state17.moreBtn;
+    const seq3 = ++state18.seq;
+    const anchor = state18.moreBtn;
     let libs = [];
     let profile2 = [];
     try {
@@ -15901,11 +16325,12 @@
       profile2 = await profileEntries({ theme: "retro", returnFocus: anchor });
     } catch {
     }
-    if (seq3 !== state17.seq || !state17.root) return;
+    if (seq3 !== state18.seq || !state18.root) return;
     emitFx("open");
     const c = openSheet(anchor, "Mehr");
     c.sheet.classList.add("lfx-retro-sheet");
-    state17.sheet = c;
+    state18.sheet = c;
+    releaseOffs();
     const entries = moreEntries(libs, profile2, {
       go: go2,
       close: () => closeChooser(),
@@ -15921,6 +16346,17 @@
       if (!b) return;
       if (e.stats) b.classList.add("is-stats");
       if (e.pref) paintToggle(b, e.pref);
+      if (e.sw) {
+        const sw = e.sw;
+        paintSwitch(b, sw.label, Boolean(sw.checked));
+        b.dataset.sw = sw.key || "";
+        if (typeof sw.watch === "function") {
+          const off = sw.watch((on) => {
+            if (b.isConnected) paintSwitch(b, sw.label, Boolean(on));
+          });
+          if (typeof off === "function") state18.offs.push(off);
+        }
+      }
     });
     applyActive9();
   }
@@ -15935,11 +16371,11 @@
   async function fillTopbar() {
     let chip = { name: "" };
     try {
-      chip = await getUserChip({ retries: 20, isAlive: () => Boolean(state17.top) });
+      chip = await getUserChip({ retries: 20, isAlive: () => Boolean(state18.top) });
     } catch {
     }
-    if (!state17.top || !chip.name) return;
-    const who = state17.top.querySelector(".lfx-retro-topbar__user");
+    if (!state18.top || !chip.name) return;
+    const who = state18.top.querySelector(".lfx-retro-topbar__user");
     if (who) who.textContent = chip.name;
   }
   var retroTabbar = {
@@ -15948,16 +16384,20 @@
       return isTheme("retro") && isModern() && !isTv() && isPhone2() && isReady() && !EXCLUDED11.test(route.path);
     },
     mount(route) {
-      state17.seq++;
-      state17.route = route;
+      state18.seq++;
+      state18.route = route;
       const top = mountPoint(TOP_ID, { tag: "header", className: "lfx-retro-topbar" });
-      state17.clock = createClock();
+      state18.clock = createClock();
+      const ds = createDsButton("lfx-retro-topbar__ds");
       top.replaceChildren(h("div", { class: "lfx-retro-topbar__bar" }, [
         createLogo("lfx-retro-topbar__logo"),
         h("span", { class: "lfx-retro-topbar__user", "aria-hidden": "true" }),
-        state17.clock.el
+        state18.clock.el,
+        ds,
+        createTvButton("lfx-retro-topbar__tv")
       ]));
-      state17.top = top;
+      state18.ds = ds;
+      state18.top = top;
       const root7 = mountPoint(ROOT_ID15, { tag: "nav", className: "lfx-retro-tabbar" });
       root7.setAttribute("aria-label", "Hauptnavigation");
       const more = h("button", {
@@ -15972,8 +16412,8 @@
       root7.addEventListener("click", (e) => {
         if (e.target.closest && e.target.closest("a")) emitFx("nav");
       });
-      state17.root = root7;
-      state17.moreBtn = more;
+      state18.root = root7;
+      state18.moreBtn = more;
       const cl2 = document.documentElement.classList;
       const onFocusIn = (e) => {
         if (e.target && e.target.matches && e.target.matches(TEXT_INPUT2)) cl2.add(KB_CLASS2);
@@ -15985,7 +16425,7 @@
       document.addEventListener("focusout", onFocusOut);
       window.addEventListener("hashchange", onHash2);
       document.addEventListener(PREFS_EVENT, onPrefs);
-      state17.cleanups.push(() => {
+      state18.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         window.removeEventListener("hashchange", onHash2);
@@ -15998,23 +16438,28 @@
       fillTopbar();
     },
     update(route) {
-      const changed = !state17.route || state17.route.hash !== route.hash;
-      state17.route = route;
-      if (changed) closeMore();
+      const changed = !state18.route || state18.route.hash !== route.hash;
+      state18.route = route;
+      if (changed) {
+        closeMore();
+        closeDsPopover2();
+      }
       applyActive9();
     },
     unmount() {
       closeMore();
-      for (const fn of state17.cleanups.splice(0)) fn();
-      if (state17.clock) state17.clock.destroy();
-      state17.clock = null;
+      closeDsPopover2();
+      state18.ds = null;
+      for (const fn of state18.cleanups.splice(0)) fn();
+      if (state18.clock) state18.clock.destroy();
+      state18.clock = null;
       unmountPoint(ROOT_ID15);
       unmountPoint(TOP_ID);
       document.documentElement.classList.remove(ON_CLASS14, MOBILE_CLASS2);
-      state17.root = null;
-      state17.top = null;
-      state17.moreBtn = null;
-      state17.route = null;
+      state18.root = null;
+      state18.top = null;
+      state18.moreBtn = null;
+      state18.route = null;
     }
   };
   var tabbar_default3 = retroTabbar;
@@ -16932,17 +17377,17 @@
   // src/js/features/retro/title.js
   var ROOT_ID17 = "lfx-retro-title";
   var ON_CLASS16 = "lfx-retro-title-on";
-  var state18 = null;
+  var state19 = null;
   var gen5 = 0;
   var routeId2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "title" ? r.id : null;
   };
-  var stalenessOf2 = (g) => () => !state18 || state18.g !== g;
+  var stalenessOf2 = (g) => () => !state19 || state19.g !== g;
   function dispose4() {
     gen5 += 1;
-    const s = state18;
-    state18 = null;
+    const s = state19;
+    state19 = null;
     closeTrailer2();
     try {
       closePopover();
@@ -16969,12 +17414,12 @@
       h("a", { class: "lfx-retro-btn", href: "#/home" }, "Zur Startseite")
     ]);
   }
-  function btn2(mod, label, onClick) {
+  function btn2(mod, label, onClick2) {
     const b = h("button", { type: "button", class: `lfx-retro-btn lfx-rt__btn lfx-rt__btn--${mod}` }, label);
     b.addEventListener("click", (e) => {
       e.preventDefault();
       emitFx("click");
-      onClick(b);
+      onClick2(b);
     });
     return b;
   }
@@ -17008,7 +17453,7 @@
   }
   async function load4(g) {
     const stale = stalenessOf2(g);
-    const s = state18;
+    const s = state19;
     const root7 = s.root;
     let sel;
     let main;
@@ -17088,9 +17533,9 @@
       progress.hidden = !(info.progress > 0);
       if (info.progress > 0) {
         const left = remainingLabel2(info.target);
-        const pct = String(Math.round(info.progress * 10) / 10);
+        const pct2 = String(Math.round(info.progress * 10) / 10);
         const bar = h("span", { class: "lfx-rt__tapebar", role: "presentation" }, [h("span", { class: "lfx-rt__tapebar-fill" })]);
-        bar.firstChild.style.width = `${pct}%`;
+        bar.firstChild.style.width = `${pct2}%`;
         progress.append(bar, h("span", { class: "lfx-rt__tapeleft" }, left || `${Math.round(info.progress)} %`));
       }
     };
@@ -17278,10 +17723,10 @@
   function begin4(id, { keepScroll = false } = {}) {
     dispose4();
     const g = gen5;
-    state18 = { g, id, root: null, cleanups: [], cancelWait: null };
-    const s = state18;
+    state19 = { g, id, root: null, cleanups: [], cancelWait: null };
+    const s = state19;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state18 !== s) return;
+      if (state19 !== s) return;
       const root7 = h("div", { id: ROOT_ID17, class: "lfx-retro-page lfx-rt is-loading", "aria-busy": "true" }, [
         h("div", { class: "lfx-rt__boot lfx-retro-caret" }, "LADE KASSETTE")
       ]);
@@ -17290,7 +17735,7 @@
       setPageOn2(ON_CLASS16, true);
       if (!keepScroll) scrollTop2();
       load4(g).then(() => {
-        if (state18 === s) root7.removeAttribute("aria-busy");
+        if (state19 === s) root7.removeAttribute("aria-busy");
       }).catch((e) => console.error("[LenzFlix] retro-title", e));
     });
   }
@@ -17304,7 +17749,7 @@
     update(route) {
       const id = routeId2(route);
       if (!id) return;
-      if (state18 && state18.id === id && state18.root && state18.root.isConnected) return;
+      if (state19 && state19.id === id && state19.root && state19.root.isConnected) return;
       begin4(id);
     },
     unmount: dispose4
@@ -17315,15 +17760,15 @@
   var ON_CLASS17 = "lfx-retro-search-on";
   var DEBOUNCE_MS3 = 300;
   var MIN_LEN4 = 2;
-  var state19 = null;
+  var state20 = null;
   var asItems9 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var routeQ2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "search" ? r.q || "" : null;
   };
   function dispose5() {
-    const s = state19;
-    state19 = null;
+    const s = state20;
+    state20 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       clearTimeout(s.timer);
@@ -17360,7 +17805,7 @@
     }
   }
   async function renderStart(s, seq3) {
-    const stale = () => state19 !== s || s.seq !== seq3;
+    const stale = () => state20 !== s || s.seq !== seq3;
     s.results.replaceChildren(h("p", { class: "lfx-rs__hint lfx-retro-caret" }, "BEREIT"));
     s.count.textContent = "";
     const [lib, genres, colls, latest] = await Promise.all([
@@ -17408,7 +17853,7 @@
     s.abort = ctl;
     s.root.setAttribute("aria-busy", "true");
     s.count.textContent = "SUCHE L\xC4UFT\u2026";
-    const stale = () => state19 !== s || s.seq !== seq3;
+    const stale = () => state20 !== s || s.seq !== seq3;
     try {
       const res = await searchItems(term, { signal: ctl.signal });
       if (stale()) return;
@@ -17550,9 +17995,9 @@
       syncUi: () => {
       }
     };
-    state19 = s;
+    state20 = s;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state19 === s) build9(tab2, s, q);
+      if (state20 === s) build9(tab2, s, q);
     });
   }
   var search_default2 = {
@@ -17564,17 +18009,17 @@
     update(route) {
       const q = routeQ2(route);
       if (q == null) return;
-      if (!state19 || !state19.root || !state19.root.isConnected) {
+      if (!state20 || !state20.root || !state20.root.isConnected) {
         begin5(q);
         return;
       }
-      if (q.trim() !== (state19.term || "")) {
-        state19.input.value = q;
-        clearTimeout(state19.timer);
-        runSearch2(state19, q.trim());
+      if (q.trim() !== (state20.term || "")) {
+        state20.input.value = q;
+        clearTimeout(state20.timer);
+        runSearch2(state20, q.trim());
       }
       try {
-        state19.input.focus({ preventScroll: true });
+        state20.input.focus({ preventScroll: true });
       } catch {
       }
     },
@@ -17591,7 +18036,7 @@
     date: { label: "DATUM", by: "DateCreated", order: "Descending" },
     rating: { label: "WERTUNG", by: "CommunityRating,SortName", order: "Descending" }
   };
-  var state20 = null;
+  var state21 = null;
   var routeOf2 = (route) => {
     const r = parseLfxRoute(route);
     return r.kind === "browse" && r.lib ? { lib: r.lib, genre: r.genre } : null;
@@ -17616,8 +18061,8 @@
     }
   }
   function dispose6() {
-    const s = state20;
-    state20 = null;
+    const s = state21;
+    state21 = null;
     if (s) {
       if (s.cancelWait) s.cancelWait();
       for (const fn of s.cleanups.splice(0)) {
@@ -17687,12 +18132,12 @@
     loadMore2(s);
   }
   async function loadMore2(s) {
-    if (state20 !== s || s.loading || s.done) return;
+    if (state21 !== s || s.loading || s.done) return;
     const seq3 = s.seq;
     s.loading = true;
     s.root.setAttribute("aria-busy", "true");
     paintHead(s);
-    const stale = () => state20 !== s || s.seq !== seq3;
+    const stale = () => state21 !== s || s.seq !== seq3;
     const sort = SORTS2[s.sort] || SORTS2.name;
     try {
       const res = await getItems({
@@ -17742,7 +18187,7 @@
     paintHead(s);
   }
   async function build10(tab2, s) {
-    const stale = () => state20 !== s;
+    const stale = () => state21 !== s;
     let lib = null;
     try {
       lib = (await getLibraries()).find((l) => l.id === s.libId) || null;
@@ -17753,11 +18198,11 @@
     s.libName = lib ? lib.name : "Bibliothek";
     const path = h("h1", { class: "lfx-rb__path lfx-retro-glow--strong" });
     const count = h("p", { class: "lfx-rb__count", "aria-live": "polite" });
-    const optBtn = (attrs, label, onClick) => {
+    const optBtn = (attrs, label, onClick2) => {
       const b = h("button", { type: "button", class: "lfx-rb__opt", ...attrs }, label);
       b.addEventListener("click", () => {
         emitFx("click");
-        onClick(b);
+        onClick2(b);
       });
       return b;
     };
@@ -17866,9 +18311,9 @@
       cancelWait: null,
       root: null
     };
-    state20 = s;
+    state21 = s;
     s.cancelWait = whenHomeTab2((tab2) => {
-      if (state20 === s) build10(tab2, s);
+      if (state21 === s) build10(tab2, s);
     });
   }
   var browse_default2 = {
@@ -17881,15 +18326,15 @@
     update(route) {
       const r = routeOf2(route);
       if (!r) return;
-      if (!state20 || state20.libId !== r.lib || !state20.root || !state20.root.isConnected) {
+      if (!state21 || state21.libId !== r.lib || !state21.root || !state21.root.isConnected) {
         begin6(r);
         return;
       }
-      if ((r.genre || null) !== state20.genreId) {
-        state20.genreId = r.genre || null;
-        const chip = state20.genres.querySelector(`.lfx-rb__genre[data-genre="${state20.genreId || ""}"]`);
-        state20.genreName = chip && state20.genreId ? chip.textContent : null;
-        reload2(state20);
+      if ((r.genre || null) !== state21.genreId) {
+        state21.genreId = r.genre || null;
+        const chip = state21.genres.querySelector(`.lfx-rb__genre[data-genre="${state21.genreId || ""}"]`);
+        state21.genreName = chip && state21.genreId ? chip.textContent : null;
+        reload2(state21);
       }
     },
     unmount: dispose6
@@ -18581,9 +19026,9 @@
     const addr = Math.floor(rnd() * 65535).toString(16).padStart(4, "0").toUpperCase();
     return `0x${addr}  ${part(8)}`;
   }
-  function progressBar(pct, width = 24) {
-    const full = Math.round(Math.max(0, Math.min(100, pct)) / 100 * width);
-    return `[${"#".repeat(full)}${".".repeat(width - full)}] ${String(Math.round(pct)).padStart(3, " ")}%`;
+  function progressBar(pct2, width = 24) {
+    const full = Math.round(Math.max(0, Math.min(100, pct2)) / 100 * width);
+    return `[${"#".repeat(full)}${".".repeat(width - full)}] ${String(Math.round(pct2)).padStart(3, " ")}%`;
   }
   async function execute(line, ctx2) {
     const p = parseCommand(line);
@@ -18768,8 +19213,8 @@
       if (!await ctx2.sleep(60)) return;
     }
     const upd = ctx2.print(progressBar(0));
-    for (let pct = 0; pct <= 100; pct += 10) {
-      if (typeof upd === "function") upd(progressBar(pct));
+    for (let pct2 = 0; pct2 <= 100; pct2 += 10) {
+      if (typeof upd === "function") upd(progressBar(pct2));
       if (!await ctx2.sleep(110)) return;
     }
     for (let i = 0; i < 8; i++) {
@@ -19250,7 +19695,7 @@
     const taps = createTapCounter({ gap: 400 });
     const html2 = document.documentElement;
     S = { timers, crt, sound, reduced, boot: null, overdriveTimer: 0, pressTimer: 0, pressX: 0, pressY: 0, suppressClickUntil: 0, listeners: [] };
-    const listen = (target, type, fn, opts) => {
+    const listen2 = (target, type, fn, opts) => {
       target.addEventListener(type, fn, opts);
       S.listeners.push(() => target.removeEventListener(type, fn, opts));
     };
@@ -19338,7 +19783,7 @@
       titleHref
     });
     Object.assign(S, { terminal, screensaver, glitch, endOverdrive });
-    listen(document, "keydown", (e) => {
+    listen2(document, "keydown", (e) => {
       if (!S || e.ctrlKey || e.metaKey || e.altKey) return;
       if (isEditable(e.target) || S.boot || terminal.isOpen() || isDialogOpen()) return;
       if (e.code === "Backquote" && !e.repeat) {
@@ -19355,7 +19800,7 @@
         S.pressTimer = 0;
       }
     };
-    listen(document, "pointerdown", (e) => {
+    listen2(document, "pointerdown", (e) => {
       if (e.button > 0) return;
       const logo = logoOf(e);
       if (!logo) return;
@@ -19376,33 +19821,33 @@
         terminal.open();
       }, LONG_PRESS_MS2);
     }, true);
-    listen(document, "pointermove", (e) => {
+    listen2(document, "pointermove", (e) => {
       if (S.pressTimer && Math.abs(e.clientX - S.pressX) + Math.abs(e.clientY - S.pressY) > 12) cancelPress2();
     }, { capture: true, passive: true });
-    for (const type of ["pointerup", "pointercancel"]) listen(document, type, cancelPress2, true);
-    listen(document, "click", (e) => {
+    for (const type of ["pointerup", "pointercancel"]) listen2(document, type, cancelPress2, true);
+    listen2(document, "click", (e) => {
       if (!logoOf(e)) return;
       if (Date.now() < S.suppressClickUntil || taps.count >= 2) {
         e.preventDefault();
         e.stopPropagation();
       }
     }, true);
-    listen(document, "contextmenu", (e) => {
+    listen2(document, "contextmenu", (e) => {
       if (logoOf(e) && (S.pressTimer || Date.now() < S.suppressClickUntil)) e.preventDefault();
     }, true);
     const gesture = () => {
       if (S && getPref("sound") && !sound.isRunning()) sound.unlock();
     };
-    for (const type of ["pointerdown", "keydown", "click", "touchend"]) listen(document, type, gesture, { capture: true, passive: true });
-    listen(document, FX_EVENT, (e) => {
+    for (const type of ["pointerdown", "keydown", "click", "touchend"]) listen2(document, type, gesture, { capture: true, passive: true });
+    listen2(document, FX_EVENT, (e) => {
       const name = e.detail && e.detail.name;
       if (name) sound.play(name === "hover" ? "blip" : name);
     });
-    listen(window, "hashchange", () => sound.play("nav"));
-    listen(document, "visibilitychange", () => {
+    listen2(window, "hashchange", () => sound.play("nav"));
+    listen2(document, "visibilitychange", () => {
       if (document.hidden) sound.suspend();
     });
-    listen(document, PREFS_EVENT, (e) => {
+    listen2(document, PREFS_EVENT, (e) => {
       const d = e.detail || {};
       if (d.name === "crt") crt.sync(d.value);
       else if (d.name === "sound") {
@@ -19817,9 +20262,9 @@
       return null;
     }
   }
-  function saveState(state21) {
-    if (!state21 || typeof state21 !== "object") return;
-    write2("sessionStorage", SESSION_STATE, JSON.stringify(state21));
+  function saveState(state22) {
+    if (!state22 || typeof state22 !== "object") return;
+    write2("sessionStorage", SESSION_STATE, JSON.stringify(state22));
   }
 
   // src/js/features/store/cinema-bridge.js
@@ -20010,12 +20455,12 @@
     function seekTo(s) {
       try {
         const v = cur3();
-        const slider = osd("input.osdPositionSlider");
+        const slider2 = osd("input.osdPositionSlider");
         const d = v ? v.duration : NaN;
-        if (slider && Number.isFinite(d) && d > 0) {
-          const pct = Math.max(0, Math.min(100, Number(s) / d * 100));
-          slider.value = String(pct);
-          slider.dispatchEvent(new win.Event("change", { bubbles: true }));
+        if (slider2 && Number.isFinite(d) && d > 0) {
+          const pct2 = Math.max(0, Math.min(100, Number(s) / d * 100));
+          slider2.value = String(pct2);
+          slider2.dispatchEvent(new win.Event("change", { bubbles: true }));
         } else if (v && Number.isFinite(Number(s))) {
           v.currentTime = Math.max(0, Number(s));
         }
@@ -20033,11 +20478,11 @@
       try {
         const v = cur3();
         if (v && v.muted && f > levelOf(v)) click(".buttonMute");
-        const slider = osd("input.osdVolumeSlider");
-        if (slider) {
-          slider.value = String(Math.round(f * 100));
-          slider.dispatchEvent(new win.Event("input", { bubbles: true }));
-          slider.dispatchEvent(new win.Event("change", { bubbles: true }));
+        const slider2 = osd("input.osdVolumeSlider");
+        if (slider2) {
+          slider2.value = String(Math.round(f * 100));
+          slider2.dispatchEvent(new win.Event("input", { bubbles: true }));
+          slider2.dispatchEvent(new win.Event("change", { bubbles: true }));
         } else if (v) {
           v.volume = f ** 3;
         }
@@ -20997,9 +21442,9 @@
     clearTimeout(fadeTimer2);
     ui3.loading.remove();
     ui3.root.querySelector(".lfx-live-fallback")?.remove();
-    const btn3 = (text, onClick, primary = false) => {
+    const btn3 = (text, onClick2, primary = false) => {
       const b = h("button", { type: "button", class: `lfx-live-fallback__btn${primary ? " lfx-live-fallback__btn--primary" : ""}` }, text);
-      b.addEventListener("click", onClick);
+      b.addEventListener("click", onClick2);
       return b;
     };
     const actions = [];

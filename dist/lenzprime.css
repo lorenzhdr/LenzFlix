@@ -223,6 +223,27 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv):not(.lfx-datasaver) #lfx-prime-heade
   display: none;
 }
 
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-dsbtn {
+  color: var(--lfx-red);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-dsbtn[aria-expanded="true"] {
+  background: var(--lfx-pill-active);
+  color: var(--lfx-red-hover);
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-dsbtn:focus-visible {
+  outline: 2px solid var(--lfx-red);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-dsbtn:hover {
+    background: var(--lfx-pill-active);
+    color: var(--lfx-red-hover);
+  }
+}
+
 html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-header__avatar {
   background: var(--lfx-prime-chip);
   width: 34px;

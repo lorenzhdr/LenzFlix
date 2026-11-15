@@ -307,16 +307,16 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv
 
 html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds {
   box-sizing: border-box;
-  background: var(--lfx-plus-circle);
-  color: rgba(255, 255, 255, .7);
+  width: 36px;
+  height: 36px;
+  color: var(--lfx-red);
   cursor: pointer;
+  background: none;
   border: 0;
   border-radius: 50%;
   flex: none;
   justify-content: center;
   align-items: center;
-  width: 36px;
-  height: 36px;
   margin: 0 10px 0 auto;
   padding: 0;
   transition: background-color .2s ease-in-out, color .2s ease-in-out;
@@ -324,6 +324,7 @@ html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-p
 }
 
 html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds svg {
+  fill: currentColor;
   width: 20px;
   height: 20px;
 }
@@ -333,8 +334,13 @@ html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-p
 }
 
 html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds[aria-expanded="true"] {
-  color: #fff;
-  background: #3a3a42;
+  color: var(--lfx-red-hover);
+  background: rgba(255, 255, 255, .1);
+}
+
+html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds:focus-visible {
+  outline: 2px solid var(--lfx-red);
+  outline-offset: 3px;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__tv.is-active, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__search.is-active {
@@ -353,6 +359,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header button:focus-visible
 }
 
 @media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-header .lfx-plus-header__ds:hover {
+    color: var(--lfx-red-hover);
+    background: rgba(255, 255, 255, .1);
+  }
+
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-header .lfx-plus-header__item:hover {
     color: #fff;
   }
@@ -3236,24 +3247,34 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
 
   html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds {
     box-sizing: border-box;
-    color: #fff;
-    background: rgba(16, 19, 31, .55);
+    width: 44px;
+    height: 44px;
+    color: var(--lfx-red);
+    background: none;
     border: 0;
     border-radius: 50%;
     flex: none;
     align-items: center;
     justify-items: center;
-    width: 44px;
-    height: 44px;
     margin: 0 8px 0 auto;
     padding: 0;
     display: grid;
   }
 
   html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds svg {
+    fill: currentColor;
     width: 24px;
     height: 24px;
     display: block;
+  }
+
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds[aria-expanded="true"] {
+    background: rgba(255, 255, 255, .1);
+  }
+
+  html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds:focus-visible {
+    outline: 2px solid var(--lfx-red);
+    outline-offset: 2px;
   }
 
   html.lfx-js.lfx-theme-plus.lfx-datasaver:not(.layout-tv) #lfx-plus-mhead .lfx-plus-mhead__ds + .lfx-plus-mhead__tv {

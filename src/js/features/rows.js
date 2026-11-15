@@ -48,8 +48,13 @@ function fill(rowEl, def, items, newSeries, eager = false) {
   return attachScroller({ track, prev, next, indicator });
 }
 
-/** Rendert die Zeilen in den Slot. Rückgabe: Cleanup-Funktion. */
-export function render(slot) {
+/**
+ * Rendert die Zeilen in den Slot. Rückgabe: Cleanup-Funktion.
+ * ctx (alles optional, ohne Felder = Startseite): defs {build(), peek()} = eigene Zeilenliste (peek -> defs|null/undefined
+ * für die Sofort-Anzeige aus dem Cache), prefetch (false = kein Hintergrund-Vorladen), hero (Element oder Getter für das Billboard).
+ */
+export function render(slot, ctx = {}) {
+  const opts = ctx || {};
   let disposed = false;
   let observer = null;
   let prefetch = null;
@@ -135,7 +140,9 @@ export function render(slot) {
     if (!api.isReady()) { console.warn('[LenzFlix] Zeilen: keine Anmeldung'); signalReady(); return; }
     let defs;
     try {
-      defs = peekRowDefs({ deferCharts: true }) || await buildRowDefs({ deferCharts: true }); // Cache: kein Warten, Zeilen sofort
+      defs = opts.defs
+        ? ((opts.defs.peek && opts.defs.peek()) || await opts.defs.build())
+        : (peekRowDefs({ deferCharts: true }) || await buildRowDefs({ deferCharts: true })); // Cache: kein Warten, Zeilen sofort
     } catch (e) {
       console.warn('[LenzFlix] Zeilen konnten nicht aufgebaut werden', e && e.message);
       signalReady();
@@ -170,16 +177,17 @@ export function render(slot) {
           observer.unobserve(en.target);
           loadRow(en.target, def);
         }
-      }, { rootMargin: isDataSaver() ? '100px 0px' : '600px 0px' });
+      }, { rootMargin: isDataSaver('lazy') ? '100px 0px' : '600px 0px' });
       for (const el of pending.keys()) observer.observe(el);
     } else {
       for (const [el, def] of [...pending]) { pending.delete(el); loadRow(el, def); }
     }
     // Hintergrund-Vorladen der übrigen Zeilen, sobald oben alles fertig ist (Hero, erste Zeilen, Trailer).
+    if (opts.prefetch === false) return;
     prefetch = startRowPrefetch({
       slot,
       pending,
-      hero: () => document.getElementById('lfx-billboard'),
+      hero: () => (typeof opts.hero === 'function' ? opts.hero() : opts.hero) || document.getElementById('lfx-billboard'),
       load: (el, def) => { if (observer) observer.unobserve(el); return loadRow(el, def); },
     });
   })();

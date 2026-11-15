@@ -128,7 +128,7 @@ export function renderRows(slot, getDefs, peekDefs, opts = {}) {
           observer.unobserve(en.target);
           loadRow(en.target, def);
         }
-      }, { rootMargin: isDataSaver() ? '100px 0px' : '600px 0px' });
+      }, { rootMargin: isDataSaver('lazy') ? '100px 0px' : '600px 0px' });
       for (const el of pending.keys()) observer.observe(el);
     } else {
       for (const [el, def] of [...pending]) { pending.delete(el); loadRow(el, def); }

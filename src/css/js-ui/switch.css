@@ -84,6 +84,29 @@ html.lfx-js:not(.layout-tv) .lfx-dsbtn {
 html.lfx-js.lfx-datasaver:not(.layout-tv) .lfx-dsbtn svg {
   width: 24px;
   height: 24px;
+  fill: currentcolor;
+}
+
+/* Aufleuchten beim Einschalten: Kern setzt 1200 ms lang html.lfx-ds-flash (alle Designs, Symbol in Akzentfarbe) */
+@keyframes lfx-ds-flash {
+  0% { transform: scale(1); filter: none; }
+  30% { transform: scale(1.25); filter: drop-shadow(0 0 6px var(--lfx-red)) drop-shadow(0 0 14px var(--lfx-red)); }
+  100% { transform: scale(1); filter: none; }
+}
+@keyframes lfx-ds-flash-calm {
+  0%, 100% { color: var(--lfx-red); }
+  50% { color: var(--lfx-red-hover); }
+}
+html.lfx-js.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-dsbtn svg {
+  animation: lfx-ds-flash 1.2s var(--lfx-ease) 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-dsbtn svg {
+    animation: none;
+  }
+  html.lfx-js.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-dsbtn {
+    animation: lfx-ds-flash-calm 1.2s linear 1;
+  }
 }
 
 /* flix: fixiert links neben dem TV-Symbol (#lfx-tvm-btn: Gutter + 98 px), native Suche rückt 40 px weiter ab */
@@ -105,7 +128,7 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--lfx-text);
+  color: var(--lfx-red);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -120,7 +143,7 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn[aria-expanded="true"] svg 
   background-color: rgb(255 255 255 / 0.1);
 }
 html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
-  outline: 2px solid var(--lfx-text);
+  outline: 2px solid var(--lfx-red);
   outline-offset: -4px;
   border-radius: 50%;
 }

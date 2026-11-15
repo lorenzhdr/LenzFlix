@@ -5,7 +5,7 @@ import { h } from '../../core/dom.js';
 import { isMobile } from '../../core/layout.js';
 import { isPopoverOpen } from '../../core/popover.js';
 import { getTheme, onThemeChange } from '../../core/theme.js';
-import { onDataSaverChange } from '../../core/datasaver.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { ensureThemeJs, removeThemeJs } from '../../core/themejs.js';
 import { ensureAddonCss, removeAddonCss } from '../../core/addoncss.js';
 import { play } from '../../core/playback.js';
@@ -50,7 +50,12 @@ function disposeInstance() {
 function watchTheme() {
   if (!themeOff) themeOff = onThemeChange(onTheme);
   // Datensparmodus an: vorgewärmte Nachbarsitzungen sofort beenden (sonst Ablauf nach <= 40 s)
-  if (!saverOff) saverOff = onDataSaverChange((active) => { if (active && inst) { try { inst.instance.releaseWarm(); } catch { /* egal */ } } });
+  if (!saverOff) {
+    const rel = () => { if (inst && isDataSaver('tvwarm')) { try { inst.instance.releaseWarm(); } catch { /* egal */ } } };
+    const offA = onDataSaverChange(rel);
+    const offB = onDataSaverPartsChange(rel);
+    saverOff = () => { offA(); offB(); };
+  }
 }
 
 function unwatchTheme() {

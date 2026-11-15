@@ -5,12 +5,13 @@ import { isReady } from '../../core/api.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { openSheet, renderSheet, closeChooser, isCurrent } from '../../core/sheet.js';
+import { closePopover, isPopoverOpen } from '../../core/popover.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
-import { hubHref, searchHref } from '../../shared/routes.js';
+import { hubHref, searchHref, isTvModeRoute } from '../../shared/routes.js';
 import { emitFx, getPref, togglePref, PREFS_EVENT } from './prefs.js';
 import { EXCLUDED, LIST_HREF, NEW_HREF, activeKey, go, isPhone } from './header-nav.js';
-import { createClock, createLogo } from './header-ui.js';
+import { createClock, createLogo, createDsButton, createTvButton } from './header-ui.js';
 
 const ROOT_ID = 'lfx-retro-tabbar';
 const TOP_ID = 'lfx-retro-topbar';
@@ -42,8 +43,12 @@ export const isVideoHash = (hash) => /^#!?[/]video(?:[/?]|$)/.test(String(hash |
 
 const PREF_LABEL = { sound: 'Sound', crt: 'CRT-Effekt' };
 
+/** Text eines Schalter-Eintrags im Retro-Stil („Datensparmodus: AN“). */
+const switchText = (label, on) => `${label}: ${on ? 'AN' : 'AUS'}`;
+
 /**
- * Einträge des MEHR-Blatts: Bibliotheken (Filme/Serien zuerst), Profil-Einträge, Schalter Sound/CRT.
+ * Einträge des MEHR-Blatts: Bibliotheken (Filme/Serien zuerst), Profil-Einträge (inkl. Schalter-Items wie Datensparmodus,
+ * Eintrag trägt `sw` = Profil-Item), Schalter Sound/CRT.
  * go(href) navigiert, close() schließt das Blatt (vor jeder Aktion außer den Schaltern), toggle(pref) schaltet.
  */
 export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
@@ -56,7 +61,18 @@ export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
     if (href) entries.push({ key: `lib:${l.id}`, label: l.name, onClick: () => { close(); goFn(href); } });
   }
   for (const p of Array.isArray(profile) ? profile : []) {
-    if (p.href) entries.push({ key: p.key, label: p.label, badge: p.badge, stats: p.key === 'stats', onClick: () => { close(); goFn(p.href); } });
+    if (p.switch && typeof p.onToggle === 'function') {
+      // Schalter bleibt im Blatt: Text „Label: AN|AUS“, Zustand liest/schreibt openMore am Button (Klick ohne Event: Zustand aus p.checked)
+      entries.push({
+        key: p.key, label: p.label, sw: p,
+        onClick: (ev) => {
+          const btn = ev && ev.currentTarget;
+          const next = btn ? btn.getAttribute('aria-pressed') !== 'true' : !p.checked;
+          p.onToggle(next);
+          if (btn) paintSwitch(btn, p.label, next);
+        },
+      });
+    } else if (p.href) entries.push({ key: p.key, label: p.label, badge: p.badge, stats: p.key === 'stats', onClick: () => { close(); goFn(p.href); } });
     else if (typeof p.onClick === 'function') entries.push({ key: p.key, label: p.label, badge: p.badge, onClick: () => { close(); p.onClick(); } });
   }
   for (const pref of ['sound', 'crt']) {
@@ -65,13 +81,18 @@ export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
   return entries;
 }
 
-const state = { root: null, top: null, route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
+const state = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
 
 function paintToggle(btn, pref) {
   const on = getPref(pref);
   btn.dataset.pref = pref;
   btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   btn.textContent = `${PREF_LABEL[pref]}: ${on ? 'AN' : 'AUS'}`;
+}
+
+function paintSwitch(btn, label, on) {
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  btn.textContent = switchText(label, on);
 }
 
 function syncSheetToggles() {
@@ -84,6 +105,15 @@ function applyActive() {
   if (!state.root) return;
   const sheetOpen = Boolean(state.sheet && isCurrent(state.sheet));
   const key = sheetOpen ? 'more' : tabKey(state.route);
+  if (state.top) {
+    const tv = state.top.querySelector('[data-key="tv"]');
+    const on = isTvModeRoute(state.route);
+    if (tv) {
+      tv.classList.toggle('is-active', on);
+      if (on) tv.setAttribute('aria-current', 'page');
+      else tv.removeAttribute('aria-current');
+    }
+  }
   for (const el of state.root.querySelectorAll('[data-key]')) {
     const on = el.dataset.key === key;
     el.classList.toggle('is-active', on);
@@ -92,8 +122,17 @@ function applyActive() {
   }
 }
 
+function releaseOffs() {
+  for (const off of state.offs.splice(0)) { try { off(); } catch { /* egal */ } }
+}
+
+function closeDsPopover() {
+  if (state.ds && state.ds.getAttribute('aria-expanded') === 'true' && isPopoverOpen()) closePopover();
+}
+
 function closeMore() {
   state.seq++;
+  releaseOffs();
   const c = state.sheet;
   state.sheet = null;
   if (c && isCurrent(c)) closeChooser();
@@ -113,6 +152,7 @@ async function openMore() {
   const c = openSheet(anchor, 'Mehr');
   c.sheet.classList.add('lfx-retro-sheet');
   state.sheet = c;
+  releaseOffs();
   const entries = moreEntries(libs, profile, {
     go, close: () => closeChooser(), toggle: (pref) => { togglePref(pref); syncSheetToggles(); },
   });
@@ -123,6 +163,16 @@ async function openMore() {
     if (!b) return;
     if (e.stats) b.classList.add('is-stats');
     if (e.pref) paintToggle(b, e.pref);
+    if (e.sw) {
+      const sw = e.sw;
+      paintSwitch(b, sw.label, Boolean(sw.checked));
+      b.dataset.sw = sw.key || '';
+      // Zustand folgt Änderungen von außen (z. B. Kopfleisten-Symbol); Abmeldung beim Schließen des Blatts
+      if (typeof sw.watch === 'function') {
+        const off = sw.watch((on) => { if (b.isConnected) paintSwitch(b, sw.label, Boolean(on)); });
+        if (typeof off === 'function') state.offs.push(off);
+      }
+    }
   });
   applyActive();
 }
@@ -152,11 +202,15 @@ export const retroTabbar = {
     state.route = route;
     const top = mountPoint(TOP_ID, { tag: 'header', className: 'lfx-retro-topbar' });
     state.clock = createClock();
+    const ds = createDsButton('lfx-retro-topbar__ds');
     top.replaceChildren(h('div', { class: 'lfx-retro-topbar__bar' }, [
       createLogo('lfx-retro-topbar__logo'),
       h('span', { class: 'lfx-retro-topbar__user', 'aria-hidden': 'true' }),
       state.clock.el,
+      ds,
+      createTvButton('lfx-retro-topbar__tv'),
     ]));
+    state.ds = ds;
     state.top = top;
 
     const root = mountPoint(ROOT_ID, { tag: 'nav', className: 'lfx-retro-tabbar' });
@@ -194,11 +248,13 @@ export const retroTabbar = {
   update(route) {
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
-    if (changed) closeMore();
+    if (changed) { closeMore(); closeDsPopover(); }
     applyActive();
   },
   unmount() {
     closeMore();
+    closeDsPopover();
+    state.ds = null;
     for (const fn of state.cleanups.splice(0)) fn();
     if (state.clock) state.clock.destroy();
     state.clock = null;

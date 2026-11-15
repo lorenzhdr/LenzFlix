@@ -1,7 +1,7 @@
 // Startseiten-Zeilen im Hintergrund vorladen, sobald oben alles fertig ist (Hero, erste Zeilen, Trailer).
 // Gemeinsam für flix/plus/prime (nur Startseite, nie Hubs). Eine Zeile nach der anderen, von oben nach unten.
 import { netOk } from '../../core/net.js';
-import { isDataSaver, onDataSaverChange } from '../../core/datasaver.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 
 const MAX_WAIT = 15000; // spätestens dann starten, auch wenn „oben“ nicht fertig meldet
 const IMG_WAIT = 4000;
@@ -18,7 +18,7 @@ export function allowPrefetch() {
 /** Pause: Tab versteckt, Datensparmodus an, Info-Fenster offen oder TV läuft im Hintergrund-PiP (Klasse + Video, gegen hängende Klasse). */
 function paused() {
   const cl = document.documentElement.classList;
-  return document.hidden || isDataSaver() || cl.contains('lfx-modal-open')
+  return document.hidden || isDataSaver('prefetch') || cl.contains('lfx-modal-open')
     || (cl.contains('lfx-tvm-bgplay') && !!document.querySelector('#lfx-tvm-bg video'));
 }
 
@@ -130,12 +130,14 @@ export function startRowPrefetch({ slot, pending, load, hero }) {
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   }
   // Datensparmodus: an -> pausieren (laufende Zeile lädt fertig), aus -> nach RESUME_MS an derselben Stelle weiter
-  offs.push(onDataSaverChange(() => {
+  const onSaver = () => {
     const p = paused();
     wasPaused = p;
     clearTimeout(rTimer);
     if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
-  }));
+  };
+  offs.push(onDataSaverChange(onSaver));
+  offs.push(onDataSaverPartsChange(onSaver)); // Teil „prefetch“ ein-/ausgeschaltet
   later(tick, POLL);
 
   return {

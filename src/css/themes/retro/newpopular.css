@@ -7,7 +7,9 @@ html.lfx-newpopular-on.lfx-theme-retro:not(.layout-tv) #indexPage #homeTab { bac
 html.lfx-js.lfx-theme-retro:not(.layout-tv) {
   & .lfx-np {
     --np-gutter: var(--lfx-retro-gutter);
-    padding: 8px 0 96px;
+    /* Retro blendet die native Kopfzeile aus (kein AppBar-Spacer): Seite beginnt unter der festen Kopfzeile, sonst schiebt
+       sich die klebende Tab-Leiste (top = Kopfhöhe) über die erste Abschnitts-Überschrift (R2). */
+    padding: calc(var(--lfx-header-h) + 8px) 0 96px;
     color: var(--lfx-retro-amber);
     font-family: var(--lfx-retro-font-mono);
   }
@@ -48,7 +50,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
   }
 
   /* Abschnitte */
-  & .lfx-np__section { scroll-margin-top: calc(var(--lfx-header-h) + 72px); margin-top: 36px; }
+  & .lfx-np__section { scroll-margin-top: calc(var(--lfx-header-h) + 88px); margin-top: 36px; }
   & .lfx-np__heading {
     margin: 0 var(--np-gutter) 18px;
     font: 400 34px/1.1 var(--lfx-retro-font-pixel);
@@ -113,6 +115,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
 @media (max-width: 799px) {
   html.lfx-js.lfx-theme-retro:not(.layout-tv) {
     & .lfx-np { padding-top: 52px; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 36px); }
+    & .lfx-np__section { scroll-margin-top: calc(var(--lfx-header-h) + 84px); }
     & .lfx-np__tabs { top: 52px; padding-left: 14px; padding-right: 14px; }
     & .lfx-np__pill { height: 44px; }
     & .lfx-np__list,

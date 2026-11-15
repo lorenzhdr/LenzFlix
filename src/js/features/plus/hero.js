@@ -89,7 +89,7 @@ function buildSlide(item, i, info, mobile, warm, eagerN = 3) {
  */
 export function createHero(items, { info = null, interval = HERO_INTERVAL, mobile = isPhone(), warm = poolWarm } = {}) {
   const all = (items || []).filter((it) => it && it.Id);
-  const saver = isDataSaver(); // Datensparmodus: nur 5 Titel, nur das erste Bild eager (Rest lazy)
+  const saver = isDataSaver('hero'); // Datensparmodus: nur 5 Titel, nur das erste Bild eager (Rest lazy)
   const list = saver ? saverPool(all) : all;
   if (!list.length) return null;
   const n = list.length;

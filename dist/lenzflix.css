@@ -7173,6 +7173,190 @@ html.lfx-js:not(.layout-tv) .lfx-statshint--top .lfx-statshint__text {
   }
 }
 
+html.lfx-js:not(.layout-tv) .lfx-secret {
+  z-index: 100000;
+  font-family: var(--lfx-font);
+  animation: lfx-secret-in var(--lfx-dur) var(--lfx-ease-out);
+  background: rgba(0, 0, 0, .72);
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  display: flex;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__panel {
+  background: var(--lfx-surface);
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
+  color: var(--lfx-text-body);
+  border: 1px solid var(--lfx-border);
+  border-radius: var(--lfx-modal-radius);
+  box-shadow: var(--lfx-shadow-modal);
+  outline: none;
+  flex-direction: column;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__head {
+  border-bottom: 1px solid var(--lfx-border);
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__title {
+  font-size: 20px;
+  font-weight: var(--lfx-fw-row-title);
+  color: var(--lfx-text);
+  margin: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__close {
+  background: var(--lfx-icon-circle);
+  width: 40px;
+  height: 40px;
+  color: var(--lfx-text);
+  cursor: pointer;
+  border: 0;
+  border-radius: 50%;
+  font-size: 18px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__body {
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 18px 18px;
+  overflow-y: auto;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__sec {
+  border-bottom: 1px solid var(--lfx-border);
+  padding: 14px 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__sec:last-child {
+  border-bottom: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__h {
+  font-size: 15px;
+  font-weight: var(--lfx-fw-row-title);
+  color: var(--lfx-text);
+  margin: 0 0 10px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__note {
+  color: var(--lfx-text-muted);
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__slider {
+  margin-bottom: 10px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__lbl, html.lfx-js:not(.layout-tv) .lfx-secret__row {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 14px;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__val, html.lfx-js:not(.layout-tv) .lfx-secret__v {
+  color: var(--lfx-text);
+  font-variant-numeric: tabular-nums;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret input[type="range"] {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--lfx-red);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__btn {
+  border: 1px solid var(--lfx-border);
+  border-radius: var(--lfx-btn-radius);
+  background: var(--lfx-glass);
+  min-height: 40px;
+  color: var(--lfx-text);
+  font-size: var(--lfx-fs-button);
+  cursor: pointer;
+  margin-top: 10px;
+  padding: 0 16px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__btn[hidden] {
+  display: none;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__switch {
+  width: 100%;
+  min-height: 44px;
+  color: var(--lfx-text-body);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 0 4px;
+  font-size: 14px;
+  display: flex;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret__btn:hover, html.lfx-js:not(.layout-tv) .lfx-secret__close:hover {
+  background: var(--lfx-glass-hover);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret button:focus-visible {
+  outline: 2px solid var(--lfx-red);
+  outline-offset: 2px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-secret input:focus-visible {
+  outline: 2px solid var(--lfx-red);
+  outline-offset: 2px;
+}
+
+@keyframes lfx-secret-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 799px) {
+  html.lfx-js:not(.layout-tv) .lfx-secret {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-secret__panel {
+    width: 100%;
+    max-height: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js:not(.layout-tv) .lfx-secret {
+    animation: none;
+  }
+}
+
 html.lfx-js {
   --lfx-tp-radius: 18px;
   --lfx-tp-card-radius: 14px;
@@ -8408,8 +8592,50 @@ html.lfx-js:not(.layout-tv) .lfx-dsbtn {
 }
 
 html.lfx-js.lfx-datasaver:not(.layout-tv) .lfx-dsbtn svg {
+  fill: currentColor;
   width: 24px;
   height: 24px;
+}
+
+@keyframes lfx-ds-flash {
+  0% {
+    filter: none;
+    transform: scale(1);
+  }
+
+  30% {
+    filter: drop-shadow(0 0 6px var(--lfx-red)) drop-shadow(0 0 14px var(--lfx-red));
+    transform: scale(1.25);
+  }
+
+  100% {
+    filter: none;
+    transform: scale(1);
+  }
+}
+
+@keyframes lfx-ds-flash-calm {
+  0%, 100% {
+    color: var(--lfx-red);
+  }
+
+  50% {
+    color: var(--lfx-red-hover);
+  }
+}
+
+html.lfx-js.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-dsbtn svg {
+  animation: lfx-ds-flash 1.2s var(--lfx-ease) 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-dsbtn svg {
+    animation: none;
+  }
+
+  html.lfx-js.lfx-datasaver.lfx-ds-flash:not(.layout-tv) .lfx-dsbtn {
+    animation: 1.2s linear lfx-ds-flash-calm;
+  }
 }
 
 html.lfx-js.lfx-datasaver.lfx-dsbtn-on.lfx-tvbtn-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root a[href="#/search"]:not(:-webkit-any(:lang(ae), :lang(ar), :lang(arc), :lang(bcc), :lang(bqi), :lang(ckb), :lang(dv), :lang(fa), :lang(glk), :lang(he), :lang(ku), :lang(mzn), :lang(nqo), :lang(pnb), :lang(ps), :lang(sd), :lang(ug), :lang(ur), :lang(yi))) {
@@ -8435,7 +8661,7 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
   box-sizing: border-box;
   width: 40px;
   height: var(--lfx-header-h);
-  color: var(--lfx-text);
+  color: var(--lfx-red);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   background: none;
@@ -8460,7 +8686,7 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg, html.lfx-js.lfx
 }
 
 html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
-  outline: 2px solid var(--lfx-text);
+  outline: 2px solid var(--lfx-red);
   outline-offset: -4px;
   border-radius: 50%;
 }

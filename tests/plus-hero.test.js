@@ -14,8 +14,9 @@ vi.mock('../src/js/core/api.js', async () => {
 
 const ds = vi.hoisted(() => ({ on: false }));
 vi.mock('../src/js/core/datasaver.js', () => ({
-  isDataSaver: () => ds.on,
+  isDataSaver: (part) => ds.on && !(part && (ds.off || []).includes(part)),
   onDataSaverChange: () => () => {},
+  onDataSaverPartsChange: () => () => {},
 }));
 
 import * as api from '../src/js/core/api.js';
@@ -150,6 +151,15 @@ describe('createHero: Datensparmodus', () => {
     expect(hero.el.querySelectorAll('.lfx-plus-hero__slide')).toHaveLength(10);
     expect(loading(hero).slice(0, 4)).toEqual(['eager', 'eager', 'eager', 'lazy']);
     hero.destroy();
+  });
+  it('an + Teil „hero“ aus: wie AUS', () => {
+    ds.on = true;
+    ds.off = ['hero'];
+    const hero = createHero(many);
+    expect(hero.el.querySelectorAll('.lfx-plus-hero__slide')).toHaveLength(10);
+    expect(loading(hero).slice(0, 4)).toEqual(['eager', 'eager', 'eager', 'lazy']);
+    hero.destroy();
+    ds.off = [];
   });
   it('an: höchstens 5 Titel, nur das erste Bild eager', () => {
     ds.on = true;

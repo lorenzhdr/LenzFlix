@@ -2,7 +2,7 @@
 // Cache pro Benutzer und Sendetag: IndexedDB `lfx-live`/`catalog` (Schlüssel `<uid>:<Sendetag>`, ältere Einträge des Benutzers werden
 // ersetzt), ohne IndexedDB Speicher-Cache (core/cache.js). Es landen keine Tokens im Cache.
 import * as api from '../../core/api.js';
-import { cached } from '../../core/cache.js';
+import { cached, clearCache } from '../../core/cache.js';
 
 export const PAGE_SIZE = 1000;
 export const EPISODE_PAGE_SIZE = 2000;
@@ -150,6 +150,22 @@ async function idbPut(uid, key, value) {
   } finally {
     db.close();
   }
+}
+
+/** Geheimmenü: leert den Speicher- und den IndexedDB-Katalog-Cache (alle Benutzer/Sendetage). Wirft nie. */
+export async function clearCatalogCache() {
+  clearCache('live:catalog:');
+  if (!hasIdb()) return;
+  try {
+    const db = await openDb();
+    try {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+      await idbDone(tx);
+    } finally {
+      db.close();
+    }
+  } catch { /* kein Cache oder gesperrt: ignorieren */ }
 }
 
 function validRaw(x) {
