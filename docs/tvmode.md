@@ -1,9 +1,11 @@
-# TV-Modus (`lfx=tv`, flix/plus/prime) – Vertrag Hülle ↔ Engine ↔ CSS
+# TV-Modus (`lfx=tv`, flix/plus/prime/retro) – Vertrag Hülle ↔ Engine ↔ CSS
 
 Moderner TV-Modus im Stil eines IPTV-Webangebots als **eigene Vollseite `#/home?lfx=tv`** (wie „Neu und beliebt“), erreichbar über ein
 TV-Symbol in der Kopfleiste (`ICON_TVMODE` in `core/icons.js`; flix: `features/tvbtn.js`, plus/prime im eigenen Kopf). Er nutzt Sender (18, Admin-Belegung 5–16),
 deterministischen Plan und spurlosen Player von LENZ LIVE (`docs/live.md`), hat aber **keine Fernbedienung und keinen Röhren-Look**.
-Gilt nur in `flix`, `plus`, `prime` auf Modern; nie auf `html.layout-tv`, nie in `retro`, `store`, `live`.
+Gilt nur in `flix`, `plus`, `prime` und seit 1.13.0 `retro` (`TV_THEMES` in `features/tvmode/route.js`) auf Modern; nie auf `html.layout-tv`, nie in `store`, `live`.
+
+**LENZ//84 (1.13.0):** TV-Symbol in `retro/header-ui.js` und der Topbar. Der Look kommt rein per CSS aus `src/css/themes/retro/tvmode.css` (Bundle `dist/lenzretro.css`; Details-Karte: `themes/retro/modal.css`): Scanlines/Vignette bei `html.lfx-retro-tvcrt` (gesetzt von `retro/tvlook.js` nach dem CRT-Schalter), Rauschen an `.lfx-tvm__player.is-loading`, Programmnummer per `content:"P" attr(data-tvm-no)`. Einzige Engine-Änderung: `live/tvmode/player-view.js` `renderZap` setzt `data-tvm-no` (2-stellig). `retro/fx/index.js` `shouldRun` ist auf der TV-Route aus. Datensparmodus (Teil `tvwarm`) gilt wie in den anderen Designs.
 
 Status: seit 1.10.0 vollständig umgesetzt und live getestet. Namen, Klassen und Signaturen hier sind bindend; die Wellen-/Eigentümer-Angaben (A, E, F, G, H, W1–W3)
 sind Entstehungshistorie.
@@ -444,8 +446,8 @@ des neuen Players). `modal.js` bekommt keinen Haken.
 ## Routen-Nebenwirkungen
 - `lfx=tv` ist **nie** Startseite: `features/home.js`, `mobilenav.js` (flix), `plus/switcher.js`, `plus/favempty.js`, `live/home-route.js`, `plus/home.js`, `prime/home-route.js`,
   `retro/home-route.js` prüfen ohnehin auf beliebiges `lfx` und sind zuständig-frei (Test `tests/tvmode-route.test.js`). Kein Billboard, kein Switcher, kein Fav-Leerzustand.
-- **Umleitung:** `features/themeroute.js` leitet `lfx=tv` unter `retro`, `store`, `live` und `html.layout-tv` per `location.replace('#/home')` zurück (kein History-Eintrag);
-  unter `live` greift zusätzlich der Wächter `features/live/guard.js`. Unter `flix`/`plus`/`prime` gibt es keine Umleitung.
+- **Umleitung:** `features/themeroute.js` leitet `lfx=tv` unter `store`, `live` und `html.layout-tv` per `location.replace('#/home')` zurück (kein History-Eintrag; seit 1.13.0 nicht mehr unter `retro`);
+  unter `live` greift zusätzlich der Wächter `features/live/guard.js`. Unter `flix`/`plus`/`prime`/`retro` gibt es keine Umleitung.
 - Aktiv-Hervorhebung des TV-Symbols (`activeKey`/`tabKey`/`mobileTitle`) für `kind === 'tv'`: Aufgabe von W1-B/C/D (`nav.js`, `plus/header.js`, `plus/mobilehead.js`,
   `plus/tabbar.js`, `prime/header.js`, `prime/tabbar.js`, `prime/profile-sheet.js`).
 
