@@ -62,6 +62,35 @@ describe('statshint', () => {
     expect(el.style.right).toContain(`${window.innerWidth - 900 + 8}px`);
   });
 
+  function mountWithHintWidth(width) {
+    const nav = Object.assign(document.createElement('div'), { id: 'lfx-nav' });
+    const sync = document.createElement('button');
+    document.querySelector('header.MuiAppBar-root').append(nav, sync);
+    nav.getBoundingClientRect = () => ({ left: 100, right: 700, top: 0, bottom: 0, width: 600, height: 0 });
+    sync.getBoundingClientRect = () => ({ left: 900, right: 924, top: 0, bottom: 0, width: 24, height: 0 });
+    const orig = Element.prototype.getBoundingClientRect;
+    const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function rect() {
+      return this.id === 'lfx-statshint' ? { left: 0, right: width, top: 0, bottom: 0, width, height: 40 } : orig.call(this);
+    });
+    statshint.mount(home);
+    vi.advanceTimersByTime(HINT_DELAY);
+    spy.mockRestore();
+    return document.getElementById('lfx-statshint');
+  }
+
+  it('Desktop: zu wenig Platz in der Kopfleiste → Hinweis unten wie am Handy, ohne Symbole zu überdecken', () => {
+    const el = mountWithHintWidth(150);
+    expect(el.classList.contains('lfx-statshint--top')).toBe(false);
+    expect(el.style.left).toBe('');
+    expect(el.style.right).toBe('');
+  });
+
+  it('Desktop: genug Platz → Hinweis bleibt oben in der Kopfleiste', () => {
+    const el = mountWithHintWidth(400);
+    expect(el.classList.contains('lfx-statshint--top')).toBe(true);
+    expect(el.style.right).not.toBe('');
+  });
+
   it('nur einmal pro Sitzung', () => {
     statshint.mount(home);
     vi.advanceTimersByTime(HINT_DELAY + HINT_DURATION + 300);
