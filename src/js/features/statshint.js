@@ -118,6 +118,13 @@ function show() {
     });
   }
   root.style.right = limit ? `max(calc(var(--lfx-gutter) + 178px), ${Math.round(window.innerWidth - limit + 8)}px)` : '';
+  // Zu wenig Platz zwischen Navigation und Symbolen (schmale Desktop-Fenster): Hinweis wie am Handy unten zeigen statt Symbole zu überdecken
+  const avail = top ? root.getBoundingClientRect().width : 0; // 0 ohne Layout (jsdom): nichts umstellen
+  if (top && avail > 0 && avail < 260) {
+    root.classList.remove('lfx-statshint--top');
+    root.style.left = '';
+    root.style.right = '';
+  }
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
   root.replaceChildren(h('div', { class: 'lfx-statshint__box' }, [link, close]));

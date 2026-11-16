@@ -218,7 +218,7 @@ html.layout-tv .overflowSquareCard {
   width: 12.4vw;
 }
 /* Texte unter den Karten in Scroller-Reihen ausblenden. Der Fortschrittsbalken liegt im .innerCardFooter
-   (innerhalb .cardScalable, 0.3em hoch, unten am Bild); er liegt bei Fokus per z-index über dem Verlauf (::after von .cardScalable). Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
+   (innerhalb .cardScalable, 0.3em hoch, unten am Bild); er liegt bei Fokus per z-index über dem Verlauf (::after von .cardImageContainer). Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
 html.layout-tv .emby-scroller .cardBox > .cardFooter,
 html.layout-tv .emby-scroller .card:not(.personCard) .cardBox > .cardText {
   display: none;
@@ -239,19 +239,22 @@ html.layout-tv .emby-scroller .card:not(.personCard):focus .cardBox > .cardText-
   padding: 1.6em 0.6em 0.7em;
   color: #fff;
 }
-/* Der Verlauf liegt im Stapelkontext des Bildes (.cardScalable), damit der Fortschrittsbalken darüber bleibt */
-html.layout-tv .emby-scroller .card:not(.personCard):focus .cardScalable {
-  position: relative;
-}
-html.layout-tv .emby-scroller .card:not(.personCard):focus .cardScalable::after {
+/* Der Verlauf liegt im Stapelkontext des Bildes (.cardImageContainer hat contain: strict), unter dem Fortschrittsbalken (.innerCardFooter, z-index 2) */
+html.layout-tv .emby-scroller .card:not(.personCard):focus .cardImageContainer::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   height: 4em;
+  z-index: 1;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
   pointer-events: none;
+}
+/* Bibliothekskacheln ("Meine Medien"): das Bild trägt den Namen schon, daher kein zweiter Titel und kein Verlauf bei Fokus */
+html.layout-tv .emby-scroller .card[data-type="CollectionFolder"]:focus .cardBox > .cardText-first,
+html.layout-tv .emby-scroller .card[data-type="CollectionFolder"]:focus .cardImageContainer::after {
+  display: none;
 }
 html.layout-tv .emby-scroller .card:focus .innerCardFooter {
   z-index: 2;

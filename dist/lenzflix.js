@@ -11131,6 +11131,12 @@
       });
     }
     root7.style.right = limit ? `max(calc(var(--lfx-gutter) + 178px), ${Math.round(window.innerWidth - limit + 8)}px)` : "";
+    const avail = top ? root7.getBoundingClientRect().width : 0;
+    if (top && avail > 0 && avail < 260) {
+      root7.classList.remove("lfx-statshint--top");
+      root7.style.left = "";
+      root7.style.right = "";
+    }
     root7.setAttribute("role", "status");
     root7.setAttribute("aria-live", "polite");
     root7.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));

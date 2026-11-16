@@ -436,6 +436,7 @@ html:not(.layout-tv) #itemDetailPage .detailsGroupItem a:hover {
 /* ---------- Track-Auswahl + Selects (dezent dunkel, Streaming-Dropdown) ---------- */
 html:not(.layout-tv) #itemDetailPage .trackSelections {
   margin-bottom: 1em;
+  max-width: none; /* Jellyfin setzt 44em am Element: im Flex-Layout ab 1000 px quetscht das die Beschreibung daneben */
 }
 /* Breite am Inhalt statt am Flex-Element: ein max-width am Element ließe die Beschreibung (.detailSection, flex-wrap) daneben rutschen */
 html:not(.layout-tv) #itemDetailPage .trackSelections > * {
