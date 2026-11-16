@@ -8,6 +8,8 @@ const KV_KEY = 'charts:v1';
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 const NEG_TTL_MS = 60 * 1000;
 const MAX_CACHE = 500;
+// Free-Plan: höchstens 50 Subrequests je Lauf; 2000 Episoden = 20 /Items-Blöcke + Abfrage + /Users.
+const EPISODE_CAP = 2000;
 
 /*
  * Token-Cache: Memory-Map mit TTL (pro Isolate) statt Cache API.
@@ -44,7 +46,19 @@ async function isTokenValid(env, token) {
 export async function computeCharts(env) {
   const days = windowDays(env.WINDOW_DAYS);
   const rows = await runCustomQuery(env, buildSql(env.WINDOW_DAYS, env.MIN_SECONDS));
-  const episodeIds = [...new Set(rows.filter((r) => r.itemType === 'Episode').map((r) => r.itemId))];
+  const perEpisode = new Map();
+  for (const r of rows) {
+    if (r.itemType !== 'Episode') continue;
+    const e = perEpisode.get(r.itemId) ?? { id: r.itemId, viewers: 0, secs: 0 };
+    e.viewers += 1;
+    e.secs += r.secs;
+    perEpisode.set(r.itemId, e);
+  }
+  // Nur die stärksten Episoden auflösen (nach Zuschauern, dann Sekunden), damit das Subrequest-Limit hält.
+  const episodeIds = [...perEpisode.values()]
+    .sort((a, b) => b.viewers - a.viewers || b.secs - a.secs || (a.id < b.id ? -1 : 1))
+    .slice(0, EPISODE_CAP)
+    .map((e) => e.id);
   const seriesByEpisode = episodeIds.length ? await resolveSeries(env, episodeIds) : new Map();
   const { movies, series, all } = aggregate(rows, seriesByEpisode);
   return {

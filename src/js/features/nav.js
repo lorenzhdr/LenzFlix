@@ -212,7 +212,7 @@ function render() {
     for (const m of more) entries.push(h('a', { class: 'lfx-nav__menu-item', role: 'menuitem', href: m.href, dataset: { id: m.id } }, m.label));
     // Eigenständige Seite (kein Hash-Link, kein data-key -> nie „aktiv“)
     if (statsUrl) entries.push(h('a', { class: 'lfx-nav__menu-item lfx-nav__menu-item--stats', role: 'menuitem', href: statsUrl }, STATS_LABEL));
-    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem' }, 'Design Einstellungen');
+    const designBtn = h('button', { type: 'button', class: 'lfx-nav__menu-item lfx-nav__menu-item--design', role: 'menuitem' }, 'Design-Einstellungen');
     entries.push(designBtn);
     // Datensparmodus: Schalterzeile (kein Nav-Punkt, nie eingeklappt); Klick schließt das Menü nicht
     const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: 'lfx-nav__menu-item lfx-nav__menu-item--datasaver' }) : null;

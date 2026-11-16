@@ -12,8 +12,16 @@ export function setSwitchState(btn, on) {
 /**
  * Bindet einen Button als Schalter: Zustand aus item.checked, Klick schaltet um und ruft item.onToggle(next)
  * (schließt nie ein Menü). item.watch(cb) (optional) meldet Änderungen von außen: cb(on) → Rückgabe Abmelden;
- * die Meldung meldet sich selbst ab, sobald der Button nicht mehr im Dokument hängt.
+ * abgemeldet wird beim Schließen des Menüs (releaseSwitches) bzw. spätestens bei der nächsten Meldung, wenn der Button nicht mehr im Dokument hängt.
  */
+const bound = new Set(); // aktive watch-Anmeldungen: { btn, off }
+
+/** Meldet alle watch-Anmeldungen der Schalter unterhalb von root ab (Menü/Sheet wird geschlossen oder neu gezeichnet). */
+export function releaseSwitches(root) {
+  if (!root) return;
+  for (const e of [...bound]) if (root === e.btn || root.contains(e.btn)) e.off();
+}
+
 function bindSwitch(btn, item) {
   setSwitchState(btn, item.checked);
   btn.addEventListener('click', () => {
@@ -22,10 +30,20 @@ function bindSwitch(btn, item) {
     if (typeof item.onToggle === 'function') item.onToggle(next);
   });
   if (typeof item.watch === 'function') {
-    const off = item.watch((on) => {
-      if (!btn.isConnected) off();
+    const entry = { btn, off: () => {} };
+    let released = false;
+    const unwatch = item.watch((on) => {
+      if (released) return;
+      if (!btn.isConnected) entry.off();
       else setSwitchState(btn, on);
     });
+    entry.off = () => {
+      if (released) return;
+      released = true;
+      bound.delete(entry);
+      if (typeof unwatch === 'function') unwatch();
+    };
+    bound.add(entry);
   }
   return btn;
 }

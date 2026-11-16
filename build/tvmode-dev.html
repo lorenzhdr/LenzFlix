@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:,">
   <title>TV-Modus · Dev-Harness</title>
   <!-- Dev-Harness des TV-Modus (docs/tvmode.md) ohne Jellyfin, keine Netzwerkzugriffe. Start: npm run build && npm run serve → http://localhost:5179/tvmode-dev.html
-       Parameter siehe Kopfkommentar in tvmode-dev.js (design, phone, now, channel, state, tab, info, img, chrome, min, autostart, real, landscape, debug, zapstats). -->
+       Parameter siehe Kopfkommentar in tvmode-dev.js (design, phone, now, channel, state, tab, info, img, chrome, min, thin, autostart, real, landscape, debug, zapstats). -->
   <style>
     html, body { margin: 0; min-height: 100%; background: #0b0b0e; color: #eee; font-family: system-ui, sans-serif; }
     body { background: var(--lfx-bg, #141414); }
@@ -15,7 +16,7 @@
     #dev-chrome span { display: flex; gap: 14px; }
     #dev-chrome i { width: 24px; height: 24px; border-radius: 50%; background: #fff4; display: block; }
     html.dev-phone #dev-chrome { height: 56px; padding: 0 14px; background: #0b0b0e; }
-    #dev-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; height: 64px; display: none; align-items: center; justify-content: space-around; background: #111; border-top: 1px solid #333; }
+    #dev-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200; height: 64px; display: none; align-items: center; justify-content: space-around; background: #111; border-top: 1px solid #333; }
     html.dev-phone.dev-tabbar #dev-tabbar { display: flex; }
     #dev-tabbar i { width: 28px; height: 28px; border-radius: 8px; background: #fff3; display: block; }
     #dev-page { box-sizing: border-box; padding: 0 var(--lfx-gutter, 36px); }

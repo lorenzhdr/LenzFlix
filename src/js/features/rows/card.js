@@ -9,11 +9,11 @@ export function detailHref(item) {
 }
 
 function displayTitle(item) {
-  return item.Type === 'Episode' && item.SeriesName ? item.SeriesName : item.Name || '';
+  return (item.Type === 'Episode' || item.Type === 'Season') && item.SeriesName ? item.SeriesName : item.Name || '';
 }
 
 function ariaLabel(item) {
-  if (item.Type === 'Episode' && item.SeriesName) return `${item.SeriesName} – ${item.Name || ''}`.trim();
+  if ((item.Type === 'Episode' || item.Type === 'Season') && item.SeriesName) return `${item.SeriesName} – ${item.Name || ''}`.trim();
   return item.Name || '';
 }
 

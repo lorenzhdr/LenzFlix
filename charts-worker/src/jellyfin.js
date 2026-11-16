@@ -3,7 +3,7 @@ const CHUNK = 100;
 
 const base = (env) => String(env.JELLYFIN_URL).replace(/\/+$/, '');
 const auth = (token) => `MediaBrowser Token="${token}"`;
-const normId = (v) => String(v ?? '').replace(/-/g, '').toLowerCase();
+export const normId = (v) => String(v ?? '').replace(/-/g, '').toLowerCase();
 
 /** Wandelt die Plugin-Antwort ({colums, results}) in Objekte; Zahlen als Number. */
 export function parseCustomQuery(json) {

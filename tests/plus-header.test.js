@@ -15,7 +15,7 @@ vi.mock('../src/js/shared/libraries.js', () => ({ getLibraries: vi.fn(async () =
 const designClick = vi.fn();
 vi.mock('../src/js/shared/profile.js', () => ({
   profileEntries: vi.fn(async () => [
-    { key: 'design', label: 'Design Einstellungen', onClick: designClick },
+    { key: 'design', label: 'Design-Einstellungen', onClick: designClick },
     { key: 'logout', label: 'Abmelden', onClick: vi.fn() },
   ]),
   getUserChip: vi.fn(async () => ({ name: 'Lorenz', imageUrl: null })),
@@ -102,7 +102,7 @@ describe('plus-header: Feature', () => {
     expect(document.documentElement.classList.contains('lfx-plus-header-on')).toBe(false);
   });
 
-  it('Klick auf den Chip öffnet das Menü, Design Einstellungen funktioniert', async () => {
+  it('Klick auf den Chip öffnet das Menü, Design-Einstellungen funktioniert', async () => {
     header.mount(R('#/home'));
     await flush();
     document.querySelector('.lfx-plus-header__chip').click();

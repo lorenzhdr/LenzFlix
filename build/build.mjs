@@ -82,7 +82,7 @@ function checkMainBundle() {
   if (code.length > MAIN_MIN_BUDGET) console.warn(`WARNUNG: lenzflix.min.js ist ${code.length} B (Budget ${MAIN_MIN_BUDGET} B)`);
 }
 
-// Wächter: die TV-Modus-Engine importiert nichts aus der LENZ-LIVE-Engine-UI (Marker/Fernbedienungs-Klassen), bleibt unter 120 KB.
+// Wächter: die TV-Modus-Engine importiert nichts aus der LENZ-LIVE-Engine-UI (Marker/Fernbedienungs-Klassen), bleibt unter 128 KiB.
 const TVMODE_MIN_BUDGET = 128 * 1024; // 1.11.5: +Vorwärmen (lazy Engine); 1.11.6: +fMP4 pro Titel, Gründe, Formatprüfung (Nutzer-OK bis 128 KiB)
 function checkTvModeBundle() {
   const code = readFileSync(resolve(dist, 'lenztvmode.min.js'), 'utf8');
@@ -100,8 +100,25 @@ await buildCss();
 await buildJs();
 if (watch) {
   const { watch: fsWatch } = await import('node:fs');
+  // Entprellt und serialisiert: ein laufender Build wird nie ueberlappt, Ereignisse waehrenddessen merken genau einen Folgelauf vor.
+  let timer = null;
+  let running = false;
+  let again = false;
+  const run = async () => {
+    if (running) { again = true; return; }
+    running = true;
+    try {
+      await buildCss();
+      console.log('css rebuilt');
+    } catch (e) {
+      console.error(e.message);
+    }
+    running = false;
+    if (again) { again = false; run(); }
+  };
   fsWatch(resolve(root, 'src/css'), { recursive: true }, () => {
-    buildCss().then(() => console.log('css rebuilt'), (e) => console.error(e.message));
+    clearTimeout(timer);
+    timer = setTimeout(run, 100);
   });
   console.log('watching…');
 } else {

@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  RANGES, assertUid, buildQ1, buildQ2, buildQ2b, buildQ3, buildQ4, buildQ5a, buildQ5b, buildQ6a, buildQ6b, buildQ7, normUserId,
+  RANGES, assertUid, buildQ1, buildQ2, buildQ2b, buildQ3, buildQ4, buildQ5a, buildQ5b, buildQ6a, buildQ6b, buildQ7,
 } from '../src/stats-sql.js';
+import { normId } from '../src/jellyfin.js';
 
 const UID = '0123456789abcdef0123456789abcdef';
 const builders = [buildQ1, buildQ2, buildQ2b, buildQ3, buildQ4, buildQ5a, buildQ5b, buildQ6a, buildQ6b, buildQ7];
 
 describe('stats-sql', () => {
-  it('normUserId entfernt Bindestriche und macht klein', () => {
-    expect(normUserId('01234567-89AB-CDEF-0123-456789ABCDEF')).toBe(UID);
+  it('normId (gemeinsame Normalisierung) entfernt Bindestriche und macht klein', () => {
+    expect(normId('01234567-89AB-CDEF-0123-456789ABCDEF')).toBe(UID);
   });
 
   it('assertUid akzeptiert nur 32 Hex klein', () => {

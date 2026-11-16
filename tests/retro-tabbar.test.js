@@ -15,7 +15,7 @@ vi.mock('../src/js/shared/libraries.js', () => ({
 vi.mock('../src/js/shared/profile.js', () => ({
   getUserChip: vi.fn(async () => ({ name: 'Lena', imageUrl: null })),
   profileEntries: vi.fn(async () => [
-    { key: 'design', label: 'Design Einstellungen', onClick: () => {} },
+    { key: 'design', label: 'Design-Einstellungen', onClick: () => {} },
     { key: 'logout', label: 'Abmelden', onClick: () => {} },
     { key: 'datasaver', label: 'Datensparmodus', switch: true, checked: false, onToggle: (n) => dsToggle(n), watch: (cb) => { dsWatchers.add(cb); return () => dsWatchers.delete(cb); } },
   ]),
@@ -123,7 +123,7 @@ describe('retro-tabbar: Feature', () => {
     expect(document.querySelector('.lfx-retro-fkey.is-active').dataset.key).toBe('list');
   });
 
-  it('MEHR öffnet Sheet mit Bibliotheken, Design Einstellungen und Schaltern; Schalter toggeln', async () => {
+  it('MEHR öffnet Sheet mit Bibliotheken, Design-Einstellungen und Schaltern; Schalter toggeln', async () => {
     tabbar.mount(route('#/home'));
     await flush();
     document.querySelector('[data-key="more"]').click();
@@ -132,7 +132,7 @@ describe('retro-tabbar: Feature', () => {
     expect(sheet).toBeTruthy();
     const items = [...sheet.querySelectorAll('.lfx-sheet__item')];
     expect(items.map((b) => b.textContent.replace(/\s+/g, ' ').trim())).toEqual([
-      'Filme', 'Serien', 'Musik', 'Design Einstellungen', 'Abmelden', 'Datensparmodus: AUS', 'Sound: AUS', 'CRT-Effekt: AN',
+      'Filme', 'Serien', 'Musik', 'Design-Einstellungen', 'Abmelden', 'Datensparmodus: AUS', 'Sound: AUS', 'CRT-Effekt: AN',
     ]);
     expect(items[3].querySelector('.lfx-beta')).toBeNull();
     const sound = items[6];

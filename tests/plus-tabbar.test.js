@@ -23,7 +23,7 @@ const logoutClick = vi.fn();
 vi.mock('../src/js/shared/profile.js', () => ({
   profileEntries: vi.fn(async () => [
     { key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' },
-    { key: 'design', label: 'Design Einstellungen', onClick: designClick },
+    { key: 'design', label: 'Design-Einstellungen', onClick: designClick },
     { key: 'logout', label: 'Abmelden', onClick: logoutClick },
   ]),
   getUserChip: vi.fn(async () => ({ name: 'Lorenz', imageUrl: null })),
@@ -64,9 +64,9 @@ describe('plus-tabbar: Modell', () => {
     const act = vi.fn(() => calls.push('act'));
     const entries = sheetEntries(libs, [
       { label: 'Einstellungen', href: '#/mypreferencesmenu' },
-      { label: 'Design Einstellungen', onClick: act },
+      { label: 'Design-Einstellungen', onClick: act },
     ], { go, close });
-    expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design Einstellungen']);
+    expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design-Einstellungen']);
     entries[0].onClick();
     entries[1].onClick();
     entries[2].onClick();
@@ -166,7 +166,7 @@ describe('plus-tabbar: Feature', () => {
     expect(sheetMod.openSheet).toHaveBeenCalledTimes(1);
     const [, title, entries] = sheetMod.renderSheet.mock.calls[0];
     expect(title).toBe('Lorenz');
-    expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design Einstellungen', 'Abmelden']);
+    expect(entries.map((e) => e.label)).toEqual(['Neu & beliebt', 'Filme', 'Musik', 'Einstellungen', 'Design-Einstellungen', 'Abmelden']);
     btn.click();
     await flush();
     expect(sheetMod.closeChooser).toHaveBeenCalled();

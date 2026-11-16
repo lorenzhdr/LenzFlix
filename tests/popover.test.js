@@ -61,7 +61,7 @@ describe('popover', () => {
     key('Escape');
     expect(isPopoverOpen()).toBe(false);
     expect(document.getElementById('lfx-popover')).toBeNull();
-    expect(anchor.hasAttribute('aria-expanded')).toBe(false);
+    expect(anchor.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(anchor);
     open();
     key('Tab');

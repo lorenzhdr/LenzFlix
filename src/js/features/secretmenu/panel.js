@@ -3,6 +3,7 @@ import { h } from '../../core/dom.js';
 import { VERSION } from '../../core/version.js';
 import { getTheme } from '../../core/theme.js';
 import { clearCache } from '../../core/cache.js';
+import { clearItemStore } from '../../core/itemstore.js';
 import {
   getNormalScale, getSaverScale, setImageScales, resetImageScales, onImageScaleChange, NORMAL_RANGE, SAVER_RANGE,
 } from '../../core/imgscale.js';
@@ -141,6 +142,7 @@ function infoSection() {
     class: 'lfx-secret__btn',
     onclick: async () => {
       clearCache();
+      clearItemStore();
       await clearCatalogCache();
       msg.textContent = 'Cache geleert – Seite neu laden für frische Daten';
       reload.hidden = false;

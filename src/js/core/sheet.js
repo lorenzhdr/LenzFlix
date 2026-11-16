@@ -3,7 +3,7 @@
 import { h, mountPoint, unmountPoint } from './dom.js';
 import { computeMenuPosition, anchorRect } from './itemmenu.js';
 import { attachSwipeClose } from './swipe.js';
-import { switchButton } from './switch.js';
+import { switchButton, releaseSwitches } from './switch.js';
 
 const SHEET_ID = 'lfx-sheet';
 
@@ -30,6 +30,7 @@ export function closeChooser() {
   if (c.detachSwipe) c.detachSwipe();
   window.removeEventListener('keydown', c.onKeydown, true);
   c.overlay.removeEventListener('click', c.onOverlayClick);
+  releaseSwitches(c.overlay);
   unmountPoint(c.overlay);
   document.documentElement.classList.remove('lfx-sheet-open');
   const a = c.anchorEl;
@@ -44,6 +45,8 @@ export function closeChooser() {
 
 export function renderSheet(c, title, entries) {
   c.title.textContent = title;
+  if (title) c.sheet.setAttribute('aria-label', title);
+  releaseSwitches(c.list);
   c.list.replaceChildren(
     ...entries.map(({ label, note, onClick, disabled, primary, ...rest }) =>
       rest.switch ? switchButton({ label, ...rest }, { className: 'lfx-sheet__item lfx-sheet__item--switch', role: 'switch' }) : h(
@@ -97,9 +100,9 @@ export function openSheet(anchorEl, label) {
     const firstEl = focusable[0];
     const lastEl = focusable[focusable.length - 1];
     const active = document.activeElement;
-    if (!sheet.contains(active)) {
+    if (!sheet.contains(active) || active === sheet) {
       e.preventDefault();
-      firstEl.focus();
+      (e.shiftKey ? lastEl : firstEl).focus();
     } else if (e.shiftKey && active === firstEl) {
       e.preventDefault();
       lastEl.focus();

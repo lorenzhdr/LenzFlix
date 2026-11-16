@@ -10,11 +10,11 @@ export const TAPE_VARIANTS = ['spine', 'cover', 'wide'];
 const TONES = 5; // data-tone 0..4 (Farbstreifen am Kassettenrücken, siehe card.css)
 
 export function displayTitle(item) {
-  return item.Type === 'Episode' && item.SeriesName ? item.SeriesName : item.Name || '';
+  return (item.Type === 'Episode' || item.Type === 'Season') && item.SeriesName ? item.SeriesName : item.Name || '';
 }
 
 export function ariaFor(item) {
-  if (item.Type === 'Episode' && item.SeriesName) return `${item.SeriesName} – ${item.Name || ''}`.trim();
+  if ((item.Type === 'Episode' || item.Type === 'Season') && item.SeriesName) return `${item.SeriesName} – ${item.Name || ''}`.trim();
   return item.Name || '';
 }
 

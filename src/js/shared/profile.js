@@ -26,7 +26,7 @@ export async function profileEntries({ theme, returnFocus } = {}) {
   if (getStatsUrl()) {
     entries.push({ key: 'stats', label: 'Meine Statistik', href: statsHref(theme) || getStatsUrl(), className: 'is-stats' });
   }
-  entries.push({ key: 'design', label: 'Design Einstellungen', onClick: () => openThemePicker({ returnFocus }) });
+  entries.push({ key: 'design', label: 'Design-Einstellungen', onClick: () => openThemePicker({ returnFocus }) });
   if (DATASAVER_THEMES.includes(theme || getTheme() || 'flix')) entries.push(dataSaverItem());
   entries.push({ key: 'settings', label: 'Einstellungen', href: '#/mypreferencesmenu' });
   let user = null;

@@ -113,7 +113,9 @@ export function wrapRow(def) {
   const orig = def.load;
   def.cacheKey = key;
   def.load = async (d = def) => {
-    const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title }), HOME_TTL);
+    d.noCache = false;
+    const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title, noCache: !!d.noCache }),
+      (s) => (s.noCache ? 0 : HOME_TTL)); // Ersatz bei fehlenden Charts: nicht 10 min festhalten
     d.id = snap.id;
     d.title = snap.title;
     return snap.items;
@@ -152,6 +154,7 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
 
   const items = (params) => api.getItems({ ...BASE_PARAMS, ...params }).then(asItems);
   const defs = [];
+  let chartsMissing = false;
 
   defs.push({
     id: 'resume', title: 'Weiterschauen', kind: 'resume',
@@ -183,6 +186,7 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
             const fb = fallbackDef(); // keine Charts: erste Platzhalter-Zeile wird zur „Neu auf“-Zeile
             def.id = fb.id;
             def.title = fb.title;
+            def.noCache = true; // nur mit Charts-URL hier: Ersatz soll sich erholen
             return fb.load();
           },
         });
@@ -191,7 +195,7 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
   } else {
     const chartDefs = await buildChartDefs();
     if (chartDefs.length) defs.push(...chartDefs);
-    else defs.push(fallbackDef());
+    else { defs.push(fallbackDef()); chartsMissing = !!getChartsUrl(); }
   }
   if (movieView) {
     defs.push({
@@ -241,6 +245,6 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
     }),
   });
   defs.forEach(wrapRow);
-  if (viewsRes.status !== 'fulfilled' || genresRes.status !== 'fulfilled') degraded.add(defs);
+  if (chartsMissing || viewsRes.status !== 'fulfilled' || genresRes.status !== 'fulfilled') degraded.add(defs);
   return defs;
 }

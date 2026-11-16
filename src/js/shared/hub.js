@@ -1,5 +1,6 @@
 // LenzFlix shared: Zeilen + Hero-Pool für Bibliotheks-Hubs (alles per ParentId auf eine Bibliothek begrenzt).
 import * as api from '../core/api.js';
+import { cached, clearCache, homeKey, HOME_TTL } from '../core/cache.js';
 import { BASE_PARAMS, dayKey, pickGenres } from '../features/rows/logic.js';
 import { buildPool } from '../features/billboard/format.js';
 
@@ -53,9 +54,9 @@ export async function buildHubRowDefs(lib, { seed = dayKey(), genreCount = 6 } =
 
   let genres;
   try {
-    genres = asItems(await api.getJson('/Genres', {
+    genres = await cached(homeKey(api.getUserId(), 'hubgenres', lib.id), async () => asItems(await api.getJson('/Genres', {
       userId: api.getUserId(), ParentId: lib.id, IncludeItemTypes: types.items, Recursive: true, SortBy: 'SortName',
-    }));
+    })), HOME_TTL);
   } catch { genres = []; }
   const idByName = new Map(genres.filter((g) => g && g.Name && g.Id).map((g) => [g.Name, g.Id]));
   for (const name of pickGenres(genres, { seed, count: genreCount })) {
@@ -76,8 +77,16 @@ export async function buildHubRowDefs(lib, { seed = dayKey(), genreCount = 6 } =
 const HERO_FIELDS = `${BASE_PARAMS.Fields},RemoteTrailers,LocalTrailerCount`;
 
 /** Hero-Kandidaten (Backdrop + Logo bevorzugt, Format wie buildPool im Billboard); Fallback: nur Backdrop. */
-export async function getHubHeroPool(lib) {
-  if (!lib || !lib.id) return [];
+export function getHubHeroPool(lib) {
+  if (!lib || !lib.id) return Promise.resolve([]);
+  const key = homeKey(api.getUserId(), 'hubpool', lib.id);
+  const p = cached(key, () => loadHubHeroPool(lib), HOME_TTL);
+  // Leeren Pool (z. B. Netzfehler) nicht 10 min festhalten.
+  p.then((pool) => { if (!pool.length) clearCache(key); }, () => {});
+  return p;
+}
+
+async function loadHubHeroPool(lib) {
   const types = hubTypes(lib);
   const q = (params) => api.getItems({
     ...BASE_PARAMS, Fields: HERO_FIELDS, ParentId: lib.id, IncludeItemTypes: types.items, Recursive: true, ...params,

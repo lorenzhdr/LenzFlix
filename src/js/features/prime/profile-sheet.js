@@ -2,7 +2,7 @@
 // Einträge: Nutzer-Chip, „Neu & beliebt“, Bibliotheken, dann profileEntries() (Statistik, Design, Einstellungen, Dashboard, Abmelden).
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import { attachSwipeClose } from '../../core/swipe.js';
-import { switchButton } from '../../core/switch.js';
+import { switchButton, releaseSwitches } from '../../core/switch.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { hubHref } from '../../shared/routes.js';
@@ -24,6 +24,7 @@ export function closeProfileSheet({ restoreFocus = true } = {}) {
   if (c.detachSwipe) c.detachSwipe();
   window.removeEventListener('keydown', c.onKeydown, true);
   window.removeEventListener('hashchange', c.onHash);
+  releaseSwitches(c.root);
   unmountPoint(c.root);
   document.documentElement.classList.remove(OPEN_CLASS);
   const back = c.returnFocus;

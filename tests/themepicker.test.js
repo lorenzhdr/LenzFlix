@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const themeState = vi.hoisted(() => ({ chosen: 'flix', listeners: new Set(), setImpl: null }));
+const themeState = vi.hoisted(() => ({ chosen: 'flix', effective: 'flix', state: 'active', listeners: new Set(), setImpl: null }));
 
 const apiMock = vi.hoisted(() => ({ ready: true, getItems: null }));
 const chartsMock = vi.hoisted(() => ({ getCharts: null }));
@@ -25,6 +25,8 @@ vi.mock('../src/js/core/theme.js', () => ({
     live: { id: 'live', name: 'LENZ LIVE', tagline: 'Lineares Fernsehen mit 18 Sendern', palette: ['#0b0d12', '#e03a2f', '#f4f1e8', '#3a7bd5'] },
   },
   getChosenTheme: () => themeState.chosen,
+  getTheme: () => themeState.effective,
+  getThemeState: () => themeState.state,
   setTheme: vi.fn((id) => themeState.setImpl(id)),
   onThemeChange: (fn) => {
     themeState.listeners.add(fn);
@@ -47,6 +49,8 @@ describe('themepicker', () => {
   beforeEach(() => {
     document.body.innerHTML = '<button id="opener">Mehr</button>';
     themeState.chosen = 'flix';
+    themeState.effective = 'flix';
+    themeState.state = 'active';
     themeState.listeners.clear();
     themeState.setImpl = (id) => {
       themeState.chosen = id;
@@ -167,6 +171,18 @@ describe('themepicker', () => {
     await vi.waitFor(() => expect(card('prime').hasAttribute('aria-busy')).toBe(false));
     expect(card('prime').getAttribute('aria-pressed')).toBe('false');
     expect(card('flix').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('nach gescheitertem Erststart: angezeigtes Design markiert, Klick aufs gewählte Design versucht es erneut', async () => {
+    themeState.chosen = 'plus';
+    themeState.effective = 'flix';
+    themeState.state = 'failed';
+    themeState.setImpl = () => Promise.resolve();
+    openThemePicker();
+    expect(card('flix').getAttribute('aria-pressed')).toBe('true');
+    expect(card('plus').getAttribute('aria-pressed')).toBe('false');
+    card('plus').click();
+    expect(setTheme).toHaveBeenCalledWith('plus', { source: 'user' });
   });
 
   it('Handy: Bottom-Sheet-Variante', () => {

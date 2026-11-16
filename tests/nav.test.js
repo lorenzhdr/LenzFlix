@@ -92,8 +92,8 @@ describe('nav: Meine Statistik', () => {
     const design = items.at(-1);
     expect(design.tagName).toBe('BUTTON');
     expect(design.type).toBe('button');
-    expect(design.childNodes[0].textContent).toBe('Design Einstellungen');
-    expect(design.textContent).toBe('Design Einstellungen');
+    expect(design.childNodes[0].textContent).toBe('Design-Einstellungen');
+    expect(design.textContent).toBe('Design-Einstellungen');
     expect(design.hasAttribute('aria-label')).toBe(false);
     expect(design.classList.contains('lfx-nav__menu-item--design')).toBe(true);
     const wrap = document.querySelector('.lfx-nav__more');

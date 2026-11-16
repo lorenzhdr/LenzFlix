@@ -12,7 +12,7 @@ export function buildMoreButton(onClick) {
 
 export function buildFooter() {
   const href = statsHref('prime');
-  const picker = h('button', { type: 'button', class: 'lfx-prime-footer__link' }, 'Design Einstellungen');
+  const picker = h('button', { type: 'button', class: 'lfx-prime-footer__link' }, 'Design-Einstellungen');
   picker.addEventListener('click', () => openThemePicker({ returnFocus: picker }));
   const links = [
     href ? h('a', { class: 'lfx-prime-footer__link', href }, STATS_LABEL) : null,

@@ -173,9 +173,11 @@ export function show({ item } = {}) {
   if (!item || !item.Id || !isActive()) return;
   clearTimeout(leaving);
   leaving = 0;
+  if (el && !el.isConnected) cleanup(); // Knoten von removeAllMounts() entfernt (destroy/CSS aus)
   if (!el) {
     el = mountPoint(ID, { className: 'lfx-startcover' });
     el.setAttribute('role', 'status');
+    el.setAttribute('tabindex', '-1');
     el.setAttribute('aria-label', 'Wiedergabe wird geladen');
     el.append(div('lfx-startcover__spinner'));
     origin = routePath();
@@ -184,6 +186,12 @@ export function show({ item } = {}) {
   }
   el.classList.remove('is-leaving');
   document.documentElement.classList.add(ON_CLASS);
+  // Fokus vom verdeckten Auslöser nehmen (Enter/Space würden sonst erneut starten, Tab liefe unsichtbar durch die Seite).
+  try {
+    el.focus({ preventScroll: true });
+  } catch {
+    /* Fokus ist optional */
+  }
   watch(true);
   if (itemId !== item.Id) {
     itemId = item.Id;

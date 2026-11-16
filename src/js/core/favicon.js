@@ -9,6 +9,8 @@ const FAVICONS = { flix: FLIX_HREF, plus: FLIX_HREF, prime: FLIX_HREF, retro: FL
 
 const typeFor = (href) => (href.startsWith('data:image/svg') ? 'image/svg+xml' : 'image/png');
 const ATTR = 'data-lfx-orig';
+const ATTR_SIZES = 'data-lfx-orig-sizes';
+const ATTR_TYPE = 'data-lfx-orig-type';
 
 let created = null;
 let patched = [];
@@ -37,6 +39,8 @@ export function applyFavicon(theme = 'flix') {
   patched = [...document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')];
   for (const l of patched) {
     l.setAttribute(ATTR, l.getAttribute('href') ?? '');
+    if (l.hasAttribute('sizes')) l.setAttribute(ATTR_SIZES, l.getAttribute('sizes'));
+    if (l.hasAttribute('type')) l.setAttribute(ATTR_TYPE, l.getAttribute('type'));
     l.setAttribute('href', href);
     l.setAttribute('type', typeFor(href));
     l.removeAttribute('sizes');
@@ -55,7 +59,14 @@ export function removeFavicon() {
   currentTheme = null;
   for (const l of patched) {
     if (l.hasAttribute(ATTR)) {
-      l.setAttribute('href', l.getAttribute(ATTR));
+      const orig = l.getAttribute(ATTR);
+      if (orig) l.setAttribute('href', orig);
+      else l.removeAttribute('href'); // Original hatte kein href
+      for (const [a, name] of [[ATTR_SIZES, 'sizes'], [ATTR_TYPE, 'type']]) {
+        if (l.hasAttribute(a)) l.setAttribute(name, l.getAttribute(a));
+        else if (name === 'sizes') l.removeAttribute(name);
+        l.removeAttribute(a);
+      }
       l.removeAttribute(ATTR);
     }
   }

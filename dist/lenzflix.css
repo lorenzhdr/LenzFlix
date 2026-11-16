@@ -5626,7 +5626,7 @@ html.lfx-js .lfx-toast {
   left: 0;
   right: 0;
   bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  z-index: 1300;
+  z-index: 1450;
   box-sizing: border-box;
   pointer-events: none;
   animation: lfx-toast-in var(--lfx-dur) var(--lfx-ease-out) both;

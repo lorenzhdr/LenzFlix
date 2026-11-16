@@ -1,5 +1,5 @@
 import { jsonResponse } from './http.js';
-import { getMe, resolveSeriesForUser, runCustomQueryRows } from './jellyfin.js';
+import { getMe, normId, resolveSeriesForUser, runCustomQueryRows } from './jellyfin.js';
 import {
   RANGES,
   ROW_CAP,
@@ -27,7 +27,6 @@ const num = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 };
-const normId = (v) => String(v ?? '').replace(/-/g, '').toLowerCase();
 
 async function sha256Hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));

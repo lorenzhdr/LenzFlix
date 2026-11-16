@@ -8,12 +8,19 @@
   // src/js/core/cache.js
   var store = /* @__PURE__ */ new Map();
   var inflight = /* @__PURE__ */ new Map();
+  var MAX_ENTRIES = 500;
   function cached(key, loader, ttlMs = 6e4) {
     const hit = store.get(key);
     if (hit && hit.expires > Date.now()) return Promise.resolve(hit.value);
+    if (hit) store.delete(key);
     if (inflight.has(key)) return inflight.get(key);
     const p = Promise.resolve().then(loader).then((value) => {
-      if (inflight.get(key) === p) store.set(key, { value, expires: Date.now() + ttlMs });
+      if (inflight.get(key) === p) {
+        const ttl = typeof ttlMs === "function" ? ttlMs(value) : ttlMs;
+        store.delete(key);
+        store.set(key, { value, expires: Date.now() + ttl });
+        while (store.size > MAX_ENTRIES) store.delete(store.keys().next().value);
+      }
       return value;
     }).finally(() => {
       if (inflight.get(key) === p) inflight.delete(key);
@@ -23,7 +30,11 @@
   }
   function peekCached(key) {
     const hit = store.get(key);
-    return hit && hit.expires > Date.now() ? hit.value : void 0;
+    if (hit && hit.expires <= Date.now()) {
+      store.delete(key);
+      return void 0;
+    }
+    return hit ? hit.value : void 0;
   }
   var HOME_TTL = 10 * 6e4;
   var homeKey = (userId, ...parts) => ["home", userId || "anon", ...parts].join(":");
@@ -178,6 +189,7 @@
       if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
       out = await res.json();
     }
+    clearCache("home:");
     document.dispatchEvent(new CustomEvent("lfx:favorite", { detail: { id, value: Boolean(isFavorite) } }));
     return out;
   }
@@ -190,6 +202,7 @@
       headers: { Authorization: `MediaBrowser Token="${token2}"` }
     });
     if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Gesehen)`);
+    clearCache("home:");
   }
   function first(arr) {
     return Array.isArray(arr) && arr.length ? arr[0] : null;
@@ -240,19 +253,25 @@
     return null;
   }
   var userCache = /* @__PURE__ */ new Map();
-  async function getUser() {
+  var userPending = /* @__PURE__ */ new Map();
+  function getUser() {
     const userId = getUserId();
-    if (!userId) return null;
-    if (userCache.has(userId)) return userCache.get(userId);
-    try {
-      const client = window.ApiClient;
-      const user = client && typeof client.getCurrentUser === "function" ? await client.getCurrentUser() : await getJson(`/Users/${userId}`);
-      if (!user) return null;
-      userCache.set(userId, user);
-      return user;
-    } catch {
-      return null;
-    }
+    if (!userId) return Promise.resolve(null);
+    if (userCache.has(userId)) return Promise.resolve(userCache.get(userId));
+    if (userPending.has(userId)) return userPending.get(userId);
+    const p = (async () => {
+      try {
+        const client = window.ApiClient;
+        const user = client && typeof client.getCurrentUser === "function" ? await client.getCurrentUser() : await getJson(`/Users/${userId}`);
+        if (!user) return null;
+        userCache.set(userId, user);
+        return user;
+      } catch {
+        return null;
+      }
+    })().finally(() => userPending.delete(userId));
+    userPending.set(userId, p);
+    return p;
   }
 
   // src/js/core/router.js
@@ -557,6 +576,8 @@
   var FAVICONS = { flix: FLIX_HREF, plus: FLIX_HREF, prime: FLIX_HREF, retro: FLIX_HREF, store: STORE_HREF, live: LIVE_HREF };
   var typeFor = (href) => href.startsWith("data:image/svg") ? "image/svg+xml" : "image/png";
   var ATTR = "data-lfx-orig";
+  var ATTR_SIZES = "data-lfx-orig-sizes";
+  var ATTR_TYPE = "data-lfx-orig-type";
   var created = null;
   var patched = [];
   var currentTheme = null;
@@ -580,6 +601,8 @@
     patched = [...document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')];
     for (const l of patched) {
       l.setAttribute(ATTR, l.getAttribute("href") ?? "");
+      if (l.hasAttribute("sizes")) l.setAttribute(ATTR_SIZES, l.getAttribute("sizes"));
+      if (l.hasAttribute("type")) l.setAttribute(ATTR_TYPE, l.getAttribute("type"));
       l.setAttribute("href", href);
       l.setAttribute("type", typeFor(href));
       l.removeAttribute("sizes");
@@ -597,7 +620,14 @@
     currentTheme = null;
     for (const l of patched) {
       if (l.hasAttribute(ATTR)) {
-        l.setAttribute("href", l.getAttribute(ATTR));
+        const orig = l.getAttribute(ATTR);
+        if (orig) l.setAttribute("href", orig);
+        else l.removeAttribute("href");
+        for (const [a, name] of [[ATTR_SIZES, "sizes"], [ATTR_TYPE, "type"]]) {
+          if (l.hasAttribute(a)) l.setAttribute(name, l.getAttribute(a));
+          else if (name === "sizes") l.removeAttribute(name);
+          l.removeAttribute(a);
+        }
         l.removeAttribute(ATTR);
       }
     }
@@ -648,24 +678,45 @@
 
   // src/js/core/toast.js
   var ID = "lfx-toast";
+  var LIVE_ID = "lfx-toast-live";
+  var ANNOUNCE_DELAY_MS = 100;
   var hideTimer = null;
   var removeTimer = null;
+  var liveTimer = null;
   function clearTimers() {
     clearTimeout(hideTimer);
     clearTimeout(removeTimer);
-    hideTimer = removeTimer = null;
+    clearTimeout(liveTimer);
+    hideTimer = removeTimer = liveTimer = null;
+  }
+  function announce(text) {
+    const fresh = !document.getElementById(LIVE_ID);
+    const live = mountPoint(LIVE_ID);
+    if (fresh) {
+      live.setAttribute("role", "status");
+      live.setAttribute("aria-live", "polite");
+      live.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap";
+    }
+    live.textContent = "";
+    liveTimer = setTimeout(() => {
+      liveTimer = null;
+      live.textContent = text;
+    }, ANNOUNCE_DELAY_MS);
   }
   function toast(text, { duration = 3e3 } = {}) {
     clearTimers();
+    const msg = String(text);
+    announce(msg);
     const root7 = mountPoint(ID, { className: "lfx-toast" });
     root7.classList.remove("is-leaving");
-    root7.setAttribute("role", "status");
-    root7.setAttribute("aria-live", "polite");
-    root7.replaceChildren(h("div", { class: "lfx-toast__msg" }, [String(text)]));
+    root7.setAttribute("aria-hidden", "true");
+    root7.replaceChildren(h("div", { class: "lfx-toast__msg" }, [msg]));
     hideTimer = setTimeout(() => {
       root7.classList.add("is-leaving");
       removeTimer = setTimeout(() => {
         unmountPoint(root7);
+        const live = document.getElementById(LIVE_ID);
+        if (live) live.textContent = "";
         hideTimer = removeTimer = null;
       }, 200);
     }, duration);
@@ -673,6 +724,7 @@
   function clearToast() {
     clearTimers();
     unmountPoint(ID);
+    unmountPoint(LIVE_ID);
   }
 
   // src/js/core/theme.js
@@ -707,6 +759,9 @@
   var inflight3 = null;
   var touched = 0;
   var lastUid = null;
+  var knownUid = null;
+  var pendingChoice = null;
+  var revealStart = 0;
   var remoteDone = false;
   var saveTimer = null;
   var revealTimer = null;
@@ -723,6 +778,12 @@
   }
   function getTheme() {
     return effective;
+  }
+  function getThemeState() {
+    return state;
+  }
+  function isThemePending() {
+    return state === "pending";
   }
   function isTheme(id) {
     return effective === id;
@@ -754,9 +815,9 @@
   function strictTheme(x) {
     return THEMES.includes(x) ? x : null;
   }
-  function resolveLocalChoice() {
+  function resolveLocalChoice(ignoreLast = false) {
     const uk = userKey();
-    return strictTheme(uk && lsGet(uk)) || strictTheme(lsGet(KEY_LAST)) || "flix";
+    return strictTheme(uk && lsGet(uk)) || (ignoreLast ? null : strictTheme(lsGet(KEY_LAST))) || "flix";
   }
   function saveLocal(id) {
     const uk = userKey();
@@ -947,15 +1008,14 @@
   }
   function commit(id, nextState = "active") {
     const previous = effective;
+    const prevState = state;
     effective = id;
     state = nextState;
     setHtmlTheme(id);
     removeThemeCss(id === "flix" ? null : id);
     applyFavicon(id);
-    if (previous !== id) {
-      reevaluate();
-      emit(id, previous);
-    }
+    if (previous !== id || prevState === "pending" && nextState !== "pending") reevaluate();
+    if (previous !== id) emit(id, previous);
   }
   function transition(target) {
     if (inflight3 && inflight3.target === target) return inflight3.promise;
@@ -967,6 +1027,7 @@
     }
     if (effective === target) {
       inflight3 = null;
+      removeThemeCss(target);
       return Promise.resolve(true);
     }
     const initial = effective === null;
@@ -974,7 +1035,8 @@
       state = "pending";
       root().classList.add(LOADING);
       clearTimeout(revealTimer);
-      const waited = earlyAt ? Math.max(0, Date.now() - earlyAt) : 0;
+      if (!revealStart) revealStart = earlyAt || Date.now();
+      const waited = Math.max(0, Date.now() - revealStart);
       earlyAt = 0;
       revealTimer = setTimeout(() => {
         revealTimer = null;
@@ -1003,6 +1065,7 @@
   }
   async function setTheme(id, { source = "user" } = {}) {
     const next = normalizeTheme(id);
+    if (source === "user") pendingChoice = getUserId() ? null : next;
     const before = effective || chosen || resolveLocalChoice();
     chosen = next;
     if (source === "user") touched++;
@@ -1040,8 +1103,10 @@
     started = true;
     endEarly();
     lastUid = getUserId() || null;
+    knownUid = lastUid;
     const fromHash = takeHashChoice();
     if (fromHash) {
+      pendingChoice = lastUid ? null : fromHash;
       if (fromHash === "live") savePrevious(resolveLocalChoice());
       chosen = fromHash;
       touched++;
@@ -1061,8 +1126,20 @@
       clearTimeout(saveTimer);
       saveTimer = null;
       unsynced = false;
-      chosen = resolveLocalChoice();
+      const pend = uid ? pendingChoice : null;
+      if (pend) {
+        lsSet(KEY_USER + uid, pend);
+        const p = pend === "live" ? strictPrev(lsGet(KEY_PREV + "last")) : null;
+        if (p) lsSet(KEY_PREV + uid, p);
+        chosen = pend;
+        touched++;
+        pendingChoice = null;
+      } else {
+        chosen = resolveLocalChoice(Boolean(uid && knownUid && uid !== knownUid));
+      }
+      if (uid) knownUid = uid;
       transition(desired());
+      if (pend) scheduleUpload(pend);
     }
     const fromHash = takeHashChoice();
     if (fromHash) setTheme(fromHash, { source: "user" });
@@ -1094,6 +1171,9 @@
     chosen = null;
     remoteDone = false;
     lastUid = null;
+    knownUid = null;
+    pendingChoice = null;
+    revealStart = 0;
   }
   function destroyTheme() {
     abortEarly();
@@ -1331,9 +1411,11 @@
     if (!item || !item.Id || !isActive()) return;
     clearTimeout(leaving);
     leaving = 0;
+    if (el && !el.isConnected) cleanup();
     if (!el) {
       el = mountPoint(ID2, { className: "lfx-startcover" });
       el.setAttribute("role", "status");
+      el.setAttribute("tabindex", "-1");
       el.setAttribute("aria-label", "Wiedergabe wird geladen");
       el.append(div("lfx-startcover__spinner"));
       origin = routePath();
@@ -1342,6 +1424,10 @@
     }
     el.classList.remove("is-leaving");
     document.documentElement.classList.add(ON_CLASS);
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+    }
     watch(true);
     if (itemId !== item.Id) {
       itemId = item.Id;
@@ -1364,6 +1450,9 @@
     leaving = setTimeout(() => {
       if (el === node) cleanup();
     }, FADE_MS);
+  }
+  function destroy() {
+    cleanup();
   }
 
   // src/js/core/playback.js
@@ -1391,19 +1480,30 @@
   function playViaDetails(item, resume, timeoutMs) {
     return new Promise((resolve2) => {
       const serverId = item.ServerId || getAuth().serverId || "";
+      const stale = new Set(document.querySelectorAll(".itemDetailPage"));
+      const shown3 = /* @__PURE__ */ new WeakSet();
+      const onShow = (e) => shown3.add(e.target);
+      document.addEventListener("viewshow", onShow, true);
+      const sameBefore = new URLSearchParams(window.location.hash.split("?")[1] || "").get("id") === item.Id;
+      const grace = Math.min(1e3, timeoutMs / 2);
       window.location.hash = `#/details?id=${item.Id}&serverId=${serverId}`;
       const started2 = Date.now();
       const timer2 = setInterval(() => {
-        const wrap = document.querySelector(".itemDetailPage:not(.hide) .mainDetailButtons");
+        const done = (result) => {
+          clearInterval(timer2);
+          document.removeEventListener("viewshow", onShow, true);
+          resolve2(result);
+        };
+        if (new URLSearchParams(window.location.hash.split("?")[1] || "").get("id") !== item.Id) return done(false);
+        const page2 = [...document.querySelectorAll(".itemDetailPage:not(.hide)")].find((p) => sameBefore || !stale.has(p) || shown3.has(p) || Date.now() - started2 > grace);
+        const wrap = page2 && page2.querySelector(".mainDetailButtons");
         const visible = (sel) => wrap && [...wrap.querySelectorAll(sel)].find((b) => !b.classList.contains("hide"));
         const target = resume ? visible(".btnPlay") : visible(".btnReplay") || visible(".btnPlay");
         if (target) {
-          clearInterval(timer2);
           target.click();
-          resolve2(true);
+          done(true);
         } else if (Date.now() - started2 > timeoutMs) {
-          clearInterval(timer2);
-          resolve2(false);
+          done(false);
         }
       }, 150);
     });
@@ -1442,6 +1542,9 @@
   }
   function getStoredItem(id) {
     return store2.get(id) || null;
+  }
+  function clearItemStore() {
+    store2.clear();
   }
 
   // src/js/core/swipe.js
@@ -1947,14 +2050,21 @@
     const inPlayer = () => parseHash(window.location.hash).path.startsWith("/video");
     let wasPlayer = inPlayer();
     let uid = getUserId();
+    let lateTimer = null;
     const onRoute2 = () => {
       const now = inPlayer();
       if (now && !wasPlayer) drop2();
+      if (!now && wasPlayer) {
+        drop2();
+        clearTimeout(lateTimer);
+        lateTimer = setTimeout(drop2, 2e3);
+      }
       wasPlayer = now;
       const u = getUserId();
       if (u !== uid) {
         uid = u;
-        drop2();
+        clearCache();
+        clearItemStore();
       }
     };
     window.addEventListener("lfx:play", drop2);
@@ -1962,7 +2072,26 @@
     window.addEventListener("popstate", onRoute2);
     document.addEventListener("viewshow", onRoute2);
     const off = onItemsChanged(drop2);
+    let offData = null;
+    const client = window.ApiClient;
+    if (client && typeof client.subscribe === "function") {
+      try {
+        const res = client.subscribe(["UserDataChanged"], drop2);
+        offData = typeof res === "function" ? res : () => {
+          if (typeof client.unsubscribe === "function") client.unsubscribe(["UserDataChanged"], drop2);
+        };
+      } catch {
+        offData = null;
+      }
+    }
     stop = () => {
+      clearTimeout(lateTimer);
+      if (offData) {
+        try {
+          offData();
+        } catch {
+        }
+      }
       window.removeEventListener("lfx:play", drop2);
       window.removeEventListener("hashchange", onRoute2);
       window.removeEventListener("popstate", onRoute2);
@@ -2172,201 +2301,6 @@
     setImageScale(1);
   }
 
-  // src/js/shared/routes.js
-  var enc = encodeURIComponent;
-  var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
-  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
-  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
-  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
-  var KINDS = ["title", "hub", "browse", "search", "new", "tv", "series", "movies", "mylist"];
-  var SORTS = ["az", "za", "new", "year"];
-  var TYPES = ["movies", "series"];
-  function libraryHref(kind2, { genre, view, sort } = {}) {
-    const k = kind2 === "series" ? "series" : "movies";
-    return `#/home?lfx=${k}${genre ? `&genre=${enc(genre)}` : ""}${view === "grid" ? "&view=grid" : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
-  }
-  function myListHref({ type, sort } = {}) {
-    return `#/home?lfx=mylist${TYPES.includes(type) ? `&type=${type}` : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
-  }
-  function parseLfxRoute(route) {
-    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null, view: null, sort: null, type: null };
-    if (!route || !route.params || route.path !== "/home") return empty2;
-    const kind2 = route.params.get("lfx");
-    if (!KINDS.includes(kind2)) return empty2;
-    return {
-      kind: kind2,
-      id: route.params.get("id") || null,
-      lib: route.params.get("lib") || null,
-      genre: route.params.get("genre") || null,
-      q: route.params.get("q") || null,
-      view: route.params.get("view") === "grid" ? "grid" : null,
-      sort: SORTS.includes(route.params.get("sort")) ? route.params.get("sort") : null,
-      type: TYPES.includes(route.params.get("type")) ? route.params.get("type") : null
-    };
-  }
-  var tvModeHref = "#/home?lfx=tv";
-  var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
-  var isLibraryRoute = (route) => ["series", "movies"].includes(parseLfxRoute(route).kind);
-  var isMyListRoute = (route) => parseLfxRoute(route).kind === "mylist";
-
-  // src/js/features/themeroute.js
-  var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
-  var STORE_REDIRECT_KINDS = ["hub", "browse"];
-  var tvModeUnavailable = () => isTheme("store") || isTheme("live") || isTv();
-  var PAGE_KINDS = ["series", "movies", "mylist"];
-  var CT_OF = { series: "tvshows", movies: "movies" };
-  var isFavTab = (route) => route && route.path === "/home" && route.params && !route.params.get("lfx") && route.params.get("tab") === "1";
-  function pageUnavailable(kind2) {
-    if (isTv() || isTheme("store") || isTheme("live")) return true;
-    if (isTheme("flix")) return false;
-    if (isTheme("retro")) return kind2 !== "mylist";
-    return true;
-  }
-  var lastKey = null;
-  var seq2 = 0;
-  function libraryUrl(id, ct) {
-    const q = `topParentId=${id}&collectionType=${ct}`;
-    switch (ct) {
-      case "movies":
-        return `#/movies?${q}`;
-      case "tvshows":
-        return `#/tv?${q}`;
-      case "music":
-        return `#/music?${q}`;
-      case "books":
-        return `#/books?${q}`;
-      case "musicvideos":
-        return `#/musicvideos?${q}`;
-      case "boxsets":
-        return `#/boxsets?${q}`;
-      case "playlists":
-        return `#/playlists?${q}`;
-      case "homevideos":
-        return `#/homevideos?topParentId=${id}`;
-      case "livetv":
-        return "#/livetv";
-      default:
-        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
-    }
-  }
-  function replaceTo(hash2) {
-    const { pathname, search } = window.location;
-    window.location.replace(`${pathname}${search}${hash2}`);
-  }
-  function toLibrary(lib, key, mine, genre) {
-    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
-    const home = isTheme("store") ? "#/home?lfx=classic" : "#/home";
-    Promise.resolve().then(() => getViews()).then((views) => {
-      const items = views && views.Items || [];
-      const v = items.find((x) => x.Id === lib);
-      if (v && isTheme("flix") && (v.CollectionType === "movies" || v.CollectionType === "tvshows")) {
-        return libraryHref(v.CollectionType === "movies" ? "movies" : "series", { genre });
-      }
-      return v ? libraryUrl(v.Id, v.CollectionType) : home;
-    }).catch(() => `#/list?parentId=${encodeURIComponent(lib)}`).then((hash2) => {
-      if (stillHere()) replaceTo(hash2);
-    });
-  }
-  function toFirstHub(kind2, key, mine) {
-    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
-    Promise.resolve().then(() => getViews()).then((views) => {
-      const v = (views && views.Items || []).find((x) => x.CollectionType === CT_OF[kind2]);
-      return v ? hubHref(v.Id) : "#/home";
-    }).catch(() => "#/home").then((hash2) => {
-      if (stillHere()) replaceTo(hash2);
-    });
-  }
-  function redirect(route) {
-    const r = parseLfxRoute(route);
-    const store3 = isTheme("store");
-    const home = store3 ? "#/home?lfx=classic" : "#/home";
-    const key = route.hash;
-    if (key === lastKey) return;
-    lastKey = key;
-    const mine = ++seq2;
-    if (isFavTab(route)) {
-      replaceTo(myListHref());
-    } else if (PAGE_KINDS.includes(r.kind)) {
-      if (isTv() || isTheme("store") || isTheme("live")) return replaceTo("#/home");
-      if (r.kind === "mylist") return replaceTo("#/home?tab=1");
-      if (isTheme("retro") || isTheme("plus") || isTheme("prime")) return toFirstHub(r.kind, key, mine);
-      replaceTo("#/home");
-    } else if (r.kind === "tv") {
-      replaceTo("#/home");
-    } else if (r.kind === "title") {
-      if (!r.id) return replaceTo("#/home");
-      const { serverId } = getAuth();
-      replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`);
-    } else if (r.kind === "hub") {
-      if ((store3 || isTheme("flix")) && r.lib) return toLibrary(r.lib, key, mine, r.genre);
-      replaceTo(home);
-    } else if (r.kind === "search") {
-      replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : "#/search");
-    } else if (r.kind === "browse") {
-      if (!r.lib) return replaceTo(home);
-      toLibrary(r.lib, key, mine, r.genre);
-    }
-  }
-  var themeroute = {
-    name: "themeroute",
-    match: (route) => {
-      const kind2 = parseLfxRoute(route).kind;
-      if (kind2 === "tv") return tvModeUnavailable();
-      if (PAGE_KINDS.includes(kind2)) return pageUnavailable(kind2);
-      if (isFavTab(route)) return !isTv() && (isTheme("flix") || isTheme("retro"));
-      return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2);
-    },
-    mount: (route) => redirect(route),
-    update: (route) => redirect(route),
-    unmount: () => {
-      lastKey = null;
-      seq2++;
-    }
-  };
-  var themeroute_default = themeroute;
-
-  // src/js/core/stats.js
-  var stats_exports = {};
-  __export(stats_exports, {
-    STATS_LABEL: () => STATS_LABEL,
-    getStatsUrl: () => getStatsUrl,
-    isStatsHref: () => isStatsHref,
-    statsHref: () => statsHref
-  });
-  function clean(raw) {
-    const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "");
-    if (!s || /[\s"'\\<>]/.test(s)) return null;
-    if (/^https:\/\/[^/]/i.test(s)) return s;
-    if (/^\/(?![/\\])/.test(s)) return s;
-    return null;
-  }
-  function getStatsUrl() {
-    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.statsUrl);
-    if (fromConfig) return fromConfig;
-    try {
-      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-stats-url"));
-    } catch {
-      return null;
-    }
-  }
-  function statsHref(theme = getTheme() || "flix") {
-    const url = getStatsUrl();
-    if (!url) return null;
-    return `${url}${url.includes("?") ? "&" : "?"}theme=${encodeURIComponent(theme)}`;
-  }
-  var STATS_LABEL = "Meine Statistik";
-  function isStatsHref(href) {
-    const stats = getStatsUrl();
-    if (!stats || !href) return false;
-    try {
-      const a = new URL(href, window.location.href);
-      const b = new URL(stats, window.location.href);
-      return a.origin === b.origin && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
-    } catch {
-      return false;
-    }
-  }
-
   // src/js/core/format.js
   var pad2 = (n) => String(n).padStart(2, "0");
 
@@ -2495,6 +2429,7 @@
   // src/js/core/charts.js
   var TIMEOUT_MS = 3e3;
   var TTL_MS = 5 * 60 * 1e3;
+  var FAIL_TTL_MS = 30 * 1e3;
   function getChartsUrl() {
     const clean2 = (raw) => {
       const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
@@ -2554,7 +2489,7 @@
   }
   function getCharts() {
     if (!getChartsUrl()) return Promise.resolve(null);
-    return cached("charts", fetchCharts, TTL_MS);
+    return cached("charts", fetchCharts, (data) => data ? TTL_MS : FAIL_TTL_MS);
   }
   var normId = (id) => String(id || "").replace(/-/g, "").toLowerCase();
   async function resolveChartItems(entries, { type, limit = 10 } = {}) {
@@ -2810,8 +2745,11 @@
     btn3.addEventListener("click", () => choose(c, id));
     return btn3;
   }
+  function shownTheme() {
+    return getThemeState() === "failed" ? getTheme() || "flix" : getChosenTheme();
+  }
   function refresh(c) {
-    const chosen2 = getChosenTheme();
+    const chosen2 = shownTheme();
     for (const [id, btn3] of c.cards) {
       const on = id === chosen2;
       btn3.setAttribute("aria-pressed", String(on));
@@ -2824,7 +2762,7 @@
   }
   function choose(c, id) {
     if (current !== c || c.loading) return;
-    if (id === getChosenTheme()) return;
+    if (id === getChosenTheme() && getThemeState() !== "failed") return;
     c.loading = id;
     refresh(c);
     const done = () => {
@@ -2849,6 +2787,7 @@
     if (!c) return;
     current = null;
     if (c.detachSwipe) c.detachSwipe();
+    if (c.unwatchMq) c.unwatchMq();
     if (c.unsub) c.unsub();
     window.removeEventListener("keydown", c.onKeydown, true);
     c.overlay.removeEventListener("click", c.onOverlayClick);
@@ -2862,12 +2801,31 @@
       }
     }
   }
+  function watchMobileViewport(cb) {
+    try {
+      if (typeof window.matchMedia !== "function") return null;
+      const mq = window.matchMedia(MOBILE_QUERY);
+      const fn = (e) => cb(Boolean(e && e.matches));
+      if (typeof mq.addEventListener === "function") {
+        mq.addEventListener("change", fn);
+        return () => mq.removeEventListener("change", fn);
+      }
+      if (typeof mq.addListener === "function") {
+        mq.addListener(fn);
+        return () => mq.removeListener(fn);
+      }
+    } catch {
+    }
+    return null;
+  }
   function openThemePicker({ returnFocus } = {}) {
     if (current) closeThemePicker();
+    const prev2 = document.activeElement;
+    const back = returnFocus || (prev2 && prev2 !== document.body && prev2 !== document.documentElement ? prev2 : null);
     const sheet = isMobileViewport();
     const overlay = mountPoint(ID3, { className: `lfx-tp${sheet ? " lfx-tp--sheet" : ""}` });
     overlay.className = `lfx-tp${sheet ? " lfx-tp--sheet" : ""}`;
-    const c = { overlay, cards: /* @__PURE__ */ new Map(), loading: null, returnFocus: returnFocus || null };
+    const c = { overlay, cards: /* @__PURE__ */ new Map(), loading: null, returnFocus: back };
     const closeBtn = h("button", { type: "button", class: "lfx-tp__close", "aria-label": "Schlie\xDFen" }, "\xD7");
     closeBtn.addEventListener("click", () => closeThemePicker());
     const dialog = h("div", { class: "lfx-tp__dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "lfx-tp-title", tabindex: "-1" }, [
@@ -2923,11 +2881,21 @@
     c.unsub = onThemeChange(() => {
       if (current === c) refresh(c);
     });
-    if (sheet) {
-      c.detachSwipe = attachSwipeClose(dialog, { onClose: () => {
-        if (current === c) closeThemePicker();
-      } });
-    }
+    const applySheet = (on) => {
+      overlay.classList.toggle("lfx-tp--sheet", on);
+      if (on && !c.detachSwipe) {
+        c.detachSwipe = attachSwipeClose(dialog, { onClose: () => {
+          if (current === c) closeThemePicker();
+        } });
+      } else if (!on && c.detachSwipe) {
+        c.detachSwipe();
+        c.detachSwipe = null;
+      }
+    };
+    if (sheet) applySheet(true);
+    c.unwatchMq = watchMobileViewport((narrow) => {
+      if (current === c) applySheet(narrow);
+    });
     document.documentElement.classList.add(OPEN_CLASS);
     current = c;
     refresh(c);
@@ -2939,6 +2907,203 @@
       if (current === c) overlay.classList.add("is-open");
     });
     return c;
+  }
+
+  // src/js/shared/routes.js
+  var enc = encodeURIComponent;
+  var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
+  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
+  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
+  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
+  var KINDS = ["title", "hub", "browse", "search", "new", "tv", "series", "movies", "mylist"];
+  var SORTS = ["az", "za", "new", "year"];
+  var TYPES = ["movies", "series"];
+  function libraryHref(kind2, { genre, view, sort } = {}) {
+    const k = kind2 === "series" ? "series" : "movies";
+    return `#/home?lfx=${k}${genre ? `&genre=${enc(genre)}` : ""}${view === "grid" ? "&view=grid" : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
+  }
+  function myListHref({ type, sort } = {}) {
+    return `#/home?lfx=mylist${TYPES.includes(type) ? `&type=${type}` : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
+  }
+  function parseLfxRoute(route) {
+    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null, view: null, sort: null, type: null };
+    if (!route || !route.params || route.path !== "/home") return empty2;
+    const kind2 = route.params.get("lfx");
+    if (!KINDS.includes(kind2)) return empty2;
+    return {
+      kind: kind2,
+      id: route.params.get("id") || null,
+      lib: route.params.get("lib") || null,
+      genre: route.params.get("genre") || null,
+      q: route.params.get("q") || null,
+      view: route.params.get("view") === "grid" ? "grid" : null,
+      sort: SORTS.includes(route.params.get("sort")) ? route.params.get("sort") : null,
+      type: TYPES.includes(route.params.get("type")) ? route.params.get("type") : null
+    };
+  }
+  var tvModeHref = "#/home?lfx=tv";
+  var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
+  var isLibraryRoute = (route) => ["series", "movies"].includes(parseLfxRoute(route).kind);
+  var isMyListRoute = (route) => parseLfxRoute(route).kind === "mylist";
+
+  // src/js/features/themeroute.js
+  var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
+  var STORE_REDIRECT_KINDS = ["hub", "browse"];
+  var tvModeUnavailable = () => isTheme("store") || isTheme("live") || isTv();
+  var PAGE_KINDS = ["series", "movies", "mylist"];
+  var CT_OF = { series: "tvshows", movies: "movies" };
+  var isFavTab = (route) => route && route.path === "/home" && route.params && !route.params.get("lfx") && route.params.get("tab") === "1";
+  function pageUnavailable(kind2) {
+    if (isTv() || isTheme("store") || isTheme("live")) return true;
+    if (isThemePending()) return false;
+    if (isTheme("flix")) return false;
+    if (isTheme("retro")) return kind2 !== "mylist";
+    return true;
+  }
+  var lastKey = null;
+  var seq2 = 0;
+  function libraryUrl(id, ct) {
+    const q = `topParentId=${id}&collectionType=${ct}`;
+    switch (ct) {
+      case "movies":
+        return `#/movies?${q}`;
+      case "tvshows":
+        return `#/tv?${q}`;
+      case "music":
+        return `#/music?${q}`;
+      case "books":
+        return `#/books?${q}`;
+      case "musicvideos":
+        return `#/musicvideos?${q}`;
+      case "boxsets":
+        return `#/boxsets?${q}`;
+      case "playlists":
+        return `#/playlists?${q}`;
+      case "homevideos":
+        return `#/homevideos?topParentId=${id}`;
+      case "livetv":
+        return "#/livetv";
+      default:
+        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
+    }
+  }
+  function replaceTo(hash2) {
+    const { pathname, search } = window.location;
+    window.location.replace(`${pathname}${search}${hash2}`);
+  }
+  function toLibrary(lib, key, mine, genre) {
+    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
+    const home = isTheme("store") ? "#/home?lfx=classic" : "#/home";
+    Promise.resolve().then(() => getViews()).then((views) => {
+      const items = views && views.Items || [];
+      const v = items.find((x) => x.Id === lib);
+      if (v && isTheme("flix") && (v.CollectionType === "movies" || v.CollectionType === "tvshows")) {
+        return libraryHref(v.CollectionType === "movies" ? "movies" : "series", { genre });
+      }
+      return v ? libraryUrl(v.Id, v.CollectionType) : home;
+    }).catch(() => `#/list?parentId=${encodeURIComponent(lib)}`).then((hash2) => {
+      if (stillHere()) replaceTo(hash2);
+    });
+  }
+  function toFirstHub(kind2, key, mine) {
+    const stillHere = () => mine === seq2 && window.location.hash.replace(/^#!?/, "") === key.replace(/^#!?/, "");
+    Promise.resolve().then(() => getViews()).then((views) => {
+      const v = (views && views.Items || []).find((x) => x.CollectionType === CT_OF[kind2]);
+      return v ? hubHref(v.Id) : "#/home";
+    }).catch(() => "#/home").then((hash2) => {
+      if (stillHere()) replaceTo(hash2);
+    });
+  }
+  function redirect(route) {
+    const r = parseLfxRoute(route);
+    const store3 = isTheme("store");
+    const home = store3 ? "#/home?lfx=classic" : "#/home";
+    const key = route.hash;
+    if (key === lastKey) return;
+    lastKey = key;
+    const mine = ++seq2;
+    if (isFavTab(route)) {
+      replaceTo(myListHref());
+    } else if (PAGE_KINDS.includes(r.kind)) {
+      if (isTv() || isTheme("store") || isTheme("live")) return replaceTo("#/home");
+      if (r.kind === "mylist") return replaceTo("#/home?tab=1");
+      if (isTheme("retro") || isTheme("plus") || isTheme("prime")) return toFirstHub(r.kind, key, mine);
+      replaceTo("#/home");
+    } else if (r.kind === "tv") {
+      replaceTo("#/home");
+    } else if (r.kind === "title") {
+      if (!r.id) return replaceTo("#/home");
+      const { serverId } = getAuth();
+      replaceTo(`#/details?id=${encodeURIComponent(r.id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`);
+    } else if (r.kind === "hub") {
+      if ((store3 || isTheme("flix")) && r.lib) return toLibrary(r.lib, key, mine, r.genre);
+      replaceTo(home);
+    } else if (r.kind === "search") {
+      replaceTo(r.q ? `#/search?query=${encodeURIComponent(r.q)}` : "#/search");
+    } else if (r.kind === "browse") {
+      if (!r.lib) return replaceTo(home);
+      toLibrary(r.lib, key, mine, r.genre);
+    }
+  }
+  var themeroute = {
+    name: "themeroute",
+    match: (route) => {
+      const kind2 = parseLfxRoute(route).kind;
+      if (kind2 === "tv") return tvModeUnavailable();
+      if (PAGE_KINDS.includes(kind2)) return pageUnavailable(kind2);
+      if (isThemePending()) return false;
+      if (isFavTab(route)) return !isTv() && (isTheme("flix") || isTheme("retro"));
+      return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2);
+    },
+    mount: (route) => redirect(route),
+    update: (route) => redirect(route),
+    unmount: () => {
+      lastKey = null;
+      seq2++;
+    }
+  };
+  var themeroute_default = themeroute;
+
+  // src/js/core/stats.js
+  var stats_exports = {};
+  __export(stats_exports, {
+    STATS_LABEL: () => STATS_LABEL,
+    getStatsUrl: () => getStatsUrl,
+    isStatsHref: () => isStatsHref,
+    statsHref: () => statsHref
+  });
+  function clean(raw) {
+    const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "");
+    if (!s || /[\s"'\\<>]/.test(s)) return null;
+    if (/^https:\/\/[^/]/i.test(s)) return s;
+    if (/^\/(?![/\\])/.test(s)) return s;
+    return null;
+  }
+  function getStatsUrl() {
+    const fromConfig = clean(window.LenzFlixConfig && window.LenzFlixConfig.statsUrl);
+    if (fromConfig) return fromConfig;
+    try {
+      return clean(getComputedStyle(document.documentElement).getPropertyValue("--lfx-stats-url"));
+    } catch {
+      return null;
+    }
+  }
+  function statsHref(theme = getTheme() || "flix") {
+    const url = getStatsUrl();
+    if (!url) return null;
+    return `${url}${url.includes("?") ? "&" : "?"}theme=${encodeURIComponent(theme)}`;
+  }
+  var STATS_LABEL = "Meine Statistik";
+  function isStatsHref(href) {
+    const stats = getStatsUrl();
+    if (!stats || !href) return false;
+    try {
+      const a = new URL(href, window.location.href);
+      const b = new URL(stats, window.location.href);
+      return a.origin === b.origin && a.pathname.replace(/\/+$/, "") === b.pathname.replace(/\/+$/, "");
+    } catch {
+      return false;
+    }
   }
 
   // src/js/core/ambient.js
@@ -2970,6 +3135,11 @@
     btn3.classList.toggle("is-on", Boolean(on));
     btn3.setAttribute("aria-checked", String(Boolean(on)));
   }
+  var bound = /* @__PURE__ */ new Set();
+  function releaseSwitches(root7) {
+    if (!root7) return;
+    for (const e of [...bound]) if (root7 === e.btn || root7.contains(e.btn)) e.off();
+  }
   function bindSwitch(btn3, item) {
     setSwitchState(btn3, item.checked);
     btn3.addEventListener("click", () => {
@@ -2978,10 +3148,21 @@
       if (typeof item.onToggle === "function") item.onToggle(next);
     });
     if (typeof item.watch === "function") {
-      const off = item.watch((on) => {
-        if (!btn3.isConnected) off();
+      const entry = { btn: btn3, off: () => {
+      } };
+      let released = false;
+      const unwatch2 = item.watch((on) => {
+        if (released) return;
+        if (!btn3.isConnected) entry.off();
         else setSwitchState(btn3, on);
       });
+      entry.off = () => {
+        if (released) return;
+        released = true;
+        bound.delete(entry);
+        if (typeof unwatch2 === "function") unwatch2();
+      };
+      bound.add(entry);
     }
     return btn3;
   }
@@ -3183,7 +3364,7 @@
       const entries = MENU_ORDER.map((k) => all.find((it) => it.key === k)).filter(Boolean).map((it) => h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--fold", role: "menuitem", href: it.href, hidden: true, dataset: { key: it.key } }, it.label));
       for (const m of more) entries.push(h("a", { class: "lfx-nav__menu-item", role: "menuitem", href: m.href, dataset: { id: m.id } }, m.label));
       if (statsUrl) entries.push(h("a", { class: "lfx-nav__menu-item lfx-nav__menu-item--stats", role: "menuitem", href: statsUrl }, STATS_LABEL2));
-      const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--design", role: "menuitem" }, "Design Einstellungen");
+      const designBtn = h("button", { type: "button", class: "lfx-nav__menu-item lfx-nav__menu-item--design", role: "menuitem" }, "Design-Einstellungen");
       entries.push(designBtn);
       const dsBtn = dataSaverAvailable() ? switchButton(dataSaverItem(), { className: "lfx-nav__menu-item lfx-nav__menu-item--datasaver" }) : null;
       if (dsBtn) entries.push(dsBtn);
@@ -3493,7 +3674,12 @@
     const orig = def.load;
     def.cacheKey = key;
     def.load = async (d = def) => {
-      const snap = await cached(key, async () => ({ items: await orig(d), id: d.id, title: d.title }), HOME_TTL);
+      d.noCache = false;
+      const snap = await cached(
+        key,
+        async () => ({ items: await orig(d), id: d.id, title: d.title, noCache: !!d.noCache }),
+        (s) => s.noCache ? 0 : HOME_TTL
+      );
       d.id = snap.id;
       d.title = snap.title;
       return snap.items;
@@ -3522,6 +3708,7 @@
     const tvView = views.find((v) => v.CollectionType === "tvshows");
     const items = (params) => getItems({ ...BASE_PARAMS, ...params }).then(asItems);
     const defs = [];
+    let chartsMissing = false;
     defs.push({
       id: "resume",
       title: "Weiterschauen",
@@ -3562,6 +3749,7 @@
               const fb = fallbackDef();
               def.id = fb.id;
               def.title = fb.title;
+              def.noCache = true;
               return fb.load();
             }
           });
@@ -3570,7 +3758,10 @@
     } else {
       const chartDefs = await buildChartDefs();
       if (chartDefs.length) defs.push(...chartDefs);
-      else defs.push(fallbackDef());
+      else {
+        defs.push(fallbackDef());
+        chartsMissing = !!getChartsUrl();
+      }
     }
     if (movieView) {
       defs.push({
@@ -3642,7 +3833,7 @@
       })
     });
     defs.forEach(wrapRow);
-    if (viewsRes.status !== "fulfilled" || genresRes.status !== "fulfilled") degraded.add(defs);
+    if (chartsMissing || viewsRes.status !== "fulfilled" || genresRes.status !== "fulfilled") degraded.add(defs);
     return defs;
   }
 
@@ -3792,6 +3983,7 @@
           console.warn("[LenzFlix] Top 10 nicht aufgebaut", e && e.message);
         }
         def.title = `Top 10: Neu auf ${brandName()}`;
+        def.noCache = !!getChartsUrl();
         return selectTop10(await items({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 10 }));
       }
     });
@@ -3887,7 +4079,7 @@
     for (const m of model.more) items.push({ key: "more", label: m.label, href: m.href, id: m.id });
     const statsUrl = statsLink2();
     if (statsUrl) items.push({ key: "stats", label: STATS_LABEL3, href: statsUrl, external: true });
-    items.push({ key: "design", label: "Design Einstellungen", action: "design" });
+    items.push({ key: "design", label: "Design-Einstellungen", action: "design" });
     if (dataSaverAvailable()) items.push({ key: "datasaver", label: "Datensparmodus", action: "datasaver" });
     return items;
   }
@@ -4284,10 +4476,11 @@
     document.removeEventListener("click", c.onDocClick, true);
     window.removeEventListener("resize", c.onClose);
     window.removeEventListener("scroll", c.onScroll, true);
+    releaseSwitches(c.el);
     unmountPoint(c.el);
+    document.documentElement.classList.remove("lfx-popover-open");
     if (c.anchorEl) {
-      c.anchorEl.removeAttribute("aria-expanded");
-      if (c.hadExpanded !== null) c.anchorEl.setAttribute("aria-expanded", c.hadExpanded);
+      c.anchorEl.setAttribute("aria-expanded", c.hadExpanded !== null ? c.hadExpanded : "false");
       if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === "function") {
         try {
           c.anchorEl.focus({ preventScroll: true });
@@ -4373,6 +4566,7 @@
       }
     };
     current2 = c;
+    document.documentElement.classList.add("lfx-popover-open");
     if (anchorEl) anchorEl.setAttribute("aria-expanded", "true");
     window.addEventListener("keydown", c.onKeydown, true);
     document.addEventListener("click", c.onDocClick, true);
@@ -4389,6 +4583,15 @@
 
   // src/js/shared/dsbtn.js
   var LABEL = "Datensparmodus an";
+  function rescueFocus(btn3) {
+    const ae = document.activeElement;
+    if (ae && ae !== document.body) return;
+    const sibs = btn3.parentElement ? [...btn3.parentElement.children] : [];
+    const i = sibs.indexOf(btn3);
+    const order = [...sibs.slice(i + 1), ...sibs.slice(0, Math.max(i, 0)).reverse()];
+    const next = order.find((e) => e.matches("button:not([disabled]), a[href]") && getComputedStyle(e).display !== "none");
+    if (next) next.focus({ preventScroll: true });
+  }
   function createDataSaverButton({ className = "", el: el4 } = {}) {
     const btn3 = el4 || h("button", { type: "button" });
     btn3.classList.add("lfx-dsbtn");
@@ -4406,7 +4609,10 @@
         label: "Datensparmodus",
         items: [
           { note: true, key: "ds-note", label: "Datensparmodus ist an" },
-          { key: "ds-off", label: "Ausschalten", onClick: () => setDataSaver(false) }
+          { key: "ds-off", label: "Ausschalten", onClick: () => {
+            setDataSaver(false);
+            rescueFocus(btn3);
+          } }
         ]
       });
     });
@@ -4427,6 +4633,7 @@
       document.documentElement.classList.add("lfx-dsbtn-on");
     },
     unmount() {
+      closePopover();
       unmountPoint(ID7);
       document.documentElement.classList.remove("lfx-dsbtn-on");
     }
@@ -4687,6 +4894,7 @@
     if (c.detachSwipe) c.detachSwipe();
     window.removeEventListener("keydown", c.onKeydown, true);
     c.overlay.removeEventListener("click", c.onOverlayClick);
+    releaseSwitches(c.overlay);
     unmountPoint(c.overlay);
     document.documentElement.classList.remove("lfx-sheet-open");
     const a = c.anchorEl;
@@ -4699,6 +4907,8 @@
   }
   function renderSheet(c, title, entries) {
     c.title.textContent = title;
+    if (title) c.sheet.setAttribute("aria-label", title);
+    releaseSwitches(c.list);
     c.list.replaceChildren(
       ...entries.map(
         ({ label, note: note2, onClick: onClick2, disabled, primary, ...rest }) => rest.switch ? switchButton({ label, ...rest }, { className: "lfx-sheet__item lfx-sheet__item--switch", role: "switch" }) : h(
@@ -4746,9 +4956,9 @@
       const firstEl = focusable[0];
       const lastEl = focusable[focusable.length - 1];
       const active6 = document.activeElement;
-      if (!sheet.contains(active6)) {
+      if (!sheet.contains(active6) || active6 === sheet) {
         e.preventDefault();
-        firstEl.focus();
+        (e.shiftKey ? lastEl : firstEl).focus();
       } else if (e.shiftKey && active6 === firstEl) {
         e.preventDefault();
         lastEl.focus();
@@ -6133,10 +6343,10 @@
     return `#/details?id=${encodeURIComponent(item.Id)}${serverId ? `&serverId=${encodeURIComponent(serverId)}` : ""}`;
   }
   function displayTitle(item) {
-    return item.Type === "Episode" && item.SeriesName ? item.SeriesName : item.Name || "";
+    return (item.Type === "Episode" || item.Type === "Season") && item.SeriesName ? item.SeriesName : item.Name || "";
   }
   function ariaLabel(item) {
-    if (item.Type === "Episode" && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
+    if ((item.Type === "Episode" || item.Type === "Season") && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
     return item.Name || "";
   }
   function landscapeWidth() {
@@ -6718,7 +6928,7 @@
     const list = item && Array.isArray(item.RemoteTrailers) ? item.RemoteTrailers : [];
     for (const r of list) {
       const u = r && typeof r.Url === "string" ? r.Url : "";
-      if (/^https?:\/\//i.test(u) && DIRECT_VIDEO.test(u)) return u;
+      if (/^https:\/\//i.test(u) && DIRECT_VIDEO.test(u)) return u;
     }
     return null;
   }
@@ -6765,8 +6975,10 @@
       timer2 = null;
       if (dead || !container) return;
       let src;
+      let local = false;
       try {
         const t = await loadLocalTrailer(item);
+        local = Boolean(t);
         src = t ? trailerUrl(t.Id) : directRemoteTrailerUrl(item);
       } catch {
         src = directRemoteTrailerUrl(item);
@@ -6786,6 +6998,7 @@
       });
       v.addEventListener("ended", finish3);
       v.addEventListener("error", finish3);
+      if (!local) v.setAttribute("referrerpolicy", "no-referrer");
       video2 = v;
       applyStartAt(v, startAt);
       v.src = src;
@@ -9823,7 +10036,7 @@
   var INTENT_TTL_MS = 3e4;
   var held = null;
   var timer = null;
-  var bound = false;
+  var bound2 = false;
   function drop() {
     clearTimeout(timer);
     timer = null;
@@ -9849,13 +10062,13 @@
     return v;
   }
   function initUnlock() {
-    if (bound) return;
-    bound = true;
+    if (bound2) return;
+    bound2 = true;
     window.addEventListener("lfx:tvmode-intent", onIntent);
   }
   function destroyUnlock() {
-    if (bound) window.removeEventListener("lfx:tvmode-intent", onIntent);
-    bound = false;
+    if (bound2) window.removeEventListener("lfx:tvmode-intent", onIntent);
+    bound2 = false;
     drop();
   }
 
@@ -10448,6 +10661,7 @@
       class: "lfx-secret__btn",
       onclick: async () => {
         clearCache();
+        clearItemStore();
         await clearCatalogCache();
         msg.textContent = "Cache geleert \u2013 Seite neu laden f\xFCr frische Daten";
         reload3.hidden = false;
@@ -10717,7 +10931,7 @@
     if (getStatsUrl()) {
       entries.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme) || getStatsUrl(), className: "is-stats" });
     }
-    entries.push({ key: "design", label: "Design Einstellungen", onClick: () => openThemePicker({ returnFocus }) });
+    entries.push({ key: "design", label: "Design-Einstellungen", onClick: () => openThemePicker({ returnFocus }) });
     if (DATASAVER_THEMES.includes(theme || getTheme() || "flix")) entries.push(dataSaverItem());
     entries.push({ key: "settings", label: "Einstellungen", href: "#/mypreferencesmenu" });
     let user = null;
@@ -11363,13 +11577,13 @@
     ];
     let genres;
     try {
-      genres = asItems5(await getJson("/Genres", {
+      genres = await cached(homeKey(getUserId(), "hubgenres", lib.id), async () => asItems5(await getJson("/Genres", {
         userId: getUserId(),
         ParentId: lib.id,
         IncludeItemTypes: types.items,
         Recursive: true,
         SortBy: "SortName"
-      }));
+      })), HOME_TTL);
     } catch {
       genres = [];
     }
@@ -11393,8 +11607,17 @@
     return defs;
   }
   var HERO_FIELDS2 = `${BASE_PARAMS.Fields},RemoteTrailers,LocalTrailerCount`;
-  async function getHubHeroPool(lib) {
-    if (!lib || !lib.id) return [];
+  function getHubHeroPool(lib) {
+    if (!lib || !lib.id) return Promise.resolve([]);
+    const key = homeKey(getUserId(), "hubpool", lib.id);
+    const p = cached(key, () => loadHubHeroPool(lib), HOME_TTL);
+    p.then((pool) => {
+      if (!pool.length) clearCache(key);
+    }, () => {
+    });
+    return p;
+  }
+  async function loadHubHeroPool(lib) {
     const types = hubTypes(lib);
     const q = (params) => getItems({
       ...BASE_PARAMS,
@@ -11857,15 +12080,16 @@
       }
       return list.filter((b) => b && b.Id).map((b) => {
         const img = pickImage(b);
-        return {
-          id: b.Id,
-          name: b.Name,
-          imageUrl: img ? imageUrlFor(b.Id, { type: img.type, tag: img.tag, maxWidth: 640 }) : null,
-          imageType: img ? img.type : null,
-          href: `#/details?id=${b.Id}`
-        };
+        return { id: b.Id, name: b.Name, img, href: `#/details?id=${b.Id}` };
       });
-    }, 5 * 60 * 1e3);
+    }, 5 * 60 * 1e3).then((list) => list.map(({ id, name, img, href }) => ({
+      // URL erst hier: Datensparmodus/Bildskala gelten sofort
+      id,
+      name,
+      imageUrl: img ? imageUrlFor(id, { type: img.type, tag: img.tag, maxWidth: 640 }) : null,
+      imageType: img ? img.type : null,
+      href
+    })));
   }
 
   // src/js/features/plus/brands.js
@@ -13119,7 +13343,7 @@
   var asItems9 = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   var MIN_LEN = 2;
   async function searchItems(q, { limit = 40, signal } = {}) {
-    const out = { movies: [], series: [], episodes: [], people: [] };
+    const out = { titles: [], movies: [], series: [], episodes: [], people: [] };
     const term = String(q == null ? "" : q).trim();
     if (term.length < MIN_LEN) return out;
     const userId = getUserId();
@@ -13133,6 +13357,7 @@
       get("/Items", { ...BASE_PARAMS, searchTerm: term, IncludeItemTypes: "Episode", Recursive: true, Limit: 12 }).catch(soft2),
       get("/Persons", { searchTerm: term, Limit: 8, Fields: "PrimaryImageAspectRatio", ImageTypeLimit: 1 }).catch(soft2)
     ]);
+    out.titles = titles;
     out.movies = titles.filter((i) => i.Type === "Movie");
     out.series = titles.filter((i) => i.Type === "Series");
     out.episodes = episodes;
@@ -13141,7 +13366,7 @@
   }
   async function tileFor(genre, parentId) {
     const own2 = genre.ImageTags && (genre.ImageTags.Thumb ? "Thumb" : genre.ImageTags.Primary ? "Primary" : null);
-    if (own2) return imageUrlFor(genre.Id, { type: own2, tag: genre.ImageTags[own2], maxWidth: 640 });
+    if (own2) return { id: genre.Id, type: own2, tag: genre.ImageTags[own2] };
     const top = asItems9(await getItems({
       ParentId: parentId || void 0,
       GenreIds: genre.Id,
@@ -13156,7 +13381,7 @@
       EnableUserData: false
     }));
     const hit = top.find((i) => i.BackdropImageTags && i.BackdropImageTags.length);
-    return hit ? imageUrlFor(hit.Id, { type: "Backdrop", tag: hit.BackdropImageTags[0], maxWidth: 640 }) : null;
+    return hit ? { id: hit.Id, type: "Backdrop", tag: hit.BackdropImageTags[0] } : null;
   }
   async function getGenreTiles({ parentId, limit = 12 } = {}) {
     const res = await getJson("/Genres", {
@@ -13169,9 +13394,10 @@
     });
     const genres = asItems9(res).filter((g) => g && g.Id && g.Name).slice(0, limit);
     return Promise.all(genres.map(async (g) => {
-      let imageUrl2;
+      let imageUrl2 = null;
       try {
-        imageUrl2 = await cached(`genretile:${parentId || ""}:${g.Id}`, () => tileFor(g, parentId), 10 * 60 * 1e3);
+        const img = await cached(`genretile:${parentId || ""}:${g.Id}`, () => tileFor(g, parentId), 10 * 60 * 1e3);
+        if (img) imageUrl2 = imageUrlFor(img.id, { type: img.type, tag: img.tag, maxWidth: 640 });
       } catch {
         imageUrl2 = null;
       }
@@ -13278,7 +13504,7 @@
         getNewContentInfo().catch(() => null)
       ]);
       if (stale()) return;
-      const titles = [...res.movies, ...res.series];
+      const titles = res.titles || [...res.movies, ...res.series];
       putItems([...titles, ...res.episodes]);
       const parts = [];
       if (titles.length) {
@@ -14131,6 +14357,7 @@
     if (c.detachSwipe) c.detachSwipe();
     window.removeEventListener("keydown", c.onKeydown, true);
     window.removeEventListener("hashchange", c.onHash);
+    releaseSwitches(c.root);
     unmountPoint(c.root);
     document.documentElement.classList.remove(OPEN_CLASS2);
     const back = c.returnFocus;
@@ -14650,7 +14877,7 @@
   }
   function buildFooter() {
     const href = statsHref("prime");
-    const picker = h("button", { type: "button", class: "lfx-prime-footer__link" }, "Design Einstellungen");
+    const picker = h("button", { type: "button", class: "lfx-prime-footer__link" }, "Design-Einstellungen");
     picker.addEventListener("click", () => openThemePicker({ returnFocus: picker }));
     const links = [
       href ? h("a", { class: "lfx-prime-footer__link", href }, STATS_LABEL) : null,
@@ -17869,10 +18096,10 @@
   var TAPE_VARIANTS = ["spine", "cover", "wide"];
   var TONES = 5;
   function displayTitle4(item) {
-    return item.Type === "Episode" && item.SeriesName ? item.SeriesName : item.Name || "";
+    return (item.Type === "Episode" || item.Type === "Season") && item.SeriesName ? item.SeriesName : item.Name || "";
   }
   function ariaFor2(item) {
-    if (item.Type === "Episode" && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
+    if ((item.Type === "Episode" || item.Type === "Season") && item.SeriesName) return `${item.SeriesName} \u2013 ${item.Name || ""}`.trim();
     return item.Name || "";
   }
   function toneFor(item) {
@@ -23116,8 +23343,10 @@
       destroyStore();
       destroyLive();
       destroyTvMode();
+      destroy();
       removeAllMounts();
       destroyLayout();
+      destroyDataSaver();
       stopTheme();
     }
     function sync3() {
@@ -23150,19 +23379,20 @@
     window.addEventListener("popstate", sync3);
     document.addEventListener("viewshow", sync3);
     sync3();
-    function destroy() {
+    function destroy2() {
       destroyed = true;
       clearInterval(watchTimer);
       window.removeEventListener("hashchange", sync3);
       window.removeEventListener("popstate", sync3);
       document.removeEventListener("viewshow", sync3);
       stopFeatures();
-      destroyDataSaver();
+      closeThemePicker();
+      clearToast();
       destroyTheme();
       removeFavicon();
       delete window.LenzFlix;
     }
-    window.LenzFlix = { version: VERSION, destroy };
+    window.LenzFlix = { version: VERSION, destroy: destroy2 };
   }
   init();
 })();

@@ -29,7 +29,9 @@ createServer(async (req, res) => {
   };
   if (req.method === 'OPTIONS') { res.writeHead(204, headers); return res.end(); }
   const rawPath = new URL(req.url, 'http://x').pathname;
-  const path = extra[rawPath] || normalize(decodeURIComponent(rawPath)).replace(/^[\\/]+/, '');
+  let decoded;
+  try { decoded = decodeURIComponent(rawPath); } catch { res.writeHead(400, headers); return res.end('bad request'); }
+  const path = extra[rawPath] || normalize(decoded).replace(/^[\\/]+/, '');
   const top = path.split(/[\\/]/)[0];
   // src/js/ nur lesend und nur .js-Module (Picker-Harness)
   const srcJs = /^src[\\/]js[\\/]/.test(path) && extname(path) === '.js';

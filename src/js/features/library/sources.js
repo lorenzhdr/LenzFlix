@@ -4,7 +4,7 @@ import * as api from '../../core/api.js';
 import { brandName } from '../../core/theme.js';
 import { cached, HOME_TTL, homeKey } from '../../core/cache.js';
 import { putItems } from '../../core/itemstore.js';
-import { getCharts, resolveChartItems } from '../../core/charts.js';
+import { getCharts, getChartsUrl, resolveChartItems } from '../../core/charts.js';
 import { buildPool } from '../billboard/format.js';
 import { BASE_PARAMS, dayKey, pickGenres, selectTop10 } from '../rows/logic.js';
 import { asItems, wrapRow, chartSpecs, MIN_CHART_ROW } from '../rows/sources.js';
@@ -152,6 +152,7 @@ export async function buildLibraryRowDefs(kind, { genre, genreName } = {}) {
         console.warn('[LenzFlix] Top 10 nicht aufgebaut', e && e.message);
       }
       def.title = `Top 10: Neu auf ${brandName()}`;
+      def.noCache = !!getChartsUrl(); // Ersatz soll sich erholen (kein 10-min-Cache)
       return selectTop10(await items({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10 }));
     },
   });

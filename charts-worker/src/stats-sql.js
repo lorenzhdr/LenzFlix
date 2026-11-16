@@ -27,9 +27,6 @@ export const RANGES = Object.freeze({
 
 export const isRange = (v) => typeof v === 'string' && Object.prototype.hasOwnProperty.call(RANGES, v);
 
-/** UserId normalisieren: Bindestriche raus, klein. */
-export const normUserId = (v) => String(v ?? '').replace(/-/g, '').toLowerCase();
-
 /** Strikte Prüfung; wirft bei allem außer 32 Kleinbuchstaben-Hex. */
 export function assertUid(uid) {
   if (typeof uid !== 'string' || !/^[0-9a-f]{32}$/.test(uid)) throw new Error('invalid uid');

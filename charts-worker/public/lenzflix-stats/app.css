@@ -32,6 +32,9 @@
   --lfx-font: "LenzFlix Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+/* Vor der Designwahl (app.js setzt body.theme-*) keine Webschrift anfordern, sonst lädt jedes Design die Inter-Schrift. */
+body:not([class]) { --lfx-font: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+
 * { box-sizing: border-box; }
 html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 body {
@@ -465,6 +468,8 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .theme-plus .btn.ghost { background: rgba(255, 255, 255, 0.1); color: #fff; }
 .theme-plus .btn.ghost:hover { background: rgba(255, 255, 255, 0.18); }
 .theme-plus .notice { border-left: 0; border-radius: 14px; background: var(--lfx-surface-2); }
+.theme-plus .notice.warn { background: rgba(245, 166, 35, 0.14); box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.55); }
+.theme-plus .notice.warn::before, .theme-prime .notice.warn::before { content: "\26A0\FE0E\00a0"; color: #f5a623; font-weight: 700; }
 .theme-plus .login input { border-radius: 14px; border-color: rgba(255, 255, 255, 0.14); }
 .theme-plus .progress-run { background: linear-gradient(90deg, #1bb3e8, #4f7cff); }
 .theme-plus .share-dialog { border: 0; border-radius: 24px; background: var(--lfx-surface); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
@@ -481,7 +486,7 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
   --lfx-border: rgba(255, 255, 255, 0.16);
   --lfx-text-body: #dde3ea;
   --lfx-text-muted: #8197a4;
-  --lfx-text-soft: #5f7380;
+  --lfx-text-soft: #7d909c;
   --lfx-green: #37f1a3;
   --lfx-font: "LenzPrime Sans", "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
   /* Vollbreiter Kopf mit Verlauf: Blau-Schimmer oben links, läuft in Blauschwarz aus */
@@ -528,6 +533,8 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .theme-prime .kpi-v { font-size: 1.9rem; font-weight: 700; }
 .theme-prime .panel { margin: 10px 6px; width: calc(100% - 12px); padding: 20px 20px 16px; border-radius: 12px; }
 .theme-prime .notice { border-radius: 8px; }
+.theme-prime .notice.warn { background: rgba(245, 166, 35, 0.12); border-color: rgba(245, 166, 35, 0.6); border-left: 4px solid #f5a623; }
+.theme-prime .foot { color: var(--lfx-text-muted); }
 @media (min-width: 700px) {
   .theme-prime .panel.half { width: calc(50% - 12px); }
 }
@@ -647,7 +654,7 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
   --lfx-text: #ffe2a8;
   --lfx-text-body: #ffb000;
   --lfx-text-muted: #c98a12;
-  --lfx-text-soft: #8a5d10;
+  --lfx-text-soft: #a87518;
   --lfx-green: #ffb000;
   --lfx-font: "LenzRetro Mono", "Courier New", monospace;
   background-image: radial-gradient(80% 60% at 82% 0%, rgba(255, 90, 31, 0.16), rgba(255, 90, 31, 0) 70%), radial-gradient(70% 50% at 10% 100%, rgba(255, 176, 0, 0.08), rgba(255, 176, 0, 0) 70%);
@@ -731,7 +738,7 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 .theme-retro h2::before { content: "// "; color: var(--rt-lo); }
 .theme-retro .sub, .theme-retro .kpi-l, .theme-retro .tmeta, .theme-retro .hero-note { color: var(--rt-lo); font-size: 0.8rem; }
 .theme-retro .tname { color: var(--rt-hi); font-size: 0.8rem; }
-.theme-retro .foot { color: var(--lfx-text-soft); }
+.theme-retro .foot { color: var(--lfx-text-muted); }
 .theme-retro .foot::after { content: "_"; margin-left: 4px; color: var(--rt-amber); -webkit-animation: rt-blink 1.1s steps(1, end) infinite; animation: rt-blink 1.1s steps(1, end) infinite; }
 
 /* Zeitraum-Tabs: [ TEXT ] */
@@ -836,4 +843,17 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 
 @media (prefers-reduced-motion: reduce) {
   .theme-retro::after, .theme-retro .hero-value::after, .theme-retro .foot::after { -webkit-animation: none; animation: none; }
+}
+
+/* Handy: Reiter einzeilig, kleinere Kopfwerte, lesbare Diagrammbeschriftung */
+@media (max-width: 699px) {
+  .theme-plus .app .tabs { display: -webkit-flex; display: flex; -webkit-flex-wrap: nowrap; flex-wrap: nowrap; overflow-x: auto; max-width: calc(100% - 12px); }
+  .theme-plus .app .tab { -webkit-flex-shrink: 0; flex-shrink: 0; padding: 8px 12px; white-space: nowrap; }
+  .theme-plus .hero-value { font-size: 9vw; }
+  .theme-prime .hero-value { font-size: 9vw; }
+  .theme-retro .hero-value { font-size: 10vw; }
+  .chart text, .theme-retro .chart text { font-size: 20px; }
+  .chart .ytick, .theme-retro .chart .ytick { font-size: 20px; }
+  .theme-plus .hero-value, .theme-prime .hero-value, .theme-retro .hero-value { white-space: nowrap; }
+  .chart-hm text, .theme-retro .chart-hm text { font-size: 16px; }
 }

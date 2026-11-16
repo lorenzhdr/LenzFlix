@@ -17,69 +17,69 @@
   "topSeries": [
     {
       "id": "73758b19cd1796f107f8e8ba2422c7d3",
-      "seconds": 37143,
+      "seconds": 27975,
       "episodes": 24
     },
     {
       "id": "49e8724fa1b8d48da9d7d56df82f4d6c",
-      "seconds": 21667,
+      "seconds": 16319,
       "episodes": 12
     },
     {
       "id": "82f33c810017f7ced843a9f0943d7ea1",
-      "seconds": 15294,
+      "seconds": 11519,
       "episodes": 8
     },
     {
       "id": "7078fbe5aabfcf2be217ff6d1a13b93d",
-      "seconds": 11818,
+      "seconds": 8901,
       "episodes": 6
     },
     {
       "id": "d4750ab23f2b82fca9070b2a7d488dbe",
-      "seconds": 9630,
+      "seconds": 7253,
       "episodes": 5
     },
     {
       "id": "193c6f16c874b2cbb56d1b2919311cd4",
-      "seconds": 8125,
+      "seconds": 6120,
       "episodes": 4
     },
     {
       "id": "6c48e96b3fb465f612ad45043ae3b753",
-      "seconds": 7027,
+      "seconds": 5293,
       "episodes": 3
     },
     {
       "id": "628b8eb8ea83e3e0c36ebab4883332e3",
-      "seconds": 6190,
+      "seconds": 4662,
       "episodes": 3
     }
   ],
   "topMovies": [
     {
       "id": "b1d858bf4158cea7938b86b531f12950",
-      "seconds": 8400,
+      "seconds": 8314,
       "plays": 2
     },
     {
       "id": "cc884f868d1c01cee323b144e3912f9c",
-      "seconds": 7500,
+      "seconds": 7423,
       "plays": 1
     },
     {
       "id": "d993c12b228ec34b10fa817565a809be",
-      "seconds": 6600,
+      "seconds": 6532,
       "plays": 1
     },
     {
       "id": "8d77ffb62403b2a6cd436f852d76d271",
-      "seconds": 5700,
+      "seconds": 5641,
       "plays": 1
     },
     {
       "id": "fed9ffddc68efd8630ba8bf9915926b2",
-      "seconds": 4800,
+      "seconds": 4751,
       "plays": 1
     }
   ],
@@ -498,39 +498,39 @@
       "client": "Jellyfin Web",
       "device": "Chrome",
       "plays": 64,
-      "seconds": 241000
+      "seconds": 63908
     },
     {
       "client": "Jellyfin Android TV",
       "device": "Wohnzimmer-TV",
       "plays": 51,
-      "seconds": 207000
+      "seconds": 54892
     },
     {
       "client": "Jellyfin iOS",
       "device": "iPhone",
       "plays": 22,
-      "seconds": 64000
+      "seconds": 16971
     },
     {
       "client": "Jellyfin Web",
       "device": "Firefox",
       "plays": 9,
-      "seconds": 23500
+      "seconds": 6232
     }
   ],
   "methods": {
     "directPlay": {
       "plays": 88,
-      "seconds": 351000
+      "seconds": 93078
     },
     "directStream": {
       "plays": 31,
-      "seconds": 118000
+      "seconds": 31291
     },
     "transcode": {
       "plays": 27,
-      "seconds": 66500
+      "seconds": 17634
     },
     "other": {
       "plays": 0,
@@ -539,13 +539,13 @@
   },
   "binge": {
     "topDay": {
-      "agoDays": 12,
-      "seconds": 31500
+      "agoDays": 9,
+      "seconds": 11805
     },
     "seriesDay": {
       "seriesId": "73758b19cd1796f107f8e8ba2422c7d3",
-      "agoDays": 12,
-      "episodes": 9
+      "agoDays": 9,
+      "episodes": 4
     }
   }
 }

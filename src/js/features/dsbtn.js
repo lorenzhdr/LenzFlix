@@ -5,6 +5,7 @@ import { mountPoint, unmountPoint } from '../core/dom.js';
 import { isReady } from '../core/api.js';
 import { isModern, isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
+import { closePopover } from '../core/popover.js';
 import { createDataSaverButton } from '../shared/dsbtn.js';
 import { EXCLUDED } from './nav.js';
 
@@ -22,6 +23,7 @@ const dsbtnFeature = {
     document.documentElement.classList.add('lfx-dsbtn-on');
   },
   unmount() {
+    closePopover(); // offenes Datensparmodus-Popover nicht mit Capture-Listenern verwaisen lassen
     unmountPoint(ID);
     document.documentElement.classList.remove('lfx-dsbtn-on');
   },

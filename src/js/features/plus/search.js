@@ -115,7 +115,7 @@ async function runSearch(s, term) {
       getNewContentInfo().catch(() => null),
     ]);
     if (stale()) return;
-    const titles = [...res.movies, ...res.series];
+    const titles = res.titles || [...res.movies, ...res.series]; // Serverreihenfolge (Relevanz)
     putItems([...titles, ...res.episodes]);
     const parts = [];
     if (titles.length) {

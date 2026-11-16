@@ -39,7 +39,7 @@ export function isDataSaverOn() {
   try { return window.localStorage.getItem(storageKey()) === '1'; } catch { return false; }
 }
 
-/** Schalter wird im aktuellen Design angeboten (flix/plus/prime). */
+/** Schalter wird im aktuellen Design angeboten (siehe DATASAVER_THEMES). */
 export function dataSaverAvailable() {
   return DATASAVER_THEMES.includes(getTheme());
 }

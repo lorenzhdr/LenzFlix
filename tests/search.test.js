@@ -18,7 +18,7 @@ beforeEach(() => {
 describe('searchItems', () => {
   it('kurzer Begriff -> leer ohne Request', async () => {
     for (const q of ['', ' a ', null, undefined]) {
-      expect(await searchItems(q)).toEqual({ movies: [], series: [], episodes: [], people: [] });
+      expect(await searchItems(q)).toEqual({ titles: [], movies: [], series: [], episodes: [], people: [] });
     }
     expect(api.getJson).not.toHaveBeenCalled();
   });

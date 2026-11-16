@@ -40,7 +40,7 @@ describe('mobilenav (rein)', () => {
   const model = buildNavModel(views);
   it('Pills und Overlay-Einträge', () => {
     expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
-    expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik', 'Design Einstellungen', 'Datensparmodus']);
+    expect(overlayItems(model).map((i) => i.label)).toEqual(['Startseite', 'Serien', 'Filme', 'Neu und beliebt', 'Meine Liste', 'Musik', 'Design-Einstellungen', 'Datensparmodus']);
   });
   it('Statistik-Eintrag nur mit Konfiguration, nicht in den Pills', () => {
     expect(overlayItems(model).some((i) => i.label === 'Meine Statistik')).toBe(false);
@@ -48,7 +48,7 @@ describe('mobilenav (rein)', () => {
     try {
       const items = overlayItems(model);
       expect(items.at(-1)).toMatchObject({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver' });
-      expect(items.at(-2)).toMatchObject({ key: 'design', label: 'Design Einstellungen', action: 'design' });
+      expect(items.at(-2)).toMatchObject({ key: 'design', label: 'Design-Einstellungen', action: 'design' });
       expect(items.at(-3)).toMatchObject({ label: 'Meine Statistik', href: '/lenzflix-stats/?theme=flix' });
       expect(pillItems(model).map((i) => i.label)).toEqual(['Serien', 'Filme', 'Meine Liste']);
     } finally {
@@ -138,7 +138,7 @@ describe('mobilenav (DOM)', () => {
     expect(btn.tagName).toBe('BUTTON');
     expect(btn.type).toBe('button');
     expect(btn.dataset.action).toBe('design');
-    expect(btn.childNodes[0].textContent).toBe('Design Einstellungen');
+    expect(btn.childNodes[0].textContent).toBe('Design-Einstellungen');
     expect(btn.querySelector('.lfx-beta')).toBeNull();
     expect(btn.hasAttribute('aria-label')).toBe(false);
     btn.click();

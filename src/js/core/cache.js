@@ -2,16 +2,23 @@
 
 const store = new Map(); // key -> {value, expires}
 const inflight = new Map(); // key -> Promise
+const MAX_ENTRIES = 500; // Obergrenze, älteste Einträge fallen zuerst heraus
 
-/** Liefert gecachten Wert oder ruft loader() genau einmal auf (auch bei parallelen Aufrufen). */
+/** Liefert gecachten Wert oder ruft loader() genau einmal auf (auch bei parallelen Aufrufen). ttlMs: Zahl oder Funktion (Ergebnis) => ms. */
 export function cached(key, loader, ttlMs = 60_000) {
   const hit = store.get(key);
   if (hit && hit.expires > Date.now()) return Promise.resolve(hit.value);
+  if (hit) store.delete(key);
   if (inflight.has(key)) return inflight.get(key);
   const p = Promise.resolve()
     .then(loader)
     .then((value) => {
-      if (inflight.get(key) === p) store.set(key, { value, expires: Date.now() + ttlMs }); // clearCache() währenddessen: Ergebnis verwerfen
+      if (inflight.get(key) === p) { // clearCache() währenddessen: Ergebnis verwerfen
+        const ttl = typeof ttlMs === 'function' ? ttlMs(value) : ttlMs;
+        store.delete(key);
+        store.set(key, { value, expires: Date.now() + ttl });
+        while (store.size > MAX_ENTRIES) store.delete(store.keys().next().value);
+      }
       return value;
     })
     .finally(() => { if (inflight.get(key) === p) inflight.delete(key); });
@@ -22,7 +29,8 @@ export function cached(key, loader, ttlMs = 60_000) {
 /** Synchroner Treffer (noch gültig) oder undefined – startet nie einen Abruf. */
 export function peekCached(key) {
   const hit = store.get(key);
-  return hit && hit.expires > Date.now() ? hit.value : undefined;
+  if (hit && hit.expires <= Date.now()) { store.delete(key); return undefined; }
+  return hit ? hit.value : undefined;
 }
 
 /** Startseiten-Cache (Zeilen, Billboard/Hero): 10 min, Schlüssel immer `home:<userId>:…`, Invalidierung: core/homecache.js. */

@@ -52,8 +52,8 @@ describe('fmtDuration', () => {
     expect(L.fmtDurationShort(98000)).toBe('27 Std');
   });
   it('Datum', () => {
-    expect(L.fmtDate('2026-11-02')).toBe('2. November 2026');
-    expect(L.fmtDate('2026-03-15 20:11:03')).toBe('15. März 2026');
+    expect(L.fmtDate('2026-11-02')).toBe('2.\u00a0November 2026');
+    expect(L.fmtDate('2026-03-15 20:11:03')).toBe('15.\u00a0März 2026');
     expect(L.fmtDate('x')).toBe('');
   });
 });
@@ -109,7 +109,7 @@ describe('Verlauf: Y-Achse und Balken-Details', () => {
       { key: '2026-11-10', seconds: 7200 },
     ];
     const d = L.bucketDetails('day', data, 2);
-    expect(d.title).toBe('Dienstag, 10. November 2026');
+    expect(d.title).toBe('Dienstag, 10.\u00a0November 2026');
     expect(d.share).toBeCloseTo(2 / 3);
     expect(d.rank).toBe(1);
     expect(d.active).toBe(2);
@@ -1055,5 +1055,106 @@ describe('Share-Bild je Design', () => {
     expect(L.shareFileName('top', '4:5')).toBe('lenzprime-top-4x5.png');
     expect(L.shareFileName('top', 'story', 'plus')).toBe('lenzplus-top-story.png');
     expect(L.shareFileName('top', 'story', 'flix')).toBe('lenzflix-top-story.png');
+  });
+});
+
+describe('Audit w1 stats-2', () => {
+  const NB = ' ';
+
+  it('H043: Vergleichs-Durchschnitt nutzt ab 2 Tagen dieselbe Einheit wie der eigene Wert', () => {
+    expect(L.compareText({ rank: 2, of: 9, avgSeconds: 372 * 3600 })).toBe('Platz 2 von 9 · Ø 15 Tage 12 Std');
+    expect(L.compareText({ rank: 2, of: 7, avgSeconds: 98000 })).toBe('Platz 2 von 7 · Ø 27 Std');
+  });
+
+  it('H044: Datum hält Tag und Monat mit geschütztem Leerzeichen zusammen', () => {
+    expect(L.fmtDate('2026-11-04')).toBe('4.' + NB + 'November 2026');
+  });
+
+  it('A206: Wochenbeschriftung ist die ISO-Kalenderwoche samt Montag, Woche 0 ab 1. Januar', () => {
+    expect(L.axisLabel('week', '2026-46')).toBe('KW 47');
+    expect(L.axisLabel('week', '2026-00')).toBe('KW 1');
+    expect(L.axisLabel('week', '2026-01')).toBe('KW 2');
+    expect(L.bucketLabel('week', '2026-46')).toBe('KW 47, ab 16.' + NB + 'November 2026');
+    expect(L.bucketLabel('week', '2026-00')).toBe('KW 1, ab 1.' + NB + 'Januar 2026');
+    expect(L.bucketLabel('week', '2026-00')).not.toContain('Woche 0');
+  });
+
+  it('A208: Verlaufs-Diagramm ist role=group, damit die Balken-Buttons erreichbar bleiben', () => {
+    const c = document.createElement('div');
+    document.body.appendChild(c);
+    L.renderTimeline(c, { range: '7d', timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] } });
+    const svg = c.querySelector('svg.chart');
+    expect(svg.getAttribute('role')).toBe('group');
+    expect(svg.querySelector('[role="button"]')).not.toBeNull();
+  });
+
+  it('A199: Zeitraum-Reiter sind als Gruppe beschriftet, der aktive meldet aria-pressed', () => {
+    document.body.innerHTML = '<main id="lfx-app"></main>';
+    L.state.range = '30d';
+    L.drawDashboard({
+      version: 1, range: '30d', computedAt: '2026-11-10T12:00:00Z', stale: false, approx: false, ignored: false,
+      totals: { seconds: 3600, plays: 1, episodes: 1, movies: 0, series: 1, activeDays: 1, firstAt: null, lastAt: null },
+      topSeries: [], topMovies: [], timeline: { unit: 'day', buckets: [] }, heatmap: [], binge: { topDay: null, seriesDay: null }, devices: [],
+      methods: { directPlay: { plays: 0, seconds: 0 }, directStream: { plays: 0, seconds: 0 }, transcode: { plays: 0, seconds: 0 }, other: { plays: 0, seconds: 0 } },
+      compare: null,
+    });
+    const tabs = document.querySelector('.tabs');
+    expect(tabs.getAttribute('role')).toBe('group');
+    expect(tabs.getAttribute('aria-label')).toBe('Zeitraum');
+    const on = tabs.querySelector('.tab.on');
+    expect(on.getAttribute('aria-pressed')).toBe('true');
+    expect(tabs.querySelector('.tab:not(.on)').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('A207: abgelehntes navigator.share (NotAllowedError) fällt auf Download zurück, Abbruch nicht', async () => {
+    const downloads = [];
+    URL.createObjectURL = () => 'blob:fake';
+    URL.revokeObjectURL = () => {};
+    const origClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      downloads.push(this.download);
+    };
+    const nav = window.navigator;
+    const had = { share: nav.share, canShare: nav.canShare };
+    try {
+      nav.canShare = () => true;
+      nav.share = () => Promise.reject(Object.assign(new Error('x'), { name: 'NotAllowedError' }));
+      L.deliverBlob(new Blob(['x'], { type: 'image/png' }), 'a.png');
+      await new Promise((r) => setTimeout(r, 10));
+      expect(downloads).toEqual(['a.png']);
+      nav.share = () => Promise.reject(Object.assign(new Error('x'), { name: 'AbortError' }));
+      L.deliverBlob(new Blob(['x'], { type: 'image/png' }), 'b.png');
+      await new Promise((r) => setTimeout(r, 10));
+      expect(downloads).toEqual(['a.png']);
+    } finally {
+      HTMLAnchorElement.prototype.click = origClick;
+      nav.share = had.share;
+      nav.canShare = had.canShare;
+    }
+  });
+
+  describe('A202: Abmelden der Web-Sitzung sperrt nur diese Sitzung', () => {
+    const creds = (token) => JSON.stringify({ Servers: [{ Id: 's', AccessToken: token, UserId: 'u1' }] });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      window.localStorage.clear();
+    });
+
+    it('nach neuer Jellyfin-Anmeldung (anderer Token) greift die Auto-Anmeldung wieder', async () => {
+      document.body.innerHTML = '<main id="lfx-app"></main>';
+      window.localStorage.clear();
+      window.localStorage.setItem('jellyfin_credentials', creds('tok-alt'));
+      L.state.own = false;
+      L.state.token = 'tok-alt';
+      L.logout();
+      vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ Id: 'u1' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))));
+      // gleiche Sitzung bleibt übergangen
+      expect(await L.resolveAuth()).toBe(false);
+      // neue Anmeldung in Jellyfin
+      window.localStorage.setItem('jellyfin_credentials', creds('tok-neu'));
+      expect(await L.resolveAuth()).toBe(true);
+      expect(L.state.token).toBe('tok-neu');
+      expect(window.localStorage.getItem('lfx-stats-ignore-web')).toBeNull();
+    });
   });
 });

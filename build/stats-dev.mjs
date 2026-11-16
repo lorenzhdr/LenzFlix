@@ -102,7 +102,7 @@ function loginPage() {
 
 /** Zeichnet das Share-Bild (ohne Dialog) direkt als Seite: ?theme=plus&variant=top&format=story (zum Prüfen/Screenshot). */
 function sharePage() {
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Dev-Share</title>
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Dev-Share</title><link rel="icon" href="data:,">
 <link rel="stylesheet" href="/lenzflix-stats/app.css"><style>body{margin:0;background:#333}canvas{display:block}</style></head><body>
 <div id="lfx-app" style="display:none"></div><canvas id="c"></canvas>
 <script>window.__LFX_STATS_TEST__ = true;</script><script src="/lenzflix-stats/app.js"></script>
@@ -152,7 +152,8 @@ const server = http.createServer((req, res) => {
   try {
     if (p === '/lenzflix-stats/dev-login.html') return send(res, 200, loginPage(), MIME['.html']);
     if (p === '/lenzflix-stats/dev-share.html') return send(res, 200, sharePage(), MIME['.html']);
-    if (p === '/lenzflix-stats/' || p === '/lenzflix-stats') return serveStatic(res, 'index.html');
+    if (p === '/lenzflix-stats') return send(res, 302, '', 'text/plain', { Location: '/lenzflix-stats/' });
+    if (p === '/lenzflix-stats/') return serveStatic(res, 'index.html');
     if (p === '/lenzflix-stats/api/me/stats') return json(res, statsFor(url.searchParams.get('range')));
     if (p.startsWith('/lenzflix-stats/')) return serveStatic(res, decodeURIComponent(p.slice('/lenzflix-stats/'.length)));
     if (p === '/System/Info/Public') return json(res, fixture('info.json'));

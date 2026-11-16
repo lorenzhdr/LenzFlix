@@ -7,6 +7,7 @@ import { BASE_PARAMS } from '../features/rows/logic.js';
 
 const TIMEOUT_MS = 3000;
 const TTL_MS = 5 * 60 * 1000;
+const FAIL_TTL_MS = 30 * 1000; // Fehlschlag (null) nur kurz merken
 
 /** Charts-URL: window.LenzFlixConfig.chartsUrl -> CSS-Var --lfx-charts-url -> null. Nur https. */
 export function getChartsUrl() {
@@ -73,10 +74,10 @@ async function fetchCharts() {
   }
 }
 
-/** Lädt die Charts (5 min gecacht). Bei jedem Fehler: null. */
+/** Lädt die Charts (5 min gecacht, Fehlschlag nur 30 s). Bei jedem Fehler: null. */
 export function getCharts() {
   if (!getChartsUrl()) return Promise.resolve(null);
-  return cached('charts', fetchCharts, TTL_MS);
+  return cached('charts', fetchCharts, (data) => (data ? TTL_MS : FAIL_TTL_MS));
 }
 
 const normId = (id) => String(id || '').replace(/-/g, '').toLowerCase();

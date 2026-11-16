@@ -5,11 +5,13 @@ vi.mock('../src/js/core/api.js', () => ({
 }));
 
 import * as api from '../src/js/core/api.js';
+import { clearCache } from '../src/js/core/cache.js';
 import { buildHubRowDefs, getHubHeroPool, hubTypes } from '../src/js/shared/hub.js';
 
 const genres = Array.from({ length: 10 }, (_, i) => ({ Id: `g${i}`, Name: `Genre ${i}` }));
 
 beforeEach(() => {
+  clearCache(); // Hub-Pool und Genres sind gecacht (A020)
   for (const f of [api.getItems, api.getLatest, api.getResume, api.getJson]) f.mockReset();
   api.getJson.mockResolvedValue({ Items: genres });
   api.getItems.mockResolvedValue({ Items: [] });
@@ -48,6 +50,7 @@ describe('buildHubRowDefs', () => {
     api.getJson.mockResolvedValue({ Items: genres.slice(0, 2) });
     const few = await buildHubRowDefs({ id: 'L', collectionType: 'movies' });
     expect(few.filter((d) => d.id.includes('-genre-'))).toHaveLength(2);
+    clearCache();
     api.getJson.mockRejectedValue(new Error('x'));
     const defs = await buildHubRowDefs({ id: 'L', collectionType: 'movies' });
     expect(defs.some((d) => d.id.includes('-genre-'))).toBe(false);

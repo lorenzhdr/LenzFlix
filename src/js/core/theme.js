@@ -44,6 +44,9 @@ let seq = 0; // Generation: macht laufende Übergänge ungültig
 let inflight = null; // { target, promise }
 let touched = 0; // zählt Nutzerwahlen (schützt vor überholenden Server-Werten)
 let lastUid = null;
+let knownUid = null; // zuletzt gesehener Benutzer dieser Sitzung (auch nach Abmeldung)
+let pendingChoice = null; // Nutzerwahl ohne Benutzer-ID (Hash vor dem Login): wird beim Login übernommen
+let revealStart = 0; // Beginn des Ausblendens (erster Start), bleibt über Zielwechsel erhalten
 let remoteDone = false;
 let saveTimer = null;
 let revealTimer = null;
@@ -67,6 +70,11 @@ export function getTheme() {
 
 export function getThemeState() {
   return state;
+}
+
+/** Erster Start, Design noch nicht angewendet (auch während des vorläufigen LENZFLIX). */
+export function isThemePending() {
+  return state === 'pending';
 }
 
 export function isTheme(id) {
@@ -107,10 +115,10 @@ function strictTheme(x) {
   return THEMES.includes(x) ? x : null;
 }
 
-/** localStorage: Benutzer-Key -> last -> 'flix'. */
-function resolveLocalChoice() {
+/** localStorage: Benutzer-Key -> last -> 'flix'. ignoreLast: Benutzerwechsel, `last` gehört dem Vorgänger. */
+function resolveLocalChoice(ignoreLast = false) {
   const uk = userKey();
-  return strictTheme(uk && lsGet(uk)) || strictTheme(lsGet(KEY_LAST)) || 'flix';
+  return strictTheme(uk && lsGet(uk)) || (ignoreLast ? null : strictTheme(lsGet(KEY_LAST))) || 'flix';
 }
 
 function saveLocal(id) {
@@ -335,15 +343,15 @@ function revealFlix() {
 
 function commit(id, nextState = 'active') {
   const previous = effective;
+  const prevState = state;
   effective = id;
   state = nextState;
   setHtmlTheme(id);
   removeThemeCss(id === 'flix' ? null : id);
   applyFavicon(id);
-  if (previous !== id) {
-    reevaluate();
-    emit(id, previous);
-  }
+  // pending verlassen, auch ohne Designwechsel (Reveal lief schon): themeroute muss die Route neu bewerten
+  if (previous !== id || (prevState === 'pending' && nextState !== 'pending')) reevaluate();
+  if (previous !== id) emit(id, previous);
 }
 
 /** Wechselt auf target. Erstes Laden (effective null): pending + Ausblenden. Rückgabe: Promise<boolean> (angewendet). */
@@ -357,6 +365,7 @@ function transition(target) {
   }
   if (effective === target) {
     inflight = null;
+    removeThemeCss(target); // Zurück auf das wirksame Design: Link des überholten Ziels entfernen
     return Promise.resolve(true);
   }
   const initial = effective === null;
@@ -364,7 +373,8 @@ function transition(target) {
     state = 'pending';
     root().classList.add(LOADING);
     clearTimeout(revealTimer);
-    const waited = earlyAt ? Math.max(0, Date.now() - earlyAt) : 0; // Frühstart zählt mit
+    if (!revealStart) revealStart = earlyAt || Date.now(); // Frühstart zählt mit; ein zweites Ziel startet die Frist nicht neu
+    const waited = Math.max(0, Date.now() - revealStart);
     earlyAt = 0;
     revealTimer = setTimeout(() => {
       revealTimer = null;
@@ -395,6 +405,7 @@ function transition(target) {
 /** Nutzer-/Server-Wahl setzen. Resolved, wenn das Design angewendet (bzw. gescheitert) ist. */
 export async function setTheme(id, { source = 'user' } = {}) {
   const next = normalizeTheme(id);
+  if (source === 'user') pendingChoice = getUserId() ? null : next;
   const before = effective || chosen || resolveLocalChoice(); // bisheriges Design (vor dem Wechsel)
   chosen = next;
   if (source === 'user') touched++;
@@ -435,8 +446,10 @@ export function startTheme() {
   started = true;
   endEarly(); // Ausblenden übernimmt ab jetzt transition()
   lastUid = getUserId() || null;
+  knownUid = lastUid;
   const fromHash = takeHashChoice();
   if (fromHash) {
+    pendingChoice = lastUid ? null : fromHash;
     if (fromHash === 'live') savePrevious(resolveLocalChoice());
     chosen = fromHash;
     touched++;
@@ -458,8 +471,20 @@ export function syncThemeUser() {
     clearTimeout(saveTimer);
     saveTimer = null;
     unsynced = false;
-    chosen = resolveLocalChoice();
+    const pend = uid ? pendingChoice : null; // Wahl vor dem Login gehört dem neuen Benutzer
+    if (pend) {
+      lsSet(KEY_USER + uid, pend);
+      const p = pend === 'live' ? strictPrev(lsGet(KEY_PREV + 'last')) : null;
+      if (p) lsSet(KEY_PREV + uid, p);
+      chosen = pend;
+      touched++;
+      pendingChoice = null;
+    } else {
+      chosen = resolveLocalChoice(Boolean(uid && knownUid && uid !== knownUid)); // `last` ist die Wahl des Vorgängers
+    }
+    if (uid) knownUid = uid;
     transition(desired());
+    if (pend) scheduleUpload(pend);
   }
   const fromHash = takeHashChoice();
   if (fromHash) setTheme(fromHash, { source: 'user' });
@@ -492,6 +517,9 @@ export function stopTheme() {
   chosen = null;
   remoteDone = false;
   lastUid = null;
+  knownUid = null;
+  pendingChoice = null;
+  revealStart = 0;
 }
 
 export function destroyTheme() {

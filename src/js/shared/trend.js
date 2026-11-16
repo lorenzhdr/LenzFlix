@@ -44,7 +44,7 @@ export function heroTrendLine(item, trend) {
   return e && e.rank <= 10 ? `Platz ${e.rank} der Top 10` : null;
 }
 
-/** Genau ein Badge: NEUE STAFFEL > NEUE FOLGE > NEUER FILM/NEUE SERIE > AM BELIEBTESTEN > IM TREND. */
+/** Genau ein Badge: NEUE SERIE > NEUE STAFFEL > NEUE FOLGE (Serien) bzw. NEUER FILM, dann AM BELIEBTESTEN > IM TREND. */
 export function cardBadge(item, { newInfo, trend } = {}) {
   return newBadge(item, newInfo) || trendBadge(item, trend);
 }

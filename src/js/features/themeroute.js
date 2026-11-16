@@ -3,7 +3,7 @@
 // native Ziel umgeleitet – ohne neuen History-Eintrag.
 import { getViews, getAuth } from '../core/api.js';
 import { isTv } from '../core/layout.js';
-import { isTheme } from '../core/theme.js';
+import { isTheme, isThemePending } from '../core/theme.js';
 import { parseLfxRoute, libraryHref, myListHref, hubHref } from '../shared/routes.js';
 
 const REDIRECT_KINDS = ['title', 'hub', 'browse', 'search'];
@@ -17,6 +17,7 @@ const CT_OF = { series: 'tvshows', movies: 'movies' };
 const isFavTab = (route) => route && route.path === '/home' && route.params && !route.params.get('lfx') && route.params.get('tab') === '1';
 function pageUnavailable(kind) {
   if (isTv() || isTheme('store') || isTheme('live')) return true;
+  if (isThemePending()) return false; // erster Start: Design-CSS lädt noch (vorläufiges LENZFLIX), nicht umleiten
   if (isTheme('flix')) return false;
   if (isTheme('retro')) return kind !== 'mylist';
   return true;
@@ -118,6 +119,7 @@ const themeroute = {
     const kind = parseLfxRoute(route).kind;
     if (kind === 'tv') return tvModeUnavailable();
     if (PAGE_KINDS.includes(kind)) return pageUnavailable(kind);
+    if (isThemePending()) return false; // Design-Routen erst nach dem Commit auswerten (sonst Umleitung im Reveal-Fenster)
     if (isFavTab(route)) return !isTv() && (isTheme('flix') || isTheme('retro'));
     return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind));
   },

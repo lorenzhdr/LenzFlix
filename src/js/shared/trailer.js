@@ -21,12 +21,12 @@ export async function loadLocalTrailer(item) {
   return t && t.Id ? t : null;
 }
 
-/** Direkt abspielbarer Remote-Trailer (nur Videodatei-URLs, keine Plattform-Links) oder null. */
+/** Direkt abspielbarer Remote-Trailer (nur https-Videodatei-URLs, keine Plattform-Links) oder null. */
 export function directRemoteTrailerUrl(item) {
   const list = item && Array.isArray(item.RemoteTrailers) ? item.RemoteTrailers : [];
   for (const r of list) {
     const u = r && typeof r.Url === 'string' ? r.Url : '';
-    if (/^https?:\/\//i.test(u) && DIRECT_VIDEO.test(u)) return u;
+    if (/^https:\/\//i.test(u) && DIRECT_VIDEO.test(u)) return u;
   }
   return null;
 }
@@ -79,8 +79,10 @@ export function createMutedPreview(container, item, { delay = 1500, onStart, onE
     timer = null;
     if (dead || !container) return;
     let src;
+    let local = false;
     try {
       const t = await loadLocalTrailer(item);
+      local = Boolean(t);
       src = t ? trailerUrl(t.Id) : directRemoteTrailerUrl(item);
     } catch {
       src = directRemoteTrailerUrl(item);
@@ -100,6 +102,7 @@ export function createMutedPreview(container, item, { delay = 1500, onStart, onE
     });
     v.addEventListener('ended', finish);
     v.addEventListener('error', finish);
+    if (!local) v.setAttribute('referrerpolicy', 'no-referrer'); // Fremd-Host bekommt keinen Referrer
     video = v;
     applyStartAt(v, startAt);
     v.src = src;

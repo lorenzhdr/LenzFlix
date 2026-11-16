@@ -9,16 +9,18 @@
 //   autostart=0              kein instance.start() nach onReady   real=1  kein fakePlayer (Standard fakePlayer)   debug=1  window.__lfxTvm
 //   tab=now|epg              Klick auf .lfx-tvm__tab--now|--epg (Handy)   info=1  Info-Karte einer künftigen Sendung (Klick auf EPG-Zelle, am Handy nach Tab Programm)
 //   img=0                    imageUrl → null (Platzhalter testen)   muted=1  opts.muted   zapstats=1  Messanzeige (opts.zapStats)
-//   state=playing|loading|pause|closedown|error|gesture|tap|muted   Zustand erzwingen (siehe unten)
+//   state=loading|pause|closedown|error|gesture|tap|muted   Zustand erzwingen (siehe unten)   thin=1  ausgedünnter Katalog (nur lange Filme)
 //
-// Zustände erzwingen (state=… schaltet debug automatisch ein):
+// Zustände erzwingen (state=pause|closedown|error|gesture|tap schaltet debug automatisch ein; playing ist der Normalablauf, kein state nötig):
+//   loading   → onReady wird nicht ausgeführt: Ladezustand (is-loading, Fortschrittsanzeige) bleibt stehen; kein Start, kein Hook.
 //   muted     → opts.muted = true (Nutzer-Stumm; mutedByPolicy braucht einen Hook).
 //   closedown → now = Sa 03:30 MEZ (falls now fehlt), danach Sender 1..18 per ctl.tune(immediate) durchschalten, bis snap.phase === 'closedown'.
 //   pause     → gleiches Durchschalten bis snap.phase === 'pause' (ggf. now= anpassen).
 //   error     → bevorzugt Hook debugCard('error'); fehlt er, läuft der echte Player (fakePlayer aus) gegen about:blank → Fehlerkarte.
 //   gesture/tap → nur per Hook debugCard('tap'); ohne Hook bleibt der Zustand unverändert (Warnung in der Konsole).
-// ERWARTETE Hooks von E (optional): window.__lfxTvm = { ctl, model, state } laut Vertrag (debug:true). Wunsch: window.__lfxTvm.debugCard(kind) oder
-//   ctl.debugCard(kind) mit kind 'pause'|'closedown'|'error'|'tap'|'muted' (erzwingt die Karte/mutedByPolicy). Ohne ihn gelten die Fallbacks oben.
+// Hook der Engine (debug:true): window.__lfxTvm = { ctl, model, state, debugCard(kind) } mit kind 'pause'|'closedown'|'error'|'tap'|'muted'.
+//   debugCard legt nur eine Karte über den laufenden Sender (phase bleibt 'playing'); die Scan-/about:blank-Fallbacks greifen nur, wenn der Hook fehlt.
+//   Echte Zustände: thin=1 dünnt den Katalog aus (nur Filme ab 120 min, keine Serien) → nachts entsteht echtes closedown; mit state=pause|closedown schaltet das Harness dann Sender 1..18 durch, bis die Phase passt.
 // Marker: html[data-tvm-dev-ready="1"] nach onReady + start + Zustand + zwei rAF; Fehler → html[data-tvm-dev-error].
 (function () {
   var q = new URLSearchParams(location.search);
@@ -65,6 +67,7 @@
     return new Date(NOW0 - Math.floor(d * DAY)).toISOString();
   }
 
+  var thin = q.get('thin') === '1';
   var catalog = { movies: [], series: [], episodes: [], boxsets: [], loadedAt: NOW0 };
   var movieIds = [];
   for (var i = 0; i < 420; i++) {
@@ -108,6 +111,12 @@
         });
       }
     }
+  }
+  if (thin) { // nur lange Filme: keine Kurztitel zum Füllen von Lücken
+    catalog.movies = catalog.movies.filter(function (mm) { return mm.RunTimeTicks >= 120 * TICKS_MIN; });
+    movieIds = catalog.movies.map(function (mm) { return mm.Id; });
+    catalog.series = [];
+    catalog.episodes = [];
   }
   var boxMap = {}; // boxsetId → Filmids
   var pool = movieIds.slice();
@@ -210,6 +219,7 @@
     onReady: function () {
       var l = $('dev-load');
       if (l) l.remove();
+      if (loadingOnly) { document.documentElement.dataset.tvmDevReady = '1'; return; } // state=loading: Ladezustand stehen lassen
       host.classList.remove('is-loading');
       automate();
     },
@@ -228,6 +238,7 @@
     document.documentElement.dataset.tvmDevError = msg;
   }
 
+  var loadingOnly = state === 'loading';
   var forced = ['pause', 'closedown', 'error', 'gesture', 'tap'].indexOf(state) >= 0;
   var opts = {
     video: null,
@@ -275,7 +286,8 @@
   function forceState() {
     var d = window.__lfxTvm;
     var hook = d && (d.debugCard || (d.ctl && d.ctl.debugCard));
-    if (hook && ['pause', 'closedown', 'error', 'gesture', 'tap', 'muted'].indexOf(state) >= 0) {
+    var realScan = thin && (state === 'pause' || state === 'closedown'); // thin=1: echte Phase suchen statt Karte
+    if (hook && !realScan && ['pause', 'closedown', 'error', 'gesture', 'tap', 'muted'].indexOf(state) >= 0) {
       hook.call(d.debugCard ? d : d.ctl, state === 'gesture' ? 'tap' : state);
       return wait(300);
     }

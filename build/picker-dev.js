@@ -47,7 +47,9 @@ function cover(index) {
   g.fillText(TITLES[index % TITLES.length], 80, 196, 140);
   return c.toDataURL('image/jpeg', 0.8);
 }
-const indexOf = (id) => Number(String(id).replace(/\D/g, '')) || 0;
+// Präfix m/s/n zählt mit (s +12, n +24), damit mN und sN verschiedene Titel/Cover bekommen
+const PREFIX_OFFSET = { m: 0, s: 12, n: 24 };
+const indexOf = (id) => (Number(String(id).replace(/\D/g, '')) || 0) + (PREFIX_OFFSET[String(id)[0]] || 0);
 const item = (id) => ({ Id: id, Name: TITLES[indexOf(id) % TITLES.length], ImageTags: { Primary: `tag-${id}` } });
 const json = (data) => new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
@@ -65,23 +67,24 @@ window.fetch = async (input) => {
     const list = ids.length ? ids.filter((i) => !HIDDEN.has(i)) : Array.from({ length: 30 }, (_, i) => `n${i}`);
     return json({ Items: list.map(item), TotalRecordCount: list.length });
   }
+  if (url.pathname.startsWith('/DisplayPreferences/')) return json({});
   return new Response('not found', { status: 404 });
 };
 
-// Cover-Bilder: die Picker-URLs (…/Items/<id>/Images/Primary?…) gegen Canvas-data-URLs tauschen, optional verzögert
+// Cover-Bilder: den src-Setter der Picker-Covers abfangen. Die echte URL (…/Items/<id>/Images/…) gelangt nie ins Netz (kein 404,
+// der Fehler-Handler des Pickers würde das <img> sonst entfernen); stattdessen wird die Canvas-data-URL gesetzt, optional verzögert.
 const delay = q.get('delay') === '1';
-new MutationObserver((records) => {
-  for (const r of records) {
-    for (const n of r.addedNodes) {
-      if (!(n instanceof HTMLImageElement) || !n.classList.contains('lfx-tp__coverimg')) continue;
-      const m = /\/Items\/([^/]+)\/Images\//.exec(n.getAttribute('src') || '');
-      if (!m) continue;
-      const data = cover(indexOf(m[1]));
-      if (delay) setTimeout(() => { n.src = data; }, 300 + Math.random() * 1500);
-      else n.src = data;
-    }
-  }
-}).observe(document.documentElement, { childList: true, subtree: true });
+const srcDesc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+Object.defineProperty(HTMLImageElement.prototype, 'src', {
+  ...srcDesc,
+  set(value) {
+    const m = this.classList.contains('lfx-tp__coverimg') && /\/Items\/([^/]+)\/Images\//.exec(String(value));
+    if (!m) { srcDesc.set.call(this, value); return; }
+    const data = cover(indexOf(m[1]));
+    if (delay) setTimeout(() => srcDesc.set.call(this, data), 300 + Math.random() * 1500);
+    else srcDesc.set.call(this, data);
+  },
+});
 
 const { openThemePicker } = await import('/src/js/core/themepicker.js');
 document.getElementById('dev-open').addEventListener('click', () => openThemePicker({ returnFocus: document.getElementById('dev-open') }));

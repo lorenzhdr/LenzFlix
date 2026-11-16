@@ -59,11 +59,16 @@
     return Math.round(s / 3600) + ' Std';
   }
 
+  /** Durchschnitt in derselben Einheitenlogik wie fmtDuration: ab 2 Tagen "N Tage x Std", sonst kurz. */
+  function fmtAvg(sec) {
+    return Number(sec) >= 2 * 86400 ? fmtDuration(sec) : fmtDurationShort(sec);
+  }
+
   /** "2026-11-02" (auch mit Uhrzeit) → "2. November 2026". Manuell, damit alte Browser identisch ausgeben. */
   function fmtDate(str) {
     var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str || ''));
     if (!m) return '';
-    return parseInt(m[3], 10) + '. ' + MONTHS[parseInt(m[2], 10) - 1] + ' ' + m[1];
+    return parseInt(m[3], 10) + '.\u00a0' + MONTHS[parseInt(m[2], 10) - 1] + ' ' + m[1];
   }
 
   /** ISO-Zeitstempel → lokales "10. November 2026, 18:00". */
@@ -249,7 +254,7 @@
 
   function compareText(c) {
     if (!c) return '';
-    return 'Platz ' + c.rank + ' von ' + c.of + ' · Ø ' + fmtDurationShort(c.avgSeconds);
+    return 'Platz ' + c.rank + ' von ' + c.of + ' · Ø ' + fmtAvg(c.avgSeconds);
   }
 
   function isEmptyStats(s) {
@@ -568,14 +573,32 @@
     });
   }
 
+  /** Montag der SQLite-%W-Woche "YYYY-WW" (Woche 0 = ab 1. Januar). → Date oder null. */
+  function weekStart(key) {
+    var m = /^(\d{4})-(\d{2})$/.exec(key);
+    if (!m) return null;
+    var y = parseInt(m[1], 10);
+    var w = parseInt(m[2], 10);
+    if (!w) return new Date(y, 0, 1);
+    var first = (8 - new Date(y, 0, 1).getDay()) % 7;
+    return new Date(y, 0, 1 + first + (w - 1) * 7);
+  }
+
+  /** ISO-8601-Kalenderwoche des Datums. */
+  function isoWeek(d) {
+    var thu = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    thu.setUTCDate(thu.getUTCDate() + 4 - (thu.getUTCDay() || 7));
+    return Math.ceil(((thu - Date.UTC(thu.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+  }
+
   function bucketLabel(unit, key) {
     if (unit === 'day') return fmtDate(key);
     if (unit === 'month') {
       var m = /^(\d{4})-(\d{2})$/.exec(key);
       return m ? MONTHS[parseInt(m[2], 10) - 1] + ' ' + m[1] : key;
     }
-    var w = /^(\d{4})-(\d{2})$/.exec(key);
-    return w ? 'Woche ' + parseInt(w[2], 10) + ', ' + w[1] : key;
+    var ws = weekStart(key);
+    return ws ? 'KW ' + isoWeek(ws) + ', ab ' + ws.getDate() + '.\u00a0' + MONTHS[ws.getMonth()] + ' ' + ws.getFullYear() : key;
   }
 
   function axisLabel(unit, key) {
@@ -587,8 +610,17 @@
       var m = /^(\d{4})-(\d{2})$/.exec(key);
       return m ? MONTHS_SHORT[parseInt(m[2], 10) - 1] + ' ' + m[1].slice(2) : key;
     }
-    var w = /^\d{4}-(\d{2})$/.exec(key);
-    return w ? 'KW ' + parseInt(w[1], 10) : key;
+    var ws = weekStart(key);
+    return ws ? 'KW ' + isoWeek(ws) : key;
+  }
+
+  /** Der document-Listener des Verlaufs (genau einer); setView und jedes Neuzeichnen räumen ihn ab. */
+  var timelineOutside = null;
+  var timelineSvg = null;
+  function dropTimelineOutside() {
+    if (timelineOutside) document.removeEventListener('click', timelineOutside);
+    timelineOutside = null;
+    timelineSvg = null;
   }
 
   function renderTimeline(container, stats) {
@@ -601,15 +633,15 @@
     }
     var W = 600;
     var H = 140;
-    var LM = 46; // linker Rand für die Y-Achsen-Beschriftung
-    var TM = 8; // oberer Rand, damit das oberste Label nicht abgeschnitten wird
+    var LM = 48; // linker Rand für die Y-Achsen-Beschriftung (Kurzform „10h“, 20 Einheiten Schrift)
+    var TM = 14; // oberer Rand, damit das oberste Label (Schrift 20) nicht abgeschnitten wird
     var PW = W - LM;
     var max = 0;
     data.forEach(function (b) {
       if (b.seconds > max) max = b.seconds;
     });
     var axis = niceAxis(max);
-    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + (TM + H + 22), class: 'chart', role: 'img', 'aria-label': 'Watchtime im Verlauf', preserveAspectRatio: 'xMidYMid meet' });
+    var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + (TM + H + 22), class: 'chart', role: 'group', 'aria-label': 'Watchtime im Verlauf', preserveAspectRatio: 'xMidYMid meet' });
     // Gitternetz + Y-Achse (hinter den Balken)
     for (var t = 1; t <= axis.count; t++) {
       var ty = TM + H - (t / axis.count) * H;
@@ -617,7 +649,7 @@
     }
     for (var u = 0; u <= axis.count; u++) {
       var uy = TM + H - (u / axis.count) * H;
-      svg.appendChild(svgEl('text', { x: LM - 6, y: (uy + 4).toFixed(1), 'text-anchor': 'end', class: 'ytick' }, axisTickLabel(u * axis.step, axis.step)));
+      svg.appendChild(svgEl('text', { x: LM - 6, y: (uy + 4).toFixed(1), 'text-anchor': 'end', class: 'ytick' }, axisTickShort(u * axis.step, axis.step)));
     }
     var slot = PW / data.length;
     var bw = Math.max(1, slot * 0.72);
@@ -657,31 +689,47 @@
       if (d.vsAvg != null && d.active > 1) {
         var pct = Math.round(Math.abs(d.vsAvg) * 100);
         detail.appendChild(
-          el('div', 'tl-r', (pct < 5 ? 'Etwa im Schnitt' : pct + ' % ' + (d.vsAvg > 0 ? 'über' : 'unter') + ' dem Schnitt') + ' (Ø ' + fmtDuration(d.avg) + ' pro aktivem ' + UNIT_SINGULAR[unit] + ')')
+          el('div', 'tl-r', (pct < 5 ? 'Etwa im Schnitt' : pct + ' % ' + (d.vsAvg > 0 ? 'über' : 'unter') + ' dem Schnitt') + ' (Ø ' + fmtDuration(d.avg) + ' pro ' + UNIT_ACTIVE[unit] + ')')
         );
       }
     }
+    /* Roving tabindex: das Diagramm ist ein Tab-Stopp, Pfeiltasten wechseln den Balken. */
+    function roving(k) {
+      hits.forEach(function (r, n) {
+        r.setAttribute('tabindex', n === k ? '0' : '-1');
+      });
+    }
     data.forEach(function (b, i) {
-      var hit = svgEl('rect', { class: 'hit', x: (LM + i * slot).toFixed(2), y: TM, width: slot.toFixed(2), height: H, tabindex: 0, role: 'button', 'aria-label': bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds) });
+      var hit = svgEl('rect', { class: 'hit', x: (LM + i * slot).toFixed(2), y: TM, width: slot.toFixed(2), height: H, tabindex: i === 0 ? 0 : -1, role: 'button', 'aria-label': bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds) });
       hit.appendChild(svgEl('title', {}, bucketLabel(unit, b.key) + ': ' + fmtDuration(b.seconds)));
       var pick = function () {
         selected = selected === i ? -1 : i;
         showDetail();
       };
       hit.addEventListener('click', pick);
+      hit.addEventListener('focus', function () {
+        roving(i);
+      });
       hit.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           pick();
+          return;
         }
+        var to = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? hits.length - 1 : -1;
+        if (to < 0 || to >= hits.length || to === i) return;
+        e.preventDefault();
+        roving(to);
+        hits[to].focus();
       });
       svg.appendChild(hit);
       hits.push(hit);
     });
     // Klick irgendwo außerhalb der Balken → zurück zur Gesamtansicht
+    dropTimelineOutside();
     var outside = function (e) {
       if (!document.body.contains(svg)) {
-        document.removeEventListener('click', outside);
+        dropTimelineOutside();
         return;
       }
       if (selected >= 0 && hits.indexOf(e.target) < 0) {
@@ -689,6 +737,8 @@
         showDetail();
       }
     };
+    timelineOutside = outside;
+    timelineSvg = svg;
     document.addEventListener('click', outside);
     showDetail();
     container.appendChild(svg);
@@ -697,7 +747,7 @@
 
   var WEEKDAYS_LONG = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
   var UNIT_PLURAL = { day: 'Tagen', week: 'Wochen', month: 'Monaten' };
-  var UNIT_SINGULAR = { day: 'Tag', week: 'Woche', month: 'Monat' };
+  var UNIT_ACTIVE = { day: 'aktivem Tag', week: 'aktiver Woche', month: 'aktivem Monat' };
 
   /** Titel eines Balkens; bei Tagen mit Wochentag ("Montag, 3. November 2026"). */
   function bucketTitle(unit, key) {
@@ -755,12 +805,25 @@
     return step % 3600 === 0 ? sec / 3600 + ' Std' : Math.round(sec / 60) + ' Min';
   }
 
+  /** Kurzform für die SVG-Y-Achse ("4h", "30m"), damit große Schrift in den Rand passt. */
+  function axisTickShort(sec, step) {
+    if (sec === 0) return '0';
+    return step % 3600 === 0 ? sec / 3600 + 'h' : Math.round(sec / 60) + 'm';
+  }
+
   function renderHeatmap(container, stats) {
     var hm = buildHeatmap(stats.heatmap);
     var LW = 26;
     var CW = 20;
-    var svg = svgEl('svg', { viewBox: '0 0 ' + (LW + 24 * CW) + ' ' + (7 * CW + 18), class: 'chart', role: 'img', 'aria-label': 'Wann du schaust: Wochentage und Uhrzeiten' });
+    var svg = svgEl('svg', { viewBox: '0 0 ' + (LW + 24 * CW) + ' ' + (7 * CW + 18), class: 'chart chart-hm', role: 'img', 'aria-label': 'Wann du schaust: Wochentage und Uhrzeiten' });
     var d, h;
+    if (hm.max > 0) {
+      // Textalternative: die stärkste Zelle (die Einzelwerte stehen nur in den Maus-Tooltips)
+      var bd = 0;
+      var bh = 0;
+      for (d = 0; d < 7; d++) for (h = 0; h < 24; h++) if (hm.matrix[d][h] > hm.matrix[bd][bh]) { bd = d; bh = h; }
+      svg.setAttribute('aria-label', 'Wann du schaust: Am meisten ' + WEEKDAYS_LONG[(bd + 1) % 7] + ' um ' + bh + ' Uhr, ' + fmtDuration(hm.matrix[bd][bh]));
+    }
     for (d = 0; d < 7; d++) {
       svg.appendChild(svgEl('text', { x: 0, y: d * CW + 14 }, DOW_LABELS[d]));
       for (h = 0; h < 24; h++) {
@@ -816,6 +879,8 @@
     revokeBlobs();
     clear(root);
     root.appendChild(node);
+    // Listener nur abbauen, wenn sein Verlauf nicht in der neuen Ansicht liegt
+    if (timelineOutside && timelineSvg && !root.contains(timelineSvg)) dropTimelineOutside();
   }
 
   /**
@@ -993,6 +1058,14 @@
     setView(wrap);
   }
 
+  /** Nicht umkehrbarer Kurzwert, damit der Token nicht ein zweites Mal gespeichert wird. */
+  function hashToken(t) {
+    var h = 5381;
+    var s = String(t || '');
+    for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    return 'h' + h.toString(36);
+  }
+
   function logout() {
     var wasOwn = S.own;
     var token = S.token;
@@ -1002,7 +1075,7 @@
       });
     } else {
       try {
-        window.localStorage.setItem(KEY_IGNORE, '1');
+        window.localStorage.setItem(KEY_IGNORE, hashToken(token));
       } catch (e) {
         /* ignorieren */
       }
@@ -1011,17 +1084,24 @@
     showLogin('');
   }
 
+  /* Nach dem Zeitraumwechsel wird die Seite neu gebaut; der Fokus soll auf dem Reiter bleiben. */
+  var focusTab = false;
+
   function drawDashboard(stats) {
     var wrap = el('div');
     wrap.appendChild(el('h1', null, 'Meine Statistik'));
 
     var tabs = el('div', 'tabs');
+    tabs.setAttribute('role', 'group');
+    tabs.setAttribute('aria-label', 'Zeitraum');
     RANGES.forEach(function (r) {
       var t = el('button', r.key === S.range ? 'tab on' : 'tab', r.label);
       t.type = 'button';
+      t.setAttribute('aria-pressed', r.key === S.range ? 'true' : 'false');
       t.addEventListener('click', function () {
         if (S.range === r.key) return;
         S.range = r.key;
+        focusTab = true;
         loadAll();
       });
       tabs.appendChild(t);
@@ -1038,7 +1118,8 @@
     }
 
     var actions = el('div', 'actions');
-    if (!stats.ignored && !isEmptyStats(stats)) {
+    var canSave = !stats.ignored && !isEmptyStats(stats);
+    if (canSave) {
       var save = el('button', 'btn', 'Als Bild speichern');
       save.type = 'button';
       save.addEventListener('click', function () {
@@ -1051,8 +1132,13 @@
     out.addEventListener('click', logout);
     actions.appendChild(out);
     wrap.appendChild(actions);
-    wrap.appendChild(el('p', 'foot', 'Es werden nur deine eigenen Wiedergaben angezeigt. Das Bild wird auf deinem Gerät erzeugt und nirgends hochgeladen.'));
+    wrap.appendChild(el('p', 'foot', 'Es werden nur deine eigenen Wiedergaben angezeigt.' + (canSave ? ' Das Bild wird auf deinem Gerät erzeugt und nirgends hochgeladen.' : '')));
     setView(wrap);
+    if (focusTab) {
+      focusTab = false;
+      var on = wrap.querySelector('.tab.on');
+      if (on && on.focus) on.focus();
+    }
     loadNextUp();
   }
 
@@ -1991,8 +2077,9 @@
     }
     var nav = window.navigator;
     if (file && nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
-      nav.share({ files: [file] }).catch(function () {
-        /* abgebrochen */
+      nav.share({ files: [file] }).catch(function (err) {
+        /* Abbruch durch den Nutzer: nichts tun; sonst (z. B. Geste abgelaufen) als Download */
+        if (!err || err.name !== 'AbortError') download(blob, name);
       });
     } else {
       download(blob, name);
@@ -2292,13 +2379,17 @@
       S.own = true;
       return Promise.resolve(true);
     }
-    var ignore = false;
+    var cred = pickCredentials(window.localStorage.getItem('jellyfin_credentials'));
     try {
-      ignore = window.localStorage.getItem(KEY_IGNORE) === '1';
+      var ign = window.localStorage.getItem(KEY_IGNORE);
+      if (ign && cred) {
+        /* Nur genau die abgemeldete Web-Sitzung übergehen; nach neuer Anmeldung (anderer Token) wieder nutzen. */
+        if (ign === hashToken(cred.token)) cred = null;
+        else window.localStorage.removeItem(KEY_IGNORE);
+      }
     } catch (e) {
       /* ohne Speicher: nicht ignorieren */
     }
-    var cred = ignore ? null : pickCredentials(window.localStorage.getItem('jellyfin_credentials'));
     if (!cred) return Promise.resolve(false);
     return requestJson('/Users/Me', jfInit(cred.token)).then(
       function (res) {
@@ -2359,9 +2450,11 @@
     renderTopList: renderTopList,
     renderHeatmap: renderHeatmap,
     renderTimeline: renderTimeline,
+    drawDashboard: drawDashboard,
     bucketDetails: bucketDetails,
     niceAxis: niceAxis,
     axisTickLabel: axisTickLabel,
+    axisTickShort: axisTickShort,
     fitText: fitText,
     shareVariants: shareVariants,
     shareFileName: shareFileName,
@@ -2379,6 +2472,11 @@
     closeShareDialog: closeShareDialog,
     showLoading: showLoading,
     loadAll: loadAll,
+    resolveAuth: resolveAuth,
+    logout: logout,
+    deliverBlob: deliverBlob,
+    axisLabel: axisLabel,
+    bucketLabel: bucketLabel,
     formats: FORMATS,
     state: S,
   };

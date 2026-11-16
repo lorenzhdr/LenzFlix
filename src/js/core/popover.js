@@ -2,7 +2,7 @@
 // Für Profil-/Bibliotheksmenüs der Designs. Klicks auf den Anker selbst zählen nicht als „außerhalb“,
 // der Aufrufer schaltet dort per isPopoverOpen()/closePopover() um.
 import { h, mountPoint, unmountPoint } from './dom.js';
-import { switchButton } from './switch.js';
+import { switchButton, releaseSwitches } from './switch.js';
 
 const ID = 'lfx-popover';
 const GAP = 8;
@@ -22,10 +22,11 @@ export function closePopover({ restoreFocus = false } = {}) {
   document.removeEventListener('click', c.onDocClick, true);
   window.removeEventListener('resize', c.onClose);
   window.removeEventListener('scroll', c.onScroll, true);
+  releaseSwitches(c.el);
   unmountPoint(c.el);
+  document.documentElement.classList.remove('lfx-popover-open');
   if (c.anchorEl) {
-    c.anchorEl.removeAttribute('aria-expanded');
-    if (c.hadExpanded !== null) c.anchorEl.setAttribute('aria-expanded', c.hadExpanded);
+    c.anchorEl.setAttribute('aria-expanded', c.hadExpanded !== null ? c.hadExpanded : 'false');
     if (restoreFocus && c.anchorEl.isConnected && typeof c.anchorEl.focus === 'function') {
       try {
         c.anchorEl.focus({ preventScroll: true });
@@ -123,6 +124,7 @@ export function openPopover(anchorEl, { label, items = [], align = 'end', classN
     }
   };
   current = c;
+  document.documentElement.classList.add('lfx-popover-open');
   if (anchorEl) anchorEl.setAttribute('aria-expanded', 'true');
   window.addEventListener('keydown', c.onKeydown, true);
   document.addEventListener('click', c.onDocClick, true);

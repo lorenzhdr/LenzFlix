@@ -160,6 +160,7 @@ export async function setFavorite(id, isFavorite) {
     if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Favorit)`);
     out = await res.json();
   }
+  clearCache('home:'); // zweites Leeren: ein Abruf im Fenster bis zur Antwort hat noch den alten Stand gespeichert
   // Seite „Meine Liste“ (features/mylist.js) lädt darauf neu.
   document.dispatchEvent(new CustomEvent('lfx:favorite', { detail: { id, value: Boolean(isFavorite) } }));
   return out;
@@ -175,6 +176,7 @@ export async function setPlayed(id, played) {
     headers: { Authorization: `MediaBrowser Token="${token}"` },
   });
   if (!res.ok) throw new Error(`LenzFlix API: HTTP ${res.status} (Gesehen)`);
+  clearCache('home:'); // zweites Leeren (siehe setFavorite)
 }
 
 // ---------------------------------------------------------------- Bilder
@@ -244,21 +246,27 @@ export function logoImage(item, { maxWidth = 500, quality = 90, scale } = {}) {
 
 // ---------------------------------------------------------------- Benutzer
 
-const userCache = new Map();
+const userCache = new Map(); // userId -> Benutzer
+const userPending = new Map(); // userId -> Promise (parallele Aufrufe teilen sich einen Abruf)
 
 /** Aktueller Benutzer (inkl. Policy), pro userId gecacht. Fehler -> null. */
-export async function getUser() {
+export function getUser() {
   const userId = getUserId();
-  if (!userId) return null;
-  if (userCache.has(userId)) return userCache.get(userId);
-  try {
-    const client = window.ApiClient;
-    const user =
-      client && typeof client.getCurrentUser === 'function' ? await client.getCurrentUser() : await getJson(`/Users/${userId}`);
-    if (!user) return null;
-    userCache.set(userId, user);
-    return user;
-  } catch {
-    return null;
-  }
+  if (!userId) return Promise.resolve(null);
+  if (userCache.has(userId)) return Promise.resolve(userCache.get(userId));
+  if (userPending.has(userId)) return userPending.get(userId);
+  const p = (async () => {
+    try {
+      const client = window.ApiClient;
+      const user =
+        client && typeof client.getCurrentUser === 'function' ? await client.getCurrentUser() : await getJson(`/Users/${userId}`);
+      if (!user) return null;
+      userCache.set(userId, user);
+      return user;
+    } catch {
+      return null;
+    }
+  })().finally(() => userPending.delete(userId));
+  userPending.set(userId, p);
+  return p;
 }

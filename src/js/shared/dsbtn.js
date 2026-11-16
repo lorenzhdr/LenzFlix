@@ -7,6 +7,17 @@ import { setDataSaver } from '../core/datasaver.js';
 
 const LABEL = 'Datensparmodus an';
 
+/** Das Symbol verschwindet mit dem Ausschalten: Fokus (nur wenn er verloren ging) an einen sichtbaren Nachbarn geben. */
+function rescueFocus(btn) {
+  const ae = document.activeElement;
+  if (ae && ae !== document.body) return;
+  const sibs = btn.parentElement ? [...btn.parentElement.children] : [];
+  const i = sibs.indexOf(btn);
+  const order = [...sibs.slice(i + 1), ...sibs.slice(0, Math.max(i, 0)).reverse()];
+  const next = order.find((e) => e.matches('button:not([disabled]), a[href]') && getComputedStyle(e).display !== 'none');
+  if (next) next.focus({ preventScroll: true });
+}
+
 /** el: vorhandenes Element (z. B. mountPoint) ausstatten, sonst neuer <button>. */
 export function createDataSaverButton({ className = '', el } = {}) {
   const btn = el || h('button', { type: 'button' });
@@ -25,7 +36,7 @@ export function createDataSaverButton({ className = '', el } = {}) {
       label: 'Datensparmodus',
       items: [
         { note: true, key: 'ds-note', label: 'Datensparmodus ist an' },
-        { key: 'ds-off', label: 'Ausschalten', onClick: () => setDataSaver(false) },
+        { key: 'ds-off', label: 'Ausschalten', onClick: () => { setDataSaver(false); rescueFocus(btn); } },
       ],
     });
   });

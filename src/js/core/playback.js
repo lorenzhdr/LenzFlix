@@ -31,19 +31,35 @@ export function buildProxy(item, resume) {
 function playViaDetails(item, resume, timeoutMs) {
   return new Promise((resolve) => {
     const serverId = item.ServerId || getAuth().serverId || '';
+    // Detailseiten, die schon vor dem Hash-Wechsel existierten (z. B. die des vorherigen Titels), zählen nur,
+    // wenn Jellyfin sie danach per viewshow für den neuen Titel anzeigt.
+    const stale = new Set(document.querySelectorAll('.itemDetailPage'));
+    const shown = new WeakSet();
+    const onShow = (e) => shown.add(e.target);
+    document.addEventListener('viewshow', onShow, true);
+    // Stand die Detailseite dieses Titels schon offen (kein Hash-Wechsel, kein viewshow), gibt es nichts auszuschließen.
+    const sameBefore = new URLSearchParams(window.location.hash.split('?')[1] || '').get('id') === item.Id;
+    // Karenz: Jellyfin blendet die alte Seite binnen Sekundenbruchteilen aus; was danach noch sichtbar ist, ist die (wiederverwendete) aktuelle Seite.
+    const grace = Math.min(1000, timeoutMs / 2);
     window.location.hash = `#/details?id=${item.Id}&serverId=${serverId}`;
     const started = Date.now();
     const timer = setInterval(() => {
-      const wrap = document.querySelector('.itemDetailPage:not(.hide) .mainDetailButtons');
+      const done = (result) => {
+        clearInterval(timer);
+        document.removeEventListener('viewshow', onShow, true);
+        resolve(result);
+      };
+      // Nutzer ist inzwischen zu einem anderen Titel navigiert: nicht dort auf Play drücken.
+      if (new URLSearchParams(window.location.hash.split('?')[1] || '').get('id') !== item.Id) return done(false);
+      const page = [...document.querySelectorAll('.itemDetailPage:not(.hide)')].find((p) => sameBefore || !stale.has(p) || shown.has(p) || Date.now() - started > grace);
+      const wrap = page && page.querySelector('.mainDetailButtons');
       const visible = (sel) => wrap && [...wrap.querySelectorAll(sel)].find((b) => !b.classList.contains('hide'));
       const target = resume ? visible('.btnPlay') : visible('.btnReplay') || visible('.btnPlay');
       if (target) {
-        clearInterval(timer);
         target.click();
-        resolve(true);
+        done(true);
       } else if (Date.now() - started > timeoutMs) {
-        clearInterval(timer);
-        resolve(false);
+        done(false);
       }
     }, 150);
   });

@@ -7,10 +7,13 @@ import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { cssActive } from './core/csscheck.js';
+import { destroy as destroyStartCover } from './core/startcover.js';
 import { initHomeCache, destroyHomeCache } from './core/homecache.js';
 import { VERSION } from './core/version.js';
 import { earlyTheme, startTheme, stopTheme, syncThemeUser, destroyTheme, getTheme } from './core/theme.js';
 import { syncDataSaver, destroyDataSaver } from './core/datasaver.js';
+import { closeThemePicker } from './core/themepicker.js';
+import { clearToast } from './core/toast.js';
 import { features } from './features/index.js';
 import { destroyStore } from './features/store/home.js';
 import { destroyLive } from './features/live/home.js';
@@ -52,8 +55,10 @@ function init() {
     destroyStore(); // VIDEOTHEK LENZ: suspendierte 3D-Instanz sofort freigeben
     destroyLive(); // LENZ LIVE: suspendierte Engine-Instanz sofort freigeben
     destroyTvMode(); // TV-Modus: Instanz (auch im Bild-in-Bild), CSS, Intent-Listener freigeben
+    destroyStartCover(); // Ladebild: Listener, Esc-Sperre, html-Klasse
     removeAllMounts();
     destroyLayout();
+    destroyDataSaver(); // Klasse, Bild-Skala, Abos; syncDataSaver() baut beim nächsten sync() neu auf
     stopTheme();
   }
 
@@ -98,7 +103,8 @@ function init() {
     window.removeEventListener('popstate', sync);
     document.removeEventListener('viewshow', sync);
     stopFeatures();
-    destroyDataSaver();
+    closeThemePicker(); // offenen Design-Dialog (Overlay, keydown-Capture) nicht verwaisen lassen
+    clearToast();
     destroyTheme();
     removeFavicon();
     delete window.LenzFlix;

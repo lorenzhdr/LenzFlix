@@ -294,7 +294,7 @@ html.lfx-js .lfx-toast {
   left: 0;
   right: 0;
   bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  z-index: 1300;
+  z-index: 1450; /* über dem Design-Picker (1400), z. B. für „Design konnte nicht geladen werden“ */
   display: flex;
   justify-content: center;
   padding: 0 16px;

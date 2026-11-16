@@ -15,7 +15,7 @@ const logout = vi.fn();
 vi.mock('../src/js/shared/profile.js', () => ({
   getUserChip: vi.fn(async () => ({ name: 'Lena', imageUrl: null })),
   profileEntries: vi.fn(async () => [
-    { key: 'design', label: 'Design Einstellungen', onClick: () => {} },
+    { key: 'design', label: 'Design-Einstellungen', onClick: () => {} },
     { key: 'logout', label: 'Abmelden', onClick: () => logout() },
   ]),
 }));
@@ -264,9 +264,9 @@ describe('prime-header am Handy', () => {
     await flush();
     const sheet = document.querySelector('.lfx-prime-psheet');
     const labels = [...sheet.querySelectorAll('.lfx-prime-psheet__item')].map((n) => n.querySelector('.lfx-prime-psheet__label').textContent);
-    expect(labels).toEqual(['Neu & beliebt', 'Filme', 'Serien', 'Musik', 'Design Einstellungen', 'Abmelden']);
+    expect(labels).toEqual(['Neu & beliebt', 'Filme', 'Serien', 'Musik', 'Design-Einstellungen', 'Abmelden']);
     const design = sheet.querySelector('[data-key="design"]');
-    expect(design.textContent).toBe('Design Einstellungen');
+    expect(design.textContent).toBe('Design-Einstellungen');
     expect(sheet.querySelector('.lfx-prime-psheet__name').textContent).toBe('Lena');
     expect(sheet.querySelector('a[href="#/home?lfx=new"]')).not.toBeNull();
     expect(html.classList.contains('lfx-prime-profilesheet-open')).toBe(true);

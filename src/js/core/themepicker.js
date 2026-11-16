@@ -2,7 +2,7 @@
 // Singleton #lfx-themepicker an document.body, unabhängig von Features (überlebt Design-Wechsel).
 import { h, mountPoint, unmountPoint } from './dom.js';
 import { attachSwipeClose } from './swipe.js';
-import { THEMES, THEME_META, getChosenTheme, setTheme, onThemeChange } from './theme.js';
+import { THEMES, THEME_META, getChosenTheme, getTheme, getThemeState, setTheme, onThemeChange } from './theme.js';
 import * as api from './api.js';
 import { getCharts } from './charts.js';
 import { cached, clearCache } from './cache.js';
@@ -224,8 +224,13 @@ function buildCard(c, id) {
   return btn;
 }
 
+/** Markierte Karte: gewählt; nach gescheitertem Erststart das tatsächlich angezeigte Design. */
+function shownTheme() {
+  return getThemeState() === 'failed' ? getTheme() || 'flix' : getChosenTheme();
+}
+
 function refresh(c) {
-  const chosen = getChosenTheme();
+  const chosen = shownTheme();
   for (const [id, btn] of c.cards) {
     const on = id === chosen;
     btn.setAttribute('aria-pressed', String(on));
@@ -239,7 +244,7 @@ function refresh(c) {
 
 function choose(c, id) {
   if (current !== c || c.loading) return;
-  if (id === getChosenTheme()) return;
+  if (id === getChosenTheme() && getThemeState() !== 'failed') return; // bei 'failed' ist ein neuer Versuch erlaubt
   c.loading = id;
   refresh(c);
   const done = () => {
@@ -266,6 +271,7 @@ export function closeThemePicker() {
   if (!c) return;
   current = null;
   if (c.detachSwipe) c.detachSwipe();
+  if (c.unwatchMq) c.unwatchMq();
   if (c.unsub) c.unsub();
   window.removeEventListener('keydown', c.onKeydown, true);
   c.overlay.removeEventListener('click', c.onOverlayClick);
@@ -283,12 +289,32 @@ export function closeThemePicker() {
 
 export const destroyThemePicker = closeThemePicker;
 
+/** Breitenwechsel bei offenem Dialog: cb(schmal). Rückgabe: Abmelden (oder null ohne matchMedia). */
+function watchMobileViewport(cb) {
+  try {
+    if (typeof window.matchMedia !== 'function') return null;
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const fn = (e) => cb(Boolean(e && e.matches));
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', fn);
+      return () => mq.removeEventListener('change', fn);
+    }
+    if (typeof mq.addListener === 'function') { // ältere Safari-Versionen
+      mq.addListener(fn);
+      return () => mq.removeListener(fn);
+    }
+  } catch { /* ohne Umschalten weiter */ }
+  return null;
+}
+
 export function openThemePicker({ returnFocus } = {}) {
   if (current) closeThemePicker();
+  const prev = document.activeElement;
+  const back = returnFocus || (prev && prev !== document.body && prev !== document.documentElement ? prev : null);
   const sheet = isMobileViewport();
   const overlay = mountPoint(ID, { className: `lfx-tp${sheet ? ' lfx-tp--sheet' : ''}` });
   overlay.className = `lfx-tp${sheet ? ' lfx-tp--sheet' : ''}`;
-  const c = { overlay, cards: new Map(), loading: null, returnFocus: returnFocus || null };
+  const c = { overlay, cards: new Map(), loading: null, returnFocus: back };
 
   const closeBtn = h('button', { type: 'button', class: 'lfx-tp__close', 'aria-label': 'Schließen' }, '×');
   closeBtn.addEventListener('click', () => closeThemePicker());
@@ -346,9 +372,17 @@ export function openThemePicker({ returnFocus } = {}) {
   c.unsub = onThemeChange(() => {
     if (current === c) refresh(c);
   });
-  if (sheet) {
-    c.detachSwipe = attachSwipeClose(dialog, { onClose: () => { if (current === c) closeThemePicker(); } });
-  }
+  const applySheet = (on) => {
+    overlay.classList.toggle('lfx-tp--sheet', on);
+    if (on && !c.detachSwipe) {
+      c.detachSwipe = attachSwipeClose(dialog, { onClose: () => { if (current === c) closeThemePicker(); } });
+    } else if (!on && c.detachSwipe) {
+      c.detachSwipe();
+      c.detachSwipe = null;
+    }
+  };
+  if (sheet) applySheet(true);
+  c.unwatchMq = watchMobileViewport((narrow) => { if (current === c) applySheet(narrow); });
   document.documentElement.classList.add(OPEN_CLASS);
   current = c;
   refresh(c);

@@ -50,7 +50,7 @@ export function overlayItems(model) {
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
   const statsUrl = statsLink();
   if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
-  items.push({ key: 'design', label: 'Design Einstellungen', action: 'design' });
+  items.push({ key: 'design', label: 'Design-Einstellungen', action: 'design' });
   if (dataSaverAvailable()) items.push({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver' });
   return items;
 }

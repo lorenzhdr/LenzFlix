@@ -28,13 +28,13 @@ export function getCollections({ tag = 'lenzplus', fallbackLimit = 8 } = {}) {
     }
     return list.filter((b) => b && b.Id).map((b) => {
       const img = pickImage(b);
-      return {
-        id: b.Id,
-        name: b.Name,
-        imageUrl: img ? api.imageUrlFor(b.Id, { type: img.type, tag: img.tag, maxWidth: 640 }) : null,
-        imageType: img ? img.type : null,
-        href: `#/details?id=${b.Id}`,
-      };
+      return { id: b.Id, name: b.Name, img, href: `#/details?id=${b.Id}` };
     });
-  }, 5 * 60 * 1000);
+  }, 5 * 60 * 1000).then((list) => list.map(({ id, name, img, href }) => ({ // URL erst hier: Datensparmodus/Bildskala gelten sofort
+    id,
+    name,
+    imageUrl: img ? api.imageUrlFor(id, { type: img.type, tag: img.tag, maxWidth: 640 }) : null,
+    imageType: img ? img.type : null,
+    href,
+  })));
 }

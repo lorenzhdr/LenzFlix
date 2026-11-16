@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 let theme = 'flix';
 let views = { Items: [{ Id: 'lib1', CollectionType: 'movies' }, { Id: 'lib2', CollectionType: 'tvshows' }, { Id: 'lib3', CollectionType: 'music' }] };
 
-vi.mock('../src/js/core/theme.js', () => ({ isTheme: (id) => theme === id }));
+let pendingTheme = false;
+vi.mock('../src/js/core/theme.js', () => ({ isTheme: (id) => theme === id, isThemePending: () => pendingTheme }));
 vi.mock('../src/js/core/api.js', () => ({
   getViews: vi.fn(async () => views),
   getAuth: () => ({ serverId: 'srv1' }),
@@ -18,6 +19,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
   theme = 'flix';
+  pendingTheme = false;
   window.location.hash = '#/home';
 });
 afterEach(() => {
@@ -237,5 +239,16 @@ describe('themeroute: Seiten Serien/Filme/Meine Liste (1.13.0)', () => {
     expect(themeroute.match(route('#/home?lfx=series'))).toBe(true);
     go('#/home?lfx=mylist');
     expect(window.location.hash).toBe('#/home');
+  });
+});
+
+describe('themeroute: vorläufiges LENZFLIX beim ersten Start (B001)', () => {
+  it('pending: keine Umleitung der Design-Routen, Seiten und Meine-Liste-Tab', () => {
+    pendingTheme = true;
+    for (const h of ['#/home?lfx=title&id=1', '#/home?lfx=hub&lib=1', '#/home?lfx=browse&lib=1', '#/home?lfx=search', '#/home?lfx=series', '#/home?lfx=mylist', '#/home?tab=1']) {
+      expect(themeroute.match(route(h))).toBe(false);
+    }
+    pendingTheme = false;
+    expect(themeroute.match(route('#/home?lfx=title&id=1'))).toBe(true);
   });
 });
