@@ -194,14 +194,18 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:focus-visible {
   outline-offset: 1px;
 }
 @media (hover: hover) and (pointer: fine) {
-  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:hover {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.18);
     outline: 2px solid var(--lfx-store-yellow, #ffd23f);
     outline-offset: 1px;
   }
 }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:active {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:active:not(:disabled) {
   transform: scale(0.97);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary {
   background: var(--lfx-store-yellow, #ffd23f);
@@ -233,6 +237,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
   display: flex;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 8px;
   width: min(86vw, 340px);
@@ -279,6 +284,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick[hidden] {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
   display: flex;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 8px;
   width: min(92vw, 380px);
@@ -325,11 +331,13 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing {
   opacity: 0;
-  transition: opacity 0.3s ease;
-  animation: none;
+  animation: lfx-store-fadeout 0.3s ease both;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-panel {
   pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel:focus {
+  outline: none;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag {
   position: absolute;
@@ -471,9 +479,14 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep-tag {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+@keyframes lfx-store-fadeout {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing {
     animation: none;
   }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-cross,

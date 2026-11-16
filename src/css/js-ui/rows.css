@@ -247,6 +247,7 @@ html.lfx-js .lfx-rows > .lfx-row:nth-child(n+4) .lfx-skel { animation: none; }
 
 /* Live-Abgleich mit der Vorlage (t3/t7): Die Top-10-Zeile ist höher als eine 16:9-Zeile –
    Poster ≈ 140×200 bei 289 px Pitch, Ziffer so hoch wie das Poster. Höhe ≈ 0,7 × Kartenbreite. */
+html.lfx-js .lfx-row--top10,
 html.lfx-js .lfx-row:has(.lfx-card--top10),
 html.lfx-js .lfx-card--top10 {
   --lfx-card-h: calc(var(--lfx-card-w) * 0.7);

@@ -665,13 +665,6 @@
     align-items: flex-start;
     row-gap: 6px;
   }
-  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
-  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content::before {
-    flex: 0 0 24px;
-    margin-right: 4px;
-    font-size: 18px;
-    line-height: 1.4;
-  }
   html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .listItemImage-large {
     flex: 0 0 calc(40% - 12px);
     width: calc(40% - 12px) !important;

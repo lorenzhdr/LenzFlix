@@ -142,12 +142,27 @@ describe('Info-Fenster: Fokus und Tastatur', () => {
     document.body.insertAdjacentHTML('beforeend', '<div class="lfx-card" data-lfx-id="M1"><a class="lfx-card__link" href="#x">M1</a></div><button id="hc">Weitere Infos</button>');
     const hc = document.getElementById('hc');
     hc.focus();
+    const orig = Element.prototype.matches;
+    const spy = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (q) { return q === ':focus-visible' ? true : orig.call(this, q); });
+    await openModal('M1');
+    await wait(() => document.querySelector('.lfx-modal__play'));
+    spy.mockRestore();
+    hc.remove();
+    closeModal();
+    await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
+    expect(document.activeElement).toBe(document.querySelector('.lfx-card__link'));
+  });
+
+  it('Opener per Maus (kein Tastaturfokus) verschwunden -> kein Fokus auf die Karte', async () => {
+    document.body.insertAdjacentHTML('beforeend', '<div class="lfx-card" data-lfx-id="M1"><a class="lfx-card__link" href="#x">M1</a></div><button id="hc">Weitere Infos</button>');
+    const hc = document.getElementById('hc');
+    hc.focus();
     await openModal('M1');
     await wait(() => document.querySelector('.lfx-modal__play'));
     hc.remove();
     closeModal();
     await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
-    expect(document.activeElement).toBe(document.querySelector('.lfx-card__link'));
+    expect(document.activeElement).not.toBe(document.querySelector('.lfx-card__link'));
   });
 
   it('gelöschte Folge kehrt nach „Mehr anzeigen“ nicht zurück', async () => {

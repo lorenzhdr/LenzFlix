@@ -15,6 +15,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-guide {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-panel {
   display: flex;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 8px;
   width: min(86vw, 380px);

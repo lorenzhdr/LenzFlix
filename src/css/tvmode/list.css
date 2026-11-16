@@ -103,9 +103,9 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__row.is-current {
   }
 }
 
-/* Laptop/Tablet (Seitenleiste 320-440 px): Sender-Badge weglassen, damit der Text Platz hat */
-@media (max-width: 1500px) {
-  html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row { grid-template-columns: 28px 92px minmax(0, 1fr); }
+/* Laptop/Tablet bis ca. 1466 px (Seitenleiste schmaler als 440 px): Sender-Badge weglassen, Vorschaubild behält 132 px; Text bekommt den Platz */
+@media (max-width: 1466px) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row { grid-template-columns: 28px 132px minmax(0, 1fr); }
   html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row-logo { display: none; }
 }
 

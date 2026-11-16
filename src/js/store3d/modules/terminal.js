@@ -306,6 +306,10 @@ export default {
       const status = h('div', 'lfx-store-term-status');
       status.setAttribute('role', 'status');
       status.setAttribute('aria-live', 'polite');
+      // Auswahl per Pfeiltasten: der Fokus bleibt im Suchfeld, deshalb eigene Ansage der gewählten Zeile
+      const selSay = h('div', 'lfx-store-sr');
+      selSay.setAttribute('role', 'status');
+      selSay.setAttribute('aria-live', 'polite');
       const list = h('div', 'lfx-store-term-list');
       list.setAttribute('role', 'list');
       const help = h('div', 'lfx-store-term-help');
@@ -332,6 +336,8 @@ export default {
       function select(i, scroll = true) {
         if (!results.length) { sel = -1; return; }
         sel = Math.max(0, Math.min(results.length - 1, i));
+        const dsc = results[sel].desc;
+        selSay.textContent = `${[dsc.title, dsc.sub, dsc.year, dsc.typeLabel, dsc.location].filter(Boolean).join(', ')}. Eintrag ${sel + 1} von ${results.length}`;
         results.forEach((r, k) => {
           const on = k === sel;
           r.el.classList.toggle('is-sel', on);
@@ -376,6 +382,7 @@ export default {
 
       function render(sections, emptyText) {
         list.textContent = '';
+        selSay.textContent = '';
         results = [];
         sel = -1;
         const e = env();
@@ -457,7 +464,7 @@ export default {
       root.addEventListener('keyup', (e) => e.stopPropagation());
       root.addEventListener('click', (e) => { if (e.target === root) ctx.overlay.close(); });
 
-      crt.append(head, field, status, list, help, keys);
+      crt.append(head, field, status, selSay, list, help, keys);
       root.appendChild(crt);
 
       S.cleanup = () => { clearTimeout(timer); clearInterval(clockTimer); if (ac) ac.abort(); token++; };

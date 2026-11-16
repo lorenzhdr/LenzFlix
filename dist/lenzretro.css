@@ -3739,7 +3739,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rs__input {
   border: 0;
   border-radius: 0;
   outline: 0;
-  padding: 0;
+  padding: 0 .5em 0 0;
   display: block;
 }
 
@@ -3762,7 +3762,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rs__input:focus-visible {
 
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-rs__caret {
   top: 50%;
-  left: min(calc(var(--rs-pos, 0) * (1ch + .04em)), calc(100% - .5em));
+  left: min(max(0px, calc(var(--rs-pos, 0) * (1ch + .04em) - var(--rs-scroll, 0px))), calc(100% - .5em));
   width: .5em;
   height: .78em;
   font-family: var(--lfx-retro-font-pixel);
@@ -5849,7 +5849,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-title {
   line-height: 1.05;
 }
 
-html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__thumb-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-no {
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan-no, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-no {
   font-family: var(--lfx-retro-font-pixel);
   color: var(--lfx-retro-amber);
   text-shadow: var(--lfx-retro-glow);
@@ -5862,7 +5862,14 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-hour, html.lf
   text-transform: uppercase;
 }
 
-html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__day, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row {
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__thumb-no {
+  font-family: var(--lfx-retro-font-pixel);
+  color: inherit;
+  text-shadow: none;
+  font-weight: 400;
+}
+
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__chan-badge, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-chan .lfx-tvm__chan-badge, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__row-logo .lfx-tvm__chan-badge, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__day, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now, html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row {
   border-radius: 0;
 }
 

@@ -137,22 +137,10 @@ function themeFor(ctx, kind, D) {
   return memo.get(key);
 }
 
-/** Verfügbare Arten der Woche W in Permutationsreihenfolge (hash(W)). Boxset: sobald eine Sammlung geladen und ≥ 2 Titel hat. */
+/** Verfügbare Arten der Woche W in Permutationsreihenfolge (hash(W)). Boxset wie die anderen am Wochenanfang geprüft (prepare lädt ihn immer mit). */
 function weekOrder(ctx, W) {
   const D0 = weekStart(W);
-  const cache = stateOf(ctx).boxsets;
-  const avail = KINDS.filter((k) => {
-    if (k === 'boxset') {
-      for (let d = D0; d < D0 + 7; d++) {
-        for (const c of boxsetCands(ctx, d)) {
-          const ids = cache.get(c.id);
-          if (ids && boxsetItems(ctx, ids, d).length >= MIN_ITEMS) return true;
-        }
-      }
-      return false;
-    }
-    return themeFor(ctx, k, D0) != null;
-  });
+  const avail = KINDS.filter((k) => themeFor(ctx, k, D0) != null);
   return avail.map((k) => ({ k, h: keyHash('themeday', W + ':' + k) }))
     .sort((a, b) => (a.h - b.h) || cmpStr(a.k, b.k)).map((x) => x.k);
 }
@@ -208,7 +196,8 @@ const themedayImpl = {
   /** Lädt die Sammlungs-Inhalte, die für die Tage Ds gebraucht werden (sequentiell, mit Cache; Fehler → Kandidat überspringen). */
   async prepare(ctx, Ds) {
     const cache = stateOf(ctx).boxsets;
-    const days = [...new Set((Array.isArray(Ds) ? Ds : []).filter(Number.isInteger))].sort((a, b) => a - b);
+    const req = (Array.isArray(Ds) ? Ds : []).filter(Number.isInteger);
+    const days = [...new Set(req.concat(req.map((d) => weekStart(weekOf(d)))))].sort((a, b) => a - b); // Wochenanfang: weekOrder prüft Boxset dort
     for (const D of days) {
       for (const c of boxsetCands(ctx, D)) {
         if (!cache.has(c.id)) {

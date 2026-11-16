@@ -45,6 +45,28 @@ describe('Neu und beliebt: aktive Pille', () => {
     expect(active()).toBe('new');
   });
 
+  it('nach Pillen-Klick bleibt die angeklickte Pille aktiv (auch wenn der Scroll-Spy anderes meldet), bis der Nutzer selbst scrollt', async () => {
+    feature.mount();
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4));
+    rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      return { top: this.classList.contains('lfx-np__section') ? 40 : 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
+    });
+    Object.defineProperty(window, 'scrollY', { value: 500, configurable: true });
+    const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    try {
+      document.querySelector('.lfx-np__pill[data-np="top-series"]').click();
+      window.dispatchEvent(new Event('scroll'));
+      await frames();
+      expect(active()).toBe('top-series'); // Spy würde den letzten Abschnitt (top-movies) wählen
+      window.dispatchEvent(new Event('wheel'));
+      window.dispatchEvent(new Event('scroll'));
+      await frames();
+      expect(active()).toBe('top-movies');
+    } finally {
+      Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
+    }
+  });
+
   it('aria-current="true" nur an der aktiven Pille', async () => {
     feature.mount();
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4));

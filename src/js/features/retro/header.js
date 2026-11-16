@@ -8,6 +8,7 @@ import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js'
 import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { emitFx } from './prefs.js';
+import { scrollTop } from './title-mount.js';
 import { EXCLUDED, activeKey, isPhone, navItems } from './header-nav.js';
 import { createClock, createLogo, createToggle, createDsButton, createTvButton } from './header-ui.js';
 
@@ -17,7 +18,7 @@ const SCROLL_THRESHOLD = 10;
 const HOVER_GAP_MS = 140;
 
 const state = {
-  el: null, ds: null, route: null, libs: [], seq: 0, raf: 0, busy: false, lastHover: 0, cleanups: [],
+  el: null, ds: null, route: null, libs: [], seq: 0, raf: 0, busy: false, lastHover: 0, clickAt: 0, cleanups: [],
 };
 
 function applyActive() {
@@ -80,7 +81,7 @@ function build() {
   state.el.replaceChildren(h('div', { class: 'lfx-retro-header__bar' }, [logo, nav, right]));
   state.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
 
-  nav.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a')) emitFx('nav'); });
+  nav.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a')) { state.clickAt = Date.now(); emitFx('nav'); } });
   nav.addEventListener('pointerover', (e) => {
     if (e.pointerType && e.pointerType !== 'mouse') return;
     if (!e.target.closest || !e.target.closest('a')) return;
@@ -150,6 +151,8 @@ export default {
     if (!state.el) return;
     if (changed && profileIsOpen()) closePopover();
     if (changed) closeDsPopover();
+    if (changed && state.clickAt && Date.now() - state.clickAt < 1500) scrollTop(); // Zurück/Vor ohne Klick behält die Position
+    state.clickAt = 0;
     applyActive();
   },
   unmount() {

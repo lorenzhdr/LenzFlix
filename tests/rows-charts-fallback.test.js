@@ -49,13 +49,13 @@ describe('Ersatz bei fehlenden Charts', () => {
     await Promise.resolve();
     expect(peekRowDefs({ seed: 's' })).toBeDefined();
   });
-  it('deferred: Platzhalterzeile mit Ersatz wird nach Erholung neu geladen', async () => {
+  it('deferred: Platzhalterzeile mit Ersatz bleibt gecacht (kein Zusatzabruf pro Besuch)', async () => {
     const defs = await buildRowDefs({ seed: 's2', deferCharts: true });
     const ph = defs.find((d) => d.kind === 'top10');
     await ph.load();
     expect(ph.title).toMatch(/^Top 10: Neu auf/);
     const n = getItems.mock.calls.length;
     await ph.load();
-    expect(getItems.mock.calls.length).toBeGreaterThan(n);
+    expect(getItems.mock.calls.length).toBe(n);
   });
 });

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Remote-Trailer nur über https und ohne Referrer.
+// Remote-Trailer nur über https, Vorschau nie remote.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', () => ({
@@ -27,12 +27,10 @@ describe('Remote-Trailer-Datenschutz', () => {
     expect(directRemoteTrailerUrl({ RemoteTrailers: [{ Url: 'http://cdn.example/t.mp4' }, { Url: 'https://cdn.example/t.webm' }] })).toBe('https://cdn.example/t.webm');
   });
 
-  it('Vorschau-Video mit Remote-Trailer trägt referrerpolicy=no-referrer', async () => {
+  it('Vorschau ohne lokalen Trailer startet kein Remote-Video', async () => {
     createMutedPreview(document.getElementById('box'), { Id: 'M1', RemoteTrailers: [{ Url: 'https://cdn.example/t.mp4' }] }, { delay: 10 });
     await vi.advanceTimersByTimeAsync(20);
     await flush();
-    const v = document.querySelector('video');
-    expect(v).not.toBeNull();
-    expect(v.getAttribute('referrerpolicy')).toBe('no-referrer');
+    expect(document.querySelector('video')).toBeNull();
   });
 });

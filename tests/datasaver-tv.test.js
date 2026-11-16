@@ -92,7 +92,7 @@ describe('TV-Controller: Nachbarn bei zapPrefetch=false', () => {
     }
   });
 
-  it('Vorwärmen läuft über den Delegations-Player weiter (prewarm, warmNote), auch bei zapPrefetch=false', async () => {
+  it('Vorwärmen läuft weiter (prewarm, warmNote), auch bei zapPrefetch=false', async () => {
     const { ctl, player } = makeEnv({ zapWarm: true, zapPrefetch: false });
     ctl.start();
     await flush(NEIGHBOR_MS + 1);

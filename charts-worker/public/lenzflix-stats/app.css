@@ -849,6 +849,7 @@ h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 10px; color: var(--lfx-te
 @media (max-width: 699px) {
   .theme-plus .app .tabs { display: -webkit-flex; display: flex; -webkit-flex-wrap: nowrap; flex-wrap: nowrap; overflow-x: auto; max-width: calc(100% - 12px); }
   .theme-plus .app .tab { -webkit-flex-shrink: 0; flex-shrink: 0; padding: 8px 12px; white-space: nowrap; }
+  .kpi-v { font-size: 1.25rem; }
   .theme-plus .hero-value { font-size: 9vw; }
   .theme-prime .hero-value { font-size: 9vw; }
   .theme-retro .hero-value { font-size: 10vw; }

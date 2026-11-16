@@ -155,7 +155,11 @@ const server = http.createServer((req, res) => {
     if (p === '/lenzflix-stats') return send(res, 302, '', 'text/plain', { Location: '/lenzflix-stats/' });
     if (p === '/lenzflix-stats/') return serveStatic(res, 'index.html');
     if (p === '/lenzflix-stats/api/me/stats') return json(res, statsFor(url.searchParams.get('range')));
-    if (p.startsWith('/lenzflix-stats/')) return serveStatic(res, decodeURIComponent(p.slice('/lenzflix-stats/'.length)));
+    if (p.startsWith('/lenzflix-stats/')) {
+      let rel;
+      try { rel = decodeURIComponent(p.slice('/lenzflix-stats/'.length)); } catch { return send(res, 400, 'bad request', 'text/plain'); }
+      return serveStatic(res, rel);
+    }
     if (p === '/System/Info/Public') return json(res, fixture('info.json'));
     if (p === '/Users/Me') return json(res, fixture('user.json'));
     if (p === '/Users/AuthenticateByName' && req.method === 'POST') return json(res, { AccessToken: 'dev', User: fixture('user.json') });

@@ -77,9 +77,6 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .
   height: 24px;
   fill: currentcolor;
 }
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--over .lfx-prime-header__back {
-  background: rgba(0, 5, 13, 0.55);
-}
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__title {
   flex: 1 1 0;
   min-width: 0;
@@ -493,10 +490,6 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .li
   flex-wrap: wrap;
   align-items: flex-start;
   row-gap: 6px;
-}
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItem-largeImage .listItem-content::before {
-  display: none; /* Zählernummer spart Breite */
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #itemDetailPage .listItemImage-large {
   flex: none;

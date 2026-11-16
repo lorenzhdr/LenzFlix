@@ -88,7 +88,7 @@ export function createCard(item, opts = {}) {
         : h('span', { class: 'lfx-card__title' }, title));
     }
     link = h('a', {
-      class: `lfx-card__link${titled ? ' lfx-card__link--titled' : ''}`,
+      class: `lfx-card__link${titled ? ' lfx-card__link--titled' : ''}${poster ? ' lfx-card__link--poster' : ''}`,
       href: detailHref(item),
       'aria-label': ariaLabel(item),
     }, children);

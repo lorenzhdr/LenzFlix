@@ -12,7 +12,7 @@
 //   state=loading|pause|closedown|error|gesture|tap|muted   Zustand erzwingen (siehe unten)   thin=1  ausgedünnter Katalog (nur lange Filme)
 //
 // Zustände erzwingen (state=pause|closedown|error|gesture|tap schaltet debug automatisch ein; playing ist der Normalablauf, kein state nötig):
-//   loading   → onReady wird nicht ausgeführt: Ladezustand (is-loading, Fortschrittsanzeige) bleibt stehen; kein Start, kein Hook.
+//   loading   → onReady kehrt früh zurück: Ladezustand (is-loading, #dev-load-Fortschrittsanzeige) bleibt stehen; kein Start, kein Hook.
 //   muted     → opts.muted = true (Nutzer-Stumm; mutedByPolicy braucht einen Hook).
 //   closedown → now = Sa 03:30 MEZ (falls now fehlt), danach Sender 1..18 per ctl.tune(immediate) durchschalten, bis snap.phase === 'closedown'.
 //   pause     → gleiches Durchschalten bis snap.phase === 'pause' (ggf. now= anpassen).
@@ -217,9 +217,9 @@
       $('dev-load-bar').style.width = Math.round((f || 0) * 100) + '%';
     },
     onReady: function () {
+      if (loadingOnly) { document.documentElement.dataset.tvmDevReady = '1'; return; } // state=loading: Ladeanzeige (#dev-load) bleibt stehen
       var l = $('dev-load');
       if (l) l.remove();
-      if (loadingOnly) { document.documentElement.dataset.tvmDevReady = '1'; return; } // state=loading: Ladezustand stehen lassen
       host.classList.remove('is-loading');
       automate();
     },

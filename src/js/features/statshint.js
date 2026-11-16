@@ -109,6 +109,15 @@ function show() {
   const nav = top ? document.getElementById('lfx-nav') : null;
   const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
   root.style.left = top && navRight > 0 ? `${navRight + 12}px` : '';
+  // Rechts alle Kopfleisten-Symbole (auch Synchronwiedergabe, Datenspar/TV) rechts der Navigation frei lassen; CSS-Wert (178 px) bleibt Untergrenze
+  let limit = 0;
+  if (top && navRight > 0) {
+    document.querySelectorAll('header.MuiAppBar-root button, header.MuiAppBar-root a, #lfx-tvm-btn, #lfx-ds-btn').forEach((n) => {
+      const r = n.getBoundingClientRect();
+      if (r.width > 0 && r.left > navRight && (!limit || r.left < limit)) limit = r.left;
+    });
+  }
+  root.style.right = limit ? `max(calc(var(--lfx-gutter) + 178px), ${Math.round(window.innerWidth - limit + 8)}px)` : '';
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
   root.replaceChildren(h('div', { class: 'lfx-statshint__box' }, [link, close]));

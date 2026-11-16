@@ -189,9 +189,12 @@ html.layout-tv .card:focus .cardBox > .cardFooter {
 }
 
 /* ---------- Startseite / Reihen ---------- */
-/* Unterrand 0.4em: die fokussierte (skalierte) Karte soll den Abschnittstitel nicht überdecken */
+/* Unterrand: die fokussierte (skalierte) Karte samt 4px-Ring soll den Abschnittstitel (auch Unterlängen) nicht überdecken */
 html.layout-tv .sectionTitleContainer-cards {
-  margin: 0 0 0.4em;
+  margin: 0 0 0.7em;
+}
+html.layout-tv #itemDetailPage .detailVerticalSection > .sectionTitle {
+  margin-bottom: 0.4em;
 }
 html.layout-tv .sectionTitle,
 html.layout-tv .sectionTitle-cards {
@@ -215,7 +218,7 @@ html.layout-tv .overflowSquareCard {
   width: 12.4vw;
 }
 /* Texte unter den Karten in Scroller-Reihen ausblenden. Der Fortschrittsbalken liegt im .innerCardFooter
-   (innerhalb .cardScalable, 0.3em hoch, unten am Bild); die Fokus-Verläufe unten sitzen 0.3em höher und lassen ihn frei. Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
+   (innerhalb .cardScalable, 0.3em hoch, unten am Bild); er liegt bei Fokus per z-index über dem Verlauf (::after von .cardScalable). Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
 html.layout-tv .emby-scroller .cardBox > .cardFooter,
 html.layout-tv .emby-scroller .card:not(.personCard) .cardBox > .cardText {
   display: none;
@@ -225,17 +228,33 @@ html.layout-tv .emby-scroller .cardBox {
   position: relative;
 }
 html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter,
-/* Jellyfin 12.4 gibt die Texte ohne .cardFooter direkt in .cardBox aus: nur die erste Zeile (Titel) als Verlauf */
+/* Jellyfin 12.4 gibt die Texte ohne .cardFooter direkt in .cardBox aus: nur die erste Zeile (Titel) */
 html.layout-tv .emby-scroller .card:not(.personCard):focus .cardBox > .cardText-first {
   display: block;
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0.3em; /* = Höhe des Fortschrittsbalkens, sonst deckt der Verlauf ihn ab */
+  bottom: 0;
   z-index: 2;
   padding: 1.6em 0.6em 0.7em;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
   color: #fff;
+}
+/* Der Verlauf liegt im Stapelkontext des Bildes (.cardScalable), damit der Fortschrittsbalken darüber bleibt */
+html.layout-tv .emby-scroller .card:not(.personCard):focus .cardScalable {
+  position: relative;
+}
+html.layout-tv .emby-scroller .card:not(.personCard):focus .cardScalable::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4em;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+html.layout-tv .emby-scroller .card:focus .innerCardFooter {
+  z-index: 2;
 }
 /* Kartentexte außerhalb von Scrollern (Raster) */
 html.layout-tv .cardText {
@@ -324,7 +343,7 @@ html.layout-tv #itemDetailPage .itemMiscInfo .mediaInfoOfficialRating {
   border-radius: 3px;
   padding: 0 0.4em;
 }
-/* Buttons als Pillen; Beschriftung sichtbar */
+/* Buttons als Pillen; Jellyfin 12.4 rendert hier keine Beschriftung (Icon-Buttons), eine vorhandene wird nicht versteckt */
 html.layout-tv #itemDetailPage .mainDetailButtons {
   flex-wrap: wrap;
   margin: 0.6em 0 1em;

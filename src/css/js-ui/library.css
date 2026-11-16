@@ -159,6 +159,10 @@ html.lfx-js:not(.layout-tv) .lfx-lib__all-btn:focus-visible { outline: 2px solid
   html.lfx-js:not(.layout-tv) .lfx-lib__head { display: none; }
 }
 html.lfx-js.lfx-mnav-on:not(.layout-tv) .lfx-lib__head { display: none; }
+/* Handy-Pillenzeile (mobilenav, 56–96 px, absolut) deckt sonst die erste Rasterreihe: Raster beginnt darunter */
+@media (max-width: 899px) {
+  html.lfx-js.lfx-mnav-pills:not(.layout-tv) .lfx-lib.is-grid .lfx-lib__body { padding-top: 48px; }
+}
 
 /* ---------------------------------------------------------------- Raster (generisch, auch „Meine Liste“) */
 html.lfx-js .lfx-grid {

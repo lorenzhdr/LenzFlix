@@ -1244,19 +1244,7 @@
   }
   function weekOrder(ctx, W) {
     const D0 = weekStart(W);
-    const cache = stateOf(ctx).boxsets;
-    const avail = KINDS.filter((k) => {
-      if (k === "boxset") {
-        for (let d = D0; d < D0 + 7; d++) {
-          for (const c of boxsetCands(ctx, d)) {
-            const ids = cache.get(c.id);
-            if (ids && boxsetItems(ctx, ids, d).length >= MIN_ITEMS) return true;
-          }
-        }
-        return false;
-      }
-      return themeFor(ctx, k, D0) != null;
-    });
+    const avail = KINDS.filter((k) => themeFor(ctx, k, D0) != null);
     return avail.map((k) => ({ k, h: keyHash("themeday", W + ":" + k) })).sort((a, b) => a.h - b.h || cmpStr(a.k, b.k)).map((x) => x.k);
   }
   function themesFor(ctx, D) {
@@ -1312,7 +1300,8 @@
     /** Lädt die Sammlungs-Inhalte, die für die Tage Ds gebraucht werden (sequentiell, mit Cache; Fehler → Kandidat überspringen). */
     async prepare(ctx, Ds) {
       const cache = stateOf(ctx).boxsets;
-      const days2 = [...new Set((Array.isArray(Ds) ? Ds : []).filter(Number.isInteger))].sort((a, b) => a - b);
+      const req = (Array.isArray(Ds) ? Ds : []).filter(Number.isInteger);
+      const days2 = [...new Set(req.concat(req.map((d) => weekStart(weekOf(d)))))].sort((a, b) => a - b);
       for (const D of days2) {
         for (const c of boxsetCands(ctx, D)) {
           if (!cache.has(c.id)) {
@@ -2926,6 +2915,7 @@
         return null;
       }
     }
+    let pendingAudio = null;
     async function play(opts = {}) {
       if (disposed) return aborted();
       const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none", info: null, hint: null, itemId: opts.itemId };
@@ -3092,12 +3082,24 @@
       /** Messung des letzten play()/playUrl(): { totalMs, infoMs, loadMs, startMs, chain, cached, mode } oder null. */
       lastTiming: () => lastTiming ? { ...lastTiming } : null,
       tracks() {
-        return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
+        return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: pendingAudio ?? tr.audioIndex, subtitleIndex: tr.subtitleIndex };
       },
       async setAudio(index) {
         if (!session || session.kind !== "item") return aborted();
-        if (index === tr.audioIndex) return { ok: true, mode: session.mode };
-        return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail: true });
+        if (index === (pendingAudio ?? tr.audioIndex)) return { ok: true, mode: session.mode };
+        if (pendingAudio != null && index === tr.audioIndex) {
+          gen++;
+          cancelRequests();
+          pendingAudio = null;
+          return { ok: true, mode: session.mode };
+        }
+        const keepOnFail = vc.phases().playing != null;
+        if (keepOnFail) pendingAudio = index;
+        try {
+          return await play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail });
+        } finally {
+          if (pendingAudio === index) pendingAudio = null;
+        }
       },
       async setSubtitle(index) {
         if (!session || session.kind !== "item") return;
@@ -3681,11 +3683,8 @@
       }
     }
     const prefetchTarget = (itemId, signal) => prefetchItem(player, itemId, signal);
-    const nbPlayer = player && typeof player === "object" && typeof player.prefetch === "function" ? Object.assign(Object.create(player), {
-      prefetch: (id, o2) => deps && deps.zapPrefetch === false ? Promise.resolve({ ok: false, reason: "off" }) : player.prefetch(id, o2)
-    }) : player;
     const nb = createNeighbors({
-      player: nbPlayer,
+      player,
       scheduler,
       clock,
       deps,
@@ -3935,6 +3934,7 @@
       return tr || { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
     }
     async function setAudio(i) {
+      if (i === tracks().audioIndex) return { ok: true };
       let res;
       const g = gen;
       const e = entry;

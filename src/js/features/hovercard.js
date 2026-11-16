@@ -579,8 +579,11 @@ function removeSession(s) {
   s.removeTimer = null;
   const a = document.activeElement;
   if (a && a !== document.body && s.el.contains(a) && s.card.isConnected) {
-    const link = s.card.querySelector('a, [tabindex]'); // Fokus nicht auf <body> fallen lassen
+    let kb; // Fokusrückgabe nur nach Tastaturbedienung; Mausklick-Fokus lösen (sonst zeigt :focus-within Pfeile/Punkte der Zeile weiter)
+    try { kb = a.matches(':focus-visible'); } catch { kb = true; }
+    const link = kb && s.card.querySelector('a, [tabindex]');
     if (link && link.focus) link.focus({ preventScroll: true });
+    else if (!kb && a.blur) a.blur();
   }
   s.el.remove();
   if (session === s) session = null;

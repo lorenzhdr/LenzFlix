@@ -450,6 +450,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     } catch { return null; }
   }
 
+  let pendingAudio = null; // angeforderte Spur während einer keepOnFail-Umschaltung (tr bleibt bis zur Auflösung alt)
+
   async function play(opts = {}) {
     if (disposed) return aborted();
     const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: 'none', info: null, hint: null, itemId: opts.itemId };
@@ -634,12 +636,16 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     /** Messung des letzten play()/playUrl(): { totalMs, infoMs, loadMs, startMs, chain, cached, mode } oder null. */
     lastTiming: () => (lastTiming ? { ...lastTiming } : null),
     tracks() {
-      return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
+      return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: pendingAudio ?? tr.audioIndex, subtitleIndex: tr.subtitleIndex };
     },
     async setAudio(index) {
       if (!session || session.kind !== 'item') return aborted();
-      if (index === tr.audioIndex) return { ok: true, mode: session.mode };
-      return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail: true });
+      if (index === (pendingAudio ?? tr.audioIndex)) return { ok: true, mode: session.mode };
+      if (pendingAudio != null && index === tr.audioIndex) { gen++; cancelRequests(); pendingAudio = null; return { ok: true, mode: session.mode }; } // Rückwahl der alten Spur: Umschaltung abbrechen
+      // Bild nur behalten, wenn der Start schon läuft; im Ladefenster wie sonst abbauen und Fehler melden
+      const keepOnFail = vc.phases().playing != null;
+      if (keepOnFail) pendingAudio = index;
+      try { return await play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail }); } finally { if (pendingAudio === index) pendingAudio = null; }
     },
     async setSubtitle(index) {
       if (!session || session.kind !== 'item') return;

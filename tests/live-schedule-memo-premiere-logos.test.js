@@ -47,15 +47,17 @@ describe('Premiere wird nicht vorher als Füllprogramm gesendet', () => {
 });
 
 describe('Thementag-Kandidaten sind cache-unabhängig', () => {
-  it('Kandidaten jenseits der ersten 12 Rotationsplätze werden nie geladen', async () => {
+  it('Kandidaten jenseits der ersten 12 Rotationsplätze je Tag werden nie geladen (Tag + Wochenanfang)', async () => {
     const raw = base();
     for (let i = 0; i < 30; i++) raw.boxsets.push({ Id: 'b' + i, Name: 'Reihe ' + i, ChildCount: 3 });
     const loaded = new Set();
     const sch = createScheduler(normalizeCatalog(raw), { getBoxSetItems: async (id) => { loaded.add(id); return []; } });
     await sch.prepare([dNov(10)]);
-    expect(loaded.size).toBe(12);
+    const n = loaded.size;
+    expect(n).toBeGreaterThanOrEqual(12);
+    expect(n).toBeLessThanOrEqual(24); // 12 für den Tag, höchstens 12 für den Wochenanfang
     await sch.prepare([dNov(10)]); // warmer Cache darf die Zulassung nicht erweitern
-    expect(loaded.size).toBe(12);
+    expect(loaded.size).toBe(n);
   });
 });
 

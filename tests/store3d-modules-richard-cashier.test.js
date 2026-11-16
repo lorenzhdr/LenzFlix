@@ -78,6 +78,22 @@ describe('Richard und Kassen-PC', () => {
     expect(document.activeElement.tagName).toBe('BUTTON');
   });
 
+  it('Kassen-PC: Pfeiltasten-Auswahl wird in einer Live-Region angesagt', async () => {
+    await build();
+    host.ctx.use('terminal').open('titel');
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    const root = dom.querySelector('.lfx-store-term');
+    const say = root.querySelector('.lfx-store-sr');
+    expect(say.getAttribute('aria-live')).toBe('polite');
+    const rows = root.querySelectorAll('.lfx-store-term-row');
+    expect(say.textContent).toContain('Eintrag 1 von ' + rows.length);
+    if (rows.length > 1) {
+      root.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      expect(say.textContent).toContain('Eintrag 2 von ' + rows.length);
+    }
+  });
+
   it('Kassen-PC: keine option-Zeilen mit Buttons, Hilfe-Schalter und Status', async () => {
     await build();
     host.ctx.use('terminal').open('titel');

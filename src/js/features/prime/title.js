@@ -3,6 +3,7 @@
 // native Sektionen werden per html.lfx-prime-title-on ausgeblendet. Episode/Staffel -> Serie, BoxSet -> Titel-Raster.
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
+import { clearCache } from '../../core/cache.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
@@ -492,6 +493,7 @@ async function load(id) {
       if (fresh) {
         main.UserData = fresh.UserData || main.UserData;
         syncButtons(s, main);
+        clearCache(`lfx:modal:next:${main.Id}`);
         refreshPlay(s, main);
       }
     }

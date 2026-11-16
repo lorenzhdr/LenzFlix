@@ -23,8 +23,10 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .
   background: rgba(255, 255, 255, 0.1);
   font-weight: 700;
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:hover {
-  background: rgba(255, 255, 255, 0.2);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text .MuiButton-root:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-contained .MuiButton-root {
   border-radius: 100px;
@@ -107,9 +109,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~
   border: 0;
   background: rgba(255, 255, 255, 0.1);
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay:hover {
-  border: 0;
-  background: rgba(255, 255, 255, 0.22);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay:hover {
+    border: 0;
+    background: rgba(255, 255, 255, 0.22);
+  }
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .itemMiscInfo .mediaInfoText.mediaInfoOfficialRating {
   border: 0;

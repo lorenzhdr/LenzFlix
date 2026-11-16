@@ -95,6 +95,13 @@ describe('Titel: Fehlertexte', () => {
     await flush();
     expect(document.querySelector('.lfx-plus-title__error p').textContent).toBe('Der Server hat nicht geantwortet.');
   });
+
+  it('HTTP 404 (gelöschter Titel): eigener Text statt Server-Text', async () => {
+    api.getItem.mockRejectedValue(new Error('LenzFlix API: HTTP 404 für /Users/u/Items/zz'));
+    title.mount(parseHash('#/home?lfx=title&id=zz'));
+    await flush();
+    expect(document.querySelector('.lfx-plus-title__error p').textContent).toBe('Dieser Titel ist nicht mehr verfügbar.');
+  });
 });
 
 describe('Serie', () => {
@@ -170,21 +177,30 @@ describe('Serie', () => {
 });
 
 describe('Trailer-Dialog', () => {
-  it('Trailer-Dialog: Tab wechselt zyklisch zwischen Video und Schließen', async () => {
+  it('Trailer-Dialog: Tab wird nicht abgefangen (native Video-Bedienelemente bleiben erreichbar)', async () => {
+    api.getItem.mockResolvedValue({ ...base, Name: 'Film' });
+    title.mount(parseHash('#/home?lfx=title&id=m1'));
+    await flush();
+    document.querySelector('.lfx-plus-circle--trailer').click();
+    const ev = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    window.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(false);
+  });
+
+  it('Trailer-Dialog: Fokus außerhalb holt ihn zurück (nach Schließen -> Video, sonst Schließen)', async () => {
     api.getItem.mockResolvedValue({ ...base, Name: 'Film' });
     title.mount(parseHash('#/home?lfx=title&id=m1'));
     await flush();
     document.querySelector('.lfx-plus-circle--trailer').click();
     const closeBtn = document.querySelector('.lfx-plus-trailer__close');
     const video = document.querySelector('.lfx-plus-trailer__video');
-    expect(document.activeElement).toBe(closeBtn);
-    const tab = (shiftKey) => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
     video.tabIndex = 0;
-    tab(false);
+    const out = document.createElement('button');
+    document.body.append(out);
+    out.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: closeBtn }));
     expect(document.activeElement).toBe(video);
-    tab(false);
+    out.dispatchEvent(new FocusEvent('focusin', { bubbles: true, relatedTarget: video }));
     expect(document.activeElement).toBe(closeBtn);
-    tab(true);
-    expect(document.activeElement).toBe(video);
+    out.remove();
   });
 });

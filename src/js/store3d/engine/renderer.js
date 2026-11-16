@@ -114,6 +114,7 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
 
   function go() {
     if (!running || lost || (document.hidden && !inXr())) return;
+    aq.reset();
     last = performance.now();
     renderer.setAnimationLoop(loop);
   }

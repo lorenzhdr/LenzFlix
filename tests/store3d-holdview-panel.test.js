@@ -31,14 +31,14 @@ describe('Hüllen-Panel', () => {
     expect(draws.some((l) => l.includes('3 Staffeln'))).toBe(true);
   });
 
-  it('Dialogrolle, Fokus auf erstem Knopf, Fokus zurück', () => {
+  it('Dialogrolle, Fokus auf dem Panel (nicht auf „Abspielen“), Fokus zurück', () => {
     document.body.innerHTML = '<button id="prev">x</button>';
     document.getElementById('prev').focus();
     const hv = mk({ Id: 'm', Name: 'Film', Type: 'Movie', RunTimeTicks: 6e10 });
     const panel = document.querySelector('.lfx-store-hold-panel');
     expect(panel.getAttribute('role')).toBe('dialog');
     expect(panel.getAttribute('aria-label')).toBe('Film');
-    expect(document.activeElement.textContent).toBe('Abspielen');
+    expect(document.activeElement).toBe(panel);
     hv.dispose(true);
     expect(document.activeElement.id).toBe('prev');
   });

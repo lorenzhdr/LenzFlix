@@ -625,7 +625,7 @@
         else l.removeAttribute("href");
         for (const [a, name] of [[ATTR_SIZES, "sizes"], [ATTR_TYPE, "type"]]) {
           if (l.hasAttribute(a)) l.setAttribute(name, l.getAttribute(a));
-          else if (name === "sizes") l.removeAttribute(name);
+          else l.removeAttribute(name);
           l.removeAttribute(a);
         }
         l.removeAttribute(ATTR);
@@ -915,7 +915,7 @@
     }
     if (!started || getUserId() !== uid) return;
     if (touched !== startTouched || unsynced) {
-      scheduleUpload(chosen);
+      if (remote !== chosen) scheduleUpload(chosen);
       return;
     }
     if (remotePrev) lsSet(KEY_PREV + uid, remotePrev);
@@ -1274,6 +1274,7 @@
   var raf = 0;
   var safety = 0;
   var leaving = 0;
+  var opener = null;
   var watching = false;
   var routePath = () => parseHash(window.location.hash).path;
   function isActive() {
@@ -1400,6 +1401,14 @@
     leaving = 0;
     watch(false);
     document.documentElement.classList.remove(ON_CLASS);
+    const a = document.activeElement;
+    if (opener && opener.isConnected && (!a || a === el || a === document.body) && routePath() !== "/video") {
+      try {
+        opener.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    opener = null;
     unmountPoint(ID2);
     el = null;
     itemId = null;
@@ -1424,6 +1433,8 @@
     }
     el.classList.remove("is-leaving");
     document.documentElement.classList.add(ON_CLASS);
+    const a = document.activeElement;
+    if (a && a !== el && a !== document.body && a.isConnected) opener = a;
     try {
       el.focus({ preventScroll: true });
     } catch {
@@ -3768,7 +3779,6 @@
               const fb = fallbackDef();
               def.id = fb.id;
               def.title = fb.title;
-              def.noCache = true;
               return fb.load();
             }
           });
@@ -4123,6 +4133,7 @@
   var isCatsOpen = () => Boolean(state3.cats && !state3.cats.hidden);
   function openCats() {
     if (!state3.cats || isCatsOpen()) return;
+    ensureGenres(libraryKind(state3.route));
     state3.catsReturnFocus = document.activeElement;
     state3.cats.hidden = false;
     cl().add("lfx-mnav-cats-open");
@@ -4356,9 +4367,9 @@
       const onOverlayClick = (e) => {
         const t = e.target.closest && e.target.closest("a, button[data-action]");
         if (!t || t.dataset && t.dataset.key === "datasaver") return;
-        const opener = state3.returnFocus || state3.catBtn;
+        const opener2 = state3.returnFocus || state3.catBtn;
         closeOverlay({ restoreFocus: false });
-        if (t.dataset && t.dataset.action === "design") openThemePicker({ returnFocus: opener });
+        if (t.dataset && t.dataset.action === "design") openThemePicker({ returnFocus: opener2 });
       };
       state3.overlay.addEventListener("click", onOverlayClick);
       state3.cleanups.push(
@@ -5845,7 +5856,7 @@
     create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
     return loadInto(id, hint, false);
   }
-  function create(opener, overlayMode = false, id = null) {
+  function create(opener2, overlayMode = false, id = null) {
     const overlay = mountPoint(ROOT_ID2, { className: "lfx-modal-overlay" });
     overlay.replaceChildren();
     const closeBtn = h("button", { type: "button", class: "lfx-modal__close", "aria-label": "Schlie\xDFen", title: "Schlie\xDFen", onclick: () => closeModal() }, [icon("close")]);
@@ -5862,7 +5873,13 @@
     overlay.addEventListener("click", onOverlayClick);
     clearCache("lfx:modal:");
     window.removeEventListener("popstate", onOrphanPop);
-    state4 = { overlay, modal, content, closeBtn, opener, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    let kb;
+    try {
+      kb = Boolean(opener2 && opener2.matches(":focus-visible"));
+    } catch {
+      kb = true;
+    }
+    state4 = { overlay, modal, content, closeBtn, opener: opener2, kb, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
     state4.unsub = onItemsChanged(onChanged);
     lockScroll(state4);
     if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
@@ -5925,7 +5942,7 @@
     rootEl().classList.remove("lfx-modal-open");
     unmountPoint(s.overlay);
     let op = s.opener;
-    if (!(op && op.isConnected) && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link');
+    if (!(op && op.isConnected) && s.kb && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link');
     if (op && op.isConnected && typeof op.focus === "function" && !overlayOnTop()) op.focus({ preventScroll: true });
     return s.after;
   }
@@ -6083,6 +6100,7 @@
     s.seasonId = sel.seasonId;
     s.selectedEpisodeId = sel.episodeId;
     const H = makeHandlers(s, token2);
+    s.H = H;
     const isSeries = main.Type === "Series";
     const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? "Fortsetzen" : "Abspielen" });
     s.parts = parts;
@@ -6132,7 +6150,13 @@
   }
   async function showSeason(s, token2, H, sid = s.seasonId) {
     s.want = sid;
-    const episodes = await loadEpisodes2(s.main.Id, sid);
+    let episodes;
+    try {
+      episodes = await loadEpisodes2(s.main.Id, sid);
+    } catch (e) {
+      if (s.want === sid) s.want = null;
+      throw e;
+    }
     if (state4 !== s || s.token !== token2 || s.want !== sid) return;
     s.seasonId = sid;
     s.episodes = episodes;
@@ -6268,11 +6292,12 @@
             const failed = await bulkPlayed(s, targetId, next);
             if (!sameTitle()) return;
             if (isSeries || !next) {
-              main.UserData = main.UserData || {};
-              main.UserData.Played = isSeries ? next : false;
-              if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, main.UserData.Played);
+              const m = s.main;
+              m.UserData = m.UserData || {};
+              m.UserData.Played = isSeries ? next : false;
+              if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, m.UserData.Played);
             }
-            await showSeason(s, token2, H).catch(() => {
+            showSeason(s, s.token, s.H, s.want || s.seasonId).catch(() => {
             });
             if (failed) toast(SAVE_ERROR);
             else toast(isSeries ? `Serie als ${verb} markiert` : `${folgen(n)} als ${verb} markiert`);
@@ -6488,7 +6513,7 @@
         children.push(logo ? h("img", { class: "lfx-card__logo", src: logo, alt: "", ...lazy }) : h("span", { class: "lfx-card__title" }, title));
       }
       link = h("a", {
-        class: `lfx-card__link${titled ? " lfx-card__link--titled" : ""}`,
+        class: `lfx-card__link${titled ? " lfx-card__link--titled" : ""}${poster ? " lfx-card__link--poster" : ""}`,
         href: detailHref2(item),
         "aria-label": ariaLabel(item)
       }, children);
@@ -7065,14 +7090,11 @@
     const start11 = async () => {
       timer2 = null;
       if (dead || !container) return;
-      let src;
-      let local = false;
+      let src = null;
       try {
         const t = await loadLocalTrailer(item);
-        local = Boolean(t);
-        src = t ? trailerUrl(t.Id) : directRemoteTrailerUrl(item);
+        if (t) src = trailerUrl(t.Id);
       } catch {
-        src = directRemoteTrailerUrl(item);
       }
       if (dead || !src) return;
       const v = document.createElement("video");
@@ -7089,7 +7111,6 @@
       });
       v.addEventListener("ended", finish3);
       v.addEventListener("error", finish3);
-      if (!local) v.setAttribute("referrerpolicy", "no-referrer");
       video2 = v;
       applyStartAt(v, startAt);
       v.src = src;
@@ -8356,8 +8377,15 @@
     s.removeTimer = null;
     const a = document.activeElement;
     if (a && a !== document.body && s.el.contains(a) && s.card.isConnected) {
-      const link = s.card.querySelector("a, [tabindex]");
+      let kb;
+      try {
+        kb = a.matches(":focus-visible");
+      } catch {
+        kb = true;
+      }
+      const link = kb && s.card.querySelector("a, [tabindex]");
       if (link && link.focus) link.focus({ preventScroll: true });
+      else if (!kb && a.blur) a.blur();
     }
     s.el.remove();
     if (session2 === s) session2 = null;
@@ -9525,6 +9553,7 @@
         else pill.removeAttribute("aria-current");
       }
     }
+    let lock = null;
     for (const d of sectionDefs()) {
       const pill = h("button", {
         type: "button",
@@ -9533,6 +9562,7 @@
         onclick: () => {
           const sec = sections.get(d.id);
           setActive(d.id);
+          lock = d.id;
           if (sec && typeof sec.scrollIntoView === "function") sec.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }, [h("span", { class: "lfx-np__pill-ico", "aria-hidden": "true" }, d.icon), d.label]);
@@ -9548,6 +9578,10 @@
       if (raf3) return;
       raf3 = requestAnimationFrame(() => {
         raf3 = 0;
+        if (lock && pills.has(lock)) {
+          setActive(lock);
+          return;
+        }
         let current6 = null;
         if ((window.scrollY || 0) <= 0) current6 = sections.keys().next().value;
         else {
@@ -9559,6 +9593,11 @@
       });
     };
     window.addEventListener("scroll", onScroll7, { passive: true });
+    const unlock = () => {
+      lock = null;
+    };
+    const userEvents = ["wheel", "touchstart", "keydown", "pointerdown"];
+    userEvents.forEach((n) => window.addEventListener(n, unlock, { passive: true }));
     function drop2(id) {
       sections.get(id)?.remove();
       sections.delete(id);
@@ -9640,6 +9679,7 @@
     cleanups2.push(() => {
       disposed = true;
       window.removeEventListener("scroll", onScroll7);
+      userEvents.forEach((n) => window.removeEventListener(n, unlock));
       if (raf3) cancelAnimationFrame(raf3);
       for (const d of scrollers.splice(0)) {
         try {
@@ -10787,9 +10827,13 @@
       out.textContent = pct(s);
       showSizes(s);
     };
+    const snap = (v) => {
+      const cur3 = Math.round(get() * 100);
+      return (v > cur3 ? Math.ceil(v / 5) * 5 : v < cur3 ? Math.floor(v / 5) * 5 : v) / 100;
+    };
     show3(get());
-    input.addEventListener("input", () => show3(Number(input.value) / 100));
-    input.addEventListener("change", () => setImageScales({ [key]: Number(input.value) / 100 }));
+    input.addEventListener("input", () => show3(snap(Number(input.value))));
+    input.addEventListener("change", () => setImageScales({ [key]: snap(Number(input.value)) }));
     offs.push(onImageScaleChange(() => {
       const s = get();
       input.value = String(Math.round(s * 100));
@@ -11070,6 +11114,14 @@
     const nav = top ? document.getElementById("lfx-nav") : null;
     const navRight = nav ? Math.round(nav.getBoundingClientRect().right) : 0;
     root7.style.left = top && navRight > 0 ? `${navRight + 12}px` : "";
+    let limit = 0;
+    if (top && navRight > 0) {
+      document.querySelectorAll("header.MuiAppBar-root button, header.MuiAppBar-root a, #lfx-tvm-btn, #lfx-ds-btn").forEach((n) => {
+        const r = n.getBoundingClientRect();
+        if (r.width > 0 && r.left > navRight && (!limit || r.left < limit)) limit = r.left;
+      });
+    }
+    root7.style.right = limit ? `max(calc(var(--lfx-gutter) + 178px), ${Math.round(window.innerWidth - limit + 8)}px)` : "";
     root7.setAttribute("role", "status");
     root7.setAttribute("aria-live", "polite");
     root7.replaceChildren(h("div", { class: "lfx-statshint__box" }, [link, close2]));
@@ -12932,14 +12984,6 @@
     overlay.setAttribute("aria-label", "Trailer");
     overlay.append(video2, closeBtn);
     const onKey4 = (e) => {
-      if (e.key === "Tab") {
-        const ring = [video2, closeBtn];
-        const i = ring.indexOf(document.activeElement);
-        const to = i < 0 ? ring[e.shiftKey ? 1 : 0] : ring[1 - i];
-        e.preventDefault();
-        to.focus();
-        return;
-      }
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
@@ -12948,10 +12992,17 @@
     const onBackdrop = (e) => {
       if (e.target === overlay) close2();
     };
+    const onFocusIn = (e) => {
+      if (overlay.contains(e.target)) return;
+      (e.relatedTarget === closeBtn ? video2 : closeBtn).focus();
+      if (!overlay.contains(document.activeElement)) closeBtn.focus();
+    };
+    document.addEventListener("focusin", onFocusIn);
     window.addEventListener("keydown", onKey4, true);
     overlay.addEventListener("click", onBackdrop);
     overlay.__lfxCleanup = () => {
       window.removeEventListener("keydown", onKey4, true);
+      document.removeEventListener("focusin", onFocusIn);
       overlay.removeEventListener("click", onBackdrop);
     };
     video2.addEventListener("error", () => {
@@ -13046,7 +13097,7 @@
       if (!main) throw Object.assign(new Error("Titel nicht gefunden"), { notFound: true });
     } catch (e) {
       if (stale()) return;
-      root7.replaceChildren(errorBox(e && e.notFound ? "Dieser Titel ist nicht mehr verf\xFCgbar." : e && e.message ? "Der Server hat nicht geantwortet." : ""));
+      root7.replaceChildren(errorBox(e && (e.notFound || /\b404\b/.test(String(e.message))) ? "Dieser Titel ist nicht mehr verf\xFCgbar." : e && e.message ? "Der Server hat nicht geantwortet." : ""));
       root7.classList.add("is-error");
       return;
     }
@@ -14982,7 +15033,8 @@
       const back = h("button", { type: "button", class: "lfx-prime-header__back", "aria-label": "Zur\xFCck" });
       back.append(icon3("back"));
       back.addEventListener("click", goBack);
-      left = [back, h("h1", { class: "lfx-prime-header__title" }, mobileTitle(route, state17.libs))];
+      const tag = route && route.path === "/home" && route.params.get("lfx") === "title" ? "div" : "h1";
+      left = [back, h(tag, { class: "lfx-prime-header__title" }, mobileTitle(route, state17.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), dsLink(), avatar])]);
     const kids = [bar];
@@ -17258,6 +17310,7 @@
         if (fresh) {
           main.UserData = fresh.UserData || main.UserData;
           syncButtons(s, main);
+          clearCache(`lfx:modal:next:${main.Id}`);
           refreshPlay(s, main);
         }
       }
@@ -17511,6 +17564,59 @@
   var OVERDRIVE_CLASS = "lfx-retro-overdrive";
   var NO_CRT_CLASS = "lfx-retro-nocrt";
 
+  // src/js/features/retro/title-mount.js
+  var root4 = () => document.documentElement;
+  var PAGE_CLASS = "lfx-retro-page-on";
+  function findHomeTab10() {
+    const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
+    return tab2 && tab2.isConnected ? tab2 : null;
+  }
+  function whenHomeTab2(cb, { tries = 30, every = 200 } = {}) {
+    let dead = false;
+    let timer2 = null;
+    let n = 0;
+    const poll = () => {
+      timer2 = null;
+      if (dead) return;
+      const t = findHomeTab10();
+      if (t) cb(t);
+      else if (++n < tries) timer2 = setTimeout(poll, every);
+    };
+    poll();
+    return () => {
+      dead = true;
+      if (timer2) clearTimeout(timer2);
+      timer2 = null;
+    };
+  }
+  function setPageOn2(cls, on) {
+    const cl2 = root4().classList;
+    cl2.toggle(PAGE_CLASS, on);
+    cl2.toggle(cls, on);
+  }
+  function scrollTop2() {
+    try {
+      window.scrollTo(0, 0);
+    } catch {
+    }
+  }
+  function reducedMotion5() {
+    try {
+      return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  }
+  function throttle(fn, ms) {
+    let last = 0;
+    return (...args) => {
+      const now = Date.now();
+      if (now - last < ms) return;
+      last = now;
+      fn(...args);
+    };
+  }
+
   // src/js/features/retro/header-nav.js
   var EXCLUDED11 = /^\/(login|selectserver|addserver|startup|forgotpassword|resetpassword|wizard|video|dashboard|queue)/;
   var LIST_HREF2 = myListHref();
@@ -17649,6 +17755,7 @@
     raf: 0,
     busy: false,
     lastHover: 0,
+    clickAt: 0,
     cleanups: []
   };
   function applyActive8() {
@@ -17713,7 +17820,10 @@
     state19.el.replaceChildren(h("div", { class: "lfx-retro-header__bar" }, [logo, nav, right]));
     state19.cleanups.push(clock.destroy, sound.destroy, crt.destroy);
     nav.addEventListener("click", (e) => {
-      if (e.target.closest && e.target.closest("a")) emitFx("nav");
+      if (e.target.closest && e.target.closest("a")) {
+        state19.clickAt = Date.now();
+        emitFx("nav");
+      }
     });
     nav.addEventListener("pointerover", (e) => {
       if (e.pointerType && e.pointerType !== "mouse") return;
@@ -17785,6 +17895,8 @@
       if (!state19.el) return;
       if (changed && profileIsOpen2()) closePopover();
       if (changed) closeDsPopover();
+      if (changed && state19.clickAt && Date.now() - state19.clickAt < 1500) scrollTop2();
+      state19.clickAt = 0;
       applyActive8();
     },
     unmount() {
@@ -18086,7 +18198,7 @@
   var FIELDS5 = "Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated";
   var FIRST_KEY2 = "lfx-retro-hero-first";
   var MAX_NAME = 22;
-  var reducedMotion5 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var reducedMotion6 = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function setTitleText(el4, text) {
     el4.textContent = "";
     const cut = text.lastIndexOf("_") + 1;
@@ -18188,7 +18300,7 @@
     function scheduleRotate() {
       if (rotateTimer) clearLater(rotateTimer);
       rotateTimer = 0;
-      if (disposed || pool.length < 2 || reducedMotion5()) return;
+      if (disposed || pool.length < 2 || reducedMotion6()) return;
       rotateTimer = later(() => {
         rotateTimer = 0;
         if (paused3()) scheduleRotate();
@@ -18199,7 +18311,7 @@
       const el4 = refs.title;
       el4.textContent = "";
       refs.heading.dataset.size = String(titleSize(text));
-      if (reducedMotion5()) {
+      if (reducedMotion6()) {
         setTitleText(el4, text);
         return;
       }
@@ -18244,7 +18356,7 @@
     function show3(i, { immediate = false } = {}) {
       if (disposed || !pool[i]) return;
       target = i;
-      if (immediate || reducedMotion5() || !hero) {
+      if (immediate || reducedMotion6() || !hero) {
         apply3(i);
         return;
       }
@@ -18627,7 +18739,7 @@
     if (lfx || route.params.get("tab") === "1") return null;
     return { key: "home", kind: "home", lib: null };
   }
-  function findHomeTab10() {
+  function findHomeTab11() {
     const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
     return tab2 && tab2.isConnected ? tab2 : null;
   }
@@ -18736,7 +18848,7 @@
   }
   function ensure8(route) {
     clearTimeout(waitTimer8);
-    const tab2 = findHomeTab10();
+    const tab2 = findHomeTab11();
     const existing = document.getElementById(ROOT_ID18);
     if (tab2 && existing && tab2.contains(existing) && current5 && current5.key === route.key && builtPhone === isPhone2()) return;
     gen4 += 1;
@@ -18744,7 +18856,7 @@
     let tries = 0;
     const poll = () => {
       if (myGen !== gen4) return;
-      const t = findHomeTab10();
+      const t = findHomeTab11();
       if (t) start7(t, route, myGen);
       else if (++tries < 30) waitTimer8 = setTimeout(poll, 200);
     };
@@ -18765,59 +18877,6 @@
     }
   };
   var home_default4 = retroHome;
-
-  // src/js/features/retro/title-mount.js
-  var root4 = () => document.documentElement;
-  var PAGE_CLASS = "lfx-retro-page-on";
-  function findHomeTab11() {
-    const tab2 = document.querySelector("#indexPage:not(.hide) #homeTab");
-    return tab2 && tab2.isConnected ? tab2 : null;
-  }
-  function whenHomeTab2(cb, { tries = 30, every = 200 } = {}) {
-    let dead = false;
-    let timer2 = null;
-    let n = 0;
-    const poll = () => {
-      timer2 = null;
-      if (dead) return;
-      const t = findHomeTab11();
-      if (t) cb(t);
-      else if (++n < tries) timer2 = setTimeout(poll, every);
-    };
-    poll();
-    return () => {
-      dead = true;
-      if (timer2) clearTimeout(timer2);
-      timer2 = null;
-    };
-  }
-  function setPageOn2(cls, on) {
-    const cl2 = root4().classList;
-    cl2.toggle(PAGE_CLASS, on);
-    cl2.toggle(cls, on);
-  }
-  function scrollTop2() {
-    try {
-      window.scrollTo(0, 0);
-    } catch {
-    }
-  }
-  function reducedMotion6() {
-    try {
-      return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      return false;
-    }
-  }
-  function throttle(fn, ms) {
-    let last = 0;
-    return (...args) => {
-      const now = Date.now();
-      if (now - last < ms) return;
-      last = now;
-      fn(...args);
-    };
-  }
 
   // src/js/features/retro/title-type.js
   var TICK_MS = 28;
@@ -18847,7 +18906,7 @@
     };
     const start11 = () => {
       stop8();
-      if (reducedMotion6() || full.length < 2) {
+      if (reducedMotion5() || full.length < 2) {
         finish3();
         return;
       }
@@ -19594,7 +19653,8 @@
     Object.assign(s, { root: root7, input, results, count });
     const placeCaret = () => {
       const pos = typeof input.selectionStart === "number" ? input.selectionStart : input.value.length;
-      cmd.style.setProperty("--rs-pos", String(Math.min(pos, 60)));
+      cmd.style.setProperty("--rs-pos", String(pos));
+      cmd.style.setProperty("--rs-scroll", `${input.scrollLeft || 0}px`);
       cmd.classList.toggle("is-empty", !input.value);
     };
     s.syncUi = () => {
@@ -19645,6 +19705,7 @@
     input.addEventListener("keyup", onCaret);
     input.addEventListener("click", onCaret);
     input.addEventListener("focus", onCaret);
+    input.addEventListener("scroll", onCaret);
     clear.addEventListener("click", onClear);
     s.cleanups.push(() => {
       input.removeEventListener("input", onInput);
@@ -19652,6 +19713,7 @@
       input.removeEventListener("keyup", onCaret);
       input.removeEventListener("click", onCaret);
       input.removeEventListener("focus", onCaret);
+      input.removeEventListener("scroll", onCaret);
       clear.removeEventListener("click", onClear);
     });
     try {
@@ -19698,6 +19760,7 @@
       }
       if (q.trim() !== (state22.term || "")) {
         state22.input.value = q;
+        state22.input.setSelectionRange(q.length, q.length);
         clearTimeout(state22.timer);
         runSearch2(state22, q.trim());
       }
@@ -19705,7 +19768,6 @@
         state22.input.focus({ preventScroll: true });
       } catch {
       }
-      state22.input.setSelectionRange(state22.input.value.length, state22.input.value.length);
       state22.syncUi();
     },
     unmount: dispose5
@@ -19776,8 +19838,9 @@
       h("span", { class: "lfx-rb__row-genre" }, genre.toUpperCase())
     ]);
   }
+  var wantList = (s) => s.view === "list" && !isNarrow();
   function itemNode(s, it) {
-    return s.view === "list" && !isNarrow() ? listRow(it) : createTapeCard(it, { variant: "cover" });
+    return s.builtList ? listRow(it) : createTapeCard(it, { variant: "cover" });
   }
   function paintHead(s) {
     const lib = s.libName || "BIBLIOTHEK";
@@ -19796,7 +19859,7 @@
       b.setAttribute("aria-pressed", String(on));
     }
     s.genreBtn.classList.toggle("is-on", Boolean(s.genreId));
-    s.grid.classList.toggle("is-list", s.view === "list" && !isNarrow());
+    s.grid.classList.toggle("is-list", Boolean(s.builtList));
     s.grid.setAttribute("role", "list");
     for (const chip of s.genres.querySelectorAll(".lfx-rb__genre")) {
       const on = (chip.dataset.genre || "") === (s.genreId || "");
@@ -19811,6 +19874,7 @@
     s.total = null;
     s.done = false;
     s.loading = false;
+    s.builtList = wantList(s);
     s.grid.replaceChildren();
     s.status.replaceChildren();
     paintHead(s);
@@ -19837,6 +19901,7 @@
         Limit: PAGE5
       });
       if (stale()) return;
+      if (s.builtList !== wantList(s)) rerender(s);
       const items = asItems11(res);
       putItems(items);
       s.total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
@@ -19869,6 +19934,7 @@
     }
   }
   function rerender(s) {
+    s.builtList = wantList(s);
     s.grid.replaceChildren(...s.items.map((it) => itemNode(s, it)));
     paintHead(s);
   }
@@ -20021,7 +20087,7 @@
         const chip = state23.genres.querySelector(`.lfx-rb__genre[data-genre="${state23.genreId || ""}"]`);
         state23.genreName = chip && state23.genreId ? chip.textContent : null;
         reload2(state23);
-      }
+      } else if (state23.grid && state23.builtList !== wantList(state23)) rerender(state23);
     },
     unmount: dispose6
   };
@@ -21212,7 +21278,7 @@
     let out = null;
     let input = null;
     let closeBtn = null;
-    let opener = null;
+    let opener2 = null;
     let alive = false;
     let busy3 = false;
     let gen9 = 0;
@@ -21388,7 +21454,7 @@
         return;
       }
       if (root7) teardown11();
-      opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+      opener2 = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
       busy3 = false;
       gen9 += 1;
       build13();
@@ -21418,8 +21484,8 @@
     function close2() {
       if (!alive) return;
       const el4 = root7;
-      const back = opener;
-      opener = null;
+      const back = opener2;
+      opener2 = null;
       emitFx("close");
       alive = false;
       releaseSleepers();
@@ -21447,7 +21513,7 @@
       run,
       destroy() {
         alive = false;
-        opener = null;
+        opener2 = null;
         teardown11();
       }
     };

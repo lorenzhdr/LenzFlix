@@ -30,7 +30,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
     width: 100%;
     box-sizing: border-box;
     height: 56px;
-    padding: 0;
+    padding: 0 0.5em 0 0; /* Platz für den Block am Textende */
     border: 0;
     outline: 0;
     border-radius: 0;
@@ -50,7 +50,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
   & .lfx-rs__caret {
     position: absolute;
     top: 50%;
-    left: min(calc(var(--rs-pos, 0) * (1ch + 0.04em)), calc(100% - 0.5em));
+    left: min(max(0px, calc(var(--rs-pos, 0) * (1ch + 0.04em) - var(--rs-scroll, 0px))), calc(100% - 0.5em));
     width: 0.5em;
     height: 0.78em;
     margin-top: -0.39em;

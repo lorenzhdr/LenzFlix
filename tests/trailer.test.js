@@ -137,11 +137,11 @@ describe('createMutedPreview', () => {
     expect(onStart).not.toHaveBeenCalled();
   });
 
-  it('direkter Remote-Trailer wird genutzt; Fehler beim Laden der lokalen Liste fällt darauf zurück', async () => {
+  it('Fehler beim Laden der lokalen Liste startet keinen Remote-Trailer', async () => {
     api.getJson.mockRejectedValue(new Error('x'));
     createMutedPreview(box(), { Id: 'M1', LocalTrailerCount: 1, RemoteTrailers: [{ Url: 'https://cdn.example/t.webm' }] }, { delay: 10 });
     await vi.advanceTimersByTimeAsync(20);
     await flush();
-    expect(box().querySelector('video').getAttribute('src')).toBe('https://cdn.example/t.webm');
+    expect(box().querySelector('video')).toBeNull();
   });
 });

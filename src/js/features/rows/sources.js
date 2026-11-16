@@ -186,7 +186,6 @@ async function computeRowDefs({ seed = dayKey(), genreCount = 6, deferCharts = f
             const fb = fallbackDef(); // keine Charts: erste Platzhalter-Zeile wird zur „Neu auf“-Zeile
             def.id = fb.id;
             def.title = fb.title;
-            def.noCache = true; // nur mit Charts-URL hier: Ersatz soll sich erholen
             return fb.load();
           },
         });

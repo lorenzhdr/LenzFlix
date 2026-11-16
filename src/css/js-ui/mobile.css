@@ -341,7 +341,7 @@ html.lfx-js .lfx-mnav-cats__close:focus-visible {
     left: 14px;
   }
   html.lfx-js .lfx-bb__dots {
-    bottom: 4px;
+    bottom: 0;
     opacity: 1;
   }
 
@@ -582,6 +582,8 @@ html.lfx-js .lfx-mnav-cats__close:focus-visible {
    bereits steckt – das zusätzliche Titel-Logo würde doppelt erscheinen (Streaming-App zeigt nur das Poster). */
 @media (max-width: 799px) {
   html.lfx-js .lfx-bb__logo { display: none; }
+  /* Läuft der Trailer, deckt das Video das Poster samt Titel ab: Logo bleibt über den Genres sichtbar */
+  html.lfx-js .lfx-bb.is-trailer .lfx-bb__logo { display: block; max-height: 72px; }
 }
 
 /* Billboard mobil: Genre-Zeile statt Metazeile, "Meine Liste" statt "Weitere Infos" */
@@ -620,10 +622,11 @@ html.lfx-js .lfx-card__link picture { display: contents; }
   html.lfx-js .lfx-row--poster .lfx-card__title { display: none; }
   html.lfx-js .lfx-row--poster .lfx-card__link--titled::after { display: none; }
   /* Raster (Serien/Filme, Meine Liste): die Karte lädt hier schon das Poster, also auch 2:3 statt 16:9 */
-  html.lfx-js .lfx-grid .lfx-card__link { aspect-ratio: 2 / 3; }
-  html.lfx-js .lfx-grid .lfx-card__logo,
-  html.lfx-js .lfx-grid .lfx-card__title { display: none; }
-  html.lfx-js .lfx-grid .lfx-card__link--titled::after { display: none; }
+  html.lfx-js .lfx-grid { --lfx-card-h: calc(var(--lfx-card-w) * 1.5); }
+  html.lfx-js .lfx-grid .lfx-card__link--poster { aspect-ratio: 2 / 3; }
+  html.lfx-js .lfx-grid .lfx-card__link--poster .lfx-card__logo,
+  html.lfx-js .lfx-grid .lfx-card__link--poster .lfx-card__title { display: none; }
+  html.lfx-js .lfx-grid .lfx-card__link--poster.lfx-card__link--titled::after { display: none; }
 }
 
 /* 800–899 px mit layout-mobile (Handy quer, schmal): Handy-Menü mit Pills, Billboard darunter */

@@ -232,7 +232,7 @@ async function loadRemoteTheme(uid) {
   }
   if (!started || getUserId() !== uid) return;
   if (touched !== startTouched || unsynced) {
-    scheduleUpload(chosen); // Nutzer war schneller
+    if (remote !== chosen) scheduleUpload(chosen); // Nutzer war schneller (Server schon gleich: kein zweiter Upload)
     return;
   }
   if (remotePrev) lsSet(KEY_PREV + uid, remotePrev);

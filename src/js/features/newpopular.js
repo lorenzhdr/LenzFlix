@@ -255,6 +255,7 @@ function build(tab) {
     }
   }
 
+  let lock = null; // angeklickte Pille bleibt aktiv, bis der Nutzer selbst scrollt (Abschnitt erreicht die Schwelle am Seitenende oft nie)
   for (const d of sectionDefs()) {
     const pill = h('button', {
       type: 'button',
@@ -263,6 +264,7 @@ function build(tab) {
       onclick: () => {
         const sec = sections.get(d.id);
         setActive(d.id);
+        lock = d.id;
         if (sec && typeof sec.scrollIntoView === 'function') sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       },
     }, [h('span', { class: 'lfx-np__pill-ico', 'aria-hidden': 'true' }, d.icon), d.label]);
@@ -279,6 +281,7 @@ function build(tab) {
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = 0;
+      if (lock && pills.has(lock)) { setActive(lock); return; }
       let current = null;
       // Ganz oben immer der erste Abschnitt (leere Skelett-Abschnitte liegen sonst alle über der Schwelle)
       if ((window.scrollY || 0) <= 0) current = sections.keys().next().value;
@@ -291,6 +294,9 @@ function build(tab) {
     });
   };
   window.addEventListener('scroll', onScroll, { passive: true });
+  const unlock = () => { lock = null; };
+  const userEvents = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
+  userEvents.forEach((n) => window.addEventListener(n, unlock, { passive: true }));
 
   function drop(id) {
     sections.get(id)?.remove();
@@ -378,6 +384,7 @@ function build(tab) {
   cleanups.push(() => {
     disposed = true;
     window.removeEventListener('scroll', onScroll);
+    userEvents.forEach((n) => window.removeEventListener(n, unlock));
     if (raf) cancelAnimationFrame(raf);
     for (const d of scrollers.splice(0)) {
       try { d && d(); } catch { /* ignorieren */ }

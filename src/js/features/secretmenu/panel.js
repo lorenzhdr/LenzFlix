@@ -59,9 +59,14 @@ function slider({ label, range, get, key, offs }) {
     sizes.textContent = `Poster ${px(POSTER_BASE, s)} px · Breitbild ${px(wideBase(), s)} px`;
   };
   const show = (s) => { out.textContent = pct(s); showSizes(s); };
+  // Gespeichert wird in 5er-Schritten (imgscale); in Bewegungsrichtung runden, damit Pfeiltasten nicht auf dem Wert hängen
+  const snap = (v) => {
+    const cur = Math.round(get() * 100);
+    return (v > cur ? Math.ceil(v / 5) * 5 : v < cur ? Math.floor(v / 5) * 5 : v) / 100;
+  };
   show(get());
-  input.addEventListener('input', () => show(Number(input.value) / 100));
-  input.addEventListener('change', () => setImageScales({ [key]: Number(input.value) / 100 }));
+  input.addEventListener('input', () => show(snap(Number(input.value))));
+  input.addEventListener('change', () => setImageScales({ [key]: snap(Number(input.value)) }));
   offs.push(onImageScaleChange(() => {
     const s = get();
     input.value = String(Math.round(s * 100));

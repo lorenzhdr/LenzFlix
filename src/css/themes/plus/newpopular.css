@@ -76,8 +76,8 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn {
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:hover,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: var(--lfx-icon-circle-border);
+  background: var(--lfx-icon-circle);
+  border-color: #fff;
   color: #fff;
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {

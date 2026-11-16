@@ -473,7 +473,7 @@ html.lfx-js .lfx-tp__preview--store .lfx-tp__shopsign {
   position: absolute;
   z-index: 3;
   /* rechts der Beta-Marke (oben links), damit nichts überlappt */
-  left: 59%;
+  left: 64%;
   top: 6%;
   transform: translateX(-50%);
   box-sizing: border-box;
@@ -835,7 +835,8 @@ html.lfx-js .lfx-tp__mark-live-dot {
 html.lfx-js .lfx-tp__beta {
   position: absolute;
   top: 20px;
-  left: 20px;
+  left: 16px;
+  z-index: 5; /* über Regalen, Schild und Vignette der Store-Vorschau */
   padding: 2px 8px;
   border: 1px solid #ffd23f;
   border-radius: 999px;

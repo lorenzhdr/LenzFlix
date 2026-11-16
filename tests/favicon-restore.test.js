@@ -24,6 +24,13 @@ describe('removeFavicon stellt sizes und fehlendes href wieder her', () => {
     expect(a.getAttribute('href')).toBe('a.png');
     expect(b.hasAttribute('href')).toBe(false);
     expect(document.head.querySelector('[data-lfx-orig]')).toBeNull();
+    expect(a.hasAttribute('type')).toBe(false);
+  });
+  it('Original-type kommt zurück', () => {
+    document.head.innerHTML = '<link rel="icon" type="image/x-icon" href="f.ico">';
+    applyFavicon();
+    removeFavicon();
+    expect(document.head.querySelector('link').getAttribute('type')).toBe('image/x-icon');
   });
 });
 

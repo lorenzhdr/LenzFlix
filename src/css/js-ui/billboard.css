@@ -235,6 +235,10 @@ html.lfx-js .lfx-bb__dotbtn.is-active::after { background: #fff; }
   html.lfx-js .lfx-bb__btn { flex: 1 1 50%; padding: 0 12px; }
   html.lfx-js .lfx-bb__badge { display: none; }
   html.lfx-js .lfx-bb__mark { left: 16px; }
+  /* Tippfläche der Punkte vergrößert (24 px), Look gleich */
+  html.lfx-js .lfx-bb__dots { gap: 0; }
+  html.lfx-js .lfx-bb__dotbtn { width: 24px; height: 22px; }
+  html.lfx-js .lfx-bb__dotbtn::after { left: 4px; right: 4px; top: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js .lfx-bb__pic,

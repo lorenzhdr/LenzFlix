@@ -142,25 +142,24 @@ function openTrailer(src, returnFocus) {
   overlay.setAttribute('aria-label', 'Trailer');
   overlay.append(video, closeBtn);
   const onKey = (e) => {
-    if (e.key === 'Tab') {
-      // Fokusfalle: zwischen Video und Schließen wechseln (aria-modal)
-      const ring = [video, closeBtn];
-      const i = ring.indexOf(document.activeElement);
-      const to = i < 0 ? ring[e.shiftKey ? 1 : 0] : ring[1 - i];
-      e.preventDefault();
-      to.focus();
-      return;
-    }
     if (e.key !== 'Escape') return;
     e.preventDefault();
     e.stopPropagation();
     close();
   };
   const onBackdrop = (e) => { if (e.target === overlay) close(); };
+  // Fokusfalle (aria-modal) ohne Tab-Abfangen: native Video-Bedienelemente bleiben per Tab erreichbar
+  const onFocusIn = (e) => {
+    if (overlay.contains(e.target)) return;
+    (e.relatedTarget === closeBtn ? video : closeBtn).focus();
+    if (!overlay.contains(document.activeElement)) closeBtn.focus(); // Video nicht fokussierbar
+  };
+  document.addEventListener('focusin', onFocusIn);
   window.addEventListener('keydown', onKey, true);
   overlay.addEventListener('click', onBackdrop);
   overlay.__lfxCleanup = () => {
     window.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('focusin', onFocusIn);
     overlay.removeEventListener('click', onBackdrop);
   };
   video.addEventListener('error', () => {
@@ -260,7 +259,7 @@ async function load(g) {
     if (!main) throw Object.assign(new Error('Titel nicht gefunden'), { notFound: true });
   } catch (e) {
     if (stale()) return;
-    root.replaceChildren(errorBox(e && e.notFound ? 'Dieser Titel ist nicht mehr verfügbar.' : e && e.message ? 'Der Server hat nicht geantwortet.' : ''));
+    root.replaceChildren(errorBox(e && (e.notFound || /\b404\b/.test(String(e.message))) ? 'Dieser Titel ist nicht mehr verfügbar.' : e && e.message ? 'Der Server hat nicht geantwortet.' : ''));
     root.classList.add('is-error');
     return;
   }

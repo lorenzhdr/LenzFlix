@@ -29121,8 +29121,13 @@ void main() {
       this.frames = 0;
       this.elapsed = 0;
       this.stable = 0;
+      this.settle = 3;
     }
     sample(dt, now) {
+      if (this.settle > 0) {
+        this.settle--;
+        return null;
+      }
       this.frames++;
       this.elapsed += dt;
       if (this.elapsed < 2) return null;
@@ -29272,6 +29277,7 @@ void main() {
     }
     function go() {
       if (!running || lost || document.hidden && !inXr()) return;
+      aq.reset();
       last = performance.now();
       renderer.setAnimationLoop(loop);
     }
@@ -33721,6 +33727,9 @@ void main() {
         const status = h("div", "lfx-store-term-status");
         status.setAttribute("role", "status");
         status.setAttribute("aria-live", "polite");
+        const selSay = h("div", "lfx-store-sr");
+        selSay.setAttribute("role", "status");
+        selSay.setAttribute("aria-live", "polite");
         const list = h("div", "lfx-store-term-list");
         list.setAttribute("role", "list");
         const help = h("div", "lfx-store-term-help");
@@ -33756,6 +33765,8 @@ void main() {
             return;
           }
           sel = Math.max(0, Math.min(results.length - 1, i));
+          const dsc = results[sel].desc;
+          selSay.textContent = `${[dsc.title, dsc.sub, dsc.year, dsc.typeLabel, dsc.location].filter(Boolean).join(", ")}. Eintrag ${sel + 1} von ${results.length}`;
           results.forEach((r, k) => {
             const on = k === sel;
             r.el.classList.toggle("is-sel", on);
@@ -33809,6 +33820,7 @@ void main() {
         }
         function render(sections, emptyText) {
           list.textContent = "";
+          selSay.textContent = "";
           results = [];
           sel = -1;
           const e = env();
@@ -33933,7 +33945,7 @@ void main() {
         root.addEventListener("click", (e) => {
           if (e.target === root) ctx.overlay.close();
         });
-        crt.append(head, field, status, list, help, keys);
+        crt.append(head, field, status, selSay, list, help, keys);
         root.appendChild(crt);
         S.cleanup = () => {
           clearTimeout(timer);
@@ -38790,8 +38802,12 @@ void main() {
           return;
         }
         this.walkPending = resolve;
-        app.player.walkTo(path, () => {
+        app.player.walkTo(path, (ok) => {
           this.walkPending = null;
+          if (ok === false) {
+            resolve(false);
+            return;
+          }
           if (typeof o.face === "number") app.player.faceYaw(o.face);
           else if (o.face && Number.isFinite(o.face.x)) app.player.faceYaw(Math.atan2(-(o.face.x - app.player.x), -(o.face.z - app.player.z)));
           resolve(true);
@@ -39931,12 +39947,10 @@ void main() {
       });
       this.dom.btns.back = btn("Zur\xFCckstellen", () => this.close(true));
       this.refreshMeta();
-      const first = actions.querySelector("button");
-      if (first) {
-        try {
-          first.focus({ preventScroll: true });
-        } catch {
-        }
+      panel.tabIndex = -1;
+      try {
+        panel.focus({ preventScroll: true });
+      } catch {
       }
       if (isSeries) this.buildSeries(token);
       let last = null;
@@ -45754,6 +45768,14 @@ void main() {
       } catch {
       }
     }
+    // Während des Boots (mods fehlt noch) zurückstellen; enter() öffnet das Terminal danach.
+    openTerminalOrQueue(q) {
+      if (this.mods && this.mode !== "boot") this.openTerminal(q);
+      else {
+        this.opts.openTerminal = true;
+        this.opts.query = q || "";
+      }
+    }
     openItem(id) {
       if (!this.holdview || !this.layout) return;
       const slot = this.findSlot(id);
@@ -45793,7 +45815,12 @@ void main() {
         if (this.holdview) this.holdview.setHost(host);
         if (this.fs) this.fs.setHost(host);
       }
-      if (this.mode === "boot") return;
+      if (this.mode === "boot") {
+        if (this.covers) this.covers.resume();
+        if (this.mods) this.mods.hook("onResume");
+        if (this.fs) this.fs.resume();
+        return;
+      }
       if (this.desktop) this.desktop.attach();
       if (this.touchCtl) this.touchCtl.attach();
       if (this.covers) this.covers.resume();
@@ -45925,7 +45952,7 @@ void main() {
         if (app.holdview && app.mode !== "boot") app.openItem(id);
         else app.opts.openItemId = id;
       },
-      openTerminal: (q) => app.openTerminal(q),
+      openTerminal: (q) => app.openTerminalOrQueue(q),
       getState: () => app.getState(),
       setQuality: (q) => app.setQuality(q),
       setSound: (on) => app.setSound(on),

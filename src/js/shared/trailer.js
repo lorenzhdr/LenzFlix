@@ -45,8 +45,8 @@ export function applyStartAt(v, startAt) {
 }
 
 /**
- * Stumme Trailer-Vorschau im Container: startet nach `delay` ms einen <video>, sofern ein direkt abspielbarer
- * Trailer existiert. onStart beim ersten „playing“, onEnd bei Ende/Fehler nach dem Start (nicht bei cancel()).
+ * Stumme Trailer-Vorschau im Container: startet nach `delay` ms einen <video>, sofern ein lokaler
+ * Trailer existiert (Remote-Trailer nie automatisch). onStart beim ersten „playing“, onEnd bei Ende/Fehler nach dem Start (nicht bei cancel()).
  * cancel() räumt alles auf (Timer, Video, src, load()). Option startAt: Startsekunde (nur bei langen Videos).
  */
 export function createMutedPreview(container, item, { delay = 1500, onStart, onEnd, startAt = 0 } = {}) {
@@ -78,15 +78,11 @@ export function createMutedPreview(container, item, { delay = 1500, onStart, onE
   const start = async () => {
     timer = null;
     if (dead || !container) return;
-    let src;
-    let local = false;
+    let src = null;
     try {
-      const t = await loadLocalTrailer(item);
-      local = Boolean(t);
-      src = t ? trailerUrl(t.Id) : directRemoteTrailerUrl(item);
-    } catch {
-      src = directRemoteTrailerUrl(item);
-    }
+      const t = await loadLocalTrailer(item); // nur lokale Trailer: Remote-Trailer starten nie automatisch
+      if (t) src = trailerUrl(t.Id);
+    } catch { /* kein Trailer */ }
     if (dead || !src) return;
     const v = document.createElement('video');
     v.className = 'lfx-preview__video';
@@ -102,7 +98,6 @@ export function createMutedPreview(container, item, { delay = 1500, onStart, onE
     });
     v.addEventListener('ended', finish);
     v.addEventListener('error', finish);
-    if (!local) v.setAttribute('referrerpolicy', 'no-referrer'); // Fremd-Host bekommt keinen Referrer
     video = v;
     applyStartAt(v, startAt);
     v.src = src;

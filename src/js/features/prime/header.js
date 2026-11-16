@@ -284,7 +284,9 @@ function buildMobile(route) {
     const back = h('button', { type: 'button', class: 'lfx-prime-header__back', 'aria-label': 'Zurück' });
     back.append(icon('back'));
     back.addEventListener('click', goBack);
-    left = [back, h('h1', { class: 'lfx-prime-header__title' }, mobileTitle(route, state.libs))];
+    // Titelseite hat eine eigene h1 (Logo/Name): Kopfzeilen-Titel dort nur als div (eine h1 pro Seite)
+    const tag = route && route.path === '/home' && route.params.get('lfx') === 'title' ? 'div' : 'h1';
+    left = [back, h(tag, { class: 'lfx-prime-header__title' }, mobileTitle(route, state.libs))];
   }
   const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [tvLink(), dsLink(), avatar])]);
   const kids = [bar];

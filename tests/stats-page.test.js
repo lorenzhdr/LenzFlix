@@ -1156,5 +1156,17 @@ describe('Statistik-Seite: Beschriftung, Teilen und Abmelden', () => {
       expect(L.state.token).toBe('tok-neu');
       expect(window.localStorage.getItem('lfx-stats-ignore-web')).toBeNull();
     });
+
+    it('Altwert „1“ aus 1.13.1 bleibt eine Abmeldung und wird auf den Token-Hash umgeschrieben', async () => {
+      document.body.innerHTML = '<main id="lfx-app"></main>';
+      window.localStorage.clear();
+      window.localStorage.setItem('jellyfin_credentials', creds('tok-alt'));
+      window.localStorage.setItem('lfx-stats-ignore-web', '1');
+      vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ Id: 'u1' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))));
+      expect(await L.resolveAuth()).toBe(false);
+      expect(window.localStorage.getItem('lfx-stats-ignore-web')).toMatch(/^h/);
+      window.localStorage.setItem('jellyfin_credentials', creds('tok-neu'));
+      expect(await L.resolveAuth()).toBe(true);
+    });
   });
 });

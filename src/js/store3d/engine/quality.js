@@ -40,11 +40,13 @@ export class AutoQuality {
     this.frames = 0;
     this.elapsed = 0;
     this.stable = 0;
+    this.settle = 3; // Einschwingen: die nächsten Frames (Shader-Kompilierung, Textur-Neuladen) nicht werten
   }
 
   sample(dt, now) {
     // Hänger (> 0,25 s) zählen als sehr langsamer Frame, damit Dauerruckeln die Stufe senkt; Hintergrund-Tabs
     // erreichen sample() nicht (Schleife hält an, `last` wird beim Fortsetzen neu gesetzt).
+    if (this.settle > 0) { this.settle--; return null; }
     this.frames++;
     this.elapsed += dt;
     if (this.elapsed < 2) return null;

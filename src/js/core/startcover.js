@@ -24,6 +24,7 @@ let mo = null;
 let raf = 0;
 let safety = 0;
 let leaving = 0;
+let opener = null; // Auslöser vor dem Ladebild: bekommt beim Abbau ohne Player den Fokus zurück
 let watching = false;
 
 const routePath = () => parseHash(window.location.hash).path;
@@ -158,6 +159,11 @@ function cleanup() {
   leaving = 0;
   watch(false);
   document.documentElement.classList.remove(ON_CLASS);
+  const a = document.activeElement;
+  if (opener && opener.isConnected && (!a || a === el || a === document.body) && routePath() !== '/video') {
+    try { opener.focus({ preventScroll: true }); } catch { /* Fokus ist optional */ }
+  }
+  opener = null;
   unmountPoint(ID);
   el = null;
   itemId = null;
@@ -187,6 +193,8 @@ export function show({ item } = {}) {
   el.classList.remove('is-leaving');
   document.documentElement.classList.add(ON_CLASS);
   // Fokus vom verdeckten Auslöser nehmen (Enter/Space würden sonst erneut starten, Tab liefe unsichtbar durch die Seite).
+  const a = document.activeElement;
+  if (a && a !== el && a !== document.body && a.isConnected) opener = a;
   try {
     el.focus({ preventScroll: true });
   } catch {

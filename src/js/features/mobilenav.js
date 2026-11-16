@@ -78,6 +78,7 @@ const isCatsOpen = () => Boolean(state.cats && !state.cats.hidden);
 
 function openCats() {
   if (!state.cats || isCatsOpen()) return;
+  ensureGenres(libraryKind(state.route)); // nach einem Ladefehler beim erneuten Öffnen neu versuchen
   state.catsReturnFocus = document.activeElement;
   state.cats.hidden = false;
   cl().add('lfx-mnav-cats-open');

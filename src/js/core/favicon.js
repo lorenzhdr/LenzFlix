@@ -64,7 +64,7 @@ export function removeFavicon() {
       else l.removeAttribute('href'); // Original hatte kein href
       for (const [a, name] of [[ATTR_SIZES, 'sizes'], [ATTR_TYPE, 'type']]) {
         if (l.hasAttribute(a)) l.setAttribute(name, l.getAttribute(a));
-        else if (name === 'sizes') l.removeAttribute(name);
+        else l.removeAttribute(name);
         l.removeAttribute(a);
       }
       l.removeAttribute(ATTR);

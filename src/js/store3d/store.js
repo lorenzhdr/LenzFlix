@@ -662,6 +662,12 @@ export class StoreApp {
     try { this.deps.toast('Kassen-PC kommt bald'); } catch { /* egal */ }
   }
 
+  // Während des Boots (mods fehlt noch) zurückstellen; enter() öffnet das Terminal danach.
+  openTerminalOrQueue(q) {
+    if (this.mods && this.mode !== 'boot') this.openTerminal(q);
+    else { this.opts.openTerminal = true; this.opts.query = q || ''; }
+  }
+
   openItem(id) {
     if (!this.holdview || !this.layout) return;
     const slot = this.findSlot(id);
@@ -704,7 +710,12 @@ export class StoreApp {
       if (this.holdview) this.holdview.setHost(host);
       if (this.fs) this.fs.setHost(host);
     }
-    if (this.mode === 'boot') return; // Boot läuft noch: boot() startet den Rest selbst
+    if (this.mode === 'boot') { // Boot läuft noch: boot() startet Engine/Steuerung selbst, nur die Pause der Teile aufheben
+      if (this.covers) this.covers.resume();
+      if (this.mods) this.mods.hook('onResume');
+      if (this.fs) this.fs.resume();
+      return;
+    }
     if (this.desktop) this.desktop.attach();
     if (this.touchCtl) this.touchCtl.attach();
     if (this.covers) this.covers.resume();
@@ -785,7 +796,7 @@ export function create(host, deps, opts = {}) {
     resume: (h) => app.resume(h),
     dispose: () => app.dispose(),
     openItem: (id) => { if (app.holdview && app.mode !== 'boot') app.openItem(id); else app.opts.openItemId = id; },
-    openTerminal: (q) => app.openTerminal(q),
+    openTerminal: (q) => app.openTerminalOrQueue(q),
     getState: () => app.getState(),
     setQuality: (q) => app.setQuality(q),
     setSound: (on) => app.setSound(on),

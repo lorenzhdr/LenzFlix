@@ -1244,19 +1244,7 @@
   }
   function weekOrder(ctx, W2) {
     const D0 = weekStart(W2);
-    const cache = stateOf(ctx).boxsets;
-    const avail = KINDS.filter((k) => {
-      if (k === "boxset") {
-        for (let d2 = D0; d2 < D0 + 7; d2++) {
-          for (const c2 of boxsetCands(ctx, d2)) {
-            const ids = cache.get(c2.id);
-            if (ids && boxsetItems(ctx, ids, d2).length >= MIN_ITEMS) return true;
-          }
-        }
-        return false;
-      }
-      return themeFor(ctx, k, D0) != null;
-    });
+    const avail = KINDS.filter((k) => themeFor(ctx, k, D0) != null);
     return avail.map((k) => ({ k, h: keyHash("themeday", W2 + ":" + k) })).sort((a, b) => a.h - b.h || cmpStr(a.k, b.k)).map((x) => x.k);
   }
   function themesFor(ctx, D) {
@@ -1312,7 +1300,8 @@
     /** Lädt die Sammlungs-Inhalte, die für die Tage Ds gebraucht werden (sequentiell, mit Cache; Fehler → Kandidat überspringen). */
     async prepare(ctx, Ds) {
       const cache = stateOf(ctx).boxsets;
-      const days = [...new Set((Array.isArray(Ds) ? Ds : []).filter(Number.isInteger))].sort((a, b) => a - b);
+      const req = (Array.isArray(Ds) ? Ds : []).filter(Number.isInteger);
+      const days = [...new Set(req.concat(req.map((d2) => weekStart(weekOf(d2)))))].sort((a, b) => a - b);
       for (const D of days) {
         for (const c2 of boxsetCands(ctx, D)) {
           if (!cache.has(c2.id)) {
@@ -2926,6 +2915,7 @@
         return null;
       }
     }
+    let pendingAudio = null;
     async function play(opts = {}) {
       if (disposed) return aborted();
       const tm = { t0: now(), infoAt: null, chain: [], cached: false, mode: "none", info: null, hint: null, itemId: opts.itemId };
@@ -3092,12 +3082,24 @@
       /** Messung des letzten play()/playUrl(): { totalMs, infoMs, loadMs, startMs, chain, cached, mode } oder null. */
       lastTiming: () => lastTiming ? { ...lastTiming } : null,
       tracks() {
-        return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: tr.audioIndex, subtitleIndex: tr.subtitleIndex };
+        return { audio: tr.audio.map((t) => ({ ...t })), subs: tr.subs.map((t) => ({ ...t })), audioIndex: pendingAudio ?? tr.audioIndex, subtitleIndex: tr.subtitleIndex };
       },
       async setAudio(index) {
         if (!session || session.kind !== "item") return aborted();
-        if (index === tr.audioIndex) return { ok: true, mode: session.mode };
-        return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail: true });
+        if (index === (pendingAudio ?? tr.audioIndex)) return { ok: true, mode: session.mode };
+        if (pendingAudio != null && index === tr.audioIndex) {
+          gen++;
+          cancelRequests();
+          pendingAudio = null;
+          return { ok: true, mode: session.mode };
+        }
+        const keepOnFail = vc.phases().playing != null;
+        if (keepOnFail) pendingAudio = index;
+        try {
+          return await play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail });
+        } finally {
+          if (pendingAudio === index) pendingAudio = null;
+        }
       },
       async setSubtitle(index) {
         if (!session || session.kind !== "item") return;

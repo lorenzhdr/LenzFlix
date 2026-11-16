@@ -36,7 +36,6 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-title { font
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__info-no,
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-no,
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-chan-no,
-html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__thumb-no,
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__zap-no {
   font-family: var(--lfx-retro-font-pixel);
   font-weight: 400;
@@ -50,6 +49,12 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-corner {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* Platzhalter-Nummer: Schrift aus channelInk (Inline-Farbe am Bild), kein Amber/Glow */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__thumb-no { font-family: var(--lfx-retro-font-pixel); font-weight: 400; color: inherit; text-shadow: none; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__chan-badge { border-radius: 0; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-chan .lfx-tvm__chan-badge { border-radius: 0; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__row-logo .lfx-tvm__chan-badge { border-radius: 0; }
 
 /* ---- Senderliste und Programm ---- */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__day,

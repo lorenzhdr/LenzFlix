@@ -103,14 +103,31 @@ describe('Top-10-Hovercard', () => {
 });
 
 describe('Fokus beim Schließen', () => {
-  it('Fokus im Popup wandert beim Entfernen auf den Kartenlink', async () => {
+  const kbFocus = (on) => {
+    const orig = Element.prototype.matches;
+    return vi.spyOn(Element.prototype, 'matches').mockImplementation(function (q) { return q === ':focus-visible' ? on : orig.call(this, q); });
+  };
+  it('Tastaturfokus im Popup wandert beim Entfernen auf den Kartenlink', async () => {
     const { c, pop } = await openPopup({ type: 'Movie' });
     const btn = pop.querySelector('.lfx-hc__btn--list');
     btn.focus();
     expect(document.activeElement).toBe(btn);
+    const spy = kbFocus(true);
     over(document.body);
     await vi.advanceTimersByTimeAsync(1000);
+    spy.mockRestore();
     expect(document.getElementById('lfx-hovercard')).toBeNull();
     expect(document.activeElement).toBe(c.card.querySelector('a'));
+  });
+  it('Mausklick-Fokus im Popup wird gelöst (kein :focus-within auf der Zeile)', async () => {
+    const { c, pop } = await openPopup({ type: 'Movie' });
+    pop.querySelector('.lfx-hc__btn--list').focus();
+    const spy = kbFocus(false);
+    over(document.body);
+    await vi.advanceTimersByTimeAsync(1000);
+    spy.mockRestore();
+    expect(document.getElementById('lfx-hovercard')).toBeNull();
+    expect(document.activeElement).not.toBe(c.card.querySelector('a'));
+    expect(document.activeElement).toBe(document.body);
   });
 });

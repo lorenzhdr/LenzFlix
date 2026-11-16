@@ -390,8 +390,9 @@ export class HoldView {
     this.dom.btns.flip = btn('Umdrehen', () => { this.flipped = !this.flipped; this.rotTargetY = this.flipped ? Math.PI : 0; });
     this.dom.btns.back = btn('Zurückstellen', () => this.close(true));
     this.refreshMeta();
-    const first = actions.querySelector('button');
-    if (first) { try { first.focus({ preventScroll: true }); } catch { /* egal */ } }
+    // Fokus aufs Panel, nicht auf „Abspielen“: Leertaste/Enter nach dem Nehmen starten sonst versehentlich die Wiedergabe
+    panel.tabIndex = -1;
+    try { panel.focus({ preventScroll: true }); } catch { /* egal */ }
 
     if (isSeries) this.buildSeries(token);
 

@@ -172,7 +172,8 @@ function build(tab, s, q) {
   // Block-Cursor an der Eingabeposition (Monospace: ch-Einheiten)
   const placeCaret = () => {
     const pos = typeof input.selectionStart === 'number' ? input.selectionStart : input.value.length;
-    cmd.style.setProperty('--rs-pos', String(Math.min(pos, 60)));
+    cmd.style.setProperty('--rs-pos', String(pos));
+    cmd.style.setProperty('--rs-scroll', `${input.scrollLeft || 0}px`);
     cmd.classList.toggle('is-empty', !input.value);
   };
   s.syncUi = () => {
@@ -223,6 +224,7 @@ function build(tab, s, q) {
   input.addEventListener('keyup', onCaret);
   input.addEventListener('click', onCaret);
   input.addEventListener('focus', onCaret);
+  input.addEventListener('scroll', onCaret);
   clear.addEventListener('click', onClear);
   s.cleanups.push(() => {
     input.removeEventListener('input', onInput);
@@ -230,6 +232,7 @@ function build(tab, s, q) {
     input.removeEventListener('keyup', onCaret);
     input.removeEventListener('click', onCaret);
     input.removeEventListener('focus', onCaret);
+    input.removeEventListener('scroll', onCaret);
     clear.removeEventListener('click', onClear);
   });
   try { input.focus({ preventScroll: true }); } catch { /* egal */ }
@@ -264,11 +267,11 @@ export default {
     // Externe Navigation (z. B. Suchfeld der Kopfzeile): nur reagieren, wenn der Begriff abweicht.
     if (q.trim() !== (state.term || '')) {
       state.input.value = q;
+      state.input.setSelectionRange(q.length, q.length);
       clearTimeout(state.timer);
       runSearch(state, q.trim());
     }
     try { state.input.focus({ preventScroll: true }); } catch { /* egal */ }
-    state.input.setSelectionRange(state.input.value.length, state.input.value.length);
     state.syncUi();
   },
   unmount: dispose,

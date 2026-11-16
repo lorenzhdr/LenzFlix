@@ -261,6 +261,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-tile:hover {
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-grid > .lfx-card .lfx-badge {
   top: 8px;
   left: 8px;
+  transform: none;
   z-index: 3;
   padding: 0 5px;
   border-radius: 4px;

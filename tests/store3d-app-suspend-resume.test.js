@@ -49,5 +49,29 @@ describe('resume während des Boots', () => {
     expect(a.desktop.attach).not.toHaveBeenCalled();
     expect(a.touchCtl.attach).not.toHaveBeenCalled();
   });
+  it('gibt aber Cover, Module und Vollbild-Hilfe wieder frei', () => {
+    const fs = { suspend: vi.fn(), resume: vi.fn() };
+    const a = fakeApp({ mode: 'boot', ready: false, player: {}, suspended: true, fs });
+    a.resume();
+    expect(a.covers.resume).toHaveBeenCalled();
+    expect(a.mods.hook).toHaveBeenCalledWith('onResume');
+    expect(fs.resume).toHaveBeenCalled();
+    expect(a.engine.start).not.toHaveBeenCalled();
+  });
 });
 
+
+describe('Suche während des Boots', () => {
+  it('wird zurückgestellt statt „Kassen-PC kommt bald“ zu zeigen', () => {
+    const a = fakeApp({ mode: 'boot', mods: undefined, opts: {}, openTerminal: vi.fn() });
+    a.openTerminalOrQueue('abc');
+    expect(a.openTerminal).not.toHaveBeenCalled();
+    expect(a.opts.openTerminal).toBe(true);
+    expect(a.opts.query).toBe('abc');
+  });
+  it('öffnet im Spielmodus direkt', () => {
+    const a = fakeApp({ opts: {}, openTerminal: vi.fn() });
+    a.openTerminalOrQueue('x');
+    expect(a.openTerminal).toHaveBeenCalledWith('x');
+  });
+});

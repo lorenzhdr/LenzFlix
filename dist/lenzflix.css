@@ -1171,8 +1171,11 @@ html:not(.layout-tv) #itemDetailPage .detailsGroupItem a:hover {
 }
 
 html:not(.layout-tv) #itemDetailPage .trackSelections {
-  max-width: 44em;
   margin-bottom: 1em;
+}
+
+html:not(.layout-tv) #itemDetailPage .trackSelections > * {
+  max-width: 44em;
 }
 
 html:not(.layout-tv) #itemDetailPage .trackSelections .selectContainer .selectLabel {
@@ -1226,12 +1229,7 @@ html:not(.layout-tv) #itemDetailPage .detailVerticalSection .sectionTitle {
   font-weight: 700;
 }
 
-html:not(.layout-tv) #itemDetailPage .detailVerticalSection .itemsContainer {
-  counter-reset: lfx-ep;
-}
-
 html:not(.layout-tv) #itemDetailPage .listItem {
-  counter-increment: lfx-ep;
   border-bottom: 1px solid var(--lfx-border);
   transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
   border-radius: 0;
@@ -1240,16 +1238,6 @@ html:not(.layout-tv) #itemDetailPage .listItem {
 
 html:not(.layout-tv) #itemDetailPage .listItem:hover {
   background: #333;
-}
-
-html:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper):before, html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content:before {
-  content: counter(lfx-ep);
-  text-align: center;
-  color: #d2d2d2;
-  flex: 0 0 48px;
-  margin-right: 8px;
-  font-size: 24px;
-  line-height: 1;
 }
 
 html:not(.layout-tv) #itemDetailPage .listItemImage-large {
@@ -1385,11 +1373,6 @@ html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent .cardFo
     min-width: 110px;
     width: 110px !important;
     height: 62px !important;
-  }
-
-  html:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper):before, html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content:before {
-    flex-basis: 28px;
-    font-size: 20px;
   }
 }
 
@@ -1533,7 +1516,7 @@ html:not(.layout-tv) #videoOsdPage .osdSecondaryMediaInfo > * {
   padding-left: 0 !important;
 }
 
-@media (max-width: 899px) {
+@media (max-width: 1099px) {
   html:not(.layout-tv) #videoOsdPage .osdControls > .osdMainTextContainer {
     grid-row: 1;
   }
@@ -2766,7 +2749,11 @@ html.layout-tv .card:focus .cardBox > .cardText, html.layout-tv .card:focus .car
 }
 
 html.layout-tv .sectionTitleContainer-cards {
-  margin: 0 0 .4em;
+  margin: 0 0 .7em;
+}
+
+html.layout-tv #itemDetailPage .detailVerticalSection > .sectionTitle {
+  margin-bottom: .4em;
 }
 
 html.layout-tv .sectionTitle, html.layout-tv .sectionTitle-cards {
@@ -2802,13 +2789,31 @@ html.layout-tv .emby-scroller .cardBox {
 html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter, html.layout-tv .emby-scroller .card:not(.personCard):focus .cardBox > .cardText-first {
   z-index: 2;
   color: #fff;
-  background: linear-gradient(0deg, rgba(0, 0, 0, .85) 0%, rgba(0, 0, 0, 0) 100%);
   padding: 1.6em .6em .7em;
   display: block;
   position: absolute;
-  bottom: .3em;
+  bottom: 0;
   left: 0;
   right: 0;
+}
+
+html.layout-tv .emby-scroller .card:not(.personCard):focus .cardScalable {
+  position: relative;
+}
+
+html.layout-tv .emby-scroller .card:not(.personCard):focus .cardScalable:after {
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(0, 0, 0, .85) 0%, rgba(0, 0, 0, 0) 100%);
+  height: 4em;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.layout-tv .emby-scroller .card:focus .innerCardFooter {
+  z-index: 2;
 }
 
 html.layout-tv .cardText {
@@ -3667,6 +3672,21 @@ html.lfx-js .lfx-bb__dotbtn.is-active:after {
   html.lfx-js .lfx-bb__mark {
     left: 16px;
   }
+
+  html.lfx-js .lfx-bb__dots {
+    gap: 0;
+  }
+
+  html.lfx-js .lfx-bb__dotbtn {
+    width: 24px;
+    height: 22px;
+  }
+
+  html.lfx-js .lfx-bb__dotbtn:after {
+    top: 9px;
+    left: 4px;
+    right: 4px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -4095,7 +4115,7 @@ html.lfx-js .lfx-rows > .lfx-row:nth-child(n+4) .lfx-skel {
   }
 }
 
-html.lfx-js .lfx-card--top10 {
+html.lfx-js .lfx-row--top10, html.lfx-js .lfx-card--top10 {
   --lfx-card-h: calc(var(--lfx-card-w) * .7);
   --lfx-poster-w: calc(var(--lfx-card-h) * 2 / 3);
 }
@@ -6347,6 +6367,12 @@ html.lfx-js.lfx-mnav-on:not(.layout-tv) .lfx-lib__head {
   display: none;
 }
 
+@media (max-width: 899px) {
+  html.lfx-js.lfx-mnav-pills:not(.layout-tv) .lfx-lib.is-grid .lfx-lib__body {
+    padding-top: 48px;
+  }
+}
+
 html.lfx-js .lfx-grid {
   --lfx-grid-cols: 6;
   --lfx-grid-gap: 12px;
@@ -7140,7 +7166,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn.is-primary {
 
   html.lfx-js .lfx-bb__dots {
     opacity: 1;
-    bottom: 4px;
+    bottom: 0;
   }
 
   html.lfx-js .lfx-rows {
@@ -7408,7 +7434,16 @@ html.lfx-js:not(.layout-tv) .lfx-tvm__fallback-btn.is-primary {
 }
 
 @media (max-width: 799px) {
-  html.lfx-js .lfx-bb__logo, html.lfx-js .lfx-bb__meta, html.lfx-js .lfx-bb__btn--info {
+  html.lfx-js .lfx-bb__logo {
+    display: none;
+  }
+
+  html.lfx-js .lfx-bb.is-trailer .lfx-bb__logo {
+    max-height: 72px;
+    display: block;
+  }
+
+  html.lfx-js .lfx-bb__meta, html.lfx-js .lfx-bb__btn--info {
     display: none;
   }
 
@@ -7456,11 +7491,15 @@ html.lfx-js .lfx-card__link picture {
     display: none;
   }
 
-  html.lfx-js .lfx-grid .lfx-card__link {
+  html.lfx-js .lfx-grid {
+    --lfx-card-h: calc(var(--lfx-card-w) * 1.5);
+  }
+
+  html.lfx-js .lfx-grid .lfx-card__link--poster {
     aspect-ratio: 2 / 3;
   }
 
-  html.lfx-js .lfx-grid .lfx-card__logo, html.lfx-js .lfx-grid .lfx-card__title, html.lfx-js .lfx-grid .lfx-card__link--titled:after {
+  html.lfx-js .lfx-grid .lfx-card__link--poster .lfx-card__logo, html.lfx-js .lfx-grid .lfx-card__link--poster .lfx-card__title, html.lfx-js .lfx-grid .lfx-card__link--poster.lfx-card__link--titled:after {
     display: none;
   }
 }
@@ -8651,7 +8690,7 @@ html.lfx-js .lfx-tp__preview--store .lfx-tp__shopsign {
   font: 800 max(6px, min(1.2vw, 9px)) / 1 Arial Black, Impact, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, sans-serif;
   position: absolute;
   top: 6%;
-  left: 59%;
+  left: 64%;
   transform: translateX(-50%);
   box-shadow: 0 0 10px rgba(255, 61, 127, .8), 0 0 28px rgba(255, 61, 127, .35), inset 0 0 6px rgba(255, 61, 127, .5);
 }
@@ -9080,6 +9119,7 @@ html.lfx-js .lfx-tp__mark-live-dot {
 }
 
 html.lfx-js .lfx-tp__beta {
+  z-index: 5;
   color: #ffd23f;
   font: 700 11px / 1.4 var(--lfx-font);
   letter-spacing: .06em;
@@ -9090,7 +9130,7 @@ html.lfx-js .lfx-tp__beta {
   padding: 2px 8px;
   position: absolute;
   top: 20px;
-  left: 20px;
+  left: 16px;
 }
 
 html.lfx-js .lfx-tp--sheet .lfx-tp__beta {

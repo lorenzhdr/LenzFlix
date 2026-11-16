@@ -168,11 +168,11 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute {
   min-height: 48px;
   padding: 0 28px;
   box-shadow: var(--lfx-shadow-card);
-  transition: bottom var(--lfx-dur) var(--lfx-ease);
+  transition: background var(--lfx-dur-fast) var(--lfx-ease), bottom var(--lfx-dur) var(--lfx-ease);
 }
 /* Zapp-Karte (unten links) darf „Ton an“ nicht verdecken: Knopf rückt währenddessen darüber */
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-zapping .lfx-tvm__unmute {
-  bottom: 168px;
+  bottom: min(168px, calc(100% - 56px)); /* schmaler Desktop-Player (< 210 px hoch): Knopf bleibt im Bild */
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
   position: absolute;
@@ -356,8 +356,11 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls .lfx-tvm__btn--
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-touch .lfx-tvm__controls .lfx-tvm__btn--icon {
   width: 44px;
   height: 44px;
-  min-width: 44px;
+  min-width: 38px;
+  flex: 0 1 44px; /* schmale Handys: Knöpfe schrumpfen, statt die Leiste zu sprengen */
 }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls { padding-left: calc(8px + env(safe-area-inset-left, 0px)); padding-right: calc(8px + env(safe-area-inset-right, 0px)); }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls-left { min-width: 0; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon svg {
   width: 24px;
   height: 24px;
@@ -373,6 +376,9 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__volume {
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__volume {
   width: 72px;
+  min-width: 28px;
+  flex: 0 1 72px;
+  padding: 0 4px;
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__range {
   appearance: none;

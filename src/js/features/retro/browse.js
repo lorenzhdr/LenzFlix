@@ -84,8 +84,10 @@ function listRow(it) {
   ]);
 }
 
+const wantList = (s) => s.view === 'list' && !isNarrow();
+
 function itemNode(s, it) {
-  return s.view === 'list' && !isNarrow() ? listRow(it) : createTapeCard(it, { variant: 'cover' });
+  return s.builtList ? listRow(it) : createTapeCard(it, { variant: 'cover' });
 }
 
 function paintHead(s) {
@@ -106,7 +108,7 @@ function paintHead(s) {
     b.setAttribute('aria-pressed', String(on));
   }
   s.genreBtn.classList.toggle('is-on', Boolean(s.genreId));
-  s.grid.classList.toggle('is-list', s.view === 'list' && !isNarrow());
+  s.grid.classList.toggle('is-list', Boolean(s.builtList));
   s.grid.setAttribute('role', 'list');
   for (const chip of s.genres.querySelectorAll('.lfx-rb__genre')) {
     const on = (chip.dataset.genre || '') === (s.genreId || '');
@@ -123,6 +125,7 @@ function reload(s) {
   s.total = null;
   s.done = false;
   s.loading = false;
+  s.builtList = wantList(s);
   s.grid.replaceChildren();
   s.status.replaceChildren();
   paintHead(s);
@@ -150,6 +153,7 @@ async function loadMore(s) {
       Limit: PAGE,
     });
     if (stale()) return;
+    if (s.builtList !== wantList(s)) rerender(s);
     const items = asItems(res);
     putItems(items);
     s.total = res && typeof res.TotalRecordCount === 'number' ? res.TotalRecordCount : null;
@@ -181,6 +185,7 @@ async function loadMore(s) {
 
 /** Wechselt Raster/Liste ohne Neuladen. */
 function rerender(s) {
+  s.builtList = wantList(s);
   s.grid.replaceChildren(...s.items.map((it) => itemNode(s, it)));
   paintHead(s);
 }
@@ -310,7 +315,7 @@ export default {
       const chip = state.genres.querySelector(`.lfx-rb__genre[data-genre="${state.genreId || ''}"]`);
       state.genreName = chip && state.genreId ? chip.textContent : null;
       reload(state);
-    }
+    } else if (state.grid && state.builtList !== wantList(state)) rerender(state);
   },
   unmount: dispose,
 };

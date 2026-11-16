@@ -19,6 +19,17 @@ describe('Geheimmenü: Bildgrößen', () => {
     expect(`${input.value} %`).toBe(label.replace(/\s/g, ' '));
   });
 
+  it('Reglerwert rastet beim Loslassen in Bewegungsrichtung auf 5 % (Pfeiltasten bleiben nicht hängen)', () => {
+    openSecretMenu();
+    const input = document.getElementById('lfx-secret-saver');
+    input.value = '64';
+    input.dispatchEvent(new Event('change'));
+    expect(input.value).toBe('60');
+    input.value = '61';
+    input.dispatchEvent(new Event('change'));
+    expect(input.value).toBe('65');
+  });
+
   it('DPR < 1 sagt nicht „schärfer“', () => {
     vi.stubGlobal('devicePixelRatio', 0.9);
     openSecretMenu();

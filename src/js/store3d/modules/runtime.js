@@ -195,8 +195,9 @@ export class ModuleHost {
       const path = findPath(app.layout.nav, { x: app.player.x, z: app.player.z }, { x, z });
       if (!path) { resolve(false); return; }
       this.walkPending = resolve;
-      app.player.walkTo(path, () => {
+      app.player.walkTo(path, (ok) => {
         this.walkPending = null;
+        if (ok === false) { resolve(false); return; } // Pfad blockiert
         if (typeof o.face === 'number') app.player.faceYaw(o.face);
         else if (o.face && Number.isFinite(o.face.x)) app.player.faceYaw(Math.atan2(-(o.face.x - app.player.x), -(o.face.z - app.player.z)));
         resolve(true);

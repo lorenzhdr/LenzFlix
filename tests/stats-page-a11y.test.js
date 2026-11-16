@@ -72,7 +72,7 @@ describe('Statistik-Seite: Verlauf-Achsen am Handy', () => {
     const c = document.createElement('div');
     document.body.appendChild(c);
     const mk = (s) => ({ range: '30d', timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: s }, { key: '2026-11-10', seconds: s / 2 }] } });
-    for (const secs of [3600 * 40, 3600 * 4, 3600 * 1.5, 1800]) {
+    for (const secs of [3600 * 40, 3600 * 4, 3600 * 1.5, 1800, 6480, 400000]) {
       c.innerHTML = '';
       L.renderTimeline(c, mk(secs));
       const svg = c.querySelector('svg');

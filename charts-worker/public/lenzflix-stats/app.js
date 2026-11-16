@@ -633,7 +633,7 @@
     }
     var W = 600;
     var H = 140;
-    var LM = 48; // linker Rand für die Y-Achsen-Beschriftung (Kurzform „10h“, 20 Einheiten Schrift)
+    var LM = 58; // linker Rand für die Y-Achsen-Beschriftung (bis „120m“/„192h“, 20 Einheiten Schrift)
     var TM = 14; // oberer Rand, damit das oberste Label (Schrift 20) nicht abgeschnitten wird
     var PW = W - LM;
     var max = 0;
@@ -1107,6 +1107,10 @@
       tabs.appendChild(t);
     });
     wrap.appendChild(tabs);
+    setTimeout(function () {
+      var on = tabs.querySelector('.tab.on');
+      if (on && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = on.offsetLeft + on.offsetWidth - tabs.clientWidth;
+    }, 0);
 
     if (stats.stale) wrap.appendChild(el('p', 'notice warn', 'Stand: ' + fmtDateTime(stats.computedAt) + ' – Server gerade nicht erreichbar'));
     if (stats.ignored) {
@@ -2384,7 +2388,11 @@
       var ign = window.localStorage.getItem(KEY_IGNORE);
       if (ign && cred) {
         /* Nur genau die abgemeldete Web-Sitzung übergehen; nach neuer Anmeldung (anderer Token) wieder nutzen. */
-        if (ign === hashToken(cred.token)) cred = null;
+        if (ign === '1') {
+          /* Altwert aus 1.13.1: bewusste Abmeldung auf den aktuellen Token übertragen. */
+          window.localStorage.setItem(KEY_IGNORE, hashToken(cred.token));
+          cred = null;
+        } else if (ign === hashToken(cred.token)) cred = null;
         else window.localStorage.removeItem(KEY_IGNORE);
       }
     } catch (e) {

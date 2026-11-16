@@ -131,7 +131,7 @@ html:not(.layout-tv) #videoOsdPage .osdSecondaryMediaInfo > * {
   padding-left: 0 !important;
 }
 /* Schmale Fenster: Titel über die Zeitleiste, volle Breite */
-@media (max-width: 899px) {
+@media (max-width: 1099px) {
   html:not(.layout-tv) #videoOsdPage .osdControls > .osdMainTextContainer { grid-row: 1; }
   html:not(.layout-tv) #videoOsdPage .osdControls > .osdSecondaryMediaInfo { grid-row: 2; }
   html:not(.layout-tv) #videoOsdPage .osdControls > .flex { grid-row: 3; }

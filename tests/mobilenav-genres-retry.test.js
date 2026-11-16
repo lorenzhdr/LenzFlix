@@ -37,4 +37,13 @@ describe('mobilenav: Genreliste nach Ladefehler', () => {
     mobilenav.update(parseHash('#/home?lfx=movies&genre=g1'));
     await vi.waitFor(() => expect(getLibraryGenres).toHaveBeenCalledTimes(2));
   });
+
+  it('lädt beim erneuten Öffnen der Genreliste auf derselben Seite erneut', async () => {
+    getLibraryGenres.mockRejectedValueOnce(new Error('netz')).mockResolvedValue([{ id: 'g1', name: 'Krimi' }]);
+    mobilenav.mount(parseHash('#/home?lfx=movies'));
+    await vi.waitFor(() => expect(getLibraryGenres).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 20));
+    document.querySelector('.lfx-mnav__pill--genre').click();
+    await vi.waitFor(() => expect(getLibraryGenres).toHaveBeenCalledTimes(2));
+  });
 });

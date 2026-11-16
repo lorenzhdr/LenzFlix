@@ -132,6 +132,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-status {
   color: #9fb0ff;
   font-size: 14px;
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-list {
   flex: 1;
   min-height: 0;

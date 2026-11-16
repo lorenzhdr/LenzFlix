@@ -435,8 +435,11 @@ html:not(.layout-tv) #itemDetailPage .detailsGroupItem a:hover {
 
 /* ---------- Track-Auswahl + Selects (dezent dunkel, Streaming-Dropdown) ---------- */
 html:not(.layout-tv) #itemDetailPage .trackSelections {
-  max-width: 44em;
   margin-bottom: 1em;
+}
+/* Breite am Inhalt statt am Flex-Element: ein max-width am Element ließe die Beschreibung (.detailSection, flex-wrap) daneben rutschen */
+html:not(.layout-tv) #itemDetailPage .trackSelections > * {
+  max-width: 44em;
 }
 html:not(.layout-tv) #itemDetailPage .trackSelections .selectContainer .selectLabel {
   font-size: 14px;
@@ -486,11 +489,7 @@ html:not(.layout-tv) #itemDetailPage .detailVerticalSection .sectionTitle {
 }
 
 /* Episodenliste (Staffel-Seite: Listview mit großem Bild, components/listview) */
-html:not(.layout-tv) #itemDetailPage .detailVerticalSection .itemsContainer {
-  counter-reset: lfx-ep;
-}
 html:not(.layout-tv) #itemDetailPage .listItem {
-  counter-increment: lfx-ep;
   padding: 16px 12px;
   border-bottom: 1px solid var(--lfx-border);
   border-radius: 0;
@@ -498,17 +497,6 @@ html:not(.layout-tv) #itemDetailPage .listItem {
 }
 html:not(.layout-tv) #itemDetailPage .listItem:hover {
   background: #333;
-}
-/* Nummer links (CSS-Zähler: Jellyfin rendert in dieser Ansicht keine Indexnummer) */
-html:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
-html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content::before {
-  content: counter(lfx-ep);
-  flex: 0 0 48px;
-  margin-right: 8px;
-  font-size: 24px;
-  line-height: 1;
-  text-align: center;
-  color: #d2d2d2;
 }
 html:not(.layout-tv) #itemDetailPage .listItemImage-large {
   width: 130px !important;
@@ -631,11 +619,6 @@ html:not(.layout-tv) #itemDetailPage #similarCollapsible .similarContent .cardFo
     width: 110px !important;
     min-width: 110px;
     height: 62px !important;
-  }
-  html:not(.layout-tv) #itemDetailPage .listItem-largeImage:not(.listItem-withContentWrapper)::before,
-  html:not(.layout-tv) #itemDetailPage .listItem-largeImage .listItem-content::before {
-    flex-basis: 28px;
-    font-size: 20px;
   }
 }
 

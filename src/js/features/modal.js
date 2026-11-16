@@ -121,7 +121,9 @@ function create(opener, overlayMode = false, id = null) {
 
   clearCache('lfx:modal:'); // frischer Start: Fortschritt/NextUp nach einer Wiedergabe nicht aus dem Cache (Wechsel innerhalb des Fensters nutzt ihn weiter)
   window.removeEventListener('popstate', onOrphanPop);
-  state = { overlay, modal, content, closeBtn, opener, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+  let kb; // Tastaturfokus beim Öffnen? Nur dann Rückfall-Fokus auf die Karte
+  try { kb = Boolean(opener && opener.matches(':focus-visible')); } catch { kb = true; }
+  state = { overlay, modal, content, closeBtn, opener, kb, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
   state.unsub = onItemsChanged(onChanged);
   lockScroll(state); // auch am Desktop: overflow:hidden an html/body allein verwirft sonst die Scrollposition der Seite
   if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 799px)').matches) {
@@ -188,7 +190,7 @@ function teardown() {
   rootEl().classList.remove('lfx-modal-open');
   unmountPoint(s.overlay);
   let op = s.opener;
-  if (!(op && op.isConnected) && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link'); // Opener (z. B. Hovercard-Knopf) ist weg: zugehörige Karte
+  if (!(op && op.isConnected) && s.kb && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link'); // Opener (z. B. Hovercard-Knopf) ist weg: zugehörige Karte
   if (op && op.isConnected && typeof op.focus === 'function' && !overlayOnTop()) op.focus({ preventScroll: true });
   return s.after;
 }
@@ -342,6 +344,7 @@ async function loadInto(id, hint, replace, refresh = false) {
   s.seasonId = sel.seasonId;
   s.selectedEpisodeId = sel.episodeId;
   const H = makeHandlers(s, token);
+  s.H = H;
   const isSeries = main.Type === 'Series';
   const parts = buildDetail(main, H, { playLabel: !isSeries && hasResume(main) ? 'Fortsetzen' : 'Abspielen' });
   s.parts = parts;
@@ -389,7 +392,8 @@ async function loadSeriesParts(s, token, H) {
 /** Das Info-Fenster öffnet immer oben; die gewählte Folge ist nur per .is-selected markiert (kein automatisches Scrollen des Overlays). */
 async function showSeason(s, token, H, sid = s.seasonId) {
   s.want = sid; // neueste Anfrage gewinnt; seasonId und Folgen wechseln erst gemeinsam nach dem Laden
-  const episodes = await data.loadEpisodes(s.main.Id, sid);
+  let episodes;
+  try { episodes = await data.loadEpisodes(s.main.Id, sid); } catch (e) { if (s.want === sid) s.want = null; throw e; }
   if (state !== s || s.token !== token || s.want !== sid) return;
   s.seasonId = sid;
   s.episodes = episodes;
@@ -533,11 +537,12 @@ function makeHandlers(s, token) {
           const failed = await bulkPlayed(s, targetId, next);
           if (!sameTitle()) return;
           if (isSeries || !next) {
-            main.UserData = main.UserData || {};
-            main.UserData.Played = isSeries ? next : false;
-            if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, main.UserData.Played);
+            const m = s.main; // nach einem Refresh das aktuelle Objekt, nicht das der alten Closure
+            m.UserData = m.UserData || {};
+            m.UserData.Played = isSeries ? next : false;
+            if (s.parts && s.parts.playedBtn) setPlayedState(s.parts.playedBtn, m.UserData.Played);
           }
-          await showSeason(s, token, H).catch(() => {});
+          showSeason(s, s.token, s.H, s.want || s.seasonId).catch(() => {}); // aktuelle Generation/Staffel (nicht die der Closure); ohne Warten, eine hängende Staffelwahl blockiert die Meldung nicht
           if (failed) toast(SAVE_ERROR);
           else toast(isSeries ? `Serie als ${verb} markiert` : `${folgen(n)} als ${verb} markiert`);
         } catch {

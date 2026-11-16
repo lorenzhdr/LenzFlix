@@ -50,6 +50,18 @@ describe('statshint', () => {
     expect(document.getElementById('lfx-statshint')).toBeNull();
   });
 
+  it('Desktop: rechter Rand lässt alle Kopfleisten-Symbole rechts der Navigation frei (z. B. Synchronwiedergabe)', () => {
+    const nav = Object.assign(document.createElement('div'), { id: 'lfx-nav' });
+    const sync = document.createElement('button');
+    document.querySelector('header.MuiAppBar-root').append(nav, sync);
+    nav.getBoundingClientRect = () => ({ left: 100, right: 700, top: 0, bottom: 0, width: 600, height: 0 });
+    sync.getBoundingClientRect = () => ({ left: 900, right: 924, top: 0, bottom: 0, width: 24, height: 0 });
+    statshint.mount(home);
+    vi.advanceTimersByTime(HINT_DELAY);
+    const el = document.getElementById('lfx-statshint');
+    expect(el.style.right).toContain(`${window.innerWidth - 900 + 8}px`);
+  });
+
   it('nur einmal pro Sitzung', () => {
     statshint.mount(home);
     vi.advanceTimersByTime(HINT_DELAY + HINT_DURATION + 300);
