@@ -86,8 +86,9 @@ describe('themepicker', () => {
     expect(card('live').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
     expect(card('plus').querySelector('.lfx-tp__beta')).toBeNull();
     expect(card('prime').querySelector('.lfx-tp__beta')).toBeNull();
-    expect(card('retro').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
+    expect(card('retro').querySelector('.lfx-tp__beta')).toBeNull();
     expect(card('plus').getAttribute('aria-label')).not.toContain('Beta');
+    expect(card('retro').getAttribute('aria-label')).not.toContain('Beta');
     expect(card('store').getAttribute('aria-label')).toContain('(Beta)');
     expect(card('live').querySelectorAll('.lfx-tp__remote .lfx-tp__rkey').length).toBe(9);
     expect(card('live').querySelectorAll('.lfx-tp__remote .lfx-tp__rcol').length).toBe(4);

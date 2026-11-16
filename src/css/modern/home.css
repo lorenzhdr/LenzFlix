@@ -1,5 +1,5 @@
 /* LenzFlix · modern/home
-   Jellyfin-native Startseite (#indexPage) im Netflix-Look, ohne JS lauffähig.
+   Jellyfin-native Startseite (#indexPage) im Streaming-Look, ohne JS lauffähig.
    Gilt nicht für .layout-tv. Quellen: homesections/sections/*.ts, librarybrowser.scss,
    emby-scroller.scss/js, emby-scrollbuttons (jellyfin-web v12.4). */
 
@@ -56,7 +56,7 @@ html:not(.layout-tv) #indexPage .sectionTitleContainer-cards .sectionTitleTextBu
   color: var(--lfx-text) !important;
   text-decoration: none;
 }
-/* Chevron „>“: nur bei Hover der Sektion dezent einblenden (Netflix „Alle ansehen“) */
+/* Chevron „>“: nur bei Hover der Sektion dezent einblenden (Vorlage „Alle ansehen“) */
 html:not(.layout-tv) #indexPage .sectionTitleTextButton > .material-icons {
   margin: 0 0 0 2px;
   font-size: 20px;
@@ -73,7 +73,7 @@ html:not(.layout-tv) #indexPage .sectionTitleTextButton:focus-visible > .materia
 /* ---------- Scroller: Gutter, Overflow für Zoom, Abstände ---------- */
 /* Padding oben/unten schafft Platz für Zoom + Schatten und wird per negativem Margin
    ausgeglichen: Titel-Unterkante -> Karte = 14 px, Karte -> nächster Titel = 40 px.
-   Zeilen-Pitch Backdrop (1206 px): 22 + 14 + 158,5 + 40 ≈ 234 px (Netflix ≈ 231). */
+   Zeilen-Pitch Backdrop (1206 px): 22 + 14 + 158,5 + 40 ≈ 234 px (Vorlage ≈ 231). */
 html:not(.layout-tv) #indexPage .emby-scroller {
   padding: var(--lfx-pad-top) var(--lfx-gutter) var(--lfx-pad-bottom);
   margin-top: calc(var(--lfx-row-title-gap) - var(--lfx-pad-top));
@@ -85,7 +85,7 @@ html:not(.layout-tv) #indexPage .emby-scroller::-webkit-scrollbar {
 }
 
 /* ---------- Kartentexte in Startseiten-Zeilen ausblenden ---------- */
-/* Netflix zeigt nur Bilder (Titel steckt im Bild; Jellyfin erzeugt für Bibliotheken
+/* Die Vorlage zeigt nur Bilder (Titel steckt im Bild; Jellyfin erzeugt für Bibliotheken
    ohnehin Bilder mit Schriftzug). Jellyfin 12.4 legt die Texte je nach Sektion in
    .cardFooter ODER direkt als .cardBox > .cardText ab (live geprüft).
    Grids (.vertical-wrap) liegen nicht in .emby-scroller und bleiben unberührt. */

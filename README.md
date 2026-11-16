@@ -1,11 +1,11 @@
 # LenzFlix
 
-Ein Theme im Stil von Netflix für das Jellyfin-Web-Frontend (Version 12.4): dunkles Design mit roter Akzentfarbe, Modern-Layout für Desktop und Mobil sowie ein Legacy-TV-Layout.
+Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkles Design mit roter Akzentfarbe, Modern-Layout für Desktop und Mobil sowie ein Legacy-TV-Layout.
 
 - Der **CSS-Kern** funktioniert allein und braucht kein JavaScript.
-- Das **optionale JavaScript** ergänzt: Billboard (Hero), Netflix-artige Zeilen inklusive Top 10 und Badges, Hover-Popup, Detail-Modal, „Neu und beliebt“, Handy-Navigation im App-Stil und eine Ambient-Farbe aus dem Billboard-Bild.
+- Das **optionale JavaScript** ergänzt: Billboard (Hero), Streaming-artige Zeilen inklusive Top 10 und Badges, Hover-Popup, Detail-Modal, „Neu und beliebt“, Handy-Navigation im App-Stil und eine Ambient-Farbe aus dem Billboard-Bild.
 
-> **Haftungsausschluss:** LenzFlix ist ein inoffizielles Fan-Theme. Es hat keine Verbindung zu Netflix oder zum Jellyfin-Projekt und enthält keine Netflix-Marken, -Logos oder -Assets. „Netflix“ wird nur beschreibend für den Look verwendet. Logo und Name „LENZFLIX“ sind eigene Gestaltung.
+> **Haftungsausschluss:** LenzFlix ist ein inoffizielles Fan-Theme. Es steht in keiner Verbindung zu Streaming-Anbietern oder zum Jellyfin-Projekt und enthält keine fremden Marken, Logos oder Assets. Logo und Name „LENZFLIX“ sind eigene Gestaltung.
 
 ## Kompatibilität
 
@@ -44,7 +44,7 @@ Mit aktivem JavaScript gibt es sechs Designs:
 - **LENZFLIX** (Standard): das klassische Design mit roten Akzenten.
 - **LENZ+**: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs.
 - **LENZPRIME**: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile.
-- **LENZ//84** (Beta): Cyber-Retro mit Bernstein-Terminal, Kassetten-Regal und Neon-Gitter samt Sonne im Hero, dazu CRT-Effekte und ein paar versteckte Überraschungen. Sound ist standardmäßig aus und lässt sich in der Kopfzeile einschalten. Tipp: Ein Terminal öffnet sich mit der Taste `^` (am Handy: Logo lange drücken), und mit dem richtigen Cheat-Code passiert etwas Besonderes.
+- **LENZ//84**: Cyber-Retro mit Bernstein-Terminal, Kassetten-Regal und Neon-Gitter samt Sonne im Hero, dazu CRT-Effekte und ein paar versteckte Überraschungen. Sound ist standardmäßig aus und lässt sich in der Kopfzeile einschalten. Tipp: Ein Terminal öffnet sich mit der Taste `^` (am Handy: Logo lange drücken), und mit dem richtigen Cheat-Code passiert etwas Besonderes.
 - **VIDEOTHEK LENZ** (Beta): begehbare 3D-Videothek. Ton ist standardmäßig an (im Esc-Menü abschaltbar), Kassierer Richard spricht mit der deutschen Gerätestimme. Lädt ~0,7 MB zusätzlich nur bei Auswahl und braucht WebGL.
 - **LENZ LIVE** (Beta): lineares Fernsehen aus der eigenen Mediathek. 18 Sender mit einem Programm, das für alle gleich ist, dazu Programmführer (EPG) und Videotext. Es gibt keine Pause, nur Umschalten und Ausschalten. Der eigene Player meldet keinen Fortschritt, daher hinterlässt LENZ LIVE keine Spuren in „Weiterschauen“. Gespielt wird nur per Direktwiedergabe bzw. Umpacken, nie mit Video-Transkodierung (Titel, die der Browser so nicht abspielt, sind „nicht empfangbar“). Firefox ohne native HLS-Wiedergabe zeigt ein Störbild.
   - **Pausenmusik:** Bei Pausenbild, Sendeschluss/Testbild und Störbild „Kein Empfang“ läuft Hintergrundmusik, die im Browser erzeugt wird (Klang je TV-Stil, folgt Lautstärke und Stumm). Im Menü unter „Pausenmusik“ an- und abschaltbar.
@@ -53,7 +53,7 @@ Mit aktivem JavaScript gibt es sechs Designs:
   - **Röhren-Stile (1.9.4):** „Röhre 80er“ als Holz-Truhe im Wohnzimmer um 1982 (Zimmerantenne, Videorekorder, Stehlampe) und „Silber-Röhre“ als Silbergerät auf einem Glas-Rack um 2000 (DVD-Player, Receiver, Lautsprecher). Wölbung, Zeilen, Flimmern und Rollbalken lassen sich im Menü unter „Röhren-Effekte“ abschalten. Auf Handy, im Vollbild und in schmalen Fenstern bleibt die Deko ausgeblendet.
   - **Bedienbare Geräte (1.9.5):** Bei der Röhre 80er schalten Netzschalter und Programmtasten 1–8 am Gerät, die Drehknöpfe (Sender, Lautstärke) lassen sich ziehen, anklicken oder per Mausrad drehen, und der Videorekorder zeigt immer die Uhrzeit. Die Silber-Röhre hat Gerätetasten P+/P−/V+/V−/EPG und einen Netzschalter. Gerätetasten klicken hörbar und schalten aus dem Standby ein (außer V±).
 
-Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; LENZ//84, VIDEOTHEK LENZ und LENZ LIVE tragen das Badge „Beta“). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
+Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ und LENZ LIVE tragen in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
 
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 

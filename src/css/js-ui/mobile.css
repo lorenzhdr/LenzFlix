@@ -1,4 +1,4 @@
-/* LenzFlix · js-ui/mobile: Netflix-Handy-App-Optik für die JS-Komponenten (< 800 px).
+/* LenzFlix · js-ui/mobile: Streaming-Handy-App-Optik für die JS-Komponenten (< 800 px).
    Nur Overrides, geladen nach allen anderen js-ui-Dateien. Greift nur mit html.lfx-js.
    Die mobilenav-Elemente (#lfx-mnav, #lfx-mnav-overlay) existieren nur, wenn das Feature mobil läuft. */
 
@@ -579,7 +579,7 @@ html.lfx-js .lfx-mnav-cats__close:focus-visible {
 }
 
 /* Live-Abgleich 390 px: Mobil zeigt das Billboard das Hochformat-Poster, in dem der Titel
-   bereits steckt – das zusätzliche Titel-Logo würde doppelt erscheinen (Netflix-App zeigt nur das Poster). */
+   bereits steckt – das zusätzliche Titel-Logo würde doppelt erscheinen (Streaming-App zeigt nur das Poster). */
 @media (max-width: 799px) {
   html.lfx-js .lfx-bb__logo { display: none; }
 }

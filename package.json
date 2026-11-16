@@ -1,7 +1,7 @@
 {
   "name": "lenzflix",
   "version": "1.13.1",
-  "description": "Netflix-look theme for the Jellyfin 12.4 web client",
+  "description": "Streaming-style theme for the Jellyfin 12.4 web client",
   "private": false,
   "type": "module",
   "license": "MIT",

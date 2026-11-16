@@ -1,4 +1,4 @@
-/* LenzFlix · js-ui/rows – Netflix-Zeilen (#lfx-rows). Nur mit aktivem JS. */
+/* LenzFlix · js-ui/rows – Streaming-Zeilen (#lfx-rows). Nur mit aktivem JS. */
 html.lfx-js .lfx-rows {
   --lfx-card-w: calc((100vw - var(--lfx-gutter) - var(--lfx-cards-visible) * var(--lfx-card-gap) - var(--lfx-card-peek)) / var(--lfx-cards-visible));
   --lfx-card-h: calc(var(--lfx-card-w) * 9 / 16);

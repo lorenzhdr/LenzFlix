@@ -1,5 +1,5 @@
 /* LenzFlix · modern/login
-   Netflix-Anmeldeformular für #loginPage (Legacy-View, apps/legacy/controllers/session/login/index.html).
+   Streaming-Anmeldeformular für #loginPage (Legacy-View, apps/legacy/controllers/session/login/index.html).
    Nicht für .layout-tv. Logo oben links kommt aus der AppBar (header.css / logo.css). */
 
 /* --- Hintergrund: Splash-Backdrop bleibt, darüber Abdunklung + Verläufe oben/unten --- */
@@ -193,7 +193,7 @@ html:not(.layout-tv) #loginPage .loginDisclaimer {
   color: #8c8c8c;
 }
 
-/* --- Benutzerkacheln (normalerweise serverseitig versteckt): Netflix-Profile --- */
+/* --- Benutzerkacheln (normalerweise serverseitig versteckt): Streaming-Profile --- */
 html:not(.layout-tv) #loginPage .visualLoginForm h1 {
   font-size: 32px;
   font-weight: 700;

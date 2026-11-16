@@ -320,11 +320,6 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:focus::before,
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:focus-visible::before { opacity: 1; }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item.is-stats { color: var(--lfx-retro-amber-hi); }
-html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-beta {
-  border-radius: 2px;
-  background: transparent;
-  font: 400 15px/1.2 var(--lfx-retro-font-pixel);
-}
 @media (hover: hover) and (pointer: fine) {
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-popover.lfx-retro-profile .lfx-popover__item:hover {
     background: var(--lfx-retro-amber);

@@ -1,5 +1,5 @@
 /* LenzFlix · js-ui/hovercard
-   Netflix-Hover-Popup (#lfx-hovercard, vom JS in <body> angelegt). Nur im JS-Modus. */
+   Streaming-Hover-Popup (#lfx-hovercard, vom JS in <body> angelegt). Nur im JS-Modus. */
 
 /* ---------- Nativen Hover-Zoom/-Overlay im JS-Modus neutralisieren ---------- */
 @media (hover: hover) and (pointer: fine) {

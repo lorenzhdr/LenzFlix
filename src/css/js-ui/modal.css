@@ -1,4 +1,4 @@
-/* LenzFlix · js-ui/modal – Netflix-Detail-Modal. Nur unter html.lfx-js.
+/* LenzFlix · js-ui/modal – Streaming-Detail-Modal. Nur unter html.lfx-js.
    z-index 1200: über AppBar (1100) und Header-Pills (1101), unter MUI-Menüs (1300) und Jellyfin-Dialogen (999999). */
 html.lfx-js.lfx-modal-open { overflow: hidden; }
 html.lfx-js.lfx-modal-open body { overflow: hidden; } /* iOS: html-overflow allein sperrt den Hintergrund nicht */

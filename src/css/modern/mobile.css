@@ -1,4 +1,4 @@
-/* LenzFlix · modern/mobile: Netflix-Handy-App-Optik (< 800 px), wirkt ohne JS.
+/* LenzFlix · modern/mobile: Streaming-Handy-App-Optik (< 800 px), wirkt ohne JS.
    Ausschließlich Overrides; wird nach allen modern/*.css geladen (gleiche Spezifität -> gewinnt). */
 
 @media (max-width: 799px) {

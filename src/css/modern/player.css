@@ -1,5 +1,5 @@
 /* LenzFlix · modern/player
-   Video-Player-OSD (#videoOsdPage) im Netflix-Player-Stil. Nicht für .layout-tv.
+   Video-Player-OSD (#videoOsdPage) im Streaming-Player-Stil. Nicht für .layout-tv.
    Header: Modern = .skinHeader.osdHeader (apps/modern/routes/video/index.tsx, MUI-Toolbar),
            Legacy = normaler .skinHeader, bekommt per JS .osdHeader (controllers/playback/video/index.js).
    Selektor-Quellen: apps/legacy/controllers/playback/video/index.html, styles/videoosd.scss,

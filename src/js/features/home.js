@@ -1,6 +1,6 @@
 // LenzFlix: Startseiten-Hülle (Feature "home").
 // Hängt einen eigenen Container #lfx-home als erstes Kind in #homeTab (Legacy-Controller-DOM, kein React)
-// mit zwei Slots: #lfx-billboard (Billboard) und #lfx-rows (Netflix-Zeilen). Die nativen Sektionen
+// mit zwei Slots: #lfx-billboard (Billboard) und #lfx-rows (Streaming-Zeilen). Die nativen Sektionen
 // werden per CSS (html.lfx-home-on) ausgeblendet. Billboard/Zeilen liefern je render(slot, ctx) -> cleanup.
 import { h } from '../core/dom.js';
 import { isTv } from '../core/layout.js';

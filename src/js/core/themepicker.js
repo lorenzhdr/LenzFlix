@@ -9,7 +9,7 @@ import { cached, clearCache } from './cache.js';
 import { dayKey, seededShuffle } from './dayseed.js';
 
 const ID = 'lfx-themepicker';
-const BETA = new Set(['retro', 'store', 'live']); // Designs mit Beta-Kennzeichnung
+const BETA = new Set(['store', 'live']); // Designs mit Beta-Kennzeichnung
 const STORE_ROWS = [7, 6]; // Cover pro Regalreihe in der Vorschau der VIDEOTHEK LENZ
 const STORE_COVERS = STORE_ROWS.reduce((a, b) => a + b, 0);
 const COVER_TTL_MS = 6 * 60 * 60 * 1000;

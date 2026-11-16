@@ -157,11 +157,6 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-sheet__item:ac
   outline: none;
   box-shadow: none;
 }
-html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-sheet .lfx-beta {
-  border-radius: 2px;
-  background: transparent;
-  font: 400 16px/1.2 var(--lfx-retro-font-pixel);
-}
 
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js.lfx-theme-retro:not(.layout-tv) #lfx-retro-tabbar { transition: none; }

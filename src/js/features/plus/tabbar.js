@@ -56,8 +56,8 @@ export function sheetEntries(libs, profile, { go, close }) {
   }
   for (const p of Array.isArray(profile) ? profile : []) {
     if (p.switch) entries.push(p);
-    else if (p.href) entries.push({ label: p.label, badge: p.badge, onClick: () => { close(); go(p.href); }, stats: p.key === 'stats' });
-    else if (typeof p.onClick === 'function') entries.push({ label: p.label, badge: p.badge, onClick: () => { close(); p.onClick(); } });
+    else if (p.href) entries.push({ label: p.label, onClick: () => { close(); go(p.href); }, stats: p.key === 'stats' });
+    else if (typeof p.onClick === 'function') entries.push({ label: p.label, onClick: () => { close(); p.onClick(); } });
   }
   return entries;
 }

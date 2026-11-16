@@ -1,6 +1,6 @@
 // LenzFlix: Sheet-Hülle (Overlay, Titel, Liste, Fokusfalle, Swipe) für Auswahl- und Bestätigungsdialoge.
 // Es gibt genau EIN aktives Sheet.
-import { h, mountPoint, unmountPoint, badgePill, badgedName } from './dom.js';
+import { h, mountPoint, unmountPoint } from './dom.js';
 import { computeMenuPosition, anchorRect } from './itemmenu.js';
 import { attachSwipeClose } from './swipe.js';
 import { switchButton } from './switch.js';
@@ -45,21 +45,19 @@ export function closeChooser() {
 export function renderSheet(c, title, entries) {
   c.title.textContent = title;
   c.list.replaceChildren(
-    ...entries.map(({ label, note, onClick, disabled, primary, badge, ...rest }) =>
+    ...entries.map(({ label, note, onClick, disabled, primary, ...rest }) =>
       rest.switch ? switchButton({ label, ...rest }, { className: 'lfx-sheet__item lfx-sheet__item--switch', role: 'switch' }) : h(
         'button',
         {
           type: 'button',
           class: `lfx-sheet__item${primary ? ' lfx-sheet__item--primary' : ''}`,
           disabled: disabled ? true : null,
-          'aria-label': badgedName(label, badge),
           onclick: onClick,
         },
         [
           note
             ? h('span', { class: 'lfx-sheet__text' }, [h('span', null, [label]), h('span', { class: 'lfx-sheet__note' }, [note])])
             : label,
-          badge ? badgePill(badge) : null,
         ],
       ),
     ),

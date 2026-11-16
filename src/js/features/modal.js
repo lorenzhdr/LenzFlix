@@ -1,4 +1,4 @@
-// LenzFlix: Netflix-Detail-Modal.
+// LenzFlix: Streaming-Detail-Modal.
 // Öffentliche API: openModal(itemOrId), closeModal(). Klicks auf Karten werden im Capture-Handler abgefangen.
 // History: beim Öffnen history.pushState({...history.state, lfxModal:id}, '', location.href) – gleiche URL, kein Hash-Wechsel.
 // Der react-router-Hash-Router hört nur auf popstate/hashchange (pushState löst nichts aus). Beim Zurück (popstate) bekommt er

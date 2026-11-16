@@ -1,4 +1,4 @@
-/* LenzFlix · js-ui/header: Netflix-Navigation (#lfx-nav) + Ambient-Layer. Greift nur mit html.lfx-js. */
+/* LenzFlix · js-ui/header: Streaming-Navigation (#lfx-nav) + Ambient-Layer. Greift nur mit html.lfx-js. */
 
 /* Animierbare Ambient-Kanäle (Überblendung 600 ms beim Setzen durch setAmbient) */
 @property --lfx-ambient-r { syntax: "<number>"; inherits: true; initial-value: 27; }
@@ -18,7 +18,7 @@ html.lfx-js {
 
 /* Ambient-Verlauf: fixiert oben, unter dem Content (erstes Kind von body) */
 html.lfx-js #lfx-ambient {
-  /* Netflix: Ambient-Farbe aus dem Billboard-Bild; oben dunkel, zum Billboard hin heller,
+  /* Vorlage: Ambient-Farbe aus dem Billboard-Bild; oben dunkel, zum Billboard hin heller,
      umfließt die eingerückte Billboard-Karte und läuft darunter in #141414 aus.
      Gemessen in der Vorlage: y0 #071617 → y80 #133c3c → y160 #1b5657. Scrollt mit der Seite. */
   position: absolute;

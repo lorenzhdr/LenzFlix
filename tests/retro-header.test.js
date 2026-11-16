@@ -10,7 +10,7 @@ vi.mock('../src/js/shared/libraries.js', () => ({
   ]),
 }));
 const profileEntries = vi.fn(async () => [
-  { key: 'design', label: 'Design Einstellungen', badge: 'Beta', onClick: () => {} },
+  { key: 'design', label: 'Design Einstellungen', onClick: () => {} },
   { key: 'logout', label: 'Abmelden', onClick: () => {} },
 ]);
 vi.mock('../src/js/shared/profile.js', () => ({
@@ -199,7 +199,7 @@ describe('retro-header: Feature', () => {
     expect(names).toContain('nav');
   });
 
-  it('Profil-Popover enthält „Design Einstellungen“ (mit Beta-Badge)', async () => {
+  it('Profil-Popover enthält „Design Einstellungen“ (ohne Badge)', async () => {
     header.mount(route('#/home'));
     await flush();
     document.querySelector('.lfx-retro-header__avatar').click();
@@ -208,7 +208,7 @@ describe('retro-header: Feature', () => {
     const pop = document.getElementById('lfx-popover');
     expect(pop.classList.contains('lfx-retro-profile')).toBe(true);
     expect(pop.textContent).toContain('Design Einstellungen');
-    expect(pop.querySelector('.lfx-beta')).toBeTruthy();
+    expect(pop.querySelector('.lfx-beta')).toBeNull();
   });
 
   it('Profil-Menü bleibt bei viewshow-update offen, schließt nur bei Routenwechsel', async () => {

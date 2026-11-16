@@ -1,4 +1,4 @@
-// LenzFlix: Netflix-Hover-Popup („Mini-Modal“) für Karten am Desktop (Feature "hovercard").
+// LenzFlix: Streaming-Hover-Popup („Mini-Modal“) für Karten am Desktop (Feature "hovercard").
 // Ein einziger Delegations-Listener am document (pointerover/pointerout), Popup = eigener Knoten #lfx-hovercard in <body>.
 import { h } from '../core/dom.js';
 import {

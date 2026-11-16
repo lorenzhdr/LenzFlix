@@ -1,5 +1,5 @@
 /* LenzFlix · Design-Tokens
-   Werte aus der Vermessung von netflix.de/browse (Viewport 1206 CSS-px, siehe Plan).
+   Werte aus der Vermessung einer Streaming-Vorlage (Viewport 1206 CSS-px, siehe Plan).
    Schicht 1: Jellyfin-12-Theme-Variablen überschreiben (wirkt auf MUI + theme.css).
    Schicht 2: eigene --lfx-*-Tokens für alle LenzFlix-Regeln. */
 
@@ -111,7 +111,7 @@
   --lfx-shadow-modal: 0 32px 64px rgba(0, 0, 0, 0.85);
 }
 
-/* Breitenabhängige Kartenanzahl (Netflix-Verhalten: 2–6 Karten je Breite) */
+/* Breitenabhängige Kartenanzahl (Vorlagen-Verhalten: 2–6 Karten je Breite) */
 @media (max-width: 799px) { :root { --lfx-cards-visible: 2; --lfx-gutter: 4vw; } }
 @media (min-width: 800px) and (max-width: 1099px) { :root { --lfx-cards-visible: 3; } }
 @media (min-width: 1400px) { :root { --lfx-cards-visible: 5; --lfx-gutter: 3vw; } }

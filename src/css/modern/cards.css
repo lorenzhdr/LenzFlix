@@ -1,5 +1,5 @@
 /* LenzFlix · modern/cards
-   Karten in horizontalen Zeilen (.emby-scroller .itemsContainer.scrollSlider) im Netflix-Look.
+   Karten in horizontalen Zeilen (.emby-scroller .itemsContainer.scrollSlider) im Streaming-Look.
    Gilt nicht für .layout-tv. Grids (.vertical-wrap) bleiben bewusst unberührt.
    Quellen: components/cardbuilder/card.scss, cardBuilder.js, indicators.scss (jellyfin-web v12.4). */
 
@@ -99,7 +99,7 @@ html:not(.layout-tv) .emby-scroller .innerCardFooterClear .itemProgressBarForegr
 }
 
 /* ---------- Indikatoren: dezent ---------- */
-/* Begründung: Netflix zeigt keine Gesehen-Haken; wir behalten eine kleine Info, ohne das Bild zu stören. */
+/* Begründung: Die Vorlage zeigt keine Gesehen-Haken; wir behalten eine kleine Info, ohne das Bild zu stören. */
 html:not(.layout-tv) .emby-scroller .cardIndicators {
   top: 8px;
   right: 8px;

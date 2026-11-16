@@ -1,10 +1,10 @@
-// LenzFlix: Handy-Navigation im Netflix-App-Stil (Feature "mobilenav").
+// LenzFlix: Handy-Navigation im Streaming-App-Stil (Feature "mobilenav").
 // Nur Modern-Layout, nicht TV, nur bei Breite < 900 px (auch am Desktop; ab 900 px gilt die große Leiste #lfx-nav, auch bei layout-mobile).
 //  - Logo-Link (fixed im Header; der MUI-Drawer-Button wird per CSS ausgeblendet, solange das Feature läuft)
 //  - Filter-Pills unter dem Header: Startseite (Serien · Filme · Meine Liste · Mehr ▾), Serien/Filme (✕ · Titel · Genres ▾ + Vollbild-Genreliste), Meine Liste (✕ · Meine Liste)
 //  - Vollbild-Overlay „Mehr“ mit Startseite/Bibliotheken als zentrierte Textliste
 // Eigene Knoten liegen außerhalb der React-Knoten; unmount() räumt alles auf.
-import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
+import { h, mountPoint, unmountPoint } from '../core/dom.js';
 import { getViews, getUserId, isReady } from '../core/api.js';
 import { cached } from '../core/cache.js';
 import { isModern, isTv, isNavCompact } from '../core/layout.js';
@@ -50,7 +50,7 @@ export function overlayItems(model) {
   for (const m of model.more) items.push({ key: 'more', label: m.label, href: m.href, id: m.id });
   const statsUrl = statsLink();
   if (statsUrl) items.push({ key: 'stats', label: STATS_LABEL, href: statsUrl, external: true });
-  items.push({ key: 'design', label: 'Design Einstellungen', badge: 'Beta', action: 'design' });
+  items.push({ key: 'design', label: 'Design Einstellungen', action: 'design' });
   if (dataSaverAvailable()) items.push({ key: 'datasaver', label: 'Datensparmodus', action: 'datasaver' });
   return items;
 }
@@ -281,7 +281,7 @@ function render() {
   const list = h('ul', { class: 'lfx-mnav-overlay__list' },
     overlayItems(state.model).map((it) => h('li', null, [
       it.action === 'datasaver' ? switchButton(dataSaverItem(), { className: 'lfx-mnav-overlay__link lfx-mnav-overlay__link--datasaver', role: 'switch' }) :
-      it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, 'aria-label': badgedName(it.label, it.badge), dataset: { action: it.action } }, [it.label, it.badge ? badgePill(it.badge) : null]) :
+      it.action ? h('button', { type: 'button', class: `lfx-mnav-overlay__link lfx-mnav-overlay__link--${it.action}`, dataset: { action: it.action } }, it.label) :
       // Externe Seite (Statistik): kein data-key, damit sie nie als aktiver Tab markiert wird
       h('a', { class: `lfx-mnav-overlay__link${it.external ? ' lfx-mnav-overlay__link--stats' : ''}`, href: it.href, ...(it.external ? {} : { dataset: { key: it.key } }) }, it.label),
     ])));

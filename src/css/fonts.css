@@ -1,4 +1,4 @@
-/* LenzFlix · Schrift: Inter (OFL, variable wght 100–900) als freie Netflix-Sans-Annäherung.
+/* LenzFlix · Schrift: Inter (OFL, variable wght 100–900) als freie Annäherung an eine Streaming-Schrift.
    url() immer relativ zu dist/ schreiben (../assets/fonts/…) – lightningcss schreibt nicht um. */
 @font-face {
   font-family: "LenzFlix Sans";

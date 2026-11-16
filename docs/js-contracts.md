@@ -1,12 +1,12 @@
 # LenzFlix JS-Verträge (für alle Feature-Worker)
 
 ## Gemeinsamer Kontext
-- Repo: `C:\Users\loren\Desktop\Clausi_Projects\NetflixTheme` (eigenes Git-Repo, **nicht** committen/pushen).
+- Repo: eigenes Git-Repo (Submodul im Hauptrepo), **nicht** ungefragt committen/pushen.
 - Build `npm run build` → `dist/lenzflix.css` + `dist/lenzflix.js` (esbuild IIFE). Tests `npm test` (vitest + jsdom, `// @vitest-environment jsdom` pro Datei). Lint `npm run lint`.
 - Pflichtlektüre: `docs/dom-map.md` (live verifiziert), `src/css/tokens.css` (nur `--lfx-*`-Tokens benutzen; neue Tokens lokal im eigenen CSS definieren und im Report vorschlagen), `src/js/core/*` (API, Cache, Router, Layout, Playback, DOM-Helper, Ambient) – **core nur lesen**, Änderungswünsche im Report melden.
-- Jellyfin-Quellcode v12.4 (nur lesen/grep): `C:\Users\loren\AppData\Local\Temp\claude\8b9d54130c035d8c\55b2626a-940d-42b4-ae47-d8bbffea6d7e\scratchpad\jw\src\src\`
-- Netflix-Vorlage (Kacheln in CSS-px bei 1206 px Viewport): `…\scratchpad\tiles\t0.png` … `t7.png`.
-- Sprache der UI: Deutsch. Keine Netflix-Namen/-Logos/-Assets im Code (Marke heißt „LENZFLIX“, rotes Logo `assets/logo/lenzflix.svg`, Mini-Marke `assets/logo/lenzflix-l.svg`; in CSS `url("../assets/logo/…")` relativ zu dist/).
+- Jellyfin-Quellcode v12.4 (nur lesen/grep): lokaler Checkout von jellyfin-web, nicht im Repo.
+- Vorlage (Kacheln in CSS-px bei 1206 px Viewport): lokale Referenz-Screenshots, nicht im Repo.
+- Sprache der UI: Deutsch. Keine fremden Marken-Namen/-Logos/-Assets im Code (Marke heißt „LENZFLIX“, rotes Logo `assets/logo/lenzflix.svg`, Mini-Marke `assets/logo/lenzflix-l.svg`; in CSS `url("../assets/logo/…")` relativ zu dist/).
 - Alle JS-UI-Styles nur unter `html.lfx-js`. Nicht auf TV (`html.lfx-tv` / `layout-tv`). Pointer-abhängige Effekte nur unter `(hover:hover) and (pointer:fine)`.
 - `window.LenzFlix.destroy()` muss alles entfernen: jedes Feature räumt in `unmount()`/Cleanup Listener, Timer, Knoten auf.
 - Keine Tokens/Credentials loggen. Bild-URLs ohne api_key (Jellyfin-Bilder sind ohne Auth abrufbar).
@@ -64,7 +64,7 @@
 - `src/js/features/home.js` (fertig) legt `#lfx-home` als erstes Kind von `#homeTab` an mit Slots `#lfx-billboard` und `#lfx-rows` und ruft `billboard.render(slot, ctx)` bzw. `rows.render(slot, ctx)` auf (Rückgabe: Cleanup-Funktion). Native Sektionen sind dann per `html.lfx-home-on` versteckt.
 
 ## Designs (Umschalter)
-Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`plus`: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs) **LENZPRIME** (`prime`: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile) **LENZ//84** (`retro`, Beta: Bernstein-Terminal, Kassetten, Neon-Gitter) **VIDEOTHEK LENZ** (`store`, Beta: begehbare 3D-Videothek) und **LENZ LIVE** (`live`, Beta: lineares Fernsehen aus der Mediathek). Feature-Ordner `src/js/features/plus/`, `features/prime/`, `features/retro/`, `features/store/` und `features/live/` (Listen `plusFeatures`/`primeFeatures`/`retroFeatures` und die Store-/Live-Listen in `features/index.js`), CSS unter `src/css/themes/<id>/`. `core/` und `shared/` nutzen alle Designs gemeinsam. Die Features von LENZFLIX (`home`, `nav`, `mobilenav`, `hovercard`, `statshint`) matchen nur mit `isTheme('flix')`.
+Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`plus`: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs) **LENZPRIME** (`prime`: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile) **LENZ//84** (`retro`: Bernstein-Terminal, Kassetten, Neon-Gitter) **VIDEOTHEK LENZ** (`store`, Beta: begehbare 3D-Videothek) und **LENZ LIVE** (`live`, Beta: lineares Fernsehen aus der Mediathek). Feature-Ordner `src/js/features/plus/`, `features/prime/`, `features/retro/`, `features/store/` und `features/live/` (Listen `plusFeatures`/`primeFeatures`/`retroFeatures` und die Store-/Live-Listen in `features/index.js`), CSS unter `src/css/themes/<id>/`. `core/` und `shared/` nutzen alle Designs gemeinsam. Die Features von LENZFLIX (`home`, `nav`, `mobilenav`, `hovercard`, `statshint`) matchen nur mit `isTheme('flix')`.
 
 ### Design-Kern (`src/js/core/theme.js`)
 - `THEMES`, `THEME_META` (id, Name, Tagline, Palette), `normalizeTheme(x)` (unbekannt → `flix`).
@@ -151,8 +151,7 @@ Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 
 ### Design-Dialog und Popover
 - `openThemePicker({returnFocus})` / `closeThemePicker()` / `isThemePickerOpen()` (`core/themepicker.js`): Singleton `#lfx-themepicker` an `<body>` (Dialog am Desktop, Bottom-Sheet < 800 px mit Wisch-Schließen), unabhängig von Features, überlebt Design-Wechsel; Klick auf eine Karte ruft `setTheme(id, {source:'user'})`. Aufrufer: „Mehr → Design Einstellungen“ (`nav.js`), Mehr-Overlay (`mobilenav.js`), Profilmenüs der Designs (`shared/profile.js`).
-- `openPopover(anchorEl, {label, items, align='end', className})` / `closePopover({restoreFocus})` / `isPopoverOpen()` (`core/popover.js`): Singleton `#lfx-popover`; `items: [{key, label, href?, onClick?, className?, icon?, badge?, hidden?}]`. Klicks auf den Anker zählen nicht als „außerhalb“, der Aufrufer schaltet selbst per `isPopoverOpen()`/`closePopover()` um.
-- `badge` (Menüeintrag-Feld, Text z. B. „Beta“): kleine Pille hinter dem Label (`badgePill(text)` in `core/dom.js`, Styles `js-ui/beta.css`); der zugängliche Name wird als „Label (Beta)“ gesetzt (`badgedName(label, badge)`, `aria-label`). „Design Einstellungen“ trägt das Badge „Beta“ in `core/popover.js`, `features/nav.js`, `features/mobilenav.js`, `features/prime/footer.js` und `features/retro/tabbar.js`; neue Menüs mit diesem Eintrag setzen das Feld ebenfalls.
+- `openPopover(anchorEl, {label, items, align='end', className})` / `closePopover({restoreFocus})` / `isPopoverOpen()` (`core/popover.js`): Singleton `#lfx-popover`; `items: [{key, label, href?, onClick?, className?, icon?, hidden?}]`. Klicks auf den Anker zählen nicht als „außerhalb“, der Aufrufer schaltet selbst per `isPopoverOpen()`/`closePopover()` um.
 
 ### Statistik-Seite und Design
 - `statsHref(theme)` (`core/stats.js`) hängt `theme=<id>` an die Statistik-URL. Die Seite (`charts-worker/public/lenzflix-stats/app.js`, `resolveTheme()` → `applyTheme()`, Whitelist `flix|plus|prime|retro`) löst `?theme=` → `lfx.theme.<userId>` → `lfx.theme.last` → `flix` auf (nur Whitelist). Lokal prüfen: `node build/stats-dev.mjs`.

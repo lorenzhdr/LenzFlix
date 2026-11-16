@@ -14,7 +14,7 @@ html:not(.layout-tv) .libraryPage:not(#searchPage) .padded-bottom-page.padded-le
   padding-right: var(--lfx-gutter);
 }
 
-/* --- Toolbar (2. MUI-Toolbar der AppBar): dunkel, Titel als Netflix-Überschrift --- */
+/* --- Toolbar (2. MUI-Toolbar der AppBar): dunkel, Titel als Streaming-Überschrift --- */
 html:not(.layout-tv) .MuiAppBar-root .MuiToolbar-root + .MuiToolbar-root {
   background: var(--lfx-bg);
   padding-left: var(--lfx-gutter);
@@ -44,7 +44,7 @@ html:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected {
   border-radius: 20px;
 }
 
-/* ButtonGroup Filter/Sortierung/Ansicht: Netflix-Dropdown-Optik */
+/* ButtonGroup Filter/Sortierung/Ansicht: Streaming-Dropdown-Optik */
 html:not(.layout-tv) .MuiToolbar-root + .MuiToolbar-root .MuiButtonGroup-text {
   gap: 8px;
 }

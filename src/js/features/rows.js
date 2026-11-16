@@ -1,4 +1,4 @@
-// LenzFlix: Netflix-Zeilen der Startseite (Feature "rows"). Rendert in #lfx-rows.
+// LenzFlix: Streaming-Zeilen der Startseite (Feature "rows"). Rendert in #lfx-rows.
 // Zeilen laden lazy (IntersectionObserver); Fehler lassen die Zeile still weg.
 import * as api from '../core/api.js';
 import { h } from '../core/dom.js';

@@ -72,8 +72,8 @@ export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
           if (btn) paintSwitch(btn, p.label, next);
         },
       });
-    } else if (p.href) entries.push({ key: p.key, label: p.label, badge: p.badge, stats: p.key === 'stats', onClick: () => { close(); goFn(p.href); } });
-    else if (typeof p.onClick === 'function') entries.push({ key: p.key, label: p.label, badge: p.badge, onClick: () => { close(); p.onClick(); } });
+    } else if (p.href) entries.push({ key: p.key, label: p.label, stats: p.key === 'stats', onClick: () => { close(); goFn(p.href); } });
+    else if (typeof p.onClick === 'function') entries.push({ key: p.key, label: p.label, onClick: () => { close(); p.onClick(); } });
   }
   for (const pref of ['sound', 'crt']) {
     entries.push({ key: `pref-${pref}`, label: PREF_LABEL[pref], pref, onClick: () => toggle(pref) });

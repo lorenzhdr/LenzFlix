@@ -9398,24 +9398,6 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
   }
 }
 
-html.lfx-js .lfx-beta {
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  vertical-align: middle;
-  white-space: nowrap;
-  opacity: .8;
-  pointer-events: none;
-  background: rgba(255, 255, 255, .12);
-  border: 1px solid;
-  border-radius: 999px;
-  margin-left: 7px;
-  padding: 1px 6px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.4;
-  display: inline-block;
-}
-
 html.lfx-theme-loading:not(.layout-tv) body {
   opacity: 0 !important;
 }

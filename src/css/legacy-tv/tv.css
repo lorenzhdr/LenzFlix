@@ -75,7 +75,7 @@ html.layout-tv .skinHeader .headerButton {
 html.layout-tv .skinHeader .headerButton .material-icons {
   font-size: 1.6em;
 }
-/* Tabs unter der Kopfzeile: Netflix-Textlinks.
+/* Tabs unter der Kopfzeile: Streaming-Textlinks.
    Jellyfin zieht die Tabs ab 100em Viewport (1920er-TVs) per margin-top:-4.3em + position:relative in die Logo-Zeile;
    zusammen mit align-self:flex-start lägen sie dann auf dem Logo -> zurücksetzen, eigene Zeile unter dem Logo. */
 html.layout-tv .skinHeader .headerTabs {
@@ -235,7 +235,7 @@ html.layout-tv .itemProgressBarForeground {
 }
 
 /* ---------- Detailseite ---------- */
-/* Backdrop (global, fix): Netflix-Verläufe links dunkel, unten in #141414 */
+/* Backdrop (global, fix): Streaming-Verläufe links dunkel, unten in #141414 */
 html.layout-tv .backdropContainer::after {
   content: "";
   position: absolute;

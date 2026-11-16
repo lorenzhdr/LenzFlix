@@ -1,4 +1,4 @@
-/* LenzFlix · modern/header: MUI-AppBar im Netflix-Look (wirkt ohne JS).
+/* LenzFlix · modern/header: MUI-AppBar im Streaming-Look (wirkt ohne JS).
    Gilt nur im Modern-Layout (header.MuiAppBar-root), nicht im TV-Layout und nicht im Dashboard. */
 
 html:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
