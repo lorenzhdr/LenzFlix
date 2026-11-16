@@ -3,6 +3,7 @@
 // (html.lfx-library-on) ausgeblendet. Zeilen-Ansicht: Billboard + Zeilen (billboard.js/rows.js per ctx), Raster-Ansicht: createGrid.
 import * as api from '../core/api.js';
 import { h } from '../core/dom.js';
+import { homeKey } from '../core/cache.js';
 import { isModern, isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
 import { isLibraryRoute, libraryHref, parseLfxRoute } from '../shared/routes.js';
@@ -83,7 +84,6 @@ function renderRowsView(s, { kind, genre }) {
   const ctxRows = {
     root: s.root,
     defs: { build: () => buildLibraryRowDefs(kind, { genre, genreName }) },
-    prefetch: false,
     hero: () => bbSlot,
   };
   for (const [mod, slot, ctx] of [[billboard, bbSlot, ctxBb], [rows, rowsSlot, ctxRows]]) {
@@ -99,7 +99,10 @@ function renderGridView(s, { kind, genre, sort }) {
   const query = { IncludeItemTypes: LIB_TYPES[kind] || LIB_TYPES.movies };
   if (genre) query.GenreIds = genre;
   const grid = createGrid({
-    query, sort: sort || 'az', onCount: (n) => { if (state === s) s.head.setCount(n); },
+    query,
+    sort: sort || 'az',
+    cacheKey: (srt) => homeKey(api.getUserId(), 'lib', kind, genre || 'all', 'grid', srt || 'az'),
+    onCount: (n) => { if (state === s) s.head.setCount(n); },
   });
   s.grid = grid;
   s.body.append(grid.el);

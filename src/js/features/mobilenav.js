@@ -1,7 +1,7 @@
 // LenzFlix: Handy-Navigation im Netflix-App-Stil (Feature "mobilenav").
 // Nur Modern-Layout, nicht TV, nur bei Breite < 900 px (auch am Desktop; ab 900 px gilt die große Leiste #lfx-nav, auch bei layout-mobile).
 //  - Logo-Link (fixed im Header; der MUI-Drawer-Button wird per CSS ausgeblendet, solange das Feature läuft)
-//  - Filter-Pills unter dem Header: Startseite (Serien · Filme · Meine Liste · Mehr ▾), Serien/Filme (✕ · Titel · Kategorien ▾ + Vollbild-Genreliste), Meine Liste (✕ · Meine Liste)
+//  - Filter-Pills unter dem Header: Startseite (Serien · Filme · Meine Liste · Mehr ▾), Serien/Filme (✕ · Titel · Genres ▾ + Vollbild-Genreliste), Meine Liste (✕ · Meine Liste)
 //  - Vollbild-Overlay „Mehr“ mit Startseite/Bibliotheken als zentrierte Textliste
 // Eigene Knoten liegen außerhalb der React-Knoten; unmount() räumt alles auf.
 import { h, mountPoint, unmountPoint, badgePill, badgedName } from '../core/dom.js';
@@ -188,7 +188,7 @@ function genreName(kind, id) {
   return g ? g.name : null;
 }
 
-/** Pillen-Leiste je Route: Startseite (Serien · Filme · Meine Liste · Mehr), Bibliothek (✕ · Serien · Kategorien), Meine Liste (✕ · Meine Liste). */
+/** Pillen-Leiste je Route: Startseite (Serien · Filme · Meine Liste · Mehr), Bibliothek (✕ · Serien · Genres), Meine Liste (✕ · Meine Liste). */
 function renderPills() {
   if (!state.pills) return;
   const mode = state.route ? pillsMode(state.route) : null;
@@ -207,7 +207,7 @@ function renderPills() {
       'aria-expanded': String(isCatsOpen()),
       'aria-controls': CATS_ID,
       dataset: { key: 'cats' },
-    }, [gname || 'Kategorien', caret()]);
+    }, [gname || 'Genres', caret()]);
     state.genreBtn.addEventListener('click', () => (isCatsOpen() ? closeCats() : openCats()));
     state.pills.append(
       closeX(),
@@ -233,7 +233,7 @@ function renderPills() {
   }
 }
 
-/** Vollbild-Kategorienliste (Genres der aktuellen Bibliotheksart). */
+/** Vollbild-Genreliste (Genres der aktuellen Bibliotheksart). */
 function renderCats() {
   if (!state.cats) return;
   const kind = libraryKind(state.route);
@@ -339,11 +339,11 @@ export const mobilenavFeature = {
       () => state.overlay && state.overlay.removeEventListener('keydown', onOverlayKey),
       () => state.overlay && state.overlay.removeEventListener('click', onOverlayClick),
     );
-    // Kategorienliste (Serien/Filme): eigenes Vollbild-Overlay mit Fokus-Falle und Scroll-Sperre
+    // Genreliste (Serien/Filme): eigenes Vollbild-Overlay mit Fokus-Falle und Scroll-Sperre
     state.cats = mountPoint(CATS_ID, { className: 'lfx-mnav-cats' });
     state.cats.setAttribute('role', 'dialog');
     state.cats.setAttribute('aria-modal', 'true');
-    state.cats.setAttribute('aria-label', 'Kategorien');
+    state.cats.setAttribute('aria-label', 'Genres');
     state.cats.hidden = true;
     state.cats.addEventListener('keydown', onCatsKey);
     const onCatsClick = (e) => {

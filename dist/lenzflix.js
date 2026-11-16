@@ -401,7 +401,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.13.0";
+  var VERSION = "1.13.1";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -4032,7 +4032,7 @@
         "aria-expanded": String(isCatsOpen()),
         "aria-controls": CATS_ID,
         dataset: { key: "cats" }
-      }, [gname || "Kategorien", caret()]);
+      }, [gname || "Genres", caret()]);
       state3.genreBtn.addEventListener("click", () => isCatsOpen() ? closeCats() : openCats());
       state3.pills.append(
         closeX(),
@@ -4161,7 +4161,7 @@
       state3.cats = mountPoint(CATS_ID, { className: "lfx-mnav-cats" });
       state3.cats.setAttribute("role", "dialog");
       state3.cats.setAttribute("aria-modal", "true");
-      state3.cats.setAttribute("aria-label", "Kategorien");
+      state3.cats.setAttribute("aria-label", "Genres");
       state3.cats.hidden = true;
       state3.cats.addEventListener("keydown", onCatsKey);
       const onCatsClick = (e) => {
@@ -8173,7 +8173,8 @@
         return { SortBy: "SortName", SortOrder: "Ascending" };
     }
   }
-  var defaultCard = (item) => createCard(item, { kind: "landscape" });
+  var EAGER_CARDS2 = 12;
+  var defaultCard = (item, o) => createCard(item, { kind: "landscape", eager: !!(o && o.eager) });
   function createGrid(opts = {}) {
     const pageSize = opts.pageSize || 40;
     const cardFactory = opts.cardFactory || defaultCard;
@@ -8228,15 +8229,46 @@
       el4.removeAttribute("aria-busy");
       loadMore3();
     }
+    const pageKey = () => {
+      if (typeof opts.cacheKey !== "function") return null;
+      try {
+        return opts.cacheKey(sort) || null;
+      } catch {
+        return null;
+      }
+    };
+    function applyPage(res, { eager = false } = {}) {
+      const items = asItems2(res);
+      putItems(items);
+      const total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
+      status.replaceChildren();
+      items.forEach((it, i) => {
+        const card3 = cardFactory(it, { eager: eager && count + i < EAGER_CARDS2 });
+        if (card3) list.append(h("div", { class: "lfx-grid__item", role: "presentation" }, [card3]));
+      });
+      count += items.length;
+      done = items.length < pageSize || total != null && count >= total;
+      if (!count) status.replaceChildren(h("p", { class: "lfx-grid__empty" }, emptyText));
+      if (typeof opts.onCount === "function") opts.onCount(total != null ? total : count);
+    }
     async function loadMore3() {
       if (destroyed || loading || done) return;
+      const key = !count ? pageKey() : null;
+      if (key) {
+        const hit = peekCached(key);
+        if (hit !== void 0) {
+          applyPage(hit, { eager: true });
+          recheck();
+          return;
+        }
+      }
       const mySeq = seq3;
       loading = true;
       el4.setAttribute("aria-busy", "true");
       if (!count) skeleton3();
       const stale = () => destroyed || seq3 !== mySeq;
       try {
-        const res = await getItems({
+        const fetchPage = () => getItems({
           ...BASE_PARAMS,
           Recursive: true,
           ...query2,
@@ -8245,19 +8277,9 @@
           StartIndex: count,
           Limit: pageSize
         });
+        const res = await (key ? cached(key, fetchPage, HOME_TTL) : fetchPage());
         if (stale()) return;
-        const items = asItems2(res);
-        putItems(items);
-        const total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
-        status.replaceChildren();
-        for (const it of items) {
-          const card3 = cardFactory(it);
-          if (card3) list.append(h("div", { class: "lfx-grid__item", role: "presentation" }, [card3]));
-        }
-        count += items.length;
-        done = items.length < pageSize || total != null && count >= total;
-        if (!count) status.replaceChildren(h("p", { class: "lfx-grid__empty" }, emptyText));
-        if (typeof opts.onCount === "function") opts.onCount(total != null ? total : count);
+        applyPage(res);
       } catch (e) {
         if (stale()) return;
         console.warn("[LenzFlix] Raster konnte nicht laden", e && e.message);
@@ -8569,7 +8591,6 @@
     const ctxRows = {
       root: s.root,
       defs: { build: () => buildLibraryRowDefs(kind2, { genre, genreName: genreName2 }) },
-      prefetch: false,
       hero: () => bbSlot
     };
     for (const [mod, slot, ctx2] of [[billboard_exports, bbSlot, ctxBb], [rows_exports, rowsSlot, ctxRows]]) {
@@ -8586,6 +8607,7 @@
     const grid2 = createGrid({
       query: query2,
       sort: sort || "az",
+      cacheKey: (srt) => homeKey(getUserId(), "lib", kind2, genre || "all", "grid", srt || "az"),
       onCount: (n) => {
         if (state5 === s) s.head.setCount(n);
       }
@@ -11914,14 +11936,14 @@
     ]);
   }
   var EAGER_ROWS2 = 3;
-  var EAGER_CARDS2 = 8;
+  var EAGER_CARDS3 = 8;
   var lastInfo = null;
   function fill3(rowEl, def, items, info, eager = false) {
     const resume = def.kind === "resume";
     const cards = items.map((it, i) => createPlusCard(it, {
       kind: resume ? "resume" : "poster",
       badge: resume ? null : plusBadge(it, info),
-      eager: eager && i < EAGER_CARDS2
+      eager: eager && i < EAGER_CARDS3
     }));
     const track = h("div", { class: "lfx-plus-row__track", role: "list", "aria-label": def.title || "" }, cards);
     const prev2 = chevronButton("prev", "Zur\xFCck");
@@ -14743,7 +14765,7 @@
     let held2 = false;
     let stopped = false;
     let io = null;
-    const sync4 = () => {
+    const sync3 = () => {
       if (stopped || !video2) return;
       const want = visible && !held2 && !document.hidden;
       try {
@@ -14757,17 +14779,17 @@
       } catch {
       }
     };
-    const onVis = () => sync4();
+    const onVis = () => sync3();
     const onHold = (e) => {
       held2 = Boolean(e.detail && e.detail.on);
-      sync4();
+      sync3();
     };
     if (typeof IntersectionObserver === "function") {
       io = new IntersectionObserver((entries) => {
         const e = entries[entries.length - 1];
         if (!e) return;
         visible = e.isIntersecting && e.intersectionRatio >= VISIBLE_RATIO;
-        sync4();
+        sync3();
       }, { threshold: [0, VISIBLE_RATIO, 1] });
       io.observe(video2);
     }
@@ -15333,7 +15355,7 @@
     return b;
   }
   var EAGER_ROWS3 = 3;
-  var EAGER_CARDS3 = 8;
+  var EAGER_CARDS4 = 8;
   var lastInfo2 = null;
   function pickPosterId(defs, hub) {
     const list = defs || [];
@@ -15403,7 +15425,7 @@
         kind: kind2,
         rank: kind2 === "top10" ? i + 1 : 0,
         badge: cardBadge(it, inf),
-        eager: eager && i < EAGER_CARDS3
+        eager: eager && i < EAGER_CARDS4
       }));
       const track = rowEl.querySelector(".lfx-prime-row__track");
       const prev2 = arrow("prev", "Zur\xFCck");
@@ -17076,19 +17098,19 @@
       "aria-label": cfg.label,
       title: cfg.label
     }, [svgIcon2(cfg.icon)]);
-    const sync4 = () => {
+    const sync3 = () => {
       const on = getPref(pref);
       el4.setAttribute("aria-pressed", on ? "true" : "false");
       el4.classList.toggle("is-on", on);
     };
-    const onPrefs2 = () => sync4();
+    const onPrefs = () => sync3();
     el4.addEventListener("click", () => {
       togglePref(pref);
     });
-    document.addEventListener(PREFS_EVENT, onPrefs2);
-    sync4();
-    return { el: el4, sync: sync4, destroy() {
-      document.removeEventListener(PREFS_EVENT, onPrefs2);
+    document.addEventListener(PREFS_EVENT, onPrefs);
+    sync3();
+    return { el: el4, sync: sync3, destroy() {
+      document.removeEventListener(PREFS_EVENT, onPrefs);
     } };
   }
 
@@ -17491,16 +17513,16 @@
       };
       const onFocusOut = () => cl2.remove(KB_CLASS2);
       const onHash2 = () => cl2.toggle(HIDE_CLASS2, isVideoHash2(window.location.hash));
-      const onPrefs2 = () => syncSheetToggles();
+      const onPrefs = () => syncSheetToggles();
       document.addEventListener("focusin", onFocusIn);
       document.addEventListener("focusout", onFocusOut);
       window.addEventListener("hashchange", onHash2);
-      document.addEventListener(PREFS_EVENT, onPrefs2);
+      document.addEventListener(PREFS_EVENT, onPrefs);
       state20.cleanups.push(() => {
         document.removeEventListener("focusin", onFocusIn);
         document.removeEventListener("focusout", onFocusOut);
         window.removeEventListener("hashchange", onHash2);
-        document.removeEventListener(PREFS_EVENT, onPrefs2);
+        document.removeEventListener(PREFS_EVENT, onPrefs);
         cl2.remove(KB_CLASS2, HIDE_CLASS2);
       });
       cl2.remove(HIDE_CLASS2);
@@ -19852,42 +19874,13 @@
   };
   var hover_default2 = hover;
 
-  // src/js/features/retro/tvlook.js
-  var TVCRT_CLASS = "lfx-retro-tvcrt";
-  var onPrefs = null;
-  function sync3() {
-    document.documentElement.classList.toggle(TVCRT_CLASS, getPref("crt"));
-  }
-  function mount() {
-    if (onPrefs) return;
-    onPrefs = (e) => {
-      const d = e && e.detail;
-      if (!d || d.name === "crt") sync3();
-    };
-    document.addEventListener(PREFS_EVENT, onPrefs);
-    sync3();
-  }
-  function unmount() {
-    if (onPrefs) document.removeEventListener(PREFS_EVENT, onPrefs);
-    onPrefs = null;
-    document.documentElement.classList.remove(TVCRT_CLASS);
-  }
-  var tvlook_default = {
-    name: "retro-tvlook",
-    match: (route) => isTheme("retro") && isModern() && !isTv() && isTvModeRoute(route),
-    mount,
-    update() {
-    },
-    unmount
-  };
-
   // src/js/features/retro/fx/crt.js
   var CRT_ID = "lfx-retro-crt";
   function createCrt() {
     let el4 = null;
     let stripTimer = 0;
     let shakeTimer = 0;
-    function mount3() {
+    function mount2() {
       if (el4 && el4.isConnected) return el4;
       el4 = h("div", { id: CRT_ID, class: "lfx-retro-crt", "aria-hidden": "true" }, [
         h("div", { class: "lfx-retro-crt__flicker" }),
@@ -19900,17 +19893,17 @@
       document.body.append(el4);
       return el4;
     }
-    function unmount3() {
+    function unmount2() {
       clearTimeout(stripTimer);
       clearTimeout(shakeTimer);
       stripTimer = shakeTimer = 0;
       if (el4) el4.remove();
       el4 = null;
     }
-    function sync4(on) {
+    function sync3(on) {
       document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
-      if (on) mount3();
-      else unmount3();
+      if (on) mount2();
+      else unmount2();
     }
     function glitchStrip(ms = 180) {
       if (!el4) return;
@@ -19932,7 +19925,7 @@
         if (el4) el4.classList.remove("is-shaking");
       }, ms);
     }
-    return { mount: mount3, unmount: unmount3, sync: sync4, glitchStrip, shake, get el() {
+    return { mount: mount2, unmount: unmount2, sync: sync3, glitchStrip, shake, get el() {
       return el4;
     } };
   }
@@ -21111,7 +21104,7 @@
     const t = e.target;
     return t && t.closest ? t.closest(`[${LOGO_ATTR}]`) : null;
   }
-  function mount2() {
+  function mount() {
     if (S) return;
     const reduced = prefersReducedMotion();
     const timers = createTimers();
@@ -21288,7 +21281,7 @@
     if (!reduced) glitch.start();
     screensaver.start();
   }
-  function unmount2() {
+  function unmount() {
     if (!S) return;
     const s = S;
     S = null;
@@ -21311,14 +21304,14 @@
   var fx_default = {
     name: "retro-fx",
     match: (route) => shouldRun(route),
-    mount: mount2,
+    mount,
     update() {
     },
-    unmount: unmount2
+    unmount
   };
 
   // src/js/features/retro/index.js
-  var retroFeatures = [header_default3, tabbar_default3, home_default4, title_default3, search_default2, browse_default2, nativedetail_default3, hover_default2, tvlook_default, fx_default];
+  var retroFeatures = [header_default3, tabbar_default3, home_default4, title_default3, search_default2, browse_default2, nativedetail_default3, hover_default2, fx_default];
 
   // src/js/features/store/departments.js
   var NEW_DAYS3 = 14;
@@ -23147,7 +23140,7 @@
       destroyLayout();
       stopTheme();
     }
-    function sync4() {
+    function sync3() {
       if (destroyed) return;
       if (cssActive()) {
         startTheme();
@@ -23169,20 +23162,20 @@
     watchTimer = setInterval(() => {
       if (++fastN >= FAST_TICKS) {
         clearInterval(watchTimer);
-        watchTimer = setInterval(sync4, WATCH_MS);
+        watchTimer = setInterval(sync3, WATCH_MS);
       }
-      sync4();
+      sync3();
     }, FAST_MS);
-    window.addEventListener("hashchange", sync4);
-    window.addEventListener("popstate", sync4);
-    document.addEventListener("viewshow", sync4);
-    sync4();
+    window.addEventListener("hashchange", sync3);
+    window.addEventListener("popstate", sync3);
+    document.addEventListener("viewshow", sync3);
+    sync3();
     function destroy() {
       destroyed = true;
       clearInterval(watchTimer);
-      window.removeEventListener("hashchange", sync4);
-      window.removeEventListener("popstate", sync4);
-      document.removeEventListener("viewshow", sync4);
+      window.removeEventListener("hashchange", sync3);
+      window.removeEventListener("popstate", sync3);
+      document.removeEventListener("viewshow", sync3);
       stopFeatures();
       destroyDataSaver();
       destroyTheme();

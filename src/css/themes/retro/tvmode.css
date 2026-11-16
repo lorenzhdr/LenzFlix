@@ -1,5 +1,5 @@
 /* LENZ//84 · TV-Modus (Engine src/js/live/tvmode/, Basis-CSS src/css/tvmode/): Bernstein-Terminal-Look, Röhren-Schein, Schnee beim Umschalten.
-   Nur Engine-Klassen (lfx-tvm__*), kein Nesting, kein :has. Scanlines/Vignette nur bei html.lfx-retro-tvcrt (setzt features/retro/tvlook.js nach der CRT-Vorliebe). */
+   Nur Engine-Klassen (lfx-tvm__*), kein Nesting, kein :has. Bild selbst ohne Effekte (1.13.1: keine Scanlines/Vignette mehr). */
 
 /* ---- Rahmen: eckig, Bernstein-Linie ---- */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm {
@@ -175,17 +175,6 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-loading
 }
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-loading::before { animation: none; }
-}
-
-/* ---- Röhren-Schein über dem Bild (nur bei CRT an): Scanlines + Vignette ---- */
-html.lfx-js.lfx-theme-retro.lfx-retro-tvcrt:not(.layout-tv) .lfx-tvm .lfx-tvm__video-slot::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.55) 100%),
-    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, 0.16) 3px, rgba(0, 0, 0, 0) 4px);
 }
 
 /* ---- Handy: Fußabstand über der F-Tasten-Leiste (58 px + Safe-Area, mobile-home.css) ---- */

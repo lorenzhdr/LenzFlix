@@ -45,7 +45,6 @@
       var phone = q.get('phone') === '1';
       if (phone) h.classList.add('dev-phone');
       if (q.get('chrome') !== '0') h.classList.add('dev-chrome');
-      if (design === 'retro' && q.get('crt') !== '0') h.classList.add('lfx-retro-tvcrt'); // wie features/retro/tvlook.js (Standard: CRT an)
       if (design !== 'flix') h.classList.add('dev-tabbar');
       document.getElementById('dev-logo').textContent = design === 'plus' ? 'LENZ+' : design === 'prime' ? 'LENZPRIME' : design === 'retro' ? 'LENZ//84' : 'LENZFLIX';
       if (q.get('chrome') !== '0' && phone) h.style.setProperty('--lfx-header-h', '56px'); // Handy-Kopfleiste 56 px; Abstand oben macht der Root selbst

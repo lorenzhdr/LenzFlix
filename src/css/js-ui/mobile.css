@@ -177,7 +177,7 @@ html.lfx-js .lfx-mnav-overlay__close:focus-visible {
   outline-offset: 3px;
 }
 
-/* Pillen-Varianten (Serien/Filme/Meine Liste): ✕-Rundknopf, Kategorien/Genre mit ▾ */
+/* Pillen-Varianten (Serien/Filme/Meine Liste): ✕-Rundknopf, Genres mit ▾ */
 html.lfx-js .lfx-mnav__pill--x {
   justify-content: center;
   width: 32px;
@@ -189,7 +189,7 @@ html.lfx-js .lfx-mnav__pill--genre.has-genre {
   border-color: #fff;
 }
 
-/* Kategorien-Vollbildliste: dunkler, leicht transparenter Hintergrund, zentrierte große Einträge */
+/* Genres-Vollbildliste: dunkler, leicht transparenter Hintergrund, zentrierte große Einträge */
 html.lfx-js.lfx-mnav-cats-open {
   overflow: hidden;
 }

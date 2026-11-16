@@ -1,5 +1,5 @@
 // Startseiten-Zeilen im Hintergrund vorladen, sobald oben alles fertig ist (Hero, erste Zeilen, Trailer).
-// Gemeinsam für flix/plus/prime (nur Startseite, nie Hubs). Eine Zeile nach der anderen, von oben nach unten.
+// Gemeinsam für flix/plus/prime: Startseite und (seit 1.13.1) die LENZFLIX-Seiten Serien/Filme; nie native Hubs. Eine Zeile nach der anderen, von oben nach unten.
 import { netOk } from '../../core/net.js';
 import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 

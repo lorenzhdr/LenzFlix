@@ -6005,17 +6005,6 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-loading
   }
 }
 
-html.lfx-js.lfx-theme-retro.lfx-retro-tvcrt:not(.layout-tv) .lfx-tvm .lfx-tvm__video-slot:after {
-  content: "";
-  pointer-events: none;
-  background: radial-gradient(rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, .55) 100%), repeating-linear-gradient(rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 2px, rgba(0, 0, 0, .16) 3px, rgba(0, 0, 0, 0) 4px);
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-}
-
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm.is-phone {
   --lfx-tvm-foot: calc(var(--lfx-retro-fh, calc(58px + env(safe-area-inset-bottom, 0px))) + 16px);
 }

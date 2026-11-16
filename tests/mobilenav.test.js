@@ -221,17 +221,18 @@ describe('mobilenav (DOM)', () => {
   describe('Serien/Filme/Meine Liste', () => {
     const labels = () => [...document.querySelectorAll('.lfx-mnav__pill')].map((p) => p.textContent);
 
-    it('Serien-Seite: ✕ · Serien (aktiv) · Kategorien; Klasse lfx-mnav-pills gesetzt', async () => {
+    it('Serien-Seite: ✕ · Serien (aktiv) · Genres; Klasse lfx-mnav-pills gesetzt', async () => {
       mobilenav.mount(parseHash('#/home?lfx=series'));
-      await vi.waitFor(() => expect(labels()).toEqual(['×', 'Serien', 'Kategorien']));
+      await vi.waitFor(() => expect(labels()).toEqual(['×', 'Serien', 'Genres']));
       expect(document.documentElement.classList.contains('lfx-mnav-pills')).toBe(true);
+      expect(document.getElementById('lfx-mnav-cats').getAttribute('aria-label')).toBe('Genres');
       const [x, s] = document.querySelectorAll('.lfx-mnav__pill');
       expect(x.getAttribute('href')).toBe('#/home');
       expect(s.getAttribute('href')).toBe('#/home?lfx=series');
       expect(s.classList.contains('is-active')).toBe(true);
     });
 
-    it('Filme mit Genre: Genre-Name statt „Kategorien“; Pille führt ohne Genre zurück', async () => {
+    it('Filme mit Genre: Genre-Name statt „Genres“; Pille führt ohne Genre zurück', async () => {
       mobilenav.mount(parseHash('#/home?lfx=movies&genre=g1'));
       await vi.waitFor(() => expect(labels()).toEqual(['×', 'Filme', 'Krimi']));
       expect(document.querySelectorAll('.lfx-mnav__pill')[1].getAttribute('href')).toBe('#/home?lfx=movies');
@@ -244,7 +245,7 @@ describe('mobilenav (DOM)', () => {
       expect(document.querySelectorAll('.lfx-mnav__pill')[1].classList.contains('is-active')).toBe(true);
     });
 
-    it('Kategorienliste: öffnet, lädt Genres, markiert aktives Genre, navigiert und schließt (Scroll-Sperre zurück)', async () => {
+    it('Genreliste: öffnet, lädt Genres, markiert aktives Genre, navigiert und schließt (Scroll-Sperre zurück)', async () => {
       mobilenav.mount(parseHash('#/home?lfx=series&genre=g2'));
       await vi.waitFor(() => expect(labels()).toEqual(['×', 'Serien', 'Komödie']));
       const cats = document.getElementById('lfx-mnav-cats');
@@ -261,7 +262,7 @@ describe('mobilenav (DOM)', () => {
       expect(document.documentElement.classList.contains('lfx-mnav-cats-open')).toBe(false);
     });
 
-    it('Kategorienliste: Esc und ✕ schließen, Route-Wechsel und unmount setzen die Sperre zurück', async () => {
+    it('Genreliste: Esc und ✕ schließen, Route-Wechsel und unmount setzen die Sperre zurück', async () => {
       mobilenav.mount(parseHash('#/home?lfx=movies'));
       await vi.waitFor(() => expect(document.querySelectorAll('.lfx-mnav-cats__link').length).toBe(3));
       const cats = document.getElementById('lfx-mnav-cats');
@@ -288,7 +289,7 @@ describe('mobilenav (DOM)', () => {
       mobilenav.mount(parseHash('#/home'));
       await vi.waitFor(() => expect(labels()).toEqual(['Serien', 'Filme', 'Meine Liste', 'Mehr']));
       mobilenav.update(parseHash('#/home?lfx=series'));
-      expect(labels()).toEqual(['×', 'Serien', 'Kategorien']);
+      expect(labels()).toEqual(['×', 'Serien', 'Genres']);
       mobilenav.update(parseHash('#/home'));
       expect(labels()).toEqual(['Serien', 'Filme', 'Meine Liste', 'Mehr']);
     });

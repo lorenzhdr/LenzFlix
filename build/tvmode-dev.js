@@ -2,7 +2,7 @@
 // (dist/lenztvmode.js) ohne Jellyfin und ohne Netzwerk. HTML: build/tvmode-dev.html (lädt CSS/JS je nach design/min).
 //
 // Parameter:
-//   design=flix|plus|prime|retro   Klasse lfx-theme-<id> + Design-CSS (lenzplus/lenzprime/lenzretro)   crt=0|1  nur retro: Klasse lfx-retro-tvcrt (Standard 1)    phone=1   Handy-Layout (opts.phone + opts.touch, Kopfleiste 56 px)
+//   design=flix|plus|prime|retro   Klasse lfx-theme-<id> + Design-CSS (lenzplus/lenzprime/lenzretro)   phone=1   Handy-Layout (opts.phone + opts.touch, Kopfleiste 56 px)
 //   landscape=1              nur Hinweis für Skripte (Viewport quer per Emulation setzen; keine Wirkung im Harness)
 //   now=<ISO>                Testuhr (Standard: Fr 2026-11-13T20:30+01:00; ohne Zone = lokale Zeit)
 //   channel=N                opts.lastChannel (Standard 1)   min=1  .min-Dateien   chrome=0  Kopfleisten-/Tabbar-Attrappe aus (Standard an)

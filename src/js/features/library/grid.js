@@ -1,8 +1,13 @@
 // LenzFlix library: wiederverwendbares Raster mit Nachladen (Serien/Filme/Meine Liste). Markup: .lfx-grid > .lfx-grid__list.
+// Option cacheKey: (sort) => string|null – Schlüssel (home:…, muss die Query enthalten) für die ERSTE Seite; bei
+// Treffer (10 min, core/cache.js) zeichnet das Raster synchron ohne Skelett/Abruf, die ersten 12 Karten laden Bilder
+// sofort (eager). Folgeseiten sind ungecacht. Ohne cacheKey (Meine Liste) unverändertes Verhalten.
+// cardFactory(item, { eager }) bekommt als zweites Argument die Eager-Angabe.
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { putItems } from '../../core/itemstore.js';
 import { isDataSaver } from '../../core/datasaver.js';
+import { cached, peekCached, HOME_TTL } from '../../core/cache.js';
 import { BASE_PARAMS } from '../rows/logic.js';
 import { createCard } from '../rows/card.js';
 
@@ -21,7 +26,8 @@ export function sortParams(sort, query) {
   }
 }
 
-const defaultCard = (item) => createCard(item, { kind: 'landscape' });
+const EAGER_CARDS = 12;
+const defaultCard = (item, o) => createCard(item, { kind: 'landscape', eager: !!(o && o.eager) });
 
 export function createGrid(opts = {}) {
   const pageSize = opts.pageSize || 40;
@@ -81,15 +87,47 @@ export function createGrid(opts = {}) {
     loadMore();
   }
 
+  /** Schlüssel des Seiten-1-Caches für die aktuelle Sortierung (null = ungecacht). */
+  const pageKey = () => {
+    if (typeof opts.cacheKey !== 'function') return null;
+    try { return opts.cacheKey(sort) || null; } catch { return null; }
+  };
+
+  /** Zeichnet eine Antwort: Karten anhängen, Zähler/Ende/Leerhinweis/onCount. */
+  function applyPage(res, { eager = false } = {}) {
+    const items = asItems(res);
+    putItems(items);
+    const total = res && typeof res.TotalRecordCount === 'number' ? res.TotalRecordCount : null;
+    status.replaceChildren();
+    items.forEach((it, i) => {
+      const card = cardFactory(it, { eager: eager && count + i < EAGER_CARDS });
+      if (card) list.append(h('div', { class: 'lfx-grid__item', role: 'presentation' }, [card]));
+    });
+    count += items.length;
+    done = items.length < pageSize || (total != null && count >= total);
+    if (!count) status.replaceChildren(h('p', { class: 'lfx-grid__empty' }, emptyText));
+    if (typeof opts.onCount === 'function') opts.onCount(total != null ? total : count);
+  }
+
   async function loadMore() {
     if (destroyed || loading || done) return;
+    const key = !count ? pageKey() : null;
+    if (key) {
+      // Synchroner Treffer: erste Seite sofort zeichnen, kein Skelett, kein Server-Abruf.
+      const hit = peekCached(key);
+      if (hit !== undefined) {
+        applyPage(hit, { eager: true });
+        recheck();
+        return;
+      }
+    }
     const mySeq = seq;
     loading = true;
     el.setAttribute('aria-busy', 'true');
     if (!count) skeleton();
     const stale = () => destroyed || seq !== mySeq;
     try {
-      const res = await api.getItems({
+      const fetchPage = () => api.getItems({
         ...BASE_PARAMS,
         Recursive: true,
         ...query,
@@ -98,19 +136,9 @@ export function createGrid(opts = {}) {
         StartIndex: count,
         Limit: pageSize,
       });
+      const res = await (key ? cached(key, fetchPage, HOME_TTL) : fetchPage());
       if (stale()) return;
-      const items = asItems(res);
-      putItems(items);
-      const total = res && typeof res.TotalRecordCount === 'number' ? res.TotalRecordCount : null;
-      status.replaceChildren();
-      for (const it of items) {
-        const card = cardFactory(it);
-        if (card) list.append(h('div', { class: 'lfx-grid__item', role: 'presentation' }, [card]));
-      }
-      count += items.length;
-      done = items.length < pageSize || (total != null && count >= total);
-      if (!count) status.replaceChildren(h('p', { class: 'lfx-grid__empty' }, emptyText));
-      if (typeof opts.onCount === 'function') opts.onCount(total != null ? total : count);
+      applyPage(res);
     } catch (e) {
       if (stale()) return;
       console.warn('[LenzFlix] Raster konnte nicht laden', e && e.message);

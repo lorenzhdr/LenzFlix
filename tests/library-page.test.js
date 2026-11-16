@@ -94,7 +94,7 @@ describe('library-Seite', () => {
     expect(rowsCleanup).toHaveBeenCalled();
   });
 
-  it('Zeilen-Ansicht ruft billboard.render mit ctx.pool und rows.render mit ctx.defs/prefetch:false', async () => {
+  it('Zeilen-Ansicht ruft billboard.render mit ctx.pool und rows.render mit ctx.defs/hero und aktivem Vorladen', async () => {
     feature.mount(route('lfx=movies'));
     expect(document.querySelector('.lfx-lib__title').textContent).toBe('Filme');
     expect(billboard.render).toHaveBeenCalledTimes(1);
@@ -104,7 +104,8 @@ describe('library-Seite', () => {
     expect(bbCtx.pool.firstKey).toBe('lfx-bb-first:lib:movies');
     expect(billboard.render.mock.calls[0][0].id).toBe('lfx-billboard');
     const rCtx = rows.render.mock.calls[0][1];
-    expect(rCtx.prefetch).toBe(false);
+    expect(rCtx.prefetch).not.toBe(false);
+    expect(typeof rCtx.hero).toBe('function');
     await rCtx.defs.build();
     expect(buildLibraryRowDefs).toHaveBeenCalledWith('movies', { genre: null, genreName: undefined });
     expect(createGrid).not.toHaveBeenCalled();
@@ -165,6 +166,10 @@ describe('library-Seite', () => {
     const opts = createGrid.mock.calls[0][0];
     expect(opts.query).toEqual({ IncludeItemTypes: 'Movie', GenreIds: 'g2' });
     expect(opts.sort).toBe('year');
+    const ck = opts.cacheKey('az');
+    expect(ck.startsWith('home:')).toBe(true);
+    expect(ck).toContain(':grid:az');
+    expect(ck).toContain('g2');
     expect(document.querySelector('.lfx-grid')).not.toBeNull();
     opts.onCount(42);
     expect(document.querySelector('.lfx-lib__count').textContent).toBe('42 Titel');

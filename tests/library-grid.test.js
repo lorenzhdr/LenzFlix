@@ -16,6 +16,7 @@ vi.mock('../src/js/core/datasaver.js', () => ({ isDataSaver: vi.fn(() => false) 
 import * as api from '../src/js/core/api.js';
 import { isDataSaver } from '../src/js/core/datasaver.js';
 import { createGrid, sortParams } from '../src/js/features/library/grid.js';
+import { clearCache } from '../src/js/core/cache.js';
 
 const page = (from, n, total) => ({ Items: Array.from({ length: n }, (_, i) => ({ Id: `i${from + i}`, Name: `T${from + i}`, Type: 'Movie' })), TotalRecordCount: total });
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
@@ -23,6 +24,7 @@ let ios;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearCache();
   isDataSaver.mockReturnValue(false);
   ios = [];
   vi.stubGlobal('IntersectionObserver', class {
@@ -32,7 +34,7 @@ beforeEach(() => {
     disconnect() { this.gone = true; }
   });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); clearCache(); });
 
 describe('sortParams', () => {
   it('Mapping', () => {
@@ -108,6 +110,108 @@ describe('createGrid', () => {
     expect(ios[1].opts.rootMargin).toBe('100px 0px');
     a.destroy();
     b.destroy();
+  });
+
+  describe('Seite-1-Cache (cacheKey)', () => {
+    const ck = (s) => `home:u1:lib:movies:all:grid:${s || 'az'}`;
+
+    it('zweiter Aufbau zeichnet synchron aus dem Cache, ohne Skelett/Abruf; erste 12 Karten eager', async () => {
+      api.getItems.mockResolvedValue(page(0, 20, 20));
+      const a = createGrid({ query: { IncludeItemTypes: 'Movie' }, cacheKey: ck });
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(1);
+      a.destroy();
+      const flags = [];
+      const b = createGrid({ query: { IncludeItemTypes: 'Movie' }, cacheKey: ck, cardFactory: (it, o) => { flags.push(o.eager); return document.createElement('div'); } });
+      expect(b.el.querySelectorAll('.lfx-grid__item')).toHaveLength(20);
+      expect(flags.slice(0, 12).every(Boolean)).toBe(true);
+      expect(flags.slice(12).some(Boolean)).toBe(false);
+      expect(b.el.querySelector('.lfx-grid__skel')).toBeNull();
+      expect(b.el.hasAttribute('aria-busy')).toBe(false);
+      expect(api.getItems).toHaveBeenCalledTimes(1);
+      b.destroy();
+    });
+
+    it('andere Sortierung hat eigenen Schlüssel', async () => {
+      api.getItems.mockResolvedValue(page(0, 3, 3));
+      const a = createGrid({ query: {}, cacheKey: ck });
+      await flush();
+      a.destroy();
+      const b = createGrid({ query: {}, sort: 'za', cacheKey: ck });
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      b.destroy();
+    });
+
+    it('setSort nutzt den Treffer der neuen Sortierung', async () => {
+      api.getItems.mockResolvedValue(page(0, 3, 3));
+      const a = createGrid({ query: {}, sort: 'za', cacheKey: ck });
+      await flush();
+      a.destroy();
+      const b = createGrid({ query: {}, cacheKey: ck });
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      b.setSort('za');
+      expect(b.el.querySelectorAll('.lfx-card')).toHaveLength(3);
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      b.destroy();
+    });
+
+    it('ohne cacheKey wird immer neu abgefragt', async () => {
+      api.getItems.mockResolvedValue(page(0, 3, 3));
+      const a = createGrid({ query: {} });
+      await flush();
+      a.destroy();
+      const b = createGrid({ query: {} });
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      b.destroy();
+    });
+
+    it('nach clearCache(home:) wird neu abgefragt', async () => {
+      api.getItems.mockResolvedValue(page(0, 3, 3));
+      const a = createGrid({ query: {}, cacheKey: ck });
+      await flush();
+      a.destroy();
+      clearCache('home:');
+      const b = createGrid({ query: {}, cacheKey: ck });
+      expect(b.el.querySelector('.lfx-grid__skel')).toBeTruthy();
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      b.destroy();
+    });
+
+    it('nach synchronem Treffer lädt Seite 2 über den Sentinel nach', async () => {
+      api.getItems.mockResolvedValueOnce(page(0, 40, 45)).mockResolvedValueOnce(page(40, 5, 45));
+      const a = createGrid({ query: {}, cacheKey: ck });
+      await flush();
+      a.destroy();
+      const b = createGrid({ query: {}, cacheKey: ck });
+      expect(b.el.querySelectorAll('.lfx-grid__item')).toHaveLength(40);
+      expect(api.getItems).toHaveBeenCalledTimes(1);
+      ios[ios.length - 1].cb([{ isIntersecting: true }]);
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      expect(api.getItems.mock.calls[1][0].StartIndex).toBe(40);
+      expect(b.el.querySelectorAll('.lfx-grid__item')).toHaveLength(45);
+      b.destroy();
+    });
+
+    it('Fehler beim ersten Abruf hinterlässt keinen Cache-Eintrag', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      api.getItems.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce(page(0, 2, 2));
+      const a = createGrid({ query: {}, cacheKey: ck });
+      await flush();
+      expect(a.el.querySelector('.lfx-grid__retry')).toBeTruthy();
+      a.destroy();
+      const b = createGrid({ query: {}, cacheKey: ck });
+      expect(b.el.querySelector('.lfx-grid__skel')).toBeTruthy();
+      await flush();
+      expect(api.getItems).toHaveBeenCalledTimes(2);
+      expect(b.el.querySelectorAll('.lfx-card')).toHaveLength(2);
+      b.destroy();
+      warn.mockRestore();
+    });
   });
 
   it('destroy trennt den Observer und entfernt das Element', async () => {
