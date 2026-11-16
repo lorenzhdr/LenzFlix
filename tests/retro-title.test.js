@@ -136,11 +136,12 @@ describe('Film', () => {
   it('Beschreibung tippt sich ein und ist danach vollständig', async () => {
     title.mount(route('#/home?lfx=title&id=m1'));
     await flush();
-    await new Promise((r) => setTimeout(r, 1600));
     const p = document.querySelector('.lfx-rt__text');
-    expect(p.querySelector('.lfx-rt__typed').textContent).toBe('Beschreibung des Films');
-    expect(p.classList.contains('lfx-retro-caret')).toBe(false);
-  });
+    await vi.waitFor(() => {
+      expect(p.querySelector('.lfx-rt__typed').textContent).toBe('Beschreibung des Films');
+      expect(p.classList.contains('lfx-retro-caret')).toBe(false);
+    }, { timeout: 8000, interval: 50 });
+  }, 12000);
 
   it('Fortsetzen bei Position; Klick spielt mit resume, Neu starten ohne', async () => {
     data.loadItem.mockResolvedValue({ ...movie, UserData: { PlaybackPositionTicks: 1000 } });
@@ -175,7 +176,7 @@ describe('Film', () => {
     expect(seen.classList.contains('is-on')).toBe(true);
   });
 
-  it('L035: Meine Liste/Gesehen deaktivieren den Knopf nicht (Fokus bleibt), Doppelklick wird ignoriert', async () => {
+  it('Meine Liste/Gesehen deaktivieren den Knopf nicht (Fokus bleibt), Doppelklick wird ignoriert', async () => {
     let done;
     toggleFavorite.mockImplementationOnce(() => new Promise((r) => { done = r; }));
     title.mount(route('#/home?lfx=title&id=m1'));
@@ -198,7 +199,7 @@ describe('Film', () => {
     expect(document.activeElement).toBe(seen);
   });
 
-  it('A083: Trailer-Overlay hält den Fokus im Dialog', async () => {
+  it('Trailer-Overlay hält den Fokus im Dialog', async () => {
     vi.mocked(directRemoteTrailerUrl).mockReturnValue('http://x/t.mp4');
     title.mount(route('#/home?lfx=title&id=m1'));
     await flush();
@@ -332,7 +333,7 @@ describe('Serie und Episode', () => {
     expect(document.querySelector('.lfx-rt__ep.is-selected').dataset.id).toBe('e2');
   });
 
-  it('A081: Abspielen ohne geladene Staffeln lädt sie nach und spielt die erste Folge; leer: Fehler-Effekt', async () => {
+  it('Abspielen ohne geladene Staffeln lädt sie nach und spielt die erste Folge; leer: Fehler-Effekt', async () => {
     data.loadNextUp.mockResolvedValue(null);
     data.loadSeasons.mockReset();
     data.loadSeasons.mockRejectedValueOnce(new Error('x')).mockResolvedValue([{ Id: 'se1', Name: 'Staffel 1', IndexNumber: 1 }]);

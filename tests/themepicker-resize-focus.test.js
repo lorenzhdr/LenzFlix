@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// H023: Breitenwechsel bei offenem Picker schaltet Dialog <-> Bottom-Sheet um. H028: Fokus kehrt auch ohne returnFocus zurück.
+// Breitenwechsel bei offenem Picker schaltet Dialog <-> Bottom-Sheet um. Fokus kehrt auch ohne returnFocus zurück.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', () => ({ isReady: () => false, getUserId: () => 'u1', getItems: vi.fn(), imageUrlFor: () => null }));
@@ -42,7 +42,7 @@ afterEach(() => {
   document.documentElement.className = '';
 });
 
-describe('Picker: Breitenwechsel (H023)', () => {
+describe('Picker: Breitenwechsel', () => {
   it('Desktop -> schmal: Sheet-Klasse, Wisch-Schließen; zurück: wieder Dialog', () => {
     openThemePicker({});
     const mount = document.getElementById('lfx-themepicker');
@@ -61,7 +61,7 @@ describe('Picker: Breitenwechsel (H023)', () => {
   });
 });
 
-describe('Picker: Fokus-Rückgabe (H028)', () => {
+describe('Picker: Fokus-Rückgabe', () => {
   it('ohne returnFocus kehrt der Fokus zum vorher fokussierten Element zurück', () => {
     const opener = document.getElementById('opener');
     opener.focus();

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// B037: Hovercard-Aktionen müssen den Modal-Item-Cache (lfx:modal:item:<id>) leeren.
+// Hovercard-Aktionen müssen den Modal-Item-Cache (lfx:modal:item:<id>) leeren.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', () => ({
@@ -51,7 +51,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('B037 Hovercard-Aktionen und Modal-Cache', () => {
+describe('Hovercard-Aktionen und Modal-Cache', () => {
   it('Favorit in der Hovercard leert lfx:modal:item:<id>', async () => {
     const id = 'x1';
     putItems([{ Id: id, Type: 'Movie', Name: 'Film', Genres: ['A'], UserData: { IsFavorite: false } }]);

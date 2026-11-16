@@ -43,7 +43,7 @@ beforeEach(() => {
 });
 afterEach(() => { setDataSaver(false); home.unmount(); document.body.innerHTML = ''; });
 
-describe('plus-home: Datensparmodus zur Laufzeit (A061)', () => {
+describe('plus-home: Datensparmodus zur Laufzeit', () => {
   it('Einschalten kürzt das Hero-Karussell auf 5 Folien, Ausschalten stellt es wieder her', async () => {
     home.mount(parseHash('#/home'));
     await flush();

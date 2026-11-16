@@ -253,7 +253,7 @@ describe('prime-title: Datensparmodus', () => {
   });
 });
 
-describe('prime-title: Zugänglichkeit (Welle 2)', () => {
+describe('prime-title: Zugänglichkeit', () => {
   const base = { Id: 'm1', Name: 'Film', Type: 'Movie', Overview: 'B', RunTimeTicks: 600_000_000 * 100, People: [], Genres: [] };
   const seasons = [{ Id: 'se1', IndexNumber: 1, Name: 'Staffel 1' }, { Id: 'se2', IndexNumber: 2, Name: 'Staffel 2' }];
   const mountWith = async (item) => {
@@ -276,7 +276,7 @@ describe('prime-title: Zugänglichkeit (Welle 2)', () => {
   });
   afterEach(() => feature.unmount());
 
-  it('L028: Titel mit Logo hat trotzdem eine h1 (Logo-Bild darin, Name als alt)', async () => {
+  it('Titel mit Logo hat trotzdem eine h1 (Logo-Bild darin, Name als alt)', async () => {
     const root = await mountWith({ ...base, ImageTags: { Logo: 'lg' }, UserData: {} });
     const h1 = root.querySelector('h1');
     expect(h1).not.toBeNull();
@@ -284,7 +284,7 @@ describe('prime-title: Zugänglichkeit (Welle 2)', () => {
     expect(img.getAttribute('alt')).toBe('Film');
   });
 
-  it('A079: Merkliste/Gesehen starten mit is-on und aria-pressed passend zum Zustand', async () => {
+  it('Merkliste/Gesehen starten mit is-on und aria-pressed passend zum Zustand', async () => {
     const on = await mountWith({ ...base, UserData: { IsFavorite: true, Played: true } });
     for (const sel of ['.lfx-pt__circle--fav', '.lfx-pt__circle--seen']) {
       const b = on.querySelector(sel);
@@ -297,7 +297,7 @@ describe('prime-title: Zugänglichkeit (Welle 2)', () => {
     expect(off.querySelector('.lfx-pt__circle--fav').classList.contains('is-on')).toBe(false);
   });
 
-  it('L025: „Meine Liste“-Knopf behält nach dem Umschalten den Tastaturfokus', async () => {
+  it('„Meine Liste“-Knopf behält nach dem Umschalten den Tastaturfokus', async () => {
     const root = await mountWith({ ...base, UserData: {} });
     const fav = root.querySelector('.lfx-pt__circle--fav');
     fav.focus();
@@ -308,7 +308,7 @@ describe('prime-title: Zugänglichkeit (Welle 2)', () => {
     expect(document.activeElement).toBe(fav);
   });
 
-  it('A072/A078: Staffel-Knopf hat keinen verdeckenden aria-label; aria-expanded folgt dem Popover', async () => {
+  it('Staffel-Knopf hat keinen verdeckenden aria-label; aria-expanded folgt dem Popover', async () => {
     const root = await mountWith({ Id: 's1', Name: 'Serie', Type: 'Series', Overview: 'S', ChildCount: 2, UserData: {} });
     const btn = root.querySelector('.lfx-pt__season');
     expect(btn.getAttribute('aria-label')).toBeNull();

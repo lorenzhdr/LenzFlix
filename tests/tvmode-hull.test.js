@@ -266,7 +266,7 @@ describe('tvmode Lebenszyklus', () => {
     expect(window.LenzFlixTvMode.create).toHaveBeenCalledTimes(2);
   });
 
-  it('A095/A097: Stopp im Hintergrund meldet Design-Abo ab und entfernt das Addon-CSS', async () => {
+  it('Stopp im Hintergrund meldet Design-Abo ab und entfernt das Addon-CSS', async () => {
     suspendResult = true;
     await mountReady();
     const deps = created.deps;
@@ -278,7 +278,7 @@ describe('tvmode Lebenszyklus', () => {
     expect(removeAddonCss).toHaveBeenCalledWith('lenztvmode');
   });
 
-  it('B055: onFatal nach Neu-Andocken (#homeTab ersetzt) zeigt trotzdem die Fehlerkarte', async () => {
+  it('onFatal nach Neu-Andocken (#homeTab ersetzt) zeigt trotzdem die Fehlerkarte', async () => {
     feature.mount();
     await flush();
     document.getElementById('indexPage').innerHTML = '<div id="homeTab"><div class="sections"></div></div>';

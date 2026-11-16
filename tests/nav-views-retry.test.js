@@ -34,7 +34,7 @@ afterEach(() => {
   document.documentElement.className = '';
 });
 
-// B049: ein einmaliger /UserViews-Fehler darf die Bibliotheken nicht bis zum Remount verbergen.
+// Ein einmaliger /UserViews-Fehler darf die Bibliotheken nicht bis zum Remount verbergen.
 describe.each([['nav', nav, () => document.getElementById('lfx-nav'), ''], ['mobilenav', mobilenav, () => document.getElementById('lfx-mnav'), 'layout-mobile']])(
   '%s: Bibliotheken nach Ladefehler', (_n, feat, root, cls) => {
     beforeEach(() => { document.documentElement.className = cls; window.innerWidth = cls ? 390 : 1400; });

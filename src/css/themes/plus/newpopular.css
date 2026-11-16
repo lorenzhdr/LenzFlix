@@ -94,7 +94,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
     font-size: 14px;
   }
 }
-/* L019: fährt die LENZ+-Kopfleiste aus, klebt die Pillenleiste ganz oben */
+/* fährt die LENZ+-Kopfleiste aus, klebt die Pillenleiste ganz oben */
 html.lfx-js.lfx-theme-plus.lfx-plus-header-hidden:not(.layout-tv) .lfx-np__tabs {
   top: 0;
 }

@@ -165,7 +165,7 @@ describe('Öffnen', () => {
   });
 });
 
-describe('Datensparmodus mitten im Hover (A082)', () => {
+describe('Datensparmodus mitten im Hover', () => {
   it('geplanter oder laufender Trailer wird beim Einschalten abgebrochen', async () => {
     over(card);
     await tick(INTENT_MS + 10);

@@ -253,7 +253,7 @@ describe('Pause-Abwehr und Sync', () => {
     expect(ctx.video.play).not.toHaveBeenCalled();
   });
 
-  it('Media-Session: Handler werden weder gesetzt noch bei dispose entfernt (Jellyfins bleiben, B079)', () => {
+  it('Media-Session: Handler werden weder gesetzt noch bei dispose entfernt (Jellyfins bleiben)', () => {
     const setActionHandler = vi.fn();
     Object.defineProperty(navigator, 'mediaSession', { value: { setActionHandler }, configurable: true });
     const { player } = setup();

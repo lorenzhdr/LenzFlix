@@ -1058,19 +1058,19 @@ describe('Share-Bild je Design', () => {
   });
 });
 
-describe('Audit w1 stats-2', () => {
+describe('Statistik-Seite: Beschriftung, Teilen und Abmelden', () => {
   const NB = ' ';
 
-  it('H043: Vergleichs-Durchschnitt nutzt ab 2 Tagen dieselbe Einheit wie der eigene Wert', () => {
+  it('Vergleichs-Durchschnitt nutzt ab 2 Tagen dieselbe Einheit wie der eigene Wert', () => {
     expect(L.compareText({ rank: 2, of: 9, avgSeconds: 372 * 3600 })).toBe('Platz 2 von 9 · Ø 15 Tage 12 Std');
     expect(L.compareText({ rank: 2, of: 7, avgSeconds: 98000 })).toBe('Platz 2 von 7 · Ø 27 Std');
   });
 
-  it('H044: Datum hält Tag und Monat mit geschütztem Leerzeichen zusammen', () => {
+  it('Datum hält Tag und Monat mit geschütztem Leerzeichen zusammen', () => {
     expect(L.fmtDate('2026-11-04')).toBe('4.' + NB + 'November 2026');
   });
 
-  it('A206: Wochenbeschriftung ist die ISO-Kalenderwoche samt Montag, Woche 0 ab 1. Januar', () => {
+  it('Wochenbeschriftung ist die ISO-Kalenderwoche samt Montag, Woche 0 ab 1. Januar', () => {
     expect(L.axisLabel('week', '2026-46')).toBe('KW 47');
     expect(L.axisLabel('week', '2026-00')).toBe('KW 1');
     expect(L.axisLabel('week', '2026-01')).toBe('KW 2');
@@ -1079,7 +1079,7 @@ describe('Audit w1 stats-2', () => {
     expect(L.bucketLabel('week', '2026-00')).not.toContain('Woche 0');
   });
 
-  it('A208: Verlaufs-Diagramm ist role=group, damit die Balken-Buttons erreichbar bleiben', () => {
+  it('Verlaufs-Diagramm ist role=group, damit die Balken-Buttons erreichbar bleiben', () => {
     const c = document.createElement('div');
     document.body.appendChild(c);
     L.renderTimeline(c, { range: '7d', timeline: { unit: 'day', buckets: [{ key: '2026-11-09', seconds: 3600 }] } });
@@ -1088,7 +1088,7 @@ describe('Audit w1 stats-2', () => {
     expect(svg.querySelector('[role="button"]')).not.toBeNull();
   });
 
-  it('A199: Zeitraum-Reiter sind als Gruppe beschriftet, der aktive meldet aria-pressed', () => {
+  it('Zeitraum-Reiter sind als Gruppe beschriftet, der aktive meldet aria-pressed', () => {
     document.body.innerHTML = '<main id="lfx-app"></main>';
     L.state.range = '30d';
     L.drawDashboard({
@@ -1106,7 +1106,7 @@ describe('Audit w1 stats-2', () => {
     expect(tabs.querySelector('.tab:not(.on)').getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('A207: abgelehntes navigator.share (NotAllowedError) fällt auf Download zurück, Abbruch nicht', async () => {
+  it('abgelehntes navigator.share (NotAllowedError) fällt auf Download zurück, Abbruch nicht', async () => {
     const downloads = [];
     URL.createObjectURL = () => 'blob:fake';
     URL.revokeObjectURL = () => {};
@@ -1133,7 +1133,7 @@ describe('Audit w1 stats-2', () => {
     }
   });
 
-  describe('A202: Abmelden der Web-Sitzung sperrt nur diese Sitzung', () => {
+  describe('Abmelden der Web-Sitzung sperrt nur diese Sitzung', () => {
     const creds = (token) => JSON.stringify({ Servers: [{ Id: 's', AccessToken: token, UserId: 'u1' }] });
     afterEach(() => {
       vi.unstubAllGlobals();

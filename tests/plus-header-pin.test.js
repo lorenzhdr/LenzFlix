@@ -17,7 +17,7 @@ import header from '../src/js/features/plus/header.js';
 import { parseHash } from '../src/js/core/router.js';
 import { closePopover } from '../src/js/core/popover.js';
 
-describe('plus-header: angeheftetes Profilmenü (L018)', () => {
+describe('plus-header: angeheftetes Profilmenü', () => {
   beforeEach(() => { document.body.innerHTML = '<header class="MuiAppBar-root"></header>'; });
   afterEach(() => { header.unmount(); closePopover(); vi.useRealTimers(); document.documentElement.className = ''; });
 

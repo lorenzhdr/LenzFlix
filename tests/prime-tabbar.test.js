@@ -305,8 +305,8 @@ describe('prime-header am Handy', () => {
   });
 });
 
-describe('prime: Fokus nach Abbrechen der Handy-Suche (Welle 2)', () => {
-  it('L026: Fokus geht an den Tab „Suche“, auch wenn die Pille beim Schließen noch inert ist', async () => {
+describe('prime: Fokus nach Abbrechen der Handy-Suche', () => {
+  it('Fokus geht an den Tab „Suche“, auch wenn die Pille beim Schließen noch inert ist', async () => {
     tabbar.mount(route('#/home'));
     const nav = document.getElementById('lfx-prime-tabbar');
     const search = document.querySelector('[data-tab="search"]');

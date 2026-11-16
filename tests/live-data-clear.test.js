@@ -14,7 +14,7 @@ describe('clearCatalogCache', () => {
     expect(peekCached('live:catalog:u1:2026-11-15')).toBeUndefined();
     expect(peekCached('home:u1:x')).toBe(2);
   });
-  it('B059: ein neuer Sendetag verwirft den Speicher-Katalog des Vortags', async () => {
+  it('ein neuer Sendetag verwirft den Speicher-Katalog des Vortags', async () => {
     await loadCatalog({ now: Date.UTC(2026, 10, 14, 12, 0, 0) }).catch(() => {}); // Abruf scheitert (Mock)
     await cached('live:catalog:u1:2026-11-14', async () => 1);
     await loadCatalog({ now: Date.UTC(2026, 10, 15, 12, 0, 0) }).catch(() => {});

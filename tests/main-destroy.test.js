@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Regressionstests Audit Welle 1 (Paket core): A002 (destroy schließt Picker/Toast), A013 (CSS aus räumt Datensparmodus ab).
+// main: destroy() schließt Picker und Toast; CSS aus räumt den Datensparmodus ab.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 function addCss() {
@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe('main: Aufräumen', () => {
-  it('A002: destroy() schließt den offenen Design-Picker und den Toast', async () => {
+  it('destroy() schließt den offenen Design-Picker und den Toast', async () => {
     setup();
     addCss();
     await import('../src/js/main.js');
@@ -47,7 +47,7 @@ describe('main: Aufräumen', () => {
     expect(document.getElementById('lfx-toast-live')).toBeNull();
   }, 15000);
 
-  it('A013: CSS aus (stopFeatures) nimmt Datensparmodus-Klasse und Bild-Skala zurück', async () => {
+  it('CSS aus (stopFeatures) nimmt Datensparmodus-Klasse und Bild-Skala zurück', async () => {
     vi.useFakeTimers();
     setup();
     const st = addCss();

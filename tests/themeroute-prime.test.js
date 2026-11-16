@@ -17,7 +17,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 beforeEach(() => { theme = 'prime'; window.location.hash = '#/home'; });
 afterEach(() => themeroute.unmount());
 
-describe('themeroute unter LENZPRIME (B008)', () => {
+describe('themeroute unter LENZPRIME', () => {
   it('browse und search werden umgeleitet, title/hub bleiben Sache von prime', () => {
     expect(themeroute.match(route('#/home?lfx=browse&lib=lib1'))).toBe(true);
     expect(themeroute.match(route('#/home?lfx=search&q=a'))).toBe(true);

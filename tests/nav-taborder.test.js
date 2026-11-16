@@ -17,8 +17,8 @@ import { clearCache } from '../src/js/core/cache.js';
 
 const feats = [nav, tvbtn, dsbtn];
 
-// L001: Navigation und Kopfleisten-Symbole stehen im DOM (und damit in der Tab-Reihenfolge) vor dem Seiteninhalt.
-// L008: die fixierten Symbole tragen mui-fixed (MUI gleicht beim Scroll-Lock den Scrollbar-Platz aus).
+// Navigation und Kopfleisten-Symbole stehen im DOM (und damit in der Tab-Reihenfolge) vor dem Seiteninhalt.
+// Die fixierten Symbole tragen mui-fixed (MUI gleicht beim Scroll-Lock den Scrollbar-Platz aus).
 describe('Kopfleisten-Mountpoints: Tab-Reihenfolge und Scroll-Lock', () => {
   beforeEach(() => {
     clearCache();

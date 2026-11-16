@@ -225,7 +225,7 @@ describe('createGrid', () => {
   });
 });
 
-describe('createGrid: Fehlerzustand (A050)', () => {
+describe('createGrid: Fehlerzustand', () => {
   it('der Observer startet im Fehlerzustand keine neue Anfrage, Erneut versuchen schon', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     api.getItems.mockResolvedValueOnce(page(0, 40, 100)).mockRejectedValueOnce(new Error('boom')).mockResolvedValue(page(40, 40, 100));

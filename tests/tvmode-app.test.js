@@ -129,7 +129,7 @@ describe('app: Gerüst und Klassen', () => {
     expect(host.querySelector('.lfx-tvm__tab--epg').classList.contains('is-active')).toBe(false);
   });
 
-  it('B091: Toast zieht im nativen Vollbild in den Player und danach zurück in die Wurzel', () => {
+  it('Toast zieht im nativen Vollbild in den Player und danach zurück in die Wurzel', () => {
     mount();
     const player = get('player').el;
     const toast = host.querySelector('.lfx-tvm__toast');

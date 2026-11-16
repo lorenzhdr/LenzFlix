@@ -91,8 +91,8 @@ export function navItems(model) {
   return items;
 }
 
-const VIEWS_RETRY_MS = 5000; // B049: nach einem Ladefehler der Bibliotheken frühestens so bald erneut versuchen
-// L001: eigene Kopfleisten-Mountpoints vor die React-Wurzel hängen, damit Tab-Reihenfolge = optische Reihenfolge (vor dem Seiteninhalt).
+const VIEWS_RETRY_MS = 5000; // nach einem Ladefehler der Bibliotheken frühestens so bald erneut versuchen
+// eigene Kopfleisten-Mountpoints vor die React-Wurzel hängen, damit Tab-Reihenfolge = optische Reihenfolge (vor dem Seiteninhalt).
 export const beforeApp = () => document.getElementById('reactRoot');
 const state = {
   viewsFailedAt: 0,

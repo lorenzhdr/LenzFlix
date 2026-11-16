@@ -230,7 +230,7 @@ describe('prime-header: Handy-Titel (nie Servername)', () => {
   });
 });
 
-describe('prime-header: Popover beim unmount (B011)', () => {
+describe('prime-header: Popover beim unmount', () => {
   it('schließt ein fremdes offenes Popover (z. B. Datensparmodus)', async () => {
     document.body.innerHTML = '';
     isTheme.mockReturnValue(true);

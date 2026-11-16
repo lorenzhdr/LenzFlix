@@ -15,7 +15,7 @@ import { createHero } from '../src/js/features/plus/hero.js';
 
 const mk = (n) => ({ Id: `id${n}`, Name: `Titel ${n}`, Type: 'Movie', ImageTags: {}, BackdropImageTags: ['b'] });
 
-describe('plus-hero: Fokus bei Pfeiltasten (A068)', () => {
+describe('plus-hero: Fokus bei Pfeiltasten', () => {
   afterEach(() => { document.body.innerHTML = ''; });
   it('ArrowRight verschiebt den Fokus auf die neue aktive Folie', () => {
     const hero = createHero([mk(1), mk(2), mk(3)], { mobile: false });

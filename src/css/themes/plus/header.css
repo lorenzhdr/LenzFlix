@@ -9,14 +9,14 @@ html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboar
 html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root::before {
   display: none;
 }
-/* L014: Die unsichtbare AppBar (z 1100) darf bei eingefahrener Kopfleiste keine Klicks im 66-px-Streifen schlucken; die zweite Toolbar bleibt bedienbar */
+/* Die unsichtbare AppBar (z 1100) darf bei eingefahrener Kopfleiste keine Klicks im 66-px-Streifen schlucken; die zweite Toolbar bleibt bedienbar */
 html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
   pointer-events: none;
 }
 html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) {
   pointer-events: auto;
 }
-/* L023: "Meine Liste" (nativer Favoriten-Tab) hat ohne Abschnitts-Tabs keinen Abstand zur Kopfleiste */
+/* "Meine Liste" (nativer Favoriten-Tab) hat ohne Abschnitts-Tabs keinen Abstand zur Kopfleiste */
 @media (min-width: 800px) {
   html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) #indexPage:not(.hide) #favoritesTab {
     padding-top: 32px;

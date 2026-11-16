@@ -349,9 +349,9 @@ describe('prime-hover: Datensparmodus', () => {
   });
 });
 
-describe('prime-hover: Datensparmodus-Wechsel während des Hovers (Welle 2)', () => {
+describe('prime-hover: Datensparmodus-Wechsel während des Hovers', () => {
   afterEach(() => { ds.on = false; ds.off = []; });
-  it('A071: Einschalten bricht die laufende Vorschau ab, die Karte bleibt offen', async () => {
+  it('Einschalten bricht die laufende Vorschau ab, die Karte bleibt offen', async () => {
     over(poster.querySelector('a'));
     await tick(INTENT_POSTER_MS + 20);
     expect(createMutedPreview).toHaveBeenCalledTimes(1);

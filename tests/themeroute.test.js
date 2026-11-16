@@ -242,7 +242,7 @@ describe('themeroute: Seiten Serien/Filme/Meine Liste (1.13.0)', () => {
   });
 });
 
-describe('themeroute: vorläufiges LENZFLIX beim ersten Start (B001)', () => {
+describe('themeroute: vorläufiges LENZFLIX beim ersten Start', () => {
   it('pending: keine Umleitung der Design-Routen, Seiten und Meine-Liste-Tab', () => {
     pendingTheme = true;
     for (const h of ['#/home?lfx=title&id=1', '#/home?lfx=hub&lib=1', '#/home?lfx=browse&lib=1', '#/home?lfx=search', '#/home?lfx=series', '#/home?lfx=mylist', '#/home?tab=1']) {

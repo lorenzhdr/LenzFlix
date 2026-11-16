@@ -33,7 +33,7 @@ const route = (hash) => parseHash(hash);
 const flush = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0)); };
 const mk = (n, from = 0) => Array.from({ length: n }, (_, i) => ({ Id: `i${from + i}`, Name: `Titel ${from + i}`, Type: 'Movie' }));
 
-describe('A084 retro-browse Nachladen bei dauerhaft sichtbarem Sentinel', () => {
+describe('retro-browse Nachladen bei dauerhaft sichtbarem Sentinel', () => {
   const realIO = globalThis.IntersectionObserver;
   beforeEach(() => {
     window.scrollTo = vi.fn();
@@ -70,7 +70,7 @@ describe('A084 retro-browse Nachladen bei dauerhaft sichtbarem Sentinel', () => 
     expect(api.getItems.mock.calls[1][0]).toMatchObject({ StartIndex: 40 });
   });
 
-  it('A214: Listenansicht im Handy-Querformat (mobile, nicht schmal) bleibt aktiv', async () => {
+  it('Listenansicht im Handy-Querformat (mobile, nicht schmal) bleibt aktiv', async () => {
     lay.mobile = true; lay.narrow = false;
     window.localStorage.setItem('lfx.retro.browseview', 'list');
     api.getItems.mockImplementation(async () => ({ Items: mk(3), TotalRecordCount: 3 }));

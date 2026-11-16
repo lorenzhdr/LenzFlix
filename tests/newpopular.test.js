@@ -58,7 +58,7 @@ describe('Format', () => {
 });
 
 describe('PlayCount-Fallback', () => {
-  beforeEach(() => { api.getItems.mockReset(); clearCache(); }); // Abfragen sind gecacht (A038)
+  beforeEach(() => { api.getItems.mockReset(); clearCache(); }); // Abfragen sind gecacht
   it('nutzt PlayCount, wenn vorhanden', async () => {
     api.getItems.mockResolvedValueOnce({ Items: [mk('a', 'Movie', { UserData: { PlayCount: 3 } })] });
     expect((await loadMostWatched()).map((i) => i.Id)).toEqual(['a']);

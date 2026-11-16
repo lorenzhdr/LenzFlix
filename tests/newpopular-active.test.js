@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// L027/B051: aktive Pille oben (scrollY 0) ist immer die erste; aria-current folgt is-active.
+// Aktive Pille oben (scrollY 0) ist immer die erste; aria-current folgt is-active.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', async () => {
@@ -34,18 +34,18 @@ describe('Neu und beliebt: aktive Pille', () => {
   });
   afterEach(() => { rectSpy?.mockRestore(); feature.unmount(); document.body.innerHTML = ''; });
 
-  it('L027: oben (scrollY 0) gewinnt der erste Abschnitt, auch wenn alle Oberkanten unter der Schwelle liegen', async () => {
+  it('oben (scrollY 0) gewinnt der erste Abschnitt, auch wenn alle Oberkanten unter der Schwelle liegen', async () => {
     feature.mount();
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));
     rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
       return { top: this.classList.contains('lfx-np__section') ? 40 : 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
     });
     window.dispatchEvent(new Event('scroll'));
-    await new Promise((r) => setTimeout(r, 80));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // rAF-gedrosselter Scroll-Handler
     expect(active()).toBe('new');
   });
 
-  it('B051: aria-current="true" nur an der aktiven Pille', async () => {
+  it('aria-current="true" nur an der aktiven Pille', async () => {
     feature.mount();
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4));
     const cur = () => [...document.querySelectorAll('.lfx-np__pill[aria-current]')].map((p) => p.dataset.np);

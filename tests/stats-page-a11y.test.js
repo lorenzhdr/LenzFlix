@@ -57,7 +57,7 @@ describe('Statistik-Seite: Reiter und Fußtext', () => {
   });
 });
 
-describe('Statistik-Seite: Verlauf-Achsen am Handy (H032)', () => {
+describe('Statistik-Seite: Verlauf-Achsen am Handy', () => {
   const css = readFileSync(resolve(import.meta.dirname, '../charts-worker/public/lenzflix-stats/app.css'), 'utf8');
   const FS = 20;
 

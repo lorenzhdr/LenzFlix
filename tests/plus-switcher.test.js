@@ -66,7 +66,7 @@ describe('plus-switcher', () => {
     expect(document.documentElement.classList.contains('lfx-plus-switcher-on')).toBe(false);
   });
 
-  it('A064: Pfeiltaste hält genau einen Tab im Tab-Index (Roving-Tabindex)', async () => {
+  it('Pfeiltaste hält genau einen Tab im Tab-Index (Roving-Tabindex)', async () => {
     sw.mount(R('#/home'));
     await flush();
     const tabs = [...document.querySelectorAll('#lfx-plus-switcher [role="tab"]')];

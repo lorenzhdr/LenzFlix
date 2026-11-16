@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A022: Nach „Ausschalten“ per Tastatur darf der Fokus nicht auf <body> fallen.
+// Nach „Ausschalten“ per Tastatur darf der Fokus nicht auf <body> fallen.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', () => ({

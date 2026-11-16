@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// B035: Ersatzzeile bei fehlenden Charts darf nicht 10 min gecacht werden (nur mit Charts-URL).
+// Ersatzzeile bei fehlenden Charts darf nicht 10 min gecacht werden (nur mit Charts-URL).
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const state = { url: 'https://c.example', charts: null };
@@ -20,7 +20,7 @@ const { clearCache } = await import('../src/js/core/cache.js');
 
 beforeEach(() => { clearCache(); getItems.mockClear(); state.url = 'https://c.example'; state.charts = null; });
 
-describe('B035: Ersatz bei fehlenden Charts', () => {
+describe('Ersatz bei fehlenden Charts', () => {
   it('wrapRow: Ersatz mit noCache wird neu geladen', async () => {
     const mk = () => wrapRow({
       id: 'top10', title: 't', kind: 'top10',

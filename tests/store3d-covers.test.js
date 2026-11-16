@@ -39,7 +39,7 @@ function setup({ phone = false, n = 14, pre = preset(), maxTex = 4096, big = fal
 async function settle(m, args = [0, 0, 0, { zoom: 1, pitch: 0 }], rounds = 90, clock = m.clockRef) {
   for (let i = 0; i < rounds; i++) {
     m.update(...args);
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => globalThis.setImmediate(r)); // ohne Timer-Mindestdauer (Windows ~1-15 ms) -> 90 Runden bleiben unter Last schnell
     for (let k = 0; k < 8; k++) { // 8 Frames à 31 ms pro Runde (250 ms)
       if (clock) clock.t += 31.25;
       m.tick();
@@ -47,7 +47,7 @@ async function settle(m, args = [0, 0, 0, { zoom: 1, pitch: 0 }], rounds = 90, c
   }
 }
 
-describe('store3d CoverManager Schärfestufe', () => {
+describe('store3d CoverManager Schärfestufe', { timeout: 20000 }, () => {
   it('Desktop: höchstens 4 Seiten in 2048², Handy: höchstens 2', async () => {
     const d = setup({ n: 14 });
     await settle(d.m);

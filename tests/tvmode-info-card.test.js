@@ -223,7 +223,7 @@ describe('tvmode info-card.js Datum nach Mitternacht', () => {
   });
 });
 
-describe('tvmode info-card.js: Fokus und Anfrage (Welle 3)', () => {
+describe('tvmode info-card.js: Fokus und Anfrage', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     resetThumbCache();
@@ -231,7 +231,7 @@ describe('tvmode info-card.js: Fokus und Anfrage (Welle 3)', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it('H016/A137: Sendungsbeginn bei offener Karte behält den Fokus in der Karte, Esc schließt', () => {
+  it('Sendungsbeginn bei offener Karte behält den Fokus in der Karte, Esc schließt', () => {
     const { card, model } = make();
     const now = entryOn(model, 6, T0);
     const e = { ...now, start: T0 + 1000, end: T0 + 3600e3 };
@@ -243,7 +243,7 @@ describe('tvmode info-card.js: Fokus und Anfrage (Welle 3)', () => {
     expect(card.isOpen()).toBe(false);
   });
 
-  it('B090: die Karte fragt sofort an, ohne eine wartende Id der Infoleiste zu verdrängen', async () => {
+  it('die Karte fragt sofort an, ohne eine wartende Id der Infoleiste zu verdrängen', async () => {
     const { card, model, details, itemDetails } = make();
     details.request('m-wait');
     card.open({ no: 2, entry: entryOn(model, 2, T0 + 3 * 3600e3) });

@@ -205,7 +205,7 @@ describe('Feature retro-home', () => {
     expect(document.documentElement.classList.contains('lfx-retro-home-on')).toBe(false);
   });
 
-  it('A080: Wechsel von der Startseite auf Hub mit unbekannter Bibliothek räumt die Retro-Startseite ab', async () => {
+  it('Wechsel von der Startseite auf Hub mit unbekannter Bibliothek räumt die Retro-Startseite ab', async () => {
     feature.mount(route(''));
     await vi.waitFor(() => expect(document.querySelectorAll('.lfx-retro-row:not(.is-loading)').length).toBe(9));
     feature.update(route('lfx=hub&lib=NOPE'));

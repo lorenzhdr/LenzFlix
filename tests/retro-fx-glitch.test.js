@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { createGlitch } from '../src/js/features/retro/fx/glitch.js';
 
-describe('A089/A094 Glitch: stop() räumt die Basisklasse an fremden Überschriften auf', () => {
+describe('Glitch: stop() räumt die Basisklasse an fremden Überschriften auf', () => {
   afterEach(() => { vi.restoreAllMocks(); document.body.innerHTML = ''; });
 
   it('entfernt lfx-retro-glitch und is-glitching, wenn stop() vor dem 600-ms-Timer läuft', () => {

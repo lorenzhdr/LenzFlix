@@ -11,7 +11,8 @@ import { parseHash } from '../src/js/core/router.js';
 
 const root = () => document.getElementById('lfx-osdc');
 const b = (k) => root().querySelector(`.lfx-osdc__btn--${k}`);
-const tick = () => new Promise((r) => setTimeout(r, 40));
+// Zwei Frames abwarten (Ereignis statt Echtzeit): der Feature-Sync läuft per requestAnimationFrame
+const tick = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 const pageHtml = (cls = '') => `<div id="videoOsdPage" class="${cls}"><div class="upNextContainer hide"></div>`
   + '<div class="videoOsdBottom"><button class="btnRewind"></button><button class="btnPause"></button><button class="btnFastForward"></button></div></div>';
 const route = parseHash('#/video');

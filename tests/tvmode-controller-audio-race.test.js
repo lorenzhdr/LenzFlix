@@ -8,7 +8,7 @@ const T0 = Date.UTC(2026, 10, 11, 18, 0, 0);
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(T0); });
 afterEach(() => vi.useRealTimers());
 
-describe('B088: Tonspurwahl während des Ladens', () => {
+describe('Tonspurwahl während des Ladens', () => {
   it('übernimmt den erfolgreichen Start der Tonspurwahl (phase playing statt hängendem loading)', async () => {
     const channels = Array.from({ length: 18 }, (_, i) => ({ no: i + 1, key: `k${i}`, name: `L${i + 1}` }));
     const scheduler = {

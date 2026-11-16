@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A026/A027: Nutzerwechsel ohne Neuladen darf keine Bibliotheken/Neu-Info/Sammlungen/Genre-Kacheln des Vorgängers liefern.
+// Nutzerwechsel ohne Neuladen darf keine Bibliotheken/Neu-Info/Sammlungen/Genre-Kacheln des Vorgängers liefern.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const userState = vi.hoisted(() => ({ id: 'u1' }));

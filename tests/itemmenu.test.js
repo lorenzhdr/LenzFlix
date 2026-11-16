@@ -223,7 +223,7 @@ describe('Sitzungsende', () => {
   });
 });
 
-describe('Fokusrückgabe an abgehängten Anker (A033)', () => {
+describe('Fokusrückgabe an abgehängten Anker', () => {
   it('fokussiert das neu gebaute Element mit gleicher Klasse', async () => {
     setupContainer();
     const btn = document.createElement('button');

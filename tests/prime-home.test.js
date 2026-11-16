@@ -230,7 +230,7 @@ describe('Feature prime-home', () => {
   });
 });
 
-describe('prime-home: Hub ohne auflösbare Bibliothek (Welle 2)', () => {
+describe('prime-home: Hub ohne auflösbare Bibliothek', () => {
   beforeEach(() => {
     vi.mocked(isTheme).mockImplementation((id) => id === 'prime');
     getLibraries.mockResolvedValue(libs);
@@ -241,7 +241,7 @@ describe('prime-home: Hub ohne auflösbare Bibliothek (Welle 2)', () => {
   });
   afterEach(() => { feature.unmount(); document.body.innerHTML = ''; document.documentElement.className = ''; });
 
-  it('A076: update von der Startseite auf eine unbekannte Hub-Route baut die eigene Seite ab', async () => {
+  it('update von der Startseite auf eine unbekannte Hub-Route baut die eigene Seite ab', async () => {
     feature.mount(route(''));
     await vi.waitFor(() => expect(document.querySelector('[data-lfx-row="latest-movies"]')).not.toBeNull());
     expect(document.documentElement.classList.contains('lfx-prime-home-on')).toBe(true);

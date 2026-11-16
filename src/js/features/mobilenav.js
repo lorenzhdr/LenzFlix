@@ -55,7 +55,7 @@ export function overlayItems(model) {
   return items;
 }
 
-const VIEWS_RETRY_MS = 5000; // B049: nach einem Ladefehler der Bibliotheken frühestens so bald erneut versuchen
+const VIEWS_RETRY_MS = 5000; // nach einem Ladefehler der Bibliotheken frühestens so bald erneut versuchen
 const state = {
   viewsFailedAt: 0,
   model: { series: null, movies: null, more: [] },

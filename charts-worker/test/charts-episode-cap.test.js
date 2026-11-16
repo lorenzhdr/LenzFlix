@@ -4,7 +4,7 @@ import { computeCharts } from '../src/index.js';
 const env = { JELLYFIN_URL: 'https://jf.example', JELLYFIN_API_KEY: 'KEY' };
 afterEach(() => vi.restoreAllMocks());
 
-describe('computeCharts: Episoden-Obergrenze (A198)', () => {
+describe('computeCharts: Episoden-Obergrenze', () => {
   it('löst bei sehr vielen Episoden nur eine begrenzte Zahl auf (Subrequest-Budget)', async () => {
     const N = 6000;
     const results = [];

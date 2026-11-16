@@ -68,7 +68,7 @@ describe('retro-search', () => {
     expect(searchItems).not.toHaveBeenCalled();
   });
 
-  it('L030: vorbelegter Begriff, Eingabemarke steht am Ende', async () => {
+  it('vorbelegter Begriff, Eingabemarke steht am Ende', async () => {
     search.mount(route('#/home?lfx=search&q=harry'));
     await flush();
     const input = document.querySelector('.lfx-rs__input');

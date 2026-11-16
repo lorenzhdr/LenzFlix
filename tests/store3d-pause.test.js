@@ -72,7 +72,7 @@ describe('Pause-Menue: Touch-Steuerung', () => {
   });
 });
 
-describe('Pause-Menue: Fokus (L042/A125)', () => {
+describe('Pause-Menue: Fokus', () => {
   const tab = (host, shiftKey = false) => { const e = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }); host.querySelector('.lfx-store-pause').dispatchEvent(e); return e; };
   it('aria-modal an allen Panels', () => {
     const { host, p } = make();
@@ -121,7 +121,7 @@ describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
     expect(note(host).textContent).toBe('Stimme: wartet auf ersten Tipp');
     p.destroy();
   });
-  it('bei Ton aus unsichtbar, aber Platz reserviert (L041); ohne Info versteckt', () => {
+  it('bei Ton aus unsichtbar, aber Platz reserviert; ohne Info versteckt', () => {
     const { host, p, setSound } = make();
     setSound(false);
     p.refresh();
@@ -172,7 +172,7 @@ describe('Pause-Menue: Stimmenauswahl', () => {
     expect(btn(host, /^Stimme:/).hidden).toBe(false);
     setSound(false);
     p.refresh();
-    expect(btn(host, /^Stimme:/).hidden).toBe(false); // L041: bleibt im Layout, nur gesperrt
+    expect(btn(host, /^Stimme:/).hidden).toBe(false); // bleibt im Layout, nur gesperrt
     expect(btn(host, /^Stimme:/).disabled).toBe(true);
     p.destroy();
     const n = makeVoice({ getVoicePrefs: () => ({ name: LIST[1].name, online: false, pitch: 'tief' }) });

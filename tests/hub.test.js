@@ -11,7 +11,7 @@ import { buildHubRowDefs, getHubHeroPool, hubTypes } from '../src/js/shared/hub.
 const genres = Array.from({ length: 10 }, (_, i) => ({ Id: `g${i}`, Name: `Genre ${i}` }));
 
 beforeEach(() => {
-  clearCache(); // Hub-Pool und Genres sind gecacht (A020)
+  clearCache(); // Hub-Pool und Genres sind gecacht
   for (const f of [api.getItems, api.getLatest, api.getResume, api.getJson]) f.mockReset();
   api.getJson.mockResolvedValue({ Items: genres });
   api.getItems.mockResolvedValue({ Items: [] });

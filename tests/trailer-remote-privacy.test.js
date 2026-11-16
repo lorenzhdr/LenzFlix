@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A216: Remote-Trailer nur über https und ohne Referrer.
+// Remote-Trailer nur über https und ohne Referrer.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', () => ({

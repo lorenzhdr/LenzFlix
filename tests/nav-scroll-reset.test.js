@@ -13,7 +13,7 @@ import nav from '../src/js/features/nav.js';
 import { parseHash } from '../src/js/core/router.js';
 import { clearCache } from '../src/js/core/cache.js';
 
-// L002: Seitenwechsel über Kopfleiste/TV-Symbol beginnt oben, Browser-Zurück behält die Position.
+// Seitenwechsel über Kopfleiste/TV-Symbol beginnt oben, Browser-Zurück behält die Position.
 describe('nav: Scroll-Reset bei neuer lfx-Seite', () => {
   let spy;
   beforeEach(() => {

@@ -99,7 +99,7 @@ describe('plus-mobilehead: Feature', () => {
     expect(root.classList.contains('is-solid')).toBe(false);
     window.scrollY = 120;
     window.dispatchEvent(new Event('scroll'));
-    await new Promise((r) => setTimeout(r, 40));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // rAF-gedrosselter Scroll-Handler
     expect(root.classList.contains('is-solid')).toBe(true);
     window.scrollY = 0;
     head.unmount();
@@ -109,7 +109,7 @@ describe('plus-mobilehead: Feature', () => {
   });
 });
 
-describe('plus: Popover beim unmount (B011)', () => {
+describe('plus: Popover beim unmount', () => {
   afterEach(() => {
     closePopover();
     document.documentElement.className = '';

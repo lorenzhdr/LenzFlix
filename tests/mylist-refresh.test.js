@@ -53,7 +53,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('mylist: Tab-Rückkehr (A056/A045)', () => {
+describe('mylist: Tab-Rückkehr', () => {
   it('kurzer Tab-Wechsel lädt nicht neu, ab 60 s schon', async () => {
     mylist.mount(route('#/home?lfx=mylist'));
     await flush();
@@ -71,7 +71,7 @@ describe('mylist: Tab-Rückkehr (A056/A045)', () => {
   });
 });
 
-describe('mylist: Art und Sortierung zugleich (A051)', () => {
+describe('mylist: Art und Sortierung zugleich', () => {
   it('genau eine Anfrage mit neuer Art und neuer Sortierung', async () => {
     mylist.mount(route('#/home?lfx=mylist'));
     await flush();
@@ -83,7 +83,7 @@ describe('mylist: Art und Sortierung zugleich (A051)', () => {
   });
 });
 
-describe('mylist: entfernte Karten (A057)', () => {
+describe('mylist: entfernte Karten', () => {
   it('Nachladen beginnt hinter den verbleibenden Titeln, Zähler sinkt', async () => {
     mylist.mount(route('#/home?lfx=mylist'));
     await flush();

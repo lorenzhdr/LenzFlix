@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A020: Hub-Hero-Pool + Genres gecacht. A019: gecachte Sammlungen/Genre-Kacheln frieren die Bildgröße nicht ein.
+// Hub-Hero-Pool + Genres gecacht. Gecachte Sammlungen/Genre-Kacheln frieren die Bildgröße nicht ein.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const scaleState = vi.hoisted(() => ({ v: 1 }));
@@ -23,7 +23,7 @@ beforeEach(() => {
   api.getLatest.mockResolvedValue([]);
 });
 
-describe('Hub-Cache (A020)', () => {
+describe('Hub-Cache', () => {
   it('Hero-Pool: zweiter Aufruf derselben Bibliothek sendet keine /Items-Anfragen', async () => {
     const lib = { id: 'L1', collectionType: 'movies' };
     api.getItems.mockResolvedValue({ Items: [{ Id: 'm1', BackdropImageTags: ['b'] }] });
@@ -35,7 +35,7 @@ describe('Hub-Cache (A020)', () => {
     expect(api.getItems.mock.calls.length).toBe(n * 2);
   });
 
-  it('leerer Pool (Netzfehler) wird nicht gecacht, Retry l�dt neu', async () => {
+  it('leerer Pool (Netzfehler) wird nicht gecacht, Retry lädt neu', async () => {
     const lib = { id: 'L1', collectionType: 'movies' };
     api.getItems.mockRejectedValueOnce(new Error('x')).mockRejectedValueOnce(new Error('x'))
       .mockResolvedValue({ Items: [{ Id: 'm1', BackdropImageTags: ['b'] }] });
@@ -54,7 +54,7 @@ describe('Hub-Cache (A020)', () => {
   });
 });
 
-describe('Bildgröße nicht eingefroren (A019)', () => {
+describe('Bildgröße nicht eingefroren', () => {
   it('Sammlungen: URL folgt der aktuellen Skala', async () => {
     api.getItems.mockResolvedValue({ Items: [{ Id: 'B1', Name: 'Box', ImageTags: { Thumb: 't1' } }] });
     const a = await getCollections();

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// A028/A036: Nach dem Löschen der Karte mit tabindex=0 bleibt die Zeile per Tab erreichbar.
+// Nach dem Löschen der Karte mit tabindex=0 bleibt die Zeile per Tab erreichbar.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../src/js/core/api.js', async () => {

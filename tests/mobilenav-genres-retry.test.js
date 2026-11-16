@@ -15,7 +15,7 @@ import mobilenav from '../src/js/features/mobilenav.js';
 import { parseHash } from '../src/js/core/router.js';
 import { clearCache } from '../src/js/core/cache.js';
 
-// A037: ein einmaliger Ladefehler der Genreliste darf den nächsten Versuch nicht sperren.
+// Ein einmaliger Ladefehler der Genreliste darf den nächsten Versuch nicht sperren.
 describe('mobilenav: Genreliste nach Ladefehler', () => {
   beforeEach(() => {
     clearCache();

@@ -46,7 +46,7 @@ beforeEach(() => {
 });
 afterEach(() => { browse.unmount(); document.body.innerHTML = ''; globalThis.IntersectionObserver = realIO; });
 
-describe('A067 Raster-Nachladen bei dauerhaft sichtbarem Sentinel', () => {
+describe('Raster-Nachladen bei dauerhaft sichtbarem Sentinel', () => {
   it('lädt Seite 2, obwohl der IntersectionObserver nur einmal (während Seite 1 lädt) feuert', async () => {
     // Echter IO: meldet nur den Anfangszustand (sichtbar) einmal, danach nur bei Zustandswechsel.
     globalThis.IntersectionObserver = class {

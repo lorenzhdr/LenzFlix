@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('toast', () => {
-  it('zeigt eine Meldung; die Live-Region existiert vor dem Text (A004)', () => {
+  it('zeigt eine Meldung; die Live-Region existiert vor dem Text', () => {
     toast('Hallo');
     const root = document.getElementById('lfx-toast');
     expect(root.className).toContain('lfx-toast');
