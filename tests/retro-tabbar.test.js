@@ -66,6 +66,20 @@ describe('retro-tabbar: match', () => {
   });
 });
 
+describe('retro-tabbar: Scrollposition', () => {
+  it('Tab-Klick öffnet die Zielseite oben, Zurück/Vor ohne Klick behält die Position', () => {
+    const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    tabbar.mount(route('#/home'));
+    document.querySelector('#lfx-retro-tabbar [data-key="list"]').click();
+    tabbar.update(route('#/home?lfx=mylist'));
+    expect(spy).toHaveBeenCalledWith(0, 0);
+    spy.mockClear();
+    tabbar.update(route('#/home'));
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
 describe('retro-tabbar: Modell', () => {
   it('aktive Taste', () => {
     expect(tabKey(route('#/home'))).toBe('home');

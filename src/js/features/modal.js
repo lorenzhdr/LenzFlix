@@ -191,7 +191,7 @@ function teardown() {
   unmountPoint(s.overlay);
   let op = s.opener;
   if (!(op && op.isConnected) && s.kb && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link'); // Opener (z. B. Hovercard-Knopf) ist weg: zugehörige Karte
-  if (op && op.isConnected && typeof op.focus === 'function' && !overlayOnTop()) op.focus({ preventScroll: true });
+  if (s.kb && op && op.isConnected && typeof op.focus === 'function' && !overlayOnTop()) op.focus({ preventScroll: true });
   return s.after;
 }
 
@@ -395,6 +395,10 @@ async function showSeason(s, token, H, sid = s.seasonId) {
   let episodes;
   try { episodes = await data.loadEpisodes(s.main.Id, sid); } catch (e) { if (s.want === sid) s.want = null; throw e; }
   if (state !== s || s.token !== token || s.want !== sid) return;
+  if (s.parts.episodesSlot.querySelector('.lfx-modal__seasonlist:not([hidden])')) { // offene Staffelliste nicht unter dem Klick ersetzen: später erneut
+    setTimeout(() => { if (state === s && s.token === token && s.want === sid) showSeason(s, token, H, sid).catch(() => {}); }, 300);
+    return;
+  }
   s.seasonId = sid;
   s.episodes = episodes;
   renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: sid, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);

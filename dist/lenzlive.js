@@ -10522,7 +10522,7 @@
       }
     }
     function resultFailed(res) {
-      return !!res && res.ok === false;
+      return !!res && res.ok === false && res.reason !== "aborted";
     }
     async function cycleAudio() {
       const tr = safe3(() => player.tracks && player.tracks());

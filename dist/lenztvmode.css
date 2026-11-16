@@ -585,8 +585,9 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute {
   transform: translateX(-50%);
 }
 
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-zapping .lfx-tvm__unmute {
-  bottom: min(168px, 100% - 56px);
+html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__unmute {
+  top: 12px;
+  bottom: auto;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
@@ -818,8 +819,12 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls {
   padding-right: calc(8px + env(safe-area-inset-right, 0px));
 }
 
-html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls-left {
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls-left, html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls-right, html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__zapper {
   min-width: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__controls .lfx-tvm__btn--icon {
+  min-width: 30px;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__controls .lfx-tvm__btn--icon svg {

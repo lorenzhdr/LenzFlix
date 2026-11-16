@@ -851,6 +851,9 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
   top: 54px;
   left: 14px;
 }
+html.lfx-js .lfx-tp--sheet .lfx-tp__preview--store .lfx-tp__shopsign {
+  left: 59%;
+}
 
 /* ---------- Handy: Bottom-Sheet ---------- */
 html.lfx-js .lfx-tp--sheet {

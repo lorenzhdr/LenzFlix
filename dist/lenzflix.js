@@ -4276,6 +4276,7 @@
   function renderCats() {
     if (!state3.cats) return;
     const kind2 = libraryKind(state3.route);
+    const hadFocus = state3.cats.contains(document.activeElement);
     state3.cats.textContent = "";
     if (!kind2) {
       closeCats({ restoreFocus: false });
@@ -4295,6 +4296,7 @@
     const close2 = h("button", { type: "button", class: "lfx-mnav-cats__close", "aria-label": "Schlie\xDFen" }, "\xD7");
     close2.addEventListener("click", () => closeCats());
     state3.cats.append(list, close2);
+    if (hadFocus) (list.querySelector(".is-active") || list.querySelector("a")).focus({ preventScroll: true });
   }
   function ensureGenres(kind2) {
     if (!kind2 || state3.genres[kind2] || state3.genresLoading.has(kind2)) return;
@@ -5943,7 +5945,7 @@
     unmountPoint(s.overlay);
     let op = s.opener;
     if (!(op && op.isConnected) && s.kb && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link');
-    if (op && op.isConnected && typeof op.focus === "function" && !overlayOnTop()) op.focus({ preventScroll: true });
+    if (s.kb && op && op.isConnected && typeof op.focus === "function" && !overlayOnTop()) op.focus({ preventScroll: true });
     return s.after;
   }
   function closeModal(opts = {}) {
@@ -6158,6 +6160,13 @@
       throw e;
     }
     if (state4 !== s || s.token !== token2 || s.want !== sid) return;
+    if (s.parts.episodesSlot.querySelector(".lfx-modal__seasonlist:not([hidden])")) {
+      setTimeout(() => {
+        if (state4 === s && s.token === token2 && s.want === sid) showSeason(s, token2, H, sid).catch(() => {
+        });
+      }, 300);
+      return;
+    }
     s.seasonId = sid;
     s.episodes = episodes;
     renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: sid, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
@@ -12984,6 +12993,11 @@
     overlay.setAttribute("aria-label", "Trailer");
     overlay.append(video2, closeBtn);
     const onKey4 = (e) => {
+      if (e.key === "Tab" && !e.shiftKey && document.activeElement === closeBtn) {
+        e.preventDefault();
+        video2.focus();
+        return;
+      }
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
@@ -14880,7 +14894,9 @@
     if (window.history.length > 1) window.history.back();
     else window.location.hash = "#/home";
   }
+  var isTitleRoute = (route) => Boolean(route && route.path === "/home" && route.params.get("lfx") === "title");
   var state17 = {
+    title: false,
     mobile: false,
     kind: null,
     el: null,
@@ -15033,7 +15049,8 @@
       const back = h("button", { type: "button", class: "lfx-prime-header__back", "aria-label": "Zur\xFCck" });
       back.append(icon3("back"));
       back.addEventListener("click", goBack);
-      const tag = route && route.path === "/home" && route.params.get("lfx") === "title" ? "div" : "h1";
+      const tag = isTitleRoute(route) ? "div" : "h1";
+      state17.title = tag === "div";
       left = [back, h(tag, { class: "lfx-prime-header__title" }, mobileTitle(route, state17.libs))];
     }
     const bar = h("div", { class: "lfx-prime-header__bar" }, [...left, h("div", { class: "lfx-prime-header__right" }, [tvLink(), dsLink(), avatar])]);
@@ -15154,7 +15171,7 @@
       state17.route = route;
       if (!state17.el) return;
       const mobileNow = isMobile() && isNarrow();
-      if (mobileNow !== state17.mobile || mobileNow && mobileKind(route) !== state17.kind) {
+      if (mobileNow !== state17.mobile || mobileNow && (mobileKind(route) !== state17.kind || state17.kind === "sub" && isTitleRoute(route) !== state17.title)) {
         closePrimeSearch({ restoreFocus: false });
         render8();
         return;
@@ -16874,10 +16891,11 @@
   async function resolveTrailerSrc(item) {
     try {
       const t = await loadLocalTrailer({ ...item, LocalTrailerCount: item.LocalTrailerCount == null ? 1 : item.LocalTrailerCount });
-      if (t) return trailerUrl(t.Id);
+      if (t) return { src: trailerUrl(t.Id), local: true };
     } catch {
     }
-    return directRemoteTrailerUrl(item);
+    const src = directRemoteTrailerUrl(item);
+    return src ? { src, local: false } : null;
   }
   function startVideo(s, { muted = true } = {}) {
     if (s.dead || !s.trailerSrc || !s.bg) return;
@@ -17267,11 +17285,11 @@
       if (ok && !s.dead && s.dlBtn.isConnected) s.dlBtn.hidden = false;
     }, () => {
     });
-    resolveTrailerSrc(main).then((src) => {
-      if (s.dead || !src) return;
-      s.trailerSrc = src;
+    resolveTrailerSrc(main).then((tr) => {
+      if (s.dead || !tr) return;
+      s.trailerSrc = tr.src;
       s.trailerBtn.hidden = false;
-      if (reducedMotion4() || isMobile() || isDataSaver("trailer")) return;
+      if (!tr.local || reducedMotion4() || isMobile() || isDataSaver("trailer")) return;
       const t = setTimeout(() => {
         if (!isDataSaver("trailer")) startVideo(s, { muted: true });
       }, TRAILER_DELAY_MS2);
@@ -17979,7 +17997,7 @@
     }
     return entries;
   }
-  var state20 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
+  var state20 = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clickAt: 0, clock: null, cleanups: [] };
   function paintToggle(btn3, pref) {
     const on = getPref(pref);
     btn3.dataset.pref = pref;
@@ -18136,7 +18154,10 @@
       more.addEventListener("click", openMore);
       root7.replaceChildren(...KEYS.map(fkey), more);
       root7.addEventListener("click", (e) => {
-        if (e.target.closest && e.target.closest("a")) emitFx("nav");
+        if (e.target.closest && e.target.closest("a")) {
+          state20.clickAt = Date.now();
+          emitFx("nav");
+        }
       });
       state20.root = root7;
       state20.moreBtn = more;
@@ -18170,6 +18191,8 @@
         closeMore();
         closeDsPopover2();
       }
+      if (changed && state20.clickAt && Date.now() - state20.clickAt < 1500) scrollTop2();
+      state20.clickAt = 0;
       applyActive9();
     },
     unmount() {

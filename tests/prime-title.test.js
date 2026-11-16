@@ -54,7 +54,7 @@ vi.mock('../src/js/shared/titleactions.js', () => ({
 
 import * as data from '../src/js/features/modal/data.js';
 import { play } from '../src/js/core/playback.js';
-import { loadLocalTrailer } from '../src/js/shared/trailer.js';
+import { loadLocalTrailer, directRemoteTrailerUrl } from '../src/js/shared/trailer.js';
 import { putItems, clearItemStore } from '../src/js/core/itemstore.js';
 import feature from '../src/js/features/prime/title.js';
 import {
@@ -213,6 +213,24 @@ describe('prime-title Feature', () => {
       expect(root.querySelector('.lfx-pt__circle--trailer').hidden).toBe(false);
       feature.unmount();
       expect(document.querySelector('video')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('Remote-Trailer: kein Autoplay, der Trailer-Knopf startet ihn', async () => {
+    vi.useFakeTimers();
+    try {
+      directRemoteTrailerUrl.mockReturnValueOnce('https://fremd.example/t.mp4');
+      feature.mount(route('m1'));
+      await vi.advanceTimersByTimeAsync(2500);
+      const root = document.getElementById('lfx-prime-title');
+      expect(root.querySelector('video.lfx-pt__video')).toBeNull();
+      const btn = root.querySelector('.lfx-pt__circle--trailer');
+      expect(btn.hidden).toBe(false);
+      btn.click();
+      await vi.advanceTimersByTimeAsync(50);
+      expect(root.querySelector('video.lfx-pt__video')).not.toBeNull();
+      feature.unmount();
     } finally {
       vi.useRealTimers();
     }

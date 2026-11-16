@@ -76,9 +76,10 @@ function paintMute(s) {
 async function resolveTrailerSrc(item) {
   try {
     const t = await loadLocalTrailer({ ...item, LocalTrailerCount: item.LocalTrailerCount == null ? 1 : item.LocalTrailerCount });
-    if (t) return trailerUrl(t.Id);
+    if (t) return { src: trailerUrl(t.Id), local: true };
   } catch { /* Fallback */ }
-  return directRemoteTrailerUrl(item);
+  const src = directRemoteTrailerUrl(item);
+  return src ? { src, local: false } : null;
 }
 
 function startVideo(s, { muted = true } = {}) {
@@ -456,11 +457,11 @@ async function load(id) {
   }, () => {});
 
   // Trailer (stumm, Autoplay) – Backdrop bleibt, bis das Video läuft
-  resolveTrailerSrc(main).then((src) => {
-    if (s.dead || !src) return;
-    s.trailerSrc = src;
+  resolveTrailerSrc(main).then((tr) => {
+    if (s.dead || !tr) return;
+    s.trailerSrc = tr.src;
     s.trailerBtn.hidden = false;
-    if (reducedMotion() || isMobile() || isDataSaver('trailer')) return; // Handy/Datensparmodus: kein Autoplay, der Trailer-Knopf startet ihn
+    if (!tr.local || reducedMotion() || isMobile() || isDataSaver('trailer')) return; // Handy/Datensparmodus: kein Autoplay, der Trailer-Knopf startet ihn
     const t = setTimeout(() => { if (!isDataSaver('trailer')) startVideo(s, { muted: true }); }, TRAILER_DELAY_MS);
     s.cleanups.push(() => clearTimeout(t));
     s.autoTimer = t;

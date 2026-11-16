@@ -376,7 +376,7 @@ export class HoldView {
     const btn = (label, fn, cls = '') => {
       const b = el('button', `lfx-store-act ${cls}`.trim(), label);
       b.type = 'button';
-      b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); });
+      b.addEventListener('click', (e) => { e.stopPropagation(); if (!root.classList.contains('is-closing')) fn(b); });
       actions.appendChild(b);
       return b;
     };

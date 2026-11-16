@@ -9138,6 +9138,10 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
   left: 14px;
 }
 
+html.lfx-js .lfx-tp--sheet .lfx-tp__preview--store .lfx-tp__shopsign {
+  left: 59%;
+}
+
 html.lfx-js .lfx-tp--sheet {
   align-items: flex-end;
   padding: 0;

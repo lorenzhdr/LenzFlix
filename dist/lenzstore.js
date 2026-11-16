@@ -39929,7 +39929,7 @@ void main() {
         b.type = "button";
         b.addEventListener("click", (e) => {
           e.stopPropagation();
-          fn(b);
+          if (!root.classList.contains("is-closing")) fn(b);
         });
         actions.appendChild(b);
         return b;

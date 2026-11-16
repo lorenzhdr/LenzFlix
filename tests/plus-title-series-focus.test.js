@@ -182,9 +182,30 @@ describe('Trailer-Dialog', () => {
     title.mount(parseHash('#/home?lfx=title&id=m1'));
     await flush();
     document.querySelector('.lfx-plus-circle--trailer').click();
+    const video = document.querySelector('.lfx-plus-trailer__video');
+    video.tabIndex = 0;
+    video.focus();
     const ev = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
     window.dispatchEvent(ev);
     expect(ev.defaultPrevented).toBe(false);
+  });
+
+  it('Trailer-Dialog: Tab auf dem Schließen-Knopf geht zum Video (Seite wird nicht verlassen), Shift+Tab nicht', async () => {
+    api.getItem.mockResolvedValue({ ...base, Name: 'Film' });
+    title.mount(parseHash('#/home?lfx=title&id=m1'));
+    await flush();
+    document.querySelector('.lfx-plus-circle--trailer').click();
+    const closeBtn = document.querySelector('.lfx-plus-trailer__close');
+    const video = document.querySelector('.lfx-plus-trailer__video');
+    video.tabIndex = 0;
+    expect(document.activeElement).toBe(closeBtn);
+    const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    window.dispatchEvent(back);
+    expect(back.defaultPrevented).toBe(false);
+    const ev = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    window.dispatchEvent(ev);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(video);
   });
 
   it('Trailer-Dialog: Fokus außerhalb holt ihn zurück (nach Schließen -> Video, sonst Schließen)', async () => {

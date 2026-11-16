@@ -142,6 +142,12 @@ function openTrailer(src, returnFocus) {
   overlay.setAttribute('aria-label', 'Trailer');
   overlay.append(video, closeBtn);
   const onKey = (e) => {
+    // Tab vom Schließen-Knopf (letztes tabbares Element der Seite) verließe sonst die Seite: weiter zum Video
+    if (e.key === 'Tab' && !e.shiftKey && document.activeElement === closeBtn) {
+      e.preventDefault();
+      video.focus();
+      return;
+    }
     if (e.key !== 'Escape') return;
     e.preventDefault();
     e.stopPropagation();

@@ -33,4 +33,14 @@ describe('prime-header: Handy-Titel-Tag', () => {
     await flush();
     expect(document.querySelector('.lfx-prime-header__title').tagName).toBe('H1');
   });
+
+  it('SPA Unterseite -> Titelseite -> Unterseite: immer genau eine h1 im Kopf', async () => {
+    document.body.innerHTML = '';
+    await header.mount(parseHash('#/home?lfx=new'));
+    await flush();
+    header.update(parseHash('#/home?lfx=title&id=c1'));
+    expect(document.querySelector('.lfx-prime-header__title').tagName).toBe('DIV');
+    header.update(parseHash('#/home?tab=1'));
+    expect(document.querySelector('.lfx-prime-header__title').tagName).toBe('H1');
+  });
 });

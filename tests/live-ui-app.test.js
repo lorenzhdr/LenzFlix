@@ -409,6 +409,16 @@ describe('Lautstärke', () => {
     none.app.press('audio');
     expect(q(none, '.lfx-live-osd__msg').textContent).toBe('Keine weiteren Tonspuren');
   });
+
+  it('abgelöster Tonwechsel (aborted) bleibt still, kein „nicht verfügbar“', async () => {
+    const tracks = { audio: [{ index: 0, label: 'Deutsch' }, { index: 1, label: 'Englisch' }], subs: [], audioIndex: 0, subtitleIndex: -1 };
+    const env = makeEnv({ player: { tracks: vi.fn(() => tracks), setAudio: vi.fn(async () => ({ ok: false, mode: 'none', reason: 'aborted' })) } });
+    env.app.press('power');
+    await flush();
+    env.app.press('audio');
+    await flush();
+    expect(q(env, '.lfx-live-osd__msg').textContent).toBe('Ton: Englisch');
+  });
 });
 
 describe('Overlays', () => {

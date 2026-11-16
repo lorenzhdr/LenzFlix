@@ -9,6 +9,7 @@ import { closePopover, isPopoverOpen } from '../../core/popover.js';
 import { getLibraries } from '../../shared/libraries.js';
 import { profileEntries, getUserChip } from '../../shared/profile.js';
 import { hubHref, searchHref, isTvModeRoute } from '../../shared/routes.js';
+import { scrollTop } from './title-mount.js';
 import { emitFx, getPref, togglePref, PREFS_EVENT } from './prefs.js';
 import { EXCLUDED, LIST_HREF, NEW_HREF, activeKey, go, isPhone } from './header-nav.js';
 import { createClock, createLogo, createDsButton, createTvButton } from './header-ui.js';
@@ -81,7 +82,7 @@ export function moreEntries(libs, profile, { go: goFn, close, toggle }) {
   return entries;
 }
 
-const state = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clock: null, cleanups: [] };
+const state = { root: null, top: null, ds: null, offs: [], route: null, moreBtn: null, sheet: null, seq: 0, clickAt: 0, clock: null, cleanups: [] };
 
 function paintToggle(btn, pref) {
   const on = getPref(pref);
@@ -220,7 +221,7 @@ const retroTabbar = {
     }, [h('span', { class: 'lfx-retro-fkey__n', 'aria-hidden': 'true' }, 'F5'), h('span', { class: 'lfx-retro-fkey__l', 'aria-hidden': 'true' }, 'MEHR')]);
     more.addEventListener('click', openMore);
     root.replaceChildren(...KEYS.map(fkey), more);
-    root.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a')) emitFx('nav'); });
+    root.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a')) { state.clickAt = Date.now(); emitFx('nav'); } });
     state.root = root;
     state.moreBtn = more;
 
@@ -249,6 +250,8 @@ const retroTabbar = {
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
     if (changed) { closeMore(); closeDsPopover(); }
+    if (changed && state.clickAt && Date.now() - state.clickAt < 1500) scrollTop(); // Zurück/Vor ohne Klick behält die Position
+    state.clickAt = 0;
     applyActive();
   },
   unmount() {

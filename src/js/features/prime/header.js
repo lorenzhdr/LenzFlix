@@ -130,7 +130,10 @@ function goBack() {
   else window.location.hash = '#/home';
 }
 
+const isTitleRoute = (route) => Boolean(route && route.path === '/home' && route.params.get('lfx') === 'title');
+
 const state = {
+  title: false,
   mobile: false,
   kind: null,
   el: null,
@@ -285,7 +288,8 @@ function buildMobile(route) {
     back.append(icon('back'));
     back.addEventListener('click', goBack);
     // Titelseite hat eine eigene h1 (Logo/Name): Kopfzeilen-Titel dort nur als div (eine h1 pro Seite)
-    const tag = route && route.path === '/home' && route.params.get('lfx') === 'title' ? 'div' : 'h1';
+    const tag = isTitleRoute(route) ? 'div' : 'h1';
+    state.title = tag === 'div';
     left = [back, h(tag, { class: 'lfx-prime-header__title' }, mobileTitle(route, state.libs))];
   }
   const bar = h('div', { class: 'lfx-prime-header__bar' }, [...left, h('div', { class: 'lfx-prime-header__right' }, [tvLink(), dsLink(), avatar])]);
@@ -413,7 +417,7 @@ export default {
     state.route = route;
     if (!state.el) return;
     const mobileNow = isMobile() && isNarrow();
-    if (mobileNow !== state.mobile || (mobileNow && mobileKind(route) !== state.kind)) {
+    if (mobileNow !== state.mobile || (mobileNow && (mobileKind(route) !== state.kind || (state.kind === 'sub' && isTitleRoute(route) !== state.title)))) {
       // Fensterwechsel Desktop <-> Handy bzw. Startseite <-> Unterseite am Handy: Kopfzeile neu aufbauen
       closePrimeSearch({ restoreFocus: false });
       render();

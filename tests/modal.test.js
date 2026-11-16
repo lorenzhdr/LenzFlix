@@ -190,7 +190,10 @@ describe('open/close', () => {
     const opener = document.createElement('button');
     document.body.append(opener);
     opener.focus();
+    const orig = Element.prototype.matches; // Tastaturbedienung: nur dann geht der Fokus zurück
+    const spy = vi.spyOn(Element.prototype, 'matches').mockImplementation(function (q) { return q === ':focus-visible' ? true : orig.call(this, q); });
     await openModal('M1', { opener });
+    spy.mockRestore();
     const dlg = document.querySelector('.lfx-modal');
     expect(dlg.getAttribute('role')).toBe('dialog');
     expect(dlg.getAttribute('aria-modal')).toBe('true');

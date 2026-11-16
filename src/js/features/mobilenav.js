@@ -240,6 +240,7 @@ function renderPills() {
 function renderCats() {
   if (!state.cats) return;
   const kind = libraryKind(state.route);
+  const hadFocus = state.cats.contains(document.activeElement);
   state.cats.textContent = '';
   if (!kind) {
     closeCats({ restoreFocus: false });
@@ -256,6 +257,7 @@ function renderCats() {
   const close = h('button', { type: 'button', class: 'lfx-mnav-cats__close', 'aria-label': 'Schließen' }, '×');
   close.addEventListener('click', () => closeCats());
   state.cats.append(list, close);
+  if (hadFocus) (list.querySelector('.is-active') || list.querySelector('a')).focus({ preventScroll: true });
 }
 
 /** Genres der Bibliotheksart laden (einmal), danach Pille und Liste neu zeichnen. */

@@ -333,7 +333,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing {
   opacity: 0;
   animation: lfx-store-fadeout 0.3s ease both;
 }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-panel {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-panel,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-act,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-drag {
   pointer-events: none;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel:focus {

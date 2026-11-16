@@ -809,7 +809,7 @@ export function createApp(host, { scheduler, player: playerArg, watch, pickFille
     try { await deps.leaveToLibrary(r.itemId, r.meta); } catch { if (deps.toast) deps.toast('Der Wechsel hat nicht geklappt.'); }
   }
 
-  function resultFailed(res) { return !!res && res.ok === false; }
+  function resultFailed(res) { return !!res && res.ok === false && res.reason !== 'aborted'; }
 
   async function cycleAudio() {
     const tr = safe(() => player.tracks && player.tracks());

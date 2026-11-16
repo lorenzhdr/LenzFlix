@@ -871,7 +871,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing {
   animation: .3s both lfx-store-fadeout;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-panel {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-panel, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-act, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-drag {
   pointer-events: none;
 }
 
@@ -1935,7 +1935,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-promp
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble {
-  z-index: 6;
+  z-index: 4;
   color: #1a1c2e;
   max-width: min(72vw, 300px);
   font: 600 14px/1.35 var(--lfx-font, system-ui, sans-serif);
