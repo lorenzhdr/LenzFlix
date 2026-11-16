@@ -1,5 +1,5 @@
 // LenzFlix build: CSS via lightningcss, JS via esbuild -> dist/
-import { bundle } from 'lightningcss';
+import { bundleAsync } from 'lightningcss';
 import { build, context } from 'esbuild';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -27,11 +27,15 @@ const cssEntries = [
   ['src/css/tvmode/index.css', 'lenztvmode'], // TV-Modus (flix/plus/prime, lazy über core/addoncss.js, docs/tvmode.md)
 ];
 
-function buildCss() {
+// Zeilenenden normalisieren: lightningcss übernimmt unaufgelöste Werte (z. B. mehrzeilige var()-Listen) roh.
+// Bei CRLF-Arbeitskopien (Windows, core.autocrlf) landete sonst ein CR in dist/ (Build nicht reproduzierbar).
+const resolver = { read: (file) => readFileSync(file, 'utf8').replace(/\r\n?/g, '\n') };
+
+async function buildCss() {
   for (const [file, name] of cssEntries) {
     const entry = resolve(root, file);
     for (const minify of [false, true]) {
-      const { code } = bundle({ filename: entry, minify, targets });
+      const { code } = await bundleAsync({ filename: entry, minify, targets, resolver });
       writeFileSync(resolve(dist, minify ? `${name}.min.css` : `${name}.css`), code);
     }
   }
@@ -92,12 +96,12 @@ function checkTvModeBundle() {
 }
 
 mkdirSync(dist, { recursive: true });
-buildCss();
+await buildCss();
 await buildJs();
 if (watch) {
   const { watch: fsWatch } = await import('node:fs');
   fsWatch(resolve(root, 'src/css'), { recursive: true }, () => {
-    try { buildCss(); console.log('css rebuilt'); } catch (e) { console.error(e.message); }
+    buildCss().then(() => console.log('css rebuilt'), (e) => console.error(e.message));
   });
   console.log('watching…');
 } else {
