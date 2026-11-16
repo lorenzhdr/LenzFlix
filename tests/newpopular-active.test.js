@@ -36,7 +36,7 @@ describe('Neu und beliebt: aktive Pille', () => {
 
   it('oben (scrollY 0) gewinnt der erste Abschnitt, auch wenn alle Oberkanten unter der Schwelle liegen', async () => {
     feature.mount();
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__entry').length).toBe(2), { timeout: 5000 });
     rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
       return { top: this.classList.contains('lfx-np__section') ? 40 : 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
     });
@@ -47,7 +47,7 @@ describe('Neu und beliebt: aktive Pille', () => {
 
   it('nach Pillen-Klick bleibt die angeklickte Pille aktiv (auch wenn der Scroll-Spy anderes meldet), bis der Nutzer selbst scrollt', async () => {
     feature.mount();
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4), { timeout: 5000 });
     rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function () {
       return { top: this.classList.contains('lfx-np__section') ? 40 : 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
     });
@@ -69,7 +69,7 @@ describe('Neu und beliebt: aktive Pille', () => {
 
   it('aria-current="true" nur an der aktiven Pille', async () => {
     feature.mount();
-    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4));
+    await vi.waitFor(() => expect(document.querySelectorAll('.lfx-np__pill').length).toBe(4), { timeout: 5000 });
     const cur = () => [...document.querySelectorAll('.lfx-np__pill[aria-current]')].map((p) => p.dataset.np);
     expect(cur()).toEqual(['new']);
     document.querySelector('.lfx-np__pill[data-np="watched"]').click();

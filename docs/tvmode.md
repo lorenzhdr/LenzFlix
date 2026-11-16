@@ -231,7 +231,7 @@ createX({ doc, ctl, model, deps, opts }) → { el: HTMLElement, update(snap), ti
 ### Layout-Umschaltung (wer setzt `is-phone`/`is-landscape`)
 Nur `app.js` (E) setzt am Root `is-phone` (`opts.phone` **oder** `matchMedia('(max-width: 799px)')`) und `is-landscape` (nur mit `is-phone`:
 `matchMedia('(orientation: landscape) and (max-height: 500px)')`) per `change`-Listener der `MediaQueryList`en; `destroy()` entfernt Listener und Klassen. Das CSS (E/F/G) schaltet das Layout
-**ausschließlich** über `.is-phone`/`.is-landscape` am Root um (kein eigenes `@media` für Layout). Komponenten, die das wissen müssen (z. B. Wischen nur bei Touch), lesen `opts.phone`/`opts.touch`
+**ausschließlich** über `.is-phone`/`.is-landscape` am Root um (kein eigenes `@media` für Layout (einzige dokumentierte Ausnahme: die Senderliste lässt bis ca. 1466 px Fensterbreite das Sender-Badge weg, `src/css/tvmode/list.css`)). Komponenten, die das wissen müssen (z. B. Wischen nur bei Touch), lesen `opts.phone`/`opts.touch`
 bzw. prüfen die Root-Klasse bei Bedarf; Wischgesten nur bei `pointerType === 'touch'`.
 
 ### Gemeinsame Helfer (Eigentümer G; E und F importieren sie)
@@ -287,7 +287,7 @@ Block `lfx-tvm`; Elemente `lfx-tvm__x`; Modifier als `is-*` (Zustand) bzw. `lfx-
 |---|---|---|
 | `lfx-tvm` | Hülle | Root |
 | `is-loading` | Hülle | Engine/Plan noch nicht bereit („Sendersuchlauf“); entfernt bei `onReady` |
-| `is-phone` | E (app.js) | Handy-Layout: `opts.phone` oder `matchMedia('(max-width: 799px)')` (einzige Quelle für CSS; kein eigenes `@media` für Layoutumschaltung); Aufräumen in `destroy()` |
+| `is-phone` | E (app.js) | Handy-Layout: `opts.phone` oder `matchMedia('(max-width: 799px)')` (einzige Quelle für CSS; kein eigenes `@media` für Layoutumschaltung (einzige dokumentierte Ausnahme: die Senderliste lässt bis ca. 1466 px Fensterbreite das Sender-Badge weg, `src/css/tvmode/list.css`)); Aufräumen in `destroy()` |
 | `is-landscape` | E | nur zusammen mit `is-phone`: `matchMedia('(orientation: landscape) and (max-height: 500px)')`; Player füllt den Schirm |
 | `is-touch` | E | `opts.touch` |
 | `is-on` | E | `snap.on` |
@@ -315,7 +315,7 @@ Zustände, die F selbst verwaltet, stehen **am Element `.lfx-tvm__player`** (F d
   .lfx-tvm__toast                    // kurzer Hinweis (ctl 'message')
 ```
 **Desktop-Layout (final, Nutzerentscheidung):** Player 16:9 links, Senderliste rechts (Zeile = Nummer, Sender-Badge, kleines 16:9-Bild, Titel, Fortschritt, „Danach“), unter dem Player der
-Info-Bereich mit den Knöpfen [Von vorne] [Details] (Bild-in-Bild nur in der Player-Leiste), darunter direkt das EPG-Raster über die volle Breite **ohne Tabs**, mit Tagesauswahl (7 Tage) und „Jetzt“-Knopf.
+Info-Bereich mit den Knöpfen [Von vorne] [Details] (Bild-in-Bild nur in der Player-Leiste), darunter direkt das EPG-Raster über die volle Breite **ohne Tabs**, mit Tagesauswahl (7 Tage) und „Jetzt“-Knopf. Bis ca. 1466 px Fensterbreite (Seitenleiste schmaler als 440 px) entfällt das Sender-Badge in der Senderliste (Spalten `28px 132px 1fr`, damit die Titel lesbar bleiben; vom Nutzer am 16.11.2026 bestätigt).
 Umsetzung: `.lfx-tvm__stage` Grid mit zwei Spalten `minmax(0, 1fr) clamp(320px, 30vw, 440px)`, `gap: var(--lfx-gutter)`; `__main` links, `__side` rechts
 (Höhe an `__main` gebunden, Liste scrollt intern); `__epg` darunter über die volle Breite (`grid-column: 1 / -1`); `__tabs` ist auf dem Desktop `display:none`, Liste und EPG sind immer sichtbar.
 **Handy hochkant** (`is-phone`): eine Spalte; `__player` `position: sticky; top: var(--lfx-header-h)` (16:9), darunter `__info`, dann `__tabs` ([Jetzt im TV] [Programm], nur Handy), dann je nach Tab
@@ -460,7 +460,7 @@ Gemeinsame Bausteine: `.lfx-tvm__btn` (Knopf; Varianten `--primary`, `--ghost`, 
 - Basisregeln beginnen mit `.lfx-tvm` (das Bundle lädt nur, wenn der TV-Modus aktiv sein darf). Feinschliff je Design nur in `designs.css` unter
   `html.lfx-js.lfx-theme-<id>:not(.layout-tv) .lfx-tvm` (`<id>` = `plus`|`prime`; flix = Basis). Pointerabhängige Effekte nur unter `(hover:hover) and (pointer:fine)`.
 - Kein `:has`, kein CSS-Nesting (Konvention des Repos). Asset-URLs relativ zu `dist/`.
-- Layoutumschaltung nur über `.is-phone` / `.is-landscape` am Root (siehe oben), nicht über eigene `@media`.
+- Layoutumschaltung nur über `.is-phone` / `.is-landscape` am Root (siehe oben), nicht über eigene `@media` (einzige dokumentierte Ausnahme: die Senderliste lässt bis ca. 1466 px Fensterbreite das Sender-Badge weg, `src/css/tvmode/list.css`).
 - Jellyfin-Fallen: `.card` und `.libraryPage` nicht verwenden/treffen; nichts an `#videoOsdPage`; keine React-Knoten mutieren.
 
 ## Dev-Harness `build/tvmode-dev.html|js` (Welle W3)

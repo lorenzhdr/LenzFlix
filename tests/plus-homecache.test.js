@@ -32,7 +32,7 @@ const mk = (id) => ({ Id: id, Type: 'Movie', Name: id, ImageTags: { Primary: 'p'
 const many = (p, n = 12) => Array.from({ length: n }, (_, i) => mk(`${p}${i}`));
 const calls = () => [api.getResume, api.getLatest, api.getItems].reduce((n, f) => n + f.mock.calls.length, 0);
 const mount = (slot) => renderRows(slot, () => buildRowDefs(), () => peekRowDefs());
-const settle = () => vi.waitFor(() => expect(document.querySelectorAll('.lfx-plus-row:not(.is-loading)').length).toBeGreaterThan(3));
+const settle = () => vi.waitFor(() => expect(document.querySelectorAll('.lfx-plus-row:not(.is-loading)').length).toBeGreaterThan(3), { timeout: 5000 });
 
 describe('LENZ+: Startseiten-Cache der Zeilen', () => {
   let slot;

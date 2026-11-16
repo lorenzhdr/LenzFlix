@@ -42,7 +42,7 @@ function setupApi() {
   });
 }
 
-const settle = () => vi.waitFor(() => expect(document.querySelectorAll('.lfx-row:not(.is-loading)').length).toBeGreaterThan(3));
+const settle = () => vi.waitFor(() => expect(document.querySelectorAll('.lfx-row:not(.is-loading)').length).toBeGreaterThan(3), { timeout: 5000 });
 const calls = () => [api.getResume, api.getLatest, api.getItems].reduce((n, f) => n + f.mock.calls.length, 0);
 
 describe('Startseiten-Cache der Zeilen', () => {

@@ -48,7 +48,7 @@ beforeEach(() => {
 });
 afterEach(() => { search.unmount(); browse.unmount(); header.unmount(); document.body.innerHTML = ''; });
 
-describe('R12 retro-search update() erhält die Auswahl', () => {
+describe('retro-search update() erhält die Auswahl', () => {
   it('Marke/Auswahl bleibt bei gleichem Begriff', async () => {
     vi.mocked(searchItems).mockReset().mockResolvedValue({ movies: [], series: [], episodes: [], people: [] });
     vi.mocked(getGenreTiles).mockReset().mockResolvedValue([]);
@@ -64,7 +64,7 @@ describe('R12 retro-search update() erhält die Auswahl', () => {
   });
 });
 
-describe('R13 retro-browse zeichnet beim Drehen neu', () => {
+describe('retro-browse zeichnet beim Drehen neu', () => {
   it('Quer statt Hoch: nur Listenzeilen', async () => {
     window.localStorage.setItem('lfx.retro.browseview', 'list');
     api.getJson.mockReset().mockResolvedValue({ Items: [] });
@@ -85,7 +85,7 @@ describe('R13 retro-browse zeichnet beim Drehen neu', () => {
   });
 });
 
-describe('P16 retro-header scrollt nach Klick nach oben', () => {
+describe('retro-header scrollt nach Klick nach oben', () => {
   it('Klick auf Link + neue Route: scrollTo(0,0)', async () => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1280 });
     header.mount(route('#/home'));
@@ -107,7 +107,7 @@ describe('P16 retro-header scrollt nach Klick nach oben', () => {
   });
 });
 
-describe('P18 Kanal-Badges eckig auch im Handy-Layout', () => {
+describe('Kanal-Badges eckig auch im Handy-Layout', () => {
   it('Phone-Overrides mit ausreichender Spezifität', async () => {
     const fs = await import('node:fs');
     const css = fs.readFileSync('src/css/themes/retro/tvmode.css', 'utf8');
@@ -121,7 +121,7 @@ describe('P18 Kanal-Badges eckig auch im Handy-Layout', () => {
   });
 });
 
-describe('P17 retro-search Eingabemarke bleibt bei langen Begriffen konsistent', () => {
+describe('retro-search Eingabemarke bleibt bei langen Begriffen konsistent', () => {
   it('--rs-pos ungekappt, --rs-scroll folgt scroll, nach unmount ohne Wirkung', async () => {
     vi.mocked(searchItems).mockReset().mockResolvedValue({ movies: [], series: [], episodes: [], people: [] });
     vi.mocked(getGenreTiles).mockReset().mockResolvedValue([]);

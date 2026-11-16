@@ -43,7 +43,8 @@ import { clearCache } from '../src/js/core/cache.js';
 import modal, { openModal, closeModal } from '../src/js/features/modal.js';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
-const wait = async (fn, n = 40) => { for (let i = 0; i < n; i++) { if (fn()) return; await flush(); } };
+// Zeitbasiert statt Schleifenzähler: setTimeout(0) dauert je nach Timer-Auflösung (Windows) 1–16 ms, der Rückfall-Timer in modal.js (600 ms) bliebe sonst unerreichbar.
+const wait = async (fn, n = 40) => { const end = Date.now() + Math.min(n * 50, 4000); while (Date.now() < end) { if (fn()) return; await new Promise((r) => setTimeout(r, 5)); } fn(); };
 
 const series = { Id: 'S1', Type: 'Series', Name: 'Serie', Overview: 'Text', ChildCount: 2, ProductionYear: 2020, Genres: ['Drama'], UserData: {} };
 const other = { Id: 'S2', Type: 'Series', Name: 'Andere', ChildCount: 1, UserData: { Played: true } };
@@ -162,6 +163,7 @@ describe('Info-Fenster: Fokus und Tastatur', () => {
     hc.remove();
     closeModal();
     await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
+    expect(document.querySelector('.lfx-modal-overlay')).toBeNull();
     expect(document.activeElement).not.toBe(document.querySelector('.lfx-card__link'));
   });
 

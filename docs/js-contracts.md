@@ -18,6 +18,7 @@
   <a class="lfx-card__link" href="#/details?id=ITEM_ID&serverId=SERVER_ID" aria-label="Titel">
     <img class="lfx-card__img" src="…" alt="" loading="lazy" decoding="async">
     <!-- optional: <img class="lfx-card__logo"> oder <span class="lfx-card__title"> wenn Bild kein Thumb ist -->
+    <!-- Link trägt zusätzlich `lfx-card__link--poster`, wenn ein Poster-Source vorhanden ist (nur kind landscape): im Handy-Raster dann 2:3; Karten ohne Poster bleiben 16:9 mit Titel -->
   </a>
   <!-- optional: <span class="lfx-badge">Neu hinzugefügt</span> -->
   <!-- optional (Weiterschauen): <div class="lfx-progress"><div class="lfx-progress__bar" style="width:42%"></div></div> -->
@@ -64,7 +65,7 @@
 
 ## Startseite
 - `src/js/features/home.js` (fertig) legt `#lfx-home` als erstes Kind von `#homeTab` an mit Slots `#lfx-billboard` und `#lfx-rows` und ruft `billboard.render(slot, ctx)` bzw. `rows.render(slot, ctx)` auf (Rückgabe: Cleanup-Funktion). Native Sektionen sind dann per `html.lfx-home-on` versteckt.
-- Billboard: Rotation pausiert bei Hover, Tastaturfokus (`:focus-visible` im Billboard, Mausklick-Fokus zählt nicht), laufendem Trailer, Info-Fenster, offenem Menü. Kein Auto-Trailer bei Datensparmodus, `prefers-reduced-motion` (wie LENZPRIME) und Hintergrund-PiP des TV-Modus (`tvBgPlaying()`); bei reduzierter Bewegung rotiert auch nichts.
+- Billboard: Am Handy (< 800 px) ist das Logo ausgeblendet; läuft der Trailer (`.is-trailer` an `.lfx-bb`), wird es eingeblendet, damit der Titel erkennbar bleibt. Rotation pausiert bei Hover, Tastaturfokus (`:focus-visible` im Billboard, Mausklick-Fokus zählt nicht), laufendem Trailer, Info-Fenster, offenem Menü. Kein Auto-Trailer bei Datensparmodus, `prefers-reduced-motion` (wie LENZPRIME) und Hintergrund-PiP des TV-Modus (`tvBgPlaying()`); bei reduzierter Bewegung rotiert auch nichts.
 - Startseiten-Cache (`core/cache.js` `cached`, `HOME_TTL` 10 min, Schlüssel `homeKey(uid, …)` = `home:<uid>:…`): u. a. Zeilen, `hubpool:<libId>` und `hubgenres:<libId>` (`shared/hub.js`), Neu und beliebt `np:…` (5 min, `newpopular.js`). Invalidierung `core/homecache.js`: Abspielen (`lfx:play`), Betreten und Verlassen der Player-Route (beim Verlassen sofort und 2 s später, weil der Stopp-Bericht verspätet ankommt), `LibraryChanged`/geänderte Titel, `UserDataChanged` (falls `ApiClient.subscribe` existiert, abgesichert). Nutzerwechsel leert den gesamten Cache (`clearCache()`) und den `itemstore`. `core/charts.js` `getCharts` cacht Fehlschlag (`null`) nur 30 s statt 5 min.
 
 ## Designs (Umschalter)
@@ -170,7 +171,7 @@ Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 - `trend.js` – Trend-/Beliebtheits-Badges aus `core/charts.js` mit Fallback (`getTrendInfo`, `cardBadge`).
 - `search.js` – Suche und Genre-Kacheln (`searchItems` liefert `titles` (Filme und Serien in Serverreihenfolge) neben `movies|series|episodes|people`, `getGenreTiles`).
 - `titleactions.js` – UI-unabhängige Titel-Aktionen (`togglePlayed`, `toggleFavorite`, `setLike`, `startDownloadFor`, `openTitleMenu`).
-- `trailer.js` – Trailer-URLs und stumme Vorschau (`createMutedPreview`); Remote-Trailer nur über https, das `<video>` trägt `referrerpolicy="no-referrer"`.
+- `trailer.js` – Trailer-URLs und stumme Vorschau (`createMutedPreview`); `createMutedPreview` spielt in der stummen Vorschau **nur lokale** Trailer. Remote-Trailer (nur https-Videodatei, `directRemoteTrailerUrl`) starten ausschließlich auf ausdrücklichen Klick (Trailer-Knopf der Titelseiten).
 - `profile.js` – Profilmenü-Einträge und Benutzer-Chip für das Popover (`profileEntries`, `getUserChip`, `logout`).
 
 ## Datensparmodus (1.12.0, seit 1.13.0 auch LENZ//84)

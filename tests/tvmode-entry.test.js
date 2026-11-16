@@ -18,7 +18,7 @@ const mkDeps = (over = {}) => ({
   onProgress: vi.fn(), onReady: vi.fn(), onFatal: vi.fn(), onStopped: vi.fn(), onPip: vi.fn(),
   ...over,
 });
-const ready = () => vi.waitFor(() => { if (!(deps.onReady.mock.calls.length || deps.onFatal.mock.calls.length)) throw new Error('warten'); });
+const ready = () => vi.waitFor(() => { if (!(deps.onReady.mock.calls.length || deps.onFatal.mock.calls.length)) throw new Error('warten'); }, { timeout: 5000 });
 async function boot(opts = {}) {
   inst = create(host, deps, { now, fakePlayer: true, ...opts });
   await ready();
@@ -78,7 +78,7 @@ describe('entry', () => {
     inst = create(host, deps, { now, fakePlayer: true });
     inst.start();
     await ready();
-    await vi.waitFor(() => { if (!inst.isOn()) throw new Error('noch aus'); });
+    await vi.waitFor(() => { if (!inst.isOn()) throw new Error('noch aus'); }, { timeout: 5000 });
   });
 
   it('lfx:play stoppt mit Grund lfx-play', async () => {

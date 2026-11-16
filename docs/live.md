@@ -230,8 +230,8 @@ pickFiller(entry, nextEntry, deps, now?) → Promise<{ kind: 'trailer', url, off
 // Trailer läuft deterministisch im Fenster [entry.end − durMs, entry.end); davor Karte mit trailerStartMs (Zeitpunkt des Trailerstarts, die App fragt dann neu)
 ```
 - Genau ein `<video class="lfx-live-video" playsinline disablepictureinpicture x-webkit-airplay="deny">` pro Instanz, ohne
-  `controls`, nie im DOM umhängen. Pause abfangen (Ereignis `pause` → weiter an Live-Position; Media-Session-Handler `pause`,
-  `seekbackward`, `seekforward` als No-op). Zappen entprellt die UI (400 ms), nicht der Player.
+  `controls`, nie im DOM umhängen. Pause abfangen (Ereignis `pause` → weiter an Live-Position; keine Media-Session-Handler: sie sind global und nicht
+  wiederherstellbar, die Handler von Jellyfin bleiben erhalten; Pause per Kopfhörer oder Medientaste fängt der `pause`-Listener ab). Zappen entprellt die UI (400 ms), nicht der Player.
 - DeviceProfile wie im Prüflauf: DirectPlay `mkv,mp4,m4v` + h264 + `aac,mp3` (nur wenn `canPlayType` es bejaht; Safari: kein mkv);
   Transcoding `ts`/hls, VideoCodec `h264`, AudioCodec `aac`, 2 Kanäle; `AllowVideoStreamCopy: true`, `EnableTranscoding: true`.
   HLS nur, wenn der Browser HLS nativ kann (`canPlayType('application/vnd.apple.mpegurl')`), sonst `reason: 'browser'`.
@@ -404,7 +404,8 @@ createDecor({ room, tv, screen, doc, onAction }) → { el, layers: { room, tv, g
 ```
 - Ebenen (alle `aria-hidden="true"`, `pointer-events: none`): `.lfx-live-decor` (erstes Kind von `.lfx-live-room`, hinter TV und Seitenspalte), `.lfx-live-tv__deco` (letztes Kind von `.lfx-live-tv`: Antenne, Gitter, Tastenreihen, Klappe), `.lfx-live-screen__glass` (in `.lfx-live-screen`, vor `.lfx-live-overlay` im DOM).
 - `setStyle(id)` leert alle drei Ebenen und baut sie aus `SPECS[id]` neu (flat/plain/unbekannt: leer). Die App ruft es beim Aufbau und bei jedem Stilwechsel.
-- Spezifikation `ui/decor-<id>.js`: `export default { room: Node[], tv: Node[], glass: Node[] }`, `Node = { cls, tag? = 'div', text?, display?: 'vcr'|'dvd'|'rcv', action?, tip?, count?: n, actionEach?: 'ch', children?: Node[] }`. `count: n` erzeugt n Kinder `<span class="lfx-live-d__i" style="--i:k">` (k = 1…n) vor `children` (z. B. Programmtasten). Neue Klassen heißen `lfx-live-d-…`.- Anzeigen: Elemente mit `data-display`. `setDisplays({ on, clock:'20:15', ch:5 })` (fehlende Felder behalten den letzten Wert): `vcr` → immer die Uhrzeit (auch im Standby; `--:--` nur ohne bekannte Uhrzeit); `dvd` → an ? Uhrzeit : leer; `rcv` → an ? `P` + zweistelliger Sender : leer. Zusätzlich an `.lfx-live-decor` die Variablen `--lfx-live-clock-h` (Stundenwinkel in Grad, 0–360) und `--lfx-live-clock-m` (Minutenwinkel) für eine Wanduhr (sie zeigt auch im Standby die Zeit). Geschrieben wird nur bei Änderung.
+- Spezifikation `ui/decor-<id>.js`: `export default { room: Node[], tv: Node[], glass: Node[] }`, `Node = { cls, tag? = 'div', text?, display?: 'vcr'|'dvd'|'rcv', action?, tip?, count?: n, actionEach?: 'ch', children?: Node[] }`. `count: n` erzeugt n Kinder `<span class="lfx-live-d__i" style="--i:k">` (k = 1…n) vor `children` (z. B. Programmtasten). Neue Klassen heißen `lfx-live-d-…`.
+- Anzeigen: Elemente mit `data-display`. `setDisplays({ on, clock:'20:15', ch:5 })` (fehlende Felder behalten den letzten Wert): `vcr` → immer die Uhrzeit (auch im Standby; `--:--` nur ohne bekannte Uhrzeit); `dvd` → an ? Uhrzeit : leer; `rcv` → an ? `P` + zweistelliger Sender : leer. Zusätzlich an `.lfx-live-decor` die Variablen `--lfx-live-clock-h` (Stundenwinkel in Grad, 0–360) und `--lfx-live-clock-m` (Minutenwinkel) für eine Wanduhr (sie zeigt auch im Standby die Zeit). Geschrieben wird nur bei Änderung.
 - Einbau `ui/app.js`: `syncDecor()` bei Ein/Aus, Senderwechsel und Stilwechsel; Uhrzeit über `ctx.formatClock` und einen Minuten-Timer (`later('clock')`, läuft auch im Standby, kein rAF; der Planer bleibt unberührt). `dispose` entfernt die Ebenen.
 
 ### Bedienbare Geräte (1.9.5)

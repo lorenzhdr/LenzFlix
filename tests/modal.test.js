@@ -50,7 +50,8 @@ import modal, { openModal, closeModal, findInterceptTarget } from '../src/js/fea
 import { formatRuntime, metaParts, qualityLabel, seasonsLabel, ratingText } from '../src/js/features/modal/format.js';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
-const wait = async (fn, n = 40) => { for (let i = 0; i < n; i++) { if (fn()) return; await flush(); } };
+// Zeitbasiert statt Schleifenzähler: setTimeout(0) dauert je nach Timer-Auflösung (Windows) 1–16 ms, der Rückfall-Timer in modal.js (600 ms) bliebe sonst unerreichbar.
+const wait = async (fn, n = 40) => { const end = Date.now() + Math.min(n * 50, 4000); while (Date.now() < end) { if (fn()) return; await new Promise((r) => setTimeout(r, 5)); } fn(); };
 
 const series = { Id: 'S1', Type: 'Series', Name: 'Serie', Overview: 'Text', ChildCount: 2, ProductionYear: 2020, OfficialRating: 'FSK-12', People: [{ Id: 'p1', Name: 'Ann', Type: 'Actor' }], Genres: ['Drama'], UserData: {} };
 const movie = { Id: 'M1', Type: 'Movie', Name: 'Film', RunTimeTicks: 67_200_000_000, Width: 1920, ProductionYear: 2021, UserData: { PlaybackPositionTicks: 5 } };

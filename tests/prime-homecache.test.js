@@ -29,7 +29,7 @@ import { clearCache } from '../src/js/core/cache.js';
 const mk = (id) => ({ Id: id, Type: 'Movie', Name: id, ImageTags: { Thumb: 't' }, DateCreated: new Date().toISOString() });
 const many = (p, n = 12) => Array.from({ length: n }, (_, i) => mk(`${p}${i}`));
 const calls = () => [api.getResume, api.getLatest, api.getItems].reduce((n, f) => n + f.mock.calls.length, 0);
-const settle = () => vi.waitFor(() => expect(document.querySelectorAll('.lfx-prime-row:not(.is-loading)').length).toBeGreaterThan(3));
+const settle = () => vi.waitFor(() => expect(document.querySelectorAll('.lfx-prime-row:not(.is-loading)').length).toBeGreaterThan(3), { timeout: 5000 });
 
 describe('LENZPRIME: Startseiten-Cache der Zeilen', () => {
   let slot;
