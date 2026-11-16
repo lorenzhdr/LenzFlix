@@ -333,7 +333,7 @@ Root-Hintergrund `var(--lfx-bg)`, oberer Abstand für die Kopfleiste `var(--lfx-
     .lfx-tvm__card-title / .lfx-tvm__card-text / .lfx-tvm__card-actions (> .lfx-tvm__btn „Erneut versuchen“)
   .lfx-tvm__pip-card                 // „Läuft im Bild-in-Bild“ (sichtbar bei pip.active(), deckt den Slot)
     .lfx-tvm__pip-card-text / .lfx-tvm__btn.lfx-tvm__btn--pip-back „Zurückholen“ (→ opts.pip.exit())
-  .lfx-tvm__unmute                   // „Ton an“-Knopf (snap.mutedByPolicy), deutlich, mittig-unten (→ ctl.gesture())
+  .lfx-tvm__unmute                   // „Ton an“-Knopf (snap.mutedByPolicy), deutlich; Desktop mittig-oben (fest, springt nicht, nie von Zapp-Karte/Leiste verdeckt), Handy unten (→ ctl.gesture())
   .lfx-tvm__zap                      // Zapp-Einblendung (≈ 4 s nach Kanalwechsel/Start, Daten aus snap.channel + snap.entry), oben links; is-zapping am .lfx-tvm__player
     .lfx-tvm__zap-no / .lfx-tvm__zap-name / .lfx-tvm__zap-title / .lfx-tvm__zap-time
     .lfx-tvm__zap-bar > .lfx-tvm__zap-fill      // Breite in % per style.width
