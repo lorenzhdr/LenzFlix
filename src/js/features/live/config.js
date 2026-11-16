@@ -1,8 +1,8 @@
 // LENZ LIVE: Admin-Belegung der Senderplätze 5–16 (docs/live.md).
 // Quelle: window.LenzFlixConfig.liveChannels (Objekt { 5: 'Action' } oder String "5=Action;6=Komödie"),
 // sonst die CSS-Variable --lfx-live-channels (Custom CSS), Format wie der String.
-export const MIN_NO = 5;
-export const MAX_NO = 16;
+const MIN_NO = 5;
+const MAX_NO = 16;
 
 const stripQuotes = (s) => String(s == null ? '' : s).trim().replace(/^["'\s]+|["'\s]+$/g, '');
 

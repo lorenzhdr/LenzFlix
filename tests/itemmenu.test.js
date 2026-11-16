@@ -223,6 +223,28 @@ describe('Sitzungsende', () => {
   });
 });
 
+describe('Fokusrückgabe an abgehängten Anker (A033)', () => {
+  it('fokussiert das neu gebaute Element mit gleicher Klasse', async () => {
+    setupContainer();
+    const btn = document.createElement('button');
+    btn.className = 'lfx-bb__btn lfx-bb__btn--menu';
+    document.body.append(btn);
+    openItemMenu(item, btn);
+    const d = addDialog();
+    await flush();
+    // Billboard baut neu: alter Button weg, neuer Button gleicher Klasse
+    btn.remove();
+    const neu = document.createElement('button');
+    neu.className = 'lfx-bb__btn lfx-bb__btn--menu';
+    document.body.append(neu);
+    d.remove();
+    await flush();
+    vi.advanceTimersByTime(800);
+    expect(isMenuOpen()).toBe(false);
+    expect(document.activeElement).toBe(neu);
+  });
+});
+
 describe('computeMenuPosition', () => {
   const vp = { w: 1000, h: 800 };
   const menu = { w: 300, h: 320 };

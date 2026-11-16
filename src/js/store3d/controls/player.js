@@ -117,7 +117,7 @@ export class Player {
         this.path = null;
         const cb = this.onArrive;
         this.onArrive = null;
-        if (cb) cb();
+        if (cb) cb(false);
       }
     }
     if (this.turnTo && !manual) {

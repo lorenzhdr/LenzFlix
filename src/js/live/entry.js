@@ -18,7 +18,7 @@ const DAYS = 7;
  * create(host, deps, opts) → instance { suspend, resume, dispose, isOn }. Gibt sofort zurück; Planen läuft async
  * (deps.onProgress, deps.onReady, bei Fehlern deps.onFatal).
  */
-export function create(host, deps, opts = {}) {
+function create(host, deps, opts = {}) {
   const o = opts || {};
   const now = typeof o.now === 'function' ? o.now : () => Date.now();
   let app = null;

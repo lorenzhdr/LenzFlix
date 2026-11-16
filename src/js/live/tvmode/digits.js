@@ -44,6 +44,6 @@ export function createDigits({ onCommit, onPreview, onInvalid, now = Date.now, t
     },
     clear() { if (!disposed) reset(); },
     pending: () => buf,
-    dispose() { if (disposed) return; disposed = true; unarm(); buf = ''; },
+    dispose() { if (disposed) return; reset(); disposed = true; },
   };
 }

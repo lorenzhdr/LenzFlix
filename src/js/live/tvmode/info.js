@@ -134,6 +134,7 @@ export function createInfo({ doc = document, ctl, model, deps = {}, opts = {} } 
     if (!entry) {
       key = '';
       for (const b of [restartBtn, detailsBtn]) b.disabled = true;
+      moreBtn.hidden = true;
       return;
     }
     const t = getNow();

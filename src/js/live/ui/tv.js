@@ -7,7 +7,7 @@ export const STYLES = [
   { id: 'plain', name: 'Schlicht' },
 ];
 
-export const DEFAULT_STYLE = 'flat';
+const DEFAULT_STYLE = 'flat';
 
 export function normStyle(id) {
   return STYLES.some((s) => s.id === id) ? id : DEFAULT_STYLE;

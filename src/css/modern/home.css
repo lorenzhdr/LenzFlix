@@ -88,9 +88,10 @@ html:not(.layout-tv) #indexPage .emby-scroller::-webkit-scrollbar {
 /* Die Vorlage zeigt nur Bilder (Titel steckt im Bild; Jellyfin erzeugt für Bibliotheken
    ohnehin Bilder mit Schriftzug). Jellyfin 12.4 legt die Texte je nach Sektion in
    .cardFooter ODER direkt als .cardBox > .cardText ab (live geprüft).
+   Nur im Start-Tab (#homeTab): Favoriten-Tab (Meine Liste in plus/prime) behält Namen/Rollen.
    Grids (.vertical-wrap) liegen nicht in .emby-scroller und bleiben unberührt. */
-html:not(.layout-tv) #indexPage .emby-scroller .card .cardFooter,
-html:not(.layout-tv) #indexPage .emby-scroller .card .cardBox > .cardText {
+html:not(.layout-tv) #indexPage #homeTab .emby-scroller .card .cardFooter,
+html:not(.layout-tv) #indexPage #homeTab .emby-scroller .card .cardBox > .cardText {
   display: none;
 }
 

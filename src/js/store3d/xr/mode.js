@@ -235,6 +235,7 @@ export class XrMode {
     if (app.hud) { app.hud.showPrompt(false); app.hud.setCross(false, false); app.hud.setHint(null); }
     // Budget wie am Handy; Qualität nur low/mid
     this.prevQuality = app.qualitySetting;
+    this.prevLevel = app.engine.preset.level; // bei „auto“: zuletzt automatisch gewählte Stufe
     app.engine.setXrBudget(true);
     const vr = app.opts.vr || {};
     app.setQuality(vr.quality === 'low' ? 'low' : 'mid');
@@ -293,6 +294,7 @@ export class XrMode {
     if (rig) { rig.position.set(0, 0, 0); rig.rotation.set(0, 0, 0); rig.updateMatrixWorld(true); }
     if (!app.disposed && app.engine) {
       app.engine.setXrBudget(false);
+      if (this.prevQuality === 'auto' && this.prevLevel) app.engine.setLevel(this.prevLevel);
       if (this.prevQuality) app.setQuality(this.prevQuality);
       app.engine.setZoom(1);
       const p = app.player;
@@ -416,8 +418,12 @@ export class XrMode {
     return this.floor ? 0 : EYE;
   }
 
-  /** Neu ausrichten: Höhe und Rig beim nächsten Frame aus der Kopfpose neu berechnen. */
-  recenter() { this.placed = false; }
+  /** Neu ausrichten: Höhe und Rig beim nächsten Frame aus der Kopfpose neu berechnen; im Kino sofort die Sitzhöhe. Rückgabe false = nichts getan. */
+  recenter() {
+    if (this.inCinema) return this.cinema.recenter();
+    this.placed = false;
+    return true;
+  }
 
   cinemaTick(dt, now) { this.cinema.tick(dt, now); }
 
@@ -426,6 +432,7 @@ export class XrMode {
   async jumpTo(x, z, { face } = {}) {
     const app = this.app;
     const p = app.player;
+    if (this.inCinema) return false; // der Laden ist im Kino unsichtbar
     let yaw = p.yaw;
     if (typeof face === 'number') yaw = face;
     else if (face && Number.isFinite(face.x) && Number.isFinite(face.z)) yaw = Math.atan2(-(face.x - x), -(face.z - z));
@@ -554,7 +561,7 @@ export class XrMode {
     this.cinemaEnter(item);
   }
 
-  cinemaEnter(item) { this.cinema.enter(item); }
+  cinemaEnter(item) { return this.cinema.enter(item); }
 
   /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. */
   leaveCinema(reason, code) {

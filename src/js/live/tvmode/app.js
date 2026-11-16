@@ -151,7 +151,8 @@ export function createApp(host, { scheduler, ctl, video, pip = null, deps = {}, 
   fullscreen = createFullscreen({
     target: playerEl,
     doc,
-    onChange: (on) => { setCls('is-fullscreen', on); },
+    // Im Element-Vollbild wird nur der Player gezeichnet: Toast dorthin umhängen (sonst unsichtbar)
+    onChange: (on) => { setCls('is-fullscreen', on); (on ? playerEl : root).append(toast); },
   });
 
   // ---------- Tabs ----------

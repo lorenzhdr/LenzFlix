@@ -72,6 +72,45 @@ describe('Pause-Menue: Touch-Steuerung', () => {
   });
 });
 
+describe('Pause-Menue: Fokus (L042/A125)', () => {
+  const tab = (host, shiftKey = false) => { const e = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }); host.querySelector('.lfx-store-pause').dispatchEvent(e); return e; };
+  it('aria-modal an allen Panels', () => {
+    const { host, p } = make();
+    expect(host.querySelector('.lfx-store-pause-panel').getAttribute('aria-modal')).toBe('true');
+    expect(host.querySelector('.lfx-store-voicepick-panel').getAttribute('aria-modal')).toBe('true');
+    p.destroy();
+  });
+  it('Tab kreist im Panel statt es zu verlassen', () => {
+    const { host, p } = make();
+    p.show();
+    const btns = [...host.querySelectorAll('.lfx-store-pause-panel > button')].filter((b) => !b.hidden && !b.disabled);
+    btns[btns.length - 1].focus();
+    const e = tab(host);
+    expect(e.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(btns[0]);
+    const e2 = tab(host, true);
+    expect(e2.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(btns[btns.length - 1]);
+    p.destroy();
+  });
+  it('Unterpanel sperrt das Pause-Panel (inert) und fängt Tab', () => {
+    const tune = {};
+    const { host, p } = make({ onTouchControl() {}, getTouchControl: () => 'touch', onTouchTune() {}, getTouchTune: () => tune });
+    p.show();
+    const panel = host.querySelector('.lfx-store-pause-panel');
+    expect(panel.hasAttribute('inert')).toBe(false);
+    [...panel.querySelectorAll('button')].find((b) => b.textContent === 'Touch-Steuerung …').click();
+    expect(panel.hasAttribute('inert')).toBe(true);
+    const inner = [...host.querySelectorAll('.lfx-store-touchpick button')].filter((b) => !b.hidden);
+    inner[inner.length - 1].focus();
+    tab(host);
+    expect(document.activeElement).toBe(inner[0]);
+    p.closePick();
+    expect(panel.hasAttribute('inert')).toBe(false);
+    p.destroy();
+  });
+});
+
 describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
   it('zeigt bei Ton an den Zustand, aktualisiert bei refresh/show', () => {
     const { host, p, setInfo } = make();
@@ -82,11 +121,15 @@ describe('Pause-Menue: Stimmen-Diagnosezeile', () => {
     expect(note(host).textContent).toBe('Stimme: wartet auf ersten Tipp');
     p.destroy();
   });
-  it('ist bei Ton aus oder ohne Info versteckt', () => {
+  it('bei Ton aus unsichtbar, aber Platz reserviert (L041); ohne Info versteckt', () => {
     const { host, p, setSound } = make();
     setSound(false);
     p.refresh();
-    expect(note(host).hidden).toBe(true);
+    expect(note(host).hidden).toBe(false);
+    expect(note(host).style.visibility).toBe('hidden');
+    setSound(true);
+    p.refresh();
+    expect(note(host).style.visibility).toBe('');
     const m = make({ getVoiceInfo: undefined });
     expect(note(m.host).hidden).toBe(true);
     p.destroy();
@@ -129,7 +172,8 @@ describe('Pause-Menue: Stimmenauswahl', () => {
     expect(btn(host, /^Stimme:/).hidden).toBe(false);
     setSound(false);
     p.refresh();
-    expect(btn(host, /^Stimme:/).hidden).toBe(true);
+    expect(btn(host, /^Stimme:/).hidden).toBe(false); // L041: bleibt im Layout, nur gesperrt
+    expect(btn(host, /^Stimme:/).disabled).toBe(true);
     p.destroy();
     const n = makeVoice({ getVoicePrefs: () => ({ name: LIST[1].name, online: false, pitch: 'tief' }) });
     expect(btn(n.host, /^Stimme:/).textContent).toBe('Stimme: Conrad');

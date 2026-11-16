@@ -43,7 +43,8 @@ export class AutoQuality {
   }
 
   sample(dt, now) {
-    if (dt > 0.25) { this.reset(); return null; } // Tab im Hintergrund / Hänger: nicht werten
+    // Hänger (> 0,25 s) zählen als sehr langsamer Frame, damit Dauerruckeln die Stufe senkt; Hintergrund-Tabs
+    // erreichen sample() nicht (Schleife hält an, `last` wird beim Fortsetzen neu gesetzt).
     this.frames++;
     this.elapsed += dt;
     if (this.elapsed < 2) return null;

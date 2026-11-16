@@ -138,6 +138,7 @@ export function createControls({ doc = document, ctl, opts = {} } = {}) {
   el.append(left, right);
 
   let lastMuted = null;
+  let lastEntry; // Sendungswechsel schließt das Ton-/Untertitel-Menü (die Einträge gehörten zum alten Titel)
   function syncFullscreen() {
     const act = !!(fullscreen && fullscreen.active && fullscreen.active());
     setLabel(fsBtn, act ? 'Vollbild beenden' : 'Vollbild');
@@ -170,7 +171,9 @@ export function createControls({ doc = document, ctl, opts = {} } = {}) {
     }
     const choice = menu.hasChoice();
     tracksBtn.hidden = !choice;
-    if (!choice && menu.isOpen()) menu.close(false);
+    const changedEntry = snap.entry !== lastEntry;
+    lastEntry = snap.entry;
+    if ((!choice || changedEntry) && menu.isOpen()) menu.close(false);
     syncPip();
     syncFullscreen();
   }

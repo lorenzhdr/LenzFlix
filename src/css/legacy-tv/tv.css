@@ -9,9 +9,15 @@
 /* ---------- Basis ---------- */
 html.layout-tv,
 html.layout-tv body {
-  background-color: var(--lfx-bg);
   color: var(--lfx-text-body);
   font-family: var(--lfx-font);
+}
+html.layout-tv {
+  background-color: var(--lfx-bg);
+}
+/* Body transparent: sonst malt er über den fixen Ebenen (z-index:-1) und verdeckt den Backdrop */
+html.layout-tv body {
+  background-color: transparent;
 }
 html.layout-tv .backgroundContainer {
   background-color: var(--lfx-bg);
@@ -123,6 +129,11 @@ html.layout-tv .emby-button:focus .detailButton-text,
 html.layout-tv .emby-button:focus .emby-button-foreground {
   color: #000 !important;
 }
+/* Jellyfins LinkButton trägt style="color:inherit" (Genre-/Regie-/Studio-Links) -> nur !important schlägt das */
+html.layout-tv #itemDetailPage .detailsGroupItem a:focus,
+html.layout-tv .button-link.emby-button:focus {
+  color: #000 !important;
+}
 html.layout-tv .paper-icon-button-light.show-focus:focus,
 html.layout-tv .paper-icon-button-light:focus {
   background: #fff;
@@ -133,8 +144,8 @@ html.layout-tv .paper-icon-button-light:focus {
 html.layout-tv .paper-icon-button-light:focus .material-icons {
   color: #000;
 }
-html.layout-tv .headerTabs .emby-tab-button.show-focus:focus,
-html.layout-tv .headerTabs .emby-tab-button:focus {
+html.layout-tv .emby-tab-button.show-focus:focus,
+html.layout-tv .emby-tab-button:focus {
   background: #fff !important;
   color: #000 !important;
   transform: scale(1.06) !important;
@@ -170,9 +181,17 @@ html.layout-tv .card:focus .cardBox:not(.visualCardBox) .cardScalable {
   box-shadow: 0 0 0 4px #fff, 0 16px 32px 4px rgba(0, 0, 0, 0.75);
 }
 
+/* Der Schatten des Bildes dunkelt sonst den Titel darunter ab */
+html.layout-tv .card:focus .cardBox > .cardText,
+html.layout-tv .card:focus .cardBox > .cardFooter {
+  position: relative;
+  z-index: 1;
+}
+
 /* ---------- Startseite / Reihen ---------- */
+/* Unterrand 0.4em: die fokussierte (skalierte) Karte soll den Abschnittstitel nicht überdecken */
 html.layout-tv .sectionTitleContainer-cards {
-  margin: 0;
+  margin: 0 0 0.4em;
 }
 html.layout-tv .sectionTitle,
 html.layout-tv .sectionTitle-cards {
@@ -196,24 +215,25 @@ html.layout-tv .overflowSquareCard {
   width: 12.4vw;
 }
 /* Texte unter den Karten in Scroller-Reihen ausblenden. Der Fortschrittsbalken liegt im .innerCardFooter
-   (innerhalb .cardScalable) und bleibt unberührt. Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
+   (innerhalb .cardScalable, 0.3em hoch, unten am Bild); die Fokus-Verläufe unten sitzen 0.3em höher und lassen ihn frei. Kartentexte stehen teils in .cardFooter, teils direkt in .cardBox. */
 html.layout-tv .emby-scroller .cardBox > .cardFooter,
-html.layout-tv .emby-scroller .cardBox > .cardText {
+html.layout-tv .emby-scroller .card:not(.personCard) .cardBox > .cardText {
   display: none;
 }
 /* Titel erscheint nur bei Fokus als Verlauf am unteren Bildrand */
 html.layout-tv .emby-scroller .cardBox {
   position: relative;
 }
-html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter {
+html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter,
+/* Jellyfin 12.4 gibt die Texte ohne .cardFooter direkt in .cardBox aus: nur die erste Zeile (Titel) als Verlauf */
+html.layout-tv .emby-scroller .card:not(.personCard):focus .cardBox > .cardText-first {
   display: block;
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 0.3em; /* = Höhe des Fortschrittsbalkens, sonst deckt der Verlauf ihn ab */
   z-index: 2;
   padding: 1.6em 0.6em 0.7em;
-  border-radius: 0 0 8px 8px;
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
   color: #fff;
 }
@@ -250,7 +270,9 @@ html.layout-tv .backdropContainer::after {
     linear-gradient(90deg, rgba(20, 20, 20, 0.92) 0%, rgba(20, 20, 20, 0.55) 40%, rgba(20, 20, 20, 0) 75%),
     linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 20%);
 }
+/* Jellyfin legt .withBackdrop (deckend durch die Basisregel oben) über den Backdrop -> transparent, sonst bleiben Bild und Verläufe unsichtbar */
 html.layout-tv .backgroundContainer.withBackdrop {
+  background-color: transparent;
   opacity: 1;
 }
 html.layout-tv #itemDetailPage {
@@ -282,6 +304,11 @@ html.layout-tv #itemDetailPage .itemName {
   white-space: normal;
   overflow: visible;
   color: var(--lfx-text);
+}
+html.layout-tv #itemDetailPage .nameContainer .subtitle {
+  margin-left: 0;
+  padding-left: 0;
+  font-size: 1.6em;
 }
 html.layout-tv #itemDetailPage .nameContainer h3,
 html.layout-tv #itemDetailPage .nameContainer h4 {
@@ -331,7 +358,10 @@ html.layout-tv #itemDetailPage .detailButton:focus {
   background: #fff;
   color: #000;
 }
-/* Beschreibung */
+/* Beschreibung ("Mehr anzeigen" direkt am Text statt am rechten Rand) */
+html.layout-tv #itemDetailPage .overview-controls {
+  justify-content: flex-start;
+}
 html.layout-tv #itemDetailPage .detailSectionContent .overview,
 html.layout-tv #itemDetailPage .detailSectionContent .tagline {
   max-width: 50ch;

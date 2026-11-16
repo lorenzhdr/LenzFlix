@@ -467,9 +467,14 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     cancelRequests();
     ac = new AbortController();
     const signal = ac.signal;
-    teardown(); // nicht abwarten: das Zappen soll nicht auf das DELETE warten
-    tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
-    em.emit('state', { phase: 'loading' });
+    // keepOnFail (Tonspurwahl): laufendes Bild erst nach erfolgreicher Auflösung abbauen, sonst bleibt es bei Fehlern unverändert.
+    const keep = !!opts.keepOnFail;
+    const reset = () => {
+      teardown(); // nicht abwarten: das Zappen soll nicht auf das DELETE warten
+      tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
+      em.emit('state', { phase: 'loading' });
+    };
+    if (!keep) reset();
 
     lastCached = false;
     lastWarm = null;
@@ -484,9 +489,10 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       if (my !== gen) return aborted();
     }
     if (!r.ok) {
-      failure(r.reason, r.code);
+      if (!keep) failure(r.reason, r.code);
       return failResult(r);
     }
+    if (keep) reset();
 
     // Rückfallkette (max. MAX_ATTEMPTS Starts): Direct → Remux (noDirect) → fMP4 → ts → ein ts-Neuversuch.
     // Nie eine echte Video-Umwandlung erzwingen: HEVC-Quellen bekommen keinen ts-Rückfall (Safari).
@@ -504,7 +510,8 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
       tm.mode = cur.mode;
       tm.info = cur.info || null;
       const wasWarm = attempt === 1 && !!tm.warm; // übernommene Vorwärm-Sitzung (nicht frisch aufgelöst)
-      res = await launch(cur, opts, offsetMs, itemId, my);
+      // Plan einholen: Auflösung/Rückfälle haben seit play() Zeit gekostet (die Live-Position läuft weiter).
+      res = await launch(cur, opts, offsetMs + Math.max(0, now() - tm.t0), itemId, my);
       if (my !== gen) return aborted();
       if (res.ok) {
         if (cur.mode === 'hls' && cur.offeredHevc && cur.videoCodec === 'h264') fmp4Ok = true;
@@ -632,7 +639,7 @@ export function createPlayer({ video, deps, now = Date.now, fake = false, canvas
     async setAudio(index) {
       if (!session || session.kind !== 'item') return aborted();
       if (index === tr.audioIndex) return { ok: true, mode: session.mode };
-      return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex });
+      return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail: true });
     },
     async setSubtitle(index) {
       if (!session || session.kind !== 'item') return;

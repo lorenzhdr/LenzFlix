@@ -8,9 +8,6 @@ export const ZAP_KEY = 'lfx-zapstats';
 export const ZAP_WARM_KEY = 'lfx-zapwarm';
 export const FORCE_HLS_KEY = 'lfx-forcehls';
 
-// Aufräumen: Rest der entfernten Startvarianten-Weiche (1.11.5).
-try { window.localStorage.removeItem('lfx-zapvariant'); } catch { /* Speicher gesperrt */ }
-
 function hashParam(name) {
   try { return parseHash(window.location.hash).params.get(name); } catch { return null; }
 }

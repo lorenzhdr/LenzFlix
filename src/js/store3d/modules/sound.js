@@ -219,6 +219,9 @@ export default {
       }
     }
     function schedule(upTo) {
+      // Nach verstecktem Tab nicht alle verpassten Schritte auf einmal einplanen: aufholen statt abspielen.
+      const lag = ac.currentTime - nextStep;
+      if (lag > STEP) { const k = Math.ceil(lag / STEP); nextStep += k * STEP; stepIdx += k; }
       while (nextStep < upTo) {
         const t = nextStep;
         const barStep = stepIdx % 8;

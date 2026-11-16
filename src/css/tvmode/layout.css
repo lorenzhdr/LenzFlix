@@ -160,6 +160,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-bar {
   background: var(--lfx-progress-rail);
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-fill { height: 100%; width: 0; border-radius: 2px; background: var(--lfx-tvm-accent); }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info.is-empty .lfx-tvm__info-bar { display: none; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__badges { display: flex; flex-wrap: wrap; gap: 6px; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__badges[hidden],
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-sub[hidden],
@@ -196,7 +197,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more {
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more[hidden] { display: none; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-more:focus-visible { outline: none; box-shadow: var(--lfx-tvm-ring); border-radius: 4px; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-next { color: var(--lfx-text-muted); font-size: 14px; }
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions { display: flex; flex-wrap: wrap; gap: var(--lfx-tvm-gap-btn, 10px); margin-top: 6px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__btn-ico { display: none; }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__btn-ico svg { display: block; }
 /* Zu wenig Platz (JS setzt .is-compact): nur Icons */

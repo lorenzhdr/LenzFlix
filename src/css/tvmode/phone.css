@@ -22,7 +22,19 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player {
   border-radius: 0;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
-html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-fullscreen { position: fixed; top: 0; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-fullscreen { position: fixed; top: 0; z-index: var(--lfx-tvm-z-full); box-shadow: none; }
+/* Einschalt-Knopf über der Zapp-Karte (hochkant: Karte ca. 80 px breit über die ganze Breite, mit Leiste bei 58 px); Werte nicht im Browser gemessen */
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-zapping .lfx-tvm__unmute { bottom: 104px; min-height: 40px; }
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-zapping.is-controls .lfx-tvm__unmute { bottom: 146px; }
+/* Querformat: Karte belegt höchstens die linke Hälfte, der Knopf weicht nach rechts aus */
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__player.is-zapping .lfx-tvm__unmute,
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__player.is-zapping.is-controls .lfx-tvm__unmute {
+  left: auto;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  transform: none;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: 48px;
+}
 /* Info kompakt: Titel 22, Badges neben der Zeit, Text einzeilig (Mehr klappt auf), Danach einzeilig, Knopfzeile 40 px */
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__info { padding: 12px var(--lfx-gutter) 4px; gap: 6px; width: 100%; }
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__info-head { gap: 8px; }

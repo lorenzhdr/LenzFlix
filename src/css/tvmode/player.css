@@ -59,11 +59,6 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__loading .lfx-tvm__spinner {
   border-top-color: var(--lfx-red);
   animation: lfx-tvm-spin 0.9s linear infinite;
 }
-@keyframes lfx-tvm-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* Hinweis „Füllprogramm …“ oben links */
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__banner {
@@ -157,11 +152,13 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
   cursor: pointer;
   transition: background var(--lfx-dur-fast) var(--lfx-ease);
 }
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn:hover,
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn:hover,
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute:hover,
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap:hover {
-  background: var(--lfx-red-hover);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn:hover,
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn:hover,
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute:hover,
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap:hover {
+    background: var(--lfx-red-hover);
+  }
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute {
   position: absolute;
@@ -171,6 +168,11 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute {
   min-height: 48px;
   padding: 0 28px;
   box-shadow: var(--lfx-shadow-card);
+  transition: bottom var(--lfx-dur) var(--lfx-ease);
+}
+/* Zapp-Karte (unten links) darf „Ton an“ nicht verdecken: Knopf rückt währenddessen darüber */
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-zapping .lfx-tvm__unmute {
+  bottom: 168px;
 }
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
   position: absolute;

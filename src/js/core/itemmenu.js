@@ -178,13 +178,21 @@ function teardown(s) {
   if (session === s) session = null;
 }
 
+/** Anker durch Neuaufbau (z. B. Billboard) abgehängt: das eindeutige Element mit gleicher Klassenliste nehmen. */
+function rebuiltAnchor(s) {
+  if (!s.anchorSel) return null;
+  const all = document.querySelectorAll(s.anchorSel);
+  return all.length === 1 ? all[0] : null;
+}
+
 function finish(s) {
   if (session !== s) return;
   teardown(s);
   const { anchor, opts, command, item } = s;
-  if (anchor && typeof anchor.focus === 'function' && anchor.isConnected) {
+  const target = anchor && anchor.isConnected ? anchor : rebuiltAnchor(s);
+  if (target && typeof target.focus === 'function') {
     try {
-      anchor.focus({ preventScroll: true });
+      target.focus({ preventScroll: true });
     } catch {
       /* Fokus ist optional */
     }
@@ -277,6 +285,7 @@ export function openItemMenu(item, anchor, opts = {}) {
   const s = {
     item,
     anchor,
+    anchorSel: anchor && anchor.classList && anchor.classList.length ? `.${[...anchor.classList].join('.')}` : '',
     opts,
     wrapper,
     command: null,

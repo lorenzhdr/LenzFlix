@@ -19,11 +19,6 @@ html:not(.layout-tv) .emby-scroller {
   );
 }
 
-/* Schmale Breiten: engerer Abstand (wirkt auch in der Breitenformel) */
-@media (max-width: 599px) {
-  html:not(.layout-tv) .emby-scroller { --lfx-card-gap: 4px; }
-}
-
 /* ---------- Layout der Zeile: Gap statt Karten-Margin ---------- */
 html:not(.layout-tv) .emby-scroller .itemsContainer.scrollSlider {
   gap: var(--lfx-card-gap);
@@ -82,9 +77,12 @@ html:not(.layout-tv) .emby-scroller .cardScalable .cardContent:has(.itemProgress
 html:not(.layout-tv) .emby-scroller .innerCardFooter.innerCardFooterClear {
   left: 0;
   right: 0;
-  bottom: -10px;
   overflow: visible;
   background: transparent;
+}
+/* eigene Regel: ohne :has (Firefox < 121) bleibt der Balken an Jellyfins Position im Bild, statt abgeschnitten zu werden */
+html:not(.layout-tv) .emby-scroller .cardContent:has(.itemProgressBar) .innerCardFooter.innerCardFooterClear {
+  bottom: -10px;
 }
 html:not(.layout-tv) .emby-scroller .innerCardFooterClear > .itemProgressBar {
   width: 60%;

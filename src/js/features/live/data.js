@@ -6,8 +6,8 @@ import { cached, clearCache } from '../../core/cache.js';
 
 export const PAGE_SIZE = 1000;
 export const EPISODE_PAGE_SIZE = 2000;
-export const MEM_TTL_MS = 6 * 60 * 60 * 1000;
-export const DAY_START_SHIFT_MS = 5 * 60 * 60 * 1000; // Sendetag beginnt um 5:00 lokaler Zeit
+const MEM_TTL_MS = 6 * 60 * 60 * 1000;
+const DAY_START_SHIFT_MS = 5 * 60 * 60 * 1000; // Sendetag beginnt um 5:00 lokaler Zeit
 const DB_NAME = 'lfx-live';
 const STORE = 'catalog';
 
@@ -172,11 +172,17 @@ function validRaw(x) {
   return Boolean(x && Array.isArray(x.movies) && Array.isArray(x.series) && Array.isArray(x.episodes) && Array.isArray(x.boxsets));
 }
 
+let lastKey = null;
+
 /** RawCatalog für den aktuellen Sendetag: IndexedDB -> sonst Server (dann zurückschreiben). Fehler des Servers werden geworfen. */
 export function loadCatalog({ onProgress, now } = {}) {
   const t = typeof now === 'function' ? now() : (Number.isFinite(now) ? now : Date.now());
   const uid = api.getUserId();
   const key = cacheKey(uid, t);
+  if (lastKey !== key) { // neuer Sendetag/Benutzer: Kataloge davor verwerfen (sonst bleiben sie bis zum Reload)
+    if (lastKey) clearCache('live:catalog:');
+    lastKey = key;
+  }
   return cached(`live:catalog:${key}`, async () => {
     if (hasIdb()) {
       try {

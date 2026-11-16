@@ -2,7 +2,7 @@
 import { h } from './tv.js';
 import { createLogo } from './logos.js';
 
-export const ERROR_TEXTS = {
+const ERROR_TEXTS = {
   video: { title: 'Kein Empfang auf diesem Gerät', sub: 'Dieses Gerät kann den Sender nicht empfangen' },
   browser: { title: 'Kein Empfang auf diesem Gerät', sub: 'Bitte einen anderen Browser verwenden' },
   audio: { title: 'Ton auf diesem Gerät nicht empfangbar', sub: 'Dem Konto fehlt die Berechtigung zur Ton-Umwandlung' },
@@ -10,7 +10,7 @@ export const ERROR_TEXTS = {
   network: { title: 'Empfangsstörung – erneuter Versuch …', sub: '' },
 };
 
-export function errorText(reason) {
+function errorText(reason) {
   return ERROR_TEXTS[reason] || ERROR_TEXTS.network;
 }
 

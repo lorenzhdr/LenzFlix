@@ -45,6 +45,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   let view = null;  // Eintrag für die Anzeige (beim Zappen sofort der Eintrag des neuen Senders)
   let gen = 0;
   let playing = false;
+  let trailerOn = false; // Füller-Trailer läuft (playing bleibt false, damit watchTune/syncTo ihn auslassen)
   let phase = 'off';
   let reason = null;
   let card = null;
@@ -273,6 +274,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     entry = e;
     view = e;
     playing = false;
+    trailerOn = false;
     unlater('retry');
     unlater('trailer');
     nb.stop();
@@ -311,7 +313,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       let res;
       try { res = await player.playUrl(pick.url, pick.offsetMs || 0); } catch { res = { ok: false, reason: 'network' }; }
       if (g !== gen) return;
-      if (res && res.ok !== false) { phase = 'playing'; reason = null; card = null; changed(); return; }
+      if (res && res.ok !== false) { trailerOn = true; phase = 'playing'; reason = null; card = null; changed(); return; }
     }
     safe(() => player.stop());
     showPause(e);
@@ -343,6 +345,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     watchLeave();
     if (!immediate) safe(() => player.stop());
     playing = false;
+    trailerOn = false;
     entry = null;
     try { view = scheduler.nowOn(no, clock()).entry; } catch { view = null; }
     banner = null;
@@ -408,6 +411,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     safe(() => player.stop());
     on = false;
     playing = false;
+    trailerOn = false;
     needsTap = false;
     mutedByPolicy = false;
     entry = null;
@@ -453,7 +457,11 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
 
   async function setAudio(i) {
     let res;
+    const g = gen;
+    const e = entry;
     try { res = await player.setAudio(i); } catch { res = { ok: false }; }
+    // Ladefenster: setAudio löst den laufenden Start ab (der meldet 'aborted'), also dessen Ergebnis übernehmen
+    if (res && res.ok && phase === 'loading' && g === gen && e === entry) handleResult(res, g, e);
     if (res && res.ok === false && res.reason !== 'aborted') message('Diese Tonspur ist nicht verfügbar');
     return res;
   }
@@ -484,7 +492,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
       } else if (ph === 'playing') {
         if (stallArmed) clearStall();
         if (playing) watchTune(); // idempotent; nach Stillstand wieder aufnehmen
-        if (phase === 'loading' && playing) { phase = 'playing'; changed(); }
+        if (phase === 'loading' && (playing || trailerOn)) { phase = 'playing'; changed(); }
       } else if (ph === 'error') {
         clearStall();
         watchLeave(true);

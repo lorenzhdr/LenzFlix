@@ -336,3 +336,46 @@ describe('tvmode epg-grid.js · Titel rückt nach', () => {
     expect(spy).toHaveBeenCalledWith('scroll', expect.any(Function));
   });
 });
+
+describe('tvmode epg-grid.js: Welle 3', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
+  const key = (el, k) => { const ev = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }); el.dispatchEvent(ev); return ev; };
+
+  it('B092/H015: Tageswechsel springt zurück zur Jetzt-Linie und behält den Fokus', () => {
+    const { grid, setNow } = make();
+    const sc = grid.el.querySelector('.lfx-tvm__epg-scroll');
+    const row = grid.el.querySelector('.lfx-tvm__epg-row[data-tvm-no="3"]');
+    const cell = row.querySelector('.lfx-tvm__epg-cell.is-current');
+    cell.focus();
+    sc.scrollLeft = 5000;
+    const t = dayBounds(D0 + 1).start + 5 * MS;
+    setNow(t);
+    grid.tick(t);
+    expect(sc.scrollLeft).not.toBe(5000);
+    const f = document.activeElement;
+    expect(f.classList.contains('lfx-tvm__epg-cell')).toBe(true);
+    expect(f.closest('.lfx-tvm__epg-row').dataset.tvmNo).toBe('3');
+  });
+
+  it('H018/A135: ↑ in der ersten und ↓ in der letzten Zeile werden geschluckt (kein Zappen)', () => {
+    const { grid } = make();
+    const rows = grid.el.querySelectorAll('.lfx-tvm__epg-row');
+    const first = rows[0].querySelector('.lfx-tvm__epg-cell');
+    const last = rows[rows.length - 1].querySelector('.lfx-tvm__epg-cell');
+    expect(key(first, 'ArrowUp').defaultPrevented).toBe(true);
+    expect(key(last, 'ArrowDown').defaultPrevented).toBe(true);
+  });
+
+  it('B093: genau eine Zelle ist Tab-Stopp (Roving Tabindex)', () => {
+    const { grid } = make();
+    const stops = () => [...grid.el.querySelectorAll('.lfx-tvm__epg-cell')].filter((c) => c.tabIndex === 0);
+    expect(stops()).toHaveLength(1);
+    const other = grid.el.querySelectorAll('.lfx-tvm__epg-row')[4].querySelector('.lfx-tvm__epg-cell');
+    other.focus();
+    expect(stops()).toEqual([other]);
+    key(other, 'ArrowRight');
+    expect(stops()).toHaveLength(1);
+    grid.update({ on: true, channel: 7 });
+    expect(stops()).toHaveLength(1);
+  });
+});

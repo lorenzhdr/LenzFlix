@@ -42,7 +42,9 @@ html.lfx-js .lfx-np__pill {
   cursor: pointer;
   transition: background var(--lfx-dur-fast) var(--lfx-ease), color var(--lfx-dur-fast) var(--lfx-ease);
 }
-html.lfx-js .lfx-np__pill:hover { background: var(--lfx-pill-active); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-np__pill:hover { background: var(--lfx-pill-active); }
+}
 html.lfx-js .lfx-np__pill.is-active,
 html.lfx-js .lfx-np__pill.is-active:hover { background: #fff; color: #000; border-color: #fff; }
 html.lfx-js .lfx-np__pill:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
@@ -152,8 +154,8 @@ html.lfx-js .lfx-np__overview {
 html.lfx-js .lfx-np__genres { margin-top: 10px; color: #fff; font-size: 14px; font-weight: 500; }
 
 @media (max-width: 799px) {
-  html.lfx-js .lfx-np { padding-top: 56px; }
-  html.lfx-js .lfx-np__tabs { top: 56px; padding-left: 4vw; padding-right: 4vw; }
+  html.lfx-js .lfx-np { padding-top: calc(56px + env(safe-area-inset-top, 0px)); }
+  html.lfx-js .lfx-np__tabs { top: calc(56px + env(safe-area-inset-top, 0px)); padding-left: 4vw; padding-right: 4vw; }
   html.lfx-js .lfx-np__entry { grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
   html.lfx-js .lfx-np__day { font-size: 28px; }
   html.lfx-js .lfx-np__month { font-size: 12px; }

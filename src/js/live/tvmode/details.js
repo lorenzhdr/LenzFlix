@@ -39,8 +39,9 @@ export function createDetails({ deps = {}, delayMs = 400, setTimer = setTimeout,
     /** Text oder undefined (noch nicht geladen). Leerer String = geladen, aber ohne Inhaltsangabe. */
     get: (id) => texts.get(id),
     /** Lädt die Inhaltsangabe entprellt; eine noch wartende andere Id wird verworfen. */
-    request(id) {
+    request(id, immediate) {
       if (!alive || !id || !can() || texts.has(id) || inflight.has(id)) return;
+      if (immediate) { load(id); return; } // Info-Karte: sofort, die wartende Id der Infoleiste bleibt
       waitId = id;
       if (timer) clearTimer(timer);
       timer = setTimer(() => {

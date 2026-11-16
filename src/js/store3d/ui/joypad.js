@@ -51,7 +51,7 @@ export function createJoypad(host, { onWalk, onLook } = {}) {
     if (walkId !== null) return;
     walkId = e.pointerId;
     capture(walk, e.pointerId);
-    try { if (navigator.vibrate) navigator.vibrate(8); } catch { /* egal */ }
+    try { if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(8); } catch { /* egal */ }
     setWalk(true);
   }
   function walkUp(e) {

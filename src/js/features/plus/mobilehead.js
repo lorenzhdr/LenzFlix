@@ -1,6 +1,7 @@
 // LENZ+: Handy-Kopfzeile (<800 px): Seitentitel, Zurück-Pfeil auf Unterseiten, Blur-Streifen beim Scrollen.
 // Eigener Container #lfx-plus-mhead; die native AppBar wird nur per html-Klasse (lfx-plus-mhead-on) ausgeblendet.
 import { h, mountPoint, unmountPoint } from '../../core/dom.js';
+import { closePopover } from '../../core/popover.js';
 import { isReady } from '../../core/api.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
@@ -119,6 +120,7 @@ const plusMobileHead = {
   },
   unmount() {
     state.seq++;
+    closePopover();
     for (const fn of state.cleanups.splice(0)) fn();
     if (state.raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(state.raf);
     state.raf = 0;

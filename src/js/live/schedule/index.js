@@ -37,6 +37,7 @@ function validPlan(list, b) {
 export function createScheduler(catalog, opts = {}) {
   const { ctx, channels, planBuiltin } = createContext(catalog, opts);
   const now = opts.now || (() => Date.now());
+  const MEMO_MAX = 18 * 8;
   const memo = new Map();
   const specialFor = (no) => (opts.specials && opts.specials[no]) || getSpecial(no);
 
@@ -53,6 +54,7 @@ export function createScheduler(catalog, opts = {}) {
       if (sp && typeof sp.planDay === 'function') list = sp.planDay(ctx, D);
       p = validPlan(list, b) ? Object.freeze(list.map((e) => Object.freeze({ ...e }))) : closedownDay(D, 'empty');
     } else p = planBuiltin(no, D);
+    if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value); // FIFO: Dauerbetrieb wächst nicht (planDay ist rein)
     memo.set(key, p);
     return p;
   }

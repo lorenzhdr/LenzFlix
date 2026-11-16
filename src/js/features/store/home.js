@@ -10,10 +10,12 @@ import { isTheme, onThemeChange, setTheme } from '../../core/theme.js';
 import { openThemePicker } from '../../core/themepicker.js';
 import { ensureThemeJs, removeThemeJs } from '../../core/themejs.js';
 import { toast } from '../../core/toast.js';
+import { clearCache } from '../../core/cache.js';
 import { logout } from '../../shared/profile.js';
 import { searchItems } from '../../shared/search.js';
 import { loadLocalTrailer, trailerUrl } from '../../shared/trailer.js';
 import { loadCatalog } from './data.js';
+import { fatalText } from '../live/deps.js';
 import { closeProfileMenu, hudButton, profileButton, toggleProfileMenu, wordmark } from './hud.js';
 import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js';
 import * as prefs from './prefs.js';
@@ -27,7 +29,7 @@ const FADE_MS = 450;
 let gen = 0;
 let waitTimer = null;
 let fadeTimer = null;
-let inst = null; // { instance, unsubTheme, disposeTimer, ready, parked }
+let inst = null; // { instance, uid, unsubTheme, offPlay, disposeTimer, ready, parked }
 let ui = null; // { root, stage, loading, fill, label, hud, avatar, searchBtn }
 let lastKey = null;
 let shown = false; // Bühne gerade im DOM
@@ -51,7 +53,7 @@ function releaseParked() {
   const cur = inst;
   if (!cur || !cur.parked) return;
   cur.parked = false;
-  try { cur.instance.suspend(); } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
+  try { cur.instance.suspend(); cur.suspended = true; } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
   unparkStage();
   clearTimeout(cur.disposeTimer);
   cur.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
@@ -103,6 +105,7 @@ function disposeInstance() {
   inst = null;
   clearTimeout(cur.disposeTimer);
   if (cur.unsubTheme) cur.unsubTheme();
+  if (cur.offPlay) cur.offPlay();
   try { cur.instance.dispose(); } catch (e) { console.warn('[LenzFlix] store dispose', e && e.message); }
   unparkStage();
   if (bridge) bridge.activate(false);
@@ -211,11 +214,6 @@ function showFallback(message, { retry = false, detail = '' } = {}) {
   ui.root.insertBefore(panel, ui.hud);
 }
 
-function fatalText(err) {
-  const m = err && err.message ? String(err.message) : '';
-  return m.replace(/api_key=[^&\s]+/gi, 'api_key=…').slice(0, 200);
-}
-
 // ------------------------------------------------------------------ Route
 
 function applyRoute(r) {
@@ -229,6 +227,7 @@ function applyRoute(r) {
 }
 
 const routeKey = (route) => (route && route.hash) || '';
+const viewKey = (r) => (r ? `${r.kind}|${r.id}|${r.q}` : '');
 
 // ------------------------------------------------------------------ Deps / Start
 
@@ -355,9 +354,15 @@ async function boot(myGen, route) {
       try { instance.dispose(); } catch { /* egal */ }
       return;
     }
-    const entry = { instance, ready: false, disposeTimer: null, unsubTheme: null };
+    const entry = { instance, uid: api.getUserId(), ready: false, disposeTimer: null, unsubTheme: null, offPlay: null };
     entry.unsubTheme = onThemeChange(({ theme }) => { if (theme !== 'store') disposeInstance(); });
+    // Abspielen ändert Fortschritt/Weiterschauen: Katalog-Cache leeren, damit ein Neuaufbau frische Daten lädt
+    const dropCatalog = () => clearCache('store:catalog:');
+    window.addEventListener('lfx:play', dropCatalog);
+    entry.offPlay = () => window.removeEventListener('lfx:play', dropCatalog);
     inst = entry;
+    const cur = storeHomeRoute(parseCurrent()); // Route kann sich während des Ladens geändert haben
+    if (viewKey(cur) !== viewKey(route)) applyRoute(cur);
   } catch (e) {
     if (myGen === gen && ui) showFallback('Die 3D-Videothek konnte nicht gestartet werden.', { retry: true, detail: fatalText(e) });
   }
@@ -426,6 +431,7 @@ function start(tab, route, myGen) {
   root().classList.add(ON_CLASS);
   shown = true;
   const r = storeHomeRoute(route);
+  if (inst && inst.instance && inst.uid !== api.getUserId()) disposeInstance(); // Instanz eines anderen Benutzers nie fortsetzen
   if (inst && inst.instance) {
     if (inst.parked) {
       // Zeile 6: aus dem VR-Kino zurück, Bühne samt laufender Session wieder einhängen (kein resume)
@@ -437,10 +443,14 @@ function start(tab, route, myGen) {
     }
     // Suspendierte Instanz weiterverwenden: kein Ladebildschirm
     clearDisposeTimer();
-    ui.loading.remove();
-    ui.searchBtn.disabled = false;
-    ui.stage.classList.add('is-ready');
+    if (inst.ready) {
+      ui.loading.remove();
+      ui.searchBtn.disabled = false;
+      ui.stage.classList.add('is-ready');
+    }
     try {
+      if (!inst.suspended) inst.instance.suspend(); // resume() hängt den neuen Host nur nach suspend() um (ersetzter #homeTab)
+      inst.suspended = false;
       inst.instance.resume(ui.stage);
     } catch (e) {
       console.warn('[LenzFlix] store resume', e && e.message);
@@ -500,7 +510,7 @@ const storeHome = {
     if (same) {
       // viewshow feuert öfter: nur nachziehen, wenn die Bühne fehlt (z. B. #homeTab neu aufgebaut)
       const tab = findHomeTab();
-      if (!tab || !ui || tab.contains(ui.root)) return;
+      if (!tab || (ui && tab.contains(ui.root))) return;
       ensure(route);
       return;
     }
@@ -528,7 +538,7 @@ const storeHome = {
         }
       }
       if (!parkedNow) {
-        try { inst.instance.suspend(); } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
+        try { inst.instance.suspend(); inst.suspended = true; } catch (e) { console.warn('[LenzFlix] store suspend', e && e.message); }
         clearDisposeTimer();
         inst.disposeTimer = setTimeout(disposeInstance, SUSPEND_MS);
       }

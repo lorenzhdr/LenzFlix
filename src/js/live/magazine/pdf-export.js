@@ -5,7 +5,7 @@ import { renderMagazinePdf } from '../pdf/render.js';
 
 export const IMG_MAX_W = 360;
 export const IMG_TIMEOUT_MS = 8000;
-export const JPEG_QUALITY = 0.8;
+const JPEG_QUALITY = 0.8;
 
 export function createPdfExport({ imageUrl, doc = document, win = null, now = null, time = {} } = {}) {
   const w = win || doc.defaultView || (typeof window !== 'undefined' ? window : null);

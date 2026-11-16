@@ -16,15 +16,6 @@ describe('Touch-Feineinstellung', () => {
     prefs.savePrefs({ touchControl: 'joystick' });
     expect(prefs.getTouchControl()).toBe('joystick');
   });
-  it('alte lookInvert-Schlüssel werden entfernt und nicht übernommen', () => {
-    localStorage.setItem('lfx.store.lookInvertY.u1', '1');
-    localStorage.setItem('lfx.store.lookInvertX.u1', '1');
-    const t = prefs.getTouchTune();
-    expect(t.lookFlipY).toBe(false);
-    expect(t.lookFlipX).toBe(false);
-    expect(localStorage.getItem('lfx.store.lookInvertY.u1')).toBeNull();
-    expect(localStorage.getItem('lfx.store.lookInvertX.u1')).toBeNull();
-  });
   it('Umgreifen speichern und validieren', () => {
     prefs.savePrefs({ touchRegrip: 'long' });
     expect(prefs.getTouchTune().touchRegrip).toBe('long');

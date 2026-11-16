@@ -29123,10 +29123,6 @@ void main() {
       this.stable = 0;
     }
     sample(dt, now) {
-      if (dt > 0.25) {
-        this.reset();
-        return null;
-      }
       this.frames++;
       this.elapsed += dt;
       if (this.elapsed < 2) return null;
@@ -29249,6 +29245,7 @@ void main() {
       let dt = (now - last) / 1e3;
       last = now;
       if (!(dt > 0)) dt = 1 / 60;
+      const rawDt = dt;
       if (dt > 0.25) dt = 0.016;
       acc += dt;
       accN++;
@@ -29259,7 +29256,7 @@ void main() {
         accN = 0;
       }
       if (autoOn && !inXr()) {
-        const l = aq.sample(dt, now);
+        const l = aq.sample(rawDt, now);
         if (l) {
           setLevel(l);
           if (onAutoLevel) onAutoLevel(l);
@@ -29942,7 +29939,12 @@ void main() {
       night: toTexture(nightCanvas(), { aniso: 1, mips: false })
     };
     t.setAnisotropy = (n) => {
-      for (const k of ["carpet", "carpetRed", "carpetKids", "wood", "wallpaper", "ceiling"]) t[k].anisotropy = n;
+      for (const k of ["carpet", "carpetRed", "carpetKids", "wood", "wallpaper", "ceiling"]) {
+        if (t[k].anisotropy !== n) {
+          t[k].anisotropy = n;
+          t[k].needsUpdate = true;
+        }
+      }
     };
     t.dispose = () => {
       for (const k of Object.keys(t)) if (t[k] && t[k].isTexture) t[k].dispose();
@@ -30317,7 +30319,8 @@ void main() {
     const spec = layout.spec || shelfSpec(false);
     const frames = layout.runs.map((r) => frameGeometry(r, spec));
     const frameMesh = new Mesh(
-      mergeGeometries(frames, false),
+      frames.length ? mergeGeometries(frames, false) : new BufferGeometry(),
+      // leerer Katalog: mergeGeometries([]) wirft
       new MeshLambertMaterial({ map: woodTex, vertexColors: true })
     );
     frames.forEach((g) => g.dispose());
@@ -31271,7 +31274,7 @@ void main() {
       const maxTex = cap && cap.maxTextureSize || 0;
       return this.preset.level !== "low" && this.preset.atlas >= 1024 && maxTex >= HI_SIZE;
     }
-    /** Höchstzahl 2048er-Atlanten: Limit je Gerät (8 / Handy 4), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
+    /** Höchstzahl 2048er-Atlanten: Limit je Gerät (4 / Handy 2), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
     get hiCap() {
       if (!this.hiEnabled) return 0;
       return Math.max(0, Math.min(this.hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
@@ -31337,7 +31340,7 @@ void main() {
           used--;
         }
       }
-      for (const f of this.faces) if (f.loading && !inRadius.has(f) && f.score > radius * 1.25) this.cancelLoad(f);
+      for (const f of this.faces) if (f.loading && !inRadius.has(f) && f.d > radius * 1.25) this.cancelLoad(f);
       let loadingNow = this.faces.reduce((n, f) => n + (f.loading ? 1 : 0), 0);
       used = this.usedCount;
       let ph = 0;
@@ -31590,6 +31593,7 @@ void main() {
       l.bitmaps.clear();
       f.loading = null;
       this.queue = this.queue.filter((j) => j.loading !== l);
+      this.composeQueue = this.composeQueue.filter((j) => !(j.f === f && j.kind === "full"));
     }
     cancelHiLoad(f) {
       const l = f.hiLoading;
@@ -31996,7 +32000,7 @@ void main() {
           this.path = null;
           const cb = this.onArrive;
           this.onArrive = null;
-          if (cb) cb();
+          if (cb) cb(false);
         }
       }
       if (this.turnTo && !manual) {
@@ -32138,6 +32142,7 @@ void main() {
       this.zoomBtn = false;
       this.syncZoom();
       this.releaseLock();
+      this.exiting = false;
     }
     clearLockTimer() {
       if (this.lockTimer) {
@@ -32237,6 +32242,9 @@ void main() {
         }
         this.down.clear();
         if (!wasIntentional && this.ctx.getMode() === "play") this.ctx.onLockLost();
+      } else if (this.ctx.getMode() !== "play") {
+        this.releaseLock();
+        return;
       } else {
         this.dragLook = false;
         this.retried = false;
@@ -32290,6 +32298,7 @@ void main() {
       const mode = this.ctx.getMode();
       const esc = isDown && e.code === "Escape";
       if (esc ? typingText(e.target) : typing(e.target)) return;
+      if (esc && document.documentElement.classList.contains("lfx-themepicker-open") || esc && document.documentElement.classList.contains("lfx-popover-open")) return;
       if (esc) {
         if (mode === "hold" || mode === "paused" || mode === "overlay") {
           e.preventDefault();
@@ -32305,7 +32314,7 @@ void main() {
       if (isDown && !e.repeat && mode === "play" && this.relockArmed && !this.locked && !this.dragLook && !this.inflight && e.code !== "Escape") this.requestLock();
       const k = KEYS[e.code];
       if (k) {
-        if (mode !== "play" && e.code.startsWith("Arrow")) return;
+        if (isDown && mode !== "play" && e.code.startsWith("Arrow")) return;
         e.preventDefault();
         e.stopPropagation();
         if (mode === "play" && isDown) this.down.add(k);
@@ -32375,7 +32384,7 @@ void main() {
       walkId = e.pointerId;
       capture(walk, e.pointerId);
       try {
-        if (navigator.vibrate) navigator.vibrate(8);
+        if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(8);
       } catch {
       }
       setWalk(true);
@@ -32677,7 +32686,7 @@ void main() {
       if (this.currentZoom() !== 1) this.setZoom(1);
       this.showRing(p.x, p.y);
       try {
-        if (navigator.vibrate) navigator.vibrate(8);
+        if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(8);
       } catch {
       }
     }
@@ -33710,8 +33719,10 @@ void main() {
         input.maxLength = 80;
         field.appendChild(input);
         const status = h("div", "lfx-store-term-status");
+        status.setAttribute("role", "status");
+        status.setAttribute("aria-live", "polite");
         const list = h("div", "lfx-store-term-list");
-        list.setAttribute("role", "listbox");
+        list.setAttribute("role", "list");
         const help = h("div", "lfx-store-term-help");
         help.hidden = true;
         for (const line of [
@@ -33748,7 +33759,8 @@ void main() {
           results.forEach((r, k) => {
             const on = k === sel;
             r.el.classList.toggle("is-sel", on);
-            r.el.setAttribute("aria-selected", on ? "true" : "false");
+            if (on) r.el.setAttribute("aria-current", "true");
+            else r.el.removeAttribute("aria-current");
           });
           if (scroll) {
             const el2 = results[sel].el;
@@ -33774,7 +33786,7 @@ void main() {
         }
         function addRow(desc) {
           const row = h("div", "lfx-store-term-row");
-          row.setAttribute("role", "option");
+          row.setAttribute("role", "listitem");
           const idx = results.length;
           const main = h("div", "lfx-store-term-main");
           main.appendChild(h("span", "lfx-store-term-name", desc.title));
@@ -33854,9 +33866,14 @@ void main() {
           }
         }
         input.addEventListener("input", () => schedule(input.value, false));
-        keyBtn("F1 Hilfe", () => {
+        const toggleHelp = () => {
           help.hidden = !help.hidden;
-        });
+          helpBtn.setAttribute("aria-expanded", help.hidden ? "false" : "true");
+        };
+        const helpBtn = keyBtn("F1 Hilfe", toggleHelp);
+        help.id = "lfx-store-term-help";
+        helpBtn.setAttribute("aria-controls", help.id);
+        helpBtn.setAttribute("aria-expanded", "false");
         keyBtn("F3 Hinf\xFChren", () => act("guide"));
         keyBtn("F5 Tresen", () => act(selected() && selected().desc.isEpisode ? "series" : "counter"));
         keyBtn("Esc Ende", () => ctx.overlay.close());
@@ -33894,7 +33911,7 @@ void main() {
             }
             case "F1":
               e.preventDefault();
-              help.hidden = !help.hidden;
+              toggleHelp();
               break;
             case "F3":
               e.preventDefault();
@@ -34940,6 +34957,12 @@ void main() {
         }
       }
       function schedule(upTo) {
+        const lag = ac.currentTime - nextStep;
+        if (lag > STEP) {
+          const k = Math.ceil(lag / STEP);
+          nextStep += k * STEP;
+          stepIdx += k;
+        }
         while (nextStep < upTo) {
           const t = nextStep;
           const barStep = stepIdx % 8;
@@ -36739,7 +36762,7 @@ void main() {
       const host = ctx.renderer.domElement.parentNode;
       const user = ctx.deps.user && ctx.deps.user.name || "";
       const rand = Math.random;
-      const limiter = createLimiter(2e4);
+      const limiter = createLimiter(20);
       const lastIdx = {};
       const deptOf = /* @__PURE__ */ new Map();
       for (const d of ctx.catalog.departments || []) {
@@ -36967,6 +36990,9 @@ void main() {
       function openDialogDom() {
         const el2 = document.createElement("div");
         el2.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
+        el2.setAttribute("role", "dialog");
+        el2.setAttribute("aria-modal", "true");
+        el2.setAttribute("aria-label", "Richard \u2013 Kasse");
         const card = document.createElement("div");
         card.className = "lfx-store-tip-card";
         const h2 = document.createElement("div");
@@ -36992,8 +37018,8 @@ void main() {
               b.addEventListener("click", () => flow.act(bt.id));
               row.appendChild(b);
             }
-            if (first && m.choices) {
-              const f = row.querySelector("button");
+            if (first && m.choices || !first && !ctx.isTouch) {
+              const f = row.querySelector(".is-primary") || row.querySelector("button");
               if (f && !ctx.isTouch) f.focus({ preventScroll: true });
             }
           },
@@ -37882,7 +37908,7 @@ void main() {
         if (discovering) return discovering;
         discovering = (async () => {
           try {
-            while (trailers.length < want && cIdx < cands.length && !ac.signal.aborted) {
+            while (trailers.length < want && cIdx < cands.length && !ac.signal.aborted && !suspended) {
               const it = cands[cIdx++];
               try {
                 const full = await withTimeout(ctx.deps.getItem(it.Id), 6e3);
@@ -38157,9 +38183,12 @@ void main() {
         const bUp = button("Lauter", "lfx-store-couch-btn", () => setVol(vol + 0.15));
         const bWatch = button("Diesen Film ansehen", "lfx-store-couch-btn is-main", () => watch());
         row.append(bStand, bNext, bSnd, bDn, bUp, bWatch);
-        bar.append(info, row);
+        const volEl = h("span", "lfx-store-couch-vol");
+        volEl.setAttribute("role", "status");
+        volEl.style.cssText = "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap";
+        bar.append(info, row, volEl);
         root.appendChild(bar);
-        return { root, title, tag, bSnd, bDn, bUp, last: "" };
+        return { root, title, tag, bSnd, bDn, bUp, volEl, last: "" };
       }
       function refreshUi() {
         if (!ui) return;
@@ -38204,6 +38233,7 @@ void main() {
         } catch {
         }
         if (vol > 0) userMuted = false;
+        if (ui && ui.volEl) ui.volEl.textContent = `Lautst\xE4rke ${Math.round(vol * 100)} %`;
         applyAudio(trailer && trailer.video);
         if (trailer && trailer.video.paused) playVideo(trailer.video);
         refreshUi();
@@ -39187,6 +39217,7 @@ void main() {
     const panel = el("div", "lfx-store-pause-panel");
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "Pause");
+    panel.setAttribute("aria-modal", "true");
     const title = el("div", "lfx-store-pause-title", "Pause");
     panel.appendChild(title);
     const mk2 = (label, fn, cls = "") => {
@@ -39239,6 +39270,7 @@ void main() {
     const pickPanel = el("div", "lfx-store-voicepick-panel");
     pickPanel.setAttribute("role", "dialog");
     pickPanel.setAttribute("aria-label", "Stimme");
+    pickPanel.setAttribute("aria-modal", "true");
     pickPanel.appendChild(el("div", "lfx-store-pause-title", "Stimme"));
     const list = el("div", "lfx-store-voicelist");
     const pitchBtn = el("button", "lfx-store-act lfx-store-voicepitch");
@@ -39295,9 +39327,14 @@ void main() {
       a.onVoice({ pitch: PITCH_NEXT[prefsNow().pitch] || "sehrtief" });
       renderPick();
     });
+    const syncInert = () => {
+      if (pick.hidden && tp.hidden) panel.removeAttribute("inert");
+      else panel.setAttribute("inert", "");
+    };
     function openPick() {
       renderPick();
       pick.hidden = false;
+      syncInert();
       const on = list.querySelector('[aria-pressed="true"]') || list.querySelector("button");
       if (on) {
         try {
@@ -39309,6 +39346,7 @@ void main() {
     function closePick() {
       if (pick.hidden) return;
       pick.hidden = true;
+      syncInert();
       try {
         vo.focus({ preventScroll: true });
       } catch {
@@ -39329,6 +39367,7 @@ void main() {
     const tpPanel = el("div", "lfx-store-voicepick-panel");
     tpPanel.setAttribute("role", "dialog");
     tpPanel.setAttribute("aria-label", "Touch-Steuerung");
+    tpPanel.setAttribute("aria-modal", "true");
     tpPanel.appendChild(el("div", "lfx-store-pause-title", "Touch-Steuerung"));
     const tuneNow = () => a.getTouchTune && a.getTouchTune() || {};
     const mkT = (fn) => {
@@ -39382,6 +39421,7 @@ void main() {
     function openTouch() {
       refreshTouch();
       tp.hidden = false;
+      syncInert();
       try {
         tSchemeB.focus({ preventScroll: true });
       } catch {
@@ -39390,6 +39430,7 @@ void main() {
     function closeTouch() {
       if (tp.hidden) return;
       tp.hidden = true;
+      syncInert();
       try {
         tc.focus({ preventScroll: true });
       } catch {
@@ -39411,12 +39452,14 @@ void main() {
       if (!tp.hidden) refreshTouch();
       const pr = prefsNow();
       const wantOnline = !!pr.online;
-      vo.hidden = !a.onVoice || !a.getSound();
+      vo.hidden = !a.onVoice;
+      vo.disabled = !a.getSound();
       const chosen = pr.name ? voicesNow().find((v) => v.name === pr.name) : null;
       vo.textContent = `Stimme: ${chosen ? shortVoiceName(chosen.name) : "Automatisch"}`;
-      const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline) : "";
+      const vt = voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline);
       note.textContent = vt;
       note.hidden = !vt;
+      note.style.visibility = a.getSound() ? "" : "hidden";
       const fk = a.fullscreenKind ? a.fullscreenKind() : "none";
       fs.hidden = fk !== "api" && fk !== "guide";
       fs.textContent = fk === "guide" ? "Vollbild \u2026" : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? "An" : "Aus"}`;
@@ -39426,6 +39469,20 @@ void main() {
     root.appendChild(tp);
     root.addEventListener("click", (e) => {
       if (e.target === root) a.onResume();
+    });
+    root.addEventListener("keydown", (e) => {
+      if (e.key !== "Tab") return;
+      const layer = !tp.hidden ? tp : !pick.hidden ? pick : panel;
+      const list2 = [...layer.querySelectorAll("button")].filter((b) => !b.disabled && !b.closest("[hidden]"));
+      if (!list2.length) return;
+      const i = list2.indexOf(document.activeElement);
+      const next = e.shiftKey ? i <= 0 ? list2[list2.length - 1] : null : i < 0 || i === list2.length - 1 ? list2[0] : null;
+      if (!next) return;
+      e.preventDefault();
+      try {
+        next.focus({ preventScroll: true });
+      } catch {
+      }
     });
     host.appendChild(root);
     refresh();
@@ -39448,6 +39505,7 @@ void main() {
       show() {
         pick.hidden = true;
         tp.hidden = true;
+        syncInert();
         refresh();
         focusBack = document.activeElement;
         root.hidden = false;
@@ -39582,7 +39640,7 @@ void main() {
     const meta = [
       item.ProductionYear,
       fsk(item.OfficialRating),
-      item.RunTimeTicks ? ticksToText(item.RunTimeTicks) : item.ChildCount ? `${item.ChildCount} Staffeln` : "",
+      item.RunTimeTicks ? ticksToText(item.RunTimeTicks) : item.ChildCount ? `${item.ChildCount} ${item.ChildCount === 1 ? "Staffel" : "Staffeln"}` : "",
       item.CommunityRating ? `\u2605 ${Number(item.CommunityRating).toFixed(1).replace(".", ",")}` : ""
     ].filter(Boolean).join(" \xB7 ");
     y += 4;
@@ -39841,6 +39899,8 @@ void main() {
       const root = el("div", "lfx-store-hold");
       const drag = el("div", "lfx-store-hold-drag");
       const panel = el("div", "lfx-store-hold-panel");
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-label", item.Name || "H\xFClle");
       const title = el("div", "lfx-store-hold-title", item.Name || "");
       const meta = el("div", "lfx-store-hold-meta");
       const actions = el("div", "lfx-store-hold-actions");
@@ -39859,6 +39919,7 @@ void main() {
         return b;
       };
       this.dom.btns = {};
+      this.focusBack = document.activeElement;
       const { series: isSeries, resumable } = itemFlags(item);
       if (!isSeries) this.dom.btns.play = btn("Abspielen", () => this.play(item, false), "lfx-store-act--primary");
       if (resumable) this.dom.btns.resume = btn("Weiterschauen", () => this.play(item, true), "lfx-store-act--primary");
@@ -39870,6 +39931,13 @@ void main() {
       });
       this.dom.btns.back = btn("Zur\xFCckstellen", () => this.close(true));
       this.refreshMeta();
+      const first = actions.querySelector("button");
+      if (first) {
+        try {
+          first.focus({ preventScroll: true });
+        } catch {
+        }
+      }
       if (isSeries) this.buildSeries(token);
       let last = null;
       drag.addEventListener("pointerdown", (e) => {
@@ -39911,8 +39979,10 @@ void main() {
       const { fav, seen } = itemFlags(it);
       this.dom.btns.fav.textContent = fav ? "Gemerkt \u2713" : "Merken";
       this.dom.btns.fav.classList.toggle("is-on", fav);
+      this.dom.btns.fav.setAttribute("aria-pressed", fav ? "true" : "false");
       this.dom.btns.seen.textContent = seen ? "Gesehen \u2713" : "Gesehen";
       this.dom.btns.seen.classList.toggle("is-on", seen);
+      this.dom.btns.seen.setAttribute("aria-pressed", seen ? "true" : "false");
     }
     async toggle(kind) {
       const it = this.item;
@@ -39985,11 +40055,16 @@ void main() {
         return b;
       })();
       let eps = [];
+      let selGen = 0;
       const select = async (i) => {
-        [...tabs.children].forEach((c, k) => c.classList.toggle("is-on", k === i));
+        const gen = ++selGen;
+        [...tabs.children].forEach((c, k) => {
+          c.classList.toggle("is-on", k === i);
+          c.setAttribute("aria-pressed", k === i ? "true" : "false");
+        });
         list.textContent = "Lade Folgen \u2026";
         const got = await this.loadEpisodes(seasons[i].Id, token);
-        if (got === null) return;
+        if (got === null || gen !== selGen) return;
         eps = got;
         list.textContent = "";
         const m = seriesModel(seasons, eps, i);
@@ -40035,7 +40110,7 @@ void main() {
         season: (i) => this.selectVrSeason(i),
         episode: (ep, resume) => this.play(ep, resume)
       });
-      spec.anchor = { head: true, offset: { x: this.hand === "left" ? 0.3 : -0.3, y: -0.15, z: 0.65 }, follow: true };
+      spec.anchor = { head: true, offset: { x: this.hand === "left" ? 0.2 : -0.2, y: -0.15, z: 0.65 }, follow: true };
       spec.onClose = () => {
         if (this.vr && this.isXr()) this.close(true);
       };
@@ -40123,7 +40198,9 @@ void main() {
       const wide = this.camera.aspect >= 1.2;
       if (wide) TARGET.pos.set(-0.14, 0.02, -0.66);
       else TARGET.pos.set(0, 0.3, -0.6);
-      TARGET.scale = wide ? 2.9 : 3;
+      const k = wide ? 1 : Math.min(1, Math.tan((this.camera.fov || 70) * Math.PI / 360) / Math.tan(Math.PI * 35 / 180));
+      if (!wide) TARGET.pos.y *= k;
+      TARGET.scale = wide ? 2.9 : 3 * k;
       return TARGET;
     }
     /** Pose zwischen Regal (t=0) und Hand (t=1). */
@@ -40212,6 +40289,14 @@ void main() {
       if (this.dom) {
         this.dom.root.remove();
         this.dom = null;
+      }
+      const fb = this.focusBack;
+      this.focusBack = null;
+      if (fb && fb !== document.body && fb.isConnected && typeof fb.focus === "function") {
+        try {
+          fb.focus({ preventScroll: true });
+        } catch {
+        }
       }
       this.closeVr();
       this.series = null;
@@ -40323,6 +40408,7 @@ void main() {
     let hostEl = host;
     let guide = null;
     let guideKeyHandler = null;
+    let guidePrev = null;
     let spacer = null;
     let hint = null;
     let collapsed = false;
@@ -40394,6 +40480,7 @@ void main() {
         }
       };
       doc.addEventListener("keydown", guideKeyHandler, true);
+      guidePrev = doc.activeElement;
       try {
         ok.focus({ preventScroll: true });
       } catch {
@@ -40406,6 +40493,14 @@ void main() {
       guide = null;
       if (guideKeyHandler) doc.removeEventListener("keydown", guideKeyHandler, true);
       guideKeyHandler = null;
+      const prev = guidePrev;
+      guidePrev = null;
+      if (prev && prev.isConnected && prev.focus) {
+        try {
+          prev.focus({ preventScroll: true });
+        } catch {
+        }
+      }
       update();
     }
     const geom = () => {
@@ -40545,6 +40640,7 @@ void main() {
       },
       suspend() {
         suspended = true;
+        hideGuide();
         teardown();
       },
       resume() {
@@ -40811,6 +40907,7 @@ void main() {
     let dur = 0;
     let t = 0;
     let resolve = null;
+    let disposed = false;
     const apply = () => {
       mat.opacity = alpha;
       mesh.visible = alpha > 2e-3;
@@ -40822,6 +40919,7 @@ void main() {
       },
       /** Auf alpha (0..1) in ms blenden. */
       to(a, ms = 200) {
+        if (disposed) return Promise.resolve();
         if (resolve) {
           const r = resolve;
           resolve = null;
@@ -40862,6 +40960,7 @@ void main() {
         }
       },
       dispose() {
+        disposed = true;
         if (resolve) {
           const r = resolve;
           resolve = null;
@@ -40928,6 +41027,7 @@ void main() {
   var HEAD_TURN = 35 * Math.PI / 180;
   var HEAD_WALK = 0.6;
   var ROW_H = 88;
+  var ARROW_H = 44;
   var BTN_H = 76;
   var TAB_H = 60;
   var INPUT_H = 72;
@@ -41035,11 +41135,21 @@ void main() {
         });
       }
       if (maxScroll > 0) {
-        const trackH = shown * ROW_H - 8;
+        const full = shown * ROW_H - 8;
+        const arrows = full >= 2 * ARROW_H + 40;
+        const top = y + 4 + (arrows ? ARROW_H : 0);
+        const trackH = full - (arrows ? 2 * ARROW_H : 0);
         const thumbH = Math.max(40, trackH * (visible / rows.length));
-        const thumbY = y + 4 + (trackH - thumbH) * (sc / maxScroll);
-        rect(W - 22, y + 4, 8, trackH, COLORS.fill, { r: 4 });
+        const thumbY = top + (trackH - thumbH) * (sc / maxScroll);
+        rect(W - 22, top, 8, trackH, COLORS.fill, { r: 4 });
         rect(W - 22, thumbY, 8, thumbH, COLORS.yellow, { r: 4 });
+        if (arrows) {
+          [["\u25B2", y + 4, -1], ["\u25BC", y + 4 + full - ARROW_H, 1]].forEach(([ch, ay, ref]) => {
+            rect(W - PAD, ay, PAD, ARROW_H, COLORS.fill, { r: 8, key: `scroll:${ref}` });
+            text(W - PAD / 2, ay + 8, ch, 22, COLORS.text, { align: "center" });
+            hits.push({ x: W - PAD, y: ay, w: PAD, h: ARROW_H, kind: "scroll", ref });
+          });
+        }
       }
       y += shown * ROW_H + GAP;
     }
@@ -41434,6 +41544,9 @@ void main() {
         }
         return h2;
       },
+      get maxScroll() {
+        return laid ? laid.maxScroll : 0;
+      },
       scroll(dy) {
         if (!isOpen || !laid || !laid.maxScroll) return;
         const n = Math.max(0, Math.min(laid.maxScroll, scrollPx + dy));
@@ -41460,7 +41573,8 @@ void main() {
             const r = cur.list && cur.list.rows[h2.ref.row];
             const a = r && r.actions && r.actions[h2.ref.action];
             if (a && a.onSelect) a.onSelect();
-          } else if (h2.kind === "progress") {
+          } else if (h2.kind === "scroll") handle.scroll(h2.ref * ROW_H);
+          else if (h2.kind === "progress") {
             if (cur.progress && cur.progress.onSeek) cur.progress.onSeek(h2.frac == null ? 0 : h2.frac);
           } else if (h2.kind === "key") {
             if (!cur.input) return false;
@@ -41815,9 +41929,9 @@ void main() {
   }
 
   // src/js/store3d/xr/hud3d.js
-  function vrHint(hint, fallback = "Trigger: Benutzen") {
-    const h2 = String(hint == null || hint === "" ? fallback : hint);
-    return h2.replace(/E\s*\/\s*Klick\s*:/i, "Trigger:");
+  function vrHint(hint, fallback = "Trigger: Benutzen", hand = false) {
+    const h2 = String(hint == null || hint === "" ? fallback : hint).replace(/E\s*\/\s*Klick\s*:/i, "Trigger:");
+    return hand ? h2.replace(/^Trigger:/, "Zusammenkneifen:") : h2;
   }
   function diagLines({ visibility, space, sources, cinema }) {
     const out = [`Sitzung: ${visibility || "?"}`, `Raum: ${space || "?"}`, `Eingabe: ${sources && sources.length ? sources.join(", ") : "keine"}`];
@@ -41872,8 +41986,17 @@ void main() {
         }
         w = Math.ceil(maxW + pad * 2);
         h2 = Math.ceil(y + pad - 4);
+        const resized = this.drawn && (this.canvas.width !== w || this.canvas.height !== h2);
         this.canvas.width = w;
         this.canvas.height = h2;
+        if (resized) {
+          this.tex.dispose();
+          this.tex = new CanvasTexture(this.canvas);
+          this.tex.colorSpace = SRGBColorSpace;
+          this.mat.map = this.tex;
+          this.mat.needsUpdate = true;
+        }
+        this.drawn = true;
         g.clearRect(0, 0, w, h2);
         g.fillStyle = "rgba(13, 19, 48, 0.88)";
         g.beginPath();
@@ -41915,7 +42038,7 @@ void main() {
       rig.add(this.label.mesh);
       camera.add(this.toastQuad.mesh);
       camera.add(this.diagQuad.mesh);
-      this.toastQuad.mesh.position.set(0, -0.28, -1);
+      this.toastQuad.mesh.position.set(0, 0.34, -1);
       this.diagQuad.mesh.position.set(-0.32, 0.2, -1);
       this.toastLeft = 0;
       this.labelOn = false;
@@ -42025,6 +42148,7 @@ void main() {
     return best;
   }
   function scrollable(panel) {
+    if (panel && typeof panel.maxScroll === "number") return panel.maxScroll > 0;
     const s = panel && panel.spec;
     const l = s && s.list;
     return !!(l && Array.isArray(l.rows) && l.rows.length > (l.visible || 6));
@@ -42220,18 +42344,19 @@ void main() {
         const rec = m.recFor(side);
         const tg = rec && rec.pt ? rec.pt.target : null;
         if (!tg || tg.kind === "panel") continue;
+        const hand = Boolean(rec.source && rec.source.hand);
         let title = "";
         let hint = "";
         if (tg.kind === "cover") {
           const it = m.app.items.get(tg.info.itemId);
           title = it && it.Name || "";
-          hint = "Trigger: Nehmen \xB7 Grip: Greifen";
+          hint = hand ? "Zusammenkneifen: Nehmen" : "Trigger: Nehmen \xB7 Grip: Greifen";
         } else if (tg.kind === "ia") {
           title = tg.ia.label || "";
-          hint = vrHint(tg.ia.hint);
+          hint = vrHint(tg.ia.hint, void 0, hand);
         } else if (tg.kind === "wrist") {
           title = "Men\xFC";
-          hint = "Trigger: \xD6ffnen";
+          hint = hand ? "Zusammenkneifen: \xD6ffnen" : "Trigger: \xD6ffnen";
         }
         const len = Math.min(tg.t, 4);
         this._pt.copy(rec.pt.o).addScaledVector(rec.pt.d, len);
@@ -42445,8 +42570,7 @@ void main() {
         again();
       } },
       { label: "Neu ausrichten", sub: "Sitzh\xF6he neu kalibrieren", onSelect: () => {
-        mode.recenter();
-        mode.toast("Neu ausgerichtet", 1600);
+        if (mode.recenter() !== false) mode.toast("Neu ausgerichtet", 1600);
       } },
       { label: "Qualit\xE4t", tag: vr.quality === "low" ? "Niedrig" : "Mittel", onSelect: () => {
         const q = vr.quality === "low" ? "mid" : "low";
@@ -42463,6 +42587,9 @@ void main() {
         again();
       } }
     ];
+    if (mode.inCinema) {
+      for (const l of ["Gr\xF6\xDFe", "Kassen-PC-Suche"]) rows.splice(rows.findIndex((r) => r.label === l), 1);
+    }
     let extra;
     try {
       extra = mode.cinema && typeof mode.cinema.menuItems === "function" ? mode.cinema.menuItems() || [] : [];
@@ -43318,6 +43445,7 @@ void main() {
   function createControls({ openPanel: openPanel3, cinema, getState, getSeat, onSeat, onBack, toast }) {
     let main = null;
     let tracks = null;
+    let reshow = false;
     let trackToken = 0;
     let selfClose = false;
     let lastKey = "";
@@ -43333,6 +43461,12 @@ void main() {
       } catch {
       }
       selfClose = false;
+    };
+    const restore = () => {
+      if (reshow) {
+        reshow = false;
+        if (!disposed) api.show();
+      }
     };
     const handlers = {
       get seat() {
@@ -43411,7 +43545,7 @@ void main() {
     ].join("~");
     const api = {
       get visible() {
-        return Boolean(main && main.open);
+        return Boolean(main && main.open) || reshow;
       },
       get tracksOpen() {
         return Boolean(tracks && tracks.open);
@@ -43423,11 +43557,13 @@ void main() {
         if (disposed) return;
         api.touch();
         if (main && main.open) return;
+        reshow = false;
         const st = state();
         main = openPanel3(controlsSpec(st, handlers));
         lastKey = keyOf2(st);
       },
       hide() {
+        reshow = false;
         const h2 = main;
         main = null;
         lastKey = "";
@@ -43461,6 +43597,7 @@ void main() {
         }
         if (tracks && !tracks.open) {
           tracks = null;
+          restore();
         }
         if (!main) return;
         api.refresh();
@@ -43469,7 +43606,16 @@ void main() {
       },
       openTracks(kind) {
         if (disposed) return;
+        const keep = reshow || Boolean(main && main.open);
+        reshow = false;
         api.closeTracks();
+        if (main && main.open) {
+          const m = main;
+          main = null;
+          lastKey = "";
+          closeHandle(m);
+        }
+        reshow = keep;
         const token = ++trackToken;
         const common2 = {
           onBack: () => api.closeTracks(),
@@ -43477,6 +43623,7 @@ void main() {
             if (selfClose) return;
             if (token === trackToken) {
               tracks = null;
+              restore();
             }
           }
         };
@@ -43516,6 +43663,7 @@ void main() {
         const h2 = tracks;
         tracks = null;
         closeHandle(h2);
+        restore();
       },
       dispose() {
         if (disposed) return;
@@ -43587,6 +43735,9 @@ void main() {
       this.lastProgress = 0;
       this.pausedSince = null;
       this.prepareShown = false;
+      this.reloadShown = null;
+      this.stopping = false;
+      this.backPending = false;
     }
     /** true ab enter() bis leave() abgeschlossen. */
     get active() {
@@ -43617,8 +43768,22 @@ void main() {
       this.timers.clear();
     }
     // ---------------------------------------------------------------- betreten
+    /** Rückgabe: false nur bei disposed. Läuft gerade die Rückblende, wird der Start danach nachgeholt (sonst verschluckt). */
     enter(item) {
-      if (this._active || this.disposed) return;
+      if (this.disposed) return false;
+      if (this._active) {
+        const lp = this._leavePromise;
+        if (lp) {
+          const tok = this._pend = {};
+          lp.then(() => {
+            if (this._pend === tok && !this._active && !this.disposed) {
+              this._pend = null;
+              this.enter(item);
+            }
+          });
+        }
+        return true;
+      }
       this._active = true;
       this._leaveAsked = false;
       this.gen++;
@@ -43629,6 +43794,13 @@ void main() {
       const run = () => this._build(this.gen);
       if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn4("Kino betreten", err));
       else run();
+      return true;
+    }
+    /** Neu ausrichten (VR-Menü): Sitzhöhe aus der aktuellen Kopfpose neu berechnen. Rückgabe false = nichts getan. */
+    recenter() {
+      if (!this._active || !this.hall || this.phase === "entering" || this.phase === "leaving") return false;
+      this._placeSeat();
+      return true;
     }
     _seatName() {
       const v = this.app.opts && this.app.opts.vr && this.app.opts.vr.seat;
@@ -43693,7 +43865,9 @@ void main() {
     }
     _title() {
       const it = this.item;
-      return String(it && (it.Name || it.name) || this.state && this.state.title || "");
+      const st = this.state || {};
+      const live = this.phase === "playing" || this.phase === "paused";
+      return String(live && st.title || it && (it.Name || it.name) || st.title || "");
     }
     _duck(on) {
       try {
@@ -43723,7 +43897,9 @@ void main() {
       const vr = this.app.opts && this.app.opts.vr;
       if (vr) vr.seat = name;
       try {
-        this.app.savePrefs();
+        const x = this._xr;
+        if (x && typeof x.savePrefs === "function") x.savePrefs();
+        else this.app.savePrefs();
       } catch (err) {
         warn4("Platz speichern", err);
       }
@@ -43902,11 +44078,23 @@ void main() {
       else this.leave(reason, code);
     }
     backToStore() {
-      if (this._leaveAsked || !this._active) return;
+      if (this._leaveAsked || !this._active || this.stopping) return;
       const d = this._deps;
+      if (d && this.phase === "starting" && !this.video && (this.state || {}).route !== "video" && !d.video()) {
+        if (!this.backPending) {
+          this.backPending = true;
+          if (this._xr) this._xr.toast("Wird beendet, sobald der Film startet \u2026", 3e3);
+        }
+        return;
+      }
+      this.stopping = true;
+      this.backPending = false;
       const gen = this.gen;
       Promise.resolve(d ? d.stop() : true).catch(() => false).then(() => {
-        if (gen === this.gen) this._selfLeave("stop");
+        if (gen === this.gen) {
+          this.stopping = false;
+          this._selfLeave("stop");
+        }
       });
     }
     // ---------------------------------------------------------------- Schleife
@@ -43933,12 +44121,25 @@ void main() {
         this._onState();
         if (this._leaveAsked) return;
       }
+      if (this.backPending && (this.video || (this.state || {}).route === "video")) {
+        this.backPending = false;
+        this.backToStore();
+        if (this._leaveAsked) return;
+      }
       this.screen.update(now);
+      const live = this.phase === "playing" || this.phase === "paused";
+      if (live && !this.screen.hasFrame) {
+        const title = this._title();
+        if (this.reloadShown !== title) {
+          this.reloadShown = title;
+          this.screen.setStatus({ title, text: "Wird geladen \u2026", sub: "" });
+        }
+      } else this.reloadShown = null;
       if (this.subs) {
         if (d && now - this.lastSub >= SUB_MS && this.phase !== "failed") {
           this.lastSub = now;
           try {
-            this.subs.set(d.subtitles());
+            this.subs.set(this.screen.hasFrame ? d.subtitles() : null);
           } catch {
           }
         }
@@ -43976,7 +44177,7 @@ void main() {
     onVisibility(state) {
       if (!this._active || !this.controls) return;
       if (state !== "visible") {
-        this.controlsWanted = this.controls.visible;
+        if (this.controls.visible) this.controlsWanted = true;
         this.controls.hide();
       } else if (this.controlsWanted && this.phase !== "failed") {
         this.controlsWanted = false;
@@ -43998,7 +44199,8 @@ void main() {
     /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. Rückgabe: Promise (löst nach der Rückblende auf). */
     leave(reason = "stop", code) {
       if (!this._active) return Promise.resolve(false);
-      if (this._leavePromise) return this._leavePromise;
+      this._pend = null;
+      if (this._leavePromise && reason !== "sessionend") return this._leavePromise;
       if (code) this.failCode = code;
       this._leaveAsked = true;
       this.gen++;
@@ -44010,12 +44212,15 @@ void main() {
       }
       this.phase = "leaving";
       const run = () => this._teardown();
+      const gen = this.gen;
       this._leavePromise = Promise.resolve(this._enterPromise).then(() => f.jump(run, { out: 250, in: 500 })).then(() => {
+        if (gen !== this.gen) return true;
         this._leavePromise = null;
         if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(this.failCode ? `Kino konnte nicht starten (${this.failCode})` : "Kino konnte nicht starten", 3200);
         return true;
       }, (err) => {
         warn4("Kino verlassen", err);
+        if (gen !== this.gen) return false;
         this._leavePromise = null;
         if (this._active) this._teardown();
         return false;
@@ -44348,6 +44553,7 @@ void main() {
         app.hud.setHint(null);
       }
       this.prevQuality = app.qualitySetting;
+      this.prevLevel = app.engine.preset.level;
       app.engine.setXrBudget(true);
       const vr = app.opts.vr || {};
       app.setQuality(vr.quality === "low" ? "low" : "mid");
@@ -44438,6 +44644,7 @@ void main() {
       }
       if (!app.disposed && app.engine) {
         app.engine.setXrBudget(false);
+        if (this.prevQuality === "auto" && this.prevLevel) app.engine.setLevel(this.prevLevel);
         if (this.prevQuality) app.setQuality(this.prevQuality);
         app.engine.setZoom(1);
         const p = app.player;
@@ -44616,9 +44823,11 @@ void main() {
       if (pref === "seated") return seatedOffset(head.y, EYE);
       return this.floor ? 0 : EYE;
     }
-    /** Neu ausrichten: Höhe und Rig beim nächsten Frame aus der Kopfpose neu berechnen. */
+    /** Neu ausrichten: Höhe und Rig beim nächsten Frame aus der Kopfpose neu berechnen; im Kino sofort die Sitzhöhe. Rückgabe false = nichts getan. */
     recenter() {
+      if (this.inCinema) return this.cinema.recenter();
       this.placed = false;
+      return true;
     }
     cinemaTick(dt, now) {
       this.cinema.tick(dt, now);
@@ -44628,6 +44837,7 @@ void main() {
     async jumpTo(x, z, { face } = {}) {
       const app = this.app;
       const p = app.player;
+      if (this.inCinema) return false;
       let yaw = p.yaw;
       if (typeof face === "number") yaw = face;
       else if (face && Number.isFinite(face.x) && Number.isFinite(face.z)) yaw = Math.atan2(-(face.x - x), -(face.z - z));
@@ -44802,7 +45012,7 @@ void main() {
       this.cinemaEnter(item);
     }
     cinemaEnter(item) {
-      this.cinema.enter(item);
+      return this.cinema.enter(item);
     }
     /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. */
     leaveCinema(reason, code) {
@@ -44917,9 +45127,12 @@ void main() {
         onVr: () => this.xr.enter(),
         getVr: () => this.xr.supported && !this.xr.presenting,
         onSearch: () => {
-          this.resumeFromPause();
+          if (this.mode !== "paused") return;
+          this.pause.hide();
+          this.setMode("play");
           this.openTerminal("");
         },
+        // ohne requestLock: das Terminal ist ein Overlay
         onClassic: () => this.deps.classicView(),
         onQuality: (q) => {
           this.setQuality(q);
@@ -45109,10 +45322,7 @@ void main() {
       this.xr.probe().then(() => {
         if (!this.disposed) this.syncUi();
       });
-      if (this.suspended) {
-        this.engine.stop();
-        this.desktop && this.desktop.detach();
-      }
+      if (this.suspended) this.pauseParts();
       const intro = this.mods.ctx.use("intro");
       if (intro && !this.opts.skipIntro) {
         await new Promise((res) => {
@@ -45127,10 +45337,14 @@ void main() {
         }
         if (this.disposed) return;
       }
-      this.mods.emit("enter");
-      if (this.opts.openItemId) this.openItem(this.opts.openItemId);
-      else if (r && r.heldId) this.take(r.heldId, { instant: true });
-      if (this.opts.openTerminal) this.openTerminal(this.opts.query || "");
+      const enter = () => {
+        this.mods.emit("enter");
+        if (this.opts.openItemId) this.openItem(this.opts.openItemId);
+        else if (r && r.heldId) this.take(r.heldId, { instant: true });
+        if (this.opts.openTerminal) this.openTerminal(this.opts.query || "");
+      };
+      if (this.suspended) this.afterResume = enter;
+      else enter();
     }
     buildOverlays() {
       this.highlight = new Mesh(
@@ -45140,17 +45354,10 @@ void main() {
       this.highlight.visible = false;
       this.highlight.renderOrder = 6;
       this.engine.scene.add(this.highlight);
-      this.marker = new Mesh(
-        new RingGeometry(0.16, 0.22, 40),
-        new MeshBasicMaterial({ color: 16777215, transparent: true, opacity: 0.7, depthWrite: false, side: DoubleSide, toneMapped: false })
-      );
-      this.marker.rotation.x = -Math.PI / 2;
-      this.marker.visible = false;
-      this.marker.renderOrder = 6;
-      this.engine.scene.add(this.marker);
     }
     // --- Modus / UI ---
     setMode(m) {
+      if (m !== "play") this.pendingTake = this.pendingUse = null;
       this.mode = m;
       this.syncUi();
       if (this.fs) this.fs.update();
@@ -45175,7 +45382,7 @@ void main() {
       this.hud.showMenuBtn(play);
       if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
       if (this.rotate) this.rotate.update();
-      this.hud.showVr(this.ready && (play || this.mode === "hold") && !!xr && xr.supported && !xr.presenting);
+      this.hud.showVr(this.ready && play && !!xr && xr.supported && !xr.presenting);
       if (!play || !this.aim) this.hud.setHint(null);
       if (this.pause && this.mode !== "paused" && this.pause.visible) this.pause.hide();
     }
@@ -45186,7 +45393,6 @@ void main() {
       }
       if (this.mode !== "play") return;
       this.player.cancelPath();
-      this.marker.visible = false;
       this.setMode("paused");
       if (this.desktop) this.desktop.releaseLock();
       this.pause.show();
@@ -45241,7 +45447,6 @@ void main() {
       this.setMode("hold");
       this.pendingTake = null;
       this.player.cancelPath();
-      this.marker.visible = false;
       if (this.desktop) this.desktop.releaseLock();
       this.clearAim();
       if (xr) this.holdview.open(id, slot, instant, { xr: true, anchor: this.holdAnchorFor(hand), hand: hand || "right", grab: !!grab });
@@ -45300,7 +45505,7 @@ void main() {
       camera.updateMatrixWorld(true);
       this.rc.setFromCamera(ndc, camera);
       const { origin, direction } = this.rc.ray;
-      this.pendingTake = null;
+      this.pendingTake = this.pendingUse = null;
       const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
       const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
       const far = this.touchScheme === "joystick" ? "Halte GEHEN, um hinzulaufen" : "Halte gedr\xFCckt, um hinzulaufen";
@@ -45329,78 +45534,6 @@ void main() {
         this.lookAtPoint(pos.x, pos.y, pos.z);
         this.pendingTake = { id: hit.info.itemId, at: performance.now() + 280 };
       }
-    }
-    walkTo(pt) {
-      const path = findPath(this.layout.nav, { x: this.player.x, z: this.player.z }, pt);
-      if (!path) {
-        this.hud.note("Da komme ich nicht hin");
-        return false;
-      }
-      const end = path[path.length - 1];
-      this.marker.position.set(end.x, 0.02, end.z);
-      this.marker.visible = true;
-      this.player.walkTo(path, () => {
-        this.marker.visible = false;
-      });
-      return true;
-    }
-    approachCover(hit) {
-      const { fv, info } = hit;
-      const f = fv.face;
-      const pos = slotWorld(fv, info, this._v, this._q).pos;
-      const dist = Math.hypot(pos.x - this.player.x, pos.z - this.player.z);
-      const id = info.itemId;
-      if (dist <= 2.3 && (this.player.x - f.x) * f.nx + (this.player.z - f.z) * f.nz > 0.2) {
-        this.player.cancelPath();
-        this.lookAtPoint(pos.x, pos.y, pos.z);
-        this.pendingTake = { id, at: performance.now() + 280 };
-        return;
-      }
-      const dest = { x: pos.x + f.nx * 1.1, z: pos.z + f.nz * 1.1 };
-      const path = findPath(this.layout.nav, { x: this.player.x, z: this.player.z }, dest);
-      if (!path) {
-        this.hud.note("Da komme ich nicht hin");
-        return;
-      }
-      const end = path[path.length - 1];
-      this.marker.position.set(end.x, 0.02, end.z);
-      this.marker.visible = true;
-      this.player.walkTo(path, () => {
-        this.marker.visible = false;
-        this.player.faceYaw(f.yaw, 0.12);
-        this.pendingTake = { id, at: performance.now() + 380 };
-      });
-    }
-    approachInteractable(ia) {
-      const { min, max } = ia.box;
-      const p = this.player;
-      const cx = (min.x + max.x) / 2;
-      const cy = (min.y + max.y) / 2;
-      const cz = (min.z + max.z) / 2;
-      const nx = Math.min(Math.max(p.x, min.x), max.x);
-      const nz = Math.min(Math.max(p.z, min.z), max.z);
-      const dx = p.x - nx;
-      const dz = p.z - nz;
-      const d = Math.hypot(dx, dz);
-      if (d <= 2) {
-        this.lookAtPoint(cx, cy, cz);
-        this.pendingUse = { ia, at: performance.now() + 250 };
-        return;
-      }
-      const dest = { x: nx + dx / d * 1.1, z: nz + dz / d * 1.1 };
-      const path = findPath(this.layout.nav, { x: p.x, z: p.z }, dest);
-      if (!path) {
-        this.hud.note("Da komme ich nicht hin");
-        return;
-      }
-      const end = path[path.length - 1];
-      this.marker.position.set(end.x, 0.02, end.z);
-      this.marker.visible = true;
-      p.walkTo(path, () => {
-        this.marker.visible = false;
-        this.lookAtPoint(cx, cy, cz);
-        this.pendingUse = { ia, at: performance.now() + 350 };
-      });
     }
     lookAtPoint(x, y, z) {
       const dx = x - this.player.x;
@@ -45447,10 +45580,6 @@ void main() {
           this.updateAim();
         }
       } else if (this.aim) this.clearAim();
-      if (this.marker.visible) {
-        const s = 1 + 0.12 * Math.sin(now / 180);
-        this.marker.scale.set(s, s, s);
-      }
       if (this.pendingUse && this.mode === "play" && now >= this.pendingUse.at) {
         const ia = this.pendingUse.ia;
         this.pendingUse = null;
@@ -45639,15 +45768,20 @@ void main() {
     suspend() {
       if (this.suspended || this.disposed) return;
       this.suspended = true;
+      this.pendingTake = this.pendingUse = null;
       if (this.xr && this.xr.presenting) this.xr.exit();
+      this.pauseParts();
+      if (this.hud) this.hud.showPrompt(false);
+      if (this.fs) this.fs.suspend();
+      this.notifyState(true);
+    }
+    /** Schleife, Steuerung, Cover-Warteschlange und Module anhalten (suspend() und boot(), wenn dort währenddessen ausgesetzt wurde). */
+    pauseParts() {
       if (this.engine) this.engine.stop();
       if (this.desktop) this.desktop.detach();
       if (this.touchCtl) this.touchCtl.detach();
       if (this.covers) this.covers.pause();
       if (this.mods) this.mods.hook("onSuspend");
-      if (this.hud) this.hud.showPrompt(false);
-      if (this.fs) this.fs.suspend();
-      this.notifyState(true);
     }
     resume(host) {
       if (!this.suspended || this.disposed) return;
@@ -45659,7 +45793,7 @@ void main() {
         if (this.holdview) this.holdview.setHost(host);
         if (this.fs) this.fs.setHost(host);
       }
-      if (!this.ready && !this.player) return;
+      if (this.mode === "boot") return;
       if (this.desktop) this.desktop.attach();
       if (this.touchCtl) this.touchCtl.attach();
       if (this.covers) this.covers.resume();
@@ -45670,6 +45804,11 @@ void main() {
       }
       if (this.fs) this.fs.resume();
       this.syncUi();
+      if (this.afterResume) {
+        const f = this.afterResume;
+        this.afterResume = null;
+        f();
+      }
     }
     dispose() {
       if (this.disposed) return;
@@ -45703,10 +45842,6 @@ void main() {
       if (this.highlight) {
         this.highlight.geometry.dispose();
         this.highlight.material.dispose();
-      }
-      if (this.marker) {
-        this.marker.geometry.dispose();
-        this.marker.material.dispose();
       }
       if (this.lights) this.lights.dispose();
       if (this.tex) this.tex.dispose();

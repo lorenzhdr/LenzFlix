@@ -1,9 +1,9 @@
 // VIDEOTHEK LENZ · create(host, deps, opts) → instance (Vertrag: docs/store3d.md).
 import {
-  Vector3, Quaternion, Raycaster, Mesh, BoxGeometry, RingGeometry, MeshBasicMaterial, AdditiveBlending, DoubleSide,
+  Vector3, Quaternion, Raycaster, Mesh, BoxGeometry, MeshBasicMaterial, AdditiveBlending,
 } from 'three';
 import { buildLayout } from './world/layout.js';
-import { findPath, nearestFree, isFree } from './nav/path.js';
+import { nearestFree, isFree } from './nav/path.js';
 import { createEngine } from './engine/renderer.js';
 import { makeTextures, makeCanvas, toTexture } from './world/textures.js';
 import { buildRoom, addLights } from './world/build-room.js';
@@ -43,7 +43,7 @@ function normalizeVr(v) {
   };
 }
 
-class StoreApp {
+export class StoreApp {
   constructor(host, deps, opts) {
     this.host = host;
     this.xr = null;
@@ -111,7 +111,7 @@ class StoreApp {
       onResume: () => this.resumeFromPause(),
       onVr: () => this.xr.enter(),
       getVr: () => this.xr.supported && !this.xr.presenting,
-      onSearch: () => { this.resumeFromPause(); this.openTerminal(''); },
+      onSearch: () => { if (this.mode !== 'paused') return; this.pause.hide(); this.setMode('play'); this.openTerminal(''); }, // ohne requestLock: das Terminal ist ein Overlay
       onClassic: () => this.deps.classicView(),
       onQuality: (q) => { this.setQuality(q); this.savePrefs(); },
       onSound: (on) => { this.setSound(on); this.savePrefs(); },
@@ -260,7 +260,7 @@ class StoreApp {
     this.engine.start((dt, now, frame) => this.tick(dt, now, frame));
     this.syncUi();
     this.xr.probe().then(() => { if (!this.disposed) this.syncUi(); });
-    if (this.suspended) { this.engine.stop(); this.desktop && this.desktop.detach(); }
+    if (this.suspended) this.pauseParts();
 
     // Intro-Provider (Modul): nach dem ersten Bild, außer es wurde in dieser Sitzung schon gesehen
     const intro = this.mods.ctx.use('intro');
@@ -270,10 +270,14 @@ class StoreApp {
       try { await intro.run(); } catch (err) { console.warn('[LenzFlix Store3D] Intro', err); }
       if (this.disposed) return;
     }
-    this.mods.emit('enter');
-    if (this.opts.openItemId) this.openItem(this.opts.openItemId);
-    else if (r && r.heldId) this.take(r.heldId, { instant: true });
-    if (this.opts.openTerminal) this.openTerminal(this.opts.query || '');
+    const enter = () => {
+      this.mods.emit('enter');
+      if (this.opts.openItemId) this.openItem(this.opts.openItemId);
+      else if (r && r.heldId) this.take(r.heldId, { instant: true });
+      if (this.opts.openTerminal) this.openTerminal(this.opts.query || '');
+    };
+    if (this.suspended) this.afterResume = enter; // ausgesetzt: erst bei resume() betreten
+    else enter();
   }
 
   buildOverlays() {
@@ -284,18 +288,10 @@ class StoreApp {
     this.highlight.visible = false;
     this.highlight.renderOrder = 6;
     this.engine.scene.add(this.highlight);
-    this.marker = new Mesh(
-      new RingGeometry(0.16, 0.22, 40),
-      new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false, side: DoubleSide, toneMapped: false }),
-    );
-    this.marker.rotation.x = -Math.PI / 2;
-    this.marker.visible = false;
-    this.marker.renderOrder = 6;
-    this.engine.scene.add(this.marker);
   }
 
   // --- Modus / UI ---
-  setMode(m) { this.mode = m; this.syncUi(); if (this.fs) this.fs.update(); }
+  setMode(m) { if (m !== 'play') this.pendingTake = this.pendingUse = null; this.mode = m; this.syncUi(); if (this.fs) this.fs.update(); }
 
   syncUi() {
     if (!this.hud) return;
@@ -318,8 +314,8 @@ class StoreApp {
     this.hud.showMenuBtn(play);
     if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
     if (this.rotate) this.rotate.update();
-    // auch mit Hülle in der Hand (z. B. nach Wiederherstellung): sie wandert beim Betreten in die Hand
-    this.hud.showVr(this.ready && (play || this.mode === 'hold') && !!xr && xr.supported && !xr.presenting);
+    // nur im Laufmodus: die Halte-Ebene (z-index 4) läge sonst über dem Knopf und finge das Tippen ab
+    this.hud.showVr(this.ready && play && !!xr && xr.supported && !xr.presenting);
     if (!play || !this.aim) this.hud.setHint(null);
     if (this.pause && this.mode !== 'paused' && this.pause.visible) this.pause.hide();
   }
@@ -328,7 +324,6 @@ class StoreApp {
     if (this.xr && this.xr.presenting) { this.xr.openMenu(); return; }
     if (this.mode !== 'play') return;
     this.player.cancelPath();
-    this.marker.visible = false;
     this.setMode('paused');
     if (this.desktop) this.desktop.releaseLock();
     this.pause.show();
@@ -386,7 +381,6 @@ class StoreApp {
     this.setMode('hold');
     this.pendingTake = null;
     this.player.cancelPath();
-    this.marker.visible = false;
     if (this.desktop) this.desktop.releaseLock();
     this.clearAim();
     if (xr) this.holdview.open(id, slot, instant, { xr: true, anchor: this.holdAnchorFor(hand), hand: hand || 'right', grab: !!grab });
@@ -445,7 +439,7 @@ class StoreApp {
     camera.updateMatrixWorld(true);
     this.rc.setFromCamera(ndc, camera);
     const { origin, direction } = this.rc.ray;
-    this.pendingTake = null;
+    this.pendingTake = this.pendingUse = null;
     const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
     const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
     const far = this.touchScheme === 'joystick' ? 'Halte GEHEN, um hinzulaufen' : 'Halte gedrückt, um hinzulaufen';
@@ -468,66 +462,6 @@ class StoreApp {
       this.lookAtPoint(pos.x, pos.y, pos.z);
       this.pendingTake = { id: hit.info.itemId, at: performance.now() + 280 };
     }
-  }
-
-  walkTo(pt) {
-    const path = findPath(this.layout.nav, { x: this.player.x, z: this.player.z }, pt);
-    if (!path) { this.hud.note('Da komme ich nicht hin'); return false; }
-    const end = path[path.length - 1];
-    this.marker.position.set(end.x, 0.02, end.z);
-    this.marker.visible = true;
-    this.player.walkTo(path, () => { this.marker.visible = false; });
-    return true;
-  }
-
-  approachCover(hit) {
-    const { fv, info } = hit;
-    const f = fv.face;
-    const pos = slotWorld(fv, info, this._v, this._q).pos;
-    const dist = Math.hypot(pos.x - this.player.x, pos.z - this.player.z);
-    const id = info.itemId;
-    if (dist <= 2.3 && (this.player.x - f.x) * f.nx + (this.player.z - f.z) * f.nz > 0.2) {
-      this.player.cancelPath();
-      this.lookAtPoint(pos.x, pos.y, pos.z);
-      this.pendingTake = { id, at: performance.now() + 280 };
-      return;
-    }
-    const dest = { x: pos.x + f.nx * 1.1, z: pos.z + f.nz * 1.1 };
-    const path = findPath(this.layout.nav, { x: this.player.x, z: this.player.z }, dest);
-    if (!path) { this.hud.note('Da komme ich nicht hin'); return; }
-    const end = path[path.length - 1];
-    this.marker.position.set(end.x, 0.02, end.z);
-    this.marker.visible = true;
-    this.player.walkTo(path, () => {
-      this.marker.visible = false;
-      this.player.faceYaw(f.yaw, 0.12);
-      this.pendingTake = { id, at: performance.now() + 380 };
-    });
-  }
-
-  approachInteractable(ia) {
-    const { min, max } = ia.box;
-    const p = this.player;
-    const cx = (min.x + max.x) / 2;
-    const cy = (min.y + max.y) / 2;
-    const cz = (min.z + max.z) / 2;
-    const nx = Math.min(Math.max(p.x, min.x), max.x);
-    const nz = Math.min(Math.max(p.z, min.z), max.z);
-    const dx = p.x - nx;
-    const dz = p.z - nz;
-    const d = Math.hypot(dx, dz);
-    if (d <= 2.0) { this.lookAtPoint(cx, cy, cz); this.pendingUse = { ia, at: performance.now() + 250 }; return; }
-    const dest = { x: nx + (dx / d) * 1.1, z: nz + (dz / d) * 1.1 };
-    const path = findPath(this.layout.nav, { x: p.x, z: p.z }, dest);
-    if (!path) { this.hud.note('Da komme ich nicht hin'); return; }
-    const end = path[path.length - 1];
-    this.marker.position.set(end.x, 0.02, end.z);
-    this.marker.visible = true;
-    p.walkTo(path, () => {
-      this.marker.visible = false;
-      this.lookAtPoint(cx, cy, cz);
-      this.pendingUse = { ia, at: performance.now() + 350 };
-    });
   }
 
   lookAtPoint(x, y, z) {
@@ -567,10 +501,6 @@ class StoreApp {
       if (now - this.lastAim > 90) { this.lastAim = now; this.updateAim(); }
     }
     else if (this.aim) this.clearAim();
-    if (this.marker.visible) {
-      const s = 1 + 0.12 * Math.sin(now / 180);
-      this.marker.scale.set(s, s, s);
-    }
     if (this.pendingUse && this.mode === 'play' && now >= this.pendingUse.at) {
       const ia = this.pendingUse.ia;
       this.pendingUse = null;
@@ -747,15 +677,21 @@ class StoreApp {
   suspend() {
     if (this.suspended || this.disposed) return;
     this.suspended = true;
+    this.pendingTake = this.pendingUse = null;
     if (this.xr && this.xr.presenting) this.xr.exit(); // Sitzung zuerst beenden
+    this.pauseParts();
+    if (this.hud) this.hud.showPrompt(false);
+    if (this.fs) this.fs.suspend();
+    this.notifyState(true);
+  }
+
+  /** Schleife, Steuerung, Cover-Warteschlange und Module anhalten (suspend() und boot(), wenn dort währenddessen ausgesetzt wurde). */
+  pauseParts() {
     if (this.engine) this.engine.stop();
     if (this.desktop) this.desktop.detach();
     if (this.touchCtl) this.touchCtl.detach();
     if (this.covers) this.covers.pause();
     if (this.mods) this.mods.hook('onSuspend');
-    if (this.hud) this.hud.showPrompt(false);
-    if (this.fs) this.fs.suspend();
-    this.notifyState(true);
   }
 
   resume(host) {
@@ -768,7 +704,7 @@ class StoreApp {
       if (this.holdview) this.holdview.setHost(host);
       if (this.fs) this.fs.setHost(host);
     }
-    if (!this.ready && !this.player) return; // Boot läuft noch: boot() startet den Rest selbst
+    if (this.mode === 'boot') return; // Boot läuft noch: boot() startet den Rest selbst
     if (this.desktop) this.desktop.attach();
     if (this.touchCtl) this.touchCtl.attach();
     if (this.covers) this.covers.resume();
@@ -776,6 +712,7 @@ class StoreApp {
     if (this.engine) { this.engine.resize(); this.engine.start((dt, now, frame) => this.tick(dt, now, frame)); }
     if (this.fs) this.fs.resume();
     this.syncUi();
+    if (this.afterResume) { const f = this.afterResume; this.afterResume = null; f(); }
   }
 
   dispose() {
@@ -793,7 +730,6 @@ class StoreApp {
       try { if (part) part.dispose(); } catch { /* egal */ }
     }
     if (this.highlight) { this.highlight.geometry.dispose(); this.highlight.material.dispose(); }
-    if (this.marker) { this.marker.geometry.dispose(); this.marker.material.dispose(); }
     if (this.lights) this.lights.dispose();
     if (this.tex) this.tex.dispose();
     if (this.blank) this.blank.dispose();

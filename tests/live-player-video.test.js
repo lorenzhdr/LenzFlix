@@ -253,19 +253,12 @@ describe('Pause-Abwehr und Sync', () => {
     expect(ctx.video.play).not.toHaveBeenCalled();
   });
 
-  it('Media-Session-Handler sind No-ops und werden bei dispose entfernt', () => {
-    const handlers = {};
-    const setActionHandler = vi.fn((a, fn) => { handlers[a] = fn; });
+  it('Media-Session: Handler werden weder gesetzt noch bei dispose entfernt (Jellyfins bleiben, B079)', () => {
+    const setActionHandler = vi.fn();
     Object.defineProperty(navigator, 'mediaSession', { value: { setActionHandler }, configurable: true });
     const { player } = setup();
-    for (const a of ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack']) {
-      expect(typeof handlers[a]).toBe('function');
-      expect(handlers[a]()).toBeUndefined();
-    }
     player.dispose();
-    for (const a of ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack']) {
-      expect(handlers[a]).toBeNull();
-    }
+    expect(setActionHandler).not.toHaveBeenCalled();
   });
 
   it('syncTo: springt nur bei Abweichung > 10 s', async () => {

@@ -153,7 +153,7 @@ export function createInfoCard({ doc, ctl, model, deps = {}, opts = {} }) {
     }
     badgesEl.hidden = !(info.badges && info.badges.length);
     thumb.set(info.imageItemId, no);
-    if (info.itemId != null && details) details.request(info.itemId);
+    if (info.itemId != null && details) details.request(info.itemId, true);
     renderText();
     running = isRunning(t);
     renderActions();
@@ -228,7 +228,9 @@ export function createInfoCard({ doc, ctl, model, deps = {}, opts = {} }) {
       const r = isRunning(t);
       if (r !== running) {
         running = r;
+        const had = actions.contains(doc.activeElement); // Fokus nach dem Neuaufbau zurück in die Karte (Esc/Tab hängen am Karten-Element)
         renderActions();
+        if (had) (actions.querySelector('button') || closeBtn).focus();
       }
     },
     destroy() {

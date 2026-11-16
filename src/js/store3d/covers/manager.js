@@ -104,7 +104,7 @@ export class CoverManager {
     return this.preset.level !== 'low' && this.preset.atlas >= 1024 && maxTex >= HI_SIZE;
   }
 
-  /** Höchstzahl 2048er-Atlanten: Limit je Gerät (8 / Handy 4), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
+  /** Höchstzahl 2048er-Atlanten: Limit je Gerät (4 / Handy 2), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
   get hiCap() {
     if (!this.hiEnabled) return 0;
     return Math.max(0, Math.min(this.hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
@@ -167,7 +167,7 @@ export class CoverManager {
       }
     }
     // Laufende Ladevorgänge weit entfernter Faces abbrechen
-    for (const f of this.faces) if (f.loading && !inRadius.has(f) && f.score > radius * 1.25) this.cancelLoad(f);
+    for (const f of this.faces) if (f.loading && !inRadius.has(f) && f.d > radius * 1.25) this.cancelLoad(f);
 
     let loadingNow = this.faces.reduce((n, f) => n + (f.loading ? 1 : 0), 0);
     used = this.usedCount;
@@ -398,6 +398,7 @@ export class CoverManager {
     l.bitmaps.clear();
     f.loading = null;
     this.queue = this.queue.filter((j) => j.loading !== l);
+    this.composeQueue = this.composeQueue.filter((j) => !(j.f === f && j.kind === 'full'));
   }
 
   cancelHiLoad(f) {

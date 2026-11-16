@@ -91,7 +91,8 @@ function boxsetItems(ctx, ids, D) {
   return out;
 }
 
-const boxsetCands = (ctx, D) => rotated('themeday:boxset', ctx.catalog.boxsets.filter((x) => x.childCount >= 2), D);
+// Zulässig sind nur die ersten MAX_LOADS_PER_DAY Kandidaten der Rotation (Position, nicht Cache-Zustand): alle Clients planen gleich.
+const boxsetCands = (ctx, D) => rotated('themeday:boxset', ctx.catalog.boxsets.filter((x) => x.childCount >= 2), D).slice(0, MAX_LOADS_PER_DAY);
 
 function computeTheme(ctx, kind, D) {
   if (kind === 'boxset') {
@@ -142,7 +143,12 @@ function weekOrder(ctx, W) {
   const cache = stateOf(ctx).boxsets;
   const avail = KINDS.filter((k) => {
     if (k === 'boxset') {
-      for (const ids of cache.values()) if (ids && boxsetItems(ctx, ids, D0 + 6).length >= MIN_ITEMS) return true;
+      for (let d = D0; d < D0 + 7; d++) {
+        for (const c of boxsetCands(ctx, d)) {
+          const ids = cache.get(c.id);
+          if (ids && boxsetItems(ctx, ids, d).length >= MIN_ITEMS) return true;
+        }
+      }
       return false;
     }
     return themeFor(ctx, k, D0) != null;
@@ -204,10 +210,8 @@ const themedayImpl = {
     const cache = stateOf(ctx).boxsets;
     const days = [...new Set((Array.isArray(Ds) ? Ds : []).filter(Number.isInteger))].sort((a, b) => a - b);
     for (const D of days) {
-      let loads = 0;
       for (const c of boxsetCands(ctx, D)) {
         if (!cache.has(c.id)) {
-          if (loads++ >= MAX_LOADS_PER_DAY) break;
           try {
             const r = await ctx.getBoxSetItems(c.id);
             cache.set(c.id, Array.isArray(r) ? r.map(String) : null);

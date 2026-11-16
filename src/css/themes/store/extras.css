@@ -22,8 +22,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-skip {
   font: 600 14px/1 var(--lfx-font, system-ui, sans-serif);
   letter-spacing: 0.02em;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-skip.is-touch {
   padding: 12px 22px;
@@ -85,7 +83,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble-who::after {
 /* Kassierer nicht im Bild: Blase oben mittig, mit Absender */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge {
   left: 50%;
-  top: calc(var(--lfx-store-hud-h, 44px) + 18px);
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 18px);
   transform: translateX(-50%);
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge::after {

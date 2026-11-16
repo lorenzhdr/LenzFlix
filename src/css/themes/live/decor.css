@@ -34,6 +34,4 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) {
     user-select: none;
     touch-action: manipulation;
   }
-  /* Platzhalter-Knoten der Spezifikationen bleiben unsichtbar, bis der Stil-Coder sie ersetzt */
-  .lfx-live-d-todo { display: none; }
 }

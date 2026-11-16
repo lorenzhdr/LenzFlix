@@ -81,6 +81,7 @@ export function trackSpec(kind, rows, { busy = false, onPick, onBack, onClose } 
 export function createControls({ openPanel, cinema, getState, getSeat, onSeat, onBack, toast }) {
   let main = null;
   let tracks = null;
+  let reshow = false;
   let trackToken = 0;
   let selfClose = false;
   let lastKey = '';
@@ -90,6 +91,8 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
 
   const state = () => (getState && getState()) || {};
   const closeHandle = (h) => { if (!h) return; selfClose = true; try { if (h.open !== false) h.close(); } catch { /* egal */ } selfClose = false; };
+
+  const restore = () => { if (reshow) { reshow = false; if (!disposed) api.show(); } };
 
   const handlers = {
     get seat() { return getSeat(); },
@@ -125,18 +128,20 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
     st.upNext ? `${st.upNext.seconds}|${st.upNext.text ? 1 : 0}` : '-', Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100), st.muted, getSeat()].join('~');
 
   const api = {
-    get visible() { return Boolean(main && main.open); },
+    get visible() { return Boolean(main && main.open) || reshow; },
     get tracksOpen() { return Boolean(tracks && tracks.open); },
     touch() { lastTouch = now; },
     show() {
       if (disposed) return;
       api.touch();
       if (main && main.open) return;
+      reshow = false;
       const st = state();
       main = openPanel(controlsSpec(st, handlers));
       lastKey = keyOf(st);
     },
     hide() {
+      reshow = false;
       const h = main;
       main = null;
       lastKey = '';
@@ -161,7 +166,7 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
       now = t;
       if (disposed) return;
       if (main && !main.open) { main = null; lastKey = ''; }
-      if (tracks && !tracks.open) { tracks = null; }
+      if (tracks && !tracks.open) { tracks = null; restore(); }
       if (!main) return;
       api.refresh();
       const st = state();
@@ -169,11 +174,16 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
     },
     openTracks(kind) {
       if (disposed) return;
+      // Bedienpanel liegt näher am Kopf als die Spurwahl und würde sie verdecken: solange sie offen ist, zu
+      const keep = reshow || Boolean(main && main.open);
+      reshow = false;
       api.closeTracks();
+      if (main && main.open) { const m = main; main = null; lastKey = ''; closeHandle(m); }
+      reshow = keep;
       const token = ++trackToken;
       const common = {
         onBack: () => api.closeTracks(),
-        onClose: () => { if (selfClose) return; if (token === trackToken) { tracks = null; } },
+        onClose: () => { if (selfClose) return; if (token === trackToken) { tracks = null; restore(); } },
       };
       let rows = null;
       let busy = false;
@@ -206,6 +216,7 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
       const h = tracks;
       tracks = null;
       closeHandle(h);
+      restore();
     },
     dispose() {
       if (disposed) return;

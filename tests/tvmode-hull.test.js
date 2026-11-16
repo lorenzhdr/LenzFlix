@@ -266,6 +266,29 @@ describe('tvmode Lebenszyklus', () => {
     expect(window.LenzFlixTvMode.create).toHaveBeenCalledTimes(2);
   });
 
+  it('A095/A097: Stopp im Hintergrund meldet Design-Abo ab und entfernt das Addon-CSS', async () => {
+    suspendResult = true;
+    await mountReady();
+    const deps = created.deps;
+    feature.unmount();
+    expect(themeListeners.size).toBe(1); // bleibt für die behaltene Instanz
+    removeAddonCss.mockClear();
+    deps.onStopped({ reason: 'pip-end' });
+    expect(themeListeners.size).toBe(0);
+    expect(removeAddonCss).toHaveBeenCalledWith('lenztvmode');
+  });
+
+  it('B055: onFatal nach Neu-Andocken (#homeTab ersetzt) zeigt trotzdem die Fehlerkarte', async () => {
+    feature.mount();
+    await flush();
+    document.getElementById('indexPage').innerHTML = '<div id="homeTab"><div class="sections"></div></div>';
+    feature.update(); // ensure(): gen + 1, resume auf neue Wurzel
+    created.deps.onFatal(new Error('planung kaputt'));
+    expect(instance.dispose).toHaveBeenCalled();
+    const root = document.getElementById('lfx-tvm');
+    expect(root.querySelector('.lfx-tvm__fallback-text').textContent).toContain('planung kaputt');
+  });
+
   it('Design-Wechsel: dispose und removeAddonCss', async () => {
     await mountReady();
     theme = 'store';

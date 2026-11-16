@@ -101,7 +101,7 @@ function drawBack(canvas, item) {
   for (const l of wrap(ctx, item.Name, W - 80).slice(0, 3)) { ctx.fillText(l, 40, y); y += 48; }
   ctx.font = `22px ${FONT}`;
   ctx.fillStyle = '#ffd166';
-  const meta = [item.ProductionYear, fsk(item.OfficialRating), item.RunTimeTicks ? ticksToText(item.RunTimeTicks) : (item.ChildCount ? `${item.ChildCount} Staffeln` : ''),
+  const meta = [item.ProductionYear, fsk(item.OfficialRating), item.RunTimeTicks ? ticksToText(item.RunTimeTicks) : (item.ChildCount ? `${item.ChildCount} ${item.ChildCount === 1 ? 'Staffel' : 'Staffeln'}` : ''),
     item.CommunityRating ? `★ ${Number(item.CommunityRating).toFixed(1).replace('.', ',')}` : ''].filter(Boolean).join(' · ');
   y += 4;
   for (const l of wrap(ctx, meta, W - 80)) { ctx.fillText(l, 40, y); y += 28; }
@@ -363,6 +363,8 @@ export class HoldView {
     const root = el('div', 'lfx-store-hold');
     const drag = el('div', 'lfx-store-hold-drag');
     const panel = el('div', 'lfx-store-hold-panel');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', item.Name || 'Hülle');
     const title = el('div', 'lfx-store-hold-title', item.Name || '');
     const meta = el('div', 'lfx-store-hold-meta');
     const actions = el('div', 'lfx-store-hold-actions');
@@ -379,6 +381,7 @@ export class HoldView {
       return b;
     };
     this.dom.btns = {};
+    this.focusBack = document.activeElement;
     const { series: isSeries, resumable } = itemFlags(item);
     if (!isSeries) this.dom.btns.play = btn('Abspielen', () => this.play(item, false), 'lfx-store-act--primary');
     if (resumable) this.dom.btns.resume = btn('Weiterschauen', () => this.play(item, true), 'lfx-store-act--primary');
@@ -387,6 +390,8 @@ export class HoldView {
     this.dom.btns.flip = btn('Umdrehen', () => { this.flipped = !this.flipped; this.rotTargetY = this.flipped ? Math.PI : 0; });
     this.dom.btns.back = btn('Zurückstellen', () => this.close(true));
     this.refreshMeta();
+    const first = actions.querySelector('button');
+    if (first) { try { first.focus({ preventScroll: true }); } catch { /* egal */ } }
 
     if (isSeries) this.buildSeries(token);
 
@@ -420,8 +425,10 @@ export class HoldView {
     const { fav, seen } = itemFlags(it);
     this.dom.btns.fav.textContent = fav ? 'Gemerkt ✓' : 'Merken';
     this.dom.btns.fav.classList.toggle('is-on', fav);
+    this.dom.btns.fav.setAttribute('aria-pressed', fav ? 'true' : 'false');
     this.dom.btns.seen.textContent = seen ? 'Gesehen ✓' : 'Gesehen';
     this.dom.btns.seen.classList.toggle('is-on', seen);
+    this.dom.btns.seen.setAttribute('aria-pressed', seen ? 'true' : 'false');
   }
 
   async toggle(kind) {
@@ -484,11 +491,13 @@ export class HoldView {
       return b;
     })();
     let eps = [];
+    let selGen = 0;
     const select = async (i) => {
-      [...tabs.children].forEach((c, k) => c.classList.toggle('is-on', k === i));
+      const gen = ++selGen;
+      [...tabs.children].forEach((c, k) => { c.classList.toggle('is-on', k === i); c.setAttribute('aria-pressed', k === i ? 'true' : 'false'); });
       list.textContent = 'Lade Folgen …';
       const got = await this.loadEpisodes(seasons[i].Id, token);
-      if (got === null) return;
+      if (got === null || gen !== selGen) return;
       eps = got;
       list.textContent = '';
       const m = seriesModel(seasons, eps, i);
@@ -527,8 +536,8 @@ export class HoldView {
       season: (i) => this.selectVrSeason(i),
       episode: (ep, resume) => this.play(ep, resume),
     });
-    // Weltfest vor dem Kopf (0,65 m, 0,15 m unter Augenhöhe), seitlich zur freien Hand hin; folgt dem Kopf nur bei deutlicher Drehung/Bewegung
-    spec.anchor = { head: true, offset: { x: this.hand === 'left' ? 0.3 : -0.3, y: -0.15, z: 0.65 }, follow: true };
+    // Weltfest vor dem Kopf (0,65 m, 0,15 m unter Augenhöhe), seitlich zur freien Hand hin (0,2 m: ganze Panelbreite im Sichtfeld); folgt dem Kopf nur bei deutlicher Drehung/Bewegung
+    spec.anchor = { head: true, offset: { x: this.hand === 'left' ? 0.2 : -0.2, y: -0.15, z: 0.65 }, follow: true };
     spec.onClose = () => { if (this.vr && this.isXr()) this.close(true); };
     return spec;
   }
@@ -608,7 +617,10 @@ export class HoldView {
     const wide = this.camera.aspect >= 1.2;
     if (wide) TARGET.pos.set(-0.14, 0.02, -0.66);
     else TARGET.pos.set(0, 0.3, -0.6);
-    TARGET.scale = wide ? 2.9 : 3;
+    // Nicht breit: Höhe und Größe am vertikalen FOV ausrichten (unter Seitenverhältnis 1,2 schrumpft es gegenüber 70°)
+    const k = wide ? 1 : Math.min(1, Math.tan(((this.camera.fov || 70) * Math.PI) / 360) / Math.tan(Math.PI * 35 / 180));
+    if (!wide) TARGET.pos.y *= k;
+    TARGET.scale = wide ? 2.9 : 3 * k;
     return TARGET;
   }
 
@@ -691,6 +703,9 @@ export class HoldView {
     if (this.front) { this.front.width = 1; this.front.height = 1; this.front = null; }
     if (this.back) { this.back.width = 1; this.back.height = 1; this.back = null; }
     if (this.dom) { this.dom.root.remove(); this.dom = null; }
+    const fb = this.focusBack;
+    this.focusBack = null;
+    if (fb && fb !== document.body && fb.isConnected && typeof fb.focus === 'function') { try { fb.focus({ preventScroll: true }); } catch { /* egal */ } }
     this.closeVr();
     this.series = null;
   }

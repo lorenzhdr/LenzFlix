@@ -29,7 +29,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) {
   --lfx-store-night-2: #141c48;
   --lfx-store-yellow: #ffd23f;
   --lfx-store-pink: #ff3d7f;
-  --lfx-store-carpet: #2446a8;
   --lfx-store-text: #f4f6ff;
   --lfx-store-muted: #aab4e8;
   --lfx-store-hud-h: 44px;
@@ -574,8 +573,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hint {
   text-align: center;
   background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   border-radius: 12px;
   max-width: min(80vw, 520px);
   padding: 8px 16px;
@@ -602,8 +599,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hint-sub {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-prompt {
   text-align: center;
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
   opacity: 0;
   background: rgba(13, 19, 48, .72);
   border-radius: 16px;
@@ -665,8 +660,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-menubtn {
   top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
   background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   pointer-events: auto;
   cursor: pointer;
   border-radius: 50%;
@@ -706,16 +699,18 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act {
   transition: background .12s, transform .12s;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:hover {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:focus-visible {
   outline: 2px solid var(--lfx-store-yellow, #ffd23f);
   outline-offset: 1px;
   background: rgba(255, 255, 255, .18);
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:focus-visible {
-  outline: 2px solid var(--lfx-store-yellow, #ffd23f);
-  outline-offset: 1px;
-  background: rgba(255, 255, 255, .18);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:hover {
+    outline: 2px solid var(--lfx-store-yellow, #ffd23f);
+    outline-offset: 1px;
+    background: rgba(255, 255, 255, .18);
+  }
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act:active {
@@ -747,8 +742,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary.is-on {
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
   z-index: 5;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   pointer-events: auto;
   background: rgba(7, 10, 28, .6);
   justify-content: center;
@@ -768,7 +761,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
   flex-direction: column;
   gap: 8px;
   width: min(86vw, 340px);
-  max-height: 90vh;
+  max-height: calc(100% - 24px);
   padding: 20px;
   display: flex;
   overflow-y: auto;
@@ -822,7 +815,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
   flex-direction: column;
   gap: 8px;
   width: min(92vw, 380px);
-  max-height: 92vh;
+  max-height: calc(100% - 24px);
   padding: 18px;
   display: flex;
   overflow-y: auto;
@@ -869,6 +862,11 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing {
   opacity: 0;
   transition: opacity .3s;
+  animation: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold.is-closing .lfx-store-hold-panel {
+  pointer-events: none;
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag {
@@ -889,8 +887,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-drag:active {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-hold-panel {
   background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
   pointer-events: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 18px;
@@ -1078,8 +1074,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 {
   z-index: 6;
   box-sizing: border-box;
   padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
   color: var(--lfx-store-text, #f4f6ff);
   font-family: var(--lfx-font, system-ui, sans-serif);
   pointer-events: auto;
@@ -1242,8 +1236,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row {
   display: grid;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row:hover {
-  background: rgba(227, 233, 255, .12);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row:hover {
+    background: rgba(227, 233, 255, .12);
+  }
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row.is-sel {
@@ -1369,14 +1365,16 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key {
   font-weight: 700;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:hover {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:focus-visible {
   background: #fff;
   outline: 2px solid #ffd23f;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:focus-visible {
-  background: #fff;
-  outline: 2px solid #ffd23f;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:hover {
+    background: #fff;
+    outline: 2px solid #ffd23f;
+  }
 }
 
 @media (pointer: coarse) {
@@ -1876,8 +1874,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-skip {
   font: 600 14px/1 var(--lfx-font, system-ui, sans-serif);
   letter-spacing: .02em;
   cursor: pointer;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   background: rgba(13, 19, 48, .62);
   border: 1px solid rgba(255, 255, 255, .35);
   border-radius: 999px;
@@ -1954,7 +1950,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble-who:after {
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge {
   left: 50%;
-  top: calc(var(--lfx-store-hud-h, 44px) + 18px);
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 18px);
   transform: translateX(-50%);
 }
 
@@ -2272,7 +2268,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fs-panel {
   flex-direction: column;
   gap: 8px;
   width: min(86vw, 380px);
-  max-height: 90vh;
+  max-height: calc(100% - 24px);
   padding: 20px;
   display: flex;
   overflow-y: auto;
@@ -2576,11 +2572,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-rotate-close:focus-visibl
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn {
   left: 50%;
-  bottom: calc(var(--lfx-store-safe-bottom, 0px) + 22px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
   border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, .14));
   background: var(--lfx-store-glass, rgba(13, 19, 48, .62));
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
   color: var(--lfx-store-text, #f4f6ff);
   font: inherit;
   letter-spacing: .02em;
@@ -2603,9 +2597,11 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn svg {
   flex: none;
 }
 
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn:hover {
-  border-color: var(--lfx-store-yellow, #ffd23f);
-  background: var(--lfx-glass-hover, rgba(255, 210, 63, .18));
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn:hover {
+    border-color: var(--lfx-store-yellow, #ffd23f);
+    background: var(--lfx-glass-hover, rgba(255, 210, 63, .18));
+  }
 }
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn:focus-visible {
@@ -2615,4 +2611,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn:focus-visible {
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-vrbtn {
   display: none;
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-vrbtn {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 160px);
+  }
 }

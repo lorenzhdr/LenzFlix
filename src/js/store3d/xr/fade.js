@@ -15,6 +15,7 @@ export function createFade(camera) {
   let dur = 0;
   let t = 0;
   let resolve = null;
+  let disposed = false;
   const apply = () => { mat.opacity = alpha; mesh.visible = alpha > 0.002; };
 
   const api = {
@@ -22,6 +23,7 @@ export function createFade(camera) {
     get alpha() { return alpha; },
     /** Auf alpha (0..1) in ms blenden. */
     to(a, ms = 200) {
+      if (disposed) return Promise.resolve();
       if (resolve) { const r = resolve; resolve = null; r(); }
       target = Math.max(0, Math.min(1, a));
       from = alpha;
@@ -44,6 +46,7 @@ export function createFade(camera) {
       if (k >= 1) { const r = resolve; resolve = null; r(); }
     },
     dispose() {
+      disposed = true;
       if (resolve) { const r = resolve; resolve = null; r(); }
       mesh.removeFromParent();
       mesh.geometry.dispose();

@@ -19,11 +19,11 @@ import { genreLabels } from './overlay-util.js';
 import { buildMagazine as buildMagazineModel, collectTipIds, loadOverviews } from '../magazine/model.js';
 import { createMagazineProp, PROP_MIN_PX } from '../magazine/prop.js';
 
-export const DEBOUNCE_MS = 400;
-export const DIGIT_WAIT_MS = 1500;
-export const RETRY_MS = 10000;
-export const SYNC_MS = 30000;
-export const LOADING_DELAY_MS = 400;
+const DEBOUNCE_MS = 400;
+const DIGIT_WAIT_MS = 1500;
+const RETRY_MS = 10000;
+const SYNC_MS = 30000;
+const LOADING_DELAY_MS = 400;
 const MAX_TIMEOUT = 2147483647;
 const VOL_STEP = 5;
 const VOL_SETTLE_MS = 1000; // so lange muss ein Pegel stehen, um als „letzter Pegel“ fürs Entstummen zu gelten
@@ -46,7 +46,7 @@ function pick(it, ...keys) {
 }
 
 /** Liest die normalisierten CatalogItem-Felder (schedule/catalog.js). Unbekannte Staffel/Folge (9999) → null. */
-export function itemFields(it, scheduler) {
+function itemFields(it, scheduler) {
   if (!it) return { genres: [] };
   const known = (n) => (n != null && n !== 9999 ? n : null);
   const g = Array.isArray(it.genres) ? it.genres : [];

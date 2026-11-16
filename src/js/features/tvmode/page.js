@@ -212,12 +212,14 @@ async function boot(myGen) {
     fatal: (err) => {
       fatal = true;
       disposeInstance();
-      if (myGen === gen) showFallback(err);
+      if (ui) showFallback(err); // nicht an gen binden: ensure() kann zwischenzeitlich neu angedockt haben
     },
     stopped: ({ reason } = {}) => {
       // Stopp im Hintergrund (Seite nicht gemountet, z. B. PiP vorbei): behaltene Instanz vergessen
       if (ui || !inst || reason === 'leave') return;
       disposeInstance();
+      unwatchTheme(); // Seite ist weg: Abos und Addon-CSS freigeben (start() meldet sie beim Wiedereintritt neu an)
+      removeAddonCss(ADDON);
     },
   });
   try {

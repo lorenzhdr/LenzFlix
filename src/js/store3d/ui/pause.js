@@ -62,6 +62,7 @@ export function createPause(host, a) {
   const panel = el('div', 'lfx-store-pause-panel');
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', 'Pause');
+  panel.setAttribute('aria-modal', 'true');
   const title = el('div', 'lfx-store-pause-title', 'Pause');
   panel.appendChild(title);
   const mk = (label, fn, cls = '') => {
@@ -98,6 +99,7 @@ export function createPause(host, a) {
   const pickPanel = el('div', 'lfx-store-voicepick-panel');
   pickPanel.setAttribute('role', 'dialog');
   pickPanel.setAttribute('aria-label', 'Stimme');
+  pickPanel.setAttribute('aria-modal', 'true');
   pickPanel.appendChild(el('div', 'lfx-store-pause-title', 'Stimme'));
   const list = el('div', 'lfx-store-voicelist');
   const pitchBtn = el('button', 'lfx-store-act lfx-store-voicepitch');
@@ -145,15 +147,19 @@ export function createPause(host, a) {
     a.onVoice({ pitch: PITCH_NEXT[prefsNow().pitch] || 'sehrtief' });
     renderPick();
   });
+  /** Das Pause-Panel ist bei offenem Unterpanel gesperrt (kein Tab/Lesen dahinter). */
+  const syncInert = () => { if (pick.hidden && tp.hidden) panel.removeAttribute('inert'); else panel.setAttribute('inert', ''); };
   function openPick() {
     renderPick();
     pick.hidden = false;
+    syncInert();
     const on = list.querySelector('[aria-pressed="true"]') || list.querySelector('button');
     if (on) { try { on.focus({ preventScroll: true }); } catch { /* egal */ } }
   }
   function closePick() {
     if (pick.hidden) return;
     pick.hidden = true;
+    syncInert();
     try { vo.focus({ preventScroll: true }); } catch { /* egal */ }
   }
   doneBtn.addEventListener('click', (e) => { e.stopPropagation(); closePick(); });
@@ -165,6 +171,7 @@ export function createPause(host, a) {
   const tpPanel = el('div', 'lfx-store-voicepick-panel');
   tpPanel.setAttribute('role', 'dialog');
   tpPanel.setAttribute('aria-label', 'Touch-Steuerung');
+  tpPanel.setAttribute('aria-modal', 'true');
   tpPanel.appendChild(el('div', 'lfx-store-pause-title', 'Touch-Steuerung'));
   const tuneNow = () => (a.getTouchTune && a.getTouchTune()) || {};
   const mkT = (fn) => {
@@ -203,11 +210,13 @@ export function createPause(host, a) {
   function openTouch() {
     refreshTouch();
     tp.hidden = false;
+    syncInert();
     try { tSchemeB.focus({ preventScroll: true }); } catch { /* egal */ }
   }
   function closeTouch() {
     if (tp.hidden) return;
     tp.hidden = true;
+    syncInert();
     try { tc.focus({ preventScroll: true }); } catch { /* egal */ }
   }
   tp.addEventListener('click', (e) => { if (e.target === tp) { e.stopPropagation(); closeTouch(); } });
@@ -222,12 +231,14 @@ export function createPause(host, a) {
     if (!tp.hidden) refreshTouch();
     const pr = prefsNow();
     const wantOnline = !!pr.online;
-    vo.hidden = !a.onVoice || !a.getSound();
+    vo.hidden = !a.onVoice; // bei Ton aus nur gesperrt statt ausgeblendet: Knöpfe bleiben an ihrem Platz
+    vo.disabled = !a.getSound();
     const chosen = pr.name ? voicesNow().find((v) => v.name === pr.name) : null;
     vo.textContent = `Stimme: ${chosen ? shortVoiceName(chosen.name) : 'Automatisch'}`;
-    const vt = a.getSound() ? voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline) : '';
+    const vt = voiceNote(a.getVoiceInfo ? a.getVoiceInfo() : null, wantOnline);
     note.textContent = vt;
     note.hidden = !vt;
+    note.style.visibility = a.getSound() ? '' : 'hidden'; // Platz bleibt reserviert (kein Verrutschen beim Umschalten)
     const fk = a.fullscreenKind ? a.fullscreenKind() : 'none';
     fs.hidden = fk !== 'api' && fk !== 'guide';
     fs.textContent = fk === 'guide' ? 'Vollbild …' : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? 'An' : 'Aus'}`;
@@ -236,6 +247,18 @@ export function createPause(host, a) {
   root.appendChild(pick);
   root.appendChild(tp);
   root.addEventListener('click', (e) => { if (e.target === root) a.onResume(); });
+  // Tab kreist im obersten Panel (Pause, Stimme oder Touch-Steuerung)
+  root.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const layer = !tp.hidden ? tp : !pick.hidden ? pick : panel;
+    const list = [...layer.querySelectorAll('button')].filter((b) => !b.disabled && !b.closest('[hidden]'));
+    if (!list.length) return;
+    const i = list.indexOf(document.activeElement);
+    const next = e.shiftKey ? (i <= 0 ? list[list.length - 1] : null) : (i < 0 || i === list.length - 1 ? list[0] : null);
+    if (!next) return;
+    e.preventDefault();
+    try { next.focus({ preventScroll: true }); } catch { /* egal */ }
+  });
 
   host.appendChild(root);
   refresh();
@@ -249,6 +272,7 @@ export function createPause(host, a) {
     show() {
       pick.hidden = true;
       tp.hidden = true;
+      syncInert();
       refresh();
       focusBack = document.activeElement;
       root.hidden = false;

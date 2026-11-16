@@ -129,6 +129,19 @@ describe('app: Gerüst und Klassen', () => {
     expect(host.querySelector('.lfx-tvm__tab--epg').classList.contains('is-active')).toBe(false);
   });
 
+  it('B091: Toast zieht im nativen Vollbild in den Player und danach zurück in die Wurzel', () => {
+    mount();
+    const player = get('player').el;
+    const toast = host.querySelector('.lfx-tvm__toast');
+    expect(toast.parentNode).toBe(host);
+    Object.defineProperty(document, 'fullscreenElement', { get: () => player, configurable: true });
+    document.dispatchEvent(new Event('fullscreenchange'));
+    expect(toast.parentNode).toBe(player);
+    Object.defineProperty(document, 'fullscreenElement', { get: () => null, configurable: true });
+    document.dispatchEvent(new Event('fullscreenchange'));
+    expect(toast.parentNode).toBe(host);
+  });
+
   it('message zeigt den Toast; Ziffern-Vorschau erreicht digits.on', () => {
     vi.useFakeTimers();
     mount();

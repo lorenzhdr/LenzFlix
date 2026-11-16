@@ -222,3 +222,34 @@ describe('tvmode info-card.js Datum nach Mitternacht', () => {
     card.close();
   });
 });
+
+describe('tvmode info-card.js: Fokus und Anfrage (Welle 3)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetThumbCache();
+    document.body.innerHTML = '';
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('H016/A137: Sendungsbeginn bei offener Karte behält den Fokus in der Karte, Esc schließt', () => {
+    const { card, model } = make();
+    const now = entryOn(model, 6, T0);
+    const e = { ...now, start: T0 + 1000, end: T0 + 3600e3 };
+    card.open({ no: 6, entry: e });
+    expect(document.activeElement).toBe(find(card, 'Details'));
+    card.tick(T0 + 2000);
+    expect(card.el.contains(document.activeElement)).toBe(true);
+    document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(card.isOpen()).toBe(false);
+  });
+
+  it('B090: die Karte fragt sofort an, ohne eine wartende Id der Infoleiste zu verdrängen', async () => {
+    const { card, model, details, itemDetails } = make();
+    details.request('m-wait');
+    card.open({ no: 2, entry: entryOn(model, 2, T0 + 3 * 3600e3) });
+    await vi.advanceTimersByTimeAsync(450);
+    const ids = itemDetails.mock.calls.map((c) => c[0][0]);
+    expect(ids).toContain('m-wait');
+    expect(ids.length).toBe(2);
+  });
+});

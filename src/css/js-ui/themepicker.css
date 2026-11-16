@@ -8,10 +8,12 @@ html.lfx-js {
 html.lfx-js.lfx-themepicker-open {
   overflow: hidden;
 }
+html.lfx-js.lfx-themepicker-open body { overflow: hidden; } /* iOS: html-overflow allein sperrt den Hintergrund nicht */
 
 html.lfx-js .lfx-tp {
   position: fixed;
   inset: 0;
+  overscroll-behavior: none;
   z-index: 1400;
   display: flex;
   align-items: center;
@@ -843,9 +845,10 @@ html.lfx-js .lfx-tp__beta {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* Sheet: Vorschau oben bündig, Pille unten links in der Vorschau (Schild oben bleibt frei) */
 html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
-  top: 12px;
-  left: 12px;
+  top: 54px;
+  left: 14px;
 }
 
 /* ---------- Handy: Bottom-Sheet ---------- */
@@ -892,7 +895,7 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__grid {
 html.lfx-js .lfx-tp--sheet .lfx-tp__card {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 14px;
   padding: 10px;
 }

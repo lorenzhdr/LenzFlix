@@ -25,8 +25,6 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3 {
   box-sizing: border-box;
   padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
   background: rgba(5, 8, 24, 0.58);
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
   color: var(--lfx-store-text, #f4f6ff);
   font-family: var(--lfx-font, system-ui, sans-serif);
   pointer-events: auto;
@@ -161,8 +159,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row {
   border-bottom: 1px dotted rgba(227, 233, 255, 0.2);
   cursor: pointer;
 }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row:hover {
-  background: rgba(227, 233, 255, 0.12);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row:hover {
+    background: rgba(227, 233, 255, 0.12);
+  }
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-row.is-sel {
   background: #e3e9ff;
@@ -267,10 +267,15 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key {
   text-shadow: none;
   cursor: pointer;
 }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:hover,
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:focus-visible {
   background: #fff;
   outline: 2px solid #ffd23f;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-term-key:hover {
+    background: #fff;
+    outline: 2px solid #ffd23f;
+  }
 }
 
 @media (pointer: coarse) {

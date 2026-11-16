@@ -103,7 +103,6 @@
   --lfx-ease-out: cubic-bezier(0, 0, .2, 1);
   --lfx-dur-fast: .15s;
   --lfx-dur: .25s;
-  --lfx-dur-slow: .4s;
   --lfx-hover-delay: .5s;
   --lfx-shadow-card: 0 16px 32px rgba(0, 0, 0, .75);
   --lfx-shadow-modal: 0 32px 64px rgba(0, 0, 0, .85);
@@ -154,7 +153,6 @@ html body, .MuiTypography-root, .MuiButtonBase-root, .emby-button, input, select
   :root {
     --lfx-dur-fast: 0s;
     --lfx-dur: 0s;
-    --lfx-dur-slow: 0s;
   }
 }
 
@@ -377,12 +375,6 @@ html:not(.layout-tv) .emby-scroller {
     / var(--lfx-poster-visible));
 }
 
-@media (max-width: 599px) {
-  html:not(.layout-tv) .emby-scroller {
-    --lfx-card-gap: 4px;
-  }
-}
-
 html:not(.layout-tv) .emby-scroller .itemsContainer.scrollSlider {
   gap: var(--lfx-card-gap);
 }
@@ -425,10 +417,13 @@ html:not(.layout-tv) .emby-scroller .cardScalable .cardContent:has(.itemProgress
 
 html:not(.layout-tv) .emby-scroller .innerCardFooter.innerCardFooterClear {
   background: none;
-  bottom: -10px;
   left: 0;
   right: 0;
   overflow: visible;
+}
+
+html:not(.layout-tv) .emby-scroller .cardContent:has(.itemProgressBar) .innerCardFooter.innerCardFooterClear {
+  bottom: -10px;
 }
 
 html:not(.layout-tv) .emby-scroller .innerCardFooterClear > .itemProgressBar {
@@ -617,7 +612,7 @@ html:not(.layout-tv) #indexPage .emby-scroller::-webkit-scrollbar {
   display: none;
 }
 
-html:not(.layout-tv) #indexPage .emby-scroller .card .cardFooter, html:not(.layout-tv) #indexPage .emby-scroller .card .cardBox > .cardText {
+html:not(.layout-tv) #indexPage #homeTab .emby-scroller .card .cardFooter, html:not(.layout-tv) #indexPage #homeTab .emby-scroller .card .cardBox > .cardText {
   display: none;
 }
 
@@ -817,10 +812,10 @@ html:not(.layout-tv) #itemDetailPage .detailLogo {
     width: min(65vw, 420px);
     height: 110px;
   }
+}
 
-  html:not(.layout-tv) #itemDetailPage .detailLogo:not(.hide) {
-    display: block;
-  }
+html:not(.layout-tv) #itemDetailPage .detailLogo:not(.hide) {
+  display: block;
 }
 
 html:not(.layout-tv) #itemDetailPage:has(.detailLogo:not(.hide)) .nameContainer h1 {
@@ -1045,6 +1040,10 @@ html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay .detailBut
 
 html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay:after {
   content: none;
+}
+
+html:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--lfx-bg), 0 0 0 4px #fff;
 }
 
 html:not(.layout-tv) #itemDetailPage .btnUserRating:not(.ratingbutton-withrating) .detailButton-icon {
@@ -1494,7 +1493,7 @@ html:not(.layout-tv) #videoOsdPage .osdControls > .osdTextContainer {
   pointer-events: none;
   grid-area: 2 / 1;
   justify-self: center;
-  max-width: 34%;
+  max-width: min(34%, 100% - 880px);
   margin: 0;
   padding: 0 !important;
 }
@@ -1786,6 +1785,7 @@ html:not(.layout-tv):has(#loginPage:not(.hide)) .backdropContainer:after {
 
 html:not(.layout-tv) #loginPage {
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--lfx-text);
   padding-top: calc(var(--lfx-header-h) + 8px) !important;
 }
@@ -1864,6 +1864,10 @@ html:not(.layout-tv) #loginPage .emby-input:-webkit-autofill {
   box-shadow: inset 0 0 0 100px #333;
 }
 
+html:not(.layout-tv) #loginPage .emby-input:-webkit-autofill:focus {
+  box-shadow: inset 0 0 0 1px #fff, inset 0 0 0 100px #333;
+}
+
 html:not(.layout-tv) #loginPage .checkboxContainer {
   margin: 4px 0 16px;
 }
@@ -1930,7 +1934,7 @@ html:not(.layout-tv) #loginPage .btnCancel, html:not(.layout-tv) #loginPage .btn
 
 html:not(.layout-tv) #loginPage .btnCancel:hover, html:not(.layout-tv) #loginPage .btnCancel:focus, html:not(.layout-tv) #loginPage .btnManual:hover, html:not(.layout-tv) #loginPage .btnManual:focus, html:not(.layout-tv) #loginPage .btnQuick:hover, html:not(.layout-tv) #loginPage .btnQuick:focus {
   color: #fff;
-  background: rgba(128, 128, 128, .3);
+  background: rgba(128, 128, 128, .55);
 }
 
 html:not(.layout-tv) #loginPage .btnForgotPassword, html:not(.layout-tv) #loginPage .btnSelectServer {
@@ -1945,6 +1949,10 @@ html:not(.layout-tv) #loginPage .btnForgotPassword:hover, html:not(.layout-tv) #
   color: #fff;
   background: none;
   text-decoration: underline;
+}
+
+html:not(.layout-tv) #loginPage .emby-button:focus-visible {
+  box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff;
 }
 
 html:not(.layout-tv) #loginPage .readOnlyContent {
@@ -2563,7 +2571,7 @@ html:not(.layout-tv) #searchPage .noItemsMessage {
   }
 
   html:not(.layout-tv) #videoOsdPage .videoOsdBottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
     padding-inline: max(0px, env(safe-area-inset-left, 0px)) max(0px, env(safe-area-inset-right, 0px));
   }
 
@@ -2572,7 +2580,7 @@ html:not(.layout-tv) #searchPage .noItemsMessage {
   }
 
   html:not(.layout-tv) .dialog.actionSheet .actionSheetContent {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -2588,9 +2596,16 @@ html:not(.layout-tv) #searchPage .noItemsMessage {
 }
 
 html.layout-tv, html.layout-tv body {
-  background-color: var(--lfx-bg);
   color: var(--lfx-text-body);
   font-family: var(--lfx-font);
+}
+
+html.layout-tv {
+  background-color: var(--lfx-bg);
+}
+
+html.layout-tv body {
+  background-color: rgba(0, 0, 0, 0);
 }
 
 html.layout-tv .backgroundContainer {
@@ -2696,7 +2711,7 @@ html.layout-tv .emby-button.show-focus:focus, html.layout-tv .emby-button:focus,
   transform: scale(1.06);
 }
 
-html.layout-tv .emby-button:focus .material-icons, html.layout-tv .emby-button:focus .detailButton-icon, html.layout-tv .emby-button:focus .detailButtonText, html.layout-tv .emby-button:focus .detailButton-text, html.layout-tv .emby-button:focus .emby-button-foreground {
+html.layout-tv .emby-button:focus .material-icons, html.layout-tv .emby-button:focus .detailButton-icon, html.layout-tv .emby-button:focus .detailButtonText, html.layout-tv .emby-button:focus .detailButton-text, html.layout-tv .emby-button:focus .emby-button-foreground, html.layout-tv #itemDetailPage .detailsGroupItem a:focus, html.layout-tv .button-link.emby-button:focus {
   color: #000 !important;
 }
 
@@ -2711,7 +2726,7 @@ html.layout-tv .paper-icon-button-light:focus .material-icons {
   color: #000;
 }
 
-html.layout-tv .headerTabs .emby-tab-button.show-focus:focus, html.layout-tv .headerTabs .emby-tab-button:focus {
+html.layout-tv .emby-tab-button.show-focus:focus, html.layout-tv .emby-tab-button:focus {
   color: #000 !important;
   background: #fff !important;
   transform: scale(1.06) !important;
@@ -2745,8 +2760,13 @@ html.layout-tv .card:focus .cardBox.visualCardBox, html.layout-tv .card:focus .c
   border-color: rgba(0, 0, 0, 0) !important;
 }
 
+html.layout-tv .card:focus .cardBox > .cardText, html.layout-tv .card:focus .cardBox > .cardFooter {
+  z-index: 1;
+  position: relative;
+}
+
 html.layout-tv .sectionTitleContainer-cards {
-  margin: 0;
+  margin: 0 0 .4em;
 }
 
 html.layout-tv .sectionTitle, html.layout-tv .sectionTitle-cards {
@@ -2771,7 +2791,7 @@ html.layout-tv .overflowPortraitCard, html.layout-tv .overflowSquareCard {
   width: 12.4vw;
 }
 
-html.layout-tv .emby-scroller .cardBox > .cardFooter, html.layout-tv .emby-scroller .cardBox > .cardText {
+html.layout-tv .emby-scroller .cardBox > .cardFooter, html.layout-tv .emby-scroller .card:not(.personCard) .cardBox > .cardText {
   display: none;
 }
 
@@ -2779,15 +2799,14 @@ html.layout-tv .emby-scroller .cardBox {
   position: relative;
 }
 
-html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter {
+html.layout-tv .emby-scroller .card:focus .cardBox > .cardFooter, html.layout-tv .emby-scroller .card:not(.personCard):focus .cardBox > .cardText-first {
   z-index: 2;
   color: #fff;
   background: linear-gradient(0deg, rgba(0, 0, 0, .85) 0%, rgba(0, 0, 0, 0) 100%);
-  border-radius: 0 0 8px 8px;
   padding: 1.6em .6em .7em;
   display: block;
   position: absolute;
-  bottom: 0;
+  bottom: .3em;
   left: 0;
   right: 0;
 }
@@ -2826,6 +2845,7 @@ html.layout-tv .backdropContainer:after {
 
 html.layout-tv .backgroundContainer.withBackdrop {
   opacity: 1;
+  background-color: rgba(0, 0, 0, 0);
 }
 
 html.layout-tv #itemDetailPage {
@@ -2859,6 +2879,12 @@ html.layout-tv #itemDetailPage .nameContainer h1, html.layout-tv #itemDetailPage
   font-weight: 800;
   line-height: 1.1;
   overflow: visible;
+}
+
+html.layout-tv #itemDetailPage .nameContainer .subtitle {
+  margin-left: 0;
+  padding-left: 0;
+  font-size: 1.6em;
 }
 
 html.layout-tv #itemDetailPage .nameContainer h3, html.layout-tv #itemDetailPage .nameContainer h4 {
@@ -2914,6 +2940,10 @@ html.layout-tv #itemDetailPage .btnPlay {
 html.layout-tv #itemDetailPage .detailButton:focus {
   color: #000;
   background: #fff;
+}
+
+html.layout-tv #itemDetailPage .overview-controls {
+  justify-content: flex-start;
 }
 
 html.layout-tv #itemDetailPage .detailSectionContent .overview, html.layout-tv #itemDetailPage .detailSectionContent .tagline {
@@ -4076,29 +4106,29 @@ html.lfx-js .lfx-row:has(.lfx-card--top10) {
 }
 
 @media (hover: hover) and (pointer: fine) {
-  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) {
     z-index: auto;
     transition-delay: 0s;
     transform: none;
   }
 
-  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
     z-index: auto;
     transition-delay: 0s;
     transform: none;
   }
 
-  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) .cardScalable {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:-webkit-any(:hover, :has(:focus-visible)) .cardScalable {
     box-shadow: none;
     transition-delay: 0s;
   }
 
-  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
     box-shadow: none;
     transition-delay: 0s;
   }
 
-  html.lfx-js .emby-scroller .cardOverlayContainer {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .cardOverlayContainer {
     display: none !important;
   }
 }
@@ -4806,8 +4836,10 @@ html.lfx-js .lfx-modal__person {
   font-style: normal;
 }
 
-html.lfx-js .lfx-modal__more-link:hover, html.lfx-js .lfx-modal__person:hover {
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__more-link:hover, html.lfx-js .lfx-modal__person:hover {
+    text-decoration: underline;
+  }
 }
 
 html.lfx-js .lfx-modal__section {
@@ -4862,8 +4894,10 @@ html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on) 
   border-color: #4d4d4d;
 }
 
-html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on):hover {
-  background: #333;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on):hover {
+    background: #333;
+  }
 }
 
 html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__seasonbtn {
@@ -4923,9 +4957,16 @@ html.lfx-js .lfx-modal__seasonopt {
   display: block;
 }
 
-html.lfx-js .lfx-modal__seasonopt:hover, html.lfx-js .lfx-modal__seasonopt[aria-selected="true"] {
+html.lfx-js .lfx-modal__seasonopt[aria-selected="true"] {
   color: #fff;
   background: #333;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__seasonopt:hover {
+    color: #fff;
+    background: #333;
+  }
 }
 
 html.lfx-js .lfx-modal__ep {
@@ -5120,8 +5161,10 @@ html.lfx-js .lfx-modal__more-btn {
   position: relative;
 }
 
-html.lfx-js .lfx-modal__more-btn:hover {
-  border-color: #fff;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__more-btn:hover {
+    border-color: #fff;
+  }
 }
 
 html.lfx-js .lfx-modal__grid {
@@ -5199,9 +5242,11 @@ html.lfx-js .lfx-modal__link {
   text-decoration: none;
 }
 
-html.lfx-js .lfx-modal__link:hover {
-  color: #fff;
-  text-decoration: underline;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__link:hover {
+    color: #fff;
+    text-decoration: underline;
+  }
 }
 
 html.lfx-js .lfx-modal__error {
@@ -5313,7 +5358,7 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body {
     transition: none;
   }
 
-  html.lfx-js .lfx-modal {
+  html.lfx-js .lfx-modal, html.lfx-js .lfx-skel {
     animation: none;
   }
 }
@@ -5760,8 +5805,10 @@ html.lfx-js .lfx-np__pill {
   display: inline-flex;
 }
 
-html.lfx-js .lfx-np__pill:hover {
-  background: var(--lfx-pill-active);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-np__pill:hover {
+    background: var(--lfx-pill-active);
+  }
 }
 
 html.lfx-js .lfx-np__pill.is-active, html.lfx-js .lfx-np__pill.is-active:hover {
@@ -5987,13 +6034,13 @@ html.lfx-js .lfx-np__genres {
 
 @media (max-width: 799px) {
   html.lfx-js .lfx-np {
-    padding-top: 56px;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px));
   }
 
   html.lfx-js .lfx-np__tabs {
+    top: calc(56px + env(safe-area-inset-top, 0px));
     padding-left: 4vw;
     padding-right: 4vw;
-    top: 56px;
   }
 
   html.lfx-js .lfx-np__entry {
@@ -7398,6 +7445,7 @@ html.lfx-js .lfx-card__link picture {
 @media (max-width: 799px) {
   html.lfx-js .lfx-row--poster {
     --lfx-card-w: calc((100vw - var(--lfx-gutter)) / 3.3 - var(--lfx-card-gap));
+    --lfx-card-h: calc(var(--lfx-card-w) * 1.5);
   }
 
   html.lfx-js .lfx-row--poster .lfx-card__link {
@@ -7464,8 +7512,10 @@ html.lfx-js #lfx-tvm-btn svg {
   padding: 8px;
 }
 
-html.lfx-js #lfx-tvm-btn:hover svg {
-  background-color: rgba(255, 255, 255, .1);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js #lfx-tvm-btn:hover svg {
+    background-color: rgba(255, 255, 255, .1);
+  }
 }
 
 html.lfx-js #lfx-tvm-btn.is-active svg {
@@ -7793,13 +7843,13 @@ html.lfx-js:not(.layout-tv) .lfx-statshint__close {
 
 html.lfx-js:not(.layout-tv) .lfx-statshint--top {
   top: 0;
+  right: calc(var(--lfx-gutter) + 178px);
   bottom: auto;
-  right: auto;
   left: calc(var(--lfx-gutter) + 420px);
   height: var(--lfx-header-h);
   z-index: 1101;
+  justify-content: flex-start;
   align-items: center;
-  max-width: calc(100vw - 480px);
   padding: 0;
   animation-name: lfx-statshint-in-top;
 }
@@ -8064,11 +8114,12 @@ html.lfx-js {
   --lfx-tp-scrim: rgba(0, 0, 0, .72);
 }
 
-html.lfx-js.lfx-themepicker-open {
+html.lfx-js.lfx-themepicker-open, html.lfx-js.lfx-themepicker-open body {
   overflow: hidden;
 }
 
 html.lfx-js .lfx-tp {
+  overscroll-behavior: none;
   z-index: 1400;
   box-sizing: border-box;
   background: var(--lfx-tp-scrim);
@@ -9043,8 +9094,8 @@ html.lfx-js .lfx-tp__beta {
 }
 
 html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
-  top: 12px;
-  left: 12px;
+  top: 54px;
+  left: 14px;
 }
 
 html.lfx-js .lfx-tp--sheet {
@@ -9098,7 +9149,7 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__grid {
 
 html.lfx-js .lfx-tp--sheet .lfx-tp__card {
   grid-template-columns: 112px minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 14px;
   padding: 10px;
   display: grid;
@@ -9382,8 +9433,14 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn svg {
   padding: 8px;
 }
 
-html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg, html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn[aria-expanded="true"] svg {
+html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn[aria-expanded="true"] svg {
   background-color: rgba(255, 255, 255, .1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg {
+    background-color: rgba(255, 255, 255, .1);
+  }
 }
 
 html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {

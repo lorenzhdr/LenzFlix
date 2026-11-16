@@ -103,7 +103,6 @@
   --lfx-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --lfx-dur-fast: 150ms;
   --lfx-dur: 250ms;
-  --lfx-dur-slow: 400ms;
   --lfx-hover-delay: 500ms;
 
   /* --- Schatten --- */
@@ -136,5 +135,5 @@ button {
 ::selection { background: var(--lfx-red); color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
-  :root { --lfx-dur-fast: 0ms; --lfx-dur: 0ms; --lfx-dur-slow: 0ms; }
+  :root { --lfx-dur-fast: 0ms; --lfx-dur: 0ms; }
 }

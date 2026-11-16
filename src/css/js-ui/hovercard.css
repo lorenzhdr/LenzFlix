@@ -1,18 +1,18 @@
 /* LenzFlix · js-ui/hovercard
    Streaming-Hover-Popup (#lfx-hovercard, vom JS in <body> angelegt). Nur im JS-Modus. */
 
-/* ---------- Nativen Hover-Zoom/-Overlay im JS-Modus neutralisieren ---------- */
+/* ---------- Nativen Hover-Zoom/-Overlay im JS-Modus neutralisieren (nur flix: nur dort gibt es die Hovercard) ---------- */
 @media (hover: hover) and (pointer: fine) {
-  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) {
     transform: none;
     z-index: auto;
     transition-delay: 0s;
   }
-  html.lfx-js:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .itemsContainer > .card-hoverable:is(:hover, :has(:focus-visible)) .cardScalable {
     box-shadow: none;
     transition-delay: 0s;
   }
-  html.lfx-js .emby-scroller .cardOverlayContainer {
+  html.lfx-js.lfx-theme-flix:not(.layout-tv) .emby-scroller .cardOverlayContainer {
     display: none !important;
   }
 }

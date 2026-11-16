@@ -28,8 +28,10 @@ html.lfx-js #lfx-tvm-btn svg {
   border-radius: 50%;
   transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
 }
-html.lfx-js #lfx-tvm-btn:hover svg {
-  background-color: rgb(255 255 255 / 0.1);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js #lfx-tvm-btn:hover svg {
+    background-color: rgb(255 255 255 / 0.1);
+  }
 }
 html.lfx-js #lfx-tvm-btn.is-active svg {
   background-color: var(--lfx-pill-active);

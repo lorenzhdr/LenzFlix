@@ -79,12 +79,12 @@ html.lfx-js:not(.layout-tv) .lfx-statshint__close {
 /* Desktop: in der Kopfzeile rechts neben der Navigation (left setzt das JS aus der Nav-Breite) */
 html.lfx-js:not(.layout-tv) .lfx-statshint--top {
   top: 0;
-  right: auto;
+  right: calc(var(--lfx-gutter) + 178px); /* frei lassen: Datenspar-, TV- und Suchsymbol der Kopfleiste */
   bottom: auto;
   left: calc(var(--lfx-gutter) + 420px);
   height: var(--lfx-header-h);
   align-items: center;
-  max-width: calc(100vw - 480px);
+  justify-content: flex-start;
   padding: 0;
   z-index: 1101;
   animation-name: lfx-statshint-in-top;

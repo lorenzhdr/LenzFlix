@@ -105,9 +105,10 @@ function sourceInfo(ms, audioIdx, reasons) {
 
 
 function absolute(deps, rel) {
-  let origin = '';
-  try { origin = new URL(deps.streamUrl('/')).origin; } catch { /* Fallback unten */ }
-  try { return new URL(rel, origin || undefined).href; } catch { return null; }
+  // Serverrelative Adresse ("/videos/…") an die Serveradresse MIT Basispfad hängen (Reverse-Proxy unter /jellyfin).
+  let base = '';
+  try { const u = new URL(deps.streamUrl('/')); base = u.origin + u.pathname.replace(/\/+$/, ''); } catch { /* Fallback unten */ }
+  try { return new URL(/^\/(?!\/)/.test(rel) ? base + rel : rel, base || undefined).href; } catch { return null; }
 }
 
 /**

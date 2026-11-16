@@ -311,6 +311,7 @@ const plusHeader = {
   unmount() {
     state.mountSeq++;
     closeMenu();
+    closePopover();
     for (const fn of state.cleanups.splice(0)) fn();
     if (state.raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(state.raf);
     state.raf = 0;

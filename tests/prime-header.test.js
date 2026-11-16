@@ -23,7 +23,7 @@ vi.mock('../src/js/shared/profile.js', () => ({
 vi.mock('../src/js/shared/search.js', () => ({ searchItems: vi.fn(async () => ({ movies: [], series: [], episodes: [], people: [] })) }));
 
 import { isTheme } from '../src/js/core/theme.js';
-import { closePopover } from '../src/js/core/popover.js';
+import { openPopover, isPopoverOpen, closePopover } from '../src/js/core/popover.js';
 import { parseHash } from '../src/js/core/router.js';
 import header, { navItems, activeKey, mobileTitle } from '../src/js/features/prime/header.js';
 import { isPrimeSearchOpen } from '../src/js/features/prime/search.js';
@@ -229,3 +229,19 @@ describe('prime-header: Handy-Titel (nie Servername)', () => {
     expect(mobileTitle(route('#/details?id=9'))).toBe('Staffel 1');
   });
 });
+
+describe('prime-header: Popover beim unmount (B011)', () => {
+  it('schließt ein fremdes offenes Popover (z. B. Datensparmodus)', async () => {
+    document.body.innerHTML = '';
+    isTheme.mockReturnValue(true);
+    await header.mount(route('#/home'));
+    await flush();
+    openPopover(document.body, { items: [{ key: 'a', label: 'A' }] });
+    expect(isPopoverOpen()).toBe(true);
+    header.unmount();
+    expect(isPopoverOpen()).toBe(false);
+    expect(document.getElementById('lfx-popover')).toBeNull();
+    closePopover();
+  });
+});
+

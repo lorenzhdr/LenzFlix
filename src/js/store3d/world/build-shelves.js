@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Regale: alle Rahmen in EINEM Mesh (Holz, Rückwand, Leisten), Hüllen je Regalseite ("Face") als
 // zusammengeführte Geometrie mit eigenem Atlas-Material. Ein Face = ein Draw-Call (max. 35 Hüllen normal 7 × 5, 24 groß 6 × 4).
 import {
-  Group, Mesh, MeshLambertMaterial, BoxGeometry, Float32BufferAttribute, Color, Vector3, Quaternion, Euler,
+  Group, Mesh, MeshLambertMaterial, BoxGeometry, Float32BufferAttribute, Color, Vector3, Quaternion, Euler, BufferGeometry,
 } from 'three';
 import { box, merge, hex, hash, disposeTree } from '../util/geo.js';
 import { levelY, shelfSpec } from './layout.js';
@@ -113,7 +113,7 @@ export function buildShelves(layout, catalogItems, blankTex, woodTex) {
   const spec = layout.spec || shelfSpec(false);
   const frames = layout.runs.map((r) => frameGeometry(r, spec));
   const frameMesh = new Mesh(
-    mergeGeometries(frames, false),
+    frames.length ? mergeGeometries(frames, false) : new BufferGeometry(), // leerer Katalog: mergeGeometries([]) wirft
     new MeshLambertMaterial({ map: woodTex, vertexColors: true }),
   );
   frames.forEach((g) => g.dispose());

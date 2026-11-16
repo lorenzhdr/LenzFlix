@@ -613,6 +613,7 @@ html.lfx-js .lfx-card__link picture { display: contents; }
 @media (max-width: 799px) {
   html.lfx-js .lfx-row--poster {
     --lfx-card-w: calc((100vw - var(--lfx-gutter)) / 3.3 - var(--lfx-card-gap));
+    --lfx-card-h: calc(var(--lfx-card-w) * 1.5); /* Poster 2:3: Badge und Skelett folgen der Posterhöhe */
   }
   html.lfx-js .lfx-row--poster .lfx-card__link { aspect-ratio: 2 / 3; }
   html.lfx-js .lfx-row--poster .lfx-card__logo,

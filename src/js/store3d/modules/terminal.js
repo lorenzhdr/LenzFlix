@@ -304,8 +304,10 @@ export default {
       input.maxLength = 80;
       field.appendChild(input);
       const status = h('div', 'lfx-store-term-status');
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
       const list = h('div', 'lfx-store-term-list');
-      list.setAttribute('role', 'listbox');
+      list.setAttribute('role', 'list');
       const help = h('div', 'lfx-store-term-help');
       help.hidden = true;
       for (const line of [
@@ -333,7 +335,7 @@ export default {
         results.forEach((r, k) => {
           const on = k === sel;
           r.el.classList.toggle('is-sel', on);
-          r.el.setAttribute('aria-selected', on ? 'true' : 'false');
+          if (on) r.el.setAttribute('aria-current', 'true'); else r.el.removeAttribute('aria-current');
         });
         if (scroll) { const el = results[sel].el; if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); }
         ctx.use('sound')?.play('click');
@@ -355,7 +357,7 @@ export default {
 
       function addRow(desc) {
         const row = h('div', 'lfx-store-term-row');
-        row.setAttribute('role', 'option');
+        row.setAttribute('role', 'listitem');
         const idx = results.length;
         const main = h('div', 'lfx-store-term-main');
         main.appendChild(h('span', 'lfx-store-term-name', desc.title));
@@ -421,7 +423,11 @@ export default {
       }
 
       input.addEventListener('input', () => schedule(input.value, false));
-      keyBtn('F1 Hilfe', () => { help.hidden = !help.hidden; });
+      const toggleHelp = () => { help.hidden = !help.hidden; helpBtn.setAttribute('aria-expanded', help.hidden ? 'false' : 'true'); };
+      const helpBtn = keyBtn('F1 Hilfe', toggleHelp);
+      help.id = 'lfx-store-term-help';
+      helpBtn.setAttribute('aria-controls', help.id);
+      helpBtn.setAttribute('aria-expanded', 'false');
       keyBtn('F3 Hinführen', () => act('guide'));
       keyBtn('F5 Tresen', () => act(selected() && selected().desc.isEpisode ? 'series' : 'counter'));
       keyBtn('Esc Ende', () => ctx.overlay.close());
@@ -441,7 +447,7 @@ export default {
             if (selected()) act(selected().desc.actions[0]);
             break;
           }
-          case 'F1': e.preventDefault(); help.hidden = !help.hidden; break;
+          case 'F1': e.preventDefault(); toggleHelp(); break;
           case 'F3': e.preventDefault(); act('guide'); break;
           case 'F5': e.preventDefault(); act(selected() && selected().desc.isEpisode ? 'series' : 'counter'); break;
           case 'Escape': e.preventDefault(); ctx.overlay.close(); break;

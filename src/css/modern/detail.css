@@ -120,11 +120,11 @@ html:not(.layout-tv) #itemDetailPage .detailLogo {
     width: min(65vw, 420px);
     height: 110px;
   }
-  /* Jellyfin blendet das Logo am Handy aus, die Regel unten klippt aber den Text-Titel, sobald ein Logo
-     existiert -> ohne diese Zeile waren am Handy weder Logo noch Name sichtbar (live geprüft, 390 px). */
-  html:not(.layout-tv) #itemDetailPage .detailLogo:not(.hide) {
-    display: block;
-  }
+}
+/* Jellyfin blendet das Logo bis 1100 px und in layout-mobile aus, die Regel unten klippt aber den Text-Titel, sobald ein
+   Logo existiert -> ohne diese Regel waren in diesen Breiten weder Logo noch Name sichtbar (live geprüft, 390 px). */
+html:not(.layout-tv) #itemDetailPage .detailLogo:not(.hide) {
+  display: block;
 }
 /* Logo vorhanden (.detailLogo ohne .hide, siehe renderLogo()) -> Text-Titel visuell ausblenden (bleibt für Screenreader).
    Nur h1; der h3-Untertitel (Episode: "Staffel – Name") bleibt sichtbar. */
@@ -322,6 +322,11 @@ html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay .detailBut
 }
 html:not(.layout-tv) #itemDetailPage .btnPlay:not(.hide) ~ .btnReplay::after {
   content: none;
+}
+/* Tastaturfokus: emby-button setzt outline:none !important, die Rand-/Hintergrundregeln oben überdecken den Fokus
+   (Von vorn neben Fortsetzen, aktive Favorit/Gesehen-Buttons) -> Ring per box-shadow */
+html:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--lfx-bg), 0 0 0 4px #fff;
 }
 /* Favorit/Gesehen: inaktiv gedämpft, aktiv weiß + weißer Rand (Theme färbt aktive Icons sonst bunt) */
 html:not(.layout-tv) #itemDetailPage .btnUserRating:not(.ratingbutton-withrating) .detailButton-icon,

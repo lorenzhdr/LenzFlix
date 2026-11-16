@@ -221,7 +221,7 @@ export function makeTextures(preset) {
     glow: toTexture(glowCanvas(), { aniso: 1, mips: false }),
     night: toTexture(nightCanvas(), { aniso: 1, mips: false }),
   };
-  t.setAnisotropy = (n) => { for (const k of ['carpet', 'carpetRed', 'carpetKids', 'wood', 'wallpaper', 'ceiling']) t[k].anisotropy = n; };
+  t.setAnisotropy = (n) => { for (const k of ['carpet', 'carpetRed', 'carpetKids', 'wood', 'wallpaper', 'ceiling']) { if (t[k].anisotropy !== n) { t[k].anisotropy = n; t[k].needsUpdate = true; } } };
   t.dispose = () => { for (const k of Object.keys(t)) if (t[k] && t[k].isTexture) t[k].dispose(); };
   return t;
 }

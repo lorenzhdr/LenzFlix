@@ -1091,9 +1091,13 @@
       const pool = rerunPool(info, D);
       const candsA = streamCands(pool.filter((u) => streamOfAge(u.age) === "A"), "A", D);
       const candsB = streamCands(pool.filter((u) => streamOfAge(u.age) === "B"), "B", D);
-      const B = ctx.builder(17, D);
-      const b = B.bounds;
       const premPieces = P ? piecesOf(P, P.kind === "film" ? { premiere: "film" } : { premiere: "episode", label: "Neue Folge" }) : null;
+      const B = ctx.builder(17, D, new Set(premPieces ? premPieces.map((p) => p.itemId) : []));
+      const b = B.bounds;
+      const placePrem = () => {
+        for (const p of premPieces) B.used.delete(p.itemId);
+        B.placeBlock(premPieces);
+      };
       const late = P && P.age != null && P.age > 12;
       if (late) {
         const at = P.age >= 18 ? b.a2300 : b.a2200;
@@ -1103,13 +1107,13 @@
         fillSegment(B, candsA, { limit: b.a2200, strict: true });
         if (at > b.a2200) fillSegment(B, candsB, { limit: at, strict: true });
         if (B.cursor < at) B.fillUntil(at);
-        B.placeBlock(premPieces);
+        placePrem();
         fillSegment(B, candsB, { limit: b.end, strict: true });
         return B.finish();
       }
       const anchorMovie = P ? null : candsA.find((c) => c.movie && b.a2015 + c.size <= b.end);
       fillSegment(B, candsA.filter((c) => c !== anchorMovie), { limit: b.a2015, strict: true });
-      if (P) B.placeBlock(premPieces);
+      if (P) placePrem();
       else if (anchorMovie) B.placeBlock(anchorMovie.pieces);
       fillSegment(B, candsA, { limit: b.a2200, strict: false });
       fillSegment(B, candsB, { limit: b.end, strict: true });
@@ -1196,7 +1200,7 @@
     }
     return out;
   }
-  var boxsetCands = (ctx, D) => rotated("themeday:boxset", ctx.catalog.boxsets.filter((x) => x.childCount >= 2), D);
+  var boxsetCands = (ctx, D) => rotated("themeday:boxset", ctx.catalog.boxsets.filter((x) => x.childCount >= 2), D).slice(0, MAX_LOADS_PER_DAY);
   function computeTheme(ctx, kind, D) {
     if (kind === "boxset") {
       const cache = stateOf(ctx).boxsets;
@@ -1243,7 +1247,12 @@
     const cache = stateOf(ctx).boxsets;
     const avail = KINDS.filter((k) => {
       if (k === "boxset") {
-        for (const ids of cache.values()) if (ids && boxsetItems(ctx, ids, D0 + 6).length >= MIN_ITEMS) return true;
+        for (let d = D0; d < D0 + 7; d++) {
+          for (const c of boxsetCands(ctx, d)) {
+            const ids = cache.get(c.id);
+            if (ids && boxsetItems(ctx, ids, d).length >= MIN_ITEMS) return true;
+          }
+        }
         return false;
       }
       return themeFor(ctx, k, D0) != null;
@@ -1305,10 +1314,8 @@
       const cache = stateOf(ctx).boxsets;
       const days2 = [...new Set((Array.isArray(Ds) ? Ds : []).filter(Number.isInteger))].sort((a, b) => a - b);
       for (const D of days2) {
-        let loads = 0;
         for (const c of boxsetCands(ctx, D)) {
           if (!cache.has(c.id)) {
-            if (loads++ >= MAX_LOADS_PER_DAY) break;
             try {
               const r = await ctx.getBoxSetItems(c.id);
               cache.set(c.id, Array.isArray(r) ? r.map(String) : null);
@@ -1341,6 +1348,7 @@
   function createScheduler(catalog, opts = {}) {
     const { ctx, channels, planBuiltin } = createContext(catalog, opts);
     const now = opts.now || (() => Date.now());
+    const MEMO_MAX = 18 * 8;
     const memo = /* @__PURE__ */ new Map();
     const specialFor = (no) => opts.specials && opts.specials[no] || getSpecial(no);
     function planDay(no, D) {
@@ -1356,6 +1364,7 @@
         if (sp && typeof sp.planDay === "function") list = sp.planDay(ctx, D);
         p = validPlan(list, b) ? Object.freeze(list.map((e) => Object.freeze({ ...e }))) : closedownDay(D, "empty");
       } else p = planBuiltin(no, D);
+      if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value);
       memo.set(key, p);
       return p;
     }
@@ -1441,7 +1450,11 @@
   // src/js/live/player/video.js
   var START_TIMEOUT_MS = 25e3;
   var STALL_REPORT_MS = 1200;
-  var MEDIA_ACTIONS = ["pause", "play", "seekbackward", "seekforward", "seekto", "previoustrack", "nexttrack"];
+  var LANG2 = { ger: "de", deu: "de", eng: "en", fre: "fr", fra: "fr", spa: "es", ita: "it", jpn: "ja", kor: "ko", chi: "zh", zho: "zh", rus: "ru", por: "pt", dut: "nl", nld: "nl", pol: "pl", tur: "tr", swe: "sv", dan: "da", ara: "ar" };
+  var srcLang = (l) => {
+    const s = String(l || "").toLowerCase();
+    return /^[a-z]{2}(-[a-z0-9]+)*$/.test(s) ? s : LANG2[s] || "";
+  };
   var JUMP_TOLERANCE_S = 1.5;
   function createVideoControl(video, { now = Date.now, emit = () => {
   } } = {}) {
@@ -1653,16 +1666,6 @@
       }
     };
     for (const [name, fn] of Object.entries(listeners)) video.addEventListener(name, fn);
-    const ms = typeof navigator !== "undefined" ? navigator.mediaSession : null;
-    if (ms && typeof ms.setActionHandler === "function") {
-      for (const a of MEDIA_ACTIONS) {
-        try {
-          ms.setActionHandler(a, () => {
-          });
-        } catch {
-        }
-      }
-    }
     function clearSubtitles() {
       if (trackEl) {
         try {
@@ -1797,7 +1800,8 @@
         const el = document.createElement("track");
         el.kind = "subtitles";
         el.label = label || "";
-        if (lang) el.srclang = lang;
+        const sl = srcLang(lang);
+        if (sl) el.srclang = sl;
         el.default = true;
         el.src = url;
         video.appendChild(el);
@@ -1813,14 +1817,6 @@
         clear(false);
         disposed = true;
         for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
-        if (ms && typeof ms.setActionHandler === "function") {
-          for (const a of MEDIA_ACTIONS) {
-            try {
-              ms.setActionHandler(a, null);
-            } catch {
-            }
-          }
-        }
       }
     };
   }
@@ -2087,13 +2083,14 @@
     };
   }
   function absolute(deps, rel) {
-    let origin = "";
+    let base = "";
     try {
-      origin = new URL(deps.streamUrl("/")).origin;
+      const u = new URL(deps.streamUrl("/"));
+      base = u.origin + u.pathname.replace(/\/+$/, "");
     } catch {
     }
     try {
-      return new URL(rel, origin || void 0).href;
+      return new URL(/^\/(?!\/)/.test(rel) ? base + rel : rel, base || void 0).href;
     } catch {
       return null;
     }
@@ -2945,9 +2942,13 @@
       cancelRequests();
       ac = new AbortController();
       const signal = ac.signal;
-      teardown();
-      tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
-      em.emit("state", { phase: "loading" });
+      const keep2 = !!opts.keepOnFail;
+      const reset = () => {
+        teardown();
+        tr = { audio: [], subs: [], audioIndex: null, subtitleIndex: -1 };
+        em.emit("state", { phase: "loading" });
+      };
+      if (!keep2) reset();
       lastCached = false;
       lastWarm = null;
       let r = await resolveFor(itemId, opts, signal);
@@ -2960,9 +2961,10 @@
         if (my !== gen) return aborted();
       }
       if (!r.ok) {
-        failure(r.reason, r.code);
+        if (!keep2) failure(r.reason, r.code);
         return failResult(r);
       }
+      if (keep2) reset();
       const chain = tm.chain;
       let cur = r;
       let noHevc = !!opts.noHevc;
@@ -2977,7 +2979,7 @@
         tm.mode = cur.mode;
         tm.info = cur.info || null;
         const wasWarm = attempt === 1 && !!tm.warm;
-        res = await launch(cur, opts, offsetMs2, itemId, my);
+        res = await launch(cur, opts, offsetMs2 + Math.max(0, now() - tm.t0), itemId, my);
         if (my !== gen) return aborted();
         if (res.ok) {
           if (cur.mode === "hls" && cur.offeredHevc && cur.videoCodec === "h264") fmp4Ok = true;
@@ -3095,7 +3097,7 @@
       async setAudio(index) {
         if (!session || session.kind !== "item") return aborted();
         if (index === tr.audioIndex) return { ok: true, mode: session.mode };
-        return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex });
+        return play({ itemId: session.itemId, offsetMs: vc.positionMs(), audioIndex: index, subtitleIndex: tr.subtitleIndex, keepOnFail: true });
       },
       async setSubtitle(index) {
         if (!session || session.kind !== "item") return;
@@ -3187,6 +3189,7 @@
       if (!list.length) note("filler");
     }
     function prefetch() {
+      if (deps && deps.zapPrefetch === false) return false;
       for (const x of neighbors()) {
         const key = `${x.no}:${x.e.start}:${x.e.itemId}`;
         if (done.has(key)) continue;
@@ -3205,7 +3208,11 @@
         return;
       }
       if (!warmOn()) {
-        if (mode === "play") prefetch();
+        if (mode !== "play") return;
+        if (prefetch() === false && ticks < WARM_TICK_MAX) {
+          ticks++;
+          wait(() => step(t, mode, 0), WARM_TICK_MS);
+        }
         return;
       }
       warm();
@@ -3479,6 +3486,7 @@
     let view = null;
     let gen = 0;
     let playing = false;
+    let trailerOn = false;
     let phase = "off";
     let reason = null;
     let card = null;
@@ -3710,6 +3718,7 @@
       entry = e;
       view = e;
       playing = false;
+      trailerOn = false;
       unlater("retry");
       unlater("trailer");
       nb.stop();
@@ -3772,6 +3781,7 @@
         }
         if (g !== gen) return;
         if (res && res.ok !== false) {
+          trailerOn = true;
           phase = "playing";
           reason = null;
           card = null;
@@ -3814,6 +3824,7 @@
       watchLeave();
       if (!immediate) safe2(() => player.stop());
       playing = false;
+      trailerOn = false;
       entry = null;
       try {
         view = scheduler.nowOn(no, clock()).entry;
@@ -3881,6 +3892,7 @@
       safe2(() => player.stop());
       on = false;
       playing = false;
+      trailerOn = false;
       needsTap = false;
       mutedByPolicy = false;
       entry = null;
@@ -3924,11 +3936,14 @@
     }
     async function setAudio(i) {
       let res;
+      const g = gen;
+      const e = entry;
       try {
         res = await player.setAudio(i);
       } catch {
         res = { ok: false };
       }
+      if (res && res.ok && phase === "loading" && g === gen && e === entry) handleResult(res, g, e);
       if (res && res.ok === false && res.reason !== "aborted") message("Diese Tonspur ist nicht verf\xFCgbar");
       return res;
     }
@@ -3968,7 +3983,7 @@
         } else if (ph === "playing") {
           if (stallArmed) clearStall();
           if (playing) watchTune();
-          if (phase === "loading" && playing) {
+          if (phase === "loading" && (playing || trailerOn)) {
             phase = "playing";
             changed();
           }
@@ -4074,8 +4089,12 @@
       /** Text oder undefined (noch nicht geladen). Leerer String = geladen, aber ohne Inhaltsangabe. */
       get: (id) => texts.get(id),
       /** Lädt die Inhaltsangabe entprellt; eine noch wartende andere Id wird verworfen. */
-      request(id) {
+      request(id, immediate) {
         if (!alive || !id || !can2() || texts.has(id) || inflight.has(id)) return;
+        if (immediate) {
+          load(id);
+          return;
+        }
         waitId = id;
         if (timer) clearTimer(timer);
         timer = setTimer(() => {
@@ -4381,9 +4400,8 @@
       pending: () => buf,
       dispose() {
         if (disposed) return;
+        reset();
         disposed = true;
-        unarm();
-        buf = "";
       }
     };
   }
@@ -4480,7 +4498,12 @@
     const r = parseInt(c.slice(0, 2), 16);
     const g = parseInt(c.slice(2, 4), 16);
     const b = parseInt(c.slice(4, 6), 16);
-    return (r * 299 + g * 587 + b * 114) / 1e3 > 150 ? "#1a1a1a" : "#ffffff";
+    const lin = (v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) + 0.05;
+    return L / 0.0603 > 1.05 / L ? "#1a1a1a" : "#ffffff";
   }
   function shortName(channel) {
     if (!channel) return "";
@@ -4879,6 +4902,7 @@
       if (!entry) {
         key = "";
         for (const b of [restartBtn, detailsBtn]) b.disabled = true;
+        moreBtn.hidden = true;
         return;
       }
       const t = getNow();
@@ -5222,6 +5246,7 @@
     right.append(zapWrap, tracksBtn, pipBtn, fsBtn);
     el.append(left, right);
     let lastMuted = null;
+    let lastEntry;
     function syncFullscreen() {
       const act = !!(fullscreen && fullscreen.active && fullscreen.active());
       setLabel(fsBtn, act ? "Vollbild beenden" : "Vollbild");
@@ -5253,7 +5278,9 @@
       }
       const choice = menu.hasChoice();
       tracksBtn.hidden = !choice;
-      if (!choice && menu.isOpen()) menu.close(false);
+      const changedEntry = snap.entry !== lastEntry;
+      lastEntry = snap.entry;
+      if ((!choice || changedEntry) && menu.isOpen()) menu.close(false);
       syncPip();
       syncFullscreen();
     }
@@ -5727,6 +5754,7 @@
     let nowPos = null;
     let cells = [];
     let rowEls = /* @__PURE__ */ new Map();
+    let tabRec = null;
     let dayBtns = [];
     let lastPpm = DEFAULT_PPM;
     let positioned = false;
@@ -5819,7 +5847,9 @@
           btn.setAttribute("aria-label", `Sender ${no}, ${c.title}, ${tm.textContent}`);
           const rec = { btn, entry: c.entry, no, mins, filler: c.kind === "filler", cur: false, past: false, vis: null };
           classify(rec, p);
+          btn.tabIndex = -1;
           btn.addEventListener("click", () => onCell(rec));
+          btn.addEventListener("focus", () => setTab(rec));
           btn.addEventListener("keydown", (e) => onKey(e, rec));
           track.append(btn);
           cells.push(rec);
@@ -5831,6 +5861,16 @@
       markCurrentChannel();
       applyTime(t, true);
       updateVis();
+      tabRec = null;
+      pickTab();
+    }
+    function setTab(rec) {
+      if (tabRec && tabRec !== rec) tabRec.btn.tabIndex = -1;
+      tabRec = rec;
+      if (rec) rec.btn.tabIndex = 0;
+    }
+    function pickTab(force) {
+      if (force || !tabRec || !tabRec.btn.isConnected) setTab(cells.find((c) => c.cur && c.no === current) || cells.find((c) => c.cur) || cells[0] || null);
     }
     function updateVis() {
       if (!alive) return;
@@ -5897,11 +5937,11 @@
         const at = Math.max(rec.entry.start, bounds.start);
         target = cells.find((c) => c.no === no && c.entry.start <= at && at < c.entry.end);
       }
-      if (target) {
+      if (k === "ArrowUp" || k === "ArrowDown" || target) {
         e.preventDefault();
         e.stopPropagation();
-        target.btn.focus();
       }
+      if (target) target.btn.focus();
     }
     function applyTime(t, force) {
       const inDay = t >= bounds.start && t < bounds.end;
@@ -6016,6 +6056,7 @@
         if (no !== current) {
           current = no;
           markCurrentChannel();
+          if (!el.contains(doc.activeElement)) pickTab(true);
         }
         if (!positioned && (!ro || scroll.clientWidth > 0)) {
           positioned = true;
@@ -6029,8 +6070,15 @@
           const follow = selD === todayD;
           todayD = D;
           if (follow || selD < D || selD > D + 6) selD = D;
+          const fr = cells.find((c) => c.btn === doc.activeElement);
           renderDays(t);
           renderDay(t);
+          if (follow) {
+            scroll.scrollLeft = 0;
+            reveal();
+          }
+          const again = fr && cells.find((c) => c.no === fr.no && (c.entry.start === fr.entry.start || c.cur));
+          if (again) again.btn.focus();
           return;
         }
         applyTime(t, false);
@@ -6192,7 +6240,7 @@
       }
       badgesEl.hidden = !(info.badges && info.badges.length);
       thumb.set(info.imageItemId, no);
-      if (info.itemId != null && details) details.request(info.itemId);
+      if (info.itemId != null && details) details.request(info.itemId, true);
       renderText();
       running = isRunning(t);
       renderActions();
@@ -6265,7 +6313,9 @@
         const r = isRunning(t);
         if (r !== running) {
           running = r;
+          const had = actions.contains(doc.activeElement);
           renderActions();
+          if (had) (actions.querySelector("button") || closeBtn).focus();
         }
       },
       destroy() {
@@ -6429,8 +6479,10 @@
     fullscreen = createFullscreen({
       target: playerEl,
       doc,
+      // Im Element-Vollbild wird nur der Player gezeichnet: Toast dorthin umhängen (sonst unsichtbar)
       onChange: (on) => {
         setCls("is-fullscreen", on);
+        (on ? playerEl : root).append(toast);
       }
     });
     function revealEpg() {

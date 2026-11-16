@@ -138,9 +138,13 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn svg {
   border-radius: 50%;
   transition: background-color var(--lfx-dur-fast) var(--lfx-ease);
 }
-html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg,
 html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn[aria-expanded="true"] svg {
   background-color: rgb(255 255 255 / 0.1);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:hover svg {
+    background-color: rgb(255 255 255 / 0.1);
+  }
 }
 html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn:focus-visible {
   outline: 2px solid var(--lfx-red);

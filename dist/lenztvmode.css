@@ -257,6 +257,10 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-fill {
   height: 100%;
 }
 
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info.is-empty .lfx-tvm__info-bar {
+  display: none;
+}
+
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__badges {
   flex-wrap: wrap;
   gap: 6px;
@@ -321,8 +325,8 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-next {
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__info-actions {
-  gap: var(--lfx-tvm-gap-btn, 10px);
   flex-wrap: wrap;
+  gap: 10px;
   margin-top: 6px;
   display: flex;
 }
@@ -564,18 +568,25 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lf
   padding: 0 22px;
 }
 
-html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn:hover, html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn:hover, html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute:hover, html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap:hover {
-  background: var(--lfx-red-hover);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__card-actions .lfx-tvm__btn:hover, html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player .lfx-tvm__pip-card .lfx-tvm__btn:hover, html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute:hover, html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap:hover {
+    background: var(--lfx-red-hover);
+  }
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__unmute {
   min-height: 48px;
   box-shadow: var(--lfx-shadow-card);
+  transition: bottom var(--lfx-dur) var(--lfx-ease);
   padding: 0 28px;
   position: absolute;
   bottom: 72px;
   left: 50%;
   transform: translateX(-50%);
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__player.is-zapping .lfx-tvm__unmute {
+  bottom: 168px;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__tap {
@@ -1114,6 +1125,16 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__row.is-current {
   }
 }
 
+@media (max-width: 1500px) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row {
+    grid-template-columns: 28px 92px minmax(0, 1fr);
+  }
+
+  html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row-logo {
+    display: none;
+  }
+}
+
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__row-no {
   font-size: var(--lfx-fs-meta);
   color: var(--lfx-text-muted);
@@ -1383,6 +1404,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-scroll {
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__epg-scroll {
+  isolation: isolate;
   max-height: none;
   overflow-x: auto;
   overflow-y: visible;
@@ -1649,7 +1671,7 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-nowline[hidden] {
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__infocard {
-  z-index: 1100;
+  z-index: calc(var(--lfx-tvm-z-full) + 2);
   padding: var(--lfx-gutter);
   box-sizing: border-box;
   justify-content: center;
@@ -1864,8 +1886,27 @@ html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player {
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-fullscreen {
+  z-index: var(--lfx-tvm-z-full);
+  box-shadow: none;
   position: fixed;
   top: 0;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-zapping .lfx-tvm__unmute {
+  min-height: 40px;
+  bottom: 104px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__player.is-zapping.is-controls .lfx-tvm__unmute {
+  bottom: 146px;
+}
+
+html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__player.is-zapping .lfx-tvm__unmute, html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone.is-landscape .lfx-tvm__player.is-zapping.is-controls .lfx-tvm__unmute {
+  left: auto;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  min-height: 48px;
+  transform: none;
 }
 
 html.lfx-js:not(.layout-tv) .lfx-tvm.is-phone .lfx-tvm__info {

@@ -30,9 +30,8 @@ export function getQuality() {
   return QUALITIES.includes(v) ? v : DEFAULTS.quality;
 }
 
-/** Ton (Standard an). Neuer Schlüssel „soundOn“; der alte Schlüssel „sound“ (Standard aus) wird ignoriert und entfernt. */
+/** Ton (Standard an). Schlüssel „soundOn“. */
 export function getSound() {
-  try { window.localStorage.removeItem(storageKey('sound')); } catch { /* egal */ }
   const v = read('localStorage', storageKey('soundOn'));
   return v === null ? DEFAULTS.sound : v !== '0';
 }
@@ -63,9 +62,8 @@ export function getTouchControl() {
   return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS.touchControl;
 }
 
-/** Touch-Feineinstellung: vier Umkehr-Schalter (Standard false), Empfindlichkeit 'low' | 'normal' | 'high', Umgreifen 'off' | 'short' (Standard) | 'long'. Alte Schlüssel lookInvertY/X (andere Konvention) werden entfernt. */
+/** Touch-Feineinstellung: vier Umkehr-Schalter (Standard false), Empfindlichkeit 'low' | 'normal' | 'high', Umgreifen 'off' | 'short' (Standard) | 'long'. */
 export function getTouchTune() {
-  for (const k of ['lookInvertY', 'lookInvertX']) { try { window.localStorage.removeItem(storageKey(k)); } catch { /* egal */ } }
   const t = { touchSens: readEnum('touchSens', TOUCH_SENS, 'normal'), touchRegrip: readEnum('touchRegrip', TOUCH_REGRIPS, 'short') };
   for (const k of TUNE_FLAGS) t[k] = read('localStorage', storageKey(k)) === '1';
   return t;

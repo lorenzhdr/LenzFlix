@@ -112,6 +112,7 @@ export class DesktopControls {
     this.zoomBtn = false;
     this.syncZoom();
     this.releaseLock();
+    this.exiting = false; // Listener ist entfernt, das Lock-Ende kommt nicht mehr an
   }
 
   clearLockTimer() {
@@ -193,6 +194,10 @@ export class DesktopControls {
       if (!wasIntentional) { this.unlockAt = performance.now(); this.escAt = this.unlockAt; } // Esc-Exit: Chrome sperrt neue Anfragen ~1 s
       this.down.clear();
       if (!wasIntentional && this.ctx.getMode() === 'play') this.ctx.onLockLost();
+    } else if (this.ctx.getMode() !== 'play') {
+      // später erteilter Lock, obwohl inzwischen Overlay/Pause/Hold: sofort wieder freigeben (sonst bleibt der Zeiger gefangen)
+      this.releaseLock();
+      return;
     } else {
       this.dragLook = false;
       this.retried = false;
@@ -240,6 +245,8 @@ export class DesktopControls {
     const mode = this.ctx.getMode();
     const esc = isDown && e.code === 'Escape';
     if (esc ? typingText(e.target) : typing(e.target)) return;
+    // Design-Wähler/Profil-Popover der Hülle (aus dem Pause-Menü geöffnet) schließen sich selbst: Esc gehört ihnen
+    if (esc && document.documentElement.classList.contains('lfx-themepicker-open') || esc && document.documentElement.classList.contains('lfx-popover-open')) return;
     if (esc) {
       if (mode === 'hold' || mode === 'paused' || mode === 'overlay') {
         e.preventDefault();
@@ -257,7 +264,7 @@ export class DesktopControls {
     if (isDown && !e.repeat && mode === 'play' && this.relockArmed && !this.locked && !this.dragLook && !this.inflight && e.code !== 'Escape') this.requestLock();
     const k = KEYS[e.code];
     if (k) {
-      if (mode !== 'play' && e.code.startsWith('Arrow')) return;
+      if (isDown && mode !== 'play' && e.code.startsWith('Arrow')) return;
       e.preventDefault();
       e.stopPropagation();
       if (mode === 'play' && isDown) this.down.add(k);

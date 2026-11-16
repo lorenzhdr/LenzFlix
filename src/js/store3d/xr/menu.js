@@ -23,11 +23,15 @@ export function buildMenuSpec(mode) {
     { label: 'Drehen', tag: vr.turn === 'smooth' ? 'Weich' : 'Ruck 45°', onSelect: () => { setVr(mode, { turn: vr.turn === 'smooth' ? 'snap' : 'smooth' }); again(); } },
     { label: 'Vignette', tag: onOff(vr.vignette !== false), onSelect: () => { setVr(mode, { vignette: vr.vignette === false }); again(); } },
     { label: 'Größe', tag: vr.height === 'seated' ? 'Sitzend' : 'Automatisch', onSelect: () => { setVr(mode, { height: vr.height === 'seated' ? 'auto' : 'seated' }); mode.recenter(); again(); } },
-    { label: 'Neu ausrichten', sub: 'Sitzhöhe neu kalibrieren', onSelect: () => { mode.recenter(); mode.toast('Neu ausgerichtet', 1600); } },
+    { label: 'Neu ausrichten', sub: 'Sitzhöhe neu kalibrieren', onSelect: () => { if (mode.recenter() !== false) mode.toast('Neu ausgerichtet', 1600); } },
     { label: 'Qualität', tag: vr.quality === 'low' ? 'Niedrig' : 'Mittel', onSelect: () => { const q = vr.quality === 'low' ? 'mid' : 'low'; setVr(mode, { quality: q }); app.setQuality(q); again(); } },
     { label: 'Kassen-PC-Suche', onSelect: () => { mode.closeMenu(); app.openTerminal(''); } },
     { label: 'Diagnose', tag: onOff(mode.diagOn), onSelect: () => { mode.setDiag(!mode.diagOn); again(); } },
   ];
+  // Im Kino ohne „Größe“ (der Saal wertet sie nicht aus) und ohne Kassen-PC-Suche (der Laden ist dort unsichtbar)
+  if (mode.inCinema) {
+    for (const l of ['Größe', 'Kassen-PC-Suche']) rows.splice(rows.findIndex((r) => r.label === l), 1);
+  }
   let extra;
   try { extra = mode.cinema && typeof mode.cinema.menuItems === 'function' ? mode.cinema.menuItems() || [] : []; } catch { extra = []; }
   for (const it of extra) {

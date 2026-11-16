@@ -95,7 +95,7 @@ html:not(.layout-tv) #videoOsdPage .osdControls > .osdTextContainer {
   grid-row: 2;
   grid-column: 1;
   justify-self: center;
-  max-width: 34%;
+  max-width: min(34%, calc(100% - 880px)); /* mittig, ohne die Knopfgruppen links/rechts (je ca. 440 px) zu überdecken */
   margin: 0;
   padding: 0 !important;
   pointer-events: none;

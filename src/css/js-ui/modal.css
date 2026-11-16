@@ -176,8 +176,10 @@ html.lfx-js .lfx-modal__value { color: #ddd; }
 html.lfx-js .lfx-modal__more-link,
 html.lfx-js .lfx-modal__person { color: #ddd; font-style: italic; text-decoration: none; }
 html.lfx-js .lfx-modal__person { font-style: normal; }
-html.lfx-js .lfx-modal__more-link:hover,
-html.lfx-js .lfx-modal__person:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__more-link:hover,
+  html.lfx-js .lfx-modal__person:hover { text-decoration: underline; }
+}
 
 html.lfx-js .lfx-modal__section { padding: 2em 3em 0; }
 html.lfx-js .lfx-modal__section[hidden] { display: none; }
@@ -198,7 +200,9 @@ html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played {
   border-radius: 10px 0 0 10px;
 }
 html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on) { border-color: #4d4d4d; background: #242424; }
-html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on):hover { background: #333; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__round--played:not(.is-on):hover { background: #333; }
+}
 html.lfx-js .lfx-modal__eps-tools--joined .lfx-modal__seasonbtn {
   height: 42px;
   box-sizing: border-box;
@@ -246,8 +250,10 @@ html.lfx-js .lfx-modal__seasonopt {
   white-space: nowrap;
   cursor: pointer;
 }
-html.lfx-js .lfx-modal__seasonopt:hover,
 html.lfx-js .lfx-modal__seasonopt[aria-selected="true"] { background: #333; color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__seasonopt:hover { background: #333; color: #fff; }
+}
 
 html.lfx-js .lfx-modal__ep {
   display: flex;
@@ -350,7 +356,9 @@ html.lfx-js .lfx-modal__more-btn {
   padding: 0;
   cursor: pointer;
 }
-html.lfx-js .lfx-modal__more-btn:hover { border-color: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__more-btn:hover { border-color: #fff; }
+}
 
 /* Kartenraster */
 html.lfx-js .lfx-modal__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -367,7 +375,9 @@ html.lfx-js .lfx-modal__card-desc { -webkit-line-clamp: 4; line-clamp: 4; }
 html.lfx-js .lfx-modal__inforow { margin: 0 0 8px; font-size: 14px; line-height: 1.6; }
 html.lfx-js .lfx-modal__footer { padding: 24px 3em 32px; }
 html.lfx-js .lfx-modal__link { color: #b3b3b3; font-size: 14px; text-decoration: none; }
-html.lfx-js .lfx-modal__link:hover { color: #fff; text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js .lfx-modal__link:hover { color: #fff; text-decoration: underline; }
+}
 html.lfx-js .lfx-modal__error { padding: 80px 3em; text-align: center; }
 
 /* Skeleton */
@@ -416,4 +426,5 @@ html.lfx-js .lfx-modal__skeleton .lfx-modal__body { padding-top: 24px; }
 @media (prefers-reduced-motion: reduce) {
   html.lfx-js .lfx-modal__epactions > .lfx-modal__round { transition: none; }
   html.lfx-js .lfx-modal { animation: none; }
+  html.lfx-js .lfx-skel { animation: none; }
 }

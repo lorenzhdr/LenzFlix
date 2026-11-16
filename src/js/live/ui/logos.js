@@ -15,13 +15,15 @@ export function channelColor(no) {
   return LOGO_COLORS[(n - 1) % LOGO_COLORS.length];
 }
 
-/** Dunkle oder helle Schrift je nach Helligkeit der Senderfarbe. */
+/** Dunkle (#1a1a1a) oder weiße Schrift: die Farbe mit dem höheren WCAG-Kontrast zur Senderfarbe. */
 export function channelInk(no) {
   const c = channelColor(no).slice(1);
   const r = parseInt(c.slice(0, 2), 16);
   const g = parseInt(c.slice(2, 4), 16);
   const b = parseInt(c.slice(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#1a1a1a' : '#ffffff';
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) + 0.05;
+  return L / 0.0603 > 1.05 / L ? '#1a1a1a' : '#ffffff'; // 0,0603 = Luminanz von #1a1a1a + 0,05
 }
 
 /** Kurzname: „KINO“, „KLASSIK“, Genre gekürzt auf 9 Zeichen. */

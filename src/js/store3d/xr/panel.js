@@ -11,6 +11,7 @@ const MAX_HALF_ANGLE = (27.5 * Math.PI) / 180; // Panel höchstens ~55° breit
 const HEAD_TURN = (35 * Math.PI) / 180;
 const HEAD_WALK = 0.6;
 const ROW_H = 88;
+const ARROW_H = 44;
 const BTN_H = 76;
 const TAB_H = 60;
 const INPUT_H = 72;
@@ -103,12 +104,22 @@ function build(s, W, scroll, measure, shift, visCap) {
       });
     }
     if (maxScroll > 0) {
-      // Scroll-Indikator im rechten Rand
-      const trackH = shown * ROW_H - 8;
+      // Scroll-Indikator im rechten Rand; ▲/▼ (Treffer 'scroll', ref ±1) für Hände ohne Stick
+      const full = shown * ROW_H - 8;
+      const arrows = full >= 2 * ARROW_H + 40;
+      const top = y + 4 + (arrows ? ARROW_H : 0);
+      const trackH = full - (arrows ? 2 * ARROW_H : 0);
       const thumbH = Math.max(40, trackH * (visible / rows.length));
-      const thumbY = y + 4 + (trackH - thumbH) * (sc / maxScroll);
-      rect(W - 22, y + 4, 8, trackH, COLORS.fill, { r: 4 });
+      const thumbY = top + (trackH - thumbH) * (sc / maxScroll);
+      rect(W - 22, top, 8, trackH, COLORS.fill, { r: 4 });
       rect(W - 22, thumbY, 8, thumbH, COLORS.yellow, { r: 4 });
+      if (arrows) {
+        [['▲', y + 4, -1], ['▼', y + 4 + full - ARROW_H, 1]].forEach(([ch, ay, ref]) => {
+          rect(W - PAD, ay, PAD, ARROW_H, COLORS.fill, { r: 8, key: `scroll:${ref}` });
+          text(W - PAD / 2, ay + 8, ch, 22, COLORS.text, { align: 'center' });
+          hits.push({ x: W - PAD, y: ay, w: PAD, h: ARROW_H, kind: 'scroll', ref });
+        });
+      }
     }
     y += shown * ROW_H + GAP;
   }
@@ -482,6 +493,7 @@ export function openPanel(spec, { anchor = 'front', camera, scene, measure, clea
       if (k !== hoverKey) { hoverKey = k; redraw(); }
       return h;
     },
+    get maxScroll() { return laid ? laid.maxScroll : 0; },
     scroll(dy) {
       if (!isOpen || !laid || !laid.maxScroll) return;
       const n = Math.max(0, Math.min(laid.maxScroll, scrollPx + dy));
@@ -496,6 +508,7 @@ export function openPanel(spec, { anchor = 'front', camera, scene, measure, clea
         else if (h.kind === 'tab') { const t = cur.tabs && cur.tabs[h.ref]; if (t && t.onSelect) t.onSelect(); }
         else if (h.kind === 'row') { const r = cur.list && cur.list.rows[h.ref]; if (r && r.onSelect) r.onSelect(); }
         else if (h.kind === 'action') { const r = cur.list && cur.list.rows[h.ref.row]; const a = r && r.actions && r.actions[h.ref.action]; if (a && a.onSelect) a.onSelect(); }
+        else if (h.kind === 'scroll') handle.scroll(h.ref * ROW_H);
         else if (h.kind === 'progress') { if (cur.progress && cur.progress.onSeek) cur.progress.onSeek(h.frac == null ? 0 : h.frac); }
         else if (h.kind === 'key') {
           if (!cur.input) return false;

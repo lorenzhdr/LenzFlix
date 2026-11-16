@@ -433,6 +433,7 @@ export default {
     if (state.menus) state.menus.destroy();
     state.menus = null;
     closeProfile();
+    closePopover();
     closeProfileSheet({ restoreFocus: false });
     closePrimeSearch({ restoreFocus: false });
     unmountPoint(ID);

@@ -94,12 +94,13 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     let dt = (now - last) / 1000;
     last = now;
     if (!(dt > 0)) dt = 1 / 60;
-    if (dt > 0.25) dt = 0.016;
+    const rawDt = dt;
+    if (dt > 0.25) dt = 0.016; // Physik/Tick nicht mit dem Hänger füttern
     acc += dt;
     accN++;
     if (acc >= 0.5) { fps = accN / acc; frameMs = (acc / accN) * 1000; acc = 0; accN = 0; }
     if (autoOn && !inXr()) {
-      const l = aq.sample(dt, now);
+      const l = aq.sample(rawDt, now);
       if (l) { setLevel(l); if (onAutoLevel) onAutoLevel(l); }
     }
     const t0 = performance.now();

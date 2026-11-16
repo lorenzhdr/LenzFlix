@@ -1878,13 +1878,19 @@
     clearMarker();
     if (session === s) session = null;
   }
+  function rebuiltAnchor(s) {
+    if (!s.anchorSel) return null;
+    const all = document.querySelectorAll(s.anchorSel);
+    return all.length === 1 ? all[0] : null;
+  }
   function finish(s) {
     if (session !== s) return;
     teardown(s);
     const { anchor, opts, command, item } = s;
-    if (anchor && typeof anchor.focus === "function" && anchor.isConnected) {
+    const target = anchor && anchor.isConnected ? anchor : rebuiltAnchor(s);
+    if (target && typeof target.focus === "function") {
       try {
-        anchor.focus({ preventScroll: true });
+        target.focus({ preventScroll: true });
       } catch {
       }
     }
@@ -1965,6 +1971,7 @@
     const s = {
       item,
       anchor,
+      anchorSel: anchor && anchor.classList && anchor.classList.length ? `.${[...anchor.classList].join(".")}` : "",
       opts,
       wrapper,
       command: null,
@@ -9939,10 +9946,15 @@
   function validRaw(x) {
     return Boolean(x && Array.isArray(x.movies) && Array.isArray(x.series) && Array.isArray(x.episodes) && Array.isArray(x.boxsets));
   }
+  var lastKey2 = null;
   function loadCatalog({ onProgress, now } = {}) {
     const t = typeof now === "function" ? now() : Number.isFinite(now) ? now : Date.now();
     const uid = getUserId();
     const key = cacheKey(uid, t);
+    if (lastKey2 !== key) {
+      if (lastKey2) clearCache("live:catalog:");
+      lastKey2 = key;
+    }
     return cached(`live:catalog:${key}`, async () => {
       if (hasIdb()) {
         try {
@@ -10009,10 +10021,6 @@
   var ZAP_KEY = "lfx-zapstats";
   var ZAP_WARM_KEY = "lfx-zapwarm";
   var FORCE_HLS_KEY = "lfx-forcehls";
-  try {
-    window.localStorage.removeItem("lfx-zapvariant");
-  } catch {
-  }
   function hashParam(name) {
     try {
       return parseHash(window.location.hash).params.get(name);
@@ -10493,11 +10501,13 @@
       fatal: (err) => {
         fatal = true;
         disposeInstance();
-        if (myGen === gen) showFallback(err);
+        if (ui) showFallback(err);
       },
       stopped: ({ reason } = {}) => {
         if (ui || !inst || reason === "leave") return;
         disposeInstance();
+        unwatchTheme();
+        removeAddonCss(ADDON);
       }
     });
     try {
@@ -11496,6 +11506,7 @@
     unmount() {
       state9.mountSeq++;
       closeMenu();
+      closePopover();
       for (const fn of state9.cleanups.splice(0)) fn();
       if (state9.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state9.raf);
       state9.raf = 0;
@@ -11610,6 +11621,7 @@
     },
     unmount() {
       state10.seq++;
+      closePopover();
       for (const fn of state10.cleanups.splice(0)) fn();
       if (state10.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(state10.raf);
       state10.raf = 0;
@@ -15111,6 +15123,7 @@
       if (state17.menus) state17.menus.destroy();
       state17.menus = null;
       closeProfile2();
+      closePopover();
       closeProfileSheet({ restoreFocus: false });
       closePrimeSearch({ restoreFocus: false });
       unmountPoint(ID13);
@@ -22157,10 +22170,6 @@
     return QUALITIES.includes(v) ? v : DEFAULTS3.quality;
   }
   function getSound() {
-    try {
-      window.localStorage.removeItem(storageKey6("sound"));
-    } catch {
-    }
     const v = read3("localStorage", storageKey6("soundOn"));
     return v === null ? DEFAULTS3.sound : v !== "0";
   }
@@ -22182,12 +22191,6 @@
     return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS3.touchControl;
   }
   function getTouchTune() {
-    for (const k of ["lookInvertY", "lookInvertX"]) {
-      try {
-        window.localStorage.removeItem(storageKey6(k));
-      } catch {
-      }
-    }
     const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal"), touchRegrip: readEnum("touchRegrip", TOUCH_REGRIPS, "short") };
     for (const k of TUNE_FLAGS) t[k] = read3("localStorage", storageKey6(k)) === "1";
     return t;
@@ -22663,7 +22666,7 @@
   var fadeTimer = null;
   var inst2 = null;
   var ui2 = null;
-  var lastKey2 = null;
+  var lastKey3 = null;
   var shown = false;
   var root5 = () => document.documentElement;
   var bridge = null;
@@ -22683,6 +22686,7 @@
     cur3.parked = false;
     try {
       cur3.instance.suspend();
+      cur3.suspended = true;
     } catch (e) {
       console.warn("[LenzFlix] store suspend", e && e.message);
     }
@@ -22735,6 +22739,7 @@
     inst2 = null;
     clearTimeout(cur3.disposeTimer);
     if (cur3.unsubTheme) cur3.unsubTheme();
+    if (cur3.offPlay) cur3.offPlay();
     try {
       cur3.instance.dispose();
     } catch (e) {
@@ -22849,10 +22854,6 @@
     ]);
     ui2.root.insertBefore(panel, ui2.hud);
   }
-  function fatalText2(err) {
-    const m = err && err.message ? String(err.message) : "";
-    return m.replace(/api_key=[^&\s]+/gi, "api_key=\u2026").slice(0, 200);
-  }
   function applyRoute(r) {
     if (!inst2 || !inst2.instance || !r) return;
     try {
@@ -22863,6 +22864,7 @@
     }
   }
   var routeKey2 = (route) => route && route.hash || "";
+  var viewKey = (r) => r ? `${r.kind}|${r.id}|${r.q}` : "";
   async function userName() {
     try {
       const u = await getUser();
@@ -22981,7 +22983,7 @@
       loaded = { catalog, name };
     } catch (e) {
       if (myGen !== gen7 || !ui2) return;
-      showFallback2("Die Videothek konnte nicht geladen werden.", { retry: true, detail: fatalText2(e) });
+      showFallback2("Die Videothek konnte nicht geladen werden.", { retry: true, detail: fatalText(e) });
       return;
     }
     if (myGen !== gen7 || !ui2) return;
@@ -22990,7 +22992,7 @@
     const deps = buildDeps2(loaded.catalog, loaded.name, (err) => {
       fatal = true;
       disposeInstance2();
-      showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText2(err) });
+      showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText(err) });
     }, (on) => rebuild(on));
     const opts = buildOpts2(route);
     setIntroSeen();
@@ -23004,13 +23006,18 @@
         }
         return;
       }
-      const entry = { instance, ready: false, disposeTimer: null, unsubTheme: null };
+      const entry = { instance, uid: getUserId(), ready: false, disposeTimer: null, unsubTheme: null, offPlay: null };
       entry.unsubTheme = onThemeChange(({ theme }) => {
         if (theme !== "store") disposeInstance2();
       });
+      const dropCatalog = () => clearCache("store:catalog:");
+      window.addEventListener("lfx:play", dropCatalog);
+      entry.offPlay = () => window.removeEventListener("lfx:play", dropCatalog);
       inst2 = entry;
+      const cur3 = storeHomeRoute(parseCurrent());
+      if (viewKey(cur3) !== viewKey(route)) applyRoute(cur3);
     } catch (e) {
-      if (myGen === gen7 && ui2) showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText2(e) });
+      if (myGen === gen7 && ui2) showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText(e) });
     }
   }
   function rebuild(on) {
@@ -23069,6 +23076,7 @@
     root5().classList.add(ON_CLASS21);
     shown = true;
     const r = storeHomeRoute(route);
+    if (inst2 && inst2.instance && inst2.uid !== getUserId()) disposeInstance2();
     if (inst2 && inst2.instance) {
       if (inst2.parked) {
         if (isPresenting() && reattachParked()) {
@@ -23078,10 +23086,14 @@
         releaseParked();
       }
       clearDisposeTimer();
-      ui2.loading.remove();
-      ui2.searchBtn.disabled = false;
-      ui2.stage.classList.add("is-ready");
+      if (inst2.ready) {
+        ui2.loading.remove();
+        ui2.searchBtn.disabled = false;
+        ui2.stage.classList.add("is-ready");
+      }
       try {
+        if (!inst2.suspended) inst2.instance.suspend();
+        inst2.suspended = false;
         inst2.instance.resume(ui2.stage);
       } catch (e) {
         console.warn("[LenzFlix] store resume", e && e.message);
@@ -23123,23 +23135,23 @@
       bridge = null;
     }
     teardownUi2();
-    lastKey2 = null;
+    lastKey3 = null;
     removeThemeJs();
   }
   var storeHome = {
     name: "store-home",
     match: (route) => isTheme("store") && isModern() && !isTv() && isReady() && Boolean(storeHomeRoute(route)),
     mount(route) {
-      lastKey2 = routeKey2(route);
+      lastKey3 = routeKey2(route);
       ensure9(route);
     },
     update(route) {
       const key = routeKey2(route);
-      const same = key === lastKey2;
-      lastKey2 = key;
+      const same = key === lastKey3;
+      lastKey3 = key;
       if (same) {
         const tab2 = findHomeTab12();
-        if (!tab2 || !ui2 || tab2.contains(ui2.root)) return;
+        if (!tab2 || ui2 && tab2.contains(ui2.root)) return;
         ensure9(route);
         return;
       }
@@ -23150,7 +23162,7 @@
       gen7 += 1;
       clearTimeout(waitTimer9);
       waitTimer9 = null;
-      lastKey2 = null;
+      lastKey3 = null;
       if (inst2 && inst2.instance && !inst2.parked) {
         let parkedNow = false;
         if (isPresenting() && xr.cinema && ui2 && ui2.stage) {
@@ -23168,6 +23180,7 @@
         if (!parkedNow) {
           try {
             inst2.instance.suspend();
+            inst2.suspended = true;
           } catch (e) {
             console.warn("[LenzFlix] store suspend", e && e.message);
           }
@@ -23630,7 +23643,7 @@
   // src/js/features/live/guard.js
   var ALLOWED = ["/login", "/selectserver", "/addserver", "/startup", "/wizard", "/forgotpassword", "/resetpassword", "/video", "/queue"];
   var ALLOWED_PREFIX = ["/dashboard", "/mypreferences", "/userprofile"];
-  var lastKey3 = null;
+  var lastKey4 = null;
   function isAllowedRoute(route) {
     const path = route && route.path || "";
     if (path === "/home") return liveHomeRoute(route);
@@ -23644,8 +23657,8 @@
   }
   function redirect2(route) {
     const key = route.hash;
-    if (key === lastKey3) return;
-    lastKey3 = key;
+    if (key === lastKey4) return;
+    lastKey4 = key;
     replaceHome();
   }
   var liveGuard = {
@@ -23654,7 +23667,7 @@
     mount: (route) => redirect2(route),
     update: (route) => redirect2(route),
     unmount: () => {
-      lastKey3 = null;
+      lastKey4 = null;
     }
   };
   var guard_default = liveGuard;

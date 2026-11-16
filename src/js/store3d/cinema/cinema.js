@@ -66,6 +66,9 @@ export class Cinema {
     this.lastProgress = 0;
     this.pausedSince = null;
     this.prepareShown = false;
+    this.reloadShown = null;
+    this.stopping = false;
+    this.backPending = false;
   }
 
   /** true ab enter() bis leave() abgeschlossen. */
@@ -87,8 +90,17 @@ export class Cinema {
   _clearTimers() { for (const id of this.timers) clearTimeout(id); this.timers.clear(); }
 
   // ---------------------------------------------------------------- betreten
+  /** Rückgabe: false nur bei disposed. Läuft gerade die Rückblende, wird der Start danach nachgeholt (sonst verschluckt). */
   enter(item) {
-    if (this._active || this.disposed) return;
+    if (this.disposed) return false;
+    if (this._active) {
+      const lp = this._leavePromise;
+      if (lp) {
+        const tok = (this._pend = {});
+        lp.then(() => { if (this._pend === tok && !this._active && !this.disposed) { this._pend = null; this.enter(item); } });
+      }
+      return true;
+    }
     this._active = true;
     this._leaveAsked = false;
     this.gen++;
@@ -99,6 +111,14 @@ export class Cinema {
     const run = () => this._build(this.gen);
     if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn('Kino betreten', err));
     else run();
+    return true;
+  }
+
+  /** Neu ausrichten (VR-Menü): Sitzhöhe aus der aktuellen Kopfpose neu berechnen. Rückgabe false = nichts getan. */
+  recenter() {
+    if (!this._active || !this.hall || this.phase === 'entering' || this.phase === 'leaving') return false;
+    this._placeSeat();
+    return true;
   }
 
   _seatName() {
@@ -157,7 +177,9 @@ export class Cinema {
 
   _title() {
     const it = this.item;
-    return String((it && (it.Name || it.name)) || (this.state && this.state.title) || '');
+    const st = this.state || {};
+    const live = this.phase === 'playing' || this.phase === 'paused';
+    return String((live && st.title) || (it && (it.Name || it.name)) || st.title || '');
   }
 
   _duck(on) {
@@ -186,7 +208,8 @@ export class Cinema {
     if (!SEAT_NAMES.includes(name) || !this._active) return Promise.resolve(false);
     const vr = this.app.opts && this.app.opts.vr;
     if (vr) vr.seat = name;
-    try { this.app.savePrefs(); } catch (err) { warn('Platz speichern', err); }
+    // In VR stellt XrMode.savePrefs die 2D-Qualität für das Speichern wieder her
+    try { const x = this._xr; if (x && typeof x.savePrefs === 'function') x.savePrefs(); else this.app.savePrefs(); } catch (err) { warn('Platz speichern', err); }
     if (name === this.seat || !this.hall || this.phase === 'entering' || this.phase === 'leaving') { this.seat = name; return Promise.resolve(true); }
     const wasVisible = !!(this.controls && this.controls.visible);
     const go = () => {
@@ -327,10 +350,17 @@ export class Cinema {
   }
 
   backToStore() {
-    if (this._leaveAsked || !this._active) return;
+    if (this._leaveAsked || !this._active || this.stopping) return;
     const d = this._deps;
+    // Start läuft, aber noch kein Player/Route: Abbruch vormerken, sonst startet Jellyfin den Film danach doch
+    if (d && this.phase === 'starting' && !this.video && (this.state || {}).route !== 'video' && !d.video()) {
+      if (!this.backPending) { this.backPending = true; if (this._xr) this._xr.toast('Wird beendet, sobald der Film startet …', 3000); }
+      return;
+    }
+    this.stopping = true;
+    this.backPending = false;
     const gen = this.gen;
-    Promise.resolve(d ? d.stop() : true).catch(() => false).then(() => { if (gen === this.gen) this._selfLeave('stop'); });
+    Promise.resolve(d ? d.stop() : true).catch(() => false).then(() => { if (gen === this.gen) { this.stopping = false; this._selfLeave('stop'); } });
   }
 
   // ---------------------------------------------------------------- Schleife
@@ -351,11 +381,19 @@ export class Cinema {
       this._onState();
       if (this._leaveAsked) return;
     }
+    if (this.backPending && (this.video || (this.state || {}).route === 'video')) { this.backPending = false; this.backToStore(); if (this._leaveAsked) return; }
     this.screen.update(now);
+    const live = this.phase === 'playing' || this.phase === 'paused';
+    if (live && !this.screen.hasFrame) {
+      // Folgenwechsel/Nachladen: Status-Karte mit aktuellem Titel statt dem alten Startsatz
+      const title = this._title();
+      if (this.reloadShown !== title) { this.reloadShown = title; this.screen.setStatus({ title, text: 'Wird geladen …', sub: '' }); }
+    } else this.reloadShown = null;
     if (this.subs) {
       if (d && now - this.lastSub >= SUB_MS && this.phase !== 'failed') {
         this.lastSub = now;
-        try { this.subs.set(d.subtitles()); } catch { /* egal */ }
+        // Untertitel erst, wenn die Leinwand ein Videobild hat (nicht über dem Status-Bild)
+        try { this.subs.set(this.screen.hasFrame ? d.subtitles() : null); } catch { /* egal */ }
       }
       this.subs.tick(now);
     }
@@ -392,7 +430,7 @@ export class Cinema {
   onVisibility(state) {
     if (!this._active || !this.controls) return;
     if (state !== 'visible') {
-      this.controlsWanted = this.controls.visible;
+      if (this.controls.visible) this.controlsWanted = true;
       this.controls.hide();
     } else if (this.controlsWanted && this.phase !== 'failed') {
       this.controlsWanted = false;
@@ -416,7 +454,8 @@ export class Cinema {
   /** reason: 'home' | 'stop' | 'fail' | 'sessionend'; idempotent. Rückgabe: Promise (löst nach der Rückblende auf). */
   leave(reason = 'stop', code) {
     if (!this._active) return Promise.resolve(false);
-    if (this._leavePromise) return this._leavePromise;
+    this._pend = null; // vorgemerkter Neustart (enter während der Rückblende) verfällt
+    if (this._leavePromise && reason !== 'sessionend') return this._leavePromise;
     if (code) this.failCode = code;
     this._leaveAsked = true;
     this.gen++;
@@ -428,12 +467,14 @@ export class Cinema {
     }
     this.phase = 'leaving';
     const run = () => this._teardown();
+    const gen = this.gen;
     this._leavePromise = Promise.resolve(this._enterPromise).then(() => f.jump(run, { out: 250, in: 500 })).then(() => {
+      if (gen !== this.gen) return true; // Sitzungsende hat schon abgebaut
       this._leavePromise = null;
       // Auch nach Fehlschlag + Rücksprung über #/home (Hülle ruft leave('home')) den Code zeigen
       if ((reason === 'fail' || this.failCode) && this._xr) this._xr.toast(this.failCode ? `Kino konnte nicht starten (${this.failCode})` : 'Kino konnte nicht starten', 3200);
       return true;
-    }, (err) => { warn('Kino verlassen', err); this._leavePromise = null; if (this._active) this._teardown(); return false; });
+    }, (err) => { warn('Kino verlassen', err); if (gen !== this.gen) return false; this._leavePromise = null; if (this._active) this._teardown(); return false; });
     return this._leavePromise;
   }
 

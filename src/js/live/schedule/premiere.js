@@ -117,9 +117,11 @@ const premiereImpl = {
     const pool = rerunPool(info, D);
     const candsA = streamCands(pool.filter((u) => streamOfAge(u.age) === 'A'), 'A', D);
     const candsB = streamCands(pool.filter((u) => streamOfAge(u.age) === 'B'), 'B', D);
-    const B = ctx.builder(17, D);
-    const b = B.bounds;
     const premPieces = P ? piecesOf(P, P.kind === 'film' ? { premiere: 'film' } : { premiere: 'episode', label: 'Neue Folge' }) : null;
+    // Premieren-Titel vorab sperren: das Füllprogramm (pickShort) darf sie nicht vorher senden; erst beim Platzieren freigeben.
+    const B = ctx.builder(17, D, new Set(premPieces ? premPieces.map((p) => p.itemId) : []));
+    const b = B.bounds;
+    const placePrem = () => { for (const p of premPieces) B.used.delete(p.itemId); B.placeBlock(premPieces); };
     const late = P && P.age != null && P.age > 12;
     if (late) {
       const at = P.age >= 18 ? b.a2300 : b.a2200;
@@ -129,13 +131,13 @@ const premiereImpl = {
       fillSegment(B, candsA, { limit: b.a2200, strict: true });
       if (at > b.a2200) fillSegment(B, candsB, { limit: at, strict: true });
       if (B.cursor < at) B.fillUntil(at);
-      B.placeBlock(premPieces);
+      placePrem();
       fillSegment(B, candsB, { limit: b.end, strict: true });
       return B.finish();
     }
     const anchorMovie = P ? null : candsA.find((c) => c.movie && b.a2015 + c.size <= b.end);
     fillSegment(B, candsA.filter((c) => c !== anchorMovie), { limit: b.a2015, strict: true });
-    if (P) B.placeBlock(premPieces);
+    if (P) placePrem();
     else if (anchorMovie) B.placeBlock(anchorMovie.pieces);
     fillSegment(B, candsA, { limit: b.a2200, strict: false });
     fillSegment(B, candsB, { limit: b.end, strict: true });

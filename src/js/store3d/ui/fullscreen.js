@@ -59,6 +59,7 @@ export function createFullscreen({ host, isTouch, getMode, userId, hud, onChange
   let hostEl = host;
   let guide = null;
   let guideKeyHandler = null;
+  let guidePrev = null;
   let spacer = null;
   let hint = null;
   let collapsed = false; // Leiste wurde eingeklappt (Wisch erfolgreich)
@@ -112,6 +113,7 @@ export function createFullscreen({ host, isTouch, getMode, userId, hud, onChange
     guide = root;
     guideKeyHandler = (e) => { if (e.key === 'Escape') { e.stopPropagation(); hideGuide(); } };
     doc.addEventListener('keydown', guideKeyHandler, true);
+    guidePrev = doc.activeElement;
     try { ok.focus({ preventScroll: true }); } catch { /* egal */ }
     update();
   }
@@ -122,6 +124,9 @@ export function createFullscreen({ host, isTouch, getMode, userId, hud, onChange
     guide = null;
     if (guideKeyHandler) doc.removeEventListener('keydown', guideKeyHandler, true);
     guideKeyHandler = null;
+    const prev = guidePrev;
+    guidePrev = null;
+    if (prev && prev.isConnected && prev.focus) { try { prev.focus({ preventScroll: true }); } catch { /* egal */ } }
     update();
   }
 
@@ -243,7 +248,7 @@ export function createFullscreen({ host, isTouch, getMode, userId, hud, onChange
     setHost(h) {
       if (h && h !== hostEl) { hostEl = h; if (guide) h.appendChild(guide); }
     },
-    suspend() { suspended = true; teardown(); },
+    suspend() { suspended = true; hideGuide(); teardown(); },
     resume() { suspended = false; update(); },
     destroy() {
       if (destroyed) return;

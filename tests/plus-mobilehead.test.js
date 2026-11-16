@@ -19,6 +19,7 @@ vi.mock('../src/js/shared/libraries.js', () => ({ getLibraries: vi.fn(async () =
 import head, { headerTitle, showsBack } from '../src/js/features/plus/mobilehead.js';
 import header from '../src/js/features/plus/header.js';
 import { parseHash } from '../src/js/core/router.js';
+import { openPopover, isPopoverOpen, closePopover } from '../src/js/core/popover.js';
 
 const R = (h) => parseHash(h);
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -107,3 +108,35 @@ describe('plus-mobilehead: Feature', () => {
     back.mockRestore();
   });
 });
+
+describe('plus: Popover beim unmount (B011)', () => {
+  afterEach(() => {
+    closePopover();
+    document.documentElement.className = '';
+  });
+  it('mobilehead.unmount schließt ein offenes Popover', async () => {
+    document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
+    layout.mobile = true;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    head.mount(R('#/home'));
+    await flush();
+    openPopover(document.body, { items: [{ key: 'a', label: 'A' }] });
+    expect(isPopoverOpen()).toBe(true);
+    head.unmount();
+    expect(isPopoverOpen()).toBe(false);
+    expect(document.getElementById('lfx-popover')).toBeNull();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 });
+  });
+  it('header.unmount schließt ein offenes Popover', async () => {
+    document.body.innerHTML = '<header class="MuiAppBar-root"></header>';
+    layout.mobile = false;
+    header.mount(R('#/home'));
+    await flush();
+    openPopover(document.body, { items: [{ key: 'a', label: 'A' }] });
+    expect(isPopoverOpen()).toBe(true);
+    header.unmount();
+    expect(isPopoverOpen()).toBe(false);
+    expect(document.getElementById('lfx-popover')).toBeNull();
+  });
+});
+

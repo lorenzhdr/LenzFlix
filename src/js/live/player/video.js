@@ -3,7 +3,9 @@
 
 const START_TIMEOUT_MS = 25000;
 const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
-const MEDIA_ACTIONS = ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack'];
+// ISO 639-2 (Jellyfin) → BCP-47 für <track srclang>; unbekannt = weglassen.
+const LANG2 = { ger: 'de', deu: 'de', eng: 'en', fre: 'fr', fra: 'fr', spa: 'es', ita: 'it', jpn: 'ja', kor: 'ko', chi: 'zh', zho: 'zh', rus: 'ru', por: 'pt', dut: 'nl', nld: 'nl', pol: 'pl', tur: 'tr', swe: 'sv', dan: 'da', ara: 'ar' };
+const srcLang = (l) => { const s = String(l || '').toLowerCase(); return /^[a-z]{2}(-[a-z0-9]+)*$/.test(s) ? s : LANG2[s] || ''; };
 
 const JUMP_TOLERANCE_S = 1.5; // nach den Metadaten nur nachspringen, wenn die Position so weit von der Live-Position abweicht
 
@@ -185,12 +187,8 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
   };
   for (const [name, fn] of Object.entries(listeners)) video.addEventListener(name, fn);
 
-  const ms = typeof navigator !== 'undefined' ? navigator.mediaSession : null;
-  if (ms && typeof ms.setActionHandler === 'function') {
-    for (const a of MEDIA_ACTIONS) {
-      try { ms.setActionHandler(a, () => {}); } catch { /* Aktion nicht unterstützt */ }
-    }
-  }
+  // Keine Media-Session-Handler: sie sind global und lassen sich nicht wiederherstellen (Jellyfins gingen sonst verloren);
+  // Pause von Kopfhörer/Medientaste fängt der 'pause'-Listener oben ab.
 
   function clearSubtitles() {
     if (trackEl) {
@@ -307,7 +305,8 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       const el = document.createElement('track');
       el.kind = 'subtitles';
       el.label = label || '';
-      if (lang) el.srclang = lang;
+      const sl = srcLang(lang);
+      if (sl) el.srclang = sl;
       el.default = true;
       el.src = url;
       video.appendChild(el);
@@ -320,11 +319,6 @@ export function createVideoControl(video, { now = Date.now, emit = () => {} } = 
       clear(false);
       disposed = true;
       for (const [name, fn] of Object.entries(listeners)) video.removeEventListener(name, fn);
-      if (ms && typeof ms.setActionHandler === 'function') {
-        for (const a of MEDIA_ACTIONS) {
-          try { ms.setActionHandler(a, null); } catch { /* egal */ }
-        }
-      }
     },
   };
 }

@@ -100,7 +100,7 @@ export default {
     const host = ctx.renderer.domElement.parentNode;
     const user = (ctx.deps.user && ctx.deps.user.name) || '';
     const rand = Math.random;
-    const limiter = createLimiter(20000);
+    const limiter = createLimiter(20);
     const lastIdx = {};
     const deptOf = new Map();
     for (const d of (ctx.catalog.departments || [])) {
@@ -287,6 +287,9 @@ export default {
     function openDialogDom() {
       const el = document.createElement('div');
       el.className = 'lfx-store-tip lfx-store-dialog' + (ctx.isTouch ? ' is-touch' : '');
+      el.setAttribute('role', 'dialog');
+      el.setAttribute('aria-modal', 'true');
+      el.setAttribute('aria-label', 'Richard – Kasse');
       const card = document.createElement('div');
       card.className = 'lfx-store-tip-card';
       const h = document.createElement('div');
@@ -312,7 +315,7 @@ export default {
             b.addEventListener('click', () => flow.act(bt.id));
             row.appendChild(b);
           }
-          if (first && m.choices) { const f = row.querySelector('button'); if (f && !ctx.isTouch) f.focus({ preventScroll: true }); }
+          if ((first && m.choices) || (!first && !ctx.isTouch)) { const f = row.querySelector('.is-primary') || row.querySelector('button'); if (f && !ctx.isTouch) f.focus({ preventScroll: true }); }
         },
         close: () => ctx.overlay.close(),
       };

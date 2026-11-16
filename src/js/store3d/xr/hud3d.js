@@ -3,9 +3,9 @@
 import { Mesh, PlaneGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace, Vector3 } from 'three';
 
 /** Hinweistext für VR: „E / Klick:“ → „Trigger:“. */
-export function vrHint(hint, fallback = 'Trigger: Benutzen') {
-  const h = String(hint == null || hint === '' ? fallback : hint);
-  return h.replace(/E\s*\/\s*Klick\s*:/i, 'Trigger:');
+export function vrHint(hint, fallback = 'Trigger: Benutzen', hand = false) {
+  const h = String(hint == null || hint === '' ? fallback : hint).replace(/E\s*\/\s*Klick\s*:/i, 'Trigger:');
+  return hand ? h.replace(/^Trigger:/, 'Zusammenkneifen:') : h; // Hände kennen nur Pinch
 }
 
 /** Diagnose-Zeilen aus dem Zustand (rein). cinema = Ergebnis von cinema.diag() (Objekt, Text oder Liste). */
@@ -57,8 +57,18 @@ class TextQuad {
       for (const r of rows) { g.font = `${r.weight || '600'} ${r.size}px ${FONT}`; maxW = Math.max(maxW, g.measureText(r.text).width); y += r.size * 1.25; }
       w = Math.ceil(maxW + pad * 2);
       h = Math.ceil(y + pad - 4);
+      // three legt den Texturspeicher fest an: nach Größenwechsel neue Textur, sonst Geisterbild/INVALID_VALUE
+      const resized = this.drawn && (this.canvas.width !== w || this.canvas.height !== h);
       this.canvas.width = w;
       this.canvas.height = h;
+      if (resized) {
+        this.tex.dispose();
+        this.tex = new CanvasTexture(this.canvas);
+        this.tex.colorSpace = SRGBColorSpace;
+        this.mat.map = this.tex;
+        this.mat.needsUpdate = true;
+      }
+      this.drawn = true;
       g.clearRect(0, 0, w, h);
       g.fillStyle = 'rgba(13, 19, 48, 0.88)';
       g.beginPath();
@@ -102,7 +112,7 @@ export class Hud3d {
     rig.add(this.label.mesh);
     camera.add(this.toastQuad.mesh);
     camera.add(this.diagQuad.mesh);
-    this.toastQuad.mesh.position.set(0, -0.28, -1.0);
+    this.toastQuad.mesh.position.set(0, 0.34, -1.0); // oben: unten liegt das Kino-Bedienpanel (Anker 'low')
     this.diagQuad.mesh.position.set(-0.32, 0.2, -1.0);
     this.toastLeft = 0;
     this.labelOn = false;

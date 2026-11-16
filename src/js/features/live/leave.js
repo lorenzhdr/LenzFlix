@@ -4,7 +4,7 @@ import { getAuth } from '../../core/api.js';
 import { getPreviousTheme, getTheme, onThemeChange, setTheme } from '../../core/theme.js';
 import { titleHref } from '../../shared/routes.js';
 
-export const THEME_WAIT_MS = 3000;
+const THEME_WAIT_MS = 3000;
 
 function waitForTheme(target, ms = THEME_WAIT_MS) {
   if (getTheme() === target) return Promise.resolve(true);

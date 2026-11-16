@@ -158,11 +158,10 @@ describe('mount', () => {
 });
 
 describe('Ton', () => {
-  it('Standard an; alter Schlüssel „sound“ wird ignoriert und entfernt; Aus bleibt aus', async () => {
+  it('Standard an; alter Schlüssel „sound“ wird ignoriert; Aus bleibt aus', async () => {
     localStorage.setItem('lfx.store.sound.u1', '0');
     await mountOk();
     expect(captured.opts.sound).toBe(true);
-    expect(localStorage.getItem('lfx.store.sound.u1')).toBeNull();
     captured.deps.onPrefs({ sound: false });
     expect(localStorage.getItem('lfx.store.soundOn.u1')).toBe('0');
     feature.unmount();
@@ -230,6 +229,7 @@ describe('Hüllengröße', () => {
 describe('Lebenszyklus', () => {
   it('unmount -> suspend; erneuter mount -> resume ohne neues create und ohne Ladebildschirm', async () => {
     await mountOk();
+    captured.deps.onReady();
     feature.unmount();
     expect(inst.suspend).toHaveBeenCalledTimes(1);
     expect(inst.dispose).not.toHaveBeenCalled();

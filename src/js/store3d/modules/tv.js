@@ -312,7 +312,7 @@ export default {
       if (discovering) return discovering;
       discovering = (async () => {
         try {
-          while (trailers.length < want && cIdx < cands.length && !ac.signal.aborted) {
+          while (trailers.length < want && cIdx < cands.length && !ac.signal.aborted && !suspended) {
             const it = cands[cIdx++];
             try {
               const full = await withTimeout(ctx.deps.getItem(it.Id), 6000);
@@ -525,9 +525,13 @@ export default {
       const bUp = button('Lauter', 'lfx-store-couch-btn', () => setVol(vol + 0.15));
       const bWatch = button('Diesen Film ansehen', 'lfx-store-couch-btn is-main', () => watch());
       row.append(bStand, bNext, bSnd, bDn, bUp, bWatch);
-      bar.append(info, row);
+      // Lautstärke für Screenreader ansagen (nur lesbar, optisch ausgeblendet)
+      const volEl = h('span', 'lfx-store-couch-vol');
+      volEl.setAttribute('role', 'status');
+      volEl.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap';
+      bar.append(info, row, volEl);
       root.appendChild(bar);
-      return { root, title, tag, bSnd, bDn, bUp, last: '' };
+      return { root, title, tag, bSnd, bDn, bUp, volEl, last: '' };
     }
     function refreshUi() {
       if (!ui) return;
@@ -562,6 +566,7 @@ export default {
       vol = clamp(v, 0, 1);
       try { sessionStorage.setItem(VOL_KEY, String(vol)); } catch { /* egal */ }
       if (vol > 0) userMuted = false;
+      if (ui && ui.volEl) ui.volEl.textContent = `Lautstärke ${Math.round(vol * 100)} %`;
       applyAudio(trailer && trailer.video);
       if (trailer && trailer.video.paused) playVideo(trailer.video);
       refreshUi();

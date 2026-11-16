@@ -103,6 +103,12 @@ html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__row.is-current {
   }
 }
 
+/* Laptop/Tablet (Seitenleiste 320-440 px): Sender-Badge weglassen, damit der Text Platz hat */
+@media (max-width: 1500px) {
+  html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row { grid-template-columns: 28px 92px minmax(0, 1fr); }
+  html.lfx-js:not(.layout-tv) .lfx-tvm:not(.is-phone) .lfx-tvm__row-logo { display: none; }
+}
+
 html.lfx-js:not(.layout-tv) .lfx-tvm .lfx-tvm__row-no {
   font-size: var(--lfx-fs-meta);
   font-weight: 700;

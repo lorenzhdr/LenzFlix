@@ -1147,10 +1147,6 @@ html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-tv__deco [data-action] {
   touch-action: manipulation;
 }
 
-html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live-d-todo {
-  display: none;
-}
-
 html.lfx-js.lfx-theme-live:not(.layout-tv) .lfx-live--style-crt80 .lfx-live-decor {
   --side: max(0px, calc((100cqw - var(--lfx-live-tv-w) - 28px - 176 * var(--lfx-live-u)) / 2));
   container-type: size;

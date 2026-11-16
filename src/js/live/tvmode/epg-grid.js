@@ -55,6 +55,7 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
   let nowPos = null;
   let cells = []; // { btn, entry, no, mins, filler, cur, past }
   let rowEls = new Map(); // no → row
+  let tabRec = null; // einzige Zelle mit tabIndex 0
   let dayBtns = [];
   let lastPpm = DEFAULT_PPM;
   let positioned = false;
@@ -152,7 +153,9 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
         btn.setAttribute('aria-label', `Sender ${no}, ${c.title}, ${tm.textContent}`);
         const rec = { btn, entry: c.entry, no, mins, filler: c.kind === 'filler', cur: false, past: false, vis: null };
         classify(rec, p);
+        btn.tabIndex = -1; // Roving Tabindex: nur eine Zelle ist Tab-Stopp
         btn.addEventListener('click', () => onCell(rec));
+        btn.addEventListener('focus', () => setTab(rec));
         btn.addEventListener('keydown', (e) => onKey(e, rec));
         track.append(btn);
         cells.push(rec);
@@ -164,6 +167,17 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
     markCurrentChannel();
     applyTime(t, true);
     updateVis();
+    tabRec = null;
+    pickTab();
+  }
+
+  function setTab(rec) {
+    if (tabRec && tabRec !== rec) tabRec.btn.tabIndex = -1;
+    tabRec = rec;
+    if (rec) rec.btn.tabIndex = 0;
+  }
+  function pickTab(force) {
+    if (force || !tabRec || !tabRec.btn.isConnected) setTab(cells.find((c) => c.cur && c.no === current) || cells.find((c) => c.cur) || cells[0] || null);
   }
 
   /** Links unter die Senderspalte ragende Zellen: sichtbare Restbreite als --tvm-vis, damit der Titel (sticky) mitrückt. */
@@ -230,11 +244,11 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
       const at = Math.max(rec.entry.start, bounds.start);
       target = cells.find((c) => c.no === no && c.entry.start <= at && at < c.entry.end);
     }
-    if (target) {
+    if (k === 'ArrowUp' || k === 'ArrowDown' || target) { // am Rand stehen bleiben statt zu zappen
       e.preventDefault();
       e.stopPropagation();
-      target.btn.focus();
     }
+    if (target) target.btn.focus();
   }
 
   function applyTime(t, force) {
@@ -356,6 +370,7 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
       if (no !== current) {
         current = no;
         markCurrentChannel();
+        if (!el.contains(doc.activeElement)) pickTab(true);
       }
       if (!positioned && (!ro || scroll.clientWidth > 0)) {
         positioned = true;
@@ -369,8 +384,12 @@ export function createEpgGrid({ doc, ctl, model, deps = {}, opts = {} }) {
         const follow = selD === todayD;
         todayD = D;
         if (follow || selD < D || selD > D + 6) selD = D;
+        const fr = cells.find((c) => c.btn === doc.activeElement);
         renderDays(t);
         renderDay(t);
+        if (follow) { scroll.scrollLeft = 0; reveal(); }
+        const again = fr && cells.find((c) => c.no === fr.no && (c.entry.start === fr.entry.start || c.cur));
+        if (again) again.btn.focus();
         return;
       }
       applyTime(t, false);

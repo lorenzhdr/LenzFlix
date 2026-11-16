@@ -51,8 +51,9 @@ export function nearestCover(faceViews, p, r = GRIP_REACH) {
   return best;
 }
 
-/** Panel mit scrollbarer Liste? */
+/** Panel mit scrollbarer Liste? Maßgeblich ist das Layout (maxScroll), die Spec nur als Rückfall. */
 export function scrollable(panel) {
+  if (panel && typeof panel.maxScroll === 'number') return panel.maxScroll > 0;
   const s = panel && panel.spec;
   const l = s && s.list;
   return !!(l && Array.isArray(l.rows) && l.rows.length > (l.visible || 6));
@@ -255,16 +256,17 @@ export class Pointer {
       const rec = m.recFor(side);
       const tg = rec && rec.pt ? rec.pt.target : null;
       if (!tg || tg.kind === 'panel') continue;
+      const hand = Boolean(rec.source && rec.source.hand);
       let title = '';
       let hint = '';
       if (tg.kind === 'cover') {
         const it = m.app.items.get(tg.info.itemId);
         title = (it && it.Name) || '';
-        hint = 'Trigger: Nehmen · Grip: Greifen';
+        hint = hand ? 'Zusammenkneifen: Nehmen' : 'Trigger: Nehmen · Grip: Greifen';
       } else if (tg.kind === 'ia') {
         title = tg.ia.label || '';
-        hint = vrHint(tg.ia.hint);
-      } else if (tg.kind === 'wrist') { title = 'Menü'; hint = 'Trigger: Öffnen'; }
+        hint = vrHint(tg.ia.hint, undefined, hand);
+      } else if (tg.kind === 'wrist') { title = 'Menü'; hint = hand ? 'Zusammenkneifen: Öffnen' : 'Trigger: Öffnen'; }
       const len = Math.min(tg.t, 4);
       this._pt.copy(rec.pt.o).addScaledVector(rec.pt.d, len);
       hud.setLabel(title, hint, this._pt);

@@ -217,7 +217,7 @@ export class TouchControls {
     p.walked = true;
     if (this.currentZoom() !== 1) this.setZoom(1);
     this.showRing(p.x, p.y);
-    try { if (navigator.vibrate) navigator.vibrate(8); } catch { /* egal */ }
+    try { if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(8); } catch { /* egal */ }
   }
 
   onMove(e) {

@@ -59,6 +59,7 @@ export function createNeighbors({ player, scheduler, clock = Date.now, deps = {}
 
   // Ohne Vorwärmen: je Sendung einmal die PlaybackInfo der Nachbarn (max. 2 Anfragen).
   function prefetch() {
+    if (deps && deps.zapPrefetch === false) return false; // Datensparmodus: nichts abrufen, keinen Schlüssel verbrauchen
     for (const x of neighbors()) {
       const key = `${x.no}:${x.e.start}:${x.e.itemId}`;
       if (done.has(key)) continue;
@@ -78,7 +79,12 @@ export function createNeighbors({ player, scheduler, clock = Date.now, deps = {}
       return;
     }
     // Mit Vorwärmen löst player.prewarm die Nachbarn selbst auf: kein zusätzlicher prefetch (sonst PlaybackInfo doppelt).
-    if (!warmOn()) { if (mode === 'play') prefetch(); return; }
+    if (!warmOn()) {
+      if (mode !== 'play') return;
+      // Datensparmodus: im Takt erneut versuchen, falls er während der Sendung ausgeschaltet wird.
+      if (prefetch() === false && ticks < WARM_TICK_MAX) { ticks++; wait(() => step(t, mode, 0), WARM_TICK_MS); }
+      return;
+    }
     warm();
     if (ticks >= WARM_TICK_MAX) return;
     ticks++;
