@@ -1,5 +1,7 @@
 // LenzFlix rows: reine Logik (ohne DOM/Netzwerk) – gut testbar.
 
+import { pad2 } from '../../core/format.js';
+
 export const NEW_DAYS = 14;
 const DAY_MS = 86400000;
 
@@ -17,7 +19,7 @@ export const BASE_PARAMS = {
   EnableImageTypes: 'Primary,Backdrop,Thumb,Logo',
 };
 
-/** Erstausstrahlung, ab der eine Folge noch als „neu erschienen“ gilt (Netflix-Sinn von „Neue Folgen“). */
+/** Erstausstrahlung, ab der eine Folge noch als „neu erschienen“ gilt (Streaming-Sinn von „Neue Folgen“). */
 export const NEW_EPISODE_AIRED_DAYS = 365;
 
 /**
@@ -84,8 +86,7 @@ export function progressPercent(item) {
 
 // ------------------------------------------------------------ Zufall mit Seed
 export function dayKey(date = new Date()) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
 function hashString(str) {

@@ -4,8 +4,7 @@ import { h } from '../../core/dom.js';
 import { formatRuntime, progressPercent } from '../modal/format.js';
 import { landscapeFor } from '../rows/card.js';
 import { ratingChip, episodeRuntime, remainingLabel } from '../prime/title-logic.js';
-
-const pad2 = (n) => String(n).padStart(2, '0');
+import { pad2 } from '../../core/format.js';
 
 /** S01E03 (leer, wenn Nummern fehlen). */
 export function episodeCode(ep) {

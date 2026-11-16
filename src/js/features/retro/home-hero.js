@@ -11,6 +11,7 @@ import { playLabel, playTitle } from '../prime/hero-play.js';
 import { emitFx } from './prefs.js';
 import { isPhone } from './header-nav.js';
 import { svgIcon } from './header-ui.js';
+import { pad2 } from '../../core/format.js';
 
 export const ROTATE_MS = 9000;
 export const TYPE_MS = 46;
@@ -38,8 +39,6 @@ export function titleSize(text) {
   const n = String(text || '').length;
   return n > 24 ? 3 : n > 20 ? 2 : n > 16 ? 1 : 0;
 }
-
-const pad2 = (n) => String(n).padStart(2, '0');
 
 /** „Neon Läufer: Teil 2“ -> „NEON_LAEUFER_TEIL_2“ (max. 22 Zeichen, nur A–Z/0–9/_). */
 export function dosName(name) {

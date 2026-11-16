@@ -1,10 +1,11 @@
 // LenzFlix: kleiner Tages-Seed für deterministische Mischungen (gleicher Tag = gleiche Reihenfolge).
 // Eigene Kopie der Idee aus features/rows/logic.js (core/ darf nicht aus features/ importieren).
 
+import { pad2 } from './format.js';
+
 /** Lokales Datum als YYYY-MM-DD. */
 export function dayKey(date = new Date()) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
 /** FNV-1a (32 Bit). */

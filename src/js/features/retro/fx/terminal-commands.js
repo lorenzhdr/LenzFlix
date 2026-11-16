@@ -1,3 +1,4 @@
+import { pad2 } from '../../../core/format.js';
 // LENZ//84 retro-fx: Befehle des geheimen Terminals. Parser und Ausführung sind unabhängig vom DOM:
 // execute(line, ctx) arbeitet nur über ctx (print, clear, close, go, …) und ist daher testbar.
 // Ausgaben sind reiner Text (der Aufrufer setzt ihn per textContent). Nie Tokens/IDs/URLs mit api_key ausgeben.
@@ -75,7 +76,6 @@ export function complete(prefix) {
   return COMPLETABLE.filter((k) => k.startsWith(p)).sort();
 }
 
-const pad2 = (n) => String(n).padStart(2, '0');
 const WEEKDAYS = ['SONNTAG', 'MONTAG', 'DIENSTAG', 'MITTWOCH', 'DONNERSTAG', 'FREITAG', 'SAMSTAG'];
 
 export function formatDate(d) {

@@ -11,6 +11,7 @@ import { canDownload, startDownload, isChooserOpen } from '../core/download.js';
 import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
+import { ROWS_READY_EVENT } from './rows.js';
 import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
 import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../core/datasaver.js';
 import { buildPool, saverPool, SAVER_POOL, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
@@ -21,7 +22,6 @@ export const TRAILER_BUFFER_S = 6; // so viel Vorlauf gilt als „abspielbereit�
 export const TRAILER_STALL_MS = 1500; // ohne Pufferfortschritt so lange -> play() trotzdem versuchen (iOS puffert ohne play() nicht)
 export const TRAILER_WAIT_MAX_MS = 25000; // so lange hält die Rotation für einen ladenden Trailer an
 export const ROWS_WAIT_MAX_MS = 8000; // Trailer lädt spätestens dann vor, auch ohne „lfx:rows-ready“
-const ROWS_READY_EVENT = 'lfx:rows-ready';
 const IMG_FADE_MS = 1000;
 const TEXT_FADE_MS = 400;
 // Nur, was Billboard/Modal-Hint brauchen (Overview/RemoteTrailers werden nicht angezeigt: das Modal lädt den Titel selbst).

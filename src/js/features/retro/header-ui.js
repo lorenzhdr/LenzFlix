@@ -4,6 +4,7 @@ import { ICON_TVMODE } from '../../core/icons.js';
 import { tvModeHref } from '../../shared/routes.js';
 import { createDataSaverButton } from '../../shared/dsbtn.js';
 import { emitFx, getPref, togglePref, PREFS_EVENT, LOGO_ATTR } from './prefs.js';
+import { pad2 } from '../../core/format.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 /** 24er-Raster; stroke = currentColor. Sound = [♪] (Klammern + Note), CRT = Monitor mit Zeilen. */
@@ -31,7 +32,6 @@ export function createLogo(className) {
   return h('a', { class: className, href: '#/home', 'aria-label': 'LENZ//84 – Startseite', [LOGO_ATTR]: '' });
 }
 
-const pad2 = (n) => String(n).padStart(2, '0');
 /** 'HH:MM' (24 h). */
 export function formatClock(date = new Date()) {
   return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
