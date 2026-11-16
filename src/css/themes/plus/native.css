@@ -65,10 +65,15 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton {
   border: 0;
   background: rgba(255, 255, 255, 0.1);
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:hover,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
   border: 0;
   background: rgba(255, 255, 255, 0.22);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:hover {
+    border: 0;
+    background: rgba(255, 255, 255, 0.22);
+  }
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay {
@@ -78,11 +83,15 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay {
   border-radius: 9999px;
   background: #fff;
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:hover,
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:hover,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:focus-visible,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:focus-visible {
   background: #d9d9de;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:hover,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:hover {
+    background: #d9d9de;
+  }
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay::after,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay::after {
@@ -257,4 +266,21 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-favempty {
   color: var(--lfx-text-muted, #b8b9c0);
   font: 400 16px / 1.5 var(--lfx-font);
   text-align: center;
+}
+
+/* ---- Kern-Regeln mit hellem Text auf --lfx-pill-active (#fff in plus): dunkle Schrift auf Weiß ---- */
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus,
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus .actionsheetMenuItemIcon,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:focus,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .alphaPicker-fixed-right .MuiToggleButton-root.Mui-selected,
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .alphaPickerButton-selected {
+  color: var(--lfx-bg-deep);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:hover,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:hover .actionsheetMenuItemIcon,
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:hover {
+    color: var(--lfx-bg-deep);
+  }
 }

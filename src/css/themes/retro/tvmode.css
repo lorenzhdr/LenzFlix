@@ -3,7 +3,6 @@
 
 /* ---- Rahmen: eckig, Bernstein-Linie ---- */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm {
-  --lfx-tvm-panel: var(--lfx-retro-panel);
   --lfx-tvm-panel-hi: var(--lfx-retro-amber-dim);
   --lfx-tvm-line: var(--lfx-retro-line);
   --lfx-tvm-ring: 0 0 0 2px var(--lfx-retro-bg), 0 0 0 4px var(--lfx-retro-amber);
@@ -53,6 +52,8 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-corner {
 }
 
 /* ---- Senderliste und Programm ---- */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__day,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__epg-now { border-radius: 0; }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row { border-radius: 0; }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row-title { font-family: var(--lfx-retro-font-pixel); font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
 html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-tvm .lfx-tvm__row.is-current { background: var(--lfx-retro-amber-dim); box-shadow: inset 2px 0 0 var(--lfx-retro-amber); }

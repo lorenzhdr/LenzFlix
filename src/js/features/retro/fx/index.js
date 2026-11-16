@@ -132,7 +132,7 @@ function mount() {
     getPref,
     setPref,
     unlockSound,
-    regen: () => screensaver.run(true),
+    regen: () => { if (S) screensaver.run(true); },
     overdrive,
     reboot: () => { clearBooted(); if (S) startBoot(); },
     now: () => new Date(),

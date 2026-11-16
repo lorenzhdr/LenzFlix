@@ -424,7 +424,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
   & .lfx-rt__btn--primary::before,
   & .lfx-rt__btn--primary::after { opacity: 0.55; }
   & .lfx-rt__btn.is-on { background: var(--lfx-retro-amber-dim); box-shadow: var(--lfx-retro-box-glow); color: var(--lfx-retro-amber-hi); }
-  & .lfx-rt__btn:disabled { opacity: 0.55; cursor: progress; }
+  & .lfx-rt__btn:disabled, & .lfx-rt__btn[aria-busy="true"] { opacity: 0.55; cursor: progress; }
   @media (hover: hover) and (pointer: fine) {
     & .lfx-rt__btn--primary:hover { background: var(--lfx-retro-amber-hi); box-shadow: 0 0 30px rgba(255, 200, 80, 0.7); }
     & .lfx-rt__btn.is-on:hover { background: var(--lfx-retro-amber); color: var(--lfx-retro-ink); }

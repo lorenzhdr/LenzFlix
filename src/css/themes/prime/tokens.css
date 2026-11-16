@@ -39,9 +39,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) {
 
   /* LENZPRIME-eigene Tokens */
   --lfx-prime-glass: rgba(25, 30, 37, 0.8);
-  --lfx-prime-panel: rgba(23, 25, 28, 0.8);
   --lfx-prime-chip: #33373d;
-  --lfx-prime-rating: #35a9e5;
   --lfx-prime-hover-bg: #ebecee;
   --lfx-prime-ink: #00050d;
   --lfx-prime-shadow: rgba(0, 0, 0, 0.3) 0 4px 4px 0, rgba(0, 0, 0, 0.15) 0 8px 12px 6px;

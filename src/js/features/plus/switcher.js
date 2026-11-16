@@ -69,6 +69,7 @@ function render() {
     if (i < 0) return;
     const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
     e.preventDefault();
+    for (const t of tabs) t.tabIndex = -1;
     next.tabIndex = 0;
     next.focus();
   });

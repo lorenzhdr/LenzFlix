@@ -117,7 +117,7 @@ export function openMenus({ wrap, button, flyout, load }) {
     }
   };
   const onFocusOut = (e) => {
-    if (opened && e.relatedTarget && !wrap.contains(e.relatedTarget)) close();
+    if (opened && (e.relatedTarget ? !wrap.contains(e.relatedTarget) : !pinned)) close(); // null: Fokus verlässt das Fenster
   };
   const onDocClick = (e) => {
     if (opened && !wrap.contains(e.target)) close();
@@ -139,6 +139,8 @@ export function openMenus({ wrap, button, flyout, load }) {
       gen++;
       close();
       document.removeEventListener('click', onDocClick, true);
+      button.removeEventListener('click', onClick);
+      flyout.removeEventListener('click', onFlyoutClick);
       wrap.removeEventListener('mouseenter', onEnter);
       wrap.removeEventListener('mouseleave', onLeave);
       wrap.removeEventListener('keydown', onKeydown);

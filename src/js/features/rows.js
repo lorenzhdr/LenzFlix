@@ -75,7 +75,11 @@ export function render(slot, ctx = {}) {
       }
       if (!changed) continue;
       if (!track.querySelector('.lfx-card')) row.remove();
-      else track.dispatchEvent(new Event('scroll')); // Scroller (Pfeile/Seitenpunkte) neu berechnen
+      else {
+        const ls = [...track.querySelectorAll('.lfx-card__link')];
+        if (ls.length && !ls.some((l) => l.tabIndex === 0)) ls[0].tabIndex = 0; // Roving-Tabindex erhalten (Zeile bleibt per Tab erreichbar)
+        track.dispatchEvent(new Event('scroll')); // Scroller (Pfeile/Seitenpunkte) neu berechnen
+      }
     }
   }));
 

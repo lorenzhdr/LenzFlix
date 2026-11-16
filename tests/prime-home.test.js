@@ -229,3 +229,24 @@ describe('Feature prime-home', () => {
     expect(css).toMatch(/lfx-prime-home-on #indexPage #homeTab > \.sections/);
   });
 });
+
+describe('prime-home: Hub ohne auflösbare Bibliothek (Welle 2)', () => {
+  beforeEach(() => {
+    vi.mocked(isTheme).mockImplementation((id) => id === 'prime');
+    getLibraries.mockResolvedValue(libs);
+    buildRowDefs.mockReset();
+    buildRowDefs.mockImplementation(async () => [def('latest-movies', 'landscape', 2)]);
+    document.documentElement.className = 'lfx-js lfx-theme-prime';
+    document.body.innerHTML = '<header class="MuiAppBar-root"></header><div id="indexPage"><div id="homeTab"><div class="sections"></div></div></div>';
+  });
+  afterEach(() => { feature.unmount(); document.body.innerHTML = ''; document.documentElement.className = ''; });
+
+  it('A076: update von der Startseite auf eine unbekannte Hub-Route baut die eigene Seite ab', async () => {
+    feature.mount(route(''));
+    await vi.waitFor(() => expect(document.querySelector('[data-lfx-row="latest-movies"]')).not.toBeNull());
+    expect(document.documentElement.classList.contains('lfx-prime-home-on')).toBe(true);
+    feature.update(route('lfx=hub&lib=XX'));
+    await vi.waitFor(() => expect(document.getElementById('lfx-prime-home')).toBeNull());
+    expect(document.documentElement.classList.contains('lfx-prime-home-on')).toBe(false);
+  });
+});

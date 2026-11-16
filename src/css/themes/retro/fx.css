@@ -372,6 +372,15 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__input:focus-visible
   }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__form { padding: 12px 0 4px; font-size: 28px; }
   html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__close { min-width: 52px; min-height: 44px; }
+  /* Umbrüche der Ausgabe (z. B. HILFE-Tabelle): Folgezeilen eingerückt statt in Spalte 0 */
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__row { padding-left: 4ch; text-indent: -4ch; }
+}
+/* Tastatur-Hinweise nur mit Maus/Tastatur */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__hint,
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__row.is-hint { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__hint { display: inline; }
+  html.lfx-js.lfx-theme-retro:not(.layout-tv) .lfx-retro-term__row.is-hint { display: block; }
 }
 
 /* ================= Bildschirmschoner: Code-Regen ================= */

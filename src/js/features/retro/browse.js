@@ -4,7 +4,7 @@
 // (Die Hub-Ansicht #/home?lfx=hub gehört zur Startseite, nicht zu dieser Datei.)
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
-import { isMobile, isModern, isTv } from '../../core/layout.js';
+import { isNarrow, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
 import { isDataSaver } from '../../core/datasaver.js';
 import { putItems } from '../../core/itemstore.js';
@@ -85,7 +85,7 @@ function listRow(it) {
 }
 
 function itemNode(s, it) {
-  return s.view === 'list' && !isMobile() ? listRow(it) : createTapeCard(it, { variant: 'cover' });
+  return s.view === 'list' && !isNarrow() ? listRow(it) : createTapeCard(it, { variant: 'cover' });
 }
 
 function paintHead(s) {
@@ -106,7 +106,7 @@ function paintHead(s) {
     b.setAttribute('aria-pressed', String(on));
   }
   s.genreBtn.classList.toggle('is-on', Boolean(s.genreId));
-  s.grid.classList.toggle('is-list', s.view === 'list' && !isMobile());
+  s.grid.classList.toggle('is-list', s.view === 'list' && !isNarrow());
   s.grid.setAttribute('role', 'list');
   for (const chip of s.genres.querySelectorAll('.lfx-rb__genre')) {
     const on = (chip.dataset.genre || '') === (s.genreId || '');
@@ -173,6 +173,8 @@ async function loadMore(s) {
       s.loading = false;
       s.root.removeAttribute('aria-busy');
       paintHead(s);
+      // IO meldet nur Wechsel: liegt der Sentinel nach dem Laden noch im Ladebereich, selbst weiterladen
+      if (!s.done && s.sentinel && s.sentinel.getBoundingClientRect().top < (window.innerHeight || 800) + (isDataSaver('lazy') ? 100 : 900)) loadMore(s);
     }
   }
 }
@@ -237,7 +239,7 @@ async function build(tab, s) {
     h('header', { class: 'lfx-rb__head' }, [path, count]),
     opts, genres, grid, status, sentinel,
   ]);
-  Object.assign(s, { root, path, count, opts, genres, genreBtn, grid, status });
+  Object.assign(s, { root, path, count, opts, genres, genreBtn, grid, status, sentinel });
   tab.prepend(root);
   setPageOn(ON_CLASS, true);
   scrollTop();

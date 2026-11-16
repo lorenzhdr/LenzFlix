@@ -224,3 +224,24 @@ describe('createGrid', () => {
     expect(root.children).toHaveLength(0);
   });
 });
+
+describe('createGrid: Fehlerzustand (A050)', () => {
+  it('der Observer startet im Fehlerzustand keine neue Anfrage, Erneut versuchen schon', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    api.getItems.mockResolvedValueOnce(page(0, 40, 100)).mockRejectedValueOnce(new Error('boom')).mockResolvedValue(page(40, 40, 100));
+    const g = createGrid({ query: {} });
+    await flush();
+    ios[0].cb([{ isIntersecting: true }]);
+    await flush();
+    expect(api.getItems).toHaveBeenCalledTimes(2);
+    expect(g.el.querySelector('.lfx-grid__retry')).toBeTruthy();
+    ios[0].cb([{ isIntersecting: true }]);
+    await flush();
+    expect(api.getItems).toHaveBeenCalledTimes(2);
+    g.el.querySelector('.lfx-grid__retry').click();
+    await flush();
+    expect(api.getItems).toHaveBeenCalledTimes(3);
+    g.destroy();
+    warn.mockRestore();
+  });
+});

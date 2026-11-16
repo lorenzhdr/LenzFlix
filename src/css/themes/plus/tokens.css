@@ -51,17 +51,12 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) {
   --lfx-progress-rail: rgba(255, 255, 255, 0.2);
 
   /* --- LENZ+-eigene Tokens --- */
-  --lfx-plus-tile: #2d2f36;
   --lfx-plus-nav-idle: #c5c5cc;
   --lfx-plus-circle: #2a2a30;
-  --lfx-plus-chip: rgba(255, 255, 255, 0.05);
-  --lfx-plus-footer: #0e0b14;
   --lfx-plus-menu-bg: #131313;
   --lfx-plus-menu-border: rgba(151, 151, 151, 0.34);
-  --lfx-plus-ring: #fff;
   --lfx-plus-ls: -0.1px;
   --lfx-plus-ls-bold: 0.11px;
-  --lfx-plus-ls-caps: 1.76px;
 
   /* --- Typografie --- */
   --lfx-font: "LenzPlus Sans", "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;

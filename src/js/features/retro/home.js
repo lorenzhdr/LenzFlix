@@ -62,7 +62,7 @@ async function start(tab, route, myGen) {
   if (myGen !== gen) return;
   const hub = route.kind === 'hub';
   const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
-  if (hub && !lib) return; // unbekannte Bibliothek: native Seite bleibt sichtbar
+  if (hub && !lib) { current = null; teardown(); return; } // unbekannte Bibliothek: native Seite sichtbar (alte Startseite weg)
 
   teardown();
   const heroSlot = h('section', { id: 'lfx-retro-hero', class: 'lfx-retro-hero-slot', 'aria-label': 'Empfehlung' });

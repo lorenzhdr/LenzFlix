@@ -225,15 +225,15 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot {
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot::before {
   content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #8d8d95;
-  transition: width 0.2s, height 0.2s, background-color 0.2s;
-}
-html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot.is-active::before {
   width: 7px;
   height: 7px;
+  border-radius: 50%;
+  background: #8d8d95;
+  transform: scale(0.714);
+  transition: transform 0.2s, background-color 0.2s;
+}
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot.is-active::before {
+  transform: scale(1);
   background: #fff;
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot:focus-visible { outline: 2px solid #fff; }

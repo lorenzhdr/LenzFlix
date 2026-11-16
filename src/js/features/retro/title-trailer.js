@@ -44,10 +44,18 @@ export function openTrailer(src, returnFocus) {
     close();
   };
   const onBackdrop = (e) => { if (e.target === overlay) close(); };
+  // Fokusfalle (aria-modal): Fokus außerhalb des Dialogs zurückholen (Tab am Ende -> Video, Umschalt+Tab am Anfang -> Schließen)
+  const onFocusIn = (e) => {
+    if (overlay.contains(e.target)) return;
+    (e.relatedTarget === closeBtn ? video : closeBtn).focus();
+    if (!overlay.contains(document.activeElement)) closeBtn.focus(); // Video nicht fokussierbar
+  };
+  document.addEventListener('focusin', onFocusIn);
   window.addEventListener('keydown', onKey, true);
   overlay.addEventListener('click', onBackdrop);
   overlay.__lfxCleanup = () => {
     window.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('focusin', onFocusIn);
     overlay.removeEventListener('click', onBackdrop);
   };
   video.addEventListener('error', () => {

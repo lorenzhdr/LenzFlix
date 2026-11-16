@@ -21,13 +21,13 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-tabbar-on
 }
 /* Native Seiten (Einstellungen, Bibliotheken ...) beginnen unter der 52-px-Kopfzeile; eigene Seiten (Start, Titel, Suche,
    Neu & beliebt, Detail, Login) haben ihren eigenen Abstand. Absoluter Wert + !important: kein Doppelabstand. */
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage) {
   padding-top: var(--lfx-prime-mh) !important;
 }
 /* Bibliotheksseiten: zweite AppBar-Toolbar (Filter/Sortierung, ~48 px) hängt unter der Kopfzeile. Live gemessen (390 px): mit
    +52 px blieben ~100 px Leerraum bis zur ersten Kartenreihe, die Seite bringt also selbst Platz mit. Korrektur über
    --lfx-prime-libshift (Ziel: erste Reihe ~12-16 px unter der Toolbar); bei Abweichung nur diesen Wert nachziehen. */
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage) {
   padding-top: max(0px, calc(var(--lfx-prime-mh) + var(--lfx-prime-libshift, -46px))) !important;
 }
 
@@ -35,10 +35,6 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBa
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--mobile {
   pointer-events: auto;
   background: #00050d;
-}
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--over {
-  pointer-events: none;
-  background: linear-gradient(rgba(0, 5, 13, 0.85), rgba(0, 5, 13, 0));
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__bar {
   --lfx-prime-inset: 0px;

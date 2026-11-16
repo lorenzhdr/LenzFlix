@@ -23,6 +23,7 @@ export function createTerminal(deps) {
   let opener = null;
   let alive = false; // Terminal offen? (sleep() bricht ab, sobald es schließt)
   let busy = false;
+  let gen = 0; // zählt Öffnungen: Ausgabe/Folgeaktionen alter Befehle verfallen
   const sleepers = new Set();
   const history = [];
   let hIndex = 0;
@@ -38,25 +39,31 @@ export function createTerminal(deps) {
     return (t) => { row.textContent = String(t); };
   }
 
-  const ctx = {
-    ...deps,
-    print,
-    error(text) { print(text, 'err'); emitFx('error'); },
-    clear() { if (out) out.replaceChildren(); },
-    close() { close(); },
-    go(href) {
-      timers.timeout(() => {
-        close();
-        try { window.location.hash = href; } catch { /* egal */ }
-      }, 700);
-    },
-    sleep(ms) {
-      return new Promise((resolve) => {
-        sleepers.add(resolve);
-        timers.timeout(() => { sleepers.delete(resolve); resolve(alive); }, ms);
-      });
-    },
-  };
+  // Kontext pro Befehl: g = Öffnungs-Generation beim Start; nach Schließen/Neuöffnen wirkt nichts mehr
+  function mkCtx(g) {
+    const live = () => alive && g === gen;
+    return {
+      ...deps,
+      print: (text, cls) => (g === gen ? print(text, cls) : () => {}),
+      error(text) { if (g === gen) { print(text, 'err'); emitFx('error'); } },
+      clear() { if (out && g === gen) out.replaceChildren(); },
+      close() { if (g === gen) close(); },
+      isOpen: live,
+      go(href) {
+        if (!live()) return;
+        timers.timeout(() => {
+          close();
+          try { window.location.hash = href; } catch { /* egal */ }
+        }, 700);
+      },
+      sleep(ms) {
+        return new Promise((resolve) => {
+          sleepers.add(resolve);
+          timers.timeout(() => { sleepers.delete(resolve); resolve(live()); }, ms);
+        });
+      },
+    };
+  }
 
   async function run(line) {
     const raw = String(line || '').trim();
@@ -67,13 +74,16 @@ export function createTerminal(deps) {
     hIndex = history.length;
     draft = '';
     busy = true;
+    const g = gen;
     try {
-      await execute(raw, ctx);
+      await execute(raw, mkCtx(g));
     } catch {
-      print('INTERNER FEHLER. SYSTEM LÄUFT WEITER.', 'err');
+      if (g === gen) print('INTERNER FEHLER. SYSTEM LÄUFT WEITER.', 'err');
     } finally {
-      busy = false;
-      if (input && alive) input.focus({ preventScroll: true });
+      if (g === gen) {
+        busy = false;
+        if (input && alive) input.focus({ preventScroll: true });
+      }
     }
   }
 
@@ -113,7 +123,7 @@ export function createTerminal(deps) {
       input.value = hIndex >= history.length ? draft : history[hIndex];
     } else if ((e.key === 'l' || e.key === 'L') && e.ctrlKey) {
       e.preventDefault();
-      ctx.clear();
+      if (out) out.replaceChildren();
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
       emitFx('type');
     }
@@ -142,7 +152,7 @@ export function createTerminal(deps) {
     root = h('div', {
       id: TERMINAL_ID, class: 'lfx-retro-term', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'LENZ//84 Terminal',
     }, [
-      h('div', { class: 'lfx-retro-term__bar' }, [h('span', { class: 'lfx-retro-term__title' }, 'LENZ//84 TERMINAL  [ESC = ENDE]'), closeBtn]),
+      h('div', { class: 'lfx-retro-term__bar' }, [h('span', { class: 'lfx-retro-term__title' }, ['LENZ//84 TERMINAL', h('span', { class: 'lfx-retro-term__hint' }, '  [ESC = ENDE]')]), closeBtn]),
       out,
       form,
     ]);
@@ -155,8 +165,10 @@ export function createTerminal(deps) {
 
   function open() {
     if (alive) { if (input) input.focus(); return; }
+    if (root) teardown(); // altes Element aus der Schließanimation sofort entfernen
     opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
     busy = false;
+    gen += 1;
     build();
     document.body.append(root);
     document.documentElement.classList.add('lfx-retro-term-open');

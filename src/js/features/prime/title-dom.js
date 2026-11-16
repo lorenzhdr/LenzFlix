@@ -113,11 +113,10 @@ export function buildCardGrid(items, { trend, newInfo } = {}) {
 export function buildSeasonSelect(seasons, seasonId, onPick) {
   const cur = seasons.find((s) => s.Id === seasonId) || seasons[0];
   const btn = h('button', {
-    type: 'button', class: 'lfx-pt__season', 'aria-haspopup': 'menu', 'aria-label': 'Staffel wählen',
+    type: 'button', class: 'lfx-pt__season', 'aria-haspopup': 'menu',
   }, [h('span', { class: 'lfx-pt__season-label' }, seasonName(cur)), iconEl(ICONS.chevron, 'lfx-pt__season-chev')]);
   btn.addEventListener('click', () => {
     if (isPopoverOpen()) { closePopover({ restoreFocus: true }); return; }
-    btn.setAttribute('aria-expanded', 'true');
     openPopover(btn, {
       label: 'Staffeln',
       align: 'start',

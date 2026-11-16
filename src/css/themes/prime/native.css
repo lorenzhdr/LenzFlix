@@ -187,7 +187,7 @@ html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .sectionTitle,
 html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .listItem-content h2 {
   font-weight: 700;
 }
-html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction) {
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction):not([class*="lfx-"]) {
   color: var(--nat-link);
 }
 html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .paperList,

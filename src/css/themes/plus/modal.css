@@ -21,7 +21,9 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play {
   text-transform: uppercase;
   transition: background-color 0.2s ease-in-out;
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:hover { background: #d9d9de; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:hover { background: #d9d9de; }
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round {
   width: 48px;
   height: 48px;
@@ -31,7 +33,9 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round {
   transition: background-color 0.2s ease-in-out;
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round--small { width: 36px; height: 36px; }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:hover { background: rgba(255, 255, 255, 0.18); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:hover { background: rgba(255, 255, 255, 0.18); }
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on { background: rgba(255, 255, 255, 0.18); }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:focus-visible,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:focus-visible,
@@ -39,7 +43,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__close:focus-vi
   outline: 3px solid #fff;
   outline-offset: 3px;
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected { background: var(--lfx-surface-2); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover { background: var(--lfx-surface-2); }
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link { color: var(--lfx-accent); }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link:hover { color: var(--lfx-red-hover); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link:hover { color: var(--lfx-red-hover); }
+}

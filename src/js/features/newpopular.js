@@ -12,7 +12,8 @@ import { getCharts, resolveChartItems } from '../core/charts.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { createCard, detailHref, landscapeFor } from './rows/card.js';
-import { brandName, isTheme } from '../core/theme.js';
+import { brandName, isTheme, onThemeChange } from '../core/theme.js';
+import { cached, homeKey } from '../core/cache.js';
 import { BASE_PARAMS, badgeFor } from './rows/logic.js';
 import { attachScroller, chevronButton } from './rows/scroller.js';
 import { asItems, getNewSeriesIds } from './rows/sources.js';
@@ -51,9 +52,12 @@ function teardown() {
 
 // ---------------------------------------------------------------- Abfragen
 
-const query = (params) => api.getItems({
+const NP_TTL = 5 * 60_000;
+
+/** Abfrage mit 5-min-Cache unter `home:`-Schlüssel (gleiche Invalidierung wie die Startseite: Meine Liste, Gesehen). */
+const query = (params) => cached(homeKey(api.getUserId(), 'np', JSON.stringify(params)), () => api.getItems({
   ...BASE_PARAMS, IncludeItemTypes: TYPES, Recursive: true, ...params,
-}).then(asItems);
+}).then(asItems), NP_TTL);
 
 function loadNew() {
   return query({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 20 }).then((l) => uniqueTitles(l, 20));
@@ -244,7 +248,11 @@ function build(tab) {
   const nav = h('nav', { class: 'lfx-np__tabs', 'aria-label': 'Neu und beliebt' });
 
   function setActive(id) {
-    for (const [pid, pill] of pills) pill.classList.toggle('is-active', pid === id);
+    for (const [pid, pill] of pills) {
+      pill.classList.toggle('is-active', pid === id);
+      if (pid === id) pill.setAttribute('aria-current', 'true');
+      else pill.removeAttribute('aria-current');
+    }
   }
 
   for (const d of sectionDefs()) {
@@ -272,8 +280,12 @@ function build(tab) {
     raf = requestAnimationFrame(() => {
       raf = 0;
       let current = null;
-      for (const [id, sec] of sections) {
-        if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current = id;
+      // Ganz oben immer der erste Abschnitt (leere Skelett-Abschnitte liegen sonst alle über der Schwelle)
+      if ((window.scrollY || 0) <= 0) current = sections.keys().next().value;
+      else {
+        for (const [id, sec] of sections) {
+          if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current = id;
+        }
       }
       if (current) setActive(current);
     });
@@ -293,6 +305,12 @@ function build(tab) {
     const pill = pills.get(id);
     if (pill && pill.lastChild) pill.lastChild.textContent = label;
   }
+
+  // Designwechsel auf dieser Seite: Markenname in Überschrift, Pille und Chart-Untertiteln nachziehen
+  cleanups.push(onThemeChange(() => {
+    relabel('new', `Neu bei ${brandName()}`);
+    root.querySelectorAll('.lfx-np__sub').forEach((el) => { el.textContent = chartSubtitle(Number(el.dataset.days)); });
+  }));
 
   let newSeriesIds = new Set();
 
@@ -330,6 +348,7 @@ function build(tab) {
       newSeriesIds = newSeries;
       if (fallbackLabel && !meta.charted) relabel(id, fallbackLabel);
       renderer(sections.get(id), items, newSeries, meta);
+      onScroll();
     } catch (e) {
       console.warn(`[LenzFlix] Neu und beliebt "${id}" nicht geladen`, e && e.message);
       if (!disposed) drop(id);
@@ -339,7 +358,7 @@ function build(tab) {
     const row = createRow(meta.charted || !fallbackTitle ? title : fallbackTitle, items, kind, newSeries);
     sec.querySelector('.lfx-np__heading')?.remove();
     if (meta.charted) {
-      row.el.querySelector('.lfx-row__head').after(h('p', { class: 'lfx-np__sub' }, chartSubtitle(meta.windowDays)));
+      row.el.querySelector('.lfx-row__head').after(h('p', { class: 'lfx-np__sub', dataset: { days: meta.windowDays || '' } }, chartSubtitle(meta.windowDays)));
     }
     sec.append(row.el);
     scrollers.push(attachScroller(row.scroller));
@@ -383,7 +402,7 @@ function ensure() {
 
 const newPopularFeature = {
   name: 'newpopular',
-  match: (route) => isNewRoute(route) && !isTv() && !isTheme('live'),
+  match: (route) => isNewRoute(route) && !isTv() && !isTheme('live') && !isTheme('store'),
   mount: () => ensure(),
   update: () => ensure(),
   unmount: () => { clearTimeout(waitTimer); teardown(); },

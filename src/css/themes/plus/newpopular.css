@@ -72,21 +72,13 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__genres {
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn {
   width: 40px;
   height: 40px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.14);
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:hover,
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
-  border: 0;
   background: rgba(255, 255, 255, 0.28);
+  border-color: var(--lfx-icon-circle-border);
   color: #fff;
-}
-@media (hover: hover) and (pointer: fine) {
-  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:hover {
-    border: 0;
-    background: rgba(255, 255, 255, 0.26);
-  }
 }
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
   outline: 3px solid #fff;
@@ -101,4 +93,8 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
     padding: 0 14px;
     font-size: 14px;
   }
+}
+/* L019: fährt die LENZ+-Kopfleiste aus, klebt die Pillenleiste ganz oben */
+html.lfx-js.lfx-theme-plus.lfx-plus-header-hidden:not(.layout-tv) .lfx-np__tabs {
+  top: 0;
 }

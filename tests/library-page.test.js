@@ -147,15 +147,16 @@ describe('library-Seite', () => {
     expect(panel.hidden).toBe(true);
   });
 
-  it('Umschalter Zeilen/Raster mit aria-pressed und Links', () => {
+  it('Umschalter Zeilen/Raster mit aria-current und Links', () => {
     feature.mount(route('lfx=series&genre=g1'));
     const [rowsLink, gridLink] = document.querySelectorAll('.lfx-lib__view');
-    expect(rowsLink.getAttribute('aria-pressed')).toBe('true');
-    expect(gridLink.getAttribute('aria-pressed')).toBe('false');
+    expect(rowsLink.getAttribute('aria-current')).toBe('true');
+    expect(gridLink.hasAttribute('aria-current')).toBe(false);
+    expect(rowsLink.hasAttribute('aria-pressed')).toBe(false);
     expect(gridLink.getAttribute('href')).toBe('#/home?lfx=series&genre=g1&view=grid');
     feature.update(route('lfx=series&genre=g1&view=grid&sort=za'));
-    expect(rowsLink.getAttribute('aria-pressed')).toBe('false');
-    expect(gridLink.getAttribute('aria-pressed')).toBe('true');
+    expect(rowsLink.hasAttribute('aria-current')).toBe(false);
+    expect(gridLink.getAttribute('aria-current')).toBe('true');
     expect(rowsLink.getAttribute('href')).toBe('#/home?lfx=series&genre=g1');
   });
 

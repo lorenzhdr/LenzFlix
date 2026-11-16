@@ -118,7 +118,7 @@ html.lfx-js.lfx-datasaver:not(.layout-tv) #lfx-ds-btn {
   top: 0;
   right: calc(var(--lfx-gutter) + 138px);
   z-index: 1101;
-  box-sizing: border-box;
+  box-sizing: content-box; /* mui-fixed: siehe tvbtn.css (Scroll-Lock-Ausgleich) */
   width: 40px;
   height: var(--lfx-header-h);
   margin: 0;

@@ -18,6 +18,7 @@ function pickTarget(root = document) {
 export function createGlitch({ crt, enabled = () => true, minMs = 20000, maxMs = 40000 }) {
   const timers = createTimers();
   let running = false;
+  const added = new Set(); // Ziele, denen wir die Basisklasse gegeben haben
 
   function fire() {
     if (!running) return;
@@ -26,9 +27,11 @@ export function createGlitch({ crt, enabled = () => true, minMs = 20000, maxMs =
       if (target) {
         const addedBase = !target.classList.contains('lfx-retro-glitch');
         target.classList.add('lfx-retro-glitch', 'is-glitching');
+        if (addedBase) added.add(target);
         timers.timeout(() => {
           target.classList.remove('is-glitching');
           if (addedBase) target.classList.remove('lfx-retro-glitch');
+          added.delete(target);
         }, 600);
       }
       crt.glitchStrip();
@@ -50,6 +53,8 @@ export function createGlitch({ crt, enabled = () => true, minMs = 20000, maxMs =
       running = false;
       timers.clearAll();
       for (const el of document.querySelectorAll('.is-glitching')) el.classList.remove('is-glitching');
+      for (const el of added) el.classList.remove('lfx-retro-glitch');
+      added.clear();
     },
     fire,
   };

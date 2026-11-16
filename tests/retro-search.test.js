@@ -68,6 +68,17 @@ describe('retro-search', () => {
     expect(searchItems).not.toHaveBeenCalled();
   });
 
+  it('L030: vorbelegter Begriff, Eingabemarke steht am Ende', async () => {
+    search.mount(route('#/home?lfx=search&q=harry'));
+    await flush();
+    const input = document.querySelector('.lfx-rs__input');
+    expect(input.value).toBe('harry');
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(5);
+    expect(input.selectionEnd).toBe(5);
+    expect(document.querySelector('.lfx-rs__cmd').style.getPropertyValue('--rs-pos')).toBe('5');
+  });
+
   it('Eingabe wird 300 ms entprellt, schreibt q in den Hash, rendert gruppierte Ergebnisse', async () => {
     search.mount(route('#/home?lfx=search'));
     await flush();

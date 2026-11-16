@@ -81,9 +81,15 @@ export function closePrimeSearch({ restoreFocus = true } = {}) {
   document.documentElement.classList.remove('lfx-prime-search-open');
   const back = c.returnFocus;
   if (restoreFocus && back && back.isConnected && typeof back.focus === 'function') {
-    try {
-      back.focus({ preventScroll: true });
-    } catch { /* Fokus ist optional */ }
+    // Die Handy-Tabbar ist beim Schließen noch inert/versteckt (sie reagiert erst nach dem Schließen): Fokus nach ihrem Update nachholen.
+    const give = (tries) => {
+      try {
+        back.focus({ preventScroll: true });
+      } catch { /* Fokus ist optional */ }
+      const a = document.activeElement;
+      if (tries > 0 && back.isConnected && (!a || a === document.body) && typeof requestAnimationFrame === 'function') requestAnimationFrame(() => give(tries - 1));
+    };
+    give(2);
   }
 }
 

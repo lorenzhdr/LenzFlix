@@ -103,6 +103,8 @@ async function loadMore(s) {
     if (!stale()) {
       s.loading = false;
       s.root.removeAttribute('aria-busy');
+      // Der IntersectionObserver meldet nur Wechsel: bleibt der Sentinel im Rand, selbst weiterladen
+      if (!s.done && s.sentinel && s.sentinel.getBoundingClientRect().top < (window.innerHeight || 800) + 800) loadMore(s);
     }
   }
 }
@@ -122,7 +124,7 @@ async function build(tab, s) {
   const status = h('div', { class: 'lfx-plus-browse__status' });
   const sentinel = h('div', { class: 'lfx-plus-browse__sentinel', 'aria-hidden': 'true' });
   const root = h('div', { id: ROOT_ID, class: 'lfx-plus-page lfx-plus-browse' }, [title, chips, grid, status, sentinel]);
-  Object.assign(s, { root, chips, grid, status });
+  Object.assign(s, { root, chips, grid, status, sentinel });
   tab.prepend(root);
   setPageOn(ON_CLASS, true);
   scrollTop();

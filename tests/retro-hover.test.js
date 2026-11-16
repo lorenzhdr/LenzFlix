@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const themeState = vi.hoisted(() => ({ id: 'retro', saver: false }));
+const themeState = vi.hoisted(() => ({ id: 'retro', saver: false, subs: [] }));
 const preview = vi.hoisted(() => ({ calls: [], cancel: vi.fn() }));
 vi.mock('../src/js/core/theme.js', () => ({
   getTheme: () => themeState.id,
@@ -20,7 +20,10 @@ vi.mock('../src/js/core/api.js', async () => {
   };
 });
 vi.mock('../src/js/core/layout.js', () => ({ isModern: () => true, isTv: () => false, isMobile: () => false }));
-vi.mock('../src/js/core/datasaver.js', () => ({ isDataSaver: (part) => themeState.saver && (!part || part === 'trailer') }));
+vi.mock('../src/js/core/datasaver.js', () => {
+  const sub = (cb) => { themeState.subs.push(cb); return () => { themeState.subs = themeState.subs.filter((f) => f !== cb); }; };
+  return { isDataSaver: (part) => themeState.saver && (!part || part === 'trailer'), onDataSaverChange: sub, onDataSaverPartsChange: sub };
+});
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn().mockResolvedValue(true) }));
 vi.mock('../src/js/shared/titleactions.js', () => ({ toggleFavorite: vi.fn().mockResolvedValue(true) }));
 vi.mock('../src/js/shared/trailer.js', () => ({
@@ -159,6 +162,26 @@ describe('Öffnen', () => {
     await tick(INTENT_MS + 10);
     expect(popup()).toBeNull();
     document.documentElement.classList.remove('lfx-modal-open');
+  });
+});
+
+describe('Datensparmodus mitten im Hover (A082)', () => {
+  it('geplanter oder laufender Trailer wird beim Einschalten abgebrochen', async () => {
+    over(card);
+    await tick(INTENT_MS + 10);
+    expect(createMutedPreview).toHaveBeenCalledTimes(1);
+    popup().classList.add('is-video');
+    expect(preview.cancel).not.toHaveBeenCalled();
+    themeState.saver = true;
+    for (const cb of [...themeState.subs]) cb(true);
+    expect(preview.cancel).toHaveBeenCalledTimes(1);
+    expect(popup().classList.contains('is-video')).toBe(false);
+    expect(popup()).not.toBeNull();
+  });
+  it('unmount meldet die Datensparmodus-Abos ab', () => {
+    expect(themeState.subs.length).toBeGreaterThan(0);
+    hover.unmount();
+    expect(themeState.subs.length).toBe(0);
   });
 });
 

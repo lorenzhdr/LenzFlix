@@ -348,3 +348,20 @@ describe('prime-hover: Datensparmodus', () => {
     expect(api.getItem).not.toHaveBeenCalled();
   });
 });
+
+describe('prime-hover: Datensparmodus-Wechsel während des Hovers (Welle 2)', () => {
+  afterEach(() => { ds.on = false; ds.off = []; });
+  it('A071: Einschalten bricht die laufende Vorschau ab, die Karte bleibt offen', async () => {
+    over(poster.querySelector('a'));
+    await tick(INTENT_POSTER_MS + 20);
+    expect(createMutedPreview).toHaveBeenCalledTimes(1);
+    const opts = createMutedPreview.mock.calls[0][2];
+    opts.onStart(document.createElement('video'));
+    ds.on = true;
+    for (const cb of ds.subs) cb(true);
+    expect(preview.cancel).toHaveBeenCalledTimes(1);
+    expect(poster.classList.contains('is-expanded')).toBe(true);
+    expect(poster.querySelector('.lfx-prime-expand__mute').hidden).toBe(true);
+    expect(poster.querySelector('.lfx-prime-expand').classList.contains('is-video')).toBe(false);
+  });
+});

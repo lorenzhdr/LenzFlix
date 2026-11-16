@@ -252,3 +252,70 @@ describe('prime-title: Datensparmodus', () => {
     }
   });
 });
+
+describe('prime-title: Zugänglichkeit (Welle 2)', () => {
+  const base = { Id: 'm1', Name: 'Film', Type: 'Movie', Overview: 'B', RunTimeTicks: 600_000_000 * 100, People: [], Genres: [] };
+  const seasons = [{ Id: 'se1', IndexNumber: 1, Name: 'Staffel 1' }, { Id: 'se2', IndexNumber: 2, Name: 'Staffel 2' }];
+  const mountWith = async (item) => {
+    data.loadItem.mockImplementation(async () => item);
+    feature.mount(route(item.Id));
+    await flush(12);
+    return document.getElementById('lfx-prime-title');
+  };
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="indexPage"><div id="homeTab"><div class="sections"></div></div></div>';
+    document.documentElement.className = '';
+    window.scrollTo = vi.fn();
+    vi.clearAllMocks();
+    clearItemStore();
+    data.loadSimilar.mockResolvedValue([]);
+    data.loadSeasons.mockResolvedValue(seasons);
+    data.loadEpisodes.mockResolvedValue([]);
+    data.loadNextUp.mockResolvedValue(null);
+    data.loadCollection.mockResolvedValue([]);
+  });
+  afterEach(() => feature.unmount());
+
+  it('L028: Titel mit Logo hat trotzdem eine h1 (Logo-Bild darin, Name als alt)', async () => {
+    const root = await mountWith({ ...base, ImageTags: { Logo: 'lg' }, UserData: {} });
+    const h1 = root.querySelector('h1');
+    expect(h1).not.toBeNull();
+    const img = h1.querySelector('img.lfx-pt__logo');
+    expect(img.getAttribute('alt')).toBe('Film');
+  });
+
+  it('A079: Merkliste/Gesehen starten mit is-on und aria-pressed passend zum Zustand', async () => {
+    const on = await mountWith({ ...base, UserData: { IsFavorite: true, Played: true } });
+    for (const sel of ['.lfx-pt__circle--fav', '.lfx-pt__circle--seen']) {
+      const b = on.querySelector(sel);
+      expect(b.classList.contains('is-on')).toBe(true);
+      expect(b.getAttribute('aria-pressed')).toBe('true');
+    }
+    feature.unmount();
+    const off = await mountWith({ ...base, UserData: {} });
+    expect(off.querySelector('.lfx-pt__circle--fav').getAttribute('aria-pressed')).toBe('false');
+    expect(off.querySelector('.lfx-pt__circle--fav').classList.contains('is-on')).toBe(false);
+  });
+
+  it('L025: „Meine Liste“-Knopf behält nach dem Umschalten den Tastaturfokus', async () => {
+    const root = await mountWith({ ...base, UserData: {} });
+    const fav = root.querySelector('.lfx-pt__circle--fav');
+    fav.focus();
+    expect(document.activeElement).toBe(fav);
+    fav.click();
+    await flush(4);
+    expect(fav.getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(fav);
+  });
+
+  it('A072/A078: Staffel-Knopf hat keinen verdeckenden aria-label; aria-expanded folgt dem Popover', async () => {
+    const root = await mountWith({ Id: 's1', Name: 'Serie', Type: 'Series', Overview: 'S', ChildCount: 2, UserData: {} });
+    const btn = root.querySelector('.lfx-pt__season');
+    expect(btn.getAttribute('aria-label')).toBeNull();
+    expect(btn.textContent).toContain('Staffel 1');
+    btn.click();
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    btn.click(); // schließt
+    expect(btn.getAttribute('aria-expanded')).toBe('false');
+  });
+});

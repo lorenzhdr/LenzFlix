@@ -13,6 +13,7 @@ import { createGrid } from './library/grid.js';
 const ROOT_ID = 'lfx-mylist';
 const ON_CLASS = 'lfx-mylist-on';
 const RETRO_PAGE_ON = 'lfx-retro-page-on';
+const HIDDEN_RELOAD_MS = 60000; // Tab-Rückkehr: erst nach so langer Abwesenheit neu laden
 const STALE_MS = 2000; // update() innerhalb dieser Zeit nach dem Laden ist ein Router-Echo (viewshow feuert mehrfach)
 
 const TYPE_QUERY = { movies: 'Movie', series: 'Series' };
@@ -80,19 +81,31 @@ function paint(s) {
 }
 
 function emptyBlock() {
-  const retro = isTheme('retro');
   return h('div', { class: 'lfx-ml__empty', hidden: true }, [
-    h('p', { class: 'lfx-ml__empty-title' }, retro ? 'KEINE BÄNDER GEMERKT' : 'Deine Liste ist leer'),
+    h('p', { class: 'lfx-ml__empty-title' }),
     h('p', { class: 'lfx-ml__empty-hint' }, 'Mit „+ Meine Liste“ merkst du dir Filme und Serien.'),
-    h('a', { class: 'lfx-ml__empty-link', href: '#/home' }, retro ? 'ZURÜCK ZUM STARTMENÜ' : 'Zur Startseite'),
+    h('a', { class: 'lfx-ml__empty-link' }),
   ]);
+}
+
+// Leertext: mit Art-Filter filterbezogen (Link „Alle anzeigen“), sonst „Liste leer“.
+function fillEmpty(s) {
+  const retro = isTheme('retro');
+  const kind = { movies: 'Filme', series: 'Serien' }[s.type];
+  const [title, hint, link] = s.empty.children;
+  title.textContent = kind
+    ? (retro ? `KEINE ${kind.toUpperCase()} GEMERKT` : `Keine ${kind} in deiner Liste`)
+    : (retro ? 'KEINE BÄNDER GEMERKT' : 'Deine Liste ist leer');
+  hint.hidden = Boolean(kind);
+  link.textContent = kind ? (retro ? 'ALLE ANZEIGEN' : 'Alle anzeigen') : (retro ? 'ZURÜCK ZUM STARTMENÜ' : 'Zur Startseite');
+  link.setAttribute('href', kind ? myListHref({ sort: s.sort === 'az' ? undefined : s.sort }) : '#/home');
 }
 
 function build(tab, r) {
   teardown();
   const retro = isTheme('retro');
   const s = {
-    root: null, grid: null, type: r.type, sort: r.sort, count: null, chips: null, sorts: null, empty: null,
+    root: null, grid: null, type: r.type, sort: r.sort, count: null, chips: null, sorts: null, empty: null, retro,
     loadedAt: Date.now(), cleanups: [],
   };
   state = s;
@@ -117,6 +130,7 @@ function build(tab, r) {
     onCount: (n) => {
       s.loadedAt = Date.now();
       s.count.textContent = countText(n);
+      fillEmpty(s);
       s.empty.hidden = n > 0;
       s.root.classList.toggle('is-empty', n === 0);
     },
@@ -138,13 +152,21 @@ function build(tab, r) {
   const refresh = () => { if (state === s) s.grid.refresh(); };
   s.cleanups.push(onItemsChanged(({ removed = [] }) => {
     if (state !== s || !removed.length) return;
+    let n = 0;
     s.root.querySelectorAll('[data-lfx-id]').forEach((el) => {
-      if (removed.includes(el.dataset.lfxId)) (el.closest('.lfx-grid__item') || el).remove();
+      if (removed.includes(el.dataset.lfxId)) { (el.closest('.lfx-grid__item') || el).remove(); n += 1; }
     });
+    if (n) s.grid.drop(n);
   }));
   document.addEventListener('lfx:favorite', refresh);
   s.cleanups.push(() => document.removeEventListener('lfx:favorite', refresh));
-  const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+  // Tab-Rückkehr: erst nach 60 s Abwesenheit neu laden, kurzer Wechsel behält Scrollstand und nachgeladene Seiten.
+  let hiddenAt = 0;
+  const onVisible = () => {
+    if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt >= HIDDEN_RELOAD_MS) refresh();
+    hiddenAt = 0;
+  };
   document.addEventListener('visibilitychange', onVisible);
   s.cleanups.push(() => document.removeEventListener('visibilitychange', onVisible));
 }
@@ -156,12 +178,12 @@ function ensure(route) {
   if (state && state.root && state.root.isConnected && tab && tab.contains(state.root)) {
     // Gleiche Seite: nur Art/Sortierung nachziehen, sonst bei Router-Wiederholung nach einer Weile neu laden.
     const s = state;
+    if (s.retro !== isTheme('retro')) { build(tab, r); return; } // Designwechsel flix <-> retro: Hülle/Texte neu aufbauen
     if (r.type !== s.type) {
       s.type = r.type;
       s.sort = r.sort;
       paint(s);
-      s.grid.setQuery(queryFor(s.type));
-      s.grid.setSort(s.sort);
+      s.grid.setQuery(queryFor(s.type), s.sort);
     } else if (r.sort !== s.sort) {
       s.sort = r.sort;
       paint(s);

@@ -53,9 +53,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) {
   --lfx-glass-hover: rgba(255, 255, 255, .2);
   --lfx-pill-active: rgba(255, 255, 255, .2);
   --lfx-prime-glass: rgba(25, 30, 37, .8);
-  --lfx-prime-panel: rgba(23, 25, 28, .8);
   --lfx-prime-chip: #33373d;
-  --lfx-prime-rating: #35a9e5;
   --lfx-prime-hover-bg: #ebecee;
   --lfx-prime-ink: #00050d;
   --lfx-prime-shadow: rgba(0, 0, 0, .3) 0 4px 4px 0, rgba(0, 0, 0, .15) 0 8px 12px 6px;
@@ -1213,16 +1211,18 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:focus-visible {
   outline: 2px solid #fff;
 }
 
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:hover .lfx-prime-row__more {
-  opacity: 1;
-}
-
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:focus-within .lfx-prime-row__more {
   opacity: 1;
 }
 
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:hover {
-  color: var(--pv-text-2);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:hover .lfx-prime-row__more {
+    opacity: 1;
+  }
+
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:hover {
+    color: var(--pv-text-2);
+  }
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__viewport {
@@ -1278,8 +1278,10 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:focu
   outline: 3px solid #fff;
 }
 
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:hover .lfx-card__img {
-  filter: none;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:hover .lfx-card__img {
+    filter: none;
+  }
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:after {
@@ -1998,6 +2000,13 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt__content {
   gap: 14px;
   display: flex;
   position: relative;
+}
+
+html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt__logo-h1 {
+  font-size: inherit;
+  margin: 0;
+  padding: 0;
+  line-height: 0;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt__logo {
@@ -2971,7 +2980,7 @@ html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) .sectionTitle, htm
   font-weight: 700;
 }
 
-html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction) {
+html.lfx-theme-prime:not(.layout-tv) .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction):not([class*="lfx-"]) {
   color: var(--nat-link);
 }
 
@@ -3073,7 +3082,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np {
 }
 
 html.lfx-newpopular-on.lfx-theme-prime:not(.layout-tv) #indexPage, html.lfx-newpopular-on.lfx-theme-prime:not(.layout-tv) #indexPage #homeTab {
-  background: var(--lfx-prime-bg, #00050d) !important;
+  background: #00050d !important;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np__tabs {
@@ -3289,22 +3298,17 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile.lfx-prime-tabbar-on
   padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage) {
   padding-top: var(--lfx-prime-mh) !important;
 }
 
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile:has(header.MuiAppBar-root > .MuiToolbar-root + .MuiToolbar-root) .page.libraryPage:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage) {
   padding-top: max(0px, calc(var(--lfx-prime-mh) + var(--lfx-prime-libshift, -46px))) !important;
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--mobile {
   pointer-events: auto;
   background: #00050d;
-}
-
-html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header.lfx-prime-header--over {
-  pointer-events: none;
-  background: linear-gradient(rgba(0, 5, 13, .85), rgba(0, 5, 13, 0));
 }
 
 html.lfx-js.lfx-theme-prime:not(.layout-tv).lfx-prime-mobile #lfx-prime-header .lfx-prime-header__bar {

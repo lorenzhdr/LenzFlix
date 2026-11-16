@@ -83,9 +83,14 @@ describe('plus-browse', () => {
 
   it('Paging: volle Seite -> nächste Seite per Scroll-Fallback mit StartIndex', async () => {
     api.getItems.mockResolvedValueOnce({ Items: mk(40), TotalRecordCount: 45 }).mockResolvedValueOnce({ Items: mk(5, 40), TotalRecordCount: 45 });
+    // Sentinel weit unten (außerhalb des 800-px-Rands), erst beim Scrollen im Bereich (jsdom liefert sonst top=0 und der Nachlade-Check greift sofort)
+    let top = 5000;
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(() => ({ top, bottom: top, left: 0, right: 0, width: 0, height: 0 }));
     browse.mount(route('#/home?lfx=browse&lib=lib1'));
     await flush();
     expect(document.querySelectorAll('.lfx-card').length).toBe(40);
+    expect(api.getItems).toHaveBeenCalledTimes(1);
+    top = 0;
     window.dispatchEvent(new Event('scroll'));
     await flush();
     expect(api.getItems.mock.calls[1][0].StartIndex).toBe(40);
@@ -93,6 +98,7 @@ describe('plus-browse', () => {
     window.dispatchEvent(new Event('scroll'));
     await flush();
     expect(api.getItems).toHaveBeenCalledTimes(2);
+    rect.mockRestore();
   });
 
   it('leere Bibliothek und Fehler zeigen Hinweise; unmount räumt auf', async () => {

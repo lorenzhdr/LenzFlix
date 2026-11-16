@@ -50,11 +50,11 @@ const HELP_LINES = [
 ];
 
 const ASCII_LOGO = [
-  ' _     _____ _   _ __________  ___   ___  _  _ ',
-  '| |   | ____| \\ | |__  /__  / / _ \\ / _ \\| || |',
-  '| |   |  _| |  \\| | / /   / / | (_) | (_) | || |_',
-  '| |___| |___| |\\  |/ /_  / /_  > _ < > _ <|__   _|',
-  '|_____|_____|_| \\_/____|/____|\\___/ \\___/    |_|  ',
+  ' _      _____  _   _  _____    __    __  ___   _  _',
+  '| |    | ____|| \\ | ||__  /   / /   / / ( _ ) | || |',
+  '| |    |  _|  |  \\| |  / /   / /   / /  / _ \\ | || |_',
+  '| |___ | |___ | |\\  | / /_  / /   / /  | (_) ||__   _|',
+  '|_____||_____||_| \\_|/____|/_/   /_/    \\___/    |_|',
 ];
 
 /** Zeile in { cmd (kanonisch|null), name (Eingabe, klein), args (Text), argv } zerlegen. */
@@ -115,7 +115,7 @@ export async function execute(line, ctx) {
     case 'hilfe':
       out('VERFÜGBARE BEFEHLE:');
       for (const [a, b] of HELP_LINES) out(`  ${a.padEnd(16, ' ')} ${b}`);
-      out('TAB = VERVOLLSTÄNDIGEN, PFEIL AUF/AB = VERLAUF.');
+      ctx.print('TAB = VERVOLLSTÄNDIGEN, PFEIL AUF/AB = VERLAUF.', 'hint');
       break;
     case 'whoami': {
       let n;
@@ -144,6 +144,7 @@ export async function execute(line, ctx) {
       out(`SUCHE KASSETTE "${p.args}" ...`);
       let hits;
       try { hits = await ctx.searchTitles(p.args); } catch { hits = []; }
+      if (ctx.isOpen && !ctx.isOpen()) break;
       if (!hits.length) { ctx.error(`KEINE KASSETTE GEFUNDEN: ${p.args}`); break; }
       const best = hits[0];
       out(`GEFUNDEN: ${String(best.name).toUpperCase()}${best.year ? ` (${best.year})` : ''}`);
@@ -155,6 +156,7 @@ export async function execute(line, ctx) {
       out('ZIEHE ZUFALLSKASSETTE ...');
       let pick;
       try { pick = await ctx.randomTitle(); } catch { pick = null; }
+      if (ctx.isOpen && !ctx.isOpen()) break;
       if (!pick) { ctx.error('NICHTS GEFUNDEN. IST DIE MEDIATHEK LEER?'); break; }
       out(`GEZOGEN: ${String(pick.name).toUpperCase()}`);
       out('LADE KASSETTE ...');
@@ -171,7 +173,7 @@ export async function execute(line, ctx) {
       if (!ctx.themes.includes(id)) { ctx.error(`UNBEKANNTES DESIGN: ${id}. VERFÜGBAR: ${ctx.themes.join(', ')}`); break; }
       if (id === ctx.currentTheme()) { out('DIESES DESIGN IST BEREITS AKTIV.'); break; }
       out(`WECHSLE ZU ${ctx.themeName(id)} ... DAS TERMINAL WIRD GESCHLOSSEN.`);
-      await ctx.sleep(500);
+      if (!(await ctx.sleep(500))) break;
       ctx.close();
       await ctx.setTheme(id);
       break;
@@ -193,7 +195,7 @@ export async function execute(line, ctx) {
     }
     case 'regen':
       out('CODE-REGEN STARTET ... TASTE ZUM BEENDEN.');
-      await ctx.sleep(400);
+      if (!(await ctx.sleep(400))) break;
       ctx.close();
       ctx.regen();
       break;
@@ -204,7 +206,7 @@ export async function execute(line, ctx) {
     case 'hack': await runHack(ctx); break;
     case 'reboot':
       out('SYSTEM WIRD NEU GESTARTET ...');
-      await ctx.sleep(500);
+      if (!(await ctx.sleep(500))) break;
       ctx.close();
       ctx.reboot();
       break;
@@ -246,5 +248,5 @@ async function runHack(ctx, { rnd = Math.random } = {}) {
     if (!(await ctx.sleep(45))) return;
   }
   ctx.print('>> ZUGRIFF GEWÄHRT <<', 'ok');
-  ctx.print('(ALLES NUR SPIELERI. NIEMAND WURDE GEHACKT.)');
+  ctx.print('(ALLES NUR SPIELEREI. NIEMAND WURDE GEHACKT.)');
 }

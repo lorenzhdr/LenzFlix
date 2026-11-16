@@ -232,8 +232,9 @@ function build(tab, s, q) {
     input.removeEventListener('focus', onCaret);
     clear.removeEventListener('click', onClear);
   });
-  s.syncUi();
   try { input.focus({ preventScroll: true }); } catch { /* egal */ }
+  input.setSelectionRange(q.length, q.length); // value-Attribut lässt die Marke sonst vorn stehen
+  s.syncUi();
   runSearch(s, q.trim());
 }
 
@@ -267,6 +268,8 @@ export default {
       runSearch(state, q.trim());
     }
     try { state.input.focus({ preventScroll: true }); } catch { /* egal */ }
+    state.input.setSelectionRange(state.input.value.length, state.input.value.length);
+    state.syncUi();
   },
   unmount: dispose,
 };

@@ -20,8 +20,10 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
     overflow: visible;
     scroll-snap-align: start;
   }
-  & .lfx-retro-card:hover,
   & .lfx-retro-card:focus-within { z-index: 6; }
+  @media (hover: hover) and (pointer: fine) {
+    & .lfx-retro-card:hover { z-index: 6; }
+  }
   & .lfx-retro-card .lfx-card__link {
     position: relative;
     display: block;

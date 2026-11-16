@@ -63,17 +63,12 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) {
   --lfx-glass: rgba(45, 47, 54, .71);
   --lfx-glass-hover: rgba(255, 255, 255, .18);
   --lfx-progress-rail: rgba(255, 255, 255, .2);
-  --lfx-plus-tile: #2d2f36;
   --lfx-plus-nav-idle: #c5c5cc;
   --lfx-plus-circle: #2a2a30;
-  --lfx-plus-chip: rgba(255, 255, 255, .05);
-  --lfx-plus-footer: #0e0b14;
   --lfx-plus-menu-bg: #131313;
   --lfx-plus-menu-border: rgba(151, 151, 151, .34);
-  --lfx-plus-ring: #fff;
   --lfx-plus-ls: -.1px;
   --lfx-plus-ls-bold: .11px;
-  --lfx-plus-ls-caps: 1.76px;
   --lfx-font: "LenzPlus Sans", "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --lfx-fs-nav: 15px;
   --lfx-fs-row-title: 22px;
@@ -132,6 +127,20 @@ html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboar
 
 html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root:before {
   display: none;
+}
+
+html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root {
+  pointer-events: none;
+}
+
+html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:not(:first-child) {
+  pointer-events: auto;
+}
+
+@media (min-width: 800px) {
+  html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) #indexPage:not(.hide) #favoritesTab {
+    padding-top: 32px;
+  }
 }
 
 html.lfx-js.lfx-theme-plus.lfx-plus-header-on:not(.layout-tv) body:not(.dashboardDocument) header.MuiAppBar-root > .MuiToolbar-root:first-child {
@@ -481,7 +490,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher {
   border-radius: 100px;
   max-width: min(92vw, 960px);
   padding: 6px;
-  transition: top .3s ease-in-out;
+  transition: transform .3s ease-in-out;
   position: fixed;
   top: 84px;
   left: 50%;
@@ -489,8 +498,10 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher {
   box-shadow: 0 22px 34px rgba(0, 0, 0, .25);
 }
 
-html.lfx-js.lfx-theme-plus.lfx-plus-header-hidden:not(.layout-tv) #lfx-plus-switcher {
-  top: 20px;
+@media (min-width: 800px) {
+  html.lfx-js.lfx-theme-plus.lfx-plus-header-hidden:not(.layout-tv) #lfx-plus-switcher {
+    transform: translate(-50%, -64px);
+  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-plus-switcher .lfx-plus-switcher__list {
@@ -812,15 +823,15 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot:before {
   content: "";
   background: #8d8d95;
   border-radius: 50%;
-  width: 5px;
-  height: 5px;
-  transition: width .2s, height .2s, background-color .2s;
+  width: 7px;
+  height: 7px;
+  transition: transform .2s, background-color .2s;
+  transform: scale(.714);
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot.is-active:before {
   background: #fff;
-  width: 7px;
-  height: 7px;
+  transform: scale(1);
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-hero__dot:focus-visible {
@@ -1155,6 +1166,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play {
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play:focus-visible {
   opacity: 1;
   outline: none;
+  box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play-icon {
@@ -1654,7 +1666,7 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-circle:disabled {
   }
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-progress {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__progressrow .lfx-plus-progress {
   background: rgba(255, 255, 255, .2);
   border-radius: 4px;
   height: 4px;
@@ -1663,9 +1675,18 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-progress {
   overflow: hidden;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-progress__bar {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__progressrow .lfx-plus-progress__bar {
   background: var(--lfx-progress);
   border-radius: 4px;
+  display: block;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: auto;
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-ep__progress .lfx-plus-progress__bar {
   display: block;
   position: absolute;
   top: 0;
@@ -2357,8 +2378,10 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play {
   transition: background-color .2s ease-in-out;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:hover {
-  background: #d9d9de;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__play:hover {
+    background: #d9d9de;
+  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round {
@@ -2375,7 +2398,13 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round--small {
   height: 36px;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on {
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round:hover {
+    background: rgba(255, 255, 255, .18);
+  }
+}
+
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__round.is-on {
   background: rgba(255, 255, 255, .18);
 }
 
@@ -2394,16 +2423,24 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__close:focus-vi
   outline: 3px solid #fff;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep.is-selected {
   background: var(--lfx-surface-2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__ep:hover {
+    background: var(--lfx-surface-2);
+  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link {
   color: var(--lfx-accent);
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link:hover {
-  color: var(--lfx-red-hover);
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #lfx-modal .lfx-modal__link:hover {
+    color: var(--lfx-red-hover);
+  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-browse__title {
@@ -2785,14 +2822,16 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton {
   height: 48px;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:hover {
+html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
   background: rgba(255, 255, 255, .22);
   border: 0;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:focus-visible {
-  background: rgba(255, 255, 255, .22);
-  border: 0;
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .detailButton:hover {
+    background: rgba(255, 255, 255, .22);
+    border: 0;
+  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay, html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay {
@@ -2803,16 +2842,18 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay, html.lfx-js
   padding: 0 24px 0 18px !important;
 }
 
-html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:hover {
-  background: #d9d9de;
-}
-
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:focus-visible {
   background: #d9d9de;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:focus-visible {
   background: #d9d9de;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:hover {
+    background: #d9d9de;
+  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnPlay:after, html.lfx-js.lfx-theme-plus:not(.layout-tv) #itemDetailPage .btnReplay:after {
@@ -3006,6 +3047,16 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-favempty {
   padding: 96px 24px;
 }
 
+html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus, html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:focus .actionsheetMenuItemIcon, html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:focus, html.lfx-js.lfx-theme-plus:not(.layout-tv) .MuiMenu-paper .MuiMenuItem-root.Mui-selected, html.lfx-js.lfx-theme-plus:not(.layout-tv) .alphaPicker-fixed-right .MuiToggleButton-root.Mui-selected, html.lfx-js.lfx-theme-plus:not(.layout-tv) .alphaPickerButton-selected {
+  color: var(--lfx-bg-deep);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:hover, html.lfx-js.lfx-theme-plus:not(.layout-tv).lfx-menu-open .dialog.actionSheet .actionSheetMenuItem:hover .actionsheetMenuItemIcon, html.lfx-js.lfx-theme-plus:not(.layout-tv) .dialog.actionSheet .actionSheetMenuItem:hover {
+    color: var(--lfx-bg-deep);
+  }
+}
+
 html.lfx-js.lfx-theme-plus.lfx-newpopular-on:not(.layout-tv) #indexPage, html.lfx-js.lfx-theme-plus.lfx-newpopular-on:not(.layout-tv) #indexPage #homeTab {
   background: none !important;
 }
@@ -3083,29 +3134,20 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__genres {
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn {
-  background: rgba(255, 255, 255, .14);
-  border: 0;
   width: 40px;
   height: 40px;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on, html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:hover {
+  border-color: var(--lfx-icon-circle-border);
   color: #fff;
   background: rgba(255, 255, 255, .28);
-  border: 0;
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn.lfx-np__btn--fav.is-on:focus-visible {
+  border-color: var(--lfx-icon-circle-border);
   color: #fff;
   background: rgba(255, 255, 255, .28);
-  border: 0;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:hover {
-    background: rgba(255, 255, 255, .26);
-    border: 0;
-  }
 }
 
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
@@ -3123,7 +3165,13 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
     padding: 0 14px;
     font-size: 14px;
   }
+}
 
+html.lfx-js.lfx-theme-plus.lfx-plus-header-hidden:not(.layout-tv) .lfx-np__tabs {
+  top: 0;
+}
+
+@media (max-width: 799px) {
   html.lfx-js.lfx-theme-plus:not(.layout-tv) {
     --plus-m-head: calc(env(safe-area-inset-top, 0px) + 56px);
     --plus-m-tabbar: calc(46px + env(safe-area-inset-bottom, 0px));
@@ -3765,6 +3813,12 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-np__btn:focus-visible {
 
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-result__title {
     font-size: 12px;
+  }
+
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__shade {
+    background: linear-gradient(90deg, rgba(16, 19, 31, .94) 0%, rgba(16, 19, 31, .82) 60%, rgba(16, 19, 31, .64) 100%),
+      linear-gradient(0deg, var(--lfx-bg) 0%, rgba(16, 19, 31, .9) 8%, rgba(16, 19, 31, .62) 16%, rgba(16, 19, 31, .3) 24%, rgba(16, 19, 31, .1) 30%, rgba(16, 19, 31, 0) 36%),
+      linear-gradient(180deg, rgba(0, 0, 0, .55) 0, rgba(0, 0, 0, 0) 160px);
   }
 
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__hero {

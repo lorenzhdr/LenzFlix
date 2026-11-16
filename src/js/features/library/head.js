@@ -59,8 +59,10 @@ export function createHead() {
     const grid = view === 'grid';
     rowsLink.href = libraryHref(kind, { genre });
     gridLink.href = libraryHref(kind, { genre, view: 'grid', sort });
-    rowsLink.setAttribute('aria-pressed', String(!grid));
-    gridLink.setAttribute('aria-pressed', String(grid));
+    // Links: aktuelle Ansicht per aria-current (aria-pressed ist für <a> ungültig)
+    for (const [a, on] of [[rowsLink, !grid], [gridLink, grid]]) {
+      if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+    }
     rowsLink.classList.toggle('is-active', !grid);
     gridLink.classList.toggle('is-active', grid);
     tools.hidden = !grid;

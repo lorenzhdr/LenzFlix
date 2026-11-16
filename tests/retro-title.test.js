@@ -44,6 +44,7 @@ vi.mock('../src/js/features/modal/data.js', () => ({
 import title from '../src/js/features/retro/title.js';
 import { episodeCode, tapeName, runtimeSticker } from '../src/js/features/retro/title-dom.js';
 import { FX_EVENT } from '../src/js/features/retro/prefs.js';
+import { closeTrailer } from '../src/js/features/retro/title-trailer.js';
 import { parseHash } from '../src/js/core/router.js';
 import * as data from '../src/js/features/modal/data.js';
 import { play } from '../src/js/core/playback.js';
@@ -174,6 +175,51 @@ describe('Film', () => {
     expect(seen.classList.contains('is-on')).toBe(true);
   });
 
+  it('L035: Meine Liste/Gesehen deaktivieren den Knopf nicht (Fokus bleibt), Doppelklick wird ignoriert', async () => {
+    let done;
+    toggleFavorite.mockImplementationOnce(() => new Promise((r) => { done = r; }));
+    title.mount(route('#/home?lfx=title&id=m1'));
+    await flush();
+    const fav = document.querySelector('.lfx-rt__btn--fav');
+    fav.focus();
+    fav.click();
+    fav.click();
+    expect(fav.disabled).toBe(false);
+    expect(toggleFavorite).toHaveBeenCalledTimes(1);
+    done(true);
+    await flush();
+    expect(document.activeElement).toBe(fav);
+    expect(fav.getAttribute('aria-pressed')).toBe('true');
+    const seen = document.querySelector('.lfx-rt__btn--seen');
+    seen.focus();
+    seen.click();
+    expect(seen.disabled).toBe(false);
+    await flush();
+    expect(document.activeElement).toBe(seen);
+  });
+
+  it('A083: Trailer-Overlay hält den Fokus im Dialog', async () => {
+    vi.mocked(directRemoteTrailerUrl).mockReturnValue('http://x/t.mp4');
+    title.mount(route('#/home?lfx=title&id=m1'));
+    await flush();
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    try {
+      document.querySelector('.lfx-rt__btn--trailer').click();
+      const ov = document.getElementById('lfx-retro-trailer');
+      const closeBtn = ov.querySelector('.lfx-retro-trailer__close');
+      expect(document.activeElement).toBe(closeBtn);
+      outside.focus();
+      expect(ov.contains(document.activeElement)).toBe(true);
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      outside.focus();
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      closeTrailer();
+      vi.mocked(directRemoteTrailerUrl).mockReturnValue(null);
+    }
+  });
+
   it('Trailer-Knopf nur mit Quelle; Overlay schließt per Escape', async () => {
     title.mount(route('#/home?lfx=title&id=m1'));
     await flush();
@@ -284,6 +330,32 @@ describe('Serie und Episode', () => {
     await flush();
     expect(data.loadItem).toHaveBeenCalledWith('s1');
     expect(document.querySelector('.lfx-rt__ep.is-selected').dataset.id).toBe('e2');
+  });
+
+  it('A081: Abspielen ohne geladene Staffeln lädt sie nach und spielt die erste Folge; leer: Fehler-Effekt', async () => {
+    data.loadNextUp.mockResolvedValue(null);
+    data.loadSeasons.mockReset();
+    data.loadSeasons.mockRejectedValueOnce(new Error('x')).mockResolvedValue([{ Id: 'se1', Name: 'Staffel 1', IndexNumber: 1 }]);
+    title.mount(route('#/home?lfx=title&id=s1'));
+    await flush();
+    expect(document.querySelectorAll('.lfx-rt__tab').length).toBe(0);
+    document.querySelector('.lfx-rt__btn--play').click();
+    await flush();
+    expect(play).toHaveBeenCalledWith(expect.objectContaining({ Id: 'e1' }), { resume: false });
+    play.mockClear();
+    data.loadSeasons.mockReset();
+    data.loadSeasons.mockResolvedValue([]);
+    title.unmount();
+    title.mount(route('#/home?lfx=title&id=s1'));
+    await flush();
+    const seen = [];
+    const onFx = (e) => seen.push(e.detail.name);
+    document.addEventListener(FX_EVENT, onFx);
+    document.querySelector('.lfx-rt__btn--play').click();
+    await flush();
+    document.removeEventListener(FX_EVENT, onFx);
+    expect(play).not.toHaveBeenCalled();
+    expect(seen).toContain('error');
   });
 
   it('Klick auf Folge spielt sie ab', async () => {

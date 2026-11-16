@@ -7,6 +7,7 @@ import { isTheme } from '../../core/theme.js';
 import { play } from '../../core/playback.js';
 import { openPopover, closePopover } from '../../core/popover.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
+import { clearCache } from '../../core/cache.js';
 import { canDownload } from '../../core/download.js';
 import { toast } from '../../core/toast.js';
 import { ICON_DOWNLOAD, ICON_MORE, ICON_EYE, ICON_EYE_CHECK } from '../../core/icons.js';
@@ -141,6 +142,15 @@ function openTrailer(src, returnFocus) {
   overlay.setAttribute('aria-label', 'Trailer');
   overlay.append(video, closeBtn);
   const onKey = (e) => {
+    if (e.key === 'Tab') {
+      // Fokusfalle: zwischen Video und Schließen wechseln (aria-modal)
+      const ring = [video, closeBtn];
+      const i = ring.indexOf(document.activeElement);
+      const to = i < 0 ? ring[e.shiftKey ? 1 : 0] : ring[1 - i];
+      e.preventDefault();
+      to.focus();
+      return;
+    }
     if (e.key !== 'Escape') return;
     e.preventDefault();
     e.stopPropagation();
@@ -171,7 +181,7 @@ function openTrailer(src, returnFocus) {
 /** id -> { target: Id des anzuzeigenden Titels, seasonId, episodeId } (Episode/Staffel -> Serie). */
 async function resolveTarget(id) {
   const first = data.getStoredItem(id) || (await data.loadItem(id));
-  if (!first) throw new Error('Titel nicht gefunden');
+  if (!first) throw Object.assign(new Error('Titel nicht gefunden'), { notFound: true });
   const sel = { target: id, seasonId: null, episodeId: null };
   if (first.Type === 'Episode') {
     sel.target = first.SeriesId || first.ParentId || id;
@@ -247,10 +257,10 @@ async function load(g) {
     sel = await resolveTarget(s.id);
     if (stale()) return;
     main = await data.loadItem(sel.target);
-    if (!main) throw new Error('Titel nicht gefunden');
+    if (!main) throw Object.assign(new Error('Titel nicht gefunden'), { notFound: true });
   } catch (e) {
     if (stale()) return;
-    root.replaceChildren(errorBox(e && e.message ? 'Der Server hat nicht geantwortet.' : ''));
+    root.replaceChildren(errorBox(e && e.notFound ? 'Dieser Titel ist nicht mehr verfügbar.' : e && e.message ? 'Der Server hat nicht geantwortet.' : ''));
     root.classList.add('is-error');
     return;
   }
@@ -317,7 +327,8 @@ async function load(g) {
     let t = target();
     if (isSeries && !t.item) {
       try {
-        const eps = c.seasons.length ? await data.loadEpisodes(main.Id, pickInitialSeason(c.seasons, null)) : [];
+        const list = c.seasons.length ? c.seasons : await data.loadSeasons(main.Id);
+        const eps = list.length ? await data.loadEpisodes(main.Id, pickInitialSeason(list, null)) : [];
         t = { item: eps[0] || null, resume: false };
       } catch { t = { item: null }; }
       if (stale()) return;
@@ -327,10 +338,13 @@ async function load(g) {
 
   // ---- Rundknöpfe
   const circles = [];
+  // Sperre per Flag statt disabled: ein deaktivierter Knopf verliert den Fokus
+  let favBusy = false;
   const favBtn = circle('fav', 'Zu Meine Liste hinzufügen', ICON_PLUS, async () => {
-    favBtn.disabled = true;
+    if (favBusy) return;
+    favBusy = true;
     const on = await toggleFavorite(main);
-    favBtn.disabled = false;
+    favBusy = false;
     if (!stale()) paintFav(on);
   });
   const paintFav = (on) => {
@@ -350,13 +364,20 @@ async function load(g) {
   dlBtn.hidden = true;
   circles.push(dlBtn);
 
+  let seenBusy = false;
   const seenBtn = circle('seen', 'Als gesehen markieren', ICON_EYE, async (b) => {
-    b.disabled = true;
+    if (seenBusy) return;
+    seenBusy = true;
     const on = await togglePlayed(main, { anchorEl: b });
-    b.disabled = false;
+    seenBusy = false;
     if (stale()) return;
     paintSeen(on);
-    if (isSeries) refreshEpisodes();
+    if (isSeries) {
+      c.focusEp = null;
+      refreshEpisodes();
+      try { c.nextUp = await data.loadNextUp(main.Id); } catch { /* alter Stand */ }
+      if (!stale()) paintPlay();
+    }
   });
   const paintSeen = (on) => {
     setIcon(seenBtn, on ? ICON_EYE_CHECK : ICON_EYE);
@@ -433,8 +454,9 @@ async function load(g) {
       raf = 0;
       const vh = window.innerHeight || 800;
       const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
+      const stuck = tablist.getBoundingClientRect().top <= 67; // erst lesen, dann schreiben (kein erzwungenes Layout)
       root.style.setProperty('--lfx-plus-dim', String(Math.round(v * 100) / 100));
-      tablist.classList.toggle('is-stuck', tablist.getBoundingClientRect().top <= 67);
+      tablist.classList.toggle('is-stuck', stuck);
     });
   };
   window.addEventListener('scroll', onScroll, { passive: true });
@@ -462,11 +484,7 @@ async function load(g) {
       const hit = eps.find((e) => e.Id === c.selectedEp);
       if (hit) { c.focusEp = hit; paintPlay(); }
     }
-    episodesBody.replaceChildren(...eps.map((e) => {
-      const card = episodeCard(e, e.Id === c.selectedEp, playEpisode);
-      card.setAttribute('role', 'listitem');
-      return card;
-    }));
+    episodesBody.replaceChildren(...eps.map((e) => h('div', { role: 'listitem' }, [episodeCard(e, e.Id === c.selectedEp, playEpisode)])));
     if (!eps.length) episodesBody.append(h('p', { class: 'lfx-plus-empty' }, 'Keine Folgen vorhanden.'));
   }
   const refreshEpisodes = () => { showSeason(); };
@@ -484,7 +502,7 @@ async function load(g) {
     ico.innerHTML = ICON_CHEVRON;
     const btn = h('button', { type: 'button', class: 'lfx-plus-season', 'aria-haspopup': 'menu' }, [label, ico]);
     btn.addEventListener('click', () => {
-      openPopover(btn, {
+      const pop = openPopover(btn, {
         label: 'Staffel wählen',
         align: 'start',
         className: 'lfx-plus-season-menu',
@@ -494,14 +512,24 @@ async function load(g) {
           className: x.Id === c.seasonId ? 'is-active' : '',
           onClick: () => {
             closePopover();
-            if (x.Id === c.seasonId) return;
-            c.seasonId = x.Id;
-            c.selectedEp = null;
-            paintSeasonBar();
-            showSeason();
+            if (x.Id !== c.seasonId) {
+              c.seasonId = x.Id;
+              c.selectedEp = null;
+              paintSeasonBar();
+              showSeason();
+            }
+            const nb = seasonBar.querySelector('button'); // Anker wurde ggf. neu gebaut: Fokus zurückgeben
+            if (nb) nb.focus({ preventScroll: true });
           },
         })),
       });
+      if (!pop || !pop.el) return;
+      for (const it of pop.el.querySelectorAll('[data-key]')) {
+        const on = it.dataset.key === c.seasonId;
+        it.setAttribute('role', 'menuitemradio');
+        it.setAttribute('aria-checked', String(on));
+        if (on) it.focus({ preventScroll: true });
+      }
     });
     seasonBar.append(btn);
   }
@@ -556,6 +584,9 @@ async function load(g) {
     if (removed.includes(main.Id) || removed.includes(s.id)) {
       location.hash = '#/home';
     } else if (updated.includes(main.Id)) {
+      for (const k of ['item', 'seasons', 'next', 'similar', 'coll']) clearCache(`lfx:modal:${k}:${main.Id}`);
+      clearCache(`lfx:modal:eps:${main.Id}:`);
+      if (s.id !== main.Id) clearCache(`lfx:modal:item:${s.id}`);
       begin(s.id, { keepScroll: true });
     }
   }));

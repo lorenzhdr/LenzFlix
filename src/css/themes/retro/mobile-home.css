@@ -9,7 +9,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-mobile {
   -webkit-tap-highlight-color: transparent;
 }
 /* Native Seiten beginnen unter der Kopfzeile; Startseite, Titel, Suche u. ä. haben eigenen Abstand (Hero reicht unter die Kopfzeile). */
-html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage):not(.lfx-page) {
+html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-mobile .page:not(#videoOsdPage):not(#indexPage):not(#itemDetailPage):not(#searchPage):not(#loginPage) {
   padding-top: var(--lfx-retro-mh) !important;
 }
 html.lfx-js.lfx-theme-retro:not(.layout-tv).lfx-retro-mobile.lfx-retro-home-on #indexPage { padding-top: 0 !important; }

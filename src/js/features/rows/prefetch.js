@@ -15,11 +15,15 @@ export function allowPrefetch() {
   return netOk();
 }
 
+/** TV-Modus läuft im Hintergrund-Bild-in-Bild (Startseite offen): Bandbreite gehört dem TV-Strom. */
+export function tvBgPlaying() {
+  return document.documentElement.classList.contains('lfx-tvm-bgplay') && !!document.querySelector('#lfx-tvm-bg video');
+}
+
 /** Pause: Tab versteckt, Datensparmodus an, Info-Fenster offen oder TV läuft im Hintergrund-PiP (Klasse + Video, gegen hängende Klasse). */
 function paused() {
-  const cl = document.documentElement.classList;
-  return document.hidden || isDataSaver('prefetch') || cl.contains('lfx-modal-open')
-    || (cl.contains('lfx-tvm-bgplay') && !!document.querySelector('#lfx-tvm-bg video'));
+  return document.hidden || isDataSaver('prefetch') || document.documentElement.classList.contains('lfx-modal-open')
+    || tvBgPlaying();
 }
 
 /** Hero fertig: kein Skeleton, Bilder (außer lazy) geladen, kein wartender Trailer (data-lfx-tr="wait"). */

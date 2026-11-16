@@ -65,4 +65,15 @@ describe('plus-switcher', () => {
     expect(document.getElementById('lfx-plus-switcher')).toBeNull();
     expect(document.documentElement.classList.contains('lfx-plus-switcher-on')).toBe(false);
   });
+
+  it('A064: Pfeiltaste hält genau einen Tab im Tab-Index (Roving-Tabindex)', async () => {
+    sw.mount(R('#/home'));
+    await flush();
+    const tabs = [...document.querySelectorAll('#lfx-plus-switcher [role="tab"]')];
+    tabs[0].focus();
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    tabs[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    expect(tabs.filter((t) => t.tabIndex === 0).length).toBe(1);
+    expect(tabs[2].tabIndex).toBe(0);
+  });
 });

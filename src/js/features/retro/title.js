@@ -6,6 +6,7 @@ import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
+import { toast } from '../../core/toast.js';
 import { play } from '../../core/playback.js';
 import { closePopover } from '../../core/popover.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
@@ -84,6 +85,13 @@ function btn(mod, label, onClick) {
     onClick(b);
   });
   return b;
+}
+
+/** Anfrage ohne disabled (ein deaktivierter Knopf verliert den Fokus): aria-busy sperrt nur Doppelklicks. */
+async function busy(b, fn) {
+  if (b.getAttribute('aria-busy')) return;
+  b.setAttribute('aria-busy', 'true');
+  try { await fn(); } finally { b.removeAttribute('aria-busy'); }
 }
 
 function setToggle(b, on, labelOn, labelOff) {
@@ -180,6 +188,7 @@ async function load(g) {
     let item = t.target;
     if (isSeries && item === main) {
       try {
+        if (!c.seasons.length) c.seasons = await data.loadSeasons(main.Id); // Staffeln noch nicht da / Laden fehlgeschlagen
         const sid = c.seasons.length ? pickInitialSeason(c.seasons, null) : null;
         const eps = sid ? await data.loadEpisodes(main.Id, sid) : [];
         item = eps[0] || null;
@@ -188,6 +197,7 @@ async function load(g) {
       t = { ...t, resume: false };
     }
     if (item) await play(item, { resume: Boolean(t.resume) });
+    else { emitFx('error'); toast('Keine Folge zum Abspielen gefunden'); }
   });
   playBtn.classList.add('lfx-rt__btn--primary');
   const restartBtn = btn('restart', 'Neu starten', async () => {
@@ -215,21 +225,17 @@ async function load(g) {
 
   const trailerBtn = btn('trailer', 'Trailer', (b) => { if (c.trailerSrc) openTrailer(c.trailerSrc, b); });
   trailerBtn.hidden = true;
-  const favBtn = btn('fav', 'Meine Liste', async (b) => {
-    b.disabled = true;
+  const favBtn = btn('fav', 'Meine Liste', (b) => busy(b, async () => {
     const on = await toggleFavorite(main);
-    b.disabled = false;
     if (!stale()) setToggle(b, on, 'Auf der Liste', 'Meine Liste');
-  });
+  }));
   setToggle(favBtn, Boolean(main.UserData && main.UserData.IsFavorite), 'Auf der Liste', 'Meine Liste');
-  const seenBtn = btn('seen', 'Gesehen', async (b) => {
-    b.disabled = true;
+  const seenBtn = btn('seen', 'Gesehen', (b) => busy(b, async () => {
     const on = await togglePlayed(main, { anchorEl: b });
-    b.disabled = false;
     if (stale()) return;
     setToggle(b, on, 'Gesehen', 'Als gesehen');
     if (isSeries) showSeason();
-  });
+  }));
   setToggle(seenBtn, Boolean(main.UserData && main.UserData.Played), 'Gesehen', 'Als gesehen');
   const dlBtn = btn('dl', isSeries ? 'Folgen laden' : 'Herunterladen', (b) => { startDownloadFor(main, { anchorEl: b }); });
   dlBtn.hidden = true;

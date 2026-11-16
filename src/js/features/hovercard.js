@@ -166,6 +166,11 @@ function patchUserData(s, patch) {
   s.item = { ...s.item, UserData: { ...userData(s), ...patch } };
   putItems([s.item]);
   clearCache(`hc:${getUserId()}:${s.item.Id}`);
+  clearCache(`lfx:modal:item:${s.item.Id}`); // Info-Fenster nicht mit altem Stand aus dem Cache öffnen
+  if (s.item.Type === 'Episode' && s.item.SeriesId) {
+    clearCache(`lfx:modal:next:${s.item.SeriesId}`);
+    clearCache(`lfx:modal:eps:${s.item.SeriesId}:`);
+  }
   clearCache('home:'); // Startseiten-Zeilen (Meine Liste, Weiterschauen …) neu holen
 }
 
@@ -259,10 +264,13 @@ async function askBulkPlayed(s) {
     /* ohne Zahl: „Alle Folgen …“ */
   }
   s.busyPlayed = false;
+  // Popup während des Zählens geschlossen: Knopf hängt nicht mehr im DOM → ohne Anker, dafür mit Titel im Text
+  const gone = !s.btns.played.isConnected;
+  const ask = n ? `${folgen(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`;
   confirmAction({
-    title: n ? `${folgen(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`,
+    title: gone && item.Name ? `${item.Name}: ${ask}` : ask,
     confirmLabel: `Als ${verb} markieren`,
-    anchorEl: s.btns.played,
+    anchorEl: gone ? null : s.btns.played,
     onConfirm: async () => {
       s.busyPlayed = true;
       let failed = 0;
@@ -419,7 +427,8 @@ function renderBody(s) {
 
 function applyMedia(s) {
   const it = s.item;
-  const portrait = !s.own && /Portrait|Square/i.test(s.card.className);
+  const top10 = s.card.classList.contains('lfx-card--top10'); // Hochformat-Poster: Querformat-Bild + Logo/Titel wie bei nativen Hochformat-Karten
+  const portrait = top10 || (!s.own && /Portrait|Square/i.test(s.card.className));
   const fromCard = cardImageUrl(s.card);
   const landscape = it && it.ImageTags ? landscapeImage(it) : null;
   const url = (portrait || !fromCard ? landscape || fromCard : fromCard) || null;
@@ -432,7 +441,7 @@ function applyMedia(s) {
     s.overlay.append(h('img', { class: 'lfx-hc__logo', src: cardLogo.getAttribute('src'), alt: '' }));
   } else if (cardTitle) {
     s.overlay.append(h('span', { class: 'lfx-hc__title' }, cardTitle.textContent));
-  } else if (!s.own && it && it.ImageTags) {
+  } else if ((!s.own || top10) && it && it.ImageTags) {
     const pick = pickLandscape(it);
     if (pick && pick.type !== 'Thumb') {
       const logo = logoImage(it);
@@ -568,6 +577,11 @@ function open(target) {
 function removeSession(s) {
   if (s.removeTimer) clearTimeout(s.removeTimer);
   s.removeTimer = null;
+  const a = document.activeElement;
+  if (a && a !== document.body && s.el.contains(a) && s.card.isConnected) {
+    const link = s.card.querySelector('a, [tabindex]'); // Fokus nicht auf <body> fallen lassen
+    if (link && link.focus) link.focus({ preventScroll: true });
+  }
   s.el.remove();
   if (session === s) session = null;
 }

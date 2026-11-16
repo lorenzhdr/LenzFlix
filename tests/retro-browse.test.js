@@ -18,7 +18,7 @@ vi.mock('../src/js/core/api.js', async () => {
     getJson: vi.fn(),
   };
 });
-vi.mock('../src/js/core/layout.js', () => ({ isModern: () => true, isTv: () => false, isMobile: () => false }));
+vi.mock('../src/js/core/layout.js', () => ({ isModern: () => true, isTv: () => false, isMobile: () => false, isNarrow: () => false }));
 vi.mock('../src/js/shared/libraries.js', () => ({
   getLibraries: vi.fn().mockResolvedValue([{ id: 'lib1', name: 'Filme', collectionType: 'movies', href: '#/movies', hubCapable: true }]),
 }));
@@ -116,6 +116,8 @@ describe('retro-browse', () => {
       disconnect() {}
     }
     const orig = globalThis.IntersectionObserver;
+    // Sentinel weit außerhalb des Ladebereichs (jsdom liefert sonst top 0 und die Selbstprüfung lädt weiter)
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ top: 9000, bottom: 9000, left: 0, right: 0, width: 0, height: 0 });
     globalThis.IntersectionObserver = IO;
     api.getItems.mockResolvedValueOnce({ Items: mk(40), TotalRecordCount: 45 });
     browse.mount(route('#/home?lfx=browse&lib=lib1'));
@@ -128,6 +130,7 @@ describe('retro-browse', () => {
     expect(api.getItems.mock.calls.at(-1)[0].StartIndex).toBe(40);
     expect(document.querySelector('.lfx-rb__end')).toBeTruthy();
     globalThis.IntersectionObserver = orig;
+    rectSpy.mockRestore();
   });
 
   it('Fehler zeigt Wiederholen-Knopf; unmount räumt auf', async () => {

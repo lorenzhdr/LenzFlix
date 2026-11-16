@@ -1,4 +1,4 @@
-// LenzFlix: Feature "themeroute". Die Design-Routen (#/home?lfx=title|hub|browse|search) gehören LENZ+/LENZPRIME.
+// LenzFlix: Feature "themeroute". Die Design-Routen (#/home?lfx=title|hub|browse|search) gehören den Designs außer LENZFLIX.
 // Ist das wirksame Design 'flix' (z. B. geteilter Link, TV, Design gewechselt), wird per location.replace auf das
 // native Ziel umgeleitet – ohne neuen History-Eintrag.
 import { getViews, getAuth } from '../core/api.js';
@@ -9,6 +9,8 @@ import { parseLfxRoute, libraryHref, myListHref, hubHref } from '../shared/route
 const REDIRECT_KINDS = ['title', 'hub', 'browse', 'search'];
 // VIDEOTHEK LENZ (store) zeigt title/search/new/classic selbst (3D-Bühne); nur Hub/Browse gehen auf die native Bibliothek.
 const STORE_REDIRECT_KINDS = ['hub', 'browse'];
+// LENZPRIME rendert browse/search nicht (kommt nur über Designwechsel/History/Lesezeichen): auf native Ziele umleiten.
+const PRIME_REDIRECT_KINDS = ['browse', 'search'];
 // TV-Modus (#/home?lfx=tv) gibt es nur in flix/plus/prime/retro auf Modern: store/live und layout-tv gehen zurück auf #/home.
 const tvModeUnavailable = () => isTheme('store') || isTheme('live') || isTv();
 // 1.13.0: Seiten Serien/Filme (nur flix) und Meine Liste (flix, retro); sonst native Ziele bzw. #/home.
@@ -121,7 +123,8 @@ const themeroute = {
     if (PAGE_KINDS.includes(kind)) return pageUnavailable(kind);
     if (isThemePending()) return false; // Design-Routen erst nach dem Commit auswerten (sonst Umleitung im Reveal-Fenster)
     if (isFavTab(route)) return !isTv() && (isTheme('flix') || isTheme('retro'));
-    return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind));
+    return (isTheme('flix') && REDIRECT_KINDS.includes(kind)) || (isTheme('store') && STORE_REDIRECT_KINDS.includes(kind))
+      || (isTheme('prime') && PRIME_REDIRECT_KINDS.includes(kind));
   },
   mount: (route) => redirect(route),
   update: (route) => redirect(route),

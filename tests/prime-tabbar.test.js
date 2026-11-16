@@ -304,3 +304,22 @@ describe('prime-header am Handy', () => {
     expect(document.querySelector('.lfx-prime-header__icon')).not.toBeNull();
   });
 });
+
+describe('prime: Fokus nach Abbrechen der Handy-Suche (Welle 2)', () => {
+  it('L026: Fokus geht an den Tab „Suche“, auch wenn die Pille beim Schließen noch inert ist', async () => {
+    tabbar.mount(route('#/home'));
+    const nav = document.getElementById('lfx-prime-tabbar');
+    const search = document.querySelector('[data-tab="search"]');
+    // jsdom kennt inert nicht: Browserverhalten nachbilden (inerte Elemente nehmen keinen Fokus)
+    const realFocus = search.focus.bind(search);
+    search.focus = (o) => { if (!nav.hasAttribute('inert')) realFocus(o); };
+    search.click();
+    await flush();
+    expect(nav.hasAttribute('inert')).toBe(true); // Suchfeld hat Fokus -> Pille versteckt
+    document.querySelector('.lfx-prime-search__cancel').click();
+    await flush();
+    await flush();
+    expect(nav.hasAttribute('inert')).toBe(false);
+    expect(document.activeElement).toBe(search);
+  });
+});

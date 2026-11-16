@@ -88,7 +88,6 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
 
   /* Bewegung */
   --lfx-retro-ease-crt: cubic-bezier(0.2, 0.9, 0.25, 1);  /* kurzer Anlauf, weiches Ausschwingen */
-  --lfx-retro-dur-boot: 700ms;                            /* Einschalt-/Boot-Animation */
   --lfx-retro-dur-glitch: 280ms;                          /* ein Glitch-Zucken */
 
   /* Layout */

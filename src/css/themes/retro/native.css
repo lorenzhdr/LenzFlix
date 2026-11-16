@@ -148,6 +148,7 @@ html.lfx-theme-retro:not(.layout-tv) body:not(.dashboardDocument) {
     text-shadow: var(--lfx-retro-glow);
   }
   & .dialog.actionSheet .actionSheetMenuItem { border-radius: 0; font-family: var(--lfx-retro-font-pixel); font-size: 22px; letter-spacing: 0.05em; text-transform: uppercase; }
+  & .dialog.actionSheet .actionSheetItemText { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.1; }
   & .dialog.actionSheet .actionSheetMenuItem:focus,
   & .dialog.actionSheet .actionSheetMenuItem.selected { background: var(--lfx-retro-amber-dim); }
   & .dialogBackdrop.dialogBackdropOpened { background: rgba(5, 3, 1, 0.82); }
@@ -232,7 +233,7 @@ html.lfx-theme-retro:not(.layout-tv) body:not(.dashboardDocument) {
   & .page:not(#videoOsdPage) .sectionTitle,
   & .page:not(#videoOsdPage) .listItem-content h2 { font-family: var(--lfx-retro-font-pixel); font-size: 28px; letter-spacing: 0.06em; text-transform: uppercase; }
   & .page:not(#videoOsdPage) .sectionTitle::before { content: "// "; color: var(--lfx-retro-hot); }
-  & .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction):not(.lfx-card__link) { color: var(--lfx-retro-amber-hi); }
+  & .page:not(#videoOsdPage) a:not(.emby-button):not(.card):not(.cardImageContainer):not(.listItem):not(.itemAction):not(.lfx-card__link):not(.lfx-ml__chip):not(.lfx-ml__sort):not(.lfx-ml__empty-link) { color: var(--lfx-retro-amber-hi); }
   & .page:not(#videoOsdPage) .paperList,
   & .page:not(#videoOsdPage) .MuiPaper-root:not(.MuiMenu-paper):not(.MuiPopover-paper):not(.MuiDialog-paper) {
     border: 1px solid var(--nat-line-lo);

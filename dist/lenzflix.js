@@ -2754,10 +2754,10 @@
       const on = id === chosen2;
       btn3.setAttribute("aria-pressed", String(on));
       btn3.classList.toggle("is-active", on);
-      const busy2 = c.loading === id;
-      if (busy2) btn3.setAttribute("aria-busy", "true");
+      const busy3 = c.loading === id;
+      if (busy3) btn3.setAttribute("aria-busy", "true");
       else btn3.removeAttribute("aria-busy");
-      btn3.classList.toggle("is-loading", busy2);
+      btn3.classList.toggle("is-loading", busy3);
     }
   }
   function choose(c, id) {
@@ -2949,6 +2949,7 @@
   // src/js/features/themeroute.js
   var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
   var STORE_REDIRECT_KINDS = ["hub", "browse"];
+  var PRIME_REDIRECT_KINDS = ["browse", "search"];
   var tvModeUnavailable = () => isTheme("store") || isTheme("live") || isTv();
   var PAGE_KINDS = ["series", "movies", "mylist"];
   var CT_OF = { series: "tvshows", movies: "movies" };
@@ -3053,7 +3054,7 @@
       if (PAGE_KINDS.includes(kind2)) return pageUnavailable(kind2);
       if (isThemePending()) return false;
       if (isFavTab(route)) return !isTv() && (isTheme("flix") || isTheme("retro"));
-      return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2);
+      return isTheme("flix") && REDIRECT_KINDS.includes(kind2) || isTheme("store") && STORE_REDIRECT_KINDS.includes(kind2) || isTheme("prime") && PRIME_REDIRECT_KINDS.includes(kind2);
     },
     mount: (route) => redirect(route),
     update: (route) => redirect(route),
@@ -3258,7 +3259,10 @@
     items.push({ key: "list", label: "Meine Liste", href: myListHref() });
     return items;
   }
+  var VIEWS_RETRY_MS = 5e3;
+  var beforeApp = () => document.getElementById("reactRoot");
   var state2 = {
+    viewsFailedAt: 0,
     nav: null,
     model: { series: null, movies: null, more: [] },
     route: null,
@@ -3268,7 +3272,8 @@
     seq: 0,
     raf: 0,
     watch: [],
-    toolbar: null
+    toolbar: null,
+    clickAt: 0
   };
   function setMenu(open3) {
     state2.menuOpen = open3;
@@ -3422,9 +3427,11 @@
     if (root7.classList.contains("lfx-scrolled") !== on) root7.classList.toggle("lfx-scrolled", on);
   }
   function onDocClick(e) {
+    if (e.target && e.target.closest && e.target.closest('a[href^="#/home"]')) state2.clickAt = Date.now();
     if (state2.menuOpen && state2.nav && !state2.nav.contains(e.target)) setMenu(false);
   }
   async function loadViews(seq3) {
+    state2.viewsFailedAt = 0;
     try {
       const views = await cached(`views:${getUserId()}`, getViews, 5 * 6e4);
       if (seq3 !== state2.seq || !state2.nav) return;
@@ -3432,6 +3439,7 @@
     } catch {
       if (seq3 !== state2.seq || !state2.nav) return;
       state2.model = { series: null, movies: null, more: [] };
+      state2.viewsFailedAt = Date.now();
     }
     render();
   }
@@ -3443,7 +3451,7 @@
     mount(route) {
       const seq3 = ++state2.seq;
       state2.route = route;
-      state2.nav = mountPoint(NAV_ID, { tag: "nav", className: "lfx-nav" });
+      state2.nav = mountPoint(NAV_ID, { tag: "nav", className: "lfx-nav", before: beforeApp() });
       state2.nav.setAttribute("aria-label", "Hauptnavigation");
       mountAmbient();
       document.documentElement.classList.add("lfx-nav-on");
@@ -3466,7 +3474,10 @@
     update(route) {
       const changed = !state2.route || state2.route.hash !== route.hash;
       state2.route = route;
+      if (state2.viewsFailedAt && Date.now() - state2.viewsFailedAt >= VIEWS_RETRY_MS) loadViews(state2.seq);
       if (changed) setMenu(false);
+      if (changed && state2.clickAt && Date.now() - state2.clickAt < 1500) window.scrollTo(0, 0);
+      state2.clickAt = 0;
       applyActive();
       watchToolbar();
       scheduleFit();
@@ -3482,6 +3493,7 @@
       const cl2 = document.documentElement.classList;
       cl2.remove("lfx-nav-on", "lfx-scrolled");
       state2.nav = null;
+      state2.viewsFailedAt = 0;
       state2.menuOpen = false;
     }
   };
@@ -4083,7 +4095,9 @@
     if (dataSaverAvailable()) items.push({ key: "datasaver", label: "Datensparmodus", action: "datasaver" });
     return items;
   }
+  var VIEWS_RETRY_MS2 = 5e3;
   var state3 = {
+    viewsFailedAt: 0,
     model: { series: null, movies: null, more: [] },
     route: null,
     root: null,
@@ -4268,10 +4282,10 @@
     if (!kind2 || state3.genres[kind2] || state3.genresLoading.has(kind2)) return;
     const seq3 = state3.seq;
     state3.genresLoading.add(kind2);
-    Promise.resolve().then(() => getLibraryGenres(kind2)).then((g) => Array.isArray(g) ? g : [], () => []).then((g) => {
+    Promise.resolve().then(() => getLibraryGenres(kind2)).then((g) => Array.isArray(g) ? g : null, () => null).then((g) => {
       if (seq3 !== state3.seq || !state3.root) return;
       state3.genresLoading.delete(kind2);
-      state3.genres[kind2] = g;
+      if (g) state3.genres[kind2] = g;
       renderPills();
       renderCats();
       applyActive2();
@@ -4299,6 +4313,7 @@
     applyPillsVisibility();
   }
   async function loadViews2(seq3) {
+    state3.viewsFailedAt = 0;
     try {
       const views = await cached(`views:${getUserId()}`, getViews, 5 * 6e4);
       if (seq3 !== state3.seq || !state3.root) return;
@@ -4306,6 +4321,7 @@
     } catch {
       if (seq3 !== state3.seq || !state3.root) return;
       state3.model = { series: null, movies: null, more: [] };
+      state3.viewsFailedAt = Date.now();
     }
     render2();
   }
@@ -4364,6 +4380,7 @@
     update(route) {
       const changed = !state3.route || state3.route.hash !== route.hash;
       state3.route = route;
+      if (state3.viewsFailedAt && Date.now() - state3.viewsFailedAt >= VIEWS_RETRY_MS2) loadViews2(state3.seq);
       if (changed) {
         closeOverlay({ restoreFocus: false });
         closeCats({ restoreFocus: false });
@@ -4394,6 +4411,7 @@
       state3.genresLoading.clear();
       state3.returnFocus = null;
       state3.model = { series: null, movies: null, more: [] };
+      state3.viewsFailedAt = 0;
     }
   };
   var mobilenav_default = mobilenavFeature;
@@ -4438,7 +4456,7 @@
       return isReady() && isModern() && !isTv() && isTheme("flix") && !EXCLUDED.test(route.path);
     },
     mount(route) {
-      el2 = mountPoint(ID5, { tag: "a", className: "lfx-tvbtn" });
+      el2 = mountPoint(ID5, { tag: "a", className: "lfx-tvbtn mui-fixed", before: beforeApp() });
       el2.href = tvModeHref;
       el2.setAttribute("aria-label", "TV");
       el2.title = "TV";
@@ -4627,7 +4645,7 @@
       return isReady() && isModern() && !isTv() && isTheme("flix") && !EXCLUDED.test(route.path);
     },
     mount() {
-      const el4 = mountPoint(ID7, { tag: "button" });
+      const el4 = mountPoint(ID7, { tag: "button", className: "mui-fixed", before: beforeApp() });
       el4.type = "button";
       createDataSaverButton({ el: el4 });
       document.documentElement.classList.add("lfx-dsbtn-on");
@@ -5342,8 +5360,9 @@
   function heroImage(item) {
     return imageUrl(item, { type: "Backdrop", maxWidth: 1280 }) || landscapeImage(item, { maxWidth: 1280 });
   }
+  var thumbHero = (item) => !imageUrl(item, { type: "Backdrop", maxWidth: 1280 }) && (pickLandscape(item) || {}).type === "Thumb";
   function logoUrl(item) {
-    return logoImage(item, { maxWidth: 500 });
+    return thumbHero(item) ? null : logoImage(item, { maxWidth: 500 });
   }
   function detailHref(id, serverId) {
     return `#/details?id=${id}&serverId=${serverId || getAuth().serverId || ""}`;
@@ -5461,7 +5480,7 @@
     const dlBtn = downloadButton(item);
     const menuBtn = menuButton(item);
     const playedBtn = item.Type === "BoxSet" || item.Type === "Season" ? null : playedButton(item, { onclick: () => item.Type === "Series" ? H.toggleSeriesPlayed(playedBtn) : H.togglePlayed(item, playedBtn) });
-    const title = h("h2", { id: TITLE_ID, class: logo ? "lfx-modal__title lfx-sr" : "lfx-modal__title" }, item.Name || "");
+    const title = h("h2", { id: TITLE_ID, class: logo || thumbHero(item) ? "lfx-modal__title lfx-sr" : "lfx-modal__title" }, item.Name || "");
     const hero = h("div", { class: "lfx-modal__hero" }, [
       img ? h("img", { class: "lfx-modal__hero-img", src: img, alt: "" }) : null,
       h("div", { class: "lfx-modal__hero-fade" }),
@@ -5597,6 +5616,11 @@
       h("button", { type: "button", class: "lfx-modal__more-btn", "aria-label": "Mehr anzeigen", title: "Mehr anzeigen", onclick }, [icon("chevron")])
     ]);
   }
+  function revealMore(list, from, btnEl, grow) {
+    const kb = btnEl.contains(document.activeElement);
+    grow();
+    if (kb && list.children[from]) list.children[from].focus({ preventScroll: true });
+  }
   function renderEpisodes(slot, state24, H) {
     slot.hidden = false;
     slot.replaceChildren();
@@ -5621,12 +5645,27 @@
         class: "lfx-modal__seasonbtn",
         "aria-haspopup": "listbox",
         "aria-expanded": "false",
-        onclick: () => toggle(list.hidden)
+        onclick: () => toggle(list.hidden),
+        onkeydown: (e) => {
+          if (e.key === "ArrowDown" && list.hidden) {
+            e.preventDefault();
+            toggle(true);
+          }
+        }
       }, [h("span", {}, current6 && current6.Name || "Staffel"), icon("chevron")]);
       const toggle = (open3) => {
         list.hidden = !open3;
         btn3.setAttribute("aria-expanded", String(open3));
+        if (open3) (list.querySelector('[aria-selected="true"]') || list.querySelector("button"))?.focus({ preventScroll: true });
       };
+      list.addEventListener("keydown", (e) => {
+        const o = [...list.querySelectorAll("button")];
+        const i = o.indexOf(document.activeElement);
+        const n = { ArrowDown: Math.min(i + 1, o.length - 1), ArrowUp: Math.max(i - 1, 0), Home: 0, End: o.length - 1 }[e.key];
+        if (n === void 0) return;
+        e.preventDefault();
+        o[n].focus({ preventScroll: true });
+      });
       for (const s of seasons) {
         list.append(h("li", { role: "presentation" }, [h("button", {
           type: "button",
@@ -5636,7 +5675,10 @@
           "data-id": s.Id,
           onclick: () => {
             toggle(false);
-            if (s.Id !== seasonId) H.season(s.Id);
+            btn3.focus({ preventScroll: true });
+            if (s.Id !== seasonId) Promise.resolve(H.season(s.Id)).then(() => {
+              if (slot.isConnected && document.activeElement === document.body) slot.querySelector(".lfx-modal__seasonbtn")?.focus({ preventScroll: true });
+            });
           }
         }, s.Name || `Staffel ${s.IndexNumber}`)]));
       }
@@ -5654,10 +5696,14 @@
     let shown3 = Math.max(EPISODES_INITIAL, selIdx + 1);
     const draw = () => {
       listEl.replaceChildren(...episodes.slice(0, shown3).map((e) => episodeRow(e, selectedEpisodeId, H, episodes)));
-      if (shown3 < episodes.length) listEl.append(moreButton(() => {
-        shown3 = episodes.length;
-        draw();
-      }));
+      if (shown3 < episodes.length) {
+        const from = shown3;
+        const more = moreButton(() => revealMore(listEl, from, more, () => {
+          shown3 = episodes.length;
+          draw();
+        }));
+        listEl.append(more);
+      }
     };
     draw();
   }
@@ -5684,7 +5730,7 @@
       "aria-label": item.Name || "",
       onclick: open3,
       onkeydown: (e) => {
-        if (e.key === "Enter" && e.target === e.currentTarget) {
+        if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
           e.preventDefault();
           open3();
         }
@@ -5717,10 +5763,14 @@
     const draw = () => {
       grid2.replaceChildren(...items.slice(0, shown3).map((it) => card(it, H)));
       slot.querySelector(".lfx-modal__more")?.remove();
-      if (shown3 < items.length) slot.append(moreButton(() => {
-        shown3 = items.length;
-        draw();
-      }));
+      if (shown3 < items.length) {
+        const from = shown3;
+        const more = moreButton(() => revealMore(grid2, from, more, () => {
+          shown3 = items.length;
+          draw();
+        }));
+        slot.append(more);
+      }
     };
     draw();
   }
@@ -5731,6 +5781,7 @@
   var BLOCKED_PATHS = ["/video", "/login", "/dashboard"];
   var SKIP_IN_CARD = '.cardOverlayButton, .lfx-card__action, button, [data-action="menu"], [data-action="play"], [data-action="resume"]';
   var IMAGE_LINK = "a.cardImageContainer, a.lfx-card__link";
+  var REFRESH_DEBOUNCE = 1800;
   var state4 = null;
   var clickInstalled = false;
   var rootEl = () => document.documentElement;
@@ -5784,10 +5835,10 @@
     }
     const hint = typeof itemOrId === "object" ? itemOrId : null;
     if (state4) return loadInto(id, hint, true);
-    create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay));
+    create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
     return loadInto(id, hint, false);
   }
-  function create(opener, overlayMode = false) {
+  function create(opener, overlayMode = false, id = null) {
     const overlay = mountPoint(ROOT_ID2, { className: "lfx-modal-overlay" });
     overlay.replaceChildren();
     const closeBtn = h("button", { type: "button", class: "lfx-modal__close", "aria-label": "Schlie\xDFen", title: "Schlie\xDFen", onclick: () => closeModal() }, [icon("close")]);
@@ -5802,10 +5853,12 @@
       closeModal();
     };
     overlay.addEventListener("click", onOverlayClick);
-    state4 = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+    clearCache("lfx:modal:");
+    window.removeEventListener("popstate", onOrphanPop);
+    state4 = { overlay, modal, content, closeBtn, opener, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
     state4.unsub = onItemsChanged(onChanged);
+    lockScroll(state4);
     if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 799px)").matches) {
-      lockScroll(state4);
       state4.detachSwipe = attachSwipeClose(modal, {
         backdrop: overlay,
         canStart: () => overlay.scrollTop <= 0 && !overlayOnTop(),
@@ -5847,13 +5900,14 @@
     st.left = l.left;
     st.right = l.right;
     st.width = l.width;
-    window.scrollTo(0, l.y);
+    if (l.y) window.scrollTo(0, l.y);
   }
   function teardown2() {
     if (!state4) return null;
     const s = state4;
     state4 = null;
     clearTimeout(s.fallback);
+    clearTimeout(s.refreshTimer);
     if (typeof s.unsub === "function") s.unsub();
     if (s.detachSwipe) s.detachSwipe();
     s.overlay.removeEventListener("click", s.onOverlayClick);
@@ -5863,7 +5917,8 @@
     unlockScroll(s);
     rootEl().classList.remove("lfx-modal-open");
     unmountPoint(s.overlay);
-    const op = s.opener;
+    let op = s.opener;
+    if (!(op && op.isConnected) && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link');
     if (op && op.isConnected && typeof op.focus === "function" && !overlayOnTop()) op.focus({ preventScroll: true });
     return s.after;
   }
@@ -5976,10 +6031,17 @@
       }
     }
   }
+  function keepFocus(s) {
+    if (document.activeElement === document.body) s.closeBtn.focus({ preventScroll: true });
+  }
   async function loadInto(id, hint, replace, refresh2 = false) {
     const s = state4;
     const token2 = ++s.token;
     const stale = () => state4 !== s || s.token !== token2;
+    if (!refresh2) {
+      s.seasons = [];
+      s.episodes = [];
+    }
     if (refresh2) {
     } else if (replace) {
       s.content.replaceChildren(buildSkeleton());
@@ -5993,6 +6055,7 @@
     } else {
       s.content.replaceChildren(buildSkeleton());
     }
+    if (!refresh2) keepFocus(s);
     if (!refresh2) preloadImages(id, hint);
     let main;
     let sel;
@@ -6026,6 +6089,7 @@
       if (footer) footer.prepend(link, " \xB7 ");
     }
     s.content.replaceChildren(parts.el);
+    keepFocus(s);
     if (!refresh2) s.overlay.scrollTop = 0;
     const tasks = [];
     if (isSeries) {
@@ -6059,11 +6123,13 @@
     } catch {
     }
   }
-  async function showSeason(s, token2, H) {
-    const episodes = await loadEpisodes2(s.main.Id, s.seasonId);
-    if (state4 !== s || s.token !== token2) return;
+  async function showSeason(s, token2, H, sid = s.seasonId) {
+    s.want = sid;
+    const episodes = await loadEpisodes2(s.main.Id, sid);
+    if (state4 !== s || s.token !== token2 || s.want !== sid) return;
+    s.seasonId = sid;
     s.episodes = episodes;
-    renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
+    renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: sid, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
     const row = s.parts.episodesSlot.querySelector(".lfx-modal__ep.is-selected");
     if (!row) return;
     const list = row.parentElement;
@@ -6083,18 +6149,23 @@
     }
     const gone = removed.filter((rid) => s.episodes.some((e) => e.Id === rid));
     if (gone.length) {
-      s.episodes = s.episodes.filter((e) => !gone.includes(e.Id));
+      s.episodes.splice(0, s.episodes.length, ...s.episodes.filter((e) => !gone.includes(e.Id)));
       clearCache(`lfx:modal:eps:${id}:`);
       for (const rid of gone) {
         s.overlay.querySelectorAll(".lfx-modal__ep").forEach((row) => {
           if (row.dataset.id === rid) row.remove();
         });
       }
+      syncSeasonBtn(s);
     }
     if (updated.includes(id)) {
-      for (const key of ["item", "seasons", "next", "similar", "coll"]) clearCache(`lfx:modal:${key}:${id}`);
-      clearCache(`lfx:modal:eps:${id}:`);
-      loadInto(id, null, true, true);
+      clearTimeout(s.refreshTimer);
+      s.refreshTimer = setTimeout(() => {
+        if (state4 !== s) return;
+        for (const key of ["item", "seasons", "next", "similar", "coll"]) clearCache(`lfx:modal:${key}:${id}`);
+        clearCache(`lfx:modal:eps:${id}:`);
+        loadInto(id, null, true, true);
+      }, REFRESH_DEBOUNCE);
     }
   }
   function navigate(hash2) {
@@ -6136,12 +6207,8 @@
     clearPlayedCaches(seriesId, seriesId);
     const seasonIds = targetId === seriesId ? s.seasons.map((x) => x.Id) : [targetId];
     const wrong = [];
-    for (const sid of seasonIds) {
-      try {
-        for (const e of await loadEpisodes2(seriesId, sid)) if (isPlayed(e) !== next) wrong.push(e);
-      } catch {
-      }
-    }
+    const lists = await Promise.all(seasonIds.map((sid) => loadEpisodes2(seriesId, sid).catch(() => [])));
+    for (const l of lists) for (const e of l) if (isPlayed(e) !== next) wrong.push(e);
     let failed = 0;
     for (let i = 0; i < wrong.length; i += 6) {
       const res = await Promise.allSettled(wrong.slice(i, i + 6).map((e) => setPlayed(e.Id, next)));
@@ -6152,9 +6219,8 @@
   }
   async function seriesEpisodeCount(s) {
     try {
-      let n = 0;
-      for (const se of s.seasons) n += (await loadEpisodes2(s.main.Id, se.Id)).length;
-      return n;
+      const lists = await Promise.all(s.seasons.map((se) => loadEpisodes2(s.main.Id, se.Id)));
+      return lists.reduce((n, l) => n + l.length, 0);
     } catch {
       return 0;
     }
@@ -6162,6 +6228,7 @@
   function makeHandlers(s, token2) {
     const main = s.main;
     const stale = () => state4 !== s || s.token !== token2;
+    const sameTitle = () => state4 === s && Boolean(s.main) && s.main.Id === main.Id;
     let starting = false;
     const coverFor = (it) => {
       if (!it || it.Type !== "Episode") return it;
@@ -6188,11 +6255,11 @@
         confirmLabel: `Als ${verb} markieren`,
         anchorEl: btn3,
         onConfirm: async () => {
-          if (stale()) return;
+          if (!sameTitle()) return;
           btn3.disabled = true;
           try {
             const failed = await bulkPlayed(s, targetId, next);
-            if (stale()) return;
+            if (!sameTitle()) return;
             if (isSeries || !next) {
               main.UserData = main.UserData || {};
               main.UserData.Played = isSeries ? next : false;
@@ -6217,6 +6284,10 @@
         const row = btn3.closest(".lfx-modal__ep");
         item.UserData = { ...prev2, Played: next, PlaybackPositionTicks: 0 };
         delete item.UserData.PlayedPercentage;
+        const syncLabel = () => {
+          if (item === main && main.Type !== "Series" && !stale() && s.parts) setPlayLabel(s.parts.playBtn, hasResume(item) ? "Fortsetzen" : "Abspielen");
+        };
+        syncLabel();
         setPlayedState(btn3, next);
         setEpisodeSeen(row, next);
         syncSeasonBtn(s);
@@ -6224,6 +6295,7 @@
           await setPlayed(item.Id, next);
         } catch {
           item.UserData = prev2;
+          syncLabel();
           setPlayedState(btn3, !next);
           setEpisodeSeen(row, !next);
           if (!stale()) syncSeasonBtn(s);
@@ -6258,7 +6330,8 @@
           if (main.Type === "Series") {
             target = await loadNextUp(main.Id).catch(() => null);
             if (!target && !stale()) {
-              const eps = s.seasons.length ? await loadEpisodes2(main.Id, pickInitialSeason(s.seasons, null)).catch(() => []) : [];
+              const ss = s.seasons.length ? s.seasons : await loadSeasons(main.Id).catch(() => []);
+              const eps = ss.length ? await loadEpisodes2(main.Id, pickInitialSeason(ss, null)).catch(() => []) : [];
               target = eps[0] || null;
             }
             resume = hasResume(target);
@@ -6268,6 +6341,7 @@
         }
         if (!target || stale()) {
           starting = false;
+          if (!target && !stale()) toast("Keine Folgen verf\xFCgbar");
           hide();
           return;
         }
@@ -6294,9 +6368,8 @@
         if (el4 && el4.scrollIntoView) el4.scrollIntoView({ behavior: "smooth", block: "start" });
       },
       async season(seasonId) {
-        s.seasonId = seasonId;
         s.selectedEpisodeId = null;
-        await showSeason(s, token2, H).catch(() => {
+        await showSeason(s, token2, H, seasonId).catch(() => {
         });
       },
       playItem(ep) {
@@ -6307,8 +6380,13 @@
     };
     return H;
   }
+  function onOrphanPop() {
+    window.removeEventListener("popstate", onOrphanPop);
+    if (!state4 && history.state && history.state.lfxModal) history.back();
+  }
   function destroyAll() {
     if (state4) {
+      if (state4.pushed) window.addEventListener("popstate", onOrphanPop);
       state4.pushed = false;
       teardown2();
     }
@@ -6567,9 +6645,11 @@
   function allowPrefetch() {
     return netOk();
   }
+  function tvBgPlaying() {
+    return document.documentElement.classList.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
+  }
   function paused2() {
-    const cl2 = document.documentElement.classList;
-    return document.hidden || isDataSaver("prefetch") || cl2.contains("lfx-modal-open") || cl2.contains("lfx-tvm-bgplay") && !!document.querySelector("#lfx-tvm-bg video");
+    return document.hidden || isDataSaver("prefetch") || document.documentElement.classList.contains("lfx-modal-open") || tvBgPlaying();
   }
   function heroSettled(slot) {
     if (!slot || slot.hidden) return true;
@@ -6586,7 +6666,7 @@
     const offs = [];
     let dead = false;
     let go3 = false;
-    let busy2 = false;
+    let busy3 = false;
     let imgSince = 0;
     let timer2 = null;
     let idleId = null;
@@ -6649,7 +6729,7 @@
       if (!left) end();
     }
     function next() {
-      if (dead || busy2 || hold()) return;
+      if (dead || busy3 || hold()) return;
       let el4 = null;
       for (const e of pending2.keys()) {
         if (!e.isConnected || !e.classList.contains("is-loading")) {
@@ -6661,12 +6741,12 @@
       if (!el4) return;
       const entry = pending2.get(el4);
       pending2.delete(el4);
-      busy2 = true;
+      busy3 = true;
       Promise.resolve().then(() => load6(el4, entry)).catch(() => {
       }).then(() => {
         if (dead) return;
         waitImgs(cardImgs(el4), () => {
-          busy2 = false;
+          busy3 = false;
           idle(next);
         });
       });
@@ -6683,11 +6763,11 @@
       next();
     }
     const onVis = () => {
-      if (!paused2() && !dead && !busy2) later(tick, 0);
+      if (!paused2() && !dead && !busy3) later(tick, 0);
     };
     document.addEventListener("visibilitychange", onVis);
     const resume = () => {
-      if (!dead && !busy2 && !paused2()) later(tick, 0);
+      if (!dead && !busy3 && !paused2()) later(tick, 0);
     };
     if (typeof MutationObserver === "function") {
       wasPaused = paused2();
@@ -6700,14 +6780,14 @@
       });
       mo3.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     }
-    const onSaver = () => {
+    const onSaver3 = () => {
       const p = paused2();
       wasPaused = p;
       clearTimeout(rTimer);
       if (!p && !dead) rTimer = setTimeout(resume, RESUME_MS);
     };
-    offs.push(onDataSaverChange(onSaver));
-    offs.push(onDataSaverPartsChange(onSaver));
+    offs.push(onDataSaverChange(onSaver3));
+    offs.push(onDataSaverPartsChange(onSaver3));
     later(tick, POLL);
     return {
       stop() {
@@ -6720,7 +6800,7 @@
         offs.splice(0).forEach((f) => f());
       },
       notify() {
-        if (go3 && !busy2 && !dead) idle(next);
+        if (go3 && !busy3 && !dead) idle(next);
       }
     };
   }
@@ -6780,7 +6860,11 @@
         }
         if (!changed) continue;
         if (!track.querySelector(".lfx-card")) row.remove();
-        else track.dispatchEvent(new Event("scroll"));
+        else {
+          const ls = [...track.querySelectorAll(".lfx-card__link")];
+          if (ls.length && !ls.some((l) => l.tabIndex === 0)) ls[0].tabIndex = 0;
+          track.dispatchEvent(new Event("scroll"));
+        }
       }
     }));
     let newSeries = peekNewSeriesIds();
@@ -7158,8 +7242,32 @@
       timers.add(t);
       return t;
     };
-    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver("trailer") && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
-    const paused3 = () => hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    const noAuto = () => isDataSaver("trailer") || reducedMotion() || tvBgPlaying();
+    const trailerPending = () => Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !noAuto() && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
+    const kbFocus = () => {
+      if (!card3) return false;
+      try {
+        return Boolean(card3.querySelector(":focus-visible"));
+      } catch {
+        return card3.contains(document.activeElement);
+      }
+    };
+    const paused3 = () => hovering || kbFocus() || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
+    function syncMedia() {
+      if (video2 && trailerActive) {
+        const hold = document.hidden || document.documentElement.classList.contains("lfx-modal-open");
+        try {
+          if (hold) video2.pause();
+          else if (video2.paused) {
+            const p = video2.play();
+            if (p && p.catch) p.catch(() => {
+            });
+          }
+        } catch {
+        }
+      }
+      tryPreload();
+    }
     function stopTrailer() {
       if (slide) clearTimeout(slide.revealTimer);
       trailerActive = false;
@@ -7203,6 +7311,7 @@
         try {
           await setFavorite(item.Id, !prev2);
           clearCache("home:");
+          clearCache(`lfx:modal:item:${item.Id}`);
         } catch {
           item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
           paint2();
@@ -7313,6 +7422,7 @@
         }
         index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur3);
         fillDots();
+        scheduleRotate();
         if (curGone) show3(index);
         return;
       }
@@ -7321,7 +7431,15 @@
         if (!fresh) return;
         const merged = { ...cur3, ...fresh };
         pool[index] = merged;
-        if (!content.classList.contains("is-out")) content.replaceChildren(...buildContent(merged).childNodes);
+        if (!content.classList.contains("is-out")) {
+          const act = document.activeElement;
+          const btn3 = act && content.contains(act) ? [...act.classList].find((c) => c.startsWith("lfx-bb__btn--")) : null;
+          content.replaceChildren(...buildContent(merged).childNodes);
+          if (btn3) {
+            const n = content.querySelector(`.${btn3}`);
+            if (n) n.focus();
+          }
+        }
       }
     }
     function setMuteIcon() {
@@ -7331,7 +7449,7 @@
     }
     function tryPreload() {
       const sl = slide;
-      if (!sl || disposed || sl.gen !== gen9 || sl.started || sl.failed || isDataSaver("trailer")) return;
+      if (!sl || disposed || sl.gen !== gen9 || sl.started || sl.failed || noAuto()) return;
       if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
       sl.started = true;
       startTrailer(sl);
@@ -7340,8 +7458,9 @@
       try {
         const t = await loadLocalTrailer(sl.item);
         if (sl.gen !== gen9 || disposed) return;
-        if (isDataSaver("trailer")) {
+        if (isDataSaver("trailer") || reducedMotion()) {
           sl.failed = true;
+          sl.saver = true;
           setTr("");
           return;
         }
@@ -7458,7 +7577,7 @@
       scheduleRotate();
       const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
       slide = sl;
-      setTr(item.LocalTrailerCount > 0 && !isDataSaver("trailer") ? "wait" : "");
+      setTr(item.LocalTrailerCount > 0 && !noAuto() ? "wait" : "");
       const img = pic.querySelector(".lfx-bb__img");
       const onLoaded = () => {
         if (disposed || sl.gen !== gen9 || sl.imgAt) return;
@@ -7510,17 +7629,34 @@
       card3.addEventListener("mouseenter", onEnter);
       card3.addEventListener("mouseleave", onLeave);
       document.addEventListener("visibilitychange", onVis);
-      cleanupFns.push(() => document.removeEventListener("visibilitychange", onVis));
+      document.addEventListener("visibilitychange", syncMedia);
+      const mo3 = new MutationObserver(syncMedia);
+      mo3.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      cleanupFns.push(() => {
+        document.removeEventListener("visibilitychange", onVis);
+        document.removeEventListener("visibilitychange", syncMedia);
+        mo3.disconnect();
+      });
       cleanupFns.push(onItemsChanged(onChanged2));
-      cleanupFns.push(onDataSaverChange(onSaver));
-      cleanupFns.push(onDataSaverPartsChange(onSaver));
+      cleanupFns.push(onDataSaverChange(onSaver3));
+      cleanupFns.push(onDataSaverPartsChange(onSaver3));
     }
-    function onSaver() {
+    function onSaver3() {
       if (disposed || !card3) return;
       if (isDataSaver("trailer")) {
-        if (slide) slide.failed = true;
+        if (slide) {
+          slide.failed = true;
+          slide.saver = true;
+        }
         stopTrailer();
         setTr("");
+      } else if (slide && (slide.saver || !slide.started)) {
+        slide.saver = false;
+        slide.failed = false;
+        slide.started = false;
+        slide.ready = false;
+        setTr(slide.item.LocalTrailerCount > 0 && !noAuto() ? "wait" : "");
+        tryPreload();
       }
       if (isDataSaver("hero") && pool.length > SAVER_POOL) {
         const cur3 = pool[index];
@@ -7841,6 +7977,11 @@
     s.item = { ...s.item, UserData: { ...userData(s), ...patch } };
     putItems([s.item]);
     clearCache(`hc:${getUserId()}:${s.item.Id}`);
+    clearCache(`lfx:modal:item:${s.item.Id}`);
+    if (s.item.Type === "Episode" && s.item.SeriesId) {
+      clearCache(`lfx:modal:next:${s.item.SeriesId}`);
+      clearCache(`lfx:modal:eps:${s.item.SeriesId}:`);
+    }
     clearCache("home:");
   }
   async function toggleFavorite(s) {
@@ -7925,10 +8066,12 @@
     } catch {
     }
     s.busyPlayed = false;
+    const gone = !s.btns.played.isConnected;
+    const ask = n ? `${folgen2(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`;
     confirmAction({
-      title: n ? `${folgen2(n)} als ${verb} markieren?` : `Alle Folgen als ${verb} markieren?`,
+      title: gone && item.Name ? `${item.Name}: ${ask}` : ask,
       confirmLabel: `Als ${verb} markieren`,
-      anchorEl: s.btns.played,
+      anchorEl: gone ? null : s.btns.played,
       onConfirm: async () => {
         s.busyPlayed = true;
         let failed = 0;
@@ -8070,7 +8213,8 @@
   }
   function applyMedia(s) {
     const it = s.item;
-    const portrait = !s.own && /Portrait|Square/i.test(s.card.className);
+    const top10 = s.card.classList.contains("lfx-card--top10");
+    const portrait = top10 || !s.own && /Portrait|Square/i.test(s.card.className);
     const fromCard = cardImageUrl(s.card);
     const landscape = it && it.ImageTags ? landscapeImage(it) : null;
     const url = (portrait || !fromCard ? landscape || fromCard : fromCard) || null;
@@ -8082,7 +8226,7 @@
       s.overlay.append(h("img", { class: "lfx-hc__logo", src: cardLogo.getAttribute("src"), alt: "" }));
     } else if (cardTitle) {
       s.overlay.append(h("span", { class: "lfx-hc__title" }, cardTitle.textContent));
-    } else if (!s.own && it && it.ImageTags) {
+    } else if ((!s.own || top10) && it && it.ImageTags) {
       const pick = pickLandscape(it);
       if (pick && pick.type !== "Thumb") {
         const logo = logoImage(it);
@@ -8203,6 +8347,11 @@
   function removeSession(s) {
     if (s.removeTimer) clearTimeout(s.removeTimer);
     s.removeTimer = null;
+    const a = document.activeElement;
+    if (a && a !== document.body && s.el.contains(a) && s.card.isConnected) {
+      const link = s.card.querySelector("a, [tabindex]");
+      if (link && link.focus) link.focus({ preventScroll: true });
+    }
     s.el.remove();
     if (session2 === s) session2 = null;
   }
@@ -8387,6 +8536,7 @@
     let loading = false;
     let destroyed = false;
     let failed = false;
+    let total = null;
     const list = h("div", { class: "lfx-grid__list", role: "list" });
     const status = h("div", { class: "lfx-grid__status" });
     const sentinel = h("div", { class: "lfx-grid__more", "aria-hidden": "true" });
@@ -8440,7 +8590,7 @@
     function applyPage(res, { eager = false } = {}) {
       const items = asItems2(res);
       putItems(items);
-      const total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
+      total = res && typeof res.TotalRecordCount === "number" ? res.TotalRecordCount : null;
       status.replaceChildren();
       items.forEach((it, i) => {
         const card3 = cardFactory(it, { eager: eager && count + i < EAGER_CARDS2 });
@@ -8452,7 +8602,7 @@
       if (typeof opts.onCount === "function") opts.onCount(total != null ? total : count);
     }
     async function loadMore3() {
-      if (destroyed || loading || done) return;
+      if (destroyed || loading || done || failed) return;
       const key = !count ? pageKey() : null;
       if (key) {
         const hit = peekCached(key);
@@ -8513,9 +8663,17 @@
         sort = s;
         reset();
       },
-      setQuery(next) {
+      /** Optional mit neuer Sortierung: genau ein Neuaufbau. */
+      setQuery(next, nextSort) {
         query2 = next || {};
+        if (nextSort) sort = nextSort;
         reset();
+      },
+      /** n Karten wurden außerhalb entfernt (z. B. Favorit weg): Nachlade-Versatz und Zähler nachführen. */
+      drop(n) {
+        count = Math.max(0, count - n);
+        if (total != null) total = Math.max(0, total - n);
+        if (typeof opts.onCount === "function") opts.onCount(total != null ? total : count);
       },
       refresh: reset,
       destroy() {
@@ -8680,8 +8838,10 @@
       const grid2 = view === "grid";
       rowsLink.href = libraryHref(kind2, { genre });
       gridLink.href = libraryHref(kind2, { genre, view: "grid", sort });
-      rowsLink.setAttribute("aria-pressed", String(!grid2));
-      gridLink.setAttribute("aria-pressed", String(grid2));
+      for (const [a, on] of [[rowsLink, !grid2], [gridLink, grid2]]) {
+        if (on) a.setAttribute("aria-current", "true");
+        else a.removeAttribute("aria-current");
+      }
       rowsLink.classList.toggle("is-active", !grid2);
       gridLink.classList.toggle("is-active", grid2);
       tools.hidden = !grid2;
@@ -8901,6 +9061,7 @@
   var ROOT_ID4 = "lfx-mylist";
   var ON_CLASS3 = "lfx-mylist-on";
   var RETRO_PAGE_ON = "lfx-retro-page-on";
+  var HIDDEN_RELOAD_MS = 6e4;
   var STALE_MS = 2e3;
   var TYPE_QUERY = { movies: "Movie", series: "Series" };
   var TYPES2 = [
@@ -8966,12 +9127,20 @@
     }
   }
   function emptyBlock() {
-    const retro = isTheme("retro");
     return h("div", { class: "lfx-ml__empty", hidden: true }, [
-      h("p", { class: "lfx-ml__empty-title" }, retro ? "KEINE B\xC4NDER GEMERKT" : "Deine Liste ist leer"),
+      h("p", { class: "lfx-ml__empty-title" }),
       h("p", { class: "lfx-ml__empty-hint" }, "Mit \u201E+ Meine Liste\u201C merkst du dir Filme und Serien."),
-      h("a", { class: "lfx-ml__empty-link", href: "#/home" }, retro ? "ZUR\xDCCK ZUM STARTMEN\xDC" : "Zur Startseite")
+      h("a", { class: "lfx-ml__empty-link" })
     ]);
+  }
+  function fillEmpty(s) {
+    const retro = isTheme("retro");
+    const kind2 = { movies: "Filme", series: "Serien" }[s.type];
+    const [title, hint, link] = s.empty.children;
+    title.textContent = kind2 ? retro ? `KEINE ${kind2.toUpperCase()} GEMERKT` : `Keine ${kind2} in deiner Liste` : retro ? "KEINE B\xC4NDER GEMERKT" : "Deine Liste ist leer";
+    hint.hidden = Boolean(kind2);
+    link.textContent = kind2 ? retro ? "ALLE ANZEIGEN" : "Alle anzeigen" : retro ? "ZUR\xDCCK ZUM STARTMEN\xDC" : "Zur Startseite";
+    link.setAttribute("href", kind2 ? myListHref({ sort: s.sort === "az" ? void 0 : s.sort }) : "#/home");
   }
   function build3(tab2, r) {
     teardown5();
@@ -8985,6 +9154,7 @@
       chips: null,
       sorts: null,
       empty: null,
+      retro,
       loadedAt: Date.now(),
       cleanups: []
     };
@@ -9012,6 +9182,7 @@
       onCount: (n) => {
         s.loadedAt = Date.now();
         s.count.textContent = countText(n);
+        fillEmpty(s);
         s.empty.hidden = n > 0;
         s.root.classList.toggle("is-empty", n === 0);
       }
@@ -9032,14 +9203,25 @@
     };
     s.cleanups.push(onItemsChanged(({ removed = [] }) => {
       if (state6 !== s || !removed.length) return;
+      let n = 0;
       s.root.querySelectorAll("[data-lfx-id]").forEach((el4) => {
-        if (removed.includes(el4.dataset.lfxId)) (el4.closest(".lfx-grid__item") || el4).remove();
+        if (removed.includes(el4.dataset.lfxId)) {
+          (el4.closest(".lfx-grid__item") || el4).remove();
+          n += 1;
+        }
       });
+      if (n) s.grid.drop(n);
     }));
     document.addEventListener("lfx:favorite", refresh2);
     s.cleanups.push(() => document.removeEventListener("lfx:favorite", refresh2));
+    let hiddenAt = 0;
     const onVisible = () => {
-      if (document.visibilityState === "visible") refresh2();
+      if (document.visibilityState !== "visible") {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt && Date.now() - hiddenAt >= HIDDEN_RELOAD_MS) refresh2();
+      hiddenAt = 0;
     };
     document.addEventListener("visibilitychange", onVisible);
     s.cleanups.push(() => document.removeEventListener("visibilitychange", onVisible));
@@ -9050,12 +9232,15 @@
     const tab2 = findHomeTab3();
     if (state6 && state6.root && state6.root.isConnected && tab2 && tab2.contains(state6.root)) {
       const s = state6;
+      if (s.retro !== isTheme("retro")) {
+        build3(tab2, r);
+        return;
+      }
       if (r.type !== s.type) {
         s.type = r.type;
         s.sort = r.sort;
         paint(s);
-        s.grid.setQuery(queryFor(s.type));
-        s.grid.setSort(s.sort);
+        s.grid.setQuery(queryFor(s.type), s.sort);
       } else if (r.sort !== s.sort) {
         s.sort = r.sort;
         paint(s);
@@ -9158,12 +9343,13 @@
     document.getElementById(ROOT_ID5)?.remove();
     document.documentElement.classList.remove(ON_CLASS4);
   }
-  var query = (params) => getItems({
+  var NP_TTL = 5 * 6e4;
+  var query = (params) => cached(homeKey(getUserId(), "np", JSON.stringify(params)), () => getItems({
     ...BASE_PARAMS,
     IncludeItemTypes: TYPES3,
     Recursive: true,
     ...params
-  }).then(asItems);
+  }).then(asItems), NP_TTL);
   function loadNew() {
     return query({ SortBy: "DateCreated", SortOrder: "Descending", Limit: 20 }).then((l) => uniqueTitles(l, 20));
   }
@@ -9326,7 +9512,11 @@
     const pills = /* @__PURE__ */ new Map();
     const nav = h("nav", { class: "lfx-np__tabs", "aria-label": "Neu und beliebt" });
     function setActive(id) {
-      for (const [pid, pill] of pills) pill.classList.toggle("is-active", pid === id);
+      for (const [pid, pill] of pills) {
+        pill.classList.toggle("is-active", pid === id);
+        if (pid === id) pill.setAttribute("aria-current", "true");
+        else pill.removeAttribute("aria-current");
+      }
     }
     for (const d of sectionDefs()) {
       const pill = h("button", {
@@ -9352,8 +9542,11 @@
       raf3 = requestAnimationFrame(() => {
         raf3 = 0;
         let current6 = null;
-        for (const [id, sec] of sections) {
-          if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current6 = id;
+        if ((window.scrollY || 0) <= 0) current6 = sections.keys().next().value;
+        else {
+          for (const [id, sec] of sections) {
+            if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current6 = id;
+          }
         }
         if (current6) setActive(current6);
       });
@@ -9371,6 +9564,12 @@
       const pill = pills.get(id);
       if (pill && pill.lastChild) pill.lastChild.textContent = label;
     }
+    cleanups2.push(onThemeChange(() => {
+      relabel("new", `Neu bei ${brandName()}`);
+      root7.querySelectorAll(".lfx-np__sub").forEach((el4) => {
+        el4.textContent = chartSubtitle(Number(el4.dataset.days));
+      });
+    }));
     let newSeriesIds = /* @__PURE__ */ new Set();
     function onChanged2({ removed = [], updated = [] }) {
       if (disposed) return;
@@ -9406,6 +9605,7 @@
         newSeriesIds = newSeries;
         if (fallbackLabel && !meta2.charted) relabel(id, fallbackLabel);
         renderer(sections.get(id), items, newSeries, meta2);
+        onScroll7();
       } catch (e) {
         console.warn(`[LenzFlix] Neu und beliebt "${id}" nicht geladen`, e && e.message);
         if (!disposed) drop2(id);
@@ -9415,7 +9615,7 @@
       const row = createRow(meta2.charted || !fallbackTitle ? title : fallbackTitle, items, kind2, newSeries);
       sec.querySelector(".lfx-np__heading")?.remove();
       if (meta2.charted) {
-        row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub" }, chartSubtitle(meta2.windowDays)));
+        row.el.querySelector(".lfx-row__head").after(h("p", { class: "lfx-np__sub", dataset: { days: meta2.windowDays || "" } }, chartSubtitle(meta2.windowDays)));
       }
       sec.append(row.el);
       scrollers.push(attachScroller(row.scroller));
@@ -9461,7 +9661,7 @@
   }
   var newPopularFeature = {
     name: "newpopular",
-    match: (route) => isNewRoute(route) && !isTv() && !isTheme("live"),
+    match: (route) => isNewRoute(route) && !isTv() && !isTheme("live") && !isTheme("store"),
     mount: () => ensure4(),
     update: () => ensure4(),
     unmount: () => {
@@ -10567,7 +10767,7 @@
       id,
       min: Math.round(range[0] * 100),
       max: Math.round(range[1] * 100),
-      step: 5,
+      step: 1,
       value: Math.round(get() * 100)
     });
     const showSizes = (s) => {
@@ -10596,7 +10796,7 @@
     const kids = [
       slider({ label: "Normal", range: NORMAL_RANGE, get: getNormalScale, key: "normal", offs }),
       slider({ label: "Datensparmodus", range: SAVER_RANGE, get: getSaverScale, key: "saver", offs }),
-      note(`Bildschirm dieses Ger\xE4ts: ${de(dpr)}\xD7 sch\xE4rfer`)
+      note(`Bildschirm dieses Ger\xE4ts: ${de(dpr)}\xD7 ${dpr < 1 ? "weniger scharf" : "sch\xE4rfer"}`)
     ];
     const rec = recommendScale();
     if (rec !== null) kids.push(note(`F\xFCr scharfe Cover hier: ca. ${rec} %`));
@@ -11152,6 +11352,7 @@
   function scheduleOpen() {
     clearTimeout(state9.closeTimer);
     if (menuOpen() || state9.openTimer) return;
+    state9.pinned = false;
     state9.openTimer = setTimeout(() => {
       state9.openTimer = null;
       openMenu2();
@@ -11476,6 +11677,7 @@
       if (i < 0) return;
       const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
       e.preventDefault();
+      for (const t of tabs) t.tabIndex = -1;
       next.tabIndex = 0;
       next.focus();
     });
@@ -12013,8 +12215,10 @@
     };
     const onVis = () => document.hidden ? stop8() : schedule4();
     const onKey4 = (e) => {
-      if (e.key === "ArrowLeft") go3(idx - 1);
-      else if (e.key === "ArrowRight") go3(idx + 1);
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      go3(idx + (e.key === "ArrowLeft" ? -1 : 1));
+      if (el4.contains(document.activeElement)) slides[idx].focus({ preventScroll: true });
     };
     prev2.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
@@ -12344,11 +12548,22 @@
           getNewContentInfo()
         ]);
         if (!alive() || !pool.length) return;
-        const hero = createHero(pool, { info });
+        let hero = null;
+        let saver = false;
+        const put2 = () => {
+          if (hero) hero.destroy();
+          saver = isDataSaver("hero");
+          hero = createHero(pool, { info });
+          if (hero) heroSlot.append(hero.el);
+        };
+        put2();
         if (!hero) return;
         heroSlot.classList.remove("is-loading");
-        heroSlot.append(hero.el);
-        cleanups3.push(() => hero.destroy());
+        cleanups3.push(() => hero && hero.destroy());
+        const resync = () => {
+          if (alive() && isDataSaver("hero") !== saver) put2();
+        };
+        cleanups3.push(onDataSaverChange(resync), onDataSaverPartsChange(resync));
       } catch (e) {
         console.warn("[LenzFlix] Hero nicht geladen", e && e.message);
       } finally {
@@ -12705,6 +12920,14 @@
     overlay.setAttribute("aria-label", "Trailer");
     overlay.append(video2, closeBtn);
     const onKey4 = (e) => {
+      if (e.key === "Tab") {
+        const ring = [video2, closeBtn];
+        const i = ring.indexOf(document.activeElement);
+        const to = i < 0 ? ring[e.shiftKey ? 1 : 0] : ring[1 - i];
+        e.preventDefault();
+        to.focus();
+        return;
+      }
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopPropagation();
@@ -12735,7 +12958,7 @@
   }
   async function resolveTarget3(id) {
     const first2 = getStoredItem(id) || await loadItem(id);
-    if (!first2) throw new Error("Titel nicht gefunden");
+    if (!first2) throw Object.assign(new Error("Titel nicht gefunden"), { notFound: true });
     const sel = { target: id, seasonId: null, episodeId: null };
     if (first2.Type === "Episode") {
       sel.target = first2.SeriesId || first2.ParentId || id;
@@ -12808,10 +13031,10 @@
       sel = await resolveTarget3(s.id);
       if (stale()) return;
       main = await loadItem(sel.target);
-      if (!main) throw new Error("Titel nicht gefunden");
+      if (!main) throw Object.assign(new Error("Titel nicht gefunden"), { notFound: true });
     } catch (e) {
       if (stale()) return;
-      root7.replaceChildren(errorBox(e && e.message ? "Der Server hat nicht geantwortet." : ""));
+      root7.replaceChildren(errorBox(e && e.notFound ? "Dieser Titel ist nicht mehr verf\xFCgbar." : e && e.message ? "Der Server hat nicht geantwortet." : ""));
       root7.classList.add("is-error");
       return;
     }
@@ -12873,7 +13096,8 @@
       let t = target();
       if (isSeries && !t.item) {
         try {
-          const eps = c.seasons.length ? await loadEpisodes2(main.Id, pickInitialSeason(c.seasons, null)) : [];
+          const list = c.seasons.length ? c.seasons : await loadSeasons(main.Id);
+          const eps = list.length ? await loadEpisodes2(main.Id, pickInitialSeason(list, null)) : [];
           t = { item: eps[0] || null, resume: false };
         } catch {
           t = { item: null };
@@ -12883,10 +13107,12 @@
       if (t.item) await play(t.item, { resume: Boolean(t.resume) });
     });
     const circles = [];
+    let favBusy = false;
     const favBtn = circle("fav", "Zu Meine Liste hinzuf\xFCgen", ICON_PLUS3, async () => {
-      favBtn.disabled = true;
+      if (favBusy) return;
+      favBusy = true;
       const on = await toggleFavorite2(main);
-      favBtn.disabled = false;
+      favBusy = false;
       if (!stale()) paintFav(on);
     });
     const paintFav = (on) => {
@@ -12907,13 +13133,23 @@
     });
     dlBtn.hidden = true;
     circles.push(dlBtn);
+    let seenBusy = false;
     const seenBtn = circle("seen", "Als gesehen markieren", ICON_EYE, async (b) => {
-      b.disabled = true;
+      if (seenBusy) return;
+      seenBusy = true;
       const on = await togglePlayed2(main, { anchorEl: b });
-      b.disabled = false;
+      seenBusy = false;
       if (stale()) return;
       paintSeen(on);
-      if (isSeries) refreshEpisodes();
+      if (isSeries) {
+        c.focusEp = null;
+        refreshEpisodes();
+        try {
+          c.nextUp = await loadNextUp(main.Id);
+        } catch {
+        }
+        if (!stale()) paintPlay2();
+      }
     });
     const paintSeen = (on) => {
       setIcon(seenBtn, on ? ICON_EYE_CHECK : ICON_EYE);
@@ -12984,8 +13220,9 @@
         raf3 = 0;
         const vh = window.innerHeight || 800;
         const v = Math.max(0, Math.min(1, (window.scrollY || document.documentElement.scrollTop || 0) / (vh * 0.55)));
+        const stuck = tablist.getBoundingClientRect().top <= 67;
         root7.style.setProperty("--lfx-plus-dim", String(Math.round(v * 100) / 100));
-        tablist.classList.toggle("is-stuck", tablist.getBoundingClientRect().top <= 67);
+        tablist.classList.toggle("is-stuck", stuck);
       });
     };
     window.addEventListener("scroll", onScroll7, { passive: true });
@@ -13013,11 +13250,7 @@
           paintPlay2();
         }
       }
-      episodesBody.replaceChildren(...eps.map((e) => {
-        const card3 = episodeCard(e, e.Id === c.selectedEp, playEpisode);
-        card3.setAttribute("role", "listitem");
-        return card3;
-      }));
+      episodesBody.replaceChildren(...eps.map((e) => h("div", { role: "listitem" }, [episodeCard(e, e.Id === c.selectedEp, playEpisode)])));
       if (!eps.length) episodesBody.append(h("p", { class: "lfx-plus-empty" }, "Keine Folgen vorhanden."));
     }
     const refreshEpisodes = () => {
@@ -13036,7 +13269,7 @@
       ico.innerHTML = ICON_CHEVRON;
       const btn3 = h("button", { type: "button", class: "lfx-plus-season", "aria-haspopup": "menu" }, [label, ico]);
       btn3.addEventListener("click", () => {
-        openPopover(btn3, {
+        const pop = openPopover(btn3, {
           label: "Staffel w\xE4hlen",
           align: "start",
           className: "lfx-plus-season-menu",
@@ -13046,14 +13279,24 @@
             className: x.Id === c.seasonId ? "is-active" : "",
             onClick: () => {
               closePopover();
-              if (x.Id === c.seasonId) return;
-              c.seasonId = x.Id;
-              c.selectedEp = null;
-              paintSeasonBar();
-              showSeason2();
+              if (x.Id !== c.seasonId) {
+                c.seasonId = x.Id;
+                c.selectedEp = null;
+                paintSeasonBar();
+                showSeason2();
+              }
+              const nb = seasonBar.querySelector("button");
+              if (nb) nb.focus({ preventScroll: true });
             }
           }))
         });
+        if (!pop || !pop.el) return;
+        for (const it of pop.el.querySelectorAll("[data-key]")) {
+          const on = it.dataset.key === c.seasonId;
+          it.setAttribute("role", "menuitemradio");
+          it.setAttribute("aria-checked", String(on));
+          if (on) it.focus({ preventScroll: true });
+        }
       });
       seasonBar.append(btn3);
     }
@@ -13106,6 +13349,9 @@
       if (removed.includes(main.Id) || removed.includes(s.id)) {
         location.hash = "#/home";
       } else if (updated.includes(main.Id)) {
+        for (const k of ["item", "seasons", "next", "similar", "coll"]) clearCache(`lfx:modal:${k}:${main.Id}`);
+        clearCache(`lfx:modal:eps:${main.Id}:`);
+        if (s.id !== main.Id) clearCache(`lfx:modal:item:${s.id}`);
         begin(s.id, { keepScroll: true });
       }
     }));
@@ -13238,6 +13484,7 @@
       if (!stale()) {
         s.loading = false;
         s.root.removeAttribute("aria-busy");
+        if (!s.done && s.sentinel && s.sentinel.getBoundingClientRect().top < (window.innerHeight || 800) + 800) loadMore(s);
       }
     }
   }
@@ -13256,7 +13503,7 @@
     const status = h("div", { class: "lfx-plus-browse__status" });
     const sentinel = h("div", { class: "lfx-plus-browse__sentinel", "aria-hidden": "true" });
     const root7 = h("div", { id: ROOT_ID12, class: "lfx-plus-page lfx-plus-browse" }, [title, chips, grid2, status, sentinel]);
-    Object.assign(s, { root: root7, chips, grid: grid2, status });
+    Object.assign(s, { root: root7, chips, grid: grid2, status, sentinel });
     tab2.prepend(root7);
     setPageOn(ON_CLASS11, true);
     scrollTop();
@@ -14084,10 +14331,15 @@
     document.documentElement.classList.remove("lfx-prime-search-open");
     const back = c.returnFocus;
     if (restoreFocus && back && back.isConnected && typeof back.focus === "function") {
-      try {
-        back.focus({ preventScroll: true });
-      } catch {
-      }
+      const give = (tries) => {
+        try {
+          back.focus({ preventScroll: true });
+        } catch {
+        }
+        const a = document.activeElement;
+        if (tries > 0 && back.isConnected && (!a || a === document.body) && typeof requestAnimationFrame === "function") requestAnimationFrame(() => give(tries - 1));
+      };
+      give(2);
     }
   }
   function openPrimeSearch({ returnFocus } = {}) {
@@ -14317,7 +14569,7 @@
       }
     };
     const onFocusOut = (e) => {
-      if (opened && e.relatedTarget && !wrap.contains(e.relatedTarget)) close2();
+      if (opened && (e.relatedTarget ? !wrap.contains(e.relatedTarget) : !pinned)) close2();
     };
     const onDocClick2 = (e) => {
       if (opened && !wrap.contains(e.target)) close2();
@@ -14337,6 +14589,8 @@
         gen9++;
         close2();
         document.removeEventListener("click", onDocClick2, true);
+        button.removeEventListener("click", onClick2);
+        flyout.removeEventListener("click", onFlyoutClick);
         wrap.removeEventListener("mouseenter", onEnter);
         wrap.removeEventListener("mouseleave", onLeave);
         wrap.removeEventListener("keydown", onKeydown3);
@@ -15312,7 +15566,7 @@
       scheduleRotate();
       startTrailer(item, myGen);
     }
-    function onSaver() {
+    function onSaver3() {
       if (disposed || !hero) return;
       if (isDataSaver("trailer")) stopTrailer();
       if (!isDataSaver("hero")) return;
@@ -15450,8 +15704,8 @@
       pool = isDataSaver("hero") ? saverPool(items) : items;
       putItems(pool);
       build13();
-      cleanupFns.push(onDataSaverChange(onSaver));
-      cleanupFns.push(onDataSaverPartsChange(onSaver));
+      cleanupFns.push(onDataSaverChange(onSaver3));
+      cleanupFns.push(onDataSaverPartsChange(onSaver3));
       slot.hidden = false;
       slot.classList.remove("is-loading");
       show3(0, true);
@@ -15782,7 +16036,11 @@
     if (myGen !== gen3) return;
     const hub = route.kind === "hub";
     const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
-    if (hub && !lib) return;
+    if (hub && !lib) {
+      teardown9();
+      current4 = null;
+      return;
+    }
     teardown9();
     const heroSlot = h("section", { id: "lfx-prime-hero", class: "lfx-prime-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-prime-rows" });
@@ -16156,7 +16414,7 @@
     }, 340));
     if (reducedMotion3() || isDataSaver("trailer")) return;
     loadDetail(item.Id).then((detail) => {
-      if (active4 !== a || !detail) return;
+      if (active4 !== a || !detail || isDataSaver("trailer")) return;
       a.preview = createMutedPreview(mediaEl, detail, {
         delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
         startAt: 4,
@@ -16231,6 +16489,20 @@
     if (!active4 && !intent2) return;
     closeNow2();
   }
+  function onSaver() {
+    const a = active4;
+    if (!a || !a.preview || !isDataSaver("trailer")) return;
+    a.preview.cancel();
+    a.preview = null;
+    a.video = null;
+    if (a.holding) {
+      a.holding = false;
+      setPreviewHold(false);
+    }
+    a.el.classList.remove("is-video");
+    const mute = a.el.querySelector(".lfx-prime-expand__mute");
+    if (mute) mute.hidden = true;
+  }
   function onKey2(e) {
     if (e.key === "Escape" && active4) closeNow2();
   }
@@ -16245,6 +16517,7 @@
     add(window, "scroll", onScroll5, { capture: true, passive: true });
     add(window, "hashchange", closeNow2);
     add(window, "blur", closeNow2);
+    listeners5.push(onDataSaverChange(onSaver), onDataSaverPartsChange(onSaver));
   }
   function stop5() {
     closeNow2();
@@ -16467,15 +16740,13 @@
     const btn3 = h("button", {
       type: "button",
       class: "lfx-pt__season",
-      "aria-haspopup": "menu",
-      "aria-label": "Staffel w\xE4hlen"
+      "aria-haspopup": "menu"
     }, [h("span", { class: "lfx-pt__season-label" }, seasonName(cur3)), iconEl2(ICONS5.chevron, "lfx-pt__season-chev")]);
     btn3.addEventListener("click", () => {
       if (isPopoverOpen()) {
         closePopover({ restoreFocus: true });
         return;
       }
-      btn3.setAttribute("aria-expanded", "true");
       openPopover(btn3, {
         label: "Staffeln",
         align: "start",
@@ -16619,6 +16890,16 @@
       wrap.append(h("div", { class: "lfx-pt__progress", "aria-hidden": "true" }, [h("span", { style: { width: `${Math.round(info.progress)}%` } })]));
     }
   }
+  function refreshPlay(s, main) {
+    if (main.Type !== "Series") {
+      paintPlay(s, playInfo(main, null));
+      return;
+    }
+    loadNextUp(main.Id).then((ep) => {
+      if (!s.dead) paintPlay(s, playInfo(main, ep));
+    }).catch(() => {
+    });
+  }
   function buildStage(s, main) {
     const bgUrl2 = backdropOf(main);
     s.bg = h("div", { class: "lfx-pt__bg", "aria-hidden": "true" }, [
@@ -16639,7 +16920,7 @@
     });
     s.muteBtn.classList.add("lfx-pt__mute");
     const logo = logoImage(main, { maxWidth: 720 });
-    const title = logo ? h("img", { class: "lfx-pt__logo", src: logo, alt: main.Name || "", decoding: "async" }) : h("h1", { class: "lfx-pt__title" }, main.Name || "");
+    const title = logo ? h("h1", { class: "lfx-pt__logo-h1" }, [h("img", { class: "lfx-pt__logo", src: logo, alt: main.Name || "", decoding: "async" })]) : h("h1", { class: "lfx-pt__title" }, main.Name || "");
     s.rankEl = h("div", { class: "lfx-pt__rank", hidden: true });
     const meta2 = h("div", { class: "lfx-pt__meta" });
     const fill4 = (seasonCount) => {
@@ -16666,10 +16947,9 @@
       label: favLabel(),
       icon: isFav() ? ICONS5.check : ICONS5.plus,
       mod: "fav",
-      onClick: async (b) => {
+      onClick: async () => {
         await toggleFavorite2(main);
         if (!s.dead) syncButtons(s, main);
-        b.blur();
       }
     });
     s.playedBtn = circleButton2({
@@ -16678,7 +16958,10 @@
       mod: "seen",
       onClick: async (b) => {
         await togglePlayed2(main, { anchorEl: b });
-        if (!s.dead) syncButtons(s, main);
+        if (!s.dead) {
+          syncButtons(s, main);
+          refreshPlay(s, main);
+        }
       }
     });
     s.trailerBtn = circleButton2({
@@ -16686,7 +16969,10 @@
       icon: ICONS5.trailer,
       mod: "trailer",
       hidden: true,
-      onClick: () => startVideo(s, { muted: false })
+      onClick: () => {
+        s.manual = true;
+        startVideo(s, { muted: false });
+      }
     });
     s.dlBtn = circleButton2({
       label: main.Type === "Series" || main.Type === "Season" ? "Episoden herunterladen" : "Herunterladen",
@@ -16706,6 +16992,7 @@
       h("div", { class: "lfx-pt__actions" }, [s.playWrap, s.circles])
     ]);
     s.stage = h("div", { class: "lfx-pt__stage" }, [s.bg, s.muteBtn, content]);
+    syncButtons(s, main);
     return s.stage;
   }
   function syncButtons(s, main) {
@@ -16920,10 +17207,19 @@
       s.trailerSrc = src;
       s.trailerBtn.hidden = false;
       if (reducedMotion4() || isMobile() || isDataSaver("trailer")) return;
-      const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS2);
+      const t = setTimeout(() => {
+        if (!isDataSaver("trailer")) startVideo(s, { muted: true });
+      }, TRAILER_DELAY_MS2);
       s.cleanups.push(() => clearTimeout(t));
+      s.autoTimer = t;
     }).catch(() => {
     });
+    const onSaver3 = () => {
+      if (!isDataSaver("trailer")) return;
+      clearTimeout(s.autoTimer);
+      if (!s.manual) stopVideo(s);
+    };
+    s.cleanups.push(onDataSaverChange(onSaver3), onDataSaverPartsChange(onSaver3));
     const onVis = () => {
       if (!s.video) return;
       try {
@@ -16949,6 +17245,7 @@
         if (fresh) {
           main.UserData = fresh.UserData || main.UserData;
           syncButtons(s, main);
+          refreshPlay(s, main);
         }
       }
     }));
@@ -18039,7 +18336,7 @@
         cleanups6.push(() => io.disconnect());
       }
     }
-    function onSaver() {
+    function onSaver3() {
       if (disposed || !pool.length || !isDataSaver("hero") || pool.length <= saverPool(pool).length) return;
       const cur3 = pool[index];
       pool = saverPool(pool, cur3 && cur3.Id);
@@ -18075,7 +18372,7 @@
       slot.classList.remove("is-loading");
       apply3(0);
     }
-    cleanups6.push(onDataSaverChange(onSaver), onDataSaverPartsChange(onSaver));
+    cleanups6.push(onDataSaverChange(onSaver3), onDataSaverPartsChange(onSaver3));
     slot.hidden = false;
     slot.classList.add("is-loading");
     init2();
@@ -18377,7 +18674,11 @@
     if (myGen !== gen4) return;
     const hub = route.kind === "hub";
     const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
-    if (hub && !lib) return;
+    if (hub && !lib) {
+      current5 = null;
+      teardown10();
+      return;
+    }
     teardown10();
     const heroSlot = h("section", { id: "lfx-retro-hero", class: "lfx-retro-hero-slot", "aria-label": "Empfehlung" });
     const rowsSlot = h("div", { class: "lfx-retro-rows" });
@@ -18693,10 +18994,17 @@
     const onBackdrop = (e) => {
       if (e.target === overlay) close2();
     };
+    const onFocusIn = (e) => {
+      if (overlay.contains(e.target)) return;
+      (e.relatedTarget === closeBtn ? video2 : closeBtn).focus();
+      if (!overlay.contains(document.activeElement)) closeBtn.focus();
+    };
+    document.addEventListener("focusin", onFocusIn);
     window.addEventListener("keydown", onKey4, true);
     overlay.addEventListener("click", onBackdrop);
     overlay.__lfxCleanup = () => {
       window.removeEventListener("keydown", onKey4, true);
+      document.removeEventListener("focusin", onFocusIn);
       overlay.removeEventListener("click", onBackdrop);
     };
     video2.addEventListener("error", () => {
@@ -18779,6 +19087,15 @@
       onClick2(b);
     });
     return b;
+  }
+  async function busy(b, fn) {
+    if (b.getAttribute("aria-busy")) return;
+    b.setAttribute("aria-busy", "true");
+    try {
+      await fn();
+    } finally {
+      b.removeAttribute("aria-busy");
+    }
   }
   function setToggle(b, on, labelOn, labelOff) {
     b.classList.toggle("is-on", on);
@@ -18865,6 +19182,7 @@
       let item = t.target;
       if (isSeries && item === main) {
         try {
+          if (!c.seasons.length) c.seasons = await loadSeasons(main.Id);
           const sid = c.seasons.length ? pickInitialSeason(c.seasons, null) : null;
           const eps = sid ? await loadEpisodes2(main.Id, sid) : [];
           item = eps[0] || null;
@@ -18875,6 +19193,10 @@
         t = { ...t, resume: false };
       }
       if (item) await play(item, { resume: Boolean(t.resume) });
+      else {
+        emitFx("error");
+        toast("Keine Folge zum Abspielen gefunden");
+      }
     });
     playBtn.classList.add("lfx-rt__btn--primary");
     const restartBtn = btn2("restart", "Neu starten", async () => {
@@ -18902,21 +19224,17 @@
       if (c.trailerSrc) openTrailer2(c.trailerSrc, b);
     });
     trailerBtn.hidden = true;
-    const favBtn = btn2("fav", "Meine Liste", async (b) => {
-      b.disabled = true;
+    const favBtn = btn2("fav", "Meine Liste", (b) => busy(b, async () => {
       const on = await toggleFavorite2(main);
-      b.disabled = false;
       if (!stale()) setToggle(b, on, "Auf der Liste", "Meine Liste");
-    });
+    }));
     setToggle(favBtn, Boolean(main.UserData && main.UserData.IsFavorite), "Auf der Liste", "Meine Liste");
-    const seenBtn = btn2("seen", "Gesehen", async (b) => {
-      b.disabled = true;
+    const seenBtn = btn2("seen", "Gesehen", (b) => busy(b, async () => {
       const on = await togglePlayed2(main, { anchorEl: b });
-      b.disabled = false;
       if (stale()) return;
       setToggle(b, on, "Gesehen", "Als gesehen");
       if (isSeries) showSeason2();
-    });
+    }));
     setToggle(seenBtn, Boolean(main.UserData && main.UserData.Played), "Gesehen", "Als gesehen");
     const dlBtn = btn2("dl", isSeries ? "Folgen laden" : "Herunterladen", (b) => {
       startDownloadFor(main, { anchorEl: b });
@@ -19323,11 +19641,12 @@
       input.removeEventListener("focus", onCaret);
       clear.removeEventListener("click", onClear);
     });
-    s.syncUi();
     try {
       input.focus({ preventScroll: true });
     } catch {
     }
+    input.setSelectionRange(q.length, q.length);
+    s.syncUi();
     runSearch2(s, q.trim());
   }
   function begin5(q) {
@@ -19373,6 +19692,8 @@
         state22.input.focus({ preventScroll: true });
       } catch {
       }
+      state22.input.setSelectionRange(state22.input.value.length, state22.input.value.length);
+      state22.syncUi();
     },
     unmount: dispose5
   };
@@ -19443,7 +19764,7 @@
     ]);
   }
   function itemNode(s, it) {
-    return s.view === "list" && !isMobile() ? listRow(it) : createTapeCard(it, { variant: "cover" });
+    return s.view === "list" && !isNarrow() ? listRow(it) : createTapeCard(it, { variant: "cover" });
   }
   function paintHead(s) {
     const lib = s.libName || "BIBLIOTHEK";
@@ -19462,7 +19783,7 @@
       b.setAttribute("aria-pressed", String(on));
     }
     s.genreBtn.classList.toggle("is-on", Boolean(s.genreId));
-    s.grid.classList.toggle("is-list", s.view === "list" && !isMobile());
+    s.grid.classList.toggle("is-list", s.view === "list" && !isNarrow());
     s.grid.setAttribute("role", "list");
     for (const chip of s.genres.querySelectorAll(".lfx-rb__genre")) {
       const on = (chip.dataset.genre || "") === (s.genreId || "");
@@ -19530,6 +19851,7 @@
         s.loading = false;
         s.root.removeAttribute("aria-busy");
         paintHead(s);
+        if (!s.done && s.sentinel && s.sentinel.getBoundingClientRect().top < (window.innerHeight || 800) + (isDataSaver("lazy") ? 100 : 900)) loadMore2(s);
       }
     }
   }
@@ -19601,7 +19923,7 @@
       status,
       sentinel
     ]);
-    Object.assign(s, { root: root7, path, count, opts, genres, genreBtn, grid: grid2, status });
+    Object.assign(s, { root: root7, path, count, opts, genres, genreBtn, grid: grid2, status, sentinel });
     tab2.prepend(root7);
     setPageOn2(ON_CLASS20, true);
     scrollTop2();
@@ -20045,9 +20367,18 @@
   function onKey3(e) {
     if (e.key === "Escape" && (active5 || intent3)) closeNow3();
   }
+  function onSaver2() {
+    const a = active5;
+    if (!a || !a.preview || !isDataSaver("trailer")) return;
+    a.preview.cancel();
+    a.preview = null;
+    a.el.classList.remove("is-video");
+  }
   function start8() {
     if (listeners6.length) return;
     listeners6 = [
+      onDataSaverChange(onSaver2),
+      onDataSaverPartsChange(onSaver2),
       add2(document, "mouseover", onOver3),
       add2(document, "mouseout", onOut3),
       add2(document, "keydown", onKey3),
@@ -20305,6 +20636,7 @@
   function createGlitch({ crt, enabled: enabled2 = () => true, minMs = 2e4, maxMs = 4e4 }) {
     const timers = createTimers();
     let running = false;
+    const added = /* @__PURE__ */ new Set();
     function fire() {
       if (!running) return;
       if (enabled2() && !document.hidden) {
@@ -20312,9 +20644,11 @@
         if (target) {
           const addedBase = !target.classList.contains("lfx-retro-glitch");
           target.classList.add("lfx-retro-glitch", "is-glitching");
+          if (addedBase) added.add(target);
           timers.timeout(() => {
             target.classList.remove("is-glitching");
             if (addedBase) target.classList.remove("lfx-retro-glitch");
+            added.delete(target);
           }, 600);
         }
         crt.glitchStrip();
@@ -20334,6 +20668,8 @@
         running = false;
         timers.clearAll();
         for (const el4 of document.querySelectorAll(".is-glitching")) el4.classList.remove("is-glitching");
+        for (const el4 of added) el4.classList.remove("lfx-retro-glitch");
+        added.clear();
       },
       fire
     };
@@ -20618,11 +20954,11 @@
     ["EXIT", "TERMINAL SCHLIESSEN"]
   ];
   var ASCII_LOGO = [
-    " _     _____ _   _ __________  ___   ___  _  _ ",
-    "| |   | ____| \\ | |__  /__  / / _ \\ / _ \\| || |",
-    "| |   |  _| |  \\| | / /   / / | (_) | (_) | || |_",
-    "| |___| |___| |\\  |/ /_  / /_  > _ < > _ <|__   _|",
-    "|_____|_____|_| \\_/____|/____|\\___/ \\___/    |_|  "
+    " _      _____  _   _  _____    __    __  ___   _  _",
+    "| |    | ____|| \\ | ||__  /   / /   / / ( _ ) | || |",
+    "| |    |  _|  |  \\| |  / /   / /   / /  / _ \\ | || |_",
+    "| |___ | |___ | |\\  | / /_  / /   / /  | (_) ||__   _|",
+    "|_____||_____||_| \\_|/____|/_/   /_/    \\___/    |_|"
   ];
   function parseCommand(input) {
     const raw = String(input == null ? "" : input).trim();
@@ -20663,7 +20999,7 @@
       case "hilfe":
         out("VERF\xDCGBARE BEFEHLE:");
         for (const [a, b] of HELP_LINES) out(`  ${a.padEnd(16, " ")} ${b}`);
-        out("TAB = VERVOLLST\xC4NDIGEN, PFEIL AUF/AB = VERLAUF.");
+        ctx2.print("TAB = VERVOLLST\xC4NDIGEN, PFEIL AUF/AB = VERLAUF.", "hint");
         break;
       case "whoami": {
         let n;
@@ -20717,6 +21053,7 @@
         } catch {
           hits = [];
         }
+        if (ctx2.isOpen && !ctx2.isOpen()) break;
         if (!hits.length) {
           ctx2.error(`KEINE KASSETTE GEFUNDEN: ${p.args}`);
           break;
@@ -20735,6 +21072,7 @@
         } catch {
           pick = null;
         }
+        if (ctx2.isOpen && !ctx2.isOpen()) break;
         if (!pick) {
           ctx2.error("NICHTS GEFUNDEN. IST DIE MEDIATHEK LEER?");
           break;
@@ -20760,7 +21098,7 @@
           break;
         }
         out(`WECHSLE ZU ${ctx2.themeName(id)} ... DAS TERMINAL WIRD GESCHLOSSEN.`);
-        await ctx2.sleep(500);
+        if (!await ctx2.sleep(500)) break;
         ctx2.close();
         await ctx2.setTheme(id);
         break;
@@ -20782,7 +21120,7 @@
       }
       case "regen":
         out("CODE-REGEN STARTET ... TASTE ZUM BEENDEN.");
-        await ctx2.sleep(400);
+        if (!await ctx2.sleep(400)) break;
         ctx2.close();
         ctx2.regen();
         break;
@@ -20795,7 +21133,7 @@
         break;
       case "reboot":
         out("SYSTEM WIRD NEU GESTARTET ...");
-        await ctx2.sleep(500);
+        if (!await ctx2.sleep(500)) break;
         ctx2.close();
         ctx2.reboot();
         break;
@@ -20847,7 +21185,7 @@
       if (!await ctx2.sleep(45)) return;
     }
     ctx2.print(">> ZUGRIFF GEW\xC4HRT <<", "ok");
-    ctx2.print("(ALLES NUR SPIELERI. NIEMAND WURDE GEHACKT.)");
+    ctx2.print("(ALLES NUR SPIELEREI. NIEMAND WURDE GEHACKT.)");
   }
 
   // src/js/features/retro/fx/terminal.js
@@ -20863,7 +21201,8 @@
     let closeBtn = null;
     let opener = null;
     let alive = false;
-    let busy2 = false;
+    let busy3 = false;
+    let gen9 = 0;
     const sleepers = /* @__PURE__ */ new Set();
     const history2 = [];
     let hIndex = 0;
@@ -20880,38 +21219,46 @@
         row.textContent = String(t);
       };
     }
-    const ctx2 = {
-      ...deps,
-      print,
-      error(text) {
-        print(text, "err");
-        emitFx("error");
-      },
-      clear() {
-        if (out) out.replaceChildren();
-      },
-      close() {
-        close2();
-      },
-      go(href) {
-        timers.timeout(() => {
-          close2();
-          try {
-            window.location.hash = href;
-          } catch {
+    function mkCtx(g) {
+      const live = () => alive && g === gen9;
+      return {
+        ...deps,
+        print: (text, cls) => g === gen9 ? print(text, cls) : () => {
+        },
+        error(text) {
+          if (g === gen9) {
+            print(text, "err");
+            emitFx("error");
           }
-        }, 700);
-      },
-      sleep(ms) {
-        return new Promise((resolve2) => {
-          sleepers.add(resolve2);
+        },
+        clear() {
+          if (out && g === gen9) out.replaceChildren();
+        },
+        close() {
+          if (g === gen9) close2();
+        },
+        isOpen: live,
+        go(href) {
+          if (!live()) return;
           timers.timeout(() => {
-            sleepers.delete(resolve2);
-            resolve2(alive);
-          }, ms);
-        });
-      }
-    };
+            close2();
+            try {
+              window.location.hash = href;
+            } catch {
+            }
+          }, 700);
+        },
+        sleep(ms) {
+          return new Promise((resolve2) => {
+            sleepers.add(resolve2);
+            timers.timeout(() => {
+              sleepers.delete(resolve2);
+              resolve2(live());
+            }, ms);
+          });
+        }
+      };
+    }
     async function run(line) {
       const raw = String(line || "").trim();
       if (!raw) return;
@@ -20920,14 +21267,17 @@
       if (history2.length > MAX_HISTORY) history2.shift();
       hIndex = history2.length;
       draft = "";
-      busy2 = true;
+      busy3 = true;
+      const g = gen9;
       try {
-        await execute(raw, ctx2);
+        await execute(raw, mkCtx(g));
       } catch {
-        print("INTERNER FEHLER. SYSTEM L\xC4UFT WEITER.", "err");
+        if (g === gen9) print("INTERNER FEHLER. SYSTEM L\xC4UFT WEITER.", "err");
       } finally {
-        busy2 = false;
-        if (input && alive) input.focus({ preventScroll: true });
+        if (g === gen9) {
+          busy3 = false;
+          if (input && alive) input.focus({ preventScroll: true });
+        }
       }
     }
     function onKey4(e) {
@@ -20969,7 +21319,7 @@
         input.value = hIndex >= history2.length ? draft : history2[hIndex];
       } else if ((e.key === "l" || e.key === "L") && e.ctrlKey) {
         e.preventDefault();
-        ctx2.clear();
+        if (out) out.replaceChildren();
       } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
         emitFx("type");
       }
@@ -20996,7 +21346,7 @@
       input.id = "lfx-retro-term-input";
       form.addEventListener("submit", (e) => {
         e.preventDefault();
-        if (busy2) return;
+        if (busy3) return;
         const v = input.value;
         input.value = "";
         run(v);
@@ -21008,7 +21358,7 @@
         "aria-modal": "true",
         "aria-label": "LENZ//84 Terminal"
       }, [
-        h("div", { class: "lfx-retro-term__bar" }, [h("span", { class: "lfx-retro-term__title" }, "LENZ//84 TERMINAL  [ESC = ENDE]"), closeBtn]),
+        h("div", { class: "lfx-retro-term__bar" }, [h("span", { class: "lfx-retro-term__title" }, ["LENZ//84 TERMINAL", h("span", { class: "lfx-retro-term__hint" }, "  [ESC = ENDE]")]), closeBtn]),
         out,
         form
       ]);
@@ -21024,8 +21374,10 @@
         if (input) input.focus();
         return;
       }
+      if (root7) teardown11();
       opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
-      busy2 = false;
+      busy3 = false;
+      gen9 += 1;
       build13();
       document.body.append(root7);
       document.documentElement.classList.add("lfx-retro-term-open");
@@ -21045,7 +21397,7 @@
       timers.clearAll();
       releaseSleepers();
       alive = false;
-      busy2 = false;
+      busy3 = false;
       if (root7) root7.remove();
       root7 = out = input = closeBtn = null;
       document.documentElement.classList.remove("lfx-retro-term-open");
@@ -21398,7 +21750,9 @@
       getPref,
       setPref,
       unlockSound,
-      regen: () => screensaver.run(true),
+      regen: () => {
+        if (S) screensaver.run(true);
+      },
       overdrive,
       reboot: () => {
         clearBooted();
@@ -21707,7 +22061,7 @@
     ]);
   }
   var PROFILE_CLASS = "lfx-store-profile";
-  var busy = false;
+  var busy2 = false;
   function profileIsOpen3() {
     const el4 = document.getElementById("lfx-popover");
     return isPopoverOpen() && Boolean(el4 && el4.classList.contains(PROFILE_CLASS));
@@ -21720,14 +22074,14 @@
       closePopover({ restoreFocus: true });
       return;
     }
-    if (busy) return;
-    busy = true;
+    if (busy2) return;
+    busy2 = true;
     try {
       const items = await profileEntries({ theme: "store", returnFocus: anchor });
       if (!anchor.isConnected) return;
       openPopover(anchor, { label: "Profil", items, align: "end", className: PROFILE_CLASS });
     } finally {
-      busy = false;
+      busy2 = false;
     }
   }
   function profileButton() {

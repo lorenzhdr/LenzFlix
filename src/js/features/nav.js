@@ -91,7 +91,11 @@ export function navItems(model) {
   return items;
 }
 
+const VIEWS_RETRY_MS = 5000; // B049: nach einem Ladefehler der Bibliotheken frühestens so bald erneut versuchen
+// L001: eigene Kopfleisten-Mountpoints vor die React-Wurzel hängen, damit Tab-Reihenfolge = optische Reihenfolge (vor dem Seiteninhalt).
+export const beforeApp = () => document.getElementById('reactRoot');
 const state = {
+  viewsFailedAt: 0,
   nav: null,
   model: { series: null, movies: null, more: [] },
   route: null,
@@ -102,6 +106,7 @@ const state = {
   raf: 0,
   watch: [],
   toolbar: null,
+  clickAt: 0,
 };
 
 function setMenu(open) {
@@ -276,10 +281,13 @@ function onScroll() {
 }
 
 function onDocClick(e) {
+  // Klick auf einen #/home-Link merken: die nächste neue Route öffnet oben (alle Seiten teilen die View #/home, Jellyfin setzt nicht zurück).
+  if (e.target && e.target.closest && e.target.closest('a[href^="#/home"]')) state.clickAt = Date.now();
   if (state.menuOpen && state.nav && !state.nav.contains(e.target)) setMenu(false);
 }
 
 async function loadViews(seq) {
+  state.viewsFailedAt = 0;
   try {
     const views = await cached(`views:${getUserId()}`, getViews, 5 * 60_000);
     if (seq !== state.seq || !state.nav) return;
@@ -287,6 +295,7 @@ async function loadViews(seq) {
   } catch {
     if (seq !== state.seq || !state.nav) return;
     state.model = { series: null, movies: null, more: [] };
+    state.viewsFailedAt = Date.now();
   }
   render();
 }
@@ -299,7 +308,7 @@ const navFeature = {
   mount(route) {
     const seq = ++state.seq;
     state.route = route;
-    state.nav = mountPoint(NAV_ID, { tag: 'nav', className: 'lfx-nav' });
+    state.nav = mountPoint(NAV_ID, { tag: 'nav', className: 'lfx-nav', before: beforeApp() });
     state.nav.setAttribute('aria-label', 'Hauptnavigation');
     mountAmbient();
     document.documentElement.classList.add('lfx-nav-on');
@@ -325,7 +334,10 @@ const navFeature = {
     // schließen, wenn sich die Route wirklich ändert, sonst klappt es unter der Maus wieder zu.
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
+    if (state.viewsFailedAt && Date.now() - state.viewsFailedAt >= VIEWS_RETRY_MS) loadViews(state.seq);
     if (changed) setMenu(false);
+    if (changed && state.clickAt && Date.now() - state.clickAt < 1500) window.scrollTo(0, 0); // Zurück/Vor ohne Klick behält die Position
+    state.clickAt = 0;
     applyActive();
     watchToolbar();
     scheduleFit();
@@ -341,6 +353,7 @@ const navFeature = {
     const cl = document.documentElement.classList;
     cl.remove('lfx-nav-on', 'lfx-scrolled');
     state.nav = null;
+    state.viewsFailedAt = 0;
     state.menuOpen = false;
   },
 };

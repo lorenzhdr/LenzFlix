@@ -9,7 +9,7 @@ import { isChooserOpen } from '../../core/download.js';
 import { getStoredItem, putItems } from '../../core/itemstore.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
-import { isDataSaver } from '../../core/datasaver.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { titleHref } from '../../shared/routes.js';
 import { createMutedPreview } from '../../shared/trailer.js';
 import { getTrendInfo } from '../../shared/trend.js';
@@ -227,7 +227,7 @@ async function openPoster(card) {
   }, 340));
   if (reducedMotion() || isDataSaver('trailer')) return; // Datensparmodus: keine Trailer-Vorschau (die Hover-Karte bleibt)
   loadDetail(item.Id).then((detail) => {
-    if (active !== a || !detail) return;
+    if (active !== a || !detail || isDataSaver('trailer')) return;
     a.preview = createMutedPreview(mediaEl, detail, {
       delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
       startAt: 4,
@@ -303,6 +303,19 @@ function onScroll() {
   closeNow();
 }
 
+/** Datensparmodus während des Hovers eingeschaltet: laufende Trailer-Vorschau beenden, die Karte bleibt. */
+function onSaver() {
+  const a = active;
+  if (!a || !a.preview || !isDataSaver('trailer')) return;
+  a.preview.cancel();
+  a.preview = null;
+  a.video = null;
+  if (a.holding) { a.holding = false; setPreviewHold(false); }
+  a.el.classList.remove('is-video');
+  const mute = a.el.querySelector('.lfx-prime-expand__mute');
+  if (mute) mute.hidden = true;
+}
+
 function onKey(e) {
   if (e.key === 'Escape' && active) closeNow();
 }
@@ -319,6 +332,7 @@ function start() {
   add(window, 'scroll', onScroll, { capture: true, passive: true });
   add(window, 'hashchange', closeNow);
   add(window, 'blur', closeNow);
+  listeners.push(onDataSaverChange(onSaver), onDataSaverPartsChange(onSaver));
 }
 
 function stop() {

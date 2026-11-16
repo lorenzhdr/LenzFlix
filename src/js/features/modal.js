@@ -29,6 +29,7 @@ const BLOCKED_PATHS = ['/video', '/login', '/dashboard'];
 const SKIP_IN_CARD = '.cardOverlayButton, .lfx-card__action, button, [data-action="menu"], [data-action="play"], [data-action="resume"]';
 const IMAGE_LINK = 'a.cardImageContainer, a.lfx-card__link';
 
+const REFRESH_DEBOUNCE = 1800;
 let state = null; // offenes Modal
 let clickInstalled = false;
 
@@ -98,11 +99,11 @@ export function openModal(itemOrId, opts = {}) {
   }
   const hint = typeof itemOrId === 'object' ? itemOrId : null;
   if (state) return loadInto(id, hint, true);
-  create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay));
+  create(opts.opener || (document.activeElement !== document.body ? document.activeElement : null), Boolean(opts.overlay), id);
   return loadInto(id, hint, false);
 }
 
-function create(opener, overlayMode = false) {
+function create(opener, overlayMode = false, id = null) {
   const overlay = mountPoint(ROOT_ID, { className: 'lfx-modal-overlay' });
   overlay.replaceChildren();
   const closeBtn = h('button', { type: 'button', class: 'lfx-modal__close', 'aria-label': 'Schließen', title: 'Schließen', onclick: () => closeModal() }, [icon('close')]);
@@ -118,10 +119,12 @@ function create(opener, overlayMode = false) {
   };
   overlay.addEventListener('click', onOverlayClick);
 
-  state = { overlay, modal, content, closeBtn, opener, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
+  clearCache('lfx:modal:'); // frischer Start: Fortschritt/NextUp nach einer Wiedergabe nicht aus dem Cache (Wechsel innerhalb des Fensters nutzt ihn weiter)
+  window.removeEventListener('popstate', onOrphanPop);
+  state = { overlay, modal, content, closeBtn, opener, rootId: id, token: 0, pushed: false, after: null, fallback: null, main: null, parts: null, scrollY: window.scrollY || 0, overlayMode, lock: null, seasons: [], episodes: [], seasonId: null, selectedEpisodeId: null, onOverlayClick, unsub: null };
   state.unsub = onItemsChanged(onChanged);
+  lockScroll(state); // auch am Desktop: overflow:hidden an html/body allein verwirft sonst die Scrollposition der Seite
   if (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 799px)').matches) {
-    lockScroll(state);
     // Handy: Modal per Wischgeste nach unten schließen (nur am Anfang des Inhalts, nicht über Menü/Auswahl).
     state.detachSwipe = attachSwipeClose(modal, {
       backdrop: overlay,
@@ -141,7 +144,7 @@ function create(opener, overlayMode = false) {
   closeBtn.focus({ preventScroll: true });
 }
 
-/** Handy: Seite per position:fixed an Ort und Stelle halten (iOS setzt sonst scrollY zurück, beim Wischen scheint die falsche Stelle durch). */
+/** Seite per position:fixed an Ort und Stelle halten (iOS setzt sonst scrollY zurück, beim Wischen scheint die falsche Stelle durch). */
 function lockScroll(s) {
   const b = document.body;
   if (!b) return;
@@ -166,7 +169,7 @@ function unlockScroll(s) {
   st.left = l.left;
   st.right = l.right;
   st.width = l.width;
-  window.scrollTo(0, l.y);
+  if (l.y) window.scrollTo(0, l.y);
 }
 
 function teardown() {
@@ -174,6 +177,7 @@ function teardown() {
   const s = state;
   state = null;
   clearTimeout(s.fallback);
+  clearTimeout(s.refreshTimer);
   if (typeof s.unsub === 'function') s.unsub();
   if (s.detachSwipe) s.detachSwipe();
   s.overlay.removeEventListener('click', s.onOverlayClick);
@@ -183,7 +187,8 @@ function teardown() {
   unlockScroll(s);
   rootEl().classList.remove('lfx-modal-open');
   unmountPoint(s.overlay);
-  const op = s.opener;
+  let op = s.opener;
+  if (!(op && op.isConnected) && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link'); // Opener (z. B. Hovercard-Knopf) ist weg: zugehörige Karte
   if (op && op.isConnected && typeof op.focus === 'function' && !overlayOnTop()) op.focus({ preventScroll: true });
   return s.after;
 }
@@ -296,10 +301,16 @@ function preloadImages(id, hint) {
   }
 }
 
+/** Inhalt ausgetauscht (fokussiertes Element weg, Fokus auf body): Fokus im Fenster halten. */
+function keepFocus(s) {
+  if (document.activeElement === document.body) s.closeBtn.focus({ preventScroll: true });
+}
+
 async function loadInto(id, hint, replace, refresh = false) {
   const s = state;
   const token = ++s.token;
   const stale = () => state !== s || s.token !== token;
+  if (!refresh) { s.seasons = []; s.episodes = []; } // Staffeln des vorigen Titels nie für den neuen verwenden
   if (refresh) {
     // Aktualisierung: bisherigen Inhalt stehen lassen, kein Skeleton, kein Scroll-Reset, keine History-Änderung.
   } else if (replace) {
@@ -309,6 +320,7 @@ async function loadInto(id, hint, replace, refresh = false) {
   } else {
     s.content.replaceChildren(buildSkeleton());
   }
+  if (!refresh) keepFocus(s);
   if (!refresh) preloadImages(id, hint);
   let main;
   let sel;
@@ -341,6 +353,7 @@ async function loadInto(id, hint, replace, refresh = false) {
     if (footer) footer.prepend(link, ' · ');
   }
   s.content.replaceChildren(parts.el);
+  keepFocus(s);
   if (!refresh) s.overlay.scrollTop = 0;
 
   const tasks = [];
@@ -374,11 +387,13 @@ async function loadSeriesParts(s, token, H) {
 }
 
 /** Das Info-Fenster öffnet immer oben; die gewählte Folge ist nur per .is-selected markiert (kein automatisches Scrollen des Overlays). */
-async function showSeason(s, token, H) {
-  const episodes = await data.loadEpisodes(s.main.Id, s.seasonId);
-  if (state !== s || s.token !== token) return;
+async function showSeason(s, token, H, sid = s.seasonId) {
+  s.want = sid; // neueste Anfrage gewinnt; seasonId und Folgen wechseln erst gemeinsam nach dem Laden
+  const episodes = await data.loadEpisodes(s.main.Id, sid);
+  if (state !== s || s.token !== token || s.want !== sid) return;
+  s.seasonId = sid;
   s.episodes = episodes;
-  renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: s.seasonId, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
+  renderEpisodes(s.parts.episodesSlot, { seasons: s.seasons, seasonId: sid, episodes, selectedEpisodeId: s.selectedEpisodeId }, H);
   const row = s.parts.episodesSlot.querySelector('.lfx-modal__ep.is-selected');
   if (!row) return;
   // Interne Folgenliste (falls scrollbar) auf die Zeile setzen – ohne das Overlay zu bewegen (kein scrollIntoView).
@@ -398,16 +413,22 @@ function onChanged({ removed = [], updated = [] } = {}) {
   if (removed.includes(id)) { closeModal(); return; }
   const gone = removed.filter((rid) => s.episodes.some((e) => e.Id === rid));
   if (gone.length) {
-    s.episodes = s.episodes.filter((e) => !gone.includes(e.Id));
+    s.episodes.splice(0, s.episodes.length, ...s.episodes.filter((e) => !gone.includes(e.Id))); // gleiches Array: „Mehr anzeigen“ zeichnet daraus
     clearCache(`lfx:modal:eps:${id}:`);
     for (const rid of gone) {
       s.overlay.querySelectorAll('.lfx-modal__ep').forEach((row) => { if (row.dataset.id === rid) row.remove(); });
     }
+    syncSeasonBtn(s);
   }
   if (updated.includes(id)) {
-    for (const key of ['item', 'seasons', 'next', 'similar', 'coll']) clearCache(`lfx:modal:${key}:${id}`);
-    clearCache(`lfx:modal:eps:${id}:`);
-    loadInto(id, null, true, true);
+    // Entprellen: der Menü-Refresh meldet bis zu viermal binnen 8 s, nur der letzte baut neu auf
+    clearTimeout(s.refreshTimer);
+    s.refreshTimer = setTimeout(() => {
+      if (state !== s) return;
+      for (const key of ['item', 'seasons', 'next', 'similar', 'coll']) clearCache(`lfx:modal:${key}:${id}`);
+      clearCache(`lfx:modal:eps:${id}:`);
+      loadInto(id, null, true, true);
+    }, REFRESH_DEBOUNCE);
   }
 }
 
@@ -457,11 +478,8 @@ async function bulkPlayed(s, targetId, next) {
   clearPlayedCaches(seriesId, seriesId);
   const seasonIds = targetId === seriesId ? s.seasons.map((x) => x.Id) : [targetId];
   const wrong = [];
-  for (const sid of seasonIds) {
-    try {
-      for (const e of await data.loadEpisodes(seriesId, sid)) if (isPlayed(e) !== next) wrong.push(e);
-    } catch { /* Absicherung best effort */ }
-  }
+  const lists = await Promise.all(seasonIds.map((sid) => data.loadEpisodes(seriesId, sid).catch(() => []))); // best effort, parallel
+  for (const l of lists) for (const e of l) if (isPlayed(e) !== next) wrong.push(e);
   let failed = 0;
   for (let i = 0; i < wrong.length; i += 6) {
     const res = await Promise.allSettled(wrong.slice(i, i + 6).map((e) => setPlayed(e.Id, next)));
@@ -473,9 +491,8 @@ async function bulkPlayed(s, targetId, next) {
 
 async function seriesEpisodeCount(s) {
   try {
-    let n = 0;
-    for (const se of s.seasons) n += (await data.loadEpisodes(s.main.Id, se.Id)).length;
-    return n;
+    const lists = await Promise.all(s.seasons.map((se) => data.loadEpisodes(s.main.Id, se.Id)));
+    return lists.reduce((n, l) => n + l.length, 0);
   } catch {
     return 0;
   }
@@ -484,6 +501,7 @@ async function seriesEpisodeCount(s) {
 function makeHandlers(s, token) {
   const main = s.main;
   const stale = () => state !== s || s.token !== token;
+  const sameTitle = () => state === s && Boolean(s.main) && s.main.Id === main.Id;
   // Wiedergabe-Start läuft (Doppelklick-Schutz). Erst Modal samt History-Eintrag abbauen, dann Proxy-Klick.
   let starting = false;
   // Ladebild sofort (verdeckt die Startseite, die beim Schließen kurz aufblitzt), dann Modal schließen, dann Proxy-Klick.
@@ -509,11 +527,11 @@ function makeHandlers(s, token) {
       confirmLabel: `Als ${verb} markieren`,
       anchorEl: btn,
       onConfirm: async () => {
-        if (stale()) return;
+        if (!sameTitle()) return; // ein Refresh des Titels (neues token) darf die Rückfrage nicht verwerfen
         btn.disabled = true;
         try {
           const failed = await bulkPlayed(s, targetId, next);
-          if (stale()) return;
+          if (!sameTitle()) return;
           if (isSeries || !next) {
             main.UserData = main.UserData || {};
             main.UserData.Played = isSeries ? next : false;
@@ -537,6 +555,8 @@ function makeHandlers(s, token) {
       const row = btn.closest('.lfx-modal__ep');
       item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
       delete item.UserData.PlayedPercentage;
+      const syncLabel = () => { if (item === main && main.Type !== 'Series' && !stale() && s.parts) setPlayLabel(s.parts.playBtn, hasResume(item) ? 'Fortsetzen' : 'Abspielen'); };
+      syncLabel();
       setPlayedState(btn, next);
       setEpisodeSeen(row, next);
       syncSeasonBtn(s);
@@ -544,6 +564,7 @@ function makeHandlers(s, token) {
         await setPlayed(item.Id, next);
       } catch {
         item.UserData = prev;
+        syncLabel();
         setPlayedState(btn, !next);
         setEpisodeSeen(row, !next);
         if (!stale()) syncSeasonBtn(s);
@@ -578,7 +599,8 @@ function makeHandlers(s, token) {
         if (main.Type === 'Series') {
           target = await data.loadNextUp(main.Id).catch(() => null);
           if (!target && !stale()) {
-            const eps = s.seasons.length ? await data.loadEpisodes(main.Id, pickInitialSeason(s.seasons, null)).catch(() => []) : [];
+            const ss = s.seasons.length ? s.seasons : await data.loadSeasons(main.Id).catch(() => []);
+            const eps = ss.length ? await data.loadEpisodes(main.Id, pickInitialSeason(ss, null)).catch(() => []) : [];
             target = eps[0] || null;
           }
           resume = hasResume(target);
@@ -586,7 +608,12 @@ function makeHandlers(s, token) {
       } catch {
         target = null;
       }
-      if (!target || stale()) { starting = false; hideCover(); return; }
+      if (!target || stale()) {
+        starting = false;
+        if (!target && !stale()) toast('Keine Folgen verfügbar');
+        hideCover();
+        return;
+      }
       startPlayback(target, resume);
     },
     toggleFav: (btn) => toggleFavGeneric(main, btn),
@@ -610,9 +637,8 @@ function makeHandlers(s, token) {
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     async season(seasonId) {
-      s.seasonId = seasonId;
       s.selectedEpisodeId = null;
-      await showSeason(s, token, H).catch(() => {});
+      await showSeason(s, token, H, seasonId).catch(() => {});
     },
     playItem(ep) {
       if (starting) return;
@@ -625,8 +651,15 @@ function makeHandlers(s, token) {
 
 // ---------------------------------------------------------------- Feature
 
+/** Verwaister Modal-Eintrag (Wiedergabe über das native Menü): beim Zurück aus dem Player einmal überspringen. */
+function onOrphanPop() {
+  window.removeEventListener('popstate', onOrphanPop);
+  if (!state && history.state && history.state.lfxModal) history.back();
+}
+
 function destroyAll() {
   if (state) {
+    if (state.pushed) window.addEventListener('popstate', onOrphanPop);
     state.pushed = false;
     teardown();
   }

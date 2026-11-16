@@ -19,7 +19,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .osdT
 }
 
 /* ---- Kopfzeile (Zurück-Pfeil, Titel) und Bedienleiste: Grund dunkel statt Jellyfin-Verlauf ---- */
-html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .skinHeader.osdHeader {
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .skinHeader.osdHeader {
   background: linear-gradient(to bottom, rgba(10, 6, 3, 0.85), rgba(10, 6, 3, 0));
   color: var(--lfx-retro-amber);
   font-family: var(--lfx-retro-font-mono);
@@ -27,6 +27,10 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .skin
 html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) .videoOsdBottom {
   background: linear-gradient(to top, rgba(10, 6, 3, 0.9), rgba(10, 6, 3, 0));
 }
+
+/* Der Modern-Header ist Geschwister (nicht Kind) von #videoOsdPage: ohne dessen Ancestor-Scope. */
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .osdHeader :is(.MuiToolbar-root .MuiIconButton-root, .headerBackButton) { color: var(--lfx-retro-amber); border-radius: 2px; }
+html.lfx-js.lfx-theme-retro:not(.layout-tv) .osdHeader .MuiTypography-root { font-family: var(--lfx-retro-font-mono); color: var(--lfx-retro-amber-hi); }
 
 /* ---- Knöpfe (Material-Icons) ---- */
 html.lfx-js.lfx-theme-retro:not(.layout-tv) [id="videoOsdPage"]:not(.hide) :is(.paper-icon-button-light, .osdControls button, .osdHeader button) {

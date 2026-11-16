@@ -188,7 +188,11 @@ html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play {
   opacity: 0;
   transition: opacity 0.2s ease-out, background-color 0.2s;
 }
-html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play:focus-visible { opacity: 1; outline: none; }
+html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play:focus-visible {
+  opacity: 1;
+  outline: none;
+  box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff;
+}
 html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-card__play-icon {
   width: 0;
   height: 0;

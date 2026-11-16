@@ -35,9 +35,12 @@ export function heroImage(item) {
   return api.imageUrl(item, { type: 'Backdrop', maxWidth: 1280 }) || api.landscapeImage(item, { maxWidth: 1280 });
 }
 
+/** Hero ist ein Thumb-Bild (Schriftzug eingebrannt): dann kein zusätzliches Logo. */
+const thumbHero = (item) => !api.imageUrl(item, { type: 'Backdrop', maxWidth: 1280 }) && (api.pickLandscape(item) || {}).type === 'Thumb';
+
 /** Logo-URL des Info-Fensters (eine Quelle für buildDetail und das frühe Vorladen in modal.js). */
 export function logoUrl(item) {
-  return api.logoImage(item, { maxWidth: 500 });
+  return thumbHero(item) ? null : api.logoImage(item, { maxWidth: 500 });
 }
 
 export function detailHref(id, serverId) {
@@ -168,7 +171,7 @@ export function buildDetail(item, H, { playLabel = 'Abspielen' } = {}) {
     ? null
     : playedButton(item, { onclick: () => (item.Type === 'Series' ? H.toggleSeriesPlayed(playedBtn) : H.togglePlayed(item, playedBtn)) });
 
-  const title = h('h2', { id: TITLE_ID, class: logo ? 'lfx-modal__title lfx-sr' : 'lfx-modal__title' }, item.Name || '');
+  const title = h('h2', { id: TITLE_ID, class: logo || thumbHero(item) ? 'lfx-modal__title lfx-sr' : 'lfx-modal__title' }, item.Name || '');
   const hero = h('div', { class: 'lfx-modal__hero' }, [
     img ? h('img', { class: 'lfx-modal__hero-img', src: img, alt: '' }) : null,
     h('div', { class: 'lfx-modal__hero-fade' }),
@@ -299,6 +302,13 @@ function moreButton(onclick) {
   ]);
 }
 
+/** „Mehr anzeigen“: Fokus (nur bei Tastaturbedienung auf dem Knopf) auf das erste neue Element, sonst landet er auf body. */
+function revealMore(list, from, btnEl, grow) {
+  const kb = btnEl.contains(document.activeElement);
+  grow();
+  if (kb && list.children[from]) list.children[from].focus({ preventScroll: true });
+}
+
 /** Füllt den Folgen-Abschnitt. state: {seasons, seasonId, episodes, selectedEpisodeId}. */
 export function renderEpisodes(slot, state, H) {
   slot.hidden = false;
@@ -323,12 +333,31 @@ export function renderEpisodes(slot, state, H) {
     const btn = h('button', {
       type: 'button', class: 'lfx-modal__seasonbtn', 'aria-haspopup': 'listbox', 'aria-expanded': 'false',
       onclick: () => toggle(list.hidden),
+      onkeydown: (e) => { if (e.key === 'ArrowDown' && list.hidden) { e.preventDefault(); toggle(true); } },
     }, [h('span', {}, (current && current.Name) || 'Staffel'), icon('chevron')]);
-    const toggle = (open) => { list.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+    // Listbox-Muster: Öffnen fokussiert die gewählte Option, Pfeile/Home/End bewegen
+    const toggle = (open) => {
+      list.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      if (open) (list.querySelector('[aria-selected="true"]') || list.querySelector('button'))?.focus({ preventScroll: true });
+    };
+    list.addEventListener('keydown', (e) => {
+      const o = [...list.querySelectorAll('button')];
+      const i = o.indexOf(document.activeElement);
+      const n = { ArrowDown: Math.min(i + 1, o.length - 1), ArrowUp: Math.max(i - 1, 0), Home: 0, End: o.length - 1 }[e.key];
+      if (n === undefined) return;
+      e.preventDefault();
+      o[n].focus({ preventScroll: true });
+    });
     for (const s of seasons) {
       list.append(h('li', { role: 'presentation' }, [h('button', {
         type: 'button', role: 'option', class: 'lfx-modal__seasonopt', 'aria-selected': String(s.Id === seasonId), 'data-id': s.Id,
-        onclick: () => { toggle(false); if (s.Id !== seasonId) H.season(s.Id); },
+        onclick: () => {
+          toggle(false);
+          btn.focus({ preventScroll: true });
+          // renderEpisodes ersetzt den Knopf: Fokus nach dem Laden auf den neuen setzen
+          if (s.Id !== seasonId) Promise.resolve(H.season(s.Id)).then(() => { if (slot.isConnected && document.activeElement === document.body) slot.querySelector('.lfx-modal__seasonbtn')?.focus({ preventScroll: true }); });
+        },
       }, s.Name || `Staffel ${s.IndexNumber}`)]));
     }
     tools.append(h('div', { class: 'lfx-modal__dropdown' }, [btn, list]));
@@ -346,7 +375,11 @@ export function renderEpisodes(slot, state, H) {
   let shown = Math.max(EPISODES_INITIAL, selIdx + 1);
   const draw = () => {
     listEl.replaceChildren(...episodes.slice(0, shown).map((e) => episodeRow(e, selectedEpisodeId, H, episodes)));
-    if (shown < episodes.length) listEl.append(moreButton(() => { shown = episodes.length; draw(); }));
+    if (shown < episodes.length) {
+      const from = shown;
+      const more = moreButton(() => revealMore(listEl, from, more, () => { shown = episodes.length; draw(); }));
+      listEl.append(more);
+    }
   };
   draw();
 }
@@ -365,7 +398,7 @@ function card(item, H) {
   return h('div', {
     class: 'lfx-modal__card', role: 'button', tabindex: '0', 'data-id': item.Id, 'aria-label': item.Name || '',
     onclick: open,
-    onkeydown: (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); open(); } },
+    onkeydown: (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); open(); } },
   }, [
     h('div', { class: 'lfx-modal__card-img' }, [
       img ? h('img', { src: img, alt: '', loading: 'lazy' }) : h('span', { class: 'lfx-modal__card-name' }, item.Name || ''),
@@ -393,7 +426,11 @@ export function renderCards(slot, title, items, H, initial = CARDS_INITIAL) {
   const draw = () => {
     grid.replaceChildren(...items.slice(0, shown).map((it) => card(it, H)));
     slot.querySelector('.lfx-modal__more')?.remove();
-    if (shown < items.length) slot.append(moreButton(() => { shown = items.length; draw(); }));
+    if (shown < items.length) {
+      const from = shown;
+      const more = moreButton(() => revealMore(grid, from, more, () => { shown = items.length; draw(); }));
+      slot.append(more);
+    }
   };
   draw();
 }

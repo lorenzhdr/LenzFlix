@@ -7,7 +7,7 @@ import { isModern, isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
 import { closePopover } from '../core/popover.js';
 import { createDataSaverButton } from '../shared/dsbtn.js';
-import { EXCLUDED } from './nav.js';
+import { EXCLUDED, beforeApp } from './nav.js';
 
 const ID = 'lfx-ds-btn';
 
@@ -17,7 +17,7 @@ const dsbtnFeature = {
     return isReady() && isModern() && !isTv() && isTheme('flix') && !EXCLUDED.test(route.path);
   },
   mount() {
-    const el = mountPoint(ID, { tag: 'button' });
+    const el = mountPoint(ID, { tag: 'button', className: 'mui-fixed', before: beforeApp() });
     el.type = 'button';
     createDataSaverButton({ el });
     document.documentElement.classList.add('lfx-dsbtn-on');

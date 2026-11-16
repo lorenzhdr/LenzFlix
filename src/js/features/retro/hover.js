@@ -10,7 +10,7 @@ import { isMenuOpen } from '../../core/itemmenu.js';
 import { getStoredItem, putItems } from '../../core/itemstore.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
-import { isDataSaver } from '../../core/datasaver.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { play } from '../../core/playback.js';
 import { titleHref } from '../../shared/routes.js';
 import { toggleFavorite } from '../../shared/titleactions.js';
@@ -283,9 +283,20 @@ function onKey(e) {
   if (e.key === 'Escape' && (active || intent)) closeNow();
 }
 
+/** Datensparmodus (Teil 'trailer') mitten im Hover: geplanten/laufenden Trailer abbrechen, das Etikett bleibt. */
+function onSaver() {
+  const a = active;
+  if (!a || !a.preview || !isDataSaver('trailer')) return;
+  a.preview.cancel();
+  a.preview = null;
+  a.el.classList.remove('is-video');
+}
+
 function start() {
   if (listeners.length) return;
   listeners = [
+    onDataSaverChange(onSaver),
+    onDataSaverPartsChange(onSaver),
     add(document, 'mouseover', onOver),
     add(document, 'mouseout', onOut),
     add(document, 'keydown', onKey),

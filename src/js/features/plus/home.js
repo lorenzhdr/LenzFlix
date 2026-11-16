@@ -2,6 +2,7 @@
 // Eigener Container #lfx-plus-home als erstes Kind von #homeTab; native Sektionen werden per html.lfx-plus-home-on versteckt.
 import { h } from '../../core/dom.js';
 import { isTv, isModern } from '../../core/layout.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { isTheme } from '../../core/theme.js';
 import * as api from '../../core/api.js';
 import { getLibraries } from '../../shared/libraries.js';
@@ -80,11 +81,21 @@ async function build(tab, key) {
         getNewContentInfo(),
       ]);
       if (!alive() || !pool.length) return;
-      const hero = createHero(pool, { info });
+      let hero = null;
+      let saver = false;
+      const put = () => {
+        if (hero) hero.destroy();
+        saver = isDataSaver('hero');
+        hero = createHero(pool, { info });
+        if (hero) heroSlot.append(hero.el);
+      };
+      put();
       if (!hero) return;
       heroSlot.classList.remove('is-loading');
-      heroSlot.append(hero.el);
-      cleanups.push(() => hero.destroy());
+      cleanups.push(() => hero && hero.destroy());
+      // Datensparmodus zur Laufzeit: Karussell mit gekürztem bzw. vollem Pool neu aufbauen
+      const resync = () => { if (alive() && isDataSaver('hero') !== saver) put(); };
+      cleanups.push(onDataSaverChange(resync), onDataSaverPartsChange(resync));
     } catch (e) {
       console.warn('[LenzFlix] Hero nicht geladen', e && e.message);
     } finally {

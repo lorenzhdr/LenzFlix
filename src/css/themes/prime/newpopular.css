@@ -12,7 +12,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-np {
 }
 html.lfx-newpopular-on.lfx-theme-prime:not(.layout-tv) #indexPage,
 html.lfx-newpopular-on.lfx-theme-prime:not(.layout-tv) #indexPage #homeTab {
-  background: var(--lfx-prime-bg, #00050d) !important;
+  background: #00050d !important;
 }
 
 /* Tabs: wie die Menüpunkte der Kopfzeile (Pille 42 px, aktiv grau, Hover fast weiß) */

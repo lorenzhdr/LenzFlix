@@ -41,6 +41,7 @@ export function createGrid(opts = {}) {
   let loading = false;
   let destroyed = false;
   let failed = false;
+  let total = null;
 
   const list = h('div', { class: 'lfx-grid__list', role: 'list' });
   const status = h('div', { class: 'lfx-grid__status' });
@@ -97,7 +98,7 @@ export function createGrid(opts = {}) {
   function applyPage(res, { eager = false } = {}) {
     const items = asItems(res);
     putItems(items);
-    const total = res && typeof res.TotalRecordCount === 'number' ? res.TotalRecordCount : null;
+    total = res && typeof res.TotalRecordCount === 'number' ? res.TotalRecordCount : null;
     status.replaceChildren();
     items.forEach((it, i) => {
       const card = cardFactory(it, { eager: eager && count + i < EAGER_CARDS });
@@ -110,7 +111,7 @@ export function createGrid(opts = {}) {
   }
 
   async function loadMore() {
-    if (destroyed || loading || done) return;
+    if (destroyed || loading || done || failed) return;
     const key = !count ? pageKey() : null;
     if (key) {
       // Synchroner Treffer: erste Seite sofort zeichnen, kein Skelett, kein Server-Abruf.
@@ -170,9 +171,17 @@ export function createGrid(opts = {}) {
       sort = s;
       reset();
     },
-    setQuery(next) {
+    /** Optional mit neuer Sortierung: genau ein Neuaufbau. */
+    setQuery(next, nextSort) {
       query = next || {};
+      if (nextSort) sort = nextSort;
       reset();
+    },
+    /** n Karten wurden außerhalb entfernt (z. B. Favorit weg): Nachlade-Versatz und Zähler nachführen. */
+    drop(n) {
+      count = Math.max(0, count - n);
+      if (total != null) total = Math.max(0, total - n);
+      if (typeof opts.onCount === 'function') opts.onCount(total != null ? total : count);
     },
     refresh: reset,
     destroy() {

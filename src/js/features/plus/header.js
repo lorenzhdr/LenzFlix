@@ -152,6 +152,7 @@ async function openMenu() {
 function scheduleOpen() {
   clearTimeout(state.closeTimer);
   if (menuOpen() || state.openTimer) return;
+  state.pinned = false; // Rest eines selbst geschlossenen (Escape/Auswahl) angehefteten Menüs
   state.openTimer = setTimeout(() => {
     state.openTimer = null;
     openMenu();

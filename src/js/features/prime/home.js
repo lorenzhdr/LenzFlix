@@ -53,7 +53,11 @@ async function start(tab, route, myGen) {
   if (myGen !== gen) return;
   const hub = route.kind === 'hub';
   const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
-  if (hub && !lib) return; // unbekannte Bibliothek: native Seite bleibt sichtbar
+  if (hub && !lib) { // unbekannte Bibliothek: eigene Seite (auch eine zuvor offene Startseite) abbauen, native Seite zeigen
+    teardown();
+    current = null;
+    return;
+  }
 
   teardown();
   const heroSlot = h('section', { id: 'lfx-prime-hero', class: 'lfx-prime-hero-slot', 'aria-label': 'Empfehlung' });

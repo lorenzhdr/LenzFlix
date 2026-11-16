@@ -576,15 +576,16 @@ describe('Scroll-Sperre am Handy', () => {
     }
   });
 
-  it('breit: keine Inline-Styles am body', async () => {
+  it('breit: Sperre ebenfalls (sonst springt die Seite hinter dem Overlay auf scrollY 0)', async () => {
     const restoreMq = withMq(false);
     Object.defineProperty(window, 'scrollY', { value: 420, configurable: true });
     try {
       await openModal('M1');
-      expect(document.body.style.position).toBe('');
-      expect(document.body.style.top).toBe('');
+      expect(document.body.style.position).toBe('fixed');
+      expect(document.body.style.top).toBe('-420px');
     } finally {
       closeModal();
+      await wait(() => !document.querySelector('.lfx-modal-overlay'), 100);
       Object.defineProperty(window, 'scrollY', { value: 0, configurable: true, writable: true });
       restoreMq();
     }
@@ -774,7 +775,8 @@ describe('Escape bei Dialog, Änderungen', () => {
     cb({ removed: ['SE1-E1'], updated: [] });
     expect(document.querySelector('.lfx-modal__ep[data-id="SE1-E1"]')).toBeNull();
     const calls = api.getItem.mock.calls.length;
-    cb({ removed: [], updated: ['S1'] });
+    vi.useFakeTimers();
+    try { cb({ removed: [], updated: ['S1'] }); await vi.advanceTimersByTimeAsync(3000); } finally { vi.useRealTimers(); }
     await wait(() => api.getItem.mock.calls.length > calls);
     expect(api.getItem.mock.calls.length).toBeGreaterThan(calls);
     await flush();

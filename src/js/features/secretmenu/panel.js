@@ -53,7 +53,7 @@ function slider({ label, range, get, key, offs }) {
   const out = h('output', { class: 'lfx-secret__val', for: id }, pct(get()));
   const sizes = h('p', { class: 'lfx-secret__note' });
   const input = h('input', {
-    type: 'range', id, min: Math.round(range[0] * 100), max: Math.round(range[1] * 100), step: 5, value: Math.round(get() * 100),
+    type: 'range', id, min: Math.round(range[0] * 100), max: Math.round(range[1] * 100), step: 1, value: Math.round(get() * 100),
   });
   const showSizes = (s) => {
     sizes.textContent = `Poster ${px(POSTER_BASE, s)} px · Breitbild ${px(wideBase(), s)} px`;
@@ -77,7 +77,7 @@ function imageSection(offs) {
   const kids = [
     slider({ label: 'Normal', range: NORMAL_RANGE, get: getNormalScale, key: 'normal', offs }),
     slider({ label: 'Datensparmodus', range: SAVER_RANGE, get: getSaverScale, key: 'saver', offs }),
-    note(`Bildschirm dieses Geräts: ${de(dpr)}× schärfer`),
+    note(`Bildschirm dieses Geräts: ${de(dpr)}× ${dpr < 1 ? 'weniger scharf' : 'schärfer'}`),
   ];
   const rec = recommendScale();
   if (rec !== null) kids.push(note(`Für scharfe Cover hier: ca. ${rec} %`));

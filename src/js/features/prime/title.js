@@ -5,7 +5,7 @@ import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile, isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
-import { isDataSaver } from '../../core/datasaver.js';
+import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../../core/datasaver.js';
 import { play } from '../../core/playback.js';
 import { canDownload } from '../../core/download.js';
 import { onItemsChanged } from '../../core/itemmenu.js';
@@ -155,6 +155,12 @@ function paintPlay(s, info) {
   }
 }
 
+/** Nach Gesehen-Markierung/Änderung: Abspielknopf neu zeichnen (Fortsetzen-Stand und Balken); Serie: nächste Folge neu laden. */
+function refreshPlay(s, main) {
+  if (main.Type !== 'Series') { paintPlay(s, playInfo(main, null)); return; }
+  data.loadNextUp(main.Id).then((ep) => { if (!s.dead) paintPlay(s, playInfo(main, ep)); }).catch(() => {});
+}
+
 function buildStage(s, main) {
   const bgUrl = backdropOf(main);
   s.bg = h('div', { class: 'lfx-pt__bg', 'aria-hidden': 'true' }, [
@@ -174,7 +180,7 @@ function buildStage(s, main) {
 
   const logo = api.logoImage(main, { maxWidth: 720 });
   const title = logo
-    ? h('img', { class: 'lfx-pt__logo', src: logo, alt: main.Name || '', decoding: 'async' })
+    ? h('h1', { class: 'lfx-pt__logo-h1' }, [h('img', { class: 'lfx-pt__logo', src: logo, alt: main.Name || '', decoding: 'async' })])
     : h('h1', { class: 'lfx-pt__title' }, main.Name || '');
   s.rankEl = h('div', { class: 'lfx-pt__rank', hidden: true });
 
@@ -203,22 +209,21 @@ function buildStage(s, main) {
   const favLabel = () => (isFav() ? 'Aus Meine Liste entfernen' : 'Zu Meine Liste hinzufügen');
   s.favBtn = circleButton({
     label: favLabel(), icon: isFav() ? ICONS.check : ICONS.plus, mod: 'fav',
-    onClick: async (b) => {
+    onClick: async () => {
       await toggleFavorite(main);
       if (!s.dead) syncButtons(s, main);
-      b.blur();
     },
   });
   s.playedBtn = circleButton({
     label: isPlayed() ? 'Als ungesehen markieren' : 'Als gesehen markieren', icon: isPlayed() ? ICON_EYE_CHECK : ICON_EYE, mod: 'seen',
     onClick: async (b) => {
       await togglePlayed(main, { anchorEl: b });
-      if (!s.dead) syncButtons(s, main);
+      if (!s.dead) { syncButtons(s, main); refreshPlay(s, main); }
     },
   });
   s.trailerBtn = circleButton({
     label: 'Trailer ansehen', icon: ICONS.trailer, mod: 'trailer', hidden: true,
-    onClick: () => startVideo(s, { muted: false }),
+    onClick: () => { s.manual = true; startVideo(s, { muted: false }); },
   });
   s.dlBtn = circleButton({
     label: main.Type === 'Series' || main.Type === 'Season' ? 'Episoden herunterladen' : 'Herunterladen', icon: ICON_DOWNLOAD, mod: 'dl', hidden: true,
@@ -236,6 +241,7 @@ function buildStage(s, main) {
     h('div', { class: 'lfx-pt__actions' }, [s.playWrap, s.circles]),
   ]);
   s.stage = h('div', { class: 'lfx-pt__stage' }, [s.bg, s.muteBtn, content]);
+  syncButtons(s, main);
   return s.stage;
 }
 
@@ -454,9 +460,18 @@ async function load(id) {
     s.trailerSrc = src;
     s.trailerBtn.hidden = false;
     if (reducedMotion() || isMobile() || isDataSaver('trailer')) return; // Handy/Datensparmodus: kein Autoplay, der Trailer-Knopf startet ihn
-    const t = setTimeout(() => startVideo(s, { muted: true }), TRAILER_DELAY_MS);
+    const t = setTimeout(() => { if (!isDataSaver('trailer')) startVideo(s, { muted: true }); }, TRAILER_DELAY_MS);
     s.cleanups.push(() => clearTimeout(t));
+    s.autoTimer = t;
   }).catch(() => {});
+
+  // Datensparmodus an: Autoplay-Trailer (nicht der per Knopf gestartete) und wartender Timer weg
+  const onSaver = () => {
+    if (!isDataSaver('trailer')) return;
+    clearTimeout(s.autoTimer);
+    if (!s.manual) stopVideo(s);
+  };
+  s.cleanups.push(onDataSaverChange(onSaver), onDataSaverPartsChange(onSaver));
 
   const onVis = () => {
     if (!s.video) return;
@@ -477,6 +492,7 @@ async function load(id) {
       if (fresh) {
         main.UserData = fresh.UserData || main.UserData;
         syncButtons(s, main);
+        refreshPlay(s, main);
       }
     }
   }));

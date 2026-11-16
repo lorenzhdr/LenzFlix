@@ -560,7 +560,13 @@
     font-size: 12px;
   }
 
-  /* Titelseite */
+  /* Titelseite: Schatten reicht über die volle Breite, damit die Beschreibung auch über hellem Bild lesbar bleibt */
+  html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__shade {
+    background:
+      linear-gradient(90deg, rgba(16, 19, 31, 0.94) 0%, rgba(16, 19, 31, 0.82) 60%, rgba(16, 19, 31, 0.64) 100%),
+      linear-gradient(0deg, var(--lfx-bg) 0%, rgba(16, 19, 31, 0.9) 8%, rgba(16, 19, 31, 0.62) 16%, rgba(16, 19, 31, 0.3) 24%, rgba(16, 19, 31, 0.1) 30%, rgba(16, 19, 31, 0) 36%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0) 160px);
+  }
   html.lfx-js.lfx-theme-plus:not(.layout-tv) .lfx-plus-title__hero {
     --lfx-plus-side: 16px;
     min-height: 62vh;

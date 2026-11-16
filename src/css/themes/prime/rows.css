@@ -30,9 +30,11 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more {
   transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:focus-visible { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:hover .lfx-prime-row__more,
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:focus-within .lfx-prime-row__more { opacity: 1; }
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:hover { color: var(--pv-text-2); }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row:hover .lfx-prime-row__more { opacity: 1; }
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__more:hover { color: var(--pv-text-2); }
+}
 
 /* Viewport: Container für die Kartenbreite (cqw), Track: nativer Scroll-Container */
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-row__viewport {
@@ -76,7 +78,9 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link {
   text-decoration: none;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:hover .lfx-card__img { filter: none; }
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link:hover .lfx-card__img { filter: none; }
+}
 /* Fuß-Verlauf unter Karten-Zeichen/Titel */
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-prime-card .lfx-card__link::after {
   content: "";

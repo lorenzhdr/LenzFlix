@@ -618,6 +618,11 @@ html.lfx-js .lfx-card__link picture { display: contents; }
   html.lfx-js .lfx-row--poster .lfx-card__logo,
   html.lfx-js .lfx-row--poster .lfx-card__title { display: none; }
   html.lfx-js .lfx-row--poster .lfx-card__link--titled::after { display: none; }
+  /* Raster (Serien/Filme, Meine Liste): die Karte lädt hier schon das Poster, also auch 2:3 statt 16:9 */
+  html.lfx-js .lfx-grid .lfx-card__link { aspect-ratio: 2 / 3; }
+  html.lfx-js .lfx-grid .lfx-card__logo,
+  html.lfx-js .lfx-grid .lfx-card__title { display: none; }
+  html.lfx-js .lfx-grid .lfx-card__link--titled::after { display: none; }
 }
 
 /* 800–899 px mit layout-mobile (Handy quer, schmal): Handy-Menü mit Pills, Billboard darunter */

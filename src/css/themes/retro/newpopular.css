@@ -110,6 +110,31 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
   & .lfx-np__since { font: 400 24px/1 var(--lfx-retro-font-pixel); letter-spacing: 0.1em; text-transform: uppercase; color: var(--lfx-retro-hot); }
   & .lfx-np__overview { font-size: 13px; line-height: 1.7; color: var(--lfx-retro-amber); }
   & .lfx-np__genres { font: 400 22px/1.2 var(--lfx-retro-font-pixel); letter-spacing: 0.08em; text-transform: uppercase; color: var(--lfx-retro-amber-lo); }
+
+  /* LENZFLIX-Zeilen (Am häufigsten geschaut, Top 10): Überschrift, Rangziffern und Karten im Retro-Look */
+  & .lfx-np .lfx-row__title {
+    font: 400 34px/1.1 var(--lfx-retro-font-pixel);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lfx-retro-amber-hi);
+    text-shadow: var(--lfx-retro-glow);
+  }
+  & .lfx-np .lfx-row__title::before { content: "// "; color: var(--lfx-retro-hot); text-shadow: 0 0 8px rgba(255, 90, 31, 0.6); }
+  & .lfx-np .lfx-card__rank {
+    font-family: var(--lfx-retro-font-pixel);
+    font-weight: 400;
+    color: rgba(255, 176, 0, 0.06);
+    -webkit-text-stroke: 2px var(--lfx-retro-amber);
+    text-shadow: 0 0 18px rgba(255, 176, 0, 0.55);
+    paint-order: normal;
+  }
+  & .lfx-np .lfx-card__link {
+    border: 1px solid var(--lfx-retro-amber-lo);
+    border-radius: 2px;
+    background: linear-gradient(160deg, #1d1208, #0e0803);
+    box-shadow: none;
+  }
+  & .lfx-np .lfx-card__link img { border-radius: 0; filter: sepia(0.5) saturate(1.1) brightness(0.9) contrast(1.05); }
 }
 
 @media (max-width: 799px) {

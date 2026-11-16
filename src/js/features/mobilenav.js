@@ -55,7 +55,9 @@ export function overlayItems(model) {
   return items;
 }
 
+const VIEWS_RETRY_MS = 5000; // B049: nach einem Ladefehler der Bibliotheken frühestens so bald erneut versuchen
 const state = {
+  viewsFailedAt: 0,
   model: { series: null, movies: null, more: [] },
   route: null,
   root: null,
@@ -262,11 +264,11 @@ function ensureGenres(kind) {
   state.genresLoading.add(kind);
   Promise.resolve()
     .then(() => getLibraryGenres(kind))
-    .then((g) => (Array.isArray(g) ? g : []), () => [])
+    .then((g) => (Array.isArray(g) ? g : null), () => null)
     .then((g) => {
       if (seq !== state.seq || !state.root) return;
       state.genresLoading.delete(kind);
-      state.genres[kind] = g;
+      if (g) state.genres[kind] = g; // Fehler: nicht merken, der nächste update() lädt neu
       renderPills();
       renderCats();
       applyActive();
@@ -294,6 +296,7 @@ function render() {
 }
 
 async function loadViews(seq) {
+  state.viewsFailedAt = 0;
   try {
     const views = await cached(`views:${getUserId()}`, getViews, 5 * 60_000);
     if (seq !== state.seq || !state.root) return;
@@ -301,6 +304,7 @@ async function loadViews(seq) {
   } catch {
     if (seq !== state.seq || !state.root) return;
     state.model = { series: null, movies: null, more: [] };
+    state.viewsFailedAt = Date.now();
   }
   render();
 }
@@ -364,6 +368,7 @@ const mobilenavFeature = {
     // schließen, wenn sich die Route wirklich ändert, sonst klappt es direkt nach dem Öffnen wieder zu.
     const changed = !state.route || state.route.hash !== route.hash;
     state.route = route;
+    if (state.viewsFailedAt && Date.now() - state.viewsFailedAt >= VIEWS_RETRY_MS) loadViews(state.seq);
     if (changed) {
       closeOverlay({ restoreFocus: false });
       closeCats({ restoreFocus: false });
@@ -394,6 +399,7 @@ const mobilenavFeature = {
     state.genresLoading.clear();
     state.returnFocus = null;
     state.model = { series: null, movies: null, more: [] };
+    state.viewsFailedAt = 0;
   },
 };
 

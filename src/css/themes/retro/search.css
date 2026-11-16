@@ -54,6 +54,7 @@ html.lfx-js.lfx-theme-retro:not(.layout-tv) {
     width: 0.5em;
     height: 0.78em;
     margin-top: -0.39em;
+    font-family: var(--lfx-retro-font-pixel); /* ch wie im Eingabefeld (Pixel), nicht Mono */
     font-size: 44px;
     background: var(--lfx-retro-amber);
     box-shadow: var(--lfx-retro-glow);

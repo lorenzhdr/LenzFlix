@@ -12,6 +12,7 @@ import { openItemMenu, isMenuOpen, onItemsChanged } from '../core/itemmenu.js';
 import { play } from '../core/playback.js';
 import { openModal } from './modal.js';
 import { ROWS_READY_EVENT } from './rows.js';
+import { tvBgPlaying } from './rows/prefetch.js';
 import { loadLocalTrailer, trailerUrl } from '../shared/trailer.js';
 import { isDataSaver, onDataSaverChange, onDataSaverPartsChange } from '../core/datasaver.js';
 import { buildPool, saverPool, SAVER_POOL, metaParts, genreLine, badgeFor, hasProgress } from './billboard/format.js';
@@ -160,13 +161,33 @@ export function render(slot, ctx = {}) {
   };
 
   // Ein ladender Trailer hält die Rotation an (höchstens TRAILER_WAIT_MAX_MS), damit das Bild stehen bleibt.
+  // Kein Auto-Trailer: Datensparmodus, „Bewegung reduzieren“ oder TV-Modus im Hintergrund-Bild-in-Bild.
+  const noAuto = () => isDataSaver('trailer') || reducedMotion() || tvBgPlaying();
   const trailerPending = () =>
-    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !isDataSaver('trailer')
+    Boolean(slide && slide.item.LocalTrailerCount > 0 && !slide.failed && !trailerActive && !noAuto()
       && Date.now() - slide.t0 < TRAILER_WAIT_MAX_MS);
 
+  // Tastaturfokus im Billboard hält die Rotation an (WCAG 2.2.2); Mausklick-Fokus zählt nicht.
+  const kbFocus = () => {
+    if (!card) return false;
+    try { return Boolean(card.querySelector(':focus-visible')); } catch { return card.contains(document.activeElement); }
+  };
+
   const paused = () =>
-    hovering || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains('lfx-modal-open')
+    hovering || kbFocus() || trailerActive || trailerPending() || document.hidden || document.documentElement.classList.contains('lfx-modal-open')
     || isMenuOpen() || isChooserOpen();
+
+  // Trailer ruht hinter dem Info-Fenster und im versteckten Tab; Datensparmodus/Bewegung reduzieren/Hintergrund-PiP sperren den Start.
+  function syncMedia() {
+    if (video && trailerActive) {
+      const hold = document.hidden || document.documentElement.classList.contains('lfx-modal-open');
+      try {
+        if (hold) video.pause();
+        else if (video.paused) { const p = video.play(); if (p && p.catch) p.catch(() => {}); }
+      } catch { /* jsdom */ }
+    }
+    tryPreload();
+  }
 
   function stopTrailer() {
     if (slide) clearTimeout(slide.revealTimer);
@@ -212,6 +233,7 @@ export function render(slot, ctx = {}) {
       try {
         await setFavorite(item.Id, !prev);
         clearCache('home:');
+        clearCache(`lfx:modal:item:${item.Id}`);
       } catch {
         item.UserData = { ...(item.UserData || {}), IsFavorite: prev };
         paint();
@@ -324,6 +346,7 @@ export function render(slot, ctx = {}) {
       }
       index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur);
       fillDots();
+      scheduleRotate(); // alter Timer weg; bei Pool < 2 kein neuer
       if (curGone) show(index);
       return;
     }
@@ -332,7 +355,12 @@ export function render(slot, ctx = {}) {
       if (!fresh) return;
       const merged = { ...cur, ...fresh };
       pool[index] = merged;
-      if (!content.classList.contains('is-out')) content.replaceChildren(...buildContent(merged).childNodes);
+      if (!content.classList.contains('is-out')) {
+        const act = document.activeElement;
+        const btn = act && content.contains(act) ? [...act.classList].find((c) => c.startsWith('lfx-bb__btn--')) : null;
+        content.replaceChildren(...buildContent(merged).childNodes);
+        if (btn) { const n = content.querySelector(`.${btn}`); if (n) n.focus(); } // Fokus nicht an <body> verlieren
+      }
     }
   }
 
@@ -345,7 +373,7 @@ export function render(slot, ctx = {}) {
   /** Vorladen starten: erst wenn das Titelbild geladen ist UND die ersten Zeilen gefüllt sind. */
   function tryPreload() {
     const sl = slide;
-    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed || isDataSaver('trailer')) return; // Datensparmodus: kein Trailer
+    if (!sl || disposed || sl.gen !== gen || sl.started || sl.failed || noAuto()) return; // Datensparmodus/Bewegung reduzieren/TV-Hintergrund: kein Trailer
     if (!(sl.item.LocalTrailerCount > 0) || !sl.imgAt || !rowsReady) return;
     sl.started = true;
     startTrailer(sl);
@@ -356,7 +384,7 @@ export function render(slot, ctx = {}) {
     try {
       const t = await loadLocalTrailer(sl.item);
       if (sl.gen !== gen || disposed) return;
-      if (isDataSaver('trailer')) { sl.failed = true; setTr(''); return; } // zwischenzeitlich eingeschaltet
+      if (isDataSaver('trailer') || reducedMotion()) { sl.failed = true; sl.saver = true; setTr(''); return; } // zwischenzeitlich eingeschaltet
       if (!t) { sl.failed = true; setTr(''); return; }
       const v = h('video', { class: 'lfx-bb__video', playsinline: true, preload: 'auto', 'aria-hidden': 'true' });
       v.muted = true;
@@ -459,7 +487,7 @@ export function render(slot, ctx = {}) {
     // Trailer: erst das Titelbild; Vorladen startet, sobald Bild geladen + Zeilen gefüllt (tryPreload).
     const sl = { item, gen: myGen, t0: Date.now(), imgAt: 0, started: false, ready: false, failed: false, revealTimer: null };
     slide = sl;
-    setTr(item.LocalTrailerCount > 0 && !isDataSaver('trailer') ? 'wait' : '');
+    setTr(item.LocalTrailerCount > 0 && !noAuto() ? 'wait' : '');
     const img = pic.querySelector('.lfx-bb__img');
     const onLoaded = () => {
       if (disposed || sl.gen !== gen || sl.imgAt) return;
@@ -506,7 +534,14 @@ export function render(slot, ctx = {}) {
     card.addEventListener('mouseenter', onEnter);
     card.addEventListener('mouseleave', onLeave);
     document.addEventListener('visibilitychange', onVis);
-    cleanupFns.push(() => document.removeEventListener('visibilitychange', onVis));
+    document.addEventListener('visibilitychange', syncMedia);
+    const mo = new MutationObserver(syncMedia); // Info-Fenster (lfx-modal-open) und Hintergrund-PiP (lfx-tvm-bgplay)
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    cleanupFns.push(() => {
+      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('visibilitychange', syncMedia);
+      mo.disconnect();
+    });
     cleanupFns.push(onItemsChanged(onChanged));
     cleanupFns.push(onDataSaverChange(onSaver));
     cleanupFns.push(onDataSaverPartsChange(onSaver));
@@ -516,9 +551,16 @@ export function render(slot, ctx = {}) {
   function onSaver() {
     if (disposed || !card) return;
     if (isDataSaver('trailer')) {
-      if (slide) slide.failed = true;
+      if (slide) { slide.failed = true; slide.saver = true; }
       stopTrailer();
       setTr('');
+    } else if (slide && (slide.saver || !slide.started)) { // wieder aus: Trailer der aktuellen Folie neu starten
+      slide.saver = false;
+      slide.failed = false;
+      slide.started = false;
+      slide.ready = false;
+      setTr(slide.item.LocalTrailerCount > 0 && !noAuto() ? 'wait' : '');
+      tryPreload();
     }
     if (isDataSaver('hero') && pool.length > SAVER_POOL) {
       const cur = pool[index];

@@ -180,8 +180,10 @@ export function createHero(items, { info = null, interval = HERO_INTERVAL, mobil
   const onFocusOut = (e) => { if (!el.contains(e.relatedTarget)) { focus = false; schedule(); } };
   const onVis = () => (document.hidden ? stop() : schedule());
   const onKey = (e) => {
-    if (e.key === 'ArrowLeft') go(idx - 1);
-    else if (e.key === 'ArrowRight') go(idx + 1);
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    go(idx + (e.key === 'ArrowLeft' ? -1 : 1));
+    if (el.contains(document.activeElement)) slides[idx].focus({ preventScroll: true }); // Fokus folgt der aktiven Folie
   };
 
   prev.addEventListener('click', onPrev);

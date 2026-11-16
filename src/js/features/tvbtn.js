@@ -7,7 +7,7 @@ import { isModern, isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
 import { ICON_TVMODE } from '../core/icons.js';
 import { tvModeHref, isTvModeRoute } from '../shared/routes.js';
-import { EXCLUDED } from './nav.js';
+import { EXCLUDED, beforeApp } from './nav.js';
 
 const ID = 'lfx-tvm-btn';
 let el = null;
@@ -28,7 +28,7 @@ const tvbtnFeature = {
     return isReady() && isModern() && !isTv() && isTheme('flix') && !EXCLUDED.test(route.path);
   },
   mount(route) {
-    el = mountPoint(ID, { tag: 'a', className: 'lfx-tvbtn' });
+    el = mountPoint(ID, { tag: 'a', className: 'lfx-tvbtn mui-fixed', before: beforeApp() });
     el.href = tvModeHref;
     el.setAttribute('aria-label', 'TV');
     el.title = 'TV';
