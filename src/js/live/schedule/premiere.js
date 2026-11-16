@@ -12,10 +12,10 @@ import { makeEntries, bucketCount, rotationWithBorrow, streamOfAge, CAP_MS } fro
 import { slotOf, fillSegment } from './fill.js';
 import { cmpStr } from './hash.js';
 
-export const EPOCH = dayOfDate(2026, 10, 1); // 01.11.2026
-export const MAX_WAIT_DAYS = 15; // Premiere höchstens am 15. Tag nach dem Hinzufügen (addedDay + 1 … addedDay + 15)
-export const BLOCK_MAX_EPS = 3;
-export const BLOCK_MAX_MS = 2 * HOUR;
+const EPOCH = dayOfDate(2026, 10, 1); // 01.11.2026
+const MAX_WAIT_DAYS = 15; // Premiere höchstens am 15. Tag nach dem Hinzufügen (addedDay + 1 … addedDay + 15)
+const BLOCK_MAX_EPS = 3;
+const BLOCK_MAX_MS = 2 * HOUR;
 const MIN_POOL_MS = 24 * HOUR;
 const WINDOWS = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 365];
 
@@ -110,7 +110,7 @@ function streamCands(pool, S, D) {
   return home.concat(borrow).map((e) => candOf(e.it));
 }
 
-export const premiereImpl = {
+const premiereImpl = {
   planDay(ctx, D) {
     const info = buildInfo(ctx.catalog);
     const P = info.byDay.get(D) || null;
@@ -143,10 +143,5 @@ export const premiereImpl = {
   },
 };
 
-/** Premieren-Kette des Katalogs (Tag → Einheit-Id), nur für Tests/Diagnose. */
-export function premiereChain(catalog) {
-  const { byDay } = buildInfo(catalog);
-  return new Map([...byDay].map(([d, u]) => [d, u.id]));
-}
 
 registerSpecial(17, premiereImpl);

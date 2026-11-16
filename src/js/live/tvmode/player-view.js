@@ -9,7 +9,7 @@ import { createControls } from './controls.js';
 export const ZAP_MS = 4000;
 export const CONTROLS_MS = 3000;
 export const LOADING_DELAY_MS = 300;
-export const SWIPE_PX = 50;
+const SWIPE_PX = 50;
 const DOUBLE_TAP_MS = 320;
 export const MOUSE_HIDE_MS = 250; // Maus: Ausblenden per Klick verzögert, damit ein Doppelklick (Vollbild) nicht flackert
 const MOVE_GUARD_PX = 8; // nach Maus-Ausblenden: erst ab so viel Zeigerweg wieder einblenden

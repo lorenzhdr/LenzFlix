@@ -10,7 +10,7 @@ import { progressPercent } from '../rows/logic.js';
 
 const SEP = ' • ';
 
-export function displayTitle(item) {
+function displayTitle(item) {
   return item.Type === 'Episode' && item.SeriesName ? item.SeriesName : item.Name || '';
 }
 

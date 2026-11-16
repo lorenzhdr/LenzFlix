@@ -54,7 +54,7 @@ function dispose() {
 }
 
 /** Bekanntes Item (Zeilen-/Hero-Daten): Hintergrund, Logo und Cover schon vor dem Laden der Details anfordern (gleiche URLs wie load). */
-export function preloadImages(item) {
+function preloadImages(item) {
   let target = item;
   if (item && (item.Type === 'Episode' || item.Type === 'Season')) {
     const tid = item.SeriesId || item.ParentId;

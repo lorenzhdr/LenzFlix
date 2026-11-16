@@ -4,7 +4,7 @@ import { openPopover, closePopover, isPopoverOpen } from '../../core/popover.js'
 import { getUserChip, profileEntries } from '../../shared/profile.js';
 
 const svg = (p) => `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">${p}</svg>`;
-export const ICONS = {
+const ICONS = {
   search: svg('<path d="M10 3a7 7 0 1 0 4.2 12.6l4.6 4.6 1.4-1.4-4.6-4.6A7 7 0 0 0 10 3zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"/>'),
   classic: svg('<path d="M3 4h8v7H3zm10 0h8v7h-8zM3 13h8v7H3zm10 0h8v7h-8z"/>'),
   enter: svg('<path d="M4 3h9v2H6v14h7v2H4zm11.6 5.4L21.2 12l-5.6 3.6V13H9v-2h6.600z"/>'),

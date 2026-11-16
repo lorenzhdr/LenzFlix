@@ -27,7 +27,7 @@ const EXCLUDED = /^\/(login|selectserver|addserver|startup|forgotpassword|resetp
 const FOCUSABLE = 'a[href], button:not([disabled])';
 
 /** Pills-Modus der Route: 'home' (Startseite), 'library' (Serien/Filme), 'mylist' oder null (keine Pills). */
-export function pillsMode(route) {
+function pillsMode(route) {
   if (!route || route.path !== '/home') return null;
   if (isLibraryRoute(route)) return 'library';
   if (isMyListRoute(route)) return 'mylist';
@@ -305,7 +305,7 @@ async function loadViews(seq) {
   render();
 }
 
-export const mobilenavFeature = {
+const mobilenavFeature = {
   name: 'mobilenav',
   match(route) {
     return isReady() && isModern() && !isTv() && isNavCompact() && isTheme('flix') && !EXCLUDED.test(route.path);

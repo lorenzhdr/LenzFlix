@@ -85,7 +85,7 @@ export function chartSpecs() {
 }
 
 /** Echte Top-10-Zeilen (Serien/Filme), je nur mit >= 5 auflösbaren Titeln. Leer, wenn keine Charts. */
-export async function buildChartDefs() {
+async function buildChartDefs() {
   try {
     const charts = await getCharts();
     if (!charts) return [];

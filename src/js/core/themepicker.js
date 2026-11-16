@@ -167,7 +167,7 @@ async function loadCoverUrls(day) {
 }
 
 /** Cover-Liste für heute (pro Nutzer und Tag im Speicher gecacht). Fehler: leere Liste. */
-export function loadStoreCoverUrls() {
+function loadStoreCoverUrls() {
   try {
     if (!api.isReady()) return Promise.resolve([]);
     const day = dayKey();

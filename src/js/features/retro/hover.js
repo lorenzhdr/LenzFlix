@@ -22,11 +22,11 @@ import { displayTitle } from './card.js';
 import { isDialogOpen, isPlayerVisible } from './fx/util.js';
 import { emitFx } from './prefs.js';
 
-export const POPUP_ID = 'lfx-retro-hover';
+const POPUP_ID = 'lfx-retro-hover';
 const TERMINAL_ID = 'lfx-retro-terminal';
 export const INTENT_MS = 600;
 export const PREVIEW_MS = 1500;
-export const LEAVE_MS = 220;
+const LEAVE_MS = 220;
 const POPUP_W = 320;
 const GAP = 10;
 const EDGE = 12;

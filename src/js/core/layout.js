@@ -43,7 +43,7 @@ export function applyLayoutClasses() {
 let observer = null;
 let resizeHandler = null;
 let lastMobile = null;
-export const RESIZE_DEBOUNCE_MS = 200;
+const RESIZE_DEBOUNCE_MS = 200;
 
 function layoutKey() {
   return `${isMobile()}|${isNarrow()}|${isNavCompact()}`;

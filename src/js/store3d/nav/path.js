@@ -35,11 +35,11 @@ export function makeNavGrid(bounds, rects, radius = 0.32, cell = 0.25) {
   return { cell, ox, oz, cols, rows, blocked, radius };
 }
 
-export function worldToCell(nav, x, z) {
+function worldToCell(nav, x, z) {
   return [Math.floor((x - nav.ox) / nav.cell), Math.floor((z - nav.oz) / nav.cell)];
 }
 
-export function cellCenter(nav, c, r) {
+function cellCenter(nav, c, r) {
   return { x: nav.ox + (c + 0.5) * nav.cell, z: nav.oz + (r + 0.5) * nav.cell };
 }
 

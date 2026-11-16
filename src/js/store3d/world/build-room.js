@@ -100,7 +100,7 @@ export function wallTrimSpans(layout, side, D) {
 }
 
 /** Ein Türflügel (Pivot = Scharnier an x = 0, öffnet nach +x/-x je nach dir). Benannt von buildRoom, Intro dreht ihn um y. */
-export function buildDoorLeaf(dir) {
+function buildDoorLeaf(dir) {
   const parts = [];
   const dark = [0.2, 0.22, 0.26];
   // Tiefen gestaffelt (Fußleiste 0.05 < Oberschiene 0.054 < Stile 0.058), sonst koplanare Flächen → Flackern

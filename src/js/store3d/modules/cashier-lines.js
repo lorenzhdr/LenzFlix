@@ -266,7 +266,7 @@ export function dialogPicks(catalog, deptOf) {
 }
 
 // --- Dialogmodell „Mit Richard reden“ (rein; DOM und VR-Panel nutzen dasselbe) ---
-export const ANSWERS = [
+const ANSWERS = [
   { key: 'comedy', label: 'Was Lustiges?', cat: 'tipComedy' },
   { key: 'horror', label: 'Was Gruseliges?', cat: 'tipHorror' },
   { key: 'kids', label: 'Was für Kinder?', cat: 'tipKids' },

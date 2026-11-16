@@ -138,7 +138,7 @@ function sync(route) {
   }
 }
 
-export const statshintFeature = {
+const statshintFeature = {
   name: 'statshint',
   match(route) {
     return isTheme('flix') && isModern() && !isTv() && Boolean(getStatsUrl()) && !EXCLUDED.test(route.path);

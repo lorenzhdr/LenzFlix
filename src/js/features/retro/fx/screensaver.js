@@ -4,8 +4,8 @@
 import { h } from '../../../core/dom.js';
 import { createTimers } from './util.js';
 
-export const RAIN_ID = 'lfx-retro-rain';
-export const IDLE_MS = 3 * 60 * 1000;
+const RAIN_ID = 'lfx-retro-rain';
+const IDLE_MS = 3 * 60 * 1000;
 const CHARS = '0123456789ABCDEF0123456789ABCDEFGHIJKLMNOPRSTUVWXYZ#%&$+=<>/\\|:;▓▒░█▌▐'.split('');
 const FRAME_MS = 1000 / 30;
 

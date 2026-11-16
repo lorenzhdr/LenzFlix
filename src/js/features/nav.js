@@ -8,12 +8,11 @@ import { isModern, isTv, isNavCompact } from '../core/layout.js';
 import * as stats from '../core/stats.js';
 import { isTheme } from '../core/theme.js';
 import { openThemePicker } from '../core/themepicker.js';
-import { mountAmbient, unmountAmbient, setAmbient } from '../core/ambient.js';
+import { mountAmbient, unmountAmbient } from '../core/ambient.js';
 import { dataSaverAvailable, DATASAVER_EVENT } from '../core/datasaver.js';
 import { dataSaverItem, switchButton } from '../shared/dsswitch.js';
 import { parseLfxRoute, libraryHref, myListHref } from '../shared/routes.js';
 
-export { setAmbient };
 
 const { STATS_LABEL } = stats;
 const statsLink = () => (typeof stats.statsHref === 'function' ? stats.statsHref() : stats.getStatsUrl());
@@ -292,7 +291,7 @@ async function loadViews(seq) {
   render();
 }
 
-export const navFeature = {
+const navFeature = {
   name: 'nav',
   match(route) {
     return isReady() && isModern() && !isTv() && isTheme('flix') && !EXCLUDED.test(route.path);

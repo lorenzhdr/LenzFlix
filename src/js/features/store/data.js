@@ -4,9 +4,9 @@ import { cached } from '../../core/cache.js';
 import { putItems } from '../../core/itemstore.js';
 import { buildCatalog } from './departments.js';
 
-export const PAGE_SIZE = 500;
-export const TTL_MS = 5 * 60 * 1000;
-export const FIELDS = 'Overview,Genres,OfficialRating,ProductionYear,DateCreated,RunTimeTicks,CommunityRating,ChildCount,SortName,BackdropImageTags,PrimaryImageAspectRatio';
+const PAGE_SIZE = 500;
+const TTL_MS = 5 * 60 * 1000;
+const FIELDS = 'Overview,Genres,OfficialRating,ProductionYear,DateCreated,RunTimeTicks,CommunityRating,ChildCount,SortName,BackdropImageTags,PrimaryImageAspectRatio';
 
 const asItems = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
 

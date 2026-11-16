@@ -1,11 +1,5 @@
 // LenzFlix: kleine DOM-Helfer. Eigene Knoten liegen immer außerhalb von React-Knoten.
 
-const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-
-export function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
-}
-
 /**
  * h('a', {class:'x', href:'#', onclick: fn, style:{color:'red'}, dataset:{id:1}}, ['Text', child])
  * Attribute mit null/undefined/false werden übersprungen.

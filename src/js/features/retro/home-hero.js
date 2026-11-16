@@ -14,7 +14,7 @@ import { svgIcon } from './header-ui.js';
 
 export const ROTATE_MS = 9000;
 export const TYPE_MS = 46;
-export const CHANNEL_SWAP_MS = 220; // Moment des Inhaltswechsels im Kanalwechsel
+const CHANNEL_SWAP_MS = 220; // Moment des Inhaltswechsels im Kanalwechsel
 export const CHANNEL_END_MS = 520;
 const FIELDS = 'Overview,Genres,OfficialRating,ProductionYear,RunTimeTicks,ChildCount,DateCreated';
 const FIRST_KEY = 'lfx-retro-hero-first';
@@ -88,7 +88,7 @@ function writeFirst(id) {
 }
 
 /** Hero-Pool der Startseite (neueste + zufällige Titel mit Backdrop). */
-export async function fetchHomePool() {
+async function fetchHomePool() {
   const base = { Recursive: true, IncludeItemTypes: 'Movie,Series', ImageTypes: 'Logo,Backdrop', Fields: FIELDS, EnableUserData: true, Limit: 40 };
   const [latest, random] = await Promise.all([
     getItems({ ...base, SortBy: 'DateCreated', SortOrder: 'Descending' }).catch(() => null),

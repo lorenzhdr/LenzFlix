@@ -241,7 +241,7 @@ async function loadLibraries(mountSeq) {
   renderNav();
 }
 
-export const plusHeader = {
+const plusHeader = {
   name: 'plus-header',
   match(route) {
     return isTheme('plus') && isModern() && !isTv() && !isPhone() && isReady() && !EXCLUDED.test(route.path);

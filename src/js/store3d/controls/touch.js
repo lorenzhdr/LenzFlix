@@ -7,9 +7,9 @@ import { createJoypad } from '../ui/joypad.js';
 /** Bogenmaß pro Pixel beim Wischen/Lenken. */
 export const TOUCH_LOOK = 0.0045;
 /** Haltezeit (ms), ab der ein ruhender Finger zum Laufen wird. */
-export const TOUCH_HOLD_MS = 220;
+const TOUCH_HOLD_MS = 220;
 /** Bewegungsschwelle (px) für „Finger ruht“. */
-export const TOUCH_SLOP = 9;
+const TOUCH_SLOP = 9;
 /** Joystick: Drehrate (rad/s) bei voller Auslenkung. */
 export const STICK_YAW_RATE = 2.4;
 export const STICK_PITCH_RATE = 1.5;
@@ -18,7 +18,7 @@ export const SCHEMES = ['joystick', 'touch'];
 export const SENS_FACTOR = { low: 0.7, normal: 1, high: 1.4 };
 
 /** Umgreifen: Nachlauf (ms) nach dem Loslassen am Rand. */
-export const REGRIP_MS = { off: 0, short: 400, long: 800 };
+const REGRIP_MS = { off: 0, short: 400, long: 800 };
 /** Randzone (Anteil der Breite links/rechts), in der Loslassen den Nachlauf startet. */
 const REGRIP_EDGE = 0.2;
 

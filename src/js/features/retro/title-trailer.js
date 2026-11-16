@@ -3,7 +3,7 @@ import { h, mountPoint, unmountPoint } from '../../core/dom.js';
 import { toast } from '../../core/toast.js';
 import { emitFx } from './prefs.js';
 
-export const TRAILER_ID = 'lfx-retro-trailer';
+const TRAILER_ID = 'lfx-retro-trailer';
 
 export function closeTrailer() {
   const el = document.getElementById(TRAILER_ID);

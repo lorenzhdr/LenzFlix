@@ -3,8 +3,8 @@ import { cmpStr } from './hash.js';
 import { ratingAge, maxAge } from './rating.js';
 import { parseDate, ticksToMs, MIN, HOUR } from './time.js';
 
-export const MIN_DUR = 5 * MIN;
-export const MAX_DUR = 5 * HOUR;
+const MIN_DUR = 5 * MIN;
+const MAX_DUR = 5 * HOUR;
 
 /** Genre normalisieren (Vergleichsschlüssel). */
 export const normGenre = (g) => String(g == null ? '' : g).trim().normalize('NFC').toLowerCase();

@@ -2,7 +2,6 @@
 import { isReady } from '../../core/api.js';
 import { isModern, isTv } from '../../core/layout.js';
 import { isTheme } from '../../core/theme.js';
-import { parseHash } from '../../core/router.js';
 import { isTvModeRoute } from '../../shared/routes.js';
 
 export const ROOT_ID = 'lfx-tvm';
@@ -16,5 +15,3 @@ export const findHomeTab = () => {
 
 export const tvModeMatch = (route) => isTvModeRoute(route) && TV_THEMES.some(isTheme) && isModern() && !isTv() && isReady();
 
-/** Liegt die aktuelle Adresse noch auf #/home?lfx=tv? */
-export const onTvRoute = () => isTvModeRoute(parseHash(window.location.hash));

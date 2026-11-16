@@ -1,7 +1,7 @@
 // LENZ+: gemeinsame Mount-Helfer der Unterseiten (Titel, Bibliothek, Suche): #homeTab finden, Seitenklassen setzen.
 const ROOT = () => document.documentElement;
 
-export function findHomeTab() {
+function findHomeTab() {
   const tab = document.querySelector('#indexPage:not(.hide) #homeTab');
   return tab && tab.isConnected ? tab : null;
 }

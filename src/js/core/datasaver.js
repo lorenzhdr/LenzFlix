@@ -12,8 +12,8 @@ export const DATASAVER_EVENT = 'lfx:datasaver';
 export const DATASAVER_CLASS = 'lfx-datasaver';
 export const DATASAVER_THEMES = ['flix', 'plus', 'prime', 'retro'];
 export { DATASAVER_SCALE };
-export const PARTS_KEY = 'lfx.datasaver.parts.';
-export const PARTS_EVENT = 'lfx:datasaver-parts';
+const PARTS_KEY = 'lfx.datasaver.parts.';
+const PARTS_EVENT = 'lfx:datasaver-parts';
 export const FLASH_CLASS = 'lfx-ds-flash';
 export const DATASAVER_PARTS = ['trailer', 'hero', 'images', 'prefetch', 'lazy', 'tvwarm'];
 export const DATASAVER_PART_LABELS = {

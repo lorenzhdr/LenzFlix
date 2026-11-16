@@ -2,9 +2,9 @@
 // Gehört Worker P2. Bewusst eigene Kopie (Retro darf die Features von LENZ+/LENZPRIME nicht importieren).
 const root = () => document.documentElement;
 
-export const PAGE_CLASS = 'lfx-retro-page-on';
+const PAGE_CLASS = 'lfx-retro-page-on';
 
-export function findHomeTab() {
+function findHomeTab() {
   const tab = document.querySelector('#indexPage:not(.hide) #homeTab');
   return tab && tab.isConnected ? tab : null;
 }

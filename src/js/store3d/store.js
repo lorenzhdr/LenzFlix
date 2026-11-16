@@ -32,7 +32,7 @@ function resolveLevel(setting) {
 }
 
 /** VR-Prefs (Vertrag): turn snap|smooth, vignette bool, height auto|seated, quality mid|low, seat front|mid|back. */
-export function normalizeVr(v) {
+function normalizeVr(v) {
   const o = v && typeof v === 'object' ? v : {};
   return {
     turn: o.turn === 'smooth' ? 'smooth' : 'snap',

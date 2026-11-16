@@ -49,7 +49,7 @@ export function moreHrefFor(def, { hub, libs, lib }) {
 }
 
 /** Fußzeile: „READY.“ mit blinkendem Cursor und Systemzeile (reine Deko). */
-export function buildFooter() {
+function buildFooter() {
   return h('footer', { class: 'lfx-retro-footer', 'aria-hidden': 'true' }, [
     h('p', { class: 'lfx-retro-footer__ready lfx-retro-caret' }, 'READY.'),
     h('p', { class: 'lfx-retro-footer__sys' }, SYSTEM_LINE),

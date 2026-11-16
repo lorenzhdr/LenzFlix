@@ -2,9 +2,9 @@
 // Richtung ist der Kopf-Yaw (player.yaw in XR); hier entstehen nur Eingabewerte und der Drehwinkel dieses Frames.
 
 export const SNAP_ANGLE = Math.PI / 4; // 45°
-export const SNAP_ON = 0.7;
-export const SNAP_OFF = 0.3;
-export const SMOOTH_RATE = Math.PI / 2; // 90°/s
+const SNAP_ON = 0.7;
+const SNAP_OFF = 0.3;
+const SMOOTH_RATE = Math.PI / 2; // 90°/s
 
 export function createLoco() {
   return { running: false, snapArmed: true };

@@ -16,7 +16,7 @@ import {
 } from '../live/zapflag.js';
 import { clearCatalogCache } from '../live/data.js';
 
-export const PANEL_ID = 'lfx-secret';
+const PANEL_ID = 'lfx-secret';
 const POSTER_BASE = 300;
 const WIDE_BASE_DESKTOP = 600;
 const WIDE_BASE_NARROW = 420;
@@ -35,7 +35,7 @@ const section = (title, children) => h('section', { class: 'lfx-secret__sec' }, 
 const note = (text) => h('p', { class: 'lfx-secret__note' }, text);
 
 /** Empfehlung für die Normal-Skala aus der ersten sichtbaren Breitbild-Karte, sonst null. */
-export function recommendScale() {
+function recommendScale() {
   const dpr = window.devicePixelRatio || 1;
   for (const img of document.querySelectorAll('.lfx-card img')) {
     const r = img.getBoundingClientRect();

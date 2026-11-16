@@ -12,7 +12,7 @@ import { bitrev32, keyHash, cmpStr } from './hash.js';
 import { HOUR } from './time.js';
 
 export const CAP_MS = { A: 17 * HOUR, B: 4 * HOUR };
-export const MAX_C = 4096;
+const MAX_C = 4096;
 
 export const streamOfAge = (age) => (age == null || age <= 12 ? 'A' : 'B');
 

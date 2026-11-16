@@ -4,7 +4,7 @@
 import { getUserId } from './api.js';
 
 const KEY = 'lfx.imgscale.';
-export const IMGSCALE_EVENT = 'lfx:imgscale';
+const IMGSCALE_EVENT = 'lfx:imgscale';
 /** Standard-Skala im Datensparmodus (exakt 2/3, nicht 0.67: URLs und Server-Cache bleiben gleich). */
 export const DATASAVER_SCALE = 2 / 3;
 export const NORMAL_RANGE = [0.5, 2];

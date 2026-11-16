@@ -11,11 +11,10 @@ import { nextProgram, titleOf } from './model.js';
 
 export const DEBOUNCE_MS = 250;
 export { NEIGHBOR_MS, WARM_TICK_MS } from '../player/neighbors.js'; // stabiles „playing“ → Nachbarsender vorauflösen/vorwärmen
-export const PREFETCH_MAX_AGE_MS = 30000;
 const STATS_MAX = 10;
 export const RETRY_MS = 10000;
-export const SYNC_MS = 30000;
-export const STALL_MS = 60000;
+const SYNC_MS = 30000;
+const STALL_MS = 60000;
 const MAX_TIMEOUT = 2147483647;
 const VOL_STEP = 5;
 const VOL_SETTLE_MS = 1000; // so lange muss ein Pegel stehen, um als „letzter Pegel“ fürs Entstummen zu gelten

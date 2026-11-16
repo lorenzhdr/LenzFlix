@@ -33,7 +33,7 @@ export function backdropUrl(item) {
 }
 
 /** Aufkleber der Vorderseite (generisch, keine Marken). */
-export function buildStickers(main) {
+function buildStickers(main) {
   const out = [];
   out.push(h('span', { class: 'lfx-rt__sticker lfx-rt__sticker--stereo' }, 'STEREO'));
   if (main.Width && Number(main.Width) >= 1200) out.push(h('span', { class: 'lfx-rt__sticker lfx-rt__sticker--hd' }, 'HD'));

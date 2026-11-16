@@ -3,9 +3,9 @@
 import { h } from '../../../core/dom.js';
 import { createTimers } from './util.js';
 
-export const BOOT_ID = 'lfx-retro-boot';
+const BOOT_ID = 'lfx-retro-boot';
 export const BOOT_FLAG = 'lfx.retro.booted';
-export const BOOT_VERSION = 'v1.6';
+const BOOT_VERSION = 'v1.6';
 const HARD_TIMEOUT_MS = 4500;
 const REDUCED_MS = 800;
 

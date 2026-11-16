@@ -1,5 +1,5 @@
 // VIDEOTHEK LENZ · Qualitätsstufen und Automatik (rein, ohne three).
-export const LEVELS = ['low', 'mid', 'high'];
+const LEVELS = ['low', 'mid', 'high'];
 
 /** Einstellungen je Stufe. Atlas-Auflösung = Kantenlänge der Cover-Atlanten; maxAtlases = Texturbudget (LRU). */
 export function presetFor(level, phone = false) {

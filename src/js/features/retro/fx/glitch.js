@@ -10,7 +10,7 @@ function inViewport(el) {
 }
 
 /** Sichtbarer Kandidat (nicht im Player) oder null. */
-export function pickTarget(root = document) {
+function pickTarget(root = document) {
   const list = [...root.querySelectorAll(TARGETS)].filter((el) => !el.closest('#videoOsdPage') && inViewport(el));
   return list.length ? list[Math.floor(Math.random() * list.length)] : null;
 }

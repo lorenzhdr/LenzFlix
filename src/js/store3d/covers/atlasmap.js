@@ -4,8 +4,6 @@
 import { shelfSpec } from '../world/layout.js';
 
 export const BASE = 1024;
-export const CELL_W = 146; // Normal-Werte, andere Spezifikation: spec.cellW/cellH
-export const CELL_H = 200;
 export const SWATCH_Y = 1004;
 export const SWATCH_W = 40;
 export const SWATCH_H = 20;

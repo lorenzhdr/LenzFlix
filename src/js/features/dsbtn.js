@@ -10,7 +10,7 @@ import { EXCLUDED } from './nav.js';
 
 const ID = 'lfx-ds-btn';
 
-export const dsbtnFeature = {
+const dsbtnFeature = {
   name: 'dsbtn',
   match(route) {
     return isReady() && isModern() && !isTv() && isTheme('flix') && !EXCLUDED.test(route.path);

@@ -21,15 +21,15 @@ import { createTerminal } from './terminal.js';
 import { createScreensaver } from './screensaver.js';
 import { createTimers, isEditable, isDialogOpen, isPlayerVisible, isVideoPlaying, prefersReducedMotion } from './util.js';
 
-export const OVERDRIVE_MS = 20000;
-export const LONG_PRESS_MS = 700;
-export const TAP_COUNT = 7;
+const OVERDRIVE_MS = 20000;
+const LONG_PRESS_MS = 700;
+const TAP_COUNT = 7;
 const TOAST_ID = 'lfx-retro-od-toast';
 
 let S = null; // Laufzeitzustand, null = nicht gemountet
 
 /** Dieses Feature ist aktiv (Retro, Modern, nicht TV, eingeloggt, kein Player/Dashboard)? */
-export function shouldRun(route) {
+function shouldRun(route) {
   if (!isTheme('retro') || !isModern() || isTv() || !isReady()) return false;
   if (isTvModeRoute(route)) return false; // TV-Seite: keine Retro-Effekte
   if (document.body && document.body.classList.contains('dashboardDocument')) return false;

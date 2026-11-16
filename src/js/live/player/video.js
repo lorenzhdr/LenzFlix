@@ -2,7 +2,7 @@
 // Keine URLs in Ereignissen/Fehlern: Payloads tragen nur { phase, reason }.
 
 const START_TIMEOUT_MS = 25000;
-export const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
+const STALL_REPORT_MS = 1200; // 'waiting' zählt erst als Stall, wenn currentTime so lange nicht vorankommt
 const MEDIA_ACTIONS = ['pause', 'play', 'seekbackward', 'seekforward', 'seekto', 'previoustrack', 'nexttrack'];
 
 const JUMP_TOLERANCE_S = 1.5; // nach den Metadaten nur nachspringen, wenn die Position so weit von der Live-Position abweicht

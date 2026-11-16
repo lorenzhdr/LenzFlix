@@ -2949,10 +2949,8 @@
   // src/js/core/ambient.js
   var ID4 = "lfx-ambient";
   var clamp2 = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
-  var current2 = null;
   function setAmbient(r, g, b) {
     const [R, G, B] = [clamp2(r), clamp2(g), clamp2(b)];
-    current2 = [R, G, B];
     const s = document.documentElement.style;
     s.setProperty("--lfx-ambient-r", String(R));
     s.setProperty("--lfx-ambient-g", String(G));
@@ -2960,7 +2958,6 @@
     s.setProperty("--lfx-ambient", `${R} ${G} ${B}`);
   }
   function resetAmbient() {
-    current2 = null;
     const s = document.documentElement.style;
     for (const p of ["--lfx-ambient-r", "--lfx-ambient-g", "--lfx-ambient-b", "--lfx-ambient"]) s.removeProperty(p);
   }
@@ -4280,14 +4277,14 @@
   var ID6 = "lfx-popover";
   var GAP = 8;
   var MARGIN = 8;
-  var current3 = null;
+  var current2 = null;
   function isPopoverOpen() {
-    return current3 !== null;
+    return current2 !== null;
   }
   function closePopover({ restoreFocus = false } = {}) {
-    const c = current3;
+    const c = current2;
     if (!c) return;
-    current3 = null;
+    current2 = null;
     window.removeEventListener("keydown", c.onKeydown, true);
     document.removeEventListener("click", c.onDocClick, true);
     window.removeEventListener("resize", c.onClose);
@@ -4350,10 +4347,10 @@
     const focusable = nodes.filter((n) => !n.classList.contains("lfx-popover__note"));
     const c = { el: el4, anchorEl, hadExpanded: anchorEl ? anchorEl.getAttribute("aria-expanded") : null };
     c.close = () => {
-      if (current3 === c) closePopover({ restoreFocus: true });
+      if (current2 === c) closePopover({ restoreFocus: true });
     };
     c.onClose = () => {
-      if (current3 === c) closePopover();
+      if (current2 === c) closePopover();
     };
     c.onScroll = (e) => {
       if (e.target && e.target !== document && el4.contains(e.target)) return;
@@ -4382,7 +4379,7 @@
         focusable[next].focus();
       }
     };
-    current3 = c;
+    current2 = c;
     if (anchorEl) anchorEl.setAttribute("aria-expanded", "true");
     window.addEventListener("keydown", c.onKeydown, true);
     document.addEventListener("click", c.onDocClick, true);
@@ -4392,7 +4389,7 @@
     if (focusable[0]) focusable[0].focus({ preventScroll: true });
     const raf3 = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
     raf3(() => {
-      if (current3 === c) el4.classList.add("is-open");
+      if (current2 === c) el4.classList.add("is-open");
     });
     return { el: el4, close: c.close };
   }
@@ -4683,17 +4680,17 @@
 
   // src/js/core/sheet.js
   var SHEET_ID = "lfx-sheet";
-  var current4 = null;
+  var current3 = null;
   function isChooserOpen() {
-    return current4 !== null;
+    return current3 !== null;
   }
   function isCurrent(c) {
-    return current4 !== null && current4 === c;
+    return current3 !== null && current3 === c;
   }
   function closeChooser() {
-    const c = current4;
+    const c = current3;
     if (!c) return;
-    current4 = null;
+    current3 = null;
     if (c.detachSwipe) c.detachSwipe();
     window.removeEventListener("keydown", c.onKeydown, true);
     c.overlay.removeEventListener("click", c.onOverlayClick);
@@ -4776,11 +4773,11 @@
     overlay.addEventListener("click", c.onOverlayClick);
     if (typeof window.matchMedia === "function" && window.matchMedia("(hover: none), (max-width: 799px)").matches) {
       c.detachSwipe = attachSwipeClose(sheet, { onClose: () => {
-        if (current4 === c) closeChooser();
+        if (current3 === c) closeChooser();
       } });
     }
     document.documentElement.classList.add("lfx-sheet-open");
-    current4 = c;
+    current3 = c;
     sheet.setAttribute("tabindex", "-1");
     sheet.focus({ preventScroll: true });
     return c;
@@ -5404,7 +5401,7 @@
     slot.replaceChildren();
     const { seasons, seasonId, episodes, selectedEpisodeId } = state24;
     putItems(episodes);
-    const current7 = seasons.find((s) => s.Id === seasonId);
+    const current6 = seasons.find((s) => s.Id === seasonId);
     const head = h("div", { class: "lfx-modal__eps-head" }, [h("h3", { class: "lfx-modal__h" }, "Folgen")]);
     const tools = h("div", { class: "lfx-modal__eps-tools" });
     head.append(tools);
@@ -5424,7 +5421,7 @@
         "aria-haspopup": "listbox",
         "aria-expanded": "false",
         onclick: () => toggle(list.hidden)
-      }, [h("span", {}, current7 && current7.Name || "Staffel"), icon("chevron")]);
+      }, [h("span", {}, current6 && current6.Name || "Staffel"), icon("chevron")]);
       const toggle = (open3) => {
         list.hidden = !open3;
         btn3.setAttribute("aria-expanded", String(open3));
@@ -9151,11 +9148,11 @@
       if (raf3) return;
       raf3 = requestAnimationFrame(() => {
         raf3 = 0;
-        let current7 = null;
+        let current6 = null;
         for (const [id, sec] of sections) {
-          if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current7 = id;
+          if (sec.isConnected && sec.getBoundingClientRect().top <= 170) current6 = id;
         }
-        if (current7) setActive(current7);
+        if (current6) setActive(current6);
       });
     };
     window.addEventListener("scroll", onScroll7, { passive: true });
@@ -15528,7 +15525,7 @@
   var cleanups4 = [];
   var waitTimer6 = null;
   var gen3 = 0;
-  var current5 = null;
+  var current4 = null;
   var builtMobile = false;
   function teardown9() {
     for (const fn of cleanups4.splice(0)) {
@@ -15578,7 +15575,7 @@
     const root7 = h("div", { id: ROOT_ID15, class: `lfx-prime-home lfx-prime-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter()]);
     tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS14);
-    current5 = route;
+    current4 = route;
     builtMobile = isMobile() && isNarrow();
     cleanups4.push(renderHero(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchHomePool() }));
     const getDefs = (genreCount2) => hub ? buildHubRowDefs(lib, { genreCount: genreCount2 }) : buildRowDefs({ genreCount: genreCount2 });
@@ -15621,7 +15618,7 @@
     clearTimeout(waitTimer6);
     const tab2 = findHomeTab8();
     const existing = document.getElementById(ROOT_ID15);
-    if (tab2 && existing && tab2.contains(existing) && current5 && current5.key === route.key && builtMobile === (isMobile() && isNarrow())) return;
+    if (tab2 && existing && tab2.contains(existing) && current4 && current4.key === route.key && builtMobile === (isMobile() && isNarrow())) return;
     gen3 += 1;
     const myGen = gen3;
     let tries = 0;
@@ -15642,7 +15639,7 @@
     unmount() {
       gen3 += 1;
       clearTimeout(waitTimer6);
-      current5 = null;
+      current4 = null;
       teardown9();
     }
   };
@@ -18119,7 +18116,7 @@
   var cleanups5 = [];
   var waitTimer8 = null;
   var gen4 = 0;
-  var current6 = null;
+  var current5 = null;
   var builtPhone = false;
   function teardown10() {
     for (const fn of cleanups5.splice(0)) {
@@ -18175,7 +18172,7 @@
     const root7 = h("div", { id: ROOT_ID18, class: `lfx-retro-home lfx-retro-home--${hub ? "hub" : "home"}` }, [heroSlot, rowsSlot, moreSlot, buildFooter2()]);
     tab2.prepend(root7);
     document.documentElement.classList.add(ON_CLASS17);
-    current6 = route;
+    current5 = route;
     builtPhone = isPhone2();
     cleanups5.push(renderHero2(heroSlot, { loadPool: () => hub ? getHubHeroPool(lib) : fetchCachedHomePool(), peekPool: hub ? null : peekHomePool }));
     const getDefs = (genreCount2) => hub ? buildHubRowDefs(lib, { genreCount: genreCount2 }) : buildRowDefs({ genreCount: genreCount2 });
@@ -18214,7 +18211,7 @@
     clearTimeout(waitTimer8);
     const tab2 = findHomeTab10();
     const existing = document.getElementById(ROOT_ID18);
-    if (tab2 && existing && tab2.contains(existing) && current6 && current6.key === route.key && builtPhone === isPhone2()) return;
+    if (tab2 && existing && tab2.contains(existing) && current5 && current5.key === route.key && builtPhone === isPhone2()) return;
     gen4 += 1;
     const myGen = gen4;
     let tries = 0;
@@ -18236,7 +18233,7 @@
       gen4 += 1;
       clearTimeout(waitTimer8);
       waitTimer8 = null;
-      current6 = null;
+      current5 = null;
       teardown10();
     }
   };
@@ -20233,7 +20230,6 @@
       });
     }
   };
-  var SOUND_NAMES = Object.keys(SOUNDS).concat("rain");
   function createSound(isEnabled) {
     let lastHover = 0;
     function play2(name) {

@@ -16,9 +16,6 @@ export function probeXr() {
   return probed;
 }
 
-/** Nur für Tests: Cache leeren. */
-export function resetProbe() { probed = null; }
-
 export class XrSession {
   /** @param {{ renderer, onStart(info), onEnd(), onVisibility(state) }} o */
   constructor({ renderer, onStart, onEnd, onVisibility }) {

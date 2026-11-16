@@ -5,10 +5,10 @@ import {
   SRGBColorSpace, LinearFilter, FrontSide,
 } from 'three';
 
-export const SCREEN_RADIUS = 14;
-export const SCREEN_MAX_W = 16;
-export const SCREEN_MAX_H = 9;
-export const SCREEN_BOTTOM = 1.5;
+const SCREEN_RADIUS = 14;
+const SCREEN_MAX_W = 16;
+const SCREEN_MAX_H = 9;
+const SCREEN_BOTTOM = 1.5;
 
 /**
  * Zylindersegment, Innenseite zum Publikum (+z). width = Bogenlänge in Metern, Mittelpunkt im Ursprung,
@@ -100,7 +100,7 @@ function ctx2d(canvas) {
 }
 
 /** Status-Bild („Film wird gestartet …“, „Kino konnte nicht starten“). */
-export function drawStatus(canvas, { title = '', text = '', sub = '' } = {}) {
+function drawStatus(canvas, { title = '', text = '', sub = '' } = {}) {
   const g = ctx2d(canvas);
   if (!g) return false;
   const W = canvas.width;

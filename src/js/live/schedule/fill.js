@@ -24,11 +24,11 @@
 import { GRID, MIN, HOUR, dayBounds } from './time.js';
 import { keyHash } from './hash.js';
 
-export const FILL_LABEL = 'Füllprogramm';
-export const NIGHT_LABEL = 'Füllprogramm – reguläres Programm ab 5:00';
-export const FILLER_MAX = 30 * MIN;
-export const DP_HORIZON = 4 * HOUR;
-export const DP_MAX_CANDS = 40;
+const FILL_LABEL = 'Füllprogramm';
+const NIGHT_LABEL = 'Füllprogramm – reguläres Programm ab 5:00';
+const FILLER_MAX = 30 * MIN;
+const DP_HORIZON = 4 * HOUR;
+const DP_MAX_CANDS = 40;
 
 export const slotOf = (durMs) => Math.ceil(durMs / GRID) * GRID;
 

@@ -5,12 +5,9 @@ import { mountPoint, unmountPoint } from './dom.js';
 const ID = 'lfx-ambient';
 const clamp = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0)));
 
-let current = null;
-
 /** Setzt die Ambient-Farbe (0..255 je Kanal). */
 export function setAmbient(r, g, b) {
   const [R, G, B] = [clamp(r), clamp(g), clamp(b)];
-  current = [R, G, B];
   const s = document.documentElement.style;
   s.setProperty('--lfx-ambient-r', String(R));
   s.setProperty('--lfx-ambient-g', String(G));
@@ -18,12 +15,7 @@ export function setAmbient(r, g, b) {
   s.setProperty('--lfx-ambient', `${R} ${G} ${B}`);
 }
 
-export function getAmbient() {
-  return current;
-}
-
 export function resetAmbient() {
-  current = null;
   const s = document.documentElement.style;
   for (const p of ['--lfx-ambient-r', '--lfx-ambient-g', '--lfx-ambient-b', '--lfx-ambient']) s.removeProperty(p);
 }

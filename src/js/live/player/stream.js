@@ -3,7 +3,7 @@
 import { buildDeviceProfile, canHls, canHevc } from './profile.js';
 import { buildTracks, pickAudio, serverDefaultAudio, isPlainAudioCodec } from './tracks.js';
 
-export const VIDEO_REASONS = new Set([
+const VIDEO_REASONS = new Set([
   'VideoCodecNotSupported', 'VideoProfileNotSupported', 'VideoLevelNotSupported', 'VideoResolutionNotSupported',
   'VideoBitDepthNotSupported', 'VideoFramerateNotSupported', 'RefFramesNotSupported', 'AnamorphicVideoNotSupported',
   'InterlacedVideoNotSupported', 'VideoBitrateNotSupported', 'VideoRangeTypeNotSupported', 'VideoCodecTagNotSupported',

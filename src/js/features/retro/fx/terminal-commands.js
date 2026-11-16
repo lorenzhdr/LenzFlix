@@ -28,7 +28,7 @@ export const ALIASES = {
 };
 
 /** Befehle, die in der Hilfe stehen (versteckte fehlen absichtlich). */
-export const HELP_LINES = [
+const HELP_LINES = [
   ['HILFE', 'DIESE LISTE'],
   ['WHOAMI', 'WER BIN ICH'],
   ['DATUM / UHR', 'DATUM UND UHRZEIT'],
@@ -48,7 +48,7 @@ export const HELP_LINES = [
   ['EXIT', 'TERMINAL SCHLIESSEN'],
 ];
 
-export const ASCII_LOGO = [
+const ASCII_LOGO = [
   ' _     _____ _   _ __________  ___   ___  _  _ ',
   '| |   | ____| \\ | |__  /__  / / _ \\ / _ \\| || |',
   '| |   |  _| |  \\| | / /   / / | (_) | (_) | || |_',
@@ -229,7 +229,7 @@ export async function execute(line, ctx) {
 }
 
 /** Rein kosmetische Fake-Hacking-Animation. */
-export async function runHack(ctx, { rnd = Math.random } = {}) {
+async function runHack(ctx, { rnd = Math.random } = {}) {
   ctx.print('VERBINDE MIT MAINFRAME ...');
   if (!(await ctx.sleep(500))) return;
   for (let i = 0; i < 14; i++) {

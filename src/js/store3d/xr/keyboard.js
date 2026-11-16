@@ -1,8 +1,8 @@
 // VIDEOTHEK LENZ · VR-Tastatur (rein, ohne three): QWERTZ-Layout und Tastenlogik für Panels mit `input`.
-export const KEY_H = 64;
-export const KEY_GAP = 8;
-export const KEY_ROWS = 5;
-export const MAX_LEN = 80;
+const KEY_H = 64;
+const KEY_GAP = 8;
+const KEY_ROWS = 5;
+const MAX_LEN = 80;
 
 /** Höhe der Tastatur in Pixeln. */
 export const keyboardHeight = () => KEY_ROWS * KEY_H + (KEY_ROWS - 1) * KEY_GAP;

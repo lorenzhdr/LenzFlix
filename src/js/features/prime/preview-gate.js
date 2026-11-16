@@ -1,7 +1,7 @@
 // LENZPRIME: Videos sparsam halten. Ein Video pausiert, solange es aus dem Viewport gescrollt ist, der Tab verborgen ist
 // oder eine Poster-Vorschau läuft (Hold-Event auf document), und läuft danach weiter.
-export const HOLD_EVENT = 'lfx-prime-preview-hold';
-export const VISIBLE_RATIO = 0.2;
+const HOLD_EVENT = 'lfx-prime-preview-hold';
+const VISIBLE_RATIO = 0.2;
 
 /** Meldet, dass eine andere Vorschau (Poster-Hover) läuft (on = true) bzw. endet (on = false). */
 export function setPreviewHold(on) {

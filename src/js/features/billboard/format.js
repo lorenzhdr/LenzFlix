@@ -1,9 +1,9 @@
 // LenzFlix: Billboard – reine Formatierungs-/Auswahl-Logik (testbar ohne DOM).
 
 const DAY = 86400000;
-export const NEW_DAYS = 14;
+const NEW_DAYS = 14;
 
-export function hasLogoAndBackdrop(it) {
+function hasLogoAndBackdrop(it) {
   return Boolean(it && it.Id && it.ImageTags && it.ImageTags.Logo && it.BackdropImageTags && it.BackdropImageTags.length);
 }
 

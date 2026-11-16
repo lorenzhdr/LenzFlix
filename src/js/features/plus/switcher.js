@@ -86,7 +86,7 @@ async function loadLibraries(seq) {
   render();
 }
 
-export const plusSwitcher = {
+const plusSwitcher = {
   name: 'plus-switcher',
   match(route) {
     return isTheme('plus') && isModern() && !isTv() && isReady() && isSwitcherRoute(route);

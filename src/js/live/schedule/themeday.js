@@ -12,9 +12,9 @@ import { makeEntries, bucketCount, rotation, rotationWithBorrow, streamOfAge } f
 import { slotOf } from './fill.js';
 import { keyHash, cmpStr } from './hash.js';
 
-export const KINDS = ['boxset', 'decade', 'pilot', 'overlength'];
-export const OVERLENGTH_MS = 150 * 60000;
-export const DECADE_MIN_MS = 6 * HOUR;
+const KINDS = ['boxset', 'decade', 'pilot', 'overlength'];
+const OVERLENGTH_MS = 150 * 60000;
+const DECADE_MIN_MS = 6 * HOUR;
 const MIN_ITEMS = 2;
 const MIN_PILOTS = 3;
 const MAX_LOADS_PER_DAY = 12;
@@ -198,7 +198,7 @@ function planThemes(ctx, D, themes) {
   return B.finish();
 }
 
-export const themedayImpl = {
+const themedayImpl = {
   /** Lädt die Sammlungs-Inhalte, die für die Tage Ds gebraucht werden (sequentiell, mit Cache; Fehler → Kandidat überspringen). */
   async prepare(ctx, Ds) {
     const cache = stateOf(ctx).boxsets;

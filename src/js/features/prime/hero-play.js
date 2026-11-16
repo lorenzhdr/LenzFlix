@@ -4,7 +4,7 @@ import * as data from '../modal/data.js';
 import { hasResume, pickInitialSeason, progressPercent } from '../modal/format.js';
 
 /** Zu spielende Folge einer Serie: nächste Folge, sonst erste Folge der ersten Staffel; null wenn nichts da ist. */
-export async function seriesTarget(series) {
+async function seriesTarget(series) {
   let target = await data.loadNextUp(series.Id).catch(() => null);
   if (!target) {
     const seasons = await data.loadSeasons(series.Id).catch(() => []);

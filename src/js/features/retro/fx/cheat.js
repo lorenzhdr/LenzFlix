@@ -3,7 +3,7 @@
 export const CHEAT_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
 /** e.key normalisieren: Buchstaben klein, Rest unverändert. */
-export function normalizeKey(key) {
+function normalizeKey(key) {
   return typeof key === 'string' && key.length === 1 ? key.toLowerCase() : key;
 }
 

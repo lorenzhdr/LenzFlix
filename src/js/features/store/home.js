@@ -69,7 +69,7 @@ function onXr(s) {
   else if (bridge) bridge.activate(false);
 }
 
-export function hasWebGL() {
+function hasWebGL() {
   try {
     const c = document.createElement('canvas');
     const gl = c.getContext('webgl2') || c.getContext('webgl');

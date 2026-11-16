@@ -1,10 +1,10 @@
 // VIDEOTHEK LENZ: Einteilung des Katalogs in Abteilungen. REIN (keine Imports, kein State): Regeln siehe docs/store3d.md.
-export const NEW_DAYS = 14;
-export const NEW_MAX = 24;
-export const MIN_SERIES_GENRE = 6;
-export const MIN_MOVIE_GENRE = 8;
-export const HIGHLIGHT_MAX = 8;
-export const HIGHLIGHT_RATING = 7.5;
+const NEW_DAYS = 14;
+const NEW_MAX = 24;
+const MIN_SERIES_GENRE = 6;
+const MIN_MOVIE_GENRE = 8;
+const HIGHLIGHT_MAX = 8;
+const HIGHLIGHT_RATING = 7.5;
 
 const DAY_MS = 86400000;
 const ADULT = new Set(['FSK-18', '18', 'DE-18', 'NC-17', 'X', 'R18', 'R18+', 'AO']);
@@ -12,7 +12,7 @@ const KIDS_GENRES = new Set(['animation', 'familie', 'kids', 'kinder']);
 const KIDS_RATINGS = new Set(['FSK-0', 'FSK-6', '0', '6', '']);
 
 // Kräftige 90er-Neonfarben; Abteilungen bekommen deterministisch eine daraus (Hash des Schlüssels).
-export const NEON = ['#ff3d7f', '#00e5ff', '#7cff3d', '#ffa826', '#b455ff', '#3d7bff', '#ff5a3d', '#2affb2', '#ff4df0', '#e8ff3d'];
+const NEON = ['#ff3d7f', '#00e5ff', '#7cff3d', '#ffa826', '#b455ff', '#3d7bff', '#ff5a3d', '#2affb2', '#ff4df0', '#e8ff3d'];
 const FIXED = { new: '#ffd23f', kids: '#4dd2ff', adult: '#ff2a3a', misc: '#c7cde8', 'series-misc': '#aab4ff' };
 
 const norm = (s) => String(s == null ? '' : s).trim();

@@ -6,9 +6,9 @@ import { isModern, isTv } from '../core/layout.js';
 import { isTheme } from '../core/theme.js';
 import { openSecretMenu, closeSecretMenu } from './secretmenu/panel.js';
 
-export const LOGO_SELECTOR = 'header.MuiAppBar-root a[href="#/"], .lfx-mnav__logo';
-export const CLICKS = 5;
-export const WINDOW_MS = 3000;
+const LOGO_SELECTOR = 'header.MuiAppBar-root a[href="#/"], .lfx-mnav__logo';
+const CLICKS = 5;
+const WINDOW_MS = 3000;
 
 let stamps = [];
 let listening = false;

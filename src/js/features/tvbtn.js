@@ -22,7 +22,7 @@ function applyActive(route) {
   else el.removeAttribute('aria-current');
 }
 
-export const tvbtnFeature = {
+const tvbtnFeature = {
   name: 'tvbtn',
   match(route) {
     return isReady() && isModern() && !isTv() && isTheme('flix') && !EXCLUDED.test(route.path);

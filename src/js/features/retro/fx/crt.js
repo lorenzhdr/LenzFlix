@@ -3,7 +3,7 @@
 import { h } from '../../../core/dom.js';
 import { NO_CRT_CLASS } from '../prefs.js';
 
-export const CRT_ID = 'lfx-retro-crt';
+const CRT_ID = 'lfx-retro-crt';
 
 export function createCrt() {
   let el = null;

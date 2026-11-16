@@ -119,7 +119,6 @@ const SOUNDS = {
   },
 };
 
-export const SOUND_NAMES = Object.keys(SOUNDS).concat('rain');
 
 /**
  * Sound-Steuerung. Ob Sound an ist, fragt isEnabled() ab (getPref('sound')).

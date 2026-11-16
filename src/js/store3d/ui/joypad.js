@@ -3,7 +3,7 @@
 // unabhängig davon weiterlaufen. Laufen und Umsehen gehen gleichzeitig mit zwei Daumen.
 
 /** Totzone der Joystick-Auslenkung (0..1). */
-export const STICK_DEAD = 0.12;
+const STICK_DEAD = 0.12;
 
 /** Rohauslenkung (−1..1 je Achse, Betrag ≤ 1) → Totzone + quadratische Kurve für feines Zielen. */
 export function shapeStick(x, y) {

@@ -34,7 +34,7 @@ const FIXED = {
 };
 
 /** channelConfig ({5:'Action'} oder '5=Action;6=Komödie') → Map<Platz 5-16, normalisiertes Genre>. */
-export function parseChannelConfig(cfg) {
+function parseChannelConfig(cfg) {
   const out = new Map();
   let pairs = [];
   if (typeof cfg === 'string') {

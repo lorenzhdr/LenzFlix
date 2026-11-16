@@ -8,8 +8,8 @@ import { openItemMenu } from '../../core/itemmenu.js';
 import { formatRuntime, metaParts, peopleOf, progressPercent, ratingText, episodeLabel } from './format.js';
 
 export const TITLE_ID = 'lfx-modal-title';
-export const EPISODES_INITIAL = 10;
-export const CARDS_INITIAL = 6;
+const EPISODES_INITIAL = 10;
+const CARDS_INITIAL = 6;
 
 const ICONS = {
   play: '<svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M6 4l15 8-15 8z"/></svg>',
@@ -96,7 +96,7 @@ export function setPlayedState(btn, on) {
 }
 
 /** Eckiger Gesehen-Button. opts: {small, scope, on, onclick}. */
-export function playedButton(item, { small = false, scope = null, on = null, onclick = null } = {}) {
+function playedButton(item, { small = false, scope = null, on = null, onclick = null } = {}) {
   const sc = scope || (item.Type === 'Series' ? 'series' : 'item');
   const btn = roundButton(PLAYED_LABELS[sc][0], ICON_EYE, onclick, `${small ? 'lfx-modal__round--small ' : ''}lfx-modal__round--played`);
   btn.dataset.scope = sc;
@@ -236,7 +236,7 @@ function infoRow(label, valueNode) {
   return h('p', { class: 'lfx-modal__inforow' }, [h('span', { class: 'lfx-modal__label' }, `${label}: `), valueNode]);
 }
 
-export function buildInfo(item, H) {
+function buildInfo(item, H) {
   const sec = h('section', { class: 'lfx-modal__section lfx-modal__info' }, [
     h('h3', { class: 'lfx-modal__h' }, ['Info zu ', h('strong', {}, item.Name || '')]),
   ]);

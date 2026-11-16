@@ -24,7 +24,7 @@ export function canHevc(video) {
 }
 
 /** Zusätzliche Ton-Codecs (Safari: AC-3/E-AC-3), nur wenn canPlayType sie bejaht. */
-export function extraAudioCodecs(video) {
+function extraAudioCodecs(video) {
   const out = [];
   if (can(video, AC3)) out.push('ac3');
   if (can(video, EAC3)) out.push('eac3');

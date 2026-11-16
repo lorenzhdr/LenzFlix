@@ -2,7 +2,7 @@
 // Markup: button[role=menuitemcheckbox|switch][aria-checked].is-on > Beschriftung + span.lfx-switch > span.lfx-switch__knob.
 import { h } from './dom.js';
 
-export const switchVisual = () => h('span', { class: 'lfx-switch', 'aria-hidden': 'true' }, [h('span', { class: 'lfx-switch__knob' })]);
+const switchVisual = () => h('span', { class: 'lfx-switch', 'aria-hidden': 'true' }, [h('span', { class: 'lfx-switch__knob' })]);
 
 export function setSwitchState(btn, on) {
   btn.classList.toggle('is-on', Boolean(on));
@@ -14,7 +14,7 @@ export function setSwitchState(btn, on) {
  * (schließt nie ein Menü). item.watch(cb) (optional) meldet Änderungen von außen: cb(on) → Rückgabe Abmelden;
  * die Meldung meldet sich selbst ab, sobald der Button nicht mehr im Dokument hängt.
  */
-export function bindSwitch(btn, item) {
+function bindSwitch(btn, item) {
   setSwitchState(btn, item.checked);
   btn.addEventListener('click', () => {
     const next = btn.getAttribute('aria-checked') !== 'true';

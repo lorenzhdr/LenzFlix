@@ -99,7 +99,7 @@ function btn(key, label, sel) {
   return b;
 }
 
-export const osdcenterFeature = {
+const osdcenterFeature = {
   name: 'osdcenter',
   match(route) {
     return !isTv() && !isTheme('live') && Boolean(page() || (route && route.path === '/video'));

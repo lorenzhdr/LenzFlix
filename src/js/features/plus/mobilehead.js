@@ -82,7 +82,7 @@ async function loadLibraries(seq) {
   render();
 }
 
-export const plusMobileHead = {
+const plusMobileHead = {
   name: 'plus-mobilehead',
   match(route) {
     return isTheme('plus') && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED.test(route.path);

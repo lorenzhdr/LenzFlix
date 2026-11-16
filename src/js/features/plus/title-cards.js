@@ -4,13 +4,13 @@ import { createCard } from '../rows/card.js';
 import { metaParts } from '../modal/format.js';
 
 /** Alters-Box ("FSK-12" -> "12"); null ohne Freigabe. */
-export function ageBox(rating) {
+function ageBox(rating) {
   const r = String(rating || '').trim().replace(/^fsk[-\s]?/i, '');
   return r ? h('span', { class: 'lfx-plus-age' }, r) : null;
 }
 
 /** "Jahr • Laufzeit/Staffeln • Genre, Genre" (leere Teile entfallen). */
-export function metaText(item, { genres = 3 } = {}) {
+function metaText(item, { genres = 3 } = {}) {
   if (!item) return '';
   const m = metaParts(item);
   const g = (item.Genres || []).slice(0, genres).join(', ');

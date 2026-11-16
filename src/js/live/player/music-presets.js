@@ -7,7 +7,7 @@
 //   bass        : 1 = Grundton, 3 = Terz, 5 = Quinte, 8 = Oktave, 0 = Pause
 //   pad / epiano / kick / snare / hat / brush : Anschlagstärke 0..1
 
-export const QUALITIES = {
+const QUALITIES = {
   maj: [0, 4, 7],
   m: [0, 3, 7],
   maj7: [0, 4, 7, 11],

@@ -2,10 +2,10 @@
 // Ausgabe nur per textContent. Fokus-Falle, Fokus zurück, Verlauf mit Pfeiltasten (nur im Eingabefeld), Tab-Vervollständigung.
 import { h } from '../../../core/dom.js';
 import { emitFx } from '../prefs.js';
-import { execute, complete, parseCommand } from './terminal-commands.js';
+import { execute, complete } from './terminal-commands.js';
 import { createTimers } from './util.js';
 
-export const TERMINAL_ID = 'lfx-retro-terminal';
+const TERMINAL_ID = 'lfx-retro-terminal';
 const PROMPT = 'LENZ84:\\>';
 const MAX_LINES = 400;
 const MAX_HISTORY = 50;
@@ -208,4 +208,3 @@ export function createTerminal(deps) {
   };
 }
 
-export { parseCommand };

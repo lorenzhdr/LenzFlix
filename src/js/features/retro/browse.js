@@ -21,7 +21,7 @@ const ON_CLASS = 'lfx-retro-browse-on';
 const PAGE = 40;
 const VIEW_KEY = 'lfx.retro.browseview';
 
-export const SORTS = {
+const SORTS = {
   name: { label: 'NAME', by: 'SortName', order: 'Ascending' },
   date: { label: 'DATUM', by: 'DateCreated', order: 'Descending' },
   rating: { label: 'WERTUNG', by: 'CommunityRating,SortName', order: 'Descending' },

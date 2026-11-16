@@ -55,14 +55,14 @@ const query = (params) => api.getItems({
   ...BASE_PARAMS, IncludeItemTypes: TYPES, Recursive: true, ...params,
 }).then(asItems);
 
-export function loadNew() {
+function loadNew() {
   return query({ SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 20 }).then((l) => uniqueTitles(l, 20));
 }
 
 const MIN_CHART_TITLES = 3;
 
 /** Untertitel unter Chart-Sektionen. */
-export const chartSubtitle = (days) => `Meistgesehen auf ${brandName()} · letzte ${days || 30} Tage`;
+const chartSubtitle = (days) => `Meistgesehen auf ${brandName()} · letzte ${days || 30} Tage`;
 
 /** Charts-Titel einer Liste auflösen. Rückgabe: {items, charted, windowDays}; zu dünn/kein Chart -> charted false. */
 async function loadChart(key, limit, type) {
@@ -80,14 +80,14 @@ async function loadChart(key, limit, type) {
 }
 
 /** „Am häufigsten geschaut“: echte Charts, sonst eigene PlayCount, sonst CommunityRating. */
-export async function loadMostWatchedSection() {
+async function loadMostWatchedSection() {
   const chart = await loadChart('all', 20);
   if (chart.charted) return { ...chart, items: uniqueTitles(chart.items, 20) };
   return { items: await loadMostWatched(), charted: false };
 }
 
 /** „Top 10 Serien/Filme“ (type: 'Series'|'Movie'): echte Charts, sonst neueste (Titel dann ehrlich „Neueste …“). */
-export async function loadTopSection(type) {
+async function loadTopSection(type) {
   const chart = await loadChart(type === 'Series' ? 'series' : 'movies', 10);
   if (chart.charted) return chart;
   return { items: await loadTop(type), charted: false };
@@ -100,7 +100,7 @@ export async function loadMostWatched() {
   return uniqueTitles(await query({ SortBy: 'CommunityRating', SortOrder: 'Descending', Limit: 20 }), 20);
 }
 
-export const loadTop = (type) => query({
+const loadTop = (type) => query({
   IncludeItemTypes: type, SortBy: 'DateCreated', SortOrder: 'Descending', Limit: 10,
 }).then((l) => uniqueTitles(l, 10));
 
@@ -174,7 +174,7 @@ function favoriteButton(item) {
 }
 
 /** Ein Eintrag der „Neu bei LENZFLIX“-Liste. */
-export function createNewEntry(item, newSeries) {
+function createNewEntry(item, newSeries) {
   const parts = dateParts(item.DateCreated);
   const title = item.Name || '';
   const bg = api.imageUrl(item, { type: 'Backdrop', maxWidth: 1000, quality: 85 }) || (landscapeFor(item, 1000) || {}).url;
@@ -211,7 +211,7 @@ export function createNewEntry(item, newSeries) {
 }
 
 /** Karten-Zeile (Klassen aus rows.css). Rückgabe: {el, scroller}. */
-export function createRow(title, items, kind, newSeries) {
+function createRow(title, items, kind, newSeries) {
   const now = Date.now();
   const cards = items.map((it, i) => createCard(it, {
     kind, rank: kind === 'top10' ? i + 1 : 0, badge: badgeFor(it, newSeries, now),

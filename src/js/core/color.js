@@ -20,7 +20,7 @@ export function rgbToHsl(r, g, b) {
 }
 
 /** [h (0..360), s, l] -> [r,g,b] (gerundet) */
-export function hslToRgb(h, s, l) {
+function hslToRgb(h, s, l) {
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const hp = (((h % 360) + 360) % 360) / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));

@@ -136,8 +136,6 @@ export function defaultSections(catalog, getItem, max = 6) {
   return out;
 }
 
-export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-
 /** Länge des Streckenzugs start → path[0] → … */
 export function pathLength(start, path) {
   let len = 0;

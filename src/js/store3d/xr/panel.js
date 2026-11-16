@@ -3,7 +3,7 @@
 import { Mesh, PlaneGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace, DoubleSide, Vector3 } from 'three';
 import { keyboardLayout, keyboardHeight, applyKey } from './keyboard.js';
 
-export const PX_PER_M = 1000;
+const PX_PER_M = 1000;
 export const MAX_H = 1100;
 const PAD = 36;
 const GAP = 18;

@@ -39,7 +39,7 @@ export function tabKey(route) {
 }
 
 /** True, wenn der Hash auf den Player zeigt (#/video). */
-export const isVideoHash = (hash) => /^#!?[/]video(?:[/?]|$)/.test(String(hash || ''));
+const isVideoHash = (hash) => /^#!?[/]video(?:[/?]|$)/.test(String(hash || ''));
 
 const PREF_LABEL = { sound: 'Sound', crt: 'CRT-Effekt' };
 
@@ -192,7 +192,7 @@ async function fillTopbar() {
   if (who) who.textContent = chip.name;
 }
 
-export const retroTabbar = {
+const retroTabbar = {
   name: 'retro-tabbar',
   match(route) {
     return isTheme('retro') && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED.test(route.path);

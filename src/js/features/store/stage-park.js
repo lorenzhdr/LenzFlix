@@ -22,5 +22,3 @@ export function unparkStage() {
   if (box) box.remove();
   return el;
 }
-
-export const parked = () => stageEl;

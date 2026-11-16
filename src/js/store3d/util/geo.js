@@ -98,13 +98,7 @@ export function hex(c) {
   return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
 }
 
-export function mix(a, b, t) {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-}
 
-export function scale3(c, f) {
-  return [c[0] * f, c[1] * f, c[2] * f];
-}
 
 /** Deterministischer Zufall (mulberry32). */
 export function rng(seed) {

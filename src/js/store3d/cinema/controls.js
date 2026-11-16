@@ -3,7 +3,7 @@
 
 export const SEAT_ORDER = ['front', 'mid', 'back'];
 export const SEAT_LABEL = { front: 'vorn', mid: 'Mitte', back: 'hinten' };
-export const AUTO_HIDE_MS = 6000;
+const AUTO_HIDE_MS = 6000;
 
 /** m:ss bzw. h:mm:ss */
 export function fmtTime(s) {

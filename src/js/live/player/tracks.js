@@ -8,7 +8,7 @@ const LANG = {
   pt: 'por', por: 'por', ru: 'rus', rus: 'rus', tr: 'tur', tur: 'tur', pl: 'pol', pol: 'pol',
 };
 
-export function normLang(l) {
+function normLang(l) {
   const s = String(l || '').trim().toLowerCase();
   return LANG[s] || s;
 }

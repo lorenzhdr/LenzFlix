@@ -13,13 +13,13 @@ import { playLabel, playTitle } from './hero-play.js';
 const displayName = (item) => (item.Type === 'Episode' && item.SeriesName ? item.SeriesName : item.Name || '');
 
 /** „7,5“ aus CommunityRating (0–10) oder ''. */
-export function ratingLabel(item) {
+function ratingLabel(item) {
   const r = Number(item && item.CommunityRating);
   return r > 0 ? r.toFixed(1).replace('.', ',') : '';
 }
 
 /** Meta-Zeile: FSK-Chip, ★ Bewertung, Jahr, Laufzeit/Staffeln. */
-export function buildMeta(item) {
+function buildMeta(item) {
   const parts = [];
   const fsk = formatRating(item.OfficialRating);
   if (fsk) parts.push(h('span', { class: 'lfx-prime-chip' }, fsk));

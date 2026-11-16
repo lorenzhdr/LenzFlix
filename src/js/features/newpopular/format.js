@@ -11,7 +11,7 @@ export function dateParts(iso) {
 }
 
 /** ISO-Datum -> '8. November 2026' (deutsch) oder ''. */
-export function longDate(iso) {
+function longDate(iso) {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return '';
   return new Date(t).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });

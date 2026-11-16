@@ -38,7 +38,7 @@ function restoreMeta() {
   own = false;
 }
 
-export const playerbgFeature = {
+const playerbgFeature = {
   name: 'playerbg',
   match(route) {
     return !isTv() && Boolean(document.querySelector(PAGE) || (route && route.path === '/video'));

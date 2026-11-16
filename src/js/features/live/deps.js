@@ -33,7 +33,7 @@ function safeStorage() {
   try { return window.localStorage || null; } catch { return null; }
 }
 
-export function deviceId() {
+function deviceId() {
   try {
     const c = window.ApiClient;
     return (c && typeof c.deviceId === 'function' && c.deviceId()) || '';

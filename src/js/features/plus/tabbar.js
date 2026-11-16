@@ -131,7 +131,7 @@ async function fillAvatar() {
   if (user.name) state.profileBtn.setAttribute('aria-label', `Profil: ${user.name}`);
 }
 
-export const plusTabbar = {
+const plusTabbar = {
   name: 'plus-tabbar',
   match(route) {
     return isTheme('plus') && isModern() && !isTv() && isPhone() && isReady() && !EXCLUDED.test(route.path);

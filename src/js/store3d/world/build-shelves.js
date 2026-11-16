@@ -4,7 +4,7 @@ import {
   Group, Mesh, MeshLambertMaterial, BoxGeometry, Float32BufferAttribute, Color, Vector3, Quaternion, Euler,
 } from 'three';
 import { box, merge, hex, hash, disposeTree } from '../util/geo.js';
-import { levelY, shelfSpec, H_TALL, H_LOW } from './layout.js';
+import { levelY, shelfSpec } from './layout.js';
 import { cellUV, slotCell, swatchUV, swatchFor } from '../covers/atlasmap.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
@@ -181,4 +181,3 @@ export function buildShelves(layout, catalogItems, blankTex, woodTex) {
   };
 }
 
-export { H_TALL, H_LOW };

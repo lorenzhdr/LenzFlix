@@ -7,7 +7,7 @@ const FAKE_TRACKS = {
   subs: [{ index: 2, label: 'Deutsch (Test)', lang: 'ger', isDefault: false }],
 };
 
-export function formatTimecode(ms) {
+function formatTimecode(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const p = (n) => String(n).padStart(2, '0');
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;

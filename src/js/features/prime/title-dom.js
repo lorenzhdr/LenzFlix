@@ -94,7 +94,7 @@ export function buildEpisode(ep, { onPlay, selected = false } = {}) {
   ]);
 }
 
-export function formatDate(iso) {
+function formatDate(iso) {
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return '';
   return new Date(t).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
