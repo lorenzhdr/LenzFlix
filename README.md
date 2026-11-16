@@ -22,7 +22,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 @import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.13.1/dist/lenzflix.min.css");
 ```
 
-- `v1.0.0` ist ein Platzhalter. Auf den **aktuellen Release-Tag pinnen**. `@latest` wird bei jsDelivr lange gecacht.
+- Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
 - Vorher altes Theme-CSS (andere Themes, `@import`s) entfernen.
 
 ### 2. JavaScript (optional)
@@ -33,7 +33,18 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
-### 3. Reverse-Proxy mit CSP
+### 3. Konfiguration (optional)
+
+Die optionalen Werte `chartsUrl`, `statsUrl`, `liveChannels` und `themeCssBase` (siehe die Abschnitte unten) setzt man in einem eigenen JavaScript-Injector-Eintrag **vor** `lenzflix.min.js`. Mehrere einzelne Zuweisungen überschreiben sich gegenseitig, deshalb zusammenführen:
+
+```js
+window.LenzFlixConfig = Object.assign(window.LenzFlixConfig || {}, {
+  chartsUrl: "https://charts.example.com",
+  statsUrl: "/lenzflix-stats/",
+});
+```
+
+### 4. Reverse-Proxy mit CSP
 
 Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenzlive.min.css`, `lenzlive.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
 
@@ -53,7 +64,7 @@ Mit aktivem JavaScript gibt es sechs Designs:
   - **Röhren-Stile (1.9.4):** „Röhre 80er“ als Holz-Truhe im Wohnzimmer um 1982 (Zimmerantenne, Videorekorder, Stehlampe) und „Silber-Röhre“ als Silbergerät auf einem Glas-Rack um 2000 (DVD-Player, Receiver, Lautsprecher). Wölbung, Zeilen, Flimmern und Rollbalken lassen sich im Menü unter „Röhren-Effekte“ abschalten. Auf Handy, im Vollbild und in schmalen Fenstern bleibt die Deko ausgeblendet.
   - **Bedienbare Geräte (1.9.5):** Bei der Röhre 80er schalten Netzschalter und Programmtasten 1–8 am Gerät, die Drehknöpfe (Sender, Lautstärke) lassen sich ziehen, anklicken oder per Mausrad drehen, und der Videorekorder zeigt immer die Uhrzeit. Die Silber-Röhre hat Gerätetasten P+/P−/V+/V−/EPG und einen Netzschalter. Gerätetasten klicken hörbar und schalten aus dem Standby ein (außer V±).
 
-Die Auswahl öffnet sich über **Mehr → Design Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ und LENZ LIVE tragen in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
+Die Auswahl öffnet sich über **Mehr → Design-Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ und LENZ LIVE tragen in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
 
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
@@ -65,7 +76,7 @@ In LENZFLIX führen „Serien“ und „Filme“ auf eigene Seiten, die alle Ser
 
 ### Datensparmodus (LENZFLIX, LENZ+, LENZPRIME, LENZ//84)
 
-Für Mobilfunk und knappe Leitungen: Die Zeile **Datensparmodus** mit Schieber steht direkt unter „Design Einstellungen“ (LENZFLIX: „Mehr“ bzw. Handy-Menü, LENZ+/LENZPRIME: Profilmenü, LENZ//84: „MEHR“-Blatt am Handy). Solange er an ist, zeigt die Kopfleiste ein kleines Tacho-Symbol zum schnellen Ausschalten.
+Für Mobilfunk und knappe Leitungen: Die Zeile **Datensparmodus** mit Schieber steht direkt unter „Design-Einstellungen“ (LENZFLIX: „Mehr“ bzw. Handy-Menü, LENZ+/LENZPRIME: Profilmenü, LENZ//84: Profilmenü am Desktop bzw. „MEHR“-Blatt am Handy). Solange er an ist, zeigt die Kopfleiste ein kleines Tacho-Symbol zum schnellen Ausschalten.
 
 - **Weniger Daten im Hintergrund:** keine automatischen Trailer (die Trailer-Knöpfe funktionieren weiter), nur 5 Titel in der Hero-Rotation, Bilder in 2/3 der Größe, keine Vorladung unterer Startseiten-Zeilen, im TV-Modus kein Vorwärmen der Nachbarsender (Umschalten dauert dadurch etwas länger).
 - **Unverändert:** Videoqualität beim Abspielen. Der Modus gilt pro Gerät und Benutzer und ist standardmäßig aus; in VIDEOTHEK LENZ und LENZ LIVE gibt es ihn nicht.
@@ -91,7 +102,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 :root { --lfx-live-channels: "5=Action;6=Komödie"; }
 ```
 
-  Pro Eintrag `Platz=Genre` (Genre wie in Jellyfin geschrieben), getrennt durch `;`. Alternativ per JS: `window.LenzFlixConfig = { liveChannels: { 5: "Action", 6: "Komödie" } }` (hat Vorrang).
+  Pro Eintrag `Platz=Genre` (Genre wie in Jellyfin geschrieben), getrennt durch `;`. Alternativ per JS (siehe „Konfiguration“): `window.LenzFlixConfig = { liveChannels: { 5: "Action", 6: "Komödie" } }` (hat Vorrang).
 
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 
@@ -139,7 +150,7 @@ Alternativ per JS: `window.LenzFlixConfig = { statsUrl: "/lenzflix-stats/" }` (h
 - **Klick auf eine Karte** öffnet das Detail-Modal. **Strg/Shift/Meta-Klick oder Mittelklick** öffnet die native Detailseite.
 - **Mehr-Menü (⋮):** in Hover-Popup, Detail-Modal, Episodenzeilen, Billboard und „Neu und beliebt“ sowie per Rechtsklick bzw. langem Drücken auf Karten und Episodenzeilen. Es öffnet das native Jellyfin-Titelmenü (inkl. Rechteprüfung) im LenzFlix-Stil, am Handy als Bottom-Sheet, das sich per Wischen nach unten schließen lässt (ebenso die Download-Auswahl und das Detail-Modal).
 - **Download-Button:** neben dem Daumen, nur mit Download-Recht. Bei Serien erst Auswahl „Ganze Serie / Staffel“, dann Rückfrage. Auf Touch-Geräten (Handy/Tablet) ist „Ganze Serie“ ausgegraut („Funktioniert nur am Desktop“), weil Safari jede Datei einzeln bestätigen lässt; einzelne Staffeln bleiben wählbar.
-- **Detail-Modal:** bei Episoden-Karten scrollt es nach dem Öffnen sanft zur Folge.
+- **Detail-Modal:** öffnet oben; bei Episoden-Karten steht die Folgenliste auf der markierten Folge.
 - **Daumen (Gefällt mir):** aktiv gefüllt in Rot.
 - **Gesehen-Button (Detail-Modal):** eckiger Button mit Auge, aktiv = weiß. Im Kopf bei Filmen und Folgen direkt, bei Serien für die ganze Serie (mit Rückfrage). In jeder Folgenzeile für die einzelne Folge und im Folgen-Kopf als ein Block mit der Staffel-Auswahl (links daneben, gemeinsame Kontur) für die ganze Staffel (mit Rückfrage). Auch im Hover-Popup unten rechts im Bild. Die Startseite zeigt die Änderung nach dem nächsten Laden.
 - **Neu und beliebt:** eigene Ansicht unter `#/home?lfx=new`.
@@ -170,6 +181,8 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 }
 ```
 
+**Logo-Klassen:** `.lfx-logo` (Wortmarke „LENZFLIX“, 88 × 25 px) und `.lfx-logo--l` (nur das „L“, 24 px breit) sind Hilfsklassen für eigenes HTML, z. B. im Jellyfin-Branding (Login-Hinweis): `<span class="lfx-logo"></span>`. Die Größe lässt sich per `width`/`height` überschreiben.
+
 Hinweis: `--lfx-cards-visible` und `--lfx-gutter` werden in Media-Queries pro Breite gesetzt. Ein Override im Custom-CSS gilt dadurch für alle Breiten, sofern nicht selbst per Media-Query eingeschränkt.
 
 ## Entwicklung
@@ -183,24 +196,24 @@ npm run lint    # eslint
 npm run serve   # Dev-Server http://localhost:5179/dist/ (liefert dist/ und assets/ mit CORS)
 ```
 
-**Dev-Loop:** `npm run dev` und `npm run serve` laufen lassen. Den Inhalt von `build/dev-inject.js` in die Konsole eines eingeloggten Jellyfin-Tabs einfügen. Das Skript entfernt bekannte Fremd-Spotlight-Elemente, lädt CSS und JS frisch vom Dev-Server und ruft vorher `window.LenzFlix.destroy()` auf. Mit `window.__lfxNoJs = true` wird nur das CSS geladen. Chrome: in den Seiteneinstellungen des Jellyfin-Tabs den Zugriff auf das **lokale Netzwerk** erlauben, sonst blockiert Chrome den Zugriff von https auf localhost.
+**Dev-Loop:** `npm run dev` und `npm run serve` laufen lassen. Den Inhalt von `build/dev-inject.js` in die Konsole eines eingeloggten Jellyfin-Tabs einfügen. Das Skript entfernt bekannte Fremd-Spotlight-Elemente, lädt CSS und JS frisch vom Dev-Server und ruft vorher `window.LenzFlix.destroy()` auf. Mit `window.__lfxNoJs = true` wird nur das CSS geladen. `build/dev-boot.js` (über `npm run serve` als `/boot.js`) tut dasselbe als Kurz-Loader, setzt aber zusätzlich das Design per `#/home?lfxtheme=<Design>`. Chrome: in den Seiteneinstellungen des Jellyfin-Tabs den Zugriff auf das **lokale Netzwerk** erlauben, sonst blockiert Chrome den Zugriff von https auf localhost.
 
 ### Projektstruktur
 
 ```
-build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js (Dev-Loader)
+build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js und dev-boot.js (Dev-Loader), *-dev.html/js (Dev-Harnesses)
 dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css, lenzretro[.min].css, lenzstore[.min].css/.js, lenzlive[.min].css/.js, lenztvmode[.min].css/.js)
 assets/       Schriften Inter und LenzRetro (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
-docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features)
+docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features), store3d.md, live.md, tvmode.md, charts-api.md, stats-api.md
 src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css, logo.css
   modern/     Kern-CSS für das Modern-Layout (wirkt ohne JS)
   legacy-tv/  TV-Layout
   js-ui/      Styles der JS-Komponenten (nur unter html.lfx-js)
-src/js/       main.js (Einstieg, setzt window.LenzFlix)
+src/js/       main.js (Einstieg, setzt window.LenzFlix); store3d/ (3D-Engine) und live/ (LIVE-/TV-Modus-Engine) als lazy Bundles
   core/       API, Cache, Router, Layout, Playback, DOM-Helper, Ambient, Item-Store
-  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/, prime/ und retro/ (LENZ+, LENZPRIME, LENZ//84)
-  shared/     von beiden Designs genutzte Module (Routen, Hubs, Suche, Titel-Aktionen)
-src/css/themes/  plus/, prime/ und retro/ (je index.css = Bundle-Einstieg)
+  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/, prime/, retro/ (LENZ+, LENZPRIME, LENZ//84), store/, live/, tvmode/ (Hüllen für VIDEOTHEK LENZ, LENZ LIVE, TV-Modus)
+  shared/     von plus, prime und retro genutzte Module (Routen, Hubs, Suche, Titel-Aktionen)
+src/css/themes/  plus/, prime/, retro/, store/, live/ (je index.css = Bundle-Einstieg)
 tests/        vitest-Tests (jsdom)
 ```
 

@@ -33,13 +33,13 @@ Eigene Statistik pro Jellyfin-Nutzer aus dem Plugin Playback Reporting. Die Seit
   "compare": { "rank": 2, "of": 7, "avgSeconds": 98000 }
 }
 ```
-- `topSeries`/`topMovies` max. 10, IDs normalisiert (32 Hex ohne Bindestriche, klein). Titel/Poster lädt die Seite selbst mit dem Nutzer-Token.
-- `timeline.buckets` sind dünn besetzt (nur Buckets mit Daten), `key` = `YYYY-MM-DD` (day), `YYYY-WW` (week, SQLite `%W`), `YYYY-MM` (month). Einheit: `7d`/`30d` → day, `year` → week, `all` → month. Lücken füllt die Seite.
+- `devices` max. 5 (nach Sekunden). `topSeries`/`topMovies` max. 10, IDs normalisiert (32 Hex ohne Bindestriche, klein). Titel/Poster lädt die Seite selbst mit dem Nutzer-Token.
+- `timeline.buckets` sind dünn besetzt (nur Buckets mit Daten), `key` = `YYYY-MM-DD` (day), `YYYY-WW` (week, SQLite `%W`: Woche 0 = Tage vor dem ersten Montag; die Seite rechnet daraus die ISO-Kalenderwoche des Wochenmontags), `YYYY-MM` (month). Einheit: `7d`/`30d` → day, `year` → week, `all` → month. Lücken füllt die Seite.
 - `heatmap`: `dow` 0 = Sonntag … 6 = Samstag (SQLite `%w`), `hour` 0–23, nur Zellen mit Daten. Zeit = lokale Serverzeit (Europe/Berlin), keine Umrechnung. Die Dauer einer Wiedergabe wird der Startstunde zugerechnet.
 - `methods`: `PlaybackMethod` wird per Präfix normalisiert (`DirectPlay` → directPlay, `DirectStream` und `Transcode (v:direct a:direct)` (nur Remux, laut echten Daten häufig) → directStream, übrige `Transcode…` → transcode, sonst other).
 - `compare` ist `null`, wenn weniger als 3 aktive Nutzer im Zeitraum (Ignorierliste ausgenommen) existieren, wenn der Nutzer selbst im Zeitraum keine Wiedergabe hat oder wenn er ignoriert wird. Es enthält **nie** Daten anderer Nutzer außer dem Durchschnitt; `rank = 1 + Anzahl Nutzer mit mehr Watchtime`.
 - `ignored: true` (Nutzer steht auf der Ignorierliste von Playback Reporting): alle Zahlen 0/leer, `compare: null`.
-- `approx: true`, wenn mehr als 3000 Episoden für die Serien-Zuordnung angefallen sind (Subrequest-Limit). Dann sind `topSeries`/`binge.seriesDay` Näherungen; `totals.episodes`/`movies`/`seconds` bleiben exakt.
+- `approx: true`, wenn mehr als 3000 Episoden für die Serien-Zuordnung angefallen sind (Subrequest-Limit) oder die Abfrage der gezählten Items (Filme und Folgen) bzw. der Tagesfolgen bei 3000 Zeilen abgeschnitten wurde (auch durch Filme). Dann sind `topSeries`/`binge.seriesDay` Näherungen; `totals.episodes`/`movies`/`seconds` bleiben exakt.
 - `stale: true`: Neuberechnung ist fehlgeschlagen (Jellyfin/Tunnel down), ausgeliefert wird der letzte Stand aus dem Cache; `computedAt` zeigt dessen Alter.
 
 ## Zählregeln

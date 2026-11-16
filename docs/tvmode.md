@@ -32,7 +32,7 @@ sind Entstehungshistorie.
 - `src/js/live/{ui,schedule,player,magazine,pdf}/**`, `live/entry.js`, `src/css/themes/live/**` und die `tests/live-*.test.js` bleiben unangetastet
   (sha256 von `dist/lenzlive.min.js|css` vor/nach gleich).
 - Build-Wächter (`build/build.mjs`): Hauptbundle enthält nie `__LFX_TVMODE_ENGINE__`; `lenztvmode.min.js` enthält nie `__LFX_LIVE_ENGINE__` und nie
-  `lfx-live-remote`; Warnung ab 120 KB. Marker `__LFX_TVMODE_ENGINE__` steht in `src/js/live/tvmode/entry.js`.
+  `lfx-live-remote`; Warnung ab 128 KiB. Marker `__LFX_TVMODE_ENGINE__` steht in `src/js/live/tvmode/entry.js`.
 - Status: final umgesetzt und live getestet (1.10.0). Der frühere Stub aus W0 ist durch die echte Engine ersetzt.
 
 ## Global und `create`
@@ -127,16 +127,16 @@ gibt es kein Intent-Video: die Engine erzeugt ihr eigenes, der Start kann stumm 
 ## Controller (`controller.js`, Welle A, fertig) – UI-frei
 Der Code ist maßgeblich (Tests `tests/tvmode-controller.test.js`).
 ```js
-import { createTvController, DEBOUNCE_MS, RETRY_MS, SYNC_MS, STALL_MS, ERROR_TEXTS } from './controller.js'
+import { createTvController, DEBOUNCE_MS, RETRY_MS, ERROR_TEXTS } from './controller.js'
 createTvController({ scheduler, player, watch = null, pickFiller = null, deps = {}, now = Date.now, opts = {} }) → ctl
 //   player: createPlayer()-Instanz · watch: createWatchTracker() oder null · pickFiller: wie LIVE (Trailer/Karte) oder null
 //   opts: { lastChannel (Standard 1), volume (0..1; Werte > 1 = Prozent), muted }
 //   deps: nur savePrefs({ lastChannel | volume | muted }) (optional, Fehler werden geschluckt) und Durchreichen an pickFiller
-// Konstanten: DEBOUNCE_MS 400 · RETRY_MS 10000 (network-Neuversuch) · SYNC_MS 30000 · STALL_MS 60000
+// Konstanten: DEBOUNCE_MS 250 · RETRY_MS 10000 (network-Neuversuch); intern, nicht exportiert: SYNC_MS 30000 · STALL_MS 60000
 ctl = {
   start(),                       // SYNCHRON in der Geste: player.unlock(), dann Sender (lastChannel) sofort einschalten; idempotent
   stop(),                        // Stream stoppen, Timer aus; phase 'off' (kein Argument; den Stopp-Grund meldet die Engine selbst)
-  tune(no, { immediate } = {}),  // Sender 1..18 (Umlauf per Modulo); entprellt 400 ms, immediate:true sofort. Gleicher Sender → nichts. Nur wenn on.
+  tune(no, { immediate } = {}),  // Sender 1..18 (Umlauf per Modulo); entprellt 250 ms, immediate:true sofort. Gleicher Sender → nichts. Nur wenn on.
   zap(delta),                    // = tune(channel + delta); ArrowUp/Wischen hoch = +1, ArrowDown/Wischen runter = −1
   gesture(),                     // Nutzer hat getippt: player.unlock() synchron; hebt mutedByPolicy auf; bei needsTap neuer Versuch („Zum Starten tippen“/„Ton an“)
   retry(),                       // nach Fehlerkarte neu versuchen
@@ -146,6 +146,8 @@ ctl = {
   get volumeSupported,           // boolean (false = keinen Lautstärke-Regler rendern, nur Stumm-Knopf)
   tracks() → { audio, subs, audioIndex, subtitleIndex },   // wie Player.tracks(); ohne Player leer ({ [], [], null, -1 })
   setAudio(index) → Promise, setSubtitle(index | -1) → Promise,   // Fehler → 'message'
+                                 //   setAudio nutzt `keepOnFail`: ist die Spur nicht auflösbar, bleibt das laufende Bild unverändert
+                                 //   (Ergebnis { ok:false, reason }, Meldung „Diese Tonspur ist nicht verfügbar“, kein 'error'-Ereignis)
   restartTarget() → { itemId, type, seriesId } | null,     // Sendung der aktuellen Ansicht (snapshot.entry); type 'movie'|'episode'|Katalogart; null bei Pause/Sendeschluss/aus
   state() → Snapshot,            // eingefroren (Object.freeze); wird nach jedem 'change' neu gebaut
   on(event, fn) → off,           // 'change' (Snapshot) | 'message' (string) | 'tick' (ms, 1/s) | 'day' (Sendetag D, Wechsel um 05:00)
@@ -233,9 +235,9 @@ Nur `app.js` (E) setzt am Root `is-phone` (`opts.phone` **oder** `matchMedia('(m
 bzw. prüfen die Root-Klasse bei Bedarf; Wischgesten nur bei `pointerType === 'touch'`.
 
 ### Gemeinsame Helfer (Eigentümer G; E und F importieren sie)
-- **`details.js`** (G): Inhaltsangaben. `createDetails({ deps, delayMs = 400 }) → { get(id) → string | undefined, request(id), map() → Map<id,string>, on(fn(id, text)) → off, dispose() }`.
+- **`details.js`** (G): Inhaltsangaben. `createDetails({ deps, delayMs = 400 }) → { get(id) → string | undefined, request(id, immediate?), map() → Map<id,string>, on(fn(id, text)) → off, dispose() }`.
   Der Katalog hat keine Inhaltsangaben; `request(id)` lädt `overview` über `deps.itemDetails([id])`. Pro Instanz per Id gecacht (auch leere Antworten, kein Wiederholen); `request` entprellt
-  400 ms und überschreibt eine noch wartende Id (**max. eine Anfrage je Zappen**); fehlt `deps.itemDetails`, tut es nichts. `map()` wird als `opts.overviews` an `model.describe` gereicht.
+  400 ms und überschreibt eine noch wartende Id (**max. eine Anfrage je Zappen**); `request(id, true)` lädt sofort, ohne die wartende Id der Infoleiste zu verdrängen (die Info-Karte nutzt das); fehlt `deps.itemDetails`, tut es nichts. `map()` wird als `opts.overviews` an `model.describe` gereicht.
   Eine Instanz je Engine (`app.js` erzeugt sie, reicht sie als `opts.details` an `info.js` und `info-card.js`/`channel-list.js`).
 - **`thumb.js`** (G): 16:9-Vorschaubild. `createThumb({ doc, deps }) → { el, set(imageItemId, channelNo), destroy() }`; Regeln siehe „Bilder“.
 
@@ -266,14 +268,14 @@ Jede Datei hat genau einen Eigentümer; fehlt einem Worker Klasse oder Funktion 
 - `describe().imageItemId` ist bei Folgen die Serien-Id, sonst die `itemId` der Sendung (`null` ohne Katalogtitel → direkt Platzhalter).
 - URL über `deps.imageUrl(id, { type, maxWidth })` (= `imageUrlFor`; Signatur siehe `features/live/deps.js`). Reihenfolge der Typen: **`Thumb` → `Backdrop` → `Primary`**, `maxWidth` 480
   (Liste/Karte; Info-Karte 960). Bei `onerror` des `<img>` wird der nächste Typ versucht; nach dem letzten ein Platzhalter: `.lfx-tvm__thumb--ph` mit Hintergrund
-  `channelColor(no)` aus `ui/logos.js` (Textfarbe `channelInk(no)`) und Sendernummer. Das Ergebnis wird je `id` im `thumb.js` gemerkt (kein erneutes Durchprobieren).
+  `channelColor(no)` aus `ui/logos.js` (Textfarbe `channelInk(no)` nach WCAG-Kontrast: `#1a1a1a` oder `#ffffff`) und Sendernummer. Das Ergebnis wird je `id` im `thumb.js` gemerkt (kein erneutes Durchprobieren).
 - **Bild-Kennung `tag`** (Browser-Cache, Server antwortet mit `max-age=31536000, immutable`; ohne `tag` nur `public` = Rückfrage je Anzeige): Die Hülle (`features/live/deps.js` `taggedImageUrl`) ergänzt `tag` aus dem Katalog (`features/live/data.js`: Filme/Serien laden `ImageTags` Thumb/Primary + erstes `BackdropImageTags`; Folgen nutzen die Serien-Id). Unbekannt (z. B. Cache-Eintrag von vor 1.11.8, Typ fehlt) → URL ohne `tag`, nie `null` (sonst Platzhalter statt Typ-Fallback). Gilt auch für LENZ LIVE (Fernsehzeitung/PDF).
 - Bild-URLs ohne `api_key`/Token (CLAUDE.md): niemals `streamUrl`, nie `ApiKey`/`api_key` anhängen oder loggen; die Bild-Endpunkte sind ohne Schlüssel erreichbar.
 - Lazy: `loading="lazy"`/`IntersectionObserver` in der Liste; Rasterzellen haben keine Bilder.
 
 ### Inhaltsangaben
 Der Katalog hat keine. Info-Bereich (`info.js`) und Info-Karte (`info-card.js`) rufen `opts.details.request(id)` (siehe `details.js`: Cache je Instanz, 400 ms Entprellung,
-höchstens eine Anfrage je Zappen) und zeigen `details.get(id)` bzw. lassen den Text leer; bei der Antwort (`details.on`) aktualisieren sie sich. Id = `describe().itemId`
+höchstens eine Anfrage je Zappen; die Info-Karte ruft `request(id, true)` = sofort) und zeigen `details.get(id)` bzw. lassen den Text leer; bei der Antwort (`details.on`) aktualisieren sie sich. Id = `describe().itemId`
 (bei Folgen die Folgen-Id, die den eigenen Text hat; **nicht** `imageItemId`).
 
 
@@ -387,8 +389,10 @@ Klick → `ctl.tune(no, { immediate: true })`.
 ```
 Klick auf eine laufende Zelle (`cell.now`) → `ctl.tune(no, { immediate: true })` (Umschalten); jede andere Zelle öffnet die Info-Karte (`opts.onInfo`) mit
 [Details] und [In der Mediathek ansehen]. Zellen kommen aus `model.gridRows(…, { now })`; Zeitachse pro Tag (Sendetag 05:00–05:00), Tage lazy gerendert.
+Tastatur im Raster: Roving Tabindex (nur eine Zelle ist Tab-Stopp, `tabIndex 0`, folgt dem Fokus). Pfeil links/rechts bewegt den Fokus innerhalb des Senders, hoch/runter zum Sender darüber/darunter (Zelle zur selben Zeit). Die Pfeile bewegen nur den Fokus und bleiben am Rand stehen (kein Zappen, `stopPropagation` gegen `keys.js`).
 
 ### Info-Karte (G, `info-card.js`)
+Z-Ebene: `--lfx-tvm-z-full` + 2 (1292), über Kopfleisten und Tabbars, unter Dialogen (1300).
 ```
 .lfx-tvm__infocard (role=dialog, aria-modal; is-open)
   .lfx-tvm__infocard-backdrop
@@ -407,7 +411,7 @@ Gemeinsame Bausteine: `.lfx-tvm__btn` (Knopf; Varianten `--primary`, `--ghost`, 
 ## Hülle `features/tvmode/` (Welle H)
 - `route.js`: `ROOT_ID = 'lfx-tvm'`, `ON_CLASS = 'lfx-tvm-on'`; Route `#/home?lfx=tv` (`tvModeHref`, `isTvModeRoute` aus `shared/routes.js`, `'tv'` ist in `KINDS`).
 - `page.js`: nach dem Muster `features/newpopular.js` (Mount in `#homeTab` per Poll, Neu-Einhängen bei Ersetzen des Tabs). Match:
-  `lfx==='tv' && ['flix','plus','prime'].some(isTheme) && isModern() && !isTv() && isReady()`. Lazy: `ensureAddonCss('lenztvmode')` + `ensureThemeJs('tvmode')`.
+  `lfx==='tv' && TV_THEMES.some(isTheme) && isModern() && !isTv() && isReady()`. Lazy: `ensureAddonCss('lenztvmode')` + `ensureThemeJs('tvmode')`.
   Exportiert `destroyTvMode()` (für `main.js` und Design-Wechsel).
 - `prefs.js`: Schlüssel `lfx.tvm.<name>.<uid>` für `volume`, `muted`, `lastChannel`.
 - `unlock.js`: hört auf `window` `lfx:tvmode-intent` (siehe „Ereignis `lfx:tvmode-intent`“), erzeugt synchron ein `<video playsinline>`, ruft `play()` auf, merkt es sich (`takeIntentVideo()`) und
@@ -420,8 +424,7 @@ Gemeinsame Bausteine: `.lfx-tvm__btn` (Knopf; Varianten `--primary`, `--ghost`, 
 ## Ereignis `lfx:play`
 `core/playback.js` `play(item, opts)` feuert **synchron am Anfang** (vor dem Proxy-Klick bzw. Fallback)
 `window.dispatchEvent(new CustomEvent('lfx:play', { detail: { id } }))`. Es feuert nicht ohne Item/Id. Damit stoppt der TV-Modus bei **jedem** normalen Abspielweg
-(Modal, Hovercard, Titelseiten, „Von vorne“). Der Stopp kommt **vor** dem Start des Jellyfin-Players (sonst löscht `video.js` beim Dispose die mediaSession-Handler
-des neuen Players). `modal.js` bekommt keinen Haken.
+(Modal, Hovercard, Titelseiten, „Von vorne“). Der Stopp kommt **vor** dem Start des Jellyfin-Players, damit nie zwei Wiedergaben gleichzeitig laufen. (`player/video.js` setzt keine Media-Session-Handler mehr; sie sind global und nicht wiederherstellbar.) `modal.js` bekommt keinen Haken.
 
 ## Lebenszyklus
 - **Verlassen = Stopp:** `unmount` ohne aktives PiP → `instance.suspend()` (= `false`, `<video>` leeren, `DELETE /Videos/ActiveEncodings`) und danach `dispose()`. Kein Mini-Player.
@@ -429,14 +432,11 @@ des neuen Players). `modal.js` bekommt keinen Haken.
   (Besitzer: Engine). Rückkehr auf die Seite → `resume(newHost)`; PiP-Ende → zurück in den Slot (Seite gemountet) bzw. `dispose()` mit Stopp-Grund `pip-end` (Seite nicht gemountet).
   Das Umhängen übersteht PiP (S1 bestätigt); ein Geometrie-Sync ist **nicht** nötig.
 - **Stopp-Gründe** (`deps.onStopped({ reason })`): `leave` (Seite verlassen, kein PiP), `lfx-play` (Ereignis), `route-video` (Route `/video`), `pip-end` (`leavepictureinpicture`
-  außerhalb der Seite), `detached` (`!video.isConnected`), `theme` (Design-Wechsel), `destroy`, `modal` (flix-Details), `error` (nicht behebbar).
-  Weitere Gründe nur nach Absprache. Wer löst aus: Engine (`entry.js`/`pip.js`): `lfx-play`, `pip-end`, `detached`; Hülle (H): `leave`, `route-video` (Route `/video` bzw. `#videoOsdPage:not(.hide)`), `theme`, `destroy`, `modal`;
+  außerhalb der Seite), `detached` (`!video.isConnected`), `theme` (Design-Wechsel), `destroy`, `error` (nicht behebbar).
+  Weitere Gründe nur nach Absprache. Wer löst aus: Engine (`entry.js`/`pip.js`): `lfx-play`, `pip-end`, `detached`; Hülle (H): `leave`, `route-video` (Route `/video` bzw. `#videoOsdPage:not(.hide)`), `theme`, `destroy`;
   `error` kommt vom Controller (nicht behebbarer Fehler) über die Engine.
 - **Design-Wechsel/`destroy()`:** sofort `dispose()` (die Engine entfernt dabei `#lfx-tvm-bg`), `removeAddonCss('lenztvmode')`, `removeThemeJs` wie bei den anderen lazy Bundles.
-- **Details:** in `flix` öffnet `deps.openDetails` `openModal` über der TV-Seite. Die Hülle beobachtet per `MutationObserver` die Klasse `html.lfx-modal-open`:
-  Öffnen → `instance.stop('modal')`; Schließen → nur dann wieder einschalten (`start()`), wenn (a) während des Schließens **kein** `lfx:play` kam
-  (der Modal-Fix ruft `play()` synchron im `after` auf, der Observer läuft danach als Microtask), (b) die Route noch `lfx=tv` ist und (c) `#videoOsdPage:not(.hide)` fehlt.
-  In `plus`/`prime` ist „Details“ eine Navigation (`titleHref`), also ein Verlassen mit Stopp.
+- **Details:** in allen Designs öffnet `deps.openDetails` `openModal(id, { overlay: true })` als Overlay über dem laufenden TV: kein Stopp, kein Observer, Bild und Ton laufen weiter. Die Tasten bleiben per `BLOCK` gesperrt (siehe unten).
 - **„Von vorne“ / „In der Mediathek ansehen“:** TV stoppen, dann `deps.playFromStart(id)` (Jellyfin-Player ab Anfang, `core/playback.js`, `resume:false`).
   Erzeugt bewusst einen normalen „Weiterschauen“-Eintrag.
 - **Zappen** meldet keinen Fortschritt (nie `/Sessions/Playing*`, nie `StartTimeTicks` an der HLS-URL; Server-Fallen siehe `docs/live.md`).
@@ -465,9 +465,10 @@ des neuen Players). `modal.js` bekommt keinen Haken.
 
 ## Dev-Harness `build/tvmode-dev.html|js` (Welle W3)
 Über `serve` als `/tvmode-dev.html` (Fake-Katalog aus `build/live-dev.js` **kopiert**, kein Netzwerk, `fakePlayer: true`). Parameter:
-`design=flix|plus|prime` (Klasse `lfx-theme-<id>` + Design-CSS), `phone=1`, `now=<ISO>` (Testuhr), `channel=N`, `state=playing|pause|closedown|error|gesture|muted|loading`,
-`chrome=1` (Attrappe der Jellyfin-Kopfleiste mit `--lfx-header-h`), optional `tab=now|epg`, `landscape=1`, `debug=1` (`window.__lfxTvm`). Marker: `html[data-tvm-dev-ready]` sobald
-`onReady` kam. Lädt `dist/lenztvmode.js|css` (bzw. `src/` per Modul) wie `live-dev.html`.
+`design=flix|plus|prime|retro` (Klasse `lfx-theme-<id>` + Design-CSS), `phone=1`, `now=<ISO>` (Testuhr), `channel=N`,
+`state=loading|pause|closedown|error|gesture|tap|muted` (`loading` hält den Ladezustand; `playing` ist der Normalablauf, kein `state` nötig), `thin=1` (ausgedünnter Katalog, nur Filme ab 120 min, für echte Sendepause),
+`chrome=0` (Kopfleisten-/Tabbar-Attrappe aus; Standard an, `chrome=1` wirkungslos), optional `tab=now|epg`, `info=1`, `landscape=1` (nur Hinweis für Skripte), `debug=1` (`window.__lfxTvm`); weitere Parameter im Kopfkommentar von `build/tvmode-dev.js` (maßgeblich). Marker: `html[data-tvm-dev-ready]` sobald
+`onReady` kam. Lädt `dist/lenztvmode.js|css` wie `live-dev.html` (kein `src/`-Modus).
 
 ## Live-Befunde 1.10.0
 Live getestet am 12.11.2026 (Testkonto, Chrome Desktop und 390-px-iframe, Screenshot-Skript `.tmp/verify/tvm-shot.mjs`, gitignored). Gefunden und behoben:
@@ -512,6 +513,6 @@ Pegel 0 ist in jedem Modus stumm und läuft immer über `muted` (`silent() = mut
 - Der TV-Modus nutzt den gemeinsamen Player: Die Startposition wird beim Setzen der Quelle vorab als Default-Startposition gesetzt, `loadedmetadata` springt nur bei mehr als 1,5 s Abweichung nach (fest; die Weiche `lfxzap` ist entfernt, iPhone-Messung ohne belastbaren Unterschied). Debug-Schalter `lfxhls=1` zusammen mit `lfxdebug=1`. Die Messanzeige zeigt eine dritte Zeile (Quelle, Grund, Sprung, Puffer, Warten).
 - „Vorwärmen“ ist seit 1.11.6 **Standard an** (Hash `lfxwarm=0|1`, `deps.zapWarm` als Getter, Netzregel). Der Controller nutzt den gemeinsamen Nachbar-Vorwärmer `live/player/neighbors.js` (`createNeighbors`, geteilt mit LENZ LIVE; Importgrenze bleibt `src/js/live/**`): `arm('play')` wärmt die Nachbarsender ±1 per `player.prewarm(itemId, offsetMs)` vor (Playlist, Init, erstes Segmentbyte, alle 35 s erneut, max. 10×), `arm('error')` tut das 2 s nach einer Fehlerkarte (nur `video`/`browser`/`audio`); `stop()` bei Zappen, neuer Sendung, Pause/Stopp, dispose. `NEIGHBOR_MS` und `WARM_TICK_MS` exportiert `controller.js` weiter. Zeile 4 der Messanzeige zeigt Ergebnis und Grund. Details: `docs/live.md`, Abschnitte „Startablauf und erweiterte Messanzeige“ und „Vorwärmen“.
 - **Fehlerkarte mit Grund (1.11.6):** Meldet der Player ein `hint` (M3 bei ungeeignetem Bildformat, z. B. h264 HDR), setzt der Controller `card.hint = '<hint> wird von diesem Gerät nicht unterstützt'`; `player-view.js` zeigt es als `.lfx-tvm__card-hint` unter dem Code (Details und Liste: `docs/live.md`, „Player: Rückfall, Fehlercodes …“).
-- **Klasse `lfx-tvm-bgplay` (1.11.6):** Die Engine (`entry.js`, Helfer `bgCls`) setzt sie auf `<html>`, solange der TV im Hintergrund-Bild-in-Bild weiterläuft (in `suspend()` bei aktivem PiP und im PiP-`onChange`); entfernt bei `resume()`, PiP-Ende, `stop()` (auch `lfx:play`/`bail`) und `dispose()`. Zweck: Das Vorladen der Startseite (`features/rows/prefetch.js`) pausiert dann (zusätzlich muss `#lfx-tvm-bg video` existieren, gegen eine hängende Klasse). Eigentümer ist die Engine, die Hülle setzt sie nie. Das Öffnen des TV-Modus selbst beendet das Vorladen (`stop()`); fertige Zeilen bleiben im 10-min-Cache.
-- **Datensparmodus (1.12.0, Vertrag `docs/js-contracts.md` „Datensparmodus“):** `defineZapWarm(deps)` (`features/live/zapflag.js`) setzt neben `deps.zapWarm` den Getter `deps.zapPrefetch` (= `!isDataSaver()`); `zapWarmEnabled()` ist bei aktivem Modus false (kein Vorwärmen). Unter LENZ LIVE ist der Modus nie aktiv, dort gilt weiter alles wie bisher. Wie `zapWarm` ein Getter: nach `{ ...deps }` erneut `defineZapWarm` aufrufen. Der Controller reicht `createNeighbors` einen **Delegations-Player** (`Object.assign(Object.create(player), { prefetch })`, `controller.js`): `prefetch` liefert bei `deps.zapPrefetch === false` `{ ok:false, reason:'off' }`, alles andere (`prewarm`, `warmNote`, …) läuft über den Prototyp weiter. So bleibt `live/player/neighbors.js` unverändert und `dist/lenzlive.*` byte-gleich. Die Vorauflösung des **gewählten** Zielsenders (Liste/Ziffern) bleibt, sie ist eine Nutzeraktion. `instance.releaseWarm()` (`entry.js` → `controller.releaseWarm()`: Nachbar-Takt `stop()` + `player.releaseWarm()`; der laufende Sender bleibt unberührt): die Hülle (`features/tvmode/page.js`) ruft es bei `lfx:datasaver` (active) auf, vorgewärmte Sitzungen enden sofort statt nach <= 40 s. Senderbilder werden über `deps.imageUrl` (= `imageUrlFor`) automatisch kleiner, die Engine ist dafür unverändert.
+- **Klasse `lfx-tvm-bgplay` (1.11.6):** Die Engine (`entry.js`, Helfer `bgCls`) setzt sie auf `<html>`, solange der TV im Hintergrund-Bild-in-Bild weiterläuft (in `suspend()` bei aktivem PiP und im PiP-`onChange`); entfernt bei `resume()`, PiP-Ende, `stop()` (auch `lfx:play`/`bail`) und `dispose()`. Zweck: Das Vorladen der Startseite (`features/rows/prefetch.js`) pausiert dann, und der Billboard-Trailer startet nicht (gemeinsamer Helfer `tvBgPlaying()` in `features/rows/prefetch.js`; zusätzlich muss `#lfx-tvm-bg video` existieren, gegen eine hängende Klasse). Eigentümer ist die Engine, die Hülle setzt sie nie. Das Öffnen des TV-Modus selbst beendet das Vorladen (`stop()`); fertige Zeilen bleiben im 10-min-Cache.
+- **Datensparmodus (1.12.0, Vertrag `docs/js-contracts.md` „Datensparmodus“):** `defineZapWarm(deps)` (`features/live/zapflag.js`) setzt neben `deps.zapWarm` den Getter `deps.zapPrefetch` (= `!isDataSaver('tvwarm')`); `zapWarmEnabled()` ist bei aktivem Modus false (kein Vorwärmen). Unter LENZ LIVE ist der Modus nie aktiv, dort gilt weiter alles wie bisher. Wie `zapWarm` ein Getter: nach `{ ...deps }` erneut `defineZapWarm` aufrufen. Der Controller reicht `createNeighbors` einen **Delegations-Player** (`Object.assign(Object.create(player), { prefetch })`, `controller.js`): `prefetch` liefert bei `deps.zapPrefetch === false` `{ ok:false, reason:'off' }`, alles andere (`prewarm`, `warmNote`, …) läuft über den Prototyp weiter. So bleibt `live/player/neighbors.js` unverändert und `dist/lenzlive.*` byte-gleich. Die Vorauflösung des **gewählten** Zielsenders (Liste/Ziffern) bleibt, sie ist eine Nutzeraktion. `instance.releaseWarm()` (`entry.js` → `controller.releaseWarm()`: Nachbar-Takt `stop()` + `player.releaseWarm()`; der laufende Sender bleibt unberührt): die Hülle (`features/tvmode/page.js`) ruft es bei `onDataSaverChange` und `onDataSaverPartsChange` auf, sobald `isDataSaver('tvwarm')` gilt, vorgewärmte Sitzungen enden sofort statt nach <= 40 s. Senderbilder werden über `deps.imageUrl` (= `imageUrlFor`) automatisch kleiner, die Engine ist dafür unverändert.
 - **Budget:** Die Engine (`dist/lenztvmode.min.js`) darf bis 128 KiB (131.072 B, `TVMODE_MIN_BUDGET` in `build/build.mjs`; 1.11.6: 127.392 B). Vorher 120/124 KiB.

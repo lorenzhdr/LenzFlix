@@ -24,7 +24,7 @@ const cssEntries = [
   ['src/css/themes/retro/index.css', 'lenzretro'],
   ['src/css/themes/store/index.css', 'lenzstore'],
   ['src/css/themes/live/index.css', 'lenzlive'],
-  ['src/css/tvmode/index.css', 'lenztvmode'], // TV-Modus (flix/plus/prime, lazy über core/addoncss.js, docs/tvmode.md)
+  ['src/css/tvmode/index.css', 'lenztvmode'], // TV-Modus (flix/plus/prime/retro, lazy über core/addoncss.js, docs/tvmode.md)
 ];
 
 // Zeilenenden normalisieren: lightningcss übernimmt unaufgelöste Werte (z. B. mehrzeilige var()-Listen) roh.

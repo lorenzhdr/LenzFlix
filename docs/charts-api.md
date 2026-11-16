@@ -10,7 +10,7 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
   - Body: `{"CustomQueryString":"<SQL>","ReplaceUserId":false}`
   - Antwort: `{"colums":[...], "results":[[...string...]], "message":"..."}` (Key heißt wirklich `colums`; alle Zellen sind Strings)
 - Tabelle `PlaybackActivity(DateCreated DATETIME, UserId TEXT, ItemId TEXT, ItemType TEXT, ItemName TEXT, PlaybackMethod TEXT, ClientName TEXT, DeviceName TEXT, PlayDuration INT)`; `UserList(UserId)` = ignorierte Benutzer. IDs = GUID ohne Bindestriche. `DateCreated` = lokale Serverzeit.
-- **Nur feste, im Code hinterlegte SELECT-Abfragen** (keine Nutzereingaben im SQL!). Die einzige Variable ist das Zeitfenster als Zahl aus der Worker-Konfiguration (Integer-validiert).
+- **Nur feste, im Code hinterlegte SELECT-Abfragen** (keine Nutzereingaben im SQL!). Variabel sind nur zwei Integer aus der Worker-Konfiguration: `WINDOW_DAYS` (1–365) und `MIN_SECONDS` (0–3600), beide validiert, sonst Default.
 - Abfrage (distinct Paare Item×Benutzer im Fenster, Mindestdauer 300 s):
   ```sql
   SELECT ItemId, ItemType, UserId, COUNT(*) AS plays, SUM(PlayDuration) AS secs
@@ -21,17 +21,17 @@ mit einem Admin-API-Key und liefert sie nur an eingeloggte Jellyfin-Nutzer aus.
     AND UserId NOT IN (SELECT UserId FROM UserList)
   GROUP BY ItemId, UserId
   ```
-- Episoden → Serie: `GET {JELLYFIN_URL}/Items?Ids=<id1,id2,…>&Fields=SeriesId&EnableImages=false` (API-Key, in Blöcken à 100 IDs). Episoden ohne auflösbare SeriesId werden verworfen; gelöschte Items ebenso.
+- Episoden → Serie: `GET {JELLYFIN_URL}/Items?Ids=<id1,id2,…>&Fields=SeriesId&EnableImages=false` (API-Key, in Blöcken à 100 IDs). Episoden ohne auflösbare SeriesId werden verworfen; gelöschte Items ebenso. Der Cron löst höchstens 2000 Episoden auf (stärkste zuerst: Zuschauer, dann Sekunden) = 20 Blöcke, mit Abfrage und `/Users` etwa 22 Subrequests je Lauf (Free-Plan-Limit 50). Serien, die nur über seltene Episoden jenseits der 2000 vorkommen, können in den Charts fehlen.
 - Aggregation: Filme pro ItemId, Serien pro SeriesId. `viewers` = Anzahl verschiedener UserIds, `plays` = Summe Wiedergaben, `seconds` = Summe Dauer. Sortierung: viewers desc, plays desc, seconds desc.
 
 ## Speicherung
 - Cron (stündlich, `0 * * * *`) schreibt das Ergebnis als JSON in KV-Namespace `CHARTS`, Key `charts:v1`.
-- Zusätzlich manuell auslösbar: `POST /refresh` nur mit Header `X-Refresh-Secret: <REFRESH_SECRET>` (Secret, optional).
+- Zusätzlich manuell auslösbar: `POST /refresh` nur mit Header `X-Refresh-Secret: <REFRESH_SECRET>` (Secret, optional). Antworten: `200 {"ok":true,"generatedAt":…}`; `401`, wenn Header oder `REFRESH_SECRET` fehlt oder nicht passt; `502 {"error":"refresh-failed"}`, wenn die Berechnung scheitert (altes KV-Ergebnis bleibt); sonst `404`/`500 {"error":"internal"}`.
 
 ## Auslieferung (Theme → Worker)
 - `GET {CHARTS_URL}/charts`
   - Header vom Browser: `X-Emby-Token: <Jellyfin-AccessToken des eingeloggten Nutzers>`
-  - Worker prüft das Token: `GET {JELLYFIN_URL}/Users/Me` mit `Authorization: MediaBrowser Token="<token>"` → 200 = gültig. Ergebnis pro Token-Hash (SHA-256) 10 min im Cache (Cache API oder Memory), Tokens werden nie gespeichert/geloggt (nur Hash).
+  - Worker prüft das Token: `GET {JELLYFIN_URL}/Users/Me` mit `Authorization: MediaBrowser Token="<token>"` → 200 = gültig. Ergebnis pro Token-Hash (SHA-256) im Memory-Cache des Isolates: gültig 10 min, ungültig nur 60 s (Negativ-Cache), Tokens werden nie gespeichert/geloggt (nur Hash).
   - Antworten:
     - `200` `application/json`:
       ```json
