@@ -5,7 +5,7 @@
 // Provider 'brawl' { state(), isBanned(), canTalk(), hitBy(source, dir), getNetState(), applyRemote(net) }.
 // Debug: ctx.opts.debug oder ?brawl=1 → window.__lfxBrawl { state, hit(), force(state), say(cat), fsm }.
 import { Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, BoxGeometry, OctahedronGeometry, PlaneGeometry, DoubleSide } from 'three';
-import { findPath } from '../nav/path.js';
+import { findPath, isFree } from '../nav/path.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { createBrawlFsm, STATES, BRAWL } from './brawl-fsm.js';
 import { inCone, stepAlong, hopPoint, aimVelocity, ballisticStep } from './brawl-logic.js';
@@ -20,6 +20,10 @@ const THROWS = 3;
 const THROW_GAP = 1.4;
 const WIND = 0.45;
 const SAY_GAP = 3.2; // Mindestabstand zwischen Rufen
+const CHASE_GIVEUP = 12; // s Verfolgung, danach Rauswurf-Rückfall (Spieler noch im Laden oder kein Pfad)
+const PEN_GIVEUP = 4; // s: Spieler hinter dem Tresen (Kassenbereich ist geschlossen) -> Rückfall früher
+const DRIVE_BEHIND = 0.9; // Richard läuft so weit hinter dem Spieler (auf der dem Ziel abgewandten Seite)
+const EXPEL_FADE = 0.4; // s Abblenden vor dem Versetzen
 
 
 function banCanvas() {
@@ -83,6 +87,10 @@ export default {
     const tapes = [];
     let discoveredBan = false;
     let lockPending = false; // Hausverbot gilt, Tür sperrt erst, wenn der Spieler hinter dem Türblock steht
+    let chaseSince = 0;
+    let penSince = -1;
+    let expelling = false; // Rückfall-Rauswurf läuft (Abblender)
+    const goal = { x: doorCx, z: D + 0.9 }; // Treibeziel: vor der Tür, außen
 
     // --- Persistenz der spitzen Phase (nur Sitzung) ---
     const store = (() => { try { return window.sessionStorage; } catch { return null; } })();
@@ -97,6 +105,15 @@ export default {
     Object.assign(hud.style, { position: 'absolute', bottom: '24%', left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: 'rgba(179,38,30,0.92)', color: '#fff', font: 'bold 15px/1.3 system-ui, sans-serif', borderRadius: '8px', pointerEvents: 'none', zIndex: '5', textAlign: 'center' });
     if (host) host.appendChild(hud);
     let hudSec = -1;
+
+    // Bildschirm-Abblender für den Rückfall-Rauswurf (ohne Animation bei „reduzierte Bewegung“)
+    const veil = document.createElement('div');
+    veil.className = 'lfx-store-expelveil';
+    veil.hidden = true;
+    Object.assign(veil.style, { position: 'absolute', inset: '0', background: '#000', opacity: '0', pointerEvents: 'none', zIndex: '6' });
+    if (!reduced) veil.style.transition = 'opacity 0.4s ease';
+    if (host) host.appendChild(veil);
+    const veilTo = (on) => { if (reduced) { veil.hidden = true; return; } veil.hidden = false; veil.style.opacity = on ? '1' : '0'; };
 
     let sign = null;
     function ensureSign() {
@@ -127,6 +144,39 @@ export default {
     const away = (p) => { const dx = p.x - R.pos.x; const dz = p.z - R.pos.z; const l = Math.hypot(dx, dz) || 1; return { x: dx / l, z: dz / l }; };
     const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
     const inPen = () => R.pos.x >= counter.x0 - 0.1 && R.pos.z >= counter.z1 - 0.05 && R.pos.y < 0.3;
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
+    /** Freier Landepunkt auf der Kundenseite vor dem Tresen: nie auf dem Tresen, nie im Spieler (seitlich/nach hinten versetzt). */
+    function landingPoint(p) {
+      const nav = ctx.layout.nav;
+      const bx = clamp(R.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
+      for (const dz of [0.6, 1.0, 1.4, 1.8]) {
+        for (const dx of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
+          const x = clamp(bx + dx, counter.x0 + 0.3, counter.x1 - 0.3);
+          const z = counter.z0 - dz;
+          if (nav && !isFree(nav, x, z)) continue;
+          if (p && Math.hypot(p.x - x, p.z - z) < 1.1) continue;
+          return { x, z };
+        }
+      }
+      return { x: bx, z: counter.z0 - 1.8 };
+    }
+    /** Richtung (normiert) vom Spieler zur Tür: nächster Pfadpunkt des A* über layout.nav; ohne Pfad Luftlinie. */
+    function driveDir(p) {
+      const nav = ctx.layout.nav;
+      let path = null;
+      if (nav) {
+        path = findPath(nav, { x: p.x, z: p.z }, goal);
+        // auf dem Tresen / dahinter: der Pfad beginnt auf der Kundenseite
+        if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
+      }
+      let w = null;
+      if (path) { for (const q of path) { if (Math.hypot(q.x - p.x, q.z - p.z) > 0.6) { w = q; break; } } if (!w && path.length) w = path[path.length - 1]; }
+      const ok = !!w;
+      if (!w) w = goal;
+      const dx = w.x - p.x; const dz = w.z - p.z; const l = Math.hypot(dx, dz) || 1;
+      return { x: dx / l, z: dz / l, ok };
+    }
     function play(name, dur = Infinity) { anim = { name, t: 0, dur }; }
     function later(sec, fn) { timers.push({ at: T + sec, fn }); }
     function say(cat, vars, o) {
@@ -150,11 +200,14 @@ export default {
     }
     function found(id) { const d = ctx.use('discover'); if (d && d.found) { try { d.found(id); } catch { /* egal */ } } }
 
-    function walkTo(target, speed, onDone) {
-      if (inPen()) { hopTo({ x: front.x, z: front.z }, () => walkTo(target, speed, onDone)); return; }
+    // strict: ohne Pfad nicht in Luftlinie laufen (sonst durch den Tresen); Rückgabe false = kein Weg
+    function walkTo(target, speed, onDone, strict) {
+      if (inPen()) { hopTo(landingPoint(pose()), () => walkTo(target, speed, onDone, strict)); return true; }
       const nav = ctx.layout.nav;
       const path = nav ? findPath(nav, { x: R.pos.x, z: R.pos.z }, target) : null;
+      if (strict && nav && !(path && path.length)) return false;
       task = { type: 'walk', path: path && path.length ? path : [{ x: target.x, z: target.z }], i: 0, speed, onDone };
+      return true;
     }
     function hopTo(b, then) {
       task = { type: 'hop', a: { x: R.pos.x, z: R.pos.z }, b, u: 0, then };
@@ -162,7 +215,12 @@ export default {
     }
     function goHome() {
       if (inPen() && Math.hypot(R.pos.x - R.home.x, R.pos.z - R.home.z) < 0.4) { settle(); return; }
-      walkTo(front, WALK_SPEED, () => hopTo({ x: R.home.x, z: R.home.z }, () => { settle(); say('backHome', {}, { always: true }); }));
+      // Rückweg: erst zur Tresenfront, dann zurück über den Tresen (nur wenn der Spieler nicht auf dem Zielpunkt steht)
+      walkTo(front, WALK_SPEED, () => {
+        const q = pose();
+        if (Math.hypot(q.x - R.home.x, q.z - R.home.z) < 0.9) { task = null; later(1, goHome); return; }
+        hopTo({ x: R.home.x, z: R.home.z }, () => { settle(); say('backHome', {}, { always: true }); });
+      });
     }
     function settle() {
       task = null; base = 'idle'; anim = { name: 'idle', t: 0, dur: Infinity };
@@ -197,8 +255,9 @@ export default {
       }
       if (to === 'chase') {
         pathAt = -Infinity; pushAt = T + 0.8;
+        chaseSince = T; penSince = -1; expelling = false;
         say('chase', {}, { always: true });
-        if (inPen()) hopTo({ x: front.x, z: front.z }, () => { task = null; });
+        if (inPen()) hopTo(landingPoint(pose()), () => { task = null; });
       }
       if (to === 'banned') {
         if (playerClear()) applyBan(); else lockPending = true;
@@ -219,6 +278,23 @@ export default {
         goHome();
       }
       if (to === 'calm') { saveGrudge(0); base = 'idle'; if (!task) goHome(); }
+    }
+
+    /** Rückfall: comic-hafter Rauswurf. Abblenden, Spieler vor die Tür setzen (Blick zur Tür), dann sofort Hausverbot. */
+    function expelPlayer() {
+      if (expelling || fsm.state !== 'chase') return;
+      expelling = true;
+      say('expel', {}, { always: true });
+      play('shove', 0.6);
+      veilTo(true);
+      later(reduced ? 0 : EXPEL_FADE, () => {
+        if (fsm.state !== 'chase') { expelling = false; veilTo(false); return; }
+        ctx.player.teleport(doorCx, D + 2.2, 0, 0);
+        task = null;
+        expelling = false;
+        onTransition(fsm.event('expelled', T));
+        veilTo(false);
+      });
     }
 
     function reactHit(dir) {
@@ -329,7 +405,7 @@ export default {
 
     function reset() {
       fsm.reset(T);
-      task = null; timers = []; throwsLeft = 0; starsT = 0; lockPending = false;
+      task = null; timers = []; throwsLeft = 0; starsT = 0; lockPending = false; expelling = false; veil.hidden = true; veil.style.opacity = '0';
       lockDoor(false);
       if (sign) sign.visible = false;
       hud.hidden = true; hudSec = -1;
@@ -400,24 +476,30 @@ export default {
             if (throwsLeft === 0) throwEnd = T + WIND + 1.0;
           } else if (throwsLeft === 0 && throwEnd && T >= throwEnd) { throwEnd = 0; onTransition(fsm.event('throwDone', T)); }
         }
-        // Verfolgung
+        // Verfolgung: Richard treibt den Spieler per Pfad zur Tür (Schubser in Pfadrichtung); Rückfall: Rauswurf nach CHASE_GIVEUP
         if (fsm.state === 'chase') {
-          if (!inside) onTransition(fsm.event('expelled', T));
-          else if (!task || task.type !== 'hop') {
-            const dist = Math.hypot(p.x - R.pos.x, p.z - R.pos.z);
-            if (playerInPen(p)) {
-              // Spieler hinter dem Tresen: Richard bleibt an der Kundenseite stehen (keine Hüpf-Schleife), Verfolgung läuft aus
-              if (inPen()) hopTo({ x: front.x, z: front.z }, () => { task = null; });
-              else if (Math.hypot(R.pos.x - front.x, R.pos.z - front.z) > 0.5 && T - pathAt > 0.4) { pathAt = T; walkTo({ x: front.x, z: front.z }, RUN_SPEED, null); }
-            } else if (dist > 1.1) {
-              if (T - pathAt > 0.4) { pathAt = T; walkTo({ x: p.x, z: p.z }, RUN_SPEED, null); }
-            } else {
-              task = null;
-              if (T >= pushAt) {
-                pushAt = T + 0.8;
-                play('shove', 0.6);
-                const dx = gateIn.x - p.x; const dz = (D + 0.5) - p.z; const l = Math.hypot(dx, dz) || 1;
-                ctx.player.knock({ x: dx / l, z: dz / l }, 1.1);
+          if (!inside) { onTransition(fsm.event('expelled', T)); veilTo(false); }
+          else if (!expelling) {
+            const inP = playerInPen(p);
+            if (inP) { if (penSince < 0) penSince = T; } else penSince = -1;
+            if (T - chaseSince > CHASE_GIVEUP || (penSince >= 0 && T - penSince > PEN_GIVEUP)) expelPlayer();
+            else if (!task || task.type !== 'hop') {
+              if (inPen() || (!task && onCounter(R.pos))) hopTo(landingPoint(p), () => { task = null; });
+              else if (inP) {
+                // Spieler hinter dem Tresen: Richard wartet an der Kundenseite (Rückfall nach PEN_GIVEUP)
+                if (Math.hypot(R.pos.x - front.x, R.pos.z - front.z) > 0.5 && T - pathAt > 0.4) { pathAt = T; walkTo({ x: front.x, z: front.z }, RUN_SPEED, null, true); }
+              } else {
+                const dd = driveDir(p);
+                const dist = Math.hypot(p.x - R.pos.x, p.z - R.pos.z);
+                const tx = p.x - dd.x * DRIVE_BEHIND; const tz = p.z - dd.z * DRIVE_BEHIND;
+                if (dist > 1.9 || Math.hypot(R.pos.x - tx, R.pos.z - tz) > 0.7) {
+                  if (T - pathAt > 0.35) { pathAt = T; if (!walkTo({ x: tx, z: tz }, RUN_SPEED, null, true)) walkTo({ x: p.x, z: p.z }, RUN_SPEED, null, true); }
+                } else if (task) task = null;
+                if (dist < 2.0 && T >= pushAt) {
+                  pushAt = T + 0.7;
+                  play('shove', 0.6);
+                  ctx.player.knock({ x: dd.x, z: dd.z }, 1.1);
+                }
               }
             }
           }
@@ -494,6 +576,7 @@ export default {
         if (sign) ctx.scene.remove(sign);
         R.head.remove(stars);
         hud.remove();
+        veil.remove();
         R.head.material.color.setRGB(1, 1, 1);
         R.root.rotation.order = 'XYZ';
         R.setBusy(false);

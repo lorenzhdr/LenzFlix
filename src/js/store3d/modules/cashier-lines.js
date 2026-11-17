@@ -250,6 +250,12 @@ export const LINES = {
     'Keine Sorge, ich will nur reden. Mit Nachdruck.',
     'Tür ist da hinten, {name}! Ich zeige sie dir auch gern persönlich.',
   ],
+  expel: [
+    'So, Abflug! Ich habe da einen Kollegen, der heißt Schwung.',
+    'Kurzer Nachhilfeunterricht in Türenkunde, {name}: Raus ist da draußen.',
+    'Ich trage dich nicht gern, aber ich trage dich auch nicht lange.',
+    'Zack und raus! Das war jetzt wirklich nicht persönlich.',
+  ],
   ban: [
     'Hausverbot! Dreißig Sekunden, und zwar ohne Verhandlung.',
     'Raus! Und denk in Ruhe über dein Verhalten nach.',

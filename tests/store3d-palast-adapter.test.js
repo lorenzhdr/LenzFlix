@@ -107,6 +107,30 @@ describe('PalastCinema', () => {
     c.cin.dispose();
   });
 
+  it('Platzwechsel bei laufendem Film: Kamera fliegt auf den neuen Platz, kein Neustart, Leiste und Phase bleiben', () => {
+    const c = setup({ video: mkVideo(), state: { phase: 'playing' } });
+    c.saal.seats.push({ id: 'B2', x: 7, y: 1.15, z: 6, yaw: 0 });
+    c.cin.sit('stub');
+    c.cin.play(ITEM);
+    run(c, 0, 1500);
+    expect(c.cin.phase).toBe('playing');
+    const plays = c.raw.play.mock.calls.length;
+    const notifies = c.raw.onCinema2d.mock.calls.length;
+    expect(c.cin.sit('B2')).toBe(true);
+    expect(c.cin.seatId).toBe('B2');
+    expect(c.calls.fly).toHaveLength(2);
+    expect(c.calls.fly[1][0]).toMatchObject({ x: 7, z: 6 });
+    expect(c.ctx.overlay.open).toHaveBeenCalledTimes(1);
+    expect(c.calls.freeze).toEqual([true]);
+    expect(c.raw.play.mock.calls.length).toBe(plays);
+    expect(c.raw.onCinema2d.mock.calls.length).toBe(notifies);
+    expect(c.cin.phase).toBe('playing');
+    expect(c.cin.seated).toBe(true);
+    c.cin.sit('B2');
+    expect(c.calls.fly).toHaveLength(2); // derselbe Platz: No-op
+    c.cin.dispose();
+  });
+
   it('(b) play: onCinema2d({active}) kommt VOR dem echten deps.play, mit noCover; Leinwand hängt am Saal-Anker', () => {
     const c = setup();
     c.cin.play(ITEM, { resume: true });

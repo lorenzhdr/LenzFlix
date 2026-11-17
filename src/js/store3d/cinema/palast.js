@@ -156,7 +156,7 @@ export class PalastCinema {
   sit(seatId) {
     const ctx = this._ctx;
     if (this.disposed || !this.saal || !ctx || this._inXr()) return false;
-    if (this.seated) return true;
+    if (this.seated) return this._moveSeat(seatId);
     if (ctx.overlay.isOpen()) return false;
     const seat = pickSeat(this.saal.seats, seatId, this.app.player);
     if (!seat) return false;
@@ -168,6 +168,18 @@ export class PalastCinema {
     this._ensureBar();
     this.overlayMine = true;
     ctx.overlay.open(this.bar.el, { onClose: () => this._afterStand() });
+    const eye = { x: seat.x, y: Number.isFinite(seat.y) ? seat.y : 1.15, z: seat.z };
+    ctx.player.camera.flyTo(eye, this._lookTarget(seat, eye), 750);
+    return true;
+  }
+
+  /** Platzwechsel im Sitzen: nur die Kamera fliegt auf den neuen Platz, Film, Leiste und Spielerzustand bleiben (kein Neustart). */
+  _moveSeat(seatId) {
+    const ctx = this._ctx;
+    if (seatId == null || !ctx || !this.saal) return true;
+    const seat = (this.saal.seats || []).find((s) => s && s.id === seatId && Number.isFinite(s.x) && Number.isFinite(s.z));
+    if (!seat || seat.id === this.seatId) return true;
+    this.seatId = seat.id;
     const eye = { x: seat.x, y: Number.isFinite(seat.y) ? seat.y : 1.15, z: seat.z };
     ctx.player.camera.flyTo(eye, this._lookTarget(seat, eye), 750);
     return true;

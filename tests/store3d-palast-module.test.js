@@ -122,6 +122,21 @@ describe('Modul palast', () => {
     expect(t.rec.play).toEqual([['m3', { resume: true }]]);
   });
 
+  it('Platzwechsel bei laufendem Film: sit ja, aber play (Neustart) nicht', async () => {
+    const t = setup({ resume: [movie(3)] });
+    palastMod.init(t.ctx);
+    const prov = t.providers.get('palast');
+    prov.ticketBook.buyShow(prov.program().shows[0], t.ctx.catalog.items.get('m3'), 'x');
+    iaBy(t.rec, `Platz ${t.rec.saal.seats[10].id}`).onUse();
+    await Promise.resolve();
+    expect(t.rec.play).toHaveLength(1);
+    t.cinema.active = true; // Film läuft, Spieler sitzt (Mock: seated ist immer wahr)
+    iaBy(t.rec, `Platz ${t.rec.saal.seats[20].id}`).onUse();
+    await Promise.resolve();
+    expect(t.rec.sit).toEqual([t.rec.saal.seats[10].id, t.rec.saal.seats[20].id]);
+    expect(t.rec.play).toHaveLength(1);
+  });
+
   it('Kasse: Overlay mit Programm; Kauf setzt Ticket, Toast und Spruch des Personals', () => {
     const t = setup();
     palastMod.init(t.ctx);

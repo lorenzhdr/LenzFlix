@@ -177,7 +177,9 @@ export default {
       if (!c || !attach()) { toast('Der Saal ist gerade geschlossen.'); return false; }
       const gate = seatGate(book.get(), inHall());
       if (!gate.ok) { if (gate.msg) toast(gate.msg); return false; }
+      const wasSeated = c.seated === true && c.active === true;
       if (!c.sit(seatId)) return false;
+      if (wasSeated) return true; // Platzwechsel bei laufendem Film: Kamera zieht um, der Stream läuft ohne Neustart weiter
       const t = book.get();
       startedFor = null;
       Promise.resolve(c.play(t.item, { resume: t.resume })).then((ok) => { if (ok === false && c.seated) { toast('Der Film startet gerade nicht.'); } }).catch((err) => warn('palast play', err));
