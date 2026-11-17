@@ -120,3 +120,73 @@ describe('Hände', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('Pause-Menü: Diagnosezeile im Touch-Panel', () => {
+  const open = (host) => [...host.querySelectorAll('.lfx-store-pause-panel > button')].find((b) => b.textContent === 'Touch-Steuerung …').click();
+  it('zeigt die Zeile aus getInputInfo, aktualisiert sie jede Sekunde und blendet sie ohne Text aus', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '';
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let info = 'Eingabe: 0 Finger · keine Abbrüche';
+    const p = createPause(host, { ...base(), onTouchControl() {}, getTouchControl: () => 'game', getInputInfo: () => info });
+    const note = () => host.querySelector('.lfx-store-pause-diag');
+    expect(note().hidden).toBe(true);
+    open(host);
+    expect(note().hidden).toBe(false);
+    expect(note().textContent).toBe('Eingabe: 0 Finger · keine Abbrüche');
+    expect(note().classList.contains('lfx-store-pause-note')).toBe(true);
+    info = 'Eingabe: 1 Finger (Stick) · keine Abbrüche';
+    vi.advanceTimersByTime(1000);
+    expect(note().textContent).toBe('Eingabe: 1 Finger (Stick) · keine Abbrüche');
+    info = null;
+    vi.advanceTimersByTime(1000);
+    expect(note().hidden).toBe(true);
+    p.closePick();
+    info = 'neu';
+    vi.advanceTimersByTime(3000);
+    expect(note().textContent).toBe(''); // Timer läuft nur bei offenem Panel
+    p.destroy();
+    vi.useRealTimers();
+  });
+  it('ohne getInputInfo bleibt die Zeile ausgeblendet', () => {
+    document.body.innerHTML = '';
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const p = createPause(host, { ...base(), onTouchControl() {}, getTouchControl: () => 'touch' });
+    open(host);
+    expect(host.querySelector('.lfx-store-pause-diag').hidden).toBe(true);
+    p.destroy();
+  });
+});
+
+describe('HUD Menüknopf (Mehrfinger)', () => {
+  it('touchend mit weiterem liegenden Finger öffnet das Menü einmal, folgendes click wird geschluckt', () => {
+    document.body.innerHTML = '';
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const onMenu = vi.fn();
+    createHud(host, { touch: true, onMenu, getTouchScheme: () => 'game' });
+    const btn = host.querySelector('.lfx-store-menubtn');
+    const te = new Event('touchend', { bubbles: true, cancelable: true });
+    Object.defineProperty(te, 'touches', { value: [{ identifier: 1 }] });
+    btn.dispatchEvent(te);
+    expect(onMenu).toHaveBeenCalledTimes(1);
+    btn.click();
+    expect(onMenu).toHaveBeenCalledTimes(1);
+  });
+  it('einzelner Tipp (kein weiterer Finger) läuft wie bisher über click', () => {
+    document.body.innerHTML = '';
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const onMenu = vi.fn();
+    createHud(host, { touch: true, onMenu, getTouchScheme: () => 'game' });
+    const btn = host.querySelector('.lfx-store-menubtn');
+    const te = new Event('touchend', { bubbles: true, cancelable: true });
+    Object.defineProperty(te, 'touches', { value: [] });
+    btn.dispatchEvent(te);
+    expect(onMenu).not.toHaveBeenCalled();
+    btn.click();
+    expect(onMenu).toHaveBeenCalledTimes(1);
+  });
+});

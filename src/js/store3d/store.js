@@ -115,7 +115,7 @@ export class StoreApp {
       host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
       onChange: () => { if (this.pause) this.pause.refresh(); },
     });
-    this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
+    this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode, isWanted: () => !(this.touch && this.touchScheme === 'game') }) : null;
     this.pause = createPause(host, {
       help: this.touch ? '' : DESKTOP_HELP,
       onResume: () => this.resumeFromPause(),
@@ -132,6 +132,7 @@ export class StoreApp {
       onBigCovers: (on) => this.setBigCovers(on),
       onTouchControl: this.touch ? (s) => { this.touchChosen = true; this.setTouchControl(s); this.savePrefs(); } : null,
       getTouchControl: () => this.touchScheme,
+      getInputInfo: () => (this.touchCtl && this.touchScheme === 'game' ? this.touchCtl.diagLine() : null),
       onTouchTune: this.touch ? (p) => { this.setTouchTune(p); this.savePrefs(); } : null,
       getTouchTune: () => this.touchTune,
       onTheme: () => this.deps.openThemePicker(),
@@ -242,7 +243,7 @@ export class StoreApp {
         else this.resumeFromPause();
       },
     });
-    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune,
+    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune, debug: !!this.opts.debug, touchApi: this.opts.touchApi,
       onJump: () => this.doJump(), onUse: () => this.doUse('touch'), onHit: () => this.doHit('touch'), onThrow: () => this.doThrow('touch'),
     }) : null;
 
@@ -319,9 +320,16 @@ export class StoreApp {
   // --- Modus / UI ---
   setMode(m) { if (m !== 'play') this.pendingTake = this.pendingUse = null; this.mode = m; this.syncUi(); if (this.fs) this.fs.update(); }
 
+  /** Gate-Argumente der Touch-Steuerung: Modus plus Sperrgrund (Kamerafahrt 'cam' bzw. sonstige Sperre 'freeze'). */
+  gateArgs() {
+    const m = this.mods;
+    return { mode: this.mode, lock: m && m.locked ? (m.cam ? 'cam' : 'freeze') : '' };
+  }
+
   syncUi() {
     if (!this.hud) return;
     const xr = this.xr;
+    if (this.host && this.host.classList) this.host.classList.toggle('lfx-store-ctl-game', !!(this.touch && this.touchScheme === 'game'));
     if (xr && xr.presenting) {
       // In VR gibt es kein DOM-HUD und keine Desktop-/Touch-Steuerung
       this.hud.setCross(false, false);
@@ -329,7 +337,7 @@ export class StoreApp {
       this.hud.showMenuBtn(false);
       this.hud.showVr(false);
       this.hud.setHint(null);
-      if (this.touchCtl) this.touchCtl.showPad(false);
+      if (this.touchCtl) this.touchCtl.gate({ xr: true });
       if (this.pause && this.pause.visible) this.pause.hide();
       return;
     }
@@ -338,7 +346,7 @@ export class StoreApp {
     this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
     this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
     this.hud.showMenuBtn(play);
-    if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
+    if (this.touchCtl) this.touchCtl.gate(this.gateArgs());
     if (this.rotate) this.rotate.update();
     // nur im Laufmodus: die Halte-Ebene (z-index 4) läge sonst über dem Knopf und finge das Tippen ab
     this.hud.showVr(this.ready && play && !!xr && xr.supported && !xr.presenting);
@@ -698,9 +706,8 @@ export class StoreApp {
     if (!inXr) this.stepZoom(dt);
     if (now - this.lastFps >= 500) { this.lastFps = now; this.updateFps(); if (this.fs) this.fs.update(); }
     if (this.touchCtl && !inXr) {
-      const padOn = this.mode === 'play' && !this.mods.locked;
-      if (padOn !== this.touchCtl.padShown) this.touchCtl.showPad(padOn);
-      if (padOn) this.touchCtl.tick(dt);
+      this.touchCtl.gate(this.gateArgs());
+      if (this.touchCtl.padShown) this.touchCtl.tick(dt);
     }
     if (!inXr) {
       if (this.mode === 'play' && !this.mods.locked) p.update(dt, (this.desktop || this.touchCtl) ? (this.desktop || this.touchCtl).input : null);
@@ -931,6 +938,7 @@ export class StoreApp {
     if (!this.suspended || this.disposed) return;
     this.suspended = false;
     if (host && host !== this.host) {
+      try { this.host.classList.remove('lfx-store-ctl-game'); } catch { /* egal */ }
       while (this.host.firstChild) host.appendChild(this.host.firstChild);
       this.host = host;
       if (this.engine) this.engine.setHost(host);
@@ -956,6 +964,7 @@ export class StoreApp {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    try { if (this.host && this.host.classList) this.host.classList.remove('lfx-store-ctl-game'); } catch { /* egal */ }
     try { if (this.cinema2d) this.cinema2d.dispose(); } catch { /* egal */ }
     try { if (this.xr) this.xr.dispose(); } catch { /* egal */ }
     try { if (this.desktop) this.desktop.detach(); } catch { /* egal */ }
@@ -1026,6 +1035,7 @@ export class StoreApp {
         };
       },
       state() { return app.getState(); },
+      input() { return app.touchCtl ? app.touchCtl.diag() : null; }, // Touch-Eingabe-Diagnose (Slots, Gate, Zähler); null ohne Touch
       palastTest(o) { return palastTest(app, o); }, // Spike: Leinwand + Sitz vor dem Spieler (cinema/saal-stub.js)
       zones() { return Object.values(app.layout.zones).map((z) => { const v = z.view || z; return { id: z.id, label: z.label, x: +v.x.toFixed(2), z: +v.z.toFixed(2), yaw: v.yaw, obj: { x: +z.x.toFixed(2), z: +z.z.toFixed(2) } }; }); }, // x/z/yaw = Blickpunkt, obj = Objektposition
     };

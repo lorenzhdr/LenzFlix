@@ -19,7 +19,7 @@ export function touchHint(hint) {
 
 /** Texte des Start-Hinweises für Touch je Schema: [Titel, Untertitel]. */
 export function promptTexts(scheme) {
-  if (scheme === 'game') return ['Links laufen · rechts umsehen', 'Tippen zum Nehmen · Springen, Benutzen und Schlagen unten rechts'];
+  if (scheme === 'game') return ['Links laufen · rechts umsehen', 'Tippen zum Nehmen · rechts unten Springen, Benutzen, Schlagen, Zoom (halten)'];
   return ['Gedrückt halten zum Laufen', 'Wischen zum Umsehen · Tippen zum Nehmen'];
 }
 
@@ -53,7 +53,16 @@ export function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
     menuBtn.type = 'button';
     menuBtn.setAttribute('aria-label', 'Menü');
     menuBtn.innerHTML = '<span></span><span></span><span></span>';
-    menuBtn.addEventListener('click', (e) => { e.stopPropagation(); if (onMenu) onMenu(); });
+    // Liegt noch ein anderer Finger (z. B. am Stick), erzeugt der Browser für den Tipp oft kein click → direkt bei touchend auslösen, folgendes click schlucken
+    let menuAt = 0;
+    const fireMenu = () => { menuAt = Date.now(); if (onMenu) onMenu(); };
+    menuBtn.addEventListener('touchend', (e) => {
+      if (!e.touches || e.touches.length === 0) return;
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+      fireMenu();
+    });
+    menuBtn.addEventListener('click', (e) => { e.stopPropagation(); if (Date.now() - menuAt < 700) return; fireMenu(); });
     root.appendChild(menuBtn);
   }
   const vrBtn = el('button', 'lfx-store-vrbtn');

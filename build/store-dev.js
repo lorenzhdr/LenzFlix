@@ -598,7 +598,7 @@
     inst = window.LenzFlixStore3D.create(host, deps, {
       quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
-      openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true,
+      openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true, touchApi: q.get('tapi') === 'pointer' ? 'pointer' : undefined,
       spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,
       devFlags: { npc: q.get('npc') !== '0', cars: q.get('cars') !== '0', palast: q.get('palast') === '1', brawl: q.get('brawl') === '1', props: q.get('props') !== '0' },
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,

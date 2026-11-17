@@ -1,10 +1,11 @@
 // VIDEOTHEK LENZ · Touch-Steuerung. Drei Schemata:
-//  'game':     (Standard der App) schwebender Stick links = Laufen/Rennen, rechte Hälfte wischen = Umsehen, Knöpfe Springen/Benutzen/Schlagen|Werfen (ui/gamepad.js).
+//  'game':     (Standard der App) schwebender Stick links = Laufen/Rennen, rechts überall wischen = Umsehen, Knöpfe Springen/Benutzen/Schlagen|Werfen/Zoom (ui/gamepad.js = Ansicht, controls/gametouch.js = Eingabe auf Touch Events).
 //  'touch':    Gedrückt halten = vorwärts laufen (Ziehen lenkt), kurzes Wischen = Umsehen.
 //  'joystick': Gehen-Knopf unten links = vorwärts, Joystick unten rechts = Blick drehen (ui/joypad.js); Wischen sieht zusätzlich um.
-// Beide: kurzes Tippen = Hülle nehmen/benutzen (Logik in store.js), Pinch = Zoom.
+// Alle: kurzes Tippen = Hülle nehmen/benutzen (Logik in store.js); Pinch = Zoom nur bei 'touch'/'joystick' (bei 'game': Zoom-Knopf).
 import { createJoypad } from '../ui/joypad.js';
 import { createGamepad } from '../ui/gamepad.js';
+import { GameTouch, diagLine } from './gametouch.js';
 
 /** Bogenmaß pro Pixel beim Wischen/Lenken. */
 export const TOUCH_LOOK = 0.0045;
@@ -39,11 +40,16 @@ export function normTune(t) {
     touchRegrip: Object.prototype.hasOwnProperty.call(REGRIP_MS, o.touchRegrip) ? o.touchRegrip : 'short',
   };
 }
+/** Blick-Delta (rad) aus einem Pixel-Delta des Fingers: Normal = Finger rechts → Blick rechts; Flip = „Szene greifen“; bei Zoom schwächer. Geteilt von Canvas-Wischen und Schema 'game'. */
+export function lookDelta(dx, dy, tune, zoom) {
+  const k = TOUCH_LOOK * SENS_FACTOR[tune.touchSens] / Math.max(1, zoom);
+  return [dx * k * (tune.lookFlipX ? 1 : -1), dy * k * (tune.lookFlipY ? 1 : -1)];
+}
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game') } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game'), debug?: bool (Eingabe-Ringpuffer), touchApi?: 'pointer' (Plan B: Pointer statt Touch Events im Schema 'game') } */
   constructor(ctx) {
     this.ctx = ctx;
     this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : 'touch';
@@ -54,6 +60,20 @@ export class TouchControls {
     this.aimed = false; // Schema 'game': Ziel im Fadenkreuz (Benutzen-Knopf hervorheben)
     this.carrying = false; // Schema 'game': Hülle getragen (Werfen statt Schlagen)
     this.pointers = new Map();
+    this.gateState = { state: 'on', why: '' }; // Gate (on/parked/off), siehe gate()
+    const c = ctx;
+    this.game = new GameTouch({
+      now: () => this.now(),
+      look: (dx, dy) => { const [a, b] = lookDelta(dx, dy, this.tune(), this.currentZoom()); this.ctx.player.look(a, b); },
+      onTap: (x, y) => { if (c.getMode() === 'play' && c.onTap) c.onTap(x, y); },
+      onZoom: (z) => this.setZoom(z),
+      onJump: () => { if (c.onJump) c.onJump(); },
+      onUse: () => { if (c.onUse) c.onUse(); },
+      onHit: () => { if (c.onHit) c.onHit(); },
+      onThrow: () => { if (c.onThrow) c.onThrow(); },
+      debug: !!ctx.debug,
+      api: ctx.touchApi,
+    });
     this.attached = false;
     this.walkId = null; // pointerId des Fingers, der gerade läuft
     this.timer = 0;
@@ -66,6 +86,7 @@ export class TouchControls {
       move: (e) => this.onMove(e),
       up: (e) => this.onUp(e, false),
       cancel: (e) => this.onUp(e, true),
+      lost: (e) => { if (this.scheme !== 'game' && this.pointers.has(e.pointerId)) this.onUp(e, true); },
       noCtx: (e) => e.preventDefault(),
     };
   }
@@ -84,8 +105,8 @@ export class TouchControls {
   /** Eingabe für Player.update(): läuft nur im Laufmodus. */
   get input() {
     if (this.scheme === 'game') {
-      if (this.ctx.getMode() !== 'play' && this.pad) this.pad.reset();
-      return this.pad ? this.pad.input : { fwd: 0, strafe: 0, scale: 0, run: false };
+      if (this.ctx.getMode() !== 'play' && this.game.state === 'on') this.gate({ mode: this.ctx.getMode() });
+      return this.game.input;
     }
     if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== 'play') { this.stopWalk(); if (this.pad) this.pad.reset(); }
     return { fwd: this.walkId !== null || this.padWalk || this.coasting() ? 1 : 0, strafe: 0, run: false };
@@ -106,15 +127,43 @@ export class TouchControls {
   setScheme(s) {
     if (!SCHEMES.includes(s) || s === this.scheme) return;
     this.scheme = s;
-    this.reset();
+    this.reset('scheme');
     if (this.attached) this.syncPad();
   }
 
-  /** Pad ein-/ausblenden (z. B. nur im Laufmodus). */
-  showPad(on) {
-    this.padShown = !!on;
-    if (this.pad) this.pad.show(this.padShown);
+  /**
+   * Gate (pro Frame billig aufrufen): { play?, mode?, lock?: 'cam' | 'freeze' | '', xr? }.
+   * 'on' = Laufmodus ohne Sperre; 'parked' = Laufmodus, aber Kamerafahrt/Sperre (Schema 'game': liegende Finger bleiben bis PARK_MAX_MS, Ausgabe 0);
+   * 'off' = Pause/Hülle/Überlagerung/VR (alle Finger lösen). Schemata 'touch'/'joystick': nur 'on' zeigt das Pad.
+   */
+  gate(g = {}) {
+    const play = g.play !== undefined ? !!g.play : g.mode === undefined ? true : g.mode === 'play';
+    let state = 'on';
+    let why = '';
+    if (g.xr) { state = 'off'; why = 'xr'; }
+    else if (!play) { state = 'off'; why = `mode:${g.mode || 'off'}`; }
+    else if (g.lock) { state = 'parked'; why = `locked:${g.lock}`; }
+    this.gateState = { state, why };
+    const shown = state === 'on';
+    const changed = shown !== this.padShown;
+    this.padShown = shown;
+    this.game.setGate(state, why);
+    if (this.pad && this.padKind !== 'game' && changed) this.pad.show(shown);
   }
+
+  /** Pad ein-/ausblenden (Kompatibilität, = gate({ play: on })). */
+  showPad(on) { this.gate({ play: !!on }); }
+
+  /** Eingabe-Diagnose (Zähler überstehen Schema-Wechsel und Aussetzen). */
+  diag() {
+    const d = this.game.diag();
+    d.scheme = this.scheme;
+    if (this.scheme !== 'game') { d.gate = this.gateState.state === 'on' ? 'on' : 'off'; d.gateWhy = this.gateState.why; }
+    return d;
+  }
+
+  /** Zeile(n) für das Pause-Menü (nur Schema 'game'), sonst null. */
+  diagLine() { return this.scheme === 'game' ? diagLine(this.diag()) : null; }
 
   /** Schema 'game': Ziel im Fadenkreuz / Hülle getragen (wirkt auch auf ein später erzeugtes Pad). */
   setAimed(on) { this.aimed = !!on; if (this.pad && this.pad.setAimed) this.pad.setAimed(this.aimed); }
@@ -123,6 +172,7 @@ export class TouchControls {
 
   syncPad() {
     if (this.pad && (!this.attached || this.padKind !== this.scheme)) { // anderes Schema oder abgehängt: altes Pad entfernen
+      if (this.padKind === 'game') this.game.detach(this.attached ? 'scheme' : 'detach');
       this.pad.destroy();
       this.pad = null;
       this.padWalk = false;
@@ -132,19 +182,12 @@ export class TouchControls {
       if (!this.pad) {
         const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
         const c = this.ctx;
-        this.pad = createGamepad(host, {
-          onJump: () => { if (c.onJump) c.onJump(); },
-          onUse: () => { if (c.onUse) c.onUse(); },
-          onHit: () => { if (c.onHit) c.onHit(); },
-          onThrow: () => { if (c.onThrow) c.onThrow(); },
-          onTap: (x, y) => { if (c.getMode() === 'play' && c.onTap) c.onTap(x, y); },
-          now: c.now,
-        });
+        this.pad = createGamepad(host, { now: c.now });
         this.pad.setAimed(this.aimed);
         this.pad.setCarrying(this.carrying);
         this.padKind = 'game';
+        this.game.attach(this.pad); // übernimmt den aktuellen Gate-Zustand
       }
-      this.pad.show(this.padShown);
     } else if (this.scheme === 'joystick' && this.attached) {
       if (!this.pad) {
         const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
@@ -171,6 +214,7 @@ export class TouchControls {
     c.addEventListener('pointermove', this.h.move);
     c.addEventListener('pointerup', this.h.up);
     c.addEventListener('pointercancel', this.h.cancel);
+    c.addEventListener('lostpointercapture', this.h.lost);
     c.addEventListener('contextmenu', this.h.noCtx);
     this.syncPad();
   }
@@ -183,20 +227,23 @@ export class TouchControls {
     c.removeEventListener('pointermove', this.h.move);
     c.removeEventListener('pointerup', this.h.up);
     c.removeEventListener('pointercancel', this.h.cancel);
+    c.removeEventListener('lostpointercapture', this.h.lost);
     c.removeEventListener('contextmenu', this.h.noCtx);
-    this.reset();
+    this.reset('detach');
     this.syncPad();
     if (this.ring) { this.ring.remove(); this.ring = null; }
   }
 
-  reset() {
+  reset(why = 'reset') {
+    this.game.releaseAll(why);
+    if (this.pad && this.padKind === 'game' && this.zoom !== 1) this.setZoom(1);
     this.clearTimer();
     this.coastUntil = 0;
     this.walkId = null;
     this.pinch = null;
     this.pointers.clear();
     this.hideRing();
-    if (this.pad) this.pad.reset();
+    if (this.pad && this.padKind !== 'game' && this.pad.reset) this.pad.reset();
     this.padWalk = false;
     this.stick = { x: 0, y: 0 };
   }
@@ -211,7 +258,14 @@ export class TouchControls {
   }
 
   onDown(e) {
+    if (this.scheme === 'game') return; // Schema 'game': die Eingabe liegt in controls/gametouch.js
     if (this.ctx.getMode() !== 'play') return;
+    if (e.isPrimary && e.pointerType === 'touch' && this.pointers.size > 0) { // verwaister Rest (ein primärer Pointer entsteht nur ohne andere aktive Touches)
+      this.pointers.clear();
+      this.clearTimer();
+      this.stopWalk();
+      this.pinch = null;
+    }
     try { this.ctx.canvas.setPointerCapture(e.pointerId); } catch { /* egal */ }
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, dead: false, walked: false });
     this.clearTimer();
@@ -253,6 +307,7 @@ export class TouchControls {
   }
 
   onMove(e) {
+    if (this.scheme === 'game') return;
     const p = this.pointers.get(e.pointerId);
     if (!p || this.ctx.getMode() !== 'play') return;
     const dx = e.clientX - p.x;
@@ -274,14 +329,14 @@ export class TouchControls {
     // Normal (Flip aus): Kamera-Konvention wie die Maus – Finger nach rechts → Blick nach rechts, Finger nach oben → Blick nach oben.
     // Umgekehrt (Flip an) = „Szene greifen“. Bei Zoom schwächer (wie desktop.js).
     if (p.moved || p.walked) {
-      const tu = this.tune();
-      const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens] / Math.max(1, this.currentZoom());
-      this.ctx.player.look(dx * k * (tu.lookFlipX ? 1 : -1), dy * k * (tu.lookFlipY ? 1 : -1));
+      const [ya, pi] = lookDelta(dx, dy, this.tune(), this.currentZoom());
+      this.ctx.player.look(ya, pi);
     }
     if (p.walked) this.moveRing(e.clientX, e.clientY);
   }
 
   onUp(e, cancelled) {
+    if (this.scheme === 'game') return;
     const p = this.pointers.get(e.pointerId);
     this.pointers.delete(e.pointerId);
     this.clearTimer();

@@ -44,3 +44,23 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-vrbtn
     bottom: calc(env(safe-area-inset-bottom, 0px) + 160px);
   }
 }
+
+/* Touch-Schema „Spiel“: VR-Knopf als 44-px-Symbol oben links neben dem Menü (Host-Klasse lfx-store-ctl-game), nicht mehr unten in der Blickfläche */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ctl-game .lfx-store-vrbtn {
+  left: calc(var(--lfx-store-safe-x, 12px) + 52px);
+  right: auto;
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
+  bottom: auto;
+  transform: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ctl-game .lfx-store-vrbtn-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

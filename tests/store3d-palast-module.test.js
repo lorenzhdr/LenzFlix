@@ -137,6 +137,26 @@ describe('Modul palast', () => {
     expect(t.rec.play).toHaveLength(1);
   });
 
+  it('Wieder hinsetzen nach Aufstehen, gleicher Film: nur sit + Fortsetzen, kein play; anderes Ticket: play', async () => {
+    const t = setup({ resume: [movie(3)] });
+    palastMod.init(t.ctx);
+    const prov = t.providers.get('palast');
+    prov.ticketBook.buyShow(prov.program().shows[0], t.ctx.catalog.items.get('m3'), 'x');
+    t.cinema.seated = false;
+    t.cinema.active = true; // aufgestanden, Film läuft im Hintergrund
+    t.cinema.sameFilm = vi.fn(() => true);
+    t.cinema.resumeAfterStand = vi.fn(() => true);
+    iaBy(t.rec, `Platz ${t.rec.saal.seats[10].id}`).onUse();
+    await Promise.resolve();
+    expect(t.rec.sit).toEqual([t.rec.saal.seats[10].id]);
+    expect(t.cinema.resumeAfterStand).toHaveBeenCalledTimes(1);
+    expect(t.rec.play).toHaveLength(0);
+    t.cinema.sameFilm = vi.fn(() => false); // anderes Ticket
+    iaBy(t.rec, `Platz ${t.rec.saal.seats[10].id}`).onUse();
+    await Promise.resolve();
+    expect(t.rec.play).toEqual([['m3', { resume: true }]]);
+  });
+
   it('Kasse: Overlay mit Programm; Kauf setzt Ticket, Toast und Spruch des Personals', () => {
     const t = setup();
     palastMod.init(t.ctx);

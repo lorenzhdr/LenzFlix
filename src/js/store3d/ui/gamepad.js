@@ -1,15 +1,16 @@
-// VIDEOTHEK LENZ · Touch-Schema „Spiel“ (game): schwebender Stick links (Laufen in alle Richtungen, Rennen am Rand),
-// Knöpfe unten rechts (Springen, Benutzen, Schlagen bzw. Werfen, wenn etwas getragen wird). Umsehen übernimmt die rechte
-// Hälfte über die Canvas-Handler von controls/touch.js. Eigene Pointer-Events: die linke Zone liegt als DOM-Overlay über dem Canvas,
-// der Canvas sieht die linken Finger nie (Pinch und Look rechts bleiben unberührt). Ein kurzer Tipp in der linken Zone geht an onTap.
+// VIDEOTHEK LENZ · Touch-Schema „Spiel“ (game), reine Ansicht: Ruhe-Stick links (immer sichtbar, dezent), Knöpfe unten rechts
+// (Springen, Benutzen, Schlagen bzw. Werfen, Zoom). Die gesamte Eingabe (Finger-Rollen, Stick, Umsehen, Tippen) macht
+// controls/gametouch.js; hier nur DOM, Zustände und Geometrie. .lfx-store-gp ist ganzflächig (Touch-Fläche), die Stick-Zone ist reine Geometrie.
 
 /** Totzone (Anteil des Radius) und Rennschwellen (Hysterese). */
 export const GP_DEAD = 0.12;
 export const GP_RUN_ON = 0.92;
 export const GP_RUN_OFF = 0.8;
-/** Tipp: höchstens so lange (ms) und so weit (px). */
-const TAP_MS = 250;
-const TAP_SLOP = 9;
+/** Stick-Zone als Anteil der Fensterbreite/-höhe: Finger links von x und unterhalb y legen den Stick an. */
+export const GP_ZONE = {
+  landscape: { x: 0.42, y: 0.28 },
+  portrait: { x: 0.48, y: 0.42 },
+};
 
 /** Stickradius in px: 9 % der kleineren Fensterseite, mindestens 48. */
 export function stickRadius(w, h) {
@@ -40,135 +41,96 @@ function mk(tag, cls, text) {
 }
 
 /**
+ * Ansicht des Touch-Schemas „game“.
  * @param {HTMLElement} host
- * @param {object} cb { onJump(), onUse(), onHit(), onThrow(), onTap(x, y), now?() → ms }
+ * @returns {{root, btnOf, setStick, restStick, press, setAimed, setCarrying, carrying, show, setParked, zoneOf, destroy}}
  */
-export function createGamepad(host, { onJump, onUse, onHit, onThrow, onTap, now } = {}) {
-  const clock = () => (now ? now() : performance.now());
+export function createGamepad(host) {
   const root = mk('div', 'lfx-store-gp');
   root.setAttribute('aria-hidden', 'true');
-  const zone = mk('div', 'lfx-store-gp-zone');
-  const base = mk('div', 'lfx-store-gp-base');
+  const base = mk('div', 'lfx-store-gp-base is-rest');
   const knob = mk('div', 'lfx-store-gp-knob');
   base.appendChild(knob);
-  base.hidden = true;
-  zone.appendChild(base);
   const btns = mk('div', 'lfx-store-gp-btns');
   const jump = mk('button', 'lfx-store-gp-jump', 'SPRINGEN');
   const use = mk('button', 'lfx-store-gp-use', 'BENUTZEN');
   const hit = mk('button', 'lfx-store-gp-hit', 'SCHLAGEN');
   const thr = mk('button', 'lfx-store-gp-throw', 'WERFEN');
-  for (const b of [jump, use, hit, thr]) { b.type = 'button'; b.tabIndex = -1; }
+  const zoom = mk('button', 'lfx-store-gp-zoom', 'ZOOM');
+  for (const b of [jump, use, hit, thr, zoom]) { b.type = 'button'; b.tabIndex = -1; }
   thr.hidden = true;
-  btns.append(jump, use, hit, thr);
-  root.append(zone, btns);
+  btns.append(jump, use, hit, thr, zoom);
+  root.append(base, btns);
   host.appendChild(root);
 
-  let stickId = null;
-  let origin = null; // { x, y, t, moved }
-  let latch = false;
-  const state = { fwd: 0, strafe: 0, scale: 0, run: false };
+  const byName = { jump, use, act: hit, zoom };
+  let carrying = false;
 
-  const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
-  const capture = (el, id) => { try { el.setPointerCapture(id); } catch { /* egal */ } };
-
-  function setKnob(kx, ky) {
-    knob.style.transform = kx || ky ? `translate(${Math.round(kx)}px, ${Math.round(ky)}px)` : '';
-  }
-  function clearState() {
-    state.fwd = 0; state.strafe = 0; state.scale = 0; state.run = false;
-    latch = false;
-  }
-  function zoneDown(e) {
-    stop(e);
-    if (stickId !== null) return;
-    stickId = e.pointerId;
-    capture(zone, e.pointerId);
-    origin = { x: e.clientX, y: e.clientY, t: clock(), moved: 0 };
-    const r = host.getBoundingClientRect ? host.getBoundingClientRect() : { left: 0, top: 0 };
-    base.style.transform = `translate(${Math.round(e.clientX - r.left)}px, ${Math.round(e.clientY - r.top)}px) translate(-50%, -50%)`;
-    base.hidden = false;
-    base.classList.add('is-on');
-    setKnob(0, 0);
-  }
-  function zoneMove(e) {
-    if (e.pointerId !== stickId || !origin) return;
-    stop(e);
-    const dx = e.clientX - origin.x;
-    const dy = e.clientY - origin.y;
-    origin.moved = Math.max(origin.moved, Math.hypot(dx, dy));
-    const R = stickRadius(window.innerWidth || 800, window.innerHeight || 600);
-    const v = stickVector(dx, dy, R, latch);
-    latch = v.run;
-    state.fwd = v.fwd; state.strafe = v.strafe; state.scale = v.scale; state.run = v.run;
-    setKnob(v.kx, v.ky);
-    base.classList.toggle('is-run', v.run);
-  }
-  function zoneUp(e, cancelled) {
-    if (e.pointerId !== stickId) return;
-    stop(e);
-    const o = origin;
-    release();
-    if (!cancelled && o && o.moved <= TAP_SLOP && clock() - o.t <= TAP_MS && onTap) onTap(e.clientX, e.clientY);
-  }
-  function release() {
-    stickId = null;
-    origin = null;
-    clearState();
-    base.hidden = true;
-    base.classList.remove('is-on', 'is-run');
-    setKnob(0, 0);
-  }
-
-  const buttonHandlers = [];
-  function wireButton(el, fn) {
-    const down = (e) => { stop(e); el.classList.add('is-down'); if (fn) fn(); };
-    const up = () => { el.classList.remove('is-down'); };
-    buttonHandlers.push([el, 'pointerdown', down], [el, 'pointerup', up], [el, 'pointercancel', up], [el, 'lostpointercapture', up]);
-  }
-  wireButton(jump, () => onJump && onJump());
-  wireButton(use, () => onUse && onUse());
-  wireButton(hit, () => onHit && onHit());
-  wireButton(thr, () => onThrow && onThrow());
+  const actEl = () => (carrying ? thr : hit);
+  const nameOf = (el) => (el === jump ? 'jump' : el === use ? 'use' : el === hit || el === thr ? 'act' : el === zoom ? 'zoom' : null);
 
   const noCtx = (e) => e.preventDefault();
-  const noTouch = (e) => { if (e.cancelable) e.preventDefault(); };
-  const L = [
-    [zone, 'pointerdown', zoneDown], [zone, 'pointermove', zoneMove],
-    [zone, 'pointerup', (e) => zoneUp(e, false)], [zone, 'pointercancel', (e) => zoneUp(e, true)], [zone, 'lostpointercapture', (e) => zoneUp(e, true)],
-    [root, 'contextmenu', noCtx], ...buttonHandlers,
-  ];
-  for (const [el, t, fn] of L) el.addEventListener(t, fn);
-  root.addEventListener('touchstart', noTouch, { passive: false });
+  root.addEventListener('contextmenu', noCtx);
 
   const api = {
     root,
-    zone,
-    /** Aktuelle Laufeingabe { fwd, strafe, scale, run } (für Player.update). */
-    get input() { return state; },
-    get stickActive() { return stickId !== null; },
-    get carrying() { return !thr.hidden; },
-    /** Gedrückte Finger loslassen (Moduswechsel, Ausblenden). */
-    reset() {
-      if (stickId !== null) release();
-      for (const b of [jump, use, hit, thr]) b.classList.remove('is-down');
+    /** Knopfname zu einem Ereignisziel (auch Kindelemente): 'jump' | 'use' | 'act' | 'zoom' | null. */
+    btnOf(target) {
+      let el = target && target.nodeType ? target : null;
+      while (el && el !== root) {
+        if (el.parentNode === btns) return nameOf(el);
+        el = el.parentNode;
+      }
+      return null;
     },
-    show(on) {
-      if (!on) api.reset();
-      root.hidden = !on;
+    /**
+     * Stick-Basis an Client-Position (cx, cy; Mitte), Knopfversatz kx/ky in px, run → Rennen-Rand.
+     * Position relativ zum Rect von root (H1-Fix: Basis ist Kind von root, nicht einer versetzten Zone).
+     */
+    setStick(cx, cy, kx, ky, run) {
+      const r = root.getBoundingClientRect();
+      const x = Math.round(cx - r.left);
+      const y = Math.round(cy - r.top);
+      base.classList.remove('is-rest');
+      base.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+      knob.style.transform = kx || ky ? `translate(${Math.round(kx)}px, ${Math.round(ky)}px)` : '';
+      base.classList.toggle('is-run', !!run);
+    },
+    /** Zurück zum Ruheplatz (dezent, ohne Transformation). */
+    restStick() {
+      base.classList.add('is-rest');
+      base.classList.remove('is-run');
+      base.style.transform = '';
+      knob.style.transform = '';
+    },
+    /** Knopf optisch gedrückt (name: jump | use | act | zoom). */
+    press(name, on) {
+      const el = name === 'act' ? actEl() : byName[name];
+      if (el) el.classList.toggle('is-down', !!on);
+      if (name === 'act') { const o = el === hit ? thr : hit; o.classList.remove('is-down'); }
     },
     /** Ziel im Fadenkreuz: Benutzen-Knopf hervorheben. */
     setAimed(on) { use.classList.toggle('is-aimed', !!on); },
-    /** Getragene Hülle: „Werfen“ ersetzt „Schlagen“. */
+    /** Getragene Hülle: „Werfen“ ersetzt „Schlagen“ (btnOf liefert weiter 'act'). */
     setCarrying(on) {
-      thr.hidden = !on;
-      hit.hidden = !!on;
-      use.classList.toggle('is-carry', !!on);
+      carrying = !!on;
+      thr.hidden = !carrying;
+      hit.hidden = carrying;
+      use.classList.toggle('is-carry', carrying);
+    },
+    get carrying() { return carrying; },
+    show(on) { root.hidden = !on; },
+    /** Geparkt (Kamerafahrt): unsichtbar, Ereignisse laufen weiter. */
+    setParked(on) { root.classList.toggle('is-parked', !!on); },
+    /** Liegt der Client-Punkt in der Stick-Zone? Hoch-/Querformat per innerHeight > innerWidth. */
+    zoneOf(x, y) {
+      const w = window.innerWidth || 800;
+      const h = window.innerHeight || 600;
+      const z = h > w ? GP_ZONE.portrait : GP_ZONE.landscape;
+      return x < z.x * w && y > z.y * h;
     },
     destroy() {
-      api.reset();
-      for (const [el, t, fn] of L) el.removeEventListener(t, fn);
-      root.removeEventListener('touchstart', noTouch, { passive: false });
+      root.removeEventListener('contextmenu', noCtx);
       root.remove();
     },
   };

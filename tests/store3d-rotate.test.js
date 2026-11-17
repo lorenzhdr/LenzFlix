@@ -23,17 +23,28 @@ function fakeWin(portrait) {
   };
 }
 
-function make(portrait = true, mode = 'play') {
+function make(portrait = true, mode = 'play', wanted = true) {
   document.body.innerHTML = '';
   const host = document.createElement('div');
   document.body.appendChild(host);
   const win = fakeWin(portrait);
-  const st = { mode };
-  const r = createRotateHint(host, { getMode: () => st.mode, win });
+  const st = { mode, wanted };
+  const r = createRotateHint(host, { getMode: () => st.mode, isWanted: () => st.wanted, win });
   return { host, win, st, r, el: host.querySelector('.lfx-store-rotate') };
 }
 
 describe('Hochformat-Hinweis', () => {
+  it('isWanted = false (Schema game) hält den Banner aus, true bringt ihn zurück', () => {
+    const { r, st } = make(true, 'play', false);
+    expect(r.visible).toBe(false);
+    st.wanted = true;
+    r.update();
+    expect(r.visible).toBe(true);
+    st.wanted = false;
+    r.update();
+    expect(r.visible).toBe(false);
+  });
+
   it('zeigt im Hochformat im Laufmodus den Text, im Querformat nicht', () => {
     const { r, el, win } = make(true);
     expect(el.textContent).toContain(ROTATE_TEXT);

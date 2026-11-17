@@ -35007,7 +35007,7 @@ void main() {
     }
     function walkDown(e) {
       stop(e);
-      if (walkId !== null) return;
+      if (walkId !== null && !e.isPrimary) return;
       walkId = e.pointerId;
       capture(walk, e.pointerId);
       try {
@@ -35041,7 +35041,7 @@ void main() {
     }
     function stickDown(e) {
       stop(e);
-      if (stickId !== null) return;
+      if (stickId !== null && !e.isPrimary) return;
       stickId = e.pointerId;
       capture(stick, e.pointerId);
       const r = stick.getBoundingClientRect();
@@ -35110,8 +35110,10 @@ void main() {
   var GP_DEAD = 0.12;
   var GP_RUN_ON = 0.92;
   var GP_RUN_OFF = 0.8;
-  var TAP_MS = 250;
-  var TAP_SLOP = 9;
+  var GP_ZONE = {
+    landscape: { x: 0.42, y: 0.28 },
+    portrait: { x: 0.48, y: 0.42 }
+  };
   function stickRadius(w, h2) {
     return Math.max(48, 0.09 * Math.min(w, h2));
   }
@@ -35131,168 +35133,593 @@ void main() {
     if (text != null) e.textContent = text;
     return e;
   }
-  function createGamepad(host, { onJump, onUse, onHit, onThrow, onTap, now } = {}) {
-    const clock = () => now ? now() : performance.now();
+  function createGamepad(host) {
     const root = mk2("div", "lfx-store-gp");
     root.setAttribute("aria-hidden", "true");
-    const zone = mk2("div", "lfx-store-gp-zone");
-    const base = mk2("div", "lfx-store-gp-base");
+    const base = mk2("div", "lfx-store-gp-base is-rest");
     const knob = mk2("div", "lfx-store-gp-knob");
     base.appendChild(knob);
-    base.hidden = true;
-    zone.appendChild(base);
     const btns = mk2("div", "lfx-store-gp-btns");
     const jump = mk2("button", "lfx-store-gp-jump", "SPRINGEN");
     const use = mk2("button", "lfx-store-gp-use", "BENUTZEN");
     const hit = mk2("button", "lfx-store-gp-hit", "SCHLAGEN");
     const thr = mk2("button", "lfx-store-gp-throw", "WERFEN");
-    for (const b of [jump, use, hit, thr]) {
+    const zoom = mk2("button", "lfx-store-gp-zoom", "ZOOM");
+    for (const b of [jump, use, hit, thr, zoom]) {
       b.type = "button";
       b.tabIndex = -1;
     }
     thr.hidden = true;
-    btns.append(jump, use, hit, thr);
-    root.append(zone, btns);
+    btns.append(jump, use, hit, thr, zoom);
+    root.append(base, btns);
     host.appendChild(root);
-    let stickId = null;
-    let origin = null;
-    let latch = false;
-    const state = { fwd: 0, strafe: 0, scale: 0, run: false };
-    const stop = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    const capture = (el3, id) => {
-      try {
-        el3.setPointerCapture(id);
-      } catch {
-      }
-    };
-    function setKnob(kx, ky) {
-      knob.style.transform = kx || ky ? `translate(${Math.round(kx)}px, ${Math.round(ky)}px)` : "";
-    }
-    function clearState() {
-      state.fwd = 0;
-      state.strafe = 0;
-      state.scale = 0;
-      state.run = false;
-      latch = false;
-    }
-    function zoneDown(e) {
-      stop(e);
-      if (stickId !== null) return;
-      stickId = e.pointerId;
-      capture(zone, e.pointerId);
-      origin = { x: e.clientX, y: e.clientY, t: clock(), moved: 0 };
-      const r = host.getBoundingClientRect ? host.getBoundingClientRect() : { left: 0, top: 0 };
-      base.style.transform = `translate(${Math.round(e.clientX - r.left)}px, ${Math.round(e.clientY - r.top)}px) translate(-50%, -50%)`;
-      base.hidden = false;
-      base.classList.add("is-on");
-      setKnob(0, 0);
-    }
-    function zoneMove(e) {
-      if (e.pointerId !== stickId || !origin) return;
-      stop(e);
-      const dx = e.clientX - origin.x;
-      const dy = e.clientY - origin.y;
-      origin.moved = Math.max(origin.moved, Math.hypot(dx, dy));
-      const R2 = stickRadius(window.innerWidth || 800, window.innerHeight || 600);
-      const v = stickVector(dx, dy, R2, latch);
-      latch = v.run;
-      state.fwd = v.fwd;
-      state.strafe = v.strafe;
-      state.scale = v.scale;
-      state.run = v.run;
-      setKnob(v.kx, v.ky);
-      base.classList.toggle("is-run", v.run);
-    }
-    function zoneUp(e, cancelled) {
-      if (e.pointerId !== stickId) return;
-      stop(e);
-      const o = origin;
-      release();
-      if (!cancelled && o && o.moved <= TAP_SLOP && clock() - o.t <= TAP_MS && onTap) onTap(e.clientX, e.clientY);
-    }
-    function release() {
-      stickId = null;
-      origin = null;
-      clearState();
-      base.hidden = true;
-      base.classList.remove("is-on", "is-run");
-      setKnob(0, 0);
-    }
-    const buttonHandlers = [];
-    function wireButton(el3, fn) {
-      const down = (e) => {
-        stop(e);
-        el3.classList.add("is-down");
-        if (fn) fn();
-      };
-      const up = () => {
-        el3.classList.remove("is-down");
-      };
-      buttonHandlers.push([el3, "pointerdown", down], [el3, "pointerup", up], [el3, "pointercancel", up], [el3, "lostpointercapture", up]);
-    }
-    wireButton(jump, () => onJump && onJump());
-    wireButton(use, () => onUse && onUse());
-    wireButton(hit, () => onHit && onHit());
-    wireButton(thr, () => onThrow && onThrow());
+    const byName = { jump, use, act: hit, zoom };
+    let carrying = false;
+    const actEl = () => carrying ? thr : hit;
+    const nameOf2 = (el3) => el3 === jump ? "jump" : el3 === use ? "use" : el3 === hit || el3 === thr ? "act" : el3 === zoom ? "zoom" : null;
     const noCtx = (e) => e.preventDefault();
-    const noTouch = (e) => {
-      if (e.cancelable) e.preventDefault();
-    };
-    const L = [
-      [zone, "pointerdown", zoneDown],
-      [zone, "pointermove", zoneMove],
-      [zone, "pointerup", (e) => zoneUp(e, false)],
-      [zone, "pointercancel", (e) => zoneUp(e, true)],
-      [zone, "lostpointercapture", (e) => zoneUp(e, true)],
-      [root, "contextmenu", noCtx],
-      ...buttonHandlers
-    ];
-    for (const [el3, t, fn] of L) el3.addEventListener(t, fn);
-    root.addEventListener("touchstart", noTouch, { passive: false });
+    root.addEventListener("contextmenu", noCtx);
     const api = {
       root,
-      zone,
-      /** Aktuelle Laufeingabe { fwd, strafe, scale, run } (für Player.update). */
-      get input() {
-        return state;
+      /** Knopfname zu einem Ereignisziel (auch Kindelemente): 'jump' | 'use' | 'act' | 'zoom' | null. */
+      btnOf(target) {
+        let el3 = target && target.nodeType ? target : null;
+        while (el3 && el3 !== root) {
+          if (el3.parentNode === btns) return nameOf2(el3);
+          el3 = el3.parentNode;
+        }
+        return null;
       },
-      get stickActive() {
-        return stickId !== null;
+      /**
+       * Stick-Basis an Client-Position (cx, cy; Mitte), Knopfversatz kx/ky in px, run → Rennen-Rand.
+       * Position relativ zum Rect von root (H1-Fix: Basis ist Kind von root, nicht einer versetzten Zone).
+       */
+      setStick(cx, cy, kx, ky, run) {
+        const r = root.getBoundingClientRect();
+        const x = Math.round(cx - r.left);
+        const y = Math.round(cy - r.top);
+        base.classList.remove("is-rest");
+        base.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+        knob.style.transform = kx || ky ? `translate(${Math.round(kx)}px, ${Math.round(ky)}px)` : "";
+        base.classList.toggle("is-run", !!run);
       },
-      get carrying() {
-        return !thr.hidden;
+      /** Zurück zum Ruheplatz (dezent, ohne Transformation). */
+      restStick() {
+        base.classList.add("is-rest");
+        base.classList.remove("is-run");
+        base.style.transform = "";
+        knob.style.transform = "";
       },
-      /** Gedrückte Finger loslassen (Moduswechsel, Ausblenden). */
-      reset() {
-        if (stickId !== null) release();
-        for (const b of [jump, use, hit, thr]) b.classList.remove("is-down");
-      },
-      show(on) {
-        if (!on) api.reset();
-        root.hidden = !on;
+      /** Knopf optisch gedrückt (name: jump | use | act | zoom). */
+      press(name, on) {
+        const el3 = name === "act" ? actEl() : byName[name];
+        if (el3) el3.classList.toggle("is-down", !!on);
+        if (name === "act") {
+          const o = el3 === hit ? thr : hit;
+          o.classList.remove("is-down");
+        }
       },
       /** Ziel im Fadenkreuz: Benutzen-Knopf hervorheben. */
       setAimed(on) {
         use.classList.toggle("is-aimed", !!on);
       },
-      /** Getragene Hülle: „Werfen“ ersetzt „Schlagen“. */
+      /** Getragene Hülle: „Werfen“ ersetzt „Schlagen“ (btnOf liefert weiter 'act'). */
       setCarrying(on) {
-        thr.hidden = !on;
-        hit.hidden = !!on;
-        use.classList.toggle("is-carry", !!on);
+        carrying = !!on;
+        thr.hidden = !carrying;
+        hit.hidden = carrying;
+        use.classList.toggle("is-carry", carrying);
+      },
+      get carrying() {
+        return carrying;
+      },
+      show(on) {
+        root.hidden = !on;
+      },
+      /** Geparkt (Kamerafahrt): unsichtbar, Ereignisse laufen weiter. */
+      setParked(on) {
+        root.classList.toggle("is-parked", !!on);
+      },
+      /** Liegt der Client-Punkt in der Stick-Zone? Hoch-/Querformat per innerHeight > innerWidth. */
+      zoneOf(x, y) {
+        const w = window.innerWidth || 800;
+        const h2 = window.innerHeight || 600;
+        const z = h2 > w ? GP_ZONE.portrait : GP_ZONE.landscape;
+        return x < z.x * w && y > z.y * h2;
       },
       destroy() {
-        api.reset();
-        for (const [el3, t, fn] of L) el3.removeEventListener(t, fn);
-        root.removeEventListener("touchstart", noTouch, { passive: false });
+        root.removeEventListener("contextmenu", noCtx);
         root.remove();
       }
     };
     return api;
   }
+
+  // src/js/store3d/controls/gametouch.js
+  var TAP_MS = 250;
+  var TAP_SLOP = 9;
+  var DRAG_SLOP = 12;
+  var PARK_MAX_MS = 1500;
+  var ROLES = ["stick", "look", "jump", "use", "act", "zoom"];
+  var BUTTONS = ["jump", "use", "act", "zoom"];
+  var LOG_MAX = 40;
+  var WHY_DE = {
+    cancel: "Systemabbruch",
+    orphan: "verwaist",
+    reuse: "ID doppelt",
+    lost: "Erfassung verloren",
+    hidden: "App verlassen",
+    pagehide: "Seite verlassen",
+    blur: "Fokus weg",
+    orient: "Drehen",
+    "mode:paused": "Men\xFC",
+    "mode:hold": "H\xFClle",
+    "mode:overlay": "\xDCberlagerung",
+    "mode:off": "Aus",
+    xr: "VR-Modus",
+    scheme: "Schema",
+    detach: "Aussetzen",
+    reset: "Zur\xFCcksetzen"
+  };
+  var ROLE_DE = { stick: "am Stick", look: "beim Umsehen", jump: "am Knopf Springen", use: "am Knopf Benutzen", act: "am Knopf Schlagen", zoom: "am Knopf Zoom" };
+  var ROLE_NAME = { stick: "Stick", look: "Blick", jump: "Springen", use: "Benutzen", act: "Schlagen", zoom: "Zoom" };
+  function whyDe(w) {
+    if (WHY_DE[w]) return WHY_DE[w];
+    if (typeof w === "string" && w.indexOf("mode:") === 0) return "Modus";
+    if (typeof w === "string" && w.indexOf("locked:") === 0) return "Kamerafahrt";
+    return String(w || "");
+  }
+  function diagLine(d) {
+    if (!d) return "";
+    const n = d.n || {};
+    const names = Object.keys(d.roles || {}).filter((r) => d.roles[r] !== null && d.roles[r] !== void 0).map((r) => ROLE_NAME[r] || r);
+    const parts = [`Eingabe: ${d.fingers || 0} Finger${names.length ? ` (${names.join(", ")})` : ""}`];
+    const cleaned = (n.orphan || 0) + (n.reuse || 0);
+    if (cleaned > 0) parts.push(`bereinigt ${cleaned}`);
+    if ((n.cancel || 0) > 0) parts.push(`Abbr\xFCche ${n.cancel}`);
+    if (!cleaned && !(n.cancel > 0) && !d.last) parts.push("keine Abbr\xFCche");
+    if (d.last) parts.push(`zuletzt: ${whyDe(d.last.why)}${d.last.role && ROLE_DE[d.last.role] ? ` ${ROLE_DE[d.last.role]}` : ""} vor ${Math.round(d.last.ago)} s`);
+    const lines = [parts.join(" \xB7 ")];
+    if (d.lastHide) lines.push(`Pad aus zuletzt: ${whyDe(d.lastHide.why)} vor ${Math.round(d.lastHide.ago)} s${n.parkResume > 0 ? ` \xB7 fortgesetzt ${n.parkResume}\xD7` : ""}`);
+    return lines.join("\n");
+  }
+  var GameTouch = class {
+    /**
+     * @param {object} o {
+     *   now?() → ms, look(dx, dy) (Pixel-Delta des Blick-Fingers), onTap(x, y), onZoom(z), onJump(), onUse(), onHit(), onThrow(),
+     *   debug?: bool (Ereignis-Ringpuffer in diag().log), api?: 'touch' | 'pointer' (Binder; Standard 'touch', 'pointer' = Plan B),
+     *   win?, doc? }
+     */
+    constructor(o = {}) {
+      this.o = o;
+      this.win = o.win || (typeof window !== "undefined" ? window : null);
+      this.doc = o.doc || (typeof document !== "undefined" ? document : null);
+      this.api = o.api === "pointer" ? "pointer" : "touch";
+      this.debug = !!o.debug;
+      this.view = null;
+      this.root = null;
+      this.L = [];
+      this.mq = null;
+      this.slots = { stick: null, look: null, jump: null, use: null, act: null, zoom: null };
+      this.out = { fwd: 0, strafe: 0, scale: 0, run: false };
+      this.state = "on";
+      this.why = "";
+      this.parkSince = 0;
+      this.fingers = 0;
+      this.last = null;
+      this.lastHide = null;
+      this.log = [];
+      this.layout = { w: 0, h: 0, portrait: false, R: 48, half: Infinity };
+      this.n = { start: 0, end: 0, cancel: 0, orphan: 0, reuse: 0, lost: 0, parkResume: 0, rel: { mode: 0, locked: 0, xr: 0, hidden: 0, pagehide: 0, blur: 0, orient: 0, scheme: 0, detach: 0, reset: 0 } };
+    }
+    now() {
+      return this.o.now ? this.o.now() : performance.now();
+    }
+    /** Laufeingabe { fwd, strafe, scale, run } für Player.update (nur im Zustand 'on' ungleich 0). */
+    get input() {
+      return this.out;
+    }
+    get padShown() {
+      return this.state === "on";
+    }
+    // --- Anbindung an die Ansicht ---
+    attach(view) {
+      if (this.view) this.detach("detach");
+      this.view = view;
+      this.root = view.root;
+      this.refreshLayout();
+      const r = this.root;
+      const add = (t, type, fn, opts) => {
+        t.addEventListener(type, fn, opts);
+        this.L.push([t, type, fn, opts]);
+      };
+      const prevent = (e) => {
+        if (e.cancelable) e.preventDefault();
+      };
+      add(r, "contextmenu", prevent);
+      add(r, "gesturestart", prevent);
+      add(r, "gesturechange", prevent);
+      if (this.api === "touch") {
+        add(r, "touchstart", (e) => this.onTouchStart(e), { passive: false });
+        add(r, "touchmove", (e) => this.onTouchMove(e), { passive: false });
+        add(r, "touchend", (e) => this.onTouchEnd(e, false), { passive: false });
+        add(r, "touchcancel", (e) => this.onTouchEnd(e, true), { passive: false });
+      }
+      add(r, "pointerdown", (e) => this.onPtrDown(e));
+      add(r, "pointermove", (e) => this.onPtrMove(e));
+      add(r, "pointerup", (e) => this.onPtrUp(e, false));
+      add(r, "pointercancel", (e) => this.onPtrUp(e, true));
+      add(r, "lostpointercapture", (e) => this.onPtrLost(e));
+      if (this.doc) add(this.doc, "visibilitychange", () => {
+        if (this.doc.visibilityState === "hidden" || this.doc.hidden === true) this.releaseAll("hidden");
+      });
+      if (this.win) {
+        add(this.win, "pagehide", () => this.releaseAll("pagehide"));
+        add(this.win, "blur", () => this.releaseAll("blur"));
+        add(this.win, "orientationchange", () => this.releaseAll("orient"));
+        add(this.win, "resize", () => this.refreshLayout());
+        let mq;
+        try {
+          mq = this.win.matchMedia ? this.win.matchMedia("(orientation: portrait)") : null;
+        } catch {
+          mq = null;
+        }
+        if (mq) {
+          const fn = () => this.releaseAll("orient");
+          if (mq.addEventListener) mq.addEventListener("change", fn);
+          else if (mq.addListener) mq.addListener(fn);
+          this.mq = { mq, fn };
+        }
+      }
+      this.applyView();
+    }
+    detach(why = "detach") {
+      if (!this.view) return;
+      this.releaseAll(why);
+      for (const [t, type, fn, opts] of this.L) t.removeEventListener(type, fn, opts);
+      this.L = [];
+      if (this.mq) {
+        const { mq, fn } = this.mq;
+        if (mq.removeEventListener) mq.removeEventListener("change", fn);
+        else if (mq.removeListener) mq.removeListener(fn);
+        this.mq = null;
+      }
+      this.view = null;
+      this.root = null;
+    }
+    applyView() {
+      if (!this.view) return;
+      this.view.show(this.state !== "off");
+      this.view.setParked(this.state === "parked");
+    }
+    refreshLayout() {
+      const w = this.win ? this.win.innerWidth || 0 : 0;
+      const h2 = this.win ? this.win.innerHeight || 0 : 0;
+      const L = this.layout;
+      L.w = w;
+      L.h = h2;
+      L.portrait = h2 > w;
+      L.R = stickRadius(w || 800, h2 || 600);
+    }
+    /** Halbe Breite der Stick-Basis (px), falls die Ansicht sie schon gemessen hat; sonst unbegrenzt. */
+    baseHalf() {
+      const b = this.root && this.root.querySelector ? this.root.querySelector(".lfx-store-gp-base") : null;
+      const w = b && b.offsetWidth;
+      return w > 0 ? w / 2 : Infinity;
+    }
+    // --- Gate ---
+    /** state: 'on' | 'parked' | 'off', why: Grund (z. B. 'mode:paused', 'locked:cam', 'xr'). Wird pro Frame aufgerufen und vergleicht billig. */
+    setGate(state, why = "", now = this.now()) {
+      const prev = this.state;
+      if (state === "parked" && prev === "parked") {
+        this.why = why;
+        if (this.parkSince && now - this.parkSince > PARK_MAX_MS) {
+          this.parkSince = 0;
+          this.releaseAll(why);
+        }
+        return;
+      }
+      if (state === prev && why === this.why) return;
+      this.state = state;
+      this.why = why;
+      if (state === "off") {
+        this.releaseAll(why);
+        this.lastHide = { why, t: now };
+      } else if (state === "parked") {
+        this.parkSince = now;
+        this.lastHide = { why, t: now };
+      }
+      if (prev === "parked" && state === "on") {
+        this.parkSince = 0;
+        if (ROLES.some((r) => this.slots[r])) {
+          this.n.parkResume++;
+          if (this.slots.zoom && this.o.onZoom) this.o.onZoom(ZOOM_IN);
+          if (this.slots.stick) this.applyStick();
+        }
+      }
+      if (state !== "on") this.clearOut();
+      this.applyView();
+    }
+    // --- Rollen ---
+    rolesOf(id) {
+      const a = [];
+      for (const r of ROLES) if (this.slots[r] && this.slots[r].id === id) a.push(r);
+      return a;
+    }
+    clearOut() {
+      const o = this.out;
+      o.fwd = 0;
+      o.strafe = 0;
+      o.scale = 0;
+      o.run = false;
+    }
+    /** Eine Rolle lösen. why 'end' = normales Loslassen (kein Protokoll), sonst Abbruch bei liegendem Finger. */
+    drop(role, why) {
+      const s = this.slots[role];
+      if (!s) return;
+      this.slots[role] = null;
+      if (role === "stick") {
+        this.clearOut();
+        if (this.view) this.view.restStick();
+      } else if (role === "zoom") {
+        if (this.o.onZoom) this.o.onZoom(1);
+        if (this.view) this.view.press("zoom", false);
+      } else if (BUTTONS.includes(role) && this.view) {
+        this.view.press(role, false);
+      }
+      if (why === "end") return;
+      const key = why.indexOf(":") > 0 ? why.slice(0, why.indexOf(":")) : why;
+      if (why === "orphan") this.n.orphan++;
+      else if (why === "reuse") this.n.reuse++;
+      else if (why === "cancel") this.n.cancel++;
+      else if (why === "lost") this.n.lost++;
+      else if (Object.prototype.hasOwnProperty.call(this.n.rel, key)) this.n.rel[key]++;
+      const t = this.now();
+      this.last = { why, role, t, x: s.x !== void 0 ? s.x : s.sx, y: s.y !== void 0 ? s.y : s.sy };
+      this.dlog("rel", s.id, role, this.last.x, this.last.y);
+    }
+    /** Alle Slots lösen (Grund für die Diagnose). */
+    releaseAll(why) {
+      for (const r of ROLES) this.drop(r, why);
+    }
+    /** Slots, deren Finger nicht mehr in der Liste liegen (Touch-ID-Liste e.touches), lösen. Pointer-Einträge (String-IDs) bleiben unberührt. */
+    reconcile(ids) {
+      for (const r of ROLES) {
+        const s = this.slots[r];
+        if (s && typeof s.id === "number" && !ids.includes(s.id)) {
+          this.dlog("orph", s.id, r, s.x, s.y);
+          this.drop(r, "orphan");
+        }
+      }
+    }
+    dlog(code, id, role, x, y) {
+      if (!this.debug) return;
+      this.log.push([Math.round(this.now()), code, id, role, Math.round(x || 0), Math.round(y || 0)]);
+      if (this.log.length > LOG_MAX) this.log.shift();
+    }
+    // --- Kern: Start / Bewegung / Ende ---
+    /** Neuer Finger. Rückgabe true, wenn er eine Rolle bekommen hat. */
+    start(id, x, y, target) {
+      this.n.start++;
+      this.dlog("ts", id, "", x, y);
+      if (this.state !== "on" || !this.view) return false;
+      const v = this.view;
+      const name = v.btnOf ? v.btnOf(target) : null;
+      if (name && BUTTONS.includes(name)) {
+        if (this.slots[name]) return false;
+        this.slots[name] = { id, sx: x, sy: y, x, y, dragged: false };
+        v.press(name, true);
+        this.haptic(8);
+        if (name === "jump") {
+          if (this.o.onJump) this.o.onJump();
+        } else if (name === "use") {
+          if (this.o.onUse) this.o.onUse();
+        } else if (name === "act") {
+          if (v.carrying) {
+            if (this.o.onThrow) this.o.onThrow();
+          } else if (this.o.onHit) this.o.onHit();
+        } else if (name === "zoom") {
+          if (this.o.onZoom) this.o.onZoom(ZOOM_IN);
+        }
+        return true;
+      }
+      if (!this.slots.stick && v.zoneOf(x, y)) {
+        this.refreshLayout();
+        this.layout.half = this.baseHalf();
+        this.slots.stick = { id, ox: x, oy: y, sx: x, sy: y, x, y, t0: this.now(), moved: 0, latch: false };
+        v.setStick(x, y, 0, 0, false);
+        return true;
+      }
+      if (!this.slots.look) {
+        this.slots.look = { id, x, y, sx: x, sy: y, t0: this.now(), moved: false };
+        return true;
+      }
+      return false;
+    }
+    move(id, x, y) {
+      this.dlog("tm", id, "", x, y);
+      for (const r of this.rolesOf(id)) {
+        if (r === "stick") this.moveStick(x, y);
+        else if (r === "look") this.moveLook(x, y);
+        else this.moveButton(r, x, y);
+      }
+    }
+    moveStick(x, y) {
+      const s = this.slots.stick;
+      s.x = x;
+      s.y = y;
+      s.moved = Math.max(s.moved, Math.hypot(x - s.sx, y - s.sy));
+      if (this.state === "on") this.applyStick();
+    }
+    applyStick() {
+      const s = this.slots.stick;
+      const L = this.layout;
+      const R2 = Math.min(L.R, L.half);
+      let dx = s.x - s.ox;
+      let dy = s.y - s.oy;
+      const d = Math.hypot(dx, dy);
+      if (d > R2) {
+        const k = (d - R2) / d;
+        s.ox += dx * k;
+        s.oy += dy * k;
+        const hb = Number.isFinite(L.half) ? L.half : R2;
+        if (L.w > 2 * hb) s.ox = Math.max(hb, Math.min(L.w - hb, s.ox));
+        if (L.h > 2 * hb) s.oy = Math.max(hb, Math.min(L.h - hb, s.oy));
+        dx = s.x - s.ox;
+        dy = s.y - s.oy;
+      }
+      const v = stickVector(dx, dy, R2, s.latch);
+      if (v.run && !s.latch) this.haptic(12);
+      s.latch = v.run;
+      const o = this.out;
+      o.fwd = v.fwd;
+      o.strafe = v.strafe;
+      o.scale = v.scale;
+      o.run = v.run;
+      s.m = v.m;
+      if (this.view) this.view.setStick(s.ox, s.oy, v.kx, v.ky, v.run);
+    }
+    moveLook(x, y) {
+      const s = this.slots.look;
+      const dx = x - s.x;
+      const dy = y - s.y;
+      s.x = x;
+      s.y = y;
+      if (!s.moved && Math.hypot(x - s.sx, y - s.sy) > TAP_SLOP) s.moved = true;
+      if (s.moved && this.state === "on" && this.o.look) this.o.look(dx, dy);
+    }
+    moveButton(role, x, y) {
+      const s = this.slots[role];
+      s.x = x;
+      s.y = y;
+      if (s.dragged || Math.hypot(x - s.sx, y - s.sy) <= DRAG_SLOP || this.slots.look || this.state !== "on") return;
+      s.dragged = true;
+      if (this.view) this.view.press(role, false);
+      this.slots.look = { id: s.id, x, y, sx: x, sy: y, t0: this.now(), moved: true };
+      if (role !== "zoom") this.slots[role] = null;
+    }
+    /** Finger weg (cancelled = Systemabbruch). */
+    end(id, cancelled) {
+      this.dlog(cancelled ? "tc" : "te", id, "", 0, 0);
+      this.n.end++;
+      const live = this.state === "on";
+      for (const r of this.rolesOf(id)) {
+        const s = this.slots[r];
+        if (cancelled) {
+          this.drop(r, "cancel");
+          continue;
+        }
+        const tapOk = live && (r === "stick" ? s.moved <= TAP_SLOP : r === "look" ? !s.moved : false) && this.now() - s.t0 <= TAP_MS;
+        const x = s.x;
+        const y = s.y;
+        this.drop(r, "end");
+        if (tapOk && this.o.onTap) this.o.onTap(x, y);
+      }
+    }
+    // --- Touch-Binder ---
+    idsOf(list) {
+      const a = [];
+      if (list) for (let i = 0; i < list.length; i++) a.push(list[i].identifier);
+      return a;
+    }
+    onTouchStart(e) {
+      if (!this.view) return;
+      if (e.cancelable) e.preventDefault();
+      this.fingers = e.touches ? e.touches.length : 0;
+      const ch = e.changedTouches || [];
+      for (let i = 0; i < ch.length; i++) {
+        for (const r of this.rolesOf(ch[i].identifier)) this.drop(r, "reuse");
+      }
+      this.reconcile(this.idsOf(e.touches));
+      for (let i = 0; i < ch.length; i++) {
+        const t = ch[i];
+        this.start(t.identifier, t.clientX, t.clientY, t.target);
+      }
+    }
+    onTouchMove(e) {
+      if (!this.view) return;
+      if (e.cancelable) e.preventDefault();
+      this.fingers = e.touches ? e.touches.length : 0;
+      this.reconcile(this.idsOf(e.touches));
+      const ch = e.changedTouches || [];
+      for (let i = 0; i < ch.length; i++) this.move(ch[i].identifier, ch[i].clientX, ch[i].clientY);
+    }
+    onTouchEnd(e, cancelled) {
+      if (!this.view) return;
+      this.fingers = e.touches ? e.touches.length : 0;
+      const ch = e.changedTouches || [];
+      for (let i = 0; i < ch.length; i++) this.end(ch[i].identifier, cancelled);
+      this.reconcile(this.idsOf(e.touches));
+    }
+    // --- Pointer-Binder (Maus/Stift; bei api 'pointer' auch Touch) ---
+    ptrOk(e) {
+      return this.api === "pointer" || e.pointerType !== "touch";
+    }
+    onPtrDown(e) {
+      if (!this.view || !this.ptrOk(e)) return;
+      if (this.api === "pointer" && e.isPrimary && ROLES.some((r) => this.slots[r])) this.releaseAll("orphan");
+      if (e.cancelable) e.preventDefault();
+      const id = `p${e.pointerId}`;
+      for (const r of this.rolesOf(id)) this.drop(r, "reuse");
+      if (this.start(id, e.clientX, e.clientY, e.target)) {
+        try {
+          this.root.setPointerCapture(e.pointerId);
+        } catch {
+        }
+      }
+    }
+    onPtrMove(e) {
+      if (!this.view || !this.ptrOk(e)) return;
+      this.move(`p${e.pointerId}`, e.clientX, e.clientY);
+    }
+    onPtrUp(e, cancelled) {
+      if (!this.view || !this.ptrOk(e)) return;
+      this.end(`p${e.pointerId}`, cancelled);
+    }
+    onPtrLost(e) {
+      if (!this.view || !this.ptrOk(e)) return;
+      const id = `p${e.pointerId}`;
+      for (const r of this.rolesOf(id)) this.drop(r, "lost");
+    }
+    haptic(ms) {
+      try {
+        if (typeof navigator !== "undefined" && navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(ms);
+      } catch {
+      }
+    }
+    // --- Diagnose ---
+    diag() {
+      const t = this.now();
+      const S = this.slots;
+      const roles = {};
+      for (const r of ROLES) roles[r] = S[r] ? S[r].id : null;
+      const s = S.stick;
+      const base = this.root && this.root.querySelector ? this.root.querySelector(".lfx-store-gp-base") : null;
+      let rest = null;
+      try {
+        const br = base && base.getBoundingClientRect ? base.getBoundingClientRect() : null;
+        if (br && br.width > 0) rest = [Math.round(br.left + br.width / 2), Math.round(br.top + br.height / 2)];
+      } catch {
+      }
+      const L = this.layout;
+      return {
+        v: 1,
+        api: this.api,
+        scheme: "game",
+        gate: this.state,
+        gateWhy: this.why,
+        fingers: this.fingers,
+        roles,
+        stick: s ? { x: Math.round(s.x - s.ox), y: Math.round(s.y - s.oy), m: +(s.m || 0).toFixed(2), run: !!s.latch, follow: Math.round(Math.hypot(s.ox - s.sx, s.oy - s.sy)) } : null,
+        zoom: S.zoom ? ZOOM_IN : 1,
+        n: { start: this.n.start, end: this.n.end, cancel: this.n.cancel, orphan: this.n.orphan, reuse: this.n.reuse, lost: this.n.lost, parkResume: this.n.parkResume, rel: { ...this.n.rel } },
+        last: this.last ? { why: this.last.why, role: this.last.role, ago: +((t - this.last.t) / 1e3).toFixed(1), x: Math.round(this.last.x), y: Math.round(this.last.y) } : null,
+        lastHide: this.lastHide ? { why: this.lastHide.why, ago: +((t - this.lastHide.t) / 1e3).toFixed(1) } : null,
+        layout: { w: L.w, h: L.h, portrait: L.portrait, zone: this.view && this.view.zoneRect ? this.view.zoneRect() : null, R: Math.round(Math.min(L.R, L.half)), rest },
+        log: this.debug ? this.log.slice() : []
+      };
+    }
+  };
 
   // src/js/store3d/controls/touch.js
   var TOUCH_LOOK = 45e-4;
@@ -35315,10 +35742,14 @@ void main() {
       touchRegrip: Object.prototype.hasOwnProperty.call(REGRIP_MS, o.touchRegrip) ? o.touchRegrip : "short"
     };
   }
+  function lookDelta(dx, dy, tune, zoom) {
+    const k = TOUCH_LOOK * SENS_FACTOR[tune.touchSens] / Math.max(1, zoom);
+    return [dx * k * (tune.lookFlipX ? 1 : -1), dy * k * (tune.lookFlipY ? 1 : -1)];
+  }
   var ZOOM_MIN = 1;
   var ZOOM_MAX = 3;
   var TouchControls = class {
-    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game') } */
+    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game'), debug?: bool (Eingabe-Ringpuffer), touchApi?: 'pointer' (Plan B: Pointer statt Touch Events im Schema 'game') } */
     constructor(ctx) {
       this.ctx = ctx;
       this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : "touch";
@@ -35329,6 +35760,33 @@ void main() {
       this.aimed = false;
       this.carrying = false;
       this.pointers = /* @__PURE__ */ new Map();
+      this.gateState = { state: "on", why: "" };
+      const c = ctx;
+      this.game = new GameTouch({
+        now: () => this.now(),
+        look: (dx, dy) => {
+          const [a, b] = lookDelta(dx, dy, this.tune(), this.currentZoom());
+          this.ctx.player.look(a, b);
+        },
+        onTap: (x, y) => {
+          if (c.getMode() === "play" && c.onTap) c.onTap(x, y);
+        },
+        onZoom: (z) => this.setZoom(z),
+        onJump: () => {
+          if (c.onJump) c.onJump();
+        },
+        onUse: () => {
+          if (c.onUse) c.onUse();
+        },
+        onHit: () => {
+          if (c.onHit) c.onHit();
+        },
+        onThrow: () => {
+          if (c.onThrow) c.onThrow();
+        },
+        debug: !!ctx.debug,
+        api: ctx.touchApi
+      });
       this.attached = false;
       this.walkId = null;
       this.timer = 0;
@@ -35341,6 +35799,9 @@ void main() {
         move: (e) => this.onMove(e),
         up: (e) => this.onUp(e, false),
         cancel: (e) => this.onUp(e, true),
+        lost: (e) => {
+          if (this.scheme !== "game" && this.pointers.has(e.pointerId)) this.onUp(e, true);
+        },
         noCtx: (e) => e.preventDefault()
       };
     }
@@ -35362,8 +35823,8 @@ void main() {
     /** Eingabe für Player.update(): läuft nur im Laufmodus. */
     get input() {
       if (this.scheme === "game") {
-        if (this.ctx.getMode() !== "play" && this.pad) this.pad.reset();
-        return this.pad ? this.pad.input : { fwd: 0, strafe: 0, scale: 0, run: false };
+        if (this.ctx.getMode() !== "play" && this.game.state === "on") this.gate({ mode: this.ctx.getMode() });
+        return this.game.input;
       }
       if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== "play") {
         this.stopWalk();
@@ -35385,13 +35846,52 @@ void main() {
     setScheme(s) {
       if (!SCHEMES.includes(s) || s === this.scheme) return;
       this.scheme = s;
-      this.reset();
+      this.reset("scheme");
       if (this.attached) this.syncPad();
     }
-    /** Pad ein-/ausblenden (z. B. nur im Laufmodus). */
+    /**
+     * Gate (pro Frame billig aufrufen): { play?, mode?, lock?: 'cam' | 'freeze' | '', xr? }.
+     * 'on' = Laufmodus ohne Sperre; 'parked' = Laufmodus, aber Kamerafahrt/Sperre (Schema 'game': liegende Finger bleiben bis PARK_MAX_MS, Ausgabe 0);
+     * 'off' = Pause/Hülle/Überlagerung/VR (alle Finger lösen). Schemata 'touch'/'joystick': nur 'on' zeigt das Pad.
+     */
+    gate(g = {}) {
+      const play = g.play !== void 0 ? !!g.play : g.mode === void 0 ? true : g.mode === "play";
+      let state = "on";
+      let why = "";
+      if (g.xr) {
+        state = "off";
+        why = "xr";
+      } else if (!play) {
+        state = "off";
+        why = `mode:${g.mode || "off"}`;
+      } else if (g.lock) {
+        state = "parked";
+        why = `locked:${g.lock}`;
+      }
+      this.gateState = { state, why };
+      const shown = state === "on";
+      const changed = shown !== this.padShown;
+      this.padShown = shown;
+      this.game.setGate(state, why);
+      if (this.pad && this.padKind !== "game" && changed) this.pad.show(shown);
+    }
+    /** Pad ein-/ausblenden (Kompatibilität, = gate({ play: on })). */
     showPad(on) {
-      this.padShown = !!on;
-      if (this.pad) this.pad.show(this.padShown);
+      this.gate({ play: !!on });
+    }
+    /** Eingabe-Diagnose (Zähler überstehen Schema-Wechsel und Aussetzen). */
+    diag() {
+      const d = this.game.diag();
+      d.scheme = this.scheme;
+      if (this.scheme !== "game") {
+        d.gate = this.gateState.state === "on" ? "on" : "off";
+        d.gateWhy = this.gateState.why;
+      }
+      return d;
+    }
+    /** Zeile(n) für das Pause-Menü (nur Schema 'game'), sonst null. */
+    diagLine() {
+      return this.scheme === "game" ? diagLine(this.diag()) : null;
     }
     /** Schema 'game': Ziel im Fadenkreuz / Hülle getragen (wirkt auch auf ein später erzeugtes Pad). */
     setAimed(on) {
@@ -35404,6 +35904,7 @@ void main() {
     }
     syncPad() {
       if (this.pad && (!this.attached || this.padKind !== this.scheme)) {
+        if (this.padKind === "game") this.game.detach(this.attached ? "scheme" : "detach");
         this.pad.destroy();
         this.pad = null;
         this.padWalk = false;
@@ -35413,29 +35914,12 @@ void main() {
         if (!this.pad) {
           const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
           const c = this.ctx;
-          this.pad = createGamepad(host, {
-            onJump: () => {
-              if (c.onJump) c.onJump();
-            },
-            onUse: () => {
-              if (c.onUse) c.onUse();
-            },
-            onHit: () => {
-              if (c.onHit) c.onHit();
-            },
-            onThrow: () => {
-              if (c.onThrow) c.onThrow();
-            },
-            onTap: (x, y) => {
-              if (c.getMode() === "play" && c.onTap) c.onTap(x, y);
-            },
-            now: c.now
-          });
+          this.pad = createGamepad(host, { now: c.now });
           this.pad.setAimed(this.aimed);
           this.pad.setCarrying(this.carrying);
           this.padKind = "game";
+          this.game.attach(this.pad);
         }
-        this.pad.show(this.padShown);
       } else if (this.scheme === "joystick" && this.attached) {
         if (!this.pad) {
           const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
@@ -35463,6 +35947,7 @@ void main() {
       c.addEventListener("pointermove", this.h.move);
       c.addEventListener("pointerup", this.h.up);
       c.addEventListener("pointercancel", this.h.cancel);
+      c.addEventListener("lostpointercapture", this.h.lost);
       c.addEventListener("contextmenu", this.h.noCtx);
       this.syncPad();
     }
@@ -35474,22 +35959,25 @@ void main() {
       c.removeEventListener("pointermove", this.h.move);
       c.removeEventListener("pointerup", this.h.up);
       c.removeEventListener("pointercancel", this.h.cancel);
+      c.removeEventListener("lostpointercapture", this.h.lost);
       c.removeEventListener("contextmenu", this.h.noCtx);
-      this.reset();
+      this.reset("detach");
       this.syncPad();
       if (this.ring) {
         this.ring.remove();
         this.ring = null;
       }
     }
-    reset() {
+    reset(why = "reset") {
+      this.game.releaseAll(why);
+      if (this.pad && this.padKind === "game" && this.zoom !== 1) this.setZoom(1);
       this.clearTimer();
       this.coastUntil = 0;
       this.walkId = null;
       this.pinch = null;
       this.pointers.clear();
       this.hideRing();
-      if (this.pad) this.pad.reset();
+      if (this.pad && this.padKind !== "game" && this.pad.reset) this.pad.reset();
       this.padWalk = false;
       this.stick = { x: 0, y: 0 };
     }
@@ -35504,7 +35992,14 @@ void main() {
       this.hideRing();
     }
     onDown(e) {
+      if (this.scheme === "game") return;
       if (this.ctx.getMode() !== "play") return;
+      if (e.isPrimary && e.pointerType === "touch" && this.pointers.size > 0) {
+        this.pointers.clear();
+        this.clearTimer();
+        this.stopWalk();
+        this.pinch = null;
+      }
       try {
         this.ctx.canvas.setPointerCapture(e.pointerId);
       } catch {
@@ -35550,6 +36045,7 @@ void main() {
       }
     }
     onMove(e) {
+      if (this.scheme === "game") return;
       const p = this.pointers.get(e.pointerId);
       if (!p || this.ctx.getMode() !== "play") return;
       const dx = e.clientX - p.x;
@@ -35570,13 +36066,13 @@ void main() {
         this.clearTimer();
       }
       if (p.moved || p.walked) {
-        const tu = this.tune();
-        const k = TOUCH_LOOK * SENS_FACTOR[tu.touchSens] / Math.max(1, this.currentZoom());
-        this.ctx.player.look(dx * k * (tu.lookFlipX ? 1 : -1), dy * k * (tu.lookFlipY ? 1 : -1));
+        const [ya, pi] = lookDelta(dx, dy, this.tune(), this.currentZoom());
+        this.ctx.player.look(ya, pi);
       }
       if (p.walked) this.moveRing(e.clientX, e.clientY);
     }
     onUp(e, cancelled) {
+      if (this.scheme === "game") return;
       const p = this.pointers.get(e.pointerId);
       this.pointers.delete(e.pointerId);
       this.clearTimer();
@@ -35622,7 +36118,7 @@ void main() {
     }
     return (win.innerHeight || 0) > (win.innerWidth || 0);
   }
-  function createRotateHint(host, { getMode = () => "play", win = window } = {}) {
+  function createRotateHint(host, { getMode = () => "play", isWanted = () => true, win = window } = {}) {
     const root = document.createElement("div");
     root.className = "lfx-store-rotate";
     root.setAttribute("role", "status");
@@ -35645,7 +36141,7 @@ void main() {
     function update() {
       if (destroyed) return;
       const mode = getMode();
-      root.hidden = dismissed || mode !== "play" || !isPortrait(win);
+      root.hidden = dismissed || mode !== "play" || !isWanted() || !isPortrait(win);
     }
     close.addEventListener("click", () => {
       dismissed = true;
@@ -45631,13 +46127,13 @@ void main() {
   var HAIR_STYLES = ["short", "long", "bald", "tuft", "bob"];
   var pick = (arr, rand) => arr[Math.min(arr.length - 1, Math.floor(rand() * arr.length))];
   var range = (a, b, rand) => a + (b - a) * rand();
-  var ROLES = {
+  var ROLES2 = {
     ticket: { top: [0.55, 0.1, 0.18], bottom: [0.12, 0.1, 0.16], shoes: [0.08, 0.08, 0.1], stripe: [0.95, 0.8, 0.25], hat: "cap", hatColor: [0.55, 0.1, 0.18], hair: HAIR2[1], skin: SKIN2[2], hairStyle: "short", bag: null, glasses: true, height: 1, build: 1 },
     popcorn: { top: [0.93, 0.93, 0.95], bottom: [0.75, 0.15, 0.15], shoes: [0.15, 0.1, 0.1], stripe: [0.85, 0.15, 0.15], hat: "cap", hatColor: [0.85, 0.15, 0.15], hair: HAIR2[3], skin: SKIN2[1], hairStyle: "bob", bag: null, glasses: false, height: 0.98, build: 1.08 },
     kiosk: { top: [0.95, 0.5, 0.65], bottom: [0.3, 0.25, 0.4], shoes: [0.2, 0.15, 0.2], stripe: [1, 1, 1], hat: null, hair: HAIR2[5], skin: SKIN2[1], hairStyle: "bob", bag: null, glasses: true, apron: [1, 0.85, 0.35], height: 0.96, build: 1.12 }
   };
   function makeLook(rand, opts = {}) {
-    const role = opts.role && ROLES[opts.role];
+    const role = opts.role && ROLES2[opts.role];
     if (role) return { ...role, role: opts.role, umbrella: false };
     const skin = pick(SKIN2, rand);
     const hat = pick(HATS, rand);
@@ -49395,7 +49891,12 @@ void main() {
           return false;
         }
         const wasSeated = c.seated === true && c.active === true;
+        const again = !wasSeated && typeof c.sameFilm === "function" && c.sameFilm(book.get().item);
         if (!c.sit(seatId)) return false;
+        if (again) {
+          if (typeof c.resumeAfterStand === "function") c.resumeAfterStand();
+          return true;
+        }
         if (wasSeated) return true;
         const t = book.get();
         startedFor = null;
@@ -50806,7 +51307,7 @@ void main() {
     return String(hint == null ? "" : hint).replace(/E\s*\/\s*Klick\s*:\s*/i, "");
   }
   function promptTexts(scheme) {
-    if (scheme === "game") return ["Links laufen \xB7 rechts umsehen", "Tippen zum Nehmen \xB7 Springen, Benutzen und Schlagen unten rechts"];
+    if (scheme === "game") return ["Links laufen \xB7 rechts umsehen", "Tippen zum Nehmen \xB7 rechts unten Springen, Benutzen, Schlagen, Zoom (halten)"];
     return ["Gedr\xFCckt halten zum Laufen", "Wischen zum Umsehen \xB7 Tippen zum Nehmen"];
   }
   function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
@@ -50839,9 +51340,21 @@ void main() {
       menuBtn.type = "button";
       menuBtn.setAttribute("aria-label", "Men\xFC");
       menuBtn.innerHTML = "<span></span><span></span><span></span>";
+      let menuAt = 0;
+      const fireMenu = () => {
+        menuAt = Date.now();
+        if (onMenu) onMenu();
+      };
+      menuBtn.addEventListener("touchend", (e) => {
+        if (!e.touches || e.touches.length === 0) return;
+        e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
+        fireMenu();
+      });
       menuBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (onMenu) onMenu();
+        if (Date.now() - menuAt < 700) return;
+        fireMenu();
       });
       root.appendChild(menuBtn);
     }
@@ -51192,6 +51705,29 @@ void main() {
     const tSchemeB = mkT(() => {
       if (a.onTouchControl) a.onTouchControl(SCHEME_NEXT[a.getTouchControl ? a.getTouchControl() : "touch"] || "game");
     });
+    const tDiag = el("div", "lfx-store-pause-note lfx-store-pause-diag");
+    tDiag.style.userSelect = "text";
+    tDiag.style.webkitUserSelect = "text";
+    tDiag.style.whiteSpace = "pre-line";
+    tDiag.hidden = true;
+    tpPanel.appendChild(tDiag);
+    let diagTimer = 0;
+    const stopDiag = () => {
+      if (diagTimer) {
+        clearInterval(diagTimer);
+        diagTimer = 0;
+      }
+    };
+    function refreshDiag() {
+      let t;
+      try {
+        t = a.getInputInfo ? a.getInputInfo() : null;
+      } catch {
+        t = null;
+      }
+      tDiag.textContent = t || "";
+      tDiag.hidden = !t;
+    }
     const flag = (key) => () => {
       if (a.onTouchTune) a.onTouchTune({ [key]: !tuneNow()[key] });
     };
@@ -51225,11 +51761,14 @@ void main() {
       tRegrip.hidden = !isTouch;
       tRegrip.textContent = `Umgreifen: ${REGRIP_LABEL[t.touchRegrip] || REGRIP_LABEL.short}`;
       tSens.textContent = `Empfindlichkeit: ${SENS_LABEL[t.touchSens] || SENS_LABEL.normal}`;
+      refreshDiag();
     }
     function openTouch() {
       refreshTouch();
       tp.hidden = false;
       syncInert();
+      stopDiag();
+      if (a.getInputInfo) diagTimer = setInterval(refreshDiag, 1e3);
       try {
         tSchemeB.focus({ preventScroll: true });
       } catch {
@@ -51237,6 +51776,7 @@ void main() {
     }
     function closeTouch() {
       if (tp.hidden) return;
+      stopDiag();
       tp.hidden = true;
       syncInert();
       try {
@@ -51316,6 +51856,7 @@ void main() {
         closeDiscover();
       },
       show() {
+        stopDiag();
         pick2.hidden = true;
         tp.hidden = true;
         dp.hidden = true;
@@ -51332,6 +51873,7 @@ void main() {
         }
       },
       hide() {
+        stopDiag();
         root.hidden = true;
         pick2.hidden = true;
         tp.hidden = true;
@@ -51350,6 +51892,7 @@ void main() {
         if (!dp.hidden) renderDiscover();
       },
       destroy() {
+        stopDiag();
         root.remove();
       }
     };
@@ -57622,6 +58165,7 @@ void main() {
       this.overlayMine = false;
       this.deskDetached = false;
       this._pauseOnStand = true;
+      this._pausedByStand = false;
       this.fallbackCode = null;
       this.failCode = null;
       this.black = newBlackState();
@@ -57640,6 +58184,7 @@ void main() {
       this.reloadShown = null;
       this.stopping = false;
       this.backPending = false;
+      this._pausedByStand = false;
       this.failCode = null;
       this.fallbackCode = null;
       this.black = newBlackState();
@@ -57742,6 +58287,29 @@ void main() {
       ctx.player.camera.flyTo(eye, this._lookTarget(seat, eye), 750);
       return true;
     }
+    /** Läuft dieser Film noch (Spieler ist nur aufgestanden)? Dann braucht ein erneutes Hinsetzen keinen Neustart. */
+    sameFilm(item) {
+      if (!this.active || this.seated || this.disposed || !item || !this.item) return false;
+      if (this.phase !== "playing" && this.phase !== "paused") return false;
+      let st = this.state || {};
+      try {
+        const d = this._bridge;
+        if (d) st = d.state() || st;
+      } catch {
+      }
+      if (st.phase === "ended" || st.phase === "error") return false;
+      const a = this.item.Id || this.item.id;
+      const b = item.Id || item.id;
+      return Boolean(a && b && a === b);
+    }
+    /** Nach erneutem Hinsetzen: nur fortsetzen, wenn das Aufstehen den Film pausiert hat (idempotent). */
+    resumeAfterStand() {
+      if (!this._pausedByStand) return false;
+      this._pausedByStand = false;
+      if (!this.active || !this.seated || this._isPlaying()) return false;
+      call(this._bridge, "togglePause");
+      return true;
+    }
     /** Platzwechsel im Sitzen: nur die Kamera fliegt auf den neuen Platz, Film, Leiste und Spielerzustand bleiben (kein Neustart). */
     _moveSeat(seatId) {
       const ctx = this._ctx;
@@ -57793,7 +58361,10 @@ void main() {
       this.overlayMine = false;
       const pause = this._pauseOnStand !== false && this.active;
       this._pauseOnStand = true;
-      if (pause && this._isPlaying()) call(this._bridge, "togglePause");
+      if (pause && this._isPlaying()) {
+        call(this._bridge, "togglePause");
+        this._pausedByStand = true;
+      }
       const ctx = this._ctx;
       const a = this.saal && this.saal.aisle;
       if (ctx) {
@@ -58413,7 +58984,7 @@ void main() {
           if (this.pause) this.pause.refresh();
         }
       });
-      this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
+      this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode, isWanted: () => !(this.touch && this.touchScheme === "game") }) : null;
       this.pause = createPause(host, {
         help: this.touch ? "" : DESKTOP_HELP,
         onResume: () => this.resumeFromPause(),
@@ -58457,6 +59028,7 @@ void main() {
           this.savePrefs();
         } : null,
         getTouchControl: () => this.touchScheme,
+        getInputInfo: () => this.touchCtl && this.touchScheme === "game" ? this.touchCtl.diagLine() : null,
         onTouchTune: this.touch ? (p) => {
           this.setTouchTune(p);
           this.savePrefs();
@@ -58605,6 +59177,8 @@ void main() {
         getZoom: () => this.zoomTarget,
         scheme: this.touchScheme,
         getTune: () => this.touchTune,
+        debug: !!this.opts.debug,
+        touchApi: this.opts.touchApi,
         onJump: () => this.doJump(),
         onUse: () => this.doUse("touch"),
         onHit: () => this.doHit("touch"),
@@ -58692,16 +59266,22 @@ void main() {
       this.syncUi();
       if (this.fs) this.fs.update();
     }
+    /** Gate-Argumente der Touch-Steuerung: Modus plus Sperrgrund (Kamerafahrt 'cam' bzw. sonstige Sperre 'freeze'). */
+    gateArgs() {
+      const m = this.mods;
+      return { mode: this.mode, lock: m && m.locked ? m.cam ? "cam" : "freeze" : "" };
+    }
     syncUi() {
       if (!this.hud) return;
       const xr = this.xr;
+      if (this.host && this.host.classList) this.host.classList.toggle("lfx-store-ctl-game", !!(this.touch && this.touchScheme === "game"));
       if (xr && xr.presenting) {
         this.hud.setCross(false, false);
         this.hud.showPrompt(false, false);
         this.hud.showMenuBtn(false);
         this.hud.showVr(false);
         this.hud.setHint(null);
-        if (this.touchCtl) this.touchCtl.showPad(false);
+        if (this.touchCtl) this.touchCtl.gate({ xr: true });
         if (this.pause && this.pause.visible) this.pause.hide();
         return;
       }
@@ -58710,7 +59290,7 @@ void main() {
       this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
       this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
       this.hud.showMenuBtn(play);
-      if (this.touchCtl) this.touchCtl.showPad(play && !(this.mods && this.mods.locked));
+      if (this.touchCtl) this.touchCtl.gate(this.gateArgs());
       if (this.rotate) this.rotate.update();
       this.hud.showVr(this.ready && play && !!xr && xr.supported && !xr.presenting);
       if (!play || !this.aim) this.hud.setHint(null);
@@ -59085,9 +59665,8 @@ void main() {
         if (this.fs) this.fs.update();
       }
       if (this.touchCtl && !inXr) {
-        const padOn = this.mode === "play" && !this.mods.locked;
-        if (padOn !== this.touchCtl.padShown) this.touchCtl.showPad(padOn);
-        if (padOn) this.touchCtl.tick(dt);
+        this.touchCtl.gate(this.gateArgs());
+        if (this.touchCtl.padShown) this.touchCtl.tick(dt);
       }
       if (!inXr) {
         if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
@@ -59336,6 +59915,10 @@ void main() {
       if (!this.suspended || this.disposed) return;
       this.suspended = false;
       if (host && host !== this.host) {
+        try {
+          this.host.classList.remove("lfx-store-ctl-game");
+        } catch {
+        }
         while (this.host.firstChild) host.appendChild(this.host.firstChild);
         this.host = host;
         if (this.engine) this.engine.setHost(host);
@@ -59367,6 +59950,10 @@ void main() {
     dispose() {
       if (this.disposed) return;
       this.disposed = true;
+      try {
+        if (this.host && this.host.classList) this.host.classList.remove("lfx-store-ctl-game");
+      } catch {
+      }
       try {
         if (this.cinema2d) this.cinema2d.dispose();
       } catch {
@@ -59517,6 +60104,10 @@ void main() {
         state() {
           return app.getState();
         },
+        input() {
+          return app.touchCtl ? app.touchCtl.diag() : null;
+        },
+        // Touch-Eingabe-Diagnose (Slots, Gate, Zähler); null ohne Touch
         palastTest(o) {
           return palastTest(app, o);
         },

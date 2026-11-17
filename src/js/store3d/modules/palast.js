@@ -178,7 +178,9 @@ export default {
       const gate = seatGate(book.get(), inHall());
       if (!gate.ok) { if (gate.msg) toast(gate.msg); return false; }
       const wasSeated = c.seated === true && c.active === true;
+      const again = !wasSeated && typeof c.sameFilm === 'function' && c.sameFilm(book.get().item); // aufgestanden, Film läuft noch
       if (!c.sit(seatId)) return false;
+      if (again) { if (typeof c.resumeAfterStand === 'function') c.resumeAfterStand(); return true; } // kein Neustart
       if (wasSeated) return true; // Platzwechsel bei laufendem Film: Kamera zieht um, der Stream läuft ohne Neustart weiter
       const t = book.get();
       startedFor = null;

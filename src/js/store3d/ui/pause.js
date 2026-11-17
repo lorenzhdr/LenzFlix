@@ -58,6 +58,7 @@ export function voiceNote(info, wantOnline = false) {
  *   help?: string (Tastenhilfe, Desktop; Zeile unter dem Titel),
  *   onTouchControl?(scheme) / getTouchControl?() → 'game' | 'joystick' | 'touch' (Dreier-Zyklus; nur Touch; fehlt = Knopf ausgeblendet),
  *   onTouchTune?({ holdInvertY?, holdInvertX?, lookFlipY?, lookFlipX?, touchSens?, touchRegrip? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal', Umgreifen 'short'),
+ *   getInputInfo?() → string | null (Diagnosezeile im Panel „Touch-Steuerung“, nur Schema 'game'; wird bei offenem Panel jede Sekunde neu gelesen),
  *   getDiscover?() → { count, total, items:[{id,found,title,desc,hint}] } | null (Eintrag „Entdeckungen (n/N)“ + Liste; fehlt = ausgeblendet),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
@@ -233,6 +234,20 @@ export function createPause(host, a) {
     return b;
   };
   const tSchemeB = mkT(() => { if (a.onTouchControl) a.onTouchControl(SCHEME_NEXT[a.getTouchControl ? a.getTouchControl() : 'touch'] || 'game'); });
+  const tDiag = el('div', 'lfx-store-pause-note lfx-store-pause-diag');
+  tDiag.style.userSelect = 'text';
+  tDiag.style.webkitUserSelect = 'text';
+  tDiag.style.whiteSpace = 'pre-line';
+  tDiag.hidden = true;
+  tpPanel.appendChild(tDiag);
+  let diagTimer = 0;
+  const stopDiag = () => { if (diagTimer) { clearInterval(diagTimer); diagTimer = 0; } };
+  function refreshDiag() {
+    let t;
+    try { t = a.getInputInfo ? a.getInputInfo() : null; } catch { t = null; }
+    tDiag.textContent = t || '';
+    tDiag.hidden = !t;
+  }
   const flag = (key) => () => { if (a.onTouchTune) a.onTouchTune({ [key]: !tuneNow()[key] }); };
   const tHoldY = mkT(flag('holdInvertY'));
   const tHoldX = mkT(flag('holdInvertX'));
@@ -257,15 +272,19 @@ export function createPause(host, a) {
     tRegrip.hidden = !isTouch;
     tRegrip.textContent = `Umgreifen: ${REGRIP_LABEL[t.touchRegrip] || REGRIP_LABEL.short}`;
     tSens.textContent = `Empfindlichkeit: ${SENS_LABEL[t.touchSens] || SENS_LABEL.normal}`;
+    refreshDiag();
   }
   function openTouch() {
     refreshTouch();
     tp.hidden = false;
     syncInert();
+    stopDiag();
+    if (a.getInputInfo) diagTimer = setInterval(refreshDiag, 1000);
     try { tSchemeB.focus({ preventScroll: true }); } catch { /* egal */ }
   }
   function closeTouch() {
     if (tp.hidden) return;
+    stopDiag();
     tp.hidden = true;
     syncInert();
     try { tc.focus({ preventScroll: true }); } catch { /* egal */ }
@@ -325,6 +344,7 @@ export function createPause(host, a) {
     get touchOpen() { return !tp.hidden; },
     closePick() { closePick(); closeTouch(); closeDiscover(); },
     show() {
+      stopDiag();
       pick.hidden = true;
       tp.hidden = true;
       dp.hidden = true;
@@ -336,6 +356,7 @@ export function createPause(host, a) {
       if (first) { try { first.focus({ preventScroll: true }); } catch { /* egal */ } }
     },
     hide() {
+      stopDiag();
       root.hidden = true;
       pick.hidden = true;
       tp.hidden = true;
@@ -344,6 +365,6 @@ export function createPause(host, a) {
       focusBack = null;
     },
     refresh() { refresh(); if (!pick.hidden) renderPick(); if (!dp.hidden) renderDiscover(); },
-    destroy() { root.remove(); },
+    destroy() { stopDiag(); root.remove(); },
   };
 }

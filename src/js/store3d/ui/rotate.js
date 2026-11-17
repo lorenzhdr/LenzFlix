@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · Hinweis am Handy im Hochformat: „Für die beste Ansicht das Handy quer drehen“ (Banner oben, wegtippbar).
 // Erscheint bei jedem Besuch im Hochformat, verschwindet beim Drehen ins Querformat und kommt beim Zurückdrehen wieder,
 // bis man ihn mit ✕ schließt (nur für diesen Besuch, nichts wird gespeichert). Spielen im Hochformat bleibt möglich.
+// Option isWanted: im Touch-Schema „game“ (eigenes Hochformat-Layout) liefert die Hülle false, der Banner bleibt dann aus.
 
 const ICON = '<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false">'
   + '<rect x="7" y="2.5" width="10" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/>'
@@ -21,9 +22,9 @@ export function isPortrait(win = window) {
 
 /**
  * @param {HTMLElement} host
- * @param {object} o { getMode() → Modus; sichtbar nur bei 'play', win? }
+ * @param {object} o { getMode() → Modus; sichtbar nur bei 'play', isWanted() → false unterdrückt den Banner (Standard true), win? }
  */
-export function createRotateHint(host, { getMode = () => 'play', win = window } = {}) {
+export function createRotateHint(host, { getMode = () => 'play', isWanted = () => true, win = window } = {}) {
   const root = document.createElement('div');
   root.className = 'lfx-store-rotate';
   root.setAttribute('role', 'status');
@@ -48,7 +49,7 @@ export function createRotateHint(host, { getMode = () => 'play', win = window } 
   function update() {
     if (destroyed) return;
     const mode = getMode();
-    root.hidden = dismissed || mode !== 'play' || !isPortrait(win);
+    root.hidden = dismissed || mode !== 'play' || !isWanted() || !isPortrait(win);
   }
   close.addEventListener('click', () => { dismissed = true; update(); });
 

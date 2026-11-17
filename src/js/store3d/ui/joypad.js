@@ -48,7 +48,7 @@ export function createJoypad(host, { onWalk, onLook } = {}) {
   }
   function walkDown(e) {
     stop(e);
-    if (walkId !== null) return;
+    if (walkId !== null && !e.isPrimary) return; // primärer Pointer = verwaister Rest, übernehmen
     walkId = e.pointerId;
     capture(walk, e.pointerId);
     try { if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) navigator.vibrate(8); } catch { /* egal */ }
@@ -77,7 +77,7 @@ export function createJoypad(host, { onWalk, onLook } = {}) {
   }
   function stickDown(e) {
     stop(e);
-    if (stickId !== null) return;
+    if (stickId !== null && !e.isPrimary) return; // primärer Pointer = verwaister Rest, übernehmen
     stickId = e.pointerId;
     capture(stick, e.pointerId);
     const r = stick.getBoundingClientRect();

@@ -267,6 +267,12 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note {
   pointer-events: none;
   user-select: none;
 }
+/* Eingabe-Diagnose (Touch-Panel): markier- und kopierbar für Fehlerberichte */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note.lfx-store-pause-diag {
+  pointer-events: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
 
 /* Stimmenauswahl (über dem Pause-Menü) */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick {
@@ -517,4 +523,43 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ep-tag {
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause[hidden] {
   display: none !important;
+}
+
+/* Touch-Schema „Spiel“: Titel-Hinweis schmaler (Querformat) bzw. im Hochformat aus der Daumenzeile heraus, Toast unter die obere Knopfreihe */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ctl-game .lfx-store-hint {
+  max-width: min(80vw, 520px, calc(100% - 420px));
+}
+@media (orientation: portrait) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ctl-game .lfx-store-hint {
+    bottom: auto;
+    top: 58%;
+    max-width: calc(100% - 168px);
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-ctl-game .lfx-store-note {
+    top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 62px);
+    max-width: calc(100% - 32px);
+  }
+}
+
+/* Soziale Plätze oben rechts (Mehrspieler ab W1, Inhalt liefert net/hud.js): „N hier“, Chat und Emote je 44 px, FPS-Feld darunter.
+   W0 reserviert nur Container und Platz: Host-Klasse lfx-store-has-social, Container .lfx-store-social (rechtsbündig, Reihenfolge von rechts: Emote, Chat, „N hier“). */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-social {
+  position: absolute;
+  right: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-right, 0px));
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  pointer-events: none;
+  z-index: 2;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-social > * {
+  min-width: 44px;
+  min-height: 44px;
+  pointer-events: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-has-social .lfx-store-fps {
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 64px);
 }

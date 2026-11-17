@@ -72,6 +72,7 @@ export class PalastCinema {
     this.overlayMine = false;
     this.deskDetached = false;
     this._pauseOnStand = true;
+    this._pausedByStand = false;
     this.fallbackCode = null;
     this.failCode = null;
     this.black = newBlackState();
@@ -91,6 +92,7 @@ export class PalastCinema {
     this.reloadShown = null;
     this.stopping = false;
     this.backPending = false;
+    this._pausedByStand = false;
     this.failCode = null;
     this.fallbackCode = null;
     this.black = newBlackState();
@@ -173,6 +175,27 @@ export class PalastCinema {
     return true;
   }
 
+  /** Läuft dieser Film noch (Spieler ist nur aufgestanden)? Dann braucht ein erneutes Hinsetzen keinen Neustart. */
+  sameFilm(item) {
+    if (!this.active || this.seated || this.disposed || !item || !this.item) return false;
+    if (this.phase !== 'playing' && this.phase !== 'paused') return false;
+    let st = this.state || {};
+    try { const d = this._bridge; if (d) st = d.state() || st; } catch { /* egal */ }
+    if (st.phase === 'ended' || st.phase === 'error') return false;
+    const a = this.item.Id || this.item.id;
+    const b = item.Id || item.id;
+    return Boolean(a && b && a === b);
+  }
+
+  /** Nach erneutem Hinsetzen: nur fortsetzen, wenn das Aufstehen den Film pausiert hat (idempotent). */
+  resumeAfterStand() {
+    if (!this._pausedByStand) return false;
+    this._pausedByStand = false;
+    if (!this.active || !this.seated || this._isPlaying()) return false;
+    call(this._bridge, 'togglePause');
+    return true;
+  }
+
   /** Platzwechsel im Sitzen: nur die Kamera fliegt auf den neuen Platz, Film, Leiste und Spielerzustand bleiben (kein Neustart). */
   _moveSeat(seatId) {
     const ctx = this._ctx;
@@ -219,7 +242,7 @@ export class PalastCinema {
     // Aufstehen pausiert den Film – auch bei Esc (desktop.js → overlayClose ruft hier direkt an); leave/dispose übergeben pause:false
     const pause = this._pauseOnStand !== false && this.active;
     this._pauseOnStand = true;
-    if (pause && this._isPlaying()) call(this._bridge, 'togglePause');
+    if (pause && this._isPlaying()) { call(this._bridge, 'togglePause'); this._pausedByStand = true; }
     const ctx = this._ctx;
     const a = this.saal && this.saal.aisle;
     if (ctx) {

@@ -416,3 +416,54 @@ describe('TouchControls: Schema „Joystick“', () => {
     expect(half).toBeCloseTo(0.25, 1);
   });
 });
+
+describe('TouchControls: verwaiste Pointer (touch/joystick)', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+  const ptr = (canvas, type, id, x, y, extra = {}) => {
+    const e = new Event(type, { bubbles: true });
+    Object.assign(e, { pointerId: id, clientX: x, clientY: y }, extra);
+    canvas.dispatchEvent(e);
+  };
+  it('ein primärer Touch-Pointer bei vorhandenem Eintrag leert den Rest: kein Pinch, Umsehen funktioniert', () => {
+    const { tc, canvas, player, onZoom } = setup();
+    ptr(canvas, 'pointerdown', 1, 100, 100); // verwaist (pointerup blieb aus)
+    ptr(canvas, 'pointerdown', 2, 300, 300, { isPrimary: true, pointerType: 'touch' });
+    expect(tc.pointers.size).toBe(1);
+    expect(tc.pinch).toBe(null);
+    ptr(canvas, 'pointermove', 2, 330, 300);
+    ptr(canvas, 'pointermove', 2, 360, 300);
+    expect(player.look).toHaveBeenCalled();
+    expect(onZoom).not.toHaveBeenCalled();
+  });
+  it('ohne isPrimary (zweiter echter Finger) bleibt das Pinch-Verhalten', () => {
+    const { tc, canvas } = setup();
+    ptr(canvas, 'pointerdown', 1, 100, 100, { isPrimary: true, pointerType: 'touch' });
+    ptr(canvas, 'pointerdown', 2, 300, 300, { isPrimary: false, pointerType: 'touch' });
+    expect(tc.pointers.size).toBe(2);
+    expect(tc.pinch).not.toBe(null);
+  });
+  it('lostpointercapture entfernt nur vorhandene Einträge (nach normalem pointerup passiert nichts)', () => {
+    const { tc, canvas, onTap } = setup();
+    ptr(canvas, 'pointerdown', 1, 100, 100);
+    ptr(canvas, 'lostpointercapture', 1, 100, 100);
+    expect(tc.pointers.size).toBe(0);
+    ptr(canvas, 'pointerdown', 2, 100, 100);
+    ptr(canvas, 'pointerup', 2, 100, 100);
+    expect(onTap).toHaveBeenCalledTimes(1);
+    ptr(canvas, 'lostpointercapture', 2, 100, 100);
+    ptr(canvas, 'lostpointercapture', 7, 100, 100);
+    expect(tc.pointers.size).toBe(0);
+    expect(onTap).toHaveBeenCalledTimes(1);
+  });
+  it('Schema game: die Canvas-Handler steigen aus (kein Umsehen, kein Pinch, kein Laufen)', () => {
+    const { tc, canvas, player } = setup();
+    tc.setScheme('game');
+    ptr(canvas, 'pointerdown', 1, 100, 100);
+    ptr(canvas, 'pointermove', 1, 160, 100);
+    ptr(canvas, 'pointerdown', 2, 300, 300);
+    expect(tc.pointers.size).toBe(0);
+    expect(player.look).not.toHaveBeenCalled();
+    expect(tc.pinch).toBe(null);
+  });
+});

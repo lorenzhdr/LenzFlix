@@ -7,7 +7,7 @@ const KEYS = {
   ShiftLeft: 'run', ShiftRight: 'run',
 };
 
-const ZOOM_IN = 2.6; // Zoom-Faktor bei gehaltener rechter Maustaste / Q
+export const ZOOM_IN = 2.6; // Zoom-Faktor bei gehaltener rechter Maustaste / Q
 const LOCK_COOLDOWN = 1150; // Chrome lehnt requestPointerLock() kurz nach dem Verlassen per Esc ab
 const LOCK_RECENT = 3000;
 const LOCK_SILENT = 400; // kommt nach requestPointerLock() so lange weder Lock noch Fehler, gilt der Versuch als gescheitert
