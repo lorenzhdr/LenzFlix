@@ -3,6 +3,8 @@
 // (eigene Prüfung, nicht resolveCircle3: dort ist STEP_H = 0,35 fest, kleine Körper würden Kanten hochploppen),
 // Körper-Körper (Zylinder-Näherung inkl. Stapeln), Reibung, Schlafzustand, Festzeitschritt mit Akkumulator.
 // Spieler = kinematischer Zylinder (setPlayer): Laufen schubst Objekte an.
+// Mehrspieler (1.16.0): Ereignisse spawn/touch/hold/reset/remove (Netz-Teil net/phys.js hört mit), Flag b.netRemote = fremdgesteuert (wird nicht
+// simuliert, sondern von applyRemote/Interpolation bewegt; kein Schlaf, keine Körperpaare, nicht in enforceMax). Ohne Hörer: Verhalten wie 1.15.
 import { GRAV, VY_MIN } from '../nav/collide.js';
 import { dimsOf } from './kinds.js';
 
@@ -94,7 +96,7 @@ export function createWorld(opts = {}) {
       rollX: 0, rollZ: 0, tipLocal: !!spec.tipLocal, tipA: 0, tipAx: 0, tipAz: 0, tipping: false,
       sleeping: false, still: 0, restT: 0, grounded: false, supported: false, held: false, removed: false, age: 0,
       owner: spec.owner || null, ttl: Number.isFinite(spec.ttl) ? spec.ttl : null, onHit: spec.onHit || null, mesh: spec.mesh || null,
-      home: null, hitCd: 0, tumble: Number.isFinite(spec.tumble) ? spec.tumble : 0, dirty: true, data: spec.data || null,
+      home: null, hitCd: 0, touchCd: 0, netRemote: !!spec.netRemote, tumble: Number.isFinite(spec.tumble) ? spec.tumble : 0, dirty: true, data: spec.data || null,
       impulse(v) { api.impulse(b, v); },
       remove() { api.remove(b); },
     };
@@ -106,6 +108,13 @@ export function createWorld(opts = {}) {
     b.hitCd = 0.15;
     emit({ type: 'impact', body: b, ...ev });
     if (b.onHit) { try { b.onHit({ other: ev.other || null, collider: ev.collider || null, player: !!ev.player, speed: ev.speed }); } catch { /* egal */ } }
+  }
+
+  /** Berührung durch Spieler/Stoß melden (Mehrspieler: Besitz anfordern), je Körper höchstens alle 0,1 s. */
+  function touch(b, by) {
+    if (b.touchCd > 0) return;
+    b.touchCd = 0.1;
+    emit({ type: 'touch', body: b, by });
   }
 
   // --- Statik ---
@@ -234,10 +243,10 @@ export function createWorld(opts = {}) {
     const n = bodies.length;
     for (let i = 0; i < n; i++) {
       const a = bodies[i];
-      if (a.held || a.sleeping) continue;
+      if (a.held || a.sleeping || a.netRemote) continue;
       for (let j = 0; j < n; j++) {
         const c = bodies[j];
-        if (i === j || c.held) continue;
+        if (i === j || c.held || c.netRemote) continue;
         if (!c.sleeping && c.id < a.id) continue; // beide wach: Paar nur einmal
         const dx = c.pos.x - a.pos.x;
         const dz = c.pos.z - a.pos.z;
@@ -301,9 +310,10 @@ export function createWorld(opts = {}) {
       const along = player.vx * nx + player.vz * nz;
       const rel = b.vel.x * nx + b.vel.z * nz;
       if (along < 0.05 && rel >= along) { // Spieler läuft nicht hinein: nur herausschieben
-        if (b.sleeping) { b.pos.x = player.x + nx * rs; b.pos.z = player.z + nz * rs; }
+        if (b.sleeping && !b.netRemote) { b.pos.x = player.x + nx * rs; b.pos.z = player.z + nz * rs; }
         continue;
       }
+      if (b.netRemote) { touch(b, 'player'); if (b.netRemote) continue; } // Anspruch stellen; bleibt er fremd, bewegt ihn nur sein Besitzer
       wake(b);
       const k = 1 / (1 + b.mass * 0.25);
       const want = along * 1.1 + 0.4;
@@ -311,14 +321,15 @@ export function createWorld(opts = {}) {
       b.pos.x = player.x + nx * rs; b.pos.z = player.z + nz * rs;
       if (along > TIP_V) startTip(b, nx, nz);
       if (along > 2.5 && b.owner !== 'player') contact(b, { surface: 'player', speed: along, player: true });
+      touch(b, 'player');
     }
   }
 
   function enforceMax() {
     let awake = 0;
-    for (const b of bodies) if (!b.sleeping && !b.held) awake++;
+    for (const b of bodies) if (!b.sleeping && !b.held && !b.netRemote) awake++;
     if (awake <= maxActive) return;
-    const rest = bodies.filter((b) => !b.sleeping && !b.held && (b.grounded || b.supported)).sort((p, q) => (p.vel.x ** 2 + p.vel.z ** 2) - (q.vel.x ** 2 + q.vel.z ** 2));
+    const rest = bodies.filter((b) => !b.sleeping && !b.held && !b.netRemote && (b.grounded || b.supported)).sort((p, q) => (p.vel.x ** 2 + p.vel.z ** 2) - (q.vel.x ** 2 + q.vel.z ** 2));
     for (const b of rest) {
       if (awake <= maxActive) break;
       b.sleeping = true; b.vel.x = b.vel.y = b.vel.z = 0; b.spin = 0; awake--;
@@ -331,8 +342,13 @@ export function createWorld(opts = {}) {
       const b = bodies[i];
       if (b.held) continue;
       if (b.hitCd > 0) b.hitCd -= h;
+      if (b.touchCd > 0) b.touchCd -= h;
       b.age += h;
       if (b.ttl !== null) { b.ttl -= h; if (b.ttl <= 0) { api.remove(b); continue; } }
+      if (b.netRemote) { // fremdgesteuert: nur Rollen der Kugel aus der übernommenen Geschwindigkeit
+        if (!b.sleeping && b.shape === 'sphere') { b.rollX += (b.vel.z / b.r) * h; b.rollZ -= (b.vel.x / b.r) * h; b.dirty = true; }
+        continue;
+      }
       if (b.sleeping) { b.restT += h; continue; }
       b.supported = false;
       integrate(b, h);
@@ -342,7 +358,7 @@ export function createWorld(opts = {}) {
     bodyPairs();
     playerPush();
     for (const b of bodies) {
-      if (b.sleeping || b.held) continue;
+      if (b.sleeping || b.held || b.netRemote) continue;
       if (b.grounded || b.supported) {
         const f = Math.exp(-b.mu * h);
         b.vel.x *= f; b.vel.z *= f;
@@ -368,6 +384,7 @@ export function createWorld(opts = {}) {
       if (spec && spec.sleeping) b.sleeping = true;
       bodies.push(b);
       byId.set(b.id, b);
+      emit({ type: 'spawn', body: b });
       return b;
     },
     remove(b) {
@@ -380,11 +397,12 @@ export function createWorld(opts = {}) {
     },
     get(id) { return byId.get(id) || null; },
     count() { return bodies.length; },
-    awakeCount() { let n = 0; for (const b of bodies) if (!b.sleeping && !b.held) n++; return n; },
+    awakeCount() { let n = 0; for (const b of bodies) if (!b.sleeping && !b.held && !b.netRemote) n++; return n; },
     wake(b) { wake(b); },
     /** Geschwindigkeitsänderung v = {x,y,z} (m/s); weckt Körper und Auflieger, kippt tippable bei starkem Stoß. */
     impulse(b, v) {
       if (!b || b.removed) return;
+      emit({ type: 'touch', body: b, by: 'impulse' }); // vor der Wirkung: ein Anspruch kann den Körper erst lokal simulierbar machen
       wake(b);
       b.vel.x += v.x || 0; b.vel.y += v.y || 0; b.vel.z += v.z || 0;
       b.grounded = false;
@@ -394,7 +412,7 @@ export function createWorld(opts = {}) {
     /** Körper in Richtung (dx, dz) umkippen lassen (auch für sonst nicht tippable Arten, z. B. gelandete Hülle). */
     tip(b, dx, dz) { b.tippable = true; startTip(b, dx, dz); },
     /** Körper festhalten (aufgehoben): aus der Simulation nehmen / wieder freigeben. */
-    setHeld(b, on) { b.held = !!on; if (on) { b.vel.x = b.vel.y = b.vel.z = 0; b.sleeping = false; } else { wake(b); b.still = 0; } b.dirty = true; },
+    setHeld(b, on) { b.held = !!on; if (on) { b.vel.x = b.vel.y = b.vel.z = 0; b.sleeping = false; } else { wake(b); b.still = 0; } b.dirty = true; emit({ type: 'hold', body: b, on: !!on }); },
     setHome(b, x, y, z, yaw = 0) { b.home = { x, y, z, yaw }; },
     /** Zurück an den Platz (schlafend, aufgerichtet). */
     reset(b) {
@@ -402,6 +420,7 @@ export function createWorld(opts = {}) {
       b.pos.x = b.home.x; b.pos.y = b.home.y; b.pos.z = b.home.z; b.yaw = b.home.yaw || 0;
       b.vel.x = b.vel.y = b.vel.z = 0; b.spin = 0; b.rollX = b.rollZ = 0;
       b.tipA = 0; b.tipping = false; b.hy = b.hy0; b.sleeping = true; b.still = 0; b.restT = 0; b.dirty = true;
+      emit({ type: 'reset', body: b });
       return true;
     },
     setPlayer(p) {
@@ -462,12 +481,20 @@ export function createWorld(opts = {}) {
         b.vel.x = e.v[0]; b.vel.y = e.v[1]; b.vel.z = e.v[2];
         b.yaw = e.y || 0;
         b.tipA = e.t || 0;
-        if (b.tipA) { b.tipAx = e.ax || 0; b.tipAz = e.az || 0; b.hy = b.hy0 + (b.lieHy - b.hy0) * (b.tipA / (Math.PI / 2)); }
+        b.tipping = false;
+        if (b.tipA) { b.tipAx = e.ax || 0; b.tipAz = e.az || 0; b.hy = b.hy0 + (b.lieHy - b.hy0) * Math.min(1, b.tipA / (Math.PI / 2)); } else b.hy = b.hy0;
         b.sleeping = !!e.s;
         b.dirty = true;
         n++;
       }
       return n;
+    },
+    /** Fremdgesteuert (true) bzw. wieder lokal simuliert (false; die Simulation macht vom letzten Stand an weiter). */
+    setRemote(b, on) {
+      if (!b || b.removed || !!b.netRemote === !!on) return;
+      b.netRemote = !!on;
+      b.dirty = true;
+      if (!on) { b.still = 0; b.restT = 0; if (!b.sleeping) b.grounded = false; }
     },
     dispose() { bodies.length = 0; byId.clear(); listeners.length = 0; },
   };

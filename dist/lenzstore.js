@@ -1529,12 +1529,12 @@
       const theta2 = 2 * Math.PI * Math.random();
       const x0 = Math.random();
       const r1 = Math.sqrt(1 - x0);
-      const r25 = Math.sqrt(x0);
+      const r26 = Math.sqrt(x0);
       return this.set(
         r1 * Math.sin(theta1),
         r1 * Math.cos(theta1),
-        r25 * Math.sin(theta2),
-        r25 * Math.cos(theta2)
+        r26 * Math.sin(theta2),
+        r26 * Math.cos(theta2)
       );
     }
     /**
@@ -29916,6 +29916,7 @@ void main() {
   var JUMP_BUF = 0.12;
   var AIR_K = 3;
   var MANTLE_T = 0.28;
+  var PUSH_KNOCK = 0.9;
   var y0Of = (q) => q.y0 === void 0 ? 0 : q.y0;
   var y1Of = (q) => q.y1 === void 0 ? Infinity : q.y1;
   function colliderBlocks(q, feetY, bodyH = BODY_H) {
@@ -30025,7 +30026,7 @@ void main() {
     let mantle = null;
     for (let pass = 0; pass < 3; pass++) {
       const list = gather(src, x - r, z - r, x + r, z + r, scratch);
-      let moved2 = false;
+      let moved3 = false;
       for (let i = 0; i < list.length; i++) {
         const q = list[i];
         if (x + r < q.x0 || x - r > q.x1 || z + r < q.z0 || z - r > q.z1) continue;
@@ -30051,7 +30052,7 @@ void main() {
           else if (m === top) z = q.z0 - r;
           else z = q.z1 + r;
         }
-        moved2 = true;
+        moved3 = true;
         hit = true;
         rect = q;
         if (!mantle) {
@@ -30059,7 +30060,7 @@ void main() {
           if (Number.isFinite(y1) && q.top !== false && y1 - feetY > STEP_H && y1 - feetY <= MANTLE_H) mantle = q;
         }
       }
-      if (!moved2) break;
+      if (!moved3) break;
     }
     scratch.length = 0;
     return { x, z, hit, rect, mantle };
@@ -31990,10 +31991,10 @@ void main() {
         ctx.restore();
       }
     });
-    const r25 = rng(4242);
+    const r26 = rng(4242);
     for (let i = 0; i < 2600; i++) {
-      ctx.fillStyle = r25() > 0.5 ? P.speck : "rgba(0,0,0,0.06)";
-      ctx.fillRect(r25() * S, r25() * S, 1.5, 1.5);
+      ctx.fillStyle = r26() > 0.5 ? P.speck : "rgba(0,0,0,0.06)";
+      ctx.fillRect(r26() * S, r26() * S, 1.5, 1.5);
     }
     return c;
   }
@@ -33332,12 +33333,12 @@ void main() {
       if (this.finished || this.disposed) return Promise.resolve();
       return new Promise((resolve) => {
         let timer = null;
-        const fin = () => {
+        const fin2 = () => {
           if (timer) clearTimeout(timer);
           resolve();
         };
-        timer = setTimeout(fin, ms);
-        this.waiters.push(fin);
+        timer = setTimeout(fin2, ms);
+        this.waiters.push(fin2);
       });
     }
     stats() {
@@ -34422,17 +34423,17 @@ void main() {
       const a = b[i];
       const n = b[i + 1];
       const k = (c - a.t) / Math.max(1e-6, n.t - a.t);
-      const lerp3 = (p, q) => p + ((q === void 0 ? p : q) - p) * k;
+      const lerp4 = (p, q) => p + ((q === void 0 ? p : q) - p) * k;
       const as = a.s;
       const ns = n.s;
-      this.x = lerp3(as.x, ns.x);
-      this.y = lerp3(as.y || 0, ns.y || 0);
-      this.z = lerp3(as.z, ns.z);
+      this.x = lerp4(as.x, ns.x);
+      this.y = lerp4(as.y || 0, ns.y || 0);
+      this.z = lerp4(as.z, ns.z);
       this.yaw = (as.yaw || 0) + angDiff(as.yaw || 0, ns.yaw || 0) * k;
-      this.pitch = lerp3(as.pitch || 0, ns.pitch || 0);
-      this.vx = lerp3(as.vx || 0, ns.vx || 0);
-      this.vy = lerp3(as.vy || 0, ns.vy || 0);
-      this.vz = lerp3(as.vz || 0, ns.vz || 0);
+      this.pitch = lerp4(as.pitch || 0, ns.pitch || 0);
+      this.vx = lerp4(as.vx || 0, ns.vx || 0);
+      this.vy = lerp4(as.vy || 0, ns.vy || 0);
+      this.vz = lerp4(as.vz || 0, ns.vz || 0);
       this.grounded = (ns.a || 0) !== ANIM.AIR;
     }
   };
@@ -40313,7 +40314,8 @@ void main() {
       if (dbg) window.__lfxM4 = { ...window.__lfxM4, scene: ctx.scene, outdoor: out, ctx };
       let tod = timeOfDay(hourOpt);
       const seed = Math.random() * 4294967296 >>> 0;
-      const raining = rainDecision(seed, tod, rainForce);
+      const localRaining = rainDecision(seed, tod, rainForce);
+      const raining = localRaining;
       const weather = {
         tod,
         raining,
@@ -40330,6 +40332,17 @@ void main() {
           return !!(c && x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1 && y < c.y);
         }
       };
+      weather.setRaining = (on) => {
+        if (rainForce !== void 0) return;
+        const want = on === true || on === false ? on : localRaining;
+        if (want === weather.raining) return;
+        weather.raining = want;
+        if (ready) {
+          apply();
+          syncVisible();
+        }
+      };
+      let ready = false;
       ctx.provide("weather", weather);
       out.setPalette(tod, raining);
       const lights = [];
@@ -40417,6 +40430,7 @@ void main() {
         if (drops) drops.visible = r;
       }
       syncVisible();
+      ready = true;
       const cam = ctx.camera;
       let checkT = 0;
       const speed = reduced ? 0.012 : 0.03;
@@ -40644,6 +40658,8 @@ void main() {
         mesh: spec.mesh || null,
         home: null,
         hitCd: 0,
+        touchCd: 0,
+        netRemote: !!spec.netRemote,
         tumble: Number.isFinite(spec.tumble) ? spec.tumble : 0,
         dirty: true,
         data: spec.data || null,
@@ -40666,6 +40682,11 @@ void main() {
         } catch {
         }
       }
+    }
+    function touch(b, by) {
+      if (b.touchCd > 0) return;
+      b.touchCd = 0.1;
+      emit({ type: "touch", body: b, by });
     }
     function collideStatic(b, prevBot, prevTop, h2) {
       const r = b.r;
@@ -40719,7 +40740,7 @@ void main() {
       let nxs = 0;
       let nzs = 0;
       for (let pass = 0; pass < 2; pass++) {
-        let moved2 = false;
+        let moved3 = false;
         for (let i = 0; i < cand.length; i++) {
           const q = cand[i];
           const y0 = q.y0 === void 0 ? 0 : q.y0;
@@ -40767,7 +40788,7 @@ void main() {
           }
           nxs += ux;
           nzs += uz;
-          moved2 = true;
+          moved3 = true;
           const vn = b.vel.x * ux + b.vel.z * uz;
           if (vn < 0) {
             const k = 1 + b.e;
@@ -40776,7 +40797,7 @@ void main() {
             if (-vn > 1.2) contact(b, { surface: "wall", speed: -vn, collider: q });
           }
         }
-        if (!moved2) break;
+        if (!moved3) break;
       }
       if (h2 && (nxs || nzs)) b.spin *= 0.9;
     }
@@ -40829,10 +40850,10 @@ void main() {
       const n = bodies.length;
       for (let i = 0; i < n; i++) {
         const a = bodies[i];
-        if (a.held || a.sleeping) continue;
+        if (a.held || a.sleeping || a.netRemote) continue;
         for (let j = 0; j < n; j++) {
           const c = bodies[j];
-          if (i === j || c.held) continue;
+          if (i === j || c.held || c.netRemote) continue;
           if (!c.sleeping && c.id < a.id) continue;
           const dx = c.pos.x - a.pos.x;
           const dz = c.pos.z - a.pos.z;
@@ -40926,11 +40947,15 @@ void main() {
         const along = player.vx * nx + player.vz * nz;
         const rel = b.vel.x * nx + b.vel.z * nz;
         if (along < 0.05 && rel >= along) {
-          if (b.sleeping) {
+          if (b.sleeping && !b.netRemote) {
             b.pos.x = player.x + nx * rs;
             b.pos.z = player.z + nz * rs;
           }
           continue;
+        }
+        if (b.netRemote) {
+          touch(b, "player");
+          if (b.netRemote) continue;
         }
         wake(b);
         const k = 1 / (1 + b.mass * 0.25);
@@ -40943,13 +40968,14 @@ void main() {
         b.pos.z = player.z + nz * rs;
         if (along > TIP_V) startTip(b, nx, nz);
         if (along > 2.5 && b.owner !== "player") contact(b, { surface: "player", speed: along, player: true });
+        touch(b, "player");
       }
     }
     function enforceMax() {
       let awake = 0;
-      for (const b of bodies) if (!b.sleeping && !b.held) awake++;
+      for (const b of bodies) if (!b.sleeping && !b.held && !b.netRemote) awake++;
       if (awake <= maxActive) return;
-      const rest = bodies.filter((b) => !b.sleeping && !b.held && (b.grounded || b.supported)).sort((p, q) => p.vel.x ** 2 + p.vel.z ** 2 - (q.vel.x ** 2 + q.vel.z ** 2));
+      const rest = bodies.filter((b) => !b.sleeping && !b.held && !b.netRemote && (b.grounded || b.supported)).sort((p, q) => p.vel.x ** 2 + p.vel.z ** 2 - (q.vel.x ** 2 + q.vel.z ** 2));
       for (const b of rest) {
         if (awake <= maxActive) break;
         b.sleeping = true;
@@ -40964,6 +40990,7 @@ void main() {
         const b = bodies[i];
         if (b.held) continue;
         if (b.hitCd > 0) b.hitCd -= h2;
+        if (b.touchCd > 0) b.touchCd -= h2;
         b.age += h2;
         if (b.ttl !== null) {
           b.ttl -= h2;
@@ -40971,6 +40998,14 @@ void main() {
             api.remove(b);
             continue;
           }
+        }
+        if (b.netRemote) {
+          if (!b.sleeping && b.shape === "sphere") {
+            b.rollX += b.vel.z / b.r * h2;
+            b.rollZ -= b.vel.x / b.r * h2;
+            b.dirty = true;
+          }
+          continue;
         }
         if (b.sleeping) {
           b.restT += h2;
@@ -40984,7 +41019,7 @@ void main() {
       bodyPairs();
       playerPush();
       for (const b of bodies) {
-        if (b.sleeping || b.held) continue;
+        if (b.sleeping || b.held || b.netRemote) continue;
         if (b.grounded || b.supported) {
           const f = Math.exp(-b.mu * h2);
           b.vel.x *= f;
@@ -41030,6 +41065,7 @@ void main() {
         if (spec && spec.sleeping) b.sleeping = true;
         bodies.push(b);
         byId.set(b.id, b);
+        emit({ type: "spawn", body: b });
         return b;
       },
       remove(b) {
@@ -41048,7 +41084,7 @@ void main() {
       },
       awakeCount() {
         let n = 0;
-        for (const b of bodies) if (!b.sleeping && !b.held) n++;
+        for (const b of bodies) if (!b.sleeping && !b.held && !b.netRemote) n++;
         return n;
       },
       wake(b) {
@@ -41057,6 +41093,7 @@ void main() {
       /** Geschwindigkeitsänderung v = {x,y,z} (m/s); weckt Körper und Auflieger, kippt tippable bei starkem Stoß. */
       impulse(b, v) {
         if (!b || b.removed) return;
+        emit({ type: "touch", body: b, by: "impulse" });
         wake(b);
         b.vel.x += v.x || 0;
         b.vel.y += v.y || 0;
@@ -41081,6 +41118,7 @@ void main() {
           b.still = 0;
         }
         b.dirty = true;
+        emit({ type: "hold", body: b, on: !!on });
       },
       setHome(b, x, y, z, yaw = 0) {
         b.home = { x, y, z, yaw };
@@ -41102,6 +41140,7 @@ void main() {
         b.still = 0;
         b.restT = 0;
         b.dirty = true;
+        emit({ type: "reset", body: b });
         return true;
       },
       setPlayer(p) {
@@ -41182,16 +41221,28 @@ void main() {
           b.vel.z = e.v[2];
           b.yaw = e.y || 0;
           b.tipA = e.t || 0;
+          b.tipping = false;
           if (b.tipA) {
             b.tipAx = e.ax || 0;
             b.tipAz = e.az || 0;
-            b.hy = b.hy0 + (b.lieHy - b.hy0) * (b.tipA / (Math.PI / 2));
-          }
+            b.hy = b.hy0 + (b.lieHy - b.hy0) * Math.min(1, b.tipA / (Math.PI / 2));
+          } else b.hy = b.hy0;
           b.sleeping = !!e.s;
           b.dirty = true;
           n++;
         }
         return n;
+      },
+      /** Fremdgesteuert (true) bzw. wieder lokal simuliert (false; die Simulation macht vom letzten Stand an weiter). */
+      setRemote(b, on) {
+        if (!b || b.removed || !!b.netRemote === !!on) return;
+        b.netRemote = !!on;
+        b.dirty = true;
+        if (!on) {
+          b.still = 0;
+          b.restT = 0;
+          if (!b.sleeping) b.grounded = false;
+        }
       },
       dispose() {
         bodies.length = 0;
@@ -41523,6 +41574,13 @@ void main() {
 
   // src/js/store3d/modules/props.js
   var CULL_DIST = { low: 24, mid: 32, high: 40 };
+  var NET_ID_RE = /^[A-Za-z0-9._-]{1,24}$/;
+  function netIdOf(b) {
+    const d = b && b.data;
+    if (!d) return null;
+    const id = d.net || d.id;
+    return typeof id === "string" && NET_ID_RE.test(id) ? id : null;
+  }
   var warn2 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
@@ -41656,6 +41714,11 @@ void main() {
         b.inst = instancer.alloc(p.kind);
         b.vis = false;
         homes.push(b);
+      }
+      const netIndex = /* @__PURE__ */ new Map();
+      for (const b of homes) {
+        const id = netIdOf(b);
+        if (id) netIndex.set(id, b);
       }
       const pyramid = homes.filter((b) => b.data.group === "pyramid");
       const hoopBalls = homes.filter((b) => b.data.group === "hoop");
@@ -41855,7 +41918,18 @@ void main() {
         geometryOf: (kind) => shapes.geometry(kind),
         tapeMesh: (art, media) => shapes.tapeMesh(art, media),
         snapshot: (all) => world.snapshot(all),
-        applyRemote: (list) => world.applyRemote(list)
+        applyRemote: (list) => world.applyRemote(list),
+        netIdOf,
+        byNetId(id) {
+          const k = netIndex.get(id);
+          if (k && !k.removed) return k;
+          netIndex.delete(id);
+          for (const b of world.bodies) if (netIdOf(b) === id) {
+            netIndex.set(id, b);
+            return b;
+          }
+          return null;
+        }
       };
       cleanups.push(ctx.provide("physics", provider));
       updateVisibility();
@@ -41885,7 +41959,7 @@ void main() {
           }
           world.step(dt);
           if (tracker) for (const b of hb) {
-            if (!b.held) tracker.feed(b.id, { x: b.px, y: b.py, z: b.pz }, b.pos, b.r);
+            if (!b.held && !b.netRemote) tracker.feed(b.id, { x: b.px, y: b.py, z: b.pz }, b.pos, b.r);
           }
           visT += dt;
           resetT += dt;
@@ -41897,7 +41971,12 @@ void main() {
           instancer.flush();
           if (resetT > 0.6) {
             resetT = 0;
-            for (const b of world.bodies) if (shouldReset(b, view)) world.reset(b);
+            const net = ctx.use("net");
+            for (const b of world.bodies) {
+              if (b.netRemote || !shouldReset(b, view)) continue;
+              if (net && typeof net.physGate === "function" && !net.physGate(b)) continue;
+              world.reset(b);
+            }
             if (!pyramidDone && pyramid.length && pyramidDown(pyramid)) {
               pyramidDone = true;
               const d = ctx.use("discover");
@@ -43753,16 +43832,30 @@ void main() {
         since = t;
         until = 0;
       },
-      /** Netzformat (1.16.0): Restzeit statt absoluter Zeit. */
+      /** Netzformat (1.16.0): Restzeit bis zum zeitgesteuerten Übergang (s, 0,1 s genau) für jeden Zustand ≠ calm. */
       getNetState(t) {
-        return { v: 1, s: STATES.indexOf(state), h: hits, r: Math.max(0, Math.round((until - t) * 10) / 10) };
+        let r = 0;
+        if (state === "annoyed" || state === "shove") r = cfg.DECAY - (t - lastHit);
+        else if (state === "throw") r = cfg.THROW_MAX - (t - since);
+        else if (state === "chase") r = cfg.CHASE_MAX - (t - since);
+        else if (state === "banned" || state === "grudge") r = until - t;
+        return { v: 1, s: STATES.indexOf(state), h: hits, r: Number.isFinite(r) ? Math.max(0, Math.round(r * 10) / 10) : 0 };
       },
+      /** Zustand aus dem Netzformat übernehmen; lastHit/since/until werden aus der Restzeit rekonstruiert (ohne r: volle Dauer). */
       applyRemote(net, t) {
         if (!net || net.v !== 1 || !STATES[net.s]) return false;
         state = STATES[net.s];
         hits = Math.max(0, net.h | 0);
+        const has = Number.isFinite(net.r);
+        const rem = (full) => has ? Math.min(full, Math.max(0, net.r)) : full;
         since = t;
-        until = t + (Number.isFinite(net.r) ? net.r : 0);
+        until = 0;
+        lastHit = -Infinity;
+        if (state === "annoyed" || state === "shove") lastHit = t - (cfg.DECAY - rem(cfg.DECAY));
+        else if (state === "throw") since = t - (cfg.THROW_MAX - rem(cfg.THROW_MAX));
+        else if (state === "chase") since = t - (cfg.CHASE_MAX - rem(cfg.CHASE_MAX));
+        else if (state === "banned") until = t + rem(cfg.BAN);
+        else if (state === "grudge") until = t + rem(cfg.GRUDGE);
         return true;
       }
     };
@@ -43980,6 +44073,9 @@ void main() {
   var PEN_GIVEUP = 4;
   var DRIVE_BEHIND = 0.9;
   var EXPEL_FADE = 0.4;
+  var MIRROR_EASE = 10;
+  var MIRROR_SNAP = 4;
+  var ONESHOT = { stagger: 0.8, armsup: 0.8, shove: 0.6, wind: WIND, throw: 0.4, hop: 0.85 };
   function banCanvas() {
     const c = makeCanvas(256, 128);
     const x = c.getContext("2d");
@@ -44051,6 +44147,12 @@ void main() {
       let chaseSince = 0;
       let penSince = -1;
       let expelling = false;
+      let netRole = "local";
+      let netHook = null;
+      let mSelf = false;
+      let mTarget = null;
+      let mA = -1;
+      let mSnapGrudge = 0;
       const goal = { x: doorCx, z: D2 + 0.9 };
       const store = (() => {
         try {
@@ -44129,14 +44231,14 @@ void main() {
       };
       const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
       const inPen = () => R2.pos.x >= counter.x0 - 0.1 && R2.pos.z >= counter.z1 - 0.05 && R2.pos.y < 0.3;
-      const clamp11 = (v, a, b) => Math.min(b, Math.max(a, v));
+      const clamp13 = (v, a, b) => Math.min(b, Math.max(a, v));
       const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
       function landingPoint(p) {
         const nav = ctx.layout.nav;
-        const bx2 = clamp11(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
+        const bx2 = clamp13(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
         for (const dz of [0.6, 1, 1.4, 1.8]) {
           for (const dx of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
-            const x = clamp11(bx2 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
+            const x = clamp13(bx2 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
             const z = counter.z0 - dz;
             if (nav && !isFree(nav, x, z)) continue;
             if (p && Math.hypot(p.x - x, p.z - z) < 1.1) continue;
@@ -44150,7 +44252,7 @@ void main() {
         let path = null;
         if (nav) {
           path = findPath(nav, { x: p.x, z: p.z }, goal);
-          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp11(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
+          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp13(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
         }
         let w = null;
         if (path) {
@@ -44355,8 +44457,17 @@ void main() {
         if (!hostile() || fsm.state === "throw") play("stagger", 0.8);
       }
       function doHit(source, dir) {
+        if (netRole === "mirror") {
+          if (hostile() || !(netHook && netHook.claim())) {
+            reactHit(dir);
+            return;
+          }
+          setNetRole("owner");
+        }
+        const wasLocal = netRole === "local";
         const res = fsm.hit(source, T5);
         if (res.accepted) {
+          if (wasLocal && netHook && netHook.claim()) netRole = "owner";
           onTransition(res.transition);
           if (source === "object" && res.transition.to !== "annoyed" && res.transition.to !== "throw") say("hitObject", {}, { always: true });
           reactHit(dir);
@@ -44380,19 +44491,20 @@ void main() {
         ctx.player.knock({ x: d.x, z: d.z }, 0.8);
         say("throwHit", {}, { always: false });
       }
-      function launchTape() {
-        const p = pose();
+      function launchTape(aim) {
+        const visual = !!aim;
+        const p = visual ? aim : pose();
         const eye = Number.isFinite(p.y) ? p.y + ctx.player.eyeY() : ctx.player.eyeY();
         const from = { x: R2.pos.x, y: R2.pos.y + 1.45, z: R2.pos.z };
-        const to = { x: p.x, y: eye - 0.25, z: p.z };
+        const to = visual ? { x: aim.x, y: Number.isFinite(aim.y) ? aim.y + 1.2 : 1.2, z: aim.z } : { x: p.x, y: eye - 0.25, z: p.z };
         const dist = Math.hypot(to.x - from.x, to.z - from.z);
         const sec = Math.min(1.1, Math.max(0.35, dist / 9));
         const vel = aimVelocity(from, to, sec);
         const mesh = new Mesh(tapeGeo, tapeMat);
         mesh.position.set(from.x, from.y, from.z);
         ctx.scene.add(mesh);
-        const tp = { mesh, p: { ...from }, v: vel, age: 0, hit: false, body: null, grounded: false };
-        const phys = ctx.use("physics");
+        const tp = { mesh, p: { ...from }, v: vel, age: 0, hit: visual, body: null, grounded: false };
+        const phys = visual ? null : ctx.use("physics");
         if (phys && typeof phys.spawn === "function") {
           try {
             tp.body = phys.spawn({
@@ -44464,8 +44576,11 @@ void main() {
         getNetState() {
           return { v: 1, f: fsm.getNetState(T5), x: Math.round(R2.pos.x * 100) / 100, z: Math.round(R2.pos.z * 100) / 100, y: Math.round(R2.pos.y * 100) / 100, yaw: Math.round(R2.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name)) };
         },
-        applyRemote(net) {
-          if (!net || net.v !== 1 || !fsm.applyRemote(net.f, T5)) return false;
+        /** Zustand + Ort übernehmen. Rolle 'mirror': glättet auf das Ziel, Hausverbot nur mit o.self; sonst wie 1.15 (hart). */
+        applyRemote(net, o) {
+          if (!net || net.v !== 1) return false;
+          if (netRole === "mirror") return mirrorApply(net, !!(o && o.self));
+          if (!fsm.applyRemote(net.f, T5)) return false;
           task = null;
           rest.x = net.x;
           rest.z = net.z;
@@ -44473,9 +44588,152 @@ void main() {
           rest.yaw = net.yaw || 0;
           anim = { name: ANIMS[net.a] || "idle", t: 0, dur: Infinity };
           return true;
-        }
+        },
+        netRole: () => netRole,
+        setNetRole: (role, o) => setNetRole(role, o),
+        /** Haken des Netzteils (net/richard.js); liefert die Abmeldefunktion. */
+        setNet(h2) {
+          netHook = h2 && typeof h2 === "object" ? h2 : null;
+          return () => {
+            if (netHook === h2) netHook = null;
+          };
+        },
+        /** Zurück in den friedlichen Ausgangszustand (Rolle bleibt, Zustand calm). */
+        resetLocal: () => reset()
       };
       const offProvide = ctx.provide("brawl", api);
+      function setNetRole(role, o) {
+        if (role !== "local" && role !== "owner" && role !== "mirror") return false;
+        if (role === "owner" && xrOn()) return false;
+        const prev = netRole;
+        if (role === prev) {
+          if (role === "mirror") mSelf = !!(o && o.self);
+          return true;
+        }
+        if (role === "mirror") {
+          mSnapGrudge = fsm.state === "grudge" ? fsm.grudgeRemaining(T5) : 0;
+          task = null;
+          timers = [];
+          throwsLeft = 0;
+          expelling = false;
+          pathAt = -Infinity;
+          if (!veil.hidden) veilTo(false);
+          mTarget = null;
+          mA = -1;
+        }
+        netRole = role;
+        mSelf = role === "mirror" && !!(o && o.self);
+        if (prev === "mirror") leaveMirror(role);
+        return true;
+      }
+      function leaveMirror(to) {
+        const was = fsm.state;
+        mTarget = null;
+        mA = -1;
+        if (to === "owner") {
+          task = null;
+          timers = [];
+          if (hostile() && !mSelf) {
+            fsm.startGrudge(T5);
+            onTransition({ from: was, to: "grudge", reason: "handover" });
+          } else if (fsm.state === "chase") {
+            chaseSince = T5;
+            penSince = -1;
+            pathAt = -Infinity;
+            pushAt = T5 + 0.8;
+          } else if (fsm.state === "throw") {
+            throwsLeft = THROWS;
+            nextThrow = T5 + 1.2;
+            throwEnd = 0;
+          }
+          return;
+        }
+        if (mSnapGrudge > 0) fsm.startGrudge(T5, mSnapGrudge);
+        else fsm.reset(T5);
+        mSnapGrudge = 0;
+        lockPending = false;
+        lockDoor(false);
+        if (sign) sign.visible = false;
+        hud.hidden = true;
+        hudSec = -1;
+        starsT = 0;
+        R2.setBusy(false);
+        task = null;
+        timers = [];
+        base = "idle";
+        anim = { name: "idle", t: 0, dur: Infinity };
+        if (was !== "calm") goHome();
+      }
+      function mirrorTransition(to) {
+        R2.setBusy(to === "shove" || to === "throw" || to === "chase" || to === "banned");
+        if (to === "annoyed") say("hit1", {}, { always: true });
+        else if (to === "shove") say("hit2", {}, { always: true });
+        else if (to === "throw") {
+          starsT = 1.6;
+          say("hit3", {}, { always: true });
+        } else if (to === "chase") say("chase", {}, { always: true });
+        else if (to === "banned") {
+          say("ban", {}, { always: true });
+          banSayAt = T5 + 6;
+          if (mSelf) {
+            if (playerClear()) applyBan();
+            else lockPending = true;
+          }
+        }
+      }
+      function mirrorApply(net, self2) {
+        const f = net.f;
+        if (!f || f.v !== 1 || !STATES[f.s]) return false;
+        mSelf = self2;
+        if (f.s === 0 || STATES[f.s] === "grudge") {
+          setNetRole("local");
+          return true;
+        }
+        const prev = fsm.state;
+        if (!fsm.applyRemote(f, T5)) return false;
+        const num4 = (v, d) => Number.isFinite(v) ? v : d;
+        const tgt = { x: num4(net.x, R2.pos.x), z: num4(net.z, R2.pos.z), y: num4(net.y, 0), yaw: num4(net.yaw, 0) };
+        if (!mTarget || Math.hypot(tgt.x - rest.x, tgt.z - rest.z) > MIRROR_SNAP) {
+          rest.x = tgt.x;
+          rest.z = tgt.z;
+          rest.y = tgt.y;
+        }
+        mTarget = tgt;
+        rest.yaw = tgt.yaw;
+        const a = Math.max(0, num4(net.a, 0) | 0);
+        if (a !== mA) {
+          mA = a;
+          const name = ANIMS[a] || "idle";
+          anim = { name, t: 0, dur: ONESHOT[name] || Infinity };
+          if (name === "throw" && fsm.state === "throw" && netHook && typeof netHook.aim === "function") {
+            const aim = netHook.aim();
+            if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.z)) launchTape(aim);
+          }
+        }
+        if (fsm.state !== prev) mirrorTransition(fsm.state);
+        return true;
+      }
+      function mirrorStep(dt) {
+        if (!mTarget) return;
+        const k = 1 - Math.exp(-MIRROR_EASE * dt);
+        rest.x += (mTarget.x - rest.x) * k;
+        rest.z += (mTarget.z - rest.z) * k;
+        rest.y += (mTarget.y - rest.y) * k;
+      }
+      function selfBanTick(p, inside) {
+        if (fsm.state !== "banned") return;
+        if (lockPending && !inside && playerClear()) applyBan();
+        if (lockPending && !inside && !playerClear() && T5 >= pushAt) {
+          pushAt = T5 + 0.7;
+          ctx.player.knock({ x: 0, z: 1 }, 0.8);
+        }
+        const sec = Math.ceil(fsm.banRemaining(T5));
+        if (sec !== hudSec) {
+          hudSec = sec;
+          hud.textContent = `HAUSVERBOT \xB7 noch ${sec} s`;
+          hud.hidden = false;
+        }
+      }
       function reset() {
         fsm.reset(T5);
         task = null;
@@ -44494,7 +44752,7 @@ void main() {
         settle();
       }
       offs.push(ctx.on("xr", (on) => {
-        if (on && fsm.state !== "calm") reset();
+        if (on && netRole !== "mirror" && fsm.state !== "calm") reset();
       }));
       if (ctx.opts.debug || ctx.opts.devFlags && ctx.opts.devFlags.brawl) {
         window.__lfxBrawl = {
@@ -44506,7 +44764,7 @@ void main() {
             reset();
             const n = STATES.indexOf(s);
             if (n < 0) return false;
-            fsm.applyRemote({ v: 1, s: n, h: Math.min(n, 3), r: s === "banned" ? BRAWL.BAN : s === "grudge" ? BRAWL.GRUDGE : 0 }, T5);
+            fsm.applyRemote({ v: 1, s: n, h: Math.min(n, 3), r: { annoyed: BRAWL.DECAY, shove: BRAWL.DECAY, throw: BRAWL.THROW_MAX, chase: BRAWL.CHASE_MAX, banned: BRAWL.BAN, grudge: BRAWL.GRUDGE }[s] || 0 }, T5);
             if (n > 0) onTransition({ from: "calm", to: s, reason: "debug" });
             return true;
           },
@@ -44535,140 +44793,146 @@ void main() {
       return {
         update(dt, t) {
           T5 = t;
-          if (xrOn()) {
+          const mirror = netRole === "mirror";
+          if (xrOn() && !mirror) {
             if (fsm.state !== "calm") reset();
             return;
           }
-          if (restoreSec > 0) {
-            fsm.startGrudge(T5, restoreSec);
-            idleAt = T5 + 30;
-            restoreSec = 0;
-            R2.setBusy(false);
-          }
-          const tr = fsm.update(T5);
-          if (tr) onTransition(tr);
-          const p = pose();
-          const inside = R2.inStore();
-          if (fsm.state === "banned" && lockPending && !inside && playerClear()) applyBan();
-          if (fsm.state === "banned" && lockPending && !inside && !playerClear() && T5 >= pushAt) {
-            pushAt = T5 + 0.7;
-            ctx.player.knock({ x: 0, z: 1 }, 0.8);
-          }
-          if (fsm.state === "banned" && inside) {
-            lockDoor(false);
-            fsm.startGrudge(T5);
-            onTransition({ to: "grudge", reason: "safety" });
-          }
-          if (fsm.state === "throw") {
-            if (!inside) onTransition(fsm.event("throwDone", T5));
-            else if (throwsLeft > 0 && T5 >= nextThrow) {
-              throwsLeft--;
-              nextThrow = T5 + THROW_GAP;
-              play("wind", WIND);
-              later(WIND, () => {
-                if (fsm.state === "throw") {
-                  play("throw", 0.4);
-                  launchTape();
-                }
-              });
-              if (throwsLeft === 0) throwEnd = T5 + WIND + 1;
-            } else if (throwsLeft === 0 && throwEnd && T5 >= throwEnd) {
-              throwEnd = 0;
-              onTransition(fsm.event("throwDone", T5));
+          if (mirror) {
+            mirrorStep(dt);
+            if (mSelf) selfBanTick(pose(), R2.inStore());
+          } else {
+            if (restoreSec > 0) {
+              fsm.startGrudge(T5, restoreSec);
+              idleAt = T5 + 30;
+              restoreSec = 0;
+              R2.setBusy(false);
             }
-          }
-          if (fsm.state === "chase") {
-            if (!inside) {
-              onTransition(fsm.event("expelled", T5));
-              veilTo(false);
-            } else if (!expelling) {
-              const inP = playerInPen(p);
-              if (inP) {
-                if (penSince < 0) penSince = T5;
-              } else penSince = -1;
-              if (T5 - chaseSince > CHASE_GIVEUP || penSince >= 0 && T5 - penSince > PEN_GIVEUP) expelPlayer();
-              else if (!task || task.type !== "hop") {
-                if (inPen() || !task && onCounter(R2.pos)) hopTo(landingPoint(p), () => {
-                  task = null;
-                });
-                else if (inP) {
-                  if (Math.hypot(R2.pos.x - front.x, R2.pos.z - front.z) > 0.5 && T5 - pathAt > 0.4) {
-                    pathAt = T5;
-                    walkTo({ x: front.x, z: front.z }, RUN_SPEED, null, true);
+            const tr = fsm.update(T5);
+            if (tr) onTransition(tr);
+            const p = pose();
+            const inside = R2.inStore();
+            if (fsm.state === "banned" && lockPending && !inside && playerClear()) applyBan();
+            if (fsm.state === "banned" && lockPending && !inside && !playerClear() && T5 >= pushAt) {
+              pushAt = T5 + 0.7;
+              ctx.player.knock({ x: 0, z: 1 }, 0.8);
+            }
+            if (fsm.state === "banned" && inside) {
+              lockDoor(false);
+              fsm.startGrudge(T5);
+              onTransition({ to: "grudge", reason: "safety" });
+            }
+            if (fsm.state === "throw") {
+              if (!inside) onTransition(fsm.event("throwDone", T5));
+              else if (throwsLeft > 0 && T5 >= nextThrow) {
+                throwsLeft--;
+                nextThrow = T5 + THROW_GAP;
+                play("wind", WIND);
+                later(WIND, () => {
+                  if (fsm.state === "throw") {
+                    play("throw", 0.4);
+                    launchTape();
                   }
-                } else {
-                  const dd = driveDir(p);
-                  const dist = Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z);
-                  const tx = p.x - dd.x * DRIVE_BEHIND;
-                  const tz = p.z - dd.z * DRIVE_BEHIND;
-                  if (dist > 1.9 || Math.hypot(R2.pos.x - tx, R2.pos.z - tz) > 0.7) {
-                    if (T5 - pathAt > 0.35) {
+                });
+                if (throwsLeft === 0) throwEnd = T5 + WIND + 1;
+              } else if (throwsLeft === 0 && throwEnd && T5 >= throwEnd) {
+                throwEnd = 0;
+                onTransition(fsm.event("throwDone", T5));
+              }
+            }
+            if (fsm.state === "chase") {
+              if (!inside) {
+                onTransition(fsm.event("expelled", T5));
+                veilTo(false);
+              } else if (!expelling) {
+                const inP = playerInPen(p);
+                if (inP) {
+                  if (penSince < 0) penSince = T5;
+                } else penSince = -1;
+                if (T5 - chaseSince > CHASE_GIVEUP || penSince >= 0 && T5 - penSince > PEN_GIVEUP) expelPlayer();
+                else if (!task || task.type !== "hop") {
+                  if (inPen() || !task && onCounter(R2.pos)) hopTo(landingPoint(p), () => {
+                    task = null;
+                  });
+                  else if (inP) {
+                    if (Math.hypot(R2.pos.x - front.x, R2.pos.z - front.z) > 0.5 && T5 - pathAt > 0.4) {
                       pathAt = T5;
-                      if (!walkTo({ x: tx, z: tz }, RUN_SPEED, null, true)) walkTo({ x: p.x, z: p.z }, RUN_SPEED, null, true);
+                      walkTo({ x: front.x, z: front.z }, RUN_SPEED, null, true);
                     }
-                  } else if (task) task = null;
-                  if (dist < 2 && T5 >= pushAt) {
-                    pushAt = T5 + 0.7;
-                    play("shove", 0.6);
-                    ctx.player.knock({ x: dd.x, z: dd.z }, 1.1);
+                  } else {
+                    const dd = driveDir(p);
+                    const dist = Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z);
+                    const tx = p.x - dd.x * DRIVE_BEHIND;
+                    const tz = p.z - dd.z * DRIVE_BEHIND;
+                    if (dist > 1.9 || Math.hypot(R2.pos.x - tx, R2.pos.z - tz) > 0.7) {
+                      if (T5 - pathAt > 0.35) {
+                        pathAt = T5;
+                        if (!walkTo({ x: tx, z: tz }, RUN_SPEED, null, true)) walkTo({ x: p.x, z: p.z }, RUN_SPEED, null, true);
+                      }
+                    } else if (task) task = null;
+                    if (dist < 2 && T5 >= pushAt) {
+                      pushAt = T5 + 0.7;
+                      play("shove", 0.6);
+                      ctx.player.knock({ x: dd.x, z: dd.z }, 1.1);
+                    }
                   }
                 }
               }
             }
-          }
-          if (fsm.state === "banned") {
-            if (T5 >= banSayAt && Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z) < 16) {
-              if (say("banGlass", {}, { always: true })) banSayAt = T5 + 11;
-              else banSayAt = T5 + 1;
+            if (fsm.state === "banned") {
+              if (T5 >= banSayAt && Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z) < 16) {
+                if (say("banGlass", {}, { always: true })) banSayAt = T5 + 11;
+                else banSayAt = T5 + 1;
+              }
+              const sec = Math.ceil(fsm.banRemaining(T5));
+              if (sec !== hudSec) {
+                hudSec = sec;
+                hud.textContent = `HAUSVERBOT \xB7 noch ${sec} s`;
+                hud.hidden = false;
+              }
             }
-            const sec = Math.ceil(fsm.banRemaining(T5));
-            if (sec !== hudSec) {
-              hudSec = sec;
-              hud.textContent = `HAUSVERBOT \xB7 noch ${sec} s`;
-              hud.hidden = false;
+            if (fsm.state === "grudge" && !task && T5 >= idleAt) {
+              idleAt = T5 + 45 + Math.random() * 40;
+              if (inside && Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z) < 9) say("grudgeIdle", {}, { always: true });
             }
-          }
-          if (fsm.state === "grudge" && !task && T5 >= idleAt) {
-            idleAt = T5 + 45 + Math.random() * 40;
-            if (inside && Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z) < 9) say("grudgeIdle", {}, { always: true });
-          }
-          if (timers.length) {
-            const due = timers.filter((x) => T5 >= x.at);
-            if (due.length) {
-              timers = timers.filter((x) => T5 < x.at);
-              due.forEach((x) => x.fn());
+            if (timers.length) {
+              const due = timers.filter((x) => T5 >= x.at);
+              if (due.length) {
+                timers = timers.filter((x) => T5 < x.at);
+                due.forEach((x) => x.fn());
+              }
             }
-          }
-          if (task && task.type === "walk") {
-            const s = stepAlong(rest, task.path, task.i, task.speed, dt);
-            rest.x = s.x;
-            rest.z = s.z;
-            task.i = s.i;
-            if (s.yaw !== null) rest.yaw = s.yaw;
-            base = "run";
-            if (s.done) {
-              const cb = task.onDone;
-              task = null;
-              base = "idle";
-              if (cb) cb();
+            if (task && task.type === "walk") {
+              const s = stepAlong(rest, task.path, task.i, task.speed, dt);
+              rest.x = s.x;
+              rest.z = s.z;
+              task.i = s.i;
+              if (s.yaw !== null) rest.yaw = s.yaw;
+              base = "run";
+              if (s.done) {
+                const cb = task.onDone;
+                task = null;
+                base = "idle";
+                if (cb) cb();
+              }
+            } else if (task && task.type === "hop") {
+              task.u += dt / HOP_SEC;
+              const hp = hopPoint(task.a, task.b, task.u, 1.45, 0);
+              rest.x = hp.x;
+              rest.z = hp.z;
+              rest.y = Math.max(0, hp.y);
+              rest.yaw = Math.atan2(-(task.b.x - task.a.x), -(task.b.z - task.a.z));
+              if (task.u >= 1) {
+                rest.y = 0;
+                const cb = task.then;
+                task = null;
+                base = "idle";
+                anim = { name: "idle", t: 0, dur: Infinity };
+                if (cb) cb();
+              }
+            } else if (fsm.state !== "banned" || base !== "cross") {
+              if (Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z) < 9 && fsm.state !== "banned") rest.yaw = Math.atan2(-(p.x - R2.pos.x), -(p.z - R2.pos.z));
             }
-          } else if (task && task.type === "hop") {
-            task.u += dt / HOP_SEC;
-            const hp = hopPoint(task.a, task.b, task.u, 1.45, 0);
-            rest.x = hp.x;
-            rest.z = hp.z;
-            rest.y = Math.max(0, hp.y);
-            rest.yaw = Math.atan2(-(task.b.x - task.a.x), -(task.b.z - task.a.z));
-            if (task.u >= 1) {
-              rest.y = 0;
-              const cb = task.then;
-              task = null;
-              base = "idle";
-              anim = { name: "idle", t: 0, dur: Infinity };
-              if (cb) cb();
-            }
-          } else if (fsm.state !== "banned" || base !== "cross") {
-            if (Math.hypot(p.x - R2.pos.x, p.z - R2.pos.z) < 9 && fsm.state !== "banned") rest.yaw = Math.atan2(-(p.x - R2.pos.x), -(p.z - R2.pos.z));
           }
           const rk = Math.exp(-3.5 * dt);
           recoil.x *= rk;
@@ -44681,8 +44945,8 @@ void main() {
           if (anim.t >= anim.dur) {
             const b = task && task.type === "walk" ? "run" : hostile() && fsm.state === "throw" ? "armsup" : base;
             anim = { name: b, t: 0, dur: Infinity };
-          } else if (anim.dur === Infinity && task && task.type === "walk" && anim.name !== "run") anim = { name: "run", t: 0, dur: Infinity };
-          else if (anim.dur === Infinity && !task && anim.name === "run") anim = { name: base === "run" ? "idle" : base, t: 0, dur: Infinity };
+          } else if (!mirror && anim.dur === Infinity && task && task.type === "walk" && anim.name !== "run") anim = { name: "run", t: 0, dur: Infinity };
+          else if (!mirror && anim.dur === Infinity && !task && anim.name === "run") anim = { name: base === "run" ? "idle" : base, t: 0, dur: Infinity };
           const rt = REDNESS[fsm.state] || 0;
           redCur += (rt - redCur) * Math.min(1, dt * (rt > redCur ? 3 : 0.4));
           R2.head.material.color.setRGB(1, 1 - 0.55 * redCur, 1 - 0.6 * redCur);
@@ -44709,7 +44973,6 @@ void main() {
             place2();
           }
           updateTapes(dt);
-          void inside;
         },
         onSuspend() {
         },
@@ -50819,6 +51082,23 @@ void main() {
   function emoteEndsOn(a) {
     return EMOTE_END_A.includes(a);
   }
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = a + 1831565813 >>> 0;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var WX_SLOT_MS = 18e5;
+  var WX_RAIN_BELOW = 0.35;
+  function wxRoll(sd, serverMs) {
+    const slot = Math.floor(serverMs / WX_SLOT_MS);
+    return mulberry32((sd ^ Math.imul(slot, 2654435761)) >>> 0)();
+  }
+  var wxRain = (sd, serverMs) => wxRoll(sd, serverMs) < WX_RAIN_BELOW;
   var posQ = (q, o) => {
     const x = ci(q[o], ...LIM.x);
     const y = ci(q[o + 1], ...LIM.y);
@@ -50900,7 +51180,7 @@ void main() {
         const vz = velI(e[7]);
         const yaw = yawI(e[8]);
         const tip = ci(e[9], ...LIM.tip);
-        const s = intIn(e[12], 0, 1);
+        const s = Number.isFinite(e[12]) ? Math.round(e[12]) === 1 ? 1 : 0 : null;
         if (g === null || !pos || vx === null || vy === null || vz === null || yaw === null || tip === null || s === null) continue;
         const ax = tip > 0 ? ci(e[10], -LIM.ax, LIM.ax) ?? 0 : 0;
         const az = tip > 0 ? ci(e[11], -LIM.ax, LIM.ax) ?? 0 : 0;
@@ -50918,7 +51198,7 @@ void main() {
       const vy = velI(q[4]);
       const vz = velI(q[5]);
       const yaw = yawI(q[6]);
-      const spin = ci(q[7], -LIM.v, LIM.v);
+      const spin = ci(q[7], -2e3, 2e3);
       if (!pos || vx === null || vy === null || vz === null || yaw === null || spin === null) return null;
       return { t: "pn", i: m.i, it, q: [pos[0], pos[1], pos[2], vx, vy, vz, yaw, spin] };
     },
@@ -50933,12 +51213,12 @@ void main() {
       const tg = intIn(m.tg ?? 0, 0, 65535);
       const q = m.q;
       if (g === null || tg === null || !Array.isArray(q) || q.length < 8) return null;
-      const s = intIn(q[0], 0, 15);
+      const s = intIn(q[0], 0, 6);
       const h2 = intIn(q[1], 0, 255);
       const r = intIn(q[2], 0, 36e3);
       const pos = posQ(q, 3);
       const yaw = yawI(q[6]);
-      const a = intIn(q[7], 0, 31);
+      const a = intIn(q[7], 0, 9);
       if (s === null || h2 === null || r === null || !pos || yaw === null || a === null) return null;
       return { t: "rs", g, q: [s, h2, r, pos[0], pos[1], pos[2], yaw, a], tg };
     },
@@ -53829,26 +54109,1252 @@ void main() {
     return api;
   }
 
+  // src/js/store3d/net/phys-logic.js
+  var PH_DELAY_MS = 250;
+  var EXTRAP_MS = 150;
+  var STALE_MS = 3e3;
+  var HELD_RESEND_MS = 800;
+  var FINAL_MS = 1500;
+  var HOLD_MS = 250;
+  var DENY_PAUSE_MS = 400;
+  var PEND_MS = 700;
+  var CLAIM_PER_S = 8;
+  var CHAIN_MS = 100;
+  var CHAIN_MAX = 3;
+  var MAX_ENTRIES = 8;
+  var MAX_REMOTE_TAPES = 6;
+  var VISIBLE_TAPES = { low: 2, other: 4 };
+  var REST_MOVE = 0.02;
+  var OBJ_ID = /^[A-Za-z0-9._-]{1,24}$/;
+  var ITEM_ID = /^[0-9a-f]{32}$/;
+  var isTapeId = (id) => typeof id === "string" && id.includes(".");
+  var r25 = (v) => Math.round(v * 100) / 100;
+  var clamp10 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var fin = (v) => Number.isFinite(v) ? v : 0;
+  function createLimiter3(perS, burst) {
+    let tokens = burst;
+    let last = null;
+    return {
+      take(now) {
+        if (last !== null) tokens = Math.min(burst, tokens + (now - last) / 1e3 * perS);
+        last = now;
+        if (tokens >= 1) {
+          tokens -= 1;
+          return true;
+        }
+        return false;
+      },
+      reset() {
+        tokens = burst;
+        last = null;
+      }
+    };
+  }
+  function createOwners() {
+    const m = /* @__PURE__ */ new Map();
+    const gs = /* @__PURE__ */ new Map();
+    const api = {
+      get: (id) => m.get(id) || null,
+      g: (id) => gs.get(id) || 0,
+      size: () => m.size,
+      /** Besitz setzen (aus `po`/`ps`, maßgeblich: `po` kommt auf einem Socket in Reihenfolge, g wird so übernommen, auch ein kleineres); behält den Sendestand bei gleichem Besitzer. */
+      set(id, o, g, h2, now) {
+        const prev = m.get(id);
+        const keep2 = prev && prev.o === o;
+        m.set(id, { o, g, h: h2 | 0, at: keep2 ? prev.at : now, last: keep2 ? prev.last : null, sentAt: keep2 ? prev.sentAt : 0, opt: false });
+        gs.set(id, g);
+      },
+      /** Optimistischer eigener Anspruch (g nur im Eintrag, bis `po` es bestätigt); Rückgabe: zuletzt gesehenes g (Feld `g` von pc). */
+      claim(id, me, now) {
+        const seen = gs.get(id) || 0;
+        m.set(id, { o: me, g: seen + 1, h: 0, at: now, last: null, sentAt: 0, opt: true });
+        return seen;
+      },
+      free(id) {
+        m.delete(id);
+      },
+      ownedBy(c) {
+        const out = [];
+        for (const [id, e] of m) if (e.o === c) out.push(id);
+        return out;
+      },
+      entries: () => m.entries(),
+      clear() {
+        m.clear();
+        gs.clear();
+      }
+    };
+    return api;
+  }
+  function claimAllowed(owners, id, me, now, denyUntil) {
+    const e = owners.get(id);
+    if (e && e.o === me) return false;
+    if (e && e.h && e.h !== me) return false;
+    if (e && now - e.at < HOLD_MS) return false;
+    if (denyUntil && denyUntil > now) return false;
+    return true;
+  }
+  function bodyState2(b) {
+    const tip = b.tipA || 0;
+    return { x: b.pos.x, y: b.pos.y, z: b.pos.z, vx: b.vel.x, vy: b.vel.y, vz: b.vel.z, yaw: b.yaw || 0, tip, ax: tip > 0 ? b.tipAx : 0, az: tip > 0 ? b.tipAz : 0, s: b.sleeping ? 1 : 0 };
+  }
+  function handState(pose) {
+    const yaw = fin(pose.yaw);
+    const fx = -Math.sin(yaw);
+    const fz = -Math.cos(yaw);
+    const rx = Math.cos(yaw);
+    const rz = -Math.sin(yaw);
+    return { x: fin(pose.x) + fx * 0.45 + rx * 0.2, y: fin(pose.y) + 1.05, z: fin(pose.z) + fz * 0.45 + rz * 0.2, vx: 0, vy: 0, vz: 0, yaw, tip: 0, ax: 0, az: 0, s: 0 };
+  }
+  function moved2(a, b) {
+    if (!a) return true;
+    if (a.s !== b.s) return true;
+    if (Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) > REST_MOVE) return true;
+    if (Math.abs(a.yaw - b.yaw) > 0.03 || Math.abs(a.tip - b.tip) > 0.03) return true;
+    return false;
+  }
+  function encodeEntry(frame, id, g, st, tape) {
+    const r = tape ? 2 : frame.area(st.x, st.z, st.y);
+    const p = frame.enc(st.x, st.y, st.z, r);
+    const sl = st.s === 1;
+    const v = sl ? [0, 0] : frame.encVec(st.x, st.z, st.vx, st.vz, r);
+    const tip = clamp10(Math.round(st.tip * 100), 0, 157);
+    return [
+      id,
+      g,
+      p[0],
+      p[1],
+      p[2],
+      v[0],
+      sl ? 0 : Math.round(st.vy * 100),
+      v[1],
+      frame.encYaw(st.yaw),
+      tip,
+      tip > 0 ? clamp10(Math.round(st.ax * 100), -100, 100) : 0,
+      tip > 0 ? clamp10(Math.round(st.az * 100), -100, 100) : 0,
+      sl ? 1 : 0
+    ];
+  }
+  function decodeEntry(frame, e, hintR) {
+    const r = Number.isInteger(hintR) ? hintR : 2;
+    const p = frame.dec(e[2], e[3], e[4], r);
+    const v = frame.decVec(e[2], e[4], e[5], e[7], r);
+    return { i: e[0], g: e[1], x: p[0], y: p[1], z: p[2], vx: v[0], vy: e[6] / 100, vz: v[1], yaw: frame.decYaw(e[8]), tip: e[9] / 100, ax: e[10] / 100, az: e[11] / 100, s: e[12] === 1 ? 1 : 0 };
+  }
+  function pickSend(cands) {
+    const sorted = cands.slice().sort((a, b) => b.final - a.final || a.sentAt - b.sentAt);
+    return sorted.slice(0, MAX_ENTRIES);
+  }
+  var createTrack = () => ({ s: [], applied: false, lastRx: 0 });
+  function pushSample(tr, smp) {
+    const a = tr.s;
+    const last = a[a.length - 1];
+    const t = last && smp.t <= last.t ? last.t + 1 : smp.t;
+    a.push({ ...smp, t });
+    if (a.length > 6) a.shift();
+    tr.applied = false;
+    tr.lastRx = t;
+  }
+  var lerp3 = (a, b, f) => a + (b - a) * f;
+  function lerpYaw(a, b, f) {
+    let d = (b - a) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    else if (d < -Math.PI) d += Math.PI * 2;
+    return a + d * f;
+  }
+  function sampleTrack(tr, t) {
+    const a = tr.s;
+    const n = a.length;
+    if (!n) return null;
+    const last = a[n - 1];
+    if (t >= last.t) {
+      const over = t - last.t;
+      if (last.s === 1) return { p: [last.x, last.y, last.z], v: [0, 0, 0], y: last.yaw, tip: last.tip, ax: last.ax, az: last.az, s: 1, final: true, over };
+      const dt = Math.min(over, EXTRAP_MS) / 1e3;
+      return { p: [last.x + last.vx * dt, last.y + last.vy * dt, last.z + last.vz * dt], v: [last.vx, last.vy, last.vz], y: last.yaw, tip: last.tip, ax: last.ax, az: last.az, s: 0, final: false, over };
+    }
+    const first = a[0];
+    if (t <= first.t) return { p: [first.x, first.y, first.z], v: [first.vx, first.vy, first.vz], y: first.yaw, tip: first.tip, ax: first.ax, az: first.az, s: first.s, final: false, over: 0 };
+    let i = 0;
+    while (i < n - 2 && t >= a[i + 1].t) i++;
+    const p0 = a[i];
+    const p1 = a[i + 1];
+    const f = (t - p0.t) / (p1.t - p0.t);
+    return {
+      p: [lerp3(p0.x, p1.x, f), lerp3(p0.y, p1.y, f), lerp3(p0.z, p1.z, f)],
+      v: [lerp3(p0.vx, p1.vx, f), lerp3(p0.vy, p1.vy, f), lerp3(p0.vz, p1.vz, f)],
+      y: lerpYaw(p0.yaw, p1.yaw, f),
+      tip: lerp3(p0.tip, p1.tip, f),
+      ax: p1.ax || p0.ax,
+      az: p1.az || p0.az,
+      s: 0,
+      final: false,
+      over: 0
+    };
+  }
+  function worldEntry(bodyId, s) {
+    return { i: bodyId, p: [r25(s.p[0]), r25(s.p[1]), r25(s.p[2])], v: [r25(s.v[0]), r25(s.v[1]), r25(s.v[2])], y: s.y, t: s.tip, ax: s.ax, az: s.az, s: s.s };
+  }
+
+  // src/js/store3d/net/phys.js
+  var warn8 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp phys", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  function createPhys(core) {
+    const ctx = core.ctx;
+    const frame = core.frame;
+    const clock = typeof core.now === "function" ? core.now : () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const owners = createOwners();
+    const lim = createLimiter3(CLAIM_PER_S, 4);
+    const tracks = /* @__PURE__ */ new Map();
+    const pending = /* @__PURE__ */ new Map();
+    const deny = /* @__PURE__ */ new Map();
+    const rtapes = /* @__PURE__ */ new Map();
+    const mineTapes = /* @__PURE__ */ new Set();
+    let seq = 0;
+    let tapeN = 0;
+    let ph = 8;
+    let acc = 0;
+    let chainAcc = 0;
+    let off = null;
+    let attached = null;
+    let disposed = false;
+    let cover = null;
+    let geo = null;
+    let mat2 = null;
+    const phys = () => {
+      try {
+        return ctx.use("physics") || null;
+      } catch {
+        return null;
+      }
+    };
+    const me = () => {
+      try {
+        return core.me() || null;
+      } catch {
+        return null;
+      }
+    };
+    const on = () => !disposed && !!core.active() && !!core.cap("phys") && !!me();
+    const worldOf = () => {
+      const p = phys();
+      return p && p.world || null;
+    };
+    const byId = (id) => {
+      const p = phys();
+      return p && typeof p.byNetId === "function" ? p.byNetId(id) : null;
+    };
+    const idOf = (b) => {
+      const p = phys();
+      return p && typeof p.netIdOf === "function" ? p.netIdOf(b) : null;
+    };
+    const lowish = () => {
+      let q = "mid";
+      try {
+        q = ctx.quality ? ctx.quality() : "mid";
+      } catch {
+      }
+      return q === "low" || !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    };
+    function remote(b, flag) {
+      const w = worldOf();
+      if (w && typeof w.setRemote === "function") w.setRemote(b, flag);
+      else if (b) b.netRemote = !!flag;
+    }
+    const release = (b) => {
+      if (b) remote(b, false);
+    };
+    function claim(id, b, t) {
+      const m = me();
+      const seen = owners.claim(id, m.c, t);
+      pending.set(id, t);
+      tracks.delete(id);
+      remote(b, false);
+      if (!core.send(build.pc(id, seen))) {
+        owners.free(id);
+        pending.delete(id);
+      }
+    }
+    function claimFor(b, force) {
+      const id = idOf(b);
+      if (!id) return;
+      if (b.held && !force) return;
+      const m = me();
+      const t = clock();
+      if (!claimAllowed(owners, id, m.c, t, deny.get(id))) return;
+      if (!lim.take(t)) return;
+      claim(id, b, t);
+    }
+    function gate(b) {
+      if (!on()) return true;
+      const id = idOf(b);
+      if (!id) return true;
+      if (b.netRemote) return false;
+      const o = owners.get(id);
+      if (o) return o.o === me().c && !pending.has(id);
+      const t = clock();
+      if (claimAllowed(owners, id, me().c, t, deny.get(id)) && lim.take(t)) claim(id, b, t);
+      return false;
+    }
+    function onSpawn(b) {
+      if (b.netRemote || !b.data || b.data.net || b.data.tapeId === void 0 || b.owner !== "player") return;
+      const m = me();
+      const t = clock();
+      const id = `${m.c}.${++tapeN}`;
+      const st = bodyState2(b);
+      let film = false;
+      try {
+        film = !!core.prefs().film;
+      } catch {
+      }
+      const it = film && ITEM_ID.test(String(b.data.tapeId)) ? b.data.tapeId : null;
+      const p = frame.enc(st.x, st.y, st.z, 2);
+      const v = frame.encVec(st.x, st.z, st.vx, st.vz, 2);
+      const q = [p[0], p[1], p[2], v[0], Math.round(st.vy * 100), v[1], frame.encYaw(st.yaw), Math.round((b.spin || 0) * 100)];
+      b.data.net = id;
+      const msg = build.pn(id, it, q);
+      if (msg && core.send(msg)) {
+        owners.set(id, m.c, 1, 0, t);
+        const e = owners.get(id);
+        e.last = st;
+        e.sentAt = t;
+        b.data.mine = true;
+        mineTapes.add(b);
+      } else delete b.data.net;
+    }
+    function onRemove(b) {
+      const id = b && b.data && b.data.net;
+      if (!id) return;
+      if (rtapes.has(id)) {
+        dropTape(id);
+        return;
+      }
+      if (b.data.mine) {
+        b.data.mine = false;
+        mineTapes.delete(b);
+        owners.free(id);
+        if (on()) core.send(build.px(id));
+      }
+    }
+    function onWorld(ev) {
+      try {
+        if (!ev || !ev.body) return;
+        if (ev.type === "remove") {
+          onRemove(ev.body);
+          return;
+        }
+        if (!on()) return;
+        if (ev.type === "touch") claimFor(ev.body, false);
+        else if (ev.type === "hold") claimFor(ev.body, true);
+        else if (ev.type === "spawn") onSpawn(ev.body);
+      } catch (err) {
+        warn8("Welt", err);
+      }
+    }
+    function attach() {
+      const w = worldOf();
+      if (!w || typeof w.on !== "function") return false;
+      if (attached === w) return true;
+      detach();
+      attached = w;
+      off = w.on(onWorld);
+      return true;
+    }
+    function detach() {
+      if (off) {
+        try {
+          off();
+        } catch {
+        }
+      }
+      off = null;
+      attached = null;
+    }
+    function neutralMesh() {
+      if (!geo) {
+        geo = new BoxGeometry(0.14, 0.2, 0.03);
+        mat2 = new MeshBasicMaterial({ color: 3820152 });
+      }
+      return new Mesh(geo, mat2);
+    }
+    function makeVisual(id, it) {
+      const outer = new Group();
+      outer.name = "lfx-mp-tape";
+      const inner = new Group();
+      outer.add(inner);
+      if (it && ITEM_ID.test(it)) {
+        if (!cover) cover = createHeldCover(ctx);
+        cover.set(id, { root: inner, bones: null, disposed: false }, it, lowish() ? "neutral" : "cover");
+        const ch = inner.children[0];
+        if (ch) {
+          ch.position.set(0, 0, 0);
+          ch.rotation.set(0, Math.PI, 0);
+        }
+      }
+      if (!inner.children.length) inner.add(neutralMesh());
+      return { outer, inner };
+    }
+    function applyVis() {
+      const list = [...rtapes.values()].sort((a, b) => a.seq - b.seq);
+      const n = lowish() ? VISIBLE_TAPES.low : VISIBLE_TAPES.other;
+      list.forEach((t, i) => {
+        t.inner.visible = i >= list.length - n;
+      });
+    }
+    function dropTape(id) {
+      const t = rtapes.get(id);
+      if (!t) return;
+      rtapes.delete(id);
+      tracks.delete(id);
+      owners.free(id);
+      pending.delete(id);
+      if (cover) cover.clear(id);
+      if (t.outer.parent) t.outer.parent.remove(t.outer);
+      if (t.body && !t.body.removed) t.body.remove();
+      applyVis();
+    }
+    function spawnTape(c, id, it, q) {
+      const P = phys();
+      if (!P || typeof P.spawn !== "function" || rtapes.has(id) || byId(id)) return;
+      while (rtapes.size >= MAX_REMOTE_TAPES) dropTape(rtapes.keys().next().value);
+      const t = clock();
+      const pos = frame.dec(q[0], q[1], q[2], 2);
+      const v = frame.decVec(q[0], q[2], q[3], q[5], 2);
+      const vis = makeVisual(id, it);
+      const yaw = q[6] / 100;
+      const vy = q[4] / 100;
+      const body = P.spawn({
+        kind: "tape",
+        shape: "box",
+        size: [0.14, 0.2, 0.03],
+        rr: 0.1,
+        mass: 0.2,
+        owner: "remote",
+        mesh: vis.outer,
+        tipLocal: true,
+        pos: { x: pos[0], y: pos[1], z: pos[2] },
+        vel: { x: v[0], y: vy, z: v[1] },
+        yaw,
+        spin: q[7] / 100,
+        tumble: 11,
+        ttl: 60,
+        netRemote: true,
+        data: { net: id }
+      });
+      rtapes.set(id, { c, body, outer: vis.outer, inner: vis.inner, seq: ++seq });
+      owners.set(id, c, 1, 0, t);
+      const tr = createTrack();
+      pushSample(tr, { t, x: pos[0], y: pos[1], z: pos[2], vx: v[0], vy, vz: v[1], yaw, tip: 0, ax: 0, az: 0, s: 0 });
+      tracks.set(id, tr);
+      applyVis();
+    }
+    function onPo(i, o, g, h2) {
+      if (typeof i !== "string" || !OBJ_ID.test(i) || !Number.isInteger(o)) return;
+      const m = me();
+      const t = clock();
+      const b = byId(i);
+      if (!o) {
+        const tr = tracks.get(i);
+        const last = tr && tr.s.length ? tr.s[tr.s.length - 1] : null;
+        const w = worldOf();
+        if (b && w && last && last.s === 1 && b.netRemote) w.applyRemote([worldEntry(b.id, { p: [last.x, last.y, last.z], v: [0, 0, 0], y: last.yaw, tip: last.tip, ax: last.ax, az: last.az, s: 1 })]);
+        owners.free(i);
+        pending.delete(i);
+        tracks.delete(i);
+        release(b);
+        return;
+      }
+      if (!Number.isInteger(g)) return;
+      if (o === m.c) {
+        owners.set(i, o, g, h2, t);
+        pending.delete(i);
+        if (b && !b.held) release(b);
+        return;
+      }
+      if (pending.has(i)) {
+        deny.set(i, t + DENY_PAUSE_MS);
+        pending.delete(i);
+      }
+      owners.set(i, o, g, h2, t);
+      if (b && !b.held) remote(b, true);
+    }
+    function onPs(c, list) {
+      const m = me();
+      if (!m || c === m.c || !Array.isArray(list)) return;
+      const w = worldOf();
+      if (!w) return;
+      const t = clock();
+      for (const e of list) {
+        if (!Array.isArray(e) || e.length < 13) continue;
+        const id = e[0];
+        const b = byId(id);
+        if (!b || b.held) continue;
+        const cur = owners.get(id);
+        if (cur && cur.o !== c) continue;
+        if (!cur) owners.set(id, c, e[1], 0, t);
+        else if (cur.g !== e[1]) cur.g = e[1];
+        if (!b.netRemote) remote(b, true);
+        const st = decodeEntry(frame, e, isTapeId(id) ? 2 : frame.area(b.pos.x, b.pos.z, b.pos.y));
+        let tr = tracks.get(id);
+        if (!tr) {
+          tr = createTrack();
+          tracks.set(id, tr);
+          pushSample(tr, { ...bodyState2(b), s: 0, t: t - 120 });
+        }
+        pushSample(tr, { ...st, t });
+        const rt = rtapes.get(id);
+        if (rt && rt.body) rt.body.ttl = 60;
+      }
+    }
+    function applyRest(r) {
+      if (!Array.isArray(r) || r.length < 8) return;
+      const b = byId(r[0]);
+      const w = worldOf();
+      if (!b || !w || b.held) return;
+      const cur = owners.get(r[0]);
+      if (cur && cur.o !== me().c) return;
+      const st = decodeEntry(frame, [r[0], 0, r[1], r[2], r[3], 0, 0, 0, r[4], r[5], r[6], r[7], 1], frame.area(b.pos.x, b.pos.z, b.pos.y));
+      w.applyRemote([worldEntry(b.id, { p: [st.x, st.y, st.z], v: [0, 0, 0], y: st.yaw, tip: st.tip, ax: st.ax, az: st.az, s: 1 })]);
+    }
+    function resetAll() {
+      for (const b of mineTapes) if (b.data) {
+        delete b.data.net;
+        b.data.mine = false;
+      }
+      mineTapes.clear();
+      for (const id of [...rtapes.keys()]) dropTape(id);
+      for (const [id] of owners.entries()) release(byId(id));
+      for (const id of tracks.keys()) release(byId(id));
+      owners.clear();
+      tracks.clear();
+      pending.clear();
+      deny.clear();
+      lim.reset();
+      acc = 0;
+      chainAcc = 0;
+    }
+    function onLeave(c) {
+      for (const id of owners.ownedBy(c)) {
+        owners.free(id);
+        tracks.delete(id);
+        pending.delete(id);
+        if (rtapes.has(id)) dropTape(id);
+        else release(byId(id));
+      }
+      for (const [id, t] of [...rtapes]) if (t.c === c) dropTape(id);
+    }
+    function sendOwn(t) {
+      const m = me();
+      const cands = [];
+      let pose = null;
+      for (const [id, e] of owners.entries()) {
+        if (e.o !== m.c) continue;
+        const b = byId(id);
+        if (!b || b.removed) {
+          cands.push({ id, e, drop: true });
+          continue;
+        }
+        let st;
+        let fin2 = 0;
+        if (b.held) {
+          if (!pose) {
+            try {
+              pose = ctx.player.getPose();
+            } catch {
+              pose = null;
+            }
+          }
+          if (!pose) continue;
+          st = handState(pose);
+        } else {
+          st = bodyState2(b);
+          fin2 = st.s === 1 ? 1 : 0;
+        }
+        if (!fin2 && !moved2(e.last, st) && !(b.held && t - e.sentAt >= HELD_RESEND_MS)) continue;
+        cands.push({ id, e, st, final: fin2, sentAt: e.sentAt });
+      }
+      const gone = cands.filter((c) => c.drop);
+      for (const c of gone) owners.free(c.id);
+      const pick2 = pickSend(cands.filter((c) => !c.drop));
+      if (!pick2.length) return;
+      const entries = pick2.map((c) => encodeEntry(frame, c.id, c.e.g, c.st, isTapeId(c.id)));
+      const msg = build.ps(entries);
+      if (!msg) return;
+      if (!core.send(msg)) return;
+      for (const c of pick2) {
+        c.e.last = c.st;
+        c.e.sentAt = t;
+        if (c.final) owners.free(c.id);
+      }
+    }
+    function interpolate(t) {
+      const w = worldOf();
+      if (!w) return;
+      for (const [id, tr] of [...tracks]) {
+        const b = byId(id);
+        if (!b || b.removed || !b.netRemote) {
+          tracks.delete(id);
+          continue;
+        }
+        const s = sampleTrack(tr, t - PH_DELAY_MS);
+        if (!s) continue;
+        if (s.final) {
+          if (!tr.applied) {
+            w.applyRemote([worldEntry(b.id, s)]);
+            tr.applied = true;
+          }
+          if (s.over > FINAL_MS) {
+            owners.free(id);
+            tracks.delete(id);
+            release(b);
+          }
+        } else if (s.over > STALE_MS) {
+          owners.free(id);
+          tracks.delete(id);
+          release(b);
+        } else w.applyRemote([worldEntry(b.id, s)]);
+      }
+    }
+    function chain(t) {
+      const w = worldOf();
+      const m = me();
+      if (!w || !m) return;
+      let n = 0;
+      for (const b of w.bodies) {
+        if (n >= CHAIN_MAX) break;
+        if (b.sleeping || b.held || b.netRemote || b.removed) continue;
+        const id = idOf(b);
+        if (!id || !claimAllowed(owners, id, m.c, t, deny.get(id))) continue;
+        if (!lim.take(t)) break;
+        claim(id, b, t);
+        n++;
+      }
+    }
+    const api = {
+      welcome(wl) {
+        if (disposed || !wl) return;
+        resetAll();
+        if (wl.cf && Number.isFinite(wl.cf.ph)) ph = Math.max(1, Math.min(8, wl.cf.ph));
+        if (!on() || !attach()) return;
+        for (const e of Array.isArray(wl.po) ? wl.po : []) if (Array.isArray(e)) onPo(e[0], e[1], e[2], e[3]);
+        for (const r of Array.isArray(wl.pr) ? wl.pr : []) applyRest(r);
+      },
+      ev(m) {
+        if (disposed || !m || !Array.isArray(m.ev)) return;
+        for (const e of m.ev) {
+          if (!e || typeof e.t !== "string") continue;
+          if (e.t === "cf") {
+            if (Number.isFinite(e.ph)) ph = Math.max(1, Math.min(8, e.ph));
+            continue;
+          }
+          if (!on()) continue;
+          const mi = me();
+          try {
+            if (e.t === "po") onPo(e.i, e.o, e.g, e.h);
+            else if (e.t === "ps") onPs(e.c, e.l);
+            else if (e.t === "pn") {
+              if (e.c !== mi.c && typeof e.i === "string" && OBJ_ID.test(e.i) && Array.isArray(e.q) && e.q.length >= 8) spawnTape(e.c, e.i, typeof e.it === "string" ? e.it : null, e.q);
+            } else if (e.t === "px") {
+              if (typeof e.i === "string") dropTape(e.i);
+            } else if (e.t === "l") onLeave(e.c);
+          } catch (err) {
+            warn8(e.t, err);
+          }
+        }
+      },
+      tick(dt) {
+        if (disposed || !(dt > 0) || !on()) return;
+        attach();
+        const t = clock();
+        interpolate(t);
+        for (const [id, t0] of [...pending]) {
+          if (t - t0 <= PEND_MS) continue;
+          pending.delete(id);
+          deny.set(id, t + DENY_PAUSE_MS);
+          const e = owners.get(id);
+          if (e && e.opt) owners.free(id);
+        }
+        chainAcc += dt * 1e3;
+        if (chainAcc >= CHAIN_MS) {
+          chainAcc = 0;
+          chain(t);
+        }
+        acc += dt;
+        if (acc >= 1 / ph) {
+          acc = 0;
+          sendOwn(t);
+        }
+      },
+      gate,
+      /** Verbindung weg: alles fremdgesteuerte lokal weiter simulieren, fremde Hüllen entfernen, Tabellen leeren (1.15-Verhalten). */
+      stop() {
+        detach();
+        resetAll();
+      },
+      dispose() {
+        if (disposed) return;
+        api.stop();
+        disposed = true;
+        if (cover) {
+          cover.dispose();
+          cover = null;
+        }
+        if (geo) {
+          geo.dispose();
+          geo = null;
+        }
+        if (mat2) {
+          mat2.dispose();
+          mat2 = null;
+        }
+      },
+      stats() {
+        return { owned: owners.ownedBy(me() ? me().c : -1).length, tracks: tracks.size, tapes: rtapes.size, pending: pending.size };
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/net/push.js
+  var SEND_GAP_MS = 500;
+  var RECV_GAP_MS = 350;
+  var SEND_DIST = 3.4;
+  var RECV_DIST = 4.5;
+  var PUSH_S = 100;
+  var clamp11 = (v, a, b) => v < a ? a : v > b ? b : v;
+  var warn9 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp push", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  function createPush(core) {
+    const ctx = core.ctx;
+    const frame = core.frame;
+    const clock = typeof core.now === "function" ? core.now : () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const regs = /* @__PURE__ */ new Map();
+    let lastSend = -1e9;
+    let lastRecv = -1e9;
+    let disposed = false;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    const poseOf = () => {
+      try {
+        return ctx.player.getPose();
+      } catch {
+        return null;
+      }
+    };
+    function hit(c, fig, dir) {
+      try {
+        if (typeof fig.hitReact === "function") fig.hitReact(dir);
+      } catch (err) {
+        warn9("hitReact", err);
+      }
+      if (disposed || xrOn() || !core.active() || !core.cap("push") || !dir) return;
+      const info = core.peers && core.peers.get ? core.peers.get(c) : null;
+      if (info && info.f & F.VR) return;
+      const t = clock();
+      if (t - lastSend < SEND_GAP_MS) return;
+      const pose = poseOf();
+      if (!pose) return;
+      const fp = fig.root && fig.root.position;
+      if (fp && Math.hypot(pose.x - fp.x, pose.z - fp.z) > SEND_DIST) return;
+      const r = frame.area(pose.x, pose.z, pose.y || 0);
+      const d = frame.encDir(pose.x, pose.z, dir.x, dir.z, r);
+      if (!d[0] && !d[1]) return;
+      const m = build.pu(c, d, PUSH_S);
+      if (m && core.send(m)) lastSend = t;
+    }
+    function onFigure(kind, pub, fig) {
+      if (disposed || !fig) return;
+      if (kind === "remove") {
+        const off = regs.get(fig);
+        if (off) {
+          regs.delete(fig);
+          try {
+            off();
+          } catch {
+          }
+        }
+        return;
+      }
+      if (kind !== "add" || regs.has(fig)) return;
+      let n = null;
+      try {
+        n = ctx.use("npc");
+      } catch {
+      }
+      if (!n || typeof n.registerPerson !== "function") return;
+      const c = pub.c;
+      regs.set(fig, n.registerPerson({ kind: "peer", handle: fig, onHit: (dir) => hit(c, fig, dir) }));
+    }
+    const offFig = core.peers && typeof core.peers.onFigure === "function" ? core.peers.onFigure(onFigure) : null;
+    function onPu(e) {
+      if (xrOn() || !core.active()) return;
+      if (typeof ctx.playing === "function" && !ctx.playing()) return;
+      const me = core.me();
+      if (!me || e.c === me.c || !Array.isArray(e.d) || e.d.length < 2) return;
+      const dx = Number(e.d[0]);
+      const dz = Number(e.d[1]);
+      const s = Number(e.s);
+      if (!Number.isFinite(dx) || !Number.isFinite(dz) || !Number.isFinite(s)) return;
+      const t = clock();
+      if (t - lastRecv < RECV_GAP_MS) return;
+      const pose = poseOf();
+      if (!pose) return;
+      const sender = core.peers && core.peers.get ? core.peers.get(e.c) : null;
+      const f = sender && sender.figure;
+      if (f && !f.disposed && f.root && f.root.position && Math.hypot(f.root.position.x - pose.x, f.root.position.z - pose.z) > RECV_DIST) return;
+      const r = frame.area(pose.x, pose.z, pose.y || 0);
+      const p = frame.enc(pose.x, pose.y || 0, pose.z, r);
+      const dir = frame.decDir(p[0], p[2], dx, dz, r);
+      if (!dir[0] && !dir[1]) return;
+      lastRecv = t;
+      try {
+        ctx.player.knock({ x: dir[0], z: dir[1], up: 0 }, clamp11(s, 1, 100) / 100 * PUSH_KNOCK);
+      } catch (err) {
+        warn9("knock", err);
+        return;
+      }
+      try {
+        const sd = ctx.use("sound");
+        if (sd && typeof sd.play === "function") sd.play("thud", { k: 0.8 });
+      } catch {
+      }
+    }
+    function unregisterAll() {
+      for (const off of regs.values()) {
+        try {
+          off();
+        } catch {
+        }
+      }
+      regs.clear();
+    }
+    return {
+      /** Frame x (empfängerspezifisch): pu {c, d, s}. */
+      x(m) {
+        if (disposed || !m || !Array.isArray(m.ev)) return;
+        for (const e of m.ev) {
+          if (e && e.t === "pu") {
+            try {
+              onPu(e);
+            } catch (err) {
+              warn9("pu", err);
+            }
+          }
+        }
+      },
+      stop() {
+        unregisterAll();
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (offFig) {
+          try {
+            offFig();
+          } catch {
+          }
+        }
+        unregisterAll();
+      }
+    };
+  }
+
+  // src/js/store3d/net/richard.js
+  var RS_MIN_MS = 200;
+  var RS_KEEP_MS = 1e3;
+  var MIRROR_TIMEOUT_MS = 6e4;
+  var CLAIM_TIMEOUT_MS = 4e3;
+  var GRUDGE = 6;
+  var MOVE_M = 0.04;
+  var YAW_RAD = 0.05;
+  var warn10 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp richard", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  function createRichard(core) {
+    const ctx = core.ctx;
+    const nowMs = () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const brawl = () => {
+      const b = ctx.use("brawl");
+      return b && typeof b.setNetRole === "function" ? b : null;
+    };
+    const myC = () => {
+      const m = core.me();
+      return m ? m.c : 0;
+    };
+    const vr = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    const enabled = () => core.active() && core.cap("rich");
+    let ra = { c: 0, g: 0, tg: 0 };
+    let role = "local";
+    let pending = false;
+    let pendingAt = 0;
+    let lastRs = null;
+    let lastRxAt = 0;
+    let lastSentAt = -Infinity;
+    let lastSig = "";
+    let lastSigPos = null;
+    let hooked = null;
+    let unhook = null;
+    function encode(st) {
+      const f = st.f;
+      const s = f.s === GRUDGE ? 0 : f.s;
+      const calm = s === 0;
+      const [x, y, z] = core.frame.enc(st.x, st.y || 0, st.z, 0);
+      return [s, calm ? 0 : f.h, calm ? 0 : Math.round(f.r * 10), x, y, z, core.frame.encYaw(st.yaw || 0), st.a | 0];
+    }
+    function decode(q) {
+      const [x, y, z] = core.frame.dec(q[3], q[4], q[5], 0);
+      return { v: 1, f: { v: 1, s: q[0], h: q[1], r: q[2] / 10 }, x, z, y, yaw: core.frame.decYaw(q[6]), a: q[7] };
+    }
+    function aim() {
+      const tg = ra.tg || ra.c;
+      const p = tg ? core.peers.get(tg) : null;
+      const root = p && p.figure && p.figure.root;
+      if (!root || !root.position) return null;
+      return { x: root.position.x, y: root.position.y, z: root.position.z };
+    }
+    function claim() {
+      if (!enabled() || vr()) return false;
+      if (!core.send(build.rc())) return false;
+      role = "owner";
+      pending = true;
+      pendingAt = nowMs();
+      lastSig = "";
+      lastSentAt = -Infinity;
+      return true;
+    }
+    function ensureHook() {
+      const b = brawl();
+      if (b === hooked) return b;
+      if (unhook) {
+        try {
+          unhook();
+        } catch {
+        }
+        unhook = null;
+      }
+      hooked = b;
+      if (b && typeof b.setNet === "function") unhook = b.setNet({ claim, aim });
+      return b;
+    }
+    function toLocal() {
+      const b = brawl();
+      if (b) {
+        try {
+          b.setNetRole("local");
+        } catch (err) {
+          warn10("local", err);
+        }
+      }
+      role = "local";
+      pending = false;
+      lastRs = null;
+    }
+    function toMirror() {
+      const b = brawl();
+      if (!b) return false;
+      const me = myC();
+      b.setNetRole("mirror", { self: !!me && ra.tg === me });
+      role = "mirror";
+      pending = false;
+      lastRxAt = nowMs();
+      return true;
+    }
+    function release() {
+      const b = brawl();
+      if (role === "owner" && !pending && ra.c === myC() && ra.g > 0) {
+        if (b) {
+          const st = b.getNetState();
+          if (st && st.f) core.send(build.rs(ra.g, [0, 0, 0, ...core.frame.enc(st.x, st.y || 0, st.z, 0), core.frame.encYaw(st.yaw || 0), st.a | 0], myC()), { urgent: true });
+        }
+        core.send(build.rr(ra.g), { urgent: true });
+      }
+      if (b) {
+        try {
+          b.setNetRole("local");
+        } catch (err) {
+          warn10("release", err);
+        }
+      }
+      role = "local";
+      pending = false;
+    }
+    function onRa(e) {
+      if (!e || !Number.isInteger(e.c)) return;
+      const me = myC();
+      const next = { c: e.c | 0, g: Number.isFinite(e.g) ? e.g | 0 : 0, tg: e.tg | 0 };
+      if (next.g < ra.g && ra.c !== 0) return;
+      ra = next;
+      if (!brawl()) return;
+      if (ra.c === 0) {
+        if (role === "mirror") toLocal();
+        else {
+          role = "local";
+          pending = false;
+        }
+        return;
+      }
+      if (ra.c === me) {
+        if (role === "owner") {
+          pending = false;
+          return;
+        }
+        if (vr()) {
+          core.send(build.rr(ra.g), { urgent: true });
+          return;
+        }
+        const b = brawl();
+        if (b.setNetRole("owner")) {
+          role = "owner";
+          pending = false;
+          lastSig = "";
+          lastSentAt = -Infinity;
+        }
+        return;
+      }
+      if (role === "owner") {
+        toMirror();
+        if (lastRs && lastRs.c === ra.c) applyRs(lastRs);
+      } else if (role !== "mirror") toMirror();
+      else {
+        const b = brawl();
+        b.setNetRole("mirror", { self: !!me && ra.tg === me });
+      }
+    }
+    function applyRs(r) {
+      const b = brawl();
+      if (!b) return;
+      const q = r.q;
+      if (!Array.isArray(q) || q.length < 8) return;
+      try {
+        b.applyRemote(decode(q), { self: !!myC() && r.tg === myC() });
+      } catch (err) {
+        warn10("rs", err);
+      }
+      if (q[0] === 0 || q[0] === GRUDGE) {
+        role = "local";
+        pending = false;
+        lastRs = null;
+      }
+    }
+    function onRs(e) {
+      if (!e || !Array.isArray(e.q) || e.q.length < 8 || !Number.isInteger(e.c)) return;
+      const me = myC();
+      if (e.c === me) return;
+      const g = Number.isFinite(e.g) ? e.g | 0 : 0;
+      if (g < ra.g) return;
+      if (role !== "mirror" && (e.q[0] === 0 || e.q[0] === GRUDGE)) {
+        if (ra.c === e.c) ra = { c: 0, g: ra.g, tg: 0 };
+        return;
+      }
+      if (ra.c !== e.c || g > ra.g) onRa({ c: e.c, g, tg: e.tg });
+      if (role !== "mirror") {
+        if (!brawl() || role === "owner" && ra.c === me) return;
+        toMirror();
+      }
+      lastRxAt = nowMs();
+      lastRs = { c: e.c, g, tg: e.tg | 0, q: e.q };
+      applyRs(lastRs);
+    }
+    function onEr(e) {
+      if (!e || e.y !== "rc") return;
+      if (role !== "owner") return;
+      if (e.c === "deny" && ra.c !== 0 && ra.c !== myC()) {
+        const had = lastRs && lastRs.c === ra.c;
+        toMirror();
+        if (had) applyRs(lastRs);
+      } else {
+        const b = brawl();
+        if (b) b.setNetRole("local");
+        role = "local";
+        pending = false;
+      }
+    }
+    const offs = [core.on("ra", onRa), core.on("rs", onRs), core.on("er", onEr)];
+    function sendOwner(b, now) {
+      const st = b.getNetState();
+      if (!st || !st.f) return;
+      const q = encode(st);
+      if (q[0] === 0) {
+        release();
+        return;
+      }
+      const sig = `${q[0]}|${q[1]}|${q[7]}`;
+      const moved3 = lastSigPos === null || Math.hypot(st.x - lastSigPos.x, st.z - lastSigPos.z) > MOVE_M || Math.abs(st.yaw - lastSigPos.yaw) > YAW_RAD;
+      const changed = sig !== lastSig || moved3;
+      if (!(changed && now - lastSentAt >= RS_MIN_MS || now - lastSentAt >= RS_KEEP_MS)) return;
+      const m = build.rs(ra.g, q, myC());
+      if (!m) return;
+      if (core.send(m, { urgent: false })) {
+        lastSentAt = now;
+        lastSig = sig;
+        lastSigPos = { x: st.x, z: st.z, yaw: st.yaw };
+      }
+    }
+    return {
+      role: () => role,
+      welcome(wl) {
+        lastSigPos = null;
+        ra = { c: 0, g: 0, tg: 0 };
+        if (wl && wl.ra && Number.isInteger(wl.ra.c) && wl.ra.c !== 0) onRa(wl.ra);
+      },
+      tick() {
+        const b = ensureHook();
+        if (!b) return;
+        if (!enabled()) {
+          if (role !== "local") {
+            toLocal();
+          }
+          return;
+        }
+        const now = nowMs();
+        if (role === "mirror") {
+          if (now - lastRxAt > MIRROR_TIMEOUT_MS) toLocal();
+          return;
+        }
+        if (role !== "owner") return;
+        if (vr()) {
+          release();
+          return;
+        }
+        if (pending) {
+          if (now - pendingAt > CLAIM_TIMEOUT_MS) {
+            b.setNetRole("local");
+            role = "local";
+            pending = false;
+          }
+          return;
+        }
+        if (ra.c !== myC()) return;
+        sendOwner(b, now);
+      },
+      /** Verbindung weg oder Aussetzen: Richard läuft wieder rein lokal (1.15). */
+      stop() {
+        if (role !== "local") toLocal();
+        ra = { c: 0, g: 0, tg: 0 };
+        lastSigPos = null;
+      },
+      dispose() {
+        offs.forEach((o) => {
+          try {
+            o();
+          } catch {
+          }
+        });
+        if (unhook) {
+          try {
+            unhook();
+          } catch {
+          }
+          unhook = null;
+        }
+        hooked = null;
+        if (role !== "local") toLocal();
+      }
+    };
+  }
+
+  // src/js/store3d/net/weather.js
+  var WX_EVAL_S = 15;
+  var WX_RETRY_S = 0.5;
+  function createWeather(core) {
+    const ctx = core.ctx;
+    let sd = null;
+    let acc = 0;
+    let synced = false;
+    let pushed = false;
+    const provider = () => {
+      const w = ctx.use("weather");
+      return w && typeof w.setRaining === "function" ? w : null;
+    };
+    function release() {
+      if (pushed) {
+        const w = provider();
+        if (w) {
+          try {
+            w.setRaining(null);
+          } catch {
+          }
+        }
+      }
+      pushed = false;
+      synced = false;
+    }
+    function evaluate() {
+      if (sd === null || !core.active()) return false;
+      const now = core.serverNow();
+      if (!Number.isFinite(now)) return false;
+      const w = provider();
+      if (!w) return false;
+      try {
+        w.setRaining(wxRain(sd, now));
+      } catch {
+        return false;
+      }
+      pushed = true;
+      synced = true;
+      return true;
+    }
+    return {
+      welcome(wl) {
+        const x = wl && wl.wx;
+        sd = x && typeof x === "object" && Number.isFinite(x.sd) ? x.sd : null;
+        acc = 0;
+        synced = false;
+        if (sd === null) {
+          release();
+          return;
+        }
+        evaluate();
+      },
+      tick(dt) {
+        if (sd === null) return;
+        acc += dt;
+        if (acc < (synced ? WX_EVAL_S : WX_RETRY_S)) return;
+        acc = 0;
+        evaluate();
+      },
+      stop() {
+        sd = null;
+        acc = 0;
+        release();
+      },
+      dispose() {
+        sd = null;
+        release();
+      }
+    };
+  }
+
   // src/js/store3d/net/parts.js
   var stub = () => ({});
   var PART_FACTORIES = {
     chat: createChatPart,
     // Welle b (B1)
     emotes: createEmotes,
-    phys: stub,
-    // Welle c
-    push: stub,
-    // Welle c
-    richard: stub,
-    // Welle c
-    weather: stub,
-    // Welle c
+    phys: createPhys,
+    // Welle c (C1)
+    push: createPush,
+    // Welle c (C1)
+    richard: createRichard,
+    // Welle c (C2)
+    weather: createWeather,
+    // Welle c (C2)
     kino: stub
     // Welle d
   };
 
   // src/js/store3d/modules/net.js
-  var warn8 = (what, err) => {
+  var warn11 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp", what, err && err.message ? err.message : "");
     } catch {
@@ -53874,7 +55380,7 @@ void main() {
           try {
             fn(...a);
           } catch (err) {
-            warn8("H\xF6rer " + ev, err);
+            warn11("H\xF6rer " + ev, err);
           }
         }
       };
@@ -53893,7 +55399,7 @@ void main() {
           try {
             fn();
           } catch (err) {
-            warn8("onChange", err);
+            warn11("onChange", err);
           }
         }
       };
@@ -53909,7 +55415,7 @@ void main() {
         try {
           if (ctx.deps.onPrefs) ctx.deps.onPrefs({ mp: p });
         } catch (err) {
-          warn8("prefs", err);
+          warn11("prefs", err);
         }
       };
       let disposed = false;
@@ -53962,7 +55468,7 @@ void main() {
           try {
             p[name](...a);
           } catch (err) {
-            warn8("Teil " + name, err);
+            warn11("Teil " + name, err);
             const t = nowMs();
             partErrs = partErrs.filter((x) => t - x < PART_ERR_WINDOW_MS);
             partErrs.push(t);
@@ -54066,7 +55572,7 @@ void main() {
           clearTimeout: (h2) => clearTimeout(h2),
           random: Math.random
         },
-        hello: () => ({ cap: ["pres", "chat", "emote", "admin"], f: flags(), cv: mp.cv }),
+        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "admin"], f: flags(), cv: mp.cv }),
         onMsg,
         onState
       });
@@ -54077,7 +55583,7 @@ void main() {
           const h2 = PART_FACTORIES[k](core);
           if (h2) parts.push(h2);
         } catch (err) {
-          warn8("Teil " + k, err);
+          warn11("Teil " + k, err);
         }
       }
       const chatPart = () => parts.find((p) => typeof p.sayResult === "function") || null;
@@ -54253,7 +55759,14 @@ void main() {
         peerName: (c) => peers.name(c),
         on,
         send: (msg) => send(msg),
-        physGate: () => true,
+        physGate: (b) => {
+          const p = parts.find((x) => typeof x.gate === "function");
+          try {
+            return p ? p.gate(b) : true;
+          } catch {
+            return true;
+          }
+        },
         menu: () => ({ label: "Mehrspieler \u2026" }),
         renderMenu: (el4) => panel.render(el4),
         onChange: (fn) => {
@@ -54403,7 +55916,7 @@ void main() {
 
   // src/js/store3d/modules/runtime.js
   var ease3 = (t) => t * t * (3 - 2 * t);
-  var warn9 = (...a) => {
+  var warn12 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -54569,7 +56082,7 @@ void main() {
             try {
               fn();
             } catch (err) {
-              warn9("exitThen", err);
+              warn12("exitThen", err);
             }
             return true;
           },
@@ -54626,7 +56139,7 @@ void main() {
           const h2 = await m.init(this.ctx);
           if (h2) this.handles.push({ name: m.name, h: h2 });
         } catch (err) {
-          warn9(`Modul "${m && m.name}" konnte nicht starten`, err);
+          warn12(`Modul "${m && m.name}" konnte nicht starten`, err);
         }
         if (progress) progress((i + 1) / n);
       }
@@ -54638,7 +56151,7 @@ void main() {
         try {
           fn(...args);
         } catch (err) {
-          warn9(`Event ${ev}`, err);
+          warn12(`Event ${ev}`, err);
         }
       }
     }
@@ -54648,7 +56161,7 @@ void main() {
         try {
           h2[name](...args);
         } catch (err) {
-          warn9(`Modul "${mn}".${name}`, err);
+          warn12(`Modul "${mn}".${name}`, err);
         }
       }
     }
@@ -54717,7 +56230,7 @@ void main() {
             break;
           }
         } catch (err) {
-          warn9("Aktion " + name, err);
+          warn12("Aktion " + name, err);
         }
       }
       this.emit(name, ev, consumed);
@@ -54850,7 +56363,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn9("overlay.onClose", err);
+            warn12("overlay.onClose", err);
           }
         });
         return;
@@ -54879,7 +56392,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn9("panel.onClose", err);
+            warn12("panel.onClose", err);
           }
         });
         return dead;
@@ -54928,7 +56441,7 @@ void main() {
       try {
         if (st.onClose) st.onClose();
       } catch (err) {
-        warn9("overlay.onClose", err);
+        warn12("overlay.onClose", err);
       }
       app.setMode(st.prev === "hold" && app.holdview.isOpen ? "hold" : "play");
       if (app.mode === "play" && app.desktop && !app.suspended) app.desktop.requestLock();
@@ -55188,12 +56701,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn14 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn17 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn14}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn17}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -57622,7 +59135,7 @@ void main() {
     g.globalAlpha = 1;
   }
   var keyOf2 = (h2) => h2 ? h2.kind === "action" ? `action:${h2.ref.row}:${h2.ref.action}` : `${h2.kind}:${h2.ref}` : null;
-  var warn10 = (what, err) => {
+  var warn13 = (what, err) => {
     try {
       console.warn(`[LenzFlix Store3D] ${what}`, err);
     } catch {
@@ -57735,12 +59248,12 @@ void main() {
     function headStep(dt, snap) {
       if (!headFollow || !readHead()) return;
       const d = yawDir();
-      let moved2 = !headRef.set;
-      if (!moved2) {
+      let moved3 = !headRef.set;
+      if (!moved3) {
         const dot = Math.max(-1, Math.min(1, d.x * headRef.fx + d.z * headRef.fz));
-        moved2 = Math.acos(dot) > HEAD_TURN || Math.hypot(head.x - headRef.x, head.z - headRef.z) > HEAD_WALK;
+        moved3 = Math.acos(dot) > HEAD_TURN || Math.hypot(head.x - headRef.x, head.z - headRef.z) > HEAD_WALK;
       }
-      if (moved2) {
+      if (moved3) {
         headRef.set = true;
         headRef.x = head.x;
         headRef.z = head.z;
@@ -57896,7 +59409,7 @@ void main() {
           } else if (h2.kind === "input") {
           } else return false;
         } catch (err) {
-          warn10("Panel", err);
+          warn13("Panel", err);
         }
         return true;
       },
@@ -57913,7 +59426,7 @@ void main() {
         try {
           if (cb) cb();
         } catch (err) {
-          warn10("Panel.onClose", err);
+          warn13("Panel.onClose", err);
         }
       }
     };
@@ -58599,9 +60112,9 @@ void main() {
           continue;
         }
         const { o, d } = this.rayOf(rec);
-        const moved2 = o.distanceToSquared(pt.o) > 16e-6 || 1 - d.dot(pt.d) > 15e-7;
+        const moved3 = o.distanceToSquared(pt.o) > 16e-6 || 1 - d.dot(pt.d) > 15e-7;
         const age = now - pt.at;
-        if (this.dirty || age >= IDLE_MS || moved2 && age >= PICK_MS) this.pick(rec, now);
+        if (this.dirty || age >= IDLE_MS || moved3 && age >= PICK_MS) this.pick(rec, now);
         this.render(rec);
         const tg = pt.target;
         if (tg && tg.kind === "panel" && scrollable(tg.panel) && rec.side) {
@@ -60225,13 +61738,13 @@ void main() {
 
   // src/js/store3d/cinema/cinema.js
   var FAIL_HOLD_MS = 2600;
-  var warn11 = (...a) => {
+  var warn14 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
     }
   };
-  var clamp10 = (v, a, b) => Math.max(a, Math.min(b, v));
+  var clamp12 = (v, a, b) => Math.max(a, Math.min(b, v));
   var Cinema = class {
     constructor(app) {
       this.app = app;
@@ -60332,7 +61845,7 @@ void main() {
       this._resetRun();
       const f = this._fade();
       const run = () => this._build(this.gen);
-      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn11("Kino betreten", err));
+      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn14("Kino betreten", err));
       else run();
       return true;
     }
@@ -60356,7 +61869,7 @@ void main() {
         try {
           if (app.holdview && typeof app.holdview.close === "function") app.holdview.close(false);
         } catch (err) {
-          warn11("H\xFClle schlie\xDFen", err);
+          warn14("H\xFClle schlie\xDFen", err);
         }
         if (app.mods) app.mods.hook("onSuspend");
         this._duck(true);
@@ -60397,7 +61910,7 @@ void main() {
         }
         this.phase = "starting";
       } catch (err) {
-        warn11("Kino bauen", err);
+        warn14("Kino bauen", err);
         this.failCode = "B";
         this._selfLeave("fail", "B");
       }
@@ -60425,7 +61938,7 @@ void main() {
       } catch {
       }
       const floor = !this._xr || this._xr.floor !== false;
-      let off = floor ? clamp10(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
+      let off = floor ? clamp12(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
       if (!Number.isFinite(off)) off = 0;
       placeRig(eng.rig, { x: s.x, z: s.z, yaw: s.yaw }, head, { y: s.y + off });
       eng.rig.updateMatrixWorld(true);
@@ -60440,7 +61953,7 @@ void main() {
         if (x && typeof x.savePrefs === "function") x.savePrefs();
         else this.app.savePrefs();
       } catch (err) {
-        warn11("Platz speichern", err);
+        warn14("Platz speichern", err);
       }
       if (name === this.seat || !this.hall || this.phase === "entering" || this.phase === "leaving") {
         this.seat = name;
@@ -60548,7 +62061,7 @@ void main() {
       this.phase = "failed";
       this.failCode = code;
       this.marks.fail = Math.round(this.watch.startAt == null ? 0 : this.now - this.watch.startAt);
-      warn11("Kino-Start fehlgeschlagen", code);
+      warn14("Kino-Start fehlgeschlagen", code);
       const d = this._deps;
       const st = this.state || {};
       const txt = failToast(code);
@@ -60561,7 +62074,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn11("Stopp", err);
+          warn14("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS, () => this._selfLeave("fail", code));
@@ -60713,7 +62226,7 @@ void main() {
         if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(failToast(this.failCode), 3200);
         return true;
       }, (err) => {
-        warn11("Kino verlassen", err);
+        warn14("Kino verlassen", err);
         if (gen !== this.gen) return false;
         this._leavePromise = null;
         if (this._active) this._teardown();
@@ -60779,7 +62292,7 @@ void main() {
   };
 
   // src/js/store3d/xr/mode.js
-  var warn12 = (...a) => {
+  var warn15 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -60847,7 +62360,7 @@ void main() {
         const f = this.app.deps && this.app.deps.onXr;
         if (typeof f === "function") f(state);
       } catch (err) {
-        warn12("onXr", err);
+        warn15("onXr", err);
       }
     }
     /** Muss synchron aus einem Klick laufen. */
@@ -60861,7 +62374,7 @@ void main() {
         const cash = ctx && ctx.use("cashier");
         if (cash && typeof cash.unlockVoice === "function") cash.unlockVoice();
       } catch (err) {
-        warn12("Entsperren", err);
+        warn15("Entsperren", err);
       }
       Promise.resolve(p).then((ok) => {
         if (!ok && !this.presenting) this.releaseSources();
@@ -61161,7 +62674,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn12("exitThen", err);
+          warn15("exitThen", err);
         }
       }
     }
@@ -61180,7 +62693,7 @@ void main() {
       try {
         if (this.cinema && typeof this.cinema.onVisibility === "function") this.cinema.onVisibility(state);
       } catch (err) {
-        warn12("Kino-Sichtbarkeit", err);
+        warn15("Kino-Sichtbarkeit", err);
       }
     }
     // --- Schleife ---
@@ -61288,7 +62801,7 @@ void main() {
           try {
             h2.tick(dt);
           } catch (err) {
-            warn12("Panel", err);
+            warn15("Panel", err);
           }
         }
       }
@@ -61296,7 +62809,7 @@ void main() {
         try {
           b.update(dt);
         } catch (err) {
-          warn12("Blase", err);
+          warn15("Blase", err);
         }
       }
       if (this.vignette) this.vignette.update(dt, !!(app.opts.vr && app.opts.vr.vignette !== false) && !this.inCinema, this.speed, this.turnRate);
@@ -61398,7 +62911,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn12("exitThen", err);
+          warn15("exitThen", err);
         }
         return true;
       }
@@ -61894,7 +63407,7 @@ void main() {
   // src/js/store3d/cinema/palast.js
   var FAIL_HOLD_MS2 = 1800;
   var GAP_MS2 = 2e3;
-  var warn13 = (...a) => {
+  var warn16 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -61905,7 +63418,7 @@ void main() {
       try {
         return o[name](...a);
       } catch (err) {
-        warn13(name, err);
+        warn16(name, err);
       }
     }
     return void 0;
@@ -62017,7 +63530,7 @@ void main() {
         try {
           d.onCinema2d({ active: this.active, full: this.active && this.full });
         } catch (err) {
-          warn13("onCinema2d", err);
+          warn16("onCinema2d", err);
         }
       }
     }
@@ -62247,7 +63760,7 @@ void main() {
           this.state = d.state() || {};
         }
       } catch (err) {
-        warn13("Palast-Kino bauen", err);
+        warn16("Palast-Kino bauen", err);
         this.leave("build", "B");
       }
     }
@@ -62394,7 +63907,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn13("Stopp", err);
+          warn16("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS2, () => this.leave("fail", code));

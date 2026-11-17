@@ -5,15 +5,19 @@
 //          peers /* net/peers.js */, prefs() → {...}, toast(text), on(t, fn) → off /* Nachrichtentyp, z. B. 'kx' */ }
 import { createEmotes } from './emote-ui.js';
 import { createChatPart } from './chat-ui.js';
+import { createPhys } from './phys.js';
+import { createPush } from './push.js';
+import { createRichard } from './richard.js';
+import { createWeather } from './weather.js';
 
 const stub = () => ({});
 
 export const PART_FACTORIES = {
   chat: createChatPart, // Welle b (B1)
   emotes: createEmotes,
-  phys: stub, // Welle c
-  push: stub, // Welle c
-  richard: stub, // Welle c
-  weather: stub, // Welle c
+  phys: createPhys, // Welle c (C1)
+  push: createPush, // Welle c (C1)
+  richard: createRichard, // Welle c (C2)
+  weather: createWeather, // Welle c (C2)
   kino: stub, // Welle d
 };

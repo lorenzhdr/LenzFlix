@@ -16,7 +16,7 @@ import kino from './kino.js';
 
 export const SUBS = [chat, phys, rich, kino];
 const capsOf = (s) => (s.cap == null ? [] : Array.isArray(s.cap) ? s.cap : [s.cap]);
-export const SERVER_CAPS = ['pres', ...SUBS.flatMap(capsOf)].filter((c, i, a) => CAPS.includes(c) && a.indexOf(c) === i);
+export const SERVER_CAPS = ['pres', 'wx', ...SUBS.flatMap(capsOf)].filter((c, i, a) => CAPS.includes(c) && a.indexOf(c) === i);
 // Storage-Präfixe, die der Kaltstart lädt (Kern + Unter-Reducer).
 export const STORE_PREFIXES = [...new Set(['sv', 'seed', 'quota', 'b:', 'j:', ...SUBS.flatMap((s) => s.storeKeys || [])])];
 
@@ -252,6 +252,7 @@ CORE.hi = (st, p, raw, cx) => {
     t: 'wl', pv: PV, c: p.c, k: p.k, s: cx.now, ad: p.a ? 1 : 0, cap: p.cap, cf: cx.cf(),
     peers: liveList(st).map(pubPeer),
   };
+  if (p.cap.includes('wx') && st.seed !== null) wl.wx = { sd: st.seed, l: 1800 }; // Wetter-Seed (cap wx, §8.3)
   for (const s of SUBS) {
     let w = null;
     try { w = s.welcome(st, p, cx); } catch { /* ignorieren */ }

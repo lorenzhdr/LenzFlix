@@ -58,7 +58,7 @@ describe('mp-room: Handshake', () => {
     expect(wl).toEqual({
       t: 'wl', pv: 1, c: 1, k: K('a'), s: NOW0, ad: 0, cap: ['pres', 'chat'], cf: { pr: 8, ph: 8 }, peers: [],
     });
-    expect(SERVER_CAPS).toEqual(['pres', 'chat', 'emote', 'admin']); // Welle b: chat.js kuendigt chat/emote/admin an
+    expect(SERVER_CAPS).toEqual(expect.arrayContaining(['pres', 'chat', 'emote', 'admin'])); // Unter-Reducer kuendigen ihre Faehigkeiten an (ab Welle c auch phys/push)
   });
   it('Admin-Kennung', () => {
     const w = world();

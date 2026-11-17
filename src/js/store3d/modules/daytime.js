@@ -1,6 +1,6 @@
 // VIDEOTHEK LENZ · M4 Tageszeit & Wetter: Blick durch Schaufenster/Tür nach draußen (Himmel nach Uhrzeit, Häuserzeile,
 // Laternen), Regen (~35 % der Besuche, nachts öfter) mit Streifen draußen und Tropfen auf der Scheibe, innen nachts
-// leicht dunkler/kälter. Provider 'weather' { tod, raining, hour, lampsOn, sheltered(x,z,y) }. Debug (nur opts.debug): opts.hour, opts.rain.
+// leicht dunkler/kälter. Provider 'weather' { tod, raining, hour, lampsOn, sheltered(x,z,y), setRaining(on|null) }. Debug (nur opts.debug): opts.hour, opts.rain.
 // Der Regen (Linien) folgt der Kamera (Volumen 24 x 24 m) und fällt in allen Außenbereichen (Provider 'areas'), Dichte aus dem Preset.
 import {
   LineSegments, LineBasicMaterial, BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, DoubleSide, Color,
@@ -63,7 +63,8 @@ export default {
     if (dbg) window.__lfxM4 = { ...window.__lfxM4, scene: ctx.scene, outdoor: out, ctx };
     let tod = timeOfDay(hourOpt);
     const seed = (Math.random() * 4294967296) >>> 0;
-    const raining = rainDecision(seed, tod, rainForce);
+    const localRaining = rainDecision(seed, tod, rainForce);
+    const raining = localRaining;
     const weather = {
       tod, raining, hour: hourOpt,
       /** Laternen/Neon an (nicht am Tag). */
@@ -76,6 +77,15 @@ export default {
         return !!(c && x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1 && y < c.y);
       },
     };
+    /** Mehrspieler (net/weather.js): Regen für alle gleich (true/false), null = lokale Entscheidung wie 1.15. Der Debug-Wert rain hat Vorrang. */
+    weather.setRaining = (on) => {
+      if (rainForce !== undefined) return;
+      const want = on === true || on === false ? on : localRaining;
+      if (want === weather.raining) return;
+      weather.raining = want;
+      if (ready) { apply(); syncVisible(); }
+    };
+    let ready = false;
     ctx.provide('weather', weather);
     out.setPalette(tod, raining);
 
@@ -160,6 +170,7 @@ export default {
       if (drops) drops.visible = r;
     }
     syncVisible();
+    ready = true;
 
     const cam = ctx.camera;
     let checkT = 0;

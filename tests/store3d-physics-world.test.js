@@ -172,3 +172,114 @@ describe('Physik-Kern', () => {
     expect(bc.pos.y).toBeCloseTo(ba.pos.y, 1);
   });
 });
+
+describe('Physik-Kern: Mehrspieler (1.16.0)', () => {
+  const events = (w) => { const l = []; w.on((e) => l.push(e)); return l; };
+
+  it('Ereignisse spawn, hold, reset, remove; impulse meldet touch vor der Wirkung', () => {
+    const w = createWorld({ src: [] });
+    const ev = events(w);
+    const b = ball(w);
+    expect(ev.map((e) => e.type)).toEqual(['spawn']);
+    expect(ev[0].body).toBe(b);
+    w.setHeld(b, true);
+    w.setHeld(b, false);
+    expect(ev.filter((e) => e.type === 'hold').map((e) => e.on)).toEqual([true, false]);
+    let velAtTouch = null;
+    w.on((e) => { if (e.type === 'touch') velAtTouch = b.vel.x; });
+    b.vel.x = 0;
+    w.impulse(b, { x: 3, y: 0, z: 0 });
+    expect(velAtTouch).toBe(0); // vor der Geschwindigkeitsänderung
+    expect(ev.some((e) => e.type === 'touch' && e.by === 'impulse')).toBe(true);
+    w.setHome(b, 1, 2, 3);
+    w.reset(b);
+    expect(ev.some((e) => e.type === 'reset' && e.body === b)).toBe(true);
+    w.remove(b);
+    expect(ev[ev.length - 1].type).toBe('remove');
+  });
+
+  it('Spieler schiebt Körper: touch (by player) höchstens alle 0,1 s je Körper, auch ohne Hörer unverändertes Verhalten', () => {
+    const run1 = (listen) => {
+      const w = createWorld({ src: [] });
+      const b = ball(w, { pos: { x: 0.3, y: 0.12, z: 0 }, sleeping: true });
+      const ev = listen ? events(w) : [];
+      for (let i = 0; i < 30; i++) { w.setPlayer({ x: -0.2 + i * 0.01, z: 0, y: 0, vx: 2, vz: 0 }); w.step(DT); }
+      return { x: b.pos.x, vx: b.vel.x, touches: ev.filter((e) => e.type === 'touch' && e.by === 'player').length };
+    };
+    const a = run1(true);
+    const c = run1(false);
+    expect(a.x).toBeCloseTo(c.x, 8);
+    expect(a.vx).toBeCloseTo(c.vx, 8);
+    expect(a.touches).toBeGreaterThanOrEqual(1);
+    expect(a.touches).toBeLessThanOrEqual(6); // 0,5 s Lauf = höchstens ~5 Meldungen
+  });
+
+  it('netRemote: wird nicht simuliert (fällt nicht, schläft nicht), Kugel rollt aus der übernommenen Geschwindigkeit; applyRemote bewegt ihn', () => {
+    const w = createWorld({ src: [] });
+    const b = ball(w, { pos: { x: 0, y: 3, z: 0 }, netRemote: true });
+    run(w, 1);
+    expect(b.pos.y).toBe(3);
+    expect(b.vel.y).toBe(0);
+    w.applyRemote([{ i: b.id, p: [1, 3, 1], v: [2, 0, 0], y: 0, t: 0, s: 0 }]);
+    const roll = b.rollZ;
+    run(w, 0.5);
+    expect(b.pos.x).toBe(1);
+    expect(b.rollZ).toBeLessThan(roll); // rollt (rollZ -= vx/r*h)
+    expect(b.sleeping).toBe(false);
+    expect(w.awakeCount()).toBe(0); // fremdgesteuert zählt nicht zu den simulierten
+  });
+
+  it('netRemote: keine Körperpaare, nicht in enforceMax; setRemote(false) simuliert vom letzten Stand an weiter', () => {
+    const w = createWorld({ src: [], maxActive: 1 });
+    const r = ball(w, { pos: { x: 0, y: 0.12, z: 0 }, netRemote: true });
+    const a = ball(w, { pos: { x: 0.05, y: 0.12, z: 0 }, vel: { x: 1, y: 0, z: 0 } });
+    run(w, 0.2);
+    expect(r.pos.x).toBe(0); // vom Paar nicht verschoben
+    expect(r.vel.x).toBe(0);
+    expect(a.sleeping).toBe(false); // maxActive 1: der Fremde zählt nicht mit
+    w.setRemote(r, false);
+    r.pos.y = 2;
+    run(w, 0.3);
+    expect(r.pos.y).toBeLessThan(2); // fällt wieder
+    w.setRemote(r, true);
+    const y = r.pos.y;
+    run(w, 0.3);
+    expect(r.pos.y).toBe(y);
+  });
+
+  it('playerPush auf Fremdgesteuertes: touch, bleibt der Körper fremd, wird er nicht verschoben; Anspruch (setRemote false) lässt ihn schieben', () => {
+    const mk = () => { const w = createWorld({ src: [] }); const b = ball(w, { pos: { x: 0.3, y: 0.12, z: 0 }, netRemote: true, sleeping: true }); return { w, b }; };
+    const a = mk();
+    let touched = 0;
+    a.w.on((e) => { if (e.type === 'touch') touched++; });
+    a.w.setPlayer({ x: 0.05, z: 0, y: 0, vx: 3, vz: 0 });
+    a.w.step(DT);
+    expect(touched).toBe(1);
+    expect(a.b.vel.x).toBe(0);
+    expect(a.b.pos.x).toBe(0.3);
+    const c = mk();
+    c.w.on((e) => { if (e.type === 'touch') c.w.setRemote(c.b, false); });
+    c.w.setPlayer({ x: 0.05, z: 0, y: 0, vx: 3, vz: 0 });
+    c.w.step(DT);
+    expect(c.b.netRemote).toBe(false);
+    expect(c.b.vel.x).toBeGreaterThan(0);
+  });
+
+  it('applyRemote: tip 0 stellt die Höhe wieder her; tipping wird beendet; Schlaf/Ruhe übernommen', () => {
+    const w = createWorld({ src: [] });
+    const b = w.spawn({ kind: 'bin', pos: { x: 0, y: 0.475, z: 0 } });
+    w.applyRemote([{ i: b.id, p: [0, 0.3, 0], v: [0, 0, 0], y: 0.5, t: 1.57, ax: 1, az: 0, s: 1 }]);
+    expect(b.hy).toBeCloseTo(b.lieHy, 2);
+    expect(b.sleeping).toBe(true);
+    w.applyRemote([{ i: b.id, p: [0, 0.475, 0], v: [0, 0, 0], y: 0, t: 0, s: 1 }]);
+    expect(b.hy).toBe(b.hy0);
+    expect(b.tipping).toBe(false);
+  });
+
+  it('ohne netRemote und Hörer bleibt der Kern bitgleich (spawn ohne Flag = lokal)', () => {
+    const w = createWorld({ src: [] });
+    const b = ball(w);
+    expect(b.netRemote).toBe(false);
+    expect(b.touchCd).toBe(0);
+  });
+});

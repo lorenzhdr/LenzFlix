@@ -5,6 +5,8 @@
 //   hitTest(origin, dir, range, coneDeg?) → { body, dist } | null     bodiesNear(x, z, r) → body[]     count()
 //   Zusätze: world (Kern, rein), pickable(pose, dir) → { body, dist } | null (aufhebbare Dinge), hold(body, on), launch(body, pos, vel),
 //   geometryOf(kind), tapeMesh(art, media), hoop (Korb) und snapshot()/applyRemote() (Netzzustand, 1.16.0).
+//   Mehrspieler (1.16.0): byNetId(id) → body|null und netIdOf(body) → id|null (Netz-ID = data.id statischer Requisiten bzw. data.net eines Spawns "<c>.<n>"),
+//   Reset-Gate: ein verschobenes Ding wird nur zurückgesetzt, wenn net.physGate(body) es erlaubt (fremdgesteuerte nie).
 // Objekte schlafen an ihrem Platz (layout.city.propSlots + eigene Plätze) und setzen sich nach ~2 min Ruhe unsichtbar zurück.
 import { Group, Mesh, MeshBasicMaterial, PlaneGeometry, CanvasTexture, SRGBColorSpace, Vector3, DoubleSide } from 'three';
 import { getOutdoor } from './outdoor.js';
@@ -20,6 +22,15 @@ import { resolveHoop, createHoopTracker } from '../physics/hoop.js';
 import { shouldReset, pyramidDown } from '../physics/home.js';
 
 const CULL_DIST = { low: 24, mid: 32, high: 40 };
+const NET_ID_RE = /^[A-Za-z0-9._-]{1,24}$/;
+
+/** Netz-ID eines Körpers (rein): data.net (Spawn "<c>.<n>") vor data.id (statische Requisiten), nur im Format der Leitung. */
+export function netIdOf(b) {
+  const d = b && b.data;
+  if (!d) return null;
+  const id = d.net || d.id;
+  return typeof id === 'string' && NET_ID_RE.test(id) ? id : null;
+}
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
 
 /** Ist der Kreis (x, z, r) auf Höhe y (Füße) frei von Kollidern? (rein; für Platzwahl) */
@@ -163,6 +174,8 @@ export default {
       b.vis = false;
       homes.push(b);
     }
+    const netIndex = new Map(); // Netz-ID → Körper (Statik fest, Spawns beim ersten Zugriff)
+    for (const b of homes) { const id = netIdOf(b); if (id) netIndex.set(id, b); }
     const pyramid = homes.filter((b) => b.data.group === 'pyramid');
     const hoopBalls = homes.filter((b) => b.data.group === 'hoop');
     let pyramidDone = false;
@@ -333,6 +346,14 @@ export default {
       tapeMesh: (art, media) => shapes.tapeMesh(art, media),
       snapshot: (all) => world.snapshot(all),
       applyRemote: (list) => world.applyRemote(list),
+      netIdOf,
+      byNetId(id) {
+        const k = netIndex.get(id);
+        if (k && !k.removed) return k;
+        netIndex.delete(id);
+        for (const b of world.bodies) if (netIdOf(b) === id) { netIndex.set(id, b); return b; }
+        return null;
+      },
     };
     cleanups.push(ctx.provide('physics', provider));
 
@@ -354,14 +375,19 @@ export default {
         const hb = tracker ? hoopBalls.concat(world.bodies.filter((b) => b.kind === 'basketball' && !hoopBalls.includes(b))) : [];
         for (const b of hb) { b.px = b.pos.x; b.py = b.pos.y; b.pz = b.pos.z; }
         world.step(dt);
-        if (tracker) for (const b of hb) { if (!b.held) tracker.feed(b.id, { x: b.px, y: b.py, z: b.pz }, b.pos, b.r); }
+        if (tracker) for (const b of hb) { if (!b.held && !b.netRemote) tracker.feed(b.id, { x: b.px, y: b.py, z: b.pz }, b.pos, b.r); }
         visT += dt; resetT += dt;
         if (visT > 0.3) { visT = 0; updateVisibility(); }
         for (const b of world.bodies) if (b.dirty) syncBody(b);
         instancer.flush();
         if (resetT > 0.6) {
           resetT = 0;
-          for (const b of world.bodies) if (shouldReset(b, view)) world.reset(b);
+          const net = ctx.use('net');
+          for (const b of world.bodies) {
+            if (b.netRemote || !shouldReset(b, view)) continue;
+            if (net && typeof net.physGate === 'function' && !net.physGate(b)) continue; // Mehrspieler: erst Anspruch, dann Reset
+            world.reset(b);
+          }
           if (!pyramidDone && pyramid.length && pyramidDown(pyramid)) {
             pyramidDone = true;
             const d = ctx.use('discover');

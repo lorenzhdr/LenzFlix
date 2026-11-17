@@ -96,6 +96,48 @@ describe('Brawl-Zustandsautomat', () => {
     expect(b.applyRemote({ v: 2 }, 0)).toBe(false);
     expect(b.applyRemote({ v: 1, s: 99 }, 0)).toBe(false);
   });
+  it('Netzformat: r für jeden Zustand ≠ calm, applyRemote rekonstruiert lastHit/since/until aus Restzeiten', () => {
+    const a = createBrawlFsm();
+    expect(a.getNetState(0).r).toBe(0); // calm
+    a.hit('player', 10);
+    expect(a.getNetState(15)).toEqual({ v: 1, s: STATES.indexOf('annoyed'), h: 1, r: 20 }); // DECAY 25 - 5
+    const b = createBrawlFsm();
+    b.applyRemote(a.getNetState(15), 100);
+    expect(b.state).toBe('annoyed');
+    expect(b.update(119.9)).toBeNull(); // noch 20 s bis calm, nicht sofort
+    expect(b.update(120.1).to).toBe('calm');
+    // Treffer-Abstand lebt weiter: ein Treffer direkt nach der Übernahme zählt nicht doppelt
+    const c = createBrawlFsm();
+    c.applyRemote({ v: 1, s: 1, h: 1, r: 25 }, 50);
+    expect(c.hit('player', 50.2).accepted).toBe(false);
+    expect(c.hit('player', 51).accepted).toBe(true);
+    // throw/chase: since aus der Restzeit (kein Neustart der Frist)
+    const d = createBrawlFsm();
+    d.applyRemote({ v: 1, s: STATES.indexOf('chase'), h: 3, r: 5 }, 200);
+    expect(d.getNetState(202).r).toBe(3);
+    expect(d.update(204.9)).toBeNull();
+    expect(d.update(205.1).to).toBe('grudge');
+    const e = createBrawlFsm();
+    e.applyRemote({ v: 1, s: STATES.indexOf('throw'), h: 3, r: 2 }, 0);
+    expect(e.update(2.1).to).toBe('chase');
+    // banned/grudge: until aus r; ohne r volle Dauer
+    const f = createBrawlFsm();
+    f.applyRemote({ v: 1, s: STATES.indexOf('banned'), h: 3, r: 12.5 }, 10);
+    expect(f.banRemaining(10)).toBe(12.5);
+    expect(f.getNetState(20).r).toBe(2.5);
+    const g = createBrawlFsm();
+    g.applyRemote({ v: 1, s: STATES.indexOf('grudge'), h: 3 }, 10);
+    expect(g.grudgeRemaining(10)).toBe(BRAWL.GRUDGE);
+    // Rundlauf über alle Zustände
+    for (const st of STATES) {
+      const x = createBrawlFsm();
+      x.applyRemote({ v: 1, s: STATES.indexOf(st), h: 2, r: 4 }, 7);
+      const y = createBrawlFsm();
+      expect(y.applyRemote(x.getNetState(9), 30)).toBe(true);
+      expect(y.state).toBe(st);
+      expect(y.getNetState(30).r).toBe(st === 'calm' ? 0 : 2);
+    }
+  });
 });
 
 describe('Trefferkegel', () => {

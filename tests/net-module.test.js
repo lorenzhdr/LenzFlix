@@ -88,7 +88,7 @@ describe('Modul net: Verbindung', () => {
     expect(sockets[0].protocols).toEqual(['lfx-mp.1', 't.a.b']);
     sockets[0].open();
     const hi = sockets[0].frames()[0];
-    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'admin'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
+    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'admin'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
     h.dispose();
   });
 

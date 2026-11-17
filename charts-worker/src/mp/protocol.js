@@ -31,6 +31,11 @@ export const RANGE = {
   kinoPos: [0, 12 * 3600 * 1000],
 };
 
+export const VMAX = 1600; // cm/s, Geschwindigkeitsklemme (docs/mp-api.md §5)
+export const SPINMAX = 2000; // cRad/s, Drehung geworfener Hüllen
+export const PS_MAX = 8; // Einträge je ps
+export const RE_NETID = /^[1-9][0-9]{0,4}\.[0-9]{1,6}$/; // Spawn-Id "<c>.<n>"
+
 export const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 export const clampInt = (v, lo, hi) => Math.min(hi, Math.max(lo, Math.round(v)));
 export const isItemId = (v) => typeof v === 'string' && RE_ITEM.test(v);
@@ -113,6 +118,60 @@ export const V = {
   // Admin-Kick: Ziel = Verbindungsnummer 1..65535.
   ki(m) {
     return isNum(m.c) && Number.isInteger(m.c) && m.c >= 1 && m.c <= 65535 ? { t: 'ki', c: m.c } : null;
+  },
+  // Physik (Welle c). pc: Besitz-Anspruch, g = zuletzt gesehene Vergabe-Nummer (0 = keine).
+  pc(m) {
+    if (!isObjId(m.i)) return null;
+    const g = m.g === undefined ? 0 : m.g;
+    if (!isNum(g) || g < 0) return null;
+    return { t: 'pc', i: m.i, g: clampInt(g, 0, 65535) };
+  },
+  // ps: bis 8 Einträge [i,g,x,y,z,vx,vy,vz,yaw,tip,ax,az,s]; s 0 wach / 1 schläft; ax/az nur bei tip>0.
+  ps(m) {
+    const l = m.l;
+    if (!Array.isArray(l) || l.length < 1 || l.length > PS_MAX) return null;
+    const out = [];
+    for (const e of l) {
+      if (!Array.isArray(e) || e.length !== 13 || !isObjId(e[0]) || !e.slice(1).every(isNum)) return null;
+      const tip = clampInt(e[9], ...RANGE.tip);
+      out.push([
+        e[0], clampInt(e[1], 0, 65535),
+        clampInt(e[2], ...RANGE.x), clampInt(e[3], ...RANGE.y), clampInt(e[4], ...RANGE.z),
+        clampInt(e[5], -VMAX, VMAX), clampInt(e[6], -VMAX, VMAX), clampInt(e[7], -VMAX, VMAX),
+        clampInt(e[8], ...RANGE.yaw), tip,
+        tip > 0 ? clampInt(e[10], ...RANGE.ax) : 0, tip > 0 ? clampInt(e[11], ...RANGE.az) : 0,
+        Math.round(e[12]) === 1 ? 1 : 0,
+      ]);
+    }
+    return { t: 'ps', l: out };
+  },
+  // pn: Spawn einer geworfenen Hülle. i = "<c>.<n>", it = Item-ID oder null, q = [x,y,z,vx,vy,vz,yaw,spin].
+  pn(m) {
+    if (typeof m.i !== 'string' || !RE_NETID.test(m.i)) return null;
+    if (m.it !== null && m.it !== undefined && !isItemId(m.it)) return null;
+    const q = m.q;
+    if (!Array.isArray(q) || q.length !== 8 || !q.every(isNum)) return null;
+    return {
+      t: 'pn', i: m.i, it: m.it || null,
+      q: [
+        clampInt(q[0], ...RANGE.x), clampInt(q[1], ...RANGE.y), clampInt(q[2], ...RANGE.z),
+        clampInt(q[3], -VMAX, VMAX), clampInt(q[4], -VMAX, VMAX), clampInt(q[5], -VMAX, VMAX),
+        clampInt(q[6], ...RANGE.yaw), clampInt(q[7], -SPINMAX, SPINMAX),
+      ],
+    };
+  },
+  px(m) {
+    return typeof m.i === 'string' && RE_NETID.test(m.i) ? { t: 'px', i: m.i } : null;
+  },
+  // pu: Schubs. c = Ziel-Verbindung, d = [dx,dz] (Einheitsvektor x100), s = Stärke 1..100.
+  pu(m) {
+    if (!isNum(m.c) || !Number.isInteger(m.c) || m.c < 1 || m.c > 65535) return null;
+    const d = m.d;
+    if (!Array.isArray(d) || d.length !== 2 || !isNum(d[0]) || !isNum(d[1]) || !isNum(m.s)) return null;
+    const dx = clampInt(d[0], -100, 100);
+    const dz = clampInt(d[1], -100, 100);
+    if (dx === 0 && dz === 0) return null;
+    return { t: 'pu', c: m.c, d: [dx, dz], s: clampInt(m.s, 1, 100) };
   },
   rn(m) {
     return typeof m.tk === 'string' && RE_TK.test(m.tk) ? { t: 'rn', tk: m.tk } : null;

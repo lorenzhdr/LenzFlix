@@ -65,14 +65,30 @@ export function createBrawlFsm(opts = {}) {
     /** Spitze Phase direkt starten (Wiederherstellung aus sessionStorage). */
     startGrudge(t, sec) { return go('grudge', t, 'restore', { sec }); },
     reset(t = 0) { state = 'calm'; hits = 0; lastHit = -Infinity; since = t; until = 0; },
-    /** Netzformat (1.16.0): Restzeit statt absoluter Zeit. */
-    getNetState(t) { return { v: 1, s: STATES.indexOf(state), h: hits, r: Math.max(0, Math.round((until - t) * 10) / 10) }; },
+    /** Netzformat (1.16.0): Restzeit bis zum zeitgesteuerten Übergang (s, 0,1 s genau) für jeden Zustand ≠ calm. */
+    getNetState(t) {
+      let r = 0;
+      if (state === 'annoyed' || state === 'shove') r = cfg.DECAY - (t - lastHit);
+      else if (state === 'throw') r = cfg.THROW_MAX - (t - since);
+      else if (state === 'chase') r = cfg.CHASE_MAX - (t - since);
+      else if (state === 'banned' || state === 'grudge') r = until - t;
+      return { v: 1, s: STATES.indexOf(state), h: hits, r: Number.isFinite(r) ? Math.max(0, Math.round(r * 10) / 10) : 0 };
+    },
+    /** Zustand aus dem Netzformat übernehmen; lastHit/since/until werden aus der Restzeit rekonstruiert (ohne r: volle Dauer). */
     applyRemote(net, t) {
       if (!net || net.v !== 1 || !STATES[net.s]) return false;
       state = STATES[net.s];
       hits = Math.max(0, net.h | 0);
+      const has = Number.isFinite(net.r);
+      const rem = (full) => (has ? Math.min(full, Math.max(0, net.r)) : full);
       since = t;
-      until = t + (Number.isFinite(net.r) ? net.r : 0);
+      until = 0;
+      lastHit = -Infinity;
+      if (state === 'annoyed' || state === 'shove') lastHit = t - (cfg.DECAY - rem(cfg.DECAY));
+      else if (state === 'throw') since = t - (cfg.THROW_MAX - rem(cfg.THROW_MAX));
+      else if (state === 'chase') since = t - (cfg.CHASE_MAX - rem(cfg.CHASE_MAX));
+      else if (state === 'banned') until = t + rem(cfg.BAN);
+      else if (state === 'grudge') until = t + rem(cfg.GRUDGE);
       return true;
     },
   };

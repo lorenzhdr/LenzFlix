@@ -113,7 +113,7 @@ describe('Builder und Klemmen', () => {
     expect(m.l[0]).toEqual(['o0', 2, 100, 0, 200, 1600, -1600, 0, 3, 20, 9, 9, 1]);
     const flat = P.build.ps([['x', 1, 0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 0]]);
     expect(flat.l[0].slice(9)).toEqual([0, 0, 0, 0]); // ax/az nur bei tip > 0
-    expect(P.build.ps([['x', 1, 0, 0, 0, 0, 0, 0, 0, 999, 500, -500, 5]]).l[0].slice(9)).toEqual([157, 100, -100, 1]);
+    expect(P.build.ps([['x', 1, 0, 0, 0, 0, 0, 0, 0, 999, 500, -500, 5]]).l[0].slice(9)).toEqual([157, 100, -100, 0]);
     expect(P.build.ps([])).toBe(null);
   });
   it('pn/px/rc/rs/rr', () => {
@@ -203,4 +203,21 @@ describe('Golden-Datei des Workers (chat.json)', () => {
     }
     expect(cases.length).toBeGreaterThan(5);
   });
+});
+
+describe('Golden-Dateien des Workers (phys.json, rich.json)', () => {
+  for (const name of ['phys', 'rich']) {
+    const file = new URL(`../charts-worker/test/fixtures/mp-golden/${name}.json`, import.meta.url);
+    const exists = fs.existsSync(file);
+    const cases = exists ? JSON.parse(fs.readFileSync(file, 'utf8')).c2s || [] : [];
+    (exists ? it : it.skip)(`${name} c2s: Client-Normalisierer == Server-Ergebnis (gültige Fälle)`, () => {
+      let n = 0;
+      for (const c of cases) {
+        if (!c.out) continue;
+        n++;
+        expect(P.normalizeOut(c.in), c.name).toEqual(c.out);
+      }
+      expect(n).toBeGreaterThan(3);
+    });
+  }
 });

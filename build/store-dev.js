@@ -4,6 +4,8 @@
 // für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0. Debug: __lfxStore.spawns() / area() / city().
 // Mehrspieler (1.16.0, build/mp-dev/): ?mp=fake&bots=N  Fake-Welt auf dem echten Reducer (deps.mp = fake.mp, opts.mpTransport = fake.socketFactory), N Bots (Straße, Laden, Tür, Palast-Saal, Foyer);
 //   Still-aus-Modi: ?mp=off (kein deps.mp), ?mp=nourl|404|503|401|drop (deps.mp vorhanden, Ticket scheitert bzw. die Verbindung bricht ab); ?mplat=ms (Latenz, Standard 30).
+//   Zwei-Seiten-Test (Welle 3/4): ?mp=relay&relay=<port>&name=<N>[&admin=1]  echtes WebSocket zu build/mp-dev/relay.mjs (Node, echter Reducer, kein Cloudflare); deps.mp.ticket() liefert das Dev-Ticket 'dev.<N>.<0|1>'.
+//   Treiber: .tmp/verify/w3-two.mjs (zwei Chrome-Instanzen). window.__devMp = { relay, name, setPrefs() } (nur Prefs, kein Bot-Schwarm); window.__devNet = { wl, types } (erstes wl, Zähler je Nachrichtentyp).
 //   Debug: window.__devMp = Fake-Welt (stats(), bots.stats(), setPrefs()). Welle 2: ?mpadmin=1 (ich bin Jellyfin-Admin im Fake: Kick-Knöpfe), ?mpbotadmin=<Index> (dieser Bot ist Admin, Standard keiner),
 //   ?botsocial=0 (Bots chatten/emoten nicht von selbst), ?mpchat=0 (Chat-Schalter aus). window.__devMp.bots.say(i,text)/emote(i,code)/park(i,xcm,zcm)/inbox(i)/kick(i,c);
 //   window.__devFigs = alle per npc.figure() angelegten Figuren (fig.getNetState().a = Animationscode, nur Mehrspieler-Läufe mit ?mp=…).
@@ -635,7 +637,43 @@
       npc.figure = function () { var f = orig.apply(this, arguments); window.__devFigs.push(f); return f; };
     }());
   }
+  function loadRelay() {
+    var name = String(q.get('name') || 'A').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24) || 'A';
+    var port = Number(q.get('relay')) || 5197;
+    var admin = q.get('admin') === '1' ? 1 : 0;
+    var prefs = { on: true, name: true, film: false, chat: true, mute: [], hint: false };
+    if (q.get('mpchat') === '0') prefs.chat = false;
+    deps.mp = {
+      uid: 'dev-' + name, cv: '1.16.0',
+      prefs: function () { return Object.assign({}, prefs, { mute: prefs.mute.slice() }); },
+      on: function () { return function () {}; },
+      ticket: function () {
+        var exp = Date.now() + 60000;
+        return Promise.resolve({ ok: true, tk: 'dev.' + name + '.' + admin, url: 'ws://127.0.0.1:' + port + '/mp', exp: exp, pv: [1], s: Date.now() });
+      },
+    };
+    window.__devMp = { relay: port, name: name, setPrefs: function (p) { if (!p) return; ['on', 'name', 'film', 'chat', 'hint'].forEach(function (k) { if (typeof p[k] === 'boolean') prefs[k] = p[k]; }); if (Array.isArray(p.mute)) prefs.mute = p.mute.slice(0, 50); } };
+    // Mitschnitt für das Prüfskript: erstes 'wl' (Wetter-Seed wx.sd, Fähigkeiten) und Zähler je Nachrichtentyp (window.__devNet)
+    var net = window.__devNet = { wl: null, types: {} };
+    var NativeWS = window.WebSocket;
+    window.WebSocket = function (url, protocols) {
+      var ws = protocols === undefined ? new NativeWS(url) : new NativeWS(url, protocols);
+      ws.addEventListener('message', function (ev) {
+        if (typeof ev.data !== 'string' || ev.data === 'pong') return;
+        try {
+          var j = JSON.parse(ev.data);
+          (Array.isArray(j) ? j : [j]).forEach(function (m) { if (m && m.t) { net.types[m.t] = (net.types[m.t] || 0) + 1; if (m.t === 'wl') net.wl = m; } });
+        } catch { /* egal */ }
+      });
+      return ws;
+    };
+    window.WebSocket.prototype = NativeWS.prototype;
+    ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(function (k) { window.WebSocket[k] = NativeWS[k]; });
+    recordFigures();
+    return Promise.resolve();
+  }
   function loadMp() {
+    if (mpQ === 'relay') return loadRelay();
     if (mpModes.indexOf(mpQ) < 0) return Promise.resolve();
     return import('/build/mp-dev/fake.js').then(function (m) {
       var w = m.createFakeWorld({

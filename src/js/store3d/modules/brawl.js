@@ -2,7 +2,10 @@
 // brawl-logic.js, Posen in brawl-pose.js. Dieses Modul verbindet sie mit der Figur aus cashier.js (Provider 'cashier'.richard()):
 // Schlag erkennen (ctx.input.onAction('hit'), prio 30), Taumeln, Schubsen, Kassetten werfen, Tresen-Sprung und Verfolgung (A*),
 // Hausverbot (Tür zu, Schild, Countdown), spitze Phase (sessionStorage). Nie in VR: dort bleibt Richard friedlich.
-// Provider 'brawl' { state(), isBanned(), canTalk(), hitBy(source, dir), getNetState(), applyRemote(net) }.
+// Provider 'brawl' { state(), isBanned(), canTalk(), hitBy(source, dir), getNetState(), applyRemote(net, { self }), netRole(), setNetRole(role, { self }), setNet(hook), resetLocal() }.
+// Mehrspieler (1.16.0, nur über net/richard.js): Rolle 'local' (wie 1.15, Standard), 'owner' (Autorität im Streit, FSM läuft hier) oder 'mirror'
+// (nur Anzeige: FSM, Timer, Wurf, Verfolgung, Tür, HUD, sessionStorage und alles, was den lokalen Spieler trifft, ruhen; Zustand und Ort kommen per applyRemote).
+// Hausverbot/Tür/HUD im Spiegel nur bei { self: true } (der Täter). hook = { claim() → bool /* Treffer außerhalb der Autorität: rc senden */, aim() → {x,y,z}|null /* Ziel für Spiegel-Kassetten */ }.
 // Debug: ctx.opts.debug oder ?brawl=1 → window.__lfxBrawl { state, hit(), force(state), say(cat), fsm }.
 import { Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, BoxGeometry, OctahedronGeometry, PlaneGeometry, DoubleSide } from 'three';
 import { findPath, isFree } from '../nav/path.js';
@@ -24,6 +27,9 @@ const CHASE_GIVEUP = 12; // s Verfolgung, danach Rauswurf-Rückfall (Spieler noc
 const PEN_GIVEUP = 4; // s: Spieler hinter dem Tresen (Kassenbereich ist geschlossen) -> Rückfall früher
 const DRIVE_BEHIND = 0.9; // Richard läuft so weit hinter dem Spieler (auf der dem Ziel abgewandten Seite)
 const EXPEL_FADE = 0.4; // s Abblenden vor dem Versetzen
+const MIRROR_EASE = 10; // Spiegel: Glättung der Ortsänderung, 1 - exp(-10 dt)
+const MIRROR_SNAP = 4; // m: weiter weg springt der Spiegel direkt
+const ONESHOT = { stagger: 0.8, armsup: 0.8, shove: 0.6, wind: WIND, throw: 0.4, hop: 0.85 }; // einmalige Posen im Spiegel (Dauer s)
 
 
 function banCanvas() {
@@ -90,6 +96,12 @@ export default {
     let chaseSince = 0;
     let penSince = -1;
     let expelling = false; // Rückfall-Rauswurf läuft (Abblender)
+    let netRole = 'local'; // 'local' | 'owner' | 'mirror' (Mehrspieler, siehe Kopf)
+    let netHook = null;
+    let mSelf = false; // Spiegel: Ich bin der Täter (Hausverbot gilt hier)
+    let mTarget = null; // Spiegel: letzter Ort { x, z, y, yaw }
+    let mA = -1; // Spiegel: letzter Animationscode
+    let mSnapGrudge = 0; // eigene spitze Phase (s), solange der Spiegel läuft
     const goal = { x: doorCx, z: D + 0.9 }; // Treibeziel: vor der Tür, außen
 
     // --- Persistenz der spitzen Phase (nur Sitzung) ---
@@ -303,8 +315,15 @@ export default {
     }
 
     function doHit(source, dir) {
+      if (netRole === 'mirror') {
+        // fremder Streit: nur Rückstoß; ist Richard (noch) nicht feindlich, übernimmt der Treffer die Autorität
+        if (hostile() || !(netHook && netHook.claim())) { reactHit(dir); return; }
+        setNetRole('owner');
+      }
+      const wasLocal = netRole === 'local';
       const res = fsm.hit(source, T);
       if (res.accepted) {
+        if (wasLocal && netHook && netHook.claim()) netRole = 'owner';
         onTransition(res.transition);
         if (source === 'object' && res.transition.to !== 'annoyed' && res.transition.to !== 'throw') say('hitObject', {}, { always: true });
         reactHit(dir);
@@ -332,19 +351,21 @@ export default {
       ctx.player.knock({ x: d.x, z: d.z }, 0.8);
       say('throwHit', {}, { always: false });
     }
-    function launchTape() {
-      const p = pose();
+    /** aim: nur Spiegel (rein optisch, ohne Körper und Treffer) – Ziel {x,y,z}; sonst echter Wurf auf den lokalen Spieler. */
+    function launchTape(aim) {
+      const visual = !!aim;
+      const p = visual ? aim : pose();
       const eye = Number.isFinite(p.y) ? p.y + ctx.player.eyeY() : ctx.player.eyeY();
       const from = { x: R.pos.x, y: R.pos.y + 1.45, z: R.pos.z };
-      const to = { x: p.x, y: eye - 0.25, z: p.z };
+      const to = visual ? { x: aim.x, y: Number.isFinite(aim.y) ? aim.y + 1.2 : 1.2, z: aim.z } : { x: p.x, y: eye - 0.25, z: p.z };
       const dist = Math.hypot(to.x - from.x, to.z - from.z);
       const sec = Math.min(1.1, Math.max(0.35, dist / 9));
       const vel = aimVelocity(from, to, sec);
       const mesh = new Mesh(tapeGeo, tapeMat);
       mesh.position.set(from.x, from.y, from.z);
       ctx.scene.add(mesh);
-      const tp = { mesh, p: { ...from }, v: vel, age: 0, hit: false, body: null, grounded: false };
-      const phys = ctx.use('physics');
+      const tp = { mesh, p: { ...from }, v: vel, age: 0, hit: visual, body: null, grounded: false };
+      const phys = visual ? null : ctx.use('physics');
       if (phys && typeof phys.spawn === 'function') {
         try {
           tp.body = phys.spawn({
@@ -394,14 +415,118 @@ export default {
       getNetState() {
         return { v: 1, f: fsm.getNetState(T), x: Math.round(R.pos.x * 100) / 100, z: Math.round(R.pos.z * 100) / 100, y: Math.round(R.pos.y * 100) / 100, yaw: Math.round(R.pos.yaw * 100) / 100, a: Math.max(0, ANIMS.indexOf(anim.name)) };
       },
-      applyRemote(net) {
-        if (!net || net.v !== 1 || !fsm.applyRemote(net.f, T)) return false;
+      /** Zustand + Ort übernehmen. Rolle 'mirror': glättet auf das Ziel, Hausverbot nur mit o.self; sonst wie 1.15 (hart). */
+      applyRemote(net, o) {
+        if (!net || net.v !== 1) return false;
+        if (netRole === 'mirror') return mirrorApply(net, !!(o && o.self));
+        if (!fsm.applyRemote(net.f, T)) return false;
         task = null; rest.x = net.x; rest.z = net.z; rest.y = net.y || 0; rest.yaw = net.yaw || 0;
         anim = { name: ANIMS[net.a] || 'idle', t: 0, dur: Infinity };
         return true;
       },
+      netRole: () => netRole,
+      setNetRole: (role, o) => setNetRole(role, o),
+      /** Haken des Netzteils (net/richard.js); liefert die Abmeldefunktion. */
+      setNet(h) { netHook = h && typeof h === 'object' ? h : null; return () => { if (netHook === h) netHook = null; }; },
+      /** Zurück in den friedlichen Ausgangszustand (Rolle bleibt, Zustand calm). */
+      resetLocal: () => reset(),
     };
     const offProvide = ctx.provide('brawl', api);
+
+    // --- Mehrspieler: Rollen und Spiegel ---
+    function setNetRole(role, o) {
+      if (role !== 'local' && role !== 'owner' && role !== 'mirror') return false;
+      if (role === 'owner' && xrOn()) return false; // in VR nie Autorität
+      const prev = netRole;
+      if (role === prev) { if (role === 'mirror') mSelf = !!(o && o.self); return true; }
+      if (role === 'mirror') {
+        mSnapGrudge = fsm.state === 'grudge' ? fsm.grudgeRemaining(T) : 0;
+        task = null; timers = []; throwsLeft = 0; expelling = false; pathAt = -Infinity;
+        if (!veil.hidden) veilTo(false);
+        mTarget = null; mA = -1;
+      }
+      netRole = role;
+      mSelf = role === 'mirror' && !!(o && o.self);
+      if (prev === 'mirror') leaveMirror(role);
+      return true;
+    }
+    function leaveMirror(to) {
+      const was = fsm.state;
+      mTarget = null; mA = -1;
+      if (to === 'owner') {
+        // Übergabe: den gespiegelten Stand fortsetzen. Fremder feindlicher Streit wird hier zur spitzen Phase (ohne Sperre).
+        task = null; timers = [];
+        if (hostile() && !mSelf) {
+          fsm.startGrudge(T);
+          onTransition({ from: was, to: 'grudge', reason: 'handover' });
+        } else if (fsm.state === 'chase') { chaseSince = T; penSince = -1; pathAt = -Infinity; pushAt = T + 0.8; } else if (fsm.state === 'throw') { throwsLeft = THROWS; nextThrow = T + 1.2; throwEnd = 0; }
+        return;
+      }
+      // zurück auf lokal: eigene spitze Phase wiederherstellen, sonst friedlich; Richard geht von selbst nach Hause
+      if (mSnapGrudge > 0) fsm.startGrudge(T, mSnapGrudge); else fsm.reset(T);
+      mSnapGrudge = 0;
+      lockPending = false;
+      lockDoor(false);
+      if (sign) sign.visible = false;
+      hud.hidden = true; hudSec = -1;
+      starsT = 0;
+      R.setBusy(false);
+      task = null; timers = [];
+      base = 'idle'; anim = { name: 'idle', t: 0, dur: Infinity };
+      if (was !== 'calm') goHome();
+    }
+    function mirrorTransition(to) {
+      R.setBusy(to === 'shove' || to === 'throw' || to === 'chase' || to === 'banned');
+      if (to === 'annoyed') say('hit1', {}, { always: true });
+      else if (to === 'shove') say('hit2', {}, { always: true });
+      else if (to === 'throw') { starsT = 1.6; say('hit3', {}, { always: true }); } else if (to === 'chase') say('chase', {}, { always: true });
+      else if (to === 'banned') {
+        say('ban', {}, { always: true });
+        banSayAt = T + 6;
+        if (mSelf) { if (playerClear()) applyBan(); else lockPending = true; }
+      }
+    }
+    function mirrorApply(net, self) {
+      const f = net.f;
+      if (!f || f.v !== 1 || !STATES[f.s]) return false;
+      mSelf = self;
+      // Ruhe/spitze Phase gibt es nur lokal (W12/W14): zurück auf die eigene Richard-Logik
+      if (f.s === 0 || STATES[f.s] === 'grudge') { setNetRole('local'); return true; }
+      const prev = fsm.state;
+      if (!fsm.applyRemote(f, T)) return false;
+      const num = (v, d) => (Number.isFinite(v) ? v : d);
+      const tgt = { x: num(net.x, R.pos.x), z: num(net.z, R.pos.z), y: num(net.y, 0), yaw: num(net.yaw, 0) };
+      if (!mTarget || Math.hypot(tgt.x - rest.x, tgt.z - rest.z) > MIRROR_SNAP) { rest.x = tgt.x; rest.z = tgt.z; rest.y = tgt.y; }
+      mTarget = tgt;
+      rest.yaw = tgt.yaw;
+      const a = Math.max(0, num(net.a, 0) | 0);
+      if (a !== mA) {
+        mA = a;
+        const name = ANIMS[a] || 'idle';
+        anim = { name, t: 0, dur: ONESHOT[name] || Infinity };
+        if (name === 'throw' && fsm.state === 'throw' && netHook && typeof netHook.aim === 'function') {
+          const aim = netHook.aim();
+          if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.z)) launchTape(aim);
+        }
+      }
+      if (fsm.state !== prev) mirrorTransition(fsm.state);
+      return true;
+    }
+    function mirrorStep(dt) {
+      if (!mTarget) return;
+      const k = 1 - Math.exp(-MIRROR_EASE * dt);
+      rest.x += (mTarget.x - rest.x) * k;
+      rest.z += (mTarget.z - rest.z) * k;
+      rest.y += (mTarget.y - rest.y) * k;
+    }
+    /** Spiegel beim Täter: Hausverbot (Tür, HUD) wie lokal, nur ohne eigene Entscheidungen. */
+    function selfBanTick(p, inside) {
+      if (fsm.state !== 'banned') return;
+      if (lockPending && !inside && playerClear()) applyBan();
+      if (lockPending && !inside && !playerClear() && T >= pushAt) { pushAt = T + 0.7; ctx.player.knock({ x: 0, z: 1 }, 0.8); }
+      const sec = Math.ceil(fsm.banRemaining(T));
+      if (sec !== hudSec) { hudSec = sec; hud.textContent = `HAUSVERBOT · noch ${sec} s`; hud.hidden = false; }
+    }
 
     function reset() {
       fsm.reset(T);
@@ -412,7 +537,7 @@ export default {
       R.setBusy(false);
       settle();
     }
-    offs.push(ctx.on('xr', (on) => { if (on && fsm.state !== 'calm') reset(); }));
+    offs.push(ctx.on('xr', (on) => { if (on && netRole !== 'mirror' && fsm.state !== 'calm') reset(); }));
 
     if (ctx.opts.debug || (ctx.opts.devFlags && ctx.opts.devFlags.brawl)) {
       window.__lfxBrawl = {
@@ -423,7 +548,7 @@ export default {
           reset();
           const n = STATES.indexOf(s);
           if (n < 0) return false;
-          fsm.applyRemote({ v: 1, s: n, h: Math.min(n, 3), r: s === 'banned' ? BRAWL.BAN : s === 'grudge' ? BRAWL.GRUDGE : 0 }, T);
+          fsm.applyRemote({ v: 1, s: n, h: Math.min(n, 3), r: { annoyed: BRAWL.DECAY, shove: BRAWL.DECAY, throw: BRAWL.THROW_MAX, chase: BRAWL.CHASE_MAX, banned: BRAWL.BAN, grudge: BRAWL.GRUDGE }[s] || 0 }, T);
           if (n > 0) onTransition({ from: 'calm', to: s, reason: 'debug' });
           return true;
         },
@@ -451,87 +576,94 @@ export default {
     return {
       update(dt, t) {
         T = t;
-        if (xrOn()) { if (fsm.state !== 'calm') reset(); return; }
-        if (restoreSec > 0) { fsm.startGrudge(T, restoreSec); idleAt = T + 30; restoreSec = 0; R.setBusy(false); }
-        // Zeitablauf
-        const tr = fsm.update(T);
-        if (tr) onTransition(tr);
-        const p = pose();
-        const inside = R.inStore();
-        // Sicherheit: Hausverbot, aber Spieler im Laden (Teleport u. a.) -> Tür auf
-        if (fsm.state === 'banned' && lockPending && !inside && playerClear()) applyBan();
-        // Spieler blieb nach dem Rauswurf im Türspalt (draußen, aber noch im Türblock): sanft weiter nach draußen schubsen, bis die Sperre greift
-        if (fsm.state === 'banned' && lockPending && !inside && !playerClear() && T >= pushAt) {
-          pushAt = T + 0.7;
-          ctx.player.knock({ x: 0, z: 1 }, 0.8);
-        }
-        if (fsm.state === 'banned' && inside) { lockDoor(false); fsm.startGrudge(T); onTransition({ to: 'grudge', reason: 'safety' }); }
-        // Wurfphase
-        if (fsm.state === 'throw') {
-          if (!inside) onTransition(fsm.event('throwDone', T));
-          else if (throwsLeft > 0 && T >= nextThrow) {
-            throwsLeft--; nextThrow = T + THROW_GAP;
-            play('wind', WIND);
-            later(WIND, () => { if (fsm.state === 'throw') { play('throw', 0.4); launchTape(); } });
-            if (throwsLeft === 0) throwEnd = T + WIND + 1.0;
-          } else if (throwsLeft === 0 && throwEnd && T >= throwEnd) { throwEnd = 0; onTransition(fsm.event('throwDone', T)); }
-        }
-        // Verfolgung: Richard treibt den Spieler per Pfad zur Tür (Schubser in Pfadrichtung); Rückfall: Rauswurf nach CHASE_GIVEUP
-        if (fsm.state === 'chase') {
-          if (!inside) { onTransition(fsm.event('expelled', T)); veilTo(false); }
-          else if (!expelling) {
-            const inP = playerInPen(p);
-            if (inP) { if (penSince < 0) penSince = T; } else penSince = -1;
-            if (T - chaseSince > CHASE_GIVEUP || (penSince >= 0 && T - penSince > PEN_GIVEUP)) expelPlayer();
-            else if (!task || task.type !== 'hop') {
-              if (inPen() || (!task && onCounter(R.pos))) hopTo(landingPoint(p), () => { task = null; });
-              else if (inP) {
-                // Spieler hinter dem Tresen: Richard wartet an der Kundenseite (Rückfall nach PEN_GIVEUP)
-                if (Math.hypot(R.pos.x - front.x, R.pos.z - front.z) > 0.5 && T - pathAt > 0.4) { pathAt = T; walkTo({ x: front.x, z: front.z }, RUN_SPEED, null, true); }
-              } else {
-                const dd = driveDir(p);
-                const dist = Math.hypot(p.x - R.pos.x, p.z - R.pos.z);
-                const tx = p.x - dd.x * DRIVE_BEHIND; const tz = p.z - dd.z * DRIVE_BEHIND;
-                if (dist > 1.9 || Math.hypot(R.pos.x - tx, R.pos.z - tz) > 0.7) {
-                  if (T - pathAt > 0.35) { pathAt = T; if (!walkTo({ x: tx, z: tz }, RUN_SPEED, null, true)) walkTo({ x: p.x, z: p.z }, RUN_SPEED, null, true); }
-                } else if (task) task = null;
-                if (dist < 2.0 && T >= pushAt) {
-                  pushAt = T + 0.7;
-                  play('shove', 0.6);
-                  ctx.player.knock({ x: dd.x, z: dd.z }, 1.1);
+        const mirror = netRole === 'mirror';
+        if (xrOn() && !mirror) { if (fsm.state !== 'calm') reset(); return; }
+        if (mirror) {
+          // Spiegel: nur Ort glätten (und beim Täter das Hausverbot anzeigen); keine eigene Logik
+          mirrorStep(dt);
+          if (mSelf) selfBanTick(pose(), R.inStore());
+        } else {
+          if (restoreSec > 0) { fsm.startGrudge(T, restoreSec); idleAt = T + 30; restoreSec = 0; R.setBusy(false); }
+          // Zeitablauf
+          const tr = fsm.update(T);
+          if (tr) onTransition(tr);
+          const p = pose();
+          const inside = R.inStore();
+          // Sicherheit: Hausverbot, aber Spieler im Laden (Teleport u. a.) -> Tür auf
+          if (fsm.state === 'banned' && lockPending && !inside && playerClear()) applyBan();
+          // Spieler blieb nach dem Rauswurf im Türspalt (draußen, aber noch im Türblock): sanft weiter nach draußen schubsen, bis die Sperre greift
+          if (fsm.state === 'banned' && lockPending && !inside && !playerClear() && T >= pushAt) {
+            pushAt = T + 0.7;
+            ctx.player.knock({ x: 0, z: 1 }, 0.8);
+          }
+          if (fsm.state === 'banned' && inside) { lockDoor(false); fsm.startGrudge(T); onTransition({ to: 'grudge', reason: 'safety' }); }
+          // Wurfphase
+          if (fsm.state === 'throw') {
+            if (!inside) onTransition(fsm.event('throwDone', T));
+            else if (throwsLeft > 0 && T >= nextThrow) {
+              throwsLeft--; nextThrow = T + THROW_GAP;
+              play('wind', WIND);
+              later(WIND, () => { if (fsm.state === 'throw') { play('throw', 0.4); launchTape(); } });
+              if (throwsLeft === 0) throwEnd = T + WIND + 1.0;
+            } else if (throwsLeft === 0 && throwEnd && T >= throwEnd) { throwEnd = 0; onTransition(fsm.event('throwDone', T)); }
+          }
+          // Verfolgung: Richard treibt den Spieler per Pfad zur Tür (Schubser in Pfadrichtung); Rückfall: Rauswurf nach CHASE_GIVEUP
+          if (fsm.state === 'chase') {
+            if (!inside) { onTransition(fsm.event('expelled', T)); veilTo(false); }
+            else if (!expelling) {
+              const inP = playerInPen(p);
+              if (inP) { if (penSince < 0) penSince = T; } else penSince = -1;
+              if (T - chaseSince > CHASE_GIVEUP || (penSince >= 0 && T - penSince > PEN_GIVEUP)) expelPlayer();
+              else if (!task || task.type !== 'hop') {
+                if (inPen() || (!task && onCounter(R.pos))) hopTo(landingPoint(p), () => { task = null; });
+                else if (inP) {
+                  // Spieler hinter dem Tresen: Richard wartet an der Kundenseite (Rückfall nach PEN_GIVEUP)
+                  if (Math.hypot(R.pos.x - front.x, R.pos.z - front.z) > 0.5 && T - pathAt > 0.4) { pathAt = T; walkTo({ x: front.x, z: front.z }, RUN_SPEED, null, true); }
+                } else {
+                  const dd = driveDir(p);
+                  const dist = Math.hypot(p.x - R.pos.x, p.z - R.pos.z);
+                  const tx = p.x - dd.x * DRIVE_BEHIND; const tz = p.z - dd.z * DRIVE_BEHIND;
+                  if (dist > 1.9 || Math.hypot(R.pos.x - tx, R.pos.z - tz) > 0.7) {
+                    if (T - pathAt > 0.35) { pathAt = T; if (!walkTo({ x: tx, z: tz }, RUN_SPEED, null, true)) walkTo({ x: p.x, z: p.z }, RUN_SPEED, null, true); }
+                  } else if (task) task = null;
+                  if (dist < 2.0 && T >= pushAt) {
+                    pushAt = T + 0.7;
+                    play('shove', 0.6);
+                    ctx.player.knock({ x: dd.x, z: dd.z }, 1.1);
+                  }
                 }
               }
             }
           }
-        }
-        // Hausverbot: Rufe durchs Glas, Countdown
-        if (fsm.state === 'banned') {
-          if (T >= banSayAt && Math.hypot(p.x - R.pos.x, p.z - R.pos.z) < 16) { if (say('banGlass', {}, { always: true })) banSayAt = T + 11; else banSayAt = T + 1; }
-          const sec = Math.ceil(fsm.banRemaining(T));
-          if (sec !== hudSec) { hudSec = sec; hud.textContent = `HAUSVERBOT · noch ${sec} s`; hud.hidden = false; }
-        }
-        // Spitze Phase: gelegentlich Sticheleien
-        if (fsm.state === 'grudge' && !task && T >= idleAt) {
-          idleAt = T + 45 + Math.random() * 40;
-          if (inside && Math.hypot(p.x - R.pos.x, p.z - R.pos.z) < 9) say('grudgeIdle', {}, { always: true });
-        }
-        // Timer
-        if (timers.length) { const due = timers.filter((x) => T >= x.at); if (due.length) { timers = timers.filter((x) => T < x.at); due.forEach((x) => x.fn()); } }
-        // Bewegung
-        if (task && task.type === 'walk') {
-          const s = stepAlong(rest, task.path, task.i, task.speed, dt);
-          rest.x = s.x; rest.z = s.z; task.i = s.i;
-          if (s.yaw !== null) rest.yaw = s.yaw;
-          base = 'run';
-          if (s.done) { const cb = task.onDone; task = null; base = 'idle'; if (cb) cb(); }
-        } else if (task && task.type === 'hop') {
-          task.u += dt / HOP_SEC;
-          const hp = hopPoint(task.a, task.b, task.u, 1.45, 0);
-          rest.x = hp.x; rest.z = hp.z; rest.y = Math.max(0, hp.y); rest.yaw = Math.atan2(-(task.b.x - task.a.x), -(task.b.z - task.a.z));
-          if (task.u >= 1) { rest.y = 0; const cb = task.then; task = null; base = 'idle'; anim = { name: 'idle', t: 0, dur: Infinity }; if (cb) cb(); }
-        } else if (fsm.state !== 'banned' || base !== 'cross') {
-          // Stehend: dem Spieler zugewandt
-          if (Math.hypot(p.x - R.pos.x, p.z - R.pos.z) < 9 && fsm.state !== 'banned') rest.yaw = Math.atan2(-(p.x - R.pos.x), -(p.z - R.pos.z));
+          // Hausverbot: Rufe durchs Glas, Countdown
+          if (fsm.state === 'banned') {
+            if (T >= banSayAt && Math.hypot(p.x - R.pos.x, p.z - R.pos.z) < 16) { if (say('banGlass', {}, { always: true })) banSayAt = T + 11; else banSayAt = T + 1; }
+            const sec = Math.ceil(fsm.banRemaining(T));
+            if (sec !== hudSec) { hudSec = sec; hud.textContent = `HAUSVERBOT · noch ${sec} s`; hud.hidden = false; }
+          }
+          // Spitze Phase: gelegentlich Sticheleien
+          if (fsm.state === 'grudge' && !task && T >= idleAt) {
+            idleAt = T + 45 + Math.random() * 40;
+            if (inside && Math.hypot(p.x - R.pos.x, p.z - R.pos.z) < 9) say('grudgeIdle', {}, { always: true });
+          }
+          // Timer
+          if (timers.length) { const due = timers.filter((x) => T >= x.at); if (due.length) { timers = timers.filter((x) => T < x.at); due.forEach((x) => x.fn()); } }
+          // Bewegung
+          if (task && task.type === 'walk') {
+            const s = stepAlong(rest, task.path, task.i, task.speed, dt);
+            rest.x = s.x; rest.z = s.z; task.i = s.i;
+            if (s.yaw !== null) rest.yaw = s.yaw;
+            base = 'run';
+            if (s.done) { const cb = task.onDone; task = null; base = 'idle'; if (cb) cb(); }
+          } else if (task && task.type === 'hop') {
+            task.u += dt / HOP_SEC;
+            const hp = hopPoint(task.a, task.b, task.u, 1.45, 0);
+            rest.x = hp.x; rest.z = hp.z; rest.y = Math.max(0, hp.y); rest.yaw = Math.atan2(-(task.b.x - task.a.x), -(task.b.z - task.a.z));
+            if (task.u >= 1) { rest.y = 0; const cb = task.then; task = null; base = 'idle'; anim = { name: 'idle', t: 0, dur: Infinity }; if (cb) cb(); }
+          } else if (fsm.state !== 'banned' || base !== 'cross') {
+            // Stehend: dem Spieler zugewandt
+            if (Math.hypot(p.x - R.pos.x, p.z - R.pos.z) < 9 && fsm.state !== 'banned') rest.yaw = Math.atan2(-(p.x - R.pos.x), -(p.z - R.pos.z));
+          }
         }
         // Rückstoß klingt ab
         const rk = Math.exp(-3.5 * dt);
@@ -542,8 +674,8 @@ export default {
         if (anim.t >= anim.dur) {
           const b = task && task.type === 'walk' ? 'run' : (hostile() && fsm.state === 'throw' ? 'armsup' : base);
           anim = { name: b, t: 0, dur: Infinity };
-        } else if (anim.dur === Infinity && task && task.type === 'walk' && anim.name !== 'run') anim = { name: 'run', t: 0, dur: Infinity };
-        else if (anim.dur === Infinity && !task && anim.name === 'run') anim = { name: base === 'run' ? 'idle' : base, t: 0, dur: Infinity };
+        } else if (!mirror && anim.dur === Infinity && task && task.type === 'walk' && anim.name !== 'run') anim = { name: 'run', t: 0, dur: Infinity };
+        else if (!mirror && anim.dur === Infinity && !task && anim.name === 'run') anim = { name: base === 'run' ? 'idle' : base, t: 0, dur: Infinity };
         // Rötung
         const rt = REDNESS[fsm.state] || 0;
         redCur += (rt - redCur) * Math.min(1, dt * (rt > redCur ? 3 : 0.4));
@@ -564,7 +696,6 @@ export default {
           place();
         }
         updateTapes(dt);
-        void inside;
       },
       onSuspend() { /* Zustand bleibt; Zeit läuft über update(t) weiter */ },
       dispose() {

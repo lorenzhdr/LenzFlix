@@ -156,7 +156,7 @@ const NORM = {
       const vx = velI(e[5]); const vy = velI(e[6]); const vz = velI(e[7]);
       const yaw = yawI(e[8]);
       const tip = ci(e[9], ...LIM.tip);
-      const s = intIn(e[12], 0, 1);
+      const s = Number.isFinite(e[12]) ? (Math.round(e[12]) === 1 ? 1 : 0) : null; // wie Server: nur 1 = schläft, sonst 0
       if (g === null || !pos || vx === null || vy === null || vz === null || yaw === null || tip === null || s === null) continue;
       const ax = tip > 0 ? (ci(e[10], -LIM.ax, LIM.ax) ?? 0) : 0;
       const az = tip > 0 ? (ci(e[11], -LIM.ax, LIM.ax) ?? 0) : 0;
@@ -172,7 +172,7 @@ const NORM = {
     const pos = posQ(q, 0);
     const vx = velI(q[3]); const vy = velI(q[4]); const vz = velI(q[5]);
     const yaw = yawI(q[6]);
-    const spin = ci(q[7], -LIM.v, LIM.v);
+    const spin = ci(q[7], -2000, 2000); // SPINMAX des Servers
     if (!pos || vx === null || vy === null || vz === null || yaw === null || spin === null) return null;
     return { t: 'pn', i: m.i, it, q: [pos[0], pos[1], pos[2], vx, vy, vz, yaw, spin] };
   },
@@ -183,10 +183,10 @@ const NORM = {
     const tg = intIn(m.tg ?? 0, 0, 65535);
     const q = m.q;
     if (g === null || tg === null || !Array.isArray(q) || q.length < 8) return null;
-    const s = intIn(q[0], 0, 15); const h = intIn(q[1], 0, 255); const r = intIn(q[2], 0, 36000);
+    const s = intIn(q[0], 0, 6); const h = intIn(q[1], 0, 255); const r = intIn(q[2], 0, 36000);
     const pos = posQ(q, 3);
     const yaw = yawI(q[6]);
-    const a = intIn(q[7], 0, 31);
+    const a = intIn(q[7], 0, 9);
     if (s === null || h === null || r === null || !pos || yaw === null || a === null) return null;
     return { t: 'rs', g, q: [s, h, r, pos[0], pos[1], pos[2], yaw, a], tg };
   },

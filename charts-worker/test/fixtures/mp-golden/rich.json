@@ -1,0 +1,205 @@
+{
+  "contract": "lfx-mp.1",
+  "note": "Besitzer W-C2. c2s: rohe Client-Nachricht -> normalisiert (out) oder null (verworfen); s2c: Beispielframes (vom Test mp-rich gegen den Reducer geprueft, mit MP_GOLDEN_WRITE=1 neu schreibbar).",
+  "limits": {
+    "rs": {
+      "n": 6,
+      "per": 1000,
+      "burst": 6
+    }
+  },
+  "c2s": [
+    {
+      "name": "rc",
+      "in": {
+        "t": "rc"
+      },
+      "out": {
+        "t": "rc"
+      }
+    },
+    {
+      "name": "rr gueltig",
+      "in": {
+        "t": "rr",
+        "g": 3
+      },
+      "out": {
+        "t": "rr",
+        "g": 3
+      }
+    },
+    {
+      "name": "rr g negativ",
+      "in": {
+        "t": "rr",
+        "g": -1
+      },
+      "out": null
+    },
+    {
+      "name": "rs gueltig",
+      "in": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          2,
+          3,
+          240,
+          500,
+          0,
+          600,
+          12,
+          4
+        ],
+        "tg": 5
+      },
+      "out": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          2,
+          3,
+          240,
+          500,
+          0,
+          600,
+          12,
+          4
+        ],
+        "tg": 5
+      }
+    },
+    {
+      "name": "rs ohne tg wird 0",
+      "in": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "out": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "tg": 0
+      }
+    },
+    {
+      "name": "rs Zustand ausserhalb",
+      "in": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          7,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "out": null
+    },
+    {
+      "name": "rs falsche Laenge",
+      "in": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          1,
+          0,
+          0
+        ]
+      },
+      "out": null
+    },
+    {
+      "name": "rs geklemmt",
+      "in": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          1,
+          999,
+          99999,
+          9000000000,
+          -9000000000,
+          0,
+          1000000,
+          99
+        ],
+        "tg": 0
+      },
+      "out": {
+        "t": "rs",
+        "g": 1,
+        "q": [
+          1,
+          255,
+          36000,
+          5000,
+          -200,
+          0,
+          315,
+          9
+        ],
+        "tg": 0
+      }
+    }
+  ],
+  "s2c": {
+    "ra_claim": {
+      "t": "ra",
+      "c": 1,
+      "g": 1,
+      "tg": 1
+    },
+    "rs": {
+      "t": "rs",
+      "c": 1,
+      "g": 1,
+      "q": [
+        2,
+        3,
+        240,
+        500,
+        0,
+        600,
+        12,
+        0
+      ],
+      "tg": 1
+    },
+    "ra_release": {
+      "t": "ra",
+      "c": 0,
+      "g": 1,
+      "tg": 0
+    },
+    "wl_ra": {
+      "c": 0,
+      "g": 1,
+      "tg": 0
+    }
+  }
+}

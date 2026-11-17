@@ -185,7 +185,7 @@ export default {
         clearTimeout: (h) => clearTimeout(h),
         random: Math.random,
       },
-      hello: () => ({ cap: ['pres', 'chat', 'emote', 'admin'], f: flags(), cv: mp.cv }),
+      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'admin'], f: flags(), cv: mp.cv }),
       onMsg,
       onState,
     });
@@ -341,7 +341,7 @@ export default {
       peerName: (c) => peers.name(c),
       on,
       send: (msg) => send(msg),
-      physGate: () => true,
+      physGate: (b) => { const p = parts.find((x) => typeof x.gate === 'function'); try { return p ? p.gate(b) : true; } catch { return true; } },
       menu: () => ({ label: 'Mehrspieler …' }),
       renderMenu: (el) => panel.render(el),
       onChange: (fn) => { if (typeof fn !== 'function') return () => {}; changeFns.add(fn); return () => changeFns.delete(fn); },

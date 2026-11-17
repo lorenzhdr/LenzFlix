@@ -33,6 +33,8 @@ export const JUMP_BUF = 0.12;
 export const AIR_K = 3;
 /** Dauer des Hochziehens in Sekunden. */
 export const MANTLE_T = 0.28;
+/** Schubs-Stärke (Mehrspieler, 1.16.0): Faktor für Body.knock bei voller Stärke (pu.s = 100); nur Stoß, kein Schaden. */
+export const PUSH_KNOCK = 0.9;
 
 const y0Of = (q) => (q.y0 === undefined ? 0 : q.y0);
 const y1Of = (q) => (q.y1 === undefined ? Infinity : q.y1);
