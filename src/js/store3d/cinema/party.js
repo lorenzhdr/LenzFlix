@@ -93,6 +93,7 @@ export function createParty(o = {}) {
     if (timer) { ci(timer); timer = 0; }
     const n = netp();
     if (n && typeof n.setKino === 'function') get(() => n.setKino(false));
+    if (sync && typeof sync.dispose === 'function') { try { sync.dispose(); } catch (err) { warn('dispose', err); } }
     sync = null; sid = null; role = null; lastKx = null;
     info = { wait: false, unsynced: false };
   }

@@ -5,7 +5,7 @@ Cloudflare Worker, der aus dem Jellyfin-Plugin **Playback Reporting** serverweit
 Vertrag: [`../docs/charts-api.md`](../docs/charts-api.md).
 
 - Cron `0 * * * *` (stündlich) berechnet die Charts und schreibt sie in KV (`CHARTS`, Key `charts:v1`).
-- `GET /charts` (Header `X-Emby-Token`), `GET /health`, `POST /refresh` (Header `X-Refresh-Secret`).
+- `GET /charts` (Header `X-Emby-Token`), `GET /health`, `POST /refresh` (Header `X-Refresh-Secret`); Mehrspieler: `GET /mp/ticket`, `GET /mp` (siehe unten).
 
 ## Einrichtung (Schritt für Schritt)
 
@@ -36,6 +36,22 @@ Vertrag: [`../docs/charts-api.md`](../docs/charts-api.md).
 
 Konfiguration (Vars in `wrangler.jsonc`): `JELLYFIN_URL`, `ALLOWED_ORIGIN`, `WINDOW_DAYS` (1–365, Default 30),
 `MIN_SECONDS` (0–3600, Default 300). Ungültige Werte fallen auf den Default zurück.
+
+## Mehrspieler (VIDEOTHEK LENZ, ab 1.16.0)
+
+Derselbe Worker trägt die gemeinsame Welt der VIDEOTHEK: ein Durable Object `MpWorld` (eine Welt für alle, höchstens 16 Verbindungen). Vertrag: [`../docs/mp-api.md`](../docs/mp-api.md).
+
+- Routen: `GET /mp/ticket` (Header `X-Emby-Token`, liefert ein kurzlebiges, signiertes Ticket) und `GET /mp` (WebSocket-Upgrade mit den Subprotokollen `lfx-mp.1` und `t.<ticket>`, nur von `ALLOWED_ORIGIN` bzw. `MP_DEV_ORIGINS`).
+- Binding `WORLD` → Klasse `MpWorld`, Migration `mp1` (siehe `wrangler.jsonc`; den Tag `mp1` nie umbenennen). Das Durable Object nutzt SQLite-Speicher, der auch im Free-Plan verfügbar ist.
+- Vars (alle optional): `MP_MAX_CONN` (gleichzeitige Verbindungen, Default 16), `MP_DAILY_REQ` (Tageskontingent in Requests, Default 80000), `MP_DEV_ORIGINS` (zusätzliche erlaubte `https`-Origins für Tests, kommagetrennt, Default leer).
+- **Secret `MP_SECRET`** setzen (langer Zufallswert, mindestens 32 Zeichen), sonst bleibt der Mehrspieler aus (`/mp/ticket` antwortet 503, die VIDEOTHEK läuft wie bisher):
+  ```
+  npx wrangler secret put MP_SECRET -c wrangler.local.jsonc
+  ```
+  Ein Drehen des Secrets ändert alle Pseudonyme `k` der Spieler; lokale Stummschaltlisten und laufende Sperren (Kick) verfallen dadurch.
+- **Kill-Schalter:** Wird `MP_SECRET` entfernt (`npx wrangler secret delete MP_SECRET`), antwortet `/mp/ticket` mit 503, und das Durable Object schließt beim nächsten Alarm alle Verbindungen still.
+- **Free-Plan:** Ein Sparwächter zählt Requests pro UTC-Tag gegen `MP_DAILY_REQ`. Ab 60 % senkt er die Sende-Raten der Clients, ab 95 % nimmt er keine neuen Verbindungen mehr an (Close-Code 4503), bestehende laufen mit minimaler Rate weiter. Die VIDEOTHEK fällt dann still auf das Verhalten ohne Mehrspieler zurück.
+- Deploy wie oben (`npx wrangler deploy -c wrangler.local.jsonc`); die Migration `mp1` legt das Durable Object beim ersten Deploy an. Im Theme muss `chartsUrl` gesetzt sein; Hinweis zur CSP (`connect-src wss://…`) in der Haupt-README.
 
 ## Entwicklung
 

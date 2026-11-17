@@ -100,18 +100,70 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 17.11.2026 (1.15.0). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md` und `docs/tvmode.md`.
-- **In Arbeit: 1.16.0** auf `feature/v1.16.0` (Plan `.tmp/v116/plan.md`, Design `.tmp/v116/design/`, Vertrag `docs/mp-api.md`). Wellen: W0 Spiel-Steuerung 2.0 + Kino-Fix Hinsetzen (fertig, lokal committet; `controls/gametouch.js`, Messung `.tmp/verify/gp2-measure.mjs`, Emulation `.tmp/verify/w0-iphone-emu.mjs`), W1 Transport/Präsenz/Figuren (fertig, lokal committet, Worker-Teil a deployt und live mit zwei Tabs geprüft; Harness `/store-dev.html?mp=fake&bots=5` bzw. `?mp=off|nourl|404|503|drop`, Prüfskripte `.tmp/verify/w1-mp.mjs` und `.tmp/verify/w1-do-local.mjs` (wrangler dev lokal, 2 WS-Clients)), W2 Chat/Emotes/Liste/Admin (fertig, lokal committet; Prüfskript `.tmp/verify/w2-mp.mjs`, Harness `?mp=fake&bots=4&mpadmin=1`), W3 Schubsen/Physik/Richard/Wetter (fertig, lokal committet; Zwei-Seiten-Test `.tmp/verify/w3-two.mjs` über den Dev-Relay `build/mp-dev/relay.mjs` + `?mp=relay&relay=<port>&name=<N>`), W4 Kino-Sync (fertig, lokal committet; Uhrabgleich/Drift/Puffern `cinema/sync.js`, Adapter `cinema/party.js`, Worker `src/mp/kino.js` mit Notbremse `ANNOUNCE`; Zwei-Seiten-Test `.tmp/verify/w4-kino.mjs --label <x> [--mode private]` über den Dev-Relay), dann Abschluss. Nutzer testet am iPhone erst nach dem Release; lokale Commits pro Welle und Tunnel selbst erlaubt, Worker-Deploys für W2–W4 nach grüner Prüfung ohne Nachfrage erlaubt, `MP_SECRET` ist gesetzt. `lenzstore.min.js`-Warnschwelle darf auf 1,35 MB steigen (freigegeben).
-- **Version:** v1.15.0 (Tag `v1.15.0`, Branch `feature/v1.15.0` per Fast-Forward nach main; charts-worker unverändert, kein Deploy), 3209 Tests (336 Dateien), Lint und Build grün. Hauptbundle 496.995 B (Warnschwelle 507.904 B), TV-Modus-Engine 129.167 B von 131.072 B (`dist/lenztvmode.min.*` seit 1.14.0 byte-gleich, Basis-Hashes in `.tmp/v115/tv-base.sha256`), `lenzstore.min.js` 1.166.990 B (Soft-Budget 1,25 MB).
-- **Inhalt 1.15.0 (17.11.2026):**
-  - **LENZ LIVE entfernt** (Design, Engine-Teile, Hülle, CSS, `dist/lenzlive.*`, Harness; `docs/live.md` → geteilte Verträge in `docs/tvmode.md`). Geteilter TV-Unterbau umbenannt: `src/js/live` → `src/js/tv`, `features/live` → `features/tvdata`. Gespeichertes `live` migriert einmalig auf das früher gemerkte Design (`core/theme.js`), Senderbelegung `tvChannels`/`--lfx-tv-channels` mit Rückfall auf die alten Namen.
-  - **VIDEOTHEK als Open World** (Vertrag `docs/store3d.md` „Open World (1.15.0)“): Höhen-Kollision mit Sprung/Hochziehen (`nav/collide.js`, `controls/body.js`), Tragen von Hüllen, Desktop Space/F/G/M, Handy-Schema `game` als Standard; Block mit Kreuzung (`world/city.js`, `build-city*.js`), Auto-Tür, LENZ PALAST mit Programm, Ticket und 2D-Kino (Leinwand mit echtem Jellyfin-`<video>`, Vollbild ↔ „Zurück ins Kino“, Tastenwächter, Rückfall), Richard wehrt sich bis zum Hausverbot (`modules/brawl.js`, Rückfall-Rauswurf nach 12 s), Ausleihen/Diebstahlsicherung, Physik/Werfen/Korb, Passanten/Katze/Tauben/Personal/Kiosk/Autos mit Ampeln, 15 Entdeckungen. VR: Stadt begehbar, kein Sprung/Schlagen/Werfen, Palast-Sitz startet das VR-Kino.
-  - Geprüft: Integrations-QA (6 Tester, 43 Befunde behoben und nachgeprüft), Abschluss-Review (9 bestätigte Befunde behoben), Harness (Headless, auch 390 px/Touch-Emulation, VR-Emulator 15/15), live im Jellyfin-Tab über Tunnel (Palast-Film inkl. Weiterschauen, Vollbild/Zurück, Platzwechsel, Jellyfin-Zurück, Richard bis Hausverbot, TV-Modus).
-  - Arbeitsdateien (gitignored): `.tmp/v115/` (Spezifikationen, QA-Befunde, Skripte, Screenshots).
-- **Ältere Stände (Details in Git und Verträgen):** 1.14.0 Gesamt-Audit (gut 400 Befunde behoben, Testliste vom Nutzer erledigt); 1.13.x LENZFLIX-Seiten Serien/Filme/Meine Liste, Datensparmodus auch retro, Geheimmenü, LENZ//84-TV-Modus; 1.12.0 Datensparmodus; 1.11.x Vorwärmen/Vorladen, Startseiten-Cache, Fehlercodes/Rückfallkette im Player; 1.10.x TV-Modus, Ladebild, Player-Bildmitte; 1.9.x Röhren-Geräte und VR-Kino.
+Stand 17.11.2026 (1.16.0). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
+- **Version:** v1.16.0 auf `feature/v1.16.0`, lokal committet. Push, Tag `v1.16.0` und Fast-Forward nach main erst nach Freigabe des Nutzers.
+  - charts-worker deployt (Mehrspieler-DO `MpWorld`, Migration `mp1`); `MP_SECRET` ist gesetzt.
+  - Tests: 3737 Root-Tests (361 Dateien) und 351 Worker-Tests; Lint und Build grün.
+  - Hauptbundle 499.367 B.
+  - TV-Modus-Engine seit 1.14.0 byte-gleich; Basis-Hashes in `.tmp/v115/tv-base.sha256`.
+  - `lenzstore.min.js` 1.289.420 B (Warnschwelle 1,35 MB, freigegeben).
+- **Inhalt 1.16.0:**
+  - **Spiel-Steuerung 2.0**
+    - Touch-Schema `game` in `controls/gametouch.js`; `ui/gamepad.js` ist eine reine Ansicht.
+    - Ruhe-Stick; Rollen-Slots mit Abgleich gegen `e.touches`.
+    - Gate on/parked/off; Durchziehen; Zoom-Knopf.
+    - Eigenes Hoch- und Querformat; Diagnosezeile.
+    - Dazu der Kino-Fix: Wiederhinsetzen startet den Film nicht neu.
+  - **Mehrspieler** (Vertrag `docs/mp-api.md`, Doku `docs/store3d.md` „Mehrspieler (1.16.0)“)
+    - Worker in `charts-worker/src/mp/*`: Ticket, Route und das DO als dünne Hülle um den reinen Reducer `room.js` mit `chat`, `phys`, `rich` und `kino`.
+    - Client in `store3d/net/*` mit dem Provider `net`; Hülle `features/store/mp.js`.
+    - Figuren, Chat, Emote-Rad, Spielerliste, Stummschalten, Admin-Kick.
+    - Synchrone Physik; Richard und Wetter gemeinsam; in VR sehen und Chat lesen.
+  - **Gemeinsames Kino**
+    - Kern in `cinema/sync.js` und `cinema/party.js`; Bridge mit `setPaused`, `seekTo` und `mode`.
+    - Totband 300 ms. Die Ratenkorrektur setzt ab dem festen Totband ein, der Landefehler weitet nur das Sprungband.
+  - **Live-Befunde (behoben)**
+    - Cloudflare kappte Workers-WebSockets nach genau 5 s ohne Servernachricht. Deshalb pingt der Client jetzt alle 3 s (Memory `cloudflare-ws-idle-cut`).
+    - Nach dem Spulen blieben 1,3 s Abstand stehen.
+    - Die Sturmgrenze zählte auch stabile Verbindungen mit.
+    - Ohne Verbindung bot die Platzwahl veraltete Angebote an.
+  - **Abschluss-Review:** 4 bestätigte Befunde behoben.
+    - Physik-Besitz höchstens 16 Einträge je Verbindung.
+    - Host der Schilder und Blasen wird dynamisch ermittelt.
+    - Toggle bei lokal gehaltenem Player.
+    - Die Rate wird beim Sitzungsende zurückgesetzt.
+  - **Geprüft:**
+    - Harness headless: `gp2-measure` mit 4 Viewports, iPhone-Emulation, `w1`- bis `w4`-Skripte über den Dev-Relay.
+    - Lokaler DO-Test.
+    - Live mit zwei Desktop-Tabs desselben Kontos am echten Worker: Präsenz, Mitschauen, Pause, Spulen, Aufstehen, Verbindung länger als 3 min.
+  - Arbeitsdateien (gitignored): `.tmp/v116/` mit Plan, Design, Wellen-Reports und `review-final.json`.
+- **Ältere Stände (Details in Git und Verträgen):**
+  - 1.15.0: LENZ LIVE entfernt; VIDEOTHEK als Open World mit LENZ PALAST (Vertrag „Open World (1.15.0)“).
+  - 1.14.0: Gesamt-Audit, gut 400 Befunde behoben; Testliste vom Nutzer erledigt.
+  - 1.13.x: LENZFLIX-Seiten Serien, Filme und Meine Liste; Datensparmodus auch retro; Geheimmenü; LENZ//84-TV-Modus.
+  - 1.12.0: Datensparmodus.
+  - 1.11.x: Vorwärmen und Vorladen, Startseiten-Cache, Fehlercodes und Rückfallkette im Player.
+  - 1.10.x: TV-Modus, Ladebild, Player-Bildmitte.
+  - 1.9.x: Röhren-Geräte und VR-Kino.
 - **Offen:**
-  - Gerätetests 1.15.0 (Testliste als privates Artifact): iPhone-Safari (Spiel-Steuerung, Leinwand-Textur im Palast – Rückfall auf Vollbild erwartet –, Wisch-Trick, Safe-Area), Android, VR-Brille (Stadt begehen, Palast-Sitz → VR-Kino), LG-TV (TV-Modus unverändert).
-  - Mehrspieler kommt als 1.16.0: Durable Object mit WebSocket im charts-worker (Token-Prüfung `resolveUid` existiert), sichtbar Figur + Name + gehaltenes Cover + Film im Kino (abschaltbar), gemeinsam Kino (SyncPlay), Emotes, Text-Chat, Schubsen/Werfen. Vorbereitet: `Body.getNetState/applyRemote`, `npc/figure.js`, Palast `getNetState`.
+  - **Gerätetests 1.16.0** (Testliste als privates Artifact; sie ersetzt die Liste von 1.15.0).
+    - iPhone: Spiel-Steuerung hoch und quer, Wisch-Trick.
+    - Palast-Kino, schon aus 1.15.0 offen.
+    - Mehrspieler und gemeinsames Kino mit Desktop und iPhone (selbes Konto).
+    - VR.
+    - Admin-Kick, Rechte-Filter und Stummschalten sind nur im Harness geprüft, weil es kein zweites Konto gibt.
+  - **Beobachten:**
+    - Ob das Cloudflare-Idle-Kappen dauerhaft ist.
+    - Free-Kontingent im Dashboard an Tag 1 und Tag 7. Der Ping alle 3 s kostet bis etwa 60 Requests pro Spielerstunde.
+  - **Zurückgestellt (1.16.0):**
+    - Rejoin ohne Flackern.
+    - Ein schlafender Remote-Körper drückt den Spieler heraus.
+    - Stummschalten, wenn der Absender schon weg ist.
+    - Filmende serverseitig in `kino.js`.
+    - `Bridge.mode()` liefert nie `'other'`.
+    - Die `hi`-Frist greift erst bei der nächsten Nachricht oder beim nächsten Alarm.
+    - Entzogene Admin-Rechte gelten bis etwa 25 min weiter (Cache).
+    - Ein Neuladen über den Dev-Loader mitten im Film lässt den Jellyfin-Player stehen (nur Dev).
   - Zurückgestellt (1.15.0): `navBlocks` für Palast-Stufen (Saal im Nav-Raster gesperrt, nur für Pfade relevant); Draw-Calls bei `low` an der 140er-Grenze; kleine Doppelungen (mulberry32/FNV/clamp-Kopien) im 3D-Bundle, Rest-Export `FAIL_TEXT` und Re-Export der Physik-Konstanten in `world/city.js` (Entfernen ändert die Minifier-Namen); Richard: steht der Spieler direkt am Tresen, schiebt `driveDir` ihn live nach Norden statt um den Tresen zur Tür, der Rauswurf kommt dann über den Rückfall nach 12 s (Abblende) – Pfadpunkte nahe am Start überspringen.
   - Ideen (aus dem Audit 1.14.0): VIDEOTHEK Umsehen/Nehmen per Tastatur ohne Maus, Mittelregal-Stirnseite nur Holz, Hinweis am Reservierungsfach veraltet, VR-Knopf liest nie definiertes `--lfx-store-safe-bottom`; Design-Picker Pfeiltasten/Home/End; LENZFLIX „Z–A“ auch auf Meine Liste, Startseiten-Zeile „Meine Liste“ erst nach Neuaufruf aktuell; `core/download.js` schickt `ApiKey` in der Query; LENZ+ Hero reagiert nur beim Aufbau auf den Datensparmodus, Posterreihe ohne Scrollbar; LENZ//84 Altlast `tab=1`; Statistik-Seite Login-Fehlermeldung bleibt stehen.
   - Beobachten: kurzzeitige Server-503 beim ersten Boot (Startseite leer); HDR-Titel am iPhone (zurückgestellt); V-SUB; VR-Kino „erst beim zweiten Mal“ (nur aus Code hergeleitet). TV-Modus live ungetestet: Ton-/Untertitelwechsel, Gesehen-Regel, iPhone-PiP/Autostart, Dauerbetrieb.
@@ -119,3 +171,4 @@ Stand 17.11.2026 (1.15.0). Bei jedem Release aktualisieren, knapp halten. Vertr�
 - **Weitermachen:**
   - Worktree-Arbeit: Worktrees manuell aus dem Feature-Branch anlegen (`git worktree add .tmp/wt/<name> -b <name> <branch>`, dort `npm ci`). Workflow-Worktrees (`isolation`) zweigen von main ab und nutzen eine `node_modules`-Junction – `git worktree remove` leert dann das `node_modules` des Hauptprojekts (`npm ci` stellt es wieder her). Kein `git stash` in Worktrees (repo-weit geteilt).
   - Headless-Prüfung: `.tmp/verify/lib.mjs`, QA-Skripte unter `.tmp/v115/qa/`, Harness-Parameter im Kopf von `build/store-dev.js`.
+  - Mehrspieler prüfen: Prüfskripte `.tmp/verify/w0-iphone-emu.mjs`, `gp2-measure.mjs`, `w1-mp.mjs`, `w2-mp.mjs`, `w3-two.mjs`, `w4-kino.mjs` (Dev-Relay `build/mp-dev/relay.mjs` mit echtem Reducer), lokal das DO mit `w1-do-idle.mjs`/`w4-do-idle-all.mjs` (wrangler dev). Live im Claude-Tab: vor dem Klick in die Szene die Pointer-Lock-Attrappe aus `lib.mjs` einspritzen, Abbrüche per WebSocket-Hook analysieren (Close-Zeit gegen letzte Nachricht). `MP_SECRET` nie für Diagnosen drehen (ändert alle Pseudonyme).

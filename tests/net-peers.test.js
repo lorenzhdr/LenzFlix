@@ -410,4 +410,24 @@ describe('heldcover / tags (Einzelfälle)', () => {
     expect(dom.querySelectorAll('.lfx-mp-tag').length).toBe(0);
     tags.dispose();
   });
+
+  it('tags: nach Umhängen der Canvas landen neue und bestehende Schilder im neuen Host', () => {
+    const dom1 = document.createElement('div');
+    const dom2 = document.createElement('div');
+    Object.defineProperty(dom2, 'clientWidth', { value: 400 });
+    Object.defineProperty(dom2, 'clientHeight', { value: 300 });
+    const canvas = document.createElement('canvas');
+    dom1.appendChild(canvas);
+    const ctx = { renderer: { domElement: canvas }, camera: new PerspectiveCamera(), isTouch: false, xr: { presenting: () => false } };
+    const tags = createTags(ctx);
+    const a = fakeFigure({});
+    const b = fakeFigure({});
+    tags.sync([{ c: 1, fig: a, text: 'Max', dist: 5 }], { tagDist: 16 });
+    expect(dom1.querySelectorAll('.lfx-mp-tag').length).toBe(1);
+    dom2.appendChild(canvas); // Resume: Canvas wandert in die neue Bühne
+    tags.sync([{ c: 1, fig: a, text: 'Max', dist: 5 }, { c: 2, fig: b, text: 'Eva', dist: 5 }], { tagDist: 16 });
+    expect(dom2.querySelectorAll('.lfx-mp-tag').length).toBe(2);
+    expect(dom1.querySelectorAll('.lfx-mp-tag').length).toBe(0);
+    tags.dispose();
+  });
 });

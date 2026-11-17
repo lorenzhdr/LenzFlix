@@ -390,6 +390,22 @@ describe('Absichtstabelle, CAS, Echo, Toggle', () => {
     expect(R.of('kc')).toHaveLength(2);
     expect(R.of('kc')[1]).toMatchObject({ v: v + 1, o: 1 });
   });
+  it('Toggle bei lokal gehaltenem Player (Sitzung läuft): nur lokal fortsetzen, kein kc, danach synchron', () => {
+    const R = joined();
+    R.advance(3000);
+    R.sync.suppress(10000); // lokaler Eingriff, nicht als Nutzerpause werten
+    R.P.paused = true; // z. B. iOS-Sperre: lokal gehalten, Sitzung läuft
+    R.advance(3000);
+    const kc = R.of('kc').length;
+    R.calls.length = 0;
+    expect(R.sync.toggle()).toBe(true);
+    expect(R.of('kc')).toHaveLength(kc);
+    expect(R.calls).toContainEqual(['pause', false]);
+    expect(R.P.paused).toBe(false);
+    R.advance(8000);
+    expect(R.of('kc')).toHaveLength(kc);
+    expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(500);
+  });
   it('Toggle nach fremder Pause setzt fort, nicht noch einmal Pause', () => {
     const R = joined();
     R.advance(3000);

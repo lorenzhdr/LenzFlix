@@ -10,6 +10,7 @@ import { take } from './limits.js';
 
 export const cap = ['phys', 'push'];
 export const MAX_ENTRIES = 64;
+export const MAX_OWN = 16; // Nicht-Spawn-Einträge je Verbindung (Client hält höchstens 6 Hüllen + wenige angestoßene Requisiten)
 export const HOLD_MS = 250; // Haltezeit nach einer Vergabe gegen Flattern
 export const MAX_SPAWNS = 4; // geworfene Hüllen je Werfer
 export const PUSH_RANGE = 350; // cm im Netzrahmen (3,5 m, horizontal)
@@ -41,6 +42,15 @@ function release(cx, ph, i, e) {
   emitPo(cx, i, e);
 }
 
+// Vor einem neuen Eintrag: besitzt c schon MAX_OWN Nicht-Spawn-Einträge, wird der älteste (kleinstes t) freigegeben.
+function capOwn(cx, ph, c) {
+  const own = Object.entries(ph.tab).filter(([i, e]) => e.o === c && !isSpawnId(i));
+  if (own.length < MAX_OWN) return;
+  let best = own[0];
+  for (const x of own) if (x[1].t < best[1].t) best = x;
+  release(cx, ph, best[0], best[1]);
+}
+
 // Platz schaffen: ältester freier Eintrag. false, wenn alles belegt ist.
 function makeRoom(ph) {
   if (size(ph) < MAX_ENTRIES) return true;
@@ -61,7 +71,9 @@ const handlers = {
     const now = cx.now;
     let e = ph.tab[m.i];
     if (!e) {
-      if (isSpawnId(m.i) || !makeRoom(ph)) { cx.sendTo(p.c, { t: 'er', c: 'deny', y: 'pc' }); return; }
+      if (isSpawnId(m.i)) { cx.sendTo(p.c, { t: 'er', c: 'deny', y: 'pc' }); return; }
+      capOwn(cx, ph, p.c);
+      if (!makeRoom(ph)) { cx.sendTo(p.c, { t: 'er', c: 'deny', y: 'pc' }); return; }
       e = ph.tab[m.i] = { o: p.c, g: 1, at: now, t: now, last: null };
       emitPo(cx, m.i, e);
       return;
@@ -91,7 +103,9 @@ const handlers = {
       let e = ph.tab[i];
       if (!e) {
         // Nach Hibernation/Kaltstart ist die Tabelle leer: ein weiterlaufender Besitzer übernimmt still wieder (kein bekannter Besitzer).
-        if (isSpawnId(i) || en[1] < 1 || !makeRoom(ph)) continue;
+        if (isSpawnId(i) || en[1] < 1) continue;
+        capOwn(cx, ph, p.c);
+        if (!makeRoom(ph)) continue;
         e = ph.tab[i] = { o: p.c, g: en[1], at: now, t: now, last: null };
         emitPo(cx, i, e);
       }

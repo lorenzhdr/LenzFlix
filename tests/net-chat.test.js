@@ -156,6 +156,21 @@ describe('Blasen über Fremdfiguren', () => {
     expect(t.host.querySelectorAll('.lfx-mp-say').length).toBe(0);
   });
 
+  it('nach Umhängen der Canvas landen neue und bestehende Blasen im neuen Host', () => {
+    const t = mkCtx();
+    const host2 = document.createElement('div');
+    document.body.appendChild(host2);
+    const b = createBubbles(t.ctx);
+    b.say(2, () => fig(0, 1.7, -5), 'alt', 5000);
+    expect(t.host.querySelectorAll('.lfx-mp-say').length).toBe(1);
+    host2.appendChild(t.ctx.renderer.domElement);
+    b.say(3, () => fig(0, 1.7, -5), 'neu', 5000);
+    b.update(0.1);
+    expect(host2.querySelectorAll('.lfx-mp-say').length).toBe(2);
+    expect(t.host.querySelectorAll('.lfx-mp-say').length).toBe(0);
+    b.dispose();
+  });
+
   it('ohne Figur ruht die Blase, VR nutzt die 3D-Blase und kein DOM', () => {
     const t = mkCtx();
     const b = createBubbles(t.ctx);

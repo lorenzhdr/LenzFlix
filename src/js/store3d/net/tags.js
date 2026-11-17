@@ -9,7 +9,7 @@ import { Vector3 } from 'three';
 const tmp = new Vector3();
 
 export function createTags(ctx) {
-  const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
+  const host = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
   const tags = new Map(); // c → { el, fig, text, dom (aktiv), name3d }
   const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
 
@@ -23,7 +23,8 @@ export function createTags(ctx) {
     el.style.top = '0';
     el.style.pointerEvents = 'none';
     el.style.whiteSpace = 'nowrap';
-    if (host) host.appendChild(el);
+    const h = host();
+    if (h) h.appendChild(el);
     return el;
   }
   function untag3d(t) {
@@ -55,6 +56,7 @@ export function createTags(ctx) {
         if (!t) { t = { el: makeEl(), fig: it.fig, text: '', dom: false, name3d: '' }; tags.set(it.c, t); }
         if (t.fig !== it.fig) { untag3d(t); t.fig = it.fig; }
         seen.add(it.c);
+        { const hs = host(); if (hs && t.el.parentNode !== hs) hs.appendChild(t.el); }
         if (xr) {
           t.dom = false;
           t.el.hidden = true;
@@ -74,8 +76,10 @@ export function createTags(ctx) {
     update() {
       if (xrOn()) return;
       const cam = ctx.camera;
+      const hs = host();
       for (const t of tags.values()) {
         if (!t.dom) continue;
+        if (hs && t.el.parentNode !== hs) hs.appendChild(t.el);
         const h = t.fig;
         if (!h || h.disposed || !h.root.visible) { t.el.hidden = true; continue; }
         h.headWorld(tmp);
@@ -83,9 +87,9 @@ export function createTags(ctx) {
         tmp.project(cam);
         const on = tmp.z < 1 && Math.abs(tmp.x) < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;
         t.el.hidden = !on;
-        if (on && host) {
-          const w = host.clientWidth || window.innerWidth;
-          const hh = host.clientHeight || window.innerHeight;
+        if (on && hs) {
+          const w = hs.clientWidth || window.innerWidth;
+          const hh = hs.clientHeight || window.innerHeight;
           t.el.style.transform = `translate(${((tmp.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-tmp.y * 0.5 + 0.5) * hh).toFixed(1)}px) translate(-50%, -100%)`;
         }
       }
@@ -110,7 +114,7 @@ const SAY_HEAR = 16;
 const SAY_RISE = 0.5; // VR: Meter über dem Kopf (über dem 3D-Schild)
 
 export function createBubbles(ctx, o = {}) {
-  const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
+  const host = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
   const hear = o.hear || SAY_HEAR;
   const poolMax = o.pool || SAY_POOL;
   const slots = new Map(); // c → { el, txt, getFig, text, left, b3d }
@@ -125,7 +129,8 @@ export function createBubbles(ctx, o = {}) {
     el.style.left = '0';
     el.style.top = '0';
     el.style.pointerEvents = 'none';
-    if (host) host.appendChild(el);
+    const h = host();
+    if (h) h.appendChild(el);
     return { el, getFig: null, text: '', left: 0, b3d: null };
   }
   function free(c) {
@@ -136,6 +141,8 @@ export function createBubbles(ctx, o = {}) {
     slots.delete(c);
   }
   function place(s) {
+    const hs = host();
+    if (hs && s.el.parentNode !== hs) hs.appendChild(s.el);
     let fig;
     try { fig = s.getFig ? s.getFig() : null; } catch { fig = null; }
     if (!fig || fig.disposed || !fig.root || !fig.root.visible) { s.el.hidden = true; if (s.b3d) s.b3d.hide(); return; }
@@ -155,9 +162,9 @@ export function createBubbles(ctx, o = {}) {
     tmp.project(cam);
     const on = tmp.z < 1 && Math.abs(tmp.x) < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;
     s.el.hidden = !on;
-    if (on && host) {
-      const w = host.clientWidth || window.innerWidth;
-      const hh = host.clientHeight || window.innerHeight;
+    if (on && hs) {
+      const w = hs.clientWidth || window.innerWidth;
+      const hh = hs.clientHeight || window.innerHeight;
       s.el.style.transform = `translate(${((tmp.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-tmp.y * 0.5 + 0.5) * hh).toFixed(1)}px) translate(-50%, -100%) translateY(-26px)`;
     }
   }

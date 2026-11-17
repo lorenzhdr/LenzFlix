@@ -345,6 +345,22 @@ describe('party: Mitschauen', () => {
     expect(b.toasts.at(-1)).toMatch(/getrennt/);
     expect(b.net.kinds('ks')).toHaveLength(0);
   });
+
+  it('Sitzungsende per wl setzt die Ratenkorrektur zurück', () => {
+    const b = mkParty();
+    const t0 = clock;
+    b.party.join(7, ITEM);
+    b.party.beginRun(ITEM);
+    b.net.emit('msg:kx', kx({ st: 1, v: 2, p: 0, at: t0, m: [9, 1] }));
+    b.party.onPlaying(ITEM);
+    adv(3000);
+    b.bridge.v.currentTime = (clock - t0 + 1000) / 1000; // 1 s voraus: Ratenband
+    adv(500);
+    expect(b.bridge.v.playbackRate).not.toBe(1);
+    b.net.emit('msg:wl', { t: 'wl', kh: [] });
+    expect(b.party.active).toBe(false);
+    expect(b.bridge.v.playbackRate).toBe(1);
+  });
 });
 
 describe('bar2d: Chat-Zeile und Gruppentext', () => {

@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.15.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.16.0/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.15.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.16.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -46,7 +46,7 @@ window.LenzFlixConfig = Object.assign(window.LenzFlixConfig || {}, {
 
 ### 4. Reverse-Proxy mit CSP
 
-Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
+Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig. Für den Mehrspieler der VIDEOTHEK LENZ (siehe unten) muss zusätzlich `connect-src` die Adresse des Charts-Workers als `wss://<charts-url>` erlauben (neben `https://<charts-url>`, das für die Charts schon nötig ist).
 
 ## Designs
 
@@ -91,7 +91,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.15.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.16.0/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -107,6 +107,14 @@ Die Videothek steht in einer kleinen Stadt: Durch die Tür geht es auf die Stra�
 - **Richard, Ausleihen, Physik:** Wer Richard schlägt, bekommt Ärger; mit Hausverbot bleibt die Tür eine Weile zu. Hüllen lassen sich an der Kasse ausleihen, Bälle, Dosen und Kisten rollen, kippen und lassen sich schlagen und werfen. Im Hof hängt ein Basketballkorb.
 - **Entdeckungen:** Überall sind 15 Kleinigkeiten versteckt. Das Pause-Menü zeigt, wie viele schon gefunden sind, und gibt Hinweise ohne die Lösung zu verraten. Der Stand wird pro Browser gespeichert.
 - **Hinweise:** Beim Neuladen steht man wieder an der letzten Position (auch in der Stadt); ist die Stelle ungültig oder belegt, geht es zum nächsten freien Punkt in der Nähe, sonst in den Laden. Auf schwachen Geräten helfen „Qualität“ im Pause-Menü und ein kleinerer Datenumfang (Hüllen „Normal“).
+
+### Mehrspieler (Beta, VIDEOTHEK LENZ)
+
+Alle Nutzer eines Servers laufen in derselben Videothek: Man sieht andere Figuren mit ihrem Jellyfin-Namen („N hier“ in der Anzeige, Spielerliste im Esc-Menü), kann chatten (Enter am PC, Knopf am Handy), mit dem Emote-Rad (`T` bzw. Knopf) Gesten zeigen und Bälle, Dosen, Tonnen und Hüllen gemeinsam schubsen und werfen. Richard und das Wetter sind für alle gleich; ein Hausverbot trifft nur den Täter. Im **LENZ PALAST** kann man am Platz „Mitschauen“ wählen oder einen eigenen Film starten; jeder schaut über das eigene Konto (eigenes Weiterschauen), alle dürfen pausieren und spulen. Private Filme werden nicht angeboten, und Cover oder Titel erscheinen nur, wenn sie in der eigenen Bibliothek liegen, sonst als neutrale Hülle. Höchstens 16 Verbindungen gleichzeitig. Am Handy ist die Spiel-Steuerung neu: Ruhe-Stick links (springt unter den Daumen), rechts überall wischen, Zoom per Knopf, eigenes Hoch- und Querformat. Stummschalten ist lokal, Administratoren können Spieler für 10 Minuten entfernen.
+
+- **Standardmäßig an**, im Esc-Menü unter „Mehrspieler …“ abschaltbar (auch Name, Chat und „Mein Film für andere sichtbar“, Standard aus). Beim ersten Mal erscheint ein einmaliger Hinweis.
+- **Voraussetzung:** der Charts-Worker mit Durable Object und dem Secret `MP_SECRET` (Einrichtung in [`charts-worker/README.md`](charts-worker/README.md)) und gesetzter `chartsUrl`. Ohne ihn, bei einer älteren Worker-Version oder bei Störungen verhält sich die VIDEOTHEK wie bisher.
+- **CSP:** Wer eine Content-Security-Policy setzt, muss `connect-src` für `wss://<charts-url>` erlauben (siehe „Reverse-Proxy mit CSP“).
 
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 
@@ -177,7 +185,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.15.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.16.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;

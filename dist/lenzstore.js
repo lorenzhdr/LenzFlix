@@ -52348,7 +52348,7 @@ void main() {
   // src/js/store3d/net/tags.js
   var tmp2 = new Vector3();
   function createTags(ctx) {
-    const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
+    const host = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
     const tags = /* @__PURE__ */ new Map();
     const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
     function makeEl() {
@@ -52361,7 +52361,8 @@ void main() {
       el4.style.top = "0";
       el4.style.pointerEvents = "none";
       el4.style.whiteSpace = "nowrap";
-      if (host) host.appendChild(el4);
+      const h2 = host();
+      if (h2) h2.appendChild(el4);
       return el4;
     }
     function untag3d(t) {
@@ -52403,6 +52404,10 @@ void main() {
             t.fig = it.fig;
           }
           seen.add(it.c);
+          {
+            const hs = host();
+            if (hs && t.el.parentNode !== hs) hs.appendChild(t.el);
+          }
           if (xr) {
             t.dom = false;
             t.el.hidden = true;
@@ -52428,8 +52433,10 @@ void main() {
       update() {
         if (xrOn()) return;
         const cam = ctx.camera;
+        const hs = host();
         for (const t of tags.values()) {
           if (!t.dom) continue;
+          if (hs && t.el.parentNode !== hs) hs.appendChild(t.el);
           const h2 = t.fig;
           if (!h2 || h2.disposed || !h2.root.visible) {
             t.el.hidden = true;
@@ -52440,9 +52447,9 @@ void main() {
           tmp2.project(cam);
           const on = tmp2.z < 1 && Math.abs(tmp2.x) < 1.05 && tmp2.y > -1.05 && tmp2.y < 1.05;
           t.el.hidden = !on;
-          if (on && host) {
-            const w = host.clientWidth || window.innerWidth;
-            const hh = host.clientHeight || window.innerHeight;
+          if (on && hs) {
+            const w = hs.clientWidth || window.innerWidth;
+            const hh = hs.clientHeight || window.innerHeight;
             t.el.style.transform = `translate(${((tmp2.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-tmp2.y * 0.5 + 0.5) * hh).toFixed(1)}px) translate(-50%, -100%)`;
           }
         }
@@ -52468,7 +52475,7 @@ void main() {
   var SAY_HEAR = 16;
   var SAY_RISE = 0.5;
   function createBubbles2(ctx, o = {}) {
-    const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
+    const host = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
     const hear = o.hear || SAY_HEAR;
     const poolMax = o.pool || SAY_POOL;
     const slots = /* @__PURE__ */ new Map();
@@ -52482,7 +52489,8 @@ void main() {
       el4.style.left = "0";
       el4.style.top = "0";
       el4.style.pointerEvents = "none";
-      if (host) host.appendChild(el4);
+      const h2 = host();
+      if (h2) h2.appendChild(el4);
       return { el: el4, getFig: null, text: "", left: 0, b3d: null };
     }
     function free(c) {
@@ -52500,6 +52508,8 @@ void main() {
       slots.delete(c);
     }
     function place2(s) {
+      const hs = host();
+      if (hs && s.el.parentNode !== hs) hs.appendChild(s.el);
       let fig;
       try {
         fig = s.getFig ? s.getFig() : null;
@@ -52531,9 +52541,9 @@ void main() {
       tmp2.project(cam);
       const on = tmp2.z < 1 && Math.abs(tmp2.x) < 1.05 && tmp2.y > -1.05 && tmp2.y < 1.05;
       s.el.hidden = !on;
-      if (on && host) {
-        const w = host.clientWidth || window.innerWidth;
-        const hh = host.clientHeight || window.innerHeight;
+      if (on && hs) {
+        const w = hs.clientWidth || window.innerWidth;
+        const hh = hs.clientHeight || window.innerHeight;
         s.el.style.transform = `translate(${((tmp2.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-tmp2.y * 0.5 + 0.5) * hh).toFixed(1)}px) translate(-50%, -100%) translateY(-26px)`;
       }
     }
@@ -63975,6 +63985,16 @@ void main() {
         return userSt(1);
       },
       toggle() {
+        if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight) {
+          const obs = obsNow();
+          if (obs && obs.paused) {
+            const now = nowFn();
+            doPause(false, now);
+            const erw = expectedPos(S.sess, now);
+            if (Math.abs(num4(obs.t) - erw) > dead()) doSeek(erw + lead(), now);
+            return true;
+          }
+        }
         return userSt(effSt() === 1 ? 2 : 1);
       },
       seek(ms) {
@@ -64009,6 +64029,11 @@ void main() {
         const t = now + num4(ms, cfg.GUARD_MS);
         S.guardUntil = Math.max(S.guardUntil, t);
         S.applyUntil = Math.max(S.applyUntil, t);
+      },
+      /** Sitzung lokal verwerfen (Aufrufer baut sie ab): Rate zurück, kein kl. */
+      dispose() {
+        resetRate();
+        S.phase = "ended";
       },
       localEnded() {
         if (!inactive()) {
@@ -64312,6 +64337,13 @@ void main() {
       }
       const n = netp();
       if (n && typeof n.setKino === "function") get(() => n.setKino(false));
+      if (sync && typeof sync.dispose === "function") {
+        try {
+          sync.dispose();
+        } catch (err) {
+          warn16("dispose", err);
+        }
+      }
       sync = null;
       sid = null;
       role = null;

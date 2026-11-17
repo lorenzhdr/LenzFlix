@@ -238,7 +238,20 @@ export function createSync(o = {}) {
     // Nutzeraktionen (Leiste, Tastenwächter, VR-Panel): optimistisch lokal, dann absoluter Zielzustand per kc.
     pause() { return userSt(2); },
     play() { return userSt(1); },
-    toggle() { return userSt(effSt() === 1 ? 2 : 1); },
+    toggle() {
+      // Sitzung läuft, nur der eigene Player ist gehalten (z. B. iOS-Sperre): lokal fortsetzen, die Gruppe nicht pausieren.
+      if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight) {
+        const obs = obsNow();
+        if (obs && obs.paused) {
+          const now = nowFn();
+          doPause(false, now);
+          const erw = expectedPos(S.sess, now);
+          if (Math.abs(num(obs.t) - erw) > dead()) doSeek(erw + lead(), now);
+          return true;
+        }
+      }
+      return userSt(effSt() === 1 ? 2 : 1);
+    },
     seek(ms) {
       if (inactive() || !S.sess) return false;
       const now = nowFn();
@@ -269,6 +282,8 @@ export function createSync(o = {}) {
       S.guardUntil = Math.max(S.guardUntil, t);
       S.applyUntil = Math.max(S.applyUntil, t);
     },
+    /** Sitzung lokal verwerfen (Aufrufer baut sie ab): Rate zurück, kein kl. */
+    dispose() { resetRate(); S.phase = 'ended'; },
     localEnded() { if (!inactive()) { resetRate(); S.phase = 'ended'; } },
     leave() {
       if (inactive()) return;

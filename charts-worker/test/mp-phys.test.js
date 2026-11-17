@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createState, step, SERVER_CAPS } from '../src/mp/room.js';
 import { V } from '../src/mp/protocol.js';
 import { LIMITS } from '../src/mp/limits.js';
-import { HOLD_MS, MAX_ENTRIES, MAX_SPAWNS, IDLE_OWNER_MS, SPAWN_TTL_MS } from '../src/mp/phys.js';
+import { HOLD_MS, MAX_ENTRIES, MAX_OWN, MAX_SPAWNS, IDLE_OWNER_MS, SPAWN_TTL_MS } from '../src/mp/phys.js';
 
 const GOLDEN = new URL('./fixtures/mp-golden/phys.json', import.meta.url);
 const NOW0 = 1_700_000_000_000;
@@ -122,17 +122,19 @@ describe('mp-phys: Besitz', () => {
     const w = world();
     const a = w.join('a', 'Anna');
     const b = w.join('b', 'Ben');
-    for (let k = 0; k < MAX_ENTRIES; k++) w.msg(k % 2 ? a : b, [PC('o' + k)], 120);
+    const cs = [a, b, w.join('c', 'Cleo'), w.join('d', 'Dora')]; // je MAX_OWN (16) -> 64 Eintraege
+    for (let k = 0; k < MAX_ENTRIES; k++) w.msg(cs[k % 4], [PC('o' + k)], 120);
     expect(Object.keys(w.st.ph.tab)).toHaveLength(MAX_ENTRIES);
-    w.take(a);
-    w.msg(a, [PC('neu')], 120);
-    expect(w.xev(a, 'er')).toEqual([{ t: 'er', c: 'deny', y: 'pc' }]); // alle belegt
+    const e5 = w.join('e', 'Emil'); // besitzt selbst nichts, Tabelle voll mit fremdem Besitz
+    w.take(e5);
+    w.msg(e5, [PC('neu')], 120);
+    expect(w.xev(e5, 'er')).toEqual([{ t: 'er', c: 'deny', y: 'pc' }]); // alle belegt
     // einen freigeben -> Platz
     const first = Object.entries(w.st.ph.tab)[0];
     const owner = first[1].o;
     w.msg(owner, [{ t: 'ps', l: [E(first[0], first[1].g, 1)] }], 120);
-    w.msg(a, [PC('neu')], 120);
-    expect(w.st.ph.tab.neu.o).toBe(a);
+    w.msg(e5, [PC('neu')], 120);
+    expect(w.st.ph.tab.neu.o).toBe(e5);
     expect(Object.keys(w.st.ph.tab)).toHaveLength(MAX_ENTRIES);
   });
 });
@@ -447,5 +449,32 @@ describe('mp-phys: Golden s2c', () => {
       writeFileSync(GOLDEN, JSON.stringify(g, null, 2) + '\n');
     }
     expect(actual).toEqual(JSON.parse(readFileSync(GOLDEN, 'utf8')).s2c);
+  });
+});
+
+describe('mp-phys: Besitz-Obergrenze je Verbindung', () => {
+  it('Phantom-IDs eines Clients sperren die Tabelle nicht (W-1)', () => {
+    const w = world();
+    const a = w.join('a', 'Anna');
+    const b = w.join('b', 'Ben');
+    for (let k = 0; k < MAX_ENTRIES; k++) w.msg(a, [PC('ph' + k)], 1000);
+    w.take(b);
+    w.msg(b, [PC('echt1')], 1000);
+    expect(w.take(b).filter((f) => f.t === 'er')).toEqual([]);
+    expect(w.st.ph.tab.echt1.o).toBe(b);
+  });
+  it('Anspruch MAX_OWN+1 gibt den aeltesten eigenen Eintrag frei', () => {
+    const w = world();
+    const a = w.join('a', 'Anna');
+    const b = w.join('b', 'Ben');
+    for (let k = 0; k < MAX_OWN; k++) w.msg(a, [PC('o' + k)], 1000);
+    w.take(b);
+    w.msg(a, [PC('neu')], 1000);
+    expect(w.bevs(b, 'po')).toEqual([
+      { t: 'po', i: 'o0', o: 0, g: 1, h: 0 },
+      { t: 'po', i: 'neu', o: a, g: 1, h: 0 },
+    ]);
+    expect(w.st.ph.tab.o0.o).toBe(0);
+    expect(Object.values(w.st.ph.tab).filter((e) => e.o === a).length).toBe(MAX_OWN);
   });
 });

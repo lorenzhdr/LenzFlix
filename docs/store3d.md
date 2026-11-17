@@ -368,7 +368,7 @@ Siehe „Module (store3d intern)“: `addCollider(rect, { dynamic })`, `moveColl
 
 **Gebäude und Programm.** Hülle, Maße und Anker kommen aus `city.palast`; den Innenausbau besitzt das Modul `palast` (`modules/palast.js`).
 - `palast/program.js` (rein): `buildProgram(catalog, dayKey)` → `{ dayKey, shows[{ slot, time, minutes, tag, line, itemId, title, year, runtimeMin, resume }], footer }`. Nur `Type === 'Movie'`, nie Ab-18; Sortierung nach Id (Seed = FNV-1a von `palast|<Tag>`), Platz 1 = erster Weiterschauen-Film (`resume: true`); vier Zeiten 15:30/18:00/20:15/22:45 (`SLOTS`), bei weniger Filmen die späteren. Hilfen `dayKeyOf`, `minutesOf`, `clockText`, `highlightIndex`, `showState`.
-- `palast/choice.js` (rein): `createTicketBook()` (`get/has/buyShow/handIn/clear/onChange`, `getNetState()`/`applyRemote()` für 1.16), `tapeOf`, `showRows` (laufend: „läuft schon – du startest von vorn“; vorbei: „läuft gerade nicht – startet für dich von vorn“), `seatGate`, `ticketText/ticketToast/tearLine`.
+- `palast/choice.js` (rein): `createTicketBook()` (`get/has/buyShow/handIn/clear/onChange`, `getNetState()`/`applyRemote()` für den Mehrspieler), `tapeOf`, `showRows` (laufend: „läuft schon – du startest von vorn“; vorbei: „läuft gerade nicht – startet für dich von vorn“), `seatGate`, `ticketText/ticketToast/tearLine`.
 - `palast/plan.js` (rein): `buildPlan(city.palast)` → Stufen/Ränge/Sitzblöcke als Kollider mit Höhe, `seats[{ id, x, y, z, yaw, row, base }]`, `aisle`, `bounds`, `screen`, `curtain`, `stations`, `posters`; `stationsOf(p)`, `outerPosterSlots(p)`. Saal: 6 Reihen à 1,1 m, `rise = min(seatBlock.rise, 0,14)` (Stufen ≤ 0,28 m am Eingang), Reihe 0 hinten am höchsten, `aisle` auf Bodenhöhe vor der ersten Reihe. Leinwand `radius 16, bottom 1,8, maxW 10,5, maxH 4,9` (Oberkante 7,3 m unter der Decke 7,5 m), Anker `rotation.y = π`. Weitere Dateien: `hall.js` (Saal, liefert das `saal`-Handle, Sitze instanziert), `foyer.js`, `board.js`, `panel.js` (Kassen-Overlay, DOM, CSS in `themes/store/palast.css`).
 - Provider `palast`: `stations` (Weltkoordinaten `ticket`, `popcornStaff`, Tresen `kasse/popcorn/ticketDesk`), `test({ item?, autostart? })`; die Personal-Figuren platziert `npc` selbst über `stationsOf`.
 - **Ablauf:** Kasse/Anzeigetafel/Plakat → Overlay `.lfx-store-palast-pick` (Programm; „Eigene Kassette abgeben“, wenn `ctx.items.carried()`) → Ticket → Hinsetzen (`Platz <Reihe><Nr>`, Interaktionen nur im Saal, `anyHeight`) → `cinema2d.sit(id)` + `cinema2d.play(item, { resume })`. Ohne Ticket: Toast „Erst ein Ticket an der Kasse holen“. Kartenabreißer: mit Hülle in der Hand Kassette abgeben (danach `ctx.items.drop()`), sonst Spruch. Das Ticket verfällt, wenn das Kino endet. In VR gibt das Foyer nur einen Toast; Hinsetzen ruft direkt `deps.play` (VR-Kino), keine 2D-Leinwand. Der Saal wird nur in Foyer/Saal (oder VR) gezeichnet. Entdeckungen `palast-film` beim ersten `playing`, `palast-tape` bei mitgebrachter Kassette.
@@ -398,7 +398,7 @@ saal = {
 | `stopAndRelease()` | Saal verlassen: `bridge.stop()`, dann `leave('stop')`; läuft der Start noch ohne Player, vorgemerkt (`backPending`) |
 | `setFull(on, { notice })` | Vollbild (Bühne ausblenden), meldet `{ active, full }`, `engine.setRenderEnabled(!on)`, Desktop-Steuerung ab/an |
 | `leave(reason, code)` | `home, stop, fail, suspend, dispose, saal, build`; idempotent; räumt Leinwand/Untertitel/Ambient/Leiste/Wächter, Spieler an `aisle`, Toast („Film beendet“, „Abspann vorbei“, „Kino konnte nicht starten (Code)“) |
-| `tick(dt, now)`, `diag()`, `getNetState()`/`applyRemote()` | `tick` aus `StoreApp.tick` (nur aktiv, nicht in XR); `diag()` = `{ phase, active, full, seated, failCode, fallbackCode, videoFrames, marks, renderEnabled }`; Netzform für 1.16 (`applyRemote` Platzhalter) |
+| `tick(dt, now)`, `diag()`, `getNetState()`/`applyRemote()` | `tick` aus `StoreApp.tick` (nur aktiv, nicht in XR); `diag()` = `{ phase, active, full, seated, failCode, fallbackCode, videoFrames, marks, renderEnabled }`; Netzform für den Mehrspieler (`getNetState`, `applyRemote`) |
 
 Phasen: `idle → starting → playing ⇄ paused`; `fallback` (Vollbild-Rückfall), `failed` (Statusbild, dann `leave('fail')`). Nicht behandelt: ein XR-Start bei laufendem 2D-Kino.
 
@@ -498,8 +498,39 @@ Treffer in `throw/chase/banned` zählen nicht, in `grudge` springt Richard sofor
 - `index.query` teilt eine `seen`-Menge: nie verschachtelt aufrufen. Kein `Math.random` in Logik/Physik/Planung (Variation per Platz-Id/Position). `ctx.opts.devFlags` gibt es nur im Harness (live undefined = alles an).
 - Interaktionen: Reichweite ~2 m, der Blick muss im Kasten liegen (Box nicht unter Augenhöhe 1,65 m enden lassen). Touch-Hinweise ohne „E / Klick:“.
 - Headless-Tests: Chrome cachet `lenzstore.js` heuristisch (`Network.setCacheDisabled` setzen); auf geteilten Rechnern einen eigenen Dev-Server-Port nehmen.
-- Mehrspieler 1.16.0: nur Formate vorbereitet (`getNetState/applyRemote` an Body, Figuren, Physik, Richard, Tickets, Entdeckungen, `cinema2d`), nichts ist verdrahtet.
+- Mehrspieler 1.16.0: `getNetState/applyRemote` (Body, Figuren, Physik, Richard, Tickets, Entdeckungen, `cinema2d`) sind seit 1.16.0 verdrahtet, siehe „Mehrspieler (1.16.0)“.
 - Teile von `brawl.js`/`city.js` haben CRLF: Edit-Werkzeuge mit LF-Mustern können scheitern.
+
+## Mehrspieler (1.16.0)
+
+Standardmäßig an: Eine Welt für alle Nutzer eines Servers (höchstens 16 Verbindungen), fremde Figuren mit Jellyfin-Namen, Chat, Emote-Rad, synchrone Physik, gemeinsamer Richard und gemeinsames Wetter, gemeinsames Kino. Das Protokoll (Nachrichten, Fähigkeiten `cap`, Server-Regeln, Kontingent) steht in `docs/mp-api.md`; die Einrichtung des Workers in `charts-worker/README.md`. Hier nur die Seite des 3D-Bundles und der Hülle.
+
+- **Hülle/3D-Bundle:** Die Hülle (`features/store/mp.js`) holt per `GET /mp/ticket` (Header `X-Emby-Token`, nur `fetch`) das kurzlebige Ticket und reicht es als `deps.mp.ticket()` an das 3D-Bundle. Das Token gelangt nie ins 3D-Bundle, Ticket und Token stehen nie in einer URL. Das WebSocket (`wss://<Charts-URL>/mp`, Subprotokolle `lfx-mp.1` und `t.<ticket>`) liegt komplett im 3D-Bundle (`net/transport.js`). Ohne `deps.mp` gibt es keinen Provider, kein DOM und keine Listener.
+- **Modul `net` (`modules/net.js`)** ist das letzte Modul in `MODULES` und holt fremde Provider nur bei Gebrauch mit Guard. Provider `net`: `{ active(), me(), has(cap), count(), serverNow(), peers(), peerName(c), on(ev), send(msg), physGate(body), menu(), renderMenu(el), onChange(fn), emote(code), openEmotes(), say(text), openChat(), setKino(on) }`; Ereignisse `'state'`, `'peers'`, `'msg:<t>'`. Teile unter `store3d/net/*`: `transport` (Verbindung, Backoff, Keepalive), `frame`/`proto` (Netzrahmen, eingefrorene Codetabellen), `pose`/`peers` (Figuren, Interpolation), `chat*`/`emote*`, `push`, `phys`, `richard`, `weather`, `clock` (Uhrabgleich), `hud` („N hier“), `panel` („Mehrspieler …“), `parts`.
+- **Netzrahmen und Transport:** Frames als JSON-Array, höchstens 8 Frames/s. Keepalive-Text `ping` alle 3 s (Auto-Response `pong` im Worker; Cloudflare hat live Workers-WebSockets nach 5 s ohne Servernachricht gekappt). Backoff 1 bis 60 s, höchstens 6 Versuche je 10 min, danach 30 min Pause; eine 60 s stabile Verbindung leert die Zählung. Still aus (VIDEOTHEK wie 1.15): ohne Charts-URL, bei 404/503, bei CSP-Blockade (`connect-src`) oder erschöpftem Kontingent; nur das Panel nennt den Grund. `init` wartet nie aufs Netz, die Verbindung entsteht erst nach `'enter'`.
+- **Lebenszyklus:** `onSuspend` (echtes Aussetzen, z. B. Route in den Player) schließt mit 1000, `onResume` verbindet neu; Design-Wechsel und `dispose()` schließen ebenfalls. Ausnahme: Das VR-Kino hält die Verbindung (`ctx.suspended()` ist dann false), verbirgt nur Figuren und DOM; auch ein verborgener Tab schließt nach 60 s, außer das Kino ist aktiv. VR: andere sehen, Chat lesen, mitschauen.
+- **Tasten:** Enter (Chat) und T (Emote-Rad) werden nur im Modus `play` mit Pointer-Lock verbraucht (`controls/desktop.js`, `MP_ACTIONS`); im Sitzen (Overlay, Kino) und ohne Mehrspieler bleiben sie unberührt wie in 1.15, damit nicht aufgestanden oder pausiert wird. Am Handy gibt es dafür Knöpfe.
+- **Rechte-Filter:** Über die Leitung gehen nur Item-IDs (gehaltene Hülle, Film). Cover und Titel zeigt der Betrachter nur aus dem eigenen Katalog, sonst eine neutrale Hülle. „Mein Film für andere sichtbar“ ist standardmäßig aus (dann kein Titel und kein Mitschauen-Angebot). Private Filme werden nie angeboten.
+- **Prefs und Panel:** Panel „Mehrspieler …“ im Pause-Menü (Gesamtschalter, Name, Chat, „Mein Film für andere sichtbar“), Spielerliste mit Stummschalten (nur lokal, gespeichert unter dem Pseudonym `k`) und Admin-Kick (10 min). Einmaliger Hinweis pro Konto. Standardwerte in `modules/net.js` (`DEFAULTS`).
+- **Gemeinsam:** Schubsen, Bälle, Dosen, Tonnen und geworfene Hüllen (Besitz je Objekt, `net/phys.js`); Richard und Wetter gemeinsam, das Hausverbot gilt nur für den Täter.
+
+### Gemeinsames Kino (1.16.0)
+
+Im LENZ PALAST wählt man am Platz „Mitschauen“ oder den eigenen Film. Alle dürfen pausieren und spulen. Beim Puffern warten alle höchstens etwa 10 s. Jeder schaut über das eigene Konto mit eigenem Weiterschauen; private Filme werden nicht angeboten. Nachrichten `ks kj kl kc kb`, Fähigkeit `kino` (vom Worker angekündigt, `charts-worker/src/mp/kino.js`), Details in `docs/mp-api.md`.
+
+- **Sync-Kern `cinema/sync.js`** (rein, ohne DOM und Netz, Konstanten `SYNC`): Uhrabgleich über den Server (`serverNow()`, `ck`). Totband 300 ms (`DEAD_MS`). Ratenkorrektur (±8 %, `RATE_CLAMP`) beginnt am festen Totband; der gemessene Landefehler weitet nur das Sprungband, um Sprungzyklen zu vermeiden. Sprung ab 2 s (`RATE_MAX_MS`) mit gelerntem Vorhalt (Start direkt 500 ms, HLS 1500 ms, höchstens 3 s) und Abklingzeit (6 s, HLS 12 s), höchstens 3 Sprünge je 60 s (`SEEK_CAP`), danach wird der Versatz hingenommen. Echo-Unterdrückung (eigene Befehle lösen keine Eingriffserkennung aus) und CAS über die Version `v`; gesteuert wird nur mit absoluten Zielzuständen.
+- **Adapter `cinema/party.js`** nutzt den Provider `net` und die Bridge `features/store/cinema-bridge.js` (`setPaused(on)`, `seekTo(s, { exact })`, `mode()` = `'direct'|'hls'|'other'`). Es gibt keinen Stub `net/kino.js`.
+- **Kino-Fix:** Aufstehen und wieder Hinsetzen am selben Platz startet den Film nicht neu (`stand()`/`sit()`, siehe `cinema2d`).
+
+### Harness (Mehrspieler)
+
+`/store-dev.html` (Kopfkommentar von `build/store-dev.js`; Fake-Welt und Bots unter `build/mp-dev/`, nichts davon im Produktionsbundle):
+- `?mp=fake&bots=N`: Fake-Welt auf dem echten Reducer (`charts-worker/src/mp/room.js`), N Bots (Straße, Laden, Tür, Palast-Saal, Foyer); `?mplat=<ms>` Latenz (Standard 30).
+- Still-aus-Modi: `?mp=off` (kein `deps.mp`), `?mp=nourl|404|503|401|drop`.
+- `?mpadmin=1` (ich bin Admin: Kick-Knöpfe), `?mpbotadmin=<Index>`, `?botsocial=0` (Bots chatten/emoten nicht), `?mpchat=0` (Chat-Schalter aus).
+- Zwei-Seiten-Test: `?mp=relay&relay=<port>&name=<N>[&admin=1]` mit echtem WebSocket zum Dev-Relay `build/mp-dev/relay.mjs` (Node, echter Reducer, kein Cloudflare).
+- Debug: `window.__devMp` (Fake-Welt bzw. Relay-Prefs), `window.__devNet`, `window.__devFigs`; mit `__lfxStoreDebug` zusätzlich `__lfxStore`.
+- Kino: `?cinema=1|series|fail|paused|slow` (Fake-Player) und `?subs=srt|ass|off`, `?palast=1` für das 2D-Kino; zusammen mit `?mp=…` lässt sich das gemeinsame Kino im Harness prüfen.
 
 ## VR-Modus (Beta)
 

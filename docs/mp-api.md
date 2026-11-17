@@ -21,7 +21,7 @@ Schreibweise: Dezimalpunkt in Tabellen und Formeln (`0.35`); Einheiten cm (int),
 | c | Schubsen, Physik, Richard, Wetter | `push` `phys` `rich` `wx` | `pu pc ps pn px rc rs rr` |
 | d | Kino-Sync | `kino` | `ks kj kl kc kb` |
 
-Der Server kündigt `kino` erst nach bestandenem Live-Test (Welle d) an. `wx` hat keine eigene Client-Nachricht (nur `wl.wx`).
+Der Server kündigt `kino` seit 1.16.0 an (`charts-worker/src/mp/kino.js`, `ANNOUNCE = true`). `wx` hat keine eigene Client-Nachricht (nur `wl.wx`).
 
 ## 2. Transport und Auth
 

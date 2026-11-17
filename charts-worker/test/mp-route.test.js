@@ -198,8 +198,10 @@ describe('GET /mp (Upgrade)', () => {
     const tk = await good();
     const other = (await mintTicket('o'.repeat(40), { uid: UID, name: 'x', admin: true }, Date.now())).tk;
     const old = await good(undefined, Date.now() - 120000);
-    const flip = tk.endsWith('A') ? 'B' : 'A';
-    for (const t of [null, tk.slice(0, -1) + flip, other, old]) {
+    // Ein Zeichen MITTEN in der Signatur ändern: das letzte Base64url-Zeichen trägt teils nur Füllbits (Test wackelte ~1/8).
+    const at = tk.lastIndexOf('.') + 5;
+    const tampered = tk.slice(0, at) + (tk[at] === 'A' ? 'B' : 'A') + tk.slice(at + 1);
+    for (const t of [null, tampered, other, old]) {
       expect((await worker.fetch(req('/mp', up(t)), env)).status).toBe(401);
     }
     expect(seen).toHaveLength(0);
