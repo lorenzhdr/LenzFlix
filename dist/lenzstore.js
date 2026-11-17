@@ -51521,7 +51521,8 @@ void main() {
   var TICK_MS = 125;
   var BUCKET_PER_S = 10;
   var FRAME_CHARS = 2e3;
-  var PING_MS = 25e3;
+  var PING_MS = 3e3;
+  var PONG_DEAD_MS = 2e4;
   var HELLO_MS = 12e3;
   var RENEW_MS = 6e5;
   var STABLE_MS = 6e4;
@@ -51581,8 +51582,7 @@ void main() {
       for (const k of Object.keys(T5)) clearT(k);
     };
     let awaitingPong = false;
-    let missed = 0;
-    let lastPingT = 0;
+    let pingSentT = 0;
     let ckN = 0;
     const info = () => ({ state, why, until, hint, attempt, cf: { ...cf }, count: attemptLog.length });
     function setState(s, w = null, h2 = null) {
@@ -51766,7 +51766,6 @@ void main() {
       if (typeof data !== "string") return;
       if (data === "pong") {
         awaitingPong = false;
-        missed = 0;
         return;
       }
       let j;
@@ -51816,12 +51815,12 @@ void main() {
       fastUsed = false;
       lastFlush = -Infinity;
       awaitingPong = false;
-      missed = 0;
-      lastPingT = now();
+      pingSentT = 0;
       setState("live");
       T5.stable = st(() => {
         T5.stable = null;
         attempt = 0;
+        attemptLog = [];
       }, STABLE_MS);
       T5.ping = st(pingTick, PING_MS);
       T5.renew = st(renewTick, RENEW_MS);
@@ -51832,9 +51831,7 @@ void main() {
       T5.ping = null;
       if (state !== "live" || !ws) return;
       const t = now();
-      const late = t - lastPingT > PING_MS * 2.5;
-      if (awaitingPong) missed += late ? 2 : 1;
-      if (missed >= 2) {
+      if (awaitingPong && t - pingSentT > PONG_DEAD_MS) {
         dropConn(1006);
         return;
       }
@@ -51844,8 +51841,10 @@ void main() {
         dropConn(1006);
         return;
       }
-      awaitingPong = true;
-      lastPingT = t;
+      if (!awaitingPong) {
+        awaitingPong = true;
+        pingSentT = t;
+      }
       T5.ping = st(pingTick, PING_MS);
     }
     function ckTick() {
@@ -64131,12 +64130,12 @@ void main() {
         }
         if (ready < 3 || obs.seeking) return;
         const ad = Math.abs(d);
-        if (ad < D2 / 2) {
+        const Dr = Math.max(cfg.DEAD_MS, res());
+        if (ad < Dr / 2) {
           resetRate();
           return;
         }
-        if (ad <= D2) return;
-        if (st === 1 && S.rateOk !== false && A.setRate && ad <= cfg.RATE_MAX_MS) {
+        if (st === 1 && S.rateOk !== false && A.setRate && ad > Dr && ad <= Math.max(D2, cfg.RATE_MAX_MS)) {
           const r = 1 - clamp13(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
           if (S.rateSet !== r) {
             try {
@@ -64148,6 +64147,7 @@ void main() {
           }
           return;
         }
+        if (ad <= D2) return;
         const cool = mode() === "hls" ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
         if (now - S.lastSeekAt < cool) return;
         S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
@@ -64486,6 +64486,7 @@ void main() {
       offers() {
         if (!netp()) return [];
         listen();
+        if (!kinoNet()) return [];
         const me = meNow();
         return kh.filter((e) => Array.isArray(e) && e[2] && e[0] !== sid && !(me && e[1] === me.c)).map((e) => ({ sid: e[0], host: e[1], itemId: e[2], n: e[3], st: e[4], m: e[5] || [], p: e[6], at: e[7] }));
       },

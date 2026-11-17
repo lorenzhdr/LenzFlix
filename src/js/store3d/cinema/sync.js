@@ -363,15 +363,19 @@ export function createSync(o = {}) {
       }
       if (ready < 3 || obs.seeking) return;
       const ad = Math.abs(d);
-      if (ad < D / 2) { resetRate(); return; }
-      if (ad <= D) return;
-      if (st === 1 && S.rateOk !== false && A.setRate && ad <= cfg.RATE_MAX_MS) {
+      // Ratenband ab dem festen Totband: der Landefehler (unpräzise Sprünge, z. B. HLS) weitet nur das Sprungband gegen
+      // Sprungzyklen. Sonst bleiben zwei Mitglieder mit entgegengesetztem Versatz je „im Totband“ und liegen zusammen
+      // deutlich über der Zielgrenze (live gemessen: −0,98 s und +0,36 s, also 1,34 s Abstand, ohne Korrektur).
+      const Dr = Math.max(cfg.DEAD_MS, res());
+      if (ad < Dr / 2) { resetRate(); return; }
+      if (st === 1 && S.rateOk !== false && A.setRate && ad > Dr && ad <= Math.max(D, cfg.RATE_MAX_MS)) {
         const r = 1 - clamp(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
         if (S.rateSet !== r) {
           try { A.setRate(r); S.rateSet = r; } catch { S.rateOk = false; }
         }
         return;
       }
+      if (ad <= D) return;
       const cool = mode() === 'hls' ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
       if (now - S.lastSeekAt < cool) return;
       S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);

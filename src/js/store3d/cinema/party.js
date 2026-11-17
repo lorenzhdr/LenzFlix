@@ -230,6 +230,7 @@ export function createParty(o = {}) {
     offers() {
       if (!netp()) return [];
       listen();
+      if (!kinoNet()) return []; // ohne Verbindung ist kh veraltet (Rückfallpause): keine Geister-Angebote
       const me = meNow();
       return kh.filter((e) => Array.isArray(e) && e[2] && e[0] !== sid && !(me && e[1] === me.c))
         .map((e) => ({ sid: e[0], host: e[1], itemId: e[2], n: e[3], st: e[4], m: e[5] || [], p: e[6], at: e[7] }));

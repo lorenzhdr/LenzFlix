@@ -1,6 +1,6 @@
 // VIDEOTHEK LENZ · Mehrspieler: WebSocket-Transport (Zustandsautomat, ohne DOM/Jellyfin; alles Umgebungsabhängige per `env`).
 // Ticket -> new WebSocket(url, ['lfx-mp.1', 't.'+tk]) -> hi -> wl -> live. EIN Sende-Takt (125 ms, nur bei nicht-leerer Warteschlange,
-// <= 8 Frames/s, Client-Bucket <= 10/s), Keepalive-Text 'ping' alle 25 s, Backoff, Close-Code-Tabelle, Ticket-Erneuerung.
+// <= 8 Frames/s, Client-Bucket <= 10/s), Keepalive-Text 'ping' alle 3 s, Backoff, Close-Code-Tabelle, Ticket-Erneuerung.
 // Vertrag: docs/mp-api.md §2, §3, §6.3. Nie Token/Ticket loggen oder in eine URL schreiben; es wird gar nichts geloggt.
 import { SUB, PV, CAP_OF, build, normalizeOut } from './proto.js';
 import { createClock } from './clock.js';
@@ -8,7 +8,10 @@ import { createClock } from './clock.js';
 export const TICK_MS = 125;
 export const BUCKET_PER_S = 10;
 export const FRAME_CHARS = 2000; // unter dem Server-Limit von 2048
-export const PING_MS = 25000;
+// 3 s (statt 25 s): Cloudflare kappte live (17.11.2026) Workers-WebSockets nach genau 5 s ohne Nachricht vom Server (1006);
+// der Auto-Response-Pong hält die Leitung offen, ohne das DO zu wecken. Kosten: höchstens ~60 Requests je Spielerstunde (20:1).
+export const PING_MS = 3000;
+export const PONG_DEAD_MS = 20000; // ältester unbeantworteter Ping älter als das: Verbindung tot
 export const HELLO_MS = 12000;
 export const RENEW_MS = 600000;
 export const STABLE_MS = 60000;
@@ -73,8 +76,7 @@ export function createTransport(opts) {
   const clearAll = () => { for (const k of Object.keys(T)) clearT(k); };
 
   let awaitingPong = false;
-  let missed = 0;
-  let lastPingT = 0;
+  let pingSentT = 0; // Zeitpunkt des ältesten unbeantworteten Pings
   let ckN = 0;
 
   const info = () => ({ state, why, until, hint, attempt, cf: { ...cf }, count: attemptLog.length });
@@ -227,7 +229,7 @@ export function createTransport(opts) {
   // --- Empfangen -------------------------------------------------------------------------------------------------
   function onMessage(data) {
     if (typeof data !== 'string') return;
-    if (data === 'pong') { awaitingPong = false; missed = 0; return; }
+    if (data === 'pong') { awaitingPong = false; return; }
     let j;
     try { j = JSON.parse(data); } catch { return; }
     for (const m of Array.isArray(j) ? j : [j]) if (isObj(m) && typeof m.t === 'string') handle(m);
@@ -266,10 +268,11 @@ export function createTransport(opts) {
     fastUsed = false;
     lastFlush = -Infinity;
     awaitingPong = false;
-    missed = 0;
-    lastPingT = now();
+    pingSentT = 0;
     setState('live');
-    T.stable = st(() => { T.stable = null; attempt = 0; }, STABLE_MS);
+    // 60 s stabil: Backoff zurück und die Sturm-Grenze (6/10 min) vergisst die bisherigen Versuche – sie soll nur kurz lebende
+    // Verbindungen bremsen, nicht oft entsperrte Handys oder Neuladen nach langen, stabilen Phasen.
+    T.stable = st(() => { T.stable = null; attempt = 0; attemptLog = []; }, STABLE_MS);
     T.ping = st(pingTick, PING_MS);
     T.renew = st(renewTick, RENEW_MS);
     ckN = 0;
@@ -281,12 +284,11 @@ export function createTransport(opts) {
     T.ping = null;
     if (state !== 'live' || !ws) return;
     const t = now();
-    const late = t - lastPingT > PING_MS * 2.5; // Hintergrund-Timer gedrosselt oder Gerät geschlafen
-    if (awaitingPong) missed += late ? 2 : 1;
-    if (missed >= 2) { dropConn(1006); return; }
+    // Tot erst, wenn der älteste Ping 20 s ohne Pong ist (kurze Funklöcher überstehen; nach Geräteschlaf sofort neu).
+    // Gedrosselte Hintergrund-Timer sind kein Ausfall: der Pong kommt als Ereignis und löscht awaitingPong.
+    if (awaitingPong && t - pingSentT > PONG_DEAD_MS) { dropConn(1006); return; }
     try { ws.send('ping'); } catch { dropConn(1006); return; }
-    awaitingPong = true;
-    lastPingT = t;
+    if (!awaitingPong) { awaitingPong = true; pingSentT = t; }
     T.ping = st(pingTick, PING_MS);
   }
 

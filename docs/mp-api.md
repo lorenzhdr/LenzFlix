@@ -65,7 +65,7 @@ Client: `new WebSocket(wssBase + "/mp", ["lfx-mp.1", "t." + tk])`. Weder Token n
 ### 2.3 Handshake, Keepalive, Neuprüfung
 
 - Client sendet `hi`, DO antwortet mit `wl`. Kommt binnen 10 s kein `hi`, schließt das DO mit 4408. Entscheidung: Die Frist wird bei jeder Nachricht und im Alarm geprüft, es gibt dafür keinen eigenen Alarm (jeder Alarm kostet einen Request); ein Socket ohne `hi` fällt damit spätestens nach etwa 60 s. Die `hi`-Frist steht bewusst NICHT in `nextDeadline` (nur 60-s-Alarm bzw. nächste Nachricht).
-- Keepalive: Client sendet alle 25 s den Text `ping` (Wanduhr), das DO antwortet per `setWebSocketAutoResponse` mit `pong`, ohne aufzuwachen. Bleibt `pong` zweimal aus, verbindet der Client neu.
+- Keepalive: Client sendet alle 3 s den Text `ping` (Wanduhr), das DO antwortet per `setWebSocketAutoResponse` mit `pong`, ohne aufzuwachen. Ist der älteste unbeantwortete Ping älter als 20 s, verbindet der Client neu (nach Geräteschlaf also sofort). Entscheidung 17.11.2026 (vorher 25 s): Live kappte Cloudflare Workers-WebSockets nach genau 5 s ohne Nachricht vom Server mit 1006 (auch `wrangler tail`; der Tunnel-Pfad und das lokale DO waren stabil); mit Ping alle 3 s hielt die Leitung.
 - Neuprüfung: Das DO sieht nie das Jellyfin-Token. Alle 10 min holt die Hülle ein neues Ticket, der Client sendet `rn {tk}`. `world.js` prüft HMAC per `crypto.subtle` (asynchron) und gibt `renew-ok{claims}` in den Reducer: gleiches `k`, neue jti, dann `x = now + 15 min`; `n` und `a` werden neu übernommen, bei Namensänderung folgt `ev pf`. Läuft `x` ab, schließt das DO mit 4401.
 - Logout/Nutzerwechsel: dispose bzw. suspend schließt mit 1000 (kein eigener Haken, kein `revoke`).
 
@@ -89,7 +89,7 @@ Vor jedem Close vom Server geht `bye {c, u?}`.
 | 4429 | rate | 60 s warten |
 | 4503 | full / quota | 60 s / 30 min |
 
-- Backoff: 1, 2, 4, 8, 16, 30, 60 s mit ±20 % Jitter, zurückgesetzt nach 60 s stabiler Verbindung. Höchstens 6 Versuche je 10 min, danach 30 min Pause.
+- Backoff: 1, 2, 4, 8, 16, 30, 60 s mit ±20 % Jitter, zurückgesetzt nach 60 s stabiler Verbindung. Höchstens 6 Versuche je 10 min, danach 30 min Pause; eine 60 s stabile Verbindung leert auch diese Zählung (die Grenze bremst nur kurz lebende Verbindungen).
 - `why`-Codes von `deps.mp.ticket()` (W2): `net` = Backoff, `blocked` = aus.
 
 | `why` | Auslöser | Verhalten |
@@ -258,7 +258,7 @@ Pose `p`: bei Änderung (Position > 2 cm, yaw > 2, pitch > 4, `a`/`r`/`se` neu),
 | `ki` | `c` | Admin-Kick | 1/5 s |
 | `ck` | `a` (Client-ms) | 5x beim Start (1 s Abstand), dann alle 5 min | 2/s |
 | `rn` | `tk` | alle 10 min | 1/min |
-| Text `ping` | – | alle 25 s | auto-response |
+| Text `ping` | – | alle 3 s | auto-response |
 
 ### 7.2 Server zu Client
 
@@ -341,7 +341,7 @@ Rechnung:
 - Pose-Frames je Spielerstunde: 8 Hz x 3600 s x 60 % Bewegung = 17 280, plus etwa 1 500 sonstige = etwa 18 800 Frames, also etwa **940 Requests**.
 - Dazu je Verbindung 1 Request (Upgrade).
 - Alarme: einer je 60 s, solange Verbindungen bestehen: **etwa 60 Requests/h** insgesamt (nicht je Spieler), plus Kino-Fristen `w`. Jedes `setAlarm` = 1 Row written.
-- Ping: Auto-Response gratis (schlimmstenfalls 7/h, unbelegt); `ck` ist selten.
+- Ping: Auto-Response ohne Laufzeitkosten; ob er als eingehende Nachricht (20:1) zählt, ist laut Preisseite unklar. Schlimmstenfalls 1 200 Pings je Spielerstunde = **etwa 60 Requests** (gut +6 %); `ck` ist selten.
 - Reichweite: etwa 100 Spielerstunden/Tag; alle 16 Spieler dauernd in Bewegung (Worst Case: 16 x 8 Hz x 100 % Bewegung): etwa 23 000/h, etwa 4 h. 8 Hz ist deshalb die Obergrenze.
 - Laufzeit: ein DO mit 128 MB, höchstens 86 400 s x 0.125 GB = 10 800 GB-s/Tag (unter 13 000).
 - Rows written je Stunde: Alarme 60, jti etwa 7 je Spielerstunde, `quota` etwa 1 je 500 Frames (etwa 38/h je Spielerstunde), `hall` je Kino-Änderung, `rest` höchstens 720/h (nur bei Physik); Ziel höchstens etwa 1 000/h gegen 100 000/Tag.

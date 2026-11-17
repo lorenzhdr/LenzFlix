@@ -11,7 +11,7 @@ function rig(opt = {}) {
     setPaused(on) { R.calls.push(['pause', on]); P.paused = on; },
     seekTo(ms, o) {
       R.calls.push(['seek', ms, !!(o && o.exact)]);
-      let land = ms;
+      let land = ms + (cfg.landErr || 0);
       if (!(cfg.exactSeek && o && o.exact) && cfg.res > 0) land = Math.floor(ms / cfg.res) * cfg.res;
       P.land = land; P.seeking = true; P.ready = 0; P.until = R.now + cfg.lag;
     },
@@ -170,6 +170,16 @@ describe('Drift-Korrektur', () => {
     expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(300);
     expect(R.P.rate).toBe(1);
     expect(R.sync.diag().seeks).toBe(seeks);
+  });
+  it('Landefehler weitet nur das Sprungband: die Rate zieht trotzdem unter das feste Totband (live HLS: −0,98 s blieb stehen)', () => {
+    const R = joined({ landErr: -900 }); // jeder Sprung landet 0,9 s zu früh (z. B. HLS)
+    R.advance(4000); // Landemessung nach Einstieg und Nachsprung
+    expect(R.sync.diag().land).toBeGreaterThan(500);
+    const seeks = R.sync.diag().seeks;
+    R.advance(25000);
+    expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(300);
+    expect(R.sync.diag().seeks).toBe(seeks); // kein Sprungzyklus
+    expect(R.P.rate).toBe(1);
   });
   it('vorn: Rate < 1', () => {
     const R = joined();

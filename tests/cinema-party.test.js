@@ -247,6 +247,16 @@ describe('party: Mitschauen', () => {
     net.emit('msg:kh', { l: [] });
     expect(party.offers()).toEqual([]);
   });
+  it('offers: ohne Verbindung keine (veraltete) Angebote – live gesehen: Rückfallpause, Platzwahl bot eine längst beendete Sitzung an', () => {
+    const { party, net } = mkParty();
+    party.listen();
+    net.emit('msg:wl', { t: 'wl', kh: [[3, 9, 'zz9', 2, 1, [9, 4], 5000, clock]] });
+    expect(party.offers()).toHaveLength(1);
+    net.active = () => false;
+    expect(party.offers()).toEqual([]);
+    net.active = () => true;
+    expect(party.offers()).toHaveLength(1);
+  });
 
   it('join: kj sofort, begin beim ersten playing: st=1 springt auf erwartete Position plus Vorhalt', () => {
     const { party, net, bridge } = mkParty();

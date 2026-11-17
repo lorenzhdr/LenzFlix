@@ -326,6 +326,19 @@ describe('Backoff', () => {
     h.last().drop();
     expect(h.tr.info().until - h.now()).toBe(1000);
   });
+  it('stabile Verbindungen zählen nicht zur 6/10-min-Grenze (z. B. oft entsperrtes Handy)', async () => {
+    const h = harness();
+    h.tr.start();
+    for (let i = 0; i < 8; i++) {
+      await h.advance(0);
+      h.last().open(); h.last().recv(WL);
+      await h.advance(61000); // je über 60 s stabil
+      h.last().drop();
+      expect(h.tr.info().why).not.toBe('limit');
+      await h.advance(1000);
+    }
+    expect(h.sockets).toHaveLength(9);
+  });
   it('höchstens 6 Versuche je 10 min', async () => {
     const h = harness();
     h.tr.start();
@@ -480,39 +493,52 @@ describe('Ticket-Fehler (why)', () => {
 });
 
 describe('Keepalive', () => {
-  it('Ping-Text alle 25 s; mit Pong bleibt die Verbindung', async () => {
+  it('Ping-Text alle 3 s (Cloudflare kappt nach 5 s Funkstille); mit Pong bleibt die Verbindung', async () => {
     const h = harness({ autoPong: false });
     const ws = await h.live();
-    for (let i = 0; i < 6; i++) {
-      await h.advance(25000);
+    for (let i = 0; i < 20; i++) {
+      await h.advance(3000);
       ws.recv('pong');
     }
-    expect(ws.texts().filter((x) => x === 'ping')).toHaveLength(6);
+    expect(ws.texts().filter((x) => x === 'ping')).toHaveLength(20);
     expect(h.tr.state()).toBe('live');
     expect(h.sockets).toHaveLength(1);
   });
-  it('zweimal kein Pong -> neu verbinden', async () => {
+  it('höchstens 4,5 s zwischen zwei Pings (Abstand < 5 s Kappgrenze)', async () => {
+    const h = harness();
+    const ws = await h.live();
+    await h.advance(60000);
+    const at = ws.sent.filter((x) => x.s === 'ping').map((x) => x.at);
+    for (let i = 1; i < at.length; i++) expect(at[i] - at[i - 1]).toBeLessThanOrEqual(4500);
+    expect(at.length).toBeGreaterThanOrEqual(19);
+  });
+  it('20 s ohne Pong -> neu verbinden', async () => {
     const h = harness({ autoPong: false });
     const ws = await h.live();
-    await h.advance(25000); // ping 1
-    await h.advance(25000); // kein pong: missed 1, ping 2
-    expect(h.tr.state()).toBe('live');
-    await h.advance(25000); // missed 2 -> neu verbinden
-    expect(ws.texts().filter((x) => x === 'ping')).toHaveLength(2);
+    await h.advance(18000);
+    expect(h.tr.state()).toBe('live'); // kurzes Funkloch übersteht die Leitung
+    await h.advance(6000); // ältester Ping > 20 s unbeantwortet
     expect(h.tr.state()).toBe('backoff');
     expect(ws.closed).toBe(1000);
     await h.advance(1000);
     expect(h.sockets).toHaveLength(2);
   });
-  it('ein Pong dazwischen setzt den Zähler zurück', async () => {
+  it('ein Pong dazwischen setzt die Frist zurück', async () => {
     const h = harness({ autoPong: false });
     const ws = await h.live();
-    await h.advance(25000);
-    await h.advance(25000); // missed 1
+    await h.advance(15000);
     ws.recv('pong');
-    await h.advance(25000);
-    await h.advance(25000); // missed 1 (nicht 2)
+    await h.advance(15000);
     expect(h.tr.state()).toBe('live');
+  });
+  it('Gerät geschlafen (Timer 5 min verspätet, kein Pong): sofort neu verbinden', async () => {
+    const h = harness({ autoPong: false });
+    const ws = await h.live();
+    await h.advance(3000); // ping 1 unterwegs
+    for (const x of h.timers) x.at += 300000; // Schlaf: alle Timer 5 min später
+    await h.advance(304000); // nächster Ping-Tick (fällig bei 6 s) läuft erst jetzt
+    expect(ws.closed).toBe(1000);
+    expect(h.tr.state()).not.toBe('live');
   });
 });
 
