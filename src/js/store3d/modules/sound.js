@@ -122,6 +122,7 @@ export default {
           tone(f * 2.76, t + d, 0.6, { gain: 0.04, send: 0.5, attack: 0.004 });
         });
       },
+      alarm(t) { for (let i = 0; i < 6; i++) tone(i % 2 ? 1040 : 780, t + i * 0.13, 0.12, { type: 'square', gain: 0.045, attack: 0.003 }); },
       beep(t) { tone(1760, t, 0.07, { type: 'square', gain: 0.035, attack: 0.002 }); },
       beep2(t) { tone(1320, t, 0.05, { type: 'square', gain: 0.03, attack: 0.002 }); tone(1760, t + 0.07, 0.07, { type: 'square', gain: 0.03, attack: 0.002 }); },
       drawer(t) {

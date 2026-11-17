@@ -34,6 +34,8 @@ import door from './door.js';
 import intro from './intro.js';
 import daytime from './daytime.js';
 import cashier from './cashier.js';
+import brawl from './brawl.js';
+import rent from './rent.js';
 import snack from './snack.js';
 import tv from './tv.js';
 // --- Paket B palast: imports ---
@@ -47,6 +49,8 @@ export const MODULES = [
   intro,
   daytime,
   cashier,
+  brawl,
+  rent,
   snack,
   tv,
   // --- Paket B palast (nach city: braucht Provider 'city'/'areas') ---

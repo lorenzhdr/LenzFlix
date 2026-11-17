@@ -38,10 +38,18 @@ function buildFigure(ctx) {
   const root = new Group();
   const lam = () => new MeshLambertMaterial({ vertexColors: true });
   const body = [];
-  for (const sx of [-1, 1]) {
-    body.push(box({ w: 0.14, h: 0.8, d: 0.17, x: sx * 0.1, y: 0.4, z: 0, color: NAVY }));
-    body.push(box({ w: 0.15, h: 0.07, d: 0.26, x: sx * 0.1, y: 0.035, z: -0.04, color: [0.1, 0.1, 0.12] }));
-  }
+  const leg = (sx) => {
+    const m = new Mesh(merge([
+      box({ w: 0.14, h: 0.8, d: 0.17, x: 0, y: -0.4, z: 0, color: NAVY }),
+      box({ w: 0.15, h: 0.07, d: 0.26, x: 0, y: -0.765, z: -0.04, color: [0.1, 0.1, 0.12] }),
+    ]), lam());
+    const g = new Group();
+    g.position.set(sx * 0.1, 0.8, 0); // Hüfte
+    g.add(m);
+    return g;
+  };
+  const legL = leg(-1);
+  const legR = leg(1);
   body.push(box({ w: 0.42, h: 0.58, d: 0.23, x: 0, y: 1.09, z: 0, color: SHIRT }));
   body.push(box({ w: 0.44, h: 0.5, d: 0.25, x: 0, y: 1.05, z: 0, color: VEST }));
   body.push(box({ w: 0.45, h: 0.045, d: 0.26, x: 0, y: 0.9, z: 0, color: [1, 0.24, 0.5] }));
@@ -78,9 +86,9 @@ function buildFigure(ctx) {
   const tag = new Mesh(quad({ w: 0.15, h: 0.065 }), new MeshBasicMaterial({ map: toTexture(nameTag(), { aniso: 2 }) }));
   tag.position.set(0.1, 1.22, -0.132);
   tag.rotation.y = Math.PI;
-  root.add(bodyMesh, headMesh, armL, armR, tag);
+  root.add(bodyMesh, headMesh, armL, armR, tag, legL, legR);
   ctx.track(root);
-  return { root, head: headMesh, mouth, armL, armR };
+  return { root, head: headMesh, mouth, armL, armR, legL, legR };
 }
 
 export default {
@@ -89,12 +97,19 @@ export default {
     const z = ctx.layout.zones.cashier;
     const L = ctx.layout;
     if (!z) return {};
-    const cx = L.w - 2.9;
-    const cz = L.d - 2.35;
+    const home = { x: L.w - 2.9, z: L.d - 2.35 };
+    const pos = { x: home.x, y: 0, z: home.z, yaw: 0 }; // Richards Ort (Welle 2: brawl.js verschiebt ihn über richard.place)
     const fig = buildFigure(ctx);
-    fig.root.position.set(cx, 0, cz); // blickt nach Norden (−z) zu den Kunden
+    fig.root.position.set(pos.x, 0, pos.z); // blickt nach Norden (−z) zu den Kunden
     ctx.scene.add(fig.root);
-    ctx.addCollider({ x0: cx - 0.3, z0: cz - 0.3, x1: cx + 0.3, z1: cz + 0.3 });
+    const collider = ctx.addCollider({ x0: pos.x - 0.3, z0: pos.z - 0.3, x1: pos.x + 0.3, z1: pos.z + 0.3 });
+    const ctl = { on: false, busy: false }; // on: brawl.js steuert die Glieder; busy: nur Schlagabtausch-Sprüche
+    const storeRect = (L.zones && L.zones.store && L.zones.store.rect) || { x0: 0, z0: 0, x1: L.w, z1: L.d };
+    const inStore = () => {
+      const p = ctx.player.getPose();
+      const y = Number.isFinite(p.y) ? p.y : 0;
+      return p.x >= storeRect.x0 && p.x <= storeRect.x1 && p.z >= storeRect.z0 && p.z <= storeRect.z1 && (storeRect.y1 === undefined || y <= storeRect.y1);
+    };
 
     const reduced = prefersReducedMotion();
     const host = ctx.renderer.domElement.parentNode;
@@ -156,7 +171,7 @@ export default {
     let bubbleText = '';
     function showBubble3d() {
       if (!bubble3d) bubble3d = ctx.xr.bubble();
-      bubble3d.show(bubbleText, { x: cx, y: 1.95 + 0.35, z: cz });
+      bubble3d.show(bubbleText, { x: pos.x, y: pos.y + 1.95 + 0.35, z: pos.z });
     }
     function hideBubble() {
       bubble.hidden = true;
@@ -166,13 +181,15 @@ export default {
     let now = 0;
     const weather = () => ctx.use('weather');
     const hourNow = () => { const w = weather(); return w && Number.isFinite(w.hour) ? w.hour : undefined; };
-    const distToPlayer = () => { const p = ctx.player.getPose(); return Math.hypot(p.x - cx, p.z - cz); };
+    const distToPlayer = () => { const p = ctx.player.getPose(); return Math.hypot(p.x - pos.x, p.z - pos.z); };
     const seated = () => { const c = ctx.use('couch'); return !!(c && c.seated && c.seated()); };
 
     /** Blase + (bei Ton an, nah genug) Stimme. opts.also: zweite Kategorie, an den Text angehängt. */
-    function speak(cat, vars, { force = false, maxDist = 16, voice: withVoice = true, also = null, overOverlay = false } = {}) {
+    function speak(cat, vars, { force = false, maxDist = 16, voice: withVoice = true, also = null, overOverlay = false, outside = false, brawl = false } = {}) {
       if (ctx.overlay.isOpen() && !force) return false;
       if (!force && seated()) return false;
+      if (ctl.busy && !brawl) return false; // im Schlagabtausch kein Plauderton
+      if (!outside && !inStore()) return false; // draußen nur Rufe (Diebstahl, Hausverbot)
       const dist = distToPlayer();
       if (!force && dist > maxDist) return false;
       if (!limiter.can(now, { force })) return false;
@@ -195,7 +212,7 @@ export default {
     let bubbleSticky = false; // Blase bleibt trotz offenem Overlay (Couch-Sprüche)
     function placeBubble() {
       if (bubble.hidden || !host || xrOn()) return;
-      v.set(cx, 1.95, cz).project(ctx.camera);
+      v.set(pos.x, pos.y + 1.95, pos.z).project(ctx.camera);
       const on = v.z < 1 && Math.abs(v.x) < 0.9 && v.y > -0.8 && v.y < 0.88;
       bubble.classList.toggle('is-edge', !on);
       if (on) {
@@ -230,7 +247,16 @@ export default {
         if (bubbleLeft > 0) { bubble.hidden = false; placeBubble(); }
       }
     }));
-    offs.push(ctx.on('enter', () => { pendingGreet = 1.1; wave(); }));
+    // Begrüßung nur im Laden: beim Start draußen (?spawn=street) erst beim Betreten ('return'), nie aus der Ferne
+    let greetOwed = false;
+    let lastGreet = -Infinity;
+    offs.push(ctx.on('enter', () => { if (inStore()) { pendingGreet = 1.1; wave(); } else greetOwed = true; }));
+    offs.push(ctx.on('return', () => {
+      if (!greetOwed && now - lastGreet < 90) return;
+      greetOwed = false;
+      pendingGreet = 1.1;
+      wave();
+    }));
     offs.push(ctx.on('take', (id) => {
       const it = ctx.catalog.items && ctx.catalog.items.get(id);
       const dept = deptOf.get(id);
@@ -252,9 +278,13 @@ export default {
       const w = weather();
       let cat = greetingCategory(timeOfDay(h), late);
       if (!late && w && w.raining && rand() < 0.4) cat = 'rain';
+      const bw = ctx.use('brawl');
+      const grudge = !!(bw && bw.state() === 'grudge');
+      if (grudge) cat = 'grudgeGreet';
+      lastGreet = now;
       let first;
       try { first = !sessionStorage.getItem(INTRO_KEY); if (first) sessionStorage.setItem(INTRO_KEY, '1'); } catch { first = false; }
-      speak(cat, {}, { force: true, also: first ? 'intro' : null });
+      speak(cat, {}, { force: true, also: first && !grudge ? 'intro' : null });
     }
 
     // --- „Mit Richard reden“: Dialog (Modell in cashier-lines.js; Ansicht DOM oder VR-Panel) ---
@@ -348,12 +378,57 @@ export default {
 
     function openDialog() { if (xrOn()) openDialogXr(); else openDialogDom(); }
 
+    const atHome = () => Math.hypot(pos.x - home.x, pos.z - home.z) < 0.4 && pos.y < 0.1;
+    const talkOk = () => {
+      if (!atHome()) return false;
+      const b = ctx.use('brawl');
+      return !b || b.canTalk();
+    };
+    const iaBox = { min: { x: home.x - 0.5, y: 0.2, z: home.z - 0.6 }, max: { x: home.x + 0.5, y: 2.0, z: home.z + 0.4 } };
     const offIa = ctx.addInteractable({
-      box: { min: { x: cx - 0.5, y: 0.2, z: cz - 0.6 }, max: { x: cx + 0.5, y: 2.0, z: cz + 0.4 } },
+      box: iaBox,
       label: 'Richard', hint: 'E / Klick: Mit Richard reden', onUse: openDialog,
+      enabled: () => talkOk() && !ctx.items.carried(),
+    });
+    // Mit getragener Hülle: Ausleihen (rent.js); ohne rent-Provider wie gewohnt reden
+    const offIa2 = ctx.addInteractable({
+      box: iaBox,
+      label: 'Richard', hint: 'E / Klick: Hülle ausleihen',
+      onUse: () => { const r = ctx.use('rent'); if (r) r.tryRent(); },
+      enabled: () => talkOk() && !!ctx.items.carried() && !!ctx.use('rent'),
+    });
+    const offIa3 = ctx.addInteractable({
+      box: iaBox,
+      label: 'Richard', hint: 'E / Klick: Mit Richard reden', onUse: openDialog,
+      enabled: () => talkOk() && !!ctx.items.carried() && !ctx.use('rent'),
     });
 
+    const richard = {
+      root: fig.root, head: fig.head, mouth: fig.mouth, armL: fig.armL, armR: fig.armR, legL: fig.legL, legR: fig.legR,
+      home, pos, collider, inStore,
+      /** Figur setzen (x, z, y = Höhe über Boden, yaw) und Kollider/Blase mitführen. */
+      place(x, z, y = 0, yaw = pos.yaw) {
+        pos.x = x; pos.z = z; pos.y = y; pos.yaw = yaw;
+        fig.root.position.set(x, y, z);
+        fig.root.rotation.y = yaw;
+        ctx.moveCollider(collider, x - 0.3, z - 0.3, x + 0.3, z + 0.3);
+      },
+      /** brawl.js übernimmt (true) bzw. gibt die Leerlauf-Animation zurück (false). */
+      control(on) {
+        ctl.on = !!on;
+        if (!on) {
+          fig.armL.rotation.set(0, 0, 0); fig.armR.rotation.set(0, 0, 0); fig.legL.rotation.set(0, 0, 0); fig.legR.rotation.set(0, 0, 0);
+          fig.root.rotation.x = 0; fig.root.rotation.z = 0; fig.root.scale.y = 1; fig.head.rotation.x = 0;
+          waveT = -1; wipeT = -1;
+        }
+      },
+      /** Schlagabtausch-Zustand: unterdrückt normale Sprüche. */
+      setBusy(on) { ctl.busy = !!on; },
+      /** Spruch aus einer Kategorie (auch draußen, ohne Limiter-Pause); false bei offenem Overlay. */
+      say(cat, vars, o) { return speak(cat, vars || {}, { force: true, outside: true, brawl: true, maxDist: 40, ...o }); },
+    };
     const offProvide = ctx.provide('cashier', {
+      richard: () => richard,
       event(name) {
         if (name === 'couchSit' || name === 'couchStand') speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
       },
@@ -396,18 +471,20 @@ export default {
       update(dt, t) {
         now = t;
         const p = ctx.player.getPose();
-        const dx = p.x - cx;
-        const dz = p.z - cz;
+        const dx = p.x - pos.x;
+        const dz = p.z - pos.z;
         const dist = Math.hypot(dx, dz);
-        // Kopf: zum Spieler (< 6 m), sonst sanftes Umherschauen
-        const idleLook = Math.sin(t * 0.37) * 0.35;
-        const target = dist < 6 ? clamp(Math.atan2(-dx, -dz), -1.1, 1.1) : idleLook;
-        headYaw += (target - headYaw) * (1 - Math.exp(-5 * dt));
-        fig.head.rotation.y = headYaw;
-        fig.root.rotation.y = headYaw * 0.3;
-        if (!reduced) {
-          fig.head.position.y = 1.44 + Math.sin(t * 1.7) * 0.004;
-          fig.root.scale.y = 1 + Math.sin(t * 1.7) * 0.005;
+        if (!ctl.on) {
+          // Kopf: zum Spieler (< 6 m), sonst sanftes Umherschauen
+          const idleLook = Math.sin(t * 0.37) * 0.35;
+          const target = dist < 6 ? clamp(Math.atan2(-dx, -dz), -1.1, 1.1) : idleLook;
+          headYaw += (target - headYaw) * (1 - Math.exp(-5 * dt));
+          fig.head.rotation.y = headYaw;
+          fig.root.rotation.y = headYaw * 0.3;
+          if (!reduced) {
+            fig.head.position.y = 1.44 + Math.sin(t * 1.7) * 0.004;
+            fig.root.scale.y = 1 + Math.sin(t * 1.7) * 0.005;
+          }
         }
         // Mund: flattert beim Sprechen
         if (voice.speaking) {
@@ -415,7 +492,7 @@ export default {
           fig.mouth.scale.y = 1 + Math.min(1, open) * (reduced ? 0.6 : 2.2);
         } else if (fig.mouth.scale.y !== 1) fig.mouth.scale.y = 1;
         // Arme
-        if (waveT >= 0) {
+        if (ctl.on) { waveT = -1; wipeT = -1; } else if (waveT >= 0) {
           waveT += dt;
           const u = waveT / WAVE;
           const env = u >= 1 ? 0 : Math.sin(Math.min(1, u * 1.15) * Math.PI) ** 0.4;
@@ -469,6 +546,8 @@ export default {
         offs.forEach((o) => o());
         if (bubble3d) { bubble3d.dispose(); bubble3d = null; }
         offIa();
+        offIa2();
+        offIa3();
         offProvide();
         stopVoice();
         voice.dispose();
