@@ -67,6 +67,7 @@ export class StoreApp {
     this.touchChosen = false; // Nutzer hat das Schema im Pause-Menü selbst gewählt (nur dann wird es gespeichert)
     this.carried = null; // { id, item, slot, art, reopened } getragene Hülle (Mitnehmen)
     this.carryingOut = false;
+    this.released = new Map(); // freigegebene (geworfene) Hüllen: id -> { slot, art, item }, Regalfach bleibt leer bis restoreReleased
     this.touchTune = normTune(this.opts.touchTune);
     this.zoomTarget = 1;
     this.zoom = 1;
@@ -515,6 +516,11 @@ export class StoreApp {
       let rel;
       try { rel = hv.releaseForCarry(); } finally { this.carryingOut = false; }
       if (rel) { if (!c) slot = rel.slot; if (rel.art) art = rel.art; }
+    } else if (this.released && this.released.has(id)) { // geworfene Hülle wieder aufgehoben: Ursprungsfach und Cover übernehmen
+      const rel = this.released.get(id);
+      this.released.delete(id);
+      slot = rel.slot;
+      art = rel.art || art;
     } else {
       slot = this.findSlot(id);
       if (slot) this.shelves.setHidden(slot.fv, slot.info, true);
@@ -534,6 +540,30 @@ export class StoreApp {
     const hv = this.holdview;
     if (c.reopened && hv && hv.isOpen && hv.itemId === c.id) { hv.close(false); return true; } // onHoldClosed → returnCarried
     this.returnCarried();
+    return true;
+  }
+
+  /**
+   * Getragene Hülle aus der Hand geben, OHNE sie ins Regal zu stellen (Werfen): Das Fach bleibt leer, bis restoreReleased(id)
+   * oder ein erneutes carry(id). Rückgabe { id, item, art (Canvas|null), media } oder null.
+   */
+  releaseCarried() {
+    const c = this.carried;
+    if (!c || (this.holdview && this.holdview.isOpen && c.reopened)) return null;
+    this.carried = null;
+    (this.released || (this.released = new Map())).set(c.id, { slot: c.slot, art: c.art, item: c.item });
+    if (this.hands) this.hands.setCarried(null);
+    if (this.touchCtl) this.touchCtl.setCarrying(false);
+    if (this.mods) this.mods.emit('carry', { id: null });
+    return { id: c.id, item: c.item, art: c.art || null, media: (c.item && c.item.lfx && c.item.lfx.media) || 'dvd' };
+  }
+
+  /** Freigegebene Hülle zurück ins Ursprungsfach. Rückgabe false, wenn nichts freigegeben war. */
+  restoreReleased(id) {
+    const r = this.released && this.released.get(id);
+    if (!r) return false;
+    this.released.delete(id);
+    if (r.slot && this.shelves) this.shelves.setHidden(r.slot.fv, r.slot.info, false);
     return true;
   }
 
@@ -965,6 +995,11 @@ export class StoreApp {
       carried() { return app.getCarried(); },
       carry(id) { return app.carry(id); },
       drop() { return app.drop(); },
+      release() { return app.releaseCarried(); },
+      use(name) { return app.mods ? app.mods.ctx.use(name) : undefined; }, // Provider (Debug), z. B. use('physics')
+      restore(id) { return app.restoreReleased(id); },
+      act(name, src) { return name === 'hit' ? app.doHit(src || 'key') : name === 'throw' ? app.doThrow(src || 'key') : app.doUse(src || 'key'); }, // Debug: Aktion auslösen (hit|throw|use)
+      look(yaw, pitch) { app.player.yaw = yaw; app.player.pitch = pitch || 0; app.player.moved++; },
       spawns() { return app.layout.city ? JSON.parse(JSON.stringify(app.layout.city.spawns)) : {}; },
       area() { return areaAt(app.layout, app.player.x, app.player.z, app.player.y || 0); },
       city() { return app.layout.city; },

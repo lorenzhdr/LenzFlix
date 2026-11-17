@@ -158,6 +158,10 @@ export class ModuleHost {
         carry: (id) => (typeof app.carry === 'function' ? app.carry(id) : false),
         /** Getragene Hülle zurück ins Regal an den Ursprungsplatz. */
         drop: () => (typeof app.drop === 'function' ? app.drop() : false),
+        /** Getragene Hülle freigeben (Werfen) ohne Regal-Rückstellung → { id, item, art, media } | null; Fach bleibt leer. */
+        release: () => (typeof app.releaseCarried === 'function' ? app.releaseCarried() : null),
+        /** Freigegebene Hülle zurück ins Ursprungsfach (false = nichts freigegeben). Vor erneutem carry(id) NICHT nötig. */
+        restore: (id) => (typeof app.restoreReleased === 'function' ? app.restoreReleased(id) : false),
       },
       input: {
         /** Aktions-Handler 'use' | 'hit' | 'throw'; fn(ev) -> true = verbraucht. Höhere prio zuerst. Rückgabe: off(). */

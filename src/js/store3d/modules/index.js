@@ -33,6 +33,10 @@ import city from './city.js';
 import door from './door.js';
 import intro from './intro.js';
 import daytime from './daytime.js';
+// --- Welle 2 physics: imports ---
+import props from './props.js';
+import throwModule from './throw.js';
+// --- /Welle 2 physics ---
 import cashier from './cashier.js';
 import brawl from './brawl.js';
 import rent from './rent.js';
@@ -48,6 +52,9 @@ export const MODULES = [
   door,
   intro,
   daytime,
+  // --- Welle 2 physics (props: Provider 'physics' vor allen Nutzern) ---
+  props,
+  throwModule,
   cashier,
   brawl,
   rent,

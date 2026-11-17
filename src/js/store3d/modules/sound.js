@@ -148,6 +148,13 @@ export default {
         lfo.start(t); lfo.stop(t + dur + 0.05);
         tone(110, t + dur - 0.12, 0.22, { type: 'triangle', gain: 0.2, slide: 0.5 }); // Anschlag oben
       },
+      // --- Physik (Welle 2, Paket physics) ---
+      thud(t, o) { const k = o && o.k > 0 ? Math.min(1.6, o.k) : 1; noise(t, 0.09, { freq: 260, q: 1, gain: 0.2 * k }); tone(120, t, 0.12, { type: 'triangle', gain: 0.22 * k, slide: 0.5 }); },
+      bounce(t, o) { const k = o && o.k > 0 ? Math.min(1.4, o.k) : 1; tone(190, t, 0.14, { type: 'sine', gain: 0.2 * k, slide: 0.6 }); noise(t, 0.03, { freq: 900, q: 2, gain: 0.05 * k }); },
+      whoosh(t) { const { f } = noise(t, 0.22, { freq: 700, q: 0.9, gain: 0.1 }); f.frequency.setValueAtTime(500, t); f.frequency.exponentialRampToValueAtTime(2200, t + 0.2); },
+      swish(t) { noise(t, 0.3, { freq: 3200, q: 0.7, gain: 0.07 }); },
+      cheer(t) { [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.07, 0.35, { type: 'triangle', gain: 0.1, send: 0.4, attack: 0.004 })); },
+      clang(t) { tone(420, t, 0.5, { type: 'square', gain: 0.05, slide: 0.9, send: 0.5 }); tone(1130, t, 0.35, { type: 'sine', gain: 0.07, send: 0.5 }); noise(t, 0.05, { freq: 2500, q: 2, gain: 0.1 }); },
     };
 
     function play(name, opts) {
