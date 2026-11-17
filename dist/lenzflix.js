@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.14.0";
+  var VERSION = "1.15.0";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -1521,10 +1521,10 @@
       }, 150);
     });
   }
-  async function play(item, { resume = false, timeoutMs = 8e3 } = {}) {
+  async function play(item, { resume = false, timeoutMs = 8e3, noCover = false } = {}) {
     if (!item || !item.Id) return false;
     window.dispatchEvent(new CustomEvent("lfx:play", { detail: { id: item.Id } }));
-    show({ item });
+    if (!noCover) show({ item });
     const container = findProxyContainer();
     if (container) {
       const proxy = buildProxy(item, resume);
@@ -1536,7 +1536,7 @@
       }
       return true;
     }
-    allowRoute("/details");
+    if (!noCover) allowRoute("/details");
     const ok = await playViaDetails(item, resume, timeoutMs);
     if (!ok) hide();
     return ok;
@@ -22228,8 +22228,8 @@
 
   // src/js/features/store/prefs.js
   var KEY5 = "lfx.store.";
-  var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "touch" };
-  var TOUCH_CONTROLS = ["joystick", "touch"];
+  var DEFAULTS3 = { quality: "auto", sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: "tief", touchControl: "game" };
+  var TOUCH_CONTROLS = ["game", "joystick", "touch"];
   var TOUCH_SENS = ["low", "normal", "high"];
   var TUNE_FLAGS = ["holdInvertY", "holdInvertX", "lookFlipY", "lookFlipX"];
   var TOUCH_REGRIPS = ["off", "short", "long"];
@@ -22278,7 +22278,9 @@
   }
   function getTouchControl() {
     const v = read3("localStorage", storageKey6("touchControl"));
-    return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS3.touchControl;
+    if (v === "joystick") return "joystick";
+    if (v === "touch" && read3("localStorage", storageKey6("touchControlChosen")) === "1") return "touch";
+    return DEFAULTS3.touchControl;
   }
   function getTouchTune() {
     const t = { touchSens: readEnum("touchSens", TOUCH_SENS, "normal"), touchRegrip: readEnum("touchRegrip", TOUCH_REGRIPS, "short") };
@@ -22309,7 +22311,10 @@
     if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey6("voiceOnline"), p.voiceOnline ? "1" : "0");
     if (typeof p.voiceName === "string") write2("localStorage", storageKey6("voiceName"), p.voiceName);
     if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey6("voicePitch"), p.voicePitch);
-    if (TOUCH_CONTROLS.includes(p.touchControl)) write2("localStorage", storageKey6("touchControl"), p.touchControl);
+    if (p.touchControlChosen === true && TOUCH_CONTROLS.includes(p.touchControl)) {
+      write2("localStorage", storageKey6("touchControl"), p.touchControl);
+      write2("localStorage", storageKey6("touchControlChosen"), "1");
+    }
     for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey6(k), p[k] ? "1" : "0");
     if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey6("touchSens"), p.touchSens);
     if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey6("touchRegrip"), p.touchRegrip);
@@ -22729,12 +22734,12 @@
   // src/js/features/store/stage-park.js
   var PARK_ID = "lfx-store-park";
   var stageEl = null;
-  function parkStage(stage) {
+  function parkStage(stage, { visible = false } = {}) {
     if (!stage) return;
     unparkStage();
     const box = document.createElement("div");
     box.id = PARK_ID;
-    box.setAttribute("style", "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;z-index:-1");
+    box.setAttribute("style", visible ? "display:block;height:0;overflow:visible" : "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;z-index:-1");
     box.appendChild(stage);
     document.body.appendChild(box);
     stageEl = stage;
@@ -22745,6 +22750,40 @@
     const box = document.getElementById(PARK_ID);
     if (box) box.remove();
     return el4;
+  }
+
+  // src/js/features/store/palast-back.js
+  var IDLE_MS2 = 3e3;
+  function mountBackButton({ onBack }) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "lfx-palast-back";
+    b.textContent = "Zur\xFCck ins Kino";
+    let t = 0;
+    const wake = () => {
+      b.classList.remove("is-idle");
+      clearTimeout(t);
+      t = setTimeout(() => b.classList.add("is-idle"), IDLE_MS2);
+    };
+    const evs = ["mousemove", "pointerdown", "touchstart"];
+    b.addEventListener("click", () => {
+      try {
+        onBack();
+      } catch (e) {
+        console.warn("[LenzFlix] palast back", e && e.message);
+      }
+    });
+    for (const n of evs) window.addEventListener(n, wake, { passive: true, capture: true });
+    document.body.appendChild(b);
+    wake();
+    return {
+      el: b,
+      destroy() {
+        clearTimeout(t);
+        for (const n of evs) window.removeEventListener(n, wake, true);
+        b.remove();
+      }
+    };
   }
 
   // src/js/features/store/home.js
@@ -22761,6 +22800,8 @@
   var root5 = () => document.documentElement;
   var bridge = null;
   var xr = { presenting: false, cinema: false };
+  var palast = { active: false, full: false };
+  var backBtn = null;
   var getBridge = () => bridge || (bridge = createCinemaBridge());
   function isPresenting() {
     if (!xr.presenting || !inst2 || !inst2.instance) return false;
@@ -22770,6 +22811,7 @@
       return false;
     }
   }
+  var isPalast = () => palast.active && Boolean(inst2 && inst2.instance);
   function releaseParked() {
     const cur3 = inst2;
     if (!cur3 || !cur3.parked) return;
@@ -22793,7 +22835,27 @@
       return;
     }
     if (xr.cinema) getBridge().activate(true);
-    else if (bridge) bridge.activate(false);
+    else if (bridge && !palast.active) bridge.activate(false);
+  }
+  function onCinema2d(s) {
+    palast.active = Boolean(s && s.active);
+    palast.full = palast.active && Boolean(s.full);
+    const cl2 = root5().classList;
+    cl2.toggle("lfx-store-palast", palast.active);
+    cl2.toggle("lfx-store-palast-full", palast.full);
+    if (palast.active) getBridge().activate(true);
+    else if (bridge && !xr.cinema) bridge.activate(false);
+    if (palast.full && !backBtn) backBtn = mountBackButton({ onBack: () => {
+      try {
+        inst2.instance.cinema2dSetFull(false);
+      } catch {
+      }
+    } });
+    else if (!palast.full && backBtn) {
+      backBtn.destroy();
+      backBtn = null;
+    }
+    if (!palast.active && !isPresenting() && inst2 && inst2.parked) releaseParked();
   }
   function hasWebGL() {
     try {
@@ -22839,6 +22901,7 @@
     if (bridge) bridge.activate(false);
     xr.presenting = false;
     xr.cinema = false;
+    onCinema2d(null);
   }
   function setProgress2(fraction, label) {
     if (!ui2 || !ui2.fill) return;
@@ -22996,7 +23059,7 @@
           return null;
         }
       },
-      play: (item, o = {}) => play(item, { resume: Boolean(o.resume) }),
+      play: (item, o = {}) => play(item, o.noCover ? { resume: Boolean(o.resume), noCover: true } : { resume: Boolean(o.resume) }),
       toast: (text) => toast(text),
       classicView: () => {
         window.location.hash = CLASSIC_HASH;
@@ -23034,6 +23097,7 @@
       onPrefs: ret2((p) => savePrefs2(p)),
       onBigCovers: ret2((on) => onBigCovers(on)),
       onXr: ret2((s) => onXr(s)),
+      onCinema2d: ret2((s) => onCinema2d(s)),
       cinema: getBridge(),
       onFatal: ret2(onFatal)
     };
@@ -23169,7 +23233,7 @@
     if (inst2 && inst2.instance && inst2.uid !== getUserId()) disposeInstance2();
     if (inst2 && inst2.instance) {
       if (inst2.parked) {
-        if (isPresenting() && reattachParked()) {
+        if ((isPresenting() || isPalast()) && reattachParked()) {
           applyRoute(r);
           return;
         }
@@ -23220,6 +23284,7 @@
     waitTimer9 = null;
     disposeInstance2();
     unparkStage();
+    onCinema2d(null);
     if (bridge) {
       bridge.dispose();
       bridge = null;
@@ -23255,9 +23320,9 @@
       lastKey3 = null;
       if (inst2 && inst2.instance && !inst2.parked) {
         let parkedNow = false;
-        if (isPresenting() && xr.cinema && ui2 && ui2.stage) {
+        if ((isPresenting() && xr.cinema || isPalast()) && ui2 && ui2.stage) {
           try {
-            parkStage(ui2.stage);
+            parkStage(ui2.stage, { visible: !isPresenting() });
             inst2.parked = true;
             parkedNow = true;
             clearDisposeTimer();
