@@ -109,6 +109,11 @@ describe('mount', () => {
       expect(captured.deps[k]).toBeDefined();
     }
     expect(captured.deps.user).toEqual({ name: 'Lenz' });
+    expect(captured.deps.mp).toMatchObject({ uid: 'u1', cv: expect.any(String) });
+    expect(captured.deps.mp.prefs()).toEqual({ on: true, name: true, film: false, chat: true, mute: [], hint: false });
+    expect(typeof captured.deps.mp.ticket).toBe('function');
+    captured.deps.onPrefs({ mp: { chat: false } });
+    expect(captured.deps.mp.prefs().chat).toBe(false);
     expect(loadCatalog).toHaveBeenCalled();
     expect(sessionStorage.getItem('lfx.store.introSeen')).toBe('1');
   });

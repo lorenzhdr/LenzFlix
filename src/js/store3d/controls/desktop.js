@@ -13,6 +13,8 @@ const LOCK_RECENT = 3000;
 const LOCK_SILENT = 400; // kommt nach requestPointerLock() so lange weder Lock noch Fehler, gilt der Versuch als gescheitert
 /** Aktionstasten: Code -> ctx-Rückruf (nur im Modus 'play' abgefangen, damit Leertaste in Menüs und Panels weiter Knöpfe auslöst). */
 const ACTIONS = { Space: 'onJump', KeyF: 'onHit', KeyG: 'onThrow' };
+/** Mehrspieler-Tasten (Enter/T): nur im Modus 'play' mit Pointer-Lock und nur verbraucht, wenn der Rückruf true liefert (sonst bleibt die Taste unberührt, wie in 1.15). */
+const MP_ACTIONS = { Enter: 'onChat', NumpadEnter: 'onChat', KeyT: 'onEmote' };
 const ESC_DEBOUNCE = 300; // Esc, das den Lock beendet hat, darf das Pause-Menü nicht sofort wieder schließen
 
 /** Texteingabe, in der Esc nicht abgefangen wird (Knöpfe, Auswahllisten u. Ä. zählen nicht). */
@@ -52,6 +54,7 @@ export class DesktopControls {
     this.zoomKey = false;
     this.zoomBtn = false;
     this.zoomSent = 1;
+    this.eaten = new Set(); // Mehrspieler-Tasten, deren keydown verbraucht wurde (Wiederholung und keyup folgen)
     this.h = {
       key: (e) => this.onKey(e, true),
       keyUp: (e) => this.onKey(e, false),
@@ -63,7 +66,7 @@ export class DesktopControls {
         this.drag = null;
         if (e && e.button === 2) { this.zoomBtn = false; this.syncZoom(); }
       },
-      blur: () => { this.down.clear(); this.zoomKey = false; this.zoomBtn = false; this.syncZoom(); },
+      blur: () => { this.down.clear(); this.eaten.clear(); this.zoomKey = false; this.zoomBtn = false; this.syncZoom(); },
       noCtx: (e) => e.preventDefault(),
     };
   }
@@ -97,6 +100,7 @@ export class DesktopControls {
   detach() {
     if (!this.attached) return;
     this.attached = false;
+    this.eaten.clear();
     const c = this.ctx.canvas;
     window.removeEventListener('keydown', this.h.key, true);
     window.removeEventListener('keyup', this.h.keyUp, true);
@@ -280,6 +284,20 @@ export class DesktopControls {
       this.zoomKey = isDown && mode === 'play';
       this.syncZoom();
       return;
+    }
+    const mpa = MP_ACTIONS[e.code];
+    if (mpa && typeof this.ctx[mpa] === 'function') {
+      const eat = () => { e.preventDefault(); e.stopPropagation(); };
+      if (!isDown) {
+        if (this.eaten.delete(e.code)) { eat(); return; }
+      } else if (this.eaten.has(e.code)) {
+        eat();
+        return;
+      } else if (mode === 'play' && !e.repeat && (this.locked || this.dragLook) && this.ctx[mpa]() === true) {
+        this.eaten.add(e.code);
+        eat();
+        return;
+      }
     }
     const act = ACTIONS[e.code];
     if (act && mode === 'play' && this.ctx[act]) {

@@ -34,7 +34,9 @@ createServer(async (req, res) => {
   const top = path.split(/[\\/]/)[0];
   // src/js/ nur lesend und nur .js-Module (Picker-Harness)
   const srcJs = /^src[\\/]js[\\/]/.test(path) && extname(path) === '.js';
-  if (!extra[rawPath] && !srcJs && (!allowed.includes(top) || path.includes('..'))) {
+  // Mehrspieler-Harness (nur .js, nur lesend): Fake-Welt/Bots und der echte Reducer charts-worker/src/mp/*.js
+  const mpDev = /^(build[\\/]mp-dev|charts-worker[\\/]src[\\/]mp)[\\/][^\\/]+\.js$/.test(path) && !path.includes('..');
+  if (!extra[rawPath] && !srcJs && !mpDev && (!allowed.includes(top) || path.includes('..'))) {
     res.writeHead(404, headers); return res.end('not found');
   }
   try {

@@ -2,6 +2,8 @@ import { aggregate } from './aggregate.js';
 import { jsonResponse, preflight } from './http.js';
 import { checkToken, resolveSeries, runCustomQuery } from './jellyfin.js';
 import { handleMeStats } from './me-stats.js';
+import { handleTicket, handleUpgrade } from './mp/route.js';
+export { MpWorld } from './mp/world.js';
 import { buildSql, windowDays } from './sql.js';
 
 const KV_KEY = 'charts:v1';
@@ -92,6 +94,9 @@ async function handle(request, env, ctx) {
   if ((pathname === '/me/stats' || pathname === '/lenzflix-stats/api/me/stats') && request.method === 'GET') {
     return handleMeStats(request, env, ctx);
   }
+
+  if (pathname === '/mp/ticket' && request.method === 'GET') return handleTicket(request, env, ctx);
+  if (pathname === '/mp' && request.method === 'GET') return handleUpgrade(request, env);
 
   if (pathname === '/health' && request.method === 'GET') {
     const data = await env.CHARTS.get(KV_KEY, 'json');

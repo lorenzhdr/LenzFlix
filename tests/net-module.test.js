@@ -1,0 +1,376 @@
+// @vitest-environment jsdom
+// VIDEOTHEK LENZ · Modul net (modules/net.js): Verbindung erst nach 'enter', Anzeige, Still-aus, Lebenszyklus (Aussetzen, VR-Kino), dispose.
+// Fake-WebSocket, Fake-Timer, kein Netzwerk.
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import net from '../src/js/store3d/modules/net.js';
+
+const WL = (over = {}) => ({ t: 'wl', pv: 1, c: 1, k: 'aaaaaaaaaaaa', s: 5000000, ad: 0, cap: ['pres', 'chat'], cf: { pr: 8, ph: 8 }, peers: [], ...over });
+const peer = (c, k, extra = {}) => ({ c, k, n: 'Gast', f: 1, j: 0, ...extra });
+
+let sockets;
+class FakeWS {
+  constructor(url, protocols) { this.url = url; this.protocols = protocols; this.sent = []; this.closed = null; this.readyState = 0; sockets.push(this); }
+  send(s) { this.sent.push(s); }
+  close(code) { this.closed = code; this.readyState = 3; }
+  open() { this.readyState = 1; this.onopen && this.onopen({}); }
+  recv(m) { this.onmessage && this.onmessage({ data: JSON.stringify(m) }); }
+  frames() { return this.sent.filter((x) => x.startsWith('[')).flatMap((x) => JSON.parse(x)); }
+}
+
+function setup(o = {}) {
+  const provided = new Map();
+  const listeners = new Map();
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const canvas = document.createElement('canvas');
+  host.appendChild(canvas);
+  let prefs = { on: true, name: true, film: false, chat: true, mute: [], hint: false, ...(o.prefs || {}) };
+  const onPrefs = vi.fn((p) => { Object.assign(prefs, p.mp); });
+  const state = { suspended: false, playing: true, xr: false };
+  const toast = vi.fn();
+  const ticket = vi.fn(async () => o.ticket || { ok: true, tk: 'a.b', url: 'wss://charts.example/mp', exp: 0, pv: [1], s: 5000000 });
+  const player = { x: 5, y: 0, z: 5, yaw: 0, pitch: 0, a: 0, h: null };
+  const ctx = {
+    scene: {}, camera: {}, renderer: { domElement: canvas }, layout: { w: 12.5, d: 18 }, isTouch: !!o.touch, isPhone: false,
+    deps: { ...(o.noMp ? {} : { mp: { uid: 'u1', cv: '1.16.0', prefs: () => prefs, ticket } }), onPrefs },
+    opts: { debug: true, mpTransport: FakeWS },
+    quality: () => 'high',
+    suspended: () => state.suspended,
+    playing: () => state.playing,
+    player: { getNet: () => ({ ...player, vx: 0, vy: 0, vz: 0 }) },
+    xr: { presenting: () => state.xr, toast },
+    provide: (n, impl) => { provided.set(n, impl); return () => { if (provided.get(n) === impl) provided.delete(n); }; },
+    use: (n) => provided.get(n),
+    on: (ev, fn) => { const l = listeners.get(ev) || []; l.push(fn); listeners.set(ev, l); return () => { const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); }; },
+  };
+  const emit = (ev, ...a) => { for (const fn of (listeners.get(ev) || []).slice()) fn(...a); };
+  return { ctx, emit, provided, listeners, state, toast, ticket, onPrefs, prefs: (p) => { prefs = { ...prefs, ...p }; }, player, host, getPrefs: () => prefs };
+}
+
+const flush = async () => { await vi.advanceTimersByTimeAsync(0); };
+async function goLive(t, wl = WL()) {
+  t.emit('enter');
+  await flush();
+  const ws = sockets[sockets.length - 1];
+  ws.open();
+  ws.recv(wl);
+  return ws;
+}
+
+beforeEach(() => { vi.useFakeTimers(); sockets = []; });
+afterEach(() => { vi.useRealTimers(); document.body.innerHTML = ''; });
+
+describe('Modul net: ohne deps.mp', () => {
+  it('kein Handle, kein Provider, keine Listener, kein DOM', () => {
+    const t = setup({ noMp: true });
+    const add = vi.spyOn(document, 'addEventListener');
+    expect(net.init(t.ctx)).toBeNull();
+    expect(t.provided.size).toBe(0);
+    expect(t.listeners.size).toBe(0);
+    expect(add).not.toHaveBeenCalled();
+    expect(t.host.querySelector('.lfx-store-social')).toBeNull();
+    add.mockRestore();
+  });
+});
+
+describe('Modul net: Verbindung', () => {
+  it('init verbindet nicht; erst nach enter kommt Ticket, Socket mit Subprotokoll und hi', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    expect(h).toBeTruthy();
+    await flush();
+    expect(t.ticket).not.toHaveBeenCalled();
+    expect(sockets.length).toBe(0);
+    t.emit('enter');
+    await flush();
+    expect(t.ticket).toHaveBeenCalledTimes(1);
+    expect(sockets.length).toBe(1);
+    expect(sockets[0].protocols).toEqual(['lfx-mp.1', 't.a.b']);
+    sockets[0].open();
+    const hi = sockets[0].frames()[0];
+    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
+    h.dispose();
+  });
+
+  it('Mehrspieler aus: auch nach enter keine Verbindung', async () => {
+    const t = setup({ prefs: { on: false } });
+    const h = net.init(t.ctx);
+    t.emit('enter');
+    await flush();
+    expect(t.ticket).not.toHaveBeenCalled();
+    h.dispose();
+  });
+
+  it('wl: Provider aktiv, Anzeige „1 hier“, Hinweis genau einmal', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    await goLive(t);
+    const p = t.provided.get('net');
+    expect(p.active()).toBe(true);
+    expect(p.me()).toMatchObject({ c: 1, k: 'aaaaaaaaaaaa' });
+    expect(p.has('pres')).toBe(true);
+    expect(p.has('kino')).toBe(false);
+    h.update(0.016, 1);
+    expect(t.host.querySelector('.lfx-mp-count').textContent).toBe('1 hier');
+    expect(t.toast).toHaveBeenCalledTimes(1);
+    expect(t.toast.mock.calls[0][0]).toContain('Abschalten im Menü unter Mehrspieler');
+    expect(t.onPrefs).toHaveBeenCalledWith({ mp: { hint: true } });
+    h.dispose();
+  });
+
+  it('Hinweis bei bereits gezeigtem hint: kein Toast', async () => {
+    const t = setup({ prefs: { hint: true } });
+    const h = net.init(t.ctx);
+    await goLive(t);
+    expect(t.toast).not.toHaveBeenCalled();
+    h.dispose();
+  });
+
+  it('Zählung nach k: andere Person, eigenes zweites Gerät', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t, WL({ peers: [peer(2, 'bbbbbbbbbbbb')] }));
+    const p = t.provided.get('net');
+    h.update(0.016, 1);
+    expect(p.count()).toBe(2);
+    expect(t.host.querySelector('.lfx-mp-count').textContent).toBe('2 hier');
+    ws.recv({ t: 'b', s: 5001000, p: [], ev: [{ t: 'j', c: 3, k: 'aaaaaaaaaaaa', n: 'Ich', f: 1, j: 0 }] });
+    h.update(0.016, 2);
+    expect(p.count()).toBe(2);
+    expect(t.host.querySelector('.lfx-mp-count').textContent).toBe('2 hier · 3 Geräte');
+    expect(p.peers().map((x) => x.c).sort()).toEqual([2, 3]);
+    ws.recv({ t: 'b', s: 5002000, p: [], ev: [{ t: 'l', c: 2 }, { t: 'l', c: 3 }] });
+    h.update(0.016, 3);
+    expect(t.host.querySelector('.lfx-mp-count').textContent).toBe('1 hier');
+    h.dispose();
+  });
+
+  it('Nachrichtentypen gehen an on("msg:<t>")', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    const seen = [];
+    t.provided.get('net').on('msg:kx', (e) => seen.push(e.sid));
+    ws.recv({ t: 'x', ev: [{ t: 'kx', sid: 7 }] });
+    expect(seen).toEqual([7]);
+    h.dispose();
+  });
+
+  it('Anzeige nur bei playing()', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    await goLive(t);
+    h.update(0.016, 1);
+    expect(t.host.querySelector('.lfx-mp-social').hidden).toBe(false);
+    t.state.playing = false;
+    h.update(0.016, 2);
+    expect(t.host.querySelector('.lfx-mp-social').hidden).toBe(true);
+    t.state.playing = true;
+    h.update(0.016, 3);
+    expect(t.host.querySelector('.lfx-mp-social').hidden).toBe(false);
+    h.dispose();
+  });
+
+  it('Touch: Host-Klasse lfx-store-has-social, Desktop nicht', async () => {
+    const t = setup({ touch: true });
+    const h = net.init(t.ctx);
+    await goLive(t);
+    h.update(0.016, 1);
+    expect(t.host.classList.contains('lfx-store-has-social')).toBe(true);
+    h.dispose();
+    expect(t.host.classList.contains('lfx-store-has-social')).toBe(false);
+    const d = setup();
+    const h2 = net.init(d.ctx);
+    await goLive(d);
+    h2.update(0.016, 1);
+    expect(d.host.classList.contains('lfx-store-has-social')).toBe(false);
+    h2.dispose();
+  });
+
+  it('sendet die eigene Pose im Takt (nur bei Änderung)', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    h.update(0.016, 1);
+    await vi.advanceTimersByTimeAsync(300);
+    const ps = ws.frames().filter((m) => m.t === 'p');
+    expect(ps.length).toBe(1);
+    expect(ps[0].q.length).toBe(7);
+    h.update(0.016, 2); // unverändert: nichts Neues
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws.frames().filter((m) => m.t === 'p').length).toBe(1);
+    h.dispose();
+  });
+
+  it('Hülle in der Hand: nur mit Film-Flag über die Leitung', async () => {
+    const id = 'a'.repeat(32);
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    t.emit('carry', { id });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws.frames().some((m) => m.t === 'hd')).toBe(false);
+    t.prefs({ film: true });
+    t.provided.get('net').renderMenu(document.createElement('div'));
+    h.dispose();
+    const t2 = setup({ prefs: { film: true } });
+    const h2 = net.init(t2.ctx);
+    const ws2 = await goLive(t2);
+    t2.emit('carry', { id });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws2.frames().filter((m) => m.t === 'hd')).toEqual([{ t: 'hd', i: id }]);
+    h2.dispose();
+  });
+});
+
+describe('Modul net: Still-aus', () => {
+  it.each([
+    [{ ok: false, why: 'nourl' }, 'nicht eingerichtet'],
+    [{ ok: false, why: 'gone' }, 'nicht eingerichtet'],
+    [{ ok: false, why: 'off' }, 'vorübergehend aus'],
+    [{ ok: false, why: 'blocked' }, 'nicht erreichbar'],
+    [{ ok: false, why: 'auth' }, 'Anmeldung'],
+  ])('Ticket %j: kein Socket, keine Figuren/Anzeige, Panel nennt den Grund', async (ticket, text) => {
+    const t = setup({ ticket });
+    const h = net.init(t.ctx);
+    t.emit('enter');
+    await flush();
+    expect(sockets.length).toBe(0);
+    const p = t.provided.get('net');
+    expect(p.active()).toBe(false);
+    h.update(0.016, 1);
+    expect(t.host.querySelector('.lfx-store-social')).toBeNull();
+    const el = document.createElement('div');
+    p.renderMenu(el);
+    expect(el.querySelector('.lfx-mp-status').textContent).toContain(text);
+    h.dispose();
+  });
+
+  it('Ticket 503 ohne Update-Hinweis; Verbindungsabbruch räumt Anzeige und Peers weg', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t, WL({ peers: [peer(2, 'bbbbbbbbbbbb')] }));
+    h.update(0.016, 1);
+    expect(t.host.querySelector('.lfx-mp-social').hidden).toBe(false);
+    ws.readyState = 3;
+    ws.onclose({ code: 1006 });
+    expect(t.provided.get('net').active()).toBe(false);
+    expect(t.provided.get('net').peers()).toEqual([]);
+    expect(t.host.querySelector('.lfx-mp-social').hidden).toBe(true);
+    h.dispose();
+  });
+
+  it('Update nötig (4001) nennt den Grund im Panel', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    t.emit('enter');
+    await flush();
+    sockets[0].open();
+    sockets[0].readyState = 3;
+    sockets[0].onclose({ code: 4001 });
+    const el = document.createElement('div');
+    t.provided.get('net').renderMenu(el);
+    expect(el.querySelector('.lfx-mp-status').textContent).toContain('Update nötig');
+    h.dispose();
+  });
+});
+
+describe('Modul net: Lebenszyklus', () => {
+  it('echtes Aussetzen schließt mit 1000, Fortsetzen verbindet neu', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    t.state.suspended = true;
+    h.onSuspend();
+    expect(ws.closed).toBe(1000);
+    expect(t.provided.get('net').active()).toBe(false);
+    t.state.suspended = false;
+    h.onResume();
+    await flush();
+    expect(sockets.length).toBe(2);
+    h.dispose();
+  });
+
+  it('VR-Kino (ctx.suspended() false): Verbindung bleibt, Anzeige weg, keine Posen', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    h.update(0.016, 1);
+    await vi.advanceTimersByTimeAsync(300);
+    const n0 = ws.frames().filter((m) => m.t === 'p').length;
+    h.onSuspend();
+    expect(ws.closed).toBeNull();
+    expect(t.provided.get('net').active()).toBe(true);
+    expect(t.host.querySelector('.lfx-mp-social').hidden).toBe(true);
+    t.player.x = 9;
+    h.update(0.016, 2);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws.frames().filter((m) => m.t === 'p').length).toBe(n0);
+    h.onResume();
+    expect(sockets.length).toBe(1);
+    h.update(0.016, 3);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws.frames().filter((m) => m.t === 'p').length).toBe(n0 + 1);
+    h.dispose();
+  });
+
+  it('Panel-Schalter Mehrspieler aus schließt die Verbindung, an verbindet wieder', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    const el = document.createElement('div');
+    const p = t.provided.get('net');
+    p.renderMenu(el);
+    const b = [...el.querySelectorAll('button')].find((x) => x.textContent.startsWith('Mehrspieler'));
+    expect(b.textContent).toBe('Mehrspieler: An');
+    b.click();
+    expect(ws.closed).toBe(1000);
+    expect(t.getPrefs().on).toBe(false);
+    expect(b.textContent).toBe('Mehrspieler: Aus');
+    expect([...el.querySelectorAll('button')].filter((x) => x !== b).every((x) => x.disabled)).toBe(true);
+    b.click();
+    await flush();
+    expect(sockets.length).toBe(2);
+    h.dispose();
+  });
+
+  it('Name-Schalter sendet das Flag neu', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    const el = document.createElement('div');
+    t.provided.get('net').renderMenu(el);
+    [...el.querySelectorAll('button')].find((x) => x.textContent.startsWith('Name zeigen')).click();
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws.frames().filter((m) => m.t === 'f')).toEqual([{ t: 'f', f: 4 }]);
+    h.dispose();
+  });
+
+  it('dispose: Socket zu, Provider und DOM weg, Listener entfernt', async () => {
+    const t = setup();
+    const rm = vi.spyOn(document, 'removeEventListener');
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    h.update(0.016, 1);
+    h.dispose();
+    expect(ws.closed).toBe(1000);
+    expect(t.provided.has('net')).toBe(false);
+    expect(t.host.querySelector('.lfx-store-social')).toBeNull();
+    expect(rm).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    h.dispose(); // zweimal ist harmlos
+    rm.mockRestore();
+  });
+
+  it('Provider: menu() und onChange', async () => {
+    const t = setup();
+    const h = net.init(t.ctx);
+    const p = t.provided.get('net');
+    expect(p.menu()).toEqual({ label: 'Mehrspieler …' });
+    const fn = vi.fn();
+    const off = p.onChange(fn);
+    await goLive(t);
+    expect(fn).toHaveBeenCalled();
+    off();
+    h.dispose();
+  });
+});

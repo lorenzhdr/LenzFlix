@@ -1,0 +1,72 @@
+/* VIDEOTHEK LENZ · Mehrspieler (1.16, Welle a): Anzeige „N hier“, Namensschilder der Fremden, Panel „Mehrspieler …“.
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv); nur --lfx-store-*-Variablen. Overlays fangen keine Eingaben ab (pointer-events:none), außer echten Knöpfen. */
+
+/* „N hier“: nur Anzeige, kein Knopf */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social > .lfx-mp-count {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  color: var(--lfx-store-text, #f4f6ff);
+  font-size: 0.85rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social[hidden] {
+  display: none;
+}
+/* Desktop: oben links (Touch: oben rechts, W0-Platz) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-social.is-desk {
+  right: auto;
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  flex-direction: row;
+}
+
+/* Namensschild über der Figur (Lage setzt net/tags.js inline) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-tag {
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  color: var(--lfx-store-text, #f4f6ff);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-tag.is-touch {
+  padding: 1px 6px;
+  font-size: 0.68rem;
+}
+
+/* Panel „Mehrspieler …“ (Unterebene des Pause-Menüs) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-mpbody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-switch {
+  text-align: left;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-note {
+  margin: -4px 4px 2px;
+  text-align: left;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-status {
+  margin: 4px 4px 0;
+  text-align: left;
+  color: var(--lfx-store-muted, #aab4e8);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-status[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-note[hidden] {
+  display: none;
+}

@@ -314,3 +314,39 @@ describe('Netzzustand', () => {
     expect(b.x).toBeGreaterThan(-5); // kollidiert nicht mit dem Rechteck
   });
 });
+
+describe('Mehrspieler: netDelay und syncNetClock (1.16.0)', () => {
+  it('Standard bleibt NET_DELAY_MS (2D unverändert); Option netDelay wirkt auf applyRemote', () => {
+    const d = new Body({ src: [] });
+    expect(d.netDelay).toBe(NET_DELAY_MS);
+    d.applyRemote({ x: 0, z: 0, a: 0 }, 1000);
+    expect(d.netClock).toBe(1000 - NET_DELAY_MS);
+    const b = new Body({ src: [], netDelay: 250 });
+    expect(b.netDelay).toBe(250);
+    b.applyRemote({ x: 0, z: 0, a: 0 }, 1000);
+    expect(b.netClock).toBe(750);
+    expect(new Body({ src: [], netDelay: -5 }).netDelay).toBe(NET_DELAY_MS);
+    expect(new Body({ src: [], netDelay: NaN }).netDelay).toBe(NET_DELAY_MS);
+  });
+  it('syncNetClock(ms): Uhr = ms - netDelay, nur bei Remote-Körpern, nicht-endlich ignoriert', () => {
+    const b = new Body({ src: [], netDelay: 250 });
+    b.syncNetClock(5000);
+    expect(b.netClock).toBe(0); // noch kein Remote-Körper
+    b.applyRemote({ x: 0, z: 0, a: 0 }, 1000);
+    b.syncNetClock(9000);
+    expect(b.netClock).toBe(8750);
+    b.syncNetClock(NaN);
+    expect(b.netClock).toBe(8750);
+  });
+  it('nach einem Hänger holt syncNetClock die Anzeige wieder an die Quellzeit heran (Interpolation bei 250 ms Verzögerung)', () => {
+    const b = new Body({ src: [], netDelay: 250 });
+    b.applyRemote({ x: 0, z: 0, a: 1 }, 0);
+    b.applyRemote({ x: 1, z: 0, a: 1 }, 1000);
+    b.applyRemote({ x: 2, z: 0, a: 1 }, 2000);
+    b.step(0.016); // Uhr läuft nur über dt: weit hinter der Quelle
+    b.syncNetClock(1750 + 0); // Quellzeit 1750 → Anzeigezeit 1500
+    b.step(0);
+    b.stepRemote(0);
+    expect(b.x).toBeCloseTo(1.5, 5);
+  });
+});

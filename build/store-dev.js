@@ -2,6 +2,9 @@
 // 3D-Bundles ohne Jellyfin auf. Keine Netzwerkzugriffe: Cover sind per Canvas generierte data-URLs.
 // Parameter (Stadt, 1.15.0): ?spawn=shop|street|palast|yard|roof|kiosk|alley (Startpunkt), ?npc=0 / ?cars=0 (Passanten/Autos aus,
 // für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0. Debug: __lfxStore.spawns() / area() / city().
+// Mehrspieler (1.16.0, build/mp-dev/): ?mp=fake&bots=N  Fake-Welt auf dem echten Reducer (deps.mp = fake.mp, opts.mpTransport = fake.socketFactory), N Bots (Straße, Laden, Tür, Palast-Saal, Foyer);
+//   Still-aus-Modi: ?mp=off (kein deps.mp), ?mp=nourl|404|503|401|drop (deps.mp vorhanden, Ticket scheitert bzw. die Verbindung bricht ab); ?mplat=ms (Latenz, Standard 30).
+//   Debug: window.__devMp = Fake-Welt (stats(), bots.stats(), setPrefs()).
 (function () {
   var q = new URLSearchParams(location.search);
   var touch = q.get('touch') === '1';
@@ -191,6 +194,7 @@
     if (typeof p.voicePitch === 'string') prefs.voicePitch = p.voicePitch;
     if (typeof p.bigCovers === 'boolean') prefs.bigCovers = p.bigCovers;
     if (typeof p.touchControl === 'string') prefs.touchControl = p.touchControl;
+    if (p.mp && window.__devMp) window.__devMp.setPrefs(p.mp);
     console.log('[dev] prefs', p);
   };
   deps.onBigCovers = function (on) {
@@ -595,14 +599,14 @@
       try { restore = JSON.parse(sessionStorage.getItem('store-dev-state')); } catch { restore = null; }
     }
     if (q.get('discover') === 'reset') { try { Object.keys(localStorage).filter(function (k) { return k.indexOf('lfx.store.discover.') === 0; }).forEach(function (k) { localStorage.removeItem(k); }); } catch { /* egal */ } }
-    inst = window.LenzFlixStore3D.create(host, deps, {
+    inst = window.LenzFlixStore3D.create(host, deps, Object.assign({
       quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
       openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true, touchApi: q.get('tapi') === 'pointer' ? 'pointer' : undefined,
       spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,
       devFlags: { npc: q.get('npc') !== '0', cars: q.get('cars') !== '0', palast: q.get('palast') === '1', brawl: q.get('brawl') === '1', props: q.get('props') !== '0' },
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,
-    });
+    }, mpOpts));
     window.__store = inst;
   }
   if (palastQ) {
@@ -612,8 +616,22 @@
       setTimeout(function () { if (inst && inst.debug && inst.debug.palastTest) window.__palast = inst.debug.palastTest({ autostart: true }); }, 300);
     };
   }
+  // Mehrspieler-Harness: ?mp=fake|nourl|404|503|401|drop lädt die Fake-Welt (echter Reducer), ?mp=off und ohne Parameter setzen kein deps.mp (wie 1.15)
+  var mpOpts = {};
+  var mpQ = q.get('mp');
+  var mpModes = ['fake', 'nourl', '404', '503', '401', 'drop'];
+  function loadMp() {
+    if (mpModes.indexOf(mpQ) < 0) return Promise.resolve();
+    return import('/build/mp-dev/fake.js').then(function (m) {
+      var w = m.createFakeWorld({ mode: mpQ === 'fake' ? 'ok' : mpQ, bots: mpQ === 'fake' ? Number(q.get('bots')) || 0 : 0, seed: Number(q.get('mpseed')) || 1, latency: q.get('mplat') !== null ? Number(q.get('mplat')) : undefined, uid: 'dev-user', name: 'Du' });
+      w.start();
+      deps.mp = w.mp;
+      window.__devMp = w;
+      mpOpts.mpTransport = w.socketFactory; // nur mit opts.debug (Harness) gelesen
+    }).catch(function (e) { console.warn('[dev] mp-fake', e && e.message); });
+  }
   function boot() {
-    start(false);
+    loadMp().then(function () { start(false); });
     window.addEventListener('pagehide', function () { if (bridge) bridge.dispose(); if (inst) inst.dispose(); });
   }
   if (!window.LenzFlixStore3D) { deps.onFatal(new Error('dist/lenzstore.js fehlt – erst npm run build')); return; }

@@ -27,9 +27,10 @@ const r2 = (v) => +v.toFixed(2);
 
 
 export class Body {
-  /** @param {{ src, x?, z?, y?, yaw?, pitch?, spawn? }} o  src = Kollider-Quelle (Array | Index | { index, dyn }, siehe nav/collide.js) */
+  /** @param {{ src, x?, z?, y?, yaw?, pitch?, spawn?, netDelay? }} o  src = Kollider-Quelle (Array | Index | { index, dyn }, siehe nav/collide.js); netDelay = Anzeigeverzögerung der Remote-Interpolation in ms (Standard NET_DELAY_MS) */
   constructor(o = {}) {
     this.src = o.src || [];
+    this.netDelay = Number.isFinite(o.netDelay) && o.netDelay >= 0 ? o.netDelay : NET_DELAY_MS;
     this.x = o.x || 0;
     this.z = o.z || 0;
     this.y = o.y || 0;
@@ -293,7 +294,7 @@ export class Body {
 
   /**
    * Fremden Zustand übernehmen: (now = Zeit in ms, beliebige Uhr, nur Differenzen zählen). Der Körper wird zum Remote-Körper
-   * (keine Physik, keine Kollision) und folgt dem Puffer mit NET_DELAY_MS Verzögerung (lineare Interpolation, Winkel über angDiff).
+   * (keine Physik, keine Kollision) und folgt dem Puffer mit netDelay (Standard NET_DELAY_MS) Verzögerung (lineare Interpolation, Winkel über angDiff).
    * Liegt der neue Stand weiter als NET_JUMP_DIST vom aktuellen entfernt, springt der Körper sofort.
    */
   applyRemote(s, now = 0) {
@@ -303,12 +304,17 @@ export class Body {
     const far = Math.hypot(s.x - this.x, (s.y || 0) - this.y, s.z - this.z) > NET_JUMP_DIST;
     if (first || far) {
       this.netBuf = [];
-      this.netClock = now - NET_DELAY_MS;
+      this.netClock = now - this.netDelay;
       this.setNet(s);
     }
     this.netBuf.push({ t: now, s: { ...s } });
     while (this.netBuf.length > NET_BUFFER) this.netBuf.shift();
     this.heldId = s.h == null ? null : s.h;
+  }
+
+  /** Remote-Uhr auf die aktuelle Zeit der Quelle setzen (ms, gleiche Uhr wie bei applyRemote): behebt Dauerverzögerung nach Hängern. Nur bei Remote-Körpern. */
+  syncNetClock(ms) {
+    if (this.remote && Number.isFinite(ms)) this.netClock = ms - this.netDelay;
   }
 
   setNet(s) {

@@ -111,3 +111,57 @@ describe('Aktionstasten', () => {
     input.remove();
   });
 });
+
+describe('Mehrspieler-Tasten Enter/T', () => {
+  it('ohne Verbraucher (Rückruf fehlt) bleiben Enter und T unberührt', () => {
+    for (const code of ['Enter', 'NumpadEnter', 'KeyT']) {
+      const e = key(code);
+      expect(e.defaultPrevented, code).toBe(false);
+      key(code, 'keyup');
+    }
+  });
+  it('Rückruf liefert false: Taste bleibt unberührt', () => {
+    ctx.onChat = vi.fn(() => false);
+    ctx.onEmote = vi.fn(() => false);
+    const e = key('Enter');
+    const t = key('KeyT');
+    expect(ctx.onChat).toHaveBeenCalledTimes(1);
+    expect(ctx.onEmote).toHaveBeenCalledTimes(1);
+    expect(e.defaultPrevented).toBe(false);
+    expect(t.defaultPrevented).toBe(false);
+  });
+  it('Rückruf liefert true: Taste (inkl. Wiederholung und keyup) wird verbraucht, nur einmal ausgelöst', () => {
+    ctx.onChat = vi.fn(() => true);
+    ctx.onEmote = vi.fn(() => true);
+    const down = key('Enter');
+    const rep = key('Enter', 'keydown', { repeat: true });
+    const up = key('Enter', 'keyup');
+    expect(ctx.onChat).toHaveBeenCalledTimes(1);
+    expect(down.defaultPrevented && rep.defaultPrevented && up.defaultPrevented).toBe(true);
+    expect(key('KeyT').defaultPrevented).toBe(true);
+    expect(ctx.onEmote).toHaveBeenCalledTimes(1);
+  });
+  it('nur im Modus play: im Overlay/Sitzen (Kino-Leiste) wird nichts ausgelöst oder verbraucht', () => {
+    ctx.onChat = vi.fn(() => true);
+    ctx.onEmote = vi.fn(() => true);
+    mode = 'overlay';
+    expect(key('Enter').defaultPrevented).toBe(false);
+    expect(key('KeyT').defaultPrevented).toBe(false);
+    expect(ctx.onChat).not.toHaveBeenCalled();
+    expect(ctx.onEmote).not.toHaveBeenCalled();
+  });
+  it('ohne Pointer-Lock und ohne dragLook: nicht ausgelöst', () => {
+    ctx.onChat = vi.fn(() => true);
+    lockEl = null;
+    expect(key('Enter').defaultPrevented).toBe(false);
+    expect(ctx.onChat).not.toHaveBeenCalled();
+  });
+  it('Tippen in Textfeldern bleibt unberührt', () => {
+    ctx.onChat = vi.fn(() => true);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.dispatchEvent(new KeyboardEvent('keydown', { code: 'Enter', bubbles: true, cancelable: true }));
+    expect(ctx.onChat).not.toHaveBeenCalled();
+    input.remove();
+  });
+});

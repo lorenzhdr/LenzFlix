@@ -294,4 +294,37 @@ describe('npc/traffic/kiosk', () => {
     const near = [...app.layout.dyn].filter((c) => c.kind === 'walker' && Math.abs((c.x0 + c.x1) / 2 - person.handle.root.position.x) < 0.05);
     expect(near.length).toBe(1);
   });
+
+  it('Provider npc: reserve(n) senkt die Passanten-Zahl um n (Mehrspieler, Draw-Call-Ausgleich), 0 hebt auf, Werte werden geklemmt', async () => {
+    await build({ level: 'low' });
+    const p = host.ctx.use('npc');
+    expect(typeof p.reserve).toBe('function');
+    const count = () => window.__lfxM4 && window.__lfxM4.npc ? window.__lfxM4.npc.counts().walkers : p.people().filter((q) => q.kind === 'walker').length;
+    const base = count();
+    expect(base).toBeGreaterThan(2);
+    expect(p.reserve(2)).toBe(2);
+    expect(count()).toBe(base - 2);
+    expect(p.reserve(2)).toBe(2);
+    expect(count()).toBe(base - 2);
+    expect(p.reserve(1)).toBe(1);
+    expect(count()).toBe(base - 1);
+    expect(p.reserve(1000)).toBe(64);
+    expect(count()).toBe(0);
+    expect(p.reserve(-3)).toBe(0);
+    expect(p.reserve(NaN)).toBe(0);
+    expect(count()).toBe(base);
+  });
+
+  it('reserve bleibt bei Qualitätswechsel erhalten und beeinträchtigt externe Figuren nicht', async () => {
+    const { groups } = await build({ level: 'low' });
+    const p = host.ctx.use('npc');
+    const ext = p.figure({ pos: { x: 1, z: 1 }, parent: groups.street });
+    const base = p.people().filter((q) => q.kind === 'walker').length;
+    p.reserve(3);
+    host.hook('onQuality');
+    expect(p.people().filter((q) => q.kind === 'walker').length).toBe(Math.max(0, base - 3));
+    expect(ext.disposed).toBe(false);
+    p.reserve(0);
+    expect(p.people().filter((q) => q.kind === 'walker').length).toBe(base);
+  });
 });

@@ -51,6 +51,10 @@ export class ModuleHost {
       catalog: app.deps.catalog, deps: app.deps, opts: app.opts, isPhone: app.phone, isTouch: app.touch,
       quality: () => app.engine.preset.level,
       soundOn: () => app.sound,
+      /** Aussetzung läuft (Hülle unmount): im VR-Kino bleibt das false, obwohl onSuspend gerufen wird. */
+      suspended: () => !!app.suspended,
+      /** Laufmodus sichtbar: Spiel läuft (mode 'play'), nicht ausgesetzt, nicht entsorgt. */
+      playing: () => !app.disposed && !app.suspended && app.mode === 'play',
       voiceOnline: () => !!app.voiceOnline,
       voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || '', pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
       /**
@@ -107,6 +111,8 @@ export class ModuleHost {
       },
       player: {
         getPose: () => ({ ...app.player.state, y: app.player.y }),
+        /** Netzzustand des eigenen Körpers { x, y, z, yaw, pitch, vx, vy, vz, a (Body.ANIM), h } (Mehrspieler). */
+        getNet: () => (typeof app.player.getNetState === 'function' ? app.player.getNetState() : null),
         teleport: (x, z, yaw, pitch, y) => { app.player.teleport(x, z, yaw === undefined ? app.player.yaw : yaw, pitch || 0, y); },
         /** Sprung auslösen (gepuffert). Rückgabe: Sprung ist sofort möglich; in VR immer false. */
         jump: () => (self.xrOn() || typeof app.player.jump !== 'function' ? false : app.player.jump()),
@@ -159,7 +165,7 @@ export class ModuleHost {
         restore: (id) => (typeof app.restoreReleased === 'function' ? app.restoreReleased(id) : false),
       },
       input: {
-        /** Aktions-Handler 'use' | 'hit' | 'throw'; fn(ev) -> true = verbraucht. Höhere prio zuerst. Rückgabe: off(). */
+        /** Aktions-Handler 'use' | 'hit' | 'throw' | 'chat' | 'emote'; fn(ev) -> true = verbraucht. Höhere prio zuerst. Rückgabe: off(). */
         onAction: (name, fn, o) => self.onAction(name, fn, o),
       },
       on: (ev, fn) => {

@@ -90,3 +90,26 @@ describe('VR-Prefs', () => {
     prefs.savePrefs({ vr: 'x' });
   });
 });
+
+describe('Mehrspieler-Vorlieben', () => {
+  it('Standard: on/name/chat an, film aus, mute leer, hint false', () => {
+    expect(prefs.getMp()).toEqual({ on: true, name: true, film: false, chat: true, mute: [], hint: false });
+  });
+  it('nur ausdrückliches 0 schaltet ab, nur 1 schaltet film an', () => {
+    prefs.savePrefs({ mp: { on: false, name: false, chat: false, film: true, hint: true } });
+    expect(prefs.getMp()).toMatchObject({ on: false, name: false, chat: false, film: true, hint: true });
+    expect(localStorage.getItem('lfx.store.mpOn.u1')).toBe('0');
+    localStorage.setItem('lfx.store.mpOn.u1', 'x');
+    localStorage.setItem('lfx.store.mpFilm.u1', 'x');
+    expect(prefs.getMp()).toMatchObject({ on: true, film: false });
+  });
+  it('Teilmenge, Typprüfung, mute gefiltert/dedupliziert/auf 50 begrenzt', () => {
+    prefs.savePrefs({ mp: { on: 'no', chat: false } });
+    expect(prefs.getMp()).toMatchObject({ on: true, chat: false });
+    const ks = Array.from({ length: 60 }, (_, i) => i.toString(16).padStart(12, '0'));
+    prefs.savePrefs({ mp: { mute: [...ks, ks[0], 'ZZ', 5] } });
+    expect(prefs.getMp().mute).toEqual(ks.slice(0, 50));
+    localStorage.setItem('lfx.store.mpMute.u1', '{kaputt');
+    expect(prefs.getMp().mute).toEqual([]);
+  });
+});

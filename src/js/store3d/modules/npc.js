@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · Modul `npc` (Welle 2, Paket E): Figuren-Provider, Passanten, Kino-Personal, Katze, Tauben, Schlag-Handler (prio 20).
 // Provider 'npc' { figure(opts) → Handle, staff(role) → Handle|null, nearestPerson(x,z,r) → { kind, handle, dist }|null,
-//   registerPerson({ kind, handle, onHit(dir), pos?() }) → off, people() → [{ kind, handle, x, z }], say(handle, text, ms), scare(x,z) }.
+//   registerPerson({ kind, handle, onHit(dir), pos?() }) → off, people() → [{ kind, handle, x, z }], say(handle, text, ms), scare(x,z),
+//   reserve(n) → n (1.16.0: n Figuren-Slots für Mitspieler belegen; Passanten-Zahl sinkt um n, Draw-Call-Ausgleich bei low) }.
 // Passanten laufen auf layout.city.sidewalkPaths (npc/pathgraph.js), warten an Zebrastreifen auf Fußgänger-Grün, weichen dem Spieler aus.
 // ?npc=0 (ctx.opts.devFlags.npc === false): figure() geht weiter, staff()/nearestPerson() liefern null, keine Passanten/Tiere.
 // Vor-/Nachbedingungen: Passanten hängen in city.groups.street (unsichtbar im Laden), Personal in palastInterior, Katze in yard.
@@ -86,6 +87,12 @@ export default {
       registerPerson(o) { const e = { ...o }; registered.add(e); return () => registered.delete(e); },
       say: (h, text, ms) => bubbles.show(h, text, ms),
       scare(x, z) { if (cat && Math.hypot(cat.logic.x - x, cat.logic.z - z) < 3) scareCat(cat.logic, catEnv()); },
+      /** Slots für Fremdfiguren (Mehrspieler): je Slot ein Passant weniger. Rückgabe: gültiger Wert; 0 hebt auf. */
+      reserve(n) {
+        const v = Number.isFinite(n) ? Math.max(0, Math.min(64, Math.floor(n))) : 0;
+        if (v !== reserved) { reserved = v; if (enabled && graph) adjustWalkers(); }
+        return reserved;
+      },
     };
     const offProvider = ctx.provide('npc', provider);
 
@@ -97,6 +104,7 @@ export default {
     let pigeons = null;
     let graph = null;
     let frame = 0;
+    let reserved = 0; // provider.reserve(n)
     let px = 0; let pz = 0; let py = 0; let pSpeed = 0; let havePose = false;
     let preset = presetFor(ctx.quality(), ctx.isPhone);
 
@@ -131,7 +139,7 @@ export default {
       entry.handle.dispose();
     }
     function adjustWalkers() {
-      const want = enabled && graph ? walkerCount(preset.npcMax, tod(), raining()) : 0;
+      const want = enabled && graph ? Math.max(0, walkerCount(preset.npcMax, tod(), raining()) - reserved) : 0;
       while (walkers.length < want) if (!spawnWalker()) break;
       while (walkers.length > want) removeWalker(walkers[walkers.length - 1]);
     }
@@ -339,7 +347,7 @@ export default {
       cat: () => cat && { ...cat.logic },
       flock: () => flock && flock.list.map((p) => ({ state: p.state, x: p.x, z: p.z, y: p.y })),
       staff: () => [...staffMap.keys()],
-      counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size }),
+      counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size, reserved }),
     });
 
     return {

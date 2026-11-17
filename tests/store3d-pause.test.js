@@ -276,3 +276,47 @@ describe('Pause-Menue: VR-Modus', () => {
     n.p.destroy();
   });
 });
+
+describe('Pause-Menue: Mehrspieler', () => {
+  const entryOf = (host) => [...host.querySelectorAll('.lfx-store-pause-panel > button')].find((b) => b.textContent === 'Mehrspieler …');
+  it('ohne getMp kein Eintrag', () => {
+    const { host, p } = make();
+    expect(entryOf(host).hidden).toBe(true);
+    p.destroy();
+  });
+  it('Eintrag öffnet die Unterebene, rendert den Inhalt und schließt per Zurück/closePick', () => {
+    const render = vi.fn((el) => { el.textContent = 'Inhalt'; });
+    const { host, p } = make({ getMp: () => ({ label: 'Mehrspieler …' }), renderMp: render });
+    p.show();
+    const entry = entryOf(host);
+    expect(entry.hidden).toBe(false);
+    expect(p.pickOpen).toBe(false);
+    entry.click();
+    expect(p.pickOpen).toBe(true);
+    expect(host.querySelector('.lfx-store-mppick').hidden).toBe(false);
+    expect(host.querySelector('.lfx-store-mpbody').textContent).toBe('Inhalt');
+    expect(host.querySelector('.lfx-store-pause-panel').hasAttribute('inert')).toBe(true);
+    const n = render.mock.calls.length;
+    p.refresh();
+    expect(render.mock.calls.length).toBeGreaterThan(n);
+    host.querySelector('.lfx-store-mppick .lfx-store-act--primary').click();
+    expect(p.pickOpen).toBe(false);
+    expect(host.querySelector('.lfx-store-pause-panel').hasAttribute('inert')).toBe(false);
+    entry.click();
+    p.closePick();
+    expect(p.pickOpen).toBe(false);
+    p.destroy();
+  });
+  it('fällt getMp während offener Ebene auf null, schließt sie', () => {
+    let on = true;
+    const { host, p } = make({ getMp: () => (on ? { label: 'Mehrspieler …' } : null), renderMp: () => {} });
+    p.show();
+    entryOf(host).click();
+    expect(p.pickOpen).toBe(true);
+    on = false;
+    p.refresh();
+    expect(p.pickOpen).toBe(false);
+    expect(entryOf(host).hidden).toBe(true);
+    p.destroy();
+  });
+});

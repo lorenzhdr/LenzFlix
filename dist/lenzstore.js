@@ -2758,17 +2758,17 @@
      * @return {Matrix3} A reference to this matrix.
      */
     transpose() {
-      let tmp2;
+      let tmp3;
       const m = this.elements;
-      tmp2 = m[1];
+      tmp3 = m[1];
       m[1] = m[3];
-      m[3] = tmp2;
-      tmp2 = m[2];
+      m[3] = tmp3;
+      tmp3 = m[2];
       m[2] = m[6];
-      m[6] = tmp2;
-      tmp2 = m[5];
+      m[6] = tmp3;
+      tmp3 = m[5];
       m[5] = m[7];
-      m[7] = tmp2;
+      m[7] = tmp3;
       return this;
     }
     /**
@@ -5237,25 +5237,25 @@
      */
     transpose() {
       const te = this.elements;
-      let tmp2;
-      tmp2 = te[1];
+      let tmp3;
+      tmp3 = te[1];
       te[1] = te[4];
-      te[4] = tmp2;
-      tmp2 = te[2];
+      te[4] = tmp3;
+      tmp3 = te[2];
       te[2] = te[8];
-      te[8] = tmp2;
-      tmp2 = te[6];
+      te[8] = tmp3;
+      tmp3 = te[6];
       te[6] = te[9];
-      te[9] = tmp2;
-      tmp2 = te[3];
+      te[9] = tmp3;
+      tmp3 = te[3];
       te[3] = te[12];
-      te[12] = tmp2;
-      tmp2 = te[7];
+      te[12] = tmp3;
+      tmp3 = te[7];
       te[7] = te[13];
-      te[13] = tmp2;
-      tmp2 = te[11];
+      te[13] = tmp3;
+      tmp3 = te[11];
       te[11] = te[14];
-      te[14] = tmp2;
+      te[14] = tmp3;
       return this;
     }
     /**
@@ -10375,18 +10375,18 @@
           );
         }
       }
-      const tmp2 = new Vector3(), tmp22 = new Vector3();
+      const tmp3 = new Vector3(), tmp22 = new Vector3();
       const n = new Vector3(), n2 = new Vector3();
       function handleVertex(v) {
         n.fromBufferAttribute(normalAttribute, v);
         n2.copy(n);
         const t = tan1[v];
-        tmp2.copy(t);
-        tmp2.sub(n.multiplyScalar(n.dot(t))).normalize();
+        tmp3.copy(t);
+        tmp3.sub(n.multiplyScalar(n.dot(t))).normalize();
         tmp22.crossVectors(n2, t);
         const test = tmp22.dot(tan2[v]);
         const w = test < 0 ? -1 : 1;
-        tangentAttribute.setXYZW(v, tmp2.x, tmp2.y, tmp2.z, w);
+        tangentAttribute.setXYZW(v, tmp3.x, tmp3.y, tmp3.z, w);
       }
       for (let i = 0, il = groups.length; i < il; ++i) {
         const group = groups[i];
@@ -14687,7 +14687,7 @@
         const normal = new Vector3();
         const vertex2 = new Vector3();
         let groupCount = 0;
-        const slope = (radiusBottom - radiusTop) / height;
+        const slope2 = (radiusBottom - radiusTop) / height;
         for (let y = 0; y <= heightSegments; y++) {
           const indexRow = [];
           const v = y / heightSegments;
@@ -14701,7 +14701,7 @@
             vertex2.y = -v * height + halfHeight;
             vertex2.z = radius * cosTheta;
             vertices.push(vertex2.x, vertex2.y, vertex2.z);
-            normal.set(sinTheta, slope, cosTheta).normalize();
+            normal.set(sinTheta, slope2, cosTheta).normalize();
             normals.push(normal.x, normal.y, normal.z);
             uvs.push(u, 1 - v);
             indexRow.push(index++);
@@ -15386,9 +15386,9 @@
   function mergeUniforms(uniforms) {
     const merged = {};
     for (let u = 0; u < uniforms.length; u++) {
-      const tmp2 = cloneUniforms(uniforms[u]);
-      for (const p in tmp2) {
-        merged[p] = tmp2[p];
+      const tmp3 = cloneUniforms(uniforms[u]);
+      for (const p in tmp3) {
+        merged[p] = tmp3[p];
       }
     }
     return merged;
@@ -16066,9 +16066,9 @@
     for (let i = 0; i < 8; i++) {
       const error2 = cubicBezier(s, x0, x1, x2, x3) - x;
       if (Math.abs(error2) < 1e-10) break;
-      const slope = cubicBezierSlope(s, x0, x1, x2, x3);
-      if (Math.abs(slope) < 1e-10) break;
-      s = Math.max(0, Math.min(1, s - error2 / slope));
+      const slope2 = cubicBezierSlope(s, x0, x1, x2, x3);
+      if (Math.abs(slope2) < 1e-10) break;
+      s = Math.max(0, Math.min(1, s - error2 / slope2));
     }
     return s;
   }
@@ -29935,9 +29935,9 @@ void main() {
       const out = [];
       const c0 = Math.floor(q.x0 / cell);
       const c1 = Math.floor(q.x1 / cell);
-      const r0 = Math.floor(q.z0 / cell);
+      const r02 = Math.floor(q.z0 / cell);
       const r1 = Math.floor(q.z1 / cell);
-      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) out.push(cellKey(c, r));
+      for (let r = r02; r <= r1; r++) for (let c = c0; c <= c1; c++) out.push(cellKey(c, r));
       return out;
     };
     const idx = {
@@ -29987,9 +29987,9 @@ void main() {
         seen.clear();
         const c0 = Math.floor(x0 / cell);
         const c1 = Math.floor(x1 / cell);
-        const r0 = Math.floor(z0 / cell);
+        const r02 = Math.floor(z0 / cell);
         const r1 = Math.floor(z1 / cell);
-        for (let r = r0; r <= r1; r++) {
+        for (let r = r02; r <= r1; r++) {
           for (let c = c0; c <= c1; c++) {
             const l = map.get(cellKey(c, r));
             if (!l) continue;
@@ -30025,7 +30025,7 @@ void main() {
     let mantle = null;
     for (let pass = 0; pass < 3; pass++) {
       const list = gather(src, x - r, z - r, x + r, z + r, scratch);
-      let moved = false;
+      let moved2 = false;
       for (let i = 0; i < list.length; i++) {
         const q = list[i];
         if (x + r < q.x0 || x - r > q.x1 || z + r < q.z0 || z - r > q.z1) continue;
@@ -30051,7 +30051,7 @@ void main() {
           else if (m === top) z = q.z0 - r;
           else z = q.z1 + r;
         }
-        moved = true;
+        moved2 = true;
         hit = true;
         rect = q;
         if (!mantle) {
@@ -30059,7 +30059,7 @@ void main() {
           if (Number.isFinite(y1) && q.top !== false && y1 - feetY > STEP_H && y1 - feetY <= MANTLE_H) mantle = q;
         }
       }
-      if (!moved) break;
+      if (!moved2) break;
     }
     scratch.length = 0;
     return { x, z, hit, rect, mantle };
@@ -30140,9 +30140,9 @@ void main() {
       if (!navBlocks(q)) continue;
       const c0 = Math.max(0, Math.floor((q.x0 - radius - ox) / cell));
       const c1 = Math.min(cols - 1, Math.ceil((q.x1 + radius - ox) / cell));
-      const r0 = Math.max(0, Math.floor((q.z0 - radius - oz) / cell));
+      const r02 = Math.max(0, Math.floor((q.z0 - radius - oz) / cell));
       const r1 = Math.min(rows - 1, Math.ceil((q.z1 + radius - oz) / cell));
-      for (let r = r0; r <= r1; r++) {
+      for (let r = r02; r <= r1; r++) {
         const z = oz + (r + 0.5) * cell;
         for (let c = c0; c <= c1; c++) {
           const x = ox + (c + 0.5) * cell;
@@ -30166,7 +30166,7 @@ void main() {
     return nav.blocked[r * nav.cols + c] === 0;
   }
   function nearestFree(nav, x, z, maxR = 12) {
-    const [c0, r0] = worldToCell(nav, x, z);
+    const [c0, r02] = worldToCell(nav, x, z);
     let best = null;
     let bestD = Infinity;
     for (let rad = 0; rad <= maxR; rad++) {
@@ -30174,7 +30174,7 @@ void main() {
         for (let dc = -rad; dc <= rad; dc++) {
           if (Math.max(Math.abs(dr), Math.abs(dc)) !== rad) continue;
           const c = c0 + dc;
-          const r = r0 + dr;
+          const r = r02 + dr;
           if (c < 0 || r < 0 || c >= nav.cols || r >= nav.rows || nav.blocked[r * nav.cols + c]) continue;
           const p = cellCenter(nav, c, r);
           const d = (p.x - x) ** 2 + (p.z - z) ** 2;
@@ -30433,35 +30433,35 @@ void main() {
   var OUTDOOR_AREAS = ["street", "crossing", "sideN", "sideS", "yard", "alley", "roof", "escape", "kiosk", "palastEntrance", "outside", "doorway"];
   var clamp3 = (v, a, b) => Math.min(b, Math.max(a, v));
   var PI = Math.PI;
-  function cityFrame(W, D) {
-    const fz = D + 0.21;
-    const roadZ0 = D + 2.75;
-    const roadZ1 = D + 8.5;
-    const PW2 = clamp3(Math.round((W + 4) * 2) / 2, 20, 28);
+  function cityFrame(W2, D2) {
+    const fz = D2 + 0.21;
+    const roadZ0 = D2 + 2.75;
+    const roadZ1 = D2 + 8.5;
+    const PW2 = clamp3(Math.round((W2 + 4) * 2) / 2, 20, 28);
     return {
-      W,
-      D,
+      W: W2,
+      D: D2,
       fz,
-      curbZ: D + 2.6,
+      curbZ: D2 + 2.6,
       roadZ0,
       roadZ1,
-      roadMid: D + 5.625,
-      laneWz: D + 4.325,
-      laneEz: D + 6.925,
-      sz: D + 10.7,
-      xc0: W + 14,
-      xc1: W + 19,
+      roadMid: D2 + 5.625,
+      laneWz: D2 + 4.325,
+      laneEz: D2 + 6.925,
+      sz: D2 + 10.7,
+      xc0: W2 + 14,
+      xc1: W2 + 19,
       XW0: -26,
-      XW1: W + 33.4,
+      XW1: W2 + 33.4,
       ZW0: -12.5,
-      ZW1: D + 32,
+      ZW1: D2 + 32,
       zSN: roadZ0 - 24,
       zSS: roadZ1 + 21,
       PW: PW2,
-      px0: W / 2 - PW2 / 2,
-      px1: W / 2 + PW2 / 2,
-      fx: Math.round(W * 0.6 * 2) / 2,
-      bounds: { x0: -27, z0: -13.5, x1: W + 34.4, z1: D + 33 }
+      px0: W2 / 2 - PW2 / 2,
+      px1: W2 / 2 + PW2 / 2,
+      fx: Math.round(W2 * 0.6 * 2) / 2,
+      bounds: { x0: -27, z0: -13.5, x1: W2 + 34.4, z1: D2 + 33 }
     };
   }
   function navCellFor(bounds) {
@@ -30488,18 +30488,18 @@ void main() {
     return "outside";
   }
   function visibleGroups(layout, area, x, z) {
-    const W = layout.w;
-    const D = layout.d;
+    const W2 = layout.w;
+    const D2 = layout.d;
     const c = layout.city;
     const out = { shopShell: false, shelves: false, street: area !== "palastHall", yard: false, palastInterior: false, palastExterior: true };
-    const inFront = z > D - 0.01 && z - D < 14 && Math.abs(x - W / 2) < W / 2 + 8 && area !== "palastHall" && area !== "palastFoyer" && area !== "roof" && area !== "escape" && area !== "yard";
+    const inFront = z > D2 - 0.01 && z - D2 < 14 && Math.abs(x - W2 / 2) < W2 / 2 + 8 && area !== "palastHall" && area !== "palastFoyer" && area !== "roof" && area !== "escape" && area !== "yard";
     out.shopShell = area === "shop" || area === "doorway" || inFront;
-    out.shelves = area === "shop" || inFront && z - D < 5;
+    out.shelves = area === "shop" || inFront && z - D2 < 5;
     if (c) {
       const m = c.spawns.alley;
       const inside = area === "shop" || area === "palastHall" || area === "palastFoyer";
       out.yard = area === "yard" || area === "alley" || area === "escape" || area === "roof" || !inside && Math.hypot(x - m.x, z - (c.frame.fz + 1.2)) < 16;
-      const dx = x - W / 2;
+      const dx = x - W2 / 2;
       out.palastInterior = area === "palastHall" || area === "palastFoyer" || z < c.frame.sz && Math.hypot(dx, z - c.frame.sz) < 12 && area !== "shop";
     }
     return out;
@@ -30544,12 +30544,12 @@ void main() {
     ...extra
   });
   function buildCity(store) {
-    const W = store.w;
-    const D = store.d;
-    const door = store.door || { x0: W / 2 - 1.1, x1: W / 2 + 1.1 };
-    const f = cityFrame(W, D);
+    const W2 = store.w;
+    const D2 = store.d;
+    const door = store.door || { x0: W2 / 2 - 1.1, x1: W2 / 2 + 1.1 };
+    const f = cityFrame(W2, D2);
     const { fz, curbZ, roadZ0, roadZ1, sz, xc0, xc1, XW0, XW1, ZW0, ZW1, zSN, zSS, px0, px1, PW: PW2, fx } = f;
-    const rand = seeded(Math.round(W * 100 + D * 10) + 5);
+    const rand = seeded(Math.round(W2 * 100 + D2 * 10) + 5);
     const PALETTE = [[0.55, 0.28, 0.24], [0.62, 0.5, 0.36], [0.38, 0.42, 0.52], [0.5, 0.36, 0.4], [0.42, 0.5, 0.42], [0.6, 0.55, 0.5]];
     const colorOf = () => PALETTE[Math.floor(rand() * PALETTE.length)].map((v) => Math.round(v * 1e3) / 1e3);
     const colliders = [];
@@ -30561,15 +30561,15 @@ void main() {
     const bl = [
       ["NW2", XW0, ZW0, -14, fz, 7.4, "W"],
       ["NW1", -14, ZW0, -3.4, fz, 6.4, "W"],
-      ["NE1", W + T, -T, W + 8.4, fz, 7, "N"],
-      ["NE1b", W + 8.4, ZW0, W + 11.6, D - 2, 7.6, "E"],
-      ["NE2", W + 21.4, ZW0, XW1, fz, 8, "E"],
-      ["YB", -3.4, ZW0, W + 8.4, -11, 6, "Y"],
+      ["NE1", W2 + T, -T, W2 + 8.4, fz, 7, "N"],
+      ["NE1b", W2 + 8.4, ZW0, W2 + 11.6, D2 - 2, 7.6, "E"],
+      ["NE2", W2 + 21.4, ZW0, XW1, fz, 8, "E"],
+      ["YB", -3.4, ZW0, W2 + 8.4, -11, 6, "Y"],
       ["SW", XW0, sz, px0, ZW1, 7, "S"],
-      ["SE1", px1, sz, W + 11.6, ZW1, 6.6, "S"],
-      ["SE2", W + 21.4, sz, XW1, ZW1, 7.8, "S"],
-      ["QN", W + 11.6, ZW0, W + 21.4, zSN, 6.5, "E"],
-      ["QS", W + 11.6, zSS, W + 21.4, ZW1, 6.5, "E"]
+      ["SE1", px1, sz, W2 + 11.6, ZW1, 6.6, "S"],
+      ["SE2", W2 + 21.4, sz, XW1, ZW1, 7.8, "S"],
+      ["QN", W2 + 11.6, ZW0, W2 + 21.4, zSN, 6.5, "E"],
+      ["QS", W2 + 11.6, zSS, W2 + 21.4, ZW1, 6.5, "E"]
     ];
     const buildings = bl.map(([id, x0, z0, x1, z1, h2, region]) => ({ id, x0, z0, x1, z1, h: h2, region, color: colorOf(), front: z1 === fz ? "S" : z0 === sz ? "N" : null }));
     for (const b2 of buildings) col(b2.id, "building", b2.x0, b2.z0, b2.x1, b2.z1);
@@ -30582,17 +30582,17 @@ void main() {
       rect: { x0: px0, z0: sz, x1: px1, z1: pz1 },
       wall: wt,
       h: 8.5,
-      doorX0: W / 2 - 1.5,
-      doorX1: W / 2 + 1.5,
+      doorX0: W2 / 2 - 1.5,
+      doorX1: W2 / 2 + 1.5,
       foyer: { x0: px0 + wt, z0: sz + wt, x1: px1 - wt, z1: sz + 5.75, ceil: 4 },
       hall: { x0: px0 + wt, z0: sz + 6, x1: px1 - wt, z1: sz + 19.5, ceil: 7.5 },
-      hallDoors: [{ x0: W / 2 - 4.5 - 0.8, x1: W / 2 - 4.5 + 0.8 }, { x0: W / 2 + 4.5 - 0.8, x1: W / 2 + 4.5 + 0.8 }],
-      screen: { cx: W / 2, z: sz + 19.15, y0: 1.5, w: 11, h: 6.2, yaw: PI },
+      hallDoors: [{ x0: W2 / 2 - 4.5 - 0.8, x1: W2 / 2 - 4.5 + 0.8 }, { x0: W2 / 2 + 4.5 - 0.8, x1: W2 / 2 + 4.5 + 0.8 }],
+      screen: { cx: W2 / 2, z: sz + 19.15, y0: 1.5, w: 11, h: 6.2, yaw: PI },
       seatBlock: { x0: px0 + 2, x1: px1 - 2, z0: sz + 7, z1: sz + 13.6, rows: 6, pitch: 1.1, rise: 0.2 },
-      canopy: { x0: W / 2 - 4.5, x1: W / 2 + 4.5, z0: sz - 1.7, z1: sz, y: 3 }
+      canopy: { x0: W2 / 2 - 4.5, x1: W2 / 2 + 4.5, z0: sz - 1.7, z1: sz, y: 3 }
     };
-    palast.posterSlots = [-6.4, -3.6, 3.6, 6.4].map((o, i) => ({ id: `poster${i}`, x: Math.round((W / 2 + o) * 100) / 100, y: 1.9, z: sz - 0.05, w: 1.6, h: 2.2, yaw: PI }));
-    palast.sign = { x: W / 2, y: 5.6, w: Math.min(PW2 - 2, 9) };
+    palast.posterSlots = [-6.4, -3.6, 3.6, 6.4].map((o, i) => ({ id: `poster${i}`, x: Math.round((W2 / 2 + o) * 100) / 100, y: 1.9, z: sz - 0.05, w: 1.6, h: 2.2, yaw: PI }));
+    palast.sign = { x: W2 / 2, y: 5.6, w: Math.min(PW2 - 2, 9) };
     col("palastFrontL", "wall", px0, sz, palast.doorX0, sz + wt);
     col("palastFrontR", "wall", palast.doorX1, sz, px1, sz + wt);
     col("palastSideW", "wall", px0, sz, px0 + wt, pz1);
@@ -30612,10 +30612,10 @@ void main() {
     col("gateE", "bounds", XW1 - 0.6, fz, XW1 + 1, sz);
     col("gateN", "bounds", xc0 - 2.4, zSN, xc1 + 2.4, zSN + 0.6);
     col("gateS", "bounds", xc0 - 2.4, zSS - 0.6, xc1 + 2.4, zSS);
-    const kiosk = { hut: { x0: W + 8.8, z0: D - 1.9, x1: W + 11.2, z1: D - 0.1, h: 2.6 }, counter: { x0: W + 9, z0: D - 0.1, x1: W + 11, z1: D + 0.2, h: 1.05 } };
-    kiosk.vendor = { x: W + 10, z: D - 0.95, yaw: PI };
-    kiosk.awning = { x0: W + 8.7, x1: W + 11.3, z0: D - 0.1, z1: D + 1.5, y0: 2.45, y1: 2.75 };
-    kiosk.table = { x0: W + 8.9, z0: D + 1.8, x1: W + 9.4, z1: D + 2.3, h: 1.1 };
+    const kiosk = { hut: { x0: W2 + 8.8, z0: D2 - 1.9, x1: W2 + 11.2, z1: D2 - 0.1, h: 2.6 }, counter: { x0: W2 + 9, z0: D2 - 0.1, x1: W2 + 11, z1: D2 + 0.2, h: 1.05 } };
+    kiosk.vendor = { x: W2 + 10, z: D2 - 0.95, yaw: PI };
+    kiosk.awning = { x0: W2 + 8.7, x1: W2 + 11.3, z0: D2 - 0.1, z1: D2 + 1.5, y0: 2.45, y1: 2.75 };
+    kiosk.table = { x0: W2 + 8.9, z0: D2 + 1.8, x1: W2 + 9.4, z1: D2 + 2.3, h: 1.1 };
     col("kioskHut", "hut", kiosk.hut.x0, kiosk.hut.z0, kiosk.hut.x1, kiosk.hut.z1, { y1: kiosk.hut.h, top: false });
     col("kioskCounter", "kioskcounter", kiosk.counter.x0, kiosk.counter.z0, kiosk.counter.x1, kiosk.counter.z1, { y1: kiosk.counter.h });
     col("kioskTable", "stehtisch", kiosk.table.x0, kiosk.table.z0, kiosk.table.x1, kiosk.table.z1, { y1: kiosk.table.h, top: false });
@@ -30631,78 +30631,78 @@ void main() {
     }
     const L2 = col("escapeL2", "escape", fx - 3.64, -1.62, fx - 2.54, -T, { y1: ROOF_Y });
     escape.parts.push(L2.id);
-    const roof = { x0: -T, z0: -T, x1: W + T, z1: D + T, y: ROOF_Y, gate: { x0: fx - 3.84, x1: fx - 2.34 } };
+    const roof = { x0: -T, z0: -T, x1: W2 + T, z1: D2 + T, y: ROOF_Y, gate: { x0: fx - 3.84, x1: fx - 2.34 } };
     col("roof", "roof", roof.x0, roof.z0, roof.x1, roof.z1, { y0: CEIL_Y, y1: ROOF_Y });
     const par = 0.15;
     col("parapetN1", "parapet", roof.x0, roof.z0, roof.gate.x0, roof.z0 + par, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
     col("parapetN2", "parapet", roof.gate.x1, roof.z0, roof.x1, roof.z0 + par, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
     col("parapetW", "parapet", roof.x0, roof.z0, roof.x0 + par, roof.z1, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
     col("parapetE", "parapet", roof.x1 - par, roof.z0, roof.x1, roof.z1, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
-    col("parapetS", "parapet", roof.x0, D + 0.17, roof.x1, D + 0.25, { y0: ROOF_Y, y1: ROOF_Y + 2, top: false });
+    col("parapetS", "parapet", roof.x0, D2 + 0.17, roof.x1, D2 + 0.25, { y0: ROOF_Y, y1: ROOF_Y + 2, top: false });
     col("crateA", "crate", 0.6, -6, 1.6, -5, { y1: 0.55 });
     col("crateB", "crate", 1.6, -6, 2.6, -5, { y1: 1.1 });
     col("crateC", "crate", 2.6, -6, 3.6, -5, { y1: 1.65 });
     col("container", "container", 3.6, -10.6, 6, -4.6, { y1: 2.6 });
-    const cx0 = Math.round(W * 0.55 * 100) / 100;
+    const cx0 = Math.round(W2 * 0.55 * 100) / 100;
     col("carHood", "car", cx0, -9.6, cx0 + 1.8, -8.4, { y1: 0.95 });
     col("carCabin", "car", cx0, -8.4, cx0 + 1.8, -6.2, { y1: 1.42 });
     col("carTrunk", "car", cx0, -6.2, cx0 + 1.8, -5.4, { y1: 0.95 });
-    const bx0 = Math.round(W * 0.9 * 100) / 100;
+    const bx0 = Math.round(W2 * 0.9 * 100) / 100;
     col("yardBin1", "bin", bx0, -3.3, bx0 + 0.7, -2.6, { y1: 1 });
     col("yardBin2", "bin", bx0, -2.1, bx0 + 0.7, -1.4, { y1: 1 });
-    const hx = Math.round((W + 7.7) * 100) / 100;
-    const hoop = { x: Math.round((W + 6.45) * 100) / 100, y: 3.05, z: -5, yaw: -PI / 2, mast: { x: hx, z: -5 }, board: { x: Math.round((W + 6.95) * 100) / 100, y: 3.35, w: 1.8, h: 1.05 }, ringR: 0.23 };
+    const hx = Math.round((W2 + 7.7) * 100) / 100;
+    const hoop = { x: Math.round((W2 + 6.45) * 100) / 100, y: 3.05, z: -5, yaw: -PI / 2, mast: { x: hx, z: -5 }, board: { x: Math.round((W2 + 6.95) * 100) / 100, y: 3.35, w: 1.8, h: 1.05 }, ringR: 0.23 };
     col("hoopMast", "hoopmast", hx - 0.1, -5.1, hx + 0.1, -4.9, { y1: 3.9, top: false });
     col("hoopBoard", "hoopmast", hoop.board.x - 0.03, -5 - hoop.board.w / 2, hoop.board.x + 0.03, -5 + hoop.board.w / 2, { y0: hoop.board.y - hoop.board.h / 2, y1: hoop.board.y + hoop.board.h / 2, top: false });
     col("palletA", "pallet", -3, -7.6, -1.8, -6.5, { y1: 0.28 });
     col("palletB", "pallet", -3, -6.4, -1.8, -5.3, { y1: 0.28 });
-    const laundry = { x0: Math.round(W * 35) / 100, x1: Math.round(W * 78) / 100, z: -3.9, y: 2.25 };
+    const laundry = { x0: Math.round(W2 * 35) / 100, x1: Math.round(W2 * 78) / 100, z: -3.9, y: 2.25 };
     col("laundryPostA", "laundrypost", laundry.x0 - 0.05, laundry.z - 0.05, laundry.x0 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
     col("laundryPostB", "laundrypost", laundry.x1 - 0.05, laundry.z - 0.05, laundry.x1 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
     const graffiti = { id: "graffiti", x: 0.8, y: 1.6, z: -11, w: 3, h: 2.2, yaw: 0 };
     const roofProps = [
-      { id: "vent1", kind: "vent", x: Math.round(W * 75) / 100, z: Math.round(D * 55) / 100, w: 0.9, d: 0.7, h: 0.8 },
-      { id: "vent2", kind: "vent", x: Math.round(W * 62) / 100, z: Math.round(D * 82) / 100, w: 0.7, d: 0.7, h: 0.6 },
-      { id: "mast", kind: "mast", x: Math.round(W * 20) / 100, z: Math.round(D * 75) / 100, w: 0.16, d: 0.16, h: 2.6 }
+      { id: "vent1", kind: "vent", x: Math.round(W2 * 75) / 100, z: Math.round(D2 * 55) / 100, w: 0.9, d: 0.7, h: 0.8 },
+      { id: "vent2", kind: "vent", x: Math.round(W2 * 62) / 100, z: Math.round(D2 * 82) / 100, w: 0.7, d: 0.7, h: 0.6 },
+      { id: "mast", kind: "mast", x: Math.round(W2 * 20) / 100, z: Math.round(D2 * 75) / 100, w: 0.16, d: 0.16, h: 2.6 }
     ];
     for (const r of roofProps) col(`roof_${r.id}`, "roofprop", r.x - r.w / 2, r.z - r.d / 2, r.x + r.w / 2, r.z + r.d / 2, { y0: ROOF_Y, y1: ROOF_Y + r.h, top: false });
-    col("barrel1", "barrel", -3.3, D - 7.4, -2.6, D - 6.7, { y1: 1.05 });
-    col("barrel2", "barrel", -3.3, D - 5.9, -2.6, D - 5.2, { y1: 1.05 });
+    col("barrel1", "barrel", -3.3, D2 - 7.4, -2.6, D2 - 6.7, { y1: 1.05 });
+    col("barrel2", "barrel", -3.3, D2 - 5.9, -2.6, D2 - 5.2, { y1: 1.05 });
     const fixtures = [];
     const fix = (id, kind, x0, z0, x1, z1, o = {}) => {
       fixtures.push(col(id, kind, x0, z0, x1, z1, o));
     };
-    const bn = W / 2 + 5.2;
-    fix("benchN", "bench", bn - 0.8, D + 0.3, bn + 0.8, D + 0.7, { y1: 0.48 });
-    fix("benchS", "bench", W / 2 - 7.8, D + 10, W / 2 - 6.2, D + 10.45, { y1: 0.48 });
-    fix("phone", "phone", W + 6.1, D + 1.7, W + 7, D + 2.4, { y1: 2.3, top: false });
+    const bn = W2 / 2 + 5.2;
+    fix("benchN", "bench", bn - 0.8, D2 + 0.3, bn + 0.8, D2 + 0.7, { y1: 0.48 });
+    fix("benchS", "bench", W2 / 2 - 7.8, D2 + 10, W2 / 2 - 6.2, D2 + 10.45, { y1: 0.48 });
+    fix("phone", "phone", W2 + 6.1, D2 + 1.7, W2 + 7, D2 + 2.4, { y1: 2.3, top: false });
     const bsx = px0 - 5;
-    fix("busstop", "busstop", bsx - 1.5, D + 9.95, bsx + 1.5, D + 10.65, { y1: 2.4, top: false });
-    fix("mailbox", "mailbox", W + 4, D + 2, W + 4.4, D + 2.4, { y1: 1.2, top: false });
-    fix("hydrant", "hydrant", W / 2 - 9, D + 2.2, W / 2 - 8.75, D + 2.45, { y1: 0.8, top: false });
-    fix("binN", "bin", W / 2 - 4, D + 0.3, W / 2 - 3.6, D + 0.7, { y1: 0.95 });
-    fix("binS", "bin", px1 + 3, D + 9.9, px1 + 3.4, D + 10.3, { y1: 0.95 });
+    fix("busstop", "busstop", bsx - 1.5, D2 + 9.95, bsx + 1.5, D2 + 10.65, { y1: 2.4, top: false });
+    fix("mailbox", "mailbox", W2 + 4, D2 + 2, W2 + 4.4, D2 + 2.4, { y1: 1.2, top: false });
+    fix("hydrant", "hydrant", W2 / 2 - 9, D2 + 2.2, W2 / 2 - 8.75, D2 + 2.45, { y1: 0.8, top: false });
+    fix("binN", "bin", W2 / 2 - 4, D2 + 0.3, W2 / 2 - 3.6, D2 + 0.7, { y1: 0.95 });
+    fix("binS", "bin", px1 + 3, D2 + 9.9, px1 + 3.4, D2 + 10.3, { y1: 0.95 });
     const lfx = Math.round((px1 + 5.5) * 100) / 100;
-    const litfass = { x: lfx, z: D + 10.3, r: 0.35, h: 2.7, slot: { x: lfx, y: 1.5, z: D + 10.3, r: 0.37, h: 1.6 } };
+    const litfass = { x: lfx, z: D2 + 10.3, r: 0.35, h: 2.7, slot: { x: lfx, y: 1.5, z: D2 + 10.3, r: 0.37, h: 1.6 } };
     fix("litfass", "litfass", lfx - 0.35, litfass.z - 0.35, lfx + 0.35, litfass.z + 0.35, { y1: litfass.h, top: false });
-    const bikeX = Math.round((W / 2 - 12) * 100) / 100;
-    fix("bikerack", "bikerack", bikeX - 0.8, D + 0.3, bikeX + 0.8, D + 0.7, { y1: 1.5, top: false });
+    const bikeX = Math.round((W2 / 2 - 12) * 100) / 100;
+    fix("bikerack", "bikerack", bikeX - 0.8, D2 + 0.3, bikeX + 0.8, D2 + 0.7, { y1: 1.5, top: false });
     [-3.4, -2.2, 2.2, 3.4].forEach((o, i) => {
-      const x = W / 2 + o;
-      fix(`bollard${i}`, "bollard", x - 0.1, D + 2.35, x + 0.1, D + 2.55, { y1: 0.9, top: false });
+      const x = W2 / 2 + o;
+      fix(`bollard${i}`, "bollard", x - 0.1, D2 + 2.35, x + 0.1, D2 + 2.55, { y1: 0.9, top: false });
     });
     const lights = [];
     const lampRow = (rowZ, armDz, from, id) => {
       for (let x = from; x < XW1 - 6; x += 9) {
         if (x < XW0 + 6) continue;
         if (x > xc0 - 3.5 && x < xc1 + 3.5) continue;
-        if (id === "S" && x > W / 2 - 5.5 && x < W / 2 + 5.5) continue;
-        if ([W / 2, xc0 - 3.3, xc1 + 3.3, -1.8, W + 10].some((px) => Math.abs(x - px) < 1.5)) continue;
+        if (id === "S" && x > W2 / 2 - 5.5 && x < W2 / 2 + 5.5) continue;
+        if ([W2 / 2, xc0 - 3.3, xc1 + 3.3, -1.8, W2 + 10].some((px) => Math.abs(x - px) < 1.5)) continue;
         lights.push({ id: `lamp${id}${lights.length}`, x: Math.round(x * 100) / 100, z: rowZ, armDz, h: 4.2 });
       }
     };
-    lampRow(D + 2.45, -0.62, XW0 + 6 + 1, "N");
-    lampRow(D + 8.75, 0.62, XW0 + 6 + 5.5, "S");
+    lampRow(D2 + 2.45, -0.62, XW0 + 6 + 1, "N");
+    lampRow(D2 + 8.75, 0.62, XW0 + 6 + 5.5, "S");
     for (const l of lights) col(l.id, "pole", l.x - 0.1, l.z - 0.1, l.x + 0.1, l.z + 0.1, { y1: l.h, top: false });
     const signals = [
       { id: "mainE", lane: "mainE", signal: "main", x: xc0 - 1.6, z: roadZ1 + 1.6 },
@@ -30712,16 +30712,16 @@ void main() {
     ];
     for (const s of signals) col(`sig_${s.id}`, "pole", s.x - 0.1, s.z - 0.1, s.x + 0.1, s.z + 0.1, { y1: 3.2, top: false });
     const doorPosts = [
-      col("postL", "post", door.x0 + 0.05, D - 0.8, door.x0 + 0.17, D - 0.6, { y1: 1.3, top: false }),
-      col("postR", "post", door.x1 - 0.17, D - 0.8, door.x1 - 0.05, D - 0.6, { y1: 1.3, top: false })
+      col("postL", "post", door.x0 + 0.05, D2 - 0.8, door.x0 + 0.17, D2 - 0.6, { y1: 1.3, top: false }),
+      col("postR", "post", door.x1 - 0.17, D2 - 0.8, door.x1 - 0.05, D2 - 0.6, { y1: 1.3, top: false })
     ];
-    const doorBlock = { id: "door", kind: "door", x0: door.x0, z0: D - 0.05, x1: door.x1, z1: D + T + 0.1, y1: CEIL_Y, top: false };
+    const doorBlock = { id: "door", kind: "door", x0: door.x0, z0: D2 - 0.05, x1: door.x1, z1: D2 + T + 0.1, y1: CEIL_Y, top: false };
     const zones = {};
     const Z = (id, label, rect, extra) => {
       zones[id] = zoneOf(id, label, rect, extra);
     };
     const hi = 2.9;
-    Z("store", "Laden", { x0: 0, z0: 0, x1: W, z1: D, y1: hi }, { x: W / 2, z: D - 1.4 });
+    Z("store", "Laden", { x0: 0, z0: 0, x1: W2, z1: D2, y1: hi }, { x: W2 / 2, z: D2 - 1.4 });
     Z("street", "Stra\xDFe", { x0: XW0, z0: fz, x1: XW1, z1: sz, y1: hi });
     Z("sidewalkN", "Gehweg Nord", { x0: XW0, z0: fz, x1: XW1, z1: curbZ, y1: hi });
     Z("sidewalkS", "Gehweg S\xFCd", { x0: XW0, z0: roadZ1, x1: XW1, z1: sz, y1: hi });
@@ -30729,45 +30729,45 @@ void main() {
     Z("crossing", "Kreuzung", { x0: xc0, z0: roadZ0, x1: xc1, z1: roadZ1, y1: hi });
     Z("sideN", "Seitenstra\xDFe Nord", { x0: xc0 - 2.4, z0: zSN, x1: xc1 + 2.4, z1: roadZ0, y1: hi });
     Z("sideS", "Seitenstra\xDFe S\xFCd", { x0: xc0 - 2.4, z0: roadZ1, x1: xc1 + 2.4, z1: zSS, y1: hi });
-    Z("doorway", "Ladent\xFCr", { x0: door.x0, z0: D - 0.6, x1: door.x1, z1: D + 0.8, y1: hi }, { yaw: 0 });
-    Z("theft", "Diebstahlsicherung", { x0: door.x0 - 0.1, z0: D - 1, x1: door.x1 + 0.1, z1: D - 0.35, y1: hi }, { yaw: 0 });
+    Z("doorway", "Ladent\xFCr", { x0: door.x0, z0: D2 - 0.6, x1: door.x1, z1: D2 + 0.8, y1: hi }, { yaw: 0 });
+    Z("theft", "Diebstahlsicherung", { x0: door.x0 - 0.1, z0: D2 - 1, x1: door.x1 + 0.1, z1: D2 - 0.35, y1: hi }, { yaw: 0 });
     Z("alley", "Gasse", { x0: -3.4, z0: -T, x1: -T, z1: fz, y1: hi });
-    Z("yard", "Hinterhof", { x0: -3.4, z0: -11, x1: W + 8.4, z1: -T, y1: 4 });
+    Z("yard", "Hinterhof", { x0: -3.4, z0: -11, x1: W2 + 8.4, z1: -T, y1: 4 });
     Z("escape", "Feuertreppe", { x0: fx - 3.64, z0: -1.62, x1: fx + 2.54, z1: -T });
-    Z("roof", "Dach", { x0: -T, z0: -T, x1: W + T, z1: D + T, y0: 3 });
-    Z("kiosk", "Kiosk", { x0: W + 8.4, z0: D + 0.3, x1: W + 11.6, z1: D + 2, y1: hi });
+    Z("roof", "Dach", { x0: -T, z0: -T, x1: W2 + T, z1: D2 + T, y0: 3 });
+    Z("kiosk", "Kiosk", { x0: W2 + 8.4, z0: D2 + 0.3, x1: W2 + 11.6, z1: D2 + 2, y1: hi });
     Z("palast", "LENZ PALAST", palast.rect);
     Z("palastFoyer", "Palast-Foyer", { x0: palast.foyer.x0, z0: palast.foyer.z0, x1: palast.foyer.x1, z1: palast.hall.z0 });
     Z("palastHall", "Palast-Saal", { x0: palast.hall.x0, z0: palast.hall.z0, x1: palast.hall.x1, z1: palast.hall.z1 });
-    Z("palastEntrance", "Palast-Eingang", { x0: W / 2 - 2, z0: sz - 2.2, x1: W / 2 + 2, z1: sz + 1, y1: hi });
+    Z("palastEntrance", "Palast-Eingang", { x0: W2 / 2 - 2, z0: sz - 2.2, x1: W2 / 2 + 2, z1: sz + 1, y1: hi });
     const spawns = {
-      shop: { x: W / 2, z: D - 1.4, yaw: 0 },
-      street: { x: W / 2, z: D + 1.6, yaw: PI },
-      palast: { x: W / 2, z: sz + 2, yaw: PI },
-      yard: { x: Math.round(W * 50) / 100, z: -3.2, yaw: PI },
-      kiosk: { x: W + 10, z: D + 1.4, yaw: 0 },
-      alley: { x: -1.8, z: Math.round(D * 50) / 100, yaw: 0 },
+      shop: { x: W2 / 2, z: D2 - 1.4, yaw: 0 },
+      street: { x: W2 / 2, z: D2 + 1.6, yaw: PI },
+      palast: { x: W2 / 2, z: sz + 2, yaw: PI },
+      yard: { x: Math.round(W2 * 50) / 100, z: -3.2, yaw: PI },
+      kiosk: { x: W2 + 10, z: D2 + 1.4, yaw: 0 },
+      alley: { x: -1.8, z: Math.round(D2 * 50) / 100, yaw: 0 },
       roof: { x: fx - 2, z: 1.2, y: ROOF_Y, yaw: PI }
     };
-    const wN = D + 1.2;
-    const wS = D + 9.35;
+    const wN = D2 + 1.2;
+    const wS = D2 + 9.35;
     const sidewalkPaths = [
       { id: "walkN", pts: [{ x: XW0 + 1.8, z: wN }, { x: xc0 - 0.3, z: wN }, { x: xc1 + 0.3, z: wN }, { x: XW1 - 1.8, z: wN }], waits: [null, "side", null] },
       { id: "walkS", pts: [{ x: XW0 + 1.8, z: wS }, { x: xc0 - 0.3, z: wS }, { x: xc1 + 0.3, z: wS }, { x: XW1 - 1.8, z: wS }], waits: [null, "side", null] },
       { id: "crossW", pts: [{ x: xc0 - 3.3, z: wN }, { x: xc0 - 3.3, z: wS }], waits: ["main"] },
       { id: "crossE", pts: [{ x: xc1 + 3.3, z: wN }, { x: xc1 + 3.3, z: wS }], waits: ["main"] },
-      { id: "crossMid", pts: [{ x: W / 2, z: wN }, { x: W / 2, z: wS }], waits: ["mid"] },
-      { id: "shopDoor", pts: [{ x: W / 2, z: D + 0.9 }, { x: W / 2, z: wN }], waits: [null] },
-      { id: "palastDoor", pts: [{ x: W / 2, z: sz + 0.6 }, { x: W / 2, z: wS }], waits: [null] },
-      { id: "alleyMouth", pts: [{ x: -1.8, z: wN }, { x: -1.8, z: D + 0.9 }], waits: [null] },
-      { id: "kioskFront", pts: [{ x: W + 10, z: wN }, { x: W + 10, z: D + 0.9 }], waits: [null] }
+      { id: "crossMid", pts: [{ x: W2 / 2, z: wN }, { x: W2 / 2, z: wS }], waits: ["mid"] },
+      { id: "shopDoor", pts: [{ x: W2 / 2, z: D2 + 0.9 }, { x: W2 / 2, z: wN }], waits: [null] },
+      { id: "palastDoor", pts: [{ x: W2 / 2, z: sz + 0.6 }, { x: W2 / 2, z: wS }], waits: [null] },
+      { id: "alleyMouth", pts: [{ x: -1.8, z: wN }, { x: -1.8, z: D2 + 0.9 }], waits: [null] },
+      { id: "kioskFront", pts: [{ x: W2 + 10, z: wN }, { x: W2 + 10, z: D2 + 0.9 }], waits: [null] }
     ];
     const zebras = [
-      { id: "zebraMid", x0: W / 2 - 1.1, z0: roadZ0, x1: W / 2 + 1.1, z1: roadZ1 },
+      { id: "zebraMid", x0: W2 / 2 - 1.1, z0: roadZ0, x1: W2 / 2 + 1.1, z1: roadZ1 },
       { id: "zebraW", x0: xc0 - 4.4, z0: roadZ0, x1: xc0 - 2.2, z1: roadZ1 },
       { id: "zebraE", x0: xc1 + 2.2, z0: roadZ0, x1: xc1 + 4.4, z1: roadZ1 },
-      { id: "zebraArmN", x0: xc0, z0: D + 0.5, x1: xc1, z1: D + 2.1 },
-      { id: "zebraArmS", x0: xc0, z0: D + 8.9, x1: xc1, z1: D + 10.1 }
+      { id: "zebraArmN", x0: xc0, z0: D2 + 0.5, x1: xc1, z1: D2 + 2.1 },
+      { id: "zebraArmS", x0: xc0, z0: D2 + 8.9, x1: xc1, z1: D2 + 10.1 }
     ];
     const lanes = [
       { id: "mainW", dir: { x: -1, z: 0 }, z: f.laneWz, from: XW1 + 4, to: XW0 - 4, speed: 8, stop: { at: xc1 + 1.4, axis: "x", signal: "main" }, yields: ["zebraMid", "zebraW", "zebraE"] },
@@ -30776,12 +30776,12 @@ void main() {
       { id: "sideN", dir: { x: 0, z: -1 }, x: xc1 - 1.25, from: zSS + 4, to: zSN - 4, speed: 7, stop: { at: roadZ1 + 1, axis: "z", signal: "side" }, yields: ["zebraArmS"] }
     ];
     const signs = [
-      { id: "palast", text: "LENZ PALAST", color: "#ffd23f", x: W / 2, y: 5.6, z: sz - 0.05, yaw: PI, w: Math.min(PW2 - 2, 9) },
-      { id: "kiosk", text: "KIOSK", color: "#ff7ac8", x: W + 10, y: 2.3, z: D - 0.07, yaw: 0, w: 1.8 },
-      { id: "alley", text: "HINTERHOF", color: "#35e6ff", x: -3.37, y: 2.4, z: D - 1, yaw: PI / 2, w: 1.8 },
+      { id: "palast", text: "LENZ PALAST", color: "#ffd23f", x: W2 / 2, y: 5.6, z: sz - 0.05, yaw: PI, w: Math.min(PW2 - 2, 9) },
+      { id: "kiosk", text: "KIOSK", color: "#ff7ac8", x: W2 + 10, y: 2.3, z: D2 - 0.07, yaw: 0, w: 1.8 },
+      { id: "alley", text: "HINTERHOF", color: "#35e6ff", x: -3.37, y: 2.4, z: D2 - 1, yaw: PI / 2, w: 1.8 },
       { id: "street", text: "LENZSTRASSE", color: "#ffffff", x: px0 - 4, y: 3.2, z: sz - 0.03, yaw: PI, w: 3 },
-      { id: "armW", text: "BAHNWEG", color: "#ffffff", x: W + 11.63, y: 3, z: D - 6, yaw: PI / 2, w: 2.4 },
-      { id: "armE", text: "BAHNWEG", color: "#ffffff", x: W + 21.37, y: 3, z: D - 6, yaw: -PI / 2, w: 2.4 }
+      { id: "armW", text: "BAHNWEG", color: "#ffffff", x: W2 + 11.63, y: 3, z: D2 - 6, yaw: PI / 2, w: 2.4 },
+      { id: "armE", text: "BAHNWEG", color: "#ffffff", x: W2 + 21.37, y: 3, z: D2 - 6, yaw: -PI / 2, w: 2.4 }
     ];
     const FRONTS = [
       ["NW1", "B\xC4CKEREI KRUME", "#ffb347", [0.8, 0.3, 0.2]],
@@ -30805,30 +30805,30 @@ void main() {
       shopFronts.push({ id: bid, text, color, awning, x: Math.round(cx * 100) / 100, w: Math.round(wd * 100) / 100, z: bd.front === "S" ? bd.z1 : bd.z0, yaw: bd.front === "S" ? 0 : PI, y: 3.5 });
     }
     const discoverSlots = [
-      { id: "roofCenter", area: "roof", x: Math.round(W * 50) / 100, z: Math.round(D * 40) / 100, y: ROOF_Y },
+      { id: "roofCenter", area: "roof", x: Math.round(W2 * 50) / 100, z: Math.round(D2 * 40) / 100, y: ROOF_Y },
       { id: "containerTop", area: "yard", x: 4.8, z: -7.6, y: 2.6 },
       { id: "carRoof", area: "yard", x: cx0 + 0.9, z: -7.3, y: 1.42 },
       { id: "yardCorner", area: "yard", x: -2.4, z: -9.8, y: 0 },
       { id: "alleyEnd", area: "alley", x: -1.8, z: 1.4, y: 0 },
-      { id: "busStop", area: "street", x: bsx, z: D + 9.2, y: 0 },
-      { id: "kioskSide", area: "kiosk", x: W + 8.2, z: D + 1, y: 0 },
-      { id: "palastCanopy", area: "palastEntrance", x: W / 2 + 3.2, z: sz - 0.8, y: 0 }
+      { id: "busStop", area: "street", x: bsx, z: D2 + 9.2, y: 0 },
+      { id: "kioskSide", area: "kiosk", x: W2 + 8.2, z: D2 + 1, y: 0 },
+      { id: "palastCanopy", area: "palastEntrance", x: W2 / 2 + 3.2, z: sz - 0.8, y: 0 }
     ];
     const propSlots = [
-      { id: "ball1", kind: "ball", x: W / 2 - 3, z: D + 1.4, y: 0 },
-      { id: "ball2", kind: "ball", x: W / 2 + 3, z: D + 9.4, y: 0 },
-      { id: "crate1", kind: "crate", x: -1.8, z: D * 0.35, y: 0 },
+      { id: "ball1", kind: "ball", x: W2 / 2 - 3, z: D2 + 1.4, y: 0 },
+      { id: "ball2", kind: "ball", x: W2 / 2 + 3, z: D2 + 9.4, y: 0 },
+      { id: "crate1", kind: "crate", x: -1.8, z: D2 * 0.35, y: 0 },
       { id: "crate2", kind: "crate", x: 1.5, z: -8.5, y: 0 },
-      { id: "crate3", kind: "crate", x: W + 10, z: D + 1.1, y: 0 },
-      { id: "can1", kind: "can", x: W / 2 + 7, z: D + 1.5, y: 0 },
-      { id: "can2", kind: "can", x: W / 2 - 5, z: D + 9.5, y: 0 },
-      { id: "can3", kind: "can", x: px1 + 1.5, z: D + 9.4, y: 0 },
-      { id: "cone1", kind: "cone", x: xc0 - 1, z: D + 1.5, y: 0 },
-      { id: "cone2", kind: "cone", x: xc1 + 1, z: D + 9.4, y: 0 },
-      { id: "box1", kind: "box", x: W * 0.25, z: -3, y: 0 },
-      { id: "box2", kind: "box", x: W + 5, z: D + 1.3, y: 0 },
-      { id: "roofBox", kind: "box", x: W * 0.35, z: D * 0.6, y: ROOF_Y },
-      { id: "palastBall", kind: "ball", x: W / 2 - 2.5, z: sz + 3, y: 0 }
+      { id: "crate3", kind: "crate", x: W2 + 10, z: D2 + 1.1, y: 0 },
+      { id: "can1", kind: "can", x: W2 / 2 + 7, z: D2 + 1.5, y: 0 },
+      { id: "can2", kind: "can", x: W2 / 2 - 5, z: D2 + 9.5, y: 0 },
+      { id: "can3", kind: "can", x: px1 + 1.5, z: D2 + 9.4, y: 0 },
+      { id: "cone1", kind: "cone", x: xc0 - 1, z: D2 + 1.5, y: 0 },
+      { id: "cone2", kind: "cone", x: xc1 + 1, z: D2 + 9.4, y: 0 },
+      { id: "box1", kind: "box", x: W2 * 0.25, z: -3, y: 0 },
+      { id: "box2", kind: "box", x: W2 + 5, z: D2 + 1.3, y: 0 },
+      { id: "roofBox", kind: "box", x: W2 * 0.35, z: D2 * 0.6, y: ROOF_Y },
+      { id: "palastBall", kind: "ball", x: W2 / 2 - 2.5, z: sz + 3, y: 0 }
     ];
     return {
       frame: f,
@@ -30845,7 +30845,7 @@ void main() {
       lights,
       signs,
       fixtures,
-      yard: { x0: -3.4, z0: -11, x1: W + 8.4, z1: -T, hoop, graffiti, laundry },
+      yard: { x0: -3.4, z0: -11, x1: W2 + 8.4, z1: -T, hoop, graffiti, laundry },
       roofProps,
       litfass,
       shopFronts,
@@ -30915,11 +30915,11 @@ void main() {
       cellH: 240
     }
   };
-  function facadeWindows(W, door) {
+  function facadeWindows(W2, door) {
     const winH = { y0: 0.95, y1: 2.4 };
     const out = [];
     if (door.x0 - 0.7 - 1.2 > 1.2) out.push({ x0: 1.2, x1: door.x0 - 0.7, ...winH });
-    if (W - 1.2 - (door.x1 + 0.7) > 1.2) out.push({ x0: door.x1 + 0.7, x1: W - 1.2, ...winH });
+    if (W2 - 1.2 - (door.x1 + 0.7) > 1.2) out.push({ x0: door.x1 + 0.7, x1: W2 - 1.2, ...winH });
     return out;
   }
   function shelfSpec(big) {
@@ -30982,11 +30982,11 @@ void main() {
     const wk = Math.max(6, 0.3 + AISLE_BACK + nrK * (UNIT_DEPTH + AISLE_BACK));
     const wa = Math.max(6, WALL_T + AISLE_BACK + nrA * (UNIT_DEPTH + AISLE_BACK));
     const wRows = 0.6 + (k + 1) * AISLE + k * UNIT_DEPTH;
-    const W = Math.max(MIN_W, wRows, wk + 3.6 + wa);
-    const aisle = k > 0 ? (W - 0.6 - UNIT_DEPTH * k) / (k + 1) : AISLE;
+    const W2 = Math.max(MIN_W, wRows, wk + 3.6 + wa);
+    const aisle = k > 0 ? (W2 - 0.6 - UNIT_DEPTH * k) / (k + 1) : AISLE;
     const zMainN = band + CROSS;
     const zMainS = zMainN + mainLen;
-    const D = zMainS + FRONT;
+    const D2 = zMainS + FRONT;
     const runs = [];
     const faces = [];
     const placements = {};
@@ -31093,14 +31093,14 @@ void main() {
         makeRun({ axis: "z", cx: WALL_DEPTH / 2, cz: zMainS - west.length * SEG_W / 2, double: false, yaw: HALF_PI, segs: west, style: "wall" });
       }
       if (east.length) {
-        makeRun({ axis: "z", cx: W - WALL_DEPTH / 2, cz: zMainS - east.length * SEG_W / 2, double: false, yaw: -HALF_PI, rev: true, segs: east, style: "wall" });
+        makeRun({ axis: "z", cx: W2 - WALL_DEPTH / 2, cz: zMainS - east.length * SEG_W / 2, double: false, yaw: -HALF_PI, rev: true, segs: east, style: "wall" });
       }
     }
     splitRuns(flat(kidsD, true), rb).forEach((chunkSegs, i) => {
       const cx = 0.3 + AISLE_BACK + UNIT_DEPTH / 2 + i * (UNIT_DEPTH + AISLE_BACK);
       makeRun({ axis: "z", cx, cz: band - 1.5 - chunkSegs.length * SEG_W / 2, double: true, low: true, yaw: HALF_PI, segs: chunkSegs, style: "kids" });
     });
-    const xs = W - wa;
+    const xs = W2 - wa;
     splitRuns(flat(adultD, true), rb).forEach((chunkSegs, i) => {
       const cx = xs + WALL_T + AISLE_BACK + UNIT_DEPTH / 2 + i * (UNIT_DEPTH + AISLE_BACK);
       makeRun({ axis: "z", cx, cz: band - 1.5 - chunkSegs.length * SEG_W / 2, double: true, yaw: HALF_PI, segs: chunkSegs, style: "adult" });
@@ -31109,21 +31109,21 @@ void main() {
     const newSegs = flat(newD, true);
     let newRun = null;
     if (newSegs.length) {
-      newRun = makeRun({ axis: "x", cx: newX0 + newSegs.length * SEG_W / 2, cz: D - 3.4, double: true, yaw: 0, segs: newSegs, style: "new" });
+      newRun = makeRun({ axis: "x", cx: newX0 + newSegs.length * SEG_W / 2, cz: D2 - 3.4, double: true, yaw: 0, segs: newSegs, style: "new" });
     }
     const doorW = 2.2;
-    const door = { x0: W / 2 - doorW / 2, x1: W / 2 + doorW / 2, w: doorW };
+    const door = { x0: W2 / 2 - doorW / 2, x1: W2 / 2 + doorW / 2, w: doorW };
     const adultDoor = { x0: xs + WALL_T + 0.05, x1: xs + WALL_T + 1.65 };
     walls.push(
-      { x0: -WALL_T, z0: -WALL_T, x1: W + WALL_T, z1: 0, h: CEIL_H, kind: "outer-n" },
-      { x0: -WALL_T, z0: D, x1: W + WALL_T, z1: D + WALL_T, h: CEIL_H, kind: "outer-s" },
-      { x0: -WALL_T, z0: 0, x1: 0, z1: D, h: CEIL_H, kind: "outer-w" },
-      { x0: W, z0: 0, x1: W + WALL_T, z1: D, h: CEIL_H, kind: "outer-e" }
+      { x0: -WALL_T, z0: -WALL_T, x1: W2 + WALL_T, z1: 0, h: CEIL_H, kind: "outer-n" },
+      { x0: -WALL_T, z0: D2, x1: W2 + WALL_T, z1: D2 + WALL_T, h: CEIL_H, kind: "outer-s" },
+      { x0: -WALL_T, z0: 0, x1: 0, z1: D2, h: CEIL_H, kind: "outer-w" },
+      { x0: W2, z0: 0, x1: W2 + WALL_T, z1: D2, h: CEIL_H, kind: "outer-e" }
     );
     if (sAdult > 0) {
       walls.push(
         { x0: xs, z0: 0, x1: xs + WALL_T, z1: band, h: CEIL_H, kind: "adult-w" },
-        { x0: adultDoor.x1, z0: band - WALL_T, x1: W, z1: band, h: CEIL_H, kind: "adult-s" }
+        { x0: adultDoor.x1, z0: band - WALL_T, x1: W2, z1: band, h: CEIL_H, kind: "adult-s" }
       );
     }
     for (const wl of walls) {
@@ -31132,10 +31132,10 @@ void main() {
         if (wl.x1 > door.x1) colliders.push({ ...wl, x0: door.x1, kind: "wall", y1: CEIL_H, top: false });
       } else colliders.push({ ...wl, kind: "wall", y1: CEIL_H, top: false });
     }
-    const counter = { x0: W - 4.6, z0: D - 3.5, x1: W, z1: D - 2.8, kind: "counter", y1: 1.05 };
-    const counterSide = { x0: W - 4.7, z0: D - 2.8, x1: W - 4.6, z1: D, kind: "counter", y1: 1.05 };
+    const counter = { x0: W2 - 4.6, z0: D2 - 3.5, x1: W2, z1: D2 - 2.8, kind: "counter", y1: 1.05 };
+    const counterSide = { x0: W2 - 4.7, z0: D2 - 2.8, x1: W2 - 4.6, z1: D2, kind: "counter", y1: 1.05 };
     colliders.push(counter, counterSide);
-    const register = { x: W - 2.6, z: D - 4.3, yaw: Math.PI };
+    const register = { x: W2 - 2.6, z: D2 - 4.3, yaw: Math.PI };
     const signW = (label) => Math.min(2, Math.max(1.3, 0.55 + label.length * 0.16));
     const mkSign = (o) => signs.push({ id: `s${signs.length}`, y: 2.4, h: 0.5, kind: "hang", ...o });
     for (const run of runs) {
@@ -31147,7 +31147,7 @@ void main() {
         const w = signW(seg.label);
         if (run.style === "wall") {
           const west = run.yaw > 0;
-          mkSign({ text: seg.label, color: seg.color, dept: seg.dept, kind: "wall", x: west ? 0.03 : W - 0.03, z: seg.z, yaw: west ? HALF_PI : -HALF_PI, w: Math.min(w, 1.9), y: wallIdx++ % 2 ? 2.22 : 2.72 });
+          mkSign({ text: seg.label, color: seg.color, dept: seg.dept, kind: "wall", x: west ? 0.03 : W2 - 0.03, z: seg.z, yaw: west ? HALF_PI : -HALF_PI, w: Math.min(w, 1.9), y: wallIdx++ % 2 ? 2.22 : 2.72 });
         } else if (run.axis === "z") {
           if (seg.index === 0) {
             mkSign({ text: seg.label, color: seg.color, dept: seg.dept, x: run.cx, z: seg.z + SEG_W / 2 - 0.05, yaw: 0, w, y: 2.62 });
@@ -31160,20 +31160,20 @@ void main() {
         }
       });
     }
-    mkSign({ text: "KASSE", color: "#ff4fa3", dept: "register", x: W - 2.3, z: D - 3.15, yaw: 0, w: 1.5 });
+    mkSign({ text: "KASSE", color: "#ff4fa3", dept: "register", x: W2 - 2.3, z: D2 - 3.15, yaw: 0, w: 1.5 });
     if (sAdult > 0) mkSign({ text: "AB 18", color: "#ff2d2d", dept: "adult-door", kind: "door", x: (adultDoor.x0 + adultDoor.x1) / 2, z: band - 0.03, yaw: 0, w: 1.5, y: 2.55 });
-    mkSign({ text: "VIDEOTHEK LENZ", color: "#35e6ff", dept: "brand", kind: "wall", x: W / 2, z: 0.03, yaw: 0, w: 3.6, y: 2.5 });
+    mkSign({ text: "VIDEOTHEK LENZ", color: "#35e6ff", dept: "brand", kind: "wall", x: W2 / 2, z: 0.03, yaw: 0, w: 3.6, y: 2.5 });
     const zones = {};
     const zone = (id, o) => {
       if (o.rect && o.rect.y1 === void 0) o.rect.y1 = 2.6;
       zones[id] = { id, ...o };
     };
     const box3 = (x0, z0, x1, z1) => ({ x0, z0, x1, z1 });
-    zone("entrance", { label: "Eingang", x: W / 2, z: D - 1.4, yaw: 0, rect: box3(W / 2 - 1.6, D - 2.4, W / 2 + 1.6, D - 0.4) });
+    zone("entrance", { label: "Eingang", x: W2 / 2, z: D2 - 1.4, yaw: 0, rect: box3(W2 / 2 - 1.6, D2 - 2.4, W2 / 2 + 1.6, D2 - 0.4) });
     zone("register", {
       label: "Kasse",
       ...register,
-      rect: box3(W - 4.6, D - 4.9, W - 1.7, D - 2.8),
+      rect: box3(W2 - 4.6, D2 - 4.9, W2 - 1.7, D2 - 2.8),
       counter: { ...counter }
     });
     for (const dp of depts) {
@@ -31182,31 +31182,31 @@ void main() {
     }
     const kidsFace = faces.find((q) => q.kind === "kids");
     if (kidsFace) zone("kids", { label: "Kinder-Ecke", x: kidsFace.stand.x, z: kidsFace.stand.z, yaw: kidsFace.stand.yaw, rect: box3(0.3, 0.3, wk, band - 0.3) });
-    if (sAdult > 0) zone("adult", { label: "Ab 18", x: (adultDoor.x0 + adultDoor.x1) / 2, z: band + 0.9, yaw: 0, rect: box3(xs + WALL_T, 0, W, band - WALL_T) });
+    if (sAdult > 0) zone("adult", { label: "Ab 18", x: (adultDoor.x0 + adultDoor.x1) / 2, z: band + 0.9, yaw: 0, rect: box3(xs + WALL_T, 0, W2, band - WALL_T) });
     const midX0 = wk + 0.3;
     const midX1 = Math.max(midX0, xs - 0.3);
     const staffX = (wk + xs) / 2;
-    zone("cashier", { label: "Kassierer-Platz", reserved: true, x: W - 2.9, z: D - 1.6, yaw: Math.PI, rect: box3(W - 4.4, D - 2.4, W - 1.4, D - 0.6) });
-    zone("reserve", { label: "Reservierungsfach", reserved: true, x: W - 0.7, z: D - 1.5, yaw: -HALF_PI, rect: box3(W - 1.2, D - 2.6, W - 0.2, D - 0.6) });
-    zone("returns", { label: "R\xFCckgabe-Wagen", reserved: true, x: W - 1, z: D - 4.3, yaw: Math.PI, rect: box3(W - 1.6, D - 4.9, W - 0.4, D - 3.7) });
-    zone("snack", { label: "Snack-Theke", reserved: true, x: 1.1, z: D - 2.2, yaw: -HALF_PI, rect: box3(0.3, D - 3.6, 2, D - 0.8) });
+    zone("cashier", { label: "Kassierer-Platz", reserved: true, x: W2 - 2.9, z: D2 - 1.6, yaw: Math.PI, rect: box3(W2 - 4.4, D2 - 2.4, W2 - 1.4, D2 - 0.6) });
+    zone("reserve", { label: "Reservierungsfach", reserved: true, x: W2 - 0.7, z: D2 - 1.5, yaw: -HALF_PI, rect: box3(W2 - 1.2, D2 - 2.6, W2 - 0.2, D2 - 0.6) });
+    zone("returns", { label: "R\xFCckgabe-Wagen", reserved: true, x: W2 - 1, z: D2 - 4.3, yaw: Math.PI, rect: box3(W2 - 1.6, D2 - 4.9, W2 - 0.4, D2 - 3.7) });
+    zone("snack", { label: "Snack-Theke", reserved: true, x: 1.1, z: D2 - 2.2, yaw: -HALF_PI, rect: box3(0.3, D2 - 3.6, 2, D2 - 0.8) });
     zone("tv", { label: "TV-Ecke", reserved: true, x: (midX0 + midX1) / 2, z: band * 0.5 + 0.7, yaw: 0, rect: box3(midX0, 1.4, midX1, band - 0.8) });
     zone("staff", { label: "Mitarbeiter-T\xFCr", reserved: true, x: staffX, z: 1.2, yaw: 0, rect: box3(staffX - 0.6, 0, staffX + 0.6, 1.2) });
-    zone("window", { label: "Schaufenster links", reserved: true, x: (1.2 + door.x0 - 0.7) / 2, z: D - 0.6, yaw: 0, rect: box3(1.2, D - 1, door.x0 - 0.7, D) });
-    zone("window2", { label: "Schaufenster rechts", reserved: true, x: (door.x1 + 0.7 + W - 1.2) / 2, z: D - 0.6, yaw: 0, rect: box3(door.x1 + 0.7, D - 1, W - 1.2, D) });
+    zone("window", { label: "Schaufenster links", reserved: true, x: (1.2 + door.x0 - 0.7) / 2, z: D2 - 0.6, yaw: 0, rect: box3(1.2, D2 - 1, door.x0 - 0.7, D2) });
+    zone("window2", { label: "Schaufenster rechts", reserved: true, x: (door.x1 + 0.7 + W2 - 1.2) / 2, z: D2 - 0.6, yaw: 0, rect: box3(door.x1 + 0.7, D2 - 1, W2 - 1.2, D2) });
     const look = (fx, fz, tx, tz) => Math.atan2(-(tx - fx), -(tz - fz));
     const view = (id, x, z, tx, tz) => {
       if (zones[id]) zones[id].view = { x, z, yaw: look(x, z, tx, tz) };
     };
-    view("returns", W - 2.8, D - 4.3, W - 1, D - 4.3);
-    view("reserve", W - 1.8, D - 4.1, W - 0.3, D - 1.6);
-    view("cashier", W - 2.9, D - 4.2, W - 2.9, D - 1.6);
-    view("snack", 3.4, D - 2.2, 1.1, D - 2.2);
+    view("returns", W2 - 2.8, D2 - 4.3, W2 - 1, D2 - 4.3);
+    view("reserve", W2 - 1.8, D2 - 4.1, W2 - 0.3, D2 - 1.6);
+    view("cashier", W2 - 2.9, D2 - 4.2, W2 - 2.9, D2 - 1.6);
+    view("snack", 3.4, D2 - 2.2, 1.1, D2 - 2.2);
     view("staff", staffX, 3.2, staffX, 0);
     view("tv", midX0 - 0.2, (1.4 + band - 0.8) / 2, midX1 + 0.3, (1.4 + band - 0.8) / 2);
-    view("window", zones.window.x, D - 2.6, zones.window.x, D);
-    view("window2", zones.window2.x, D - 2.6, zones.window2.x, D);
-    const city2 = buildCity({ w: W, d: D, door });
+    view("window", zones.window.x, D2 - 2.6, zones.window.x, D2);
+    view("window2", zones.window2.x, D2 - 2.6, zones.window2.x, D2);
+    const city2 = buildCity({ w: W2, d: D2, door });
     colliders.push(...city2.colliders);
     for (const [id, z] of Object.entries(city2.zones)) if (!zones[id]) zones[id] = z;
     const bounds = city2.bounds;
@@ -31215,13 +31215,13 @@ void main() {
     const panels = [];
     const stepX = 2.9;
     const stepZ = 3.2;
-    for (let z = stepZ / 2; z < D; z += stepZ) {
-      for (let x = stepX / 2; x < W; x += stepX) panels.push({ x, z, w: 1.2, d: 0.3 });
+    for (let z = stepZ / 2; z < D2; z += stepZ) {
+      for (let x = stepX / 2; x < W2; x += stepX) panels.push({ x, z, w: 1.2, d: 0.3 });
     }
     return {
       spec,
-      w: W,
-      d: D,
+      w: W2,
+      d: D2,
       ceilH: CEIL_H,
       band,
       zMainN,
@@ -31241,20 +31241,20 @@ void main() {
       city: city2,
       navCell,
       doorBlock: city2.doorBlock,
-      facade: { door, windows: facadeWindows(W, door) },
+      facade: { door, windows: facadeWindows(W2, door) },
       bounds,
       cidx: createColliderIndex(colliders),
       dyn: /* @__PURE__ */ new Set(),
       // Raster-Hash (statisch) und dynamische Kollider, siehe nav/collide.js
-      spawn: { x: W / 2, z: D - 1.4, yaw: 0 },
-      pc: { x: W - 3.5, z: (counter.z0 + counter.z1) / 2 },
+      spawn: { x: W2 / 2, z: D2 - 1.4, yaw: 0 },
+      pc: { x: W2 - 3.5, z: (counter.z0 + counter.z1) / 2 },
       // Kassen-PC (build-props.js und modules/terminal.js)
       door,
       adultDoor: sAdult > 0 ? adultDoor : null,
       counter,
       register,
       newRun,
-      adultRoom: sAdult > 0 ? { x0: xs, z0: 0, x1: W, z1: band } : null,
+      adultRoom: sAdult > 0 ? { x0: xs, z0: 0, x1: W2, z1: band } : null,
       kidsRoom: sKids > 0 ? { x0: 0, z0: 0, x1: wk, z1: band } : null
     };
   }
@@ -32084,27 +32084,27 @@ void main() {
     return c;
   }
   function nightCanvas() {
-    const W = 1024;
-    const H = 256;
-    const c = makeCanvas(W, H);
+    const W2 = 1024;
+    const H2 = 256;
+    const c = makeCanvas(W2, H2);
     const ctx = c.getContext("2d");
-    const g = ctx.createLinearGradient(0, 0, 0, H);
+    const g = ctx.createLinearGradient(0, 0, 0, H2);
     g.addColorStop(0, "#070a1c");
     g.addColorStop(0.6, "#16204a");
     g.addColorStop(1, "#2a2f5c");
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, W2, H2);
     const r = rng(321);
     for (let i = 0; i < 70; i++) {
       ctx.fillStyle = `rgba(255,255,255,${0.2 + r() * 0.5})`;
-      ctx.fillRect(r() * W, r() * H * 0.5, 1.5, 1.5);
+      ctx.fillRect(r() * W2, r() * H2 * 0.5, 1.5, 1.5);
     }
-    for (let x = 0; x < W; x += 70 + r() * 40) {
+    for (let x = 0; x < W2; x += 70 + r() * 40) {
       const w = 60 + r() * 50;
       const h2 = 70 + r() * 110;
       ctx.fillStyle = "#0c1030";
-      ctx.fillRect(x, H - h2, w, h2);
-      for (let wy = H - h2 + 10; wy < H - 14; wy += 18) {
+      ctx.fillRect(x, H2 - h2, w, h2);
+      for (let wy = H2 - h2 + 10; wy < H2 - 14; wy += 18) {
         for (let wx = x + 8; wx < x + w - 10; wx += 16) {
           if (r() > 0.55) {
             ctx.fillStyle = r() > 0.5 ? "#ffd27a" : "#9fd0ff";
@@ -32114,13 +32114,13 @@ void main() {
       }
     }
     for (const x of [140, 420, 700, 930]) {
-      const gl = ctx.createRadialGradient(x, H - 150, 0, x, H - 150, 60);
+      const gl = ctx.createRadialGradient(x, H2 - 150, 0, x, H2 - 150, 60);
       gl.addColorStop(0, "rgba(255,220,150,0.8)");
       gl.addColorStop(1, "rgba(255,220,150,0)");
       ctx.fillStyle = gl;
-      ctx.fillRect(x - 60, H - 210, 120, 120);
+      ctx.fillRect(x - 60, H2 - 210, 120, 120);
       ctx.fillStyle = "#05060f";
-      ctx.fillRect(x - 2, H - 150, 4, 150);
+      ctx.fillRect(x - 2, H2 - 150, 4, 150);
     }
     return c;
   }
@@ -32157,9 +32157,9 @@ void main() {
   var TEAL = hex("#1f5f6b");
   var METAL = [0.62, 0.64, 0.7];
   function lightmapCanvas(layout) {
-    const { w: W, d: D } = layout;
-    const s = Math.min(16, 1024 / Math.max(W, D));
-    const c = makeCanvas(Math.ceil(W * s), Math.ceil(D * s));
+    const { w: W2, d: D2 } = layout;
+    const s = Math.min(16, 1024 / Math.max(W2, D2));
+    const c = makeCanvas(Math.ceil(W2 * s), Math.ceil(D2 * s));
     const ctx = c.getContext("2d");
     ctx.fillStyle = "rgb(112,106,100)";
     ctx.fillRect(0, 0, c.width, c.height);
@@ -32216,17 +32216,17 @@ void main() {
     }
     part(cur, x1, 0, CEIL_H);
   }
-  function wallTrimSpans(layout, side, D) {
+  function wallTrimSpans(layout, side, D2) {
     const GAP3 = 2e-3;
-    const W = layout.w;
-    const cuts = (layout.runs || []).filter((r) => r.style === "wall" && r.rect && (side === "w" ? r.rect.x0 < W / 2 : r.rect.x1 > W / 2)).map((r) => [Math.max(0, r.rect.z0 - GAP3), Math.min(D, r.rect.z1 + GAP3)]).sort((a, b) => a[0] - b[0]);
+    const W2 = layout.w;
+    const cuts = (layout.runs || []).filter((r) => r.style === "wall" && r.rect && (side === "w" ? r.rect.x0 < W2 / 2 : r.rect.x1 > W2 / 2)).map((r) => [Math.max(0, r.rect.z0 - GAP3), Math.min(D2, r.rect.z1 + GAP3)]).sort((a, b) => a[0] - b[0]);
     const spans = [];
     let cur = 0;
     for (const [a, b] of cuts) {
       if (a - cur > 0.01) spans.push([cur, a]);
       cur = Math.max(cur, b);
     }
-    if (D - cur > 0.01) spans.push([cur, D]);
+    if (D2 - cur > 0.01) spans.push([cur, D2]);
     return spans;
   }
   function buildDoorLeaf(dir) {
@@ -32247,7 +32247,7 @@ void main() {
     return g;
   }
   function buildRoom(layout, tex) {
-    const { w: W, d: D } = layout;
+    const { w: W2, d: D2 } = layout;
     const group = new Group();
     group.name = "room";
     const lm = toTexture(lightmapCanvas(layout), { mips: false, aniso: 1 });
@@ -32261,15 +32261,15 @@ void main() {
       polygonOffsetUnits: -offset
     });
     const floors = [];
-    const f0 = flatRect(0, 0, W, D, { tile: 2, roomW: W, roomD: D });
+    const f0 = flatRect(0, 0, W2, D2, { tile: 2, roomW: W2, roomD: D2 });
     floors.push(new Mesh(f0, floorMat(tex.carpet, 0)));
     if (layout.adultRoom) {
       const a = layout.adultRoom;
-      floors.push(new Mesh(flatRect(a.x0 + 0.12, a.z0, a.x1, a.z1, { y: 4e-3, tile: 2, roomW: W, roomD: D }), floorMat(tex.carpetRed, 1)));
+      floors.push(new Mesh(flatRect(a.x0 + 0.12, a.z0, a.x1, a.z1, { y: 4e-3, tile: 2, roomW: W2, roomD: D2 }), floorMat(tex.carpetRed, 1)));
     }
     if (layout.kidsRoom) {
       const k = layout.kidsRoom;
-      floors.push(new Mesh(flatRect(k.x0, k.z0, k.x1, k.z1, { y: 4e-3, tile: 2, roomW: W, roomD: D }), floorMat(tex.carpetKids, 1)));
+      floors.push(new Mesh(flatRect(k.x0, k.z0, k.x1, k.z1, { y: 4e-3, tile: 2, roomW: W2, roomD: D2 }), floorMat(tex.carpetKids, 1)));
     }
     floors.forEach((m) => {
       m.matrixAutoUpdate = false;
@@ -32280,7 +32280,7 @@ void main() {
     const trimParts = [];
     const glassParts = [];
     const door = layout.door;
-    const windows = facadeWindows(W, door);
+    const windows = facadeWindows(W2, door);
     const doorOpen = { x0: door.x0, x1: door.x1, y0: 0, y1: 2.4 };
     layout.facade = { door, windows };
     for (const wl of layout.walls) {
@@ -32295,25 +32295,25 @@ void main() {
       trimParts.push(box({ w: w + (w > d ? 0 : 0.03), h: 0.05, d: d + (w > d ? 0.03 : 0), x: (x0 + x1) / 2, y: 0.925, z: (z0 + z1) / 2, color: [0.45, 0.3, 0.18] }));
       trimParts.push(box({ w: w + (w > d ? 0 : 0.02), h: 0.1, d: d + (w > d ? 0.02 : 0), x: (x0 + x1) / 2, y: 0.05, z: (z0 + z1) / 2, color: TRIM_DARK }));
     };
-    dado(0, 0.015, W, 0.015);
-    for (const [z0, z1] of wallTrimSpans(layout, "w", D)) dado(0.015, z0, 0.015, z1);
-    for (const [z0, z1] of wallTrimSpans(layout, "e", D)) dado(W - 0.015, z0, W - 0.015, z1);
-    dado(0, D - 0.015, door.x0 - 0.01, D - 0.015);
-    dado(door.x1 + 0.01, D - 0.015, W, D - 0.015);
+    dado(0, 0.015, W2, 0.015);
+    for (const [z0, z1] of wallTrimSpans(layout, "w", D2)) dado(0.015, z0, 0.015, z1);
+    for (const [z0, z1] of wallTrimSpans(layout, "e", D2)) dado(W2 - 0.015, z0, W2 - 0.015, z1);
+    dado(0, D2 - 0.015, door.x0 - 0.01, D2 - 0.015);
+    dado(door.x1 + 0.01, D2 - 0.015, W2, D2 - 0.015);
     if (layout.adultRoom) {
       const a = layout.adultRoom;
       trimParts.push(box({ w: 0.03, h: 0.9, d: a.z1, x: a.x0 - 0.015, y: 0.45, z: a.z1 / 2, color: [0.25, 0.08, 0.12] }));
     }
-    const frame = (x, y, w, h2, d = 0.07) => trimParts.push(box({ w, h: h2, d, x, y, z: D + 0.06, color: METAL }));
+    const frame = (x, y, w, h2, d = 0.07) => trimParts.push(box({ w, h: h2, d, x, y, z: D2 + 0.06, color: METAL }));
     frame(door.x0, 1.2, 0.08, 2.4);
     frame(door.x1, 1.2, 0.08, 2.4);
-    frame(W / 2, 2.35, door.w, 0.1);
+    frame(W2 / 2, 2.35, door.w, 0.1);
     for (const wd of windows) {
       const wcx = (wd.x0 + wd.x1) / 2;
       const ww = wd.x1 - wd.x0;
-      glassParts.push(quad({ w: ww, h: wd.y1 - wd.y0, x: wcx, y: (wd.y0 + wd.y1) / 2, z: D + 0.06 }));
-      trimParts.push(box({ w: 0.05, h: wd.y1 - wd.y0, d: 0.08, x: wcx, y: (wd.y0 + wd.y1) / 2, z: D + 0.06, color: METAL }));
-      trimParts.push(box({ w: ww + 0.1, h: 0.05, d: 0.2, x: wcx, y: wd.y0, z: D + 0.06, color: [0.8, 0.72, 0.6] }));
+      glassParts.push(quad({ w: ww, h: wd.y1 - wd.y0, x: wcx, y: (wd.y0 + wd.y1) / 2, z: D2 + 0.06 }));
+      trimParts.push(box({ w: 0.05, h: wd.y1 - wd.y0, d: 0.08, x: wcx, y: (wd.y0 + wd.y1) / 2, z: D2 + 0.06, color: METAL }));
+      trimParts.push(box({ w: ww + 0.1, h: 0.05, d: 0.2, x: wcx, y: wd.y0, z: D2 + 0.06, color: [0.8, 0.72, 0.6] }));
     }
     layout.facade.windows = windows;
     const wallsMesh = new Mesh(merge(wallParts), new MeshLambertMaterial({ map: tex.wallpaper, vertexColors: true }));
@@ -32323,21 +32323,21 @@ void main() {
     doorGroup.name = "lfx-door";
     const leafL = buildDoorLeaf(1);
     leafL.name = "lfx-door-left";
-    leafL.position.set(door.x0 + 0.02, 0, D + 0.06);
+    leafL.position.set(door.x0 + 0.02, 0, D2 + 0.06);
     const leafR = buildDoorLeaf(-1);
     leafR.name = "lfx-door-right";
-    leafR.position.set(door.x1 - 0.02, 0, D + 0.06);
+    leafR.position.set(door.x1 - 0.02, 0, D2 + 0.06);
     doorGroup.add(leafL, leafR);
     group.add(doorGroup);
     const glass = new Mesh(merge(glassParts), new MeshBasicMaterial({ color: 11458303, transparent: true, opacity: 0.13, depthWrite: false, side: DoubleSide }));
     glass.renderOrder = 5;
     group.add(glass);
-    const night = new Mesh(quad({ w: W + 30, h: 9, x: W / 2, y: 3.6, z: D + 8, ry: PI2 }), new MeshBasicMaterial({ map: tex.night }));
-    const street = new Mesh(flatRect(-14, D, W + 14, D + 8, { y: -0.02, tile: 4, roomW: W, roomD: D }), new MeshBasicMaterial({ color: 1382186 }));
+    const night = new Mesh(quad({ w: W2 + 30, h: 9, x: W2 / 2, y: 3.6, z: D2 + 8, ry: PI2 }), new MeshBasicMaterial({ map: tex.night }));
+    const street = new Mesh(flatRect(-14, D2, W2 + 14, D2 + 8, { y: -0.02, tile: 4, roomW: W2, roomD: D2 }), new MeshBasicMaterial({ color: 1382186 }));
     night.name = "lfx-backdrop";
     street.name = "lfx-street";
     group.add(night, street);
-    const ceil = new Mesh(flatRect(0, 0, W, D, { y: CEIL_H, up: false, tile: 0.6, roomW: W, roomD: D }), new MeshBasicMaterial({ map: tex.ceiling, color: 13222837 }));
+    const ceil = new Mesh(flatRect(0, 0, W2, D2, { y: CEIL_H, up: false, tile: 0.6, roomW: W2, roomD: D2 }), new MeshBasicMaterial({ map: tex.ceiling, color: 13222837 }));
     group.add(ceil);
     const frames = [];
     const tubes = [];
@@ -32889,19 +32889,19 @@ void main() {
       return t;
     };
     const solid = [];
-    const { w: W, d: D } = layout;
+    const { w: W2, d: D2 } = layout;
     const cn = layout.counter;
     const cw = cn.x1 - cn.x0;
     solid.push(box({ w: cw, h: 1.05, d: cn.z1 - cn.z0, x: (cn.x0 + cn.x1) / 2, y: 0.525, z: (cn.z0 + cn.z1) / 2, color: hex("#2a6f86") }));
     solid.push(box({ w: cw + 0.06, h: 0.05, d: cn.z1 - cn.z0 + 0.1, x: (cn.x0 + cn.x1) / 2, y: 1.075, z: (cn.z0 + cn.z1) / 2 - 0.02, color: [0.28, 0.17, 0.1] }));
-    solid.push(box({ w: 0.1, h: 1.05, d: D - cn.z1, x: cn.x0 - 0.05, y: 0.525, z: (cn.z1 + D) / 2, color: hex("#2a6f86") }));
+    solid.push(box({ w: 0.1, h: 1.05, d: D2 - cn.z1, x: cn.x0 - 0.05, y: 0.525, z: (cn.z1 + D2) / 2, color: hex("#2a6f86") }));
     const pcx = layout.pc.x;
     const pcz = (cn.z0 + cn.z1) / 2;
     solid.push(box({ w: 0.44, h: 0.38, d: 0.4, x: pcx, y: 1.1 + 0.25, z: pcz, color: [0.86, 0.83, 0.72] }));
     solid.push(box({ w: 0.16, h: 0.1, d: 0.2, x: pcx, y: 1.1 + 0.03, z: pcz, color: [0.8, 0.77, 0.68] }));
     solid.push(box({ w: 0.42, h: 0.025, d: 0.15, x: pcx, y: 1.1 + 0.015, z: cn.z0 + 0.12, color: [0.8, 0.77, 0.68] }));
-    solid.push(box({ w: 0.36, h: 0.14, d: 0.3, x: W - 1.8, y: 1.1 + 0.07, z: pcz, color: [0.25, 0.25, 0.28] }));
-    solid.push(box({ w: 0.2, h: 0.1, d: 0.08, x: W - 1.8, y: 1.1 + 0.2, z: pcz + 0.08, color: [0.25, 0.25, 0.28], rx: -0.4 }));
+    solid.push(box({ w: 0.36, h: 0.14, d: 0.3, x: W2 - 1.8, y: 1.1 + 0.07, z: pcz, color: [0.25, 0.25, 0.28] }));
+    solid.push(box({ w: 0.2, h: 0.1, d: 0.08, x: W2 - 1.8, y: 1.1 + 0.2, z: pcz + 0.08, color: [0.25, 0.25, 0.28], rx: -0.4 }));
     const st = layout.zones.staff;
     solid.push(box({ w: 1, h: 2.1, d: 0.06, x: st.x, y: 1.05, z: 0.04, color: [0.32, 0.34, 0.38] }));
     solid.push(box({ w: 0.04, h: 0.04, d: 0.06, x: st.x + 0.38, y: 1, z: 0.1, color: [0.8, 0.8, 0.8] }));
@@ -32924,7 +32924,7 @@ void main() {
     const plate = new Mesh(quad({ w: 0.7, h: 0.175, x: st.x, y: 2, z: 0.075 }), new MeshBasicMaterial({ map: T5(plateCanvas("NUR PERSONAL")) }));
     group.add(plate);
     const atlas = T5(posterAtlas());
-    const pw = 0.75;
+    const pw2 = 0.75;
     const ph = 1.1;
     const pg = [];
     const frames = [];
@@ -32933,16 +32933,16 @@ void main() {
       const cy = Math.floor(i / 4) * 0.5;
       const nx = Math.sin(ry);
       const nz = Math.cos(ry);
-      pg.push(quad({ w: pw, h: ph, x: x + nx * 0.03, y: 1.65, z: z + nz * 0.03, ry, uv: [cx, 0.5 - cy, cx + 0.25, 1 - cy] }));
-      frames.push(box({ w: pw + 0.08, h: ph + 0.08, d: 0.03, x: x + nx * 0.012, y: 1.65, z: z + nz * 0.012, ry, color: [0.1, 0.1, 0.12] }));
+      pg.push(quad({ w: pw2, h: ph, x: x + nx * 0.03, y: 1.65, z: z + nz * 0.03, ry, uv: [cx, 0.5 - cy, cx + 0.25, 1 - cy] }));
+      frames.push(box({ w: pw2 + 0.08, h: ph + 0.08, d: 0.03, x: x + nx * 0.012, y: 1.65, z: z + nz * 0.012, ry, color: [0.1, 0.1, 0.12] }));
     };
     let pi = 0;
-    for (let x = 1.6; x < W - 1.2; x += 2.4) {
+    for (let x = 1.6; x < W2 - 1.2; x += 2.4) {
       if (Math.abs(x - st.x) < 1.3) continue;
       hang(x, 0, 0, pi++ % 8);
     }
-    for (let z = D - 4.8; z < D - 0.9; z += 1.8) hang(0, z, PI3 / 2, pi++ % 8);
-    hang(W, D - 4.4, -PI3 / 2, pi % 8);
+    for (let z = D2 - 4.8; z < D2 - 0.9; z += 1.8) hang(0, z, PI3 / 2, pi++ % 8);
+    hang(W2, D2 - 4.4, -PI3 / 2, pi % 8);
     if (pg.length) {
       group.add(new Mesh(merge(pg), new MeshLambertMaterial({ map: atlas, vertexColors: true })));
       group.add(new Mesh(merge(frames), new MeshLambertMaterial({ vertexColors: true })));
@@ -32953,7 +32953,7 @@ void main() {
       m.rotation.y = ry;
       group.add(m);
     };
-    standee(starCanvas("NEU!", "FRISCH IM REGAL", "#ffd400", "#d6001c"), 1.35, D - 4.6, 0.35);
+    standee(starCanvas("NEU!", "FRISCH IM REGAL", "#ffd400", "#d6001c"), 1.35, D2 - 4.6, 0.35);
     if (layout.kidsRoom) standee(popcornCanvas(), layout.kidsRoom.x1 - 0.7, layout.band - 0.7, -0.2, 0.7);
     return { group, screen, dispose() {
       disposeTree(group);
@@ -34086,9 +34086,10 @@ void main() {
   var r3 = (v) => +v.toFixed(3);
   var r2 = (v) => +v.toFixed(2);
   var Body = class {
-    /** @param {{ src, x?, z?, y?, yaw?, pitch?, spawn? }} o  src = Kollider-Quelle (Array | Index | { index, dyn }, siehe nav/collide.js) */
+    /** @param {{ src, x?, z?, y?, yaw?, pitch?, spawn?, netDelay? }} o  src = Kollider-Quelle (Array | Index | { index, dyn }, siehe nav/collide.js); netDelay = Anzeigeverzögerung der Remote-Interpolation in ms (Standard NET_DELAY_MS) */
     constructor(o = {}) {
       this.src = o.src || [];
+      this.netDelay = Number.isFinite(o.netDelay) && o.netDelay >= 0 ? o.netDelay : NET_DELAY_MS;
       this.x = o.x || 0;
       this.z = o.z || 0;
       this.y = o.y || 0;
@@ -34370,7 +34371,7 @@ void main() {
     }
     /**
      * Fremden Zustand übernehmen: (now = Zeit in ms, beliebige Uhr, nur Differenzen zählen). Der Körper wird zum Remote-Körper
-     * (keine Physik, keine Kollision) und folgt dem Puffer mit NET_DELAY_MS Verzögerung (lineare Interpolation, Winkel über angDiff).
+     * (keine Physik, keine Kollision) und folgt dem Puffer mit netDelay (Standard NET_DELAY_MS) Verzögerung (lineare Interpolation, Winkel über angDiff).
      * Liegt der neue Stand weiter als NET_JUMP_DIST vom aktuellen entfernt, springt der Körper sofort.
      */
     applyRemote(s, now = 0) {
@@ -34380,12 +34381,16 @@ void main() {
       const far = Math.hypot(s.x - this.x, (s.y || 0) - this.y, s.z - this.z) > NET_JUMP_DIST;
       if (first || far) {
         this.netBuf = [];
-        this.netClock = now - NET_DELAY_MS;
+        this.netClock = now - this.netDelay;
         this.setNet(s);
       }
       this.netBuf.push({ t: now, s: { ...s } });
       while (this.netBuf.length > NET_BUFFER) this.netBuf.shift();
       this.heldId = s.h == null ? null : s.h;
+    }
+    /** Remote-Uhr auf die aktuelle Zeit der Quelle setzen (ms, gleiche Uhr wie bei applyRemote): behebt Dauerverzögerung nach Hängern. Nur bei Remote-Körpern. */
+    syncNetClock(ms) {
+      if (this.remote && Number.isFinite(ms)) this.netClock = ms - this.netDelay;
     }
     setNet(s) {
       this.x = s.x;
@@ -34653,6 +34658,7 @@ void main() {
   var LOCK_RECENT = 3e3;
   var LOCK_SILENT = 400;
   var ACTIONS = { Space: "onJump", KeyF: "onHit", KeyG: "onThrow" };
+  var MP_ACTIONS = { Enter: "onChat", NumpadEnter: "onChat", KeyT: "onEmote" };
   var ESC_DEBOUNCE = 300;
   function typingText(t) {
     if (!t || !t.tagName) return false;
@@ -34688,6 +34694,7 @@ void main() {
       this.zoomKey = false;
       this.zoomBtn = false;
       this.zoomSent = 1;
+      this.eaten = /* @__PURE__ */ new Set();
       this.h = {
         key: (e) => this.onKey(e, true),
         keyUp: (e) => this.onKey(e, false),
@@ -34704,6 +34711,7 @@ void main() {
         },
         blur: () => {
           this.down.clear();
+          this.eaten.clear();
           this.zoomKey = false;
           this.zoomBtn = false;
           this.syncZoom();
@@ -34739,6 +34747,7 @@ void main() {
     detach() {
       if (!this.attached) return;
       this.attached = false;
+      this.eaten.clear();
       const c = this.ctx.canvas;
       window.removeEventListener("keydown", this.h.key, true);
       window.removeEventListener("keyup", this.h.keyUp, true);
@@ -34942,6 +34951,26 @@ void main() {
         this.zoomKey = isDown && mode === "play";
         this.syncZoom();
         return;
+      }
+      const mpa = MP_ACTIONS[e.code];
+      if (mpa && typeof this.ctx[mpa] === "function") {
+        const eat = () => {
+          e.preventDefault();
+          e.stopPropagation();
+        };
+        if (!isDown) {
+          if (this.eaten.delete(e.code)) {
+            eat();
+            return;
+          }
+        } else if (this.eaten.has(e.code)) {
+          eat();
+          return;
+        } else if (mode === "play" && !e.repeat && (this.locked || this.dragLook) && this.ctx[mpa]() === true) {
+          this.eaten.add(e.code);
+          eat();
+          return;
+        }
       }
       const act = ACTIONS[e.code];
       if (act && mode === "play" && this.ctx[act]) {
@@ -36612,7 +36641,7 @@ void main() {
     });
     return b;
   }
-  function openPanel(ctx, { cls, label, build: build2, onClose, vr }) {
+  function openPanel(ctx, { cls, label, build: build3, onClose, vr }) {
     if (typeof vr === "function" && ctx.xr && ctx.xr.presenting()) {
       let open2 = true;
       const close2 = () => {
@@ -36639,7 +36668,7 @@ void main() {
       if (e.target === root) close();
     });
     for (const ev of ["keydown", "keyup", "keypress"]) root.addEventListener(ev, (e) => e.stopPropagation());
-    build2(panel, close);
+    build3(panel, close);
     ctx.overlay.open(root, { onClose: () => {
       open = false;
       if (onClose) onClose();
@@ -36792,7 +36821,7 @@ void main() {
   var SCR_W = 320;
   var SCR_H = 240;
   function drawScreen(g, w, hh, t, name, blink) {
-    const F = (px, b) => `${b ? "bold " : ""}${px}px ${MONO}`;
+    const F2 = (px, b) => `${b ? "bold " : ""}${px}px ${MONO}`;
     g.fillStyle = "#14208f";
     g.fillRect(0, 0, w, hh);
     g.strokeStyle = "#d9e2ff";
@@ -36802,25 +36831,25 @@ void main() {
     g.fillStyle = "#d9e2ff";
     g.fillRect(12, 12, w - 24, 22);
     g.fillStyle = "#14208f";
-    g.font = F(14, true);
+    g.font = F2(14, true);
     g.textBaseline = "middle";
     g.textAlign = "left";
     g.fillText("VIDEOTHEK LENZ \xB7 Verleihsystem 2.3", 18, 23);
     g.fillStyle = "#d9e2ff";
-    g.font = F(15, true);
+    g.font = F2(15, true);
     g.fillText(`Willkommen, ${String(name || "Gast").slice(0, 18)}`, 22, 62);
-    g.font = F(13, false);
+    g.font = F2(13, false);
     g.fillStyle = "#aebcff";
     g.fillText("Titelsuche \xB7 Standortauskunft", 22, 84);
     g.fillText("Hinf\xFChren \xB7 \xDCber den Tresen", 22, 102);
     g.fillStyle = "#d9e2ff";
-    g.font = F(15, true);
+    g.font = F2(15, true);
     g.fillText("Suchbegriff:", 22, 142);
     g.fillText(`> ${blink ? "_" : " "}`, 22, 166);
     g.fillStyle = "#d9e2ff";
     g.fillRect(12, hh - 38, w - 24, 22);
     g.fillStyle = "#14208f";
-    g.font = F(12, true);
+    g.font = F2(12, true);
     g.textAlign = "center";
     g.fillText("E = Benutzen \xB7 Esc = Ende", w / 2, hh - 27);
     g.fillStyle = "rgba(0,0,0,0.16)";
@@ -37625,7 +37654,7 @@ void main() {
     init(ctx) {
       const z = ctx.layout.zones.reserve;
       if (!z) return null;
-      const W = ctx.layout.w;
+      const W2 = ctx.layout.w;
       const zc = z.z;
       const name = ctx.deps.user && ctx.deps.user.name || "dich";
       const collectFavs = () => {
@@ -37645,9 +37674,9 @@ void main() {
       const wood = hex("#8a5a32");
       const woodDark = hex("#5e3b1f");
       const parts = [];
-      parts.push(box({ w: 0.03, h: 1.95, d: HALF * 2, x: W - 0.02, y: 0.975, z: zc, color: woodDark }));
-      for (const s of [-1, 1]) parts.push(box({ w: 0.3, h: 1.95, d: 0.035, x: W - 0.15, y: 0.975, z: zc + s * HALF, color: wood }));
-      for (const y of [0.3, ...ROW_Y, 1.8]) parts.push(box({ w: 0.3, h: 0.03, d: HALF * 2, x: W - 0.15, y, z: zc, color: wood }));
+      parts.push(box({ w: 0.03, h: 1.95, d: HALF * 2, x: W2 - 0.02, y: 0.975, z: zc, color: woodDark }));
+      for (const s of [-1, 1]) parts.push(box({ w: 0.3, h: 1.95, d: 0.035, x: W2 - 0.15, y: 0.975, z: zc + s * HALF, color: wood }));
+      for (const y of [0.3, ...ROW_Y, 1.8]) parts.push(box({ w: 0.3, h: 0.03, d: HALF * 2, x: W2 - 0.15, y, z: zc, color: wood }));
       group.add(new Mesh(merge(parts), new MeshLambertMaterial({ vertexColors: true })));
       const pos = [];
       if (shown.length) {
@@ -37660,14 +37689,14 @@ void main() {
         shown.forEach((it, i) => {
           const c = i % COLS3;
           const r = Math.floor(i / COLS3);
-          const p = { x: W - 0.1, y: ROW_Y[r] + 0.015 + 0.115, z: zc + (c - (COLS3 - 1) / 2) * 0.26 };
+          const p = { x: W2 - 0.1, y: ROW_Y[r] + 0.015 + 0.115, z: zc + (c - (COLS3 - 1) / 2) * 0.26 };
           pos.push(p);
           quads.push(quad({ w: 0.17, h: 0.23, x: p.x, y: p.y, z: p.z, ry: -Math.PI / 2, uv: board.uv(i) }));
         });
         group.add(new Mesh(merge(quads), new MeshLambertMaterial({ map: board.texture })));
       }
       const note = new Mesh(
-        quad({ w: 0.8, h: 0.3, x: W - 0.035, y: 2.2, z: zc, ry: -Math.PI / 2, rx: 0, rz: 0.03 }),
+        quad({ w: 0.8, h: 0.3, x: W2 - 0.035, y: 2.2, z: zc, ry: -Math.PI / 2, rx: 0, rz: 0.03 }),
         new MeshBasicMaterial({
           map: canvasTexture(ctx, 512, 192, (g, w, hh) => {
             g.fillStyle = "#f6efd6";
@@ -37694,7 +37723,7 @@ void main() {
       group.add(note);
       ctx.scene.add(group);
       ctx.track(group);
-      const rect = ctx.addCollider({ x0: W - 0.32, z0: zc - HALF, x1: W, z1: zc + HALF, kind: "prop" });
+      const rect = ctx.addCollider({ x0: W2 - 0.32, z0: zc - HALF, x1: W2, z1: zc + HALF, kind: "prop" });
       function openList() {
         favs = collectFavs();
         if (ctx.xr.presenting()) {
@@ -37766,12 +37795,12 @@ void main() {
         handle = openPanel(ctx, { vr: (close) => render(close) });
       }
       const removeIa = ctx.addInteractable({
-        box: { min: { x: W - 0.36, y: 0.3, z: zc - HALF }, max: { x: W, y: 2.4, z: zc + HALF } },
+        box: { min: { x: W2 - 0.36, y: 0.3, z: zc - HALF }, max: { x: W2, y: 2.4, z: zc + HALF } },
         label: "Reservierungen ansehen",
         hint: favs.length ? `E / Klick: ${favs.length} zur\xFCckgelegt` : "E / Klick: Merkliste ansehen",
         onUse: openList
       });
-      const offDbg = debugHook(ctx, "reserve", { open: openList, pos: { x: W, z: zc }, count: favs.length });
+      const offDbg = debugHook(ctx, "reserve", { open: openList, pos: { x: W2, z: zc }, count: favs.length });
       return {
         dispose() {
           offDbg();
@@ -37956,7 +37985,7 @@ void main() {
     name: "showcase",
     init(ctx) {
       const L = ctx.layout;
-      const D = L.d;
+      const D2 = L.d;
       const wins = ["window", "window2"].map((id) => L.zones[id]).filter((zz) => zz && zz.rect && zz.rect.x1 - zz.rect.x0 >= 1.4);
       const list = (ctx.catalog && ctx.catalog.highlights || []).filter((it) => it && it.Id);
       if (!wins.length || !list.length) return null;
@@ -37984,14 +38013,14 @@ void main() {
       const signs = [];
       const signTex = canvasTexture(ctx, 512, 128, neonSign);
       const posters = [];
-      const pz = D - 0.42;
+      const pz = D2 - 0.42;
       let idx = 0;
       wins.forEach((zz, wi) => {
         const g = groups[wi] || [];
         if (!g.length) return;
         const r = zz.rect;
         const xs = spreadCenters(g.length, r.x0 + 0.1, r.x1 - 0.1);
-        signs.push(quad({ w: 1.8, h: 0.45, x: (r.x0 + r.x1) / 2, y: 2.72, z: D - 0.03, ry: Math.PI }));
+        signs.push(quad({ w: 1.8, h: 0.45, x: (r.x0 + r.x1) / 2, y: 2.72, z: D2 - 0.03, ry: Math.PI }));
         g.forEach((it, k) => {
           const x = xs[k];
           podia.push(box({ w: 0.84, h: 0.3, d: 0.5, x, y: 0.15, z: pz, color: [0.16, 0.19, 0.42] }));
@@ -38619,9 +38648,9 @@ void main() {
   }
   function buildOutdoor(ctx) {
     const L = ctx.layout;
-    const W = L.w;
-    const D = L.d;
-    const rand = rng(Math.round(W * 100 + D * 10) + 5);
+    const W2 = L.w;
+    const D2 = L.d;
+    const rand = rng(Math.round(W2 * 100 + D2 * 10) + 5);
     const group = new Group();
     group.name = "m4-outdoor";
     ctx.scene.add(group);
@@ -38817,22 +38846,22 @@ void main() {
   }
   function buildFacade(out, o = {}) {
     const L = out.L;
-    const W = L.w;
-    const D = L.d;
+    const W2 = L.w;
+    const D2 = L.d;
     const group = new Group();
     group.name = "m4-facade";
     out.group.add(group);
     const door = L.facade.door;
     const windows = L.facade.windows || [];
-    const z0 = D + WALL_OUT + 0.05;
+    const z0 = D2 + WALL_OUT + 0.05;
     const front = z0 + 0.04;
     const openings = [{ x0: door.x0, x1: door.x1, y0: 0, y1: 2.4 }, ...windows.map((w) => ({ x0: w.x0, x1: w.x1, y0: w.y0, y1: w.y1 }))];
     const parts = [];
     const TEAL2 = hex("#1c4f5e");
-    claddingParts(parts, -WALL_OUT, W + WALL_OUT, z0, 0.08, 2.85, openings, TEAL2);
+    claddingParts(parts, -WALL_OUT, W2 + WALL_OUT, z0, 0.08, 2.85, openings, TEAL2);
     const NAVY2 = hex("#10153a");
-    parts.push(box({ w: W + 2 * WALL_OUT, h: 2.35, d: 0.08, x: W / 2, y: 4, z: z0, color: NAVY2 }));
-    for (const [y, c] of [[5.12, [1, 0.24, 0.5]], [2.9, [1, 0.82, 0.25]]]) parts.push(box({ w: W + 2 * WALL_OUT + 0.1, h: 0.07, d: 0.1, x: W / 2, y, z: z0 + 0.03, color: c }));
+    parts.push(box({ w: W2 + 2 * WALL_OUT, h: 2.35, d: 0.08, x: W2 / 2, y: 4, z: z0, color: NAVY2 }));
+    for (const [y, c] of [[5.12, [1, 0.24, 0.5]], [2.9, [1, 0.82, 0.25]]]) parts.push(box({ w: W2 + 2 * WALL_OUT + 0.1, h: 0.07, d: 0.1, x: W2 / 2, y, z: z0 + 0.03, color: c }));
     const mat2 = new MeshBasicMaterial({ vertexColors: true });
     const cladding = new Mesh(merge(parts), mat2);
     cladding.matrixAutoUpdate = false;
@@ -38840,8 +38869,8 @@ void main() {
     group.add(cladding);
     const signTex = toTexture(signCanvas2(), { aniso: 4 });
     const signMat = new MeshBasicMaterial({ map: signTex, toneMapped: false });
-    const sign = new Mesh(new PlaneGeometry(Math.min(W - 1.4, 7.4), Math.min(W - 1.4, 7.4) / 4), signMat);
-    sign.position.set(W / 2, 4, front + 0.012);
+    const sign = new Mesh(new PlaneGeometry(Math.min(W2 - 1.4, 7.4), Math.min(W2 - 1.4, 7.4) / 4), signMat);
+    sign.position.set(W2 / 2, 4, front + 0.012);
     group.add(sign);
     const hoursMat = new MeshBasicMaterial({ map: toTexture(hoursCanvas(), { aniso: 4 }) });
     out.tint(hoursMat);
@@ -38849,7 +38878,7 @@ void main() {
     hours.position.set(door.x1 + 0.36, 1.5, front + 0.012);
     group.add(hours);
     const SH2 = 2.62;
-    const SW2 = W - 0.5;
+    const SW2 = W2 - 0.5;
     let shutter = null;
     let casing = null;
     let shTex = null;
@@ -38863,10 +38892,10 @@ void main() {
       shMat = new MeshBasicMaterial({ map: shTex });
       out.tint(shMat);
       shutter = new Mesh(shGeo, shMat);
-      shutter.position.set(W / 2, SH2, front + 0.1);
+      shutter.position.set(W2 / 2, SH2, front + 0.1);
       group.add(shutter);
-      casing = new Mesh(box({ w: W - 0.2, h: 0.3, d: 0.28, x: 0, y: 0, z: 0, color: [0.36, 0.4, 0.46] }), new MeshBasicMaterial({ vertexColors: true }));
-      casing.position.set(W / 2, SH2 + 0.14, front + 0.1);
+      casing = new Mesh(box({ w: W2 - 0.2, h: 0.3, d: 0.28, x: 0, y: 0, z: 0, color: [0.36, 0.4, 0.46] }), new MeshBasicMaterial({ vertexColors: true }));
+      casing.position.set(W2 / 2, SH2 + 0.14, front + 0.1);
       out.tint(casing.material);
       group.add(casing);
     }
@@ -39057,8 +39086,8 @@ void main() {
   var SHOP_GLASS = { day: [0.16, 0.22, 0.3], dusk: [0.5, 0.38, 0.28], night: [0.8, 0.55, 0.28] };
   function buildCityDecor(out, city2, layout, G, winSpecs) {
     const f = city2.frame;
-    const { W, D, sz } = f;
-    const rand = seeded(Math.round(W * 100 + D * 10) + 13);
+    const { W: W2, D: D2, sz } = f;
+    const rand = seeded(Math.round(W2 * 100 + D2 * 10) + 13);
     const flat = out.tint(new MeshBasicMaterial({ vertexColors: true }));
     const mats = [];
     const meshes = [];
@@ -39218,7 +39247,7 @@ void main() {
     mats.push(haloMat);
     const halos = [
       quad({ w: ps.w * 1.5, h: sh * 3.2, x: ps.x, y: ps.y, z: sz - 0.1, ry: PI5, color: [1, 0.35, 0.65] }),
-      quad({ w: 3.2, h: 2.2, x: W + 10, y: 2.3, z: D - 0.2, color: [1, 0.4, 0.8] }),
+      quad({ w: 3.2, h: 2.2, x: W2 + 10, y: 2.3, z: D2 - 0.2, color: [1, 0.4, 0.8] }),
       quad({ w: 2.6, h: 2.6, x: city2.escape.fx - 0.4, y: 3.5, z: -1, color: [1, 0.85, 0.5] })
     ];
     const haloMesh = put(G.street, halos, haloMat, "city-halos", 7);
@@ -39469,8 +39498,8 @@ void main() {
   var shadeOf = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
   function buildCityMeshes(out, city2, layout) {
     const f = city2.frame;
-    const { W, D, fz, roadZ0, roadZ1, sz, xc0, xc1, XW0, XW1, zSN, zSS } = f;
-    const rand = seeded(Math.round(W * 100 + D * 10) + 9);
+    const { W: W2, D: D2, fz, roadZ0, roadZ1, sz, xc0, xc1, XW0, XW1, zSN, zSS } = f;
+    const rand = seeded(Math.round(W2 * 100 + D2 * 10) + 9);
     const root = new Group();
     root.name = "city-root";
     out.group.add(root);
@@ -39500,17 +39529,17 @@ void main() {
     const aL = xc0 - 2.4;
     const aR = xc1 + 2.4;
     const walk = [
-      wk(XW0, D, aL, roadZ0),
-      wk(aR, D, XW1, roadZ0),
+      wk(XW0, D2, aL, roadZ0),
+      wk(aR, D2, XW1, roadZ0),
       wk(XW0, roadZ1, aL, sz),
       wk(aR, roadZ1, XW1, sz),
       wk(aL, zSN, xc0, roadZ0),
       wk(xc1, zSN, aR, roadZ0),
       wk(aL, roadZ1, xc0, zSS),
       wk(xc1, roadZ1, aR, zSS),
-      wk(W + 8.4, D - 2, W + 11.6, D),
+      wk(W2 + 8.4, D2 - 2, W2 + 11.6, D2),
       // Kiosk-Tasche
-      wk(-3.4, -T3, -T3, D)
+      wk(-3.4, -T3, -T3, D2)
       // Gasse
     ];
     put(street, walk, walkMat, "city-walk");
@@ -39582,7 +39611,7 @@ void main() {
     pl.push(B2(c.x0, c.z0, c.x1, c.z1, c.y, c.y + 0.18, [0.85, 0.2, 0.45]), B2(c.x0, c.z0, c.x1, c.z1, c.y - 0.04, c.y, [1, 0.88, 0.55]));
     pl.push(B2(r.x0 - 0.1, r.z0 - 0.1, r.x1 + 0.1, r.z0 + 0.12, ph - 0.25, ph, [1, 0.24, 0.5]));
     put(palastG, pl, flat, "city-palast-shell");
-    const yardGeos = [flatRect(-3.4, -11, W + 8.4, -T3, { y: 2e-3, tile: 1.4 })];
+    const yardGeos = [flatRect(-3.4, -11, W2 + 8.4, -T3, { y: 2e-3, tile: 1.4 })];
     put(yard, yardGeos, walkMat, "city-yard-floor");
     const yg = [];
     const sg = [];
@@ -39596,9 +39625,9 @@ void main() {
       const geo = B2(q.x0, q.z0, q.x1, q.z1, y0, q.y1, KIND_COLOR[q.kind]);
       (STREET_KINDS.has(q.kind) ? sg : yg).push(geo);
     }
-    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W + T3, D + T3, 3, 3.3, [0.32, 0.32, 0.36]));
-    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W + T3, -T3, 0, 3, [0.55, 0.3, 0.26]));
-    yg.push(B2(-T3 - 0.03, -T3, -T3, D, 0, 3, [0.58, 0.34, 0.28]));
+    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W2 + T3, D2 + T3, 3, 3.3, [0.32, 0.32, 0.36]));
+    yg.push(B2(-T3 - 0.03, -T3 - 0.03, W2 + T3, -T3, 0, 3, [0.55, 0.3, 0.26]));
+    yg.push(B2(-T3 - 0.03, -T3, -T3, D2, 0, 3, [0.58, 0.34, 0.28]));
     put(yard, yg, flat, "city-yard-props");
     const gates = [];
     const bar = (x0, z0, x1, z1) => {
@@ -39625,12 +39654,12 @@ void main() {
       glows.push(quad({ w: 2.6, h: 2.6, x: l.x, y: l.h - 0.1, z: l.z + l.armDz, ry: PI6, color: [1, 0.84, 0.55] }));
       glows.push(quad({ w: 5.2, h: 3.6, x: l.x, y: 0.014, z: l.z + l.armDz * 0.3, rx: -PI6 / 2, color: [1, 0.78, 0.45] }));
     }
-    const zW0 = D + T3;
+    const zW0 = D2 + T3;
     for (const wd of layout.facade.windows || []) glows.push(quad({ w: (wd.x1 - wd.x0) * 1.15, h: 2.4, x: (wd.x0 + wd.x1) / 2, y: 0.014, z: zW0 + 1, rx: -PI6 / 2, color: [1, 0.86, 0.6] }));
     const dr = layout.facade.door;
     glows.push(quad({ w: dr.w * 1.6, h: 2.8, x: (dr.x0 + dr.x1) / 2, y: 0.014, z: zW0 + 1.2, rx: -PI6 / 2, color: [1, 0.86, 0.6] }));
-    glows.push(quad({ w: 8, h: 4, x: W / 2, y: 0.014, z: sz - 1.2, rx: -PI6 / 2, color: [1, 0.7, 0.8] }));
-    glows.push(quad({ w: 3.4, h: 3, x: W + 10, y: 0.014, z: D + 1.2, rx: -PI6 / 2, color: [1, 0.7, 0.9] }));
+    glows.push(quad({ w: 8, h: 4, x: W2 / 2, y: 0.014, z: sz - 1.2, rx: -PI6 / 2, color: [1, 0.7, 0.8] }));
+    glows.push(quad({ w: 3.4, h: 3, x: W2 + 10, y: 0.014, z: D2 + 1.2, rx: -PI6 / 2, color: [1, 0.7, 0.9] }));
     put(street, poles, flat, "city-lamps");
     const glowMat = new MeshBasicMaterial({ map: out.T(glowCanvas2()), vertexColors: true, transparent: true, depthWrite: false, blending: AdditiveBlending, side: DoubleSide, opacity: 0, fog: false });
     const glowMesh = put(street, glows, glowMat, "city-glow");
@@ -39928,7 +39957,7 @@ void main() {
     name: "door",
     init(ctx) {
       const L = ctx.layout;
-      const D = L.d;
+      const D2 = L.d;
       const door = L.facade && L.facade.door || L.door;
       const out = getOutdoor(ctx);
       const left = ctx.scene.getObjectByName("lfx-door-left");
@@ -39953,7 +39982,7 @@ void main() {
         else ctx.removeCollider(blockRect);
       }
       const sign = new Mesh(new PlaneGeometry(0.8, 0.3), new MeshBasicMaterial({ map: toTexture(closedCanvas(), { aniso: 2 }), side: DoubleSide }));
-      sign.position.set((door.x0 + door.x1) / 2, 1.65, D + 0.09);
+      sign.position.set((door.x0 + door.x1) / 2, 1.65, D2 + 0.09);
       sign.visible = false;
       ctx.scene.add(sign);
       ctx.track(sign);
@@ -39963,7 +39992,7 @@ void main() {
         if (right) right.rotation.y = a;
       }
       function near(p) {
-        return p && p.x >= door.x0 - 0.6 && p.x <= door.x1 + 0.6 && p.z >= D - 0.9 && p.z <= D + 1.8;
+        return p && p.x >= door.x0 - 0.6 && p.x <= door.x1 + 0.6 && p.z >= D2 - 0.9 && p.z <= D2 + 1.8;
       }
       function setLocked(on) {
         if (on === locked) return;
@@ -40047,7 +40076,7 @@ void main() {
             else if (amount > goal) amount = Math.max(goal, amount - CLOSE_SPEED * dt);
           }
           applyAngle();
-          if (forced === null && prevZ > D + 0.4 && p.z <= D + 0.4 && p.x >= door.x0 && p.x <= door.x1) {
+          if (forced === null && prevZ > D2 + 0.4 && p.z <= D2 + 0.4 && p.x >= door.x0 && p.x <= door.x1) {
             const s = ctx.use("sound");
             if (s) s.play("doorbell");
           }
@@ -40081,8 +40110,8 @@ void main() {
         return {};
       }
       const L = ctx.layout;
-      const W = L.w;
-      const D = L.d;
+      const W2 = L.w;
+      const D2 = L.d;
       const player = ctx.player;
       const touch = ctx.isTouch;
       const doorP = ctx.use("door");
@@ -40122,7 +40151,7 @@ void main() {
       }
       const back = ctx.camera.aspect < 1.2 ? 1.55 : 1;
       player.freeze(true);
-      player.camera.flyTo({ x: W / 2 - 1.5, y: 1.6, z: Math.min(D + 7.4 * back, D + 9.4) }, { x: W / 2, y: 3.3, z: D }, 1);
+      player.camera.flyTo({ x: W2 / 2 - 1.5, y: 1.6, z: Math.min(D2 + 7.4 * back, D2 + 9.4) }, { x: W2 / 2, y: 3.3, z: D2 }, 1);
       ctx.provide("intro", {
         run() {
           if (done) return Promise.resolve();
@@ -40181,7 +40210,7 @@ void main() {
           facade.flicker(tl);
           if (!startedFly1 && tl >= T4.fly1) {
             startedFly1 = true;
-            player.camera.flyTo({ x: W / 2 - 1.5, y: 1.6, z: Math.min(D + 3.9 * (back > 1 ? 1.45 : 1), D + 9.4) }, { x: W / 2, y: 1.7, z: D }, T4.fly1Dur);
+            player.camera.flyTo({ x: W2 / 2 - 1.5, y: 1.6, z: Math.min(D2 + 3.9 * (back > 1 ? 1.45 : 1), D2 + 9.4) }, { x: W2 / 2, y: 1.7, z: D2 }, T4.fly1Dur);
           }
           if (tl >= T4.shutter) {
             if (!shutterSound) {
@@ -40203,7 +40232,7 @@ void main() {
               if (ok) finish();
             });
           }
-          if (step === 1 && !belled && ctx.camera.position.z < D + 0.4) {
+          if (step === 1 && !belled && ctx.camera.position.z < D2 + 0.4) {
             belled = true;
             const s = ctx.use("sound");
             if (s) s.play("doorbell");
@@ -40270,7 +40299,7 @@ void main() {
     name: "daytime",
     init(ctx) {
       const L = ctx.layout;
-      const D = L.d;
+      const D2 = L.d;
       const dbg = !!(ctx.opts && ctx.opts.debug);
       const hourOpt = dbg && Number.isFinite(ctx.opts.hour) ? ctx.opts.hour : void 0;
       const rainForce = dbg && typeof ctx.opts.rain === "boolean" ? ctx.opts.rain : void 0;
@@ -40307,17 +40336,17 @@ void main() {
         if (o.isDirectionalLight) dirs.push({ o, i: o.intensity, c: o.color.clone() });
       });
       const baseExposure = ctx.renderer.toneMappingExposure;
-      const tmp2 = new Color();
+      const tmp3 = new Color();
       function applyMood(pal) {
         const cool = pal.cool * 0.5;
         for (const l of lights) {
           l.o.intensity = l.i * pal.hemi;
-          l.o.color.copy(l.c).lerp(tmp2.copy(COOL).multiply(l.c), cool);
-          if (l.g) l.o.groundColor.copy(l.g).lerp(tmp2.copy(COOL).multiply(l.g), cool);
+          l.o.color.copy(l.c).lerp(tmp3.copy(COOL).multiply(l.c), cool);
+          if (l.g) l.o.groundColor.copy(l.g).lerp(tmp3.copy(COOL).multiply(l.g), cool);
         }
         for (const d of dirs) {
           d.o.intensity = d.i * pal.hemi * 0.95;
-          d.o.color.copy(d.c).lerp(tmp2.copy(COOL).multiply(d.c), cool);
+          d.o.color.copy(d.c).lerp(tmp3.copy(COOL).multiply(d.c), cool);
         }
         ctx.renderer.toneMappingExposure = baseExposure * pal.exposure;
       }
@@ -40357,8 +40386,8 @@ void main() {
       const dropTex = toTexture(dropsCanvas(), { repeat: true, aniso: 2 });
       const f = L.facade || {};
       const glassQuads = [];
-      for (const wd of f.windows || []) glassQuads.push(quad({ w: wd.x1 - wd.x0, h: wd.y1 - wd.y0, x: (wd.x0 + wd.x1) / 2, y: (wd.y0 + wd.y1) / 2, z: D + 0.078, tile: 1 }));
-      if (f.door) glassQuads.push(quad({ w: f.door.w - 0.12, h: 2, x: (f.door.x0 + f.door.x1) / 2, y: 1.35, z: D + 0.078, tile: 1 }));
+      for (const wd of f.windows || []) glassQuads.push(quad({ w: wd.x1 - wd.x0, h: wd.y1 - wd.y0, x: (wd.x0 + wd.x1) / 2, y: (wd.y0 + wd.y1) / 2, z: D2 + 0.078, tile: 1 }));
+      if (f.door) glassQuads.push(quad({ w: f.door.w - 0.12, h: 2, x: (f.door.x0 + f.door.x1) / 2, y: 1.35, z: D2 + 0.078, tile: 1 }));
       let drops = null;
       if (glassQuads.length) {
         const dMat = new MeshBasicMaterial({ map: dropTex, transparent: true, depthWrite: false, side: DoubleSide, opacity: 0.8 });
@@ -40394,7 +40423,7 @@ void main() {
             const was = near;
             const areas = ctx.use("areas");
             const a = areas ? areas.current() : "shop";
-            near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && cam.position.z > D + 0.3;
+            near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && cam.position.z > D2 + 0.3;
             if (was !== near) syncVisible();
           }
           if (drops && weather.raining && near) dropTex.offset.y += dt * speed;
@@ -40685,7 +40714,7 @@ void main() {
       let nxs = 0;
       let nzs = 0;
       for (let pass = 0; pass < 2; pass++) {
-        let moved = false;
+        let moved2 = false;
         for (let i = 0; i < cand.length; i++) {
           const q = cand[i];
           const y0 = q.y0 === void 0 ? 0 : q.y0;
@@ -40733,7 +40762,7 @@ void main() {
           }
           nxs += ux;
           nzs += uz;
-          moved = true;
+          moved2 = true;
           const vn = b.vel.x * ux + b.vel.z * uz;
           if (vn < 0) {
             const k = 1 + b.e;
@@ -40742,7 +40771,7 @@ void main() {
             if (-vn > 1.2) contact(b, { surface: "wall", speed: -vn, collider: q });
           }
         }
-        if (!moved) break;
+        if (!moved2) break;
       }
       if (h2 && (nxs || nzs)) b.spin *= 0.9;
     }
@@ -41189,8 +41218,8 @@ void main() {
     g.setAttribute("color", new Float32BufferAttribute(col, 3));
     return g;
   }
-  function cyl2(r0, r1, h2, y, color, seg = 10) {
-    const g = new CylinderGeometry(r0, r1, h2, seg);
+  function cyl2(r02, r1, h2, y, color, seg = 10) {
+    const g = new CylinderGeometry(r02, r1, h2, seg);
     g.translate(0, y, 0);
     return paintAll(g, color);
   }
@@ -41524,8 +41553,8 @@ void main() {
     const city2 = layout.city;
     const src = layout.cidx ? { index: layout.cidx, dyn: null } : layout.colliders;
     const out = [];
-    const W = layout.w;
-    const D = layout.d;
+    const W2 = layout.w;
+    const D2 = layout.d;
     const add = (kind, id, x, z, y, yaw = 0, group = "misc") => {
       const k = KINDS[kind];
       const r = k.shape === "sphere" ? k.size : k.rr || Math.max(k.size[0], k.size[2]) / 2;
@@ -41541,12 +41570,12 @@ void main() {
         if (!KINDS[kind]) continue;
         add(kind, s.id, s.x, s.z, s.y || 0, (s.x * 7 + s.z * 3) % 6.28, "slot");
       }
-      add("bin", "binL", W * 0.12, D + 0.6, 0, 0.3, "bin");
-      add("bin", "binR", W * 0.88, D + 0.6, 0, -0.4, "bin");
-      add("bin", "binYard", W * 0.72, -2, 0, 0.8, "bin");
+      add("bin", "binL", W2 * 0.12, D2 + 0.6, 0, 0.3, "bin");
+      add("bin", "binR", W2 * 0.88, D2 + 0.6, 0, -0.4, "bin");
+      add("bin", "binYard", W2 * 0.72, -2, 0, 0.8, "bin");
     }
-    add("standee", "standeeL", W / 2 - 2.7, D - 1.5, 0, 0.1, "standee");
-    add("standee", "standeeR", W / 2 + 2.7, D - 1.5, 0, -0.1, "standee");
+    add("standee", "standeeL", W2 / 2 - 2.7, D2 - 1.5, 0, 0.1, "standee");
+    add("standee", "standeeR", W2 / 2 + 2.7, D2 - 1.5, 0, -0.1, "standee");
     if (city2) {
       const crate = (city2.colliders || []).find((q) => q.id === "crateB");
       if (crate) {
@@ -41626,7 +41655,7 @@ void main() {
       const pyramid = homes.filter((b) => b.data.group === "pyramid");
       const hoopBalls = homes.filter((b) => b.data.group === "hoop");
       let pyramidDone = false;
-      function regionVisible(x, z, y) {
+      function regionVisible2(x, z, y) {
         const areas = ctx.use("areas");
         const a = areas ? areas.at(x, z, y) : "street";
         if (a === "shop") return vis.shopShell !== false;
@@ -41645,7 +41674,7 @@ void main() {
             continue;
           }
           const near = Math.hypot(b.pos.x - p.x, b.pos.z - p.z) < cullDist;
-          const v = near && (b.mesh || regionVisible(b.pos.x, b.pos.z, b.pos.y));
+          const v = near && (b.mesh || regionVisible2(b.pos.x, b.pos.z, b.pos.y));
           if (v !== b.vis) {
             b.vis = v;
             b.dirty = true;
@@ -43975,10 +44004,10 @@ void main() {
       const R2 = cash && cash.richard ? cash.richard() : null;
       if (!R2) return {};
       const L = ctx.layout;
-      const D = L.d;
+      const D2 = L.d;
       const doorR = L.facade && L.facade.door || L.door;
       const doorCx = (doorR.x0 + doorR.x1) / 2;
-      const gateIn = { x: doorCx, z: D - 1.5 };
+      const gateIn = { x: doorCx, z: D2 - 1.5 };
       const counter = L.counter;
       const front = { x: R2.home.x, z: counter.z0 - 0.6 };
       const reduced = prefersReducedMotion();
@@ -44017,7 +44046,7 @@ void main() {
       let chaseSince = 0;
       let penSince = -1;
       let expelling = false;
-      const goal = { x: doorCx, z: D + 0.9 };
+      const goal = { x: doorCx, z: D2 + 0.9 };
       const store = (() => {
         try {
           return window.sessionStorage;
@@ -44064,7 +44093,7 @@ void main() {
       function ensureSign() {
         if (sign) return sign;
         sign = new Mesh(new PlaneGeometry(0.9, 0.45), new MeshBasicMaterial({ map: toTexture(banCanvas(), { aniso: 2 }), side: DoubleSide }));
-        sign.position.set(doorCx, 1.12, D + 0.12);
+        sign.position.set(doorCx, 1.12, D2 + 0.12);
         sign.visible = false;
         ctx.scene.add(sign);
         ctx.track(sign);
@@ -44095,14 +44124,14 @@ void main() {
       };
       const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
       const inPen = () => R2.pos.x >= counter.x0 - 0.1 && R2.pos.z >= counter.z1 - 0.05 && R2.pos.y < 0.3;
-      const clamp10 = (v, a, b) => Math.min(b, Math.max(a, v));
+      const clamp11 = (v, a, b) => Math.min(b, Math.max(a, v));
       const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
       function landingPoint(p) {
         const nav = ctx.layout.nav;
-        const bx2 = clamp10(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
+        const bx2 = clamp11(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
         for (const dz of [0.6, 1, 1.4, 1.8]) {
           for (const dx of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
-            const x = clamp10(bx2 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
+            const x = clamp11(bx2 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
             const z = counter.z0 - dz;
             if (nav && !isFree(nav, x, z)) continue;
             if (p && Math.hypot(p.x - x, p.z - z) < 1.1) continue;
@@ -44116,7 +44145,7 @@ void main() {
         let path = null;
         if (nav) {
           path = findPath(nav, { x: p.x, z: p.z }, goal);
-          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp10(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
+          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp11(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
         }
         let w = null;
         if (path) {
@@ -44160,7 +44189,7 @@ void main() {
           lockedByMe = false;
         }
       }
-      const doorBlockZ1 = (L.doorBlock ? L.doorBlock.z1 : D + 0.22) + 0.5;
+      const doorBlockZ1 = (L.doorBlock ? L.doorBlock.z1 : D2 + 0.22) + 0.5;
       const playerClear = () => pose().z > doorBlockZ1;
       function applyBan() {
         lockPending = false;
@@ -44306,7 +44335,7 @@ void main() {
             veilTo(false);
             return;
           }
-          ctx.player.teleport(doorCx, D + 2.2, 0, 0);
+          ctx.player.teleport(doorCx, D2 + 2.2, 0, 0);
           task = null;
           expelling = false;
           onTransition(fsm.event("expelled", T5));
@@ -44715,7 +44744,7 @@ void main() {
     name: "rent",
     init(ctx) {
       const L = ctx.layout;
-      const D = L.d;
+      const D2 = L.d;
       const door = L.facade && L.facade.door || L.door;
       const store = (() => {
         try {
@@ -44726,7 +44755,7 @@ void main() {
       })();
       const ledger = createRentLedger(store);
       const guard = createTheftGuard(ALARM_COOLDOWN);
-      const gate = { x0: door.x0 - 0.1, x1: door.x1 + 0.1, z: D - 0.7 };
+      const gate = { x0: door.x0 - 0.1, x1: door.x1 + 0.1, z: D2 - 0.7 };
       const richard = () => {
         const c = ctx.use("cashier");
         return c && c.richard ? c.richard() : null;
@@ -44948,11 +44977,11 @@ void main() {
       const L = ctx.layout;
       const zone = L.zones.snack;
       if (!zone) return {};
-      const D = L.d;
+      const D2 = L.d;
       const reduced = prefersReducedMotion();
-      const zc1 = D - 3;
-      const zc2 = D - 2.05;
-      const zc3 = D - 1.18;
+      const zc1 = D2 - 3;
+      const zc2 = D2 - 2.05;
+      const zc3 = D2 - 1.18;
       const solid = [];
       const WOOD2 = [0.5, 0.34, 0.2];
       solid.push(box({ w: 0.42, h: 1.7, d: 0.9, x: 0.21, y: 0.85, z: zc1, color: WOOD2 }));
@@ -44984,7 +45013,7 @@ void main() {
       const faces = [
         quad({ w: 0.9, h: 1.7, x: 0.425, y: 0.85, z: zc1, ry: PI7 / 2, uv: u(R.candy) }),
         quad({ w: 0.8, h: 1.85, x: 0.655, y: 0.925, z: zc3, ry: PI7 / 2, uv: u(R.fridge) }),
-        quad({ w: 1.6, h: 0.31, x: 0.05, y: 2.45, z: D - 2.05, ry: PI7 / 2, uv: u(R.sign) }),
+        quad({ w: 1.6, h: 0.31, x: 0.05, y: 2.45, z: D2 - 2.05, ry: PI7 / 2, uv: u(R.sign) }),
         quad({ w: 0.5, h: 0.153, x: 0.635, y: 0.55, z: zc2, ry: PI7 / 2, uv: u(R.pop) })
       ];
       const atlasMesh = new Mesh(merge(faces), new MeshBasicMaterial({ map: atlasTex, toneMapped: false }));
@@ -45331,8 +45360,8 @@ void main() {
       const ac = new AbortController();
       const noise = [noiseCanvas(), noiseCanvas(), noiseCanvas()];
       const overSmall = overlayCanvas(SW, SH);
-      let W = SW;
-      let H = SH;
+      let W2 = SW;
+      let H2 = SH;
       let gx = sx;
       let over = overSmall;
       let bigCanvas = null;
@@ -45413,14 +45442,14 @@ void main() {
           bigTex.colorSpace = SRGBColorSpace;
           bigTex.minFilter = LinearFilter;
           bigTex.generateMipmaps = false;
-          W = BW;
-          H = BH;
+          W2 = BW;
+          H2 = BH;
           gx = bigCanvas.getContext("2d");
           over = overlayCanvas(BW, BH);
           mat2.map = bigTex;
         } else {
-          W = SW;
-          H = SH;
+          W2 = SW;
+          H2 = SH;
           gx = sx;
           over = overSmall;
           mat2.map = tex;
@@ -45649,7 +45678,7 @@ void main() {
         const s = slides[idx % slides.length];
         const sitting = seat === "in";
         const src = s ? sitting && s.big || s.canvas || null : null;
-        return { s, src, W, H, chan, osd: osdT > 0, title: s && s.title };
+        return { s, src, W: W2, H: H2, chan, osd: osdT > 0, title: s && s.title };
       }
       function sameKey(a, b) {
         return !!a && a.s === b.s && a.src === b.src && a.W === b.W && a.H === b.H && a.chan === b.chan && a.osd === b.osd && a.title === b.title;
@@ -45657,39 +45686,39 @@ void main() {
       function frame() {
         if (!slides.length) return;
         lastKey = state === "slide" ? slideKey() : null;
-        const k = W / SW;
+        const k = W2 / SW;
         const s = slides[idx % slides.length];
         const sitting = seat === "in";
         gx.imageSmoothingEnabled = state !== "static";
         if (state === "static") {
           gx.imageSmoothingEnabled = false;
-          gx.drawImage(noise[Math.floor(Math.random() * 3)], 0, 0, W, H);
+          gx.drawImage(noise[Math.floor(Math.random() * 3)], 0, 0, W2, H2);
         } else if (state === "trailer" && trailer && trailer.video.readyState >= 2) {
           const v = trailer.video;
           const vw = v.videoWidth || 16;
           const vh = v.videoHeight || 9;
-          const kk = sitting ? Math.min(W / vw, H / vh) : Math.max(W / vw, H / vh);
+          const kk = sitting ? Math.min(W2 / vw, H2 / vh) : Math.max(W2 / vw, H2 / vh);
           gx.fillStyle = "#000";
-          gx.fillRect(0, 0, W, H);
-          gx.drawImage(v, (W - vw * kk) / 2, (H - vh * kk) / 2, vw * kk, vh * kk);
+          gx.fillRect(0, 0, W2, H2);
+          gx.drawImage(v, (W2 - vw * kk) / 2, (H2 - vh * kk) / 2, vw * kk, vh * kk);
         } else if (s && (sitting && s.big || s.canvas)) {
-          gx.drawImage(sitting && s.big || s.canvas, 0, 0, W, H);
+          gx.drawImage(sitting && s.big || s.canvas, 0, 0, W2, H2);
         } else {
-          fallbackArt(gx, s && s.title, W, H);
+          fallbackArt(gx, s && s.title, W2, H2);
         }
         if (state !== "static") {
           const cur = current();
           gx.fillStyle = "rgba(0,0,0,0.55)";
-          gx.fillRect(0, H - 34 * k, W, 34 * k);
+          gx.fillRect(0, H2 - 34 * k, W2, 34 * k);
           gx.fillStyle = "#f4f6ff";
           gx.textAlign = "left";
           gx.textBaseline = "middle";
           gx.font = `bold ${15 * k}px ${FONT}`;
-          gx.fillText(String(cur && cur.title || "").slice(0, 30), 12 * k, H - 17 * k);
+          gx.fillText(String(cur && cur.title || "").slice(0, 30), 12 * k, H2 - 17 * k);
           gx.fillStyle = "#ffd23f";
           gx.textAlign = "right";
           gx.font = `${12 * k}px ${FONT}`;
-          gx.fillText(state === "trailer" ? "VORSCHAU" : "KANAL " + chan, W - 12 * k, H - 17 * k);
+          gx.fillText(state === "trailer" ? "VORSCHAU" : "KANAL " + chan, W2 - 12 * k, H2 - 17 * k);
         }
         if (osdT > 0) {
           gx.fillStyle = "#6dff8a";
@@ -45698,7 +45727,7 @@ void main() {
           gx.font = `bold ${22 * k}px "Courier New",monospace`;
           gx.fillText("CH " + String(chan).padStart(2, "0"), 14 * k, 12 * k);
         }
-        gx.drawImage(over, 0, 0, W, H);
+        gx.drawImage(over, 0, 0, W2, H2);
         (bigTex || tex).needsUpdate = true;
       }
       ctx.addInteractable({
@@ -46508,7 +46537,7 @@ void main() {
     let recoil = { x: 0, z: 0 };
     let remote = null;
     let disposed = false;
-    const tmp2 = new Vector3();
+    const tmp3 = new Vector3();
     const handle = {
       root,
       rig,
@@ -46564,7 +46593,7 @@ void main() {
         rig.add(tag);
       },
       /** Kopfposition (Welt) für Sprechblasen. */
-      headWorld(out = tmp2) {
+      headWorld(out = tmp3) {
         return out.set(root.position.x, root.position.y + 1.95 * k, root.position.z);
       },
       show() {
@@ -46621,8 +46650,8 @@ void main() {
           if (!recoil.x && !recoil.z) rig.position.set(0, 0, 0);
         }
         if (tag && camera) {
-          camera.getWorldPosition(tmp2);
-          tag.lookAt(tmp2);
+          camera.getWorldPosition(tmp3);
+          tag.lookAt(tmp3);
         }
       },
       dispose() {
@@ -47142,13 +47171,13 @@ void main() {
       const y = rowY(i);
       const zc = r34(sb.z0 + (i + 0.5) * sb.pitch);
       const letter = rowLetter(rows - 1 - i);
-      let num = 0;
+      let num4 = 0;
       for (const s of sections) {
         const w = s.n * SEAT.pitch;
         const start = (s.x0 + s.x1) / 2 - w / 2;
         for (let j = 0; j < s.n; j++) {
-          num++;
-          seats.push({ id: `${letter}${num}`, row: i, x: r34(start + (j + 0.5) * SEAT.pitch), y: r34(y + SEAT.eye), z: zc, yaw: Math.PI, base: y });
+          num4++;
+          seats.push({ id: `${letter}${num4}`, row: i, x: r34(start + (j + 0.5) * SEAT.pitch), y: r34(y + SEAT.eye), z: zc, yaw: Math.PI, base: y });
         }
         seatBlocks.push({ row: i, x0: r34(start), z0: r34(zc - SEAT.depth / 2), x1: r34(start + w), z1: r34(zc + SEAT.depth / 2), y0: 0, y1: r34(y + SEAT.h) });
       }
@@ -47904,6 +47933,15 @@ void main() {
         say: (h2, text, ms) => bubbles.show(h2, text, ms),
         scare(x, z) {
           if (cat && Math.hypot(cat.logic.x - x, cat.logic.z - z) < 3) scareCat(cat.logic, catEnv());
+        },
+        /** Slots für Fremdfiguren (Mehrspieler): je Slot ein Passant weniger. Rückgabe: gültiger Wert; 0 hebt auf. */
+        reserve(n) {
+          const v = Number.isFinite(n) ? Math.max(0, Math.min(64, Math.floor(n))) : 0;
+          if (v !== reserved) {
+            reserved = v;
+            if (enabled && graph) adjustWalkers();
+          }
+          return reserved;
         }
       };
       const offProvider = ctx.provide("npc", provider);
@@ -47914,6 +47952,7 @@ void main() {
       let pigeons = null;
       let graph = null;
       let frame = 0;
+      let reserved = 0;
       let px = 0;
       let pz = 0;
       let py = 0;
@@ -47956,7 +47995,7 @@ void main() {
         entry.handle.dispose();
       }
       function adjustWalkers() {
-        const want = enabled && graph ? walkerCount(preset.npcMax, tod(), raining()) : 0;
+        const want = enabled && graph ? Math.max(0, walkerCount(preset.npcMax, tod(), raining()) - reserved) : 0;
         while (walkers.length < want) if (!spawnWalker()) break;
         while (walkers.length > want) removeWalker(walkers[walkers.length - 1]);
       }
@@ -48195,7 +48234,7 @@ void main() {
         cat: () => cat && { ...cat.logic },
         flock: () => flock && flock.list.map((p) => ({ state: p.state, x: p.x, z: p.z, y: p.y })),
         staff: () => [...staffMap.keys()],
-        counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size })
+        counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size, reserved })
       });
       return {
         update(dt) {
@@ -48271,12 +48310,12 @@ void main() {
   var geos2 = /* @__PURE__ */ new Map();
   var mat = null;
   var lightMat = null;
-  function bodyGeo(styleIdx, ci) {
-    const key = `${styleIdx}:${ci}`;
+  function bodyGeo(styleIdx, ci2) {
+    const key = `${styleIdx}:${ci2}`;
     let g = geos2.get(key);
     if (g) return g;
     const st = STYLES[styleIdx % STYLES.length];
-    const c = CAR_COLORS[ci % CAR_COLORS.length];
+    const c = CAR_COLORS[ci2 % CAR_COLORS.length];
     const glass = [0.16, 0.22, 0.3];
     const dk = [0.1, 0.1, 0.12];
     const w = 1.8;
@@ -48532,12 +48571,12 @@ void main() {
   function parkingSpots(city2) {
     const f = city2.frame;
     const { xc0, xc1 } = f;
-    const D = f.D;
+    const D2 = f.D;
     const L = CAR_LEN;
     const mk3 = (id, cx, z0) => ({ id, x0: cx - CAR_W / 2, x1: cx + CAR_W / 2, z0, z1: z0 + L, cx, cz: z0 + L / 2 });
     return [
-      mk3("parkNW", xc0 - 1.4, D - 10.5),
-      mk3("parkNE", xc1 + 1.4, D - 7),
+      mk3("parkNW", xc0 - 1.4, D2 - 10.5),
+      mk3("parkNE", xc1 + 1.4, D2 - 7),
       mk3("parkSW", xc0 - 1.4, f.roadZ1 + 6)
     ];
   }
@@ -50641,6 +50680,2519 @@ void main() {
     }
   };
 
+  // src/js/store3d/net/proto.js
+  var SUB = "lfx-mp.1";
+  var PV = 1;
+  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin"];
+  var F = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
+  var BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
+  var NET_A_ANIM = ["idle", "walk", "run", "idle", "stagger", "idle", "hit", "sit", "throw"];
+  var CAP_OF = {
+    hi: null,
+    ck: null,
+    rn: null,
+    p: "pres",
+    hd: "pres",
+    f: "pres",
+    e: "emote",
+    m: "chat",
+    ki: "admin",
+    pu: "push",
+    pc: "phys",
+    ps: "phys",
+    pn: "phys",
+    px: "phys",
+    rc: "rich",
+    rs: "rich",
+    rr: "rich",
+    ks: "kino",
+    kj: "kino",
+    kl: "kino",
+    kc: "kino",
+    kb: "kino"
+  };
+  var LIM = {
+    x: [-3e3, 5e3],
+    y: [-200, 1200],
+    z: [-1600, 5400],
+    v: 1600,
+    yaw: 315,
+    pitch: 157,
+    tip: [0, 157],
+    ax: 100,
+    kinoP: [0, 12 * 3600 * 1e3],
+    textMax: 200,
+    nameMax: 24,
+    frameChars: 2048
+  };
+  var ITEM_RE = /^[0-9a-f]{32}$/;
+  var OBJ_RE = /^[A-Za-z0-9._-]{1,24}$/;
+  var TK_RE = /^[A-Za-z0-9_-]{1,1200}\.[A-Za-z0-9_-]{1,400}$/;
+  var num = (v) => typeof v === "number" && Number.isFinite(v);
+  var clampN = (v, a, b) => v < a ? a : v > b ? b : v;
+  var ci = (v, a, b) => num(v) ? clampN(Math.round(v), a, b) + 0 : null;
+  var CTRL_RE = /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g;
+  function sanitize(s, max = LIM.textMax) {
+    if (typeof s !== "string") return "";
+    let t = s;
+    try {
+      t = t.normalize("NFC");
+    } catch {
+    }
+    t = t.replace(/[\t\n\r\u2028\u2029]+/g, " ").replace(CTRL_RE, "").replace(/ {2,}/g, " ").trim();
+    const cp = Array.from(t);
+    return cp.length > max ? cp.slice(0, max).join("").trim() : t;
+  }
+  function bodyAnimToNet(a) {
+    return Object.prototype.hasOwnProperty.call(BODY_TO_NET, a) ? BODY_TO_NET[a] : 0;
+  }
+  var posQ = (q, o) => {
+    const x = ci(q[o], ...LIM.x);
+    const y = ci(q[o + 1], ...LIM.y);
+    const z = ci(q[o + 2], ...LIM.z);
+    return x === null || y === null || z === null ? null : [x, y, z];
+  };
+  var yawI = (v) => ci(v, -LIM.yaw, LIM.yaw);
+  var velI = (v) => ci(v, -LIM.v, LIM.v);
+  var intIn = (v, a, b) => num(v) && Number.isInteger(Math.round(v)) ? clampN(Math.round(v), a, b) + 0 : null;
+  var itemOrNull = (v) => v === null || v === void 0 ? null : typeof v === "string" && ITEM_RE.test(v) ? v : void 0;
+  var sidOk = (v) => typeof v === "string" ? OBJ_RE.test(v) ? v : null : num(v) && v >= 0 ? Math.round(v) : null;
+  var NORM = {
+    hi(m) {
+      const pv = m.pv === void 0 ? PV : Number.isInteger(m.pv) ? m.pv : null;
+      if (pv === null || m.cap !== void 0 && !Array.isArray(m.cap)) return null;
+      const cap = [];
+      for (const c of m.cap || []) if (CAPS.includes(c) && !cap.includes(c)) cap.push(c);
+      return { t: "hi", pv, cap, f: intIn(m.f, 0, 15) ?? 0, cv: sanitize(typeof m.cv === "string" ? m.cv : "", 16) };
+    },
+    p(m) {
+      const q = m.q;
+      if (!Array.isArray(q) || q.length < 7) return null;
+      const pos = posQ(q, 0);
+      const yaw = yawI(q[3]);
+      const pitch = ci(q[4], -LIM.pitch, LIM.pitch);
+      if (!pos || yaw === null || pitch === null) return null;
+      if (!num(q[5]) || !num(q[6])) return null;
+      const ra = Math.round(q[5]);
+      const rr = Math.round(q[6]);
+      const a = ra >= 0 && ra <= 8 ? ra : 0;
+      const r = rr >= 0 && rr <= 2 ? rr : 0;
+      const out = { t: "p", q: [pos[0], pos[1], pos[2], yaw, pitch, a, r] };
+      if (a === 7 && m.se !== void 0 && m.se !== null) {
+        if (!Array.isArray(m.se) || m.se.length < 2) return null;
+        const row = ci(m.se[0], 0, 5);
+        const share = ci(m.se[1], 0, 1e3);
+        if (row === null || share === null) return null;
+        out.se = [row, share];
+      }
+      return out;
+    },
+    hd(m) {
+      if (!("i" in m)) return null;
+      const i = itemOrNull(m.i);
+      return i === void 0 ? null : { t: "hd", i };
+    },
+    f(m) {
+      const f = intIn(m.f ?? m.b, 0, 15);
+      return f === null ? null : { t: "f", f };
+    },
+    // Feldname `f` (wie hi/pf), `b` nur Eingabe-Alias
+    e(m) {
+      const e = intIn(m.e, 1, 8);
+      return e === null ? null : { t: "e", e };
+    },
+    m(m) {
+      const x = sanitize(m.x, LIM.textMax);
+      return x ? { t: "m", x } : null;
+    },
+    pu(m) {
+      const c = intIn(m.c, 1, 65535);
+      const s = intIn(m.s, 1, 100);
+      const d = Array.isArray(m.d) && m.d.length >= 2 ? [ci(m.d[0], -100, 100), ci(m.d[1], -100, 100)] : null;
+      return c === null || s === null || !d || d[0] === null || d[1] === null ? null : { t: "pu", c, d, s };
+    },
+    pc(m) {
+      const g = intIn(m.g ?? 0, 0, 2147483647);
+      return typeof m.i === "string" && OBJ_RE.test(m.i) && g !== null ? { t: "pc", i: m.i, g } : null;
+    },
+    ps(m) {
+      if (!Array.isArray(m.l)) return null;
+      const l = [];
+      for (const e of m.l.slice(0, 8)) {
+        if (!Array.isArray(e) || e.length < 13 || typeof e[0] !== "string" || !OBJ_RE.test(e[0])) continue;
+        const g = intIn(e[1], 0, 2147483647);
+        const pos = posQ(e, 2);
+        const vx = velI(e[5]);
+        const vy = velI(e[6]);
+        const vz = velI(e[7]);
+        const yaw = yawI(e[8]);
+        const tip = ci(e[9], ...LIM.tip);
+        const s = intIn(e[12], 0, 1);
+        if (g === null || !pos || vx === null || vy === null || vz === null || yaw === null || tip === null || s === null) continue;
+        const ax = tip > 0 ? ci(e[10], -LIM.ax, LIM.ax) ?? 0 : 0;
+        const az = tip > 0 ? ci(e[11], -LIM.ax, LIM.ax) ?? 0 : 0;
+        l.push([e[0], g, pos[0], pos[1], pos[2], vx, vy, vz, yaw, tip, ax, az, s]);
+      }
+      return l.length ? { t: "ps", l } : null;
+    },
+    pn(m) {
+      if (typeof m.i !== "string" || !OBJ_RE.test(m.i)) return null;
+      const it = itemOrNull(m.it);
+      const q = m.q;
+      if (it === void 0 || !Array.isArray(q) || q.length < 8) return null;
+      const pos = posQ(q, 0);
+      const vx = velI(q[3]);
+      const vy = velI(q[4]);
+      const vz = velI(q[5]);
+      const yaw = yawI(q[6]);
+      const spin = ci(q[7], -LIM.v, LIM.v);
+      if (!pos || vx === null || vy === null || vz === null || yaw === null || spin === null) return null;
+      return { t: "pn", i: m.i, it, q: [pos[0], pos[1], pos[2], vx, vy, vz, yaw, spin] };
+    },
+    px(m) {
+      return typeof m.i === "string" && OBJ_RE.test(m.i) ? { t: "px", i: m.i } : null;
+    },
+    rc() {
+      return { t: "rc" };
+    },
+    rs(m) {
+      const g = intIn(m.g, 0, 2147483647);
+      const tg = intIn(m.tg ?? 0, 0, 65535);
+      const q = m.q;
+      if (g === null || tg === null || !Array.isArray(q) || q.length < 8) return null;
+      const s = intIn(q[0], 0, 15);
+      const h2 = intIn(q[1], 0, 255);
+      const r = intIn(q[2], 0, 36e3);
+      const pos = posQ(q, 3);
+      const yaw = yawI(q[6]);
+      const a = intIn(q[7], 0, 31);
+      if (s === null || h2 === null || r === null || !pos || yaw === null || a === null) return null;
+      return { t: "rs", g, q: [s, h2, r, pos[0], pos[1], pos[2], yaw, a], tg };
+    },
+    rr(m) {
+      const g = intIn(m.g, 0, 2147483647);
+      return g === null ? null : { t: "rr", g };
+    },
+    ks(m) {
+      if (typeof m.i !== "string" || !ITEM_RE.test(m.i)) return null;
+      const p = intIn(m.p ?? 0, ...LIM.kinoP);
+      if (p === null) return null;
+      const out = { t: "ks", i: m.i, p };
+      if (m.dur !== void 0) {
+        const d = intIn(m.dur, 0, LIM.kinoP[1]);
+        if (d !== null) out.dur = d;
+      }
+      return out;
+    },
+    kj(m) {
+      const sid = sidOk(m.sid);
+      return sid === null ? null : { t: "kj", sid };
+    },
+    kl(m) {
+      const sid = sidOk(m.sid);
+      return sid === null ? null : { t: "kl", sid };
+    },
+    kc(m) {
+      const sid = sidOk(m.sid);
+      const v = intIn(m.v, 0, 2147483647);
+      const o = intIn(m.o, 1, 3);
+      const p = intIn(m.p ?? 0, ...LIM.kinoP);
+      return sid === null || v === null || o === null || p === null ? null : { t: "kc", sid, v, o, p };
+    },
+    kb(m) {
+      const sid = sidOk(m.sid);
+      const b = intIn(m.b, 0, 1);
+      return sid === null || b === null ? null : { t: "kb", sid, b };
+    },
+    ki(m) {
+      const c = intIn(m.c, 1, 65535);
+      return c === null ? null : { t: "ki", c };
+    },
+    ck(m) {
+      return num(m.a) ? { t: "ck", a: m.a } : null;
+    },
+    rn(m) {
+      return typeof m.tk === "string" && TK_RE.test(m.tk) ? { t: "rn", tk: m.tk } : null;
+    }
+  };
+  function normalizeOut(msg) {
+    if (!msg || typeof msg !== "object" || typeof msg.t !== "string") return null;
+    const fn = NORM[msg.t];
+    return fn ? fn(msg) : null;
+  }
+  var build = {
+    hi: (o) => NORM.hi(o || {}),
+    p: (q, se) => NORM.p({ q, se }),
+    hd: (i) => NORM.hd({ i }),
+    f: (bits) => NORM.f({ f: bits }),
+    e: (e) => NORM.e({ e }),
+    m: (x) => NORM.m({ x }),
+    pu: (c, d, s) => NORM.pu({ c, d, s }),
+    pc: (i, g) => NORM.pc({ i, g }),
+    ps: (l) => NORM.ps({ l }),
+    pn: (i, it, q) => NORM.pn({ i, it, q }),
+    px: (i) => NORM.px({ i }),
+    rc: () => NORM.rc({}),
+    rs: (g, q, tg) => NORM.rs({ g, q, tg }),
+    rr: (g) => NORM.rr({ g }),
+    ks: (i, p, dur) => NORM.ks({ i, p, dur }),
+    kj: (sid) => NORM.kj({ sid }),
+    kl: (sid) => NORM.kl({ sid }),
+    kc: (sid, v, o, p) => NORM.kc({ sid, v, o, p }),
+    kb: (sid, b) => NORM.kb({ sid, b }),
+    ki: (c) => NORM.ki({ c }),
+    ck: (a) => NORM.ck({ a }),
+    rn: (tk) => NORM.rn({ tk })
+  };
+
+  // src/js/store3d/net/clock.js
+  var KEEP = 8;
+  var MAX_AGE_MS = 15 * 60 * 1e3;
+  function createClock({ now = Date.now } = {}) {
+    let probes = [];
+    let seedOff = null;
+    const best = () => {
+      let b = null;
+      for (const p of probes) if (!b || p.rtt < b.rtt) b = p;
+      return b;
+    };
+    return {
+      /** Grobe Startprobe (z. B. `wl.s`/`ticket.s`): nur gültig, bis eine echte Probe vorliegt. */
+      seed(serverMs) {
+        if (Number.isFinite(serverMs)) seedOff = serverMs - now();
+      },
+      /** Echo von `ck {a, s}` verarbeiten. Rückgabe: RTT in ms oder null (ungültig). */
+      sample(a, serverMs) {
+        const t = now();
+        if (!Number.isFinite(a) || !Number.isFinite(serverMs)) return null;
+        const rtt = t - a;
+        if (rtt < 0 || rtt > 6e4) return null;
+        probes.push({ rtt, off: serverMs + rtt / 2 - t, at: t });
+        probes = probes.filter((p) => t - p.at <= MAX_AGE_MS).slice(-KEEP);
+        return rtt;
+      },
+      offset() {
+        const b = best();
+        return b ? b.off : seedOff;
+      },
+      rtt() {
+        const b = best();
+        return b ? b.rtt : null;
+      },
+      serverNow() {
+        const o = best() ? best().off : seedOff;
+        return o === null ? null : now() + o;
+      },
+      /** Server-ms -> lokale Wanduhr (null ohne Probe). */
+      toLocal(serverMs) {
+        const o = this.offset();
+        return o === null || !Number.isFinite(serverMs) ? null : serverMs - o;
+      },
+      reset() {
+        probes = [];
+        seedOff = null;
+      },
+      probeCount() {
+        return probes.length;
+      }
+    };
+  }
+
+  // src/js/store3d/net/transport.js
+  var TICK_MS = 125;
+  var BUCKET_PER_S = 10;
+  var FRAME_CHARS = 2e3;
+  var PING_MS = 25e3;
+  var HELLO_MS = 12e3;
+  var RENEW_MS = 6e5;
+  var STABLE_MS = 6e4;
+  var HIDDEN_MS = 6e4;
+  var BACKOFF_S = [1, 2, 4, 8, 16, 30, 60];
+  var ATTEMPTS_MAX = 6;
+  var ATTEMPTS_WINDOW_MS = 6e5;
+  var LONG_PAUSE_MS = 18e5;
+  var CK_COUNT = 5;
+  var CK_GAP_MS = 1e3;
+  var CK_EVERY_MS = 3e5;
+  var FATAL_WHY = ["nourl", "gone", "off", "blocked", "bad", "auth", "user"];
+  var COALESCE = /* @__PURE__ */ new Set(["p", "hd", "f", "rs"]);
+  var URGENT = /* @__PURE__ */ new Set(["m", "e", "pu", "kc"]);
+  var isObj = (v) => v && typeof v === "object";
+  function createTransport(opts) {
+    const env2 = opts.env;
+    const ticketFn = opts.ticket || env2.ticket;
+    const now = () => env2.now();
+    const st = (fn, ms) => env2.setTimeout(fn, ms);
+    const ct = (h2) => {
+      if (h2 !== null && h2 !== void 0) env2.clearTimeout(h2);
+    };
+    const rnd = () => env2.random ? env2.random() : Math.random();
+    const clock = createClock({ now });
+    let state = "off";
+    let why = null;
+    let until = 0;
+    let hint = null;
+    let enabled = false;
+    let ws = null;
+    let seq = 0;
+    let attempt = 0;
+    let attemptLog = [];
+    let fastUsed = false;
+    let badCount = 0;
+    let wasLive = false;
+    let lastBye = null;
+    let caps = null;
+    let me = null;
+    let cf = { pr: 8, ph: 8 };
+    let hidden = false;
+    let kino = false;
+    let resumeOnVisible = false;
+    let errLog = [];
+    let queue = [];
+    let sentTimes = [];
+    let lastFlush = -Infinity;
+    let earlyUsed = false;
+    let flushEarly = false;
+    const T5 = { retry: null, hello: null, ping: null, renew: null, stable: null, ck: null, flush: null, hidden: null };
+    const clearT = (k) => {
+      ct(T5[k]);
+      T5[k] = null;
+    };
+    const clearAll = () => {
+      for (const k of Object.keys(T5)) clearT(k);
+    };
+    let awaitingPong = false;
+    let missed = 0;
+    let lastPingT = 0;
+    let ckN = 0;
+    const info = () => ({ state, why, until, hint, attempt, cf: { ...cf }, count: attemptLog.length });
+    function setState(s, w = null, h2 = null) {
+      state = s;
+      why = w;
+      hint = h2;
+      try {
+        if (opts.onState) opts.onState(s, info());
+      } catch {
+      }
+    }
+    function detach(sock) {
+      if (!sock) return;
+      sock.onopen = sock.onmessage = sock.onclose = sock.onerror = null;
+    }
+    function closeSock(code = 1e3) {
+      const s = ws;
+      ws = null;
+      seq++;
+      detach(s);
+      if (s) {
+        try {
+          s.close(code);
+        } catch {
+        }
+      }
+    }
+    function die(w, h2 = null) {
+      clearAll();
+      closeSock(1e3);
+      queue = [];
+      setState("dead", w, h2);
+    }
+    function connect() {
+      if (!enabled || state === "dead") return;
+      clearT("retry");
+      clearT("hello");
+      const my = ++seq;
+      const t0 = now();
+      attemptLog.push(t0);
+      attemptLog = attemptLog.filter((x) => t0 - x <= ATTEMPTS_WINDOW_MS);
+      lastBye = null;
+      wasLive = false;
+      setState("ticket");
+      let p;
+      try {
+        p = Promise.resolve(ticketFn());
+      } catch {
+        p = Promise.resolve({ ok: false, why: "net" });
+      }
+      p.then((r) => r, () => ({ ok: false, why: "net" })).then((res) => {
+        if (my !== seq || !enabled || state !== "ticket") return;
+        if (!res || !res.ok) {
+          const w = res && res.why || "net";
+          if (FATAL_WHY.includes(w)) die(w);
+          else scheduleRetry(w === "rate" ? "rate" : "net");
+          return;
+        }
+        if (Array.isArray(res.pv) && !res.pv.includes(PV)) {
+          die("pv", "Update n\xF6tig");
+          return;
+        }
+        if (typeof res.tk !== "string" || typeof res.url !== "string") {
+          die("bad");
+          return;
+        }
+        if (Number.isFinite(res.s)) clock.seed(res.s);
+        open(res, my);
+      });
+    }
+    function open(res, my) {
+      let sock;
+      try {
+        sock = new env2.WebSocket(res.url, [SUB, `t.${res.tk}`]);
+      } catch {
+        handleClosed(1006);
+        return;
+      }
+      ws = sock;
+      setState("open");
+      sock.onopen = () => {
+        if (ws !== sock || my !== seq) return;
+        sendRaw([build.hi(opts.hello ? opts.hello() : {})]);
+        setState("hello");
+        T5.hello = st(() => {
+          T5.hello = null;
+          if (ws === sock) dropConn(1006);
+        }, HELLO_MS);
+      };
+      sock.onmessage = (ev) => {
+        if (ws === sock && my === seq) onMessage(ev && ev.data);
+      };
+      sock.onerror = () => {
+      };
+      sock.onclose = (ev) => {
+        if (ws !== sock || my !== seq) return;
+        ws = null;
+        detach(sock);
+        handleClosed(ev && Number.isFinite(ev.code) ? ev.code : 1006);
+      };
+    }
+    function dropConn(code) {
+      const s = ws;
+      ws = null;
+      seq++;
+      detach(s);
+      if (s) {
+        try {
+          s.close(1e3);
+        } catch {
+        }
+      }
+      handleClosed(code);
+    }
+    function handleClosed(code) {
+      clearT("hello");
+      clearT("ping");
+      clearT("renew");
+      clearT("stable");
+      clearT("ck");
+      clearT("flush");
+      queue = [];
+      const live = wasLive;
+      wasLive = false;
+      const c = lastBye && lastBye.c;
+      if (!enabled) return;
+      if (code === 4001) return die("pv", "Update n\xF6tig");
+      if (code === 4409) return die("dup");
+      if (code === 4403) {
+        let u = now() + 6e5;
+        const lu = lastBye && Number.isFinite(lastBye.u) ? clock.toLocal(lastBye.u) : null;
+        if (lu !== null) u = Math.max(now(), Math.min(lu, now() + 864e5));
+        until = u;
+        setState("banned", "ban");
+        T5.retry = st(() => {
+          T5.retry = null;
+          connect();
+        }, Math.max(0, u - now()));
+        return;
+      }
+      if (code === 4429) return wait(6e4, "rate");
+      if (code === 4503) return wait(c === "quota" ? LONG_PAUSE_MS : 6e4, c === "quota" ? "quota" : "full");
+      if (code === 4e3 || code === 4408) {
+        badCount++;
+        if (badCount >= 3) return die("bad");
+        return scheduleRetry("bad");
+      }
+      if (code === 4401 || code === 1006 && !live && !lastBye) {
+        if (!fastUsed) {
+          fastUsed = true;
+          connect();
+          return;
+        }
+      }
+      scheduleRetry(code === 4401 ? "auth" : "net");
+    }
+    function wait(ms, w) {
+      until = now() + ms;
+      setState("backoff", w);
+      T5.retry = st(() => {
+        T5.retry = null;
+        connect();
+      }, ms);
+    }
+    function scheduleRetry(w) {
+      const t = now();
+      attemptLog = attemptLog.filter((x) => t - x <= ATTEMPTS_WINDOW_MS);
+      let ms;
+      if (attemptLog.length >= ATTEMPTS_MAX) {
+        ms = LONG_PAUSE_MS;
+        attemptLog = [];
+        w = "limit";
+      } else {
+        const base = BACKOFF_S[Math.min(attempt, BACKOFF_S.length - 1)] * 1e3;
+        ms = Math.round(base * (0.8 + rnd() * 0.4));
+        attempt++;
+      }
+      wait(ms, w);
+    }
+    function onMessage(data) {
+      if (typeof data !== "string") return;
+      if (data === "pong") {
+        awaitingPong = false;
+        missed = 0;
+        return;
+      }
+      let j;
+      try {
+        j = JSON.parse(data);
+      } catch {
+        return;
+      }
+      for (const m of Array.isArray(j) ? j : [j]) if (isObj(m) && typeof m.t === "string") handle(m);
+    }
+    function handle(m) {
+      if (m.t === "ck") {
+        clock.sample(m.a, m.s);
+        return;
+      }
+      if (m.t === "bye") lastBye = { c: m.c, u: m.u };
+      if (m.t === "wl") {
+        if (Array.isArray(m.cap)) caps = new Set(m.cap);
+        if (!caps || !caps.has("pres")) {
+          die("cap");
+          return;
+        }
+        me = { c: m.c, k: m.k, admin: !!m.ad };
+        if (m.cf) setCf(m.cf);
+        if (Number.isFinite(m.s)) clock.seed(m.s);
+        goLive();
+      } else if (m.t === "b" && Array.isArray(m.ev)) {
+        for (const e of m.ev) if (e && e.t === "cf") setCf(e);
+      }
+      try {
+        if (opts.onMsg) opts.onMsg(m);
+      } catch {
+        const t = now();
+        errLog = errLog.filter((x) => t - x < 6e4);
+        errLog.push(t);
+        if (errLog.length > 5) die("err");
+      }
+    }
+    function setCf(o) {
+      const n = (v, d) => Number.isFinite(v) ? Math.max(1, Math.min(8, Math.round(v))) : d;
+      cf = { pr: n(o.pr, cf.pr), ph: n(o.ph, cf.ph) };
+    }
+    function goLive() {
+      clearT("hello");
+      if (state === "live") return;
+      wasLive = true;
+      fastUsed = false;
+      lastFlush = -Infinity;
+      awaitingPong = false;
+      missed = 0;
+      lastPingT = now();
+      setState("live");
+      T5.stable = st(() => {
+        T5.stable = null;
+        attempt = 0;
+      }, STABLE_MS);
+      T5.ping = st(pingTick, PING_MS);
+      T5.renew = st(renewTick, RENEW_MS);
+      ckN = 0;
+      ckTick();
+    }
+    function pingTick() {
+      T5.ping = null;
+      if (state !== "live" || !ws) return;
+      const t = now();
+      const late = t - lastPingT > PING_MS * 2.5;
+      if (awaitingPong) missed += late ? 2 : 1;
+      if (missed >= 2) {
+        dropConn(1006);
+        return;
+      }
+      try {
+        ws.send("ping");
+      } catch {
+        dropConn(1006);
+        return;
+      }
+      awaitingPong = true;
+      lastPingT = t;
+      T5.ping = st(pingTick, PING_MS);
+    }
+    function ckTick() {
+      T5.ck = null;
+      if (state !== "live") return;
+      if (bucketOk()) {
+        sendRaw([build.ck(now())]);
+        markSent();
+      }
+      ckN++;
+      T5.ck = st(ckTick, ckN < CK_COUNT ? CK_GAP_MS : CK_EVERY_MS);
+    }
+    let renewFails = 0;
+    function renewTick() {
+      T5.renew = null;
+      if (state !== "live") return;
+      let p;
+      try {
+        p = Promise.resolve(ticketFn());
+      } catch {
+        p = Promise.resolve({ ok: false });
+      }
+      const my = seq;
+      p.then((r) => r, () => ({ ok: false })).then((res) => {
+        if (my !== seq || state !== "live") return;
+        if (res && res.ok && typeof res.tk === "string") {
+          renewFails = 0;
+          const rn = build.rn(res.tk);
+          if (rn) {
+            enqueue(rn);
+            schedule();
+          }
+          T5.renew = st(renewTick, RENEW_MS);
+        } else if (++renewFails <= 3) T5.renew = st(renewTick, 6e4);
+      });
+    }
+    function rawSend(str) {
+      try {
+        ws.send(str);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    function sendRaw(arr) {
+      return ws ? rawSend(JSON.stringify(arr)) : false;
+    }
+    function prune() {
+      const t = now();
+      sentTimes = sentTimes.filter((x) => t - x < 1e3);
+    }
+    function bucketOk() {
+      prune();
+      return sentTimes.length < BUCKET_PER_S;
+    }
+    function markSent() {
+      sentTimes.push(now());
+    }
+    function enqueue(msg) {
+      if (COALESCE.has(msg.t)) {
+        const i = queue.findIndex((q) => q.t === msg.t);
+        if (i >= 0) {
+          queue[i] = msg;
+          return;
+        }
+      } else if (msg.t === "ps") {
+        const i = queue.findIndex((q) => q.t === "ps");
+        if (i >= 0) {
+          const ids = new Set(msg.l.map((e) => e[0]));
+          const rest = queue[i].l.filter((e) => !ids.has(e[0]));
+          queue[i] = { t: "ps", l: [...msg.l, ...rest] };
+          return;
+        }
+      }
+      queue.push(msg);
+      if (queue.length > 64) queue.shift();
+    }
+    function schedule(delay) {
+      if (T5.flush !== null || state !== "live") return;
+      const d = delay !== void 0 ? delay : Math.max(0, lastFlush + TICK_MS - now());
+      T5.flush = st(flush2, d);
+    }
+    function flush2() {
+      T5.flush = null;
+      if (state !== "live" || !ws || !queue.length) return;
+      prune();
+      if (sentTimes.length >= BUCKET_PER_S) {
+        schedule(Math.max(1, sentTimes[0] + 1e3 - now()));
+        return;
+      }
+      const out = [];
+      let len = 2;
+      const rest = [];
+      for (const m of queue) {
+        let cur = m;
+        let s = JSON.stringify(cur);
+        if (out.length && len + s.length + 1 > FRAME_CHARS) {
+          if (cur.t === "ps") {
+            const keep2 = [];
+            const more = [];
+            let l2 = len;
+            for (const e of cur.l) {
+              const es = JSON.stringify(e).length + 1;
+              if (!more.length && l2 + es + 30 <= FRAME_CHARS) {
+                keep2.push(e);
+                l2 += es;
+              } else more.push(e);
+            }
+            if (keep2.length) {
+              out.push({ t: "ps", l: keep2 });
+              len = l2 + 30;
+            }
+            if (more.length) rest.push({ t: "ps", l: more });
+            continue;
+          }
+          rest.push(cur);
+          continue;
+        }
+        if (s.length + 2 > FRAME_CHARS && !out.length) {
+          if (cur.t === "ps" && cur.l.length > 1) {
+            const h2 = Math.ceil(cur.l.length / 2);
+            cur = { t: "ps", l: cur.l.slice(0, h2) };
+            rest.push({ t: "ps", l: m.l.slice(h2) });
+            s = JSON.stringify(cur);
+            if (s.length + 2 > FRAME_CHARS) continue;
+          } else continue;
+        }
+        out.push(cur);
+        len += s.length + 1;
+      }
+      queue = rest;
+      if (out.length) {
+        if (!rawSend(JSON.stringify(out))) {
+          dropConn(1006);
+          return;
+        }
+        markSent();
+        lastFlush = now();
+        if (!flushEarly) earlyUsed = false;
+        flushEarly = false;
+      }
+      if (queue.length) schedule();
+    }
+    function hiddenCheck() {
+      clearT("hidden");
+      if (!hidden || kino || !enabled) return;
+      if (state === "off" || state === "dead" || state === "idle") return;
+      T5.hidden = st(() => {
+        T5.hidden = null;
+        if (!hidden || kino || !enabled) return;
+        clearAll();
+        closeSock(1e3);
+        queue = [];
+        resumeOnVisible = true;
+        setState("idle", "hidden");
+      }, HIDDEN_MS);
+    }
+    return {
+      clock,
+      start() {
+        if (state === "dead") return false;
+        enabled = true;
+        if (state === "off" || state === "idle") {
+          resumeOnVisible = false;
+          if (hidden && !kino) {
+            resumeOnVisible = true;
+            setState("idle", "hidden");
+          } else connect();
+        }
+        return true;
+      },
+      /** Schalter aus, Logout, dispose, suspend: mit 1000 schließen (kein Neuverbinden). */
+      stop(code = 1e3) {
+        enabled = false;
+        resumeOnVisible = false;
+        clearAll();
+        closeSock(code);
+        queue = [];
+        wasLive = false;
+        if (state !== "dead") setState("off");
+      },
+      /** Nach „dead“ (Nutzerwechsel) alles zurücksetzen. */
+      reset() {
+        enabled = false;
+        clearAll();
+        closeSock(1e3);
+        queue = [];
+        attempt = 0;
+        attemptLog = [];
+        fastUsed = false;
+        badCount = 0;
+        errLog = [];
+        renewFails = 0;
+        clock.reset();
+        caps = null;
+        me = null;
+        cf = { pr: 8, ph: 8 };
+        setState("off");
+      },
+      /** In die Warteschlange (Takt). false bei inaktiv, fehlender Fähigkeit oder ungültiger Nachricht. */
+      send(msg, o) {
+        if (state !== "live") return false;
+        const m = normalizeOut(msg);
+        if (!m) return false;
+        const need = CAP_OF[m.t];
+        if (need && (!caps || !caps.has(need))) return false;
+        if (hidden && (m.t === "p" || m.t === "ps" || m.t === "rs")) return false;
+        enqueue(m);
+        const urgent = o && o.urgent || URGENT.has(m.t);
+        if (urgent && !earlyUsed && now() - lastFlush < TICK_MS) {
+          earlyUsed = true;
+          flushEarly = true;
+          clearT("flush");
+          schedule(0);
+        } else schedule();
+        return true;
+      },
+      /** Sichtbarkeit des Tabs: verborgen = keine Posen, nach 60 s Close 1000 (außer Kino aktiv). */
+      setHidden(h2) {
+        hidden = !!h2;
+        if (!hidden) {
+          clearT("hidden");
+          if (resumeOnVisible && enabled && state === "idle") {
+            resumeOnVisible = false;
+            connect();
+          }
+        } else hiddenCheck();
+      },
+      /** Kino-Sitzung aktiv: Verbindung bleibt auch verborgen offen. */
+      setKino(on) {
+        kino = !!on;
+        if (kino) clearT("hidden");
+        else hiddenCheck();
+        if (kino && hidden && resumeOnVisible && enabled && state === "idle") {
+          resumeOnVisible = false;
+          connect();
+        }
+      },
+      state: () => state,
+      info,
+      live: () => state === "live",
+      me: () => me ? { ...me } : null,
+      has: (c) => !!(caps && caps.has(c)),
+      cf: () => ({ ...cf }),
+      serverNow: () => clock.serverNow(),
+      queued: () => queue.length
+    };
+  }
+
+  // src/js/store3d/net/frame.js
+  var W0 = 12.5;
+  var D0 = 18;
+  var NET_KX = [0, 1.75, 10.75, 12.5];
+  var NET_KP = [-3.75, 0.75, 11.75, 16.25];
+  var TAU3 = Math.PI * 2;
+  var r0 = (v) => Math.round(v) + 0;
+  var r35 = (v) => Math.round(v * 1e3) / 1e3 + 0;
+  function wrapYaw(yaw) {
+    if (!Number.isFinite(yaw)) return 0;
+    const y = yaw - TAU3 * Math.ceil((yaw - Math.PI) / TAU3);
+    return y + 0;
+  }
+  var encYaw = (yaw) => r0(wrapYaw(yaw) * 100);
+  var decYaw = (c) => c / 100;
+  var encPitch = (p) => Math.max(-157, Math.min(157, r0((Number.isFinite(p) ? p : 0) * 100)));
+  var decPitch = (c) => c / 100;
+  function pw(v, from, to) {
+    const n = from.length - 1;
+    if (v <= from[0]) return to[0] + (v - from[0]);
+    if (v >= from[n]) return to[n] + (v - from[n]);
+    let i = 0;
+    while (i < n - 1 && v > from[i + 1]) i++;
+    return to[i] + (v - from[i]) * (to[i + 1] - to[i]) / (from[i + 1] - from[i]);
+  }
+  function slope(v, from, to) {
+    const n = from.length - 1;
+    if (v <= from[0] || v >= from[n]) return 1;
+    let i = 0;
+    while (i < n - 1 && v > from[i + 1]) i++;
+    return (to[i + 1] - to[i]) / (from[i + 1] - from[i]);
+  }
+  var increasing = (k) => k.every((v, i) => i === 0 || v > k[i - 1]);
+  function createFrame(layout) {
+    const W2 = Number(layout && layout.w) || W0;
+    const D2 = Number(layout && layout.d) || D0;
+    const city2 = layout && layout.city;
+    let xFrom = [0, W2 / 2 - 4.5, W2 / 2 + 4.5, W2];
+    let xTo = NET_KX;
+    if (!increasing(xFrom)) {
+      xFrom = [0, W2];
+      xTo = [0, W0];
+    }
+    const zFrom = D2 > 0 ? [0, D2] : [0, D0];
+    const zTo = [0, D0];
+    let pFrom = null;
+    const rc = city2 && city2.palast && city2.palast.rect;
+    if (rc && Number.isFinite(rc.x0) && Number.isFinite(rc.x1)) {
+      pFrom = [rc.x0, W2 / 2 - 5.5, W2 / 2 + 5.5, rc.x1];
+      if (!increasing(pFrom)) pFrom = null;
+    }
+    const xmap = (r) => r === 1 && pFrom ? [pFrom, NET_KP] : [xFrom, xTo];
+    return {
+      W: W2,
+      D: D2,
+      hasPalast: !!pFrom,
+      /** Ortskennung `r` für eine lokale Position (0 Laden, 1 Palast, 2 draußen). */
+      area(x, z, y = 0) {
+        const a = areaAt(layout, x, z, y);
+        return a === "shop" ? 0 : a === "palastHall" || a === "palastFoyer" ? 1 : 2;
+      },
+      enc(x, y, z, r = 0) {
+        const [f, t] = xmap(r);
+        return [r0(pw(x, f, t) * 100), r0(y * 100), r0(pw(z, zFrom, zTo) * 100)];
+      },
+      dec(cx, cy, cz, r = 0) {
+        const [f, t] = xmap(r);
+        return [r35(pw(cx / 100, t, f)), r35(cy / 100), r35(pw(cz / 100, zTo, zFrom))];
+      },
+      encVec(x, z, vx, vz, r = 0) {
+        const [f, t] = xmap(r);
+        return [r0(vx * slope(x, f, t) * 100), r0(vz * slope(z, zFrom, zTo) * 100)];
+      },
+      decVec(cx, cz, cvx, cvz, r = 0) {
+        const [f, t] = xmap(r);
+        const x = pw(cx / 100, t, f);
+        const z = pw(cz / 100, zTo, zFrom);
+        return [r35(cvx / 100 / slope(x, f, t)), r35(cvz / 100 / slope(z, zFrom, zTo))];
+      },
+      encDir(x, z, dx, dz, r = 0) {
+        const [f, t] = xmap(r);
+        const ax = dx * slope(x, f, t);
+        const az = dz * slope(z, zFrom, zTo);
+        const l = Math.hypot(ax, az) || 1;
+        return [r0(ax / l * 100), r0(az / l * 100)];
+      },
+      decDir(cx, cz, dx, dz, r = 0) {
+        const [f, t] = xmap(r);
+        const x = pw(cx / 100, t, f);
+        const z = pw(cz / 100, zTo, zFrom);
+        const ax = dx / 100 / slope(x, f, t);
+        const az = dz / 100 / slope(z, zFrom, zTo);
+        const l = Math.hypot(ax, az) || 1;
+        return [r35(ax / l), r35(az / l)];
+      },
+      encYaw,
+      decYaw,
+      encPitch,
+      decPitch,
+      wrapYaw
+    };
+  }
+
+  // src/js/store3d/net/pose.js
+  var POS_EPS = 2;
+  var YAW_EPS = 2;
+  var PITCH_EPS = 4;
+  var YAW_PERIOD = 628;
+  var yawDiff = (a, b) => {
+    const d = Math.abs(a - b) % YAW_PERIOD;
+    return Math.min(d, YAW_PERIOD - d);
+  };
+  var seKey = (se) => se ? `${se[0]}:${se[1]}` : "";
+  var same = (a, b) => a.x === b.x && a.y === b.y && a.z === b.z && a.yaw === b.yaw && a.pitch === b.pitch && a.a === b.a && a.r === b.r && a.se === b.se;
+  var moved = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) > POS_EPS || yawDiff(a.yaw, b.yaw) > YAW_EPS || Math.abs(a.pitch - b.pitch) > PITCH_EPS || a.a !== b.a || a.r !== b.r || a.se !== b.se;
+  function createPose({ frame, rate = () => 8 }) {
+    let lastSent = null;
+    let lastSentT = -Infinity;
+    let lastObs = null;
+    const quant = (s) => {
+      const r = s.r === void 0 || s.r === null ? frame.area(s.x, s.z, s.y) : s.r;
+      const [x, y, z] = frame.enc(s.x, s.y, s.z, r);
+      return { x, y, z, yaw: frame.encYaw(s.yaw), pitch: frame.encPitch(s.pitch), a: s.a | 0, r, se: seKey(s.se), seRaw: s.se || null };
+    };
+    const emit = (c, t) => {
+      lastSent = c;
+      lastSentT = t;
+      return build.p([c.x, c.y, c.z, c.yaw, c.pitch, c.a, c.r], c.seRaw);
+    };
+    return {
+      update(s, t) {
+        const c = quant(s);
+        const prev = lastObs;
+        lastObs = c;
+        if (!lastSent) return emit(c, t);
+        if (prev && same(c, prev) && !same(c, lastSent)) return emit(c, t);
+        if (!moved(c, lastSent)) return null;
+        const hz = Math.max(1, Math.min(8, Number(rate()) || 8));
+        return t - lastSentT >= 1e3 / hz ? emit(c, t) : null;
+      },
+      /** Nach (Wieder-)Verbinden: nächster Aufruf sendet sofort. */
+      reset() {
+        lastSent = null;
+        lastObs = null;
+        lastSentT = -Infinity;
+      },
+      last() {
+        return lastSent;
+      }
+    };
+  }
+
+  // src/js/store3d/palast/seatnet.js
+  var num2 = (v, d = 0) => Number.isFinite(v) ? v : d;
+  function buildSeatTable(seats) {
+    const rows = /* @__PURE__ */ new Map();
+    const byId = /* @__PURE__ */ new Map();
+    for (const s of Array.isArray(seats) ? seats : []) {
+      if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.z)) continue;
+      const row = Number.isInteger(s.row) ? s.row : 0;
+      const base = Number.isFinite(s.base) ? s.base : num2(s.y, SEAT.eye) - SEAT.eye;
+      const e = { id: s.id, row, x: s.x, z: s.z, y: base, yaw: num2(s.yaw, Math.PI), frac: 500 };
+      if (!rows.has(row)) rows.set(row, []);
+      rows.get(row).push(e);
+      byId.set(e.id, e);
+    }
+    const order = [...rows.keys()].sort((a, b) => a - b);
+    for (const r of order) {
+      const list = rows.get(r).sort((a, b) => a.x - b.x);
+      const x0 = list[0].x;
+      const x1 = list[list.length - 1].x;
+      for (const e of list) e.frac = x1 > x0 ? Math.round((e.x - x0) / (x1 - x0) * 1e3) : 500;
+    }
+    return { rows, order, byId };
+  }
+  function encodeSeat(table, seatId) {
+    const s = table && table.byId.get(seatId);
+    if (!s) return null;
+    return [Math.max(0, Math.min(5, s.row)), s.frac];
+  }
+  function createSeatNet(seats) {
+    const table = buildSeatTable(seats);
+    const seatOfC = /* @__PURE__ */ new Map();
+    let own = null;
+    const ownerOf = (id, except) => {
+      if (own === id) return -1;
+      for (const [c, s] of seatOfC) if (c !== except && s.id === id) return c;
+      return null;
+    };
+    function best(c, row, frac) {
+      const cur = seatOfC.get(c) || null;
+      const rows = table.order;
+      if (!rows.length) return null;
+      const want = Number.isFinite(row) ? Math.max(0, Math.min(rows[rows.length - 1], Math.round(row))) : rows[0];
+      let pick2 = null;
+      let pickScore = Infinity;
+      for (const r of rows) {
+        const list = table.rows.get(r);
+        for (const s of list) {
+          if (ownerOf(s.id, c) !== null) continue;
+          const score = Math.abs(r - want) * 1e4 + Math.abs(s.frac - frac) - (cur && cur.id === s.id ? 0.5 : 0);
+          if (score < pickScore) {
+            pickScore = score;
+            pick2 = s;
+          }
+        }
+      }
+      return pick2;
+    }
+    return {
+      /** Fremden setzen/umsetzen. se = [Reihe, Anteil]; ungültig → null (und freigeben). */
+      sit(c, se) {
+        if (!Array.isArray(se) || !Number.isFinite(se[0]) || !Number.isFinite(se[1])) {
+          seatOfC.delete(c);
+          return null;
+        }
+        const s = best(c, se[0], Math.max(0, Math.min(1e3, se[1])));
+        if (!s) {
+          seatOfC.delete(c);
+          return null;
+        }
+        seatOfC.set(c, s);
+        return { id: s.id, x: s.x, y: s.y, z: s.z, yaw: s.yaw };
+      },
+      stand(c) {
+        seatOfC.delete(c);
+      },
+      seatOf(c) {
+        const s = seatOfC.get(c);
+        return s ? { id: s.id, x: s.x, y: s.y, z: s.z, yaw: s.yaw } : null;
+      },
+      has: (c) => seatOfC.has(c),
+      /** Eigener Sitz (id | null): zählt für Fremde als belegt; ein Fremder auf diesem Sitz weicht beim nächsten sit() aus. */
+      setOwn(id) {
+        own = id == null ? null : id;
+      },
+      taken() {
+        const t = new Set([...seatOfC.values()].map((s) => s.id));
+        if (own != null) t.add(own);
+        return t;
+      },
+      clear() {
+        seatOfC.clear();
+        own = null;
+      },
+      count: () => seatOfC.size,
+      encode: (seatId) => encodeSeat(table, seatId),
+      table
+    };
+  }
+
+  // src/js/store3d/net/tags.js
+  var tmp2 = new Vector3();
+  function createTags(ctx) {
+    const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
+    const tags = /* @__PURE__ */ new Map();
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    function makeEl() {
+      const el3 = document.createElement("div");
+      el3.className = "lfx-mp-tag" + (ctx.isTouch ? " is-touch" : "");
+      el3.hidden = true;
+      el3.setAttribute("aria-hidden", "true");
+      el3.style.position = "absolute";
+      el3.style.left = "0";
+      el3.style.top = "0";
+      el3.style.pointerEvents = "none";
+      el3.style.whiteSpace = "nowrap";
+      if (host) host.appendChild(el3);
+      return el3;
+    }
+    function untag3d(t) {
+      if (t.name3d && t.fig && !t.fig.disposed) {
+        try {
+          t.fig.setName(null);
+        } catch {
+        }
+      }
+      t.name3d = "";
+    }
+    function remove(c) {
+      const t = tags.get(c);
+      if (!t) return;
+      untag3d(t);
+      if (t.el.parentNode) t.el.parentNode.removeChild(t.el);
+      tags.delete(c);
+    }
+    return {
+      /** Schilder neu bewerten (mit der Figurenbewertung, nicht jeden Frame). */
+      sync(items, lod) {
+        const xr = xrOn();
+        const seen = /* @__PURE__ */ new Set();
+        const list = Array.isArray(items) ? items.filter((i) => i && i.fig && !i.fig.disposed && i.text) : [];
+        let allow3d = null;
+        if (xr) {
+          const n = Math.max(0, (lod && lod.tag3d) | 0);
+          const d3 = lod && lod.tag3dDist || 0;
+          allow3d = new Set(list.filter((i) => i.dist <= d3).sort((a, b) => a.dist - b.dist).slice(0, n).map((i) => i.c));
+        }
+        for (const it of list) {
+          let t = tags.get(it.c);
+          if (!t) {
+            t = { el: makeEl(), fig: it.fig, text: "", dom: false, name3d: "" };
+            tags.set(it.c, t);
+          }
+          if (t.fig !== it.fig) {
+            untag3d(t);
+            t.fig = it.fig;
+          }
+          seen.add(it.c);
+          if (xr) {
+            t.dom = false;
+            t.el.hidden = true;
+            if (allow3d.has(it.c)) {
+              if (t.name3d !== it.text) {
+                it.fig.setName(it.text);
+                t.name3d = it.text;
+              }
+            } else untag3d(t);
+          } else {
+            untag3d(t);
+            t.dom = it.dist <= (lod && lod.tagDist || 0);
+            if (t.text !== it.text) {
+              t.el.textContent = it.text;
+              t.text = it.text;
+            }
+            if (!t.dom) t.el.hidden = true;
+          }
+        }
+        for (const c of [...tags.keys()]) if (!seen.has(c)) remove(c);
+      },
+      /** Pro Frame: aktive DOM-Schilder nachführen. */
+      update() {
+        if (xrOn()) return;
+        const cam = ctx.camera;
+        for (const t of tags.values()) {
+          if (!t.dom) continue;
+          const h2 = t.fig;
+          if (!h2 || h2.disposed || !h2.root.visible) {
+            t.el.hidden = true;
+            continue;
+          }
+          h2.headWorld(tmp2);
+          tmp2.y += 0.12;
+          tmp2.project(cam);
+          const on = tmp2.z < 1 && Math.abs(tmp2.x) < 1.05 && tmp2.y > -1.05 && tmp2.y < 1.05;
+          t.el.hidden = !on;
+          if (on && host) {
+            const w = host.clientWidth || window.innerWidth;
+            const hh = host.clientHeight || window.innerHeight;
+            t.el.style.transform = `translate(${((tmp2.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-tmp2.y * 0.5 + 0.5) * hh).toFixed(1)}px) translate(-50%, -100%)`;
+          }
+        }
+      },
+      clear() {
+        for (const c of [...tags.keys()]) remove(c);
+      },
+      stats() {
+        let dom = 0;
+        let d3 = 0;
+        for (const t of tags.values()) {
+          if (t.dom && !t.el.hidden) dom++;
+          if (t.name3d) d3++;
+        }
+        return { tags: tags.size, dom, d3 };
+      },
+      dispose() {
+        for (const c of [...tags.keys()]) remove(c);
+      }
+    };
+  }
+
+  // src/js/store3d/net/heldcover.js
+  var W = 0.135;
+  var H = 0.19;
+  var D = 0.016;
+  var SIDE = 2306138;
+  var NEUTRAL2 = 3820152;
+  var LRU_MAX = 8;
+  var ID_RE = /^[0-9a-f]{32}$/;
+  function createHeldCover(ctx) {
+    let boxGeo = null;
+    let planeGeo = null;
+    let sideMat = null;
+    let neutralMat = null;
+    const lru = /* @__PURE__ */ new Map();
+    const held = /* @__PURE__ */ new Map();
+    let disposed = false;
+    let seq = 0;
+    const catalogItem = (id) => {
+      const it = ctx.catalog && ctx.catalog.items;
+      if (!it || !ID_RE.test(id)) return null;
+      return (it instanceof Map ? it.get(id) : it[id]) || null;
+    };
+    function geo() {
+      if (!boxGeo) {
+        boxGeo = new BoxGeometry(W, H, D);
+        planeGeo = new PlaneGeometry(W * 0.94, H * 0.94);
+        sideMat = new MeshBasicMaterial({ color: SIDE });
+        neutralMat = new MeshBasicMaterial({ color: NEUTRAL2 });
+      }
+    }
+    function evict() {
+      if (lru.size <= LRU_MAX) return;
+      for (const [id, e] of lru) {
+        if (lru.size <= LRU_MAX) break;
+        if (e.refs > 0 || e.state === "loading") continue;
+        lru.delete(id);
+        if (e.tex) e.tex.dispose();
+        if (e.mat) e.mat.dispose();
+      }
+    }
+    function release(entry) {
+      if (entry) entry.refs = Math.max(0, entry.refs - 1);
+    }
+    function entryFor(id, it) {
+      let e = lru.get(id);
+      if (e) {
+        lru.delete(id);
+        lru.set(id, e);
+        return e;
+      }
+      e = { tex: null, mat: null, refs: 0, state: "loading", waiters: [] };
+      lru.set(id, e);
+      const url = (() => {
+        try {
+          const ref = coverRef(it);
+          return ctx.deps.imageUrl(ref.id, { type: "Primary", maxWidth: 160, tag: ref.tag }) || "";
+        } catch {
+          return "";
+        }
+      })();
+      const done = (tex) => {
+        if (disposed) {
+          if (tex) tex.dispose();
+          return;
+        }
+        if (tex) {
+          e.tex = tex;
+          e.mat = new MeshBasicMaterial({ map: tex });
+          e.state = "ok";
+        } else e.state = "fail";
+        for (const fn of e.waiters.splice(0)) fn(e);
+        evict();
+      };
+      if (!url || typeof ctx.loadTexture !== "function") done(null);
+      else Promise.resolve(ctx.loadTexture(url, { maxWidth: 160 })).then(done, () => done(null));
+      evict();
+      return e;
+    }
+    function drop(c) {
+      const h2 = held.get(c);
+      if (!h2) return;
+      held.delete(c);
+      h2.token = -1;
+      release(h2.entry);
+      if (h2.group.parent) h2.group.parent.remove(h2.group);
+    }
+    function build3(c, fig, id, mode) {
+      geo();
+      const group = new Group();
+      group.name = "lfx-mp-held";
+      const box3 = new Mesh(boxGeo, neutralMat);
+      group.add(box3);
+      group.position.set(0.04, -0.5, -0.12);
+      group.rotation.set(0, 0, 0);
+      const arm = fig.bones && fig.bones.armR;
+      (arm || fig.root).add(group);
+      const h2 = { fig, id, mode, group, box: box3, plane: null, entry: null, token: ++seq };
+      held.set(c, h2);
+      if (mode === "cover") {
+        const it = catalogItem(id);
+        if (it) {
+          const e = entryFor(id, it);
+          e.refs++;
+          h2.entry = e;
+          const apply = () => {
+            if (h2.token < 0 || !held.has(c) || held.get(c) !== h2 || e.state !== "ok") return;
+            box3.material = sideMat;
+            const plane = new Mesh(planeGeo, e.mat);
+            plane.position.set(0, 0, -D / 2 - 8e-4);
+            plane.rotation.y = Math.PI;
+            group.add(plane);
+            h2.plane = plane;
+          };
+          if (e.state === "ok") apply();
+          else if (e.state === "loading") e.waiters.push(apply);
+        }
+      }
+      return h2;
+    }
+    return {
+      /** Hülle an die Hand der Figur hängen (oder wechseln/entfernen). id = Item-ID | null. */
+      set(c, fig, id, mode) {
+        if (disposed) return;
+        const wantId = id && ID_RE.test(id) ? id : null;
+        if (!fig || fig.disposed || !wantId || mode === "none" || mode !== "neutral" && mode !== "cover") {
+          drop(c);
+          return;
+        }
+        const h2 = held.get(c);
+        if (h2 && h2.fig === fig && h2.id === wantId && h2.mode === mode) return;
+        drop(c);
+        build3(c, fig, wantId, mode);
+      },
+      clear(c) {
+        drop(c);
+      },
+      has: (c) => held.has(c),
+      stats() {
+        let withCover = 0;
+        for (const h2 of held.values()) if (h2.plane) withCover++;
+        return { held: held.size, withCover, textures: lru.size };
+      },
+      dispose() {
+        if (disposed) return;
+        for (const c of [...held.keys()]) drop(c);
+        disposed = true;
+        for (const e of lru.values()) {
+          if (e.tex) e.tex.dispose();
+          if (e.mat) e.mat.dispose();
+        }
+        lru.clear();
+        if (boxGeo) boxGeo.dispose();
+        if (planeGeo) planeGeo.dispose();
+        if (sideMat) sideMat.dispose();
+        if (neutralMat) neutralMat.dispose();
+        boxGeo = null;
+        planeGeo = null;
+        sideMat = null;
+        neutralMat = null;
+      }
+    };
+  }
+
+  // src/js/store3d/net/peers-logic.js
+  var PEER_DELAY_MS = 250;
+  var GAP_MS = 300;
+  var REFEED_MS = 125;
+  var V_MAX = 16;
+  var FAR3 = 52;
+  var TIMELINE = 12;
+  var EVAL_S = 0.3;
+  var ONE_SHOT2 = /* @__PURE__ */ new Set(["hit", "throw", "stagger"]);
+  function fnv1a32(str) {
+    let h2 = 2166136261;
+    const s = String(str);
+    for (let i = 0; i < s.length; i++) {
+      h2 ^= s.charCodeAt(i) & 255;
+      h2 = Math.imul(h2, 16777619) >>> 0;
+    }
+    return h2 >>> 0;
+  }
+  var lookSeed = (k) => fnv1a32("lfx-mp-look|" + String(k));
+  var num3 = (v, d = 0) => Number.isFinite(v) ? v : d;
+  var clamp9 = (v, a, b) => Math.min(b, Math.max(a, v));
+  function decodePose(frame, e) {
+    if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) return null;
+    const y = num3(e.y);
+    const raw = frame && typeof frame.dec === "function" ? frame.dec(e.x, y, e.z, e.r | 0) : { x: e.x / 100, y: y / 100, z: e.z / 100 };
+    const o = Array.isArray(raw) ? { x: raw[0], y: raw[1], z: raw[2] } : raw;
+    if (!o || !Number.isFinite(o.x) || !Number.isFinite(o.z)) return null;
+    return {
+      x: o.x,
+      y: Number.isFinite(o.y) ? o.y : 0,
+      z: o.z,
+      yaw: num3(e.yaw) / 100,
+      pitch: num3(e.pitch) / 100,
+      a: Number.isInteger(e.a) && e.a >= 0 && e.a <= 8 ? e.a : 0,
+      r: e.r | 0,
+      se: Array.isArray(e.se) ? e.se : null
+    };
+  }
+  function bodyState(cur, prev, t) {
+    let vx = 0;
+    let vy = 0;
+    let vz = 0;
+    if (prev && t > prev.t) {
+      const dt = (t - prev.t) / 1e3;
+      vx = clamp9((cur.x - prev.s.x) / dt, -V_MAX, V_MAX);
+      vy = clamp9((cur.y - prev.s.y) / dt, -V_MAX, V_MAX);
+      vz = clamp9((cur.z - prev.s.z) / dt, -V_MAX, V_MAX);
+    }
+    return { x: cur.x, y: cur.y, z: cur.z, yaw: cur.yaw, pitch: cur.pitch, vx, vy, vz, a: cur.a <= 6 ? cur.a : 0, h: null };
+  }
+  var needRefeed = (lastT, t) => Number.isFinite(lastT) && t - lastT > GAP_MS;
+  function pushTimeline(tl, t, pose) {
+    if (tl.length && t <= tl[tl.length - 1].t) return false;
+    tl.push({ t, a: pose.a, r: pose.r, se: pose.se });
+    while (tl.length > TIMELINE) tl.shift();
+    return true;
+  }
+  function entryAt(tl, t) {
+    if (!tl.length) return null;
+    let best = tl[0];
+    for (const e of tl) {
+      if (e.t <= t) best = e;
+      else break;
+    }
+    return best;
+  }
+  function animName(a) {
+    const n = NET_A_ANIM[a];
+    return typeof n === "string" ? n : "idle";
+  }
+  function smoothSpeed(prev, dist, dt) {
+    if (!(dt > 0)) return prev;
+    const inst = Math.min(V_MAX, dist / dt);
+    return prev + (inst - prev) * Math.min(1, dt * 8);
+  }
+  function animFor(a, lastA, speed) {
+    const name = animName(a);
+    if (ONE_SHOT2.has(name)) return { name, speed, restart: a !== lastA, apply: a !== lastA };
+    return { name, speed: name === "walk" || name === "run" ? speed : 0, restart: false, apply: true };
+  }
+  function regionVisible(area, vis) {
+    const v = vis || {};
+    if (area === "shop") return v.shopShell !== false;
+    if (area === "yard" || area === "alley" || area === "escape" || area === "roof") return !!v.yard;
+    if (area === "palastHall" || area === "palastFoyer") return !!v.palastInterior;
+    return v.street !== false;
+  }
+  function lodFor(level, phone, xr) {
+    const lv = level === "low" || level === "high" ? level : "mid";
+    if (xr) return { max: lv === "low" ? 3 : 4, tagDist: 0, tag3d: 3, tag3dDist: 10, hand: "neutral", coverDist: 0 };
+    if (lv === "low") return { max: presetFor("low", !!phone).npcMax, tagDist: 12, tag3d: 0, tag3dDist: 0, hand: "none", coverDist: 0 };
+    if (lv === "mid") return { max: 10, tagDist: 16, tag3d: 0, tag3dDist: 0, hand: "cover", coverDist: 10 };
+    return { max: 16, tagDist: 20, tag3d: 0, tag3dDist: 0, hand: "cover", coverDist: 14 };
+  }
+  function pickFigures(cands, max) {
+    const list = cands.filter((e) => e && Number.isFinite(e.d) && e.d <= FAR3).map((e) => ({ c: e.c, s: e.d - (e.has ? 1.5 : 0) }));
+    list.sort((a, b) => a.s - b.s || a.c - b.c);
+    return new Set(list.slice(0, Math.max(0, max | 0)).map((e) => e.c));
+  }
+  function displayName(n, f) {
+    const s = typeof n === "string" ? n : "";
+    return s && f & F.NAME ? s : "Jemand";
+  }
+  function cleanItemId(id) {
+    return typeof id === "string" && ITEM_RE.test(id) ? id : null;
+  }
+  function deviceCounts(peers, meK) {
+    const m = /* @__PURE__ */ new Map();
+    for (const p of peers) m.set(p.k, (m.get(p.k) || 0) + 1);
+    if (meK) m.set(meK, (m.get(meK) || 0) + 1);
+    return m;
+  }
+
+  // src/js/store3d/net/peers.js
+  var warn5 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp peers", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  function createPeers(core) {
+    const ctx = core.ctx;
+    const peers = /* @__PURE__ */ new Map();
+    const figListeners = /* @__PURE__ */ new Set();
+    const tags = createTags(ctx);
+    const held = createHeldCover(ctx);
+    let seatnet = null;
+    let myC = 0;
+    let active = true;
+    let acc = EVAL_S;
+    let dirty = true;
+    let disposed = false;
+    let lastReserve = -1;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    const myInfo = () => {
+      try {
+        return core.me && core.me() || null;
+      } catch {
+        return null;
+      }
+    };
+    const isMe = (c) => c === myC || myInfo() && myInfo().c === c;
+    const npc = () => ctx.use("npc");
+    const nowMs = () => {
+      try {
+        const v = core.serverNow && core.serverNow();
+        return Number.isFinite(v) ? v : null;
+      } catch {
+        return null;
+      }
+    };
+    function seats() {
+      if (seatnet) return seatnet;
+      const pal = ctx.use("palast");
+      const list = pal && pal.plan && pal.plan.seats;
+      if (list && list.length) seatnet = createSeatNet(list);
+      return seatnet;
+    }
+    const pub = (p) => ({ c: p.c, k: p.k, n: p.n, r: p.r, f: p.f });
+    function emitFig(kind, p, fig) {
+      for (const fn of [...figListeners]) {
+        try {
+          fn(kind, pub(p), fig);
+        } catch (err) {
+          warn5("onFigure", err);
+        }
+      }
+    }
+    function makePeer(d) {
+      return {
+        c: d.c,
+        k: String(d.k || ""),
+        n: typeof d.n === "string" ? d.n : "",
+        f: d.f | 0,
+        j: d.j,
+        ad: !!d.ad,
+        h: d.h || null,
+        r: 0,
+        a: 0,
+        se: null,
+        body: new Body({ src: [], netDelay: PEER_DELAY_MS }),
+        last: null,
+        tl: [],
+        fig: null,
+        speed: 0,
+        lastA: -1,
+        pos: null,
+        prev: null,
+        seatKey: "",
+        vis: false,
+        dist: 1e9
+      };
+    }
+    function feedPose(p, e, t) {
+      const pose = decodePose(core.frame, e);
+      if (!pose) return;
+      if (!pushTimeline(p.tl, t, pose)) return;
+      const st = bodyState(pose, p.last, t);
+      if (p.last && needRefeed(p.last.t, t)) p.body.applyRemote(p.last.st, t - REFEED_MS);
+      p.body.applyRemote(st, t);
+      p.last = { t, s: pose, st };
+      p.r = pose.r;
+      dirty = true;
+    }
+    function addPeer(d, t) {
+      if (!d || !Number.isInteger(d.c) || isMe(d.c)) return null;
+      let p = peers.get(d.c);
+      if (p) {
+        p.k = String(d.k || p.k);
+        if (typeof d.n === "string") p.n = d.n;
+        if (Number.isInteger(d.f)) p.f = d.f;
+        p.h = d.h || null;
+      } else {
+        p = makePeer(d);
+        peers.set(d.c, p);
+      }
+      if (Array.isArray(d.q) && Number.isFinite(t)) {
+        const q = d.q;
+        feedPose(p, { x: q[0], y: q[1], z: q[2], yaw: q[3], pitch: q[4], a: q[5], r: q[6], se: d.se }, t);
+      }
+      dirty = true;
+      return p;
+    }
+    function removePeer(c) {
+      const p = peers.get(c);
+      if (!p) return;
+      destroyFig(p);
+      if (seatnet) seatnet.stand(c);
+      peers.delete(c);
+      dirty = true;
+    }
+    function makeFig(p) {
+      const n = npc();
+      if (!n || typeof n.figure !== "function") return false;
+      try {
+        const look = makeLook(seeded(lookSeed(p.k)), {});
+        const fig = n.figure({ look, parent: ctx.scene });
+        p.fig = fig;
+        p.lastA = -1;
+        if (p.pos) {
+          fig.root.position.set(p.pos.x, p.pos.y, p.pos.z);
+          fig.root.rotation.y = p.pos.yaw;
+        }
+        emitFig("add", p, fig);
+        return true;
+      } catch (err) {
+        warn5("figure", err);
+        return false;
+      }
+    }
+    function destroyFig(p) {
+      if (!p.fig) return;
+      held.clear(p.c);
+      const fig = p.fig;
+      p.fig = null;
+      emitFig("remove", p, fig);
+      if (!fig.disposed) {
+        try {
+          fig.dispose();
+        } catch (err) {
+          warn5("dispose", err);
+        }
+      }
+    }
+    function resolve(p, dt) {
+      const b = p.body;
+      const e = entryAt(p.tl, b.netClock);
+      if (!e) return;
+      p.a = e.a;
+      let x = b.x;
+      let y = b.y;
+      let z = b.z;
+      let yaw = b.yaw;
+      let seated = false;
+      const sn = e.a === 7 && e.r === 1 ? seats() : null;
+      if (sn) {
+        const key = e.se ? e.se[0] + ":" + e.se[1] : "";
+        if (key !== p.seatKey) {
+          p.seatKey = key;
+          sn.sit(p.c, e.se);
+        }
+        const s = sn.seatOf(p.c);
+        if (s) {
+          x = s.x;
+          y = s.y;
+          z = s.z;
+          yaw = s.yaw;
+          seated = true;
+        }
+      } else if (p.seatKey && seatnet) {
+        seatnet.stand(p.c);
+        p.seatKey = "";
+      }
+      const prev = p.pos;
+      p.pos = { x, y, z, yaw, seated };
+      if (prev && dt > 0) {
+        const d = Math.hypot(x - prev.x, z - prev.z);
+        p.speed = d > 3 || seated ? 0 : smoothSpeed(p.speed, d, dt);
+      }
+    }
+    const NEAR_HIDE = 0.6;
+    function applyFig(p) {
+      const fig = p.fig;
+      if (!fig || fig.disposed || !p.pos) return;
+      const cam = ctx.camera && ctx.camera.position;
+      const near = !!cam && Math.hypot(cam.x - p.pos.x, cam.z - p.pos.z) < NEAR_HIDE && cam.y > p.pos.y - 0.2 && cam.y < p.pos.y + 2.2;
+      fig.root.visible = p.vis && !near;
+      fig.root.position.set(p.pos.x, p.pos.y, p.pos.z);
+      fig.root.rotation.y = p.pos.yaw;
+      if (!p.vis) return;
+      const af = p.pos.seated ? { name: "sit", speed: 0, restart: false, apply: true } : animFor(p.a, p.lastA, p.speed);
+      if (af.apply) fig.setAnim(af.name, { speed: af.speed, restart: af.restart, then: "idle" });
+      p.lastA = p.a;
+    }
+    function evaluate() {
+      dirty = false;
+      const xr = xrOn();
+      const level = ctx.quality ? ctx.quality() : "mid";
+      const lod = lodFor(level, ctx.isPhone, xr);
+      const cityP = ctx.use("city");
+      const vis = cityP && cityP.visible ? cityP.visible() : null;
+      const areas = ctx.use("areas");
+      const cam = ctx.camera.position;
+      const ci2 = ctx.use("cinema2d");
+      if (seatnet) seatnet.setOwn(ci2 && ci2.seated && ci2.active !== false ? ci2.seatId : null);
+      const cands = [];
+      for (const p of peers.values()) {
+        if (!p.pos) {
+          p.vis = false;
+          continue;
+        }
+        let area = "street";
+        if (areas && areas.at) {
+          try {
+            area = areas.at(p.pos.x, p.pos.z, p.pos.y) || "street";
+          } catch {
+            area = "street";
+          }
+        }
+        p.area = area;
+        p.dist = Math.hypot(cam.x - p.pos.x, cam.z - p.pos.z);
+        p.vis = active && (xr || regionVisible(area, vis)) && p.dist <= FAR3;
+        if (p.vis) cands.push({ c: p.c, d: p.dist, has: !!p.fig });
+      }
+      const chosen = active ? pickFigures(cands, lod.max) : /* @__PURE__ */ new Set();
+      let figs = 0;
+      const tagItems = [];
+      for (const p of peers.values()) {
+        const want2 = chosen.has(p.c);
+        if (want2 && !p.fig) makeFig(p);
+        else if (!want2 && p.fig) destroyFig(p);
+        if (!p.fig) continue;
+        figs++;
+        const id = cleanItemId(p.h);
+        const mode = lod.hand === "none" ? "none" : lod.hand === "neutral" || p.dist > lod.coverDist ? "neutral" : "cover";
+        held.set(p.c, p.fig, id && p.f & F.FILM ? id : null, mode);
+        if (p.f & F.NAME && p.n) tagItems.push({ c: p.c, fig: p.fig, text: p.n, dist: p.dist });
+        applyFig(p);
+      }
+      tags.sync(tagItems, lod);
+      const want = level === "low" || xr ? figs : 0;
+      if (want !== lastReserve) {
+        const n = npc();
+        if (n && typeof n.reserve === "function") {
+          try {
+            n.reserve(want);
+            lastReserve = want;
+          } catch (err) {
+            warn5("reserve", err);
+          }
+        }
+      }
+    }
+    const api = {
+      /** wl: { c, s, peers:[{c,k,n,f,j,ad?,q?,se?,h?}] } */
+      welcome(wl) {
+        if (disposed || !wl) return;
+        for (const c of [...peers.keys()]) removePeer(c);
+        if (seatnet) seatnet.clear();
+        if (Number.isInteger(wl.c)) myC = wl.c;
+        const t = Number.isFinite(wl.s) ? wl.s : nowMs();
+        for (const d of Array.isArray(wl.peers) ? wl.peers : []) addPeer(d, t);
+        acc = EVAL_S;
+      },
+      ev(e) {
+        if (disposed || !e) return false;
+        switch (e.t) {
+          case "b": {
+            const s = Number.isFinite(e.s) ? e.s : nowMs();
+            for (const q of Array.isArray(e.p) ? e.p : []) {
+              if (!Array.isArray(q) || isMe(q[0])) continue;
+              const p = peers.get(q[0]);
+              if (!p || !Number.isFinite(s)) continue;
+              feedPose(p, { x: q[1], y: q[2], z: q[3], yaw: q[4], pitch: q[5], a: q[6], r: q[7], se: q[9] }, s - (Number.isFinite(q[8]) ? q[8] : 0));
+            }
+            for (const x of Array.isArray(e.ev) ? e.ev : []) api.ev(x);
+            return true;
+          }
+          case "j":
+            addPeer(e.peer || e.p || e, nowMs());
+            return true;
+          case "l":
+            removePeer(e.c);
+            return true;
+          case "pf": {
+            const p = peers.get(e.c);
+            if (!p) return true;
+            if (Number.isInteger(e.f)) p.f = e.f;
+            if (typeof e.n === "string") p.n = e.n;
+            if ("h" in e) p.h = e.h || null;
+            dirty = true;
+            return true;
+          }
+          default:
+            return false;
+        }
+      },
+      tick(dt) {
+        if (disposed || !(dt > 0)) return;
+        dt = Math.min(dt, 0.1);
+        const now = nowMs();
+        for (const p of peers.values()) {
+          if (!p.last) continue;
+          if (now !== null) p.body.syncNetClock(now - dt * 1e3);
+          p.body.step(dt);
+          resolve(p, dt);
+          if (p.fig) applyFig(p);
+        }
+        acc += dt;
+        if (acc >= EVAL_S || dirty && acc >= 0.1) {
+          acc = 0;
+          evaluate();
+        }
+        tags.update();
+      },
+      list() {
+        const me = myInfo();
+        const counts = deviceCounts([...peers.values()], me && me.k);
+        return [...peers.values()].map((p) => ({ c: p.c, k: p.k, n: p.n, r: p.r, f: p.f, devs: counts.get(p.k) || 1 }));
+      },
+      /** Anzeigename mit Namens-Regel (leer oder ohne Namens-Flag → „Jemand“). */
+      name(c) {
+        const p = peers.get(c);
+        return p ? displayName(p.n, p.f) : "Jemand";
+      },
+      get: (c) => {
+        const p = peers.get(c);
+        return p ? { ...pub(p), figure: p.fig, devs: 1 } : null;
+      },
+      count: () => peers.size,
+      onFigure(fn) {
+        figListeners.add(fn);
+        return () => figListeners.delete(fn);
+      },
+      /** false = Figuren und DOM weg (Aussetzen, VR-Kino), Peer-Daten bleiben; true = wieder zeigen. */
+      setActive(on) {
+        active = !!on;
+        if (!active) {
+          for (const p of peers.values()) destroyFig(p);
+          tags.clear();
+          if (lastReserve !== 0) {
+            const n = npc();
+            if (n && n.reserve) n.reserve(0);
+            lastReserve = 0;
+          }
+        }
+        acc = EVAL_S;
+      },
+      onQuality() {
+        acc = EVAL_S;
+      },
+      /** Alles entfernen (Peers, Figuren, DOM, reserve(0)). */
+      clear() {
+        for (const c of [...peers.keys()]) removePeer(c);
+        tags.clear();
+        if (seatnet) seatnet.clear();
+        const n = npc();
+        if (n && typeof n.reserve === "function") {
+          try {
+            n.reserve(0);
+          } catch {
+          }
+        }
+        lastReserve = 0;
+      },
+      stats() {
+        let figs = 0;
+        for (const p of peers.values()) if (p.fig) figs++;
+        return { peers: peers.size, figures: figs, tags: tags.stats(), held: held.stats(), reserved: lastReserve, seats: seatnet ? seatnet.count() : 0 };
+      },
+      dispose() {
+        if (disposed) return;
+        api.clear();
+        disposed = true;
+        tags.dispose();
+        held.dispose();
+        figListeners.clear();
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/net/hud.js
+  function createHud(ctx) {
+    let root = null;
+    let label = null;
+    let host = null;
+    let shown = "";
+    const hostEl = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode || null;
+    function leaveHost() {
+      if (host && host.classList) host.classList.remove("lfx-store-has-social");
+      if (root && root.parentNode) root.parentNode.removeChild(root);
+      host = null;
+    }
+    function ensure() {
+      const h2 = hostEl();
+      if (!h2) return false;
+      if (root && host === h2 && root.parentNode === h2) return true;
+      if (root) leaveHost();
+      if (!root) {
+        root = document.createElement("div");
+        root.className = "lfx-store-social lfx-mp-social" + (ctx.isTouch ? " is-touch" : " is-desk");
+        label = document.createElement("div");
+        label.className = "lfx-mp-count";
+        label.setAttribute("role", "status");
+        root.appendChild(label);
+      }
+      h2.appendChild(root);
+      host = h2;
+      if (ctx.isTouch) h2.classList.add("lfx-store-has-social");
+      return true;
+    }
+    return {
+      /** Text zeigen; null/leer = ausblenden (und Platz im Host freigeben). */
+      set(text) {
+        if (!text) {
+          if (root) root.hidden = true;
+          if (host && host.classList) host.classList.remove("lfx-store-has-social");
+          shown = "";
+          return;
+        }
+        if (!ensure()) return;
+        root.hidden = false;
+        if (ctx.isTouch && host.classList) host.classList.add("lfx-store-has-social");
+        if (text !== shown) {
+          label.textContent = text;
+          shown = text;
+        }
+      },
+      dispose() {
+        leaveHost();
+        root = null;
+        label = null;
+        shown = "";
+      }
+    };
+  }
+
+  // src/js/store3d/net/panel.js
+  var SWITCHES = [
+    { key: "on", label: "Mehrspieler", note: "Andere auf diesem Server sehen dich in der VIDEOTHEK." },
+    { key: "name", label: "Name zeigen", note: "Dein Jellyfin-Benutzername \xFCber deiner Figur. Aus: andere sehen \u201EJemand\u201C." },
+    { key: "chat", label: "Chat", note: "" },
+    { key: "film", label: "Mein Film f\xFCr andere sichtbar", note: "Gilt auch f\xFCr die H\xFClle in deiner Hand." }
+  ];
+  function createPanel(api) {
+    const views = /* @__PURE__ */ new WeakMap();
+    function update(el3, v) {
+      const pr = api.prefs();
+      for (const r of v.rows) {
+        const on = !!pr[r.sw.key];
+        r.b.textContent = `${r.sw.label}: ${on ? "An" : "Aus"}`;
+        r.b.setAttribute("aria-pressed", on ? "true" : "false");
+        r.b.classList.toggle("is-on", on);
+        r.b.disabled = r.sw.key !== "on" && !pr.on;
+        if (r.note) r.note.hidden = r.sw.key !== "on" && !pr.on;
+      }
+      v.status.textContent = api.status() || "";
+      v.status.hidden = !v.status.textContent;
+    }
+    function build3(el3) {
+      el3.textContent = "";
+      const v = { rows: [], status: null };
+      for (const sw of SWITCHES) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "lfx-store-act lfx-mp-switch";
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          api.set({ [sw.key]: !api.prefs()[sw.key] });
+          update(el3, v);
+        });
+        el3.appendChild(b);
+        let note = null;
+        if (sw.note) {
+          note = document.createElement("div");
+          note.className = "lfx-store-pause-note lfx-mp-note";
+          note.textContent = sw.note;
+          el3.appendChild(note);
+        }
+        v.rows.push({ sw, b, note });
+      }
+      v.status = document.createElement("div");
+      v.status.className = "lfx-store-pause-note lfx-mp-status";
+      v.status.setAttribute("role", "status");
+      el3.appendChild(v.status);
+      views.set(el3, v);
+      return v;
+    }
+    return {
+      render(el3) {
+        if (!el3) return;
+        update(el3, views.get(el3) || build3(el3));
+      }
+    };
+  }
+
+  // src/js/store3d/net/parts.js
+  var stub = () => ({});
+  var PART_FACTORIES = {
+    chat: stub,
+    // Welle b
+    emotes: stub,
+    // Welle b
+    phys: stub,
+    // Welle c
+    push: stub,
+    // Welle c
+    richard: stub,
+    // Welle c
+    weather: stub,
+    // Welle c
+    kino: stub
+    // Welle d
+  };
+
+  // src/js/store3d/modules/net.js
+  var warn6 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  var HINT = "Andere auf diesem Server sehen dich hier. Abschalten im Men\xFC unter Mehrspieler.";
+  var HINT_MS = 7e3;
+  var DEFAULTS = { on: true, name: true, film: false, chat: true, mute: [], hint: false };
+  var PART_ERR_MAX = 5;
+  var PART_ERR_WINDOW_MS = 6e4;
+  var net_default = {
+    name: "net",
+    init(ctx) {
+      const mp = ctx.deps && ctx.deps.mp;
+      if (!mp || typeof mp.ticket !== "function") return null;
+      const opts = ctx.opts || {};
+      const WS = opts.debug && opts.mpTransport || (typeof WebSocket !== "undefined" ? WebSocket : null);
+      const bus = /* @__PURE__ */ new Map();
+      const emit = (ev, ...a) => {
+        const l = bus.get(ev);
+        if (!l) return;
+        for (const fn of [...l]) {
+          try {
+            fn(...a);
+          } catch (err) {
+            warn6("H\xF6rer " + ev, err);
+          }
+        }
+      };
+      const on = (ev, fn) => {
+        if (typeof fn !== "function") return () => {
+        };
+        const l = bus.get(ev) || /* @__PURE__ */ new Set();
+        l.add(fn);
+        bus.set(ev, l);
+        return () => l.delete(fn);
+      };
+      const changeFns = /* @__PURE__ */ new Set();
+      const change = () => {
+        emit("state");
+        for (const fn of [...changeFns]) {
+          try {
+            fn();
+          } catch (err) {
+            warn6("onChange", err);
+          }
+        }
+      };
+      const prefs = () => {
+        let p = null;
+        try {
+          p = mp.prefs();
+        } catch {
+        }
+        return { ...DEFAULTS, ...p && typeof p === "object" ? p : {} };
+      };
+      const writePrefs = (p) => {
+        try {
+          if (ctx.deps.onPrefs) ctx.deps.onPrefs({ mp: p });
+        } catch (err) {
+          warn6("prefs", err);
+        }
+      };
+      let disposed = false;
+      let entered = false;
+      let live = false;
+      let failed = null;
+      let suspendedClosed = false;
+      let cinemaVr = false;
+      let heldId = null;
+      let hudText = "";
+      let sigPeers = "";
+      const frame = createFrame(ctx.layout);
+      const pose = createPose({ frame, rate: () => transport ? transport.info().cf.pr : 8 });
+      const hud = createHud(ctx);
+      let transport = null;
+      let peers = null;
+      let seatnet = null;
+      const parts = [];
+      const offs = [];
+      const nowMs = () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+      const flags = () => {
+        const p = prefs();
+        return (p.name ? F.NAME : 0) | (p.film ? F.FILM : 0) | (p.chat ? F.CHAT : 0) | (ctx.xr && ctx.xr.presenting() ? F.VR : 0);
+      };
+      const send = (msg, o) => transport && live && !disposed ? transport.send(msg, o) : false;
+      const toast = (text) => {
+        try {
+          ctx.xr.toast(text, HINT_MS);
+        } catch {
+        }
+      };
+      const core = {
+        ctx,
+        frame,
+        send: (m) => send(m),
+        me: () => transport ? transport.me() : null,
+        cap: (n) => !!transport && transport.has(n),
+        active: () => live && !disposed,
+        serverNow: () => transport ? transport.serverNow() : null,
+        peers: null,
+        prefs,
+        toast,
+        on: (t, fn) => on("msg:" + t, fn)
+      };
+      let partErrs = [];
+      const callParts = (name, ...a) => {
+        for (const p of parts) {
+          if (typeof p[name] !== "function") continue;
+          try {
+            p[name](...a);
+          } catch (err) {
+            warn6("Teil " + name, err);
+            const t = nowMs();
+            partErrs = partErrs.filter((x) => t - x < PART_ERR_WINDOW_MS);
+            partErrs.push(t);
+            if (partErrs.length > PART_ERR_MAX) {
+              stopAll("err");
+              return;
+            }
+          }
+        }
+      };
+      function endSession() {
+        live = false;
+        sentHd = null;
+        pose.reset();
+        if (peers) peers.clear();
+        callParts("stop");
+        hud.set(null);
+        hudText = "";
+        sigPeers = "";
+      }
+      function stopAll(reason) {
+        if (reason) failed = failed || reason;
+        if (transport) transport.stop(1e3);
+        endSession();
+        change();
+      }
+      function maybeStart() {
+        if (disposed || failed || !entered || suspendedClosed || !transport) return;
+        if (!prefs().on) return;
+        if (!WS) {
+          failed = "nows";
+          change();
+          return;
+        }
+        if (transport.state() === "dead") transport.reset();
+        transport.setHidden(typeof document !== "undefined" && document.hidden === true);
+        transport.start();
+      }
+      let sentFlags = -1;
+      function sendFlags() {
+        const f = flags();
+        if (send(build.f(f))) sentFlags = f;
+      }
+      let sentHd = null;
+      function syncHeld() {
+        const want = prefs().film ? heldId : null;
+        if (want === sentHd) return;
+        if (send(build.hd(want))) sentHd = want;
+      }
+      function onState(s) {
+        if (disposed) return;
+        if (s === "live") {
+          live = true;
+          pose.reset();
+        } else if (live) {
+          endSession();
+        }
+        change();
+      }
+      function peersSig() {
+        const list = peers ? peers.list() : [];
+        return list.map((p) => `${p.c}:${p.k}:${p.f}:${p.n}`).join("|");
+      }
+      function onMsg(m) {
+        if (disposed || !m) return;
+        if (m.t === "wl") {
+          peers.welcome(m);
+          callParts("welcome", m);
+          sentFlags = flags();
+          syncHeld();
+          const pr = prefs();
+          if (!pr.hint) {
+            toast(HINT);
+            writePrefs({ hint: true });
+          }
+        } else if (m.t === "b" || m.t === "j" || m.t === "l" || m.t === "pf") {
+          peers.ev(m);
+          if (m.t === "b") callParts("ev", m);
+        } else if (m.t === "x") {
+          callParts("x", m);
+        }
+        emit("msg:" + m.t, m);
+        if ((m.t === "b" || m.t === "x") && Array.isArray(m.ev)) {
+          for (const e of m.ev) if (e && typeof e.t === "string") emit("msg:" + e.t, e, m);
+        }
+        if (m.t === "wl" || m.t === "j" || m.t === "l" || m.t === "pf" || m.t === "b") {
+          const sig = peersSig();
+          if (sig !== sigPeers) {
+            sigPeers = sig;
+            emit("peers");
+            change();
+          }
+        }
+      }
+      transport = createTransport({
+        ticket: () => mp.ticket(),
+        env: {
+          WebSocket: WS,
+          now: () => Date.now(),
+          setTimeout: (f, ms) => setTimeout(f, ms),
+          clearTimeout: (h2) => clearTimeout(h2),
+          random: Math.random
+        },
+        hello: () => ({ cap: ["pres"], f: flags(), cv: mp.cv }),
+        onMsg,
+        onState
+      });
+      peers = createPeers({ ctx, frame, serverNow: () => transport.serverNow(), me: () => transport.me() });
+      core.peers = peers;
+      for (const k of Object.keys(PART_FACTORIES)) {
+        try {
+          const h2 = PART_FACTORIES[k](core);
+          if (h2) parts.push(h2);
+        } catch (err) {
+          warn6("Teil " + k, err);
+        }
+      }
+      function others() {
+        const me = transport.me();
+        return peers.list().filter((p) => !me || p.c !== me.c);
+      }
+      function count() {
+        const me = transport.me();
+        const ks = new Set(others().map((p) => p.k));
+        if (me) ks.add(me.k);
+        return ks.size;
+      }
+      function hudLabel() {
+        const n = count();
+        const conn = others().length + 1;
+        return conn > n ? `${n} hier \xB7 ${conn} Ger\xE4te` : `${n} hier`;
+      }
+      function seats() {
+        if (seatnet) return seatnet;
+        const pal = ctx.use("palast");
+        const list = pal && pal.plan && pal.plan.seats;
+        if (list && list.length) seatnet = createSeatNet(list);
+        return seatnet;
+      }
+      function samplePose(ms) {
+        const n = ctx.player.getNet();
+        if (!n) return;
+        const s = { x: n.x, y: n.y, z: n.z, yaw: n.yaw, pitch: n.pitch, a: bodyAnimToNet(n.a) };
+        const c2 = ctx.use("cinema2d");
+        if (c2 && c2.seated && c2.seatId != null && c2.active !== false) {
+          const sn = seats();
+          const se = sn ? sn.encode(c2.seatId) : null;
+          if (se) {
+            s.a = 7;
+            s.se = se;
+          }
+        }
+        const m = pose.update(s, ms);
+        if (m) transport.send(m);
+      }
+      function statusText() {
+        if (failed === "nows") return "Mehrspieler: vom Browser nicht unterst\xFCtzt.";
+        if (failed) return "Mehrspieler wegen eines Fehlers vor\xFCbergehend aus.";
+        if (!prefs().on) return "Mehrspieler ist aus.";
+        const i = transport.info();
+        const wait = () => {
+          const s = Math.max(1, Math.round((i.until - Date.now()) / 1e3));
+          return s >= 90 ? `${Math.round(s / 60)} min` : `${s} s`;
+        };
+        switch (i.state) {
+          case "live":
+            return `Verbunden \xB7 ${hudLabel()}`;
+          case "ticket":
+          case "open":
+          case "hello":
+            return "Verbindung wird aufgebaut \u2026";
+          case "idle":
+            return i.why === "hidden" ? "Pausiert, solange die Seite im Hintergrund ist." : "Noch nicht verbunden.";
+          case "banned": {
+            const d = new Date(i.until);
+            return `Ausgeschlossen bis ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} Uhr.`;
+          }
+          case "backoff":
+            if (i.why === "full") return `Server voll, neuer Versuch in ${wait()}.`;
+            if (i.why === "quota") return "Tageslimit des Servers erreicht, sp\xE4ter erneut.";
+            if (i.why === "limit") return "Verbindung gest\xF6rt, n\xE4chster Versuch in 30 min.";
+            return `Verbindung unterbrochen, neuer Versuch in ${wait()}.`;
+          case "dead":
+            if (i.why === "nourl" || i.why === "gone") return "Mehrspieler ist auf diesem Server nicht eingerichtet.";
+            if (i.why === "off") return "Mehrspieler ist vor\xFCbergehend aus.";
+            if (i.why === "pv") return i.hint || "Update n\xF6tig.";
+            if (i.why === "cap") return "Der Server unterst\xFCtzt Mehrspieler nicht. Update n\xF6tig.";
+            if (i.why === "dup") return "Zu viele Verbindungen mit diesem Konto.";
+            if (i.why === "auth" || i.why === "user") return "Anmeldung abgelaufen. Seite neu laden.";
+            if (i.why === "err") return "Mehrspieler wegen eines Fehlers vor\xFCbergehend aus.";
+            return "Der Mehrspieler-Dienst ist nicht erreichbar.";
+          default:
+            return entered ? "Noch nicht verbunden." : "";
+        }
+      }
+      function setPref(p) {
+        const before = prefs();
+        writePrefs(p);
+        const now = prefs();
+        if (now.on !== before.on) {
+          if (now.on) {
+            failed = failed === "nows" ? failed : null;
+            partErrs = [];
+            maybeStart();
+          } else {
+            if (transport) transport.stop(1e3);
+            endSession();
+          }
+        } else if (live) {
+          if (flags() !== sentFlags) sendFlags();
+          if (now.film !== before.film) syncHeld();
+        }
+        change();
+      }
+      const panel = createPanel({ prefs, set: setPref, status: statusText });
+      const removeProvider = ctx.provide("net", {
+        active: () => live && !disposed,
+        me: () => transport ? transport.me() : null,
+        has: (cap) => !!transport && transport.has(cap),
+        count,
+        serverNow: () => transport ? transport.serverNow() : null,
+        peers: () => others().map((p) => ({ ...p })),
+        peerName: (c) => peers.name(c),
+        on,
+        send: (msg) => send(msg),
+        physGate: () => true,
+        menu: () => ({ label: "Mehrspieler \u2026" }),
+        renderMenu: (el3) => panel.render(el3),
+        onChange: (fn) => {
+          if (typeof fn !== "function") return () => {
+          };
+          changeFns.add(fn);
+          return () => changeFns.delete(fn);
+        },
+        emote: () => false,
+        // Welle b
+        say: () => false,
+        // Welle b
+        /** Kino-Sitzung aktiv: Verbindung bleibt auch im verborgenen Tab offen (W9). */
+        setKino: (v) => {
+          if (transport) transport.setKino(!!v);
+        }
+      });
+      const onVis = () => {
+        if (transport && entered) transport.setHidden(document.hidden === true);
+      };
+      if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVis);
+      offs.push(ctx.on("enter", () => {
+        entered = true;
+        maybeStart();
+      }));
+      offs.push(ctx.on("xr", () => {
+        if (live) sendFlags();
+        hud.set(null);
+      }));
+      offs.push(ctx.on("carry", (c) => {
+        heldId = c && c.id ? c.id : null;
+        if (live) syncHeld();
+      }));
+      return {
+        update(dt, t) {
+          if (disposed) return;
+          if (!live) return;
+          if (cinemaVr || ctx.suspended()) return;
+          peers.tick(dt);
+          callParts("tick", dt, t);
+          if (!live) return;
+          samplePose(nowMs());
+          hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : "";
+          hud.set(hudText);
+        },
+        onSuspend() {
+          if (disposed) return;
+          if (ctx.suspended()) {
+            suspendedClosed = true;
+            if (transport) transport.stop(1e3);
+            endSession();
+            change();
+          } else {
+            cinemaVr = true;
+            peers.setActive(false);
+            hud.set(null);
+          }
+        },
+        onResume() {
+          if (disposed) return;
+          cinemaVr = false;
+          if (peers) peers.setActive(true);
+          if (suspendedClosed) {
+            suspendedClosed = false;
+            maybeStart();
+          }
+        },
+        onQuality() {
+          if (peers) peers.onQuality();
+        },
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+          if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVis);
+          for (const off of offs) {
+            try {
+              off();
+            } catch {
+            }
+          }
+          offs.length = 0;
+          try {
+            if (transport) transport.stop(1e3);
+          } catch {
+          }
+          for (const p of parts) {
+            try {
+              if (p.dispose) p.dispose();
+            } catch {
+            }
+          }
+          parts.length = 0;
+          try {
+            peers.dispose();
+          } catch {
+          }
+          hud.dispose();
+          removeProvider();
+          bus.clear();
+          changeFns.clear();
+          live = false;
+        }
+      };
+    }
+  };
+
   // src/js/store3d/modules/index.js
   var MODULES = [
     // --- M4 Atmosphäre (zuerst: Sound-Provider, Intro) ---
@@ -50670,12 +53222,14 @@ void main() {
     staff_default,
     showcase_default,
     // --- Welle 2 discover (nach city/daytime: braucht Dachgruppe und Wetter) ---
-    discover_default
+    discover_default,
+    // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
+    net_default
   ];
 
   // src/js/store3d/modules/runtime.js
   var ease3 = (t) => t * t * (3 - 2 * t);
-  var warn5 = (...a) => {
+  var warn7 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -50725,6 +53279,10 @@ void main() {
         isTouch: app.touch,
         quality: () => app.engine.preset.level,
         soundOn: () => app.sound,
+        /** Aussetzung läuft (Hülle unmount): im VR-Kino bleibt das false, obwohl onSuspend gerufen wird. */
+        suspended: () => !!app.suspended,
+        /** Laufmodus sichtbar: Spiel läuft (mode 'play'), nicht ausgesetzt, nicht entsorgt. */
+        playing: () => !app.disposed && !app.suspended && app.mode === "play",
         voiceOnline: () => !!app.voiceOnline,
         voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || "", pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
         /**
@@ -50784,6 +53342,8 @@ void main() {
         },
         player: {
           getPose: () => ({ ...app.player.state, y: app.player.y }),
+          /** Netzzustand des eigenen Körpers { x, y, z, yaw, pitch, vx, vy, vz, a (Body.ANIM), h } (Mehrspieler). */
+          getNet: () => typeof app.player.getNetState === "function" ? app.player.getNetState() : null,
           teleport: (x, z, yaw, pitch, y) => {
             app.player.teleport(x, z, yaw === void 0 ? app.player.yaw : yaw, pitch || 0, y);
           },
@@ -50835,7 +53395,7 @@ void main() {
             try {
               fn();
             } catch (err) {
-              warn5("exitThen", err);
+              warn7("exitThen", err);
             }
             return true;
           },
@@ -50857,7 +53417,7 @@ void main() {
           restore: (id) => typeof app.restoreReleased === "function" ? app.restoreReleased(id) : false
         },
         input: {
-          /** Aktions-Handler 'use' | 'hit' | 'throw'; fn(ev) -> true = verbraucht. Höhere prio zuerst. Rückgabe: off(). */
+          /** Aktions-Handler 'use' | 'hit' | 'throw' | 'chat' | 'emote'; fn(ev) -> true = verbraucht. Höhere prio zuerst. Rückgabe: off(). */
           onAction: (name, fn, o) => self2.onAction(name, fn, o)
         },
         on: (ev, fn) => {
@@ -50892,7 +53452,7 @@ void main() {
           const h2 = await m.init(this.ctx);
           if (h2) this.handles.push({ name: m.name, h: h2 });
         } catch (err) {
-          warn5(`Modul "${m && m.name}" konnte nicht starten`, err);
+          warn7(`Modul "${m && m.name}" konnte nicht starten`, err);
         }
         if (progress) progress((i + 1) / n);
       }
@@ -50904,7 +53464,7 @@ void main() {
         try {
           fn(...args);
         } catch (err) {
-          warn5(`Event ${ev}`, err);
+          warn7(`Event ${ev}`, err);
         }
       }
     }
@@ -50914,7 +53474,7 @@ void main() {
         try {
           h2[name](...args);
         } catch (err) {
-          warn5(`Modul "${mn}".${name}`, err);
+          warn7(`Modul "${mn}".${name}`, err);
         }
       }
     }
@@ -50983,7 +53543,7 @@ void main() {
             break;
           }
         } catch (err) {
-          warn5("Aktion " + name, err);
+          warn7("Aktion " + name, err);
         }
       }
       this.emit(name, ev, consumed);
@@ -51116,7 +53676,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn5("overlay.onClose", err);
+            warn7("overlay.onClose", err);
           }
         });
         return;
@@ -51145,7 +53705,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn5("panel.onClose", err);
+            warn7("panel.onClose", err);
           }
         });
         return dead;
@@ -51194,7 +53754,7 @@ void main() {
       try {
         if (st.onClose) st.onClose();
       } catch (err) {
-        warn5("overlay.onClose", err);
+        warn7("overlay.onClose", err);
       }
       app.setMode(st.prev === "hold" && app.holdview.isOpen ? "hold" : "play");
       if (app.mode === "play" && app.desktop && !app.suspended) app.desktop.requestLock();
@@ -51310,7 +53870,7 @@ void main() {
     if (scheme === "game") return ["Links laufen \xB7 rechts umsehen", "Tippen zum Nehmen \xB7 rechts unten Springen, Benutzen, Schlagen, Zoom (halten)"];
     return ["Gedr\xFCckt halten zum Laufen", "Wischen zum Umsehen \xB7 Tippen zum Nehmen"];
   }
-  function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
+  function createHud2(host, { touch, onMenu, onVr, getTouchScheme }) {
     const root = el("div", "lfx-store-ov");
     const cross = el("div", "lfx-store-cross");
     cross.setAttribute("aria-hidden", "true");
@@ -51454,12 +54014,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn10 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn12 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn10}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn12}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -51518,6 +54078,7 @@ void main() {
       refresh();
     });
     const tc = mk3("Touch-Steuerung \u2026", () => openTouch());
+    const mpb = mk3("Mehrspieler \u2026", () => openMp());
     const fs = mk3("", () => {
       if (a.onFullscreen) a.onFullscreen();
       refresh();
@@ -51648,8 +54209,62 @@ void main() {
         closeDiscover();
       }
     });
+    const mpp = el("div", "lfx-store-voicepick lfx-store-mppick");
+    mpp.hidden = true;
+    const mppPanel = el("div", "lfx-store-voicepick-panel");
+    mppPanel.setAttribute("role", "dialog");
+    mppPanel.setAttribute("aria-label", "Mehrspieler");
+    mppPanel.setAttribute("aria-modal", "true");
+    const mppTitle = el("div", "lfx-store-pause-title", "Mehrspieler");
+    const mppBody = el("div", "lfx-store-mpbody");
+    const mppBack = el("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
+    mppBack.type = "button";
+    mppPanel.append(mppTitle, mppBody, mppBack);
+    mpp.appendChild(mppPanel);
+    const mpNow = () => {
+      try {
+        return a.getMp && a.getMp() || null;
+      } catch {
+        return null;
+      }
+    };
+    function renderMp() {
+      try {
+        if (a.renderMp) a.renderMp(mppBody);
+      } catch {
+      }
+    }
+    function openMp() {
+      renderMp();
+      mpp.hidden = false;
+      syncInert();
+      const first = mppBody.querySelector("button:not([disabled])") || mppBack;
+      try {
+        first.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    function closeMp() {
+      if (mpp.hidden) return;
+      mpp.hidden = true;
+      syncInert();
+      try {
+        mpb.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    mppBack.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeMp();
+    });
+    mpp.addEventListener("click", (e) => {
+      if (e.target === mpp) {
+        e.stopPropagation();
+        closeMp();
+      }
+    });
     const syncInert = () => {
-      if (pick2.hidden && tp.hidden && dp.hidden) panel.removeAttribute("inert");
+      if (pick2.hidden && tp.hidden && dp.hidden && mpp.hidden) panel.removeAttribute("inert");
       else panel.setAttribute("inert", "");
     };
     function openPick() {
@@ -51800,6 +54415,13 @@ void main() {
       f.textContent = `FPS-Anzeige: ${a.getFps() ? "An" : "Aus"}`;
       bc.textContent = `H\xFCllen: ${a.getBigCovers() ? "Gro\xDF" : "Normal"}`;
       tc.hidden = !a.onTouchControl && !a.onTouchTune;
+      const mpm = mpNow();
+      mpb.hidden = !mpm;
+      if (mpm && mpm.label) mpb.textContent = mpm.label;
+      if (!mpp.hidden) {
+        if (mpm) renderMp();
+        else closeMp();
+      }
       if (!tp.hidden) refreshTouch();
       const pr = prefsNow();
       const wantOnline = !!pr.online;
@@ -51819,12 +54441,13 @@ void main() {
     root.appendChild(pick2);
     root.appendChild(tp);
     root.appendChild(dp);
+    root.appendChild(mpp);
     root.addEventListener("click", (e) => {
       if (e.target === root) a.onResume();
     });
     root.addEventListener("keydown", (e) => {
       if (e.key !== "Tab") return;
-      const layer = !dp.hidden ? dp : !tp.hidden ? tp : !pick2.hidden ? pick2 : panel;
+      const layer = !mpp.hidden ? mpp : !dp.hidden ? dp : !tp.hidden ? tp : !pick2.hidden ? pick2 : panel;
       const list2 = [...layer.querySelectorAll('button, [tabindex="0"]')].filter((b) => !b.disabled && !b.closest("[hidden]"));
       if (!list2.length) return;
       const i = list2.indexOf(document.activeElement);
@@ -51845,7 +54468,7 @@ void main() {
         return !root.hidden;
       },
       get pickOpen() {
-        return !pick2.hidden || !tp.hidden || !dp.hidden;
+        return !pick2.hidden || !tp.hidden || !dp.hidden || !mpp.hidden;
       },
       get touchOpen() {
         return !tp.hidden;
@@ -51854,12 +54477,14 @@ void main() {
         closePick();
         closeTouch();
         closeDiscover();
+        closeMp();
       },
       show() {
         stopDiag();
         pick2.hidden = true;
         tp.hidden = true;
         dp.hidden = true;
+        mpp.hidden = true;
         syncInert();
         refresh();
         focusBack = document.activeElement;
@@ -51878,6 +54503,7 @@ void main() {
         pick2.hidden = true;
         tp.hidden = true;
         dp.hidden = true;
+        mpp.hidden = true;
         if (focusBack && typeof focusBack.focus === "function") {
           try {
             focusBack.focus({ preventScroll: true });
@@ -51936,16 +54562,16 @@ void main() {
   }
   function drawFront(canvas, item, bmp) {
     const ctx = canvas.getContext("2d");
-    const W = canvas.width;
-    const H = canvas.height;
+    const W2 = canvas.width;
+    const H2 = canvas.height;
     const media = item.lfx && item.lfx.media || "dvd";
     ctx.fillStyle = media === "vhs" ? "#e2d8bd" : media === "box" ? "#c9a227" : hash(item.Id || "") % 3 === 0 ? "#101012" : "#1d3f9c";
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, W2, H2);
     const m = media === "vhs" ? [26, 26, 26, 54] : media === "box" ? [30, 30, 30, 30] : [38, 14, 14, 14];
     const ix = m[0];
     const iy = m[1];
-    const iw = W - m[0] - m[2];
-    const ih = H - m[1] - m[3];
+    const iw = W2 - m[0] - m[2];
+    const ih = H2 - m[1] - m[3];
     if (bmp) {
       const sw = bmp.width || bmp.naturalWidth;
       const sh = bmp.height || bmp.naturalHeight;
@@ -51971,26 +54597,26 @@ void main() {
       ctx.fillStyle = "#fff";
       ctx.textAlign = "center";
       ctx.font = `bold 34px ${FONT}`;
-      wrap2(ctx, item.Name, iw - 40).slice(0, 6).forEach((l, i) => ctx.fillText(l, W / 2, iy + ih * 0.4 + i * 42));
+      wrap2(ctx, item.Name, iw - 40).slice(0, 6).forEach((l, i) => ctx.fillText(l, W2 / 2, iy + ih * 0.4 + i * 42));
     }
   }
   function drawBack(canvas, item) {
     const ctx = canvas.getContext("2d");
-    const W = canvas.width;
-    const H = canvas.height;
+    const W2 = canvas.width;
+    const H2 = canvas.height;
     const genre = item.Genres && item.Genres[0] || "";
     ctx.fillStyle = BACK_COLORS[hash(genre || item.Id || "") % BACK_COLORS.length];
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, W2, H2);
     ctx.fillStyle = "rgba(255,255,255,0.06)";
-    for (let y2 = 0; y2 < H; y2 += 6) ctx.fillRect(0, y2, W, 1);
+    for (let y2 = 0; y2 < H2; y2 += 6) ctx.fillRect(0, y2, W2, 1);
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.lineWidth = 3;
-    ctx.strokeRect(18, 18, W - 36, H - 36);
+    ctx.strokeRect(18, 18, W2 - 36, H2 - 36);
     ctx.fillStyle = "#fff";
     ctx.textAlign = "left";
     ctx.font = `bold 42px ${FONT}`;
     let y = 80;
-    for (const l of wrap2(ctx, item.Name, W - 80).slice(0, 3)) {
+    for (const l of wrap2(ctx, item.Name, W2 - 80).slice(0, 3)) {
       ctx.fillText(l, 40, y);
       y += 48;
     }
@@ -52003,7 +54629,7 @@ void main() {
       item.CommunityRating ? `\u2605 ${Number(item.CommunityRating).toFixed(1).replace(".", ",")}` : ""
     ].filter(Boolean).join(" \xB7 ");
     y += 4;
-    for (const l of wrap2(ctx, meta, W - 80)) {
+    for (const l of wrap2(ctx, meta, W2 - 80)) {
       ctx.fillText(l, 40, y);
       y += 28;
     }
@@ -52016,8 +54642,8 @@ void main() {
     }
     ctx.fillStyle = "#f2f2f2";
     ctx.font = `23px "Helvetica Neue",Arial,sans-serif`;
-    const lines = wrap2(ctx, item.Overview || "Kurzinhalt wird geladen \u2026", W - 80);
-    const max = Math.floor((H - y - 90) / 31);
+    const lines = wrap2(ctx, item.Overview || "Kurzinhalt wird geladen \u2026", W2 - 80);
+    const max = Math.floor((H2 - y - 90) / 31);
     lines.slice(0, max).forEach((l, i) => {
       const last = i === max - 1 && lines.length > max;
       ctx.fillText(last ? `${l.replace(/\s*\S{0,3}$/, "")} \u2026` : l, 40, y + i * 26);
@@ -52025,9 +54651,9 @@ void main() {
     ctx.fillStyle = "rgba(255,255,255,0.55)";
     ctx.font = `bold 16px ${FONT}`;
     ctx.textAlign = "center";
-    ctx.fillText("VIDEOTHEK LENZ", W / 2, H - 44);
+    ctx.fillText("VIDEOTHEK LENZ", W2 / 2, H2 - 44);
     ctx.fillStyle = "rgba(255,255,255,0.8)";
-    for (let x = W / 2 - 60; x < W / 2 + 60; x += 4) ctx.fillRect(x, H - 38, 1 + x * 7 % 3, 12);
+    for (let x = W2 / 2 - 60; x < W2 / 2 + 60; x += 4) ctx.fillRect(x, H2 - 38, 1 + x * 7 % 3, 12);
   }
   var clip = (text, n) => {
     const t = String(text || "").replace(/\s+/g, " ").trim();
@@ -52751,7 +55377,7 @@ void main() {
   var SWING_DUR = 0.28;
   var THROW_DUR = 0.35;
   var CARRY_POS = [0.24, -0.2, -0.42];
-  var SIDE = { vhs: 14866621, dvd: 1916828, box: 13214247 };
+  var SIDE2 = { vhs: 14866621, dvd: 1916828, box: 13214247 };
   var SIZE = { vhs: [0.1, 0.19, 0.03], dvd: [0.12, 0.17, 0.02], box: [0.14, 0.19, 0.05] };
   var sin01 = (p) => Math.sin(Math.PI * Math.min(1, Math.max(0, p)));
   function createHands(camera) {
@@ -52798,9 +55424,9 @@ void main() {
       setCarried(spec) {
         clearCarried();
         if (!spec) return;
-        const media = SIDE[spec.media] ? spec.media : "dvd";
+        const media = SIDE2[spec.media] ? spec.media : "dvd";
         const [w, h2, d] = SIZE[media];
-        const side = new MeshBasicMaterial({ color: SIDE[media], depthTest: false, transparent: true });
+        const side = new MeshBasicMaterial({ color: SIDE2[media], depthTest: false, transparent: true });
         let tex = null;
         if (spec.art) {
           tex = new CanvasTexture(spec.art);
@@ -53491,11 +56117,11 @@ void main() {
     [{ w: 8, key: "space", label: "Leertaste" }, { w: 3, key: "enter", label: "Suchen" }]
   ];
   var isLetter = (c) => c !== "\xDF" && c.toLowerCase() !== c.toUpperCase();
-  function keyboardLayout(W, { shift = false } = {}) {
+  function keyboardLayout(W2, { shift = false } = {}) {
     const out = [];
     ROWS.forEach((row, r) => {
       const units = row.reduce((a, k) => a + k.w, 0);
-      const unit = (W - (row.length - 1) * KEY_GAP) / units;
+      const unit = (W2 - (row.length - 1) * KEY_GAP) / units;
       let x = 0;
       for (const k of row) {
         const w = k.w * unit;
@@ -53562,10 +56188,10 @@ void main() {
     }
     return out;
   }
-  function build(s, W, scroll, measure, shift, visCap) {
+  function build2(s, W2, scroll, measure, shift, visCap) {
     const ops = [];
     const hits = [];
-    const inner = W - PAD * 2;
+    const inner = W2 - PAD * 2;
     let y = PAD;
     let maxScroll = 0;
     let listVisible = 0;
@@ -53643,13 +56269,13 @@ void main() {
         const trackH = full - (arrows ? 2 * ARROW_H : 0);
         const thumbH = Math.max(40, trackH * (visible / rows.length));
         const thumbY = top + (trackH - thumbH) * (sc / maxScroll);
-        rect(W - 22, top, 8, trackH, COLORS2.fill, { r: 4 });
-        rect(W - 22, thumbY, 8, thumbH, COLORS2.yellow, { r: 4 });
+        rect(W2 - 22, top, 8, trackH, COLORS2.fill, { r: 4 });
+        rect(W2 - 22, thumbY, 8, thumbH, COLORS2.yellow, { r: 4 });
         if (arrows) {
           [["\u25B2", y + 4, -1], ["\u25BC", y + 4 + full - ARROW_H, 1]].forEach(([ch, ay, ref]) => {
-            rect(W - PAD, ay, PAD, ARROW_H, COLORS2.fill, { r: 8, key: `scroll:${ref}` });
-            text(W - PAD / 2, ay + 8, ch, 22, COLORS2.text, { align: "center" });
-            hits.push({ x: W - PAD, y: ay, w: PAD, h: ARROW_H, kind: "scroll", ref });
+            rect(W2 - PAD, ay, PAD, ARROW_H, COLORS2.fill, { r: 8, key: `scroll:${ref}` });
+            text(W2 - PAD / 2, ay + 8, ch, 22, COLORS2.text, { align: "center" });
+            hits.push({ x: W2 - PAD, y: ay, w: PAD, h: ARROW_H, kind: "scroll", ref });
           });
         }
       }
@@ -53738,13 +56364,13 @@ void main() {
     const height = Math.max(PAD * 2, y - GAP2 + PAD);
     return { ops, hits, height, maxScroll, listVisible };
   }
-  function layoutPanel(spec, W = 900, scroll = 0, measure = approx, opts = {}) {
+  function layoutPanel(spec, W2 = 900, scroll = 0, measure = approx, opts = {}) {
     const s = spec || {};
     const maxH = opts.maxH || MAX_H;
-    let L = build(s, W, scroll, measure, !!opts.shift, 0);
+    let L = build2(s, W2, scroll, measure, !!opts.shift, 0);
     if (L.height > maxH && L.listVisible > 1) {
       const over = Math.ceil((L.height - maxH) / ROW_H);
-      L = build(s, W, scroll, measure, !!opts.shift, Math.max(1, L.listVisible - over));
+      L = build2(s, W2, scroll, measure, !!opts.shift, Math.max(1, L.listVisible - over));
     }
     return L;
   }
@@ -53786,14 +56412,14 @@ void main() {
     if (r && g.roundRect) g.roundRect(x, y, w, h2, r);
     else g.rect(x, y, w, h2);
   }
-  function paint3(g, W, H, laid, hoverKey, cursorOn) {
-    g.clearRect(0, 0, W, H);
+  function paint3(g, W2, H2, laid, hoverKey, cursorOn) {
+    g.clearRect(0, 0, W2, H2);
     g.fillStyle = COLORS2.bg;
-    roundPath(g, 0, 0, W, H, 28);
+    roundPath(g, 0, 0, W2, H2, 28);
     g.fill();
     g.strokeStyle = COLORS2.border;
     g.lineWidth = 3;
-    roundPath(g, 1.5, 1.5, W - 3, H - 3, 28);
+    roundPath(g, 1.5, 1.5, W2 - 3, H2 - 3, 28);
     g.stroke();
     g.textBaseline = "top";
     for (const op of laid.ops) {
@@ -53822,7 +56448,7 @@ void main() {
     g.globalAlpha = 1;
   }
   var keyOf2 = (h2) => h2 ? h2.kind === "action" ? `action:${h2.ref.row}:${h2.ref.action}` : `${h2.kind}:${h2.ref}` : null;
-  var warn6 = (what, err) => {
+  var warn8 = (what, err) => {
     try {
       console.warn(`[LenzFlix Store3D] ${what}`, err);
     } catch {
@@ -53830,9 +56456,9 @@ void main() {
   };
   function openPanel2(spec, { anchor = "front", camera, scene, measure, clearance } = {}) {
     let cur = spec || {};
-    const W = Math.round((cur.width || 0.9) * PX_PER_M);
+    const W2 = Math.round((cur.width || 0.9) * PX_PER_M);
     const canvas = document.createElement("canvas");
-    canvas.width = W;
+    canvas.width = W2;
     canvas.height = 256;
     let g = null;
     try {
@@ -53859,21 +56485,21 @@ void main() {
     let scrollPx = 0;
     let hoverKey = null;
     let isOpen = true;
-    let H = 0;
+    let H2 = 0;
     let kbValue = null;
     let shift = false;
     let cursorOn = true;
     const effective = () => cur.input && kbValue != null ? { ...cur, input: { ...cur.input, value: kbValue } } : cur;
     function redraw() {
-      laid = layoutPanel(effective(), W, scrollPx, m, { shift });
+      laid = layoutPanel(effective(), W2, scrollPx, m, { shift });
       scrollPx = Math.max(0, Math.min(laid.maxScroll, scrollPx));
       const h2 = Math.min(MAX_H, Math.ceil(laid.height));
-      if (h2 !== H) {
-        const first = H === 0;
-        H = h2;
-        canvas.height = H;
+      if (h2 !== H2) {
+        const first = H2 === 0;
+        H2 = h2;
+        canvas.height = H2;
         mesh.geometry.dispose();
-        mesh.geometry = new PlaneGeometry(W / PX_PER_M, H / PX_PER_M);
+        mesh.geometry = new PlaneGeometry(W2 / PX_PER_M, H2 / PX_PER_M);
         if (!first) {
           tex.dispose();
           tex = makeTex();
@@ -53882,7 +56508,7 @@ void main() {
         }
       }
       if (g) {
-        paint3(g, W, H, laid, hoverKey, cursorOn);
+        paint3(g, W2, H2, laid, hoverKey, cursorOn);
         tex.needsUpdate = true;
       }
     }
@@ -53890,7 +56516,7 @@ void main() {
     const headFollow = !follow && anchor && anchor.follow && anchor.head ? anchor : null;
     const headRef = { x: 0, z: 0, fx: 0, fz: -1, set: false };
     const wantPos = new Vector3();
-    const tmp2 = new Vector3();
+    const tmp3 = new Vector3();
     const head = new Vector3();
     const dir = new Vector3();
     const readHead = () => {
@@ -53910,7 +56536,7 @@ void main() {
       if (host) host.add(mesh);
       if (!readHead()) return;
       const d = yawDir();
-      const minDist = W / PX_PER_M / 2 / Math.tan(MAX_HALF_ANGLE);
+      const minDist = W2 / PX_PER_M / 2 / Math.tan(MAX_HALF_ANGLE);
       if (anchor === "low") {
         const dist = Math.max(0.85, minDist);
         mesh.position.set(head.x + d.x * dist, head.y - 0.4, head.z + d.z * dist);
@@ -53935,12 +56561,12 @@ void main() {
     function headStep(dt, snap) {
       if (!headFollow || !readHead()) return;
       const d = yawDir();
-      let moved = !headRef.set;
-      if (!moved) {
+      let moved2 = !headRef.set;
+      if (!moved2) {
         const dot = Math.max(-1, Math.min(1, d.x * headRef.fx + d.z * headRef.fz));
-        moved = Math.acos(dot) > HEAD_TURN || Math.hypot(head.x - headRef.x, head.z - headRef.z) > HEAD_WALK;
+        moved2 = Math.acos(dot) > HEAD_TURN || Math.hypot(head.x - headRef.x, head.z - headRef.z) > HEAD_WALK;
       }
-      if (moved) {
+      if (moved2) {
         headRef.set = true;
         headRef.x = head.x;
         headRef.z = head.z;
@@ -53955,13 +56581,13 @@ void main() {
     }
     function followStep(dt, snap) {
       if (!follow) return;
-      follow.object.getWorldPosition(tmp2);
+      follow.object.getWorldPosition(tmp3);
       const o = follow.offset || {};
-      tmp2.x += o.x || 0;
-      tmp2.y += o.y || 0;
-      tmp2.z += o.z || 0;
-      if (snap) mesh.position.copy(tmp2);
-      else mesh.position.lerp(tmp2, 1 - Math.exp(-Math.max(0, dt) * 4));
+      tmp3.x += o.x || 0;
+      tmp3.y += o.y || 0;
+      tmp3.z += o.z || 0;
+      if (snap) mesh.position.copy(tmp3);
+      else mesh.position.lerp(tmp3, 1 - Math.exp(-Math.max(0, dt) * 4));
       if (readHead()) mesh.rotation.set(0, Math.atan2(head.x - mesh.position.x, head.z - mesh.position.z), 0);
     }
     function place2() {
@@ -54009,8 +56635,8 @@ void main() {
     };
     const hitAt = (uv) => {
       if (!uv || !laid) return null;
-      const px = uv.x * W;
-      const py = (1 - uv.y) * H;
+      const px = uv.x * W2;
+      const py = (1 - uv.y) * H2;
       for (let i = laid.hits.length - 1; i >= 0; i--) {
         const h2 = laid.hits[i];
         if (px >= h2.x && px <= h2.x + h2.w && py >= h2.y && py <= h2.y + h2.h) return h2.kind === "progress" ? { ...h2, frac: Math.max(0, Math.min(1, (px - h2.x) / h2.w)) } : h2;
@@ -54096,7 +56722,7 @@ void main() {
           } else if (h2.kind === "input") {
           } else return false;
         } catch (err) {
-          warn6("Panel", err);
+          warn8("Panel", err);
         }
         return true;
       },
@@ -54113,7 +56739,7 @@ void main() {
         try {
           if (cb) cb();
         } catch (err) {
-          warn6("Panel.onClose", err);
+          warn8("Panel.onClose", err);
         }
       }
     };
@@ -54799,9 +57425,9 @@ void main() {
           continue;
         }
         const { o, d } = this.rayOf(rec);
-        const moved = o.distanceToSquared(pt.o) > 16e-6 || 1 - d.dot(pt.d) > 15e-7;
+        const moved2 = o.distanceToSquared(pt.o) > 16e-6 || 1 - d.dot(pt.d) > 15e-7;
         const age = now - pt.at;
-        if (this.dirty || age >= IDLE_MS || moved && age >= PICK_MS) this.pick(rec, now);
+        if (this.dirty || age >= IDLE_MS || moved2 && age >= PICK_MS) this.pick(rec, now);
         this.render(rec);
         const tg = pt.target;
         if (tg && tg.kind === "panel" && scrollable(tg.panel) && rec.side) {
@@ -55497,27 +58123,27 @@ void main() {
   function drawStatus(canvas, { title = "", text = "", sub = "" } = {}) {
     const g = ctx2d(canvas);
     if (!g) return false;
-    const W = canvas.width;
-    const H = canvas.height;
+    const W2 = canvas.width;
+    const H2 = canvas.height;
     g.fillStyle = "#05060b";
-    g.fillRect(0, 0, W, H);
+    g.fillRect(0, 0, W2, H2);
     g.textAlign = "center";
     g.textBaseline = "middle";
     g.fillStyle = "#ffd23f";
-    g.font = `700 ${Math.round(H * 0.058)}px system-ui, "Segoe UI", Arial, sans-serif`;
-    g.fillText("VIDEOTHEK LENZ", W / 2, H * 0.2, W * 0.9);
+    g.font = `700 ${Math.round(H2 * 0.058)}px system-ui, "Segoe UI", Arial, sans-serif`;
+    g.fillText("VIDEOTHEK LENZ", W2 / 2, H2 * 0.2, W2 * 0.9);
     if (title) {
       g.fillStyle = "#aab4e8";
-      g.font = `600 ${Math.round(H * 0.06)}px system-ui, "Segoe UI", Arial, sans-serif`;
-      g.fillText(String(title).slice(0, 80), W / 2, H * 0.42, W * 0.9);
+      g.font = `600 ${Math.round(H2 * 0.06)}px system-ui, "Segoe UI", Arial, sans-serif`;
+      g.fillText(String(title).slice(0, 80), W2 / 2, H2 * 0.42, W2 * 0.9);
     }
     g.fillStyle = "#f4f6ff";
-    g.font = `700 ${Math.round(H * 0.095)}px system-ui, "Segoe UI", Arial, sans-serif`;
-    g.fillText(String(text), W / 2, H * 0.58, W * 0.92);
+    g.font = `700 ${Math.round(H2 * 0.095)}px system-ui, "Segoe UI", Arial, sans-serif`;
+    g.fillText(String(text), W2 / 2, H2 * 0.58, W2 * 0.92);
     if (sub) {
       g.fillStyle = "#aab4e8";
-      g.font = `500 ${Math.round(H * 0.048)}px system-ui, "Segoe UI", Arial, sans-serif`;
-      g.fillText(String(sub).slice(0, 90), W / 2, H * 0.74, W * 0.9);
+      g.font = `500 ${Math.round(H2 * 0.048)}px system-ui, "Segoe UI", Arial, sans-serif`;
+      g.fillText(String(sub).slice(0, 90), W2 / 2, H2 * 0.74, W2 * 0.9);
     }
     return true;
   }
@@ -56425,13 +59051,13 @@ void main() {
 
   // src/js/store3d/cinema/cinema.js
   var FAIL_HOLD_MS = 2600;
-  var warn7 = (...a) => {
+  var warn9 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
     }
   };
-  var clamp9 = (v, a, b) => Math.max(a, Math.min(b, v));
+  var clamp10 = (v, a, b) => Math.max(a, Math.min(b, v));
   var Cinema = class {
     constructor(app) {
       this.app = app;
@@ -56532,7 +59158,7 @@ void main() {
       this._resetRun();
       const f = this._fade();
       const run = () => this._build(this.gen);
-      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn7("Kino betreten", err));
+      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn9("Kino betreten", err));
       else run();
       return true;
     }
@@ -56556,7 +59182,7 @@ void main() {
         try {
           if (app.holdview && typeof app.holdview.close === "function") app.holdview.close(false);
         } catch (err) {
-          warn7("H\xFClle schlie\xDFen", err);
+          warn9("H\xFClle schlie\xDFen", err);
         }
         if (app.mods) app.mods.hook("onSuspend");
         this._duck(true);
@@ -56597,7 +59223,7 @@ void main() {
         }
         this.phase = "starting";
       } catch (err) {
-        warn7("Kino bauen", err);
+        warn9("Kino bauen", err);
         this.failCode = "B";
         this._selfLeave("fail", "B");
       }
@@ -56625,7 +59251,7 @@ void main() {
       } catch {
       }
       const floor = !this._xr || this._xr.floor !== false;
-      let off = floor ? clamp9(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
+      let off = floor ? clamp10(SEAT_EYE - head.y, -0.7, 0.3) : SEAT_EYE - head.y;
       if (!Number.isFinite(off)) off = 0;
       placeRig(eng.rig, { x: s.x, z: s.z, yaw: s.yaw }, head, { y: s.y + off });
       eng.rig.updateMatrixWorld(true);
@@ -56640,7 +59266,7 @@ void main() {
         if (x && typeof x.savePrefs === "function") x.savePrefs();
         else this.app.savePrefs();
       } catch (err) {
-        warn7("Platz speichern", err);
+        warn9("Platz speichern", err);
       }
       if (name === this.seat || !this.hall || this.phase === "entering" || this.phase === "leaving") {
         this.seat = name;
@@ -56748,7 +59374,7 @@ void main() {
       this.phase = "failed";
       this.failCode = code;
       this.marks.fail = Math.round(this.watch.startAt == null ? 0 : this.now - this.watch.startAt);
-      warn7("Kino-Start fehlgeschlagen", code);
+      warn9("Kino-Start fehlgeschlagen", code);
       const d = this._deps;
       const st = this.state || {};
       const txt = failToast(code);
@@ -56761,7 +59387,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn7("Stopp", err);
+          warn9("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS, () => this._selfLeave("fail", code));
@@ -56913,7 +59539,7 @@ void main() {
         if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(failToast(this.failCode), 3200);
         return true;
       }, (err) => {
-        warn7("Kino verlassen", err);
+        warn9("Kino verlassen", err);
         if (gen !== this.gen) return false;
         this._leavePromise = null;
         if (this._active) this._teardown();
@@ -56979,7 +59605,7 @@ void main() {
   };
 
   // src/js/store3d/xr/mode.js
-  var warn8 = (...a) => {
+  var warn10 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -57047,7 +59673,7 @@ void main() {
         const f = this.app.deps && this.app.deps.onXr;
         if (typeof f === "function") f(state);
       } catch (err) {
-        warn8("onXr", err);
+        warn10("onXr", err);
       }
     }
     /** Muss synchron aus einem Klick laufen. */
@@ -57061,7 +59687,7 @@ void main() {
         const cash = ctx && ctx.use("cashier");
         if (cash && typeof cash.unlockVoice === "function") cash.unlockVoice();
       } catch (err) {
-        warn8("Entsperren", err);
+        warn10("Entsperren", err);
       }
       Promise.resolve(p).then((ok) => {
         if (!ok && !this.presenting) this.releaseSources();
@@ -57361,7 +59987,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn8("exitThen", err);
+          warn10("exitThen", err);
         }
       }
     }
@@ -57380,7 +60006,7 @@ void main() {
       try {
         if (this.cinema && typeof this.cinema.onVisibility === "function") this.cinema.onVisibility(state);
       } catch (err) {
-        warn8("Kino-Sichtbarkeit", err);
+        warn10("Kino-Sichtbarkeit", err);
       }
     }
     // --- Schleife ---
@@ -57488,7 +60114,7 @@ void main() {
           try {
             h2.tick(dt);
           } catch (err) {
-            warn8("Panel", err);
+            warn10("Panel", err);
           }
         }
       }
@@ -57496,7 +60122,7 @@ void main() {
         try {
           b.update(dt);
         } catch (err) {
-          warn8("Blase", err);
+          warn10("Blase", err);
         }
       }
       if (this.vignette) this.vignette.update(dt, !!(app.opts.vr && app.opts.vr.vignette !== false) && !this.inCinema, this.speed, this.turnRate);
@@ -57598,7 +60224,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn8("exitThen", err);
+          warn10("exitThen", err);
         }
         return true;
       }
@@ -58093,8 +60719,8 @@ void main() {
 
   // src/js/store3d/cinema/palast.js
   var FAIL_HOLD_MS2 = 1800;
-  var GAP_MS = 2e3;
-  var warn9 = (...a) => {
+  var GAP_MS2 = 2e3;
+  var warn11 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -58105,7 +60731,7 @@ void main() {
       try {
         return o[name](...a);
       } catch (err) {
-        warn9(name, err);
+        warn11(name, err);
       }
     }
     return void 0;
@@ -58217,7 +60843,7 @@ void main() {
         try {
           d.onCinema2d({ active: this.active, full: this.active && this.full });
         } catch (err) {
-          warn9("onCinema2d", err);
+          warn11("onCinema2d", err);
         }
       }
     }
@@ -58447,7 +61073,7 @@ void main() {
           this.state = d.state() || {};
         }
       } catch (err) {
-        warn9("Palast-Kino bauen", err);
+        warn11("Palast-Kino bauen", err);
         this.leave("build", "B");
       }
     }
@@ -58594,7 +61220,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn9("Stopp", err);
+          warn11("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS2, () => this.leave("fail", code));
@@ -58657,7 +61283,7 @@ void main() {
     // ---------------------------------------------------------------- Schleife
     tick(dt, now) {
       if (!this.active || this.disposed) return;
-      if (this.lastNow != null && now - this.lastNow > GAP_MS) this.watch.shiftClock(now - this.lastNow);
+      if (this.lastNow != null && now - this.lastNow > GAP_MS2) this.watch.shiftClock(now - this.lastNow);
       this.lastNow = now;
       this.now = now;
       if (!this.screen) return;
@@ -58973,7 +61599,7 @@ void main() {
       }
       this.xr = new XrMode(this);
       this.cinema2d = new PalastCinema(this);
-      this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), getTouchScheme: () => this.touchScheme });
+      this.hud = createHud2(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), getTouchScheme: () => this.touchScheme });
       this.fs = createFullscreen({
         host,
         isTouch: this.touch,
@@ -59043,6 +61669,14 @@ void main() {
         getDiscover: () => {
           const d = this.mods && this.mods.ctx.use("discover");
           return d ? d.summary() : null;
+        },
+        getMp: () => {
+          const n = this.mods && this.mods.ctx.use("net");
+          return n && n.menu ? n.menu() : null;
+        },
+        renderMp: (el3) => {
+          const n = this.mods && this.mods.ctx.use("net");
+          if (n && n.renderMenu) n.renderMenu(el3);
         },
         getVoiceInfo: () => {
           const c = this.mods && this.mods.ctx.use("cashier");
@@ -59158,6 +61792,8 @@ void main() {
         onJump: () => this.doJump(),
         onHit: () => this.doHit("key"),
         onThrow: () => this.doThrow("key"),
+        onChat: () => this.doChat("key"),
+        onEmote: () => this.doEmote("key"),
         onCarry: () => this.holdview.carryOut(),
         onZoom: (z) => this.setZoom(z),
         getZoom: () => this.zoom,
@@ -59188,6 +61824,10 @@ void main() {
       this.mods.ctx.on("xr", (on) => this.onXrHold(on));
       await this.mods.init((f) => this.progress(0.86 + f * 0.05, "Module werden geladen"));
       if (this.disposed) return;
+      const mpNet = this.mods.ctx.use("net");
+      if (mpNet && mpNet.onChange) mpNet.onChange(() => {
+        if (this.pause) this.pause.refresh();
+      });
       const r = this.opts.restore;
       const city2 = this.mods.ctx.use("city");
       if (city2) city2.partition();
@@ -59441,6 +62081,13 @@ void main() {
       if (this.carried && this.hands) this.hands.throwAnim();
       else if (this.hands) this.hands.swing();
       return this.mods.action("throw", ev);
+    }
+    /** Chat (Enter) und Emote (T): nur im Laufmodus; true = ein Handler (Modul net) hat die Taste verbraucht, sonst bleibt sie unberührt (1.15-Verhalten). */
+    doChat(src = "key") {
+      return this.canAct() && this.mods.action("chat", this.actionEvent("chat", src));
+    }
+    doEmote(src = "key") {
+      return this.canAct() && this.mods.action("emote", this.actionEvent("emote", src));
     }
     /** Springen (Leertaste, Knopf). Rückgabe: Sprung ist sofort möglich. */
     doJump() {

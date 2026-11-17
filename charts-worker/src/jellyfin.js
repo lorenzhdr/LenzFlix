@@ -164,3 +164,34 @@ export async function resolveSeriesForUser(env, token, episodeIds) {
   }
   return map;
 }
+
+/**
+ * Eigene Id, Name und Admin-Recht aus /Users/Me (Mehrspieler-Ticket); getMe bleibt unverändert.
+ * false bei 401/403; wirft bei Netzwerkfehler, 5xx, Nicht-JSON und ungültiger Id.
+ * Fehlt Policy in der Antwort, Rückfall GET /Users/{uid}; ohne Ergebnis admin=false.
+ */
+export async function getMeInfo(env, token) {
+  const res = await fetch(`${base(env)}/Users/Me`, {
+    headers: { Authorization: auth(token) },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (res.status === 401 || res.status === 403) return false;
+  if (res.status !== 200) throw new Error(`users/me failed: HTTP ${res.status}`);
+  const json = await res.json(); // wirft bei HTML
+  const uid = normId(json?.Id);
+  if (!GUID_RE.test(uid)) throw new Error('users/me: invalid Id');
+  const name = typeof json?.Name === 'string' ? json.Name : '';
+  let policy = json?.Policy && typeof json.Policy === 'object' ? json.Policy : null;
+  if (!policy) {
+    try {
+      const r2 = await fetch(`${base(env)}/Users/${uid}`, {
+        headers: { Authorization: auth(token) },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (r2.status === 200) policy = (await r2.json())?.Policy ?? null;
+    } catch {
+      policy = null;
+    }
+  }
+  return { uid, name, admin: policy?.IsAdministrator === true };
+}

@@ -1,0 +1,718 @@
+{
+  "contract": "lfx-mp.1",
+  "note": "Besitzer W-R. c2s: rohe Client-Nachricht -> normalisiert (out) oder null (verworfen). Client-Builder muessen Eingaben erzeugen, die unveraendert (in == out) bestehen. s2c: Beispielframes des Servers (vom Test mp-room gegen den Reducer geprueft).",
+  "limits": {
+    "frame": {
+      "n": 12,
+      "per": 1000,
+      "burst": 20
+    },
+    "p": {
+      "n": 10,
+      "per": 1000,
+      "burst": 10
+    },
+    "ps": {
+      "n": 12,
+      "per": 1000,
+      "burst": 12
+    },
+    "pc": {
+      "n": 10,
+      "per": 1000,
+      "burst": 10,
+      "fail": "deny"
+    },
+    "rs": {
+      "n": 6,
+      "per": 1000,
+      "burst": 6
+    },
+    "m": {
+      "n": 5,
+      "per": 10000,
+      "burst": 5,
+      "fail": "rate"
+    },
+    "e": {
+      "n": 1,
+      "per": 1500,
+      "burst": 1
+    },
+    "pu": {
+      "n": 2,
+      "per": 1000,
+      "burst": 2
+    },
+    "kc": {
+      "n": 2,
+      "per": 1000,
+      "burst": 2
+    },
+    "kb": {
+      "n": 4,
+      "per": 1000,
+      "burst": 4
+    },
+    "ks": {
+      "n": 1,
+      "per": 1000,
+      "burst": 1
+    },
+    "kj": {
+      "n": 1,
+      "per": 1000,
+      "burst": 1
+    },
+    "kl": {
+      "n": 1,
+      "per": 1000,
+      "burst": 1
+    },
+    "f": {
+      "n": 2,
+      "per": 1000,
+      "burst": 2
+    },
+    "hd": {
+      "n": 2,
+      "per": 1000,
+      "burst": 2
+    },
+    "ck": {
+      "n": 2,
+      "per": 1000,
+      "burst": 2
+    },
+    "rn": {
+      "n": 1,
+      "per": 60000,
+      "burst": 1
+    },
+    "ki": {
+      "n": 1,
+      "per": 5000,
+      "burst": 1,
+      "fail": "perm"
+    }
+  },
+  "frames": [
+    {
+      "name": "leeres Array",
+      "text": "[]",
+      "result": "ok",
+      "count": 0
+    },
+    {
+      "name": "eine Nachricht",
+      "text": "[{\"t\":\"ck\",\"a\":1}]",
+      "result": "ok",
+      "count": 1
+    },
+    {
+      "name": "genau 2048 Zeichen",
+      "genLen": 2048,
+      "result": "ok",
+      "count": 0
+    },
+    {
+      "name": "2049 Zeichen",
+      "genLen": 2049,
+      "result": 4000
+    },
+    {
+      "name": "kein JSON",
+      "text": "hallo",
+      "result": 4000
+    },
+    {
+      "name": "Objekt statt Array",
+      "text": "{\"t\":\"ck\"}",
+      "result": 4000
+    },
+    {
+      "name": "Binaerframe",
+      "binary": true,
+      "result": 4000
+    },
+    {
+      "name": "mehr als 32 Eintraege",
+      "text": "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]",
+      "result": 4000
+    }
+  ],
+  "c2s": [
+    {
+      "name": "hi",
+      "in": {
+        "t": "hi",
+        "pv": 1,
+        "cap": [
+          "pres",
+          "chat",
+          "kino"
+        ],
+        "f": 3,
+        "cv": "1.16.0"
+      },
+      "out": {
+        "t": "hi",
+        "pv": 1,
+        "cap": [
+          "pres",
+          "chat",
+          "kino"
+        ],
+        "f": 3,
+        "cv": "1.16.0"
+      }
+    },
+    {
+      "name": "hi unbekannte und doppelte caps, Flags klemmen, cv kuerzen",
+      "in": {
+        "t": "hi",
+        "pv": 1,
+        "cap": [
+          "pres",
+          "zzz",
+          "pres",
+          "emote"
+        ],
+        "f": 99,
+        "cv": "1.16.0-sehr-lange-version"
+      },
+      "out": {
+        "t": "hi",
+        "pv": 1,
+        "cap": [
+          "pres",
+          "emote"
+        ],
+        "f": 15,
+        "cv": "1.16.0-sehr-lang"
+      }
+    },
+    {
+      "name": "hi ohne optionale Felder",
+      "in": {
+        "t": "hi",
+        "pv": 1
+      },
+      "out": {
+        "t": "hi",
+        "pv": 1,
+        "cap": [],
+        "f": 0,
+        "cv": ""
+      }
+    },
+    {
+      "name": "hi pv keine Ganzzahl",
+      "in": {
+        "t": "hi",
+        "pv": 1.5
+      },
+      "out": null
+    },
+    {
+      "name": "hi cap kein Array",
+      "in": {
+        "t": "hi",
+        "pv": 1,
+        "cap": "pres"
+      },
+      "out": null
+    },
+    {
+      "name": "p gueltig",
+      "in": {
+        "t": "p",
+        "q": [
+          1250,
+          0,
+          800,
+          -100,
+          20,
+          1,
+          0
+        ]
+      },
+      "out": {
+        "t": "p",
+        "q": [
+          1250,
+          0,
+          800,
+          -100,
+          20,
+          1,
+          0
+        ]
+      }
+    },
+    {
+      "name": "p klemmen",
+      "in": {
+        "t": "p",
+        "q": [
+          99999,
+          -9999,
+          99999,
+          400,
+          -300,
+          99,
+          9
+        ]
+      },
+      "out": {
+        "t": "p",
+        "q": [
+          5000,
+          -200,
+          5400,
+          315,
+          -157,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "p rundet",
+      "in": {
+        "t": "p",
+        "q": [
+          100.6,
+          0.4,
+          -100.5,
+          1.2,
+          1.5,
+          2,
+          2
+        ]
+      },
+      "out": {
+        "t": "p",
+        "q": [
+          101,
+          0,
+          -100,
+          1,
+          2,
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "name": "p Sitzen mit se",
+      "in": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          7,
+          1
+        ],
+        "se": [
+          3,
+          500
+        ]
+      },
+      "out": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          7,
+          1
+        ],
+        "se": [
+          3,
+          500
+        ]
+      }
+    },
+    {
+      "name": "p se klemmen",
+      "in": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          7,
+          1
+        ],
+        "se": [
+          9,
+          2000
+        ]
+      },
+      "out": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          7,
+          1
+        ],
+        "se": [
+          5,
+          1000
+        ]
+      }
+    },
+    {
+      "name": "p se bei Nicht-Sitzen entfernt",
+      "in": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          1,
+          1
+        ],
+        "se": [
+          3,
+          500
+        ]
+      },
+      "out": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "name": "p se kaputt",
+      "in": {
+        "t": "p",
+        "q": [
+          500,
+          0,
+          4000,
+          0,
+          0,
+          7,
+          1
+        ],
+        "se": [
+          3
+        ]
+      },
+      "out": null
+    },
+    {
+      "name": "p zu kurz",
+      "in": {
+        "t": "p",
+        "q": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      },
+      "out": null
+    },
+    {
+      "name": "p nicht endlich",
+      "in": {
+        "t": "p",
+        "q": [
+          1,
+          2,
+          "3",
+          4,
+          5,
+          0,
+          0
+        ]
+      },
+      "out": null
+    },
+    {
+      "name": "p null-Element",
+      "in": {
+        "t": "p",
+        "q": [
+          1,
+          2,
+          null,
+          4,
+          5,
+          0,
+          0
+        ]
+      },
+      "out": null
+    },
+    {
+      "name": "hd Huelle",
+      "in": {
+        "t": "hd",
+        "i": "0123456789abcdef0123456789abcdef"
+      },
+      "out": {
+        "t": "hd",
+        "i": "0123456789abcdef0123456789abcdef"
+      }
+    },
+    {
+      "name": "hd null",
+      "in": {
+        "t": "hd",
+        "i": null
+      },
+      "out": {
+        "t": "hd",
+        "i": null
+      }
+    },
+    {
+      "name": "hd falsche ID",
+      "in": {
+        "t": "hd",
+        "i": "ABC"
+      },
+      "out": null
+    },
+    {
+      "name": "hd Grossbuchstaben",
+      "in": {
+        "t": "hd",
+        "i": "0123456789ABCDEF0123456789ABCDEF"
+      },
+      "out": null
+    },
+    {
+      "name": "f",
+      "in": {
+        "t": "f",
+        "f": 5
+      },
+      "out": {
+        "t": "f",
+        "f": 5
+      }
+    },
+    {
+      "name": "f klemmen",
+      "in": {
+        "t": "f",
+        "f": -4
+      },
+      "out": {
+        "t": "f",
+        "f": 0
+      }
+    },
+    {
+      "name": "f Text",
+      "in": {
+        "t": "f",
+        "f": "5"
+      },
+      "out": null
+    },
+    {
+      "name": "ck",
+      "in": {
+        "t": "ck",
+        "a": 1234.5
+      },
+      "out": {
+        "t": "ck",
+        "a": 1234.5
+      }
+    },
+    {
+      "name": "ck ohne a",
+      "in": {
+        "t": "ck"
+      },
+      "out": null
+    },
+    {
+      "name": "rn",
+      "in": {
+        "t": "rn",
+        "tk": "abc-_.def-_"
+      },
+      "out": {
+        "t": "rn",
+        "tk": "abc-_.def-_"
+      }
+    },
+    {
+      "name": "rn ohne Punkt",
+      "in": {
+        "t": "rn",
+        "tk": "abcdef"
+      },
+      "out": null
+    },
+    {
+      "name": "rn Sonderzeichen",
+      "in": {
+        "t": "rn",
+        "tk": "ab c.def"
+      },
+      "out": null
+    }
+  ],
+  "s2c": {
+    "wl_first": {
+      "t": "wl",
+      "pv": 1,
+      "c": 1,
+      "k": "aaaaaaaaaaaa",
+      "s": 1700000000000,
+      "ad": 0,
+      "cap": [
+        "pres"
+      ],
+      "cf": {
+        "pr": 8,
+        "ph": 8
+      },
+      "peers": []
+    },
+    "wl_second": {
+      "t": "wl",
+      "pv": 1,
+      "c": 2,
+      "k": "bbbbbbbbbbbb",
+      "s": 1700000000350,
+      "ad": 1,
+      "cap": [
+        "pres"
+      ],
+      "cf": {
+        "pr": 8,
+        "ph": 8
+      },
+      "peers": [
+        {
+          "c": 1,
+          "k": "aaaaaaaaaaaa",
+          "n": "Anna",
+          "f": 3,
+          "j": 1700000000000,
+          "q": [
+            1250,
+            0,
+            800,
+            -100,
+            20,
+            1,
+            0
+          ],
+          "h": "0123456789abcdef0123456789abcdef"
+        }
+      ]
+    },
+    "b_join": {
+      "t": "b",
+      "s": 1700000000350,
+      "ev": [
+        {
+          "t": "j",
+          "c": 2,
+          "k": "bbbbbbbbbbbb",
+          "n": "Ben",
+          "f": 1,
+          "j": 1700000000350,
+          "ad": 1
+        }
+      ]
+    },
+    "b_pose": {
+      "t": "b",
+      "s": 1700000000500,
+      "p": [
+        [
+          2,
+          500,
+          0,
+          4000,
+          0,
+          0,
+          7,
+          1,
+          0,
+          [
+            3,
+            500
+          ]
+        ]
+      ]
+    },
+    "ck": {
+      "t": "ck",
+      "a": 1234.5,
+      "s": 1700000000510
+    },
+    "b_pf": {
+      "t": "b",
+      "s": 1700000000520,
+      "ev": [
+        {
+          "t": "pf",
+          "c": 1,
+          "f": 2,
+          "n": "",
+          "h": "0123456789abcdef0123456789abcdef"
+        }
+      ]
+    },
+    "x_er_cap": {
+      "t": "x",
+      "ev": [
+        {
+          "t": "er",
+          "c": "cap",
+          "y": "m"
+        }
+      ]
+    },
+    "b_leave": {
+      "t": "b",
+      "s": 1700000000540,
+      "ev": [
+        {
+          "t": "l",
+          "c": 2
+        }
+      ]
+    },
+    "bye_hello": {
+      "t": "bye",
+      "c": "hello"
+    }
+  }
+}

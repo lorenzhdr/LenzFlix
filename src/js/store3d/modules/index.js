@@ -50,6 +50,8 @@ import kiosk from './kiosk.js';
 import palast from './palast.js';
 // --- Welle 2 discover: imports ---
 import discover from './discover.js';
+// --- Mehrspieler (1.16): imports ---
+import net from './net.js';
 
 export const MODULES = [
   // --- M4 Atmosphäre (zuerst: Sound-Provider, Intro) ---
@@ -80,4 +82,6 @@ export const MODULES = [
   showcase,
   // --- Welle 2 discover (nach city/daytime: braucht Dachgruppe und Wetter) ---
   discover,
+  // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
+  net,
 ];

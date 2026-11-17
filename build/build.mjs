@@ -74,6 +74,10 @@ function checkMainBundle() {
   if (code.includes('__LFX_TVMODE_ENGINE__')) {
     throw new Error('dist/lenzflix.min.js enthält die TV-Modus-Engine – sie darf nur lazy (lenztvmode.min.js) geladen werden');
   }
+  // Mehrspieler (docs/mp-api.md 11.1): WebSocket-Code gehört ausschließlich ins 3D-Bundle.
+  if (/new WebSocket|lfx-mp\.|\bthree\b/.test(code)) {
+    throw new Error('dist/lenzflix.min.js enthält WebSocket-/Mehrspieler-Netzcode oder three – beides gehört nur ins lazy 3D-Bundle');
+  }
   if (code.length > MAIN_MIN_BUDGET) console.warn(`WARNUNG: lenzflix.min.js ist ${code.length} B (Budget ${MAIN_MIN_BUDGET} B)`);
 }
 
@@ -89,9 +93,14 @@ function checkTvModeBundle() {
 
 // Soft-Budget des 3D-Bundles (VIDEOTHEK LENZ, lazy): nur eine Warnung, kein Abbruch.
 // 1.15.0: Open World (Stadt, LENZ PALAST, Richard, Physik, Figuren, Autos, Entdeckungen) → 1,16 MB (vorher ca. 0,90 MB); Richtwert 1,25 MB.
-const STORE_MIN_BUDGET = 1250 * 1000;
+// 1.16.0: Mehrspieler (Netz, Fremdfiguren, Chat) → Richtwert 1,35 MB (vom Nutzer freigegeben).
+const STORE_MIN_BUDGET = 1350 * 1000;
 function checkStoreBundle() {
   const code = readFileSync(resolve(dist, 'lenzstore.min.js'), 'utf8');
+  // Das Jellyfin-Token erreicht das 3D-Bundle nie; nur das Ticket (docs/mp-api.md 11.1).
+  if (/X-Emby-Token|accessToken|api_key|MediaBrowser Token/.test(code)) {
+    throw new Error('dist/lenzstore.min.js enthält Token-Zugriffe (X-Emby-Token/accessToken/api_key) – das Jellyfin-Token darf nie ins 3D-Bundle');
+  }
   if (code.length > STORE_MIN_BUDGET) console.warn(`WARNUNG: lenzstore.min.js ist ${code.length} B (Budget ${STORE_MIN_BUDGET} B)`);
 }
 

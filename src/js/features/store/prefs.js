@@ -98,6 +98,25 @@ export function getVr() {
   return { turn: getVrTurn(), vignette: getVrVignette(), height: getVrHeight(), quality: getVrQuality(), seat: getVrSeat() };
 }
 
+const MP_KEY = /^[0-9a-f]{12}$/;
+/** Mehrspieler-Vorlieben: on/name/chat Standard an (nur „0“ schaltet ab), film Standard aus (nur „1“ schaltet an), mute = Pseudonyme (höchstens 50), hint = Hinweis gezeigt. */
+export function getMp() {
+  const on = (n) => read('localStorage', storageKey(n)) !== '0';
+  let mute = [];
+  try {
+    const m = JSON.parse(read('localStorage', storageKey('mpMute')) || '[]');
+    if (Array.isArray(m)) mute = m.filter((k) => typeof k === 'string' && MP_KEY.test(k)).slice(0, 50);
+  } catch { /* defekt: leer */ }
+  return { on: on('mpOn'), name: on('mpName'), film: read('localStorage', storageKey('mpFilm')) === '1', chat: on('mpChat'), mute, hint: read('localStorage', storageKey('mpHint')) === '1' };
+}
+
+function saveMp(m) {
+  for (const k of ['on', 'name', 'film', 'chat', 'hint']) {
+    if (typeof m[k] === 'boolean') write('localStorage', storageKey(`mp${k[0].toUpperCase()}${k.slice(1)}`), m[k] ? '1' : '0');
+  }
+  if (Array.isArray(m.mute)) write('localStorage', storageKey('mpMute'), JSON.stringify([...new Set(m.mute.filter((k) => typeof k === 'string' && MP_KEY.test(k)))].slice(0, 50)));
+}
+
 /** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl? (nur zusammen mit touchControlChosen: true, sonst ignoriert), touchControlChosen?, holdInvertY?/holdInvertX?/lookFlipY?/lookFlipX? (bool), touchSens? ('low'|'normal'|'high'), touchRegrip? ('off'|'short'|'long'), vr? { turn, vignette, height, quality, seat } } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
@@ -115,6 +134,7 @@ export function savePrefs(p) {
   if (TOUCH_SENS.includes(p.touchSens)) write('localStorage', storageKey('touchSens'), p.touchSens);
   if (TOUCH_REGRIPS.includes(p.touchRegrip)) write('localStorage', storageKey('touchRegrip'), p.touchRegrip);
   if (typeof p.bigCovers === 'boolean') write('localStorage', storageKey('bigCovers'), p.bigCovers ? '1' : '0');
+  if (p.mp && typeof p.mp === 'object') saveMp(p.mp);
   const vr = p.vr;
   if (vr && typeof vr === 'object') {
     if (VR_TURNS.includes(vr.turn)) write('localStorage', storageKey('vrTurn'), vr.turn);

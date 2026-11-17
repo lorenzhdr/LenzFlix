@@ -19,6 +19,8 @@ import { fatalText } from '../tvdata/deps.js';
 import { closeProfileMenu, hudButton, profileButton, toggleProfileMenu, wordmark } from './hud.js';
 import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js';
 import * as prefs from './prefs.js';
+import { createTicket } from './mp.js';
+import { VERSION } from '../../core/version.js';
 import { createCinemaBridge } from './cinema-bridge.js';
 import { parkStage, unparkStage } from './stage-park.js';
 import { mountBackButton } from './palast-back.js';
@@ -263,9 +265,11 @@ async function userName() {
 function buildDeps(catalog, name, onFatal, onBigCovers) {
   const ret = (f) => (...a) => { try { return f(...a); } catch (e) { console.warn('[LenzFlix] store dep', e && e.message); return undefined; } };
   const items = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
+  const uid = api.getUserId();
   return {
     catalog,
     user: { name },
+    ...(uid ? { mp: { uid, cv: VERSION, prefs: () => prefs.getMp(), ticket: createTicket(uid) } } : {}),
     imageUrl: (id, o = {}) => api.imageUrlFor(id, { ...o, scale: false }),
     getItem: (id) => api.getItem(id),
     getSeasons: (seriesId) => api.getSeasons(seriesId).then(items),

@@ -98,6 +98,7 @@ export function createPause(host, a) {
   const f = mk('', () => { a.onFps(!a.getFps()); refresh(); });
   const bc = mk('', () => { a.onBigCovers(!a.getBigCovers()); refresh(); });
   const tc = mk('Touch-Steuerung …', () => openTouch());
+  const mpb = mk('Mehrspieler …', () => openMp());
   const fs = mk('', () => { if (a.onFullscreen) a.onFullscreen(); refresh(); }, 'lfx-store-act--fs');
   mk('Design wechseln', () => a.onTheme());
   mk('Menü', (b) => a.onMenu(b));
@@ -199,8 +200,39 @@ export function createPause(host, a) {
   dpBack.addEventListener('click', (e) => { e.stopPropagation(); closeDiscover(); });
   dp.addEventListener('click', (e) => { if (e.target === dp) { e.stopPropagation(); closeDiscover(); } });
 
+  // --- Mehrspieler (Panel über dem Pause-Menü; Inhalt liefert a.renderMp(el), Eintrag nur wenn a.getMp() etwas liefert) ---
+  const mpp = el('div', 'lfx-store-voicepick lfx-store-mppick');
+  mpp.hidden = true;
+  const mppPanel = el('div', 'lfx-store-voicepick-panel');
+  mppPanel.setAttribute('role', 'dialog');
+  mppPanel.setAttribute('aria-label', 'Mehrspieler');
+  mppPanel.setAttribute('aria-modal', 'true');
+  const mppTitle = el('div', 'lfx-store-pause-title', 'Mehrspieler');
+  const mppBody = el('div', 'lfx-store-mpbody');
+  const mppBack = el('button', 'lfx-store-act lfx-store-act--primary', 'Zurück');
+  mppBack.type = 'button';
+  mppPanel.append(mppTitle, mppBody, mppBack);
+  mpp.appendChild(mppPanel);
+  const mpNow = () => { try { return (a.getMp && a.getMp()) || null; } catch { return null; } };
+  function renderMp() { try { if (a.renderMp) a.renderMp(mppBody); } catch { /* egal */ } }
+  function openMp() {
+    renderMp();
+    mpp.hidden = false;
+    syncInert();
+    const first = mppBody.querySelector('button:not([disabled])') || mppBack;
+    try { first.focus({ preventScroll: true }); } catch { /* egal */ }
+  }
+  function closeMp() {
+    if (mpp.hidden) return;
+    mpp.hidden = true;
+    syncInert();
+    try { mpb.focus({ preventScroll: true }); } catch { /* egal */ }
+  }
+  mppBack.addEventListener('click', (e) => { e.stopPropagation(); closeMp(); });
+  mpp.addEventListener('click', (e) => { if (e.target === mpp) { e.stopPropagation(); closeMp(); } });
+
   /** Das Pause-Panel ist bei offenem Unterpanel gesperrt (kein Tab/Lesen dahinter). */
-  const syncInert = () => { if (pick.hidden && tp.hidden && dp.hidden) panel.removeAttribute('inert'); else panel.setAttribute('inert', ''); };
+  const syncInert = () => { if (pick.hidden && tp.hidden && dp.hidden && mpp.hidden) panel.removeAttribute('inert'); else panel.setAttribute('inert', ''); };
   function openPick() {
     renderPick();
     pick.hidden = false;
@@ -301,6 +333,10 @@ export function createPause(host, a) {
     f.textContent = `FPS-Anzeige: ${a.getFps() ? 'An' : 'Aus'}`;
     bc.textContent = `Hüllen: ${a.getBigCovers() ? 'Groß' : 'Normal'}`;
     tc.hidden = !a.onTouchControl && !a.onTouchTune;
+    const mpm = mpNow();
+    mpb.hidden = !mpm;
+    if (mpm && mpm.label) mpb.textContent = mpm.label;
+    if (!mpp.hidden) { if (mpm) renderMp(); else closeMp(); }
     if (!tp.hidden) refreshTouch();
     const pr = prefsNow();
     const wantOnline = !!pr.online;
@@ -320,11 +356,12 @@ export function createPause(host, a) {
   root.appendChild(pick);
   root.appendChild(tp);
   root.appendChild(dp);
+  root.appendChild(mpp);
   root.addEventListener('click', (e) => { if (e.target === root) a.onResume(); });
   // Tab kreist im obersten Panel (Pause, Stimme oder Touch-Steuerung)
   root.addEventListener('keydown', (e) => {
     if (e.key !== 'Tab') return;
-    const layer = !dp.hidden ? dp : !tp.hidden ? tp : !pick.hidden ? pick : panel;
+    const layer = !mpp.hidden ? mpp : !dp.hidden ? dp : !tp.hidden ? tp : !pick.hidden ? pick : panel;
     const list = [...layer.querySelectorAll('button, [tabindex="0"]')].filter((b) => !b.disabled && !b.closest('[hidden]'));
     if (!list.length) return;
     const i = list.indexOf(document.activeElement);
@@ -340,14 +377,15 @@ export function createPause(host, a) {
   return {
     root,
     get visible() { return !root.hidden; },
-    get pickOpen() { return !pick.hidden || !tp.hidden || !dp.hidden; },
+    get pickOpen() { return !pick.hidden || !tp.hidden || !dp.hidden || !mpp.hidden; },
     get touchOpen() { return !tp.hidden; },
-    closePick() { closePick(); closeTouch(); closeDiscover(); },
+    closePick() { closePick(); closeTouch(); closeDiscover(); closeMp(); },
     show() {
       stopDiag();
       pick.hidden = true;
       tp.hidden = true;
       dp.hidden = true;
+      mpp.hidden = true;
       syncInert();
       refresh();
       focusBack = document.activeElement;
@@ -361,6 +399,7 @@ export function createPause(host, a) {
       pick.hidden = true;
       tp.hidden = true;
       dp.hidden = true;
+      mpp.hidden = true;
       if (focusBack && typeof focusBack.focus === 'function') { try { focusBack.focus({ preventScroll: true }); } catch { /* egal */ } }
       focusBack = null;
     },

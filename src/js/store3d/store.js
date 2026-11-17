@@ -142,6 +142,8 @@ export class StoreApp {
       getFps: () => this.showFps,
       getBigCovers: () => this.bigCovers,
       getDiscover: () => { const d = this.mods && this.mods.ctx.use('discover'); return d ? d.summary() : null; },
+      getMp: () => { const n = this.mods && this.mods.ctx.use('net'); return n && n.menu ? n.menu() : null; },
+      renderMp: (el) => { const n = this.mods && this.mods.ctx.use('net'); if (n && n.renderMenu) n.renderMenu(el); },
       getVoiceInfo: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voiceInfo ? c.voiceInfo() : null; },
       onFullscreen: () => this.fs.toggle(),
       getFullscreen: () => this.fs.isOn(),
@@ -233,6 +235,8 @@ export class StoreApp {
       onJump: () => this.doJump(),
       onHit: () => this.doHit('key'),
       onThrow: () => this.doThrow('key'),
+      onChat: () => this.doChat('key'),
+      onEmote: () => this.doEmote('key'),
       onCarry: () => this.holdview.carryOut(),
       onZoom: (z) => this.setZoom(z),
       getZoom: () => this.zoom,
@@ -251,6 +255,8 @@ export class StoreApp {
     this.mods.ctx.on('xr', (on) => this.onXrHold(on));
     await this.mods.init((f) => this.progress(0.86 + f * 0.05, 'Module werden geladen'));
     if (this.disposed) return;
+    const mpNet = this.mods.ctx.use('net'); // Mehrspieler: Status-/Schalteränderung baut das Pause-Menü neu (Provider endet mit dem Modul)
+    if (mpNet && mpNet.onChange) mpNet.onChange(() => { if (this.pause) this.pause.refresh(); });
     // Startposition / Wiederherstellung
     const r = this.opts.restore;
     const city = this.mods.ctx.use('city');
@@ -496,6 +502,10 @@ export class StoreApp {
     else if (this.hands) this.hands.swing();
     return this.mods.action('throw', ev);
   }
+
+  /** Chat (Enter) und Emote (T): nur im Laufmodus; true = ein Handler (Modul net) hat die Taste verbraucht, sonst bleibt sie unberührt (1.15-Verhalten). */
+  doChat(src = 'key') { return this.canAct() && this.mods.action('chat', this.actionEvent('chat', src)); }
+  doEmote(src = 'key') { return this.canAct() && this.mods.action('emote', this.actionEvent('emote', src)); }
 
   /** Springen (Leertaste, Knopf). Rückgabe: Sprung ist sofort möglich. */
   doJump() {

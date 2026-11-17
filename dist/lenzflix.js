@@ -22303,6 +22303,23 @@
   function getVr() {
     return { turn: getVrTurn(), vignette: getVrVignette(), height: getVrHeight(), quality: getVrQuality(), seat: getVrSeat() };
   }
+  var MP_KEY = /^[0-9a-f]{12}$/;
+  function getMp() {
+    const on = (n) => read3("localStorage", storageKey6(n)) !== "0";
+    let mute = [];
+    try {
+      const m = JSON.parse(read3("localStorage", storageKey6("mpMute")) || "[]");
+      if (Array.isArray(m)) mute = m.filter((k) => typeof k === "string" && MP_KEY.test(k)).slice(0, 50);
+    } catch {
+    }
+    return { on: on("mpOn"), name: on("mpName"), film: read3("localStorage", storageKey6("mpFilm")) === "1", chat: on("mpChat"), mute, hint: read3("localStorage", storageKey6("mpHint")) === "1" };
+  }
+  function saveMp(m) {
+    for (const k of ["on", "name", "film", "chat", "hint"]) {
+      if (typeof m[k] === "boolean") write2("localStorage", storageKey6(`mp${k[0].toUpperCase()}${k.slice(1)}`), m[k] ? "1" : "0");
+    }
+    if (Array.isArray(m.mute)) write2("localStorage", storageKey6("mpMute"), JSON.stringify([...new Set(m.mute.filter((k) => typeof k === "string" && MP_KEY.test(k)))].slice(0, 50)));
+  }
   function savePrefs2(p) {
     if (!p) return;
     if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey6("quality"), p.quality);
@@ -22319,6 +22336,7 @@
     if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey6("touchSens"), p.touchSens);
     if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey6("touchRegrip"), p.touchRegrip);
     if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey6("bigCovers"), p.bigCovers ? "1" : "0");
+    if (p.mp && typeof p.mp === "object") saveMp(p.mp);
     const vr = p.vr;
     if (vr && typeof vr === "object") {
       if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey6("vrTurn"), vr.turn);
@@ -22343,6 +22361,50 @@
   function saveState(state24) {
     if (!state24 || typeof state24 !== "object") return;
     write2("sessionStorage", SESSION_STATE, JSON.stringify(state24));
+  }
+
+  // src/js/features/store/mp.js
+  var TIMEOUT_MS2 = 8e3;
+  function createTicket(uid) {
+    let pending2 = null;
+    async function run() {
+      const base = getChartsUrl();
+      if (!base) return { ok: false, why: "nourl" };
+      const a = getAuth();
+      if (!a.token || a.userId !== uid) return { ok: false, why: "user" };
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return { ok: false, why: "net" };
+      const ctrl = typeof AbortController === "function" ? new AbortController() : null;
+      const timer2 = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS2) : null;
+      try {
+        const res = await fetch(`${base}/mp/ticket`, {
+          headers: { "X-Emby-Token": a.token },
+          credentials: "omit",
+          cache: "no-store",
+          signal: ctrl ? ctrl.signal : void 0
+        });
+        const st = res.status;
+        if (st === 404) return { ok: false, why: "gone" };
+        if (st === 503) return { ok: false, why: "off" };
+        if (st === 401) return { ok: false, why: "auth" };
+        if (st === 429) return { ok: false, why: "rate" };
+        if (!res.ok) return { ok: false, why: st >= 500 ? "net" : "bad" };
+        const d = await res.json();
+        if (!d || typeof d.tk !== "string" || !d.tk || d.url !== "/mp") return { ok: false, why: "bad" };
+        return { ok: true, tk: d.tk, url: `${base.replace(/^https:/i, "wss:")}/mp`, exp: d.exp, pv: Array.isArray(d.pv) ? d.pv : [1], s: d.s };
+      } catch (e) {
+        if (e && e.name === "AbortError") return { ok: false, why: "net" };
+        if (e instanceof SyntaxError) return { ok: false, why: "bad" };
+        return { ok: false, why: e instanceof TypeError ? "blocked" : "net" };
+      } finally {
+        if (timer2) clearTimeout(timer2);
+      }
+    }
+    return () => {
+      if (!pending2) pending2 = run().finally(() => {
+        pending2 = null;
+      });
+      return pending2;
+    };
   }
 
   // src/js/features/store/cinema-bridge.js
@@ -23036,9 +23098,11 @@
       }
     };
     const items = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
+    const uid = getUserId();
     return {
       catalog,
       user: { name },
+      ...uid ? { mp: { uid, cv: VERSION, prefs: () => getMp(), ticket: createTicket(uid) } } : {},
       imageUrl: (id, o = {}) => imageUrlFor(id, { ...o, scale: false }),
       getItem: (id) => getItem(id),
       getSeasons: (seriesId) => getSeasons(seriesId).then(items),
