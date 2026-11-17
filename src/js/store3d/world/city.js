@@ -191,6 +191,9 @@ export function buildCity(store) {
     seatBlock: { x0: px0 + 2, x1: px1 - 2, z0: sz + 7.0, z1: sz + 13.6, rows: 6, pitch: 1.1, rise: 0.2 },
     canopy: { x0: W / 2 - 4.5, x1: W / 2 + 4.5, z0: sz - 1.7, z1: sz, y: 3.0 },
   };
+  // Schaukasten-Anker an der Außenwand (Mitte x,y,z; w,h; yaw PI = zur Straße), Plakate hängt das Paket Palast ein
+  palast.posterSlots = [-6.4, -3.6, 3.6, 6.4].map((o, i) => ({ id: `poster${i}`, x: Math.round((W / 2 + o) * 100) / 100, y: 1.9, z: sz - 0.05, w: 1.6, h: 2.2, yaw: PI }));
+  palast.sign = { x: W / 2, y: 5.6, w: Math.min(PW - 2, 9) }; // Neonschild (gleiche Werte wie signs.palast)
   col('palastFrontL', 'wall', px0, sz, palast.doorX0, sz + wt);
   col('palastFrontR', 'wall', palast.doorX1, sz, px1, sz + wt);
   col('palastSideW', 'wall', px0, sz, px0 + wt, pz1);
@@ -215,8 +218,12 @@ export function buildCity(store) {
 
   // --- Kiosk (Ecke Ost) ---
   const kiosk = { hut: { x0: W + 8.8, z0: D - 1.9, x1: W + 11.2, z1: D - 0.1, h: 2.6 }, counter: { x0: W + 9.0, z0: D - 0.1, x1: W + 11.0, z1: D + 0.2, h: 1.05 } };
+  kiosk.vendor = { x: W + 10, z: D - 0.95, yaw: PI }; // Anker für die Verkäuferin (steht im Häuschen, blickt zur Straße)
+  kiosk.awning = { x0: W + 8.7, x1: W + 11.3, z0: D - 0.1, z1: D + 1.5, y0: 2.45, y1: 2.75 };
+  kiosk.table = { x0: W + 8.9, z0: D + 1.8, x1: W + 9.4, z1: D + 2.3, h: 1.1 };
   col('kioskHut', 'hut', kiosk.hut.x0, kiosk.hut.z0, kiosk.hut.x1, kiosk.hut.z1, { y1: kiosk.hut.h, top: false });
   col('kioskCounter', 'kioskcounter', kiosk.counter.x0, kiosk.counter.z0, kiosk.counter.x1, kiosk.counter.z1, { y1: kiosk.counter.h });
+  col('kioskTable', 'stehtisch', kiosk.table.x0, kiosk.table.z0, kiosk.table.x1, kiosk.table.z1, { y1: kiosk.table.h, top: false });
 
   // --- Feuertreppe (alle Maße relativ zu fx), Dach ---
   const L1 = col('escapeL1', 'escape', fx - 1.1, -1.62, fx + 1.1, -T, { y1: 1.65 });
@@ -247,6 +254,23 @@ export function buildCity(store) {
   const bx0 = Math.round(W * 0.9 * 100) / 100;
   col('yardBin1', 'bin', bx0, -3.3, bx0 + 0.7, -2.6, { y1: 1.0 });
   col('yardBin2', 'bin', bx0, -2.1, bx0 + 0.7, -1.4, { y1: 1.0 });
+  // Basketballkorb (Mast + Brett + Ring statisch von hier, Treffer-Logik Paket physics), Paletten, Wäscheleine, Graffiti-Wand
+  const hx = Math.round((W + 7.7) * 100) / 100;
+  const hoop = { x: Math.round((W + 6.45) * 100) / 100, y: 3.05, z: -5.0, yaw: -PI / 2, mast: { x: hx, z: -5.0 }, board: { x: Math.round((W + 6.95) * 100) / 100, y: 3.35, w: 1.8, h: 1.05 }, ringR: 0.23 };
+  col('hoopMast', 'hoopmast', hx - 0.1, -5.1, hx + 0.1, -4.9, { y1: 3.9, top: false });
+  col('palletA', 'pallet', -3.0, -7.6, -1.8, -6.5, { y1: 0.28 });
+  col('palletB', 'pallet', -3.0, -6.4, -1.8, -5.3, { y1: 0.28 });
+  const laundry = { x0: Math.round(W * 35) / 100, x1: Math.round(W * 78) / 100, z: -3.9, y: 2.25 };
+  col('laundryPostA', 'laundrypost', laundry.x0 - 0.05, laundry.z - 0.05, laundry.x0 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
+  col('laundryPostB', 'laundrypost', laundry.x1 - 0.05, laundry.z - 0.05, laundry.x1 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
+  const graffiti = { id: 'graffiti', x: 0.8, y: 1.6, z: -11.0, w: 3.0, h: 2.2, yaw: 0 }; // leere Wandfläche für das Paket discover
+  // Dach: Lüftungskästen, Antenne (Hindernisse, nicht besteigbar)
+  const roofProps = [
+    { id: 'vent1', kind: 'vent', x: Math.round(W * 75) / 100, z: Math.round(D * 55) / 100, w: 0.9, d: 0.7, h: 0.8 },
+    { id: 'vent2', kind: 'vent', x: Math.round(W * 62) / 100, z: Math.round(D * 82) / 100, w: 0.7, d: 0.7, h: 0.6 },
+    { id: 'mast', kind: 'mast', x: Math.round(W * 20) / 100, z: Math.round(D * 75) / 100, w: 0.16, d: 0.16, h: 2.6 },
+  ];
+  for (const r of roofProps) col(`roof_${r.id}`, 'roofprop', r.x - r.w / 2, r.z - r.d / 2, r.x + r.w / 2, r.z + r.d / 2, { y0: ROOF_Y, y1: ROOF_Y + r.h, top: false });
   // Gasse
   col('barrel1', 'barrel', -3.3, D - 7.4, -2.6, D - 6.7, { y1: 1.05 });
   col('barrel2', 'barrel', -3.3, D - 5.9, -2.6, D - 5.2, { y1: 1.05 });
@@ -264,6 +288,11 @@ export function buildCity(store) {
   fix('hydrant', 'hydrant', W / 2 - 9.0, D + 2.2, W / 2 - 8.75, D + 2.45, { y1: 0.8, top: false });
   fix('binN', 'bin', W / 2 - 4.0, D + 0.3, W / 2 - 3.6, D + 0.7, { y1: 0.95 });
   fix('binS', 'bin', px1 + 3.0, D + 9.9, px1 + 3.4, D + 10.3, { y1: 0.95 });
+  const lfx = Math.round((px1 + 5.5) * 100) / 100;
+  const litfass = { x: lfx, z: D + 10.3, r: 0.35, h: 2.7, slot: { x: lfx, y: 1.5, z: D + 10.3, r: 0.37, h: 1.6 } }; // Plakatfläche als Anker (Mantel um die Säule)
+  fix('litfass', 'litfass', lfx - 0.35, litfass.z - 0.35, lfx + 0.35, litfass.z + 0.35, { y1: litfass.h, top: false });
+  const bikeX = Math.round((W / 2 - 12) * 100) / 100;
+  fix('bikerack', 'bikerack', bikeX - 0.8, D + 0.3, bikeX + 0.8, D + 0.7, { y1: 0.9, top: false });
   [-3.4, -2.2, 2.2, 3.4].forEach((o, i) => { const x = W / 2 + o; fix(`bollard${i}`, 'bollard', x - 0.1, D + 2.35, x + 0.1, D + 2.55, { y1: 0.9, top: false }); });
 
   // --- Laternen, Ampelmasten ---
@@ -370,6 +399,26 @@ export function buildCity(store) {
     { id: 'armE', text: 'BAHNWEG', color: '#ffffff', x: W + 21.37, y: 3.0, z: D - 6, yaw: -PI / 2, w: 2.4 },
   ];
 
+  // --- Läden an den Fassaden (erfundene Namen; Zeichnung in world/build-city-decor.js) ---
+  const FRONTS = [
+    ['NW1', 'BÄCKEREI KRUME', '#ffb347', [0.8, 0.3, 0.2]], ['NW2', 'WASCHSALON SCHAUMSCHLÄGER', '#7be0ff', [0.2, 0.5, 0.7]],
+    ['NE2', 'IMBISS ZUR WURSTBUDE', '#ff6b6b', [0.85, 0.25, 0.2]], ['SW', 'FRISEUR HAARSCHARF', '#d9a6ff', [0.5, 0.3, 0.7]],
+    ['SE1', 'BLUMEN PUSTEBLUME', '#9dff7a', [0.3, 0.65, 0.35]], ['SE2', 'REISEBÜRO FERNWEH', '#ffe66b', [0.25, 0.5, 0.75]],
+    ['NE1', 'ZOO FELLNASE', '#ff9ad5', [0.9, 0.5, 0.6]],
+  ];
+  const shopFronts = [];
+  for (const [bid, text, color, awning] of FRONTS) {
+    const bd = buildings.find((q) => q.id === bid);
+    if (!bd || !bd.front) continue;
+    let cx = (bd.x0 + bd.x1) / 2;
+    if (bid === 'SW') cx = Math.max(bd.x0 + 4, px0 - 14);
+    if (bid === 'SE1') cx = (bd.x0 + bd.x1) / 2 + 2.5;
+    const wd = Math.min(5, bd.x1 - bd.x0 - 1.5);
+    if (wd < 2.4) continue;
+    cx = clamp(cx, bd.x0 + wd / 2 + 0.2, bd.x1 - wd / 2 - 0.2);
+    shopFronts.push({ id: bid, text, color, awning, x: Math.round(cx * 100) / 100, w: Math.round(wd * 100) / 100, z: bd.front === 'S' ? bd.z1 : bd.z0, yaw: bd.front === 'S' ? 0 : PI, y: 3.5 });
+  }
+
   // --- Plätze für Welle 2 ---
   const discoverSlots = [
     { id: 'roofCenter', area: 'roof', x: Math.round(W * 50) / 100, z: Math.round(D * 40) / 100, y: ROOF_Y },
@@ -400,7 +449,7 @@ export function buildCity(store) {
 
   return {
     frame: f, bounds: f.bounds, buildings, palast, colliders, zones, spawns, sidewalkPaths, lanes, zebras, signals, lights, signs, fixtures,
-    yard: { x0: -3.4, z0: -11.0, x1: W + 8.4, z1: -T }, escape, roof, kiosk, doorPosts, doorBlock, discoverSlots, propSlots,
+    yard: { x0: -3.4, z0: -11.0, x1: W + 8.4, z1: -T, hoop, graffiti, laundry }, roofProps, litfass, shopFronts, escape, roof, kiosk, doorPosts, doorBlock, discoverSlots, propSlots,
     signalCycle: SIGNAL_CYCLE,
   };
 }

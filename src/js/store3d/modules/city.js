@@ -114,6 +114,7 @@ export default {
         out.follow(ctx.camera);
         acc += dt;
         if (acc >= 0.15) { acc = 0; refresh(); }
+        if (cm) cm.update(dt);
         sigAcc += dt;
         if (cm && sigAcc >= 0.25) { sigAcc = 0; cm.setSignals(signalAt(Date.now() / 1000)); }
       },

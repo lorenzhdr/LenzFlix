@@ -151,13 +151,12 @@ describe('Modul door', () => {
     expect(s.sound.play).not.toHaveBeenCalled();
   });
 
-  it('VR: Spalt wird gesperrt, Spieler draußen kehrt in den Laden zurück', () => {
+  it('VR: Spalt bleibt offen, kein Zurück-Teleport (Welt begehbar)', () => {
     const s = setup();
     s.pose.z = s.L.d + 5;
     s.emit('xr', true);
-    expect(s.colliders).toContain(s.L.doorBlock);
-    expect(s.teleports).toHaveLength(1);
-    expect(s.teleports[0].slice(0, 2)).toEqual([s.L.spawn.x, s.L.spawn.z]);
+    expect(s.colliders).not.toContain(s.L.doorBlock);
+    expect(s.teleports).toHaveLength(0);
     s.emit('xr', false);
     expect(s.colliders).not.toContain(s.L.doorBlock);
   });

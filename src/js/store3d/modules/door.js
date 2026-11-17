@@ -1,4 +1,4 @@
-// VIDEOTHEK LENZ · Modul `door`: Auto-Tür der Eingangsfront, Türglocke, schaltbarer Türspalt (Hausverbot) und VR-Sperre.
+// VIDEOTHEK LENZ · Modul `door`: Auto-Tür der Eingangsfront, Türglocke, schaltbarer Türspalt (Hausverbot) (VR sperrt nicht mehr).
 // Besitzt die Türflügel-Materialien dauerhaft (Tönung nach Tageszeit). Der Türspalt ist nur im Kollider offen; `layout.doorBlock`
 // wird bei Sperre per ctx.addCollider eingefügt (einmal Nav-Neuaufbau). Provider 'door':
 //   override(v|null)       0..1 Öffnung erzwingen (Intro); null = Automatik
@@ -45,7 +45,6 @@ export default {
     let locked = false;
     let lockT = 0;
     let holdT = 0;
-    let xr = false;
     let prevZ = null;
     const actors = [];
     const changes = [];
@@ -78,7 +77,7 @@ export default {
     function setLocked(on) {
       if (on === locked) return;
       locked = on;
-      setBlock(locked || xr);
+      setBlock(locked);
       sign.visible = locked;
       for (const fn of changes.slice()) { try { fn(locked); } catch (err) { console.warn('[LenzFlix Store3D] door', err); } }
     }
@@ -95,15 +94,7 @@ export default {
     };
     ctx.provide('door', api);
 
-    ctx.on('xr', (on) => {
-      xr = !!on;
-      setBlock(locked || xr);
-      if (xr) {
-        const p = ctx.player.getPose();
-        if (p.z > D - 0.2 || (Number.isFinite(p.y) && p.y > 0.3) || p.x < 0 || p.x > L.w) ctx.player.teleport(L.spawn.x, L.spawn.z, L.spawn.yaw || 0, 0, 0); // VR bleibt im Laden
-      }
-    });
-
+    // VR (seit 1.15.0): Die Welt ist begehbar, der Türspalt bleibt offen, kein Zurück-Teleport (Sperre nur per lock()).
     applyAngle();
 
     return {

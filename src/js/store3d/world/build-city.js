@@ -9,6 +9,7 @@ import { box, quad, flatRect, merge } from '../util/geo.js';
 import { makeCanvas, FONT } from './textures.js';
 import { glowCanvas, windowGrid } from '../modules/outdoor.js';
 import { seeded } from '../modules/m4-util.js';
+import { buildCityDecor } from './build-city-decor.js';
 
 const PI = Math.PI;
 const T = 0.12;
@@ -277,8 +278,11 @@ export function buildCityMeshes(out, city, layout) {
   });
   put(street, signGeos, signMat, 'city-signs');
 
+  // Dekor (Ladenschilder, Palast-Fassade, Kiosk, Hof, Dach, Fußgänger-Ampeln, Tageszeit-Effekte)
+  const decor = buildCityDecor(out, city, layout, { street, palast: palastG, yard }, winSpecs);
+  const setAll = (sig) => { setSignals(sig); decor.setSignals(sig); };
   return {
-    root, groups: { street, palast: palastG, yard, palastInterior }, setSignals,
-    dispose() { root.removeFromParent(); },
+    root, groups: { street, palast: palastG, yard, palastInterior }, setSignals: setAll, update: decor.update,
+    dispose() { decor.dispose(); root.removeFromParent(); },
   };
 }
