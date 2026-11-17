@@ -106,3 +106,25 @@ describe('Panel: Kick', () => {
     expect(el.querySelector('.lfx-mp-kick.is-confirm')).toBeNull();
   });
 });
+
+describe('Panel: Film-Spalte', () => {
+  function withFilm(filmTitle) {
+    const base = make();
+    const api = {
+      prefs: () => ({ on: true, name: true, chat: true, film: false }), set() {}, status: () => '', isMuted: () => false, setMute: () => false,
+      canKick: () => false, kick: () => false, players: () => base.st.rows, filmTitle,
+    };
+    const el = document.createElement('div');
+    createPanel(api).render(el);
+    return el;
+  }
+  it('zeigt den Titel nur, wenn filmTitle ihn liefert', () => {
+    const el = withFilm((r) => (r.k === 'bbb' ? 'Alien' : ''));
+    expect(txt(el, '.lfx-mp-pmeta')).toEqual(['Laden', 'Palast-Saal · 2 Geräte · Film: Alien', 'Straße · Admin']);
+  });
+  it('ohne filmTitle oder bei Nicht-Text kein Film', () => {
+    expect(txt(withFilm(undefined), '.lfx-mp-pmeta').join('|')).not.toContain('Film');
+    expect(txt(withFilm(() => 42), '.lfx-mp-pmeta').join('|')).not.toContain('Film');
+    expect(txt(withFilm(() => { throw new Error('x'); }), '.lfx-mp-pmeta').join('|')).not.toContain('Film');
+  });
+});

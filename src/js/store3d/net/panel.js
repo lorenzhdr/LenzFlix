@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Mehrspieler: Inhalt der Unterebene „Mehrspieler …“ im Pause-Menü (Welle a: Schalter und Status).
 // createPanel(api) → { render(el) }; api = { prefs() → {on,name,chat,film}, set(partial), status() → string,
 //   players() → [{ k, name, area, devs, admin }] (eine Zeile je Person, ohne mich), isMuted(k), setMute(k, on) → bool,
-//   canKick() → bool (ich bin Admin), kick(k) → bool }.
+//   canKick() → bool (ich bin Admin), kick(k) → bool, filmTitle(row) → string (optional, Welle d: Titel nur bei Film-Flag des anderen UND im eigenen Katalog, sonst '') }.
 // Spielerliste: Name (sonst „Jemand“), grober Ort, Geräteanzahl, Stumm/Laut je Person; „10 min entfernen“ nur für Admins (nie bei Admins), mit Bestätigung.
 // render(el) baut den Inhalt je Element einmal auf und aktualisiert danach nur Texte/Zustände (Fokus bleibt beim Umschalten erhalten).
 const SWITCHES = [
@@ -43,7 +43,8 @@ export function createPanel(api) {
     const rows = players();
     const kick = !!call('canKick');
     if (v.confirm && !rows.some((r) => r.k === v.confirm && !r.admin)) v.confirm = null;
-    const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call('isMuted', r.k)])]);
+    const film = (r) => { const t = call('filmTitle', r); return typeof t === 'string' ? t : ''; };
+    const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call('isMuted', r.k), film(r)])]);
     if (sig === v.sig) return;
     v.sig = sig;
     const doc = el.ownerDocument || document;
@@ -67,7 +68,7 @@ export function createPanel(api) {
       nm.textContent = r.name || 'Jemand';
       const meta = document.createElement('span');
       meta.className = 'lfx-mp-pmeta';
-      meta.textContent = `${areaLabel(r.area)}${r.devs > 1 ? ` · ${r.devs} Geräte` : ''}${r.admin ? ' · Admin' : ''}`;
+      meta.textContent = `${areaLabel(r.area)}${r.devs > 1 ? ` · ${r.devs} Geräte` : ''}${r.admin ? ' · Admin' : ''}${film(r) ? ` · Film: ${film(r)}` : ''}`;
       info.append(nm, meta);
       row.appendChild(info);
       const acts = document.createElement('div');

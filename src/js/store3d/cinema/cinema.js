@@ -57,6 +57,7 @@ export class Cinema {
     this.reloadShown = null;
     this.stopping = false;
     this.backPending = false;
+    this.startPending = false;
   }
 
   get marks() { return this.watch.marks; }
@@ -69,6 +70,21 @@ export class Cinema {
   get _deps() { const d = this.app.deps; return d && d.cinema ? d.cinema : null; }
 
   get _xr() { return this.app.xr || null; }
+
+  /** Gemeinsames Kino (Mehrspieler 1.16): Party des 2D-Kinos (cinema/party.js), auch in VR; ohne Provider null (= 1.15). */
+  get _party() { const c = this.app.cinema2d; return c && c.party ? c.party : null; }
+
+  _pt(fn) { const p = this._party; if (!p) return undefined; try { return fn(p); } catch (err) { warn('Party', err); return undefined; } }
+
+  /** Bridge für die Bedienelemente: Pause/Spulen als absolute Ziele (kc); „Weiter“ bei gesperrtem Autoplay bleibt lokal. */
+  _ctlBridge() {
+    const d = this._deps || {};
+    const w = this._pt((p) => p.wrap(d));
+    if (!w || w === d) return d;
+    const c = Object.create(w);
+    c.togglePause = (...a) => (this.startPending && typeof d.togglePause === 'function' ? d.togglePause(...a) : w.togglePause(...a));
+    return c;
+  }
 
   _fade() { const x = this._xr; return x && x.presenting && x.fade ? x.fade : null; }
 
@@ -99,6 +115,7 @@ export class Cinema {
     this.item = item || null;
     this.phase = 'entering';
     this._resetRun();
+    this._pt((p) => p.beginRun(item)); // neuer Film ohne Mitschauen: alte Sitzung verlassen (kl); nach join() bleibt sie
     const f = this._fade();
     const run = () => this._build(this.gen);
     if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn('Kino betreten', err));
@@ -145,8 +162,8 @@ export class Cinema {
       this.screen.setStatus({ title, text: 'Film wird gestartet …', sub: '' });
       this.controls = createControls({
         openPanel: (spec) => this._xr.openPanel(spec),
-        cinema: this._deps || {},
-        getState: () => this.state,
+        cinema: this._ctlBridge(),
+        getState: () => { const g = this._pt((p) => p.text()); return g ? { ...this.state, group: g } : this.state; },
         getSeat: () => this.seat,
         onSeat: (n) => this.setSeat(n),
         onBack: () => this.backToStore(),
@@ -228,6 +245,7 @@ export class Cinema {
 
   _onState() {
     const st = this.state || {};
+    if (st.reloading) this._pt((p) => p.suppress()); // Tonspur-/Qualitätswechsel lädt neu: kein Eingriff, kein Puffern melden
     if (this.phase === 'starting') {
       if (st.phase === 'error' && !st.reloading) this._fail('D');
       return;
@@ -244,6 +262,8 @@ export class Cinema {
     const hall = this.hall;
     if (hall) { hall.curtain(true); hall.setHouseLight(0.08); }
     this.spillK = 1;
+    this.startPending = false;
+    this._pt((p) => p.onPlaying(this.item)); // erstes echtes playing: Gastgeber legt die Sitzung an, Mitschauer gleicht erstmals ab
     if (this.controls) { if (first || this.controls.visible) this.controls.show(); else this.controls.touch(); }
   }
 
@@ -260,12 +280,13 @@ export class Cinema {
     });
     if (r.event === 'start') {
       this.opened = true;
-      if (r.paused) { this._setPaused(); this.hall.curtain(true); } else this._setPlaying(true);
+      if (r.paused) { this._setPaused(); this.startPending = true; this.hall.curtain(true); } else this._setPlaying(true);
       return;
     }
     if (r.event === 'pausedStart') {
       this.opened = true;
       this._setPaused();
+      this.startPending = true;
       if (this.hall) this.hall.curtain(true);
       if (this._xr) this._xr.toast('Zum Starten „Weiter“ drücken', 5000);
       return;
@@ -433,6 +454,7 @@ export class Cinema {
 
   _teardown() {
     if (!this._active) return;
+    this._pt((p) => p.leave()); // kl (einmalig), bevor Bridge und Video wegfallen
     const app = this.app;
     const eng = app.engine;
     this.feed.unsubscribe();

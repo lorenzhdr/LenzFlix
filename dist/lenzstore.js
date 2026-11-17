@@ -44231,14 +44231,14 @@ void main() {
       };
       const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
       const inPen = () => R2.pos.x >= counter.x0 - 0.1 && R2.pos.z >= counter.z1 - 0.05 && R2.pos.y < 0.3;
-      const clamp13 = (v, a, b) => Math.min(b, Math.max(a, v));
+      const clamp14 = (v, a, b) => Math.min(b, Math.max(a, v));
       const onCounter = (q) => q.x >= counter.x0 - 0.05 && q.x <= counter.x1 + 0.05 && q.z > counter.z0 + 0.02 && q.z < counter.z1 - 0.02;
       function landingPoint(p) {
         const nav = ctx.layout.nav;
-        const bx2 = clamp13(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
+        const bx2 = clamp14(R2.pos.x, counter.x0 + 0.5, counter.x1 - 0.5);
         for (const dz of [0.6, 1, 1.4, 1.8]) {
           for (const dx of [0, 0.9, -0.9, 1.8, -1.8, 2.7, -2.7]) {
-            const x = clamp13(bx2 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
+            const x = clamp14(bx2 + dx, counter.x0 + 0.3, counter.x1 - 0.3);
             const z = counter.z0 - dz;
             if (nav && !isFree(nav, x, z)) continue;
             if (p && Math.hypot(p.x - x, p.z - z) < 1.1) continue;
@@ -44252,7 +44252,7 @@ void main() {
         let path = null;
         if (nav) {
           path = findPath(nav, { x: p.x, z: p.z }, goal);
-          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp13(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
+          if (!path && (onCounter(p) || playerInPen(p))) path = findPath(nav, { x: clamp14(p.x, counter.x0, counter.x1), z: counter.z0 - 0.6 }, goal);
         }
         let w = null;
         if (path) {
@@ -44691,8 +44691,8 @@ void main() {
         }
         const prev = fsm.state;
         if (!fsm.applyRemote(f, T5)) return false;
-        const num4 = (v, d) => Number.isFinite(v) ? v : d;
-        const tgt = { x: num4(net.x, R2.pos.x), z: num4(net.z, R2.pos.z), y: num4(net.y, 0), yaw: num4(net.yaw, 0) };
+        const num5 = (v, d) => Number.isFinite(v) ? v : d;
+        const tgt = { x: num5(net.x, R2.pos.x), z: num5(net.z, R2.pos.z), y: num5(net.y, 0), yaw: num5(net.yaw, 0) };
         if (!mTarget || Math.hypot(tgt.x - rest.x, tgt.z - rest.z) > MIRROR_SNAP) {
           rest.x = tgt.x;
           rest.z = tgt.z;
@@ -44700,7 +44700,7 @@ void main() {
         }
         mTarget = tgt;
         rest.yaw = tgt.yaw;
-        const a = Math.max(0, num4(net.a, 0) | 0);
+        const a = Math.max(0, num5(net.a, 0) | 0);
         if (a !== mA) {
           mA = a;
           const name = ANIMS[a] || "idle";
@@ -47501,13 +47501,13 @@ void main() {
       const y = rowY(i);
       const zc = r34(sb.z0 + (i + 0.5) * sb.pitch);
       const letter = rowLetter(rows - 1 - i);
-      let num4 = 0;
+      let num5 = 0;
       for (const s of sections) {
         const w = s.n * SEAT.pitch;
         const start = (s.x0 + s.x1) / 2 - w / 2;
         for (let j = 0; j < s.n; j++) {
-          num4++;
-          seats.push({ id: `${letter}${num4}`, row: i, x: r34(start + (j + 0.5) * SEAT.pitch), y: r34(y + SEAT.eye), z: zc, yaw: Math.PI, base: y });
+          num5++;
+          seats.push({ id: `${letter}${num5}`, row: i, x: r34(start + (j + 0.5) * SEAT.pitch), y: r34(y + SEAT.eye), z: zc, yaw: Math.PI, base: y });
         }
         seatBlocks.push({ row: i, x0: r34(start), z0: r34(zc - SEAT.depth / 2), x1: r34(start + w), z1: r34(zc + SEAT.depth / 2), y0: 0, y1: r34(y + SEAT.h) });
       }
@@ -49562,6 +49562,13 @@ void main() {
         emit();
         return ticket;
       },
+      /** Mitschauen (1.16): Ticket der Quelle „join“, immer von vorn (resume=false), die Position holt die Party per Seek. */
+      join(o) {
+        if (!o || !o.item) return null;
+        ticket = { itemId: o.itemId || o.item.Id || null, title: titleOf(o.item), item: o.item, resume: false, source: "join", slot: -1, time: "", no: 0, sid: o.sid };
+        emit();
+        return ticket;
+      },
       clear() {
         if (ticket) {
           ticket = null;
@@ -49599,18 +49606,125 @@ void main() {
       };
     });
   }
-  function seatGate(ticket, inHall) {
+  function seatGate(ticket, inHall, offer) {
     if (!inHall) return { ok: false, msg: "" };
+    if (!ticket && offer) return { ok: true, msg: "" };
     if (!ticket) return { ok: false, msg: "Erst ein Ticket an der Kasse holen" };
     return { ok: true, msg: "" };
   }
   function ticketToast(ticket) {
     if (!ticket) return "";
+    if (ticket.source === "join") return "Du schaust mit \u2013 Saal 1, bitte Platz nehmen";
     return ticket.source === "tape" ? "Kassette abgegeben \u2013 Saal 1, bitte Platz nehmen" : `Ticket Nr. ${ticket.no} \u2013 Saal 1, bitte Platz nehmen`;
   }
   function tearLine(ticket, n = 0) {
     if (!ticket) return "Ohne Ticket? Mutig. Aber erst zur Kasse!";
     return TEAR_LINES[Math.abs(Math.floor(n)) % TEAR_LINES.length];
+  }
+  function joinOffers(raw, items, nameOf2, selfC, now) {
+    const out = [];
+    for (const x of raw || []) {
+      const e = Array.isArray(x) ? { sid: x[0], host: x[1], itemId: x[2], n: x[3], st: x[4], m: x[5], p: x[6], at: x[7] } : x;
+      const iid = e && (e.itemId || e.i);
+      const it = iid && items && typeof items.get === "function" ? items.get(iid) : null;
+      if (!it || it.Type && it.Type !== "Movie") continue;
+      out.push({ sid: e.sid, itemId: iid, item: it, title: titleOf(it), sub: joinSub(e, nameOf2, selfC, now) });
+    }
+    return out;
+  }
+  var hms = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1e3));
+    const h2 = Math.floor(s / 3600);
+    const m = Math.floor(s % 3600 / 60);
+    return `${h2 ? `${h2}:${String(m).padStart(2, "0")}` : m}:${String(s % 60).padStart(2, "0")}`;
+  };
+  function joinSub(e, nameOf2, selfC, now) {
+    const m = Array.isArray(e.m) ? e.m.filter((c) => c !== selfC) : [];
+    const n = Number.isFinite(e.n) ? e.n : m.length;
+    const names = m.map((c) => nameOf2 ? nameOf2(c) : "Jemand").filter((x) => x && x !== "Jemand");
+    let who = "";
+    if (names.length) who = ` \xB7 mit ${names[0]}${n > 1 ? ` und ${n - 1 === 1 ? "1 weiteren" : `${n - 1} weiteren`}` : ""}`;
+    else if (n > 0) who = ` \xB7 mit ${n} Zuschauer${n === 1 ? "" : "n"}`;
+    if (e.st === 2) return `pausiert${who}`;
+    if (e.st === 0) return `startet gerade${who}`;
+    const pos = Number.isFinite(now) && Number.isFinite(e.p) && Number.isFinite(e.at) ? ` bei ${hms(e.p + (now - e.at))}` : "";
+    return `l\xE4uft${pos}${who}`;
+  }
+  var JOIN_FOOT = "Beim Mitschauen kann jeder pausieren und spulen. Du schaust \xFCber dein eigenes Konto \u2013 Weiterschauen wird f\xFCr dich gespeichert.";
+  var JOIN_PRIVATE = "Dein Film ist privat \u2013 andere sehen nur, dass du sitzt.";
+
+  // src/js/store3d/palast/joinpanel.js
+  var HEAD = "Saal 1 \u2013 was m\xF6chtest du sehen?";
+  var OWN_NONE = "Eigener Film \u2013 erst ein Ticket an der Kasse holen";
+  function renderJoin(panel, close, model) {
+    panel.textContent = "";
+    const head = h("div", "lfx-store-palast-head");
+    head.append(h("div", "lfx-store-palast-title", HEAD), button("Abbrechen", "lfx-store-act lfx-store-palast-close", close));
+    panel.append(head);
+    const list = h("div", "lfx-store-palast-list");
+    for (const o of model.offers) {
+      const row = h("button", "lfx-store-palast-row lfx-store-join-row");
+      row.type = "button";
+      const txt = h("span", "lfx-store-palast-txt");
+      txt.append(h("span", "lfx-store-palast-name", `Mitschauen: \u201E${o.title}\u201C`), h("span", "lfx-store-palast-info", o.sub));
+      row.append(txt, h("span", "lfx-store-palast-go", "Mitschauen"));
+      row.addEventListener("click", (e) => {
+        e.stopPropagation();
+        close();
+        model.onJoin(o);
+      });
+      list.append(row);
+    }
+    const own = h("button", "lfx-store-palast-row lfx-store-join-row");
+    own.type = "button";
+    const ot = h("span", "lfx-store-palast-txt");
+    ot.append(h("span", "lfx-store-palast-name", model.own ? `Eigener Film: \u201E${model.own.title}\u201C` : OWN_NONE));
+    own.append(ot);
+    if (model.own) {
+      own.append(h("span", "lfx-store-palast-go", "Starten"));
+      own.addEventListener("click", (e) => {
+        e.stopPropagation();
+        close();
+        model.onOwn();
+      });
+    } else own.disabled = true;
+    list.append(own);
+    panel.append(list);
+    if (model.isPrivate) panel.append(h("div", "lfx-store-palast-tip", JOIN_PRIVATE));
+    panel.append(h("div", "lfx-store-palast-foot", JOIN_FOOT));
+    panel.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const f = [...panel.querySelectorAll("button:not([disabled])")];
+      if (!f.length) return;
+      const i = f.indexOf(panel.ownerDocument.activeElement);
+      const to = e.shiftKey ? i <= 0 ? f.length - 1 : i - 1 : i < 0 || i === f.length - 1 ? 0 : i + 1;
+      e.preventDefault();
+      f[to].focus();
+    });
+  }
+  function joinSpec(model, close) {
+    const rows = model.offers.map((o) => ({
+      label: `Mitschauen: \u201E${o.title}\u201C`,
+      sub: o.sub,
+      actions: [{ label: "Mitschauen", primary: true, onSelect: () => {
+        close();
+        model.onJoin(o);
+      } }]
+    }));
+    rows.push(model.own ? { label: `Eigener Film: \u201E${model.own.title}\u201C`, actions: [{ label: "Starten", onSelect: () => {
+      close();
+      model.onOwn();
+    } }] } : { label: OWN_NONE, actions: [] });
+    const lines = [];
+    if (model.isPrivate) lines.push(JOIN_PRIVATE);
+    lines.push(JOIN_FOOT);
+    return { title: HEAD, lines, anchor: "front", width: 0.9, list: { visible: 5, rows } };
   }
 
   // src/js/store3d/palast/hall.js
@@ -50240,14 +50354,65 @@ void main() {
       }
       let startedFor = null;
       let wasActive = false;
+      function offersNow() {
+        const c = cinema();
+        const pt = c && c.party;
+        if (!pt || typeof pt.offers !== "function") return [];
+        const n = ctx.use("net");
+        try {
+          const me = n && typeof n.me === "function" ? n.me() : null;
+          return joinOffers(pt.offers(), catItems(), n && n.peerName ? (x) => n.peerName(x) : null, me && me.c, n && n.serverNow ? n.serverNow() : null);
+        } catch {
+          return [];
+        }
+      }
+      function openJoin(seatId, offers) {
+        const t = book.get();
+        const n = ctx.use("net");
+        const pr = n && typeof n.prefs === "function" ? n.prefs() : null;
+        const later = (fn) => queueMicrotask(fn);
+        const model = {
+          offers,
+          own: t && t.source !== "join" ? { title: t.title } : null,
+          isPrivate: Boolean(pr && pr.film === false),
+          onOwn: () => later(() => sitOwn(seatId)),
+          onJoin: (o) => later(() => {
+            const pt = (cinema() || {}).party;
+            book.join(o);
+            sitOwn(seatId, () => {
+              try {
+                if (pt && typeof pt.join === "function") pt.join(o.sid, o.item);
+              } catch (err) {
+                warn4("palast join", err);
+              }
+            });
+          })
+        };
+        return openPanel(ctx, { cls: "lfx-store-palast-pick", label: "LENZ PALAST Platzwahl", build(panel, close) {
+          renderJoin(panel, close, model);
+        }, vr: (close) => joinSpec(model, close) });
+      }
       function sit(seatId) {
+        const c = cinema();
+        if (!(c && c.active) && !ctx.overlay.isOpen() && (xr() || inHall())) {
+          const offers = offersNow();
+          if (offers.length) {
+            openJoin(seatId, offers);
+            return false;
+          }
+        }
+        return sitOwn(seatId);
+      }
+      function sitOwn(seatId, pre) {
         const c = cinema();
         if (xr()) {
           const t2 = book.get();
           const show = program.shows[0];
           const it = t2 ? t2.item : itemOf(show);
-          if (it) ctx.deps.play(it, { resume: t2 ? t2.resume : Boolean(show && show.resume) });
-          else toast("Heute l\xE4uft nichts im Palast.");
+          if (it) {
+            if (pre) pre();
+            ctx.deps.play(it, { resume: t2 ? t2.resume : Boolean(show && show.resume) });
+          } else toast("Heute l\xE4uft nichts im Palast.");
           return false;
         }
         if (!c || !attach()) {
@@ -50269,6 +50434,7 @@ void main() {
         if (wasSeated) return true;
         const t = book.get();
         startedFor = null;
+        if (pre) pre();
         Promise.resolve(c.play(t.item, { resume: t.resume })).then((ok) => {
           if (ok === false && c.seated) {
             toast("Der Film startet gerade nicht.");
@@ -53317,7 +53483,11 @@ void main() {
       const rows = players();
       const kick = !!call2("canKick");
       if (v.confirm && !rows.some((r) => r.k === v.confirm && !r.admin)) v.confirm = null;
-      const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call2("isMuted", r.k)])]);
+      const film = (r) => {
+        const t = call2("filmTitle", r);
+        return typeof t === "string" ? t : "";
+      };
+      const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call2("isMuted", r.k), film(r)])]);
       if (sig === v.sig) return;
       v.sig = sig;
       const doc = el4.ownerDocument || document;
@@ -53341,7 +53511,7 @@ void main() {
         nm.textContent = r.name || "Jemand";
         const meta = document.createElement("span");
         meta.className = "lfx-mp-pmeta";
-        meta.textContent = `${areaLabel(r.area)}${r.devs > 1 ? ` \xB7 ${r.devs} Ger\xE4te` : ""}${r.admin ? " \xB7 Admin" : ""}`;
+        meta.textContent = `${areaLabel(r.area)}${r.devs > 1 ? ` \xB7 ${r.devs} Ger\xE4te` : ""}${r.admin ? " \xB7 Admin" : ""}${film(r) ? ` \xB7 Film: ${film(r)}` : ""}`;
         info.append(nm, meta);
         row.appendChild(info);
         const acts = document.createElement("div");
@@ -55572,7 +55742,7 @@ void main() {
           clearTimeout: (h2) => clearTimeout(h2),
           random: Math.random
         },
-        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "admin"], f: flags(), cv: mp.cv }),
+        hello: () => ({ cap: ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin"], f: flags(), cv: mp.cv }),
         onMsg,
         onState
       });
@@ -55749,6 +55919,7 @@ void main() {
       });
       const removeProvider = ctx.provide("net", {
         active: () => live && !disposed,
+        prefs,
         /** Diagnose (Debug/Panel): Sitzung, Ausschaltgrund, Transportzustand. */
         diag: () => ({ live, failed: failed || null, entered, suspendedClosed, transport: transport && transport.info ? transport.info() : null }),
         me: () => transport ? transport.me() : null,
@@ -56701,12 +56872,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn17 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn18 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn17}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn18}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -61300,7 +61471,7 @@ void main() {
     const vol = s.muted ? "stumm" : pct >= 100 ? "100 % (max.)" : `${pct} %`;
     const spec = {
       title: clip2(s.title || "Kino", 70),
-      lines: [`Lautst\xE4rke ${vol}`],
+      lines: s.group ? [`Lautst\xE4rke ${vol}`, clip2(s.group, 60)] : [`Lautst\xE4rke ${vol}`],
       progress: { value: dur ? t / dur : 0, label: `${fmtTime(t)} / ${fmtTime(dur)}`, onSeek: dur ? (f) => h2.onSeekFrac(f) : void 0 },
       buttons,
       width: 0.95,
@@ -61408,7 +61579,8 @@ void main() {
       st.upNext ? `${st.upNext.seconds}|${st.upNext.text ? 1 : 0}` : "-",
       Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100),
       st.muted,
-      getSeat()
+      getSeat(),
+      st.group || ""
     ].join("~");
     const api = {
       get visible() {
@@ -61785,6 +61957,7 @@ void main() {
       this.reloadShown = null;
       this.stopping = false;
       this.backPending = false;
+      this.startPending = false;
     }
     get marks() {
       return this.watch.marks;
@@ -61802,6 +61975,30 @@ void main() {
     }
     get _xr() {
       return this.app.xr || null;
+    }
+    /** Gemeinsames Kino (Mehrspieler 1.16): Party des 2D-Kinos (cinema/party.js), auch in VR; ohne Provider null (= 1.15). */
+    get _party() {
+      const c = this.app.cinema2d;
+      return c && c.party ? c.party : null;
+    }
+    _pt(fn) {
+      const p = this._party;
+      if (!p) return void 0;
+      try {
+        return fn(p);
+      } catch (err) {
+        warn14("Party", err);
+        return void 0;
+      }
+    }
+    /** Bridge für die Bedienelemente: Pause/Spulen als absolute Ziele (kc); „Weiter“ bei gesperrtem Autoplay bleibt lokal. */
+    _ctlBridge() {
+      const d = this._deps || {};
+      const w = this._pt((p) => p.wrap(d));
+      if (!w || w === d) return d;
+      const c = Object.create(w);
+      c.togglePause = (...a) => this.startPending && typeof d.togglePause === "function" ? d.togglePause(...a) : w.togglePause(...a);
+      return c;
     }
     _fade() {
       const x = this._xr;
@@ -61843,6 +62040,7 @@ void main() {
       this.item = item || null;
       this.phase = "entering";
       this._resetRun();
+      this._pt((p) => p.beginRun(item));
       const f = this._fade();
       const run = () => this._build(this.gen);
       if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn14("Kino betreten", err));
@@ -61890,8 +62088,11 @@ void main() {
         this.screen.setStatus({ title, text: "Film wird gestartet \u2026", sub: "" });
         this.controls = createControls({
           openPanel: (spec) => this._xr.openPanel(spec),
-          cinema: this._deps || {},
-          getState: () => this.state,
+          cinema: this._ctlBridge(),
+          getState: () => {
+            const g = this._pt((p3) => p3.text());
+            return g ? { ...this.state, group: g } : this.state;
+          },
           getSeat: () => this.seat,
           onSeat: (n) => this.setSeat(n),
           onBack: () => this.backToStore(),
@@ -61992,6 +62193,7 @@ void main() {
     }
     _onState() {
       const st = this.state || {};
+      if (st.reloading) this._pt((p) => p.suppress());
       if (this.phase === "starting") {
         if (st.phase === "error" && !st.reloading) this._fail("D");
         return;
@@ -62016,6 +62218,8 @@ void main() {
         hall.setHouseLight(0.08);
       }
       this.spillK = 1;
+      this.startPending = false;
+      this._pt((p) => p.onPlaying(this.item));
       if (this.controls) {
         if (first || this.controls.visible) this.controls.show();
         else this.controls.touch();
@@ -62040,6 +62244,7 @@ void main() {
         this.opened = true;
         if (r.paused) {
           this._setPaused();
+          this.startPending = true;
           this.hall.curtain(true);
         } else this._setPlaying(true);
         return;
@@ -62047,6 +62252,7 @@ void main() {
       if (r.event === "pausedStart") {
         this.opened = true;
         this._setPaused();
+        this.startPending = true;
         if (this.hall) this.hall.curtain(true);
         if (this._xr) this._xr.toast("Zum Starten \u201EWeiter\u201C dr\xFCcken", 5e3);
         return;
@@ -62236,6 +62442,7 @@ void main() {
     }
     _teardown() {
       if (!this._active) return;
+      this._pt((p) => p.leave());
       const app = this.app;
       const eng = app.engine;
       this.feed.unsubscribe();
@@ -63054,7 +63261,7 @@ void main() {
     if (text != null) e.textContent = text;
     return e;
   }
-  function createBar({ bridge, getState, onStand, onFull, toast, doc = document, win = typeof window !== "undefined" ? window : null } = {}) {
+  function createBar({ bridge, getState, onStand, onFull, toast, chat = null, doc = document, win = typeof window !== "undefined" ? window : null } = {}) {
     const root = el3(doc, "div", "lfx-palast-bar");
     root.setAttribute("role", "group");
     root.setAttribute("aria-label", "Kino");
@@ -63077,7 +63284,15 @@ void main() {
     const row = el3(doc, "div", "lfx-palast-row");
     const pop = el3(doc, "div", "lfx-palast-pop");
     pop.hidden = true;
-    panel.append(title, msg, prog, row, pop);
+    const chatRow = el3(doc, "div", "lfx-palast-chat");
+    chatRow.hidden = true;
+    const chatIn = el3(doc, "input", "lfx-palast-chatin");
+    chatIn.type = "text";
+    chatIn.maxLength = 200;
+    chatIn.placeholder = "Nachricht an alle im Saal \u2026";
+    chatIn.setAttribute("aria-label", "Chat-Nachricht");
+    chatRow.appendChild(chatIn);
+    panel.append(title, msg, prog, row, chatRow, pop);
     root.appendChild(panel);
     const btn = (label, cls, fn, parent = row) => {
       const b = el3(doc, "button", `lfx-palast-btn${cls ? ` ${cls}` : ""}`, label);
@@ -63138,7 +63353,7 @@ void main() {
       const d = st().duration;
       if (d > 0) bridge.seekTo(Number(seek.value) / 1e3 * d);
     });
-    const keyOf3 = (s) => [s.title, Math.floor(s.time || 0), Math.floor(s.duration || 0), s.phase, s.hasPrev, s.hasNext, Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100), s.muted, s.startPending, s.ended, s.canFull].join("~");
+    const keyOf3 = (s) => [s.group, s.title, Math.floor(s.time || 0), Math.floor(s.duration || 0), s.phase, s.hasPrev, s.hasNext, Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100), s.muted, s.startPending, s.ended, s.canFull].join("~");
     function renderPop() {
       if (!popKind) {
         pop.hidden = true;
@@ -63192,13 +63407,36 @@ void main() {
       });
     }
     function idleHide() {
-      if (!disposed && lastPhase === "playing" && !popKind) root.classList.add("is-idle");
+      if (!disposed && lastPhase === "playing" && !popKind && chatRow.hidden) root.classList.add("is-idle");
     }
     function armIdle() {
       clearTimeout(hideT);
       hideT = 0;
-      if (lastPhase === "playing" && !popKind) hideT = setTimeout(idleHide, IDLE_MS2);
+      if (lastPhase === "playing" && !popKind && chatRow.hidden) hideT = setTimeout(idleHide, IDLE_MS2);
     }
+    const stopKey = (e) => e.stopPropagation();
+    chatIn.addEventListener("keyup", stopKey);
+    chatIn.addEventListener("keypress", stopKey);
+    chatIn.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.isComposing) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        api.closeChat();
+        return;
+      }
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const text = chatIn.value.trim();
+      if (!text) {
+        api.closeChat();
+        return;
+      }
+      if (chat && chat.say(text)) {
+        chatIn.value = "";
+        api.closeChat();
+      } else if (toast) toast("Senden gerade nicht m\xF6glich");
+    });
     const onMove = () => {
       if (!disposed) api.touch();
     };
@@ -63245,7 +63483,7 @@ void main() {
         bPause.classList.toggle("is-attn", Boolean(x.startPending));
         bPrev.hidden = !x.hasPrev;
         bNext.hidden = !x.hasNext;
-        msg.textContent = x.ended ? "Film zu Ende" : x.startPending ? "Zum Starten \u201EStarten\u201C dr\xFCcken" : "";
+        msg.textContent = x.ended ? "Film zu Ende" : x.startPending ? "Zum Starten \u201EStarten\u201C dr\xFCcken" : String(x.group || "");
         msg.hidden = !msg.textContent;
         const pct = Math.round((Number.isFinite(x.volume) ? x.volume : 1) * 100);
         vol.textContent = x.muted ? "stumm" : `${pct} %`;
@@ -63263,6 +63501,7 @@ void main() {
       hide() {
         root.hidden = true;
         api.closeTracks();
+        api.closeChat();
       },
       /** Bedienung/Bewegung: Leiste sichtbar, Ausblend-Zeit neu. */
       touch() {
@@ -63293,6 +63532,34 @@ void main() {
             renderPop();
           }
         });
+      },
+      /** Chat-Zeile öffnen (Enter im Sessel). false = Chat aus/nicht verbunden: die Taste bleibt unverbraucht. */
+      openChat() {
+        if (disposed || !chat || !chat.enabled() || root.hidden) return false;
+        if (!chatRow.hidden) return true;
+        api.closeTracks();
+        chatRow.hidden = false;
+        chatIn.value = "";
+        clearTimeout(hideT);
+        root.classList.remove("is-idle");
+        try {
+          chatIn.focus({ preventScroll: true });
+        } catch {
+          try {
+            chatIn.focus();
+          } catch {
+          }
+        }
+        return true;
+      },
+      closeChat() {
+        if (chatRow.hidden) return;
+        chatRow.hidden = true;
+        try {
+          chatIn.blur();
+        } catch {
+        }
+        armIdle();
       },
       closeTracks() {
         popToken++;
@@ -63335,7 +63602,7 @@ void main() {
       const f = handlers[name];
       if (typeof f === "function") {
         try {
-          f(...a);
+          return f(...a);
         } catch (err) {
           try {
             console.warn("[LenzFlix Store3D] keyguard", err);
@@ -63343,6 +63610,7 @@ void main() {
           }
         }
       }
+      return void 0;
     };
     function seatedKey(e) {
       switch (e.code) {
@@ -63370,6 +63638,9 @@ void main() {
         case "KeyF":
           if (!e.repeat) call2("full");
           return true;
+        case "Enter":
+          return !e.repeat && call2("chat") === true;
+        // Chat-Zeile der Leiste; nur verbraucht, wenn sie aufgeht
         default:
           return false;
       }
@@ -63404,10 +63675,937 @@ void main() {
     };
   }
 
+  // src/js/store3d/cinema/sync.js
+  var SYNC = Object.freeze({
+    TICK_MS: 250,
+    // Takt des Aufrufers
+    DEAD_MS: 300,
+    // Totband-Minimum
+    RATE_MAX_MS: 2e3,
+    // bis hier Ratenkorrektur, darüber Sprung
+    RATE_GAIN_MS: 1e4,
+    RATE_CLAMP: 0.08,
+    COOLDOWN_MS: 6e3,
+    // zwischen zwei Sync-Sprüngen (Direktwiedergabe)
+    COOLDOWN_HLS_MS: 12e3,
+    SEEK_CAP: 3,
+    // Sync-Sprünge je Fenster, danach Versatz hinnehmen
+    SEEK_CAP_WINDOW_MS: 6e4,
+    OFFSET_RETRY_MS: 12e4,
+    LEAD_DIRECT_MS: 500,
+    // Startwerte des gelernten Vorhalts
+    LEAD_HLS_MS: 1500,
+    LEAD_MAX_MS: 3e3,
+    LAND_AFTER_MS: 2e3,
+    // Messung des Landefehlers nach einem Sprung
+    SYNCED_HOLD_MS: 2e3,
+    APPLY_MS: 2e3,
+    // nach eigenem Befehl keine Eingriffserkennung
+    GUARD_MS: 8e3,
+    // nach Sprung kein Zeitsprung-Eingriff, kein kb
+    JUMP_MS: 2500,
+    // Zeitsprung ohne Guard = Nutzer hat gespult
+    TICK_GAP_MS: 3e3,
+    // größere Lücke (Hintergrund-Drossel): neu aufsetzen
+    COALESCE_MS: 400,
+    // Seeks sammeln
+    KC_MIN_MS: 500,
+    KB_MIN_MS: 250,
+    INFLIGHT_MS: 3e3,
+    STALL_MS: 1e3,
+    LG_MS: 6e4,
+    // Schonzeit in lg (wie Worker LG_MS); der Worker meldet ihr Ende nicht per kx
+    AHEAD_OK_MS: 3e3,
+    MIRROR_TOL_MS: 150,
+    SEEK_TOAST_MS: 1500
+  });
+  var clamp13 = (x, a, b) => Math.min(b, Math.max(a, x));
+  var num4 = (x, d = 0) => Number.isFinite(Number(x)) ? Number(x) : d;
+  function expectedPos(s, now) {
+    if (!s) return 0;
+    const p = num4(s.p);
+    if (s.st !== 1) return Math.max(0, p);
+    return Math.max(0, p + (now - num4(s.at, now)) * num4(s.rate, 1));
+  }
+  function rejoinPlan({ kh, sid, wasHost, alone } = {}) {
+    if (Array.isArray(kh) && kh.some((e) => Array.isArray(e) && e[0] === sid)) return "kj";
+    return wasHost || alone ? "ks" : "solo";
+  }
+  function createSync(o = {}) {
+    const cfg = { ...SYNC, ...o.cfg || {} };
+    const A = o.adapter;
+    const send = o.send || (() => false);
+    const emit = o.emit || (() => {
+    });
+    const nowFn = o.serverNow || (() => Date.now());
+    const isHost = !!o.host;
+    const selfC = o.self;
+    const S = {
+      sess: null,
+      phase: "joining",
+      began: false,
+      inflight: null,
+      next: null,
+      seekP: null,
+      seekDue: 0,
+      lastKc: -1e9,
+      lastKb: -1e9,
+      applyUntil: 0,
+      guardUntil: 0,
+      lastSeekAt: -1e9,
+      seekTimes: [],
+      offsetUntil: 0,
+      offsetHits: 0,
+      land: null,
+      landFix: false,
+      landAt: 0,
+      lead: null,
+      leadAt: 0,
+      rateSet: null,
+      rateOk: null,
+      alignedSince: null,
+      bufSent: false,
+      stallSince: null,
+      hostKb: false,
+      waiting: false,
+      fasterShown: false,
+      last: null,
+      d: 0,
+      offsetMs: 0
+    };
+    const C = { kc: 0, kb: 0, seeks: 0, accepts: 0 };
+    const mode = () => A.mode ? A.mode() : "direct";
+    const exactOk = () => A.exact ? A.exact() !== false : true;
+    const res = () => exactOk() ? 0 : num4(A.res && A.res());
+    const lead = () => S.lead != null ? S.lead : mode() === "hls" ? cfg.LEAD_HLS_MS : cfg.LEAD_DIRECT_MS;
+    const dead = () => Math.max(cfg.DEAD_MS, 1.5 * (S.land || 0), res());
+    const inactive = () => S.phase === "solo" || S.phase === "ended";
+    const obsNow = () => {
+      try {
+        return A.state() || null;
+      } catch {
+        return null;
+      }
+    };
+    function resetRate() {
+      if (S.rateSet != null) {
+        S.rateSet = null;
+        try {
+          if (A.setRate) A.setRate(1);
+        } catch {
+        }
+      }
+    }
+    function giveUp(reason, sendKl = true) {
+      if (inactive()) return;
+      resetRate();
+      if (sendKl && S.sess) send({ t: "kl", sid: S.sess.sid });
+      S.phase = "solo";
+      emit({ type: "solo", reason });
+    }
+    function doSeek(target, now) {
+      try {
+        A.seekTo(Math.max(0, Math.round(target)), { exact: exactOk() });
+      } catch {
+      }
+      S.guardUntil = now + cfg.GUARD_MS;
+      S.applyUntil = now + cfg.APPLY_MS;
+      S.lastSeekAt = now;
+      S.landAt = now + cfg.LAND_AFTER_MS;
+      S.leadAt = now;
+      S.alignedSince = null;
+      C.seeks++;
+      resetRate();
+    }
+    function doPause(on, now) {
+      try {
+        A.setPaused(on);
+      } catch {
+      }
+      S.applyUntil = now + cfg.APPLY_MS;
+    }
+    function effSt() {
+      if (S.next) return S.next.o === 1 ? 1 : 2;
+      if (S.inflight && S.inflight.o !== 3) return S.inflight.o === 1 ? 1 : 2;
+      return S.sess ? S.sess.st : 2;
+    }
+    function flush2(now) {
+      if (!S.sess || inactive() || S.inflight || now - S.lastKc < cfg.KC_MIN_MS) return;
+      let o2, p;
+      if (S.next) {
+        o2 = S.next.o;
+        p = S.next.p;
+        S.next = null;
+      } else if (S.seekP != null && now >= S.seekDue) {
+        o2 = 3;
+        p = S.seekP;
+        S.seekP = null;
+      } else return;
+      p = Math.round(p);
+      S.inflight = { v: S.sess.v, o: o2, p, at: now };
+      S.lastKc = now;
+      C.kc++;
+      send({ t: "kc", sid: S.sess.sid, v: S.sess.v, o: o2, p });
+    }
+    function queue(o2, p, now) {
+      if (o2 === 3) {
+        S.seekP = Math.max(0, p);
+        S.seekDue = now + cfg.COALESCE_MS;
+        return;
+      }
+      const pp = S.seekP != null ? S.seekP : p;
+      S.seekP = null;
+      S.next = { o: o2, p: Math.max(0, pp) };
+      flush2(now);
+    }
+    function setWaiting(on, ms) {
+      if (on && !S.waiting) emit({ type: "wait", ms });
+      if (!on && S.waiting) emit({ type: "resume" });
+      S.waiting = on;
+    }
+    function applyRemote(old, s, now, initial) {
+      const obs = obsNow();
+      const cur = obs ? num4(obs.t) : 0;
+      const D2 = dead();
+      if (S.phase === "offset") S.phase = "synced";
+      if (s.st === 1) {
+        setWaiting(false);
+        doPause(false, now);
+        const erw = expectedPos(s, now);
+        if (initial || Math.abs(cur - erw) > D2) doSeek(erw + lead(), now);
+      } else if (s.st === 2) {
+        setWaiting(false);
+        doPause(true, now);
+        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now);
+      } else if (s.w) {
+        doPause(true, now);
+        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now);
+        setWaiting(true, Math.max(0, num4(s.w) - now));
+      } else if (!isHost) {
+        doPause(true, now);
+        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now);
+      }
+      if (!initial && old && !S.fasterShown) {
+        if (old.st === 1 && s.st === 2) emit({ type: "remote", kind: "pause", p: s.p });
+        else if (old.st === 2 && s.st === 1) emit({ type: "remote", kind: "play", p: expectedPos(s, now) });
+        else if (old.st === s.st && s.st !== 0 && Math.abs(expectedPos(s, now) - expectedPos(old, now)) > cfg.SEEK_TOAST_MS) emit({ type: "remote", kind: "seek", p: expectedPos(s, now) });
+      }
+    }
+    function hostKb() {
+      if (!isHost || S.hostKb || !S.began || !S.sess || S.sess.st !== 0 || S.sess.w) return;
+      S.hostKb = true;
+      S.lastKb = nowFn();
+      C.kb++;
+      send({ t: "kb", sid: S.sess.sid, b: 0 });
+    }
+    function userSt(st) {
+      if (inactive() || !S.sess) return false;
+      const now = nowFn();
+      const obs = obsNow();
+      doPause(st === 2, now);
+      queue(st, S.seekP != null ? S.seekP : obs ? num4(obs.t) : S.sess.p, now);
+      return true;
+    }
+    const api = {
+      /** Mitschauer: der Watchdog meldet 'start' -> erster Abgleich auf den Sitzungszustand. */
+      begin() {
+        if (inactive() || S.began) return;
+        S.began = true;
+        if (S.sess) applyRemote(null, S.sess, nowFn(), true);
+      },
+      /** Gastgeber: der Film spielt echt (erstes playing). Bezugspunkt der Sitzung; sendet kb 0, sobald der Server st=0 meldet. */
+      markPlaying() {
+        if (inactive() || S.began) return;
+        S.began = true;
+        if (isHost) {
+          S.phase = "synced";
+          hostKb();
+        } else if (S.sess) applyRemote(null, S.sess, nowFn(), true);
+      },
+      onKx(kx) {
+        if (inactive() || !kx || typeof kx !== "object") return;
+        if (S.sess && kx.sid !== S.sess.sid) return;
+        const old = S.sess;
+        const v = num4(kx.v);
+        if (old && v < old.v) return;
+        const now = nowFn();
+        const s = { sid: kx.sid, v, i: kx.i, st: num4(kx.st, 2), p: num4(kx.p), at: num4(kx.at, now), m: Array.isArray(kx.m) ? kx.m : [], lg: Array.isArray(kx.lg) ? kx.lg : [], w: kx.w ? num4(kx.w) : 0, rate: kx.rate };
+        if (o.itemId && s.i && s.i !== o.itemId) {
+          S.sess = s;
+          giveUp("item");
+          return;
+        }
+        S.sess = s;
+        if (selfC != null && s.lg.includes(selfC)) {
+          if (S.lgSince == null) S.lgSince = now;
+        } else S.lgSince = null;
+        C.accepts++;
+        const f = S.inflight;
+        let mine = false;
+        if (f && v > f.v) {
+          mine = v === f.v + 1 && Math.abs(s.p - f.p) <= cfg.MIRROR_TOL_MS && (f.o === 3 || s.st === (f.o === 1 ? 1 : 2));
+          S.inflight = null;
+          if (!mine && !S.fasterShown) {
+            emit({ type: "faster" });
+            S.fasterShown = true;
+          }
+        }
+        const repeat = old && v === old.v && s.st === old.st && s.w === old.w;
+        if (!mine && !repeat && S.began) applyRemote(old, s, now, !old);
+        S.fasterShown = false;
+        hostKb();
+        flush2(now);
+      },
+      /** er-Antwort auf einen eigenen kc. */
+      onError(code) {
+        if (inactive()) return;
+        if (code === "stale") {
+          S.inflight = null;
+          if (!S.fasterShown) {
+            emit({ type: "faster" });
+            S.fasterShown = true;
+          }
+        } else if (code === "rate" || code === "bad") S.inflight = null;
+        else if (code === "off" || code === "cap" || code === "deny" || code === "perm") giveUp(code, false);
+      },
+      // Nutzeraktionen (Leiste, Tastenwächter, VR-Panel): optimistisch lokal, dann absoluter Zielzustand per kc.
+      pause() {
+        return userSt(2);
+      },
+      play() {
+        return userSt(1);
+      },
+      toggle() {
+        return userSt(effSt() === 1 ? 2 : 1);
+      },
+      seek(ms) {
+        if (inactive() || !S.sess) return false;
+        const now = nowFn();
+        const p = Math.max(0, num4(ms));
+        try {
+          A.seekTo(Math.round(p), { exact: exactOk() });
+        } catch {
+        }
+        S.guardUntil = now + cfg.GUARD_MS;
+        S.applyUntil = now + cfg.APPLY_MS;
+        queue(3, p, now);
+        return true;
+      },
+      seekBy(deltaMs) {
+        if (inactive() || !S.sess) return false;
+        const obs = obsNow();
+        return api.seek((S.seekP != null ? S.seekP : obs ? num4(obs.t) : 0) + num4(deltaMs));
+      },
+      /** Aufstehen: allein Pause per kc ('pause', der Aufrufer pausiert lokal wie 1.15), mit anderen nichts ('keep'). */
+      stand() {
+        if (inactive() || !S.sess) return "pause";
+        if ((S.sess.m || []).length > 1) return "keep";
+        const obs = obsNow();
+        queue(2, obs ? num4(obs.t) : S.sess.p, nowFn());
+        return "pause";
+      },
+      /** Eigene lokale Eingriffe (Autoplay-Sperre, Spurwechsel, Neuladen) ms lang nicht als Nutzeraktion/Puffern werten. */
+      suppress(ms) {
+        const now = nowFn();
+        const t = now + num4(ms, cfg.GUARD_MS);
+        S.guardUntil = Math.max(S.guardUntil, t);
+        S.applyUntil = Math.max(S.applyUntil, t);
+      },
+      localEnded() {
+        if (!inactive()) {
+          resetRate();
+          S.phase = "ended";
+        }
+      },
+      leave() {
+        if (inactive()) return;
+        resetRate();
+        if (S.sess) send({ t: "kl", sid: S.sess.sid });
+        S.phase = "ended";
+      },
+      tick() {
+        if (!S.sess || inactive()) return;
+        const now = nowFn();
+        if (S.inflight && now - S.inflight.at > cfg.INFLIGHT_MS) S.inflight = null;
+        flush2(now);
+        const obs = obsNow();
+        if (!obs) return;
+        const t = num4(obs.t);
+        const ready = num4(obs.ready, 4);
+        const last = S.last;
+        const rebase = !last || now - last.now > cfg.TICK_GAP_MS;
+        S.last = { now, t, paused: !!obs.paused, rate: obs.rate != null ? num4(obs.rate, 1) : 1 };
+        if (obs.ended) return;
+        if (S.rateSet != null && obs.rate != null && Math.abs(num4(obs.rate) - S.rateSet) > 0.01) {
+          resetRate();
+          S.rateOk = false;
+        }
+        if (S.landAt && now >= S.landAt && ready >= 3 && !obs.seeking) {
+          const err = Math.abs(t - expectedPos(S.sess, now));
+          S.landAt = 0;
+          if (!S.landFix && S.sess.st === 1 && !obs.paused && res() === 0 && err > 2 * cfg.DEAD_MS) {
+            S.landFix = true;
+            doSeek(expectedPos(S.sess, now) + lead(), now);
+            return;
+          }
+          S.landFix = false;
+          S.land = S.land == null ? err : 0.7 * S.land + 0.3 * err;
+        }
+        if (S.leadAt && now - S.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S.sess.st === 1 && !obs.paused) {
+          const dur = clamp13(now - S.leadAt, 0, cfg.LEAD_MAX_MS);
+          S.lead = clamp13(S.lead == null ? dur : 0.7 * S.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
+          S.leadAt = 0;
+        }
+        const hidden = !!obs.hidden;
+        if (S.began && S.phase !== "joining" && !rebase && !hidden) {
+          const eff = effSt();
+          if (obs.paused !== last.paused && now >= S.applyUntil) {
+            if (obs.paused && eff === 1) queue(2, t, now);
+            else if (!obs.paused && eff !== 1) queue(1, t, now);
+          }
+          const expT = last.paused ? last.t : last.t + (now - last.now) * num4(last.rate, 1);
+          if (Math.abs(t - expT) > cfg.JUMP_MS && now >= S.guardUntil && now >= S.applyUntil) {
+            S.guardUntil = now + cfg.GUARD_MS;
+            queue(3, t, now);
+          }
+        }
+        const inLg = selfC != null && (S.sess.lg || []).includes(selfC) && (S.lgSince == null || now - S.lgSince < cfg.LG_MS);
+        const recovered = ready >= 3 || num4(obs.ahead) >= cfg.AHEAD_OK_MS;
+        const stalled = !obs.paused && !obs.seeking && ready < 3 && last && Math.abs(t - last.t) < 50;
+        if (stalled) {
+          if (S.stallSince == null) S.stallSince = now;
+          if (now - S.stallSince >= cfg.STALL_MS) S.stalledLong = true;
+        } else S.stallSince = null;
+        if (S.bufSent) {
+          if (recovered && now - S.lastKb >= cfg.KB_MIN_MS) {
+            S.bufSent = false;
+            S.lastKb = now;
+            C.kb++;
+            send({ t: "kb", sid: S.sess.sid, b: 0 });
+          }
+        } else if (S.phase === "synced" && S.stallSince != null && now - S.stallSince >= cfg.STALL_MS && now >= S.guardUntil && !hidden && !inLg && now - S.lastKb >= cfg.KB_MIN_MS) {
+          S.bufSent = true;
+          S.lastKb = now;
+          C.kb++;
+          send({ t: "kb", sid: S.sess.sid, b: 1 });
+        }
+        if (S.stalledLong && recovered) {
+          S.stalledLong = false;
+          S.seekTimes = [];
+          S.lastSeekAt = -1e9;
+          if (S.phase === "offset") {
+            S.phase = "synced";
+            S.alignedSince = null;
+          }
+        }
+        if (!S.began) return;
+        const st = S.sess.st;
+        const erw = expectedPos(S.sess, now);
+        const d = t - erw;
+        S.d = d;
+        const D2 = dead();
+        if (S.phase === "offset") {
+          S.offsetMs = d;
+          if (now < S.offsetUntil) return;
+          S.phase = "synced";
+          S.seekTimes = [];
+          S.alignedSince = null;
+        }
+        const hold = !!obs.paused && st === 1;
+        if (mode() === "other") {
+          if (S.phase === "joining") {
+            S.phase = "synced";
+            emit({ type: "unsynced" });
+          }
+          return;
+        }
+        if (hold) return;
+        if (S.phase === "joining") {
+          const ok = ready >= 3 && !obs.seeking && Math.abs(d) < D2 && (st === 1 ? !obs.paused : !!obs.paused);
+          if (!ok) S.alignedSince = null;
+          else if (S.alignedSince == null) S.alignedSince = now;
+          else if (now - S.alignedSince >= cfg.SYNCED_HOLD_MS) {
+            S.phase = "synced";
+            emit({ type: "synced" });
+          }
+        }
+        if (ready < 3 || obs.seeking) return;
+        const ad = Math.abs(d);
+        if (ad < D2 / 2) {
+          resetRate();
+          return;
+        }
+        if (ad <= D2) return;
+        if (st === 1 && S.rateOk !== false && A.setRate && ad <= cfg.RATE_MAX_MS) {
+          const r = 1 - clamp13(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
+          if (S.rateSet !== r) {
+            try {
+              A.setRate(r);
+              S.rateSet = r;
+            } catch {
+              S.rateOk = false;
+            }
+          }
+          return;
+        }
+        const cool = mode() === "hls" ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
+        if (now - S.lastSeekAt < cool) return;
+        S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
+        if (S.seekTimes.length >= cfg.SEEK_CAP) {
+          resetRate();
+          S.phase = "offset";
+          S.offsetUntil = now + cfg.OFFSET_RETRY_MS;
+          S.offsetMs = d;
+          S.offsetHits++;
+          emit({ type: "offset", ms: d });
+          if (S.offsetHits >= 2) giveUp("sync");
+          return;
+        }
+        S.seekTimes.push(now);
+        doSeek(erw + (st === 1 ? lead() : 0), now);
+      },
+      status() {
+        const now = nowFn();
+        const s = S.sess;
+        return { phase: S.phase, st: s ? s.st : null, v: s ? s.v : null, d: S.d, offsetMs: S.offsetMs, waitMs: s && s.st === 0 && s.w ? Math.max(0, s.w - now) : 0, members: s ? s.m.length : 0 };
+      },
+      diag() {
+        return { phase: S.phase, st: S.sess ? S.sess.st : null, v: S.sess ? S.sess.v : null, d: S.d, seeks: C.seeks, rate: S.rateSet, rateOk: S.rateOk, accepts: C.accepts, kcSent: C.kc, kbSent: C.kb, land: S.land, lead: lead(), guard: Math.round(S.guardUntil - nowFn()), apply: Math.round(S.applyUntil - nowFn()), inflight: !!S.inflight, seekP: S.seekP };
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/cinema/party.js
+  var TICK_MS2 = 250;
+  var HOLD_MS2 = 8e3;
+  var POLL_MS = 1e3;
+  var RESYNC_MS = 1500;
+  var LOST_MS = 2e4;
+  var warn16 = (...a) => {
+    try {
+      console.warn("[LenzFlix Store3D]", ...a);
+    } catch {
+    }
+  };
+  var SOLO_TEXT = {
+    sync: "Synchron nicht m\xF6glich \u2013 du schaust allein weiter.",
+    item: "Anderer Film \u2013 du schaust allein weiter.",
+    lost: "Gemeinsames Kino getrennt \u2013 du schaust allein weiter."
+  };
+  function createParty(o = {}) {
+    const get = (f, ...a) => {
+      try {
+        return typeof f === "function" ? f(...a) : null;
+      } catch (err) {
+        warn16("party", err);
+        return null;
+      }
+    };
+    const netp = () => {
+      const n = get(o.net);
+      return n && typeof n.send === "function" && typeof n.on === "function" && typeof n.has === "function" && typeof n.serverNow === "function" ? n : null;
+    };
+    const meNow = () => {
+      const n = netp();
+      return n && typeof n.me === "function" ? get(() => n.me()) : null;
+    };
+    const live = () => {
+      const n = netp();
+      return n && (typeof n.active !== "function" || n.active()) ? n : null;
+    };
+    const kinoNet = () => {
+      const n = live();
+      return n && n.has("kino") ? n : null;
+    };
+    const toast = (t) => {
+      if (t) get(o.toast, t);
+    };
+    const si = o.setInterval || ((f, ms) => setInterval(f, ms));
+    const ci2 = o.clearInterval || ((h2) => clearInterval(h2));
+    const bridge = () => get(o.bridge);
+    const video = () => {
+      const b = bridge();
+      return b && typeof b.video === "function" ? get(() => b.video()) : null;
+    };
+    const now = () => {
+      const n = netp();
+      const t = n ? Number(n.serverNow()) : NaN;
+      return Number.isFinite(t) ? t : Date.now();
+    };
+    let sync = null;
+    let sid = null;
+    let role = null;
+    let itemId = null;
+    let kh = [];
+    let timer = 0;
+    let offs = [];
+    let hostTried = false;
+    let pendingJoin = false;
+    let played = false;
+    let lastKx = null;
+    let lastPoll = -1e9;
+    let wrapped = null;
+    let lostAt = 0;
+    let disposed = false;
+    let info = { wait: false, unsynced: false };
+    const alive = () => {
+      if (!sync) return false;
+      const p = sync.status().phase;
+      return p !== "solo" && p !== "ended";
+    };
+    const adapter = {
+      setPaused(on) {
+        const b = bridge();
+        if (!b) return;
+        let r;
+        if (typeof b.setPaused === "function") r = b.setPaused(on);
+        else {
+          const v = video();
+          if (v && Boolean(v.paused) !== Boolean(on) && typeof b.togglePause === "function") b.togglePause();
+        }
+        if (r && typeof r.then === "function") r.then(void 0, () => {
+          if (sync) sync.suppress(HOLD_MS2);
+          get(o.onBlocked);
+        });
+      },
+      seekTo(ms, opts) {
+        const b = bridge();
+        if (b && typeof b.seekTo === "function") b.seekTo(ms / 1e3, opts);
+      },
+      setRate(r) {
+        const v = video();
+        if (v) v.playbackRate = r;
+      },
+      mode() {
+        const b = bridge();
+        const m = b && typeof b.mode === "function" ? b.mode() : "direct";
+        return m === "unknown" ? "hls" : m;
+      },
+      exact: () => true,
+      state() {
+        const v = video();
+        if (!v) return null;
+        const t = Number(v.currentTime) || 0;
+        let ahead = 0;
+        try {
+          const b = v.buffered;
+          if (b && b.length) ahead = Math.max(0, (Number(b.end(b.length - 1)) || 0) - t) * 1e3;
+        } catch {
+        }
+        return {
+          paused: Boolean(v.paused),
+          t: t * 1e3,
+          ready: Number(v.readyState) || 0,
+          seeking: Boolean(v.seeking),
+          rate: Number(v.playbackRate) || 1,
+          ahead,
+          hidden: typeof document !== "undefined" && document.hidden === true,
+          ended: Boolean(v.ended)
+        };
+      }
+    };
+    function endSession() {
+      if (timer) {
+        ci2(timer);
+        timer = 0;
+      }
+      const n = netp();
+      if (n && typeof n.setKino === "function") get(() => n.setKino(false));
+      sync = null;
+      sid = null;
+      role = null;
+      lastKx = null;
+      info = { wait: false, unsynced: false };
+    }
+    function onEmit(ev) {
+      switch (ev.type) {
+        case "remote":
+          if (ev.kind === "pause") toast("Jemand hat pausiert");
+          else if (ev.kind === "play") toast("Jemand hat fortgesetzt");
+          else toast(`Jemand hat auf ${fmtTime(ev.p / 1e3)} gespult`);
+          break;
+        case "faster":
+          toast("Jemand war schneller");
+          break;
+        case "wait":
+          info.wait = true;
+          break;
+        case "resume":
+          info.wait = false;
+          break;
+        case "unsynced":
+          info.unsynced = true;
+          toast("Hier ist kein Abgleich m\xF6glich \u2013 du schaust f\xFCr dich.");
+          break;
+        case "solo":
+          toast(SOLO_TEXT[ev.reason] || "Gemeinsames Kino nicht verf\xFCgbar \u2013 du schaust allein weiter.");
+          endSession();
+          break;
+        default:
+          break;
+      }
+    }
+    function make(host, n) {
+      const me = n.me ? get(() => n.me()) : null;
+      sync = createSync({
+        serverNow: now,
+        adapter,
+        send: (m) => {
+          const x = netp();
+          return x ? x.send(m) : false;
+        },
+        emit: onEmit,
+        host,
+        self: me ? me.c : void 0,
+        itemId
+      });
+      role = host ? "host" : "member";
+      info = { wait: false, unsynced: false };
+      if (typeof n.setKino === "function") n.setKino(true);
+      lostAt = 0;
+      timer = si(() => {
+        if (sync) {
+          checkLost();
+          if (sync) sync.tick();
+        }
+      }, TICK_MS2);
+      listen();
+    }
+    function checkLost() {
+      if (!sync) return;
+      if (live()) {
+        lostAt = 0;
+        return;
+      }
+      const t = Date.now();
+      if (!lostAt) {
+        lostAt = t;
+        return;
+      }
+      if (t - lostAt < LOST_MS) return;
+      toast(SOLO_TEXT.lost);
+      try {
+        sync.leave();
+      } catch (err) {
+        warn16("kl", err);
+      }
+      endSession();
+    }
+    function startHost(item) {
+      const n = kinoNet();
+      const id = item && (item.Id || item.id);
+      const t = item && item.Type;
+      if (!n || !id || t && t !== "Movie" || !get(o.film)) return false;
+      const v = video();
+      if (!v) return false;
+      const msg = { t: "ks", i: id, p: Math.round((Number(v.currentTime) || 0) * 1e3) };
+      if (Number.isFinite(v.duration) && v.duration > 0) msg.dur = Math.round(v.duration * 1e3);
+      itemId = id;
+      if (!n.send(msg)) return false;
+      make(true, n);
+      sync.markPlaying();
+      return true;
+    }
+    function onWl(m) {
+      kh = Array.isArray(m && m.kh) ? m.kh : [];
+      if (!sync) return;
+      const plan = rejoinPlan({ kh, sid, wasHost: role === "host", alone: sync.status().members <= 1 });
+      const n = kinoNet();
+      if (plan === "kj" && n) n.send({ t: "kj", sid });
+      else if (plan === "ks" && n) {
+        const item = { Id: itemId, Type: "Movie" };
+        endSession();
+        if (!startHost(item)) toast(SOLO_TEXT.lost);
+      } else {
+        endSession();
+        toast(SOLO_TEXT.lost);
+      }
+    }
+    function listen() {
+      if (offs.length || disposed) return;
+      const n = netp();
+      if (!n) return;
+      offs.push(
+        n.on("msg:kh", (e) => {
+          kh = Array.isArray(e && e.l) ? e.l : [];
+        }),
+        n.on("msg:wl", onWl),
+        n.on("state", checkLost),
+        n.on("msg:kx", (e) => {
+          if (!sync || !e) return;
+          if (sid == null) {
+            const me = meNow();
+            if (me && Array.isArray(e.m) && e.m.includes(me.c)) sid = e.sid;
+            else return;
+          } else if (e.sid !== sid) return;
+          lastKx = { ...e, i: e.i || lastKx && lastKx.i };
+          sync.onKx(e);
+        }),
+        n.on("msg:er", (e) => {
+          if (!sync || !e) return;
+          if (e.y === "kc" || e.y === "ks" || e.y === "kj") sync.onError(e.c);
+        })
+      );
+    }
+    function wrap3(b) {
+      if (!b) return {};
+      if (wrapped && wrapped.b === b) return wrapped.w;
+      const w = Object.create(b);
+      w.togglePause = (...a) => {
+        if (alive()) {
+          const st = sync.status().st;
+          if (get(o.startPending)) {
+            if (!played || st === 1 || st === 0 || !sync.play()) {
+              sync.suppress(HOLD_MS2);
+              adapter.setPaused(false);
+            }
+            return void 0;
+          }
+          if (sync.toggle()) return void 0;
+        }
+        return b.togglePause(...a);
+      };
+      w.seekBy = (d, ...a) => alive() && sync.seekBy(Number(d) * 1e3) ? void 0 : b.seekBy(d, ...a);
+      w.seekTo = (s, ...a) => alive() && sync.seek(Number(s) * 1e3) ? void 0 : b.seekTo(s, ...a);
+      wrapped = { b, w };
+      return w;
+    }
+    const api = {
+      get active() {
+        return alive();
+      },
+      get role() {
+        return alive() ? role : null;
+      },
+      get sid() {
+        return sid;
+      },
+      listen,
+      /** Öffentliche Sitzungen anderer (Platzwahl): [{ sid, host, itemId, n, st, m, p, at }]. Rechte-Filter macht die Platzwahl. */
+      offers() {
+        if (!netp()) return [];
+        listen();
+        const me = meNow();
+        return kh.filter((e) => Array.isArray(e) && e[2] && e[0] !== sid && !(me && e[1] === me.c)).map((e) => ({ sid: e[0], host: e[1], itemId: e[2], n: e[3], st: e[4], m: e[5] || [], p: e[6], at: e[7] }));
+      },
+      /** Mitschauen: kj sofort senden; der Film startet danach über cinema.play (ohne resume). false = nicht möglich. */
+      join(s, item) {
+        const n = kinoNet();
+        const id = item && (item.Id || item.id);
+        if (!n || !id || !Number.isInteger(s)) return false;
+        if (sync) api.leave();
+        itemId = id;
+        if (!n.send({ t: "kj", sid: s })) return false;
+        sid = s;
+        make(false, n);
+        pendingJoin = true;
+        return true;
+      },
+      /** Beginn eines Laufs (PalastCinema.beforePlay): ohne vorangegangenes join() endet eine alte Sitzung (kl). */
+      beginRun(item) {
+        const joining = pendingJoin;
+        pendingJoin = false;
+        if (!joining) {
+          api.leave();
+          itemId = item ? item.Id || item.id || null : null;
+        }
+        played = false;
+        hostTried = false;
+      },
+      /** Erstes echtes playing (Watchdog start bzw. „Starten“): Gastgeber legt die Sitzung an, Mitschauer gleicht erstmals ab. */
+      onPlaying(item) {
+        if (played) return;
+        played = true;
+        if (sync && role === "member") {
+          sync.begin();
+          return;
+        }
+        if (!sync) {
+          hostTried = true;
+          if (!startHost(item)) hostTried = false;
+        }
+      },
+      /** Takt von PalastCinema.tick: Gastgeber-Start nachholen (mp erst später verbunden, Film-Schalter später an). */
+      poll(t, item) {
+        if (!played || sync || hostTried || t - lastPoll < POLL_MS) return;
+        lastPoll = t;
+        if (startHost(item)) hostTried = true;
+      },
+      wrap: wrap3,
+      /** Aufstehen: 'keep' = mit anderen nichts tun (Film läuft weiter), sonst 'pause' (allein; kc ist schon gesendet, lokal pausiert der Aufrufer). */
+      stand() {
+        return alive() ? sync.stand() : "pause";
+      },
+      /** Nach Aufstehen allein pausiert: Weiter für die Sitzung. false = keine Sitzung (Aufrufer setzt lokal fort). */
+      play() {
+        return alive() ? sync.play() : false;
+      },
+      /** Wieder hingesetzt: bei größerer Abweichung sofort auf die gemeinsame Position springen (kein Nutzer-Seek, also kein kc). */
+      resync() {
+        if (!alive() || !lastKx || lastKx.st !== 1) return;
+        const v = video();
+        if (!v) return;
+        const erw = expectedPos(lastKx, now());
+        if (Math.abs((Number(v.currentTime) || 0) * 1e3 - erw) <= RESYNC_MS) return;
+        sync.suppress(HOLD_MS2);
+        adapter.seekTo(erw, { exact: true });
+      },
+      suppress(ms = HOLD_MS2) {
+        if (alive()) sync.suppress(ms);
+      },
+      leave() {
+        pendingJoin = false;
+        if (sync) {
+          try {
+            sync.leave();
+          } catch (err) {
+            warn16("kl", err);
+          }
+          endSession();
+        }
+      },
+      /** Leistenzeile (leer ohne Sitzung). */
+      text() {
+        if (!alive()) return "";
+        const s = sync.status();
+        if (s.waitMs > 0) return `Warte auf andere Zuschauer \u2026 ${Math.ceil(s.waitMs / 1e3)} s`;
+        if (info.unsynced) return "Nicht abgeglichen";
+        if (s.phase === "joining") return role === "member" ? "Du steigst ein \u2026" : "";
+        if (s.phase === "offset") return `\u2248 ${Math.max(1, Math.round(Math.abs(s.offsetMs) / 1e3))} s versetzt`;
+        return s.members > 1 ? `Gemeinsam \xB7 ${s.members} Zuschauer` : "";
+      },
+      /** Chat in der Leiste: nur mit Verbindung und eingeschaltetem Chat (sonst bleibt Enter im Sessel unberührt). */
+      chatOn() {
+        return Boolean(live() && get(o.chatOn));
+      },
+      say(text) {
+        const n = live();
+        return Boolean(n && typeof n.say === "function" && n.say(text));
+      },
+      diag() {
+        return { role, sid, itemId, kh: kh.length, ...sync ? sync.diag() : {} };
+      },
+      dispose() {
+        if (disposed) return;
+        api.leave();
+        disposed = true;
+        for (const f of offs) {
+          try {
+            if (typeof f === "function") f();
+          } catch {
+          }
+        }
+        offs = [];
+      }
+    };
+    return api;
+  }
+
   // src/js/store3d/cinema/palast.js
   var FAIL_HOLD_MS2 = 1800;
   var GAP_MS2 = 2e3;
-  var warn16 = (...a) => {
+  var warn17 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -63418,7 +64616,7 @@ void main() {
       try {
         return o[name](...a);
       } catch (err) {
-        warn16(name, err);
+        warn17(name, err);
       }
     }
     return void 0;
@@ -63474,6 +64672,28 @@ void main() {
       this.timers = /* @__PURE__ */ new Set();
       this.watch = createStartWatch();
       this.feed = createFeed({ getDeps: () => this._bridge });
+      this.party = createParty({
+        net: () => {
+          const c = this._ctx;
+          return c && typeof c.use === "function" ? c.use("net") : null;
+        },
+        bridge: () => this._bridge,
+        film: () => Boolean(this._mpPrefs().film),
+        chatOn: () => {
+          const c = this._ctx;
+          const n = c && typeof c.use === "function" ? c.use("net") : null;
+          return Boolean(n && typeof n.has === "function" && n.has("chat") && this._mpPrefs().chat !== false && !this._inXr());
+        },
+        toast: (t) => this._toast(t),
+        onBlocked: () => {
+          if (this.active) {
+            this.startPending = true;
+            this._toast("Zum Starten \u201EStarten\u201C dr\xFCcken");
+          }
+        },
+        startPending: () => this.startPending
+      });
+      this._offEnter = null;
       this.guard = null;
       this.overlayMine = false;
       this.deskDetached = false;
@@ -63510,8 +64730,21 @@ void main() {
       const d = this.app.deps;
       return d && d.cinema ? d.cinema : null;
     }
+    /** Bridge mit absoluten Zielen für Pause/Spulen (gemeinsame Sitzung); ohne Sitzung identisch zur Bridge. */
+    get _ib() {
+      return this.party.wrap(this._bridge);
+    }
     get _ctx() {
       return this.app.mods && this.app.mods.ctx ? this.app.mods.ctx : null;
+    }
+    _mpPrefs() {
+      try {
+        const mp = this.app.deps && this.app.deps.mp;
+        const p = mp && typeof mp.prefs === "function" ? mp.prefs() : null;
+        return p && typeof p === "object" ? p : {};
+      } catch {
+        return {};
+      }
     }
     _inXr() {
       const x = this.app.xr;
@@ -63530,7 +64763,7 @@ void main() {
         try {
           d.onCinema2d({ active: this.active, full: this.active && this.full });
         } catch (err) {
-          warn16("onCinema2d", err);
+          warn17("onCinema2d", err);
         }
       }
     }
@@ -63549,6 +64782,12 @@ void main() {
     }
     /** Beim Modul-Host anmelden: ctx.use('cinema2d') liefert diese Instanz (Welle 2). */
     register(ctx) {
+      if (ctx && typeof ctx.on === "function") {
+        try {
+          this._offEnter = ctx.on("enter", () => this.party.listen());
+        } catch {
+        }
+      }
       if (ctx && typeof ctx.provide === "function") return ctx.provide("cinema2d", this);
       return null;
     }
@@ -63617,11 +64856,23 @@ void main() {
     }
     /** Nach erneutem Hinsetzen: nur fortsetzen, wenn das Aufstehen den Film pausiert hat (idempotent). */
     resumeAfterStand() {
-      if (!this._pausedByStand) return false;
+      if (!this._pausedByStand) {
+        if (this.active && this.seated) this.party.resync();
+        return false;
+      }
       this._pausedByStand = false;
       if (!this.active || !this.seated || this._isPlaying()) return false;
-      call(this._bridge, "togglePause");
+      if (!this.party.play()) call(this._bridge, "togglePause");
       return true;
+    }
+    /** Mitschauen (Platzwahl): kj senden, dann denselben Film über den normalen Weg ohne resume starten; der Sync springt danach auf die gemeinsame Position. */
+    joinFilm(sid, item) {
+      if (this.disposed || !this.saal || this._inXr() || !item) return Promise.resolve(false);
+      if (!this.party.join(sid, item)) return Promise.resolve(false);
+      return this.play(item, { resume: false }).then((ok) => {
+        if (ok === false || !this.active) this.party.leave();
+        return ok;
+      });
     }
     /** Platzwechsel im Sitzen: nur die Kamera fliegt auf den neuen Platz, Film, Leiste und Spielerzustand bleiben (kein Neustart). */
     _moveSeat(seatId) {
@@ -63674,7 +64925,7 @@ void main() {
       this.overlayMine = false;
       const pause = this._pauseOnStand !== false && this.active;
       this._pauseOnStand = true;
-      if (pause && this._isPlaying()) {
+      if (pause && this._isPlaying() && this.party.stand() !== "keep") {
         call(this._bridge, "togglePause");
         this._pausedByStand = true;
       }
@@ -63694,7 +64945,8 @@ void main() {
     _ensureBar() {
       if (this.bar) return;
       this.bar = createBar({
-        bridge: this._bridge || {},
+        bridge: this._bridge ? this._ib : {},
+        chat: { enabled: () => this.party.chatOn(), say: (t) => this.party.say(t) },
         getState: () => this._barState(),
         onStand: () => this.stand(),
         onFull: () => this.setFull(true),
@@ -63703,7 +64955,7 @@ void main() {
     }
     _barState() {
       const st = this.state || {};
-      return { ...st, startPending: this.startPending, ended: st.phase === "ended", canFull: this.active };
+      return { ...st, startPending: this.startPending, ended: st.phase === "ended", canFull: this.active, group: this.party.text() };
     }
     _duck(on) {
       try {
@@ -63728,6 +64980,7 @@ void main() {
       this._clearTimers();
       this.item = item || null;
       this._resetRun();
+      this.party.beginRun(item);
       this.active = true;
       this.phase = "starting";
       if (this.full) this._setFull(false);
@@ -63760,7 +65013,7 @@ void main() {
           this.state = d.state() || {};
         }
       } catch (err) {
-        warn16("Palast-Kino bauen", err);
+        warn17("Palast-Kino bauen", err);
         this.leave("build", "B");
       }
     }
@@ -63778,12 +65031,14 @@ void main() {
           handlers: {
             pause: () => {
               if (this.bar) this.bar.touch();
-              call(this._bridge, "togglePause");
+              call(this._ib, "togglePause");
             },
             seekBy: (d) => {
               if (this.bar) this.bar.touch();
-              call(this._bridge, "seekBy", d);
+              call(this._ib, "seekBy", d);
             },
+            chat: () => this.bar ? this.bar.openChat() : false,
+            // Enter im Sessel: Chat-Zeile der Leiste (nur bei Chat an, sonst nicht verbraucht)
             volume: (dir) => {
               if (this.bar) this.bar.touch();
               applyVolumeStep(stepVolume(this.state, dir), this._bridge || {}, (t) => this._toast(t));
@@ -63814,6 +65069,7 @@ void main() {
     }
     _onState() {
       const st = this.state || {};
+      if (st.reloading) this.party.suppress();
       if (this.phase === "starting") {
         if (st.phase === "error" && !st.reloading) this._giveUp("D");
         return;
@@ -63828,6 +65084,7 @@ void main() {
         this._giveUp("D");
         return;
       }
+      if (st.phase === "ended") this.party.leave();
       if (st.phase === "playing" && this.phase !== "playing") this._setPlaying();
       else if ((st.phase === "paused" || st.phase === "ended") && this.phase !== "paused") this._setPaused();
     }
@@ -63837,6 +65094,7 @@ void main() {
       call(this.saal, "curtain", true);
       call(this.saal, "light", 0.08);
       this.spillK = 1;
+      this.party.onPlaying(this.item);
     }
     _setPaused() {
       this.phase = "paused";
@@ -63907,7 +65165,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn16("Stopp", err);
+          warn17("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS2, () => this.leave("fail", code));
@@ -64019,6 +65277,7 @@ void main() {
         this._stopThenLeave("stop");
         if (!this.active) return;
       }
+      if (this.phase === "playing" || this.phase === "paused") this.party.poll(now, this.item);
       if (this.bar) this.bar.update(this._barState());
       if (this.phase === "starting") this._checkStart(now);
     }
@@ -64052,6 +65311,7 @@ void main() {
       const st = this.state || {};
       const ended = st.phase === "ended" || st.duration > 0 && st.time >= st.duration - 1;
       this.active = false;
+      this.party.leave();
       this.gen++;
       this._clearTimers();
       this.phase = "idle";
@@ -64113,7 +65373,8 @@ void main() {
         fallbackCode: this.fallbackCode,
         videoFrames: this.screen ? this.screen.videoFrames : 0,
         marks: { ...this.watch.marks },
-        renderEnabled: !this.full
+        renderEnabled: !this.full,
+        party: this.party.diag()
       };
     }
     dispose() {
@@ -64122,6 +65383,14 @@ void main() {
       else if (this.seated) this.stand({ pause: false });
       this.disposed = true;
       this._clearTimers();
+      this.party.dispose();
+      if (this._offEnter) {
+        try {
+          this._offEnter();
+        } catch {
+        }
+        this._offEnter = null;
+      }
       this.feed.dispose();
       if (this.guard) {
         this.guard.detach();

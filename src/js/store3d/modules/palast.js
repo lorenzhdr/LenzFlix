@@ -8,8 +8,9 @@ import { quad, merge } from '../util/geo.js';
 import { buildPlan, outerPosterSlots, inRect } from '../palast/plan.js';
 import { buildProgram, dayKeyOf, minutesOf, clockText } from '../palast/program.js';
 import {
-  createTicketBook, showRows, tapeOf, seatGate, ticketToast, tearLine,
+  createTicketBook, showRows, tapeOf, seatGate, ticketToast, tearLine, joinOffers,
 } from '../palast/choice.js';
+import { renderJoin, joinSpec } from '../palast/joinpanel.js';
 import { buildHall } from '../palast/hall.js';
 import { buildFoyer } from '../palast/foyer.js';
 import { renderPanel } from '../palast/panel.js';
@@ -164,13 +165,48 @@ export default {
     // ---------------------------------------------------------------- Sitzen
     let startedFor = null; // Ticket, für das schon gemeldet wurde
     let wasActive = false;
+    // Mitschauen (1.16): öffentliche Sitzungen anderer, deren Film im eigenen Katalog steht (Rechte-Filter in joinOffers)
+    function offersNow() {
+      const c = cinema();
+      const pt = c && c.party;
+      if (!pt || typeof pt.offers !== 'function') return [];
+      const n = ctx.use('net');
+      try {
+        const me = n && typeof n.me === 'function' ? n.me() : null;
+        return joinOffers(pt.offers(), catItems(), n && n.peerName ? (x) => n.peerName(x) : null, me && me.c, n && n.serverNow ? n.serverNow() : null);
+      } catch { return []; }
+    }
+    function openJoin(seatId, offers) {
+      const t = book.get();
+      const n = ctx.use('net');
+      const pr = n && typeof n.prefs === 'function' ? n.prefs() : null;
+      const later = (fn) => queueMicrotask(fn); // c.sit lehnt bei offenem Overlay ab: erst nach dem Schließen
+      const model = {
+        offers, own: t && t.source !== 'join' ? { title: t.title } : null, isPrivate: Boolean(pr && pr.film === false),
+        onOwn: () => later(() => sitOwn(seatId)),
+        onJoin: (o) => later(() => {
+          const pt = (cinema() || {}).party;
+          book.join(o);
+          sitOwn(seatId, () => { try { if (pt && typeof pt.join === 'function') pt.join(o.sid, o.item); } catch (err) { warn('palast join', err); } });
+        }),
+      };
+      return openPanel(ctx, { cls: 'lfx-store-palast-pick', label: 'LENZ PALAST Platzwahl', build(panel, close) { renderJoin(panel, close, model); }, vr: (close) => joinSpec(model, close) });
+    }
     function sit(seatId) {
+      const c = cinema();
+      if (!(c && c.active) && !ctx.overlay.isOpen() && (xr() || inHall())) {
+        const offers = offersNow();
+        if (offers.length) { openJoin(seatId, offers); return false; }
+      }
+      return sitOwn(seatId);
+    }
+    function sitOwn(seatId, pre) {
       const c = cinema();
       if (xr()) {
         const t = book.get();
         const show = program.shows[0];
         const it = t ? t.item : itemOf(show);
-        if (it) ctx.deps.play(it, { resume: t ? t.resume : Boolean(show && show.resume) });
+        if (it) { if (pre) pre(); ctx.deps.play(it, { resume: t ? t.resume : Boolean(show && show.resume) }); }
         else toast('Heute läuft nichts im Palast.');
         return false;
       }
@@ -184,6 +220,7 @@ export default {
       if (wasSeated) return true; // Platzwechsel bei laufendem Film: Kamera zieht um, der Stream läuft ohne Neustart weiter
       const t = book.get();
       startedFor = null;
+      if (pre) pre();
       Promise.resolve(c.play(t.item, { resume: t.resume })).then((ok) => { if (ok === false && c.seated) { toast('Der Film startet gerade nicht.'); } }).catch((err) => warn('palast play', err));
       return true;
     }

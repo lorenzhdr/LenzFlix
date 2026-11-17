@@ -22592,9 +22592,37 @@
       }
     };
     const cur3 = () => videoEl || find();
-    function seekTo(s) {
+    function setPaused(on) {
       try {
         const v = cur3();
+        if (!v || Boolean(v.paused) === Boolean(on)) return void 0;
+        const b = osd(".btnPause");
+        if (b) {
+          b.click();
+          return void 0;
+        }
+        return on ? void v.pause() : v.play();
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    }
+    function mode() {
+      try {
+        const v = cur3();
+        const u = String(v && v.currentSrc || "");
+        if (!u) return "unknown";
+        return /\.m3u8|^blob:/i.test(u) ? "hls" : "direct";
+      } catch {
+        return "unknown";
+      }
+    }
+    function seekTo(s, opts) {
+      try {
+        const v = cur3();
+        if (opts && opts.exact && v && Number.isFinite(Number(s))) {
+          v.currentTime = Math.max(0, Number(s));
+          return;
+        }
         const slider2 = osd("input.osdPositionSlider");
         const d = v ? v.duration : NaN;
         if (slider2 && Number.isFinite(d) && d > 0) {
@@ -22779,6 +22807,8 @@
       },
       subtitles,
       togglePause: () => click(".btnPause"),
+      setPaused,
+      mode,
       seekBy,
       seekTo,
       next: () => click(".btnNextTrack"),

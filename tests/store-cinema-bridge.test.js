@@ -224,6 +224,54 @@ describe('Proxy', () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
+  it('setPaused ist idempotent: klickt nur bei Abweichung, liest paused live', () => {
+    bridge.setPaused(false); // läuft schon
+    expect(clicks).toEqual([]);
+    bridge.setPaused(true);
+    expect(clicks).toEqual(['btnPause']);
+    vs.paused = true; // Jellyfin zieht nach
+    bridge.setPaused(true);
+    bridge.setPaused(true);
+    expect(clicks).toEqual(['btnPause']);
+    bridge.setPaused(false);
+    expect(clicks).toEqual(['btnPause', 'btnPause']);
+  });
+
+  it('setPaused ohne Knopf: pause()/play(), Promise zeigt Ablehnung', async () => {
+    document.querySelector('.btnPause').remove();
+    video.pause = vi.fn();
+    video.play = vi.fn(() => Promise.reject(new Error('blocked')));
+    bridge.setPaused(true);
+    expect(video.pause).toHaveBeenCalledTimes(1);
+    vs.paused = true;
+    await expect(bridge.setPaused(false)).rejects.toThrow('blocked');
+    bridge.setPaused(true); // schon pausiert
+    expect(video.pause).toHaveBeenCalledTimes(1);
+  });
+
+  it('seekTo exact setzt currentTime direkt, ohne exact bleibt der Slider', () => {
+    const onChange = vi.fn();
+    document.querySelector('input.osdPositionSlider').addEventListener('change', onChange);
+    bridge.seekTo(123.456, { exact: true });
+    expect(vs.currentTime).toBe(123.456);
+    expect(onChange).not.toHaveBeenCalled();
+    bridge.seekTo(-5, { exact: true });
+    expect(vs.currentTime).toBe(0);
+    bridge.seekTo(1500, {});
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('mode: nur Token aus currentSrc', () => {
+    expect(bridge.mode()).toBe('unknown');
+    vs.currentSrc = 'https://x/Videos/1/master.m3u8?a=1';
+    Object.defineProperty(video, 'currentSrc', { get: () => vs.currentSrc, configurable: true });
+    expect(bridge.mode()).toBe('hls');
+    vs.currentSrc = 'blob:https://x/abc';
+    expect(bridge.mode()).toBe('hls');
+    vs.currentSrc = 'https://x/Videos/1/stream?static=true';
+    expect(bridge.mode()).toBe('direct');
+  });
+
   it('setVolume: Slider mit input und change; Fallback video.volume', () => {
     const slider = document.querySelector('input.osdVolumeSlider');
     const ev = [];

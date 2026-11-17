@@ -56,7 +56,7 @@ describe('mp-room: Handshake', () => {
     expect(c).toBe(1);
     const [wl] = w.take(c);
     expect(wl).toEqual({
-      t: 'wl', pv: 1, c: 1, k: K('a'), s: NOW0, ad: 0, cap: ['pres', 'chat'], cf: { pr: 8, ph: 8 }, peers: [],
+      t: 'wl', pv: 1, c: 1, k: K('a'), s: NOW0, ad: 0, cap: ['pres', 'chat', 'kino'], cf: { pr: 8, ph: 8 }, kh: [], peers: [],
     });
     expect(SERVER_CAPS).toEqual(expect.arrayContaining(['pres', 'chat', 'emote', 'admin'])); // Unter-Reducer kuendigen ihre Faehigkeiten an (ab Welle c auch phys/push)
   });

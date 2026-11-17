@@ -7,6 +7,7 @@
 // API:  import { startRelay } from './relay.mjs'  →  const r = await startRelay({ port, host, cfg, now })
 //         r.port, r.state (Reducer-State), r.stats(), r.reset(), r.kick(name), r.close()
 //   cfg  = Reducer-Konfiguration (wie MpWorld: { maxConn, dailyReq }); now = Uhr-Funktion (Standard Date.now, Tests dürfen eine eigene setzen)
+//   tap  = optionaler Mitschnitt (Welle 4, Datenschutz-/Zähl-Prüfung): tap(dir 'in'|'out', name, text) je Textframe (ohne ping/pong); 'in' = Client→Server mit Verbindungsname, 'out' = Server→Client
 // HTTP (nur zum Messen/Debuggen):  GET /stats → r.stats()    GET /health → "ok"
 // WebSocket: ws://127.0.0.1:<port>/mp, Subprotokolle ['lfx-mp.1', 't.<Ticket>'] (Antwort 'lfx-mp.1'), Origin egal.
 // Dev-Ticket (statt HMAC-Ticket): 'dev.<name>.<admin 0|1>' → Claims { k: Pseudonym aus 'dev-<name>' (12 Hex, stabil), n: name, a, e: jetzt+10 min, j: eindeutig je Verbindung }.
@@ -78,7 +79,7 @@ export async function startRelay(o = {}) {
         for (const c of x.to) {
           const ws = sockets.get(c);
           if (!ws || ws.readyState !== 1) continue;
-          try { ws.send(x.data); tot.framesOut++; const mt = meta.get(c); if (mt) mt.out++; } catch { /* toter Socket: der Alarm räumt auf */ }
+          try { ws.send(x.data); tot.framesOut++; const mt = meta.get(c); if (mt) mt.out++; if (o.tap) o.tap('out', mt ? mt.name : '?', String(x.data)); } catch { /* toter Socket: der Alarm räumt auf */ }
         }
       } else if (x.kind === 'renew') renews.push(x);
       // 'att' (Hibernation-Attachment) entfällt: der Relay hält den Zustand im Prozess
@@ -131,6 +132,7 @@ export async function startRelay(o = {}) {
           const mt = meta.get(c);
           if (mt) { const t = now(); mt.in++; mt.times.push(t); while (mt.times.length && t - mt.times[0] >= 1000) mt.times.shift(); if (mt.times.length > mt.max) mt.max = mt.times.length; }
           tot.framesIn++;
+          if (o.tap) o.tap('in', mt ? mt.name : '?', text);
           run({ type: 'message', c, data: text });
         });
         const gone = (type) => () => {

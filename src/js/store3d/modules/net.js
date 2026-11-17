@@ -185,7 +185,7 @@ export default {
         clearTimeout: (h) => clearTimeout(h),
         random: Math.random,
       },
-      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'admin'], f: flags(), cv: mp.cv }),
+      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin'], f: flags(), cv: mp.cv }),
       onMsg,
       onState,
     });
@@ -331,6 +331,7 @@ export default {
     // ---------------------------------------------------------------- Provider
     const removeProvider = ctx.provide('net', {
       active: () => live && !disposed,
+      prefs,
       /** Diagnose (Debug/Panel): Sitzung, Ausschaltgrund, Transportzustand. */
       diag: () => ({ live, failed: failed || null, entered, suspendedClosed, transport: transport && transport.info ? transport.info() : null }),
       me: () => (transport ? transport.me() : null),

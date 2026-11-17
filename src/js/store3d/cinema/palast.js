@@ -14,6 +14,7 @@ import { failToast } from './failcodes.js';
 import { createBar } from './bar2d.js';
 import { createKeyGuard } from './keyguard.js';
 import { stepVolume, applyVolumeStep } from './controls.js';
+import { createParty } from './party.js';
 
 const FAIL_HOLD_MS = 1800; // Statusbild „Kino konnte nicht starten“ bleibt so lange stehen
 const GAP_MS = 2000; // größere Lücke zwischen zwei Ticks = Hintergrund-Tab (Uhr des Watchdogs nachziehen)
@@ -68,6 +69,17 @@ export class PalastCinema {
     this.timers = new Set();
     this.watch = createStartWatch();
     this.feed = createFeed({ getDeps: () => this._bridge });
+    // Gemeinsames Kino (Mehrspieler 1.16): ohne Verbindung/Fähigkeit `kino` reicht party alles durch (= 1.15)
+    this.party = createParty({
+      net: () => { const c = this._ctx; return c && typeof c.use === 'function' ? c.use('net') : null; },
+      bridge: () => this._bridge,
+      film: () => Boolean(this._mpPrefs().film),
+      chatOn: () => { const c = this._ctx; const n = c && typeof c.use === 'function' ? c.use('net') : null; return Boolean(n && typeof n.has === 'function' && n.has('chat') && this._mpPrefs().chat !== false && !this._inXr()); },
+      toast: (t) => this._toast(t),
+      onBlocked: () => { if (this.active) { this.startPending = true; this._toast('Zum Starten „Starten“ drücken'); } },
+      startPending: () => this.startPending,
+    });
+    this._offEnter = null;
     this.guard = null;
     this.overlayMine = false;
     this.deskDetached = false;
@@ -104,7 +116,14 @@ export class PalastCinema {
   // ---------------------------------------------------------------- Zugriffe
   get _bridge() { const d = this.app.deps; return d && d.cinema ? d.cinema : null; }
 
+  /** Bridge mit absoluten Zielen für Pause/Spulen (gemeinsame Sitzung); ohne Sitzung identisch zur Bridge. */
+  get _ib() { return this.party.wrap(this._bridge); }
+
   get _ctx() { return this.app.mods && this.app.mods.ctx ? this.app.mods.ctx : null; }
+
+  _mpPrefs() {
+    try { const mp = this.app.deps && this.app.deps.mp; const p = mp && typeof mp.prefs === 'function' ? mp.prefs() : null; return p && typeof p === 'object' ? p : {}; } catch { return {}; }
+  }
 
   _inXr() { const x = this.app.xr; return Boolean(x && x.presenting); }
 
@@ -125,7 +144,12 @@ export class PalastCinema {
   _clearTimers() { for (const id of this.timers) clearTimeout(id); this.timers.clear(); }
 
   /** Beim Modul-Host anmelden: ctx.use('cinema2d') liefert diese Instanz (Welle 2). */
-  register(ctx) { if (ctx && typeof ctx.provide === 'function') return ctx.provide('cinema2d', this); return null; }
+  register(ctx) {
+    // Kino-Angebote (kh) kommen schon beim Verbinden: ab 'enter' zuhören (das Modul net steht dann bereit)
+    if (ctx && typeof ctx.on === 'function') { try { this._offEnter = ctx.on('enter', () => this.party.listen()); } catch { /* egal */ } }
+    if (ctx && typeof ctx.provide === 'function') return ctx.provide('cinema2d', this);
+    return null;
+  }
 
   // ---------------------------------------------------------------- Saal
   /** saal: { anchor: Object3D, screenOpts, seats, aisle, bounds, curtain?(open, instant), light?(k), spill?({r,g,b}, k), dispose?() }. Rückgabe: Abmelder. */
@@ -189,11 +213,18 @@ export class PalastCinema {
 
   /** Nach erneutem Hinsetzen: nur fortsetzen, wenn das Aufstehen den Film pausiert hat (idempotent). */
   resumeAfterStand() {
-    if (!this._pausedByStand) return false;
+    if (!this._pausedByStand) { if (this.active && this.seated) this.party.resync(); return false; } // gemeinsam: Film lief weiter, auf die Gruppe nachziehen
     this._pausedByStand = false;
     if (!this.active || !this.seated || this._isPlaying()) return false;
-    call(this._bridge, 'togglePause');
+    if (!this.party.play()) call(this._bridge, 'togglePause'); // gemeinsam (allein pausiert): Weiter für die Sitzung
     return true;
+  }
+
+  /** Mitschauen (Platzwahl): kj senden, dann denselben Film über den normalen Weg ohne resume starten; der Sync springt danach auf die gemeinsame Position. */
+  joinFilm(sid, item) {
+    if (this.disposed || !this.saal || this._inXr() || !item) return Promise.resolve(false);
+    if (!this.party.join(sid, item)) return Promise.resolve(false);
+    return this.play(item, { resume: false }).then((ok) => { if (ok === false || !this.active) this.party.leave(); return ok; });
   }
 
   /** Platzwechsel im Sitzen: nur die Kamera fliegt auf den neuen Platz, Film, Leiste und Spielerzustand bleiben (kein Neustart). */
@@ -242,7 +273,8 @@ export class PalastCinema {
     // Aufstehen pausiert den Film – auch bei Esc (desktop.js → overlayClose ruft hier direkt an); leave/dispose übergeben pause:false
     const pause = this._pauseOnStand !== false && this.active;
     this._pauseOnStand = true;
-    if (pause && this._isPlaying()) { call(this._bridge, 'togglePause'); this._pausedByStand = true; }
+    // gemeinsam mit anderen: der Film läuft für alle weiter (stand() meldet 'keep'); allein: Pause wie 1.15 (die Sitzung bekommt das kc)
+    if (pause && this._isPlaying() && this.party.stand() !== 'keep') { call(this._bridge, 'togglePause'); this._pausedByStand = true; }
     const ctx = this._ctx;
     const a = this.saal && this.saal.aisle;
     if (ctx) {
@@ -257,7 +289,8 @@ export class PalastCinema {
   _ensureBar() {
     if (this.bar) return;
     this.bar = createBar({
-      bridge: this._bridge || {},
+      bridge: this._bridge ? this._ib : {},
+      chat: { enabled: () => this.party.chatOn(), say: (t) => this.party.say(t) },
       getState: () => this._barState(),
       onStand: () => this.stand(),
       onFull: () => this.setFull(true),
@@ -267,7 +300,7 @@ export class PalastCinema {
 
   _barState() {
     const st = this.state || {};
-    return { ...st, startPending: this.startPending, ended: st.phase === 'ended', canFull: this.active };
+    return { ...st, startPending: this.startPending, ended: st.phase === 'ended', canFull: this.active, group: this.party.text() };
   }
 
   _duck(on) {
@@ -294,6 +327,7 @@ export class PalastCinema {
     this._clearTimers();
     this.item = item || null;
     this._resetRun();
+    this.party.beginRun(item); // neuer Film ohne Mitschauen: alte Sitzung verlassen (kl)
     this.active = true;
     this.phase = 'starting';
     if (this.full) this._setFull(false);
@@ -342,8 +376,9 @@ export class PalastCinema {
         isActive: () => this.active && !this.full,
         isSeated: () => this.seated && this.phase !== 'failed',
         handlers: {
-          pause: () => { if (this.bar) this.bar.touch(); call(this._bridge, 'togglePause'); },
-          seekBy: (d) => { if (this.bar) this.bar.touch(); call(this._bridge, 'seekBy', d); },
+          pause: () => { if (this.bar) this.bar.touch(); call(this._ib, 'togglePause'); },
+          seekBy: (d) => { if (this.bar) this.bar.touch(); call(this._ib, 'seekBy', d); },
+          chat: () => (this.bar ? this.bar.openChat() : false), // Enter im Sessel: Chat-Zeile der Leiste (nur bei Chat an, sonst nicht verbraucht)
           volume: (dir) => { if (this.bar) this.bar.touch(); applyVolumeStep(stepVolume(this.state, dir), this._bridge || {}, (t) => this._toast(t)); },
           mute: () => { if (this.bar) this.bar.touch(); call(this._bridge, 'toggleMute'); },
           full: () => this.setFull(true),
@@ -367,6 +402,7 @@ export class PalastCinema {
 
   _onState() {
     const st = this.state || {};
+    if (st.reloading) this.party.suppress(); // Tonspur-/Qualitätswechsel lädt neu: kein Eingriff, kein Puffern melden
     if (this.phase === 'starting') {
       if (st.phase === 'error' && !st.reloading) this._giveUp('D');
       return;
@@ -375,6 +411,7 @@ export class PalastCinema {
     if (st.route === 'home') { this.leave('home'); return; }
     if (this.phase === 'fallback') return;
     if (st.phase === 'error' && !st.reloading) { this._giveUp('D'); return; }
+    if (st.phase === 'ended') this.party.leave(); // Film zu Ende: Sitzung verlassen (kl), Angebot verschwindet
     if (st.phase === 'playing' && this.phase !== 'playing') this._setPlaying();
     else if ((st.phase === 'paused' || st.phase === 'ended') && this.phase !== 'paused') this._setPaused();
   }
@@ -385,6 +422,7 @@ export class PalastCinema {
     call(this.saal, 'curtain', true);
     call(this.saal, 'light', 0.08);
     this.spillK = 1;
+    this.party.onPlaying(this.item); // erstes echtes playing: Gastgeber legt die Sitzung an, Mitschauer gleicht erstmals ab
   }
 
   _setPaused() {
@@ -530,6 +568,7 @@ export class PalastCinema {
     const b = this.saal && this.saal.bounds;
     const p = this.app.player;
     if (b && p && !this.seated && !this.full && !this.stopping && this.phase !== 'failed' && !inBounds(b, p.x, p.z)) { this._stopThenLeave('stop'); if (!this.active) return; }
+    if (this.phase === 'playing' || this.phase === 'paused') this.party.poll(now, this.item);
     if (this.bar) this.bar.update(this._barState());
     if (this.phase === 'starting') this._checkStart(now);
   }
@@ -566,6 +605,7 @@ export class PalastCinema {
     const st = this.state || {};
     const ended = st.phase === 'ended' || (st.duration > 0 && st.time >= st.duration - 1);
     this.active = false;
+    this.party.leave(); // kl (einmalig); Hülle und Leiste danach wie 1.15
     this.gen++;
     this._clearTimers();
     this.phase = 'idle';
@@ -602,7 +642,7 @@ export class PalastCinema {
   diag() {
     return {
       phase: this.phase, active: this.active, full: this.full, seated: this.seated, failCode: this.failCode, fallbackCode: this.fallbackCode,
-      videoFrames: this.screen ? this.screen.videoFrames : 0, marks: { ...this.watch.marks }, renderEnabled: !this.full,
+      videoFrames: this.screen ? this.screen.videoFrames : 0, marks: { ...this.watch.marks }, renderEnabled: !this.full, party: this.party.diag(),
     };
   }
 
@@ -612,6 +652,8 @@ export class PalastCinema {
     else if (this.seated) this.stand({ pause: false });
     this.disposed = true;
     this._clearTimers();
+    this.party.dispose();
+    if (this._offEnter) { try { this._offEnter(); } catch { /* egal */ } this._offEnter = null; }
     this.feed.dispose();
     if (this.guard) { this.guard.detach(); this.guard = null; }
     if (this.bar) { this.bar.dispose(); this.bar = null; }

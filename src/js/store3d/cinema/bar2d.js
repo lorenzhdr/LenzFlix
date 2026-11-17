@@ -16,7 +16,7 @@ function el(doc, tag, cls, text) {
  * st (update): Bridge-Zustand (title, time, duration, phase, hasPrev, hasNext, volume, muted) plus { startPending, ended, canFull }.
  * Die Knöpfe nehmen keinen Fokus (Leertaste löst so keinen Klick aus); „Starten“ ruft togglePause synchron im Klick (Nutzergeste).
  */
-export function createBar({ bridge, getState, onStand, onFull, toast, doc = document, win = typeof window !== 'undefined' ? window : null } = {}) {
+export function createBar({ bridge, getState, onStand, onFull, toast, chat = null, doc = document, win = typeof window !== 'undefined' ? window : null } = {}) {
   const root = el(doc, 'div', 'lfx-palast-bar');
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', 'Kino');
@@ -34,7 +34,13 @@ export function createBar({ bridge, getState, onStand, onFull, toast, doc = docu
   const row = el(doc, 'div', 'lfx-palast-row');
   const pop = el(doc, 'div', 'lfx-palast-pop');
   pop.hidden = true;
-  panel.append(title, msg, prog, row, pop);
+  // Chat-Zeile (Mehrspieler): erst per openChat() sichtbar, Enter sendet, Esc/Leerlauf schließt
+  const chatRow = el(doc, 'div', 'lfx-palast-chat');
+  chatRow.hidden = true;
+  const chatIn = el(doc, 'input', 'lfx-palast-chatin');
+  chatIn.type = 'text'; chatIn.maxLength = 200; chatIn.placeholder = 'Nachricht an alle im Saal …'; chatIn.setAttribute('aria-label', 'Chat-Nachricht');
+  chatRow.appendChild(chatIn);
+  panel.append(title, msg, prog, row, chatRow, pop);
   root.appendChild(panel);
 
   const btn = (label, cls, fn, parent = row) => {
@@ -84,7 +90,7 @@ export function createBar({ bridge, getState, onStand, onFull, toast, doc = docu
     if (d > 0) bridge.seekTo((Number(seek.value) / 1000) * d);
   });
 
-  const keyOf = (s) => [s.title, Math.floor(s.time || 0), Math.floor(s.duration || 0), s.phase, s.hasPrev, s.hasNext, Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100), s.muted, s.startPending, s.ended, s.canFull].join('~');
+  const keyOf = (s) => [s.group, s.title,Math.floor(s.time || 0), Math.floor(s.duration || 0), s.phase, s.hasPrev, s.hasNext, Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100), s.muted, s.startPending, s.ended, s.canFull].join('~');
 
   function renderPop() {
     if (!popKind) { pop.hidden = true; return; }
@@ -132,12 +138,25 @@ export function createBar({ bridge, getState, onStand, onFull, toast, doc = docu
     }, () => { if (token === popToken) { popBusy = false; api.closeTracks(); } });
   }
 
-  function idleHide() { if (!disposed && lastPhase === 'playing' && !popKind) root.classList.add('is-idle'); }
+  function idleHide() { if (!disposed && lastPhase === 'playing' && !popKind && chatRow.hidden) root.classList.add('is-idle'); }
   function armIdle() {
     clearTimeout(hideT);
     hideT = 0;
-    if (lastPhase === 'playing' && !popKind) hideT = setTimeout(idleHide, IDLE_MS);
+    if (lastPhase === 'playing' && !popKind && chatRow.hidden) hideT = setTimeout(idleHide, IDLE_MS);
   }
+  const stopKey = (e) => e.stopPropagation(); // Spiel- und Jellyfin-Kürzel bleiben draußen
+  chatIn.addEventListener('keyup', stopKey);
+  chatIn.addEventListener('keypress', stopKey);
+  chatIn.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.isComposing) return;
+    if (e.key === 'Escape') { e.preventDefault(); api.closeChat(); return; }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const text = chatIn.value.trim();
+    if (!text) { api.closeChat(); return; }
+    if (chat && chat.say(text)) { chatIn.value = ''; api.closeChat(); } else if (toast) toast('Senden gerade nicht möglich');
+  });
   const onMove = () => { if (!disposed) api.touch(); };
   const onDown = () => { swallow = api.idle; onMove(); };
   const evs = [['mousemove', onMove], ['pointerdown', onDown], ['touchstart', onMove]];
@@ -172,7 +191,7 @@ export function createBar({ bridge, getState, onStand, onFull, toast, doc = docu
       bPause.classList.toggle('is-attn', Boolean(x.startPending));
       bPrev.hidden = !x.hasPrev;
       bNext.hidden = !x.hasNext;
-      msg.textContent = x.ended ? 'Film zu Ende' : x.startPending ? 'Zum Starten „Starten“ drücken' : '';
+      msg.textContent = x.ended ? 'Film zu Ende' : x.startPending ? 'Zum Starten „Starten“ drücken' : String(x.group || '');
       msg.hidden = !msg.textContent;
       const pct = Math.round((Number.isFinite(x.volume) ? x.volume : 1) * 100);
       vol.textContent = x.muted ? 'stumm' : `${pct} %`;
@@ -182,7 +201,7 @@ export function createBar({ bridge, getState, onStand, onFull, toast, doc = docu
       return true;
     },
     show() { if (!disposed) { root.hidden = false; api.touch(); } },
-    hide() { root.hidden = true; api.closeTracks(); },
+    hide() { root.hidden = true; api.closeTracks(); api.closeChat(); },
     /** Bedienung/Bewegung: Leiste sichtbar, Ausblend-Zeit neu. */
     touch() {
       if (disposed) return;
@@ -204,6 +223,24 @@ export function createBar({ bridge, getState, onStand, onFull, toast, doc = docu
         popRows = Array.isArray(list) ? list : [];
         renderPop();
       }, () => { if (token === popToken) { popRows = []; renderPop(); } });
+    },
+    /** Chat-Zeile öffnen (Enter im Sessel). false = Chat aus/nicht verbunden: die Taste bleibt unverbraucht. */
+    openChat() {
+      if (disposed || !chat || !chat.enabled() || root.hidden) return false;
+      if (!chatRow.hidden) return true;
+      api.closeTracks();
+      chatRow.hidden = false;
+      chatIn.value = '';
+      clearTimeout(hideT);
+      root.classList.remove('is-idle');
+      try { chatIn.focus({ preventScroll: true }); } catch { try { chatIn.focus(); } catch { /* egal */ } }
+      return true;
+    },
+    closeChat() {
+      if (chatRow.hidden) return;
+      chatRow.hidden = true;
+      try { chatIn.blur(); } catch { /* egal */ }
+      armIdle();
     },
     closeTracks() {
       popToken++;

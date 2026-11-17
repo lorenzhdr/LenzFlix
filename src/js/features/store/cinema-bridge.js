@@ -161,9 +161,34 @@ export function createCinemaBridge({ win = window, doc = document, pollMs = 250 
   const click = (sel) => { try { const b = osd(sel); if (b) b.click(); } catch { /* egal */ } };
   const cur = () => videoEl || find();
 
-  function seekTo(s) {
+  // Idempotent (Mitschauen): Zustand live aus v.paused, nur bei Abweichung klicken (kein Toggle-Flattern); Rückgabe = play()-Promise (nur ohne Knopf)
+  function setPaused(on) {
     try {
       const v = cur();
+      if (!v || Boolean(v.paused) === Boolean(on)) return undefined;
+      const b = osd('.btnPause');
+      if (b) { b.click(); return undefined; }
+      return on ? void v.pause() : v.play();
+    } catch (e) { return Promise.reject(e); }
+  }
+
+  // Nur das Token, nie die URL
+  function mode() {
+    try {
+      const v = cur();
+      const u = String((v && v.currentSrc) || '');
+      if (!u) return 'unknown';
+      return /\.m3u8|^blob:/i.test(u) ? 'hls' : 'direct';
+    } catch { return 'unknown'; }
+  }
+
+  function seekTo(s, opts) {
+    try {
+      const v = cur();
+      if (opts && opts.exact && v && Number.isFinite(Number(s))) {
+        v.currentTime = Math.max(0, Number(s));
+        return;
+      }
       const slider = osd('input.osdPositionSlider');
       const d = v ? v.duration : NaN;
       if (slider && Number.isFinite(d) && d > 0) {
@@ -338,6 +363,8 @@ export function createCinemaBridge({ win = window, doc = document, pollMs = 250 
     onChange: (fn) => { changeFns.add(fn); return () => changeFns.delete(fn); },
     subtitles,
     togglePause: () => click('.btnPause'),
+    setPaused,
+    mode,
     seekBy,
     seekTo,
     next: () => click('.btnNextTrack'),

@@ -70,7 +70,7 @@ export function controlsSpec(st, h) {
   const vol = s.muted ? 'stumm' : pct >= 100 ? '100 % (max.)' : `${pct} %`;
   const spec = {
     title: clip(s.title || 'Kino', 70),
-    lines: [`Lautstärke ${vol}`],
+    lines: s.group ? [`Lautstärke ${vol}`, clip(s.group, 60)] : [`Lautstärke ${vol}`],
     progress: { value: dur ? t / dur : 0, label: `${fmtTime(t)} / ${fmtTime(dur)}`, onSeek: dur ? (f) => h.onSeekFrac(f) : undefined },
     buttons,
     width: 0.95,
@@ -133,7 +133,7 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
   };
 
   const keyOf = (st) => [st.title, Math.floor(st.time || 0), Math.floor(st.duration || 0), st.phase, st.hasPrev, st.hasNext,
-    st.upNext ? `${st.upNext.seconds}|${st.upNext.text ? 1 : 0}` : '-', Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100), st.muted, getSeat()].join('~');
+    st.upNext ? `${st.upNext.seconds}|${st.upNext.text ? 1 : 0}` : '-', Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100), st.muted, getSeat(), st.group || ''].join('~');
 
   const api = {
     get visible() { return Boolean(main && main.open) || reshow; },

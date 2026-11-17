@@ -388,3 +388,21 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-foot {
     order: 3;
   }
 }
+
+/* ---------- Platzwahl: Mitschauen oder eigener Film (palast/joinpanel.js) ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-join-row {
+  min-height: 56px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-join-row:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-join-row:disabled:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+@media (pointer: coarse) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-join-row {
+    min-height: 64px;
+  }
+}

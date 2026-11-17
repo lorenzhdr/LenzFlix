@@ -27,7 +27,7 @@ export function passesGuard(e) {
  */
 export function createKeyGuard({ win = typeof window !== 'undefined' ? window : null, isActive, isSeated, handlers = {} } = {}) {
   let attached = false;
-  const call = (name, ...a) => { const f = handlers[name]; if (typeof f === 'function') { try { f(...a); } catch (err) { try { console.warn('[LenzFlix Store3D] keyguard', err); } catch { /* egal */ } } } };
+  const call = (name, ...a) => { const f = handlers[name]; if (typeof f === 'function') { try { return f(...a); } catch (err) { try { console.warn('[LenzFlix Store3D] keyguard', err); } catch { /* egal */ } } } return undefined; };
 
   function seatedKey(e) {
     switch (e.code) {
@@ -38,6 +38,7 @@ export function createKeyGuard({ win = typeof window !== 'undefined' ? window : 
       case 'ArrowDown': call('volume', -1); return true;
       case 'KeyM': if (!e.repeat) call('mute'); return true;
       case 'KeyF': if (!e.repeat) call('full'); return true;
+      case 'Enter': return !e.repeat && call('chat') === true; // Chat-Zeile der Leiste; nur verbraucht, wenn sie aufgeht
       default: return false;
     }
   }

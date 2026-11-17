@@ -1,0 +1,250 @@
+{
+  "contract": "lfx-mp.1",
+  "note": "Besitzer W-K. c2s: rohe Client-Nachricht -> normalisiert (out) oder null (verworfen); s2c: Beispielframes (vom Test mp-kino gegen den Reducer geprueft, mit MP_GOLDEN_WRITE=1 neu schreibbar).",
+  "limits": {
+    "ks": {
+      "n": 1,
+      "per": 1000,
+      "burst": 1
+    },
+    "kj": {
+      "n": 1,
+      "per": 1000,
+      "burst": 1
+    },
+    "kl": {
+      "n": 1,
+      "per": 1000,
+      "burst": 1
+    },
+    "kc": {
+      "n": 2,
+      "per": 1000,
+      "burst": 2
+    },
+    "kb": {
+      "n": 4,
+      "per": 1000,
+      "burst": 4
+    }
+  },
+  "c2s": [
+    {
+      "name": "ks gueltig",
+      "in": {
+        "t": "ks",
+        "i": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "p": 5000,
+        "dur": 7200000
+      },
+      "out": {
+        "t": "ks",
+        "i": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "p": 5000,
+        "dur": 7200000
+      }
+    },
+    {
+      "name": "ks ohne i (privat)",
+      "in": {
+        "t": "ks",
+        "p": 10
+      },
+      "out": {
+        "t": "ks",
+        "i": null,
+        "p": 10
+      }
+    },
+    {
+      "name": "ks i ungueltig",
+      "in": {
+        "t": "ks",
+        "i": "zz",
+        "p": 10
+      },
+      "out": null
+    },
+    {
+      "name": "ks p geklemmt",
+      "in": {
+        "t": "ks",
+        "i": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "p": 1000000000000
+      },
+      "out": {
+        "t": "ks",
+        "i": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "p": 43200000
+      }
+    },
+    {
+      "name": "kj",
+      "in": {
+        "t": "kj",
+        "sid": 3
+      },
+      "out": {
+        "t": "kj",
+        "sid": 3
+      }
+    },
+    {
+      "name": "kj sid 0",
+      "in": {
+        "t": "kj",
+        "sid": 0
+      },
+      "out": null
+    },
+    {
+      "name": "kl",
+      "in": {
+        "t": "kl",
+        "sid": 3
+      },
+      "out": {
+        "t": "kl",
+        "sid": 3
+      }
+    },
+    {
+      "name": "kc pause",
+      "in": {
+        "t": "kc",
+        "sid": 3,
+        "v": 2,
+        "o": 2,
+        "p": 61000
+      },
+      "out": {
+        "t": "kc",
+        "sid": 3,
+        "v": 2,
+        "o": 2,
+        "p": 61000
+      }
+    },
+    {
+      "name": "kc o ungueltig",
+      "in": {
+        "t": "kc",
+        "sid": 3,
+        "v": 2,
+        "o": 4,
+        "p": 1
+      },
+      "out": null
+    },
+    {
+      "name": "kc p negativ",
+      "in": {
+        "t": "kc",
+        "sid": 3,
+        "v": 2,
+        "o": 3,
+        "p": -5
+      },
+      "out": {
+        "t": "kc",
+        "sid": 3,
+        "v": 2,
+        "o": 3,
+        "p": 0
+      }
+    },
+    {
+      "name": "kb 1",
+      "in": {
+        "t": "kb",
+        "sid": 3,
+        "b": 1
+      },
+      "out": {
+        "t": "kb",
+        "sid": 3,
+        "b": 1
+      }
+    },
+    {
+      "name": "kb b ungueltig",
+      "in": {
+        "t": "kb",
+        "sid": 3,
+        "b": 2
+      },
+      "out": null
+    }
+  ],
+  "s2c": {
+    "kh": {
+      "t": "kh",
+      "l": [
+        [
+          1,
+          1,
+          "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          1,
+          1,
+          [
+            1
+          ],
+          5000,
+          1700000002200
+        ]
+      ]
+    },
+    "kx_join": {
+      "t": "kx",
+      "sid": 1,
+      "v": 2,
+      "st": 1,
+      "p": 5000,
+      "at": 1700000002200,
+      "m": [
+        1,
+        2
+      ],
+      "lg": [
+        2
+      ],
+      "i": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+    },
+    "kx_pause": {
+      "t": "kx",
+      "sid": 1,
+      "v": 3,
+      "st": 2,
+      "p": 61000,
+      "at": 1700000004400,
+      "m": [
+        1,
+        2
+      ],
+      "lg": [
+        2
+      ],
+      "i": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+    },
+    "er_stale": {
+      "t": "er",
+      "c": "stale",
+      "y": "kc"
+    },
+    "wl_kh": [
+      [
+        1,
+        1,
+        "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        2,
+        2,
+        [
+          1,
+          2
+        ],
+        61000,
+        1700000004400
+      ]
+    ]
+  }
+}

@@ -41,7 +41,7 @@
 
   function make(i, isSeries) {
     var name = pick(A) + pick(B) + (rand() > 0.6 ? ' ' + pick(['II', 'Reloaded', 'Die Rückkehr', 'Der Anfang', '3']) : '');
-    var id = (isSeries ? 's' : 'm') + i;
+    var id = (isSeries ? '5' : 'f') + i.toString(16).padStart(31, '0'); // 32 Hex wie Jellyfin (der Worker-Validator verwirft kurze IDs)
     var year = 1975 + Math.floor(rand() * 51);
     var g = [pick(genres)];
     if (rand() > 0.5) g.push(pick(genres));
@@ -213,6 +213,10 @@
 
   // --- VR-Kino-Harness: echte Bridge (Hülle) + Fake-Jellyfin-Player mit identischem DOM (docs/store3d.md, Kino) ---
   // ?cinema=1|series|fail|paused|slow  Fake-Player (Film / Serie mit Up-Next / Wiedergabefehler / Start pausiert / Bild erst nach 15 s)   ?subs=srt|ass|off  Untertitelart
+  //   Kino-Sync-Modi (1.16.0 Welle 4, Fake-Player): &slider=<%>  Raster des Positionsreglers in Prozent (z. B. 0.1 = grob, Standard 'any')   &seeklag=<ms>  nach jedem Sprung readyState 0 und stehende Zeit für ms
+  //   &stall=<s>@<t>  einmaliges Puffern: ab Position t (Sekunden) steht der Film s Sekunden (readyState 2, Ereignisse waiting/playing)   &film=1  (mp=relay) Prefs 'Mein Film für andere sichtbar' an
+  //   Zur Laufzeit: window.__devPlayer.stallNow(s) (sofort s Sekunden stocken), .setSlider(prozent|'any'), .setSeekLag(ms).
+  //   Diagnose: window.__devFake().seeks = Zähler der Sprünge (seek()), .stallDone; window.__devFake().video ist das Fake-<video>.
   // ?xremu=1 lädt den Emulator (/xr-emu.js, nur lokal in .tmp/)   ?xrshot=1 blendet die Bühne während XR aus (Screenshot-Hilfe)
   var cinemaQ = q.get('cinema');
   // ?palast=1  2D-Kino im LENZ PALAST (Vorgabe ?cinema=1): Spike-Leinwand + Sitz vor dem Spieler, Start automatisch (window.__lfxStore.palastTest). Die Bühne bleibt über dem Fake-Player sichtbar,
@@ -334,11 +338,26 @@
     }
   }
 
+  var devPl = { seekLag: Math.max(0, Number(q.get('seeklag')) || 0) };
+  var stallM = /^(d+(?:.d+)?)@(d+(?:.d+)?)$/.exec(q.get('stall') || '');
+  var stallSpec = stallM ? { s: Number(stallM[1]), at: Number(stallM[2]) } : null;
+  var sliderStep = Number(q.get('slider')) > 0 ? String(Number(q.get('slider'))) : 'any';
+  window.__devPlayer = {
+    stallNow: function (s) { var f = fake; if (!f || f.fail) return false; f.stallUntil = performance.now() + Number(s) * 1000; f.video.dispatchEvent(new Event('waiting')); return true; },
+    setSlider: function (p) { sliderStep = Number(p) > 0 ? String(Number(p)) : 'any'; if (fake && fake.pos) fake.pos.step = sliderStep; },
+    setSeekLag: function (ms) { devPl.seekLag = Math.max(0, Number(ms) || 0); },
+  };
+
   function nowT(f) {
     var n = performance.now();
     var dt = (n - f.last) / 1000;
     f.last = n;
-    if (!f.fail && !f.video.paused && n >= f.reloadUntil && f.t < f.dur) {
+    if (stallSpec && !f.stallDone && !f.fail && !f.video.paused && f.t >= stallSpec.at && !f.stallUntil) {
+      f.stallUntil = n + stallSpec.s * 1000;
+      f.video.dispatchEvent(new Event('waiting'));
+    }
+    if (f.stallUntil && n >= f.stallUntil) { f.stallUntil = 0; f.stallDone = true; f.video.dispatchEvent(new Event('playing')); }
+    if (!f.fail && !f.video.paused && n >= f.reloadUntil && !(f.lagUntil && n < f.lagUntil) && !f.stallUntil && f.t < f.dur) {
       f.t = Math.min(f.dur, f.t + dt);
       if (f.t >= f.dur) f.video.pause();
     }
@@ -347,6 +366,8 @@
 
   function seek(f, s) {
     nowT(f);
+    f.seeks = (f.seeks || 0) + 1;
+    if (devPl.seekLag > 0) f.lagUntil = performance.now() + devPl.seekLag;
     f.t = Math.max(0, Math.min(f.dur, Number(s) || 0));
     f.video.dispatchEvent(new Event('seeking'));
     f.video.dispatchEvent(new Event('seeked'));
@@ -497,7 +518,7 @@
     def('currentTime', function () { nowT(f); return performance.now() < f.reloadUntil ? 0 : f.t; }, function (v) { seek(f, v); });
     def('duration', function () { return f.fail ? NaN : f.dur; });
     def('ended', function () { return !f.fail && f.t >= f.dur - 0.01; });
-    def('readyState', function () { return f.fail || performance.now() < f.reloadUntil ? 0 : nativeReadyState.call(video); });
+    def('readyState', function () { var n = performance.now(); return f.fail || n < f.reloadUntil || (f.lagUntil && n < f.lagUntil) ? 0 : f.stallUntil ? 2 : nativeReadyState.call(video); });
 
     if (!f.fail) {
       var canvas = mk('canvas');
@@ -560,7 +581,7 @@
     btn('btnAudio', 'Ton', function () { openSheet(f, 'audio'); });
     btn('buttonMute', 'Stumm', function () { video.muted = !video.muted; });
     var pos = mk('input', 'osdPositionSlider', f.osd);
-    pos.type = 'range'; pos.min = '0'; pos.max = '100'; pos.step = 'any'; pos.value = '0'; pos.style.width = '30%';
+    pos.type = 'range'; pos.min = '0'; pos.max = '100'; pos.step = sliderStep; pos.value = '0'; pos.style.width = '30%';
     pos.addEventListener('change', function () { seek(f, (Number(pos.value) / 100) * f.dur); });
     mk('span', 'osdPositionText', f.osd, '00:00:00');
     mk('span', 'osdDurationText', f.osd, '');
@@ -641,7 +662,7 @@
     var name = String(q.get('name') || 'A').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24) || 'A';
     var port = Number(q.get('relay')) || 5197;
     var admin = q.get('admin') === '1' ? 1 : 0;
-    var prefs = { on: true, name: true, film: false, chat: true, mute: [], hint: false };
+    var prefs = { on: true, name: true, film: q.get('film') === '1', chat: true, mute: [], hint: false };
     if (q.get('mpchat') === '0') prefs.chat = false;
     deps.mp = {
       uid: 'dev-' + name, cv: '1.16.0',
