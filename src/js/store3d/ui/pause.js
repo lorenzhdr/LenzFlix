@@ -58,6 +58,7 @@ export function voiceNote(info, wantOnline = false) {
  *   help?: string (Tastenhilfe, Desktop; Zeile unter dem Titel),
  *   onTouchControl?(scheme) / getTouchControl?() → 'game' | 'joystick' | 'touch' (Dreier-Zyklus; nur Touch; fehlt = Knopf ausgeblendet),
  *   onTouchTune?({ holdInvertY?, holdInvertX?, lookFlipY?, lookFlipX?, touchSens?, touchRegrip? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal', Umgreifen 'short'),
+ *   getDiscover?() → { count, total, items:[{id,found,title,desc,hint}] } | null (Eintrag „Entdeckungen (n/N)“ + Liste; fehlt = ausgeblendet),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
 export function createPause(host, a) {
@@ -81,6 +82,7 @@ export function createPause(host, a) {
   const vrb = mk('VR-Modus', () => { if (a.onVr) a.onVr(); }); // synchron im Klick (Nutzeraktivierung für requestSession)
   vrb.hidden = true;
   mk('Suche', () => a.onSearch());
+  const dsc = mk('', () => openDiscover());
   mk('Klassische Ansicht', () => a.onClassic());
   const q = mk('', () => {
     const next = QUALITY_NEXT[a.getQuality()] || 'auto';
@@ -152,8 +154,52 @@ export function createPause(host, a) {
     a.onVoice({ pitch: PITCH_NEXT[prefsNow().pitch] || 'sehrtief' });
     renderPick();
   });
+  // --- Entdeckungen (Liste über dem Pause-Menü) ---
+  const dp = el('div', 'lfx-store-voicepick lfx-store-discoverpick');
+  dp.hidden = true;
+  const dpPanel = el('div', 'lfx-store-voicepick-panel');
+  dpPanel.setAttribute('role', 'dialog');
+  dpPanel.setAttribute('aria-label', 'Entdeckungen');
+  dpPanel.setAttribute('aria-modal', 'true');
+  const dpTitle = el('div', 'lfx-store-pause-title', 'Entdeckungen');
+  const dpList = el('div', 'lfx-store-voicelist');
+  const dpBack = el('button', 'lfx-store-act lfx-store-act--primary', 'Zurück');
+  dpBack.type = 'button';
+  dpPanel.append(dpTitle, dpList, dpBack);
+  dp.appendChild(dpPanel);
+  const discoverNow = () => { try { return (a.getDiscover && a.getDiscover()) || null; } catch { return null; } };
+  function renderDiscover() {
+    const d = discoverNow();
+    dpList.textContent = '';
+    if (!d) return;
+    dpTitle.textContent = `Entdeckungen (${d.count}/${d.total})`;
+    for (const it of d.items) {
+      const row = el('div', 'lfx-store-act lfx-store-voiceitem');
+      row.classList.toggle('is-on', !!it.found);
+      row.tabIndex = 0; // fokussierbar: Tastatur und Vorlesehilfen erreichen auch die Hinweise
+      row.style.textAlign = 'left';
+      row.style.cursor = 'default';
+      row.append(el('div', '', it.found ? it.title : '???'), el('div', 'lfx-store-pause-note', it.found ? it.desc : it.hint));
+      dpList.appendChild(row);
+    }
+  }
+  function openDiscover() {
+    renderDiscover();
+    dp.hidden = false;
+    syncInert();
+    try { dpBack.focus({ preventScroll: true }); } catch { /* egal */ }
+  }
+  function closeDiscover() {
+    if (dp.hidden) return;
+    dp.hidden = true;
+    syncInert();
+    try { dsc.focus({ preventScroll: true }); } catch { /* egal */ }
+  }
+  dpBack.addEventListener('click', (e) => { e.stopPropagation(); closeDiscover(); });
+  dp.addEventListener('click', (e) => { if (e.target === dp) { e.stopPropagation(); closeDiscover(); } });
+
   /** Das Pause-Panel ist bei offenem Unterpanel gesperrt (kein Tab/Lesen dahinter). */
-  const syncInert = () => { if (pick.hidden && tp.hidden) panel.removeAttribute('inert'); else panel.setAttribute('inert', ''); };
+  const syncInert = () => { if (pick.hidden && tp.hidden && dp.hidden) panel.removeAttribute('inert'); else panel.setAttribute('inert', ''); };
   function openPick() {
     renderPick();
     pick.hidden = false;
@@ -227,6 +273,9 @@ export function createPause(host, a) {
   tp.addEventListener('click', (e) => { if (e.target === tp) { e.stopPropagation(); closeTouch(); } });
 
   function refresh() {
+    const dd = discoverNow();
+    dsc.hidden = !dd;
+    if (dd) dsc.textContent = `Entdeckungen (${dd.count}/${dd.total})`;
     vrb.hidden = !(a.getVr && a.getVr());
     q.textContent = `Qualität: ${QUALITY_LABEL[a.getQuality()] || 'Auto'}`;
     s.textContent = `Ton: ${a.getSound() ? 'An' : 'Aus'}`;
@@ -251,12 +300,13 @@ export function createPause(host, a) {
   root.appendChild(panel);
   root.appendChild(pick);
   root.appendChild(tp);
+  root.appendChild(dp);
   root.addEventListener('click', (e) => { if (e.target === root) a.onResume(); });
   // Tab kreist im obersten Panel (Pause, Stimme oder Touch-Steuerung)
   root.addEventListener('keydown', (e) => {
     if (e.key !== 'Tab') return;
-    const layer = !tp.hidden ? tp : !pick.hidden ? pick : panel;
-    const list = [...layer.querySelectorAll('button')].filter((b) => !b.disabled && !b.closest('[hidden]'));
+    const layer = !dp.hidden ? dp : !tp.hidden ? tp : !pick.hidden ? pick : panel;
+    const list = [...layer.querySelectorAll('button, [tabindex="0"]')].filter((b) => !b.disabled && !b.closest('[hidden]'));
     if (!list.length) return;
     const i = list.indexOf(document.activeElement);
     const next = e.shiftKey ? (i <= 0 ? list[list.length - 1] : null) : (i < 0 || i === list.length - 1 ? list[0] : null);
@@ -271,12 +321,13 @@ export function createPause(host, a) {
   return {
     root,
     get visible() { return !root.hidden; },
-    get pickOpen() { return !pick.hidden || !tp.hidden; },
+    get pickOpen() { return !pick.hidden || !tp.hidden || !dp.hidden; },
     get touchOpen() { return !tp.hidden; },
-    closePick() { closePick(); closeTouch(); },
+    closePick() { closePick(); closeTouch(); closeDiscover(); },
     show() {
       pick.hidden = true;
       tp.hidden = true;
+      dp.hidden = true;
       syncInert();
       refresh();
       focusBack = document.activeElement;
@@ -288,10 +339,11 @@ export function createPause(host, a) {
       root.hidden = true;
       pick.hidden = true;
       tp.hidden = true;
+      dp.hidden = true;
       if (focusBack && typeof focusBack.focus === 'function') { try { focusBack.focus({ preventScroll: true }); } catch { /* egal */ } }
       focusBack = null;
     },
-    refresh() { refresh(); if (!pick.hidden) renderPick(); },
+    refresh() { refresh(); if (!pick.hidden) renderPick(); if (!dp.hidden) renderDiscover(); },
     destroy() { root.remove(); },
   };
 }

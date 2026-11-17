@@ -140,6 +140,7 @@ export class StoreApp {
       getSound: () => this.sound,
       getFps: () => this.showFps,
       getBigCovers: () => this.bigCovers,
+      getDiscover: () => { const d = this.mods && this.mods.ctx.use('discover'); return d ? d.summary() : null; },
       getVoiceInfo: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voiceInfo ? c.voiceInfo() : null; },
       onFullscreen: () => this.fs.toggle(),
       getFullscreen: () => this.fs.isOn(),
@@ -977,7 +978,7 @@ export class StoreApp {
   exposeDebug() {
     const app = this;
     this.dbg = {
-      teleport(x, z, yaw = app.player.yaw) { app.player.teleport(x, z, yaw, 0); app.lastCover = 0; },
+      teleport(x, z, yaw = app.player.yaw, y, pitch = 0) { app.player.teleport(x, z, yaw, pitch, y); app.lastCover = 0; },
       lookAt(id) {
         const s = app.findSlot(id);
         if (!s) return false;
@@ -990,6 +991,7 @@ export class StoreApp {
       take(id) { return app.take(id); },
       put() { app.put(); },
       jump() { return app.player.jump(); },
+      discover(cmd) { const d = app.mods && app.mods.ctx.use('discover'); if (!d) return []; if (cmd === 'reset') d.reset(); return d.list(); },
       getNetState() { return app.player.getNetState(); },
       pose() { return app.player.pose; },
       carried() { return app.getCarried(); },

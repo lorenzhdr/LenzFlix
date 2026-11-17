@@ -48,6 +48,8 @@ import traffic from './traffic.js';
 import kiosk from './kiosk.js';
 // --- Paket B palast: imports ---
 import palast from './palast.js';
+// --- Welle 2 discover: imports ---
+import discover from './discover.js';
 
 export const MODULES = [
   // --- M4 Atmosphäre (zuerst: Sound-Provider, Intro) ---
@@ -76,4 +78,6 @@ export const MODULES = [
   reserve,
   staff,
   showcase,
+  // --- Welle 2 discover (nach city/daytime: braucht Dachgruppe und Wetter) ---
+  discover,
 ];

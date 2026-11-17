@@ -123,6 +123,8 @@ export default {
         });
       },
       alarm(t) { for (let i = 0; i < 6; i++) tone(i % 2 ? 1040 : 780, t + i * 0.13, 0.12, { type: 'square', gain: 0.045, attack: 0.003 }); },
+      // Entdeckung: kleiner aufsteigender Glockenlauf
+      discover(t) { [[784, 0], [988, 0.09], [1175, 0.18], [1568, 0.27]].forEach(([f, d]) => { tone(f, t + d, 0.5, { gain: 0.1, send: 0.7, attack: 0.004 }); tone(f * 2.01, t + d, 0.25, { gain: 0.03, send: 0.5, attack: 0.004 }); }); },
       beep(t) { tone(1760, t, 0.07, { type: 'square', gain: 0.035, attack: 0.002 }); },
       beep2(t) { tone(1320, t, 0.05, { type: 'square', gain: 0.03, attack: 0.002 }); tone(1760, t + 0.07, 0.07, { type: 'square', gain: 0.03, attack: 0.002 }); },
       drawer(t) {

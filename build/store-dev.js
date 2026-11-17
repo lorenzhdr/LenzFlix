@@ -594,6 +594,7 @@
     if (rebuilt || q.get('restore') === '1') {
       try { restore = JSON.parse(sessionStorage.getItem('store-dev-state')); } catch { restore = null; }
     }
+    if (q.get('discover') === 'reset') { try { Object.keys(localStorage).filter(function (k) { return k.indexOf('lfx.store.discover.') === 0; }).forEach(function (k) { localStorage.removeItem(k); }); } catch { /* egal */ } }
     inst = window.LenzFlixStore3D.create(host, deps, {
       quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
