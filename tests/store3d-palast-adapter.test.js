@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Scene } from 'three';
-import { PalastCinema } from '../src/js/store3d/cinema/palast.js';
+import { PalastCinema, screenCenterY } from '../src/js/store3d/cinema/palast.js';
 import { buildStubSaal, palastTest } from '../src/js/store3d/cinema/saal-stub.js';
 import { wrapDeps } from '../src/js/store3d/xr/guard.js';
 
@@ -431,5 +431,15 @@ describe('PalastCinema', () => {
     h.dispose();
     expect(c.cin.saal).toBeNull();
     c.cin.dispose();
+  });
+});
+
+describe('Sitzblick (Q3#4)', () => {
+  it('zielt vor dem Bau der Leinwand auf die Leinwandmitte, nicht auf Augenhöhe', () => {
+    const opts = { bottom: 1.8, maxW: 10.5, maxH: 4.9 };
+    expect(screenCenterY(opts)).toBeCloseTo(1.8 + 4.9 / 2, 5);
+    const fake = { screen: null, saal: { anchor: { getWorldPosition: (v) => v.set(7.8, 0, 52.4) }, screenOpts: opts } };
+    const t = PalastCinema.prototype._lookTarget.call(fake, { yaw: Math.PI }, { x: 7.5, y: 1.15, z: 46.3 });
+    expect(t).toEqual({ x: 7.8, y: expect.closeTo(4.25, 5), z: 52.4 });
   });
 });

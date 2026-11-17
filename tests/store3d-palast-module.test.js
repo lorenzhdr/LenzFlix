@@ -242,4 +242,28 @@ describe('Kassen-Overlay (DOM)', () => {
     expect(dayLabel('2026-11-17')).toBe('Heute, 17. November');
     expect(dayLabel('')).toBe('Heute im Programm');
   });
+
+  it('Außenplakate liegen vor der Vorderseite der Schaukasten-Fläche (Straßenseite), nicht dahinter', () => {
+    const t = setup();
+    const h = palastMod.init(t.ctx);
+    const mesh = t.groups.palast.children.find((c) => c.name === 'palast-outer-posters');
+    expect(mesh).toBeTruthy();
+    mesh.geometry.computeBoundingBox();
+    const slot = city.palast.posterSlots[0];
+    // Fläche: Mitte slot.z − 0,04, Tiefe 0,05 → Vorderseite (zur Straße, kleineres z) bei slot.z − 0,065
+    expect(mesh.geometry.boundingBox.max.z).toBeLessThan(slot.z - 0.065);
+    h.dispose();
+  });
+
+  it('Saalinhalt wird nur im Foyer/Saal (oder in VR) gezeichnet, nicht von der Straße aus', () => {
+    const t = setup({ area: 'street' });
+    const h = palastMod.init(t.ctx);
+    const hallRoot = t.groups.palastInterior.children.find((c) => c !== t.groups.palastInterior.children[0]);
+    h.update(0.016);
+    expect(hallRoot.visible).toBe(false);
+    t.providers.set('areas', { current: () => 'palastFoyer', on: () => () => {} });
+    h.update(0.016);
+    expect(hallRoot.visible).toBe(true);
+    h.dispose();
+  });
 });

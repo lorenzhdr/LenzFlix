@@ -144,6 +144,14 @@ describe('Palast-Filmauswahl (rein)', () => {
     expect(rows.every((r) => r.title && r.time)).toBe(true);
   });
 
+  it('vergangene Vorstellungen tragen einen Hinweis statt stillschweigend verkauft zu werden', () => {
+    const c = mk(8);
+    const p = buildProgram(c, '2026-04-04');
+    const late = p.shows[p.shows.length - 1].minutes + 600;
+    const rows = showRows(p, late, null);
+    expect(rows.every((r) => /läuft gerade nicht/.test(r.badge))).toBe(true);
+  });
+
   it('Sitz-Freigabe: ohne Ticket Hinweis, außerhalb des Saals stumm', () => {
     expect(seatGate(null, true)).toEqual({ ok: false, msg: 'Erst ein Ticket an der Kasse holen' });
     expect(seatGate(null, false)).toEqual({ ok: false, msg: '' });

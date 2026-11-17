@@ -64,7 +64,7 @@ export function showRows(program, nowMin, ticket) {
       time: s.time,
       sub: [s.tag, s.runtimeMin > 0 ? `${s.runtimeMin} min` : '', s.year ? String(s.year) : ''].filter(Boolean).join(' · '),
       line: s.line,
-      badge: s.resume ? 'Weiterschauen' : st === 'running' ? 'läuft schon – du startest von vorn' : '',
+      badge: s.resume ? 'Weiterschauen' : st === 'running' ? 'läuft schon – du startest von vorn' : st === 'done' ? 'läuft gerade nicht – startet für dich von vorn' : '',
       mine: Boolean(ticket && ticket.source === 'program' && ticket.slot === s.slot && ticket.itemId === s.itemId),
     };
   });

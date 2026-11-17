@@ -163,6 +163,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -182,6 +184,16 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-row {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-row.is-on {
   border-color: var(--lfx-store-yellow, #ffd23f);
   color: var(--lfx-store-yellow, #ffd23f);
+}
+
+/* Niedriges Querformat (Handy): Liste bekommt mehr Höhe und scrollt, „Schließen“ bleibt erreichbar */
+@media (max-height: 480px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop {
+    max-height: 44vh;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-row {
+    min-height: 36px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -358,7 +370,21 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-foot {
   font-style: italic;
 }
 @media (max-width: 520px) {
+  /* Handy: „Ticket holen“ bleibt sichtbar (kompakt), „Schließen“ steht neben dem Titel, der Untertitel darunter */
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-go {
-    display: none;
+    padding: 4px 7px;
+    font-size: 11px;
+    line-height: 1.2;
+    text-align: center;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-title {
+    font-size: 21px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-close {
+    margin-left: auto;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-sub {
+    flex: 1 0 100%;
+    order: 3;
   }
 }

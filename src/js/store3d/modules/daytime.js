@@ -173,7 +173,7 @@ export default {
           const was = near;
           const areas = ctx.use('areas');
           const a = areas ? areas.current() : 'shop';
-          near = OUTDOOR_AREAS.includes(a) || cam.position.z > D + 0.3; // Kamera draußen (Intro) oder Spieler in einem Außenbereich
+          near = OUTDOOR_AREAS.includes(a) || (a !== 'palastHall' && a !== 'palastFoyer' && cam.position.z > D + 0.3); // Kamera draußen (Intro) oder Spieler in einem Außenbereich
           if (was !== near) syncVisible();
         }
         if (drops && weather.raining && near) dropTex.offset.y += dt * speed;

@@ -3,18 +3,26 @@
 // Anker-Vertrag (Vorrang, wenn vorhanden): city.palast.staff.ticket|popcorn = { x, z, yaw } · city.kiosk.vendor = { x, z, yaw }.
 // yaw: 0 blickt nach −z (Norden), π nach +z (Süden), +π/2 nach −x (Westen).
 
+import { stationsOf } from '../palast/plan.js';
+
 const PI = Math.PI;
+
+/** Stationen des Palasts (Pult, Theke) aus den Stadtdaten; null, wenn Saal/Sitzblock fehlen. */
+function palastStations(p) {
+  try { return p && p.hall && p.seatBlock ? stationsOf(p) : null; } catch { return null; }
+}
 
 /** Kinopersonal im Palast-Foyer (Fallback: Kartenabreißer neben der rechten Saaltür, Popcorn an der Ostwand). */
 export function staffAnchors(city) {
   const p = city.palast;
   const given = (p && p.staff) || {};
   const f = p.foyer;
+  const st = palastStations(p);
   const cx = (p.doorX0 + p.doorX1) / 2;
   const d0 = p.hallDoors[0];
   return {
-    ticket: given.ticket || { x: cx - 4.5 + 1.7, z: f.z1 - 0.7, yaw: 0, anchor: false },
-    popcorn: given.popcorn || { x: f.x1 - 1.3, z: f.z0 + 2.4, yaw: PI / 2, anchor: false },
+    ticket: given.ticket || (st && { ...st.ticket, anchor: false }) || { x: cx - 4.5 + 1.7, z: f.z1 - 0.7, yaw: 0, anchor: false },
+    popcorn: given.popcorn || (st && { ...st.popcornStaff, anchor: false }) || { x: f.x1 - 1.3, z: f.z0 + 2.4, yaw: PI / 2, anchor: false },
     _hallDoor: d0,
   };
 }

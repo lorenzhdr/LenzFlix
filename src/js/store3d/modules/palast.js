@@ -25,6 +25,9 @@ export function dayLabel(dayKey) {
   return m ? `Heute, ${Number(m[3])}. ${MONTHS[Number(m[2]) - 1]}` : 'Heute im Programm';
 }
 
+/** Abstand der Außenplakate vor der Kastenmitte (Fläche des Kastens: Tiefe 0,05 bei z−0,04 → Vorderseite 0,065 davor). */
+export const POSTER_LIFT = 0.1;
+
 export default {
   name: 'palast',
   init(ctx) {
@@ -77,7 +80,7 @@ export default {
     const outerSlots = atlas ? outerPosterSlots(pd) : [];
     if (outerSlots.length && groups.palast) {
       const geos = outerSlots.map((s, i) => quad({
-        w: s.w, h: s.h, uv: atlas.uv(i % program.shows.length), x: s.x + Math.sin(s.yaw) * 0.02, y: s.y, z: s.z + Math.cos(s.yaw) * 0.02, ry: s.yaw,
+        w: s.w, h: s.h, uv: atlas.uv(i % program.shows.length), x: s.x + Math.sin(s.yaw) * POSTER_LIFT, y: s.y, z: s.z + Math.cos(s.yaw) * POSTER_LIFT, ry: s.yaw,
       }));
       outer = new Mesh(merge(geos), new MeshBasicMaterial({ map: atlas.texture, toneMapped: false, side: DoubleSide }));
       outer.name = 'palast-outer-posters';
@@ -276,7 +279,11 @@ export default {
     return {
       update(dt) {
         if (!parent.visible) return;
-        hall.update(dt);
+        const ar = ctx.use('areas');
+        const here = ar ? ar.current() : 'palastHall';
+        // Saalinhalt nur zeichnen, wenn man drinnen ist (Foyer/Saal) oder in VR (alles sichtbar)
+        hall.root.visible = here === 'palastHall' || here === 'palastFoyer' || xr();
+        if (hall.root.visible) hall.update(dt);
         const c = cinema();
         if (c) {
           if (!offSaal) attach();

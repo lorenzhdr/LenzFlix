@@ -5,7 +5,7 @@
 // Hülle ↔ 3D: Player nur über app.deps.cinema (Bridge), Zustand an die Hülle über app.deps.onCinema2d({ active, full }).
 // Vertrag: docs/store3d.md („2D-Kino im LENZ PALAST“). Kein Jellyfin-DOM, kein `three`-fremder Import.
 import { Vector3 } from 'three';
-import { createScreen } from './screen.js';
+import { createScreen, fitScreen } from './screen.js';
 import { createSubtitles } from './subtitles.js';
 import { createAmbientSampler, smoothColor, newBlackState, trackBlack } from './ambient.js';
 import { createStartWatch } from './startwatch.js';
@@ -36,6 +36,13 @@ export function pickSeat(seats, id, pos) {
   let bd = Infinity;
   for (const s of list) { const d = (s.x - pos.x) ** 2 + (s.z - pos.z) ** 2; if (d < bd) { bd = d; best = s; } }
   return best;
+}
+
+/** Höhe der Leinwandmitte über dem Anker (rein): Unterkante + halbe 16:9-Höhe. */
+export function screenCenterY(opts = {}) {
+  const o = opts || {};
+  const bottom = Number.isFinite(o.bottom) ? o.bottom : 1.5;
+  return bottom + fitScreen(16 / 9, { maxW: o.maxW, maxH: o.maxH }).height / 2;
 }
 
 export class PalastCinema {
@@ -166,11 +173,12 @@ export class PalastCinema {
     return true;
   }
 
+  /** Blickziel des Sitzes: Leinwandmitte (Höhe aus den Saal-Maßen, solange die Leinwand noch nicht gebaut ist). */
   _lookTarget(seat, eye) {
     const v = new Vector3();
     if (this.screen) { this.screen.group.getWorldPosition(v); return { x: v.x, y: v.y, z: v.z }; }
     const s = this.saal;
-    if (s && s.anchor && typeof s.anchor.getWorldPosition === 'function') { s.anchor.getWorldPosition(v); return { x: v.x, y: eye.y + 0.4, z: v.z }; }
+    if (s && s.anchor && typeof s.anchor.getWorldPosition === 'function') { s.anchor.getWorldPosition(v); return { x: v.x, y: v.y + screenCenterY(s.screenOpts), z: v.z }; }
     const yaw = Number(seat.yaw) || 0;
     return { x: eye.x - Math.sin(yaw) * 5, y: eye.y, z: eye.z - Math.cos(yaw) * 5 };
   }

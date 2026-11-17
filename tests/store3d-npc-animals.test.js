@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createCat, stepCat, petCat, catPettable, scareCat, lineFree, createFlock, stepFlock, flush, CAT, PIGEON } from '../src/js/store3d/npc/animals-logic.js';
+import { stationsOf } from '../src/js/store3d/palast/plan.js';
 import { catSpots, pigeonHomes, staffAnchors, vendorAnchor } from '../src/js/store3d/npc/spots.js';
 import { buildCity } from '../src/js/store3d/world/city.js';
 import { seeded } from '../src/js/store3d/modules/m4-util.js';
@@ -152,6 +153,15 @@ describe('Plätze (aus der echten Stadt)', () => {
         for (const q of c.colliders) expect(h.x > q.x0 - h.r && h.x < q.x1 + h.r && h.z > q.z0 - h.r && h.z < q.z1 + h.r, `${w}x${d} ${h.id} × ${q.id}`).toBe(false);
       }
     }
+  });
+
+  it('Personal ohne Paket-Anker steht an den Palast-Stationen (Pult, hinter der Theke)', () => {
+    const a = staffAnchors(city);
+    const st = stationsOf(city.palast);
+    expect(a.ticket).toMatchObject({ x: st.ticket.x, z: st.ticket.z });
+    expect(a.popcorn).toMatchObject({ x: st.popcornStaff.x, z: st.popcornStaff.z });
+    expect(a.ticket.x).toBeGreaterThan(st.ticketDesk.x0 - 0.5);
+    expect(a.ticket.x).toBeLessThan(st.ticketDesk.x1 + 0.5);
   });
 
   it('Personal- und Verkäuferin-Anker: Fallback im Foyer/am Kiosk, Anker von A/B haben Vorrang', () => {
