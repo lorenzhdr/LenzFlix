@@ -15,6 +15,29 @@ export function fmtTime(s) {
   return h > 0 ? `${h}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
 }
 
+/**
+ * Lautstärkeschritt (rein, 10-%-Raster). st = deps.cinema.state(); dir > 0 lauter, sonst leiser.
+ * Rückgabe: { act: 'set', value } (0..1) | { act: 'unmute' } | { act: 'toast', text }. Gemeinsam für VR-Panel, 2D-Leiste und Tastenwächter.
+ */
+export function stepVolume(st, dir) {
+  const s = st || {};
+  const pct = Math.round((Number.isFinite(s.volume) ? s.volume : 1) * 100);
+  if (dir > 0) {
+    if (pct >= 100) return s.muted ? { act: 'unmute' } : { act: 'toast', text: 'Schon volle Lautstärke' };
+    return { act: 'set', value: (Math.min(100, (Math.floor(pct / 10) + 1) * 10)) / 100 };
+  }
+  if (pct <= 0) return { act: 'toast', text: 'Schon ganz leise' };
+  return { act: 'set', value: (Math.max(0, (Math.ceil(pct / 10) - 1) * 10)) / 100 };
+}
+
+/** Schritt aus stepVolume an die Bridge (deps.cinema) geben. */
+export function applyVolumeStep(step, cinema, toast) {
+  if (!step) return;
+  if (step.act === 'set') cinema.setVolume(step.value);
+  else if (step.act === 'unmute') cinema.toggleMute();
+  else if (step.act === 'toast' && toast) toast(step.text);
+}
+
 const clip = (s, n) => { const t = String(s == null ? '' : s); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 
 /**
@@ -102,22 +125,7 @@ export function createControls({ openPanel, cinema, getState, getSeat, onSeat, o
     onPrev: () => { api.touch(); cinema.prev(); },
     onNext: () => { api.touch(); cinema.next(); },
     onTracks: (kind) => { api.touch(); api.openTracks(kind); },
-    onVolume: (d) => {
-      api.touch();
-      const st = state();
-      const pct = Math.round((Number.isFinite(st.volume) ? st.volume : 1) * 100);
-      if (d > 0) {
-        if (pct >= 100) {
-          if (st.muted) cinema.toggleMute();
-          else if (toast) toast('Schon volle Lautstärke');
-          return;
-        }
-        cinema.setVolume((Math.min(100, (Math.floor(pct / 10) + 1) * 10)) / 100);
-      } else {
-        if (pct <= 0) { if (toast) toast('Schon ganz leise'); return; }
-        cinema.setVolume((Math.max(0, (Math.ceil(pct / 10) - 1) * 10)) / 100);
-      }
-    },
+    onVolume: (d) => { api.touch(); applyVolumeStep(stepVolume(state(), d > 0 ? 1 : -1), cinema, toast); },
     onSeat: (name) => { api.touch(); onSeat(name); },
     onBack: () => onBack(),
     onUpNext: (a) => { api.touch(); cinema.upNext(a); },

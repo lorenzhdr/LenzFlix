@@ -21,6 +21,7 @@ import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js'
 import * as prefs from './prefs.js';
 import { createCinemaBridge } from './cinema-bridge.js';
 import { parkStage, unparkStage } from './stage-park.js';
+import { mountBackButton } from './palast-back.js';
 
 export const SUSPEND_MS = 3 * 60 * 1000;
 const CLASSIC_HASH = '#/home?lfx=classic';
@@ -40,6 +41,8 @@ const root = () => document.documentElement;
 
 let bridge = null; // Player-Bridge, ein Objekt pro Modul, lazy
 const xr = { presenting: false, cinema: false };
+const palast = { active: false, full: false }; // 2D-Kino im LENZ PALAST (deps.onCinema2d), Bühne bleibt sichtbar geparkt
+let backBtn = null;
 const getBridge = () => bridge || (bridge = createCinemaBridge());
 
 /** Session läuft laut Meldung UND laut Instanz (fehlt isXr: nicht präsentierend). */
@@ -47,6 +50,8 @@ function isPresenting() {
   if (!xr.presenting || !inst || !inst.instance) return false;
   try { return typeof inst.instance.isXr === 'function' && Boolean(inst.instance.isXr()); } catch { return false; }
 }
+
+const isPalast = () => palast.active && Boolean(inst && inst.instance);
 
 /** Zeile 4: geparkte Bühne verwerfen, Instanz wie bei unmount aussetzen (3-min-Timer). */
 function releaseParked() {
@@ -68,7 +73,21 @@ function onXr(s) {
     return;
   }
   if (xr.cinema) getBridge().activate(true);
-  else if (bridge) bridge.activate(false);
+  else if (bridge && !palast.active) bridge.activate(false);
+}
+
+/** 2D-Kino im Palast meldet { active, full }: Bridge, <html>-Klassen, „Zurück ins Kino“. Ende bei geparkter Bühne: wie Zeile 4. */
+function onCinema2d(s) {
+  palast.active = Boolean(s && s.active);
+  palast.full = palast.active && Boolean(s.full);
+  const cl = root().classList;
+  cl.toggle('lfx-store-palast', palast.active);
+  cl.toggle('lfx-store-palast-full', palast.full);
+  if (palast.active) getBridge().activate(true);
+  else if (bridge && !xr.cinema) bridge.activate(false);
+  if (palast.full && !backBtn) backBtn = mountBackButton({ onBack: () => { try { inst.instance.cinema2dSetFull(false); } catch { /* egal */ } } });
+  else if (!palast.full && backBtn) { backBtn.destroy(); backBtn = null; }
+  if (!palast.active && inst && inst.parked) releaseParked();
 }
 
 function hasWebGL() {
@@ -111,6 +130,7 @@ function disposeInstance() {
   if (bridge) bridge.activate(false);
   xr.presenting = false;
   xr.cinema = false;
+  onCinema2d(null);
 }
 
 // ------------------------------------------------------------------ UI
@@ -266,7 +286,7 @@ function buildDeps(catalog, name, onFatal, onBigCovers) {
         return null;
       }
     },
-    play: (item, o = {}) => play(item, { resume: Boolean(o.resume) }),
+    play: (item, o = {}) => play(item, o.noCover ? { resume: Boolean(o.resume), noCover: true } : { resume: Boolean(o.resume) }),
     toast: (text) => toast(text),
     classicView: () => { window.location.hash = CLASSIC_HASH; },
     openLibraries: () => { window.location.hash = CLASSIC_HASH; },
@@ -293,6 +313,7 @@ function buildDeps(catalog, name, onFatal, onBigCovers) {
     onPrefs: ret((p) => prefs.savePrefs(p)),
     onBigCovers: ret((on) => onBigCovers(on)),
     onXr: ret((s) => onXr(s)),
+    onCinema2d: ret((s) => onCinema2d(s)),
     cinema: getBridge(),
     onFatal: ret(onFatal),
   };
@@ -435,7 +456,7 @@ function start(tab, route, myGen) {
   if (inst && inst.instance) {
     if (inst.parked) {
       // Zeile 6: aus dem VR-Kino zurück, Bühne samt laufender Session wieder einhängen (kein resume)
-      if (isPresenting() && reattachParked()) {
+      if ((isPresenting() || isPalast()) && reattachParked()) {
         applyRoute(r);
         return;
       }
@@ -490,6 +511,7 @@ export function destroyStore() {
   waitTimer = null;
   disposeInstance();
   unparkStage();
+  onCinema2d(null);
   if (bridge) { bridge.dispose(); bridge = null; }
   teardownUi();
   lastKey = null;
@@ -524,10 +546,10 @@ const storeHome = {
     lastKey = null;
     if (inst && inst.instance && !inst.parked) {
       let parkedNow = false;
-      if (isPresenting() && xr.cinema && ui && ui.stage) {
-        // Zeile 2: Kino läuft, Bühne VOR dem Abbau aus ui.root lösen und parken (kein suspend, kein Timer)
+      if (((isPresenting() && xr.cinema) || isPalast()) && ui && ui.stage) {
+        // Zeile 2: Kino läuft (VR: unsichtbar, 2D-Palast: sichtbar), Bühne VOR dem Abbau aus ui.root lösen und parken (kein suspend, kein Timer)
         try {
-          parkStage(ui.stage);
+          parkStage(ui.stage, { visible: !isPresenting() });
           inst.parked = true;
           parkedNow = true;
           clearDisposeTimer();

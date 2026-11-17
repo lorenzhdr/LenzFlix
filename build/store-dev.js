@@ -207,7 +207,12 @@
   // ?cinema=1|series|fail|paused|slow  Fake-Player (Film / Serie mit Up-Next / Wiedergabefehler / Start pausiert / Bild erst nach 15 s)   ?subs=srt|ass|off  Untertitelart
   // ?xremu=1 lädt den Emulator (/xr-emu.js, nur lokal in .tmp/)   ?xrshot=1 blendet die Bühne während XR aus (Screenshot-Hilfe)
   var cinemaQ = q.get('cinema');
-  var cinemaMode = cinemaQ === '1' ? 'movie' : cinemaQ === 'series' ? 'series' : cinemaQ === 'fail' ? 'fail' : cinemaQ === 'paused' ? 'paused' : cinemaQ === 'slow' ? 'slow' : null;
+  // ?palast=1  2D-Kino im LENZ PALAST (Vorgabe ?cinema=1): Spike-Leinwand + Sitz vor dem Spieler, Start automatisch (window.__lfxStore.palastTest). Die Bühne bleibt über dem Fake-Player sichtbar,
+  //            Vollbild = Bühne ausgeblendet + Knopf „Zurück ins Kino“ (echtes features/store/palast-back.js), Jellyfins Zurück (#/home) beendet den Film. ?palast=0 nur Debug-Aufruf von Hand.
+  var palastQ = q.get('palast') === '1';
+  var cinemaMode = cinemaQ === '1' ? 'movie' : cinemaQ === 'series' ? 'series' : cinemaQ === 'fail' ? 'fail' : cinemaQ === 'paused' ? 'paused' : cinemaQ === 'slow' ? 'slow' : (palastQ ? 'movie' : null);
+  var palast = { active: false, full: false };
+  var palastBack = null;
   var xrshot = q.get('xrshot') === '1';
   var subsMode = q.get('subs') === 'ass' ? 'ass' : q.get('subs') === 'off' ? 'off' : 'srt';
   var xrState = { presenting: false, cinema: false };
@@ -218,7 +223,7 @@
 
   function syncStage() {
     // Bühne bleibt im Harness immer im DOM; unsichtbar nur für Screenshots in XR bzw. solange der Fake-Player 2D läuft
-    var hide = (xrshot && xrState.presenting) || (cinemaMode && routePath() === '/video' && !xrState.presenting);
+    var hide = (xrshot && xrState.presenting) || (cinemaMode && routePath() === '/video' && !xrState.presenting && !palast.active) || palast.full;
     host.style.visibility = hide ? 'hidden' : '';
   }
 
@@ -231,8 +236,26 @@
     if (xrState.presenting && xrState.cinema) bridge.activate(true);
     else bridge.activate(false);
   };
+  // Nachbildung der Hülle (home.js onCinema2d): Bridge, <html>-Klassen, Bühne, „Zurück ins Kino“
+  deps.onCinema2d = function (s) {
+    palast.active = !!(s && s.active);
+    palast.full = palast.active && !!(s && s.full);
+    document.documentElement.classList.toggle('lfx-store-palast', palast.active);
+    document.documentElement.classList.toggle('lfx-store-palast-full', palast.full);
+    if (bridge) bridge.activate(palast.active || (xrState.presenting && xrState.cinema));
+    syncStage();
+    if (palast.full && !palastBack) {
+      import('/src/js/features/store/palast-back.js').then(function (m) {
+        if (!palast.full || palastBack) return;
+        palastBack = m.mountBackButton({ onBack: function () { if (inst) inst.cinema2dSetFull(false); } });
+      });
+    } else if (!palast.full && palastBack) { palastBack.destroy(); palastBack = null; }
+  };
   window.addEventListener('hashchange', function () {
     syncStage();
+    if (routePath() === '/home' && palast.active && inst) {
+      try { inst.leaveCinema('home'); } catch (e) { console.warn('[dev] leaveCinema', e && e.message); }
+    }
     if (routePath() === '/home' && xrState.presenting && xrState.cinema && inst) {
       try { if (typeof inst.leaveCinema === 'function') inst.leaveCinema('home'); } catch (e) { console.warn('[dev] leaveCinema', e && e.message); }
       if (bridge) bridge.activate(false);
@@ -580,6 +603,13 @@
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,
     });
     window.__store = inst;
+  }
+  if (palastQ) {
+    var origReady = deps.onReady;
+    deps.onReady = function () {
+      origReady();
+      setTimeout(function () { if (inst && inst.debug && inst.debug.palastTest) window.__palast = inst.debug.palastTest({ autostart: true }); }, 300);
+    };
   }
   function boot() {
     start(false);

@@ -25,6 +25,8 @@ import { prefersReducedMotion } from './modules/m4-util.js';
 import { createFullscreen } from './ui/fullscreen.js';
 import { wrapDeps } from './xr/guard.js';
 import { XrMode } from './xr/mode.js';
+import { PalastCinema } from './cinema/palast.js';
+import { palastTest } from './cinema/saal-stub.js';
 
 const yieldFrame = () => new Promise((r) => setTimeout(r, 0));
 
@@ -49,7 +51,7 @@ export class StoreApp {
   constructor(host, deps, opts) {
     this.host = host;
     this.xr = null;
-    this.deps = wrapDeps(deps, () => this.xr); // in VR leiten die Wrapper DOM-Wege um (xr/guard.js)
+    this.deps = wrapDeps(deps, () => this.xr, () => this.cinema2d); // in VR leiten die Wrapper DOM-Wege um (xr/guard.js); 2D-Kino im Palast: wantsPlay()
     this.opts = { ...(opts || {}), vr: normalizeVr(opts && opts.vr) };
     this.vr = this.opts.vr;
     this.phone = !!this.opts.phone;
@@ -106,6 +108,7 @@ export class StoreApp {
       return;
     }
     this.xr = new XrMode(this);
+    this.cinema2d = new PalastCinema(this); // 2D-Kino im LENZ PALAST (cinema/palast.js); Module: ctx.use('cinema2d')
     this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), getTouchScheme: () => this.touchScheme });
     this.fs = createFullscreen({
       host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
@@ -216,6 +219,7 @@ export class StoreApp {
     });
     this.hands = createHands(engine.camera);
     this.mods = new ModuleHost(this);
+    this.cinema2d.register(this.mods.ctx);
     this.desktop = this.touch ? null : new DesktopControls({
       canvas: engine.canvas,
       player: this.player,
@@ -666,6 +670,7 @@ export class StoreApp {
     }
     this.mods.update(dt, now);
     this.syncHeld();
+    if (!inXr && this.cinema2d.active) this.cinema2d.tick(dt, now);
     if (!inXr) {
       p.applyCamera(this.engine.camera);
       this.mods.cameraStep(dt);
@@ -867,6 +872,7 @@ export class StoreApp {
     if (this.suspended || this.disposed) return;
     this.suspended = true;
     this.pendingTake = this.pendingUse = null;
+    if (this.cinema2d) this.cinema2d.leave('suspend');
     if (this.xr && this.xr.presenting) this.xr.exit(); // Sitzung zuerst beenden
     this.pauseParts();
     if (this.hud) this.hud.showPrompt(false);
@@ -912,6 +918,7 @@ export class StoreApp {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    try { if (this.cinema2d) this.cinema2d.dispose(); } catch { /* egal */ }
     try { if (this.xr) this.xr.dispose(); } catch { /* egal */ }
     try { if (this.desktop) this.desktop.detach(); } catch { /* egal */ }
     try { if (this.touchCtl) this.touchCtl.detach(); } catch { /* egal */ }
@@ -975,6 +982,7 @@ export class StoreApp {
         };
       },
       state() { return app.getState(); },
+      palastTest(o) { return palastTest(app, o); }, // Spike: Leinwand + Sitz vor dem Spieler (cinema/saal-stub.js)
       zones() { return Object.values(app.layout.zones).map((z) => { const v = z.view || z; return { id: z.id, label: z.label, x: +v.x.toFixed(2), z: +v.z.toFixed(2), yaw: v.yaw, obj: { x: +z.x.toFixed(2), z: +z.z.toFixed(2) } }; }); }, // x/z/yaw = Blickpunkt, obj = Objektposition
     };
     this.dbg.xr = this.xr;
@@ -994,7 +1002,8 @@ export function create(host, deps, opts = {}) {
     setQuality: (q) => app.setQuality(q),
     setSound: (on) => app.setSound(on),
     isXr: () => !!(app.xr && app.xr.presenting),
-    leaveCinema: (reason) => { if (app.xr) app.xr.leaveCinema(reason); },
+    leaveCinema: (reason) => { if (app.xr) app.xr.leaveCinema(reason); if (app.cinema2d && app.cinema2d.active) app.cinema2d.leave(reason); },
+    cinema2dSetFull: (on) => !!(app.cinema2d && app.cinema2d.setFull(on)),
   };
   if (opts.debug) Object.defineProperty(api, 'debug', { get: () => app.dbg, enumerable: true });
   return api;

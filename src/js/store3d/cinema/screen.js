@@ -9,6 +9,10 @@ const SCREEN_RADIUS = 14;
 const SCREEN_MAX_W = 16;
 const SCREEN_MAX_H = 9;
 const SCREEN_BOTTOM = 1.5;
+const MASK_PAD_W = 1.6;
+const MASK_PAD_H = 1.2;
+/** Maße der VR-Leinwand (Standardwerte von createScreen). */
+export const SCREEN_DEFAULTS = Object.freeze({ radius: SCREEN_RADIUS, bottom: SCREEN_BOTTOM, maxW: SCREEN_MAX_W, maxH: SCREEN_MAX_H, padW: MASK_PAD_W, padH: MASK_PAD_H });
 
 /**
  * Zylindersegment, Innenseite zum Publikum (+z). width = Bogenlänge in Metern, Mittelpunkt im Ursprung,
@@ -129,10 +133,14 @@ function drawStatus(canvas, { title = '', text = '', sub = '' } = {}) {
 }
 
 /**
- * Leinwand + schwarze Maskierung. Gruppe zeigt zur Videothek-Seite (+z). Rückgabe:
+ * Leinwand + schwarze Maskierung. Gruppe zeigt zur Videothek-Seite (+z). Optionen (alle optional, Standard = VR-Saal):
+ * radius (Wölbung), bottom (Unterkante über dem Gruppenursprung), maxW/maxH (größte Fläche, Seitenverhältnis bleibt),
+ * padW/padH (Maskenzugabe). Das 2D-Kino im LENZ PALAST übergibt kleinere Maße (saal.screenOpts). Rückgabe:
  * { group, dims, setVideo(el|null), setStatus({title,text,sub}), update(now), videoFrames, hasFrame, video, dispose() }
  */
-export function createScreen({ radius = SCREEN_RADIUS, bottom = SCREEN_BOTTOM } = {}) {
+export function createScreen({
+  radius = SCREEN_RADIUS, bottom = SCREEN_BOTTOM, maxW = SCREEN_MAX_W, maxH = SCREEN_MAX_H, padW = MASK_PAD_W, padH = MASK_PAD_H,
+} = {}) {
   const group = new Group();
   group.name = 'lfx-cinema-screen';
   const statusCanvas = document.createElement('canvas');
@@ -151,14 +159,14 @@ export function createScreen({ radius = SCREEN_RADIUS, bottom = SCREEN_BOTTOM } 
   mask.name = 'lfx-cinema-screen-mask';
   group.add(mask, mesh);
 
-  const dims = { radius, bottom, width: SCREEN_MAX_W, height: SCREEN_MAX_W * 9 / 16, aspect: 16 / 9, centerY: 0, version: 0 };
+  const dims = { radius, bottom, width: maxW, height: maxW * 9 / 16, aspect: 16 / 9, centerY: 0, version: 0 };
   let video = null;
   let tex = null;
   let disposed = false;
   let status = { title: '', text: '', sub: '' };
 
   function rebuild(aspect) {
-    const f = fitScreen(aspect);
+    const f = fitScreen(aspect, { maxW, maxH });
     dims.width = f.width;
     dims.height = f.height;
     dims.aspect = f.aspect;
@@ -167,7 +175,7 @@ export function createScreen({ radius = SCREEN_RADIUS, bottom = SCREEN_BOTTOM } 
     mesh.geometry.dispose();
     mask.geometry.dispose();
     mesh.geometry = screenGeometry({ radius, width: f.width, aspect: f.aspect });
-    mask.geometry = screenGeometry({ radius, width: f.width + 1.6, height: f.height + 1.2 });
+    mask.geometry = screenGeometry({ radius, width: f.width + padW, height: f.height + padH });
     mask.position.z = -0.06;
     group.position.y = dims.centerY;
   }

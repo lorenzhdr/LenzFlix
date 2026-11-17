@@ -1,0 +1,220 @@
+/* VIDEOTHEK LENZ · 2D-Kino im LENZ PALAST (store3d/cinema/palast.js, bar2d.js; Hülle features/store/palast-back.js).
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv). Klassen am <html>: lfx-store-palast (Kino aktiv, Bühne sichtbar
+   geparkt über Jellyfins Player), lfx-store-palast-full (Vollbild: Bühne ausgeblendet, Jellyfin-OSD bedienbar). */
+
+/* ---------- Stapel: Bühne liegt über dem Jellyfin-Player (z-index von .videoPlayerContainer/#videoOsdPage live nicht gemessen) ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-palast .lfx-store-stage {
+  z-index: 1240;
+}
+
+/* Vollbild: nur unsichtbar (visibility), nie display:none (das <video> bleibt im Spiel, die Canvas behält ihre Größe) */
+html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-palast-full .lfx-store-stage {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Ton-/Untertitelwahl öffnet im Hintergrund Jellyfins ActionSheet: im Kino unsichtbar, aber mit Layout (opacity statt
+   visibility, sonst erkennt die Bridge Fehlerdialoge nicht mehr). Im Vollbild normal. */
+html.lfx-js.lfx-theme-store:not(.layout-tv).lfx-store-palast:not(.lfx-store-palast-full) .dialogContainer {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: none !important;
+}
+
+/* ---------- Bedienleiste (Overlay in der Bühne) ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-bar {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  box-sizing: border-box;
+  color: var(--lfx-store-text, #f4f6ff);
+  font: 600 15px/1.2 var(--lfx-font, system-ui, sans-serif);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-bar[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-bar *,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-bar *::before,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-bar *::after {
+  box-sizing: border-box;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-panel {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  border-radius: 14px;
+  background: rgba(8, 12, 34, 0.84);
+  pointer-events: auto;
+  transition: opacity 0.25s;
+}
+/* Ausgeblendet (Ruhe beim Spielen): auch nicht klickbar, der weckende Tipp löst nichts aus */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-bar.is-idle .lfx-palast-panel {
+  opacity: 0;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-msg {
+  color: var(--lfx-store-yellow, #ffd23f);
+  font-size: 13px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-msg[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-prog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-seek {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+  accent-color: var(--lfx-store-yellow, #ffd23f);
+  touch-action: manipulation;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-vol {
+  min-width: 52px;
+  color: var(--lfx-store-muted, #aab4e8);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn {
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn.is-main,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn.is-attn {
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  background: var(--lfx-store-yellow, #ffd23f);
+  color: #1a1400;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn.is-stand {
+  margin-left: auto;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn.is-main:not(:disabled):hover,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn.is-attn:not(:disabled):hover {
+    background: #ffe27a;
+  }
+}
+
+/* Ton-/Untertitel-Liste */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 42vh;
+  padding: 8px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-title {
+  font-weight: 700;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-text {
+  color: var(--lfx-store-muted, #aab4e8);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-row {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-pop-row.is-on {
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  color: var(--lfx-store-yellow, #ffd23f);
+}
+
+@media (max-width: 640px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-panel {
+    padding: 8px 10px;
+    border-radius: 12px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-btn {
+    padding: 0 10px;
+  }
+}
+
+/* ---------- „Zurück ins Kino“ (Hüllen-DOM an body, nur im Vollbild) ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-back {
+  position: fixed;
+  left: 50%;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  z-index: 1260;
+  transform: translateX(-50%);
+  min-height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 12, 34, 0.86);
+  color: var(--lfx-store-text, #f4f6ff);
+  font: 700 15px/1 var(--lfx-font, system-ui, sans-serif);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.25s;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-back.is-idle {
+  opacity: 0;
+  pointer-events: none;
+}

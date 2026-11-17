@@ -56,6 +56,7 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   let accN = 0;
   let baseFov = 70;
   let zoom = 1;
+  let renderOn = true; // setRenderEnabled(false): tick läuft weiter, es wird nur nicht gezeichnet (2D-Kino im Vollbild)
 
   const inXr = () => renderer.xr.isPresenting === true;
 
@@ -99,14 +100,14 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     acc += dt;
     accN++;
     if (acc >= 0.5) { fps = accN / acc; frameMs = (acc / accN) * 1000; acc = 0; accN = 0; }
-    if (autoOn && !inXr()) {
+    if (autoOn && !inXr() && renderOn) {
       const l = aq.sample(rawDt, now);
       if (l) { setLevel(l); if (onAutoLevel) onAutoLevel(l); }
     }
     const t0 = performance.now();
     if (tick) tick(dt, now, frame);
     const t1 = performance.now();
-    renderer.render(scene, camera);
+    if (renderOn) renderer.render(scene, camera);
     const t2 = performance.now();
     tickMs += (t1 - t0 - tickMs) * 0.05;
     renderMs += (t2 - t1 - renderMs) * 0.05;
@@ -179,6 +180,9 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
     renderer, camera, canvas, rig, storeScene,
     get scene() { return scene; },
     setScene(s) { scene = s || storeScene; },
+    /** false: Frame-Schleife und tick laufen weiter, aber ohne Zeichnen (spart GPU, wenn die Bühne verdeckt ist). */
+    setRenderEnabled(on) { renderOn = on !== false; },
+    get renderEnabled() { return renderOn; },
     render(active, cam) { renderer.render(active || scene, cam || camera); },
     get preset() { return preset; },
     get fps() { return fps; },

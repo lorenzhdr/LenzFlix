@@ -7,17 +7,11 @@ import { createScreen } from './screen.js';
 import { createSubtitles } from './subtitles.js';
 import { createAmbientSampler, smoothColor } from './ambient.js';
 import { createControls, SEAT_ORDER, SEAT_LABEL } from './controls.js';
+import { createStartWatch } from './startwatch.js';
+import { createFeed } from './feed.js';
+import { failToast } from './failcodes.js';
 
-// Start-Watchdog in Stufen (Fehlercodes: T1 kein Player, T2 Stillstand/Zeitlimit, D Fehlerdialog, P play() false, B Bau-Fehler)
-const NO_VIDEO_MS = 25000; // Route/<video> nie erreicht -> T1
-const STALL_MS = 15000; // Video da, aber 15 s ohne jeden Fortschritt -> T2
-const MAX_START_MS = 60000; // absolute Obergrenze bei Fortschritt -> T2
-const PREPARE_MS = 8000; // Hinweis „Der Server bereitet den Film vor …“
-const PAUSED_HOLD_MS = 1500; // pausiert mit Bild so lange stabil = pausierter Start (Autoplay geblockt)
-const SLOW_START_MS = 3000;
-const STATE_MS = 200;
-const VIDEO_MS = 250;
-const SUB_MS = 100;
+// Start-Watchdog (startwatch.js), Polling (feed.js), Fehlercodes (failcodes.js: P, T1, T2, D, B) sind mit dem 2D-Kino (palast.js) geteilt.
 const FAIL_HOLD_MS = 2600;
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -40,7 +34,8 @@ export class Cinema {
     this.seat = 'mid';
     this.gen = 0;
     this.timers = new Set();
-    this.offs = [];
+    this.watch = createStartWatch();
+    this.feed = createFeed({ getDeps: () => this._deps });
     this._enterPromise = null;
     this._leavePromise = null;
     this._leaveAsked = false;
@@ -49,11 +44,9 @@ export class Cinema {
 
   _resetRun() {
     this.now = 0;
-    this.startAt = null;
     this.baseTime = 0;
-    this.lastState = -1e9;
-    this.lastVideo = -1e9;
-    this.lastSub = -1e9;
+    this.watch.reset();
+    this.feed.reset();
     this.spillTarget = null;
     this.spillK = 0;
     this.spill = null;
@@ -61,15 +54,14 @@ export class Cinema {
     this.visible = true;
     this.controlsWanted = false;
     this.failCode = null;
-    this.marks = {};
-    this.prog = null;
-    this.lastProgress = 0;
-    this.pausedSince = null;
-    this.prepareShown = false;
     this.reloadShown = null;
     this.stopping = false;
     this.backPending = false;
   }
+
+  get marks() { return this.watch.marks; }
+
+  get prepareShown() { return this.watch.prepareShown; }
 
   /** true ab enter() bis leave() abgeschlossen. */
   get active() { return this._active; }
@@ -162,8 +154,7 @@ export class Cinema {
       });
       const d = this._deps;
       if (d) {
-        this.offs.push(d.onVideo((v) => this._setVideo(v)));
-        this.offs.push(d.onChange((s) => { this.state = s || this.state; this._onState(); }));
+        this.feed.subscribe({ onVideo: (v) => this._setVideo(v), onChange: (s) => { this.state = s || this.state; this._onState(); } });
         this._setVideo(d.video());
         this.state = d.state() || {};
       }
@@ -264,58 +255,25 @@ export class Cinema {
   }
 
   _checkStart(now) {
-    if (this.startAt == null) this.startAt = now;
-    const v = this.video;
-    const st = this.state || {};
-    const el = now - this.startAt;
-    const rs = v ? Number(v.readyState) || 0 : 0;
-    const frames = this.screen ? this.screen.videoFrames : 0;
-    const mark = (k) => { if (this.marks[k] == null) this.marks[k] = Math.round(el); };
-    if (v) {
-      mark('video');
-      this._progress(v, now);
-      if (rs >= 2) mark('ready');
-      if (frames >= 1) mark('frame');
-    }
-    if (v && rs >= 2 && frames >= 3 && (Math.abs((Number(v.currentTime) || 0) - this.baseTime) >= 0.3 || st.phase === 'paused')) {
+    const r = this.watch.step({
+      now, video: this.video, state: this.state, frames: this.screen ? this.screen.videoFrames : 0, hasFrame: Boolean(this.screen && this.screen.hasFrame), baseTime: this.baseTime,
+    });
+    if (r.event === 'start') {
       this.opened = true;
-      mark('start');
-      if (st.phase === 'paused') { this._setPaused(); this.hall.curtain(true); } else this._setPlaying(true);
+      if (r.paused) { this._setPaused(); this.hall.curtain(true); } else this._setPlaying(true);
       return;
     }
-    // Pausierter Start: Bild da, aber Video bleibt pausiert (Browser blockt Autoplay). Kein Fehlschlag: „Weiter“ im Panel ist die Nutzergeste.
-    const pausedNow = Boolean(v) && rs >= 2 && Boolean(this.screen && this.screen.hasFrame) && (st.phase === 'paused' || v.paused === true);
-    if (pausedNow) {
-      if (this.pausedSince == null) this.pausedSince = now;
-      else if (now - this.pausedSince >= PAUSED_HOLD_MS) {
-        this.opened = true;
-        mark('start');
-        this._setPaused();
-        if (this.hall) this.hall.curtain(true);
-        if (this._xr) this._xr.toast('Zum Starten „Weiter“ drücken', 5000);
-        return;
-      }
-    } else this.pausedSince = null;
-    // Dauert der Start, Vorhang auf, damit das Status-Bild („Film wird gestartet …“) zu sehen ist
-    if (el > SLOW_START_MS && this.hall && !this.hall.curtainOpen) this.hall.curtain(true);
-    if (el > PREPARE_MS && !this.prepareShown && this.screen) {
-      this.prepareShown = true;
-      this.screen.setStatus({ title: this._title(), text: 'Film wird gestartet …', sub: 'Der Server bereitet den Film vor …' });
+    if (r.event === 'pausedStart') {
+      this.opened = true;
+      this._setPaused();
+      if (this.hall) this.hall.curtain(true);
+      if (this._xr) this._xr.toast('Zum Starten „Weiter“ drücken', 5000);
+      return;
     }
-    if (!v) { if (el > NO_VIDEO_MS) this._fail('T1'); return; }
-    if (now - this.lastProgress > STALL_MS || el > MAX_START_MS) this._fail('T2');
-  }
-
-  /** Fortschritt des Ladens: readyState steigt, buffered-Ende wächst oder currentTime ändert sich. */
-  _progress(v, now) {
-    const rs = Number(v.readyState) || 0;
-    let be = 0;
-    try { const b = v.buffered; if (b && b.length) be = Number(b.end(b.length - 1)) || 0; } catch { /* egal */ }
-    const ct = Number(v.currentTime) || 0;
-    const p = this.prog;
-    if (!p || p.v !== v) { this.prog = { v, rs, be, ct }; this.lastProgress = now; return; }
-    if (rs > p.rs || be > p.be + 0.01 || Math.abs(ct - p.ct) > 0.01) this.lastProgress = now;
-    p.rs = rs; p.be = be; p.ct = ct;
+    // Dauert der Start, Vorhang auf, damit das Status-Bild („Film wird gestartet …“) zu sehen ist
+    if (r.slow && this.hall && !this.hall.curtainOpen) this.hall.curtain(true);
+    if (r.prepare && this.screen) this.screen.setStatus({ title: this._title(), text: 'Film wird gestartet …', sub: 'Der Server bereitet den Film vor …' });
+    if (r.event === 'fail') this._fail(r.code);
   }
 
   /** code: P (play() false), T1 (kein Player), T2 (Stillstand/Zeitlimit), D (Fehlerdialog), B (Bau-Fehler). */
@@ -323,11 +281,11 @@ export class Cinema {
     if (this.phase === 'failed' || this.phase === 'leaving' || !this._active || this._leaveAsked) return;
     this.phase = 'failed';
     this.failCode = code;
-    this.marks.fail = Math.round(this.startAt == null ? 0 : this.now - this.startAt);
+    this.marks.fail = Math.round(this.watch.startAt == null ? 0 : this.now - this.watch.startAt);
     warn('Kino-Start fehlgeschlagen', code);
     const d = this._deps;
     const st = this.state || {};
-    const txt = `Kino konnte nicht starten (${code})`;
+    const txt = failToast(code);
     if (this.screen) this.screen.setStatus({ title: this._title(), text: 'Kino konnte nicht starten', sub: `Zurück in die Videothek … (${code})` });
     if (this.controls) this.controls.hide();
     if (this.hall) this.hall.curtain(true);
@@ -370,14 +328,11 @@ export class Cinema {
     const hall = this.hall;
     if (hall) hall.update(dt);
     if (this.phase === 'entering' || this.phase === 'leaving' || !this.screen) return;
-    const d = this._deps;
-    if (d && now - this.lastVideo >= VIDEO_MS) {
-      this.lastVideo = now;
-      try { this._setVideo(d.video()); } catch { /* egal */ }
-    }
-    if (d && now - this.lastState >= STATE_MS) {
-      this.lastState = now;
-      try { this.state = d.state() || this.state; } catch { /* egal */ }
+    const pv = this.feed.pollVideo(now);
+    if (pv) { try { this._setVideo(pv.value); } catch { /* egal */ } }
+    const ps = this.feed.pollState(now);
+    if (ps) {
+      this.state = ps.value || this.state;
       this._onState();
       if (this._leaveAsked) return;
     }
@@ -390,11 +345,9 @@ export class Cinema {
       if (this.reloadShown !== title) { this.reloadShown = title; this.screen.setStatus({ title, text: 'Wird geladen …', sub: '' }); }
     } else this.reloadShown = null;
     if (this.subs) {
-      if (d && now - this.lastSub >= SUB_MS && this.phase !== 'failed') {
-        this.lastSub = now;
-        // Untertitel erst, wenn die Leinwand ein Videobild hat (nicht über dem Status-Bild)
-        try { this.subs.set(this.screen.hasFrame ? d.subtitles() : null); } catch { /* egal */ }
-      }
+      // Untertitel erst, wenn die Leinwand ein Videobild hat (nicht über dem Status-Bild)
+      const pu = this.feed.pollSubs(now, this.phase !== 'failed', this.screen.hasFrame);
+      if (pu) { try { this.subs.set(pu.value); } catch { /* egal */ } }
       this.subs.tick(now);
     }
     if (this.ambient && this.screen.hasFrame && (this.phase === 'playing' || this.phase === 'paused')) {
@@ -472,7 +425,7 @@ export class Cinema {
       if (gen !== this.gen) return true; // Sitzungsende hat schon abgebaut
       this._leavePromise = null;
       // Auch nach Fehlschlag + Rücksprung über #/home (Hülle ruft leave('home')) den Code zeigen
-      if ((reason === 'fail' || this.failCode) && this._xr) this._xr.toast(this.failCode ? `Kino konnte nicht starten (${this.failCode})` : 'Kino konnte nicht starten', 3200);
+      if ((reason === 'fail' || this.failCode) && this._xr) this._xr.toast(failToast(this.failCode), 3200);
       return true;
     }, (err) => { warn('Kino verlassen', err); if (gen !== this.gen) return false; this._leavePromise = null; if (this._active) this._teardown(); return false; });
     return this._leavePromise;
@@ -482,7 +435,7 @@ export class Cinema {
     if (!this._active) return;
     const app = this.app;
     const eng = app.engine;
-    for (const off of this.offs.splice(0)) { try { off(); } catch { /* egal */ } }
+    this.feed.unsubscribe();
     if (this.controls) { this.controls.dispose(); this.controls = null; }
     if (this._xr && typeof this._xr.closePanels === 'function') this._xr.closePanels();
     if (this.subs) { this.subs.dispose(); this.subs = null; }

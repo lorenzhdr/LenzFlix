@@ -67,14 +67,14 @@ function playViaDetails(item, resume, timeoutMs) {
 
 /**
  * Startet die Wiedergabe von item (Objekt mit Id/Type/MediaType/IsFolder/ServerId/UserData).
- * Rückgabe: Promise<boolean> (true = Klick ausgelöst).
+ * Rückgabe: Promise<boolean> (true = Klick ausgelöst). noCover: kein Ladebild (2D-Kino im LENZ PALAST zeigt sein eigenes Statusbild).
  */
-export async function play(item, { resume = false, timeoutMs = 8000 } = {}) {
+export async function play(item, { resume = false, timeoutMs = 8000, noCover = false } = {}) {
   if (!item || !item.Id) return false;
   // Signal für den TV-Modus (docs/tvmode.md): stoppt dessen Stream, bevor der Jellyfin-Player startet (synchron, vor Proxy-Klick/Fallback).
   window.dispatchEvent(new CustomEvent('lfx:play', { detail: { id: item.Id } }));
   // Ladebild vor dem Klick (idempotent, wenn das Info-Fenster es schon gezeigt hat).
-  showCover({ item });
+  if (!noCover) showCover({ item });
   const container = findProxyContainer();
   if (container) {
     const proxy = buildProxy(item, resume);
@@ -86,7 +86,7 @@ export async function play(item, { resume = false, timeoutMs = 8000 } = {}) {
     }
     return true;
   }
-  allowCoverRoute('/details');
+  if (!noCover) allowCoverRoute('/details');
   const ok = await playViaDetails(item, resume, timeoutMs);
   if (!ok) hideCover();
   return ok;
