@@ -101,7 +101,7 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 
 ## Aktueller Stand und offene Punkte
 Stand 17.11.2026 (1.16.0). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
-- **Version:** v1.16.0 auf `feature/v1.16.0`, lokal committet. Push, Tag `v1.16.0` und Fast-Forward nach main erst nach Freigabe des Nutzers.
+- **Version:** v1.16.0 veröffentlicht (Tag `v1.16.0` auf d469647, Branch `feature/v1.16.0` per Fast-Forward nach main, jsDelivr geprüft).
   - charts-worker deployt (Mehrspieler-DO `MpWorld`, Migration `mp1`); `MP_SECRET` ist gesetzt.
   - Tests: 3737 Root-Tests (361 Dateien) und 351 Worker-Tests; Lint und Build grün.
   - Hauptbundle 499.367 B.
