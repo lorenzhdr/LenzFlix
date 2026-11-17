@@ -65,10 +65,13 @@ export class MpWorld {
     if (c) await this.run({ type: 'message', c, data });
   }
 
-  async webSocketClose(ws) {
+  async webSocketClose(ws, code) {
     const c = this.cOf(ws);
     this.sockets.delete(c);
     if (c) await this.run({ type: 'close', c });
+    // Close-Rahmen beantworten, sonst kappt die Gegenseite erst nach Sekunden mit 1006; nur gültige Codes
+    const ok = Number.isInteger(code) && (code === 1000 || (code >= 3000 && code <= 4999));
+    try { ws.close(ok ? code : 1000, 'bye'); } catch { /* schon zu */ }
   }
 
   async webSocketError(ws) {

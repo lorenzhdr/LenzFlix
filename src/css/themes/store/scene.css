@@ -224,6 +224,11 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary.is-on {
   color: #0d1330;
 }
 
+/* Kassen-/Orts-Modals (m3): Abstand zur Leiste; höhere Spezifität als places.css */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-stage .lfx-store-m3 {
+  padding-top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px);
+}
+
 /* ---------- Pause-Menü ---------- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
   position: absolute;
@@ -232,6 +237,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  /* Oberkante unterhalb der Leiste (HUD), Panel zentriert im Rest */
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) 12px 12px;
   background: rgba(7, 10, 28, 0.6);
   pointer-events: auto;
 }
@@ -241,7 +249,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
   flex-direction: column;
   gap: 8px;
   width: min(86vw, 340px);
-  max-height: calc(100% - 24px);
+  max-height: 100%;
   overflow-y: auto;
   padding: 20px;
   border-radius: 18px;
@@ -282,6 +290,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick {
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) 12px 12px;
   background: rgba(7, 10, 28, 0.72);
   pointer-events: auto;
 }
@@ -294,7 +304,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
   flex-direction: column;
   gap: 8px;
   width: min(92vw, 380px);
-  max-height: calc(100% - 24px);
+  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 18px;

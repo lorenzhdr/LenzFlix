@@ -745,8 +745,14 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act--primary.is-on {
   color: #0d1330;
 }
 
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-stage .lfx-store-m3 {
+  padding-top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px);
+}
+
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause {
   z-index: 5;
+  box-sizing: border-box;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) 12px 12px;
   pointer-events: auto;
   background: rgba(7, 10, 28, .6);
   justify-content: center;
@@ -767,7 +773,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-panel {
   flex-direction: column;
   gap: 8px;
   width: min(86vw, 340px);
-  max-height: calc(100% - 24px);
+  max-height: 100%;
   padding: 20px;
   display: flex;
   overflow-y: auto;
@@ -803,6 +809,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-pause-note.lfx-store-paus
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick {
   z-index: 1;
+  box-sizing: border-box;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) 12px 12px;
   pointer-events: auto;
   background: rgba(7, 10, 28, .72);
   justify-content: center;
@@ -828,7 +836,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
   flex-direction: column;
   gap: 8px;
   width: min(92vw, 380px);
-  max-height: calc(100% - 24px);
+  max-height: 100%;
   padding: 18px;
   display: flex;
   overflow-y: auto;
@@ -2600,6 +2608,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-back.is-idle {
   pointer-events: none;
 }
 
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3.lfx-store-palast-pick {
+  padding-top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px);
+}
+
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-pick .lfx-store-m3-panel {
   color: #f4f6ff;
   width: min(96vw, 720px);
@@ -3503,8 +3515,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-desk {
 
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
   left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
-  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
-  max-width: min(52vw, 360px);
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 62px);
+  max-width: min(44vw, 360px);
   font-size: .74rem;
 }
 

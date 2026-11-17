@@ -76,7 +76,7 @@ export function buildFoyer(plan, o = {}) {
   signTex.colorSpace = SRGBColorSpace;
   signTex.generateMipmaps = false;
   signTex.minFilter = LinearFilter;
-  const signMat = new MeshBasicMaterial({ map: signTex, toneMapped: false, side: DoubleSide });
+  const signMat = new MeshBasicMaterial({ map: signTex, toneMapped: false }); // nur Vorderseite (Rückseite wäre Spiegelschrift); Gegenseiten als eigene Flächen
   const f = plan.foyer;
   const fz1 = f.z1;
   const sq = (i, o2) => quad({ w: 2.0, h: 0.5, uv: SIGN_CELLS[i].uv, ...o2 });
@@ -86,6 +86,10 @@ export function buildFoyer(plan, o = {}) {
     sq(1, { x: plan.aisles[0], y: 2.85, z: fz1 - 0.03, ry: Math.PI }),
     sq(2, { x: pcx, y: 2.35, z: st.popcorn.z0 - 0.02, ry: Math.PI }),
     sq(3, { x: plan.cx, y: 3.45, z: f.z0 + 0.12, ry: Math.PI }),
+    // Gegenseiten (von Saal bzw. Foyer lesbar; gleiche Merge-Geometrie, kein zusätzlicher Draw-Call)
+    sq(1, { x: plan.aisles[1], y: 2.85, z: fz1 - 0.01 }),
+    sq(1, { x: plan.aisles[0], y: 2.85, z: fz1 - 0.01 }),
+    sq(3, { x: plan.cx, y: 3.45, z: f.z0 + 0.14 }),
   ];
   const signMesh = new Mesh(merge(signGeos), signMat);
   signMesh.name = 'palast-foyer-signs';

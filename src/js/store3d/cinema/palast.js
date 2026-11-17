@@ -196,6 +196,8 @@ export class PalastCinema {
     ctx.overlay.open(this.bar.el, { onClose: () => this._afterStand() });
     const eye = { x: seat.x, y: Number.isFinite(seat.y) ? seat.y : 1.15, z: seat.z };
     ctx.player.camera.flyTo(eye, this._lookTarget(seat, eye), 750);
+    // Handy im Hochformat: die Sitzansicht schneidet die Leinwand seitlich ab → einmal je Hinsetzen ein Hinweis
+    if (this.app.touch && !this.full && typeof window !== 'undefined' && window.innerHeight > window.innerWidth) this._toast('Für die ganze Leinwand: Handy drehen oder Vollbild.');
     return true;
   }
 

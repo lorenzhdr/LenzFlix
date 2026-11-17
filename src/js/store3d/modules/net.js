@@ -10,6 +10,7 @@ import { createFrame } from '../net/frame.js';
 import { createPose } from '../net/pose.js';
 import { createPeers } from '../net/peers.js';
 import { createSeatNet } from '../palast/seatnet.js';
+import { joinOffers } from '../palast/choice.js';
 import { F, build, bodyAnimToNet } from '../net/proto.js';
 import { createHud } from '../net/hud.js';
 import { createPanel } from '../net/panel.js';
@@ -210,13 +211,32 @@ export default {
       for (const p of peers.list()) {
         if (me && (p.c === me.c || p.k === me.k)) continue;
         let r = by.get(p.k);
-        if (!r) { r = { k: p.k, c: p.c, name: 'Jemand', area: '', devs: p.devs || 1, admin: false }; by.set(p.k, r); }
+        if (!r) { r = { k: p.k, c: p.c, name: 'Jemand', area: '', devs: p.devs || 1, admin: false, cs: [] }; by.set(p.k, r); }
+        r.cs.push(p.c);
         const nm = peers.name(p.c);
         if (nm !== 'Jemand') r.name = nm;
         if (p.ad) r.admin = true;
         if (p.area && !r.area) r.area = p.area;
       }
       return [...by.values()];
+    }
+    /** Filmtitel je Zeile: nur aus öffentlichen Kino-Sitzungen (Gastgeber oder Mitglied) UND nur aus dem eigenen Katalog, sonst ''. */
+    function filmTitle(row) {
+      try {
+        const c2 = ctx.use('cinema2d');
+        const pt = c2 && c2.party;
+        const cs = row && Array.isArray(row.cs) ? row.cs : (row && row.c ? [row.c] : []);
+        if (!pt || typeof pt.offers !== 'function' || !cs.length) return '';
+        const cat = ctx.catalog && ctx.catalog.items;
+        if (!cat) return '';
+        const items = cat instanceof Map ? cat : new Map(Object.entries(cat));
+        for (const e of pt.offers() || []) {
+          if (!e || !(cs.includes(e.host) || (Array.isArray(e.m) && e.m.some((c) => cs.includes(c))))) continue;
+          const o = joinOffers([e], items, null, 0, null)[0];
+          if (o && o.title) return o.title;
+        }
+      } catch { /* kein Titel */ }
+      return '';
     }
     function kickPlayer(k) {
       const me = transport.me();
@@ -325,7 +345,7 @@ export default {
       prefs, set: setPref, status: statusText, players, isMuted,
       setMute: (k, v) => { const c = chatPart(); if (c) return c.setMuted(k, v); setPref({ mute: v ? [...new Set([...prefs().mute, k])].slice(0, 50) : prefs().mute.filter((x) => x !== k) }); return isMuted(k); },
       canKick: () => { const me = transport.me(); return !!(live && me && me.admin && core.cap('admin')); },
-      kick: kickPlayer,
+      kick: kickPlayer, filmTitle,
     });
 
     // ---------------------------------------------------------------- Provider

@@ -89,25 +89,43 @@ describe('stepVolume (VR-Panel, 2D-Leiste, Tastenwächter)', () => {
 
 describe('trackBlack', () => {
   const black = { r: 0, g: 0, b: 0 };
-  it('6 s Videozeit exakt 0 → schwarz, genau einmal', () => {
+  it('10 s Videozeit exakt 0 → schwarz, genau einmal', () => {
     const st = newBlackState();
     let fired = 0;
-    for (let i = 0; i <= 100; i++) if (trackBlack(black, i * 125, st, { ready: true, currentTime: i * 0.125 })) fired++;
+    for (let i = 0; i <= 120; i++) if (trackBlack(black, i * 125, st, { ready: true, currentTime: i * 0.125 })) fired++;
     expect(fired).toBe(1);
     expect(st.fired).toBe(true);
     expect(trackBlack(black, 99999, st, { ready: true, currentTime: 999 })).toBe(false);
   });
 
-  it('ein heller Frame setzt zurück; ImageData-Form wird gelesen', () => {
+  it('ein heller Frame setzt zurück und schaltet die Erkennung für den Lauf ab; ImageData-Form wird gelesen', () => {
     const st = newBlackState();
     const dark = { data: new Uint8ClampedArray([0, 0, 0, 255, 0, 0, 0, 255]) };
     const lit = { data: new Uint8ClampedArray([0, 0, 0, 255, 0, 1, 0, 255]) };
     expect(trackBlack(dark, 0, st, { currentTime: 0 })).toBe(false);
     expect(trackBlack(lit, 3000, st, { currentTime: 3 })).toBe(false);
     expect(st.since).toBeNull();
+    expect(st.seen).toBe(true);
     expect(trackBlack(dark, 4000, st, { currentTime: 4 })).toBe(false);
-    expect(trackBlack(dark, 9000, st, { currentTime: 9 })).toBe(false); // erst 5 s seit dem Zurücksetzen
-    expect(trackBlack(dark, 10100, st, { currentTime: 10.1 })).toBe(true);
+    expect(trackBlack(dark, 20000, st, { currentTime: 20 })).toBe(false); // Film mit schwarzer Szene: nie mehr Alarm
+  });
+
+  it('K-BLACK: Farbe gesehen, danach 12 s schwarz → kein Alarm; schwarz ab Start 8 s, dann Farbe → kein Alarm', () => {
+    const lit = { r: 0.3, g: 0.2, b: 0.1 };
+    const a = newBlackState();
+    let fired = 0;
+    trackBlack(lit, 0, a, { currentTime: 0 });
+    for (let i = 1; i <= 100; i++) if (trackBlack(black, i * 125, a, { currentTime: 1 + i * 0.125 })) fired++;
+    expect(fired).toBe(0);
+    const b = newBlackState();
+    for (let i = 0; i <= 64; i++) if (trackBlack(black, i * 125, b, { currentTime: i * 0.125 })) fired++; // 8 s
+    trackBlack(lit, 8200, b, { currentTime: 8.2 });
+    for (let i = 0; i < 160; i++) if (trackBlack(black, 8300 + i * 125, b, { currentTime: 8.3 + i * 0.125 })) fired++;
+    expect(fired).toBe(0);
+    const c = newBlackState(); // iPhone: schwarz ab der ersten Probe, löst nach 10 s Videozeit aus
+    expect(trackBlack(black, 0, c, { currentTime: 0 })).toBe(false);
+    expect(trackBlack(black, 9900, c, { currentTime: 9.9 })).toBe(false);
+    expect(trackBlack(black, 10100, c, { currentTime: 10.1 })).toBe(true);
   });
 
   it('Videozeit steht (Pause): kein Alarm; nicht bereit: Zähler zurück; nach dem Zeitfenster: kein Alarm', () => {

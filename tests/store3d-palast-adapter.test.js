@@ -232,14 +232,14 @@ describe('PalastCinema', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
     const c = setup({ video: mkVideo(), state: { phase: 'playing' } });
     c.cin.play(ITEM);
-    run(c, 0, 5000);
+    run(c, 0, 9000);
     expect(c.cin.full).toBe(false);
-    run(c, 5000, 4000);
+    run(c, 9000, 5000);
     expect(c.cin.full).toBe(true);
     expect(c.calls.toasts).toContain('Leinwand nicht verfügbar');
     const n = c.calls.toasts.filter((t) => t === 'Leinwand nicht verfügbar').length;
     expect(c.cin.setFull(false)).toBe(true);
-    run(c, 9000, 12000);
+    run(c, 14000, 12000);
     expect(c.cin.full).toBe(false); // pendelt nicht zurück
     expect(c.calls.toasts.filter((t) => t === 'Leinwand nicht verfügbar')).toHaveLength(n);
     c.cin.dispose();
@@ -344,10 +344,10 @@ describe('PalastCinema', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => g);
     const c = setup({ video: mkVideo(), state: { phase: 'playing' } });
     c.cin.play(ITEM);
-    run(c, 0, 9000);
+    run(c, 0, 14000);
     expect(c.cin.phase).toBe('fallback');
     c.cin.setFull(false);
-    run(c, 9000, 600);
+    run(c, 14000, 600);
     expect(c.cin.phase).toBe('playing');
     expect(c.saal.log).toContainEqual(['light', 0.08]);
     c.cin.stand();

@@ -97,8 +97,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-desk {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
   left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
-  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
-  max-width: min(52vw, 360px);
+  /* unter dem Menü-Knopf (44 px hoch, gleiche Oberkante top+10) mit 8 px Abstand; links der Bildmitte, damit Toast und Blase frei bleiben */
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 62px);
+  max-width: min(44vw, 360px);
   font-size: 0.74rem;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-open {

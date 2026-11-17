@@ -34,6 +34,8 @@ export const SYNC = Object.freeze({
   AHEAD_OK_MS: 3000,
   MIRROR_TOL_MS: 150,
   SEEK_TOAST_MS: 1500,
+  HOLD_MAX_MS: 3000, // bis hier korrigiert ein lokales Anhalten einen Vorsprung, darüber Sprung
+  STUCK_MS: 3000, // lokale Pausenposition weicht so weit ab: Gruppenposition nehmen
 });
 
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -68,7 +70,7 @@ export function createSync(o = {}) {
     land: null, landFix: false, landAt: 0, lead: null, leadAt: 0,
     rateSet: null, rateOk: null, alignedSince: null,
     bufSent: false, stallSince: null, hostKb: false, waiting: false, fasterShown: false,
-    last: null, d: 0, offsetMs: 0,
+    last: null, d: 0, offsetMs: 0, holdUntil: 0,
   };
   const C = { kc: 0, kb: 0, seeks: 0, accepts: 0 };
 
@@ -84,8 +86,26 @@ export function createSync(o = {}) {
     if (S.rateSet != null) { S.rateSet = null; try { if (A.setRate) A.setRate(1); } catch { /* egal */ } }
   }
 
+  // Lokales Anhalten gegen einen Vorsprung (nur Mitschauende; der Gastgeber korrigiert wie bisher per Rate/Sprung, sonst stünde sein
+  // Bild ohne erkennbaren Grund bis zu HOLD_MAX still): Pause, nach ms (am Tick, nicht per Timer) wieder weiter. Zählt nicht als Nutzerpause.
+  function startHold(ms, now) {
+    try { A.setPaused(true); } catch { /* egal */ }
+    S.holdUntil = now + Math.round(ms);
+    S.applyUntil = Math.max(S.applyUntil, now + cfg.APPLY_MS);
+    S.alignedSince = null;
+    resetRate();
+  }
+  function endHold(resume, now) {
+    if (!S.holdUntil) return;
+    S.holdUntil = 0;
+    if (!resume) return;
+    try { A.setPaused(false); } catch { /* egal */ }
+    S.applyUntil = Math.max(S.applyUntil, (now == null ? nowFn() : now) + cfg.APPLY_MS);
+  }
+
   function giveUp(reason, sendKl = true) {
     if (inactive()) return;
+    endHold(true);
     resetRate();
     if (sendKl && S.sess) send({ t: 'kl', sid: S.sess.sid });
     S.phase = 'solo';
@@ -93,6 +113,7 @@ export function createSync(o = {}) {
   }
 
   function doSeek(target, now) {
+    S.holdUntil = 0;
     try { A.seekTo(Math.max(0, Math.round(target)), { exact: exactOk() }); } catch { /* egal */ }
     S.guardUntil = now + cfg.GUARD_MS;
     S.applyUntil = now + cfg.APPLY_MS;
@@ -104,6 +125,7 @@ export function createSync(o = {}) {
     resetRate();
   }
   function doPause(on, now) {
+    S.holdUntil = 0; // jede andere Pause-Entscheidung löst ein laufendes Anhalten ab
     try { A.setPaused(on); } catch { /* egal */ }
     S.applyUntil = now + cfg.APPLY_MS;
   }
@@ -185,7 +207,13 @@ export function createSync(o = {}) {
     const now = nowFn();
     const obs = obsNow();
     doPause(st === 2, now);
-    queue(st, S.seekP != null ? S.seekP : obs ? num(obs.t) : S.sess.p, now);
+    let p = S.seekP != null ? S.seekP : obs ? num(obs.t) : S.sess.p;
+    // Player weit hinter (oder vor) der Gruppe (hing/puffert): nicht die lokale Stelle zur Pausenposition machen, sondern die der Gruppe
+    if (st === 2 && S.seekP == null && obs) {
+      const g = expectedPos(S.sess, now);
+      if (Math.abs(p - g) > cfg.STUCK_MS) { p = g; doSeek(g, now); }
+    }
+    queue(st, p, now);
     return true;
   }
 
@@ -283,10 +311,11 @@ export function createSync(o = {}) {
       S.applyUntil = Math.max(S.applyUntil, t);
     },
     /** Sitzung lokal verwerfen (Aufrufer baut sie ab): Rate zurück, kein kl. */
-    dispose() { resetRate(); S.phase = 'ended'; },
-    localEnded() { if (!inactive()) { resetRate(); S.phase = 'ended'; } },
+    dispose() { endHold(true); resetRate(); S.phase = 'ended'; },
+    localEnded() { if (!inactive()) { endHold(false); resetRate(); S.phase = 'ended'; } },
     leave() {
       if (inactive()) return;
+      endHold(true);
       resetRate();
       if (S.sess) send({ t: 'kl', sid: S.sess.sid });
       S.phase = 'ended';
@@ -304,27 +333,38 @@ export function createSync(o = {}) {
       const rebase = !last || now - last.now > cfg.TICK_GAP_MS;
       S.last = { now, t, paused: !!obs.paused, rate: obs.rate != null ? num(obs.rate, 1) : 1 };
       if (obs.ended) return;
+      if (S.holdUntil && now + cfg.TICK_MS / 2 >= S.holdUntil) endHold(true, now); // Halbtakt-Rundung gegen Tick-Raster
       // Ratenprobe: hält der Player die gesetzte Rate nicht, ist die Ratenkorrektur für den Lauf aus
       if (S.rateSet != null && obs.rate != null && Math.abs(num(obs.rate) - S.rateSet) > 0.01) { resetRate(); S.rateOk = false; }
       // Lerngrößen: Landefehler nach einem Sprung, Vorhalt = Sprungbefehl bis wieder spielend
+      let held = false;
       if (S.landAt && now >= S.landAt && ready >= 3 && !obs.seeking) {
-        const err = Math.abs(t - expectedPos(S.sess, now));
+        const sd = t - expectedPos(S.sess, now);
+        const err = Math.abs(sd);
         S.landAt = 0;
-        // Einmaliger Korrektursprung: lag der Sprung wegen eines falsch geschätzten Vorhalts weit daneben (läuft die Sitzung), nicht als
-        // „unvermeidbaren Landefehler“ ins Totband buchen (der Vorhalt lernt in der Zwischenzeit), sondern mit dem gelernten Vorhalt nachspringen.
-        if (!S.landFix && S.sess.st === 1 && !obs.paused && res() === 0 && err > 2 * cfg.DEAD_MS) {
+        if (!isHost && sd > 2 * cfg.DEAD_MS && sd <= cfg.HOLD_MAX_MS && S.sess.st === 1 && !obs.paused && !S.holdUntil) {
+          // Landung VORAUS bei laufender Sitzung (z. B. Nachsprung im gepufferten Bereich): nicht zurückspringen, sondern kurz anhalten;
+          // der Überschuss ist kein Landefehler des Players und wird nicht in S.land gebucht.
+          S.landFix = false;
+          startHold(sd, now);
+          held = true;
+        } else if (!S.landFix && S.sess.st === 1 && !obs.paused && res() === 0 && err > 2 * cfg.DEAD_MS) {
+          // Einmaliger Korrektursprung: lag der Sprung wegen eines falsch geschätzten Vorhalts weit daneben (läuft die Sitzung), nicht als
+          // „unvermeidbaren Landefehler“ ins Totband buchen (der Vorhalt lernt in der Zwischenzeit), sondern mit dem gelernten Vorhalt nachspringen.
           S.landFix = true;
           doSeek(expectedPos(S.sess, now) + lead(), now);
           return;
+        } else {
+          S.landFix = false;
+          S.land = S.land == null ? err : 0.7 * S.land + 0.3 * err;
         }
-        S.landFix = false;
-        S.land = S.land == null ? err : 0.7 * S.land + 0.3 * err;
       }
       if (S.leadAt && now - S.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S.sess.st === 1 && !obs.paused) {
         const dur = clamp(now - S.leadAt, 0, cfg.LEAD_MAX_MS);
         S.lead = clamp(S.lead == null ? dur : 0.7 * S.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
         S.leadAt = 0;
       }
+      if (held) return;
       const hidden = !!obs.hidden;
       // Eingriffe außerhalb unserer Befehle (Jellyfin-OSD, Medientasten): Pause-Wechsel oder Zeitsprung -> kc
       if (S.began && S.phase !== 'joining' && !rebase && !hidden) {
@@ -383,6 +423,16 @@ export function createSync(o = {}) {
       // deutlich über der Zielgrenze (live gemessen: −0,98 s und +0,36 s, also 1,34 s Abstand, ohne Korrektur).
       const Dr = Math.max(cfg.DEAD_MS, res());
       if (ad < Dr / 2) { resetRate(); return; }
+      const cool = mode() === 'hls' ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
+      // Vorsprung über 2×Totband bis HOLD_MAX: kurz lokal anhalten statt langsamer Rate oder Sprung (gleicher Cooldown und Deckel wie Sprünge)
+      if (!isHost && st === 1 && !S.holdUntil && d > Math.max(2 * cfg.DEAD_MS, D) && d <= cfg.HOLD_MAX_MS && now - S.lastSeekAt >= cool) {
+        S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
+        if (S.seekTimes.length < cfg.SEEK_CAP) {
+          S.seekTimes.push(now); S.lastSeekAt = now;
+          startHold(d, now);
+          return;
+        }
+      }
       if (st === 1 && S.rateOk !== false && A.setRate && ad > Dr && ad <= Math.max(D, cfg.RATE_MAX_MS)) {
         const r = 1 - clamp(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
         if (S.rateSet !== r) {
@@ -391,7 +441,6 @@ export function createSync(o = {}) {
         return;
       }
       if (ad <= D) return;
-      const cool = mode() === 'hls' ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
       if (now - S.lastSeekAt < cool) return;
       S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
       if (S.seekTimes.length >= cfg.SEEK_CAP) {

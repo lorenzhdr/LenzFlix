@@ -22,16 +22,18 @@ export function smoothColor(prev, next, dt, tau = 0.6) {
   return { r: prev.r + (next.r - prev.r) * a, g: prev.g + (next.g - prev.g) * a, b: prev.b + (next.b - prev.b) * a };
 }
 
-export const BLACK = Object.freeze({ MIN_VIDEO_S: 6, WINDOW_MS: 90000 });
+export const BLACK = Object.freeze({ MIN_VIDEO_S: 10, WINDOW_MS: 90000 });
 
 /** Neuer Zustand für trackBlack (einer pro Wiedergabe-Lauf). */
-export const newBlackState = () => ({ t0: null, since: null, ct0: 0, fired: false });
+export const newBlackState = () => ({ t0: null, since: null, ct0: 0, fired: false, seen: false });
 
 /**
  * Erkennung „Leinwand bleibt schwarz“ (rein, z. B. iPhone mit nativem HLS: Textur bzw. drawImage liefert nur Nullen).
  * sample = ImageData ({ data }) oder Farbe ({ r, g, b }) des Abtasters; nur exakt 0 zählt als schwarz.
  * opts: { ready: readyState >= 2, currentTime }. Wahr genau einmal je Lauf (state.fired), wenn das Video bei
  * BLACK.MIN_VIDEO_S Sekunden Videozeit ununterbrochen exakt schwarz war, innerhalb der ersten BLACK.WINDOW_MS ms der Beobachtung.
+ * Nur für Leinwände, die nie Bild liefern: wurde in diesem Lauf je eine nicht-schwarze Probe gesehen (state.seen), feuert
+ * die Erkennung nie mehr (Filme mit schwarzen Szenen wären sonst grundlos im Rückfall).
  */
 export function trackBlack(sample, now, state, { ready = true, currentTime = 0 } = {}) {
   if (!state || state.fired || !sample) return false;
@@ -39,7 +41,8 @@ export function trackBlack(sample, now, state, { ready = true, currentTime = 0 }
   if (now - state.t0 > BLACK.WINDOW_MS || !ready) { state.since = null; return false; }
   let zero;
   if (sample.data) { zero = true; const d = sample.data; for (let i = 0; i < d.length; i += 4) { if (d[i] || d[i + 1] || d[i + 2]) { zero = false; break; } } } else zero = !sample.r && !sample.g && !sample.b;
-  if (!zero) { state.since = null; return false; }
+  if (!zero) { state.seen = true; state.since = null; return false; }
+  if (state.seen) return false;
   if (state.since == null) { state.since = now; state.ct0 = Number(currentTime) || 0; return false; }
   if ((Number(currentTime) || 0) - state.ct0 >= BLACK.MIN_VIDEO_S) { state.fired = true; return true; }
   return false;

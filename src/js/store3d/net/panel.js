@@ -6,7 +6,7 @@
 // render(el) baut den Inhalt je Element einmal auf und aktualisiert danach nur Texte/Zustände (Fokus bleibt beim Umschalten erhalten).
 const SWITCHES = [
   { key: 'on', label: 'Mehrspieler', note: 'Andere auf diesem Server sehen dich in der VIDEOTHEK.' },
-  { key: 'name', label: 'Name zeigen', note: 'Dein Jellyfin-Benutzername über deiner Figur. Aus: andere sehen „Jemand“.' },
+  { key: 'name', label: 'Name zeigen', note: 'Dein Jellyfin-Benutzername über deiner Figur. Aus: kein Name über der Figur, in Liste und Chat „Jemand“.' },
   { key: 'chat', label: 'Chat', note: '' },
   { key: 'film', label: 'Mein Film für andere sichtbar', note: 'Gilt auch für die Hülle in deiner Hand.' },
 ];

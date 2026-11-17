@@ -232,6 +232,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-palast-back.is-idle {
 }
 
 /* ---------- Kasse im LENZ PALAST (Overlay, modules/palast.js + palast/panel.js) ---------- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-m3.lfx-store-palast-pick {
+  padding-top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px);
+}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-palast-pick .lfx-store-m3-panel {
   width: min(96vw, 720px);
   padding: 18px 18px 16px;

@@ -50024,7 +50024,7 @@ void main() {
     signTex.colorSpace = SRGBColorSpace;
     signTex.generateMipmaps = false;
     signTex.minFilter = LinearFilter;
-    const signMat = new MeshBasicMaterial({ map: signTex, toneMapped: false, side: DoubleSide });
+    const signMat = new MeshBasicMaterial({ map: signTex, toneMapped: false });
     const f = plan.foyer;
     const fz1 = f.z1;
     const sq = (i, o2) => quad({ w: 2, h: 0.5, uv: SIGN_CELLS[i].uv, ...o2 });
@@ -50033,7 +50033,11 @@ void main() {
       sq(1, { x: plan.aisles[1], y: 2.85, z: fz1 - 0.03, ry: Math.PI }),
       sq(1, { x: plan.aisles[0], y: 2.85, z: fz1 - 0.03, ry: Math.PI }),
       sq(2, { x: pcx, y: 2.35, z: st.popcorn.z0 - 0.02, ry: Math.PI }),
-      sq(3, { x: plan.cx, y: 3.45, z: f.z0 + 0.12, ry: Math.PI })
+      sq(3, { x: plan.cx, y: 3.45, z: f.z0 + 0.12, ry: Math.PI }),
+      // Gegenseiten (von Saal bzw. Foyer lesbar; gleiche Merge-Geometrie, kein zusätzlicher Draw-Call)
+      sq(1, { x: plan.aisles[1], y: 2.85, z: fz1 - 0.01 }),
+      sq(1, { x: plan.aisles[0], y: 2.85, z: fz1 - 0.01 }),
+      sq(3, { x: plan.cx, y: 3.45, z: f.z0 + 0.14 })
     ];
     const signMesh = new Mesh(merge(signGeos), signMat);
     signMesh.name = "palast-foyer-signs";
@@ -53434,7 +53438,7 @@ void main() {
   // src/js/store3d/net/panel.js
   var SWITCHES = [
     { key: "on", label: "Mehrspieler", note: "Andere auf diesem Server sehen dich in der VIDEOTHEK." },
-    { key: "name", label: "Name zeigen", note: "Dein Jellyfin-Benutzername \xFCber deiner Figur. Aus: andere sehen \u201EJemand\u201C." },
+    { key: "name", label: "Name zeigen", note: "Dein Jellyfin-Benutzername \xFCber deiner Figur. Aus: kein Name \xFCber der Figur, in Liste und Chat \u201EJemand\u201C." },
     { key: "chat", label: "Chat", note: "" },
     { key: "film", label: "Mein Film f\xFCr andere sichtbar", note: "Gilt auch f\xFCr die H\xFClle in deiner Hand." }
   ];
@@ -55791,15 +55795,34 @@ void main() {
           if (me && (p.c === me.c || p.k === me.k)) continue;
           let r = by.get(p.k);
           if (!r) {
-            r = { k: p.k, c: p.c, name: "Jemand", area: "", devs: p.devs || 1, admin: false };
+            r = { k: p.k, c: p.c, name: "Jemand", area: "", devs: p.devs || 1, admin: false, cs: [] };
             by.set(p.k, r);
           }
+          r.cs.push(p.c);
           const nm = peers.name(p.c);
           if (nm !== "Jemand") r.name = nm;
           if (p.ad) r.admin = true;
           if (p.area && !r.area) r.area = p.area;
         }
         return [...by.values()];
+      }
+      function filmTitle(row) {
+        try {
+          const c2 = ctx.use("cinema2d");
+          const pt = c2 && c2.party;
+          const cs = row && Array.isArray(row.cs) ? row.cs : row && row.c ? [row.c] : [];
+          if (!pt || typeof pt.offers !== "function" || !cs.length) return "";
+          const cat = ctx.catalog && ctx.catalog.items;
+          if (!cat) return "";
+          const items = cat instanceof Map ? cat : new Map(Object.entries(cat));
+          for (const e of pt.offers() || []) {
+            if (!e || !(cs.includes(e.host) || Array.isArray(e.m) && e.m.some((c) => cs.includes(c)))) continue;
+            const o = joinOffers([e], items, null, 0, null)[0];
+            if (o && o.title) return o.title;
+          }
+        } catch {
+        }
+        return "";
       }
       function kickPlayer(k) {
         const me = transport.me();
@@ -55924,7 +55947,8 @@ void main() {
           const me = transport.me();
           return !!(live && me && me.admin && core.cap("admin"));
         },
-        kick: kickPlayer
+        kick: kickPlayer,
+        filmTitle
       });
       const removeProvider = ctx.provide("net", {
         active: () => live && !disposed,
@@ -61344,8 +61368,8 @@ void main() {
     const a = 1 - Math.exp(-Math.max(0, dt) / Math.max(1e-3, tau));
     return { r: prev.r + (next.r - prev.r) * a, g: prev.g + (next.g - prev.g) * a, b: prev.b + (next.b - prev.b) * a };
   }
-  var BLACK = Object.freeze({ MIN_VIDEO_S: 6, WINDOW_MS: 9e4 });
-  var newBlackState = () => ({ t0: null, since: null, ct0: 0, fired: false });
+  var BLACK = Object.freeze({ MIN_VIDEO_S: 10, WINDOW_MS: 9e4 });
+  var newBlackState = () => ({ t0: null, since: null, ct0: 0, fired: false, seen: false });
   function trackBlack(sample, now, state, { ready = true, currentTime = 0 } = {}) {
     if (!state || state.fired || !sample) return false;
     if (state.t0 == null) state.t0 = now;
@@ -61365,9 +61389,11 @@ void main() {
       }
     } else zero = !sample.r && !sample.g && !sample.b;
     if (!zero) {
+      state.seen = true;
       state.since = null;
       return false;
     }
+    if (state.seen) return false;
     if (state.since == null) {
       state.since = now;
       state.ct0 = Number(currentTime) || 0;
@@ -63726,7 +63752,11 @@ void main() {
     // Schonzeit in lg (wie Worker LG_MS); der Worker meldet ihr Ende nicht per kx
     AHEAD_OK_MS: 3e3,
     MIRROR_TOL_MS: 150,
-    SEEK_TOAST_MS: 1500
+    SEEK_TOAST_MS: 1500,
+    HOLD_MAX_MS: 3e3,
+    // bis hier korrigiert ein lokales Anhalten einen Vorsprung, darüber Sprung
+    STUCK_MS: 3e3
+    // lokale Pausenposition weicht so weit ab: Gruppenposition nehmen
   });
   var clamp13 = (x, a, b) => Math.min(b, Math.max(a, x));
   var num4 = (x, d = 0) => Number.isFinite(Number(x)) ? Number(x) : d;
@@ -63780,7 +63810,8 @@ void main() {
       fasterShown: false,
       last: null,
       d: 0,
-      offsetMs: 0
+      offsetMs: 0,
+      holdUntil: 0
     };
     const C = { kc: 0, kb: 0, seeks: 0, accepts: 0 };
     const mode = () => A.mode ? A.mode() : "direct";
@@ -63805,14 +63836,36 @@ void main() {
         }
       }
     }
+    function startHold(ms, now) {
+      try {
+        A.setPaused(true);
+      } catch {
+      }
+      S.holdUntil = now + Math.round(ms);
+      S.applyUntil = Math.max(S.applyUntil, now + cfg.APPLY_MS);
+      S.alignedSince = null;
+      resetRate();
+    }
+    function endHold(resume, now) {
+      if (!S.holdUntil) return;
+      S.holdUntil = 0;
+      if (!resume) return;
+      try {
+        A.setPaused(false);
+      } catch {
+      }
+      S.applyUntil = Math.max(S.applyUntil, (now == null ? nowFn() : now) + cfg.APPLY_MS);
+    }
     function giveUp(reason, sendKl = true) {
       if (inactive()) return;
+      endHold(true);
       resetRate();
       if (sendKl && S.sess) send({ t: "kl", sid: S.sess.sid });
       S.phase = "solo";
       emit({ type: "solo", reason });
     }
     function doSeek(target, now) {
+      S.holdUntil = 0;
       try {
         A.seekTo(Math.max(0, Math.round(target)), { exact: exactOk() });
       } catch {
@@ -63827,6 +63880,7 @@ void main() {
       resetRate();
     }
     function doPause(on, now) {
+      S.holdUntil = 0;
       try {
         A.setPaused(on);
       } catch {
@@ -63912,7 +63966,15 @@ void main() {
       const now = nowFn();
       const obs = obsNow();
       doPause(st === 2, now);
-      queue(st, S.seekP != null ? S.seekP : obs ? num4(obs.t) : S.sess.p, now);
+      let p = S.seekP != null ? S.seekP : obs ? num4(obs.t) : S.sess.p;
+      if (st === 2 && S.seekP == null && obs) {
+        const g = expectedPos(S.sess, now);
+        if (Math.abs(p - g) > cfg.STUCK_MS) {
+          p = g;
+          doSeek(g, now);
+        }
+      }
+      queue(st, p, now);
       return true;
     }
     const api = {
@@ -64032,17 +64094,20 @@ void main() {
       },
       /** Sitzung lokal verwerfen (Aufrufer baut sie ab): Rate zurück, kein kl. */
       dispose() {
+        endHold(true);
         resetRate();
         S.phase = "ended";
       },
       localEnded() {
         if (!inactive()) {
+          endHold(false);
           resetRate();
           S.phase = "ended";
         }
       },
       leave() {
         if (inactive()) return;
+        endHold(true);
         resetRate();
         if (S.sess) send({ t: "kl", sid: S.sess.sid });
         S.phase = "ended";
@@ -64060,26 +64125,35 @@ void main() {
         const rebase = !last || now - last.now > cfg.TICK_GAP_MS;
         S.last = { now, t, paused: !!obs.paused, rate: obs.rate != null ? num4(obs.rate, 1) : 1 };
         if (obs.ended) return;
+        if (S.holdUntil && now + cfg.TICK_MS / 2 >= S.holdUntil) endHold(true, now);
         if (S.rateSet != null && obs.rate != null && Math.abs(num4(obs.rate) - S.rateSet) > 0.01) {
           resetRate();
           S.rateOk = false;
         }
+        let held = false;
         if (S.landAt && now >= S.landAt && ready >= 3 && !obs.seeking) {
-          const err = Math.abs(t - expectedPos(S.sess, now));
+          const sd = t - expectedPos(S.sess, now);
+          const err = Math.abs(sd);
           S.landAt = 0;
-          if (!S.landFix && S.sess.st === 1 && !obs.paused && res() === 0 && err > 2 * cfg.DEAD_MS) {
+          if (!isHost && sd > 2 * cfg.DEAD_MS && sd <= cfg.HOLD_MAX_MS && S.sess.st === 1 && !obs.paused && !S.holdUntil) {
+            S.landFix = false;
+            startHold(sd, now);
+            held = true;
+          } else if (!S.landFix && S.sess.st === 1 && !obs.paused && res() === 0 && err > 2 * cfg.DEAD_MS) {
             S.landFix = true;
             doSeek(expectedPos(S.sess, now) + lead(), now);
             return;
+          } else {
+            S.landFix = false;
+            S.land = S.land == null ? err : 0.7 * S.land + 0.3 * err;
           }
-          S.landFix = false;
-          S.land = S.land == null ? err : 0.7 * S.land + 0.3 * err;
         }
         if (S.leadAt && now - S.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S.sess.st === 1 && !obs.paused) {
           const dur = clamp13(now - S.leadAt, 0, cfg.LEAD_MAX_MS);
           S.lead = clamp13(S.lead == null ? dur : 0.7 * S.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
           S.leadAt = 0;
         }
+        if (held) return;
         const hidden = !!obs.hidden;
         if (S.began && S.phase !== "joining" && !rebase && !hidden) {
           const eff = effSt();
@@ -64160,6 +64234,16 @@ void main() {
           resetRate();
           return;
         }
+        const cool = mode() === "hls" ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
+        if (!isHost && st === 1 && !S.holdUntil && d > Math.max(2 * cfg.DEAD_MS, D2) && d <= cfg.HOLD_MAX_MS && now - S.lastSeekAt >= cool) {
+          S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
+          if (S.seekTimes.length < cfg.SEEK_CAP) {
+            S.seekTimes.push(now);
+            S.lastSeekAt = now;
+            startHold(d, now);
+            return;
+          }
+        }
         if (st === 1 && S.rateOk !== false && A.setRate && ad > Dr && ad <= Math.max(D2, cfg.RATE_MAX_MS)) {
           const r = 1 - clamp13(d / cfg.RATE_GAIN_MS, -cfg.RATE_CLAMP, cfg.RATE_CLAMP);
           if (S.rateSet !== r) {
@@ -64173,7 +64257,6 @@ void main() {
           return;
         }
         if (ad <= D2) return;
-        const cool = mode() === "hls" ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
         if (now - S.lastSeekAt < cool) return;
         S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
         if (S.seekTimes.length >= cfg.SEEK_CAP) {
@@ -64870,6 +64953,7 @@ void main() {
       ctx.overlay.open(this.bar.el, { onClose: () => this._afterStand() });
       const eye = { x: seat.x, y: Number.isFinite(seat.y) ? seat.y : 1.15, z: seat.z };
       ctx.player.camera.flyTo(eye, this._lookTarget(seat, eye), 750);
+      if (this.app.touch && !this.full && typeof window !== "undefined" && window.innerHeight > window.innerWidth) this._toast("F\xFCr die ganze Leinwand: Handy drehen oder Vollbild.");
       return true;
     }
     /** Läuft dieser Film noch (Spieler ist nur aufgestanden)? Dann braucht ein erneutes Hinsetzen keinen Neustart. */

@@ -111,7 +111,21 @@ describe('MpWorld', () => {
     expect(leave).toBe(true);
   });
 
-  it('Binärnachricht schließt mit 4000', async () => {
+  it('beantwortet den Close-Rahmen des Clients (nur gültige Codes, sonst 1000)', async () => {
+    const ctx = makeCtx();
+    const w = new MpWorld(ctx, { MP_SECRET: SECRET });
+    await w.fetch(req(claims('a')));
+    await w.fetch(req(claims('b')));
+    await w.fetch(req(claims('c')));
+    await w.webSocketClose(ctx.sockets[0], 1000, '', true);
+    expect(ctx.sockets[0].closed.code).toBe(1000);
+    await w.webSocketClose(ctx.sockets[1], 1005, '', true);
+    expect(ctx.sockets[1].closed.code).toBe(1000);
+    await w.webSocketClose(ctx.sockets[2], 4123, 'x', true);
+    expect(ctx.sockets[2].closed.code).toBe(4123);
+  });
+
+  it('Binärnachricht schließt mit 4000',async () => {
     const ctx = makeCtx();
     const w = new MpWorld(ctx, { MP_SECRET: SECRET });
     await w.fetch(req(claims('a')));

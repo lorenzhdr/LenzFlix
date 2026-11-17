@@ -3,7 +3,7 @@ import { createSync, expectedPos, rejoinPlan, SYNC } from '../src/js/store3d/cin
 
 // Fake-Uhr + Fake-Player: advance() läuft in 50-ms-Schritten, tick() alle 250 ms.
 function rig(opt = {}) {
-  const R = { now: 1_000_000, out: [], ev: [], calls: [] };
+  const R = { now: 1_000_000, out: [], ev: [], calls: [], jumps: 0 };
   const P = { pos: 0, paused: false, ready: 4, seeking: false, rate: 1, until: 0, land: 0, stallUntil: 0, hidden: false, ended: false };
   const cfg = { lag: 0, res: 0, exactSeek: true, reportExact: true, reportRes: true, mode: 'direct', rateReset: false, hasRate: true, ...opt };
   R.P = P; R.cfg = cfg;
@@ -13,7 +13,9 @@ function rig(opt = {}) {
       R.calls.push(['seek', ms, !!(o && o.exact)]);
       let land = ms + (cfg.landErr || 0);
       if (!(cfg.exactSeek && o && o.exact) && cfg.res > 0) land = Math.floor(ms / cfg.res) * cfg.res;
-      P.land = land; P.seeking = true; P.ready = 0; P.until = R.now + cfg.lag;
+      // lagFirst: Latenz des ersten Sprungs (Player startet gerade), lagNext: aller folgenden (z. B. gepufferter Bereich)
+      const lg = R.jumps++ === 0 && cfg.lagFirst != null ? cfg.lagFirst : cfg.lagNext != null ? cfg.lagNext : cfg.lag;
+      P.land = land; P.seeking = true; P.ready = 0; P.until = R.now + lg;
     },
     state() { return { paused: P.paused, t: P.pos, ready: P.ready, seeking: P.seeking, rate: P.rate, hidden: P.hidden, ended: P.ended }; },
     mode: () => cfg.mode,
@@ -538,5 +540,83 @@ describe('Einstieg ohne Seek-Verzögerung (hls, Vorhalt-Startwert 1,5 s)', () =>
     expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(500);
     expect(R.of('kc')).toHaveLength(0);
     expect(R.calls.filter((c) => c[0] === 'seek').length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('K-JOIN: Beitritt mit langsamem ersten Sprung', () => {
+  it('erster Sprung 1500 ms, folgende 50 ms: binnen 10 s unter 0,5 s Abstand, Totband danach klein', () => {
+    const R = rig({ lag: 0, lagFirst: 1500, lagNext: 50 });
+    R.kx({ v: 1, st: 1, p: 60000, at: R.now });
+    R._p = 60000; R._at = R.now;
+    R.sync.begin();
+    R.advance(10000);
+    expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(500);
+    const land = R.sync.diag().land;
+    expect(Math.max(300, 1.5 * (land || 0))).toBeLessThanOrEqual(600);
+    // Vorsprung wurde durch lokales Anhalten abgebaut, kein kc
+    expect(R.calls.some((c) => c[0] === 'pause' && c[1] === true)).toBe(true);
+    expect(R.of('kc')).toHaveLength(0);
+    R.advance(20000);
+    expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(500);
+    expect(R.P.paused).toBe(false);
+  });
+  it('Anhalten im Drift-Teil: 1,5 s voraus nach Cooldown, kein Sprung, danach wieder gleichauf', () => {
+    const R = joined({ lag: 50 });
+    R.advance(8000);
+    const seeks = R.sync.diag().seeks;
+    R.P.pos += 1500;
+    R.advance(5000);
+    expect(R.sync.diag().seeks).toBe(seeks);
+    expect(R.of('kc')).toHaveLength(0);
+    expect(Math.abs(R.P.pos - erw(R))).toBeLessThan(400);
+    expect(R.P.paused).toBe(false);
+  });
+  it('Nutzerpause während des Anhaltens bleibt Nutzerpause (ein kc)', () => {
+    const R = joined({ lag: 50 });
+    R.advance(8000);
+    R.P.pos += 1500;
+    R.advance(500);
+    expect(R.P.paused).toBe(true);
+    R.sync.pause();
+    R.advance(5000);
+    expect(R.P.paused).toBe(true);
+    expect(R.of('kc')).toHaveLength(1);
+  });
+});
+
+describe('Gastgeber hält nie lokal an', () => {
+  it('Vorsprung des Gastgebers: keine lokale Pause (w4 share: A stand sonst bis 3 s still)', () => {
+    const R = rig({ host: true, lag: 50 });
+    R.P.pos = 1000;
+    R.sync.markPlaying();
+    R.kx({ v: 1, st: 1, p: 1000, at: R.now, m: [7], lg: [] });
+    R.advance(8000);
+    R.P.pos += 1500;
+    R.calls.length = 0;
+    R.advance(5000);
+    expect(R.calls.filter((c) => c[0] === 'pause' && c[1] === true)).toHaveLength(0);
+    expect(R.P.paused).toBe(false);
+  });
+});
+
+describe('K-STUCK: Pause eines weit zurückhängenden Mitglieds', () => {
+  it('Pausenposition ist die Gruppenposition, wenn lokal > 3 s abweichend', () => {
+    const R = joined({ lag: 50 });
+    R.advance(2000);
+    R.P.pos -= 40000; // Video hing
+    R.sync.pause();
+    R.advance(600, false);
+    const kc = R.of('kc')[0];
+    expect(kc.o).toBe(2);
+    expect(Math.abs(kc.p - erw(R))).toBeLessThan(1500);
+  });
+  it('Abweichung unter 3 s: lokale Position wie bisher', () => {
+    const R = joined({ lag: 50 });
+    R.advance(2000);
+    const loc = R.P.pos - 1500;
+    R.P.pos = loc;
+    R.sync.pause();
+    R.advance(600, false);
+    expect(Math.abs(R.of('kc')[0].p - loc)).toBeLessThan(200);
   });
 });
