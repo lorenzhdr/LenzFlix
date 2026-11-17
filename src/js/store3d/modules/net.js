@@ -294,6 +294,8 @@ export default {
     // ---------------------------------------------------------------- Provider
     const removeProvider = ctx.provide('net', {
       active: () => live && !disposed,
+      /** Diagnose (Debug/Panel): Sitzung, Ausschaltgrund, Transportzustand. */
+      diag: () => ({ live, failed: failed || null, entered, suspendedClosed, transport: transport && transport.info ? transport.info() : null }),
       me: () => (transport ? transport.me() : null),
       has: (cap) => !!transport && transport.has(cap),
       count,
