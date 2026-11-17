@@ -19,6 +19,9 @@ import { debugHook } from './m3-debug.js';
 
 const FAR = 52; // m: darüber Figuren ausblenden (Nebelende ≈ 56)
 const HIT_RANGE = 1.6;
+const PARK = -9990; // Kollider unbenutzter/ferner Passanten
+const COL_NEAR = 8; // m: nur nahe Passanten blockieren den Spieler
+const COL_R = 0.3;
 
 export default {
   name: 'npc',
@@ -112,7 +115,11 @@ export default {
       handle.setUmbrella(look.umbrella && rain);
       walkerGroup().add(handle.root);
       const w = createWalker(graph, rand, { edge: e.id, id: walkers.length, rush: rain ? 1.25 : 1 });
-      const entry = { w, handle, acc: 0 };
+      // Wurftreffer (throw.js ruft nur handle.hitReact) sollen wie der Schlag wirken: Walker-Automat auf stagger setzen, sonst überschreibt er die Animation jeden Frame.
+      const rawReact = handle.hitReact.bind(handle);
+      const entry = { w, handle, acc: 0, rawReact, col: null };
+      handle.hitReact = (dir) => { const ev = hitWalker(w, dir, rand); rawReact(dir); if (ev && ev.cat) sayCat(handle, ev.cat, true); };
+      entry.col = ctx.addCollider({ x0: PARK, z0: PARK, x1: PARK + 0.5, z1: PARK + 0.5, y1: 1.8, top: false, kind: 'walker' }, { dynamic: true });
       walkers.push(entry);
       return entry;
     }
@@ -120,6 +127,7 @@ export default {
       const i = walkers.indexOf(entry);
       if (i >= 0) walkers.splice(i, 1);
       bubbles.hideFor(entry.handle);
+      if (entry.col) ctx.removeCollider(entry.col);
       entry.handle.dispose();
     }
     function adjustWalkers() {
@@ -205,7 +213,7 @@ export default {
       const out = [];
       for (const e of walkers) {
         if (!e.handle.root.visible || !e.handle.root.parent) continue;
-        out.push({ kind: 'walker', handle: e.handle, x: e.w.x, z: e.w.z, hit: (dir) => { const ev = hitWalker(e.w, dir, rand); e.handle.hitReact(dir); sayCat(e.handle, ev.cat, true); } });
+        out.push({ kind: 'walker', handle: e.handle, x: e.w.x, z: e.w.z, hit: (dir) => { e.handle.hitReact(dir); } });
       }
       for (const e of staffMap.values()) {
         const g = groups();
@@ -292,12 +300,16 @@ export default {
         const evs = stepWalker(w, step, env);
         for (const ev of evs) {
           if (ev.type === 'say' && lod === 0) sayCat(e.handle, ev.cat, false);
-          else if (ev.type === 'bump') { sound('oof'); e.handle.hitReact({ x: w.recoil.x, z: w.recoil.z }); }
+          else if (ev.type === 'bump') { sound('oof'); e.rawReact({ x: w.recoil.x, z: w.recoil.z }); }
         }
         const h = e.handle;
         h.root.position.set(w.x + w.recoil.x * 0.1, 0, w.z + w.recoil.z * 0.1);
         h.root.rotation.y = w.yaw;
         h.root.visible = dd < FAR;
+        if (e.col) {
+          if (dd < COL_NEAR && h.root.visible) ctx.moveCollider(e.col, h.root.position.x - COL_R, h.root.position.z - COL_R, h.root.position.x + COL_R, h.root.position.z + COL_R);
+          else if (e.col.x0 > PARK + 1) ctx.moveCollider(e.col, PARK, PARK, PARK + 0.5, PARK + 0.5);
+        }
         if (w.state !== 'stagger') h.setAnim(w.anim, { speed: w.v });
         else if (!h.anim.busy()) h.setAnim('stagger', { restart: true, then: 'idle' });
         if (lod <= 1 && h.root.visible) h.update(step, ctx.camera);
@@ -352,7 +364,7 @@ export default {
       dispose() {
         for (const off of offs) { try { off(); } catch { /* egal */ } }
         offProvider();
-        for (const e of walkers) e.handle.dispose();
+        for (const e of walkers) { if (e.col) ctx.removeCollider(e.col); e.handle.dispose(); }
         walkers.length = 0;
         for (const e of staffMap.values()) e.handle.dispose();
         staffMap.clear();

@@ -199,11 +199,11 @@ describe('npc/traffic/kiosk', () => {
     await build({ level: 'mid' });
     const tr = host.ctx.use('traffic');
     expect(tr.cars()).toHaveLength(4);
-    expect(app.layout.dyn.size).toBe(4);
+    expect([...app.layout.dyn].filter((c) => c.kind === 'car').length).toBe(4);
     expect(tr.parked().length).toBe(9);
     tick(100);
     for (const c of tr.cars()) { expect(Number.isFinite(c.x + c.z)).toBe(true); }
-    const col = [...app.layout.dyn][0];
+    const col = [...app.layout.dyn].find((c) => c.kind === 'car');
     expect(col.top).toBe(false);
   });
 
@@ -211,7 +211,7 @@ describe('npc/traffic/kiosk', () => {
     await build({ flags: { cars: false } });
     const tr = host.ctx.use('traffic');
     expect(tr.cars ? tr.cars() : []).toEqual([]);
-    expect(app.layout.dyn.size).toBe(0);
+    expect([...app.layout.dyn].filter((c) => c.kind === 'car').length).toBe(0);
     expect(tr.zebraClear({ ax: 0, bx: 0 })).toBe(true);
   });
 
@@ -272,5 +272,26 @@ describe('npc/traffic/kiosk', () => {
     expect(groups.yard.children.length).toBe(0);
     expect(dom.querySelectorAll('.lfx-store-bubble.is-npc').length).toBe(0);
     void scene;
+  });
+  it('Passanten: Wurftreffer (handle.hitReact) lässt den Passanten taumeln statt vom Automaten überschrieben zu werden', async () => {
+    await build({ level: 'mid' });
+    tick(5);
+    const p = host.ctx.use('npc');
+    const person = p.people().find((q) => q.kind === 'walker');
+    expect(person).toBeTruthy();
+    place(person.x + 3, person.z, 0);
+    person.handle.hitReact({ x: 1, z: 0 });
+    tick(3);
+    expect(person.handle.anim.anim).toBe('stagger');
+  });
+
+  it('Passanten: nahe Passanten haben einen dynamischen Kollider (Spieler läuft nicht hindurch)', async () => {
+    await build({ level: 'mid' });
+    const p = host.ctx.use('npc');
+    const person = p.people().find((q) => q.kind === 'walker');
+    place(person.x + 2, person.z, 0);
+    tick(3);
+    const near = [...app.layout.dyn].filter((c) => c.kind === 'walker' && Math.abs((c.x0 + c.x1) / 2 - person.handle.root.position.x) < 0.05);
+    expect(near.length).toBe(1);
   });
 });
