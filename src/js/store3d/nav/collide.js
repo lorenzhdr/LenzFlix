@@ -15,7 +15,7 @@ export const BODY_H = 1.7;
 /** Maximale Hochziehhöhe (Oberkante über den Füßen). */
 export const MANTLE_H = 1.3;
 /** Fußradius für die Bodenprüfung. */
-export const FOOT_R = 0.15;
+const FOOT_R = 0.15;
 export const EPS = 1e-4;
 /** Körperradius (Kreis am Boden). */
 export const RADIUS = 0.28;

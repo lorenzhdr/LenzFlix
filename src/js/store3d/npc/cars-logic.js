@@ -7,11 +7,11 @@
 
 export const CAR_LEN = 4.2;
 export const CAR_W = 1.8;
-export const ACC = 3.0;
-export const DEC = 6.5;
-export const GAP = 2.4; // Wunschabstand zum Vordermann (m)
+const ACC = 3.0;
+const DEC = 6.5;
+const GAP = 2.4; // Wunschabstand zum Vordermann (m)
 export const HORN_COOL = 7; // s zwischen zwei Hupsignalen eines Autos
-export const HORN_AFTER = 1.0; // s Blockade, bevor gehupt wird
+const HORN_AFTER = 1.0; // s Blockade, bevor gehupt wird
 export const NUDGE_AFTER = 3.8; // s Blockade durch den Spieler, bevor das Auto vorsichtig anrollt
 const UPSTREAM_WINDOW = 6; // Zebra gilt als „vor der Haltelinie“, wenn sie höchstens so weit davor beginnt
 
@@ -24,8 +24,8 @@ export function laneAxis(lane) { return lane.dir.x ? 'x' : 'z'; }
 export function posOf(lane, p) { return laneAxis(lane) === 'x' ? { x: p, z: lane.z } : { x: lane.x, z: p }; }
 
 /** Fahrkoordinate (x oder z) eines Weltpunkts. */
-export function alongOf(lane, x, z) { return laneAxis(lane) === 'x' ? x : z; }
-export function lateralOf(lane, x, z) { return laneAxis(lane) === 'x' ? z - lane.z : x - lane.x; }
+function alongOf(lane, x, z) { return laneAxis(lane) === 'x' ? x : z; }
+function lateralOf(lane, x, z) { return laneAxis(lane) === 'x' ? z - lane.z : x - lane.x; }
 
 /** Haltekoordinate für die Stoßstange bei Rot: vor dem ersten Zebra, das kurz vor der Haltelinie beginnt. */
 export function effectiveStop(lane, zebras) {

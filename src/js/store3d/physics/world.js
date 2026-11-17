@@ -7,8 +7,8 @@ import { GRAV, VY_MIN } from '../nav/collide.js';
 import { dimsOf } from './kinds.js';
 
 export const DT = 1 / 60;
-export const MAX_STEPS = 6;
-export const MAX_SPEED = 16;
+const MAX_STEPS = 6;
+const MAX_SPEED = 16;
 const SLEEP_V2 = 0.0225;
 const SLEEP_T = 0.35;
 const BOUNCE_MIN = 1.0;
@@ -476,7 +476,7 @@ export function createWorld(opts = {}) {
 
 const r2 = (v) => Math.round(v * 100) / 100;
 /** Ein Körper als Netzeintrag (JSON-tauglich, auf cm/mm-Genauigkeit gerundet). */
-export function bodyNet(b) {
+function bodyNet(b) {
   const e = { i: b.id, k: b.kind, p: [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z)], v: [r2(b.vel.x), r2(b.vel.y), r2(b.vel.z)], y: r2(b.yaw), t: r2(b.tipA), s: b.sleeping ? 1 : 0 };
   if (b.tipA) { e.ax = r2(b.tipAx); e.az = r2(b.tipAz); }
   return e;

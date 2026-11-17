@@ -1,6 +1,6 @@
 // VIDEOTHEK LENZ: „Zurück ins Kino“ (2D-Kino im LENZ PALAST, Vollbild). Hüllen-DOM an body, liegt über Jellyfins OSD und der
 // ausgeblendeten Bühne. Blendet sich nach 3 s ohne Bewegung aus und kehrt bei Maus/Touch zurück. CSS: themes/store/palast.css.
-export const IDLE_MS = 3000;
+const IDLE_MS = 3000;
 
 export function mountBackButton({ onBack }) {
   const b = document.createElement('button');

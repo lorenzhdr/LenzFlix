@@ -13,7 +13,7 @@ const TICKET_GAGS = [
 const TEAR_LINES = ['Abgerissen! Saal 1, immer der Nase nach.', 'Schön gerissen. Viel Vergnügen!', 'Ritsch! Saal 1, die Tür mit dem Vorhang.'];
 
 /** Titel einer Hülle/eines Items. */
-export const titleOf = (it) => String((it && (it.Name || it.name)) || '');
+const titleOf = (it) => String((it && (it.Name || it.name)) || '');
 
 /** Kleiner Ticket-Speicher. ticket = { itemId, title, item, resume, source: 'program'|'tape', slot, time, no }. */
 export function createTicketBook() {

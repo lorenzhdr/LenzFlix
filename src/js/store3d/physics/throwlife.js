@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Wurf-Lebenszyklus einer Hülle (rein): Zustandsautomat flying → landed → (aufgehoben | zurück ins Regal).
 export const RETURN_AFTER = 6; // Sekunden nach der Landung
 export const THROW_SPEED = 9;
-export const THROW_UP = 0.28; // Anteil nach oben an der Blickrichtung (vor Normierung)
+const THROW_UP = 0.28; // Anteil nach oben an der Blickrichtung (vor Normierung)
 
 /** Abwurfgeschwindigkeit aus Blickrichtung dir (normiert): ~9 m/s nach vorn-oben. */
 export function throwVelocity(dir, speed = THROW_SPEED) {

@@ -23,7 +23,7 @@ const CULL_DIST = { low: 24, mid: 32, high: 40 };
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
 
 /** Ist der Kreis (x, z, r) auf Höhe y (Füße) frei von Kollidern? (rein; für Platzwahl) */
-export function spotFree(src, x, z, r, y = 0, h = 1) {
+function spotFree(src, x, z, r, y = 0, h = 1) {
   let free = true;
   queryColliders(src, x - r, z - r, x + r, z + r, (q) => {
     if (!free) return;

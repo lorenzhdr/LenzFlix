@@ -9,7 +9,7 @@ import { isFree, nearestFree } from '../nav/path.js';
 
 export const T = 0.12; // Wandstärke des Ladens (= layout WALL_T)
 export const ROOF_Y = 3.3; // Oberkante der Dachfläche
-export const CEIL_Y = 3.0; // Oberkante der Ladenwände
+const CEIL_Y = 3.0; // Oberkante der Ladenwände
 /** Sprunghöhe aus den Konstanten von nav/collide.js (für Erreichbarkeitstests). */
 export const JUMP_H = (JUMP_V * JUMP_V) / (2 * GRAV);
 /** Maximale Höhe, die aus dem Stand per Sprung + Hochziehen erreichbar ist. */

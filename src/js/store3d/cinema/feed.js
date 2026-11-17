@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Kino: Video-/Zustands-/Untertitel-Polling mit festen Intervallen und An-/Abmeldung an der Bridge.
 // Gemeinsam für das VR-Kino (cinema.js) und das 2D-Kino (palast.js). Die Auswertung (_onState, Phasen) bleibt beim Aufrufer.
 
-export const FEED = Object.freeze({ VIDEO_MS: 250, STATE_MS: 200, SUB_MS: 100 });
+const FEED = Object.freeze({ VIDEO_MS: 250, STATE_MS: 200, SUB_MS: 100 });
 
 /**
  * createFeed({ getDeps }): getDeps() → deps.cinema (Bridge der Hülle) oder null.

@@ -2,7 +2,7 @@
 // Format: JSON { v:1, found: { <id>: <Zeitstempel ms> } }. Müll, fremde IDs und fehlender/werfender Storage werden still ignoriert.
 import { isKnownId, CATALOG } from './catalog.js';
 
-export const KEY_PREFIX = 'lfx.store.discover.';
+const KEY_PREFIX = 'lfx.store.discover.';
 export const keyFor = (userId) => `${KEY_PREFIX}${userId ? String(userId).slice(0, 64) : 'anon'}`;
 
 /** Wert aus dem Storage lesen → { id: ts } (nur bekannte IDs, Zeit endlich). */

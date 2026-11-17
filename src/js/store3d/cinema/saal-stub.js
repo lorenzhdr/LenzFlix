@@ -4,7 +4,7 @@
 import { Group, Mesh, BoxGeometry, MeshBasicMaterial } from 'three';
 import { disposeTree } from '../util/geo.js';
 
-export const STUB = Object.freeze({ distance: 7, seatEye: 1.15, screenOpts: Object.freeze({ radius: 10, bottom: 0.9, maxW: 6, maxH: 3.4 }) });
+const STUB = Object.freeze({ distance: 7, seatEye: 1.15, screenOpts: Object.freeze({ radius: 10, bottom: 0.9, maxW: 6, maxH: 3.4 }) });
 
 /** saal-Handle vor dem Spieler (pos = { x, z, yaw }). Leinwand-Anker ± STUB.distance entlang der Blickrichtung, +z zeigt zum Spieler. */
 export function buildStubSaal(pos) {

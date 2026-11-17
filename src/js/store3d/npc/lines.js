@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · NPC-Sprüche (rein): Deutsche Zeilen für Passanten, Personal, Verkäuferin. Keine fremden Marken, keine Gewalt-Details.
 // pickLine(cat, rand, last?) → { text, index }; Kategorien in LINES.
 
-export const LINES = {
+const LINES = {
   // Schlag auf einen Passanten
   bumped: [
     'Hey! Ich hab einen Termin mit meinem Sofa!', 'Autsch! Das war mein Lieblings-Ellbogen!', 'Na hör mal! Ich wollte nur Brötchen holen!',

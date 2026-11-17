@@ -26,7 +26,7 @@ export function dayLabel(dayKey) {
 }
 
 /** Abstand der Außenplakate vor der Kastenmitte (Fläche des Kastens: Tiefe 0,05 bei z−0,04 → Vorderseite 0,065 davor). */
-export const POSTER_LIFT = 0.1;
+const POSTER_LIFT = 0.1;
 
 export default {
   name: 'palast',

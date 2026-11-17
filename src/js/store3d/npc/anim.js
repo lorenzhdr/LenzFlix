@@ -12,9 +12,9 @@ export const ANIM_CODE = Object.fromEntries(ANIMS.map((n, i) => [n, i]));
 /** Einmal-Animationen: Dauer in s, danach `idle`. */
 export const ONE_SHOT = { hit: 0.45, throw: 0.6, stagger: 1.0 };
 /** Zeitbegrenzte Dauer-Animationen (kehren nach der Zeit zu idle zurück): wave, point, cheer. */
-export const TIMED = { wave: 2.4, point: 2.2, cheer: 2.6 };
+const TIMED = { wave: 2.4, point: 2.2, cheer: 2.6 };
 export const POSE_KEYS = ['bob', 'hipDrop', 'lean', 'roll', 'headX', 'headY', 'armLx', 'armLz', 'armRx', 'armRz', 'legLx', 'legRx'];
-export const NET_VERSION = 1;
+const NET_VERSION = 1;
 const TAU = Math.PI * 2;
 const MAX_RATE = 18;
 
@@ -22,7 +22,7 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
 
-export function zeroPose() {
+function zeroPose() {
   const p = {};
   for (const k of POSE_KEYS) p[k] = 0;
   return p;

@@ -7,18 +7,16 @@ import {
 } from '../nav/collide.js';
 import { angDiff } from '../modules/m4-util.js';
 
-export { RADIUS };
-
 /** Animationscodes in getNetState().a */
 export const ANIM = { STAND: 0, WALK: 1, RUN: 2, AIR: 3, KNOCK: 4, MANTLE: 5, HIT: 6 };
 /** Anzeigeverzögerung der Remote-Interpolation (ms), Puffergröße, Sprungabstand (m). */
 export const NET_DELAY_MS = 100;
-export const NET_BUFFER = 8;
-export const NET_JUMP_DIST = 3;
+const NET_BUFFER = 8;
+const NET_JUMP_DIST = 3;
 /** Sekunden, die eine Schlag-Animation (Code 6) dauert. */
-export const SWING_T = 0.3;
+const SWING_T = 0.3;
 /** Sekunden ohne neues Hochziehen nach dem Hochziehen. */
-export const MANTLE_COOLDOWN = 0.25;
+const MANTLE_COOLDOWN = 0.25;
 const KNOCK_DECAY = 6;
 const KNOCK_SPEED = 4;
 const VERTICAL_ONLY = { verticalOnly: true };

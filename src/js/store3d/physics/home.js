@@ -1,5 +1,5 @@
 // VIDEOTHEK LENZ · Physik: Rücksetzen verschobener Objekte an ihren Platz (rein).
-export const RESET_AFTER = 120; // Sekunden Ruhe
+const RESET_AFTER = 120; // Sekunden Ruhe
 
 /** Weit genug vom Platz weg (oder umgekippt), um zurückgesetzt zu werden? */
 export function displaced(b) {

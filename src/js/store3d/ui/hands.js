@@ -3,7 +3,7 @@
 import { Group, Mesh, BoxGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace } from 'three';
 
 export const SWING_DUR = 0.28;
-export const THROW_DUR = 0.35;
+const THROW_DUR = 0.35;
 const CARRY_POS = [0.24, -0.2, -0.42];
 const SIDE = { vhs: 0xe2d8bd, dvd: 0x1d3f9c, box: 0xc9a227 };
 const SIZE = { vhs: [0.1, 0.19, 0.03], dvd: [0.12, 0.17, 0.02], box: [0.14, 0.19, 0.05] };

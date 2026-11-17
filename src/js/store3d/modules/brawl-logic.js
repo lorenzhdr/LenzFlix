@@ -45,7 +45,7 @@ export function hopPoint(a, b, u, peak, by = 0) {
   return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, y: by + 4 * peak * k * (1 - k) };
 }
 
-export const GRAV = 9.8;
+const GRAV = 9.8;
 /** Startgeschwindigkeit für eine Wurfbahn von from nach to in der Zeit T (s). */
 export function aimVelocity(from, to, T) {
   return { x: (to.x - from.x) / T, y: (to.y - from.y) / T + 0.5 * GRAV * T, z: (to.z - from.z) / T };

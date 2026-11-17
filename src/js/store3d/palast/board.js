@@ -64,7 +64,7 @@ export function drawBoard(g, w, h, { program, nowMin } = {}) {
 }
 
 /** Schildatlas 1024×256: vier Schilder (2×2, je 512×128): KASSE, SAAL 1, POPCORN, LENZ PALAST. Zellen siehe SIGN_CELLS (uv: [u0,v0,u1,v1]). */
-export const SIGN_TEXT = ['KASSE', 'SAAL 1', 'POPCORN', 'LENZ PALAST'];
+const SIGN_TEXT = ['KASSE', 'SAAL 1', 'POPCORN', 'LENZ PALAST'];
 export const SIGN_CELLS = SIGN_TEXT.map((_, i) => ({ x: (i % 2) * 512, y: Math.floor(i / 2) * 128, uv: [(i % 2) / 2, 1 - (Math.floor(i / 2) + 1) / 2, (i % 2 + 1) / 2, 1 - Math.floor(i / 2) / 2] }));
 const SIGN_COLORS = ['#35e6ff', '#ff3d7f', '#ffd23f', '#ff9f1c'];
 

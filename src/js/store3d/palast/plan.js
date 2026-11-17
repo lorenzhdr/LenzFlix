@@ -4,7 +4,7 @@
 // Koordinaten: +z geht vom Eingang (Straße) nach hinten zur Leinwand. Blick nach +z = yaw PI (Vorwärts = (-sin yaw, -cos yaw)).
 
 export const SEAT = Object.freeze({ pitch: 0.6, depth: 0.5, h: 0.95, eye: 1.15, aisleW: 1.6, wallGap: 0.9 });
-export const SCREEN_OPTS = Object.freeze({ radius: 16, bottom: 1.8, maxW: 10.5, maxH: 4.9, padW: 1.6, padH: 1.2 });
+const SCREEN_OPTS = Object.freeze({ radius: 16, bottom: 1.8, maxW: 10.5, maxH: 4.9, padW: 1.6, padH: 1.2 });
 const STEP_DEPTH = 0.3;
 const STEP_MAX = 0.28;
 const MAX_RISE = 0.14;
@@ -13,7 +13,7 @@ const r3 = (v) => Math.round(v * 1000) / 1000;
 const mid = (d) => (d.x0 + d.x1) / 2;
 
 /** Reihenbuchstabe: vorderste Reihe = A. */
-export const rowLetter = (frontIndex) => String.fromCharCode(65 + frontIndex);
+const rowLetter = (frontIndex) => String.fromCharCode(65 + frontIndex);
 
 /** Plan des Palast-Innenausbaus. p = layout.city.palast. */
 export function buildPlan(p) {

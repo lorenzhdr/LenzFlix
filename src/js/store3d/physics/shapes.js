@@ -62,7 +62,7 @@ function standeeGeo() {
   return paintAll(g, [1, 1, 1]);
 }
 
-export function standeeCanvas(makeCanvas) {
+function standeeCanvas(makeCanvas) {
   const c = makeCanvas(256, 512);
   const x = c.getContext('2d');
   x.fillStyle = '#12142a'; x.fillRect(0, 0, 256, 512);

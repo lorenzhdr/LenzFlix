@@ -1,7 +1,7 @@
 // VIDEOTHEK LENZ · Basketballkorb (rein): Treffer = Ball kreuzt die Ringebene von oben nach unten innerhalb des Rings.
 // Serie: Treffer ohne dazwischenliegenden Fehlwurf; ein Wurf des Spielers, der ohne Treffer landet, setzt die Serie zurück.
-export const RING_R = 0.3; // Innenradius (großzügiger als echt: der Ball hat 0,12 m Radius)
-export const RING_Y = 3.05;
+const RING_R = 0.3; // Innenradius (großzügiger als echt: der Ball hat 0,12 m Radius)
+const RING_Y = 3.05;
 
 /** Korb-Anker aus layout.city.yard.hoop (tolerant: { ring: {x,y,z,r} } oder { x, z, ringY, ringR }) oder Rückfall aus dem Hofrechteck. */
 export function resolveHoop(yard) {

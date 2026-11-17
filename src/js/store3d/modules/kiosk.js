@@ -7,7 +7,7 @@ import { sph } from './m4-geo.js';
 import { vendorAnchor } from '../npc/spots.js';
 import { pickLine } from '../npc/lines.js';
 
-export const SNACKS = [
+const SNACKS = [
   { id: 'brezel', name: 'Mega-Brezel', price: '1,99', blurb: 'Warm, salzig und größer als dein Kopf.', after: 'Mampf! Die Brezel war eindeutig größer als dein Kopf.' },
   { id: 'lakritz', name: 'Lakritz-Schnecke', price: '0,99', blurb: 'Schwarz wie die Nacht, klebt wie ein Versprechen.', after: 'Schmatz! Deine Zunge ist jetzt offiziell schwarz.' },
   { id: 'keule', name: 'Kakao-Keule', price: '1,49', blurb: 'Am Stiel, mit Schokoguss. Kein Besteck nötig.', after: 'Knusper! Der Schokoguss hat sich ein Plätzchen auf deiner Nase gesucht.' },
