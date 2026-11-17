@@ -52,7 +52,7 @@ const hexRgb = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255
 const SKY = {
   day: { sky: [0x4a8fe0, 0x8cc4f2, 0xdff0ff].map(hexRgb), shade: [1, 1, 1], exposure: 1, hemi: 1, cool: 0, stars: 0 },
   dusk: { sky: [0x2b2f6e, 0xc4577a, 0xffb36b].map(hexRgb), shade: [0.55, 0.42, 0.5], exposure: 0.98, hemi: 0.95, cool: 0.1, stars: 0.25 },
-  night: { sky: [0x0a1233, 0x1b2d66, 0x37508f].map(hexRgb), shade: [0.14, 0.16, 0.3], exposure: 0.93, hemi: 0.9, cool: 0.35, stars: 1 },
+  night: { sky: [0x04081f, 0x0b1538, 0x16264f].map(hexRgb), shade: [0.14, 0.16, 0.3], exposure: 0.93, hemi: 0.9, cool: 0.35, stars: 1 },
 };
 
 /** Paletten für Tageszeit + Regen (Regen: Himmel grauer und dunkler, Außen etwas dunkler). */

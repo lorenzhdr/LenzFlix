@@ -92,7 +92,7 @@ export function buildFacade(out, o = {}) {
   claddingParts(parts, -WALL_OUT, W + WALL_OUT, z0, 0.08, 2.85, openings, TEAL);
   const NAVY = hex('#10153a');
   parts.push(box({ w: W + 2 * WALL_OUT, h: 2.35, d: 0.08, x: W / 2, y: 4.0, z: z0, color: NAVY }));
-  for (const [y, c] of [[5.12, [1, 0.24, 0.5]], [2.9, [1, 0.82, 0.25]]]) parts.push(box({ w: W + 2 * WALL_OUT + 0.1, h: 0.07, d: 0.12, x: W / 2, y, z: z0 + 0.02, color: c }));
+  for (const [y, c] of [[5.12, [1, 0.24, 0.5]], [2.9, [1, 0.82, 0.25]]]) parts.push(box({ w: W + 2 * WALL_OUT + 0.1, h: 0.07, d: 0.1, x: W / 2, y, z: z0 + 0.03, color: c })); // Rückseite liegt in der Wand (kein Z-Fighting von der Dachseite)
   const mat = new MeshBasicMaterial({ vertexColors: true });
   const cladding = new Mesh(merge(parts), mat);
   cladding.matrixAutoUpdate = false;

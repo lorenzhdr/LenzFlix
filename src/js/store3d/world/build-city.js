@@ -71,6 +71,23 @@ function signAtlas(signs) {
 }
 
 const B = (x0, z0, x1, z1, y0, y1, color) => box({ w: x1 - x0, h: y1 - y0, d: z1 - z0, x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (z0 + z1) / 2, color });
+
+/** Kiosk-Häuschen als Hülle mit offener Verkaufsluke zur Straße (Süd, +z); der Kollider bleibt der volle Quader. */
+export function hutShell(q) {
+  const c = KIND_COLOR.hut;
+  const t = 0.1;
+  const dark = [c[0] * 0.55, c[1] * 0.55, c[2] * 0.55];
+  const inner = [0.06, 0.08, 0.1]; // dunkler Innenraum: die Luke liest sich als Öffnung
+  const y1 = q.y1;
+  return [
+    B(q.x0, q.z0, q.x1, q.z0 + t, 0, y1, inner), // Rückwand (dunkel)
+    B(q.x0, q.z0 + t, q.x0 + t, q.z1, 0, y1, c), B(q.x1 - t, q.z0 + t, q.x1, q.z1, 0, y1, c), // Seiten
+    B(q.x0 + t, q.z1 - t, q.x1 - t, q.z1, 0, 1.0, c), // Front unter der Luke
+    B(q.x0 + t, q.z1 - t, q.x1 - t, q.z1, 2.0, y1 - 0.1, c), // Front über der Luke
+    B(q.x0, q.z0, q.x1, q.z1, y1 - 0.1, y1, dark), // Dach
+    B(q.x0 + t, q.z0 + t, q.x1 - t, q.z1 - t, 0, 0.02, dark), // Boden
+  ];
+}
 const shadeOf = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
 
 /**
@@ -153,6 +170,9 @@ export function buildCityMeshes(out, city, layout) {
     }
   }
   for (const [key, list] of Object.entries(byRegion)) put(key === 'Y' ? yard : street, list, flat, `city-bld-${key}`);
+  for (const [ex, ry] of [[XW0 + 0.03, PI / 2], [XW1 - 0.03, -PI / 2]]) { // Fenster der Kulissenwände an den Straßenenden
+    for (let fl = 0; fl < 4; fl++) for (let zz = fz + 1.1; zz < sz - 0.6; zz += 1.8) winSpecs.push({ x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, ry, lit: rand() });
+  }
   const ws = out.addWindows(winSpecs);
   if (ws) { ws.mesh.name = 'city-windows'; street.add(ws.mesh); }
 
@@ -185,6 +205,7 @@ export function buildCityMeshes(out, city, layout) {
   for (const q of city.colliders) {
     if (!Number.isFinite(q.y1) || !KIND_COLOR[q.kind]) continue;
     const y0 = q.y0 || 0;
+    if (q.kind === 'hut') { sg.push(...hutShell(q)); continue; }
     const geo = B(q.x0, q.z0, q.x1, q.z1, y0, q.y1, KIND_COLOR[q.kind]);
     (STREET_KINDS.has(q.kind) ? sg : yg).push(geo);
   }
@@ -201,8 +222,12 @@ export function buildCityMeshes(out, city, layout) {
   bar(XW1 - 0.4, fz, XW1, sz);
   bar(xc0 - 2.4, zSN, xc1 + 2.4, zSN + 0.4);
   bar(xc0 - 2.4, zSS - 0.4, xc1 + 2.4, zSS);
+  // Kulisse statt glatter Fläche: hohe dunkle Häuserwand mit Gesims (Fenster stehen vorab im Fenstersatz)
   const TUN = [0.05, 0.06, 0.09];
-  gates.push(B(XW0 - 9, fz, XW0, sz, 0, 6, TUN), B(XW1, fz, XW1 + 9, sz, 0, 6, TUN));
+  const TUN2 = [0.09, 0.1, 0.15];
+  gates.push(B(XW0 - 9, fz, XW0, sz, 0, 3.4, TUN), B(XW1, fz, XW1 + 9, sz, 0, 3.4, TUN));
+  gates.push(B(XW0 - 9, fz, XW0, sz, 3.4, 11, TUN2), B(XW1, fz, XW1 + 9, sz, 3.4, 11, TUN2));
+  gates.push(B(XW0 - 0.2, fz, XW0, sz, 3.3, 3.55, [0.3, 0.32, 0.4]), B(XW1, fz, XW1 + 0.2, sz, 3.3, 3.55, [0.3, 0.32, 0.4]));
   put(street, gates, flat, 'city-gates');
   if (sg.length) put(street, sg, flat, 'city-street-props');
 

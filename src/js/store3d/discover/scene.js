@@ -54,7 +54,7 @@ export function buildGoldenTape() {
 }
 
 /** Graffiti-Fläche: „LENZ“-Tag mit Kassetten-Motiv. center {x,y,z}, Maße w/h, zeigt nach -z (Hofseite der Ladenwand). */
-export function buildGraffiti(center, w, h) {
+export function buildGraffiti(center, w, h, yaw = Math.PI) {
   const tex = canvasTex(1024, 512, (c, cw, ch) => {
     c.clearRect(0, 0, cw, ch);
     c.lineJoin = 'round';
@@ -126,7 +126,7 @@ export function buildGraffiti(center, w, h) {
   const geo = new PlaneGeometry(w, h);
   const m = new Mesh(geo, mat);
   m.position.set(center.x, center.y, center.z);
-  m.rotation.y = Math.PI; // Plane blickt +z → -z (Hofseite)
+  m.rotation.y = yaw; // Standard PI: Plane blickt +z → -z (Hofseite); 0 = nach +z
   m.renderOrder = 2;
   m.userData.dispose = [tex, mat, geo];
   return m;

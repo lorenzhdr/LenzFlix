@@ -5,7 +5,7 @@
 //             visible() → visibleGroups-Zustand, partition() }
 // Welle 2 hängt Innenausbau/NPCs/Autos an `city.groups.*` (Sichtbarkeit steuert dieses Modul).
 // Reihenfolge in modules/index.js: nach `sound`, vor `door`/`intro`/`daytime`.
-import { Fog, Group } from 'three';
+import { Box3, Fog, Frustum, Group, Matrix4, Vector3 } from 'three';
 import { getOutdoor, FAR_R } from './outdoor.js';
 import { buildFacade } from '../world/build-facade.js';
 import { buildCityMeshes } from '../world/build-city.js';
@@ -14,6 +14,24 @@ import { presetFor } from '../engine/quality.js';
 import { introWanted } from './m4-util.js';
 
 const SHOP_NAMES = new Set(['room', 'signs', 'props']);
+
+/** Öffnungen der Ladenfront (Tür + Schaufenster) als Boxen: nur durch sie sieht man von draußen in den Laden. */
+export function frontOpenings(L) {
+  const f = L.facade;
+  if (!f || !f.door) return [];
+  const z = L.d;
+  const list = [{ x0: f.door.x0, x1: f.door.x1, y0: 0, y1: 2.4 }, ...(f.windows || []).map((w) => ({ x0: w.x0, x1: w.x1, y0: w.y0, y1: w.y1 }))];
+  return list.map((o) => new Box3(new Vector3(o.x0, o.y0, z - 0.3), new Vector3(o.x1, o.y1, z + 0.3)));
+}
+
+/** Regal-Teilmeshes bei low jenseits dieser Entfernung (m) nicht zeichnen (Draw-Call-Budget ≤ 140). */
+export const SHELF_FAR_LOW = 11;
+
+/** Straßen-Detailmeshes: bei low aus dem Laden heraus (durch die Tür) und aus dem Hof nicht gezeichnet. */
+const STREET_DETAIL = new Set(['city-marks', 'city-signal-poles', 'city-signal-lamps', 'city-signs', 'city-shopsigns', 'city-shopglass', 'city-fahrplan', 'city-litfass', 'city-decor', 'city-ped-lamps', 'city-street-props', 'city-lamps']);
+
+/** Reichweite (m vor der Front), bis zu der die Regale durchs Fenster gezeichnet werden: low spart Draw-Calls. */
+export const shelfRange = (level) => (level === 'low' ? 2.2 : 5);
 
 /** Nebelbereich: Innenraum-Diagonale bleibt unberührt, Ende vor der Himmelskuppel (FAR_R). */
 export function fogRange(preset, layout) {
@@ -51,12 +69,20 @@ export default {
     let shelves = null;
     let xrOn = false;
     let acc = 1;
+    let level = ctx.quality();
+    const openings = L.city ? frontOpenings(L) : [];
+    const frus = new Frustum();
+    const pv = new Matrix4();
+    let sees = true;
+    let poseZ = 0;
     let sigAcc = 1;
 
     function applyVisibility() {
       const all = xrOn;
-      if (shopShell) shopShell.visible = all || vis.shopShell;
-      if (shelves) shelves.visible = all || vis.shelves;
+      // Von draußen nur zeichnen, wenn Tür/Fenster im Bild sind (Regale zusätzlich nur nah davor, bei low kürzer)
+      const out0 = area !== 'shop' && area !== 'doorway';
+      if (shopShell) shopShell.visible = all || (vis.shopShell && (!out0 || sees));
+      if (shelves) shelves.visible = all || (vis.shelves && (!out0 || (sees && poseZ - L.d < shelfRange(level))));
       if (cm) {
         cm.groups.street.visible = all || vis.street;
         cm.groups.yard.visible = all || vis.yard;
@@ -65,15 +91,37 @@ export default {
       }
     }
 
+    const cp = new Vector3();
+    /** Regal-Meshes ausblenden, die bei low weiter als SHELF_FAR_LOW von der Kamera stehen (sonst alle sichtbar). */
+    function cullShelves() {
+      if (cm) {
+        const hide = ((level === 'low' && area === 'shop') || area === 'yard') && !xrOn; // aus dem Hof sieht man die Straße nicht (6 m hohe Wände)
+        for (const m of cm.groups.street.children) if (STREET_DETAIL.has(m.name)) m.visible = !hide;
+      }
+      if (!shelves) return;
+      const on = level === 'low' && shelves.visible;
+      shelves.traverse((o) => {
+        if (!o.isMesh) return;
+        if (!on) { if (o.userData.lfxFar) { o.visible = true; o.userData.lfxFar = false; } return; }
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        const bs = o.geometry.boundingSphere;
+        cp.copy(bs.center).applyMatrix4(o.matrixWorld);
+        const far = cp.distanceTo(ctx.camera.position) - bs.radius * 0.5 > SHELF_FAR_LOW;
+        if (far) { o.visible = false; o.userData.lfxFar = true; } else if (o.userData.lfxFar) { o.visible = true; o.userData.lfxFar = false; }
+      });
+    }
+
     function refresh() {
       const p = ctx.player.getPose();
       const y = Number.isFinite(p.y) ? p.y : 0;
+      poseZ = p.z;
       const next = areaAt(L, p.x, p.z, y);
       vis = visibleGroups(L, next, p.x, p.z);
+      const prev = area;
+      area = next;
       applyVisibility();
-      if (next !== area) {
-        const prev = area;
-        area = next;
+      cullShelves();
+      if (next !== prev) {
         for (const fn of listeners.slice()) { try { fn(area, prev); } catch (err) { console.warn('[LenzFlix Store3D] areas', err); } }
       }
     }
@@ -113,12 +161,22 @@ export default {
       update(dt) {
         out.follow(ctx.camera);
         acc += dt;
+        if (openings.length && !xrOn) { // Sicht durch die Ladenfront pro Bild prüfen (billig: wenige Boxen)
+          const cam = ctx.camera;
+          cam.updateMatrixWorld();
+          pv.multiplyMatrices(cam.projectionMatrix, pv.copy(cam.matrixWorld).invert());
+          frus.setFromProjectionMatrix(pv);
+          const s2 = openings.some((b) => frus.intersectsBox(b));
+          if (s2 !== sees) { sees = s2; applyVisibility(); }
+        }
         if (acc >= 0.15) { acc = 0; refresh(); }
         if (cm) cm.update(dt);
         sigAcc += dt;
         if (cm && sigAcc >= 0.25) { sigAcc = 0; cm.setSignals(signalAt(Date.now() / 1000)); }
       },
       onQuality(lv) {
+        level = lv;
+        cullShelves();
         const r = fogRange(presetFor(lv, ctx.isPhone), L);
         fog.near = r.near;
         fog.far = r.far;

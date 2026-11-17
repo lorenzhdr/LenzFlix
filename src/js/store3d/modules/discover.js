@@ -14,7 +14,6 @@ import { openPanel, h, button } from './m3-gfx.js';
 import { hourOf } from './m4-util.js';
 
 const VENT_H = 1.15;
-const GRAFFITI = { x: 3.0, y: 1.5, w: 3.4, h: 1.7 };
 const PANEL_DX = 2.8; // rechts neben der Personaltür
 const ROOF_RAIN_SEC = 3;
 
@@ -98,14 +97,18 @@ export default {
         }
       }
 
-      // --- Graffiti im Hinterhof (Ladenwand, Hofseite) ---
-      // Hautfläche der Ladenwand zum Hof liegt bei z = -0.15; Graffiti 2 cm davor
-      const gz = -0.17;
-      const gr = buildGraffiti({ x: GRAFFITI.x, y: GRAFFITI.y, z: gz }, GRAFFITI.w, GRAFFITI.h);
-      parent.add(gr);
-      ctx.track(gr);
-      cleanups.push(() => gr.removeFromParent());
-      graffitiTarget = { x: GRAFFITI.x, y: GRAFFITI.y, z: gz, normal: { x: 0, z: -1 } };
+      // --- Graffiti an der vorbereiteten Hofwand (layout.city.yard.graffiti, Blick nach +z) ---
+      const g = cd.yard && cd.yard.graffiti;
+      if (g) {
+        const gw = g.w - 0.2;
+        const gh = Math.min(gw / 2, g.h - 0.2); // Textur 2:1
+        const gz = g.z + 0.08; // Fläche steht ca. 5 cm vor der Wand
+        const gr = buildGraffiti({ x: g.x, y: g.y, z: gz }, gh * 2, gh, 0);
+        parent.add(gr);
+        ctx.track(gr);
+        cleanups.push(() => gr.removeFromParent());
+        graffitiTarget = { x: g.x, y: g.y, z: gz, normal: { x: 0, z: 1 } };
+      }
     }
 
     // --- Lose Wandplatte neben der Personaltür ---

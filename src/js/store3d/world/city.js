@@ -258,6 +258,7 @@ export function buildCity(store) {
   const hx = Math.round((W + 7.7) * 100) / 100;
   const hoop = { x: Math.round((W + 6.45) * 100) / 100, y: 3.05, z: -5.0, yaw: -PI / 2, mast: { x: hx, z: -5.0 }, board: { x: Math.round((W + 6.95) * 100) / 100, y: 3.35, w: 1.8, h: 1.05 }, ringR: 0.23 };
   col('hoopMast', 'hoopmast', hx - 0.1, -5.1, hx + 0.1, -4.9, { y1: 3.9, top: false });
+  col('hoopBoard', 'hoopmast', hoop.board.x - 0.03, -5.0 - hoop.board.w / 2, hoop.board.x + 0.03, -5.0 + hoop.board.w / 2, { y0: hoop.board.y - hoop.board.h / 2, y1: hoop.board.y + hoop.board.h / 2, top: false }); // Brett: Bälle prallen ab, Spieler läuft darunter durch
   col('palletA', 'pallet', -3.0, -7.6, -1.8, -6.5, { y1: 0.28 });
   col('palletB', 'pallet', -3.0, -6.4, -1.8, -5.3, { y1: 0.28 });
   const laundry = { x0: Math.round(W * 35) / 100, x1: Math.round(W * 78) / 100, z: -3.9, y: 2.25 };
