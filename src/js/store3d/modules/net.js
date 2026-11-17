@@ -4,7 +4,7 @@
 // Lebenszyklus: onSuspend (echt ausgesetzt) schließt mit 1000, onResume verbindet neu; VR-Kino (ctx.suspended() false) hält die Verbindung, verbirgt nur Figuren (W9).
 // Das Jellyfin-Token gelangt nie hierher; deps.mp.ticket() liefert nur das kurzlebige Ticket.
 //   Provider 'net': { active(), me(), has(cap), count(), serverNow(), peers(), peerName(c), on(ev), send(msg), physGate(body), menu(), renderMenu(el),
-//                     onChange(fn), emote(code), say(text), setKino(on) }   ev = 'state' | 'peers' | 'msg:<t>'
+//                     onChange(fn), emote(code), openEmotes(), say(text), openChat(), setKino(on) }   ev = 'state' | 'peers' | 'msg:<t>'
 import { createTransport } from '../net/transport.js';
 import { createFrame } from '../net/frame.js';
 import { createPose } from '../net/pose.js';
@@ -65,7 +65,7 @@ export default {
 
     const frame = createFrame(ctx.layout);
     const pose = createPose({ frame, rate: () => (transport ? transport.info().cf.pr : 8) });
-    const hud = createHud(ctx);
+    const hud = createHud(ctx, { onChat: () => openChat(), onEmote: () => openEmotes() });
     let transport = null;
     let peers = null;
     let seatnet = null;
@@ -83,7 +83,7 @@ export default {
     // ---------------------------------------------------------------- Teile (Stubs der Wellen b bis d)
     const core = {
       ctx, frame, send: (m) => send(m), me: () => (transport ? transport.me() : null), cap: (n) => !!transport && transport.has(n),
-      active: () => live && !disposed, serverNow: () => (transport ? transport.serverNow() : null), peers: null, prefs, toast, on: (t, fn) => on('msg:' + t, fn),
+      active: () => live && !disposed, serverNow: () => (transport ? transport.serverNow() : null), peers: null, prefs, setPref: (p) => setPref(p), toast, on: (t, fn) => on('msg:' + t, fn),
     };
     let partErrs = [];
     const callParts = (name, ...a) => {
@@ -185,7 +185,7 @@ export default {
         clearTimeout: (h) => clearTimeout(h),
         random: Math.random,
       },
-      hello: () => ({ cap: ['pres'], f: flags(), cv: mp.cv }),
+      hello: () => ({ cap: ['pres', 'chat', 'emote', 'admin'], f: flags(), cv: mp.cv }),
       onMsg,
       onState,
     });
@@ -194,6 +194,38 @@ export default {
     for (const k of Object.keys(PART_FACTORIES)) {
       try { const h = PART_FACTORIES[k](core); if (h) parts.push(h); } catch (err) { warn('Teil ' + k, err); }
     }
+
+    // ---------------------------------------------------------------- Chat, Emotes, Liste (Welle b)
+    const chatPart = () => parts.find((p) => typeof p.sayResult === 'function') || null;
+    const emotePart = () => parts.find((p) => typeof p.emote === 'function') || null;
+    const chatOn = () => { const c = chatPart(); return !!(c && live && c.enabled() && core.cap('chat') && !(ctx.xr && ctx.xr.presenting())); };
+    const emoteOn = () => !!(emotePart() && live && prefs().on !== false && core.cap('emote') && !(ctx.xr && ctx.xr.presenting()));
+    function openChat() { const c = chatPart(); return !!c && chatOn() ? !!c.open() : false; }
+    function openEmotes() { const e = emotePart(); return !!e && emoteOn() ? !!e.open() : false; }
+    const isMuted = (k) => { const c = chatPart(); return c ? c.isMuted(k) : prefs().mute.includes(k); };
+    /** Eine Zeile je Person (k): Name, grober Ort, Geräteanzahl, Admin; ohne mich. */
+    function players() {
+      const me = transport.me();
+      const by = new Map();
+      for (const p of peers.list()) {
+        if (me && (p.c === me.c || p.k === me.k)) continue;
+        let r = by.get(p.k);
+        if (!r) { r = { k: p.k, c: p.c, name: 'Jemand', area: '', devs: p.devs || 1, admin: false }; by.set(p.k, r); }
+        const nm = peers.name(p.c);
+        if (nm !== 'Jemand') r.name = nm;
+        if (p.ad) r.admin = true;
+        if (p.area && !r.area) r.area = p.area;
+      }
+      return [...by.values()];
+    }
+    function kickPlayer(k) {
+      const me = transport.me();
+      if (!me || !me.admin || !live) return false;
+      const r = players().find((x) => x.k === k);
+      if (!r || r.admin) return false;
+      return send(build.ki(r.c));
+    }
+    offs.push(on('msg:er', (e) => { if (e && e.y === 'ki') toast('Entfernen nicht möglich.'); }));
 
     // ---------------------------------------------------------------- Anzeige und Zählung
     function others() {
@@ -289,7 +321,12 @@ export default {
       }
       change();
     }
-    const panel = createPanel({ prefs, set: setPref, status: statusText });
+    const panel = createPanel({
+      prefs, set: setPref, status: statusText, players, isMuted,
+      setMute: (k, v) => { const c = chatPart(); if (c) return c.setMuted(k, v); setPref({ mute: v ? [...new Set([...prefs().mute, k])].slice(0, 50) : prefs().mute.filter((x) => x !== k) }); return isMuted(k); },
+      canKick: () => { const me = transport.me(); return !!(live && me && me.admin && core.cap('admin')); },
+      kick: kickPlayer,
+    });
 
     // ---------------------------------------------------------------- Provider
     const removeProvider = ctx.provide('net', {
@@ -308,8 +345,11 @@ export default {
       menu: () => ({ label: 'Mehrspieler …' }),
       renderMenu: (el) => panel.render(el),
       onChange: (fn) => { if (typeof fn !== 'function') return () => {}; changeFns.add(fn); return () => changeFns.delete(fn); },
-      emote: () => false, // Welle b
-      say: () => false, // Welle b
+      /** Emote auslösen (Code 1..8 oder Name); false bei Cooldown/ohne Verbindung. */
+      emote: (x) => { const e = emotePart(); return !!e && emoteOn() ? !!e.emote(x) : false; },
+      openEmotes,
+      say: (t) => { const c = chatPart(); return !!c && c.say(t); },
+      openChat,
       /** Kino-Sitzung aktiv: Verbindung bleibt auch im verborgenen Tab offen (W9). */
       setKino: (v) => { if (transport) transport.setKino(!!v); },
     });
@@ -331,7 +371,7 @@ export default {
         if (!live) return;
         samplePose(nowMs());
         hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : '';
-        hud.set(hudText);
+        hud.set(hudText, { chat: chatOn(), emote: emoteOn() });
       },
       onSuspend() {
         if (disposed) return;

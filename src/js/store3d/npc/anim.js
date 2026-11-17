@@ -6,13 +6,17 @@
 //   legLx/legRx  >0 = Bein nach vorn · lean >0 = Oberkörper nach vorn · roll = Neigung zur Seite · hipDrop = Hüfte tiefer (m)
 //   bob = Hüfte hoch/runter (m) · headX >0 = Kopf nickt nach unten · headY = Kopf dreht nach links (+)
 
-export const ANIMS = ['idle', 'walk', 'run', 'sit', 'wave', 'hit', 'throw', 'stagger', 'point', 'cheer'];
+export const ANIMS = ['idle', 'walk', 'run', 'sit', 'wave', 'hit', 'throw', 'stagger', 'point', 'cheer',
+  // Welle b (Mehrspieler-Emotes): nur am Ende anhängen, Indizes 0..9 bleiben stabil
+  'dance', 'clap', 'thumbs', 'bow'];
 /** Codes für das Netzformat (Index in ANIMS, stabil halten). */
 export const ANIM_CODE = Object.fromEntries(ANIMS.map((n, i) => [n, i]));
 /** Einmal-Animationen: Dauer in s, danach `idle`. */
 export const ONE_SHOT = { hit: 0.45, throw: 0.6, stagger: 1.0 };
-/** Zeitbegrenzte Dauer-Animationen (kehren nach der Zeit zu idle zurück): wave, point, cheer. */
-const TIMED = { wave: 2.4, point: 2.2, cheer: 2.6 };
+/** Zeitbegrenzte Dauer-Animationen (kehren nach der Zeit zu idle zurück): wave, point, cheer und die Emotes dance, clap, thumbs, bow. */
+const TIMED = { wave: 2.4, point: 2.2, cheer: 2.6, dance: 4, clap: 2.4, thumbs: 2.2, bow: 2.2 };
+/** Dauer einer zeitbegrenzten Animation in s (0 = unbegrenzt/Einmal-/Dauerzustand). */
+export const timedDuration = (name) => TIMED[name] || 0;
 export const POSE_KEYS = ['bob', 'hipDrop', 'lean', 'roll', 'headX', 'headY', 'armLx', 'armLz', 'armRx', 'armRz', 'legLx', 'legRx'];
 const NET_VERSION = 1;
 const TAU = Math.PI * 2;
@@ -89,6 +93,35 @@ export function targetPose(anim, phase, age, dur = 1) {
       const j = Math.abs(Math.sin(age * 8));
       p.armLz = 2.75 + Math.sin(age * 11) * 0.2; p.armRz = 2.75 - Math.sin(age * 11) * 0.2;
       p.bob = j * 0.09; p.legLx = 0.18 * j; p.legRx = -0.18 * j; p.headX = -0.15;
+      break;
+    }
+    case 'dance': {
+      // Hüftschwung im Takt, Arme wechselseitig hoch, Beine federn, Kopf wippt
+      const w = Math.sin(age * 6);
+      p.armLz = 1.7 + w * 0.5; p.armRz = 1.7 - w * 0.5;
+      p.armLx = w * 0.3; p.armRx = -w * 0.3;
+      p.legLx = w * 0.35; p.legRx = -w * 0.35;
+      p.bob = Math.abs(Math.sin(age * 6)) * 0.05; p.roll = w * 0.08; p.headY = w * 0.2; p.headX = Math.abs(w) * 0.06;
+      break;
+    }
+    case 'clap': {
+      // Arme nach vorn, Hände schlagen im schnellen Takt zusammen
+      const c = (Math.sin(age * 15) + 1) / 2;
+      p.armLx = 1.25; p.armRx = 1.25; p.armLz = -0.05 + c * 0.5; p.armRz = -0.05 + c * 0.5;
+      p.headX = 0.06; p.lean = 0.05; p.bob = Math.abs(Math.sin(age * 15)) * 0.006;
+      break;
+    }
+    case 'thumbs': {
+      // rechter Arm angewinkelt nach vorn, Daumen hoch nur über den Armwinkel (kein Fingermodell), leichtes Nicken
+      const e = clamp(age / 0.25, 0, 1);
+      p.armRx = 1.35 * e + Math.sin(age * 7) * 0.05; p.armRz = 0.25 * e; p.headX = 0.08 * e + Math.sin(age * 5) * 0.03;
+      p.lean = 0.03; p.bob = Math.sin(age * 1.8) * 0.004;
+      break;
+    }
+    case 'bow': {
+      // weich nach vorn beugen, kurz halten, wieder aufrichten
+      const e = clamp(Math.min(k / 0.3, (1 - k) / 0.3), 0, 1);
+      p.lean = 1.0 * e; p.headX = 0.3 * e; p.armLx = -0.35 * e; p.armRx = -0.35 * e; p.armLz = 0.05; p.armRz = 0.05; p.hipDrop = 0.02 * e;
       break;
     }
     default: { // idle: atmen, leichtes Schwanken, Kopf schaut sich um

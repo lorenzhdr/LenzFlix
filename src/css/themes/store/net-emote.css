@@ -1,0 +1,85 @@
+/* VIDEOTHEK LENZ · Mehrspieler (1.16, Welle b): Emote-Rad (net/emote-ui.js). Overlay über der Bühne mit 8 Knöpfen im Kreis.
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv); nur --lfx-Variablen und --lfx-store-Variablen. Die Lage der Knöpfe setzt das Skript inline (left/top in %). */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emotes {
+  position: absolute;
+  inset: 0;
+  z-index: var(--lfx-store-z-bar, 1250);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 19, 48, 0.45);
+  color: var(--lfx-store-text, #f4f6ff);
+  font-family: var(--lfx-store-neon-font, system-ui, sans-serif);
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emotes-ring {
+  position: relative;
+  width: min(76vmin, 460px);
+  height: min(76vmin, 460px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emote {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 44px;
+  min-height: 44px;
+  width: 24%;
+  aspect-ratio: 1;
+  padding: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-night-2, #141c48);
+  color: inherit;
+  font: inherit;
+  font-size: clamp(0.7rem, 2.6vmin, 0.95rem);
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emote-key {
+  font-size: 0.72em;
+  color: var(--lfx-store-muted, #aab4e8);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emotes-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  color: var(--lfx-store-muted, #aab4e8);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emote:hover {
+    border-color: var(--lfx-store-yellow, #ffd23f);
+  }
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emote:focus-visible,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emotes-hub:focus-visible {
+  outline: 2px solid var(--lfx-store-yellow, #ffd23f);
+  outline-offset: 2px;
+  border-color: var(--lfx-store-yellow, #ffd23f);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emote:active {
+  background: var(--lfx-store-pink, #ff3d7f);
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-emote {
+    transition: none;
+  }
+}

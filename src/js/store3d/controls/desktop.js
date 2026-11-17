@@ -250,6 +250,8 @@ export class DesktopControls {
   onKey(e, isDown) {
     const mode = this.ctx.getMode();
     const esc = isDown && e.code === 'Escape';
+    // keyup einer per Enter/T geöffneten Eingabe trifft das Feld: gemerkte Taste trotzdem aufräumen, sonst wird das nächste keydown verschluckt
+    if (!isDown && this.eaten.delete(e.code)) { e.preventDefault(); e.stopPropagation(); return; }
     if (esc ? typingText(e.target) : typing(e.target)) return;
     // Design-Wähler/Profil-Popover der Hülle (aus dem Pause-Menü geöffnet) schließen sich selbst: Esc gehört ihnen
     if (esc && document.documentElement.classList.contains('lfx-themepicker-open') || esc && document.documentElement.classList.contains('lfx-popover-open')) return;

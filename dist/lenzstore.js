@@ -34920,6 +34920,11 @@ void main() {
     onKey(e, isDown) {
       const mode = this.ctx.getMode();
       const esc = isDown && e.code === "Escape";
+      if (!isDown && this.eaten.delete(e.code)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (esc ? typingText(e.target) : typing(e.target)) return;
       if (esc && document.documentElement.classList.contains("lfx-themepicker-open") || esc && document.documentElement.classList.contains("lfx-popover-open")) return;
       if (esc) {
@@ -35020,9 +35025,9 @@ void main() {
     let walkId = null;
     let stickId = null;
     let center = null;
-    const capture = (el3, id) => {
+    const capture = (el4, id) => {
       try {
-        el3.setPointerCapture(id);
+        el4.setPointerCapture(id);
       } catch {
       }
     };
@@ -35103,7 +35108,7 @@ void main() {
       [stick, "lostpointercapture", stickUp],
       [root, "contextmenu", noCtx]
     ];
-    for (const [el3, t, fn] of L) el3.addEventListener(t, fn);
+    for (const [el4, t, fn] of L) el4.addEventListener(t, fn);
     const noTouch = (e) => {
       if (e.cancelable) e.preventDefault();
     };
@@ -35127,7 +35132,7 @@ void main() {
       },
       destroy() {
         api.reset();
-        for (const [el3, t, fn] of L) el3.removeEventListener(t, fn);
+        for (const [el4, t, fn] of L) el4.removeEventListener(t, fn);
         root.removeEventListener("touchstart", noTouch, { passive: false });
         root.remove();
       }
@@ -35185,17 +35190,17 @@ void main() {
     const byName = { jump, use, act: hit, zoom };
     let carrying = false;
     const actEl = () => carrying ? thr : hit;
-    const nameOf2 = (el3) => el3 === jump ? "jump" : el3 === use ? "use" : el3 === hit || el3 === thr ? "act" : el3 === zoom ? "zoom" : null;
+    const nameOf2 = (el4) => el4 === jump ? "jump" : el4 === use ? "use" : el4 === hit || el4 === thr ? "act" : el4 === zoom ? "zoom" : null;
     const noCtx = (e) => e.preventDefault();
     root.addEventListener("contextmenu", noCtx);
     const api = {
       root,
       /** Knopfname zu einem Ereignisziel (auch Kindelemente): 'jump' | 'use' | 'act' | 'zoom' | null. */
       btnOf(target) {
-        let el3 = target && target.nodeType ? target : null;
-        while (el3 && el3 !== root) {
-          if (el3.parentNode === btns) return nameOf2(el3);
-          el3 = el3.parentNode;
+        let el4 = target && target.nodeType ? target : null;
+        while (el4 && el4 !== root) {
+          if (el4.parentNode === btns) return nameOf2(el4);
+          el4 = el4.parentNode;
         }
         return null;
       },
@@ -35221,10 +35226,10 @@ void main() {
       },
       /** Knopf optisch gedrückt (name: jump | use | act | zoom). */
       press(name, on) {
-        const el3 = name === "act" ? actEl() : byName[name];
-        if (el3) el3.classList.toggle("is-down", !!on);
+        const el4 = name === "act" ? actEl() : byName[name];
+        if (el4) el4.classList.toggle("is-down", !!on);
         if (name === "act") {
-          const o = el3 === hit ? thr : hit;
+          const o = el4 === hit ? thr : hit;
           o.classList.remove("is-down");
         }
       },
@@ -37177,8 +37182,8 @@ void main() {
             else r.el.removeAttribute("aria-current");
           });
           if (scroll) {
-            const el3 = results[sel].el;
-            if (el3.scrollIntoView) el3.scrollIntoView({ block: "nearest" });
+            const el4 = results[sel].el;
+            if (el4.scrollIntoView) el4.scrollIntoView({ block: "nearest" });
           }
           ctx.use("sound")?.play("click");
         }
@@ -43334,11 +43339,11 @@ void main() {
         return { start, act };
       }
       function openDialogDom() {
-        const el3 = document.createElement("div");
-        el3.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
-        el3.setAttribute("role", "dialog");
-        el3.setAttribute("aria-modal", "true");
-        el3.setAttribute("aria-label", "Richard \u2013 Kasse");
+        const el4 = document.createElement("div");
+        el4.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
+        el4.setAttribute("role", "dialog");
+        el4.setAttribute("aria-modal", "true");
+        el4.setAttribute("aria-label", "Richard \u2013 Kasse");
         const card = document.createElement("div");
         card.className = "lfx-store-tip-card";
         const h2 = document.createElement("div");
@@ -43349,7 +43354,7 @@ void main() {
         const row = document.createElement("div");
         row.className = "lfx-store-tip-btns lfx-store-dialog-btns";
         card.append(h2, p, row);
-        el3.appendChild(card);
+        el4.appendChild(card);
         let flow = null;
         const view = {
           show(m, first) {
@@ -43372,10 +43377,10 @@ void main() {
           close: () => ctx.overlay.close()
         };
         flow = dialogFlow(view);
-        el3.addEventListener("pointerdown", (e) => {
-          if (e.target === el3) ctx.overlay.close();
+        el4.addEventListener("pointerdown", (e) => {
+          if (e.target === el4) ctx.overlay.close();
         });
-        ctx.overlay.open(el3, { onClose: () => {
+        ctx.overlay.open(el4, { onClose: () => {
           stopVoice();
         } });
         bubble.hidden = true;
@@ -46193,10 +46198,27 @@ void main() {
   }
 
   // src/js/store3d/npc/anim.js
-  var ANIMS2 = ["idle", "walk", "run", "sit", "wave", "hit", "throw", "stagger", "point", "cheer"];
+  var ANIMS2 = [
+    "idle",
+    "walk",
+    "run",
+    "sit",
+    "wave",
+    "hit",
+    "throw",
+    "stagger",
+    "point",
+    "cheer",
+    // Welle b (Mehrspieler-Emotes): nur am Ende anhängen, Indizes 0..9 bleiben stabil
+    "dance",
+    "clap",
+    "thumbs",
+    "bow"
+  ];
   var ANIM_CODE = Object.fromEntries(ANIMS2.map((n, i) => [n, i]));
   var ONE_SHOT = { hit: 0.45, throw: 0.6, stagger: 1 };
-  var TIMED = { wave: 2.4, point: 2.2, cheer: 2.6 };
+  var TIMED = { wave: 2.4, point: 2.2, cheer: 2.6, dance: 4, clap: 2.4, thumbs: 2.2, bow: 2.2 };
+  var timedDuration = (name) => TIMED[name] || 0;
   var POSE_KEYS = ["bob", "hipDrop", "lean", "roll", "headX", "headY", "armLx", "armLz", "armRx", "armRz", "legLx", "legRx"];
   var NET_VERSION = 1;
   var TAU = Math.PI * 2;
@@ -46293,6 +46315,51 @@ void main() {
         p.legLx = 0.18 * j;
         p.legRx = -0.18 * j;
         p.headX = -0.15;
+        break;
+      }
+      case "dance": {
+        const w = Math.sin(age * 6);
+        p.armLz = 1.7 + w * 0.5;
+        p.armRz = 1.7 - w * 0.5;
+        p.armLx = w * 0.3;
+        p.armRx = -w * 0.3;
+        p.legLx = w * 0.35;
+        p.legRx = -w * 0.35;
+        p.bob = Math.abs(Math.sin(age * 6)) * 0.05;
+        p.roll = w * 0.08;
+        p.headY = w * 0.2;
+        p.headX = Math.abs(w) * 0.06;
+        break;
+      }
+      case "clap": {
+        const c2 = (Math.sin(age * 15) + 1) / 2;
+        p.armLx = 1.25;
+        p.armRx = 1.25;
+        p.armLz = -0.05 + c2 * 0.5;
+        p.armRz = -0.05 + c2 * 0.5;
+        p.headX = 0.06;
+        p.lean = 0.05;
+        p.bob = Math.abs(Math.sin(age * 15)) * 6e-3;
+        break;
+      }
+      case "thumbs": {
+        const e = clamp5(age / 0.25, 0, 1);
+        p.armRx = 1.35 * e + Math.sin(age * 7) * 0.05;
+        p.armRz = 0.25 * e;
+        p.headX = 0.08 * e + Math.sin(age * 5) * 0.03;
+        p.lean = 0.03;
+        p.bob = Math.sin(age * 1.8) * 4e-3;
+        break;
+      }
+      case "bow": {
+        const e = clamp5(Math.min(k / 0.3, (1 - k) / 0.3), 0, 1);
+        p.lean = 1 * e;
+        p.headX = 0.3 * e;
+        p.armLx = -0.35 * e;
+        p.armRx = -0.35 * e;
+        p.armLz = 0.05;
+        p.armRz = 0.05;
+        p.hipDrop = 0.02 * e;
         break;
       }
       default: {
@@ -46678,15 +46745,15 @@ void main() {
     function slot() {
       for (const s of slots) if (!s.handle) return s;
       if (slots.length < POOL) {
-        const el3 = document.createElement("div");
-        el3.className = "lfx-store-bubble is-npc" + (ctx.isTouch ? " is-touch" : "");
-        el3.hidden = true;
-        el3.setAttribute("role", "status");
+        const el4 = document.createElement("div");
+        el4.className = "lfx-store-bubble is-npc" + (ctx.isTouch ? " is-touch" : "");
+        el4.hidden = true;
+        el4.setAttribute("role", "status");
         const txt = document.createElement("span");
         txt.className = "lfx-store-bubble-text";
-        el3.appendChild(txt);
-        if (host) host.appendChild(el3);
-        const s = { el: el3, txt, handle: null, left: 0, b3d: null };
+        el4.appendChild(txt);
+        if (host) host.appendChild(el4);
+        const s = { el: el4, txt, handle: null, left: 0, b3d: null };
         slots.push(s);
         return s;
       }
@@ -48941,11 +49008,11 @@ void main() {
           ctx.xr.panel.open(spec);
           return;
         }
-        const el3 = document.createElement("div");
-        el3.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
-        el3.setAttribute("role", "dialog");
-        el3.setAttribute("aria-modal", "true");
-        el3.setAttribute("aria-label", "Kiosk");
+        const el4 = document.createElement("div");
+        el4.className = "lfx-store-tip lfx-store-dialog" + (ctx.isTouch ? " is-touch" : "");
+        el4.setAttribute("role", "dialog");
+        el4.setAttribute("aria-modal", "true");
+        el4.setAttribute("aria-label", "Kiosk");
         const card = document.createElement("div");
         card.className = "lfx-store-tip-card";
         const h2 = document.createElement("div");
@@ -48979,11 +49046,11 @@ void main() {
           if (t) blurb.textContent = t;
         });
         card.append(h2, p, row, blurb);
-        el3.appendChild(card);
-        el3.addEventListener("pointerdown", (e) => {
-          if (e.target === el3) ctx.overlay.close();
+        el4.appendChild(card);
+        el4.addEventListener("pointerdown", (e) => {
+          if (e.target === el4) ctx.overlay.close();
         });
-        ctx.overlay.open(el3, {});
+        ctx.overlay.open(el4, {});
         if (!ctx.isTouch) {
           const f = row.querySelector(".is-primary");
           if (f) f.focus({ preventScroll: true });
@@ -50687,6 +50754,9 @@ void main() {
   var F = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
   var BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
   var NET_A_ANIM = ["idle", "walk", "run", "idle", "stagger", "idle", "hit", "sit", "throw"];
+  var EMOTE = { WAVE: 1, CHEER: 2, POINT: 3, SIT: 4, DANCE: 5, CLAP: 6, THUMBS: 7, BOW: 8 };
+  var EMOTE_ANIM = [null, "wave", "cheer", "point", "sit", "dance", "clap", "thumbs", "bow"];
+  var EMOTE_END_A = [1, 2, 3, 4, 6, 8];
   var CAP_OF = {
     hi: null,
     ck: null,
@@ -50745,6 +50815,9 @@ void main() {
   }
   function bodyAnimToNet(a) {
     return Object.prototype.hasOwnProperty.call(BODY_TO_NET, a) ? BODY_TO_NET[a] : 0;
+  }
+  function emoteEndsOn(a) {
+    return EMOTE_END_A.includes(a);
   }
   var posQ = (q, o) => {
     const x = ci(q[o], ...LIM.x);
@@ -51834,17 +51907,17 @@ void main() {
     const tags = /* @__PURE__ */ new Map();
     const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
     function makeEl() {
-      const el3 = document.createElement("div");
-      el3.className = "lfx-mp-tag" + (ctx.isTouch ? " is-touch" : "");
-      el3.hidden = true;
-      el3.setAttribute("aria-hidden", "true");
-      el3.style.position = "absolute";
-      el3.style.left = "0";
-      el3.style.top = "0";
-      el3.style.pointerEvents = "none";
-      el3.style.whiteSpace = "nowrap";
-      if (host) host.appendChild(el3);
-      return el3;
+      const el4 = document.createElement("div");
+      el4.className = "lfx-mp-tag" + (ctx.isTouch ? " is-touch" : "");
+      el4.hidden = true;
+      el4.setAttribute("aria-hidden", "true");
+      el4.style.position = "absolute";
+      el4.style.left = "0";
+      el4.style.top = "0";
+      el4.style.pointerEvents = "none";
+      el4.style.whiteSpace = "nowrap";
+      if (host) host.appendChild(el4);
+      return el4;
     }
     function untag3d(t) {
       if (t.name3d && t.fig && !t.fig.disposed) {
@@ -51943,6 +52016,128 @@ void main() {
       },
       dispose() {
         for (const c of [...tags.keys()]) remove(c);
+      }
+    };
+  }
+  var SAY_POOL = 6;
+  var SAY_HEAR = 16;
+  var SAY_RISE = 0.5;
+  function createBubbles2(ctx, o = {}) {
+    const host = ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode;
+    const hear = o.hear || SAY_HEAR;
+    const poolMax = o.pool || SAY_POOL;
+    const slots = /* @__PURE__ */ new Map();
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    function makeSlot() {
+      const el4 = document.createElement("div");
+      el4.className = "lfx-mp-say" + (ctx.isTouch ? " is-touch" : "");
+      el4.hidden = true;
+      el4.setAttribute("aria-hidden", "true");
+      el4.style.position = "absolute";
+      el4.style.left = "0";
+      el4.style.top = "0";
+      el4.style.pointerEvents = "none";
+      if (host) host.appendChild(el4);
+      return { el: el4, getFig: null, text: "", left: 0, b3d: null };
+    }
+    function free(c) {
+      const s = slots.get(c);
+      if (!s) return;
+      if (s.b3d) {
+        try {
+          s.b3d.hide();
+          if (s.b3d.dispose) s.b3d.dispose();
+        } catch {
+        }
+        s.b3d = null;
+      }
+      if (s.el.parentNode) s.el.parentNode.removeChild(s.el);
+      slots.delete(c);
+    }
+    function place2(s) {
+      let fig;
+      try {
+        fig = s.getFig ? s.getFig() : null;
+      } catch {
+        fig = null;
+      }
+      if (!fig || fig.disposed || !fig.root || !fig.root.visible) {
+        s.el.hidden = true;
+        if (s.b3d) s.b3d.hide();
+        return;
+      }
+      fig.headWorld(tmp2);
+      const cam = ctx.camera;
+      const dx = tmp2.x - cam.position.x;
+      const dz = tmp2.z - cam.position.z;
+      if (!(Math.hypot(dx, dz) <= hear)) {
+        s.el.hidden = true;
+        if (s.b3d) s.b3d.hide();
+        return;
+      }
+      if (xrOn()) {
+        s.el.hidden = true;
+        if (!s.b3d) s.b3d = ctx.xr.bubble();
+        s.b3d.show(s.text, { x: tmp2.x, y: tmp2.y + SAY_RISE, z: tmp2.z });
+        return;
+      }
+      if (s.b3d) s.b3d.hide();
+      tmp2.y += 0.12;
+      tmp2.project(cam);
+      const on = tmp2.z < 1 && Math.abs(tmp2.x) < 1.05 && tmp2.y > -1.05 && tmp2.y < 1.05;
+      s.el.hidden = !on;
+      if (on && host) {
+        const w = host.clientWidth || window.innerWidth;
+        const hh = host.clientHeight || window.innerHeight;
+        s.el.style.transform = `translate(${((tmp2.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-tmp2.y * 0.5 + 0.5) * hh).toFixed(1)}px) translate(-50%, -100%) translateY(-26px)`;
+      }
+    }
+    return {
+      /** Blase für Sprecher c setzen/ersetzen. false: Text leer. Ältester Platz wird recycelt, wenn der Pool voll ist. */
+      say(c, getFig, text, ms = 4e3) {
+        if (typeof text !== "string" || !text) return false;
+        let s = slots.get(c);
+        if (!s) {
+          if (slots.size >= poolMax) {
+            let oldest = null;
+            for (const [k, v] of slots) if (!oldest || v.left < slots.get(oldest).left) oldest = k;
+            free(oldest);
+          }
+          s = makeSlot();
+          slots.set(c, s);
+        }
+        s.getFig = getFig;
+        s.text = text;
+        s.el.textContent = text;
+        s.left = ms / 1e3;
+        place2(s);
+        return true;
+      },
+      /** Pro Frame: Zeit herunterzählen, projizieren; abgelaufene freigeben. */
+      update(dt) {
+        for (const [c, s] of [...slots]) {
+          s.left -= dt;
+          if (s.left <= 0) {
+            free(c);
+            continue;
+          }
+          place2(s);
+        }
+      },
+      /** Blase eines Sprechers sofort weg (stummgeschaltet, gegangen). */
+      drop(c) {
+        free(c);
+      },
+      clear() {
+        for (const c of [...slots.keys()]) free(c);
+      },
+      stats() {
+        let shown = 0;
+        for (const s of slots.values()) if (!s.el.hidden || s.b3d && s.b3d.visible) shown++;
+        return { bubbles: slots.size, shown };
+      },
+      dispose() {
+        for (const c of [...slots.keys()]) free(c);
       }
     };
   }
@@ -52223,6 +52418,55 @@ void main() {
     return m;
   }
 
+  // src/js/store3d/net/emotes.js
+  var EMOTES = [
+    { code: EMOTE.WAVE, id: "wave", label: "Winken", verb: "Du winkst" },
+    { code: EMOTE.CHEER, id: "cheer", label: "Jubeln", verb: "Du jubelst" },
+    { code: EMOTE.POINT, id: "point", label: "Zeigen", verb: "Du zeigst" },
+    { code: EMOTE.SIT, id: "sit", label: "Hinsetzen", verb: "Du setzt dich" },
+    { code: EMOTE.DANCE, id: "dance", label: "Tanzen", verb: "Du tanzt" },
+    { code: EMOTE.CLAP, id: "clap", label: "Klatschen", verb: "Du klatschst" },
+    { code: EMOTE.THUMBS, id: "thumbs", label: "Daumen hoch", verb: "Du zeigst den Daumen" },
+    { code: EMOTE.BOW, id: "bow", label: "Verbeugen", verb: "Du verbeugst dich" }
+  ].map((e, i) => ({ ...e, anim: EMOTE_ANIM[e.code], key: String(i + 1) }));
+  var COOLDOWN_MS = 1500;
+  function findEmote(x) {
+    if (typeof x === "number" || typeof x === "string" && /^[1-8]$/.test(x)) {
+      const c = Number(x);
+      return EMOTES.find((e) => e.code === c) || null;
+    }
+    if (typeof x !== "string") return null;
+    const s = x.trim().toLowerCase();
+    return EMOTES.find((e) => e.id === s || e.anim === s || e.label.toLowerCase() === s) || null;
+  }
+  function createCooldown(o = {}) {
+    const ms = Number.isFinite(o.ms) ? o.ms : COOLDOWN_MS;
+    const now = typeof o.now === "function" ? o.now : () => Date.now();
+    let last = -Infinity;
+    return {
+      ready: () => now() - last >= ms,
+      left: () => Math.max(0, Math.ceil(ms - (now() - last))),
+      mark: () => {
+        last = now();
+      }
+    };
+  }
+  function startRemote(code, t0) {
+    const e = findEmote(code);
+    if (!e) return null;
+    return { code: e.code, name: e.anim, t0: Number.isFinite(t0) ? t0 : 0, age: 0, dur: e.code === EMOTE.SIT ? Infinity : timedDuration(e.anim) || 2.5 };
+  }
+  function stepRemote(st, dt) {
+    if (!st) return false;
+    if (dt > 0) st.age += dt;
+    return st.age < st.dur;
+  }
+  function endedByPose(st, timeline) {
+    if (!st || !Array.isArray(timeline)) return false;
+    for (const e of timeline) if (e.t > st.t0 && emoteEndsOn(e.a)) return true;
+    return false;
+  }
+
   // src/js/store3d/net/peers.js
   var warn5 = (what, err) => {
     try {
@@ -52243,6 +52487,7 @@ void main() {
     let dirty = true;
     let disposed = false;
     let lastReserve = -1;
+    let batchS = null;
     const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
     const myInfo = () => {
       try {
@@ -52294,6 +52539,7 @@ void main() {
         last: null,
         tl: [],
         fig: null,
+        emote: null,
         speed: 0,
         lastA: -1,
         pos: null,
@@ -52349,6 +52595,7 @@ void main() {
         const fig = n.figure({ look, parent: ctx.scene });
         p.fig = fig;
         p.lastA = -1;
+        if (p.emote) p.emote.shown = false;
         if (p.pos) {
           fig.root.position.set(p.pos.x, p.pos.y, p.pos.z);
           fig.root.rotation.y = p.pos.yaw;
@@ -52420,6 +52667,14 @@ void main() {
       fig.root.position.set(p.pos.x, p.pos.y, p.pos.z);
       fig.root.rotation.y = p.pos.yaw;
       if (!p.vis) return;
+      if (p.emote && !p.pos.seated) {
+        if (!p.emote.shown) {
+          fig.setAnim(p.emote.name, { restart: true, then: "idle" });
+          p.emote.shown = true;
+        }
+        p.lastA = p.a;
+        return;
+      }
       const af = p.pos.seated ? { name: "sit", speed: 0, restart: false, apply: true } : animFor(p.a, p.lastA, p.speed);
       if (af.apply) fig.setAnim(af.name, { speed: af.speed, restart: af.restart, then: "idle" });
       p.lastA = p.a;
@@ -52505,7 +52760,12 @@ void main() {
               if (!p || !Number.isFinite(s)) continue;
               feedPose(p, { x: q[1], y: q[2], z: q[3], yaw: q[4], pitch: q[5], a: q[6], r: q[7], se: q[9] }, s - (Number.isFinite(q[8]) ? q[8] : 0));
             }
-            for (const x of Array.isArray(e.ev) ? e.ev : []) api.ev(x);
+            batchS = s;
+            try {
+              for (const x of Array.isArray(e.ev) ? e.ev : []) api.ev(x);
+            } finally {
+              batchS = null;
+            }
             return true;
           }
           case "j":
@@ -52523,6 +52783,16 @@ void main() {
             dirty = true;
             return true;
           }
+          case "e": {
+            const p = peers.get(e.c);
+            if (!p || isMe(e.c)) return true;
+            const t0 = Number.isFinite(batchS) ? batchS : nowMs();
+            const em = startRemote(e.e, Number.isFinite(t0) ? t0 : p.tl.length ? p.tl[p.tl.length - 1].t : 0);
+            if (!em) return true;
+            p.emote = em;
+            p.lastA = -1;
+            return true;
+          }
           default:
             return false;
         }
@@ -52536,6 +52806,10 @@ void main() {
           if (now !== null) p.body.syncNetClock(now - dt * 1e3);
           p.body.step(dt);
           resolve(p, dt);
+          if (p.emote && (!stepRemote(p.emote, dt) || endedByPose(p.emote, p.tl))) {
+            p.emote = null;
+            p.lastA = -1;
+          }
           if (p.fig) applyFig(p);
         }
         acc += dt;
@@ -52548,7 +52822,7 @@ void main() {
       list() {
         const me = myInfo();
         const counts = deviceCounts([...peers.values()], me && me.k);
-        return [...peers.values()].map((p) => ({ c: p.c, k: p.k, n: p.n, r: p.r, f: p.f, devs: counts.get(p.k) || 1 }));
+        return [...peers.values()].map((p) => ({ c: p.c, k: p.k, n: p.n, r: p.r, f: p.f, ad: !!p.ad, area: p.area || "", devs: counts.get(p.k) || 1 }));
       },
       /** Anzeigename mit Namens-Regel (leer oder ohne Namens-Flag → „Jemand“). */
       name(c) {
@@ -52613,11 +52887,32 @@ void main() {
   }
 
   // src/js/store3d/net/hud.js
-  function createHud(ctx) {
+  function createHud(ctx, acts = {}) {
     let root = null;
     let label = null;
     let host = null;
     let shown = "";
+    let btnChat = null;
+    let btnEmote = null;
+    function mkBtn(cls, text, label2, fn) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "lfx-store-act lfx-mp-hudbtn " + cls;
+      b.textContent = text;
+      b.setAttribute("aria-label", label2);
+      b.hidden = true;
+      const stop = (e) => e.stopPropagation();
+      b.addEventListener("pointerdown", stop);
+      b.addEventListener("touchstart", stop, { passive: true });
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          if (typeof fn === "function") fn();
+        } catch {
+        }
+      });
+      return b;
+    }
     const hostEl = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode || null;
     function leaveHost() {
       if (host && host.classList) host.classList.remove("lfx-store-has-social");
@@ -52632,6 +52927,11 @@ void main() {
       if (!root) {
         root = document.createElement("div");
         root.className = "lfx-store-social lfx-mp-social" + (ctx.isTouch ? " is-touch" : " is-desk");
+        if (ctx.isTouch) {
+          btnEmote = mkBtn("lfx-mp-emotebtn", "Emote", "Emote-Rad \xF6ffnen", acts.onEmote);
+          btnChat = mkBtn("lfx-mp-chatbtn", "Chat", "Chat \xF6ffnen", acts.onChat);
+          root.append(btnEmote, btnChat);
+        }
         label = document.createElement("div");
         label.className = "lfx-mp-count";
         label.setAttribute("role", "status");
@@ -52644,14 +52944,20 @@ void main() {
     }
     return {
       /** Text zeigen; null/leer = ausblenden (und Platz im Host freigeben). */
-      set(text) {
+      set(text, o) {
+        const btns = () => {
+          if (btnChat) btnChat.hidden = !(text && o && o.chat);
+          if (btnEmote) btnEmote.hidden = !(text && o && o.emote);
+        };
         if (!text) {
+          btns();
           if (root) root.hidden = true;
           if (host && host.classList) host.classList.remove("lfx-store-has-social");
           shown = "";
           return;
         }
         if (!ensure()) return;
+        btns();
         root.hidden = false;
         if (ctx.isTouch && host.classList) host.classList.add("lfx-store-has-social");
         if (text !== shown) {
@@ -52663,6 +52969,8 @@ void main() {
         leaveHost();
         root = null;
         label = null;
+        btnChat = null;
+        btnEmote = null;
         shown = "";
       }
     };
@@ -52675,9 +52983,133 @@ void main() {
     { key: "chat", label: "Chat", note: "" },
     { key: "film", label: "Mein Film f\xFCr andere sichtbar", note: "Gilt auch f\xFCr die H\xFClle in deiner Hand." }
   ];
+  var AREAS = {
+    shop: "Laden",
+    doorway: "Ladent\xFCr",
+    outside: "Drau\xDFen",
+    street: "Stra\xDFe",
+    crossing: "Kreuzung",
+    sideN: "Stra\xDFe",
+    sideS: "Stra\xDFe",
+    yard: "Hof",
+    alley: "Gasse",
+    roof: "Dach",
+    escape: "Feuertreppe",
+    kiosk: "Kiosk",
+    palastEntrance: "Palast-Eingang",
+    palastFoyer: "Palast-Foyer",
+    palastHall: "Palast-Saal"
+  };
+  var areaLabel = (a) => AREAS[a] || "Unterwegs";
   function createPanel(api) {
     const views = /* @__PURE__ */ new WeakMap();
-    function update(el3, v) {
+    const players = () => {
+      try {
+        return api.players && api.players() || [];
+      } catch {
+        return [];
+      }
+    };
+    const call2 = (n, ...a) => {
+      try {
+        return api[n] ? api[n](...a) : false;
+      } catch {
+        return false;
+      }
+    };
+    function mkBtn(text, cls, fn, fk) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "lfx-store-act " + cls;
+      b.textContent = text;
+      if (fk) b.dataset.fk = fk;
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fn();
+      });
+      return b;
+    }
+    function updateList(el4, v) {
+      const on = !!api.prefs().on;
+      v.head.hidden = !on;
+      v.list.hidden = !on;
+      if (!on) return;
+      const rows = players();
+      const kick = !!call2("canKick");
+      if (v.confirm && !rows.some((r) => r.k === v.confirm && !r.admin)) v.confirm = null;
+      const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call2("isMuted", r.k)])]);
+      if (sig === v.sig) return;
+      v.sig = sig;
+      const doc = el4.ownerDocument || document;
+      const active = doc.activeElement;
+      const fk = active && v.list.contains(active) && active.dataset ? active.dataset.fk : null;
+      v.list.textContent = "";
+      v.head.textContent = rows.length ? `Gerade hier (${rows.length})` : "Gerade hier";
+      if (!rows.length) {
+        const e = document.createElement("div");
+        e.className = "lfx-store-pause-note lfx-mp-empty";
+        e.textContent = "Gerade ist niemand sonst hier.";
+        v.list.appendChild(e);
+      }
+      for (const r of rows) {
+        const row = document.createElement("div");
+        row.className = "lfx-mp-player";
+        const info = document.createElement("div");
+        info.className = "lfx-mp-pinfo";
+        const nm = document.createElement("span");
+        nm.className = "lfx-mp-pname";
+        nm.textContent = r.name || "Jemand";
+        const meta = document.createElement("span");
+        meta.className = "lfx-mp-pmeta";
+        meta.textContent = `${areaLabel(r.area)}${r.devs > 1 ? ` \xB7 ${r.devs} Ger\xE4te` : ""}${r.admin ? " \xB7 Admin" : ""}`;
+        info.append(nm, meta);
+        row.appendChild(info);
+        const acts = document.createElement("div");
+        acts.className = "lfx-mp-pacts";
+        const muted = !!call2("isMuted", r.k);
+        const mb = mkBtn(muted ? "Laut" : "Stumm", "lfx-mp-mute" + (muted ? " is-on" : ""), () => {
+          call2("setMute", r.k, !call2("isMuted", r.k));
+          v.sig = "";
+          update(el4, v);
+        }, "m:" + r.k);
+        mb.setAttribute("aria-pressed", muted ? "true" : "false");
+        mb.setAttribute("aria-label", `${r.name || "Jemand"} ${muted ? "wieder h\xF6ren" : "stummschalten"}`);
+        acts.appendChild(mb);
+        if (kick && !r.admin) {
+          if (v.confirm === r.k) {
+            acts.appendChild(mkBtn("Wirklich entfernen", "lfx-mp-kick is-confirm", () => {
+              v.confirm = null;
+              call2("kick", r.k);
+              v.sig = "";
+              update(el4, v);
+            }, "kc:" + r.k));
+            acts.appendChild(mkBtn("Abbrechen", "lfx-mp-kickno", () => {
+              v.confirm = null;
+              v.sig = "";
+              update(el4, v);
+            }, "kn:" + r.k));
+          } else {
+            acts.appendChild(mkBtn("10 min entfernen", "lfx-mp-kick", () => {
+              v.confirm = r.k;
+              v.sig = "";
+              update(el4, v);
+            }, "k:" + r.k));
+          }
+        }
+        row.appendChild(acts);
+        v.list.appendChild(row);
+      }
+      if (fk) {
+        const again = [...v.list.querySelectorAll("[data-fk]")].find((b) => b.dataset.fk === fk);
+        if (again) {
+          try {
+            again.focus({ preventScroll: true });
+          } catch {
+          }
+        }
+      }
+    }
+    function update(el4, v) {
       const pr = api.prefs();
       for (const r of v.rows) {
         const on = !!pr[r.sw.key];
@@ -52689,10 +53121,11 @@ void main() {
       }
       v.status.textContent = api.status() || "";
       v.status.hidden = !v.status.textContent;
+      updateList(el4, v);
     }
-    function build3(el3) {
-      el3.textContent = "";
-      const v = { rows: [], status: null };
+    function build3(el4) {
+      el4.textContent = "";
+      const v = { rows: [], status: null, head: null, list: null, sig: "", confirm: null };
       for (const sw of SWITCHES) {
         const b = document.createElement("button");
         b.type = "button";
@@ -52700,40 +53133,708 @@ void main() {
         b.addEventListener("click", (e) => {
           e.stopPropagation();
           api.set({ [sw.key]: !api.prefs()[sw.key] });
-          update(el3, v);
+          update(el4, v);
         });
-        el3.appendChild(b);
+        el4.appendChild(b);
         let note = null;
         if (sw.note) {
           note = document.createElement("div");
           note.className = "lfx-store-pause-note lfx-mp-note";
           note.textContent = sw.note;
-          el3.appendChild(note);
+          el4.appendChild(note);
         }
         v.rows.push({ sw, b, note });
       }
       v.status = document.createElement("div");
       v.status.className = "lfx-store-pause-note lfx-mp-status";
       v.status.setAttribute("role", "status");
-      el3.appendChild(v.status);
-      views.set(el3, v);
+      el4.appendChild(v.status);
+      v.head = document.createElement("div");
+      v.head.className = "lfx-store-pause-title lfx-mp-listhead";
+      el4.appendChild(v.head);
+      v.list = document.createElement("div");
+      v.list.className = "lfx-mp-list";
+      el4.appendChild(v.list);
+      views.set(el4, v);
       return v;
     }
     return {
-      render(el3) {
-        if (!el3) return;
-        update(el3, views.get(el3) || build3(el3));
+      render(el4) {
+        if (!el4) return;
+        update(el4, views.get(el4) || build3(el4));
       }
     };
+  }
+
+  // src/js/store3d/net/emote-ui.js
+  var warn6 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp emotes", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  var TOAST_MS = 1700;
+  function createEmoteUi({ ctx, onPick }) {
+    let el4 = null;
+    let buttons = [];
+    let closing = false;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    function cleanup() {
+      el4 = null;
+      buttons = [];
+    }
+    function focusAt(i) {
+      const n = buttons.length;
+      if (!n) return;
+      const b = buttons[(i % n + n) % n];
+      try {
+        b.focus({ preventScroll: true });
+      } catch {
+      }
+    }
+    function pick2(emote) {
+      let done = true;
+      try {
+        done = onPick ? onPick(emote) !== false : true;
+      } catch (err) {
+        warn6("onPick", err);
+      }
+      if (done) api.close();
+    }
+    function onKey(e) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const idx = buttons.indexOf(document.activeElement);
+      if (e.code === "KeyT") {
+        e.preventDefault();
+        e.stopPropagation();
+        api.close();
+        return;
+      }
+      if (/^(Digit|Numpad)[1-8]$/.test(e.code)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!e.repeat) pick2(EMOTES[Number(e.code.slice(-1)) - 1]);
+        return;
+      }
+      if (e.code === "ArrowRight" || e.code === "ArrowDown") {
+        e.preventDefault();
+        e.stopPropagation();
+        focusAt(idx + 1);
+        return;
+      }
+      if (e.code === "ArrowLeft" || e.code === "ArrowUp") {
+        e.preventDefault();
+        e.stopPropagation();
+        focusAt(idx < 0 ? 0 : idx - 1);
+      }
+    }
+    function build8() {
+      const root = document.createElement("div");
+      root.className = "lfx-mp-emotes" + (ctx.isTouch ? " is-touch" : " is-desk");
+      root.setAttribute("role", "dialog");
+      root.setAttribute("aria-label", "Emotes");
+      const ring = document.createElement("div");
+      ring.className = "lfx-mp-emotes-ring";
+      EMOTES.forEach((em, i) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "lfx-mp-emote";
+        b.dataset.emote = em.id;
+        const a = i / EMOTES.length * Math.PI * 2;
+        b.style.left = (50 + 37 * Math.sin(a)).toFixed(2) + "%";
+        b.style.top = (50 - 37 * Math.cos(a)).toFixed(2) + "%";
+        const label = document.createElement("span");
+        label.className = "lfx-mp-emote-label";
+        label.textContent = em.label;
+        b.appendChild(label);
+        if (!ctx.isTouch) {
+          const key = document.createElement("span");
+          key.className = "lfx-mp-emote-key";
+          key.textContent = em.key;
+          b.appendChild(key);
+        }
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          pick2(em);
+        });
+        ring.appendChild(b);
+        buttons.push(b);
+      });
+      const hub = document.createElement("button");
+      hub.type = "button";
+      hub.className = "lfx-mp-emotes-hub";
+      hub.textContent = ctx.isTouch ? "Schlie\xDFen" : "T / Esc";
+      hub.setAttribute("aria-label", "Emote-Auswahl schlie\xDFen");
+      hub.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        api.close();
+      });
+      ring.appendChild(hub);
+      root.appendChild(ring);
+      root.addEventListener("click", (e) => {
+        if (e.target === root) api.close();
+      });
+      root.addEventListener("keydown", onKey);
+      return root;
+    }
+    const api = {
+      open() {
+        if (el4 || xrOn() || !ctx.overlay || typeof ctx.overlay.open !== "function") return false;
+        el4 = build8();
+        try {
+          ctx.overlay.open(el4, { onClose: () => {
+            cleanup();
+          } });
+        } catch (err) {
+          warn6("overlay", err);
+          cleanup();
+          return false;
+        }
+        if (!el4) return false;
+        focusAt(0);
+        return true;
+      },
+      close() {
+        if (!el4 || closing) return;
+        closing = true;
+        try {
+          if (ctx.overlay && ctx.overlay.isOpen && ctx.overlay.isOpen()) ctx.overlay.close();
+        } catch (err) {
+          warn6("close", err);
+        }
+        if (el4 && el4.parentNode) el4.parentNode.removeChild(el4);
+        cleanup();
+        closing = false;
+      },
+      isOpen: () => !!el4,
+      dispose() {
+        api.close();
+      }
+    };
+    return api;
+  }
+  function createEmotes(core) {
+    const ctx = core.ctx;
+    const cd = createCooldown();
+    let disposed = false;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting && ctx.xr.presenting());
+    const usable = () => !disposed && core.active() && core.cap("emote") && core.prefs().on !== false && !xrOn();
+    function toast(text) {
+      try {
+        ctx.xr.toast(text, TOAST_MS);
+      } catch {
+        try {
+          core.toast(text);
+        } catch {
+        }
+      }
+    }
+    function emote(x) {
+      const em = findEmote(x);
+      if (!em || !usable()) return false;
+      if (!cd.ready()) {
+        toast("Einen Moment \u2026");
+        return false;
+      }
+      if (!core.send(build.e(em.code))) return false;
+      cd.mark();
+      toast(em.verb);
+      return true;
+    }
+    const ui = createEmoteUi({ ctx, onPick: (em) => {
+      emote(em.code);
+      return true;
+    } });
+    let off = null;
+    try {
+      if (ctx.input && typeof ctx.input.onAction === "function") {
+        off = ctx.input.onAction("emote", () => {
+          if (!usable()) return false;
+          return ui.open();
+        });
+      }
+    } catch (err) {
+      warn6("Aktion", err);
+    }
+    return {
+      open: () => usable() ? ui.open() : false,
+      emote,
+      cooldown: cd,
+      isOpen: ui.isOpen,
+      stop() {
+        ui.close();
+      },
+      // Verbindung weg: Rad zu
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (off) {
+          try {
+            off();
+          } catch {
+          }
+          off = null;
+        }
+        ui.dispose();
+      }
+    };
+  }
+
+  // src/js/store3d/net/chat.js
+  var RING_MAX = 50;
+  var HEAR_M = 16;
+  var SEND_MAX = 5;
+  var SEND_WIN_MS = 1e4;
+  var MUTE_MAX = 50;
+  var K_RE = /^[0-9a-f]{12}$/;
+  var clean = (text) => sanitize(text, LIM.textMax);
+  function bubbleMs(text) {
+    const n = typeof text === "string" ? Array.from(text).length : 0;
+    return Math.max(3e3, Math.min(9e3, 3e3 + n * 55));
+  }
+  function normMute(list) {
+    const out = [];
+    if (Array.isArray(list)) {
+      for (const k of list) if (typeof k === "string" && K_RE.test(k) && !out.includes(k)) out.push(k);
+    }
+    return out.slice(0, MUTE_MAX);
+  }
+  function withMute(list, k, on, ownK) {
+    const cur = normMute(list);
+    if (typeof k !== "string" || !K_RE.test(k) || ownK && k === ownK) return cur;
+    const rest = cur.filter((x) => x !== k);
+    if (!on) return rest;
+    rest.push(k);
+    return rest.slice(-MUTE_MAX);
+  }
+  function createLimiter2({ max = SEND_MAX, win = SEND_WIN_MS } = {}) {
+    const hits = [];
+    return {
+      take(now) {
+        while (hits.length && now - hits[0] >= win) hits.shift();
+        if (hits.length >= max) return Math.max(1, win - (now - hits[0]));
+        hits.push(now);
+        return 0;
+      },
+      reset() {
+        hits.length = 0;
+      }
+    };
+  }
+  function createChat(o = {}) {
+    const now = o.now || (() => Date.now());
+    const lookup = o.lookup || (() => null);
+    const me = o.me || (() => null);
+    const muteList = o.mute || (() => []);
+    const enabled = o.enabled || (() => true);
+    const ring = [];
+    let seq = 0;
+    const api = {
+      /** ev = { c, x, s? } vom Server (Frame x/b). Rückgabe: aufgenommener Eintrag oder null (Chat aus, leer, ungültig, stumm). */
+      receive(ev) {
+        if (!enabled() || !ev || !Number.isInteger(ev.c)) return null;
+        const text = clean(ev.x);
+        if (!text) return null;
+        const self2 = me();
+        const mine = !!self2 && self2.c === ev.c;
+        const who = mine ? { k: self2.k, name: "Du" } : lookup(ev.c);
+        const k = who && typeof who.k === "string" ? who.k : "";
+        if (!mine && k && muteList().includes(k)) return null;
+        const e = { id: ++seq, c: ev.c, k, name: mine ? "Du" : who && who.name || "Jemand", text, t: now(), mine };
+        ring.push(e);
+        while (ring.length > RING_MAX) ring.shift();
+        return e;
+      },
+      /** Sichtbare Einträge (Stumme zur Anzeigezeit herausgefiltert), die letzten n (Standard alle), neueste zuletzt. */
+      visible(n = RING_MAX) {
+        const mu = muteList();
+        const v = ring.filter((e) => e.mine || !e.k || !mu.includes(e.k));
+        return n >= v.length ? v : v.slice(v.length - n);
+      },
+      all: () => ring.slice(),
+      size: () => ring.length,
+      clear() {
+        ring.length = 0;
+      }
+    };
+    return api;
+  }
+
+  // src/js/store3d/net/chat-ui.js
+  var FADE_MS = 1e4;
+  var LINES_DESK = 6;
+  var LINES_TOUCH = 3;
+  var NOTE_MS = 2500;
+  var TICK_S = 0.25;
+  var warn7 = (what, err) => {
+    try {
+      console.warn("[LenzFlix Store3D] mp chat", what, err && err.message ? err.message : "");
+    } catch {
+    }
+  };
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== void 0) e.textContent = text;
+    return e;
+  }
+  function createChatUi(ctx, o) {
+    const model = o.model;
+    const now = o.now || (() => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+    const host = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode || null;
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    const maxLines = ctx.isTouch ? LINES_TOUCH : LINES_DESK;
+    let log2 = null;
+    let inRoot = null;
+    let input = null;
+    let noteEl = null;
+    let sig = "";
+    let isOpen = false;
+    let noteUntil = 0;
+    let acc = TICK_S;
+    let disposed = false;
+    let dirty = true;
+    function ensureLog() {
+      const h2 = host();
+      if (!h2) return null;
+      if (!log2) {
+        log2 = el("div", "lfx-mp-chatlog" + (ctx.isTouch ? " is-touch" : " is-desk"));
+        log2.hidden = true;
+        log2.setAttribute("role", "log");
+        log2.setAttribute("aria-live", "polite");
+        log2.style.pointerEvents = "none";
+      }
+      if (log2.parentNode !== h2) h2.appendChild(log2);
+      return log2;
+    }
+    function lineEl(e) {
+      const row = el("div", "lfx-mp-chatline" + (e.mine ? " is-mine" : ""));
+      row.appendChild(el("span", "lfx-mp-chatname", e.name));
+      row.appendChild(el("span", "lfx-mp-chattext", e.text));
+      return row;
+    }
+    function render() {
+      dirty = false;
+      const t = now();
+      const allowed = !disposed && o.enabled() && !xrOn();
+      let list = [];
+      if (allowed) {
+        list = isOpen ? model.visible() : model.visible(maxLines).filter((e) => t - e.t < FADE_MS);
+      }
+      const s = `${isOpen ? "o" : "c"}${allowed ? 1 : 0}:${list.map((e) => e.id).join(",")}`;
+      if (s === sig) return;
+      sig = s;
+      if (!list.length) {
+        if (log2) {
+          log2.hidden = true;
+          log2.textContent = "";
+        }
+        return;
+      }
+      const l = ensureLog();
+      if (!l) return;
+      l.textContent = "";
+      for (const e of list) l.appendChild(lineEl(e));
+      l.classList.toggle("is-open", isOpen);
+      l.style.pointerEvents = isOpen ? "auto" : "none";
+      l.hidden = false;
+      if (isOpen) l.scrollTop = l.scrollHeight;
+    }
+    function buildInput() {
+      inRoot = el("div", "lfx-mp-chatin" + (ctx.isTouch ? " is-touch" : " is-desk"));
+      inRoot.style.pointerEvents = "none";
+      const row = el("div", "lfx-mp-chatrow");
+      row.style.pointerEvents = "auto";
+      input = el("input", "lfx-mp-chatinput");
+      input.type = "text";
+      input.maxLength = 200;
+      input.autocomplete = "off";
+      input.autocapitalize = "sentences";
+      input.spellcheck = false;
+      input.setAttribute("enterkeyhint", "send");
+      input.setAttribute("aria-label", "Chat-Nachricht");
+      input.placeholder = "Nachricht an alle in der N\xE4he \u2026";
+      const send = el("button", "lfx-store-act lfx-mp-chatsend", "Senden");
+      send.type = "button";
+      const close = el("button", "lfx-store-act lfx-mp-chatclose", "Schlie\xDFen");
+      close.type = "button";
+      close.setAttribute("aria-label", "Chat schlie\xDFen");
+      noteEl = el("div", "lfx-mp-chatnote");
+      noteEl.hidden = true;
+      noteEl.setAttribute("role", "status");
+      row.append(input, send, close);
+      inRoot.append(row, noteEl);
+      const stop = (e) => e.stopPropagation();
+      input.addEventListener("keyup", stop);
+      input.addEventListener("keypress", stop);
+      input.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.isComposing) return;
+        if (e.key === "Escape") {
+          e.preventDefault();
+          api.close();
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          submit();
+        }
+      });
+      send.addEventListener("click", (e) => {
+        e.stopPropagation();
+        submit();
+      });
+      close.addEventListener("click", (e) => {
+        e.stopPropagation();
+        api.close();
+      });
+    }
+    function showNote(text) {
+      if (!noteEl) return;
+      noteEl.textContent = text;
+      noteEl.hidden = !text;
+      noteUntil = text ? now() + NOTE_MS : 0;
+    }
+    function submit() {
+      if (!isOpen) return;
+      const text = clean(input.value);
+      if (!text) {
+        api.close();
+        return;
+      }
+      const r = o.say(text);
+      if (r && r.ok) {
+        input.value = "";
+        api.close();
+        return;
+      }
+      if (r && r.why === "rate") showNote("Zu schnell \u2013 bitte kurz warten.");
+      else if (r && r.why === "xr") api.close();
+      else showNote("Senden gerade nicht m\xF6glich.");
+    }
+    function onOverlayClosed() {
+      isOpen = false;
+      if (input) {
+        try {
+          input.blur();
+        } catch {
+        }
+      }
+      showNote("");
+      dirty = true;
+    }
+    const api = {
+      /** Neuer Eintrag im Modell: Fenster neu aufbauen. */
+      push() {
+        dirty = true;
+      },
+      refresh() {
+        dirty = true;
+      },
+      /** Eingabe öffnen (Desktop: Enter, Handy: Chat-Knopf). false = nicht möglich (aus, VR, Overlay schon offen, kein Overlay-Dienst). */
+      open() {
+        if (disposed || isOpen || !o.enabled() || xrOn()) return false;
+        if (!ctx.overlay || typeof ctx.overlay.open !== "function" || ctx.overlay.isOpen && ctx.overlay.isOpen()) return false;
+        if (!host()) return false;
+        if (!inRoot) buildInput();
+        showNote("");
+        input.value = "";
+        isOpen = true;
+        ctx.overlay.open(inRoot, { onClose: onOverlayClosed });
+        if (!isOpen) return false;
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          try {
+            input.focus();
+          } catch {
+          }
+        }
+        dirty = true;
+        render();
+        return true;
+      },
+      close() {
+        if (!isOpen) return;
+        isOpen = false;
+        try {
+          if (ctx.overlay && ctx.overlay.isOpen && ctx.overlay.isOpen()) ctx.overlay.close();
+        } catch (err) {
+          warn7("close", err);
+        }
+        onOverlayClosed();
+        render();
+      },
+      isOpen: () => isOpen,
+      note: showNote,
+      /** Pro Frame: Ausblenden alter Zeilen, Hinweis-Ablauf. */
+      tick(dt) {
+        if (disposed) return;
+        acc += dt;
+        if (noteUntil && now() >= noteUntil) showNote("");
+        if (dirty || acc >= TICK_S) {
+          acc = 0;
+          render();
+        }
+      },
+      clear() {
+        if (isOpen) api.close();
+        model.clear();
+        sig = "";
+        if (log2) {
+          log2.hidden = true;
+          log2.textContent = "";
+        }
+      },
+      dispose() {
+        if (disposed) return;
+        if (isOpen) api.close();
+        disposed = true;
+        for (const e of [log2, inRoot]) if (e && e.parentNode) e.parentNode.removeChild(e);
+        log2 = null;
+        inRoot = null;
+        input = null;
+        noteEl = null;
+      }
+    };
+    return api;
+  }
+  function createChatPart(core) {
+    const ctx = core.ctx;
+    const nowMs = () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    let local = null;
+    const enabled = () => !!core.prefs().chat;
+    const mutedList = () => normMute(local || core.prefs().mute);
+    const limiter = createLimiter2();
+    const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
+    const model = createChat({
+      now: nowMs,
+      enabled,
+      mute: mutedList,
+      me: () => core.me(),
+      lookup: (c) => {
+        const p = core.peers.list().find((x) => x.c === c);
+        return p ? { k: p.k, name: core.peers.name(c) } : null;
+      }
+    });
+    const ui = createChatUi(ctx, { model, enabled, now: nowMs, say: (t) => api.sayResult(t) });
+    const bubbles = createBubbles2(ctx, { hear: HEAR_M });
+    const offs = [];
+    let wasEnabled = enabled();
+    function onMsg(e) {
+      const entry = model.receive(e);
+      if (!entry) return;
+      ui.push(entry);
+      if (entry.mine) return;
+      const c = entry.c;
+      bubbles.say(c, () => {
+        const p = core.peers.get(c);
+        return p ? p.figure : null;
+      }, entry.text, bubbleMs(entry.text));
+    }
+    const api = {
+      /** Senden mit Begründung: { ok } | { ok:false, why:'off'|'xr'|'inactive'|'empty'|'rate' }. */
+      sayResult(text) {
+        if (!enabled()) return { ok: false, why: "off" };
+        if (xrOn()) return { ok: false, why: "xr" };
+        if (!core.active() || !core.cap("chat")) return { ok: false, why: "inactive" };
+        const t = clean(text);
+        if (!t) return { ok: false, why: "empty" };
+        const wait = limiter.take(nowMs());
+        if (wait) return { ok: false, why: "rate", wait };
+        return core.send(build.m(t)) ? { ok: true } : { ok: false, why: "inactive" };
+      },
+      say: (text) => api.sayResult(text).ok,
+      open: () => ui.open(),
+      close: () => ui.close(),
+      isOpen: () => ui.isOpen(),
+      enabled,
+      mutedList,
+      isMuted: (k) => mutedList().includes(k),
+      /** Pro k stummschalten (das eigene k nie); schreibt über core.setPref({ mute }) in die Hülle, sonst nur für die Sitzung. */
+      setMuted(k, on) {
+        const me = core.me();
+        const next = withMute(mutedList(), k, !!on, me && me.k);
+        if (typeof core.setPref === "function") {
+          local = null;
+          core.setPref({ mute: next });
+        } else local = next;
+        if (on) {
+          for (const p of core.peers.list()) if (p.k === k) bubbles.drop(p.c);
+        }
+        ui.refresh();
+        return next.includes(k);
+      },
+      welcome() {
+        limiter.reset();
+        ui.clear();
+        bubbles.clear();
+      },
+      stop() {
+        ui.clear();
+        bubbles.clear();
+        limiter.reset();
+      },
+      tick(dt) {
+        const en = enabled();
+        if (!en && wasEnabled) {
+          ui.clear();
+          bubbles.clear();
+        }
+        wasEnabled = en;
+        ui.tick(dt);
+        if (en) bubbles.update(dt);
+      },
+      dispose() {
+        for (const off of offs) {
+          try {
+            off();
+          } catch {
+          }
+        }
+        offs.length = 0;
+        ui.dispose();
+        bubbles.dispose();
+      }
+    };
+    offs.push(core.on("m", onMsg));
+    offs.push(core.on("er", (e) => {
+      if (!e || e.y !== "m") return;
+      if (e.c === "rate") ui.note("Zu schnell \u2013 bitte kurz warten.");
+      else if (e.c === "perm" || e.c === "cap" || e.c === "off") {
+        try {
+          core.toast("Chat gerade nicht m\xF6glich.");
+        } catch {
+        }
+      }
+    }));
+    if (ctx.input && typeof ctx.input.onAction === "function") {
+      offs.push(ctx.input.onAction("chat", () => {
+        if (!enabled() || xrOn() || !core.active() || !core.cap("chat")) return false;
+        return ui.open();
+      }, { prio: 10 }));
+    }
+    if (typeof ctx.provide === "function") {
+      offs.push(ctx.provide("netchat", {
+        open: api.open,
+        close: api.close,
+        isOpen: api.isOpen,
+        say: api.say,
+        enabled,
+        isMuted: api.isMuted,
+        setMuted: api.setMuted,
+        mutedList
+      }));
+    }
+    return api;
   }
 
   // src/js/store3d/net/parts.js
   var stub = () => ({});
   var PART_FACTORIES = {
-    chat: stub,
-    // Welle b
-    emotes: stub,
-    // Welle b
+    chat: createChatPart,
+    // Welle b (B1)
+    emotes: createEmotes,
     phys: stub,
     // Welle c
     push: stub,
@@ -52747,7 +53848,7 @@ void main() {
   };
 
   // src/js/store3d/modules/net.js
-  var warn6 = (what, err) => {
+  var warn8 = (what, err) => {
     try {
       console.warn("[LenzFlix Store3D] mp", what, err && err.message ? err.message : "");
     } catch {
@@ -52773,7 +53874,7 @@ void main() {
           try {
             fn(...a);
           } catch (err) {
-            warn6("H\xF6rer " + ev, err);
+            warn8("H\xF6rer " + ev, err);
           }
         }
       };
@@ -52792,7 +53893,7 @@ void main() {
           try {
             fn();
           } catch (err) {
-            warn6("onChange", err);
+            warn8("onChange", err);
           }
         }
       };
@@ -52808,7 +53909,7 @@ void main() {
         try {
           if (ctx.deps.onPrefs) ctx.deps.onPrefs({ mp: p });
         } catch (err) {
-          warn6("prefs", err);
+          warn8("prefs", err);
         }
       };
       let disposed = false;
@@ -52822,7 +53923,7 @@ void main() {
       let sigPeers = "";
       const frame = createFrame(ctx.layout);
       const pose = createPose({ frame, rate: () => transport ? transport.info().cf.pr : 8 });
-      const hud = createHud(ctx);
+      const hud = createHud(ctx, { onChat: () => openChat(), onEmote: () => openEmotes() });
       let transport = null;
       let peers = null;
       let seatnet = null;
@@ -52850,6 +53951,7 @@ void main() {
         serverNow: () => transport ? transport.serverNow() : null,
         peers: null,
         prefs,
+        setPref: (p) => setPref(p),
         toast,
         on: (t, fn) => on("msg:" + t, fn)
       };
@@ -52860,7 +53962,7 @@ void main() {
           try {
             p[name](...a);
           } catch (err) {
-            warn6("Teil " + name, err);
+            warn8("Teil " + name, err);
             const t = nowMs();
             partErrs = partErrs.filter((x) => t - x < PART_ERR_WINDOW_MS);
             partErrs.push(t);
@@ -52964,7 +54066,7 @@ void main() {
           clearTimeout: (h2) => clearTimeout(h2),
           random: Math.random
         },
-        hello: () => ({ cap: ["pres"], f: flags(), cv: mp.cv }),
+        hello: () => ({ cap: ["pres", "chat", "emote", "admin"], f: flags(), cv: mp.cv }),
         onMsg,
         onState
       });
@@ -52975,9 +54077,55 @@ void main() {
           const h2 = PART_FACTORIES[k](core);
           if (h2) parts.push(h2);
         } catch (err) {
-          warn6("Teil " + k, err);
+          warn8("Teil " + k, err);
         }
       }
+      const chatPart = () => parts.find((p) => typeof p.sayResult === "function") || null;
+      const emotePart = () => parts.find((p) => typeof p.emote === "function") || null;
+      const chatOn = () => {
+        const c = chatPart();
+        return !!(c && live && c.enabled() && core.cap("chat") && !(ctx.xr && ctx.xr.presenting()));
+      };
+      const emoteOn = () => !!(emotePart() && live && prefs().on !== false && core.cap("emote") && !(ctx.xr && ctx.xr.presenting()));
+      function openChat() {
+        const c = chatPart();
+        return !!c && chatOn() ? !!c.open() : false;
+      }
+      function openEmotes() {
+        const e = emotePart();
+        return !!e && emoteOn() ? !!e.open() : false;
+      }
+      const isMuted = (k) => {
+        const c = chatPart();
+        return c ? c.isMuted(k) : prefs().mute.includes(k);
+      };
+      function players() {
+        const me = transport.me();
+        const by = /* @__PURE__ */ new Map();
+        for (const p of peers.list()) {
+          if (me && (p.c === me.c || p.k === me.k)) continue;
+          let r = by.get(p.k);
+          if (!r) {
+            r = { k: p.k, c: p.c, name: "Jemand", area: "", devs: p.devs || 1, admin: false };
+            by.set(p.k, r);
+          }
+          const nm = peers.name(p.c);
+          if (nm !== "Jemand") r.name = nm;
+          if (p.ad) r.admin = true;
+          if (p.area && !r.area) r.area = p.area;
+        }
+        return [...by.values()];
+      }
+      function kickPlayer(k) {
+        const me = transport.me();
+        if (!me || !me.admin || !live) return false;
+        const r = players().find((x) => x.k === k);
+        if (!r || r.admin) return false;
+        return send(build.ki(r.c));
+      }
+      offs.push(on("msg:er", (e) => {
+        if (e && e.y === "ki") toast("Entfernen nicht m\xF6glich.");
+      }));
       function others() {
         const me = transport.me();
         return peers.list().filter((p) => !me || p.c !== me.c);
@@ -53075,7 +54223,24 @@ void main() {
         }
         change();
       }
-      const panel = createPanel({ prefs, set: setPref, status: statusText });
+      const panel = createPanel({
+        prefs,
+        set: setPref,
+        status: statusText,
+        players,
+        isMuted,
+        setMute: (k, v) => {
+          const c = chatPart();
+          if (c) return c.setMuted(k, v);
+          setPref({ mute: v ? [.../* @__PURE__ */ new Set([...prefs().mute, k])].slice(0, 50) : prefs().mute.filter((x) => x !== k) });
+          return isMuted(k);
+        },
+        canKick: () => {
+          const me = transport.me();
+          return !!(live && me && me.admin && core.cap("admin"));
+        },
+        kick: kickPlayer
+      });
       const removeProvider = ctx.provide("net", {
         active: () => live && !disposed,
         /** Diagnose (Debug/Panel): Sitzung, Ausschaltgrund, Transportzustand. */
@@ -53090,17 +54255,24 @@ void main() {
         send: (msg) => send(msg),
         physGate: () => true,
         menu: () => ({ label: "Mehrspieler \u2026" }),
-        renderMenu: (el3) => panel.render(el3),
+        renderMenu: (el4) => panel.render(el4),
         onChange: (fn) => {
           if (typeof fn !== "function") return () => {
           };
           changeFns.add(fn);
           return () => changeFns.delete(fn);
         },
-        emote: () => false,
-        // Welle b
-        say: () => false,
-        // Welle b
+        /** Emote auslösen (Code 1..8 oder Name); false bei Cooldown/ohne Verbindung. */
+        emote: (x) => {
+          const e = emotePart();
+          return !!e && emoteOn() ? !!e.emote(x) : false;
+        },
+        openEmotes,
+        say: (t) => {
+          const c = chatPart();
+          return !!c && c.say(t);
+        },
+        openChat,
         /** Kino-Sitzung aktiv: Verbindung bleibt auch im verborgenen Tab offen (W9). */
         setKino: (v) => {
           if (transport) transport.setKino(!!v);
@@ -53132,7 +54304,7 @@ void main() {
           if (!live) return;
           samplePose(nowMs());
           hudText = ctx.playing() && !(ctx.xr && ctx.xr.presenting()) ? hudLabel() : "";
-          hud.set(hudText);
+          hud.set(hudText, { chat: chatOn(), emote: emoteOn() });
         },
         onSuspend() {
           if (disposed) return;
@@ -53231,7 +54403,7 @@ void main() {
 
   // src/js/store3d/modules/runtime.js
   var ease3 = (t) => t * t * (3 - 2 * t);
-  var warn7 = (...a) => {
+  var warn9 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -53372,7 +54544,7 @@ void main() {
           }
         },
         overlay: {
-          open: (el3, o) => self2.overlayOpen(el3, o || {}),
+          open: (el4, o) => self2.overlayOpen(el4, o || {}),
           close: () => self2.overlayClose(),
           isOpen: () => !!self2.overlayState
         },
@@ -53397,7 +54569,7 @@ void main() {
             try {
               fn();
             } catch (err) {
-              warn7("exitThen", err);
+              warn9("exitThen", err);
             }
             return true;
           },
@@ -53454,7 +54626,7 @@ void main() {
           const h2 = await m.init(this.ctx);
           if (h2) this.handles.push({ name: m.name, h: h2 });
         } catch (err) {
-          warn7(`Modul "${m && m.name}" konnte nicht starten`, err);
+          warn9(`Modul "${m && m.name}" konnte nicht starten`, err);
         }
         if (progress) progress((i + 1) / n);
       }
@@ -53466,7 +54638,7 @@ void main() {
         try {
           fn(...args);
         } catch (err) {
-          warn7(`Event ${ev}`, err);
+          warn9(`Event ${ev}`, err);
         }
       }
     }
@@ -53476,7 +54648,7 @@ void main() {
         try {
           h2[name](...args);
         } catch (err) {
-          warn7(`Modul "${mn}".${name}`, err);
+          warn9(`Modul "${mn}".${name}`, err);
         }
       }
     }
@@ -53545,7 +54717,7 @@ void main() {
             break;
           }
         } catch (err) {
-          warn7("Aktion " + name, err);
+          warn9("Aktion " + name, err);
         }
       }
       this.emit(name, ev, consumed);
@@ -53666,7 +54838,7 @@ void main() {
       if (r) r(false);
     }
     // --- Overlay ---
-    overlayOpen(el3, o) {
+    overlayOpen(el4, o) {
       const app = this.app;
       if (this.xrOn()) {
         try {
@@ -53678,14 +54850,14 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn7("overlay.onClose", err);
+            warn9("overlay.onClose", err);
           }
         });
         return;
       }
       if (this.overlayState) this.overlayClose();
-      this.overlayState = { el: el3, onClose: o.onClose, prev: app.mode };
-      app.host.appendChild(el3);
+      this.overlayState = { el: el4, onClose: o.onClose, prev: app.mode };
+      app.host.appendChild(el4);
       if (app.desktop) app.desktop.releaseLock();
       app.player.cancelPath();
       app.setMode("overlay");
@@ -53707,7 +54879,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn7("panel.onClose", err);
+            warn9("panel.onClose", err);
           }
         });
         return dead;
@@ -53756,7 +54928,7 @@ void main() {
       try {
         if (st.onClose) st.onClose();
       } catch (err) {
-        warn7("overlay.onClose", err);
+        warn9("overlay.onClose", err);
       }
       app.setMode(st.prev === "hold" && app.holdview.isOpen ? "hold" : "play");
       if (app.mode === "play" && app.desktop && !app.suspended) app.desktop.requestLock();
@@ -53857,7 +55029,7 @@ void main() {
   };
 
   // src/js/store3d/ui/hud.js
-  function el(tag, cls, text) {
+  function el2(tag, cls, text) {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
@@ -53873,32 +55045,32 @@ void main() {
     return ["Gedr\xFCckt halten zum Laufen", "Wischen zum Umsehen \xB7 Tippen zum Nehmen"];
   }
   function createHud2(host, { touch, onMenu, onVr, getTouchScheme }) {
-    const root = el("div", "lfx-store-ov");
-    const cross = el("div", "lfx-store-cross");
+    const root = el2("div", "lfx-store-ov");
+    const cross = el2("div", "lfx-store-cross");
     cross.setAttribute("aria-hidden", "true");
-    const hint = el("div", "lfx-store-hint");
-    const hintTitle = el("div", "lfx-store-hint-title");
-    const hintSub = el("div", "lfx-store-hint-sub");
+    const hint = el2("div", "lfx-store-hint");
+    const hintTitle = el2("div", "lfx-store-hint-title");
+    const hintSub = el2("div", "lfx-store-hint-sub");
     hint.append(hintTitle, hintSub);
-    const prompt = el("div", "lfx-store-prompt");
-    const pTitle = el("div", "lfx-store-prompt-title", touch ? promptTexts(getTouchScheme ? getTouchScheme() : "touch")[0] : "Klicken zum Losgehen");
-    const pSub = el(
+    const prompt = el2("div", "lfx-store-prompt");
+    const pTitle = el2("div", "lfx-store-prompt-title", touch ? promptTexts(getTouchScheme ? getTouchScheme() : "touch")[0] : "Klicken zum Losgehen");
+    const pSub = el2(
       "div",
       "lfx-store-prompt-sub",
       touch ? promptTexts(getTouchScheme ? getTouchScheme() : "touch")[1] : DESKTOP_HELP
     );
     prompt.append(pTitle, pSub);
-    const lost = el("div", "lfx-store-lost", "Grafik wird neu aufgebaut\u2026");
+    const lost = el2("div", "lfx-store-lost", "Grafik wird neu aufgebaut\u2026");
     lost.hidden = true;
-    const toast = el("div", "lfx-store-note");
+    const toast = el2("div", "lfx-store-note");
     toast.hidden = true;
-    const fps = el("div", "lfx-store-fps");
+    const fps = el2("div", "lfx-store-fps");
     fps.setAttribute("aria-hidden", "true");
     fps.hidden = true;
     root.append(cross, hint, prompt, lost, toast, fps);
     let menuBtn = null;
     if (touch) {
-      menuBtn = el("button", "lfx-store-menubtn");
+      menuBtn = el2("button", "lfx-store-menubtn");
       menuBtn.type = "button";
       menuBtn.setAttribute("aria-label", "Men\xFC");
       menuBtn.innerHTML = "<span></span><span></span><span></span>";
@@ -53920,11 +55092,11 @@ void main() {
       });
       root.appendChild(menuBtn);
     }
-    const vrBtn = el("button", "lfx-store-vrbtn");
+    const vrBtn = el2("button", "lfx-store-vrbtn");
     vrBtn.type = "button";
     vrBtn.setAttribute("aria-label", "In VR betreten");
     vrBtn.innerHTML = VR_ICON;
-    vrBtn.appendChild(el("span", "lfx-store-vrbtn-label", "In VR betreten"));
+    vrBtn.appendChild(el2("span", "lfx-store-vrbtn-label", "In VR betreten"));
     vrBtn.hidden = true;
     for (const ev of ["pointerdown", "mousedown", "touchstart"]) vrBtn.addEventListener(ev, (e) => e.stopPropagation());
     vrBtn.addEventListener("click", (e) => {
@@ -54016,12 +55188,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn12 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn14 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn12}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn14}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -54031,17 +55203,17 @@ void main() {
     return "";
   }
   function createPause(host, a) {
-    const root = el("div", "lfx-store-pause");
+    const root = el2("div", "lfx-store-pause");
     root.hidden = true;
-    const panel = el("div", "lfx-store-pause-panel");
+    const panel = el2("div", "lfx-store-pause-panel");
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "Pause");
     panel.setAttribute("aria-modal", "true");
-    const title = el("div", "lfx-store-pause-title", "Pause");
+    const title = el2("div", "lfx-store-pause-title", "Pause");
     panel.appendChild(title);
-    if (a.help) panel.appendChild(el("div", "lfx-store-pause-note lfx-store-pause-help", a.help));
+    if (a.help) panel.appendChild(el2("div", "lfx-store-pause-note lfx-store-pause-help", a.help));
     const mk3 = (label, fn, cls = "") => {
-      const b = el("button", `lfx-store-act ${cls}`.trim(), label);
+      const b = el2("button", `lfx-store-act ${cls}`.trim(), label);
       b.type = "button";
       b.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -54068,7 +55240,7 @@ void main() {
       refresh();
     });
     const vo = mk3("", () => openPick());
-    const note = el("div", "lfx-store-pause-note");
+    const note = el2("div", "lfx-store-pause-note");
     note.hidden = true;
     panel.appendChild(note);
     const f = mk3("", () => {
@@ -54087,18 +55259,18 @@ void main() {
     }, "lfx-store-act--fs");
     mk3("Design wechseln", () => a.onTheme());
     mk3("Men\xFC", (b) => a.onMenu(b));
-    const pick2 = el("div", "lfx-store-voicepick");
+    const pick2 = el2("div", "lfx-store-voicepick");
     pick2.hidden = true;
-    const pickPanel = el("div", "lfx-store-voicepick-panel");
+    const pickPanel = el2("div", "lfx-store-voicepick-panel");
     pickPanel.setAttribute("role", "dialog");
     pickPanel.setAttribute("aria-label", "Stimme");
     pickPanel.setAttribute("aria-modal", "true");
-    pickPanel.appendChild(el("div", "lfx-store-pause-title", "Stimme"));
-    const list = el("div", "lfx-store-voicelist");
-    const pitchBtn = el("button", "lfx-store-act lfx-store-voicepitch");
+    pickPanel.appendChild(el2("div", "lfx-store-pause-title", "Stimme"));
+    const list = el2("div", "lfx-store-voicelist");
+    const pitchBtn = el2("button", "lfx-store-act lfx-store-voicepitch");
     pitchBtn.type = "button";
-    const pickNote = el("div", "lfx-store-pause-note lfx-store-voicepick-note");
-    const doneBtn = el("button", "lfx-store-act lfx-store-act--primary", "Fertig");
+    const pickNote = el2("div", "lfx-store-pause-note lfx-store-voicepick-note");
+    const doneBtn = el2("button", "lfx-store-act lfx-store-act--primary", "Fertig");
     doneBtn.type = "button";
     pickPanel.append(list, pitchBtn, pickNote, doneBtn);
     pick2.appendChild(pickPanel);
@@ -54112,7 +55284,7 @@ void main() {
     };
     const selectedVoice = (pr, voices) => pr.name ? voices.find((v) => v.name === pr.name) || null : null;
     function entry(label, on, fn) {
-      const b = el("button", "lfx-store-act lfx-store-voiceitem", label);
+      const b = el2("button", "lfx-store-act lfx-store-voiceitem", label);
       b.type = "button";
       b.setAttribute("aria-pressed", on ? "true" : "false");
       b.classList.toggle("is-on", on);
@@ -54133,7 +55305,7 @@ void main() {
       for (const v of voices) {
         list.appendChild(entry(`${shortVoiceName(v.name)}${v.online ? " \xB7 online" : ""}`, !!sel && sel.name === v.name, () => a.onVoice({ name: v.name })));
       }
-      if (!voices.length) list.appendChild(el("div", "lfx-store-pause-note", "Keine deutschen Stimmen gefunden"));
+      if (!voices.length) list.appendChild(el2("div", "lfx-store-pause-note", "Keine deutschen Stimmen gefunden"));
       pitchBtn.textContent = `Tonlage: ${PITCH_LABEL[pr.pitch] || PITCH_LABEL.tief}`;
       const info = a.getVoiceInfo ? a.getVoiceInfo() : null;
       const usesOnline = sel ? sel.online : !!pr.online && !!(info && info.online);
@@ -54149,15 +55321,15 @@ void main() {
       a.onVoice({ pitch: PITCH_NEXT[prefsNow().pitch] || "sehrtief" });
       renderPick();
     });
-    const dp = el("div", "lfx-store-voicepick lfx-store-discoverpick");
+    const dp = el2("div", "lfx-store-voicepick lfx-store-discoverpick");
     dp.hidden = true;
-    const dpPanel = el("div", "lfx-store-voicepick-panel");
+    const dpPanel = el2("div", "lfx-store-voicepick-panel");
     dpPanel.setAttribute("role", "dialog");
     dpPanel.setAttribute("aria-label", "Entdeckungen");
     dpPanel.setAttribute("aria-modal", "true");
-    const dpTitle = el("div", "lfx-store-pause-title", "Entdeckungen");
-    const dpList = el("div", "lfx-store-voicelist");
-    const dpBack = el("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
+    const dpTitle = el2("div", "lfx-store-pause-title", "Entdeckungen");
+    const dpList = el2("div", "lfx-store-voicelist");
+    const dpBack = el2("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
     dpBack.type = "button";
     dpPanel.append(dpTitle, dpList, dpBack);
     dp.appendChild(dpPanel);
@@ -54174,12 +55346,12 @@ void main() {
       if (!d) return;
       dpTitle.textContent = `Entdeckungen (${d.count}/${d.total})`;
       for (const it of d.items) {
-        const row = el("div", "lfx-store-act lfx-store-voiceitem");
+        const row = el2("div", "lfx-store-act lfx-store-voiceitem");
         row.classList.toggle("is-on", !!it.found);
         row.tabIndex = 0;
         row.style.textAlign = "left";
         row.style.cursor = "default";
-        row.append(el("div", "", it.found ? it.title : "???"), el("div", "lfx-store-pause-note", it.found ? it.desc : it.hint));
+        row.append(el2("div", "", it.found ? it.title : "???"), el2("div", "lfx-store-pause-note", it.found ? it.desc : it.hint));
         dpList.appendChild(row);
       }
     }
@@ -54211,15 +55383,15 @@ void main() {
         closeDiscover();
       }
     });
-    const mpp = el("div", "lfx-store-voicepick lfx-store-mppick");
+    const mpp = el2("div", "lfx-store-voicepick lfx-store-mppick");
     mpp.hidden = true;
-    const mppPanel = el("div", "lfx-store-voicepick-panel");
+    const mppPanel = el2("div", "lfx-store-voicepick-panel");
     mppPanel.setAttribute("role", "dialog");
     mppPanel.setAttribute("aria-label", "Mehrspieler");
     mppPanel.setAttribute("aria-modal", "true");
-    const mppTitle = el("div", "lfx-store-pause-title", "Mehrspieler");
-    const mppBody = el("div", "lfx-store-mpbody");
-    const mppBack = el("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
+    const mppTitle = el2("div", "lfx-store-pause-title", "Mehrspieler");
+    const mppBody = el2("div", "lfx-store-mpbody");
+    const mppBack = el2("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
     mppBack.type = "button";
     mppPanel.append(mppTitle, mppBody, mppBack);
     mpp.appendChild(mppPanel);
@@ -54300,16 +55472,16 @@ void main() {
         closePick();
       }
     });
-    const tp = el("div", "lfx-store-voicepick lfx-store-touchpick");
+    const tp = el2("div", "lfx-store-voicepick lfx-store-touchpick");
     tp.hidden = true;
-    const tpPanel = el("div", "lfx-store-voicepick-panel");
+    const tpPanel = el2("div", "lfx-store-voicepick-panel");
     tpPanel.setAttribute("role", "dialog");
     tpPanel.setAttribute("aria-label", "Touch-Steuerung");
     tpPanel.setAttribute("aria-modal", "true");
-    tpPanel.appendChild(el("div", "lfx-store-pause-title", "Touch-Steuerung"));
+    tpPanel.appendChild(el2("div", "lfx-store-pause-title", "Touch-Steuerung"));
     const tuneNow = () => a.getTouchTune && a.getTouchTune() || {};
     const mkT = (fn) => {
-      const b = el("button", "lfx-store-act");
+      const b = el2("button", "lfx-store-act");
       b.type = "button";
       b.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -54322,7 +55494,7 @@ void main() {
     const tSchemeB = mkT(() => {
       if (a.onTouchControl) a.onTouchControl(SCHEME_NEXT[a.getTouchControl ? a.getTouchControl() : "touch"] || "game");
     });
-    const tDiag = el("div", "lfx-store-pause-note lfx-store-pause-diag");
+    const tDiag = el2("div", "lfx-store-pause-note lfx-store-pause-diag");
     tDiag.style.userSelect = "text";
     tDiag.style.webkitUserSelect = "text";
     tDiag.style.whiteSpace = "pre-line";
@@ -54358,7 +55530,7 @@ void main() {
     const tRegrip = mkT(() => {
       if (a.onTouchTune) a.onTouchTune({ touchRegrip: REGRIP_NEXT[tuneNow().touchRegrip || "short"] || "off" });
     });
-    const tBack = el("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
+    const tBack = el2("button", "lfx-store-act lfx-store-act--primary", "Zur\xFCck");
     tBack.type = "button";
     tBack.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -54884,20 +56056,20 @@ void main() {
         return;
       }
       const item = this.item;
-      const root = el("div", "lfx-store-hold");
-      const drag = el("div", "lfx-store-hold-drag");
-      const panel = el("div", "lfx-store-hold-panel");
+      const root = el2("div", "lfx-store-hold");
+      const drag = el2("div", "lfx-store-hold-drag");
+      const panel = el2("div", "lfx-store-hold-panel");
       panel.setAttribute("role", "dialog");
       panel.setAttribute("aria-label", item.Name || "H\xFClle");
-      const title = el("div", "lfx-store-hold-title", item.Name || "");
-      const meta = el("div", "lfx-store-hold-meta");
-      const actions = el("div", "lfx-store-hold-actions");
+      const title = el2("div", "lfx-store-hold-title", item.Name || "");
+      const meta = el2("div", "lfx-store-hold-meta");
+      const actions = el2("div", "lfx-store-hold-actions");
       panel.append(title, meta, actions);
       root.append(drag, panel);
       this.host.appendChild(root);
       this.dom = { root, drag, panel, title, meta, actions };
       const btn = (label, fn, cls = "") => {
-        const b = el("button", `lfx-store-act ${cls}`.trim(), label);
+        const b = el2("button", `lfx-store-act ${cls}`.trim(), label);
         b.type = "button";
         b.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -55029,8 +56201,8 @@ void main() {
     }
     async buildSeries(token) {
       const { panel } = this.dom;
-      const tabs = el("div", "lfx-store-hold-tabs");
-      const list = el("div", "lfx-store-hold-eps");
+      const tabs = el2("div", "lfx-store-hold-tabs");
+      const list = el2("div", "lfx-store-hold-eps");
       panel.append(tabs, list);
       const seasons = await this.loadSeasons(token);
       if (seasons === null) return;
@@ -55039,7 +56211,7 @@ void main() {
         return;
       }
       const playBtn = this.dom.btns.play || (() => {
-        const b = el("button", "lfx-store-act lfx-store-act--primary", "Abspielen");
+        const b = el2("button", "lfx-store-act lfx-store-act--primary", "Abspielen");
         b.type = "button";
         this.dom.actions.insertBefore(b, this.dom.actions.firstChild);
         this.dom.btns.play = b;
@@ -55061,10 +56233,10 @@ void main() {
         const m = seriesModel(seasons, eps, i);
         if (!m.rows.length) list.textContent = "Keine Folgen gefunden.";
         for (const r of m.rows) {
-          const row = el("button", "lfx-store-ep");
+          const row = el2("button", "lfx-store-ep");
           row.type = "button";
-          row.append(el("span", "lfx-store-ep-name", r.name));
-          if (r.tag) row.append(el("span", "lfx-store-ep-tag", r.tag));
+          row.append(el2("span", "lfx-store-ep-name", r.name));
+          if (r.tag) row.append(el2("span", "lfx-store-ep-tag", r.tag));
           row.addEventListener("click", (e) => {
             e.stopPropagation();
             this.play(r.ep, r.resume);
@@ -55073,7 +56245,7 @@ void main() {
         }
       };
       seasons.forEach((s, i) => {
-        const t = el("button", "lfx-store-tab", s.Name || `Staffel ${i + 1}`);
+        const t = el2("button", "lfx-store-tab", s.Name || `Staffel ${i + 1}`);
         t.type = "button";
         t.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -55568,17 +56740,17 @@ void main() {
     };
     function showGuide() {
       if (guide || destroyed) return;
-      const root = el("div", "lfx-store-fs-guide");
-      const panel = el("div", "lfx-store-fs-panel");
+      const root = el2("div", "lfx-store-fs-guide");
+      const panel = el2("div", "lfx-store-fs-panel");
       panel.setAttribute("role", "dialog");
       panel.setAttribute("aria-label", "Vollbild am iPhone");
       panel.append(
-        el("div", "lfx-store-fs-title", "Vollbild am iPhone"),
-        el("p", "lfx-store-fs-text", "Teilen \u2192 \u201EZum Home-Bildschirm\u201C \u2192 \u201EAls Web-App \xF6ffnen\u201C: Dann startet Jellyfin ohne Safari-Leisten."),
-        el("p", "lfx-store-fs-text", "Alternativ: im Querformat einmal nach oben wischen."),
-        el("p", "lfx-store-fs-text lfx-store-fs-text--muted", "Kein Ton? Stummschalter am iPhone pr\xFCfen.")
+        el2("div", "lfx-store-fs-title", "Vollbild am iPhone"),
+        el2("p", "lfx-store-fs-text", "Teilen \u2192 \u201EZum Home-Bildschirm\u201C \u2192 \u201EAls Web-App \xF6ffnen\u201C: Dann startet Jellyfin ohne Safari-Leisten."),
+        el2("p", "lfx-store-fs-text", "Alternativ: im Querformat einmal nach oben wischen."),
+        el2("p", "lfx-store-fs-text lfx-store-fs-text--muted", "Kein Ton? Stummschalter am iPhone pr\xFCfen.")
       );
-      const ok = el("button", "lfx-store-act lfx-store-act--primary", "Verstanden");
+      const ok = el2("button", "lfx-store-act lfx-store-act--primary", "Verstanden");
       ok.type = "button";
       ok.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -55632,7 +56804,7 @@ void main() {
     const scrollY = () => win.scrollY || win.pageYOffset || 0;
     function ensureActive() {
       if (!spacer) {
-        spacer = el("div", "lfx-store-swipe-spacer");
+        spacer = el2("div", "lfx-store-swipe-spacer");
         spacer.setAttribute("aria-hidden", "true");
         doc.body.appendChild(spacer);
       }
@@ -55654,18 +56826,18 @@ void main() {
     }
     function showHint() {
       if (hint) return;
-      hint = el("div", "lfx-store-swipe-hint");
-      const arrow = el("div", "lfx-store-swipe-arrow", "\u2191");
+      hint = el2("div", "lfx-store-swipe-hint");
+      const arrow = el2("div", "lfx-store-swipe-arrow", "\u2191");
       arrow.setAttribute("aria-hidden", "true");
-      const text = el("div", "lfx-store-swipe-text", "Nach oben wischen f\xFCr Vollbild");
-      const row = el("div", "lfx-store-swipe-actions");
-      const perma = el("button", "lfx-store-act", "Dauerhaft ohne Leiste");
+      const text = el2("div", "lfx-store-swipe-text", "Nach oben wischen f\xFCr Vollbild");
+      const row = el2("div", "lfx-store-swipe-actions");
+      const perma = el2("button", "lfx-store-act", "Dauerhaft ohne Leiste");
       perma.type = "button";
       perma.addEventListener("click", (e) => {
         e.stopPropagation();
         showGuide();
       });
-      const close = el("button", "lfx-store-act lfx-store-swipe-close", "\xD7");
+      const close = el2("button", "lfx-store-act lfx-store-swipe-close", "\xD7");
       close.type = "button";
       close.setAttribute("aria-label", "Schlie\xDFen");
       close.addEventListener("click", (e) => {
@@ -56450,7 +57622,7 @@ void main() {
     g.globalAlpha = 1;
   }
   var keyOf2 = (h2) => h2 ? h2.kind === "action" ? `action:${h2.ref.row}:${h2.ref.action}` : `${h2.kind}:${h2.ref}` : null;
-  var warn8 = (what, err) => {
+  var warn10 = (what, err) => {
     try {
       console.warn(`[LenzFlix Store3D] ${what}`, err);
     } catch {
@@ -56724,7 +57896,7 @@ void main() {
           } else if (h2.kind === "input") {
           } else return false;
         } catch (err) {
-          warn8("Panel", err);
+          warn10("Panel", err);
         }
         return true;
       },
@@ -56741,7 +57913,7 @@ void main() {
         try {
           if (cb) cb();
         } catch (err) {
-          warn8("Panel.onClose", err);
+          warn10("Panel.onClose", err);
         }
       }
     };
@@ -58209,13 +59381,13 @@ void main() {
       get texture() {
         return tex;
       },
-      setVideo(el3) {
-        if (disposed || el3 === video) return;
+      setVideo(el4) {
+        if (disposed || el4 === video) return;
         if (tex) {
           tex.dispose();
           tex = null;
         }
-        video = el3 || null;
+        video = el4 || null;
         if (video) {
           tex = new PolledVideoTexture(video);
           videoMat.map = tex;
@@ -58913,10 +60085,10 @@ void main() {
         if (w.startAt == null) w.startAt = now;
         const v = video || null;
         const st = state || {};
-        const el3 = now - w.startAt;
+        const el4 = now - w.startAt;
         const rs = v ? Number(v.readyState) || 0 : 0;
         const mark = (k) => {
-          if (w.marks[k] == null) w.marks[k] = Math.round(el3);
+          if (w.marks[k] == null) w.marks[k] = Math.round(el4);
         };
         if (v) {
           mark("video");
@@ -58936,17 +60108,17 @@ void main() {
             return { event: "pausedStart", paused: true, slow: false, prepare: false };
           }
         } else w.pausedSince = null;
-        const slow = el3 > cfg.SLOW_START_MS;
+        const slow = el4 > cfg.SLOW_START_MS;
         let prepare = false;
-        if (el3 > cfg.PREPARE_MS && !w.prepareShown) {
+        if (el4 > cfg.PREPARE_MS && !w.prepareShown) {
           w.prepareShown = true;
           prepare = true;
         }
         if (!v) {
-          if (el3 > cfg.NO_VIDEO_MS) return { event: "fail", code: "T1", slow, prepare };
+          if (el4 > cfg.NO_VIDEO_MS) return { event: "fail", code: "T1", slow, prepare };
           return { event: null, slow, prepare };
         }
-        if (now - w.lastProgress > cfg.STALL_MS || el3 > cfg.MAX_START_MS) return { event: "fail", code: "T2", slow, prepare };
+        if (now - w.lastProgress > cfg.STALL_MS || el4 > cfg.MAX_START_MS) return { event: "fail", code: "T2", slow, prepare };
         return { event: null, slow, prepare };
       },
       /** Hintergrund-Tab: die Uhr (now) ist um gapMs gesprungen, ohne dass etwas hätte passieren können. Zeitbezüge mitziehen. */
@@ -59053,7 +60225,7 @@ void main() {
 
   // src/js/store3d/cinema/cinema.js
   var FAIL_HOLD_MS = 2600;
-  var warn9 = (...a) => {
+  var warn11 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -59160,7 +60332,7 @@ void main() {
       this._resetRun();
       const f = this._fade();
       const run = () => this._build(this.gen);
-      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn9("Kino betreten", err));
+      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn11("Kino betreten", err));
       else run();
       return true;
     }
@@ -59184,7 +60356,7 @@ void main() {
         try {
           if (app.holdview && typeof app.holdview.close === "function") app.holdview.close(false);
         } catch (err) {
-          warn9("H\xFClle schlie\xDFen", err);
+          warn11("H\xFClle schlie\xDFen", err);
         }
         if (app.mods) app.mods.hook("onSuspend");
         this._duck(true);
@@ -59225,7 +60397,7 @@ void main() {
         }
         this.phase = "starting";
       } catch (err) {
-        warn9("Kino bauen", err);
+        warn11("Kino bauen", err);
         this.failCode = "B";
         this._selfLeave("fail", "B");
       }
@@ -59268,7 +60440,7 @@ void main() {
         if (x && typeof x.savePrefs === "function") x.savePrefs();
         else this.app.savePrefs();
       } catch (err) {
-        warn9("Platz speichern", err);
+        warn11("Platz speichern", err);
       }
       if (name === this.seat || !this.hall || this.phase === "entering" || this.phase === "leaving") {
         this.seat = name;
@@ -59376,7 +60548,7 @@ void main() {
       this.phase = "failed";
       this.failCode = code;
       this.marks.fail = Math.round(this.watch.startAt == null ? 0 : this.now - this.watch.startAt);
-      warn9("Kino-Start fehlgeschlagen", code);
+      warn11("Kino-Start fehlgeschlagen", code);
       const d = this._deps;
       const st = this.state || {};
       const txt = failToast(code);
@@ -59389,7 +60561,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn9("Stopp", err);
+          warn11("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS, () => this._selfLeave("fail", code));
@@ -59541,7 +60713,7 @@ void main() {
         if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(failToast(this.failCode), 3200);
         return true;
       }, (err) => {
-        warn9("Kino verlassen", err);
+        warn11("Kino verlassen", err);
         if (gen !== this.gen) return false;
         this._leavePromise = null;
         if (this._active) this._teardown();
@@ -59607,7 +60779,7 @@ void main() {
   };
 
   // src/js/store3d/xr/mode.js
-  var warn10 = (...a) => {
+  var warn12 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -59675,7 +60847,7 @@ void main() {
         const f = this.app.deps && this.app.deps.onXr;
         if (typeof f === "function") f(state);
       } catch (err) {
-        warn10("onXr", err);
+        warn12("onXr", err);
       }
     }
     /** Muss synchron aus einem Klick laufen. */
@@ -59689,7 +60861,7 @@ void main() {
         const cash = ctx && ctx.use("cashier");
         if (cash && typeof cash.unlockVoice === "function") cash.unlockVoice();
       } catch (err) {
-        warn10("Entsperren", err);
+        warn12("Entsperren", err);
       }
       Promise.resolve(p).then((ok) => {
         if (!ok && !this.presenting) this.releaseSources();
@@ -59989,7 +61161,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn10("exitThen", err);
+          warn12("exitThen", err);
         }
       }
     }
@@ -60008,7 +61180,7 @@ void main() {
       try {
         if (this.cinema && typeof this.cinema.onVisibility === "function") this.cinema.onVisibility(state);
       } catch (err) {
-        warn10("Kino-Sichtbarkeit", err);
+        warn12("Kino-Sichtbarkeit", err);
       }
     }
     // --- Schleife ---
@@ -60116,7 +61288,7 @@ void main() {
           try {
             h2.tick(dt);
           } catch (err) {
-            warn10("Panel", err);
+            warn12("Panel", err);
           }
         }
       }
@@ -60124,7 +61296,7 @@ void main() {
         try {
           b.update(dt);
         } catch (err) {
-          warn10("Blase", err);
+          warn12("Blase", err);
         }
       }
       if (this.vignette) this.vignette.update(dt, !!(app.opts.vr && app.opts.vr.vignette !== false) && !this.inCinema, this.speed, this.turnRate);
@@ -60226,7 +61398,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn10("exitThen", err);
+          warn12("exitThen", err);
         }
         return true;
       }
@@ -60363,23 +61535,23 @@ void main() {
 
   // src/js/store3d/cinema/bar2d.js
   var IDLE_MS2 = 4e3;
-  function el2(doc, tag, cls, text) {
+  function el3(doc, tag, cls, text) {
     const e = doc.createElement(tag);
     if (cls) e.className = cls;
     if (text != null) e.textContent = text;
     return e;
   }
   function createBar({ bridge, getState, onStand, onFull, toast, doc = document, win = typeof window !== "undefined" ? window : null } = {}) {
-    const root = el2(doc, "div", "lfx-palast-bar");
+    const root = el3(doc, "div", "lfx-palast-bar");
     root.setAttribute("role", "group");
     root.setAttribute("aria-label", "Kino");
-    const panel = el2(doc, "div", "lfx-palast-panel");
-    const title = el2(doc, "div", "lfx-palast-title");
-    const msg = el2(doc, "div", "lfx-palast-msg");
+    const panel = el3(doc, "div", "lfx-palast-panel");
+    const title = el3(doc, "div", "lfx-palast-title");
+    const msg = el3(doc, "div", "lfx-palast-msg");
     msg.setAttribute("role", "status");
-    const prog = el2(doc, "div", "lfx-palast-prog");
-    const tNow = el2(doc, "span", "lfx-palast-time");
-    const seek = el2(doc, "input", "lfx-palast-seek");
+    const prog = el3(doc, "div", "lfx-palast-prog");
+    const tNow = el3(doc, "span", "lfx-palast-time");
+    const seek = el3(doc, "input", "lfx-palast-seek");
     seek.type = "range";
     seek.min = "0";
     seek.max = "1000";
@@ -60387,15 +61559,15 @@ void main() {
     seek.step = "1";
     seek.tabIndex = -1;
     seek.setAttribute("aria-label", "Position");
-    const tDur = el2(doc, "span", "lfx-palast-time");
+    const tDur = el3(doc, "span", "lfx-palast-time");
     prog.append(tNow, seek, tDur);
-    const row = el2(doc, "div", "lfx-palast-row");
-    const pop = el2(doc, "div", "lfx-palast-pop");
+    const row = el3(doc, "div", "lfx-palast-row");
+    const pop = el3(doc, "div", "lfx-palast-pop");
     pop.hidden = true;
     panel.append(title, msg, prog, row, pop);
     root.appendChild(panel);
     const btn = (label, cls, fn, parent = row) => {
-      const b = el2(doc, "button", `lfx-palast-btn${cls ? ` ${cls}` : ""}`, label);
+      const b = el3(doc, "button", `lfx-palast-btn${cls ? ` ${cls}` : ""}`, label);
       b.type = "button";
       b.tabIndex = -1;
       b.addEventListener("mousedown", (e) => e.preventDefault());
@@ -60424,7 +61596,7 @@ void main() {
     const bMute = btn("Stumm", "", act(() => bridge.toggleMute()));
     const bDown = btn("Leiser", "", act(() => applyVolumeStep(stepVolume(st(), -1), bridge, toast)));
     const bUp = btn("Lauter", "", act(() => applyVolumeStep(stepVolume(st(), 1), bridge, toast)));
-    const vol = el2(doc, "span", "lfx-palast-vol");
+    const vol = el3(doc, "span", "lfx-palast-vol");
     row.appendChild(vol);
     const bAudio = btn("Ton", "", act(() => api.openTracks("audio")));
     const bSub = btn("Untertitel", "", act(() => api.openTracks("subtitle")));
@@ -60466,12 +61638,12 @@ void main() {
       });
       pop.textContent = "";
       pop.hidden = false;
-      pop.appendChild(el2(doc, "div", "lfx-palast-pop-title", spec.title));
-      if (spec.text) pop.appendChild(el2(doc, "div", "lfx-palast-pop-text", spec.text));
+      pop.appendChild(el3(doc, "div", "lfx-palast-pop-title", spec.title));
+      if (spec.text) pop.appendChild(el3(doc, "div", "lfx-palast-pop-text", spec.text));
       if (spec.list) {
-        const ul = el2(doc, "div", "lfx-palast-pop-list");
+        const ul = el3(doc, "div", "lfx-palast-pop-list");
         for (const r of spec.list.rows) {
-          const b = el2(doc, "button", `lfx-palast-pop-row${r.selected ? " is-on" : ""}`, r.label);
+          const b = el3(doc, "button", `lfx-palast-pop-row${r.selected ? " is-on" : ""}`, r.label);
           b.type = "button";
           b.tabIndex = -1;
           b.addEventListener("mousedown", (e) => e.preventDefault());
@@ -60480,7 +61652,7 @@ void main() {
         }
         pop.appendChild(ul);
       }
-      const back = el2(doc, "button", "lfx-palast-btn lfx-palast-pop-close", "Schlie\xDFen");
+      const back = el3(doc, "button", "lfx-palast-btn lfx-palast-pop-close", "Schlie\xDFen");
       back.type = "button";
       back.tabIndex = -1;
       back.addEventListener("mousedown", (e) => e.preventDefault());
@@ -60722,7 +61894,7 @@ void main() {
   // src/js/store3d/cinema/palast.js
   var FAIL_HOLD_MS2 = 1800;
   var GAP_MS2 = 2e3;
-  var warn11 = (...a) => {
+  var warn13 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -60733,7 +61905,7 @@ void main() {
       try {
         return o[name](...a);
       } catch (err) {
-        warn11(name, err);
+        warn13(name, err);
       }
     }
     return void 0;
@@ -60845,7 +62017,7 @@ void main() {
         try {
           d.onCinema2d({ active: this.active, full: this.active && this.full });
         } catch (err) {
-          warn11("onCinema2d", err);
+          warn13("onCinema2d", err);
         }
       }
     }
@@ -61075,7 +62247,7 @@ void main() {
           this.state = d.state() || {};
         }
       } catch (err) {
-        warn11("Palast-Kino bauen", err);
+        warn13("Palast-Kino bauen", err);
         this.leave("build", "B");
       }
     }
@@ -61222,7 +62394,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn11("Stopp", err);
+          warn13("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS2, () => this.leave("fail", code));
@@ -61676,9 +62848,9 @@ void main() {
           const n = this.mods && this.mods.ctx.use("net");
           return n && n.menu ? n.menu() : null;
         },
-        renderMp: (el3) => {
+        renderMp: (el4) => {
           const n = this.mods && this.mods.ctx.use("net");
-          if (n && n.renderMenu) n.renderMenu(el3);
+          if (n && n.renderMenu) n.renderMenu(el4);
         },
         getVoiceInfo: () => {
           const c = this.mods && this.mods.ctx.use("cashier");

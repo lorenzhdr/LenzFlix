@@ -88,7 +88,7 @@ describe('Modul net: Verbindung', () => {
     expect(sockets[0].protocols).toEqual(['lfx-mp.1', 't.a.b']);
     sockets[0].open();
     const hi = sockets[0].frames()[0];
-    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
+    expect(hi).toMatchObject({ t: 'hi', pv: 1, cap: ['pres', 'chat', 'emote', 'admin'], f: 5, cv: '1.16.0' }); // Name (1) + Chat (4), Film aus
     h.dispose();
   });
 
@@ -371,6 +371,123 @@ describe('Modul net: Lebenszyklus', () => {
     await goLive(t);
     expect(fn).toHaveBeenCalled();
     off();
+    h.dispose();
+  });
+});
+
+describe('Modul net: Welle b (Chat, Emotes, Liste, Kick)', () => {
+  const withOverlay = (t) => {
+    const ov = { open: vi.fn(), close: vi.fn(), isOpen: () => false };
+    t.ctx.overlay = ov;
+    return ov;
+  };
+
+  it('Provider: openChat und openEmotes öffnen die Teile nur bei Verbindung und Fähigkeit', async () => {
+    const t = setup();
+    const ov = withOverlay(t);
+    const h = net.init(t.ctx);
+    const p = t.provided.get('net');
+    expect(p.openChat()).toBe(false); // noch nicht verbunden
+    expect(p.openEmotes()).toBe(false);
+    await goLive(t, WL({ cap: ['pres', 'chat', 'emote'] }));
+    expect(p.openChat()).toBe(true);
+    expect(ov.open).toHaveBeenCalledTimes(1);
+    h.dispose();
+  });
+
+  it('Provider: ohne cap chat bleibt openChat false; Chat-Pref aus ebenso', async () => {
+    const t = setup({ prefs: { chat: false } });
+    withOverlay(t);
+    const h = net.init(t.ctx);
+    await goLive(t, WL({ cap: ['pres', 'chat', 'emote'] }));
+    expect(t.provided.get('net').openChat()).toBe(false);
+    h.dispose();
+  });
+
+  it('Provider say sendet m; emote sendet e', async () => {
+    const t = setup();
+    withOverlay(t);
+    const h = net.init(t.ctx);
+    const ws = await goLive(t, WL({ cap: ['pres', 'chat', 'emote'] }));
+    const p = t.provided.get('net');
+    expect(p.say('Hallo')).toBe(true);
+    expect(p.emote(1)).toBe(true);
+    h.update(0.016, 1);
+    vi.advanceTimersByTime(500);
+    h.update(0.016, 2);
+    const fr = ws.frames();
+    expect(fr.some((m) => m.t === 'm' && m.x === 'Hallo')).toBe(true);
+    expect(fr.some((m) => m.t === 'e' && m.e === 1)).toBe(true);
+    h.dispose();
+  });
+
+  it('Touch-HUD: Chat- und Emote-Knopf nur mit Fähigkeit, Desktop ohne Knöpfe', async () => {
+    const t = setup({ touch: true });
+    const ov = withOverlay(t);
+    const h = net.init(t.ctx);
+    await goLive(t, WL({ cap: ['pres', 'chat', 'emote'] }));
+    h.update(0.016, 1);
+    const chat = t.host.querySelector('.lfx-mp-chatbtn');
+    const emo = t.host.querySelector('.lfx-mp-emotebtn');
+    expect(chat.hidden).toBe(false);
+    expect(emo.hidden).toBe(false);
+    chat.click();
+    expect(ov.open).toHaveBeenCalledTimes(1);
+    h.dispose();
+    const d = setup();
+    const h2 = net.init(d.ctx);
+    await goLive(d, WL({ cap: ['pres', 'chat', 'emote'] }));
+    h2.update(0.016, 1);
+    expect(d.host.querySelector('.lfx-mp-chatbtn')).toBeNull();
+    h2.dispose();
+  });
+
+  it('Touch-HUD ohne cap chat: kein Chat-Knopf', async () => {
+    const t = setup({ touch: true });
+    withOverlay(t);
+    const h = net.init(t.ctx);
+    await goLive(t, WL({ cap: ['pres', 'emote'] }));
+    h.update(0.016, 1);
+    expect(t.host.querySelector('.lfx-mp-chatbtn').hidden).toBe(true);
+    expect(t.host.querySelector('.lfx-mp-emotebtn').hidden).toBe(false);
+    h.dispose();
+  });
+
+  it('Spielerliste: Name, Ort, Stumm je Person über prefs.mute; Kick nur für Admin', async () => {
+    const t = setup();
+    withOverlay(t);
+    const h = net.init(t.ctx);
+    const ws = await goLive(t, WL({ ad: 0, peers: [peer(2, 'bbbbbbbbbbbb', { n: 'Anna', f: 1 }), peer(3, 'cccccccccccc', { n: 'Bob', f: 0 })] }));
+    const p = t.provided.get('net');
+    const el = document.createElement('div');
+    p.renderMenu(el);
+    const names = [...el.querySelectorAll('.lfx-mp-pname')].map((x) => x.textContent);
+    expect(names).toEqual(['Anna', 'Jemand']);
+    expect(el.querySelector('.lfx-mp-kick')).toBeNull();
+    el.querySelector('.lfx-mp-mute').click();
+    expect(t.onPrefs).toHaveBeenCalledWith({ mp: { mute: ['bbbbbbbbbbbb'] } });
+    expect(ws.closed).toBeNull();
+    h.dispose();
+  });
+
+  it('Kick: Admin sieht Knopf, Bestätigung nötig, sendet ki mit c; Admin-Ziel ohne Knopf', async () => {
+    const t = setup();
+    withOverlay(t);
+    const h = net.init(t.ctx);
+    const ws = await goLive(t, WL({ ad: 1, cap: ['pres', 'chat', 'emote', 'admin'], peers: [peer(2, 'bbbbbbbbbbbb', { n: 'Anna', f: 1 }), peer(3, 'cccccccccccc', { n: 'Chef', f: 1, ad: 1 })] }));
+    const p = t.provided.get('net');
+    const el = document.createElement('div');
+    p.renderMenu(el);
+    const kicks = el.querySelectorAll('.lfx-mp-kick');
+    expect(kicks.length).toBe(1);
+    kicks[0].click();
+    h.update(0.016, 1);
+    expect(ws.frames().some((m) => m.t === 'ki')).toBe(false);
+    el.querySelector('.lfx-mp-kick.is-confirm').click();
+    h.update(0.016, 2);
+    vi.advanceTimersByTime(500);
+    h.update(0.016, 3);
+    expect(ws.frames().filter((m) => m.t === 'ki')).toEqual([{ t: 'ki', c: 2 }]);
     h.dispose();
   });
 });

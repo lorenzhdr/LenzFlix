@@ -70,3 +70,140 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-status[hidden],
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-note[hidden] {
   display: none;
 }
+
+/* Chat (Welle b, Paket B1): Verlaufsfenster, Eingabe, Blasen über Fremdfiguren. Nichts fängt Eingaben ab, außer Eingabezeile und Knöpfen. */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(34vw, 420px);
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  color: var(--lfx-store-text, #f4f6ff);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: left;
+  overflow: hidden;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-desk {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-touch {
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
+  max-width: min(52vw, 360px);
+  font-size: 0.74rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog.is-open {
+  max-height: 40vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatlog[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatnote[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatline {
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatname {
+  margin-right: 6px;
+  font-weight: 700;
+  color: var(--lfx-store-yellow, #ffd23f);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatline.is-mine .lfx-mp-chatname {
+  color: var(--lfx-store-muted, #aab4e8);
+}
+
+/* Eingabe-Overlay: Zeile oben (Handy, wegen der Systemtastatur) bzw. unten links (Desktop) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatin {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatrow {
+  position: absolute;
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  right: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 640px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatin.is-touch .lfx-mp-chatrow {
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatin.is-desk .lfx-mp-chatrow {
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatinput {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.82));
+  color: var(--lfx-store-text, #f4f6ff);
+  font: inherit;
+  font-size: 16px; /* unter 16 px zoomt iOS beim Fokus */
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatsend,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatclose {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatnote {
+  position: absolute;
+  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.82));
+  color: var(--lfx-store-text, #f4f6ff);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatin.is-touch .lfx-mp-chatnote {
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 66px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-chatin.is-desk .lfx-mp-chatnote {
+  bottom: calc(max(16px, env(safe-area-inset-bottom, 0px) + 8px) + 54px);
+}
+
+/* Blase über der Fremdfigur (Lage setzt net/tags.js inline) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-say {
+  z-index: 2;
+  box-sizing: border-box;
+  max-width: min(60vw, 260px);
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.82));
+  color: var(--lfx-store-text, #f4f6ff);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  text-align: center;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-say.is-touch {
+  max-width: min(70vw, 220px);
+  padding: 4px 9px;
+  font-size: 0.74rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-say[hidden] {
+  display: none;
+}

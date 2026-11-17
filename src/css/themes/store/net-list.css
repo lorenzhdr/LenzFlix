@@ -1,0 +1,85 @@
+/* VIDEOTHEK LENZ · Mehrspieler (1.16, Welle b): Spielerliste im Unterpanel „Mehrspieler …“ und HUD-Knöpfe (Touch).
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv); nur --lfx-store-*-Variablen. */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-listhead {
+  margin: 10px 4px 0;
+  text-align: left;
+  font-size: 0.95rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(38vh, 320px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-listhead[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-list[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-empty {
+  margin: 2px 4px;
+  text-align: left;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-player {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  color: var(--lfx-store-text, #f4f6ff);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-pinfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 140px;
+  text-align: left;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-pname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-pmeta {
+  font-size: 0.78rem;
+  color: var(--lfx-store-muted, #aab4e8);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-pacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-pacts > .lfx-store-act {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-mute.is-on {
+  opacity: 0.8;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-kick.is-confirm {
+  border-color: var(--lfx-store-danger, #ff6b6b);
+}
+
+/* HUD-Knöpfe Chat/Emote (Touch, 44 px) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-hudbtn {
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  line-height: 1;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-hudbtn[hidden] {
+  display: none;
+}

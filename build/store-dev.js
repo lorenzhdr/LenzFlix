@@ -4,7 +4,9 @@
 // für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0. Debug: __lfxStore.spawns() / area() / city().
 // Mehrspieler (1.16.0, build/mp-dev/): ?mp=fake&bots=N  Fake-Welt auf dem echten Reducer (deps.mp = fake.mp, opts.mpTransport = fake.socketFactory), N Bots (Straße, Laden, Tür, Palast-Saal, Foyer);
 //   Still-aus-Modi: ?mp=off (kein deps.mp), ?mp=nourl|404|503|401|drop (deps.mp vorhanden, Ticket scheitert bzw. die Verbindung bricht ab); ?mplat=ms (Latenz, Standard 30).
-//   Debug: window.__devMp = Fake-Welt (stats(), bots.stats(), setPrefs()).
+//   Debug: window.__devMp = Fake-Welt (stats(), bots.stats(), setPrefs()). Welle 2: ?mpadmin=1 (ich bin Jellyfin-Admin im Fake: Kick-Knöpfe), ?mpbotadmin=<Index> (dieser Bot ist Admin, Standard keiner),
+//   ?botsocial=0 (Bots chatten/emoten nicht von selbst), ?mpchat=0 (Chat-Schalter aus). window.__devMp.bots.say(i,text)/emote(i,code)/park(i,xcm,zcm)/inbox(i)/kick(i,c);
+//   window.__devFigs = alle per npc.figure() angelegten Figuren (fig.getNetState().a = Animationscode, nur Mehrspieler-Läufe mit ?mp=…).
 (function () {
   var q = new URLSearchParams(location.search);
   var touch = q.get('touch') === '1';
@@ -620,14 +622,32 @@
   var mpOpts = {};
   var mpQ = q.get('mp');
   var mpModes = ['fake', 'nourl', '404', '503', '401', 'drop'];
+  // Debug fürs Prüfskript: jede über den npc-Provider angelegte Figur landet in window.__devFigs (Animationscode via fig.getNetState().a), damit Emotes sichtbar prüfbar sind.
+  function recordFigures() {
+    window.__devFigs = [];
+    var tries = 0;
+    (function hook() {
+      var npc = window.__lfxStore && window.__lfxStore.use ? window.__lfxStore.use('npc') : null;
+      if (!npc || typeof npc.figure !== 'function') { if (++tries < 3000) requestAnimationFrame(hook); return; }
+      if (npc.__devHooked) return;
+      npc.__devHooked = true;
+      var orig = npc.figure;
+      npc.figure = function () { var f = orig.apply(this, arguments); window.__devFigs.push(f); return f; };
+    }());
+  }
   function loadMp() {
     if (mpModes.indexOf(mpQ) < 0) return Promise.resolve();
     return import('/build/mp-dev/fake.js').then(function (m) {
-      var w = m.createFakeWorld({ mode: mpQ === 'fake' ? 'ok' : mpQ, bots: mpQ === 'fake' ? Number(q.get('bots')) || 0 : 0, seed: Number(q.get('mpseed')) || 1, latency: q.get('mplat') !== null ? Number(q.get('mplat')) : undefined, uid: 'dev-user', name: 'Du' });
+      var w = m.createFakeWorld({
+        mode: mpQ === 'fake' ? 'ok' : mpQ, bots: mpQ === 'fake' ? Number(q.get('bots')) || 0 : 0, seed: Number(q.get('mpseed')) || 1, latency: q.get('mplat') !== null ? Number(q.get('mplat')) : undefined, uid: 'dev-user', name: 'Du',
+        admin: q.get('mpadmin') === '1', botAdmin: q.get('mpbotadmin') !== null ? Number(q.get('mpbotadmin')) : -1, botSocial: q.get('botsocial') !== '0',
+        prefs: q.get('mpchat') === '0' ? { chat: false } : undefined,
+      });
       w.start();
       deps.mp = w.mp;
       window.__devMp = w;
       mpOpts.mpTransport = w.socketFactory; // nur mit opts.debug (Harness) gelesen
+      recordFigures();
     }).catch(function (e) { console.warn('[dev] mp-fake', e && e.message); });
   }
   function boot() {

@@ -4,7 +4,8 @@
 //   createPeers(core) → { welcome(wl), ev(e), tick(dt), list(), name(c), get(c), count(), onFigure(fn) → off, setActive(on), onQuality(),
 //                         clear(), dispose(), stats() }
 //   core = { ctx, frame, serverNow() → ms|null, me() → { c, k }|null }   frame = net/frame.js createFrame(layout): dec(cx, cy, cz, r) → [x, y, z] Meter
-//   ev(e) versteht { t:'b', s, p:[[c,x,y,z,yaw,pitch,a,r,d,se?]], ev:[…] } sowie einzeln j (Peer), l {c}, pf {c,f,n,h}; fremde Typen werden ignoriert.
+//   ev(e) versteht { t:'b', s, p:[[c,x,y,z,yaw,pitch,a,r,d,se?]], ev:[…] } sowie einzeln j (Peer), l {c}, pf {c,f,n,h}, e {c,e} (Emote, Welle b); fremde Typen werden ignoriert.
+// Emote (net/emotes.js): läuft bis zur Dauer oder bis eine Pose nach dem Empfang mit a ∈ {1,2,3,4,6,8} eintrifft; überstimmt nur die Gehanimation, nie den Kinosessel.
 // Keine Timer: Takt kommt von tick(dt). Der Provider-Zugriff (npc, areas, city, palast, cinema2d) ist überall mit Guard.
 import { Body } from '../controls/body.js';
 import { makeLook } from '../npc/looks.js';
@@ -13,6 +14,7 @@ import { createSeatNet } from '../palast/seatnet.js';
 import { createTags } from './tags.js';
 import { createHeldCover } from './heldcover.js';
 import * as L from './peers-logic.js';
+import { startRemote, stepRemote, endedByPose } from './emotes.js';
 import { F } from './proto.js';
 
 const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] mp peers', what, err && err.message ? err.message : ''); } catch { /* egal */ } };
@@ -30,6 +32,7 @@ export function createPeers(core) {
   let dirty = true;
   let disposed = false;
   let lastReserve = -1;
+  let batchS = null; // Server-ms des gerade verarbeiteten Frames b (Zeitbezug der Emotes darin)
 
   const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
   const myInfo = () => { try { return (core.me && core.me()) || null; } catch { return null; } };
@@ -53,7 +56,7 @@ export function createPeers(core) {
     return {
       c: d.c, k: String(d.k || ''), n: typeof d.n === 'string' ? d.n : '', f: d.f | 0, j: d.j, ad: !!d.ad, h: d.h || null,
       r: 0, a: 0, se: null, body: new Body({ src: [], netDelay: L.PEER_DELAY_MS }), last: null, tl: [],
-      fig: null, speed: 0, lastA: -1, pos: null, prev: null, seatKey: '', vis: false, dist: 1e9,
+      fig: null, emote: null, speed: 0, lastA: -1, pos: null, prev: null, seatKey: '', vis: false, dist: 1e9,
     };
   }
 
@@ -102,6 +105,7 @@ export function createPeers(core) {
       const fig = n.figure({ look, parent: ctx.scene });
       p.fig = fig;
       p.lastA = -1;
+      if (p.emote) p.emote.shown = false;
       if (p.pos) { fig.root.position.set(p.pos.x, p.pos.y, p.pos.z); fig.root.rotation.y = p.pos.yaw; }
       emitFig('add', p, fig);
       return true;
@@ -152,6 +156,11 @@ export function createPeers(core) {
     fig.root.position.set(p.pos.x, p.pos.y, p.pos.z);
     fig.root.rotation.y = p.pos.yaw;
     if (!p.vis) return;
+    if (p.emote && !p.pos.seated) {
+      if (!p.emote.shown) { fig.setAnim(p.emote.name, { restart: true, then: 'idle' }); p.emote.shown = true; }
+      p.lastA = p.a;
+      return;
+    }
     const af = p.pos.seated ? { name: 'sit', speed: 0, restart: false, apply: true } : L.animFor(p.a, p.lastA, p.speed);
     if (af.apply) fig.setAnim(af.name, { speed: af.speed, restart: af.restart, then: 'idle' });
     p.lastA = p.a;
@@ -226,7 +235,8 @@ export function createPeers(core) {
             if (!p || !Number.isFinite(s)) continue;
             feedPose(p, { x: q[1], y: q[2], z: q[3], yaw: q[4], pitch: q[5], a: q[6], r: q[7], se: q[9] }, s - (Number.isFinite(q[8]) ? q[8] : 0));
           }
-          for (const x of Array.isArray(e.ev) ? e.ev : []) api.ev(x);
+          batchS = s;
+          try { for (const x of Array.isArray(e.ev) ? e.ev : []) api.ev(x); } finally { batchS = null; }
           return true;
         }
         case 'j': addPeer(e.peer || e.p || e, nowMs()); return true;
@@ -238,6 +248,16 @@ export function createPeers(core) {
           if (typeof e.n === 'string') p.n = e.n;
           if ('h' in e) p.h = e.h || null;
           dirty = true;
+          return true;
+        }
+        case 'e': {
+          const p = peers.get(e.c);
+          if (!p || isMe(e.c)) return true;
+          const t0 = Number.isFinite(batchS) ? batchS : nowMs();
+          const em = startRemote(e.e, Number.isFinite(t0) ? t0 : (p.tl.length ? p.tl[p.tl.length - 1].t : 0));
+          if (!em) return true;
+          p.emote = em;
+          p.lastA = -1;
           return true;
         }
         default: return false;
@@ -252,6 +272,7 @@ export function createPeers(core) {
         if (now !== null) p.body.syncNetClock(now - dt * 1000);
         p.body.step(dt);
         resolve(p, dt);
+        if (p.emote && (!stepRemote(p.emote, dt) || endedByPose(p.emote, p.tl))) { p.emote = null; p.lastA = -1; }
         if (p.fig) applyFig(p);
       }
       acc += dt;
@@ -261,7 +282,7 @@ export function createPeers(core) {
     list() {
       const me = myInfo();
       const counts = L.deviceCounts([...peers.values()], me && me.k);
-      return [...peers.values()].map((p) => ({ c: p.c, k: p.k, n: p.n, r: p.r, f: p.f, devs: counts.get(p.k) || 1 }));
+      return [...peers.values()].map((p) => ({ c: p.c, k: p.k, n: p.n, r: p.r, f: p.f, ad: !!p.ad, area: p.area || '', devs: counts.get(p.k) || 1 }));
     },
     /** Anzeigename mit Namens-Regel (leer oder ohne Namens-Flag → „Jemand“). */
     name(c) { const p = peers.get(c); return p ? L.displayName(p.n, p.f) : 'Jemand'; },

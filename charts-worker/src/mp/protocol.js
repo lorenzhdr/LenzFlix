@@ -101,6 +101,19 @@ export const V = {
   ck(m) {
     return isNum(m.a) && Math.abs(m.a) <= 2 ** 53 ? { t: 'ck', a: m.a } : null;
   },
+  // Chat (Welle b): Text bereinigt, höchstens 200 Zeichen; leer -> verwerfen.
+  m(m) {
+    const x = cleanText(m.x, 200);
+    return x ? { t: 'm', x } : null;
+  },
+  // Emote: Code 1..8, sonst verwerfen.
+  e(m) {
+    return isNum(m.e) && Number.isInteger(m.e) && m.e >= 1 && m.e <= 8 ? { t: 'e', e: m.e } : null;
+  },
+  // Admin-Kick: Ziel = Verbindungsnummer 1..65535.
+  ki(m) {
+    return isNum(m.c) && Number.isInteger(m.c) && m.c >= 1 && m.c <= 65535 ? { t: 'ki', c: m.c } : null;
+  },
   rn(m) {
     return typeof m.tk === 'string' && RE_TK.test(m.tk) ? { t: 'rn', tk: m.tk } : null;
   },

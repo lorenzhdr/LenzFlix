@@ -1,0 +1,143 @@
+{
+  "contract": "lfx-mp.1",
+  "note": "Besitzer W-B. c2s: rohe Client-Nachricht -> normalisiert (out) oder null (verworfen); Client-Builder muessen Eingaben erzeugen, die unveraendert (in == out) bestehen. s2c: Beispielframes (vom Test mp-chat gegen den Reducer geprueft, mit MP_GOLDEN_WRITE=1 neu schreibbar).",
+  "limits": {
+    "m": {
+      "n": 5,
+      "per": 10000,
+      "burst": 5,
+      "fail": "rate"
+    },
+    "e": {
+      "n": 1,
+      "per": 1500,
+      "burst": 1
+    },
+    "ki": {
+      "n": 1,
+      "per": 5000,
+      "burst": 1,
+      "fail": "perm"
+    }
+  },
+  "c2s": [
+    {
+      "name": "m einfach",
+      "in": {
+        "t": "m",
+        "x": "Hallo zusammen"
+      },
+      "out": {
+        "t": "m",
+        "x": "Hallo zusammen"
+      }
+    },
+    {
+      "name": "m Leerraum und Bidi-Zeichen bereinigt",
+      "in": {
+        "t": "m",
+        "x": "  a‮b \n c​ "
+      },
+      "out": {
+        "t": "m",
+        "x": "ab c"
+      }
+    },
+    {
+      "name": "m NFC",
+      "in": {
+        "t": "m",
+        "x": "é"
+      },
+      "out": {
+        "t": "m",
+        "x": "é"
+      }
+    },
+    {
+      "name": "m leer nach Bereinigung",
+      "in": {
+        "t": "m",
+        "x": " ​ "
+      },
+      "out": null
+    },
+    {
+      "name": "m kein String",
+      "in": {
+        "t": "m",
+        "x": 5
+      },
+      "out": null
+    },
+    {
+      "name": "e gueltig",
+      "in": {
+        "t": "e",
+        "e": 8
+      },
+      "out": {
+        "t": "e",
+        "e": 8
+      }
+    },
+    {
+      "name": "e ausserhalb 1..8",
+      "in": {
+        "t": "e",
+        "e": 9
+      },
+      "out": null
+    },
+    {
+      "name": "e nicht ganzzahlig",
+      "in": {
+        "t": "e",
+        "e": 1.5
+      },
+      "out": null
+    },
+    {
+      "name": "ki gueltig",
+      "in": {
+        "t": "ki",
+        "c": 3
+      },
+      "out": {
+        "t": "ki",
+        "c": 3
+      }
+    },
+    {
+      "name": "ki ungueltig",
+      "in": {
+        "t": "ki",
+        "c": 0
+      },
+      "out": null
+    }
+  ],
+  "s2c": {
+    "chat_x": {
+      "t": "m",
+      "c": 1,
+      "x": "Hallo!",
+      "s": 1700000000100
+    },
+    "emote_b": {
+      "t": "e",
+      "c": 2,
+      "e": 5
+    },
+    "kick_bye": {
+      "t": "bye",
+      "c": "ban",
+      "u": 1700000604100
+    },
+    "kick_l": {
+      "t": "l",
+      "c": 2,
+      "r": "kick"
+    }
+  }
+}

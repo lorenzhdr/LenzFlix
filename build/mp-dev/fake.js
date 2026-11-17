@@ -6,6 +6,7 @@
 //     bots        Bot-Schwarm (build/mp-dev/bots.js), stats()
 //     connect(claims, handlers) → { c, send(text), close(code) }   (für Bots/Tests, ohne Ticket)
 //     setPrefs(partial), start() (Browser: Takt per setInterval 25 ms), advance(ms) (nur virtual), pump(), stats(), dispose() }
+//   Welle 2: admin = ich bin Admin (Ticket a=1), prefs = Start-Prefs (z. B. { chat:false }), botSocial (Standard true: Bots chatten/emoten von selbst), botAdmin = Bot-Index mit Admin-Rolle.
 //   mode: 'ok' | 'nourl' | '404' | '503' | '401' | 'blocked' | 'drop' (Verbindung bricht sofort nach dem Öffnen ab, 1006).
 //   virtual: eigene Uhr (Start opts.start), advance(ms) treibt Server, Latenz, Alarm und Bots in 25-ms-Schritten.
 import { createState, step, precheck } from '../../charts-worker/src/mp/room.js';
@@ -272,6 +273,6 @@ export function createFakeWorld(o = {}) {
       conns.clear();
     },
   };
-  world.bots = createBots(world, { n: Math.max(0, Math.floor(o.bots || 0)), seed: o.seed || 1 });
+  world.bots = createBots(world, { n: Math.max(0, Math.floor(o.bots || 0)), seed: o.seed || 1, social: o.botSocial !== false, adminBot: Number.isInteger(o.botAdmin) ? o.botAdmin : -1 });
   return world;
 }

@@ -56,9 +56,9 @@ describe('mp-room: Handshake', () => {
     expect(c).toBe(1);
     const [wl] = w.take(c);
     expect(wl).toEqual({
-      t: 'wl', pv: 1, c: 1, k: K('a'), s: NOW0, ad: 0, cap: SERVER_CAPS, cf: { pr: 8, ph: 8 }, peers: [],
+      t: 'wl', pv: 1, c: 1, k: K('a'), s: NOW0, ad: 0, cap: ['pres', 'chat'], cf: { pr: 8, ph: 8 }, peers: [],
     });
-    expect(SERVER_CAPS).toEqual(['pres']); // Welle a: Stubs kuendigen nichts an
+    expect(SERVER_CAPS).toEqual(['pres', 'chat', 'emote', 'admin']); // Welle b: chat.js kuendigt chat/emote/admin an
   });
   it('Admin-Kennung', () => {
     const w = world();

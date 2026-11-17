@@ -186,3 +186,21 @@ describe('Golden-Datei des Workers (core.json)', () => {
     }
   });
 });
+
+describe('Golden-Datei des Workers (chat.json)', () => {
+  const file = new URL('../charts-worker/test/fixtures/mp-golden/chat.json', import.meta.url);
+  const exists = fs.existsSync(file);
+  const cases = exists ? JSON.parse(fs.readFileSync(file, 'utf8')).c2s || [] : [];
+  (exists ? it : it.skip)('c2s: normalizeOut(in) == out; Builder m/e/ki erzeugen gültige Nachrichten', () => {
+    for (const c of cases) {
+      // Der Client klemmt e/ki statt sie zu verwerfen (Aufrufer reichen nur gültige Werte); nur gültige Fälle sind vertragsrelevant.
+      if (c.out) expect(P.normalizeOut(c.in), c.name).toEqual(c.out);
+      if (c.out && JSON.stringify(c.in) === JSON.stringify(c.out)) {
+        const m = c.in;
+        const built = m.t === 'm' ? P.build.m(m.x) : m.t === 'e' ? P.build.e(m.e) : P.build.ki(m.c);
+        expect(built, c.name).toEqual(m);
+      }
+    }
+    expect(cases.length).toBeGreaterThan(5);
+  });
+});
