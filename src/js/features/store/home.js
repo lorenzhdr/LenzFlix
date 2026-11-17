@@ -87,7 +87,7 @@ function onCinema2d(s) {
   else if (bridge && !xr.cinema) bridge.activate(false);
   if (palast.full && !backBtn) backBtn = mountBackButton({ onBack: () => { try { inst.instance.cinema2dSetFull(false); } catch { /* egal */ } } });
   else if (!palast.full && backBtn) { backBtn.destroy(); backBtn = null; }
-  if (!palast.active && inst && inst.parked) releaseParked();
+  if (!palast.active && !isPresenting() && inst && inst.parked) releaseParked();
 }
 
 function hasWebGL() {

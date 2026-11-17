@@ -3,11 +3,10 @@
 // stepWalker(w, dt, env) → Ereignisliste [{ type: 'say', cat } | { type: 'bump' }]. env = {
 //   graph, rand, signal: { walkMain, walkSide }, player: { x, z, speed } | null, zebraClear(edge) → bool, roadMid (z, trennt Nord-/Südgehweg) }
 import { edgeDir, pointOn, chooseNext } from './pathgraph.js';
+import { angDiff } from '../modules/m4-util.js';
 
 export const SPUR_PATHS = new Set(['shopDoor', 'palastDoor', 'alleyMouth', 'kioskFront']);
-const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 export const yawOf = (dx, dz) => Math.atan2(-dx, -dz);
 
 /** Darf auf einer Kante mit Bedingung `wait` losgelaufen werden? */

@@ -2,10 +2,10 @@
 // Katze: sit | groom | walk | flee | purr. Sie läuft zwischen festen Plätzen (gerade Linien, vorab auf Freiheit geprüft), flieht vor
 // rennenden/nahen Spielern und von Schlägen in ihrer Nähe, lässt sich bei ruhigem Herangehen streicheln (purr).
 // Tauben: peck | walk | fly | land. Der Schwarm hebt gemeinsam ab (kleine Verzögerungen), kreist 6–14 s und landet an einem Heimatplatz.
+import { angDiff } from '../modules/m4-util.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 const yawTo = (dx, dz) => Math.atan2(-dx, -dz);
 
 // ---------------------------------------------------------------- Katze

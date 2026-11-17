@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · Spielerzustand: Position, Blick, weiche Beschleunigung, Kollision mit Höhen, Sprung, Pfadfolge (Touch).
 // Physik und Netzzustand liegen im geteilten Körper (controls/body.js); der Player ergänzt Blick, Pfad und Kamera-Effekte.
 import { Body } from './body.js';
+import { angDiff } from '../modules/m4-util.js';
 
 export const EYE = 1.65;
 const WALK = 2.2;
@@ -8,12 +9,6 @@ const RUN = 4.0;
 const PITCH_MAX = 1.25;
 const DIP_MIN = -0.12;
 
-function angDiff(a, b) {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
 
 export class Player extends Body {
   /**

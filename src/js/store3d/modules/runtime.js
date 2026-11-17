@@ -9,15 +9,10 @@ import { loadBitmap, closeBitmap } from '../covers/loader.js';
 import { makeCanvas } from '../world/textures.js';
 import { disposeTree } from '../util/geo.js';
 import { PITCH_FACTOR } from './voice.js';
+import { angDiff } from './m4-util.js';
 
 const ease = (t) => t * t * (3 - 2 * t);
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
-function angDiff(a, b) {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
 
 export class ModuleHost {
   constructor(app) {

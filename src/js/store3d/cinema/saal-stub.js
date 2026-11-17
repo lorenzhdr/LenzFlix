@@ -1,5 +1,5 @@
-// VIDEOTHEK LENZ · 2D-Kino: Spike-Saal für Harness und Live-Test (window.__lfxStore.palastTest()). Bis das Palast-Gebäude (Welle 2)
-// ein echtes `saal`-Handle liefert, baut dies eine Leinwand und einen Sitz vor den Spieler. Kein Produktiv-Pfad (nur über die Debug-API).
+// VIDEOTHEK LENZ · 2D-Kino: Rückfall-Saal für Harness und Live-Test (window.__lfxStore.palastTest()). Der echte Saal kommt aus dem Modul
+// `palast` (modules/palast.js); dies baut nur noch eine Leinwand und einen Sitz vor den Spieler. Kein Produktiv-Pfad (nur über die Debug-API).
 // Das `saal`-Format ist die dokumentierte Schnittstelle (PalastCinema.attachSaal), das Stub-Handle erfüllt sie vollständig.
 import { Group, Mesh, BoxGeometry, MeshBasicMaterial } from 'three';
 import { disposeTree } from '../util/geo.js';

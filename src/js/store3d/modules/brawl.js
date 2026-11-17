@@ -10,7 +10,7 @@ import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { createBrawlFsm, STATES, BRAWL } from './brawl-fsm.js';
 import { inCone, stepAlong, hopPoint, aimVelocity, ballisticStep } from './brawl-logic.js';
 import { poseFor, NEUTRAL, ANIMS, REDNESS } from './brawl-pose.js';
-import { prefersReducedMotion } from './m4-util.js';
+import { prefersReducedMotion, angDiff } from './m4-util.js';
 
 const GRUDGE_KEY = 'lfx.store.richardGrudge';
 const RUN_SPEED = 4.0;
@@ -21,7 +21,6 @@ const THROW_GAP = 1.4;
 const WIND = 0.45;
 const SAY_GAP = 3.2; // Mindestabstand zwischen Rufen
 
-const angDiff = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
 
 function banCanvas() {
   const c = makeCanvas(256, 128);
@@ -385,6 +384,11 @@ export default {
         const inside = R.inStore();
         // Sicherheit: Hausverbot, aber Spieler im Laden (Teleport u. a.) -> Tür auf
         if (fsm.state === 'banned' && lockPending && !inside && playerClear()) applyBan();
+        // Spieler blieb nach dem Rauswurf im Türspalt (draußen, aber noch im Türblock): sanft weiter nach draußen schubsen, bis die Sperre greift
+        if (fsm.state === 'banned' && lockPending && !inside && !playerClear() && T >= pushAt) {
+          pushAt = T + 0.7;
+          ctx.player.knock({ x: 0, z: 1 }, 0.8);
+        }
         if (fsm.state === 'banned' && inside) { lockDoor(false); fsm.startGrudge(T); onTransition({ to: 'grudge', reason: 'safety' }); }
         // Wurfphase
         if (fsm.state === 'throw') {

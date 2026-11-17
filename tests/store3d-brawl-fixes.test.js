@@ -66,7 +66,7 @@ describe('brawl QA-Fixes', () => {
   }
 
   it('Q2#1: Spieler im Türspalt: Tür sperrt erst, wenn er frei draußen steht; kein Sicherheitsnetz-Grudge', async () => {
-    const { state, door, layout, found } = await build();
+    const { state, door, layout, found, knock } = await build();
     const bw = host.providers.get('brawl');
     let t = 1; host.hook('update', 0.016, t);
     window.__lfxBrawl.force('chase');
@@ -78,6 +78,8 @@ describe('brawl QA-Fixes', () => {
     for (let i = 0; i < 5; i++) { t += 0.1; host.hook('update', 0.1, t); }
     expect(bw.state()).toBe('banned');
     expect(door.unlock).not.toHaveBeenCalled();
+    // Rest-Randfall: Richard/Sperre schubst den Spieler im Spalt sanft nach draußen (+z)
+    expect(knock).toHaveBeenCalledWith({ x: 0, z: 1 }, 0.8);
     state.z = layout.d + 1.5; // geht weiter nach draußen
     t += 0.1; host.hook('update', 0.1, t);
     expect(door.lock).toHaveBeenCalledTimes(1);

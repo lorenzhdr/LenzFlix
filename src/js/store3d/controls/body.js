@@ -5,6 +5,7 @@ import {
   RADIUS, GRAV, JUMP_V, VY_MIN, COYOTE, JUMP_BUF, AIR_K, MANTLE_T, STEP_H, BODY_H, EPS,
   resolveCircle3, groundHeight, ceilingY, findMantle,
 } from '../nav/collide.js';
+import { angDiff } from '../modules/m4-util.js';
 
 export { RADIUS };
 
@@ -26,12 +27,6 @@ const smoothstep = (t) => t * t * (3 - 2 * t);
 const r3 = (v) => +v.toFixed(3);
 const r2 = (v) => +v.toFixed(2);
 
-function angDiff(a, b) {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
 
 export class Body {
   /** @param {{ src, x?, z?, y?, yaw?, pitch?, spawn? }} o  src = Kollider-Quelle (Array | Index | { index, dyn }, siehe nav/collide.js) */

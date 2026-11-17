@@ -425,8 +425,20 @@ export default {
       visible = near && front && (dot > 0.35 || d < 1.2);
       canVideo = visible && d < 12 && level !== 'low' && !suspended;
     }
+    // Slide-Zustand: Bild ändert sich nur bei Slide-/Quellen-/Größen-/OSD-Wechsel → sonst kein Neuzeichnen und kein Textur-Upload
+    let lastKey = null;
+    function slideKey() {
+      const s = slides[idx % slides.length];
+      const sitting = seat === 'in';
+      const src = s ? ((sitting && s.big) || s.canvas || null) : null;
+      return { s, src, W, H, chan, osd: osdT > 0, title: s && s.title };
+    }
+    function sameKey(a, b) {
+      return !!a && a.s === b.s && a.src === b.src && a.W === b.W && a.H === b.H && a.chan === b.chan && a.osd === b.osd && a.title === b.title;
+    }
     function frame() {
       if (!slides.length) return;
+      lastKey = state === 'slide' ? slideKey() : null;
       const k = W / SW;
       const s = slides[idx % slides.length];
       const sitting = seat === 'in';
@@ -752,7 +764,10 @@ export default {
           after = 'slide';
         }
         drawT += dt;
-        if (drawT >= (state === 'trailer' ? (sitting ? 1 / 30 : 1 / 24) : 1 / 12)) { drawT = 0; frame(); }
+        if (drawT >= (state === 'trailer' ? (sitting ? 1 / 30 : 1 / 24) : 1 / 12)) {
+          drawT = 0;
+          if (state !== 'slide' || !slides.length || !sameKey(lastKey, slideKey())) frame();
+        }
       },
       onQuality(lv) {
         level = lv;

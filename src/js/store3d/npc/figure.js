@@ -11,9 +11,8 @@ import { sph } from '../modules/m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { lookKey } from './looks.js';
 import { Animator } from './anim.js';
+import { angDiff } from '../modules/m4-util.js';
 
-const TAU = Math.PI * 2;
-const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
 const dark = (c, k) => c.map((v) => v * k);

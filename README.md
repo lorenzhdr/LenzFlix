@@ -106,7 +106,7 @@ Die Videothek steht in einer kleinen Stadt: Durch die Tür geht es auf die Stra�
 - **LENZ PALAST:** An der Kasse ein Ticket für das Tagesprogramm holen (vier Vorstellungen aus der eigenen Mediathek, jede Vorstellung startet für dich von vorn), im Saal einen Platz wählen und den Film auf der großen Leinwand ansehen. Pause, Spulen, Lautstärke und Vollbild liegen in der Leiste; im Vollbild bringt „Zurück ins Kino“ in den Saal zurück, mit Esc steht man auf. Eigene Kassetten kann man mitbringen und am Eingang abgeben. Läuft die Leinwand nicht, fällt das Kino automatisch auf den normalen Player zurück.
 - **Richard, Ausleihen, Physik:** Wer Richard schlägt, bekommt Ärger; mit Hausverbot bleibt die Tür eine Weile zu. Hüllen lassen sich an der Kasse ausleihen, Bälle, Dosen und Kisten rollen, kippen und lassen sich schlagen und werfen. Im Hof hängt ein Basketballkorb.
 - **Entdeckungen:** Überall sind 15 Kleinigkeiten versteckt. Das Pause-Menü zeigt, wie viele schon gefunden sind, und gibt Hinweise ohne die Lösung zu verraten. Der Stand wird pro Browser gespeichert.
-- **Hinweise:** Wer sich verirrt, wird beim Neuladen an der letzten Position oder im Laden abgesetzt. Auf schwachen Geräten helfen „Qualität“ im Pause-Menü und ein kleinerer Datenumfang (Hüllen „Normal“).
+- **Hinweise:** Beim Neuladen steht man wieder an der letzten Position (auch in der Stadt); ist die Stelle ungültig oder belegt, geht es zum nächsten freien Punkt in der Nähe, sonst in den Laden. Auf schwachen Geräten helfen „Qualität“ im Pause-Menü und ein kleinerer Datenumfang (Hüllen „Normal“).
 
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 

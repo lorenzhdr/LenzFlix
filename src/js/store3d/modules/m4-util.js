@@ -110,3 +110,12 @@ export function createLimiter(gapMs = 20000) {
     get last() { return last; },
   };
 }
+
+/** Kürzeste Winkeldifferenz b - a in [-PI, PI]. */
+export const angDiff = (a, b) => {
+  const T = Math.PI * 2;
+  let d = (b - a) % T;
+  if (d > Math.PI) d -= T;
+  if (d < -Math.PI) d += T;
+  return d;
+};

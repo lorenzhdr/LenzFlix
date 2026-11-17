@@ -1,7 +1,7 @@
-// LENZ TV-Modus · Controller: UI-freier Zustandsautomat nach dem Vorbild von live/ui/app.js (kein DOM).
+// LENZ TV-Modus · Controller: UI-freier Zustandsautomat nach dem Vorbild der früheren Fernbedienungs-Logik von LENZ LIVE (kein DOM).
 // createTvController({ scheduler, player, watch, pickFiller, deps, now, opts }) → Controller (API: docs/tvmode.md).
 //   player: createPlayer()-Instanz (injiziert) · watch: createWatchTracker() oder null · now(): ms.
-//   opts: { lastChannel, volume (0..1 wie LIVE; Werte > 1 gelten als Prozent), muted }.
+//   opts: { lastChannel, volume (0..1 wie beim früheren LENZ LIVE; Werte > 1 gelten als Prozent), muted }.
 //   deps: wird an pickFiller durchgereicht (loadTrailer); deps.savePrefs({lastChannel|volume|muted}) optional.
 // Meldet nie Fortschritt (kein /Sessions/Playing). Importiert nur Dateien aus src/js/tv/.
 import { broadcastDayOf, formatClock } from '../schedule/time.js';
@@ -147,7 +147,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
   function toggleMute() {
     if (disposed) return;
     if (mutedByPolicy) {
-      // Autoplay-Sperre: erste Stumm-Taste schaltet nur den Ton ein (wie LIVE), außer der Nutzer hatte selbst stumm geschaltet
+      // Autoplay-Sperre: erste Stumm-Taste schaltet nur den Ton ein (wie beim früheren LENZ LIVE), außer der Nutzer hatte selbst stumm geschaltet
       mutedByPolicy = false;
       applyVolume();
       if (!muted) { changed(); return; }
@@ -236,7 +236,7 @@ export function createTvController({ scheduler, player, watch = null, pickFiller
     return true;
   }
 
-  // ---------- Vorauflösung/Vorwärmen der Nachbarsender (live/player/neighbors.js) ----------
+  // ---------- Vorauflösung/Vorwärmen der Nachbarsender (tv/player/neighbors.js) ----------
   function abortPrefetch() {
     if (pfAc) { try { pfAc.abort(); } catch { /* egal */ } pfAc = null; }
   }

@@ -1,4 +1,4 @@
-// LENZ TV-Modus · Ziffern-Eingabe (Sendernummer 1–18), Verhalten wie live/ui/app.js (digit/commitDigits).
+// LENZ TV-Modus · Ziffern-Eingabe (Sendernummer 1–18), Verhalten wie in der früheren LIVE-Fernbedienung (digit/commitDigits).
 //   0 → wartet auf die zweite Ziffer (Timeout verwirft) · 1 → wartet (Timeout schaltet Sender 1) · 2–9 → sofort.
 //   Zweite Ziffer: 1–18 gültig, sonst onInvalid. onPreview(text|null): Anzeige der Eingabe ('1_'), null = leer.
 // Keine Importe, kein DOM.

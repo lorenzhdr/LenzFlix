@@ -90,6 +90,16 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge.is-touch {
   top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 64px);
 }
+/* Hochformat: die Hinweisleiste „quer drehen“ belegt top+64 bis ca. top+119 → Blase darunter */
+@media (orientation: portrait) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge.is-touch {
+    top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 128px);
+  }
+}
+/* Hülle in der Hand (Halte-Bild): Blase ausblenden, sie läge sonst über dem 3D-Cover */
+html.lfx-js.lfx-theme-store:not(.layout-tv) :has(> .lfx-store-hold) > .lfx-store-bubble {
+  visibility: hidden;
+}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge::after {
   display: none;
 }
