@@ -17,7 +17,7 @@ import { TouchControls, SCHEMES, normTune } from './controls/touch.js';
 import { createRotateHint } from './ui/rotate.js';
 import { pickCover, pickBoxes, wallOccluders } from './controls/pick.js';
 import { ModuleHost } from './modules/runtime.js';
-import { createHud, DESKTOP_HELP } from './ui/hud.js';
+import { createHud, DESKTOP_HELP, touchHint } from './ui/hud.js';
 import { createPause } from './ui/pause.js';
 import { HoldView } from './ui/holdview.js';
 import { createHands } from './ui/hands.js';
@@ -623,7 +623,7 @@ export class StoreApp {
     this.aim = hit;
     if (hit.ia) {
       this.highlight.visible = false;
-      this.hud.setHint(hit.ia.label, hit.ia.hint || (this.touch ? 'Benutzen' : 'E / Klick: Benutzen'));
+      this.hud.setHint(hit.ia.label, this.touch ? touchHint(hit.ia.hint || 'Benutzen') : hit.ia.hint || 'E / Klick: Benutzen');
       this.hud.setCross(true, true);
       if (this.touchCtl) this.touchCtl.setAimed(true);
       return;

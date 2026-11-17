@@ -389,7 +389,11 @@ export class HoldView {
     this.dom.btns.fav = btn('', () => this.toggle('fav'));
     this.dom.btns.seen = btn('', () => this.toggle('seen'));
     this.dom.btns.flip = btn('Umdrehen', () => { this.flipped = !this.flipped; this.rotTargetY = this.flipped ? Math.PI : 0; });
-    if (this.onCarry) this.dom.btns.carry = btn('Mitnehmen', () => this.carryOut());
+    if (this.onCarry) {
+      this.dom.btns.carry = btn('Mitnehmen', () => this.carryOut());
+      this.dom.btns.carry.title = 'Mitnehmen (Taste M)';
+      this.dom.btns.carry.setAttribute('aria-keyshortcuts', 'M');
+    }
     this.dom.btns.back = btn('Zurückstellen', () => this.close(true));
     this.refreshMeta();
     // Fokus aufs Panel, nicht auf „Abspielen“: Leertaste/Enter nach dem Nehmen starten sonst versehentlich die Wiedergabe

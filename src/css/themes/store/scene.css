@@ -314,6 +314,24 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel .lfx-stor
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voiceitem {
   text-align: left;
 }
+/* Entdeckungen: Beschreibung linksbündig wie der Titel */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voiceitem .lfx-store-pause-note {
+  margin: 2px 0 0;
+  text-align: left;
+}
+/* Unterpanel: „Zurück“ bleibt am unteren Rand sichtbar, auch wenn die Liste scrollt (Handy quer) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel > .lfx-store-act--primary:last-child {
+  position: sticky;
+  bottom: 0;
+  flex: 0 0 auto;
+  z-index: 1;
+}
+@media (max-height: 480px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-panel {
+    gap: 5px;
+    padding: 12px 14px;
+  }
+}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-voicepick-note {
   pointer-events: auto;
   user-select: text;

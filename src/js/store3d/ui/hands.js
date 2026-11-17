@@ -60,7 +60,7 @@ export function createHands(camera) {
       mesh.rotation.set(-0.25, -0.45, 0.08);
       carryGroup.add(mesh);
       carried = { mesh, tex, mats: [...new Set([side, front])] };
-      carryGroup.visible = visible;
+      carryGroup.visible = true; // Sichtbarkeit insgesamt über group (Hände im Halte-Bild aus, danach wieder an)
     },
     setVisible(on) {
       visible = !!on;

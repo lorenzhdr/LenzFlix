@@ -157,7 +157,7 @@ export default {
       const mkPanelIa = () => {
         if (rmPanel) rmPanel();
         rmPanel = ctx.addInteractable({
-          box: { min: { x: px - 0.5, y: 0.7, z: 0 }, max: { x: px + 0.5, y: 1.6, z: 0.45 } },
+          box: { min: { x: px - 0.5, y: 0.7, z: 0 }, max: { x: px + 0.5, y: 1.95, z: 0.45 } }, // bis über die Augenhöhe: auch bei geradem Blick anvisierbar
           label: opened ? 'Nische hinter der Wandplatte' : 'Lose Wandplatte',
           hint: opened ? 'E / Klick: Hineinschauen' : 'E / Klick: Wackeln',
           onUse: () => {

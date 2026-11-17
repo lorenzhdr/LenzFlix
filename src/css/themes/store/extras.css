@@ -43,7 +43,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble {
   position: absolute;
   left: 0;
   top: 0;
-  z-index: 4; /* unter Pause-Menü/Stimmenauswahl (5) */
+  z-index: 3; /* unter Halte-Bild (4) und Pause-Menü/Stimmenauswahl (5) */
   max-width: min(72vw, 300px);
   padding: 9px 14px;
   border: 2px solid #12163a;
@@ -85,6 +85,10 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge {
   left: 50%;
   top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 18px);
   transform: translateX(-50%);
+}
+/* Touch: unter dem Hinweis-Toast (oben mittig), nicht darüber */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge.is-touch {
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 64px);
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-bubble.is-edge::after {
   display: none;
