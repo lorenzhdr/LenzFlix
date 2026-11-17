@@ -193,6 +193,12 @@ export class Body {
     if (!this.grounded || this.vy > 0) this.vy = Math.max(VY_MIN, this.vy - GRAV * h);
     this.y += (vy0 + this.vy) * 0.5 * h; // Trapez = exakte Parabel bei konstanter Beschleunigung
 
+    // Decke vor dem Horizontalschritt klemmen: sonst zählt eine Platte über dem Kopf (Dach) als Seitenhindernis
+    if (this.vy > 0) {
+      const c0 = ceilingY(this.x, this.z, RADIUS, this.y, src);
+      if (this.y + BODY_H > c0) { this.vy = 0; this.y = c0 - BODY_H; }
+    }
+
     // Horizontal bewegen
     let hit = false;
     let res = null;

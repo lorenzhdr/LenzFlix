@@ -15,7 +15,7 @@ import { Player } from './controls/player.js';
 import { DesktopControls } from './controls/desktop.js';
 import { TouchControls, SCHEMES, normTune } from './controls/touch.js';
 import { createRotateHint } from './ui/rotate.js';
-import { pickCover, pickBoxes } from './controls/pick.js';
+import { pickCover, pickBoxes, wallOccluders } from './controls/pick.js';
 import { ModuleHost } from './modules/runtime.js';
 import { createHud, DESKTOP_HELP } from './ui/hud.js';
 import { createPause } from './ui/pause.js';
@@ -435,6 +435,13 @@ export class StoreApp {
   /** Interaktionen ohne anyHeight gelten nur am Boden (Füße höchstens 0,5 m hoch). */
   iaReachable(ia) { return !!ia.anyHeight || !(this.player.y > 0.5); }
 
+  /** Wände als Sichtblocker für Interaktions-Strahlen (neu berechnet, wenn Module Kollider hinzufügen oder entfernen). */
+  occluders() {
+    const cs = (this.layout && this.layout.colliders) || [];
+    if (!this._occ || this._occN !== cs.length) { this._occ = wallOccluders(cs); this._occN = cs.length; }
+    return this._occ;
+  }
+
   groundIas() {
     const l = this.mods.interactables;
     return this.player.y > 0.5 ? l.filter((i) => i.anyHeight) : l;
@@ -605,7 +612,7 @@ export class StoreApp {
     const { camera } = this.engine;
     camera.getWorldDirection(this._d);
     let hit = pickCover(this.shelves.faceViews, camera.position, this._d, 2.5);
-    const iaHit = pickBoxes(this.groundIas(), camera.position, this._d, 2.5);
+    const iaHit = pickBoxes(this.groundIas(), camera.position, this._d, 2.5, this.occluders());
     if (iaHit && (!hit || iaHit.t < hit.t)) hit = iaHit;
     const prev = this.aim;
     if (!hit) {
@@ -641,7 +648,7 @@ export class StoreApp {
     const { origin, direction } = this.rc.ray;
     this.pendingTake = this.pendingUse = null;
     const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
-    const iaHit = pickBoxes(this.groundIas(), origin, direction, 9);
+    const iaHit = pickBoxes(this.groundIas(), origin, direction, 9, this.occluders());
     const far = this.touchScheme === 'joystick' ? 'Halte GEHEN, um hinzulaufen' : this.touchScheme === 'game' ? 'Geh näher heran' : 'Halte gedrückt, um hinzulaufen';
     const p = this.player;
     if (iaHit && (!hit || iaHit.t < hit.t)) {

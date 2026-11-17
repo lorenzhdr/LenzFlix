@@ -228,8 +228,8 @@ export function buildCity(store) {
   // --- Feuertreppe (alle Maße relativ zu fx), Dach ---
   const L1 = col('escapeL1', 'escape', fx - 1.1, -1.62, fx + 1.1, -T, { y1: 1.65 });
   const escape = { fx, parts: [L1.id] };
-  for (let k = 1; k <= 4; k++) { const q = col(`escapeA${k}`, 'escape', fx + 1.1 + (k - 1) * 0.36, -1.62, fx + 1.1 + k * 0.36, -0.62, { y1: Math.round((1.65 - 0.33 * k) * 100) / 100 }); escape.parts.push(q.id); }
-  for (let j = 1; j <= 4; j++) { const q = col(`escapeB${j}`, 'escape', fx - 1.1 - j * 0.36, -1.62, fx - 1.1 - (j - 1) * 0.36, -0.62, { y1: Math.round((1.65 + 0.33 * j) * 100) / 100 }); escape.parts.push(q.id); }
+  for (let k = 1; k <= 4; k++) { const q = col(`escapeA${k}`, 'escape', fx + 1.1 + (k - 1) * 0.36, -1.62, fx + 1.1 + k * 0.36, -T, { y1: Math.round((1.65 - 0.33 * k) * 100) / 100 }); escape.parts.push(q.id); }
+  for (let j = 1; j <= 4; j++) { const q = col(`escapeB${j}`, 'escape', fx - 1.1 - j * 0.36, -1.62, fx - 1.1 - (j - 1) * 0.36, -T, { y1: Math.round((1.65 + 0.33 * j) * 100) / 100 }); escape.parts.push(q.id); }
   const L2 = col('escapeL2', 'escape', fx - 3.64, -1.62, fx - 2.54, -T, { y1: ROOF_Y });
   escape.parts.push(L2.id);
   const roof = { x0: -T, z0: -T, x1: W + T, z1: D + T, y: ROOF_Y, gate: { x0: fx - 3.84, x1: fx - 2.34 } };
@@ -292,7 +292,7 @@ export function buildCity(store) {
   const litfass = { x: lfx, z: D + 10.3, r: 0.35, h: 2.7, slot: { x: lfx, y: 1.5, z: D + 10.3, r: 0.37, h: 1.6 } }; // Plakatfläche als Anker (Mantel um die Säule)
   fix('litfass', 'litfass', lfx - 0.35, litfass.z - 0.35, lfx + 0.35, litfass.z + 0.35, { y1: litfass.h, top: false });
   const bikeX = Math.round((W / 2 - 12) * 100) / 100;
-  fix('bikerack', 'bikerack', bikeX - 0.8, D + 0.3, bikeX + 0.8, D + 0.7, { y1: 0.9, top: false });
+  fix('bikerack', 'bikerack', bikeX - 0.8, D + 0.3, bikeX + 0.8, D + 0.7, { y1: 1.5, top: false });
   [-3.4, -2.2, 2.2, 3.4].forEach((o, i) => { const x = W / 2 + o; fix(`bollard${i}`, 'bollard', x - 0.1, D + 2.35, x + 0.1, D + 2.55, { y1: 0.9, top: false }); });
 
   // --- Laternen, Ampelmasten ---
@@ -344,7 +344,7 @@ export function buildCity(store) {
   Z('roof', 'Dach', { x0: -T, z0: -T, x1: W + T, z1: D + T, y0: 3.0 });
   Z('kiosk', 'Kiosk', { x0: W + 8.4, z0: D + 0.3, x1: W + 11.6, z1: D + 2.0, y1: hi });
   Z('palast', 'LENZ PALAST', palast.rect);
-  Z('palastFoyer', 'Palast-Foyer', { x0: palast.foyer.x0, z0: palast.foyer.z0, x1: palast.foyer.x1, z1: palast.foyer.z1 });
+  Z('palastFoyer', 'Palast-Foyer', { x0: palast.foyer.x0, z0: palast.foyer.z0, x1: palast.foyer.x1, z1: palast.hall.z0 }); // bis zum Saal: die Trennwand gehört zur Foyer-Zone (kein Spalt)
   Z('palastHall', 'Palast-Saal', { x0: palast.hall.x0, z0: palast.hall.z0, x1: palast.hall.x1, z1: palast.hall.z1 });
   Z('palastEntrance', 'Palast-Eingang', { x0: W / 2 - 2, z0: sz - 2.2, x1: W / 2 + 2, z1: sz + 1, y1: hi });
 

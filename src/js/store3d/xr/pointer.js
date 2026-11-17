@@ -163,7 +163,7 @@ export class Pointer {
     let iaHit = null;
     if (this.canPickWorld()) {
       coverHit = pickCover(app.shelves.faceViews, o, d, COVER_REACH);
-      iaHit = app.mods ? pickBoxes(app.mods.interactables, o, d, IA_REACH) : null;
+      iaHit = app.mods ? pickBoxes(app.mods.interactables, o, d, IA_REACH, app.occluders ? app.occluders() : null) : null;
     }
     let wristHit = null;
     if (m.wrist && rec.side !== 'left') wristHit = m.wrist.hit(o, d);

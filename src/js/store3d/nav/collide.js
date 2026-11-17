@@ -39,6 +39,9 @@ const y1Of = (q) => (q.y1 === undefined ? Infinity : q.y1);
 
 /** Blockiert Kollider q einen Körper mit den Füßen auf feetY? (Oberkante über Stufenhöhe UND Unterkante unter dem Kopf.) */
 export function colliderBlocks(q, feetY, bodyH = BODY_H) {
+  // top:false (Oberseite nicht begehbar): auch nicht überspringbar, solange die Füße unter der Oberkante sind
+  // (sonst gleitet der Sprung über das Möbel und die Landung schiebt ruckartig seitlich heraus)
+  if (q.top === false && y1Of(q) > STEP_H + EPS && y1Of(q) > feetY + EPS) return y0Of(q) < feetY + bodyH - EPS;
   return y1Of(q) > feetY + STEP_H + EPS && y0Of(q) < feetY + bodyH - EPS;
 }
 

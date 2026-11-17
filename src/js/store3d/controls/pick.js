@@ -53,12 +53,44 @@ export function pickCover(faceViews, o, d, maxDist) {
   return best;
 }
 
+/** Möbel/Requisiten: ihre Kollider umschließen oft die eigene Interaktionsbox (Sofa, Fach), sie verdecken nie. */
+const NOT_WALL = new Set(['prop', 'shelf', 'counter', 'door', 'crate', 'car']);
+
 /**
- * Strahl gegen Interaktions-Boxen (Weltkoordinaten) von Modulen.
+ * Sichtblocker aus einer Kollider-Liste: statische, mindestens 2,5 m hohe Kollider vom Boden aus (Wände, Fassaden, Gebäude).
+ * Niedrige Möbel und Dächer verdecken nie.
+ */
+export function wallOccluders(colliders) {
+  const out = [];
+  for (const q of colliders || []) {
+    if (q.dynamic || NOT_WALL.has(q.kind)) continue;
+    const y0 = q.y0 === undefined ? 0 : q.y0;
+    const y1 = q.y1 === undefined ? Infinity : q.y1;
+    if (y0 <= 0.5 && y1 >= 2.5) out.push(q);
+  }
+  return out;
+}
+
+/** Verdeckt ein Blocker den Strahl vor der Entfernung t? Blocker, die den Ursprung enthalten, zählen nicht. */
+function occludedBefore(occ, o, d, t) {
+  for (let i = 0; i < occ.length; i++) {
+    const q = occ[i];
+    if (o.x >= q.x0 && o.x <= q.x1 && o.z >= q.z0 && o.z <= q.z1) continue;
+    T0 = 0;
+    T1 = t - 0.02;
+    if (T1 <= 0) continue;
+    const y1 = q.y1 === undefined ? Infinity : q.y1;
+    if (slab(o.x, d.x, q.x0, q.x1) && slab(o.z, d.z, q.z0, q.z1) && slab(o.y, d.y, q.y0 || 0, y1)) return true;
+  }
+  return false;
+}
+
+/**
+ * Strahl gegen Interaktions-Boxen (Weltkoordinaten) von Modulen. Mit `occ` (wallOccluders) zählen Boxen hinter einer Wand nicht.
  * @param {Array<{box:{min,max}, enabled?:Function}>} list
  * @returns {{ia, t}|null}
  */
-export function pickBoxes(list, o, d, maxDist) {
+export function pickBoxes(list, o, d, maxDist, occ = null) {
   let best = null;
   for (const ia of list) {
     if (ia.enabled && !ia.enabled()) continue;
@@ -66,7 +98,9 @@ export function pickBoxes(list, o, d, maxDist) {
     T0 = 0;
     T1 = maxDist;
     if (slab(o.x, d.x, min.x, max.x) && slab(o.y, d.y, min.y, max.y) && slab(o.z, d.z, min.z, max.z) && (!best || T0 < best.t)) {
-      best = { ia, t: T0 };
+      const t = T0;
+      if (occ && occ.length && occludedBefore(occ, o, d, t)) continue;
+      best = { ia, t };
     }
   }
   return best;
