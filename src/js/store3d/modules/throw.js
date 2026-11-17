@@ -144,7 +144,13 @@ export default {
       if (!f.hit.has('richard')) {
         const z = ctx.layout.zones && ctx.layout.zones.cashier && ctx.layout.zones.cashier.rect;
         const br = ctx.use('brawl');
-        if (br && z && b.pos.x > z.x0 - 0.3 && b.pos.x < z.x1 + 0.3 && b.pos.z > z.z0 - 0.3 && b.pos.z < z.z1 + 0.3 && b.pos.y < 2.1 && b.pos.y > 0) {
+        const ca = ctx.use('cashier');
+        const rp = ca && ca.richard ? ca.richard() : null;
+        // Richards echte Position (er ist ein Kollider und verlässt den Platz): Abstand statt fester Zone
+        const near = rp
+          ? Math.hypot(b.pos.x - rp.pos.x, b.pos.z - rp.pos.z) < 0.9 && b.pos.y < (rp.pos.y || 0) + 2.1 && b.pos.y > (rp.pos.y || 0)
+          : !!z && b.pos.x > z.x0 - 0.3 && b.pos.x < z.x1 + 0.3 && b.pos.z > z.z0 - 0.3 && b.pos.z < z.z1 + 0.3 && b.pos.y < 2.1 && b.pos.y > 0;
+        if (br && near) {
           f.hit.add('richard');
           try { br.hitBy('object', { x: dir.x, z: dir.z }); } catch (err) { warn('brawl.hitBy', err); }
           play('thud', { k: 1.2 });

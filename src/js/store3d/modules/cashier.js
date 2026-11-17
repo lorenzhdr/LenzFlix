@@ -385,17 +385,18 @@ export default {
       return !b || b.canTalk();
     };
     const iaBox = { min: { x: home.x - 0.5, y: 0.2, z: home.z - 0.6 }, max: { x: home.x + 0.5, y: 2.0, z: home.z + 0.4 } };
+    const rentedCarried = () => { const c = ctx.items.carried(); const r = ctx.use('rent'); return !!(c && r && r.isRented(c.id)); };
     const offIa = ctx.addInteractable({
       box: iaBox,
       label: 'Richard', hint: 'E / Klick: Mit Richard reden', onUse: openDialog,
-      enabled: () => talkOk() && !ctx.items.carried(),
+      enabled: () => talkOk() && (!ctx.items.carried() || rentedCarried()),
     });
     // Mit getragener Hülle: Ausleihen (rent.js); ohne rent-Provider wie gewohnt reden
     const offIa2 = ctx.addInteractable({
       box: iaBox,
       label: 'Richard', hint: 'E / Klick: Hülle ausleihen',
       onUse: () => { const r = ctx.use('rent'); if (r) r.tryRent(); },
-      enabled: () => talkOk() && !!ctx.items.carried() && !!ctx.use('rent'),
+      enabled: () => talkOk() && !!ctx.items.carried() && !!ctx.use('rent') && !rentedCarried(),
     });
     const offIa3 = ctx.addInteractable({
       box: iaBox,

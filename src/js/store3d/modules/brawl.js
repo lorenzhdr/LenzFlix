@@ -29,7 +29,8 @@ function banCanvas() {
   x.fillStyle = '#f7f3e4'; x.fillRect(0, 0, 256, 128);
   x.strokeStyle = '#b3261e'; x.lineWidth = 8; x.strokeRect(6, 6, 244, 116);
   x.fillStyle = '#b3261e'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.font = `bold 40px ${FONT}`;
+  let px = 40;
+  do { x.font = `bold ${px}px ${FONT}`; px -= 2; } while (x.measureText('HAUSVERBOT').width > 224 && px > 12);
   x.fillText('HAUSVERBOT', 128, 46);
   x.fillStyle = '#222'; x.font = `bold 20px ${FONT}`;
   x.fillText('Richard sagt: Nein.', 128, 92);
@@ -82,6 +83,7 @@ export default {
     let yawCur = 0;
     const tapes = [];
     let discoveredBan = false;
+    let lockPending = false; // Hausverbot gilt, Tür sperrt erst, wenn der Spieler hinter dem Türblock steht
 
     // --- Persistenz der spitzen Phase (nur Sitzung) ---
     const store = (() => { try { return window.sessionStorage; } catch { return null; } })();
@@ -93,7 +95,7 @@ export default {
     hud.className = 'lfx-store-banhud';
     hud.hidden = true;
     hud.setAttribute('role', 'status');
-    Object.assign(hud.style, { position: 'absolute', top: '12%', left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: 'rgba(179,38,30,0.92)', color: '#fff', font: 'bold 15px/1.3 system-ui, sans-serif', borderRadius: '8px', pointerEvents: 'none', zIndex: '5', textAlign: 'center' });
+    Object.assign(hud.style, { position: 'absolute', bottom: '24%', left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', background: 'rgba(179,38,30,0.92)', color: '#fff', font: 'bold 15px/1.3 system-ui, sans-serif', borderRadius: '8px', pointerEvents: 'none', zIndex: '5', textAlign: 'center' });
     if (host) host.appendChild(hud);
     let hudSec = -1;
 
@@ -124,6 +126,7 @@ export default {
     // --- Hilfen ---
     const hostile = () => fsm.isHostile() || fsm.isBanned();
     const away = (p) => { const dx = p.x - R.pos.x; const dz = p.z - R.pos.z; const l = Math.hypot(dx, dz) || 1; return { x: dx / l, z: dz / l }; };
+    const playerInPen = (p) => p.x >= counter.x0 - 0.1 && p.z >= counter.z1 - 0.05 && !(p.y > 0.3);
     const inPen = () => R.pos.x >= counter.x0 - 0.1 && R.pos.z >= counter.z1 - 0.05 && R.pos.y < 0.3;
     function play(name, dur = Infinity) { anim = { name, t: 0, dur }; }
     function later(sec, fn) { timers.push({ at: T + sec, fn }); }
@@ -136,6 +139,15 @@ export default {
       const d = door();
       if (!d) return;
       if (on) { d.lock(BRAWL.BAN + 2); lockedByMe = true; } else if (lockedByMe) { d.unlock(); lockedByMe = false; }
+    }
+    const doorBlockZ1 = (L.doorBlock ? L.doorBlock.z1 : D + 0.22) + 0.5;
+    // Spieler steht draußen und frei vom Türblock (sonst schöbe ihn der Kollider zurück in den Laden)
+    const playerClear = () => pose().z > doorBlockZ1;
+    function applyBan() {
+      lockPending = false;
+      lockDoor(true);
+      ensureSign().visible = true;
+      if (!discoveredBan) { discoveredBan = true; found('richard-ban'); }
     }
     function found(id) { const d = ctx.use('discover'); if (d && d.found) { try { d.found(id); } catch { /* egal */ } } }
 
@@ -190,15 +202,14 @@ export default {
         if (inPen()) hopTo({ x: front.x, z: front.z }, () => { task = null; });
       }
       if (to === 'banned') {
-        lockDoor(true);
-        ensureSign().visible = true;
+        if (playerClear()) applyBan(); else lockPending = true;
         task = null;
         say('ban', {}, { always: true });
         banSayAt = T + 6;
-        if (!discoveredBan) { discoveredBan = true; found('richard-ban'); }
         walkTo(gateIn, RUN_SPEED, () => { rest.x = gateIn.x; rest.z = gateIn.z; rest.yaw = Math.PI; task = null; base = 'cross'; play('cross'); });
       }
       if (to === 'grudge') {
+        lockPending = false;
         lockDoor(false);
         if (sign) sign.visible = false;
         hud.hidden = true; hudSec = -1;
@@ -282,6 +293,13 @@ export default {
           const py = (Number.isFinite(q.y) ? q.y : 0) + ctx.player.eyeY() - 0.35;
           if (!tp.hit && Math.hypot(q.x - tp.p.x, q.z - tp.p.z, (py - tp.p.y) * 0.6) < 0.5) hitPlayer(tp);
         }
+        if (tp.body && !tp.hit && tp.body.pos) {
+          // stehender Spieler löst im Physik-Kontakt kein Ereignis aus: Treffer selbst prüfen
+          const q = pose();
+          const py = (Number.isFinite(q.y) ? q.y : 0) + ctx.player.eyeY() - 0.35;
+          const bp = tp.body.pos;
+          if (Math.hypot(q.x - bp.x, q.z - bp.z) < 0.75 && Math.abs(py - bp.y) < 0.9) { tp.p = { x: bp.x, y: bp.y, z: bp.z }; hitPlayer(tp); }
+        }
         if (tp.age > (tp.body ? 6.5 : 4)) {
           ctx.scene.remove(tp.mesh);
           if (tp.body && typeof tp.body.remove === 'function') { try { tp.body.remove(); } catch { /* egal */ } }
@@ -312,7 +330,7 @@ export default {
 
     function reset() {
       fsm.reset(T);
-      task = null; timers = []; throwsLeft = 0; starsT = 0;
+      task = null; timers = []; throwsLeft = 0; starsT = 0; lockPending = false;
       lockDoor(false);
       if (sign) sign.visible = false;
       hud.hidden = true; hudSec = -1;
@@ -366,6 +384,7 @@ export default {
         const p = pose();
         const inside = R.inStore();
         // Sicherheit: Hausverbot, aber Spieler im Laden (Teleport u. a.) -> Tür auf
+        if (fsm.state === 'banned' && lockPending && !inside && playerClear()) applyBan();
         if (fsm.state === 'banned' && inside) { lockDoor(false); fsm.startGrudge(T); onTransition({ to: 'grudge', reason: 'safety' }); }
         // Wurfphase
         if (fsm.state === 'throw') {
@@ -382,7 +401,11 @@ export default {
           if (!inside) onTransition(fsm.event('expelled', T));
           else if (!task || task.type !== 'hop') {
             const dist = Math.hypot(p.x - R.pos.x, p.z - R.pos.z);
-            if (dist > 1.1) {
+            if (playerInPen(p)) {
+              // Spieler hinter dem Tresen: Richard bleibt an der Kundenseite stehen (keine Hüpf-Schleife), Verfolgung läuft aus
+              if (inPen()) hopTo({ x: front.x, z: front.z }, () => { task = null; });
+              else if (Math.hypot(R.pos.x - front.x, R.pos.z - front.z) > 0.5 && T - pathAt > 0.4) { pathAt = T; walkTo({ x: front.x, z: front.z }, RUN_SPEED, null); }
+            } else if (dist > 1.1) {
               if (T - pathAt > 0.4) { pathAt = T; walkTo({ x: p.x, z: p.z }, RUN_SPEED, null); }
             } else {
               task = null;

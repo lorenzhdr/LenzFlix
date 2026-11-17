@@ -22,7 +22,8 @@ function closedCanvas() {
   const x = c.getContext('2d');
   x.fillStyle = '#b3261e'; x.fillRect(0, 0, 256, 96);
   x.strokeStyle = '#fff'; x.lineWidth = 4; x.strokeRect(5, 5, 246, 86);
-  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = `bold 38px ${FONT}`;
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; let px = 38;
+  do { x.font = `bold ${px}px ${FONT}`; px -= 2; } while (x.measureText('GESCHLOSSEN').width > 228 && px > 12);
   x.fillText('GESCHLOSSEN', 128, 50);
   return c;
 }
