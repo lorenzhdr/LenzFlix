@@ -88,8 +88,8 @@ function checkTvModeBundle() {
 }
 
 // Soft-Budget des 3D-Bundles (VIDEOTHEK LENZ, lazy): nur eine Warnung, kein Abbruch.
-// 1.15.0: Open World (Stadt, Physik, NPC, Autos, Entdeckungen) → Richtwert 1,15 MB (vorher ca. 0,90 MB).
-const STORE_MIN_BUDGET = 1150 * 1000;
+// 1.15.0: Open World (Stadt, LENZ PALAST, Richard, Physik, Figuren, Autos, Entdeckungen) → 1,16 MB (vorher ca. 0,90 MB); Richtwert 1,25 MB.
+const STORE_MIN_BUDGET = 1250 * 1000;
 function checkStoreBundle() {
   const code = readFileSync(resolve(dist, 'lenzstore.min.js'), 'utf8');
   if (code.length > STORE_MIN_BUDGET) console.warn(`WARNUNG: lenzstore.min.js ist ${code.length} B (Budget ${STORE_MIN_BUDGET} B)`);
