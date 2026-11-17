@@ -56,7 +56,7 @@ Mit aktivem JavaScript gibt es fünf Designs:
 - **LENZ+**: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs.
 - **LENZPRIME**: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile.
 - **LENZ//84**: Cyber-Retro mit Bernstein-Terminal, Kassetten-Regal und Neon-Gitter samt Sonne im Hero, dazu CRT-Effekte und ein paar versteckte Überraschungen. Sound ist standardmäßig aus und lässt sich in der Kopfzeile einschalten. Tipp: Ein Terminal öffnet sich mit der Taste `^` (am Handy: Logo lange drücken), und mit dem richtigen Cheat-Code passiert etwas Besonderes.
-- **VIDEOTHEK LENZ** (Beta): begehbare 3D-Videothek. Ton ist standardmäßig an (im Esc-Menü abschaltbar), Kassierer Richard spricht mit der deutschen Gerätestimme. Lädt ~0,7 MB zusätzlich nur bei Auswahl und braucht WebGL.
+- **VIDEOTHEK LENZ** (Beta): begehbare 3D-Videothek, seit 1.15.0 mit einer kleinen Stadt drumherum (siehe unten). Ton ist standardmäßig an (im Esc-Menü abschaltbar), Kassierer Richard spricht mit der deutschen Gerätestimme. Lädt rund 1,2 MB zusätzlich (übertragen etwa 0,4 MB) nur bei Auswahl und braucht WebGL.
 
 Die Auswahl öffnet sich über **Mehr → Design-Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ trägt in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
 
@@ -97,9 +97,20 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 
   Pro Eintrag `Platz=Genre` (Genre wie in Jellyfin geschrieben), getrennt durch `;`. Alternativ per JS (siehe „Konfiguration“): `window.LenzFlixConfig = { tvChannels: { 5: "Action", 6: "Komödie" } }` (hat Vorrang). Die früheren Namen `liveChannels` und `--lfx-live-channels` (aus LENZ LIVE, bis 1.14.0) werden weiter gelesen.
 
+### Open World (Beta, VIDEOTHEK LENZ)
+
+Die Videothek steht in einer kleinen Stadt: Durch die Tür geht es auf die Straße, dazu gibt es einen Hinterhof, ein Dach, einen Kiosk und das Kino **LENZ PALAST**. Ampeln, Autos, Passanten, Tauben und eine Katze beleben die Straße; Tageszeit und Regen ändern die Stimmung.
+
+- **Steuerung am PC:** WASD/Pfeile laufen, Shift rennt, Leertaste springt (an Kanten hochziehen geht auch), Maus schaut, `E`/Linksklick nimmt oder benutzt, `F` schlägt, `G` wirft, `Q`/Rechtsklick zoomt, Esc öffnet die Pause. Im Halte-Bild nimmt `M` die Hülle mit; getragene Hüllen kann man wieder öffnen, zurückstellen oder werfen.
+- **Steuerung am Handy:** Standard ist die Spiel-Steuerung: Stick links zum Gehen, rechts wischen zum Umsehen, Knöpfe für Springen, Benutzen und Schlagen (bzw. Werfen mit Hülle in der Hand). Joystick und „Halten = laufen“ bleiben im Pause-Menü unter „Steuerung“ wählbar; eine bisher gespeicherte Auswahl „Touch“ springt dabei einmalig auf „Spiel“.
+- **LENZ PALAST:** An der Kasse ein Ticket für das Tagesprogramm holen (vier Vorstellungen aus der eigenen Mediathek, jede Vorstellung startet für dich von vorn), im Saal einen Platz wählen und den Film auf der großen Leinwand ansehen. Pause, Spulen, Lautstärke und Vollbild liegen in der Leiste; im Vollbild bringt „Zurück ins Kino“ in den Saal zurück, mit Esc steht man auf. Eigene Kassetten kann man mitbringen und am Eingang abgeben. Läuft die Leinwand nicht, fällt das Kino automatisch auf den normalen Player zurück.
+- **Richard, Ausleihen, Physik:** Wer Richard schlägt, bekommt Ärger; mit Hausverbot bleibt die Tür eine Weile zu. Hüllen lassen sich an der Kasse ausleihen, Bälle, Dosen und Kisten rollen, kippen und lassen sich schlagen und werfen. Im Hof hängt ein Basketballkorb.
+- **Entdeckungen:** Überall sind 15 Kleinigkeiten versteckt. Das Pause-Menü zeigt, wie viele schon gefunden sind, und gibt Hinweise ohne die Lösung zu verraten. Der Stand wird pro Browser gespeichert.
+- **Hinweise:** Wer sich verirrt, wird beim Neuladen an der letzten Position oder im Laden abgesetzt. Auf schwachen Geräten helfen „Qualität“ im Pause-Menü und ein kleinerer Datenumfang (Hüllen „Normal“).
+
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 
-Die Videothek lässt sich mit einer VR-Brille begehen, samt Kinosaal für die Wiedergabe.
+Die Videothek lässt sich mit einer VR-Brille begehen, samt Kinosaal für die Wiedergabe. Seit 1.15.0 ist dabei auch die Stadt begehbar (ohne Sprung, Schlagen und Werfen; Richard bleibt friedlich); das Kino im LENZ PALAST gibt es nur am Bildschirm, in VR läuft der VR-Kinosaal.
 
 - **Voraussetzung:** VR-Brille mit WebXR-fähigem Browser, Jellyfin über HTTPS erreichbar. Ohne unterstützte Brille erscheint kein VR-Knopf, am Desktop und Handy ändert sich nichts.
 - **Starten:** In der Videothek auf „In VR betreten“ tippen bzw. klicken, oder im Pause-Menü „VR-Modus“ wählen.
