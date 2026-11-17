@@ -159,7 +159,12 @@ describe('Plätze (aus der echten Stadt)', () => {
     const f = city.palast.foyer;
     for (const r of ['ticket', 'popcorn']) { expect(a[r].x).toBeGreaterThan(f.x0); expect(a[r].x).toBeLessThan(f.x1); expect(a[r].z).toBeGreaterThan(f.z0); expect(a[r].z).toBeLessThan(f.z1); }
     const v = vendorAnchor(city);
-    expect(v.z).toBeGreaterThan(city.kiosk.counter.z0);
+    // Anker von Paket A: Verkäuferin steht im Häuschen hinter der Theke (Blick zur Straße)
+    const hut = city.kiosk.hut;
+    expect(v.z).toBeGreaterThan(hut.z0); expect(v.z).toBeLessThan(city.kiosk.counter.z0);
+    expect(v.x).toBeGreaterThan(hut.x0); expect(v.x).toBeLessThan(hut.x1);
+    const fallback = vendorAnchor({ ...city, kiosk: { ...city.kiosk, vendor: undefined } });
+    expect(fallback.anchor).toBe(false);
     const custom = { ...city, palast: { ...city.palast, staff: { ticket: { x: 1, z: 2, yaw: 3 } } }, kiosk: { ...city.kiosk, vendor: { x: 5, z: 6, yaw: 1 } } };
     expect(staffAnchors(custom).ticket).toEqual({ x: 1, z: 2, yaw: 3 });
     expect(vendorAnchor(custom).x).toBe(5);
