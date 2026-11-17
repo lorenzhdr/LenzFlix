@@ -36,6 +36,8 @@ import daytime from './daytime.js';
 import cashier from './cashier.js';
 import snack from './snack.js';
 import tv from './tv.js';
+// --- Paket B palast: imports ---
+import palast from './palast.js';
 
 export const MODULES = [
   // --- M4 Atmosphäre (zuerst: Sound-Provider, Intro) ---
@@ -47,6 +49,8 @@ export const MODULES = [
   cashier,
   snack,
   tv,
+  // --- Paket B palast (nach city: braucht Provider 'city'/'areas') ---
+  palast,
   // --- M3 Kasse & Orte ---
   terminal,
   returns,

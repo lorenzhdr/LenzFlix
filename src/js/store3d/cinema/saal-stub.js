@@ -41,6 +41,9 @@ export function buildStubSaal(pos) {
  * Rückgabe: { saal, sit(), play(item?), stand(), full(on), stop(), diag(), dispose() }.
  */
 export function palastTest(app, o = {}) {
+  // Echter Saal (modules/palast.js): Spieler in den Saal setzen, Ticket holen, auf Wunsch sitzen und starten
+  const real = app.mods && app.mods.ctx && typeof app.mods.ctx.use === 'function' ? app.mods.ctx.use('palast') : null;
+  if (real && typeof real.test === 'function') { const h = real.test(o); if (h) return h; }
   const c = app.cinema2d;
   if (!c || !app.player || !app.engine) return null;
   if (app.palastStub) app.palastStub.dispose();
