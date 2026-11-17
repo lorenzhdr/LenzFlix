@@ -155,6 +155,22 @@ export default {
       swish(t) { noise(t, 0.3, { freq: 3200, q: 0.7, gain: 0.07 }); },
       cheer(t) { [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.07, 0.35, { type: 'triangle', gain: 0.1, send: 0.4, attack: 0.004 })); },
       clang(t) { tone(420, t, 0.5, { type: 'square', gain: 0.05, slide: 0.9, send: 0.5 }); tone(1130, t, 0.35, { type: 'sine', gain: 0.07, send: 0.5 }); noise(t, 0.05, { freq: 2500, q: 2, gain: 0.1 }); },
+      // --- Welle 2 (npc): Straße und Tiere, alles synthetisch ---
+      honk(t) { tone(330, t, 0.3, { type: 'sawtooth', gain: 0.07 }); tone(415, t, 0.3, { type: 'sawtooth', gain: 0.06 }); tone(330, t + 0.38, 0.22, { type: 'sawtooth', gain: 0.07 }); tone(415, t + 0.38, 0.22, { type: 'sawtooth', gain: 0.06 }); },
+      purr(t) {
+        const r = noise(t, 3.4, { type: 'lowpass', freq: 220, q: 1, gain: 0.09, loop: true });
+        const lfo = ac.createOscillator();
+        const lg = ac.createGain();
+        lfo.type = 'sine'; lfo.frequency.value = 24;
+        lg.gain.value = 0.06;
+        lfo.connect(lg); lg.connect(r.g.gain);
+        lfo.start(t); lfo.stop(t + 3.5);
+      },
+      meow(t) { tone(560, t, 0.42, { type: 'triangle', gain: 0.05, slide: 1.55, attack: 0.08 }); tone(880, t + 0.22, 0.3, { type: 'sine', gain: 0.035, slide: 0.55 }); },
+      flap(t) { for (let i = 0; i < 6; i++) noise(t + i * 0.055, 0.045, { type: 'bandpass', freq: 800 + i * 140, q: 1.5, gain: 0.05 }); },
+      oof(t) { tone(170, t, 0.14, { type: 'sine', gain: 0.14, slide: 0.5 }); noise(t, 0.05, { freq: 700, q: 1, gain: 0.09 }); },
+      buy(t) { tone(988, t, 0.08, { type: 'square', gain: 0.045 }); tone(1319, t + 0.08, 0.22, { type: 'square', gain: 0.045 }); noise(t + 0.02, 0.04, { freq: 3000, q: 4, gain: 0.05 }); },
+      munch(t) { noise(t, 0.07, { type: 'bandpass', freq: 1400, q: 2, gain: 0.11 }); tone(190, t, 0.06, { type: 'triangle', gain: 0.07, slide: 0.6 }); },
     };
 
     function play(name, opts) {

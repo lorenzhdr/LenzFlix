@@ -42,6 +42,10 @@ import brawl from './brawl.js';
 import rent from './rent.js';
 import snack from './snack.js';
 import tv from './tv.js';
+// --- Welle 2 npc: imports ---
+import npc from './npc.js';
+import traffic from './traffic.js';
+import kiosk from './kiosk.js';
 // --- Paket B palast: imports ---
 import palast from './palast.js';
 
@@ -60,6 +64,10 @@ export const MODULES = [
   rent,
   snack,
   tv,
+  // --- Welle 2 npc (nach daytime/city/door; kiosk braucht Provider 'npc') ---
+  npc,
+  traffic,
+  kiosk,
   // --- Paket B palast (nach city: braucht Provider 'city'/'areas') ---
   palast,
   // --- M3 Kasse & Orte ---
