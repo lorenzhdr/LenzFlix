@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeCatalog, createScheduler, dayBounds, broadcastDayOf } from '../src/js/live/schedule/index.js';
-import { MIN as MS } from '../src/js/live/schedule/time.js';
-import * as M from '../src/js/live/tvmode/model.js';
-import { createEpgGrid } from '../src/js/live/tvmode/epg-grid.js';
+import { normalizeCatalog, createScheduler, dayBounds, broadcastDayOf } from '../src/js/tv/schedule/index.js';
+import { MIN as MS } from '../src/js/tv/schedule/time.js';
+import * as M from '../src/js/tv/tvmode/model.js';
+import { createEpgGrid } from '../src/js/tv/tvmode/epg-grid.js';
 
 const TICKS = 6e8;
 const iso = (ms) => new Date(ms).toISOString();

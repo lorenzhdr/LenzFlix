@@ -9,9 +9,9 @@ vi.mock('../src/js/core/datasaver.js', () => ({
   onDataSaverPartsChange: () => () => {},
 }));
 
-import { createEmitter } from '../src/js/live/player/events.js';
-import { createTvController, NEIGHBOR_MS, WARM_TICK_MS } from '../src/js/live/tvmode/controller.js';
-import { zapWarmEnabled, defineZapWarm } from '../src/js/features/live/zapflag.js';
+import { createEmitter } from '../src/js/tv/player/events.js';
+import { createTvController, NEIGHBOR_MS, WARM_TICK_MS } from '../src/js/tv/tvmode/controller.js';
+import { zapWarmEnabled, defineZapWarm } from '../src/js/features/tvdata/zapflag.js';
 
 describe('zapflag: Datensparmodus', () => {
   beforeEach(() => { ds.on = false; localStorage.clear(); window.location.hash = ''; });

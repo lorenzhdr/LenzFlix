@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createPlayerView, ZAP_MS, CONTROLS_MS, LOADING_DELAY_MS } from '../src/js/live/tvmode/player-view.js';
+import { createPlayerView, ZAP_MS, CONTROLS_MS, LOADING_DELAY_MS } from '../src/js/tv/tvmode/player-view.js';
 
 const snap = (o = {}) => ({
   on: true, channel: 3, entry: { itemId: 'x' }, phase: 'playing', reason: null, card: null,

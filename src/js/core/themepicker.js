@@ -9,7 +9,7 @@ import { cached, clearCache } from './cache.js';
 import { dayKey, seededShuffle } from './dayseed.js';
 
 const ID = 'lfx-themepicker';
-const BETA = new Set(['store', 'live']); // Designs mit Beta-Kennzeichnung
+const BETA = new Set(['store']); // Designs mit Beta-Kennzeichnung
 const STORE_ROWS = [7, 6]; // Cover pro Regalreihe in der Vorschau der VIDEOTHEK LENZ
 const STORE_COVERS = STORE_ROWS.reduce((a, b) => a + b, 0);
 const COVER_TTL_MS = 6 * 60 * 60 * 1000;
@@ -58,19 +58,6 @@ function buildPreview(id) {
     let k = 0;
     const shelf = (n) => span('lfx-tp__shelf', Array.from({ length: n }, () => span(`lfx-tp__cover lfx-tp__cover--${k++ % 6}`)));
     root.append(span('lfx-tp__shopsign', ['VIDEOTHEK LENZ']), ...STORE_ROWS.map(shelf), span('lfx-tp__carpet'));
-  } else if (id === 'live') {
-    // Bildschirm mit laufenden Zeilen und Rollbalken (CSS-Animation), Fernbedienung wie in LENZ LIVE: Ein, Ziffern, Steuerkreuz, Farbtasten
-    const keys = Array.from({ length: 9 }, () => span('lfx-tp__rkey'));
-    const colors = ['r', 'g', 'y', 'b'].map((c) => span(`lfx-tp__rcol lfx-tp__rcol--${c}`));
-    root.append(
-      span('lfx-tp__tv', [span('lfx-tp__screen', [span('lfx-tp__roll'), span('lfx-tp__chno', ['5']), span('lfx-tp__rec')]), span('lfx-tp__ant')]),
-      span('lfx-tp__remote', [
-        span('lfx-tp__rtop', [span('lfx-tp__rled'), span('lfx-tp__rpower')]),
-        span('lfx-tp__rkeys', keys),
-        span('lfx-tp__rpad', [span('lfx-tp__rok')]),
-        span('lfx-tp__rcols', colors),
-      ]),
-    );
   } else {
     root.append(span('lfx-tp__logo'), span('lfx-tp__hero'), span('lfx-tp__row', tiles(4)));
   }
@@ -89,9 +76,6 @@ function buildMark(id, name) {
   }
   if (id === 'store') {
     return span('lfx-tp__mark lfx-tp__mark--store', [span('lfx-tp__mark-store-a', ['VIDEOTHEK']), span('lfx-tp__mark-store-b', ['LENZ'])]);
-  }
-  if (id === 'live') {
-    return span('lfx-tp__mark lfx-tp__mark--live', [span('lfx-tp__mark-live-a', ['LENZ']), span('lfx-tp__mark-live-b', [span('lfx-tp__mark-live-dot'), 'LIVE'])]);
   }
   return span('lfx-tp__mark lfx-tp__mark--flix', [name]);
 }

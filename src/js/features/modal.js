@@ -17,7 +17,7 @@ import { toast } from '../core/toast.js';
 import { putItems } from '../core/itemstore.js';
 import { attachSwipeClose } from '../core/swipe.js';
 import { clearCache } from '../core/cache.js';
-import { getTheme, isTheme } from '../core/theme.js';
+import { getTheme } from '../core/theme.js';
 import { titleHref } from '../shared/routes.js';
 import * as data from './modal/data.js';
 import { hasResume, pickInitialSeason } from './modal/format.js';
@@ -680,7 +680,7 @@ function destroyAll() {
 
 const modalFeature = {
   name: 'modal',
-  match: (route) => !isBlockedRoute(route) && !isTv() && !isTheme('live'),
+  match: (route) => !isBlockedRoute(route) && !isTv(),
   mount() {
     if (!clickInstalled) {
       document.addEventListener('click', onDocumentClick, true);

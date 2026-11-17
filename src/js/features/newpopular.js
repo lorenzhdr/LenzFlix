@@ -409,7 +409,7 @@ function ensure() {
 
 const newPopularFeature = {
   name: 'newpopular',
-  match: (route) => isNewRoute(route) && !isTv() && !isTheme('live') && !isTheme('store'),
+  match: (route) => isNewRoute(route) && !isTv() && !isTheme('store'),
   mount: () => ensure(),
   update: () => ensure(),
   unmount: () => { clearTimeout(waitTimer); teardown(); },

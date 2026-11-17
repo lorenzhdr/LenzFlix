@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { normalizeCatalog, createScheduler, dayOfDate, dayBounds } from '../src/js/live/schedule/index.js';
-import { createWatchTracker } from '../src/js/live/player/watch.js';
-import { createEmitter } from '../src/js/live/player/events.js';
-import { createTvController, DEBOUNCE_MS, RETRY_MS } from '../src/js/live/tvmode/controller.js';
+import { normalizeCatalog, createScheduler, dayOfDate, dayBounds } from '../src/js/tv/schedule/index.js';
+import { createWatchTracker } from '../src/js/tv/player/watch.js';
+import { createEmitter } from '../src/js/tv/player/events.js';
+import { createTvController, DEBOUNCE_MS, RETRY_MS } from '../src/js/tv/tvmode/controller.js';
 
 const HOUR = 3600000;
 const T0 = Date.UTC(2026, 10, 11, 18, 0, 0); // 19:00 MEZ, volle Stunde

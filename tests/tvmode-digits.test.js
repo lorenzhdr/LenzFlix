@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createDigits } from '../src/js/live/tvmode/digits.js';
+import { createDigits } from '../src/js/tv/tvmode/digits.js';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());

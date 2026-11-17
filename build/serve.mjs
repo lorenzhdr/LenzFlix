@@ -12,8 +12,7 @@ const allowed = ['dist', 'assets'];
 // Nur diese Dateien aus build/ (Dev-Harness der VIDEOTHEK LENZ, docs/store3d.md; Kurz-Loader für Konsole/Lesezeichen)
 // – sonst wird aus build/ nichts ausgeliefert.
 const extra = { '/store-dev.html': 'build/store-dev.html', '/store-dev.js': 'build/store-dev.js',
-  // Dev-Harness der LENZ LIVE (docs/live.md)
-  '/live-dev.html': 'build/live-dev.html', '/live-dev.js': 'build/live-dev.js', '/boot.js': 'build/dev-boot.js',
+  '/boot.js': 'build/dev-boot.js',
   // Dev-Harness des TV-Modus (docs/tvmode.md)
   '/tvmode-dev.html': 'build/tvmode-dev.html', '/tvmode-dev.js': 'build/tvmode-dev.js',
   // VR-Kino-Harness: echte Bridge der Hülle (Modul) und der lokale Emulator (nur .tmp/, nie im Repo; fehlt er, gibt es 404)

@@ -35,7 +35,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 ### 3. Konfiguration (optional)
 
-Die optionalen Werte `chartsUrl`, `statsUrl`, `liveChannels` und `themeCssBase` (siehe die Abschnitte unten) setzt man in einem eigenen JavaScript-Injector-Eintrag **vor** `lenzflix.min.js`. Mehrere einzelne Zuweisungen überschreiben sich gegenseitig, deshalb zusammenführen:
+Die optionalen Werte `chartsUrl`, `statsUrl`, `tvChannels` und `themeCssBase` (siehe die Abschnitte unten) setzt man in einem eigenen JavaScript-Injector-Eintrag **vor** `lenzflix.min.js`. Mehrere einzelne Zuweisungen überschreiben sich gegenseitig, deshalb zusammenführen:
 
 ```js
 window.LenzFlixConfig = Object.assign(window.LenzFlixConfig || {}, {
@@ -46,25 +46,19 @@ window.LenzFlixConfig = Object.assign(window.LenzFlixConfig || {}, {
 
 ### 4. Reverse-Proxy mit CSP
 
-Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenzlive.min.css`, `lenzlive.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
+Falls ein Reverse-Proxy eine Content-Security-Policy setzt, muss `cdn.jsdelivr.net` erlaubt sein (Stylesheet, Skript und die Schrift-Dateien). Die zusätzlichen Design-Dateien (`lenzplus.min.css`, `lenzprime.min.css`, `lenzretro.min.css`, `lenzstore.min.css`, `lenzstore.min.js`, `lenztvmode.min.css`, `lenztvmode.min.js`) und deren Schriften liegen am selben Ort wie `lenzflix.min.css`, es ist keine weitere Freigabe nötig.
 
 ## Designs
 
-Mit aktivem JavaScript gibt es sechs Designs:
+Mit aktivem JavaScript gibt es fünf Designs:
 
 - **LENZFLIX** (Standard): das klassische Design mit roten Akzenten.
 - **LENZ+**: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs.
 - **LENZPRIME**: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile.
 - **LENZ//84**: Cyber-Retro mit Bernstein-Terminal, Kassetten-Regal und Neon-Gitter samt Sonne im Hero, dazu CRT-Effekte und ein paar versteckte Überraschungen. Sound ist standardmäßig aus und lässt sich in der Kopfzeile einschalten. Tipp: Ein Terminal öffnet sich mit der Taste `^` (am Handy: Logo lange drücken), und mit dem richtigen Cheat-Code passiert etwas Besonderes.
 - **VIDEOTHEK LENZ** (Beta): begehbare 3D-Videothek. Ton ist standardmäßig an (im Esc-Menü abschaltbar), Kassierer Richard spricht mit der deutschen Gerätestimme. Lädt ~0,7 MB zusätzlich nur bei Auswahl und braucht WebGL.
-- **LENZ LIVE** (Beta): lineares Fernsehen aus der eigenen Mediathek. 18 Sender mit einem Programm, das für alle gleich ist, dazu Programmführer (EPG) und Videotext. Es gibt keine Pause, nur Umschalten und Ausschalten. Der eigene Player meldet keinen Fortschritt, daher hinterlässt LENZ LIVE keine Spuren in „Weiterschauen“. Gespielt wird nur per Direktwiedergabe bzw. Umpacken, nie mit Video-Transkodierung (Titel, die der Browser so nicht abspielt, sind „nicht empfangbar“). Firefox ohne native HLS-Wiedergabe zeigt ein Störbild.
-  - **Pausenmusik:** Bei Pausenbild, Sendeschluss/Testbild und Störbild „Kein Empfang“ läuft Hintergrundmusik, die im Browser erzeugt wird (Klang je TV-Stil, folgt Lautstärke und Stumm). Im Menü unter „Pausenmusik“ an- und abschaltbar.
-  - **EPG:** durchgehend über 7 Tage scrollbar (Wischen, Ziehen, Mausrad über der Zeitleiste, ◀ ▶ und „Jetzt“); der Text langer Sendungen läuft am linken Rand mit.
-  - **Fernsehzeitung „LIVE Programm“:** liegt neben dem Fernseher bzw. der Fernbedienung (Taste „Heft“ oder `Z`), blättert in 3D und passt sich dem TV-Stil an. 30 Seiten mit Tipps samt Inhaltsangaben sowie Abend- und Tagesprogramm. Als A4-PDF herunterladbar (im Heft oder im Menü „Fernsehzeitung als PDF“). Titelbilder erscheinen im PDF nur, wenn der Server Bilder per CORS freigibt, sonst stehen Platzhalter.
-  - **Röhren-Stile (1.9.4):** „Röhre 80er“ als Holz-Truhe im Wohnzimmer um 1982 (Zimmerantenne, Videorekorder, Stehlampe) und „Silber-Röhre“ als Silbergerät auf einem Glas-Rack um 2000 (DVD-Player, Receiver, Lautsprecher). Wölbung, Zeilen, Flimmern und Rollbalken lassen sich im Menü unter „Röhren-Effekte“ abschalten. Auf Handy, im Vollbild und in schmalen Fenstern bleibt die Deko ausgeblendet.
-  - **Bedienbare Geräte (1.9.5):** Bei der Röhre 80er schalten Netzschalter und Programmtasten 1–8 am Gerät, die Drehknöpfe (Sender, Lautstärke) lassen sich ziehen, anklicken oder per Mausrad drehen, und der Videorekorder zeigt immer die Uhrzeit. Die Silber-Röhre hat Gerätetasten P+/P−/V+/V−/EPG und einen Netzschalter. Gerätetasten klicken hörbar und schalten aus dem Standby ein (außer V±).
 
-Die Auswahl öffnet sich über **Mehr → Design-Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ und LENZ LIVE tragen in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
+Die Auswahl öffnet sich über **Mehr → Design-Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ trägt in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
 
 Das Design-CSS lädt LenzFlix automatisch nach, aus demselben Pfad wie das eingebundene `lenzflix.min.css` (gleiche jsDelivr-Version). Nur falls es woanders liegt, den Ordner (mit `/` am Ende) setzen: `window.LenzFlixConfig = { themeCssBase: "https://example.com/lenzflix/dist/" }`. Eigene Token-Overrides nach dem `@import` (siehe „Anpassen“) gelten nur für LENZFLIX.
 
@@ -79,30 +73,29 @@ In LENZFLIX führen „Serien“ und „Filme“ auf eigene Seiten, die alle Ser
 Für Mobilfunk und knappe Leitungen: Die Zeile **Datensparmodus** mit Schieber steht direkt unter „Design-Einstellungen“ (LENZFLIX: „Mehr“ bzw. Handy-Menü, LENZ+/LENZPRIME: Profilmenü, LENZ//84: Profilmenü am Desktop bzw. „MEHR“-Blatt am Handy). Solange er an ist, zeigt die Kopfleiste ein kleines Tacho-Symbol zum schnellen Ausschalten.
 
 - **Weniger Daten im Hintergrund:** keine automatischen Trailer (die Trailer-Knöpfe funktionieren weiter), nur 5 Titel in der Hero-Rotation, Bilder in 2/3 der Größe, keine Vorladung unterer Startseiten-Zeilen, im TV-Modus kein Vorwärmen der Nachbarsender (Umschalten dauert dadurch etwas länger).
-- **Unverändert:** Videoqualität beim Abspielen. Der Modus gilt pro Gerät und Benutzer und ist standardmäßig aus; in VIDEOTHEK LENZ und LENZ LIVE gibt es ihn nicht.
+- **Unverändert:** Videoqualität beim Abspielen. Der Modus gilt pro Gerät und Benutzer und ist standardmäßig aus; in VIDEOTHEK LENZ gibt es ihn nicht.
 
 ### TV-Modus (LENZFLIX, LENZ+, LENZPRIME, LENZ//84)
 
-Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (neben der Suche, am Desktop und am Handy) öffnet `#/home?lfx=tv`. Dort laufen dieselben 18 Sender mit demselben Programm wie in LENZ LIVE, aber ohne Fernseher-Optik.
+Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (neben der Suche, am Desktop und am Handy) öffnet `#/home?lfx=tv`. Dort laufen dieselben 18 Sender mit einem Programm, das für alle gleich ist (Sender 1 bis 18, Plätze 5 bis 16 nach Genre belegbar), aber ohne Fernseher-Optik.
 
 - **Desktop:** Player links, Senderliste mit Vorschaubildern rechts, darunter Infos zur Sendung mit „Von vorne“, „Details“ und „Bild-in-Bild“ und ein Programmraster über 7 Tage mit „Jetzt“-Knopf. Ein Klick auf eine künftige Sendung zeigt eine Info-Karte.
 - **Handy:** Player oben, darunter die Tabs „Jetzt im TV“ und „Programm“. Wischen im Bild schaltet um, im Querformat füllt das Bild den Schirm.
 - **Bedienung:** Pfeiltasten ↑/↓ oder Ziffern wechseln den Sender, `M` schaltet stumm, `F` Vollbild. Ton- und Untertitelspur sowie Lautstärke wählt man in der Leiste unter dem Bild.
-- **Keine Spuren:** Wie bei LENZ LIVE meldet der Player keinen Fortschritt, Umschalten taucht nicht in „Weiterschauen“ auf. Beim Verlassen der Seite stoppt der Stream, außer Bild-in-Bild ist aktiv.
-- Die Optik folgt dem gewählten Design (in LENZ//84 mit Rauschen beim Umschalten und Programmnummer „P07“). Auf TV-Clients und in VIDEOTHEK LENZ und LENZ LIVE gibt es den TV-Modus nicht.
+- **Keine Spuren:** Der eigene Player meldet keinen Fortschritt, Umschalten taucht nicht in „Weiterschauen“ auf. Beim Verlassen der Seite stoppt der Stream, außer Bild-in-Bild ist aktiv.
+- Die Optik folgt dem gewählten Design (in LENZ//84 mit Rauschen beim Umschalten und Programmnummer „P07“). Auf TV-Clients und in VIDEOTHEK LENZ gibt es den TV-Modus nicht. Gespielt wird nur per Direktwiedergabe bzw. Umpacken, nie mit Video-Transkodierung (Titel, die der Browser so nicht abspielt, sind „nicht empfangbar“); Firefox ohne native HLS-Wiedergabe zeigt ein Störbild.
 
-### LENZ LIVE (Beta): Voraussetzungen und Senderbelegung
+### TV-Modus: Voraussetzungen und Senderbelegung
 
 - **Konten:** Benutzer brauchen im Jellyfin-Dashboard die Rechte „Audio-Transkodierung“ und „Remux“ (Umpacken). Fehlt eines, ist der Ton bzw. Stream nicht empfangbar.
-- **Mediathek-Seiten:** Solange LENZ LIVE aktiv ist, leitet das Theme Bibliotheksseiten auf die Startseite um. Über das Menü der Fernbedienung geht es zurück in das vorherige Design.
-- **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Im Menü von LENZ LIVE (Administratoren) gibt es eine Kopierzeile mit der gewünschten Belegung. Diese Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
+- **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
 @import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.14.0/dist/lenzflix.min.css");
-:root { --lfx-live-channels: "5=Action;6=Komödie"; }
+:root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
-  Pro Eintrag `Platz=Genre` (Genre wie in Jellyfin geschrieben), getrennt durch `;`. Alternativ per JS (siehe „Konfiguration“): `window.LenzFlixConfig = { liveChannels: { 5: "Action", 6: "Komödie" } }` (hat Vorrang).
+  Pro Eintrag `Platz=Genre` (Genre wie in Jellyfin geschrieben), getrennt durch `;`. Alternativ per JS (siehe „Konfiguration“): `window.LenzFlixConfig = { tvChannels: { 5: "Action", 6: "Komödie" } }` (hat Vorrang). Die früheren Namen `liveChannels` und `--lfx-live-channels` (aus LENZ LIVE, bis 1.14.0) werden weiter gelesen.
 
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 
@@ -202,18 +195,18 @@ npm run serve   # Dev-Server http://localhost:5179/dist/ (liefert dist/ und asse
 
 ```
 build/        build.mjs (lightningcss + esbuild), serve.mjs (Dev-Server), dev-inject.js und dev-boot.js (Dev-Loader), *-dev.html/js (Dev-Harnesses)
-dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css, lenzretro[.min].css, lenzstore[.min].css/.js, lenzlive[.min].css/.js, lenztvmode[.min].css/.js)
+dist/         Build-Ausgabe (lenzflix[.min].css/.js, lenzplus[.min].css, lenzprime[.min].css, lenzretro[.min].css, lenzstore[.min].css/.js, lenztvmode[.min].css/.js)
 assets/       Schriften Inter und LenzRetro (woff2) und Logo-SVGs, jeweils mit Lizenzdatei
-docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features), store3d.md, live.md, tvmode.md, charts-api.md, stats-api.md
+docs/         dom-map.md (Jellyfin-DOM), js-contracts.md (Verträge zwischen Features), store3d.md, tvmode.md, charts-api.md, stats-api.md
 src/css/      index.css (Einstieg, Reihenfolge = Kaskade), tokens.css, fonts.css, logo.css
   modern/     Kern-CSS für das Modern-Layout (wirkt ohne JS)
   legacy-tv/  TV-Layout
   js-ui/      Styles der JS-Komponenten (nur unter html.lfx-js)
-src/js/       main.js (Einstieg, setzt window.LenzFlix); store3d/ (3D-Engine) und live/ (LIVE-/TV-Modus-Engine) als lazy Bundles
+src/js/       main.js (Einstieg, setzt window.LenzFlix); store3d/ (3D-Engine) und tv/ (TV-Modus-Engine samt Planer und Player) als lazy Bundles
   core/       API, Cache, Router, Layout, Playback, DOM-Helper, Ambient, Item-Store
-  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/, prime/, retro/ (LENZ+, LENZPRIME, LENZ//84), store/, live/, tvmode/ (Hüllen für VIDEOTHEK LENZ, LENZ LIVE, TV-Modus)
+  features/   nav, mobilenav, home (Billboard + Zeilen), hovercard, modal, newpopular; plus/, prime/, retro/ (LENZ+, LENZPRIME, LENZ//84), store/, tvmode/, tvdata/ (Hüllen für VIDEOTHEK LENZ und TV-Modus, gemeinsame Server-Daten des TV-Modus)
   shared/     von plus, prime und retro genutzte Module (Routen, Hubs, Suche, Titel-Aktionen)
-src/css/themes/  plus/, prime/, retro/, store/, live/ (je index.css = Bundle-Einstieg)
+src/css/themes/  plus/, prime/, retro/, store/ (je index.css = Bundle-Einstieg)
 tests/        vitest-Tests (jsdom)
 ```
 

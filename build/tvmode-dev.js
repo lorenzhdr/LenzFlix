@@ -1,4 +1,4 @@
-// Dev-Harness des TV-Modus (docs/tvmode.md, Welle W3): Fake-Katalog (aus build/live-dev.js kopiert, deterministisch) + create() der Engine
+// Dev-Harness des TV-Modus (docs/tvmode.md, Welle W3): Fake-Katalog (deterministisch, ohne Netzwerk) + create() der Engine
 // (dist/lenztvmode.js) ohne Jellyfin und ohne Netzwerk. HTML: build/tvmode-dev.html (lädt CSS/JS je nach design/min).
 //
 // Parameter:

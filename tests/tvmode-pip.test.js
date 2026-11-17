@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createPip, BG_ID } from '../src/js/live/tvmode/pip.js';
+import { createPip, BG_ID } from '../src/js/tv/tvmode/pip.js';
 
 let video;
 let slot;

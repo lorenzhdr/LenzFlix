@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { normalizeCatalog, createScheduler } from '../src/js/live/schedule/index.js';
-import * as M from '../src/js/live/tvmode/model.js';
-import { createChannelList } from '../src/js/live/tvmode/channel-list.js';
-import { resetThumbCache } from '../src/js/live/tvmode/thumb.js';
+import { normalizeCatalog, createScheduler } from '../src/js/tv/schedule/index.js';
+import * as M from '../src/js/tv/tvmode/model.js';
+import { createChannelList } from '../src/js/tv/tvmode/channel-list.js';
+import { resetThumbCache } from '../src/js/tv/tvmode/thumb.js';
 
 const MIN = 6e8;
 const iso = (ms) => new Date(ms).toISOString();

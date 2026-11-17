@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createPlayerView, MOUSE_HIDE_MS } from '../src/js/live/tvmode/player-view.js';
+import { createPlayerView, MOUSE_HIDE_MS } from '../src/js/tv/tvmode/player-view.js';
 
 const ptr = (type, o = {}) => {
   const e = new Event(type, { bubbles: true, cancelable: true });

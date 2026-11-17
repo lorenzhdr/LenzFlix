@@ -15,14 +15,13 @@ vi.mock('../src/js/core/api.js', () => ({
 vi.mock('../src/js/core/charts.js', () => ({ getCharts: () => chartsMock.getCharts() }));
 
 vi.mock('../src/js/core/theme.js', () => ({
-  THEMES: ['flix', 'plus', 'prime', 'retro', 'store', 'live'],
+  THEMES: ['flix', 'plus', 'prime', 'retro', 'store'],
   THEME_META: {
     flix: { id: 'flix', name: 'LENZFLIX', tagline: 'Klassisch', palette: ['#000', '#e50914', '#fff', '#333'] },
     plus: { id: 'plus', name: 'LENZ+', tagline: 'Magisch', palette: ['#0a1230', '#4f7bff', '#fff', '#000'] },
     prime: { id: 'prime', name: 'LENZPRIME', tagline: 'Kinoabend', palette: ['#0f171e', '#1a98ff', '#fff', '#000'] },
     retro: { id: 'retro', name: 'LENZ//84', tagline: 'Videothek 1984', palette: ['#000', '#f0f', '#0ff', '#fff'] },
     store: { id: 'store', name: 'VIDEOTHEK LENZ', tagline: 'Begehbare 3D-Videothek', palette: ['#0d1330', '#ffd23f', '#ff3d7f', '#2446a8'] },
-    live: { id: 'live', name: 'LENZ LIVE', tagline: 'Lineares Fernsehen mit 18 Sendern', palette: ['#0b0d12', '#e03a2f', '#f4f1e8', '#3a7bd5'] },
   },
   getChosenTheme: () => themeState.chosen,
   getTheme: () => themeState.effective,
@@ -81,25 +80,15 @@ describe('themepicker', () => {
     expect(dlg.getAttribute('aria-modal')).toBe('true');
     expect(document.getElementById(dlg.getAttribute('aria-labelledby')).textContent).toBe('Design');
     expect(mount.classList.contains('lfx-tp--sheet')).toBe(false);
-    expect(document.querySelectorAll('.lfx-tp__card').length).toBe(6);
+    expect(document.querySelectorAll('.lfx-tp__card').length).toBe(5);
     expect(card('store').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
     expect(card('store').querySelector('.lfx-tp__preview--store .lfx-tp__shopsign').textContent).toBe('VIDEOTHEK LENZ');
-    expect(card('live').querySelector('.lfx-tp__preview--live .lfx-tp__screen')).not.toBeNull();
-    expect(card('live').querySelector('.lfx-tp__preview--live .lfx-tp__remote')).not.toBeNull();
-    expect(card('live').querySelector('.lfx-tp__mark--live').textContent).toBe('LENZLIVE');
-    expect(card('live').querySelector('.lfx-tp__beta').textContent).toBe('Beta');
     expect(card('plus').querySelector('.lfx-tp__beta')).toBeNull();
     expect(card('prime').querySelector('.lfx-tp__beta')).toBeNull();
     expect(card('retro').querySelector('.lfx-tp__beta')).toBeNull();
     expect(card('plus').getAttribute('aria-label')).not.toContain('Beta');
     expect(card('retro').getAttribute('aria-label')).not.toContain('Beta');
     expect(card('store').getAttribute('aria-label')).toContain('(Beta)');
-    expect(card('live').querySelectorAll('.lfx-tp__remote .lfx-tp__rkey').length).toBe(9);
-    expect(card('live').querySelectorAll('.lfx-tp__remote .lfx-tp__rcol').length).toBe(4);
-    expect(card('live').querySelector('.lfx-tp__remote .lfx-tp__rpower')).not.toBeNull();
-    expect(card('live').querySelector('.lfx-tp__remote .lfx-tp__rpad .lfx-tp__rok')).not.toBeNull();
-    expect(card('live').querySelector('.lfx-tp__screen .lfx-tp__roll')).not.toBeNull();
-    expect(card('live').querySelector('.lfx-tp__mark-live-b .lfx-tp__mark-live-dot')).not.toBeNull();
     expect(card('store').querySelectorAll('.lfx-tp__shelf').length).toBe(2);
     expect(card('store').querySelectorAll('.lfx-tp__cover').length).toBe(13);
     expect(card('flix').querySelector('.lfx-tp__beta')).toBeNull();

@@ -140,13 +140,13 @@ describe('themeroute im Design store', () => {
   describe('TV-Modus (lfx=tv)', () => {
     afterEach(() => document.documentElement.classList.remove('layout-tv'));
 
-    it('match nur unter store/live und layout-tv; flix/plus/prime/retro nie', () => {
+    it('match nur unter store und layout-tv; flix/plus/prime/retro nie', () => {
       const r = route('#/home?lfx=tv');
       for (const t of ['flix', 'plus', 'prime', 'retro']) {
         theme = t;
         expect(themeroute.match(r)).toBe(false);
       }
-      for (const t of ['store', 'live']) {
+      for (const t of ['store']) {
         theme = t;
         expect(themeroute.match(r)).toBe(true);
       }
@@ -155,7 +155,7 @@ describe('themeroute im Design store', () => {
       expect(themeroute.match(r)).toBe(true);
     });
 
-    it.each(['store', 'live'])('%s: lfx=tv -> #/home (replace, ohne neuen History-Eintrag)', (t) => {
+    it.each(['store'])('%s: lfx=tv -> #/home (replace, ohne neuen History-Eintrag)', (t) => {
       theme = t;
       window.location.hash = '#/home?lfx=tv';
       const before = window.history.length;
@@ -225,8 +225,8 @@ describe('themeroute: Seiten Serien/Filme/Meine Liste (1.13.0)', () => {
     views = saved;
   });
 
-  it('store/live/layout-tv: alle drei -> #/home', () => {
-    for (const t of ['store', 'live']) {
+  it('store: alle drei -> #/home', () => {
+    for (const t of ['store']) {
       theme = t;
       for (const k of ['series', 'movies', 'mylist']) {
         go(`#/home?lfx=${k}`);

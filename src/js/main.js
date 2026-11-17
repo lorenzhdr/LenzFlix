@@ -16,7 +16,6 @@ import { closeThemePicker } from './core/themepicker.js';
 import { clearToast } from './core/toast.js';
 import { features } from './features/index.js';
 import { destroyStore } from './features/store/home.js';
-import { destroyLive } from './features/live/home.js';
 import { destroyTvMode, initUnlock } from './features/tvmode/index.js';
 
 const WATCH_MS = 3000; // nach der Startphase; Routenwechsel lösen sync() zusätzlich sofort aus
@@ -53,7 +52,6 @@ function init() {
     resetRouter(); // unmount aller Features
     destroyHomeCache();
     destroyStore(); // VIDEOTHEK LENZ: suspendierte 3D-Instanz sofort freigeben
-    destroyLive(); // LENZ LIVE: suspendierte Engine-Instanz sofort freigeben
     destroyTvMode(); // TV-Modus: Instanz (auch im Bild-in-Bild), CSS, Intent-Listener freigeben
     destroyStartCover(); // Ladebild: Listener, Esc-Sperre, html-Klasse
     removeAllMounts();

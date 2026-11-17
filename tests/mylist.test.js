@@ -40,7 +40,7 @@ describe('mylist', () => {
     expect(mylist.match(route('#/home?lfx=new'))).toBe(false);
     themeState.id = 'retro';
     expect(mylist.match(r)).toBe(true);
-    for (const id of ['plus', 'prime', 'store', 'live']) {
+    for (const id of ['plus', 'prime', 'store']) {
       themeState.id = id;
       expect(mylist.match(r)).toBe(false);
     }

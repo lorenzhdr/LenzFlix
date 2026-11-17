@@ -11,14 +11,14 @@ const REDIRECT_KINDS = ['title', 'hub', 'browse', 'search'];
 const STORE_REDIRECT_KINDS = ['hub', 'browse'];
 // LENZPRIME rendert browse/search nicht (kommt nur über Designwechsel/History/Lesezeichen): auf native Ziele umleiten.
 const PRIME_REDIRECT_KINDS = ['browse', 'search'];
-// TV-Modus (#/home?lfx=tv) gibt es nur in flix/plus/prime/retro auf Modern: store/live und layout-tv gehen zurück auf #/home.
-const tvModeUnavailable = () => isTheme('store') || isTheme('live') || isTv();
+// TV-Modus (#/home?lfx=tv) gibt es nur in flix/plus/prime/retro auf Modern: store und layout-tv gehen zurück auf #/home.
+const tvModeUnavailable = () => isTheme('store') || isTv();
 // 1.13.0: Seiten Serien/Filme (nur flix) und Meine Liste (flix, retro); sonst native Ziele bzw. #/home.
 const PAGE_KINDS = ['series', 'movies', 'mylist'];
 const CT_OF = { series: 'tvshows', movies: 'movies' };
 const isFavTab = (route) => route && route.path === '/home' && route.params && !route.params.get('lfx') && route.params.get('tab') === '1';
 function pageUnavailable(kind) {
-  if (isTv() || isTheme('store') || isTheme('live')) return true;
+  if (isTv() || isTheme('store')) return true;
   if (isThemePending()) return false; // erster Start: Design-CSS lädt noch (vorläufiges LENZFLIX), nicht umleiten
   if (isTheme('flix')) return false;
   if (isTheme('retro')) return kind !== 'mylist';
@@ -94,7 +94,7 @@ function redirect(route) {
   if (isFavTab(route)) {
     replaceTo(myListHref());
   } else if (PAGE_KINDS.includes(r.kind)) {
-    if (isTv() || isTheme('store') || isTheme('live')) return replaceTo('#/home');
+    if (isTv() || isTheme('store')) return replaceTo('#/home');
     if (r.kind === 'mylist') return replaceTo('#/home?tab=1');
     if (isTheme('retro') || isTheme('plus') || isTheme('prime')) return toFirstHub(r.kind, key, mine);
     replaceTo('#/home');

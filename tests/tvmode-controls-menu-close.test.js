@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // TV-Bedienleiste: ein offenes Ton-/Untertitel-Menü schließt, wenn die Sendung wechselt.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createControls } from '../src/js/live/tvmode/controls.js';
+import { createControls } from '../src/js/tv/tvmode/controls.js';
 
 beforeEach(() => { document.body.innerHTML = ''; });
 afterEach(() => vi.useRealTimers());

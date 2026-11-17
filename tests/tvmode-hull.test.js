@@ -23,8 +23,8 @@ vi.mock('../src/js/core/themejs.js', () => ({ ensureThemeJs: vi.fn(async () => t
 vi.mock('../src/js/core/addoncss.js', () => ({ ensureAddonCss: vi.fn(async () => true), removeAddonCss: vi.fn() }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn(async () => true) }));
 vi.mock('../src/js/features/modal.js', () => ({ openModal: vi.fn() }));
-vi.mock('../src/js/features/live/data.js', () => ({ loadCatalog: vi.fn(async () => ({ items: [] })) }));
-vi.mock('../src/js/features/live/deps.js', () => ({
+vi.mock('../src/js/features/tvdata/data.js', () => ({ loadCatalog: vi.fn(async () => ({ items: [] })) }));
+vi.mock('../src/js/features/tvdata/deps.js', () => ({
   buildApiDeps: (raw, user) => ({ catalog: raw, user, request: vi.fn(), streamUrl: vi.fn(), imageUrl: vi.fn() }),
   loadUser: vi.fn(async () => ({ id: 'u1' })),
   fatalText: (e) => (e && e.message) || '',
@@ -37,7 +37,7 @@ import { ensureAddonCss, removeAddonCss } from '../src/js/core/addoncss.js';
 import { play } from '../src/js/core/playback.js';
 import { openModal } from '../src/js/features/modal.js';
 import { toast } from '../src/js/core/toast.js';
-import { loadCatalog } from '../src/js/features/live/data.js';
+import { loadCatalog } from '../src/js/features/tvdata/data.js';
 
 const route = (h) => parseHash(h);
 const flush = async () => { for (let i = 0; i < 8; i += 1) await new Promise((r) => setTimeout(r, 0)); };
@@ -96,9 +96,9 @@ describe('tvmode match', () => {
   it('flix/plus/prime ja', () => {
     for (const t of ['flix', 'plus', 'prime']) { theme = t; expect(m()).toBe(true); }
   });
-  it('store/live nein, retro ja', () => {
+  it('store nein, retro ja', () => {
     theme = 'retro'; expect(m()).toBe(true);
-    for (const t of ['store', 'live']) { theme = t; expect(m()).toBe(false); }
+    for (const t of ['store']) { theme = t; expect(m()).toBe(false); }
   });
   it('layout-tv / nicht modern nein, andere Routen nein', () => {
     tv = true; expect(m()).toBe(false);

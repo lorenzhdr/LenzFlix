@@ -15,7 +15,7 @@ import { logout } from '../../shared/profile.js';
 import { searchItems } from '../../shared/search.js';
 import { loadLocalTrailer, trailerUrl } from '../../shared/trailer.js';
 import { loadCatalog } from './data.js';
-import { fatalText } from '../live/deps.js';
+import { fatalText } from '../tvdata/deps.js';
 import { closeProfileMenu, hudButton, profileButton, toggleProfileMenu, wordmark } from './hud.js';
 import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js';
 import * as prefs from './prefs.js';

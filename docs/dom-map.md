@@ -163,8 +163,8 @@ Genutzt von `features/store/cinema-bridge.js` (Verhalten: `docs/store3d.md`, „
 - ActionSheet: `.dialog.actionSheet` → `.actionSheetContent` mit `h1.actionSheetTitle`, `button.actionSheetMenuItem` und `.actionSheetItemText`.
 - MUI-Menüs: `.MuiPopover-root .MuiMenu-paper`. Live-IDs: `#app-user-menu`, `#app-sync-play-menu`, `#app-remote-play-menu`.
 
-## Eigener Player (LENZ LIVE, live geprüft 11.11.2026)
-Kein DOM-Befund, sondern Server-Verhalten für den eigenen `<video>`-Player (Jellyfin 12.x); vollständige Liste in `docs/live.md` („Live geprüfte Server-Befunde“).
+## Eigener Player (TV-Modus, live geprüft 11.11.2026)
+Kein DOM-Befund, sondern Server-Verhalten für den eigenen `<video>`-Player (Jellyfin 12.x); vollständige Liste in `docs/tvmode.md` („Geteilter Unterbau“, „Server-Befunde der Wiedergabe“).
 - `POST /Items/{id}/PlaybackInfo?userId=` mit eigenem DeviceProfile; im Body immer `SubtitleStreamIndex: -1` (sonst wählt der Server evtl. einen brennenden Standard-Untertitel).
 - Token als `ApiKey` (der Server nutzt es selbst in `TranscodingUrl`); `api_key` wird ebenfalls akzeptiert.
 - Direktwiedergabe (`/Videos/{id}/stream?static=true&MediaSourceId=…`) bedient Range-Anfragen, Sprung per `currentTime` genügt.

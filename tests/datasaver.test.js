@@ -67,7 +67,7 @@ describe('datasaver (Kern)', () => {
       expect(isDataSaver()).toBe(true);
       expect(cls()).toBe(true);
     }
-    for (const id of ['store', 'live']) {
+    for (const id of ['store']) {
       setTheme(id);
       expect(dataSaverAvailable()).toBe(false);
       expect(isDataSaver()).toBe(false);

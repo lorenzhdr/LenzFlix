@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { normalizeCatalog, createScheduler, dayBounds, dayOfDate, broadcastDayOf, formatClock } from '../src/js/live/schedule/index.js';
-import { nowAll, gridRows, describe as describeEntry, days, nextProgram } from '../src/js/live/tvmode/model.js';
+import { normalizeCatalog, createScheduler, dayBounds, dayOfDate, broadcastDayOf, formatClock } from '../src/js/tv/schedule/index.js';
+import { nowAll, gridRows, describe as describeEntry, days, nextProgram } from '../src/js/tv/tvmode/model.js';
 
 const MIN = 6e8;
 const D0 = dayOfDate(2026, 10, 11); // Mittwoch 11.11.2026
@@ -214,7 +214,7 @@ describe('Sendetag', () => {
 
 describe('channelName', () => {
   it('entfernt das LIVE-Präfix und nutzt das Genre-Label', async () => {
-    const { channelName } = await import('../src/js/live/tvmode/model.js');
+    const { channelName } = await import('../src/js/tv/tvmode/model.js');
     expect(channelName({ no: 1, name: 'LIVE Kino' })).toBe('Kino');
     expect(channelName({ no: 7, name: 'LIVE Action', genreLabel: 'Action' })).toBe('Action');
     expect(channelName({ no: 9, name: 'LIVE 9' })).toBe('Sender 9');

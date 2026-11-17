@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../src/js/core/theme.js', () => ({ isTheme: vi.fn(() => false), getTheme: () => 'flix' }));
 
-import { isTheme } from '../src/js/core/theme.js';
 import osdc from '../src/js/features/osdcenter.js';
 import { features } from '../src/js/features/index.js';
 import { removeAllMounts } from '../src/js/core/dom.js';
@@ -21,7 +20,6 @@ describe('osdcenter', () => {
   beforeEach(() => {
     document.body.innerHTML = '<video class="htmlvideoplayer"></video>' + pageHtml();
     document.documentElement.className = 'lfx-js';
-    isTheme.mockImplementation(() => false);
   });
   afterEach(() => {
     osdc.unmount();
@@ -32,7 +30,7 @@ describe('osdcenter', () => {
     expect(features.map((f) => f.name)).toContain('osdcenter');
   });
 
-  it('match: nur mit aktiver Seite (oder Route /video); nicht TV, nicht live', () => {
+  it('match: nur mit aktiver Seite (oder Route /video); nicht TV', () => {
     expect(osdc.match(parseHash('#/home'))).toBe(true);
     document.body.innerHTML = '';
     expect(osdc.match(parseHash('#/home'))).toBe(false);
@@ -43,8 +41,6 @@ describe('osdcenter', () => {
     document.documentElement.className = 'lfx-js layout-tv';
     expect(osdc.match(route)).toBe(false);
     document.documentElement.className = 'lfx-js';
-    isTheme.mockImplementation((id) => id === 'live');
-    expect(osdc.match(route)).toBe(false);
   });
 
   it('mount legt Container mit drei Knöpfen und Beschriftung an', () => {

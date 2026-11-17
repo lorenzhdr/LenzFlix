@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createControls } from '../src/js/live/tvmode/controls.js';
+import { createControls } from '../src/js/tv/tvmode/controls.js';
 
 const snap = (o = {}) => ({ on: true, muted: false, volume: 50, ...o });
 

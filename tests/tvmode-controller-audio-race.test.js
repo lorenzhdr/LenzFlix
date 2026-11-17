@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createTvController } from '../src/js/live/tvmode/controller.js';
-import { createEmitter } from '../src/js/live/player/events.js';
+import { createTvController } from '../src/js/tv/tvmode/controller.js';
+import { createEmitter } from '../src/js/tv/player/events.js';
 
 const HOUR = 3600000;
 const T0 = Date.UTC(2026, 10, 11, 18, 0, 0);

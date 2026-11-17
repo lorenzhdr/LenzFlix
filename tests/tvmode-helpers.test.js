@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createDetails } from '../src/js/live/tvmode/details.js';
-import { createThumb, resetThumbCache, THUMB_TYPES } from '../src/js/live/tvmode/thumb.js';
+import { createDetails } from '../src/js/tv/tvmode/details.js';
+import { createThumb, resetThumbCache, THUMB_TYPES } from '../src/js/tv/tvmode/thumb.js';
 
 
 describe('tvmode details.js', () => {

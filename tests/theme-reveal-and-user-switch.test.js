@@ -51,17 +51,17 @@ afterEach(() => {
 });
 
 describe('Benutzerwechsel erbt nicht lfx.theme.last des Vorgängers', () => {
-  it('u1 (live) -> u2 ohne Schlüssel, Server leer: flix, kein Upload', async () => {
+  it('u1 (store) -> u2 ohne Schlüssel, Server leer: flix, kein Upload', async () => {
     vi.useFakeTimers();
     setUser('u1');
-    localStorage.setItem('lfx.theme.u1', 'live');
-    localStorage.setItem('lfx.theme.last', 'live');
+    localStorage.setItem('lfx.theme.u1', 'store');
+    localStorage.setItem('lfx.theme.last', 'store');
     window.ApiClient = { getDisplayPreferences: vi.fn(async () => prefs(null)), updateDisplayPreferences: vi.fn(async () => null) };
     const t = await load();
     t.startTheme();
-    settle('live');
+    settle('store');
     await vi.advanceTimersByTimeAsync(0);
-    expect(t.getTheme()).toBe('live');
+    expect(t.getTheme()).toBe('store');
     setUser('u2');
     t.syncThemeUser();
     await vi.advanceTimersByTimeAsync(1000);
@@ -231,16 +231,15 @@ describe('Hash-Wahl ohne Benutzer überlebt den Login', () => {
     expect(window.ApiClient.updateDisplayPreferences.mock.calls[0][1].CustomPrefs.theme).toBe('plus');
   });
 
-  it('lfxtheme=live vor Login: Vorgänger-Design (prevTheme) geht auf den Benutzer über', async () => {
+  it('lfxtheme=live (entferntes Design) wird ignoriert und aus dem Hash entfernt', async () => {
     localStorage.setItem('lfx.theme.last', 'retro');
     window.location.hash = '#/home?lfxtheme=live';
     const t = await load();
     t.startTheme();
-    settle('live');
+    settle('retro');
     await flush();
-    setUser('u1');
-    t.syncThemeUser();
-    expect(t.getPreviousTheme()).toBe('retro');
+    expect(t.getChosenTheme()).toBe('retro');
+    expect(window.location.hash).toBe('#/home');
   });
 });
 

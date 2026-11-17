@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // TV-Info: ohne Sendung ist „Mehr“ versteckt und die Wurzel is-empty.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createInfo } from '../src/js/live/tvmode/info.js';
+import { createInfo } from '../src/js/tv/tvmode/info.js';
 
 beforeEach(() => { document.body.innerHTML = ''; });
 afterEach(() => vi.useRealTimers());

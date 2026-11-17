@@ -1,5 +1,5 @@
 (() => {
-  // src/js/live/schedule/time.js
+  // src/js/tv/schedule/time.js
   var MIN = 6e4;
   var HOUR = 36e5;
   var GRID = 3e5;
@@ -60,7 +60,7 @@
     return Number.isFinite(n) ? n : 0;
   };
 
-  // src/js/live/schedule/hash.js
+  // src/js/tv/schedule/hash.js
   function fnv1a(str) {
     let h = 2166136261;
     for (let i = 0; i < str.length; i++) {
@@ -88,7 +88,7 @@
   var keyHash = (key, id) => fmix32(fnv1a(key + "" + id));
   var cmpStr = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
-  // src/js/live/schedule/rating.js
+  // src/js/tv/schedule/rating.js
   var FIXED = {
     G: 0,
     U: 0,
@@ -124,7 +124,7 @@
   }
   var maxAge = (a, b) => a == null ? b : b == null ? a : a > b ? a : b;
 
-  // src/js/live/schedule/catalog.js
+  // src/js/tv/schedule/catalog.js
   var MIN_DUR = 5 * MIN;
   var MAX_DUR = 5 * HOUR;
   var normGenre = (g) => String(g == null ? "" : g).trim().normalize("NFC").toLowerCase();
@@ -283,7 +283,7 @@
     };
   }
 
-  // src/js/live/schedule/pool.js
+  // src/js/tv/schedule/pool.js
   var CAP_MS = { A: 17 * HOUR, B: 4 * HOUR };
   var MAX_C = 4096;
   var streamOfAge = (age) => age == null || age <= 12 ? "A" : "B";
@@ -339,7 +339,7 @@
     return { home: rotation(sorted, C, D), borrow: C > 1 ? rotation(sorted, C, D + C / 2) : [] };
   }
 
-  // src/js/live/schedule/fill.js
+  // src/js/tv/schedule/fill.js
   var FILL_LABEL = "F\xFCllprogramm";
   var NIGHT_LABEL = "F\xFCllprogramm \u2013 regul\xE4res Programm ab 5:00";
   var FILLER_MAX = 30 * MIN;
@@ -527,7 +527,7 @@
     }
   }
 
-  // src/js/live/schedule/series.js
+  // src/js/tv/schedule/series.js
   function createSeriesTools() {
     const views = /* @__PURE__ */ new Map();
     const starts = /* @__PURE__ */ new Map();
@@ -614,7 +614,7 @@
     return { dayStart, view, block };
   }
 
-  // src/js/live/schedule/plan.js
+  // src/js/tv/schedule/plan.js
   var SHORT_MAX = 50 * MIN;
   var MIN_POOL = 2 * HOUR;
   var T_A = 16 * HOUR;
@@ -985,7 +985,7 @@
     return { ctx, channels, planBuiltin };
   }
 
-  // src/js/live/schedule/specials.js
+  // src/js/tv/schedule/specials.js
   var registry = /* @__PURE__ */ new Map();
   function registerSpecial(no, impl) {
     registry.set(no, impl);
@@ -994,7 +994,7 @@
     return registry.get(no) || null;
   }
 
-  // src/js/live/schedule/premiere.js
+  // src/js/tv/schedule/premiere.js
   var EPOCH = dayOfDate(2026, 10, 1);
   var MAX_WAIT_DAYS = 15;
   var BLOCK_MAX_EPS = 3;
@@ -1122,7 +1122,7 @@
   };
   registerSpecial(17, premiereImpl);
 
-  // src/js/live/schedule/themeday.js
+  // src/js/tv/schedule/themeday.js
   var KINDS = ["boxset", "decade", "pilot", "overlength"];
   var OVERLENGTH_MS = 150 * 6e4;
   var DECADE_MIN_MS = 6 * HOUR;
@@ -1324,7 +1324,7 @@
   };
   registerSpecial(18, themedayImpl);
 
-  // src/js/live/schedule/index.js
+  // src/js/tv/schedule/index.js
   var LOOKAHEAD_DAYS = 3;
   function validPlan(list, b) {
     if (!Array.isArray(list) || !list.length || list[0].start !== b.start || list[list.length - 1].end !== b.end) return false;
@@ -1408,7 +1408,7 @@
     };
   }
 
-  // src/js/live/player/events.js
+  // src/js/tv/player/events.js
   function createEmitter() {
     const map = /* @__PURE__ */ new Map();
     return {
@@ -1436,7 +1436,7 @@
     };
   }
 
-  // src/js/live/player/video.js
+  // src/js/tv/player/video.js
   var START_TIMEOUT_MS = 25e3;
   var STALL_REPORT_MS = 1200;
   var LANG2 = { ger: "de", deu: "de", eng: "en", fre: "fr", fra: "fr", spa: "es", ita: "it", jpn: "ja", kor: "ko", chi: "zh", zho: "zh", rus: "ru", por: "pt", dut: "nl", nld: "nl", pol: "pl", tur: "tr", swe: "sv", dan: "da", ara: "ar" };
@@ -1810,7 +1810,7 @@
     };
   }
 
-  // src/js/live/player/profile.js
+  // src/js/tv/player/profile.js
   var MKV = 'video/x-matroska; codecs="avc1.64001f, mp4a.40.2"';
   var MP4 = 'video/mp4; codecs="avc1.64001f, mp4a.40.2"';
   var HEVC_MP4 = 'video/mp4; codecs="hvc1.1.6.L120.90"';
@@ -1874,7 +1874,7 @@
     };
   }
 
-  // src/js/live/player/tracks.js
+  // src/js/tv/player/tracks.js
   var TEXT_SUBS = /* @__PURE__ */ new Set(["subrip", "srt", "ass", "ssa", "webvtt", "vtt", "mov_text", "text"]);
   var LANG = {
     de: "ger",
@@ -1964,7 +1964,7 @@
     return c === "aac" || c === "mp3";
   }
 
-  // src/js/live/player/stream.js
+  // src/js/tv/player/stream.js
   var VIDEO_REASONS = /* @__PURE__ */ new Set([
     "VideoCodecNotSupported",
     "VideoProfileNotSupported",
@@ -2142,7 +2142,7 @@
     }
   }
 
-  // src/js/live/player/fake.js
+  // src/js/tv/player/fake.js
   var BARS = ["#c0c0c0", "#c0c000", "#00c0c0", "#00c000", "#c000c0", "#c00000", "#0000c0"];
   var FAKE_TRACKS = {
     audio: [{ index: 1, label: "Deutsch (Test)", lang: "ger", isDefault: true }],
@@ -2275,7 +2275,7 @@
     };
   }
 
-  // src/js/live/player/warm.js
+  // src/js/tv/player/warm.js
   var abs = (rel, base) => {
     try {
       return new URL(rel, base).href;
@@ -2345,7 +2345,7 @@
     }
   }
 
-  // src/js/live/player/watch.js
+  // src/js/tv/player/watch.js
   var LATE_MS = 10 * 6e4;
   var GAP_MS = 6e4;
   var SHARE = 0.9;
@@ -2405,7 +2405,7 @@
     };
   }
 
-  // src/js/live/player/filler.js
+  // src/js/tv/player/filler.js
   async function pickFiller(entry, nextEntry, deps, now = Date.now) {
     const card = { kind: "card" };
     if (!entry || entry.type !== "filler" || !nextEntry || nextEntry.itemId == null) return card;
@@ -2422,7 +2422,7 @@
     return n < startAt ? { kind: "card", trailerStartMs: startAt } : card;
   }
 
-  // src/js/live/player/index.js
+  // src/js/tv/player/index.js
   var aborted = () => ({ ok: false, mode: "none", reason: "aborted" });
   var CACHE_TTL_MS = 10 * 60 * 1e3;
   var CACHE_MAX = 24;
@@ -3134,7 +3134,7 @@
     };
   }
 
-  // src/js/live/player/neighbors.js
+  // src/js/tv/player/neighbors.js
   var NEIGHBOR_MS = 1e3;
   var ERROR_WARM_MS = 2e3;
   var WARM_TICK_MS = 35e3;
@@ -3240,7 +3240,7 @@
     };
   }
 
-  // src/js/live/ui/overlay-util.js
+  // src/js/tv/ui/overlay-util.js
   function genreLabels(scheduler, norms) {
     const list = Array.isArray(norms) ? norms : [];
     let map;
@@ -3291,7 +3291,7 @@
     return b;
   }
 
-  // src/js/live/tvmode/model.js
+  // src/js/tv/tvmode/model.js
   var clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   var known = (n) => n != null && n !== 9999 ? n : null;
   var KIND = { program: "program", fill: "fill", nightfill: "fill", filler: "filler", closedown: "closedown" };
@@ -3451,7 +3451,7 @@
     return raw;
   }
 
-  // src/js/live/tvmode/controller.js
+  // src/js/tv/tvmode/controller.js
   var DEBOUNCE_MS = 250;
   var STATS_MAX = 10;
   var RETRY_MS2 = 1e4;
@@ -4055,7 +4055,7 @@
     };
   }
 
-  // src/js/live/tvmode/details.js
+  // src/js/tv/tvmode/details.js
   function createDetails({ deps = {}, delayMs = 400, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
     const texts = /* @__PURE__ */ new Map();
     const inflight = /* @__PURE__ */ new Set();
@@ -4122,7 +4122,7 @@
     };
   }
 
-  // src/js/live/ui/fullscreen.js
+  // src/js/tv/ui/fullscreen.js
   function createFullscreen({ target, doc = document, onChange } = {}) {
     let cssOn = false;
     const fsEl = () => doc.fullscreenElement || doc.webkitFullscreenElement || null;
@@ -4192,7 +4192,7 @@
     };
   }
 
-  // src/js/live/ui/zapstats.js
+  // src/js/tv/ui/zapstats.js
   var AVG_MAX = 10;
   var STYLE = [
     "position:absolute",
@@ -4322,7 +4322,7 @@
     };
   }
 
-  // src/js/live/tvmode/digits.js
+  // src/js/tv/tvmode/digits.js
   var MAX_CHANNEL = 18;
   function createDigits({ onCommit, onPreview, onInvalid, now = Date.now, timeoutMs = 1500 } = {}) {
     let buf = "";
@@ -4406,7 +4406,7 @@
     };
   }
 
-  // src/js/live/tvmode/keys.js
+  // src/js/tv/tvmode/keys.js
   var ZAP = { ArrowUp: 1, PageUp: 1, ArrowDown: -1, PageDown: -1 };
   var FIELD = /^(INPUT|TEXTAREA|SELECT)$/;
   function createKeys({ doc = document, root, ctl, fullscreen = null, blocked = null, onPreview = null, toast = null, now = Date.now } = {}) {
@@ -4466,7 +4466,7 @@
     };
   }
 
-  // src/js/live/ui/logos.js
+  // src/js/tv/ui/logos.js
   var LOGO_COLORS = [
     "#e53935",
     "#fb8c00",
@@ -4513,7 +4513,7 @@
     return base.length > MAX_NAME ? base.slice(0, MAX_NAME).trim() : base;
   }
 
-  // src/js/live/tvmode/thumb.js
+  // src/js/tv/tvmode/thumb.js
   var THUMB_TYPES = ["Thumb", "Backdrop", "Primary"];
   var sharedCache = /* @__PURE__ */ new Map();
   function createThumb({ doc = document, deps = {}, maxWidth = 480, cache = sharedCache } = {}) {
@@ -4589,7 +4589,7 @@
     };
   }
 
-  // src/js/live/tvmode/channel-list.js
+  // src/js/tv/tvmode/channel-list.js
   var clamp01 = (n) => Math.max(0, Math.min(1, n));
   var pct = (p) => `${(clamp01(p) * 100).toFixed(1)}%`;
   function createChannelBadge(doc, channel) {
@@ -4781,7 +4781,7 @@
     };
   }
 
-  // src/js/live/tvmode/info.js
+  // src/js/tv/tvmode/info.js
   var clamp3 = (n, a, b) => Math.max(a, Math.min(b, n));
   var SVG_NS = "http://www.w3.org/2000/svg";
   var ICONS = {
@@ -4971,7 +4971,7 @@
     };
   }
 
-  // src/js/live/tvmode/track-menu.js
+  // src/js/tv/tvmode/track-menu.js
   function createTrackMenu({ doc = document, ctl, trigger = null, onClose = null } = {}) {
     const el = doc.createElement("div");
     el.className = "lfx-tvm__menu lfx-tvm__menu--tracks lfx-tvm__menu--audio lfx-tvm__menu--subs";
@@ -5130,7 +5130,7 @@
     };
   }
 
-  // src/js/live/tvmode/controls.js
+  // src/js/tv/tvmode/controls.js
   var SVG = (inner) => `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
   var ICONS2 = {
     volume: SVG('<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
@@ -5301,7 +5301,7 @@
     };
   }
 
-  // src/js/live/tvmode/player-view.js
+  // src/js/tv/tvmode/player-view.js
   var ZAP_MS = 4e3;
   var CONTROLS_MS = 3e3;
   var LOADING_DELAY_MS = 300;
@@ -5707,7 +5707,7 @@
     };
   }
 
-  // src/js/live/tvmode/epg-grid.js
+  // src/js/tv/tvmode/epg-grid.js
   var STEP = 30 * MIN;
   var TINY_PX = 48;
   var SHORT_PX = 90;
@@ -6098,7 +6098,7 @@
     };
   }
 
-  // src/js/live/tvmode/info-card.js
+  // src/js/tv/tvmode/info-card.js
   var FOCUSABLE = 'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
   function createInfoCard({ doc, ctl, model, deps = {}, opts = {} }) {
     const getNow = typeof opts.getNow === "function" ? opts.getNow : () => Date.now();
@@ -6332,7 +6332,7 @@
     };
   }
 
-  // src/js/live/tvmode/app.js
+  // src/js/tv/tvmode/app.js
   var PHONE_Q = "(max-width: 799px)";
   var LAND_Q = "(orientation: landscape) and (max-height: 500px)";
   var TOAST_MS = 3500;
@@ -6673,7 +6673,7 @@
     };
   }
 
-  // src/js/live/tvmode/pip.js
+  // src/js/tv/tvmode/pip.js
   var BG_ID = "lfx-tvm-bg";
   var SAFARI_MODE = "picture-in-picture";
   function createPip({ doc = document, video, getSlot = () => null, onChange } = {}) {
@@ -6805,7 +6805,7 @@
     };
   }
 
-  // src/js/live/tvmode/entry.js
+  // src/js/tv/tvmode/entry.js
   var ENGINE_MARK = "__LFX_TVMODE_ENGINE__";
   var VERSION = 1;
   var DAYS = 7;

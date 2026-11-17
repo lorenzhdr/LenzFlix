@@ -50,14 +50,11 @@ describe('startcover', () => {
     expect(cover().querySelector('.lfx-startcover__title').textContent).toBe('Anderer');
   });
 
-  it('nicht unter layout-tv und nicht bei live', () => {
+  it('nicht unter layout-tv', () => {
     document.documentElement.classList.add('layout-tv');
     show({ item: movie });
     expect(cover()).toBeNull();
     document.documentElement.classList.remove('layout-tv');
-    themeState.id = 'live';
-    show({ item: movie });
-    expect(cover()).toBeNull();
   });
 
   it('hide: Fade, dann entfernt', async () => {

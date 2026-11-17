@@ -69,7 +69,7 @@
 - Startseiten-Cache (`core/cache.js` `cached`, `HOME_TTL` 10 min, Schlüssel `homeKey(uid, …)` = `home:<uid>:…`): u. a. Zeilen, `hubpool:<libId>` und `hubgenres:<libId>` (`shared/hub.js`), Neu und beliebt `np:…` (5 min, `newpopular.js`). Invalidierung `core/homecache.js`: Abspielen (`lfx:play`), Betreten und Verlassen der Player-Route (beim Verlassen sofort und 2 s später, weil der Stopp-Bericht verspätet ankommt), `LibraryChanged`/geänderte Titel, `UserDataChanged` (falls `ApiClient.subscribe` existiert, abgesichert). Nutzerwechsel leert den gesamten Cache (`clearCache()`) und den `itemstore`. `core/charts.js` `getCharts` cacht Fehlschlag (`null`) nur 30 s statt 5 min.
 
 ## Designs (Umschalter)
-Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`plus`: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs) **LENZPRIME** (`prime`: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile) **LENZ//84** (`retro`: Bernstein-Terminal, Kassetten, Neon-Gitter) **VIDEOTHEK LENZ** (`store`, Beta: begehbare 3D-Videothek) und **LENZ LIVE** (`live`, Beta: lineares Fernsehen aus der Mediathek). Feature-Ordner `src/js/features/plus/`, `features/prime/`, `features/retro/`, `features/store/` und `features/live/` (Listen `plusFeatures`/`primeFeatures`/`retroFeatures` und die Store-/Live-Listen in `features/index.js`), CSS unter `src/css/themes/<id>/`. `core/` und `shared/` nutzen alle Designs gemeinsam. Die Features von LENZFLIX (`home`, `nav`, `mobilenav`, `hovercard`, `statshint`) matchen nur mit `isTheme('flix')`.
+Fünf Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (`plus`: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs) **LENZPRIME** (`prime`: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile) **LENZ//84** (`retro`: Bernstein-Terminal, Kassetten, Neon-Gitter) und **VIDEOTHEK LENZ** (`store`, Beta: begehbare 3D-Videothek); das frühere Design „LENZ LIVE“ ist seit 1.15.0 entfernt (gespeichertes `live` wird einmalig migriert, siehe `docs/tvmode.md`). Feature-Ordner `src/js/features/plus/`, `features/prime/`, `features/retro/` und `features/store/` (Listen `plusFeatures`/`primeFeatures`/`retroFeatures` und die Store-Liste in `features/index.js`), CSS unter `src/css/themes/<id>/`. `core/` und `shared/` nutzen alle Designs gemeinsam. Die Features von LENZFLIX (`home`, `nav`, `mobilenav`, `hovercard`, `statshint`) matchen nur mit `isTheme('flix')`.
 
 ### Design-Kern (`src/js/core/theme.js`)
 - `THEMES`, `THEME_META` (id, Name, Tagline, Palette), `normalizeTheme(x)` (unbekannt → `flix`).
@@ -91,28 +91,24 @@ Sechs Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 - Lebenszyklus-Ausnahme: `unmount()` setzt die 3D-Instanz nur aus (suspend), nach 3 min folgt dispose; Design-Wechsel und `destroy()` disposen sofort.
 - `match(route)` wie bei den anderen Designs mit `isTheme('store')`; Vertrag, Module und ctx-API: `docs/store3d.md`.
 
-### LENZ LIVE (`live`, `features/live/`)
-- Zwei Bundles wie `store`: Hülle im Hauptbundle, Engine `src/js/live/**` als lazy `dist/lenzlive(.min).js` (nur eigene Dateien, Marker `__LFX_LIVE_ENGINE__`). Vertrag: `docs/live.md`.
-- `home.js` mountet `#lfx-live-home` auf `#/home` (ohne `lfx`-Route); `unmount()` → suspend, dispose nach 3 min, bei Design-Wechsel/`destroy()` sofort. Match mit `isTheme('live')`, nur Modern, nicht TV.
-- `guard.js` (Routen-Wächter): solange `live` wirksam ist, werden alle Mediathek-Routen per `location.replace` auf `#/home` umgeleitet; erlaubt sind Login-/Setup-Routen, `/dashboard*`, `/mypreferences*`, `/userprofile*`, `/video`, `/queue` und Admin-Seiten.
-- `leave.js`: `leaveToLibrary(itemId, meta)` wechselt dauerhaft ins vorherige Design (`getPreviousTheme()` aus `core/theme.js`, nie `live`) und navigiert danach zum Titel.
-- `modal` und `newpopular` matchen unter `live` und `store` nicht (kein Detail-Overlay, keine „Neu und beliebt“-Seite).
+### `modal` und `newpopular`
+- Beide matchen unter `store` nicht (kein Detail-Overlay, keine „Neu und beliebt“-Seite).
 
 ### TV-Modus (`lfx=tv`, `features/tvmode/`, flix/plus/prime und seit 1.13.0 retro)
 - Eigene Vollseite `#/home?lfx=tv` (Route-Kind `tv` in `shared/routes.js`, `tvModeHref`/`isTvModeRoute`), Einstieg über ein TV-Symbol in der Kopfleiste (flix: `features/tvbtn.js`, plus/prime im eigenen Kopf). Vertrag, Engine, DOM und Lebenszyklus: `docs/tvmode.md`.
-- Zwei Bundles: Hülle `features/tvmode/` im Hauptbundle (Server-deps aus `features/live/deps.js`, geteilt mit LENZ LIVE), Engine `src/js/live/tvmode/**` als lazy `dist/lenztvmode(.min).js` (nur Dateien aus `src/js/live/`, Marker `__LFX_TVMODE_ENGINE__`), CSS lazy als `dist/lenztvmode(.min).css`.
+- Zwei Bundles: Hülle `features/tvmode/` im Hauptbundle (Server-deps aus `features/tvdata/deps.js`), Engine `src/js/tv/tvmode/**` als lazy `dist/lenztvmode(.min).js` (nur Dateien aus `src/js/tv/`, Marker `__LFX_TVMODE_ENGINE__`), CSS lazy als `dist/lenztvmode(.min).css`.
 - `core/addoncss.js`: `ensureAddonCss(name, {timeout})` lädt ein Zusatz-CSS (Klasse `lfx-addon-css`) aus demselben Ort wie das Kern-CSS (`addonCssUrl(name)`), `removeAddonCss(name)` entfernt es. Anders als `themecss.js` gehört es nicht zum Design-Wechsel (kein `lfx-theme-css`).
 - Ereignisse auf `window`: `lfx:play` (`core/playback.js` `play()` feuert es synchron vor dem Proxy-Klick, `detail: { id }`; stoppt den TV-Modus bei jedem normalen Abspielweg) und `lfx:tvmode-intent` (TV-Symbole feuern es synchron im Klick, damit `features/tvmode/unlock.js` ein `<video>` in der Geste entsperrt).
-- Wiedergabe-Ausnahme: Wie LENZ LIVE spielt der TV-Modus mit eigenem `<video>` ohne Fortschrittsmeldung, nicht über den Proxy-Klick. „Von vorne“ und „In der Mediathek ansehen“ stoppen den TV und gehen dann normal über `core/playback.js` (`resume:false`).
-- Umleitung unter store/live und `html.layout-tv` per `features/themeroute.js` auf `#/home`. retro (1.13.0): TV-Symbol in `retro/header-ui.js`, Look rein per CSS (`themes/retro/tvmode.css`, Details in `docs/tvmode.md`), retro-fx ist auf der TV-Route aus.
+- Wiedergabe-Ausnahme: Der TV-Modus spielt mit eigenem `<video>` ohne Fortschrittsmeldung, nicht über den Proxy-Klick. „Von vorne“ und „In der Mediathek ansehen“ stoppen den TV und gehen dann normal über `core/playback.js` (`resume:false`).
+- Umleitung unter store und `html.layout-tv` per `features/themeroute.js` auf `#/home`. retro (1.13.0): TV-Symbol in `retro/header-ui.js`, Look rein per CSS (`themes/retro/tvmode.css`, Details in `docs/tvmode.md`), retro-fx ist auf der TV-Route aus.
 
-### Player-Bildmitte (`features/osdcenter.js`, Modern, alle Designs außer `live`, nicht `layout-tv`)
+### Player-Bildmitte (`features/osdcenter.js`, Modern, alle Designs, nicht `layout-tv`)
 - Eigener Container `#lfx-osdc` (body, `position:fixed`, z-index 900: über Video/Player-Seite, unter Dialogen ≥ 1000) mit drei Knöpfen ⟲10 · Play/Pause · ⟳30. CSS `js-ui/osdcenter.css`.
 - Klick = Proxy-Klick auf `.btnRewind`/`.btnPause`/`.btnFastForward` der aktiven Seite (`[id="videoOsdPage"]:not(.hide)`); Events der Knöpfe werden nicht weitergereicht (kein Leisten-Toggle durch Tippen aufs Bild). Play-Symbol folgt `play`/`pause` des `video.htmlvideoplayer`.
 - Sichtbar (`.is-visible`) nur bei sichtbarer `.videoOsdBottom` (weder `videoOsdBottom-hidden` noch `hide`), ohne offenen Dialog (`.dialogContainer .dialog.opened`) und ohne `.upNextContainer` ohne `.hide`; Proxy mit `.hide` blendet den Knopf aus.
 - Erkennung: `match` per Router (viewshow/hashchange) bzw. aktive Seite; gemountet beobachtet ein MutationObserver (childList + `class`) auf body, per rAF gebündelt.
 
-### Ladebild beim Abspielen (`core/startcover.js`, alle Designs außer `live`, nicht `layout-tv`)
+### Ladebild beim Abspielen (`core/startcover.js`, alle Designs, nicht `layout-tv`)
 - `play()` in `core/playback.js` zeigt vor dem Proxy-Klick `#lfx-startcover` (`show({item})`, idempotent je Item-Id; `hide()`, `destroy()`, `allowRoute(path)`): Backdrop (bei Folgen der Serie), Titel unten links (Folge: Serienname + „S1 · F3 · Titel“), Ladekreis; nur Kern-Tokens. z-index 1250 (über Info-Fenster 1200, unter MUI-Menüs 1300 und Jellyfin-Dialogen). CSS `js-ui/startcover.css`.
 - Das Info-Fenster (`features/modal.js`) zeigt es sofort beim Klick auf Abspielen/Folge, dann `closeModal({after: play})`; Abbruch beim Laden von „Nächste Folge“ entfernt es wieder.
 - Abbau (Fade 200 ms, MutationObserver auf body nur solange es steht, rAF-gebündelt): sichtbare `[id="videoOsdPage"]:not(.hide)` UND `video.htmlvideoplayer` spielt; offener `.dialogContainer .dialog.opened`; Route weder `/video` noch Ausgangsroute (Fallback `playViaDetails` erlaubt `/details`); anderes Item ersetzt den Inhalt; Sicherheitsnetz 25 s; Esc schließt nur das Ladebild (Event verschluckt).
@@ -202,7 +198,7 @@ Manueller Schalter gegen Hintergrund-Datenverbrauch. Kern `core/datasaver.js`; S
 
 ## Geheimmenü (1.13.0, nur LENZFLIX, `features/secretmenu.js`, `secretmenu/panel.js`, `js-ui/secretmenu.css`)
 - Öffnet sich durch 5 Klicks in 3 s aufs Logo (PC: nativer Link `header.MuiAppBar-root a[href="#/"]` per Capture-Delegation, nie mutieren; Handy `.lfx-mnav__logo`); nur der 5. Klick ruft `preventDefault`. Bewusst nicht in der README.
-- Inhalt: Bildgrößen-Regler (wirken beim Loslassen), TV/LIVE-Testschalter (`zapflag.js` `setZapStats/setZapWarm/setForceHls`), Datensparmodus-Teile, Version und „Cache leeren“ (`clearCache()` + `clearItemStore()` + `clearCatalogCache()` aus `features/live/data.js`).
+- Inhalt: Bildgrößen-Regler (wirken beim Loslassen), TV-Testschalter (`zapflag.js` `setZapStats/setZapWarm/setForceHls`), Datensparmodus-Teile, Version und „Cache leeren“ (`clearCache()` + `clearItemStore()` + `clearCatalogCache()` aus `features/tvdata/data.js`).
 
 ## Vorladen der Startseite (1.11.5, Pause 1.11.6)
 `features/rows/prefetch.js` lädt die noch offenen Zeilen der Startseite im Hintergrund, damit beim Scrollen alles da ist.

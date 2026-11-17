@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { normalizeCatalog, createScheduler } from '../src/js/live/schedule/index.js';
-import * as M from '../src/js/live/tvmode/model.js';
-import { createDetails } from '../src/js/live/tvmode/details.js';
-import { createInfoCard } from '../src/js/live/tvmode/info-card.js';
-import { resetThumbCache } from '../src/js/live/tvmode/thumb.js';
+import { normalizeCatalog, createScheduler } from '../src/js/tv/schedule/index.js';
+import * as M from '../src/js/tv/tvmode/model.js';
+import { createDetails } from '../src/js/tv/tvmode/details.js';
+import { createInfoCard } from '../src/js/tv/tvmode/info-card.js';
+import { resetThumbCache } from '../src/js/tv/tvmode/thumb.js';
 
 const TICKS = 6e8;
 const iso = (ms) => new Date(ms).toISOString();
@@ -209,7 +209,7 @@ describe('tvmode info-card.js', () => {
 
 describe('tvmode info-card.js Datum nach Mitternacht', () => {
   it('zeigt das Kalenderdatum des Beginns, nicht den Sendetag (01:35 in der Nacht = neues Datum)', async () => {
-    const { wallToUtc, broadcastDayOf, formatDay } = await import('../src/js/live/schedule/time.js');
+    const { wallToUtc, broadcastDayOf, formatDay } = await import('../src/js/tv/schedule/time.js');
     const { card } = make();
     const D = broadcastDayOf(T0);
     const start = wallToUtc(D + 1, 95); // 01:35 am Folgetag (gehört noch zum Sendetag D)

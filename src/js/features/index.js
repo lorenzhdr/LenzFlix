@@ -21,6 +21,5 @@ import { plusFeatures } from './plus/index.js';
 import { primeFeatures } from './prime/index.js';
 import { retroFeatures } from './retro/index.js';
 import { storeFeatures } from './store/index.js';
-import { liveFeatures } from './live/index.js';
 
-export const features = [themeroute, nav, mobilenav, tvbtn, dsbtn, osdcenter, playerbg, home, hovercard, modal, library, mylist, newpopular, ...tvmodeFeatures, contextmenu, secretmenu, statshint, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures, ...liveFeatures];
+export const features = [themeroute, nav, mobilenav, tvbtn, dsbtn, osdcenter, playerbg, home, hovercard, modal, library, mylist, newpopular, ...tvmodeFeatures, contextmenu, secretmenu, statshint, ...plusFeatures, ...primeFeatures, ...retroFeatures, ...storeFeatures];

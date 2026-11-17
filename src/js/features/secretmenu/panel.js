@@ -14,8 +14,8 @@ import {
 import { switchButton, setSwitchState } from '../../core/switch.js';
 import {
   isZapStatsOn, setZapStats, isZapWarmOn, setZapWarm, isForceHlsOn, setForceHls,
-} from '../live/zapflag.js';
-import { clearCatalogCache } from '../live/data.js';
+} from '../tvdata/zapflag.js';
+import { clearCatalogCache } from '../tvdata/data.js';
 
 const PANEL_ID = 'lfx-secret';
 const POSTER_BASE = 300;
@@ -98,12 +98,12 @@ function tvSection() {
     { key, label, checked: get(), onToggle: (on) => set(on) },
     { className: 'lfx-secret__switch', role: 'switch' },
   );
-  return section('TV & LENZ LIVE (Test)', [
+  return section('TV (Test)', [
     sw('zapstats', 'Messanzeige', isZapStatsOn, setZapStats),
     sw('zapwarm', 'Vorwärmen der Nachbarsender', isZapWarmOn, setZapWarm),
     sw('forcehls', 'HLS erzwingen', isForceHlsOn, setForceHls),
     note('„HLS erzwingen“ wirkt nur mit Messanzeige.'),
-    note('Wirkt beim nächsten Öffnen des TV-Modus bzw. von LENZ LIVE.'),
+    note('Wirkt beim nächsten Öffnen des TV-Modus.'),
   ]);
 }
 

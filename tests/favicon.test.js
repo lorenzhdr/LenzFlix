@@ -31,3 +31,12 @@ describe('favicon', () => {
     expect(document.head.querySelector('link').getAttribute('href')).toBe('favicon.ico');
   });
 });
+
+describe('favicon entferntes Design', () => {
+  it('live (LENZ LIVE entfernt) fällt auf das LENZFLIX-Icon zurück', () => {
+    document.head.innerHTML = '<link rel="icon" href="favicon.ico">';
+    applyFavicon('live');
+    const link = document.head.querySelector('#lfx-favicon');
+    expect(link.getAttribute('href')).toMatch(/^data:image\/png/);
+  });
+});

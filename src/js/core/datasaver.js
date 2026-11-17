@@ -1,5 +1,5 @@
 // LenzFlix: Datensparmodus (LENZFLIX/LENZ+/LENZPRIME/LENZ//84). Manueller Schalter, pro Gerät und Nutzer in localStorage
-// (lfx.datasaver.<userId|anon> = '1'|'0', Standard aus). Aktiv = an UND Design in DATASAVER_THEMES; in store/live wirkungslos.
+// (lfx.datasaver.<userId|anon> = '1'|'0', Standard aus). Aktiv = an UND Design in DATASAVER_THEMES; in store wirkungslos.
 // Teilschalter: lfx.datasaver.parts.<uid|anon> = JSON-Array der ABGESCHALTETEN Teile (DATASAVER_PARTS), isDataSaver(part).
 // Bei Änderung von „aktiv“: <html>-Klasse lfx-datasaver, Bild-Skala (core/imgscale.js → core/api.js setImageScale), window-Event
 // lfx:datasaver { active }. Vertrag: docs/js-contracts.md („Datensparmodus“).

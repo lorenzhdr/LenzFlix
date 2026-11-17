@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createTrackMenu } from '../src/js/live/tvmode/track-menu.js';
+import { createTrackMenu } from '../src/js/tv/tvmode/track-menu.js';
 
 const TR = {
   audio: [{ index: 1, label: 'Deutsch' }, { index: 2, label: 'Englisch' }],

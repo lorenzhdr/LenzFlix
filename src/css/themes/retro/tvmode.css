@@ -1,4 +1,4 @@
-/* LENZ//84 · TV-Modus (Engine src/js/live/tvmode/, Basis-CSS src/css/tvmode/): Bernstein-Terminal-Look, Röhren-Schein, Schnee beim Umschalten.
+/* LENZ//84 · TV-Modus (Engine src/js/tv/tvmode/, Basis-CSS src/css/tvmode/): Bernstein-Terminal-Look, Röhren-Schein, Schnee beim Umschalten.
    Nur Engine-Klassen (lfx-tvm__*), kein Nesting, kein :has. Bild selbst ohne Effekte (1.13.1: keine Scanlines/Vignette mehr). */
 
 /* ---- Rahmen: eckig, Bernstein-Linie ---- */

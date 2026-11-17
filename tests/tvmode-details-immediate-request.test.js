@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // TV-Details: sofortige Anfrage ohne Entprellung.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createDetails } from '../src/js/live/tvmode/details.js';
+import { createDetails } from '../src/js/tv/tvmode/details.js';
 
 const T0 = Date.UTC(2026, 10, 11, 18, 0, 0);
 const flush = (ms = 0) => vi.advanceTimersByTimeAsync(ms);

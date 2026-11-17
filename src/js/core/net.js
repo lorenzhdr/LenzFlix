@@ -1,4 +1,4 @@
-// LenzFlix: gemeinsame Netzregel für Hintergrund-Laden (Zeilen-Vorladen, Vorwärmen im TV-Modus/LENZ LIVE).
+// LenzFlix: gemeinsame Netzregel für Hintergrund-Laden (Zeilen-Vorladen, Vorwärmen im TV-Modus).
 
 /** false bei Datensparen, Mobilfunk oder langsamem Netz; ohne API (Safari/Firefox) true. */
 export function netOk() {

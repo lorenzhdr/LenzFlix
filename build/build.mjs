@@ -23,7 +23,6 @@ const cssEntries = [
   ['src/css/themes/prime/index.css', 'lenzprime'],
   ['src/css/themes/retro/index.css', 'lenzretro'],
   ['src/css/themes/store/index.css', 'lenzstore'],
-  ['src/css/themes/live/index.css', 'lenzlive'],
   ['src/css/tvmode/index.css', 'lenztvmode'], // TV-Modus (flix/plus/prime/retro, lazy über core/addoncss.js, docs/tvmode.md)
 ];
 
@@ -41,12 +40,11 @@ async function buildCss() {
   }
 }
 
-// JS-Bundles: Hauptbundle (immer geladen) + 3D-Bundle der VIDEOTHEK LENZ und Engine von LENZ LIVE (lazy, siehe core/themejs.js, docs/store3d.md).
+// JS-Bundles: Hauptbundle (immer geladen) + 3D-Bundle der VIDEOTHEK LENZ und TV-Modus-Engine (lazy, siehe core/themejs.js, docs/store3d.md, docs/tvmode.md).
 const jsEntries = [
   ['src/js/main.js', 'lenzflix'],
   ['src/js/store3d/entry.js', 'lenzstore'],
-  ['src/js/live/entry.js', 'lenzlive'], // LENZ LIVE: Engine (lazy, docs/live.md)
-  ['src/js/live/tvmode/entry.js', 'lenztvmode'], // TV-Modus: Engine (lazy, docs/tvmode.md)
+  ['src/js/tv/tvmode/entry.js', 'lenztvmode'], // TV-Modus: Engine (lazy, docs/tvmode.md)
 ];
 
 async function buildJs() {
@@ -73,24 +71,18 @@ function checkMainBundle() {
   if (/WebGLRenderer|THREE\.REVISION|three\.module/.test(code)) {
     throw new Error('dist/lenzflix.min.js enthält three.js – das 3D-Bundle darf nur lazy geladen werden');
   }
-  if (code.includes('__LFX_LIVE_ENGINE__')) {
-    throw new Error('dist/lenzflix.min.js enthält die LENZ-LIVE-Engine – sie darf nur lazy (lenzlive.min.js) geladen werden');
-  }
   if (code.includes('__LFX_TVMODE_ENGINE__')) {
     throw new Error('dist/lenzflix.min.js enthält die TV-Modus-Engine – sie darf nur lazy (lenztvmode.min.js) geladen werden');
   }
   if (code.length > MAIN_MIN_BUDGET) console.warn(`WARNUNG: lenzflix.min.js ist ${code.length} B (Budget ${MAIN_MIN_BUDGET} B)`);
 }
 
-// Wächter: die TV-Modus-Engine importiert nichts aus der LENZ-LIVE-Engine-UI (Marker/Fernbedienungs-Klassen), bleibt unter 128 KiB.
+// Wächter: die TV-Modus-Engine enthält keine Klassen des entfernten LENZ-LIVE-Designs (lfx-live-) und bleibt unter 128 KiB.
 const TVMODE_MIN_BUDGET = 128 * 1024; // 1.11.5: +Vorwärmen (lazy Engine); 1.11.6: +fMP4 pro Titel, Gründe, Formatprüfung (Nutzer-OK bis 128 KiB)
 function checkTvModeBundle() {
   const code = readFileSync(resolve(dist, 'lenztvmode.min.js'), 'utf8');
-  if (code.includes('__LFX_LIVE_ENGINE__')) {
-    throw new Error('dist/lenztvmode.min.js enthält die LENZ-LIVE-Engine – der TV-Modus darf nur Dateien aus src/js/live/{schedule,player,ui/logos,…} einzeln importieren');
-  }
-  if (code.includes('lfx-live-remote')) {
-    throw new Error('dist/lenztvmode.min.js enthält die LENZ-LIVE-Fernbedienung (lfx-live-remote) – ui/app.js/remote.js dürfen nicht importiert werden');
+  if (code.includes('lfx-live-')) {
+    throw new Error('dist/lenztvmode.min.js enthält lfx-live-Klassen des entfernten LENZ-LIVE-Designs – der TV-Modus darf diese nie ausliefern');
   }
   if (code.length > TVMODE_MIN_BUDGET) console.warn(`WARNUNG: lenztvmode.min.js ist ${code.length} B (Budget ${TVMODE_MIN_BUDGET} B)`);
 }

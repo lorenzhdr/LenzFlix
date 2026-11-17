@@ -1,12 +1,11 @@
 // LenzFlix: Knöpfe in der Bildmitte des Video-Players (Feature "osdcenter"): ⟲10 · Play/Pause · ⟳30.
 // Sichtbar genau dann, wenn Jellyfins untere Leiste sichtbar ist. Klick = Proxy-Klick auf die Knöpfe der AKTIVEN
-// Player-Seite (alte Seiten bleiben mit .hide und gleicher ID im DOM). Kein Mount unter layout-tv und LENZ LIVE.
+// Player-Seite (alte Seiten bleiben mit .hide und gleicher ID im DOM). Kein Mount unter layout-tv.
 // Erkennung: Router-Events (viewshow/hashchange; Jellyfin wechselt per pushState) + solange gemountet ein
 // MutationObserver auf body (childList + Klassen), per rAF gebündelt. Mausruhe-Timer: echte Zeigerbewegung über
 // unseren Knöpfen erreicht Jellyfins document-Listener ohnehin (pointermove wird nicht gestoppt).
 import { mountPoint, unmountPoint } from '../core/dom.js';
 import { isTv } from '../core/layout.js';
-import { isTheme } from '../core/theme.js';
 
 const ID = 'lfx-osdc';
 const PAGE = '[id="videoOsdPage"]:not(.hide)';
@@ -102,7 +101,7 @@ function btn(key, label, sel) {
 const osdcenterFeature = {
   name: 'osdcenter',
   match(route) {
-    return !isTv() && !isTheme('live') && Boolean(page() || (route && route.path === '/video'));
+    return !isTv() && Boolean(page() || (route && route.path === '/video'));
   },
   mount() {
     el = mountPoint(ID, { className: 'lfx-osdc' });

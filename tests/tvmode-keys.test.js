@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createKeys } from '../src/js/live/tvmode/keys.js';
+import { createKeys } from '../src/js/tv/tvmode/keys.js';
 
 let root;
 let ctl;

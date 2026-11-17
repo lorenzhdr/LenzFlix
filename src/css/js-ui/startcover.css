@@ -1,4 +1,4 @@
-/* LenzFlix · js-ui/startcover – Ladebild beim Start der Wiedergabe (core/startcover.js). Nur Modern, nicht TV, nicht live.
+/* LenzFlix · js-ui/startcover – Ladebild beim Start der Wiedergabe (core/startcover.js). Nur Modern, nicht TV.
    z-index 1250: über dem Info-Fenster (1200), unter MUI-Menüs (1300) und Jellyfin-Dialogen (999999). */
 html.lfx-js:not(.layout-tv) .lfx-startcover {
   position: fixed;

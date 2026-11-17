@@ -10,11 +10,10 @@ describe('store-Registrierung', () => {
     expect(names).toContain('store-home');
     expect(names).toContain('store-bar');
   });
-  it('live-home und live-guard sind registriert', () => {
+  it('LENZ LIVE ist entfernt: keine live-Features, kein Design live', () => {
     const names = features.map((f) => f.name);
-    expect(names).toContain('live-home');
-    expect(names).toContain('live-guard');
-    expect(THEMES).toContain('live');
+    expect(names.filter((n) => n.startsWith('live-'))).toEqual([]);
+    expect(THEMES).not.toContain('live');
   });
   it('Design store ist bekannt', () => {
     expect(THEMES).toContain('store');

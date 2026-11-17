@@ -1,4 +1,4 @@
-// LenzFlix: Ladebild beim Start der Wiedergabe (#lfx-startcover, alle Designs außer live/layout-tv).
+// LenzFlix: Ladebild beim Start der Wiedergabe (#lfx-startcover, alle Designs außer layout-tv).
 // show({item}) legt sofort ein Vollbild mit Backdrop + Titel + Ladekreis über alles (z-index 1250: über Modal 1200,
 // unter MUI-Menüs 1300 und Jellyfin-Dialogen). Abbau (Fade 200 ms), solange das Ladebild steht erkannt per
 // MutationObserver auf body (rAF-gebündelt, Muster features/osdcenter.js):
@@ -8,7 +8,6 @@
 // Fallback-Pfad playViaDetails: allowRoute('/details') hält das Ladebild über der Detailseite.
 import { mountPoint, unmountPoint } from './dom.js';
 import { parseHash } from './router.js';
-import { isTheme } from './theme.js';
 import { imageUrl, imageUrlFor, landscapeImage } from './api.js';
 
 const ID = 'lfx-startcover';
@@ -31,7 +30,7 @@ const routePath = () => parseHash(window.location.hash).path;
 
 function isActive() {
   const cl = document.documentElement.classList;
-  return !cl.contains('layout-tv') && !isTheme('live');
+  return !cl.contains('layout-tv');
 }
 
 function isNarrow() {

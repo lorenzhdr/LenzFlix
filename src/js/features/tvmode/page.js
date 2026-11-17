@@ -1,5 +1,5 @@
 // TV-Modus (flix/plus/prime): Vollseite #/home?lfx=tv. Mount #lfx-tvm als erstes Kind von #homeTab (Muster newpopular.js), lädt
-// Engine (window.LenzFlixTvMode) und CSS lazy. Vertrag: docs/tvmode.md. Die Hülle importiert nichts aus src/js/live.
+// Engine (window.LenzFlixTvMode) und CSS lazy. Vertrag: docs/tvmode.md. Die Hülle importiert nichts aus src/js/tv.
 import * as api from '../../core/api.js';
 import { h } from '../../core/dom.js';
 import { isMobile } from '../../core/layout.js';
@@ -10,10 +10,10 @@ import { ensureThemeJs, removeThemeJs } from '../../core/themejs.js';
 import { ensureAddonCss, removeAddonCss } from '../../core/addoncss.js';
 import { play } from '../../core/playback.js';
 import { toast } from '../../core/toast.js';
-import { loadCatalog } from '../live/data.js';
-import { buildApiDeps, fatalText, loadUser } from '../live/deps.js';
+import { loadCatalog } from '../tvdata/data.js';
+import { buildApiDeps, fatalText, loadUser } from '../tvdata/deps.js';
 import { openModal } from '../modal.js';
-import { defineZapWarm, zapStatsEnabled } from '../live/zapflag.js';
+import { defineZapWarm, zapStatsEnabled } from '../tvdata/zapflag.js';
 import * as prefs from './prefs.js';
 import { ON_CLASS, ROOT_ID, TV_THEMES, findHomeTab, tvModeMatch } from './route.js';
 import { destroyUnlock, initUnlock, takeIntentVideo } from './unlock.js';

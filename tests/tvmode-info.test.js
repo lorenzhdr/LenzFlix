@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createInfo } from '../src/js/live/tvmode/info.js';
+import { createInfo } from '../src/js/tv/tvmode/info.js';
 
 const T = Date.UTC(2026, 10, 11, 19, 0, 0);
 const entry = { start: T, end: T + 3600000, type: 'program', itemId: 'm1' };

@@ -10,7 +10,7 @@ const build = vi.hoisted(() => (name, a, extra = {}) => {
   made.list.push(c);
   return c;
 });
-vi.mock('../src/js/live/tvmode/player-view.js', () => ({
+vi.mock('../src/js/tv/tvmode/player-view.js', () => ({
   createPlayerView: (a) => {
     const c = build('player', a);
     c.el.className = 'lfx-tvm__player';
@@ -20,11 +20,11 @@ vi.mock('../src/js/live/tvmode/player-view.js', () => ({
     return c;
   },
 }));
-vi.mock('../src/js/live/tvmode/channel-list.js', () => ({ createChannelList: (a) => build('list', a), createChannelBadge: (d) => d.createElement('span') }));
-vi.mock('../src/js/live/tvmode/epg-grid.js', () => ({ createEpgGrid: (a) => build('epg', a) }));
-vi.mock('../src/js/live/tvmode/info-card.js', () => ({ createInfoCard: (a) => build('card', a, { open: vi.fn() }) }));
+vi.mock('../src/js/tv/tvmode/channel-list.js', () => ({ createChannelList: (a) => build('list', a), createChannelBadge: (d) => d.createElement('span') }));
+vi.mock('../src/js/tv/tvmode/epg-grid.js', () => ({ createEpgGrid: (a) => build('epg', a) }));
+vi.mock('../src/js/tv/tvmode/info-card.js', () => ({ createInfoCard: (a) => build('card', a, { open: vi.fn() }) }));
 
-import { createApp, bindModel } from '../src/js/live/tvmode/app.js';
+import { createApp, bindModel } from '../src/js/tv/tvmode/app.js';
 
 const T = Date.UTC(2026, 10, 11, 19, 0, 0);
 const PHONE = '(max-width: 799px)';
