@@ -1,8 +1,10 @@
-// VIDEOTHEK LENZ · Touch-Steuerung. Zwei Schemata:
+// VIDEOTHEK LENZ · Touch-Steuerung. Drei Schemata:
+//  'game':     (Standard der App) schwebender Stick links = Laufen/Rennen, rechte Hälfte wischen = Umsehen, Knöpfe Springen/Benutzen/Schlagen|Werfen (ui/gamepad.js).
 //  'touch':    Gedrückt halten = vorwärts laufen (Ziehen lenkt), kurzes Wischen = Umsehen.
 //  'joystick': Gehen-Knopf unten links = vorwärts, Joystick unten rechts = Blick drehen (ui/joypad.js); Wischen sieht zusätzlich um.
 // Beide: kurzes Tippen = Hülle nehmen/benutzen (Logik in store.js), Pinch = Zoom.
 import { createJoypad } from '../ui/joypad.js';
+import { createGamepad } from '../ui/gamepad.js';
 
 /** Bogenmaß pro Pixel beim Wischen/Lenken. */
 export const TOUCH_LOOK = 0.0045;
@@ -13,7 +15,7 @@ const TOUCH_SLOP = 9;
 /** Joystick: Drehrate (rad/s) bei voller Auslenkung. */
 export const STICK_YAW_RATE = 2.4;
 export const STICK_PITCH_RATE = 1.5;
-export const SCHEMES = ['joystick', 'touch'];
+export const SCHEMES = ['game', 'joystick', 'touch'];
 /** Empfindlichkeit (Faktor auf Umschauen und Cover-Drehung). */
 export const SENS_FACTOR = { low: 0.7, normal: 1, high: 1.4 };
 
@@ -41,7 +43,7 @@ const ZOOM_MIN = 1;
 const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'touch' | 'joystick', padHost? } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game') } */
   constructor(ctx) {
     this.ctx = ctx;
     this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : 'touch';
@@ -49,6 +51,8 @@ export class TouchControls {
     this.padWalk = false;
     this.stick = { x: 0, y: 0 };
     this.padShown = true;
+    this.aimed = false; // Schema 'game': Ziel im Fadenkreuz (Benutzen-Knopf hervorheben)
+    this.carrying = false; // Schema 'game': Hülle getragen (Werfen statt Schlagen)
     this.pointers = new Map();
     this.attached = false;
     this.walkId = null; // pointerId des Fingers, der gerade läuft
@@ -79,6 +83,10 @@ export class TouchControls {
 
   /** Eingabe für Player.update(): läuft nur im Laufmodus. */
   get input() {
+    if (this.scheme === 'game') {
+      if (this.ctx.getMode() !== 'play' && this.pad) this.pad.reset();
+      return this.pad ? this.pad.input : { fwd: 0, strafe: 0, scale: 0, run: false };
+    }
     if ((this.walkId !== null || this.padWalk) && this.ctx.getMode() !== 'play') { this.stopWalk(); if (this.pad) this.pad.reset(); }
     return { fwd: this.walkId !== null || this.padWalk || this.coasting() ? 1 : 0, strafe: 0, run: false };
   }
@@ -94,7 +102,7 @@ export class TouchControls {
     this.ctx.player.look(-x * STICK_YAW_RATE * t * f * (tu.lookFlipX ? -1 : 1), -y * STICK_PITCH_RATE * t * f * (tu.lookFlipY ? -1 : 1));
   }
 
-  /** Schema wechseln ('joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
+  /** Schema wechseln ('game' | 'joystick' | 'touch'): laufende Gesten enden, Pad wird erzeugt bzw. entfernt. */
   setScheme(s) {
     if (!SCHEMES.includes(s) || s === this.scheme) return;
     this.scheme = s;
@@ -108,8 +116,36 @@ export class TouchControls {
     if (this.pad) this.pad.show(this.padShown);
   }
 
+  /** Schema 'game': Ziel im Fadenkreuz / Hülle getragen (wirkt auch auf ein später erzeugtes Pad). */
+  setAimed(on) { this.aimed = !!on; if (this.pad && this.pad.setAimed) this.pad.setAimed(this.aimed); }
+
+  setCarrying(on) { this.carrying = !!on; if (this.pad && this.pad.setCarrying) this.pad.setCarrying(this.carrying); }
+
   syncPad() {
-    if (this.scheme === 'joystick' && this.attached) {
+    if (this.pad && (!this.attached || this.padKind !== this.scheme)) { // anderes Schema oder abgehängt: altes Pad entfernen
+      this.pad.destroy();
+      this.pad = null;
+      this.padWalk = false;
+      this.stick = { x: 0, y: 0 };
+    }
+    if (this.scheme === 'game' && this.attached) {
+      if (!this.pad) {
+        const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
+        const c = this.ctx;
+        this.pad = createGamepad(host, {
+          onJump: () => { if (c.onJump) c.onJump(); },
+          onUse: () => { if (c.onUse) c.onUse(); },
+          onHit: () => { if (c.onHit) c.onHit(); },
+          onThrow: () => { if (c.onThrow) c.onThrow(); },
+          onTap: (x, y) => { if (c.getMode() === 'play' && c.onTap) c.onTap(x, y); },
+          now: c.now,
+        });
+        this.pad.setAimed(this.aimed);
+        this.pad.setCarrying(this.carrying);
+        this.padKind = 'game';
+      }
+      this.pad.show(this.padShown);
+    } else if (this.scheme === 'joystick' && this.attached) {
       if (!this.pad) {
         const host = this.ctx.padHost || this.ctx.canvas.parentElement || document.body;
         this.pad = createJoypad(host, {
@@ -119,13 +155,9 @@ export class TouchControls {
           },
           onLook: (x, y) => { this.stick = { x, y }; },
         });
+        this.padKind = 'joystick';
       }
       this.pad.show(this.padShown);
-    } else if (this.pad) {
-      this.pad.destroy();
-      this.pad = null;
-      this.padWalk = false;
-      this.stick = { x: 0, y: 0 };
     }
   }
 

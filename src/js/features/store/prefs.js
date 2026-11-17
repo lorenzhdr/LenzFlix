@@ -2,8 +2,8 @@
 import { getUserId } from '../../core/api.js';
 
 const KEY = 'lfx.store.';
-const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief', touchControl: 'touch' };
-export const TOUCH_CONTROLS = ['joystick', 'touch'];
+const DEFAULTS = { quality: 'auto', sound: true, fps: false, bigCovers: true, voiceOnline: false, voicePitch: 'tief', touchControl: 'game' };
+export const TOUCH_CONTROLS = ['game', 'joystick', 'touch'];
 export const TOUCH_SENS = ['low', 'normal', 'high'];
 const TUNE_FLAGS = ['holdInvertY', 'holdInvertX', 'lookFlipY', 'lookFlipX'];
 export const TOUCH_REGRIPS = ['off', 'short', 'long'];
@@ -56,10 +56,17 @@ export function getVoicePitch() {
   return VOICE_PITCHES.includes(v) ? v : DEFAULTS.voicePitch;
 }
 
-/** Touch-Steuerung: 'touch' (Standard: Halten = laufen, Wischen = umsehen) oder 'joystick' (Gehen-Knopf + Joystick). */
+/**
+ * Touch-Steuerung: 'game' (Standard: Stick links, rechts umsehen, Knöpfe), 'joystick' (Gehen-Knopf + Joystick) oder 'touch' (Halten = laufen).
+ * Migration (1.15.0): 'touch' galt früher als Standard und wurde bei jeder Einstellungsänderung mitgespeichert; ohne den Marker
+ * touchControlChosen = '1' (nur das Pause-Menü setzt ihn) zählt ein gespeichertes 'touch' als nie gewählt → 'game'.
+ * 'joystick' war nie Standard und bleibt.
+ */
 export function getTouchControl() {
   const v = read('localStorage', storageKey('touchControl'));
-  return TOUCH_CONTROLS.includes(v) ? v : DEFAULTS.touchControl;
+  if (v === 'joystick') return 'joystick';
+  if (v === 'touch' && read('localStorage', storageKey('touchControlChosen')) === '1') return 'touch';
+  return DEFAULTS.touchControl;
 }
 
 /** Touch-Feineinstellung: vier Umkehr-Schalter (Standard false), Empfindlichkeit 'low' | 'normal' | 'high', Umgreifen 'off' | 'short' (Standard) | 'long'. */
@@ -91,7 +98,7 @@ export function getVr() {
   return { turn: getVrTurn(), vignette: getVrVignette(), height: getVrHeight(), quality: getVrQuality(), seat: getVrSeat() };
 }
 
-/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl?, holdInvertY?/holdInvertX?/lookFlipY?/lookFlipX? (bool), touchSens? ('low'|'normal'|'high'), touchRegrip? ('off'|'short'|'long'), vr? { turn, vignette, height, quality, seat } } (unbekannte/fehlende Felder werden ignoriert). */
+/** Speichert { quality?, sound?, fps?, bigCovers?, voiceOnline?, voiceName?, voicePitch?, touchControl? (nur zusammen mit touchControlChosen: true, sonst ignoriert), touchControlChosen?, holdInvertY?/holdInvertX?/lookFlipY?/lookFlipX? (bool), touchSens? ('low'|'normal'|'high'), touchRegrip? ('off'|'short'|'long'), vr? { turn, vignette, height, quality, seat } } (unbekannte/fehlende Felder werden ignoriert). */
 export function savePrefs(p) {
   if (!p) return;
   if (QUALITIES.includes(p.quality)) write('localStorage', storageKey('quality'), p.quality);
@@ -100,7 +107,10 @@ export function savePrefs(p) {
   if (typeof p.voiceOnline === 'boolean') write('localStorage', storageKey('voiceOnline'), p.voiceOnline ? '1' : '0');
   if (typeof p.voiceName === 'string') write('localStorage', storageKey('voiceName'), p.voiceName);
   if (VOICE_PITCHES.includes(p.voicePitch)) write('localStorage', storageKey('voicePitch'), p.voicePitch);
-  if (TOUCH_CONTROLS.includes(p.touchControl)) write('localStorage', storageKey('touchControl'), p.touchControl);
+  if (p.touchControlChosen === true && TOUCH_CONTROLS.includes(p.touchControl)) {
+    write('localStorage', storageKey('touchControl'), p.touchControl);
+    write('localStorage', storageKey('touchControlChosen'), '1');
+  }
   for (const k of TUNE_FLAGS) if (typeof p[k] === 'boolean') write('localStorage', storageKey(k), p[k] ? '1' : '0');
   if (TOUCH_SENS.includes(p.touchSens)) write('localStorage', storageKey('touchSens'), p.touchSens);
   if (TOUCH_REGRIPS.includes(p.touchRegrip)) write('localStorage', storageKey('touchRegrip'), p.touchRegrip);

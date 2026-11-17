@@ -4,6 +4,9 @@ import { el } from './hud.js';
 const QUALITY_LABEL = { auto: 'Auto', low: 'Niedrig', mid: 'Mittel', high: 'Hoch' };
 const QUALITY_NEXT = { auto: 'low', low: 'mid', mid: 'high', high: 'auto' };
 
+/** Touch-Schemata: Dreier-Zyklus Spiel → Joystick → Touch. */
+const SCHEME_LABEL = { game: 'Spiel', joystick: 'Joystick', touch: 'Touch' };
+const SCHEME_NEXT = { game: 'joystick', joystick: 'touch', touch: 'game' };
 const SENS_LABEL = { low: 'Niedrig', normal: 'Normal', high: 'Hoch' };
 const SENS_NEXT = { low: 'normal', normal: 'high', high: 'low' };
 const REGRIP_LABEL = { off: 'Aus', short: 'Kurz', long: 'Lang' };
@@ -52,7 +55,8 @@ export function voiceNote(info, wantOnline = false) {
  *   getVoiceInfo?() → { diag, voiceName, lang, onlineDe } | null (Diagnosezeile unter „Ton“, nur bei Ton an),
  *   onVoice?({ name?, online?, pitch? }) (Stimmwahl/Tonlage; spricht danach die Probe), getVoicePrefs?() → { name, online, pitch },
  *   getVoiceList?() → [{ name, lang, online, male }] (deutsche Stimmen),
- *   onTouchControl?(scheme) / getTouchControl?() → 'joystick' | 'touch' (nur Touch; fehlt = Knopf ausgeblendet),
+ *   help?: string (Tastenhilfe, Desktop; Zeile unter dem Titel),
+ *   onTouchControl?(scheme) / getTouchControl?() → 'game' | 'joystick' | 'touch' (Dreier-Zyklus; nur Touch; fehlt = Knopf ausgeblendet),
  *   onTouchTune?({ holdInvertY?, holdInvertX?, lookFlipY?, lookFlipX?, touchSens?, touchRegrip? }) / getTouchTune?() → dieselben Felder (Menü „Touch-Steuerung“, nur Touch; Standard: nichts umgekehrt, 'normal', Umgreifen 'short'),
  *   onFullscreen?(), getFullscreen?() → bool, fullscreenKind?() → 'api' | 'guide' | 'none' (nur Touch; fehlt/none = Knopf ausgeblendet) }
  */
@@ -65,6 +69,7 @@ export function createPause(host, a) {
   panel.setAttribute('aria-modal', 'true');
   const title = el('div', 'lfx-store-pause-title', 'Pause');
   panel.appendChild(title);
+  if (a.help) panel.appendChild(el('div', 'lfx-store-pause-note lfx-store-pause-help', a.help));
   const mk = (label, fn, cls = '') => {
     const b = el('button', `lfx-store-act ${cls}`.trim(), label);
     b.type = 'button';
@@ -181,7 +186,7 @@ export function createPause(host, a) {
     tpPanel.appendChild(b);
     return b;
   };
-  const tSchemeB = mkT(() => { if (a.onTouchControl) a.onTouchControl(a.getTouchControl && a.getTouchControl() === 'touch' ? 'joystick' : 'touch'); });
+  const tSchemeB = mkT(() => { if (a.onTouchControl) a.onTouchControl(SCHEME_NEXT[a.getTouchControl ? a.getTouchControl() : 'touch'] || 'game'); });
   const flag = (key) => () => { if (a.onTouchTune) a.onTouchTune({ [key]: !tuneNow()[key] }); };
   const tHoldY = mkT(flag('holdInvertY'));
   const tHoldX = mkT(flag('holdInvertX'));
@@ -197,7 +202,7 @@ export function createPause(host, a) {
   function refreshTouch() {
     const t = tuneNow();
     const nr = (on) => (on ? 'Umgekehrt' : 'Normal');
-    tSchemeB.textContent = `Steuerung: ${a.getTouchControl && a.getTouchControl() === 'touch' ? 'Touch' : 'Joystick'}`;
+    tSchemeB.textContent = `Steuerung: ${SCHEME_LABEL[a.getTouchControl ? a.getTouchControl() : 'touch'] || 'Touch'}`;
     tHoldY.textContent = `Cover kippen: ${nr(t.holdInvertY)}`;
     tHoldX.textContent = `Cover drehen: ${nr(t.holdInvertX)}`;
     tLookY.textContent = `Umschauen hoch/runter: ${nr(t.lookFlipY)}`;

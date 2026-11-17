@@ -3,7 +3,7 @@ import {
   Vector3, Quaternion, Raycaster, Mesh, BoxGeometry, MeshBasicMaterial, AdditiveBlending,
 } from 'three';
 import { buildLayout } from './world/layout.js';
-import { nearestFree, isFree } from './nav/path.js';
+import { resolveRestore, areaAt } from './world/city.js';
 import { createEngine } from './engine/renderer.js';
 import { makeTextures, makeCanvas, toTexture } from './world/textures.js';
 import { buildRoom, addLights } from './world/build-room.js';
@@ -11,15 +11,17 @@ import { buildShelves, slotWorld } from './world/build-shelves.js';
 import { buildSigns } from './world/build-signs.js';
 import { buildProps } from './world/build-props.js';
 import { CoverManager } from './covers/manager.js';
-import { Player, EYE } from './controls/player.js';
+import { Player } from './controls/player.js';
 import { DesktopControls } from './controls/desktop.js';
 import { TouchControls, SCHEMES, normTune } from './controls/touch.js';
 import { createRotateHint } from './ui/rotate.js';
 import { pickCover, pickBoxes } from './controls/pick.js';
 import { ModuleHost } from './modules/runtime.js';
-import { createHud } from './ui/hud.js';
+import { createHud, DESKTOP_HELP } from './ui/hud.js';
 import { createPause } from './ui/pause.js';
 import { HoldView } from './ui/holdview.js';
+import { createHands } from './ui/hands.js';
+import { prefersReducedMotion } from './modules/m4-util.js';
 import { createFullscreen } from './ui/fullscreen.js';
 import { wrapDeps } from './xr/guard.js';
 import { XrMode } from './xr/mode.js';
@@ -59,7 +61,10 @@ export class StoreApp {
     this.voiceName = typeof this.opts.voiceName === 'string' ? this.opts.voiceName : '';
     this.voicePitch = ['normal', 'tief', 'sehrtief'].includes(this.opts.voicePitch) ? this.opts.voicePitch : 'tief';
     this.bigCovers = this.opts.bigCovers !== false;
-    this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : 'touch';
+    this.touchScheme = SCHEMES.includes(this.opts.touchControl) ? this.opts.touchControl : 'game';
+    this.touchChosen = false; // Nutzer hat das Schema im Pause-Menü selbst gewählt (nur dann wird es gespeichert)
+    this.carried = null; // { id, item, slot, art, reopened } getragene Hülle (Mitnehmen)
+    this.carryingOut = false;
     this.touchTune = normTune(this.opts.touchTune);
     this.zoomTarget = 1;
     this.zoom = 1;
@@ -101,13 +106,14 @@ export class StoreApp {
       return;
     }
     this.xr = new XrMode(this);
-    this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter() });
+    this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), getTouchScheme: () => this.touchScheme });
     this.fs = createFullscreen({
       host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
       onChange: () => { if (this.pause) this.pause.refresh(); },
     });
     this.rotate = this.phone ? createRotateHint(host, { getMode: () => this.mode }) : null;
     this.pause = createPause(host, {
+      help: this.touch ? '' : DESKTOP_HELP,
       onResume: () => this.resumeFromPause(),
       onVr: () => this.xr.enter(),
       getVr: () => this.xr.supported && !this.xr.presenting,
@@ -120,7 +126,7 @@ export class StoreApp {
       getVoicePrefs: () => ({ name: this.voiceName, online: this.voiceOnline, pitch: this.voicePitch }),
       getVoiceList: () => { const c = this.mods && this.mods.ctx.use('cashier'); return c && c.voices ? c.voices() : []; },
       onBigCovers: (on) => this.setBigCovers(on),
-      onTouchControl: this.touch ? (s) => { this.setTouchControl(s); this.savePrefs(); } : null,
+      onTouchControl: this.touch ? (s) => { this.touchChosen = true; this.setTouchControl(s); this.savePrefs(); } : null,
       getTouchControl: () => this.touchScheme,
       onTouchTune: this.touch ? (p) => { this.setTouchTune(p); this.savePrefs(); } : null,
       getTouchTune: () => this.touchTune,
@@ -192,7 +198,9 @@ export class StoreApp {
     if (this.disposed) return;
 
     this.progress(0.8, 'Cover werden geholt');
-    this.player = new Player(L);
+    this.player = new Player(L, { reducedMotion: () => prefersReducedMotion() });
+    this.player.onJump = (info) => { if (this.mods) this.mods.emit('jump', info); };
+    this.player.onLand = (info) => { if (this.mods) this.mods.emit('land', info); };
     this.covers = new CoverManager({
       faceViews: this.shelves.faceViews, items: this.items, deps, preset, blankTex: this.blank, renderer: engine.renderer, phone: this.phone, spec: L.spec,
     });
@@ -204,7 +212,9 @@ export class StoreApp {
       isXr: () => !!(this.xr && this.xr.presenting),
       getTune: () => this.touchTune,
       onPlay: (item, resume) => this.mods && this.mods.emit('play', item, { resume }),
+      onCarry: (id) => this.carry(id),
     });
+    this.hands = createHands(engine.camera);
     this.mods = new ModuleHost(this);
     this.desktop = this.touch ? null : new DesktopControls({
       canvas: engine.canvas,
@@ -212,7 +222,11 @@ export class StoreApp {
       getMode: () => this.mode,
       onLockLost: () => this.openPause(),
       onLockChange: () => this.syncUi(),
-      onTake: () => this.takeAimed(),
+      onTake: (src) => this.doUse(src || 'click'),
+      onJump: () => this.doJump(),
+      onHit: () => this.doHit('key'),
+      onThrow: () => this.doThrow('key'),
+      onCarry: () => this.holdview.carryOut(),
       onZoom: (z) => this.setZoom(z),
       getZoom: () => this.zoom,
       onEscape: () => {
@@ -222,7 +236,9 @@ export class StoreApp {
         else this.resumeFromPause();
       },
     });
-    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune }) : null;
+    this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune,
+      onJump: () => this.doJump(), onUse: () => this.doUse('touch'), onHit: () => this.doHit('touch'), onThrow: () => this.doThrow('touch'),
+    }) : null;
 
     this.progress(0.86, 'Module werden geladen');
     this.mods.ctx.on('xr', (on) => this.onXrHold(on));
@@ -230,10 +246,14 @@ export class StoreApp {
     if (this.disposed) return;
     // Startposition / Wiederherstellung
     const r = this.opts.restore;
+    const city = this.mods.ctx.use('city');
+    if (city) city.partition(); // Szene in Laden-Hülle/Regale/Außenwelt teilen (Sichtbarkeit je Bereich)
     if (r && Number.isFinite(r.x) && Number.isFinite(r.z)) {
-      const free = isFree(L.nav, r.x, r.z) ? { x: r.x, z: r.z } : nearestFree(L.nav, r.x, r.z) || L.spawn;
-      this.player.teleport(free.x, free.z, Number.isFinite(r.yaw) ? r.yaw : 0, Number.isFinite(r.pitch) ? r.pitch : 0);
+      const rr = resolveRestore(L, r); // auch draußen (Position inkl. y)
+      this.player.teleport(rr.x, rr.z, rr.yaw, rr.pitch, rr.y);
     }
+    const sp = this.opts.debug && this.opts.spawn && L.city ? L.city.spawns[this.opts.spawn] : null; // Harness ?spawn=
+    if (sp) { this.player.teleport(sp.x, sp.z, sp.yaw || 0, 0, sp.y || 0); }
     this.player.applyCamera(engine.camera);
     this.covers.update(this.player.x, this.player.z, this.player.yaw, { zoom: this.zoom, pitch: this.player.pitch });
     await yieldFrame();
@@ -338,7 +358,10 @@ export class StoreApp {
 
   onHoldClosed() {
     if (this.disposed || this.takingNext) return;
-    if (this.heldId) { this.mods.emit('put', this.heldId); this.heldId = null; }
+    const c = this.carried;
+    if (c && c.reopened && !this.carryingOut) { this.heldId = null; this.returnCarried(); } // wieder geöffnete Hülle zurückgestellt: ins Regal
+    else if (this.heldId && !this.carryingOut) { this.mods.emit('put', this.heldId); this.heldId = null; }
+    else this.heldId = null;
     this.setMode('play');
     if (this.desktop && !this.suspended) this.desktop.requestLock();
     this.notifyState(true);
@@ -357,6 +380,7 @@ export class StoreApp {
 
   /** VR-Start/-Ende: offene Hülle in die rechte Hand bzw. zurück an die Kamera (2D-Pose, DOM-Panel). */
   onXrHold(on) {
+    if (on && this.carried) this.drop(); // getragene Hülle zurück ins Regal: VR kennt kein Tragen
     const hv = this.holdview;
     if (!hv || this.disposed || !hv.isOpen) return;
     if (on) hv.reanchor(this.holdAnchorFor('right'), { xr: true, hand: 'right' });
@@ -370,6 +394,8 @@ export class StoreApp {
 
   take(id, { instant = false, fromCounter = false, hand, grab = false, from } = {}) {
     if (!this.holdview || this.disposed || !id) return false;
+    if (this.carried && this.carried.id === id) return this.holdview.isOpen && this.holdview.itemId === id ? true : this.openCarried(); // schon in der Hand: wieder öffnen
+    if (this.carried) this.drop(); // eine andere Hülle in der Hand: erst zurück ins Regal
     if (this.holdview.isOpen) {
       this.takingNext = true;
       this.holdview.close(false);
@@ -391,14 +417,151 @@ export class StoreApp {
 
   put() { if (this.holdview && this.holdview.isOpen) this.holdview.close(true); }
 
-  takeAimed() {
-    if (this.mode !== 'play' || !this.aim || this.mods.locked) return;
-    if (this.aim.ia) this.aim.ia.onUse();
-    else this.take(this.aim.info.itemId);
+  /** Alias von doUse (Desktop-Klick/E, Altname). */
+  takeAimed(src) { return this.doUse(src || 'key'); }
+
+  // --- Aktionen (Desktop-Tasten, Touch-Knöpfe, ctx.input.onAction) ---
+  /** Aktion erlaubt? Nur im Laufmodus, ohne Modul-Sperre, nie in VR. */
+  canAct() {
+    return !this.disposed && this.mode === 'play' && !!this.mods && !this.mods.locked && !(this.xr && this.xr.presenting);
+  }
+
+  /** Interaktionen ohne anyHeight gelten nur am Boden (Füße höchstens 0,5 m hoch). */
+  iaReachable(ia) { return !!ia.anyHeight || !(this.player.y > 0.5); }
+
+  groundIas() {
+    const l = this.mods.interactables;
+    return this.player.y > 0.5 ? l.filter((i) => i.anyHeight) : l;
+  }
+
+  actionEvent(name, source) {
+    const cam = this.engine.camera;
+    cam.getWorldDirection(this._d);
+    return { name, source, aim: this.aim, origin: cam.position.clone(), dir: this._d.clone() };
+  }
+
+  /**
+   * Benutzen (E / Linksklick / Touch-Knopf). Reihenfolge: Ziel im Fadenkreuz (Hülle, Interaktion) → ctx.input.onAction('use')
+   * → getragene Hülle wieder öffnen (nicht bei source 'click') → bei source 'click' ein Schlag ('hit').
+   */
+  doUse(src = 'key') {
+    if (!this.canAct()) return false;
+    const a = this.aim;
+    if (a && (!a.ia || this.iaReachable(a.ia))) {
+      if (a.ia) a.ia.onUse(); else this.take(a.info.itemId);
+      return true;
+    }
+    if (this.mods.action('use', this.actionEvent('use', src))) return true;
+    if (this.carried && src !== 'click') { this.openCarried(); return true; }
+    if (src === 'click') return this.doHit('click');
+    return false;
+  }
+
+  /** Schlagen (F; Linksklick ohne Ziel): Arm-Schwung und ctx.input.onAction('hit') / Ereignis 'hit'. */
+  doHit(src = 'key') {
+    if (!this.canAct()) return false;
+    const ev = this.actionEvent('hit', src);
+    this.player.swing();
+    if (this.hands) this.hands.swing();
+    return this.mods.action('hit', ev);
+  }
+
+  /** Werfen (G): ctx.input.onAction('throw') / Ereignis 'throw'; ev.carried = getragene Hülle oder null. Welle 1: nur Animation. */
+  doThrow(src = 'key') {
+    if (!this.canAct()) return false;
+    const ev = this.actionEvent('throw', src);
+    ev.carried = this.carried ? { id: this.carried.id, item: this.carried.item } : null;
+    if (this.carried && this.hands) this.hands.throwAnim();
+    else if (this.hands) this.hands.swing();
+    return this.mods.action('throw', ev);
+  }
+
+  /** Springen (Leertaste, Knopf). Rückgabe: Sprung ist sofort möglich. */
+  doJump() {
+    if (!this.canAct()) return false;
+    return this.player.jump();
+  }
+
+  // --- Tragen ---
+  /** Netzzustand: heldId des Spielers = getragene oder gehaltene Hülle. */
+  syncHeld() {
+    const p = this.player;
+    if (p) p.heldId = this.carried ? this.carried.id : (this.holdview && this.holdview.itemId) || null;
+  }
+
+  getCarried() { return this.carried ? { id: this.carried.id, item: this.carried.item } : null; }
+
+  /**
+   * Hülle in die Hand nehmen (Modus 'play', der Spieler läuft weiter): aus dem Halte-Bild („Mitnehmen“) oder direkt aus dem Regal.
+   * Das Regalfach bleibt leer, bis drop() / „Zurückstellen“. Eine andere getragene Hülle geht vorher zurück ins Regal. Nicht in VR.
+   */
+  carry(id) {
+    if (!id || this.disposed || !this.holdview || !this.hands || (this.xr && this.xr.presenting)) return false;
+    const item = this.items.get(id);
+    if (!item) return false;
+    const hv = this.holdview;
+    const held = hv.isOpen && hv.itemId === id;
+    let c = this.carried;
+    if (c && c.id === id && !held) return true;
+    if (c && c.id !== id) { this.drop(); c = null; }
+    let slot = c ? c.slot : null;
+    let art = c ? c.art : null;
+    if (held) {
+      this.carryingOut = true;
+      let rel;
+      try { rel = hv.releaseForCarry(); } finally { this.carryingOut = false; }
+      if (rel) { if (!c) slot = rel.slot; if (rel.art) art = rel.art; }
+    } else {
+      slot = this.findSlot(id);
+      if (slot) this.shelves.setHidden(slot.fv, slot.info, true);
+    }
+    this.carried = { id, item, slot, art, reopened: false };
+    this.hands.setCarried({ media: (item.lfx && item.lfx.media) || 'dvd', art });
+    this.pendingTake = null;
+    if (this.touchCtl) this.touchCtl.setCarrying(true);
+    if (this.mods) this.mods.emit('carry', { id });
+    return true;
+  }
+
+  /** Getragene Hülle zurück ins Regal an den Ursprungsplatz (kam sie von der Theke, verschwindet sie nur aus der Hand). */
+  drop() {
+    const c = this.carried;
+    if (!c) return false;
+    const hv = this.holdview;
+    if (c.reopened && hv && hv.isOpen && hv.itemId === c.id) { hv.close(false); return true; } // onHoldClosed → returnCarried
+    this.returnCarried();
+    return true;
+  }
+
+  returnCarried() {
+    const c = this.carried;
+    if (!c) return;
+    this.carried = null;
+    if (c.slot && this.shelves) this.shelves.setHidden(c.slot.fv, c.slot.info, false);
+    if (this.hands) this.hands.setCarried(null);
+    if (this.touchCtl) this.touchCtl.setCarrying(false);
+    if (this.mods) this.mods.emit('carry', { id: null });
+  }
+
+  /** Getragene Hülle wieder im Halte-Bild öffnen („Benutzen“ ohne Ziel); „Zurückstellen“ legt sie ins Regal, „Mitnehmen“ wieder in die Hand. */
+  openCarried() {
+    const c = this.carried;
+    if (!c || !this.holdview || this.holdview.isOpen) return false;
+    c.reopened = true;
+    if (this.hands) this.hands.setCarried(null);
+    this.heldId = c.id;
+    this.pendingTake = null;
+    this.setMode('hold');
+    this.player.cancelPath();
+    if (this.desktop) this.desktop.releaseLock();
+    this.clearAim();
+    this.holdview.open(c.id, null, false);
+    return true;
   }
 
   clearAim() {
     this.aim = null;
+    if (this.touchCtl) this.touchCtl.setAimed(false);
     if (this.highlight) this.highlight.visible = false;
     if (this.hud) { this.hud.setHint(null); this.hud.setCross(this.mode === 'play' && !!this.desktop, false); }
   }
@@ -407,7 +570,7 @@ export class StoreApp {
     const { camera } = this.engine;
     camera.getWorldDirection(this._d);
     let hit = pickCover(this.shelves.faceViews, camera.position, this._d, 2.5);
-    const iaHit = pickBoxes(this.mods.interactables, camera.position, this._d, 2.5);
+    const iaHit = pickBoxes(this.groundIas(), camera.position, this._d, 2.5);
     if (iaHit && (!hit || iaHit.t < hit.t)) hit = iaHit;
     const prev = this.aim;
     if (!hit) {
@@ -418,15 +581,17 @@ export class StoreApp {
     this.aim = hit;
     if (hit.ia) {
       this.highlight.visible = false;
-      this.hud.setHint(hit.ia.label, hit.ia.hint || 'E / Klick: Benutzen');
+      this.hud.setHint(hit.ia.label, hit.ia.hint || (this.touch ? 'Benutzen' : 'E / Klick: Benutzen'));
       this.hud.setCross(true, true);
+      if (this.touchCtl) this.touchCtl.setAimed(true);
       return;
     }
     slotWorld(hit.fv, hit.info, this.highlight.position, this.highlight.quaternion);
     this.highlight.visible = true;
     const it = this.items.get(hit.info.itemId);
-    this.hud.setHint((it && it.Name) || '', 'E / Klick: Nehmen');
+    this.hud.setHint((it && it.Name) || '', this.touch ? 'Benutzen: Nehmen' : 'E / Klick: Nehmen');
     this.hud.setCross(true, true);
+    if (this.touchCtl) this.touchCtl.setAimed(true);
   }
 
   // --- Touch: Tippen ---
@@ -441,8 +606,8 @@ export class StoreApp {
     const { origin, direction } = this.rc.ray;
     this.pendingTake = this.pendingUse = null;
     const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
-    const iaHit = pickBoxes(this.mods.interactables, origin, direction, 9);
-    const far = this.touchScheme === 'joystick' ? 'Halte GEHEN, um hinzulaufen' : 'Halte gedrückt, um hinzulaufen';
+    const iaHit = pickBoxes(this.groundIas(), origin, direction, 9);
+    const far = this.touchScheme === 'joystick' ? 'Halte GEHEN, um hinzulaufen' : this.touchScheme === 'game' ? 'Geh näher heran' : 'Halte gedrückt, um hinzulaufen';
     const p = this.player;
     if (iaHit && (!hit || iaHit.t < hit.t)) {
       const { min, max } = iaHit.ia.box;
@@ -461,13 +626,23 @@ export class StoreApp {
       p.cancelPath();
       this.lookAtPoint(pos.x, pos.y, pos.z);
       this.pendingTake = { id: hit.info.itemId, at: performance.now() + 280 };
-    }
+    } else this.tapEmpty(clientX, clientY, r);
+  }
+
+  /**
+   * Tipp ins Leere in den Schemata 'touch'/'joystick' (kein Zielen, kein Benutzen-Knopf): ctx.input.onAction('use'); unten rechts
+   * (dort hängt die getragene Hülle) öffnet er sie wieder. Im Schema 'game' übernimmt der Benutzen-Knopf.
+   */
+  tapEmpty(x, y, r) {
+    if (this.touchScheme === 'game' || !this.canAct()) return;
+    if (this.mods.action('use', this.actionEvent('use', 'touch'))) return;
+    if (this.carried && x > r.left + r.width * 0.62 && y > r.top + r.height * 0.6) this.openCarried();
   }
 
   lookAtPoint(x, y, z) {
     const dx = x - this.player.x;
     const dz = z - this.player.z;
-    this.player.faceYaw(Math.atan2(-dx, -dz), Math.atan2(y - EYE, Math.hypot(dx, dz)));
+    this.player.faceYaw(Math.atan2(-dx, -dz), Math.atan2(y - this.player.eyeY(), Math.hypot(dx, dz)));
   }
 
   // --- Schleife ---
@@ -490,21 +665,27 @@ export class StoreApp {
       else p.update(dt, null);
     }
     this.mods.update(dt, now);
+    this.syncHeld();
     if (!inXr) {
       p.applyCamera(this.engine.camera);
       this.mods.cameraStep(dt);
       this.engine.camera.updateMatrixWorld();
     }
+    if (this.hands) {
+      this.hands.setVisible(!inXr && this.mode === 'play' && !this.mods.cam);
+      if (!inXr) this.hands.update(dt);
+    }
     if (inXr && xr.inCinema) { xr.cinemaTick(dt, now); return; }
     this.holdview.update(dt);
-    if (this.mode === 'play' && !this.mods.locked && this.desktop && (this.desktop.locked || this.desktop.dragLook)) {
+    const aimOn = this.mode === 'play' && !this.mods.locked && ((this.desktop && (this.desktop.locked || this.desktop.dragLook)) || (this.touchCtl && this.touchScheme === 'game'));
+    if (aimOn) {
       if (now - this.lastAim > 90) { this.lastAim = now; this.updateAim(); }
     }
     else if (this.aim) this.clearAim();
     if (this.pendingUse && this.mode === 'play' && now >= this.pendingUse.at) {
       const ia = this.pendingUse.ia;
       this.pendingUse = null;
-      if (!ia.enabled || ia.enabled()) ia.onUse();
+      if ((!ia.enabled || ia.enabled()) && this.iaReachable(ia)) ia.onUse();
     }
     if (this.pendingTake && this.mode === 'play' && now >= this.pendingTake.at) {
       const id = this.pendingTake.id;
@@ -512,11 +693,12 @@ export class StoreApp {
       this.take(id);
     }
     // Höchstens ein Atlas-Upload pro Frame; bei langsamen Frames gedrosselt (alle 200 ms), damit schwache Geräte trotzdem Cover bekommen.
-    if (dt < 0.04 || now - (this.lastCoverTick || 0) > 200) {
+    const farOut = p.z - this.layout.d > 25; // weit draußen (Straße südlich): der Cover-Manager lädt dort ohnehin nichts nach
+    if (farOut) { /* keine Cover-Arbeit */ } else if (dt < 0.04 || now - (this.lastCoverTick || 0) > 200) {
       this.lastCoverTick = now;
       this.covers.tick();
     }
-    if (now - this.lastCover > 250) {
+    if (!farOut && now - this.lastCover > 250) {
       this.lastCover = now;
       this.covers.update(p.x, p.z, p.yaw, { zoom: this.zoom, pitch: p.pitch });
     }
@@ -533,7 +715,8 @@ export class StoreApp {
   getState() {
     const p = this.player;
     if (!p) return this.opts.restore ? { ...this.stateCache, ...this.opts.restore } : this.stateCache;
-    return { ...p.state, heldId: this.holdview ? this.holdview.itemId : null };
+    const y = Number.isFinite(p.y) && p.y > 0.05 ? { y: Math.round(p.y * 100) / 100 } : null; // nur über dem Boden (Dach, Feuertreppe)
+    return { ...p.state, ...y, heldId: this.holdview ? this.holdview.itemId : null };
   }
 
   notifyState(force, now = performance.now()) {
@@ -574,7 +757,7 @@ export class StoreApp {
   }
 
   savePrefs() {
-    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, touchControl: this.touchScheme, ...this.touchTune, vr: { ...this.vr } }); } catch { /* egal */ }
+    try { this.deps.onPrefs({ quality: this.qualitySetting, sound: this.sound, fps: this.showFps, bigCovers: this.bigCovers, voiceOnline: this.voiceOnline, voiceName: this.voiceName, voicePitch: this.voicePitch, ...(this.touchChosen ? { touchControl: this.touchScheme, touchControlChosen: true } : {}), ...this.touchTune, vr: { ...this.vr } }); } catch { /* egal */ }
   }
 
   /** Kassierer-Stimme: Gerät (lokal, Standard) oder Online-Stimmen des Browsers (Text geht an deren Dienst). */
@@ -599,7 +782,7 @@ export class StoreApp {
     if (c && c.preview) c.preview();
   }
 
-  /** Touch-Steuerung: 'touch' (Halten = laufen, Wischen = umsehen, Standard) oder 'joystick' (Gehen-Knopf + Joystick). */
+  /** Touch-Steuerung: 'game' (Standard: Stick links, Wischen rechts, Knöpfe), 'joystick' (Gehen-Knopf + Joystick) oder 'touch' (Halten = laufen, Wischen = umsehen). */
   setTouchControl(s) {
     if (!SCHEMES.includes(s)) return;
     this.touchScheme = s;
@@ -737,6 +920,7 @@ export class StoreApp {
     if (this.mods) this.mods.dispose();
     if (this.holdview) this.holdview.dispose(true);
     if (this.covers) this.covers.dispose();
+    try { if (this.hands) this.hands.dispose(); } catch { /* egal */ }
     for (const part of [this.room, this.shelves, this.signs, this.props]) {
       try { if (part) part.dispose(); } catch { /* egal */ }
     }
@@ -763,11 +947,20 @@ export class StoreApp {
         const pos = slotWorld(s.fv, s.info, new Vector3(), new Quaternion()).pos;
         const dx = pos.x - app.player.x;
         const dz = pos.z - app.player.z;
-        app.player.look(Math.atan2(-dx, -dz) - app.player.yaw, Math.atan2(pos.y - EYE, Math.hypot(dx, dz)) - app.player.pitch);
+        app.player.look(Math.atan2(-dx, -dz) - app.player.yaw, Math.atan2(pos.y - app.player.eyeY(), Math.hypot(dx, dz)) - app.player.pitch);
         return true;
       },
       take(id) { return app.take(id); },
       put() { app.put(); },
+      jump() { return app.player.jump(); },
+      getNetState() { return app.player.getNetState(); },
+      pose() { return app.player.pose; },
+      carried() { return app.getCarried(); },
+      carry(id) { return app.carry(id); },
+      drop() { return app.drop(); },
+      spawns() { return app.layout.city ? JSON.parse(JSON.stringify(app.layout.city.spawns)) : {}; },
+      area() { return areaAt(app.layout, app.player.x, app.player.z, app.player.y || 0); },
+      city() { return app.layout.city; },
       stats() {
         const info = app.engine.renderer.info;
         return {

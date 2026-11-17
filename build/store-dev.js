@@ -1,5 +1,7 @@
 // Dev-Harness der VIDEOTHEK LENZ: erzeugt einen Fake-Katalog (analog 674 Filme + 157 Serien) und ruft create() des
 // 3D-Bundles ohne Jellyfin auf. Keine Netzwerkzugriffe: Cover sind per Canvas generierte data-URLs.
+// Parameter (Stadt, 1.15.0): ?spawn=shop|street|palast|yard|roof|kiosk|alley (Startpunkt), ?npc=0 / ?cars=0 (Passanten/Autos aus,
+// für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0. Debug: __lfxStore.spawns() / area() / city().
 (function () {
   var q = new URLSearchParams(location.search);
   var touch = q.get('touch') === '1';
@@ -181,7 +183,7 @@
     },
   };
 
-  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0', voiceOnline: q.get('voice') === 'online', voiceName: '', voicePitch: 'tief', touchControl: q.get('ctl') === 'joystick' ? 'joystick' : 'touch' };
+  var prefs = { fps: q.get('fps') === '1', bigCovers: q.get('big') !== '0', voiceOnline: q.get('voice') === 'online', voiceName: '', voicePitch: 'tief', touchControl: q.get('ctl') === 'joystick' ? 'joystick' : q.get('ctl') === 'touch' ? 'touch' : 'game' };
   deps.onPrefs = function (p) {
     if (typeof p.fps === 'boolean') prefs.fps = p.fps;
     if (typeof p.voiceOnline === 'boolean') prefs.voiceOnline = p.voiceOnline;
@@ -573,6 +575,8 @@
       quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
       openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true,
+      spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,
+      devFlags: { npc: q.get('npc') !== '0', cars: q.get('cars') !== '0', palast: q.get('palast') === '1', brawl: q.get('brawl') === '1' },
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,
     });
     window.__store = inst;

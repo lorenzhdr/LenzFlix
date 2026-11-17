@@ -1,7 +1,8 @@
 // VIDEOTHEK LENZ · Navigation (rein, ohne three): Raster, A*, Pfadglättung, Kreis-gegen-Rechteck-Kollision.
-// Rechtecke: { x0, z0, x1, z1 } in Metern (x Osten, z Süden).
+// Rechtecke: { x0, z0, x1, z1 } in Metern (x Osten, z Süden). Optionale Höhen (y0/y1, dynamic): siehe nav/collide.js.
+import { navBlocks } from './collide.js';
 
-/** Navigationsraster: Zelle blockiert, wenn der Zellmittelpunkt näher als `radius` an einem Rechteck liegt. */
+/** Navigationsraster: Zelle blockiert, wenn der Zellmittelpunkt näher als `radius` an einem Rechteck liegt (nur Boden-Hindernisse, navBlocks). */
 export function makeNavGrid(bounds, rects, radius = 0.32, cell = 0.25) {
   const ox = bounds.x0;
   const oz = bounds.z0;
@@ -18,6 +19,7 @@ export function makeNavGrid(bounds, rects, radius = 0.32, cell = 0.25) {
     }
   }
   for (const q of rects) {
+    if (!navBlocks(q)) continue;
     const c0 = Math.max(0, Math.floor((q.x0 - radius - ox) / cell));
     const c1 = Math.min(cols - 1, Math.ceil((q.x1 + radius - ox) / cell));
     const r0 = Math.max(0, Math.floor((q.z0 - radius - oz) / cell));

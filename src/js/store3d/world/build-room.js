@@ -5,7 +5,7 @@ import {
 } from 'three';
 import { box, quad, flatRect, merge, hex, disposeTree } from '../util/geo.js';
 import { makeCanvas, toTexture } from './textures.js';
-import { CEIL_H } from './layout.js';
+import { CEIL_H, facadeWindows } from './layout.js';
 
 const PI = Math.PI;
 const WALL_COL = [1, 1, 1];
@@ -148,10 +148,7 @@ export function buildRoom(layout, tex) {
   const trimParts = [];
   const glassParts = [];
   const door = layout.door;
-  const winH = { y0: 0.95, y1: 2.4 };
-  const windows = [];
-  if (door.x0 - 0.7 - 1.2 > 1.2) windows.push({ x0: 1.2, x1: door.x0 - 0.7, ...winH });
-  if (W - 1.2 - (door.x1 + 0.7) > 1.2) windows.push({ x0: door.x1 + 0.7, x1: W - 1.2, ...winH });
+  const windows = facadeWindows(W, door);
   const doorOpen = { x0: door.x0, x1: door.x1, y0: 0, y1: 2.4 };
   layout.facade = { door, windows };
 

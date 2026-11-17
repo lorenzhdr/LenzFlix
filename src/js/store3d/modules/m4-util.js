@@ -95,6 +95,11 @@ export function prefersReducedMotion() {
   try { return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 }
 
+/** Läuft das Intro? (Gleiche Bedingung für Fassade/Rollladen in modules/city.js und modules/intro.js.) */
+export function introWanted(o) {
+  return !(o && (o.skipIntro || o.restore || o.openItemId || o.openTerminal)) && !prefersReducedMotion();
+}
+
 /** Rate-Limit für Sprechblasen: mindestens `gapMs` zwischen zwei Sprüchen; Uhr wird injiziert (Tests). */
 export function createLimiter(gapMs = 20000) {
   let last = -Infinity;

@@ -240,6 +240,7 @@ export class HoldView {
     this.notify = o.notify;
     this.onClosed = o.onClosed;
     this.onPlay = o.onPlay;
+    this.onCarry = o.onCarry || null; // (id) => void: „Mitnehmen“ (Hülle in die Hand, Spieler läuft weiter; nur 2D)
     this.layout = o.layout;
     this.item = null;
     this.state = 'idle'; // idle | in | held | out
@@ -388,6 +389,7 @@ export class HoldView {
     this.dom.btns.fav = btn('', () => this.toggle('fav'));
     this.dom.btns.seen = btn('', () => this.toggle('seen'));
     this.dom.btns.flip = btn('Umdrehen', () => { this.flipped = !this.flipped; this.rotTargetY = this.flipped ? Math.PI : 0; });
+    if (this.onCarry) this.dom.btns.carry = btn('Mitnehmen', () => this.carryOut());
     this.dom.btns.back = btn('Zurückstellen', () => this.close(true));
     this.refreshMeta();
     // Fokus aufs Panel, nicht auf „Abspielen“: Leertaste/Enter nach dem Nehmen starten sonst versehentlich die Wiedergabe
@@ -662,6 +664,34 @@ export class HoldView {
     // 'XYZ' (R = Rx·Ry): Kippen um die feste Bildschirm-X-Achse, vorne wie hinten (mit 'YXZ' drehte die Kippachse mit dem Yaw mit)
     TMP_E.set(this.rot.x + sway * 0.5, this.rot.y + sway, 0, 'XYZ');
     this.mesh.quaternion.setFromEuler(TMP_E);
+  }
+
+  /** „Mitnehmen“ anfordern (Taste/Knopf): die Hülle ruft onCarry(id). */
+  carryOut() {
+    if ((this.state !== 'in' && this.state !== 'held') || !this.item || this.xr || !this.onCarry) return false;
+    this.onCarry(this.item.Id);
+    return true;
+  }
+
+  /**
+   * Hülle ohne Zurückstellen aus dem Halte-Bild nehmen: das Regalfach bleibt leer (nicht wieder einblenden), onClosed feuert.
+   * Rückgabe { slot, art } (art = verkleinerte Vorderseite als Canvas oder null) oder null, wenn nichts gehalten wird.
+   */
+  releaseForCarry() {
+    if (this.state === 'idle') return null;
+    const slot = this.slot;
+    let art = null;
+    try {
+      if (this.front) {
+        art = makeCanvas(256, 384);
+        const cx = art.getContext('2d');
+        if (cx) cx.drawImage(this.front, 0, 0, 256, 384); else art = null;
+      }
+    } catch { art = null; }
+    this.slot = null;
+    this.token++;
+    this.finishClose();
+    return { slot, art };
   }
 
   /** Zurückstellen (animiert) bzw. sofort schließen. */

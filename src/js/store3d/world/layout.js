@@ -4,6 +4,8 @@
 // Ein "Face" ist eine Regalseite (ein Segment, spec.cols Hüllen breit); seine Frontebene liegt bei (x, z), die
 // Normale zeigt nach (nx, nz) = (sin yaw, cos yaw), "rechts" in Blickrichtung auf das Face ist (nz, -nx).
 import { makeNavGrid } from '../nav/path.js';
+import { createColliderIndex } from '../nav/collide.js';
+import { buildCity, navCellFor } from './city.js';
 
 export const SEG_W = 1.2;
 // Normal-Werte (kleine Hüllen); für die Platzierung gilt immer die Spezifikation `layout.spec` (siehe shelfSpec).
@@ -45,6 +47,15 @@ const SPECS = {
     cellW: 170, cellH: 240,
   },
 };
+
+/** Schaufenster der Eingangsfront (Öffnungen neben der Tür); gemeinsam von build-room.js, build-facade.js und build-city.js. */
+export function facadeWindows(W, door) {
+  const winH = { y0: 0.95, y1: 2.4 };
+  const out = [];
+  if (door.x0 - 0.7 - 1.2 > 1.2) out.push({ x0: 1.2, x1: door.x0 - 0.7, ...winH });
+  if (W - 1.2 - (door.x1 + 0.7) > 1.2) out.push({ x0: door.x1 + 0.7, x1: W - 1.2, ...winH });
+  return out;
+}
 
 /** Regal-/Hüllen-Spezifikation (rein, konstant): Spalten, Fächer, Kapazität, Hüllenmaße, Atlas-Zellen. */
 export function shelfSpec(big) {
@@ -194,7 +205,7 @@ export function buildLayout(departments, opts = {}) {
       run.segments.push(seg);
     });
     const half = (run.axis === 'z' ? { x: run.depth / 2, z: (S * SEG_W) / 2 } : { x: (S * SEG_W) / 2, z: run.depth / 2 });
-    run.rect = { x0: run.cx - half.x, z0: run.cz - half.z, x1: run.cx + half.x, z1: run.cz + half.z, kind: 'shelf', run: run.id };
+    run.rect = { x0: run.cx - half.x, z0: run.cz - half.z, x1: run.cx + half.x, z1: run.cz + half.z, kind: 'shelf', run: run.id, y1: run.h, top: false };
     runs.push(run);
     colliders.push(run.rect);
     return run;
@@ -276,11 +287,18 @@ export function buildLayout(departments, opts = {}) {
       { x0: adultDoor.x1, z0: band - WALL_T, x1: W, z1: band, h: CEIL_H, kind: 'adult-s' },
     );
   }
-  for (const wl of walls) colliders.push({ ...wl, kind: 'wall' });
+  // Kollider der Ladenwände: Oberkante = Decke (das Dach liegt darüber begehbar); die Südwand lässt den Türspalt frei
+  // (nur der Kollider wird geteilt, der walls-Eintrag bleibt ganz: build-room.js schneidet die Öffnungen selbst).
+  for (const wl of walls) {
+    if (wl.kind === 'outer-s') {
+      if (door.x0 > wl.x0) colliders.push({ ...wl, x1: door.x0, kind: 'wall', y1: CEIL_H, top: false });
+      if (wl.x1 > door.x1) colliders.push({ ...wl, x0: door.x1, kind: 'wall', y1: CEIL_H, top: false });
+    } else colliders.push({ ...wl, kind: 'wall', y1: CEIL_H, top: false });
+  }
 
   // --- Kasse (vorne rechts) ---
-  const counter = { x0: W - 4.6, z0: D - 3.5, x1: W, z1: D - 2.8, kind: 'counter' };
-  const counterSide = { x0: W - 4.7, z0: D - 2.8, x1: W - 4.6, z1: D, kind: 'counter' };
+  const counter = { x0: W - 4.6, z0: D - 3.5, x1: W, z1: D - 2.8, kind: 'counter', y1: 1.05 };
+  const counterSide = { x0: W - 4.7, z0: D - 2.8, x1: W - 4.6, z1: D, kind: 'counter', y1: 1.05 };
   colliders.push(counter, counterSide);
   const register = { x: W - 2.6, z: D - 4.3, yaw: Math.PI };
 
@@ -318,7 +336,7 @@ export function buildLayout(departments, opts = {}) {
 
   // --- Zonen ---
   const zones = {};
-  const zone = (id, o) => { zones[id] = { id, ...o }; };
+  const zone = (id, o) => { if (o.rect && o.rect.y1 === undefined) o.rect.y1 = 2.6; zones[id] = { id, ...o }; }; // Ladenzonen gelten nur bis 2,6 m (nicht auf dem Dach)
   const box = (x0, z0, x1, z1) => ({ x0, z0, x1, z1 });
   zone('entrance', { label: 'Eingang', x: W / 2, z: D - 1.4, yaw: 0, rect: box(W / 2 - 1.6, D - 2.4, W / 2 + 1.6, D - 0.4) });
   zone('register', {
@@ -356,9 +374,15 @@ export function buildLayout(departments, opts = {}) {
   view('window', zones.window.x, D - 2.6, zones.window.x, D);
   view('window2', zones.window2.x, D - 2.6, zones.window2.x, D);
 
-  // --- Navigationsraster ---
-  const bounds = { x0: 0, z0: 0, x1: W, z1: D };
-  const nav = makeNavGrid(bounds, colliders, NAV_RADIUS, NAV_CELL);
+  // --- Stadt (Straße, Palast, Hof, Dach): Kollider und Zonen kommen aus world/city.js ---
+  const city = buildCity({ w: W, d: D, door });
+  colliders.push(...city.colliders);
+  for (const [id, z] of Object.entries(city.zones)) if (!zones[id]) zones[id] = z;
+
+  // --- Navigationsraster (ganze Welt) ---
+  const bounds = city.bounds;
+  const navCell = navCellFor(bounds);
+  const nav = makeNavGrid(bounds, colliders, NAV_RADIUS, navCell);
 
   // --- Deckenpaneele (Leuchtstoffröhren) ---
   const panels = [];
@@ -370,7 +394,9 @@ export function buildLayout(departments, opts = {}) {
 
   return {
     spec, w: W, d: D, ceilH: CEIL_H, band, zMainN, zMainS, rowSegs: r, rows: k, aisle,
-    runs, faces, walls, colliders, signs, zones, nav, panels, placements,
+    runs, faces, walls, colliders, signs, zones, nav, panels, placements, city, navCell, doorBlock: city.doorBlock,
+    facade: { door, windows: facadeWindows(W, door) },
+    bounds, cidx: createColliderIndex(colliders), dyn: new Set(), // Raster-Hash (statisch) und dynamische Kollider, siehe nav/collide.js
     spawn: { x: W / 2, z: D - 1.4, yaw: 0 },
     pc: { x: W - 3.5, z: (counter.z0 + counter.z1) / 2 }, // Kassen-PC (build-props.js und modules/terminal.js)
     door, adultDoor: sAdult > 0 ? adultDoor : null, counter, register, newRun,
@@ -381,6 +407,7 @@ export function buildLayout(departments, opts = {}) {
 
 /** Navigationsraster aus den aktuellen Kollidern neu berechnen (nach addCollider/removeCollider der Module). */
 export function rebuildNav(layout) {
-  layout.nav = makeNavGrid({ x0: 0, z0: 0, x1: layout.w, z1: layout.d }, layout.colliders, NAV_RADIUS, NAV_CELL);
+  layout.nav = makeNavGrid(layout.bounds || { x0: 0, z0: 0, x1: layout.w, z1: layout.d }, layout.colliders, NAV_RADIUS, layout.navCell || NAV_CELL);
+  if (layout.cidx) layout.cidx.rebuild(layout.colliders);
   return layout.nav;
 }

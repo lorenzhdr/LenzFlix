@@ -1,4 +1,4 @@
-// VIDEOTHEK LENZ · Desktop-Steuerung: Pointer-Lock, WASD/Pfeile, Maus-Look, Shift rennt, E/Klick nimmt.
+// VIDEOTHEK LENZ · Desktop-Steuerung: Pointer-Lock, WASD/Pfeile, Maus-Look, Shift rennt, E/Klick nimmt, Leertaste springt, F schlägt, G wirft, M nimmt die gehaltene Hülle mit.
 // Tasten laufen im Capture-Listener und werden verschluckt, damit Jellyfins Tastenkürzel nichts mitbekommen.
 
 const KEYS = {
@@ -11,6 +11,8 @@ const ZOOM_IN = 2.6; // Zoom-Faktor bei gehaltener rechter Maustaste / Q
 const LOCK_COOLDOWN = 1150; // Chrome lehnt requestPointerLock() kurz nach dem Verlassen per Esc ab
 const LOCK_RECENT = 3000;
 const LOCK_SILENT = 400; // kommt nach requestPointerLock() so lange weder Lock noch Fehler, gilt der Versuch als gescheitert
+/** Aktionstasten: Code -> ctx-Rückruf (nur im Modus 'play' abgefangen, damit Leertaste in Menüs und Panels weiter Knöpfe auslöst). */
+const ACTIONS = { Space: 'onJump', KeyF: 'onHit', KeyG: 'onThrow' };
 const ESC_DEBOUNCE = 300; // Esc, das den Lock beendet hat, darf das Pause-Menü nicht sofort wieder schließen
 
 /** Texteingabe, in der Esc nicht abgefangen wird (Knöpfe, Auswahllisten u. Ä. zählen nicht). */
@@ -28,7 +30,7 @@ function typing(t) {
 
 export class DesktopControls {
   /**
-   * @param {object} ctx { canvas, player, getMode(), onLockLost(), onLockChange(locked), onTake(), onEscape(), onZoom(z), getZoom() }
+   * @param {object} ctx { canvas, player, getMode(), onLockLost(), onLockChange(locked), onTake(src), onEscape(), onZoom(z), getZoom(), optional: onJump(), onHit(), onThrow(), onCarry() }
    */
   constructor(ctx) {
     this.ctx = ctx;
@@ -223,7 +225,7 @@ export class DesktopControls {
     if (e.button !== 0) return;
     const mode = this.ctx.getMode();
     if (mode !== 'play') return;
-    if (this.locked) { this.ctx.onTake(); return; }
+    if (this.locked) { this.ctx.onTake('click'); return; }
     if (this.dragLook) { this.drag = { x: e.clientX, y: e.clientY, moved: 0 }; return; }
     this.requestLock({ click: true });
   }
@@ -279,10 +281,23 @@ export class DesktopControls {
       this.syncZoom();
       return;
     }
+    const act = ACTIONS[e.code];
+    if (act && mode === 'play' && this.ctx[act]) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isDown && !e.repeat && (this.locked || this.dragLook)) this.ctx[act]();
+      return;
+    }
+    if (e.code === 'KeyM' && mode === 'hold' && this.ctx.onCarry) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isDown && !e.repeat) this.ctx.onCarry();
+      return;
+    }
     if (e.code === 'KeyE') {
       e.preventDefault();
       e.stopPropagation();
-      if (isDown && !e.repeat && mode === 'play' && (this.locked || this.dragLook)) this.ctx.onTake();
+      if (isDown && !e.repeat && mode === 'play' && (this.locked || this.dragLook)) this.ctx.onTake('key');
     }
   }
 }

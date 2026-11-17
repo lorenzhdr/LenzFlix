@@ -1,7 +1,8 @@
 // VIDEOTHEK LENZ · VR-Modus: Sitzung, Rig folgt dem Kopf, Eingabequellen (Controller/Hände), Fortbewegung, Laser, Menü, Hinweise.
 // Paket A: input/locomotion/pointer/hands/vignette/menu/hud3d; Paket F: cinema/cinema.js.
 import { Group } from 'three';
-import { resolveCircle, isFree, nearestFree } from '../nav/path.js';
+import { isFree, nearestFree } from '../nav/path.js';
+import { resolveCircle3, RADIUS } from '../nav/collide.js';
 import { EYE } from '../controls/player.js';
 import { XrSession, probeXr } from './session.js';
 import { headLocal, headWorld, placeRig, turnAboutHead, seatedOffset } from './rig.js';
@@ -17,7 +18,6 @@ import { Hud3d, diagLines } from './hud3d.js';
 import { buildMenuSpec } from './menu.js';
 import { Cinema } from '../cinema/cinema.js';
 
-const RADIUS = 0.28;
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
 
 export class XrMode {
@@ -38,6 +38,7 @@ export class XrMode {
     this.placed = false;
     this.lastTp = 0;
     this.rigY = 0;
+    this.groundY = 0; // Bodenhöhe unter dem Spieler, weich nachgeführt (Rig-Höhe = rigY + groundY); nur in beforeTick
     this.lastX = 0;
     this.lastZ = 0;
     this.prevQuality = null;
@@ -365,19 +366,25 @@ export class XrMode {
         this.lastTp = p.tp;
         this.placed = true;
         this.rigY = this.heightFor(head);
-        placeRig(rig, { x: p.x, z: p.z, yaw: p.yaw }, head, { y: this.rigY });
+        this.groundY = Number.isFinite(p.y) ? p.y : 0;
+        placeRig(rig, { x: p.x, z: p.z, yaw: p.yaw }, head, { y: this.rigY + this.groundY });
         p.pitch = head.pitch;
         this.lastX = p.x; this.lastZ = p.z;
       } else {
+        // Rig folgt der Bodenhöhe weich (Zeitkonstante 0,12 s; bei Sprüngen > 1,5 m sofort)
+        const gy = Number.isFinite(p.y) ? p.y : 0;
+        const g0 = this.groundY;
+        this.groundY = Math.abs(gy - g0) > 1.5 ? gy : g0 + (gy - g0) * (1 - Math.exp(-dt / 0.12));
+        if (this.groundY !== g0) rig.position.y += this.groundY - g0;
         const w = headWorld(rig, head);
         let yaw = w.yaw;
         if (res.turn) { turnAboutHead(rig, head, res.turn); yaw += res.turn; p.moved++; this.turnRate = dt > 0 ? Math.abs(res.turn) / dt : 0; }
-        const r = resolveCircle(w.x, w.z, RADIUS, app.layout.colliders);
+        const r = resolveCircle3(w.x, w.z, RADIUS, p.src || app.layout.colliders, p.y || 0);
         p.x = r.x; p.z = r.z; p.yaw = yaw; p.pitch = head.pitch;
         i.fwd = res.fwd; i.strafe = res.strafe; i.run = res.run; i.scale = res.scale;
         this.locomote(dt);
         if (Math.abs(p.x - w.x) > 1e-5 || Math.abs(p.z - w.z) > 1e-5) {
-          placeRig(rig, { x: p.x, z: p.z, yaw: p.yaw }, head, { y: this.rigY });
+          placeRig(rig, { x: p.x, z: p.z, yaw: p.yaw }, head, { y: this.rigY + this.groundY });
         }
         if (Math.hypot(p.x - this.lastX, p.z - this.lastZ) > 0.01) { this.lastX = p.x; this.lastZ = p.z; p.moved++; }
         this.speed = Math.hypot(p.vx, p.vz);
@@ -409,7 +416,10 @@ export class XrMode {
     const p = this.app.player;
     if (i && (i.fwd || i.strafe)) {
       p.update(dt, i);
-    } else { p.vx = 0; p.vz = 0; }
+    } else {
+      p.vx = 0; p.vz = 0;
+      if (typeof p.stepVertical === 'function') p.stepVertical(dt); // Schwerkraft/Bodenfolgen auch im Stand (mit Stick übernimmt update das)
+    }
   }
 
   heightFor(head) {

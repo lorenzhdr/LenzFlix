@@ -1,0 +1,145 @@
+/* VIDEOTHEK LENZ · Touch-Schema „Spiel“ (store3d/ui/gamepad.js): schwebender Stick links, Knöpfe unten rechts.
+   Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv). Nur Store-Variablen/--lfx-*-Tokens mit Rückfall. Ebene 1: unter der HUD (z-index 2, ihre Knöpfe
+   Menü und VR-Betreten bleiben bedienbar, auch wenn sie die Stick-Zone überlappen), unter Hülle/Pause; das Wisch-Hinweis-Overlay (fullscreen.css) liegt höher. Kein backdrop-filter. */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp {
+  --lfx-store-gp-bottom: max(18px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+  --lfx-store-gp-right: max(20px, calc(env(safe-area-inset-right, 0px) + 10px));
+  --lfx-store-gp-jump: 74px;
+  --lfx-store-gp-small: 58px;
+  --lfx-store-gp-base: 118px;
+  --lfx-store-gp-knob: 50px;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp[hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp [hidden],
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-gp {
+  display: none !important;
+}
+
+/* Stick-Zone: linke 45 % der Breite, untere 75 % der Höhe */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-zone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 45%;
+  height: 75%;
+  pointer-events: auto;
+  touch-action: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-base {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--lfx-store-gp-base);
+  height: var(--lfx-store-gp-base);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid rgba(53, 230, 255, 0.55);
+  background: rgba(13, 19, 48, 0.4);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), inset 0 0 18px rgba(53, 230, 255, 0.12);
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-base.is-run {
+  border-color: rgba(255, 210, 63, 0.85);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 210, 63, 0.3);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-knob {
+  width: var(--lfx-store-gp-knob);
+  height: var(--lfx-store-gp-knob);
+  border-radius: 50%;
+  background: rgba(53, 230, 255, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  will-change: transform;
+}
+
+/* Knöpfe */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 210, 63, 0.75);
+  background: rgba(13, 19, 48, 0.55);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 0 12px rgba(255, 210, 63, 0.22);
+  color: var(--lfx-store-yellow, #ffd23f);
+  font-family: var(--lfx-store-neon-font, "Arial Black", Impact, sans-serif);
+  font-size: 0.56rem;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px rgba(255, 210, 63, 0.5);
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.08s ease, background 0.08s ease;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button.is-down {
+  transform: scale(0.92);
+  background: rgba(255, 210, 63, 0.3);
+  color: #fff;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-jump {
+  right: var(--lfx-store-gp-right);
+  bottom: var(--lfx-store-gp-bottom);
+  width: var(--lfx-store-gp-jump);
+  height: var(--lfx-store-gp-jump);
+  font-size: 0.62rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-hit,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-throw {
+  right: calc(var(--lfx-store-gp-right) + var(--lfx-store-gp-jump) + 10px);
+  bottom: var(--lfx-store-gp-bottom);
+  width: var(--lfx-store-gp-small);
+  height: var(--lfx-store-gp-small);
+  border-color: rgba(255, 61, 127, 0.8);
+  color: var(--lfx-store-pink, #ff3d7f);
+  text-shadow: 0 0 8px rgba(255, 61, 127, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-use {
+  right: calc(var(--lfx-store-gp-right) + 8px);
+  bottom: calc(var(--lfx-store-gp-bottom) + var(--lfx-store-gp-jump) + 10px);
+  width: var(--lfx-store-gp-small);
+  height: var(--lfx-store-gp-small);
+  border-color: rgba(53, 230, 255, 0.7);
+  color: #35e6ff;
+  text-shadow: 0 0 8px rgba(53, 230, 255, 0.5);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-use.is-aimed {
+  background: rgba(53, 230, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.9);
+  color: #fff;
+}
+@media (orientation: portrait) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp {
+    --lfx-store-gp-jump: 66px;
+    --lfx-store-gp-small: 52px;
+    --lfx-store-gp-base: 106px;
+    --lfx-store-gp-bottom: max(26px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-btns button { transition: none; }
+}

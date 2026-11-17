@@ -69,7 +69,7 @@ describe('store3d layout', () => {
 
       it('Regal-Kollisionsrechtecke überlappen nicht (auch nicht mit Wänden/Tresen)', () => {
         const shelves = lay.colliders.filter((c) => c.kind === 'shelf');
-        const others = lay.colliders.filter((c) => c.kind !== 'shelf');
+        const others = lay.colliders.filter((c) => c.kind !== 'shelf' && !(c.y0 > 0)); // Dach und Brüstung (y0 > 0) schweben über den Regalen
         for (let i = 0; i < shelves.length; i++) {
           for (let j = i + 1; j < shelves.length; j++) expect(overlap(shelves[i], shelves[j]), `${i}/${j}`).toBe(false);
           for (const o of others) expect(overlap(shelves[i], o), `${i}/${o.kind}`).toBe(false);

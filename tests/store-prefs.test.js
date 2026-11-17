@@ -8,13 +8,38 @@ import * as prefs from '../src/js/features/store/prefs.js';
 beforeEach(() => localStorage.clear());
 
 describe('Touch-Feineinstellung', () => {
-  it('Standard: Touch-Steuerung, Umschauen normal, Umgreifen kurz', () => {
-    expect(prefs.getTouchControl()).toBe('touch');
+  it('Standard: Touch-Steuerung Spiel (game), Umschauen normal, Umgreifen kurz', () => {
+    expect(prefs.getTouchControl()).toBe('game');
     expect(prefs.getTouchTune()).toEqual({ touchSens: 'normal', touchRegrip: 'short', holdInvertY: false, holdInvertX: false, lookFlipY: false, lookFlipX: false });
   });
   it('gespeichertes joystick bleibt', () => {
-    prefs.savePrefs({ touchControl: 'joystick' });
+    prefs.savePrefs({ touchControl: 'joystick', touchControlChosen: true });
     expect(prefs.getTouchControl()).toBe('joystick');
+  });
+  it('Migration 1.15.0: touch ohne Marker = nie gewählt -> game; mit Marker bleibt touch; joystick bleibt; game bleibt', () => {
+    localStorage.setItem('lfx.store.touchControl.u1', 'touch');
+    expect(prefs.getTouchControl()).toBe('game');
+    localStorage.setItem('lfx.store.touchControlChosen.u1', '1');
+    expect(prefs.getTouchControl()).toBe('touch');
+    localStorage.clear();
+    localStorage.setItem('lfx.store.touchControl.u1', 'joystick');
+    expect(prefs.getTouchControl()).toBe('joystick');
+    localStorage.setItem('lfx.store.touchControl.u1', 'game');
+    expect(prefs.getTouchControl()).toBe('game');
+    localStorage.setItem('lfx.store.touchControl.u1', 'quatsch');
+    expect(prefs.getTouchControl()).toBe('game');
+  });
+  it('savePrefs schreibt touchControl nur mit touchControlChosen (inkl. Marker)', () => {
+    prefs.savePrefs({ touchControl: 'touch' });
+    expect(localStorage.getItem('lfx.store.touchControl.u1')).toBe(null);
+    prefs.savePrefs({ touchControl: 'touch', touchControlChosen: false });
+    expect(localStorage.getItem('lfx.store.touchControl.u1')).toBe(null);
+    prefs.savePrefs({ touchControl: 'touch', touchControlChosen: true });
+    expect(localStorage.getItem('lfx.store.touchControl.u1')).toBe('touch');
+    expect(localStorage.getItem('lfx.store.touchControlChosen.u1')).toBe('1');
+    expect(prefs.getTouchControl()).toBe('touch');
+    prefs.savePrefs({ touchControl: 'quatsch', touchControlChosen: true });
+    expect(prefs.getTouchControl()).toBe('touch');
   });
   it('Umgreifen speichern und validieren', () => {
     prefs.savePrefs({ touchRegrip: 'long' });

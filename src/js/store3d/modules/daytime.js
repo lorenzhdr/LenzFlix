@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · M4 Tageszeit & Wetter: Blick durch Schaufenster/Tür nach draußen (Himmel nach Uhrzeit, Häuserzeile,
 // Laternen), Regen (~35 % der Besuche, nachts öfter) mit Streifen draußen und Tropfen auf der Scheibe, innen nachts
-// leicht dunkler/kälter. Provider 'weather' { tod, raining, hour }. Debug (nur opts.debug): opts.hour, opts.rain.
+// leicht dunkler/kälter. Provider 'weather' { tod, raining, hour, lampsOn, sheltered(x,z,y) }. Debug (nur opts.debug): opts.hour, opts.rain.
+// Der Regen (Linien) folgt der Kamera (Volumen 24 x 24 m) und fällt in allen Außenbereichen (Provider 'areas'), Dichte aus dem Preset.
 import {
   LineSegments, LineBasicMaterial, BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, DoubleSide, Color,
 } from 'three';
@@ -8,6 +9,8 @@ import { quad, merge, rng } from '../util/geo.js';
 import { makeCanvas, toTexture } from '../world/textures.js';
 import { getOutdoor } from './outdoor.js';
 import { timeOfDay, rainDecision, skyPalette, prefersReducedMotion, clamp } from './m4-util.js';
+import { areaAt, OUTDOOR_AREAS } from '../world/city.js';
+import { presetFor } from '../engine/quality.js';
 
 const COOL = new Color(0.72, 0.82, 1.08);
 
@@ -51,7 +54,6 @@ export default {
   name: 'daytime',
   init(ctx) {
     const L = ctx.layout;
-    const W = L.w;
     const D = L.d;
     const dbg = !!(ctx.opts && ctx.opts.debug);
     const hourOpt = dbg && Number.isFinite(ctx.opts.hour) ? ctx.opts.hour : undefined;
@@ -62,7 +64,18 @@ export default {
     let tod = timeOfDay(hourOpt);
     const seed = (Math.random() * 4294967296) >>> 0;
     const raining = rainDecision(seed, tod, rainForce);
-    const weather = { tod, raining, hour: hourOpt };
+    const weather = {
+      tod, raining, hour: hourOpt,
+      /** Laternen/Neon an (nicht am Tag). */
+      get lampsOn() { return this.tod !== 'day'; },
+      /** Geschützt vor Regen: im Laden, im Palast, unter dem Vordach. */
+      sheltered(x, z, y = 0) {
+        const a = areaAt(L, x, z, y);
+        if (a === 'shop' || a === 'palastHall' || a === 'palastFoyer') return true;
+        const c = L.city && L.city.palast && L.city.palast.canopy;
+        return !!(c && x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1 && y < c.y);
+      },
+    };
     ctx.provide('weather', weather);
     out.setPalette(tod, raining);
 
@@ -90,32 +103,31 @@ export default {
     }
     apply();
 
-    // --- Regen draußen (Linien) ---
-    const N = ctx.isPhone ? 150 : 280;
-    const X0 = -8;
-    const XW = W + 16;
-    const Z0 = D + 0.6;
-    const ZD = 9;
+    // --- Regen draußen (Linien, Volumen folgt der Kamera) ---
+    const N = ctx.isPhone ? 260 : 520;
+    const HALF = 12;
     const pos = new Float32Array(N * 6);
     const vel = new Float32Array(N);
     const rr = rng(33);
     const LEN = 0.55;
     const SLANT = 0.06;
     for (let i = 0; i < N; i++) {
-      const x = X0 + rr() * XW;
+      const x = (rr() * 2 - 1) * HALF;
       const y = rr() * 9;
-      const z = Z0 + rr() * ZD;
+      const z = (rr() * 2 - 1) * HALF;
       pos.set([x, y, z, x + SLANT, y + LEN, z], i * 6);
       vel[i] = 9 + rr() * 4;
     }
     const rainGeo = new BufferGeometry();
     rainGeo.setAttribute('position', new Float32BufferAttribute(pos, 3));
-    const rainMat = new LineBasicMaterial({ color: 0xbfd2ff, transparent: true, opacity: 0.38, depthWrite: false });
+    const rainMat = new LineBasicMaterial({ color: 0xbfd2ff, transparent: true, opacity: 0.38, depthWrite: false, fog: false });
     const rain = new LineSegments(rainGeo, rainMat);
     rain.frustumCulled = false;
     rain.renderOrder = 8;
     rain.visible = false;
     out.group.add(rain);
+    let nLines = N;
+    const setLines = (lv) => { nLines = Math.min(N, presetFor(lv, ctx.isPhone).rainLines || 0); rainGeo.setDrawRange(0, nLines * 2); };
 
     // --- Tropfen auf der Scheibe ---
     const dropTex = toTexture(dropsCanvas(), { repeat: true, aniso: 2 });
@@ -139,16 +151,16 @@ export default {
     ctx.track(rain);
 
     let level = ctx.quality();
+    setLines(level);
     let near = false;
     let suspended = false;
     function syncVisible() {
       const r = weather.raining;
-      rain.visible = r && level !== 'low' && near && !suspended;
+      rain.visible = r && level !== 'low' && nLines > 0 && near && !suspended;
       if (drops) drops.visible = r;
     }
     syncVisible();
 
-    const p = ctx.player;
     const cam = ctx.camera;
     let checkT = 0;
     const speed = reduced ? 0.012 : 0.03;
@@ -158,15 +170,17 @@ export default {
         out.follow(cam);
         if (t - checkT > 0.4) {
           checkT = t;
-          const pose = p.getPose();
           const was = near;
-          near = pose.z > D - 16 || cam.position.z > D;
+          const areas = ctx.use('areas');
+          const a = areas ? areas.current() : 'shop';
+          near = OUTDOOR_AREAS.includes(a) || cam.position.z > D + 0.3; // Kamera draußen (Intro) oder Spieler in einem Außenbereich
           if (was !== near) syncVisible();
         }
         if (drops && weather.raining && near) dropTex.offset.y += dt * speed;
         if (rain.visible) {
+          rain.position.set(cam.position.x, 0, cam.position.z);
           const dd = clamp(dt, 0, 0.05);
-          for (let i = 0; i < N; i++) {
+          for (let i = 0; i < nLines; i++) {
             const k = i * 6;
             let y = pos[k + 1] - vel[i] * dd;
             if (y < 0) y += 9;
@@ -176,7 +190,7 @@ export default {
           rainGeo.attributes.position.needsUpdate = true;
         }
       },
-      onQuality(lv) { level = lv; syncVisible(); },
+      onQuality(lv) { level = lv; setLines(lv); syncVisible(); },
       onSuspend() { suspended = true; syncVisible(); },
       onResume() {
         suspended = false;

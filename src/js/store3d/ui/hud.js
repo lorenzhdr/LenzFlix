@@ -9,7 +9,16 @@ export function el(tag, cls, text) {
 
 const VR_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 8.5C3 7.1 4.1 6 5.5 6h13C19.9 6 21 7.1 21 8.5v6c0 1.4-1.1 2.5-2.5 2.5h-3.2c-.8 0-1.5-.5-1.8-1.2l-.3-.8c-.2-.5-.7-.8-1.2-.8s-1 .3-1.2.8l-.3.8c-.3.7-1 1.2-1.8 1.2H5.5C4.1 17 3 15.9 3 14.5v-6zm2 .5v5.5c0 .3.2.5.5.5h2.6l.1-.3c.5-1.2 1.6-1.9 2.8-1.9s2.3.7 2.8 1.9l.1.3h2.6c.3 0 .5-.2.5-.5V9c0-.3-.2-.5-.5-.5h-13c-.3 0-.5.2-.5.5z"/></svg>';
 
-export function createHud(host, { touch, onMenu, onVr }) {
+/** Tastenhilfe Desktop (Startbild); Touch-Texte je Schema siehe promptTexts. */
+export const DESKTOP_HELP = 'WASD laufen · Maus umsehen · Shift rennen · Leertaste springen · E nehmen · F schlagen · G werfen · Q zoomen · Esc Pause';
+
+/** Texte des Start-Hinweises für Touch je Schema: [Titel, Untertitel]. */
+export function promptTexts(scheme) {
+  if (scheme === 'game') return ['Links laufen · rechts umsehen', 'Tippen zum Nehmen · Springen, Benutzen und Schlagen unten rechts'];
+  return ['Gedrückt halten zum Laufen', 'Wischen zum Umsehen · Tippen zum Nehmen'];
+}
+
+export function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
   const root = el('div', 'lfx-store-ov');
   const cross = el('div', 'lfx-store-cross');
   cross.setAttribute('aria-hidden', 'true');
@@ -18,11 +27,11 @@ export function createHud(host, { touch, onMenu, onVr }) {
   const hintSub = el('div', 'lfx-store-hint-sub');
   hint.append(hintTitle, hintSub);
   const prompt = el('div', 'lfx-store-prompt');
-  const pTitle = el('div', 'lfx-store-prompt-title', touch ? 'Gedrückt halten zum Laufen' : 'Klicken zum Losgehen');
+  const pTitle = el('div', 'lfx-store-prompt-title', touch ? promptTexts(getTouchScheme ? getTouchScheme() : 'touch')[0] : 'Klicken zum Losgehen');
   const pSub = el(
     'div',
     'lfx-store-prompt-sub',
-    touch ? 'Wischen zum Umsehen · Tippen zum Nehmen' : 'WASD laufen · Maus umsehen · Shift rennen · E nehmen · Q zoomen · Esc Pause',
+    touch ? promptTexts(getTouchScheme ? getTouchScheme() : 'touch')[1] : DESKTOP_HELP,
   );
   prompt.append(pTitle, pSub);
   const lost = el('div', 'lfx-store-lost', 'Grafik wird neu aufgebaut…');
@@ -72,7 +81,11 @@ export function createHud(host, { touch, onMenu, onVr }) {
     },
     showPrompt(on, again) {
       prompt.classList.toggle('is-on', !!on);
-      pTitle.textContent = touch ? 'Gedrückt halten zum Laufen' : again ? 'Klicken zum Weiterspielen' : 'Klicken zum Losgehen';
+      if (touch) {
+        const t = promptTexts(getTouchScheme ? getTouchScheme() : 'touch');
+        pTitle.textContent = t[0];
+        pSub.textContent = t[1];
+      } else pTitle.textContent = again ? 'Klicken zum Weiterspielen' : 'Klicken zum Losgehen';
     },
     /** FPS-Kachel: Text setzen (null/leer blendet aus). */
     setFps(text) {

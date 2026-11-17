@@ -1,16 +1,28 @@
 // VIDEOTHEK LENZ · Qualitätsstufen und Automatik (rein, ohne three).
 const LEVELS = ['low', 'mid', 'high'];
 
+// Dichten der Außenwelt (additiv, Handy und XR nehmen die Handy-Werte): Passanten, Autos, Requisiten, Vögel, Regenlinien, Nebel.
+const CITY = {
+  low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], fogNear: 34, fogFar: 56 },
+  mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], fogNear: 36, fogFar: 58 },
+  high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], fogNear: 38, fogFar: 58 },
+};
+function city(lv, phone) {
+  const c = CITY[lv];
+  const k = phone ? 1 : 0;
+  return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], fogNear: c.fogNear, fogFar: c.fogFar };
+}
+
 /** Einstellungen je Stufe. Atlas-Auflösung = Kantenlänge der Cover-Atlanten; maxAtlases = Texturbudget (LRU). */
 export function presetFor(level, phone = false) {
   const lv = LEVELS.includes(level) ? level : 'mid';
   if (lv === 'low') {
-    return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false };
+    return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false, ...city(lv, phone) };
   }
   if (lv === 'mid') {
-    return { level: lv, pixelRatio: 1.25, shadows: false, anisotropy: 4, atlas: 1024, maxAtlases: phone ? 14 : 40, loadRadius: phone ? 13 : 17, signMips: true };
+    return { level: lv, pixelRatio: 1.25, shadows: false, anisotropy: 4, atlas: 1024, maxAtlases: phone ? 14 : 40, loadRadius: phone ? 13 : 17, signMips: true, ...city(lv, phone) };
   }
-  return { level: lv, pixelRatio: 1.75, shadows: !phone, anisotropy: 8, atlas: 1024, maxAtlases: phone ? 16 : 56, loadRadius: phone ? 20 : 28, signMips: true };
+  return { level: lv, pixelRatio: 1.75, shadows: !phone, anisotropy: 8, atlas: 1024, maxAtlases: phone ? 16 : 56, loadRadius: phone ? 20 : 28, signMips: true, ...city(lv, phone) };
 }
 
 /**

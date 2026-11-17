@@ -3,6 +3,7 @@ import { Mesh, BoxGeometry, MeshBasicMaterial, AdditiveBlending, Matrix4, Quater
 import { MODULES } from './index.js';
 import { rebuildNav } from '../world/layout.js';
 import { findPath } from '../nav/path.js';
+import { navBlocks } from '../nav/collide.js';
 import { slotWorld } from '../world/build-shelves.js';
 import { loadBitmap, closeBitmap } from '../covers/loader.js';
 import { makeCanvas } from '../world/textures.js';
@@ -35,6 +36,9 @@ export class ModuleHost {
     this.navDirty = false;
     this.zoneIn = new Set();
     this.zoneT = 0;
+    this.actions = new Map(); // Aktions-Handler: name -> [{ fn, prio, seq }] (ctx.input.onAction)
+    this.actionSeq = 0;
+    this.inStore = null; // Spieler im Innenraum? (null = noch nicht bestimmt; Ereignisse 'leave'/'return')
     this.texQueue = [];
     this.texActive = 0;
     this.ac = new AbortController();
@@ -54,26 +58,68 @@ export class ModuleHost {
       soundOn: () => app.sound,
       voiceOnline: () => !!app.voiceOnline,
       voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || '', pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
-      addCollider(rect) {
-        if (!rect || app.layout.colliders.includes(rect)) return rect;
+      /**
+       * Kollider anlegen. rect darf y0/y1/top haben (nav/collide.js). { dynamic: true } = beweglich (Auto, NPC, Kiste):
+       * nur in layout.dyn, nie im Nav-Raster; Verschieben per moveCollider.
+       */
+      addCollider(rect, o) {
+        const L = app.layout;
+        if (!rect) return rect;
+        if (o && o.dynamic) rect.dynamic = true;
+        if (rect.dynamic) {
+          if (!rect.kind) rect.kind = 'prop';
+          if (L.dyn) L.dyn.add(rect);
+          else if (!L.colliders.includes(rect)) L.colliders.push(rect);
+          return rect;
+        }
+        if (L.colliders.includes(rect)) return rect;
         if (!rect.kind) rect.kind = 'prop';
-        app.layout.colliders.push(rect);
-        self.navDirty = true;
+        // Module im Laden ohne y1: nur bis zur Decke (das Dach über dem Laden bleibt begehbar)
+        if (rect.y1 === undefined && Number.isFinite(L.ceilH) && rect.x0 >= 0 && rect.z0 >= 0 && rect.x1 <= L.w && rect.z1 <= L.d) rect.y1 = L.ceilH;
+        L.colliders.push(rect);
+        if (L.cidx) L.cidx.add(rect);
+        if (navBlocks(rect)) self.navDirty = true;
+        return rect;
+      },
+      /** Kollider verschieben/umformen (mutiert rect und sortiert ihn im Raster-Hash neu ein); nie Nav-Neuaufbau. */
+      moveCollider(rect, x0, z0, x1, z1, y0, y1) {
+        if (!rect) return rect;
+        if (x0 !== undefined) rect.x0 = x0;
+        if (z0 !== undefined) rect.z0 = z0;
+        if (x1 !== undefined) rect.x1 = x1;
+        if (z1 !== undefined) rect.z1 = z1;
+        if (y0 !== undefined) rect.y0 = y0;
+        if (y1 !== undefined) rect.y1 = y1;
+        if (app.layout.cidx && !rect.dynamic) app.layout.cidx.update(rect);
         return rect;
       },
       removeCollider(rect) {
-        const i = app.layout.colliders.indexOf(rect);
-        if (i >= 0) { app.layout.colliders.splice(i, 1); self.navDirty = true; }
+        const L = app.layout;
+        if (L.dyn && L.dyn.delete(rect)) return;
+        const i = L.colliders.indexOf(rect);
+        if (i >= 0) {
+          L.colliders.splice(i, 1);
+          if (L.cidx) L.cidx.remove(rect);
+          if (rect.dynamic) return;
+          if (navBlocks(rect)) self.navDirty = true;
+        }
       },
       addInteractable(o) {
         const b = o.box;
-        const ia = { box: { min: b.min, max: b.max }, label: o.label || '', hint: o.hint || '', onUse: o.onUse || (() => {}), enabled: o.enabled };
+        const ia = { box: { min: b.min, max: b.max }, label: o.label || '', hint: o.hint || '', onUse: o.onUse || (() => {}), enabled: o.enabled, anyHeight: !!o.anyHeight };
         self.interactables.push(ia);
         return () => { const i = self.interactables.indexOf(ia); if (i >= 0) self.interactables.splice(i, 1); };
       },
       player: {
-        getPose: () => app.player.state,
-        teleport: (x, z, yaw, pitch) => { app.player.teleport(x, z, yaw === undefined ? app.player.yaw : yaw, pitch || 0); },
+        getPose: () => ({ ...app.player.state, y: app.player.y }),
+        teleport: (x, z, yaw, pitch, y) => { app.player.teleport(x, z, yaw === undefined ? app.player.yaw : yaw, pitch || 0, y); },
+        /** Sprung auslösen (gepuffert). Rückgabe: Sprung ist sofort möglich; in VR immer false. */
+        jump: () => (self.xrOn() || typeof app.player.jump !== 'function' ? false : app.player.jump()),
+        /** Stoß { x, z, up } (Richtung wird normiert), strength Standard 1; in VR ohne Wirkung (false). */
+        knock: (dir, strength) => { if (self.xrOn() || typeof app.player.knock !== 'function') return false; app.player.knock(dir, strength); return true; },
+        eyeY: () => (typeof app.player.eyeY === 'function' ? app.player.eyeY() : 1.65),
+        getY: () => app.player.y || 0,
+        isGrounded: () => app.player.grounded !== false,
         walkTo: (x, z, o) => self.walkTo(x, z, o || {}),
         lookAt: (x, y, z, ms) => self.lookAt(x, y, z, ms),
         freeze: (on) => { self.frozen = !!on; if (on) app.player.cancelPath(); },
@@ -106,6 +152,16 @@ export class ModuleHost {
         take: (id, o) => app.take(id, { fromCounter: !!(o && o.from === 'counter') }),
         slotOf: (id) => self.slotOf(id),
         highlight: (id, on) => self.highlight(id, on),
+        /** Getragene Hülle { id, item } oder null (Mitnehmen im Halte-Bild). */
+        carried: () => (typeof app.getCarried === 'function' ? app.getCarried() : null),
+        /** Hülle in die Hand nehmen (aus dem Regal oder dem Halte-Bild); Rückgabe false in VR/ohne Titel. */
+        carry: (id) => (typeof app.carry === 'function' ? app.carry(id) : false),
+        /** Getragene Hülle zurück ins Regal an den Ursprungsplatz. */
+        drop: () => (typeof app.drop === 'function' ? app.drop() : false),
+      },
+      input: {
+        /** Aktions-Handler 'use' | 'hit' | 'throw'; fn(ev) -> true = verbraucht. Höhere prio zuerst. Rückgabe: off(). */
+        onAction: (name, fn, o) => self.onAction(name, fn, o),
       },
       on: (ev, fn) => {
         const l = self.listeners.get(ev) || [];
@@ -164,12 +220,46 @@ export class ModuleHost {
   checkZones() {
     const p = this.app.player;
     const inside = new Set();
-    for (const z of Object.values(this.app.layout.zones)) {
+    const L = this.app.layout;
+    const y = Number.isFinite(p.y) ? p.y : 0;
+    for (const z of Object.values(L.zones)) {
       const r = z.rect;
-      if (r && p.x >= r.x0 && p.x <= r.x1 && p.z >= r.z0 && p.z <= r.z1) inside.add(z.id);
+      if (!r || p.x < r.x0 || p.x > r.x1 || p.z < r.z0 || p.z > r.z1) continue;
+      if ((r.y0 !== undefined && y < r.y0) || (r.y1 !== undefined && y > r.y1)) continue; // optionale Höhe (Dach)
+      inside.add(z.id);
     }
-    for (const id of inside) if (!this.zoneIn.has(id)) this.emit('zone', id);
+    const prev = this.zoneIn;
     this.zoneIn = inside;
+    for (const id of inside) if (!prev.has(id)) this.emit('zone', id);
+    for (const id of prev) if (!inside.has(id)) this.emit('zoneExit', id);
+    // Innenraum verlassen/betreten: Zone 'store' (Welle 2), bis dahin der Grundriss 0..w x 0..d
+    const sr = (L.zones.store && L.zones.store.rect) || (Number.isFinite(L.w) && Number.isFinite(L.d) ? { x0: 0, z0: 0, x1: L.w, z1: L.d } : null);
+    if (sr) {
+      const now = p.x >= sr.x0 && p.x <= sr.x1 && p.z >= sr.z0 && p.z <= sr.z1 && (sr.y1 === undefined || y <= sr.y1);
+      if (this.inStore == null) this.inStore = now;
+      else if (now !== this.inStore) { this.inStore = now; this.emit(now ? 'return' : 'leave'); }
+    }
+  }
+
+  // --- Eingabe-Aktionen ---
+  onAction(name, fn, o) {
+    if (typeof fn !== 'function') return () => {};
+    const l = this.actions.get(name) || [];
+    const h = { fn, prio: (o && Number.isFinite(o.prio) ? o.prio : 0), seq: this.actionSeq++ };
+    l.push(h);
+    this.actions.set(name, l);
+    return () => { const i = l.indexOf(h); if (i >= 0) l.splice(i, 1); };
+  }
+
+  /** Handler (prio absteigend, dann Anmeldereihenfolge) bis zum ersten true; danach Beobachter-Ereignis emit(name, ev, consumed). */
+  action(name, ev) {
+    const l = (this.actions && this.actions.get(name)) || [];
+    let consumed = false;
+    for (const h of l.slice().sort((a, b) => b.prio - a.prio || a.seq - b.seq)) {
+      try { if (h.fn(ev) === true) { consumed = true; break; } } catch (err) { warn('Aktion ' + name, err); }
+    }
+    this.emit(name, ev, consumed);
+    return consumed;
   }
 
   /** Sitzung läuft (lazy: fakeApp hat kein app.xr). */
@@ -212,7 +302,7 @@ export class ModuleHost {
     const dx = x - p.x;
     const dz = z - p.z;
     const ty = Math.atan2(-dx, -dz);
-    const tp = Math.atan2(y - 1.65, Math.hypot(dx, dz));
+    const tp = Math.atan2(y - (typeof p.eyeY === 'function' ? p.eyeY() : 1.65), Math.hypot(dx, dz));
     p.turnTo = null;
     return new Promise((resolve) => {
       this.look = { y0: p.yaw, dy: angDiff(p.yaw, ty), p0: p.pitch, dp: tp - p.pitch, t: 0, dur: Math.max(1, ms) / 1000, resolve };
@@ -408,6 +498,7 @@ export class ModuleHost {
     }
     this.tracked = [];
     this.interactables = [];
+    if (this.actions) this.actions.clear();
     this.listeners.clear();
     this.providers.clear();
   }

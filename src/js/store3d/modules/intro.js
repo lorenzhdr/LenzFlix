@@ -3,8 +3,8 @@
 // Überspringen: Knopf, Klick/Tippen irgendwo, Esc (läuft als ctx.overlay → Esc/Pointer-Lock-Freigabe wie bei Modulen).
 // Kein Intro bei opts.skipIntro, wiederhergestelltem Zustand, direkter Titel-/Suchroute und prefers-reduced-motion.
 import { EYE } from '../controls/player.js';
-import { getOutdoor, addFacade } from './outdoor.js';
-import { prefersReducedMotion, clamp } from './m4-util.js';
+import { getOutdoor } from './outdoor.js';
+import { introWanted, clamp } from './m4-util.js';
 
 const ease = (t) => t * t * (3 - 2 * t);
 const T = { fly1: 0.6, fly1Dur: 2400, shutter: 1.5, shutterDur: 2.2, door: 3.5, doorDur: 1.0, fly2: 3.9, fly2Dur: 3300 };
@@ -13,24 +13,21 @@ export default {
   name: 'intro',
   init(ctx) {
     const o = ctx.opts || {};
-    if (o.skipIntro || o.restore || o.openItemId || o.openTerminal || prefersReducedMotion()) {
+    const out = getOutdoor(ctx);
+    const facade = out.facade; // Eigentümer: Modul `city` (dauerhaft); der Rollladen existiert nur, wenn ein Intro folgt
+    if (!introWanted(o) || !facade || !facade.shutter) {
       ctx.provide('intro', { run: () => Promise.resolve() });
       return {};
     }
     const L = ctx.layout;
     const W = L.w;
     const D = L.d;
-    const out = getOutdoor(ctx);
-    const facade = addFacade(ctx, out);
     const player = ctx.player;
     const touch = ctx.isTouch;
 
-    // Die echten Türflügel des Raums (build-room.js: 'lfx-door-left' / 'lfx-door-right') öffnen sich; keine eigene Kopie.
-    const left = ctx.scene.getObjectByName('lfx-door-left');
-    const right = ctx.scene.getObjectByName('lfx-door-right');
-    const leafMats = [left, right].filter(Boolean).map((g) => g.getObjectByName('lfx-door-frame').material);
-    out.tinted.push(...leafMats.map((mat) => ({ mat, base: [1, 1, 1] })));
-    out.setPalette(out.tod, out.rain);
+    // Die echten Türflügel gehören dem Modul `door` (Provider 'door'); das Intro erzwingt die Öffnung per override().
+    const doorP = ctx.use('door');
+    if (doorP) doorP.override(0);
 
     let started = false;
     let done = false;
@@ -54,10 +51,9 @@ export default {
       player.freeze(false);
       const p = pose || player.getPose();
       player.teleport(p.x, p.z, p.yaw, p.pitch);
-      if (left) left.rotation.y = 0;
-      if (right) right.rotation.y = 0;
-      facade.dispose();
-      for (const mat of leafMats) { const i = out.tinted.findIndex((q) => q.mat === mat); if (i >= 0) out.tinted.splice(i, 1); mat.color.setRGB(1, 1, 1); }
+      facade.setShutter(1);
+      facade.dropShutter(); // die Fassade selbst bleibt (Eigentümer: city)
+      if (doorP) doorP.override(null); // Automatik übernimmt, die Tür schließt sich von selbst
       if (overlayEl && overlayEl.parentNode) ctx.overlay.close();
       const host = ctx.renderer.domElement.parentNode;
       if (host) host.classList.remove('lfx-store-intro-on');
@@ -68,7 +64,7 @@ export default {
     const back = ctx.camera.aspect < 1.2 ? 1.55 : 1;
     // Anfangsbild schon im ersten gerenderten Frame: Kamera draußen vor dem Rollladen, Spieler eingefroren.
     player.freeze(true);
-    player.camera.flyTo({ x: W / 2 - 1.5, y: 1.6, z: D + 7.4 * back }, { x: W / 2, y: 3.3, z: D }, 1);
+    player.camera.flyTo({ x: W / 2 - 1.5, y: 1.6, z: Math.min(D + 7.4 * back, D + 9.4) }, { x: W / 2, y: 3.3, z: D }, 1); // höchstens D+9,4: davor beginnt der Palast
 
     ctx.provide('intro', {
       run() {
@@ -119,7 +115,7 @@ export default {
         facade.flicker(tl);
         if (!startedFly1 && tl >= T.fly1) {
           startedFly1 = true;
-          player.camera.flyTo({ x: W / 2 - 1.5, y: 1.6, z: D + 3.9 * (back > 1 ? 1.45 : 1) }, { x: W / 2, y: 1.7, z: D }, T.fly1Dur);
+          player.camera.flyTo({ x: W / 2 - 1.5, y: 1.6, z: Math.min(D + 3.9 * (back > 1 ? 1.45 : 1), D + 9.4) }, { x: W / 2, y: 1.7, z: D }, T.fly1Dur);
         }
         if (tl >= T.shutter) {
           if (!shutterSound) { shutterSound = true; const s = ctx.use('sound'); if (s) s.play('shutter', { dur: T.shutterDur }); }
@@ -127,8 +123,7 @@ export default {
         }
         if (tl >= T.door) {
           const a = ease(clamp((tl - T.door) / T.doorDur, 0, 1)) * 1.45;
-          if (left) left.rotation.y = -a;
-          if (right) right.rotation.y = a;
+          if (doorP) doorP.override(a / 1.45);
         }
         if (!startedFly2 && tl >= T.fly2) {
           startedFly2 = true;

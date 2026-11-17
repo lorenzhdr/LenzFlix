@@ -18,6 +18,7 @@
 //   on(event, fn) → off()   Events: 'enter' | 'take'(id) | 'put'(id) | 'play'(item,{resume}) | 'zone'(name) | 'frame'(dt,t)
 //   loadTexture(url,{maxWidth}) → Promise<Texture|null> · track(obj) → obj (Geometrie/Material/Textur/Object3D, dispose automatisch)
 //   provide(name, impl) → remove() · use(name) → impl|undefined   Provider: 'terminal' { open(q) }, 'intro' { run() → Promise },
+//   'areas' { current, at, on }, 'city' { data, groups, signals, visible, partition }, 'door' { override, open, lock, unlock, isLocked, registerActor }
 //   'cashier' { event('couchSit'|'couchStand') }, 'couch' { seated() → bool }, 'sound' { play, ambient(on), duck(key, on) }
 // Imports bitte nur im eigenen Block ergänzen (parallele Arbeit, Konflikte vermeiden).
 // --- M3 Kasse & Orte: imports ---
@@ -28,6 +29,8 @@ import staff from './staff.js';
 import showcase from './showcase.js';
 // --- M4 Atmosphäre: imports ---
 import sound from './sound.js';
+import city from './city.js';
+import door from './door.js';
 import intro from './intro.js';
 import daytime from './daytime.js';
 import cashier from './cashier.js';
@@ -37,6 +40,8 @@ import tv from './tv.js';
 export const MODULES = [
   // --- M4 Atmosphäre (zuerst: Sound-Provider, Intro) ---
   sound,
+  city,
+  door,
   intro,
   daytime,
   cashier,
