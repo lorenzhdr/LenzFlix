@@ -62,6 +62,8 @@ import xrchar from './xrchar.js';
 // --- Kampf (1.18, Stubs aus Welle 4) ---
 import fight from './fight.js';
 import gang from './gang.js';
+// --- Ultra-Figuren (1.19 U4): imports ---
+import ultraFigures from './ultra-figures.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -105,6 +107,8 @@ export const MODULES = [
   // --- Kampf (1.18, Stubs aus Welle 4; vor net) ---
   fight,
   gang,
+  // --- Ultra-Figuren (1.19 U4: Abstands-LOD der Figuren-Details, nutzt nur die Figuren-Registry) ---
+  ultraFigures,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];

@@ -4,6 +4,7 @@
 // IDs: char/ids.js. Der alte Pfad (Looks ohne v===2) bleibt in figure.js unberührt.
 import { ConeGeometry, CylinderGeometry, Float32BufferAttribute, Matrix4, Euler, Quaternion, Vector3 } from 'three';
 import { box } from '../util/geo.js';
+import { detailBody, detailHead, winterHead, winterBody } from './figure-detail.js';
 import { sph } from '../modules/m4-geo.js';
 import {
   HAIR_STYLES, EYES, BROWS, BEARDS, SHAPES, TOP_CUTS, TOP_PATTERNS, BOTTOM_CUTS, BOTTOM_PATTERNS, SHOE_MODELS, GLASSES, HATS, BAGS,
@@ -91,7 +92,7 @@ function beardShell(color, yTop, k) {
   return g;
 }
 /** Quader auf der Kopfoberfläche: z folgt dem Ellipsoid, p = Überstand vor der Haut, Neigung nach der Flächennormalen. */
-function faceBox(list, w, h, d, x, y, color, p = 0.004, rz = 0) {
+export function faceBox(list, w, h, d, x, y, color, p = 0.004, rz = 0) {
   const u = x / HEAD.r;
   const v = (y - HEAD.cy) / (HEAD.r * HEAD.sy);
   const zs = -HEAD.r * Math.sqrt(Math.max(0.02, 1 - u * u - v * v));
@@ -170,13 +171,22 @@ export function buildV2Parts(look, opts = {}) {
     return P;
   }
   buildTop(P, L, { sw, hw, ax, wAt, bx });
+  // 1.19.0 U4: Detail/Winter nur mit Flag (ohne Flag bitgleich); Mütze nur ohne vorhandenen Hut, sie deckt die Haarkappe ab
+  const winterHat = !!(opts.winter && opts.winter.hat) && L.hat === 'none';
+  const winterScarf = !!(opts.winter && opts.winter.scarf);
+  const td = 0.23 + (['sweater', 'jacket', 'hoodie'].includes(L.topCut) ? 0.03 : 0);
+  const dsc = { v2: true, skin, top: L.top, bottom: L.bottom, shoes: L.shoe, hair: L.hair, sw, hw, td, ax, lx, lw, topCut: L.topCut, botCut: L.botCut, shoeModel: L.shoeModel, brows: L.brows };
+  if (opts.detail) detailBody(P, dsc);
+  if (winterScarf) winterBody(P, dsc);
   // Kopf, Hals
   bx(sp, 0.075, 0.09, 0.075, 0, 1.425, 0, skin);
   hd.push(sph(HEAD.r, 0, HEAD.cy, 0, skin, 1, HEAD.sy, 1, HEAD_WS, HEAD_HS));
-  buildHair(P, L);
+  buildHair(P, L, winterHat);
   buildFace(P, L);
+  if (opts.detail) detailHead(hd, dsc, (w, h, d, x, y, color, p, rz) => faceBox(hd, w, h, d, x, y, color, p, rz));
   buildGlasses(hd, L);
   buildHat(hd, L);
+  if (winterHat) winterHead(hd, dsc);
   // Kopf um den Hals vergrößern (alle Kopf-Teile gemeinsam, Gesicht bleibt auf der Oberfläche)
   for (const g of hd) { g.translate(0, -NECK_PIVOT, 0); g.scale(HEAD_K, HEAD_K, HEAD_K); g.translate(0, NECK_PIVOT, 0); }
   buildShoes(P, L, { lx });
@@ -407,10 +417,10 @@ function liftHairline(g, z0 = 0.02, span = 0.06) {
   a.needsUpdate = true;
   return g;
 }
-function buildHair(P, L) {
+function buildHair(P, L, winterHat = false) {
   const hd = P[HD];
   const h = L.hair;
-  const covered = COVER.has(L.hat);
+  const covered = COVER.has(L.hat) || winterHat;
   const T = [];
   const S = hd;
   const cap = (r = 0.133, phi = 1.95, dy = 0, c = h) => T.push(liftHairline(sph(r, 0, 1.605 + dy, 0.016, c, 1, 1, 1, 8, 5, phi)));
