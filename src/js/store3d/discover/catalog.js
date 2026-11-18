@@ -20,7 +20,7 @@ export const CATALOG = [
   { id: 'cat-laser', title: 'Jagdfieber', desc: 'Du hast der Katze einen roten Punkt spendiert. Sie hat dir ihre volle Aufmerksamkeit geschenkt. Kurz.', hint: 'Manche Katzen jagen etwas, das gar nicht da ist. Gib ihr etwas Leuchtendes.', by: 'G' },
   { id: 'gang-flee', title: 'Haltung bewahrt', desc: 'Die Bande hat die Flucht ergriffen. Du warst es, auch wenn du es nicht zugeben willst.', hint: 'Wer sich auf der Straße nicht einschüchtern lässt, wird bald allein sein.', by: 'G' },
   { id: 'salon-first', title: 'Neuer Schnitt', desc: 'Frisch aus dem Salon. Der Spiegel und du, ihr seid euch einig.', hint: 'Gegenüber dreht sich ein Stuhl. Setz dich, die Schere wartet.', by: 'G' },
-  { id: 'knockout', title: 'Lichter aus', desc: 'Du bist umgefallen und im Laden wieder aufgewacht. Richard hat es natürlich kommentiert.', hint: 'Nicht jede Rauferei endet mit einem Handschlag. Manche enden auf dem Boden.', by: 'G' },
+  { id: 'knockout', title: 'Lichter aus', desc: 'Du bist umgefallen und auf der Bank vor dem Laden wieder aufgewacht. Richard hat es natürlich aus der Tür kommentiert.', hint: 'Nicht jede Rauferei endet mit einem Handschlag. Manche enden auf dem Boden.', by: 'G' },
 ];
 
 export const TOTAL = CATALOG.length;

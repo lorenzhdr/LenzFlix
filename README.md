@@ -19,7 +19,7 @@ Ein Theme im Streaming-Stil für das Jellyfin-Web-Frontend (Version 12.4): dunkl
 Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 eigener Menüpunkt „Branding“):
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.17.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.0/dist/lenzflix.min.css");
 ```
 
 - Die Version im Beispiel ist der aktuelle Release-Tag; bei Updates CSS und JS auf denselben Tag setzen. `@latest` wird bei jsDelivr lange gecacht.
@@ -29,7 +29,7 @@ Dashboard → **Branding** → *Benutzerdefiniertes CSS* (seit Jellyfin 10.11 ei
 
 1. Plugin **JavaScript Injector** (n00bcodr) installieren. Die Repository-URL für den Plugin-Katalog steht in der Plugin-README (siehe Plugin-README).
 2. Im Plugin einen Skript-Eintrag anlegen:
-   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.17.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
+   - mit externer URL `https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.0/dist/lenzflix.min.js` (externe URLs muss der Admin im Plugin erlauben), **oder**
    - den Inhalt von `dist/lenzflix.min.js` direkt einfügen.
 3. Empfohlene Benutzer-Einstellungen: Anzeige → Detailbanner an. Die Startseite-Abschnitte sind bei aktivem JS egal, LenzFlix rendert eigene Zeilen. Andere Home-Slider/Media-Bars sollten entfernt werden (LenzFlix blendet bekannte iframes `.featurediframe` aus).
 
@@ -56,7 +56,7 @@ Mit aktivem JavaScript gibt es fünf Designs:
 - **LENZ+**: dunkles Navy, Hero-Karussell mit Seitenvorschau, Poster-Zeilen, Bibliotheks-Hubs.
 - **LENZPRIME**: Blauschwarz, Vollbild-Hero mit Trailer, Badges, Glas-Kopfzeile.
 - **LENZ//84**: Cyber-Retro mit Bernstein-Terminal, Kassetten-Regal und Neon-Gitter samt Sonne im Hero, dazu CRT-Effekte und ein paar versteckte Überraschungen. Sound ist standardmäßig aus und lässt sich in der Kopfzeile einschalten. Tipp: Ein Terminal öffnet sich mit der Taste `^` (am Handy: Logo lange drücken), und mit dem richtigen Cheat-Code passiert etwas Besonderes.
-- **VIDEOTHEK LENZ** (Beta): begehbare 3D-Videothek, seit 1.15.0 mit einer kleinen Stadt drumherum (siehe unten). Ton ist standardmäßig an (im Esc-Menü abschaltbar), Kassierer Richard spricht mit der deutschen Gerätestimme. Lädt rund 1,4 MB zusätzlich (übertragen etwa 0,45 MB) nur bei Auswahl und braucht WebGL.
+- **VIDEOTHEK LENZ** (Beta): begehbare 3D-Videothek, seit 1.15.0 mit einer kleinen Stadt drumherum (siehe unten). Ton ist standardmäßig an (im Esc-Menü abschaltbar), Kassierer Richard spricht mit der deutschen Gerätestimme. Lädt rund 1,5 MB zusätzlich (übertragen etwa 0,5 MB) nur bei Auswahl und braucht WebGL.
 
 Die Auswahl öffnet sich über **Mehr → Design-Einstellungen** (bei LENZ+/LENZPRIME/LENZ//84 über das Profilmenü bzw. „Mehr“; VIDEOTHEK LENZ trägt in der Auswahl die Marke „Beta“, das Menü selbst trägt kein Badge). Die Vorschau von VIDEOTHEK LENZ zeigt eine Regalwand mit echten Covern der Top-Titel (LENZFLIX-Charts, täglich neu gemischt; ohne Charts die neuesten Titel). Die Wahl wird pro Jellyfin-Benutzer gespeichert (im Browser und in den eigenen Anzeige-Einstellungen auf dem Server) und gilt auf allen Geräten. Auf TV-Clients ist immer LENZFLIX aktiv. Nicht erreichbar oder verirrt? Notausgang: `#/home?lfxtheme=flix` an die Jellyfin-Adresse anhängen.
 
@@ -93,7 +93,7 @@ Ein modernes Fernsehprogramm als eigene Seite: Das TV-Symbol in der Kopfleiste (
 - **Senderbelegung (Admin):** Die Plätze 5 bis 16 sind automatisch mit Genres belegt. Die gewünschte Belegung (Administratoren) als Zeile unter Dashboard → **Branding** → *Benutzerdefiniertes CSS* **unterhalb** der `@import`-Zeile einfügen (nie davor, sonst lädt das Theme nicht) und speichern. Die Belegung gilt nach dem Neuladen für alle Nutzer. Format:
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.17.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.0/dist/lenzflix.min.css");
 :root { --lfx-tv-channels: "5=Action;6=Komödie"; }
 ```
 
@@ -107,7 +107,7 @@ Die Videothek steht in einer kleinen Stadt: Durch die Tür geht es auf die Stra�
 - **Steuerung am Handy:** Standard ist die Spiel-Steuerung: Stick links zum Gehen, rechts wischen zum Umsehen, Knöpfe für Springen, Benutzen und Schlagen (bzw. Werfen mit Hülle in der Hand). Joystick und „Halten = laufen“ bleiben im Pause-Menü unter „Steuerung“ wählbar; eine bisher gespeicherte Auswahl „Touch“ springt dabei einmalig auf „Spiel“.
 - **LENZ PALAST:** An der Kasse ein Ticket für das Tagesprogramm holen (vier Vorstellungen aus der eigenen Mediathek, jede Vorstellung startet für dich von vorn), im Saal einen Platz wählen und den Film auf der großen Leinwand ansehen. Pause, Spulen, Lautstärke und Vollbild liegen in der Leiste; im Vollbild bringt „Zurück ins Kino“ in den Saal zurück, mit Esc steht man auf. Eigene Kassetten kann man mitbringen und am Eingang abgeben. Läuft die Leinwand nicht, fällt das Kino automatisch auf den normalen Player zurück.
 - **Richard, Ausleihen, Physik:** Wer Richard schlägt, bekommt Ärger; mit Hausverbot bleibt die Tür eine Weile zu. Hüllen lassen sich an der Kasse ausleihen, Bälle, Dosen und Kisten rollen, kippen und lassen sich schlagen und werfen. Im Hof hängt ein Basketballkorb.
-- **Entdeckungen:** Überall sind 15 Kleinigkeiten versteckt. Das Pause-Menü zeigt, wie viele schon gefunden sind, und gibt Hinweise ohne die Lösung zu verraten. Seit 1.17.0 wird der Stand am Jellyfin-Konto gespeichert (geräteübergreifend), und jede Entdeckung schaltet ein besonderes Kleidungsstück für die eigene Figur frei.
+- **Entdeckungen:** Überall sind 19 Kleinigkeiten versteckt. Das Pause-Menü zeigt, wie viele schon gefunden sind, und gibt Hinweise ohne die Lösung zu verraten. Seit 1.17.0 wird der Stand am Jellyfin-Konto gespeichert (geräteübergreifend), und jede Entdeckung schaltet ein besonderes Kleidungsstück für die eigene Figur frei.
 - **Hinweise:** Beim Neuladen steht man wieder an der letzten Position (auch in der Stadt); ist die Stelle ungültig oder belegt, geht es zum nächsten freien Punkt in der Nähe, sonst in den Laden. Auf schwachen Geräten helfen „Qualität“ im Pause-Menü und ein kleinerer Datenumfang (Hüllen „Normal“).
 
 ### Mehrspieler (Beta, VIDEOTHEK LENZ)
@@ -127,6 +127,18 @@ Seit 1.17.0 läuft man mit einer eigenen, gestaltbaren Figur durch die Videothek
 - **Selbst sehen:** `V` (am Handy der Knopf „Ansicht“) schaltet zwischen Ego-Sicht und Außenansicht; beim Blick nach unten sieht man die eigenen Beine. Spiegel im Salon und ein Überwachungsspiegel über der Ladentür zeigen die Figur (bei Qualität „niedrig“ matt).
 - **Ausweis anderer:** Im Mehrspieler zeigt `E` beim Anschauen einer Figur (oder der Knopf „Ausweis“ in der Spielerliste) deren Ausweis. „Ausweis zeigen“ lässt sich im Mehrspieler-Menü abschalten.
 - **Speicherung:** Figur, Ausweis und Entdeckungen liegen in den eigenen Anzeige-Einstellungen am Jellyfin-Server und gelten damit auf allen Geräten. Ältere Clients und ein älterer Charts-Worker sehen weiterhin die bisherige Zufallsfigur.
+
+### NPCs und Raufen (Beta, VIDEOTHEK LENZ)
+
+Seit 1.18.0 ist die Stadt lebendiger und rauer.
+
+- **Stimmen und Gesten:** Alle Leute sprechen mit der Gerätestimme, jede Person klingt etwas anders. Es spricht immer die nächste Person, der Rest erscheint als Sprechblase. Passanten reagieren auf deine Emotes (Emote-Rad mit `T`, jetzt auch ohne Mehrspieler): Sie tanzen mit, winken zurück und klatschen.
+- **Temperament:** Wer Passanten schlägt, blendet oder anrempelt, bekommt Reaktionen. Ängstliche fliehen, andere schimpfen, Hitzköpfe drohen und schlagen mit Handtasche, Schirm oder Faust zurück. Die Kioskfrau wirft mit Bonbons, das Kino-Personal mit Popcorn, im Salon wehren sich Gabi und Ronny.
+- **Rowdy-Bande:** Nachts treiben sich in Gasse und Hof ein paar Rowdys mit derbem Mundwerk herum, tagsüber selten. Sie suchen von sich aus Streit. Wer sie vertreibt, findet eine Entdeckung.
+- **Waffen:** Hand, Gürtel, Peitsche und Laserpointer, alle sofort verfügbar. `R` halten öffnet das Waffenrad, `1`–`4` und das Mausrad wählen, `F` oder Linksklick greift an (Laser: halten). Am Handy gibt es einen Waffenknopf. Der Laser blendet Leute, lässt Autofahrer bremsen, schreckt Tauben auf, und die Katze jagt den Punkt.
+- **Energie und K.O.:** Treffer kosten Energie, die sich langsam wieder füllt. Bei null wacht man auf der Bank vor dem Laden auf, mit 10 Sekunden Schutz. Kinosaal (während des Films), Kinder-Ecke, Couch, Friseurstuhl und offene Menüs schützen.
+- **Mehrspieler:** Waffen wirken auch auf andere Spieler: Rückstoß, Energie, Blenden (kräftiger Schleier ohne Flackern, höchstens alle 4 Sekunden). Die Rowdy-Bande ist für alle dieselbe. In VR gibt es keine Waffen und keine Angriffe. Mit einem älteren Charts-Worker oder einer älteren Version bleibt es beim bisherigen Schubsen.
+- **Entdeckungen:** vier neue (jetzt 19), jede mit eigenem Kleidungsstück für die Figur.
 
 ### VR-Modus (Beta, VIDEOTHEK LENZ)
 
@@ -197,7 +209,7 @@ Alle wichtigen Werte sind CSS-Variablen (`src/css/tokens.css`). Überschreiben i
 | `--lfx-hover-delay` | Verzögerung des Hover-Popups | `500ms` |
 
 ```css
-@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.17.0/dist/lenzflix.min.css");
+@import url("https://cdn.jsdelivr.net/gh/lorenzhdr/LenzFlix@v1.18.0/dist/lenzflix.min.css");
 :root {
   --lfx-red: #1db954;
   --lfx-card-radius: 4px;
