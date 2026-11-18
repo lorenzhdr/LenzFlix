@@ -3926,7 +3926,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-hudbtn[hidden] {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
   z-index: 40;
   box-sizing: border-box;
-  padding: max(10px, var(--lfx-store-safe-top)) var(--lfx-store-safe-x) 10px;
+  padding: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 8px) var(--lfx-store-safe-x) 10px;
   color: var(--lfx-store-text);
   font-family: var(--lfx-font);
   pointer-events: none;

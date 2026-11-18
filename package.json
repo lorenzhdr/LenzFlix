@@ -1,6 +1,6 @@
 {
   "name": "lenzflix",
-  "version": "1.16.2",
+  "version": "1.17.0",
   "description": "Streaming-style theme for the Jellyfin 12.4 web client",
   "private": false,
   "type": "module",

@@ -100,8 +100,18 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 18.11.2026 (1.16.2). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
-- **Version:** v1.16.2 veröffentlicht (Tag `v1.16.2` auf 5c3e247, `feature/v1.16.2` per Fast-Forward nach main, jsDelivr geprüft). Vorher v1.16.1 (dc60324).
+Stand 19.11.2026 (1.17.0 fertig, nicht veröffentlicht; 1.18.0 in Arbeit). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
+- **Version:** 1.17.0 lokal fertig auf `feature/v1.17.0` (nicht gepusht, kein Tag; Freigabe steht aus). Worker mit Fähigkeit `look` deployt (Version 03a84e55, rein additiv). Zuletzt veröffentlicht: v1.16.2 (5c3e247). Plan: `~/.claude/plans/man-soll-f-r-den-smooth-popcorn.md` (1.17.0 Figur + 1.18.0 Raufen).
+- **Inhalt 1.17.0 (eigene Figur, Vertrag `docs/store3d.md` „Figur, Ausweis, Salon (1.17.0)“, `docs/mp-api.md` §15):**
+  - Look v2 (Int-Array 26, `char/look2.js`, IDs `char/ids.js` nur anhängen), Figuren-Fabrik v2 (`npc/figure-parts.js`), Studio (`char/studio.js`, Szene per `ctx.stage`, Kamera 40°).
+  - Pflicht-Mitgliedsantrag (Gate in `store.js` `startSequence`, auch bei `skipIntro`), Editor (Pause/Stuhl/Umkleide, 3 Plätze), Ausweis (`modules/member.js`, Stufen, Zähler 1×/Titel/Tag), 15 Freischaltungen (`char/unlocks.js`), Reaktionen (`changeKind`), Sprecher-Regie (`voice.speaker`).
+  - Außenansicht V/Knopf + Ego-Beine (`modules/selfview.js`, `char/tpcam.js`), Spiegel (`world/mirror.js`, Überwachungsspiegel `shopmirror`), Salon „FRISEUR HAARSCHARF“ fest bei x −22..−14 (`modules/salon.js`, Gabi/Ronny), VR light (`xrchar`).
+  - Konto-Profil: DisplayPreferences Id `lenzstore`, Schlüssel `CustomPrefs.profile` (Hülle `features/store/profile*.js`, `displayprefs.js`); Entdeckungen jetzt am Konto.
+  - Mehrspieler: Fähigkeit `look` (`lk`/`mc`, Unter-Reducer `mp/look.js`), Pose `a` 0..15 (1.18-Naht), „Ausweis zeigen“ (`mpCard`), Ausweis anderer per E/Liste.
+  - Geprüft: 4186 Root-Tests (397 Dateien), 394 Worker-Tests, Lint 0, Hauptbundle 514.673 B (Budget 520 KiB), `lenzstore.min.js` 1.422.301 B (Schwelle 1,45 MB), TV-Hashes gleich; Harness-Sichtprüfung in 3 Runden (`.tmp/v117/qa/`), Draw-Calls bei low ≤ 130; Code-Review mit 3 bestätigten Befunden, behoben; Live mit zwei Tabs desselben Kontos über den echten Worker (Gate, Profil am Konto, Look- und Ausweis-Übertragung, E-Ausweis, alter 1.16.2-Client ohne Fehler).
+  - Offen: iPhone/Handy nur emuliert; Zweitkonten-Profile (player1/player2) sind abgemeldet, echter Zwei-Konten-Test steht aus; Testkonto „claude“ hat jetzt ein `lenzstore`-Profil (harmlos).
+  - Fallen: `makeLook` eingefroren (Baseline `tests/store3d-figure-baseline.test.js` nie anpassen); Flag `f` klemmt 0..15 (kein neues Bit); `renderer.info.autoReset` beim Spiegel-Render; CustomPrefs enthalten geteilte Jellyfin-Schlüssel (immer GET→ändern→POST des ganzen Objekts).
+- **Vorher 1.16.2:** veröffentlicht (Tag `v1.16.2` auf 5c3e247, jsDelivr geprüft). Vorher v1.16.1 (dc60324).
 - **Inhalt 1.16.2 (Tab je Design, Vertrag `docs/js-contracts.md` „Tab-Text, Tab-Icon und Browserleiste“):**
   - Den Tab-Text schreibt nur `core/doctitle.js`: „Seite · Design“, Seitennamen aus `shared/pagetitle.js`. Features lesen Jellyfins Titel über `jellyfinTitle()`, die Kino-Bridge über die Option `readTitle`.
   - `theme-color` gehört nur `core/themecolor.js`, `playerbg` setzt einen Override.
