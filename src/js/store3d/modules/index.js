@@ -62,6 +62,8 @@ import xrchar from './xrchar.js';
 // --- Kampf (1.18, Stubs aus Welle 4) ---
 import fight from './fight.js';
 import gang from './gang.js';
+// --- Ultra (1.19): imports ---
+import ultraCity from './ultra-city.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -105,6 +107,8 @@ export const MODULES = [
   // --- Kampf (1.18, Stubs aus Welle 4; vor net) ---
   fight,
   gang,
+  // --- Ultra (1.19, Außenwelt-Geometrie; nach city: Provider 'city'/'areas'/'ultra') ---
+  ultraCity,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];
