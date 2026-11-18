@@ -13,6 +13,7 @@ const KV_KEY = 'wx:v1';
 const FRESH_MS = 15 * 60 * 1000;
 const STALE_MS = 2 * 60 * 60 * 1000;
 const TIMEOUT_MS = 4000;
+const FAIL_BACKOFF_MS = 60 * 1000; // nach Upstream-Fehler so lange kein neuer Abruf
 const RATE_MAX_IP = 30;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_CAP = 500;
@@ -20,7 +21,9 @@ const RATE_CAP = 500;
 const rate = new Map(); // ip -> Zeitstempel[]
 let mem = null; // { data, at }
 let inflight = null;
+let failAt = 0; // Zeitpunkt des letzten Upstream-Fehlers
 export function clearWxCache() {
+  failAt = 0;
   rate.clear();
   mem = null;
   inflight = null;
@@ -117,18 +120,18 @@ async function kvGet(env) {
 /** { data, stale } | null */
 async function getWx(env, co, now) {
   if (mem && now - mem.at < FRESH_MS) return { data: mem.data, stale: false };
-  const kv = await kvGet(env);
+  const backoff = failAt > 0 && now - failAt >= 0 && now - failAt < FAIL_BACKOFF_MS;
+  const kv = backoff && mem ? null : await kvGet(env);
   if (kv && now - kv.at < FRESH_MS) {
     mem = kv;
     return { data: kv.data, stale: false };
   }
-  if (!inflight) {
-    inflight = fetchUpstream(co).finally(() => {
-      inflight = null;
-    });
-  }
-  const data = await inflight;
+  const data = backoff ? null : await (inflight ||= fetchUpstream(co).finally(() => {
+    inflight = null;
+  }));
+  if (!backoff && !data) failAt = now;
   if (data) {
+    failAt = 0;
     mem = { data, at: now };
     try {
       await env.CHARTS.put(KV_KEY, JSON.stringify(mem));

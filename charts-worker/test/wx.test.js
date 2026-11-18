@@ -180,4 +180,19 @@ describe('GET /wx', () => {
     const old = makeEnv({ CHARTS: kvFake({ data, at: Date.now() - 3 * 60 * 60 * 1000 }) });
     expect((await worker.fetch(req('/wx', authed()), old, {})).status).toBe(503);
   });
+
+  it('nach Upstream-Fehler 60 s kein neuer Abruf (Negativ-Cache)', async () => {
+    const data = { v: 1, k: 'snow', i: 0.65, sd: 0.4, fog: 0, t: -3, day: 1, ts: 1 };
+    stubFetch(() => new Response('x', { status: 500 }));
+    const env = makeEnv({ CHARTS: kvFake({ data, at: Date.now() - 60 * 60 * 1000 }) });
+    for (let n = 0; n < 3; n++) {
+      const res = await worker.fetch(req('/wx', authed()), env, {});
+      expect(await res.json()).toMatchObject({ k: 'snow', stale: 1 });
+    }
+    expect(upstream).toHaveBeenCalledTimes(1);
+    const env2 = makeEnv();
+    clearWxCache();
+    for (let n = 0; n < 3; n++) expect((await worker.fetch(req('/wx', authed()), env2, {})).status).toBe(503);
+    expect(upstream).toHaveBeenCalledTimes(2);
+  });
 });
