@@ -1,4 +1,4 @@
-// VIDEOTHEK LENZ · Figur-Editor (1.17.0): DOM-Ansicht für Pause-Menü, Frisierstuhl, Fotoautomat und das Gate „Mitgliedsantrag“.
+// VIDEOTHEK LENZ · Figur-Editor (1.17.0): DOM-Ansicht für Pause-Menü, Frisierstuhl, Umkleide und das Gate „Mitgliedsantrag“.
 // Reine Ansicht über char/editor-model.js: baut Reiter + Steuerelemente, ruft Callbacks, kennt weder three noch den Provider.
 //   createCharEditor({ model, where: 'pause'|'chair'|'booth'|'gate', name?, live?, onChange(code), onTab(id), onRotate(dRad),
 //                      onApply(), onCancel(), onDone(), onRandom?(), onSlot?(kind, i), focus? })
@@ -14,7 +14,7 @@ const el = (tag, cls, attrs, text) => {
   return n;
 };
 
-const TITLES = { pause: 'Deine Figur', chair: 'Frisierstuhl', booth: 'Fotoautomat', gate: 'Mitgliedsantrag' };
+const TITLES = { pause: 'Deine Figur', chair: 'Frisierstuhl', booth: 'Umkleide', gate: 'Mitgliedsantrag' };
 const ROT_STEP = 0.5;
 
 export function createCharEditor(o) {

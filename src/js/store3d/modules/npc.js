@@ -106,7 +106,7 @@ export default {
         if (!rec || rec.c !== c) {
           if (rec) speakerSet.delete(rec);
           const id = o.id !== undefined ? o.id : `p${++speakSeq}`;
-          rec = { c, sp: c.speaker({ id, voiceSeed: o.voiceSeed !== undefined ? o.voiceSeed : id, prio: Number.isFinite(o.prio) ? o.prio : 0, pos: () => ({ x: handle.root.position.x, y: 1.6, z: handle.root.position.z }) }) };
+          rec = { c, sp: c.speaker({ id, voiceSeed: o.voiceSeed !== undefined ? o.voiceSeed : id, prio: Number.isFinite(o.prio) ? o.prio : 0, gender: o.gender, pos: () => ({ x: handle.root.position.x, y: 1.6, z: handle.root.position.z }) }) };
           speakerOf.set(handle, rec);
           speakerSet.add(rec);
         }

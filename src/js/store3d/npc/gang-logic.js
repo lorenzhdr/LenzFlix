@@ -45,7 +45,7 @@ export function spawnPlan(seed, n, spots) {
 }
 
 export function createRowdy(i, p, seed = 0) {
-  return { i, st: 'idle', x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, speed: 1.1 + fnv(`spd:${seed}:${i}`) * 0.5, struck: false };
+  return { i, st: 'idle', x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, stuck: 0, speed: 1.1 + fnv(`spd:${seed}:${i}`) * 0.5, struck: false };
 }
 
 export function createGang(seed, n, spots) {
@@ -61,18 +61,38 @@ export function hitRowdy(m, dmg) {
   return ev;
 }
 
+/**
+ * Schritt Richtung Ziel; ist er gesperrt, gleitet der Rowdy entlang einer Achse (1.18.1, Achsenschritt auf den Rest geklemmt, sonst
+ * pendelt er um die Zielkoordinate). → true nur bei echtem Fortschritt (Abstand sinkt um mindestens PROGRESS_MIN des Schritts).
+ */
+const PROGRESS_MIN = 0.25;
 function moveTo(m, tx, tz, dt, env, mul = 1) {
   const dx = tx - m.x;
   const dz = tz - m.z;
   const d = Math.hypot(dx, dz);
-  if (d < 1e-3) return d;
-  const s = Math.min(d, m.speed * mul * dt);
-  const nx = m.x + (dx / d) * s;
-  const nz = m.z + (dz / d) * s;
-  if (gangAreaOk(nx, nz, env.allowed, env.forbidden)) { m.x = nx; m.z = nz; }
+  if (d < 1e-3) return false;
   m.yaw = Math.atan2(-dx, -dz);
-  return d;
+  const s = Math.min(d, m.speed * mul * dt);
+  const sx = (dx / d) * s;
+  const sz = (dz / d) * s;
+  const ok = (x, z) => gangAreaOk(x, z, env.allowed, env.forbidden);
+  if (ok(m.x + sx, m.z + sz)) { m.x += sx; m.z += sz; }
+  else {
+    // Gleiten: die längere Achse zuerst, Schritt höchstens bis zur Zielkoordinate
+    const tryX = () => { if (Math.abs(dx) <= 1e-3) return false; const nx = m.x + Math.sign(dx) * Math.min(s, Math.abs(dx)); if (ok(nx, m.z)) { m.x = nx; return true; } return false; };
+    const tryZ = () => { if (Math.abs(dz) <= 1e-3) return false; const nz = m.z + Math.sign(dz) * Math.min(s, Math.abs(dz)); if (ok(m.x, nz)) { m.z = nz; return true; } return false; };
+    if (!(Math.abs(dx) >= Math.abs(dz) ? tryX() || tryZ() : tryZ() || tryX())) return false;
+  }
+  return d - Math.hypot(tx - m.x, tz - m.z) >= PROGRESS_MIN * s;
 }
+
+/** Ab so viel Stillstand (s) pöbelt ein Rowdy am Rand, statt im Anlauf festzuhängen; bis zu diesem Abstand (m). */
+export const STUCK_TAUNT_S = 1.2;
+export const STUCK_TAUNT_DIST = 9;
+/** Kommt ein angreifender Rowdy so lange (s) nicht weiter, gibt er auf (zurück an den Platz, Pause GIVE_UP_COOL s). */
+export const STUCK_GIVE_UP_S = 4;
+export const GIVE_UP_COOL = 6;
+const stuckStep = (m, progressed, dt) => { m.stuck = progressed ? 0 : (m.stuck || 0) + dt; };
 
 /**
  * Ein Schritt je Rowdy. env = { allowed, forbidden, player: {x,z,safe}|null }. safe = Schutzzone/VR/Menü (dann Abbruch).
@@ -93,13 +113,19 @@ export function stepRowdy(m, dt, env) {
   const dist = p ? Math.hypot(p.x - m.x, p.z - m.z) : Infinity;
   if (!usable) { // Ziel weg oder geschützt: zurück an den Platz
     if (m.st !== 'idle') { m.st = 'idle'; m.t = 0; }
+    m.stuck = 0;
     moveTo(m, m.hx, m.hz, dt, env);
     return ev;
   }
-  if (m.st === 'idle') { if (dist < 12) m.st = 'approach'; return ev; }
+  if (m.st === 'idle') {
+    if (m.cool > 0) { moveTo(m, m.hx, m.hz, dt, env); return ev; } // nach dem Aufgeben (1.18.1): erst zurück an den Platz
+    if (dist < 12) { m.st = 'approach'; m.stuck = 0; }
+    return ev;
+  }
   if (m.st === 'approach') {
-    moveTo(m, p.x, p.z, dt, env);
-    if (dist < 3.2) { m.st = 'taunt'; m.t = 2.5; ev.push({ type: 'say', i: m.i, cat: 'taunt' }); }
+    stuckStep(m, moveTo(m, p.x, p.z, dt, env), dt);
+    // 1.18.1: Weg versperrt (Kollider, Tür, Leine) → am Rand pöbeln statt dauerhaft im Anlauf zu hängen
+    if (dist < 3.2 || (m.stuck >= STUCK_TAUNT_S && dist < STUCK_TAUNT_DIST)) { m.st = 'taunt'; m.t = 2.5; m.stuck = 0; ev.push({ type: 'say', i: m.i, cat: 'taunt' }); }
     return ev;
   }
   if (m.st === 'taunt') {
@@ -109,8 +135,10 @@ export function stepRowdy(m, dt, env) {
   }
   if (m.st === 'threaten') { if (m.t <= 0) m.st = 'attack'; return ev; }
   if (m.st === 'attack') {
-    if (dist > 1.2) moveTo(m, p.x, p.z, dt, env, 1.5);
-    else if (m.cool <= 0) { m.cool = 1.2; ev.push({ type: 'strike', i: m.i, dmg: 8 }); }
+    if (dist > 1.2) {
+      stuckStep(m, moveTo(m, p.x, p.z, dt, env, 1.5), dt);
+      if (m.stuck >= STUCK_GIVE_UP_S) { m.st = 'idle'; m.t = 0; m.stuck = 0; m.cool = GIVE_UP_COOL; } // 1.18.1: Weg versperrt → aufgeben
+    } else if (m.cool <= 0) { m.stuck = 0; m.cool = 1.2; ev.push({ type: 'strike', i: m.i, dmg: 8 }); }
   }
   return ev;
 }

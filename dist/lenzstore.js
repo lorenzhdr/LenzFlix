@@ -43305,6 +43305,11 @@ void main() {
 
   // src/js/store3d/modules/voice.js
   var MALE = ["markus", "martin", "stefan", "conrad", "killian", "florian", "yannick", "viktor", "jonas"];
+  var FEMALE = ["hedda", "katja", "amala", "seraphina", "louisa", "tanja", "ingrid", "anna", "petra", "helena", "marlene", "vicki", "sabine", "katharina"];
+  var hasName = (v, names) => {
+    const n = nameOf(v);
+    return names.some((m) => n.includes(m));
+  };
   var NOVELTY = ["eddy", "reed", "rocko", "grandpa", "eloquence"];
   var isDe = (v) => /^de([-_]|$)/i.test(String(v && v.lang || ""));
   var isDeDE = (v) => /^de[-_]de$/i.test(String(v && v.lang || ""));
@@ -43345,8 +43350,17 @@ void main() {
     const all = Array.from(voices || []).filter((v2) => v2 && isDe(v2));
     const list = (opts.online ? all : all.filter((v2) => v2.localService === true)).slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "de") || 0);
     if (!list.length) return null;
+    const names = opts.gender === "f" ? FEMALE : opts.gender === "m" ? MALE : null;
+    const match = names ? list.filter((v2) => hasName(v2, names)) : [];
+    if (match.length) {
+      const v2 = match[seedHash(seed) % match.length];
+      return { voice: v2, pitch: 1, online: v2.localService !== true, gmatch: true };
+    }
     const v = list[seedHash(seed) % list.length];
-    return { voice: v, pitch: 1, online: v.localService !== true };
+    return { voice: v, pitch: 1, online: v.localService !== true, gmatch: false };
+  }
+  function personPitch(p, gender, gmatch) {
+    return gender === "f" && gmatch && p > 1 ? 1 + (p - 1) * 0.4 : p;
   }
   function seedHash(seed) {
     const n = Number(seed);
@@ -43480,16 +43494,18 @@ void main() {
     function pickFor(ex) {
       if (!ex || ex.voiceSeed === void 0 || ex.voiceSeed === null) return picked;
       const k = typeof ex.voiceSeed === "string" ? ex.voiceSeed : seedHash(ex.voiceSeed);
-      if (seeded2.has(k)) return seeded2.get(k);
+      const gender = ex.gender === "f" || ex.gender === "m" ? ex.gender : null;
+      const ck = gender ? `${k}|${gender}` : k;
+      if (seeded2.has(ck)) return seeded2.get(ck);
       let r;
       try {
-        r = pickVoiceSeeded(S.getVoices ? S.getVoices() : [], k, { online: prefs().online });
+        r = pickVoiceSeeded(S.getVoices ? S.getVoices() : [], k, { online: prefs().online, gender });
       } catch {
         r = null;
       }
       r = r || picked;
       if (r) r = { ...r, nVoices: seedVoiceCount() };
-      seeded2.set(k, r);
+      seeded2.set(ck, r);
       return r;
     }
     function seedVoiceCount() {
@@ -43508,7 +43524,7 @@ void main() {
       const seededEx = !!ex && ex.voiceSeed !== void 0 && ex.voiceSeed !== null;
       const vf = seededEx ? voiceFor(ex.voiceSeed, pk.nVoices || 1) : null;
       u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : vf ? vf.rate : 1;
-      u.pitch = ex && ex.voiceSeed !== void 0 && ex.voiceSeed !== null ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : vf.pitch) * pk.pitch) : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
+      u.pitch = ex && ex.voiceSeed !== void 0 && ex.voiceSeed !== null ? clampPitch(personPitch(Number.isFinite(ex.pitch) ? ex.pitch : vf.pitch, ex.gender, !!pk.gmatch) * pk.pitch) : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
       u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
       return u;
     }
@@ -43547,7 +43563,7 @@ void main() {
     }
     function say(text, opts = {}) {
       const { volume = 1 } = opts;
-      const ex = opts.voiceSeed !== void 0 || opts.pitch !== void 0 || opts.rate !== void 0 ? opts : null;
+      const ex = opts.voiceSeed !== void 0 || opts.pitch !== void 0 || opts.rate !== void 0 || opts.gender !== void 0 ? opts : null;
       if (disposed || !S || !U) return Promise.resolve();
       refresh();
       if (!picked) return Promise.resolve();
@@ -43765,6 +43781,7 @@ void main() {
       if (entry.sp.voiceSeed !== void 0) o.voiceSeed = entry.sp.voiceSeed;
       if (Number.isFinite(entry.sp.pitch)) o.pitch = entry.sp.pitch;
       if (Number.isFinite(entry.sp.rate)) o.rate = entry.sp.rate;
+      if (entry.sp.gender) o.gender = entry.sp.gender;
       let p;
       try {
         p = voice.say(entry.text, o);
@@ -43804,6 +43821,7 @@ void main() {
         voiceSeed: opts.voiceSeed,
         pitch: opts.pitch,
         rate: opts.rate,
+        gender: opts.gender === "f" || opts.gender === "m" ? opts.gender : void 0,
         prio: Number.isFinite(opts.prio) ? opts.prio : 0,
         pos: typeof opts.pos === "function" ? opts.pos : null
       };
@@ -48806,6 +48824,7 @@ void main() {
   var EGO_LEAN = 0.45;
   var EGO_Z = 0.05;
   var NECK_Y = 1.44;
+  var FACE_UP = 0.16;
   var GEO_FREE_MAX = 48;
   var HAND_R = { bone: "armR", offset: [0.04, -0.5, -0.12] };
   var sharedMat = null;
@@ -49103,6 +49122,11 @@ void main() {
       /** Kopfposition (Welt) für Sprechblasen. */
       headWorld(out = tmp3) {
         return out.set(root.position.x, root.position.y + headY(), root.position.z);
+      },
+      /** Gesichtsmitte (Welt, Augenhöhe) über den Kopf-Bone: folgt Größe, Animation (Taumeln, K.O.) und Blickdrehung. Ziel für den Laser (1.18.1). */
+      faceWorld(out = tmp3) {
+        bHead.updateWorldMatrix(true, false);
+        return bHead.localToWorld(out.set(0, FACE_UP, 0));
       },
       /**
        * Look tauschen: nur die Geometrie wird ersetzt, Bones/Skelett bleiben; Rig-Skalierung (height/build) wird neu gesetzt.
@@ -51631,7 +51655,7 @@ void main() {
           if (!rec || rec.c !== c) {
             if (rec) speakerSet.delete(rec);
             const id = o.id !== void 0 ? o.id : `p${++speakSeq}`;
-            rec = { c, sp: c.speaker({ id, voiceSeed: o.voiceSeed !== void 0 ? o.voiceSeed : id, prio: Number.isFinite(o.prio) ? o.prio : 0, pos: () => ({ x: handle.root.position.x, y: 1.6, z: handle.root.position.z }) }) };
+            rec = { c, sp: c.speaker({ id, voiceSeed: o.voiceSeed !== void 0 ? o.voiceSeed : id, prio: Number.isFinite(o.prio) ? o.prio : 0, gender: o.gender, pos: () => ({ x: handle.root.position.x, y: 1.6, z: handle.root.position.z }) }) };
             speakerOf.set(handle, rec);
             speakerSet.add(rec);
           }
@@ -53234,7 +53258,7 @@ void main() {
       };
       function talk(text, ms) {
         const n = npc();
-        if (n && typeof n.speak === "function") n.speak(handle, text, { id: "kiosk", voiceSeed: "kiosk", ms });
+        if (n && typeof n.speak === "function") n.speak(handle, text, { id: "kiosk", voiceSeed: "kiosk", gender: "f", ms });
         else if (handle) handle.say(text, ms);
       }
       function provoked() {
@@ -55938,7 +55962,7 @@ void main() {
     if (text !== void 0) n.textContent = text;
     return n;
   };
-  var TITLES = { pause: "Deine Figur", chair: "Frisierstuhl", booth: "Fotoautomat", gate: "Mitgliedsantrag" };
+  var TITLES = { pause: "Deine Figur", chair: "Frisierstuhl", booth: "Umkleide", gate: "Mitgliedsantrag" };
   var ROT_STEP = 0.5;
   function createCharEditor(o) {
     const { model } = o;
@@ -59194,8 +59218,8 @@ void main() {
     return { gabi, ronny };
   }
   var VOICES = {
-    gabi: { voiceSeed: "gabi-haarscharf", pitch: 1.25, rate: 1.05, prio: 50 },
-    ronny: { voiceSeed: "ronny-haarscharf", pitch: 0.85, rate: 0.98, prio: 50 }
+    gabi: { voiceSeed: "gabi-haarscharf", pitch: 1.25, rate: 1.05, prio: 50, gender: "f" },
+    ronny: { voiceSeed: "ronny-haarscharf", pitch: 0.85, rate: 0.98, prio: 50, gender: "m" }
   };
   var LINES4 = {
     gabi: {
@@ -59606,7 +59630,7 @@ void main() {
         try {
           if (p.speakerOf !== c) {
             const v = VOICES[who];
-            p.speaker = c.speaker({ id: who, voiceSeed: v.voiceSeed, pitch: v.pitch, rate: v.rate, prio: v.prio, pos: () => ({ x: p.handle.root.position.x, y: 1.6, z: p.handle.root.position.z }) });
+            p.speaker = c.speaker({ id: who, voiceSeed: v.voiceSeed, pitch: v.pitch, rate: v.rate, prio: v.prio, gender: v.gender, pos: () => ({ x: p.handle.root.position.x, y: 1.6, z: p.handle.root.position.z }) });
             p.speakerOf = c;
           }
           if (!p.speaker || typeof p.speaker.say !== "function") return Promise.resolve(bubble());
@@ -60982,12 +61006,13 @@ void main() {
       function strengthOf(dmg) {
         return Math.max(0.3, Math.min(1, dmg / 26));
       }
+      const NPC_DMG_SCALE = 0.5;
       function hitPlayer(o) {
         if (disposed || !o || xrOn() || flags.fight === false) return false;
         if (protReason()) return false;
         const dmg = Number(o.dmg);
         if (!(dmg > 0)) return false;
-        const r = energy.hit(dmg, T5);
+        const r = energy.hit(dmg * (o.src === "npc" || o.src === "gang" ? NPC_DMG_SCALE : 1), T5);
         if (r.ignored) return false;
         const k = strengthOf(dmg);
         const kn = o.knock || {};
@@ -61319,9 +61344,11 @@ void main() {
         } catch {
         }
         for (const p of people) {
-          if (!p || !p.handle || p.kind === "peer" || typeof p.handle.headWorld !== "function") continue;
+          if (!p || !p.handle || p.kind === "peer") continue;
+          const face = typeof p.handle.faceWorld === "function" ? p.handle.faceWorld : p.handle.headWorld;
+          if (typeof face !== "function") continue;
           if (p.handle.root && p.handle.root.visible === false) continue;
-          const hw = p.handle.headWorld(tmpH);
+          const hw = face.call(p.handle, tmpH);
           const on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
           for (const ev of step(p.handle, "person", on, null)) {
             if (ev.type === "blind") {
@@ -61687,7 +61714,7 @@ void main() {
     return out;
   }
   function createRowdy(i, p, seed = 0) {
-    return { i, st: "idle", x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, speed: 1.1 + fnv2(`spd:${seed}:${i}`) * 0.5, struck: false };
+    return { i, st: "idle", x: p.x, z: p.z, hx: p.x, hz: p.z, yaw: 0, hp: ROWDY_HP, t: 0, cool: 0, stuck: 0, speed: 1.1 + fnv2(`spd:${seed}:${i}`) * 0.5, struck: false };
   }
   function createGang(seed, n, spots) {
     return { seed, phase: 0, members: spawnPlan(seed, Math.min(GANG_MAX, n), spots).map((p, i) => createRowdy(i, p, seed)) };
@@ -61710,21 +61737,50 @@ void main() {
     }
     return ev;
   }
+  var PROGRESS_MIN = 0.25;
   function moveTo(m, tx, tz, dt, env2, mul = 1) {
     const dx = tx - m.x;
     const dz = tz - m.z;
     const d = Math.hypot(dx, dz);
-    if (d < 1e-3) return d;
-    const s = Math.min(d, m.speed * mul * dt);
-    const nx = m.x + dx / d * s;
-    const nz = m.z + dz / d * s;
-    if (gangAreaOk(nx, nz, env2.allowed, env2.forbidden)) {
-      m.x = nx;
-      m.z = nz;
-    }
+    if (d < 1e-3) return false;
     m.yaw = Math.atan2(-dx, -dz);
-    return d;
+    const s = Math.min(d, m.speed * mul * dt);
+    const sx = dx / d * s;
+    const sz = dz / d * s;
+    const ok = (x, z) => gangAreaOk(x, z, env2.allowed, env2.forbidden);
+    if (ok(m.x + sx, m.z + sz)) {
+      m.x += sx;
+      m.z += sz;
+    } else {
+      const tryX = () => {
+        if (Math.abs(dx) <= 1e-3) return false;
+        const nx = m.x + Math.sign(dx) * Math.min(s, Math.abs(dx));
+        if (ok(nx, m.z)) {
+          m.x = nx;
+          return true;
+        }
+        return false;
+      };
+      const tryZ = () => {
+        if (Math.abs(dz) <= 1e-3) return false;
+        const nz = m.z + Math.sign(dz) * Math.min(s, Math.abs(dz));
+        if (ok(m.x, nz)) {
+          m.z = nz;
+          return true;
+        }
+        return false;
+      };
+      if (!(Math.abs(dx) >= Math.abs(dz) ? tryX() || tryZ() : tryZ() || tryX())) return false;
+    }
+    return d - Math.hypot(tx - m.x, tz - m.z) >= PROGRESS_MIN * s;
   }
+  var STUCK_TAUNT_S = 1.2;
+  var STUCK_TAUNT_DIST = 9;
+  var STUCK_GIVE_UP_S = 4;
+  var GIVE_UP_COOL = 6;
+  var stuckStep = (m, progressed, dt) => {
+    m.stuck = progressed ? 0 : (m.stuck || 0) + dt;
+  };
   function stepRowdy(m, dt, env2) {
     const ev = [];
     const p = env2.player;
@@ -61752,18 +61808,27 @@ void main() {
         m.st = "idle";
         m.t = 0;
       }
+      m.stuck = 0;
       moveTo(m, m.hx, m.hz, dt, env2);
       return ev;
     }
     if (m.st === "idle") {
-      if (dist < 12) m.st = "approach";
+      if (m.cool > 0) {
+        moveTo(m, m.hx, m.hz, dt, env2);
+        return ev;
+      }
+      if (dist < 12) {
+        m.st = "approach";
+        m.stuck = 0;
+      }
       return ev;
     }
     if (m.st === "approach") {
-      moveTo(m, p.x, p.z, dt, env2);
-      if (dist < 3.2) {
+      stuckStep(m, moveTo(m, p.x, p.z, dt, env2), dt);
+      if (dist < 3.2 || m.stuck >= STUCK_TAUNT_S && dist < STUCK_TAUNT_DIST) {
         m.st = "taunt";
         m.t = 2.5;
+        m.stuck = 0;
         ev.push({ type: "say", i: m.i, cat: "taunt" });
       }
       return ev;
@@ -61782,8 +61847,16 @@ void main() {
       return ev;
     }
     if (m.st === "attack") {
-      if (dist > 1.2) moveTo(m, p.x, p.z, dt, env2, 1.5);
-      else if (m.cool <= 0) {
+      if (dist > 1.2) {
+        stuckStep(m, moveTo(m, p.x, p.z, dt, env2, 1.5), dt);
+        if (m.stuck >= STUCK_GIVE_UP_S) {
+          m.st = "idle";
+          m.t = 0;
+          m.stuck = 0;
+          m.cool = GIVE_UP_COOL;
+        }
+      } else if (m.cool <= 0) {
+        m.stuck = 0;
         m.cool = 1.2;
         ev.push({ type: "strike", i: m.i, dmg: 8 });
       }
@@ -68793,7 +68866,7 @@ void main() {
     return e;
   }
   var VR_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 8.5C3 7.1 4.1 6 5.5 6h13C19.9 6 21 7.1 21 8.5v6c0 1.4-1.1 2.5-2.5 2.5h-3.2c-.8 0-1.5-.5-1.8-1.2l-.3-.8c-.2-.5-.7-.8-1.2-.8s-1 .3-1.2.8l-.3.8c-.3.7-1 1.2-1.8 1.2H5.5C4.1 17 3 15.9 3 14.5v-6zm2 .5v5.5c0 .3.2.5.5.5h2.6l.1-.3c.5-1.2 1.6-1.9 2.8-1.9s2.3.7 2.8 1.9l.1.3h2.6c.3 0 .5-.2.5-.5V9c0-.3-.2-.5-.5-.5h-13c-.3 0-.5.2-.5.5z"/></svg>';
-  var DESKTOP_HELP = "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 Leertaste springen \xB7 E nehmen \xB7 M mitnehmen (im Halte-Bild) \xB7 F schlagen \xB7 G werfen \xB7 Q zoomen \xB7 Esc Pause";
+  var DESKTOP_HELP = "WASD laufen \xB7 Maus umsehen \xB7 Shift rennen \xB7 Leertaste springen \xB7 E nehmen \xB7 M mitnehmen (im Halte-Bild) \xB7 F schlagen \xB7 G werfen \xB7 R Waffen (1\u20134, Mausrad) \xB7 V Ansicht \xB7 T Emotes \xB7 Q zoomen \xB7 Esc Pause";
   function touchHint(hint) {
     return String(hint == null ? "" : hint).replace(/E\s*\/\s*Klick\s*:\s*/i, "");
   }

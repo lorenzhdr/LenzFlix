@@ -138,13 +138,16 @@ export default {
 
     // ------------------------------------------------------------ Treffer am Spieler
     function strengthOf(dmg) { return Math.max(0.3, Math.min(1, dmg / 26)); }
+    /** Energie-Faktor für Treffer von NPCs (src 'npc'/'gang', auch Bandenhiebe übers Netz); 1.18.0 war 1 (zwei Passanten: ~76 Energie in 6 s). */
+    const NPC_DMG_SCALE = 0.5;
 
     function hitPlayer(o) {
       if (disposed || !o || xrOn() || flags.fight === false) return false;
       if (protReason()) return false;
       const dmg = Number(o.dmg);
       if (!(dmg > 0)) return false;
-      const r = energy.hit(dmg, T);
+      // 1.18.1: Passanten, Personal und Bande ziehen nur die Hälfte an Energie ab (Rückstoß bleibt); Mitspieler (pvp) unverändert
+      const r = energy.hit(dmg * (o.src === 'npc' || o.src === 'gang' ? NPC_DMG_SCALE : 1), T);
       if (r.ignored) return false;
       const k = strengthOf(dmg);
       const kn = o.knock || {};
@@ -403,9 +406,12 @@ export default {
       let people = [];
       try { people = n && n.people ? n.people() : []; } catch { /* egal */ }
       for (const p of people) {
-        if (!p || !p.handle || p.kind === 'peer' || typeof p.handle.headWorld !== 'function') continue;
+        if (!p || !p.handle || p.kind === 'peer') continue;
+        // Gesicht (Kopf-Bone), nicht headWorld: das ist der Sprechblasen-Anker 0,2 m über der Oberkante (1.18.0 traf nur über dem Kopf)
+        const face = typeof p.handle.faceWorld === 'function' ? p.handle.faceWorld : p.handle.headWorld;
+        if (typeof face !== 'function') continue;
         if (p.handle.root && p.handle.root.visible === false) continue;
-        const hw = p.handle.headWorld(tmpH);
+        const hw = face.call(p.handle, tmpH);
         const on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
         for (const ev of step(p.handle, 'person', on, null)) {
           if (ev.type === 'blind') { try { if (n && n.laserHit) n.laserHit(p.handle); } catch (err) { warn('npc.laserHit', err); } }

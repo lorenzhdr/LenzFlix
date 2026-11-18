@@ -26,6 +26,7 @@ const EGO_BACK = 0.12; // Ego (alter Pfad): Rig nach hinten
 const EGO_LEAN = 0.45; // Ego (v2): Kippwinkel der Beine um den Fuß (rad), Hüfte hinter der Kamera, Füße davor
 const EGO_Z = 0.05; // Ego (v2): Lage der Hüfte relativ zur Kamera (m, + = hinter der Kamera)
 const NECK_Y = 1.44;
+const FACE_UP = 0.16; // Augenhöhe über dem Kopf-Bone (alter Pfad 1,60; v2 mit Kopf ×1,15 um den Hals ≈ 1,60–1,62)
 
 /** Höchstens so viele unreferenzierte Geometrien bleiben im Cache (älteste zuerst entsorgt). */
 export const GEO_FREE_MAX = 48;
@@ -295,6 +296,8 @@ export function createFigure(look, hooks = {}) {
     },
     /** Kopfposition (Welt) für Sprechblasen. */
     headWorld(out = tmp) { return out.set(root.position.x, root.position.y + headY(), root.position.z); },
+    /** Gesichtsmitte (Welt, Augenhöhe) über den Kopf-Bone: folgt Größe, Animation (Taumeln, K.O.) und Blickdrehung. Ziel für den Laser (1.18.1). */
+    faceWorld(out = tmp) { bHead.updateWorldMatrix(true, false); return bHead.localToWorld(out.set(0, FACE_UP, 0)); },
     /**
      * Look tauschen: nur die Geometrie wird ersetzt, Bones/Skelett bleiben; Rig-Skalierung (height/build) wird neu gesetzt.
      * Namensschild wandert mit der neuen Oberkante.

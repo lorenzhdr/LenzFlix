@@ -151,7 +151,7 @@ describe('fight: Treffer am Spieler und Schutz', () => {
     const s = setup();
     expect(s.f.hitPlayer({ dmg: 20, knock: { x: 1, z: 0 }, src: 'npc' })).toBe(true);
     s.frame();
-    expect(s.f.energy()).toBeCloseTo(80, 0);
+    expect(s.f.energy()).toBeCloseTo(90, 0); // 1.18.1: NPC-Schaden halbiert
     expect(s.calls.knock).toHaveLength(1);
     expect(s.calls.knock[0][0]).toEqual({ x: 1, z: 0 });
     expect(s.calls.sounds).toContain('ouch');
@@ -229,11 +229,30 @@ describe('fight: Treffer am Spieler und Schutz', () => {
   });
   it('Energie füllt sich nach 6 s von selbst', () => {
     const s = setup();
-    s.f.hitPlayer({ dmg: 26, knock: { x: 0, z: 1 }, src: 'npc' });
+    s.f.hitPlayer({ dmg: 26, knock: { x: 0, z: 1 }, src: 'pvp' });
     s.frames(5);
     expect(s.f.energy()).toBeCloseTo(74, 0);
     s.frames(4);
     expect(s.f.energy()).toBeGreaterThan(80);
+  });
+  it('1.18.1: NPC- und Bandentreffer ziehen die Hälfte ab, Mitspieler voll; Rückstoß unverändert', () => {
+    const a = setup();
+    a.f.hitPlayer({ dmg: 16, knock: { x: 1, z: 0 }, src: 'npc' });
+    expect(a.f.energy()).toBeCloseTo(92, 5);
+    a.f.hitPlayer({ dmg: 8, knock: { x: 1, z: 0 }, src: 'gang' });
+    expect(a.f.energy()).toBeCloseTo(88, 5);
+    const b = setup();
+    b.f.hitPlayer({ dmg: 16, knock: { x: 1, z: 0 }, src: 'pvp' });
+    expect(b.f.energy()).toBeCloseTo(84, 5);
+    expect(a.calls.knock[0][1]).toBeCloseTo(b.calls.knock[0][1], 10);
+  });
+  it('1.18.1: Bandenhieb übers Netz (fh src 1) zählt als Bande, halber Schaden', () => {
+    const nf = netFake({ peers: ['a'], pos: { a: { x: 10, y: 0, z: 9 } } });
+    const s = setup();
+    s.providers.set('net', nf.net);
+    s.frame();
+    nf.handlers.fh({ c: 'a', w: 1, d: [0, 1], src: 1 });
+    expect(s.f.energy()).toBeCloseTo(90, 0);
   });
 });
 
@@ -321,6 +340,18 @@ describe('fight: Laser', () => {
     for (let i = 0; i < 3; i++) s.frame(0.1);
     expect(laserHit).toHaveBeenCalledTimes(1);
     expect(laserHit).toHaveBeenCalledWith(handle);
+  });
+  it('1.18.1: Person mit faceWorld: Ziel ist das Gesicht, nicht der Blasen-Anker headWorld über dem Kopf', () => {
+    const s = setup();
+    const onFace = { root: { visible: true }, faceWorld: (o) => o.set(10, 1.65, 6), headWorld: (o) => o.set(10, 2.2, 6) };
+    const overHead = { root: { visible: true }, faceWorld: (o) => o.set(12, 1.1, 6), headWorld: (o) => o.set(10, 1.65, 6) };
+    const laserHit = vi.fn();
+    s.providers.set('npc', { people: () => [{ kind: 'walker', handle: onFace }, { kind: 'walker', handle: overHead }], laserHit });
+    s.f.setWeapon('laser');
+    s.f.laser(true);
+    for (let i = 0; i < 7; i++) s.frame(0.1);
+    expect(laserHit).toHaveBeenCalledTimes(1);
+    expect(laserHit).toHaveBeenCalledWith(onFace);
   });
   it('Richard: Treffer über brawl.hitBy(laser); Auto: blindDriver; Katze/Tauben: animals.laser', () => {
     const s = setup();

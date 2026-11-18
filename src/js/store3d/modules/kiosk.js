@@ -60,7 +60,7 @@ export default {
     /** Sprechen über die Sprecher-Regie (Stimme 'kiosk'); ohne npc-Provider als Blase der Figur. */
     function talk(text, ms) {
       const n = npc();
-      if (n && typeof n.speak === 'function') n.speak(handle, text, { id: 'kiosk', voiceSeed: 'kiosk', ms });
+      if (n && typeof n.speak === 'function') n.speak(handle, text, { id: 'kiosk', voiceSeed: 'kiosk', gender: 'f', ms });
       else if (handle) handle.say(text, ms);
     }
     /** Schlag auf die Kioskfrau: Bonbon-Wurf (mit Abklingzeit), nie in VR. */

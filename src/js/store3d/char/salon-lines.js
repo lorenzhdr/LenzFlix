@@ -58,10 +58,10 @@ export function npcCodes() {
   return { gabi, ronny };
 }
 
-/** Stimme je Person (Seed, Tonlage, Tempo) für `cashier.speaker`. */
+/** Stimme je Person (Seed, Tonlage, Tempo, bevorzugtes Stimmgeschlecht ab 1.18.1) für `cashier.speaker`. */
 export const VOICES = {
-  gabi: { voiceSeed: 'gabi-haarscharf', pitch: 1.25, rate: 1.05, prio: 50 },
-  ronny: { voiceSeed: 'ronny-haarscharf', pitch: 0.85, rate: 0.98, prio: 50 },
+  gabi: { voiceSeed: 'gabi-haarscharf', pitch: 1.25, rate: 1.05, prio: 50, gender: 'f' },
+  ronny: { voiceSeed: 'ronny-haarscharf', pitch: 0.85, rate: 0.98, prio: 50, gender: 'm' },
 };
 
 export const LINES = {

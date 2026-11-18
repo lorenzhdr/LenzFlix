@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // VIDEOTHEK LENZ · Sprecher-Regie (voice.js createDirector): Vorrang, Distanz, nächste Person, Warteschlange, Ton aus.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createVoice, createDirector, pickVoiceSeeded, RICHARD_PRIO } from '../src/js/store3d/modules/voice.js';
+import { createVoice, createDirector, pickVoiceSeeded, personPitch, RICHARD_PRIO } from '../src/js/store3d/modules/voice.js';
 
 const V = (name, lang = 'de-DE', localService = true) => ({ name, lang, localService });
 class Utt { constructor(text) { this.text = text; } }
@@ -34,6 +34,44 @@ describe('pickVoiceSeeded', () => {
     expect(new Set([0, 1, 2].map((s) => pickVoiceSeeded(vs, s).voice.name)).size).toBe(3);
     expect(pickVoiceSeeded([V('Joe', 'en-US')], 1)).toBeNull();
     expect(pickVoiceSeeded(vs, 1, { online: true }).voice).toBeTruthy();
+  });
+  it('1.18.1: gender bevorzugt passende Stimmen (Windows: Hedda/Katja/Stefan), sonst Rückfall auf alle', () => {
+    const win = [V('Microsoft Hedda - German (Germany)'), V('Microsoft Katja - German (Germany)'), V('Microsoft Stefan - German (Germany)')];
+    for (let s = 0; s < 20; s++) {
+      const f = pickVoiceSeeded(win, `gabi-${s}`, { gender: 'f' });
+      expect(f.voice.name).toMatch(/Hedda|Katja/);
+      expect(f.gmatch).toBe(true);
+      const m = pickVoiceSeeded(win, `ronny-${s}`, { gender: 'm' });
+      expect(m.voice.name).toMatch(/Stefan/);
+      expect(m.gmatch).toBe(true);
+    }
+    const onlyMale = [V('Microsoft Stefan - German (Germany)')];
+    const r = pickVoiceSeeded(onlyMale, 'gabi-haarscharf', { gender: 'f' });
+    expect(r.voice.name).toMatch(/Stefan/);
+    expect(r.gmatch).toBe(false);
+    // ohne gender: Wahl wie in 1.18.0
+    expect(pickVoiceSeeded(win, 'x').voice.name).toBe(pickVoiceSeeded(win, 'x', {}).voice.name);
+  });
+  it('1.18.1: personPitch dämpft die Anhebung nur bei passender Frauenstimme', () => {
+    expect(personPitch(1.25, 'f', true)).toBeCloseTo(1.1, 10);
+    expect(personPitch(1.25, 'f', false)).toBe(1.25);
+    expect(personPitch(0.85, 'm', true)).toBe(0.85);
+    expect(personPitch(0.9, 'f', true)).toBe(0.9);
+    expect(personPitch(1.2, undefined, true)).toBe(1.2);
+  });
+  it('1.18.1: Sprecher mit gender bekommt die Frauenstimme und gedämpfte Tonlage', async () => {
+    const synth = mockSynth([V('Microsoft Hedda'), V('Microsoft Stefan')]);
+    const voice = createVoice({ soundOn: () => true, synth, Utterance: Utt });
+    voice.unlockNow();
+    if (synth.spoken[0] && synth.spoken[0].onstart) synth.spoken[0].onstart();
+    synth.spoken.length = 0;
+    const dir = createDirector({ voice, soundOn: () => true, listener: () => ({ x: 0, y: 0, z: 0 }), now: () => 0 });
+    const gabi = dir.speaker({ id: 'gabi', voiceSeed: 'gabi-haarscharf', pitch: 1.25, rate: 1.05, prio: 50, gender: 'f', pos: at(1) });
+    gabi.say('Na, Schätzchen?');
+    await flush();
+    const u = synth.spoken.at(-1);
+    expect(u.voice.name).toBe('Microsoft Hedda');
+    expect(u.pitch).toBeCloseTo(1.1, 5);
   });
 });
 

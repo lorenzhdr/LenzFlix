@@ -1,4 +1,4 @@
-/* VIDEOTHEK LENZ · Figur (1.17.0): Editor (Pause, Frisierstuhl, Fotoautomat) und Gate „Mitgliedsantrag“ (3D-Bundle `ui/chareditor.js`).
+/* VIDEOTHEK LENZ · Figur (1.17.0): Editor (Pause, Frisierstuhl, Umkleide) und Gate „Mitgliedsantrag“ (3D-Bundle `ui/chareditor.js`).
    Alles unter html.lfx-js.lfx-theme-store:not(.layout-tv); nur --lfx-store-*-Variablen. Präfix lfx-store-char-.
    Querformat/Desktop: Formular links, Vorschau (3D-Studio dahinter) rechts. Hochformat: Vorschau oben ~42 %, Formular darunter scrollbar. */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {

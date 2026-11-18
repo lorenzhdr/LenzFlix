@@ -4,6 +4,9 @@
 // Text wird nie geloggt.
 
 const MALE = ['markus', 'martin', 'stefan', 'conrad', 'killian', 'florian', 'yannick', 'viktor', 'jonas'];
+/** Weibliche deutsche Gerätestimmen (Windows, Edge-Online, Apple) – nur für die Bevorzugung nach Geschlecht (1.18.1). */
+const FEMALE = ['hedda', 'katja', 'amala', 'seraphina', 'louisa', 'tanja', 'ingrid', 'anna', 'petra', 'helena', 'marlene', 'vicki', 'sabine', 'katharina'];
+const hasName = (v, names) => { const n = nameOf(v); return names.some((m) => n.includes(m)); };
 const NOVELTY = ['eddy', 'reed', 'rocko', 'grandpa', 'eloquence'];
 
 const isDe = (v) => /^de([-_]|$)/i.test(String((v && v.lang) || ''));
@@ -51,13 +54,26 @@ export function pickVoice(voices, opts = {}) {
 /**
  * Stimme je Seed (Personen, 1.17.0): stabile Wahl aus den deutschen Stimmen (lokal; mit opts.online auch Online-Stimmen),
  * nach Name sortiert. Ohne passende Stimme null. Grund-pitch 1.0; die Äußerung stellt pitch/rate selbst.
+ * 1.18.1: opts.gender 'f'|'m' wählt bevorzugt aus den Stimmen dieses Geschlechts (Namensliste); gibt es keine, bleibt es bei der
+ * Wahl aus allen (gmatch false, die Tonlage der Person gleicht dann aus).
  */
 export function pickVoiceSeeded(voices, seed, opts = {}) {
   const all = Array.from(voices || []).filter((v) => v && isDe(v));
   const list = (opts.online ? all : all.filter((v) => v.localService === true)).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de') || 0);
   if (!list.length) return null;
+  const names = opts.gender === 'f' ? FEMALE : opts.gender === 'm' ? MALE : null;
+  const match = names ? list.filter((v) => hasName(v, names)) : [];
+  if (match.length) {
+    const v = match[seedHash(seed) % match.length];
+    return { voice: v, pitch: 1.0, online: v.localService !== true, gmatch: true };
+  }
   const v = list[seedHash(seed) % list.length];
-  return { voice: v, pitch: 1.0, online: v.localService !== true };
+  return { voice: v, pitch: 1.0, online: v.localService !== true, gmatch: false };
+}
+
+/** Tonlage einer Person: Mit passender Frauenstimme wird eine Anhebung (gedacht als Ausgleich für eine Männerstimme) auf 40 % gedämpft. */
+export function personPitch(p, gender, gmatch) {
+  return gender === 'f' && gmatch && p > 1 ? 1 + (p - 1) * 0.4 : p;
 }
 
 /** Seed → nichtnegative Ganzzahl: Zahlen bleiben (abs, floor), Texte (z. B. 'gabi-haarscharf') werden per FNV-1a gehasht. */
@@ -182,12 +198,14 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
   function pickFor(ex) {
     if (!ex || ex.voiceSeed === undefined || ex.voiceSeed === null) return picked;
     const k = typeof ex.voiceSeed === 'string' ? ex.voiceSeed : seedHash(ex.voiceSeed);
-    if (seeded.has(k)) return seeded.get(k);
+    const gender = ex.gender === 'f' || ex.gender === 'm' ? ex.gender : null;
+    const ck = gender ? `${k}|${gender}` : k;
+    if (seeded.has(ck)) return seeded.get(ck);
     let r;
-    try { r = pickVoiceSeeded(S.getVoices ? S.getVoices() : [], k, { online: prefs().online }); } catch { r = null; }
+    try { r = pickVoiceSeeded(S.getVoices ? S.getVoices() : [], k, { online: prefs().online, gender }); } catch { r = null; }
     r = r || picked;
     if (r) r = { ...r, nVoices: seedVoiceCount() };
-    seeded.set(k, r);
+    seeded.set(ck, r);
     return r;
   }
   function seedVoiceCount() {
@@ -203,7 +221,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
     u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : (vf ? vf.rate : 1.0);
     // Personen: pitch ist absolut (Personenstimme hat Grund-pitch 1.0); Hauptstimme: Grund-pitch × Pref-Faktor
     u.pitch = ex && ex.voiceSeed !== undefined && ex.voiceSeed !== null
-      ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : vf.pitch) * pk.pitch)
+      ? clampPitch(personPitch(Number.isFinite(ex.pitch) ? ex.pitch : vf.pitch, ex.gender, !!pk.gmatch) * pk.pitch)
       : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
     u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
     return u;
@@ -228,7 +246,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
   /** opts: { volume, voiceSeed?, pitch?, rate? } – die letzten drei nur für Personenstimmen (Sprecher-Regie). */
   function say(text, opts = {}) {
     const { volume = 1 } = opts;
-    const ex = opts.voiceSeed !== undefined || opts.pitch !== undefined || opts.rate !== undefined ? opts : null;
+    const ex = opts.voiceSeed !== undefined || opts.pitch !== undefined || opts.rate !== undefined || opts.gender !== undefined ? opts : null;
     if (disposed || !S || !U) return Promise.resolve();
     refresh();
     if (!picked) return Promise.resolve();
@@ -398,6 +416,7 @@ export function createDirector({ voice, soundOn = () => true, listener = () => n
     if (entry.sp.voiceSeed !== undefined) o.voiceSeed = entry.sp.voiceSeed;
     if (Number.isFinite(entry.sp.pitch)) o.pitch = entry.sp.pitch;
     if (Number.isFinite(entry.sp.rate)) o.rate = entry.sp.rate;
+    if (entry.sp.gender) o.gender = entry.sp.gender;
     let p;
     try { p = voice.say(entry.text, o); } catch { p = Promise.resolve(); }
     Promise.resolve(p).then(() => {
@@ -421,6 +440,7 @@ export function createDirector({ voice, soundOn = () => true, listener = () => n
       voiceSeed: opts.voiceSeed,
       pitch: opts.pitch,
       rate: opts.rate,
+      gender: opts.gender === 'f' || opts.gender === 'm' ? opts.gender : undefined,
       prio: Number.isFinite(opts.prio) ? opts.prio : 0,
       pos: typeof opts.pos === 'function' ? opts.pos : null,
     };

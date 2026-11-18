@@ -185,6 +185,29 @@ describe('Figur v2: Handle', () => {
     for (const f of [a, b, c, old]) f.dispose();
   });
 
+  it('1.18.1: faceWorld liegt auf Augenhöhe (Kopf-Bone), unter der Oberkante, folgt Position und Größe; Hut ändert sie nicht', () => {
+    const a = createFigure(baseLook());
+    const b = createFigure(withs((l) => { l.hat.id = 'crown'; }));
+    const tall = createFigure(withs((l) => { l.height = 1.1; }));
+    const old = createFigure(makeLook(seeded(7), {}));
+    for (const f of [a, b, old]) {
+      const fy = f.faceWorld().y;
+      const h = f.look.height || 1;
+      expect(fy).toBeGreaterThan(1.5 * h);
+      expect(fy).toBeLessThan(1.7 * h);
+      expect(fy).toBeLessThan(f.topY);
+      expect(fy).toBeLessThan(f.headWorld().y - 0.2);
+    }
+    expect(b.faceWorld().y).toBeCloseTo(a.faceWorld().y, 6);
+    expect(tall.faceWorld().y).toBeCloseTo(a.faceWorld().y * 1.1, 6);
+    a.root.position.set(3, 0.5, -2);
+    const p = a.faceWorld();
+    expect(p.x).toBeCloseTo(3, 6);
+    expect(p.z).toBeCloseTo(-2, 6);
+    expect(p.y).toBeCloseTo(b.faceWorld().y + 0.5, 6);
+    for (const f of [a, b, tall, old]) f.dispose();
+  });
+
   it('Namensschild: v2 über der Oberkante, Alt-Look bei 1,98', () => {
     const ctx = new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx);

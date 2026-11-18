@@ -171,7 +171,7 @@ export default {
       try {
         if (p.speakerOf !== c) {
           const v = VOICES[who];
-          p.speaker = c.speaker({ id: who, voiceSeed: v.voiceSeed, pitch: v.pitch, rate: v.rate, prio: v.prio, pos: () => ({ x: p.handle.root.position.x, y: 1.6, z: p.handle.root.position.z }) });
+          p.speaker = c.speaker({ id: who, voiceSeed: v.voiceSeed, pitch: v.pitch, rate: v.rate, prio: v.prio, gender: v.gender, pos: () => ({ x: p.handle.root.position.x, y: 1.6, z: p.handle.root.position.z }) });
           p.speakerOf = c;
         }
         if (!p.speaker || typeof p.speaker.say !== 'function') return Promise.resolve(bubble());
