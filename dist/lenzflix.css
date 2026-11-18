@@ -8838,8 +8838,18 @@ html.lfx-js .lfx-tp__mark-store-b {
   line-height: 26px;
 }
 
-html.lfx-js .lfx-tp__beta {
+html.lfx-js .lfx-tp__badges {
   z-index: 5;
+  pointer-events: none;
+  align-items: center;
+  gap: 6px;
+  display: flex;
+  position: absolute;
+  top: 20px;
+  left: 16px;
+}
+
+html.lfx-js .lfx-tp__beta {
   color: #ffd23f;
   font: 700 11px / 1.4 var(--lfx-font);
   letter-spacing: .06em;
@@ -8848,18 +8858,14 @@ html.lfx-js .lfx-tp__beta {
   border: 1px solid #ffd23f;
   border-radius: 999px;
   padding: 2px 8px;
-  position: absolute;
-  top: 20px;
-  left: 16px;
 }
 
-html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
+html.lfx-js .lfx-tp--sheet .lfx-tp__badges {
   top: 54px;
   left: 14px;
 }
 
 html.lfx-js .lfx-tp__online {
-  z-index: 5;
   border: 1px solid var(--lfx-green);
   color: #fff;
   font: 700 11px / 1.4 var(--lfx-font);
@@ -8872,9 +8878,6 @@ html.lfx-js .lfx-tp__online {
   gap: 6px;
   padding: 2px 9px 2px 8px;
   display: inline-flex;
-  position: absolute;
-  top: 20px;
-  left: 72px;
 }
 
 html.lfx-js .lfx-tp__online-dot {
@@ -8883,11 +8886,6 @@ html.lfx-js .lfx-tp__online-dot {
   height: 7px;
   box-shadow: 0 0 6px var(--lfx-green);
   border-radius: 50%;
-}
-
-html.lfx-js .lfx-tp--sheet .lfx-tp__online {
-  top: 54px;
-  left: 70px;
 }
 
 @media (prefers-reduced-motion: no-preference) {

@@ -30265,19 +30265,19 @@ void main() {
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-  function hourOf(now) {
-    if (typeof now === "number" && Number.isFinite(now)) return (now % 24 + 24) % 24;
-    const d = now instanceof Date ? now : /* @__PURE__ */ new Date();
+  function hourOf(now2) {
+    if (typeof now2 === "number" && Number.isFinite(now2)) return (now2 % 24 + 24) % 24;
+    const d = now2 instanceof Date ? now2 : /* @__PURE__ */ new Date();
     return d.getHours() + d.getMinutes() / 60;
   }
-  function timeOfDay(now) {
-    const h3 = hourOf(now);
+  function timeOfDay(now2) {
+    const h3 = hourOf(now2);
     if (h3 >= 8 && h3 < 18) return "day";
     if (h3 >= 6 && h3 < 8 || h3 >= 18 && h3 < 21) return "dusk";
     return "night";
   }
-  function isLate(now) {
-    const h3 = hourOf(now);
+  function isLate(now2) {
+    const h3 = hourOf(now2);
     return h3 >= 23 || h3 < 5;
   }
   var RAIN_CHANCE = { day: 0.35, dusk: 0.35, night: 0.5 };
@@ -30336,11 +30336,11 @@ void main() {
   function createLimiter(gapMs = 2e4) {
     let last = -Infinity;
     return {
-      can(now, { force = false } = {}) {
-        return force || now - last >= gapMs;
+      can(now2, { force = false } = {}) {
+        return force || now2 - last >= gapMs;
       },
-      mark(now) {
-        last = now;
+      mark(now2) {
+        last = now2;
       },
       reset() {
         last = -Infinity;
@@ -31236,11 +31236,20 @@ void main() {
   }
 
   // src/js/store3d/engine/quality.js
-  var LEVELS = ["low", "mid", "high"];
+  var LEVELS = ["low", "mid", "high", "ultra"];
+  function rank(lv) {
+    const i = LEVELS.indexOf(lv);
+    return i < 0 ? 1 : i;
+  }
+  function atLeast(lv, min) {
+    return rank(lv) >= rank(min);
+  }
   var CITY = {
     low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
     mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
-    high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 }
+    high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
+    // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Handy-Werte = high.
+    ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 42, fogFar: 62 }
   };
   function city(lv, phone) {
     const c = CITY[lv];
@@ -31248,19 +31257,26 @@ void main() {
     return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], precip: c.precip[k], fogNear: c.fogNear, fogFar: c.fogFar };
   }
   function presetFor(level, phone = false) {
-    const lv = LEVELS.includes(level) ? level : "mid";
+    let lv = LEVELS.includes(level) ? level : "mid";
+    if (lv === "ultra" && phone) lv = "high";
     if (lv === "low") {
       return { level: lv, pixelRatio: phone ? 1 : 0.9, shadows: false, anisotropy: 1, atlas: 512, maxAtlases: phone ? 24 : 32, loadRadius: phone ? 9 : 11, signMips: false, ...city(lv, phone) };
     }
     if (lv === "mid") {
       return { level: lv, pixelRatio: 1.25, shadows: false, anisotropy: 4, atlas: 1024, maxAtlases: phone ? 14 : 40, loadRadius: phone ? 13 : 17, signMips: true, ...city(lv, phone) };
     }
+    if (lv === "ultra") {
+      return { level: lv, pixelRatio: 2, shadows: true, anisotropy: 16, atlas: 1024, maxAtlases: 80, hiMax: 6, loadRadius: 34, signMips: true, ...city(lv, false) };
+    }
     return { level: lv, pixelRatio: 1.75, shadows: !phone, anisotropy: 8, atlas: 1024, maxAtlases: phone ? 16 : 56, loadRadius: phone ? 20 : 28, signMips: true, ...city(lv, phone) };
   }
   var AutoQuality = class {
-    constructor(level = "mid") {
-      this.level = LEVELS.includes(level) ? level : "mid";
-      this.ceiling = LEVELS.length - 1;
+    /** opts.max: höchste erlaubte Stufe (Standard 'ultra'); setLevel und das Hochschalten klemmen darauf. */
+    constructor(level = "mid", opts = {}) {
+      this.maxIdx = LEVELS.includes(opts.max) ? LEVELS.indexOf(opts.max) : LEVELS.length - 1;
+      this.level = LEVELS[Math.min(rank(level), this.maxIdx)];
+      this.ceiling = this.maxIdx;
+      this.settleLeft = 0;
       this.frames = 0;
       this.elapsed = 0;
       this.stable = 0;
@@ -31269,18 +31285,18 @@ void main() {
     }
     setLevel(level) {
       if (!LEVELS.includes(level)) return;
-      this.level = level;
+      this.level = LEVELS[Math.min(rank(level), this.maxIdx)];
       this.reset();
     }
     reset() {
       this.frames = 0;
       this.elapsed = 0;
       this.stable = 0;
-      this.settle = 3;
+      this.settleLeft = 1.5;
     }
-    sample(dt, now) {
-      if (this.settle > 0) {
-        this.settle--;
+    sample(dt, now2) {
+      if (this.settleLeft > 0) {
+        this.settleLeft -= dt;
         return null;
       }
       this.frames++;
@@ -31290,30 +31306,30 @@ void main() {
       this.frames = 0;
       this.elapsed = 0;
       const idx2 = LEVELS.indexOf(this.level);
-      if (idx2 > 0 && now - this.lastUp < 2e4 && this.fpsAtUp && fps < Math.min(55, this.fpsAtUp * 0.92)) {
+      if (idx2 > 0 && now2 - this.lastUp < 2e4 && this.fpsAtUp && fps < Math.min(55, this.fpsAtUp * 0.92)) {
         this.stable = 0;
         this.ceiling = Math.min(this.ceiling, idx2 - 1);
         this.level = LEVELS[idx2 - 1];
-        this.lastDown = now;
+        this.lastDown = now2;
         this.fpsAtUp = 0;
         return this.level;
       }
       if (fps < 50) {
         this.stable = 0;
         if (idx2 > 0) {
-          if (now - this.lastUp < 2e4) this.ceiling = Math.min(this.ceiling, idx2 - 1);
+          if (now2 - this.lastUp < 2e4) this.ceiling = Math.min(this.ceiling, idx2 - 1);
           this.level = LEVELS[idx2 - 1];
-          this.lastDown = now;
+          this.lastDown = now2;
           return this.level;
         }
         return null;
       }
       if (fps >= 58) {
         this.stable++;
-        if (this.stable >= 5 && idx2 < this.ceiling && now - this.lastDown >= 1e4) {
+        if (this.stable >= 5 && idx2 < this.ceiling && now2 - this.lastDown >= 1e4) {
           this.stable = 0;
           this.level = LEVELS[idx2 + 1];
-          this.lastUp = now;
+          this.lastUp = now2;
           this.fpsAtUp = fps;
           return this.level;
         }
@@ -31326,7 +31342,9 @@ void main() {
 
   // src/js/store3d/engine/renderer.js
   var DEG = Math.PI / 180;
-  function createEngine({ host, level, auto, phone, onContextLost, onContextRestored, onAutoLevel }) {
+  function createEngine({ host, level, auto, phone, maxLevel = "high", onContextLost, onContextRestored, onAutoLevel }) {
+    const clampLv = (l) => rank(l) > rank(maxLevel) ? maxLevel : l;
+    level = clampLv(level);
     let preset = presetFor(level, phone);
     const canvas = document.createElement("canvas");
     canvas.className = "lfx-store-canvas";
@@ -31358,7 +31376,7 @@ void main() {
     const camera = new PerspectiveCamera(70, 1, 0.05, 90);
     camera.rotation.order = "YXZ";
     rig.add(camera);
-    const aq = new AutoQuality(level);
+    const aq = new AutoQuality(level, { max: maxLevel });
     let autoOn = !!auto;
     let tick = null;
     let running = false;
@@ -31402,9 +31420,9 @@ void main() {
       applyFov();
     }
     function loop(time, frame) {
-      const now = time || performance.now();
-      let dt = (now - last) / 1e3;
-      last = now;
+      const now2 = time || performance.now();
+      let dt = (now2 - last) / 1e3;
+      last = now2;
       if (!(dt > 0)) dt = 1 / 60;
       const rawDt = dt;
       if (dt > 0.25) dt = 0.016;
@@ -31417,14 +31435,14 @@ void main() {
         accN = 0;
       }
       if (autoOn && !inXr() && renderOn) {
-        const l = aq.sample(rawDt, now);
+        const l = aq.sample(rawDt, now2);
         if (l) {
           setLevel(l);
           if (onAutoLevel) onAutoLevel(l);
         }
       }
       const t0 = performance.now();
-      if (tick) tick(dt, now, frame);
+      if (tick) tick(dt, now2, frame);
       const t1 = performance.now();
       if (renderOn) renderer.render(scene, camera);
       const t2 = performance.now();
@@ -31443,6 +31461,7 @@ void main() {
     let xrBudget = false;
     let levelNow = level;
     function setLevel(l) {
+      l = clampLv(l);
       const prev = preset;
       levelNow = l;
       preset = presetFor(l, phone || xrBudget);
@@ -33443,7 +33462,8 @@ void main() {
     /** Höchstzahl 2048er-Atlanten: Limit je Gerät (4 / Handy 2), höchstens die Hälfte des Atlas-Budgets (in Einheiten). */
     get hiCap() {
       if (!this.hiEnabled) return 0;
-      return Math.max(0, Math.min(this.hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
+      const hiMax = this.preset.hiMax || this.hiMax;
+      return Math.max(0, Math.min(hiMax, Math.floor(this.preset.maxAtlases / (2 * HI_COST))));
     }
     setPreset(p) {
       const sizeChanged = p.atlas !== this.preset.atlas;
@@ -33469,8 +33489,8 @@ void main() {
       if (this.disposed) return;
       const zoom = extra && extra.zoom || 1;
       const pitch = extra && extra.pitch || 0;
-      const now = this.now();
-      this.trackPose(now, px, pz, yaw);
+      const now2 = this.now();
+      this.trackPose(now2, px, pz, yaw);
       this.zoomed = zoom > 1.3;
       this.evictSync = 2;
       const vx = -Math.sin(yaw);
@@ -33499,7 +33519,7 @@ void main() {
       order.sort((a, b) => a.score - b.score);
       let used = this.usedCount;
       if (used > max) {
-        const cand = this.faces.filter((f) => f.tex && f.state !== "low" && !f.loading).sort((a, b) => this.evictRank(b, now) - this.evictRank(a, now));
+        const cand = this.faces.filter((f) => f.tex && f.state !== "low" && !f.loading).sort((a, b) => this.evictRank(b, now2) - this.evictRank(a, now2));
         for (const f of cand) {
           if (used <= max) break;
           this.evict(f);
@@ -33518,7 +33538,7 @@ void main() {
         if (f.state !== "full" && !f.loading && loadingNow < this.maxLoadingFaces) {
           const counted = !!(f.tex && f.state !== "low");
           if (!counted && used >= max) {
-            const v = this.pickVictim(f, now);
+            const v = this.pickVictim(f, now2);
             if (!v) continue;
             this.evict(v);
             used--;
@@ -33528,7 +33548,7 @@ void main() {
           loadingNow++;
         }
       }
-      this.startHiLoads(hiSet, now);
+      this.startHiLoads(hiSet, now2);
       this.pump();
     }
     /** Belegte Grund-Budget-Plätze (fertige ph/full-Atlanten plus laufende Ladevorgänge). */
@@ -33536,30 +33556,30 @@ void main() {
       return this.faces.reduce((n, f) => n + (f.tex && f.state !== "low" || f.loading ? 1 : 0), 0);
     }
     /** Eviction-Rang: je größer, desto eher verdrängt (Distanz; frisch geladene zuletzt). */
-    evictRank(f, now) {
-      return f.d + (now - f.loadedAt < EVICT_PROTECT_MS ? -1e3 : 0);
+    evictRank(f, now2) {
+      return f.d + (now2 - f.loadedAt < EVICT_PROTECT_MS ? -1e3 : 0);
     }
     /** Entfernteste geladene Seite (nach Distanz), die nicht geschützt ist und mindestens EVICT_MARGIN weiter weg liegt als nf. */
-    pickVictim(nf, now) {
+    pickVictim(nf, now2) {
       let best = null;
       for (const f of this.faces) {
         if (f === nf || !f.tex || f.state === "low" || f.loading) continue;
-        if (now - f.loadedAt < EVICT_PROTECT_MS) continue;
+        if (now2 - f.loadedAt < EVICT_PROTECT_MS) continue;
         if (f.d < nf.d + EVICT_MARGIN) continue;
         if (!best || f.d > best.d) best = f;
       }
       return best;
     }
     /** Pose-Historie: Geschwindigkeit und Drehrate über >= ~230 ms. */
-    trackPose(now, x, z, yaw) {
+    trackPose(now2, x, z, yaw) {
       const ps = this.poses;
       let ref = null;
-      for (let i = ps.length - 1; i >= 0; i--) if (now - ps[i].t >= 230) {
+      for (let i = ps.length - 1; i >= 0; i--) if (now2 - ps[i].t >= 230) {
         ref = ps[i];
         break;
       }
       if (ref) {
-        const dt = (now - ref.t) / 1e3;
+        const dt = (now2 - ref.t) / 1e3;
         let dy = yaw - ref.yaw;
         dy = Math.atan2(Math.sin(dy), Math.cos(dy));
         this.calm = Math.hypot(x - ref.x, z - ref.z) / dt < CALM_SPEED;
@@ -33570,11 +33590,11 @@ void main() {
         this.turnFast = false;
         this.turnSlow = false;
       }
-      ps.push({ t: now, x, z, yaw });
-      while (ps.length > 2 && now - ps[1].t > 800) ps.shift();
+      ps.push({ t: now2, x, z, yaw });
+      while (ps.length > 2 && now2 - ps[1].t > 800) ps.shift();
     }
     /** Hochstufen nur in Ruhe (langsam) oder bei Zoom, nach Auswahl >= 400 ms, nicht kurz nach Herabstufen; LRU-Platz bei Bedarf. */
-    startHiLoads(wanted, now) {
+    startHiLoads(wanted, now2) {
       if (!wanted.length || !(this.calm || this.zoomed) || !(this.turnSlow || this.zoomed)) return;
       const cap = this.hiCap;
       const set = new Set(wanted);
@@ -33582,13 +33602,13 @@ void main() {
       for (const f of wanted) {
         if (hiLoadingNow >= 2) break;
         if (!(f.state === "full" && f.tex && !f.loading && !f.hiTex && !f.hiLoading && !f.hiSkip)) continue;
-        if (f.hiSince == null || now - f.hiSince < HI_SELECT_MS || now - f.hiChangedAt < HI_HOLD_MS) continue;
+        if (f.hiSince == null || now2 - f.hiSince < HI_SELECT_MS || now2 - f.hiChangedAt < HI_HOLD_MS) continue;
         if (this.hiPending >= cap) {
           let v = null;
           for (const g of this.faces) {
             if (set.has(g) || !(g.hiTex || g.hiLoading)) continue;
-            if (g.hiTex && now - g.hiChangedAt < HI_HOLD_MS) continue;
-            if (now - g.hiLastWanted < HI_LRU_MS) continue;
+            if (g.hiTex && now2 - g.hiChangedAt < HI_HOLD_MS) continue;
+            if (now2 - g.hiLastWanted < HI_LRU_MS) continue;
             if (!v || g.hiLastWanted < v.hiLastWanted) v = g;
           }
           if (!v) break;
@@ -33605,7 +33625,7 @@ void main() {
      * @returns {Array} gewählte Seiten (nach Rang, höchstens hiCap)
      */
     updateHi(zoom, pitch) {
-      const now = this.now();
+      const now2 = this.now();
       const cap = this.hiCap;
       const zoomed = zoom > 1.3;
       const cands2 = [];
@@ -33627,8 +33647,8 @@ void main() {
       for (const f of this.faces) {
         const has = !!(f.hiTex || f.hiLoading);
         if (set.has(f)) {
-          if (f.hiSince == null) f.hiSince = now;
-          f.hiLastWanted = now;
+          if (f.hiSince == null) f.hiSince = now2;
+          f.hiLastWanted = now2;
           f.hiBehindSince = null;
           continue;
         }
@@ -33643,10 +33663,10 @@ void main() {
         }
         const behind = f.front < -0.3 || f.dot < -0.2;
         if (behind) {
-          if (f.hiBehindSince == null) f.hiBehindSince = now;
+          if (f.hiBehindSince == null) f.hiBehindSince = now2;
         } else f.hiBehindSince = null;
-        if (f.hiTex && now - f.hiChangedAt < HI_HOLD_MS) continue;
-        if (f.d > HI_KEEP_D || f.hiBehindSince != null && now - f.hiBehindSince > HI_BEHIND_MS) this.dropHi(f);
+        if (f.hiTex && now2 - f.hiChangedAt < HI_HOLD_MS) continue;
+        if (f.d > HI_KEEP_D || f.hiBehindSince != null && now2 - f.hiBehindSince > HI_BEHIND_MS) this.dropHi(f);
       }
       let over = this.hiPending - cap;
       if (over > 0) {
@@ -33659,12 +33679,12 @@ void main() {
       return wanted;
     }
     /** Frame-Takt festhalten (für das Hi-Upload-Pacing). */
-    trackFrame(now) {
+    trackFrame(now2) {
       if (this.lastTickAt) {
-        this.frameDts.push(now - this.lastTickAt);
+        this.frameDts.push(now2 - this.lastTickAt);
         if (this.frameDts.length > 30) this.frameDts.shift();
       }
-      this.lastTickAt = now;
+      this.lastTickAt = now2;
     }
     /** Letzte ~5 Frames unauffällig (< 1,5× Median)? Ohne genug Historie: ja. */
     framesSteady() {
@@ -33674,22 +33694,22 @@ void main() {
       return a.slice(-5).every((v) => v < med * 1.5);
     }
     /** 2048er-Upload jetzt erlaubt? Ruhe/Zoom, keine schnelle Drehung, Abstand >= 250 ms, Frames unauffällig. */
-    hiUploadOk(now) {
-      return (this.calm || this.zoomed) && !this.turnFast && now - this.lastHiAt >= HI_UPLOAD_GAP_MS && this.framesSteady();
+    hiUploadOk(now2) {
+      return (this.calm || this.zoomed) && !this.turnFast && now2 - this.lastHiAt >= HI_UPLOAD_GAP_MS && this.framesSteady();
     }
     /** Pro Frame höchstens ein Atlas zeichnen + hochladen (Grund-Atlas vor Low-Nachzügler vor Schärfestufe). */
     tick() {
       if (this.disposed) return;
-      const now = this.now();
+      const now2 = this.now();
       this.frame++;
-      this.trackFrame(now);
+      this.trackFrame(now2);
       if (this.frame - this.lastUploadFrame < 2) return;
       const low = this.lowEnabled ? this.pickLow() : null;
       let job = null;
       if (this.composeQueue.length) {
-        const rank = (j) => j.f.score + (j.kind === "hi" ? 100 : 0);
-        this.composeQueue.sort((a, b) => rank(a) - rank(b));
-        const hiOk = this.hiUploadOk(now);
+        const rank2 = (j) => j.f.score + (j.kind === "hi" ? 100 : 0);
+        this.composeQueue.sort((a, b) => rank2(a) - rank2(b));
+        const hiOk = this.hiUploadOk(now2);
         const at = this.composeQueue.findIndex((j) => j.kind !== "hi" || hiOk);
         if (at >= 0) job = this.composeQueue[at];
         if (job && low && job.kind === "hi") job = null;
@@ -33707,7 +33727,7 @@ void main() {
       try {
         if (job.kind === "ph") this.composePlaceholder(job.f);
         else if (job.kind === "hi") {
-          this.lastHiAt = now;
+          this.lastHiAt = now2;
           this.composeHi(job.f);
         } else this.composeFull(job.f);
       } catch {
@@ -33807,7 +33827,7 @@ void main() {
     }
     // --- Low-Stufe ---
     /** Startet den Vorlader (Mini-Bilder aller Seiten, nahe zuerst). */
-    startPreload({ px = 0, pz = 0, onProgress, loadBitmap: loadBitmap2, closeBitmap: closeBitmap2, resize, now } = {}) {
+    startPreload({ px = 0, pz = 0, onProgress, loadBitmap: loadBitmap2, closeBitmap: closeBitmap2, resize, now: now2 } = {}) {
       if (this.pre) this.pre.dispose();
       const pl = new CoverPreloader({
         faces: this.faces.map((f) => f.face),
@@ -33822,7 +33842,7 @@ void main() {
         loadBitmap: loadBitmap2,
         closeBitmap: closeBitmap2,
         resize,
-        now
+        now: now2
       });
       this.pre = pl;
       return pl.start();
@@ -34345,17 +34365,17 @@ void main() {
      * (keine Physik, keine Kollision) und folgt dem Puffer mit netDelay (Standard NET_DELAY_MS) Verzögerung (lineare Interpolation, Winkel über angDiff).
      * Liegt der neue Stand weiter als NET_JUMP_DIST vom aktuellen entfernt, springt der Körper sofort.
      */
-    applyRemote(s, now = 0) {
+    applyRemote(s, now2 = 0) {
       if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.z)) return;
       const first = !this.remote || !this.netBuf.length;
       this.remote = true;
       const far = Math.hypot(s.x - this.x, (s.y || 0) - this.y, s.z - this.z) > NET_JUMP_DIST;
       if (first || far) {
         this.netBuf = [];
-        this.netClock = now - this.netDelay;
+        this.netClock = now2 - this.netDelay;
         this.setNet(s);
       }
-      this.netBuf.push({ t: now, s: { ...s } });
+      this.netBuf.push({ t: now2, s: { ...s } });
       while (this.netBuf.length > NET_BUFFER) this.netBuf.shift();
       this.heldId = s.h == null ? null : s.h;
     }
@@ -34716,9 +34736,9 @@ void main() {
       if (typeof this.ctx.onWeaponCycle !== "function" || this.ctx.getMode() !== "play" || !(this.locked || this.dragLook)) return;
       if (e && typeof e.preventDefault === "function") e.preventDefault();
       const dy = e ? Number(e.deltaY) || 0 : 0;
-      const now = performance.now();
-      if (Math.abs(dy) < 1 || now - this.wheelAt < 140) return;
-      this.wheelAt = now;
+      const now2 = performance.now();
+      if (Math.abs(dy) < 1 || now2 - this.wheelAt < 140) return;
+      this.wheelAt = now2;
       this.ctx.onWeaponCycle(dy > 0 ? 1 : -1);
     }
     /** Alle gehaltenen Aktionen loslassen (Loslass-Rückrufe, falls vorhanden). */
@@ -35513,11 +35533,11 @@ void main() {
     }
     // --- Gate ---
     /** state: 'on' | 'parked' | 'off', why: Grund (z. B. 'mode:paused', 'locked:cam', 'xr'). Wird pro Frame aufgerufen und vergleicht billig. */
-    setGate(state, why = "", now = this.now()) {
+    setGate(state, why = "", now2 = this.now()) {
       const prev = this.state;
       if (state === "parked" && prev === "parked") {
         this.why = why;
-        if (this.parkSince && now - this.parkSince > PARK_MAX_MS) {
+        if (this.parkSince && now2 - this.parkSince > PARK_MAX_MS) {
           this.parkSince = 0;
           this.releaseAll(why);
         }
@@ -35528,10 +35548,10 @@ void main() {
       this.why = why;
       if (state === "off") {
         this.releaseAll(why);
-        this.lastHide = { why, t: now };
+        this.lastHide = { why, t: now2 };
       } else if (state === "parked") {
-        this.parkSince = now;
-        this.lastHide = { why, t: now };
+        this.parkSince = now2;
+        this.lastHide = { why, t: now2 };
       }
       if (prev === "parked" && state === "on") {
         this.parkSince = 0;
@@ -38623,7 +38643,7 @@ void main() {
           } catch {
           }
         } else if (gain === 0 && rain) {
-          stopNodes(rain, (n) => n.s.stop());
+          stopNodes(rain, (n) => n.s.stop(), 0.3, 1800);
           rain = null;
         }
       }
@@ -38649,16 +38669,16 @@ void main() {
         s.start();
         rain = { s, g };
       }
-      function stopNodes(n, stopFn) {
+      function stopNodes(n, stopFn, tc = 0.2, delay = 900) {
         if (!n) return;
         try {
-          n.g.gain.setTargetAtTime(1e-4, ac.currentTime, 0.2);
+          n.g.gain.setTargetAtTime(1e-4, ac.currentTime, tc);
           setTimeout(() => {
             try {
               stopFn(n);
             } catch {
             }
-          }, 900);
+          }, delay);
         } catch {
         }
       }
@@ -40062,7 +40082,7 @@ void main() {
   }
   var SHELF_FAR_LOW = 11;
   var STREET_DETAIL = /* @__PURE__ */ new Set(["city-marks", "city-signal-poles", "city-signal-lamps", "city-signs", "city-shopsigns", "city-shopglass", "city-fahrplan", "city-litfass", "city-decor", "city-ped-lamps", "city-street-props", "city-lamps"]);
-  var shelfRange = (level) => level === "low" ? 2.2 : 5;
+  var shelfRange = (level) => level === "low" ? 2.2 : level === "ultra" ? 8 : 5;
   function fogRange(preset, layout) {
     const diag = Math.hypot(layout.w || 0, layout.d || 0);
     const far = Math.min(FAR_R - 2, Math.max(preset.fogFar || 58, 0));
@@ -40877,6 +40897,9 @@ void main() {
         },
         onResume() {
           suspended = false;
+        },
+        dispose() {
+          if (window.__lfxM4) delete window.__lfxM4.precip;
         }
       };
     }
@@ -41076,12 +41099,13 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       ctx.track(dropTex);
       ctx.track(trailTex);
       let near = false;
+      let suspended = false;
       function pushPrecip() {
         const pr = ctx.use("precip");
         if (pr && typeof pr.setWeather === "function") pr.setWeather(weather.precip);
       }
       function syncVisible() {
-        if (drops) drops.visible = weather.raining;
+        if (drops) drops.visible = weather.raining && !suspended;
         pushPrecip();
       }
       syncVisible();
@@ -41102,13 +41126,15 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
           if (drops && weather.raining && near && !reduced2) timeU.value = t;
         },
         onSuspend() {
+          suspended = true;
           if (drops) drops.visible = false;
         },
         onResume() {
-          const now = timeOfDay(hourOpt);
-          if (now !== tod) {
-            tod = now;
-            weather.tod = now;
+          suspended = false;
+          const now2 = timeOfDay(hourOpt);
+          if (now2 !== tod) {
+            tod = now2;
+            weather.tod = now2;
             apply();
           }
           syncVisible();
@@ -42211,7 +42237,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
   }
 
   // src/js/store3d/modules/props.js
-  var CULL_DIST = { low: 24, mid: 32, high: 40 };
+  var CULL_DIST = { low: 24, mid: 32, high: 40, ultra: 48 };
   var NET_ID_RE = /^[A-Za-z0-9._-]{1,24}$/;
   function netIdOf(b) {
     const d = b && b.data;
@@ -42479,9 +42505,9 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         if (ev.speed < 1.8) return;
         const p = lastPose;
         if (p && Math.hypot(b.pos.x - p.x, b.pos.z - p.z) > 14) return;
-        const now = world.time;
-        if (now - sfxT < 0.07) return;
-        sfxT = now;
+        const now2 = world.time;
+        if (now2 - sfxT < 0.07) return;
+        sfxT = now2;
         const s = ctx.use("sound");
         if (!s) return;
         const k = Math.min(1.5, ev.speed / 6);
@@ -43449,13 +43475,13 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     if (opts.online) {
       const onl = all.filter((v) => v.localService !== true);
       if (onl.length) {
-        const rank = (v) => {
+        const rank2 = (v) => {
           const n = nameOf(v);
           const nat = n.includes("natural") ? 0 : 1;
           const male = MALE.some((m) => n.includes(m)) ? 0 : 1;
           return nat * 4 + male * 2 + (isDeDE(v) ? 0 : 1);
         };
-        const best = onl.map((v, i) => ({ v, r: rank(v), i })).sort((a, b) => a.r - b.r || a.i - b.i)[0].v;
+        const best = onl.map((v, i) => ({ v, r: rank2(v), i })).sort((a, b) => a.r - b.r || a.i - b.i)[0].v;
         return { voice: best, pitch: 1, online: true };
       }
     }
@@ -43861,7 +43887,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
   var RICHARD_PRIO = 100;
   var SPEAK_DIST = 10;
   var SEEN_MS = 3e4;
-  function createDirector({ voice, soundOn = () => true, listener = () => null, now = () => Date.now(), maxDist = SPEAK_DIST } = {}) {
+  function createDirector({ voice, soundOn = () => true, listener = () => null, now: now2 = () => Date.now(), maxDist = SPEAK_DIST } = {}) {
     const reg = /* @__PURE__ */ new Map();
     let cur = null;
     let queued = null;
@@ -43890,7 +43916,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       return Math.max(0, Math.min(1, v * f));
     };
     const isNearest = (sp, dist) => {
-      const t = now();
+      const t = now2();
       for (const [id, r] of reg) {
         if (r.sp === sp || r.sp.prio >= RICHARD_PRIO) continue;
         if (t - r.seen > SEEN_MS) {
@@ -43960,8 +43986,8 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
           const rec = reg.get(sp.id);
           if (rec) {
             rec.sp = sp;
-            rec.seen = now();
-          } else reg.set(sp.id, { sp, seen: now() });
+            rec.seen = now2();
+          } else reg.set(sp.id, { sp, seen: now2() });
           const entry = { sp, text: str, opts: o, volume: o.volume, prio: sp.prio, resolve: null, preempted: false };
           return new Promise((resolve) => {
             entry.resolve = resolve;
@@ -44228,7 +44254,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         bubble.hidden = true;
         if (bubble3d) bubble3d.hide();
       }
-      let now = 0;
+      let now2 = 0;
       const weather = () => ctx.use("weather");
       const hourNow = () => {
         const w = weather();
@@ -44249,7 +44275,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         if (!outside && !inStore()) return false;
         const dist = distToPlayer();
         if (!force && dist > maxDist) return false;
-        if (!limiter.can(now, { force })) return false;
+        if (!limiter.can(now2, { force })) return false;
         const all = { name: user, ...vars };
         const picked = pickLine(LINES[cat], rand, all, lastIdx[cat]);
         if (!picked) return false;
@@ -44268,7 +44294,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         else bubble.hidden = false;
         bubbleSticky = overOverlay;
         bubbleLeft = (ctx.isTouch ? BUBBLE_MS + 500 : BUBBLE_MS) / 1e3;
-        limiter.mark(now);
+        limiter.mark(now2);
         placeBubble();
         if (withVoice && cat !== "play") voiceSay(text, dist);
         return true;
@@ -44296,8 +44322,8 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       let pendingGreet = -1;
       let lastWave = -Infinity;
       function wave() {
-        if (reduced2 || now - lastWave < 25) return;
-        lastWave = now;
+        if (reduced2 || now2 - lastWave < 25) return;
+        lastWave = now2;
         waveT = 0;
       }
       const offs = [];
@@ -44322,7 +44348,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         } else greetOwed = true;
       }));
       offs.push(ctx.on("return", () => {
-        if (!greetOwed && now - lastGreet < 90) return;
+        if (!greetOwed && now2 - lastGreet < 90) return;
         greetOwed = false;
         pendingGreet = 1.1;
         wave();
@@ -44355,7 +44381,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         const bw = ctx.use("brawl");
         const grudge = !!(bw && bw.state() === "grudge");
         if (grudge) cat = "grudgeGreet";
-        lastGreet = now;
+        lastGreet = now2;
         const av = ctx.use("avatar");
         let react = null;
         try {
@@ -44628,7 +44654,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       let lastKids = -Infinity;
       return {
         update(dt, t) {
-          now = t;
+          now2 = t;
           const p = ctx.player.getPose();
           const dx = p.x - pos.x;
           const dz = p.z - pos.z;
@@ -44710,7 +44736,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
               adultSaid = false;
             }
             const k = !!inR2(L2.kidsRoom, p);
-            if (k && !inKids && now - lastKids > 120 && speak("kidsEnter", {}, { maxDist: Infinity })) lastKids = now;
+            if (k && !inKids && now2 - lastKids > 120 && speak("kidsEnter", {}, { maxDist: Infinity })) lastKids = now2;
             inKids = k;
           }
         },
@@ -48474,7 +48500,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
           l(len, 0.012, 0.036, mx, my, k % 2 ? LB : LA, rz);
           const nl = Math.hypot(mx, my - cy) || 1;
           l(len - 8e-3, 3e-3, 8e-3, mx + mx / nl * 75e-4, my + (my - cy) / nl * 75e-4, LC, rz);
-          if (k >= 3 && k <= 7 && k % 2) l(7e-3, 0.0145, 9e-3, mx, my, LD, rz + Math.PI / 2);
+          if (k >= 3 && k <= 7 && k % 2) l(0.013, 0.0145, 9e-3, mx + mx / nl * 15e-4, my + (my - cy) / nl * 15e-4, LD, rz + Math.PI / 2, 0.011);
           if (k === 1) l(0.013, 0.018, 0.04, mx, my, LB, rz);
         }
         l(0.062, 0.012, 0.044, 0, 0, STEEL);
@@ -51491,25 +51517,25 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     let quietUntil = -Infinity;
     return {
       /** Neue Änderung (leerer oder gleicher Hash zählt nicht). Setzt Zähler und Passantenliste zurück. */
-      noteChange(now, h3) {
+      noteChange(now2, h3) {
         if (!h3 || h3 === hash2) return;
         hash2 = h3;
-        changeAt = now;
+        changeAt = now2;
         said = /* @__PURE__ */ new Set();
       },
       /** Darf dieser Passant jetzt etwas sagen? Ohne Nebenwirkung; erst `markSaid` verbraucht das Budget. */
-      passerbyMay(now, personId) {
+      passerbyMay(now2, personId) {
         if (!personId || changeAt === -Infinity) return false;
-        if (now < changeAt || now - changeAt > WINDOW_MS) return false;
-        if (now < quietUntil) return false;
+        if (now2 < changeAt || now2 - changeAt > WINDOW_MS) return false;
+        if (now2 < quietUntil) return false;
         if (said.size >= MAX_PASSERBY || said.has(personId)) return false;
-        if (now - lastSaid < GAP_MS) return false;
+        if (now2 - lastSaid < GAP_MS) return false;
         return true;
       },
-      markSaid(now, personId) {
+      markSaid(now2, personId) {
         said.add(personId);
-        lastSaid = now;
-        if (said.size >= MAX_PASSERBY) quietUntil = now + QUIET_MS;
+        lastSaid = now2;
+        if (said.size >= MAX_PASSERBY) quietUntil = now2 + QUIET_MS;
       }
     };
   }
@@ -53673,9 +53699,9 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     if (!Number.isFinite(d.getTime())) return null;
     return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
   }
-  function minutesOf(now) {
-    if (typeof now === "number" && Number.isFinite(now)) return Math.floor((now % 24 + 24) % 24 * 60);
-    const d = now instanceof Date ? now : null;
+  function minutesOf(now2) {
+    if (typeof now2 === "number" && Number.isFinite(now2)) return Math.floor((now2 % 24 + 24) % 24 * 60);
+    const d = now2 instanceof Date ? now2 : null;
     return d && Number.isFinite(d.getTime()) ? d.getHours() * 60 + d.getMinutes() : null;
   }
   function clockText(min) {
@@ -53863,14 +53889,14 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     if (!ticket) return "Ohne Ticket? Mutig. Aber erst zur Kasse!";
     return TEAR_LINES[Math.abs(Math.floor(n)) % TEAR_LINES.length];
   }
-  function joinOffers(raw, items, nameOf3, selfC, now) {
+  function joinOffers(raw, items, nameOf3, selfC, now2) {
     const out = [];
     for (const x of raw || []) {
       const e = Array.isArray(x) ? { sid: x[0], host: x[1], itemId: x[2], n: x[3], st: x[4], m: x[5], p: x[6], at: x[7] } : x;
       const iid = e && (e.itemId || e.i);
       const it = iid && items && typeof items.get === "function" ? items.get(iid) : null;
       if (!it || it.Type && it.Type !== "Movie") continue;
-      out.push({ sid: e.sid, itemId: iid, item: it, title: titleOf(it), sub: joinSub(e, nameOf3, selfC, now) });
+      out.push({ sid: e.sid, itemId: iid, item: it, title: titleOf(it), sub: joinSub(e, nameOf3, selfC, now2) });
     }
     return out;
   }
@@ -53880,7 +53906,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     const m = Math.floor(s % 3600 / 60);
     return `${h3 ? `${h3}:${String(m).padStart(2, "0")}` : m}:${String(s % 60).padStart(2, "0")}`;
   };
-  function joinSub(e, nameOf3, selfC, now) {
+  function joinSub(e, nameOf3, selfC, now2) {
     const m = Array.isArray(e.m) ? e.m.filter((c) => c !== selfC) : [];
     const n = Number.isFinite(e.n) ? e.n : m.length;
     const names = m.map((c) => nameOf3 ? nameOf3(c) : "Jemand").filter((x) => x && x !== "Jemand");
@@ -53889,7 +53915,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     else if (n > 0) who = ` \xB7 mit ${n} Zuschauer${n === 1 ? "" : "n"}`;
     if (e.st === 2) return `pausiert${who}`;
     if (e.st === 0) return `startet gerade${who}`;
-    const pos = Number.isFinite(now) && Number.isFinite(e.p) && Number.isFinite(e.at) ? ` bei ${hms(e.p + (now - e.at))}` : "";
+    const pos = Number.isFinite(now2) && Number.isFinite(e.p) && Number.isFinite(e.at) ? ` bei ${hms(e.p + (now2 - e.at))}` : "";
     return `l\xE4uft${pos}${who}`;
   }
   var JOIN_FOOT = "Beim Mitschauen kann jeder pausieren und spulen. Du schaust \xFCber dein eigenes Konto \u2013 Weiterschauen wird f\xFCr dich gespeichert.";
@@ -54933,7 +54959,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     }
     return out;
   }
-  function createDiscoverStore({ storage = null, userId = null, now = () => Date.now() } = {}) {
+  function createDiscoverStore({ storage = null, userId = null, now: now2 = () => Date.now() } = {}) {
     const key2 = keyFor(userId);
     let found = {};
     try {
@@ -54955,7 +54981,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       /** true, wenn neu (bekannte ID, noch nicht gefunden). */
       add(id) {
         if (!isKnownId(id) || api.has(id)) return false;
-        found[id] = Math.max(1, Math.round(now()));
+        found[id] = Math.max(1, Math.round(now2()));
         persist();
         for (const fn of [...listeners]) {
           try {
@@ -57145,7 +57171,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     const c = cnt && typeof cnt === "object" ? cnt : {};
     return { rent: sumObj(c.rent), cine: sumObj(c.cine) };
   }
-  function memberSince(profile, now = Date.now()) {
+  function memberSince(profile, now2 = Date.now()) {
     const p = profile || {};
     let best = Infinity;
     if (p.disc && typeof p.disc === "object") {
@@ -57156,7 +57182,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     }
     const s = p.mem && Number(p.mem.since);
     if (Number.isFinite(s) && s > 0) best = Math.min(best, Math.floor(s));
-    return Number.isFinite(best) ? best : dayNumber(now);
+    return Number.isFinite(best) ? best : dayNumber(now2);
   }
   function formatNo(no) {
     const s = String(no == null ? "" : no).replace(/\D/g, "");
@@ -57167,7 +57193,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     const p = (n) => String(n).padStart(2, "0");
     return p(d.getUTCDate()) + "." + p(d.getUTCMonth() + 1) + "." + d.getUTCFullYear();
   }
-  function cardData(profile, { name = null, showName = false, code = null, foundIds = null, now } = {}) {
+  function cardData(profile, { name = null, showName = false, code = null, foundIds = null, now: now2 } = {}) {
     const p = profile || {};
     const ids = foundIds != null ? idsOf(foundIds) : p.disc ? Object.keys(p.disc) : [];
     const known = new Set(CATALOG.map((e) => e.id));
@@ -57176,7 +57202,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     return {
       name: showName && name ? String(name) : null,
       no: formatNo(p.mem && p.mem.no),
-      since: memberSince(p, now),
+      since: memberSince(p, now2),
       rent,
       cine,
       stamps: stampsMask(found),
@@ -58188,10 +58214,11 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     return v.street !== false;
   }
   function lodFor(level, phone, xr) {
-    const lv = level === "low" || level === "high" ? level : "mid";
+    const lv = level === "low" || level === "high" || level === "ultra" ? level : "mid";
     if (xr) return { max: lv === "low" ? 3 : 4, tagDist: 0, tag3d: 3, tag3dDist: 10, hand: "neutral", coverDist: 0 };
     if (lv === "low") return { max: presetFor("low", !!phone).npcMax, tagDist: 12, tag3d: 0, tag3dDist: 0, hand: "none", coverDist: 0 };
     if (lv === "mid") return { max: 10, tagDist: 16, tag3d: 0, tag3dDist: 0, hand: "cover", coverDist: 10 };
+    if (lv === "ultra") return { max: 20, tagDist: 24, tag3d: 0, tag3dDist: 0, hand: "cover", coverDist: 18 };
     return { max: 16, tagDist: 20, tag3d: 0, tag3dDist: 0, hand: "cover", coverDist: 14 };
   }
   function pickFigures(cands2, max) {
@@ -58364,9 +58391,9 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
         return false;
       }
       function evaluate() {
-        const now = want === "third" && !!figFull && !forcedEgo();
-        if (now !== third) {
-          third = now;
+        const now2 = want === "third" && !!figFull && !forcedEgo();
+        if (now2 !== third) {
+          third = now2;
           frac = 0;
           bodyHidden = false;
           if (figFull) setLayer(figFull, third ? 0 : 2);
@@ -58562,6 +58589,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
   var MIRROR_FAR = 40;
   var LAYER_MIRROR = 2;
   function mirrorHz(level) {
+    if (level === "ultra") return 30;
     if (level === "high") return 20;
     if (level === "mid") return 10;
     return 0;
@@ -58579,9 +58607,9 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
     if (h3) return h3;
     let owner = null;
     h3 = {
-      claim(id, dist, now) {
-        if (!owner || owner.id === id || now - owner.at > STALE_MS || dist < owner.dist - 0.75) {
-          owner = { id, dist, at: now };
+      claim(id, dist, now2) {
+        if (!owner || owner.id === id || now2 - owner.at > STALE_MS || dist < owner.dist - 0.75) {
+          owner = { id, dist, at: now2 };
           return true;
         }
         return false;
@@ -58677,7 +58705,7 @@ void main() {
   var _sph = new Sphere();
   function createMirror(ctx, o) {
     const id = o.id || "mirror";
-    const now = o.now || (() => typeof performance !== "undefined" ? performance.now() : Date.now());
+    const now2 = o.now || (() => typeof performance !== "undefined" ? performance.now() : Date.now());
     const hub = liveHub(ctx.renderer || ctx);
     const mat2 = mirrorMaterial(null);
     const mesh = new Mesh(new PlaneGeometry(o.w, o.h), mat2);
@@ -58804,7 +58832,7 @@ void main() {
           return;
         }
         wanted = true;
-        if (!hub.claim(id, dist, now())) return;
+        if (!hub.claim(id, dist, now2())) return;
         acc += dt;
         if (acc < 1 / mirrorHz(level)) return;
         acc = 0;
@@ -60929,7 +60957,7 @@ void main() {
   };
   function createBlindVeil(host, opts = {}) {
     const reduced2 = typeof opts.reduced === "function" ? opts.reduced : reducedDefault2;
-    const now = typeof opts.now === "function" ? opts.now : () => typeof performance !== "undefined" ? performance.now() : Date.now();
+    const now2 = typeof opts.now === "function" ? opts.now : () => typeof performance !== "undefined" ? performance.now() : Date.now();
     const el5 = document.createElement("div");
     el5.className = "lfx-store-fight-veil";
     el5.setAttribute("aria-hidden", "true");
@@ -60953,7 +60981,7 @@ void main() {
     }
     function start(ms) {
       if (disposed) return false;
-      const t = now();
+      const t = now2();
       if (t - last < VEIL_GAP_MS) return false;
       last = t;
       const calm = reduced2();
@@ -62822,7 +62850,7 @@ void main() {
   // src/js/store3d/net/clock.js
   var KEEP = 8;
   var MAX_AGE_MS = 15 * 60 * 1e3;
-  function createClock({ now = Date.now } = {}) {
+  function createClock({ now: now2 = Date.now } = {}) {
     let probes = [];
     let seedOff = null;
     const best = () => {
@@ -62833,11 +62861,11 @@ void main() {
     return {
       /** Grobe Startprobe (z. B. `wl.s`/`ticket.s`): nur gültig, bis eine echte Probe vorliegt. */
       seed(serverMs) {
-        if (Number.isFinite(serverMs)) seedOff = serverMs - now();
+        if (Number.isFinite(serverMs)) seedOff = serverMs - now2();
       },
       /** Echo von `ck {a, s}` verarbeiten. Rückgabe: RTT in ms oder null (ungültig). */
       sample(a, serverMs) {
-        const t = now();
+        const t = now2();
         if (!Number.isFinite(a) || !Number.isFinite(serverMs)) return null;
         const rtt = t - a;
         if (rtt < 0 || rtt > 6e4) return null;
@@ -62855,7 +62883,7 @@ void main() {
       },
       serverNow() {
         const o = best() ? best().off : seedOff;
-        return o === null ? null : now() + o;
+        return o === null ? null : now2() + o;
       },
       /** Server-ms -> lokale Wanduhr (null ohne Probe). */
       toLocal(serverMs) {
@@ -62896,13 +62924,13 @@ void main() {
   function createTransport(opts) {
     const env2 = opts.env;
     const ticketFn = opts.ticket || env2.ticket;
-    const now = () => env2.now();
+    const now2 = () => env2.now();
     const st = (fn, ms) => env2.setTimeout(fn, ms);
     const ct = (h3) => {
       if (h3 !== null && h3 !== void 0) env2.clearTimeout(h3);
     };
     const rnd = () => env2.random ? env2.random() : Math.random();
-    const clock = createClock({ now });
+    const clock = createClock({ now: now2 });
     let state = "off";
     let why = null;
     let until = 0;
@@ -62976,7 +63004,7 @@ void main() {
       clearT("retry");
       clearT("hello");
       const my = ++seq;
-      const t0 = now();
+      const t0 = now2();
       attemptLog.push(t0);
       attemptLog = attemptLog.filter((x) => t0 - x <= ATTEMPTS_WINDOW_MS);
       lastBye = null;
@@ -63067,15 +63095,15 @@ void main() {
       if (code === 4001) return die("pv", "Update n\xF6tig");
       if (code === 4409) return die("dup");
       if (code === 4403) {
-        let u = now() + 6e5;
+        let u = now2() + 6e5;
         const lu = lastBye && Number.isFinite(lastBye.u) ? clock.toLocal(lastBye.u) : null;
-        if (lu !== null) u = Math.max(now(), Math.min(lu, now() + 864e5));
+        if (lu !== null) u = Math.max(now2(), Math.min(lu, now2() + 864e5));
         until = u;
         setState("banned", "ban");
         T5.retry = st(() => {
           T5.retry = null;
           connect();
-        }, Math.max(0, u - now()));
+        }, Math.max(0, u - now2()));
         return;
       }
       if (code === 4429) return wait(6e4, "rate");
@@ -63095,7 +63123,7 @@ void main() {
       scheduleRetry(code === 4401 ? "auth" : "net");
     }
     function wait(ms, w) {
-      until = now() + ms;
+      until = now2() + ms;
       setState("backoff", w);
       T5.retry = st(() => {
         T5.retry = null;
@@ -63103,7 +63131,7 @@ void main() {
       }, ms);
     }
     function scheduleRetry(w) {
-      const t = now();
+      const t = now2();
       attemptLog = attemptLog.filter((x) => t - x <= ATTEMPTS_WINDOW_MS);
       let ms;
       if (attemptLog.length >= ATTEMPTS_MAX) {
@@ -63153,7 +63181,7 @@ void main() {
       try {
         if (opts.onMsg) opts.onMsg(m);
       } catch {
-        const t = now();
+        const t = now2();
         errLog = errLog.filter((x) => t - x < 6e4);
         errLog.push(t);
         if (errLog.length > 5) die("err");
@@ -63185,7 +63213,7 @@ void main() {
     function pingTick() {
       T5.ping = null;
       if (state !== "live" || !ws) return;
-      const t = now();
+      const t = now2();
       if (awaitingPong && t - pingSentT > PONG_DEAD_MS) {
         dropConn(1006);
         return;
@@ -63206,7 +63234,7 @@ void main() {
       T5.ck = null;
       if (state !== "live") return;
       if (bucketOk()) {
-        sendRaw([build.ck(now())]);
+        sendRaw([build.ck(now2())]);
         markSent();
       }
       ckN++;
@@ -63248,7 +63276,7 @@ void main() {
       return ws ? rawSend(JSON.stringify(arr)) : false;
     }
     function prune() {
-      const t = now();
+      const t = now2();
       sentTimes = sentTimes.filter((x) => t - x < 1e3);
     }
     function bucketOk() {
@@ -63256,7 +63284,7 @@ void main() {
       return sentTimes.length < BUCKET_PER_S;
     }
     function markSent() {
-      sentTimes.push(now());
+      sentTimes.push(now2());
     }
     function enqueue(msg) {
       if (COALESCE.has(msg.t)) {
@@ -63279,7 +63307,7 @@ void main() {
     }
     function schedule(delay) {
       if (T5.flush !== null || state !== "live") return;
-      const d = delay !== void 0 ? delay : Math.max(0, lastFlush + TICK_MS - now());
+      const d = delay !== void 0 ? delay : Math.max(0, lastFlush + TICK_MS - now2());
       T5.flush = st(flush2, d);
     }
     function flush2() {
@@ -63287,7 +63315,7 @@ void main() {
       if (state !== "live" || !ws || !queue.length) return;
       prune();
       if (sentTimes.length >= BUCKET_PER_S) {
-        schedule(Math.max(1, sentTimes[0] + 1e3 - now()));
+        schedule(Math.max(1, sentTimes[0] + 1e3 - now2()));
         return;
       }
       const out = [];
@@ -63337,7 +63365,7 @@ void main() {
           return;
         }
         markSent();
-        lastFlush = now();
+        lastFlush = now2();
         if (!flushEarly) earlyUsed = false;
         flushEarly = false;
       }
@@ -63409,7 +63437,7 @@ void main() {
         if (hidden && (m.t === "p" || m.t === "ps" || m.t === "rs")) return false;
         enqueue(m);
         const urgent = o && o.urgent || URGENT.has(m.t);
-        if (urgent && !earlyUsed && now() - lastFlush < TICK_MS) {
+        if (urgent && !earlyUsed && now2() - lastFlush < TICK_MS) {
           earlyUsed = true;
           flushEarly = true;
           clearT("flush");
@@ -64139,13 +64167,13 @@ void main() {
   }
   function createCooldown(o = {}) {
     const ms = Number.isFinite(o.ms) ? o.ms : COOLDOWN_MS;
-    const now = typeof o.now === "function" ? o.now : () => Date.now();
+    const now2 = typeof o.now === "function" ? o.now : () => Date.now();
     let last = -Infinity;
     return {
-      ready: () => now() - last >= ms,
-      left: () => Math.max(0, Math.ceil(ms - (now() - last))),
+      ready: () => now2() - last >= ms,
+      left: () => Math.max(0, Math.ceil(ms - (now2() - last))),
       mark: () => {
-        last = now();
+        last = now2();
       }
     };
   }
@@ -64786,14 +64814,14 @@ void main() {
       tick(dt) {
         if (disposed || !(dt > 0)) return;
         dt = Math.min(dt, 0.1);
-        const now = nowMs();
+        const now2 = nowMs();
         for (const p of peers.values()) {
           if (p.wait > 0) {
             p.wait -= dt;
             if (p.wait <= 0) dirty = true;
           }
           if (!p.last) continue;
-          if (now !== null) p.body.syncNetClock(now - dt * 1e3);
+          if (now2 !== null) p.body.syncNetClock(now2 - dt * 1e3);
           p.body.step(dt);
           resolve(p, dt);
           const aw = p.a === AWAY;
@@ -65533,10 +65561,10 @@ void main() {
   function createLimiter2({ max = SEND_MAX, win = SEND_WIN_MS } = {}) {
     const hits = [];
     return {
-      take(now) {
-        while (hits.length && now - hits[0] >= win) hits.shift();
-        if (hits.length >= max) return Math.max(1, win - (now - hits[0]));
-        hits.push(now);
+      take(now2) {
+        while (hits.length && now2 - hits[0] >= win) hits.shift();
+        if (hits.length >= max) return Math.max(1, win - (now2 - hits[0]));
+        hits.push(now2);
         return 0;
       },
       reset() {
@@ -65545,7 +65573,7 @@ void main() {
     };
   }
   function createChat(o = {}) {
-    const now = o.now || (() => Date.now());
+    const now2 = o.now || (() => Date.now());
     const lookup = o.lookup || (() => null);
     const me = o.me || (() => null);
     const muteList = o.mute || (() => []);
@@ -65563,7 +65591,7 @@ void main() {
         const who = mine ? { k: self2.k, name: "Du" } : lookup(ev.c);
         const k = who && typeof who.k === "string" ? who.k : "";
         if (!mine && k && muteList().includes(k)) return null;
-        const e = { id: ++seq, c: ev.c, k, name: mine ? "Du" : who && who.name || "Jemand", text, t: now(), mine };
+        const e = { id: ++seq, c: ev.c, k, name: mine ? "Du" : who && who.name || "Jemand", text, t: now2(), mine };
         ring.push(e);
         while (ring.length > RING_MAX) ring.shift();
         return e;
@@ -65603,7 +65631,7 @@ void main() {
   }
   function createChatUi(ctx, o) {
     const model = o.model;
-    const now = o.now || (() => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
+    const now2 = o.now || (() => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now());
     const host = () => ctx.renderer && ctx.renderer.domElement && ctx.renderer.domElement.parentNode || null;
     const xrOn = () => !!(ctx.xr && ctx.xr.presenting());
     const maxLines = ctx.isTouch ? LINES_TOUCH : LINES_DESK;
@@ -65638,7 +65666,7 @@ void main() {
     }
     function render() {
       dirty = false;
-      const t = now();
+      const t = now2();
       const allowed = !disposed && o.enabled() && !xrOn();
       let list = [];
       if (allowed) {
@@ -65714,7 +65742,7 @@ void main() {
       if (!noteEl) return;
       noteEl.textContent = text;
       noteEl.hidden = !text;
-      noteUntil = text ? now() + NOTE_MS : 0;
+      noteUntil = text ? now2() + NOTE_MS : 0;
     }
     function submit() {
       if (!isOpen) return;
@@ -65792,7 +65820,7 @@ void main() {
       tick(dt) {
         if (disposed) return;
         acc += dt;
-        if (noteUntil && now() >= noteUntil) showNote("");
+        if (noteUntil && now2() >= noteUntil) showNote("");
         if (dirty || acc >= TICK_S) {
           acc = 0;
           render();
@@ -65976,9 +66004,9 @@ void main() {
     let tokens = burst;
     let last = null;
     return {
-      take(now) {
-        if (last !== null) tokens = Math.min(burst, tokens + (now - last) / 1e3 * perS);
-        last = now;
+      take(now2) {
+        if (last !== null) tokens = Math.min(burst, tokens + (now2 - last) / 1e3 * perS);
+        last = now2;
         if (tokens >= 1) {
           tokens -= 1;
           return true;
@@ -65999,16 +66027,16 @@ void main() {
       g: (id) => gs.get(id) || 0,
       size: () => m.size,
       /** Besitz setzen (aus `po`/`ps`, maßgeblich: `po` kommt auf einem Socket in Reihenfolge, g wird so übernommen, auch ein kleineres); behält den Sendestand bei gleichem Besitzer. */
-      set(id, o, g, h3, now) {
+      set(id, o, g, h3, now2) {
         const prev = m.get(id);
         const keep2 = prev && prev.o === o;
-        m.set(id, { o, g, h: h3 | 0, at: keep2 ? prev.at : now, last: keep2 ? prev.last : null, sentAt: keep2 ? prev.sentAt : 0, opt: false });
+        m.set(id, { o, g, h: h3 | 0, at: keep2 ? prev.at : now2, last: keep2 ? prev.last : null, sentAt: keep2 ? prev.sentAt : 0, opt: false });
         gs.set(id, g);
       },
       /** Optimistischer eigener Anspruch (g nur im Eintrag, bis `po` es bestätigt); Rückgabe: zuletzt gesehenes g (Feld `g` von pc). */
-      claim(id, me, now) {
+      claim(id, me, now2) {
         const seen = gs.get(id) || 0;
-        m.set(id, { o: me, g: seen + 1, h: 0, at: now, last: null, sentAt: 0, opt: true });
+        m.set(id, { o: me, g: seen + 1, h: 0, at: now2, last: null, sentAt: 0, opt: true });
         return seen;
       },
       free(id) {
@@ -66027,12 +66055,12 @@ void main() {
     };
     return api;
   }
-  function claimAllowed(owners, id, me, now, denyUntil) {
+  function claimAllowed(owners, id, me, now2, denyUntil) {
     const e = owners.get(id);
     if (e && e.o === me) return false;
     if (e && e.h && e.h !== me) return false;
-    if (e && now - e.at < HOLD_MS) return false;
-    if (denyUntil && denyUntil > now) return false;
+    if (e && now2 - e.at < HOLD_MS) return false;
+    if (denyUntil && denyUntil > now2) return false;
     return true;
   }
   function bodyState2(b) {
@@ -67022,7 +67050,7 @@ void main() {
       }
     }
     const offs = [core.on("ra", onRa), core.on("rs", onRs), core.on("er", onEr)];
-    function sendOwner(b, now) {
+    function sendOwner(b, now2) {
       const st = b.getNetState();
       if (!st || !st.f) return;
       const q = encode(st);
@@ -67033,11 +67061,11 @@ void main() {
       const sig = `${q[0]}|${q[1]}|${q[7]}`;
       const moved3 = lastSigPos === null || Math.hypot(st.x - lastSigPos.x, st.z - lastSigPos.z) > MOVE_M || Math.abs(st.yaw - lastSigPos.yaw) > YAW_RAD;
       const changed = sig !== lastSig || moved3;
-      if (!(changed && now - lastSentAt >= RS_MIN_MS || now - lastSentAt >= RS_KEEP_MS)) return;
+      if (!(changed && now2 - lastSentAt >= RS_MIN_MS || now2 - lastSentAt >= RS_KEEP_MS)) return;
       const m = build.rs(ra.g, q, myC());
       if (!m) return;
       if (core.send(m, { urgent: false })) {
-        lastSentAt = now;
+        lastSentAt = now2;
         lastSig = sig;
         lastSigPos = { x: st.x, z: st.z, yaw: st.yaw };
       }
@@ -67058,9 +67086,9 @@ void main() {
           }
           return;
         }
-        const now = nowMs();
+        const now2 = nowMs();
         if (role === "mirror") {
-          if (now - lastRxAt > MIRROR_TIMEOUT_MS) toLocal();
+          if (now2 - lastRxAt > MIRROR_TIMEOUT_MS) toLocal();
           return;
         }
         if (role !== "owner") return;
@@ -67069,7 +67097,7 @@ void main() {
           return;
         }
         if (pending) {
-          if (now - pendingAt > CLAIM_TIMEOUT_MS) {
+          if (now2 - pendingAt > CLAIM_TIMEOUT_MS) {
             b.setNetRole("local");
             role = "local";
             pending = false;
@@ -67077,7 +67105,7 @@ void main() {
           return;
         }
         if (ra.c !== myC()) return;
-        sendOwner(b, now);
+        sendOwner(b, now2);
       },
       /** Verbindung weg oder Aussetzen: Richard läuft wieder rein lokal (1.15). */
       stop() {
@@ -67133,12 +67161,12 @@ void main() {
     }
     function evaluate() {
       if (sd === null || !core.active()) return false;
-      const now = core.serverNow();
-      if (!Number.isFinite(now)) return false;
+      const now2 = core.serverNow();
+      if (!Number.isFinite(now2)) return false;
       const w = provider();
       if (!w) return false;
       try {
-        w.setRaining(wxRain(sd, now));
+        w.setRaining(wxRain(sd, now2));
       } catch {
         return false;
       }
@@ -68113,9 +68141,9 @@ void main() {
       function setPref(p) {
         const before = prefs();
         writePrefs(p);
-        const now = prefs();
-        if (now.on !== before.on) {
-          if (now.on) {
+        const now2 = prefs();
+        if (now2.on !== before.on) {
+          if (now2.on) {
             failed = failed === "nows" ? failed : null;
             partErrs = [];
             maybeStart();
@@ -68125,8 +68153,8 @@ void main() {
           }
         } else if (live) {
           if (flags() !== sentFlags) sendFlags();
-          if (now.film !== before.film) syncHeld();
-          if (now.card !== before.card) callParts("prefs");
+          if (now2.film !== before.film) syncHeld();
+          if (now2.card !== before.card) callParts("prefs");
         }
         change();
       }
@@ -68343,9 +68371,173 @@ void main() {
     net_default
   ];
 
+  // src/js/store3d/engine/ultra.js
+  var BUDGET_MS = 6;
+  var warn18 = (...a) => {
+    try {
+      console.warn("[LenzFlix Store3D]", ...a);
+    } catch {
+    }
+  };
+  var now = () => typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  function parseUfx(v) {
+    const off = /* @__PURE__ */ new Set();
+    let only = null;
+    if (typeof v === "string") {
+      for (const raw of v.split(",")) {
+        const t = raw.trim();
+        if (!t) continue;
+        if (t.startsWith("only:")) only = t.slice(5);
+        else if (t.startsWith("-")) off.add(t.slice(1));
+      }
+    }
+    return { off, only };
+  }
+  function defaultSchedule(fn) {
+    if (typeof requestIdleCallback === "function") {
+      const id2 = requestIdleCallback((d) => fn(d && typeof d.timeRemaining === "function" ? d.timeRemaining() : BUDGET_MS), { timeout: 1500 });
+      return { cancel: () => {
+        if (typeof cancelIdleCallback === "function") cancelIdleCallback(id2);
+      } };
+    }
+    const id = setTimeout(() => fn(BUDGET_MS), 16);
+    return { cancel: () => clearTimeout(id) };
+  }
+  function createUltra(ctx, o = {}) {
+    const schedule = o.schedule || defaultSchedule;
+    const flt = parseUfx(ctx && ctx.opts && ctx.opts.dev && ctx.opts.dev.ufx);
+    const entries = /* @__PURE__ */ new Map();
+    let job = null;
+    let disposed = false;
+    let lastActive = false;
+    const level = () => {
+      try {
+        return ctx.quality();
+      } catch {
+        return "mid";
+      }
+    };
+    const isActive = () => level() === "ultra";
+    const allowed = (key2) => flt.only ? key2 === flt.only : !flt.off.has(key2);
+    const reachable = () => !!(ctx && ctx.opts && ctx.opts.ultraOk === true && !ctx.isPhone);
+    const wantBuild = () => reachable() ? atLeast(level(), "high") : level() === "ultra";
+    const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built;
+    function applyVisibility() {
+      for (const e of entries.values()) if (e.built && e.api.object) e.api.object.visible = visibleNow(e);
+    }
+    function buildOne(e) {
+      const t0 = now();
+      try {
+        const api2 = e.build(ctx);
+        if (!api2 || !api2.object) throw new Error("build() liefert kein { object }");
+        e.api = api2;
+        e.built = true;
+        api2.object.visible = false;
+        (e.parent || ctx.scene).add(api2.object);
+        api2.object.visible = visibleNow(e);
+      } catch (err) {
+        e.failed = true;
+        warn18(`Ultra-Detail "${e.key}" konnte nicht gebaut werden`, err);
+      }
+      e.ms = +(now() - t0).toFixed(2);
+    }
+    function pending() {
+      if (!wantBuild()) return [];
+      return [...entries.values()].filter((e) => !e.built && !e.failed && allowed(e.key));
+    }
+    function step(avail) {
+      job = null;
+      if (disposed) return;
+      const t0 = now();
+      const budget = Math.min(BUDGET_MS, Number.isFinite(avail) && avail >= 0 ? avail : BUDGET_MS);
+      let todo = pending();
+      while (todo.length) {
+        buildOne(todo[0]);
+        todo = pending();
+        if (now() - t0 >= budget) break;
+      }
+      if (todo.length) kick();
+    }
+    function kick() {
+      if (job || disposed || !pending().length) return;
+      job = schedule(step);
+    }
+    function disposeEntry(e) {
+      if (!e.built || !e.api) return;
+      try {
+        if (typeof e.api.dispose === "function") e.api.dispose();
+        else if (e.api.object) disposeTree(e.api.object);
+        if (e.api.object && e.api.object.removeFromParent) e.api.object.removeFromParent();
+      } catch (err) {
+        warn18(`Ultra-Detail "${e.key}" dispose`, err);
+      }
+      e.built = false;
+      e.api = null;
+    }
+    const api = {
+      register(key2, build3, opts = {}) {
+        if (disposed || typeof build3 !== "function" || typeof key2 !== "string" || !key2 || entries.has(key2)) return () => {
+        };
+        const e = { key: key2, build: build3, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0 };
+        entries.set(key2, e);
+        kick();
+        return () => {
+          if (entries.get(key2) !== e) return;
+          entries.delete(key2);
+          disposeEntry(e);
+        };
+      },
+      isActive,
+      has: (key2) => entries.has(key2),
+      keys: () => [...entries.keys()],
+      list: () => [...entries.values()].map((e) => ({ key: e.key, built: e.built, visible: !!(e.built && e.api.object && e.api.object.visible), ms: e.ms }))
+    };
+    return {
+      api,
+      /** Pro Frame (nach den Modulen): update nur für gebaute, sichtbare Einträge. */
+      update(dt, t) {
+        if (disposed) return;
+        const act = isActive();
+        if (act !== lastActive) {
+          lastActive = act;
+          applyVisibility();
+        }
+        if (!act) return;
+        for (const e of entries.values()) {
+          if (!e.built || !e.api || typeof e.api.update !== "function" || !visibleNow(e)) continue;
+          try {
+            e.api.update(dt, t);
+          } catch (err) {
+            warn18(`Ultra-Detail "${e.key}".update`, err);
+          }
+        }
+      },
+      /** Stufenwechsel: Sichtbarkeit umschalten, ab >= high im Leerlauf nachbauen. */
+      onQuality() {
+        if (disposed) return;
+        lastActive = isActive();
+        applyVisibility();
+        kick();
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        if (job) {
+          try {
+            job.cancel();
+          } catch {
+          }
+          job = null;
+        }
+        for (const e of entries.values()) disposeEntry(e);
+        entries.clear();
+      }
+    };
+  }
+
   // src/js/store3d/modules/runtime.js
   var ease3 = (t) => t * t * (3 - 2 * t);
-  var warn18 = (...a) => {
+  var warn19 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -68377,6 +68569,8 @@ void main() {
       this.texActive = 0;
       this.ac = new AbortController();
       this.ctx = this.makeCtx();
+      this.ultra = createUltra(this.ctx);
+      this.providers.set("ultra", this.ultra.api);
     }
     /** Eingabe gesperrt (freeze() oder Kamera-Übernahme). */
     get locked() {
@@ -68532,7 +68726,7 @@ void main() {
             try {
               fn();
             } catch (err) {
-              warn18("exitThen", err);
+              warn19("exitThen", err);
             }
             return true;
           },
@@ -68589,7 +68783,7 @@ void main() {
           const h3 = await m.init(this.ctx);
           if (h3) this.handles.push({ name: m.name, h: h3 });
         } catch (err) {
-          warn18(`Modul "${m && m.name}" konnte nicht starten`, err);
+          warn19(`Modul "${m && m.name}" konnte nicht starten`, err);
         }
         if (progress) progress((i + 1) / n);
       }
@@ -68601,17 +68795,18 @@ void main() {
         try {
           fn(...args);
         } catch (err) {
-          warn18(`Event ${ev}`, err);
+          warn19(`Event ${ev}`, err);
         }
       }
     }
     hook(name, ...args) {
+      if (name === "onQuality" && this.ultra) this.ultra.onQuality(...args);
       for (const { name: mn, h: h3 } of this.handles) {
         if (typeof h3[name] !== "function") continue;
         try {
           h3[name](...args);
         } catch (err) {
-          warn18(`Modul "${mn}".${name}`, err);
+          warn19(`Modul "${mn}".${name}`, err);
         }
       }
     }
@@ -68621,13 +68816,14 @@ void main() {
       rebuildNav(this.app.layout);
     }
     /** Pro Frame (nach player.update). */
-    update(dt, now) {
+    update(dt, now2) {
       this.flushNav();
       this.stepLook(dt);
-      this.hook("update", dt, now / 1e3);
-      this.emit("frame", dt, now / 1e3);
-      if (now - this.zoneT > 200) {
-        this.zoneT = now;
+      this.hook("update", dt, now2 / 1e3);
+      if (this.ultra) this.ultra.update(dt, now2 / 1e3);
+      this.emit("frame", dt, now2 / 1e3);
+      if (now2 - this.zoneT > 200) {
+        this.zoneT = now2;
         this.checkZones();
       }
     }
@@ -68648,11 +68844,11 @@ void main() {
       for (const id of prev) if (!inside.has(id)) this.emit("zoneExit", id);
       const sr = L2.zones.store && L2.zones.store.rect || (Number.isFinite(L2.w) && Number.isFinite(L2.d) ? { x0: 0, z0: 0, x1: L2.w, z1: L2.d } : null);
       if (sr) {
-        const now = p.x >= sr.x0 && p.x <= sr.x1 && p.z >= sr.z0 && p.z <= sr.z1 && (sr.y1 === void 0 || y <= sr.y1);
-        if (this.inStore == null) this.inStore = now;
-        else if (now !== this.inStore) {
-          this.inStore = now;
-          this.emit(now ? "return" : "leave");
+        const now2 = p.x >= sr.x0 && p.x <= sr.x1 && p.z >= sr.z0 && p.z <= sr.z1 && (sr.y1 === void 0 || y <= sr.y1);
+        if (this.inStore == null) this.inStore = now2;
+        else if (now2 !== this.inStore) {
+          this.inStore = now2;
+          this.emit(now2 ? "return" : "leave");
         }
       }
     }
@@ -68680,7 +68876,7 @@ void main() {
             break;
           }
         } catch (err) {
-          warn18("Aktion " + name, err);
+          warn19("Aktion " + name, err);
         }
       }
       this.emit(name, ev, consumed);
@@ -68824,7 +69020,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn18("overlay.onClose", err);
+            warn19("overlay.onClose", err);
           }
         });
         return;
@@ -68836,7 +69032,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn18("overlay.onClose", err);
+            warn19("overlay.onClose", err);
           }
         });
         return false;
@@ -68866,7 +69062,7 @@ void main() {
           try {
             cb();
           } catch (err) {
-            warn18("panel.onClose", err);
+            warn19("panel.onClose", err);
           }
         });
         return dead;
@@ -68915,7 +69111,7 @@ void main() {
       try {
         if (st.onClose) st.onClose();
       } catch (err) {
-        warn18("overlay.onClose", err);
+        warn19("overlay.onClose", err);
       }
       app.setMode(st.prev === "hold" && app.holdview.isOpen ? "hold" : "play");
       if (app.mode === "play" && app.desktop && !app.suspended) app.desktop.requestLock();
@@ -68994,6 +69190,7 @@ void main() {
       this.texQueue.forEach((j) => j.resolve(null));
       this.texQueue = [];
       this.hook("dispose");
+      if (this.ultra) this.ultra.dispose();
       this.handles = [];
       this.overlayClose();
       this.release();
@@ -69176,8 +69373,8 @@ void main() {
   }
 
   // src/js/store3d/ui/pause.js
-  var QUALITY_LABEL = { auto: "Auto", low: "Niedrig", mid: "Mittel", high: "Hoch" };
-  var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "auto" };
+  var QUALITY_LABEL = { auto: "Auto", low: "Niedrig", mid: "Mittel", high: "Hoch", ultra: "Ultra" };
+  var QUALITY_NEXT = { auto: "low", low: "mid", mid: "high", high: "ultra", ultra: "auto" };
   var SCHEME_LABEL = { game: "Spiel", joystick: "Joystick", touch: "Touch" };
   var SCHEME_NEXT = { game: "joystick", joystick: "touch", touch: "game" };
   var SENS_LABEL = { low: "Niedrig", normal: "Normal", high: "Hoch" };
@@ -69198,12 +69395,12 @@ void main() {
     if (!info || !info.diag) return "";
     const d = String(info.diag);
     const name = info.voiceName || "";
-    const warn24 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
+    const warn25 = wantOnline && !info.online ? " \u2013 keine Online-Stimme verf\xFCgbar, nutze Ger\xE4testimme" : "";
     if (info.online) {
       const st = d === "ok" ? "" : d === "locked" ? " \u2013 wartet auf ersten Tipp" : d === "notStarted" ? " \u2013 hat nicht gesprochen" : d.startsWith("error:") ? ` \u2013 Fehler (${d.slice(6)})` : "";
       return `Stimme: ${name}${st} \xB7 online: S\xE4tze, Name und Titel gehen an den Stimmendienst des Browsers`;
     }
-    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn24}`;
+    if (d === "ok") return `Stimme: ${name} (${info.lang || ""})${warn25}`;
     if (d === "locked") return "Stimme: wartet auf ersten Tipp";
     if (d === "notStarted") return `Stimme: ${name} \u2013 Ger\xE4t hat nicht gesprochen (Stummschalter?)`;
     if (d === "noLocalDe") return "Stimme: keine deutsche Ger\xE4testimme \u2013 Einstellungen \u2192 Bedienungshilfen \u2192 Gesprochene Inhalte \u2192 Stimmen \u2192 Deutsch";
@@ -69249,7 +69446,8 @@ void main() {
     card.hidden = true;
     mk4("Klassische Ansicht", () => a.onClassic());
     const q = mk4("", () => {
-      const next = QUALITY_NEXT[a.getQuality()] || "auto";
+      let next = QUALITY_NEXT[a.getQuality()] || "auto";
+      if (next === "ultra" && !(typeof a.canUltra === "function" && a.canUltra())) next = "auto";
       a.onQuality(next);
       refresh();
     });
@@ -70630,7 +70828,7 @@ void main() {
   }
   function buildFistGeometry() {
     const list = [];
-    const p = (w, h3, d, x, y, z, c) => boxPart(list, w, h3, d, x, y, z, c);
+    const p = (w, h3, d, x, y, z, c2) => boxPart(list, w, h3, d, x, y, z, c2);
     p(0.09, 0.07, 0.09, 0, 5e-3, 0.04, 15515035);
     p(0.07, 0.06, 0.04, 0, 0, 0.085, 14657925);
     const stag = [0, 4e-3, 5e-3, 1e-3];
@@ -70643,7 +70841,12 @@ void main() {
     }
     p(0.026, 0.026, 0.05, -0.05, 0, 0.012, 14855818);
     p(0.062, 0.022, 0.026, -0.016, -0.012, -0.066, 15118990);
-    return mergeList(list);
+    const geo = mergeList(list);
+    geo.computeBoundingBox();
+    const c = geo.boundingBox.getCenter(new Vector3());
+    geo.translate(-c.x, -c.y, -c.z);
+    geo.computeBoundingBox();
+    return geo;
   }
   var LENS_ON = new Color(16734790).toArray();
   var LENS_OFF = new Color(6955554).toArray();
@@ -71957,7 +72160,7 @@ void main() {
     g.globalAlpha = 1;
   }
   var keyOf2 = (h3) => h3 ? h3.kind === "action" ? `action:${h3.ref.row}:${h3.ref.action}` : `${h3.kind}:${h3.ref}` : null;
-  var warn19 = (what, err) => {
+  var warn20 = (what, err) => {
     try {
       console.warn(`[LenzFlix Store3D] ${what}`, err);
     } catch {
@@ -72133,10 +72336,10 @@ void main() {
     };
     let lastRender = performance.now();
     mesh.onBeforeRender = () => {
-      const now = performance.now();
-      const dt = (now - lastRender) / 1e3;
-      lastRender = now;
-      if (now - lastTick > 250) {
+      const now2 = performance.now();
+      const dt = (now2 - lastRender) / 1e3;
+      lastRender = now2;
+      if (now2 - lastTick > 250) {
         followStep(dt, false);
         headStep(dt, false);
         blink();
@@ -72231,7 +72434,7 @@ void main() {
           } else if (h3.kind === "input") {
           } else return false;
         } catch (err) {
-          warn19("Panel", err);
+          warn20("Panel", err);
         }
         return true;
       },
@@ -72248,7 +72451,7 @@ void main() {
         try {
           if (cb) cb();
         } catch (err) {
-          warn19("Panel.onClose", err);
+          warn20("Panel.onClose", err);
         }
       }
     };
@@ -72875,12 +73078,12 @@ void main() {
       const app = m.app;
       return app.mode === "play" && !(app.mods && app.mods.locked) && !m.inCinema && !!app.shelves;
     }
-    pick(rec, now) {
+    pick(rec, now2) {
       const m = this.mode;
       const app = m.app;
       const pt = rec.pt;
       const { o, d } = this.rayOf(rec);
-      pt.at = now;
+      pt.at = now2;
       pt.o.copy(o);
       pt.d.copy(d);
       const panelHit = this.raycastPanels(o, d);
@@ -72916,7 +73119,7 @@ void main() {
       this.blocks.right = false;
       if (this.mode.hud3d) this.mode.hud3d.hideLabel();
     }
-    update(dt, now) {
+    update(dt, now2) {
       const m = this.mode;
       if (!this.attached) return;
       const active = m.inputActive();
@@ -72935,8 +73138,8 @@ void main() {
         }
         const { o, d } = this.rayOf(rec);
         const moved3 = o.distanceToSquared(pt.o) > 16e-6 || 1 - d.dot(pt.d) > 15e-7;
-        const age = now - pt.at;
-        if (this.dirty || age >= IDLE_MS || moved3 && age >= PICK_MS) this.pick(rec, now);
+        const age = now2 - pt.at;
+        if (this.dirty || age >= IDLE_MS || moved3 && age >= PICK_MS) this.pick(rec, now2);
         this.render(rec);
         const tg = pt.target;
         if (tg && tg.kind === "panel" && scrollable(tg.panel) && rec.side) {
@@ -73003,11 +73206,11 @@ void main() {
       hud.hideLabel();
     }
     /** Trigger/Pinch losgelassen→gedrückt: frisch zielen und auslösen. */
-    trigger(rec, now) {
+    trigger(rec, now2) {
       const m = this.mode;
       if (!this.attached || !rec.pt || !rec.source) return;
       if (rec.side) m.aimHand = rec.side;
-      const tg = this.pick(rec, now);
+      const tg = this.pick(rec, now2);
       const app = m.app;
       this.dirty = true;
       if (!tg) {
@@ -73029,9 +73232,9 @@ void main() {
       }
     }
     /** Grip gedrückt: Hülle in Reichweite greifen. */
-    grip(rec, now) {
+    grip(rec, now2) {
       const m = this.mode;
-      void now;
+      void now2;
       if (!this.attached || !rec.source || !this.canPickWorld()) return;
       if (rec.side) m.aimHand = rec.side;
       const p = rec.source.hand ? this.rayOf(rec).o : rec.grip.getWorldPosition(this._pt);
@@ -73618,17 +73821,17 @@ void main() {
       this._lastAt = -1e9;
     }
     /** @returns {boolean} true, wenn ein Upload angefordert wurde. */
-    update(now = typeof performance !== "undefined" ? performance.now() : Date.now()) {
+    update(now2 = typeof performance !== "undefined" ? performance.now() : Date.now()) {
       const v = this.image;
       if (!v || (Number(v.readyState) || 0) < 2) return false;
       const t = Number(v.currentTime);
-      const gap = now - this._lastAt;
+      const gap = now2 - this._lastAt;
       let go2 = false;
       if (t !== this._lastTime) go2 = gap >= MIN_GAP;
       else if (!v.paused && !v.ended) go2 = gap >= PLAY_GAP;
       if (!go2) return false;
       this._lastTime = t;
-      this._lastAt = now;
+      this._lastAt = now2;
       this.uploads++;
       this.needsUpdate = true;
       return true;
@@ -73747,10 +73950,10 @@ void main() {
         drawStatus(statusCanvas, status);
         statusTex.needsUpdate = true;
       },
-      update(now) {
+      update(now2) {
         if (disposed) return;
         if (tex) {
-          tex.update(now);
+          tex.update(now2);
           const vw = Number(video.videoWidth) || 0;
           const vh = Number(video.videoHeight) || 0;
           if (vw > 0 && vh > 0 && Math.abs(vw / vh - dims.aspect) > 0.01) rebuild(vw / vh);
@@ -73949,11 +74152,11 @@ void main() {
           api._src = c;
         }
       },
-      tick(now) {
+      tick(now2) {
         if (disposed || mode === "none") return;
         if (dimsVersion !== screen.dims.version) layout();
-        if (mode === "canvas" && copyCtx && api._src && now - lastCopy >= MAX_CANVAS_FPS_GAP) {
-          lastCopy = now;
+        if (mode === "canvas" && copyCtx && api._src && now2 - lastCopy >= MAX_CANVAS_FPS_GAP) {
+          lastCopy = now2;
           try {
             copyCtx.clearRect(0, 0, copyCanvas.width, copyCanvas.height);
             copyCtx.drawImage(api._src, 0, 0, copyCanvas.width, copyCanvas.height);
@@ -74000,10 +74203,10 @@ void main() {
   }
   var BLACK2 = Object.freeze({ MIN_VIDEO_S: 10, WINDOW_MS: 9e4 });
   var newBlackState = () => ({ t0: null, since: null, ct0: 0, fired: false, seen: false });
-  function trackBlack(sample, now, state, { ready = true, currentTime = 0 } = {}) {
+  function trackBlack(sample, now2, state, { ready = true, currentTime = 0 } = {}) {
     if (!state || state.fired || !sample) return false;
-    if (state.t0 == null) state.t0 = now;
-    if (now - state.t0 > BLACK2.WINDOW_MS || !ready) {
+    if (state.t0 == null) state.t0 = now2;
+    if (now2 - state.t0 > BLACK2.WINDOW_MS || !ready) {
       state.since = null;
       return false;
     }
@@ -74025,7 +74228,7 @@ void main() {
     }
     if (state.seen) return false;
     if (state.since == null) {
-      state.since = now;
+      state.since = now2;
       state.ct0 = Number(currentTime) || 0;
       return false;
     }
@@ -74059,10 +74262,10 @@ void main() {
       get tainted() {
         return tainted;
       },
-      update(now) {
+      update(now2) {
         if (failed || !video || (Number(video.readyState) || 0) < 2) return null;
-        if (now - last < gap) return null;
-        last = now;
+        if (now2 - last < gap) return null;
+        last = now2;
         try {
           g.drawImage(video, 0, 0, w, h3);
           return averageColor(g.getImageData(0, 0, w, h3));
@@ -74168,7 +74371,7 @@ void main() {
     let selfClose = false;
     let lastKey = "";
     let lastTouch = 0;
-    let now = 0;
+    let now2 = 0;
     let disposed = false;
     const state = () => getState && getState() || {};
     const closeHandle = (h3) => {
@@ -74255,7 +74458,7 @@ void main() {
         return Boolean(tracks && tracks.open);
       },
       touch() {
-        lastTouch = now;
+        lastTouch = now2;
       },
       show() {
         if (disposed) return;
@@ -74293,7 +74496,7 @@ void main() {
       },
       /** Pro Frame: Zeit merken, Panel aktualisieren, bei Spiel ohne Bedienung ausblenden. */
       tick(t) {
-        now = t;
+        now2 = t;
         if (disposed) return;
         if (main && !main.open) {
           main = null;
@@ -74306,7 +74509,7 @@ void main() {
         if (!main) return;
         api.refresh();
         const st = state();
-        if (st.phase === "playing" && !st.upNext && !api.tracksOpen && now - lastTouch > AUTO_HIDE_MS) api.hide();
+        if (st.phase === "playing" && !st.upNext && !api.tracksOpen && now2 - lastTouch > AUTO_HIDE_MS) api.hide();
       },
       openTracks(kind) {
         if (disposed) return;
@@ -74411,7 +74614,7 @@ void main() {
         for (const k of Object.keys(w.marks)) delete w.marks[k];
       },
       /** Fortschritt des Ladens: readyState steigt, buffered-Ende wächst oder currentTime ändert sich. */
-      progress(v, now) {
+      progress(v, now2) {
         const rs = Number(v.readyState) || 0;
         let be = 0;
         try {
@@ -74423,26 +74626,26 @@ void main() {
         const p = w.prog;
         if (!p || p.v !== v) {
           w.prog = { v, rs, be, ct };
-          w.lastProgress = now;
+          w.lastProgress = now2;
           return;
         }
-        if (rs > p.rs || be > p.be + 0.01 || Math.abs(ct - p.ct) > 0.01) w.lastProgress = now;
+        if (rs > p.rs || be > p.be + 0.01 || Math.abs(ct - p.ct) > 0.01) w.lastProgress = now2;
         p.rs = rs;
         p.be = be;
         p.ct = ct;
       },
-      step({ now, video, state, frames, hasFrame, baseTime }) {
-        if (w.startAt == null) w.startAt = now;
+      step({ now: now2, video, state, frames, hasFrame, baseTime }) {
+        if (w.startAt == null) w.startAt = now2;
         const v = video || null;
         const st = state || {};
-        const el5 = now - w.startAt;
+        const el5 = now2 - w.startAt;
         const rs = v ? Number(v.readyState) || 0 : 0;
         const mark = (k) => {
           if (w.marks[k] == null) w.marks[k] = Math.round(el5);
         };
         if (v) {
           mark("video");
-          w.progress(v, now);
+          w.progress(v, now2);
           if (rs >= 2) mark("ready");
           if (frames >= 1) mark("frame");
         }
@@ -74452,8 +74655,8 @@ void main() {
         }
         const pausedNow = Boolean(v) && rs >= 2 && Boolean(hasFrame) && (st.phase === "paused" || v.paused === true);
         if (pausedNow) {
-          if (w.pausedSince == null) w.pausedSince = now;
-          else if (now - w.pausedSince >= cfg.PAUSED_HOLD_MS) {
+          if (w.pausedSince == null) w.pausedSince = now2;
+          else if (now2 - w.pausedSince >= cfg.PAUSED_HOLD_MS) {
             mark("start");
             return { event: "pausedStart", paused: true, slow: false, prepare: false };
           }
@@ -74468,7 +74671,7 @@ void main() {
           if (el5 > cfg.NO_VIDEO_MS) return { event: "fail", code: "T1", slow, prepare };
           return { event: null, slow, prepare };
         }
-        if (now - w.lastProgress > cfg.STALL_MS || el5 > cfg.MAX_START_MS) return { event: "fail", code: "T2", slow, prepare };
+        if (now2 - w.lastProgress > cfg.STALL_MS || el5 > cfg.MAX_START_MS) return { event: "fail", code: "T2", slow, prepare };
         return { event: null, slow, prepare };
       },
       /** Hintergrund-Tab: die Uhr (now) ist um gapMs gesprungen, ohne dass etwas hätte passieren können. Zeitbezüge mitziehen. */
@@ -74490,7 +74693,7 @@ void main() {
     let lastState = -1e9;
     let lastSub = -1e9;
     let offs = [];
-    const due = (now, last, ms) => now - last >= ms;
+    const due = (now2, last, ms) => now2 - last >= ms;
     const dep = () => {
       try {
         return getDeps ? getDeps() : null;
@@ -74504,20 +74707,20 @@ void main() {
         lastState = -1e9;
         lastSub = -1e9;
       },
-      pollVideo(now) {
+      pollVideo(now2) {
         const d = dep();
-        if (!d || !due(now, lastVideo, intervals.VIDEO_MS)) return null;
-        lastVideo = now;
+        if (!d || !due(now2, lastVideo, intervals.VIDEO_MS)) return null;
+        lastVideo = now2;
         try {
           return { value: d.video() };
         } catch {
           return null;
         }
       },
-      pollState(now) {
+      pollState(now2) {
         const d = dep();
-        if (!d || !due(now, lastState, intervals.STATE_MS)) return null;
-        lastState = now;
+        if (!d || !due(now2, lastState, intervals.STATE_MS)) return null;
+        lastState = now2;
         try {
           return { value: d.state() };
         } catch {
@@ -74525,10 +74728,10 @@ void main() {
         }
       },
       /** enabled=false: Takt steht (Phase failed). wantData=false: leere Untertitel melden (Leinwand noch ohne Videobild). */
-      pollSubs(now, enabled = true, wantData = true) {
+      pollSubs(now2, enabled = true, wantData = true) {
         const d = dep();
-        if (!d || !enabled || !due(now, lastSub, intervals.SUB_MS)) return null;
-        lastSub = now;
+        if (!d || !enabled || !due(now2, lastSub, intervals.SUB_MS)) return null;
+        lastSub = now2;
         try {
           return { value: wantData ? d.subtitles() : null };
         } catch {
@@ -74575,7 +74778,7 @@ void main() {
 
   // src/js/store3d/cinema/cinema.js
   var FAIL_HOLD_MS = 2600;
-  var warn20 = (...a) => {
+  var warn21 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -74652,7 +74855,7 @@ void main() {
       try {
         return fn(p);
       } catch (err) {
-        warn20("Party", err);
+        warn21("Party", err);
         return void 0;
       }
     }
@@ -74708,7 +74911,7 @@ void main() {
       this._pt((p) => p.beginRun(item));
       const f = this._fade();
       const run = () => this._build(this.gen);
-      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn20("Kino betreten", err));
+      if (f) this._enterPromise = Promise.resolve(f.jump(run, { out: 250, in: 700 })).catch((err) => warn21("Kino betreten", err));
       else run();
       return true;
     }
@@ -74732,7 +74935,7 @@ void main() {
         try {
           if (app.holdview && typeof app.holdview.close === "function") app.holdview.close(false);
         } catch (err) {
-          warn20("H\xFClle schlie\xDFen", err);
+          warn21("H\xFClle schlie\xDFen", err);
         }
         if (app.mods) app.mods.hook("onSuspend");
         this._duck(true);
@@ -74776,7 +74979,7 @@ void main() {
         }
         this.phase = "starting";
       } catch (err) {
-        warn20("Kino bauen", err);
+        warn21("Kino bauen", err);
         this.failCode = "B";
         this._selfLeave("fail", "B");
       }
@@ -74819,7 +75022,7 @@ void main() {
         if (x && typeof x.savePrefs === "function") x.savePrefs();
         else this.app.savePrefs();
       } catch (err) {
-        warn20("Platz speichern", err);
+        warn21("Platz speichern", err);
       }
       if (name === this.seat || !this.hall || this.phase === "entering" || this.phase === "leaving") {
         this.seat = name;
@@ -74896,9 +75099,9 @@ void main() {
       this.spillK = 0.35;
       if (this.controls) this.controls.show();
     }
-    _checkStart(now) {
+    _checkStart(now2) {
       const r = this.watch.step({
-        now,
+        now: now2,
         video: this.video,
         state: this.state,
         frames: this.screen ? this.screen.videoFrames : 0,
@@ -74932,7 +75135,7 @@ void main() {
       this.phase = "failed";
       this.failCode = code;
       this.marks.fail = Math.round(this.watch.startAt == null ? 0 : this.now - this.watch.startAt);
-      warn20("Kino-Start fehlgeschlagen", code);
+      warn21("Kino-Start fehlgeschlagen", code);
       const d = this._deps;
       const st = this.state || {};
       const txt = failToast(code);
@@ -74945,7 +75148,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn20("Stopp", err);
+          warn21("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS, () => this._selfLeave("fail", code));
@@ -74980,20 +75183,20 @@ void main() {
       });
     }
     // ---------------------------------------------------------------- Schleife
-    tick(dt, now) {
+    tick(dt, now2) {
       if (!this._active || this.disposed) return;
-      this.now = now;
+      this.now = now2;
       const hall = this.hall;
       if (hall) hall.update(dt);
       if (this.phase === "entering" || this.phase === "leaving" || !this.screen) return;
-      const pv = this.feed.pollVideo(now);
+      const pv = this.feed.pollVideo(now2);
       if (pv) {
         try {
           this._setVideo(pv.value);
         } catch {
         }
       }
-      const ps = this.feed.pollState(now);
+      const ps = this.feed.pollState(now2);
       if (ps) {
         this.state = ps.value || this.state;
         this._onState();
@@ -75004,7 +75207,7 @@ void main() {
         this.backToStore();
         if (this._leaveAsked) return;
       }
-      this.screen.update(now);
+      this.screen.update(now2);
       const live = this.phase === "playing" || this.phase === "paused";
       if (live && !this.screen.hasFrame) {
         const title = this._title();
@@ -75014,25 +75217,25 @@ void main() {
         }
       } else this.reloadShown = null;
       if (this.subs) {
-        const pu = this.feed.pollSubs(now, this.phase !== "failed", this.screen.hasFrame);
+        const pu = this.feed.pollSubs(now2, this.phase !== "failed", this.screen.hasFrame);
         if (pu) {
           try {
             this.subs.set(pu.value);
           } catch {
           }
         }
-        this.subs.tick(now);
+        this.subs.tick(now2);
       }
       if (this.ambient && this.screen.hasFrame && (this.phase === "playing" || this.phase === "paused")) {
-        const c = this.ambient.update(now);
+        const c = this.ambient.update(now2);
         if (c) this.spillTarget = c;
       }
       if (this.spillTarget) {
         this.spill = smoothColor(this.spill, this.spillTarget, dt, 0.5);
         hall.setSpill(this.spill, this.spillK == null ? 0 : this.spillK);
       }
-      if (this.controls && this.phase !== "failed") this.controls.tick(now);
-      if (this.phase === "starting") this._checkStart(now);
+      if (this.controls && this.phase !== "failed") this.controls.tick(now2);
+      if (this.phase === "starting") this._checkStart(now2);
     }
     // ---------------------------------------------------------------- Eingabe-Hooks (mode.js)
     /** Trigger ins Leere: Bedienpanel ein/aus. */
@@ -75097,7 +75300,7 @@ void main() {
         if ((reason === "fail" || this.failCode) && this._xr) this._xr.toast(failToast(this.failCode), 3200);
         return true;
       }, (err) => {
-        warn20("Kino verlassen", err);
+        warn21("Kino verlassen", err);
         if (gen !== this.gen) return false;
         this._leavePromise = null;
         if (this._active) this._teardown();
@@ -75164,7 +75367,7 @@ void main() {
   };
 
   // src/js/store3d/xr/mode.js
-  var warn21 = (...a) => {
+  var warn22 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -75232,7 +75435,7 @@ void main() {
         const f = this.app.deps && this.app.deps.onXr;
         if (typeof f === "function") f(state);
       } catch (err) {
-        warn21("onXr", err);
+        warn22("onXr", err);
       }
     }
     /** Muss synchron aus einem Klick laufen. */
@@ -75246,7 +75449,7 @@ void main() {
         const cash = ctx && ctx.use("cashier");
         if (cash && typeof cash.unlockVoice === "function") cash.unlockVoice();
       } catch (err) {
-        warn21("Entsperren", err);
+        warn22("Entsperren", err);
       }
       Promise.resolve(p).then((ok) => {
         if (!ok && !this.presenting) this.releaseSources();
@@ -75332,7 +75535,7 @@ void main() {
       }
     }
     /** Grip-/B-Flanken und Trigger-Warteschlange abarbeiten (nach der Rig-Platzierung). */
-    processActions(now) {
+    processActions(now2) {
       if (!this.inputActive()) {
         this.selectQueue.length = 0;
         return;
@@ -75340,12 +75543,12 @@ void main() {
       for (const rec of this.sources) {
         if (!rec.source) continue;
         const e = rec.pad.edges;
-        if (e.gripDown && this.pointer) this.pointer.grip(rec, now);
+        if (e.gripDown && this.pointer) this.pointer.grip(rec, now2);
         if (e.bDown) this.back();
       }
       const q = this.selectQueue.splice(0);
       for (const rec of q) {
-        if (rec.source && this.pointer) this.pointer.trigger(rec, now);
+        if (rec.source && this.pointer) this.pointer.trigger(rec, now2);
       }
     }
     /** Grip-Objekt der Hand (Hände: Zielstrahl-Ursprung). Ohne Quelle: Gruppe 0,45 m vor dem Kopf. */
@@ -75546,7 +75749,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn21("exitThen", err);
+          warn22("exitThen", err);
         }
       }
     }
@@ -75565,7 +75768,7 @@ void main() {
       try {
         if (this.cinema && typeof this.cinema.onVisibility === "function") this.cinema.onVisibility(state);
       } catch (err) {
-        warn21("Kino-Sichtbarkeit", err);
+        warn22("Kino-Sichtbarkeit", err);
       }
     }
     // --- Schleife ---
@@ -75573,7 +75776,7 @@ void main() {
       return this.jumping || !!(this.fade && this.fade.alpha > 0.01);
     }
     /** Pro Frame in XR vor allem anderen: Eingabe lesen, Kopfpose → Spielerpose, Drehen/Gehen, Rig zurückrechnen, Laser. */
-    beforeTick(dt, now, frame) {
+    beforeTick(dt, now2, frame) {
       const app = this.app;
       const p = app.player;
       const eng = app.engine;
@@ -75648,16 +75851,16 @@ void main() {
           this.speed = Math.hypot(p.vx, p.vz);
         }
       }
-      this.afterPlace(dt, now);
+      this.afterPlace(dt, now2);
     }
     /** Nach der Rig-Platzierung: Laser, Handgelenk-Knopf, Aktionen, Anzeigen, Panels, Blasen, Vignette. */
-    afterPlace(dt, now) {
+    afterPlace(dt, now2) {
       const app = this.app;
       const eng = app.engine;
       if (this.wrist) this.wrist.update(this.recFor("left"), eng.camera.position);
       eng.rig.updateMatrixWorld(true);
-      if (this.pointer) this.pointer.update(dt, now);
-      this.processActions(now);
+      if (this.pointer) this.pointer.update(dt, now2);
+      this.processActions(now2);
       if (this.hud3d) {
         this.hud3d.update(dt);
         if (this.diagOn) {
@@ -75673,7 +75876,7 @@ void main() {
           try {
             h3.tick(dt);
           } catch (err) {
-            warn21("Panel", err);
+            warn22("Panel", err);
           }
         }
       }
@@ -75681,7 +75884,7 @@ void main() {
         try {
           b.update(dt);
         } catch (err) {
-          warn21("Blase", err);
+          warn22("Blase", err);
         }
       }
       if (this.vignette) this.vignette.update(dt, !!(app.opts.vr && app.opts.vr.vignette !== false) && !this.inCinema, this.speed, this.turnRate);
@@ -75709,8 +75912,8 @@ void main() {
       this.placed = false;
       return true;
     }
-    cinemaTick(dt, now) {
-      this.cinema.tick(dt, now);
+    cinemaTick(dt, now2) {
+      this.cinema.tick(dt, now2);
     }
     // --- Bewegung ---
     /** Schwarzblende + Teleport; face = yaw oder { x, z }. */
@@ -75783,7 +75986,7 @@ void main() {
         try {
           fn();
         } catch (err) {
-          warn21("exitThen", err);
+          warn22("exitThen", err);
         }
         return true;
       }
@@ -76390,11 +76593,11 @@ void main() {
   });
   var clamp17 = (x, a, b) => Math.min(b, Math.max(a, x));
   var num5 = (x, d = 0) => Number.isFinite(Number(x)) ? Number(x) : d;
-  function expectedPos(s, now) {
+  function expectedPos(s, now2) {
     if (!s) return 0;
     const p = num5(s.p);
     if (s.st !== 1) return Math.max(0, p);
-    return Math.max(0, p + (now - num5(s.at, now)) * num5(s.rate, 1));
+    return Math.max(0, p + (now2 - num5(s.at, now2)) * num5(s.rate, 1));
   }
   function rejoinPlan({ kh, sid, wasHost, alone } = {}) {
     if (Array.isArray(kh) && kh.some((e) => Array.isArray(e) && e[0] === sid)) return "kj";
@@ -76466,17 +76669,17 @@ void main() {
         }
       }
     }
-    function startHold(ms, now) {
+    function startHold(ms, now2) {
       try {
         A.setPaused(true);
       } catch {
       }
-      S.holdUntil = now + Math.round(ms);
-      S.applyUntil = Math.max(S.applyUntil, now + cfg.APPLY_MS);
+      S.holdUntil = now2 + Math.round(ms);
+      S.applyUntil = Math.max(S.applyUntil, now2 + cfg.APPLY_MS);
       S.alignedSince = null;
       resetRate();
     }
-    function endHold(resume, now) {
+    function endHold(resume, now2) {
       if (!S.holdUntil) return;
       S.holdUntil = 0;
       if (!resume) return;
@@ -76484,7 +76687,7 @@ void main() {
         A.setPaused(false);
       } catch {
       }
-      S.applyUntil = Math.max(S.applyUntil, (now == null ? nowFn() : now) + cfg.APPLY_MS);
+      S.applyUntil = Math.max(S.applyUntil, (now2 == null ? nowFn() : now2) + cfg.APPLY_MS);
     }
     function giveUp(reason, sendKl = true) {
       if (inactive()) return;
@@ -76494,94 +76697,94 @@ void main() {
       S.phase = "solo";
       emit({ type: "solo", reason });
     }
-    function doSeek(target, now) {
+    function doSeek(target, now2) {
       S.holdUntil = 0;
       try {
         A.seekTo(Math.max(0, Math.round(target)), { exact: exactOk() });
       } catch {
       }
-      S.guardUntil = now + cfg.GUARD_MS;
-      S.applyUntil = now + cfg.APPLY_MS;
-      S.lastSeekAt = now;
-      S.landAt = now + cfg.LAND_AFTER_MS;
-      S.leadAt = now;
+      S.guardUntil = now2 + cfg.GUARD_MS;
+      S.applyUntil = now2 + cfg.APPLY_MS;
+      S.lastSeekAt = now2;
+      S.landAt = now2 + cfg.LAND_AFTER_MS;
+      S.leadAt = now2;
       S.alignedSince = null;
       C.seeks++;
       resetRate();
     }
-    function doPause(on, now) {
+    function doPause(on, now2) {
       S.holdUntil = 0;
       try {
         A.setPaused(on);
       } catch {
       }
-      S.applyUntil = now + cfg.APPLY_MS;
+      S.applyUntil = now2 + cfg.APPLY_MS;
     }
     function effSt() {
       if (S.next) return S.next.o === 1 ? 1 : 2;
       if (S.inflight && S.inflight.o !== 3) return S.inflight.o === 1 ? 1 : 2;
       return S.sess ? S.sess.st : 2;
     }
-    function flush2(now) {
-      if (!S.sess || inactive() || S.inflight || now - S.lastKc < cfg.KC_MIN_MS) return;
+    function flush2(now2) {
+      if (!S.sess || inactive() || S.inflight || now2 - S.lastKc < cfg.KC_MIN_MS) return;
       let o2, p;
       if (S.next) {
         o2 = S.next.o;
         p = S.next.p;
         S.next = null;
-      } else if (S.seekP != null && now >= S.seekDue) {
+      } else if (S.seekP != null && now2 >= S.seekDue) {
         o2 = 3;
         p = S.seekP;
         S.seekP = null;
       } else return;
       p = Math.round(p);
-      S.inflight = { v: S.sess.v, o: o2, p, at: now };
-      S.lastKc = now;
+      S.inflight = { v: S.sess.v, o: o2, p, at: now2 };
+      S.lastKc = now2;
       C.kc++;
       send({ t: "kc", sid: S.sess.sid, v: S.sess.v, o: o2, p });
     }
-    function queue(o2, p, now) {
+    function queue(o2, p, now2) {
       if (o2 === 3) {
         S.seekP = Math.max(0, p);
-        S.seekDue = now + cfg.COALESCE_MS;
+        S.seekDue = now2 + cfg.COALESCE_MS;
         return;
       }
       const pp = S.seekP != null ? S.seekP : p;
       S.seekP = null;
       S.next = { o: o2, p: Math.max(0, pp) };
-      flush2(now);
+      flush2(now2);
     }
     function setWaiting(on, ms) {
       if (on && !S.waiting) emit({ type: "wait", ms });
       if (!on && S.waiting) emit({ type: "resume" });
       S.waiting = on;
     }
-    function applyRemote(old, s, now, initial) {
+    function applyRemote(old, s, now2, initial) {
       const obs = obsNow();
       const cur = obs ? num5(obs.t) : 0;
       const D2 = dead();
       if (S.phase === "offset") S.phase = "synced";
       if (s.st === 1) {
         setWaiting(false);
-        doPause(false, now);
-        const erw = expectedPos(s, now);
-        if (initial || Math.abs(cur - erw) > D2) doSeek(erw + lead(), now);
+        doPause(false, now2);
+        const erw = expectedPos(s, now2);
+        if (initial || Math.abs(cur - erw) > D2) doSeek(erw + lead(), now2);
       } else if (s.st === 2) {
         setWaiting(false);
-        doPause(true, now);
-        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now);
+        doPause(true, now2);
+        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now2);
       } else if (s.w) {
-        doPause(true, now);
-        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now);
-        setWaiting(true, Math.max(0, num5(s.w) - now));
+        doPause(true, now2);
+        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now2);
+        setWaiting(true, Math.max(0, num5(s.w) - now2));
       } else if (!isHost) {
-        doPause(true, now);
-        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now);
+        doPause(true, now2);
+        if (Math.abs(cur - s.p) > D2) doSeek(s.p, now2);
       }
       if (!initial && old && !S.fasterShown) {
         if (old.st === 1 && s.st === 2) emit({ type: "remote", kind: "pause", p: s.p });
-        else if (old.st === 2 && s.st === 1) emit({ type: "remote", kind: "play", p: expectedPos(s, now) });
-        else if (old.st === s.st && s.st !== 0 && Math.abs(expectedPos(s, now) - expectedPos(old, now)) > cfg.SEEK_TOAST_MS) emit({ type: "remote", kind: "seek", p: expectedPos(s, now) });
+        else if (old.st === 2 && s.st === 1) emit({ type: "remote", kind: "play", p: expectedPos(s, now2) });
+        else if (old.st === s.st && s.st !== 0 && Math.abs(expectedPos(s, now2) - expectedPos(old, now2)) > cfg.SEEK_TOAST_MS) emit({ type: "remote", kind: "seek", p: expectedPos(s, now2) });
       }
     }
     function hostKb() {
@@ -76593,18 +76796,18 @@ void main() {
     }
     function userSt(st) {
       if (inactive() || !S.sess) return false;
-      const now = nowFn();
+      const now2 = nowFn();
       const obs = obsNow();
-      doPause(st === 2, now);
+      doPause(st === 2, now2);
       let p = S.seekP != null ? S.seekP : obs ? num5(obs.t) : S.sess.p;
       if (st === 2 && S.seekP == null && obs) {
-        const g = expectedPos(S.sess, now);
+        const g = expectedPos(S.sess, now2);
         if (Math.abs(p - g) > cfg.STUCK_MS) {
           p = g;
-          doSeek(g, now);
+          doSeek(g, now2);
         }
       }
-      queue(st, p, now);
+      queue(st, p, now2);
       return true;
     }
     const api = {
@@ -76629,8 +76832,8 @@ void main() {
         const old = S.sess;
         const v = num5(kx.v);
         if (old && v < old.v) return;
-        const now = nowFn();
-        const s = { sid: kx.sid, v, i: kx.i, st: num5(kx.st, 2), p: num5(kx.p), at: num5(kx.at, now), m: Array.isArray(kx.m) ? kx.m : [], lg: Array.isArray(kx.lg) ? kx.lg : [], w: kx.w ? num5(kx.w) : 0, rate: kx.rate };
+        const now2 = nowFn();
+        const s = { sid: kx.sid, v, i: kx.i, st: num5(kx.st, 2), p: num5(kx.p), at: num5(kx.at, now2), m: Array.isArray(kx.m) ? kx.m : [], lg: Array.isArray(kx.lg) ? kx.lg : [], w: kx.w ? num5(kx.w) : 0, rate: kx.rate };
         if (o.itemId && s.i && s.i !== o.itemId) {
           S.sess = s;
           giveUp("item");
@@ -76638,7 +76841,7 @@ void main() {
         }
         S.sess = s;
         if (selfC != null && s.lg.includes(selfC)) {
-          if (S.lgSince == null) S.lgSince = now;
+          if (S.lgSince == null) S.lgSince = now2;
         } else S.lgSince = null;
         C.accepts++;
         const f = S.inflight;
@@ -76652,10 +76855,10 @@ void main() {
           }
         }
         const repeat = old && v === old.v && s.st === old.st && s.w === old.w;
-        if (!mine && !repeat && S.began) applyRemote(old, s, now, !old);
+        if (!mine && !repeat && S.began) applyRemote(old, s, now2, !old);
         S.fasterShown = false;
         hostKb();
-        flush2(now);
+        flush2(now2);
       },
       /** er-Antwort auf einen eigenen kc. */
       onError(code) {
@@ -76680,10 +76883,10 @@ void main() {
         if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight && !S.holdUntil) {
           const obs = obsNow();
           if (obs && obs.paused) {
-            const now = nowFn();
-            doPause(false, now);
-            const erw = expectedPos(S.sess, now);
-            if (Math.abs(num5(obs.t) - erw) > dead()) doSeek(erw + lead(), now);
+            const now2 = nowFn();
+            doPause(false, now2);
+            const erw = expectedPos(S.sess, now2);
+            if (Math.abs(num5(obs.t) - erw) > dead()) doSeek(erw + lead(), now2);
             return true;
           }
         }
@@ -76691,15 +76894,15 @@ void main() {
       },
       seek(ms) {
         if (inactive() || !S.sess) return false;
-        const now = nowFn();
+        const now2 = nowFn();
         const p = Math.max(0, num5(ms));
         try {
           A.seekTo(Math.round(p), { exact: exactOk() });
         } catch {
         }
-        S.guardUntil = now + cfg.GUARD_MS;
-        S.applyUntil = now + cfg.APPLY_MS;
-        queue(3, p, now);
+        S.guardUntil = now2 + cfg.GUARD_MS;
+        S.applyUntil = now2 + cfg.APPLY_MS;
+        queue(3, p, now2);
         return true;
       },
       seekBy(deltaMs) {
@@ -76717,8 +76920,8 @@ void main() {
       },
       /** Eigene lokale Eingriffe (Autoplay-Sperre, Spurwechsel, Neuladen) ms lang nicht als Nutzeraktion/Puffern werten. */
       suppress(ms) {
-        const now = nowFn();
-        const t = now + num5(ms, cfg.GUARD_MS);
+        const now2 = nowFn();
+        const t = now2 + num5(ms, cfg.GUARD_MS);
         S.guardUntil = Math.max(S.guardUntil, t);
         S.applyUntil = Math.max(S.applyUntil, t);
       },
@@ -76744,42 +76947,42 @@ void main() {
       },
       tick() {
         if (!S.sess || inactive()) return;
-        const now = nowFn();
-        if (S.inflight && now - S.inflight.at > cfg.INFLIGHT_MS) S.inflight = null;
-        flush2(now);
+        const now2 = nowFn();
+        if (S.inflight && now2 - S.inflight.at > cfg.INFLIGHT_MS) S.inflight = null;
+        flush2(now2);
         const obs = obsNow();
         if (!obs) return;
         const t = num5(obs.t);
         const ready = num5(obs.ready, 4);
         const last = S.last;
-        const rebase = !last || now - last.now > cfg.TICK_GAP_MS;
-        S.last = { now, t, paused: !!obs.paused, rate: obs.rate != null ? num5(obs.rate, 1) : 1 };
+        const rebase = !last || now2 - last.now > cfg.TICK_GAP_MS;
+        S.last = { now: now2, t, paused: !!obs.paused, rate: obs.rate != null ? num5(obs.rate, 1) : 1 };
         if (obs.ended) return;
-        if (S.holdUntil && now + cfg.TICK_MS / 2 >= S.holdUntil) endHold(true, now);
+        if (S.holdUntil && now2 + cfg.TICK_MS / 2 >= S.holdUntil) endHold(true, now2);
         if (S.rateSet != null && obs.rate != null && Math.abs(num5(obs.rate) - S.rateSet) > 0.01) {
           resetRate();
           S.rateOk = false;
         }
         let held = false;
-        if (S.landAt && now >= S.landAt && ready >= 3 && !obs.seeking) {
-          const sd = t - expectedPos(S.sess, now);
+        if (S.landAt && now2 >= S.landAt && ready >= 3 && !obs.seeking) {
+          const sd = t - expectedPos(S.sess, now2);
           const err = Math.abs(sd);
           S.landAt = 0;
           if (!isHost && sd > 2 * cfg.DEAD_MS && sd <= cfg.HOLD_MAX_MS && S.sess.st === 1 && !obs.paused && !S.holdUntil) {
             S.landFix = false;
-            startHold(sd, now);
+            startHold(sd, now2);
             held = true;
           } else if (!S.landFix && S.sess.st === 1 && !obs.paused && res() === 0 && err > 2 * cfg.DEAD_MS) {
             S.landFix = true;
-            doSeek(expectedPos(S.sess, now) + lead(), now);
+            doSeek(expectedPos(S.sess, now2) + lead(), now2);
             return;
           } else {
             S.landFix = false;
             S.land = S.land == null ? err : 0.7 * S.land + 0.3 * err;
           }
         }
-        if (S.leadAt && now - S.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S.sess.st === 1 && !obs.paused) {
-          const dur = clamp17(now - S.leadAt, 0, cfg.LEAD_MAX_MS);
+        if (S.leadAt && now2 - S.leadAt >= cfg.TICK_MS && ready >= 3 && !obs.seeking && S.sess.st === 1 && !obs.paused) {
+          const dur = clamp17(now2 - S.leadAt, 0, cfg.LEAD_MAX_MS);
           S.lead = clamp17(S.lead == null ? dur : 0.7 * S.lead + 0.3 * dur, 0, cfg.LEAD_MAX_MS);
           S.leadAt = 0;
         }
@@ -76787,33 +76990,33 @@ void main() {
         const hidden = !!obs.hidden;
         if (S.began && S.phase !== "joining" && !rebase && !hidden) {
           const eff = effSt();
-          if (obs.paused !== last.paused && now >= S.applyUntil) {
-            if (obs.paused && eff === 1) queue(2, t, now);
-            else if (!obs.paused && eff !== 1) queue(1, t, now);
+          if (obs.paused !== last.paused && now2 >= S.applyUntil) {
+            if (obs.paused && eff === 1) queue(2, t, now2);
+            else if (!obs.paused && eff !== 1) queue(1, t, now2);
           }
-          const expT = last.paused ? last.t : last.t + (now - last.now) * num5(last.rate, 1);
-          if (Math.abs(t - expT) > cfg.JUMP_MS && now >= S.guardUntil && now >= S.applyUntil) {
-            S.guardUntil = now + cfg.GUARD_MS;
-            queue(3, t, now);
+          const expT = last.paused ? last.t : last.t + (now2 - last.now) * num5(last.rate, 1);
+          if (Math.abs(t - expT) > cfg.JUMP_MS && now2 >= S.guardUntil && now2 >= S.applyUntil) {
+            S.guardUntil = now2 + cfg.GUARD_MS;
+            queue(3, t, now2);
           }
         }
-        const inLg = selfC != null && (S.sess.lg || []).includes(selfC) && (S.lgSince == null || now - S.lgSince < cfg.LG_MS);
+        const inLg = selfC != null && (S.sess.lg || []).includes(selfC) && (S.lgSince == null || now2 - S.lgSince < cfg.LG_MS);
         const recovered = ready >= 3 || num5(obs.ahead) >= cfg.AHEAD_OK_MS;
         const stalled = !obs.paused && !obs.seeking && ready < 3 && last && Math.abs(t - last.t) < 50;
         if (stalled) {
-          if (S.stallSince == null) S.stallSince = now;
-          if (now - S.stallSince >= cfg.STALL_MS) S.stalledLong = true;
+          if (S.stallSince == null) S.stallSince = now2;
+          if (now2 - S.stallSince >= cfg.STALL_MS) S.stalledLong = true;
         } else S.stallSince = null;
         if (S.bufSent) {
-          if (recovered && now - S.lastKb >= cfg.KB_MIN_MS) {
+          if (recovered && now2 - S.lastKb >= cfg.KB_MIN_MS) {
             S.bufSent = false;
-            S.lastKb = now;
+            S.lastKb = now2;
             C.kb++;
             send({ t: "kb", sid: S.sess.sid, b: 0 });
           }
-        } else if (S.phase === "synced" && S.stallSince != null && now - S.stallSince >= cfg.STALL_MS && now >= S.guardUntil && !hidden && !inLg && now - S.lastKb >= cfg.KB_MIN_MS) {
+        } else if (S.phase === "synced" && S.stallSince != null && now2 - S.stallSince >= cfg.STALL_MS && now2 >= S.guardUntil && !hidden && !inLg && now2 - S.lastKb >= cfg.KB_MIN_MS) {
           S.bufSent = true;
-          S.lastKb = now;
+          S.lastKb = now2;
           C.kb++;
           send({ t: "kb", sid: S.sess.sid, b: 1 });
         }
@@ -76828,13 +77031,13 @@ void main() {
         }
         if (!S.began) return;
         const st = S.sess.st;
-        const erw = expectedPos(S.sess, now);
+        const erw = expectedPos(S.sess, now2);
         const d = t - erw;
         S.d = d;
         const D2 = dead();
         if (S.phase === "offset") {
           S.offsetMs = d;
-          if (now < S.offsetUntil) return;
+          if (now2 < S.offsetUntil) return;
           S.phase = "synced";
           S.seekTimes = [];
           S.alignedSince = null;
@@ -76851,8 +77054,8 @@ void main() {
         if (S.phase === "joining") {
           const ok = ready >= 3 && !obs.seeking && Math.abs(d) < D2 && (st === 1 ? !obs.paused : !!obs.paused);
           if (!ok) S.alignedSince = null;
-          else if (S.alignedSince == null) S.alignedSince = now;
-          else if (now - S.alignedSince >= cfg.SYNCED_HOLD_MS) {
+          else if (S.alignedSince == null) S.alignedSince = now2;
+          else if (now2 - S.alignedSince >= cfg.SYNCED_HOLD_MS) {
             S.phase = "synced";
             emit({ type: "synced" });
           }
@@ -76865,12 +77068,12 @@ void main() {
           return;
         }
         const cool = mode() === "hls" ? cfg.COOLDOWN_HLS_MS : cfg.COOLDOWN_MS;
-        if (!isHost && st === 1 && !S.holdUntil && d > Math.max(2 * cfg.DEAD_MS, D2) && d <= cfg.HOLD_MAX_MS && now - S.lastSeekAt >= cool) {
-          S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
+        if (!isHost && st === 1 && !S.holdUntil && d > Math.max(2 * cfg.DEAD_MS, D2) && d <= cfg.HOLD_MAX_MS && now2 - S.lastSeekAt >= cool) {
+          S.seekTimes = S.seekTimes.filter((x) => now2 - x < cfg.SEEK_CAP_WINDOW_MS);
           if (S.seekTimes.length < cfg.SEEK_CAP) {
-            S.seekTimes.push(now);
-            S.lastSeekAt = now;
-            startHold(d, now);
+            S.seekTimes.push(now2);
+            S.lastSeekAt = now2;
+            startHold(d, now2);
             return;
           }
         }
@@ -76887,25 +77090,25 @@ void main() {
           return;
         }
         if (ad <= D2) return;
-        if (now - S.lastSeekAt < cool) return;
-        S.seekTimes = S.seekTimes.filter((x) => now - x < cfg.SEEK_CAP_WINDOW_MS);
+        if (now2 - S.lastSeekAt < cool) return;
+        S.seekTimes = S.seekTimes.filter((x) => now2 - x < cfg.SEEK_CAP_WINDOW_MS);
         if (S.seekTimes.length >= cfg.SEEK_CAP) {
           resetRate();
           S.phase = "offset";
-          S.offsetUntil = now + cfg.OFFSET_RETRY_MS;
+          S.offsetUntil = now2 + cfg.OFFSET_RETRY_MS;
           S.offsetMs = d;
           S.offsetHits++;
           emit({ type: "offset", ms: d });
           if (S.offsetHits >= 2) giveUp("sync");
           return;
         }
-        S.seekTimes.push(now);
-        doSeek(erw + (st === 1 ? lead() : 0), now);
+        S.seekTimes.push(now2);
+        doSeek(erw + (st === 1 ? lead() : 0), now2);
       },
       status() {
-        const now = nowFn();
+        const now2 = nowFn();
         const s = S.sess;
-        return { phase: S.phase, st: s ? s.st : null, v: s ? s.v : null, d: S.d, offsetMs: S.offsetMs, waitMs: s && s.st === 0 && s.w ? Math.max(0, s.w - now) : 0, members: s ? s.m.length : 0 };
+        return { phase: S.phase, st: s ? s.st : null, v: s ? s.v : null, d: S.d, offsetMs: S.offsetMs, waitMs: s && s.st === 0 && s.w ? Math.max(0, s.w - now2) : 0, members: s ? s.m.length : 0 };
       },
       diag() {
         return { phase: S.phase, st: S.sess ? S.sess.st : null, v: S.sess ? S.sess.v : null, d: S.d, seeks: C.seeks, rate: S.rateSet, rateOk: S.rateOk, accepts: C.accepts, kcSent: C.kc, kbSent: C.kb, land: S.land, lead: lead(), guard: Math.round(S.guardUntil - nowFn()), apply: Math.round(S.applyUntil - nowFn()), inflight: !!S.inflight, seekP: S.seekP };
@@ -76920,7 +77123,7 @@ void main() {
   var POLL_MS = 1e3;
   var RESYNC_MS = 1500;
   var LOST_MS = 2e4;
-  var warn22 = (...a) => {
+  var warn23 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -76936,7 +77139,7 @@ void main() {
       try {
         return typeof f === "function" ? f(...a) : null;
       } catch (err) {
-        warn22("party", err);
+        warn23("party", err);
         return null;
       }
     };
@@ -76966,7 +77169,7 @@ void main() {
       const b = bridge();
       return b && typeof b.video === "function" ? get(() => b.video()) : null;
     };
-    const now = () => {
+    const now2 = () => {
       const n = netp();
       const t = n ? Number(n.serverNow()) : NaN;
       return Number.isFinite(t) ? t : Date.now();
@@ -77054,7 +77257,7 @@ void main() {
         try {
           sync.dispose();
         } catch (err) {
-          warn22("dispose", err);
+          warn23("dispose", err);
         }
       }
       sync = null;
@@ -77094,7 +77297,7 @@ void main() {
     function make(host, n) {
       const me = n.me ? get(() => n.me()) : null;
       sync = createSync({
-        serverNow: now,
+        serverNow: now2,
         adapter,
         send: (m) => {
           const x = netp();
@@ -77133,7 +77336,7 @@ void main() {
       try {
         sync.leave();
       } catch (err) {
-        warn22("kl", err);
+        warn23("kl", err);
       }
       endSession();
     }
@@ -77292,7 +77495,7 @@ void main() {
         if (!alive() || !lastKx || lastKx.st !== 1) return;
         const v = video();
         if (!v) return;
-        const erw = expectedPos(lastKx, now());
+        const erw = expectedPos(lastKx, now2());
         if (Math.abs((Number(v.currentTime) || 0) * 1e3 - erw) <= RESYNC_MS) return;
         sync.suppress(HOLD_MS2);
         adapter.seekTo(erw, { exact: true });
@@ -77306,7 +77509,7 @@ void main() {
           try {
             sync.leave();
           } catch (err) {
-            warn22("kl", err);
+            warn23("kl", err);
           }
           endSession();
         }
@@ -77351,7 +77554,7 @@ void main() {
   // src/js/store3d/cinema/palast.js
   var FAIL_HOLD_MS2 = 1800;
   var GAP_MS3 = 2e3;
-  var warn23 = (...a) => {
+  var warn24 = (...a) => {
     try {
       console.warn("[LenzFlix Store3D]", ...a);
     } catch {
@@ -77362,7 +77565,7 @@ void main() {
       try {
         return o[name](...a);
       } catch (err) {
-        warn23(name, err);
+        warn24(name, err);
       }
     }
     return void 0;
@@ -77509,7 +77712,7 @@ void main() {
         try {
           d.onCinema2d({ active: this.active, full: this.active && this.full });
         } catch (err) {
-          warn23("onCinema2d", err);
+          warn24("onCinema2d", err);
         }
       }
     }
@@ -77760,7 +77963,7 @@ void main() {
           this.state = d.state() || {};
         }
       } catch (err) {
-        warn23("Palast-Kino bauen", err);
+        warn24("Palast-Kino bauen", err);
         this.leave("build", "B");
       }
     }
@@ -77848,9 +78051,9 @@ void main() {
       call2(this.saal, "light", 0.35);
       this.spillK = 0.35;
     }
-    _checkStart(now) {
+    _checkStart(now2) {
       const r = this.watch.step({
-        now,
+        now: now2,
         video: this.video,
         state: this.state,
         frames: this.screen ? this.screen.videoFrames : 0,
@@ -77912,7 +78115,7 @@ void main() {
         try {
           if (d && (st.route === "video" || d.video())) await d.stop();
         } catch (err) {
-          warn23("Stopp", err);
+          warn24("Stopp", err);
         }
         if (gen !== this.gen || this.disposed) return;
         this._later(FAIL_HOLD_MS2, () => this.leave("fail", code));
@@ -77973,20 +78176,20 @@ void main() {
       if (a.desktop && !a.suspended && !a.disposed) call2(a.desktop, "attach");
     }
     // ---------------------------------------------------------------- Schleife
-    tick(dt, now) {
+    tick(dt, now2) {
       if (!this.active || this.disposed) return;
-      if (this.lastNow != null && now - this.lastNow > GAP_MS3) this.watch.shiftClock(now - this.lastNow);
-      this.lastNow = now;
-      this.now = now;
+      if (this.lastNow != null && now2 - this.lastNow > GAP_MS3) this.watch.shiftClock(now2 - this.lastNow);
+      this.lastNow = now2;
+      this.now = now2;
       if (!this.screen) return;
-      const pv = this.feed.pollVideo(now);
+      const pv = this.feed.pollVideo(now2);
       if (pv) {
         try {
           this._setVideo(pv.value);
         } catch {
         }
       }
-      const ps = this.feed.pollState(now);
+      const ps = this.feed.pollState(now2);
       if (ps) {
         this.state = ps.value || this.state;
         this._onState();
@@ -77997,7 +78200,7 @@ void main() {
         this._stopThenLeave("stop");
         if (!this.active) return;
       }
-      this.screen.update(now);
+      this.screen.update(now2);
       const live = this.phase === "playing" || this.phase === "paused";
       if (live && !this.screen.hasFrame) {
         const title = this._title();
@@ -78007,16 +78210,16 @@ void main() {
         }
       } else this.reloadShown = null;
       if (this.subs) {
-        const pu = this.feed.pollSubs(now, this.phase !== "failed", this.screen.hasFrame);
+        const pu = this.feed.pollSubs(now2, this.phase !== "failed", this.screen.hasFrame);
         if (pu) {
           try {
             this.subs.set(pu.value);
           } catch {
           }
         }
-        this.subs.tick(now);
+        this.subs.tick(now2);
       }
-      this._ambient(dt, now);
+      this._ambient(dt, now2);
       if (!this.active) return;
       const b = this.saal && this.saal.bounds;
       const p = this.app.player;
@@ -78024,18 +78227,18 @@ void main() {
         this._stopThenLeave("stop");
         if (!this.active) return;
       }
-      if (this.phase === "playing" || this.phase === "paused") this.party.poll(now, this.item);
+      if (this.phase === "playing" || this.phase === "paused") this.party.poll(now2, this.item);
       if (this.bar) this.bar.update(this._barState());
-      if (this.phase === "starting") this._checkStart(now);
+      if (this.phase === "starting") this._checkStart(now2);
     }
-    _ambient(dt, now) {
+    _ambient(dt, now2) {
       const amb = this.ambient;
       if (!amb || this.phase === "failed" || this.phase === "fallback") return;
-      const c = amb.update(now);
+      const c = amb.update(now2);
       if (c) {
         if (this.screen.hasFrame && (this.phase === "playing" || this.phase === "paused")) this.spillTarget = c;
         const v = this.video;
-        if (!this.blackIgnored && trackBlack(c, now, this.black, { ready: (Number(v && v.readyState) || 0) >= 2, currentTime: v ? v.currentTime : 0 })) this._blackScreen();
+        if (!this.blackIgnored && trackBlack(c, now2, this.black, { ready: (Number(v && v.readyState) || 0) >= 2, currentTime: v ? v.currentTime : 0 })) this._blackScreen();
       } else if (amb.tainted && !this.blackIgnored) this._blackScreen();
       if (this.spillTarget) {
         this.spill = smoothColor(this.spill, this.spillTarget, dt, 0.5);
@@ -78227,7 +78430,9 @@ void main() {
 
   // src/js/store3d/store.js
   var yieldFrame = () => new Promise((r) => setTimeout(r, 0));
-  function resolveLevel(setting) {
+  var QUALITY_SETTINGS = ["auto", "low", "mid", "high", "ultra"];
+  function resolveLevel(setting, ultraOk) {
+    if (setting === "ultra") return ultraOk ? "ultra" : "high";
     if (setting === "low" || setting === "mid" || setting === "high") return setting;
     return "mid";
   }
@@ -78250,7 +78455,9 @@ void main() {
       this.vr = this.opts.vr;
       this.phone = !!this.opts.phone;
       this.touch = !!this.opts.touch;
-      this.qualitySetting = ["auto", "low", "mid", "high"].includes(this.opts.quality) ? this.opts.quality : "auto";
+      this.ultraOk = this.opts.ultraOk === true && !this.phone;
+      this.qualitySetting = QUALITY_SETTINGS.includes(this.opts.quality) ? this.opts.quality : "auto";
+      if (this.qualitySetting === "ultra" && !this.ultraOk) this.qualitySetting = "high";
       this.sound = !!this.opts.sound;
       this.showFps = this.opts.showFps === true;
       this.voiceOnline = this.opts.voiceOnline === true;
@@ -78289,9 +78496,10 @@ void main() {
       try {
         this.engine = createEngine({
           host,
-          level: resolveLevel(this.qualitySetting),
+          level: resolveLevel(this.qualitySetting, this.ultraOk),
           auto: this.qualitySetting === "auto",
           phone: this.phone,
+          maxLevel: this.ultraOk ? "ultra" : "high",
           onContextLost: () => this.onContextLost(),
           onContextRestored: () => this.onContextRestored(),
           onAutoLevel: () => this.applyPreset(this.engine.preset)
@@ -78366,6 +78574,7 @@ void main() {
         onTheme: () => this.deps.openThemePicker(),
         onMenu: (anchor) => this.deps.openMenu(anchor),
         getQuality: () => this.qualitySetting,
+        canUltra: () => this.ultraOk,
         getSound: () => this.sound,
         getFps: () => this.showFps,
         getBigCovers: () => this.bigCovers,
@@ -78604,7 +78813,7 @@ void main() {
       if (this.desktop) this.desktop.attach();
       if (this.touchCtl) this.touchCtl.attach();
       if (this.opts.debug) this.exposeDebug();
-      this.engine.start((dt, now, frame) => this.tick(dt, now, frame));
+      this.engine.start((dt, now2, frame) => this.tick(dt, now2, frame));
       this.syncUi();
       this.xr.probe().then(() => {
         if (!this.disposed) this.syncUi();
@@ -79138,16 +79347,16 @@ void main() {
       this.player.faceYaw(Math.atan2(-dx, -dz), Math.atan2(y - this.player.eyeY(), Math.hypot(dx, dz)));
     }
     // --- Schleife ---
-    tick(dt, now, frame) {
+    tick(dt, now2, frame) {
       const p = this.player;
       if (!p) return;
       const xr = this.xr;
       const inXr = !!(xr && xr.presenting);
-      if (inXr) xr.beforeTick(dt, now, frame);
+      if (inXr) xr.beforeTick(dt, now2, frame);
       this.mods.flushNav();
       if (!inXr) this.stepZoom(dt);
-      if (now - this.lastFps >= 500) {
-        this.lastFps = now;
+      if (now2 - this.lastFps >= 500) {
+        this.lastFps = now2;
         this.updateFps();
         if (this.fs) this.fs.update();
       }
@@ -79159,9 +79368,9 @@ void main() {
         if (this.mode === "play" && !this.mods.locked) p.update(dt, this.desktop || this.touchCtl ? (this.desktop || this.touchCtl).input : null);
         else p.update(dt, null);
       }
-      this.mods.update(dt, now);
+      this.mods.update(dt, now2);
       this.syncHeld();
-      if (!inXr && this.cinema2d.active) this.cinema2d.tick(dt, now);
+      if (!inXr && this.cinema2d.active) this.cinema2d.tick(dt, now2);
       if (!inXr) {
         p.applyCamera(this.engine.camera);
         this.mods.cameraStep(dt);
@@ -79180,38 +79389,38 @@ void main() {
         if (!inXr) this.hands.update(dt);
       }
       if (inXr && xr.inCinema) {
-        xr.cinemaTick(dt, now);
+        xr.cinemaTick(dt, now2);
         return;
       }
       this.holdview.update(dt);
       const aimOn = this.mode === "play" && !this.mods.locked && (this.desktop && (this.desktop.locked || this.desktop.dragLook) || this.touchCtl && this.touchScheme === "game");
       if (aimOn) {
-        if (now - this.lastAim > 90) {
-          this.lastAim = now;
+        if (now2 - this.lastAim > 90) {
+          this.lastAim = now2;
           this.updateAim();
         }
       } else if (this.aim) this.clearAim();
-      if (this.pendingUse && this.mode === "play" && now >= this.pendingUse.at) {
+      if (this.pendingUse && this.mode === "play" && now2 >= this.pendingUse.at) {
         const ia = this.pendingUse.ia;
         this.pendingUse = null;
         if ((!ia.enabled || ia.enabled()) && this.iaReachable(ia)) ia.onUse();
       }
-      if (this.pendingTake && this.mode === "play" && now >= this.pendingTake.at) {
+      if (this.pendingTake && this.mode === "play" && now2 >= this.pendingTake.at) {
         const id = this.pendingTake.id;
         this.pendingTake = null;
         this.take(id);
       }
       const farOut = p.z - this.layout.d > 25;
       if (farOut) {
-      } else if (dt < 0.04 || now - (this.lastCoverTick || 0) > 200) {
-        this.lastCoverTick = now;
+      } else if (dt < 0.04 || now2 - (this.lastCoverTick || 0) > 200) {
+        this.lastCoverTick = now2;
         this.covers.tick();
       }
-      if (!farOut && now - this.lastCover > 250) {
-        this.lastCover = now;
+      if (!farOut && now2 - this.lastCover > 250) {
+        this.lastCover = now2;
         this.covers.update(p.x, p.z, p.yaw, { zoom: this.zoom, pitch: p.pitch });
       }
-      if (p.moved !== this.lastMoved && now - this.lastNotify >= 500) this.notifyState(false, now);
+      if (p.moved !== this.lastMoved && now2 - this.lastNotify >= 500) this.notifyState(false, now2);
       if (!this.ready && ++this.readyFrames >= 2) {
         this.ready = true;
         this.progress(1, "Fertig");
@@ -79229,10 +79438,10 @@ void main() {
       const y = Number.isFinite(p.y) && p.y > 0.05 ? { y: Math.round(p.y * 100) / 100 } : null;
       return { ...p.state, ...y, heldId: this.holdview ? this.holdview.itemId : null };
     }
-    notifyState(force, now = performance.now()) {
+    notifyState(force, now2 = performance.now()) {
       if (!this.player) return;
       this.lastMoved = this.player.moved;
-      this.lastNotify = now;
+      this.lastNotify = now2;
       try {
         this.deps.onState(this.getState());
       } catch {
@@ -79259,7 +79468,8 @@ void main() {
       if (this.mods) this.mods.hook("onQuality", preset.level);
     }
     setQuality(q) {
-      if (!this.engine || !["auto", "low", "mid", "high"].includes(q)) return;
+      if (!this.engine || !QUALITY_SETTINGS.includes(q)) return;
+      if (q === "ultra" && !this.ultraOk) q = "high";
       if (this.xr && this.xr.presenting) q = q === "low" ? "low" : "mid";
       this.qualitySetting = q;
       this.engine.setAuto(q === "auto");
@@ -79314,7 +79524,7 @@ void main() {
     updateFps() {
       if (!this.hud) return;
       if (!this.showFps) return;
-      const lv = { low: "Niedrig", mid: "Mittel", high: "Hoch" }[this.engine.preset.level] || "";
+      const lv = { low: "Niedrig", mid: "Mittel", high: "Hoch", ultra: "Ultra" }[this.engine.preset.level] || "";
       this.hud.setFps(`${Math.round(this.engine.fps)} FPS \xB7 ${lv}${this.qualitySetting === "auto" ? " (Auto)" : ""}`);
     }
     /** Hüllengröße umschalten: Prefs sichern, dann baut die Hülle die Szene neu auf. */
@@ -79432,7 +79642,7 @@ void main() {
       if (this.mods) this.mods.hook("onResume");
       if (this.engine) {
         this.engine.resize();
-        this.engine.start((dt, now, frame) => this.tick(dt, now, frame));
+        this.engine.start((dt, now2, frame) => this.tick(dt, now2, frame));
       }
       if (this.fs) this.fs.resume();
       this.syncUi();
@@ -79572,6 +79782,10 @@ void main() {
         city() {
           return app.layout.city;
         },
+        ultra() {
+          return app.mods && app.mods.ultra ? app.mods.ultra.api.list() : [];
+        },
+        // Ultra-Details: [{ key, built, visible, ms }]
         stats() {
           const info = app.engine.renderer.info;
           return {

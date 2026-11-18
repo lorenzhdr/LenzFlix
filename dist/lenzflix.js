@@ -1425,7 +1425,10 @@
   function syncClass() {
     const on = isStandalone();
     const cl2 = document.documentElement.classList;
-    if (cl2.contains(CLASS2) !== on) cl2.toggle(CLASS2, on);
+    if (cl2.contains(CLASS2) !== on) {
+      cl2.toggle(CLASS2, on);
+      reevaluate();
+    }
   }
   var abs = (u, base) => {
     try {
@@ -1477,14 +1480,14 @@
   }
   async function applyManifest(theme2) {
     if (!("standalone" in navigator) || typeof fetch !== "function") return;
-    if (theme2 === lastTheme) return;
+    const el4 = document.head && document.head.querySelector('link[rel="manifest"]');
+    if (!el4) return;
+    if (theme2 === lastTheme && link === el4) return;
     if (theme2 !== failTheme) {
       failTheme = theme2;
       fails = 0;
     }
     if (fails >= MAX_FAILS) return;
-    const el4 = document.head && document.head.querySelector('link[rel="manifest"]');
-    if (!el4) return;
     if (!link || link !== el4) {
       if (link) restoreLink();
       const href = el4.getAttribute("href");
@@ -3414,11 +3417,9 @@
     const label = `${n} ${n === 1 ? "Person" : "Personen"} gerade in der Videothek`;
     if (!pill) {
       pill = span("lfx-tp__online", [span("lfx-tp__online-dot"), span("lfx-tp__online-n")]);
-      pill.setAttribute("role", "img");
-      pill.firstChild.setAttribute("aria-hidden", "true");
-      card3.append(pill);
+      pill.setAttribute("aria-hidden", "true");
+      (card3.querySelector(".lfx-tp__badges") || card3).append(pill);
     }
-    pill.setAttribute("aria-label", label);
     pill.lastChild.textContent = `${n} online`;
     card3.dataset.baseLabel = base;
     card3.setAttribute("aria-label", `${base}, ${label}`);
@@ -3427,7 +3428,7 @@
     const card3 = c.cards.get("store");
     if (!card3) return;
     const tick = () => {
-      if (current !== c) return;
+      if (current !== c || document.hidden) return;
       if (c.onlineCtl) c.onlineCtl.abort();
       const ctl = typeof AbortController === "function" ? new AbortController() : null;
       c.onlineCtl = ctl;
@@ -3439,6 +3440,10 @@
     };
     tick();
     c.onlineTimer = setInterval(tick, ONLINE_POLL_MS);
+    c.onVisible = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", c.onVisible);
   }
   function buildCard(c, id) {
     const meta2 = THEME_META[id] || { id, name: id, tagline: "", palette: [] };
@@ -3455,7 +3460,8 @@
         span("lfx-tp__palette", (meta2.palette || []).map((hex) => h("span", { class: "lfx-tp__swatch", style: { background: hex } })))
       ]),
       span("lfx-tp__state", [span("lfx-tp__active", ["Aktiv"]), span("lfx-tp__spin")]),
-      BETA.has(id) ? span("lfx-tp__beta", ["Beta"]) : null
+      BETA.has(id) ? span("lfx-tp__badges", [span("lfx-tp__beta", ["Beta"])]) : null
+      // Beta + Online-Pille nebeneinander (Flex)
     ]);
     btn3.setAttribute("aria-label", `${meta2.name}${BETA.has(id) ? " (Beta)" : ""}${meta2.tagline ? `, ${meta2.tagline}` : ""}`);
     btn3.addEventListener("click", () => choose(c, id));
@@ -3507,6 +3513,7 @@
     if (c.unsub) c.unsub();
     if (c.onlineTimer) clearInterval(c.onlineTimer);
     if (c.onlineCtl) c.onlineCtl.abort();
+    if (c.onVisible) document.removeEventListener("visibilitychange", c.onVisible);
     window.removeEventListener("keydown", c.onKeydown, true);
     c.overlay.removeEventListener("click", c.onOverlayClick);
     unmountPoint(c.overlay);
@@ -22892,7 +22899,7 @@
   var TUNE_FLAGS = ["holdInvertY", "holdInvertX", "lookFlipY", "lookFlipX"];
   var TOUCH_REGRIPS = ["off", "short", "long"];
   var VOICE_PITCHES = ["normal", "tief", "sehrtief"];
-  var QUALITIES = ["auto", "low", "mid", "high"];
+  var QUALITIES = ["auto", "low", "mid", "high", "ultra"];
   var VR_TURNS = ["snap", "smooth"];
   var VR_HEIGHTS = ["auto", "seated"];
   var VR_QUALITIES = ["mid", "low"];
@@ -23069,6 +23076,7 @@
   var TIMEOUT_MS4 = 6e3;
   var OK_TTL_MS = 15 * 60 * 1e3;
   var FAIL_TTL_MS2 = 5 * 60 * 1e3;
+  var ERR_TTL_MS = 60 * 1e3;
   var KINDS2 = ["clear", "cloudy", "fog", "drizzle", "rain", "heavy", "snow", "storm"];
   var fin = (v) => typeof v === "number" && Number.isFinite(v);
   function parse(d) {
@@ -23079,14 +23087,14 @@
   function createWeatherSource() {
     let pending2 = null;
     let cached2 = null;
-    async function run() {
+    async function run(key) {
       const base = getChartsUrl();
       const a = getAuth();
       if (!base || !a.token) return null;
       const ctrl = typeof AbortController === "function" ? new AbortController() : null;
       const timer2 = ctrl ? setTimeout(() => ctrl.abort(), TIMEOUT_MS4) : null;
       let v = null;
-      let ttl = FAIL_TTL_MS2;
+      let ttl = ERR_TTL_MS;
       try {
         const res = await fetch(`${base}/wx`, {
           headers: { "X-Emby-Token": a.token },
@@ -23097,20 +23105,27 @@
         if (res.ok) {
           v = parse(await res.json());
           if (v) ttl = OK_TTL_MS;
-        }
+        } else if (res.status === 404) ttl = FAIL_TTL_MS2;
       } catch {
         v = null;
       } finally {
         if (timer2) clearTimeout(timer2);
       }
-      cached2 = { v, exp: Date.now() + ttl };
+      cached2 = { v, exp: Date.now() + ttl, key };
       return v;
     }
     return () => {
+      const key = getAuth().token || "";
+      if (cached2 && cached2.key !== key) cached2 = null;
+      if (pending2 && pending2.key !== key) pending2 = null;
       if (cached2 && cached2.exp > Date.now()) return Promise.resolve(cached2.v);
-      if (!pending2) pending2 = run().finally(() => {
-        pending2 = null;
-      });
+      if (!pending2) {
+        const pr = run(key).finally(() => {
+          if (pending2 === pr) pending2 = null;
+        });
+        pr.key = key;
+        pending2 = pr;
+      }
       return pending2;
     };
   }
@@ -24229,8 +24244,18 @@
       onFatal: ret2(onFatal)
     };
   }
+  function ultraAllowed() {
+    try {
+      if (isTv()) return false;
+      const touchSmall = Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) && Math.min(screen.width, screen.height) < 600;
+      return !touchSmall;
+    } catch {
+      return false;
+    }
+  }
   function buildOpts2(r) {
     return {
+      ultraOk: ultraAllowed(),
       quality: getQuality(),
       sound: getSound(),
       showFps: getFps(),
