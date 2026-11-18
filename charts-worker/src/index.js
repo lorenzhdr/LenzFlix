@@ -5,6 +5,7 @@ import { handleMeStats } from './me-stats.js';
 import { handleTicket, handleUpgrade } from './mp/route.js';
 export { MpWorld } from './mp/world.js';
 import { buildSql, windowDays } from './sql.js';
+import { handleWx } from './wx.js';
 
 const KV_KEY = 'charts:v1';
 const TOKEN_TTL_MS = 10 * 60 * 1000;
@@ -94,6 +95,8 @@ async function handle(request, env, ctx) {
   if ((pathname === '/me/stats' || pathname === '/lenzflix-stats/api/me/stats') && request.method === 'GET') {
     return handleMeStats(request, env, ctx);
   }
+
+  if (pathname === '/wx' && request.method === 'GET') return handleWx(request, env, ctx);
 
   if (pathname === '/mp/ticket' && request.method === 'GET') return handleTicket(request, env, ctx);
   if (pathname === '/mp' && request.method === 'GET') return handleUpgrade(request, env);
