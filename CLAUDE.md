@@ -100,8 +100,15 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 - Öffentliches Repo `lorenzhdr/LenzFlix` (Submodul `NetflixTheme` im Hauptrepo `Clausi_Projects`): nicht ungefragt committen/pushen/taggen. `charts-worker/wrangler.local.jsonc` (echte Domains, gitignored) nie committen.
 
 ## Aktueller Stand und offene Punkte
-Stand 18.11.2026 (1.16.1). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
-- **Version:** v1.16.1 veröffentlicht (Tag `v1.16.1` auf dc60324, `feature/v1.16.1` per Fast-Forward nach main, jsDelivr geprüft). Vorher v1.16.0 (d469647).
+Stand 18.11.2026 (1.16.2). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
+- **Version:** v1.16.2 veröffentlicht (Tag `v1.16.2` auf 5c3e247, `feature/v1.16.2` per Fast-Forward nach main, jsDelivr geprüft). Vorher v1.16.1 (dc60324).
+- **Inhalt 1.16.2 (Tab je Design, Vertrag `docs/js-contracts.md` „Tab-Text, Tab-Icon und Browserleiste“):**
+  - Den Tab-Text schreibt nur `core/doctitle.js`: „Seite · Design“, Seitennamen aus `shared/pagetitle.js`. Features lesen Jellyfins Titel über `jellyfinTitle()`, die Kino-Bridge über die Option `readTitle`.
+  - `theme-color` gehört nur `core/themecolor.js`, `playerbg` setzt einen Override.
+  - Tab-Icons `assets/logo/favicon-<id>.svg` sind als kompakte data-URI in `core/favicon.js` eingebettet. Home-Bildschirm-Icons `touch-<id>.png` sind Dateien, relativ zu `resolveThemeCssBase()`.
+  - Budget des Hauptbundles auf 500 KiB angehoben; es liegt bei 508.914 B. Tests: 3801 in 368 Dateien.
+  - Live geprüft: alle 5 Designs mit Startseite, Unterseiten, Titelseiten, LENZFLIX-Info-Fenster, Player (Leiste schwarz, danach zurück) und Einstellungen. Die Tab-Icons hat der Nutzer im normalen Tab angesehen; im Claude-Tab setzt die Erweiterung ein eigenes Icon.
+  - Offen am Gerät: Home-Bildschirm-Icon und -Name am iPhone, Farbe der iPhone-Leiste. Android-Installation über Jellyfins `manifest.json` behält das Jellyfin-Icon. Titel des VIDEOTHEK-Kinos ohne Zusatz nur per Unit-Test belegt.
   - Worker mit dem Close-Fix bereits deployt (Version a6248d8d, Rauchtest ok).
   - Prüfung 1.16.1: 3759 Root-Tests (365 Dateien), 352 Worker-Tests, Lint 0, TV-Hashes gleich, Hauptbundle 499.367 B, `lenzstore.min.js` 1.291.157 B, w0–w4 PASS (w4 share 32/0, private 14/0).
 - **Inhalt 1.16.1 (Befunde aus dem Live-Test mit zwei Konten, Liste in `.tmp/v116/devtest/befunde.md`):**
