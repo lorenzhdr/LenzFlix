@@ -21,6 +21,9 @@ let blobUrl = null;
 let baseHref = null; // absolute URL des Original-Manifests
 let sourcePromise = null; // geparstes Original-Manifest
 let lastTheme = null;
+let failTheme = null;
+let fails = 0; // Fehlversuche für das aktuelle Design (max. MAX_FAILS)
+const MAX_FAILS = 4;
 let seq = 0;
 
 /** Läuft die Seite als installierte Web-App? */
@@ -58,10 +61,12 @@ export function buildManifest(src, base, theme) {
   m.scope = abs(src.scope || '.', base) || start;
   const icons = Array.isArray(src.icons) ? src.icons : [];
   const touch = touchFor(theme);
+  // data:-URIs (LENZFLIX-Eingebettet) gehören nicht ins Blob-Manifest: dann bleiben Jellyfins Original-Icons.
+  const useTouch = typeof touch === 'string' && !/^data:/i.test(touch);
   const rest = icons
     .map((i) => ({ ...i, src: abs(i.src, base) }))
-    .filter((i) => i.src && i.src !== touch);
-  m.icons = [{ src: touch, sizes: ICON_SIZES, type: 'image/png', purpose: 'any' }, ...rest];
+    .filter((i) => i.src && (!useTouch || i.src !== touch));
+  m.icons = useTouch ? [{ src: touch, sizes: ICON_SIZES, type: 'image/png', purpose: 'any' }, ...rest] : rest;
   return m;
 }
 
@@ -74,6 +79,8 @@ function restoreLink() {
   baseHref = null;
   sourcePromise = null;
   lastTheme = null;
+  failTheme = null;
+  fails = 0;
 }
 
 function loadSource() {
@@ -91,6 +98,8 @@ function loadSource() {
 async function applyManifest(theme) {
   if (!('standalone' in navigator) || typeof fetch !== 'function') return;
   if (theme === lastTheme) return;
+  if (theme !== failTheme) { failTheme = theme; fails = 0; }
+  if (fails >= MAX_FAILS) return;
   const el = document.head && document.head.querySelector('link[rel="manifest"]');
   if (!el) return;
   if (!link || link !== el) {
@@ -113,9 +122,14 @@ async function applyManifest(theme) {
     blobUrl = next;
     link.setAttribute('href', next);
     if (old) URL.revokeObjectURL(old);
+    fails = 0;
   } catch {
-    // Fehler: Original (oder zuletzt gesetzte Blob-URL) stehen lassen; lastTheme bleibt gesetzt, kein Dauerversuch im 3-s-Takt.
-    if (mine === seq && link && !blobUrl) link.setAttribute('href', origHref);
+    // Fehler: Original (oder zuletzt gesetzte Blob-URL) stehen lassen; nächster Abgleich versucht es erneut (höchstens MAX_FAILS-mal je Design).
+    if (mine === seq) {
+      fails++;
+      lastTheme = null;
+      if (link && !blobUrl) link.setAttribute('href', origHref);
+    }
   }
 }
 

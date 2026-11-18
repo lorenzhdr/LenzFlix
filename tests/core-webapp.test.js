@@ -114,15 +114,25 @@ describe('webapp: Manifest-Override', () => {
     expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
   });
 
-  it('Fetch-Fehler: Original bleibt, kein Dauerversuch', async () => {
+  it('Fetch-Fehler: Original bleibt, späterer Abgleich versucht erneut, begrenzt', async () => {
     globalThis.fetch = vi.fn(async () => { throw new Error('offline'); });
-    applyWebApp('flix');
-    await flush();
-    applyWebApp('flix');
-    await flush();
+    for (let i = 0; i < 8; i++) { applyWebApp('flix'); await flush(); }
     expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
-    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(4);
     expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('Fehler, dann Erfolg beim nächsten Abgleich setzt das Manifest', async () => {
+    let n = 0;
+    globalThis.fetch = vi.fn(async () => {
+      if (n++ === 0) throw new Error('503');
+      return { ok: true, status: 200, json: async () => SRC };
+    });
+    applyWebApp('plus');
+    await flush();
+    applyWebApp('plus');
+    await flush();
+    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toMatch(/^blob:/);
   });
 
   it('HTTP-Fehler lässt das Original stehen', async () => {
@@ -137,5 +147,16 @@ describe('webapp: Manifest-Override', () => {
     applyWebApp('flix');
     await flush();
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('buildManifest: data:-Touch-Icon', () => {
+  it('data:-URI wird nicht ins Manifest übernommen, Original-Icons bleiben', async () => {
+    vi.resetModules();
+    vi.doMock('../src/js/core/favicon.js', () => ({ touchFor: () => 'data:image/png;base64,AAAA' }));
+    const mod = await import('../src/js/core/webapp.js');
+    const m = mod.buildManifest(SRC, 'https://srv.test/web/manifest.json', 'flix');
+    expect(m.icons).toEqual([{ src: 'https://srv.test/web/favicons/touchicon72.png', sizes: '72x72', type: 'image/png' }]);
+    vi.doUnmock('../src/js/core/favicon.js');
   });
 });
