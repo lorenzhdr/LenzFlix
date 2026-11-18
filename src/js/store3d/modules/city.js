@@ -64,7 +64,7 @@ export default {
     // --- Bereich und Sichtbarkeit ---
     const listeners = [];
     let area = 'shop';
-    let vis = { shopShell: true, shelves: true, street: true, yard: false, palastInterior: false, palastExterior: true };
+    let vis = { shopShell: true, shelves: true, street: true, yard: false, palastInterior: false, salonInterior: false, palastExterior: true };
     let shopShell = null;
     let shelves = null;
     let xrOn = false;
@@ -88,6 +88,7 @@ export default {
         cm.groups.yard.visible = all || vis.yard;
         cm.groups.palast.visible = true;
         cm.groups.palastInterior.visible = all || vis.palastInterior;
+        cm.groups.salonInterior.visible = all || vis.salonInterior;
       }
     }
 

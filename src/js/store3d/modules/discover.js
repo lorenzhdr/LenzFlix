@@ -1,12 +1,13 @@
 // VIDEOTHEK LENZ · Modul `discover`: Entdeckungen (Paket F). Provider 'discover'
 //   found(id, opts?) → true wenn neu (Toast „Entdeckung n/15: Titel“ + Jingle; opts.silent unterdrückt beides) · has(id) · list() → [{id,found,title,desc,hint}]
+//   (1.17.0) Konto: deps.profile.disc wird beim Start mit dem lokalen Speicher vereinigt, found() schreibt zusätzlich ins Profil.
 //   summary() → { count, total, items } (Pause-Menü) · onChange(fn) → off · getNetState() → { found: [ids] } (Mehrspieler vorbereitet) · reset()
 // Eigene Fundstücke: Goldene Kassette (Dach, Lüftungsbox, nur per Sprung/Klettern), Graffiti (Hinterhof, Hinsehen), lose Wandplatte
 // (Nordwand neben der Personaltür), „roof“ (Dach betreten), „roof-rain“ (Dach, Regen, 20 bis 5 Uhr).
 // Speicherung: localStorage lfx.store.discover.<userId|anon>, unabhängig von den Design-Einstellungen.
 import { Vector3 } from 'three';
-import { CATALOG, TOTAL, entryOf } from '../discover/catalog.js';
-import { createDiscoverStore } from '../discover/storage.js';
+import { CATALOG, TOTAL, entryOf, isKnownId } from '../discover/catalog.js';
+import { createDiscoverStore, parseFound } from '../discover/storage.js';
 import { createGaze, isRoofRainNight } from '../discover/gaze.js';
 import { buildVent, buildGoldenTape, buildGraffiti, buildPanel } from '../discover/scene.js';
 import { ROOF_Y, areaAt } from '../world/city.js';
@@ -26,17 +27,50 @@ export default {
   init(ctx) {
     const L = ctx.layout;
     const user = ctx.deps && ctx.deps.user;
-    const store = createDiscoverStore({ storage: safeStorage(), userId: user && (user.id || user.name) });
+    const storage = safeStorage();
+    let stamp = 0; // Zeitstempel für übernommene Konto-Funde (der Speicher setzt sonst „jetzt“)
+    const store = createDiscoverStore({ storage, userId: user && (user.id || user.name), now: () => stamp || Date.now() });
+    const prof = ctx.deps && ctx.deps.profile && typeof ctx.deps.profile.get === 'function' ? ctx.deps.profile : null;
     const changeFns = new Set();
     let disposed = false;
     const timers = [];
     const later = (fn, ms) => { const t = setTimeout(() => { if (!disposed) fn(); }, ms); timers.push(t); };
+
+    /** Profil → lokal (leise, ohne Toast) und lokal → Profil; Ergebnis: neu lokal übernommene IDs. */
+    function syncProfile() {
+      if (!prof) return [];
+      const added = [];
+      let remote = {};
+      try { remote = (prof.get() && prof.get().disc) || {}; } catch { remote = {}; }
+      for (const id of Object.keys(remote)) {
+        if (!isKnownId(id) || store.has(id)) continue;
+        stamp = Number(remote[id]) > 0 ? Number(remote[id]) : 0;
+        if (store.add(id)) added.push(id);
+        stamp = 0;
+      }
+      let local = {};
+      try { local = storage ? parseFound(storage.getItem(store.key)) : {}; } catch { local = {}; }
+      const missing = Object.keys(local).filter((id) => isKnownId(id) && !remote[id]);
+      if (missing.length && typeof prof.update === 'function') {
+        try { prof.update((d) => { d.disc = d.disc && typeof d.disc === 'object' ? d.disc : {}; for (const id of missing) if (!d.disc[id]) d.disc[id] = local[id]; }); } catch { /* egal */ }
+      }
+      return added;
+    }
+    syncProfile();
+    const offRemote = prof && typeof prof.onRemote === 'function' ? prof.onRemote(() => {
+      if (disposed) return;
+      const added = syncProfile();
+      if (added.length) { const n = store.count(); for (const id of added) for (const fn of [...changeFns]) { try { fn(id, n); } catch { /* egal */ } } }
+    }) : null;
 
     const items = () => CATALOG.map((e) => ({ id: e.id, found: store.has(e.id), title: e.title, desc: e.desc, hint: e.hint }));
     const api = {
       found(id, opts) {
         if (disposed || !store.add(id)) return false;
         const n = store.count();
+        if (prof && typeof prof.update === 'function') {
+          try { prof.update((d) => { d.disc = d.disc && typeof d.disc === 'object' ? d.disc : {}; if (!d.disc[id]) d.disc[id] = Date.now(); }); } catch { /* egal */ }
+        }
         if (!(opts && opts.silent)) {
           const e = entryOf(id);
           try { ctx.xr.toast(`Entdeckung ${n}/${TOTAL}: ${e.title}`, 3800); } catch { /* egal */ }
@@ -52,7 +86,10 @@ export default {
       summary: () => ({ count: store.count(), total: TOTAL, items: items() }),
       onChange(fn) { changeFns.add(fn); return () => changeFns.delete(fn); },
       getNetState: () => ({ found: store.ids() }),
-      reset() { store.reset(); for (const fn of [...changeFns]) { try { fn(null, 0); } catch { /* egal */ } } },
+      reset() {
+        store.reset();
+        if (prof && typeof prof.update === 'function') { try { prof.update((d) => { d.disc = {}; }); } catch { /* egal */ } } for (const fn of [...changeFns]) { try { fn(null, 0); } catch { /* egal */ } }
+      },
     };
     const removeProvider = ctx.provide('discover', api);
 
@@ -224,6 +261,7 @@ export default {
         timers.forEach(clearTimeout);
         for (const c of cleanups) { try { c(); } catch { /* egal */ } }
         changeFns.clear();
+        if (offRemote) offRemote();
         removeProvider();
       },
     };

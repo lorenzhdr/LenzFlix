@@ -83,6 +83,8 @@ export function createTags(ctx) {
         const h = t.fig;
         if (!h || h.disposed || !h.root.visible) { t.el.hidden = true; continue; }
         h.headWorld(tmp);
+        // 1.17.0: Schildhöhe aus der Figur (Hut/Größe) statt fester Kopfhöhe; alte Looks (v ≠ 2) und Figuren ohne topY behalten headWorld
+        if (Number.isFinite(h.topY) && h.topY > 0 && !(h.look && h.look.v !== 2)) tmp.y = h.root.position.y + h.topY + 0.2;
         tmp.y += 0.12;
         tmp.project(cam);
         const on = tmp.z < 1 && Math.abs(tmp.x) < 1.05 && tmp.y > -1.05 && tmp.y < 1.05;

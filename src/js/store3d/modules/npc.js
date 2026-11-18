@@ -18,12 +18,26 @@ import { createCat as createCatLogic, stepCat, petCat, catPettable, scareCat, li
 import { createCat as createCatMesh, createPigeons, disposeAnimalCaches } from '../npc/animals.js';
 import { pickLine } from '../npc/lines.js';
 import { debugHook } from './m3-debug.js';
+import { createReactBudget, OUTFIT_NEW, HAIR_NEW } from '../char/react-logic.js';
+import { OUTFIT_FIELDS } from '../char/look2.js';
 
 const FAR = 52; // m: darüber Figuren ausblenden (Nebelende ≈ 56)
 const HIT_RANGE = 1.6;
 const PARK = -9990; // Kollider unbenutzter/ferner Passanten
 const COL_NEAR = 8; // m: nur nahe Passanten blockieren den Spieler
 const COL_R = 0.3;
+const REACT_R = 4; // m: so nah muss ein Passant sein, um das neue Outfit zu kommentieren (1.17.0)
+const REACT_EVERY = 0.4; // s: Prüftakt der Outfit-Reaktionen
+/** Hat sich seit prev NUR die Frisur (Stil/Farbe, Felder 5/6) geändert? (rein; Code-Arrays laut char/look2.js) */
+export function hairOnly(prev, cur) {
+  if (!Array.isArray(prev) || !Array.isArray(cur)) return false;
+  let hair = false;
+  for (const i of OUTFIT_FIELDS) {
+    if (prev[i] === cur[i]) continue;
+    if (i === 5 || i === 6) hair = true; else return false;
+  }
+  return hair;
+}
 
 export default {
   name: 'npc',
@@ -39,6 +53,8 @@ export default {
     const lastLine = {};
     let speakGap = 0;
     const offs = [];
+    // Outfit-Reaktionen der Passanten (1.17.0): Budget aus char/react-logic.js, eigene ms-Uhr (aus dt), avatar lazy (Guard)
+    const react = { budget: createReactBudget(), cat: OUTFIT_NEW, avRef: undefined, off: null, prev: null, ms: 0, acc: 0, seq: 0, ids: new WeakMap() };
     const sound = (name) => { const s = ctx.use('sound'); if (s && s.play) s.play(name); };
     const found = (id) => { const d = ctx.use('discover'); if (d && d.found) { try { d.found(id); } catch { /* egal */ } } };
     const groups = () => { const c = ctx.use('city'); return (c && c.groups) || null; };
@@ -269,6 +285,35 @@ export default {
       }));
     }
 
+    // ------------------------------------------------------------ Outfit-Reaktionen
+    function watchAvatar() {
+      const av = ctx.use('avatar');
+      if (av === react.avRef) return;
+      if (react.off) { try { react.off(); } catch { /* egal */ } react.off = null; }
+      react.avRef = av;
+      if (!av || typeof av.onChange !== 'function') return;
+      react.prev = typeof av.code === 'function' && Array.isArray(av.code()) ? av.code().slice() : null;
+      react.off = av.onChange((look, code) => {
+        const h = typeof av.hash === 'function' ? av.hash() : '';
+        react.cat = hairOnly(react.prev, code) ? HAIR_NEW : OUTFIT_NEW;
+        react.prev = Array.isArray(code) ? code.slice() : null;
+        react.budget.noteChange(react.ms, h);
+      });
+    }
+    function reactTick() {
+      if (xrOn() || !havePose || !graph || py >= 1.2) return;
+      const g = groups();
+      if (!visible(g && g.street)) return;
+      for (const e of walkers) {
+        const h = e.handle;
+        if (!h.root.visible || !h.root.parent || Math.hypot(e.w.x - px, e.w.z - pz) >= REACT_R) continue;
+        let id = react.ids.get(h);
+        if (!id) { id = ++react.seq; react.ids.set(h, id); }
+        if (!react.budget.passerbyMay(react.ms, id)) continue;
+        if (sayCat(h, react.cat, false)) { react.budget.markSaid(react.ms, id); break; }
+      }
+    }
+
     // ------------------------------------------------------------ Update
     const visible = (g) => !g || g.visible || xrOn();
     function walkerEnv() {
@@ -358,6 +403,7 @@ export default {
 
     return {
       update(dt) {
+        react.ms += Math.max(0, dt) * 1000;
         dt = Math.min(dt, 0.1);
         frame++;
         speakGap = Math.max(0, speakGap - dt);
@@ -372,11 +418,15 @@ export default {
         updateStaff(dt);
         updateCat(dt);
         updateFlock(dt);
+        watchAvatar();
+        react.acc += dt;
+        if (react.acc >= REACT_EVERY) { react.acc = 0; reactTick(); }
       },
       onQuality() { preset = presetFor(ctx.quality(), ctx.isPhone); adjustWalkers(); disposePigeons(); if (enabled && city) buildPigeons(); },
       onSuspend() { for (const s of [...walkers]) bubbles.hideFor(s.handle); },
       dispose() {
         for (const off of offs) { try { off(); } catch { /* egal */ } }
+        if (react.off) { try { react.off(); } catch { /* egal */ } react.off = null; }
         offProvider();
         for (const e of walkers) { if (e.col) ctx.removeCollider(e.col); e.handle.dispose(); }
         walkers.length = 0;

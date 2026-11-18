@@ -19,7 +19,7 @@ import { PART_FACTORIES } from '../net/parts.js';
 const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] mp', what, err && err.message ? err.message : ''); } catch { /* egal */ } };
 const HINT = 'Andere auf diesem Server sehen dich hier. Abschalten im Menü unter Mehrspieler.';
 const HINT_MS = 7000;
-const DEFAULTS = { on: true, name: true, film: false, chat: true, mute: [], hint: false };
+const DEFAULTS = { on: true, name: true, card: true, film: false, chat: true, mute: [], hint: false };
 const PART_ERR_MAX = 5;
 const PART_ERR_WINDOW_MS = 60000;
 
@@ -151,7 +151,7 @@ export default {
 
     function peersSig() {
       const list = peers ? peers.list() : [];
-      return list.map((p) => `${p.c}:${p.k}:${p.f}:${p.n}`).join('|');
+      return list.map((p) => `${p.c}:${p.k}:${p.f}:${p.n}:${p.card ? 1 : 0}`).join('|');
     }
 
     function onMsg(m) {
@@ -168,10 +168,12 @@ export default {
         if (m.t === 'b') callParts('ev', m);
       } else if (m.t === 'x') {
         callParts('x', m);
+        // sendTo-Ereignisse (Fähigkeit look: lk/mc anderer) kommen als x-Frame
+        if (Array.isArray(m.ev)) for (const e of m.ev) if (e && (e.t === 'lk' || e.t === 'mc')) peers.ev(e);
       }
       emit('msg:' + m.t, m);
       if ((m.t === 'b' || m.t === 'x') && Array.isArray(m.ev)) for (const e of m.ev) if (e && typeof e.t === 'string') emit('msg:' + e.t, e, m);
-      if (m.t === 'wl' || m.t === 'j' || m.t === 'l' || m.t === 'pf' || m.t === 'b') {
+      if (m.t === 'wl' || m.t === 'j' || m.t === 'l' || m.t === 'pf' || m.t === 'b' || m.t === 'x') {
         const sig = peersSig();
         if (sig !== sigPeers) { sigPeers = sig; emit('peers'); change(); }
       }
@@ -186,11 +188,11 @@ export default {
         clearTimeout: (h) => clearTimeout(h),
         random: Math.random,
       },
-      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin'], f: flags(), cv: mp.cv }),
+      hello: () => ({ cap: ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'], f: flags(), cv: mp.cv }),
       onMsg,
       onState,
     });
-    peers = createPeers({ ctx, frame, serverNow: () => transport.serverNow(), me: () => transport.me() });
+    peers = createPeers({ ctx, frame, serverNow: () => transport.serverNow(), me: () => transport.me(), cap: (n) => transport.has(n) });
     core.peers = peers;
     for (const k of Object.keys(PART_FACTORIES)) {
       try { const h = PART_FACTORIES[k](core); if (h) parts.push(h); } catch (err) { warn('Teil ' + k, err); }
@@ -211,7 +213,8 @@ export default {
       for (const p of peers.list()) {
         if (me && (p.c === me.c || p.k === me.k)) continue;
         let r = by.get(p.k);
-        if (!r) { r = { k: p.k, c: p.c, name: 'Jemand', area: '', devs: p.devs || 1, admin: false, cs: [] }; by.set(p.k, r); }
+        if (!r) { r = { k: p.k, c: p.c, name: 'Jemand', area: '', devs: p.devs || 1, admin: false, card: false, cs: [] }; by.set(p.k, r); }
+        if (p.card) r.card = true;
         r.cs.push(p.c);
         const nm = peers.name(p.c);
         if (nm !== 'Jemand') r.name = nm;
@@ -244,6 +247,11 @@ export default {
       const r = players().find((x) => x.k === k);
       if (!r || r.admin) return false;
       return send(build.ki(r.c));
+    }
+    /** Ausweis einer Person (Zeile der Spielerliste) ansehen: member.showCard mit dem Ausweis des ersten Geräts, das einen zeigt. */
+    function showPlayerCard(k) {
+      const p = peers.list().find((x) => x.k === k && x.card);
+      return !!p && peers.showCard(p.c);
     }
     offs.push(on('msg:er', (e) => { if (e && e.y === 'ki') toast('Entfernen nicht möglich.'); }));
 
@@ -338,6 +346,7 @@ export default {
       } else if (live) {
         if (flags() !== sentFlags) sendFlags();
         if (now.film !== before.film) syncHeld();
+        if (now.card !== before.card) callParts('prefs');
       }
       change();
     }
@@ -345,7 +354,7 @@ export default {
       prefs, set: setPref, status: statusText, players, isMuted,
       setMute: (k, v) => { const c = chatPart(); if (c) return c.setMuted(k, v); setPref({ mute: v ? [...new Set([...prefs().mute, k])].slice(0, 50) : prefs().mute.filter((x) => x !== k) }); return isMuted(k); },
       canKick: () => { const me = transport.me(); return !!(live && me && me.admin && core.cap('admin')); },
-      kick: kickPlayer, filmTitle,
+      kick: kickPlayer, filmTitle, showCard: showPlayerCard,
     });
 
     // ---------------------------------------------------------------- Provider

@@ -45,8 +45,11 @@ export function createHands(camera) {
     get carrying() { return !!carried; },
     swing() { swingT = SWING_DUR; },
     throwAnim() { throwT = THROW_DUR; },
-    /** spec { media: 'vhs'|'dvd'|'box', art?: Canvas } oder null (nichts in der Hand). */
-    setCarried(spec) {
+    /**
+     * Gehaltener Gegenstand (1.17.0, allgemein; 1.18-Naht für Waffen/Gegenstände):
+     * spec { media: 'vhs'|'dvd'|'box', art?: Canvas } oder null (nichts in der Hand). Heute nur Hüllen.
+     */
+    setHeld(spec) {
       clearCarried();
       if (!spec) return;
       const media = SIDE[spec.media] ? spec.media : 'dvd';
@@ -62,6 +65,8 @@ export function createHands(camera) {
       carried = { mesh, tex, mats: [...new Set([side, front])] };
       carryGroup.visible = true; // Sichtbarkeit insgesamt über group (Hände im Halte-Bild aus, danach wieder an)
     },
+    /** Alias für setHeld (bisheriger Name). */
+    setCarried(spec) { api.setHeld(spec); },
     setVisible(on) {
       visible = !!on;
       group.visible = visible;

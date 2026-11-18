@@ -3,7 +3,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTransport, TICK_MS, BUCKET_PER_S } from '../src/js/store3d/net/transport.js';
 
-const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin'];
+const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'];
 const WL = { t: 'wl', pv: 1, c: 3, k: 'abcdef012345', s: 5000000, ad: 0, cap: CAPS, cf: { pr: 8, ph: 8 }, peers: [] };
 const settle = async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
 

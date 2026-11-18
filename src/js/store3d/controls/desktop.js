@@ -13,6 +13,11 @@ const LOCK_RECENT = 3000;
 const LOCK_SILENT = 400; // kommt nach requestPointerLock() so lange weder Lock noch Fehler, gilt der Versuch als gescheitert
 /** Aktionstasten: Code -> ctx-Rückruf (nur im Modus 'play' abgefangen, damit Leertaste in Menüs und Panels weiter Knöpfe auslöst). */
 const ACTIONS = { Space: 'onJump', KeyF: 'onHit', KeyG: 'onThrow', KeyV: 'onView' };
+/**
+ * Loslass-Rückrufe (1.18-Naht, ohne Wirkung, solange ctx sie nicht liefert): ctx[<Aktion>Up]() beim keyup der Aktionstaste (auch außerhalb von 'play'),
+ * ctx.onTakeUp() beim Loslassen der linken Maustaste; außerdem bei blur, Lock-Verlust und detach.
+ */
+const ACTION_UP = (name) => name + 'Up';
 /** Mehrspieler-Tasten (Enter/T): nur im Modus 'play' mit Pointer-Lock und nur verbraucht, wenn der Rückruf true liefert (sonst bleibt die Taste unberührt, wie in 1.15). */
 const MP_ACTIONS = { Enter: 'onChat', NumpadEnter: 'onChat', KeyT: 'onEmote' };
 const ESC_DEBOUNCE = 300; // Esc, das den Lock beendet hat, darf das Pause-Menü nicht sofort wieder schließen
@@ -55,6 +60,8 @@ export class DesktopControls {
     this.zoomBtn = false;
     this.zoomSent = 1;
     this.eaten = new Set(); // Mehrspieler-Tasten, deren keydown verbraucht wurde (Wiederholung und keyup folgen)
+    this.actHeld = new Map(); // gedrückte Aktionstasten: Code -> Rückrufname (für den Loslass-Rückruf)
+    this.clickHeld = false; // linke Maustaste im Spiel gedrückt (onTake('click') gefeuert)
     this.h = {
       key: (e) => this.onKey(e, true),
       keyUp: (e) => this.onKey(e, false),
@@ -65,13 +72,22 @@ export class DesktopControls {
       up: (e) => {
         this.drag = null;
         if (e && e.button === 2) { this.zoomBtn = false; this.syncZoom(); }
+        if (e && e.button === 0 && this.clickHeld) { this.clickHeld = false; if (typeof this.ctx.onTakeUp === 'function') this.ctx.onTakeUp(); }
       },
-      blur: () => { this.down.clear(); this.eaten.clear(); this.zoomKey = false; this.zoomBtn = false; this.syncZoom(); },
+      blur: () => { this.down.clear(); this.eaten.clear(); this.releaseHeld(); this.zoomKey = false; this.zoomBtn = false; this.syncZoom(); },
       noCtx: (e) => e.preventDefault(),
     };
   }
 
   get locked() { return document.pointerLockElement === this.ctx.canvas; }
+
+  /** Alle gehaltenen Aktionen loslassen (Loslass-Rückrufe, falls vorhanden). */
+  releaseHeld() {
+    const held = [...this.actHeld.values()];
+    this.actHeld.clear();
+    for (const name of held) { const fn = this.ctx[ACTION_UP(name)]; if (typeof fn === 'function') fn.call(this.ctx); }
+    if (this.clickHeld) { this.clickHeld = false; if (typeof this.ctx.onTakeUp === 'function') this.ctx.onTakeUp(); }
+  }
 
   get input() {
     const d = this.down;
@@ -112,6 +128,7 @@ export class DesktopControls {
     c.removeEventListener('contextmenu', this.h.noCtx);
     window.removeEventListener('mouseup', this.h.up);
     this.down.clear();
+    this.releaseHeld();
     this.clearLockTimer();
     this.inflight = false;
     this.zoomKey = false;
@@ -199,6 +216,7 @@ export class DesktopControls {
       this.exiting = false;
       if (!wasIntentional) { this.unlockAt = performance.now(); this.escAt = this.unlockAt; } // Esc-Exit: Chrome sperrt neue Anfragen ~1 s
       this.down.clear();
+      this.releaseHeld();
       if (!wasIntentional && this.ctx.getMode() === 'play') this.ctx.onLockLost();
     } else if (this.ctx.getMode() !== 'play') {
       // später erteilter Lock, obwohl inzwischen Overlay/Pause/Hold: sofort wieder freigeben (sonst bleibt der Zeiger gefangen)
@@ -229,7 +247,7 @@ export class DesktopControls {
     if (e.button !== 0) return;
     const mode = this.ctx.getMode();
     if (mode !== 'play') return;
-    if (this.locked) { this.ctx.onTake('click'); return; }
+    if (this.locked) { this.clickHeld = true; this.ctx.onTake('click'); return; }
     if (this.dragLook) { this.drag = { x: e.clientX, y: e.clientY, moved: 0 }; return; }
     this.requestLock({ click: true });
   }
@@ -252,6 +270,13 @@ export class DesktopControls {
     const esc = isDown && e.code === 'Escape';
     // keyup einer per Enter/T geöffneten Eingabe trifft das Feld: gemerkte Taste trotzdem aufräumen, sonst wird das nächste keydown verschluckt
     if (!isDown && this.eaten.delete(e.code)) { e.preventDefault(); e.stopPropagation(); return; }
+    // Loslass-Rückruf einer Aktionstaste (auch wenn inzwischen Pause/Overlay offen ist)
+    if (!isDown && this.actHeld.has(e.code)) {
+      const name = this.actHeld.get(e.code);
+      this.actHeld.delete(e.code);
+      const up = this.ctx[ACTION_UP(name)];
+      if (typeof up === 'function') up.call(this.ctx);
+    }
     if (esc ? typingText(e.target) : typing(e.target)) return;
     // Design-Wähler/Profil-Popover der Hülle (aus dem Pause-Menü geöffnet) schließen sich selbst: Esc gehört ihnen
     if (esc && document.documentElement.classList.contains('lfx-themepicker-open') || esc && document.documentElement.classList.contains('lfx-popover-open')) return;
@@ -305,7 +330,7 @@ export class DesktopControls {
     if (act && mode === 'play' && this.ctx[act]) {
       e.preventDefault();
       e.stopPropagation();
-      if (isDown && !e.repeat && (this.locked || this.dragLook)) this.ctx[act]();
+      if (isDown && !e.repeat && (this.locked || this.dragLook)) { this.actHeld.set(e.code, act); this.ctx[act](); }
       return;
     }
     if (e.code === 'KeyM' && mode === 'hold' && this.ctx.onCarry) {

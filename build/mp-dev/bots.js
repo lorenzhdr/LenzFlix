@@ -3,8 +3,10 @@
 //   createBots(world, { n, seed }) → { list, stats() → { n, live, maxFps, totalFps, perBot[{ name, route, fps, sent, live }] }, tick(nowMs), dispose() }
 // Welle 2: Bots chatten (alle 9–18 s) und emoten (alle 7–12 s, reihum 1..8) von selbst (social, setSocial(false) schaltet ab; eigener Zufallsstrom, Routen bleiben gleich);
 //   Debug-API say/emote/kick/park/inbox/setSocial; ein Bot kann Admin sein (adminBot = Index). Kick (4403) → Bot reconnectet nicht (dead).
+// 1.17.0: Bots mit Fähigkeit look (Option look, Standard an) senden einen zufälligen v2-Look (randomLook, Seed je Bot) und einen Ausweis (mc); look:false = alter Worker (kein look in hi).
 // Routen: Straße, Laden, Tür (Laden ↔ Straße), Palast-Saal sitzend, Palast-Foyer (Eingang ↔ Foyer). Die Zuordnung r (0 Laden, 1 Palast, 2 draußen) folgt dem Netzrahmen.
 import { build, F, NET_A, SUB } from '../../src/js/store3d/net/proto.js';
+import { randomLook } from '../../src/js/store3d/char/look2.js';
 
 const TICK_MS = 125; // 8 Hz
 const D = 1800; // Ladentiefe kanonisch (cm)
@@ -36,7 +38,7 @@ function mulberry32(seed) {
 const frame = (msgs) => JSON.stringify(msgs.filter(Boolean));
 const cRad = (yaw) => Math.max(-314, Math.min(314, Math.round(yaw * 100)));
 
-export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -1 } = {}) {
+export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -1, look = true } = {}) {
   const rnd = mulberry32(seed * 7919 + 13);
   const rndSoc = mulberry32(seed * 104729 + 7); // eigener Strom: Routen bleiben mit/ohne Chat identisch
   let socialOn = !!social;
@@ -51,7 +53,7 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
       i, name, route, wp: route.sit ? 0 : (i * 3) % route.pts.length, dir: 1,
       x: route.pts[0][0], z: route.pts[0][1], yaw: 0, a: NET_A.STAND,
       pauseUntil: 0, lastTick: 0, lastSent: null, lastPing: 0, sent: 0, win: [], conn: null, started: false,
-      admin: i === adminBot, parked: null, dead: false, inbox: [], emotes: [], errs: [], bye: null, nextSay: 0, nextEmo: 0, emoIdx: i % 8,
+      admin: i === adminBot, code: look ? randomLook(mulberry32(seed * 6151 + i * 97 + 5)) : null, lookDue: false, parked: null, dead: false, inbox: [], emotes: [], errs: [], bye: null, nextSay: 0, nextEmo: 0, emoIdx: i % 8,
     };
     b.nextSay = t0 + 5000 + Math.floor(rndSoc() * 7000);
     b.nextEmo = t0 + 9000 + Math.floor(rndSoc() * 6000);
@@ -71,7 +73,8 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
     b.lastTick = t;
     b.lastPing = t;
     b.lastSent = null;
-    send(b, [build.hi({ cap: b.admin ? ['pres', 'chat', 'emote', 'admin'] : ['pres', 'chat', 'emote'], f: F.NAME | F.CHAT, cv: 'bot' })]);
+    send(b, [build.hi({ cap: [...(b.admin ? ['pres', 'chat', 'emote', 'admin'] : ['pres', 'chat', 'emote']), ...(look ? ['look'] : [])], f: F.NAME | F.CHAT, cv: 'bot' })]);
+    b.lookDue = look; // lk/mc erst im nächsten Takt (nach dem wl)
   }
 
   /** Eingehende Frames mitschreiben: Chat (x/m) in inbox, Fehler (er) in errs, bye (Kick) in bye. Nur Debug, höchstens 40 Einträge. */
@@ -121,6 +124,11 @@ export function createBots(world, { n = 0, seed = 1, social = true, adminBot = -
       b.conn.send('ping');
     }
     const route = b.route;
+    if (b.lookDue) {
+      b.lookDue = false;
+      const day = Math.floor(world.now() / 86400000);
+      send(b, [build.lk(b.code), build.mc([1, 100000 + b.i * 7919, day - 20 - b.i * 9, 2 + b.i * 3, b.i % 4, (0x5a5a5a >> (b.i % 5)) & 0x7fffff])]);
+    }
     if (socialOn) {
       if (t >= b.nextSay) { b.nextSay = t + 9000 + Math.floor(rndSoc() * 9000); send(b, [build.m(SAY_LINES[Math.floor(rndSoc() * SAY_LINES.length)])]); }
       if (t >= b.nextEmo) { b.nextEmo = t + 7000 + Math.floor(rndSoc() * 5000); b.emoIdx = (b.emoIdx % 8) + 1; send(b, [build.e(b.emoIdx)]); }

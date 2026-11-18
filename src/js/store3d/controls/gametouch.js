@@ -14,16 +14,22 @@ export const DRAG_SLOP = 12;
 /** Geparkt (Kamerafahrt/Sperre): so lange (ms) bleiben liegende Finger gehalten, danach werden sie gelöst. */
 export const PARK_MAX_MS = 1500;
 
-const ROLES = ['stick', 'look', 'jump', 'use', 'act', 'zoom'];
-const BUTTONS = ['jump', 'use', 'act', 'zoom'];
+const ROLES = ['stick', 'look', 'jump', 'use', 'act', 'zoom', 'view', 'aux'];
+const BUTTONS = ['jump', 'use', 'act', 'zoom', 'view', 'aux'];
+/**
+ * Knopf-Liste (1.17.0): Name -> Rückrufe in den Optionen. onDown beim Drücken, onUp (optional, 1.18-Naht) beim Lösen
+ * (Loslassen, Abbruch, Durchziehen zum Blick, Gate/Schema/Detach). 'act' wählt je nach Ansicht zwischen onHit und onThrow, 'zoom' liefert den Zoom-Wert.
+ * 'aux' ist der freie Platz neben Schlagen (Knopf im Gamepad bleibt versteckt, solange er nicht per setAux gezeigt wird).
+ */
+const BUTTON_CBS = { jump: ['onJump', 'onJumpUp'], use: ['onUse', 'onUseUp'], act: ['onHit', 'onHitUp'], zoom: ['onZoom', null], view: ['onView', 'onViewUp'], aux: ['onAux', 'onAuxUp'] };
 const LOG_MAX = 40;
 
 const WHY_DE = {
   cancel: 'Systemabbruch', orphan: 'verwaist', reuse: 'ID doppelt', lost: 'Erfassung verloren', hidden: 'App verlassen', pagehide: 'Seite verlassen', blur: 'Fokus weg',
   orient: 'Drehen', 'mode:paused': 'Menü', 'mode:hold': 'Hülle', 'mode:overlay': 'Überlagerung', 'mode:off': 'Aus', xr: 'VR-Modus', scheme: 'Schema', detach: 'Aussetzen', reset: 'Zurücksetzen',
 };
-const ROLE_DE = { stick: 'am Stick', look: 'beim Umsehen', jump: 'am Knopf Springen', use: 'am Knopf Benutzen', act: 'am Knopf Schlagen', zoom: 'am Knopf Zoom' };
-const ROLE_NAME = { stick: 'Stick', look: 'Blick', jump: 'Springen', use: 'Benutzen', act: 'Schlagen', zoom: 'Zoom' };
+const ROLE_DE = { stick: 'am Stick', look: 'beim Umsehen', jump: 'am Knopf Springen', use: 'am Knopf Benutzen', act: 'am Knopf Schlagen', zoom: 'am Knopf Zoom', view: 'am Knopf Ansicht', aux: 'am Zusatzknopf' };
+const ROLE_NAME = { stick: 'Stick', look: 'Blick', jump: 'Springen', use: 'Benutzen', act: 'Schlagen', zoom: 'Zoom', view: 'Ansicht', aux: 'Zusatz' };
 
 function whyDe(w) {
   if (WHY_DE[w]) return WHY_DE[w];
@@ -52,6 +58,7 @@ export class GameTouch {
   /**
    * @param {object} o {
    *   now?() → ms, look(dx, dy) (Pixel-Delta des Blick-Fingers), onTap(x, y), onZoom(z), onJump(), onUse(), onHit(), onThrow(),
+   *   onView() (Knopf Ansicht), optional Loslass-Rückrufe onJumpUp/onUseUp/onHitUp/onViewUp, onAux()/onAuxUp() (freier Knopf, 1.18-Naht),
    *   debug?: bool (Ereignis-Ringpuffer in diag().log), api?: 'touch' | 'pointer' (Binder; Standard 'touch', 'pointer' = Plan B),
    *   win?, doc? }
    */
@@ -65,7 +72,7 @@ export class GameTouch {
     this.root = null;
     this.L = [];
     this.mq = null;
-    this.slots = { stick: null, look: null, jump: null, use: null, act: null, zoom: null };
+    this.slots = { stick: null, look: null, jump: null, use: null, act: null, zoom: null, view: null, aux: null };
     this.out = { fwd: 0, strafe: 0, scale: 0, run: false };
     this.state = 'on';
     this.why = '';
@@ -221,6 +228,7 @@ export class GameTouch {
     } else if (BUTTONS.includes(role) && this.view) {
       this.view.press(role, false);
     }
+    if (BUTTONS.includes(role) && role !== 'zoom') this.up(role);
     if (why === 'end') return;
     const key = why.indexOf(':') > 0 ? why.slice(0, why.indexOf(':')) : why;
     if (why === 'orphan') this.n.orphan++;
@@ -231,6 +239,12 @@ export class GameTouch {
     const t = this.now();
     this.last = { why, role, t, x: s.x !== undefined ? s.x : s.sx, y: s.y !== undefined ? s.y : s.sy };
     this.dlog('rel', s.id, role, this.last.x, this.last.y);
+  }
+
+  /** Loslass-Rückruf eines Knopfes (falls vorhanden). */
+  up(role) {
+    const cb = BUTTON_CBS[role] && BUTTON_CBS[role][1];
+    if (cb && typeof this.o[cb] === 'function') this.o[cb]();
   }
 
   /** Alle Slots lösen (Grund für die Diagnose). */
@@ -269,6 +283,8 @@ export class GameTouch {
       else if (name === 'use') { if (this.o.onUse) this.o.onUse(); }
       else if (name === 'act') { if (v.carrying) { if (this.o.onThrow) this.o.onThrow(); } else if (this.o.onHit) this.o.onHit(); }
       else if (name === 'zoom') { if (this.o.onZoom) this.o.onZoom(ZOOM_IN); }
+      else if (name === 'view') { if (this.o.onView) this.o.onView(); }
+      else if (name === 'aux') { if (this.o.onAux) this.o.onAux(); }
       return true;
     }
     if (!this.slots.stick && v.zoneOf(x, y)) {
@@ -344,7 +360,7 @@ export class GameTouch {
     s.dragged = true;
     if (this.view) this.view.press(role, false);
     this.slots.look = { id: s.id, x, y, sx: x, sy: y, t0: this.now(), moved: true };
-    if (role !== 'zoom') this.slots[role] = null; // der Zoom bleibt aktiv, solange der Finger liegt
+    if (role !== 'zoom') { this.slots[role] = null; this.up(role); } // der Zoom bleibt aktiv, solange der Finger liegt
   }
 
   /** Finger weg (cancelled = Systemabbruch). */

@@ -200,13 +200,19 @@ export default {
       }
       return sitOwn(seatId);
     }
+    /** 1.17.0: Kinobesuch am Ausweis (je Titel einmal pro Tag; Guard, wenn `member` fehlt). */
+    function countCine(item) {
+      const id = item && (item.Id || item.id);
+      const m = ctx.use('member');
+      if (id && m && typeof m.count === 'function') { try { m.count('cine', String(id)); } catch { /* egal */ } }
+    }
     function sitOwn(seatId, pre) {
       const c = cinema();
       if (xr()) {
         const t = book.get();
         const show = program.shows[0];
         const it = t ? t.item : itemOf(show);
-        if (it) { if (pre) pre(); ctx.deps.play(it, { resume: t ? t.resume : Boolean(show && show.resume) }); }
+        if (it) { if (pre) pre(); countCine(it); ctx.deps.play(it, { resume: t ? t.resume : Boolean(show && show.resume) }); }
         else toast('Heute läuft nichts im Palast.');
         return false;
       }
@@ -330,6 +336,7 @@ export default {
           if (!offSaal) attach();
           if (c.active && c.phase === 'playing' && book.get() && startedFor !== book.get()) {
             startedFor = book.get();
+            countCine(startedFor.item);
             const d = ctx.use('discover');
             if (d && typeof d.found === 'function') {
               try { d.found('palast-film'); if (startedFor.source === 'tape') d.found('palast-tape'); } catch { /* egal */ }

@@ -43,7 +43,8 @@ function mk(tag, cls, text) {
 /**
  * Ansicht des Touch-Schemas „game“.
  * @param {HTMLElement} host
- * @returns {{root, btnOf, setStick, restStick, press, setAimed, setCarrying, carrying, show, setParked, zoneOf, destroy}}
+ * 1.17.0: Knopf „Ansicht“ (name 'view', Standard versteckt, setViewShown) und freier Platz 'aux' neben Schlagen/Werfen (1.18-Naht, Standard versteckt, setAux).
+ * @returns {{root, btnOf, setStick, restStick, press, setAimed, setCarrying, carrying, setViewShown, setAux, show, setParked, zoneOf, destroy}}
  */
 export function createGamepad(host) {
   const root = mk('div', 'lfx-store-gp');
@@ -57,24 +58,28 @@ export function createGamepad(host) {
   const hit = mk('button', 'lfx-store-gp-hit', 'SCHLAGEN');
   const thr = mk('button', 'lfx-store-gp-throw', 'WERFEN');
   const zoom = mk('button', 'lfx-store-gp-zoom', 'ZOOM');
-  for (const b of [jump, use, hit, thr, zoom]) { b.type = 'button'; b.tabIndex = -1; }
+  const view = mk('button', 'lfx-store-gp-view', 'ANSICHT');
+  const aux = mk('button', 'lfx-store-gp-aux', '');
+  for (const b of [jump, use, hit, thr, zoom, view, aux]) { b.type = 'button'; b.tabIndex = -1; }
   thr.hidden = true;
-  btns.append(jump, use, hit, thr, zoom);
+  view.hidden = true;
+  aux.hidden = true;
+  btns.append(jump, use, hit, thr, zoom, view, aux);
   root.append(base, btns);
   host.appendChild(root);
 
-  const byName = { jump, use, act: hit, zoom };
+  const byName = { jump, use, act: hit, zoom, view, aux };
   let carrying = false;
 
   const actEl = () => (carrying ? thr : hit);
-  const nameOf = (el) => (el === jump ? 'jump' : el === use ? 'use' : el === hit || el === thr ? 'act' : el === zoom ? 'zoom' : null);
+  const nameOf = (el) => (el === jump ? 'jump' : el === use ? 'use' : el === hit || el === thr ? 'act' : el === zoom ? 'zoom' : el === view ? 'view' : el === aux ? 'aux' : null);
 
   const noCtx = (e) => e.preventDefault();
   root.addEventListener('contextmenu', noCtx);
 
   const api = {
     root,
-    /** Knopfname zu einem Ereignisziel (auch Kindelemente): 'jump' | 'use' | 'act' | 'zoom' | null. */
+    /** Knopfname zu einem Ereignisziel (auch Kindelemente): 'jump' | 'use' | 'act' | 'zoom' | 'view' | 'aux' | null. */
     btnOf(target) {
       let el = target && target.nodeType ? target : null;
       while (el && el !== root) {
@@ -103,12 +108,16 @@ export function createGamepad(host) {
       base.style.transform = '';
       knob.style.transform = '';
     },
-    /** Knopf optisch gedrückt (name: jump | use | act | zoom). */
+    /** Knopf optisch gedrückt (name: jump | use | act | zoom | view | aux). */
     press(name, on) {
       const el = name === 'act' ? actEl() : byName[name];
       if (el) el.classList.toggle('is-down', !!on);
       if (name === 'act') { const o = el === hit ? thr : hit; o.classList.remove('is-down'); }
     },
+    /** Knopf „Ansicht“ zeigen/verstecken (versteckte Knöpfe nimmt GameTouch nicht als Ziel). */
+    setViewShown(on) { view.hidden = !on; },
+    /** Freier Knopf neben Schlagen/Werfen (1.18-Naht): zeigen mit Beschriftung, off = verstecken. */
+    setAux(on, label) { aux.hidden = !on; if (label !== undefined) aux.textContent = label; },
     /** Ziel im Fadenkreuz: Benutzen-Knopf hervorheben. */
     setAimed(on) { use.classList.toggle('is-aimed', !!on); },
     /** Getragene Hülle: „Werfen“ ersetzt „Schlagen“ (btnOf liefert weiter 'act'). */

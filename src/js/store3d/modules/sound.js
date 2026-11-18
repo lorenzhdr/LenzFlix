@@ -173,6 +173,16 @@ export default {
       oof(t) { tone(170, t, 0.14, { type: 'sine', gain: 0.14, slide: 0.5 }); noise(t, 0.05, { freq: 700, q: 1, gain: 0.09 }); },
       buy(t) { tone(988, t, 0.08, { type: 'square', gain: 0.045 }); tone(1319, t + 0.08, 0.22, { type: 'square', gain: 0.045 }); noise(t + 0.02, 0.04, { freq: 3000, q: 4, gain: 0.05 }); },
       munch(t) { noise(t, 0.07, { type: 'bandpass', freq: 1400, q: 2, gain: 0.11 }); tone(190, t, 0.06, { type: 'triangle', gain: 0.07, slide: 0.6 }); },
+      // --- Figur (1.17.0): Fotoblitz, Stempel, Vorhang, Schere ---
+      flash(t) { noise(t, 0.12, { type: 'highpass', freq: 5000, q: 0.7, gain: 0.16 }); tone(2600, t, 0.1, { type: 'sine', gain: 0.07, slide: 0.5 }); tone(180, t, 0.18, { type: 'triangle', gain: 0.05, slide: 0.4 }); },
+      stamp(t) { noise(t, 0.06, { freq: 300, q: 1, gain: 0.22 }); tone(95, t, 0.16, { type: 'triangle', gain: 0.3, slide: 0.5 }); noise(t + 0.05, 0.05, { freq: 1800, q: 2, gain: 0.07 }); },
+      curtain(t) {
+        const { f } = noise(t, 0.5, { freq: 600, q: 0.8, gain: 0.1 });
+        f.frequency.setValueAtTime(400, t);
+        f.frequency.exponentialRampToValueAtTime(1600, t + 0.45);
+        for (let i = 0; i < 4; i++) tone(3000 + i * 210, t + 0.05 + i * 0.09, 0.05, { type: 'sine', gain: 0.02 });
+      },
+      snip(t) { for (let k = 0; k < 2; k++) { noise(t + k * 0.09, 0.03, { type: 'highpass', freq: 4200, q: 2, gain: 0.12 }); tone(3600, t + k * 0.09, 0.04, { type: 'square', gain: 0.02 }); } },
     };
 
     function play(name, opts) {

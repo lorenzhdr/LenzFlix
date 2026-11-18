@@ -28,6 +28,12 @@ export function buildMenuSpec(mode) {
     { label: 'Kassen-PC-Suche', onSelect: () => { mode.closeMenu(); app.openTerminal(''); } },
     { label: 'Diagnose', tag: onOff(mode.diagOn), onSelect: () => { mode.setDiag(!mode.diagOn); again(); } },
   ];
+  // 1.17.0: „Figur“ (VR light) nur mit Provider xrchar (app.modUse) und nicht im Kino
+  let xrchar = null;
+  try { xrchar = !mode.inCinema && typeof app.modUse === 'function' ? app.modUse('xrchar') : null; } catch { xrchar = null; }
+  if (xrchar && typeof xrchar.open === 'function') {
+    rows.splice(rows.findIndex((r) => r.label === 'Kassen-PC-Suche'), 0, { label: 'Figur', sub: 'Outfit, Zufall, Farben', onSelect: () => { mode.closeMenu(); xrchar.open(); } });
+  }
   // Im Kino ohne „Größe“ (der Saal wertet sie nicht aus) und ohne Kassen-PC-Suche (der Laden ist dort unsichtbar)
   if (mode.inCinema) {
     for (const l of ['Größe', 'Kassen-PC-Suche']) rows.splice(rows.findIndex((r) => r.label === l), 1);

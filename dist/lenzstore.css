@@ -3833,3 +3833,821 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-hudbtn {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-hudbtn[hidden] {
   display: none;
 }
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
+  z-index: 40;
+  box-sizing: border-box;
+  padding: max(10px, var(--lfx-store-safe-top)) var(--lfx-store-safe-x) 10px;
+  color: var(--lfx-store-text);
+  font-family: var(--lfx-font);
+  pointer-events: none;
+  flex-direction: row;
+  gap: 12px;
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live {
+  justify-content: flex-start;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__panel {
+  pointer-events: auto;
+  box-sizing: border-box;
+  background: var(--lfx-store-glass);
+  border: 1px solid var(--lfx-store-glass-border);
+  border-radius: 8px;
+  flex-direction: column;
+  flex: 0 0 min(440px, 46vw);
+  order: 1;
+  min-width: 0;
+  max-height: 100%;
+  padding: 14px 14px 10px;
+  display: flex;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .5);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__preview {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  flex: auto;
+  order: 2;
+  min-width: 0;
+  position: relative;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__preview {
+  pointer-events: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rot {
+  gap: 10px;
+  display: flex;
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rotbtn {
+  border: 1px solid var(--lfx-store-glass-border);
+  background: var(--lfx-store-glass);
+  min-width: 48px;
+  min-height: 48px;
+  color: var(--lfx-store-yellow);
+  cursor: pointer;
+  border-radius: 50%;
+  font-size: 22px;
+  line-height: 1;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__head, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__formhead {
+  flex: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__title {
+  font-family: var(--lfx-store-neon-font, inherit);
+  letter-spacing: .04em;
+  color: var(--lfx-store-yellow);
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__kicker {
+  letter-spacing: .22em;
+  color: var(--lfx-store-muted);
+  font-size: 11px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__lead {
+  color: var(--lfx-store-muted);
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__panel {
+  color: #2a2330;
+  background: #f1dfe0 repeating-linear-gradient(0deg, rgba(0, 0, 0, 0) 0, rgba(0, 0, 0, 0) 27px, rgba(120, 60, 80, .12) 27px, rgba(120, 60, 80, .12) 28px);
+  border: 1px solid #c9a9ae;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .55), inset 0 0 0 4px rgba(255, 255, 255, .25);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__title {
+  color: #7a1426;
+  text-transform: uppercase;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__kicker, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__lead, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__hint {
+  color: #5d4650;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__fields {
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-bottom: 8px;
+  display: grid;
+  position: relative;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__field {
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__flabel {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #7a5a64;
+  font-size: 10px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__input, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__static {
+  box-sizing: border-box;
+  color: #1b1830;
+  min-height: 34px;
+  font: 600 14px/1.2 var(--lfx-font);
+  background: rgba(255, 255, 255, .55);
+  border: 0;
+  border-bottom: 2px solid #3a2f55;
+  border-radius: 0;
+  padding: 6px 8px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__static {
+  color: #6a5560;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp {
+  border: 2px dashed #b98a96;
+  border-radius: 4px;
+  grid-column: 1 / -1;
+  justify-content: center;
+  align-items: center;
+  min-height: 46px;
+  display: flex;
+  overflow: hidden;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp-text {
+  font: 800 20px/1 var(--lfx-font);
+  letter-spacing: .18em;
+  color: #b3202f;
+  opacity: 0;
+  border: 3px solid #b3202f;
+  border-radius: 6px;
+  padding: 4px 12px;
+  transform: rotate(-6deg) scale(1.6);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp.is-stamped .lfx-store-char__stamp-text {
+  opacity: .9;
+  transition: transform .14s cubic-bezier(.2, .9, .3, 1.3), opacity .1s linear;
+  transform: rotate(-6deg) scale(1);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tabs {
+  scrollbar-width: none;
+  flex: none;
+  gap: 4px;
+  padding-bottom: 6px;
+  display: flex;
+  overflow-x: auto;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tab {
+  border: 1px solid var(--lfx-store-glass-border);
+  min-height: 44px;
+  color: inherit;
+  font: 600 13px/1 var(--lfx-font);
+  cursor: pointer;
+  background: none;
+  border-radius: 6px;
+  flex: none;
+  padding: 0 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tab.is-on {
+  background: var(--lfx-store-yellow);
+  border-color: var(--lfx-store-yellow);
+  color: #1a1530;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__body {
+  overscroll-behavior: contain;
+  flex: auto;
+  min-height: 0;
+  padding: 4px 2px 6px;
+  overflow-y: auto;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__group {
+  border: 0;
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__legend {
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .8;
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 11px;
+  display: block;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__grid {
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 6px;
+  display: grid;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__opt {
+  border: 1px solid var(--lfx-store-glass-border);
+  min-height: 44px;
+  color: inherit;
+  font: 600 12px/1.2 var(--lfx-font);
+  cursor: pointer;
+  background: rgba(255, 255, 255, .06);
+  border-radius: 6px;
+  padding: 6px 8px;
+  position: relative;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__opt.is-on {
+  background: var(--lfx-store-yellow);
+  border-color: var(--lfx-store-yellow);
+  color: #1a1530;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__opt.is-locked {
+  opacity: .55;
+  border-style: dashed;
+  padding-right: 24px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__lock {
+  background: currentColor;
+  border-radius: 1px;
+  width: 10px;
+  height: 7px;
+  margin-top: -2px;
+  position: absolute;
+  top: 50%;
+  right: 7px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__lock:before {
+  content: "";
+  border: 1.5px solid;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  width: 4px;
+  height: 5px;
+  position: absolute;
+  top: -6px;
+  left: 1px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__swatches {
+  grid-template-columns: repeat(8, minmax(30px, 1fr));
+  gap: 6px;
+  display: grid;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__swatch {
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, .25);
+  border-radius: 6px;
+  min-height: 44px;
+  padding: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__swatch.is-on {
+  border-color: var(--lfx-store-yellow);
+  box-shadow: 0 0 0 2px var(--lfx-store-yellow);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__swatch {
+  border-color: rgba(0, 0, 0, .25);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__swatch.is-on, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__opt.is-on, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__tab.is-on {
+  color: #fff;
+  background: #7a1426;
+  border-color: #7a1426;
+  box-shadow: 0 0 0 2px #7a1426;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__swatch.is-on {
+  background-clip: padding-box;
+  box-shadow: 0 0 0 2px #7a1426;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__opt, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__tab {
+  color: #2a2330;
+  background: rgba(255, 255, 255, .5);
+  border-color: #b98a96;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__custom {
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 8px;
+  font-size: 12px;
+  display: inline-flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__color {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rangerow {
+  align-items: center;
+  gap: 8px;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__range {
+  min-width: 0;
+  min-height: 44px;
+  accent-color: var(--lfx-store-yellow);
+  flex: auto;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rangelabel {
+  opacity: .75;
+  font-size: 11px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__hint {
+  color: var(--lfx-store-muted);
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__slot {
+  border-bottom: 1px solid var(--lfx-store-glass-border);
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__slot.is-active .lfx-store-char__slotname {
+  color: var(--lfx-store-yellow);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__slotname {
+  flex: auto;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__status {
+  min-height: 18px;
+  color: var(--lfx-store-pink);
+  flex: none;
+  font-size: 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__foot {
+  flex: none;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__btn {
+  border: 1px solid var(--lfx-store-glass-border);
+  min-width: 44px;
+  min-height: 44px;
+  color: inherit;
+  font: 700 13px/1 var(--lfx-font);
+  cursor: pointer;
+  background: rgba(255, 255, 255, .08);
+  border-radius: 6px;
+  padding: 0 16px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__btn--small {
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__btn--main {
+  background: var(--lfx-store-yellow);
+  border-color: var(--lfx-store-yellow);
+  color: #1a1530;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__btn {
+  color: #2a2330;
+  background: rgba(255, 255, 255, .5);
+  border-color: #b98a96;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-char__btn--main {
+  color: #fff;
+  background: #7a1426;
+  border-color: #7a1426;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__btn:disabled, html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__btn[disabled] {
+  opacity: .5;
+  cursor: default;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-busy .lfx-store-char__panel {
+  pointer-events: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char :focus-visible {
+  outline: 2px solid var(--lfx-store-yellow);
+  outline-offset: 2px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate :focus-visible {
+  outline-color: #7a1426;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live {
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__panel {
+  flex: none;
+  order: 2;
+  align-self: center;
+  width: min(560px, 100%);
+  max-height: 52%;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__preview {
+  display: none;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char-flash {
+  z-index: 5;
+  pointer-events: none;
+  background: #fff;
+  animation: .14s ease-out both lfx-store-char-flash;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char-flash.is-soft {
+  animation: .32s ease-in-out both lfx-store-char-flash-soft;
+}
+
+@keyframes lfx-store-char-flash {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lfx-store-char-flash-soft {
+  0%, 100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: .35;
+  }
+}
+
+@media (max-aspect-ratio: 11 / 10) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__preview {
+    flex: 0 0 42%;
+    order: 1;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__panel {
+    flex: 1 1 0;
+    order: 2;
+    min-height: 0;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__swatches {
+    grid-template-columns: repeat(8, minmax(26px, 1fr));
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__fields {
+    grid-template-columns: 1fr;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp.is-stamped .lfx-store-char__stamp-text {
+    transition: none;
+  }
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-wrap {
+  z-index: 40;
+  padding: max(12px, var(--lfx-store-safe-top)) var(--lfx-store-safe-x) 12px;
+  box-sizing: border-box;
+  background: rgba(5, 8, 24, .66);
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: auto;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-wrap.is-rent {
+  pointer-events: none;
+  z-index: 30;
+  background: none;
+  animation: 1.2s both lfx-store-card-pop;
+  top: auto;
+  bottom: 18%;
+  left: 0;
+  right: 0;
+  overflow: visible;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-wrap.is-rent .lfx-store-card {
+  width: min(280px, 70vw);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card {
+  --card-a: #b87333;
+  --card-b: #7a4a1e;
+  --card-ink: #1a1208;
+  box-sizing: border-box;
+  width: min(420px, 100%);
+  max-height: 100%;
+  color: var(--card-ink);
+  font: 14px/1.35 var(--lfx-store-neon-font);
+  background: linear-gradient(135deg, var(--card-a), var(--card-b));
+  border-radius: 14px;
+  padding: 16px 18px 18px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .55), inset 0 0 0 2px rgba(255, 255, 255, .28);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card.is-silver {
+  --card-a: #d7dbe6;
+  --card-b: #8e95a8;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card.is-gold {
+  --card-a: #ffe27a;
+  --card-b: #c98a12;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-head {
+  border-bottom: 2px solid rgba(26, 18, 8, .35);
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  display: grid;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-brand {
+  letter-spacing: .06em;
+  font-size: 1.15em;
+  font-weight: 900;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-sub {
+  opacity: .8;
+  grid-column: 1;
+  font-size: .8em;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-tier {
+  text-transform: uppercase;
+  color: var(--lfx-store-yellow);
+  background: rgba(26, 18, 8, .78);
+  border-radius: 99px;
+  grid-area: 1 / 2 / span 2;
+  align-self: center;
+  padding: 2px 9px;
+  font-size: .78em;
+  font-weight: 900;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-body {
+  align-items: flex-start;
+  gap: 12px;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-photo {
+  background: rgba(255, 255, 255, .45);
+  border-radius: 6px;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  width: 96px;
+  height: 120px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px rgba(26, 18, 8, .4);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-photo-ph {
+  opacity: .4;
+  font-size: 2em;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-photo-img {
+  object-fit: cover;
+  object-position: center 20%;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-info {
+  flex: auto;
+  min-width: 0;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-row {
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-k {
+  opacity: .75;
+  white-space: nowrap;
+  font-size: .78em;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-v {
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-row.is-no .lfx-store-card-v {
+  letter-spacing: .1em;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-stamps {
+  margin-top: 12px;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-stamps-t {
+  margin-bottom: 6px;
+  font-size: .8em;
+  font-weight: 800;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-grid {
+  grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+  gap: 5px;
+  display: grid;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-stamp {
+  aspect-ratio: 1;
+  color: #b3261e;
+  border: 2px dashed rgba(26, 18, 8, .4);
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  font-size: 15px;
+  display: flex;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-stamp.is-on {
+  background: rgba(255, 255, 255, .4);
+  border: 2px solid #b3261e;
+  transform: rotate(-8deg);
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-btn {
+  cursor: pointer;
+  min-width: 140px;
+  min-height: 44px;
+  margin: 14px auto 0;
+  display: block;
+}
+
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card.is-glitter:after {
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(105deg, rgba(0, 0, 0, 0) 35%, rgba(255, 255, 255, .55) 48%, rgba(0, 0, 0, 0) 60%) 160% 0 / 250% 100%;
+  animation: 3.4s ease-in-out infinite lfx-store-card-glint;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+@keyframes lfx-store-card-glint {
+  to {
+    background-position: -60% 0;
+  }
+}
+
+@keyframes lfx-store-card-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  15%, 80% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card.is-glitter:after {
+    background: none;
+    animation: none;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-wrap.is-rent {
+    animation: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-wrap {
+    align-items: flex-start;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card {
+    width: min(640px, 100%);
+    padding: 10px 14px 12px;
+    font-size: 12px;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-photo {
+    width: 68px;
+    height: 86px;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(24px, 1fr));
+    gap: 4px;
+  }
+
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-btn {
+    margin-top: 8px;
+  }
+}

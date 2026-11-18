@@ -9,6 +9,7 @@ import { createPhys } from './phys.js';
 import { createPush } from './push.js';
 import { createRichard } from './richard.js';
 import { createWeather } from './weather.js';
+import { createLook } from './look.js';
 
 const stub = () => ({});
 
@@ -20,4 +21,5 @@ export const PART_FACTORIES = {
   richard: createRichard, // Welle c (C2)
   weather: createWeather, // Welle c (C2)
   kino: stub, // Welle d
+  look: createLook, // 1.17.0: eigener Look und Ausweis (Fähigkeit look)
 };

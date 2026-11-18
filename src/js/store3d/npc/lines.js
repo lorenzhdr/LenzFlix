@@ -50,6 +50,24 @@ const LINES = {
     'Ein Snack in Ehren kann niemand verwehren!',
   ],
   kioskHit: ['Hände weg vom Sortiment!', 'Aua! Ich bin kein Gummibärchen!', 'Wer so zuschlägt, braucht dringend eine Brezel.'],
+  // Passanten kommentieren das neue Outfit (1.17.0; eher frech, nie über Körper oder Hautfarbe, keine Beleidigungen; selten, siehe char/react-logic.js)
+  outfitNew: [
+    'Na, neues Outfit? Mutig. Gefällt mir.', 'Sieht aus, als hätte der Kleiderschrank heute Streik gehabt, aber im guten Sinn!',
+    'Dieses Outfit hat Charakter. Und Meinung.', 'Hat dich jemand angezogen oder bist du in die Auslage gefallen?',
+    'Respekt! Das trägt sonst keiner. Aus gutem Grund, aber Respekt!', 'Moment, das Outfit kenn ich noch nicht. Läuft das als Neuheit?',
+    'Schick, schick! Wie ein Filmplakat zum Anziehen.', 'Da hat jemand Stil bewiesen. Oder Mut. Beides passt!',
+    'Das ist ein Auftritt! Fehlt nur der rote Teppich.', 'Gestern noch Alltag, heute Hauptrolle. Steht dir.',
+    'Ist das Absicht? Egal, ich nehm es als Kunst.', 'Du siehst aus, als würdest du gleich einen Filmpreis abholen. Oder Brötchen.',
+    'Neue Sachen? Die Straße hat es sofort bemerkt.', 'Ich würd das nie anziehen. Deshalb gefällt es mir so.',
+    'Deine Garderobe hat heute die Hauptrolle. Der Rest ist Komparserie.', 'Oha, Farbe! Hier gibt es sonst nur Grau und Neon.',
+  ],
+  hairNew: [
+    'Neue Frisur? Der Wind hat schon abgestimmt.', 'Frisch frisiert! Hat der Spiegel genickt?', 'Da hat jemand beim Haar-Termin Mut bewiesen!',
+    'Die Frisur hat Persönlichkeit. Ich geb ihr eine Hauptrolle.', 'Wow, die Haare haben heute Premiere!', 'Neuer Schnitt? Sitzt. Oder fliegt. Beides gut!',
+    'Das ist keine Frisur, das ist ein Statement.', 'Kompliment an deinen Friseur. Oder an den Zufall.', 'Frisur sitzt! Zumindest solange es nicht regnet.',
+    'Neue Haare, neues Glück. Läuft bei dir.', 'Ich wollte auch mal so mutig sein. Dann kam der Föhn.', 'Haare wie aus dem Film. Welcher, verrate ich nicht.',
+    'Spiegel, Spiegel, an der Wand ... das war eine gute Entscheidung!', 'Hui, da ist was passiert! Steht dir!',
+  ],
   kioskBuy: ['Macht dann nix, geht aufs Haus – du siehst hungrig aus.', 'Zack, bitte sehr! Wohl bekomms!', 'Guter Griff! Den nehmen alle.'],
 };
 

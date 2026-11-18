@@ -8,6 +8,7 @@ import { createRentLedger, createTheftGuard, crossedGate } from './brawl-logic.j
 
 const BLINK_SEC = 3.2;
 const ALARM_COOLDOWN = 60;
+const ASK_MS = 1500; // Pause zwischen „Ausweis, bitte.“ und der Bestätigung in VR
 
 export default {
   name: 'rent',
@@ -18,6 +19,8 @@ export default {
     const store = (() => { try { return window.sessionStorage; } catch { return null; } })();
     const ledger = createRentLedger(store);
     const guard = createTheftGuard(ALARM_COOLDOWN);
+    const timers = new Set();
+    let disposed = false;
     const gate = { x0: door.x0 - 0.1, x1: door.x1 + 0.1, z: D - 0.7 };
     const richard = () => { const c = ctx.use('cashier'); return c && c.richard ? c.richard() : null; };
     const say = (cat, vars) => { const r = richard(); if (r) r.say(cat, vars || {}); };
@@ -46,7 +49,17 @@ export default {
       if (ledger.isRented(c.id)) { say('rentAlready', { title }); return false; }
       ledger.rent(c.id);
       sound('beep2');
-      say('rentOk', { title });
+      const mem = ctx.use('member');
+      if (mem && typeof mem.count === 'function') { try { mem.count('rent', c.id); } catch { /* egal */ } }
+      // 1.17.0: „Ausweis, bitte.“ → kurzes Einblenden der Karte (in VR nur der Spruch) → dann die Ausleihe bestätigen
+      let data;
+      try { data = mem && typeof mem.cardData === 'function' ? mem.cardData() : null; } catch { data = null; }
+      if (data) {
+        say('cardAsk', { title });
+        const done = () => { if (!disposed) say('rentOk', { title }); };
+        const shown = typeof mem.showCard === 'function' ? mem.showCard(data, { mode: 'rent' }) : Promise.resolve();
+        if (ctx.xr && ctx.xr.presenting && ctx.xr.presenting()) { const t = setTimeout(() => { timers.delete(t); done(); }, ASK_MS); timers.add(t); } else Promise.resolve(shown).then(done, done);
+      } else say('rentOk', { title });
       if (ctx.xr && ctx.xr.toast) ctx.xr.toast(title ? `Ausgeliehen: ${title}` : 'Ausgeliehen', 2200);
       const d = ctx.use('discover');
       if (d && d.found) { try { d.found('richard-rent'); } catch { /* egal */ } }
@@ -82,6 +95,8 @@ export default {
         }
       },
       dispose() {
+        disposed = true;
+        timers.forEach(clearTimeout);
         off();
         if (lamp) ctx.scene.remove(lamp);
         if (window.__lfxRent) delete window.__lfxRent;

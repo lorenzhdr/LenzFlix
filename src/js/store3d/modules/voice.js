@@ -48,6 +48,19 @@ export function pickVoice(voices, opts = {}) {
   return { voice: list.find(isDeDE) || list[0], pitch: 0.8 };
 }
 
+/**
+ * Stimme je Seed (Personen, 1.17.0): stabile Wahl aus den deutschen Stimmen (lokal; mit opts.online auch Online-Stimmen),
+ * nach Name sortiert. Ohne passende Stimme null. Grund-pitch 1.0; die Äußerung stellt pitch/rate selbst.
+ */
+export function pickVoiceSeeded(voices, seed, opts = {}) {
+  const all = Array.from(voices || []).filter((v) => v && isDe(v));
+  const list = (opts.online ? all : all.filter((v) => v.localService === true)).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'de') || 0);
+  if (!list.length) return null;
+  const s = Number.isFinite(Number(seed)) ? Math.abs(Math.floor(Number(seed))) : 0;
+  const v = list[s % list.length];
+  return { voice: v, pitch: 1.0, online: v.localService !== true };
+}
+
 /** Tonlagen-Faktoren (mit dem Grund-pitch aus pickVoice multipliziert, Ergebnis auf [0.5, 2] begrenzt). */
 export const PITCH_FACTOR = { normal: 1.0, tief: 0.8, sehrtief: 0.65 };
 const clampPitch = (x) => Math.max(0.5, Math.min(2, x));
@@ -85,6 +98,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
   let unlockTry = 0;
   let notStarted = false;
   let lastError = '';
+  const seeded = new Map(); // voiceSeed → gewählte Personenstimme
   let pending = null; // { text, volume, at, onBegin, onEnd }: wartende Zeile, wird in der Geste als Freischaltung gesprochen
   const gestureEvents = ['touchend', 'click', 'keydown']; // KEIN pointerdown: auf iOS keine Nutzeraktivierung
 
@@ -137,20 +151,35 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
     clearTimeout(startWatch);
     startWatch = setTimeout(() => { startWatch = 0; if (!disposed) { notStarted = true; unlockUtt = null; } }, START_WAIT);
   }
-  function mkUtt(str, volume) {
+  /** Stimme für eine Äußerung: mit voiceSeed die Personenstimme (gecacht), sonst die Hauptstimme. */
+  function pickFor(ex) {
+    if (!ex || ex.voiceSeed === undefined || ex.voiceSeed === null) return picked;
+    const k = Math.floor(Number(ex.voiceSeed)) || 0;
+    if (seeded.has(k)) return seeded.get(k);
+    let r;
+    try { r = pickVoiceSeeded(S.getVoices ? S.getVoices() : [], k, { online: prefs().online }); } catch { r = null; }
+    r = r || picked;
+    seeded.set(k, r);
+    return r;
+  }
+  function mkUtt(str, volume, ex) {
     const u = new U(str);
-    u.voice = picked.voice;
-    u.lang = picked.voice.lang || 'de-DE';
-    u.rate = 1.0;
-    u.pitch = clampPitch(picked.pitch * prefs().pf);
+    const pk = pickFor(ex) || picked;
+    u.voice = pk.voice;
+    u.lang = pk.voice.lang || 'de-DE';
+    u.rate = ex && Number.isFinite(ex.rate) ? Math.max(0.5, Math.min(2, ex.rate)) : 1.0;
+    // Personen: pitch ist absolut (Personenstimme hat Grund-pitch 1.0); Hauptstimme: Grund-pitch × Pref-Faktor
+    u.pitch = ex && ex.voiceSeed !== undefined && ex.voiceSeed !== null
+      ? clampPitch((Number.isFinite(ex.pitch) ? ex.pitch : 1) * pk.pitch)
+      : clampPitch(picked.pitch * prefs().pf * (ex && Number.isFinite(ex.pitch) ? ex.pitch : 1));
     u.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
     return u;
   }
 
   /** Sofort sprechen (synchron im Kontext des Aufrufers). */
-  function begin(str, volume) {
+  function begin(str, volume, ex) {
     try {
-      const u = mkUtt(str, volume);
+      const u = mkUtt(str, volume, ex);
       current = u;
       const done = () => { if (current === u) { current = null; settle(); } };
       u.onstart = () => { if (current === u) speaking = true; started(); };
@@ -163,7 +192,10 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
     } catch { current = null; settle(); }
   }
 
-  function say(text, { volume = 1 } = {}) {
+  /** opts: { volume, voiceSeed?, pitch?, rate? } – die letzten drei nur für Personenstimmen (Sprecher-Regie). */
+  function say(text, opts = {}) {
+    const { volume = 1 } = opts;
+    const ex = opts.voiceSeed !== undefined || opts.pitch !== undefined || opts.rate !== undefined ? opts : null;
     if (disposed || !S || !U) return Promise.resolve();
     refresh();
     if (!picked) return Promise.resolve();
@@ -172,7 +204,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
     if (!current && !timer && !speaking) {
       // Leerlauf: synchron sprechen (Geste bleibt erhalten; cancel()+speak im selben Tick verliert Äußerungen)
       pending = null;
-      return new Promise((resolve) => { finish = resolve; begin(str, volume); });
+      return new Promise((resolve) => { finish = resolve; begin(str, volume, ex); });
     }
     cancel();
     return new Promise((resolve) => {
@@ -180,7 +212,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
       timer = setTimeout(() => { // Chrome-Quirk: nach cancel() einen Tick warten
         timer = 0;
         if (disposed) { settle(); return; }
-        begin(str, volume);
+        begin(str, volume, ex);
       }, 0);
     });
   }
@@ -257,7 +289,7 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
     /** Deutsche Stimmen des Geräts/Browsers (siehe listVoices). */
     listVoices() { return listVoices(allVoices()); },
     /** Stimme neu wählen (z. B. nach Umschalten Gerät/Online). */
-    reselect() { picked = null; lastError = ''; notStarted = false; refresh(); },
+    reselect() { picked = null; seeded.clear(); lastError = ''; notStarted = false; refresh(); },
     /** Gewählte Stimme ist eine Online-Stimme. */
     get online() { return !!(picked && picked.online); },
     get unlocked() { return unlocked; },
@@ -276,5 +308,140 @@ export function createVoice({ soundOn = () => true, online = () => false, prefer
       if (!unlocked) return 'locked';
       return 'ok';
     },
+  };
+}
+
+export const RICHARD_PRIO = 100;
+export const SPEAK_DIST = 10;
+const SEEN_MS = 30000; // so lange zählt ein Sprecher als „in der Nähe bekannt“ (Wahl der nächsten Person)
+
+/**
+ * Sprecher-Regie (1.17.0, Vertrag §5): wer darf gerade laut sprechen? Ein Gerät, eine Stimme.
+ * speaker({ id, voiceSeed, pitch, rate, prio, pos: () => ({x,y,z}) }) → { say(text, { volume? }) → Promise<'spoken'|'bubble'|'muted'>, cancel(), release() }
+ *   'spoken' = gesprochen · 'bubble' = nicht laut, der Aufrufer zeigt eine Blase · 'muted' = Ton aus (der Aufrufer zeigt ebenfalls die Blase)
+ * Regeln: Richard (prio ≥ 100) hat Vorrang und unterbricht; sonst spricht nur die nächste Person bis 10 m, alle anderen bekommen 'bubble'.
+ * Läuft schon eine Rede, wartet höchstens eine Zeile (die neuere nähere/höhere ersetzt die wartende); statt hartem cancel() läuft
+ * die Warteschlange (Chrome verliert sonst Zeilen). Text wird nie geloggt.
+ * deps: voice (createVoice), soundOn(), listener() → {x,y,z}|null (Spielerpose), now() → ms.
+ */
+export function createDirector({ voice, soundOn = () => true, listener = () => null, now = () => Date.now(), maxDist = SPEAK_DIST } = {}) {
+  const reg = new Map(); // id → { sp, seen }
+  let cur = null; // { sp, text, opts, prio, resolve, preempted }
+  let queued = null;
+  let disposed = false;
+  let seq = 0;
+
+  const distOf = (sp) => {
+    let a;
+    let b;
+    try { a = listener(); b = sp.pos ? sp.pos() : null; } catch { return Infinity; }
+    if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(b.x)) return Infinity;
+    return Math.hypot(a.x - b.x, (a.z || 0) - (b.z || 0));
+  };
+  const voiceOk = () => {
+    if (!voice) return false;
+    const dg = voice.diag;
+    return dg !== 'unsupported' && dg !== 'novoices' && dg !== 'noLocalDe';
+  };
+  const volumeFor = (dist, vol) => {
+    const v = Number.isFinite(vol) ? vol : 1;
+    const f = dist < 3 ? 1 : 1 - ((Math.min(dist, maxDist) - 3) / (maxDist - 3)) * 0.5;
+    return Math.max(0, Math.min(1, v * f));
+  };
+  /** Ist `sp` die nächste kürzlich aktive Person (≤ maxDist)? Gleichstand: der zuerst eingetragene. */
+  const isNearest = (sp, dist) => {
+    const t = now();
+    for (const [id, r] of reg) {
+      if (r.sp === sp || r.sp.prio >= RICHARD_PRIO) continue;
+      if (t - r.seen > SEEN_MS) { reg.delete(id); continue; }
+      if (distOf(r.sp) < dist) return false;
+    }
+    return true;
+  };
+
+  function run(entry) {
+    cur = entry;
+    const o = { volume: entry.volume };
+    if (entry.sp.voiceSeed !== undefined) o.voiceSeed = entry.sp.voiceSeed;
+    if (Number.isFinite(entry.sp.pitch)) o.pitch = entry.sp.pitch;
+    if (Number.isFinite(entry.sp.rate)) o.rate = entry.sp.rate;
+    let p;
+    try { p = voice.say(entry.text, o); } catch { p = Promise.resolve(); }
+    Promise.resolve(p).then(() => {
+      if (cur === entry) { cur = null; entry.resolve(entry.preempted ? 'bubble' : 'spoken'); next(); } else entry.resolve('bubble');
+    });
+  }
+  function next() {
+    const q = queued;
+    queued = null;
+    if (!q || disposed || cur) { if (q) q.resolve('bubble'); return; }
+    if (!soundOn()) { q.resolve('muted'); return; }
+    const d = distOf(q.sp);
+    if (d > maxDist || !voiceOk()) { q.resolve('bubble'); return; }
+    q.volume = volumeFor(d, q.opts.volume);
+    run(q);
+  }
+
+  function speaker(opts = {}) {
+    const sp = {
+      id: opts.id !== undefined ? opts.id : `s${++seq}`,
+      voiceSeed: opts.voiceSeed,
+      pitch: opts.pitch,
+      rate: opts.rate,
+      prio: Number.isFinite(opts.prio) ? opts.prio : 0,
+      pos: typeof opts.pos === 'function' ? opts.pos : null,
+    };
+    const richard = () => sp.prio >= RICHARD_PRIO;
+    return {
+      say(text, o = {}) {
+        const str = String(text || '');
+        if (disposed || !soundOn()) return Promise.resolve('muted');
+        if (!str.trim()) return Promise.resolve('bubble');
+        const rec = reg.get(sp.id);
+        if (rec) { rec.sp = sp; rec.seen = now(); } else reg.set(sp.id, { sp, seen: now() });
+        const entry = { sp, text: str, opts: o, volume: o.volume, prio: sp.prio, resolve: null, preempted: false };
+        return new Promise((resolve) => {
+          entry.resolve = resolve;
+          let dist;
+          if (!richard()) {
+            dist = distOf(sp);
+            if (dist > maxDist || !voiceOk() || !voice.unlocked || !isNearest(sp, dist)) { resolve('bubble'); return; }
+            entry.volume = volumeFor(dist, o.volume);
+            if (cur && cur.prio > entry.prio) { resolve('bubble'); return; } // Höheres spricht gerade (Richard)
+          }
+          if (cur && (richard() ? entry.prio >= cur.prio : false)) {
+            // Vorrang: laufende Rede unterbrechen (voice.say löst die alte auf), Wartende verwerfen
+            if (queued) { queued.resolve('bubble'); queued = null; }
+            cur.preempted = true;
+            run(entry);
+            return;
+          }
+          if (cur) {
+            if (queued && queued.prio >= entry.prio) { resolve('bubble'); return; } // höchstens eine wartende Zeile
+            if (queued) queued.resolve('bubble');
+            queued = entry;
+            return;
+          }
+          run(entry);
+        });
+      },
+      cancel() {
+        if (queued && queued.sp === sp) { queued.resolve('bubble'); queued = null; }
+        if (cur && cur.sp === sp) { const c = cur; cur = null; c.preempted = true; try { voice.cancel(); } catch { /* egal */ } c.resolve('bubble'); next(); }
+      },
+      release() { reg.delete(sp.id); this.cancel(); },
+    };
+  }
+
+  function stopAll() {
+    if (queued) { queued.resolve('bubble'); queued = null; }
+    if (cur) { const c = cur; cur = null; c.preempted = true; c.resolve('bubble'); }
+    try { if (voice) voice.cancel(); } catch { /* egal */ }
+  }
+  return {
+    speaker,
+    stopAll,
+    get busy() { return !!cur; },
+    dispose() { if (disposed) return; stopAll(); disposed = true; reg.clear(); },
   };
 }

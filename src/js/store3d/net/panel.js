@@ -1,12 +1,13 @@
 // VIDEOTHEK LENZ · Mehrspieler: Inhalt der Unterebene „Mehrspieler …“ im Pause-Menü (Welle a: Schalter und Status).
-// createPanel(api) → { render(el) }; api = { prefs() → {on,name,chat,film}, set(partial), status() → string,
-//   players() → [{ k, name, area, devs, admin }] (eine Zeile je Person, ohne mich), isMuted(k), setMute(k, on) → bool,
-//   canKick() → bool (ich bin Admin), kick(k) → bool, filmTitle(row) → string (optional, Welle d: Titel nur bei Film-Flag des anderen UND im eigenen Katalog, sonst '') }.
+// createPanel(api) → { render(el) }; api = { prefs() → {on,name,card,chat,film}, set(partial), status() → string,
+//   players() → [{ k, name, area, devs, admin, card? }] (eine Zeile je Person, ohne mich), isMuted(k), setMute(k, on) → bool,
+//   canKick() → bool (ich bin Admin), kick(k) → bool, showCard(k) → bool (nur Zeilen mit card), filmTitle(row) → string (optional, Welle d: Titel nur bei Film-Flag des anderen UND im eigenen Katalog, sonst '') }.
 // Spielerliste: Name (sonst „Jemand“), grober Ort, Geräteanzahl, Stumm/Laut je Person; „10 min entfernen“ nur für Admins (nie bei Admins), mit Bestätigung.
 // render(el) baut den Inhalt je Element einmal auf und aktualisiert danach nur Texte/Zustände (Fokus bleibt beim Umschalten erhalten).
 const SWITCHES = [
   { key: 'on', label: 'Mehrspieler', note: 'Andere auf diesem Server sehen dich in der VIDEOTHEK.' },
   { key: 'name', label: 'Name zeigen', note: 'Dein Jellyfin-Benutzername über deiner Figur. Aus: kein Name über der Figur, in Liste und Chat „Jemand“.' },
+  { key: 'card', label: 'Ausweis zeigen', note: 'Andere sehen dein Mitgliedskärtchen (Nummer, Stempel, Stufe) und können es ansehen. Aus: niemand sieht es.' },
   { key: 'chat', label: 'Chat', note: '' },
   { key: 'film', label: 'Mein Film für andere sichtbar', note: 'Gilt auch für die Hülle in deiner Hand.' },
 ];
@@ -44,7 +45,7 @@ export function createPanel(api) {
     const kick = !!call('canKick');
     if (v.confirm && !rows.some((r) => r.k === v.confirm && !r.admin)) v.confirm = null;
     const film = (r) => { const t = call('filmTitle', r); return typeof t === 'string' ? t : ''; };
-    const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call('isMuted', r.k), film(r)])]);
+    const sig = JSON.stringify([kick, v.confirm, rows.map((r) => [r.k, r.name, r.area, r.devs, !!r.admin, !!call('isMuted', r.k), film(r), !!r.card])]);
     if (sig === v.sig) return;
     v.sig = sig;
     const doc = el.ownerDocument || document;
@@ -81,6 +82,11 @@ export function createPanel(api) {
       }, 'm:' + r.k);
       mb.setAttribute('aria-pressed', muted ? 'true' : 'false');
       mb.setAttribute('aria-label', `${r.name || 'Jemand'} ${muted ? 'wieder hören' : 'stummschalten'}`);
+      if (r.card) {
+        const cb = mkBtn('Ausweis', 'lfx-mp-card', () => { call('showCard', r.k); }, 'a:' + r.k);
+        cb.setAttribute('aria-label', `Ausweis von ${r.name || 'Jemand'} ansehen`);
+        acts.appendChild(cb);
+      }
       acts.appendChild(mb);
       if (kick && !r.admin) {
         if (v.confirm === r.k) {

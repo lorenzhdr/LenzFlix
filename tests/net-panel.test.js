@@ -128,3 +128,30 @@ describe('Panel: Film-Spalte', () => {
     expect(txt(withFilm(() => { throw new Error('x'); }), '.lfx-mp-pmeta').join('|')).not.toContain('Film');
   });
 });
+
+describe('Panel: Ausweis (1.17.0)', () => {
+  it('Schalter „Ausweis zeigen“ speichert das Pref card (nach „Name zeigen“)', () => {
+    const { el, api, st } = make({ prefs: { on: true, name: true, card: true, chat: true, film: false } });
+    const sw = [...el.querySelectorAll('.lfx-mp-switch')];
+    expect(sw.map((b) => b.textContent.split(':')[0])).toEqual(['Mehrspieler', 'Name zeigen', 'Ausweis zeigen', 'Chat', 'Mein Film für andere sichtbar']);
+    sw[2].click();
+    expect(api.set).toHaveBeenCalledWith({ card: false });
+    expect(st.prefs.card).toBe(false);
+    expect(sw[2].textContent).toBe('Ausweis zeigen: Aus');
+  });
+  it('Knopf „Ausweis“ nur bei Zeilen mit Ausweis; ruft showCard(k)', () => {
+    const showCard = vi.fn(() => true);
+    const st = { prefs: { on: true, name: true, card: true, chat: true, film: false }, rows: [
+      { k: 'aaa', name: 'Anna', area: 'shop', devs: 1, admin: false, card: true },
+      { k: 'bbb', name: 'Ben', area: 'shop', devs: 1, admin: false },
+    ] };
+    const panel = createPanel({ prefs: () => st.prefs, set: vi.fn(), status: () => '', players: () => st.rows, isMuted: () => false, setMute: vi.fn(), canKick: () => false, kick: vi.fn(), showCard });
+    const el = document.createElement('div');
+    panel.render(el);
+    const btns = el.querySelectorAll('.lfx-mp-card');
+    expect(btns.length).toBe(1);
+    expect(btns[0].getAttribute('aria-label')).toBe('Ausweis von Anna ansehen');
+    btns[0].click();
+    expect(showCard).toHaveBeenCalledWith('aaa');
+  });
+});

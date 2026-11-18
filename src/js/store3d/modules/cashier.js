@@ -8,7 +8,7 @@ import { sph } from './m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { LINES, pickLine, categoryFor, greetingCategory, dialogPicks, dialogStart, dialogAnswer } from './cashier-lines.js';
 import { timeOfDay, isLate, createLimiter, clamp, prefersReducedMotion } from './m4-util.js';
-import { createVoice } from './voice.js';
+import { createVoice, createDirector, RICHARD_PRIO } from './voice.js';
 
 const SKIN = [0.93, 0.74, 0.6];
 const VEST = [0.12, 0.45, 0.52];
@@ -129,10 +129,14 @@ export default {
       prefer: () => (ctx.voicePrefs ? ctx.voicePrefs() : {}),
     });
     voice.unlock();
+    // Sprecher-Regie (1.17.0): Richard spricht mit Vorrang über dieselbe Stimme; Personen fragen über cashier.speaker(opts)
+    const director = createDirector({ voice, soundOn: () => ctx.soundOn(), listener: () => ctx.player.getPose() });
     let talkId = 0;
+    const richardSpeaker = director.speaker({ id: 'richard', prio: RICHARD_PRIO, pos: () => pos });
     const duck = (on) => { const s = ctx.use('sound'); if (s && s.duck) s.duck('talk', on); };
     function stopVoice() {
       talkId++;
+      richardSpeaker.cancel();
       voice.cancel(); // verwirft auch eine wartende Zeile
       duck(false);
     }
@@ -148,7 +152,7 @@ export default {
         return;
       }
       duck(true);
-      voice.say(text, { volume: vol }).then(() => { if (id === talkId) duck(false); });
+      richardSpeaker.say(text, { volume: vol }).then(() => { if (id === talkId) duck(false); });
     }
 
     // --- Blase ---
@@ -282,9 +286,14 @@ export default {
       const grudge = !!(bw && bw.state() === 'grudge');
       if (grudge) cat = 'grudgeGreet';
       lastGreet = now;
+      // 1.17.0: neues Outfit/neue Frisur bemerken (nur im normalen Gruß; erst nach erfolgreichem Spruch als gesehen markieren)
+      const av = ctx.use('avatar');
+      let react = null;
+      try { if (!grudge && av && av.changedFor && av.changedFor('richard')) react = rand() < 0.65 ? 'outfitNew' : 'hairNew'; } catch { react = null; }
       let first;
       try { first = !sessionStorage.getItem(INTRO_KEY); if (first) sessionStorage.setItem(INTRO_KEY, '1'); } catch { first = false; }
-      speak(cat, {}, { force: true, also: first && !grudge ? 'intro' : null });
+      const said = speak(cat, {}, { force: true, also: react || (first && !grudge ? 'intro' : null) });
+      if (said && react) { try { av.markSeen('richard'); } catch { /* egal */ } }
     }
 
     // --- „Mit Richard reden“: Dialog (Modell in cashier-lines.js; Ansicht DOM oder VR-Panel) ---
@@ -434,6 +443,8 @@ export default {
         if (name === 'couchSit' || name === 'couchStand') speak(name, {}, { force: true, maxDist: Infinity, overOverlay: true });
       },
       /** Diagnose der Stimme fürs Pause-Menü: { diag, voiceName, lang, onlineDe } (kein Text, keine Titel). */
+      /** Sprecher-Regie für Personen: speaker({ id, voiceSeed, pitch, rate, prio, pos }) → { say(text, { volume }) → 'spoken'|'bubble'|'muted', cancel() } (modules/voice.js). */
+      speaker: (o) => director.speaker(o),
       voiceInfo() {
         return { diag: voice.diag, voiceName: voice.voiceName, lang: voice.lang, onlineDe: voice.onlineDe, online: voice.online };
       },
@@ -551,6 +562,7 @@ export default {
         offIa3();
         offProvide();
         stopVoice();
+        director.dispose();
         voice.dispose();
         bubble.remove();
         if (window.__lfxM4) { delete window.__lfxM4.say; delete window.__lfxM4.tip; delete window.__lfxM4.voice; }

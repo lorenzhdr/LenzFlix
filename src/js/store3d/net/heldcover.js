@@ -5,6 +5,7 @@
 //   mode: 'none' (nichts) | 'neutral' | 'cover' (Cover nur mit Katalogtreffer, sonst neutral).
 import { BoxGeometry, PlaneGeometry, Mesh, Group, MeshBasicMaterial } from 'three';
 import { coverRef } from '../modules/m3-util.js';
+import { HAND_R } from '../npc/figure.js';
 
 const W = 0.135;
 const H = 0.19;
@@ -84,9 +85,9 @@ export function createHeldCover(ctx) {
     const box = new Mesh(boxGeo, neutralMat);
     group.add(box);
     // Hand am rechten Arm (Bone hängt nach unten, Vorderseite = −z der Figur)
-    group.position.set(0.04, -0.5, -0.12);
+    group.position.set(HAND_R.offset[0], HAND_R.offset[1], HAND_R.offset[2]);
     group.rotation.set(0, 0, 0);
-    const arm = fig.bones && fig.bones.armR;
+    const arm = fig.bones && fig.bones[HAND_R.bone];
     (arm || fig.root).add(group);
     const h = { fig, id, mode, group, box, plane: null, entry: null, token: ++seq };
     held.set(c, h);

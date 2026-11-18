@@ -23,7 +23,13 @@ export function promptTexts(scheme) {
   return ['Gedrückt halten zum Laufen', 'Wischen zum Umsehen · Tippen zum Nehmen'];
 }
 
-export function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
+const VIEW_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 8c3.3 0 6 1.8 6 4v2H6v-2c0-2.2 2.7-4 6-4z"/></svg>';
+
+/**
+ * onView (1.17.0, optional): Knopf „Ansicht“ (Außenansicht umschalten; Klasse lfx-store-viewbtn, Taste V). Ohne onView entsteht kein Knopf.
+ * Im Touch-Schema „game“ sitzt der Knopf im Gamepad (ui/gamepad.js), dort bleibt der HUD-Knopf aus.
+ */
+export function createHud(host, { touch, onMenu, onVr, onView, getTouchScheme }) {
   const root = el('div', 'lfx-store-ov');
   const cross = el('div', 'lfx-store-cross');
   cross.setAttribute('aria-hidden', 'true');
@@ -64,6 +70,19 @@ export function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
     });
     menuBtn.addEventListener('click', (e) => { e.stopPropagation(); if (Date.now() - menuAt < 700) return; fireMenu(); });
     root.appendChild(menuBtn);
+  }
+  let viewBtn = null;
+  if (typeof onView === 'function') {
+    viewBtn = el('button', 'lfx-store-viewbtn');
+    viewBtn.type = 'button';
+    viewBtn.setAttribute('aria-label', 'Ansicht wechseln');
+    viewBtn.title = 'Ansicht wechseln (V)';
+    viewBtn.innerHTML = VIEW_ICON;
+    viewBtn.hidden = true;
+    // Der Canvas-Lock und das Umsehen dürfen den Knopf nicht mitnehmen
+    for (const ev of ['pointerdown', 'mousedown', 'touchstart']) viewBtn.addEventListener(ev, (e) => e.stopPropagation());
+    viewBtn.addEventListener('click', (e) => { e.stopPropagation(); onView(); });
+    root.appendChild(viewBtn);
   }
   const vrBtn = el('button', 'lfx-store-vrbtn');
   vrBtn.type = 'button';
@@ -109,6 +128,12 @@ export function createHud(host, { touch, onMenu, onVr, getTouchScheme }) {
     },
     showLost(on) { lost.hidden = !on; },
     showMenuBtn(on) { if (menuBtn) menuBtn.hidden = !on; },
+    /** Knopf „Ansicht“ ein-/ausblenden (nur wenn onView übergeben wurde; im Touch-Schema „game“ immer aus, dort hat das Gamepad den Knopf). */
+    showViewBtn(on) {
+      if (!viewBtn) return;
+      const game = touch && getTouchScheme && getTouchScheme() === 'game';
+      viewBtn.hidden = !on || !!game;
+    },
     showVr(on) { vrBtn.hidden = !on; },
     note(text, ms = 2200) {
       toast.textContent = text;

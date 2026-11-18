@@ -524,7 +524,7 @@ describe('Spiel-Steuerung 2.0: Diagnose', () => {
   it('Form von diag()', () => {
     const d0 = tc.diag();
     expect(d0).toMatchObject({ v: 1, api: 'touch', scheme: 'game', gate: 'on', gateWhy: '', fingers: 0, stick: null, zoom: 1, last: null, lastHide: null });
-    expect(Object.keys(d0.roles)).toEqual(['stick', 'look', 'jump', 'use', 'act', 'zoom']);
+    expect(Object.keys(d0.roles)).toEqual(['stick', 'look', 'jump', 'use', 'act', 'zoom', 'view', 'aux']);
     expect(Object.keys(d0.n)).toEqual(['start', 'end', 'cancel', 'orphan', 'reuse', 'lost', 'parkResume', 'rel']);
     expect(d0.layout).toMatchObject({ w: W, h: H, portrait: false, R: 48 });
     down(1, 100, 400);

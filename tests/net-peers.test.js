@@ -7,6 +7,7 @@ import * as L from '../src/js/store3d/net/peers-logic.js';
 import { createPeers } from '../src/js/store3d/net/peers.js';
 import { createHeldCover } from '../src/js/store3d/net/heldcover.js';
 import { createTags } from '../src/js/store3d/net/tags.js';
+import { HAND_R } from '../src/js/store3d/npc/figure.js';
 
 import { createFrame } from '../src/js/store3d/net/frame.js';
 
@@ -377,6 +378,17 @@ describe('heldcover / tags (Einzelfälle)', () => {
     hc.dispose();
     expect(fig.bones.armR.children.length).toBe(0);
     expect(tex.dispose).toHaveBeenCalled();
+  });
+
+  it('heldcover: Handanker kommt aus figure.js (HAND_R): Bone und Versatz, bitgleich zu vorher', () => {
+    expect(HAND_R).toEqual({ bone: 'armR', offset: [0.04, -0.5, -0.12] });
+    const ctx = { catalog: { items: new Map() }, deps: { imageUrl: () => '/x' }, loadTexture: vi.fn() };
+    const hc = createHeldCover(ctx);
+    const fig = fakeFigure({});
+    hc.set(1, fig, ID_A, 'neutral');
+    const g = fig.bones.armR.children[0];
+    expect(g.position.toArray()).toEqual([0.04, -0.5, -0.12]);
+    hc.dispose();
   });
 
   it('heldcover: LRU hält höchstens 8 unbenutzte Texturen', async () => {
