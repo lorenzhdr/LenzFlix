@@ -76,6 +76,34 @@ describe('Ultra-Innenraum', () => {
     expect(t.mats.carpet.map.image.width).toBe(512);
   });
 
+  it('erzeugt die 512²-Texturen schon im Leerlauf-Bau (vor dem Wechsel auf Ultra)', () => {
+    const t = setup('mid');
+    t.setLevel('high'); // gebaut, aber nicht sichtbar
+    const sp = vi.spyOn(HTMLCanvasElement.prototype, 'getContext');
+    t.setLevel('ultra');
+    expect(sp).not.toHaveBeenCalled();
+    sp.mockRestore();
+    expect(t.mats.carpet.map.image.width).toBe(512);
+  });
+
+  it('zieht spät entstandene Materialien nach und lässt verworfene los', () => {
+    const t = setup('high');
+    t.flush();
+    t.setLevel('ultra');
+    const late = new MeshLambertMaterial({ map: t.tex.wood });
+    const mesh = new Mesh(new BoxGeometry(1, 1, 1), late);
+    t.scene.add(mesh);
+    t.u.update(0.5, 1);
+    expect(late.map).toBe(t.tex.wood); // noch nicht fällig
+    t.u.update(2, 2);
+    expect(late.map.image.width).toBe(512);
+    t.scene.remove(mesh);
+    t.u.update(2.5, 3);
+    t.setLevel('high');
+    expect(late.map.image.width).toBe(512); // verworfenes Teil wird nicht mehr angefasst
+    expect(t.mats.wood.map).toBe(t.tex.wood);
+  });
+
   it('ufx=-tex lässt die alten Texturen stehen', () => {
     const t = setup('high', { ufx: '-tex' });
     t.flush();

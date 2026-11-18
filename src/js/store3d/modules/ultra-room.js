@@ -11,23 +11,27 @@ const maxAniso = (ctx) => { try { return Math.max(1, Math.min(16, ctx.renderer.c
 function buildTex(ctx) {
   const group = new Group();
   group.name = 'ultra-tex';
-  let neu = null; // { key: CanvasTexture }
+  const neu = makeUltraTextures(1); // { key: CanvasTexture } – schon im Leerlauf-Bau erzeugt, der Wechsel auf Ultra tauscht nur noch die map
   const swapped = []; // { mat, old, key }
+  let shown = false;
+  let acc = 0;
   function collect() {
-    const seen = new Set();
+    const live = new Set();
     ctx.scene.traverse((o) => {
       for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+        live.add(m);
         const k = m.map && m.map.userData && m.map.userData.lfxTex;
-        if (k && !seen.has(m)) { seen.add(m); if (!swapped.some((s) => s.mat === m)) swapped.push({ mat: m, old: m.map, key: k }); }
+        if (k && !swapped.some((s) => s.mat === m)) swapped.push({ mat: m, old: m.map, key: k });
       }
     });
+    // Materialien verworfener Szenenteile loslassen (nicht mehr in der Szene)
+    for (let i = swapped.length - 1; i >= 0; i--) if (!live.has(swapped[i].mat)) swapped.splice(i, 1);
   }
   function apply() {
-    if (!neu) neu = makeUltraTextures(1);
     collect();
     for (const s of swapped) {
       const t = neu[s.key];
-      if (!t) continue;
+      if (!t || s.mat.map === t) continue;
       t.anisotropy = s.old.anisotropy || 1; // Preset-Wert der Basistextur (Ultra: 16)
       s.mat.map = t; // gleicher Programmtyp: kein needsUpdate des Materials (kein Neu-Kompilieren)
     }
@@ -38,13 +42,15 @@ function buildTex(ctx) {
   }
   return {
     object: group,
-    update() { // Anisotropie folgt den Basistexturen (Preset-Wechsel)
-      for (const s of swapped) { const t = neu && neu[s.key]; if (t && t.anisotropy !== s.old.anisotropy) { t.anisotropy = s.old.anisotropy; t.needsUpdate = true; } }
+    update(dt) { // Anisotropie folgt den Basistexturen (Preset-Wechsel); alle 2 s neu gebaute Materialien (Rebuilds, späte Teile) nachziehen
+      for (const s of swapped) { const t = neu[s.key]; if (t && t.anisotropy !== s.old.anisotropy) { t.anisotropy = s.old.anisotropy; t.needsUpdate = true; } }
+      acc += dt || 0;
+      if (shown && acc >= 2) { acc = 0; apply(); }
     },
-    onVisible(v) { if (v) apply(); else restore(); },
+    onVisible(v) { shown = v; acc = 0; if (v) apply(); else restore(); },
     dispose() {
       restore();
-      if (neu) { for (const t of Object.values(neu)) t.dispose(); neu = null; }
+      for (const t of Object.values(neu)) t.dispose();
     },
   };
 }
