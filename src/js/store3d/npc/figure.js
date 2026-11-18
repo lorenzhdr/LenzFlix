@@ -1,8 +1,10 @@
 // VIDEOTHEK LENZ · Figuren-Baukasten (three): prozedurale Low-Poly-Menschen im Stil von Richard (modules/cashier.js), parametrisiert über einen
 // Look (npc/looks.js). EIN gemergtes SkinnedMesh pro Figur mit starren Gewichten (Bones = Gelenke Hüfte/Oberkörper/Kopf/Arme/Beine) → 1 Draw-Call
 // (+1 bei Regenschirm). Geometrie wird je Look gecacht, das Material ist geteilt. Animation: npc/anim.js.
-// createFigure(look, { say?, name? }) → Handle { root, look, setAnim, lookAt, say, hitReact, update(dt, camera?), setUmbrella, headWorld, getNetState,
-//   applyRemote, show/hide, dispose }. Für Mehrspieler (1.16.0) ist der Handle mit getNetState/applyRemote netzfähig.
+// createFigure(look, { say?, name?, ego?, material? }) → Handle { root, look, setAnim, lookAt, say, hitReact, update(dt, camera?), setUmbrella, headWorld,
+//   getNetState, applyRemote, show/hide, setLook, setEgo, topY, setHandItem, dispose }. Für Mehrspieler (1.16.0) ist der Handle mit getNetState/applyRemote netzfähig.
+// 1.17.0: Looks mit v===2 (Render-Look der eigenen Figur) baut npc/figure-parts.js; Looks ohne v laufen unverändert (bitgleich, tests/store3d-figure-baseline).
+// Geometrie-Cache mit Referenzzählung + LRU (höchstens GEO_FREE_MAX unreferenzierte Einträge).
 import {
   Group, Mesh, SkinnedMesh, Skeleton, Bone, MeshLambertMaterial, MeshBasicMaterial, Sphere, Vector3, BufferAttribute, DoubleSide,
 } from 'three';
@@ -10,6 +12,7 @@ import { box, quad, merge } from '../util/geo.js';
 import { sph } from '../modules/m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { lookKey } from './looks.js';
+import { buildV2Parts } from './figure-parts.js';
 import { Animator } from './anim.js';
 import { angDiff } from '../modules/m4-util.js';
 
@@ -21,9 +24,15 @@ const B = { root: 0, spine: 1, head: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
 const SPINE_Y = 0.8;
 const NECK_Y = 1.44;
 
+/** Höchstens so viele unreferenzierte Geometrien bleiben im Cache (älteste zuerst entsorgt). */
+export const GEO_FREE_MAX = 48;
+/** 1.18-Naht: Handposition am rechten Arm (Bone armR, Offset in dessen Raum; vgl. net/heldcover.js). */
+export const HAND_R = { bone: 'armR', offset: [0.04, -0.5, -0.12] };
+
 let sharedMat = null;
 let umbrellaMat = null;
-const geoCache = new Map();
+let useTick = 0;
+const geoCache = new Map(); // key → { key, g, refs, used, topY }
 const umbrellaCache = new Map();
 
 function material() {
@@ -42,11 +51,56 @@ function skinned(parts, bone) {
   return g;
 }
 
-/** Geometrie je Look (gemergt, mit Skin-Attributen). */
-function bodyGeometry(look) {
+function maxY(g) {
+  const a = g.attributes.position.array;
+  let m = 0;
+  for (let i = 1; i < a.length; i += 3) if (a[i] > m) m = a[i];
+  return m;
+}
+
+/** Cache-Eintrag für den Look holen (Referenz +1, ggf. bauen). */
+function acquire(look) {
   const key = lookKey(look);
-  const hit = geoCache.get(key);
-  if (hit) return hit;
+  let e = geoCache.get(key);
+  if (!e) {
+    const g = bodyGeometry(look);
+    e = { key, g, refs: 0, used: 0, topY: maxY(g) };
+    geoCache.set(key, e);
+  }
+  e.refs++;
+  e.used = ++useTick;
+  return e;
+}
+
+/** Referenz −1; unreferenzierte Einträge: LRU, älteste über GEO_FREE_MAX hinaus entsorgen. */
+function release(e) {
+  if (e.refs > 0) e.refs--;
+  e.used = ++useTick;
+  if (e.refs > 0) return;
+  const free = [...geoCache.values()].filter((x) => x.refs === 0);
+  free.sort((a, b) => a.used - b.used);
+  for (let i = 0; i < free.length - GEO_FREE_MAX; i++) { free[i].g.dispose(); geoCache.delete(free[i].key); }
+}
+
+/** Kennzahlen des Geometrie-Caches (Tests/Debug). */
+export function figureCacheInfo() {
+  let free = 0;
+  let refs = 0;
+  for (const e of geoCache.values()) { if (e.refs === 0) free++; refs += e.refs; }
+  return { size: geoCache.size, free, refs };
+}
+
+/** Geometrie je Look (gemergt, mit Skin-Attributen), ungecacht. */
+function bodyGeometry(look) {
+  const parts = look.v === 2 ? buildV2Parts(look) : oldParts(look);
+  const geos = Object.entries(parts).map(([bi, list]) => skinned(list, Number(bi)));
+  const g = merge(geos);
+  g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
+  return g;
+}
+
+/** Teile des alten Pfads (Looks ohne v===2) – unverändert. */
+function oldParts(look) {
   const skin = look.skin;
   const parts = { [B.spine]: [], [B.head]: [], [B.armL]: [], [B.armR]: [], [B.legL]: [], [B.legR]: [] };
   const bottom = look.bottom;
@@ -104,11 +158,7 @@ function bodyGeometry(look) {
       a.push(box({ w: 0.02, h: 0.14, d: 0.02, x: 0.3, y: 0.76, z: -0.02, color: dark(bc, 0.6) }));
     }
   }
-  const geos = Object.entries(parts).map(([bi, list]) => skinned(list, Number(bi)));
-  const g = merge(geos);
-  g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
-  geoCache.set(key, g);
-  return g;
+  return parts;
 }
 
 function umbrellaGeometry(color) {
@@ -136,7 +186,7 @@ function nameTexture(text) {
 
 /** Alle gecachten Geometrien und das geteilte Material freigeben (beim Modul-dispose). */
 export function disposeFigureCaches() {
-  for (const g of geoCache.values()) g.dispose();
+  for (const e of geoCache.values()) e.g.dispose();
   geoCache.clear();
   for (const g of umbrellaCache.values()) g.dispose();
   umbrellaCache.clear();
@@ -148,8 +198,9 @@ export function createFigure(look, hooks = {}) {
   const root = new Group();
   root.name = 'npc-figure';
   const rig = new Group();
-  const k = look.height || 1;
-  rig.scale.set(k * (look.build || 1), k, k * (look.build || 1));
+  let k = look.height || 1;
+  const applyScale = () => { k = look.height || 1; rig.scale.set(k * (look.build || 1), k, k * (look.build || 1)); };
+  applyScale();
   root.add(rig);
   const bones = [];
   const mk = (x, y, z, parent) => { const b = new Bone(); b.position.set(x, y, z); if (parent) parent.add(b); bones.push(b); return b; };
@@ -160,7 +211,8 @@ export function createFigure(look, hooks = {}) {
   const bArmR = mk(0.26, 1.36 - SPINE_Y, 0, bSpine);
   const bLegL = mk(-0.1, SPINE_Y, 0, bRoot);
   const bLegR = mk(0.1, SPINE_Y, 0, bRoot);
-  const mesh = new SkinnedMesh(bodyGeometry(look), material());
+  let entry = acquire(look);
+  const mesh = new SkinnedMesh(entry.g, hooks.material || material());
   mesh.add(bRoot);
   rig.add(mesh);
   mesh.updateMatrixWorld(true);
@@ -176,9 +228,16 @@ export function createFigure(look, hooks = {}) {
   let recoil = { x: 0, z: 0 };
   let remote = null;
   let disposed = false;
+  let ego = false;
+  let baseZ = 0;
+  const legacyTop = () => look.v !== 2;
+  const tagY = () => (legacyTop() ? 1.98 : entry.topY + 0.23);
+  const headY = () => (legacyTop() ? 1.95 * k : (entry.topY + 0.2) * k);
   const tmp = new Vector3();
   const handle = {
-    root, rig, mesh, look, anim, bones: { root: bRoot, spine: bSpine, head: bHead, armL: bArmL, armR: bArmR, legL: bLegL, legR: bLegR },
+    root, rig, mesh, look, anim,
+    /** Oberkante der Figur (Hut/Frisur inkl.) in Metern, × height. */
+    get topY() { return entry.topY * k; }, bones: { root: bRoot, spine: bSpine, head: bHead, armL: bArmL, armR: bArmR, legL: bLegL, legR: bLegR },
     get disposed() { return disposed; },
     setAnim(name, opts) { return anim.setAnim(name, opts); },
     /** Blickziel (Weltkoordinaten) oder null. */
@@ -203,11 +262,44 @@ export function createFigure(look, hooks = {}) {
       if (tag) { rig.remove(tag); tag.material.map.dispose(); tag.material.dispose(); tag.geometry.dispose(); tag = null; }
       if (!text) return;
       tag = new Mesh(quad({ w: 0.6, h: 0.15 }), new MeshBasicMaterial({ map: nameTexture(text), transparent: true, depthWrite: false }));
-      tag.position.set(0, 1.98, 0);
+      tag.position.set(0, tagY(), 0);
       rig.add(tag);
     },
     /** Kopfposition (Welt) für Sprechblasen. */
-    headWorld(out = tmp) { return out.set(root.position.x, root.position.y + 1.95 * k, root.position.z); },
+    headWorld(out = tmp) { return out.set(root.position.x, root.position.y + headY(), root.position.z); },
+    /**
+     * Look tauschen: nur die Geometrie wird ersetzt, Bones/Skelett bleiben; Rig-Skalierung (height/build) wird neu gesetzt.
+     * Namensschild wandert mit der neuen Oberkante.
+     */
+    setLook(next) {
+      if (disposed || !next) return;
+      const old = entry;
+      entry = acquire(next);
+      handle.look = next;
+      look = next;
+      mesh.geometry = entry.g;
+      release(old);
+      applyScale();
+      if (tag) tag.position.set(0, tagY(), 0);
+    },
+    /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel, Rig 0,12 m nach hinten. */
+    setEgo(on) {
+      ego = !!on;
+      const s = ego ? 0 : 1;
+      bHead.scale.set(s, s, s);
+      bArmL.scale.set(s, s, s);
+      bArmR.scale.set(s, s, s);
+      mesh.boundingSphere = ego ? new Sphere(new Vector3(0, 0.5, 0), 0.55) : new Sphere(new Vector3(0, 0.95, 0), 1.6);
+      baseZ = ego ? 0.12 : 0;
+      rig.position.set(0, 0, baseZ);
+    },
+    isEgo: () => ego,
+    /**
+     * 1.18-Naht: Gegenstand/Waffe an der rechten Hand (Ort: HAND_R). In 1.17 immer null; ohne Wirkung.
+     * @param {string|null} id Gegenstands-ID oder null
+     * @returns {null}
+     */
+    setHandItem(id) { void id; return null; },
     show() { root.visible = true; },
     hide() { root.visible = false; },
     /** Netzzustand { x, y, z (mm), yaw (0,01), v, a, p, s, t }. */
@@ -248,9 +340,9 @@ export function createFigure(look, hooks = {}) {
       bLegL.rotation.x = pose.legLx;
       bLegR.rotation.x = pose.legRx;
       if (recoil.x || recoil.z) {
-        rig.position.set(recoil.x * 0.12, 0, recoil.z * 0.12);
+        rig.position.set(recoil.x * 0.12, 0, baseZ + recoil.z * 0.12);
         recoil = Math.hypot(recoil.x, recoil.z) < 0.02 ? { x: 0, z: 0 } : { x: recoil.x * Math.exp(-dt * 4), z: recoil.z * Math.exp(-dt * 4) };
-        if (!recoil.x && !recoil.z) rig.position.set(0, 0, 0);
+        if (!recoil.x && !recoil.z) rig.position.set(0, 0, baseZ);
       }
       if (tag && camera) { camera.getWorldPosition(tmp); tag.lookAt(tmp); }
     },
@@ -261,8 +353,10 @@ export function createFigure(look, hooks = {}) {
       handle.setName(null);
       if (root.parent) root.parent.remove(root);
       mesh.skeleton.dispose();
+      release(entry);
     },
   };
+  if (hooks.ego) handle.setEgo(true);
   if (hooks.name) handle.setName(hooks.name);
   return handle;
 }

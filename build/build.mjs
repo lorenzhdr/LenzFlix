@@ -66,7 +66,8 @@ async function buildJs() {
 // 1.11.0: 420 → 440 KiB (Ladebild, Player-Hintergrund, Startseiten-Umbau; die Startseite spart dafür Netzwerk-Sekunden).
 // 1.13.0: 440 → 496 KiB (Serien-/Filme-Seite, Meine Liste, Geheimmenü).
 // 1.16.2: 496 → 500 KiB (Tab-Text, Tab-Icons und Browserleiste je Design).
-const MAIN_MIN_BUDGET = 500 * 1024;
+// 1.17.0: 500 → 520 KiB (Konto-Profil der eigenen Figur; Nutzer-OK).
+const MAIN_MIN_BUDGET = 520 * 1024;
 function checkMainBundle() {
   const code = readFileSync(resolve(dist, 'lenzflix.min.js'), 'utf8');
   if (/WebGLRenderer|THREE\.REVISION|three\.module/.test(code)) {
@@ -95,7 +96,8 @@ function checkTvModeBundle() {
 // Soft-Budget des 3D-Bundles (VIDEOTHEK LENZ, lazy): nur eine Warnung, kein Abbruch.
 // 1.15.0: Open World (Stadt, LENZ PALAST, Richard, Physik, Figuren, Autos, Entdeckungen) → 1,16 MB (vorher ca. 0,90 MB); Richtwert 1,25 MB.
 // 1.16.0: Mehrspieler (Netz, Fremdfiguren, Chat) → Richtwert 1,35 MB (vom Nutzer freigegeben).
-const STORE_MIN_BUDGET = 1350 * 1000;
+// 1.17.0: eigene Figur (Editor, Ausweis, Außenansicht, Friseursalon) → Richtwert 1,45 MB (Nutzer-OK).
+const STORE_MIN_BUDGET = 1450 * 1000;
 function checkStoreBundle() {
   const code = readFileSync(resolve(dist, 'lenzstore.min.js'), 'utf8');
   // Das Jellyfin-Token erreicht das 3D-Bundle nie; nur das Ticket (docs/mp-api.md 11.1).

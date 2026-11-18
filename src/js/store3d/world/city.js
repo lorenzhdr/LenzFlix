@@ -15,7 +15,7 @@ export const JUMP_H = (JUMP_V * JUMP_V) / (2 * GRAV);
 /** Maximale Höhe, die aus dem Stand per Sprung + Hochziehen erreichbar ist. */
 export const REACH_H = JUMP_H + MANTLE_H;
 export const SIGNAL_CYCLE = 24;
-export const AREAS = ['roof', 'escape', 'palastHall', 'palastFoyer', 'shop', 'doorway', 'yard', 'alley', 'kiosk', 'palastEntrance', 'crossing', 'sideN', 'sideS', 'street', 'outside'];
+export const AREAS = ['roof', 'escape', 'palastHall', 'palastFoyer', 'salon', 'shop', 'doorway', 'yard', 'alley', 'kiosk', 'palastEntrance', 'crossing', 'sideN', 'sideS', 'street', 'outside'];
 /** Bereiche, in denen es regnen darf (nicht Laden, nicht Palast innen). */
 export const OUTDOOR_AREAS = ['street', 'crossing', 'sideN', 'sideS', 'yard', 'alley', 'roof', 'escape', 'kiosk', 'palastEntrance', 'outside', 'doorway'];
 
@@ -56,7 +56,7 @@ export function signalAt(t) {
 const inRect = (r, x, z) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;
 
 /**
- * Bereichsname für eine Position (rein). Priorität: roof, escape, palastHall, palastFoyer, shop, doorway, yard, alley, kiosk,
+ * Bereichsname für eine Position (rein). Priorität: roof, escape, palastHall, palastFoyer, salon, shop, doorway, yard, alley, kiosk,
  * palastEntrance, crossing, sideN, sideS, street, outside. Ohne `layout.city` nur 'shop' oder 'outside'.
  */
 export function areaAt(layout, x, z, y = 0) {
@@ -67,29 +67,32 @@ export function areaAt(layout, x, z, y = 0) {
   if (inRect(zn.escape.rect, x, z)) return 'escape';
   if (inRect(zn.palastHall.rect, x, z)) return 'palastHall';
   if (inRect(zn.palastFoyer.rect, x, z)) return 'palastFoyer';
+  if (zn.salon && y < 2.9 && inRect(zn.salon.rect, x, z)) return 'salon';
   if (x >= 0 && x <= layout.w && z >= 0 && z <= layout.d && y < 2.9) return 'shop';
   for (const id of ['doorway', 'yard', 'alley', 'kiosk', 'palastEntrance', 'crossing', 'sideN', 'sideS', 'street']) if (inRect(zn[id].rect, x, z)) return id;
   return 'outside';
 }
 
 /**
- * Sichtbarkeit der Szenengruppen (rein). Rückgabe { shopShell, shelves, street, yard, palastInterior, palastExterior }.
+ * Sichtbarkeit der Szenengruppen (rein). Rückgabe { shopShell, shelves, street, yard, palastInterior, salonInterior, palastExterior }.
  * Außen sieht man den Laden nur im Fenster-Sichtfeld vor der Front; Hof und Gasse nur in ihrer Nähe.
  */
 export function visibleGroups(layout, area, x, z) {
   const W = layout.w;
   const D = layout.d;
   const c = layout.city;
-  const out = { shopShell: false, shelves: false, street: area !== 'palastHall', yard: false, palastInterior: false, palastExterior: true };
+  const out = { shopShell: false, shelves: false, street: area !== 'palastHall', yard: false, palastInterior: false, salonInterior: false, palastExterior: true };
   const inFront = z > D - 0.01 && z - D < 14 && Math.abs(x - W / 2) < W / 2 + 8 && area !== 'palastHall' && area !== 'palastFoyer' && area !== 'roof' && area !== 'escape' && area !== 'yard';
   out.shopShell = area === 'shop' || area === 'doorway' || inFront;
   out.shelves = area === 'shop' || (inFront && z - D < 5);
   if (c) {
     const m = c.spawns.alley;
-    const inside = area === 'shop' || area === 'palastHall' || area === 'palastFoyer'; // drinnen sieht man den Hof nicht
+    const inside = area === 'shop' || area === 'palastHall' || area === 'palastFoyer' || area === 'salon'; // drinnen sieht man den Hof nicht
     out.yard = area === 'yard' || area === 'alley' || area === 'escape' || area === 'roof' || (!inside && Math.hypot(x - m.x, z - (c.frame.fz + 1.2)) < 16);
     const dx = x - W / 2;
     out.palastInterior = area === 'palastHall' || area === 'palastFoyer' || (z < c.frame.sz && Math.hypot(dx, z - c.frame.sz) < 12 && area !== 'shop');
+    const sa = c.salon;
+    if (sa) out.salonInterior = area === 'salon' || (z < sa.door.z && Math.hypot(x - (sa.door.x0 + sa.door.x1) / 2, z - sa.door.z) < 12 && area !== 'shop'); // drinnen oder < 12 m vor der Salontür
   }
   return out;
 }
@@ -173,7 +176,21 @@ export function buildCity(store) {
     ['QN', W + 11.6, ZW0, W + 21.4, zSN, 6.5, 'E'], ['QS', W + 11.6, zSS, W + 21.4, ZW1, 6.5, 'E'],
   ];
   const buildings = bl.map(([id, x0, z0, x1, z1, h, region]) => ({ id, x0, z0, x1, z1, h, region, color: colorOf(), front: z1 === fz ? 'S' : z0 === sz ? 'N' : null }));
-  for (const b of buildings) col(b.id, 'building', b.x0, b.z0, b.x1, b.z1);
+  // Salon FRISEUR HAARSCHARF (1.17.0): FESTE Lage im Gebäude SW (x -22..-14, z sz..sz+7), unabhängig von der Ladenbreite, weil die
+  // Netzabbildung für x < 0 unverändert bleibt. SW wird um den Salon herum in West-, Ost- und Rückteil zerlegt (Farbe bleibt die von SW).
+  const SALON = { x0: -22, z0: sz, x1: -14, z1: sz + 7 };
+  const sdx = (SALON.x0 + SALON.x1) / 2;
+  const swB = buildings.find((q) => q.id === 'SW');
+  swB.parts = [
+    { id: 'w', x0: swB.x0, z0: swB.z0, x1: SALON.x0, z1: swB.z1 },
+    { id: 'e', x0: SALON.x1, z0: swB.z0, x1: swB.x1, z1: swB.z1 },
+    { id: 'b', x0: SALON.x0, z0: SALON.z1, x1: SALON.x1, z1: swB.z1 },
+  ];
+  for (const b of buildings) {
+    if (b.parts) for (const q of b.parts) col(`${b.id}${q.id}`, 'building', q.x0, q.z0, q.x1, q.z1);
+    else col(b.id, 'building', b.x0, b.z0, b.x1, b.z1);
+  }
+  col('salonRoof', 'building', SALON.x0, SALON.z0, SALON.x1, SALON.z1, { y0: CEIL_Y }); // Gebäudeteil über dem Salon
   // Nordzeile: Fassadenfront (gegenüber der Straße) bei z=fz, Südzeile bei z=sz
   for (const b of buildings) if (b.id === 'NE1' || b.id === 'NW1' || b.id === 'NW2' || b.id === 'NE2') b.front = 'S';
   for (const b of buildings) if (b.id === 'SW' || b.id === 'SE1' || b.id === 'SE2') b.front = 'N';
@@ -215,6 +232,24 @@ export function buildCity(store) {
   col('gateE', 'bounds', XW1 - 0.6, fz, XW1 + 1, sz);
   col('gateN', 'bounds', xc0 - 2.4, zSN, xc1 + 2.4, zSN + 0.6);
   col('gateS', 'bounds', xc0 - 2.4, zSS - 0.6, xc1 + 2.4, zSS);
+
+  // --- Salon: Wände (Tür 1,6 m in der Nordfront bei x = -18, Schaufenster links der Tür), Anker für den Innenraum (Welle 2) ---
+  const salon = {
+    rect: SALON, wall: T, ceil: CEIL_Y,
+    door: { x0: sdx - 0.8, x1: sdx + 0.8, z: sz, h: 2.4 },
+    window: { x0: SALON.x0 + 0.6, x1: SALON.x0 + 2.6, y0: 0.9, y1: 2.3, z: sz },
+    chair: { x: sdx, z: sz + 5.5, yaw: PI },
+    mirror: { x: sdx, y: 1.5, z: SALON.z1 - T - 0.02, yaw: PI, w: 3.4, h: 1.5 },
+    booth: { x0: SALON.x1 - 2.4, z0: sz + 4.6, x1: SALON.x1 - T, z1: SALON.z1 - T, curtain: { x: SALON.x1 - 2.4, z0: sz + 4.9, z1: sz + 6.6, y0: 0.25, y1: 2.3, yaw: -PI / 2 } },
+    rack: { x: SALON.x1 - 0.8, z: sz + 3.2, yaw: -PI / 2 },
+    gabi: { x: sdx, z: sz + 4.7, yaw: PI },
+    ronny: { x: SALON.x0 + 1.4, z: sz + 2.4, yaw: -PI / 2 },
+  };
+  col('salonFrontL', 'wall', SALON.x0, sz, salon.door.x0, sz + T);
+  col('salonFrontR', 'wall', salon.door.x1, sz, SALON.x1, sz + T);
+  col('salonSideW', 'wall', SALON.x0, sz, SALON.x0 + T, SALON.z1);
+  col('salonSideE', 'wall', SALON.x1 - T, sz, SALON.x1, SALON.z1);
+  col('salonBack', 'wall', SALON.x0, SALON.z1 - T, SALON.x1, SALON.z1);
 
   // --- Kiosk (Ecke Ost) ---
   const kiosk = { hut: { x0: W + 8.8, z0: D - 1.9, x1: W + 11.2, z1: D - 0.1, h: 2.6 }, counter: { x0: W + 9.0, z0: D - 0.1, x1: W + 11.0, z1: D + 0.2, h: 1.05 } };
@@ -347,6 +382,7 @@ export function buildCity(store) {
   Z('palast', 'LENZ PALAST', palast.rect);
   Z('palastFoyer', 'Palast-Foyer', { x0: palast.foyer.x0, z0: palast.foyer.z0, x1: palast.foyer.x1, z1: palast.hall.z0 }); // bis zum Saal: die Trennwand gehört zur Foyer-Zone (kein Spalt)
   Z('palastHall', 'Palast-Saal', { x0: palast.hall.x0, z0: palast.hall.z0, x1: palast.hall.x1, z1: palast.hall.z1 });
+  Z('salon', 'Friseur', { x0: SALON.x0, z0: SALON.z0, x1: SALON.x1, z1: SALON.z1, y1: hi }, { x: sdx, z: sz + 3.5, yaw: PI });
   Z('palastEntrance', 'Palast-Eingang', { x0: W / 2 - 2, z0: sz - 2.2, x1: W / 2 + 2, z1: sz + 1, y1: hi });
 
   // --- Spawns ---
@@ -354,6 +390,7 @@ export function buildCity(store) {
     shop: { x: W / 2, z: D - 1.4, yaw: 0 },
     street: { x: W / 2, z: D + 1.6, yaw: PI },
     palast: { x: W / 2, z: sz + 2.0, yaw: PI },
+    salon: { x: sdx, z: sz + 1.6, yaw: PI },
     yard: { x: Math.round(W * 50) / 100, z: -3.2, yaw: PI },
     kiosk: { x: W + 10.0, z: D + 1.4, yaw: 0 },
     alley: { x: -1.8, z: Math.round(D * 50) / 100, yaw: 0 },
@@ -412,7 +449,7 @@ export function buildCity(store) {
     const bd = buildings.find((q) => q.id === bid);
     if (!bd || !bd.front) continue;
     let cx = (bd.x0 + bd.x1) / 2;
-    if (bid === 'SW') cx = Math.max(bd.x0 + 4, px0 - 14);
+    if (bid === 'SW') cx = sdx; // Schild fest über der Salontür
     if (bid === 'SE1') cx = (bd.x0 + bd.x1) / 2 + 2.5;
     const wd = Math.min(5, bd.x1 - bd.x0 - 1.5);
     if (wd < 2.4) continue;
@@ -449,7 +486,7 @@ export function buildCity(store) {
   ];
 
   return {
-    frame: f, bounds: f.bounds, buildings, palast, colliders, zones, spawns, sidewalkPaths, lanes, zebras, signals, lights, signs, fixtures,
+    frame: f, bounds: f.bounds, buildings, palast, salon, colliders, zones, spawns, sidewalkPaths, lanes, zebras, signals, lights, signs, fixtures,
     yard: { x0: -3.4, z0: -11.0, x1: W + 8.4, z1: -T, hoop, graffiti, laundry }, roofProps, litfass, shopFronts, escape, roof, kiosk, doorPosts, doorBlock, discoverSlots, propSlots,
     signalCycle: SIGNAL_CYCLE,
   };

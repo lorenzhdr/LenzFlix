@@ -93,11 +93,11 @@ describe('VR-Prefs', () => {
 
 describe('Mehrspieler-Vorlieben', () => {
   it('Standard: on/name/chat an, film aus, mute leer, hint false', () => {
-    expect(prefs.getMp()).toEqual({ on: true, name: true, film: false, chat: true, mute: [], hint: false });
+    expect(prefs.getMp()).toEqual({ on: true, name: true, card: true, film: false, chat: true, mute: [], hint: false });
   });
   it('nur ausdrückliches 0 schaltet ab, nur 1 schaltet film an', () => {
-    prefs.savePrefs({ mp: { on: false, name: false, chat: false, film: true, hint: true } });
-    expect(prefs.getMp()).toMatchObject({ on: false, name: false, chat: false, film: true, hint: true });
+    prefs.savePrefs({ mp: { on: false, name: false, chat: false, film: true, hint: true, card: false } });
+    expect(prefs.getMp()).toMatchObject({ on: false, name: false, card: false, chat: false, film: true, hint: true });
     expect(localStorage.getItem('lfx.store.mpOn.u1')).toBe('0');
     localStorage.setItem('lfx.store.mpOn.u1', 'x');
     localStorage.setItem('lfx.store.mpFilm.u1', 'x');

@@ -99,7 +99,7 @@ export function getVr() {
 }
 
 const MP_KEY = /^[0-9a-f]{12}$/;
-/** Mehrspieler-Vorlieben: on/name/chat Standard an (nur „0“ schaltet ab), film Standard aus (nur „1“ schaltet an), mute = Pseudonyme (höchstens 50), hint = Hinweis gezeigt. */
+/** Mehrspieler-Vorlieben: on/name/card/chat Standard an (nur „0“ schaltet ab), film Standard aus (nur „1“ schaltet an), mute = Pseudonyme (höchstens 50), hint = Hinweis gezeigt. */
 export function getMp() {
   const on = (n) => read('localStorage', storageKey(n)) !== '0';
   let mute = [];
@@ -107,11 +107,11 @@ export function getMp() {
     const m = JSON.parse(read('localStorage', storageKey('mpMute')) || '[]');
     if (Array.isArray(m)) mute = m.filter((k) => typeof k === 'string' && MP_KEY.test(k)).slice(0, 50);
   } catch { /* defekt: leer */ }
-  return { on: on('mpOn'), name: on('mpName'), film: read('localStorage', storageKey('mpFilm')) === '1', chat: on('mpChat'), mute, hint: read('localStorage', storageKey('mpHint')) === '1' };
+  return { on: on('mpOn'), name: on('mpName'), card: on('mpCard'), film: read('localStorage', storageKey('mpFilm')) === '1', chat: on('mpChat'), mute, hint: read('localStorage', storageKey('mpHint')) === '1' };
 }
 
 function saveMp(m) {
-  for (const k of ['on', 'name', 'film', 'chat', 'hint']) {
+  for (const k of ['on', 'name', 'card', 'film', 'chat', 'hint']) {
     if (typeof m[k] === 'boolean') write('localStorage', storageKey(`mp${k[0].toUpperCase()}${k.slice(1)}`), m[k] ? '1' : '0');
   }
   if (Array.isArray(m.mute)) write('localStorage', storageKey('mpMute'), JSON.stringify([...new Set(m.mute.filter((k) => typeof k === 'string' && MP_KEY.test(k)))].slice(0, 50)));

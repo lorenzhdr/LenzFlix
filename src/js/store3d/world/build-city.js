@@ -91,8 +91,32 @@ export function hutShell(q) {
 const shadeOf = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
 
 /**
+ * Außenhaut des Friseursalons (Gebäude SW): Nordfront mit Türöffnung und Schaufenster-Rahmen, Block über dem Salon, einfacher Boden.
+ * Die Seiten- und Rückwände (Innenflächen) stammen aus den Gebäudeteilen; der Innenraum selbst folgt in Welle 2.
+ */
+function salonShell(s, b) {
+  const r = s.rect;
+  const z0 = r.z0;
+  const z1 = z0 + T;
+  const c = b.color;
+  const d = s.door;
+  const w = s.window;
+  const DK = [0.1, 0.11, 0.16];
+  return [
+    B(r.x0, z0, d.x0, z1, 0, w.y0, c), B(r.x0, z0, d.x0, z1, w.y1, s.ceil, c), // links der Tür: unter und über dem Fenster
+    B(r.x0, z0, w.x0, z1, w.y0, w.y1, c), B(w.x1, z0, d.x0, z1, w.y0, w.y1, c), // Fensterpfeiler
+    B(d.x1, z0, r.x1, z1, 0, s.ceil, c), // rechts der Tür
+    B(d.x0, z0, d.x1, z1, d.h, s.ceil, c), // Sturz über der Tür
+    B(d.x0 - 0.06, z0 - 0.03, d.x0, z1, 0, d.h, DK), B(d.x1, z0 - 0.03, d.x1 + 0.06, z1, 0, d.h, DK), // Türrahmen
+    B(w.x0 - 0.06, z0 - 0.03, w.x1 + 0.06, z1, w.y0 - 0.06, w.y0, DK), B(w.x0 - 0.06, z0 - 0.03, w.x1 + 0.06, z1, w.y1, w.y1 + 0.06, DK), // Fensterbank, Fenstersturz
+    B(r.x0, z0, r.x1, r.z1, s.ceil, b.h, c), // Block über dem Salon
+    B(r.x0, z0, r.x1, r.z1, 0, 0.012, [0.24, 0.2, 0.22]), // schlichter Boden (Platzhalter bis Welle 2)
+  ];
+}
+
+/**
  * Baut die Stadt-Meshes. `out` = getOutdoor, `city` = buildCity-Ergebnis, `layout` = Laden-Layout.
- * Rückgabe { root, groups:{street,palast,yard,palastInterior}, setSignals(s), dispose() }.
+ * Rückgabe { root, groups:{street,palast,yard,palastInterior,salonInterior}, setSignals(s), dispose() }.
  */
 export function buildCityMeshes(out, city, layout) {
   const f = city.frame;
@@ -106,6 +130,7 @@ export function buildCityMeshes(out, city, layout) {
   const palastG = mk('city-palast');
   const yard = mk('city-yard');
   const palastInterior = mk('city-palast-interior');
+  const salonInterior = mk('city-salon-interior'); // leer, Innenraum des Friseursalons zeichnet Welle 2
 
   const flat = out.tint(new MeshBasicMaterial({ vertexColors: true }));
   const walkMat = out.tint(new MeshBasicMaterial({ map: out.T(slabCanvas(), { repeat: true }), vertexColors: true }));
@@ -161,15 +186,26 @@ export function buildCityMeshes(out, city, layout) {
     const list = byRegion[b.region] || (byRegion[b.region] = []);
     const w = b.x1 - b.x0;
     const d = b.z1 - b.z0;
-    list.push(B(b.x0, b.z0, b.x1, b.z1, 0, b.h, b.color));
+    if (b.parts) for (const q of b.parts) list.push(B(q.x0, q.z0, q.x1, q.z1, 0, b.h, b.color)); // SW: um den Salon herum
+    else list.push(B(b.x0, b.z0, b.x1, b.z1, 0, b.h, b.color));
+    if (b.parts && city.salon) list.push(...salonShell(city.salon, b));
     list.push(box({ w: w + 0.3, h: 0.35, d: d + 0.3, x: (b.x0 + b.x1) / 2, y: b.h + 0.1, z: (b.z0 + b.z1) / 2, color: shadeOf(b.color, 0.6) })); // Dachkante
     if (b.front && w > 3) {
       const z = b.front === 'S' ? b.z1 + 0.01 : b.z0 - 0.01;
-      windowGrid(winSpecs, b.x0 + 1.2, b.x1 - 0.2, 1.3, Math.floor((b.h - 1.4) / 2.7), z, b.front === 'S' ? 1 : -1, rand);
-      list.push(box({ w: 1.1, h: 2.2, d: 0.1, x: b.x0 + w * 0.25, y: 1.1, z: b.front === 'S' ? b.z1 + 0.02 : b.z0 - 0.02, color: DARK })); // Haustür
+      const grid = [];
+      windowGrid(grid, b.x0 + 1.2, b.x1 - 0.2, 1.3, Math.floor((b.h - 1.4) / 2.7), z, b.front === 'S' ? 1 : -1, rand);
+      const sr = b.parts && city.salon ? city.salon.rect : null;
+      for (const g of grid) if (!(sr && g.x > sr.x0 - 0.6 && g.x < sr.x1 + 0.6 && g.y - g.h / 2 < city.salon.ceil)) winSpecs.push(g); // Erdgeschoss-Fenster nicht vor den Salon
+      if (!b.parts) list.push(box({ w: 1.1, h: 2.2, d: 0.1, x: b.x0 + w * 0.25, y: 1.1, z: b.front === 'S' ? b.z1 + 0.02 : b.z0 - 0.02, color: DARK })); // Haustür
     }
   }
   for (const [key, list] of Object.entries(byRegion)) put(key === 'Y' ? yard : street, list, flat, `city-bld-${key}`);
+  if (city.salon) { // Schaufensterglas des Salons: durchsichtig, damit der Innenraum von außen zu sehen bleibt
+    const sw = city.salon.window;
+    const glass = quad({ w: sw.x1 - sw.x0, h: sw.y1 - sw.y0, x: (sw.x0 + sw.x1) / 2, y: (sw.y0 + sw.y1) / 2, z: sw.z + T / 2, ry: PI, color: [0.55, 0.72, 0.85] });
+    const gm = put(street, [glass], new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.22, depthWrite: false, side: DoubleSide }), 'city-salon-glass');
+    if (gm) gm.renderOrder = 6;
+  }
   for (const [ex, ry] of [[XW0 + 0.03, PI / 2], [XW1 - 0.03, -PI / 2]]) { // Fenster der Kulissenwände an den Straßenenden
     for (let fl = 0; fl < 4; fl++) for (let zz = fz + 1.1; zz < sz - 0.6; zz += 1.8) winSpecs.push({ x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, ry, lit: rand() });
   }
@@ -307,7 +343,7 @@ export function buildCityMeshes(out, city, layout) {
   const decor = buildCityDecor(out, city, layout, { street, palast: palastG, yard }, winSpecs);
   const setAll = (sig) => { setSignals(sig); decor.setSignals(sig); };
   return {
-    root, groups: { street, palast: palastG, yard, palastInterior }, setSignals: setAll, update: decor.update,
+    root, groups: { street, palast: palastG, yard, palastInterior, salonInterior }, setSignals: setAll, update: decor.update,
     dispose() { decor.dispose(); root.removeFromParent(); },
   };
 }

@@ -20,6 +20,8 @@ export const LIMITS = {
   ck: { n: 2, per: 1000, burst: 2 },
   rn: { n: 1, per: 60000, burst: 1 },
   ki: { n: 1, per: 5000, burst: 1, fail: 'perm' },
+  lk: { n: 1, per: 2000, burst: 3 },
+  mc: { n: 1, per: 5000, burst: 2 },
 };
 export const FRAME_OVER_MS = 3000; // so lange darüber -> 4429
 

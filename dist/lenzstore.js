@@ -20257,12 +20257,12 @@
         useSolidColor = true;
       }
       for (let i = 0; i < 6; i++) {
-        const col = i % 3;
-        if (col === 0) {
+        const col2 = i % 3;
+        if (col2 === 0) {
           cubeCamera.up.set(0, upSign[i], 0);
           cubeCamera.position.set(position.x, position.y, position.z);
           cubeCamera.lookAt(position.x + forwardSign[i], position.y, position.z);
-        } else if (col === 1) {
+        } else if (col2 === 1) {
           cubeCamera.up.set(0, 0, upSign[i]);
           cubeCamera.position.set(position.x, position.y, position.z);
           cubeCamera.lookAt(position.x, position.y + forwardSign[i], position.z);
@@ -20272,7 +20272,7 @@
           cubeCamera.lookAt(position.x, position.y, position.z + forwardSign[i]);
         }
         const size = this._cubeSize;
-        _setViewport(cubeUVRenderTarget, col * size, i > 2 ? size : 0, size, size);
+        _setViewport(cubeUVRenderTarget, col2 * size, i > 2 ? size : 0, size, size);
         renderer.setRenderTarget(cubeUVRenderTarget);
         if (useSolidColor) {
           renderer.render(backgroundBox, cubeCamera);
@@ -30263,9 +30263,9 @@ void main() {
     const g = isFree(nav, to.x, to.z) ? to : nearestFree(nav, to.x, to.z);
     if (!s || !g) return null;
     const { cols, rows, blocked } = nav;
-    const [sc, sr] = worldToCell(nav, s.x, s.z);
+    const [sc2, sr] = worldToCell(nav, s.x, s.z);
     const [gc, gr] = worldToCell(nav, g.x, g.z);
-    const start = sr * cols + sc;
+    const start = sr * cols + sc2;
     const goal = gr * cols + gc;
     if (start === goal) return [{ x: g.x, z: g.z }];
     const gScore = new Float32Array(cols * rows).fill(Infinity);
@@ -30278,7 +30278,7 @@ void main() {
       return dx + dz + (Math.SQRT2 - 2) * Math.min(dx, dz);
     };
     gScore[start] = 0;
-    heap.push(start, h2(sc, sr));
+    heap.push(start, h2(sc2, sr));
     const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
     let found = false;
     while (heap.size) {
@@ -30484,6 +30484,7 @@ void main() {
     if (inRect(zn.escape.rect, x, z)) return "escape";
     if (inRect(zn.palastHall.rect, x, z)) return "palastHall";
     if (inRect(zn.palastFoyer.rect, x, z)) return "palastFoyer";
+    if (zn.salon && y < 2.9 && inRect(zn.salon.rect, x, z)) return "salon";
     if (x >= 0 && x <= layout.w && z >= 0 && z <= layout.d && y < 2.9) return "shop";
     for (const id of ["doorway", "yard", "alley", "kiosk", "palastEntrance", "crossing", "sideN", "sideS", "street"]) if (inRect(zn[id].rect, x, z)) return id;
     return "outside";
@@ -30492,16 +30493,18 @@ void main() {
     const W2 = layout.w;
     const D2 = layout.d;
     const c = layout.city;
-    const out = { shopShell: false, shelves: false, street: area !== "palastHall", yard: false, palastInterior: false, palastExterior: true };
+    const out = { shopShell: false, shelves: false, street: area !== "palastHall", yard: false, palastInterior: false, salonInterior: false, palastExterior: true };
     const inFront = z > D2 - 0.01 && z - D2 < 14 && Math.abs(x - W2 / 2) < W2 / 2 + 8 && area !== "palastHall" && area !== "palastFoyer" && area !== "roof" && area !== "escape" && area !== "yard";
     out.shopShell = area === "shop" || area === "doorway" || inFront;
     out.shelves = area === "shop" || inFront && z - D2 < 5;
     if (c) {
       const m = c.spawns.alley;
-      const inside = area === "shop" || area === "palastHall" || area === "palastFoyer";
+      const inside = area === "shop" || area === "palastHall" || area === "palastFoyer" || area === "salon";
       out.yard = area === "yard" || area === "alley" || area === "escape" || area === "roof" || !inside && Math.hypot(x - m.x, z - (c.frame.fz + 1.2)) < 16;
       const dx = x - W2 / 2;
       out.palastInterior = area === "palastHall" || area === "palastFoyer" || z < c.frame.sz && Math.hypot(dx, z - c.frame.sz) < 12 && area !== "shop";
+      const sa = c.salon;
+      if (sa) out.salonInterior = area === "salon" || z < sa.door.z && Math.hypot(x - (sa.door.x0 + sa.door.x1) / 2, z - sa.door.z) < 12 && area !== "shop";
     }
     return out;
   }
@@ -30554,7 +30557,7 @@ void main() {
     const PALETTE = [[0.55, 0.28, 0.24], [0.62, 0.5, 0.36], [0.38, 0.42, 0.52], [0.5, 0.36, 0.4], [0.42, 0.5, 0.42], [0.6, 0.55, 0.5]];
     const colorOf = () => PALETTE[Math.floor(rand() * PALETTE.length)].map((v) => Math.round(v * 1e3) / 1e3);
     const colliders = [];
-    const col = (id, kind, x0, z0, x1, z1, o = {}) => {
+    const col2 = (id, kind, x0, z0, x1, z1, o = {}) => {
       const q = { id, kind, x0, z0, x1, z1, ...o };
       colliders.push(q);
       return q;
@@ -30573,7 +30576,19 @@ void main() {
       ["QS", W2 + 11.6, zSS, W2 + 21.4, ZW1, 6.5, "E"]
     ];
     const buildings = bl.map(([id, x0, z0, x1, z1, h2, region]) => ({ id, x0, z0, x1, z1, h: h2, region, color: colorOf(), front: z1 === fz ? "S" : z0 === sz ? "N" : null }));
-    for (const b2 of buildings) col(b2.id, "building", b2.x0, b2.z0, b2.x1, b2.z1);
+    const SALON = { x0: -22, z0: sz, x1: -14, z1: sz + 7 };
+    const sdx = (SALON.x0 + SALON.x1) / 2;
+    const swB = buildings.find((q) => q.id === "SW");
+    swB.parts = [
+      { id: "w", x0: swB.x0, z0: swB.z0, x1: SALON.x0, z1: swB.z1 },
+      { id: "e", x0: SALON.x1, z0: swB.z0, x1: swB.x1, z1: swB.z1 },
+      { id: "b", x0: SALON.x0, z0: SALON.z1, x1: SALON.x1, z1: swB.z1 }
+    ];
+    for (const b2 of buildings) {
+      if (b2.parts) for (const q of b2.parts) col2(`${b2.id}${q.id}`, "building", q.x0, q.z0, q.x1, q.z1);
+      else col2(b2.id, "building", b2.x0, b2.z0, b2.x1, b2.z1);
+    }
+    col2("salonRoof", "building", SALON.x0, SALON.z0, SALON.x1, SALON.z1, { y0: CEIL_Y });
     for (const b2 of buildings) if (b2.id === "NE1" || b2.id === "NW1" || b2.id === "NW2" || b2.id === "NE2") b2.front = "S";
     for (const b2 of buildings) if (b2.id === "SW" || b2.id === "SE1" || b2.id === "SE2") b2.front = "N";
     for (const b2 of buildings) if (b2.id === "NE1b") b2.front = null;
@@ -30594,84 +30609,102 @@ void main() {
     };
     palast.posterSlots = [-6.4, -3.6, 3.6, 6.4].map((o, i) => ({ id: `poster${i}`, x: Math.round((W2 / 2 + o) * 100) / 100, y: 1.9, z: sz - 0.05, w: 1.6, h: 2.2, yaw: PI }));
     palast.sign = { x: W2 / 2, y: 5.6, w: Math.min(PW2 - 2, 9) };
-    col("palastFrontL", "wall", px0, sz, palast.doorX0, sz + wt);
-    col("palastFrontR", "wall", palast.doorX1, sz, px1, sz + wt);
-    col("palastSideW", "wall", px0, sz, px0 + wt, pz1);
-    col("palastSideE", "wall", px1 - wt, sz, px1, pz1);
-    col("palastBack", "wall", px0, pz1 - wt, px1, pz1);
+    col2("palastFrontL", "wall", px0, sz, palast.doorX0, sz + wt);
+    col2("palastFrontR", "wall", palast.doorX1, sz, px1, sz + wt);
+    col2("palastSideW", "wall", px0, sz, px0 + wt, pz1);
+    col2("palastSideE", "wall", px1 - wt, sz, px1, pz1);
+    col2("palastBack", "wall", px0, pz1 - wt, px1, pz1);
     const d0 = palast.hallDoors[0];
     const d1 = palast.hallDoors[1];
-    col("palastPartA", "wall", px0 + wt, sz + 5.75, d0.x0, sz + 6);
-    col("palastPartB", "wall", d0.x1, sz + 5.75, d1.x0, sz + 6);
-    col("palastPartC", "wall", d1.x1, sz + 5.75, px1 - wt, sz + 6);
+    col2("palastPartA", "wall", px0 + wt, sz + 5.75, d0.x0, sz + 6);
+    col2("palastPartB", "wall", d0.x1, sz + 5.75, d1.x0, sz + 6);
+    col2("palastPartC", "wall", d1.x1, sz + 5.75, px1 - wt, sz + 6);
     const b = f.bounds;
-    col("boundW", "bounds", b.x0 - 2, b.z0 - 2, b.x0, b.z1 + 2);
-    col("boundE", "bounds", b.x1, b.z0 - 2, b.x1 + 2, b.z1 + 2);
-    col("boundN", "bounds", b.x0 - 2, b.z0 - 2, b.x1 + 2, b.z0);
-    col("boundS", "bounds", b.x0 - 2, b.z1, b.x1 + 2, b.z1 + 2);
-    col("gateW", "bounds", XW0 - 1, fz, XW0 + 0.6, sz);
-    col("gateE", "bounds", XW1 - 0.6, fz, XW1 + 1, sz);
-    col("gateN", "bounds", xc0 - 2.4, zSN, xc1 + 2.4, zSN + 0.6);
-    col("gateS", "bounds", xc0 - 2.4, zSS - 0.6, xc1 + 2.4, zSS);
+    col2("boundW", "bounds", b.x0 - 2, b.z0 - 2, b.x0, b.z1 + 2);
+    col2("boundE", "bounds", b.x1, b.z0 - 2, b.x1 + 2, b.z1 + 2);
+    col2("boundN", "bounds", b.x0 - 2, b.z0 - 2, b.x1 + 2, b.z0);
+    col2("boundS", "bounds", b.x0 - 2, b.z1, b.x1 + 2, b.z1 + 2);
+    col2("gateW", "bounds", XW0 - 1, fz, XW0 + 0.6, sz);
+    col2("gateE", "bounds", XW1 - 0.6, fz, XW1 + 1, sz);
+    col2("gateN", "bounds", xc0 - 2.4, zSN, xc1 + 2.4, zSN + 0.6);
+    col2("gateS", "bounds", xc0 - 2.4, zSS - 0.6, xc1 + 2.4, zSS);
+    const salon = {
+      rect: SALON,
+      wall: T,
+      ceil: CEIL_Y,
+      door: { x0: sdx - 0.8, x1: sdx + 0.8, z: sz, h: 2.4 },
+      window: { x0: SALON.x0 + 0.6, x1: SALON.x0 + 2.6, y0: 0.9, y1: 2.3, z: sz },
+      chair: { x: sdx, z: sz + 5.5, yaw: PI },
+      mirror: { x: sdx, y: 1.5, z: SALON.z1 - T - 0.02, yaw: PI, w: 3.4, h: 1.5 },
+      booth: { x0: SALON.x1 - 2.4, z0: sz + 4.6, x1: SALON.x1 - T, z1: SALON.z1 - T, curtain: { x: SALON.x1 - 2.4, z0: sz + 4.9, z1: sz + 6.6, y0: 0.25, y1: 2.3, yaw: -PI / 2 } },
+      rack: { x: SALON.x1 - 0.8, z: sz + 3.2, yaw: -PI / 2 },
+      gabi: { x: sdx, z: sz + 4.7, yaw: PI },
+      ronny: { x: SALON.x0 + 1.4, z: sz + 2.4, yaw: -PI / 2 }
+    };
+    col2("salonFrontL", "wall", SALON.x0, sz, salon.door.x0, sz + T);
+    col2("salonFrontR", "wall", salon.door.x1, sz, SALON.x1, sz + T);
+    col2("salonSideW", "wall", SALON.x0, sz, SALON.x0 + T, SALON.z1);
+    col2("salonSideE", "wall", SALON.x1 - T, sz, SALON.x1, SALON.z1);
+    col2("salonBack", "wall", SALON.x0, SALON.z1 - T, SALON.x1, SALON.z1);
     const kiosk = { hut: { x0: W2 + 8.8, z0: D2 - 1.9, x1: W2 + 11.2, z1: D2 - 0.1, h: 2.6 }, counter: { x0: W2 + 9, z0: D2 - 0.1, x1: W2 + 11, z1: D2 + 0.2, h: 1.05 } };
     kiosk.vendor = { x: W2 + 10, z: D2 - 0.95, yaw: PI };
     kiosk.awning = { x0: W2 + 8.7, x1: W2 + 11.3, z0: D2 - 0.1, z1: D2 + 1.5, y0: 2.45, y1: 2.75 };
     kiosk.table = { x0: W2 + 8.9, z0: D2 + 1.8, x1: W2 + 9.4, z1: D2 + 2.3, h: 1.1 };
-    col("kioskHut", "hut", kiosk.hut.x0, kiosk.hut.z0, kiosk.hut.x1, kiosk.hut.z1, { y1: kiosk.hut.h, top: false });
-    col("kioskCounter", "kioskcounter", kiosk.counter.x0, kiosk.counter.z0, kiosk.counter.x1, kiosk.counter.z1, { y1: kiosk.counter.h });
-    col("kioskTable", "stehtisch", kiosk.table.x0, kiosk.table.z0, kiosk.table.x1, kiosk.table.z1, { y1: kiosk.table.h, top: false });
-    const L1 = col("escapeL1", "escape", fx - 1.1, -1.62, fx + 1.1, -T, { y1: 1.65 });
+    col2("kioskHut", "hut", kiosk.hut.x0, kiosk.hut.z0, kiosk.hut.x1, kiosk.hut.z1, { y1: kiosk.hut.h, top: false });
+    col2("kioskCounter", "kioskcounter", kiosk.counter.x0, kiosk.counter.z0, kiosk.counter.x1, kiosk.counter.z1, { y1: kiosk.counter.h });
+    col2("kioskTable", "stehtisch", kiosk.table.x0, kiosk.table.z0, kiosk.table.x1, kiosk.table.z1, { y1: kiosk.table.h, top: false });
+    const L1 = col2("escapeL1", "escape", fx - 1.1, -1.62, fx + 1.1, -T, { y1: 1.65 });
     const escape = { fx, parts: [L1.id] };
     for (let k = 1; k <= 4; k++) {
-      const q = col(`escapeA${k}`, "escape", fx + 1.1 + (k - 1) * 0.36, -1.62, fx + 1.1 + k * 0.36, -T, { y1: Math.round((1.65 - 0.33 * k) * 100) / 100 });
+      const q = col2(`escapeA${k}`, "escape", fx + 1.1 + (k - 1) * 0.36, -1.62, fx + 1.1 + k * 0.36, -T, { y1: Math.round((1.65 - 0.33 * k) * 100) / 100 });
       escape.parts.push(q.id);
     }
     for (let j = 1; j <= 4; j++) {
-      const q = col(`escapeB${j}`, "escape", fx - 1.1 - j * 0.36, -1.62, fx - 1.1 - (j - 1) * 0.36, -T, { y1: Math.round((1.65 + 0.33 * j) * 100) / 100 });
+      const q = col2(`escapeB${j}`, "escape", fx - 1.1 - j * 0.36, -1.62, fx - 1.1 - (j - 1) * 0.36, -T, { y1: Math.round((1.65 + 0.33 * j) * 100) / 100 });
       escape.parts.push(q.id);
     }
-    const L2 = col("escapeL2", "escape", fx - 3.64, -1.62, fx - 2.54, -T, { y1: ROOF_Y });
+    const L2 = col2("escapeL2", "escape", fx - 3.64, -1.62, fx - 2.54, -T, { y1: ROOF_Y });
     escape.parts.push(L2.id);
     const roof = { x0: -T, z0: -T, x1: W2 + T, z1: D2 + T, y: ROOF_Y, gate: { x0: fx - 3.84, x1: fx - 2.34 } };
-    col("roof", "roof", roof.x0, roof.z0, roof.x1, roof.z1, { y0: CEIL_Y, y1: ROOF_Y });
+    col2("roof", "roof", roof.x0, roof.z0, roof.x1, roof.z1, { y0: CEIL_Y, y1: ROOF_Y });
     const par = 0.15;
-    col("parapetN1", "parapet", roof.x0, roof.z0, roof.gate.x0, roof.z0 + par, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
-    col("parapetN2", "parapet", roof.gate.x1, roof.z0, roof.x1, roof.z0 + par, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
-    col("parapetW", "parapet", roof.x0, roof.z0, roof.x0 + par, roof.z1, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
-    col("parapetE", "parapet", roof.x1 - par, roof.z0, roof.x1, roof.z1, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
-    col("parapetS", "parapet", roof.x0, D2 + 0.17, roof.x1, D2 + 0.25, { y0: ROOF_Y, y1: ROOF_Y + 2, top: false });
-    col("crateA", "crate", 0.6, -6, 1.6, -5, { y1: 0.55 });
-    col("crateB", "crate", 1.6, -6, 2.6, -5, { y1: 1.1 });
-    col("crateC", "crate", 2.6, -6, 3.6, -5, { y1: 1.65 });
-    col("container", "container", 3.6, -10.6, 6, -4.6, { y1: 2.6 });
+    col2("parapetN1", "parapet", roof.x0, roof.z0, roof.gate.x0, roof.z0 + par, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
+    col2("parapetN2", "parapet", roof.gate.x1, roof.z0, roof.x1, roof.z0 + par, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
+    col2("parapetW", "parapet", roof.x0, roof.z0, roof.x0 + par, roof.z1, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
+    col2("parapetE", "parapet", roof.x1 - par, roof.z0, roof.x1, roof.z1, { y0: ROOF_Y, y1: ROOF_Y + 1, top: false });
+    col2("parapetS", "parapet", roof.x0, D2 + 0.17, roof.x1, D2 + 0.25, { y0: ROOF_Y, y1: ROOF_Y + 2, top: false });
+    col2("crateA", "crate", 0.6, -6, 1.6, -5, { y1: 0.55 });
+    col2("crateB", "crate", 1.6, -6, 2.6, -5, { y1: 1.1 });
+    col2("crateC", "crate", 2.6, -6, 3.6, -5, { y1: 1.65 });
+    col2("container", "container", 3.6, -10.6, 6, -4.6, { y1: 2.6 });
     const cx0 = Math.round(W2 * 0.55 * 100) / 100;
-    col("carHood", "car", cx0, -9.6, cx0 + 1.8, -8.4, { y1: 0.95 });
-    col("carCabin", "car", cx0, -8.4, cx0 + 1.8, -6.2, { y1: 1.42 });
-    col("carTrunk", "car", cx0, -6.2, cx0 + 1.8, -5.4, { y1: 0.95 });
+    col2("carHood", "car", cx0, -9.6, cx0 + 1.8, -8.4, { y1: 0.95 });
+    col2("carCabin", "car", cx0, -8.4, cx0 + 1.8, -6.2, { y1: 1.42 });
+    col2("carTrunk", "car", cx0, -6.2, cx0 + 1.8, -5.4, { y1: 0.95 });
     const bx0 = Math.round(W2 * 0.9 * 100) / 100;
-    col("yardBin1", "bin", bx0, -3.3, bx0 + 0.7, -2.6, { y1: 1 });
-    col("yardBin2", "bin", bx0, -2.1, bx0 + 0.7, -1.4, { y1: 1 });
+    col2("yardBin1", "bin", bx0, -3.3, bx0 + 0.7, -2.6, { y1: 1 });
+    col2("yardBin2", "bin", bx0, -2.1, bx0 + 0.7, -1.4, { y1: 1 });
     const hx = Math.round((W2 + 7.7) * 100) / 100;
     const hoop = { x: Math.round((W2 + 6.45) * 100) / 100, y: 3.05, z: -5, yaw: -PI / 2, mast: { x: hx, z: -5 }, board: { x: Math.round((W2 + 6.95) * 100) / 100, y: 3.35, w: 1.8, h: 1.05 }, ringR: 0.23 };
-    col("hoopMast", "hoopmast", hx - 0.1, -5.1, hx + 0.1, -4.9, { y1: 3.9, top: false });
-    col("hoopBoard", "hoopmast", hoop.board.x - 0.03, -5 - hoop.board.w / 2, hoop.board.x + 0.03, -5 + hoop.board.w / 2, { y0: hoop.board.y - hoop.board.h / 2, y1: hoop.board.y + hoop.board.h / 2, top: false });
-    col("palletA", "pallet", -3, -7.6, -1.8, -6.5, { y1: 0.28 });
-    col("palletB", "pallet", -3, -6.4, -1.8, -5.3, { y1: 0.28 });
+    col2("hoopMast", "hoopmast", hx - 0.1, -5.1, hx + 0.1, -4.9, { y1: 3.9, top: false });
+    col2("hoopBoard", "hoopmast", hoop.board.x - 0.03, -5 - hoop.board.w / 2, hoop.board.x + 0.03, -5 + hoop.board.w / 2, { y0: hoop.board.y - hoop.board.h / 2, y1: hoop.board.y + hoop.board.h / 2, top: false });
+    col2("palletA", "pallet", -3, -7.6, -1.8, -6.5, { y1: 0.28 });
+    col2("palletB", "pallet", -3, -6.4, -1.8, -5.3, { y1: 0.28 });
     const laundry = { x0: Math.round(W2 * 35) / 100, x1: Math.round(W2 * 78) / 100, z: -3.9, y: 2.25 };
-    col("laundryPostA", "laundrypost", laundry.x0 - 0.05, laundry.z - 0.05, laundry.x0 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
-    col("laundryPostB", "laundrypost", laundry.x1 - 0.05, laundry.z - 0.05, laundry.x1 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
+    col2("laundryPostA", "laundrypost", laundry.x0 - 0.05, laundry.z - 0.05, laundry.x0 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
+    col2("laundryPostB", "laundrypost", laundry.x1 - 0.05, laundry.z - 0.05, laundry.x1 + 0.05, laundry.z + 0.05, { y1: 2.4, top: false });
     const graffiti = { id: "graffiti", x: 0.8, y: 1.6, z: -11, w: 3, h: 2.2, yaw: 0 };
     const roofProps = [
       { id: "vent1", kind: "vent", x: Math.round(W2 * 75) / 100, z: Math.round(D2 * 55) / 100, w: 0.9, d: 0.7, h: 0.8 },
       { id: "vent2", kind: "vent", x: Math.round(W2 * 62) / 100, z: Math.round(D2 * 82) / 100, w: 0.7, d: 0.7, h: 0.6 },
       { id: "mast", kind: "mast", x: Math.round(W2 * 20) / 100, z: Math.round(D2 * 75) / 100, w: 0.16, d: 0.16, h: 2.6 }
     ];
-    for (const r of roofProps) col(`roof_${r.id}`, "roofprop", r.x - r.w / 2, r.z - r.d / 2, r.x + r.w / 2, r.z + r.d / 2, { y0: ROOF_Y, y1: ROOF_Y + r.h, top: false });
-    col("barrel1", "barrel", -3.3, D2 - 7.4, -2.6, D2 - 6.7, { y1: 1.05 });
-    col("barrel2", "barrel", -3.3, D2 - 5.9, -2.6, D2 - 5.2, { y1: 1.05 });
+    for (const r of roofProps) col2(`roof_${r.id}`, "roofprop", r.x - r.w / 2, r.z - r.d / 2, r.x + r.w / 2, r.z + r.d / 2, { y0: ROOF_Y, y1: ROOF_Y + r.h, top: false });
+    col2("barrel1", "barrel", -3.3, D2 - 7.4, -2.6, D2 - 6.7, { y1: 1.05 });
+    col2("barrel2", "barrel", -3.3, D2 - 5.9, -2.6, D2 - 5.2, { y1: 1.05 });
     const fixtures = [];
     const fix = (id, kind, x0, z0, x1, z1, o = {}) => {
-      fixtures.push(col(id, kind, x0, z0, x1, z1, o));
+      fixtures.push(col2(id, kind, x0, z0, x1, z1, o));
     };
     const bn = W2 / 2 + 5.2;
     fix("benchN", "bench", bn - 0.8, D2 + 0.3, bn + 0.8, D2 + 0.7, { y1: 0.48 });
@@ -30704,17 +30737,17 @@ void main() {
     };
     lampRow(D2 + 2.45, -0.62, XW0 + 6 + 1, "N");
     lampRow(D2 + 8.75, 0.62, XW0 + 6 + 5.5, "S");
-    for (const l of lights) col(l.id, "pole", l.x - 0.1, l.z - 0.1, l.x + 0.1, l.z + 0.1, { y1: l.h, top: false });
+    for (const l of lights) col2(l.id, "pole", l.x - 0.1, l.z - 0.1, l.x + 0.1, l.z + 0.1, { y1: l.h, top: false });
     const signals = [
       { id: "mainE", lane: "mainE", signal: "main", x: xc0 - 1.6, z: roadZ1 + 1.6 },
       { id: "mainW", lane: "mainW", signal: "main", x: xc1 + 1.6, z: roadZ0 - 0.2 },
       { id: "sideS", lane: "sideS", signal: "side", x: xc0 - 0.2, z: roadZ0 - 0.5 },
       { id: "sideN", lane: "sideN", signal: "side", x: xc1 + 0.2, z: roadZ1 + 1.6 }
     ];
-    for (const s of signals) col(`sig_${s.id}`, "pole", s.x - 0.1, s.z - 0.1, s.x + 0.1, s.z + 0.1, { y1: 3.2, top: false });
+    for (const s of signals) col2(`sig_${s.id}`, "pole", s.x - 0.1, s.z - 0.1, s.x + 0.1, s.z + 0.1, { y1: 3.2, top: false });
     const doorPosts = [
-      col("postL", "post", door.x0 + 0.05, D2 - 0.8, door.x0 + 0.17, D2 - 0.6, { y1: 1.3, top: false }),
-      col("postR", "post", door.x1 - 0.17, D2 - 0.8, door.x1 - 0.05, D2 - 0.6, { y1: 1.3, top: false })
+      col2("postL", "post", door.x0 + 0.05, D2 - 0.8, door.x0 + 0.17, D2 - 0.6, { y1: 1.3, top: false }),
+      col2("postR", "post", door.x1 - 0.17, D2 - 0.8, door.x1 - 0.05, D2 - 0.6, { y1: 1.3, top: false })
     ];
     const doorBlock = { id: "door", kind: "door", x0: door.x0, z0: D2 - 0.05, x1: door.x1, z1: D2 + T + 0.1, y1: CEIL_Y, top: false };
     const zones = {};
@@ -30740,11 +30773,13 @@ void main() {
     Z("palast", "LENZ PALAST", palast.rect);
     Z("palastFoyer", "Palast-Foyer", { x0: palast.foyer.x0, z0: palast.foyer.z0, x1: palast.foyer.x1, z1: palast.hall.z0 });
     Z("palastHall", "Palast-Saal", { x0: palast.hall.x0, z0: palast.hall.z0, x1: palast.hall.x1, z1: palast.hall.z1 });
+    Z("salon", "Friseur", { x0: SALON.x0, z0: SALON.z0, x1: SALON.x1, z1: SALON.z1, y1: hi }, { x: sdx, z: sz + 3.5, yaw: PI });
     Z("palastEntrance", "Palast-Eingang", { x0: W2 / 2 - 2, z0: sz - 2.2, x1: W2 / 2 + 2, z1: sz + 1, y1: hi });
     const spawns = {
       shop: { x: W2 / 2, z: D2 - 1.4, yaw: 0 },
       street: { x: W2 / 2, z: D2 + 1.6, yaw: PI },
       palast: { x: W2 / 2, z: sz + 2, yaw: PI },
+      salon: { x: sdx, z: sz + 1.6, yaw: PI },
       yard: { x: Math.round(W2 * 50) / 100, z: -3.2, yaw: PI },
       kiosk: { x: W2 + 10, z: D2 + 1.4, yaw: 0 },
       alley: { x: -1.8, z: Math.round(D2 * 50) / 100, yaw: 0 },
@@ -30798,7 +30833,7 @@ void main() {
       const bd = buildings.find((q) => q.id === bid);
       if (!bd || !bd.front) continue;
       let cx = (bd.x0 + bd.x1) / 2;
-      if (bid === "SW") cx = Math.max(bd.x0 + 4, px0 - 14);
+      if (bid === "SW") cx = sdx;
       if (bid === "SE1") cx = (bd.x0 + bd.x1) / 2 + 2.5;
       const wd = Math.min(5, bd.x1 - bd.x0 - 1.5);
       if (wd < 2.4) continue;
@@ -30836,6 +30871,7 @@ void main() {
       bounds: f.bounds,
       buildings,
       palast,
+      salon,
       colliders,
       zones,
       spawns,
@@ -31798,16 +31834,16 @@ void main() {
   var _s = new Vector3(1, 1, 1);
   function paint(g, color, shade2) {
     const n = g.attributes.position.count;
-    const col = new Float32Array(n * 3);
+    const col2 = new Float32Array(n * 3);
     const per = n / 6;
     for (let i = 0; i < n; i++) {
       const f = shade2 ? Math.min(5, Math.floor(i / per)) : 0;
       const sh = shade2 ? shade2[f] : 1;
-      col[i * 3] = color[0] * sh;
-      col[i * 3 + 1] = color[1] * sh;
-      col[i * 3 + 2] = color[2] * sh;
+      col2[i * 3] = color[0] * sh;
+      col2[i * 3 + 1] = color[1] * sh;
+      col2[i * 3 + 2] = color[2] * sh;
     }
-    g.setAttribute("color", new Float32BufferAttribute(col, 3));
+    g.setAttribute("color", new Float32BufferAttribute(col2, 3));
   }
   function xform(g, x, y, z, rx, ry, rz) {
     _e.set(rx, ry, rz, "YXZ");
@@ -31842,13 +31878,13 @@ void main() {
       for (let i = 0; i < 4; i++) a.setXY(i, a.getX(i) * w / tile, a.getY(i) * h2 / tile);
     }
     const n = g.attributes.position.count;
-    const col = new Float32Array(n * 3);
+    const col2 = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      col[i * 3] = color[0];
-      col[i * 3 + 1] = color[1];
-      col[i * 3 + 2] = color[2];
+      col2[i * 3] = color[0];
+      col2[i * 3 + 1] = color[1];
+      col2[i * 3 + 2] = color[2];
     }
-    g.setAttribute("color", new Float32BufferAttribute(col, 3));
+    g.setAttribute("color", new Float32BufferAttribute(col2, 3));
     xform(g, x, y, z, rx, ry, rz);
     return g;
   }
@@ -31952,14 +31988,14 @@ void main() {
       for (let i = 0; i < 26; i++) {
         const x = r() * S;
         const y = r() * S;
-        const col = P.motifs[Math.floor(r() * P.motifs.length)];
+        const col2 = P.motifs[Math.floor(r() * P.motifs.length)];
         const a = r() * Math.PI * 2;
         const s = 5 + r() * 9;
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(a);
-        ctx.fillStyle = col;
-        ctx.strokeStyle = col;
+        ctx.fillStyle = col2;
+        ctx.strokeStyle = col2;
         ctx.globalAlpha = 0.85;
         const t = Math.floor(r() * 4);
         if (t === 0) {
@@ -32285,9 +32321,9 @@ void main() {
     const doorOpen = { x0: door.x0, x1: door.x1, y0: 0, y1: 2.4 };
     layout.facade = { door, windows };
     for (const wl of layout.walls) {
-      const col = wl.kind.startsWith("adult") ? [0.62, 0.3, 0.36] : WALL_COL;
-      if (wl.kind === "outer-s") wallAlongX(wallParts, wl.x0, wl.x1, wl.z0, wl.z1, [doorOpen, ...windows], col);
-      else wallParts.push(box({ w: wl.x1 - wl.x0, h: CEIL_H, d: wl.z1 - wl.z0, x: (wl.x0 + wl.x1) / 2, y: CEIL_H / 2, z: (wl.z0 + wl.z1) / 2, color: col, tile: 1.2 }));
+      const col2 = wl.kind.startsWith("adult") ? [0.62, 0.3, 0.36] : WALL_COL;
+      if (wl.kind === "outer-s") wallAlongX(wallParts, wl.x0, wl.x1, wl.z0, wl.z1, [doorOpen, ...windows], col2);
+      else wallParts.push(box({ w: wl.x1 - wl.x0, h: CEIL_H, d: wl.z1 - wl.z0, x: (wl.x0 + wl.x1) / 2, y: CEIL_H / 2, z: (wl.z0 + wl.z1) / 2, color: col2, tile: 1.2 }));
     }
     const dado = (x0, z0, x1, z1) => {
       const w = Math.abs(x1 - x0) || 0.03;
@@ -32405,10 +32441,10 @@ void main() {
   var SWATCH_W = 40;
   var SWATCH_H = 20;
   var SWATCH_COLORS = ["#e2d8bd", "#1d3f9c", "#101012", "#c9a227", "#1a1a20"];
-  function cellUV(col, row, spec = shelfSpec(false)) {
+  function cellUV(col2, row, spec = shelfSpec(false)) {
     const cw = spec.cellW;
     const ch = spec.cellH;
-    return [col * cw / BASE, 1 - (row + 1) * ch / BASE, (col + 1) * cw / BASE, 1 - row * ch / BASE];
+    return [col2 * cw / BASE, 1 - (row + 1) * ch / BASE, (col2 + 1) * cw / BASE, 1 - row * ch / BASE];
   }
   function slotCell(idx, spec = shelfSpec(false)) {
     return { col: idx % spec.cols, row: Math.floor(idx / spec.cols) };
@@ -32479,8 +32515,8 @@ void main() {
     const t = C.thick[media] || C.thick.dvd;
     const g = new BoxGeometry(media === "box" ? C.boxW : C.w, media === "box" ? C.boxH : C.h, t);
     const uv = g.attributes.uv;
-    const { col, row } = slotCell(idx, spec);
-    const [u0, v0, u1, v1] = cellUV(col, row, spec);
+    const { col: col2, row } = slotCell(idx, spec);
+    const [u0, v0, u1, v1] = cellUV(col2, row, spec);
     const sw = swatchUV(swatchFor(media, hash(String(item && item.Id || idx))));
     for (let i = 0; i < uv.count; i++) {
       if (i >= 16 && i < 20) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (v1 - v0));
@@ -32494,8 +32530,8 @@ void main() {
     const cw = media === "box" ? C.boxW : C.w;
     g.translate(0, ch / 2, 0);
     g.rotateX(-C.tilt);
-    g.translate((col - (spec.cols - 1) / 2) * C.pitch, levelY(spec, level, face.low) + 4e-3, C.zBottom);
-    return { g, media, t, ch, cw, level, col, row };
+    g.translate((col2 - (spec.cols - 1) / 2) * C.pitch, levelY(spec, level, face.low) + 4e-3, C.zBottom);
+    return { g, media, t, ch, cw, level, col: col2, row };
   }
   var _e2 = new Euler();
   function slotWorld(fv, info, outPos = new Vector3(), outQuat = new Quaternion()) {
@@ -32620,10 +32656,10 @@ void main() {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     const passes = [[10, 26, rgba(color, 0.55)], [5, 14, color], [2, 0, "rgba(255,255,255,0.9)"]];
-    for (const [lw, blur, col] of passes) {
+    for (const [lw, blur, col2] of passes) {
       ctx.shadowColor = color;
       ctx.shadowBlur = blur;
-      ctx.strokeStyle = col;
+      ctx.strokeStyle = col2;
       ctx.lineWidth = lw;
       rr(10);
       ctx.stroke();
@@ -32638,10 +32674,10 @@ void main() {
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    for (const [lw, blur, col] of passes) {
+    for (const [lw, blur, col2] of passes) {
       ctx.shadowColor = color;
       ctx.shadowBlur = blur;
-      ctx.strokeStyle = col;
+      ctx.strokeStyle = col2;
       ctx.lineWidth = lw * 0.7;
       ctx.strokeText(text, TILE_W / 2, TILE_H / 2 + 4);
     }
@@ -33096,8 +33132,8 @@ void main() {
     const ctx = c.getContext("2d");
     ctx.fillStyle = "#101014";
     ctx.fillRect(0, 0, size, size);
-    SWATCH_COLORS.forEach((col, i) => {
-      ctx.fillStyle = col;
+    SWATCH_COLORS.forEach((col2, i) => {
+      ctx.fillStyle = col2;
       ctx.fillRect(i * SWATCH_W * s, SWATCH_Y * s, SWATCH_W * s, SWATCH_H * s);
     });
     const cw = spec.cellW * s;
@@ -33105,9 +33141,9 @@ void main() {
     face.slots.forEach((id, idx) => {
       if (id == null) return;
       const item = items.get(id) || { Id: id, Name: "?" };
-      const col = idx % spec.cols;
+      const col2 = idx % spec.cols;
       const row = Math.floor(idx / spec.cols);
-      const x = col * cw;
+      const x = col2 * cw;
       const y = row * ch;
       const media = item.lfx && item.lfx.media || "dvd";
       ctx.save();
@@ -34658,7 +34694,7 @@ void main() {
   var LOCK_COOLDOWN = 1150;
   var LOCK_RECENT = 3e3;
   var LOCK_SILENT = 400;
-  var ACTIONS = { Space: "onJump", KeyF: "onHit", KeyG: "onThrow" };
+  var ACTIONS = { Space: "onJump", KeyF: "onHit", KeyG: "onThrow", KeyV: "onView" };
   var MP_ACTIONS = { Enter: "onChat", NumpadEnter: "onChat", KeyT: "onEmote" };
   var ESC_DEBOUNCE = 300;
   function typingText(t) {
@@ -37971,10 +38007,10 @@ void main() {
     g.textBaseline = "middle";
     g.font = `bold ${Math.round(hh * 0.62)}px ${FONT}`;
     g.lineJoin = "round";
-    for (const [blur, col, lw] of [[28, "#ff3d7f", 10], [14, "#ff7aa8", 6], [0, "#fff3f8", 2]]) {
+    for (const [blur, col2, lw] of [[28, "#ff3d7f", 10], [14, "#ff7aa8", 6], [0, "#fff3f8", 2]]) {
       g.shadowColor = "#ff3d7f";
       g.shadowBlur = blur;
-      g.strokeStyle = col;
+      g.strokeStyle = col2;
       g.lineWidth = lw;
       g.strokeText("TOP-TIPPS", w / 2, hh / 2 + 4);
     }
@@ -38717,16 +38753,16 @@ void main() {
       const pal = skyPalette(tod, rain);
       out.pal = pal;
       const pos = skyGeo.attributes.position;
-      const col = skyGeo.attributes.color;
+      const col2 = skyGeo.attributes.color;
       const [zen, mid2, hor] = pal.sky;
       for (let i = 0; i < pos.count; i++) {
         const t = Math.min(1, Math.max(0, pos.getY(i) / FAR_R));
         const a = t < 0.35 ? hor : mid2;
         const b = t < 0.35 ? mid2 : zen;
         const k = t < 0.35 ? t / 0.35 : (t - 0.35) / 0.65;
-        col.setXYZ(i, lerp2(a[0], b[0], k), lerp2(a[1], b[1], k), lerp2(a[2], b[2], k));
+        col2.setXYZ(i, lerp2(a[0], b[0], k), lerp2(a[1], b[1], k), lerp2(a[2], b[2], k));
       }
-      col.needsUpdate = true;
+      col2.needsUpdate = true;
       const gp = groundGeo.attributes.position;
       const gc = groundGeo.attributes.color;
       const street = [pal.shade[0] * 0.24, pal.shade[1] * 0.25, pal.shade[2] * 0.28];
@@ -38966,13 +39002,13 @@ void main() {
   var B = (x0, z0, x1, z1, y0, y1, color) => box({ w: x1 - x0, h: y1 - y0, d: z1 - z0, x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (z0 + z1) / 2, color });
   var paint2 = (g, c) => {
     const n = g.attributes.position.count;
-    const col = new Float32Array(n * 3);
+    const col2 = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      col[i * 3] = c[0];
-      col[i * 3 + 1] = c[1];
-      col[i * 3 + 2] = c[2];
+      col2[i * 3] = c[0];
+      col2[i * 3 + 1] = c[1];
+      col2[i * 3 + 2] = c[2];
     }
-    g.setAttribute("color", new Float32BufferAttribute(col, 3));
+    g.setAttribute("color", new Float32BufferAttribute(col2, 3));
     return g;
   };
   var cyl = (r, h2, x, y, z, color, seg = 10) => {
@@ -39056,8 +39092,8 @@ void main() {
     const TXT = ["KINO-NACHT", "LENZ PALAST", "FLOHMARKT", "KEIN BILD", "HEUTE LIVE", "KATZEN SUCHEN HEIM", "AUSVERKAUF", "TANZ IM HOF"];
     for (let i = 0; i < 8; i++) {
       const px = i * 64 + 2;
-      const col = PAL[Math.floor(r() * PAL.length)];
-      x.fillStyle = col;
+      const col2 = PAL[Math.floor(r() * PAL.length)];
+      x.fillStyle = col2;
       x.fillRect(px, 6 + r() * 14, 60, 150 + r() * 80);
       x.fillStyle = "rgba(0,0,0,0.75)";
       x.save();
@@ -39125,6 +39161,7 @@ void main() {
       const gx1 = b.x1;
       st.push(box({ w: gx1 - gx0, h: 0.1, d: 0.14, x: (gx0 + gx1) / 2, y: b.h - 0.25, z: zf + face * 0.1, color: [0.25, 0.27, 0.3] }));
       st.push(box({ w: 0.1, h: b.h - 0.3, d: 0.1, x: gx1 - 0.35, y: (b.h - 0.3) / 2, z: zf + face * 0.1, color: [0.25, 0.27, 0.3] }));
+      if (b.parts) continue;
       const dx = b.x0 + (b.x1 - b.x0) * 0.25;
       st.push(box({ w: 1.3, h: 0.12, d: 0.14, x: dx, y: 2.26, z: zf + face * 0.07, color: [0.8, 0.78, 0.7] }));
       st.push(box({ w: 1.4, h: 0.08, d: 0.3, x: dx, y: 0.04, z: zf + face * 0.17, color: [0.62, 0.62, 0.66] }));
@@ -39149,6 +39186,10 @@ void main() {
       for (let k2 = 0; k2 < n; k2++) {
         const wx = s.w / n;
         st.push(box({ w: wx, h: 0.06, d: 1, x: s.x - s.w / 2 + wx * (k2 + 0.5), y: 2.62, z: s.z + face * 0.5, rx: face * -0.18, color: k2 % 2 ? [0.95, 0.95, 0.92] : s.awning }));
+      }
+      if (s.id === "SW" && city2.salon) {
+        rand();
+        return;
       }
       const gw = s.w - 1;
       glassGeos.push(quad({ w: gw, h: 1.5, x: s.x + 0.2, y: 1.15, z: s.z + face * 0.015, ry: s.yaw }));
@@ -39502,6 +39543,37 @@ void main() {
     ];
   }
   var shadeOf = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+  function salonShell(s, b) {
+    const r = s.rect;
+    const z0 = r.z0;
+    const z1 = z0 + T3;
+    const c = b.color;
+    const d = s.door;
+    const w = s.window;
+    const DK = [0.1, 0.11, 0.16];
+    return [
+      B2(r.x0, z0, d.x0, z1, 0, w.y0, c),
+      B2(r.x0, z0, d.x0, z1, w.y1, s.ceil, c),
+      // links der Tür: unter und über dem Fenster
+      B2(r.x0, z0, w.x0, z1, w.y0, w.y1, c),
+      B2(w.x1, z0, d.x0, z1, w.y0, w.y1, c),
+      // Fensterpfeiler
+      B2(d.x1, z0, r.x1, z1, 0, s.ceil, c),
+      // rechts der Tür
+      B2(d.x0, z0, d.x1, z1, d.h, s.ceil, c),
+      // Sturz über der Tür
+      B2(d.x0 - 0.06, z0 - 0.03, d.x0, z1, 0, d.h, DK),
+      B2(d.x1, z0 - 0.03, d.x1 + 0.06, z1, 0, d.h, DK),
+      // Türrahmen
+      B2(w.x0 - 0.06, z0 - 0.03, w.x1 + 0.06, z1, w.y0 - 0.06, w.y0, DK),
+      B2(w.x0 - 0.06, z0 - 0.03, w.x1 + 0.06, z1, w.y1, w.y1 + 0.06, DK),
+      // Fensterbank, Fenstersturz
+      B2(r.x0, z0, r.x1, r.z1, s.ceil, b.h, c),
+      // Block über dem Salon
+      B2(r.x0, z0, r.x1, r.z1, 0, 0.012, [0.24, 0.2, 0.22])
+      // schlichter Boden (Platzhalter bis Welle 2)
+    ];
+  }
   function buildCityMeshes(out, city2, layout) {
     const f = city2.frame;
     const { W: W2, D: D2, fz, roadZ0, roadZ1, sz, xc0, xc1, XW0, XW1, zSN, zSS } = f;
@@ -39519,6 +39591,7 @@ void main() {
     const palastG = mk3("city-palast");
     const yard = mk3("city-yard");
     const palastInterior = mk3("city-palast-interior");
+    const salonInterior = mk3("city-salon-interior");
     const flat = out.tint(new MeshBasicMaterial({ vertexColors: true }));
     const walkMat = out.tint(new MeshBasicMaterial({ map: out.T(slabCanvas(), { repeat: true }), vertexColors: true }));
     const roadMat = out.tint(new MeshBasicMaterial({ map: out.T(asphaltCanvas(), { repeat: true }), vertexColors: true }));
@@ -39566,12 +39639,12 @@ void main() {
       if (z > roadZ0 - 1.5 && z < roadZ1 + 0.5) continue;
       mk22.push(B2((xc0 + xc1) / 2 - 0.07, z, (xc0 + xc1) / 2 + 0.07, z + 1.5, 0, 0.012, DASH));
     }
-    const WHITE = [0.93, 0.93, 0.95];
+    const WHITE2 = [0.93, 0.93, 0.95];
     for (const zb of city2.zebras) {
       const lx = zb.x1 - zb.x0;
       const lz = zb.z1 - zb.z0;
-      if (lz >= lx) for (let z = zb.z0 + 0.3; z + 0.4 <= zb.z1; z += 0.8) mk22.push(B2(zb.x0, z, zb.x1, z + 0.4, 0, 0.014, WHITE));
-      else for (let x = zb.x0 + 0.3; x + 0.4 <= zb.x1; x += 0.8) mk22.push(B2(x, zb.z0, x + 0.4, zb.z1, 0, 0.014, WHITE));
+      if (lz >= lx) for (let z = zb.z0 + 0.3; z + 0.4 <= zb.z1; z += 0.8) mk22.push(B2(zb.x0, z, zb.x1, z + 0.4, 0, 0.014, WHITE2));
+      else for (let x = zb.x0 + 0.3; x + 0.4 <= zb.x1; x += 0.8) mk22.push(B2(x, zb.z0, x + 0.4, zb.z1, 0, 0.014, WHITE2));
     }
     put(street, mk22, flat, "city-marks");
     const byRegion = {};
@@ -39581,15 +39654,26 @@ void main() {
       const list = byRegion[b.region] || (byRegion[b.region] = []);
       const w = b.x1 - b.x0;
       const d = b.z1 - b.z0;
-      list.push(B2(b.x0, b.z0, b.x1, b.z1, 0, b.h, b.color));
+      if (b.parts) for (const q of b.parts) list.push(B2(q.x0, q.z0, q.x1, q.z1, 0, b.h, b.color));
+      else list.push(B2(b.x0, b.z0, b.x1, b.z1, 0, b.h, b.color));
+      if (b.parts && city2.salon) list.push(...salonShell(city2.salon, b));
       list.push(box({ w: w + 0.3, h: 0.35, d: d + 0.3, x: (b.x0 + b.x1) / 2, y: b.h + 0.1, z: (b.z0 + b.z1) / 2, color: shadeOf(b.color, 0.6) }));
       if (b.front && w > 3) {
         const z = b.front === "S" ? b.z1 + 0.01 : b.z0 - 0.01;
-        windowGrid(winSpecs, b.x0 + 1.2, b.x1 - 0.2, 1.3, Math.floor((b.h - 1.4) / 2.7), z, b.front === "S" ? 1 : -1, rand);
-        list.push(box({ w: 1.1, h: 2.2, d: 0.1, x: b.x0 + w * 0.25, y: 1.1, z: b.front === "S" ? b.z1 + 0.02 : b.z0 - 0.02, color: DARK2 }));
+        const grid = [];
+        windowGrid(grid, b.x0 + 1.2, b.x1 - 0.2, 1.3, Math.floor((b.h - 1.4) / 2.7), z, b.front === "S" ? 1 : -1, rand);
+        const sr = b.parts && city2.salon ? city2.salon.rect : null;
+        for (const g of grid) if (!(sr && g.x > sr.x0 - 0.6 && g.x < sr.x1 + 0.6 && g.y - g.h / 2 < city2.salon.ceil)) winSpecs.push(g);
+        if (!b.parts) list.push(box({ w: 1.1, h: 2.2, d: 0.1, x: b.x0 + w * 0.25, y: 1.1, z: b.front === "S" ? b.z1 + 0.02 : b.z0 - 0.02, color: DARK2 }));
       }
     }
     for (const [key, list] of Object.entries(byRegion)) put(key === "Y" ? yard : street, list, flat, `city-bld-${key}`);
+    if (city2.salon) {
+      const sw = city2.salon.window;
+      const glass = quad({ w: sw.x1 - sw.x0, h: sw.y1 - sw.y0, x: (sw.x0 + sw.x1) / 2, y: (sw.y0 + sw.y1) / 2, z: sw.z + T3 / 2, ry: PI6, color: [0.55, 0.72, 0.85] });
+      const gm = put(street, [glass], new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.22, depthWrite: false, side: DoubleSide }), "city-salon-glass");
+      if (gm) gm.renderOrder = 6;
+    }
     for (const [ex, ry] of [[XW0 + 0.03, PI6 / 2], [XW1 - 0.03, -PI6 / 2]]) {
       for (let fl = 0; fl < 4; fl++) for (let zz = fz + 1.1; zz < sz - 0.6; zz += 1.8) winSpecs.push({ x: ex, y: 2.2 + fl * 2.2 + (fl ? 0.3 : 0), z: zz, w: 0.9, h: 1.3, ry, lit: rand() });
     }
@@ -39704,8 +39788,8 @@ void main() {
       city2.signals.forEach((s, i) => {
         const phase = s.signal === "main" ? sig.main : sig.side;
         ["red", "yellow", "green"].forEach((name, k) => {
-          const col = phase === name ? COLORS4[name] : OFF;
-          for (let v = 0; v < 4; v++) attr.setXYZ((i * 3 + k) * 4 + v, col[0], col[1], col[2]);
+          const col2 = phase === name ? COLORS4[name] : OFF;
+          for (let v = 0; v < 4; v++) attr.setXYZ((i * 3 + k) * 4 + v, col2[0], col2[1], col2[2]);
         });
       });
       attr.needsUpdate = true;
@@ -39726,7 +39810,7 @@ void main() {
     };
     return {
       root,
-      groups: { street, palast: palastG, yard, palastInterior },
+      groups: { street, palast: palastG, yard, palastInterior, salonInterior },
       setSignals: setAll,
       update: decor.update,
       dispose() {
@@ -40327,7 +40411,7 @@ void main() {
         /** Geschützt vor Regen: im Laden, im Palast, unter dem Vordach. */
         sheltered(x, z, y = 0) {
           const a = areaAt(L, x, z, y);
-          if (a === "shop" || a === "palastHall" || a === "palastFoyer") return true;
+          if (a === "shop" || a === "palastHall" || a === "palastFoyer" || a === "salon") return true;
           const c = L.city && L.city.palast && L.city.palast.canopy;
           return !!(c && x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1 && y < c.y);
         }
@@ -40442,7 +40526,7 @@ void main() {
             const was = near;
             const areas = ctx.use("areas");
             const a = areas ? areas.current() : "shop";
-            near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && cam.position.z > D2 + 0.3;
+            near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && a !== "salon" && cam.position.z > D2 + 0.3;
             if (was !== near) syncVisible();
           }
           if (drops && weather.raining && near) dropTex.offset.y += dt * speed;
@@ -41265,13 +41349,13 @@ void main() {
   // src/js/store3d/physics/shapes.js
   function paintAll(g, color) {
     const n = g.attributes.position.count;
-    const col = new Float32Array(n * 3);
+    const col2 = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      col[i * 3] = color[0];
-      col[i * 3 + 1] = color[1];
-      col[i * 3 + 2] = color[2];
+      col2[i * 3] = color[0];
+      col2[i * 3 + 1] = color[1];
+      col2[i * 3 + 2] = color[2];
     }
-    g.setAttribute("color", new Float32BufferAttribute(col, 3));
+    g.setAttribute("color", new Float32BufferAttribute(col2, 3));
     return g;
   }
   function cyl2(r02, r1, h2, y, color, seg = 10) {
@@ -41286,7 +41370,7 @@ void main() {
     const g = new SphereGeometry(r, 12, 9);
     const pos = g.attributes.position;
     const n = pos.count;
-    const col = new Float32Array(n * 3);
+    const col2 = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       const x = pos.getX(i) / r;
       const y = pos.getY(i) / r;
@@ -41296,11 +41380,11 @@ void main() {
         const cell = hash(`${Math.round(x * 1.6)}:${Math.round(y * 1.6)}:${Math.round(z * 1.6)}`) % 3;
         if (cell === 0) c = patch;
       } else if (Math.abs(y) < 0.09 || Math.abs(x) < 0.09 || Math.abs(Math.abs(z) - 0.6) < 0.07) c = seam;
-      col[i * 3] = c[0];
-      col[i * 3 + 1] = c[1];
-      col[i * 3 + 2] = c[2];
+      col2[i * 3] = c[0];
+      col2[i * 3 + 1] = c[1];
+      col2[i * 3 + 2] = c[2];
     }
-    g.setAttribute("color", new Float32BufferAttribute(col, 3));
+    g.setAttribute("color", new Float32BufferAttribute(col2, 3));
     return g;
   }
   var BUILD = {
@@ -41729,6 +41813,7 @@ void main() {
         if (a === "shop") return vis.shopShell !== false;
         if (a === "yard" || a === "alley" || a === "escape" || a === "roof") return !!vis.yard;
         if (a === "palastHall" || a === "palastFoyer") return !!vis.palastInterior;
+        if (a === "salon") return !!vis.salonInterior;
         return vis.street !== false;
       }
       function updateVisibility() {
@@ -45149,10 +45234,10 @@ void main() {
         x.fillStyle = "#3e2a17";
         x.fillRect(rx, y0 + rowH - 34, rw, 14);
         for (let k = 0; k < 3; k++) {
-          const [a, b, col] = PACKS[(r * 3 + k) % PACKS.length];
+          const [a, b, col2] = PACKS[(r * 3 + k) % PACKS.length];
           const px = rx + 22 + k * 150;
           const py = y0 + 14;
-          x.fillStyle = col;
+          x.fillStyle = col2;
           x.fillRect(px, py, 130, rowH - 62);
           x.fillStyle = "rgba(255,255,255,0.22)";
           x.fillRect(px, py, 130, 22);
@@ -45582,9 +45667,9 @@ void main() {
       const clothMesh = new Mesh(merge(cloth), new MeshLambertMaterial({ map: fabricTex, vertexColors: true }));
       clothMesh.matrixAutoUpdate = false;
       ctx.track(fabricTex);
-      const sc = makeCanvas(SW, SH);
-      const sx = sc.getContext("2d");
-      const tex = new CanvasTexture(sc);
+      const sc2 = makeCanvas(SW, SH);
+      const sx = sc2.getContext("2d");
+      const tex = new CanvasTexture(sc2);
       tex.colorSpace = SRGBColorSpace;
       tex.minFilter = LinearFilter;
       tex.generateMipmaps = false;
@@ -46456,8 +46541,697 @@ void main() {
     };
   }
   function lookKey(look) {
+    if (look.v === 2) {
+      const c = (v) => Array.isArray(v) ? v.map((x) => Math.round(x * 255)).join(".") : "-";
+      const o = (v) => v && typeof v === "object" ? v : {};
+      const t = o(look.top);
+      const b = o(look.bottom);
+      const s = o(look.shoes);
+      const h2 = o(look.hat);
+      const g = o(look.bag);
+      return ["v2", look.shape, c(look.skin), look.hairStyle, c(look.hair), look.eyes, look.brows, look.beard, t.cut, c(t.color), t.pattern, c(t.color2), b.cut, c(b.color), b.pattern, c(b.color2), s.model, c(s.color), c(s.sole), look.glasses, h2.id, c(h2.color), g.id, c(g.color)].join("|");
+    }
     const f = (c) => c ? c.map((v) => Math.round(v * 20)).join(".") : "-";
-    return [look.role || "p", Math.round(look.height * 50), Math.round(look.build * 50), f(look.skin), f(look.hair), look.hairStyle, f(look.top), f(look.bottom), f(look.shoes), look.hat || "-", f(look.hatColor), look.glasses ? 1 : 0, look.bag || "-", f(look.bagColor), f(look.stripe), f(look.apron)].join("|");
+    return [look.role || "p", f(look.skin), f(look.hair), look.hairStyle, f(look.top), f(look.bottom), f(look.shoes), look.hat || "-", f(look.hatColor), look.glasses ? 1 : 0, look.bag || "-", f(look.bagColor), f(look.stripe), f(look.apron)].join("|");
+  }
+
+  // src/js/store3d/char/ids.js
+  var HAIR_STYLES2 = ["short", "long", "bald", "tuft", "bob", "buzz", "sidepart", "curls", "afro", "ponytail", "bun", "mohawk", "mullet", "spiky", "quiff", "braids", "pigtails", "undercut"];
+  var EYES = ["dot", "round", "narrow", "sleepy", "wide", "wink"];
+  var BROWS = ["none", "thin", "thick", "arched", "angry"];
+  var BEARDS = ["none", "stubble", "moustache", "goatee", "full", "chin"];
+  var SHAPES = ["straight", "shoulders", "hips"];
+  var TOP_CUTS = ["tee", "longsleeve", "hoodie", "shirt", "tank", "sweater", "jacket", "vest", "polo", "dress"];
+  var TOP_PATTERNS = ["plain", "chest", "rings", "vertical", "twotone", "check"];
+  var BOTTOM_CUTS = ["jeans", "shorts", "skirt", "cargo", "track", "wide"];
+  var BOTTOM_PATTERNS = ["plain", "stripe", "twotone", "check"];
+  var SHOE_MODELS = ["sneaker", "boot", "sandal", "loafer", "high"];
+  var GLASSES = ["none", "round", "square", "sun", "nerd"];
+  var HATS2 = ["none", "cap", "beanie", "hat", "bucket", "band", "beret"];
+  var BAGS2 = ["none", "bag", "backpack", "shopping"];
+  var UNLOCK_TOPS = ["cape", "jersey3", "banshirt", "hivis"];
+  var UNLOCK_BOTTOMS = ["zebra"];
+  var UNLOCK_SHOES = ["splash"];
+  var UNLOCK_GLASSES = ["pilot", "3d"];
+  var UNLOCK_HATS = ["goldcap", "crown", "catears", "canhat", "usher"];
+  var UNLOCK_BAGS = ["chips", "vhspack"];
+
+  // src/js/store3d/npc/figure-parts.js
+  var BONE = { root: 0, spine: 1, head: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
+  var SK = BONE.spine;
+  var HD = BONE.head;
+  var sc = (c, k) => c.map((v) => Math.min(1, Math.max(0, v * k)));
+  var mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  var isCol = (c) => Array.isArray(c) && c.length >= 3 && c.every((v) => Number.isFinite(v));
+  var col = (c, d) => isCol(c) ? [c[0], c[1], c[2]] : d;
+  var pick2 = (list, id, def) => list.includes(id) ? id : def;
+  var WHITE = [0.93, 0.93, 0.95];
+  var BLACK = [0.07, 0.07, 0.09];
+  var GOLD = [0.95, 0.78, 0.22];
+  function norm2(look) {
+    const o = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    const t = o(look.top);
+    const b = o(look.bottom);
+    const s = o(look.shoes);
+    const h2 = o(look.hat);
+    const g = o(look.bag);
+    const allTops = [...TOP_CUTS, ...UNLOCK_TOPS];
+    const allBottoms = [...BOTTOM_CUTS, ...UNLOCK_BOTTOMS];
+    const allShoes = [...SHOE_MODELS, ...UNLOCK_SHOES];
+    const allGlasses = [...GLASSES, ...UNLOCK_GLASSES];
+    const allHats = [...HATS2, ...UNLOCK_HATS];
+    const allBags = [...BAGS2, ...UNLOCK_BAGS];
+    const skin = col(look.skin, [0.9, 0.7, 0.55]);
+    const topC = col(t.color, [0.85, 0.2, 0.2]);
+    const botC = col(b.color, [0.14, 0.16, 0.3]);
+    return {
+      skin,
+      shape: pick2(SHAPES, look.shape, "straight"),
+      hairStyle: pick2(HAIR_STYLES2, look.hairStyle, "short"),
+      hair: col(look.hair, [0.24, 0.13, 0.1]),
+      eyes: pick2(EYES, look.eyes, "dot"),
+      brows: pick2(BROWS, look.brows, "none"),
+      beard: pick2(BEARDS, look.beard, "none"),
+      topCut: pick2(allTops, t.cut, "tee"),
+      top: topC,
+      topPat: pick2(TOP_PATTERNS, t.pattern, "plain"),
+      top2: col(t.color2, sc(topC, 0.6)),
+      botCut: pick2(allBottoms, b.cut, "jeans"),
+      bottom: botC,
+      botPat: pick2(BOTTOM_PATTERNS, b.pattern, "plain"),
+      bottom2: col(b.color2, sc(botC, 0.6)),
+      shoeModel: pick2(allShoes, s.model, "sneaker"),
+      shoe: col(s.color, [0.1, 0.1, 0.12]),
+      sole: col(s.sole, [0.92, 0.92, 0.94]),
+      glasses: pick2(allGlasses, look.glasses, "none"),
+      hat: pick2(allHats, h2.id, "none"),
+      hatC: col(h2.color, [0.8, 0.2, 0.2]),
+      bag: pick2(allBags, g.id, "none"),
+      bagC: col(g.color, [0.3, 0.3, 0.4])
+    };
+  }
+  var COVER2 = /* @__PURE__ */ new Set(["cap", "beanie", "hat", "bucket", "beret", "goldcap", "catears", "canhat", "usher"]);
+  function buildV2Parts(look) {
+    const L = norm2(look || {});
+    const P = { [BONE.spine]: [], [BONE.head]: [], [BONE.armL]: [], [BONE.armR]: [], [BONE.legL]: [], [BONE.legR]: [] };
+    const sp = P[SK];
+    const hd = P[HD];
+    const skin = L.skin;
+    const dims = { straight: { sw: 0.42, hw: 0.42, lx: 0.1, lw: 0.14 }, shoulders: { sw: 0.48, hw: 0.4, lx: 0.1, lw: 0.14 }, hips: { sw: 0.4, hw: 0.47, lx: 0.11, lw: 0.15 } }[L.shape];
+    const { sw, hw, lx, lw } = dims;
+    const ax = sw / 2 + 0.05;
+    const wAt = (y) => y >= 1.1 ? sw : hw;
+    const bx2 = (list, w, h2, d, x, y, z, color, rx = 0, ry = 0, rz = 0) => list.push(box({ w, h: h2, d, x, y, z, rx, ry, rz, color }));
+    buildBottoms(P, L, { lx, lw, hw });
+    buildTop(P, L, { sw, hw, ax, wAt, bx: bx2 });
+    bx2(sp, 0.1, 0.07, 0.1, 0, 1.42, 0, skin);
+    hd.push(sph(0.12, 0, 1.58, 0, skin, 1, 1.1, 1));
+    buildHair(P, L);
+    buildFace(P, L);
+    buildGlasses(hd, L);
+    buildHat(hd, L);
+    buildShoes(P, L, { lx });
+    buildBag(P, L, { ax, bx: bx2 });
+    return P;
+  }
+  function buildBottoms(P, L, { lx, lw, hw }) {
+    const c = L.bottom;
+    const c2 = L.bottom2;
+    const cut = L.botCut;
+    const skin = L.skin;
+    const pat = L.botPat;
+    const sp = P[SK];
+    const pushB = (list, w, h2, d, x, y, z, color, rx = 0, ry = 0, rz = 0) => list.push(box({ w, h: h2, d, x, y, z, rx, ry, rz, color }));
+    if (cut !== "skirt") pushB(sp, hw + 0.012, 0.035, 0.24, 0, 0.815, 0, sc(c, 0.75));
+    for (const [side, bi] of [[-1, BONE.legL], [1, BONE.legR]]) {
+      const a = P[bi];
+      const x = side * lx;
+      if (cut === "shorts") {
+        pushB(a, lw, 0.38, 0.17, x, 0.61, 0, c);
+        pushB(a, lw - 0.02, 0.42, 0.15, x, 0.21, 0, skin);
+        pushB(a, lw + 0.01, 0.03, 0.18, x, 0.425, 0, sc(c, 0.8));
+      } else if (cut === "skirt") {
+        pushB(a, lw - 0.02, 0.56, 0.15, x, 0.28, 0, skin);
+        pushB(a, lw - 0.015, 0.05, 0.155, x, 0.03, 0, WHITE);
+      } else if (cut === "wide") {
+        pushB(a, lw + 0.03, 0.66, 0.19, x, 0.47, 0, c);
+        pushB(a, lw + 0.06, 0.15, 0.21, x, 0.075, 0, sc(c, 0.9));
+      } else if (cut === "cargo") {
+        pushB(a, lw + 0.015, 0.8, 0.19, x, 0.4, 0, c);
+        pushB(a, 0.04, 0.12, 0.1, x + side * 0.088, 0.5, 0, sc(c, 0.82));
+      } else if (cut === "zebra") {
+        pushB(a, lw, 0.8, 0.17, x, 0.4, 0, WHITE);
+        for (const y of [0.1, 0.28, 0.46, 0.64]) pushB(a, lw + 0.012, 0.07, 0.182, x, y, 0, BLACK);
+      } else {
+        pushB(a, lw, 0.8, 0.17, x, 0.4, 0, c);
+        if (cut === "track") pushB(a, 8e-3, 0.78, 0.1, x + side * (lw / 2 + 4e-3), 0.4, 0, WHITE);
+      }
+      if (cut === "zebra") continue;
+      const wd = cut === "wide" ? lw + 0.04 : lw;
+      if (pat === "stripe" && cut !== "skirt") pushB(a, 0.01, 0.78, 0.1, x + side * (wd / 2 + 5e-3), 0.4, 0, c2);
+      else if (pat === "twotone" && cut !== "skirt") pushB(a, wd + 0.012, cut === "shorts" ? 0.2 : 0.38, 0.182, x, cut === "shorts" ? 0.2 : 0.19, 0, c2);
+      else if (pat === "check" && cut !== "skirt") {
+        for (const y of cut === "shorts" ? [0.7, 0.55] : [0.6, 0.25]) pushB(a, wd + 0.012, 0.035, 0.182, x, y, 0, c2);
+        pushB(a, 0.035, 0.76, 0.182, x, 0.4, 0, c2);
+      }
+    }
+    if (cut === "skirt") {
+      pushB(sp, hw + 0.08, 0.34, 0.3, 0, 0.67, 0, c);
+      pushB(sp, hw + 0.09, 0.03, 0.31, 0, 0.51, 0, sc(c, 0.8));
+      if (pat === "stripe") pushB(sp, 0.05, 0.34, 0.312, 0, 0.67, 0, c2);
+      else if (pat === "twotone") pushB(sp, hw + 0.09, 0.14, 0.312, 0, 0.58, 0, c2);
+      else if (pat === "check") {
+        pushB(sp, hw + 0.09, 0.035, 0.312, 0, 0.7, 0, c2);
+        pushB(sp, 0.035, 0.34, 0.312, -0.1, 0.67, 0, c2);
+        pushB(sp, 0.035, 0.34, 0.312, 0.1, 0.67, 0, c2);
+      }
+    }
+  }
+  function buildTop(P, L, { sw, hw, ax, wAt, bx: bx2 }) {
+    const sp = P[SK];
+    const c = L.top;
+    const c2 = L.top2;
+    const cut = L.topCut;
+    const skin = L.skin;
+    const thick = cut === "sweater" || cut === "jacket" || cut === "hoodie";
+    const gr = thick ? 0.02 : 0;
+    const td = 0.23 + (thick ? 0.03 : 0);
+    const fz = -td / 2;
+    const bz = td / 2;
+    const unlock = UNLOCK_TOPS.includes(cut);
+    const torso = (color, g = gr, d = td, h0 = 0) => {
+      if (sw === hw) sp.push(box({ w: sw + g, h: 0.58 - h0, d, y: 1.09 - h0 / 2, color }));
+      else {
+        sp.push(box({ w: sw + g, h: 0.28, d, y: 1.24, color }));
+        sp.push(box({ w: hw + g, h: 0.3 - h0, d, y: 0.95 - h0 / 2, color }));
+      }
+    };
+    let up = c;
+    let lo = skin;
+    let aw = 0.09;
+    let alw = 0.085;
+    const long = () => {
+      lo = c;
+    };
+    switch (cut) {
+      case "tee":
+      case "polo":
+        torso(c);
+        break;
+      case "longsleeve":
+        torso(c);
+        long();
+        break;
+      case "hoodie":
+        torso(c);
+        long();
+        aw = 0.105;
+        alw = 0.1;
+        break;
+      case "shirt":
+        torso(c);
+        long();
+        break;
+      case "tank":
+        torso(skin, 0, 0.22);
+        sp.push(box({ w: sw - 0.1, h: 0.58, d: td + 0.012, y: 1.09, color: c }));
+        up = skin;
+        break;
+      case "sweater":
+        torso(c);
+        long();
+        aw = 0.105;
+        alw = 0.1;
+        break;
+      case "jacket":
+        torso(c);
+        long();
+        aw = 0.1;
+        alw = 0.095;
+        break;
+      case "vest":
+        torso(c2, 0, 0.23);
+        up = c2;
+        break;
+      case "dress":
+        torso(c);
+        break;
+      case "cape":
+        torso(sc(c, 0.85));
+        up = c;
+        lo = c;
+        aw = 0.1;
+        alw = 0.095;
+        break;
+      case "jersey3":
+        torso(c);
+        up = c;
+        break;
+      case "banshirt":
+        torso(c);
+        break;
+      case "hivis":
+        torso(c2, 0, 0.23);
+        up = c2;
+        break;
+      default:
+        torso(c);
+    }
+    for (const [sx, bi] of [[-1, BONE.armL], [1, BONE.armR]]) {
+      const a = P[bi];
+      const x = sx * ax;
+      a.push(box({ w: aw, h: 0.3, d: aw, x, y: 1.21, z: 0, color: up }));
+      a.push(box({ w: alw, h: 0.26, d: alw, x, y: 0.93, z: 0, color: lo }));
+      a.push(sph(0.05, x, 0.78, 0, skin, 1, 1, 1, 6, 3));
+      if (cut === "shirt" || cut === "sweater" || cut === "jacket" || cut === "hoodie" || cut === "longsleeve") a.push(box({ w: alw + 0.012, h: 0.03, d: alw + 0.012, x, y: 0.815, z: 0, color: sc(c, cut === "shirt" ? 1.2 : 0.8) }));
+      if (cut === "jersey3") a.push(box({ w: alw + 0.015, h: 0.045, d: alw + 0.015, x, y: 0.84, z: 0, color: WHITE }));
+      if (cut === "jersey3") a.push(box({ w: aw + 0.012, h: 0.04, d: aw + 0.012, x, y: 1.1, z: 0, color: c2 }));
+      if (cut === "tee" && L.topPat === "twotone") a.push(box({ w: aw + 0.012, h: 0.12, d: aw + 0.012, x, y: 1.13, z: 0, color: c2 }));
+      if (cut === "hivis" || cut === "vest") a.push(box({ w: aw + 0.01, h: 0.04, d: aw + 0.01, x, y: 1.09, z: 0, color: sc(c2, 0.8) }));
+      if (cut === "cape") a.push(box({ w: aw + 0.014, h: 0.03, d: aw + 0.014, x, y: 0.82, z: 0, color: sc(c, 0.7) }));
+    }
+    if (cut === "hoodie") {
+      bx2(sp, 0.2, 0.12, 0.1, 0, 1.44, bz - 0.01, c);
+      bx2(sp, 0.2, 0.09, 0.015, 0, 0.99, fz - 7e-3, sc(c, 0.82));
+      bx2(sp, 0.012, 0.1, 0.012, -0.03, 1.33, fz - 7e-3, WHITE);
+      bx2(sp, 0.012, 0.1, 0.012, 0.03, 1.33, fz - 7e-3, WHITE);
+    } else if (cut === "shirt") {
+      bx2(sp, 0.07, 0.05, 0.02, -0.04, 1.375, fz - 4e-3, sc(c, 1.25), 0, 0, 0.45);
+      bx2(sp, 0.07, 0.05, 0.02, 0.04, 1.375, fz - 4e-3, sc(c, 1.25), 0, 0, -0.45);
+      bx2(sp, 0.016, 0.52, 6e-3, 0, 1.1, fz - 3e-3, sc(c, 0.7));
+    } else if (cut === "polo") {
+      bx2(sp, 0.12, 0.035, 0.12, 0, 1.395, 0, sc(c, 1.25));
+      bx2(sp, 0.03, 0.12, 6e-3, 0, 1.3, fz - 3e-3, sc(c, 0.75));
+    } else if (cut === "sweater") {
+      bx2(sp, sw + 0.03, 0.04, td + 0.012, 0, 0.82, 0, sc(c, 0.8));
+      bx2(sp, 0.13, 0.05, 0.13, 0, 1.405, 0, sc(c, 0.85));
+    } else if (cut === "jacket") {
+      bx2(sp, 0.014, 0.58, 6e-3, 0, 1.09, fz - 3e-3, sc(c, 0.45));
+      bx2(sp, 0.05, 0.07, 0.06, -0.05, 1.415, fz + 0.03, sc(c, 0.85));
+      bx2(sp, 0.05, 0.07, 0.06, 0.05, 1.415, fz + 0.03, sc(c, 0.85));
+      bx2(sp, 0.07, 0.05, 0.012, -0.12, 0.92, fz - 3e-3, sc(c, 0.7));
+      bx2(sp, 0.07, 0.05, 0.012, 0.12, 0.92, fz - 3e-3, sc(c, 0.7));
+    } else if (cut === "vest") {
+      bx2(sp, 0.02, 0.58, 0.012, 0, 1.09, fz - 5e-3, sc(c, 0.7));
+    } else if (cut === "dress") {
+      bx2(sp, hw + 0.1, 0.36, td + 0.08, 0, 0.64, 0, c);
+      bx2(sp, hw + 0.11, 0.03, td + 0.09, 0, 0.47, 0, c2);
+      bx2(sp, hw + 0.02, 0.04, td + 0.01, 0, 0.83, 0, c2);
+    } else if (cut === "cape") {
+      bx2(sp, 0.5, 0.12, 0.33, 0, 1.3, 0, c);
+      bx2(sp, 0.6, 0.4, 0.38, 0, 0.98, 0, c);
+      bx2(sp, 0.62, 0.04, 0.4, 0, 0.78, 0, c2);
+      bx2(sp, 0.2, 0.13, 0.12, 0, 1.47, 0.1, c);
+      bx2(sp, 0.03, 0.15, 0.18, -0.135, 1.5, 0, c);
+      bx2(sp, 0.03, 0.15, 0.18, 0.135, 1.5, 0, c);
+      bx2(sp, 0.018, 0.018, 0.012, 0, 1.28, -0.19, WHITE);
+      bx2(sp, 0.018, 0.018, 0.012, 0, 1.12, -0.19, WHITE);
+    } else if (cut === "jersey3") {
+      const three = (z, s) => {
+        const w = 0.12 * s;
+        const th = 0.032 * s;
+        const hh = 0.27 * s;
+        const y0 = 1.09 + hh / 2 - 0.02 * s - 0.02;
+        bx2(sp, w, th, 0.01, 0, y0, z, c2);
+        bx2(sp, w, th, 0.01, 0, y0 - hh / 2 + th / 2, z, c2);
+        bx2(sp, w, th, 0.01, 0, y0 - hh + th, z, c2);
+        bx2(sp, th, hh / 2 - th, 0.01, w / 2 - th / 2, y0 - hh / 4, z, c2);
+        bx2(sp, th, hh / 2 - th, 0.01, w / 2 - th / 2, y0 - hh * 3 / 4 + th / 2, z, c2);
+      };
+      three(bz + 5e-3, 1);
+      three(fz - 5e-3, 0.5);
+      bx2(sp, sw + 0.012, 0.03, td + 0.012, 0, 1.33, 0, WHITE);
+    } else if (cut === "banshirt") {
+      sp.push(sph(0.085, 0, 1.16, fz - 2e-3, [0.82, 0.1, 0.12], 1, 1, 0.05, 10, 3));
+      sp.push(sph(0.06, 0, 1.16, fz - 5e-3, WHITE, 1, 1, 0.05, 10, 3));
+      bx2(sp, 0.15, 0.024, 8e-3, 0, 1.16, fz - 9e-3, [0.82, 0.1, 0.12], 0, 0, 0.785);
+    } else if (cut === "hivis") {
+      const f = (z, d) => {
+        bx2(sp, 0.15, 0.58, d, -0.1, 1.09, z, c);
+        bx2(sp, 0.15, 0.58, d, 0.1, 1.09, z, c);
+      };
+      f(fz - 4e-3, 0.012);
+      bx2(sp, sw + 0.01, 0.58, 0.012, 0, 1.09, bz + 4e-3, c);
+      const R2 = [0.86, 0.88, 0.92];
+      bx2(sp, sw + 0.02, 0.045, td + 0.02, 0, 1.2, 0, R2);
+      bx2(sp, hw + 0.02, 0.045, td + 0.02, 0, 0.98, 0, R2);
+      bx2(sp, 0.04, 0.58, 0.012, -0.1, 1.09, fz - 0.011, R2);
+      bx2(sp, 0.04, 0.58, 0.012, 0.1, 1.09, fz - 0.011, R2);
+    }
+    if (unlock || cut === "cape") return;
+    const pt = L.topPat;
+    const dg = td + 0.012;
+    if (pt === "chest") bx2(sp, sw + 0.014, 0.1, dg, 0, 1.25, 0, c2);
+    else if (pt === "rings") for (const y of [1.32, 1.2, 1.08, 0.96]) bx2(sp, wAt(y) + 0.014, 0.045, dg, 0, y, 0, c2);
+    else if (pt === "vertical") for (const x of [-0.12, 0, 0.12]) bx2(sp, 0.05, 0.58, dg + 2e-3, x, 1.09, 0, c2);
+    else if (pt === "twotone") bx2(sp, hw + 0.014, 0.3, dg, 0, 0.95, 0, c2);
+    else if (pt === "check") {
+      for (const y of [1.28, 1.05]) bx2(sp, wAt(y) + 0.012, 0.03, dg + 2e-3, 0, y, 0, c2);
+      for (const x of [-0.13, 0, 0.13]) bx2(sp, 0.03, 0.56, dg + 6e-3, x, 1.09, 0, c2);
+    }
+  }
+  function buildHair(P, L) {
+    const hd = P[HD];
+    const h2 = L.hair;
+    const covered = COVER2.has(L.hat);
+    const T5 = [];
+    const S = hd;
+    const cap = (r = 0.133, phi = 1.95, dy = 0, c = h2) => T5.push(sph(r, 0, 1.605 + dy, 0.016, c, 1, 1, 1, 8, 5, phi));
+    const bxT = (list, w, hh, d, x, y, z, c = h2, rx = 0, ry = 0, rz = 0) => list.push(box({ w, h: hh, d, x, y, z, rx, ry, rz, color: c }));
+    const bxS = (w, hh, d, x, y, z, c = h2, rx = 0, ry = 0, rz = 0) => bxT(S, w, hh, d, x, y, z, c, rx, ry, rz);
+    switch (L.hairStyle) {
+      case "bald":
+        break;
+      case "long":
+        cap();
+        bxS(0.25, 0.3, 0.07, 0, 1.5, 0.1);
+        break;
+      case "tuft":
+        cap(0.133, 1.5);
+        bxT(T5, 0.05, 0.1, 0.05, 0, 1.76, 0);
+        break;
+      case "bob":
+        cap();
+        bxS(0.04, 0.2, 0.2, -0.125, 1.54, 0.02);
+        bxS(0.04, 0.2, 0.2, 0.125, 1.54, 0.02);
+        bxS(0.26, 0.2, 0.06, 0, 1.53, 0.11);
+        break;
+      case "buzz":
+        cap(0.126, 1.7, 0, sc(h2, 0.85));
+        break;
+      case "sidepart":
+        cap();
+        bxT(T5, 0.2, 0.04, 0.06, 0, 1.675, -0.095);
+        bxT(T5, 0.09, 0.05, 0.12, -0.07, 1.715, -0.06, h2, 0, 0, 0.3);
+        break;
+      case "curls":
+        cap(0.13, 1.8);
+        for (let i = 0; i < 6; i++) {
+          const a = i / 6 * Math.PI * 2;
+          T5.push(sph(0.045, Math.cos(a) * 0.1, 1.7 + i % 2 * 0.03, Math.sin(a) * 0.1 + 0.01, h2, 1, 1, 1, 6, 3));
+        }
+        T5.push(sph(0.05, 0, 1.76, 0.01, h2, 1, 1, 1, 6, 3));
+        break;
+      case "afro":
+        T5.push(sph(0.17, 0, 1.7, 0.04, h2, 1, 1, 1, 8, 5, 1.75));
+        break;
+      case "ponytail":
+        cap();
+        bxS(0.06, 0.2, 0.06, 0, 1.55, 0.15, h2, 0.3);
+        bxS(0.07, 0.025, 0.07, 0, 1.64, 0.125, [0.9, 0.3, 0.4]);
+        break;
+      case "bun":
+        cap();
+        T5.push(sph(0.06, 0, 1.76, 0.02, h2, 1, 1, 1, 6, 4));
+        break;
+      case "mohawk":
+        cap(0.126, 1.5, 0, sc(h2, 0.8));
+        bxT(T5, 0.035, 0.09, 0.22, 0, 1.745, 0.02);
+        break;
+      case "mullet":
+        cap();
+        bxS(0.22, 0.22, 0.06, 0, 1.52, 0.115);
+        bxS(0.04, 0.1, 0.09, -0.12, 1.57, 0.06);
+        bxS(0.04, 0.1, 0.09, 0.12, 1.57, 0.06);
+        break;
+      case "spiky":
+        cap(0.13, 1.8);
+        for (const [x, z, rz, rx] of [[0, -0.02, 0, 0], [-0.07, 0, 0.5, 0], [0.07, 0, -0.5, 0], [0, 0.07, 0, 0.5], [0, -0.09, 0, -0.5]]) bxT(T5, 0.035, 0.1, 0.035, x, 1.76, z, h2, rx, 0, rz);
+        break;
+      case "quiff":
+        cap();
+        bxT(T5, 0.16, 0.07, 0.12, 0, 1.745, -0.05, h2, -0.35);
+        break;
+      case "braids":
+        cap();
+        for (const sx of [-1, 1]) {
+          bxS(0.035, 0.24, 0.035, sx * 0.1, 1.46, 0.09);
+          bxS(0.045, 0.02, 0.045, sx * 0.1, 1.33, 0.09, [0.95, 0.85, 0.2]);
+        }
+        break;
+      case "pigtails":
+        cap();
+        for (const sx of [-1, 1]) {
+          bxS(0.05, 0.16, 0.05, sx * 0.15, 1.54, 0.03, h2, 0, 0, sx * 0.1);
+          bxS(0.065, 0.02, 0.065, sx * 0.14, 1.63, 0.03, [0.95, 0.85, 0.2]);
+        }
+        break;
+      case "undercut":
+        cap(0.126, 1.7, 0, sc(h2, 0.7));
+        bxT(T5, 0.16, 0.06, 0.2, 0, 1.725, 0);
+        break;
+      default:
+        cap();
+    }
+    if (!covered) hd.push(...T5);
+    else for (const g of T5) g.dispose();
+  }
+  function buildFace(P, L) {
+    const hd = P[HD];
+    const skin = L.skin;
+    const bx2 = (w, h2, d, x, y, z, color, rx = 0, ry = 0, rz = 0) => hd.push(box({ w, h: h2, d, x, y, z, rx, ry, rz, color }));
+    const eye = (x, kind) => {
+      switch (kind) {
+        case "round":
+          bx2(0.036, 0.036, 0.012, x, 1.6, -0.113, WHITE);
+          bx2(0.02, 0.026, 0.012, x, 1.6, -0.119, BLACK);
+          break;
+        case "narrow":
+          bx2(0.034, 0.014, 0.012, x, 1.6, -0.113, BLACK);
+          break;
+        case "sleepy":
+          bx2(0.03, 0.018, 0.012, x, 1.597, -0.113, BLACK);
+          bx2(0.036, 0.016, 0.014, x, 1.616, -0.113, sc(skin, 0.82));
+          break;
+        case "wide":
+          bx2(0.042, 0.046, 0.012, x, 1.602, -0.113, WHITE);
+          bx2(0.024, 0.03, 0.012, x, 1.602, -0.119, BLACK);
+          break;
+        default:
+          bx2(0.028, 0.034, 0.012, x, 1.6, -0.113, [0.08, 0.08, 0.1]);
+      }
+    };
+    if (L.eyes === "wink") {
+      eye(-0.045, "dot");
+      bx2(0.034, 0.01, 0.012, 0.045, 1.598, -0.113, BLACK);
+    } else {
+      eye(-0.045, L.eyes);
+      eye(0.045, L.eyes);
+    }
+    const bc = sc(L.hair, 0.75);
+    const bz = -0.103;
+    switch (L.brows) {
+      case "thin":
+        for (const sx of [-1, 1]) bx2(0.045, 8e-3, 0.016, sx * 0.045, 1.642, bz, bc);
+        break;
+      case "thick":
+        for (const sx of [-1, 1]) bx2(0.05, 0.018, 0.018, sx * 0.045, 1.642, bz, bc);
+        break;
+      case "arched":
+        for (const sx of [-1, 1]) bx2(0.045, 0.01, 0.016, sx * 0.045, 1.648, bz, bc, 0, 0, sx * -0.28);
+        break;
+      case "angry":
+        for (const sx of [-1, 1]) bx2(0.05, 0.014, 0.016, sx * 0.045, 1.64, bz, bc, 0, 0, sx * 0.38);
+        break;
+      default:
+    }
+    bx2(0.02, 0.03, 0.02, 0, 1.57, -0.122, sc(skin, 0.93));
+    const beard = L.beard;
+    const full = beard === "full";
+    bx2(0.05, 0.012, 0.012, 0, 1.535, full ? -0.126 : -0.113, [0.62, 0.25, 0.25]);
+    const b = sc(L.hair, 0.85);
+    if (beard === "stubble") bx2(0.17, 0.07, 0.17, 0, 1.505, -0.02, mix(skin, L.hair, 0.4));
+    else if (beard === "moustache") bx2(0.075, 0.018, 0.02, 0, 1.553, -0.108, b);
+    else if (beard === "goatee") {
+      bx2(0.075, 0.018, 0.02, 0, 1.553, -0.108, b);
+      bx2(0.04, 0.055, 0.02, 0, 1.49, -0.1, b);
+    } else if (full) {
+      bx2(0.2, 0.09, 0.19, 0, 1.5, -0.02, b);
+      bx2(0.085, 0.02, 0.02, 0, 1.557, -0.114, b);
+      bx2(0.215, 0.05, 0.06, 0, 1.57, 0.05, b);
+    } else if (beard === "chin") bx2(0.03, 0.045, 0.02, 0, 1.478, -0.098, b);
+  }
+  function buildGlasses(hd, L) {
+    const g = L.glasses;
+    if (g === "none") return;
+    const bx2 = (w, h2, d, x, y, z, color) => hd.push(box({ w, h: h2, d, x, y, z, color }));
+    const FR = [0.1, 0.1, 0.14];
+    for (const sx of [-1, 1]) {
+      const x = sx * 0.05;
+      if (g === "round") {
+        hd.push(sph(0.04, x, 1.6, -0.115, FR, 1, 1, 0.2, 8, 3));
+        hd.push(sph(0.029, x, 1.6, -0.123, [0.75, 0.88, 0.95], 1, 1, 0.2, 8, 3));
+      } else if (g === "square") {
+        bx2(0.075, 0.052, 0.012, x, 1.6, -0.12, FR);
+        bx2(0.057, 0.036, 0.012, x, 1.6, -0.1265, [0.75, 0.88, 0.95]);
+      } else if (g === "sun") {
+        bx2(0.08, 0.05, 0.014, x, 1.6, -0.12, [0.04, 0.04, 0.05]);
+        bx2(0.084, 8e-3, 0.014, x, 1.627, -0.121, FR);
+      } else if (g === "nerd") {
+        bx2(0.08, 0.058, 0.014, x, 1.6, -0.12, BLACK);
+        bx2(0.056, 0.036, 0.014, x, 1.6, -0.1275, [0.8, 0.9, 0.95]);
+      } else if (g === "pilot") {
+        hd.push(sph(0.046, x, 1.598, -0.115, GOLD, 1, 1.15, 0.2, 8, 3));
+        hd.push(sph(0.037, x, 1.598, -0.123, [0.22, 0.3, 0.26], 1, 1.15, 0.2, 8, 3));
+      } else if (g === "3d") {
+        bx2(0.08, 0.056, 0.014, x, 1.6, -0.12, WHITE);
+        bx2(0.058, 0.036, 0.014, x, 1.6, -0.1275, sx < 0 ? [0.88, 0.1, 0.12] : [0.1, 0.8, 0.9]);
+      }
+      bx2(0.012, 0.012, 0.2, sx * 0.095, 1.605, -0.02, g === "3d" ? WHITE : g === "pilot" ? GOLD : FR);
+    }
+    bx2(0.03, 0.01, 0.012, 0, 1.607, -0.12, g === "3d" ? WHITE : g === "pilot" ? GOLD : FR);
+    if (g === "nerd") bx2(0.018, 0.02, 0.016, 0, 1.607, -0.126, WHITE);
+    if (g === "pilot") bx2(0.03, 8e-3, 0.012, 0, 1.585, -0.12, GOLD);
+  }
+  function buildHat(hd, L) {
+    const id = L.hat;
+    if (id === "none") return;
+    const c = L.hatC;
+    const bx2 = (w, h2, d, x, y, z, color, rx = 0, ry = 0, rz = 0) => hd.push(box({ w, h: h2, d, x, y, z, rx, ry, rz, color }));
+    switch (id) {
+      case "cap":
+      case "goldcap": {
+        const cc = id === "goldcap" ? GOLD : c;
+        hd.push(sph(0.14, 0, 1.62, 0, cc, 1, 0.85, 1, 8, 5, 1.7));
+        bx2(0.2, 0.015, 0.12, 0, 1.635, -0.15, sc(cc, 0.8));
+        if (id === "goldcap") hd.push(sph(0.018, 0, 1.738, 0, WHITE, 1, 1, 1, 6, 4));
+        break;
+      }
+      case "beanie":
+        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 2));
+        break;
+      case "catears":
+        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 2));
+        for (const sx of [-1, 1]) {
+          bx2(0.06, 0.08, 0.035, sx * 0.075, 1.8, 0, c, 0, 0, sx * -0.3);
+          bx2(0.03, 0.045, 0.012, sx * 0.075, 1.795, -0.02, [0.95, 0.6, 0.7], 0, 0, sx * -0.3);
+        }
+        break;
+      case "hat":
+        bx2(0.36, 0.02, 0.36, 0, 1.67, 0, sc(c, 0.8));
+        bx2(0.2, 0.14, 0.2, 0, 1.75, 0, c);
+        bx2(0.205, 0.03, 0.205, 0, 1.7, 0, sc(c, 0.55));
+        break;
+      case "bucket":
+        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 0.95, 1, 8, 5, 2));
+        bx2(0.31, 0.014, 0.31, 0, 1.655, 0, sc(c, 0.85));
+        break;
+      case "band":
+        bx2(0.255, 0.035, 0.255, 0, 1.655, 0, c);
+        break;
+      case "beret":
+        hd.push(sph(0.15, 0.01, 1.7, 0.01, c, 1.05, 0.4, 1.05, 8, 5));
+        bx2(0.015, 0.035, 0.015, 0.01, 1.745, 0.01, sc(c, 0.7));
+        break;
+      case "crown":
+        bx2(0.26, 0.05, 0.26, 0, 1.7, 0, c);
+        for (const [x, z] of [[-0.1, -0.1], [0.1, -0.1], [-0.1, 0.1], [0.1, 0.1], [0, -0.12], [0, 0.12]]) bx2(0.045, 0.075, 0.045, x, 1.76, z, c, 0, 0.785, 0);
+        for (const x of [-0.07, 0.07]) hd.push(sph(0.014, x, 1.7, -0.131, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
+        break;
+      case "canhat":
+        bx2(0.26, 0.03, 0.2, 0, 1.69, 0, [0.2, 0.2, 0.24]);
+        for (const sx of [-1, 1]) {
+          bx2(0.06, 0.12, 0.06, sx * 0.12, 1.75, 0, [0.82, 0.84, 0.88]);
+          bx2(0.064, 0.04, 0.064, sx * 0.12, 1.75, 0, sx < 0 ? [0.85, 0.15, 0.15] : [0.15, 0.45, 0.8]);
+        }
+        bx2(0.24, 0.016, 0.02, 0, 1.815, 0, [0.2, 0.2, 0.24]);
+        break;
+      case "usher": {
+        const R2 = [0.75, 0.12, 0.15];
+        bx2(0.19, 0.09, 0.17, 0, 1.74, -5e-3, R2, 0, 0, 0.12);
+        bx2(0.195, 0.02, 0.175, 0, 1.705, -5e-3, GOLD, 0, 0, 0.12);
+        hd.push(sph(0.016, 0, 1.795, 0, GOLD, 1, 1, 1, 6, 4));
+        bx2(0.012, 0.03, 0.08, 0.1, 1.62, -0.02, GOLD);
+        break;
+      }
+      default:
+    }
+  }
+  function buildShoes(P, L, { lx }) {
+    const m = L.shoeModel;
+    const c = L.shoe;
+    const so = L.sole;
+    const skin = L.skin;
+    for (const [side, bi] of [[-1, BONE.legL], [1, BONE.legR]]) {
+      const a = P[bi];
+      const x = side * lx;
+      const bx2 = (w, h2, d, dx, y, z, color) => a.push(box({ w, h: h2, d, x: x + dx, y, z, color }));
+      switch (m) {
+        case "boot":
+          bx2(0.155, 0.17, 0.19, 0, 0.085, 0, c);
+          bx2(0.15, 0.07, 0.27, 0, 0.035, -0.04, c);
+          bx2(0.16, 0.03, 0.28, 0, 0.015, -0.04, so);
+          bx2(0.16, 0.02, 0.2, 0, 0.17, 0, sc(c, 0.75));
+          break;
+        case "sandal":
+          bx2(0.15, 0.02, 0.26, 0, 0.01, -0.04, so);
+          bx2(0.125, 0.04, 0.2, 0, 0.04, -0.05, skin);
+          bx2(0.15, 0.025, 0.035, 0, 0.055, -0.06, c);
+          bx2(0.15, 0.025, 0.035, 0, 0.055, 0.02, c);
+          break;
+        case "loafer":
+          bx2(0.15, 0.06, 0.26, 0, 0.04, -0.04, c);
+          bx2(0.155, 0.02, 0.27, 0, 0.01, -0.04, sc(so, 0.35));
+          bx2(0.08, 0.012, 0.04, 0, 0.073, -0.09, sc(c, 1.5));
+          break;
+        case "high":
+          bx2(0.155, 0.04, 0.27, 0, 0.055, -0.04, c);
+          bx2(0.15, 0.1, 0.17, 0, 0.12, 0.01, c);
+          bx2(0.16, 0.03, 0.28, 0, 0.015, -0.04, so);
+          bx2(0.155, 0.03, 0.14, 0, 0.18, 0.01, so);
+          bx2(0.04, 0.04, 0.012, side * 0.07, 0.11, 0.01, WHITE);
+          break;
+        case "splash": {
+          bx2(0.15, 0.05, 0.26, 0, 0.055, -0.04, [0.93, 0.93, 0.95]);
+          bx2(0.16, 0.03, 0.27, 0, 0.015, -0.04, so);
+          const dots = [[0.05, 0.05, -0.12, [0.9, 0.15, 0.6]], [-0.04, 0.083, -0.04, [0.1, 0.75, 0.9]], [0.02, 0.083, 0.03, [0.98, 0.85, 0.1]], [-0.06, 0.06, -0.1, [0.4, 0.85, 0.2]], [0.07, 0.08, 0, [0.6, 0.3, 0.85]]];
+          for (const [dx, y, z, col2] of dots) a.push(box({ w: 0.04, h: 0.024, d: 0.045, x: x + dx * side, y, z, color: col2 }));
+          break;
+        }
+        default:
+          bx2(0.15, 0.05, 0.26, 0, 0.055, -0.04, c);
+          bx2(0.16, 0.03, 0.27, 0, 0.015, -0.04, so);
+          bx2(0.13, 0.03, 0.07, 0, 0.065, -0.14, sc(c, 1.35));
+      }
+    }
+  }
+  function buildBag(P, L, { ax, bx: bx2 }) {
+    const id = L.bag;
+    if (id === "none") return;
+    const c = L.bagC;
+    const sp = P[SK];
+    const arm = P[BONE.armR];
+    switch (id) {
+      case "bag":
+        bx2(sp, 0.12, 0.2, 0.26, -ax - 0.01, 0.8, 0, c);
+        bx2(sp, 0.04, 0.64, 0.03, -0.12, 1.1, -0.12, sc(c, 0.7), 0, 0, 0.62);
+        break;
+      case "backpack":
+        bx2(sp, 0.3, 0.36, 0.14, 0, 1.12, 0.18, c);
+        bx2(sp, 0.2, 0.14, 0.04, 0, 1, 0.27, sc(c, 0.8));
+        for (const sx of [-1, 1]) bx2(sp, 0.04, 0.3, 0.03, sx * 0.11, 1.17, -0.12, sc(c, 0.7));
+        break;
+      case "shopping":
+        bx2(arm, 0.2, 0.28, 0.12, ax + 0.04, 0.58, -0.02, c);
+        bx2(arm, 0.02, 0.14, 0.02, ax + 0.04, 0.76, -0.02, sc(c, 0.6));
+        break;
+      case "chips":
+        bx2(arm, 0.2, 0.3, 0.07, ax + 0.04, 0.58, -0.02, c);
+        bx2(arm, 0.22, 0.035, 0.1, ax + 0.04, 0.755, -0.02, sc(c, 0.7));
+        bx2(arm, 0.22, 0.035, 0.1, ax + 0.04, 0.42, -0.02, sc(c, 0.7));
+        bx2(arm, 0.13, 0.1, 0.01, ax + 0.04, 0.6, -0.059, [0.98, 0.85, 0.15]);
+        bx2(arm, 0.02, 0.14, 0.02, ax + 0.04, 0.8, -0.02, sc(c, 0.6));
+        break;
+      case "vhspack":
+        bx2(sp, 0.32, 0.4, 0.14, 0, 1.1, 0.18, c);
+        bx2(sp, 0.27, 0.17, 0.035, 0, 1.2, 0.268, BLACK);
+        bx2(sp, 0.27, 0.17, 0.035, 0, 0.99, 0.268, [0.18, 0.18, 0.22]);
+        bx2(sp, 0.18, 0.06, 8e-3, 0, 1.2, 0.288, WHITE);
+        bx2(sp, 0.18, 0.06, 8e-3, 0, 0.99, 0.288, [0.95, 0.8, 0.2]);
+        for (const sx of [-1, 1]) bx2(sp, 0.04, 0.3, 0.03, sx * 0.11, 1.17, -0.12, sc(c, 0.7));
+        break;
+      default:
+    }
   }
 
   // src/js/store3d/npc/anim.js
@@ -46701,8 +47475,10 @@ void main() {
   var B3 = { root: 0, spine: 1, head: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
   var SPINE_Y = 0.8;
   var NECK_Y = 1.44;
+  var GEO_FREE_MAX = 48;
   var sharedMat = null;
   var umbrellaMat = null;
+  var useTick = 0;
   var geoCache = /* @__PURE__ */ new Map();
   var umbrellaCache = /* @__PURE__ */ new Map();
   function material() {
@@ -46722,10 +47498,43 @@ void main() {
     g.setAttribute("skinWeight", new BufferAttribute(wt, 4));
     return g;
   }
-  function bodyGeometry(look) {
+  function maxY(g) {
+    const a = g.attributes.position.array;
+    let m = 0;
+    for (let i = 1; i < a.length; i += 3) if (a[i] > m) m = a[i];
+    return m;
+  }
+  function acquire(look) {
     const key = lookKey(look);
-    const hit = geoCache.get(key);
-    if (hit) return hit;
+    let e = geoCache.get(key);
+    if (!e) {
+      const g = bodyGeometry(look);
+      e = { key, g, refs: 0, used: 0, topY: maxY(g) };
+      geoCache.set(key, e);
+    }
+    e.refs++;
+    e.used = ++useTick;
+    return e;
+  }
+  function release(e) {
+    if (e.refs > 0) e.refs--;
+    e.used = ++useTick;
+    if (e.refs > 0) return;
+    const free = [...geoCache.values()].filter((x) => x.refs === 0);
+    free.sort((a, b) => a.used - b.used);
+    for (let i = 0; i < free.length - GEO_FREE_MAX; i++) {
+      free[i].g.dispose();
+      geoCache.delete(free[i].key);
+    }
+  }
+  function bodyGeometry(look) {
+    const parts = look.v === 2 ? buildV2Parts(look) : oldParts(look);
+    const geos3 = Object.entries(parts).map(([bi, list]) => skinned(list, Number(bi)));
+    const g = merge(geos3);
+    g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
+    return g;
+  }
+  function oldParts(look) {
     const skin = look.skin;
     const parts = { [B3.spine]: [], [B3.head]: [], [B3.armL]: [], [B3.armR]: [], [B3.legL]: [], [B3.legR]: [] };
     const bottom = look.bottom;
@@ -46786,11 +47595,7 @@ void main() {
         a.push(box({ w: 0.02, h: 0.14, d: 0.02, x: 0.3, y: 0.76, z: -0.02, color: dark(bc, 0.6) }));
       }
     }
-    const geos3 = Object.entries(parts).map(([bi, list]) => skinned(list, Number(bi)));
-    const g = merge(geos3);
-    g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
-    geoCache.set(key, g);
-    return g;
+    return parts;
   }
   function umbrellaGeometry(color) {
     const key = color.map((v) => Math.round(v * 20)).join(".");
@@ -46817,7 +47622,7 @@ void main() {
     return toTexture(c, { aniso: 2 });
   }
   function disposeFigureCaches() {
-    for (const g of geoCache.values()) g.dispose();
+    for (const e of geoCache.values()) e.g.dispose();
     geoCache.clear();
     for (const g of umbrellaCache.values()) g.dispose();
     umbrellaCache.clear();
@@ -46834,8 +47639,12 @@ void main() {
     const root = new Group();
     root.name = "npc-figure";
     const rig = new Group();
-    const k = look.height || 1;
-    rig.scale.set(k * (look.build || 1), k, k * (look.build || 1));
+    let k = look.height || 1;
+    const applyScale = () => {
+      k = look.height || 1;
+      rig.scale.set(k * (look.build || 1), k, k * (look.build || 1));
+    };
+    applyScale();
     root.add(rig);
     const bones = [];
     const mk3 = (x, y, z, parent) => {
@@ -46852,7 +47661,8 @@ void main() {
     const bArmR = mk3(0.26, 1.36 - SPINE_Y, 0, bSpine);
     const bLegL = mk3(-0.1, SPINE_Y, 0, bRoot);
     const bLegR = mk3(0.1, SPINE_Y, 0, bRoot);
-    const mesh = new SkinnedMesh(bodyGeometry(look), material());
+    let entry = acquire(look);
+    const mesh = new SkinnedMesh(entry.g, hooks.material || material());
     mesh.add(bRoot);
     rig.add(mesh);
     mesh.updateMatrixWorld(true);
@@ -46867,6 +47677,11 @@ void main() {
     let recoil = { x: 0, z: 0 };
     let remote = null;
     let disposed = false;
+    let ego = false;
+    let baseZ = 0;
+    const legacyTop = () => look.v !== 2;
+    const tagY = () => legacyTop() ? 1.98 : entry.topY + 0.23;
+    const headY = () => legacyTop() ? 1.95 * k : (entry.topY + 0.2) * k;
     const tmp3 = new Vector3();
     const handle = {
       root,
@@ -46874,6 +47689,10 @@ void main() {
       mesh,
       look,
       anim,
+      /** Oberkante der Figur (Hut/Frisur inkl.) in Metern, × height. */
+      get topY() {
+        return entry.topY * k;
+      },
       bones: { root: bRoot, spine: bSpine, head: bHead, armL: bArmL, armR: bArmR, legL: bLegL, legR: bLegR },
       get disposed() {
         return disposed;
@@ -46919,12 +47738,48 @@ void main() {
         }
         if (!text) return;
         tag = new Mesh(quad({ w: 0.6, h: 0.15 }), new MeshBasicMaterial({ map: nameTexture(text), transparent: true, depthWrite: false }));
-        tag.position.set(0, 1.98, 0);
+        tag.position.set(0, tagY(), 0);
         rig.add(tag);
       },
       /** Kopfposition (Welt) für Sprechblasen. */
       headWorld(out = tmp3) {
-        return out.set(root.position.x, root.position.y + 1.95 * k, root.position.z);
+        return out.set(root.position.x, root.position.y + headY(), root.position.z);
+      },
+      /**
+       * Look tauschen: nur die Geometrie wird ersetzt, Bones/Skelett bleiben; Rig-Skalierung (height/build) wird neu gesetzt.
+       * Namensschild wandert mit der neuen Oberkante.
+       */
+      setLook(next) {
+        if (disposed || !next) return;
+        const old = entry;
+        entry = acquire(next);
+        handle.look = next;
+        look = next;
+        mesh.geometry = entry.g;
+        release(old);
+        applyScale();
+        if (tag) tag.position.set(0, tagY(), 0);
+      },
+      /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel, Rig 0,12 m nach hinten. */
+      setEgo(on) {
+        ego = !!on;
+        const s = ego ? 0 : 1;
+        bHead.scale.set(s, s, s);
+        bArmL.scale.set(s, s, s);
+        bArmR.scale.set(s, s, s);
+        mesh.boundingSphere = ego ? new Sphere(new Vector3(0, 0.5, 0), 0.55) : new Sphere(new Vector3(0, 0.95, 0), 1.6);
+        baseZ = ego ? 0.12 : 0;
+        rig.position.set(0, 0, baseZ);
+      },
+      isEgo: () => ego,
+      /**
+       * 1.18-Naht: Gegenstand/Waffe an der rechten Hand (Ort: HAND_R). In 1.17 immer null; ohne Wirkung.
+       * @param {string|null} id Gegenstands-ID oder null
+       * @returns {null}
+       */
+      setHandItem(id) {
+        void id;
+        return null;
       },
       show() {
         root.visible = true;
@@ -46975,9 +47830,9 @@ void main() {
         bLegL.rotation.x = pose.legLx;
         bLegR.rotation.x = pose.legRx;
         if (recoil.x || recoil.z) {
-          rig.position.set(recoil.x * 0.12, 0, recoil.z * 0.12);
+          rig.position.set(recoil.x * 0.12, 0, baseZ + recoil.z * 0.12);
           recoil = Math.hypot(recoil.x, recoil.z) < 0.02 ? { x: 0, z: 0 } : { x: recoil.x * Math.exp(-dt * 4), z: recoil.z * Math.exp(-dt * 4) };
-          if (!recoil.x && !recoil.z) rig.position.set(0, 0, 0);
+          if (!recoil.x && !recoil.z) rig.position.set(0, 0, baseZ);
         }
         if (tag && camera) {
           camera.getWorldPosition(tmp3);
@@ -46991,8 +47846,10 @@ void main() {
         handle.setName(null);
         if (root.parent) root.parent.remove(root);
         mesh.skeleton.dispose();
+        release(entry);
       }
     };
+    if (hooks.ego) handle.setEgo(true);
     if (hooks.name) handle.setName(hooks.name);
     return handle;
   }
@@ -48265,13 +49122,17 @@ void main() {
           if (cat && Math.hypot(cat.logic.x - x, cat.logic.z - z) < 3) scareCat(cat.logic, catEnv());
         },
         /** Slots für Fremdfiguren (Mehrspieler): je Slot ein Passant weniger. Rückgabe: gültiger Wert; 0 hebt auf. */
-        reserve(n) {
+        reserve(n, key = "net") {
           const v = Number.isFinite(n) ? Math.max(0, Math.min(64, Math.floor(n))) : 0;
-          if (v !== reserved) {
-            reserved = v;
-            if (enabled && graph) adjustWalkers();
-          }
-          return reserved;
+          const before = reservedSum();
+          if (v > 0) reservedBy.set(key, v);
+          else reservedBy.delete(key);
+          if (reservedSum() !== before && enabled && graph) adjustWalkers();
+          return v;
+        },
+        /** Wie viele reservierte Slots die aktuelle Passanten-Höchstzahl übersteigen (max(0, Summe − Höchstzahl)); 1.17.0. */
+        overflow() {
+          return Math.max(0, reservedSum() - walkerCount(preset.npcMax, tod(), raining()));
         }
       };
       const offProvider = ctx.provide("npc", provider);
@@ -48282,7 +49143,12 @@ void main() {
       let pigeons = null;
       let graph = null;
       let frame = 0;
-      let reserved = 0;
+      const reservedBy = /* @__PURE__ */ new Map();
+      const reservedSum = () => {
+        let s = 0;
+        for (const v of reservedBy.values()) s += v;
+        return s;
+      };
       let px = 0;
       let pz = 0;
       let py = 0;
@@ -48325,7 +49191,7 @@ void main() {
         entry.handle.dispose();
       }
       function adjustWalkers() {
-        const want = enabled && graph ? Math.max(0, walkerCount(preset.npcMax, tod(), raining()) - reserved) : 0;
+        const want = enabled && graph ? Math.max(0, walkerCount(preset.npcMax, tod(), raining()) - reservedSum()) : 0;
         while (walkers.length < want) if (!spawnWalker()) break;
         while (walkers.length > want) removeWalker(walkers[walkers.length - 1]);
       }
@@ -48564,7 +49430,7 @@ void main() {
         cat: () => cat && { ...cat.logic },
         flock: () => flock && flock.list.map((p) => ({ state: p.state, x: p.x, z: p.z, y: p.y })),
         staff: () => [...staffMap.keys()],
-        counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size, reserved })
+        counts: () => ({ walkers: walkers.length, staff: staffMap.size, birds: flock ? flock.list.length : 0, externals: externals.size, reserved: reservedSum() })
       });
       return {
         update(dt) {
@@ -48810,11 +49676,11 @@ void main() {
       }
     };
     if (lane.stop) {
-      const col = env2.signal ? env2.signal[lane.stop.signal] : "green";
-      if (col !== "green") {
+      const col2 = env2.signal ? env2.signal[lane.stop.signal] : "green";
+      if (col2 !== "green") {
         const eff = effectiveStop(lane, env2.zebras);
         const d = toFront(eff);
-        const canStop = d >= -0.2 && !(col === "yellow" && d < car.v * car.v / (2 * 5.5));
+        const canStop = d >= -0.2 && !(col2 === "yellow" && d < car.v * car.v / (2 * 5.5));
         if (canStop) consider(Math.max(0, d), "signal");
       }
     }
@@ -48973,8 +49839,8 @@ void main() {
         const car = createCar(lane, { id: i, p: spec.p, v: lane.speed * 0.5, style: spec.style, speedMul: spec.speedMul });
         const mesh = createCarMesh(spec.style % STYLE_COUNT, (i * 3 + spec.style) % CAR_COLORS.length, true);
         street().add(mesh.root);
-        const col = ctx.addCollider({ x0: 0, z0: 0, x1: 1, z1: 1, y1: 1.4, top: false, kind: "car" }, { dynamic: true });
-        const e = { car, lane, mesh, col, yaw: 0 };
+        const col2 = ctx.addCollider({ x0: 0, z0: 0, x1: 1, z1: 1, y1: 1.4, top: false, kind: "car" }, { dynamic: true });
+        const e = { car, lane, mesh, col: col2, yaw: 0 };
         cars.push(e);
         applyCar(e, true);
       }
@@ -49734,7 +50600,7 @@ void main() {
   var CARPET = [0.03, 0.012, 0.04];
   var CARPET2 = [0.045, 0.016, 0.055];
   var WALL = [0.12, 0.1, 0.17];
-  var GOLD = [0.6, 0.38, 0.08];
+  var GOLD2 = [0.6, 0.38, 0.08];
   var DARK = [0.025, 0.02, 0.035];
   function chairGeo() {
     return merge([
@@ -49805,7 +50671,7 @@ void main() {
       glows.push(quad({ w: 0.35, h: 0.5, x: hall.x1 - 0.22, y: 2.6, z, ry: -Math.PI / 2, color: [0.16, 0.08, 0.02] }));
     }
     for (const d of p.hallDoors) glows.push(quad({ w: 0.7, h: 0.22, x: (d.x0 + d.x1) / 2, y: 2.55, z: hall.z0 + 0.02, ry: Math.PI, color: [0.02, 0.4, 0.12] }));
-    glows.push(box({ w: 13.4, h: 0.03, d: 0.06, x: cx, y: 0.21, z: cu.z - 0.16, color: GOLD }));
+    glows.push(box({ w: 13.4, h: 0.03, d: 0.06, x: cx, y: 0.21, z: cu.z - 0.16, color: GOLD2 }));
     const glowMesh = new Mesh(merge(glows), glowMat);
     glowMesh.name = "palast-hall-glow";
     glowMesh.renderOrder = 6;
@@ -49969,7 +50835,7 @@ void main() {
   // src/js/store3d/palast/foyer.js
   var WOOD = [0.3, 0.15, 0.07];
   var WOOD_D = [0.18, 0.09, 0.05];
-  var GOLD2 = [0.7, 0.45, 0.1];
+  var GOLD3 = [0.7, 0.45, 0.1];
   var CARPET3 = [0.1, 8e-3, 0.03];
   var BOARD_W = 1024;
   var BOARD_H = 328;
@@ -49989,16 +50855,16 @@ void main() {
     counter(st.kasse);
     counter(st.popcorn, WOOD_D);
     counter(st.ticketDesk, WOOD_D);
-    solids.push(box({ w: 0.12, h: 0.1, d: 0.12, x: st.kasse.x1 - 0.6, y: 1.16, z: (st.kasse.z0 + st.kasse.z1) / 2, color: GOLD2 }));
+    solids.push(box({ w: 0.12, h: 0.1, d: 0.12, x: st.kasse.x1 - 0.6, y: 1.16, z: (st.kasse.z0 + st.kasse.z1) / 2, color: GOLD3 }));
     const cp = st.carpet;
     solids.push(box({ w: cp.x1 - cp.x0, h: 0.012, d: cp.z1 - cp.z0, x: (cp.x0 + cp.x1) / 2, y: 0.018, z: (cp.z0 + cp.z1) / 2, color: CARPET3 }));
-    solids.push(box({ w: 0.12, h: 0.014, d: cp.z1 - cp.z0, x: cp.x0 + 0.1, y: 0.02, z: (cp.z0 + cp.z1) / 2, color: GOLD2 }));
-    solids.push(box({ w: 0.12, h: 0.014, d: cp.z1 - cp.z0, x: cp.x1 - 0.1, y: 0.02, z: (cp.z0 + cp.z1) / 2, color: GOLD2 }));
+    solids.push(box({ w: 0.12, h: 0.014, d: cp.z1 - cp.z0, x: cp.x0 + 0.1, y: 0.02, z: (cp.z0 + cp.z1) / 2, color: GOLD3 }));
+    solids.push(box({ w: 0.12, h: 0.014, d: cp.z1 - cp.z0, x: cp.x1 - 0.1, y: 0.02, z: (cp.z0 + cp.z1) / 2, color: GOLD3 }));
     const ps = plan.posts;
     for (const q of ps) {
-      solids.push(box({ w: 0.14, h: 0.04, d: 0.14, x: q.x, y: 0.02, z: q.z, color: GOLD2 }));
-      solids.push(box({ w: 0.04, h: 0.9, d: 0.04, x: q.x, y: 0.47, z: q.z, color: GOLD2 }));
-      solids.push(box({ w: 0.09, h: 0.09, d: 0.09, x: q.x, y: 0.95, z: q.z, color: GOLD2 }));
+      solids.push(box({ w: 0.14, h: 0.04, d: 0.14, x: q.x, y: 0.02, z: q.z, color: GOLD3 }));
+      solids.push(box({ w: 0.04, h: 0.9, d: 0.04, x: q.x, y: 0.47, z: q.z, color: GOLD3 }));
+      solids.push(box({ w: 0.09, h: 0.09, d: 0.09, x: q.x, y: 0.95, z: q.z, color: GOLD3 }));
     }
     for (let i = 0; i + 1 < ps.length; i++) {
       const a = ps[i];
@@ -50011,7 +50877,7 @@ void main() {
     const pcz = (pc.z0 + pc.z1) / 2;
     solids.push(box({ w: 0.9, h: 0.14, d: 0.6, x: pcx, y: pc.h + 0.13, z: pcz, color: [0.5, 0.04, 0.06] }));
     solids.push(box({ w: 0.9, h: 0.12, d: 0.6, x: pcx, y: pc.h + 1, z: pcz, color: [0.5, 0.04, 0.06] }));
-    for (const sx of [-0.43, 0.43]) for (const sz of [-0.28, 0.28]) solids.push(box({ w: 0.04, h: 0.8, d: 0.04, x: pcx + sx, y: pc.h + 0.6, z: pcz + sz, color: GOLD2 }));
+    for (const sx of [-0.43, 0.43]) for (const sz of [-0.28, 0.28]) solids.push(box({ w: 0.04, h: 0.8, d: 0.04, x: pcx + sx, y: pc.h + 0.6, z: pcz + sz, color: GOLD3 }));
     const solidMesh = new Mesh(merge(solids), new MeshBasicMaterial({ vertexColors: true }));
     solidMesh.name = "palast-foyer-solid";
     root.add(solidMesh);
@@ -50073,7 +50939,7 @@ void main() {
         slots.push({ index: k, x: q.x, y: q.y, z: q.z, w: q.w, h: q.h, yaw: q.yaw });
         return quad({ w: q.w, h: q.h, uv: o.atlas.uv(k), x: q.x, y: q.y, z: q.z, ry: q.yaw });
       });
-      const frames = plan.posters.map((q) => box({ w: 0.02, h: q.h + 0.16, d: q.w + 0.16, x: q.x + (q.yaw > 0 ? -0.015 : 0.015), y: q.y, z: q.z, color: GOLD2 }));
+      const frames = plan.posters.map((q) => box({ w: 0.02, h: q.h + 0.16, d: q.w + 0.16, x: q.x + (q.yaw > 0 ? -0.015 : 0.015), y: q.y, z: q.z, color: GOLD3 }));
       const posterMesh = new Mesh(merge(geos3), new MeshBasicMaterial({ map: o.atlas.texture, toneMapped: false, side: DoubleSide }));
       posterMesh.name = "palast-foyer-posters";
       root.add(posterMesh);
@@ -50907,7 +51773,7 @@ void main() {
     pivot.add(plate);
     const recessGeo = merge([
       box({ w: 0.86, h: 0.66, d: 0.02, z: 0.012, color: [0.05, 0.04, 0.06] }),
-      ...[[-0.28, 0, [0.8, 0.2, 0.25]], [-0.28, 0.1, [0.25, 0.5, 0.85]], [0, 0.05, [0.9, 0.7, 0.2]], [0, 0.15, [0.3, 0.75, 0.45]], [0.28, -0.02, [0.7, 0.3, 0.8]], [0.28, 0.08, [0.9, 0.5, 0.2]]].map(([sx, sy, col], i) => box({ w: 0.2, h: 0.09, d: 0.1, x: sx, y: sy - 0.2, z: 0.05, ry: (i % 3 - 1) * 0.12, color: col }))
+      ...[[-0.28, 0, [0.8, 0.2, 0.25]], [-0.28, 0.1, [0.25, 0.5, 0.85]], [0, 0.05, [0.9, 0.7, 0.2]], [0, 0.15, [0.3, 0.75, 0.45]], [0.28, -0.02, [0.7, 0.3, 0.8]], [0.28, 0.08, [0.9, 0.5, 0.2]]].map(([sx, sy, col2], i) => box({ w: 0.2, h: 0.09, d: 0.1, x: sx, y: sy - 0.2, z: 0.05, ry: (i % 3 - 1) * 0.12, color: col2 }))
     ]);
     const recessMat = new MeshLambertMaterial({ vertexColors: true });
     const recess = new Mesh(recessGeo, recessMat);
@@ -51003,8 +51869,8 @@ void main() {
           const vent = buildVent(rect, ROOF_Y, VENT_H);
           parent.add(vent);
           ctx.track(vent);
-          const col = ctx.addCollider({ ...rect, y0: ROOF_Y, y1: ROOF_Y + VENT_H, kind: "vent" });
-          cleanups.push(() => ctx.removeCollider(col), () => vent.removeFromParent());
+          const col2 = ctx.addCollider({ ...rect, y0: ROOF_Y, y1: ROOF_Y + VENT_H, kind: "vent" });
+          cleanups.push(() => ctx.removeCollider(col2), () => vent.removeFromParent());
           if (!store.has("golden-tape")) {
             tape = buildGoldenTape();
             const ty = ROOF_Y + VENT_H + 0.28;
@@ -51180,10 +52046,105 @@ void main() {
     }
   };
 
+  // src/js/store3d/modules/avatar.js
+  var avatar_default = {
+    name: "avatar",
+    init(ctx) {
+      const provider = {
+        look: () => null,
+        code: () => null,
+        slots: () => [null, null, null],
+        active: () => 0,
+        setSlot() {
+        },
+        needsGate: () => false,
+        gate: () => Promise.resolve(),
+        openEditor: () => Promise.resolve(false),
+        onChange: () => () => {
+        },
+        hash: () => "",
+        changedFor: () => false,
+        markSeen() {
+        },
+        lastChange: () => 0
+      };
+      const off = ctx.provide("avatar", provider);
+      return { dispose() {
+        off();
+      } };
+    }
+  };
+
+  // src/js/store3d/modules/member.js
+  var member_default = {
+    name: "member",
+    init(ctx) {
+      const provider = {
+        cardData: () => null,
+        showCard: () => Promise.resolve(),
+        count: () => false
+      };
+      const off = ctx.provide("member", provider);
+      return { dispose() {
+        off();
+      } };
+    }
+  };
+
+  // src/js/store3d/modules/selfview.js
+  var selfview_default = {
+    name: "selfview",
+    init(ctx) {
+      const provider = {
+        mode: () => "ego",
+        setMode() {
+        },
+        toggle() {
+        },
+        eye(out) {
+          return out.copy(ctx.camera.position);
+        },
+        figure: () => null,
+        playAnim() {
+        }
+      };
+      const off = ctx.provide("selfview", provider);
+      return { dispose() {
+        off();
+      } };
+    }
+  };
+
+  // src/js/store3d/modules/shopmirror.js
+  var shopmirror_default = {
+    name: "shopmirror",
+    init(ctx) {
+      const off = ctx.provide("shopmirror", {});
+      return { dispose() {
+        off();
+      } };
+    }
+  };
+
+  // src/js/store3d/modules/salon.js
+  var salon_default = {
+    name: "salon",
+    init(ctx) {
+      const provider = {
+        busy: () => false,
+        inside: () => false
+      };
+      const off = ctx.provide("salon", provider);
+      return { dispose() {
+        off();
+      } };
+    }
+  };
+
   // src/js/store3d/net/proto.js
   var SUB = "lfx-mp.1";
   var PV = 1;
-  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin"];
+  var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look"];
   var F = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
   var BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
   var NET_A_ANIM = ["idle", "walk", "run", "idle", "stagger", "idle", "hit", "sit", "throw"];
@@ -51212,7 +52173,9 @@ void main() {
     kj: "kino",
     kl: "kino",
     kc: "kino",
-    kb: "kino"
+    kb: "kino",
+    lk: "look",
+    mc: "look"
   };
   var LIM = {
     x: [-3e3, 5e3],
@@ -51298,7 +52261,7 @@ void main() {
       if (!num(q[5]) || !num(q[6])) return null;
       const ra = Math.round(q[5]);
       const rr = Math.round(q[6]);
-      const a = ra >= 0 && ra <= 8 ? ra : 0;
+      const a = ra >= 0 && ra <= 15 ? ra : 0;
       const r = rr >= 0 && rr <= 2 ? rr : 0;
       const out = { t: "p", q: [pos[0], pos[1], pos[2], yaw, pitch, a, r] };
       if (a === 7 && m.se !== void 0 && m.se !== null) {
@@ -51427,6 +52390,20 @@ void main() {
       const b = intIn(m.b, 0, 1);
       return sid === null || b === null ? null : { t: "kb", sid, b };
     },
+    // lk: Look-Code 4..48 Einträge, [0] (Version) 1..15, Rest 0..0x1FFFFFF; sonst verwerfen (wie der Server)
+    lk(m) {
+      const l = m.l;
+      if (!Array.isArray(l) || l.length < 4 || l.length > 48 || !l.every((v) => num(v) && Number.isInteger(v))) return null;
+      if (l[0] < 1 || l[0] > 15 || l.some((v, i) => i > 0 && (v < 0 || v > 33554431))) return null;
+      return { t: "lk", l: l.slice() };
+    },
+    // mc: Mitgliedsausweis-Daten oder null (Länge 2..12, Ganzzahlen 0..2^31-1)
+    mc(m) {
+      if (m.m === null) return { t: "mc", m: null };
+      const a = m.m;
+      if (!Array.isArray(a) || a.length < 2 || a.length > 12 || !a.every((v) => num(v) && Number.isInteger(v) && v >= 0 && v <= 2147483647)) return null;
+      return { t: "mc", m: a.slice() };
+    },
     ki(m) {
       const c = intIn(m.c, 1, 65535);
       return c === null ? null : { t: "ki", c };
@@ -51463,6 +52440,8 @@ void main() {
     kl: (sid) => NORM.kl({ sid }),
     kc: (sid, v, o, p) => NORM.kc({ sid, v, o, p }),
     kb: (sid, b) => NORM.kb({ sid, b }),
+    lk: (l) => NORM.lk({ l }),
+    mc: (m) => NORM.mc({ m }),
     ki: (c) => NORM.ki({ c }),
     ck: (a) => NORM.ck({ a }),
     rn: (tk) => NORM.rn({ tk })
@@ -52292,7 +53271,7 @@ void main() {
       const rows = table.order;
       if (!rows.length) return null;
       const want = Number.isFinite(row) ? Math.max(0, Math.min(rows[rows.length - 1], Math.round(row))) : rows[0];
-      let pick2 = null;
+      let pick3 = null;
       let pickScore = Infinity;
       for (const r of rows) {
         const list = table.rows.get(r);
@@ -52301,11 +53280,11 @@ void main() {
           const score = Math.abs(r - want) * 1e4 + Math.abs(s.frac - frac) - (cur && cur.id === s.id ? 0.5 : 0);
           if (score < pickScore) {
             pickScore = score;
-            pick2 = s;
+            pick3 = s;
           }
         }
       }
-      return pick2;
+      return pick3;
     }
     return {
       /** Fremden setzen/umsetzen. se = [Reihe, Anteil]; ungültig → null (und freigeben). */
@@ -52641,7 +53620,7 @@ void main() {
         if (e.mat) e.mat.dispose();
       }
     }
-    function release(entry) {
+    function release2(entry) {
       if (entry) entry.refs = Math.max(0, entry.refs - 1);
     }
     function entryFor(id, it) {
@@ -52684,7 +53663,7 @@ void main() {
       if (!h2) return;
       held.delete(c);
       h2.token = -1;
-      release(h2.entry);
+      release2(h2.entry);
       if (h2.group.parent) h2.group.parent.remove(h2.group);
     }
     function build3(c, fig, id, mode) {
@@ -52797,7 +53776,7 @@ void main() {
       z: o.z,
       yaw: num3(e.yaw) / 100,
       pitch: num3(e.pitch) / 100,
-      a: Number.isInteger(e.a) && e.a >= 0 && e.a <= 8 ? e.a : 0,
+      a: Number.isInteger(e.a) && e.a >= 0 && e.a <= 15 ? e.a : 0,
       r: e.r | 0,
       se: Array.isArray(e.se) ? e.se : null
     };
@@ -52849,6 +53828,7 @@ void main() {
     if (area === "shop") return v.shopShell !== false;
     if (area === "yard" || area === "alley" || area === "escape" || area === "roof") return !!v.yard;
     if (area === "palastHall" || area === "palastFoyer") return !!v.palastInterior;
+    if (area === "salon") return !!v.salonInterior;
     return v.street !== false;
   }
   function lodFor(level, phone, xr) {
@@ -53457,7 +54437,8 @@ void main() {
     kiosk: "Kiosk",
     palastEntrance: "Palast-Eingang",
     palastFoyer: "Palast-Foyer",
-    palastHall: "Palast-Saal"
+    palastHall: "Palast-Saal",
+    salon: "Friseur"
   };
   var areaLabel = (a) => AREAS[a] || "Unterwegs";
   function createPanel(api) {
@@ -53655,7 +54636,7 @@ void main() {
       } catch {
       }
     }
-    function pick2(emote) {
+    function pick3(emote) {
       let done = true;
       try {
         done = onPick ? onPick(emote) !== false : true;
@@ -53676,7 +54657,7 @@ void main() {
       if (/^(Digit|Numpad)[1-8]$/.test(e.code)) {
         e.preventDefault();
         e.stopPropagation();
-        if (!e.repeat) pick2(EMOTES[Number(e.code.slice(-1)) - 1]);
+        if (!e.repeat) pick3(EMOTES[Number(e.code.slice(-1)) - 1]);
         return;
       }
       if (e.code === "ArrowRight" || e.code === "ArrowDown") {
@@ -53719,7 +54700,7 @@ void main() {
         b.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          pick2(em);
+          pick3(em);
         });
         ring.appendChild(b);
         buttons.push(b);
@@ -54548,7 +55529,7 @@ void main() {
       if (w && typeof w.setRemote === "function") w.setRemote(b, flag);
       else if (b) b.netRemote = !!flag;
     }
-    const release = (b) => {
+    const release2 = (b) => {
       if (b) remote(b, false);
     };
     function claim(id, b, t) {
@@ -54748,14 +55729,14 @@ void main() {
         owners.free(i);
         pending.delete(i);
         tracks.delete(i);
-        release(b);
+        release2(b);
         return;
       }
       if (!Number.isInteger(g)) return;
       if (o === m.c) {
         owners.set(i, o, g, h2, t);
         pending.delete(i);
-        if (b && !b.held) release(b);
+        if (b && !b.held) release2(b);
         return;
       }
       if (pending.has(i)) {
@@ -54810,8 +55791,8 @@ void main() {
       }
       mineTapes.clear();
       for (const id of [...rtapes.keys()]) dropTape(id);
-      for (const [id] of owners.entries()) release(byId(id));
-      for (const id of tracks.keys()) release(byId(id));
+      for (const [id] of owners.entries()) release2(byId(id));
+      for (const id of tracks.keys()) release2(byId(id));
       owners.clear();
       tracks.clear();
       pending.clear();
@@ -54826,7 +55807,7 @@ void main() {
         tracks.delete(id);
         pending.delete(id);
         if (rtapes.has(id)) dropTape(id);
-        else release(byId(id));
+        else release2(byId(id));
       }
       for (const [id, t] of [...rtapes]) if (t.c === c) dropTape(id);
     }
@@ -54862,13 +55843,13 @@ void main() {
       }
       const gone = cands.filter((c) => c.drop);
       for (const c of gone) owners.free(c.id);
-      const pick2 = pickSend(cands.filter((c) => !c.drop));
-      if (!pick2.length) return;
-      const entries = pick2.map((c) => encodeEntry(frame, c.id, c.e.g, c.st, isTapeId(c.id)));
+      const pick3 = pickSend(cands.filter((c) => !c.drop));
+      if (!pick3.length) return;
+      const entries = pick3.map((c) => encodeEntry(frame, c.id, c.e.g, c.st, isTapeId(c.id)));
       const msg = build.ps(entries);
       if (!msg) return;
       if (!core.send(msg)) return;
-      for (const c of pick2) {
+      for (const c of pick3) {
         c.e.last = c.st;
         c.e.sentAt = t;
         if (c.final) owners.free(c.id);
@@ -54893,12 +55874,12 @@ void main() {
           if (s.over > FINAL_MS) {
             owners.free(id);
             tracks.delete(id);
-            release(b);
+            release2(b);
           }
         } else if (s.over > STALE_MS) {
           owners.free(id);
           tracks.delete(id);
-          release(b);
+          release2(b);
         } else w.applyRemote([worldEntry(b.id, s)]);
       }
     }
@@ -55252,7 +56233,7 @@ void main() {
       lastRxAt = nowMs();
       return true;
     }
-    function release() {
+    function release2() {
       const b = brawl();
       if (role === "owner" && !pending && ra.c === myC() && ra.g > 0) {
         if (b) {
@@ -55368,7 +56349,7 @@ void main() {
       if (!st || !st.f) return;
       const q = encode(st);
       if (q[0] === 0) {
-        release();
+        release2();
         return;
       }
       const sig = `${q[0]}|${q[1]}|${q[7]}`;
@@ -55406,7 +56387,7 @@ void main() {
         }
         if (role !== "owner") return;
         if (vr()) {
-          release();
+          release2();
           return;
         }
         if (pending) {
@@ -55459,7 +56440,7 @@ void main() {
       const w = ctx.use("weather");
       return w && typeof w.setRaining === "function" ? w : null;
     };
-    function release() {
+    function release2() {
       if (pushed) {
         const w = provider();
         if (w) {
@@ -55494,7 +56475,7 @@ void main() {
         acc = 0;
         synced = false;
         if (sd === null) {
-          release();
+          release2();
           return;
         }
         evaluate();
@@ -55509,11 +56490,11 @@ void main() {
       stop() {
         sd = null;
         acc = 0;
-        release();
+        release2();
       },
       dispose() {
         sd = null;
-        release();
+        release2();
       }
     };
   }
@@ -56114,6 +57095,12 @@ void main() {
     showcase_default,
     // --- Welle 2 discover (nach city/daytime: braucht Dachgruppe und Wetter) ---
     discover_default,
+    // --- Figur (1.17, Stubs aus Welle 0; vor net) ---
+    avatar_default,
+    member_default,
+    selfview_default,
+    shopmirror_default,
+    salon_default,
     // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
     net_default
   ];
@@ -56137,6 +57124,8 @@ void main() {
       this.highlights = /* @__PURE__ */ new Map();
       this.frozen = false;
       this.cam = null;
+      this.rig = null;
+      this.rigOn = false;
       this.look = null;
       this.walkPending = null;
       this.overlayState = null;
@@ -56257,7 +57246,12 @@ void main() {
           },
           camera: {
             flyTo: (pos, target, ms) => self2.flyTo(pos, target, ms),
-            release: () => self2.release()
+            release: () => self2.release(),
+            /** 1.17.0: fn(camera, dt) läuft nach player.applyCamera, solange keine Modul-Kamera (flyTo) aktiv ist; true = Kamera gesetzt. null löst. */
+            setRig: (fn) => {
+              self2.rig = typeof fn === "function" ? fn : null;
+              if (!self2.rig) self2.rigOn = false;
+            }
           }
         },
         overlay: {
@@ -56529,8 +57523,19 @@ void main() {
     /** Nach player.applyCamera aufrufen; liefert true, solange die Modul-Kamera aktiv ist. */
     cameraStep(dt) {
       const c = this.cam;
-      if (!c) return false;
       const cam = this.app.engine.camera;
+      if (!c) {
+        this.rigOn = false;
+        if (this.rig) {
+          try {
+            this.rigOn = this.rig(cam, dt) === true;
+          } catch (err) {
+            console.warn("[LenzFlix Store3D] Kamera-Rig", err);
+            this.rig = null;
+          }
+        }
+        return false;
+      }
       if (c.t < 1) {
         c.t = Math.min(1, c.t + dt / c.dur);
         const k = ease3(c.t);
@@ -56727,6 +57732,7 @@ void main() {
       this.handles = [];
       this.overlayClose();
       this.release();
+      this.rig = null;
       for (const id of [...this.highlights.keys()]) this.highlight(id, false);
       for (const t of this.tracked) {
         try {
@@ -56946,6 +57952,14 @@ void main() {
     vrb.hidden = true;
     mk3("Suche", () => a.onSearch());
     const dsc = mk3("", () => openDiscover());
+    const fig = mk3("Figur \u2026", () => {
+      if (a.onFigure) a.onFigure();
+    });
+    fig.hidden = true;
+    const card = mk3("Mitgliedsausweis", () => {
+      if (a.onCard) a.onCard();
+    });
+    card.hidden = true;
     mk3("Klassische Ansicht", () => a.onClassic());
     const q = mk3("", () => {
       const next = QUALITY_NEXT[a.getQuality()] || "auto";
@@ -56976,8 +57990,8 @@ void main() {
     }, "lfx-store-act--fs");
     mk3("Design wechseln", () => a.onTheme());
     mk3("Men\xFC", (b) => a.onMenu(b));
-    const pick2 = el2("div", "lfx-store-voicepick");
-    pick2.hidden = true;
+    const pick3 = el2("div", "lfx-store-voicepick");
+    pick3.hidden = true;
     const pickPanel = el2("div", "lfx-store-voicepick-panel");
     pickPanel.setAttribute("role", "dialog");
     pickPanel.setAttribute("aria-label", "Stimme");
@@ -56990,7 +58004,7 @@ void main() {
     const doneBtn = el2("button", "lfx-store-act lfx-store-act--primary", "Fertig");
     doneBtn.type = "button";
     pickPanel.append(list, pitchBtn, pickNote, doneBtn);
-    pick2.appendChild(pickPanel);
+    pick3.appendChild(pickPanel);
     const prefsNow = () => a.getVoicePrefs && a.getVoicePrefs() || { name: "", online: false, pitch: "tief" };
     const voicesNow = () => {
       try {
@@ -57155,12 +58169,12 @@ void main() {
       }
     });
     const syncInert = () => {
-      if (pick2.hidden && tp.hidden && dp.hidden && mpp.hidden) panel.removeAttribute("inert");
+      if (pick3.hidden && tp.hidden && dp.hidden && mpp.hidden) panel.removeAttribute("inert");
       else panel.setAttribute("inert", "");
     };
     function openPick() {
       renderPick();
-      pick2.hidden = false;
+      pick3.hidden = false;
       syncInert();
       const on = list.querySelector('[aria-pressed="true"]') || list.querySelector("button");
       if (on) {
@@ -57171,8 +58185,8 @@ void main() {
       }
     }
     function closePick() {
-      if (pick2.hidden) return;
-      pick2.hidden = true;
+      if (pick3.hidden) return;
+      pick3.hidden = true;
       syncInert();
       try {
         vo.focus({ preventScroll: true });
@@ -57183,8 +58197,8 @@ void main() {
       e.stopPropagation();
       closePick();
     });
-    pick2.addEventListener("click", (e) => {
-      if (e.target === pick2) {
+    pick3.addEventListener("click", (e) => {
+      if (e.target === pick3) {
         e.stopPropagation();
         closePick();
       }
@@ -57300,6 +58314,15 @@ void main() {
       const dd = discoverNow();
       dsc.hidden = !dd;
       if (dd) dsc.textContent = `Entdeckungen (${dd.count}/${dd.total})`;
+      const enabledNow = (fn) => {
+        try {
+          return !fn || !!fn();
+        } catch {
+          return false;
+        }
+      };
+      fig.hidden = !(a.onFigure && enabledNow(a.getFigureEnabled));
+      card.hidden = !(a.onCard && enabledNow(a.getCardEnabled));
       vrb.hidden = !(a.getVr && a.getVr());
       q.textContent = `Qualit\xE4t: ${QUALITY_LABEL[a.getQuality()] || "Auto"}`;
       s.textContent = `Ton: ${a.getSound() ? "An" : "Aus"}`;
@@ -57329,7 +58352,7 @@ void main() {
       fs.textContent = fk === "guide" ? "Vollbild \u2026" : `Vollbild: ${a.getFullscreen && a.getFullscreen() ? "An" : "Aus"}`;
     }
     root.appendChild(panel);
-    root.appendChild(pick2);
+    root.appendChild(pick3);
     root.appendChild(tp);
     root.appendChild(dp);
     root.appendChild(mpp);
@@ -57338,7 +58361,7 @@ void main() {
     });
     root.addEventListener("keydown", (e) => {
       if (e.key !== "Tab") return;
-      const layer = !mpp.hidden ? mpp : !dp.hidden ? dp : !tp.hidden ? tp : !pick2.hidden ? pick2 : panel;
+      const layer = !mpp.hidden ? mpp : !dp.hidden ? dp : !tp.hidden ? tp : !pick3.hidden ? pick3 : panel;
       const list2 = [...layer.querySelectorAll('button, [tabindex="0"]')].filter((b) => !b.disabled && !b.closest("[hidden]"));
       if (!list2.length) return;
       const i = list2.indexOf(document.activeElement);
@@ -57359,7 +58382,7 @@ void main() {
         return !root.hidden;
       },
       get pickOpen() {
-        return !pick2.hidden || !tp.hidden || !dp.hidden || !mpp.hidden;
+        return !pick3.hidden || !tp.hidden || !dp.hidden || !mpp.hidden;
       },
       get touchOpen() {
         return !tp.hidden;
@@ -57372,7 +58395,7 @@ void main() {
       },
       show() {
         stopDiag();
-        pick2.hidden = true;
+        pick3.hidden = true;
         tp.hidden = true;
         dp.hidden = true;
         mpp.hidden = true;
@@ -57391,7 +58414,7 @@ void main() {
       hide() {
         stopDiag();
         root.hidden = true;
-        pick2.hidden = true;
+        pick3.hidden = true;
         tp.hidden = true;
         dp.hidden = true;
         mpp.hidden = true;
@@ -57405,7 +58428,7 @@ void main() {
       },
       refresh() {
         refresh();
-        if (!pick2.hidden) renderPick();
+        if (!pick3.hidden) renderPick();
         if (!dp.hidden) renderDiscover();
       },
       destroy() {
@@ -58093,8 +59116,8 @@ void main() {
       }
       this.group.position.lerpVectors(this.from.pos, tg.pos, k);
       const C = this.layout && this.layout.spec && this.layout.spec.cover;
-      const norm2 = C && !this.gripMode() ? COVER.h / C.h : 1;
-      this.group.scale.setScalar(1 + (tg.scale * norm2 - 1) * k);
+      const norm3 = C && !this.gripMode() ? COVER.h / C.h : 1;
+      this.group.scale.setScalar(1 + (tg.scale * norm3 - 1) * k);
       this.group.quaternion.copy(this.from.quat).slerp(this.gripMode() ? tg.quat : IDENT, k);
     }
     update(dt) {
@@ -59125,8 +60148,8 @@ void main() {
       const shown = Math.min(visible, rows.length);
       listVisible = visible;
       maxScroll = Math.max(0, (rows.length - visible) * ROW_H);
-      const sc = Math.max(0, Math.min(maxScroll, scroll || 0));
-      const first = Math.floor(sc / ROW_H + 1e-4);
+      const sc2 = Math.max(0, Math.min(maxScroll, scroll || 0));
+      const first = Math.floor(sc2 / ROW_H + 1e-4);
       for (let k = 0; k < shown; k++) {
         const i = first + k;
         const r = rows[i];
@@ -59159,7 +60182,7 @@ void main() {
         const top = y + 4 + (arrows ? ARROW_H : 0);
         const trackH = full - (arrows ? 2 * ARROW_H : 0);
         const thumbH = Math.max(40, trackH * (visible / rows.length));
-        const thumbY = top + (trackH - thumbH) * (sc / maxScroll);
+        const thumbY = top + (trackH - thumbH) * (sc2 / maxScroll);
         rect(W2 - 22, top, 8, trackH, COLORS2.fill, { r: 4 });
         rect(W2 - 22, thumbY, 8, thumbH, COLORS2.yellow, { r: 4 });
         if (arrows) {
@@ -59240,9 +60263,9 @@ void main() {
       s.buttons.forEach((b, i) => {
         const rowIdx = rowOf[i];
         const inRow = sizeOf[i];
-        const col = colOf[i];
+        const col2 = colOf[i];
         const bw = (inner - (inRow - 1) * 14) / inRow;
-        const x = PAD + col * (bw + 14);
+        const x = PAD + col2 * (bw + 14);
         const by = y + rowIdx * (BTN_H + 14);
         const off = !!b.disabled;
         const lit = b.on || b.primary;
@@ -60727,9 +61750,9 @@ void main() {
     list.push(span(-HALL.x, HALL.x, -0.6, HALL.h, HALL.back, HALL.back + 0.3, wall));
     list.push(span(-HALL.x, HALL.x, HALL.h, HALL.h + 0.3, HALL.front - 0.3, HALL.back + 0.3, 723728));
     for (let z = 1.6, i = 0; z < 20.4; z += 1.7, i++) {
-      const col = i % 2 ? 3877420 : 3088676;
-      list.push(span(-HALL.x, -HALL.x + 0.16, 1.4, 7.2, z, z + 1.4, col));
-      list.push(span(HALL.x - 0.16, HALL.x, 1.4, 7.2, z, z + 1.4, col));
+      const col2 = i % 2 ? 3877420 : 3088676;
+      list.push(span(-HALL.x, -HALL.x + 0.16, 1.4, 7.2, z, z + 1.4, col2));
+      list.push(span(HALL.x - 0.16, HALL.x, 1.4, 7.2, z, z + 1.4, col2));
     }
     list.push(span(-HALL.x, -HALL.x + 0.1, -0.6, 1.4, HALL.front, HALL.back, 1840152));
     list.push(span(HALL.x - 0.1, HALL.x, -0.6, 1.4, HALL.front, HALL.back, 1840152));
@@ -61368,12 +62391,12 @@ void main() {
     const a = 1 - Math.exp(-Math.max(0, dt) / Math.max(1e-3, tau));
     return { r: prev.r + (next.r - prev.r) * a, g: prev.g + (next.g - prev.g) * a, b: prev.b + (next.b - prev.b) * a };
   }
-  var BLACK = Object.freeze({ MIN_VIDEO_S: 10, WINDOW_MS: 9e4 });
+  var BLACK2 = Object.freeze({ MIN_VIDEO_S: 10, WINDOW_MS: 9e4 });
   var newBlackState = () => ({ t0: null, since: null, ct0: 0, fired: false, seen: false });
   function trackBlack(sample, now, state, { ready = true, currentTime = 0 } = {}) {
     if (!state || state.fired || !sample) return false;
     if (state.t0 == null) state.t0 = now;
-    if (now - state.t0 > BLACK.WINDOW_MS || !ready) {
+    if (now - state.t0 > BLACK2.WINDOW_MS || !ready) {
       state.since = null;
       return false;
     }
@@ -61399,7 +62422,7 @@ void main() {
       state.ct0 = Number(currentTime) || 0;
       return false;
     }
-    if ((Number(currentTime) || 0) - state.ct0 >= BLACK.MIN_VIDEO_S) {
+    if ((Number(currentTime) || 0) - state.ct0 >= BLACK2.MIN_VIDEO_S) {
       state.fired = true;
       return true;
     }
@@ -63396,7 +64419,7 @@ void main() {
       }
       const spec = trackSpec(popKind, popRows, {
         busy: popBusy,
-        onPick: (r) => pick2(r),
+        onPick: (r) => pick3(r),
         onBack: () => api.closeTracks()
       });
       pop.textContent = "";
@@ -63422,7 +64445,7 @@ void main() {
       back.addEventListener("click", () => api.closeTracks());
       pop.appendChild(back);
     }
-    function pick2(r) {
+    function pick3(r) {
       if (popBusy || !popKind) return;
       const kind = popKind;
       const token = popToken;
@@ -65743,6 +66766,29 @@ void main() {
           const d = this.mods && this.mods.ctx.use("discover");
           return d ? d.summary() : null;
         },
+        // 1.17.0: „Figur …“ / „Mitgliedsausweis“ nur mit echten Daten der Provider (Stubs liefern null → ausgeblendet)
+        onFigure: () => {
+          if (this.mode !== "paused") return;
+          const av = this.modUse("avatar");
+          if (!av) return;
+          this.pause.hide();
+          this.setMode("play");
+          Promise.resolve().then(() => av.openEditor("pause")).catch((err) => console.warn("[LenzFlix Store3D] Figur-Editor", err));
+        },
+        getFigureEnabled: () => {
+          const av = this.modUse("avatar");
+          return !!av && av.code() !== null;
+        },
+        onCard: () => {
+          const m = this.modUse("member");
+          const data = m && m.cardData();
+          if (!data) return;
+          Promise.resolve().then(() => m.showCard(data, { mode: "self" })).catch((err) => console.warn("[LenzFlix Store3D] Ausweis", err));
+        },
+        getCardEnabled: () => {
+          const m = this.modUse("member");
+          return !!m && m.cardData() !== null;
+        },
         getMp: () => {
           const n = this.mods && this.mods.ctx.use("net");
           return n && n.menu ? n.menu() : null;
@@ -65867,6 +66913,11 @@ void main() {
         onThrow: () => this.doThrow("key"),
         onChat: () => this.doChat("key"),
         onEmote: () => this.doEmote("key"),
+        onView: () => {
+          const sv = this.modUse("selfview");
+          if (sv && this.canAct()) sv.toggle();
+        },
+        // Taste V (1.17.0)
         onCarry: () => this.holdview.carryOut(),
         onZoom: (z) => this.setZoom(z),
         getZoom: () => this.zoom,
@@ -65940,13 +66991,26 @@ void main() {
         if (!this.disposed) this.syncUi();
       });
       if (this.suspended) this.pauseParts();
+      await this.startSequence(r);
+    }
+    /** Boot-Ende (1.17.0): erstes Bild, Figur-Gate (avatar), Intro (außer skipIntro), dann 'enter'. `r` = opts.restore. */
+    async startSequence(r) {
       const intro = this.mods.ctx.use("intro");
-      if (intro && !this.opts.skipIntro) {
-        await new Promise((res) => {
-          this.onReadyHook = res;
-          if (this.ready) res();
-        });
+      await new Promise((res) => {
+        this.onReadyHook = res;
+        if (this.ready) res();
+      });
+      if (this.disposed) return;
+      const av = this.mods.ctx.use("avatar");
+      if (av && av.needsGate()) {
+        try {
+          await av.gate();
+        } catch (err) {
+          console.warn("[LenzFlix Store3D] Figur-Gate", err);
+        }
         if (this.disposed) return;
+      }
+      if (intro && !this.opts.skipIntro) {
         try {
           await intro.run();
         } catch (err) {
@@ -66113,10 +67177,39 @@ void main() {
       const l = this.mods.interactables;
       return this.player.y > 0.5 ? l.filter((i) => i.anyHeight) : l;
     }
+    /** Provider eines Moduls (oder undefined, z. B. vor dem Modul-Start). */
+    modUse(name) {
+      const c = this.mods && this.mods.ctx;
+      return c && c.use ? c.use(name) : void 0;
+    }
     actionEvent(name, source) {
       const cam = this.engine.camera;
       cam.getWorldDirection(this._d);
-      return { name, source, aim: this.aim, origin: cam.position.clone(), dir: this._d.clone() };
+      const sv = this.modUse("selfview");
+      const origin = sv && sv.mode() === "third" ? sv.eye(new Vector3()) : cam.position.clone();
+      return { name, source, aim: this.aim, origin, dir: this._d.clone(), weapon: "hand", range: 1.6, max: 1 };
+    }
+    /**
+     * Zielstrahl (1.17.0). Ego: Kamera und Blickrichtung (bzw. der übergebene Strahl `ray`, z. B. Tippen), bitgleich zu früher.
+     * Außenansicht: Ursprung = Projektion des Auges (selfview.eye) auf den Strahl, Richtung = Strahlrichtung.
+     * Schreibt in `o`/`d` (Vector3) und gibt `o` zurück.
+     */
+    aimRay(o, d, ray) {
+      const cam = this.engine.camera;
+      if (ray) {
+        o.copy(ray.origin);
+        d.copy(ray.direction);
+      } else {
+        o.copy(cam.position);
+        cam.getWorldDirection(d);
+      }
+      const sv = this.modUse("selfview");
+      if (sv && sv.mode() === "third") {
+        const e = sv.eye(this._e || (this._e = new Vector3()));
+        const t = Math.max(0, (e.x - o.x) * d.x + (e.y - o.y) * d.y + (e.z - o.z) * d.z);
+        o.addScaledVector(d, t);
+      }
+      return o;
     }
     /**
      * Benutzen (E / Linksklick / Touch-Knopf). Reihenfolge: Ziel im Fadenkreuz (Hülle, Interaktion) → ctx.input.onAction('use')
@@ -66125,7 +67218,7 @@ void main() {
     doUse(src = "key") {
       if (!this.canAct()) return false;
       const a = this.aim;
-      if (a && (!a.ia || this.iaReachable(a.ia))) {
+      if (a && (!a.ia || this.iaReachable(a.ia)) && !(src === "click" && a.ia && a.ia.noClick)) {
         if (a.ia) a.ia.onUse();
         else this.take(a.info.itemId);
         return true;
@@ -66290,10 +67383,9 @@ void main() {
       }
     }
     updateAim() {
-      const { camera } = this.engine;
-      camera.getWorldDirection(this._d);
-      let hit = pickCover(this.shelves.faceViews, camera.position, this._d, 2.5);
-      const iaHit = pickBoxes(this.groundIas(), camera.position, this._d, 2.5, this.occluders());
+      const o = this.aimRay(this._ao || (this._ao = new Vector3()), this._d);
+      let hit = pickCover(this.shelves.faceViews, o, this._d, 2.5);
+      const iaHit = pickBoxes(this.groundIas(), o, this._d, 2.5, this.occluders());
       if (iaHit && (!hit || iaHit.t < hit.t)) hit = iaHit;
       const prev = this.aim;
       if (!hit) {
@@ -66325,7 +67417,8 @@ void main() {
       const ndc = { x: (clientX - r.left) / r.width * 2 - 1, y: -((clientY - r.top) / r.height) * 2 + 1 };
       camera.updateMatrixWorld(true);
       this.rc.setFromCamera(ndc, camera);
-      const { origin, direction } = this.rc.ray;
+      const origin = this.aimRay(this._ao || (this._ao = new Vector3()), this._ad || (this._ad = new Vector3()), this.rc.ray);
+      const direction = this._ad;
       this.pendingTake = this.pendingUse = null;
       const hit = pickCover(this.shelves.faceViews, origin, direction, 9);
       const iaHit = pickBoxes(this.groundIas(), origin, direction, 9, this.occluders());

@@ -142,6 +142,7 @@ export function buildCityDecor(out, city, layout, G, winSpecs) {
     const gx1 = b.x1;
     st.push(box({ w: gx1 - gx0, h: 0.1, d: 0.14, x: (gx0 + gx1) / 2, y: b.h - 0.25, z: zf + face * 0.1, color: [0.25, 0.27, 0.3] })); // Regenrinne
     st.push(box({ w: 0.1, h: b.h - 0.3, d: 0.1, x: gx1 - 0.35, y: (b.h - 0.3) / 2, z: zf + face * 0.1, color: [0.25, 0.27, 0.3] })); // Fallrohr
+    if (b.parts) continue; // SW: Der Salon hat eine eigene Tür (build-city.js), keine Haustür-Deko
     // Haustür: Rahmen, Stufe, Klingelschild (drei Knöpfe)
     const dx = b.x0 + (b.x1 - b.x0) * 0.25;
     st.push(box({ w: 1.3, h: 0.12, d: 0.14, x: dx, y: 2.26, z: zf + face * 0.07, color: [0.8, 0.78, 0.7] }));
@@ -171,6 +172,7 @@ export function buildCityDecor(out, city, layout, G, winSpecs) {
       const wx = s.w / n;
       st.push(box({ w: wx, h: 0.06, d: 1.0, x: s.x - s.w / 2 + wx * (k + 0.5), y: 2.62, z: s.z + face * 0.5, rx: face * -0.18, color: k % 2 ? [0.95, 0.95, 0.92] : s.awning }));
     }
+    if (s.id === 'SW' && city.salon) { rand(); return; } // Salon: Tür und Schaufenster zeichnet build-city.js (rand() hält die Zufallsfolge des übrigen Dekors gleich)
     const gw = s.w - 1.0;
     glassGeos.push(quad({ w: gw, h: 1.5, x: s.x + 0.2, y: 1.15, z: s.z + face * 0.015, ry: s.yaw }));
     glassSpec.push({ lit: rand() < 0.8 });

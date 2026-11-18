@@ -25,6 +25,7 @@ import { createCinemaBridge } from './cinema-bridge.js';
 import { jellyfinTitle } from '../../core/doctitle.js';
 import { parkStage, unparkStage } from './stage-park.js';
 import { mountBackButton } from './palast-back.js';
+import { createProfile } from './profile.js';
 
 export const SUSPEND_MS = 3 * 60 * 1000;
 const CLASSIC_HASH = '#/home?lfx=classic';
@@ -36,6 +37,7 @@ let fadeTimer = null;
 let inst = null; // { instance, uid, unsubTheme, offPlay, disposeTimer, ready, parked }
 let ui = null; // { root, stage, loading, fill, label, hud, avatar, searchBtn }
 let lastKey = null;
+let prof = null; // { uid, p } Konto-Profil (1.17.0), pro Benutzer eines
 let shown = false; // Bühne gerade im DOM
 
 const root = () => document.documentElement;
@@ -263,13 +265,24 @@ async function userName() {
   }
 }
 
-function buildDeps(catalog, name, onFatal, onBigCovers) {
+function getProfile(name) {
+  const uid = api.getUserId();
+  if (!uid) return null;
+  if (!prof || prof.uid !== uid) {
+    if (prof) prof.p.dispose();
+    prof = { uid, p: createProfile({ uid, name, storage: window.localStorage }) };
+  }
+  return prof.p;
+}
+
+function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
   const ret = (f) => (...a) => { try { return f(...a); } catch (e) { console.warn('[LenzFlix] store dep', e && e.message); return undefined; } };
   const items = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
   const uid = api.getUserId();
   return {
     catalog,
     user: { name },
+    ...(profile ? { profile } : {}),
     ...(uid ? { mp: { uid, cv: VERSION, prefs: () => prefs.getMp(), ticket: createTicket(uid) } } : {}),
     imageUrl: (id, o = {}) => api.imageUrlFor(id, { ...o, scale: false }),
     getItem: (id) => api.getItem(id),
@@ -355,9 +368,13 @@ async function boot(myGen, route) {
   setProgress(0.05, 'Videothek wird aufgeschlossen …');
   let loaded;
   try {
-    const [ok, catalog, name] = await Promise.all([ensureThemeJs('store'), loadCatalog(), userName()]);
+    const nameP = userName();
+    let profile = null;
+    // Profil parallel zum Katalog, höchstens 4 s; danach weiter mit state 'local'/'unknown' (spätes Konto kommt über onRemote)
+    const profP = nameP.then((n) => { profile = getProfile(n); return profile && profile.load({ timeoutMs: 4000 }); }).catch(() => { profile = null; });
+    const [ok, catalog, name] = await Promise.all([ensureThemeJs('store'), loadCatalog(), nameP, profP]);
     if (!ok || !window.LenzFlixStore3D) throw new Error('3D-Paket nicht geladen');
-    loaded = { catalog, name };
+    loaded = { catalog, name, profile };
   } catch (e) {
     if (myGen !== gen || !ui) return;
     showFallback('Die Videothek konnte nicht geladen werden.', { retry: true, detail: fatalText(e) });
@@ -370,7 +387,7 @@ async function boot(myGen, route) {
     fatal = true; // kann schon während create() feuern
     disposeInstance();
     showFallback('Die 3D-Videothek konnte nicht gestartet werden.', { retry: true, detail: fatalText(err) });
-  }, (on) => rebuild(on));
+  }, (on) => rebuild(on), loaded.profile);
   const opts = buildOpts(route);
   prefs.setIntroSeen();
   try {
@@ -517,6 +534,7 @@ export function destroyStore() {
   disposeInstance();
   unparkStage();
   onCinema2d(null);
+  if (prof) { prof.p.dispose(); prof = null; }
   if (bridge) { bridge.dispose(); bridge = null; }
   teardownUi();
   lastKey = null;

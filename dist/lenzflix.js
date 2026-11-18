@@ -597,7 +597,7 @@
   var patchedTouch = [];
   var patchedTitle = null;
   var currentTheme = null;
-  var pick = (map, theme2) => map[theme2] || map.flix;
+  var pick = (map2, theme2) => map2[theme2] || map2.flix;
   function setLink(l, href) {
     l.setAttribute("href", href);
     l.setAttribute("type", typeFor(href));
@@ -6041,9 +6041,9 @@
     grow();
     if (kb && list.children[from]) list.children[from].focus({ preventScroll: true });
   }
-  function renderEpisodes(slot, state24, H) {
-    slot.hidden = false;
-    slot.replaceChildren();
+  function renderEpisodes(slot2, state24, H) {
+    slot2.hidden = false;
+    slot2.replaceChildren();
     const { seasons, seasonId, episodes, selectedEpisodeId } = state24;
     putItems(episodes);
     const current6 = seasons.find((s) => s.Id === seasonId);
@@ -6097,7 +6097,7 @@
             toggle(false);
             btn3.focus({ preventScroll: true });
             if (s.Id !== seasonId) Promise.resolve(H.season(s.Id)).then(() => {
-              if (slot.isConnected && document.activeElement === document.body) slot.querySelector(".lfx-modal__seasonbtn")?.focus({ preventScroll: true });
+              if (slot2.isConnected && document.activeElement === document.body) slot2.querySelector(".lfx-modal__seasonbtn")?.focus({ preventScroll: true });
             });
           }
         }, s.Name || `Staffel ${s.IndexNumber}`)]));
@@ -6105,9 +6105,9 @@
       tools.append(h("div", { class: "lfx-modal__dropdown" }, [btn3, list]));
       if (tools.querySelector(".lfx-modal__round--played")) tools.classList.add("lfx-modal__eps-tools--joined");
     }
-    slot.append(head);
+    slot2.append(head);
     const listEl = h("div", { class: "lfx-modal__eplist" });
-    slot.append(listEl);
+    slot2.append(listEl);
     if (!episodes.length) {
       listEl.append(h("p", { class: "lfx-modal__empty" }, "Keine Folgen verf\xFCgbar."));
       return;
@@ -6169,27 +6169,27 @@
       ])
     ]);
   }
-  function renderCards(slot, title, items, H, initial = CARDS_INITIAL) {
-    slot.replaceChildren();
+  function renderCards(slot2, title, items, H, initial = CARDS_INITIAL) {
+    slot2.replaceChildren();
     if (!items.length) {
-      slot.hidden = true;
+      slot2.hidden = true;
       return;
     }
-    slot.hidden = false;
-    slot.append(h("h3", { class: "lfx-modal__h" }, title));
+    slot2.hidden = false;
+    slot2.append(h("h3", { class: "lfx-modal__h" }, title));
     const grid2 = h("div", { class: "lfx-modal__grid" });
-    slot.append(grid2);
+    slot2.append(grid2);
     let shown2 = initial;
     const draw = () => {
       grid2.replaceChildren(...items.slice(0, shown2).map((it) => card(it, H)));
-      slot.querySelector(".lfx-modal__more")?.remove();
+      slot2.querySelector(".lfx-modal__more")?.remove();
       if (shown2 < items.length) {
         const from = shown2;
         const more = moreButton(() => revealMore(grid2, from, more, () => {
           shown2 = items.length;
           draw();
         }));
-        slot.append(more);
+        slot2.append(more);
       }
     };
     draw();
@@ -7092,14 +7092,14 @@
   function paused2() {
     return document.hidden || isDataSaver("prefetch") || document.documentElement.classList.contains("lfx-modal-open") || tvBgPlaying();
   }
-  function heroSettled(slot) {
-    if (!slot || slot.hidden) return true;
-    if (slot.classList.contains("is-loading") || slot.querySelector(".lfx-bb--skel")) return false;
-    if (slot.dataset.lfxTr === "wait") return false;
-    return [...slot.querySelectorAll("img")].every((i) => i.getAttribute("loading") === "lazy" || i.complete);
+  function heroSettled(slot2) {
+    if (!slot2 || slot2.hidden) return true;
+    if (slot2.classList.contains("is-loading") || slot2.querySelector(".lfx-bb--skel")) return false;
+    if (slot2.dataset.lfxTr === "wait") return false;
+    return [...slot2.querySelectorAll("img")].every((i) => i.getAttribute("loading") === "lazy" || i.complete);
   }
   var cardImgs = (row) => [...row.querySelectorAll(".lfx-card")].slice(0, TOP_CARDS).flatMap((c) => [...c.querySelectorAll("img")]);
-  function startRowPrefetch({ slot, pending: pending2, load: load6, hero }) {
+  function startRowPrefetch({ slot: slot2, pending: pending2, load: load6, hero }) {
     if (!allowPrefetch()) return { stop() {
     }, notify() {
     } };
@@ -7129,8 +7129,8 @@
       else later(fn, 150);
     };
     function topReady() {
-      const rows = [...slot.children].filter((c) => c.dataset && c.dataset.lfxRow !== void 0).slice(0, TOP_ROWS);
-      if (!slot.querySelector(".lfx-card")) return !pending2.size;
+      const rows = [...slot2.children].filter((c) => c.dataset && c.dataset.lfxRow !== void 0).slice(0, TOP_ROWS);
+      if (!slot2.querySelector(".lfx-card")) return !pending2.size;
       const imgs = [];
       for (const r of rows) {
         if (r.classList.contains("is-loading")) {
@@ -7278,18 +7278,18 @@
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev, next, indicator });
   }
-  function render3(slot, ctx2 = {}) {
+  function render3(slot2, ctx2 = {}) {
     const opts = ctx2 || {};
     let disposed = false;
     let observer2 = null;
     let prefetch = null;
     const disposers = [];
-    slot.hidden = false;
-    slot.textContent = "";
+    slot2.hidden = false;
+    slot2.textContent = "";
     disposers.push(onItemsChanged(({ removed }) => {
       if (disposed || !removed || !removed.length) return;
       const gone = new Set(removed);
-      for (const row of [...slot.querySelectorAll(".lfx-row")]) {
+      for (const row of [...slot2.querySelectorAll(".lfx-row")]) {
         const track = row.querySelector(".lfx-row__track");
         if (!track) continue;
         let changed = false;
@@ -7386,13 +7386,13 @@
           def.id = snap.id;
           def.title = snap.title;
           const el5 = skeleton(def);
-          slot.append(el5);
+          slot2.append(el5);
           showRow(el5, def, items, shown2++ < EAGER_ROWS);
           continue;
         }
         const el4 = skeleton(def);
         pending2.set(el4, def);
-        slot.append(el4);
+        slot2.append(el4);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
@@ -7413,7 +7413,7 @@
       }
       if (opts.prefetch === false) return;
       prefetch = startRowPrefetch({
-        slot,
+        slot: slot2,
         pending: pending2,
         hero: () => (typeof opts.hero === "function" ? opts.hero() : opts.hero) || document.getElementById("lfx-billboard"),
         load: (el4, def) => {
@@ -7429,7 +7429,7 @@
       if (observer2) observer2.disconnect();
       observer2 = null;
       for (const d of disposers.splice(0)) d();
-      slot.textContent = "";
+      slot2.textContent = "";
     };
   }
 
@@ -7647,7 +7647,7 @@
     };
     img.src = url;
   }
-  function render4(slot, ctx2 = {}) {
+  function render4(slot2, ctx2 = {}) {
     const poolSrc = ctx2 && ctx2.pool && ctx2.pool.fetch ? ctx2.pool : null;
     let disposed = false;
     let pool = [];
@@ -7668,8 +7668,8 @@
     let dots = null;
     const cleanupFns = [];
     const setTr = (v) => {
-      if (v) slot.dataset.lfxTr = v;
-      else delete slot.dataset.lfxTr;
+      if (v) slot2.dataset.lfxTr = v;
+      else delete slot2.dataset.lfxTr;
     };
     const later = (fn, ms) => {
       const t = setTimeout(() => {
@@ -7772,7 +7772,7 @@
         startDownload(item, dl);
       });
       Promise.resolve(canDownload(item)).then((ok) => {
-        if (ok && !disposed && slot.contains(dl)) dl.hidden = false;
+        if (ok && !disposed && slot2.contains(dl)) dl.hidden = false;
       }, () => {
       });
       const menu = h("button", {
@@ -7853,7 +7853,7 @@
           timers2.forEach(clearTimeout);
           timers2.clear();
           content.replaceChildren();
-          slot.hidden = true;
+          slot2.hidden = true;
           resetAmbient();
           return;
         }
@@ -8046,8 +8046,8 @@
         content,
         dots
       ]);
-      slot.replaceChildren(card3);
-      slot.setAttribute("aria-roledescription", "Karussell");
+      slot2.replaceChildren(card3);
+      slot2.setAttribute("aria-roledescription", "Karussell");
       const onEnter = () => {
         hovering = true;
       };
@@ -8115,19 +8115,19 @@
       }
       if (disposed) return;
       if (!items.length) {
-        slot.replaceChildren();
-        slot.hidden = true;
+        slot2.replaceChildren();
+        slot2.hidden = true;
         resetAmbient();
         return;
       }
       pool = isDataSaver("hero") ? saverPool(items) : items.slice();
       putItems(pool);
       build13();
-      slot.hidden = false;
+      slot2.hidden = false;
       show3(0, true);
     }
-    slot.replaceChildren(h("div", { class: "lfx-bb lfx-bb--skel", "aria-hidden": "true" }));
-    slot.hidden = false;
+    slot2.replaceChildren(h("div", { class: "lfx-bb lfx-bb--skel", "aria-hidden": "true" }));
+    slot2.hidden = false;
     const onRowsReady = () => {
       rowsReady = true;
       tryPreload();
@@ -8145,8 +8145,8 @@
       stopTrailer();
       setTr("");
       cleanupFns.forEach((f) => f());
-      slot.replaceChildren();
-      slot.removeAttribute("aria-roledescription");
+      slot2.replaceChildren();
+      slot2.removeAttribute("aria-roledescription");
       resetAmbient();
     };
   }
@@ -8181,9 +8181,9 @@
     tab2.prepend(root6);
     document.documentElement.classList.add("lfx-home-on");
     const ctx2 = { root: root6 };
-    for (const [mod, slot] of [[billboard_exports, billboardSlot], [rows_exports, rowsSlot]]) {
+    for (const [mod, slot2] of [[billboard_exports, billboardSlot], [rows_exports, rowsSlot]]) {
       try {
-        cleanups.push(mod.render(slot, ctx2));
+        cleanups.push(mod.render(slot2, ctx2));
       } catch (e) {
         console.error("[LenzFlix] home render", e);
       }
@@ -9397,9 +9397,9 @@
       defs: { build: () => buildLibraryRowDefs(kind2, { genre, genreName: genreName2 }) },
       hero: () => bbSlot
     };
-    for (const [mod, slot, ctx2] of [[billboard_exports, bbSlot, ctxBb], [rows_exports, rowsSlot, ctxRows]]) {
+    for (const [mod, slot2, ctx2] of [[billboard_exports, bbSlot, ctxBb], [rows_exports, rowsSlot, ctxRows]]) {
       try {
-        s.content.push(mod.render(slot, ctx2));
+        s.content.push(mod.render(slot2, ctx2));
       } catch (e) {
         console.error("[LenzFlix] library render", e);
       }
@@ -12291,14 +12291,14 @@
   var TTL_MS2 = 5 * 60 * 1e3;
   var asArr = (res) => Array.isArray(res) ? res : res && Array.isArray(res.Items) ? res.Items : [];
   function newContentFrom(episodes, now = Date.now(), { days = NEW_DAYS } = {}) {
-    const map = /* @__PURE__ */ new Map();
+    const map2 = /* @__PURE__ */ new Map();
     for (const e of episodes || []) {
       if (!e || !e.SeriesId || !isRecent(e.DateCreated, now, days)) continue;
       const isSeason = e.IndexNumber === 1 && e.ParentIndexNumber > 1;
-      if (isSeason) map.set(e.SeriesId, "season");
-      else if (!map.has(e.SeriesId)) map.set(e.SeriesId, "episode");
+      if (isSeason) map2.set(e.SeriesId, "season");
+      else if (!map2.has(e.SeriesId)) map2.set(e.SeriesId, "episode");
     }
-    return map;
+    return map2;
   }
   var emptyInfo = () => ({ bySeries: /* @__PURE__ */ new Map(), newMovieIds: /* @__PURE__ */ new Set(), newSeriesIds: /* @__PURE__ */ new Set() });
   async function load(now) {
@@ -12816,16 +12816,16 @@
     rowEl.classList.remove("is-loading");
     return attachScroller({ track, prev, next, indicator: null });
   }
-  function renderRows(slot, getDefs, peekDefs, opts = {}) {
+  function renderRows(slot2, getDefs, peekDefs, opts = {}) {
     let disposed = false;
     let observer2 = null;
     let prefetch = null;
     const disposers = [];
-    slot.textContent = "";
+    slot2.textContent = "";
     disposers.push(onItemsChanged(({ removed }) => {
       if (disposed || !removed || !removed.length) return;
       const gone = new Set(removed);
-      for (const row of [...slot.querySelectorAll(".lfx-plus-row")]) {
+      for (const row of [...slot2.querySelectorAll(".lfx-plus-row")]) {
         const track = row.querySelector(".lfx-plus-row__track");
         if (!track) continue;
         let changed = false;
@@ -12878,14 +12878,14 @@
           def.id = snap.id;
           def.title = snap.title;
           const el5 = skeleton2(def);
-          slot.append(el5);
+          slot2.append(el5);
           putItems(items);
           disposers.push(fill3(el5, def, items, info, shown2++ < EAGER_ROWS2));
           continue;
         }
         const el4 = skeleton2(def);
         pending2.set(el4, def);
-        slot.append(el4);
+        slot2.append(el4);
       }
       if (typeof IntersectionObserver === "function") {
         observer2 = new IntersectionObserver((entries) => {
@@ -12906,7 +12906,7 @@
       }
       if (opts.prefetch) {
         prefetch = startRowPrefetch({
-          slot,
+          slot: slot2,
           pending: pending2,
           hero: opts.hero,
           load: (el4, def) => {
@@ -12923,7 +12923,7 @@
       if (observer2) observer2.disconnect();
       observer2 = null;
       for (const d of disposers.splice(0)) d();
-      slot.textContent = "";
+      slot2.textContent = "";
     };
   }
 
@@ -15787,7 +15787,7 @@
     if (pool[0]) writeFirst(pool[0].Id);
     return pool;
   }
-  function renderHero(slot, { loadPool: loadPool2 }) {
+  function renderHero(slot2, { loadPool: loadPool2 }) {
     const mobile = isMobile() && isNarrow();
     let newInfo = null;
     let logoBox = null;
@@ -15810,8 +15810,8 @@
     const timers2 = /* @__PURE__ */ new Set();
     const cleanupFns = [];
     const setTr = (v) => {
-      if (v) slot.dataset.lfxTr = v;
-      else delete slot.dataset.lfxTr;
+      if (v) slot2.dataset.lfxTr = v;
+      else delete slot2.dataset.lfxTr;
     };
     const later = (fn, ms) => {
       const t = setTimeout(() => {
@@ -15877,7 +15877,7 @@
       });
       setTr("wait");
       later(() => {
-        if (myGen === gen8 && slot.dataset.lfxTr === "wait") setTr("");
+        if (myGen === gen8 && slot2.dataset.lfxTr === "wait") setTr("");
       }, TRAILER_DELAY_MS + 4e3);
     }
     function playButton(item, myGen) {
@@ -16041,7 +16041,7 @@
         gen8 += 1;
         stopTrailer();
         clearTimeout(rotateTimer);
-        slot.hidden = true;
+        slot2.hidden = true;
         return;
       }
       index = curGone ? Math.min(index, pool.length - 1) : pool.indexOf(cur3);
@@ -16057,8 +16057,8 @@
         logoBox
       ]);
       hero = h("div", { class: "lfx-prime-hero lfx-prime-hero--mobile" }, [frame, content, dots]);
-      slot.replaceChildren(hero);
-      slot.setAttribute("aria-roledescription", "Karussell");
+      slot2.replaceChildren(hero);
+      slot2.setAttribute("aria-roledescription", "Karussell");
       let sx = 0;
       let sy = 0;
       frame.addEventListener("touchstart", (e) => {
@@ -16112,8 +16112,8 @@
         content,
         dots
       ]);
-      slot.replaceChildren(hero);
-      slot.setAttribute("aria-roledescription", "Karussell");
+      slot2.replaceChildren(hero);
+      slot2.setAttribute("aria-roledescription", "Karussell");
       const onEnter = () => {
         hovering = true;
       };
@@ -16150,8 +16150,8 @@
       }
       if (disposed) return;
       if (!items || !items.length) {
-        slot.classList.remove("is-loading");
-        slot.hidden = true;
+        slot2.classList.remove("is-loading");
+        slot2.hidden = true;
         return;
       }
       pool = isDataSaver("hero") ? saverPool(items) : items;
@@ -16159,12 +16159,12 @@
       build13();
       cleanupFns.push(onDataSaverChange(onSaver3));
       cleanupFns.push(onDataSaverPartsChange(onSaver3));
-      slot.hidden = false;
-      slot.classList.remove("is-loading");
+      slot2.hidden = false;
+      slot2.classList.remove("is-loading");
       show3(0, true);
     }
-    slot.hidden = false;
-    slot.classList.add("is-loading");
+    slot2.hidden = false;
+    slot2.classList.add("is-loading");
     init2();
     return () => {
       disposed = true;
@@ -16174,9 +16174,9 @@
       timers2.clear();
       stopTrailer();
       cleanupFns.splice(0).forEach((f) => f());
-      slot.replaceChildren();
-      slot.classList.remove("is-loading");
-      slot.removeAttribute("aria-roledescription");
+      slot2.replaceChildren();
+      slot2.classList.remove("is-loading");
+      slot2.removeAttribute("aria-roledescription");
     };
   }
 
@@ -16291,7 +16291,7 @@
     if (def.kind === "resume") return "resume";
     return def.id === posterId ? "poster" : "landscape";
   }
-  function createRows(slot, { posterId = null, moreHref = () => null, prefetch: wantPrefetch = false, hero = null } = {}) {
+  function createRows(slot2, { posterId = null, moreHref = () => null, prefetch: wantPrefetch = false, hero = null } = {}) {
     let disposed = false;
     let observer2 = null;
     let prefetch = null;
@@ -16309,7 +16309,7 @@
     disposers.push(onItemsChanged(({ removed }) => {
       if (disposed || !removed || !removed.length) return;
       const gone = new Set(removed);
-      for (const row of [...slot.querySelectorAll(".lfx-prime-row")]) {
+      for (const row of [...slot2.querySelectorAll(".lfx-prime-row")]) {
         const track = row.querySelector(".lfx-prime-row__track");
         if (!track) continue;
         let changed = false;
@@ -16401,12 +16401,12 @@
             if (!items.length) continue;
             def.title = snap.title;
             const el5 = skeleton3(def, kind2);
-            slot.append(el5);
+            slot2.append(el5);
             fill4(el5, def, kind2, items, inf, shown2++ < EAGER_ROWS3);
             continue;
           }
           const el4 = skeleton3(def, kind2);
-          slot.append(el4);
+          slot2.append(el4);
           pending2.set(el4, { def, kind: kind2 });
           if (observer2) observer2.observe(el4);
           else {
@@ -16417,7 +16417,7 @@
         if (prefetch) prefetch.notify();
         else if (wantPrefetch) {
           prefetch = startRowPrefetch({
-            slot,
+            slot: slot2,
             pending: pending2,
             hero,
             load: (el4, p) => {
@@ -16436,7 +16436,7 @@
         observer2 = null;
         pending2.clear();
         for (const d of disposers.splice(0)) d();
-        slot.textContent = "";
+        slot2.textContent = "";
       }
     };
   }
@@ -17014,8 +17014,8 @@
   }
   function metaItems(item, seasonCount = 0) {
     const out = [];
-    const score = Number(item && item.CommunityRating);
-    if (score > 0) out.push(`\u2605 ${score.toFixed(1).replace(".", ",")}`);
+    const score2 = Number(item && item.CommunityRating);
+    if (score2 > 0) out.push(`\u2605 ${score2.toFixed(1).replace(".", ",")}`);
     if (item && item.ProductionYear) out.push(String(item.ProductionYear));
     if (item && item.Type === "Series") {
       const n = seasonCount || Number(item.ChildCount) || 0;
@@ -17524,22 +17524,22 @@
     let seq3 = 0;
     async function showSeason2(seasonId) {
       const mine = ++seq3;
-      const slot = panel.querySelector(".lfx-pt__eps");
-      slot.replaceChildren(h("p", { class: "lfx-pt__empty" }, "Folgen werden geladen \u2026"));
+      const slot2 = panel.querySelector(".lfx-pt__eps");
+      slot2.replaceChildren(h("p", { class: "lfx-pt__empty" }, "Folgen werden geladen \u2026"));
       let eps;
       try {
         eps = await loadEpisodes2(main.Id, seasonId);
       } catch {
-        if (!s.dead && mine === seq3) slot.replaceChildren(empty("Folgen konnten nicht geladen werden."));
+        if (!s.dead && mine === seq3) slot2.replaceChildren(empty("Folgen konnten nicht geladen werden."));
         return;
       }
       if (s.dead || mine !== seq3) return;
       if (!eps.length) {
-        slot.replaceChildren(empty("Keine Folgen vorhanden."));
+        slot2.replaceChildren(empty("Keine Folgen vorhanden."));
         return;
       }
       const onPlay = (ep) => play(ep, { resume: hasResume(ep) });
-      slot.replaceChildren(...eps.map((ep) => buildEpisode(ep, { onPlay, selected: ep.Id === sel.episodeId })));
+      slot2.replaceChildren(...eps.map((ep) => buildEpisode(ep, { onPlay, selected: ep.Id === sel.episodeId })));
     }
     return (async () => {
       try {
@@ -18662,7 +18662,7 @@
     const p = peekCached(heroKey());
     return Array.isArray(p) ? p : void 0;
   }
-  function renderHero2(slot, { loadPool: loadPool2, peekPool = null }) {
+  function renderHero2(slot2, { loadPool: loadPool2, peekPool = null }) {
     const phone = isPhone2();
     let disposed = false;
     let pool = [];
@@ -18812,8 +18812,8 @@
         h("div", { class: "lfx-retro-hero__noise", "aria-hidden": "true" }),
         win
       ]);
-      slot.replaceChildren(hero);
-      slot.setAttribute("aria-roledescription", "Karussell");
+      slot2.replaceChildren(hero);
+      slot2.setAttribute("aria-roledescription", "Karussell");
       const onEnter = () => {
         hovering = true;
       };
@@ -18880,20 +18880,20 @@
       }
       if (disposed) return;
       if (!items || !items.length) {
-        slot.classList.remove("is-loading");
-        slot.hidden = true;
+        slot2.classList.remove("is-loading");
+        slot2.hidden = true;
         return;
       }
       pool = isDataSaver("hero") ? saverPool(items) : items.slice();
       putItems(pool);
       build13();
-      slot.hidden = false;
-      slot.classList.remove("is-loading");
+      slot2.hidden = false;
+      slot2.classList.remove("is-loading");
       apply3(0);
     }
     cleanups6.push(onDataSaverChange(onSaver3), onDataSaverPartsChange(onSaver3));
-    slot.hidden = false;
-    slot.classList.add("is-loading");
+    slot2.hidden = false;
+    slot2.classList.add("is-loading");
     init2();
     return () => {
       disposed = true;
@@ -18902,9 +18902,9 @@
       timers2.clear();
       rotateTimer = 0;
       cleanups6.splice(0).forEach((f) => f());
-      slot.replaceChildren();
-      slot.classList.remove("is-loading");
-      slot.removeAttribute("aria-roledescription");
+      slot2.replaceChildren();
+      slot2.classList.remove("is-loading");
+      slot2.removeAttribute("aria-roledescription");
     };
   }
 
@@ -18995,7 +18995,7 @@
     const b = h("button", { type: "button", class: `lfx-retro-arrow lfx-retro-arrow--${dir}`, "aria-label": label, tabindex: "-1", hidden: true }, [svgIcon2(dir)]);
     return b;
   }
-  function createRows2(slot, { moreHref = () => null, prefetch = false, hero = null } = {}) {
+  function createRows2(slot2, { moreHref = () => null, prefetch = false, hero = null } = {}) {
     let disposed = false;
     let prefetcher = null;
     let observer2 = null;
@@ -19006,7 +19006,7 @@
     disposers.push(onItemsChanged(({ removed } = {}) => {
       if (disposed || !removed || !removed.length) return;
       const gone = new Set(removed);
-      for (const row of [...slot.querySelectorAll(".lfx-retro-row")]) {
+      for (const row of [...slot2.querySelectorAll(".lfx-retro-row")]) {
         const track = row.querySelector(".lfx-retro-shelf");
         if (!track) continue;
         let changed = false;
@@ -19089,14 +19089,14 @@
           rendered.add(def.id);
           const kind2 = displayKind2(def);
           const el4 = skeleton3(def, kind2);
-          slot.append(el4);
+          slot2.append(el4);
           pending2.set(el4, { def, kind: kind2 });
           if (observer2) observer2.observe(el4);
           else loadRow(el4, def, kind2);
         }
         if (prefetch && !prefetcher) {
           prefetcher = startRowPrefetch({
-            slot,
+            slot: slot2,
             pending: pending2,
             hero,
             load: (el4, p) => {
@@ -19115,7 +19115,7 @@
         observer2 = null;
         pending2.clear();
         for (const d of disposers.splice(0)) d();
-        slot.textContent = "";
+        slot2.textContent = "";
       }
     };
   }
@@ -19375,8 +19375,8 @@
     }
     const g = (main.Genres || []).slice(0, 3).join(" / ");
     if (g) out.push(g);
-    const score = Number(main.CommunityRating);
-    if (score > 0) out.push(`WERTUNG ${score.toFixed(1).replace(".", ",")}`);
+    const score2 = Number(main.CommunityRating);
+    if (score2 > 0) out.push(`WERTUNG ${score2.toFixed(1).replace(".", ",")}`);
     return out;
   }
   function buildEpisode2(ep, { selected = false, next = false, onPlay } = {}) {
@@ -22429,12 +22429,12 @@
   }
   function buildCatalog({ items = [], resume = [], favorites = [], now = Date.now() } = {}) {
     const t = now instanceof Date ? now.getTime() : Number(now);
-    const map = /* @__PURE__ */ new Map();
+    const map2 = /* @__PURE__ */ new Map();
     for (const raw2 of items) {
-      if (!raw2 || !raw2.Id || raw2.Type !== "Movie" && raw2.Type !== "Series" || map.has(raw2.Id)) continue;
-      map.set(raw2.Id, decorate(raw2, t));
+      if (!raw2 || !raw2.Id || raw2.Type !== "Movie" && raw2.Type !== "Series" || map2.has(raw2.Id)) continue;
+      map2.set(raw2.Id, decorate(raw2, t));
     }
-    const all = [...map.values()];
+    const all = [...map2.values()];
     const adult = all.filter(isAdult);
     const rest = all.filter((i) => !isAdult(i));
     const kids = rest.filter(isKids);
@@ -22452,11 +22452,11 @@
     for (const [g, arr] of sg.big) departments.push(dept(`series-${g}`, `Serien \xB7 ${g}`, "series", arr));
     if (sg.rest.length) departments.push(dept("series-misc", "Serien \xB7 Mehr", "series", sg.rest));
     if (adult.length) departments.push(dept("adult", "Ab 18", "adult", adult));
-    const link = (list) => (list || []).filter((i) => i && i.Id).map((i) => map.get(i.Id) || decorate(i, t));
+    const link = (list) => (list || []).filter((i) => i && i.Id).map((i) => map2.get(i.Id) || decorate(i, t));
     const highlights = rest.filter((i) => (i.lfx.isNew || i.CommunityRating >= HIGHLIGHT_RATING) && i.BackdropImageTags && i.BackdropImageTags.length).sort((a, b) => Number(b.lfx.isNew) - Number(a.lfx.isNew) || (b.CommunityRating || 0) - (a.CommunityRating || 0) || byName(a, b)).slice(0, HIGHLIGHT_MAX);
     const favMap = new Map(link(favorites).map((i) => [i.Id, i]));
     for (const i of all) if (i.UserData && i.UserData.IsFavorite && !favMap.has(i.Id)) favMap.set(i.Id, i);
-    return { items: map, departments, resume: link(resume), favorites: [...favMap.values()], highlights };
+    return { items: map2, departments, resume: link(resume), favorites: [...favMap.values()], highlights };
   }
 
   // src/js/features/store/data.js
@@ -22682,10 +22682,10 @@
       if (Array.isArray(m)) mute = m.filter((k) => typeof k === "string" && MP_KEY.test(k)).slice(0, 50);
     } catch {
     }
-    return { on: on("mpOn"), name: on("mpName"), film: read3("localStorage", storageKey6("mpFilm")) === "1", chat: on("mpChat"), mute, hint: read3("localStorage", storageKey6("mpHint")) === "1" };
+    return { on: on("mpOn"), name: on("mpName"), card: on("mpCard"), film: read3("localStorage", storageKey6("mpFilm")) === "1", chat: on("mpChat"), mute, hint: read3("localStorage", storageKey6("mpHint")) === "1" };
   }
   function saveMp(m) {
-    for (const k of ["on", "name", "film", "chat", "hint"]) {
+    for (const k of ["on", "name", "card", "film", "chat", "hint"]) {
       if (typeof m[k] === "boolean") write3("localStorage", storageKey6(`mp${k[0].toUpperCase()}${k.slice(1)}`), m[k] ? "1" : "0");
     }
     if (Array.isArray(m.mute)) write3("localStorage", storageKey6("mpMute"), JSON.stringify([...new Set(m.mute.filter((k) => typeof k === "string" && MP_KEY.test(k)))].slice(0, 50)));
@@ -23248,6 +23248,290 @@
     };
   }
 
+  // src/js/features/store/displayprefs.js
+  var CLIENT = "lenzflix";
+  function fetchPrefs2(id, uid) {
+    const c = window.ApiClient;
+    if (c && typeof c.getDisplayPreferences === "function") return c.getDisplayPreferences(id, uid, CLIENT);
+    return getJson(`/DisplayPreferences/${id}`, { userId: uid, client: CLIENT });
+  }
+  async function postPrefs2(id, uid, prefs) {
+    const c = window.ApiClient;
+    if (c && typeof c.updateDisplayPreferences === "function") return c.updateDisplayPreferences(id, prefs, uid, CLIENT);
+    const res = await fetch(buildUrl(`/DisplayPreferences/${id}`, { userId: uid, client: CLIENT }), {
+      method: "POST",
+      headers: { Authorization: `MediaBrowser Token="${getAuth().token}"`, "Content-Type": "application/json" },
+      body: JSON.stringify(prefs)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return null;
+  }
+  async function updateCustom(id, key, fn, uid = getUserId()) {
+    const prefs = await fetchPrefs2(id, uid) || {};
+    const cur3 = prefs.CustomPrefs && prefs.CustomPrefs[key];
+    const next = fn(typeof cur3 === "string" ? cur3 : null);
+    if (next === null || next === void 0) return false;
+    prefs.CustomPrefs = { ...prefs.CustomPrefs || {}, [key]: String(next) };
+    if (!prefs.Id) prefs.Id = id;
+    await postPrefs2(id, uid, prefs);
+    return true;
+  }
+
+  // src/js/features/store/profile-merge.js
+  var MAX_CHARS = 6e3;
+  var KEEP_DEV = 8;
+  var MAX_CODE = 33554431;
+  var isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
+  var nat = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+  function map(src, re, cap, val = nat) {
+    const out = {};
+    let n = 0;
+    if (isObj(src)) {
+      for (const k of Object.keys(src)) {
+        const v = n < cap && re.test(k) ? val(src[k]) : 0;
+        if (v) {
+          out[k] = v;
+          n += 1;
+        }
+      }
+    }
+    return out;
+  }
+  function slot(s) {
+    if (!isObj(s) || !Array.isArray(s.l) || s.l.length !== 26 || !s.l.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_CODE)) return null;
+    const o = { l: s.l.slice(), t: nat(s.t) };
+    if (s.prov === true) o.prov = true;
+    return o;
+  }
+  var emptyProfile = () => normalize(null);
+  function normalize(p) {
+    const o = isObj(p) ? p : {};
+    const f = isObj(o.fig) ? o.fig : {};
+    const s = isObj(o.set) ? o.set : {};
+    const m = isObj(o.mem) ? o.mem : {};
+    const c = isObj(o.cnt) ? o.cnt : {};
+    const e = isObj(o.seen) ? o.seen : {};
+    const seen = { t: nat(e.t) };
+    for (const k of ["richard", "gabi", "ronny"]) if (typeof e[k] === "string" && e[k].length <= 16) seen[k] = e[k];
+    return {
+      v: 1,
+      fig: { act: Number.isInteger(f.act) && f.act >= 0 && f.act < 3 ? f.act : 0, slots: [0, 1, 2].map((i) => slot(Array.isArray(f.slots) ? f.slots[i] : null)) },
+      set: { cam: s.cam === "third" ? "third" : "ego", t: nat(s.t) },
+      mem: typeof m.no === "string" && /^\d{1,9}$/.test(m.no) && nat(m.since) ? { no: m.no, since: nat(m.since) } : {},
+      cnt: { rent: map(c.rent, /^[\w-]{1,8}$/, 16), cine: map(c.cine, /^[\w-]{1,8}$/, 16), last: map(c.last, /^.{1,48}$/, 300) },
+      disc: map(o.disc, /^[\w:.-]{1,40}$/, 64),
+      seen,
+      evt: map(o.evt, /^\w{1,24}$/, 8)
+    };
+  }
+  function pickSlot(a, b) {
+    if (!a || !b) return a || b;
+    if (Boolean(a.prov) !== Boolean(b.prov)) return a.prov ? b : a;
+    return b.t > a.t ? b : a;
+  }
+  var score = (p) => Math.max(0, ...p.fig.slots.map((s) => s && !s.prov ? s.t : 0));
+  function mergeDev(a, b) {
+    const o = { ...a };
+    for (const k of Object.keys(b)) o[k] = Math.max(o[k] || 0, b[k]);
+    const ks = Object.keys(o).filter((k) => k !== "_").sort((x, y) => o[y] - o[x] || (x < y ? -1 : 1));
+    let rest = 0;
+    for (const k of ks.slice(KEEP_DEV)) {
+      rest += o[k];
+      delete o[k];
+    }
+    if (rest) o._ = (o._ || 0) + rest;
+    return o;
+  }
+  function mergeProfiles(local, remote) {
+    const a = normalize(local);
+    const b = normalize(remote);
+    const slots = a.fig.slots.map((s, i) => pickSlot(s, b.fig.slots[i]));
+    let act = score(b) > score(a) ? b.fig.act : a.fig.act;
+    if (!slots[act]) act = Math.max(0, slots.findIndex(Boolean));
+    const disc = { ...b.disc };
+    for (const k of Object.keys(a.disc)) disc[k] = disc[k] ? Math.min(disc[k], a.disc[k]) : a.disc[k];
+    const evt = { ...b.evt };
+    for (const k of Object.keys(a.evt)) evt[k] = Math.max(evt[k] || 0, a.evt[k]);
+    return {
+      v: 1,
+      fig: { act, slots },
+      set: b.set.t > a.set.t ? b.set : a.set,
+      mem: !b.mem.since || a.mem.since && a.mem.since <= b.mem.since ? a.mem : b.mem,
+      cnt: { rent: mergeDev(a.cnt.rent, b.cnt.rent), cine: mergeDev(a.cnt.cine, b.cnt.cine), last: a.cnt.last },
+      disc,
+      seen: b.seen.t > a.seen.t ? b.seen : a.seen,
+      evt
+    };
+  }
+  function serialize(p) {
+    const c = normalize(p);
+    delete c.cnt.last;
+    const stages = [
+      () => {
+        c.seen = { t: 0 };
+        c.evt = {};
+      },
+      () => {
+        c.cnt = { rent: {}, cine: {} };
+      },
+      () => {
+        c.disc = {};
+      },
+      () => {
+        c.fig.slots = c.fig.slots.map((s2, i) => i === c.fig.act ? s2 : null);
+      }
+    ];
+    let s = JSON.stringify(c);
+    for (const st of stages) {
+      if (s.length <= MAX_CHARS) break;
+      st();
+      s = JSON.stringify(c);
+    }
+    return s;
+  }
+
+  // src/js/features/store/profile.js
+  var PREFS_ID2 = "lenzstore";
+  var KEY6 = "profile";
+  var DELAYS = [5e3, 3e4, 12e4];
+  function createProfile({ uid, name, storage }) {
+    const rd = (k) => {
+      try {
+        return storage.getItem(k);
+      } catch {
+        return null;
+      }
+    };
+    const wr = (k, v) => {
+      try {
+        storage.setItem(k, v);
+      } catch {
+      }
+    };
+    const ck = `lfx.store.profile.${uid}`;
+    let data = emptyProfile();
+    let dirty = false;
+    let state24 = "unknown";
+    let rev = 0;
+    let tries = 0;
+    let timer2 = null;
+    let busy3 = null;
+    let dead = false;
+    const subs = /* @__PURE__ */ new Set();
+    try {
+      const c = JSON.parse(rd(ck));
+      if (c && typeof c === "object" && c.data) {
+        data = normalize(c.data);
+        dirty = c.dirty === true;
+        state24 = "local";
+      }
+    } catch {
+    }
+    let dev = rd("lfx.store.dev");
+    if (!/^[a-z0-9]{8}$/.test(dev || "")) {
+      dev = Array.from({ length: 8 }, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]).join("");
+      wr("lfx.store.dev", dev);
+    }
+    const save = () => wr(ck, JSON.stringify({ data, dirty }));
+    const mk = `lfx.store.discmerged.${uid}`;
+    if (rd(mk) !== "1") {
+      try {
+        const old = normalize({ disc: (JSON.parse(rd(`lfx.store.discover.${name ? String(name).slice(0, 64) : "anon"}`)) || {}).found }).disc;
+        const keys = Object.keys(old).filter((k) => !data.disc[k] || old[k] < data.disc[k]);
+        if (keys.length) {
+          data = normalize({ ...data, disc: { ...data.disc, ...Object.fromEntries(keys.map((k) => [k, old[k]])) } });
+          dirty = true;
+          save();
+        }
+      } catch {
+      }
+      wr(mk, "1");
+    }
+    function schedule4(ms) {
+      clearTimeout(timer2);
+      timer2 = dead ? null : setTimeout(() => {
+        timer2 = null;
+        sync4().catch(() => {
+        });
+      }, ms);
+    }
+    function sync4() {
+      if (busy3) return busy3;
+      let sent = 0;
+      busy3 = updateCustom(PREFS_ID2, KEY6, (raw2) => {
+        let rem;
+        try {
+          rem = normalize(raw2 ? JSON.parse(raw2) : null);
+        } catch {
+          rem = emptyProfile();
+        }
+        const before = JSON.stringify(data);
+        const wasOk = state24 === "ok";
+        data = mergeProfiles(data, rem);
+        state24 = "ok";
+        sent = rev;
+        save();
+        if (!dead && (!wasOk || JSON.stringify(data) !== before)) {
+          for (const fn of [...subs]) {
+            try {
+              fn(data);
+            } catch {
+            }
+          }
+        }
+        const out = serialize(data);
+        return dirty || out !== serialize(rem) ? out : null;
+      }).then(() => {
+        busy3 = null;
+        tries = 0;
+        if (sent === rev) dirty = false;
+        save();
+        if (dirty) schedule4(2e3);
+      }, (e) => {
+        busy3 = null;
+        if (tries < DELAYS.length) schedule4(DELAYS[tries++]);
+        throw e;
+      });
+      return busy3;
+    }
+    return {
+      dev,
+      get: () => data,
+      state: () => state24,
+      update(mutator) {
+        const d = JSON.parse(JSON.stringify(data));
+        mutator(d);
+        data = normalize(d);
+        rev += 1;
+        dirty = true;
+        tries = 0;
+        save();
+        schedule4(2e3);
+      },
+      onRemote(fn) {
+        subs.add(fn);
+        return () => subs.delete(fn);
+      },
+      /** Konto laden (und ggf. hochladen); wartet höchstens timeoutMs. Löst mit dem Zustand auf. */
+      load({ timeoutMs = 4e3 } = {}) {
+        return new Promise((res) => {
+          const t = setTimeout(() => res(state24), timeoutMs);
+          const done = () => {
+            clearTimeout(t);
+            res(state24);
+          };
+          sync4().then(done, done);
+        });
+      },
+      dispose() {
+        dead = true;
+        clearTimeout(timer2);
+        timer2 = null;
+        subs.clear();
+      }
+    };
+  }
+
   // src/js/features/store/home.js
   var SUSPEND_MS = 3 * 60 * 1e3;
   var CLASSIC_HASH = "#/home?lfx=classic";
@@ -23258,6 +23542,7 @@
   var inst2 = null;
   var ui2 = null;
   var lastKey3 = null;
+  var prof = null;
   var shown = false;
   var root5 = () => document.documentElement;
   var bridge = null;
@@ -23488,7 +23773,16 @@
       return "";
     }
   }
-  function buildDeps2(catalog, name, onFatal, onBigCovers) {
+  function getProfile(name) {
+    const uid = getUserId();
+    if (!uid) return null;
+    if (!prof || prof.uid !== uid) {
+      if (prof) prof.p.dispose();
+      prof = { uid, p: createProfile({ uid, name, storage: window.localStorage }) };
+    }
+    return prof.p;
+  }
+  function buildDeps2(catalog, name, onFatal, onBigCovers, profile2) {
     const ret2 = (f) => (...a) => {
       try {
         return f(...a);
@@ -23502,6 +23796,7 @@
     return {
       catalog,
       user: { name },
+      ...profile2 ? { profile: profile2 } : {},
       ...uid ? { mp: { uid, cv: VERSION, prefs: () => getMp(), ticket: createTicket(uid) } } : {},
       imageUrl: (id, o = {}) => imageUrlFor(id, { ...o, scale: false }),
       getItem: (id) => getItem(id),
@@ -23596,9 +23891,17 @@
     setProgress2(0.05, "Videothek wird aufgeschlossen \u2026");
     let loaded;
     try {
-      const [ok, catalog, name] = await Promise.all([ensureThemeJs("store"), loadCatalog2(), userName()]);
+      const nameP = userName();
+      let profile2 = null;
+      const profP = nameP.then((n) => {
+        profile2 = getProfile(n);
+        return profile2 && profile2.load({ timeoutMs: 4e3 });
+      }).catch(() => {
+        profile2 = null;
+      });
+      const [ok, catalog, name] = await Promise.all([ensureThemeJs("store"), loadCatalog2(), nameP, profP]);
       if (!ok || !window.LenzFlixStore3D) throw new Error("3D-Paket nicht geladen");
-      loaded = { catalog, name };
+      loaded = { catalog, name, profile: profile2 };
     } catch (e) {
       if (myGen !== gen7 || !ui2) return;
       showFallback2("Die Videothek konnte nicht geladen werden.", { retry: true, detail: fatalText(e) });
@@ -23611,7 +23914,7 @@
       fatal = true;
       disposeInstance2();
       showFallback2("Die 3D-Videothek konnte nicht gestartet werden.", { retry: true, detail: fatalText(err) });
-    }, (on) => rebuild(on));
+    }, (on) => rebuild(on), loaded.profile);
     const opts = buildOpts2(route);
     setIntroSeen();
     try {
@@ -23749,6 +24052,10 @@
     disposeInstance2();
     unparkStage();
     onCinema2d(null);
+    if (prof) {
+      prof.p.dispose();
+      prof = null;
+    }
     if (bridge) {
       bridge.dispose();
       bridge = null;

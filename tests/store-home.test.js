@@ -18,6 +18,10 @@ vi.mock('../src/js/core/api.js', async () => {
 vi.mock('../src/js/core/themejs.js', () => ({ ensureThemeJs: vi.fn(async () => true), removeThemeJs: vi.fn() }));
 vi.mock('../src/js/core/themepicker.js', () => ({ openThemePicker: vi.fn() }));
 vi.mock('../src/js/core/playback.js', () => ({ play: vi.fn(async () => true) }));
+const profileMock = vi.hoisted(() => ({ load: null }));
+vi.mock('../src/js/features/store/profile.js', () => ({
+  createProfile: vi.fn(() => ({ get: () => ({ v: 1 }), update: vi.fn(), state: () => 'ok', onRemote: () => () => {}, load: (o) => profileMock.load(o), dispose: vi.fn() })),
+}));
 vi.mock('../src/js/features/store/data.js', () => ({ loadCatalog: vi.fn(async () => ({ items: new Map(), departments: [], resume: [], favorites: [], highlights: [] })) }));
 vi.mock('../src/js/shared/profile.js', () => ({
   getUserChip: vi.fn(async () => ({ name: 'Lenz', imageUrl: null })),
@@ -48,6 +52,7 @@ async function mountOk(q = '') {
 
 beforeEach(() => {
   setup();
+  profileMock.load = vi.fn(async () => 'ok');
   sessionStorage.clear();
   localStorage.clear();
   themeState.listeners.clear();
@@ -109,8 +114,10 @@ describe('mount', () => {
       expect(captured.deps[k]).toBeDefined();
     }
     expect(captured.deps.user).toEqual({ name: 'Lenz' });
+    expect(typeof captured.deps.profile.get).toBe('function');
+    expect(profileMock.load).toHaveBeenCalledWith({ timeoutMs: 4000 });
     expect(captured.deps.mp).toMatchObject({ uid: 'u1', cv: expect.any(String) });
-    expect(captured.deps.mp.prefs()).toEqual({ on: true, name: true, film: false, chat: true, mute: [], hint: false });
+    expect(captured.deps.mp.prefs()).toEqual({ on: true, name: true, card: true, film: false, chat: true, mute: [], hint: false });
     expect(typeof captured.deps.mp.ticket).toBe('function');
     captured.deps.onPrefs({ mp: { chat: false } });
     expect(captured.deps.mp.prefs().chat).toBe(false);

@@ -187,6 +187,7 @@ export default {
       if (a === 'shop') return vis.shopShell !== false;
       if (a === 'yard' || a === 'alley' || a === 'escape' || a === 'roof') return !!vis.yard;
       if (a === 'palastHall' || a === 'palastFoyer') return !!vis.palastInterior;
+      if (a === 'salon') return !!vis.salonInterior;
       return vis.street !== false;
     }
     function updateVisibility() {

@@ -47,8 +47,21 @@ export function makeLook(rand, opts = {}) {
   };
 }
 
-/** Schlüssel für den Geometrie-Cache (ohne Regenschirm, der ein eigenes Mesh ist). */
+/**
+ * Schlüssel für den Geometrie-Cache (ohne Regenschirm, der ein eigenes Mesh ist; ohne height/build, die nur das Rig skalieren).
+ * Render-Look v2: Schlüssel aus allen Render-Feldern (Farben auf 1/255 genau, damit jede Farbe die Geometrie ändert).
+ */
 export function lookKey(look) {
+  if (look.v === 2) {
+    const c = (v) => (Array.isArray(v) ? v.map((x) => Math.round(x * 255)).join('.') : '-');
+    const o = (v) => (v && typeof v === 'object' ? v : {});
+    const t = o(look.top);
+    const b = o(look.bottom);
+    const s = o(look.shoes);
+    const h = o(look.hat);
+    const g = o(look.bag);
+    return ['v2', look.shape, c(look.skin), look.hairStyle, c(look.hair), look.eyes, look.brows, look.beard, t.cut, c(t.color), t.pattern, c(t.color2), b.cut, c(b.color), b.pattern, c(b.color2), s.model, c(s.color), c(s.sole), look.glasses, h.id, c(h.color), g.id, c(g.color)].join('|');
+  }
   const f = (c) => (c ? c.map((v) => Math.round(v * 20)).join('.') : '-');
-  return [look.role || 'p', Math.round(look.height * 50), Math.round(look.build * 50), f(look.skin), f(look.hair), look.hairStyle, f(look.top), f(look.bottom), f(look.shoes), look.hat || '-', f(look.hatColor), look.glasses ? 1 : 0, look.bag || '-', f(look.bagColor), f(look.stripe), f(look.apron)].join('|');
+  return [look.role || 'p', f(look.skin), f(look.hair), look.hairStyle, f(look.top), f(look.bottom), f(look.shoes), look.hat || '-', f(look.hatColor), look.glasses ? 1 : 0, look.bag || '-', f(look.bagColor), f(look.stripe), f(look.apron)].join('|');
 }

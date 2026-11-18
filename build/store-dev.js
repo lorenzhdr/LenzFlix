@@ -10,6 +10,9 @@
 //   ?botsocial=0 (Bots chatten/emoten nicht von selbst), ?mpchat=0 (Chat-Schalter aus). window.__devMp.bots.say(i,text)/emote(i,code)/park(i,xcm,zcm)/inbox(i)/kick(i,c);
 //   window.__devFigs = alle per npc.figure() angelegten Figuren (fig.getNetState().a = Animationscode, nur Mehrspieler-Läufe mit ?mp=…).
 // opts.dev: alle Query-Parameter (1.17.0), Module lesen ihre eigenen
+// Eigene Figur (1.17.0): deps.profile = Fake-Profil im Speicher (kein Netzwerk). ?profile=ok (Standard) | offline (state 'local') | slow (Konto kommt nach 6 s per onRemote) | fail (state 'unknown');
+//   ?char=keep (Standard: vorhandener Look) | new (leeres Profil → Figuren-Gate) | look:<csv> (Look-Code, 26 Ganzzahlen); ?unlock=all (alle Entdeckungen gesetzt);
+//   ?member=bronze|silver|gold (Zähler/Entdeckungen passend zur Stufe, Ausweisnummer 123456). window.__devProfile = Fake-Profil.
 (function () {
   var q = new URLSearchParams(location.search);
   var touch = q.get('touch') === '1';
@@ -711,7 +714,41 @@
       recordFigures();
     }).catch(function (e) { console.warn('[dev] mp-fake', e && e.message); });
   }
+  function makeProfile() {
+    var mode = q.get('profile') || 'ok';
+    var ch = q.get('char') || 'keep';
+    var tier = q.get('member');
+    var ids = ['golden-tape', 'graffiti', 'secret-door', 'roof-rain', 'roof', 'cat-pet', 'kiosk-snack', 'hoop-3', 'can-pyramid', 'richard-ban', 'richard-rent', 'palast-film', 'palast-tape', 'zebra', 'car-honk'];
+    var now = Date.now();
+    var look = null;
+    if (ch === 'keep') look = [2, 3, 10, 10, 0, 0, 1, 0, 1, 0, 0, 1, 0, 6, 0, 13, 0, 11, 0, 1, 1, 0, 0, 0, 0, 0];
+    else if (ch.indexOf('look:') === 0) { var a = ch.slice(5).split(',').map(Number); if (a.length === 26 && a.every(Number.isInteger)) look = a; }
+    var full = { v: 1, fig: { act: 0, slots: [look ? { l: look, t: now } : null, null, null] }, set: { cam: 'ego', t: 0 }, mem: {}, cnt: { rent: {}, cine: {}, last: {} }, disc: {}, seen: { t: 0 }, evt: {} };
+    var n = { bronze: [1, 0, 0], silver: [3, 3, 5], gold: [12, 10, 10] }[tier];
+    if (n) {
+      full.mem = { no: '123456', since: Math.floor(now / 86400000) - 3 };
+      full.cnt.rent.devdev01 = n[0]; full.cnt.cine.devdev01 = n[1];
+      ids.slice(0, n[2]).forEach(function (id, i) { full.disc[id] = now - (i + 1) * 3600000; });
+    }
+    if (q.get('unlock') === 'all') ids.forEach(function (id, i) { full.disc[id] = now - (i + 1) * 3600000; });
+    var empty = JSON.parse(JSON.stringify(full));
+    empty.fig.slots = [null, null, null];
+    var data = mode === 'slow' || mode === 'fail' ? empty : full;
+    var state = mode === 'offline' || mode === 'slow' ? 'local' : mode === 'fail' ? 'unknown' : 'ok';
+    var subs = [];
+    var p = {
+      dev: 'devdev01',
+      get: function () { return data; },
+      state: function () { return state; },
+      update: function (fn) { var d = JSON.parse(JSON.stringify(data)); fn(d); data = d; },
+      onRemote: function (fn) { subs.push(fn); return function () { subs = subs.filter(function (f) { return f !== fn; }); }; },
+    };
+    if (mode === 'slow') setTimeout(function () { data = full; state = 'ok'; subs.slice().forEach(function (f) { f(data); }); }, 6000);
+    window.__devProfile = p;
+    return p;
+  }
   function boot() {
+    deps.profile = makeProfile();
     loadMp().then(function () { start(false); });
     window.addEventListener('pagehide', function () { if (bridge) bridge.dispose(); if (inst) inst.dispose(); });
   }

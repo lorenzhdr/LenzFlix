@@ -6,7 +6,7 @@ export const MIN_PV = 1;
 export const SUB = 'lfx-mp.1';
 export const MAX_FRAME = 2048;
 export const MAX_MSGS = 32;
-export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin'];
+export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'];
 export const FLAG = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
 
 // Nachrichtentyp -> benötigte Fähigkeit (Client -> Server, nur Nicht-Kern).
@@ -15,6 +15,7 @@ export const T_CAP = Object.assign(Object.create(null), {
   pu: 'push', pc: 'phys', ps: 'phys', pn: 'phys', px: 'phys',
   rc: 'rich', rs: 'rich', rr: 'rich',
   ks: 'kino', kj: 'kino', kl: 'kino', kc: 'kino', kb: 'kino',
+  lk: 'look', mc: 'look',
 });
 export const CORE_T = ['hi', 'p', 'hd', 'f', 'ck', 'rn'];
 
@@ -85,7 +86,8 @@ export const V = {
       q: [
         clampInt(q[0], ...RANGE.x), clampInt(q[1], ...RANGE.y), clampInt(q[2], ...RANGE.z),
         clampInt(q[3], ...RANGE.yaw), clampInt(q[4], ...RANGE.pitch),
-        a >= 0 && a <= 8 ? a : 0, r >= 0 && r <= 2 ? r : 0,
+        a >= 0 && a <= 15 ? a : 0, // 9..15: Naht für 1.18, ältere Clients zeigen unbekannte Codes als idle
+        r >= 0 && r <= 2 ? r : 0,
       ],
     };
     if (m.se !== undefined) {

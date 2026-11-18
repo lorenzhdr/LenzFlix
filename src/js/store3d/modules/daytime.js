@@ -72,7 +72,7 @@ export default {
       /** Geschützt vor Regen: im Laden, im Palast, unter dem Vordach. */
       sheltered(x, z, y = 0) {
         const a = areaAt(L, x, z, y);
-        if (a === 'shop' || a === 'palastHall' || a === 'palastFoyer') return true;
+        if (a === 'shop' || a === 'palastHall' || a === 'palastFoyer' || a === 'salon') return true;
         const c = L.city && L.city.palast && L.city.palast.canopy;
         return !!(c && x >= c.x0 && x <= c.x1 && z >= c.z0 && z <= c.z1 && y < c.y);
       },
@@ -184,7 +184,7 @@ export default {
           const was = near;
           const areas = ctx.use('areas');
           const a = areas ? areas.current() : 'shop';
-          near = OUTDOOR_AREAS.includes(a) || (a !== 'palastHall' && a !== 'palastFoyer' && cam.position.z > D + 0.3); // Kamera draußen (Intro) oder Spieler in einem Außenbereich
+          near = OUTDOOR_AREAS.includes(a) || (a !== 'palastHall' && a !== 'palastFoyer' && a !== 'salon' && cam.position.z > D + 0.3); // Kamera draußen (Intro) oder Spieler in einem Außenbereich
           if (was !== near) syncVisible();
         }
         if (drops && weather.raining && near) dropTex.offset.y += dt * speed;

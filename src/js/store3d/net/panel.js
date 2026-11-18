@@ -14,7 +14,7 @@ const SWITCHES = [
 const AREAS = {
   shop: 'Laden', doorway: 'Ladentür', outside: 'Draußen', street: 'Straße', crossing: 'Kreuzung', sideN: 'Straße', sideS: 'Straße',
   yard: 'Hof', alley: 'Gasse', roof: 'Dach', escape: 'Feuertreppe', kiosk: 'Kiosk', palastEntrance: 'Palast-Eingang',
-  palastFoyer: 'Palast-Foyer', palastHall: 'Palast-Saal',
+  palastFoyer: 'Palast-Foyer', palastHall: 'Palast-Saal', salon: 'Friseur',
 };
 /** Grober Ort für einen Bereichsnamen (unbekannt/leer → „Unterwegs“). */
 export const areaLabel = (a) => AREAS[a] || 'Unterwegs';

@@ -51,7 +51,7 @@ export function decodePose(frame, e) {
   return {
     x: o.x, y: Number.isFinite(o.y) ? o.y : 0, z: o.z,
     yaw: num(e.yaw) / 100, pitch: num(e.pitch) / 100,
-    a: Number.isInteger(e.a) && e.a >= 0 && e.a <= 8 ? e.a : 0, r: e.r | 0, se: Array.isArray(e.se) ? e.se : null,
+    a: Number.isInteger(e.a) && e.a >= 0 && e.a <= 15 ? e.a : 0, r: e.r | 0, se: Array.isArray(e.se) ? e.se : null,
   };
 }
 
@@ -117,6 +117,7 @@ export function regionVisible(area, vis) {
   if (area === 'shop') return v.shopShell !== false;
   if (area === 'yard' || area === 'alley' || area === 'escape' || area === 'roof') return !!v.yard;
   if (area === 'palastHall' || area === 'palastFoyer') return !!v.palastInterior;
+  if (area === 'salon') return !!v.salonInterior;
   return v.street !== false;
 }
 

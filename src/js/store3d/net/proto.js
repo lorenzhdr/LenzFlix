@@ -5,7 +5,7 @@
 
 export const SUB = 'lfx-mp.1';
 export const PV = 1;
-export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin'];
+export const CAPS = ['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look'];
 
 /** Flag-Bits `f`. */
 export const F = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
@@ -31,7 +31,7 @@ export const R = { SHOP: 0, PALAST: 1, OUT: 2 };
 export const CAP_OF = {
   hi: null, ck: null, rn: null, p: 'pres', hd: 'pres', f: 'pres', e: 'emote', m: 'chat', ki: 'admin',
   pu: 'push', pc: 'phys', ps: 'phys', pn: 'phys', px: 'phys', rc: 'rich', rs: 'rich', rr: 'rich',
-  ks: 'kino', kj: 'kino', kl: 'kino', kc: 'kino', kb: 'kino',
+  ks: 'kino', kj: 'kino', kl: 'kino', kc: 'kino', kb: 'kino', lk: 'look', mc: 'look',
 };
 
 /** Klemmen im Netzrahmen (cm, cRad, cm/s). */
@@ -123,7 +123,7 @@ const NORM = {
     if (!num(q[5]) || !num(q[6])) return null;
     const ra = Math.round(q[5]);
     const rr = Math.round(q[6]);
-    const a = ra >= 0 && ra <= 8 ? ra : 0; // unbekannte Codes -> 0
+    const a = ra >= 0 && ra <= 15 ? ra : 0; // unbekannte Codes -> 0 (9..15 = 1.18-Naht)
     const r = rr >= 0 && rr <= 2 ? rr : 0;
     const out = { t: 'p', q: [pos[0], pos[1], pos[2], yaw, pitch, a, r] };
     if (a === 7 && m.se !== undefined && m.se !== null) { // se nur beim Sitzen; kaputt = ganze Nachricht verwerfen
@@ -209,6 +209,20 @@ const NORM = {
     return sid === null || v === null || o === null || p === null ? null : { t: 'kc', sid, v, o, p };
   },
   kb(m) { const sid = sidOk(m.sid); const b = intIn(m.b, 0, 1); return sid === null || b === null ? null : { t: 'kb', sid, b }; },
+  // lk: Look-Code 4..48 Einträge, [0] (Version) 1..15, Rest 0..0x1FFFFFF; sonst verwerfen (wie der Server)
+  lk(m) {
+    const l = m.l;
+    if (!Array.isArray(l) || l.length < 4 || l.length > 48 || !l.every((v) => num(v) && Number.isInteger(v))) return null;
+    if (l[0] < 1 || l[0] > 15 || l.some((v, i) => i > 0 && (v < 0 || v > 0x1ffffff))) return null;
+    return { t: 'lk', l: l.slice() };
+  },
+  // mc: Mitgliedsausweis-Daten oder null (Länge 2..12, Ganzzahlen 0..2^31-1)
+  mc(m) {
+    if (m.m === null) return { t: 'mc', m: null };
+    const a = m.m;
+    if (!Array.isArray(a) || a.length < 2 || a.length > 12 || !a.every((v) => num(v) && Number.isInteger(v) && v >= 0 && v <= 0x7fffffff)) return null;
+    return { t: 'mc', m: a.slice() };
+  },
   ki(m) { const c = intIn(m.c, 1, 65535); return c === null ? null : { t: 'ki', c }; },
   ck(m) { return num(m.a) ? { t: 'ck', a: m.a } : null; },
   rn(m) { return typeof m.tk === 'string' && TK_RE.test(m.tk) ? { t: 'rn', tk: m.tk } : null; },
@@ -241,6 +255,8 @@ export const build = {
   kl: (sid) => NORM.kl({ sid }),
   kc: (sid, v, o, p) => NORM.kc({ sid, v, o, p }),
   kb: (sid, b) => NORM.kb({ sid, b }),
+  lk: (l) => NORM.lk({ l }),
+  mc: (m) => NORM.mc({ m }),
   ki: (c) => NORM.ki({ c }),
   ck: (a) => NORM.ck({ a }),
   rn: (tk) => NORM.rn({ tk }),

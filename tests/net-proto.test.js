@@ -11,7 +11,7 @@ describe('eingefrorene Codes', () => {
   it('SUB, PV, CAPS, Flags', () => {
     expect(P.SUB).toBe('lfx-mp.1');
     expect(P.PV).toBe(1);
-    expect(P.CAPS).toEqual(['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin']);
+    expect(P.CAPS).toEqual(['pres', 'chat', 'emote', 'push', 'phys', 'rich', 'wx', 'kino', 'admin', 'look']);
     expect(P.F).toEqual({ NAME: 1, FILM: 2, CHAT: 4, VR: 8 });
     expect(P.R).toEqual({ SHOP: 0, PALAST: 1, OUT: 2 });
   });
@@ -53,6 +53,8 @@ describe('eingefrorene Codes', () => {
     expect(P.CAP_OF.kc).toBe('kino');
     expect(P.CAP_OF.ki).toBe('admin');
     expect(P.CAP_OF.ck).toBe(null);
+    expect(P.CAP_OF.lk).toBe('look');
+    expect(P.CAP_OF.mc).toBe('look');
   });
 });
 
@@ -143,6 +145,26 @@ describe('Builder und Klemmen', () => {
     expect(P.build.rn('a b.c')).toBe(null);
     expect(P.build.rn('')).toBe(null);
   });
+  it('Pose a bis 15 (1.18-Naht), darüber 0', () => {
+    expect(P.build.p([0, 0, 0, 0, 0, 9, 1]).q[5]).toBe(9);
+    expect(P.build.p([0, 0, 0, 0, 0, 15, 1]).q[5]).toBe(15);
+    expect(P.build.p([0, 0, 0, 0, 0, 16, 1]).q[5]).toBe(0);
+    expect(P.netAnimName(12)).toBe('idle');
+  });
+  it('look: lk/mc wie der Server', () => {
+    expect(P.build.lk([2, 1, 2, 3])).toEqual({ t: 'lk', l: [2, 1, 2, 3] });
+    expect(P.build.lk([1, 2, 3])).toBe(null);
+    expect(P.build.lk([16, 1, 2, 3])).toBe(null);
+    expect(P.build.lk([2, 0x2000000, 2, 3])).toBe(null);
+    expect(P.build.lk([2, 1.5, 2, 3])).toBe(null);
+    expect(P.build.lk(Array(49).fill(1))).toBe(null);
+    expect(P.build.mc([1, 123456, 20400])).toEqual({ t: 'mc', m: [1, 123456, 20400] });
+    expect(P.build.mc(null)).toEqual({ t: 'mc', m: null });
+    expect(P.build.mc([1])).toBe(null);
+    expect(P.build.mc(Array(13).fill(1))).toBe(null);
+    expect(P.build.mc([1, -1])).toBe(null);
+    expect(P.build.mc([1, 2 ** 31])).toBe(null);
+  });
   it('normalizeOut ist idempotent', () => {
     const msgs = [P.build.p([1, 2, 3, 4, 5, 6, 1]), P.build.hd(ID), P.build.ps([['x', 1, 0, 0, 0, 0, 0, 0, 0, 9, 3, 4, 0]]), P.build.rs(1, [1, 1, 1, 1, 1, 1, 1, 1], 2), P.build.e(3)];
     for (const m of msgs) expect(P.normalizeOut(m)).toEqual(m);
@@ -205,8 +227,8 @@ describe('Golden-Datei des Workers (chat.json)', () => {
   });
 });
 
-describe('Golden-Dateien des Workers (phys.json, rich.json)', () => {
-  for (const name of ['phys', 'rich']) {
+describe('Golden-Dateien des Workers (phys.json, rich.json, look.json)', () => {
+  for (const name of ['phys', 'rich', 'look']) {
     const file = new URL(`../charts-worker/test/fixtures/mp-golden/${name}.json`, import.meta.url);
     const exists = fs.existsSync(file);
     const cases = exists ? JSON.parse(fs.readFileSync(file, 'utf8')).c2s || [] : [];
@@ -220,4 +242,9 @@ describe('Golden-Dateien des Workers (phys.json, rich.json)', () => {
       expect(n).toBeGreaterThan(3);
     });
   }
+  it('look.json: auch verworfene Fälle werden vom Client verworfen', () => {
+    const file = new URL('../charts-worker/test/fixtures/mp-golden/look.json', import.meta.url);
+    const cases = JSON.parse(fs.readFileSync(file, 'utf8')).c2s;
+    for (const c of cases) expect(P.normalizeOut(c.in), c.name).toEqual(c.out);
+  });
 });
