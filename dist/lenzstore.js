@@ -31269,7 +31269,7 @@ void main() {
     mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
     high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
     // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Handy-Werte = high.
-    ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 42, fogFar: 62 }
+    ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 44, fogFar: 59 }
   };
   function city(lv, phone) {
     const c = CITY[lv];
@@ -40806,6 +40806,129 @@ float lfxNoise(vec2 p) {
     }
   };
 
+  // src/js/store3d/engine/warm.js
+  var TEX_KEYS = ["map", "alphaMap", "emissiveMap", "lightMap", "aoMap", "bumpMap", "normalMap", "specularMap", "envMap", "gradientMap", "displacementMap", "roughnessMap", "metalnessMap"];
+  function collectTextures(object, extra) {
+    const out = /* @__PURE__ */ new Set();
+    const add = (t) => {
+      if (t && t.isTexture) out.add(t);
+    };
+    if (object && typeof object.traverse === "function") {
+      object.traverse((o) => {
+        for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+          for (const k of TEX_KEYS) add(m[k]);
+          if (m.uniforms) for (const k of Object.keys(m.uniforms)) add(m.uniforms[k] && m.uniforms[k].value);
+        }
+      });
+    }
+    if (Array.isArray(extra)) extra.forEach(add);
+    return [...out];
+  }
+  function showAll(object) {
+    const saved = [];
+    if (object && typeof object.traverse === "function") object.traverse((o) => {
+      saved.push([o, o.visible]);
+      o.visible = true;
+    });
+    else if (object) {
+      saved.push([object, object.visible]);
+      object.visible = true;
+    }
+    return () => {
+      for (const [o, v] of saved) o.visible = v;
+    };
+  }
+  function warmObject(renderer, object, camera, scene, opts = {}) {
+    const warn25 = (e) => {
+      if (opts.debug) {
+        try {
+          console.warn("[LenzFlix Store3D] warm", e);
+        } catch {
+        }
+      }
+    };
+    let did = false;
+    let pending = null;
+    if (renderer && object && camera) {
+      const restore = showAll(object);
+      try {
+        if (typeof renderer.compileAsync === "function") {
+          pending = renderer.compileAsync(object, camera, scene || object);
+          did = true;
+        } else if (typeof renderer.compile === "function") {
+          renderer.compile(object, camera, scene || object);
+          did = true;
+        }
+      } catch (e) {
+        warn25(e);
+        pending = null;
+      } finally {
+        restore();
+      }
+    }
+    if (renderer && typeof renderer.initTexture === "function") {
+      for (const t of collectTextures(object, opts.textures)) {
+        try {
+          renderer.initTexture(t);
+          did = true;
+        } catch (e) {
+          warn25(e);
+        }
+      }
+    }
+    return Promise.resolve(pending).then(() => did, (e) => {
+      warn25(e);
+      return did;
+    });
+  }
+  function scheduleWarm(ctx, getList, { delayMs = 2500, sched } = {}) {
+    let cancelled = false;
+    let timer = null;
+    let idle = null;
+    const later = sched || ((fn) => {
+      if (typeof requestIdleCallback === "function") {
+        const id2 = requestIdleCallback(() => fn(), { timeout: 2e3 });
+        return () => {
+          if (typeof cancelIdleCallback === "function") cancelIdleCallback(id2);
+        };
+      }
+      const id = setTimeout(fn, 32);
+      return () => clearTimeout(id);
+    });
+    const run = (list) => {
+      idle = null;
+      if (cancelled) return;
+      const it = list.shift();
+      if (it && it.object) warmObject(ctx.renderer, it.object, ctx.camera, ctx.scene, { textures: it.textures, debug: !!(ctx.opts && ctx.opts.debug) });
+      if (list.length) idle = later(() => run(list));
+    };
+    timer = setTimeout(() => {
+      timer = null;
+      if (cancelled || !ctx || !ctx.renderer || !ctx.camera) return;
+      let list = [];
+      try {
+        list = (getList() || []).filter((x) => x && x.object);
+      } catch {
+        list = [];
+      }
+      if (list.length) idle = later(() => run(list));
+    }, delayMs);
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (typeof idle === "function") {
+        try {
+          idle();
+        } catch {
+        }
+      }
+      idle = null;
+    };
+  }
+
   // src/js/store3d/modules/precip.js
   var VERT = (
     /* glsl */
@@ -41006,6 +41129,7 @@ void main() {
           near = OUTDOOR_AREAS.includes(a) || a !== "palastHall" && a !== "palastFoyer" && a !== "salon" && cam.position.z > D2 + 0.3;
         }
       }
+      const cancelWarm = scheduleWarm(ctx, () => [{ object: mesh }]);
       return {
         update(dt, t) {
           refresh(t);
@@ -41039,6 +41163,7 @@ void main() {
           suspended = false;
         },
         dispose() {
+          cancelWarm();
           if (window.__lfxM4) delete window.__lfxM4.precip;
         }
       };
@@ -41196,14 +41321,23 @@ void main() {
       let real = null;
       let mp = null;
       let pending = !!getReal;
-      const state0 = () => resolveWeather({ debug: debugWx, real, mp, local: pending ? false : localRaining });
+      const REAL_KEEP_MS = 2 * 3600 * 1e3;
+      let realAt = 0;
+      const realFresh = () => real && Date.now() - realAt <= REAL_KEEP_MS ? real : null;
+      const state0 = () => resolveWeather({ debug: debugWx, real: realFresh(), mp: pending ? null : mp, local: pending ? false : localRaining });
       const st0 = state0();
       const raining = st0.raining;
       const precipOf = (s) => s.i > 0 ? { kind: s.snowing ? "snow" : "rain", i: s.i } : { kind: null, i: 0 };
+      let nowT = 0;
+      let wetEndT = null;
       const weather = {
         tod,
         raining,
         hour: hourOpt,
+        /** Sekunden seit dem Regenende (0 bei Regen, null = unbekannt); läuft in jeder Stufe mit (für die Restnässe in ultra-wet). */
+        sinceWet() {
+          return this.raining ? 0 : wetEndT === null ? null : Math.max(0, nowT - wetEndT);
+        },
         kind: st0.kind,
         i: st0.i,
         snowing: st0.snowing,
@@ -41240,6 +41374,8 @@ void main() {
         const k = keyOf3(s);
         if (k === lastKey) return;
         lastKey = k;
+        if (s.raining) wetEndT = null;
+        else if (weather.raining) wetEndT = nowT;
         Object.assign(weather, {
           kind: s.kind,
           i: s.i,
@@ -41276,11 +41412,13 @@ void main() {
           p = null;
         }
         Promise.resolve(p).then((v) => {
-          if (!gone) {
-            real = v && typeof v === "object" ? v : null;
-            pending = false;
-            recompute();
+          if (gone) return;
+          if (v && typeof v === "object") {
+            real = v;
+            realAt = Number.isFinite(v.ts) && v.ts > 1e12 && v.ts <= Date.now() ? v.ts : Date.now();
           }
+          pending = false;
+          recompute();
         }, () => {
           if (!gone) {
             pending = false;
@@ -41403,6 +41541,7 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
       let checkT = 0;
       return {
         update(dt, t) {
+          nowT = t;
           out.follow(cam);
           if (getReal && !suspended) {
             activeS += dt;
@@ -41507,10 +41646,11 @@ uniform float uTime;`).replace("#include <map_fragment>", `#include <map_fragmen
   }
   var WET_DRY_S = 600;
   function wetLevel(state, sinceRain) {
-    if (!state || state.snowing || state.cover > 0.05) return 0;
-    if (state.raining) return Math.min(1, 0.45 + 0.55 * (fin2(state.i) ? state.i : 0.6));
+    if (!state || state.snowing) return 0;
+    const open = fin2(state.cover) ? 1 - Math.min(1, Math.max(0, state.cover)) : 1;
+    if (state.raining) return Math.min(1, 0.45 + 0.55 * (fin2(state.i) ? state.i : 0.6)) * open;
     if (!fin2(sinceRain) || sinceRain < 0 || sinceRain >= WET_DRY_S) return 0;
-    return 0.45 * (1 - sinceRain / WET_DRY_S);
+    return 0.45 * (1 - sinceRain / WET_DRY_S) * open;
   }
   function wetGlow(tod) {
     return tod === "night" ? 1 : tod === "dusk" ? 0.7 : 0.22;
@@ -41826,6 +41966,7 @@ void main() {
         onWeather();
       }
       hook();
+      const cancelWarm = scheduleWarm(ctx, () => [bolt, breath, thermo].filter(Boolean).map((object) => ({ object })));
       return {
         update(dt, t) {
           if (!hooked) hook();
@@ -41855,6 +41996,7 @@ void main() {
           onWeather();
         },
         dispose() {
+          cancelWarm();
           if (offWeather) {
             offWeather();
             offWeather = null;
@@ -42050,7 +42192,7 @@ void main() {
           wasRaining = false;
           lastRain = t;
         }
-        const since = w.raining ? 0 : lastRain === null ? null : t - lastRain;
+        const since = typeof w.sinceWet === "function" ? w.sinceWet() : w.raining ? 0 : lastRain === null ? null : t - lastRain;
         const target = wetLevel(w, since);
         amount += (target - amount) * Math.min(1, dt * 0.8);
         const vis = amount > 0.01;
@@ -48512,6 +48654,7 @@ void main() {
     const sp = P[BONE.spine];
     const fz = -d.td / 2;
     for (const [sx, bi] of [[-1, BONE.armL], [1, BONE.armR]]) {
+      if (sx === 1 && d.handBusy) continue;
       const a = P[bi];
       const x = sx * d.ax;
       for (const z of [-0.03, -0.01, 0.01, 0.03]) a.push(box({ w: 0.017, h: 0.07, d: 0.017, x, y: 0.715, z, color: sc(d.skin, 0.97) }));
@@ -48519,8 +48662,8 @@ void main() {
     }
     const collar = d.v2 ? NO_COLLAR.has(d.topCut) : true;
     if (collar) sp.push(box({ w: 0.13, h: 0.022, d: d.td + 6e-3, x: 0, y: 1.372, z: 0, color: sc(d.top, 0.75) }));
-    if (!d.v2 || BUTTONED.has(d.topCut)) for (const y of [1.31, 1.2, 1.09, 0.98]) sp.push(box({ w: 0.016, h: 0.016, d: 0.012, x: 0, y, z: fz, color: sc(d.top, 0.55) }));
-    if (d.botCut !== "skirt" && (!d.v2 || !NO_BELT.has(d.topCut))) {
+    if (!d.v2 && !d.apron && !d.stripe || d.v2 && BUTTONED.has(d.topCut)) for (const y of [1.31, 1.2, 1.09, 0.98]) sp.push(box({ w: 0.016, h: 0.016, d: 0.012, x: 0, y, z: fz, color: sc(d.top, 0.55) }));
+    if (d.botCut !== "skirt" && !d.apron && (!d.v2 || !NO_BELT.has(d.topCut))) {
       sp.push(box({ w: d.hw + 0.03, h: 0.028, d: d.td + 0.016, x: 0, y: d.v2 ? 0.845 : 0.835, z: 0, color: LEATHER }));
       sp.push(box({ w: 0.04, h: 0.034, d: 0.012, x: 0, y: d.v2 ? 0.845 : 0.835, z: -(d.td + 0.016) / 2 - 2e-3, color: STEEL }));
     }
@@ -48809,7 +48952,7 @@ void main() {
     const winterHat = !!(opts.winter && opts.winter.hat) && L2.hat === "none";
     const winterScarf = !!(opts.winter && opts.winter.scarf);
     const td = 0.23 + (["sweater", "jacket", "hoodie"].includes(L2.topCut) ? 0.03 : 0);
-    const dsc = { v2: true, skin, top: L2.top, bottom: L2.bottom, shoes: L2.shoe, hair: L2.hair, sw, hw, td, ax, lx, lw, topCut: L2.topCut, botCut: L2.botCut, shoeModel: L2.shoeModel, brows: L2.brows };
+    const dsc = { v2: true, skin, top: L2.top, bottom: L2.bottom, shoes: L2.shoe, hair: L2.hair, sw, hw, td, ax, lx, lw, topCut: L2.topCut, botCut: L2.botCut, shoeModel: L2.shoeModel, brows: L2.brows, handBusy: !!opts.handBusy || L2.bag === "shopping" || L2.bag === "chips" };
     if (opts.detail) detailBody(P, dsc);
     if (winterScarf) winterBody(P, dsc);
     bx3(sp, 0.075, 0.09, 0.075, 0, 1.425, 0, skin);
@@ -50060,10 +50203,10 @@ void main() {
     const useDetail = !!(fx && fx.detail) && !ego;
     const winter = ego ? null : effectiveWinter(look, fx && fx.winter);
     const useItem = item && !ego && HAND_ITEMS.includes(item) ? item : null;
-    const key2 = lookKey(look) + (useEgo ? "|ego" : "") + (useItem ? "|h:" + useItem + (useItem === "umbrella" ? ":" + itemColorKey(look) : "") : "") + (useDetail ? "|d" : "") + (winter ? winter.hat && winter.scarf ? "|w" : winter.hat ? "|wh" : "|ws" : "");
+    const key2 = lookKey(look) + (useEgo ? "|ego" : "") + (useItem ? "|h:" + useItem + (useItem === "umbrella" ? ":" + itemColorKey(look) : "") : "") + (useDetail ? "|d" + (useItem || fx && fx.umb ? "n" : "") : "") + (winter ? winter.hat && winter.scarf ? "|w" : winter.hat ? "|wh" : "|ws" : "");
     let e = geoCache.get(key2);
     if (!e) {
-      const g = bodyGeometry(look, useEgo, useItem, useDetail, winter);
+      const g = bodyGeometry(look, useEgo, useItem, useDetail, winter, !!(useItem || fx && fx.umb));
       e = { key: key2, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
       geoCache.set(key2, e);
     }
@@ -50095,15 +50238,15 @@ void main() {
   function itemColorKey(look) {
     return Array.isArray(look.umbrellaColor) ? look.umbrellaColor.map((v) => Math.round(v * 255)).join(".") : "-";
   }
-  function bodyGeometry(look, ego = false, item = null, detail = false, winter = null) {
-    const parts = look.v === 2 ? buildV2Parts(look, { ego, detail, winter }) : oldParts(look, detail, winter);
+  function bodyGeometry(look, ego = false, item = null, detail = false, winter = null, handBusy = false) {
+    const parts = look.v === 2 ? buildV2Parts(look, { ego, detail, winter, handBusy }) : oldParts(look, detail, winter, handBusy);
     if (item) parts[B3.armR].push(...buildHandItem(look, item));
     const geos3 = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
     const g = merge(geos3);
     g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
     return g;
   }
-  function oldParts(look, detail = false, winter = null) {
+  function oldParts(look, detail = false, winter = null, handBusy = false) {
     const skin = look.skin;
     const parts = { [B3.spine]: [], [B3.head]: [], [B3.armL]: [], [B3.armR]: [], [B3.legL]: [], [B3.legR]: [] };
     const bottom = look.bottom;
@@ -50166,7 +50309,7 @@ void main() {
       }
     }
     if (detail || winter) {
-      const dsc = { v2: false, skin, top: look.top, bottom, shoes: look.shoes, hair, sw: 0.42, hw: 0.4, td: 0.23, ax: 0.26, lx: 0.1, lw: 0.14, topCut: void 0, botCut: "jeans", shoeModel: "sneaker", brows: "none" };
+      const dsc = { v2: false, skin, top: look.top, bottom, shoes: look.shoes, hair, sw: 0.42, hw: 0.4, td: 0.23, ax: 0.26, lx: 0.1, lw: 0.14, topCut: void 0, botCut: "jeans", shoeModel: "sneaker", brows: "none", apron: !!look.apron, stripe: !!look.stripe, handBusy: handBusy || look.bag === "shopping" };
       if (detail) {
         detailBody(parts, dsc);
         detailHead(hd, dsc, (w, h3, d, x, y, color2, p, rz) => faceBox(hd, w, h3, d, x, y, color2, p, rz));
@@ -50253,7 +50396,7 @@ void main() {
     const bArmR = mk4(0.26, 1.36 - SPINE_Y, 0, bSpine);
     const bLegL = mk4(-0.1, SPINE_Y, 0, bRoot);
     const bLegR = mk4(0.1, SPINE_Y, 0, bRoot);
-    let fx = { detail: false, winter: null };
+    let fx = { detail: false, winter: null, umb: false };
     let handItem = typeof look.handItem === "string" && HAND_ITEMS.includes(look.handItem) ? look.handItem : null;
     let entry = acquire(look, ego, handItem, fx);
     const mesh = new SkinnedMesh(entry.g, hooks.material || material());
@@ -50320,6 +50463,10 @@ void main() {
         }
       },
       setUmbrella(on) {
+        if (!!on !== fx.umb) {
+          fx = { ...fx, umb: !!on };
+          if (fx.detail) swapGeo();
+        }
         if (on && !umbrella) {
           if (!umbrellaMat) umbrellaMat = new MeshLambertMaterial({ vertexColors: true, side: DoubleSide });
           umbrella = new Mesh(umbrellaGeometry(look.umbrellaColor || [0.85, 0.2, 0.25]), umbrellaMat);
@@ -54223,6 +54370,7 @@ void main() {
       const cars = [];
       const parkedCols = [];
       const parkedMeshes = [];
+      const parkedSpots = [];
       const weather = () => ctx.use("weather") || {};
       const groups = () => {
         const c = ctx.use("city");
@@ -54252,6 +54400,7 @@ void main() {
         zebraClear: () => true,
         cars: () => cars.map((c) => ({ lane: c.car.lane, ...posOf(c.lane, c.car.p), v: c.car.v, state: c.car.state })),
         parked: () => parkedCols.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 })),
+        parkedCars: () => parkedSpots.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 })),
         laserHit: () => null,
         blindDriver: () => false
       };
@@ -54324,11 +54473,13 @@ void main() {
           const cab = ctx.addCollider({ id: `${s.id}C`, kind: "car", x0: s.x0, z0: s.z0 + 1.2, x1: s.x1, z1: s.z0 + 3.4, y1: 1.42 });
           const tr = ctx.addCollider({ id: `${s.id}T`, kind: "car", x0: s.x0, z0: s.z0 + 3.4, x1: s.x1, z1: s.z1, y1: 0.95 });
           parkedCols.push(hood, cab, tr);
+          parkedSpots.push({ x0: s.x0, z0: s.z0, x1: s.x1, z1: s.z1 });
         }
       }
       function clearParked() {
         for (const q of parkedCols) ctx.removeCollider(q);
         parkedCols.length = 0;
+        parkedSpots.length = 0;
         for (const m of parkedMeshes) if (m.root.parent) m.root.parent.remove(m.root);
         parkedMeshes.length = 0;
       }
@@ -64224,6 +64375,7 @@ void main() {
     return c;
   }
   var SHADOW_DYN_MAX = 56;
+  var SHADOW_PARKED_MAX = 4;
   var SHADOW_FAR = 30;
   var FLOOR_Y = 0.03;
   function shown(o) {
@@ -64233,15 +64385,16 @@ void main() {
   function buildShadows(ctx) {
     const L2 = ctx.layout;
     const tr = ctx.use && ctx.use("traffic");
-    const parked = (() => {
+    const parkedNow = () => {
       try {
-        return tr && typeof tr.parked === "function" ? tr.parked() : [];
+        if (tr && typeof tr.parkedCars === "function") return tr.parkedCars() || [];
+        return tr && typeof tr.parked === "function" ? tr.parked() || [] : [];
       } catch {
         return [];
       }
-    })();
-    const stat = staticShadows(L2, parked);
-    const cap = stat.length + SHADOW_DYN_MAX;
+    };
+    const stat = staticShadows(L2, null);
+    const cap = stat.length + SHADOW_PARKED_MAX + SHADOW_DYN_MAX;
     const geo = new PlaneGeometry(1, 1);
     geo.rotateX(-PI9 / 2);
     const tex = toTexture(shadowCanvas(), { mips: false });
@@ -64302,6 +64455,11 @@ void main() {
         if (s.group === "street" ? !vis.street : !vis.shopShell) continue;
         put(i++, s.x, s.y, s.z, s.sx, s.sz);
       }
+      if (vis.street) {
+        for (const r of parkedNow().slice(0, SHADOW_PARKED_MAX)) {
+          put(i++, (r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2, Math.max(1, (r.x1 - r.x0) * 1.2), Math.max(1, (r.z1 - r.z0) * 1.2));
+        }
+      }
       let d = 0;
       const add = (x, y, z, sx, sz) => {
         if (d >= SHADOW_DYN_MAX || !Number.isFinite(x + y + z) || !near(x, z)) return;
@@ -64318,7 +64476,7 @@ void main() {
       }
       if (tr && typeof tr.cars === "function") {
         for (const c of tr.cars()) {
-          if (c.state === "away") continue;
+          if (!vis.street || c.state === "away") continue;
           const ln = lanes.get(c.lane);
           const alongX = !ln || !ln.dir || Math.abs(ln.dir.x) > 0;
           add(c.x, 0, c.z, alongX ? CAR_LEN * 1.15 : CAR_W * 1.3, alongX ? CAR_W * 1.3 : CAR_LEN * 1.15);
@@ -64537,6 +64695,26 @@ void main() {
     }
     return { trees, crowns };
   }
+  var CURB_STEP = 0.25;
+  var CURB_MIN = 0.5;
+  function curbRuns(keep2, x, z0, z1, dir) {
+    const runs = [];
+    const cx = x - dir * 0.08;
+    const n = Math.max(1, Math.ceil((z1 - z0) / CURB_STEP - 1e-9));
+    let a = null;
+    for (let i = 0; i < n; i++) {
+      const za = z0 + i * CURB_STEP;
+      const zb = Math.min(z1, za + CURB_STEP);
+      const free = ![za, (za + zb) / 2, zb].some((zz) => keep2.blocked(cx, zz, 0.1, "hug"));
+      if (free && a === null) a = za;
+      if ((!free || i === n - 1) && a !== null) {
+        const end = free ? zb : za;
+        if (end - a >= CURB_MIN) runs.push([a, end]);
+        a = null;
+      }
+    }
+    return runs;
+  }
   function planStreet(layout, keep2, rand, placed) {
     const c = layout.city;
     const f = c.frame;
@@ -64559,8 +64737,8 @@ void main() {
     }
     const sideRuns = [[zSN, D2 + 0.2], [D2 + 10.3, zSS]];
     for (const [z0, z1] of sideRuns) {
-      curbs.push({ axis: "z", z0, z1, x: xc0, dir: 1, solid: true });
-      curbs.push({ axis: "z", z0, z1, x: xc1, dir: -1, solid: true });
+      for (const [z0r, z1r] of curbRuns(keep2, xc0, z0, z1, 1)) curbs.push({ axis: "z", z0: z0r, z1: z1r, x: xc0, dir: 1, solid: true });
+      for (const [z0r, z1r] of curbRuns(keep2, xc1, z0, z1, -1)) curbs.push({ axis: "z", z0: z0r, z1: z1r, x: xc1, dir: -1, solid: true });
     }
     const grates = [];
     const manholes = [];
@@ -65312,11 +65490,18 @@ ${sh.vertexShader}`.replace("#include <begin_vertex>", `#include <begin_vertex>
       const wrap3 = (build3, withArea) => (c) => {
         const r = build3(c);
         const base = r.update;
+        const doSync = () => {
+          if (r.sync) r.sync(groups, withArea && areas ? areas.current() : "");
+        };
         return {
           object: r.object,
           dispose: r.dispose,
+          // Sichtbarwerden (nach Bau oder Wechsel auf Ultra): Teilmesh-Sichtbarkeit sofort setzen, nicht erst im nächsten update()
+          onVisible(v) {
+            if (v) doSync();
+          },
           update(dt, t) {
-            if (r.sync) r.sync(groups, withArea && areas ? areas.current() : "");
+            doSync();
             if (base) base(dt, t);
           }
         };
@@ -65890,16 +66075,28 @@ void main() {
     const obj = new Points(g, m);
     obj.name = "ultra-dust";
     obj.frustumCulled = false;
-    const still = (() => {
+    let mq = null;
+    try {
+      mq = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+    } catch {
+      mq = null;
+    }
+    let still = !!(mq && mq.matches);
+    const onMq = (e) => {
+      still = !!(e && typeof e.matches === "boolean" ? e.matches : mq && mq.matches);
+    };
+    if (mq) {
       try {
-        return !!(typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        if (mq.addEventListener) mq.addEventListener("change", onMq);
+        else if (mq.addListener) mq.addListener(onMq);
       } catch {
-        return false;
       }
-    })();
+    }
     return {
       object: obj,
-      still,
+      get still() {
+        return still;
+      },
       update(dt, t) {
         if (!still) m.uniforms.uTime.value = t;
         try {
@@ -65910,6 +66107,13 @@ void main() {
         }
       },
       dispose() {
+        if (mq) {
+          try {
+            if (mq.removeEventListener) mq.removeEventListener("change", onMq);
+            else if (mq.removeListener) mq.removeListener(onMq);
+          } catch {
+          }
+        }
         g.dispose();
         m.dispose();
       }
@@ -65957,6 +66161,8 @@ void main() {
     }
     return {
       object: group,
+      textures: Object.values(neu),
+      // vorab hochladen (engine/warm.js): hängen noch an keinem Material
       update(dt) {
         for (const s of swapped) {
           const t = neu[s.key];
@@ -66036,19 +66242,35 @@ void main() {
     name: "ultra-figures",
     init(ctx) {
       let acc = 0;
-      const ultra = () => {
+      const levelUltra = () => {
         try {
           return ctx.quality() === "ultra";
         } catch {
           return false;
         }
       };
+      const reg = ctx.use && ctx.use("ultra");
+      let on = false;
+      const ultra = () => reg && typeof reg.register === "function" ? on && levelUltra() : levelUltra();
       const cam = new Vector3();
       const run = () => {
         const en = ultra();
-        ctx.camera.getWorldPosition(cam);
+        try {
+          ctx.camera.getWorldPosition(cam);
+        } catch {
+          cam.set(0, 0, 0);
+        }
         stepFigureLod(liveFigures(), cam.x, cam.y, cam.z, { enabled: en });
       };
+      const off = reg && typeof reg.register === "function" ? reg.register("figures", () => {
+        const object = new Object3D();
+        object.name = "ultra-figures";
+        return { object, onVisible(v) {
+          on = !!v;
+          acc = 0;
+          run();
+        } };
+      }) : null;
       return {
         update(dt) {
           acc += dt;
@@ -66061,6 +66283,7 @@ void main() {
           run();
         },
         dispose() {
+          if (off) off();
           stepFigureLod(liveFigures(), 0, 0, 0, { enabled: false });
         }
       };
@@ -71701,9 +71924,39 @@ void main() {
       if (!wantBuild()) return [];
       return [...entries.values()].filter((e) => !e.built && !e.failed && allowed(e.key));
     }
+    function warmPending() {
+      if (!wantBuild()) return [];
+      return [...entries.values()].filter((e) => e.built && !e.failed && e.warm === void 0 && allowed(e.key));
+    }
+    function warmOne(e) {
+      const r = ctx.renderer;
+      if (!r || !ctx.camera || !e.api) {
+        e.warm = false;
+        return;
+      }
+      e.warm = true;
+      const t0 = now();
+      try {
+        warmObject(r, e.api.object, ctx.camera, ctx.scene, { textures: e.api.textures, debug: !!(ctx.opts && ctx.opts.debug) }).then((did) => {
+          if (!did) e.warm = false;
+        }, () => {
+          e.warm = false;
+        });
+      } catch (err) {
+        e.warm = false;
+        warn18(`Ultra-Detail "${e.key}" warm`, err);
+      }
+      e.warmMs = +(now() - t0).toFixed(2);
+    }
     function step(avail) {
       job = null;
       if (disposed) return;
+      if (!pending().length) {
+        const w = warmPending();
+        if (w.length) warmOne(w[0]);
+        kick();
+        return;
+      }
       const t0 = now();
       const budget = Math.min(BUDGET_MS, Number.isFinite(avail) && avail >= 0 ? avail : BUDGET_MS);
       let todo = pending();
@@ -71712,10 +71965,10 @@ void main() {
         todo = pending();
         if (now() - t0 >= budget) break;
       }
-      if (todo.length) kick();
+      kick();
     }
     function kick() {
-      if (job || disposed || !pending().length) return;
+      if (job || disposed || !(pending().length || warmPending().length)) return;
       job = schedule(step);
     }
     function disposeEntry(e) {
@@ -71729,6 +71982,7 @@ void main() {
         warn18(`Ultra-Detail "${e.key}" dispose`, err);
       }
       e.built = false;
+      e.warm = void 0;
       e.shown = false;
       e.api = null;
     }
@@ -71736,7 +71990,7 @@ void main() {
       register(key2, build3, opts = {}) {
         if (disposed || typeof build3 !== "function" || typeof key2 !== "string" || !key2 || entries.has(key2)) return () => {
         };
-        const e = { key: key2, build: build3, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false };
+        const e = { key: key2, build: build3, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false, warm: void 0, warmMs: 0 };
         entries.set(key2, e);
         kick();
         return () => {
@@ -71748,7 +72002,7 @@ void main() {
       isActive,
       has: (key2) => entries.has(key2),
       keys: () => [...entries.keys()],
-      list: () => [...entries.values()].map((e) => ({ key: e.key, built: e.built, visible: !!(e.built && e.api.object && e.api.object.visible), ms: e.ms }))
+      list: () => [...entries.values()].map((e) => ({ key: e.key, built: e.built, visible: !!(e.built && e.api.object && e.api.object.visible), ms: e.ms, warm: e.warm === true }))
     };
     return {
       api,
