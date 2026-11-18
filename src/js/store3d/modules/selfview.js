@@ -5,7 +5,7 @@
 // Wahl wird in deps.profile (set.cam) gespeichert und beim Start gelesen; Standard 'ego'.
 // Außenansicht: ctx.player.camera.setRig(fn) (Kamera hinter dem Auge, char/tpcam.js). Das Rig bleibt dauerhaft eingehängt (in Ego tut es nichts);
 //   „Rig lief im letzten Frame“ ist das Signal, dass keine Modul-Kamera (Couch, Kino, Kasse, Intro) aktiv ist.
-// Automatisch Ego: Overlay offen, Modul-Kamera, andere Bühne (Studio), VR. Danach zurück zur gewählten Ansicht.
+// Automatisch Ego: Overlay offen, Halte-Bild (ctx.holding), Modul-Kamera, andere Bühne (Studio), VR. Danach zurück zur gewählten Ansicht.
 // Ebenen: Layer 1 = Ego-Körper (nur Hauptkamera, aktiviert hier), Layer 2 = volle Figur in der Ego-Sicht (nur Spiegelkameras),
 //   Außenansicht: volle Figur auf Layer 0. Draw-Calls: Außenansicht npc.reserve(2,'self') (Figur + Schatten), sonst 0 (Ego-Beine nur beim Blick nach unten).
 // Die Figuren werden von modules/npc.js aktualisiert (externals); hier nie update() rufen.
@@ -149,6 +149,7 @@ export default {
       if (xrOn()) return true;
       if (ctx.overlay && ctx.overlay.isOpen()) return true;
       if (ctx.stage && !ctx.stage.isStore()) return true;
+      if (typeof ctx.holding === 'function' && ctx.holding()) return true; // Halte-Bild (Hülle in der Hand): kurz Ego
       if (frame - rigFrame > 1) return true; // Rig lief im letzten Frame nicht = Modul-Kamera aktiv (oder noch nicht gestartet)
       return false;
     }

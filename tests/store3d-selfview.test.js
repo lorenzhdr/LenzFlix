@@ -28,7 +28,7 @@ function setup({ look = { v: 2, id: 'A' }, profile = undefined, withAvatar = tru
   const providers = new Map();
   const figures = [];
   const reserves = [];
-  const state = { overlay: false, xr: false, studio: false };
+  const state = { overlay: false, xr: false, studio: false, hold: false };
   const pose = { x: 10, y: 0, z: 10, yaw: 0, pitch: 0 };
   const net = { a: 0, vx: 0, vz: 0 };
   let rig = null;
@@ -56,6 +56,7 @@ function setup({ look = { v: 2, id: 'A' }, profile = undefined, withAvatar = tru
     use: (n) => providers.get(n),
     on: () => () => {},
     overlay: { isOpen: () => state.overlay },
+    holding: () => state.hold,
     xr: { presenting: () => state.xr },
     stage: { isStore: () => !state.studio },
     player: {
@@ -182,6 +183,16 @@ describe('selfview: Auto-Ego', () => {
     expect(t.sv.mode()).toBe('ego');
     expect(t.reserves.at(-1)).toEqual([0, 'self']);
     t.state.overlay = false;
+    t.frames(2);
+    expect(t.sv.mode()).toBe('third');
+  });
+  it('Halte-Bild (Hülle in der Hand) → Ego, danach zurück zur Wahl', async () => {
+    const t = setup();
+    await third(t);
+    t.state.hold = true;
+    t.frames(2);
+    expect(t.sv.mode()).toBe('ego');
+    t.state.hold = false;
     t.frames(2);
     expect(t.sv.mode()).toBe('third');
   });

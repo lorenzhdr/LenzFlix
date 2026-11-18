@@ -128,3 +128,54 @@ describe('ModuleHost in VR', () => {
     await expect(host.ctx.xr.jumpTo(1, 2)).resolves.toBe(true);
   });
 });
+
+describe('ModuleHost: modale Overlays', () => {
+  function mk() {
+    const app = fakeApp(null);
+    app.host = document.createElement('div');
+    app.desktop = null;
+    document.body.appendChild(app.host);
+    return { app, host: new ModuleHost(app) };
+  }
+  it('nicht-modales Overlay verdrängt ein modales nicht: abgelehnt, onClose asynchron, false', async () => {
+    const { app, host } = mk();
+    const gate = document.createElement('div');
+    const onGate = vi.fn();
+    expect(host.ctx.overlay.open(gate, { modal: true, onClose: onGate })).toBe(true);
+    const other = document.createElement('div');
+    const onOther = vi.fn();
+    expect(host.ctx.overlay.open(other, { onClose: onOther })).toBe(false);
+    expect(onOther).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(onOther).toHaveBeenCalledTimes(1);
+    expect(onGate).not.toHaveBeenCalled();
+    expect(gate.isConnected).toBe(true);
+    expect(other.isConnected).toBe(false);
+    expect(app.mode).toBe('overlay');
+  });
+  it('modal ersetzt modal, nicht-modal ersetzt nicht-modal und modal', () => {
+    const { host } = mk();
+    const a = document.createElement('div');
+    const b = document.createElement('div');
+    const onA = vi.fn();
+    host.ctx.overlay.open(a, { modal: true, onClose: onA });
+    expect(host.ctx.overlay.open(b, { modal: true })).toBe(true);
+    expect(onA).toHaveBeenCalledTimes(1);
+    expect(a.isConnected).toBe(false);
+    expect(b.isConnected).toBe(true);
+    host.ctx.overlay.close();
+    const c = document.createElement('div');
+    const d = document.createElement('div');
+    host.ctx.overlay.open(c, {});
+    expect(host.ctx.overlay.open(d, {})).toBe(true);
+    expect(c.isConnected).toBe(false);
+    host.ctx.overlay.open(b, { modal: true });
+    expect(b.isConnected).toBe(true);
+  });
+  it('ctx.holding folgt dem Modus hold', () => {
+    const { app, host } = mk();
+    expect(host.ctx.holding()).toBe(false);
+    app.mode = 'hold';
+    expect(host.ctx.holding()).toBe(true);
+  });
+});

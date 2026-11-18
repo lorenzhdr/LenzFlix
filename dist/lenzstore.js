@@ -55818,6 +55818,7 @@ void main() {
         if (xrOn()) return true;
         if (ctx.overlay && ctx.overlay.isOpen()) return true;
         if (ctx.stage && !ctx.stage.isStore()) return true;
+        if (typeof ctx.holding === "function" && ctx.holding()) return true;
         if (frame - rigFrame > 1) return true;
         return false;
       }
@@ -62568,6 +62569,8 @@ void main() {
         suspended: () => !!app.suspended,
         /** Laufmodus sichtbar: Spiel läuft (mode 'play'), nicht ausgesetzt, nicht entsorgt. */
         playing: () => !app.disposed && !app.suspended && app.mode === "play",
+        /** 1.17.0: Halte-Bild (Hülle in der Hand-Ansicht) offen (Modus 'hold'). */
+        holding: () => !app.disposed && app.mode === "hold",
         voiceOnline: () => !!app.voiceOnline,
         voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || "", pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
         /**
@@ -62982,12 +62985,25 @@ void main() {
         });
         return;
       }
+      const modal = o.modal === true || o.escape === false;
+      if (this.overlayState && this.overlayState.modal && !modal) {
+        const cb = o.onClose;
+        if (cb) queueMicrotask(() => {
+          try {
+            cb();
+          } catch (err) {
+            warn14("overlay.onClose", err);
+          }
+        });
+        return false;
+      }
       if (this.overlayState) this.overlayClose();
-      this.overlayState = { el: el5, onClose: o.onClose, prev: app.mode, escape: !(o.modal === true || o.escape === false) };
+      this.overlayState = { el: el5, onClose: o.onClose, prev: app.mode, escape: !modal, modal };
       app.host.appendChild(el5);
       if (app.desktop) app.desktop.releaseLock();
       app.player.cancelPath();
       app.setMode("overlay");
+      return true;
     }
     /** VR-Panel als Overlay (Modus 'overlay'); Rückgabe: Handle, dessen close() das Overlay mitschließt. */
     panelOpen(spec) {

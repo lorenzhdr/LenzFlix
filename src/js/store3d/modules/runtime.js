@@ -62,6 +62,8 @@ export class ModuleHost {
       suspended: () => !!app.suspended,
       /** Laufmodus sichtbar: Spiel läuft (mode 'play'), nicht ausgesetzt, nicht entsorgt. */
       playing: () => !app.disposed && !app.suspended && app.mode === 'play',
+      /** 1.17.0: Halte-Bild (Hülle in der Hand-Ansicht) offen (Modus 'hold'). */
+      holding: () => !app.disposed && app.mode === 'hold',
       voiceOnline: () => !!app.voiceOnline,
       voicePrefs: () => ({ online: !!app.voiceOnline, name: app.voiceName || '', pitchFactor: PITCH_FACTOR[app.voicePitch] || PITCH_FACTOR.tief }),
       /**
@@ -391,13 +393,21 @@ export class ModuleHost {
       if (cb) queueMicrotask(() => { try { cb(); } catch (err) { warn('overlay.onClose', err); } });
       return;
     }
+    const modal = o.modal === true || o.escape === false;
+    // Ein offenes modales Overlay (Pflicht-Gate, 1.17.0) wird von einem nicht-modalen nie verdrängt: abgelehnt, onClose asynchron wie im VR-Pfad.
+    if (this.overlayState && this.overlayState.modal && !modal) {
+      const cb = o.onClose;
+      if (cb) queueMicrotask(() => { try { cb(); } catch (err) { warn('overlay.onClose', err); } });
+      return false;
+    }
     if (this.overlayState) this.overlayClose();
-    // modal: true bzw. escape: false → Esc schließt das Overlay nicht (Pflicht-Gate, 1.17.0); nur der Besitzer schließt per overlay.close()
-    this.overlayState = { el, onClose: o.onClose, prev: app.mode, escape: !(o.modal === true || o.escape === false) };
+    // modal: true bzw. escape: false → Esc schließt das Overlay nicht; nur der Besitzer schließt per overlay.close()
+    this.overlayState = { el, onClose: o.onClose, prev: app.mode, escape: !modal, modal };
     app.host.appendChild(el);
     if (app.desktop) app.desktop.releaseLock();
     app.player.cancelPath();
     app.setMode('overlay');
+    return true;
   }
 
   /** VR-Panel als Overlay (Modus 'overlay'); Rückgabe: Handle, dessen close() das Overlay mitschließt. */
