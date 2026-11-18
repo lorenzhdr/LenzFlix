@@ -200,7 +200,7 @@ function showOnline(card, n) {
   }
   const label = `${n} ${n === 1 ? 'Person' : 'Personen'} gerade in der Videothek`;
   if (!pill) {
-    pill = span('lfx-tp__online', [span('lfx-tp__dot'), span('lfx-tp__online-n')]);
+    pill = span('lfx-tp__online', [span('lfx-tp__online-dot'), span('lfx-tp__online-n')]);
     pill.setAttribute('role', 'img');
     pill.firstChild.setAttribute('aria-hidden', 'true');
     card.append(pill);

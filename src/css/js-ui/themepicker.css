@@ -634,7 +634,7 @@ html.lfx-js .lfx-tp__online {
   white-space: nowrap;
   pointer-events: none;
 }
-html.lfx-js .lfx-tp__dot {
+html.lfx-js .lfx-tp__online-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -646,7 +646,7 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__online {
   left: 70px;
 }
 @media (prefers-reduced-motion: no-preference) {
-  html.lfx-js .lfx-tp__dot {
+  html.lfx-js .lfx-tp__online-dot {
     animation: lfx-tp-online-pulse 2.4s ease-in-out infinite;
   }
 }

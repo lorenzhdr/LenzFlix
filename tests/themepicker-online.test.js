@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const online = vi.hoisted(() => ({ fn: null }));
@@ -92,5 +95,17 @@ describe('Online-Pille im Design-Menü', () => {
     expect(card.querySelector('.lfx-tp__online')).toBeNull();
     await vi.advanceTimersByTimeAsync(120000);
     expect(online.fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('Online-Punkt nutzt eigene Klasse, plus-Vorschau-Punkte bleiben unberührt', async () => {
+    online.fn = vi.fn(() => Promise.resolve(3));
+    openThemePicker();
+    await flush();
+    expect(pill().querySelector('.lfx-tp__online-dot')).not.toBeNull();
+    expect(pill().querySelector('.lfx-tp__dot')).toBeNull();
+    const css = readFileSync(resolve(fileURLToPath(import.meta.url), '../../src/css/js-ui/themepicker.css'), 'utf8');
+    for (const m of css.matchAll(/([^{}]*)\{[^{}]*(?:lfx-tp-online-pulse|box-shadow: 0 0 6px var\(--lfx-green\))[^{}]*\}/g)) {
+      expect(m[1]).not.toContain('.lfx-tp__dot');
+    }
   });
 });
