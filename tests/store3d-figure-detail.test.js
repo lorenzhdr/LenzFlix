@@ -5,7 +5,9 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { createFigure, disposeFigureCaches, figureCacheInfo, liveFigures } from '../src/js/store3d/npc/figure.js';
 import { makeLook } from '../src/js/store3d/npc/looks.js';
 import { seeded } from '../src/js/store3d/modules/m4-util.js';
-import { stepFigureLod, DETAIL_ON, DETAIL_OFF, MAX_SWAPS } from '../src/js/store3d/modules/ultra-figures.js';
+import { Scene, PerspectiveCamera } from 'three';
+import { createUltra } from '../src/js/store3d/engine/ultra.js';
+import ultraFigures, { stepFigureLod, DETAIL_ON, DETAIL_OFF, MAX_SWAPS } from '../src/js/store3d/modules/ultra-figures.js';
 
 const v2 = (over = {}) => ({
   v: 2, skin: [0.9, 0.7, 0.55], height: 1, build: 1, shape: 'straight', hairStyle: 'short', hair: [0.2, 0.1, 0.1], eyes: 'dot', brows: 'none', beard: 'none',
@@ -152,5 +154,56 @@ describe('Abstands-LOD', () => {
     expect(stepFigureLod(many, 0, 0, 0)).toBe(MAX_SWAPS);
     expect(stepFigureLod(many, 0, 0, 0, { enabled: false })).toBe(MAX_SWAPS);
     expect(many.filter((m) => m.getDetail()).length).toBe(0);
+  });
+});
+
+describe('Modul ultra-figures (Registry-Key figures)', () => {
+  beforeEach(() => { for (const g of [...liveFigures()]) g.dispose(); }); // Wechsellimit: Reste früherer Tests nicht mitzählen
+  function setup(level, dev) {
+    const state = { level };
+    const jobs = [];
+    const ctx = { scene: new Scene(), camera: new PerspectiveCamera(), quality: () => state.level, opts: { ultraOk: true, ...(dev ? { dev } : {}) }, isPhone: false };
+    const u = createUltra(ctx, { schedule: (fn) => { const j = { fn, cancel() {} }; jobs.push(j); return j; } });
+    ctx.use = (n) => (n === 'ultra' ? u.api : undefined);
+    const mod = ultraFigures.init(ctx);
+    const flush = () => { while (jobs.length) jobs.shift().fn(1000); };
+    const setLevel = (l) => { state.level = l; u.onQuality(l); mod.onQuality(); flush(); };
+    return { ctx, u, mod, flush, setLevel };
+  }
+  it('registriert den Key figures; Detail nur solange er sichtbar ist (ultra)', () => {
+    const f = createFigure(v2());
+    const t = setup('high');
+    expect(t.u.api.keys()).toEqual(['figures']);
+    t.flush();
+    t.mod.update(1);
+    expect(f.getDetail()).toBe(false);
+    t.setLevel('ultra');
+    expect(f.getDetail()).toBe(true);
+    t.setLevel('high'); // sofort aus
+    expect(f.getDetail()).toBe(false);
+    t.mod.dispose();
+    expect(t.u.api.keys()).toEqual([]);
+  });
+  it('?ufx=-figures und ?ufx=only:neon schalten das Figuren-Detail ab, only:figures lässt es an', () => {
+    for (const [ufx, want] of [['-figures', false], ['only:neon', false], ['only:figures', true], ['-neon', true]]) {
+      const f = createFigure(v2());
+      const t = setup('high', { ufx });
+      t.flush();
+      t.setLevel('ultra');
+      t.mod.update(1);
+      expect(f.getDetail(), ufx).toBe(want);
+      t.mod.dispose();
+      f.dispose();
+    }
+  });
+  it('ohne Provider ultra: Rückfall auf die Stufe', () => {
+    const f = createFigure(v2());
+    const state = { level: 'ultra' };
+    const mod = ultraFigures.init({ camera: new PerspectiveCamera(), quality: () => state.level, use: () => undefined });
+    mod.update(1);
+    expect(f.getDetail()).toBe(true);
+    state.level = 'high';
+    mod.onQuality();
+    expect(f.getDetail()).toBe(false);
   });
 });

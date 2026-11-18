@@ -194,10 +194,15 @@ export function buildDust(layout, ctx, n = 200) {
   const obj = new Points(g, m);
   obj.name = 'ultra-dust';
   obj.frustumCulled = false;
-  const still = (() => { try { return !!(typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch { return false; } })();
+  // Reduced-Motion: beim Bau lesen UND auf Änderungen der Systemeinstellung hören (Listener wird in dispose entfernt).
+  let mq = null;
+  try { mq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null; } catch { mq = null; }
+  let still = !!(mq && mq.matches);
+  const onMq = (e) => { still = !!(e && typeof e.matches === 'boolean' ? e.matches : mq && mq.matches); };
+  if (mq) { try { if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq); } catch { /* egal */ } }
   return {
     object: obj,
-    still,
+    get still() { return still; },
     update(dt, t) {
       if (!still) m.uniforms.uTime.value = t;
       try {
@@ -206,6 +211,9 @@ export function buildDust(layout, ctx, n = 200) {
         m.uniforms.uPx.value = h / (2 * Math.tan((fov * PI) / 360));
       } catch { /* egal */ }
     },
-    dispose() { g.dispose(); m.dispose(); },
+    dispose() {
+      if (mq) { try { if (mq.removeEventListener) mq.removeEventListener('change', onMq); else if (mq.removeListener) mq.removeListener(onMq); } catch { /* egal */ } }
+      g.dispose(); m.dispose();
+    },
   };
 }

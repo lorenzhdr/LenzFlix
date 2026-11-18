@@ -170,6 +170,28 @@ function planTrees(layout, keep, rand, placed) {
   return { trees, crowns };
 }
 
+const CURB_STEP = 0.25;
+const CURB_MIN = 0.5;
+/** Freie Abschnitte [z0, z1] einer Bordsteinlinie bei x (Walk-Seite dir): alles, was `keep` nicht blockiert; Reste < 0,5 m entfallen. */
+export function curbRuns(keep, x, z0, z1, dir) {
+  const runs = [];
+  const cx = x - dir * 0.08; // Mitte des Bordsteinkörpers
+  const n = Math.max(1, Math.ceil((z1 - z0) / CURB_STEP - 1e-9));
+  let a = null;
+  for (let i = 0; i < n; i++) {
+    const za = z0 + i * CURB_STEP;
+    const zb = Math.min(z1, za + CURB_STEP);
+    const free = ![za, (za + zb) / 2, zb].some((zz) => keep.blocked(cx, zz, 0.1, 'hug')); // Zellenanfang, -mitte, -ende
+    if (free && a === null) a = za;
+    if ((!free || i === n - 1) && a !== null) {
+      const end = free ? zb : za;
+      if (end - a >= CURB_MIN) runs.push([a, end]);
+      a = null;
+    }
+  }
+  return runs;
+}
+
 /** Straße: Bordstein-Fasen, Gullys, Kanaldeckel, Poller, Mülleimer, Fahrradständer, Schilder. */
 function planStreet(layout, keep, rand, placed) {
   const c = layout.city;
@@ -194,9 +216,10 @@ function planStreet(layout, keep, rand, placed) {
   }
   // neue Bordsteine der Seitenstraßen (Walk x ≤ xc0 bzw. ≥ xc1), mit Fase; nicht im Querungsbereich der Zebrastreifen
   const sideRuns = [[zSN, D + 0.2], [D + 10.3, zSS]];
+  // Die soliden Bordsteine laufen durch makeKeepout: an Querungen (Fußwege, Zebrastreifen, Türen/Zonen, Spawns, Kollider) wird unterbrochen.
   for (const [z0, z1] of sideRuns) {
-    curbs.push({ axis: 'z', z0, z1, x: xc0, dir: 1, solid: true });
-    curbs.push({ axis: 'z', z0, z1, x: xc1, dir: -1, solid: true });
+    for (const [z0r, z1r] of curbRuns(keep, xc0, z0, z1, 1)) curbs.push({ axis: 'z', z0: z0r, z1: z1r, x: xc0, dir: 1, solid: true });
+    for (const [z0r, z1r] of curbRuns(keep, xc1, z0, z1, -1)) curbs.push({ axis: 'z', z0: z0r, z1: z1r, x: xc1, dir: -1, solid: true });
   }
   const grates = [];
   const manholes = [];

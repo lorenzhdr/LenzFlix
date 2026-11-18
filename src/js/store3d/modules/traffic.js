@@ -1,5 +1,5 @@
 // VIDEOTHEK LENZ · Modul `traffic` (Welle 2, Paket E): Autos auf layout.city.lanes, parkende Autos in den Seitenstraßen, Hupen, Zebra-Fund.
-// Provider 'traffic' { zebraClear(edge) → bool (für Passanten am ungeregelten Zebra), cars() → [{ lane, x, z, v, state }], parked() → Rechtecke,
+// Provider 'traffic' { zebraClear(edge) → bool (für Passanten am ungeregelten Zebra), cars() → [{ lane, x, z, v, state }], parked() → Rechtecke (3 Kollider je Auto), parkedCars() → ein Rechteck je Auto,
 //   laserHit(point {x,y,z}) → { id, lane, x, z } | null (fahrendes Auto, dessen Fahrerkabine der Laserpunkt trifft; Box 3,2 m lang, y 0,65..1,75),
 //   blindDriver(ref | id, { decel?, stand? }) → bool (Vollbremsung 9 m/s², 2,5 s stehen und hupen; 1.18.0) }.
 // Fahrlogik: npc/cars-logic.js (Halten bei Rot VOR dem Zebra, Zebra-Vorrang, Abstand, Hupen, sanftes Anrollen gegen den Spieler).
@@ -29,6 +29,7 @@ export default {
     const cars = []; // { car, lane, mesh, col, yaw }
     const parkedCols = [];
     const parkedMeshes = [];
+    const parkedSpots = []; // ein Rechteck je geparktem Auto (Vereinigung seiner 3 Kollider)
     const weather = () => ctx.use('weather') || {};
     const groups = () => { const c = ctx.use('city'); return (c && c.groups) || null; };
     const found = (id) => { const d = ctx.use('discover'); if (d && d.found) { try { d.found(id); } catch { /* egal */ } } };
@@ -42,6 +43,7 @@ export default {
       zebraClear: () => true,
       cars: () => cars.map((c) => ({ lane: c.car.lane, ...posOf(c.lane, c.car.p), v: c.car.v, state: c.car.state })),
       parked: () => parkedCols.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 })),
+      parkedCars: () => parkedSpots.map((q) => ({ x0: q.x0, z0: q.z0, x1: q.x1, z1: q.z1 })),
       laserHit: () => null,
       blindDriver: () => false,
     };
@@ -109,11 +111,13 @@ export default {
         const cab = ctx.addCollider({ id: `${s.id}C`, kind: 'car', x0: s.x0, z0: s.z0 + 1.2, x1: s.x1, z1: s.z0 + 3.4, y1: 1.42 });
         const tr = ctx.addCollider({ id: `${s.id}T`, kind: 'car', x0: s.x0, z0: s.z0 + 3.4, x1: s.x1, z1: s.z1, y1: 0.95 });
         parkedCols.push(hood, cab, tr);
+        parkedSpots.push({ x0: s.x0, z0: s.z0, x1: s.x1, z1: s.z1 });
       }
     }
     function clearParked() {
       for (const q of parkedCols) ctx.removeCollider(q);
       parkedCols.length = 0;
+      parkedSpots.length = 0;
       for (const m of parkedMeshes) if (m.root.parent) m.root.parent.remove(m.root);
       parkedMeshes.length = 0;
     }

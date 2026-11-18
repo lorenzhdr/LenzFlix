@@ -2,7 +2,8 @@
 // Alle lebenden Figuren (npc/figure.js liveFigures: Passanten, Mitspieler, Personal, eigene Figur in Außenansicht/Spiegel) bekommen setDetail(true),
 // solange sie höchstens DETAIL_ON m von der Kamera entfernt sind; erst jenseits DETAIL_OFF m (Hysterese) fällt es zurück. Prüfung höchstens alle 0,5 s,
 // höchstens MAX_SWAPS Wechsel je Prüfung (nächste zuerst); beim Verlassen von „ultra“ gehen alle sofort zurück. Kein zusätzlicher Draw-Call (selbes Mesh).
-import { Vector3 } from 'three';
+// Registry-Key 'figures' (leeres Object3D): Sichtbarkeit = ultra && !ufx-abgeschaltet, damit ?ufx=-figures / ?ufx=only:x wirken. Ohne Registry: Rückfall auf die Stufe.
+import { Vector3, Object3D } from 'three';
 import { liveFigures } from '../npc/figure.js';
 
 export const DETAIL_ON = 14;
@@ -41,13 +42,23 @@ export default {
   name: 'ultra-figures',
   init(ctx) {
     let acc = 0;
-    const ultra = () => { try { return ctx.quality() === 'ultra'; } catch { return false; } };
+    const levelUltra = () => { try { return ctx.quality() === 'ultra'; } catch { return false; } };
+    const reg = ctx.use && ctx.use('ultra');
+    let on = false; // Sichtbarkeit des Registry-Eintrags 'figures'
+    const ultra = () => (reg && typeof reg.register === 'function' ? on && levelUltra() : levelUltra());
     const cam = new Vector3();
     const run = () => {
       const en = ultra();
-      ctx.camera.getWorldPosition(cam);
+      try { ctx.camera.getWorldPosition(cam); } catch { cam.set(0, 0, 0); }
       stepFigureLod(liveFigures(), cam.x, cam.y, cam.z, { enabled: en });
     };
+    const off = reg && typeof reg.register === 'function'
+      ? reg.register('figures', () => {
+        const object = new Object3D();
+        object.name = 'ultra-figures';
+        return { object, onVisible(v) { on = !!v; acc = 0; run(); } };
+      })
+      : null;
     return {
       update(dt) {
         acc += dt;
@@ -56,7 +67,7 @@ export default {
         run();
       },
       onQuality() { acc = 0; run(); },
-      dispose() { stepFigureLod(liveFigures(), 0, 0, 0, { enabled: false }); },
+      dispose() { if (off) off(); stepFigureLod(liveFigures(), 0, 0, 0, { enabled: false }); },
     };
   },
 };

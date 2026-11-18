@@ -5,7 +5,7 @@ import { Group } from 'three';
 import { createUltra } from '../src/js/store3d/engine/ultra.js';
 import ultraLight from '../src/js/store3d/modules/ultra-light.js';
 import {
-  neonStrength, poolStrength, shadowOpacity, neonSources, poolSources, staticShadows, buildNeon, buildPools, buildShadows, SHADOW_DYN_MAX,
+  neonStrength, poolStrength, shadowOpacity, neonSources, poolSources, staticShadows, buildNeon, buildPools, buildShadows, SHADOW_DYN_MAX, SHADOW_PARKED_MAX,
 } from '../src/js/store3d/world/build-ultra-light.js';
 import { MODULES } from '../src/js/store3d/modules/index.js';
 import { layoutOf, fakeCanvas } from './helpers-city.js';
@@ -13,6 +13,8 @@ import { layoutOf, fakeCanvas } from './helpers-city.js';
 const realGetContext = HTMLCanvasElement.prototype.getContext;
 beforeEach(() => { HTMLCanvasElement.prototype.getContext = () => fakeCanvas().getContext(); });
 afterEach(() => { HTMLCanvasElement.prototype.getContext = realGetContext; });
+
+const staticStreetCount = (s, t) => staticShadows(t.L, null).filter((q) => q.group === 'street').length;
 
 function make(level = 'ultra', providers = {}) {
   const L = layoutOf(40);
@@ -149,5 +151,31 @@ describe('Bauer', () => {
     const tx = vi.spyOn(s.mesh.material.map, 'dispose');
     s.dispose();
     expect(tx).toHaveBeenCalled();
+  });
+
+  it('shadows: geparkte Autos = ein Blob je Auto (nicht je Kollider), folgt Änderungen und der Straßengruppe; fahrende Autos nur bei sichtbarer Straße', () => {
+    let spots = [{ x0: 1, z0: 1, x1: 3, z1: 6 }, { x0: 8, z0: 1, x1: 10, z1: 6 }];
+    const t = make('ultra', {
+      traffic: {
+        parked: () => spots.flatMap((q) => [q, q, q]), // 3 Kollider je Auto
+        parkedCars: () => spots,
+        cars: () => [{ lane: 'mainE', x: 5, z: 5, state: 'drive' }],
+      },
+    });
+    const s = buildShadows(t.ctx);
+    s.update(0.016);
+    const base = s.mesh.count; // inkl. 2 geparkte + 1 fahrendes Auto
+    spots = [{ x0: 1, z0: 1, x1: 3, z1: 6 }];
+    s.update(0.016); s.update(0.016);
+    expect(s.mesh.count).toBe(base - 1); // Qualitätswechsel in traffic: ein Auto weniger → Blob weg
+    spots = Array.from({ length: 9 }, (_, i) => ({ x0: i, z0: 1, x1: i + 2, z1: 6 }));
+    s.update(0.016); s.update(0.016);
+    expect(s.mesh.count - (base - 2)).toBe(SHADOW_PARKED_MAX); // begrenzt
+    const withStreet = s.mesh.count;
+    t.base.city.visible = () => ({ street: false, shopShell: true });
+    s.update(0.016); s.update(0.016);
+    expect(s.mesh.count).toBe(s.staticCount - staticStreetCount(s, t));
+    expect(withStreet).toBeGreaterThan(s.mesh.count);
+    s.dispose();
   });
 });
