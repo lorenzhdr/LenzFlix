@@ -298,6 +298,32 @@ describe('Salon: Modul', () => {
     h.dispose();
   });
 
+  it('Stuhl live: Kamera rahmt das Spiegelbild in die freie Fläche neben dem Blatt', async () => {
+    const t = setup({ quality: 'high' });
+    t.avatar.freeArea = () => ({ x0: 0.33, x1: 1, y0: 0, y1: 1 });
+    t.ctx.camera.fov = 40;
+    t.ctx.camera.aspect = 1.78;
+    const h = salonMod.init(t.ctx);
+    ia(t, 'Friseurstuhl').onUse();
+    t.settleFlights();
+    await tick();
+    await new Promise((r) => setTimeout(r, 80)); // zwei Animationsbilder
+    expect(t.rec.flights.length).toBe(2);
+    const f = t.rec.flights[1];
+    const sa = t.ctx.layout.city.salon;
+    // Blickrichtung zeigt zum Spiegel (+z beim Stuhl, yaw π) und ist zur freien Fläche hin geschwenkt (nach +x)
+    const dx = f.target.x - f.pos.x;
+    const dz = f.target.z - f.pos.z;
+    expect(dz).toBeGreaterThan(0);
+    expect(dx).toBeGreaterThan(0);
+    expect(f.pos.z).toBeLessThan(sa.mirror.z - 0.3); // Kamera bleibt vor dem Spiegel
+    t.finishEditor(true);
+    await tick();
+    t.settleFlights();
+    await tick();
+    h.dispose();
+  });
+
   it('Stuhl bei Qualität low: Editor ohne live (Studio)', async () => {
     const t = setup({ quality: 'low' });
     const h = salonMod.init(t.ctx);

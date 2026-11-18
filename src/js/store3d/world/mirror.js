@@ -167,6 +167,7 @@ export function createMirror(ctx, o) {
   vcam.layers.set(0);
   vcam.layers.enable(LAYER_MIRROR);
   let rt = null;
+  let rtSize = MIRROR_RT;
   let acc = 1;
   let rendered = false;
   let live = false;
@@ -221,7 +222,8 @@ export function createMirror(ctx, o) {
   function renderNow() {
     const cam = ctx.camera;
     if (!setup(cam)) return false;
-    if (!rt) { rt = makeTarget(MIRROR_RT); mat.uniforms.tDiffuse.value = rt.texture; }
+    if (rt && rt.width !== rtSize) { rt.dispose(); rt = null; }
+    if (!rt) { rt = makeTarget(rtSize); mat.uniforms.tDiffuse.value = rt.texture; }
     renderToTarget(ctx.renderer, ctx.scene, vcam, rt, [mesh]);
     renders++;
     return true;
@@ -229,6 +231,13 @@ export function createMirror(ctx, o) {
 
   const api = {
     mesh,
+    /** Auflösung des Spiegelbilds ändern (z. B. 1024 beim Frisieren, MIRROR_RT sonst); legt das Ziel beim nächsten Bild neu an. */
+    setSize(n) {
+      const v = Math.max(64, Math.min(2048, Math.round(Number(n)) || MIRROR_RT));
+      if (v === rtSize) return;
+      rtSize = v; // das alte Ziel bleibt bis zum nächsten Spiegelbild stehen (kein Schwarzbild), renderNow tauscht es
+    },
+    getSize: () => rtSize,
     /** Wird pro Frame aus update(dt) des Moduls gerufen (vor dem Hauptbild). */
     update(dt) {
       const cam = ctx.camera;

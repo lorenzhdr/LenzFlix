@@ -566,9 +566,24 @@ describe('avatar: Editor-Sitzungen', () => {
     const n = ctx.player.camera.flyTo.mock.calls.length;
     click(ctx.curOverlay().el.querySelector('[data-tab="shoes"]'));
     expect(ctx.player.camera.flyTo.mock.calls.length).toBe(n + 1);
-    expect(studioMock.made[0].cameraPose).toHaveBeenLastCalledWith('shoes', expect.objectContaining({ aspect: 1.7, fov: 60 }));
+    expect(studioMock.made[0].cameraPose).toHaveBeenLastCalledWith('shoes', expect.objectContaining({ aspect: 1.7, fov: 40 }));
     click(btn(ctx.curOverlay().el, 'Abbrechen'));
     await pr;
+  });
+
+  it('Studio stellt die Hauptkamera auf 40° und setzt sie beim Verlassen exakt zurück (Abbruch, Resize-Reset)', async () => {
+    const av = boot({ profile: withFigure() });
+    ctx.camera.updateProjectionMatrix = vi.fn();
+    const pr = av.openEditor('pause');
+    await tick();
+    expect(ctx.camera.fov).toBe(40);
+    ctx.camera.fov = 70; // der Renderer setzt beim Resize den Winkel neu → Wächter holt die 40° zurück und merkt 70
+    window.dispatchEvent(new Event('resize'));
+    expect(ctx.camera.fov).toBe(40);
+    click(btn(ctx.curOverlay().el, 'Abbrechen'));
+    await pr;
+    expect(ctx.camera.fov).toBe(70);
+    ctx.camera.fov = 60;
   });
 
   it('in VR: Editor öffnet nicht, xrchar übernimmt', async () => {
@@ -671,7 +686,7 @@ describe('avatar: Gate bleibt sichtbar (Befund Sichtprüfung 1.17.0)', () => {
     window.dispatchEvent(new Event('resize'));
     const call = studioMock.made[0].cameraPose.mock.calls.at(-1);
     expect(call[0]).toBe('body');
-    expect(call[1]).toMatchObject({ aspect: 1.7, fov: 60, free: { x0: 0.4, x1: 1, y0: 0, y1: 1 } });
+    expect(call[1]).toMatchObject({ aspect: 1.7, fov: 40, free: { x0: 0.4, x1: 1, y0: 0, y1: 1 } });
     handle.dispose();
     await gp;
   });

@@ -6,7 +6,7 @@
 // → Kamera zurück, aufstehen. Umkleide: Vorhang zu → openEditor('booth','top'). In VR: Stuhl und Umkleide öffnen das „VR light“-Panel (xrchar).
 // Fremde Provider (avatar, selfview, npc, cashier, sound, areas, xrchar) werden bei Gebrauch geholt und mit Guard benutzt.
 import { buildSalon, drawPosterAtlas } from '../world/build-salon.js';
-import { createMirror } from '../world/mirror.js';
+import { createMirror, MIRROR_RT } from '../world/mirror.js';
 import { canvasTexture } from './m3-gfx.js';
 import { FONT } from '../world/textures.js';
 import { toRender } from '../char/look2.js';
@@ -17,6 +17,11 @@ const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch
 const GREET_GAP = 45; // s zwischen zwei Begrüßungen
 const NEAR = 6.5; // m: so nah reagieren die beiden
 const CURTAIN_S = 0.55; // s Vorhangfahrt
+const MIRROR_RT_EDIT = 1024; // Auflösung des Spiegelbilds, solange das Live-Blatt offen ist (sonst 256: bei 40° und Vollbild sichtbar unscharf)
+const FRAME = {
+  chair: { yF: 1.02, h: 1.45, w: 0.8, camY: 1.3, dMin: 1.7, dMax: 3.0 }, // sitzend: Kopf + Oberkörper im Spiegel
+  booth: { yF: 1.4, h: 1.0, w: 0.9, camY: 1.5, dMin: 1.5, dMax: 2.7 }, // stehend: Oberkörper im Spiegel
+};
 
 export default {
   name: 'salon',
@@ -131,6 +136,7 @@ export default {
         if (done) return;
         done = true;
         abort = null;
+        for (const mm of [mirrors.chair, mirrors.booth]) { if (typeof mm.setSize === 'function') mm.setSize(MIRROR_RT); }
         other.setSuppressed(false);
         sitting = false;
         // Abbruch/Fehler: Körper vor dem Zurücksetzen des Stuhl-Kollisionskörpers an den Austritt stellen (nicht in den Stuhl)
@@ -143,8 +149,10 @@ export default {
         try { ctx.player.freeze(false); } catch { /* egal */ }
         busy = false;
       };
+      let offFrame = () => {};
+      const abortAll = () => { offFrame(); offFrame = () => {}; cleanup(); };
       busy = true;
-      abort = cleanup;
+      abort = abortAll;
       let ok = false;
       try {
         ctx.player.freeze(true);
@@ -162,7 +170,12 @@ export default {
         const a = av();
         if (!a || typeof a.openEditor !== 'function') { toast('Hier tut sich gerade nichts.'); return; }
         const live = ctx.quality() !== 'low' && !xr();
-        ok = await (kind === 'chair' ? a.openEditor('chair', 'hair', live ? { live: true } : undefined) : a.openEditor('booth', 'top', live ? { live: true } : undefined));
+        const mir = mirrors[kind];
+        if (live && mir && typeof mir.setSize === 'function') mir.setSize(MIRROR_RT_EDIT);
+        const pr = kind === 'chair' ? a.openEditor('chair', 'hair', live ? { live: true } : undefined) : a.openEditor('booth', 'top', live ? { live: true } : undefined);
+        if (live) offFrame = startFrame(kind, spot);
+        ok = await pr;
+        offFrame(); offFrame = () => {};
         if (done || disposed) return;
         if (ok) {
           const who = kind === 'chair' ? 'gabi' : 'ronny';
@@ -180,9 +193,57 @@ export default {
       } catch (err) {
         warn('salon', err);
       } finally {
+        offFrame(); offFrame = () => {};
         cleanup();
       }
       return ok;
+    }
+
+    /**
+     * Live-Blatt offen: Kamera so ausrichten, dass das Spiegelbild der eigenen Figur in der freien Fläche neben (Querformat) bzw. über (Hochformat)
+     * dem Blatt liegt. Spiegelbild = Figurpunkt an der Spiegelebene gespiegelt; Kamera blickt senkrecht auf den Spiegel, Schwenk/Neigung legen
+     * das Bild in die Mitte der freien Fläche. Bei Resize neu. Rückgabe: Aufräumer.
+     */
+    function startFrame(kind, spot) {
+      const m = interior.mirrors[kind];
+      const f = FRAME[kind];
+      const cam = ctx.camera;
+      const a = av();
+      if (!m || !f || !cam || !a || typeof a.freeArea !== 'function') return () => {};
+      let stopped = false;
+      let raf = 0;
+      const apply = (ms) => {
+        raf = 0;
+        if (stopped || disposed || xr()) return;
+        let free;
+        try { free = a.freeArea(); } catch { free = null; }
+        if (!free) return;
+        const asp = cam.aspect || 1.6;
+        const tanH = Math.tan(((cam.fov || 40) * Math.PI) / 360);
+        const nx = free.x0 + free.x1 - 1;
+        const ny = 1 - (free.y0 + free.y1);
+        const fw = free.x1 - free.x0;
+        const fh = free.y1 - free.y0;
+        const D = Math.max(f.dMin, Math.min(f.dMax, Math.max(f.h / (1.3 * fh * tanH), f.w / (1.5 * fw * tanH * asp))));
+        const nX = Math.sin(m.yaw);
+        const nZ = Math.cos(m.yaw);
+        const side = (spot.x - m.x) * nX + (spot.z - m.z) * nZ; // Abstand der Figur zur Spiegelebene (vorn positiv)
+        const P = { x: spot.x - 2 * side * nX, z: spot.z - 2 * side * nZ }; // Spiegelbild
+        const C = { x: P.x + D * nX, z: P.z + D * nZ }; // Kamera davor, Blick entlang −n
+        const cy = f.camY;
+        const yaw0 = Math.atan2(-nX, -nZ); // Blickrichtung (−n) als Azimut für forward = (sin, ., cos)
+        const psi = yaw0 + Math.atan(nx * tanH * asp);
+        const pitch = Math.atan2(f.yF - cy, D) - Math.atan(ny * tanH);
+        const fx = Math.cos(pitch) * Math.sin(psi);
+        const fy = Math.sin(pitch);
+        const fz = Math.cos(pitch) * Math.cos(psi);
+        try { ctx.player.camera.flyTo({ x: C.x, y: cy, z: C.z }, { x: C.x + fx * 4, y: cy + fy * 4, z: C.z + fz * 4 }, ms); } catch (err) { warn('salon frame', err); }
+      };
+      const sched = (ms) => { if (!raf && !stopped) raf = requestAnimationFrame(() => requestAnimationFrame(() => apply(ms))); };
+      const onResize = () => sched(1);
+      window.addEventListener('resize', onResize);
+      sched(650);
+      return () => { stopped = true; if (raf) cancelAnimationFrame(raf); window.removeEventListener('resize', onResize); };
     }
 
     function noteFirstVisit() {

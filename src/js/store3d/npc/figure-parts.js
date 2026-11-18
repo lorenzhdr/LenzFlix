@@ -368,13 +368,13 @@ function buildTop(P, L, { sw, hw, ax, wAt, bx }) {
 const TALL_HAIR = new Set(['afro', 'tuft', 'bun', 'mohawk', 'spiky', 'quiff', 'curls']);
 
 /** Haarkappe vorn über die Stirn anheben: Unterkante auf den Haaransatz (HAIRLINE), an den Seiten und hinten bleibt sie tief. */
-function liftHairline(g) {
+function liftHairline(g, z0 = 0.02, span = 0.06) {
   const a = g.attributes.position;
   for (let i = 0; i < a.count; i++) {
     const y = a.getY(i);
     const z = a.getZ(i);
-    if (y >= HAIRLINE || z >= -0.02) continue;
-    const w = Math.min(1, (-z - 0.02) / 0.06);
+    if (y >= HAIRLINE || z >= -z0) continue;
+    const w = Math.min(1, (-z - z0) / span);
     a.setY(i, y + (HAIRLINE - y) * w);
   }
   a.needsUpdate = true;
@@ -448,11 +448,13 @@ function buildFace(P, L) {
   else { eye(-0.045, L.eyes); eye(0.045, L.eyes); }
   const bc = sc(L.hair, 0.75);
   const by = L.eyes === 'wide' || L.eyes === 'round' ? 1.64 : 1.634; // knapp über den Augen, unter dem Haaransatz
+  // Brauen: beide Seiten spiegelgleich (x = ±bx), nach innen gerückt, damit sie an den Schläfen nicht unter den Haaransatz laufen
+  const bx0 = 0.04;
   switch (L.brows) {
-    case 'thin': for (const sx of [-1, 1]) fb(0.045, 0.008, 0.012, sx * 0.045, by, bc, 0.005); break;
-    case 'thick': for (const sx of [-1, 1]) fb(0.05, 0.016, 0.014, sx * 0.045, by + 0.002, bc, 0.006); break;
-    case 'arched': for (const sx of [-1, 1]) fb(0.045, 0.009, 0.012, sx * 0.045, by + 0.003, bc, 0.005, sx * -0.28); break;
-    case 'angry': for (const sx of [-1, 1]) fb(0.05, 0.012, 0.012, sx * 0.045, by + 0.001, bc, 0.005, sx * 0.38); break;
+    case 'thin': for (const sx of [-1, 1]) fb(0.044, 0.008, 0.012, sx * bx0, by, bc, 0.005); break;
+    case 'thick': for (const sx of [-1, 1]) fb(0.048, 0.016, 0.014, sx * bx0, by + 0.002, bc, 0.006); break;
+    case 'arched': for (const sx of [-1, 1]) fb(0.044, 0.009, 0.012, sx * bx0, by + 0.003, bc, 0.005, sx * -0.28); break;
+    case 'angry': for (const sx of [-1, 1]) fb(0.048, 0.012, 0.012, sx * bx0, by + 0.001, bc, 0.005, sx * 0.38); break;
     default:
   }
   fb(0.02, 0.03, 0.02, 0, 1.57, sc(skin, 0.93), 0.016); // Nase
@@ -497,25 +499,26 @@ function buildHat(hd, L) {
   const bx = (w, h, d, x, y, z, color, rx = 0, ry = 0, rz = 0) => hd.push(box({ w, h, d, x, y, z, rx, ry, rz, color }));
   switch (id) {
     case 'cap': case 'goldcap': {
+      // Kuppel sitzt eng auf dem Oberkopf, vorn auf den Haaransatz angehoben (Stirn/Brauen frei); kurzer, anliegender Schirm, gerade
       const cc = id === 'goldcap' ? HAT_GOLD : c;
-      hd.push(sph(0.14, 0, 1.62, 0, cc, 1, 0.85, 1, 8, 5, 1.7));
-      bx(0.2, 0.015, 0.12, 0, 1.64, -0.15, sc(cc, 0.8));
-      if (id === 'goldcap') hd.push(sph(0.018, 0, 1.738, 0, WHITE, 1, 1, 1, 6, 4));
+      hd.push(liftHairline(sph(0.135, 0, 1.612, 0.004, cc, 1, 1, 1, 8, 5, 1.75), 0, 0.13));
+      bx(0.15, 0.012, 0.065, 0, 1.667, -0.148, sc(cc, 0.8));
       break;
     }
     case 'beanie': hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 1.45)); break;
     case 'catears':
-      // Mütze auf dem Oberkopf (Rand über den Brauen) + zwei dreieckige Ohren, symmetrisch
-      hd.push(sph(0.14, 0, 1.635, 0, c, 1, 1, 1, 8, 5, 1.4));
+      // Mütze auf dem Oberkopf (deckt die Haare oben ab, vorn auf den Haaransatz angehoben) + zwei dreieckige Ohren auf der Mütze, symmetrisch
+      hd.push(liftHairline(sph(0.139, 0, 1.612, 0.004, c, 1, 1, 1, 8, 5, 1.75), 0, 0.13));
       for (const sx of [-1, 1]) {
-        hd.push(cone(0.052, 0.1, 3, sx * 0.075, 1.8, -0.005, c, 0, 0, sx * -0.3));
-        hd.push(cone(0.03, 0.062, 3, sx * 0.0765, 1.793, -0.024, [0.95, 0.6, 0.7], 0, 0, sx * -0.3));
+        hd.push(cone(0.05, 0.095, 3, sx * 0.07, 1.768, 0.004, c, 0, 0, sx * -0.28));
+        hd.push(cone(0.03, 0.06, 3, sx * 0.0715, 1.762, -0.014, [0.95, 0.6, 0.7], 0, 0, sx * -0.28));
       }
       break;
     case 'hat':
-      bx(0.36, 0.02, 0.36, 0, 1.67, 0, sc(c, 0.8));
-      bx(0.2, 0.14, 0.2, 0, 1.75, 0, c);
-      bx(0.205, 0.03, 0.205, 0, 1.7, 0, sc(c, 0.55));
+      // Krempe liegt auf dem Kopf, Hutband direkt darüber, Kopfteil schließt ohne Spalt an
+      bx(0.33, 0.018, 0.33, 0, 1.662, 0, sc(c, 0.8));
+      bx(0.185, 0.13, 0.185, 0, 1.735, 0, c);
+      bx(0.19, 0.028, 0.19, 0, 1.682, 0, sc(c, 0.55));
       break;
     case 'bucket':
       hd.push(sph(0.14, 0, 1.63, 0, c, 1, 0.95, 1, 8, 5, 1.45));
@@ -525,12 +528,12 @@ function buildHat(hd, L) {
     case 'beret': hd.push(sph(0.15, 0.01, 1.7, 0.01, c, 1.05, 0.4, 1.05, 8, 5)); bx(0.015, 0.035, 0.015, 0.01, 1.745, 0.01, sc(c, 0.7)); break;
     case 'crown': {
       // kleine goldene Krone auf dem Oberkopf: runder Reif, 8 regelmäßige Zacken, kleiner Edelstein
-      hd.push(drum(0.092, 0.05, 8, 0, 1.718, 0.012, HAT_GOLD));
+      hd.push(drum(0.092, 0.05, 8, 0, 1.695, 0.012, HAT_GOLD));
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-        hd.push(cone(0.024, 0.06, 4, Math.sin(a) * 0.077, 1.773, 0.012 + Math.cos(a) * 0.077, HAT_GOLD, 0, a, 0));
+        hd.push(cone(0.024, 0.06, 4, Math.sin(a) * 0.077, 1.75, 0.012 + Math.cos(a) * 0.077, HAT_GOLD, 0, a, 0));
       }
-      hd.push(sph(0.013, 0, 1.718, -0.08, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
+      hd.push(sph(0.013, 0, 1.695, -0.08, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
       break;
     }
     case 'canhat':

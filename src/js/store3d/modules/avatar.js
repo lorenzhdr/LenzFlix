@@ -26,6 +26,7 @@ const STAMP_MS = 380;
 const STAMP_MS_REDUCED = 150;
 const FLASH_MS = 140;
 const FLASH_MS_REDUCED = 320;
+const STUDIO_FOV = 40; // vertikale Öffnung der Hauptkamera, solange das Studio läuft (weniger Verzerrung als die 70° des Laufens)
 
 const warn = (what, err) => console.warn(`[LenzFlix Store3D] avatar ${what}`, err);
 const validSlot = (c) => Array.isArray(c) && c.length === LEN && c[0] === 2;
@@ -42,6 +43,8 @@ export default {
     let lastChangeAt = 0;
     let rigNode = null;
     let onStage = false;
+    let setFov = 0; // zuletzt von uns gesetzter Winkel
+    let savedFov = null; // Öffnungswinkel der Hauptkamera vor dem Studio (null = nicht von uns gesetzt)
     const changeFns = new Set();
     const previewFns = new Set();
     const xrWaiters = new Set();
@@ -134,18 +137,51 @@ export default {
       const host = ui && ui.el && ui.el.parentElement;
       if (!ui || !ui.preview || !host) return null;
       const hr = host.getBoundingClientRect();
+      const n = (v) => Math.max(0, Math.min(1, v));
+      if (s.cfg.live) {
+        // Live-Blatt (Salon): die Vorschaufläche ist ausgeblendet, frei ist die Fläche neben (Querformat) bzw. über (Hochformat) dem Blatt
+        const panel = ui.el.querySelector ? ui.el.querySelector('.lfx-store-char__panel') : null;
+        const br = panel ? panel.getBoundingClientRect() : null;
+        if (!br || hr.width < 2 || hr.height < 2 || br.width < 2 || br.height < 2) return null;
+        const f = hr.width / hr.height >= 1.1
+          ? { x0: n((br.right - hr.left) / hr.width), x1: 1, y0: 0, y1: 1 }
+          : { x0: 0, x1: 1, y0: 0, y1: n((br.top - hr.top) / hr.height) };
+        return f.x1 - f.x0 > 0.05 && f.y1 - f.y0 > 0.05 ? f : null;
+      }
       const pr = ui.preview.getBoundingClientRect();
       if (hr.width < 2 || hr.height < 2 || pr.width < 2 || pr.height < 2) return null;
-      const n = (v) => Math.max(0, Math.min(1, v));
       const free = { x0: n((pr.left - hr.left) / hr.width), x1: n((pr.right - hr.left) / hr.width), y0: n((pr.top - hr.top) / hr.height), y1: n((pr.bottom - hr.top) / hr.height) };
       return free.x1 - free.x0 > 0.05 && free.y1 - free.y0 > 0.05 ? free : null;
+    }
+
+    /** Hauptkamera auf STUDIO_FOV stellen (merkt den natürlichen Winkel; ein Resize des Renderers setzt ihn zurück, dann neu merken). */
+    function studioFov() {
+      const cam = ctx.camera;
+      if (!cam || !(onStage || (session && session.cfg.live && !session.ended))) return;
+      // Salon (live) im Hochformat: horizontal ~40° statt vertikal 40° (sonst füllt die Figur im schmalen Bild die ganze Breite)
+      const want = !onStage && cam.aspect > 0 && cam.aspect < 1 ? Math.min(75, ((2 * Math.atan(Math.tan((STUDIO_FOV * Math.PI) / 360) / cam.aspect)) * 180) / Math.PI) : STUDIO_FOV;
+      if (cam.fov === want) return;
+      if (cam.fov !== setFov) savedFov = cam.fov; // der Renderer hat den Winkel neu gesetzt (Resize): neuen natürlichen Wert merken
+      setFov = want;
+      cam.fov = want;
+      if (typeof cam.updateProjectionMatrix === 'function') cam.updateProjectionMatrix();
+    }
+    function restoreFov() {
+      const cam = ctx.camera;
+      if (cam && savedFov !== null && cam.fov === setFov) {
+        cam.fov = savedFov;
+        if (typeof cam.updateProjectionMatrix === 'function') cam.updateProjectionMatrix();
+      }
+      savedFov = null;
+      setFov = 0;
     }
 
     /** Das Studio liefert die fertige Pose für Seitenverhältnis, Öffnungswinkel und freie Fläche (char/studio.js cameraPose). */
     function poseCamera(focus, ms) {
       if (!studio) return;
       const cam = ctx.camera;
-      const o = { aspect: (cam && cam.aspect) || 1.6, fov: (cam && cam.fov) || 60 };
+      studioFov();
+      const o = { aspect: (cam && cam.aspect) || 1.6, fov: STUDIO_FOV };
       const free = freeArea();
       if (free) o.free = free;
       const pose = studio.cameraPose(focus, o);
@@ -169,6 +205,7 @@ export default {
     function stageOff() {
       if (!onStage) return;
       onStage = false;
+      restoreFov();
       window.removeEventListener('resize', onResize);
       try { ctx.player.camera.release(); } catch { /* egal */ }
       try {
@@ -206,7 +243,7 @@ export default {
       s.ended = true;
       s.finished = true;
       if (s.timer) { clearTimeout(s.timer); s.timer = null; }
-      if (s.cfg.live) emitPreview(null);
+      if (s.cfg.live) { emitPreview(null); restoreFov(); }
       const wasMine = s.ui.el.isConnected;
       s.ui.destroy();
       if (wasMine) { try { ctx.overlay.close(); } catch { /* egal */ } }
@@ -249,6 +286,7 @@ export default {
         try { stageOn(startCode); } catch (err) { warn('Studio', err); stageOff(); } // ohne Studio läuft das Formular trotzdem
       }
       session = s;
+      if (s.cfg.live) studioFov(); // Salon: gleiche 40° wie im Studio (der Spiegel zeigt die Figur ohne Weitwinkel-Verzerrung)
       // Gate: Esc-fest (modal); der Editor schließt per Esc wie bisher
       ctx.overlay.open(s.ui.el, { modal: gateMode, onClose: () => onOverlayClosed(s) });
       if (onStage && !s.cfg.live) poseCamera(s.focus, 1);
@@ -380,6 +418,8 @@ export default {
         if (disposed || !isIdx(i) || !slotAt(i) || i === activeIdx()) return;
         commit([null, null, null], i);
       },
+      /** Freie Bildfläche der laufenden Sitzung (normiert 0..1, y von oben) neben/über dem Formular oder null (kein Layout, keine Sitzung). */
+      freeArea: () => freeArea(),
       needsGate,
       gate,
       openEditor,
@@ -447,7 +487,7 @@ export default {
     const off = ctx.provide('avatar', provider);
 
     return {
-      update(dt) { if (onStage && studio) studio.update(dt); guardGate(); },
+      update(dt) { if (onStage && studio) studio.update(dt); studioFov(); guardGate(); },
       dispose() {
         disposed = true;
         if (session) endSession(session, false);

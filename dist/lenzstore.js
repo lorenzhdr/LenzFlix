@@ -47468,13 +47468,13 @@ void main() {
     }
   }
   var TALL_HAIR = /* @__PURE__ */ new Set(["afro", "tuft", "bun", "mohawk", "spiky", "quiff", "curls"]);
-  function liftHairline(g) {
+  function liftHairline(g, z0 = 0.02, span2 = 0.06) {
     const a = g.attributes.position;
     for (let i = 0; i < a.count; i++) {
       const y = a.getY(i);
       const z = a.getZ(i);
-      if (y >= HAIRLINE || z >= -0.02) continue;
-      const w = Math.min(1, (-z - 0.02) / 0.06);
+      if (y >= HAIRLINE || z >= -z0) continue;
+      const w = Math.min(1, (-z - z0) / span2);
       a.setY(i, y + (HAIRLINE - y) * w);
     }
     a.needsUpdate = true;
@@ -47611,18 +47611,19 @@ void main() {
     }
     const bc = sc(L2.hair, 0.75);
     const by = L2.eyes === "wide" || L2.eyes === "round" ? 1.64 : 1.634;
+    const bx0 = 0.04;
     switch (L2.brows) {
       case "thin":
-        for (const sx of [-1, 1]) fb(0.045, 8e-3, 0.012, sx * 0.045, by, bc, 5e-3);
+        for (const sx of [-1, 1]) fb(0.044, 8e-3, 0.012, sx * bx0, by, bc, 5e-3);
         break;
       case "thick":
-        for (const sx of [-1, 1]) fb(0.05, 0.016, 0.014, sx * 0.045, by + 2e-3, bc, 6e-3);
+        for (const sx of [-1, 1]) fb(0.048, 0.016, 0.014, sx * bx0, by + 2e-3, bc, 6e-3);
         break;
       case "arched":
-        for (const sx of [-1, 1]) fb(0.045, 9e-3, 0.012, sx * 0.045, by + 3e-3, bc, 5e-3, sx * -0.28);
+        for (const sx of [-1, 1]) fb(0.044, 9e-3, 0.012, sx * bx0, by + 3e-3, bc, 5e-3, sx * -0.28);
         break;
       case "angry":
-        for (const sx of [-1, 1]) fb(0.05, 0.012, 0.012, sx * 0.045, by + 1e-3, bc, 5e-3, sx * 0.38);
+        for (const sx of [-1, 1]) fb(0.048, 0.012, 0.012, sx * bx0, by + 1e-3, bc, 5e-3, sx * 0.38);
         break;
       default:
     }
@@ -47682,25 +47683,24 @@ void main() {
       case "cap":
       case "goldcap": {
         const cc = id === "goldcap" ? HAT_GOLD : c;
-        hd.push(sph(0.14, 0, 1.62, 0, cc, 1, 0.85, 1, 8, 5, 1.7));
-        bx3(0.2, 0.015, 0.12, 0, 1.64, -0.15, sc(cc, 0.8));
-        if (id === "goldcap") hd.push(sph(0.018, 0, 1.738, 0, WHITE, 1, 1, 1, 6, 4));
+        hd.push(liftHairline(sph(0.135, 0, 1.612, 4e-3, cc, 1, 1, 1, 8, 5, 1.75), 0, 0.13));
+        bx3(0.15, 0.012, 0.065, 0, 1.667, -0.148, sc(cc, 0.8));
         break;
       }
       case "beanie":
         hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 1.45));
         break;
       case "catears":
-        hd.push(sph(0.14, 0, 1.635, 0, c, 1, 1, 1, 8, 5, 1.4));
+        hd.push(liftHairline(sph(0.139, 0, 1.612, 4e-3, c, 1, 1, 1, 8, 5, 1.75), 0, 0.13));
         for (const sx of [-1, 1]) {
-          hd.push(cone(0.052, 0.1, 3, sx * 0.075, 1.8, -5e-3, c, 0, 0, sx * -0.3));
-          hd.push(cone(0.03, 0.062, 3, sx * 0.0765, 1.793, -0.024, [0.95, 0.6, 0.7], 0, 0, sx * -0.3));
+          hd.push(cone(0.05, 0.095, 3, sx * 0.07, 1.768, 4e-3, c, 0, 0, sx * -0.28));
+          hd.push(cone(0.03, 0.06, 3, sx * 0.0715, 1.762, -0.014, [0.95, 0.6, 0.7], 0, 0, sx * -0.28));
         }
         break;
       case "hat":
-        bx3(0.36, 0.02, 0.36, 0, 1.67, 0, sc(c, 0.8));
-        bx3(0.2, 0.14, 0.2, 0, 1.75, 0, c);
-        bx3(0.205, 0.03, 0.205, 0, 1.7, 0, sc(c, 0.55));
+        bx3(0.33, 0.018, 0.33, 0, 1.662, 0, sc(c, 0.8));
+        bx3(0.185, 0.13, 0.185, 0, 1.735, 0, c);
+        bx3(0.19, 0.028, 0.19, 0, 1.682, 0, sc(c, 0.55));
         break;
       case "bucket":
         hd.push(sph(0.14, 0, 1.63, 0, c, 1, 0.95, 1, 8, 5, 1.45));
@@ -47714,12 +47714,12 @@ void main() {
         bx3(0.015, 0.035, 0.015, 0.01, 1.745, 0.01, sc(c, 0.7));
         break;
       case "crown": {
-        hd.push(drum(0.092, 0.05, 8, 0, 1.718, 0.012, HAT_GOLD));
+        hd.push(drum(0.092, 0.05, 8, 0, 1.695, 0.012, HAT_GOLD));
         for (let i = 0; i < 8; i++) {
           const a = i / 8 * Math.PI * 2 + Math.PI / 8;
-          hd.push(cone(0.024, 0.06, 4, Math.sin(a) * 0.077, 1.773, 0.012 + Math.cos(a) * 0.077, HAT_GOLD, 0, a, 0));
+          hd.push(cone(0.024, 0.06, 4, Math.sin(a) * 0.077, 1.75, 0.012 + Math.cos(a) * 0.077, HAT_GOLD, 0, a, 0));
         }
-        hd.push(sph(0.013, 0, 1.718, -0.08, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
+        hd.push(sph(0.013, 0, 1.695, -0.08, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
         break;
       }
       case "canhat":
@@ -54043,6 +54043,7 @@ void main() {
   var STAMP_MS_REDUCED = 150;
   var FLASH_MS = 140;
   var FLASH_MS_REDUCED = 320;
+  var STUDIO_FOV = 40;
   var warn5 = (what, err) => console.warn(`[LenzFlix Store3D] avatar ${what}`, err);
   var validSlot2 = (c) => Array.isArray(c) && c.length === LEN && c[0] === 2;
   var isIdx = (i) => Number.isInteger(i) && i >= 0 && i <= 2;
@@ -54063,6 +54064,8 @@ void main() {
       let lastChangeAt = 0;
       let rigNode = null;
       let onStage = false;
+      let setFov = 0;
+      let savedFov = null;
       const changeFns = /* @__PURE__ */ new Set();
       const previewFns = /* @__PURE__ */ new Set();
       const xrWaiters = /* @__PURE__ */ new Set();
@@ -54195,16 +54198,43 @@ void main() {
         const host = ui && ui.el && ui.el.parentElement;
         if (!ui || !ui.preview || !host) return null;
         const hr = host.getBoundingClientRect();
+        const n = (v) => Math.max(0, Math.min(1, v));
+        if (s.cfg.live) {
+          const panel = ui.el.querySelector ? ui.el.querySelector(".lfx-store-char__panel") : null;
+          const br = panel ? panel.getBoundingClientRect() : null;
+          if (!br || hr.width < 2 || hr.height < 2 || br.width < 2 || br.height < 2) return null;
+          const f = hr.width / hr.height >= 1.1 ? { x0: n((br.right - hr.left) / hr.width), x1: 1, y0: 0, y1: 1 } : { x0: 0, x1: 1, y0: 0, y1: n((br.top - hr.top) / hr.height) };
+          return f.x1 - f.x0 > 0.05 && f.y1 - f.y0 > 0.05 ? f : null;
+        }
         const pr = ui.preview.getBoundingClientRect();
         if (hr.width < 2 || hr.height < 2 || pr.width < 2 || pr.height < 2) return null;
-        const n = (v) => Math.max(0, Math.min(1, v));
         const free = { x0: n((pr.left - hr.left) / hr.width), x1: n((pr.right - hr.left) / hr.width), y0: n((pr.top - hr.top) / hr.height), y1: n((pr.bottom - hr.top) / hr.height) };
         return free.x1 - free.x0 > 0.05 && free.y1 - free.y0 > 0.05 ? free : null;
+      }
+      function studioFov() {
+        const cam = ctx.camera;
+        if (!cam || !(onStage || session && session.cfg.live && !session.ended)) return;
+        const want = !onStage && cam.aspect > 0 && cam.aspect < 1 ? Math.min(75, 2 * Math.atan(Math.tan(STUDIO_FOV * Math.PI / 360) / cam.aspect) * 180 / Math.PI) : STUDIO_FOV;
+        if (cam.fov === want) return;
+        if (cam.fov !== setFov) savedFov = cam.fov;
+        setFov = want;
+        cam.fov = want;
+        if (typeof cam.updateProjectionMatrix === "function") cam.updateProjectionMatrix();
+      }
+      function restoreFov() {
+        const cam = ctx.camera;
+        if (cam && savedFov !== null && cam.fov === setFov) {
+          cam.fov = savedFov;
+          if (typeof cam.updateProjectionMatrix === "function") cam.updateProjectionMatrix();
+        }
+        savedFov = null;
+        setFov = 0;
       }
       function poseCamera(focus, ms) {
         if (!studio) return;
         const cam = ctx.camera;
-        const o = { aspect: cam && cam.aspect || 1.6, fov: cam && cam.fov || 60 };
+        studioFov();
+        const o = { aspect: cam && cam.aspect || 1.6, fov: STUDIO_FOV };
         const free = freeArea();
         if (free) o.free = free;
         const pose = studio.cameraPose(focus, o);
@@ -54231,6 +54261,7 @@ void main() {
       function stageOff() {
         if (!onStage) return;
         onStage = false;
+        restoreFov();
         window.removeEventListener("resize", onResize);
         try {
           ctx.player.camera.release();
@@ -54274,7 +54305,10 @@ void main() {
           clearTimeout(s.timer);
           s.timer = null;
         }
-        if (s.cfg.live) emitPreview(null);
+        if (s.cfg.live) {
+          emitPreview(null);
+          restoreFov();
+        }
         const wasMine = s.ui.el.isConnected;
         s.ui.destroy();
         if (wasMine) {
@@ -54335,6 +54369,7 @@ void main() {
           }
         }
         session = s;
+        if (s.cfg.live) studioFov();
         ctx.overlay.open(s.ui.el, { modal: gateMode, onClose: () => onOverlayClosed(s) });
         if (onStage && !s.cfg.live) poseCamera(s.focus, 1);
         return s;
@@ -54493,6 +54528,8 @@ void main() {
           if (disposed || !isIdx(i) || !slotAt(i) || i === activeIdx()) return;
           commit([null, null, null], i);
         },
+        /** Freie Bildfläche der laufenden Sitzung (normiert 0..1, y von oben) neben/über dem Formular oder null (kein Layout, keine Sitzung). */
+        freeArea: () => freeArea(),
         needsGate,
         gate,
         openEditor,
@@ -54582,6 +54619,7 @@ void main() {
       return {
         update(dt) {
           if (onStage && studio) studio.update(dt);
+          studioFov();
           guardGate();
         },
         dispose() {
@@ -56101,6 +56139,7 @@ void main() {
     vcam.layers.set(0);
     vcam.layers.enable(LAYER_MIRROR);
     let rt = null;
+    let rtSize = MIRROR_RT;
     let acc = 1;
     let rendered = false;
     let live = false;
@@ -56154,8 +56193,12 @@ void main() {
     function renderNow() {
       const cam = ctx.camera;
       if (!setup(cam)) return false;
+      if (rt && rt.width !== rtSize) {
+        rt.dispose();
+        rt = null;
+      }
       if (!rt) {
-        rt = makeTarget(MIRROR_RT);
+        rt = makeTarget(rtSize);
         mat2.uniforms.tDiffuse.value = rt.texture;
       }
       renderToTarget(ctx.renderer, ctx.scene, vcam, rt, [mesh]);
@@ -56164,6 +56207,13 @@ void main() {
     }
     const api = {
       mesh,
+      /** Auflösung des Spiegelbilds ändern (z. B. 1024 beim Frisieren, MIRROR_RT sonst); legt das Ziel beim nächsten Bild neu an. */
+      setSize(n) {
+        const v = Math.max(64, Math.min(2048, Math.round(Number(n)) || MIRROR_RT));
+        if (v === rtSize) return;
+        rtSize = v;
+      },
+      getSize: () => rtSize,
       /** Wird pro Frame aus update(dt) des Moduls gerufen (vor dem Hauptbild). */
       update(dt) {
         const cam = ctx.camera;
@@ -56905,6 +56955,13 @@ void main() {
   var GREET_GAP = 45;
   var NEAR2 = 6.5;
   var CURTAIN_S = 0.55;
+  var MIRROR_RT_EDIT = 1024;
+  var FRAME = {
+    chair: { yF: 1.02, h: 1.45, w: 0.8, camY: 1.3, dMin: 1.7, dMax: 3 },
+    // sitzend: Kopf + Oberkörper im Spiegel
+    booth: { yF: 1.4, h: 1, w: 0.9, camY: 1.5, dMin: 1.5, dMax: 2.7 }
+    // stehend: Oberkörper im Spiegel
+  };
   var salon_default = {
     name: "salon",
     init(ctx) {
@@ -57043,6 +57100,9 @@ void main() {
           if (done) return;
           done = true;
           abort = null;
+          for (const mm of [mirrors.chair, mirrors.booth]) {
+            if (typeof mm.setSize === "function") mm.setSize(MIRROR_RT);
+          }
           other.setSuppressed(false);
           sitting = false;
           if (!exited) {
@@ -57074,8 +57134,16 @@ void main() {
           }
           busy = false;
         };
+        let offFrame = () => {
+        };
+        const abortAll = () => {
+          offFrame();
+          offFrame = () => {
+          };
+          cleanup();
+        };
         busy = true;
-        abort = cleanup;
+        abort = abortAll;
         let ok = false;
         try {
           ctx.player.freeze(true);
@@ -57106,7 +57174,14 @@ void main() {
             return;
           }
           const live = ctx.quality() !== "low" && !xr();
-          ok = await (kind === "chair" ? a.openEditor("chair", "hair", live ? { live: true } : void 0) : a.openEditor("booth", "top", live ? { live: true } : void 0));
+          const mir = mirrors[kind];
+          if (live && mir && typeof mir.setSize === "function") mir.setSize(MIRROR_RT_EDIT);
+          const pr = kind === "chair" ? a.openEditor("chair", "hair", live ? { live: true } : void 0) : a.openEditor("booth", "top", live ? { live: true } : void 0);
+          if (live) offFrame = startFrame(kind, spot);
+          ok = await pr;
+          offFrame();
+          offFrame = () => {
+          };
           if (done || disposed) return;
           if (ok) {
             const who = kind === "chair" ? "gabi" : "ronny";
@@ -57126,9 +57201,68 @@ void main() {
         } catch (err) {
           warn6("salon", err);
         } finally {
+          offFrame();
+          offFrame = () => {
+          };
           cleanup();
         }
         return ok;
+      }
+      function startFrame(kind, spot) {
+        const m = interior.mirrors[kind];
+        const f = FRAME[kind];
+        const cam = ctx.camera;
+        const a = av();
+        if (!m || !f || !cam || !a || typeof a.freeArea !== "function") return () => {
+        };
+        let stopped = false;
+        let raf = 0;
+        const apply = (ms) => {
+          raf = 0;
+          if (stopped || disposed || xr()) return;
+          let free;
+          try {
+            free = a.freeArea();
+          } catch {
+            free = null;
+          }
+          if (!free) return;
+          const asp = cam.aspect || 1.6;
+          const tanH = Math.tan((cam.fov || 40) * Math.PI / 360);
+          const nx = free.x0 + free.x1 - 1;
+          const ny = 1 - (free.y0 + free.y1);
+          const fw = free.x1 - free.x0;
+          const fh = free.y1 - free.y0;
+          const D2 = Math.max(f.dMin, Math.min(f.dMax, Math.max(f.h / (1.3 * fh * tanH), f.w / (1.5 * fw * tanH * asp))));
+          const nX = Math.sin(m.yaw);
+          const nZ = Math.cos(m.yaw);
+          const side = (spot.x - m.x) * nX + (spot.z - m.z) * nZ;
+          const P = { x: spot.x - 2 * side * nX, z: spot.z - 2 * side * nZ };
+          const C = { x: P.x + D2 * nX, z: P.z + D2 * nZ };
+          const cy = f.camY;
+          const yaw0 = Math.atan2(-nX, -nZ);
+          const psi = yaw0 + Math.atan(nx * tanH * asp);
+          const pitch = Math.atan2(f.yF - cy, D2) - Math.atan(ny * tanH);
+          const fx = Math.cos(pitch) * Math.sin(psi);
+          const fy = Math.sin(pitch);
+          const fz = Math.cos(pitch) * Math.cos(psi);
+          try {
+            ctx.player.camera.flyTo({ x: C.x, y: cy, z: C.z }, { x: C.x + fx * 4, y: cy + fy * 4, z: C.z + fz * 4 }, ms);
+          } catch (err) {
+            warn6("salon frame", err);
+          }
+        };
+        const sched = (ms) => {
+          if (!raf && !stopped) raf = requestAnimationFrame(() => requestAnimationFrame(() => apply(ms)));
+        };
+        const onResize = () => sched(1);
+        window.addEventListener("resize", onResize);
+        sched(650);
+        return () => {
+          stopped = true;
+          if (raf) cancelAnimationFrame(raf);
+          window.removeEventListener("resize", onResize);
+        };
       }
       function noteFirstVisit() {
         try {
