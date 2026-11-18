@@ -77,7 +77,7 @@ describe('hands: Waffen', () => {
     const { h } = mk();
     h.setHeld({ weapon: 'belt' });
     const g = weaponMesh(h).geometry;
-    expect(g.attributes.position.count).toBeGreaterThanOrEqual(15 * 24);
+    expect(g.attributes.position.count).toBeGreaterThanOrEqual(40 * 24);
     g.computeBoundingBox();
     expect(g.boundingBox.max.y).toBeGreaterThan(0.1);
     h.dispose();
@@ -132,6 +132,60 @@ describe('hands: Waffen', () => {
     h.dispose();
     expect(disposed).toBeGreaterThanOrEqual(1);
     expect(cam.children.includes(h.group)).toBe(false);
+  });
+});
+
+describe('hands: Detailgrad (1.19.0)', () => {
+  const count = (h, w) => { h.setHeld({ weapon: w }); return weaponMesh(h).geometry.attributes.position.count; };
+
+  it('mehr Eckpunkte als vorher: Gürtel > 15, Peitsche > 9, Laser > 4 Boxen; Faust ist ein Mesh mit Vertexfarbe aus > 1 Box', () => {
+    const { h } = mk();
+    expect(count(h, 'belt')).toBeGreaterThanOrEqual(40 * 24);
+    expect(count(h, 'whip')).toBeGreaterThanOrEqual(24 * 24);
+    expect(count(h, 'laser')).toBeGreaterThanOrEqual(9 * 24);
+    const fist = h.group.children[0];
+    expect(fist.isMesh).toBe(true);
+    expect(fist.material.vertexColors).toBe(true);
+    expect(fist.geometry.attributes.position.count).toBeGreaterThanOrEqual(15 * 24);
+    expect(fist.geometry.attributes.position.array.every(Number.isFinite)).toBe(true);
+    h.dispose();
+  });
+
+  it('kumulierte Offsets bei ungleich großen Teilen: Peitschengriff bleibt beim Hieb starr, Segmente und Fransen bewegen sich, Zählung ist Vielfaches von 24', () => {
+    const { h } = mk();
+    h.setHeld({ weapon: 'whip' });
+    const g = weaponMesh(h).geometry;
+    expect(g.attributes.position.count % 24).toBe(0);
+    expect(g.attributes.color.count).toBe(g.attributes.position.count);
+    const before = Array.from(g.attributes.position.array);
+    h.swing('whip');
+    for (let i = 0; i < 8; i++) h.update(0.05);
+    const after = g.attributes.position.array;
+    const moved = (v) => Math.hypot(after[v * 3] - before[v * 3], after[v * 3 + 1] - before[v * 3 + 1], after[v * 3 + 2] - before[v * 3 + 2]);
+    expect(moved(0)).toBe(0); // Griff (erste Box) starr
+    expect(moved(8 * 24 + 5)).toBe(0); // Griffwicklung ebenfalls
+    const n = g.attributes.position.count;
+    expect(moved(n - 1)).toBeGreaterThan(0.005); // Franse am letzten Segment folgt der Kette
+    expect(moved(n - 24 * 3)).toBeGreaterThan(0.005); // Knoten des Endes
+    h.dispose();
+  });
+
+  it('Laser: nur die letzten 24 Eckpunkte (Linse) werden gefärbt und pulsieren; alle anderen Teile bleiben unverändert', () => {
+    const { h } = mk();
+    h.setHeld({ weapon: 'laser' });
+    const g = weaponMesh(h).geometry;
+    const n = g.attributes.position.count;
+    const c0 = Array.from(g.attributes.color.array);
+    const p0 = Array.from(g.attributes.position.array);
+    h.setLaser(true);
+    h.update(0.1);
+    const c1 = g.attributes.color.array;
+    const p1 = g.attributes.position.array;
+    for (let i = 0; i < (n - 24) * 3; i++) { expect(c1[i]).toBe(c0[i]); expect(p1[i]).toBe(p0[i]); }
+    let lensChanged = 0;
+    for (let i = (n - 24) * 3; i < n * 3; i++) if (c1[i] !== c0[i] || p1[i] !== p0[i]) lensChanged++;
+    expect(lensChanged).toBeGreaterThan(0);
+    h.dispose();
   });
 });
 

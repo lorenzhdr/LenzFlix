@@ -736,12 +736,23 @@ export function buildHandItem(look, id) {
       const pt = (k) => [Math.sin((k / N) * Math.PI * 2) * R, cy + Math.cos((k / N) * Math.PI * 2) * R];
       const LA = [0.5, 0.31, 0.17];
       const LB = sc(LA, 0.82);
+      const LC = [0.78, 0.6, 0.36]; // Ziernaht
+      const LD = [0.17, 0.1, 0.06]; // Lochreihe
       const loop = [];
-      const l = (w, h, d, lx, ly, color, rz = 0) => loop.push(box({ w, h, d, x: lx, y: ly, z: 0, rz, color }));
+      const l = (w, h, d, lx, ly, color, rz = 0, lz = 0) => loop.push(box({ w, h, d, x: lx, y: ly, z: lz, rz, color }));
       for (let k = 0; k < N; k++) {
         const [x0, y0] = pt(k);
         const [x1, y1] = pt(k + 1);
-        l(Math.hypot(x1 - x0, y1 - y0) + 0.004, 0.012, 0.036, (x0 + x1) / 2, (y0 + y1) / 2, k % 2 ? LB : LA, Math.atan2(y1 - y0, x1 - x0));
+        const mx = (x0 + x1) / 2;
+        const my = (y0 + y1) / 2;
+        const len = Math.hypot(x1 - x0, y1 - y0) + 0.004;
+        const rz = Math.atan2(y1 - y0, x1 - x0);
+        l(len, 0.012, 0.036, mx, my, k % 2 ? LB : LA, rz);
+        // Ziernaht (Streifen außen, dritte Lederfarbe), Lochreihe in der oberen Hälfte, Schlaufe nahe der Schnalle
+        const nl = Math.hypot(mx, my - cy) || 1;
+        l(len - 0.008, 0.003, 0.008, mx + (mx / nl) * 0.0075, my + ((my - cy) / nl) * 0.0075, LC, rz);
+        if (k >= 3 && k <= 7 && k % 2) l(0.007, 0.0145, 0.009, mx, my, LD, rz + Math.PI / 2);
+        if (k === 1) l(0.013, 0.018, 0.04, mx, my, LB, rz);
       }
       // Schnalle: Metallrahmen mit Dorn
       l(0.062, 0.012, 0.044, 0, 0.0, STEEL);
@@ -749,6 +760,7 @@ export function buildHandItem(look, id) {
       l(0.012, 0.062, 0.044, -0.025, -0.025, STEEL);
       l(0.012, 0.062, 0.044, 0.025, -0.025, STEEL);
       l(0.007, 0.05, 0.03, 0, -0.025, [0.95, 0.96, 0.98]);
+      l(0.024, 0.007, 0.014, 0.008, 0, [0.95, 0.96, 0.98], 0, 0.02); // Dorn über den Rahmensteg
       l(0.035, 0.1, 0.012, 0.05, -0.075, LA, 0.35);
       _p.set(x, 0.78, -0.04);
       _q.setFromEuler(_e.set(0, 0.7, 0));
@@ -757,21 +769,25 @@ export function buildHandItem(look, id) {
       break;
     }
     case 'whip': {
-      // Griff in der Faust, Schnur aus 6 Segmenten in leichtem Bogen nach hinten-unten, am Ende ein Knoten
+      // Griff mit Wicklung, Knauf und Parierstück in der Faust, Schnur aus 10 Segmenten in leichtem Bogen nach hinten-unten, am Ende Knoten + Fransen
       b(0.035, 0.2, 0.035, 0, 0.76, -0.04, [0.2, 0.13, 0.09]);
+      for (let k = 0; k < 5; k++) b(0.04, 0.013, 0.04, 0, 0.855 - k * 0.04, -0.04, k % 2 ? [0.12, 0.08, 0.05] : [0.58, 0.42, 0.27]);
+      b(0.046, 0.03, 0.046, 0, 0.87, -0.04, STEEL);
       b(0.042, 0.03, 0.042, 0, 0.67, -0.04, STEEL);
-      let y = 0.65;
+      b(0.07, 0.012, 0.05, 0, 0.652, -0.04, [0.64, 0.67, 0.72]);
+      let y = 0.64;
       let z = -0.04;
       let a = 0;
-      for (let i = 0; i < 6; i++) {
-        const len = 0.14 - i * 0.008;
-        const t = 0.016 - i * 0.0013;
-        a += 0.2;
-        out.push(box({ w: t, h: len, d: t, x, y: y - Math.cos(a) * len / 2, z: z + Math.sin(a) * len / 2, rx: -a, color: LEATHER }));
+      for (let i = 0; i < 10; i++) {
+        const len = 0.095 - i * 0.0045;
+        const t = Math.max(0.006, 0.016 - i * 0.001);
+        a += 0.12;
+        out.push(box({ w: t, h: len, d: t, x, y: y - Math.cos(a) * len / 2, z: z + Math.sin(a) * len / 2, rx: -a, color: i % 2 ? sc(LEATHER, 0.8) : LEATHER }));
         y -= Math.cos(a) * len;
         z += Math.sin(a) * len;
       }
       b(0.026, 0.026, 0.026, 0, y, z, sc(LEATHER, 0.6));
+      for (const [dx, dz] of [[-0.012, -0.004], [0.0, 0.008], [0.012, -0.006]]) b(0.006, 0.045, 0.006, dx, y - 0.03, z + dz, [0.85, 0.77, 0.64], -a);
       break;
     }
     case 'laser':
@@ -780,6 +796,10 @@ export function buildHandItem(look, id) {
       b(0.034, 0.03, 0.034, 0, 0.84, -0.04, [0.8, 0.12, 0.14]);
       b(0.022, 0.03, 0.022, 0, 0.64, -0.04, [1, 0.35, 0.3]);
       b(0.012, 0.02, 0.012, 0, 0.8, -0.058, STEEL);
+      for (const dy of [0.7, 0.73, 0.76]) b(0.034, 0.008, 0.034, 0, dy, -0.04, [0.11, 0.12, 0.17]); // Griffrillen
+      b(0.008, 0.09, 0.012, 0, 0.77, -0.06, [0.62, 0.65, 0.7]); // Clip
+      b(0.012, 0.014, 0.01, 0, 0.8, -0.022, [0.9, 0.88, 0.8]); // Taster
+      b(0.03, 0.01, 0.03, 0, 0.655, -0.04, [0.44, 0.47, 0.55]); // Linsenfassung
       break;
     case 'bag':
       // Handtasche am kurzen Henkel

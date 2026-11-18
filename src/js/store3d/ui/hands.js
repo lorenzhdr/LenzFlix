@@ -13,7 +13,12 @@ const WEAPON_POS = [0.27, -0.27, -0.44];
 const BELT_A = 0x8a5a30; // Leder (abwechselnd zwei Töne, damit die Stücke lesbar bleiben)
 const BELT_B = 0x74482a;
 const STEEL = 0xe3e7ee;
-const WHIP_SEGS = 7;
+const WHIP_SEGS = 12;
+const WHIP_ROT = -0.08; // Grundkrümmung je Segment (Summe ≈ −0,96 rad wie vorher mit 7 Segmenten)
+const WHIP_LEN = (i) => 0.068 - i * 0.0028;
+const BELT_C = 0xc79a5c; // Ziernaht
+const BELT_D = 0x2a1a0e; // Lochreihe
+const STEEL_D = 0xa7aebb;
 const THROW_DUR = 0.35;
 const CARRY_POS = [0.24, -0.2, -0.42];
 const SIDE = { vhs: 0xe2d8bd, dvd: 0x1d3f9c, box: 0xc9a227 };
@@ -35,6 +40,46 @@ function paintGeo(g, hex) {
   g.setAttribute('color', new Float32BufferAttribute(c, 3));
 }
 
+/** Eine Box als Teil einer später gemergten Geometrie (nur Position + Vertexfarbe, optional gedreht). */
+function boxPart(list, w, h, d, x, y, z, color, o = {}) {
+  const g = new BoxGeometry(w, h, d);
+  g.deleteAttribute('uv');
+  g.deleteAttribute('normal');
+  if (o.rx || o.ry || o.rz) { _e.set(o.rx || 0, o.ry || 0, o.rz || 0, 'YXZ'); _q.setFromEuler(_e); g.applyQuaternion(_q); }
+  g.translate(x, y, z);
+  paintGeo(g, color);
+  list.push({ g, n: g.attributes.position.count, seg: o.seg === undefined ? -1 : o.seg, lens: !!o.lens });
+}
+
+/** Teile zu EINER Geometrie mergen (Teile werden entsorgt; Eckpunktzahl je Teil steht in list[i].n). */
+function mergeList(list) {
+  const geo = mergeGeometries(list.map((q) => q.g), false);
+  list.forEach((q) => q.g.dispose());
+  return geo;
+}
+
+/**
+ * Faust (1.19.0): Handrücken, Handgelenk, Knöchelreihe, 4 Finger aus je 2 Gliedern (vorn, dann nach unten) und Daumen quer davor,
+ * Hautton je Teil leicht abgestuft (Vertexfarbe). EIN Mesh; Maße im Rahmen der alten 0,09 × 0,09 × 0,17-Box.
+ */
+function buildFistGeometry() {
+  const list = [];
+  const p = (w, h, d, x, y, z, c) => boxPart(list, w, h, d, x, y, z, c);
+  p(0.09, 0.07, 0.09, 0, 0.005, 0.04, 0xecbd9b); // Handrücken
+  p(0.07, 0.06, 0.04, 0, 0, 0.085, 0xdfa985); // Handgelenk
+  const stag = [0.0, 0.004, 0.005, 0.001];
+  for (let i = 0; i < 4; i++) {
+    const x = -0.03375 + i * 0.0225;
+    const L = [0.044, 0.05, 0.047, 0.04][i];
+    p(0.022, 0.022, 0.024, x, 0.044 + stag[i], -0.008, i % 2 ? 0xdba580 : 0xe3ae8a); // Knöchel, leicht gestuft
+    p(0.02, 0.026, L, x, 0.031 + stag[i] * 0.5, -0.008 - L / 2 - 0.006, i % 2 ? 0xe6b490 : 0xebbb97); // vorderes Fingerglied
+    p(0.019, 0.042 - (i % 2) * 0.003, 0.02, x, 0.008, -0.008 - L - 0.016, 0xd9a47e); // Mittelglied nach unten
+  }
+  p(0.026, 0.026, 0.05, -0.05, 0.0, 0.012, 0xe2ae8a); // Daumenballen
+  p(0.062, 0.022, 0.026, -0.016, -0.012, -0.066, 0xe6b28e); // Daumen quer vor den Fingern
+  return mergeList(list);
+}
+
 const LENS_ON = new Color(0xff5a46).toArray();
 const LENS_OFF = new Color(0x6a2222).toArray();
 
@@ -44,8 +89,8 @@ export function createHands(camera, opts = {}) {
   const quality = typeof opts.quality === 'function' ? opts.quality : () => 'mid';
   const group = new Group();
   group.name = 'lfx-hands';
-  const fistMat = new MeshBasicMaterial({ color: 0xe8b894, depthTest: false, transparent: true });
-  const fist = new Mesh(new BoxGeometry(0.09, 0.09, 0.17), fistMat);
+  const fistMat = new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true });
+  const fist = new Mesh(buildFistGeometry(), fistMat);
   fist.renderOrder = 998;
   fist.visible = false;
   group.add(fist);
@@ -97,15 +142,7 @@ export function createHands(camera, opts = {}) {
    */
   function buildWeapon(id) {
     const list = []; // { g, seg, lens }
-    const part = (w, h, d, x, y, z, color, o = {}) => {
-      const g = new BoxGeometry(w, h, d);
-      g.deleteAttribute('uv');
-      g.deleteAttribute('normal');
-      if (o.rx || o.ry || o.rz) { _e.set(o.rx || 0, o.ry || 0, o.rz || 0, 'YXZ'); _q.setFromEuler(_e); g.applyQuaternion(_q); }
-      g.translate(x, y, z);
-      paintGeo(g, color);
-      list.push({ g, seg: o.seg === undefined ? -1 : o.seg, lens: !!o.lens });
-    };
+    const part = (w, h, d, x, y, z, color, o = {}) => boxPart(list, w, h, d, x, y, z, color, o);
     const w = { id, mesh: null, segs: null, lens: null, wave: null };
     if (id === 'belt') {
       // Schlaufe: beide Enden in der Faust (Schnalle unten), der Riemen steigt als Ring aus 10 flachen Stücken nach oben-vorn auf, ein Ende hängt heraus
@@ -117,7 +154,19 @@ export function createHands(camera, opts = {}) {
         const [x0, y0] = pt(k);
         const [x1, y1] = pt(k + 1);
         const len = Math.hypot(x1 - x0, y1 - y0) + 0.004;
-        part(len, 0.012, 0.034, (x0 + x1) / 2, (y0 + y1) / 2, 0, k % 2 ? BELT_B : BELT_A, { rz: Math.atan2(y1 - y0, x1 - x0) });
+        const mx = (x0 + x1) / 2;
+        const my = (y0 + y1) / 2;
+        const rz = Math.atan2(y1 - y0, x1 - x0);
+        part(len, 0.012, 0.034, mx, my, 0, k % 2 ? BELT_B : BELT_A, { rz });
+        // Ziernaht: zwei dünne Streifen (dritte Lederfarbe) längs der Außenkante
+        const nl = Math.hypot(mx, my - cy) || 1;
+        const ox = (mx / nl) * 0.0066;
+        const oy = ((my - cy) / nl) * 0.0066;
+        for (const sz of [-0.012, 0.012]) part(len - 0.006, 0.0025, 0.0035, mx + ox, my + oy, sz, BELT_C, { rz });
+        // Lochreihe (obere Hälfte): kleine dunkle Boxen, ragen leicht durch den Riemen
+        if (k >= 3 && k <= 7) part(0.006, 0.0145, 0.008, mx, my, 0, BELT_D, { rz: rz + Math.PI / 2 });
+        // Schlaufe (Keeper) um den Riemen nahe der Schnalle
+        if (k === 1) part(0.012, 0.017, 0.038, mx, my, 0, BELT_B, { rz });
       }
       // Schnalle: Rahmen mit Dorn
       part(0.06, 0.011, 0.042, 0, 0.032, 0, STEEL);
@@ -125,37 +174,53 @@ export function createHands(camera, opts = {}) {
       part(0.011, 0.061, 0.042, -0.0245, 0.007, 0, STEEL);
       part(0.011, 0.061, 0.042, 0.0245, 0.007, 0, STEEL);
       part(0.006, 0.05, 0.03, 0, 0.007, 0.004, 0xeef1f6);
-      // freies Ende
+      part(0.022, 0.006, 0.012, 0.008, 0.032, 0.02, 0xeef1f6); // Dorn über den Rahmensteg
+      part(0.007, 0.012, 0.012, 0, 0.02, 0.02, STEEL_D); // Dornspitze
+      // freies Ende mit Spitze
       part(0.034, 0.1, 0.012, 0.04, -0.06, 0, BELT_A, { rz: 0.35 });
       part(0.034, 0.05, 0.012, 0.07, -0.135, 0, BELT_B, { rz: 0.6 });
+      part(0.02, 0.026, 0.012, 0.094, -0.168, 0, BELT_A, { rz: 0.8 });
     } else if (id === 'whip') {
-      // Griff, danach eine Kette aus Segmenten: so läuft die Welle beim Hieb von der Hand zur Spitze
+      // Griff mit Wicklung, Knauf und Parierstück, danach eine Kette aus Segmenten: so läuft die Welle beim Hieb von der Hand zur Spitze
       part(0.03, 0.03, 0.17, 0, 0, 0.02, 0x4a3326);
-      part(0.036, 0.036, 0.02, 0, 0, -0.07, STEEL);
+      for (let k = 0; k < 8; k++) part(0.034, 0.034, 0.011, 0, 0, -0.056 + k * 0.021, k % 2 ? 0x2c1c12 : 0x8f6a45); // Griffwicklung
+      part(0.042, 0.042, 0.026, 0, 0, 0.115, STEEL); // Knauf
+      part(0.06, 0.016, 0.012, 0, 0, -0.07, STEEL); // Parierstück
+      part(0.016, 0.06, 0.012, 0, 0, -0.07, STEEL_D);
       w.segs = [];
       w.segM = [];
       for (let i = 0; i < WHIP_SEGS; i++) {
-        const len = 0.11 - i * 0.006;
-        const t = 0.014 - i * 0.0013;
+        const len = WHIP_LEN(i);
+        const t = Math.max(0.0042, 0.014 - i * 0.0009);
         part(t, t, len, 0, 0, -len / 2, i % 2 ? BELT_B : BELT_A, { seg: i });
-        w.segs.push({ rot: -0.14, z: i === 0 ? -0.08 : -(0.11 - (i - 1) * 0.006) });
+        w.segs.push({ rot: WHIP_ROT, z: i === 0 ? -0.08 : -WHIP_LEN(i - 1) });
         w.segM.push(new Matrix4());
       }
+      // Knall-Ende: drei kleine Fransen am letzten Segment (laufen mit ihm mit)
+      const last = WHIP_SEGS - 1;
+      const ll = WHIP_LEN(last);
+      part(0.008, 0.008, 0.02, 0, 0, -ll - 0.008, 0x2c1c12, { seg: last });
+      part(0.005, 0.005, 0.026, 0.006, 0.003, -ll - 0.024, 0xd8c6a4, { seg: last, ry: 0.25 });
+      part(0.005, 0.005, 0.03, -0.006, -0.003, -ll - 0.026, 0xd8c6a4, { seg: last, ry: -0.25 });
     } else if (id === 'laser') {
-      part(0.026, 0.026, 0.15, 0, 0, 0, 0x2c3040);
+      part(0.026, 0.026, 0.15, 0, 0, 0, 0x2c3040); // Gehäuse
+      for (const z of [0.0, 0.016, 0.032]) part(0.03, 0.03, 0.007, 0, 0, z, 0x1d212d); // Griffrillen
       part(0.03, 0.03, 0.03, 0, 0, 0.055, 0xcc2024);
+      part(0.008, 0.012, 0.07, 0, 0.019, 0.02, STEEL_D); // Clip
+      part(0.008, 0.008, 0.006, 0, 0.019, -0.016, STEEL_D);
+      part(0.012, 0.01, 0.016, 0, -0.016, -0.03, 0xe8e2d0); // Taster
       part(0.02, 0.02, 0.02, 0, 0, -0.082, 0xaeb4c2);
-      part(0.016, 0.016, 0.016, 0, 0, -0.098, 0xff3b30, { lens: true });
+      part(0.028, 0.028, 0.006, 0, 0, -0.092, 0x70778a); // Linsenfassung
+      part(0.016, 0.016, 0.016, 0, 0, -0.098, 0xff3b30, { lens: true }); // Linse bleibt das LETZTE Teil (24 Eckpunkte)
     }
-    const geo = mergeGeometries(list.map((q) => q.g), false);
-    list.forEach((q) => q.g.dispose());
+    const geo = mergeList(list);
     const n = geo.attributes.position.count;
-    const per = n / list.length;
     w.segOf = new Int8Array(n);
     w.lensAt = [];
-    list.forEach((q, i) => {
-      for (let v = 0; v < per; v++) { w.segOf[i * per + v] = q.seg; if (q.lens) w.lensAt.push(i * per + v); }
-    });
+    let at = 0; // kumulierte Eckpunkt-Offsets: Teile dürfen unterschiedlich viele Eckpunkte haben
+    for (const q of list) {
+      for (let v = 0; v < q.n; v++, at++) { w.segOf[at] = q.seg; if (q.lens) w.lensAt.push(at); }
+    }
     w.base = new Float32Array(geo.attributes.position.array);
     w.colorBase = new Float32Array(geo.attributes.color.array);
     geo.attributes.position.setUsage(DynamicDrawUsage);
@@ -233,10 +298,10 @@ export function createHands(camera, opts = {}) {
       const rx = p === 0 ? 0.2 : p < 0.35 ? 0.2 + 1.1 * (p / 0.35) : 1.3 - 2.0 * Math.sin(Math.min(1, slash * 1.2) * Math.PI * 0.5) + 0.5 * slash;
       wg.position.set(WEAPON_POS[0] - 0.12 * sin01(p), WEAPON_POS[1] + 0.2 * sin01(p) + breathe, WEAPON_POS[2] - 0.05 * sin01(slash));
       wg.rotation.set(rx, -0.15, 0.1);
-      const crack = p > 0 ? 0.55 : 0.04;
+      const crack = p > 0 ? 0.4 : 0.03;
       weapon.segs.forEach((sg, i) => {
-        const lag = Math.max(0, slash * 1.4 - i * 0.11);
-        sg.rot = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : (reduced() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3));
+        const lag = Math.max(0, slash * 1.4 - i * 0.065);
+        sg.rot = WHIP_ROT + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : (reduced() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3));
       });
       skinWhip(weapon);
     } else if (id === 'laser') {
