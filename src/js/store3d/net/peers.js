@@ -418,6 +418,11 @@ export function createPeers(core) {
     name(c) { const p = peers.get(c); return p ? L.displayName(p.n, p.f) : 'Jemand'; },
     /** Anzeigeort { x, y, z } eines Peers (auch ohne Figur) oder null. */
     pos(c) { const p = peers.get(c); return p && p.pos ? { x: p.pos.x, y: p.pos.y, z: p.pos.z } : null; },
+    /** 1.19.0: wie pos(c), aber nur bei sichtbarer Figur (Region/Reichweite/Kamera-Nähe), sonst null (Kontaktschatten). */
+    visiblePos(c) {
+      const p = peers.get(c);
+      return p && p.pos && p.vis && p.fig && p.fig.root && p.fig.root.visible ? { x: p.pos.x, y: p.pos.y, z: p.pos.z } : null;
+    },
     /** Waffenwahl eines Peers (Fähigkeit fight; 0 = Hand/leer): zeigt den Gegenstand in der Hand der Figur. */
     setWeapon(c, w) {
       const v = Number.isInteger(w) && w >= 1 && w <= 3 ? w : 0;

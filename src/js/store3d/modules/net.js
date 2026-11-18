@@ -402,7 +402,7 @@ export default {
       serverNow: () => (transport ? transport.serverNow() : null),
       peers: () => others().map((p) => ({ ...p })),
       /** 1.19.0: Anzeigeorte der Mitspieler [{ x, y, z }] (Kontaktschatten, Ultra); leer ohne Verbindung. */
-      peerPositions: () => others().map((p) => peers.pos(p.c)).filter(Boolean),
+      peerPositions: () => others().map((p) => peers.visiblePos(p.c)).filter(Boolean),
       peerName: (c) => peers.name(c),
       on,
       send: (msg) => send(msg),

@@ -232,6 +232,20 @@ describe('createPeers', () => {
     expect(e.figs[0].dispose).toHaveBeenCalled();
   });
 
+  it('visiblePos: nur bei sichtbarer Figur (Bereich ausgeblendet → null, pos bleibt)', () => {
+    const e = setup();
+    e.state.area = 'shop';
+    e.state.vis = { shopShell: true, street: true };
+    e.peers.welcome({ c: 1, s: 10000, peers: [peer(2)] });
+    run(e, 400);
+    expect(e.peers.visiblePos(2)).toBeTruthy();
+    e.state.vis = { shopShell: false, street: true };
+    run(e, 400);
+    expect(e.peers.pos(2)).toBeTruthy();
+    expect(e.peers.visiblePos(2)).toBeNull();
+    expect(e.peers.visiblePos(99)).toBeNull();
+  });
+
   it('Begrenzung: low 8 (Desktop), mid 10, VR 3/4; Rest ohne Figur', () => {
     const many = Array.from({ length: 14 }, (_, i) => peer(i + 2));
     for (const [level, xr, max] of [['low', false, 8], ['mid', false, 10], ['high', false, 14], ['low', true, 3], ['high', true, 4]]) {
