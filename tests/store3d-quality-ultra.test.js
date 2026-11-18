@@ -172,3 +172,14 @@ describe('Klemmung im Store ohne ultraOk', () => {
     expect(a.qualitySetting).toBe('mid');
   });
 });
+
+describe('Ultra-Sichtweite vs. Himmelskuppel', () => {
+  it('Nebelende liegt vor der Kuppel (kein harter Horizont)', async () => {
+    const { FAR_R } = await import('../src/js/store3d/modules/outdoor.js');
+    for (const lv of LEVELS) {
+      const c = presetFor(lv, false);
+      expect(c.fogNear).toBeLessThan(c.fogFar);
+      expect(c.fogFar).toBeLessThanOrEqual(FAR_R - 1);
+    }
+  });
+});

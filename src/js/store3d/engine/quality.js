@@ -18,7 +18,7 @@ const CITY = {
   mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
   high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
   // Ultra (nur Desktop/Tablet): alle Werte sind Startwerte, die GPU-Messung legt sie fest. Handy-Werte = high.
-  ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 42, fogFar: 62 },
+  ultra: { npcMax: [32, 14], carsMax: [8, 4], propsMax: [52, 24], birds: [12, 8], rainLines: [520, 260], precip: [2200, 700], fogNear: 44, fogFar: 59 },
 };
 function city(lv, phone) {
   const c = CITY[lv];

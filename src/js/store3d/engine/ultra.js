@@ -2,6 +2,9 @@
 // Provider 'ultra' (von modules/runtime.js bereitgestellt, Muster der anderen Provider):
 //   register(key, build, opts?) → remove()   build(ctx) → { object: Object3D, update?(dt, t), dispose?(), onVisible?(bool) }; opts.parent = Elternknoten (Standard: ctx.scene)
 //   onVisible(bool) wird bei jedem Wechsel der Sichtbarkeit des Eintrags gerufen (z. B. für Details ohne eigenes Mesh, die Materialien umschalten).
+//   Optional api.textures (Array): Texturen, die nicht im object hängen (z. B. spätere Map-Tausche) – sie werden mit hochgeladen.
+// Vorwärmen: nach dem Bau eines Eintrags kompiliert ein EIGENES späteres Häppchen (nie im Bau-Häppchen, ein Eintrag je Häppchen) die Programme
+// (renderer.compileAsync) und lädt die Texturen hoch (renderer.initTexture), damit der erste Blick keinen Hänger erzeugt. list() meldet warm: true|false.
 //   isActive() → bool (Stufe === 'ultra')   has(key) → bool   keys() → string[]   list() → [{ key, built, visible, ms }]
 // Bau: LAZY in Leerlauf-Häppchen (requestIdleCallback, Rückfall setTimeout, je Häppchen höchstens ~6 ms; ein Eintrag wird nie geteilt),
 // sobald die Stufe >= 'high' ist (damit der Wechsel auf Ultra keinen Hänger erzeugt) oder Ultra aktiv wird.
@@ -9,6 +12,7 @@
 // update(dt, t) läuft nur für gebaute, sichtbare Einträge. Dev: ctx.opts.dev.ufx = '-key1,-key2' (aus) bzw. 'only:key' (nur dieses).
 import { atLeast } from './quality.js';
 import { disposeTree } from '../util/geo.js';
+import { warmObject } from './warm.js';
 
 const BUDGET_MS = 6;
 const warn = (...a) => { try { console.warn('[LenzFlix Store3D]', ...a); } catch { /* egal */ } };
@@ -99,9 +103,33 @@ export function createUltra(ctx, o = {}) {
     return [...entries.values()].filter((e) => !e.built && !e.failed && allowed(e.key));
   }
 
+  /** Gebaute Einträge, die noch nicht vorgewärmt wurden (nur ab Stufe >= high, wie der Bau). */
+  function warmPending() {
+    if (!wantBuild()) return [];
+    return [...entries.values()].filter((e) => e.built && !e.failed && e.warm === undefined && allowed(e.key));
+  }
+
+  function warmOne(e) {
+    const r = ctx.renderer;
+    if (!r || !ctx.camera || !e.api) { e.warm = false; return; }
+    e.warm = true; // sofort markieren (kein Doppelstart), bei Fehler unten zurücksetzen
+    const t0 = now();
+    try {
+      warmObject(r, e.api.object, ctx.camera, ctx.scene, { textures: e.api.textures, debug: !!(ctx.opts && ctx.opts.debug) })
+        .then((did) => { if (!did) e.warm = false; }, () => { e.warm = false; });
+    } catch (err) { e.warm = false; warn(`Ultra-Detail "${e.key}" warm`, err); }
+    e.warmMs = +(now() - t0).toFixed(2);
+  }
+
   function step(avail) {
     job = null;
     if (disposed) return;
+    if (!pending().length) { // nur noch Vorwärmen: ein Eintrag je Häppchen, nie im Bau-Häppchen
+      const w = warmPending();
+      if (w.length) warmOne(w[0]);
+      kick();
+      return;
+    }
     const t0 = now();
     const budget = Math.min(BUDGET_MS, Number.isFinite(avail) && avail >= 0 ? avail : BUDGET_MS);
     let todo = pending();
@@ -111,11 +139,11 @@ export function createUltra(ctx, o = {}) {
       todo = pending();
       if (now() - t0 >= budget) break;
     }
-    if (todo.length) kick();
+    kick(); // weitere Bauten oder das Vorwärmen im nächsten Häppchen
   }
 
   function kick() {
-    if (job || disposed || !pending().length) return;
+    if (job || disposed || !(pending().length || warmPending().length)) return;
     job = schedule(step);
   }
 
@@ -128,6 +156,7 @@ export function createUltra(ctx, o = {}) {
       if (e.api.object && e.api.object.removeFromParent) e.api.object.removeFromParent();
     } catch (err) { warn(`Ultra-Detail "${e.key}" dispose`, err); }
     e.built = false;
+    e.warm = undefined;
     e.shown = false;
     e.api = null;
   }
@@ -135,7 +164,7 @@ export function createUltra(ctx, o = {}) {
   const api = {
     register(key, build, opts = {}) {
       if (disposed || typeof build !== 'function' || typeof key !== 'string' || !key || entries.has(key)) return () => {};
-      const e = { key, build, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false };
+      const e = { key, build, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false, warm: undefined, warmMs: 0 };
       entries.set(key, e);
       kick();
       return () => {
@@ -147,7 +176,7 @@ export function createUltra(ctx, o = {}) {
     isActive,
     has: (key) => entries.has(key),
     keys: () => [...entries.keys()],
-    list: () => [...entries.values()].map((e) => ({ key: e.key, built: e.built, visible: !!(e.built && e.api.object && e.api.object.visible), ms: e.ms })),
+    list: () => [...entries.values()].map((e) => ({ key: e.key, built: e.built, visible: !!(e.built && e.api.object && e.api.object.visible), ms: e.ms, warm: e.warm === true })),
   };
 
   return {

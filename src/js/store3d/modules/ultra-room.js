@@ -42,6 +42,7 @@ function buildTex(ctx) {
   }
   return {
     object: group,
+    textures: Object.values(neu), // vorab hochladen (engine/warm.js): hängen noch an keinem Material
     update(dt) { // Anisotropie folgt den Basistexturen (Preset-Wechsel); alle 2 s neu gebaute Materialien (Rebuilds, späte Teile) nachziehen
       for (const s of swapped) { const t = neu[s.key]; if (t && t.anisotropy !== s.old.anisotropy) { t.anisotropy = s.old.anisotropy; t.needsUpdate = true; } }
       acc += dt || 0;
