@@ -387,6 +387,20 @@ export default {
 
     /** Köpfe stecken in eigenen Kollidern (Richard: statische 0,6-m-Box bis 2,6 m) – der Wandstrahl endet davor; Köpfe bis 0,35 m hinter dem Treffpunkt zählen noch. */
     const HEAD_SLACK = 0.35;
+    /**
+     * 1.18.1: Personen, die in einem eigenen Kollider stehen (Kioskfrau in der Bude, Kollider bis 2,6 m), verdeckt dieser nicht.
+     * Nur aufgerufen, wenn der Strahl das Gesicht ohne Wände träfe; → Treffer, wenn ohne die Kollider um den Standort keine Wand davor liegt.
+     */
+    function insideOwnBox(o, d, hw, root) {
+      if (!root || !root.position) return false;
+      const px = root.position.x;
+      const pz = root.position.z;
+      const own = (b) => b && px >= b.x0 && px <= b.x1 && pz >= b.z0 && pz <= b.z1;
+      const cols = L.colliders || [];
+      if (!cols.some(own)) return false;
+      const h2 = castRay(o, d, cols.filter((b) => !own(b)), LASER_RANGE);
+      return rayHitsHead(o, d, hw, 0.17, h2.t + HEAD_SLACK);
+    }
     function laserTick() {
       aimRay(tmpO, tmpD);
       const o = { x: tmpO.x, y: tmpO.y, z: tmpO.z };
@@ -412,7 +426,8 @@ export default {
         if (typeof face !== 'function') continue;
         if (p.handle.root && p.handle.root.visible === false) continue;
         const hw = face.call(p.handle, tmpH);
-        const on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
+        let on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
+        if (!on && hit.hit === 'wall' && rayHitsHead(o, d, hw, 0.17, LASER_RANGE)) on = insideOwnBox(o, d, hw, p.handle.root);
         for (const ev of step(p.handle, 'person', on, null)) {
           if (ev.type === 'blind') { try { if (n && n.laserHit) n.laserHit(p.handle); } catch (err) { warn('npc.laserHit', err); } }
         }

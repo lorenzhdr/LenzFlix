@@ -71,9 +71,12 @@ export function pickVoiceSeeded(voices, seed, opts = {}) {
   return { voice: v, pitch: 1.0, online: v.localService !== true, gmatch: false };
 }
 
-/** Tonlage einer Person: Mit passender Frauenstimme wird eine Anhebung (gedacht als Ausgleich für eine Männerstimme) auf 40 % gedämpft. */
+/**
+ * Tonlage einer Person: Mit passender Frauenstimme wird die Abweichung von 1 auf 40 % gedämpft (eine Anhebung war als Ausgleich für eine
+ * Männerstimme gedacht, eine tiefe Seed-Tonlage klingt mit Frauenstimme zu dunkel). Männerstimmen behalten ihre Tonlage.
+ */
 export function personPitch(p, gender, gmatch) {
-  return gender === 'f' && gmatch && p > 1 ? 1 + (p - 1) * 0.4 : p;
+  return gender === 'f' && gmatch ? 1 + (p - 1) * 0.4 : p;
 }
 
 /** Seed → nichtnegative Ganzzahl: Zahlen bleiben (abs, floor), Texte (z. B. 'gabi-haarscharf') werden per FNV-1a gehasht. */

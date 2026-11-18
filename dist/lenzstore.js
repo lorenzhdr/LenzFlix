@@ -43360,7 +43360,7 @@ void main() {
     return { voice: v, pitch: 1, online: v.localService !== true, gmatch: false };
   }
   function personPitch(p, gender, gmatch) {
-    return gender === "f" && gmatch && p > 1 ? 1 + (p - 1) * 0.4 : p;
+    return gender === "f" && gmatch ? 1 + (p - 1) * 0.4 : p;
   }
   function seedHash(seed) {
     const n = Number(seed);
@@ -61320,6 +61320,16 @@ void main() {
         }
       }
       const HEAD_SLACK = 0.35;
+      function insideOwnBox(o, d, hw, root) {
+        if (!root || !root.position) return false;
+        const px = root.position.x;
+        const pz = root.position.z;
+        const own = (b) => b && px >= b.x0 && px <= b.x1 && pz >= b.z0 && pz <= b.z1;
+        const cols = L2.colliders || [];
+        if (!cols.some(own)) return false;
+        const h22 = castRay(o, d, cols.filter((b) => !own(b)), LASER_RANGE);
+        return rayHitsHead(o, d, hw, 0.17, h22.t + HEAD_SLACK);
+      }
       function laserTick() {
         aimRay(tmpO, tmpD);
         const o = { x: tmpO.x, y: tmpO.y, z: tmpO.z };
@@ -61349,7 +61359,8 @@ void main() {
           if (typeof face !== "function") continue;
           if (p.handle.root && p.handle.root.visible === false) continue;
           const hw = face.call(p.handle, tmpH);
-          const on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
+          let on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
+          if (!on && hit.hit === "wall" && rayHitsHead(o, d, hw, 0.17, LASER_RANGE)) on = insideOwnBox(o, d, hw, p.handle.root);
           for (const ev of step(p.handle, "person", on, null)) {
             if (ev.type === "blind") {
               try {

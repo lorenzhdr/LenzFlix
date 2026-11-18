@@ -52,11 +52,11 @@ describe('pickVoiceSeeded', () => {
     // ohne gender: Wahl wie in 1.18.0
     expect(pickVoiceSeeded(win, 'x').voice.name).toBe(pickVoiceSeeded(win, 'x', {}).voice.name);
   });
-  it('1.18.1: personPitch dämpft die Anhebung nur bei passender Frauenstimme', () => {
+  it('1.18.1: personPitch dämpft die Abweichung nur bei passender Frauenstimme (beide Richtungen)', () => {
     expect(personPitch(1.25, 'f', true)).toBeCloseTo(1.1, 10);
+    expect(personPitch(0.83, 'f', true)).toBeCloseTo(0.932, 10); // Kioskfrau (Seed-Tonlage) klingt mit Frauenstimme sonst zu dunkel
     expect(personPitch(1.25, 'f', false)).toBe(1.25);
     expect(personPitch(0.85, 'm', true)).toBe(0.85);
-    expect(personPitch(0.9, 'f', true)).toBe(0.9);
     expect(personPitch(1.2, undefined, true)).toBe(1.2);
   });
   it('1.18.1: Sprecher mit gender bekommt die Frauenstimme und gedämpfte Tonlage', async () => {

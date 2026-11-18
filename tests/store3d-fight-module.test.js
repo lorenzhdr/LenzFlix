@@ -353,6 +353,23 @@ describe('fight: Laser', () => {
     expect(laserHit).toHaveBeenCalledTimes(1);
     expect(laserHit).toHaveBeenCalledWith(onFace);
   });
+  it('1.18.1: Person in der eigenen Bude (Kollider um ihren Standort) wird geblendet, hinter einer fremden Wand nicht', () => {
+    const run = (col, root) => {
+      const s = setup();
+      s.ctx.layout.colliders.push(col);
+      const handle = { root: { visible: true, position: root }, faceWorld: (o) => o.set(root.x, 1.65, root.z) };
+      const laserHit = vi.fn();
+      s.providers.set('npc', { people: () => [{ kind: 'kiosk', handle }], laserHit });
+      s.f.setWeapon('laser');
+      s.f.laser(true);
+      for (let i = 0; i < 7; i++) s.frame(0.1);
+      return laserHit.mock.calls.length;
+    };
+    // Bude 1,5 m vor dem Gesicht (Strahl endet an ihrer Vorderseite), Person steht darin
+    expect(run({ x0: 9, z0: 4.5, x1: 11, z1: 7.0, y1: 2.6 }, { x: 10, y: 0, z: 5.5 })).toBe(1);
+    // fremde Wand vor der Person (Standort außerhalb): verdeckt weiter
+    expect(run({ x0: 9, z0: 6.9, x1: 11, z1: 7.0, y1: 2.6 }, { x: 10, y: 0, z: 5.5 })).toBe(0);
+  });
   it('Richard: Treffer über brawl.hitBy(laser); Auto: blindDriver; Katze/Tauben: animals.laser', () => {
     const s = setup();
     const hitBy = vi.fn();
