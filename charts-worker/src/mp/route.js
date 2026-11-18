@@ -10,23 +10,31 @@ const RATE_WINDOW_MS = 60 * 1000;
 const RATE_CAP = 500;
 
 const rate = new Map(); // tokenHash -> Zeitstempel[]
+/** Eigenes Limit für GET /mp/online (nicht der Ticket-Limiter). */
+const ONLINE_RATE_MAX = 12;
+const ONLINE_RATE_MAX_IP = 60;
+const ONLINE_TTL_MS = 30 * 1000;
+const onlineRate = new Map();
+let onlineCache = null; // { at, n } für alle Nutzer gemeinsam (je Isolate)
 export function clearMpRate() {
   rate.clear();
+  onlineRate.clear();
+  onlineCache = null;
 }
 
 export function mpEnabled(env) {
   return hasSecret(env?.MP_SECRET) && !!env?.WORLD && typeof env.WORLD.idFromName === 'function';
 }
 
-function rateHit(hash, now, max = RATE_MAX) {
-  let list = rate.get(hash);
+function rateHit(hash, now, max = RATE_MAX, map = rate) {
+  let list = map.get(hash);
   if (!list) {
-    if (rate.size >= RATE_CAP) {
-      for (const [k, v] of rate) if (!v.length || now - v[v.length - 1] >= RATE_WINDOW_MS) rate.delete(k);
-      if (rate.size >= RATE_CAP) rate.delete(rate.keys().next().value);
+    if (map.size >= RATE_CAP) {
+      for (const [k, v] of map) if (!v.length || now - v[v.length - 1] >= RATE_WINDOW_MS) map.delete(k);
+      if (map.size >= RATE_CAP) map.delete(map.keys().next().value);
     }
     list = [];
-    rate.set(hash, list);
+    map.set(hash, list);
   }
   while (list.length && now - list[0] >= RATE_WINDOW_MS) list.shift();
   if (list.length >= max) return false;
@@ -48,6 +56,35 @@ export async function handleTicket(request, env, ctx) {
   if (user.status) return jsonResponse({ error: 'upstream-unreachable' }, 502, request, env);
   const { tk, exp } = await mintTicket(env.MP_SECRET, user, now);
   return jsonResponse({ v: 1, tk, exp, url: '/mp', pv: [1], s: now }, 200, request, env);
+}
+
+/** GET /mp/online (Header X-Emby-Token): Zahl verschiedener Konten in der Videothek. Isolate-Cache 30 s. */
+export async function handleOnline(request, env, ctx) {
+  if (!mpEnabled(env)) return jsonResponse({ error: 'mp-disabled' }, 503, request, env);
+  const token = request.headers.get('X-Emby-Token');
+  if (!token) return jsonResponse({ error: 'unauthorized' }, 401, request, env);
+  const now = Date.now();
+  const ip = request.headers.get('CF-Connecting-IP');
+  if (ip && !rateHit('ip:' + ip, now, ONLINE_RATE_MAX_IP, onlineRate)) return jsonResponse({ error: 'rate' }, 429, request, env);
+  if (!rateHit(await sha256Hex(token), now, ONLINE_RATE_MAX, onlineRate)) return jsonResponse({ error: 'rate' }, 429, request, env);
+  const user = await resolveUser(env, token, ctx);
+  if (user.status === 401) return jsonResponse({ error: 'unauthorized' }, 401, request, env);
+  if (user.status) return jsonResponse({ error: 'upstream-unreachable' }, 502, request, env);
+  const extra = { 'Cache-Control': 'private, max-age=30' };
+  if (onlineCache && now - onlineCache.at >= 0 && now - onlineCache.at < ONLINE_TTL_MS) {
+    return jsonResponse({ v: 1, n: onlineCache.n }, 200, request, env, extra);
+  }
+  try {
+    const stub = env.WORLD.get(env.WORLD.idFromName('world'));
+    const res = await stub.fetch(new Request('https://world/online'));
+    const body = res.ok ? await res.json() : null;
+    if (!body || !Number.isInteger(body.n) || body.n < 0) return jsonResponse({ error: 'unavailable' }, 503, request, env);
+    onlineCache = { at: now, n: body.n };
+    return jsonResponse({ v: 1, n: body.n }, 200, request, env, extra);
+  } catch {
+    console.error('mp: do-online');
+    return jsonResponse({ error: 'unavailable' }, 503, request, env);
+  }
 }
 
 function originAllowed(origin, env) {

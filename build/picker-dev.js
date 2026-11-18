@@ -1,5 +1,6 @@
 // Dev-Harness des Design-Menüs: gefälschte Jellyfin-Umgebung (ApiClient, fetch, Charts) + der echte Picker aus src/js/core/.
 // Keine Netzwerkzugriffe: fetch wird komplett ersetzt, Cover sind per Canvas erzeugte data-URLs.
+// ?online=3|1|0|err|slow: Antwort von /mp/online (Online-Pille auf der Kachel „store“; Standard 3, err = 503, slow = 2,5 s verzögert).
 const q = new URLSearchParams(location.search);
 const fakeDay = q.get('day'); // YYYY-MM-DD: Systemdatum für die Tagesmischung
 if (fakeDay && /^\d{4}-\d{2}-\d{2}$/.test(fakeDay)) {
@@ -61,6 +62,13 @@ const HIDDEN = new Set(['s3']);
 
 window.fetch = async (input) => {
   const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+  if (url.pathname === '/mp/online') {
+    const o = q.get('online');
+    if (o === 'err') return new Response('{}', { status: 503 });
+    const n = o === null ? 3 : Number(o);
+    const body = json({ v: 1, n: Number.isInteger(n) ? n : 0 });
+    return o === 'slow' ? new Promise((r) => setTimeout(() => r(json({ v: 1, n: 3 })), 2500)) : body;
+  }
   if (url.pathname.endsWith('/charts')) return json(CHARTS);
   if (url.pathname === '/Items') {
     const ids = (url.searchParams.get('Ids') || '').split(',').filter(Boolean);
