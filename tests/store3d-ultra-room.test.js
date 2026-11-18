@@ -163,10 +163,51 @@ describe('Ultra-Innenraum', () => {
   });
 });
 
+describe('Staub und Reduced-Motion', () => {
+  const realMM = globalThis.matchMedia;
+  function fakeMM(initial) {
+    const l = new Set();
+    const mq = { matches: initial, addEventListener: (n, f) => { if (n === 'change') l.add(f); }, removeEventListener: (n, f) => { if (n === 'change') l.delete(f); } };
+    globalThis.matchMedia = () => mq;
+    return { mq, l, set(v) { mq.matches = v; for (const f of [...l]) f({ matches: v }); } };
+  }
+  it('reagiert auf Änderungen der Systemeinstellung und räumt den Listener in dispose auf', () => {
+    const m = fakeMM(false);
+    try {
+      const t = setup('ultra');
+      t.flush();
+      const dust = t.scene.getObjectByName('ultra-dust');
+      t.u.update(0.016, 2);
+      expect(dust.material.uniforms.uTime.value).toBe(2);
+      m.set(true); // jetzt reduziert: Staub steht still
+      t.u.update(0.016, 7);
+      expect(dust.material.uniforms.uTime.value).toBe(2);
+      m.set(false);
+      t.u.update(0.016, 9);
+      expect(dust.material.uniforms.uTime.value).toBe(9);
+      expect(m.l.size).toBe(1);
+      t.handle.dispose();
+      expect(m.l.size).toBe(0);
+    } finally { globalThis.matchMedia = realMM; }
+  });
+  it('startet statisch, wenn reduziert schon beim Bau gilt', () => {
+    fakeMM(true);
+    try {
+      const t = setup('ultra');
+      t.flush();
+      t.u.update(0.016, 5);
+      expect(t.scene.getObjectByName('ultra-dust').material.uniforms.uTime.value).toBe(0);
+    } finally { globalThis.matchMedia = realMM; }
+  });
+});
+
 describe('Ultra-Innenraum Platzierung', () => {
   const layout = buildLayout(depts, {});
   const hit = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.z0 < b.z1 && a.z1 > b.z0 && a.y0 < b.y1 && a.y1 > b.y0;
 
+  // Hinweis: knownInteractBoxes (room-ultra-logic.js) ist eine handgepflegte Spiegelung der addInteractable-Boxen aus modules/cashier.js (Terminal/Richard/Rückgabe)
+  // und modules/props.js/snack.js (Reservierung usw.). Sie direkt abzuleiten ginge nur über das Hochfahren der vollen Module mit Voll-ctx (Jellyfin-, Audio-, Figuren-Abhängigkeiten);
+  // das ist für eine Gegenprobe unverhältnismäßig. Ändert sich dort eine Box, hier knownInteractBoxes nachziehen.
   it('Kleinkram liegt nicht in Interaktionsboxen und bleibt auf Tresen bzw. Boden', () => {
     const boxes = knownInteractBoxes(layout);
     const cn = layout.counter;

@@ -23,11 +23,14 @@ export default {
     const wrap = (build, withArea) => (c) => {
       const r = build(c);
       const base = r.update;
+      const doSync = () => { if (r.sync) r.sync(groups, withArea && areas ? areas.current() : ''); };
       return {
         object: r.object,
         dispose: r.dispose,
+        // Sichtbarwerden (nach Bau oder Wechsel auf Ultra): Teilmesh-Sichtbarkeit sofort setzen, nicht erst im nächsten update()
+        onVisible(v) { if (v) doSync(); },
         update(dt, t) {
-          if (r.sync) r.sync(groups, withArea && areas ? areas.current() : '');
+          doSync();
           if (base) base(dt, t);
         },
       };

@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { Group, Mesh, InstancedMesh, Scene, PerspectiveCamera } from 'three';
 import { layoutOf, overlap } from './helpers-city.js';
 import { createUltra } from '../src/js/store3d/engine/ultra.js';
-import { planUltraCity, groundFootprints, makeKeepout, doorRects, SKY_RADII } from '../src/js/store3d/world/ultra-plan.js';
+import { planUltraCity, groundFootprints, makeKeepout, doorRects, curbRuns, SKY_RADII } from '../src/js/store3d/world/ultra-plan.js';
 
 const fakeOut = { group: null, tinted: [], hooks: [], tod: 'day', rain: false, pal: { shade: [1, 1, 1], sky: [[0.3, 0.5, 0.9], [0.5, 0.7, 0.95], [0.85, 0.94, 1]] } };
 fakeOut.tint = (mat, base = [1, 1, 1]) => { fakeOut.tinted.push({ mat, base }); return mat; };
@@ -64,6 +64,34 @@ for (const n of [80, 600]) {
       expect(k.blocked(L.w / 2, c.frame.D + 1.2, 0.1)).toBe(true); // Gehweg-Pfad vor dem Laden
       expect(k.blocked(c.spawns.street.x, c.spawns.street.z, 0.1)).toBe(true);
       expect(k.blocked(L.w / 2, c.frame.D + 0.3, 0.1)).toBe(true); // Ladentür
+    });
+
+    it('solide Bordsteine der Seitenstraßen liegen auf keiner Querung (Fußwege, Zebras, Türen, Zonen, Spawns, Kollider)', () => {
+      const keep = makeKeepout(L);
+      const solid = plan.street.curbs.filter((q) => q.solid);
+      expect(solid.length).toBeGreaterThanOrEqual(4);
+      const hits = [];
+      for (const q of solid) {
+        for (let z = q.z0 + 0.05; z < q.z1; z += 0.1) {
+          if (keep.blocked(q.x - q.dir * 0.08, z, 0.1, 'hug')) hits.push(`x${q.x.toFixed(2)} z${z.toFixed(2)}`);
+          for (const zb of c.zebras) if (circleRect(q.x - q.dir * 0.08, z, 0.1, zb)) hits.push(`Zebra ${zb.id} z${z.toFixed(2)}`);
+          for (const p of c.sidewalkPaths) for (let i = 0; i + 1 < p.pts.length; i++) if (segDist(q.x - q.dir * 0.08, z, p.pts[i], p.pts[i + 1]) < 0.6) hits.push(`Pfad ${p.id} z${z.toFixed(2)}`);
+        }
+      }
+      expect(hits).toEqual([]);
+    });
+
+    it('curbRuns unterbricht an einer zusätzlichen Querung und lässt kurze Reste weg', () => {
+      const f = c.frame;
+      const zMid = (f.zSN + f.D) / 2;
+      const L2 = { ...L, city: { ...c, sidewalkPaths: [...c.sidewalkPaths, { id: 'testCross', pts: [{ x: f.xc0 - 4, z: zMid }, { x: f.xc0 + 3, z: zMid }], waits: [null] }] } };
+      const plan2 = planUltraCity(L2);
+      const segs = plan2.street.curbs.filter((q) => q.solid && q.x === f.xc0);
+      expect(segs.length).toBeGreaterThanOrEqual(2);
+      for (const q of segs) expect(zMid < q.z0 - 0.5 || zMid > q.z1 + 0.5).toBe(true);
+      const free = { blocked: (x, z) => z > 2 && z < 3 };
+      expect(curbRuns(free, 0, 0, 5, 1)).toEqual([[0, 2], [3, 5]]);
+      expect(curbRuns({ blocked: (x, z) => z > 0.3 }, 0, 0, 5, 1)).toEqual([]); // Rest 0,25 m < 0,5 m
     });
 
     it('Skyline: drei Ringe zwischen 52 und 56 m, gestaffelte Höhen', () => {
@@ -165,6 +193,19 @@ describe('Modul ultra-city (Registry-Integration)', () => {
     t.street.visible = true;
     t.u.update(0.016, 1);
     expect(t.root.getObjectByName('ultra-facade-street').visible).toBe(true);
+  });
+
+  it('Teilmesh-Sichtbarkeit stimmt sofort beim Sichtbarwerden (ohne update)', () => {
+    const t = setup('high');
+    t.flush();
+    t.street.visible = false;
+    t.yard.visible = false;
+    t.setLevel('ultra'); // kein update() dazwischen
+    const m = t.root.getObjectByName('ultra-street-mesh');
+    if (m) expect(m.visible).toBe(false);
+    const f = t.root.getObjectByName('ultra-facade-street');
+    expect(f).toBeTruthy();
+    expect(f.visible).toBe(false);
   });
 
   it('dispose entfernt alles, räumt out.tinted und Hooks', () => {

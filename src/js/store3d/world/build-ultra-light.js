@@ -1,6 +1,6 @@
 // VIDEOTHEK LENZ · Ultra-Details „Licht & Atmosphäre“ (1.19.0, Stufe 'ultra'): Neon-Halos, Lichtpools/Wandwäsche, Kontaktschatten.
 // Reine Bauer: jeder liefert { object, update(dt, t), dispose() } für die Ultra-Registry (engine/ultra.js, Provider 'ultra').
-// Kosten: neon 1 Draw-Call (ein ShaderMaterial, Flackern per Vertexattribut), pools 1, shadows 2 (InstancedMesh dynamisch + 1 gemergtes statisch) = 4.
+// Kosten: neon 1 Draw-Call (ein ShaderMaterial, Flackern per Vertexattribut), pools 1, shadows 1 (ein InstancedMesh für statische + dynamische Blobs) = 3.
 // Alles unbeleuchtet (Basic bzw. kleiner Shader), Canvas-Texturen, additiv bzw. normal mit niedriger Deckkraft, depthWrite aus, kein Nebel.
 // Zustandsbehaftetes (Wetter, Passanten, Autos, Mitspieler, Selbstansicht) nur über Provider mit Guard (ctx.use).
 import {
@@ -91,7 +91,7 @@ export function poolSources(L) {
 }
 
 const STATIC_FIX = new Set(['bench', 'bin', 'bikerack', 'mailbox', 'hydrant', 'phone', 'busstop', 'bollard', 'litfass']);
-/** Statische Kontaktschatten: [{ x, z, y, sx, sz, group: 'street'|'shop' }] unter Straßenmöbeln, Regalen, Tresen und geparkten Autos. */
+/** Statische Kontaktschatten: [{ x, z, y, sx, sz, group: 'street'|'shop' }] unter Straßenmöbeln, Regalen und Tresen; optional `parked` (je Auto EIN Rechteck). buildShadows übergibt es nicht, geparkte Autos laufen dort dynamisch (Qualitätswechsel baut sie neu). */
 export function staticShadows(L, parked) {
   const out = [];
   const rect = (r, group, k = 1.4, min = 0.7) => {
@@ -280,6 +280,7 @@ function shadowCanvas() {
 }
 
 export const SHADOW_DYN_MAX = 56;
+export const SHADOW_PARKED_MAX = 4; // geparkte Autos (traffic: höchstens 3 Stellplätze)
 export const SHADOW_FAR = 30;
 const FLOOR_Y = 0.03;
 
@@ -289,16 +290,22 @@ function shown(o) {
 }
 
 /**
- * Kontaktschatten: EIN InstancedMesh (statische + dynamische Blobs; Passanten, Personal, Rowdys, Autos, Mitspieler, eigene Figur in der Außenansicht).
- * Statische sind nach Gruppe (street/shop) nur sichtbar, wenn die Gruppe gezeichnet wird; dynamische alle 2 Frames aus den Providern.
- * Katze/Tauben haben keine Positionsliste → weggelassen.
+ * Kontaktschatten: EIN InstancedMesh (= 1 Draw-Call; statische + geparkte + dynamische Blobs; Passanten, Personal, Rowdys, fahrende Autos, Mitspieler, eigene Figur in der Außenansicht).
+ * Statische sind nach Gruppe (street/shop) nur sichtbar, wenn die Gruppe gezeichnet wird; geparkte Autos (ein Blob je Auto, Provider traffic.parkedCars, jedes Update neu gelesen)
+ * und fahrende Autos hängen ebenfalls an der Straßengruppe; Rest dynamisch alle 2 Frames aus den Providern.
+ * Weggelassen: Katze/Tauben (keine Positionsliste im Provider), Rollen/Fahrräder ohne Provider sowie alles jenseits SHADOW_DYN_MAX bzw. SHADOW_FAR.
  */
 export function buildShadows(ctx) {
   const L = ctx.layout;
   const tr = ctx.use && ctx.use('traffic');
-  const parked = (() => { try { return tr && typeof tr.parked === 'function' ? tr.parked() : []; } catch { return []; } })();
-  const stat = staticShadows(L, parked);
-  const cap = stat.length + SHADOW_DYN_MAX;
+  const parkedNow = () => {
+    try {
+      if (tr && typeof tr.parkedCars === 'function') return tr.parkedCars() || [];
+      return tr && typeof tr.parked === 'function' ? tr.parked() || [] : [];
+    } catch { return []; }
+  };
+  const stat = staticShadows(L, null);
+  const cap = stat.length + SHADOW_PARKED_MAX + SHADOW_DYN_MAX;
   const geo = new PlaneGeometry(1, 1);
   geo.rotateX(-PI / 2);
   const tex = toTexture(shadowCanvas(), { mips: false });
@@ -339,6 +346,11 @@ export function buildShadows(ctx) {
       if (s.group === 'street' ? !vis.street : !vis.shopShell) continue;
       put(i++, s.x, s.y, s.z, s.sx, s.sz);
     }
+    if (vis.street) {
+      for (const r of parkedNow().slice(0, SHADOW_PARKED_MAX)) {
+        put(i++, (r.x0 + r.x1) / 2, 0, (r.z0 + r.z1) / 2, Math.max(1.0, (r.x1 - r.x0) * 1.2), Math.max(1.0, (r.z1 - r.z0) * 1.2));
+      }
+    }
     let d = 0;
     const add = (x, y, z, sx, sz) => { if (d >= SHADOW_DYN_MAX || !Number.isFinite(x + y + z) || !near(x, z)) return; put(i + d, x, y, z, sx, sz); d++; };
     const npc = ctx.use && ctx.use('npc');
@@ -351,7 +363,7 @@ export function buildShadows(ctx) {
     }
     if (tr && typeof tr.cars === 'function') {
       for (const c of tr.cars()) {
-        if (c.state === 'away') continue;
+        if (!vis.street || c.state === 'away') continue;
         const ln = lanes.get(c.lane);
         const alongX = !ln || !ln.dir || Math.abs(ln.dir.x) > 0;
         add(c.x, 0, c.z, alongX ? CAR_LEN * 1.15 : CAR_W * 1.3, alongX ? CAR_W * 1.3 : CAR_LEN * 1.15);
