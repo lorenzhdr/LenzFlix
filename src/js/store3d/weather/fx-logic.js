@@ -33,10 +33,13 @@ export function thunderPlan(seed, n) {
   return { delay: 0.5 + dist * 3.5, gain: 1 - dist * 0.8, dist };
 }
 
-/** Blitze nur bei Gewitter und ohne reduzierte Bewegung. */
-export function lightningOn(state, reduced) {
-  return !!(state && state.storm) && !reduced;
+/** Blitzplanung (und Donner) nur bei Gewitter; reduzierte Bewegung betrifft nur die Optik (lightningVisual). */
+export function lightningOn(state) {
+  return !!(state && state.storm);
 }
+
+/** Blitz-Optik (Aufhellen, Strahl) nur ohne reduzierte Bewegung. */
+export function lightningVisual(reduced) { return !reduced; }
 
 /** Sichtbarer Blitz-Strahl: nur ab Stufe mid. */
 export function boltVisible(level) { return atLeast(level, 'mid'); }

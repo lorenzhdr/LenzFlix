@@ -30,7 +30,7 @@ float lfxNoise(vec2 p) {
   return mix(mix(lfxHash(i), lfxHash(i + vec2(1.0, 0.0)), f.x), mix(lfxHash(i + vec2(0.0, 1.0)), lfxHash(i + vec2(1.0, 1.0)), f.x), f.y);
 }`;
 const FRAG_BODY = `
-  {
+  if (uSnow > 0.001) {
     vec3 lfxN = normalize(cross(dFdx(vLfxWp), dFdy(vLfxWp)));
     if (dot(lfxN, cameraPosition - vLfxWp) < 0.0) lfxN = -lfxN;
     float lfxUp = smoothstep(0.55, 0.9, lfxN.y);
@@ -42,7 +42,7 @@ const FRAG_BODY = `
       vec4 b = uSnowBoxA[i];
       if (vLfxWp.x > b.x && vLfxWp.x < b.z && vLfxWp.z > b.y && vLfxWp.z < b.w && vLfxWp.y < uSnowBoxY[i] - 0.05) lfxMask = 0.0;
     }
-    outgoingLight = mix(outgoingLight, uSnowCol, lfxUp * lfxCov * lfxMask * step(0.001, uSnow) * 0.96);
+    outgoingLight = mix(outgoingLight, uSnowCol, lfxUp * lfxCov * lfxMask * 0.96);
   }`;
 
 /** Patcht Vertex- und Fragment-Quelltext (Strings) eines Standard-Materials (z. B. ShaderLib.basic). Rein, testbar. */

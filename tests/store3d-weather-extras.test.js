@@ -3,7 +3,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Scene, PerspectiveCamera, Points } from 'three';
 import {
-  hash01, lightningGap, flashAt, FLASH_LEN, thunderPlan, lightningOn, boltVisible, breathOn, breathPhase, BREATH_MAX, thermoText, wetLevel, wetGlow, WET_DRY_S,
+  hash01, lightningGap, flashAt, FLASH_LEN, thunderPlan, lightningOn, lightningVisual, boltVisible, breathOn, breathPhase, BREATH_MAX, thermoText, wetLevel, wetGlow, WET_DRY_S,
 } from '../src/js/store3d/weather/fx-logic.js';
 import { MODULES } from '../src/js/store3d/modules/index.js';
 import { ModuleHost } from '../src/js/store3d/modules/runtime.js';
@@ -47,7 +47,9 @@ describe('fx-logic (rein)', () => {
   });
   it('Blitze nur bei Gewitter und ohne reduzierte Bewegung; Strahl ab mid', () => {
     expect(lightningOn({ storm: true }, false)).toBe(true);
-    expect(lightningOn({ storm: true }, true)).toBe(false);
+    expect(lightningOn({ storm: true }, true)).toBe(true);
+    expect(lightningVisual(true)).toBe(false);
+    expect(lightningVisual(false)).toBe(true);
     expect(lightningOn({ storm: false }, false)).toBe(false);
     expect(lightningOn(null, false)).toBe(false);
     expect(boltVisible('low')).toBe(false);
@@ -254,7 +256,8 @@ describe('Modul weatherfx', () => {
     expect(mute.max).toBeGreaterThan(0.5);
     expect(mute.thunder).toBe(0);
     const red = await run({ reduced: true, sound: true });
-    expect(red.max).toBe(0); // keine Blitze, keine Flacker-Exposure
+    expect(red.max).toBe(0); // keine Flacker-Exposure
+    expect(red.thunder).toBeGreaterThanOrEqual(2); // Donner bleibt
   });
 
   it('kein Gewitter bei normalem Regen', async () => {

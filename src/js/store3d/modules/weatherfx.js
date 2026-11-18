@@ -13,7 +13,7 @@ import { OUTDOOR_AREAS } from '../world/city.js';
 import { prefersReducedMotion } from './m4-util.js';
 import { winterNext } from '../weather/state.js';
 import {
-  lightningGap, flashAt, FLASH_LEN, thunderPlan, lightningOn, boltVisible, breathOn, breathPhase, BREATH_MAX, thermoText as thermoStr, hash01,
+  lightningGap, flashAt, FLASH_LEN, thunderPlan, lightningOn, lightningVisual, boltVisible, breathOn, breathPhase, BREATH_MAX, thermoText as thermoStr, hash01,
 } from '../weather/fx-logic.js';
 
 const BOLT_SEG = 14;
@@ -163,13 +163,14 @@ export default {
       if (w && typeof w.flash === 'function') w.flash(0);
     }
     function lightning(t, w) {
-      const on = !!w && lightningOn(w, reduced) && !suspended;
+      const on = !!w && lightningOn(w) && !suspended;
       if (!on) { if (flashing) endFlash(w); nextAt = null; return; }
       if (nextAt === null) nextAt = t + lightningGap(seed, lightN);
       if (!flashing && t >= nextAt) {
         flashing = true;
         flashStart = t;
-        if (boltVisible(level)) shapeBolt(lightN);
+        const vis = lightningVisual(reduced);
+        if (vis && boltVisible(level)) shapeBolt(lightN);
         const plan = thunderPlan(seed, lightN);
         const snd = ctx.use('sound');
         const ind = indoorFactor();
@@ -181,6 +182,7 @@ export default {
         const dt = t - flashStart;
         const k = flashAt(dt) * indoorFactor();
         if (dt >= FLASH_LEN) { endFlash(w); return; }
+        if (!lightningVisual(reduced)) return;
         if (typeof w.flash === 'function') w.flash(k);
         bolt.visible = boltVisible(level) && k > 0.3 && indoorFactor() === 1;
       }
