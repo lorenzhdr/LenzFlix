@@ -68,6 +68,8 @@ import ultraLight from './ultra-light.js';
 import ultraCity from './ultra-city.js';
 // --- Ultra Innenraum (1.19): imports ---
 import ultraRoom from './ultra-room.js';
+// --- Ultra-Figuren (1.19 U4): imports ---
+import ultraFigures from './ultra-figures.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -117,6 +119,8 @@ export const MODULES = [
   ultraCity,
   // --- Ultra Innenraum (1.19; Details nur auf Stufe ultra, Provider 'ultra') ---
   ultraRoom,
+  // --- Ultra-Figuren (1.19 U4: Abstands-LOD der Figuren-Details, nutzt nur die Figuren-Registry) ---
+  ultraFigures,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];

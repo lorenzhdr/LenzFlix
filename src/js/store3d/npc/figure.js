@@ -12,7 +12,8 @@ import { box, quad, merge } from '../util/geo.js';
 import { sph } from '../modules/m4-geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
 import { lookKey } from './looks.js';
-import { buildV2Parts, buildHandItem, HAND_ITEMS } from './figure-parts.js';
+import { buildV2Parts, buildHandItem, HAND_ITEMS, faceBox } from './figure-parts.js';
+import { detailBody, detailHead, winterHead, winterBody } from './figure-detail.js';
 import { Animator } from './anim.js';
 import { angDiff } from '../modules/m4-util.js';
 
@@ -38,6 +39,10 @@ let umbrellaMat = null;
 let useTick = 0;
 const geoCache = new Map(); // key → { key, g, refs, used, topY }
 const umbrellaCache = new Map();
+const liveSet = new Set(); // alle lebenden Figuren-Handles (1.19.0: Abstands-LOD in modules/ultra-figures.js)
+
+/** Alle lebenden Figuren (Handles), Reihenfolge = Erzeugung. */
+export function liveFigures() { return [...liveSet]; }
 
 function material() {
   if (!sharedMat) sharedMat = new MeshLambertMaterial({ vertexColors: true });
@@ -71,14 +76,18 @@ function fullTopY(look) {
 }
 
 /** Cache-Eintrag für den Look holen (Referenz +1, ggf. bauen). ego (nur v2): Geometrie mit Beinen, Schuhen und Hüfte (Ich-Sicht). */
-function acquire(look, ego = false, item = null) {
+function acquire(look, ego = false, item = null, fx = null) {
   const useEgo = !!ego && look.v === 2;
+  // 1.19.0 U4: Detail ('|d') und Winterkleidung ('|w' Mütze+Schal, '|wh' nur Mütze, '|ws' nur Schal) – Schlüssel ohne Flag unverändert (bitgleich); nicht in der Ich-Sicht
+  const useDetail = !!(fx && fx.detail) && !ego;
+  const winter = ego ? null : effectiveWinter(look, fx && fx.winter);
   // Gegenstand (1.18): eigener Cache-Zweig; in der Ich-Sicht (Arme weg) ohne Gegenstand. Ohne Gegenstand bleibt der Schlüssel unverändert (bitgleich).
   const useItem = item && !ego && HAND_ITEMS.includes(item) ? item : null;
-  const key = lookKey(look) + (useEgo ? '|ego' : '') + (useItem ? '|h:' + useItem + (useItem === 'umbrella' ? ':' + itemColorKey(look) : '') : '');
+  const key = lookKey(look) + (useEgo ? '|ego' : '') + (useItem ? '|h:' + useItem + (useItem === 'umbrella' ? ':' + itemColorKey(look) : '') : '')
+    + (useDetail ? '|d' : '') + (winter ? (winter.hat && winter.scarf ? '|w' : winter.hat ? '|wh' : '|ws') : '');
   let e = geoCache.get(key);
   if (!e) {
-    const g = bodyGeometry(look, useEgo, useItem);
+    const g = bodyGeometry(look, useEgo, useItem, useDetail, winter);
     e = { key, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
     geoCache.set(key, e);
   }
@@ -105,14 +114,28 @@ export function figureCacheInfo() {
   return { size: geoCache.size, free, refs };
 }
 
+/** Hat der Look schon eine Kopfbedeckung? (dann keine Wintermütze) */
+function hasHat(look) {
+  if (look.v === 2) return !!(look.hat && typeof look.hat === 'object' && look.hat.id && look.hat.id !== 'none');
+  return !!look.hat;
+}
+
+/** Winter-Option normalisieren: { hat, scarf } oder null (Mütze entfällt bei vorhandenem Hut). */
+function effectiveWinter(look, w) {
+  if (!w) return null;
+  const hat = !!w.hat && !hasHat(look);
+  const scarf = !!w.scarf;
+  return hat || scarf ? { hat, scarf } : null;
+}
+
 /** Farbanteil des Cache-Schlüssels für Gegenstände, deren Farbe nicht in lookKey steckt (Schirm). */
 function itemColorKey(look) {
   return Array.isArray(look.umbrellaColor) ? look.umbrellaColor.map((v) => Math.round(v * 255)).join('.') : '-';
 }
 
 /** Geometrie je Look (gemergt, mit Skin-Attributen), ungecacht. item: Gegenstand an der rechten Hand (im selben Mesh, Bone armR). */
-function bodyGeometry(look, ego = false, item = null) {
-  const parts = look.v === 2 ? buildV2Parts(look, { ego }) : oldParts(look);
+function bodyGeometry(look, ego = false, item = null, detail = false, winter = null) {
+  const parts = look.v === 2 ? buildV2Parts(look, { ego, detail, winter }) : oldParts(look, detail, winter);
   if (item) parts[B.armR].push(...buildHandItem(look, item));
   const geos = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
   const g = merge(geos);
@@ -121,7 +144,7 @@ function bodyGeometry(look, ego = false, item = null) {
 }
 
 /** Teile des alten Pfads (Looks ohne v===2) – unverändert. */
-function oldParts(look) {
+function oldParts(look, detail = false, winter = null) {
   const skin = look.skin;
   const parts = { [B.spine]: [], [B.head]: [], [B.armL]: [], [B.armR]: [], [B.legL]: [], [B.legR]: [] };
   const bottom = look.bottom;
@@ -145,10 +168,11 @@ function oldParts(look) {
   hd.push(sph(0.12, 0, 1.58, 0, skin, 1, 1.1, 1));
   const hair = look.hair;
   const style = look.hairStyle;
-  if (style !== 'bald') hd.push(sph(0.133, 0, 1.605, 0.016, hair, 1, 1, 1, 8, 5, style === 'tuft' ? 1.5 : 1.95));
+  const winterHat = !!(winter && winter.hat); // Mütze deckt die Haarkappe (und den Schopf) ab
+  if (style !== 'bald' && !winterHat) hd.push(sph(0.133, 0, 1.605, 0.016, hair, 1, 1, 1, 8, 5, style === 'tuft' ? 1.5 : 1.95));
   if (style === 'long') hd.push(box({ w: 0.25, h: 0.3, d: 0.07, x: 0, y: 1.5, z: 0.1, color: hair }));
   if (style === 'bob') { hd.push(box({ w: 0.04, h: 0.2, d: 0.2, x: -0.125, y: 1.54, z: 0.02, color: hair })); hd.push(box({ w: 0.04, h: 0.2, d: 0.2, x: 0.125, y: 1.54, z: 0.02, color: hair })); }
-  if (style === 'tuft') hd.push(box({ w: 0.05, h: 0.1, d: 0.05, x: 0, y: 1.76, z: 0, color: hair }));
+  if (style === 'tuft' && !winterHat) hd.push(box({ w: 0.05, h: 0.1, d: 0.05, x: 0, y: 1.76, z: 0, color: hair }));
   hd.push(box({ w: 0.028, h: 0.034, d: 0.012, x: -0.045, y: 1.6, z: -0.113, color: [0.08, 0.08, 0.1] }));
   hd.push(box({ w: 0.028, h: 0.034, d: 0.012, x: 0.045, y: 1.6, z: -0.113, color: [0.08, 0.08, 0.1] }));
   hd.push(box({ w: 0.02, h: 0.03, d: 0.02, x: 0, y: 1.57, z: -0.122, color: dark(skin, 0.93) }));
@@ -178,6 +202,12 @@ function oldParts(look) {
       a.push(box({ w: 0.2, h: 0.28, d: 0.12, x: 0.3, y: 0.58, z: -0.02, color: bc }));
       a.push(box({ w: 0.02, h: 0.14, d: 0.02, x: 0.3, y: 0.76, z: -0.02, color: dark(bc, 0.6) }));
     }
+  }
+  if (detail || winter) {
+    const dsc = { v2: false, skin, top: look.top, bottom, shoes: look.shoes, hair, sw: 0.42, hw: 0.4, td: 0.23, ax: 0.26, lx: 0.1, lw: 0.14, topCut: undefined, botCut: 'jeans', shoeModel: 'sneaker', brows: 'none' };
+    if (detail) { detailBody(parts, dsc); detailHead(hd, dsc, (w, h, d, x, y, color, p, rz) => faceBox(hd, w, h, d, x, y, color, p, rz)); }
+    if (winter && winter.scarf) winterBody(parts, dsc);
+    if (winterHat) winterHead(hd, dsc);
   }
   return parts;
 }
@@ -241,8 +271,9 @@ export function createFigure(look, hooks = {}) {
   const bArmR = mk(0.26, 1.36 - SPINE_Y, 0, bSpine);
   const bLegL = mk(-0.1, SPINE_Y, 0, bRoot);
   const bLegR = mk(0.1, SPINE_Y, 0, bRoot);
+  let fx = { detail: false, winter: null }; // 1.19.0 U4
   let handItem = typeof look.handItem === 'string' && HAND_ITEMS.includes(look.handItem) ? look.handItem : null;
-  let entry = acquire(look, ego, handItem);
+  let entry = acquire(look, ego, handItem, fx);
   const mesh = new SkinnedMesh(entry.g, hooks.material || material());
   mesh.add(bRoot);
   rig.add(mesh);
@@ -263,6 +294,13 @@ export function createFigure(look, hooks = {}) {
   const tagY = () => (legacyTop() ? 1.98 : entry.topY + 0.23);
   const headY = () => (legacyTop() ? 1.95 * k : (entry.topY + 0.2) * k);
   const tmp = new Vector3();
+  /** Geometrie passend zu look/ego/Gegenstand/Detail/Winter aus dem Cache holen und tauschen (Animation/Position bleiben). */
+  const swapGeo = () => {
+    const next = acquire(look, ego, handItem, fx);
+    if (next === entry) { release(next); return; }
+    const old = entry; entry = next; mesh.geometry = entry.g; release(old);
+    if (tag) tag.position.set(0, tagY(), 0);
+  };
   const handle = {
     root, rig, mesh, look, anim,
     /** Oberkante der Figur (Hut/Frisur inkl.) in Metern, × height. */
@@ -305,7 +343,7 @@ export function createFigure(look, hooks = {}) {
     setLook(next) {
       if (disposed || !next) return;
       const old = entry;
-      entry = acquire(next, ego, handItem);
+      entry = acquire(next, ego, handItem, fx);
       handle.look = next;
       look = next;
       mesh.geometry = entry.g;
@@ -317,9 +355,7 @@ export function createFigure(look, hooks = {}) {
     setEgo(on) {
       ego = !!on;
       // v2: nur Beine, Schuhe und Hüfte (eigene Geometrie); alter Pfad: Kopf/Arme per Bone-Skalierung weg (unverändert)
-      const next = acquire(look, ego, handItem);
-      if (next === entry) release(next);
-      else { const old = entry; entry = next; mesh.geometry = entry.g; release(old); }
+      swapGeo();
       const s = ego ? 0 : 1;
       bHead.scale.set(s, s, s);
       bArmL.scale.set(s, s, s);
@@ -340,12 +376,34 @@ export function createFigure(look, hooks = {}) {
       const want = typeof id === 'string' && HAND_ITEMS.includes(id) ? id : null;
       if (want === handItem) return handItem;
       handItem = want;
-      const next = acquire(look, ego, handItem);
-      if (next === entry) release(next);
-      else { const old = entry; entry = next; mesh.geometry = entry.g; release(old); }
+      swapGeo();
       return handItem;
     },
     getHandItem: () => handItem,
+    /**
+     * 1.19.0 U4: Detail-Geometrie (Finger, Gürtel, Schuhkappen, Ohren, Brauen …) im selben Mesh (kein Draw-Call mehr; Cache-Zweig '|d'). Idempotent.
+     * @returns {boolean} aktueller Zustand
+     */
+    setDetail(on) {
+      if (disposed) return false;
+      const want = !!on;
+      if (want !== fx.detail) { fx = { ...fx, detail: want }; swapGeo(); }
+      return fx.detail;
+    },
+    getDetail: () => fx.detail,
+    /**
+     * 1.19.0 U4: Winterkleidung im selben Mesh (Cache-Zweig '|w'): true = Mütze + Schal, { hat, scarf } einzeln, false/null = aus. Eine Mütze entfällt
+     * bei vorhandenem Hut. Idempotent.
+     * @returns {{hat:boolean,scarf:boolean}|null} die wirksame Kleidung
+     */
+    setWinter(on) {
+      if (disposed) return null;
+      const want = on === true ? { hat: true, scarf: true } : on && typeof on === 'object' ? { hat: !!on.hat, scarf: !!on.scarf } : null;
+      const same = (a, b) => (!a && !b) || (a && b && a.hat === b.hat && a.scarf === b.scarf);
+      if (!same(want, fx.winter)) { fx = { ...fx, winter: want && (want.hat || want.scarf) ? want : null }; swapGeo(); }
+      return effectiveWinter(look, fx.winter);
+    },
+    getWinter: () => effectiveWinter(look, fx.winter),
     show() { root.visible = true; },
     hide() { root.visible = false; },
     /** Netzzustand { x, y, z (mm), yaw (0,01), v, a, p, s, t }. */
@@ -395,6 +453,7 @@ export function createFigure(look, hooks = {}) {
     dispose() {
       if (disposed) return;
       disposed = true;
+      liveSet.delete(handle);
       handle.setUmbrella(false);
       handle.setName(null);
       if (root.parent) root.parent.remove(root);
@@ -402,6 +461,7 @@ export function createFigure(look, hooks = {}) {
       release(entry);
     },
   };
+  liveSet.add(handle);
   if (hooks.ego) handle.setEgo(true);
   if (hooks.name) handle.setName(hooks.name);
   return handle;

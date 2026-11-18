@@ -124,6 +124,20 @@ export default {
       return true;
     }
 
+    // ------------------------------------------------------------ Winterkleidung (1.19.0 U4)
+    // Passanten (deterministisch je Seed: ~80 % Mütze, ~70 % Schal) und die Kioskfrau; Mitspieler, eigene Figur, Friseure und Palast-Personal bleiben unberührt.
+    let winterOn = false;
+    const frac = (n) => ((Math.imul(n >>> 0, 2654435761) >>> 0) % 100000) / 100000;
+    const winterOf = (seed) => ({ hat: frac(seed) < 0.8, scarf: frac((seed ^ 0x9e3779b9) >>> 0) < 0.7 });
+    const applyWinter = (h, seed) => { try { h.setWinter(winterOn ? (seed === undefined ? { hat: true, scarf: true } : winterOf(seed)) : null); } catch { /* egal */ } };
+    const setWinterAll = (on) => {
+      winterOn = !!on;
+      let n = 0;
+      for (const e of walkers) { applyWinter(e.handle, e.seed); n++; }
+      for (const h of externals) if (h.look && h.look.role === 'kiosk') { applyWinter(h); n++; }
+      return n;
+    };
+
     // ------------------------------------------------------------ Provider
     const provider = {
       figure(o = {}) {
@@ -134,10 +148,14 @@ export default {
         const g = groups();
         (o.parent || (g && g.street) || ctx.scene).add(h.root);
         externals.add(h);
+        if (winterOn && look.role === 'kiosk') applyWinter(h);
         const dispose = h.dispose;
         h.dispose = () => { externals.delete(h); bubbles.hideFor(h); releaseSpeaker(h); dispose(); };
         return h;
       },
+      /** 1.19.0 U4: Winterkleidung (Mütze/Schal) für alle Passanten und die Kioskfrau an/aus; neu erzeugte Passanten folgen. Rückgabe: Anzahl umgezogener Figuren. */
+      setWinterAll,
+      isWinter: () => winterOn,
       staff(role) { return enabled && staffMap.get(role) ? staffMap.get(role).handle : null; },
       people() { return collectPeople(false).map((p) => ({ kind: p.kind, handle: p.handle, x: p.x, z: p.z })); },
       nearestPerson(x, z, r = 3) {
@@ -232,6 +250,7 @@ export default {
       handle.hitReact = (dir) => walkerProvoked(entry, 'hit', dir);
       entry.col = ctx.addCollider({ x0: PARK, z0: PARK, x1: PARK + 0.5, z1: PARK + 0.5, y1: 1.8, top: false, kind: 'walker' }, { dynamic: true });
       walkers.push(entry);
+      if (winterOn) applyWinter(handle, seed);
       return entry;
     }
     function removeWalker(entry) {
