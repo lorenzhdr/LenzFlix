@@ -111,6 +111,7 @@ export default {
     }
 
     // ------------------------------------------------------------ Ablauf (Stuhl / Umkleide)
+    let lastTod = '';
     let curtainK = 0; // aktuell
     let curtainTo = 0;
 
@@ -273,6 +274,8 @@ export default {
           curtainK = curtainTo > curtainK ? Math.min(curtainTo, curtainK + step) : Math.max(curtainTo, curtainK - step);
           interior.setCurtain(curtainK);
         }
+        const tod = (ctx.use('weather') || {}).tod || 'day';
+        if (tod !== lastTod) { lastTod = tod; interior.setBrightness(tod === 'night' ? 0.62 : tod === 'dusk' ? 0.8 : 1); }
         mirrors.chair.update(dt);
         mirrors.booth.update(dt);
         greetCool = Math.max(0, greetCool - dt);

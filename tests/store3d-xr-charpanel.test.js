@@ -53,6 +53,8 @@ describe('xr/charpanel Spec', () => {
       expect(spec.tabs[i].on).toBe(true);
       const sw = spec.buttons.filter((b) => b.swatch);
       expect(sw).toHaveLength(16);
+      expect(sw[0].swatch.every((v) => Number.isInteger(v) && v >= 0 && v <= 255)).toBe(true);
+      expect(Math.max(...sw.map((b) => Math.max(...b.swatch)))).toBeGreaterThan(1);
       sw[5].onSelect();
       expect(a.setColor).toHaveBeenLastCalledWith(p.part, 5);
     });

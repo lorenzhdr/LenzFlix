@@ -1,6 +1,6 @@
 // Außenansicht (1.17.0): Kamera hinter dem Auge, Kollision der Strecke, Einfahren/Ausfahren, Ausblenden der Figur.
 import { describe, it, expect } from 'vitest';
-import { solveTpCam, smoothFrac, hideBody, forward, BACK, UP, EXTEND_T, HIDE_DIST } from '../src/js/store3d/char/tpcam.js';
+import { solveTpCam, signBoxes, smoothFrac, hideBody, forward, BACK, UP, EXTEND_T, HIDE_DIST } from '../src/js/store3d/char/tpcam.js';
 import { createColliderIndex } from '../src/js/store3d/nav/collide.js';
 
 const eye = { x: 10, y: 1.65, z: 10 };
@@ -83,5 +83,39 @@ describe('smoothFrac / hideBody', () => {
     expect(hideBody(HIDE_DIST + 0.01)).toBe(false);
     expect(hideBody(HIDE_DIST + 0.05, true)).toBe(true);
     expect(hideBody(HIDE_DIST + 0.2, true)).toBe(false);
+  });
+});
+
+describe('Schilder als Hindernisse und Schulterblick', () => {
+  it('signBoxes: hängendes Schild (yaw 0), Wandschild entlang z (yaw ±π/2), Ladenschild samt Markise', () => {
+    const b = signBoxes({
+      signs: [{ x: 5, z: 3, y: 2.4, w: 2, yaw: 0, kind: 'hang' }, { x: 0.03, z: 8, y: 2.5, w: 1.6, yaw: Math.PI / 2, kind: 'wall' }],
+      city: { signs: [{ x: 20, z: 30, y: 3, w: 3, yaw: Math.PI }], shopFronts: [{ x: -9, z: 22.8, y: 3.5, w: 5, yaw: 0 }] },
+    });
+    expect(b).toHaveLength(5);
+    expect(b[0].x1 - b[0].x0).toBeGreaterThan(2);
+    expect(b[0].z1 - b[0].z0).toBeLessThan(0.3);
+    expect(b[1].z1 - b[1].z0).toBeGreaterThan(1.6);
+    expect(b[1].x1 - b[1].x0).toBeLessThan(0.3);
+    expect(b[4].y0).toBeLessThan(2.7); // Markise
+    expect(signBoxes(null)).toEqual([]);
+  });
+
+  it('Kamera stoppt vor einem Neonschild hinter dem Auge', () => {
+    const extra = signBoxes({ signs: [{ x: 10, z: 12, y: 1.9, w: 2, yaw: 0, kind: 'hang' }] });
+    const free = solveTpCam([], eye, 0, 0, 0);
+    expect(free.hit).toBe(false);
+    const r = solveTpCam([], eye, 0, 0, 0, { extra });
+    expect(r.hit).toBe(true);
+    expect(r.z).toBeLessThan(12 - 0.05);
+    expect(r.frac).toBeLessThan(1);
+  });
+
+  it('eingezogen: Schulterblick (lift > 0), frei: lift 0', () => {
+    const wall = [{ x0: 0, z0: 10.5, x1: 20, z1: 12, y0: 0, y1: 4 }];
+    const r = solveTpCam(wall, eye, 0, 0, 0);
+    expect(r.hit).toBe(true);
+    expect(r.lift).toBeGreaterThan(0);
+    expect(solveTpCam([], eye, 0, 0, 0).lift).toBe(0);
   });
 });

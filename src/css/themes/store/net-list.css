@@ -12,6 +12,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-list {
   max-height: min(38vh, 320px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Der feste „Zurück“-Fuß (44 px + 8 px Abstand) liegt über dem Panelende: Platz lassen, damit die letzte Zeile nicht darunter verschwindet */
+  margin-bottom: 52px;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-listhead[hidden],
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-list[hidden] {

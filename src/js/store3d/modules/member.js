@@ -121,7 +121,30 @@ export default {
           onClose: () => { if (open && open.ui === ui) closeOpen(); },
         });
         open = { ui, done: resolve };
-        ctx.overlay.open(ui.el, { onClose: () => { if (open && open.ui === ui) { open = null; ui.destroy(); resolve(); } } });
+        // Gate: Esc-fest (modal). Schließt das Overlay von außen (anderes Overlay, Moduswechsel), bleibt die Karte bis „Weiter“ stehen und kommt zurück.
+        const gate = mode === 'gate';
+        let tries = 0;
+        const openOv = () => {
+          ctx.overlay.open(ui.el, {
+            modal: gate,
+            onClose: () => {
+              if (!open || open.ui !== ui) return;
+              if (gate && !disposed) { reopen(); return; }
+              open = null; ui.destroy(); resolve();
+            },
+          });
+        };
+        const reopen = () => {
+          const t = setTimeout(() => {
+            timers.delete(t);
+            if (disposed || !open || open.ui !== ui) return;
+            if (ctx.overlay.isOpen() && ++tries > 20) { open = null; ui.destroy(); resolve(); return; } // fremdes Overlay hält sich dauerhaft: nicht ewig kämpfen
+            if (ctx.overlay.isOpen()) { reopen(); return; }
+            openOv();
+          }, 0);
+          timers.add(t);
+        };
+        openOv();
         if (!ctx.isTouch) ui.focus();
       });
     }

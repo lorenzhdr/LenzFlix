@@ -26,7 +26,6 @@ const STAMP_MS = 380;
 const STAMP_MS_REDUCED = 150;
 const FLASH_MS = 140;
 const FLASH_MS_REDUCED = 320;
-const TAN_STUDIO_HALF = Math.tan((15 * Math.PI) / 180); // Studio-Kamera: 30° Öffnung
 
 const warn = (what, err) => console.warn(`[LenzFlix Store3D] avatar ${what}`, err);
 const validSlot = (c) => Array.isArray(c) && c.length === LEN && c[0] === 2;
@@ -128,29 +127,35 @@ export default {
     // --- Bühne (Studio) ---
     const getStudio = () => studio || (studio = createStudio());
 
+    /** Freie Bildfläche (normiert 0..1, y von oben) = die Vorschaufläche des Editors, relativ zur Bühne; null ohne Layout (z. B. jsdom, Live-Sheet). */
+    function freeArea() {
+      const s = session;
+      const ui = s && s.ui;
+      const host = ui && ui.el && ui.el.parentElement;
+      if (!ui || !ui.preview || !host) return null;
+      const hr = host.getBoundingClientRect();
+      const pr = ui.preview.getBoundingClientRect();
+      if (hr.width < 2 || hr.height < 2 || pr.width < 2 || pr.height < 2) return null;
+      const n = (v) => Math.max(0, Math.min(1, v));
+      const free = { x0: n((pr.left - hr.left) / hr.width), x1: n((pr.right - hr.left) / hr.width), y0: n((pr.top - hr.top) / hr.height), y1: n((pr.bottom - hr.top) / hr.height) };
+      return free.x1 - free.x0 > 0.05 && free.y1 - free.y0 > 0.05 ? free : null;
+    }
+
+    /** Das Studio liefert die fertige Pose für Seitenverhältnis, Öffnungswinkel und freie Fläche (char/studio.js cameraPose). */
     function poseCamera(focus, ms) {
       if (!studio) return;
-      const pose = studio.cameraPose(focus);
       const cam = ctx.camera;
-      const fov = ((cam && cam.fov) || 60) * (Math.PI / 180);
-      const tanH = Math.tan(fov / 2);
-      const k = Math.max(0.25, TAN_STUDIO_HALF / tanH); // Studio-Posen sind für 30° gedacht: bei weiterem Winkel näher heran
+      const o = { aspect: (cam && cam.aspect) || 1.6, fov: (cam && cam.fov) || 60 };
+      const free = freeArea();
+      if (free) o.free = free;
+      const pose = studio.cameraPose(focus, o);
       const [lx, ly, lz] = pose.look;
-      const px = lx + (pose.pos[0] - lx) * k;
-      const py = ly + (pose.pos[1] - ly) * k;
-      const pz = lz + (pose.pos[2] - lz) * k;
-      const d = Math.hypot(px - lx, py - ly, pz - lz);
-      const aspect = (cam && cam.aspect) || 1.6;
-      let sx = 0;
-      let sy = 0;
-      if (aspect < 1.1) sy = -0.5 * d * tanH; // Hochformat: Figur ins obere Drittel, Formular darunter
-      else sx = 0.5 * d * tanH * aspect; // Querformat: Figur rechts, Formular links
-      try { ctx.player.camera.flyTo({ x: px + sx, y: py + sy, z: pz }, { x: lx + sx, y: ly + sy, z: lz }, ms); } catch (err) { warn('flyTo', err); }
+      try { ctx.player.camera.flyTo({ x: pose.pos[0], y: pose.pos[1], z: pose.pos[2] }, { x: lx, y: ly, z: lz }, ms); } catch (err) { warn('flyTo', err); }
     }
 
     const onResize = () => { if (onStage && session && session.focus) poseCamera(session.focus, 1); };
 
-    function stageOn(c, focus) {
+    function stageOn(c) {
       const st = getStudio();
       st.figure(toRender(c));
       st.setYaw(0);
@@ -158,8 +163,7 @@ export default {
       onStage = true;
       if (rigNode && st.scene) st.scene.add(rigNode);
       ctx.stage.setScene(st.scene);
-      window.addEventListener('resize', onResize);
-      poseCamera(focus, 1);
+      window.addEventListener('resize', onResize); // die erste Pose setzt startSession, sobald das Formular steht (freie Fläche messbar)
     }
 
     function stageOff() {
@@ -242,12 +246,28 @@ export default {
       });
       if (!s.cfg.live) {
         s.focus = focusOfTab(s.ui.tab());
-        try { stageOn(startCode, s.focus); } catch (err) { warn('Studio', err); stageOff(); } // ohne Studio läuft das Formular trotzdem
+        try { stageOn(startCode); } catch (err) { warn('Studio', err); stageOff(); } // ohne Studio läuft das Formular trotzdem
       }
       session = s;
       // Gate: Esc-fest (modal); der Editor schließt per Esc wie bisher
       ctx.overlay.open(s.ui.el, { modal: gateMode, onClose: () => onOverlayClosed(s) });
+      if (onStage && !s.cfg.live) poseCamera(s.focus, 1);
       return s;
+    }
+
+    /**
+     * Wächter fürs Pflicht-Gate (Befund Sichtprüfung 1.17.0, 844×390 einmal ohne sichtbares Formular, nicht reproduzierbar):
+     * Steht die Sitzung noch, ist aber nicht mehr eingehängt bzw. das Overlay nicht mehr offen (fremdes Overlay, Moduswechsel ohne
+     * onClose, abgelöstes Element), hängt er das Formular erneut in die Bühne. Läuft pro Bild, kostet nur zwei Abfragen.
+     */
+    function guardGate() {
+      const s = session;
+      if (!s || s.finished || s.ended || disposed || s.cfg.where !== 'gate' || !s.ui) return;
+      let open;
+      try { open = typeof ctx.overlay.isOpen === 'function' ? ctx.overlay.isOpen() : true; } catch { open = true; }
+      if (s.ui.el.isConnected && open) return;
+      try { ctx.overlay.open(s.ui.el, { modal: true, onClose: () => onOverlayClosed(s) }); } catch (err) { warn('Gate erneut öffnen', err); return; }
+      if (onStage) poseCamera(s.focus, 1);
     }
 
     /** Overlay wurde geschlossen (Esc, Moduswechsel, anderes Overlay): Editor = Abbrechen; beim Gate beendet es die Sitzung, die Gate-Schleife öffnet eine neue. */
@@ -427,7 +447,7 @@ export default {
     const off = ctx.provide('avatar', provider);
 
     return {
-      update(dt) { if (onStage && studio) studio.update(dt); },
+      update(dt) { if (onStage && studio) studio.update(dt); guardGate(); },
       dispose() {
         disposed = true;
         if (session) endSession(session, false);

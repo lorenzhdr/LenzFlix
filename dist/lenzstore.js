@@ -14786,6 +14786,43 @@
       return new _CylinderGeometry(data.radiusTop, data.radiusBottom, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
     }
   };
+  var ConeGeometry = class _ConeGeometry extends CylinderGeometry {
+    /**
+     * Constructs a new cone geometry.
+     *
+     * @param {number} [radius=1] - Radius of the cone base.
+     * @param {number} [height=1] - Height of the cone.
+     * @param {number} [radialSegments=32] - Number of segmented faces around the circumference of the cone.
+     * @param {number} [heightSegments=1] - Number of rows of faces along the height of the cone.
+     * @param {boolean} [openEnded=false] - Whether the base of the cone is open or capped.
+     * @param {number} [thetaStart=0] - Start angle for first segment, in radians.
+     * @param {number} [thetaLength=Math.PI*2] - The central angle, often called theta, of the circular sector, in radians.
+     * The default value results in a complete cone.
+     */
+    constructor(radius = 1, height = 1, radialSegments = 32, heightSegments = 1, openEnded = false, thetaStart = 0, thetaLength = Math.PI * 2) {
+      super(0, radius, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength);
+      this.type = "ConeGeometry";
+      this.parameters = {
+        radius,
+        height,
+        radialSegments,
+        heightSegments,
+        openEnded,
+        thetaStart,
+        thetaLength
+      };
+    }
+    /**
+     * Factory method for creating an instance of this class from the given
+     * JSON object.
+     *
+     * @param {Object} data - A JSON object representing the serialized geometry.
+     * @return {ConeGeometry} A new instance.
+     */
+    static fromJSON(data) {
+      return new _ConeGeometry(data.radius, data.height, data.radialSegments, data.heightSegments, data.openEnded, data.thetaStart, data.thetaLength);
+    }
+  };
   var PolyhedronGeometry = class _PolyhedronGeometry extends BufferGeometry {
     /**
      * Constructs a new polyhedron geometry.
@@ -32483,8 +32520,8 @@ void main() {
     parts.push(box({ w: L2 + 0.02, h: 0.04, d: depth + 0.03, x: 0, y: h3 - 0.02, z: 0, color: dark2(base, 0.85), tile: T5, shade: [1, 1, 1.1, 0.6, 1, 1] }));
     for (let j = 0; j <= run.segs; j++) {
       const x = (j - run.segs / 2) * 1.2;
-      const tint = run.style === "kids" ? segTint(Math.min(j, run.segs - 1)) : base;
-      parts.push(box({ w: 0.04, h: h3 - 0.1, d: depth, x, y: 0.1 + (h3 - 0.1) / 2, z: 0, color: tint, tile: T5 }));
+      const tint2 = run.style === "kids" ? segTint(Math.min(j, run.segs - 1)) : base;
+      parts.push(box({ w: 0.04, h: h3 - 0.1, d: depth, x, y: 0.1 + (h3 - 0.1) / 2, z: 0, color: tint2, tile: T5 }));
     }
     const sides = run.double ? [1, -1] : [1];
     for (const s of sides) {
@@ -32497,8 +32534,8 @@ void main() {
         for (let j = 0; j < run.segs; j++) {
           const x = run.segments[j].lx;
           const seg = run.segments[j];
-          const tint = run.style === "kids" ? segTint(j) : base;
-          parts.push(box({ w: 1.16, h: 0.03, d: bd, x, y: top - 0.015, z: zc, color: tint, tile: T5, shade: [1, 1, 1.05, 0.55, 1, 1] }));
+          const tint2 = run.style === "kids" ? segTint(j) : base;
+          parts.push(box({ w: 1.16, h: 0.03, d: bd, x, y: top - 0.015, z: zc, color: tint2, tile: T5, shade: [1, 1, 1.05, 0.55, 1, 1] }));
           parts.push(box({ w: 1.16, h: 0.035, d: 0.02, x, y: top + 0.0175, z: zFront - s * 0.01, color: hex(seg.color), shade: [1, 1, 1.1, 0.8, 1.05, 0.9] }));
         }
       }
@@ -38796,13 +38833,13 @@ void main() {
       return t;
     };
     const tinted = [];
-    const tint = (mat2, base = [1, 1, 1]) => {
+    const tint2 = (mat2, base = [1, 1, 1]) => {
       tinted.push({ mat: mat2, base });
       return mat2;
     };
     const windowSets = [];
     const hooks = [];
-    const out = { group, tod: "day", rain: false, pal: null, windowSets, tinted, hooks, L: L2, textures, tint, T: T5, fog: null, facade: null, city: null };
+    const out = { group, tod: "day", rain: false, pal: null, windowSets, tinted, hooks, L: L2, textures, tint: tint2, T: T5, fog: null, facade: null, city: null };
     const skyRoot = new Group();
     group.add(skyRoot);
     const skyGeo = new SphereGeometry(FAR_R, 20, 10, 0, PI4 * 2, 0, PI4 / 2);
@@ -41549,11 +41586,11 @@ void main() {
         }
         return g;
       },
-      standeeMaterial(tint) {
+      standeeMaterial(tint2) {
         if (!standeeMat) {
           standeeTex = new CanvasTexture(standeeCanvas(makeCanvas2));
           standeeTex.colorSpace = SRGBColorSpace;
-          standeeMat = tint(new MeshBasicMaterial({ map: standeeTex, vertexColors: true }));
+          standeeMat = tint2(new MeshBasicMaterial({ map: standeeTex, vertexColors: true }));
         }
         return standeeMat;
       },
@@ -41829,7 +41866,7 @@ void main() {
     }
     return out;
   }
-  function hoopVisual(hoop, tint) {
+  function hoopVisual(hoop, tint2) {
     const parts = [];
     const mx = hoop.mast ? hoop.mast.x : hoop.x + 0.95;
     parts.push(box({ w: 0.14, h: 3.7, d: 0.14, x: mx, y: 1.85, z: hoop.z, color: [0.45, 0.47, 0.52] }));
@@ -41844,7 +41881,7 @@ void main() {
       parts.push(box({ w: 0.06, h: 0.05, d: 0.06, x: hoop.x + rx, y: hoop.y, z: hoop.z + rz, ry: -a, color: [0.95, 0.4, 0.1] }));
       parts.push(box({ w: 0.015, h: 0.38, d: 0.015, x: hoop.x + rx * 0.82, y: hoop.y - 0.2, z: hoop.z + rz * 0.82, color: [0.96, 0.96, 0.96] }));
     }
-    const mesh = new Mesh(merge(parts), tint(new MeshBasicMaterial({ vertexColors: true })));
+    const mesh = new Mesh(merge(parts), tint2(new MeshBasicMaterial({ vertexColors: true })));
     mesh.name = "lfx-hoop";
     return mesh;
   }
@@ -47047,6 +47084,74 @@ void main() {
   var WHITE = [0.93, 0.93, 0.95];
   var BLACK = [0.07, 0.07, 0.09];
   var GOLD = [0.95, 0.78, 0.22];
+  var HAT_GOLD = [0.86, 0.58, 0.08];
+  var HEAD = { r: 0.12, sy: 1.1, cy: 1.58 };
+  var HEAD_WS = 12;
+  var HEAD_HS = 8;
+  var HEAD_K = 1.15;
+  var NECK_PIVOT = 1.44;
+  var HAIRLINE = 1.665;
+  var _m5 = new Matrix4();
+  var _q3 = new Quaternion();
+  var _e3 = new Euler();
+  var _p3 = new Vector3();
+  var _s3 = new Vector3(1, 1, 1);
+  function tint(g, color2) {
+    const n = g.attributes.position.count;
+    const c = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      c[i * 3] = color2[0];
+      c[i * 3 + 1] = color2[1];
+      c[i * 3 + 2] = color2[2];
+    }
+    g.setAttribute("color", new Float32BufferAttribute(c, 3));
+    return g;
+  }
+  function cone(r, h3, seg, x, y, z, color2, rx = 0, ry = 0, rz = 0) {
+    const g = tint(new ConeGeometry(r, h3, seg, 1), color2);
+    _e3.set(rx, ry, rz, "YXZ");
+    _q3.setFromEuler(_e3);
+    _p3.set(x, y, z);
+    g.applyMatrix4(_m5.compose(_p3, _q3, _s3));
+    return g;
+  }
+  function drum(r, h3, seg, x, y, z, color2) {
+    const g = tint(new CylinderGeometry(r, r, h3, seg, 1), color2);
+    g.translate(x, y, z);
+    return g;
+  }
+  function beardShell(color2, yTop, k) {
+    const g = sph(HEAD.r, 0, HEAD.cy, 0, color2, k, HEAD.sy * k, k, HEAD_WS, HEAD_HS);
+    const a = g.attributes.position;
+    const skip = new Uint8Array(a.count);
+    for (let i = 0; i < a.count; i++) {
+      const y = a.getY(i);
+      if (a.getZ(i) > 0.015) skip[i] = 1;
+      else if (y > yTop) {
+        a.setY(i, yTop);
+        skip[i] = 2;
+      }
+    }
+    const idx2 = g.index.array;
+    const keep2 = [];
+    for (let t = 0; t < idx2.length; t += 3) {
+      const s0 = skip[idx2[t]];
+      if (s0 && s0 === skip[idx2[t + 1]] && s0 === skip[idx2[t + 2]]) continue;
+      keep2.push(idx2[t], idx2[t + 1], idx2[t + 2]);
+    }
+    g.setIndex(keep2);
+    a.needsUpdate = true;
+    return g;
+  }
+  function faceBox(list, w, h3, d, x, y, color2, p = 4e-3, rz = 0) {
+    const u = x / HEAD.r;
+    const v = (y - HEAD.cy) / (HEAD.r * HEAD.sy);
+    const zs = -HEAD.r * Math.sqrt(Math.max(0.02, 1 - u * u - v * v));
+    const nx = x / (HEAD.r * HEAD.r);
+    const ny = (y - HEAD.cy) / (HEAD.r * HEAD.r * HEAD.sy * HEAD.sy);
+    const nz = zs / (HEAD.r * HEAD.r);
+    list.push(box({ w, h: h3, d, x, y, z: zs - p + d / 2, rx: Math.atan2(ny, -nz), ry: -Math.atan2(nx, -nz), rz, color: color2 }));
+  }
   function norm2(look) {
     const o = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
     const t = o(look.top);
@@ -47090,7 +47195,7 @@ void main() {
     };
   }
   var COVER2 = /* @__PURE__ */ new Set(["cap", "beanie", "hat", "bucket", "beret", "goldcap", "catears", "canhat", "usher"]);
-  function buildV2Parts(look) {
+  function buildV2Parts(look, opts = {}) {
     const L2 = norm2(look || {});
     const P = { [BONE.spine]: [], [BONE.head]: [], [BONE.armL]: [], [BONE.armR]: [], [BONE.legL]: [], [BONE.legR]: [] };
     const sp = P[SK];
@@ -47101,19 +47206,32 @@ void main() {
     const ax = sw / 2 + 0.05;
     const wAt = (y) => y >= 1.1 ? sw : hw;
     const bx3 = (list, w, h3, d, x, y, z, color2, rx = 0, ry = 0, rz = 0) => list.push(box({ w, h: h3, d, x, y, z, rx, ry, rz, color: color2 }));
-    buildBottoms(P, L2, { lx, lw, hw });
+    buildBottoms(P, L2, { lx, lw, hw, ego: !!opts.ego });
+    if (opts.ego) {
+      if (L2.topCut === "dress") {
+        bx3(sp, hw + 0.1, 0.36, 0.31, 0, 0.64, 0, L2.top);
+        bx3(sp, hw + 0.11, 0.03, 0.32, 0, 0.47, 0, L2.top2);
+      }
+      buildShoes(P, L2, { lx });
+      return P;
+    }
     buildTop(P, L2, { sw, hw, ax, wAt, bx: bx3 });
-    bx3(sp, 0.1, 0.07, 0.1, 0, 1.42, 0, skin);
-    hd.push(sph(0.12, 0, 1.58, 0, skin, 1, 1.1, 1));
+    bx3(sp, 0.075, 0.09, 0.075, 0, 1.425, 0, skin);
+    hd.push(sph(HEAD.r, 0, HEAD.cy, 0, skin, 1, HEAD.sy, 1, HEAD_WS, HEAD_HS));
     buildHair(P, L2);
     buildFace(P, L2);
     buildGlasses(hd, L2);
     buildHat(hd, L2);
+    for (const g of hd) {
+      g.translate(0, -NECK_PIVOT, 0);
+      g.scale(HEAD_K, HEAD_K, HEAD_K);
+      g.translate(0, NECK_PIVOT, 0);
+    }
     buildShoes(P, L2, { lx });
     buildBag(P, L2, { ax, bx: bx3 });
     return P;
   }
-  function buildBottoms(P, L2, { lx, lw, hw }) {
+  function buildBottoms(P, L2, { lx, lw, hw, ego = false }) {
     const c = L2.bottom;
     const c2 = L2.bottom2;
     const cut = L2.botCut;
@@ -47121,7 +47239,7 @@ void main() {
     const pat = L2.botPat;
     const sp = P[SK];
     const pushB = (list, w, h3, d, x, y, z, color2, rx = 0, ry = 0, rz = 0) => list.push(box({ w, h: h3, d, x, y, z, rx, ry, rz, color: color2 }));
-    if (cut !== "skirt") pushB(sp, hw + 0.012, 0.035, 0.24, 0, 0.815, 0, sc(c, 0.75));
+    if (cut !== "skirt" && !ego) pushB(sp, hw + 0.012, 0.035, 0.24, 0, 0.815, 0, sc(c, 0.75));
     for (const [side, bi] of [[-1, BONE.legL], [1, BONE.legR]]) {
       const a = P[bi];
       const x = side * lx;
@@ -47133,8 +47251,8 @@ void main() {
         pushB(a, lw - 0.02, 0.56, 0.15, x, 0.28, 0, skin);
         pushB(a, lw - 0.015, 0.05, 0.155, x, 0.03, 0, WHITE);
       } else if (cut === "wide") {
-        pushB(a, lw + 0.03, 0.66, 0.19, x, 0.47, 0, c);
-        pushB(a, lw + 0.06, 0.15, 0.21, x, 0.075, 0, sc(c, 0.9));
+        pushB(a, lw + 0.02, 0.66, 0.18, x, 0.47, 0, c);
+        pushB(a, lw + 0.04, 0.15, 0.2, x, 0.075, 0, sc(c, 0.9));
       } else if (cut === "cargo") {
         pushB(a, lw + 0.015, 0.8, 0.19, x, 0.4, 0, c);
         pushB(a, 0.04, 0.12, 0.1, x + side * 0.088, 0.5, 0, sc(c, 0.82));
@@ -47146,7 +47264,7 @@ void main() {
         if (cut === "track") pushB(a, 8e-3, 0.78, 0.1, x + side * (lw / 2 + 4e-3), 0.4, 0, WHITE);
       }
       if (cut === "zebra") continue;
-      const wd = cut === "wide" ? lw + 0.04 : lw;
+      const wd = cut === "wide" ? lw + 0.03 : lw;
       if (pat === "stripe" && cut !== "skirt") pushB(a, 0.01, 0.78, 0.1, x + side * (wd / 2 + 5e-3), 0.4, 0, c2);
       else if (pat === "twotone" && cut !== "skirt") pushB(a, wd + 0.012, cut === "shorts" ? 0.2 : 0.38, 0.182, x, cut === "shorts" ? 0.2 : 0.19, 0, c2);
       else if (pat === "check" && cut !== "skirt") {
@@ -47349,16 +47467,30 @@ void main() {
       for (const x of [-0.13, 0, 0.13]) bx3(sp, 0.03, 0.56, dg + 6e-3, x, 1.09, 0, c2);
     }
   }
+  var TALL_HAIR = /* @__PURE__ */ new Set(["afro", "tuft", "bun", "mohawk", "spiky", "quiff", "curls"]);
+  function liftHairline(g) {
+    const a = g.attributes.position;
+    for (let i = 0; i < a.count; i++) {
+      const y = a.getY(i);
+      const z = a.getZ(i);
+      if (y >= HAIRLINE || z >= -0.02) continue;
+      const w = Math.min(1, (-z - 0.02) / 0.06);
+      a.setY(i, y + (HAIRLINE - y) * w);
+    }
+    a.needsUpdate = true;
+    return g;
+  }
   function buildHair(P, L2) {
     const hd = P[HD];
     const h3 = L2.hair;
     const covered = COVER2.has(L2.hat);
     const T5 = [];
     const S = hd;
-    const cap = (r = 0.133, phi = 1.95, dy = 0, c = h3) => T5.push(sph(r, 0, 1.605 + dy, 0.016, c, 1, 1, 1, 8, 5, phi));
+    const cap = (r = 0.133, phi = 1.95, dy = 0, c = h3) => T5.push(liftHairline(sph(r, 0, 1.605 + dy, 0.016, c, 1, 1, 1, 8, 5, phi)));
     const bxT = (list, w, hh, d, x, y, z, c = h3, rx = 0, ry = 0, rz = 0) => list.push(box({ w, h: hh, d, x, y, z, rx, ry, rz, color: c }));
     const bxS = (w, hh, d, x, y, z, c = h3, rx = 0, ry = 0, rz = 0) => bxT(S, w, hh, d, x, y, z, c, rx, ry, rz);
-    switch (L2.hairStyle) {
+    const style = L2.hat === "crown" && TALL_HAIR.has(L2.hairStyle) ? "short" : L2.hairStyle;
+    switch (style) {
       case "bald":
         break;
       case "long":
@@ -47448,67 +47580,66 @@ void main() {
   function buildFace(P, L2) {
     const hd = P[HD];
     const skin = L2.skin;
-    const bx3 = (w, h3, d, x, y, z, color2, rx = 0, ry = 0, rz = 0) => hd.push(box({ w, h: h3, d, x, y, z, rx, ry, rz, color: color2 }));
+    const fb = (w, h3, d, x, y, color2, p = 4e-3, rz = 0) => faceBox(hd, w, h3, d, x, y, color2, p, rz);
     const eye = (x, kind) => {
       switch (kind) {
         case "round":
-          bx3(0.036, 0.036, 0.012, x, 1.6, -0.113, WHITE);
-          bx3(0.02, 0.026, 0.012, x, 1.6, -0.119, BLACK);
+          fb(0.036, 0.036, 0.012, x, 1.6, WHITE);
+          fb(0.02, 0.026, 0.012, x, 1.6, BLACK, 85e-4);
           break;
         case "narrow":
-          bx3(0.034, 0.014, 0.012, x, 1.6, -0.113, BLACK);
+          fb(0.034, 0.014, 0.012, x, 1.6, BLACK);
           break;
         case "sleepy":
-          bx3(0.03, 0.018, 0.012, x, 1.597, -0.113, BLACK);
-          bx3(0.036, 0.016, 0.014, x, 1.616, -0.113, sc(skin, 0.82));
+          fb(0.03, 0.016, 0.012, x, 1.595, BLACK);
+          fb(0.034, 0.014, 0.012, x, 1.609, sc(skin, 0.82), 55e-4);
           break;
         case "wide":
-          bx3(0.042, 0.046, 0.012, x, 1.602, -0.113, WHITE);
-          bx3(0.024, 0.03, 0.012, x, 1.602, -0.119, BLACK);
+          fb(0.042, 0.046, 0.012, x, 1.602, WHITE);
+          fb(0.024, 0.03, 0.012, x, 1.602, BLACK, 85e-4);
           break;
         default:
-          bx3(0.028, 0.034, 0.012, x, 1.6, -0.113, [0.08, 0.08, 0.1]);
+          fb(0.028, 0.034, 0.012, x, 1.6, [0.08, 0.08, 0.1]);
       }
     };
     if (L2.eyes === "wink") {
       eye(-0.045, "dot");
-      bx3(0.034, 0.01, 0.012, 0.045, 1.598, -0.113, BLACK);
+      fb(0.034, 0.01, 0.012, 0.045, 1.598, BLACK);
     } else {
       eye(-0.045, L2.eyes);
       eye(0.045, L2.eyes);
     }
     const bc = sc(L2.hair, 0.75);
-    const bz = -0.103;
+    const by = L2.eyes === "wide" || L2.eyes === "round" ? 1.64 : 1.634;
     switch (L2.brows) {
       case "thin":
-        for (const sx of [-1, 1]) bx3(0.045, 8e-3, 0.016, sx * 0.045, 1.642, bz, bc);
+        for (const sx of [-1, 1]) fb(0.045, 8e-3, 0.012, sx * 0.045, by, bc, 5e-3);
         break;
       case "thick":
-        for (const sx of [-1, 1]) bx3(0.05, 0.018, 0.018, sx * 0.045, 1.642, bz, bc);
+        for (const sx of [-1, 1]) fb(0.05, 0.016, 0.014, sx * 0.045, by + 2e-3, bc, 6e-3);
         break;
       case "arched":
-        for (const sx of [-1, 1]) bx3(0.045, 0.01, 0.016, sx * 0.045, 1.648, bz, bc, 0, 0, sx * -0.28);
+        for (const sx of [-1, 1]) fb(0.045, 9e-3, 0.012, sx * 0.045, by + 3e-3, bc, 5e-3, sx * -0.28);
         break;
       case "angry":
-        for (const sx of [-1, 1]) bx3(0.05, 0.014, 0.016, sx * 0.045, 1.64, bz, bc, 0, 0, sx * 0.38);
+        for (const sx of [-1, 1]) fb(0.05, 0.012, 0.012, sx * 0.045, by + 1e-3, bc, 5e-3, sx * 0.38);
         break;
       default:
     }
-    bx3(0.02, 0.03, 0.02, 0, 1.57, -0.122, sc(skin, 0.93));
+    fb(0.02, 0.03, 0.02, 0, 1.57, sc(skin, 0.93), 0.016);
     const beard = L2.beard;
     const full = beard === "full";
-    bx3(0.05, 0.012, 0.012, 0, 1.535, full ? -0.126 : -0.113, [0.62, 0.25, 0.25]);
+    fb(0.05, 0.012, 0.012, 0, 1.535, [0.62, 0.25, 0.25], full ? 0.016 : beard === "stubble" ? 0.011 : 5e-3);
     const b = sc(L2.hair, 0.85);
-    if (beard === "stubble") bx3(0.17, 0.07, 0.17, 0, 1.505, -0.02, mix(skin, L2.hair, 0.4));
-    else if (beard === "moustache") bx3(0.075, 0.018, 0.02, 0, 1.553, -0.108, b);
+    if (beard === "stubble") hd.push(beardShell(mix(skin, L2.hair, 0.4), 1.562, 1.03));
+    else if (beard === "moustache") fb(0.075, 0.018, 0.02, 0, 1.553, b, 8e-3);
     else if (beard === "goatee") {
-      bx3(0.075, 0.018, 0.02, 0, 1.553, -0.108, b);
-      bx3(0.04, 0.055, 0.02, 0, 1.49, -0.1, b);
+      fb(0.075, 0.018, 0.02, 0, 1.553, b, 8e-3);
+      fb(0.04, 0.055, 0.02, 0, 1.49, b, 6e-3);
     } else if (full) {
-      bx3(0.2, 0.09, 0.19, 0, 1.5, -0.02, b);
-      bx3(0.085, 0.02, 0.02, 0, 1.557, -0.114, b);
-      bx3(0.215, 0.05, 0.06, 0, 1.57, 0.05, b);
-    } else if (beard === "chin") bx3(0.03, 0.045, 0.02, 0, 1.478, -0.098, b);
+      hd.push(beardShell(b, 1.585, 1.06));
+      fb(0.085, 0.02, 0.02, 0, 1.557, b, 0.02);
+    } else if (beard === "chin") fb(0.03, 0.045, 0.02, 0, 1.478, b, 6e-3);
   }
   function buildGlasses(hd, L2) {
     const g = L2.glasses;
@@ -47550,20 +47681,20 @@ void main() {
     switch (id) {
       case "cap":
       case "goldcap": {
-        const cc = id === "goldcap" ? GOLD : c;
+        const cc = id === "goldcap" ? HAT_GOLD : c;
         hd.push(sph(0.14, 0, 1.62, 0, cc, 1, 0.85, 1, 8, 5, 1.7));
-        bx3(0.2, 0.015, 0.12, 0, 1.635, -0.15, sc(cc, 0.8));
+        bx3(0.2, 0.015, 0.12, 0, 1.64, -0.15, sc(cc, 0.8));
         if (id === "goldcap") hd.push(sph(0.018, 0, 1.738, 0, WHITE, 1, 1, 1, 6, 4));
         break;
       }
       case "beanie":
-        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 2));
+        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 1.45));
         break;
       case "catears":
-        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 1, 1, 8, 5, 2));
+        hd.push(sph(0.14, 0, 1.635, 0, c, 1, 1, 1, 8, 5, 1.4));
         for (const sx of [-1, 1]) {
-          bx3(0.06, 0.08, 0.035, sx * 0.075, 1.8, 0, c, 0, 0, sx * -0.3);
-          bx3(0.03, 0.045, 0.012, sx * 0.075, 1.795, -0.02, [0.95, 0.6, 0.7], 0, 0, sx * -0.3);
+          hd.push(cone(0.052, 0.1, 3, sx * 0.075, 1.8, -5e-3, c, 0, 0, sx * -0.3));
+          hd.push(cone(0.03, 0.062, 3, sx * 0.0765, 1.793, -0.024, [0.95, 0.6, 0.7], 0, 0, sx * -0.3));
         }
         break;
       case "hat":
@@ -47572,8 +47703,8 @@ void main() {
         bx3(0.205, 0.03, 0.205, 0, 1.7, 0, sc(c, 0.55));
         break;
       case "bucket":
-        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 0.95, 1, 8, 5, 2));
-        bx3(0.31, 0.014, 0.31, 0, 1.655, 0, sc(c, 0.85));
+        hd.push(sph(0.14, 0, 1.63, 0, c, 1, 0.95, 1, 8, 5, 1.45));
+        bx3(0.31, 0.014, 0.31, 0, 1.66, 0, sc(c, 0.85));
         break;
       case "band":
         bx3(0.255, 0.035, 0.255, 0, 1.655, 0, c);
@@ -47582,11 +47713,15 @@ void main() {
         hd.push(sph(0.15, 0.01, 1.7, 0.01, c, 1.05, 0.4, 1.05, 8, 5));
         bx3(0.015, 0.035, 0.015, 0.01, 1.745, 0.01, sc(c, 0.7));
         break;
-      case "crown":
-        bx3(0.26, 0.05, 0.26, 0, 1.7, 0, c);
-        for (const [x, z] of [[-0.1, -0.1], [0.1, -0.1], [-0.1, 0.1], [0.1, 0.1], [0, -0.12], [0, 0.12]]) bx3(0.045, 0.075, 0.045, x, 1.76, z, c, 0, 0.785, 0);
-        for (const x of [-0.07, 0.07]) hd.push(sph(0.014, x, 1.7, -0.131, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
+      case "crown": {
+        hd.push(drum(0.092, 0.05, 8, 0, 1.718, 0.012, HAT_GOLD));
+        for (let i = 0; i < 8; i++) {
+          const a = i / 8 * Math.PI * 2 + Math.PI / 8;
+          hd.push(cone(0.024, 0.06, 4, Math.sin(a) * 0.077, 1.773, 0.012 + Math.cos(a) * 0.077, HAT_GOLD, 0, a, 0));
+        }
+        hd.push(sph(0.013, 0, 1.718, -0.08, [0.9, 0.15, 0.25], 1, 1, 1, 6, 4));
         break;
+      }
       case "canhat":
         bx3(0.26, 0.03, 0.2, 0, 1.69, 0, [0.2, 0.2, 0.24]);
         for (const sx of [-1, 1]) {
@@ -47933,6 +48068,9 @@ void main() {
   var dark = (c, k) => c.map((v) => v * k);
   var B3 = { root: 0, spine: 1, head: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
   var SPINE_Y = 0.8;
+  var EGO_BACK = 0.12;
+  var EGO_LEAN = 0.45;
+  var EGO_Z = 0.05;
   var NECK_Y = 1.44;
   var GEO_FREE_MAX = 48;
   var HAND_R = { bone: "armR", offset: [0.04, -0.5, -0.12] };
@@ -47964,12 +48102,22 @@ void main() {
     for (let i = 1; i < a.length; i += 3) if (a[i] > m) m = a[i];
     return m;
   }
-  function acquire(look) {
-    const key2 = lookKey(look);
+  function fullTopY(look) {
+    const parts = buildV2Parts(look);
+    let m = 0;
+    for (const list of Object.values(parts)) for (const g of list) {
+      m = Math.max(m, maxY(g));
+      g.dispose();
+    }
+    return m;
+  }
+  function acquire(look, ego = false) {
+    const useEgo = !!ego && look.v === 2;
+    const key2 = lookKey(look) + (useEgo ? "|ego" : "");
     let e = geoCache.get(key2);
     if (!e) {
-      const g = bodyGeometry(look);
-      e = { key: key2, g, refs: 0, used: 0, topY: maxY(g) };
+      const g = bodyGeometry(look, useEgo);
+      e = { key: key2, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
       geoCache.set(key2, e);
     }
     e.refs++;
@@ -47987,9 +48135,9 @@ void main() {
       geoCache.delete(free[i].key);
     }
   }
-  function bodyGeometry(look) {
-    const parts = look.v === 2 ? buildV2Parts(look) : oldParts(look);
-    const geos3 = Object.entries(parts).map(([bi, list]) => skinned(list, Number(bi)));
+  function bodyGeometry(look, ego = false) {
+    const parts = look.v === 2 ? buildV2Parts(look, { ego }) : oldParts(look);
+    const geos3 = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
     const g = merge(geos3);
     g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
     return g;
@@ -48100,9 +48248,22 @@ void main() {
     root.name = "npc-figure";
     const rig = new Group();
     let k = look.height || 1;
+    let ego = !!hooks.ego;
+    let baseZ = 0;
+    const egoPlace = () => {
+      if (ego && look.v === 2) {
+        rig.rotation.x = EGO_LEAN;
+        baseZ = EGO_Z - SPINE_Y * k * Math.sin(EGO_LEAN);
+      } else {
+        rig.rotation.x = 0;
+        baseZ = ego ? EGO_BACK : 0;
+      }
+      rig.position.set(0, 0, baseZ);
+    };
     const applyScale = () => {
       k = look.height || 1;
       rig.scale.set(k * (look.build || 1), k, k * (look.build || 1));
+      egoPlace();
     };
     applyScale();
     root.add(rig);
@@ -48121,7 +48282,7 @@ void main() {
     const bArmR = mk4(0.26, 1.36 - SPINE_Y, 0, bSpine);
     const bLegL = mk4(-0.1, SPINE_Y, 0, bRoot);
     const bLegR = mk4(0.1, SPINE_Y, 0, bRoot);
-    let entry = acquire(look);
+    let entry = acquire(look, ego);
     const mesh = new SkinnedMesh(entry.g, hooks.material || material());
     mesh.add(bRoot);
     rig.add(mesh);
@@ -48137,8 +48298,6 @@ void main() {
     let recoil = { x: 0, z: 0 };
     let remote = null;
     let disposed = false;
-    let ego = false;
-    let baseZ = 0;
     const legacyTop = () => look.v !== 2;
     const tagY = () => legacyTop() ? 1.98 : entry.topY + 0.23;
     const headY = () => legacyTop() ? 1.95 * k : (entry.topY + 0.2) * k;
@@ -48212,7 +48371,7 @@ void main() {
       setLook(next) {
         if (disposed || !next) return;
         const old = entry;
-        entry = acquire(next);
+        entry = acquire(next, ego);
         handle.look = next;
         look = next;
         mesh.geometry = entry.g;
@@ -48220,16 +48379,23 @@ void main() {
         applyScale();
         if (tag) tag.position.set(0, tagY(), 0);
       },
-      /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel, Rig 0,12 m nach hinten. */
+      /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel; v2: eigene Geometrie nur mit Beinen/Schuhen/Hüfte und gekippt, sonst Rig 0,12 m nach hinten. */
       setEgo(on) {
         ego = !!on;
+        const next = acquire(look, ego);
+        if (next === entry) release(next);
+        else {
+          const old = entry;
+          entry = next;
+          mesh.geometry = entry.g;
+          release(old);
+        }
         const s = ego ? 0 : 1;
         bHead.scale.set(s, s, s);
         bArmL.scale.set(s, s, s);
         bArmR.scale.set(s, s, s);
         mesh.boundingSphere = ego ? new Sphere(new Vector3(0, 0.5, 0), 0.55) : new Sphere(new Vector3(0, 0.95, 0), 1.6);
-        baseZ = ego ? 0.12 : 0;
-        rig.position.set(0, 0, baseZ);
+        egoPlace();
       },
       isEgo: () => ego,
       /**
@@ -49306,11 +49472,11 @@ void main() {
       }
     };
   }
-  var _m5 = new Matrix4();
-  var _q3 = new Quaternion();
-  var _e3 = new Euler();
-  var _p3 = new Vector3();
-  var _s3 = new Vector3();
+  var _m6 = new Matrix4();
+  var _q4 = new Quaternion();
+  var _e4 = new Euler();
+  var _p4 = new Vector3();
+  var _s4 = new Vector3();
   var _w = new Matrix4();
   var _wq = new Quaternion();
   var _wp = new Vector3();
@@ -49334,13 +49500,13 @@ void main() {
       im.frustumCulled = false;
       im.instanceMatrix.setUsage(35048);
     }
-    const tint = new Color();
+    const tint2 = new Color();
     for (let i = 0; i < n; i++) {
       const k = 0.85 + i * 37 % 10 / 33;
-      tint.setRGB(k, k, k + 0.03);
-      bodies.setColorAt(i, tint);
+      tint2.setRGB(k, k, k + 0.03);
+      bodies.setColorAt(i, tint2);
     }
-    for (let i = 0; i < n * 2; i++) wings.setColorAt(i, tint.setRGB(1, 1, 1));
+    for (let i = 0; i < n * 2; i++) wings.setColorAt(i, tint2.setRGB(1, 1, 1));
     const root = new Group();
     root.name = "npc-pigeons";
     root.add(bodies, wings);
@@ -49352,19 +49518,19 @@ void main() {
           const air = p.state === "fly" || p.state === "land";
           const peck = p.state === "peck" ? Math.max(0, Math.sin(p.bob)) * 0.5 : 0;
           const bob = p.state === "walk" ? Math.sin(p.bob) * 0.015 : 0;
-          _e3.set(air ? -0.15 : peck, p.yaw, 0, "YXZ");
-          _q3.setFromEuler(_e3);
-          _p3.set(p.x, p.y + bob, p.z);
-          _s3.set(1, 1, 1);
-          _m5.compose(_p3, _q3, _s3);
-          bodies.setMatrixAt(i, _m5);
+          _e4.set(air ? -0.15 : peck, p.yaw, 0, "YXZ");
+          _q4.setFromEuler(_e4);
+          _p4.set(p.x, p.y + bob, p.z);
+          _s4.set(1, 1, 1);
+          _m6.compose(_p4, _q4, _s4);
+          bodies.setMatrixAt(i, _m6);
           const ang = air ? Math.sin(p.flap) * 0.9 : 0.15;
           const span2 = air ? 1 : 0.35;
           for (const side of [-1, 1]) {
-            _wp.set(side * 0.05, 0.12, -0.02).applyMatrix4(_m5);
-            _e3.set(0, 0, side * ang);
-            _wq.setFromEuler(_e3);
-            _wq.premultiply(_q3);
+            _wp.set(side * 0.05, 0.12, -0.02).applyMatrix4(_m6);
+            _e4.set(0, 0, side * ang);
+            _wq.setFromEuler(_e4);
+            _wq.premultiply(_q4);
             _ws.set(side * span2, 1, 1);
             _w.compose(_wp, _wq, _ws);
             wings.setMatrixAt(i * 2 + (side < 0 ? 0 : 1), _w);
@@ -51310,12 +51476,12 @@ void main() {
   var JOIN_PRIVATE = "Dein Film ist privat \u2013 andere sehen nur, dass du sitzt.";
 
   // src/js/store3d/palast/joinpanel.js
-  var HEAD = "Saal 1 \u2013 was m\xF6chtest du sehen?";
+  var HEAD2 = "Saal 1 \u2013 was m\xF6chtest du sehen?";
   var OWN_NONE = "Eigener Film \u2013 erst ein Ticket an der Kasse holen";
   function renderJoin(panel, close, model) {
     panel.textContent = "";
     const head = h("div", "lfx-store-palast-head");
-    head.append(h("div", "lfx-store-palast-title", HEAD), button("Abbrechen", "lfx-store-act lfx-store-palast-close", close));
+    head.append(h("div", "lfx-store-palast-title", HEAD2), button("Abbrechen", "lfx-store-act lfx-store-palast-close", close));
     panel.append(head);
     const list = h("div", "lfx-store-palast-list");
     for (const o of model.offers) {
@@ -51380,7 +51546,7 @@ void main() {
     const lines = [];
     if (model.isPrivate) lines.push(JOIN_PRIVATE);
     lines.push(JOIN_FOOT);
-    return { title: HEAD, lines, anchor: "front", width: 0.9, list: { visible: 5, rows } };
+    return { title: HEAD2, lines, anchor: "front", width: 0.9, list: { visible: 5, rows } };
   }
 
   // src/js/store3d/palast/hall.js
@@ -52922,24 +53088,73 @@ void main() {
   var CURTAIN_A = [0.5, 0.08, 0.15];
   var CURTAIN_B = [0.4, 0.05, 0.12];
   var WALL_Z = 1.1;
+  var RULER_X = -1.75;
+  function framePose(y0, y1, w, { aspect: aspect2 = 1, fov: fov2 = 30, free = null, margin = 0.1, minDist = 0.3 } = {}) {
+    const fr = { x0: 0, x1: 1, y0: 0, y1: 1, ...free || {} };
+    const fw = Math.max(0.05, fr.x1 - fr.x0);
+    const fh = Math.max(0.05, fr.y1 - fr.y0);
+    const asp = aspect2 > 0 ? aspect2 : 1;
+    const tanH = Math.tan((fov2 > 1 && fov2 < 170 ? fov2 : 30) * Math.PI / 360);
+    const yc = (y0 + y1) / 2;
+    const nx = fr.x0 + fr.x1 - 1;
+    const ny = 1 - (fr.y0 + fr.y1);
+    const halfH = fh * (1 - 2 * margin);
+    const halfW = fw * (1 - 0.12);
+    let Z = Math.max(minDist, (y1 - y0) / (1 - 2 * margin) / (2 * tanH * fh), w / (1 - 0.12) / (2 * tanH * asp * fw));
+    let pose = null;
+    for (let it = 0; it < 8; it++) {
+      const X = nx * Z * tanH * asp;
+      const Y = ny * Z * tanH;
+      const D2 = Math.hypot(X, Y, Z);
+      const yaw = Math.atan2(X, Z);
+      const pitch = Math.asin(Y / D2);
+      const fx = Math.cos(pitch) * Math.sin(yaw);
+      const fy = -Math.sin(pitch);
+      const fz = Math.cos(pitch) * Math.cos(yaw);
+      pose = { pos: [0, yc, -D2], look: [fx * D2, yc + fy * D2, -D2 + fz * D2] };
+      let rx = -fz;
+      let rz = fx;
+      const rl = Math.hypot(rx, rz) || 1;
+      rx /= rl;
+      rz /= rl;
+      const ux = -fy * rz;
+      const uy = rz * fx - rx * fz;
+      const uz = fy * rx;
+      const proj = (px, py, pz) => {
+        const vx = px;
+        const vy = py - yc;
+        const vz = pz + D2;
+        const zz = vx * fx + vy * fy + vz * fz;
+        return [(vx * rx + vz * rz) / (zz * tanH * asp), (vx * ux + vy * uy + vz * uz) / (zz * tanH)];
+      };
+      const top = proj(0, y1, 0)[1] - ny;
+      const bot = ny - proj(0, y0, 0)[1];
+      const sideL = Math.abs(proj(-w / 2, yc, 0)[0] - nx);
+      const sideR = Math.abs(proj(w / 2, yc, 0)[0] - nx);
+      const k = Math.max(top / halfH, bot / halfH, Math.max(sideL, sideR) / halfW);
+      if (Math.abs(k - 1) < 4e-3 && it > 0) break;
+      Z = Math.max(minDist, Z * k);
+    }
+    return pose;
+  }
   function stageGeometry() {
     const parts = [];
-    const n = 16;
-    const sw = 3.84 / n;
+    const n = 40;
+    const sw = 13 / n;
     for (let i = 0; i < n; i++) {
-      parts.push(box({ w: sw - 0.01, h: 3, d: 0.1, x: -1.92 + sw * (i + 0.5), y: 1.5, z: WALL_Z + (i % 2 ? 0.04 : 0), color: i % 2 ? CURTAIN_B : CURTAIN_A }));
+      parts.push(box({ w: sw - 0.01, h: 4, d: 0.1, x: -6.5 + sw * (i + 0.5), y: 2, z: WALL_Z + (i % 2 ? 0.04 : 0), color: i % 2 ? CURTAIN_B : CURTAIN_A }));
     }
-    for (let ix = 0; ix < 6; ix++) {
-      for (let iz = 0; iz < 5; iz++) {
+    for (let ix = 0; ix < 20; ix++) {
+      for (let iz = 0; iz < 16; iz++) {
         const dark2 = (ix + iz) % 2 === 0;
-        parts.push(box({ w: 0.64, h: 0.04, d: 0.64, x: -1.6 + ix * 0.64, y: -0.02, z: -1.9 + iz * 0.64 + 0.32, color: dark2 ? [0.16, 0.16, 0.2] : [0.78, 0.76, 0.7] }));
+        parts.push(box({ w: 0.64, h: 0.04, d: 0.64, x: -6.4 + ix * 0.64 + 0.32, y: -0.02, z: -9.1 + iz * 0.64 + 0.32, color: dark2 ? [0.16, 0.16, 0.2] : [0.78, 0.76, 0.7] }));
       }
     }
-    parts.push(box({ w: 0.26, h: 1.6, d: 0.02, x: -1.2, y: 1.25, z: WALL_Z - 0.07, color: [0.93, 0.9, 0.82] }));
+    parts.push(box({ w: 0.26, h: 1.6, d: 0.02, x: RULER_X, y: 1.25, z: WALL_Z - 0.07, color: [0.93, 0.9, 0.82] }));
     for (let i = 0; i <= 15; i++) {
       const y = 0.5 + i * 0.1;
       const major = Math.abs(y * 2 - Math.round(y * 2)) < 1e-6;
-      parts.push(box({ w: major ? 0.2 : 0.12, h: major ? 0.016 : 0.01, d: 0.01, x: -1.2 - (major ? 0 : 0.04), y, z: WALL_Z - 0.085, color: major ? [0.75, 0.1, 0.15] : [0.15, 0.15, 0.2] }));
+      parts.push(box({ w: major ? 0.2 : 0.12, h: major ? 0.016 : 0.01, d: 0.01, x: RULER_X - (major ? 0 : 0.04), y, z: WALL_Z - 0.085, color: major ? [0.75, 0.1, 0.15] : [0.15, 0.15, 0.2] }));
     }
     return merge(parts);
   }
@@ -52968,10 +53183,10 @@ void main() {
     scene.add(stage);
     const tex = signTexture();
     const signMat = new MeshBasicMaterial(tex ? { map: tex } : { color: new Color(0.9, 0.7, 0.25) });
-    const signGeo = new PlaneGeometry(1.6, 0.4);
+    const signGeo = new PlaneGeometry(1.2, 0.3);
     const sign = new Mesh(signGeo, signMat);
     sign.rotation.y = Math.PI;
-    sign.position.set(0.55, 2.45, WALL_Z - 0.08);
+    sign.position.set(1.45, 2.05, WALL_Z - 0.08);
     scene.add(sign);
     const hemi = new HemisphereLight(16774112, 3153978, 1.15);
     const key2 = new DirectionalLight(16777215, 1.6);
@@ -53014,26 +53229,27 @@ void main() {
       update(dt) {
         if (fig) fig.update(dt);
       },
-      /** Kamera-Ziel (Position + Blickpunkt) je Fokus; richtet sich nach der Oberkante der Figur. */
-      cameraPose(focus) {
+      /** Kamera-Pose (Position + Blickpunkt) je Fokus, von vorn; Kopfbereiche nach topY (Hut/Frisur), Breite nach build. Siehe Kopf. */
+      cameraPose(focus, opts) {
         const top = fig ? fig.topY : 1.75;
         const k = fig && fig.look && fig.look.height ? fig.look.height : 1;
-        const head = 1.58 * k;
+        const bw = fig && fig.look && fig.look.build ? fig.look.build : 1;
+        const o = opts && typeof opts === "object" ? opts : {};
         switch (focus) {
           case "hair":
-            return { pos: [0.25, top - 0.06, -1.05], look: [0, top - 0.12, 0] };
+            return framePose(1.3 * k, top + 0.04, 0.5 * bw, { ...o, margin: 0.08 });
           case "face":
-            return { pos: [0.1, head, -0.85], look: [0, head - 0.01, 0] };
-          case "top":
-            return { pos: [0, 1.15 * k, -1.8], look: [0, 1.1 * k, 0] };
-          case "bottom":
-            return { pos: [0, 0.5 * k, -1.9], look: [0, 0.45 * k, 0] };
-          case "shoes":
-            return { pos: [0, 0.3 * k, -1.25], look: [0, 0.08 * k, 0] };
+            return framePose(1.36 * k, top + 0.04, 0.46 * bw, { ...o, margin: 0.08 });
           case "extras":
-            return { pos: [0, 1 * k, -2.6], look: [0, 0.95 * k, 0] };
+            return framePose(1.22 * k, top + 0.04, 0.6 * bw, { ...o, margin: 0.08 });
+          case "top":
+            return framePose(0.72 * k, 1.5 * k, 0.66 * bw, { ...o, margin: 0.08 });
+          case "bottom":
+            return framePose(-0.03, 0.92 * k, 0.46 * bw, { ...o, margin: 0.08 });
+          case "shoes":
+            return framePose(-0.03, 0.3 * k, 0.44 * bw, { ...o, margin: 0.1 });
           default:
-            return { pos: [0, top * 0.55, -3.6], look: [0, top * 0.5, 0] };
+            return framePose(-0.06, top, 0.78 * bw, { ...o, margin: 0.1 });
         }
       },
       /**
@@ -53059,8 +53275,10 @@ void main() {
         scene.add(tmp3.root);
         const top = tmp3.topY;
         const pcam = new PerspectiveCamera(26, 1, 0.1, 30);
-        pcam.position.set(0, top - 0.17, -1.7);
-        pcam.lookAt(0, top - 0.2, 0);
+        const kk = look.height || 1;
+        const pp = framePose(1.3 * kk, top + 0.03, 0.46 * (look.build || 1), { aspect: 1, fov: 26, margin: 0.08 });
+        pcam.position.set(...pp.pos);
+        pcam.lookAt(...pp.look);
         pcam.updateMatrixWorld(true);
         const buf = new Uint8Array(S * S * 4);
         const prev = renderer.getRenderTarget();
@@ -53490,8 +53708,10 @@ void main() {
     let stampEl = null;
     if (gate) {
       const head = el("div", "lfx-store-char__formhead");
-      head.append(el("div", "lfx-store-char__kicker", null, "VIDEOTHEK LENZ"));
-      head.append(el("h2", "lfx-store-char__title", null, "Mitgliedsantrag"));
+      const headline = el("div", "lfx-store-char__headline");
+      headline.append(el("div", "lfx-store-char__kicker", null, "VIDEOTHEK LENZ"));
+      headline.append(el("h2", "lfx-store-char__title", null, "Mitgliedsantrag"));
+      head.append(headline);
       head.append(el("p", "lfx-store-char__lead", null, "Bitte in Druckbuchstaben ausf\xFCllen. Die Durchschrift beh\xE4ltst du."));
       const fields = el("div", "lfx-store-char__fields");
       const f1 = el("label", "lfx-store-char__field");
@@ -53502,9 +53722,12 @@ void main() {
       const f2 = el("div", "lfx-store-char__field");
       f2.append(el("span", "lfx-store-char__flabel", null, "Mitgliedsnummer"));
       f2.append(el("span", "lfx-store-char__static", null, "wird beim Stempeln vergeben"));
+      const f3 = el("div", "lfx-store-char__field lfx-store-char__field--stamp");
+      f3.append(el("span", "lfx-store-char__flabel", null, "Stempel"));
       stampEl = el("div", "lfx-store-char__stamp", { "aria-hidden": "true" });
       stampEl.append(el("span", "lfx-store-char__stamp-text", null, "GENEHMIGT"));
-      fields.append(f1, f2, stampEl);
+      f3.append(stampEl);
+      fields.append(f1, f2, f3);
       head.append(fields);
       panel.append(head);
     } else {
@@ -53532,8 +53755,9 @@ void main() {
     });
     const body = el("div", "lfx-store-char__body", { role: "tabpanel", id: "lfx-store-char-body" });
     const status = el("div", "lfx-store-char__status", { role: "status", "aria-live": "polite" });
-    panel.append(tablist, body, status);
+    panel.append(tablist, body);
     const foot = el("div", "lfx-store-char__foot");
+    foot.append(status);
     const rand = el("button", "lfx-store-char__btn", { type: "button" }, "Zufall");
     rand.addEventListener("click", () => {
       model.randomize();
@@ -53579,6 +53803,26 @@ void main() {
     }
     function setStatus(t) {
       status.textContent = t || "";
+    }
+    function updateScrollHint() {
+      if (destroyed) return;
+      const ch = body.clientHeight;
+      const more = ch > 0 && body.scrollHeight - body.scrollTop - ch > 3;
+      const less = ch > 0 && body.scrollTop > 3;
+      body.classList.toggle("is-more", more);
+      body.classList.toggle("is-less", less);
+    }
+    body.addEventListener("scroll", updateScrollHint, { passive: true });
+    window.addEventListener("resize", updateScrollHint);
+    cleanups.push(() => {
+      body.removeEventListener("scroll", updateScrollHint);
+      window.removeEventListener("resize", updateScrollHint);
+    });
+    let ro = null;
+    if (typeof ResizeObserver === "function") {
+      ro = new ResizeObserver(updateScrollHint);
+      ro.observe(body);
+      cleanups.push(() => ro.disconnect());
     }
     function buildChoice(c) {
       const wrap3 = el("fieldset", "lfx-store-char__group");
@@ -53733,6 +53977,8 @@ void main() {
         body.append(built.el);
       }
       syncAll();
+      body.scrollTop = 0;
+      updateScrollHint();
     }
     function syncAll() {
       if (destroyed) return;
@@ -53797,7 +54043,6 @@ void main() {
   var STAMP_MS_REDUCED = 150;
   var FLASH_MS = 140;
   var FLASH_MS_REDUCED = 320;
-  var TAN_STUDIO_HALF = Math.tan(15 * Math.PI / 180);
   var warn5 = (what, err) => console.warn(`[LenzFlix Store3D] avatar ${what}`, err);
   var validSlot2 = (c) => Array.isArray(c) && c.length === LEN && c[0] === 2;
   var isIdx = (i) => Number.isInteger(i) && i >= 0 && i <= 2;
@@ -53944,25 +54189,28 @@ void main() {
         return commit(slots, idx2);
       }
       const getStudio = () => studio || (studio = createStudio());
+      function freeArea() {
+        const s = session;
+        const ui = s && s.ui;
+        const host = ui && ui.el && ui.el.parentElement;
+        if (!ui || !ui.preview || !host) return null;
+        const hr = host.getBoundingClientRect();
+        const pr = ui.preview.getBoundingClientRect();
+        if (hr.width < 2 || hr.height < 2 || pr.width < 2 || pr.height < 2) return null;
+        const n = (v) => Math.max(0, Math.min(1, v));
+        const free = { x0: n((pr.left - hr.left) / hr.width), x1: n((pr.right - hr.left) / hr.width), y0: n((pr.top - hr.top) / hr.height), y1: n((pr.bottom - hr.top) / hr.height) };
+        return free.x1 - free.x0 > 0.05 && free.y1 - free.y0 > 0.05 ? free : null;
+      }
       function poseCamera(focus, ms) {
         if (!studio) return;
-        const pose = studio.cameraPose(focus);
         const cam = ctx.camera;
-        const fov2 = (cam && cam.fov || 60) * (Math.PI / 180);
-        const tanH = Math.tan(fov2 / 2);
-        const k = Math.max(0.25, TAN_STUDIO_HALF / tanH);
+        const o = { aspect: cam && cam.aspect || 1.6, fov: cam && cam.fov || 60 };
+        const free = freeArea();
+        if (free) o.free = free;
+        const pose = studio.cameraPose(focus, o);
         const [lx, ly, lz] = pose.look;
-        const px = lx + (pose.pos[0] - lx) * k;
-        const py = ly + (pose.pos[1] - ly) * k;
-        const pz = lz + (pose.pos[2] - lz) * k;
-        const d = Math.hypot(px - lx, py - ly, pz - lz);
-        const aspect2 = cam && cam.aspect || 1.6;
-        let sx = 0;
-        let sy = 0;
-        if (aspect2 < 1.1) sy = -0.5 * d * tanH;
-        else sx = 0.5 * d * tanH * aspect2;
         try {
-          ctx.player.camera.flyTo({ x: px + sx, y: py + sy, z: pz }, { x: lx + sx, y: ly + sy, z: lz }, ms);
+          ctx.player.camera.flyTo({ x: pose.pos[0], y: pose.pos[1], z: pose.pos[2] }, { x: lx, y: ly, z: lz }, ms);
         } catch (err) {
           warn5("flyTo", err);
         }
@@ -53970,7 +54218,7 @@ void main() {
       const onResize = () => {
         if (onStage && session && session.focus) poseCamera(session.focus, 1);
       };
-      function stageOn(c, focus) {
+      function stageOn(c) {
         const st = getStudio();
         st.figure(toRender(c));
         st.setYaw(0);
@@ -53979,7 +54227,6 @@ void main() {
         if (rigNode && st.scene) st.scene.add(rigNode);
         ctx.stage.setScene(st.scene);
         window.addEventListener("resize", onResize);
-        poseCamera(focus, 1);
       }
       function stageOff() {
         if (!onStage) return;
@@ -54081,7 +54328,7 @@ void main() {
         if (!s.cfg.live) {
           s.focus = focusOfTab(s.ui.tab());
           try {
-            stageOn(startCode, s.focus);
+            stageOn(startCode);
           } catch (err) {
             warn5("Studio", err);
             stageOff();
@@ -54089,7 +54336,26 @@ void main() {
         }
         session = s;
         ctx.overlay.open(s.ui.el, { modal: gateMode, onClose: () => onOverlayClosed(s) });
+        if (onStage && !s.cfg.live) poseCamera(s.focus, 1);
         return s;
+      }
+      function guardGate() {
+        const s = session;
+        if (!s || s.finished || s.ended || disposed || s.cfg.where !== "gate" || !s.ui) return;
+        let open;
+        try {
+          open = typeof ctx.overlay.isOpen === "function" ? ctx.overlay.isOpen() : true;
+        } catch {
+          open = true;
+        }
+        if (s.ui.el.isConnected && open) return;
+        try {
+          ctx.overlay.open(s.ui.el, { modal: true, onClose: () => onOverlayClosed(s) });
+        } catch (err) {
+          warn5("Gate erneut \xF6ffnen", err);
+          return;
+        }
+        if (onStage) poseCamera(s.focus, 1);
       }
       function onOverlayClosed(s) {
         if (s.finished || disposed) return;
@@ -54316,6 +54582,7 @@ void main() {
       return {
         update(dt) {
           if (onStage && studio) studio.update(dt);
+          guardGate();
         },
         dispose() {
           disposed = true;
@@ -54716,13 +54983,42 @@ void main() {
             }
           });
           open = { ui, done: resolve };
-          ctx.overlay.open(ui.el, { onClose: () => {
-            if (open && open.ui === ui) {
-              open = null;
-              ui.destroy();
-              resolve();
-            }
-          } });
+          const gate = mode === "gate";
+          let tries = 0;
+          const openOv = () => {
+            ctx.overlay.open(ui.el, {
+              modal: gate,
+              onClose: () => {
+                if (!open || open.ui !== ui) return;
+                if (gate && !disposed) {
+                  reopen();
+                  return;
+                }
+                open = null;
+                ui.destroy();
+                resolve();
+              }
+            });
+          };
+          const reopen = () => {
+            const t = setTimeout(() => {
+              timers.delete(t);
+              if (disposed || !open || open.ui !== ui) return;
+              if (ctx.overlay.isOpen() && ++tries > 20) {
+                open = null;
+                ui.destroy();
+                resolve();
+                return;
+              }
+              if (ctx.overlay.isOpen()) {
+                reopen();
+                return;
+              }
+              openOv();
+            }, 0);
+            timers.add(t);
+          };
+          openOv();
           if (!ctx.isTouch) ui.focus();
         });
       }
@@ -54746,7 +55042,8 @@ void main() {
   // src/js/store3d/char/tpcam.js
   var BACK = 2.4;
   var UP = 0.3;
-  var HIDE_DIST = 0.7;
+  var HIDE_DIST = 0.45;
+  var LIFT = 0.12;
   var EXTEND_T = 0.25;
   var MARGIN = 0.14;
   var FLOOR_GAP = 0.12;
@@ -54768,6 +55065,32 @@ void main() {
     if (index) index.query(x0, z0, x1, z1, (q) => {
       if (!q.dynamic) out.push(q);
     });
+    return out;
+  }
+  function signBoxes(layout) {
+    const out = [];
+    if (!layout) return out;
+    const add = (s, thick) => {
+      if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.z) || !Number.isFinite(s.w)) return;
+      const y = Number.isFinite(s.y) ? s.y : 2.4;
+      const h3 = s.w / 8 + 0.05;
+      const along = Math.abs(Math.sin(s.yaw || 0)) > 0.7;
+      const hx = along ? thick : s.w / 2 + 0.06;
+      const hz = along ? s.w / 2 + 0.06 : thick;
+      out.push({ x0: s.x - hx, x1: s.x + hx, z0: s.z - hz, z1: s.z + hz, y0: y - h3, y1: y + h3, dynamic: false, sign: true });
+    };
+    for (const s of layout.signs || []) add(s, s.kind === "hang" || s.kind === "top" ? 0.08 : 0.06);
+    const city2 = layout.city;
+    if (city2) {
+      for (const s of city2.signs || []) add(s, 0.08);
+      for (const s of city2.shopFronts || []) {
+        const face = s.yaw === 0 ? 1 : -1;
+        const hh = s.w / 8 + 0.08;
+        const y = Number.isFinite(s.y) ? s.y : 3.5;
+        out.push({ x0: s.x - s.w / 2 - 0.1, x1: s.x + s.w / 2 + 0.1, z0: Math.min(s.z, s.z + face * 0.15), z1: Math.max(s.z, s.z + face * 0.15), y0: y - hh, y1: y + hh, dynamic: false, sign: true });
+        out.push({ x0: s.x - s.w / 2, x1: s.x + s.w / 2, z0: Math.min(s.z, s.z + face * 1), z1: Math.max(s.z, s.z + face * 1), y0: 2.5, y1: 2.8, dynamic: false, sign: true });
+      }
+    }
     return out;
   }
   function forward(yaw, pitch, out = {}) {
@@ -54826,6 +55149,13 @@ void main() {
     const z0 = Math.min(eye.z, wz) - margin;
     const z1 = Math.max(eye.z, wz) + margin;
     collect(src, x0, z0, x1, z1, cands);
+    if (Array.isArray(o.extra)) {
+      for (let i = 0; i < o.extra.length; i++) {
+        const q = o.extra[i];
+        if (q.x1 < x0 || q.x0 > x1 || q.z1 < z0 || q.z0 > z1) continue;
+        cands.push(q);
+      }
+    }
     for (let i = 0; i < cands.length; i++) {
       const q = cands[i];
       let t = slab2(eye.x, eye.y, eye.z, dx, dy, dz, q, margin);
@@ -54837,14 +55167,31 @@ void main() {
     }
     cands.length = 0;
     frac = Math.max(0, Math.min(1, frac));
+    const px = eye.x + dx * frac;
+    const pz = eye.z + dz * frac;
+    let lift = 0;
+    if (frac < 1) {
+      lift = o.lift === void 0 ? LIFT : o.lift;
+      const py = eye.y + dy * frac;
+      const c2 = src ? ceilingY(px, pz, margin, feetY, src, Math.max(1.7, py - feetY + lift + 0.1)) : Infinity;
+      if (Number.isFinite(c2)) lift = Math.max(0, Math.min(lift, c2 - CEIL_GAP - py));
+      if (Array.isArray(o.extra)) {
+        for (let i = 0; i < o.extra.length; i++) {
+          const q = o.extra[i];
+          if (px < q.x0 - margin || px > q.x1 + margin || pz < q.z0 - margin || pz > q.z1 + margin || q.y0 <= py) continue;
+          lift = Math.max(0, Math.min(lift, q.y0 - margin - py));
+        }
+      }
+    }
     return {
-      x: eye.x + dx * frac,
+      x: px,
       y: eye.y + dy * frac,
-      z: eye.z + dz * frac,
+      z: pz,
       frac,
       want: { x: wx, y: wy, z: wz },
       len,
-      hit: frac < 1
+      hit: frac < 1,
+      lift
     };
   }
   function smoothFrac(cur, target, dt) {
@@ -55339,6 +55686,7 @@ void main() {
       let lockUntil = 0;
       let lastA = -1;
       let groundY = 0;
+      let extraBoxes = null;
       const eyeTmp = { x: 0, y: 0, z: 0 };
       ctx.camera.layers.enable(1);
       const npc = () => ctx.use("npc");
@@ -55443,9 +55791,10 @@ void main() {
         eyeTmp.y = ctx.player.eyeY();
         eyeTmp.z = p.z;
         const src = ctx.layout && (ctx.layout.cidx || ctx.layout.colliders);
-        const r = solveTpCam(src, eyeTmp, p.yaw, p.pitch, Number.isFinite(p.y) ? p.y : 0);
+        if (!extraBoxes && ctx.layout) extraBoxes = signBoxes(ctx.layout);
+        const r = solveTpCam(src, eyeTmp, p.yaw, p.pitch, Number.isFinite(p.y) ? p.y : 0, { extra: extraBoxes || void 0 });
         frac = smoothFrac(frac, r.frac, dt);
-        camera.position.set(eyeTmp.x + (r.want.x - eyeTmp.x) * frac, eyeTmp.y + (r.want.y - eyeTmp.y) * frac, eyeTmp.z + (r.want.z - eyeTmp.z) * frac);
+        camera.position.set(eyeTmp.x + (r.want.x - eyeTmp.x) * frac, eyeTmp.y + (r.want.y - eyeTmp.y) * frac + (r.lift || 0) * (1 - frac), eyeTmp.z + (r.want.z - eyeTmp.z) * frac);
         bodyHidden = hideBody(frac * r.len, bodyHidden);
         figFull.root.visible = !bodyHidden && !xrOn();
         return true;
@@ -55728,7 +56077,7 @@ void main() {
   var _view = new Vector3();
   var _target2 = new Vector3();
   var _look = new Vector3();
-  var _q4 = new Vector4();
+  var _q5 = new Vector4();
   var _clip = new Vector4();
   var _plane = new Plane();
   var _rot = new Matrix4();
@@ -55791,11 +56140,11 @@ void main() {
       _plane.setFromNormalAndCoplanarPoint(_normal, _a).applyMatrix4(vcam.matrixWorldInverse);
       _clip.set(_plane.normal.x, _plane.normal.y, _plane.normal.z, _plane.constant);
       const p = vcam.projectionMatrix.elements;
-      _q4.x = (Math.sign(_clip.x) + p[8]) / p[0];
-      _q4.y = (Math.sign(_clip.y) + p[9]) / p[5];
-      _q4.z = -1;
-      _q4.w = (1 + p[10]) / p[14];
-      _clip.multiplyScalar(2 / _clip.dot(_q4));
+      _q5.x = (Math.sign(_clip.x) + p[8]) / p[0];
+      _q5.y = (Math.sign(_clip.y) + p[9]) / p[5];
+      _q5.z = -1;
+      _q5.w = (1 + p[10]) / p[14];
+      _clip.multiplyScalar(2 / _clip.dot(_q5));
       p[2] = _clip.x;
       p[6] = _clip.y;
       p[10] = _clip.z + 1 - 3e-3;
@@ -56156,7 +56505,15 @@ void main() {
     for (const lx of [X0 + 2, cx, X1 - 2]) for (const lz of [Z0 + 2, Z0 + 5]) add(bx2(lx - 0.45, lampY, lz - 0.12, lx + 0.45, sa.ceil - 0.01, lz + 0.12, LAMP, [1, 1, 1, 1, 1, 1]));
     const m = sa.mirror;
     const fz0 = Z1 - T5;
-    add(bx2(m.x - m.w / 2 - 0.1, m.y - m.h / 2 - 0.1, fz0 - 0.12, m.x + m.w / 2 + 0.1, m.y + m.h / 2 + 0.1, fz0, [0.78, 0.62, 0.22]));
+    const FR = [0.78, 0.62, 0.22];
+    const mx0 = m.x - m.w / 2;
+    const mx1 = m.x + m.w / 2;
+    const my0 = m.y - m.h / 2;
+    const my1 = m.y + m.h / 2;
+    const fb = m.z + 0.012;
+    add(bx2(mx0, my0, fb, mx1, my1, fz0, [0.3, 0.3, 0.34]));
+    add(bx2(mx0 - 0.1, my0 - 0.1, fz0 - 0.1, mx1 + 0.1, my0, fz0, FR), bx2(mx0 - 0.1, my1, fz0 - 0.1, mx1 + 0.1, my1 + 0.1, fz0, FR));
+    add(bx2(mx0 - 0.1, my0, fz0 - 0.1, mx0, my1, fz0, FR), bx2(mx1, my0, fz0 - 0.1, mx1 + 0.1, my1, fz0, FR));
     add(bx2(m.x - m.w / 2, 0.72, fz0 - 0.3, m.x + m.w / 2, 0.76, fz0, WOOD2));
     for (let i = 0; i < 9; i++) {
       const bxp = m.x - m.w / 2 + 0.2 + i * ((m.w - 0.4) / 8);
@@ -56338,6 +56695,10 @@ void main() {
         curMesh.scale.z = Math.max(0.12, Math.min(1, 0.12 + k * 0.88));
       },
       curtainClosed: () => curMesh.scale.z > 0.99,
+      /** Innenhelligkeit (1 = Tag): unbeleuchtete Materialien passen sich der getönten Außenhaut an, damit der Raum nachts nicht „leuchtet“. */
+      setBrightness(k) {
+        for (const mat2 of [solidMat, posterMat, curMat]) mat2.color.setScalar(k);
+      },
       dispose() {
         group.removeFromParent();
         for (const mesh of [solidMesh, posterMesh, curMesh]) {
@@ -56663,6 +57024,7 @@ void main() {
           return Promise.resolve(bubble());
         }
       }
+      let lastTod = "";
       let curtainK = 0;
       let curtainTo = 0;
       const eyeY = () => typeof ctx.player.eyeY === "function" ? ctx.player.eyeY() : 1.65;
@@ -56877,6 +57239,11 @@ void main() {
             curtainK = curtainTo > curtainK ? Math.min(curtainTo, curtainK + step) : Math.max(curtainTo, curtainK - step);
             interior.setCurtain(curtainK);
           }
+          const tod = (ctx.use("weather") || {}).tod || "day";
+          if (tod !== lastTod) {
+            lastTod = tod;
+            interior.setBrightness(tod === "night" ? 0.62 : tod === "dusk" ? 0.8 : 1);
+          }
           mirrors.chair.update(dt);
           mirrors.booth.update(dt);
           greetCool = Math.max(0, greetCool - dt);
@@ -56998,8 +57365,8 @@ void main() {
         label: cur.names[idx2],
         row: 2 + Math.floor(idx2 / 4),
         on: Number.isInteger(sel) && sel < UNLOCK_BASE && sel === idx2,
-        swatch: rgb,
-        // optionale Farbfläche (xr/panel.js zeichnet sie, falls unterstützt)
+        swatch: rgb.slice(0, 3).map((v) => Math.round(v * 255)),
+        // Palette 0..1 → xr/panel.js erwartet 0..255
         onSelect: () => {
           call(() => avatar.setColor(cur.part, idx2));
           refresh();
@@ -64811,10 +65178,10 @@ void main() {
   };
 
   // src/js/store3d/xr/rig.js
-  var _e4 = new Euler(0, 0, 0, "YXZ");
+  var _e5 = new Euler(0, 0, 0, "YXZ");
   function headLocal(cameraXr) {
-    _e4.setFromQuaternion(cameraXr.quaternion, "YXZ");
-    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e4.y, pitch: _e4.x };
+    _e5.setFromQuaternion(cameraXr.quaternion, "YXZ");
+    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e5.y, pitch: _e5.x };
   }
   function headWorld(rig, head) {
     const ry = rig.rotation.y;
@@ -66377,10 +66744,10 @@ void main() {
   };
 
   // src/js/store3d/xr/hands.js
-  var _p4 = new Vector3();
+  var _p5 = new Vector3();
   var _n = new Vector3();
   var _h = new Vector3();
-  var _q5 = new Quaternion();
+  var _q6 = new Quaternion();
   function attachVisuals(rec) {
     const geos3 = [];
     const mats = [];
@@ -66448,36 +66815,36 @@ void main() {
         if (rec.source.hand) {
           const joint = rec.handGroup && rec.handGroup.joints ? rec.handGroup.joints.wrist : null;
           if (joint && joint.visible) {
-            _q5.copy(joint.quaternion);
-            _n.set(0, -1, 0).applyQuaternion(_q5);
-            _p4.copy(joint.position).addScaledVector(_n, 0.03);
+            _q6.copy(joint.quaternion);
+            _n.set(0, -1, 0).applyQuaternion(_q6);
+            _p5.copy(joint.position).addScaledVector(_n, 0.03);
             show = true;
           }
         } else if (rec.grip.visible) {
-          _q5.copy(rec.grip.quaternion);
-          _n.set(0, 1, 0).applyQuaternion(_q5);
-          _p4.set(0, 0.035, 0.09).applyQuaternion(_q5).add(rec.grip.position);
+          _q6.copy(rec.grip.quaternion);
+          _n.set(0, 1, 0).applyQuaternion(_q6);
+          _p5.set(0, 0.035, 0.09).applyQuaternion(_q6).add(rec.grip.position);
           show = true;
         }
       }
       if (show) {
-        _h.copy(headPos).sub(_p4).normalize();
+        _h.copy(headPos).sub(_p5).normalize();
         show = _n.dot(_h) > 0.35;
       }
       this.visible = show;
       g.visible = show;
       if (show) {
-        g.position.copy(_p4);
+        g.position.copy(_p5);
         g.quaternion.setFromUnitVectors(_h.set(0, 1, 0), _n);
       }
     }
     /** Strahl (Welt) gegen die Kugel um den Knopf; Treffer → Abstand t, sonst null. */
     hit(o, d, maxDist = 3) {
       if (!this.visible) return null;
-      this.group.getWorldPosition(_p4);
-      const cx = _p4.x - o.x;
-      const cy = _p4.y - o.y;
-      const cz = _p4.z - o.z;
+      this.group.getWorldPosition(_p5);
+      const cx = _p5.x - o.x;
+      const cy = _p5.y - o.y;
+      const cz = _p5.z - o.z;
       const t = cx * d.x + cy * d.y + cz * d.z;
       if (t < 0 || t > maxDist) return null;
       const dist2 = cx * cx + cy * cy + cz * cz - t * t;

@@ -99,7 +99,16 @@ export function buildSalon(sa, o = {}) {
   // --- Spiegelwand (Stuhl): Rahmenbrett hinter der Spiegelfläche ---
   const m = sa.mirror;
   const fz0 = Z1 - T;
-  add(bx(m.x - m.w / 2 - 0.1, m.y - m.h / 2 - 0.1, fz0 - 0.12, m.x + m.w / 2 + 0.1, m.y + m.h / 2 + 0.1, fz0, [0.78, 0.62, 0.22]));
+  // Der Spiegel liegt bei m.z (knapp vor der Wand): Hinterlegung bleibt hinter der Spiegelebene, der Rahmen ist ein Ring um die Fläche.
+  const FR = [0.78, 0.62, 0.22];
+  const mx0 = m.x - m.w / 2;
+  const mx1 = m.x + m.w / 2;
+  const my0 = m.y - m.h / 2;
+  const my1 = m.y + m.h / 2;
+  const fb = m.z + 0.012; // Rückseite des Spiegels
+  add(bx(mx0, my0, fb, mx1, my1, fz0, [0.3, 0.3, 0.34]));
+  add(bx(mx0 - 0.1, my0 - 0.1, fz0 - 0.1, mx1 + 0.1, my0, fz0, FR), bx(mx0 - 0.1, my1, fz0 - 0.1, mx1 + 0.1, my1 + 0.1, fz0, FR));
+  add(bx(mx0 - 0.1, my0, fz0 - 0.1, mx0, my1, fz0, FR), bx(mx1, my0, fz0 - 0.1, mx1 + 0.1, my1, fz0, FR));
   // Ablage mit Fläschchen, Kamm, Schere darunter
   add(bx(m.x - m.w / 2, 0.72, fz0 - 0.3, m.x + m.w / 2, 0.76, fz0, WOOD));
   for (let i = 0; i < 9; i++) {
@@ -276,6 +285,8 @@ export function buildSalon(sa, o = {}) {
     /** Vorhang: 0 = offen (zusammengeschoben), 1 = zu. */
     setCurtain(k) { curMesh.scale.z = Math.max(0.12, Math.min(1, 0.12 + k * 0.88)); },
     curtainClosed: () => curMesh.scale.z > 0.99,
+    /** Innenhelligkeit (1 = Tag): unbeleuchtete Materialien passen sich der getönten Außenhaut an, damit der Raum nachts nicht „leuchtet“. */
+    setBrightness(k) { for (const mat of [solidMat, posterMat, curMat]) mat.color.setScalar(k); },
     dispose() {
       group.removeFromParent();
       for (const mesh of [solidMesh, posterMesh, curMesh]) { mesh.geometry.dispose(); mesh.material.dispose(); }

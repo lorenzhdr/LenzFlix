@@ -134,6 +134,22 @@ describe('member: showCard', () => {
     await expect(p).resolves.toBeUndefined();
     expect(overlay.el).toBeNull();
   });
+  it('gate: modal (Esc-fest); externes Schließen öffnet die Karte wieder, nur „Weiter“ löst auf', async () => {
+    vi.useFakeTimers();
+    const { m, overlay } = mk();
+    let done = false;
+    const p = m.showCard(m.cardData(), { mode: 'gate' }).then(() => { done = true; });
+    expect(overlay.open.mock.calls[0][1].modal).toBe(true);
+    overlay.close(); // von außen (z. B. Moduswechsel)
+    await vi.advanceTimersByTimeAsync(5);
+    expect(overlay.open).toHaveBeenCalledTimes(2);
+    expect(done).toBe(false);
+    overlay.el.querySelector('.lfx-store-card-btn').click();
+    await p;
+    expect(done).toBe(true);
+    expect(overlay.open).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
   it('rent: kurzes Einblenden ohne Overlay, nach 1,2 s weg', async () => {
     vi.useFakeTimers();
     const { m, overlay, host } = mk();

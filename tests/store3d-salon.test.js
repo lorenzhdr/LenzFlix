@@ -41,6 +41,24 @@ describe('Salon: Innenraum', () => {
   const sa = L.city.salon;
   const built = buildSalon(sa);
 
+  it('Spiegelfläche des Stuhls ist frei: kein Rahmen-/Wandkörper vor oder in der Spiegelebene innerhalb der Fläche', () => {
+    const m = sa.mirror;
+    const pos = built.meshes.solids.geometry.getAttribute('position');
+    let bad = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i); const y = pos.getY(i); const z = pos.getZ(i);
+      if (Math.abs(x - m.x) < m.w / 2 - 0.02 && Math.abs(y - m.y) < m.h / 2 - 0.02 && z > m.z - 0.05 && z < m.z + 0.011) bad++;
+    }
+    expect(bad).toBe(0);
+  });
+
+  it('setBrightness tönt die unbeleuchteten Materialien', () => {
+    built.setBrightness(0.6);
+    expect(built.meshes.solids.material.color.r).toBeCloseTo(0.6);
+    built.setBrightness(1);
+    expect(built.meshes.posters.material.color.g).toBeCloseTo(1);
+  });
+
   it('wenige Draw-Calls: 3 Meshes im Innenraum (plus 2 Spiegelflächen und 2 Figuren = 7)', () => {
     const meshes = [];
     built.group.traverse((o) => { if (o.isMesh) meshes.push(o); });

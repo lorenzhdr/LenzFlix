@@ -11,7 +11,7 @@
 // Die Figuren werden von modules/npc.js aktualisiert (externals); hier nie update() rufen.
 // Fremde Provider (npc, avatar) nur mit Guard und lazy.
 import { Mesh, PlaneGeometry, MeshBasicMaterial, CanvasTexture } from 'three';
-import { solveTpCam, smoothFrac, hideBody } from '../char/tpcam.js';
+import { solveTpCam, smoothFrac, hideBody, signBoxes } from '../char/tpcam.js';
 import { animFor } from '../net/peers-logic.js';
 import { timedDuration, ONE_SHOT } from '../npc/anim.js';
 import { debugHook } from './m3-debug.js';
@@ -73,6 +73,7 @@ export default {
     let lockUntil = 0; // Einmal-/Zeit-Animationen laufen lassen
     let lastA = -1;
     let groundY = 0;
+    let extraBoxes = null;
     const eyeTmp = { x: 0, y: 0, z: 0 };
 
     ctx.camera.layers.enable(1); // Ebene 1 = Ego-Körper (nur Hauptkamera)
@@ -170,9 +171,10 @@ export default {
       const p = ctx.player.getPose();
       eyeTmp.x = p.x; eyeTmp.y = ctx.player.eyeY(); eyeTmp.z = p.z;
       const src = ctx.layout && (ctx.layout.cidx || ctx.layout.colliders);
-      const r = solveTpCam(src, eyeTmp, p.yaw, p.pitch, Number.isFinite(p.y) ? p.y : 0);
+      if (!extraBoxes && ctx.layout) extraBoxes = signBoxes(ctx.layout);
+      const r = solveTpCam(src, eyeTmp, p.yaw, p.pitch, Number.isFinite(p.y) ? p.y : 0, { extra: extraBoxes || undefined });
       frac = smoothFrac(frac, r.frac, dt);
-      camera.position.set(eyeTmp.x + (r.want.x - eyeTmp.x) * frac, eyeTmp.y + (r.want.y - eyeTmp.y) * frac, eyeTmp.z + (r.want.z - eyeTmp.z) * frac);
+      camera.position.set(eyeTmp.x + (r.want.x - eyeTmp.x) * frac, eyeTmp.y + (r.want.y - eyeTmp.y) * frac + (r.lift || 0) * (1 - frac), eyeTmp.z + (r.want.z - eyeTmp.z) * frac);
       bodyHidden = hideBody(frac * r.len, bodyHidden);
       figFull.root.visible = !bodyHidden && !xrOn();
       return true;

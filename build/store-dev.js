@@ -1,6 +1,6 @@
 // Dev-Harness der VIDEOTHEK LENZ: erzeugt einen Fake-Katalog (analog 674 Filme + 157 Serien) und ruft create() des
 // 3D-Bundles ohne Jellyfin auf. Keine Netzwerkzugriffe: Cover sind per Canvas generierte data-URLs.
-// Parameter (Stadt, 1.15.0): ?spawn=shop|street|palast|yard|roof|kiosk|alley (Startpunkt), ?npc=0 / ?cars=0 (Passanten/Autos aus,
+// Parameter (Stadt, 1.15.0): ?spawn=shop|street|palast|yard|roof|kiosk|alley|salon (Startpunkt), ?npc=0 / ?cars=0 (Passanten/Autos aus,
 // für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0. Debug: __lfxStore.spawns() / area() / city().
 // Mehrspieler (1.16.0, build/mp-dev/): ?mp=fake&bots=N  Fake-Welt auf dem echten Reducer (deps.mp = fake.mp, opts.mpTransport = fake.socketFactory), N Bots (Straße, Laden, Tür, Palast-Saal, Foyer);
 //   Still-aus-Modi: ?mp=off (kein deps.mp), ?mp=nourl|404|503|401|drop (deps.mp vorhanden, Ticket scheitert bzw. die Verbindung bricht ab); ?mplat=ms (Latenz, Standard 30).
@@ -632,7 +632,7 @@
       quality: q.get('quality') || 'auto', sound: q.get('sound') !== '0', showFps: prefs.fps, bigCovers: prefs.bigCovers, voiceOnline: prefs.voiceOnline, voiceName: prefs.voiceName, voicePitch: prefs.voicePitch, touchControl: prefs.touchControl,
       skipIntro: rebuilt || q.get('intro') !== '1', restore: restore, openItemId: rebuilt ? null : q.get('item') || null,
       openTerminal: false, query: '', phone: phone || touch, touch: touch, debug: true, touchApi: q.get('tapi') === 'pointer' ? 'pointer' : undefined,
-      spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,
+      spawn: ['shop', 'street', 'palast', 'yard', 'roof', 'kiosk', 'alley', 'salon'].indexOf(q.get('spawn')) >= 0 ? q.get('spawn') : null,
       devFlags: { npc: q.get('npc') !== '0', cars: q.get('cars') !== '0', palast: q.get('palast') === '1', brawl: q.get('brawl') === '1', props: q.get('props') !== '0' },
       dev: Object.fromEntries(new URLSearchParams(location.search)),
       hour: q.get('hour') !== null && q.get('hour') !== '' ? Number(q.get('hour')) : undefined, rain: q.get('rain') === '1' ? true : q.get('rain') === '0' ? false : undefined,

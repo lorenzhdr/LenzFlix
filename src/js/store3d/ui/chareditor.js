@@ -56,8 +56,10 @@ export function createCharEditor(o) {
   let stampEl = null;
   if (gate) {
     const head = el('div', 'lfx-store-char__formhead');
-    head.append(el('div', 'lfx-store-char__kicker', null, 'VIDEOTHEK LENZ'));
-    head.append(el('h2', 'lfx-store-char__title', null, 'Mitgliedsantrag'));
+    const headline = el('div', 'lfx-store-char__headline');
+    headline.append(el('div', 'lfx-store-char__kicker', null, 'VIDEOTHEK LENZ'));
+    headline.append(el('h2', 'lfx-store-char__title', null, 'Mitgliedsantrag'));
+    head.append(headline);
     head.append(el('p', 'lfx-store-char__lead', null, 'Bitte in Druckbuchstaben ausfüllen. Die Durchschrift behältst du.'));
     const fields = el('div', 'lfx-store-char__fields');
     const f1 = el('label', 'lfx-store-char__field');
@@ -68,9 +70,12 @@ export function createCharEditor(o) {
     const f2 = el('div', 'lfx-store-char__field');
     f2.append(el('span', 'lfx-store-char__flabel', null, 'Mitgliedsnummer'));
     f2.append(el('span', 'lfx-store-char__static', null, 'wird beim Stempeln vergeben'));
+    const f3 = el('div', 'lfx-store-char__field lfx-store-char__field--stamp');
+    f3.append(el('span', 'lfx-store-char__flabel', null, 'Stempel'));
     stampEl = el('div', 'lfx-store-char__stamp', { 'aria-hidden': 'true' });
     stampEl.append(el('span', 'lfx-store-char__stamp-text', null, 'GENEHMIGT'));
-    fields.append(f1, f2, stampEl);
+    f3.append(stampEl);
+    fields.append(f1, f2, f3);
     head.append(fields);
     panel.append(head);
   } else {
@@ -100,10 +105,11 @@ export function createCharEditor(o) {
   });
   const body = el('div', 'lfx-store-char__body', { role: 'tabpanel', id: 'lfx-store-char-body' });
   const status = el('div', 'lfx-store-char__status', { role: 'status', 'aria-live': 'polite' });
-  panel.append(tablist, body, status);
+  panel.append(tablist, body);
 
   // --- Fuß ---
   const foot = el('div', 'lfx-store-char__foot');
+  foot.append(status);
   const rand = el('button', 'lfx-store-char__btn', { type: 'button' }, 'Zufall');
   rand.addEventListener('click', () => {
     model.randomize();
@@ -143,6 +149,22 @@ export function createCharEditor(o) {
   }
 
   function setStatus(t) { status.textContent = t || ''; }
+
+  // Scroll-Hinweis: Überblendung oben/unten, solange der Inhalt dort weitergeht (Touch hat keine sichtbare Laufleiste).
+  // In jsdom (Höhe 0) bleibt alles aus.
+  function updateScrollHint() {
+    if (destroyed) return;
+    const ch = body.clientHeight;
+    const more = ch > 0 && body.scrollHeight - body.scrollTop - ch > 3;
+    const less = ch > 0 && body.scrollTop > 3;
+    body.classList.toggle('is-more', more);
+    body.classList.toggle('is-less', less);
+  }
+  body.addEventListener('scroll', updateScrollHint, { passive: true });
+  window.addEventListener('resize', updateScrollHint);
+  cleanups.push(() => { body.removeEventListener('scroll', updateScrollHint); window.removeEventListener('resize', updateScrollHint); });
+  let ro = null;
+  if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(updateScrollHint); ro.observe(body); cleanups.push(() => ro.disconnect()); }
 
   // --- Steuerelemente ---
   function buildChoice(c) {
@@ -283,6 +305,8 @@ export function createCharEditor(o) {
       body.append(built.el);
     }
     syncAll();
+    body.scrollTop = 0;
+    updateScrollHint();
   }
 
   function syncAll() {

@@ -199,7 +199,8 @@ describe('Figur v2: Handle', () => {
     for (const f of [old, hat, bare]) f.dispose();
   });
 
-  it('Ego blendet Kopf und Arme aus, enge Hüllkugel, Rig 0,12 m nach hinten (auch nach Rückstoß)', () => {
+  it('Ego (v2): nur Beine/Schuhe als eigene Geometrie, gekippt vor der Kamera, enge Hüllkugel, Lage bleibt auch nach Rückstoß', () => {
+    const full = createFigure(baseLook());
     const f = createFigure(baseLook(), { ego: true });
     expect(f.isEgo()).toBe(true);
     expect(f.bones.head.scale.x).toBe(0);
@@ -208,15 +209,51 @@ describe('Figur v2: Handle', () => {
     expect(f.bones.spine.scale.x).toBe(1);
     expect(f.mesh.boundingSphere.radius).toBeCloseTo(0.55);
     expect(f.mesh.boundingSphere.center.y).toBeCloseTo(0.5);
+    // eigene Geometrie ohne Hals/Torso/Kopf: deutlich weniger Dreiecke, Oberkante weit unter der vollen Figur, topY bleibt die der vollen Figur
+    expect(f.mesh.geometry).not.toBe(full.mesh.geometry);
+    expect(f.mesh.geometry.index.count).toBeLessThan(full.mesh.geometry.index.count * 0.4);
+    const ys = f.mesh.geometry.attributes.position.array;
+    let maxY = 0;
+    for (let i = 1; i < ys.length; i += 3) maxY = Math.max(maxY, ys[i]);
+    expect(maxY).toBeLessThan(0.9);
+    expect(f.topY).toBeCloseTo(full.topY, 5);
+    // Beine vor der Kamera: Rig um den Fuß nach hinten gekippt, Hüfte nur knapp hinter der Kamera
+    const lean = f.rig.rotation.x;
+    const z0 = f.rig.position.z;
+    expect(lean).toBeGreaterThan(0.2);
+    expect(z0).toBeLessThan(0);
+    f.hitReact({ x: 1, z: 0 });
+    for (let i = 0; i < 400; i++) f.update(0.05);
+    expect(f.rig.position.z).toBeCloseTo(z0);
+    expect(f.rig.rotation.x).toBeCloseTo(lean);
+    f.setEgo(false);
+    expect(f.bones.head.scale.x).toBe(1);
+    expect(f.rig.position.z).toBe(0);
+    expect(f.rig.rotation.x).toBe(0);
+    expect(f.mesh.geometry).toBe(full.mesh.geometry);
+    expect(f.mesh.boundingSphere.radius).toBeCloseTo(1.6);
+    f.setEgo(true);
+    f.setLook(baseLook());
+    expect(f.mesh.geometry).not.toBe(full.mesh.geometry); // Look-Tausch behält die Ego-Geometrie
+    f.dispose();
+    full.dispose();
+  });
+
+  it('Ego (alter Pfad): Rig 0,12 m nach hinten, Geometrie unverändert (Kopf/Arme per Bone-Skalierung)', () => {
+    const olds = makeLook(seeded(501), {});
+    const plain = createFigure(olds);
+    const f = createFigure(olds, { ego: true });
+    expect(f.mesh.geometry).toBe(plain.mesh.geometry);
+    expect(f.bones.head.scale.x).toBe(0);
     expect(f.rig.position.z).toBeCloseTo(0.12);
+    expect(f.rig.rotation.x).toBe(0);
     f.hitReact({ x: 1, z: 0 });
     for (let i = 0; i < 400; i++) f.update(0.05);
     expect(f.rig.position.z).toBeCloseTo(0.12);
     f.setEgo(false);
-    expect(f.bones.head.scale.x).toBe(1);
     expect(f.rig.position.z).toBe(0);
-    expect(f.mesh.boundingSphere.radius).toBeCloseTo(1.6);
     f.dispose();
+    plain.dispose();
   });
 
   it('hooks.material wird benutzt und beim dispose nicht entsorgt', () => {

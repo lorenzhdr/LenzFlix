@@ -300,4 +300,46 @@ describe('Editor-Ansicht', () => {
     expect(ui.el.querySelector('.lfx-store-char__rot')).toBeNull();
     expect(ui.el.classList.contains('is-live')).toBe(true);
   });
+
+  it('alle Reiter stehen im DOM (keiner versteckt); Live zeigt dieselben Inhalte wie der Studio-Editor', () => {
+    const a = mount({ ui: { focus: 'hair' } });
+    const b = mount({ ui: { live: true, focus: 'hair' } });
+    const ids = (ui) => [...ui.el.querySelectorAll('.lfx-store-char__tab')].map((n) => n.dataset.tab);
+    expect(ids(a.ui)).toEqual(TABS.map((t) => t.id));
+    expect(ids(b.ui)).toEqual(ids(a.ui));
+    const legends = (ui) => [...ui.el.querySelectorAll('.lfx-store-char__legend')].map((n) => n.textContent);
+    expect(legends(b.ui)).toEqual(legends(a.ui));
+    expect(legends(b.ui).some((l) => /haarfarbe/i.test(l))).toBe(true);
+  });
+
+  it('Scroll-Hinweis: is-more / is-less folgen dem Scrollstand (ohne Layout aus)', () => {
+    const { ui } = mount({ ui: { focus: 'hair' } });
+    const body = ui.el.querySelector('.lfx-store-char__body');
+    expect(body.classList.contains('is-more')).toBe(false); // jsdom: keine Höhe
+    Object.defineProperty(body, 'clientHeight', { configurable: true, get: () => 200 });
+    Object.defineProperty(body, 'scrollHeight', { configurable: true, get: () => 500 });
+    body.scrollTop = 0;
+    body.dispatchEvent(new Event('scroll'));
+    expect(body.classList.contains('is-more')).toBe(true);
+    expect(body.classList.contains('is-less')).toBe(false);
+    body.scrollTop = 150;
+    body.dispatchEvent(new Event('scroll'));
+    expect(body.classList.contains('is-more')).toBe(true);
+    expect(body.classList.contains('is-less')).toBe(true);
+    body.scrollTop = 300;
+    body.dispatchEvent(new Event('scroll'));
+    expect(body.classList.contains('is-more')).toBe(false);
+    expect(body.classList.contains('is-less')).toBe(true);
+    ui.setTab('face'); // Reiterwechsel springt nach oben
+    expect(body.scrollTop).toBe(0);
+  });
+
+  it('Gate: Name, Nummer und beschrifteter Stempel in einer Zeile, Status im Fuß', () => {
+    const { ui } = mount({ ui: { where: 'gate', name: 'Lenz' } });
+    const fields = ui.el.querySelector('.lfx-store-char__fields');
+    expect(fields.children.length).toBe(3);
+    expect(fields.querySelector('.lfx-store-char__field--stamp .lfx-store-char__flabel').textContent).toBe('Stempel');
+    expect(ui.stampEl.parentElement.classList.contains('lfx-store-char__field--stamp')).toBe(true);
+    expect(ui.el.querySelector('.lfx-store-char__foot .lfx-store-char__status')).toBeTruthy();
+  });
 });

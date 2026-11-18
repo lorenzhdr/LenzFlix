@@ -26,8 +26,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-wrap.is-rent .lfx-st
   padding: 10px 12px;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card {
-  --card-a: #b87333;
-  --card-b: #7a4a1e;
+  --card-a: #e3a86a;
+  --card-b: #b57638;
   --card-ink: #1a1208;
   position: relative;
   box-sizing: border-box;
@@ -53,7 +53,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-head {
   border-bottom: 2px solid rgba(26, 18, 8, 0.35);
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-brand { font-size: 1.15em; font-weight: 900; letter-spacing: 0.06em; }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-sub { grid-column: 1; font-size: 0.8em; opacity: 0.8; }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-sub { grid-column: 1; font-size: 0.8em; opacity: 0.9; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-tier {
   grid-column: 2;
   grid-row: 1 / span 2;
@@ -83,7 +83,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-photo-ph { font-size
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-photo-img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-info { flex: 1 1 auto; min-width: 0; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-k { font-size: 0.78em; opacity: 0.75; white-space: nowrap; }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-k { font-size: 0.78em; opacity: 0.9; white-space: nowrap; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-v { font-weight: 800; text-align: right; overflow-wrap: anywhere; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-row.is-no .lfx-store-card-v { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.1em; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-stamps { margin-top: 12px; }
@@ -110,7 +110,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-btn {
   min-height: 44px;
   min-width: 140px;
   cursor: pointer;
+  /* dunkler Knopf mit heller Schrift: auf allen drei Verläufen (Bronze/Silber/Gold) deutlich über AA */
+  padding: 0 22px;
+  border: 0;
+  border-radius: 99px;
+  background: #1a1208;
+  color: #fff3c4;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-btn:hover,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card-btn:focus-visible { background: #000; color: #fff; outline: 3px solid #fff; outline-offset: 2px; }
 /* Gold: Glitzer-Schimmer (ein breiter heller Streifen wandert über die Karte) */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-card.is-glitter::after {
   content: "";

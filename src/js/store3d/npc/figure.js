@@ -22,6 +22,9 @@ const dark = (c, k) => c.map((v) => v * k);
 // Bone-Indizes
 const B = { root: 0, spine: 1, head: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
 const SPINE_Y = 0.8;
+const EGO_BACK = 0.12; // Ego (alter Pfad): Rig nach hinten
+const EGO_LEAN = 0.45; // Ego (v2): Kippwinkel der Beine um den Fuß (rad), Hüfte hinter der Kamera, Füße davor
+const EGO_Z = 0.05; // Ego (v2): Lage der Hüfte relativ zur Kamera (m, + = hinter der Kamera)
 const NECK_Y = 1.44;
 
 /** Höchstens so viele unreferenzierte Geometrien bleiben im Cache (älteste zuerst entsorgt). */
@@ -58,13 +61,22 @@ function maxY(g) {
   return m;
 }
 
-/** Cache-Eintrag für den Look holen (Referenz +1, ggf. bauen). */
-function acquire(look) {
-  const key = lookKey(look);
+/** Oberkante der vollen v2-Figur (Hut/Frisur) – auch für die Ego-Variante, die nur Beine trägt. */
+function fullTopY(look) {
+  const parts = buildV2Parts(look);
+  let m = 0;
+  for (const list of Object.values(parts)) for (const g of list) { m = Math.max(m, maxY(g)); g.dispose(); }
+  return m;
+}
+
+/** Cache-Eintrag für den Look holen (Referenz +1, ggf. bauen). ego (nur v2): Geometrie mit Beinen, Schuhen und Hüfte (Ich-Sicht). */
+function acquire(look, ego = false) {
+  const useEgo = !!ego && look.v === 2;
+  const key = lookKey(look) + (useEgo ? '|ego' : '');
   let e = geoCache.get(key);
   if (!e) {
-    const g = bodyGeometry(look);
-    e = { key, g, refs: 0, used: 0, topY: maxY(g) };
+    const g = bodyGeometry(look, useEgo);
+    e = { key, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
     geoCache.set(key, e);
   }
   e.refs++;
@@ -91,9 +103,9 @@ export function figureCacheInfo() {
 }
 
 /** Geometrie je Look (gemergt, mit Skin-Attributen), ungecacht. */
-function bodyGeometry(look) {
-  const parts = look.v === 2 ? buildV2Parts(look) : oldParts(look);
-  const geos = Object.entries(parts).map(([bi, list]) => skinned(list, Number(bi)));
+function bodyGeometry(look, ego = false) {
+  const parts = look.v === 2 ? buildV2Parts(look, { ego }) : oldParts(look);
+  const geos = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
   const g = merge(geos);
   g.boundingSphere = new Sphere(new Vector3(0, 0.95, 0), 1.6);
   return g;
@@ -199,7 +211,16 @@ export function createFigure(look, hooks = {}) {
   root.name = 'npc-figure';
   const rig = new Group();
   let k = look.height || 1;
-  const applyScale = () => { k = look.height || 1; rig.scale.set(k * (look.build || 1), k, k * (look.build || 1)); };
+  let ego = !!hooks.ego;
+  let baseZ = 0;
+  // Ego v2 (nur Beine): Körper um den Fuß nach hinten gekippt, damit beim Blick nach unten Beine und Schuhe vor der Kamera im Bild sind;
+  // alter Pfad: Rig EGO_BACK m nach hinten (Kopf/Arme per Bone-Skalierung weg, unverändert).
+  const egoPlace = () => {
+    if (ego && look.v === 2) { rig.rotation.x = EGO_LEAN; baseZ = EGO_Z - SPINE_Y * k * Math.sin(EGO_LEAN); }
+    else { rig.rotation.x = 0; baseZ = ego ? EGO_BACK : 0; }
+    rig.position.set(0, 0, baseZ);
+  };
+  const applyScale = () => { k = look.height || 1; rig.scale.set(k * (look.build || 1), k, k * (look.build || 1)); egoPlace(); };
   applyScale();
   root.add(rig);
   const bones = [];
@@ -211,7 +232,7 @@ export function createFigure(look, hooks = {}) {
   const bArmR = mk(0.26, 1.36 - SPINE_Y, 0, bSpine);
   const bLegL = mk(-0.1, SPINE_Y, 0, bRoot);
   const bLegR = mk(0.1, SPINE_Y, 0, bRoot);
-  let entry = acquire(look);
+  let entry = acquire(look, ego);
   const mesh = new SkinnedMesh(entry.g, hooks.material || material());
   mesh.add(bRoot);
   rig.add(mesh);
@@ -228,8 +249,6 @@ export function createFigure(look, hooks = {}) {
   let recoil = { x: 0, z: 0 };
   let remote = null;
   let disposed = false;
-  let ego = false;
-  let baseZ = 0;
   const legacyTop = () => look.v !== 2;
   const tagY = () => (legacyTop() ? 1.98 : entry.topY + 0.23);
   const headY = () => (legacyTop() ? 1.95 * k : (entry.topY + 0.2) * k);
@@ -274,7 +293,7 @@ export function createFigure(look, hooks = {}) {
     setLook(next) {
       if (disposed || !next) return;
       const old = entry;
-      entry = acquire(next);
+      entry = acquire(next, ego);
       handle.look = next;
       look = next;
       mesh.geometry = entry.g;
@@ -282,16 +301,19 @@ export function createFigure(look, hooks = {}) {
       applyScale();
       if (tag) tag.position.set(0, tagY(), 0);
     },
-    /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel, Rig 0,12 m nach hinten. */
+    /** Ego-Variante (Ich-Sicht): Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel; v2: eigene Geometrie nur mit Beinen/Schuhen/Hüfte und gekippt, sonst Rig 0,12 m nach hinten. */
     setEgo(on) {
       ego = !!on;
+      // v2: nur Beine, Schuhe und Hüfte (eigene Geometrie); alter Pfad: Kopf/Arme per Bone-Skalierung weg (unverändert)
+      const next = acquire(look, ego);
+      if (next === entry) release(next);
+      else { const old = entry; entry = next; mesh.geometry = entry.g; release(old); }
       const s = ego ? 0 : 1;
       bHead.scale.set(s, s, s);
       bArmL.scale.set(s, s, s);
       bArmR.scale.set(s, s, s);
       mesh.boundingSphere = ego ? new Sphere(new Vector3(0, 0.5, 0), 0.55) : new Sphere(new Vector3(0, 0.95, 0), 1.6);
-      baseZ = ego ? 0.12 : 0;
-      rig.position.set(0, 0, baseZ);
+      egoPlace();
     },
     isEgo: () => ego,
     /**

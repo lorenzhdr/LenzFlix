@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // Foto-Studio (1.17.0): eigene Szene, wenige Draw-Calls, Kamera-Posen, Porträt 256×256 (Renderer gemockt – jsdom hat kein WebGL).
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { PerspectiveCamera, Vector3 } from 'three';
 import { createStudio, PORTRAIT_SIZE, PORTRAIT_CACHE_MAX, STUDIO_FOCUS } from '../src/js/store3d/char/studio.js';
 import { disposeFigureCaches } from '../src/js/store3d/npc/figure.js';
 
@@ -76,6 +77,58 @@ describe('Studio: Szene', () => {
     const h0 = s.cameraPose('hair').look[1];
     s.setLook(look(1, { hat: { id: 'crown', color: [1, 0.8, 0.2] } }));
     expect(s.cameraPose('hair').look[1]).toBeGreaterThan(h0 - 1e-9);
+    s.dispose();
+  });
+
+  it('cameraPose(focus, {aspect, fov, free}): Ganzkörper von vorn, mit ~10 % Rand in der freien Fläche, für Quer- und Hochformat', () => {
+    const s = createStudio();
+    s.figure(look(1, { hat: { id: 'crown', color: [1, 0.8, 0.2] } }));
+    const top = s.figure(look(1)).topY;
+    const cases = [
+      { aspect: 16 / 9, fov: 70, free: { x0: 0.38, x1: 1, y0: 0, y1: 1 } },
+      { aspect: 16 / 9, fov: 40, free: { x0: 0.38, x1: 1, y0: 0, y1: 1 } },
+      { aspect: 0.54, fov: 70, free: { x0: 0, x1: 1, y0: 0, y1: 0.42 } },
+      { aspect: 0.54, fov: 40, free: { x0: 0, x1: 1, y0: 0, y1: 0.42 } },
+      { aspect: 1, fov: 30, free: null },
+    ];
+    const ndc = (pose, o, x, y) => {
+      const cam = new PerspectiveCamera(o.fov, o.aspect, 0.05, 50);
+      cam.position.set(...pose.pos);
+      cam.lookAt(...pose.look);
+      cam.updateMatrixWorld(true);
+      return new Vector3(x, y, 0).project(cam);
+    };
+    for (const o of cases) {
+      const fr = { x0: 0, x1: 1, y0: 0, y1: 1, ...(o.free || {}) };
+      const pose = s.cameraPose('body', o);
+      expect(pose.pos[2]).toBeLessThan(0); // von vorn: Kamera auf der −z-Seite
+      expect(pose.look[2]).toBeGreaterThan(pose.pos[2]); // Blick nach +z
+      const hi = ndc(pose, o, 0, s.figure(look(1)).topY);
+      const lo = ndc(pose, o, 0, 0);
+      // NDC (y oben) → Bildanteil von oben
+      const fy = (v) => (1 - v.y) / 2;
+      const fx = (v) => (v.x + 1) / 2;
+      const h = fr.y1 - fr.y0;
+      expect(fy(hi) - fr.y0).toBeGreaterThan(0.05 * h); // Kopf (inkl. Frisur) nicht angeschnitten
+      expect(fy(hi) - fr.y0).toBeLessThan(0.2 * h);
+      expect(fr.y1 - fy(lo)).toBeGreaterThan(0.05 * h); // Schuhe + Boden sichtbar
+      expect(fr.y1 - fy(lo)).toBeLessThan(0.2 * h);
+      expect(fx(hi)).toBeGreaterThan(fr.x0);
+      expect(fx(hi)).toBeLessThan(fr.x1);
+      expect(Math.abs(fx(hi) - (fr.x0 + fr.x1) / 2)).toBeLessThan(0.04); // mittig in der freien Fläche
+    }
+    expect(top).toBeGreaterThan(1.6);
+    // Kopfbereiche enthalten Hut/Krone komplett (Oberkante = topY der Figur mit Hut)
+    const hatTop = s.figure(look(1, { hat: { id: 'crown', color: [1, 0.8, 0.2] } })).topY;
+    for (const focus of ['hair', 'face', 'extras']) {
+      const o = cases[0];
+      const pose = s.cameraPose(focus, o);
+      const hi = ndc(pose, o, 0, hatTop);
+      expect(hi.y).toBeLessThan(1);
+      expect(hi.y).toBeGreaterThan(0.6);
+    }
+    // Aufruf ohne opts bleibt kompatibel (30°, zentriert)
+    expect(s.cameraPose('body').pos[0]).toBeCloseTo(0);
     s.dispose();
   });
 

@@ -566,7 +566,7 @@ describe('avatar: Editor-Sitzungen', () => {
     const n = ctx.player.camera.flyTo.mock.calls.length;
     click(ctx.curOverlay().el.querySelector('[data-tab="shoes"]'));
     expect(ctx.player.camera.flyTo.mock.calls.length).toBe(n + 1);
-    expect(studioMock.made[0].cameraPose).toHaveBeenLastCalledWith('shoes');
+    expect(studioMock.made[0].cameraPose).toHaveBeenLastCalledWith('shoes', expect.objectContaining({ aspect: 1.7, fov: 60 }));
     click(btn(ctx.curOverlay().el, 'Abbrechen'));
     await pr;
   });
@@ -606,5 +606,73 @@ describe('avatar: Editor-Sitzungen', () => {
     expect(av.slots()[1]).not.toBeNull();
     expect(p.data.fig.slots[1].prov).toBe(true);
     expect(p.data.fig.slots[0].prov).toBeUndefined(); // Platz 0 blieb unberührt
+  });
+});
+
+describe('avatar: Gate bleibt sichtbar (Befund Sichtprüfung 1.17.0)', () => {
+  it('abgelöstes Formular wird vom Wächter erneut eingehängt', async () => {
+    const av = boot({ profile: makeProfile() });
+    const gp = av.gate();
+    await tick();
+    const el = ctx.curOverlay().el;
+    const opens = ctx.overlay.open.mock.calls.length;
+    el.remove(); // Element weg, ohne dass onClose lief
+    expect(el.isConnected).toBe(false);
+    handle.update(0.016);
+    expect(ctx.overlay.open.mock.calls.length).toBe(opens + 1);
+    expect(ctx.overlay.open.mock.calls.at(-1)[0]).toBe(el);
+    expect(ctx.overlay.open.mock.calls.at(-1)[1]).toMatchObject({ modal: true });
+    expect(el.isConnected).toBe(true);
+    handle.update(0.016);
+    expect(ctx.overlay.open.mock.calls.length).toBe(opens + 1); // intakt: kein weiteres Öffnen
+    handle.dispose();
+    await gp;
+  });
+
+  it('fremdes Overlay verdrängt das Gate: neues Formular steht sofort wieder, Esc-fest', async () => {
+    const av = boot({ profile: makeProfile() });
+    const gp = av.gate();
+    await tick();
+    const first = ctx.curOverlay().el;
+    ctx.overlay.close(); // wie overlayOpen eines anderen Moduls: onClose des Gates läuft
+    await tick();
+    const second = ctx.curOverlay().el;
+    expect(second).not.toBe(first);
+    expect(second.isConnected).toBe(true);
+    expect(second.classList.contains('lfx-store-char--gate')).toBe(true);
+    expect(ctx.overlay.open.mock.calls.at(-1)[1]).toMatchObject({ modal: true });
+    handle.dispose();
+    await gp;
+  });
+
+  it('Wächter bleibt außerhalb des Gates und ohne Sitzung still', async () => {
+    const av = boot({ profile: makeProfile({ slots: [{ l: defaultCode(), t: 1 }, null, null] }) });
+    handle.update(0.016);
+    expect(ctx.overlay.open).not.toHaveBeenCalled();
+    const pr = av.openEditor('pause');
+    await tick();
+    const n = ctx.overlay.open.mock.calls.length;
+    ctx.curOverlay().el.remove();
+    handle.update(0.016); // Editor (kein Pflicht-Gate): nicht erzwingen
+    expect(ctx.overlay.open.mock.calls.length).toBe(n);
+    handle.dispose();
+    await pr;
+  });
+
+  it('Kamerapose bekommt Seitenverhältnis, Winkel und die gemessene Vorschaufläche', async () => {
+    const av = boot({ profile: makeProfile() });
+    const gp = av.gate();
+    await tick();
+    const el = ctx.curOverlay().el;
+    const prev = el.querySelector('.lfx-store-char__preview');
+    const R = (l, t, r, b) => ({ left: l, top: t, right: r, bottom: b, width: r - l, height: b - t });
+    ctx.host.getBoundingClientRect = () => R(0, 0, 1000, 500);
+    prev.getBoundingClientRect = () => R(400, 0, 1000, 500);
+    window.dispatchEvent(new Event('resize'));
+    const call = studioMock.made[0].cameraPose.mock.calls.at(-1);
+    expect(call[0]).toBe('body');
+    expect(call[1]).toMatchObject({ aspect: 1.7, fov: 60, free: { x0: 0.4, x1: 1, y0: 0, y1: 1 } });
+    handle.dispose();
+    await gp;
   });
 });

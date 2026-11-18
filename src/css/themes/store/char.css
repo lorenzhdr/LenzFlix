@@ -28,7 +28,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__panel {
   box-sizing: border-box;
   padding: 14px 14px 10px;
   border-radius: 8px;
-  background: var(--lfx-store-glass);
+  background: var(--lfx-glass);
   border: 1px solid var(--lfx-store-glass-border);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
 }
@@ -46,11 +46,11 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-c
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rot {
   position: absolute;
-  left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
+  right: 8px;
+  bottom: 8px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rotbtn {
   min-width: 48px;
@@ -69,8 +69,15 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__head,
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__formhead {
   flex: 0 0 auto;
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 10px;
+  margin-bottom: 4px;
+}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__title {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-family: var(--lfx-store-neon-font, inherit);
   font-size: 20px;
   letter-spacing: 0.04em;
@@ -106,9 +113,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate .lfx-store-cha
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__fields {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 10px;
-  margin-bottom: 8px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 0.9fr);
+  gap: 6px 8px;
+  margin-bottom: 6px;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__field {
   display: flex;
@@ -136,28 +143,29 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__static {
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__static {
   font-weight: 500;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.15;
   color: #6a5560;
   display: flex;
   align-items: center;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp {
-  grid-column: 1 / -1;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
+  min-height: 34px;
   border: 2px dashed #b98a96;
   border-radius: 4px;
-  overflow: hidden;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp-text {
-  font: 800 20px/1 var(--lfx-font);
-  letter-spacing: 0.18em;
+  font: 800 11px/1 var(--lfx-font);
+  letter-spacing: 0.06em;
   color: #b3202f;
-  border: 3px solid #b3202f;
-  border-radius: 6px;
-  padding: 4px 12px;
+  border: 2px solid #b3202f;
+  border-radius: 4px;
+  padding: 3px 5px;
+  white-space: nowrap;
   transform: rotate(-6deg) scale(1.6);
   opacity: 0;
 }
@@ -170,24 +178,23 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__stamp.is-stamped .l
 /* ---- Reiter ---- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tabs {
   flex: 0 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
   padding-bottom: 6px;
 }
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tabs::-webkit-scrollbar {
-  display: none;
-}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tab {
-  flex: 0 0 auto;
+  min-width: 0;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 0 4px;
   border: 1px solid var(--lfx-store-glass-border);
   border-radius: 6px;
   background: transparent;
   color: inherit;
   font: 600 13px/1 var(--lfx-font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tab.is-on {
@@ -200,7 +207,22 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 4px 2px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--lfx-store-yellow) transparent;
+  padding: 4px 4px 16px 2px;
+}
+/* Scroll-Hinweis: Inhalt blendet dort aus, wo er weitergeht (chareditor.js setzt is-more / is-less) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__body.is-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__body.is-less {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22px);
+  mask-image: linear-gradient(to bottom, transparent, #000 22px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__body.is-more.is-less {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 calc(100% - 34px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 calc(100% - 34px), transparent);
 }
 
 /* ---- Steuerelemente ---- */
@@ -321,14 +343,17 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__color {
   cursor: pointer;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rangerow {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__range {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
+  width: 100%;
   min-height: 44px;
-  min-width: 0;
+  min-width: 80px;
+  margin: 0;
   accent-color: var(--lfx-store-yellow);
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__rangelabel {
@@ -356,9 +381,11 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__slotname {
   font-size: 13px;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__status {
-  flex: 0 0 auto;
-  min-height: 18px;
+  flex: 1 1 auto;
+  align-self: center;
+  min-width: 0;
   font-size: 12px;
+  line-height: 1.2;
   color: var(--lfx-store-pink);
 }
 
@@ -369,6 +396,9 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__foot {
   gap: 8px;
   justify-content: flex-end;
   padding-top: 8px;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__foot .lfx-store-char__btn {
+  flex: 0 0 auto;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__btn {
   min-height: 44px;
@@ -416,20 +446,31 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char--gate :focus-visible
   outline-color: #7a1426;
 }
 
-/* ---- Live-Vorschau (Salon-Spiegel): schmale Leiste unten ---- */
+/* ---- Live-Vorschau (Salon-Spiegel): Bottom-Sheet, der Spiegel darüber bleibt frei ---- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live {
   flex-direction: column;
   justify-content: flex-end;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__panel {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   order: 2;
   width: min(560px, 100%);
-  max-height: 52%;
+  max-height: 56%;
   align-self: center;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__preview {
   display: none;
+}
+@media (min-width: 540px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__tabs {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__tab {
+    padding: 0 2px;
+    font-size: 12px;
+  }
 }
 
 /* ---- Fotoblitz ---- */
@@ -453,7 +494,7 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char-flash.is-soft {
   50% { opacity: 0.35; }
 }
 
-/* ---- Hochformat (Handy): Vorschau oben ~42 %, Formular darunter scrollbar ---- */
+/* ---- Hochformat (Handy): Vorschau oben frei, Formular als Blatt darunter (~58 % der Höhe), Inhalt scrollt ---- */
 @media (max-aspect-ratio: 11/10) {
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
     flex-direction: column;
@@ -461,21 +502,74 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char-flash.is-soft {
   }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__preview {
     order: 1;
-    flex: 0 0 42%;
+    flex: 1 1 0;
+    min-height: 0;
   }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__panel {
     order: 2;
-    flex: 1 1 0;
+    flex: 0 0 58%;
     min-height: 0;
   }
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__swatches {
     grid-template-columns: repeat(8, minmax(26px, 1fr));
   }
-  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__fields {
-    grid-template-columns: 1fr;
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__panel {
+    flex: 0 1 auto;
   }
-  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live {
-    flex-direction: column;
+}
+@media (max-width: 440px) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__lead {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__field--stamp {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- Niedriges Querformat (Handy 844x390): schmaler Kopf, Reiter in einer Zeile, breiteres Blatt ---- */
+@media (max-height: 520px) and (min-aspect-ratio: 11/10) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char {
+    padding: max(6px, var(--lfx-store-safe-top)) var(--lfx-store-safe-x) 6px;
+    gap: 8px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__panel {
+    flex-basis: min(520px, 60vw);
+    padding: 8px 10px 8px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__title {
+    font-size: 17px;
+    margin-bottom: 2px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__kicker {
+    font-size: 10px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__lead {
+    display: none;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__fields {
+    margin-bottom: 4px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tabs {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    padding-bottom: 4px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__tab {
+    padding: 0 1px;
+    font-size: 12px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char__foot {
+    padding-top: 4px;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__panel {
+    max-height: 66%;
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-char.is-live .lfx-store-char__head {
+    display: none;
   }
 }
 

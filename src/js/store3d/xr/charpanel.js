@@ -54,7 +54,7 @@ export function buildCharSpec(avatar, state, hooks = {}) {
       label: cur.names[idx],
       row: 2 + Math.floor(idx / 4),
       on: Number.isInteger(sel) && sel < UNLOCK_BASE && sel === idx,
-      swatch: rgb, // optionale Farbfläche (xr/panel.js zeichnet sie, falls unterstützt)
+      swatch: rgb.slice(0, 3).map((v) => Math.round(v * 255)), // Palette 0..1 → xr/panel.js erwartet 0..255
       onSelect: () => { call(() => avatar.setColor(cur.part, idx)); refresh(); },
     });
   });
