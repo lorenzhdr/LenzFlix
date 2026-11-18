@@ -261,4 +261,45 @@ describe('daytime + precip: weather.onChange und Provider-Kopplung', () => {
     expect(calls.length).toBe(2);
     expect(w.precip).toEqual(!base ? rainWant : noneWant);
   });
+
+  it('Suspend hält die Tropfen unsichtbar (auch bei setRaining), Resume zeigt sie; dispose räumt __lfxM4.precip', async () => {
+    const daytime = (await import('../src/js/store3d/modules/daytime.js')).default;
+    MODULES.length = 0;
+    MODULES.push(precip, daytime);
+    HTMLCanvasElement.prototype.getContext = mkCanvasCtx();
+    const layout = buildLayout([{ id: 'new', label: 'Neuheiten', kind: 'new', color: '#f00', itemIds: [] }]);
+    dom = document.createElement('div');
+    const canvas = document.createElement('canvas');
+    dom.appendChild(canvas);
+    document.body.appendChild(dom);
+    const camera = new PerspectiveCamera();
+    camera.position.set(layout.w / 2, 1.65, layout.d + 3);
+    const state = { x: layout.w / 2, z: layout.d + 3, yaw: 0, pitch: 0 };
+    const app = {
+      layout, deps: {}, opts: { debug: true }, phone: false, touch: false, sound: false, mode: 'play',
+      engine: { scene: new Scene(), camera, renderer: { domElement: canvas, toneMappingExposure: 1 }, preset: { level: 'mid' } },
+      player: { x: state.x, z: state.z, y: 0, state, eyeY: () => 1.65 },
+      getCarried: () => null, setMode() {}, holdview: { isOpen: false }, findSlot: () => null, take() {}, host: dom,
+    };
+    host = new ModuleHost(app);
+    await host.init();
+    const w = host.providers.get('weather');
+    expect(typeof window.__lfxM4.precip).toBe('function');
+    const drops = app.engine.scene.children.find((c) => c.isMesh && c.renderOrder === 6);
+    expect(drops).toBeTruthy();
+    {
+      w.setRaining(true);
+      expect(drops.visible).toBe(true);
+      host.hook('onSuspend');
+      expect(drops.visible).toBe(false);
+      w.setRaining(false);
+      w.setRaining(true);
+      expect(drops.visible).toBe(false);
+      host.hook('onResume');
+      expect(drops.visible).toBe(true);
+    }
+    host.hook('dispose');
+    host = null;
+    expect(window.__lfxM4 && window.__lfxM4.precip).toBeUndefined();
+  });
 });

@@ -43,7 +43,11 @@ describe('Online-Pille im Design-Menü', () => {
     openThemePicker();
     await flush();
     expect(pill().textContent).toBe('3 online');
-    expect(pill().getAttribute('aria-label')).toBe('3 Personen gerade in der Videothek');
+    expect(pill().getAttribute('aria-hidden')).toBe('true');
+    expect(pill().hasAttribute('aria-label')).toBe(false);
+    expect(pill().hasAttribute('role')).toBe(false);
+    expect(pill().parentElement.classList.contains('lfx-tp__badges')).toBe(true);
+    expect(pill().previousElementSibling.classList.contains('lfx-tp__beta')).toBe(true);
     expect(store().contains(pill())).toBe(true);
     expect(document.querySelectorAll('.lfx-tp__online')).toHaveLength(1);
     expect(store().getAttribute('aria-label')).toContain('3 Personen gerade in der Videothek');
@@ -53,7 +57,7 @@ describe('Online-Pille im Design-Menü', () => {
     online.fn = vi.fn(async () => 1);
     openThemePicker();
     await flush();
-    expect(pill().getAttribute('aria-label')).toBe('1 Person gerade in der Videothek');
+    expect(store().getAttribute('aria-label')).toMatch(/, 1 Person gerade in der Videothek$/);
   });
 
   it.each([[0], [null]])('kein Badge bei %s', async (v) => {
@@ -80,6 +84,27 @@ describe('Online-Pille im Design-Menü', () => {
     await flush();
     expect(online.fn).toHaveBeenCalledTimes(2);
     expect(pill()).toBeNull();
+  });
+
+  it('versteckter Tab: Ticks werden übersprungen, bei sichtbar sofort aktualisiert, Listener beim Schließen entfernt', async () => {
+    online.fn = vi.fn(async () => 2);
+    let hidden = true;
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    try {
+      openThemePicker();
+      await flush();
+      expect(online.fn).toHaveBeenCalledTimes(0);
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(online.fn).toHaveBeenCalledTimes(0);
+      hidden = false;
+      document.dispatchEvent(new Event('visibilitychange'));
+      await flush();
+      expect(online.fn).toHaveBeenCalledTimes(1);
+      closeThemePicker();
+      document.dispatchEvent(new Event('visibilitychange'));
+      await flush();
+      expect(online.fn).toHaveBeenCalledTimes(1);
+    } finally { delete document.hidden; }
   });
 
   it('Schließen bricht Abruf ab, stoppt das Intervall und schreibt nichts mehr', async () => {

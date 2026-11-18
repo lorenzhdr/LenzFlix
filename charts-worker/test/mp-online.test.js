@@ -95,6 +95,13 @@ describe('GET /mp/online', () => {
     expect(last).toBe(429);
   });
 
+  it('Limit 60/min je IP auch ohne CF-Connecting-IP (Rückfallschlüssel)', async () => {
+    const { env } = makeEnv();
+    let last = 0;
+    for (let i = 0; i < 61; i++) last = (await worker.fetch(req({ 'X-Emby-Token': 't' + i }), env)).status;
+    expect(last).toBe(429);
+  });
+
   it('OPTIONS-Preflight bleibt 204', async () => {
     const { env } = makeEnv();
     const res = await worker.fetch(new Request('https://charts.example/mp/online', { method: 'OPTIONS', headers: { Origin: ORIGIN } }), env);

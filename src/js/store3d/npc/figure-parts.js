@@ -751,7 +751,8 @@ export function buildHandItem(look, id) {
         // Ziernaht (Streifen außen, dritte Lederfarbe), Lochreihe in der oberen Hälfte, Schlaufe nahe der Schnalle
         const nl = Math.hypot(mx, my - cy) || 1;
         l(len - 0.008, 0.003, 0.008, mx + (mx / nl) * 0.0075, my + ((my - cy) / nl) * 0.0075, LC, rz);
-        if (k >= 3 && k <= 7 && k % 2) l(0.007, 0.0145, 0.009, mx, my, LD, rz + Math.PI / 2);
+        // Löcher: Tiefe (radial) 0,013 > Riemendicke 0,012 und leicht nach außen versetzt → ragen vorn heraus; neben der Ziernaht (z) statt darunter
+        if (k >= 3 && k <= 7 && k % 2) l(0.013, 0.0145, 0.009, mx + (mx / nl) * 0.0015, my + ((my - cy) / nl) * 0.0015, LD, rz + Math.PI / 2, 0.011);
         if (k === 1) l(0.013, 0.018, 0.04, mx, my, LB, rz);
       }
       // Schnalle: Metallrahmen mit Dorn

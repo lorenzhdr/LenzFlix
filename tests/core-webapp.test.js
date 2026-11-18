@@ -8,6 +8,9 @@ vi.mock('../src/js/core/favicon.js', () => ({
   touchFor: (t) => `https://x.test/assets/logo/touch-${t}.png`,
 }));
 
+const rt = vi.hoisted(() => ({ reevaluate: vi.fn() }));
+vi.mock('../src/js/core/router.js', () => rt);
+
 import { applyWebApp, stopWebApp, isStandalone, buildManifest } from '../src/js/core/webapp.js';
 
 const SRC = {
@@ -104,6 +107,27 @@ describe('webapp: Manifest-Override', () => {
     stopWebApp();
     expect(link.getAttribute('href')).toBe('manifest.json');
     expect(revoked).toContain('blob:lfx/2');
+  });
+
+  it('ersetzter <link rel=manifest> wird auch bei gleichem Design neu überschrieben', async () => {
+    applyWebApp('flix');
+    await flush();
+    document.head.innerHTML = '<link rel="manifest" href="manifest2.json">';
+    applyWebApp('flix');
+    await flush();
+    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toMatch(/^blob:lfx\//);
+  });
+
+  it('Wechsel von Standalone löst reevaluate() aus (nur bei echter Änderung)', () => {
+    rt.reevaluate.mockClear();
+    window.__lfxStandalone = true;
+    applyWebApp('flix');
+    expect(rt.reevaluate).toHaveBeenCalledTimes(1);
+    applyWebApp('flix');
+    expect(rt.reevaluate).toHaveBeenCalledTimes(1);
+    window.__lfxStandalone = false;
+    applyWebApp('flix');
+    expect(rt.reevaluate).toHaveBeenCalledTimes(2);
   });
 
   it('ohne navigator.standalone (Android/Desktop) unberührt', async () => {

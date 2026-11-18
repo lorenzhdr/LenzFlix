@@ -151,8 +151,9 @@ export async function handleWx(request, env, ctx) {
   const token = request.headers.get('X-Emby-Token');
   if (!token) return jsonResponse({ error: 'unauthorized' }, 401, request, env);
   const now = Date.now();
-  const ip = request.headers.get('CF-Connecting-IP');
-  if (ip && !rateHit('ip:' + (await sha256Hex(ip)), now)) return jsonResponse({ error: 'rate' }, 429, request, env);
+  // IP-Limit bewusst VOR der Anmeldeprüfung (kostet keinen Jellyfin-Aufruf); fehlt CF-Connecting-IP (lokal/Dev), gilt der gemeinsame Rückfallschlüssel 'noip'.
+  const ip = request.headers.get('CF-Connecting-IP') || 'noip';
+  if (!rateHit('ip:' + (await sha256Hex(ip)), now)) return jsonResponse({ error: 'rate' }, 429, request, env);
   const user = await resolveUser(env, token, ctx);
   if (user.status === 401) return jsonResponse({ error: 'unauthorized' }, 401, request, env);
   if (user.status) return jsonResponse({ error: 'upstream-unreachable' }, 502, request, env);

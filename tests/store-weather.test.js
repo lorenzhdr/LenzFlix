@@ -53,7 +53,7 @@ describe('createWeatherSource()', () => {
     await vi.advanceTimersByTimeAsync(6001);
     expect(await p).toBeNull();
   });
-  it('TTL: 15 min Erfolg, 5 min nach Fehler', async () => {
+  it('TTL: 15 min Erfolg, 5 min nach 404', async () => {
     vi.useFakeTimers();
     const f = vi.fn(async () => reply(200, good));
     vi.stubGlobal('fetch', f);
@@ -76,6 +76,35 @@ describe('createWeatherSource()', () => {
     await vi.advanceTimersByTimeAsync(61 * 1000);
     await s2();
     expect(g).toHaveBeenCalledTimes(2);
+  });
+  it('Timeout/Netzfehler/503: nur 60 s gemerkt', async () => {
+    vi.useFakeTimers();
+    const f = vi.fn(async () => { throw new TypeError('net'); });
+    vi.stubGlobal('fetch', f);
+    const src = createWeatherSource();
+    await src();
+    await vi.advanceTimersByTimeAsync(30 * 1000);
+    await src();
+    expect(f).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(31 * 1000);
+    await src();
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+  it('Cache an das Token gebunden: Kontowechsel verwirft Treffer und Fehlschlag', async () => {
+    const f = vi.fn(async () => reply(404, {}));
+    vi.stubGlobal('fetch', f);
+    const src = createWeatherSource();
+    expect(await src()).toBeNull();
+    await src();
+    expect(f).toHaveBeenCalledTimes(1);
+    auth.cur = { token: 'TOK2', userId: 'u2' };
+    f.mockImplementation(async () => reply(200, good));
+    expect((await src()).k).toBe('snow');
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(f.mock.calls[1][1].headers['X-Emby-Token']).toBe('TOK2');
+    auth.cur = { token: '', userId: '' }; // abgemeldet
+    expect(await src()).toBeNull();
+    expect(f).toHaveBeenCalledTimes(2);
   });
   it('ohne Charts-URL oder Token: null, kein fetch', async () => {
     const f = vi.fn(); vi.stubGlobal('fetch', f);

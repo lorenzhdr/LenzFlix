@@ -136,6 +136,13 @@ describe('GET /wx', () => {
     expect(other.status).toBe(200);
   });
 
+  it('Rate-Limit greift auch ohne CF-Connecting-IP (Rückfallschlüssel)', async () => {
+    const env = makeEnv();
+    let last;
+    for (let n = 0; n < 31; n++) last = await worker.fetch(req('/wx', authed()), env, {});
+    expect(last.status).toBe(429);
+  });
+
   it('zwei Anfragen ergeben einen Upstream-Abruf (Isolate-Cache), KV einmal geschrieben', async () => {
     const env = makeEnv();
     await worker.fetch(req('/wx', authed()), env, {});
