@@ -171,3 +171,27 @@ describe('Gürtel als Schlaufe (1.18.0)', () => {
     expect(maxX - minX).toBeGreaterThan(0.1); // mehr als ein schmaler Stab (Ebene gedreht)
   });
 });
+
+describe('Waffen-Detail an der Figur (1.19.0)', () => {
+  it('Gürtel, Peitsche und Laser bestehen aus mehr Teilen als vorher (Naht, Wicklung, Fransen, Rillen), alles endlich', () => {
+    const need = { belt: 25, whip: 20, laser: 9 };
+    for (const [id, min] of Object.entries(need)) {
+      const parts = buildHandItem(v2(), id);
+      expect(parts.length, id).toBeGreaterThanOrEqual(min);
+      for (const g of parts) expect(g.attributes.position.array.every(Number.isFinite), id).toBe(true);
+    }
+  });
+
+  it('Peitsche und Laser hängen weiter nur am rechten Arm-Bone, Mesh-Anzahl bleibt 1', () => {
+    for (const id of ['belt', 'whip', 'laser']) {
+      const f = createFigure(v2());
+      const idx0 = Array.from(f.mesh.geometry.attributes.skinIndex.array).filter((_, i) => i % 4 === 0);
+      f.setHandItem(id);
+      const idx = Array.from(f.mesh.geometry.attributes.skinIndex.array).filter((_, i) => i % 4 === 0);
+      const cnt = (a, b) => a.filter((x) => x === b).length;
+      expect(cnt(idx, 4) - cnt(idx0, 4), id).toBe(idx.length - idx0.length);
+      expect(counts(f)).toEqual({ meshes: 1, skinned: 1 });
+      f.dispose();
+    }
+  });
+});
