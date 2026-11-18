@@ -66,6 +66,8 @@ import gang from './gang.js';
 import ultraLight from './ultra-light.js';
 // --- Ultra (1.19): imports ---
 import ultraCity from './ultra-city.js';
+// --- Ultra Innenraum (1.19): imports ---
+import ultraRoom from './ultra-room.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -113,6 +115,8 @@ export const MODULES = [
   ultraLight,
   // --- Ultra (1.19, Außenwelt-Geometrie; nach city: Provider 'city'/'areas'/'ultra') ---
   ultraCity,
+  // --- Ultra Innenraum (1.19; Details nur auf Stufe ultra, Provider 'ultra') ---
+  ultraRoom,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];
