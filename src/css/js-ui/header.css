@@ -24,6 +24,7 @@ html.lfx-js #lfx-ambient {
   position: absolute;
   inset: 0 0 auto 0;
   height: min(820px, 100vh);
+  height: min(820px, 100dvh);
   z-index: 0;
   pointer-events: none;
   background: linear-gradient(

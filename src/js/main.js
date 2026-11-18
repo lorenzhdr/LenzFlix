@@ -7,6 +7,7 @@ import { registerFeature, resetRouter, reevaluate } from './core/router.js';
 import { removeAllMounts } from './core/dom.js';
 import { applyFavicon, removeFavicon } from './core/favicon.js';
 import { applyThemeColor, removeThemeColor } from './core/themecolor.js';
+import { applyWebApp, stopWebApp } from './core/webapp.js';
 import { startDocTitle, stopDocTitle } from './core/doctitle.js';
 import { cssActive } from './core/csscheck.js';
 import { destroy as destroyStartCover } from './core/startcover.js';
@@ -72,17 +73,20 @@ function init() {
       syncDataSaver();
       applyFavicon(getTheme() || 'flix');
       applyThemeColor(getTheme() || 'flix');
+      applyWebApp(getTheme() || 'flix');
       startDocTitle();
       if (!running && window.ApiClient && isReady()) startFeatures();
     } else if (running || document.documentElement.classList.contains('lfx-js')) {
       stopFeatures();
       removeFavicon();
       removeThemeColor();
+      stopWebApp();
       stopDocTitle();
     } else {
       stopTheme();
       removeFavicon();
       removeThemeColor();
+      stopWebApp();
       stopDocTitle();
     }
   }
@@ -114,6 +118,7 @@ function init() {
     destroyTheme();
     removeFavicon();
     removeThemeColor();
+    stopWebApp();
     stopDocTitle();
     delete window.LenzFlix;
   }

@@ -22,7 +22,7 @@ import { brandName } from './theme.js';
 import { resolveThemeCssBase } from './themecss.js';
 
 /** Home-Bildschirm-Icon des Designs: Datei-URL relativ zur Kern-Basis (…/dist/ → …/assets/logo/), sonst LENZFLIX. */
-function touchFor(theme) {
+export function touchFor(theme) {
   const file = TOUCH_FILES[theme];
   if (!file) return FLIX_HREF;
   try {

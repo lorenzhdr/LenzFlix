@@ -12,6 +12,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-header .lfx-prime-flyout 
   width: min(1011px, 52.7vw, calc(100vw - 48px));
   min-height: 120px;
   max-height: min(482px, calc(100vh - 100px));
+  max-height: min(482px, calc(100dvh - 100px));
   margin-top: 6px;
   padding: 21px;
   overflow-y: auto;

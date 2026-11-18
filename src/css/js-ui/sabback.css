@@ -1,0 +1,45 @@
+/* Zurück-Knopf der installierten Web-App (features/sabback.js): unten links über der Safe-Area. */
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back {
+  position: fixed;
+  z-index: 1090; /* unter AppBar/Menüs/Dialogen (1100+), über dem Seiteninhalt */
+  left: max(14px, calc(env(safe-area-inset-left, 0px) + 10px));
+  bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--lfx-pill-soft);
+  border-radius: 50%;
+  background: var(--lfx-surface-2);
+  color: var(--lfx-text);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform var(--lfx-dur-fast) var(--lfx-ease), background-color var(--lfx-dur-fast) var(--lfx-ease);
+}
+/* LENZ//84 Handy: über der Funktionstasten-Leiste */
+html.lfx-js.lfx-standalone.lfx-theme-retro.lfx-retro-tabbar-on:not(.layout-tv) #lfx-sab-back {
+  bottom: calc(var(--lfx-retro-fh, calc(58px + env(safe-area-inset-bottom, 0px))) + 12px);
+}
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back:active {
+  transform: scale(0.94);
+  background: var(--lfx-pill-active);
+}
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back:focus-visible {
+  outline: 2px solid var(--lfx-text);
+  outline-offset: 2px;
+}
+html.lfx-js.lfx-standalone:not(.layout-tv) #lfx-sab-back svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+/* Dialoge, Sheets, Menüs und Tastatur: Knopf weg */
+html.lfx-js.lfx-standalone:not(.layout-tv):is(.lfx-modal-open, .lfx-sheet-open, .lfx-popover-open, .lfx-themepicker-open, .lfx-retro-kb) #lfx-sab-back {
+  display: none;
+}

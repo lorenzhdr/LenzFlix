@@ -18,6 +18,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) #lfx-prime-search .lfx-prime-search_
   box-sizing: border-box;
   width: min(1475px, 76.8vw, calc(100vw - 32px));
   max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 110px);
   min-height: 160px;
   margin: 0 auto;
   padding: clamp(16px, 2.3vw, 45px);

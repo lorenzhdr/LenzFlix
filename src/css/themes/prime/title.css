@@ -27,6 +27,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt {
   position: relative;
   z-index: 1;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--pt-bg);
   color: #fff;
   font-family: var(--lfx-font);
@@ -38,6 +39,7 @@ html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt__stage {
   display: flex;
   align-items: flex-end;
   height: clamp(560px, 56.25vw, 100vh);
+  height: clamp(560px, 56.25vw, 100dvh);
   overflow: hidden;
 }
 html.lfx-js.lfx-theme-prime:not(.layout-tv) .lfx-pt__bg { position: absolute; inset: 0; background: var(--pt-bg); }
