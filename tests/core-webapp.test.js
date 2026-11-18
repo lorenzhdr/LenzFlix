@@ -1,0 +1,141 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../src/js/core/theme.js', () => ({
+  brandName: (id) => ({ flix: 'LENZFLIX', plus: 'LENZ+', prime: 'LENZPRIME', retro: 'LENZ//84', store: 'VIDEOTHEK LENZ' })[id] || 'LENZFLIX',
+}));
+vi.mock('../src/js/core/favicon.js', () => ({
+  touchFor: (t) => `https://x.test/assets/logo/touch-${t}.png`,
+}));
+
+import { applyWebApp, stopWebApp, isStandalone, buildManifest } from '../src/js/core/webapp.js';
+
+const SRC = {
+  name: 'Jellyfin',
+  short_name: 'Jellyfin',
+  start_url: 'index.html#/home',
+  display: 'standalone',
+  icons: [{ src: 'favicons/touchicon72.png', sizes: '72x72', type: 'image/png' }],
+};
+const flush = () => new Promise((r) => setTimeout(r, 0));
+let blobs;
+let revoked;
+
+function mockMq(matches) {
+  window.matchMedia = vi.fn(() => ({ matches, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+}
+
+beforeEach(() => {
+  document.head.innerHTML = '<link rel="manifest" href="manifest.json">';
+  document.documentElement.className = '';
+  delete window.__lfxStandalone;
+  mockMq(false);
+  blobs = [];
+  revoked = [];
+  let n = 0;
+  URL.createObjectURL = vi.fn((b) => { blobs.push(b); return `blob:lfx/${++n}`; });
+  URL.revokeObjectURL = vi.fn((u) => revoked.push(u));
+  globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => SRC }));
+  Object.defineProperty(navigator, 'standalone', { value: false, configurable: true });
+});
+afterEach(() => {
+  stopWebApp();
+  delete navigator.standalone;
+  delete window.__lfxStandalone;
+});
+
+describe('webapp: Standalone-Klasse', () => {
+  it('display-mode standalone setzt html.lfx-standalone', () => {
+    mockMq(true);
+    applyWebApp('flix');
+    expect(document.documentElement.classList.contains('lfx-standalone')).toBe(true);
+  });
+  it('navigator.standalone === true reicht', () => {
+    Object.defineProperty(navigator, 'standalone', { value: true, configurable: true });
+    expect(isStandalone()).toBe(true);
+  });
+  it('ohne Standalone keine Klasse; Debug-Override schlägt alles', () => {
+    applyWebApp('flix');
+    expect(document.documentElement.classList.contains('lfx-standalone')).toBe(false);
+    window.__lfxStandalone = true;
+    applyWebApp('flix');
+    expect(document.documentElement.classList.contains('lfx-standalone')).toBe(true);
+    mockMq(true);
+    window.__lfxStandalone = false;
+    applyWebApp('flix');
+    expect(document.documentElement.classList.contains('lfx-standalone')).toBe(false);
+  });
+  it('stopWebApp entfernt die Klasse', () => {
+    window.__lfxStandalone = true;
+    applyWebApp('flix');
+    stopWebApp();
+    expect(document.documentElement.classList.contains('lfx-standalone')).toBe(false);
+  });
+});
+
+describe('webapp: Manifest-Override', () => {
+  it('buildManifest: Name, absolute URLs, id, Touch-Icon vorn', () => {
+    const m = buildManifest(SRC, 'https://srv.test/web/manifest.json', 'plus');
+    expect(m.name).toBe('LENZ+');
+    expect(m.short_name).toBe('LENZ+');
+    expect(m.start_url).toBe('https://srv.test/web/index.html#/home');
+    expect(m.id).toBe('https://srv.test/web/index.html#/home');
+    expect(m.scope).toBe('https://srv.test/web/');
+    expect(m.icons[0]).toEqual({ src: 'https://x.test/assets/logo/touch-plus.png', sizes: '180x180', type: 'image/png', purpose: 'any' });
+    expect(m.icons[1].src).toBe('https://srv.test/web/favicons/touchicon72.png');
+  });
+
+  it('setzt Blob-URL, merkt das Original, widerruft beim Designwechsel und stellt bei destroy her', async () => {
+    applyWebApp('flix');
+    await flush();
+    const link = document.head.querySelector('link[rel="manifest"]');
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(link.getAttribute('href')).toBe('blob:lfx/1');
+    expect(JSON.parse(await blobs[0].text()).name).toBe('LENZFLIX');
+    applyWebApp('flix'); // idempotent
+    await flush();
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    applyWebApp('retro');
+    await flush();
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1); // Original gecacht
+    expect(link.getAttribute('href')).toBe('blob:lfx/2');
+    expect(revoked).toEqual(['blob:lfx/1']);
+    expect(JSON.parse(await blobs[1].text()).name).toBe('LENZ//84');
+    stopWebApp();
+    expect(link.getAttribute('href')).toBe('manifest.json');
+    expect(revoked).toContain('blob:lfx/2');
+  });
+
+  it('ohne navigator.standalone (Android/Desktop) unberührt', async () => {
+    delete navigator.standalone;
+    applyWebApp('flix');
+    await flush();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
+  });
+
+  it('Fetch-Fehler: Original bleibt, kein Dauerversuch', async () => {
+    globalThis.fetch = vi.fn(async () => { throw new Error('offline'); });
+    applyWebApp('flix');
+    await flush();
+    applyWebApp('flix');
+    await flush();
+    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('HTTP-Fehler lässt das Original stehen', async () => {
+    globalThis.fetch = vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) }));
+    applyWebApp('plus');
+    await flush();
+    expect(document.head.querySelector('link[rel="manifest"]').getAttribute('href')).toBe('manifest.json');
+  });
+
+  it('ohne Manifest-Link nichts zu tun', async () => {
+    document.head.innerHTML = '';
+    applyWebApp('flix');
+    await flush();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
