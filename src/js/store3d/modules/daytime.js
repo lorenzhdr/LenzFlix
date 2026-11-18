@@ -102,12 +102,21 @@ export default {
     let real = null;
     let mp = null;
     let pending = !!getReal; // bis zur Antwort (höchstens 1,5 s) kein Zufallsregen, damit nichts aufblitzt
-    const state0 = () => resolveWeather({ debug: debugWx, real, mp, local: pending ? false : localRaining });
+    // Letzter echter Wert bleibt bei Folgeabfragen ohne Ergebnis (null/Fehler) höchstens 2 h gültig (REAL_KEEP_MS), danach Rückfall auf mp/lokal.
+    const REAL_KEEP_MS = 2 * 3600 * 1000;
+    let realAt = 0;
+    const realFresh = () => (real && Date.now() - realAt <= REAL_KEEP_MS ? real : null);
+    // Solange auf echtes Wetter gewartet wird (pending), gilt auch die Mehrspieler-Meldung nicht (sonst blitzt Regen auf, wenn die Antwort 'klar' lautet).
+    const state0 = () => resolveWeather({ debug: debugWx, real: realFresh(), mp: pending ? null : mp, local: pending ? false : localRaining });
     const st0 = state0();
     const raining = st0.raining;
     const precipOf = (s) => (s.i > 0 ? { kind: s.snowing ? 'snow' : 'rain', i: s.i } : { kind: null, i: 0 });
+    let nowT = 0; // Zeit (s) des letzten update(), gleiche Basis wie die Module
+    let wetEndT = null; // Zeitpunkt (s) des letzten Regenendes; null = kein Ende bekannt/es regnet
     const weather = {
       tod, raining, hour: hourOpt,
+      /** Sekunden seit dem Regenende (0 bei Regen, null = unbekannt); läuft in jeder Stufe mit (für die Restnässe in ultra-wet). */
+      sinceWet() { return this.raining ? 0 : wetEndT === null ? null : Math.max(0, nowT - wetEndT); },
       kind: st0.kind, i: st0.i, snowing: st0.snowing, wet: st0.wet, cover: st0.cover, fog: st0.fog, storm: st0.storm, overcast: st0.overcast, temp: st0.temp, real: st0.real,
       /** Niederschlag für das Modul precip: { kind: 'rain'|'snow'|null, i: 0..1 }. */
       precip: precipOf(st0),
@@ -135,6 +144,7 @@ export default {
       const k = keyOf(s);
       if (k === lastKey) return;
       lastKey = k;
+      if (s.raining) wetEndT = null; else if (weather.raining) wetEndT = nowT;
       Object.assign(weather, {
         kind: s.kind, i: s.i, raining: s.raining, snowing: s.snowing, wet: s.wet, cover: s.cover, fog: s.fog, storm: s.storm, overcast: s.overcast, temp: s.temp, real: s.real,
         precip: precipOf(s),
@@ -153,7 +163,13 @@ export default {
       activeS = 0;
       let p;
       try { p = getReal(); } catch { p = null; }
-      Promise.resolve(p).then((v) => { if (!gone) { real = v && typeof v === 'object' ? v : null; pending = false; recompute(); } }, () => { if (!gone) { pending = false; recompute(); } });
+      // null/Fehler = keine neue Info: letzten echten Wert behalten (realFresh begrenzt auf 2 h)
+      Promise.resolve(p).then((v) => {
+        if (gone) return;
+        if (v && typeof v === 'object') { real = v; realAt = Number.isFinite(v.ts) && v.ts > 1e12 && v.ts <= Date.now() ? v.ts : Date.now(); }
+        pending = false;
+        recompute();
+      }, () => { if (!gone) { pending = false; recompute(); } });
     }
     if (getReal) {
       waitTimer = setTimeout(() => { waitTimer = null; if (pending) { pending = false; recompute(); } }, 1500);
@@ -260,6 +276,7 @@ uniform float uTime;`)
 
     return {
       update(dt, t) {
+        nowT = t;
         out.follow(cam);
         if (getReal && !suspended) { activeS += dt; if (activeS >= REFRESH_S) fetchReal(); }
         if (t - checkT > 0.4) {

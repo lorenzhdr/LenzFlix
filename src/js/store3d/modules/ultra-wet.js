@@ -170,7 +170,8 @@ export function buildWet(ctx) {
       const w = ctx.use('weather');
       if (!w) return;
       if (w.raining) { wasRaining = true; lastRain = null; } else if (wasRaining) { wasRaining = false; lastRain = t; }
-      const since = w.raining ? 0 : lastRain === null ? null : t - lastRain;
+      // Regenende führt der Provider (läuft in jeder Stufe); lokale Führung nur als Rückfall ohne sinceWet
+      const since = typeof w.sinceWet === 'function' ? w.sinceWet() : w.raining ? 0 : lastRain === null ? null : t - lastRain;
       const target = wetLevel(w, since);
       amount += (target - amount) * Math.min(1, dt * 0.8); // weich ein- und ausblenden
       const vis = amount > 0.01;

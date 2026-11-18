@@ -1,7 +1,8 @@
 // VIDEOTHEK LENZ · Figuren-Detail und Winterkleidung (1.19.0 U4): zusätzliche Low-Poly-Teile (Boxen/Kugeln mit Vertexfarbe) für die Figuren-Fabrik.
 // Reine Geometrie, ohne Zustand; die Teile landen im selben gemergten SkinnedMesh (kein Draw-Call mehr) und am selben Bone wie das Vorbild.
 // Beschreiber d (aus figure.js alter Pfad bzw. figure-parts.js v2):
-//   { v2, skin, top, bottom, shoes, hair, sw, hw, td, ax, lx, lw, topCut, botCut, shoeModel, brows, hasHat }
+//   { v2, skin, top, bottom, shoes, hair, sw, hw, td, ax, lx, lw, topCut, botCut, shoeModel, brows, hasHat, apron?, stripe?, handBusy? }
+//   handBusy: rechte Hand hält etwas (Handgegenstand, Schirm, Tasche) → keine Finger/Daumen rechts (kein Überlagern); apron/stripe (Alt-Look-Rollen): keine Knöpfe/Gürtel unter Schürze/Streifen.
 // Detail (nur mit detail=true): Finger/Daumen, Halsrand, Knopfleiste, Gürtel mit Schnalle, Absätze/Schuhkappen, Hosensaum, Ohren, Brauen, Unterlippe.
 // Winter: Strickmütze mit Bommel (nur ohne vorhandenen Hut), Schal um den Hals mit hängendem Ende.
 import { box } from '../util/geo.js';
@@ -24,6 +25,7 @@ export function detailBody(P, d) {
   const fz = -d.td / 2;
   // Finger und Daumen (Arm-Bones; Hand = Kugel bei y 0,78)
   for (const [sx, bi] of [[-1, BONE.armL], [1, BONE.armR]]) {
+    if (sx === 1 && d.handBusy) continue;
     const a = P[bi];
     const x = sx * d.ax;
     for (const z of [-0.03, -0.01, 0.01, 0.03]) a.push(box({ w: 0.017, h: 0.07, d: 0.017, x, y: 0.715, z, color: sc(d.skin, 0.97) }));
@@ -33,9 +35,9 @@ export function detailBody(P, d) {
   const collar = d.v2 ? NO_COLLAR.has(d.topCut) : true;
   if (collar) sp.push(box({ w: 0.13, h: 0.022, d: d.td + 0.006, x: 0, y: 1.372, z: 0, color: sc(d.top, 0.75) }));
   // Knopfleiste
-  if (!d.v2 || BUTTONED.has(d.topCut)) for (const y of [1.31, 1.2, 1.09, 0.98]) sp.push(box({ w: 0.016, h: 0.016, d: 0.012, x: 0, y, z: fz, color: sc(d.top, 0.55) }));
+  if ((!d.v2 && !d.apron && !d.stripe) || (d.v2 && BUTTONED.has(d.topCut))) for (const y of [1.31, 1.2, 1.09, 0.98]) sp.push(box({ w: 0.016, h: 0.016, d: 0.012, x: 0, y, z: fz, color: sc(d.top, 0.55) }));
   // Gürtel mit Schnalle
-  if (d.botCut !== 'skirt' && (!d.v2 || !NO_BELT.has(d.topCut))) {
+  if (d.botCut !== 'skirt' && !d.apron && (!d.v2 || !NO_BELT.has(d.topCut))) {
     sp.push(box({ w: d.hw + 0.03, h: 0.028, d: d.td + 0.016, x: 0, y: d.v2 ? 0.845 : 0.835, z: 0, color: LEATHER }));
     sp.push(box({ w: 0.04, h: 0.034, d: 0.012, x: 0, y: d.v2 ? 0.845 : 0.835, z: -(d.td + 0.016) / 2 - 0.002, color: STEEL }));
   }
