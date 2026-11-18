@@ -10,6 +10,8 @@
 // Netz (lazy, `fight` steht vor `net` in der Registry): ctx.use('net').fight = { has, send, on, leader, isLeader, peerPos } (Vertrag Coder C).
 //   Gesendet (lokale Einheiten, net/fight.js kodiert): wp (Waffe), fh {c, w, dir:{x,z} WELT-Richtung}, lz {on, point:{x,y,z} Meter}, lb {c}. Empfangen: fh/lb mit {c = Sender, w, dir:{x,z} WELT-Richtung, src}.
 // Schutz (beide Richtungen): Saal läuft, Kinder-Ecke, Couch, Friseurstuhl/Umkleide, offenes Menü (3 s Sperre, 2 s Nachlauf), 10 s nach dem K.O., VR.
+// Geschützt heißt auch als Angreifer: in Schutzzonen liefert swingOk() false (kein Schlag, auch nicht auf Passanten/Objekte; Laser: canLaser),
+// und der PvP-Schlag (onAction 'hit') sendet bei protReason() (Zone, K.O.-Schutz, Menü) kein fh.
 // VR: Modul inaktiv (keine Waffen, keine Angriffe). Draw-Calls: bei `low` 0 (Laserpunkt als DOM-Punkt, kein Strahl); ab `mid` Punkt +1 (Strahl nur in der Außenansicht +1).
 // Dev (ctx.opts.dev, Harness-Parameter): weapon=hand|belt|whip|laser (Startwaffe), hp=0..100 (Startenergie), ko=1 (K.O. nach 2 s), blind=1 (Schleier nach 2 s), safe=kids|hall (Start in der Schutzzone).
 import { Mesh, SphereGeometry, BoxGeometry, MeshBasicMaterial, Vector3, AdditiveBlending } from 'three';
@@ -170,7 +172,9 @@ export default {
       let dx; let dz;
       if (Array.isArray(m.d)) { dx = Number(m.d[0]); dz = Number(m.d[1]); } else if (m.dir) { dx = Number(m.dir.x); dz = Number(m.dir.z); }
       if (!Number.isFinite(dx) || !Number.isFinite(dz) || (!dx && !dz)) return;
-      const sp = peerPos(m.c);
+      // Bandentreffer (src 1): m.c ist der Führer, der Schlag kommt von einem Bandenmitglied; der Server prüft schon gegen deren letzte
+      // gemeldete Positionen (<= 3,6 m), eine Distanzprüfung gegen die Führer-Pose würde sie verwerfen.
+      const sp = m.src ? null : peerPos(m.c);
       if (sp) {
         const p = ctx.player.getPose();
         if (Math.hypot(sp.x - p.x, sp.z - p.z) > PEER_HIT_DIST) return;
@@ -474,7 +478,8 @@ export default {
 
     // ------------------------------------------------------------ Angriff
     function swingOk() {
-      return !disposed && !xrOn() && !koing && !energy.isKO() && T >= nextSwing && flags.fight !== false;
+      // Schutzzonen gelten in beide Richtungen: dort kein Schlag (wie canLaser), auch nicht auf Passanten/Objekte
+      return !disposed && !xrOn() && !koing && !energy.isKO() && T >= nextSwing && flags.fight !== false && !isSafe(zoneState());
     }
     function swung(ev) {
       const info = weaponInfo(ev && ev.weapon ? ev.weapon : weapon);
@@ -490,6 +495,7 @@ export default {
     // PvP: Treffer auf Mitspieler (prio 25: nach Richard 30, vor Personen 20); ohne Fähigkeit `fight` bleibt der alte Stoß (pu) der Personen-Logik
     offs.push(ctx.input.onAction('hit', (ev) => {
       if (disposed || xrOn() || !ev || !ev.origin || !ev.dir || !netOn() || weapon === 'laser') return false;
+      if (protReason()) return false; // Angreifer geschützt (Zone, K.O.-Schutz, Menü): kein fh an Mitspieler
       const info = weaponInfo(ev.weapon || weapon);
       if (!(info.max > 0)) return false;
       const cands = [];

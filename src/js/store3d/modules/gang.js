@@ -401,7 +401,16 @@ export default {
     }
 
     // ------------------------------------------------------------ Figuren
-    function renderFigures(dt) {
+    /** Tempo-Glättung und Hieb-Abklingen für ALLE Mitglieder, unabhängig von der Figur (sonst bleibt a=6 im gs hängen). */
+    function decayMembers(dt) {
+      for (const m of members) {
+        const inst = dt > 0 ? Math.hypot(m.x - m.px, m.z - m.pz) / dt : 0;
+        m.spd += (Math.min(inst, 8) - m.spd) * Math.min(1, dt * 6);
+        m.px = m.x; m.pz = m.z;
+        if (m.striking > 0) m.striking = Math.max(0, m.striking - dt);
+      }
+    }
+    function renderFigures() {
       const np = ctx.use('npc');
       const cam = ctx.camera && ctx.camera.position;
       if (!np || typeof np.figure !== 'function' || !cam) return;
@@ -430,10 +439,6 @@ export default {
         const f = m.fig;
         f.root.position.set(m.x, 0, m.z);
         f.root.rotation.y = m.yaw;
-        const inst = dt > 0 ? Math.hypot(m.x - m.px, m.z - m.pz) / dt : 0;
-        m.spd += (Math.min(inst, 8) - m.spd) * Math.min(1, dt * 6);
-        m.px = m.x; m.pz = m.z;
-        if (m.striking > 0) m.striking = Math.max(0, m.striking - dt);
         if (m.st === 'beaten') { if (m.anim !== 'ko') { play(m, 'ko'); m.anim = 'ko'; } return; }
         if (clockT < m.lockUntil) return;
         const name = m.spd > 2.2 ? 'run' : m.spd > 0.3 ? 'walk' : 'idle';
@@ -503,7 +508,8 @@ export default {
           }
         }
         checkDispersed();
-        renderFigures(dt);
+        decayMembers(dt);
+        renderFigures();
       },
       onSuspend() { for (const m of members) destroyFig(m); setReserve(0); releaseLead(netFight()); },
       dispose() {

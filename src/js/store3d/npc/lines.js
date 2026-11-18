@@ -186,7 +186,7 @@ export const LINES = {
     'Du bist ein toter Mann! Also fast. Mit blauen Flecken!', 'Gleich wirst du dich fühlen wie ein Kuchen unter einer Walze!',
   ],
   rowdyAttack: [
-    'Jetzt gibt es auf die Fresse!', 'Stirb langsam, du Wichser!', 'Ich polier dir die Visage!', 'Komm her, Arschloch!', 'Los, Jungs, macht ihn fertig!',
+    'Jetzt gibt es auf die Fresse!', 'Gleich knallt es, du Wichser!', 'Ich polier dir die Visage!', 'Komm her, Arschloch!', 'Los, Jungs, macht ihn fertig!',
     'Du wolltest es so, du Vollidiot!', 'Nimm das, du Dreckskerl!', 'Zahn um Zahn, mein Freund!', 'Gleich bist du Matsch!', 'Zeit für einen Ausflug ins Krankenhaus!',
     'Heute gibt es keine Gnade!', 'Jetzt kriegst du, was du verdienst, du Pisser!', 'Schlaf schön, du Arschgeige!', 'Das ist für meine schlechte Laune!',
   ],

@@ -50791,7 +50791,7 @@ void main() {
     ],
     rowdyAttack: [
       "Jetzt gibt es auf die Fresse!",
-      "Stirb langsam, du Wichser!",
+      "Gleich knallt es, du Wichser!",
       "Ich polier dir die Visage!",
       "Komm her, Arschloch!",
       "Los, Jungs, macht ihn fertig!",
@@ -50973,14 +50973,15 @@ void main() {
         ev.push({ type: "anim", name: "cover", restart: true }, { type: "say", cat: "blinded" });
       }
       if (a.t >= ATK.blindS) {
-        if (a.blindThen === "attack" && tg && !env2.stop) {
+        const capOk = typeof env2.canAttack !== "function" || env2.canAttack();
+        if (a.blindThen === "attack" && tg && !env2.stop && capOk) {
           a.phase = "chase";
           a.t = 0;
           a.attack = true;
           a.until = env2.clock + CHASE_MAX;
           a.runAnim = false;
           ev.push({ type: "say", cat: "attackHot" });
-        } else ev.push({ type: "end", reason: "blind", then: a.blindThen === "attack" ? "walk" : "flee" });
+        } else ev.push({ type: "end", reason: "blind", then: a.blindThen === "attack" && capOk ? "walk" : "flee" });
       }
       return ev;
     }
@@ -51820,7 +51821,7 @@ void main() {
       };
       const countAttackers = () => {
         let n = 0;
-        for (const e of walkers) if (e.act && e.act.attack) n++;
+        for (const e of walkers) if (e.act && (e.act.attack || e.act.phase === "blind" && e.act.blindThen === "attack")) n++;
         return n;
       };
       const canAttack = () => !xrOn() && countAttackers() < MAX_ATTACKERS && !protectedNow();
@@ -51952,7 +51953,7 @@ void main() {
         const a = e.act;
         const w = e.w;
         const h3 = e.handle;
-        const evs = stepAttack(a, step, { clock, target: havePose ? { x: px, z: pz } : null, free: (p, q) => lineFree(statics, p, q), stop: stopNow, rand });
+        const evs = stepAttack(a, step, { clock, target: havePose ? { x: px, z: pz } : null, free: (p, q) => lineFree(statics, p, q), stop: stopNow, rand, canAttack: () => !xrOn() && countAttackers() - (a.phase === "blind" && a.blindThen === "attack" ? 1 : 0) < MAX_ATTACKERS && !protectedNow() });
         w.x = a.x;
         w.z = a.z;
         w.yaw = a.yaw;
@@ -61024,7 +61025,7 @@ void main() {
           dz = Number(m.dir.z);
         }
         if (!Number.isFinite(dx) || !Number.isFinite(dz) || !dx && !dz) return;
-        const sp = peerPos(m.c);
+        const sp = m.src ? null : peerPos(m.c);
         if (sp) {
           const p = ctx.player.getPose();
           if (Math.hypot(sp.x - p.x, sp.z - p.z) > PEER_HIT_DIST) return;
@@ -61410,7 +61411,7 @@ void main() {
         emitLaser();
       }
       function swingOk() {
-        return !disposed && !xrOn() && !koing && !energy.isKO() && T5 >= nextSwing && flags.fight !== false;
+        return !disposed && !xrOn() && !koing && !energy.isKO() && T5 >= nextSwing && flags.fight !== false && !isSafe(zoneState());
       }
       function swung(ev) {
         const info = weaponInfo(ev && ev.weapon ? ev.weapon : weapon);
@@ -61428,6 +61429,7 @@ void main() {
       }
       offs.push(ctx.input.onAction("hit", (ev) => {
         if (disposed || xrOn() || !ev || !ev.origin || !ev.dir || !netOn() || weapon === "laser") return false;
+        if (protReason()) return false;
         const info = weaponInfo(ev.weapon || weapon);
         if (!(info.max > 0)) return false;
         const cands2 = [];
@@ -62353,7 +62355,16 @@ void main() {
           koTries = 99;
         }
       }
-      function renderFigures(dt) {
+      function decayMembers(dt) {
+        for (const m of members) {
+          const inst = dt > 0 ? Math.hypot(m.x - m.px, m.z - m.pz) / dt : 0;
+          m.spd += (Math.min(inst, 8) - m.spd) * Math.min(1, dt * 6);
+          m.px = m.x;
+          m.pz = m.z;
+          if (m.striking > 0) m.striking = Math.max(0, m.striking - dt);
+        }
+      }
+      function renderFigures() {
         const np = ctx.use("npc");
         const cam = ctx.camera && ctx.camera.position;
         if (!np || typeof np.figure !== "function" || !cam) return;
@@ -62403,11 +62414,6 @@ void main() {
           const f = m.fig;
           f.root.position.set(m.x, 0, m.z);
           f.root.rotation.y = m.yaw;
-          const inst = dt > 0 ? Math.hypot(m.x - m.px, m.z - m.pz) / dt : 0;
-          m.spd += (Math.min(inst, 8) - m.spd) * Math.min(1, dt * 6);
-          m.px = m.x;
-          m.pz = m.z;
-          if (m.striking > 0) m.striking = Math.max(0, m.striking - dt);
           if (m.st === "beaten") {
             if (m.anim !== "ko") {
               play(m, "ko");
@@ -62501,7 +62507,8 @@ void main() {
             }
           }
           checkDispersed();
-          renderFigures(dt);
+          decayMembers(dt);
+          renderFigures();
         },
         onSuspend() {
           for (const m of members) destroyFig(m);

@@ -338,6 +338,24 @@ describe('modules/gang: Mehrspieler (Fake net.fight)', () => {
     expect(Math.hypot(fh[0].p.dir.x, fh[0].p.dir.z)).toBeCloseTo(1, 3);
   });
 
+  it('Führer ohne Figuren: der Hieb-Code a=6 im gs klingt ab (striking unabhängig von der Figur)', () => {
+    const t = setup({ n: 2 });
+    t.st.pose = { x: 200, z: 200, y: 0 };
+    t.ctx.camera.position.set(200, 1.6, 200);
+    const f = fakeFight({ leader: 7, me: 7 });
+    withNet(t, f, [{ c: 9, k: 'x', f: 1 }]);
+    t.enter();
+    t.run(2);
+    const m = t.g.members()[1];
+    f.peerPos = () => ({ x: m.pos.x + 2, y: 0, z: m.pos.z });
+    t.run(400);
+    expect(t.providers.npc.figure).not.toHaveBeenCalled();
+    const gs = f.sent.filter((s) => s.type === 'gs');
+    let streak = 0; let max = 0; let sixes = 0;
+    for (const g of gs) { const a = g.p.members[1].a; if (a === 6) { streak++; sixes++; max = Math.max(max, streak); } else streak = 0; }
+    expect(sixes).toBeGreaterThan(0);
+    expect(max).toBeLessThanOrEqual(5);
+  });
   it('Führer ohne Mitglieder (Tag) gibt die Führung ab; dispose gibt sie ebenfalls ab', () => {
     const t = setup({ n: 0 });
     const f = fakeFight({ leader: 7, me: 7 });

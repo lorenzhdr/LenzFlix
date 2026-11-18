@@ -52,7 +52,9 @@ export function stepAttack(a, dt, env) {
   if (a.phase === 'blind') {
     if (!a.started) { a.started = true; ev.push({ type: 'anim', name: 'cover', restart: true }, { type: 'say', cat: 'blinded' }); }
     if (a.t >= ATK.blindS) {
-      if (a.blindThen === 'attack' && tg && !env.stop) { a.phase = 'chase'; a.t = 0; a.attack = true; a.until = env.clock + CHASE_MAX; a.runAnim = false; ev.push({ type: 'say', cat: 'attackHot' }); } else ev.push({ type: 'end', reason: 'blind', then: a.blindThen === 'attack' ? 'walk' : 'flee' });
+      // Obergrenze (MAX_ATTACKERS) beim Übergang erneut prüfen (env.canAttack, optional): sonst Flucht statt Angriff
+      const capOk = typeof env.canAttack !== 'function' || env.canAttack();
+      if (a.blindThen === 'attack' && tg && !env.stop && capOk) { a.phase = 'chase'; a.t = 0; a.attack = true; a.until = env.clock + CHASE_MAX; a.runAnim = false; ev.push({ type: 'say', cat: 'attackHot' }); } else ev.push({ type: 'end', reason: 'blind', then: a.blindThen === 'attack' && capOk ? 'walk' : 'flee' });
     }
     return ev;
   }

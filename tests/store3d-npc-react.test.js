@@ -216,6 +216,7 @@ describe('Modul npc/kiosk: Reaktionen', () => {
       place(hot.x + 1.2, hot.z, 0);
       tick(1);
       expect(p.laserHit(hot.handle)).toBe(true);
+      expect(p.attackers()).toBe(1); // geblendeter Hitzkopf zählt für MAX_ATTACKERS mit
       for (let i = 0; i < 200 && !hits.length; i++) tick(1);
       expect(hits.length).toBeGreaterThanOrEqual(1);
     }

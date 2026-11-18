@@ -246,7 +246,8 @@ export default {
     // ------------------------------------------------------------ Provokation, Angriff, Gesten (1.18.0)
     const fightP = () => ctx.use('fight');
     const protectedNow = () => { const f = fightP(); return !!(f && typeof f.protected === 'function' && f.protected()); };
-    const countAttackers = () => { let n = 0; for (const e of walkers) if (e.act && e.act.attack) n++; return n; };
+    // Geblendete Hitzköpfe (blindThen 'attack') zählen mit: sie greifen nach der Blendung an
+    const countAttackers = () => { let n = 0; for (const e of walkers) if (e.act && (e.act.attack || (e.act.phase === 'blind' && e.act.blindThen === 'attack'))) n++; return n; };
     const canAttack = () => !xrOn() && countAttackers() < MAX_ATTACKERS && !protectedNow();
     function restoreItem(e) {
       const h = e.handle;
@@ -333,7 +334,7 @@ export default {
       const a = e.act;
       const w = e.w;
       const h = e.handle;
-      const evs = stepAttack(a, step, { clock, target: havePose ? { x: px, z: pz } : null, free: (p, q) => lineFree(statics, p, q), stop: stopNow, rand });
+      const evs = stepAttack(a, step, { clock, target: havePose ? { x: px, z: pz } : null, free: (p, q) => lineFree(statics, p, q), stop: stopNow, rand, canAttack: () => !xrOn() && countAttackers() - (a.phase === 'blind' && a.blindThen === 'attack' ? 1 : 0) < MAX_ATTACKERS && !protectedNow() });
       w.x = a.x; w.z = a.z; w.yaw = a.yaw;
       w.v = a.phase === 'chase' && a.runAnim ? ATK.speed : 0;
       w.anim = a.phase === 'chase' && a.runAnim ? 'run' : 'idle';

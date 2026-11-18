@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createState, step, SERVER_CAPS, STORE_PREFIXES } from '../src/mp/room.js';
-import fight, { V, GS_TIMEOUT_MS, PU_S } from '../src/mp/fight.js';
+import fight, { V, GS_TIMEOUT_MS, PU_S, G_MAX } from '../src/mp/fight.js';
 import { CAPS, T_CAP } from '../src/mp/protocol.js';
 import { LIMITS } from '../src/mp/limits.js';
 
@@ -333,6 +333,25 @@ describe('mp-fight: Bandenfuehrung', () => {
     w.take(b);
     w.msg(b, [GS(2)], 1000); // g < bekanntem Zaehler
     expect(w.xev(b, 'er')[0].c).toBe('stale');
+  });
+  it('Zaehler-Vergiftung: gs mit g=0x7fffffff uebernimmt keine freie Fuehrung; gc vergibt nie > G_MAX', () => {
+    const w = world();
+    const a = w.join('a');
+    const b = w.join('b');
+    w.take(b);
+    w.msg(a, [GS(0x7fffffff)]);
+    expect(w.xev(a, 'er')[0]).toEqual({ t: 'er', c: 'stale', y: 'gs' });
+    expect(w.st.gang.c).toBe(0);
+    expect(w.st.gang.g).toBe(0);
+    w.msg(b, [{ t: 'gc' }], 1000);
+    expect(w.st.gang.c).toBe(b);
+    expect(w.st.gang.g).toBe(1);
+    w.msg(b, [{ t: 'gr' }], 1000);
+    w.st.gang.g = G_MAX;
+    w.msg(a, [{ t: 'gc' }], 1000);
+    expect(w.st.gang.c).toBe(a);
+    expect(w.st.gang.g).toBeGreaterThanOrEqual(1);
+    expect(w.st.gang.g).toBeLessThanOrEqual(G_MAX);
   });
   it('gh geht nur an den Fuehrer, nie an sich selbst; Rate 4/s', () => {
     const w = world();

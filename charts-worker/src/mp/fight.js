@@ -3,7 +3,7 @@
 // Waffenwahl: `st.store['fg:<c>']` = w (1..3; 0 = kein Eintrag), gleichlautend im DO-Storage (Präfix `fg:`).
 // Bande: Führung nur im Speicher (`st.gang`), Muster rich.js: `gc` vergibt sie nur, wenn frei; `gs` nur vom Führer;
 // `gr`, Disconnect, VR oder 60 s ohne `gs` geben sie frei. Nach Kaltstart (Führer unbekannt) übernimmt ein
-// weiterlaufender Führer mit `g` >= bekanntem Zähler still wieder (wie phys.js).
+// weiterlaufender Führer mit `g` >= bekanntem Zähler (und <= G_TAKEOVER_MAX) still wieder (wie phys.js); Zähler höchstens G_MAX.
 // Treffer `fh`: Abstand <= 3,6 m über die letzte Pose; Peers OHNE Fähigkeit `fight` bekommen nur den Rückstoß als `pu`.
 import { FLAG, RANGE, isNum, clampInt } from './protocol.js';
 import { take } from './limits.js';
@@ -13,6 +13,8 @@ export const GS_TIMEOUT_MS = 60000;
 export const HIT_RANGE = 360; // cm (3,6 m, horizontal)
 export const LB_PER_TARGET = { n: 1, per: 4000, burst: 1 };
 export const PU_S = [25, 45, 60, 10]; // Rückstoß-Stärke je Waffe (hand, belt, whip, laser) für `pu` an alte Clients
+export const G_MAX = 0x7ffffffe; // Zähler nie darüber (gc vergibt r.g + 1, 2^31 wäre ungültig)
+export const G_TAKEOVER_MAX = 1 << 20; // stille Übernahme einer freien Führung per gs nur mit vernünftigem g (sonst Zähler vergiftet)
 const PREFIX = 'fg:';
 const MAX_MEMBERS = 3;
 
@@ -201,7 +203,7 @@ export const handlers = {
     const h = holderOf(st, cx.now);
     if (h && h === p) { r.at = cx.now; return; }
     if (h) { cx.sendTo(p.c, { t: 'er', c: 'deny', y: 'gc' }); return; }
-    grant(st, cx, p, r.g + 1);
+    grant(st, cx, p, r.g >= G_MAX ? 1 : r.g + 1);
     cx.flushNow();
   },
 
@@ -212,7 +214,7 @@ export const handlers = {
     expired(st, cx);
     const r = G(st, cx.now);
     const h = holderOf(st, cx.now);
-    if (!h && !isVR(p) && m.g >= 1 && m.g >= r.g) grant(st, cx, p, m.g);
+    if (!h && !isVR(p) && m.g >= 1 && m.g <= G_TAKEOVER_MAX && m.g >= r.g) grant(st, cx, p, m.g);
     else if (!h || h !== p || m.g !== r.g) { cx.sendTo(p.c, { t: 'er', c: 'stale', y: 'gs' }); return; }
     r.q = m.q;
     r.at = cx.now;

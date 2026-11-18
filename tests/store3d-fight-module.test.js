@@ -110,6 +110,32 @@ describe('fight: Angriff', () => {
     expect(s.fire('hit', ev)).toBe(false);
     expect(nf2.sent).toHaveLength(0);
   });
+  it('Schutz des Angreifers: in der Schutzzone kein Schlag (swingOk) und kein PvP-fh', () => {
+    const nf = netFake({ peers: ['a'], pos: { a: { x: 10, y: 0, z: 8.8 } } });
+    const s = setup();
+    s.providers.set('net', nf.net);
+    const ev = { origin: { x: 10, y: 1.6, z: 10 }, dir: { x: 0, y: 0, z: -1 }, weapon: 'hand', range: 1.6, max: 1 };
+    s.providers.set('couch', { seated: () => true });
+    expect(s.f.swingOk()).toBe(false);
+    expect(s.fire('hit', ev)).toBe(false);
+    expect(nf.sent).toHaveLength(0);
+    s.providers.delete('couch');
+    expect(s.f.swingOk()).toBe(true);
+    expect(s.fire('hit', ev)).toBe(true);
+    expect(nf.sent).toHaveLength(1);
+  });
+  it('Bandentreffer (src 1) werden nicht gegen die Führer-Distanz verworfen', () => {
+    const nf = netFake({ peers: ['a'], pos: { a: { x: 40, y: 0, z: 40 } } });
+    const s = setup();
+    s.providers.set('net', nf.net);
+    s.frame();
+    nf.handlers.fh({ c: 'a', w: 0, d: [0, 1], src: 1 });
+    expect(s.f.energy()).toBeLessThan(100);
+    s.frames(7);
+    const e0 = s.f.energy();
+    nf.handlers.fh({ c: 'a', w: 0, d: [0, 1] });
+    expect(s.f.energy()).toBe(e0);
+  });
   it('PvP: Peitsche trifft bis zu zwei Ziele', () => {
     const nf = netFake({ peers: ['a', 'b', 'c'], pos: { a: { x: 10, y: 0, z: 8 }, b: { x: 10, y: 0, z: 7 }, c: { x: 10, y: 0, z: 6.9 } } });
     const s = setup();

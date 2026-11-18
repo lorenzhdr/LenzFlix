@@ -86,6 +86,17 @@ describe('npc/attack-logic', () => {
     expect(ev2.some((x) => x.type === 'strike')).toBe(true);
   });
 
+  it('Geblendet: bei erreichter Angreifer-Obergrenze (env.canAttack false) wird der Hitzkopf nach der Blendung zur Flucht statt Angriff', () => {
+    const h = createBlind({ x: 0, z: 0, then: 'attack' });
+    const ev = run(h, 6, env({ canAttack: () => false }));
+    expect(h.attack).toBe(false);
+    expect(ev.find((x) => x.type === 'end')).toMatchObject({ reason: 'blind', then: 'flee' });
+    expect(ev.some((x) => x.type === 'strike')).toBe(false);
+    const ok = createBlind({ x: 0, z: 0, then: 'attack' });
+    run(ok, 3, env({ canAttack: () => true }));
+    expect(ok.attack).toBe(true);
+  });
+
   it('nearestOnGraph: nächster Kantenpunkt ohne Ampelkanten', () => {
     const g = { edges: [{ id: 0, ax: 0, az: 0, bx: 10, bz: 0, wait: null, path: 'a' }, { id: 1, ax: 0, az: 2, bx: 10, bz: 2, wait: 'main', path: 'b' }] };
     const r = nearestOnGraph(g, 4, 1.5);
