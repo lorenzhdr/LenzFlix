@@ -36,7 +36,7 @@ describe('npc/traffic/kiosk', () => {
     delete window.__lfxM4;
   });
 
-  async function build({ flags = {}, level = 'mid', mods = [npc, traffic, kiosk], hour = 'day' } = {}) {
+  async function build({ flags = {}, level = 'mid', mods = [npc, traffic, kiosk], hour = 'day', dev } = {}) {
     const layout = buildLayout([{ id: 'new', label: 'Neuheiten', kind: 'new', color: '#f00', itemIds: ['c1'] }]);
     sig = { main: 'green', side: 'red', walkMain: false, walkSide: true };
     found = [];
@@ -62,7 +62,7 @@ describe('npc/traffic/kiosk', () => {
     const camera = new PerspectiveCamera(70, 1.5, 0.05, 90);
     app = {
       layout, deps: { catalog: { items: new Map(), departments: [], highlights: [], resume: [] }, toast: vi.fn(), user: { name: 'Max' } },
-      opts: { debug: true, devFlags: { npc: true, cars: true, ...flags } }, phone: false, touch: false, sound: false, mode: 'play',
+      opts: { debug: true, devFlags: { npc: true, cars: true, ...flags }, ...(dev ? { dev } : {}) }, phone: false, touch: false, sound: false, mode: 'play',
       engine: { scene: new Scene(), camera, renderer: { domElement: canvas }, preset: { level } },
       player: { ...state, y: 0, state, cancelPath() {}, teleport: vi.fn(), knock: vi.fn(), moved: 0 },
       setMode(m) { app.mode = m; }, holdview: { isOpen: false }, findSlot: () => null, take: vi.fn(), host: dom,
@@ -326,5 +326,18 @@ describe('npc/traffic/kiosk', () => {
     expect(ext.disposed).toBe(false);
     p.reserve(0);
     expect(p.people().filter((q) => q.kind === 'walker').length).toBe(base);
+  });
+
+  it('Dev ?temper=hot|shy|normal setzt das Temperament aller Passanten, sonst Seed-Verteilung', async () => {
+    for (const t of ['hot', 'shy', 'normal']) {
+      await build({ dev: { temper: t } });
+      const p = host.ctx.use('npc');
+      const ws = p.people().filter((q) => q.kind === 'walker');
+      expect(ws.length).toBeGreaterThan(0);
+      for (const q of ws) expect(p.temperOf(q.handle)).toBe(t);
+    }
+    await build({ dev: { temper: 'bogus' } });
+    const p = host.ctx.use('npc');
+    expect(new Set(p.people().filter((q) => q.kind === 'walker').map((q) => p.temperOf(q.handle))).size).toBeGreaterThan(1);
   });
 });

@@ -37,9 +37,9 @@ export function createEmoteUi({ ctx, onPick }) {
   }
 
   function pick(emote) {
-    let done = true;
-    try { done = onPick ? onPick(emote) !== false : true; } catch (err) { warn('onPick', err); }
-    if (done) api.close();
+    // Erst schließen (im Overlay ist der Modus 'overlay', ctx.playing() wäre sonst false), dann abspielen.
+    api.close();
+    try { if (onPick) onPick(emote); } catch (err) { warn('onPick', err); }
   }
 
   function onKey(e) {

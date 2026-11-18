@@ -156,6 +156,9 @@ export default {
       let seed = Math.floor(seedBase / SLOT_MS) & 0xffffff;
       let n = spawnCount(tod, seed);
       if (opts.debug && Number.isFinite(opts.gang)) { n = clamp(Math.round(opts.gang), 0, GANG_MAX); tod = 'night'; seed = 1; }
+      const dg = opts.dev && opts.dev.gang; // Harness ?gang=1|0|day (1.18.0)
+      if (dg === '0') n = 0;
+      else if (dg === '1') { n = 2; tod = 'night'; seed = 1; } else if (dg === 'day') n = Math.max(1, n);
       return { tod, seed, n: Math.min(n, figCap()) };
     }
     const allCalm = () => members.every((m) => m.st === 'idle');

@@ -415,3 +415,16 @@ describe('modules/gang: Mehrspieler (Fake net.fight)', () => {
     expect(t.g.members()).toHaveLength(1);
   });
 });
+
+describe('modules/gang: Dev-Parameter ?gang', () => {
+  it("'0' schaltet aus, '1' erzwingt Bande, 'day' mindestens einen Rowdy bei Tag", () => {
+    const o = (g) => ({ tod: 'day', opts: { debug: false, gang: undefined, dev: { gang: g } } });
+    expect(setup(o('0')).g.members()).toHaveLength(0);
+    const one = setup(o('1'));
+    one.enter(); one.run(2);
+    expect(one.g.members().length).toBeGreaterThan(0);
+    const day = setup(o('day'));
+    day.enter(); day.run(2);
+    expect(day.g.members().length).toBeGreaterThan(0);
+  });
+});

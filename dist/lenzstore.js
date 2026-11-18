@@ -157,6 +157,7 @@
   var GreaterEqualCompare = 518;
   var AlwaysCompare = 519;
   var StaticDrawUsage = 35044;
+  var DynamicDrawUsage = 35048;
   var GLSL3 = "300 es";
   var WebGLCoordinateSystem = 2e3;
   var WebGPUCoordinateSystem = 2001;
@@ -38345,6 +38346,8 @@ void main() {
       const signs = [];
       const signTex = canvasTexture(ctx, 512, 128, neonSign);
       const posters = [];
+      const outerParts = [];
+      const innerParts = [];
       const pz = D2 - 0.42;
       let idx2 = 0;
       wins.forEach((zz, wi) => {
@@ -38368,9 +38371,8 @@ void main() {
           m.position.set(x, baseY, pz);
           m.rotation.y = Math.PI;
           group.add(m);
-          const outer = new Mesh(quad({ w: PW, h: PH, uv: board.uv(idx2) }), posterMat);
-          outer.position.set(x, baseY, pz + 0.155);
-          group.add(outer);
+          outerParts.push(quad({ w: PW, h: PH, uv: board.uv(idx2), x, y: baseY, z: pz + 0.155 }));
+          innerParts.push(quad({ w: PW, h: PH, uv: board.uv(idx2), x, y: baseY, z: pz, ry: Math.PI }));
           posters.push({ m, baseY, phase: idx2 * 1.7 });
           rects2.push(ctx.addCollider({ x0: x - 0.62, z0: pz - 0.28, x1: x + 0.62, z1: pz + 0.28, kind: "prop" }));
           removers.push(ctx.addInteractable({
@@ -38387,6 +38389,14 @@ void main() {
         group.add(new Mesh(merge(neon), new MeshBasicMaterial({ vertexColors: true, toneMapped: false })));
       }
       if (signs.length) group.add(new Mesh(merge(signs), new MeshBasicMaterial({ map: signTex, toneMapped: false })));
+      if (outerParts.length) group.add(new Mesh(merge(outerParts), posterMat));
+      const innerStatic = innerParts.length ? new Mesh(merge(innerParts), posterMat) : null;
+      if (innerStatic) group.add(innerStatic);
+      const applyLow = (low) => {
+        if (innerStatic) innerStatic.visible = low;
+        for (const p of posters) p.m.visible = !low;
+      };
+      applyLow(ctx.quality() === "low");
       ctx.scene.add(group);
       ctx.track(group);
       const offDbg = debugHook(ctx, "showcase", { posters: posters.map((p) => ({ x: p.m.position.x, z: p.m.position.z, id: flat[posters.indexOf(p)].Id })) });
@@ -38399,6 +38409,7 @@ void main() {
           }
         },
         onQuality(level) {
+          applyLow(level === "low");
           if (level !== "low") return;
           for (const p of posters) {
             p.m.rotation.y = Math.PI;
@@ -48298,13 +48309,35 @@ void main() {
     const b = (w, h3, d, dx, y, z, color2, rx = 0, ry = 0, rz = 0) => out.push(box({ w, h: h3, d, x: x + dx, y, z, rx, ry, rz, color: color2 }));
     const PINK = [0.95, 0.55, 0.75];
     switch (id) {
-      case "belt":
-        b(0.04, 0.2, 0.012, 0, 0.7, -0.04, LEATHER, 0.06);
-        b(0.04, 0.22, 0.012, 4e-3, 0.5, -0.032, LEATHER, -0.12);
-        b(0.04, 0.12, 0.012, 0.012, 0.33, -0.02, LEATHER, -0.28);
-        b(0.07, 0.06, 0.02, 0, 0.8, -0.05, STEEL);
-        b(0.04, 0.035, 0.024, 0, 0.8, -0.052, sc(STEEL, 0.55));
+      case "belt": {
+        const R2 = 0.1;
+        const N2 = 10;
+        const cy = -(0.025 + R2);
+        const pt = (k) => [Math.sin(k / N2 * Math.PI * 2) * R2, cy + Math.cos(k / N2 * Math.PI * 2) * R2];
+        const LA = [0.5, 0.31, 0.17];
+        const LB = sc(LA, 0.82);
+        const loop = [];
+        const l = (w, h3, d, lx, ly, color2, rz = 0) => loop.push(box({ w, h: h3, d, x: lx, y: ly, z: 0, rz, color: color2 }));
+        for (let k = 0; k < N2; k++) {
+          const [x0, y0] = pt(k);
+          const [x1, y1] = pt(k + 1);
+          l(Math.hypot(x1 - x0, y1 - y0) + 4e-3, 0.012, 0.036, (x0 + x1) / 2, (y0 + y1) / 2, k % 2 ? LB : LA, Math.atan2(y1 - y0, x1 - x0));
+        }
+        l(0.062, 0.012, 0.044, 0, 0, STEEL);
+        l(0.062, 0.012, 0.044, 0, -0.05, STEEL);
+        l(0.012, 0.062, 0.044, -0.025, -0.025, STEEL);
+        l(0.012, 0.062, 0.044, 0.025, -0.025, STEEL);
+        l(7e-3, 0.05, 0.03, 0, -0.025, [0.95, 0.96, 0.98]);
+        l(0.035, 0.1, 0.012, 0.05, -0.075, LA, 0.35);
+        _p3.set(x, 0.78, -0.04);
+        _q3.setFromEuler(_e3.set(0, 0.7, 0));
+        _m5.compose(_p3, _q3, _s3);
+        for (const g of loop) {
+          g.applyMatrix4(_m5);
+          out.push(g);
+        }
         break;
+      }
       case "whip": {
         b(0.035, 0.2, 0.035, 0, 0.76, -0.04, [0.2, 0.13, 0.09]);
         b(0.042, 0.03, 0.042, 0, 0.67, -0.04, STEEL);
@@ -49475,6 +49508,8 @@ void main() {
     if (n.edges.length === 1 && SPUR_PATHS.has(e.path)) {
       w.pending = { edge: w.edge, dir: -w.dir };
       w.state = "browse";
+      w.fleeT = 0;
+      w.rush = 1;
       w.timer = 1.6 + env2.rand() * 2.6;
       w.browseFace = yawOf(...dirXZ(g, w));
       w.s = e.len;
@@ -51759,7 +51794,8 @@ void main() {
         walkerGroup().add(handle.root);
         const w = createWalker(graph, rand, { edge: e.id, id: walkers.length, rush: rain ? 1.25 : 1 });
         const seed = Math.floor(rand() * 1e9);
-        const temper = temperOf(seed);
+        const dv = ctx.opts && ctx.opts.dev && ctx.opts.dev.temper;
+        const temper = dv === "hot" || dv === "shy" || dv === "normal" ? dv : temperOf(seed);
         w.temper = temper;
         const rawReact = handle.hitReact.bind(handle);
         const entry = { w, handle, acc: 0, rawReact, col: null, look, seed, temper, tst: { temper }, act: null, pend: null, pose: null, known: rand() < 0.25, waved: false, danceCool: 0 };
@@ -60834,6 +60870,15 @@ void main() {
       let wpSent = null;
       let wpDue = -1;
       let disposed = false;
+      const dev = ctx.opts && ctx.opts.dev || {};
+      if (WEAPON_IDS.includes(dev.weapon) && !xrOn()) weapon = dev.weapon;
+      const devHp = Number(dev.hp);
+      const devTodo = {
+        safe: dev.safe === "kids" || dev.safe === "hall" ? { at: 0.4, v: dev.safe } : null,
+        hp: dev.hp !== void 0 && dev.hp !== "" && Number.isFinite(devHp) && devHp < 100 ? { at: 0.8, v: Math.max(0, devHp) } : null,
+        ko: dev.ko === "1" ? { at: 2 } : null,
+        blind: dev.blind === "1" ? { at: 2 } : null
+      };
       const energy = createEnergy();
       const hud = createEnergyHud(host, { touch: !!ctx.isTouch });
       const veil = createBlindVeil(host);
@@ -61077,6 +61122,36 @@ void main() {
         } catch {
         }
       }
+      function runDev() {
+        for (const k of Object.keys(devTodo)) {
+          const d = devTodo[k];
+          if (!d || T5 < d.at) continue;
+          devTodo[k] = null;
+          try {
+            if (k === "safe") {
+              const z = L2.zones && (d.v === "kids" ? L2.zones.kids : L2.zones.palastHall);
+              const r = z && z.rect;
+              if (z) {
+                const x = d.v === "kids" && Number.isFinite(z.x) ? z.x : r ? (r.x0 + r.x1) / 2 : z.x;
+                const zz = d.v === "kids" && Number.isFinite(z.z) ? z.z : r ? (r.z0 + r.z1) / 2 : z.z;
+                ctx.player.teleport(x, zz, Number.isFinite(z.yaw) ? z.yaw : 0, 0, r && r.y0 ? r.y0 : 0);
+              }
+            } else if (k === "hp") {
+              const r = energy.hit(100 - d.v, T5);
+              hudVal = r.energy;
+              hud.set(r.energy);
+              if (r.ko) startKO();
+            } else if (k === "ko") {
+              const r = energy.hit(1e3, T5);
+              hudVal = r.energy;
+              hud.set(r.energy);
+              startKO();
+            } else if (k === "blind") blindPlayer(2500);
+          } catch (err) {
+            warn8("dev " + k, err);
+          }
+        }
+      }
       function setWeapon(id) {
         if (!WEAPON_IDS.includes(id) || xrOn() || disposed) return false;
         if (id === weapon) return true;
@@ -61100,6 +61175,8 @@ void main() {
       const tmpH = new Vector3();
       let dot = null;
       let beam = null;
+      let dot2d = null;
+      const tmpP = new Vector3();
       const stateOut = () => ({ on: laserOn, point: laserOn && point ? { ...point } : null });
       const emitLaser = () => {
         const s = stateOut();
@@ -61113,7 +61190,7 @@ void main() {
       };
       function ensureGfx() {
         if (dot) return;
-        dot = new Mesh(new SphereGeometry(0.045, 8, 6), new MeshBasicMaterial({ color: 16722474, fog: false }));
+        dot = new Mesh(new SphereGeometry(0.05, 8, 6), new MeshBasicMaterial({ color: 16722474, fog: false }));
         dot.visible = false;
         dot.frustumCulled = false;
         dot.name = "lfx-laser-dot";
@@ -61121,15 +61198,38 @@ void main() {
       }
       function ensureBeam() {
         if (beam) return;
-        beam = new Mesh(new BoxGeometry(0.012, 0.012, 1), new MeshBasicMaterial({ color: 16724016, transparent: true, opacity: 0.55, fog: false, depthWrite: false }));
+        beam = new Mesh(new BoxGeometry(0.04, 0.04, 1), new MeshBasicMaterial({ color: 16722460, transparent: true, opacity: 0.85, fog: false, depthWrite: false, blending: AdditiveBlending }));
         beam.visible = false;
         beam.frustumCulled = false;
         beam.name = "lfx-laser-beam";
         ctx.scene.add(beam);
       }
+      function ensureDot2d() {
+        if (dot2d || !host) return;
+        dot2d = document.createElement("div");
+        dot2d.className = "lfx-store-fight-dot";
+        dot2d.setAttribute("aria-hidden", "true");
+        dot2d.hidden = true;
+        host.appendChild(dot2d);
+      }
       function hideGfx() {
         if (dot) dot.visible = false;
         if (beam) beam.visible = false;
+        if (dot2d) dot2d.hidden = true;
+      }
+      function placeDot2d() {
+        if (!dot2d || !point || !ctx.camera) return;
+        const cv = ctx.renderer && ctx.renderer.domElement;
+        if (!cv) return;
+        tmpP.set(point.x, point.y, point.z).project(ctx.camera);
+        if (!(tmpP.z < 1) || Math.abs(tmpP.x) > 1.05 || Math.abs(tmpP.y) > 1.05) {
+          dot2d.hidden = true;
+          return;
+        }
+        dot2d.hidden = false;
+        const x = cv.offsetLeft + (tmpP.x * 0.5 + 0.5) * cv.clientWidth;
+        const y = cv.offsetTop + (-tmpP.y * 0.5 + 0.5) * cv.clientHeight;
+        dot2d.style.transform = "translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px,0) translate(-50%,-50%)";
       }
       function canLaser() {
         return !disposed && !xrOn() && !koing && !energy.isKO() && weapon === "laser" && flags.fight !== false && ctx.playing() && !isSafe(zoneState());
@@ -61274,22 +61374,35 @@ void main() {
           }
         }
         for (const k of [...dwell.keys()]) if (!seen.has(k)) dwell.delete(k);
-        ensureGfx();
-        dot.position.set(point.x, point.y, point.z);
-        dot.visible = true;
         let third = false;
         try {
           const sv = ctx.use("selfview");
           third = !!(sv && sv.mode && sv.mode() === "third");
         } catch {
         }
-        if (third && ctx.quality() !== "low") {
-          ensureBeam();
-          beam.position.set((o.x + point.x) / 2, (o.y + point.y) / 2 - 0.08, (o.z + point.z) / 2);
-          beam.scale.set(1, 1, Math.max(0.05, hit.t));
-          beam.lookAt(point.x, point.y - 0.08, point.z);
-          beam.visible = true;
-        } else if (beam) beam.visible = false;
+        if (ctx.quality() === "low") {
+          if (dot) dot.visible = false;
+          if (beam) beam.visible = false;
+          ensureDot2d();
+          placeDot2d();
+        } else {
+          if (dot2d) dot2d.hidden = true;
+          ensureGfx();
+          dot.position.set(point.x - dir.x * 0.03, point.y - dir.y * 0.03, point.z - dir.z * 0.03);
+          dot.scale.setScalar(Math.min(4, Math.max(1, hit.t * 0.22)));
+          dot.visible = true;
+          if (third) {
+            ensureBeam();
+            const sx = o.x - d.z * 0.25 + d.x * 0.3;
+            const sy = o.y - 0.4;
+            const sz = o.z + d.x * 0.25 + d.z * 0.3;
+            const len = Math.max(0.05, Math.hypot(point.x - sx, point.y - sy, point.z - sz));
+            beam.position.set((sx + point.x) / 2, (sy + point.y) / 2, (sz + point.z) / 2);
+            beam.scale.set(1, 1, len);
+            beam.lookAt(point.x, point.y, point.z);
+            beam.visible = true;
+          } else if (beam) beam.visible = false;
+        }
         if (netOn() && T5 - lzAt >= LZ_GAP) {
           lzAt = T5;
           if (netSend("lz", { on: 1, point: { x: point.x, y: point.y, z: point.z } })) lzOnSent = true;
@@ -61420,6 +61533,7 @@ void main() {
             if (laserOn) setLaser(false);
             return;
           }
+          runDev();
           const wo = wheel.isOpen();
           menuNow = !ctx.playing() && !wo && !koing;
           energy.setMenu(menuNow, T5);
@@ -61448,6 +61562,7 @@ void main() {
           } else if (wpDue < 0 && netOn() && wpSent == null && weapon !== "hand") wpDue = T5;
           if (auxHeld && !auxLaser && weapon === "laser" && T5 - auxStart >= AUX_TAP) auxLaser = setLaser(true);
           if (laserOn) {
+            placeDot2d();
             if (!ctx.playing() || koing || weapon !== "laser" || isSafe(zoneState())) setLaser(false);
             else {
               laserAcc += dt || 0;
@@ -61501,6 +61616,8 @@ void main() {
           }
           dot = null;
           beam = null;
+          if (dot2d && dot2d.parentNode) dot2d.parentNode.removeChild(dot2d);
+          dot2d = null;
           hud.dispose();
           veil.dispose();
           wheel.dispose();
@@ -61898,6 +62015,13 @@ void main() {
           tod = "night";
           seed = 1;
         }
+        const dg = opts.dev && opts.dev.gang;
+        if (dg === "0") n = 0;
+        else if (dg === "1") {
+          n = 2;
+          tod = "night";
+          seed = 1;
+        } else if (dg === "day") n = Math.max(1, n);
         return { tod, seed, n: Math.min(n, figCap()) };
       }
       const allCalm = () => members.every((m) => m.st === "idle");
@@ -64627,13 +64751,12 @@ void main() {
       }
     }
     function pick3(emote) {
-      let done = true;
+      api.close();
       try {
-        done = onPick ? onPick(emote) !== false : true;
+        if (onPick) onPick(emote);
       } catch (err) {
         warn11("onPick", err);
       }
-      if (done) api.close();
     }
     function onKey(e) {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -66977,6 +67100,7 @@ void main() {
   var GC_GAP_MS = 1e3;
   var LB_GAP_MS = 4e3;
   var LZ_EPS_CM = 5;
+  var LZ_BEAT_MS = 2e3;
   var TYPES = ["wp", "fh", "lz", "lb", "gs", "gh", "ga", "pu"];
   var warn16 = (what, err) => {
     try {
@@ -67030,7 +67154,7 @@ void main() {
       pendingLz = null;
       if (out(build.lz(p.on, p.q))) {
         last.lz = t;
-        lastLz = p;
+        lastLz = { on: p.on, q: p.q, at: t };
       }
     }
     function sendLz(payload, t) {
@@ -67040,7 +67164,7 @@ void main() {
       const pt = payload && payload.point && Number.isFinite(payload.point.x) ? payload.point : pose;
       if (!pt) return false;
       const q = frame.enc(pt.x, Number.isFinite(pt.y) ? pt.y : 0, pt.z, r);
-      if (lastLz && lastLz.on === on && (!on || Math.hypot(q[0] - lastLz.q[0], q[1] - lastLz.q[1], q[2] - lastLz.q[2]) <= LZ_EPS_CM)) {
+      if (lastLz && lastLz.on === on && (!on || Math.hypot(q[0] - lastLz.q[0], q[1] - lastLz.q[1], q[2] - lastLz.q[2]) <= LZ_EPS_CM) && !(on && t - lastLz.at >= LZ_BEAT_MS)) {
         pendingLz = null;
         return true;
       }
@@ -67244,6 +67368,12 @@ void main() {
           if (w !== sentWp && out(build.wp(w))) sentWp = w;
         }
         flushLz(t);
+        if (lastLz && lastLz.on && !pendingLz && t - lastLz.at >= LZ_BEAT_MS && t - last.lz >= LZ_GAP_MS) {
+          if (out(build.lz(1, lastLz.q))) {
+            last.lz = t;
+            lastLz.at = t;
+          }
+        }
       },
       /** Verbindung weg: Führer und Zustände vergessen (Peers räumt peers.clear()). */
       stop() {
@@ -70173,15 +70303,37 @@ void main() {
   var SWING_DURS = { hand: SWING_DUR, belt: 0.36, whip: 0.55 };
   var HELD_WEAPONS = ["belt", "whip", "laser"];
   var WEAPON_POS = [0.27, -0.27, -0.44];
-  var LEATHER3 = 5387294;
-  var STEEL2 = 12370636;
+  var BELT_A = 9067056;
+  var BELT_B = 7620650;
+  var STEEL2 = 14936046;
   var WHIP_SEGS = 7;
   var THROW_DUR = 0.35;
   var CARRY_POS = [0.24, -0.2, -0.42];
   var SIDE2 = { vhs: 14866621, dvd: 1916828, box: 13214247 };
   var SIZE = { vhs: [0.1, 0.19, 0.03], dvd: [0.12, 0.17, 0.02], box: [0.14, 0.19, 0.05] };
+  var _e6 = new Euler();
+  var _q7 = new Quaternion();
+  var _p6 = new Vector3();
+  var _m13 = new Matrix4();
+  var _id2 = new Matrix4();
+  var _s1 = new Vector3(1, 1, 1);
+  var _c2 = new Color();
+  function paintGeo(g, hex2) {
+    const n = g.attributes.position.count;
+    const c = new Float32Array(n * 3);
+    _c2.setHex(hex2);
+    for (let i = 0; i < n; i++) {
+      c[i * 3] = _c2.r;
+      c[i * 3 + 1] = _c2.g;
+      c[i * 3 + 2] = _c2.b;
+    }
+    g.setAttribute("color", new Float32BufferAttribute(c, 3));
+  }
+  var LENS_ON = new Color(16734790).toArray();
+  var LENS_OFF = new Color(6955554).toArray();
   var sin01 = (p) => Math.sin(Math.PI * Math.min(1, Math.max(0, p)));
-  function createHands(camera) {
+  function createHands(camera, opts = {}) {
+    const quality = typeof opts.quality === "function" ? opts.quality : () => "mid";
     const group = new Group();
     group.name = "lfx-hands";
     const fistMat = new MeshBasicMaterial({ color: 15251604, depthTest: false, transparent: true });
@@ -70218,72 +70370,145 @@ void main() {
     }
     function clearWeapon() {
       if (!weapon) return;
-      weaponGroup.remove(weapon.group);
-      for (const g of weapon.geos) g.dispose();
-      for (const m of weapon.mats) m.dispose();
+      weaponGroup.remove(weapon.mesh);
+      weapon.geo.dispose();
+      weapon.mat.dispose();
       weapon = null;
       weaponGroup.visible = false;
       weaponGroup.rotation.set(0, 0, 0);
       weaponGroup.position.set(...WEAPON_POS);
     }
     function buildWeapon(id) {
-      const g = new Group();
-      const geos3 = [];
-      const mats = [];
-      const mat2 = (color2, op = 1) => {
-        const m = new MeshBasicMaterial({ color: color2, depthTest: false, transparent: true, opacity: op });
-        mats.push(m);
-        return m;
+      const list = [];
+      const part = (w2, h3, d, x, y, z, color2, o = {}) => {
+        const g = new BoxGeometry(w2, h3, d);
+        g.deleteAttribute("uv");
+        g.deleteAttribute("normal");
+        if (o.rx || o.ry || o.rz) {
+          _e6.set(o.rx || 0, o.ry || 0, o.rz || 0, "YXZ");
+          _q7.setFromEuler(_e6);
+          g.applyQuaternion(_q7);
+        }
+        g.translate(x, y, z);
+        paintGeo(g, color2);
+        list.push({ g, seg: o.seg === void 0 ? -1 : o.seg, lens: !!o.lens });
       };
-      const part = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => {
-        geos3.push(geo);
-        const mesh = new Mesh(geo, m);
-        mesh.renderOrder = 998;
-        mesh.position.set(x, y, z);
-        mesh.rotation.set(rx, ry, rz);
-        g.add(mesh);
-        return mesh;
-      };
-      const w = { id, group: g, geos: geos3, mats };
+      const w = { id, mesh: null, segs: null, lens: null, wave: null };
       if (id === "belt") {
-        const lm = mat2(LEATHER3);
-        part(new BoxGeometry(0.035, 0.012, 0.2), lm, 0, 0, 0.09, 0.15);
-        part(new BoxGeometry(0.035, 0.012, 0.16), lm, 0, -0.03, 0.24, 0.55);
-        part(new BoxGeometry(0.05, 0.04, 0.025), mat2(STEEL2), 0, 5e-3, -0.015);
-        part(new BoxGeometry(0.03, 0.025, 0.03), mat2(7304320), 0, 5e-3, -0.016);
+        const R2 = 0.075;
+        const N2 = 10;
+        const cy = 0.02 + R2;
+        const pt = (k) => [Math.sin(k / N2 * Math.PI * 2) * R2, cy - Math.cos(k / N2 * Math.PI * 2) * R2];
+        for (let k = 0; k < N2; k++) {
+          const [x0, y0] = pt(k);
+          const [x1, y1] = pt(k + 1);
+          const len = Math.hypot(x1 - x0, y1 - y0) + 4e-3;
+          part(len, 0.012, 0.034, (x0 + x1) / 2, (y0 + y1) / 2, 0, k % 2 ? BELT_B : BELT_A, { rz: Math.atan2(y1 - y0, x1 - x0) });
+        }
+        part(0.06, 0.011, 0.042, 0, 0.032, 0, STEEL2);
+        part(0.06, 0.011, 0.042, 0, -0.018, 0, STEEL2);
+        part(0.011, 0.061, 0.042, -0.0245, 7e-3, 0, STEEL2);
+        part(0.011, 0.061, 0.042, 0.0245, 7e-3, 0, STEEL2);
+        part(6e-3, 0.05, 0.03, 0, 7e-3, 4e-3, 15659510);
+        part(0.034, 0.1, 0.012, 0.04, -0.06, 0, BELT_A, { rz: 0.35 });
+        part(0.034, 0.05, 0.012, 0.07, -0.135, 0, BELT_B, { rz: 0.6 });
       } else if (id === "whip") {
-        part(new BoxGeometry(0.03, 0.03, 0.17), mat2(3088408), 0, 0, 0.02);
-        part(new BoxGeometry(0.036, 0.036, 0.02), mat2(STEEL2), 0, 0, -0.07);
-        const lm = mat2(LEATHER3);
-        const segs = [];
-        let parent = g;
+        part(0.03, 0.03, 0.17, 0, 0, 0.02, 4862758);
+        part(0.036, 0.036, 0.02, 0, 0, -0.07, STEEL2);
+        w.segs = [];
+        w.segM = [];
         for (let i = 0; i < WHIP_SEGS; i++) {
-          const sg = new Group();
-          sg.position.set(0, 0, i === 0 ? -0.08 : -(0.11 - (i - 1) * 6e-3));
-          parent.add(sg);
           const len = 0.11 - i * 6e-3;
           const t = 0.014 - i * 13e-4;
-          const bg = new BoxGeometry(t, t, len);
-          geos3.push(bg);
-          const m = new Mesh(bg, lm);
-          m.renderOrder = 998;
-          m.position.z = -len / 2;
-          sg.add(m);
-          sg.rotation.x = -0.14;
-          segs.push(sg);
-          parent = sg;
+          part(t, t, len, 0, 0, -len / 2, i % 2 ? BELT_B : BELT_A, { seg: i });
+          w.segs.push({ rot: -0.14, z: i === 0 ? -0.08 : -(0.11 - (i - 1) * 6e-3) });
+          w.segM.push(new Matrix4());
         }
-        w.segs = segs;
       } else if (id === "laser") {
-        part(new BoxGeometry(0.026, 0.026, 0.15), mat2(1842985), 0, 0, 0);
-        part(new BoxGeometry(0.03, 0.03, 0.03), mat2(13377572), 0, 0, 0.055);
-        part(new BoxGeometry(0.02, 0.02, 0.02), mat2(16738906), 0, 0, -0.082);
-        w.glow = part(new SphereGeometry(9e-3, 8, 6), mat2(16726832), 0, 0, -0.098);
-        w.halo = part(new SphereGeometry(0.02, 8, 6), mat2(16738906, 0.35), 0, 0, -0.098);
-        w.glow.visible = false;
-        w.halo.visible = false;
+        part(0.026, 0.026, 0.15, 0, 0, 0, 2895936);
+        part(0.03, 0.03, 0.03, 0, 0, 0.055, 13377572);
+        part(0.02, 0.02, 0.02, 0, 0, -0.082, 11449538);
+        part(0.016, 0.016, 0.016, 0, 0, -0.098, 16726832, { lens: true });
+      }
+      const geo = mergeGeometries(list.map((q) => q.g), false);
+      list.forEach((q) => q.g.dispose());
+      const n = geo.attributes.position.count;
+      const per = n / list.length;
+      w.segOf = new Int8Array(n);
+      w.lensAt = [];
+      list.forEach((q, i) => {
+        for (let v = 0; v < per; v++) {
+          w.segOf[i * per + v] = q.seg;
+          if (q.lens) w.lensAt.push(i * per + v);
+        }
+      });
+      w.base = new Float32Array(geo.attributes.position.array);
+      w.colorBase = new Float32Array(geo.attributes.color.array);
+      geo.attributes.position.setUsage(DynamicDrawUsage);
+      if (w.segs || w.lensAt.length) geo.attributes.color.setUsage(DynamicDrawUsage);
+      const mat2 = new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true });
+      const mesh = new Mesh(geo, mat2);
+      mesh.renderOrder = 998;
+      mesh.frustumCulled = false;
+      mesh.name = "lfx-hands-" + id;
+      w.mesh = mesh;
+      w.geo = geo;
+      w.mat = mat2;
+      if (w.lensAt.length) {
+        let cx = 0;
+        let cy = 0;
+        let cz = 0;
+        for (const v of w.lensAt) {
+          cx += w.base[v * 3];
+          cy += w.base[v * 3 + 1];
+          cz += w.base[v * 3 + 2];
+        }
+        w.lensC = [cx / w.lensAt.length, cy / w.lensAt.length, cz / w.lensAt.length];
       }
       return w;
+    }
+    function skinWhip(wp) {
+      const mats = wp.segM;
+      for (let i = 0; i < wp.segs.length; i++) {
+        const sg = wp.segs[i];
+        _e6.set(sg.rot, 0, 0);
+        _q7.setFromEuler(_e6);
+        _p6.set(0, 0, sg.z);
+        mats[i].multiplyMatrices(i ? mats[i - 1] : _id2, _m13.compose(_p6, _q7, _s1));
+      }
+      const pos = wp.geo.attributes.position.array;
+      for (let v = 0; v < wp.segOf.length; v++) {
+        const s = wp.segOf[v];
+        if (s < 0) continue;
+        _p6.set(wp.base[v * 3], wp.base[v * 3 + 1], wp.base[v * 3 + 2]).applyMatrix4(mats[s]);
+        pos[v * 3] = _p6.x;
+        pos[v * 3 + 1] = _p6.y;
+        pos[v * 3 + 2] = _p6.z;
+      }
+      wp.geo.attributes.position.needsUpdate = true;
+    }
+    function paintLens(wp, k) {
+      const col2 = wp.geo.attributes.color.array;
+      const pos = wp.geo.attributes.position.array;
+      const on = laserOn;
+      for (const v of wp.lensAt) {
+        const i = v * 3;
+        if (on) {
+          col2[i] = LENS_ON[0];
+          col2[i + 1] = LENS_ON[1];
+          col2[i + 2] = LENS_ON[2];
+        } else {
+          col2[i] = LENS_OFF[0];
+          col2[i + 1] = LENS_OFF[1];
+          col2[i + 2] = LENS_OFF[2];
+        }
+        const s = on ? k : 1;
+        pos[i] = wp.lensC[0] + (wp.base[i] - wp.lensC[0]) * s;
+        pos[i + 1] = wp.lensC[1] + (wp.base[i + 1] - wp.lensC[1]) * s;
+        pos[i + 2] = wp.lensC[2] + (wp.base[i + 2] - wp.lensC[2]) * s;
+      }
+      wp.geo.attributes.color.needsUpdate = true;
+      wp.geo.attributes.position.needsUpdate = true;
     }
     const reduced2 = () => typeof matchMedia === "function" && !!matchMedia("(prefers-reduced-motion: reduce)").matches;
     function updateWeapon() {
@@ -70293,7 +70518,7 @@ void main() {
       if (id === "belt") {
         const p = swingT > 0 && swingKind === "belt" ? 1 - swingT / swingDur : 0;
         const e = sin01(p);
-        wg.position.set(WEAPON_POS[0] - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e);
+        wg.position.set(WEAPON_POS[0] - 0.04 * (1 - e) - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * (1 - e) + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e);
         wg.rotation.set(0.5 * (1 - e) - 0.2 * e, -0.2 - 1.5 * p + 0.5 * e, 0.4 * (1 - e));
       } else if (id === "whip") {
         const p = swingT > 0 && swingKind === "whip" ? 1 - swingT / swingDur : 0;
@@ -70304,16 +70529,13 @@ void main() {
         const crack = p > 0 ? 0.55 : 0.04;
         weapon.segs.forEach((sg, i) => {
           const lag = Math.max(0, slash * 1.4 - i * 0.11);
-          sg.rotation.x = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : reduced2() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3);
+          sg.rot = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : reduced2() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3);
         });
+        skinWhip(weapon);
       } else if (id === "laser") {
         wg.position.set(WEAPON_POS[0] - 0.04, WEAPON_POS[1] + 0.05 + breathe, WEAPON_POS[2] + 0.02);
         wg.rotation.set(0.1, 0.12, 0);
-        if (laserOn) {
-          const pulse = reduced2() ? 1 : 1 + Math.sin(clock * 14) * 0.18;
-          weapon.glow.scale.setScalar(pulse);
-          weapon.halo.scale.setScalar(pulse * 1.1);
-        }
+        paintLens(weapon, laserOn && !reduced2() ? 1.5 + Math.sin(clock * 14) * 0.3 : laserOn ? 1.5 : 1);
       }
     }
     const api = {
@@ -70342,10 +70564,7 @@ void main() {
       /** Laser an/aus (leuchtet nur mit gehaltenem Laser). */
       setLaser(on) {
         laserOn = !!on;
-        if (weapon && weapon.glow) {
-          weapon.glow.visible = laserOn;
-          weapon.halo.visible = laserOn;
-        }
+        if (weapon && weapon.lensAt.length) paintLens(weapon, laserOn ? 1.5 : 1);
       },
       throwAnim() {
         throwT = THROW_DUR;
@@ -70362,13 +70581,10 @@ void main() {
         if (wid) {
           if (!weapon) {
             weapon = buildWeapon(wid);
-            weaponGroup.add(weapon.group);
+            weaponGroup.add(weapon.mesh);
           }
           weaponGroup.visible = true;
-          if (weapon.glow) {
-            weapon.glow.visible = laserOn;
-            weapon.halo.visible = laserOn;
-          }
+          if (weapon.lensAt.length) paintLens(weapon, laserOn ? 1.5 : 1);
           return;
         }
         if (!spec) return;
@@ -70401,7 +70617,10 @@ void main() {
         clock += dt;
         if (swingT > 0) swingT = Math.max(0, swingT - dt);
         if (throwT > 0) throwT = Math.max(0, throwT - dt);
-        if (weapon) updateWeapon();
+        if (weapon) {
+          updateWeapon();
+          weaponGroup.visible = !(weapon.id === "laser" && laserOn && quality() === "low");
+        }
         if (swingT > 0 && swingKind !== "hand") fist.visible = false;
         else if (swingT > 0) {
           const p = 1 - swingT / SWING_DUR;
@@ -70949,10 +71168,10 @@ void main() {
   };
 
   // src/js/store3d/xr/rig.js
-  var _e6 = new Euler(0, 0, 0, "YXZ");
+  var _e7 = new Euler(0, 0, 0, "YXZ");
   function headLocal(cameraXr) {
-    _e6.setFromQuaternion(cameraXr.quaternion, "YXZ");
-    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e6.y, pitch: _e6.x };
+    _e7.setFromQuaternion(cameraXr.quaternion, "YXZ");
+    return { x: cameraXr.position.x, y: cameraXr.position.y, z: cameraXr.position.z, yaw: _e7.y, pitch: _e7.x };
   }
   function headWorld(rig, head) {
     const ry = rig.rotation.y;
@@ -72515,10 +72734,10 @@ void main() {
   };
 
   // src/js/store3d/xr/hands.js
-  var _p6 = new Vector3();
+  var _p7 = new Vector3();
   var _n = new Vector3();
   var _h = new Vector3();
-  var _q7 = new Quaternion();
+  var _q8 = new Quaternion();
   function attachVisuals(rec) {
     const geos3 = [];
     const mats = [];
@@ -72586,36 +72805,36 @@ void main() {
         if (rec.source.hand) {
           const joint = rec.handGroup && rec.handGroup.joints ? rec.handGroup.joints.wrist : null;
           if (joint && joint.visible) {
-            _q7.copy(joint.quaternion);
-            _n.set(0, -1, 0).applyQuaternion(_q7);
-            _p6.copy(joint.position).addScaledVector(_n, 0.03);
+            _q8.copy(joint.quaternion);
+            _n.set(0, -1, 0).applyQuaternion(_q8);
+            _p7.copy(joint.position).addScaledVector(_n, 0.03);
             show = true;
           }
         } else if (rec.grip.visible) {
-          _q7.copy(rec.grip.quaternion);
-          _n.set(0, 1, 0).applyQuaternion(_q7);
-          _p6.set(0, 0.035, 0.09).applyQuaternion(_q7).add(rec.grip.position);
+          _q8.copy(rec.grip.quaternion);
+          _n.set(0, 1, 0).applyQuaternion(_q8);
+          _p7.set(0, 0.035, 0.09).applyQuaternion(_q8).add(rec.grip.position);
           show = true;
         }
       }
       if (show) {
-        _h.copy(headPos).sub(_p6).normalize();
+        _h.copy(headPos).sub(_p7).normalize();
         show = _n.dot(_h) > 0.35;
       }
       this.visible = show;
       g.visible = show;
       if (show) {
-        g.position.copy(_p6);
+        g.position.copy(_p7);
         g.quaternion.setFromUnitVectors(_h.set(0, 1, 0), _n);
       }
     }
     /** Strahl (Welt) gegen die Kugel um den Knopf; Treffer → Abstand t, sonst null. */
     hit(o, d, maxDist = 3) {
       if (!this.visible) return null;
-      this.group.getWorldPosition(_p6);
-      const cx = _p6.x - o.x;
-      const cy = _p6.y - o.y;
-      const cz = _p6.z - o.z;
+      this.group.getWorldPosition(_p7);
+      const cx = _p7.x - o.x;
+      const cy = _p7.y - o.y;
+      const cz = _p7.z - o.z;
       const t = cx * d.x + cy * d.y + cz * d.z;
       if (t < 0 || t > maxDist) return null;
       const dist2 = cx * cx + cy * cy + cz * cz - t * t;
@@ -77961,7 +78180,7 @@ void main() {
         onPlay: (item, resume) => this.mods && this.mods.emit("play", item, { resume }),
         onCarry: (id) => this.carry(id)
       });
-      this.hands = createHands(engine.camera);
+      this.hands = createHands(engine.camera, { quality: () => engine.preset.level });
       this.mods = new ModuleHost(this);
       this.cinema2d.register(this.mods.ctx);
       this.desktop = this.touch ? null : new DesktopControls({

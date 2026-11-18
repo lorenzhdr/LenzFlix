@@ -30,6 +30,7 @@ export const GH_GAP_MS = 260;
 export const GC_GAP_MS = 1000;
 export const LB_GAP_MS = 4000;
 export const LZ_EPS_CM = 5;
+export const LZ_BEAT_MS = 2000; // Herzschlag: stillgehaltener Laser wird erneut gesendet (Peers lassen Punkte nach 6 s verfallen)
 const TYPES = ['wp', 'fh', 'lz', 'lb', 'gs', 'gh', 'ga', 'pu'];
 
 const warn = (what, err) => { try { console.warn('[LenzFlix Store3D] mp fight', what, err && err.message ? err.message : ''); } catch { /* egal */ } };
@@ -45,7 +46,7 @@ export function createFightNet(core) {
   let gen = 0;
   let sentWp = -1;
   let pendingWp = null; // { w, at }
-  let lastLz = null; // { on, q }
+  let lastLz = null; // { on, q, at }
   let pendingLz = null; // { on, q }
   const last = { lz: -1e9, gs: -1e9, fh: -1e9, gh: -1e9, gc: -1e9 };
   const lastLb = new Map(); // c → ms
@@ -67,7 +68,7 @@ export function createFightNet(core) {
     if (!pendingLz || t - last.lz < LZ_GAP_MS) return;
     const p = pendingLz;
     pendingLz = null;
-    if (out(build.lz(p.on, p.q))) { last.lz = t; lastLz = p; }
+    if (out(build.lz(p.on, p.q))) { last.lz = t; lastLz = { on: p.on, q: p.q, at: t }; }
   }
   function sendLz(payload, t) {
     const pose = poseOf();
@@ -76,7 +77,7 @@ export function createFightNet(core) {
     const pt = payload && payload.point && Number.isFinite(payload.point.x) ? payload.point : pose;
     if (!pt) return false;
     const q = frame.enc(pt.x, Number.isFinite(pt.y) ? pt.y : 0, pt.z, r);
-    if (lastLz && lastLz.on === on && (!on || Math.hypot(q[0] - lastLz.q[0], q[1] - lastLz.q[1], q[2] - lastLz.q[2]) <= LZ_EPS_CM)) { pendingLz = null; return true; }
+    if (lastLz && lastLz.on === on && (!on || Math.hypot(q[0] - lastLz.q[0], q[1] - lastLz.q[1], q[2] - lastLz.q[2]) <= LZ_EPS_CM) && !(on && t - lastLz.at >= LZ_BEAT_MS)) { pendingLz = null; return true; }
     pendingLz = { on, q };
     flushLz(t);
     return true;
@@ -240,6 +241,9 @@ export function createFightNet(core) {
         if (w !== sentWp && out(build.wp(w))) sentWp = w;
       }
       flushLz(t);
+      if (lastLz && lastLz.on && !pendingLz && t - lastLz.at >= LZ_BEAT_MS && t - last.lz >= LZ_GAP_MS) { // Herzschlag, solange der Laser an ist
+        if (out(build.lz(1, lastLz.q))) { last.lz = t; lastLz.at = t; }
+      }
     },
     /** Verbindung weg: Führer und Zustände vergessen (Peers räumt peers.clear()). */
     stop() { reset(); },

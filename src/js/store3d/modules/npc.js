@@ -222,7 +222,8 @@ export default {
       walkerGroup().add(handle.root);
       const w = createWalker(graph, rand, { edge: e.id, id: walkers.length, rush: rain ? 1.25 : 1 });
       const seed = Math.floor(rand() * 1e9);
-      const temper = temperOf(seed);
+      const dv = ctx.opts && ctx.opts.dev && ctx.opts.dev.temper; // Harness ?temper=hot|shy|normal (1.18.0)
+      const temper = dv === 'hot' || dv === 'shy' || dv === 'normal' ? dv : temperOf(seed);
       w.temper = temper;
       // Wurftreffer (throw.js ruft nur handle.hitReact) sollen wie der Schlag wirken: Walker-Automat auf stagger setzen, sonst überschreibt er die Animation jeden Frame.
       const rawReact = handle.hitReact.bind(handle);

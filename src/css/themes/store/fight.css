@@ -2,7 +2,7 @@
    Waffenrad (ui/weaponwheel.js), Blend-Schleier (ui/blindveil.js). Nur unter html.lfx-js.lfx-theme-store:not(.layout-tv);
    nur --lfx-store-Tokens mit Rückfallwerten. Alle Bewegung entfällt bei prefers-reduced-motion. */
 
-/* --- Energiebalken (dezent; Desktop unten links, Handy oben links unter dem Mehrspieler-Zähler) --- */
+/* --- Energiebalken (dezent, aber lesbar: Balken 150 x 10 px, Beschriftung mit dunkler Hinterlegung; erscheint nur nach Treffern) --- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy {
   position: absolute;
   z-index: var(--lfx-store-z-hud, 1220);
@@ -10,35 +10,54 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 132px;
   pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
-  color: var(--lfx-store-muted, #aab4e8);
+  color: var(--lfx-store-text, #f4f6ff);
   font-family: var(--lfx-store-neon-font, system-ui, sans-serif);
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   letter-spacing: 0.04em;
-  opacity: 0.85;
+  opacity: 0.92;
   transition: opacity 0.3s linear;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy[hidden] { display: none; }
+/* Desktop: unten Mitte (unten links liegt das Chat-Protokoll) */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-desk {
-  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
-  bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) + 4px));
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 6px));
 }
+/* Handy: in der Zeile des Menü-Knopfs (44 px hoch, Oberkante top+10) zwischen Knopf und Zähler/Chat/Emote rechts; Beschriftung über dem Balken gestapelt.
+   Das Chat-Protokoll liegt darunter (top+62), so überdeckt nichts den anderen. */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-touch {
-  left: max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px));
-  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 56px);
-  width: 108px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  left: calc(max(var(--lfx-store-safe-x, 12px), env(safe-area-inset-left, 0px)) + 52px);
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 11px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-label {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(8, 11, 30, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  line-height: 1.25;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-track {
-  flex: 1;
-  height: 6px;
+  flex: none;
+  width: 150px;
+  height: 10px;
+  box-sizing: border-box;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: rgba(8, 11, 30, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-touch .lfx-store-fight-energy-track { width: clamp(72px, calc(100vw - 296px), 120px); }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-touch .lfx-store-fight-energy-label { padding: 0 7px; font-size: 0.66rem; line-height: 1.3; }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-fill {
   height: 100%;
   width: 100%;
@@ -46,15 +65,23 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-fill {
   transition: width 0.2s linear, background-color 0.3s linear;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-low .lfx-store-fight-energy-track {
-  border-color: rgba(255, 120, 110, 0.7);
+  border-color: rgba(255, 120, 110, 0.9);
 }
-@media (orientation: landscape) and (max-height: 500px) {
-  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy.is-touch {
-    top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 52px);
-    width: 88px;
-  }
-  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-energy-label { display: none; }
+/* --- Laserpunkt als DOM-Punkt (nur bei `low`: kein Draw-Call; Lage setzt modules/fight.js pro Bild) --- */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: calc(var(--lfx-store-z-hud, 1220) - 10);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0, #ff6a5a 28%, #ff2a2a 60%, rgba(255, 42, 42, 0) 100%);
+  box-shadow: 0 0 10px 4px rgba(255, 42, 42, 0.65);
+  pointer-events: none;
+  will-change: transform;
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-dot[hidden] { display: none; }
 
 /* --- Schutz-Anzeige (10 s, dezent) --- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-fight-shield {

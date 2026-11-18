@@ -361,3 +361,30 @@ describe('Emote-Rad ohne Mehrspieler (createLocalEmotes)', () => {
     expect(hook).not.toHaveBeenCalled();
   });
 });
+
+describe('net/fight: Laser-Herzschlag', () => {
+  it('stillgehaltener Laser wird alle 2 s erneut gesendet (Peers verfallen nach 6 s), nach Aus nicht mehr', () => {
+    const t = setup();
+    t.f.send('lz', { on: true, point: { x: 5, y: 1, z: 2 } });
+    expect(t.sent).toHaveLength(1);
+    t.f.send('lz', { on: true, point: { x: 5, y: 1, z: 2 } }); // unveraendert, zu frueh
+    expect(t.sent).toHaveLength(1);
+    t.tick(2001);
+    expect(t.sent).toHaveLength(2);
+    expect(t.sent[1]).toMatchObject({ t: 'lz', on: 1, q: t.sent[0].q });
+    t.tick(1000);
+    expect(t.sent).toHaveLength(2);
+    t.tick(1100);
+    expect(t.sent).toHaveLength(3);
+    // auch wenn der Aufrufer jeden Frame denselben Punkt meldet
+    t.advance(2100);
+    t.f.send('lz', { on: true, point: { x: 5, y: 1, z: 2 } });
+    expect(t.sent).toHaveLength(4);
+    t.f.send('lz', { on: false });
+    t.tick(300);
+    const n = t.sent.length;
+    expect(t.sent[n - 1]).toMatchObject({ t: 'lz', on: 0 });
+    t.tick(5000);
+    expect(t.sent).toHaveLength(n);
+  });
+});

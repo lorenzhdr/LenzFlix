@@ -1,24 +1,47 @@
 // VIDEOTHEK LENZ · Hände vor der Kamera (nur 2D): Schlag-Schwung (Faust), getragene Hülle unten rechts, Wurf-Schwung,
 // Waffen (1.18.0): Gürtel (flacher Hieb), Peitsche (Überkopf-Hieb mit laufender Welle), Laser-Pointer (Gerät mit Leuchtpunkt, solange er an ist).
+// createHands(camera, { quality() → 'low'|'mid'|'high' }): bei low blendet ein leuchtender Laser sein Gerät aus (0 Draw-Calls zusätzlich).
 // Hängt als Gruppe an der Kamera, ohne Tiefentest (wie die Halte-Ebene); in VR nie sichtbar (setVisible(false)).
-import { Group, Mesh, BoxGeometry, SphereGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace } from 'three';
+import { Group, Mesh, BoxGeometry, MeshBasicMaterial, CanvasTexture, SRGBColorSpace, Matrix4, Quaternion, Vector3, Euler, DynamicDrawUsage, Float32BufferAttribute, Color } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const SWING_DUR = 0.28;
 /** Dauer des Hiebs je Waffe in s (hand = Faust; der Laser schlägt nicht). */
 export const SWING_DURS = { hand: SWING_DUR, belt: 0.36, whip: 0.55 };
 export const HELD_WEAPONS = ['belt', 'whip', 'laser'];
 const WEAPON_POS = [0.27, -0.27, -0.44];
-const LEATHER = 0x52341e;
-const STEEL = 0xbcc2cc;
+const BELT_A = 0x8a5a30; // Leder (abwechselnd zwei Töne, damit die Stücke lesbar bleiben)
+const BELT_B = 0x74482a;
+const STEEL = 0xe3e7ee;
 const WHIP_SEGS = 7;
 const THROW_DUR = 0.35;
 const CARRY_POS = [0.24, -0.2, -0.42];
 const SIDE = { vhs: 0xe2d8bd, dvd: 0x1d3f9c, box: 0xc9a227 };
 const SIZE = { vhs: [0.1, 0.19, 0.03], dvd: [0.12, 0.17, 0.02], box: [0.14, 0.19, 0.05] };
 
+const _e = new Euler();
+const _q = new Quaternion();
+const _p = new Vector3();
+const _m1 = new Matrix4();
+const _id = new Matrix4();
+const _s1 = new Vector3(1, 1, 1);
+const _c = new Color();
+/** Hex-Farbe (sRGB) als Vertexfarbe; Color rechnet in den Arbeitsfarbraum, das Material gibt sie wieder korrekt aus. */
+function paintGeo(g, hex) {
+  const n = g.attributes.position.count;
+  const c = new Float32Array(n * 3);
+  _c.setHex(hex);
+  for (let i = 0; i < n; i++) { c[i * 3] = _c.r; c[i * 3 + 1] = _c.g; c[i * 3 + 2] = _c.b; }
+  g.setAttribute('color', new Float32BufferAttribute(c, 3));
+}
+
+const LENS_ON = new Color(0xff5a46).toArray();
+const LENS_OFF = new Color(0x6a2222).toArray();
+
 const sin01 = (p) => Math.sin(Math.PI * Math.min(1, Math.max(0, p)));
 
-export function createHands(camera) {
+export function createHands(camera, opts = {}) {
+  const quality = typeof opts.quality === 'function' ? opts.quality : () => 'mid';
   const group = new Group();
   group.name = 'lfx-hands';
   const fistMat = new MeshBasicMaterial({ color: 0xe8b894, depthTest: false, transparent: true });
@@ -35,7 +58,7 @@ export function createHands(camera) {
   let swingT = 0;
   let swingDur = SWING_DUR;
   let swingKind = 'hand';
-  let weapon = null; // { id, group, geos, mats, segs?, glow?, halo? }
+  let weapon = null; // { id, mesh, geo, mat, segs?, lensAt? }
   let laserOn = false;
   let clock = 0;
   const weaponGroup = new Group();
@@ -58,72 +81,136 @@ export function createHands(camera) {
 
   function clearWeapon() {
     if (!weapon) return;
-    weaponGroup.remove(weapon.group);
-    for (const g of weapon.geos) g.dispose();
-    for (const m of weapon.mats) m.dispose();
+    weaponGroup.remove(weapon.mesh);
+    weapon.geo.dispose();
+    weapon.mat.dispose();
     weapon = null;
     weaponGroup.visible = false;
     weaponGroup.rotation.set(0, 0, 0);
     weaponGroup.position.set(...WEAPON_POS);
   }
 
-  /** Waffe bauen: kleine Quader/Kugeln ohne Tiefentest (wie die Faust), alles in einer Gruppe, Teile fürs Aufräumen gesammelt. */
+  /**
+   * Waffe bauen (1.18.0, Draw-Call-Budget): EINE Geometrie mit Vertexfarbe und EIN Mesh je Waffe (ohne Tiefentest, wie die Faust).
+   * Die Peitsche bleibt animiert: ihre Segmente werden pro Bild auf der CPU gegen die Segmentkette neu berechnet (Matrix je Segment),
+   * die Laser-Linse (kleine Box an der Spitze) pulsiert und leuchtet ebenfalls über Vertexdaten – kein Zusatzmesh für Glow/Halo.
+   */
   function buildWeapon(id) {
-    const g = new Group();
-    const geos = [];
-    const mats = [];
-    const mat = (color, op = 1) => { const m = new MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: op }); mats.push(m); return m; };
-    const part = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => {
-      geos.push(geo);
-      const mesh = new Mesh(geo, m);
-      mesh.renderOrder = 998;
-      mesh.position.set(x, y, z);
-      mesh.rotation.set(rx, ry, rz);
-      g.add(mesh);
-      return mesh;
+    const list = []; // { g, seg, lens }
+    const part = (w, h, d, x, y, z, color, o = {}) => {
+      const g = new BoxGeometry(w, h, d);
+      g.deleteAttribute('uv');
+      g.deleteAttribute('normal');
+      if (o.rx || o.ry || o.rz) { _e.set(o.rx || 0, o.ry || 0, o.rz || 0, 'YXZ'); _q.setFromEuler(_e); g.applyQuaternion(_q); }
+      g.translate(x, y, z);
+      paintGeo(g, color);
+      list.push({ g, seg: o.seg === undefined ? -1 : o.seg, lens: !!o.lens });
     };
-    const w = { id, group: g, geos, mats };
+    const w = { id, mesh: null, segs: null, lens: null, wave: null };
     if (id === 'belt') {
-      // Schnalle vorn (die Hand packt dort), der Riemen hängt nach hinten-unten
-      const lm = mat(LEATHER);
-      part(new BoxGeometry(0.035, 0.012, 0.2), lm, 0, 0, 0.09, 0.15);
-      part(new BoxGeometry(0.035, 0.012, 0.16), lm, 0, -0.03, 0.24, 0.55);
-      part(new BoxGeometry(0.05, 0.04, 0.025), mat(STEEL), 0, 0.005, -0.015);
-      part(new BoxGeometry(0.03, 0.025, 0.03), mat(0x6f7480), 0, 0.005, -0.016);
+      // Schlaufe: beide Enden in der Faust (Schnalle unten), der Riemen steigt als Ring aus 10 flachen Stücken nach oben-vorn auf, ein Ende hängt heraus
+      const R = 0.075;
+      const N = 10;
+      const cy = 0.02 + R;
+      const pt = (k) => [Math.sin((k / N) * Math.PI * 2) * R, cy - Math.cos((k / N) * Math.PI * 2) * R];
+      for (let k = 0; k < N; k++) {
+        const [x0, y0] = pt(k);
+        const [x1, y1] = pt(k + 1);
+        const len = Math.hypot(x1 - x0, y1 - y0) + 0.004;
+        part(len, 0.012, 0.034, (x0 + x1) / 2, (y0 + y1) / 2, 0, k % 2 ? BELT_B : BELT_A, { rz: Math.atan2(y1 - y0, x1 - x0) });
+      }
+      // Schnalle: Rahmen mit Dorn
+      part(0.06, 0.011, 0.042, 0, 0.032, 0, STEEL);
+      part(0.06, 0.011, 0.042, 0, -0.018, 0, STEEL);
+      part(0.011, 0.061, 0.042, -0.0245, 0.007, 0, STEEL);
+      part(0.011, 0.061, 0.042, 0.0245, 0.007, 0, STEEL);
+      part(0.006, 0.05, 0.03, 0, 0.007, 0.004, 0xeef1f6);
+      // freies Ende
+      part(0.034, 0.1, 0.012, 0.04, -0.06, 0, BELT_A, { rz: 0.35 });
+      part(0.034, 0.05, 0.012, 0.07, -0.135, 0, BELT_B, { rz: 0.6 });
     } else if (id === 'whip') {
-      // Griff, danach eine Kette aus Segmenten (verschachtelte Gruppen): so läuft die Welle beim Hieb von der Hand zur Spitze
-      part(new BoxGeometry(0.03, 0.03, 0.17), mat(0x2f2018), 0, 0, 0.02);
-      part(new BoxGeometry(0.036, 0.036, 0.02), mat(STEEL), 0, 0, -0.07);
-      const lm = mat(LEATHER);
-      const segs = [];
-      let parent = g;
+      // Griff, danach eine Kette aus Segmenten: so läuft die Welle beim Hieb von der Hand zur Spitze
+      part(0.03, 0.03, 0.17, 0, 0, 0.02, 0x4a3326);
+      part(0.036, 0.036, 0.02, 0, 0, -0.07, STEEL);
+      w.segs = [];
+      w.segM = [];
       for (let i = 0; i < WHIP_SEGS; i++) {
-        const sg = new Group();
-        sg.position.set(0, 0, i === 0 ? -0.08 : -(0.11 - (i - 1) * 0.006));
-        parent.add(sg);
         const len = 0.11 - i * 0.006;
         const t = 0.014 - i * 0.0013;
-        const bg = new BoxGeometry(t, t, len);
-        geos.push(bg);
-        const m = new Mesh(bg, lm);
-        m.renderOrder = 998;
-        m.position.z = -len / 2;
-        sg.add(m);
-        sg.rotation.x = -0.14;
-        segs.push(sg);
-        parent = sg;
+        part(t, t, len, 0, 0, -len / 2, i % 2 ? BELT_B : BELT_A, { seg: i });
+        w.segs.push({ rot: -0.14, z: i === 0 ? -0.08 : -(0.11 - (i - 1) * 0.006) });
+        w.segM.push(new Matrix4());
       }
-      w.segs = segs;
     } else if (id === 'laser') {
-      part(new BoxGeometry(0.026, 0.026, 0.15), mat(0x1c1f29), 0, 0, 0);
-      part(new BoxGeometry(0.03, 0.03, 0.03), mat(0xcc2024), 0, 0, 0.055);
-      part(new BoxGeometry(0.02, 0.02, 0.02), mat(0xff6a5a), 0, 0, -0.082);
-      w.glow = part(new SphereGeometry(0.009, 8, 6), mat(0xff3b30), 0, 0, -0.098);
-      w.halo = part(new SphereGeometry(0.02, 8, 6), mat(0xff6a5a, 0.35), 0, 0, -0.098);
-      w.glow.visible = false;
-      w.halo.visible = false;
+      part(0.026, 0.026, 0.15, 0, 0, 0, 0x2c3040);
+      part(0.03, 0.03, 0.03, 0, 0, 0.055, 0xcc2024);
+      part(0.02, 0.02, 0.02, 0, 0, -0.082, 0xaeb4c2);
+      part(0.016, 0.016, 0.016, 0, 0, -0.098, 0xff3b30, { lens: true });
+    }
+    const geo = mergeGeometries(list.map((q) => q.g), false);
+    list.forEach((q) => q.g.dispose());
+    const n = geo.attributes.position.count;
+    const per = n / list.length;
+    w.segOf = new Int8Array(n);
+    w.lensAt = [];
+    list.forEach((q, i) => {
+      for (let v = 0; v < per; v++) { w.segOf[i * per + v] = q.seg; if (q.lens) w.lensAt.push(i * per + v); }
+    });
+    w.base = new Float32Array(geo.attributes.position.array);
+    w.colorBase = new Float32Array(geo.attributes.color.array);
+    geo.attributes.position.setUsage(DynamicDrawUsage);
+    if (w.segs || w.lensAt.length) geo.attributes.color.setUsage(DynamicDrawUsage);
+    const mat = new MeshBasicMaterial({ vertexColors: true, depthTest: false, transparent: true });
+    const mesh = new Mesh(geo, mat);
+    mesh.renderOrder = 998;
+    mesh.frustumCulled = false;
+    mesh.name = 'lfx-hands-' + id;
+    w.mesh = mesh;
+    w.geo = geo;
+    w.mat = mat;
+    if (w.lensAt.length) {
+      let cx = 0; let cy = 0; let cz = 0;
+      for (const v of w.lensAt) { cx += w.base[v * 3]; cy += w.base[v * 3 + 1]; cz += w.base[v * 3 + 2]; }
+      w.lensC = [cx / w.lensAt.length, cy / w.lensAt.length, cz / w.lensAt.length];
     }
     return w;
+  }
+
+  /** Peitsche: Segmentkette → pro Eckpunkt die Matrix seines Segments (Kette relativ zur Waffengruppe). */
+  function skinWhip(wp) {
+    const mats = wp.segM;
+    for (let i = 0; i < wp.segs.length; i++) {
+      const sg = wp.segs[i];
+      _e.set(sg.rot, 0, 0);
+      _q.setFromEuler(_e);
+      _p.set(0, 0, sg.z);
+      mats[i].multiplyMatrices(i ? mats[i - 1] : _id, _m1.compose(_p, _q, _s1));
+    }
+    const pos = wp.geo.attributes.position.array;
+    for (let v = 0; v < wp.segOf.length; v++) {
+      const s = wp.segOf[v];
+      if (s < 0) continue;
+      _p.set(wp.base[v * 3], wp.base[v * 3 + 1], wp.base[v * 3 + 2]).applyMatrix4(mats[s]);
+      pos[v * 3] = _p.x; pos[v * 3 + 1] = _p.y; pos[v * 3 + 2] = _p.z;
+    }
+    wp.geo.attributes.position.needsUpdate = true;
+  }
+
+  /** Laser-Linse: Farbe an/aus, Pulsieren der Größe um den Linsenmittelpunkt. */
+  function paintLens(wp, k) {
+    const col = wp.geo.attributes.color.array;
+    const pos = wp.geo.attributes.position.array;
+    const on = laserOn;
+    for (const v of wp.lensAt) {
+      const i = v * 3;
+      if (on) { col[i] = LENS_ON[0]; col[i + 1] = LENS_ON[1]; col[i + 2] = LENS_ON[2]; } else { col[i] = LENS_OFF[0]; col[i + 1] = LENS_OFF[1]; col[i + 2] = LENS_OFF[2]; }
+      const s = on ? k : 1;
+      pos[i] = wp.lensC[0] + (wp.base[i] - wp.lensC[0]) * s;
+      pos[i + 1] = wp.lensC[1] + (wp.base[i + 1] - wp.lensC[1]) * s;
+      pos[i + 2] = wp.lensC[2] + (wp.base[i + 2] - wp.lensC[2]) * s;
+    }
+    wp.geo.attributes.color.needsUpdate = true;
+    wp.geo.attributes.position.needsUpdate = true;
   }
 
   const reduced = () => typeof matchMedia === 'function' && !!matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -137,7 +224,7 @@ export function createHands(camera) {
       const p = swingT > 0 && swingKind === 'belt' ? 1 - swingT / swingDur : 0;
       const e = sin01(p);
       // flacher Hieb von rechts nach links: Gruppe dreht um y, der Riemen schlägt vor
-      wg.position.set(WEAPON_POS[0] - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e);
+      wg.position.set(WEAPON_POS[0] - 0.04 * (1 - e) - 0.5 * p + 0.1 * e, WEAPON_POS[1] + 0.1 * (1 - e) + 0.1 * e + breathe, WEAPON_POS[2] - 0.12 * e); // Ruhelage etwas höher: die Schlaufe soll ganz im Bild stehen
       wg.rotation.set(0.5 * (1 - e) - 0.2 * e, -0.2 - 1.5 * p + 0.5 * e, 0.4 * (1 - e));
     } else if (id === 'whip') {
       const p = swingT > 0 && swingKind === 'whip' ? 1 - swingT / swingDur : 0;
@@ -149,17 +236,14 @@ export function createHands(camera) {
       const crack = p > 0 ? 0.55 : 0.04;
       weapon.segs.forEach((sg, i) => {
         const lag = Math.max(0, slash * 1.4 - i * 0.11);
-        sg.rotation.x = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : (reduced() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3));
+        sg.rot = -0.14 + (p > 0 ? Math.sin(Math.min(1, lag) * Math.PI) * crack * (i % 2 ? -1 : 1) : (reduced() ? 0 : Math.sin(clock * 2.2 + i * 0.7) * crack * 0.3));
       });
+      skinWhip(weapon);
     } else if (id === 'laser') {
       // Pointer nach vorn gerichtet, Leuchtpunkt pulsiert, solange er an ist
       wg.position.set(WEAPON_POS[0] - 0.04, WEAPON_POS[1] + 0.05 + breathe, WEAPON_POS[2] + 0.02);
       wg.rotation.set(0.1, 0.12, 0);
-      if (laserOn) {
-        const pulse = reduced() ? 1 : 1 + Math.sin(clock * 14) * 0.18;
-        weapon.glow.scale.setScalar(pulse);
-        weapon.halo.scale.setScalar(pulse * 1.1);
-      }
+      paintLens(weapon, laserOn && !reduced() ? 1.5 + Math.sin(clock * 14) * 0.3 : laserOn ? 1.5 : 1);
     }
   }
 
@@ -181,7 +265,7 @@ export function createHands(camera) {
     /** Laser an/aus (leuchtet nur mit gehaltenem Laser). */
     setLaser(on) {
       laserOn = !!on;
-      if (weapon && weapon.glow) { weapon.glow.visible = laserOn; weapon.halo.visible = laserOn; }
+      if (weapon && weapon.lensAt.length) paintLens(weapon, laserOn ? 1.5 : 1);
     },
     throwAnim() { throwT = THROW_DUR; },
     /**
@@ -196,10 +280,10 @@ export function createHands(camera) {
       if (wid) {
         if (!weapon) {
           weapon = buildWeapon(wid);
-          weaponGroup.add(weapon.group);
+          weaponGroup.add(weapon.mesh);
         }
         weaponGroup.visible = true;
-        if (weapon.glow) { weapon.glow.visible = laserOn; weapon.halo.visible = laserOn; }
+        if (weapon.lensAt.length) paintLens(weapon, laserOn ? 1.5 : 1);
         return;
       }
       if (!spec) return;
@@ -227,7 +311,11 @@ export function createHands(camera) {
       clock += dt;
       if (swingT > 0) swingT = Math.max(0, swingT - dt);
       if (throwT > 0) throwT = Math.max(0, throwT - dt);
-      if (weapon) updateWeapon();
+      if (weapon) {
+        updateWeapon();
+        // Draw-Call-Budget bei `low`: zielt der Laser, bleibt nur der Leuchtpunkt (DOM) – das Gerät zeigt ohnehin entlang der Blickachse
+        weaponGroup.visible = !(weapon.id === 'laser' && laserOn && quality() === 'low');
+      }
       if (swingT > 0 && swingKind !== 'hand') fist.visible = false;
       else if (swingT > 0) {
         const p = 1 - swingT / SWING_DUR;

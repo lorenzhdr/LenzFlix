@@ -6,7 +6,9 @@ import { createHands, SWING_DUR, SWING_DURS, HELD_WEAPONS } from '../src/js/stor
 
 const mk = () => { const cam = new PerspectiveCamera(); const h = createHands(cam); return { cam, h }; };
 const fistVisible = (h) => h.group.children[0].visible;
-const glowOf = (h) => { let g = null; h.group.traverse((o) => { if (o.isMesh && o.geometry.type === 'SphereGeometry' && o.geometry.parameters.radius < 0.01) g = o; }); return g; };
+const meshes = (h) => { const l = []; h.group.traverse((o) => { if (o.isMesh) l.push(o); }); return l; };
+const weaponMesh = (h) => meshes(h).find((m) => m.name.startsWith('lfx-hands-')) || null;
+const lensColor = (h) => { const g = weaponMesh(h).geometry; return g.attributes.color.array[(g.attributes.position.count - 24) * 3]; }; // Linse = letztes Teil des Lasers
 
 describe('hands: Waffen', () => {
   it('setHeld({weapon}) hält die Waffe, setHeld(null) räumt sie weg; Hülle und Waffe schließen sich aus', () => {
@@ -56,34 +58,69 @@ describe('hands: Waffen', () => {
     h.dispose();
   });
 
-  it('Waffenpose bleibt endlich, die Peitsche schwingt beim Hieb', () => {
+  it('jede Waffe ist EIN Mesh (Draw-Call-Budget), mit Vertexfarbe und ohne Tiefentest', () => {
     const { h } = mk();
-    h.setHeld({ weapon: 'whip' });
-    h.swing('whip');
-    const wg = h.group.children.find((c) => c !== h.group.children[0] && c.children.length && c.children[0].children.length > 1);
-    expect(wg).toBeTruthy();
-    const rots = [];
-    for (let i = 0; i < 12; i++) {
-      h.update(0.05);
-      expect([wg.position.x, wg.position.y, wg.position.z, wg.rotation.x].every(Number.isFinite)).toBe(true);
-      rots.push(wg.rotation.x);
+    for (const w of HELD_WEAPONS) {
+      h.setHeld({ weapon: w });
+      const ms = meshes(h).filter((m) => m.name.startsWith('lfx-hands-'));
+      expect(ms.length, w).toBe(1);
+      expect(ms[0].material.vertexColors).toBe(true);
+      expect(ms[0].material.depthTest).toBe(false);
+      expect(ms[0].geometry.attributes.position.array.every(Number.isFinite)).toBe(true);
     }
-    expect(Math.max(...rots) - Math.min(...rots)).toBeGreaterThan(0.5);
+    h.setLaser(true);
+    expect(meshes(h).filter((m) => m.name.startsWith('lfx-hands-')).length).toBe(1); // kein Halo/Glow-Zusatzmesh
     h.dispose();
   });
 
-  it('Laser: Leuchtpunkt nur mit setLaser(true) und gehaltenem Laser', () => {
+  it('Gürtel: Schlaufe aus mindestens 10 Stücken plus Schnalle (gemergt), steigt im Bild oberhalb der Hand auf', () => {
+    const { h } = mk();
+    h.setHeld({ weapon: 'belt' });
+    const g = weaponMesh(h).geometry;
+    expect(g.attributes.position.count).toBeGreaterThanOrEqual(15 * 24);
+    g.computeBoundingBox();
+    expect(g.boundingBox.max.y).toBeGreaterThan(0.1);
+    h.dispose();
+  });
+
+  it('Waffenpose bleibt endlich, die Peitsche schwingt beim Hieb (Segmente werden neu berechnet)', () => {
+    const { h } = mk();
+    h.setHeld({ weapon: 'whip' });
+    h.swing('whip');
+    const wm = weaponMesh(h);
+    const wg = wm.parent;
+    const tip0 = Array.from(wm.geometry.attributes.position.array.slice(-3));
+    const rots = [];
+    let moved = 0;
+    for (let i = 0; i < 12; i++) {
+      h.update(0.05);
+      expect([wg.position.x, wg.position.y, wg.position.z, wg.rotation.x].every(Number.isFinite)).toBe(true);
+      expect(wm.geometry.attributes.position.array.every(Number.isFinite)).toBe(true);
+      rots.push(wg.rotation.x);
+      const tip = Array.from(wm.geometry.attributes.position.array.slice(-3));
+      moved = Math.max(moved, Math.hypot(tip[0] - tip0[0], tip[1] - tip0[1], tip[2] - tip0[2]));
+    }
+    expect(Math.max(...rots) - Math.min(...rots)).toBeGreaterThan(0.5);
+    expect(moved).toBeGreaterThan(0.02);
+    h.dispose();
+  });
+
+  it('Laser: Linse leuchtet nur mit setLaser(true) und gehaltenem Laser (Vertexfarbe, kein Zusatzmesh)', () => {
     const { h } = mk();
     h.setLaser(true);
     expect(h.laserOn).toBe(true);
     h.setHeld({ weapon: 'laser' });
-    expect(glowOf(h).visible).toBe(true);
+    const on = lensColor(h);
     h.update(0.05);
-    expect(glowOf(h).scale.x).toBeGreaterThan(0.5);
     h.setLaser(false);
-    expect(glowOf(h).visible).toBe(false);
+    const off = lensColor(h);
+    expect(off).not.toBe(on);
+    h.setLaser(true);
+    h.update(0.05);
+    expect(lensColor(h)).toBe(on);
+    expect(meshes(h).filter((m) => m.name.startsWith('lfx-hands-')).length).toBe(1);
     h.setHeld({ weapon: 'belt' });
-    expect(glowOf(h)).toBeNull();
+    expect(weaponMesh(h).name).toBe('lfx-hands-belt');
     h.dispose();
   });
 
@@ -93,7 +130,33 @@ describe('hands: Waffen', () => {
     let disposed = 0;
     h.group.traverse((o) => { if (o.isMesh) o.geometry.addEventListener('dispose', () => { disposed++; }); });
     h.dispose();
-    expect(disposed).toBeGreaterThan(5);
+    expect(disposed).toBeGreaterThanOrEqual(1);
     expect(cam.children.includes(h.group)).toBe(false);
+  });
+});
+
+describe('hands: Draw-Call-Budget bei low', () => {
+  it('low: leuchtender Laser blendet das Gerät aus (nur der DOM-Punkt zeigt), mid/high und Laser aus: sichtbar; Gürtel/Peitsche immer sichtbar', () => {
+    let q = 'low';
+    const h = createHands(new PerspectiveCamera(), { quality: () => q });
+    h.setHeld({ weapon: 'laser' });
+    const wg = () => weaponMesh(h).parent;
+    h.update(0.05);
+    expect(wg().visible).toBe(true);
+    h.setLaser(true);
+    h.update(0.05);
+    expect(wg().visible).toBe(false);
+    q = 'mid';
+    h.update(0.05);
+    expect(wg().visible).toBe(true);
+    q = 'low';
+    h.setLaser(false);
+    h.update(0.05);
+    expect(wg().visible).toBe(true);
+    h.setLaser(true);
+    h.setHeld({ weapon: 'belt' });
+    h.update(0.05);
+    expect(wg().visible).toBe(true);
+    h.dispose();
   });
 });

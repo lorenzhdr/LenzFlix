@@ -727,14 +727,35 @@ export function buildHandItem(look, id) {
   const b = (w, h, d, dx, y, z, color, rx = 0, ry = 0, rz = 0) => out.push(box({ w, h, d, x: x + dx, y, z, rx, ry, rz, color }));
   const PINK = [0.95, 0.55, 0.75];
   switch (id) {
-    case 'belt':
-      // Gürtel an der Schnalle gepackt, Riemen hängt als drei leicht geknickte Stücke nach unten
-      b(0.04, 0.2, 0.012, 0, 0.7, -0.04, LEATHER, 0.06);
-      b(0.04, 0.22, 0.012, 0.004, 0.5, -0.032, LEATHER, -0.12);
-      b(0.04, 0.12, 0.012, 0.012, 0.33, -0.02, LEATHER, -0.28);
-      b(0.07, 0.06, 0.02, 0, 0.8, -0.05, STEEL);
-      b(0.04, 0.035, 0.024, 0, 0.8, -0.052, sc(STEEL, 0.55));
+    case 'belt': {
+      // Gürtel als Schlaufe: beide Enden mit der Schnalle in der Faust, der Riemen hängt als Ring aus 10 flachen Stücken nach unten (bei
+      // gehobenem Arm nach vorn), ein freies Ende ragt heraus. Ebene um 0,7 rad aus der Körperebene gedreht, damit Vorder- und Seitenansicht den Ring zeigen.
+      const R = 0.1;
+      const N = 10;
+      const cy = -(0.025 + R);
+      const pt = (k) => [Math.sin((k / N) * Math.PI * 2) * R, cy + Math.cos((k / N) * Math.PI * 2) * R];
+      const LA = [0.5, 0.31, 0.17];
+      const LB = sc(LA, 0.82);
+      const loop = [];
+      const l = (w, h, d, lx, ly, color, rz = 0) => loop.push(box({ w, h, d, x: lx, y: ly, z: 0, rz, color }));
+      for (let k = 0; k < N; k++) {
+        const [x0, y0] = pt(k);
+        const [x1, y1] = pt(k + 1);
+        l(Math.hypot(x1 - x0, y1 - y0) + 0.004, 0.012, 0.036, (x0 + x1) / 2, (y0 + y1) / 2, k % 2 ? LB : LA, Math.atan2(y1 - y0, x1 - x0));
+      }
+      // Schnalle: Metallrahmen mit Dorn
+      l(0.062, 0.012, 0.044, 0, 0.0, STEEL);
+      l(0.062, 0.012, 0.044, 0, -0.05, STEEL);
+      l(0.012, 0.062, 0.044, -0.025, -0.025, STEEL);
+      l(0.012, 0.062, 0.044, 0.025, -0.025, STEEL);
+      l(0.007, 0.05, 0.03, 0, -0.025, [0.95, 0.96, 0.98]);
+      l(0.035, 0.1, 0.012, 0.05, -0.075, LA, 0.35);
+      _p.set(x, 0.78, -0.04);
+      _q.setFromEuler(_e.set(0, 0.7, 0));
+      _m.compose(_p, _q, _s);
+      for (const g of loop) { g.applyMatrix4(_m); out.push(g); }
       break;
+    }
     case 'whip': {
       // Griff in der Faust, Schnur aus 6 Segmenten in leichtem Bogen nach hinten-unten, am Ende ein Knoten
       b(0.035, 0.2, 0.035, 0, 0.76, -0.04, [0.2, 0.13, 0.09]);

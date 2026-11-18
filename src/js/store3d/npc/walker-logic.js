@@ -61,6 +61,7 @@ function arrive(w, env) {
     // Sackgasse am Gebäude: kurz stehen, dann umkehren
     w.pending = { edge: w.edge, dir: -w.dir };
     w.state = 'browse';
+    w.fleeT = 0; w.rush = 1; // Flucht-Rest löschen, sonst flieht er nach der Ampel erneut
     w.timer = 1.6 + env.rand() * 2.6;
     w.browseFace = yawOf(...dirXZ(g, w));
     w.s = e.len;

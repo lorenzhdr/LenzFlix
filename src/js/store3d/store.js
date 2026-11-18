@@ -242,7 +242,7 @@ export class StoreApp {
       onPlay: (item, resume) => this.mods && this.mods.emit('play', item, { resume }),
       onCarry: (id) => this.carry(id),
     });
-    this.hands = createHands(engine.camera);
+    this.hands = createHands(engine.camera, { quality: () => engine.preset.level });
     this.mods = new ModuleHost(this);
     this.cinema2d.register(this.mods.ctx);
     this.desktop = this.touch ? null : new DesktopControls({

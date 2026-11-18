@@ -155,3 +155,19 @@ describe('setHandItem', () => {
     expect(buildHandItem(null, 'bag').length).toBeGreaterThan(0);
   });
 });
+
+describe('Gürtel als Schlaufe (1.18.0)', () => {
+  it('besteht aus Ring-Stücken, Schnalle und freiem Ende, alles endlich, Schlaufe hängt unter der Hand und ist breiter als ein Stab', () => {
+    const parts = buildHandItem(v2(), 'belt');
+    expect(parts.length).toBeGreaterThanOrEqual(15);
+    let minY = Infinity; let maxY = -Infinity; let minX = Infinity; let maxX = -Infinity;
+    for (const g of parts) {
+      const a = g.attributes.position.array;
+      expect(a.every(Number.isFinite)).toBe(true);
+      for (let i = 0; i < a.length; i += 3) { minX = Math.min(minX, a[i]); maxX = Math.max(maxX, a[i]); minY = Math.min(minY, a[i + 1]); maxY = Math.max(maxY, a[i + 1]); }
+    }
+    expect(maxY).toBeLessThan(0.82); // Schnalle in der Faust (y ≈ 0,78)
+    expect(maxY - minY).toBeGreaterThan(0.2); // Ring-Durchmesser
+    expect(maxX - minX).toBeGreaterThan(0.1); // mehr als ein schmaler Stab (Ebene gedreht)
+  });
+});

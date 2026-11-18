@@ -123,4 +123,16 @@ describe('Passanten-Zustandsautomat', () => {
     expect(w.state).toBe('walk');
     expect(w.dir).toBe(-1);
   });
+
+  it('Sackgasse nach der Flucht: kein Flucht-Rest, danach rennt er nicht erneut los', () => {
+    const gg = buildGraph([{ id: 'shopDoor', pts: [{ x: 0, z: 0 }, { x: 0, z: 3 }], waits: [null] }]);
+    const w = createWalker(gg, seeded(1), { edge: 0, dir: 1, s: 2.8 });
+    w.state = 'flee'; w.fleeT = 6; w.rush = 1.9;
+    const env = { graph: gg, rand: seeded(2), signal: {}, player: null, roadMid: 0 };
+    let n = 0;
+    while (w.state !== 'browse' && n++ < 200) stepWalker(w, 0.05, env);
+    expect(w.state).toBe('browse');
+    expect(w.fleeT).toBe(0);
+    expect(w.rush).toBe(1);
+  });
 });

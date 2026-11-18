@@ -244,8 +244,33 @@ describe('fight: Laser', () => {
     s.state.quality = 'low';
     s.f.laser(true);
     s.frame(0.11);
+    // bei low: kein Strahl, auch keine 3D-Kugel (0 Draw-Calls), der Punkt ist ein DOM-Element
     expect(s.scene.getObjectByName('lfx-laser-beam').visible).toBe(false);
+    expect(s.scene.getObjectByName('lfx-laser-dot').visible).toBe(false);
+    const d2 = s.host.querySelector('.lfx-store-fight-dot');
+    expect(d2).toBeTruthy();
+    expect(d2.hidden).toBe(false);
+    expect(d2.style.transform).toContain('translate3d');
+    s.f.laser(false);
+    expect(s.host.querySelector('.lfx-store-fight-dot').hidden).toBe(true);
+    // zurück auf mid: Kugel statt DOM-Punkt
+    s.state.quality = 'mid';
+    s.f.laser(true);
+    s.frame(0.11);
     expect(s.scene.getObjectByName('lfx-laser-dot').visible).toBe(true);
+    expect(s.host.querySelector('.lfx-store-fight-dot').hidden).toBe(true);
+  });
+  it('mid: der Punkt wächst mit der Entfernung (bleibt erkennbar), der Strahl ist breiter als 2 cm und additiv', () => {
+    const s = setup();
+    s.providers.set('selfview', { mode: () => 'third', eye: (o) => o.set(10, 1.65, 10), figure: () => null, playAnim() {} });
+    s.f.setWeapon('laser');
+    s.f.laser(true);
+    s.frame(0.11);
+    const dot = s.scene.getObjectByName('lfx-laser-dot');
+    const beam = s.scene.getObjectByName('lfx-laser-beam');
+    expect(dot.scale.x).toBeGreaterThan(1.5);
+    expect(beam.geometry.parameters.width).toBeGreaterThanOrEqual(0.03);
+    expect(beam.material.blending).toBe(2); // AdditiveBlending
   });
   it('Schutzzone und Menü: kein Strahl', () => {
     const s = setup();
@@ -381,5 +406,56 @@ describe('fight: Aufräumen', () => {
     const s = setup({ opts: { devFlags: { fight: false } } });
     expect(s.f.hitPlayer({ dmg: 10, knock: { x: 1, z: 0 }, src: 'npc' })).toBe(false);
     expect(s.f.swingOk()).toBe(false);
+  });
+});
+
+describe('fight: Dev-Parameter (ctx.opts.dev)', () => {
+  const dev = (d) => ({ opts: { devFlags: {}, dev: d } });
+  it('weapon setzt die Startwaffe, ungültige Werte werden ignoriert', () => {
+    expect(setup(dev({ weapon: 'whip' })).f.weapon()).toBe('whip');
+    expect(setup(dev({ weapon: 'laser' })).f.heldWeapon()).toBe('laser');
+    expect(setup(dev({ weapon: 'bazooka' })).f.weapon()).toBe('hand');
+    expect(setup().f.weapon()).toBe('hand');
+  });
+  it('hp setzt die Startenergie (nach kurzer Verzögerung), hp=0 löst K.O. aus', () => {
+    const s = setup(dev({ hp: '30' }));
+    s.frames(1);
+    expect(s.f.energy()).toBeLessThan(40);
+    expect(s.f.energy()).toBeGreaterThan(20);
+    expect(document.querySelector('.lfx-store-fight-energy').hidden).toBe(false);
+    const k = setup(dev({ hp: '0' }));
+    let ko = 0;
+    k.f.onKO(() => ko++);
+    k.frames(1);
+    expect(ko).toBe(1);
+  });
+  it('ko=1 löst nach 2 s den K.O.-Ablauf aus, vorher nicht', () => {
+    const s = setup(dev({ ko: '1' }));
+    let ko = 0;
+    s.f.onKO(() => ko++);
+    s.frames(1.5);
+    expect(ko).toBe(0);
+    s.frames(1);
+    expect(ko).toBe(1);
+  });
+  it('blind=1 startet nach 2 s den Schleier', () => {
+    const s = setup(dev({ blind: '1' }));
+    s.frames(1.5);
+    expect(s.f.poseCode()).toBe(null);
+    s.frames(1);
+    expect(s.f.poseCode()).toBe(10);
+  });
+  it('safe=kids teleportiert in die Kinder-Ecke, safe=hall in die Mitte des Saals; sonst kein Teleport', () => {
+    const k = setup({ opts: { devFlags: {}, dev: { safe: 'kids' } }, layout: { colliders: [], zones: { kids: { x: 2, z: 3, yaw: 0.5, rect: { x0: 0, z0: 0, x1: 5, z1: 5, y1: 2.6 } } }, city: { fixtures: [] } } });
+    k.frames(1);
+    expect(k.calls.teleport).toHaveLength(1);
+    expect(k.calls.teleport[0].slice(0, 3)).toEqual([2, 3, 0.5]);
+    expect(k.f.protected()).toBe(true);
+    const h = setup({ opts: { devFlags: {}, dev: { safe: 'hall' } }, layout: { colliders: [], zones: { kids: { rect: { x0: 0, z0: 0, x1: 5, z1: 5 } }, palastHall: { rect: { x0: 40, z0: 10, x1: 50, z1: 30, y1: 8 } } }, city: { fixtures: [] } } });
+    h.frames(1);
+    expect(h.calls.teleport[0].slice(0, 2)).toEqual([45, 20]);
+    const n = setup();
+    n.frames(3);
+    expect(n.calls.teleport).toHaveLength(0);
   });
 });

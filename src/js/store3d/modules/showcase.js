@@ -67,6 +67,8 @@ export default {
     const signs = [];
     const signTex = canvasTexture(ctx, 512, 128, neonSign);
     const posters = [];
+    const outerParts = []; // 1.18.0: statische Außenseiten gemergt (1 Draw-Call statt je Plakat)
+    const innerParts = []; // 1.18.0: ruhende Innenseiten gemergt – nur bei low sichtbar (dort ohne Wackeln)
     const pz = D - 0.42;
     let idx = 0;
     wins.forEach((zz, wi) => {
@@ -92,9 +94,8 @@ export default {
         m.rotation.y = Math.PI;
         group.add(m);
         // Außenseite des Leuchtkastens (von der Straße/im Intro sichtbar): dasselbe Motiv, statisch auf der Rahmen-Rückseite.
-        const outer = new Mesh(quad({ w: PW, h: PH, uv: board.uv(idx) }), posterMat);
-        outer.position.set(x, baseY, pz + 0.155);
-        group.add(outer);
+        outerParts.push(quad({ w: PW, h: PH, uv: board.uv(idx), x, y: baseY, z: pz + 0.155 }));
+        innerParts.push(quad({ w: PW, h: PH, uv: board.uv(idx), x, y: baseY, z: pz, ry: Math.PI }));
         posters.push({ m, baseY, phase: idx * 1.7 });
         rects.push(ctx.addCollider({ x0: x - 0.62, z0: pz - 0.28, x1: x + 0.62, z1: pz + 0.28, kind: 'prop' }));
         removers.push(ctx.addInteractable({
@@ -111,6 +112,12 @@ export default {
       group.add(new Mesh(merge(neon), new MeshBasicMaterial({ vertexColors: true, toneMapped: false })));
     }
     if (signs.length) group.add(new Mesh(merge(signs), new MeshBasicMaterial({ map: signTex, toneMapped: false })));
+    if (outerParts.length) group.add(new Mesh(merge(outerParts), posterMat));
+    const innerStatic = innerParts.length ? new Mesh(merge(innerParts), posterMat) : null;
+    if (innerStatic) group.add(innerStatic);
+    /** low: gemergte ruhende Innenseiten zeigen, einzelne (animierte) Plakate ausblenden – spart je Plakat einen Draw-Call. */
+    const applyLow = (low) => { if (innerStatic) innerStatic.visible = low; for (const p of posters) p.m.visible = !low; };
+    applyLow(ctx.quality() === 'low');
     ctx.scene.add(group);
     ctx.track(group);
 
@@ -124,6 +131,7 @@ export default {
         }
       },
       onQuality(level) {
+        applyLow(level === 'low');
         if (level !== 'low') return;
         for (const p of posters) { p.m.rotation.y = Math.PI; p.m.position.y = p.baseY; }
       },

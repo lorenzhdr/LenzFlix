@@ -10,8 +10,9 @@
 // Netz (lazy, `fight` steht vor `net` in der Registry): ctx.use('net').fight = { has, send, on, leader, isLeader, peerPos } (Vertrag Coder C).
 //   Gesendet (lokale Einheiten, net/fight.js kodiert): wp (Waffe), fh {c, w, dir:{x,z} WELT-Richtung}, lz {on, point:{x,y,z} Meter}, lb {c}. Empfangen: fh/lb mit {c = Sender, w, dir:{x,z} WELT-Richtung, src}.
 // Schutz (beide Richtungen): Saal läuft, Kinder-Ecke, Couch, Friseurstuhl/Umkleide, offenes Menü (3 s Sperre, 2 s Nachlauf), 10 s nach dem K.O., VR.
-// VR: Modul inaktiv (keine Waffen, keine Angriffe). Draw-Calls: Laserpunkt +1 (Strahl nur ab `mid` in der Außenansicht +1), sonst 0.
-import { Mesh, SphereGeometry, BoxGeometry, MeshBasicMaterial, Vector3 } from 'three';
+// VR: Modul inaktiv (keine Waffen, keine Angriffe). Draw-Calls: bei `low` 0 (Laserpunkt als DOM-Punkt, kein Strahl); ab `mid` Punkt +1 (Strahl nur in der Außenansicht +1).
+// Dev (ctx.opts.dev, Harness-Parameter): weapon=hand|belt|whip|laser (Startwaffe), hp=0..100 (Startenergie), ko=1 (K.O. nach 2 s), blind=1 (Schleier nach 2 s), safe=kids|hall (Start in der Schutzzone).
+import { Mesh, SphereGeometry, BoxGeometry, MeshBasicMaterial, Vector3, AdditiveBlending } from 'three';
 import { createEnergy } from '../fight/energy.js';
 import { isSafe } from '../fight/safezones.js';
 import { weaponInfo, selectTargets, WEAPON_IDS } from '../fight/weapons.js';
@@ -64,6 +65,16 @@ export default {
     let wpDue = -1;
     let disposed = false;
 
+    // Dev-Parameter (Harness, build/store-dev.js → ctx.opts.dev); ohne Wert nichts davon aktiv
+    const dev = (ctx.opts && ctx.opts.dev) || {};
+    if (WEAPON_IDS.includes(dev.weapon) && !xrOn()) weapon = dev.weapon;
+    const devHp = Number(dev.hp);
+    const devTodo = {
+      safe: dev.safe === 'kids' || dev.safe === 'hall' ? { at: 0.4, v: dev.safe } : null,
+      hp: dev.hp !== undefined && dev.hp !== '' && Number.isFinite(devHp) && devHp < 100 ? { at: 0.8, v: Math.max(0, devHp) } : null,
+      ko: dev.ko === '1' ? { at: 2 } : null,
+      blind: dev.blind === '1' ? { at: 2 } : null,
+    };
     const energy = createEnergy();
     const hud = createEnergyHud(host, { touch: !!ctx.isTouch });
     const veil = createBlindVeil(host);
@@ -230,6 +241,35 @@ export default {
       try { ctx.player.freeze(false); } catch { /* egal */ }
     }
 
+    function runDev() {
+      for (const k of Object.keys(devTodo)) {
+        const d = devTodo[k];
+        if (!d || T < d.at) continue;
+        devTodo[k] = null;
+        try {
+          if (k === 'safe') {
+            const z = L.zones && (d.v === 'kids' ? L.zones.kids : L.zones.palastHall);
+            const r = z && z.rect;
+            if (z) {
+              const x = d.v === 'kids' && Number.isFinite(z.x) ? z.x : r ? (r.x0 + r.x1) / 2 : z.x;
+              const zz = d.v === 'kids' && Number.isFinite(z.z) ? z.z : r ? (r.z0 + r.z1) / 2 : z.z;
+              ctx.player.teleport(x, zz, Number.isFinite(z.yaw) ? z.yaw : 0, 0, r && r.y0 ? r.y0 : 0);
+            }
+          } else if (k === 'hp') {
+            const r = energy.hit(100 - d.v, T);
+            hudVal = r.energy;
+            hud.set(r.energy);
+            if (r.ko) startKO();
+          } else if (k === 'ko') {
+            const r = energy.hit(1000, T);
+            hudVal = r.energy;
+            hud.set(r.energy);
+            startKO();
+          } else if (k === 'blind') blindPlayer(2500);
+        } catch (err) { warn('dev ' + k, err); }
+      }
+    }
+
     // ------------------------------------------------------------ Waffe
     function setWeapon(id) {
       if (!WEAPON_IDS.includes(id) || xrOn() || disposed) return false;
@@ -253,12 +293,14 @@ export default {
     const tmpH = new Vector3();
     let dot = null;
     let beam = null;
+    let dot2d = null; // DOM-Punkt (bei `low`: 0 Draw-Calls)
+    const tmpP = new Vector3();
     const stateOut = () => ({ on: laserOn, point: laserOn && point ? { ...point } : null });
     const emitLaser = () => { const s = stateOut(); for (const fn of [...laserFns]) { try { fn(s); } catch (err) { warn('onLaser', err); } } };
 
     function ensureGfx() {
       if (dot) return;
-      dot = new Mesh(new SphereGeometry(0.045, 8, 6), new MeshBasicMaterial({ color: 0xff2a2a, fog: false }));
+      dot = new Mesh(new SphereGeometry(0.05, 8, 6), new MeshBasicMaterial({ color: 0xff2a2a, fog: false }));
       dot.visible = false;
       dot.frustumCulled = false;
       dot.name = 'lfx-laser-dot';
@@ -266,13 +308,33 @@ export default {
     }
     function ensureBeam() {
       if (beam) return;
-      beam = new Mesh(new BoxGeometry(0.012, 0.012, 1), new MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.55, fog: false, depthWrite: false }));
+      beam = new Mesh(new BoxGeometry(0.04, 0.04, 1), new MeshBasicMaterial({ color: 0xff2a1c, transparent: true, opacity: 0.85, fog: false, depthWrite: false, blending: AdditiveBlending }));
       beam.visible = false;
       beam.frustumCulled = false;
       beam.name = 'lfx-laser-beam';
       ctx.scene.add(beam);
     }
-    function hideGfx() { if (dot) dot.visible = false; if (beam) beam.visible = false; }
+    function ensureDot2d() {
+      if (dot2d || !host) return;
+      dot2d = document.createElement('div');
+      dot2d.className = 'lfx-store-fight-dot';
+      dot2d.setAttribute('aria-hidden', 'true');
+      dot2d.hidden = true;
+      host.appendChild(dot2d);
+    }
+    function hideGfx() { if (dot) dot.visible = false; if (beam) beam.visible = false; if (dot2d) dot2d.hidden = true; }
+    /** DOM-Punkt (nur `low`) pro Bild an die Bildschirmstelle des Treffpunkts. */
+    function placeDot2d() {
+      if (!dot2d || !point || !ctx.camera) return;
+      const cv = ctx.renderer && ctx.renderer.domElement;
+      if (!cv) return;
+      tmpP.set(point.x, point.y, point.z).project(ctx.camera);
+      if (!(tmpP.z < 1) || Math.abs(tmpP.x) > 1.05 || Math.abs(tmpP.y) > 1.05) { dot2d.hidden = true; return; }
+      dot2d.hidden = false;
+      const x = cv.offsetLeft + (tmpP.x * 0.5 + 0.5) * cv.clientWidth;
+      const y = cv.offsetTop + (-tmpP.y * 0.5 + 0.5) * cv.clientHeight;
+      dot2d.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0) translate(-50%,-50%)';
+    }
 
     function canLaser() {
       return !disposed && !xrOn() && !koing && !energy.isKO() && weapon === 'laser' && flags.fight !== false && ctx.playing() && !isSafe(zoneState());
@@ -375,19 +437,33 @@ export default {
         }
       }
       for (const k of [...dwell.keys()]) if (!seen.has(k)) dwell.delete(k);
-      // Anzeige
-      ensureGfx();
-      dot.position.set(point.x, point.y, point.z);
-      dot.visible = true;
+      // Anzeige: bei `low` nur ein DOM-Punkt (kein Draw-Call), sonst Kugel (wächst mit der Entfernung) und in der Außenansicht ein Strahl
       let third = false;
       try { const sv = ctx.use('selfview'); third = !!(sv && sv.mode && sv.mode() === 'third'); } catch { /* egal */ }
-      if (third && ctx.quality() !== 'low') {
-        ensureBeam();
-        beam.position.set((o.x + point.x) / 2, (o.y + point.y) / 2 - 0.08, (o.z + point.z) / 2);
-        beam.scale.set(1, 1, Math.max(0.05, hit.t));
-        beam.lookAt(point.x, point.y - 0.08, point.z);
-        beam.visible = true;
-      } else if (beam) beam.visible = false;
+      if (ctx.quality() === 'low') {
+        if (dot) dot.visible = false;
+        if (beam) beam.visible = false;
+        ensureDot2d();
+        placeDot2d();
+      } else {
+        if (dot2d) dot2d.hidden = true;
+        ensureGfx();
+        dot.position.set(point.x - dir.x * 0.03, point.y - dir.y * 0.03, point.z - dir.z * 0.03);
+        dot.scale.setScalar(Math.min(4, Math.max(1, hit.t * 0.22)));
+        dot.visible = true;
+        if (third) {
+          ensureBeam();
+          // Strahl startet an der Hand der Figur (rechts unterhalb der Augen), nicht im Auge: sonst läuft er in der Außenansicht exakt auf der Blickachse und verschwindet
+          const sx = o.x - d.z * 0.25 + d.x * 0.3;
+          const sy = o.y - 0.4;
+          const sz = o.z + d.x * 0.25 + d.z * 0.3;
+          const len = Math.max(0.05, Math.hypot(point.x - sx, point.y - sy, point.z - sz));
+          beam.position.set((sx + point.x) / 2, (sy + point.y) / 2, (sz + point.z) / 2);
+          beam.scale.set(1, 1, len);
+          beam.lookAt(point.x, point.y, point.z);
+          beam.visible = true;
+        } else if (beam) beam.visible = false;
+      }
       // Punkt an Mitspieler (nur bei Änderung, höchstens 4/s)
       if (netOn() && T - lzAt >= LZ_GAP) {
         lzAt = T;
@@ -498,6 +574,7 @@ export default {
         ensureNet();
         const xr = xrOn();
         if (xr) { if (laserOn) setLaser(false); return; }
+        runDev();
         // Menü schützt (die offene Waffenwahl zählt nicht)
         const wo = wheel.isOpen();
         menuNow = !ctx.playing() && !wo && !koing;
@@ -522,6 +599,7 @@ export default {
         if (auxHeld && !auxLaser && weapon === 'laser' && T - auxStart >= AUX_TAP) auxLaser = setLaser(true);
         // Laser
         if (laserOn) {
+          placeDot2d();
           if (!ctx.playing() || koing || weapon !== 'laser' || isSafe(zoneState())) setLaser(false);
           else {
             laserAcc += dt || 0;
@@ -547,6 +625,8 @@ export default {
           m.material.dispose();
         }
         dot = null; beam = null;
+        if (dot2d && dot2d.parentNode) dot2d.parentNode.removeChild(dot2d);
+        dot2d = null;
         hud.dispose(); veil.dispose(); wheel.dispose();
         offDbg();
         offProvider();
