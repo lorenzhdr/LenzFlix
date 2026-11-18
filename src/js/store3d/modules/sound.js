@@ -26,6 +26,7 @@ export default {
     let noiseBuf = null;
     let hum = null;
     let rain = null;
+    let offWeather = null;
     let ambientWanted = false;
     const duckKeys = new Set(); // aktive Dämpfungs-Schlüssel: 'cinema' (stumm), 'tv' (stark), 'talk' (mittel)
     let ambientRunning = false;
@@ -268,15 +269,32 @@ export default {
       o1.start(); o2.start();
       hum = { g, o1, o2 };
     }
-    function startRain() {
+    /** Regenton gewollt? Nur bei Regen (nicht Schnee); Lautstärke nach Intensität (weather.precip.i, Regen 0,6 = 0,015). */
+    function rainWanted() {
       const w = ctx.use('weather');
-      if (rain || !w || !w.raining) return;
+      if (!w || !w.raining) return 0;
+      const p = w.precip;
+      if (p && p.kind === 'snow') return 0;
+      const i = p && p.kind === 'rain' && Number.isFinite(p.i) ? Math.min(1, Math.max(0, p.i)) : 0.6;
+      return i > 0 ? 0.025 * i : 0;
+    }
+    /** Regenton zur Laufzeit an/aus/lauter/leiser (weather.onChange). */
+    function syncRain() {
+      if (!ac || !ambientRunning) return;
+      const gain = rainWanted();
+      if (gain > 0 && !rain) startRain();
+      else if (gain > 0 && rain) { try { rain.g.gain.setTargetAtTime(gain, ac.currentTime, 1.2); } catch { /* egal */ } }
+      else if (gain === 0 && rain) { stopNodes(rain, (n) => n.s.stop()); rain = null; }
+    }
+    function startRain() {
+      const gain = rainWanted();
+      if (rain || !gain) return;
       const s = ac.createBufferSource();
       s.buffer = noiseBuf; s.loop = true;
       const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 400;
       const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; // v1.7.5: weicher und halb so laut
       const g = ac.createGain(); g.gain.value = 0.0001;
-      g.gain.setTargetAtTime(0.015, ac.currentTime, 1.2);
+      g.gain.setTargetAtTime(gain, ac.currentTime, 1.2);
       s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master);
       s.start();
       rain = { s, g };
@@ -292,9 +310,11 @@ export default {
       stepIdx = 0;
       startHum();
       startRain();
+      if (!offWeather) { const w = ctx.use('weather'); if (w && typeof w.onChange === 'function') offWeather = w.onChange(syncRain); }
     }
     function stopAmbient() {
       ambientRunning = false;
+      if (offWeather) { offWeather(); offWeather = null; }
       stopNodes(hum, (n) => { n.o1.stop(); n.o2.stop(); });
       hum = null;
       stopNodes(rain, (n) => n.s.stop());
@@ -410,6 +430,7 @@ export default {
         for (const ev of gestureEvents) document.removeEventListener(ev, onGesture, { capture: true });
         offs.forEach((o) => o());
         ambientRunning = false;
+        if (offWeather) { offWeather(); offWeather = null; }
         if (ac) laserLoop(false);
         if (ac) { try { ac.close(); } catch { /* egal */ } }
         ac = null; master = null; hum = null; rain = null;

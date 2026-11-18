@@ -1,16 +1,16 @@
 // VIDEOTHEK LENZ · M4 Tageszeit & Wetter: Blick durch Schaufenster/Tür nach draußen (Himmel nach Uhrzeit, Häuserzeile,
 // Laternen), Regen (~35 % der Besuche, nachts öfter) mit Streifen draußen und Tropfen auf der Scheibe, innen nachts
-// leicht dunkler/kälter. Provider 'weather' { tod, raining, hour, lampsOn, sheltered(x,z,y), setRaining(on|null) }. Debug (nur opts.debug): opts.hour, opts.rain.
-// Der Regen (Linien) folgt der Kamera (Volumen 24 x 24 m) und fällt in allen Außenbereichen (Provider 'areas'), Dichte aus dem Preset.
+// leicht dunkler/kälter. Provider 'weather' { tod, raining, precip, hour, lampsOn, sheltered(x,z,y), setRaining(on|null), onChange(fn) → off }.
+// Debug (nur opts.debug): opts.hour, opts.rain. Den fallenden Niederschlag zeichnet seit 1.19.0 modules/precip.js (Provider 'precip', 1 Draw-Call,
+// auch auf low); hier nur die Entscheidung (Regen ja/nein) und die Tropfen auf der Scheibe.
 import {
-  LineSegments, LineBasicMaterial, BufferGeometry, Float32BufferAttribute, Mesh, MeshBasicMaterial, DoubleSide, Color,
+  Mesh, MeshBasicMaterial, DoubleSide, Color,
 } from 'three';
 import { quad, merge, rng } from '../util/geo.js';
 import { makeCanvas, toTexture } from '../world/textures.js';
 import { getOutdoor } from './outdoor.js';
-import { timeOfDay, rainDecision, skyPalette, prefersReducedMotion, clamp } from './m4-util.js';
+import { timeOfDay, rainDecision, skyPalette, prefersReducedMotion } from './m4-util.js';
 import { areaAt, OUTDOOR_AREAS } from '../world/city.js';
-import { presetFor } from '../engine/quality.js';
 
 const COOL = new Color(0.72, 0.82, 1.08);
 
@@ -50,6 +50,29 @@ function dropsCanvas() {
   return c;
 }
 
+/** Rinnsale für die Scheibe: nur senkrechte Schlieren mit hellem Kopf, vertikal kachelbar (läuft per Shader nach unten). */
+function trailCanvas() {
+  const S = 256;
+  const c = makeCanvas(S, S);
+  const x = c.getContext('2d');
+  const rt = rng(21);
+  for (let i = 0; i < 9; i++) {
+    const px = rt() * S;
+    const py = rt() * S;
+    const len = 50 + rt() * 110;
+    const w = 1.4 + rt() * 1.6;
+    for (const dy of [-S, 0, S]) {
+      const g = x.createLinearGradient(0, py + dy, 0, py + dy + len);
+      g.addColorStop(0, 'rgba(210,225,255,0)');
+      g.addColorStop(0.75, 'rgba(210,225,255,0.3)');
+      g.addColorStop(1, 'rgba(240,248,255,0.65)');
+      x.fillStyle = g;
+      x.fillRect(px, py + dy, w, len);
+    }
+  }
+  return c;
+}
+
 export default {
   name: 'daytime',
   init(ctx) {
@@ -67,6 +90,8 @@ export default {
     const raining = localRaining;
     const weather = {
       tod, raining, hour: hourOpt,
+      /** Niederschlag für das Modul precip: { kind: 'rain'|'snow'|null, i: 0..1 }. */
+      precip: raining ? { kind: 'rain', i: 0.6 } : { kind: null, i: 0 },
       /** Laternen/Neon an (nicht am Tag). */
       get lampsOn() { return this.tod !== 'day'; },
       /** Geschützt vor Regen: im Laden, im Palast, unter dem Vordach. */
@@ -83,8 +108,19 @@ export default {
       const want = on === true || on === false ? on : localRaining;
       if (want === weather.raining) return;
       weather.raining = want;
-      if (ready) { apply(); syncVisible(); }
+      weather.precip = want ? { kind: 'rain', i: 0.6 } : { kind: null, i: 0 };
+      if (ready) { apply(); syncVisible(); emit(); }
     };
+    const listeners = new Set();
+    /** Meldet Änderungen des Wetters (raining, später weitere Felder); Rückgabe = Abmeldefunktion. */
+    weather.onChange = (fn) => {
+      if (typeof fn !== 'function') return () => {};
+      listeners.add(fn);
+      return () => { listeners.delete(fn); };
+    };
+    function emit() {
+      for (const fn of [...listeners]) { try { fn(weather); } catch (e) { console.warn('[store3d] weather.onChange', e); } }
+    }
     let ready = false;
     ctx.provide('weather', weather);
     out.setPalette(tod, raining);
@@ -113,34 +149,11 @@ export default {
     }
     apply();
 
-    // --- Regen draußen (Linien, Volumen folgt der Kamera) ---
-    const N = ctx.isPhone ? 260 : 520;
-    const HALF = 12;
-    const pos = new Float32Array(N * 6);
-    const vel = new Float32Array(N);
-    const rr = rng(33);
-    const LEN = 0.55;
-    const SLANT = 0.06;
-    for (let i = 0; i < N; i++) {
-      const x = (rr() * 2 - 1) * HALF;
-      const y = rr() * 9;
-      const z = (rr() * 2 - 1) * HALF;
-      pos.set([x, y, z, x + SLANT, y + LEN, z], i * 6);
-      vel[i] = 9 + rr() * 4;
-    }
-    const rainGeo = new BufferGeometry();
-    rainGeo.setAttribute('position', new Float32BufferAttribute(pos, 3));
-    const rainMat = new LineBasicMaterial({ color: 0xbfd2ff, transparent: true, opacity: 0.38, depthWrite: false, fog: false });
-    const rain = new LineSegments(rainGeo, rainMat);
-    rain.frustumCulled = false;
-    rain.renderOrder = 8;
-    rain.visible = false;
-    out.group.add(rain);
-    let nLines = N;
-    const setLines = (lv) => { nLines = Math.min(N, presetFor(lv, ctx.isPhone).rainLines || 0); rainGeo.setDrawRange(0, nLines * 2); };
-
     // --- Tropfen auf der Scheibe ---
     const dropTex = toTexture(dropsCanvas(), { repeat: true, aniso: 2 });
+    const trailTex = toTexture(trailCanvas(), { repeat: true, aniso: 2 });
+    const timeU = { value: 0 };
+    const trailU = { value: trailTex };
     const f = L.facade || {};
     const glassQuads = [];
     for (const wd of f.windows || []) glassQuads.push(quad({ w: wd.x1 - wd.x0, h: wd.y1 - wd.y0, x: (wd.x0 + wd.x1) / 2, y: (wd.y0 + wd.y1) / 2, z: D + 0.078, tile: 1 }));
@@ -148,6 +161,20 @@ export default {
     let drops = null;
     if (glassQuads.length) {
       const dMat = new MeshBasicMaterial({ map: dropTex, transparent: true, depthWrite: false, side: DoubleSide, opacity: 0.8 });
+      // Tropfen stehen still, nur die Rinnsale (zweite Textur) laufen per Shader nach unten (uTime) – weiterhin 1 Draw-Call.
+      dMat.onBeforeCompile = (sh) => {
+        sh.uniforms.uTrail = trailU;
+        sh.uniforms.uTime = timeU;
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', `#include <common>
+uniform sampler2D uTrail;
+uniform float uTime;`)
+          .replace('#include <map_fragment>', `#include <map_fragment>
+  vec4 trl = texture2D(uTrail, vec2(vMapUv.x * 1.3 + 0.37, vMapUv.y * 0.9 + uTime * 0.045));
+  diffuseColor.rgb = mix(diffuseColor.rgb, trl.rgb, trl.a * (1.0 - diffuseColor.a));
+  diffuseColor.a = diffuseColor.a + trl.a * (1.0 - diffuseColor.a);`);
+      };
+      dMat.customProgramCacheKey = () => 'lfx-drops-trail';
       drops = new Mesh(merge(glassQuads), dMat);
       drops.renderOrder = 6;
       drops.matrixAutoUpdate = false;
@@ -156,25 +183,22 @@ export default {
       ctx.track(drops);
     }
     ctx.track(dropTex);
-    ctx.track(rainGeo);
-    ctx.track(rainMat);
-    ctx.track(rain);
+    ctx.track(trailTex);
 
-    let level = ctx.quality();
-    setLines(level);
     let near = false;
-    let suspended = false;
+    function pushPrecip() {
+      const pr = ctx.use('precip');
+      if (pr && typeof pr.setWeather === 'function') pr.setWeather(weather.precip);
+    }
     function syncVisible() {
-      const r = weather.raining;
-      rain.visible = r && level !== 'low' && nLines > 0 && near && !suspended;
-      if (drops) drops.visible = r;
+      if (drops) drops.visible = weather.raining;
+      pushPrecip();
     }
     syncVisible();
     ready = true;
 
     const cam = ctx.camera;
     let checkT = 0;
-    const speed = reduced ? 0.012 : 0.03;
 
     return {
       update(dt, t) {
@@ -187,29 +211,18 @@ export default {
           near = OUTDOOR_AREAS.includes(a) || (a !== 'palastHall' && a !== 'palastFoyer' && a !== 'salon' && cam.position.z > D + 0.3); // Kamera draußen (Intro) oder Spieler in einem Außenbereich
           if (was !== near) syncVisible();
         }
-        if (drops && weather.raining && near) dropTex.offset.y += dt * speed;
-        if (rain.visible) {
-          rain.position.set(cam.position.x, 0, cam.position.z);
-          const dd = clamp(dt, 0, 0.05);
-          for (let i = 0; i < nLines; i++) {
-            const k = i * 6;
-            let y = pos[k + 1] - vel[i] * dd;
-            if (y < 0) y += 9;
-            pos[k + 1] = y;
-            pos[k + 4] = y + LEN;
-          }
-          rainGeo.attributes.position.needsUpdate = true;
-        }
+        if (drops && weather.raining && near && !reduced) timeU.value = t; // reduzierte Bewegung: Rinnsale stehen
       },
-      onQuality(lv) { level = lv; setLines(lv); syncVisible(); },
-      onSuspend() { suspended = true; syncVisible(); },
+      onSuspend() { if (drops) drops.visible = false; },
       onResume() {
-        suspended = false;
         const now = timeOfDay(hourOpt);
         if (now !== tod) { tod = now; weather.tod = now; apply(); }
         syncVisible();
       },
       dispose() {
+        listeners.clear();
+        const pr = ctx.use('precip');
+        if (pr && typeof pr.setWeather === 'function') pr.setWeather(null);
         for (const l of lights) { l.o.intensity = l.i; l.o.color.copy(l.c); if (l.g) l.o.groundColor.copy(l.g); }
         for (const d of dirs) { d.o.intensity = d.i; d.o.color.copy(d.c); }
         ctx.renderer.toneMappingExposure = baseExposure;
