@@ -111,7 +111,7 @@ Vor jedem Close vom Server geht `bye {c, u?}`.
 
 - `class MpWorld { constructor(ctx, env) }` ohne `import 'cloudflare:workers'` (sonst sind Node-Tests von `src/index.js` unmöglich). Dünne Hülle (`src/mp/world.js`) um den reinen Reducer `src/mp/room.js`: `(state, event, now, rand) → {state, out[], close[], store[], alarmAt}`. `room.js` und alle `src/mp/*` außer `world.js`, `cf.js`, `route.js` sind browserfähiges ESM ohne Node-/CF-APIs (der Fake-Server der Harness lädt sie direkt). CF-Laufzeitstellen nur in `cf.js` (`pair()`, `upgrade(client, proto)`, `autoPing(ctx)`).
 - Konfiguration: `durable_objects.bindings [{name:"WORLD", class_name:"MpWorld"}]`, `migrations [{tag:"mp1", new_sqlite_classes:["MpWorld"]}]` (Tag nie umbenennen), Vars `MP_MAX_CONN "16"`, `MP_DAILY_REQ "80000"`, `MP_DEV_ORIGINS ""`, Secret `MP_SECRET`. `compatibility_date` 2026-11-01.
-- Hibernation: `ctx.acceptWebSocket`, `webSocketMessage/Close/Error`, `alarm`. Der Konstruktor lädt per `blockConcurrencyWhile` den Storage und baut Peers aus `getWebSockets()` und `deserializeAttachment()`.
+- Hibernation: `ctx.acceptWebSocket`, `webSocketMessage/Close/Error`, `alarm`. `webSocketClose(ws, code)` beantwortet den Close-Rahmen des Clients mit `ws.close(code)` (nur 1000 oder 3000–4999, sonst 1000; seit 1.16.1 – vorher wartete der Client vergeblich, live kappte Cloudflare nach 5 s mit 1006). Der Konstruktor lädt per `blockConcurrencyWhile` den Storage und baut Peers aus `getWebSockets()` und `deserializeAttachment()`.
 - **Keine `setTimeout`/`setInterval` im DO** (sie verhindern Hibernation). Fristen laufen über `alarm()` bzw. die Prüfung im Message-Handler.
 
 | Daten | Ort | Nach Kaltstart |

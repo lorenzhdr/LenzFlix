@@ -584,6 +584,23 @@ describe('K-JOIN: Beitritt mit langsamem ersten Sprung', () => {
   });
 });
 
+describe('Umschalten während des Anhaltens', () => {
+  it('toggle während des lokalen Anhaltens pausiert die Gruppe (kein lokales Fortsetzen)', () => {
+    const R = joined({ lag: 50 });
+    R.advance(8000);
+    R.P.pos += 1500;
+    R.advance(500);
+    expect(R.P.paused).toBe(true); // hält an
+    R.sync.toggle();
+    R.advance(600, false);
+    const kc = R.of('kc');
+    expect(kc).toHaveLength(1);
+    expect(kc[0].o).toBe(2);
+    R.advance(5000);
+    expect(R.P.paused).toBe(true);
+  });
+});
+
 describe('Gastgeber hält nie lokal an', () => {
   it('Vorsprung des Gastgebers: keine lokale Pause (w4 share: A stand sonst bis 3 s still)', () => {
     const R = rig({ host: true, lag: 50 });

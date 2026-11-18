@@ -101,9 +101,9 @@ Den Tunnel nur mit ausdrücklicher Zustimmung des Nutzers starten, weil er den D
 
 ## Aktueller Stand und offene Punkte
 Stand 18.11.2026 (1.16.1 vorbereitet). Bei jedem Release aktualisieren, knapp halten. Verträge stehen in `docs/store3d.md`, `docs/tvmode.md` und `docs/mp-api.md`.
-- **Version:** v1.16.1 lokal committet auf `feature/v1.16.1` (c2d7d9b, Basis 0181b7e). Push, Tag `v1.16.1` und Fast-Forward nach main erst nach Freigabe des Nutzers. Zuletzt veröffentlicht: v1.16.0 (Tag auf d469647).
+- **Version:** v1.16.1 lokal committet auf `feature/v1.16.1` (Basis 0181b7e; Tag auf den letzten Commit des Branches). Push, Tag `v1.16.1` und Fast-Forward nach main erst nach Freigabe des Nutzers. Zuletzt veröffentlicht: v1.16.0 (Tag auf d469647).
   - Worker mit dem Close-Fix bereits deployt (Version a6248d8d, Rauchtest ok).
-  - Prüfung 1.16.1: 3758 Root-Tests (365 Dateien), 352 Worker-Tests, Lint 0, TV-Hashes gleich, `lenzstore.min.js` 1.291.143 B, w0–w4 PASS (w4 share 32/0, private 14/0).
+  - Prüfung 1.16.1: 3759 Root-Tests (365 Dateien), 352 Worker-Tests, Lint 0, TV-Hashes gleich, Hauptbundle 499.367 B, `lenzstore.min.js` 1.291.157 B, w0–w4 PASS (w4 share 32/0, private 14/0).
 - **Inhalt 1.16.1 (Befunde aus dem Live-Test mit zwei Konten, Liste in `.tmp/v116/devtest/befunde.md`):**
   - Kino: Schwarzbild-Rückfall nur, solange die Leinwand nie Bild gezeigt hat (Schwelle 10 s, `cinema/ambient.js`).
   - Mitschauen: Vorsprung von Mitschauenden per kurzem lokalem Anhalten (`sync.js` `startHold`, nicht beim Gastgeber); Pause eines > 3 s abweichenden Mitglieds nutzt die Gruppenposition.
@@ -157,7 +157,9 @@ Stand 18.11.2026 (1.16.1 vorbereitet). Bei jedem Release aktualisieren, knapp ha
   - 1.9.x: Röhren-Geräte und VR-Kino.
 - **Offen:**
   - **Gerätetests 1.16.0 erledigt:** Steuerung und VR vom Nutzer am Gerät; Palast, Mehrspieler und Mitschauen von Claude live mit zwei Konten (iPhone-Punkte p4/m2 nur emuliert, echtes Puffern in Chrome nicht erzwingbar).
-  - **Release 1.16.1:** Freigabe für Push, Tag und Fast-Forward einholen, danach jsDelivr prüfen.
+  - **Release 1.16.1:** Freigabe für Push, Tag und Fast-Forward einholen, danach jsDelivr prüfen. Live läuft bis dahin der Worker schon mit dem Close-Fix, der Client noch 1.16.0 (verträglich).
+  - **Nur per Unit-Test/Harness belegt (1.16.1):** Gruppenposition bei Pause, Anhalten im Drift-Teil, Hochformat-Hinweis, Palast-Schilder, Lage des Chatprotokolls.
+  - **Zurückgestellt (1.16.1):** Bei 844×390 überdeckt der einmalige Mehrspieler-Hinweis kurz die untere Knopfreihe des Pause-Menüs; Echtes Puffern (k5) live ungetestet; Safari-Leinwand am iPhone (p4) unbelegt, der Rückfall dort kommt jetzt nach 10 s statt 6 s; hängender Sprung (`seeking` dauerhaft) nicht reproduziert, bliebe ohne kb/Hinweis. Ideen: Angebotszeit „läuft bei“ friert im offenen Panel ein; Join-Ticket bleibt nach Sitzungsende; Programmtafel je Konto verschieden.
   - **Beobachten:**
     - Ob das Cloudflare-Idle-Kappen dauerhaft ist.
     - Free-Kontingent im Dashboard an Tag 1 und Tag 7. Der Ping alle 3 s kostet bis etwa 60 Requests pro Spielerstunde.

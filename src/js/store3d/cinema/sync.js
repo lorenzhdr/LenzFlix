@@ -268,7 +268,8 @@ export function createSync(o = {}) {
     play() { return userSt(1); },
     toggle() {
       // Sitzung läuft, nur der eigene Player ist gehalten (z. B. iOS-Sperre): lokal fortsetzen, die Gruppe nicht pausieren.
-      if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight) {
+      // (nicht während unseres eigenen Anhaltens: dann ist „Pause“ gemeint, also die Gruppe)
+      if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight && !S.holdUntil) {
         const obs = obsNow();
         if (obs && obs.paused) {
           const now = nowFn();

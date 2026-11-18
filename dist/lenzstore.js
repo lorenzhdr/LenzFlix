@@ -64047,7 +64047,7 @@ void main() {
         return userSt(1);
       },
       toggle() {
-        if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight) {
+        if (!inactive() && S.sess && S.sess.st === 1 && effSt() === 1 && !S.next && !S.inflight && !S.holdUntil) {
           const obs = obsNow();
           if (obs && obs.paused) {
             const now = nowFn();
