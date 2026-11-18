@@ -97,6 +97,13 @@ function allocC(st) {
 
 const liveList = (st) => Object.values(st.peers).filter((p) => p.live);
 
+/** Anzahl verschiedener Konten (Feld k) unter den live-Peers. Rein lesend, kein Zähler, kein Speicher. */
+export function onlineCount(st) {
+  const seen = new Set();
+  for (const p of liveList(st)) seen.add(p.k);
+  return seen.size;
+}
+
 // Öffentliche Sicht auf einen Peer (Privatsphäre erzwungen: Name nur mit Bit 1, Film nur mit Bit 2).
 function pubPeer(p) {
   const o = { c: p.c, k: p.k, n: p.f & FLAG.NAME ? p.n : '', f: p.f, j: p.t0 };

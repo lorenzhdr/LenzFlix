@@ -615,6 +615,45 @@ html.lfx-js .lfx-tp--sheet .lfx-tp__beta {
   top: 54px;
   left: 14px;
 }
+/* Online-Pille neben dem Beta-Hinweis */
+html.lfx-js .lfx-tp__online {
+  position: absolute;
+  top: 20px;
+  left: 72px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px 2px 8px;
+  border: 1px solid var(--lfx-green);
+  border-radius: 999px;
+  background: rgb(13 19 48 / 0.85);
+  color: #fff;
+  font: 700 11px / 1.4 var(--lfx-font);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+html.lfx-js .lfx-tp__online-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lfx-green);
+  box-shadow: 0 0 6px var(--lfx-green);
+}
+html.lfx-js .lfx-tp--sheet .lfx-tp__online {
+  top: 54px;
+  left: 70px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.lfx-js .lfx-tp__online-dot {
+    animation: lfx-tp-online-pulse 2.4s ease-in-out infinite;
+  }
+}
+@keyframes lfx-tp-online-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 html.lfx-js .lfx-tp--sheet .lfx-tp__preview--store .lfx-tp__shopsign {
   left: 59%;
 }

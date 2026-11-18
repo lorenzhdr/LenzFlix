@@ -5,6 +5,7 @@ import { attachSwipeClose } from './swipe.js';
 import { THEMES, THEME_META, getChosenTheme, getTheme, getThemeState, setTheme, onThemeChange } from './theme.js';
 import * as api from './api.js';
 import { getCharts } from './charts.js';
+import { fetchOnline } from './online.js';
 import { cached, clearCache } from './cache.js';
 import { dayKey, seededShuffle } from './dayseed.js';
 
@@ -186,6 +187,48 @@ function fillStoreCovers(c) {
   }).catch(() => {});
 }
 
+const ONLINE_POLL_MS = 30000;
+
+/** Pille „● N online“ auf der Kachel „store“; ab 1 sichtbar, sonst entfernt. */
+function showOnline(card, n) {
+  let pill = card.querySelector('.lfx-tp__online');
+  const base = card.dataset.baseLabel || card.getAttribute('aria-label') || '';
+  if (!Number.isInteger(n) || n < 1) {
+    if (pill) pill.remove();
+    if (card.dataset.baseLabel) card.setAttribute('aria-label', base);
+    return;
+  }
+  const label = `${n} ${n === 1 ? 'Person' : 'Personen'} gerade in der Videothek`;
+  if (!pill) {
+    pill = span('lfx-tp__online', [span('lfx-tp__online-dot'), span('lfx-tp__online-n')]);
+    pill.setAttribute('role', 'img');
+    pill.firstChild.setAttribute('aria-hidden', 'true');
+    card.append(pill);
+  }
+  pill.setAttribute('aria-label', label);
+  pill.lastChild.textContent = `${n} online`;
+  card.dataset.baseLabel = base;
+  card.setAttribute('aria-label', `${base}, ${label}`);
+}
+
+/** Zahl der Personen in der VIDEOTHEK: sofort, danach alle 30 s, nur solange der Picker offen ist. */
+function fillStoreOnline(c) {
+  const card = c.cards.get('store');
+  if (!card) return;
+  const tick = () => {
+    if (current !== c) return;
+    if (c.onlineCtl) c.onlineCtl.abort();
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    c.onlineCtl = ctl;
+    fetchOnline(ctl ? ctl.signal : undefined).then((n) => {
+      if (current !== c || !card.isConnected || (ctl && ctl.signal.aborted)) return;
+      showOnline(card, n);
+    }).catch(() => {});
+  };
+  tick();
+  c.onlineTimer = setInterval(tick, ONLINE_POLL_MS);
+}
+
 function buildCard(c, id) {
   const meta = THEME_META[id] || { id, name: id, tagline: '', palette: [] };
   const btn = h('button', {
@@ -257,6 +300,8 @@ export function closeThemePicker() {
   if (c.detachSwipe) c.detachSwipe();
   if (c.unwatchMq) c.unwatchMq();
   if (c.unsub) c.unsub();
+  if (c.onlineTimer) clearInterval(c.onlineTimer);
+  if (c.onlineCtl) c.onlineCtl.abort();
   window.removeEventListener('keydown', c.onKeydown, true);
   c.overlay.removeEventListener('click', c.onOverlayClick);
   unmountPoint(c.overlay);
@@ -371,6 +416,7 @@ export function openThemePicker({ returnFocus } = {}) {
   current = c;
   refresh(c);
   fillStoreCovers(c);
+  fillStoreOnline(c);
 
   const activeCard = c.cards.get(getChosenTheme()) || grid.querySelector('button');
   if (activeCard) activeCard.focus({ preventScroll: true });

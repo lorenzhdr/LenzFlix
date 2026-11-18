@@ -1,7 +1,7 @@
 // Durable Object MpWorld (Hibernation): dünne Hülle um den reinen Reducer room.js.
 // Keine Timer (Timer verhindern die Hibernation); Fristen laufen über alarm().
 // Keine Cloudflare-Modulimporte (DurableObject-Basisklasse unnötig). Loggt nie Token/Ticket, nur feste Codes.
-import { createState, step, precheck, STORE_PREFIXES } from './room.js';
+import { createState, step, precheck, onlineCount, STORE_PREFIXES } from './room.js';
 import { b64urlDecode, verifyTicket } from './ticket.js';
 import { pair, upgrade, autoPing } from './cf.js';
 
@@ -35,6 +35,10 @@ export class MpWorld {
 
   async fetch(request) {
     await this.ready;
+    if (new URL(request.url).pathname === '/online') {
+      // Nur lesen: kein step(), kein Tageszähler, keine Speicherschreibvorgänge.
+      return new Response(JSON.stringify({ v: 1, n: onlineCount(this.st) }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if ((request.headers.get('Upgrade') ?? '').toLowerCase() !== 'websocket') return new Response('upgrade required', { status: 426 });
     let claims;
     try {
