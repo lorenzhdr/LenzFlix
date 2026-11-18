@@ -31,7 +31,7 @@ export const SHELF_FAR_LOW = 11;
 const STREET_DETAIL = new Set(['city-marks', 'city-signal-poles', 'city-signal-lamps', 'city-signs', 'city-shopsigns', 'city-shopglass', 'city-fahrplan', 'city-litfass', 'city-decor', 'city-ped-lamps', 'city-street-props', 'city-lamps']);
 
 /** Reichweite (m vor der Front), bis zu der die Regale durchs Fenster gezeichnet werden: low spart Draw-Calls. */
-export const shelfRange = (level) => (level === 'low' ? 2.2 : 5);
+export const shelfRange = (level) => (level === 'low' ? 2.2 : level === 'ultra' ? 8 : 5);
 
 /** Nebelbereich: Innenraum-Diagonale bleibt unberührt, Ende vor der Himmelskuppel (FAR_R). */
 export function fogRange(preset, layout) {

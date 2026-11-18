@@ -8,7 +8,7 @@
 //   // init darf async sein; Fehler werden per console.warn geloggt und töten die Szene nicht. Alle Handle-Methoden optional.
 //
 // ctx (stabil; Details und Semantik: docs/store3d.md, Abschnitt „Module (store3d intern)“). three importieren Module selbst.
-//   scene, camera, renderer, layout (inkl. zones mit rect), catalog, deps, opts, isPhone, isTouch, quality() → 'low'|'mid'|'high', soundOn()
+//   scene, camera, renderer, layout (inkl. zones mit rect), catalog, deps, opts, isPhone, isTouch, quality() → 'low'|'mid'|'high'|'ultra' (ultra nur Desktop/Tablet; Prüfung auf „mindestens high“ per atLeast aus engine/quality.js), soundOn()
 //   addCollider(rect) / removeCollider(rect)            rect = { x0, z0, x1, z1, kind? }; wirkt auf Kollision UND Navigationsraster
 //   addInteractable({ box, label, hint, onUse, enabled? }) → remove()   box = THREE.Box3 | { min, max } (Weltkoordinaten)
 //   player.getPose() → {x,z,yaw,pitch} · teleport(x,z,yaw,pitch?) · walkTo(x,z,{face}) → Promise<bool> · lookAt(x,y,z,ms) → Promise
@@ -19,6 +19,7 @@
 //   loadTexture(url,{maxWidth}) → Promise<Texture|null> · track(obj) → obj (Geometrie/Material/Textur/Object3D, dispose automatisch)
 //   provide(name, impl) → remove() · use(name) → impl|undefined   Provider: 'terminal' { open(q) }, 'intro' { run() → Promise },
 //   'areas' { current, at, on }, 'city' { data, groups, signals, visible, partition }, 'door' { override, open, lock, unlock, isLocked, registerActor }
+//   'ultra' { register(key, build, opts?) → remove(), isActive, has, keys, list } (engine/ultra.js: Details nur auf Stufe ultra, lazy im Leerlauf gebaut),
 //   'cashier' { event('couchSit'|'couchStand') }, 'couch' { seated() → bool }, 'sound' { play, ambient(on), duck(key, on) }
 // Imports bitte nur im eigenen Block ergänzen (parallele Arbeit, Konflikte vermeiden).
 // --- M3 Kasse & Orte: imports ---

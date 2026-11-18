@@ -1,10 +1,13 @@
 // VIDEOTHEK LENZ · Renderer, Schleife, Qualitätsautomatik, Resize, Sichtbarkeit und Kontextverlust.
 import { WebGLRenderer, Scene, PerspectiveCamera, Group, ACESFilmicToneMapping, SRGBColorSpace, PCFShadowMap, Color } from 'three';
-import { presetFor, AutoQuality } from './quality.js';
+import { presetFor, AutoQuality, rank } from './quality.js';
 
 const DEG = Math.PI / 180;
 
-export function createEngine({ host, level, auto, phone, onContextLost, onContextRestored, onAutoLevel }) {
+/** maxLevel: höchste erlaubte Stufe ('ultra' nur, wenn die Hülle das Gerät freigibt; sonst 'high'); setLevel und die Automatik klemmen darauf. */
+export function createEngine({ host, level, auto, phone, maxLevel = 'high', onContextLost, onContextRestored, onAutoLevel }) {
+  const clampLv = (l) => (rank(l) > rank(maxLevel) ? maxLevel : l);
+  level = clampLv(level);
   let preset = presetFor(level, phone);
   const canvas = document.createElement('canvas');
   canvas.className = 'lfx-store-canvas';
@@ -40,7 +43,7 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   camera.rotation.order = 'YXZ';
   rig.add(camera);
 
-  const aq = new AutoQuality(level);
+  const aq = new AutoQuality(level, { max: maxLevel });
   let autoOn = !!auto;
   let tick = null;
   let running = false;
@@ -126,6 +129,7 @@ export function createEngine({ host, level, auto, phone, onContextLost, onContex
   let levelNow = level;
 
   function setLevel(l) {
+    l = clampLv(l);
     const prev = preset;
     levelNow = l;
     preset = presetFor(l, phone || xrBudget);

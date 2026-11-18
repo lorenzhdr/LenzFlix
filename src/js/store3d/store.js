@@ -31,7 +31,10 @@ import { palastTest } from './cinema/saal-stub.js';
 
 const yieldFrame = () => new Promise((r) => setTimeout(r, 0));
 
-function resolveLevel(setting) {
+const QUALITY_SETTINGS = ['auto', 'low', 'mid', 'high', 'ultra'];
+
+export function resolveLevel(setting, ultraOk) {
+  if (setting === 'ultra') return ultraOk ? 'ultra' : 'high'; // Ultra nur auf freigegebenen Geräten (opts.ultraOk, nie Handy)
   if (setting === 'low' || setting === 'mid' || setting === 'high') return setting;
   return 'mid'; // Start immer auf „mid“, die Automatik schaltet bei stabil > 58 fps hoch
 }
@@ -57,7 +60,9 @@ export class StoreApp {
     this.vr = this.opts.vr;
     this.phone = !!this.opts.phone;
     this.touch = !!this.opts.touch;
-    this.qualitySetting = ['auto', 'low', 'mid', 'high'].includes(this.opts.quality) ? this.opts.quality : 'auto';
+    this.ultraOk = this.opts.ultraOk === true && !this.phone; // Gerätesperre: Handy/TV nie Ultra
+    this.qualitySetting = QUALITY_SETTINGS.includes(this.opts.quality) ? this.opts.quality : 'auto';
+    if (this.qualitySetting === 'ultra' && !this.ultraOk) this.qualitySetting = 'high'; // gespeichertes Ultra auf dem Handy: klemmen, nicht verwerfen
     this.sound = !!this.opts.sound;
     this.showFps = this.opts.showFps === true;
     this.voiceOnline = this.opts.voiceOnline === true;
@@ -98,9 +103,10 @@ export class StoreApp {
     try {
       this.engine = createEngine({
         host,
-        level: resolveLevel(this.qualitySetting),
+        level: resolveLevel(this.qualitySetting, this.ultraOk),
         auto: this.qualitySetting === 'auto',
         phone: this.phone,
+        maxLevel: this.ultraOk ? 'ultra' : 'high',
         onContextLost: () => this.onContextLost(),
         onContextRestored: () => this.onContextRestored(),
         onAutoLevel: () => this.applyPreset(this.engine.preset),
@@ -139,6 +145,7 @@ export class StoreApp {
       onTheme: () => this.deps.openThemePicker(),
       onMenu: (anchor) => this.deps.openMenu(anchor),
       getQuality: () => this.qualitySetting,
+      canUltra: () => this.ultraOk,
       getSound: () => this.sound,
       getFps: () => this.showFps,
       getBigCovers: () => this.bigCovers,
@@ -913,7 +920,8 @@ export class StoreApp {
   }
 
   setQuality(q) {
-    if (!this.engine || !['auto', 'low', 'mid', 'high'].includes(q)) return;
+    if (!this.engine || !QUALITY_SETTINGS.includes(q)) return;
+    if (q === 'ultra' && !this.ultraOk) q = 'high';
     if (this.xr && this.xr.presenting) q = q === 'low' ? 'low' : 'mid'; // in VR nur low/mid
     this.qualitySetting = q;
     this.engine.setAuto(q === 'auto');
@@ -973,7 +981,7 @@ export class StoreApp {
   updateFps() {
     if (!this.hud) return;
     if (!this.showFps) return;
-    const lv = { low: 'Niedrig', mid: 'Mittel', high: 'Hoch' }[this.engine.preset.level] || '';
+    const lv = { low: 'Niedrig', mid: 'Mittel', high: 'Hoch', ultra: 'Ultra' }[this.engine.preset.level] || '';
     this.hud.setFps(`${Math.round(this.engine.fps)} FPS · ${lv}${this.qualitySetting === 'auto' ? ' (Auto)' : ''}`);
   }
 
@@ -1136,6 +1144,7 @@ export class StoreApp {
       spawns() { return app.layout.city ? JSON.parse(JSON.stringify(app.layout.city.spawns)) : {}; },
       area() { return areaAt(app.layout, app.player.x, app.player.z, app.player.y || 0); },
       city() { return app.layout.city; },
+      ultra() { return app.mods && app.mods.ultra ? app.mods.ultra.api.list() : []; }, // Ultra-Details: [{ key, built, visible, ms }]
       stats() {
         const info = app.engine.renderer.info;
         return {

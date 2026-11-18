@@ -342,8 +342,18 @@ function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
   };
 }
 
+/** Ultra nur auf Desktop/Laptop/Tablet: kein TV, kein kleiner Touch-Bildschirm (Feature-Erkennung, kein UA-Sniffing). */
+function ultraAllowed() {
+  try {
+    if (isTv()) return false;
+    const touchSmall = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches) && Math.min(screen.width, screen.height) < 600;
+    return !touchSmall;
+  } catch { return false; }
+}
+
 function buildOpts(r) {
   return {
+    ultraOk: ultraAllowed(),
     quality: prefs.getQuality(),
     sound: prefs.getSound(),
     showFps: prefs.getFps(),

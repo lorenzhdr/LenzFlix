@@ -21,7 +21,7 @@ import { pickInCone, HIT_RANGE, HIT_CONE_DEG, GRAB_RANGE } from '../physics/cone
 import { resolveHoop, createHoopTracker } from '../physics/hoop.js';
 import { shouldReset, pyramidDown } from '../physics/home.js';
 
-const CULL_DIST = { low: 24, mid: 32, high: 40 };
+const CULL_DIST = { low: 24, mid: 32, high: 40, ultra: 48 };
 const NET_ID_RE = /^[A-Za-z0-9._-]{1,24}$/;
 
 /** Netz-ID eines Körpers (rein): data.net (Spawn "<c>.<n>") vor data.id (statische Requisiten), nur im Format der Leitung. */

@@ -17,7 +17,7 @@ function run(q, fps, seconds, t0) {
 
 describe('AutoQuality', () => {
   it('schaltet nach 10 s stabil ≥ 58 fps hoch und bei spürbarem Einbruch zurück, danach bleibt high gesperrt', () => {
-    const q = new AutoQuality('mid');
+    const q = new AutoQuality('mid', { max: 'high' });
     let r = run(q, 60, 12, 0);
     expect(r.changes).toEqual(['high']);
     r = run(q, 53, 6, r.now); // auf high nur 53 fps: über der 50er-Schwelle, aber deutlich schlechter
@@ -27,12 +27,18 @@ describe('AutoQuality', () => {
     expect(q.level).toBe('mid');
   });
 
-  it('bleibt auf high, wenn es dort weiter flüssig läuft', () => {
-    const q = new AutoQuality('mid');
+  it('bleibt auf high, wenn es dort weiter flüssig läuft (Decke high)', () => {
+    const q = new AutoQuality('mid', { max: 'high' });
     let r = run(q, 60, 12, 0);
     r = run(q, 59, 30, r.now);
     expect(q.level).toBe('high');
     expect(r.changes).toEqual([]);
+  });
+
+  it('ohne Decke geht es von high weiter auf ultra (gleiche Schwellen)', () => {
+    const q = new AutoQuality('mid');
+    const r = run(q, 60, 40, 0);
+    expect(r.changes).toEqual(['high', 'ultra']);
   });
 
   it('schaltet unter 50 fps herunter', () => {

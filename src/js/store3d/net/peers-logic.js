@@ -129,10 +129,11 @@ export const OUTDOOR = new Set(['street', 'crossing', 'sideN', 'sideS', 'yard', 
  * hand = 'none' | 'cover' | 'neutral', coverDist = bis hier mit Cover (sonst neutral).
  */
 export function lodFor(level, phone, xr) {
-  const lv = level === 'low' || level === 'high' ? level : 'mid';
+  const lv = level === 'low' || level === 'high' || level === 'ultra' ? level : 'mid';
   if (xr) return { max: lv === 'low' ? 3 : 4, tagDist: 0, tag3d: 3, tag3dDist: 10, hand: 'neutral', coverDist: 0 };
   if (lv === 'low') return { max: presetFor('low', !!phone).npcMax, tagDist: 12, tag3d: 0, tag3dDist: 0, hand: 'none', coverDist: 0 };
   if (lv === 'mid') return { max: 10, tagDist: 16, tag3d: 0, tag3dDist: 0, hand: 'cover', coverDist: 10 };
+  if (lv === 'ultra') return { max: 20, tagDist: 24, tag3d: 0, tag3dDist: 0, hand: 'cover', coverDist: 18 }; // Startwerte, Messung legt fest
   return { max: 16, tagDist: 20, tag3d: 0, tag3dDist: 0, hand: 'cover', coverDist: 14 };
 }
 
