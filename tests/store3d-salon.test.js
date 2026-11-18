@@ -415,6 +415,20 @@ describe('Salon: Modul', () => {
     expect(t.avatar.openEditor).not.toHaveBeenCalled();
   });
 
+  it('onSuspend bei offenem Editor schließt das Overlay (ohne Übernahme)', async () => {
+    const t = setup();
+    const h = salonMod.init(t.ctx);
+    ia(t, 'Friseurstuhl').onUse();
+    t.settleFlights();
+    await tick();
+    expect(t.avatar.openEditor).toHaveBeenCalledTimes(1);
+    expect(t.ctx.overlay.close).not.toHaveBeenCalled();
+    h.onSuspend();
+    expect(t.ctx.overlay.close).toHaveBeenCalledTimes(1);
+    expect(t.providers.get('salon').busy()).toBe(false);
+    h.dispose();
+  });
+
   it('Sprechen: Sprecher-Regie (cashier.speaker) mit „bubble“ → Blase; ohne Regie direkt Blase', async () => {
     const t = setup();
     const h = salonMod.init(t.ctx);

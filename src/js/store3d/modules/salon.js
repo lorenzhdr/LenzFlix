@@ -94,6 +94,14 @@ export default {
     };
     mountAll();
 
+    /** Gabi während der Stuhl-Sitzung seitlich versetzen (sonst steht ihr Kopf im Spiegel genau über dem der Figur); on=false → Ausgangsplatz. */
+    const GABI_SIDE = 0.45;
+    function gabiAside(on) {
+      const p = people.gabi;
+      if (!p || !p.handle || p.handle.disposed) return;
+      p.handle.root.position.x = p.anchor.x + (on ? GABI_SIDE : 0); // Kollider bleibt (Spieler sitzt eingefroren, kein Lauf möglich)
+    }
+
     /** Zeile sprechen: Sprecher-Regie (cashier.speaker) wenn vorhanden, bei 'bubble' (oder ohne Regie) als Blase über der Figur. */
     function say(who, cat) {
       const p = people[who];
@@ -143,6 +151,7 @@ export default {
         if (!exited) { try { ctx.player.teleport(exit.x, exit.z, exit.yaw, 0); } catch { /* egal */ } exited = true; }
         if (kind === 'chair') {
           try { if (sv && sv.playAnim) sv.playAnim('idle'); } catch { /* egal */ }
+          gabiAside(false);
           if (chairParked && chairRect) { ctx.moveCollider(chairRect, interior.chairCollider.x0, interior.chairCollider.z0, interior.chairCollider.x1, interior.chairCollider.z1); chairParked = false; }
         } else { curtainTo = 0; }
         try { ctx.player.camera.release(); } catch { /* egal */ }
@@ -150,13 +159,20 @@ export default {
         busy = false;
       };
       let offFrame = () => {};
-      const abortAll = () => { offFrame(); offFrame = () => {}; cleanup(); };
+      let editing = false; // Editor dieser Sitzung offen
+      // Abbruch (Suspend/Dispose): den Editor ohne Übernahme schließen (onClose der Figur beendet die Sitzung als Abbrechen)
+      const abortAll = () => {
+        offFrame(); offFrame = () => {};
+        if (editing) { editing = false; try { ctx.overlay.close(); } catch { /* egal */ } }
+        cleanup();
+      };
       busy = true;
       abort = abortAll;
       let ok = false;
       try {
         ctx.player.freeze(true);
         other.setSuppressed(true);
+        if (kind === 'chair') gabiAside(true);
         if (kind === 'chair' && chairRect) { ctx.moveCollider(chairRect, -9990, -9990, -9989, -9989); chairParked = true; }
         const fly = ctx.player.camera.flyTo(spot.camPos, spot.camTarget, 950);
         ctx.player.teleport(spot.x, spot.z, spot.yaw, 0);
@@ -173,8 +189,10 @@ export default {
         const mir = mirrors[kind];
         if (live && mir && typeof mir.setSize === 'function') mir.setSize(MIRROR_RT_EDIT);
         const pr = kind === 'chair' ? a.openEditor('chair', 'hair', live ? { live: true } : undefined) : a.openEditor('booth', 'top', live ? { live: true } : undefined);
+        editing = true;
         if (live) offFrame = startFrame(kind, spot);
         ok = await pr;
+        editing = false;
         offFrame(); offFrame = () => {};
         if (done || disposed) return;
         if (ok) {

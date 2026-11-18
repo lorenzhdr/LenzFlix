@@ -6,7 +6,8 @@
 //   (Blick nach +z, waagerecht, immer von vorn).
 // cameraPose(focus, { aspect, fov, free }) → { pos:[x,y,z], look:[x,y,z] } – fertige Pose (kein Nachskalieren/Verschieben nötig):
 //   · focus: 'body' (Ganzkörper, Standard, ~10 % Rand oben inkl. Hut und unten mit Schuhen + Boden), 'hair'/'face'/'extras' (Kopf + Schultern
-//     komplett inkl. Hut/Brille), 'top' (Oberkörper), 'bottom' (Hose + Schuhe), 'shoes'.
+//     komplett inkl. Hut/Brille), 'top' (Oberkörper + ganzer Kopf), 'bottom' (Hose + Schuhe), 'shoes' (Knie bis Boden).
+//   Die Pose hängt vom Look ab (Hut/Frisur/Größe → topY): nach jedem Look-Wechsel neu aufrufen (topY() zeigt die Änderung).
 //   · aspect = Breite/Höhe des Bildes, fov = VERTIKALER Öffnungswinkel der Kamera in Grad (Standard: 1 und 30 = klassische Studio-Pose).
 //   · free = freie Fläche des Bildes (normiert 0..1, y von oben): { x0, x1, y0, y1 }, Standard ganzes Bild. Die Figur wird in diese Fläche
 //     eingepasst und mittig darin platziert (Querformat z. B. { x0: 0.4, x1: 1, y0: 0, y1: 1 } rechts neben dem Formular; Hochformat
@@ -167,6 +168,8 @@ export function createStudio() {
     rotate(d) { return api.setYaw(yaw + (Number.isFinite(d) ? d : 0)); },
     setYaw(y) { yaw = Number.isFinite(y) ? y : 0; if (fig) fig.root.rotation.y = yaw; return yaw; },
     getYaw: () => yaw,
+    /** Oberkante der gezeigten Figur (m, inkl. Hut/Frisur/Größe): ändert sie sich beim Look-Wechsel, muss die Kamera neu gesetzt werden (cameraPose). */
+    topY: () => (fig ? fig.topY : 1.75),
     update(dt) { if (fig) fig.update(dt); },
     /** Kamera-Pose (Position + Blickpunkt) je Fokus, von vorn; Kopfbereiche nach topY (Hut/Frisur), Breite nach build. Siehe Kopf. */
     cameraPose(focus, opts) {
@@ -178,9 +181,9 @@ export function createStudio() {
         case 'hair': return framePose(1.3 * k, top + 0.04, 0.5 * bw, { ...o, margin: 0.08 });
         case 'face': return framePose(1.36 * k, top + 0.04, 0.46 * bw, { ...o, margin: 0.08 });
         case 'extras': return framePose(1.22 * k, top + 0.04, 0.6 * bw, { ...o, margin: 0.08 });
-        case 'top': return framePose(0.72 * k, 1.5 * k, 0.66 * bw, { ...o, margin: 0.08 });
+        case 'top': return framePose(0.8 * k, top + 0.05, 0.7 * bw, { ...o, margin: 0.06 }); // Oberkörper + ganzer Kopf (inkl. Hut)
         case 'bottom': return framePose(-0.03, 0.92 * k, 0.46 * bw, { ...o, margin: 0.08 });
-        case 'shoes': return framePose(-0.03, 0.3 * k, 0.44 * bw, { ...o, margin: 0.1 });
+        case 'shoes': return framePose(-0.03, 0.5 * k, 0.44 * bw, { ...o, margin: 0.1 });
         default: return framePose(-0.06, top, 0.78 * bw, { ...o, margin: 0.1 });
       }
     },

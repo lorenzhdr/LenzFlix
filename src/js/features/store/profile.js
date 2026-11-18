@@ -33,7 +33,23 @@ export function createProfile({ uid, name, storage }) {
     wr('lfx.store.dev', dev);
   }
 
-  const save = () => wr(ck, JSON.stringify({ data, dirty }));
+  // Zweiter Tab desselben Kontos: vor dem Schreiben den fremden Cache einmischen (Zähler/Plätze gehen nicht verloren)
+  const absorb = () => {
+    try {
+      const c = JSON.parse(rd(ck));
+      if (c && typeof c === 'object' && c.data) {
+        const m = mergeProfiles(data, normalize(c.data));
+        if (JSON.stringify(m) !== JSON.stringify(data)) { data = m; return true; }
+      }
+    } catch { /* defekt: ignorieren */ }
+    return false;
+  };
+  const save = () => { absorb(); wr(ck, JSON.stringify({ data, dirty })); };
+  const onStorage = (e) => {
+    if (dead || !e || e.key !== ck || !absorb()) return;
+    for (const fn of [...subs]) { try { fn(data); } catch { /* egal */ } }
+  };
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', onStorage);
 
   // Einmalige Übernahme der alten lokalen Entdeckungen (Schlüssel nach Jellyfin-Name, wie discover.js); Marker je Gerät.
   const mk = `lfx.store.discmerged.${uid}`;
@@ -109,6 +125,6 @@ export function createProfile({ uid, name, storage }) {
         sync().then(done, done);
       });
     },
-    dispose() { dead = true; clearTimeout(timer); timer = null; subs.clear(); },
+    dispose() { dead = true; if (typeof window !== 'undefined' && window.removeEventListener) window.removeEventListener('storage', onStorage); clearTimeout(timer); timer = null; subs.clear(); },
   };
 }

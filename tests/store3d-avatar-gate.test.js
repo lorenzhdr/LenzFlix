@@ -9,6 +9,7 @@ const studioMock = vi.hoisted(() => {
       scene: { add: vi.fn() },
       figure: vi.fn(),
       setLook: vi.fn(),
+      topY: vi.fn(() => 1.75),
       rotate: vi.fn(),
       setYaw: vi.fn(),
       update: vi.fn(),
@@ -621,6 +622,66 @@ describe('avatar: Editor-Sitzungen', () => {
     expect(av.slots()[1]).not.toBeNull();
     expect(p.data.fig.slots[1].prov).toBe(true);
     expect(p.data.fig.slots[0].prov).toBeUndefined(); // Platz 0 blieb unberührt
+  });
+});
+
+describe('avatar: Review-Fixes 1.17.0', () => {
+  const withFigure = (over = {}) => makeProfile({ slots: [slotOf(defaultCode()), null, null], ...over });
+  const hairOpt = (v) => ctx.curOverlay().el.querySelector(`.lfx-store-char__opt[data-value="${v}"]`);
+
+  it('Offline-Änderung eines bestehenden Kontoplatzes ist kein prov (gewinnt per Zeitstempel)', async () => {
+    const p = withFigure({ state: 'local' });
+    const av = boot({ profile: p });
+    const pr = av.openEditor('pause', 'hair');
+    await tick();
+    click(hairOpt(8));
+    click(btn(ctx.curOverlay().el, 'Übernehmen'));
+    expect(await pr).toBe(true);
+    expect(p.data.fig.slots[0].prov).toBeUndefined();
+    expect(p.data.fig.slots[0].t).toBeGreaterThan(1);
+  });
+
+  it('Übernehmen schreibt nur im Editor geänderte Plätze (zwischenzeitlicher Konto-Stand bleibt)', async () => {
+    const other = defaultCode().slice(); other[F.hairStyle] = 3;
+    const p = makeProfile({ slots: [slotOf(defaultCode()), slotOf(defaultCode()), null] });
+    const av = boot({ profile: p });
+    const pr = av.openEditor('pause', 'hair');
+    await tick();
+    click(hairOpt(8));
+    p.remote((d) => { d.fig.slots[1] = { l: other, t: 5 }; });
+    click(btn(ctx.curOverlay().el, 'Übernehmen'));
+    expect(await pr).toBe(true);
+    expect(p.data.fig.slots[1]).toEqual({ l: other, t: 5 });
+    expect(av.code()[F.hairStyle]).toBe(8);
+  });
+
+  it('Übernehmen ändert den aktiven Platz nicht, wenn der Nutzer ihn nicht gewechselt hat', async () => {
+    const p = makeProfile({ slots: [slotOf(defaultCode()), slotOf(defaultCode()), null], act: 0 });
+    const av = boot({ profile: p });
+    const pr = av.openEditor('pause', 'hair');
+    await tick();
+    click(hairOpt(8));
+    p.remote((d) => { d.fig.act = 1; });
+    click(btn(ctx.curOverlay().el, 'Übernehmen'));
+    await pr;
+    expect(p.data.fig.act).toBe(1);
+  });
+
+  it('Look-Wechsel mit anderer Figurhöhe fährt die Kamera neu', async () => {
+    const av = boot({ profile: withFigure() });
+    const pr = av.openEditor('pause', 'extras');
+    await tick();
+    const st = studioMock.made[0];
+    const n = ctx.player.camera.flyTo.mock.calls.length;
+    click(ctx.curOverlay().el.querySelector('.lfx-store-char__opt[data-value="1"]'));
+    await tick(100);
+    expect(ctx.player.camera.flyTo.mock.calls.length).toBe(n); // gleiche Höhe: keine neue Fahrt
+    st.setLook.mockImplementation(() => { st.topY.mockReturnValue(2.1); });
+    click(ctx.curOverlay().el.querySelector('.lfx-store-char__opt[data-value="2"]'));
+    await tick(100);
+    expect(ctx.player.camera.flyTo.mock.calls.length).toBe(n + 1);
+    click(btn(ctx.curOverlay().el, 'Abbrechen'));
+    await pr;
   });
 });
 

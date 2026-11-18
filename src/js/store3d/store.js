@@ -145,6 +145,9 @@ export class StoreApp {
       // 1.17.0: „Figur …“ / „Mitgliedsausweis“ nur mit echten Daten der Provider (Stubs liefern null → ausgeblendet)
       onFigure: () => {
         if (this.mode !== 'paused') return;
+        if (this.mods && this.mods.locked) return; // gesperrte Kamerafahrt (Salon, Kasse, Kino): kein zweiter Editor-Pfad
+        const sl = this.modUse('salon');
+        if (sl && typeof sl.busy === 'function' && sl.busy()) return;
         const av = this.modUse('avatar');
         if (!av) return;
         this.pause.hide(); this.setMode('play'); // wie onSearch: der Editor ist ein Overlay, kein requestLock

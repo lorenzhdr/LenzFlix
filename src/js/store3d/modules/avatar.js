@@ -89,7 +89,9 @@ export default {
           if (!validSlot(nl)) continue;
           const old = d.fig.slots[i];
           if (old && validSlot(old.l) && equal(decode(old.l), nl)) continue;
-          d.fig.slots[i] = prov ? { l: nl.slice(), t, prov: true } : { l: nl.slice(), t };
+          // prov nur für einen bisher leeren (oder selbst vorläufigen) Platz; eine Änderung am bestehenden Platz gewinnt per Zeitstempel
+          const wasProv = !old || !validSlot(old.l) || old.prov === true;
+          d.fig.slots[i] = prov && wasProv ? { l: nl.slice(), t, prov: true } : { l: nl.slice(), t };
         }
         d.fig.act = active;
       });
@@ -219,7 +221,12 @@ export default {
     function applyLook(s, c) {
       const look = toRender(c);
       if (s.cfg.live) emitPreview(look);
-      else if (studio) studio.setLook(look);
+      else if (studio) {
+        const t = studio.topY();
+        studio.setLook(look);
+        // hoher Hut/Frisur: Kamera neu ausrichten, sonst oben abgeschnitten
+        if (onStage && s.focus && Math.abs(studio.topY() - t) > 0.005) poseCamera(s.focus, 250);
+      }
     }
 
     function pushLook(s, c) {
@@ -256,7 +263,9 @@ export default {
       const found = foundIds();
       const gateMode = cfg.where === 'gate';
       const startCode = gateMode ? randomLook(Math.random, unlockedCodes(found)) : code() || defaultCode();
-      const model = createEditorModel({ code: startCode, slots: gateMode ? [null, null, null] : slotCodes(), active: gateMode ? 0 : Math.max(0, activeIdx()), found });
+      const startSlots = gateMode ? [null, null, null] : slotCodes();
+      const startAct = gateMode ? 0 : Math.max(0, activeIdx());
+      const model = createEditorModel({ code: startCode, slots: startSlots, active: startAct, found });
       let done;
       const promise = new Promise((res) => { done = res; });
       const s = { cfg: { ...cfg, live: !!cfg.live }, model, promise, done, finished: false, ended: false, busy: false, pending: null, timer: null, last: -Infinity, ui: null, focus: cfg.focus || 'body' };
@@ -275,7 +284,9 @@ export default {
           s.finished = true;
           const r = model.result();
           if (s.cfg.live) emitPreview(null);
-          commit(r.slots, r.active);
+          // nur im Editor geänderte Plätze schreiben (ein zwischenzeitlich vom Konto geänderter Platz bleibt), Platzwechsel nur bei Wahl des Nutzers
+          const slots = r.slots.map((c, i) => (c && startSlots[i] && equal(startSlots[i], c) ? null : c));
+          commit(slots, r.active === startAct ? Math.max(0, activeIdx()) : r.active);
           endSession(s, true);
         },
         onCancel: () => { if (!s.finished) endSession(s, false); },

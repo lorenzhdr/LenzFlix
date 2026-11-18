@@ -23432,7 +23432,34 @@
       dev = Array.from({ length: 8 }, () => "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)]).join("");
       wr("lfx.store.dev", dev);
     }
-    const save = () => wr(ck, JSON.stringify({ data, dirty }));
+    const absorb = () => {
+      try {
+        const c = JSON.parse(rd(ck));
+        if (c && typeof c === "object" && c.data) {
+          const m = mergeProfiles(data, normalize(c.data));
+          if (JSON.stringify(m) !== JSON.stringify(data)) {
+            data = m;
+            return true;
+          }
+        }
+      } catch {
+      }
+      return false;
+    };
+    const save = () => {
+      absorb();
+      wr(ck, JSON.stringify({ data, dirty }));
+    };
+    const onStorage = (e) => {
+      if (dead || !e || e.key !== ck || !absorb()) return;
+      for (const fn of [...subs]) {
+        try {
+          fn(data);
+        } catch {
+        }
+      }
+    };
+    if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("storage", onStorage);
     const mk = `lfx.store.discmerged.${uid}`;
     if (rd(mk) !== "1") {
       try {
@@ -23525,6 +23552,7 @@
       },
       dispose() {
         dead = true;
+        if (typeof window !== "undefined" && window.removeEventListener) window.removeEventListener("storage", onStorage);
         clearTimeout(timer2);
         timer2 = null;
         subs.clear();

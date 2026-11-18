@@ -127,6 +127,14 @@ describe('Studio: Szene', () => {
       expect(hi.y).toBeLessThan(1);
       expect(hi.y).toBeGreaterThan(0.6);
     }
+    // 'top' zeigt den ganzen Kopf (inkl. Hut), topY() meldet die Oberkante des gezeigten Looks
+    expect(s.topY()).toBeCloseTo(hatTop);
+    {
+      const o = cases[0];
+      const hi = ndc(s.cameraPose('top', o), o, 0, hatTop);
+      expect(hi.y).toBeLessThan(0.97);
+      expect(hi.y).toBeGreaterThan(0.6);
+    }
     // Aufruf ohne opts bleibt kompatibel (30°, zentriert)
     expect(s.cameraPose('body').pos[0]).toBeCloseTo(0);
     s.dispose();

@@ -111,6 +111,25 @@ describe('createProfile (Upload, Cache, Zustände)', () => {
     expect(mk().state()).toBe('local');
   });
 
+  it('zweiter Tab: fremder Cache wird vor dem Schreiben eingemischt, storage-Event meldet es', async () => {
+    const a = mk();
+    const b = mk();
+    await a.load();
+    await b.load();
+    const seen = vi.fn();
+    a.onRemote(seen);
+    b.update((d) => { d.cnt.rent.zzzzzzzz = 4; });
+    a.update((d) => { d.cnt.cine.yyyyyyyy = 2; }); // schreibt den Cache: darf Tab b nicht überschreiben
+    expect(cache().data.cnt.rent.zzzzzzzz).toBe(4);
+    expect(cache().data.cnt.cine.yyyyyyyy).toBe(2);
+    b.update((d) => { d.cnt.rent.zzzzzzzz = 5; });
+    window.dispatchEvent(new StorageEvent('storage', { key: 'lfx.store.profile.u1' }));
+    expect(a.get().cnt.rent.zzzzzzzz).toBe(5);
+    expect(seen).toHaveBeenCalled();
+    a.dispose();
+    b.dispose();
+  });
+
   it('Geräte-ID: 8 Zeichen, stabil', () => {
     const d = mk().dev;
     expect(d).toMatch(/^[a-z0-9]{8}$/);

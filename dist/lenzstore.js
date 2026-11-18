@@ -53226,6 +53226,8 @@ void main() {
         return yaw;
       },
       getYaw: () => yaw,
+      /** Oberkante der gezeigten Figur (m, inkl. Hut/Frisur/Größe): ändert sie sich beim Look-Wechsel, muss die Kamera neu gesetzt werden (cameraPose). */
+      topY: () => fig ? fig.topY : 1.75,
       update(dt) {
         if (fig) fig.update(dt);
       },
@@ -53243,11 +53245,12 @@ void main() {
           case "extras":
             return framePose(1.22 * k, top + 0.04, 0.6 * bw, { ...o, margin: 0.08 });
           case "top":
-            return framePose(0.72 * k, 1.5 * k, 0.66 * bw, { ...o, margin: 0.08 });
+            return framePose(0.8 * k, top + 0.05, 0.7 * bw, { ...o, margin: 0.06 });
+          // Oberkörper + ganzer Kopf (inkl. Hut)
           case "bottom":
             return framePose(-0.03, 0.92 * k, 0.46 * bw, { ...o, margin: 0.08 });
           case "shoes":
-            return framePose(-0.03, 0.3 * k, 0.44 * bw, { ...o, margin: 0.1 });
+            return framePose(-0.03, 0.5 * k, 0.44 * bw, { ...o, margin: 0.1 });
           default:
             return framePose(-0.06, top, 0.78 * bw, { ...o, margin: 0.1 });
         }
@@ -54146,7 +54149,8 @@ void main() {
             if (!validSlot2(nl)) continue;
             const old = d.fig.slots[i];
             if (old && validSlot2(old.l) && equal(decode(old.l), nl)) continue;
-            d.fig.slots[i] = prov ? { l: nl.slice(), t, prov: true } : { l: nl.slice(), t };
+            const wasProv = !old || !validSlot2(old.l) || old.prov === true;
+            d.fig.slots[i] = prov && wasProv ? { l: nl.slice(), t, prov: true } : { l: nl.slice(), t };
           }
           d.fig.act = active;
         });
@@ -54278,7 +54282,11 @@ void main() {
       function applyLook(s, c) {
         const look = toRender(c);
         if (s.cfg.live) emitPreview(look);
-        else if (studio) studio.setLook(look);
+        else if (studio) {
+          const t = studio.topY();
+          studio.setLook(look);
+          if (onStage && s.focus && Math.abs(studio.topY() - t) > 5e-3) poseCamera(s.focus, 250);
+        }
       }
       function pushLook(s, c) {
         s.pending = c;
@@ -54325,7 +54333,9 @@ void main() {
         const found = foundIds();
         const gateMode = cfg.where === "gate";
         const startCode = gateMode ? randomLook(Math.random, unlockedCodes(found)) : code() || defaultCode();
-        const model = createEditorModel({ code: startCode, slots: gateMode ? [null, null, null] : slotCodes(), active: gateMode ? 0 : Math.max(0, activeIdx()), found });
+        const startSlots = gateMode ? [null, null, null] : slotCodes();
+        const startAct = gateMode ? 0 : Math.max(0, activeIdx());
+        const model = createEditorModel({ code: startCode, slots: startSlots, active: startAct, found });
         let done;
         const promise = new Promise((res) => {
           done = res;
@@ -54351,7 +54361,8 @@ void main() {
             s.finished = true;
             const r = model.result();
             if (s.cfg.live) emitPreview(null);
-            commit(r.slots, r.active);
+            const slots = r.slots.map((c, i) => c && startSlots[i] && equal(startSlots[i], c) ? null : c);
+            commit(slots, r.active === startAct ? Math.max(0, activeIdx()) : r.active);
             endSession(s, true);
           },
           onCancel: () => {
@@ -57051,6 +57062,12 @@ void main() {
         if (!people.ronny) mountPerson("ronny", sa.ronny);
       };
       mountAll();
+      const GABI_SIDE = 0.45;
+      function gabiAside(on) {
+        const p = people.gabi;
+        if (!p || !p.handle || p.handle.disposed) return;
+        p.handle.root.position.x = p.anchor.x + (on ? GABI_SIDE : 0);
+      }
       function say(who, cat) {
         const p = people[who];
         if (!p || !p.handle || p.handle.disposed) return Promise.resolve("muted");
@@ -57117,6 +57134,7 @@ void main() {
               if (sv && sv.playAnim) sv.playAnim("idle");
             } catch {
             }
+            gabiAside(false);
             if (chairParked && chairRect) {
               ctx.moveCollider(chairRect, interior.chairCollider.x0, interior.chairCollider.z0, interior.chairCollider.x1, interior.chairCollider.z1);
               chairParked = false;
@@ -57136,10 +57154,18 @@ void main() {
         };
         let offFrame = () => {
         };
+        let editing = false;
         const abortAll = () => {
           offFrame();
           offFrame = () => {
           };
+          if (editing) {
+            editing = false;
+            try {
+              ctx.overlay.close();
+            } catch {
+            }
+          }
           cleanup();
         };
         busy = true;
@@ -57148,6 +57174,7 @@ void main() {
         try {
           ctx.player.freeze(true);
           other.setSuppressed(true);
+          if (kind === "chair") gabiAside(true);
           if (kind === "chair" && chairRect) {
             ctx.moveCollider(chairRect, -9990, -9990, -9989, -9989);
             chairParked = true;
@@ -57177,8 +57204,10 @@ void main() {
           const mir = mirrors[kind];
           if (live && mir && typeof mir.setSize === "function") mir.setSize(MIRROR_RT_EDIT);
           const pr = kind === "chair" ? a.openEditor("chair", "hair", live ? { live: true } : void 0) : a.openEditor("booth", "top", live ? { live: true } : void 0);
+          editing = true;
           if (live) offFrame = startFrame(kind, spot);
           ok = await pr;
+          editing = false;
           offFrame();
           offFrame = () => {
           };
@@ -72192,6 +72221,9 @@ void main() {
         // 1.17.0: „Figur …“ / „Mitgliedsausweis“ nur mit echten Daten der Provider (Stubs liefern null → ausgeblendet)
         onFigure: () => {
           if (this.mode !== "paused") return;
+          if (this.mods && this.mods.locked) return;
+          const sl = this.modUse("salon");
+          if (sl && typeof sl.busy === "function" && sl.busy()) return;
           const av = this.modUse("avatar");
           if (!av) return;
           this.pause.hide();
