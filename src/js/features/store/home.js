@@ -20,6 +20,8 @@ import { closeProfileMenu, hudButton, profileButton, toggleProfileMenu, wordmark
 import { findHomeTab, ON_CLASS, ROOT_ID, storeHomeRoute } from './home-route.js';
 import * as prefs from './prefs.js';
 import { createTicket } from './mp.js';
+import { createWeatherSource } from './weather.js';
+import { getChartsUrl } from '../../core/charts.js';
 import { VERSION } from '../../core/version.js';
 import { createCinemaBridge } from './cinema-bridge.js';
 import { jellyfinTitle } from '../../core/doctitle.js';
@@ -275,6 +277,8 @@ function getProfile(name) {
   return prof.p;
 }
 
+let weatherSource = null;
+
 function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
   const ret = (f) => (...a) => { try { return f(...a); } catch (e) { console.warn('[LenzFlix] store dep', e && e.message); return undefined; } };
   const items = (res) => (Array.isArray(res) ? res : (res && Array.isArray(res.Items) ? res.Items : []));
@@ -284,6 +288,7 @@ function buildDeps(catalog, name, onFatal, onBigCovers, profile) {
     user: { name },
     ...(profile ? { profile } : {}),
     ...(uid ? { mp: { uid, cv: VERSION, prefs: () => prefs.getMp(), ticket: createTicket(uid) } } : {}),
+    ...(getChartsUrl() ? { weather: () => (weatherSource || (weatherSource = createWeatherSource()))() } : {}),
     imageUrl: (id, o = {}) => api.imageUrlFor(id, { ...o, scale: false }),
     getItem: (id) => api.getItem(id),
     getSeasons: (seriesId) => api.getSeasons(seriesId).then(items),

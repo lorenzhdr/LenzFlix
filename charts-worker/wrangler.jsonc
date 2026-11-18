@@ -22,7 +22,10 @@
     "MIN_SECONDS": "300",
     "MP_MAX_CONN": "16",
     "MP_DAILY_REQ": "80000",
-    "MP_DEV_ORIGINS": ""
+    "MP_DEV_ORIGINS": "",
+    // Echtes Wetter (GET /wx): Breite/Länge als Strings, nur in der lokalen Konfiguration eintragen. Leer = aus (404 wx-off).
+    "WX_LAT": "",
+    "WX_LON": ""
   },
   // Secrets (nicht hier!): JELLYFIN_API_KEY, optional REFRESH_SECRET, MP_SECRET (Mehrspieler, mindestens 32 Zeichen) -> `npx wrangler secret put <NAME>`
   "assets": { "directory": "./public", "html_handling": "auto-trailing-slash" },
