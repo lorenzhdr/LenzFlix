@@ -2,7 +2,7 @@
 // (Glaskasten, warmes Licht, animierte Popcorn-Partikel), Getränke-Kühlschrank mit leuchtender Front, Preisschilder in DM,
 // Neonschild „SNACKS“. Fantasienamen. ≈ 5 Draw-Calls (Solid, Glas, Atlas, Glanz, Partikel).
 import {
-  Mesh, MeshBasicMaterial, MeshLambertMaterial, Points, PointsMaterial, BufferGeometry, Float32BufferAttribute, AdditiveBlending, DoubleSide,
+  Mesh, MeshBasicMaterial, MeshLambertMaterial, Points, PointsMaterial, BufferGeometry, BufferAttribute, DynamicDrawUsage, AdditiveBlending, DoubleSide,
 } from 'three';
 import { box, quad, merge, rng } from '../util/geo.js';
 import { makeCanvas, toTexture, FONT } from '../world/textures.js';
@@ -179,7 +179,8 @@ export default {
     const rp = rng(31);
     for (let i = 0; i < NP; i++) { ph[i * 3] = rp() * 6.28; ph[i * 3 + 1] = 1.2 + rp() * 1.4; ph[i * 3 + 2] = rp() * 6.28; }
     const pg = new BufferGeometry();
-    pg.setAttribute('position', new Float32BufferAttribute(pp, 3));
+    // BufferAttribute behält das Array (Float32BufferAttribute kopiert es: update() schrieb dann ins Original, die Partikel blieben am Ursprung)
+    pg.setAttribute('position', new BufferAttribute(pp, 3).setUsage(DynamicDrawUsage));
     const pm = new PointsMaterial({ color: 0xfff0c4, size: ctx.isPhone ? 4 : 5, sizeAttenuation: false, depthWrite: false });
     const pts = new Points(pg, pm);
     pts.frustumCulled = false;

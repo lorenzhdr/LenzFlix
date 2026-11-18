@@ -32,6 +32,7 @@ import sound from './sound.js';
 import city from './city.js';
 import door from './door.js';
 import intro from './intro.js';
+import precip from './precip.js';
 import daytime from './daytime.js';
 // --- Welle 2 physics: imports ---
 import props from './props.js';
@@ -69,6 +70,7 @@ export const MODULES = [
   city,
   door,
   intro,
+  precip, // vor daytime: liefert den Provider 'precip'
   daytime,
   // --- Welle 2 physics (props: Provider 'physics' vor allen Nutzern) ---
   props,

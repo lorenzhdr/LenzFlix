@@ -1,16 +1,16 @@
 // VIDEOTHEK LENZ · Qualitätsstufen und Automatik (rein, ohne three).
 const LEVELS = ['low', 'mid', 'high'];
 
-// Dichten der Außenwelt (additiv, Handy und XR nehmen die Handy-Werte): Passanten, Autos, Requisiten, Vögel, Regenlinien, Nebel.
+// Dichten der Außenwelt (additiv, Handy und XR nehmen die Handy-Werte): Passanten, Autos, Requisiten, Vögel, Regenlinien (rainLines, seit 1.19.0 ungenutzt: der Niederschlag kommt aus modules/precip.js), Niederschlags-Quads (precip, auch low), Nebel.
 const CITY = {
-  low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], fogNear: 34, fogFar: 56 },
-  mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], fogNear: 36, fogFar: 58 },
-  high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], fogNear: 38, fogFar: 58 },
+  low: { npcMax: [8, 5], carsMax: [2, 2], propsMax: [16, 10], birds: [0, 0], rainLines: [0, 0], precip: [260, 180], fogNear: 34, fogFar: 56 },
+  mid: { npcMax: [16, 10], carsMax: [4, 3], propsMax: [28, 16], birds: [4, 4], rainLines: [380, 200], precip: [900, 500], fogNear: 36, fogFar: 58 },
+  high: { npcMax: [24, 14], carsMax: [6, 4], propsMax: [40, 24], birds: [8, 8], rainLines: [520, 260], precip: [1400, 700], fogNear: 38, fogFar: 58 },
 };
 function city(lv, phone) {
   const c = CITY[lv];
   const k = phone ? 1 : 0;
-  return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], fogNear: c.fogNear, fogFar: c.fogFar };
+  return { npcMax: c.npcMax[k], carsMax: c.carsMax[k], propsMax: c.propsMax[k], birds: c.birds[k], rainLines: c.rainLines[k], precip: c.precip[k], fogNear: c.fogNear, fogFar: c.fogFar };
 }
 
 /** Einstellungen je Stufe. Atlas-Auflösung = Kantenlänge der Cover-Atlanten; maxAtlases = Texturbudget (LRU). */

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { presetFor } from '../src/js/store3d/engine/quality.js';
 
-const KEYS = ['npcMax', 'carsMax', 'propsMax', 'birds', 'rainLines'];
+const KEYS = ['npcMax', 'carsMax', 'propsMax', 'birds', 'rainLines', 'precip'];
 
 describe('Qualitätsstufen: Dichte der Außenwelt', () => {
   for (const phone of [false, true]) {
@@ -12,6 +12,9 @@ describe('Qualitätsstufen: Dichte der Außenwelt', () => {
         expect(mid[k], k).toBeLessThanOrEqual(hi[k]);
       }
       expect(lo.rainLines).toBe(0);
+      expect(lo.precip).toBeGreaterThan(0); // Niederschlag auch auf low (1.19.0)
+      expect(lo.precip).toBeLessThan(mid.precip);
+      expect(mid.precip).toBeLessThan(hi.precip);
       expect(lo.birds).toBe(0);
       expect(lo.fogNear).toBeLessThanOrEqual(mid.fogNear);
       expect(mid.fogNear).toBeLessThanOrEqual(hi.fogNear);

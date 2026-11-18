@@ -1053,3 +1053,12 @@ Hülle `features/store/prefs.js`, `localStorage lfx.store.<name>.<uid>`; Mapping
   - `?subs=srt|ass|off` Untertitelart des Fake-Players.
 - `build/serve.mjs` liefert zusätzlich `/xr-emu.js` aus `.tmp/xr-emu.js` (404, wenn nicht vorhanden) und `/cinema-bridge.js` (die Bridge der Hülle als Modul).
 - Der Emulator wird separat in `.tmp/` gebündelt (IIFE, legt ein emuliertes Gerät samt `window.__xrEmu` zum Steuern von Kopf, Controllern, Händen, Tasten und Sticks an) und **nicht committet**. Ein Test ohne VR-Brille ist damit nur lokal möglich.
+
+## Niederschlag (1.19.0)
+
+- `modules/precip.js` (vor `daytime` registriert) zeichnet Regen und Schnee als EINE Geometrie (N Quads) mit EINEM `ShaderMaterial` = 1 Draw-Call, auch bei `low`. Die Animation läuft im Vertex-Shader über Uniforms (`uTime`, `uCam`, `uWind`, …), kein Buffer-Upload pro Frame. Volumen 24 x 24 m um die Kamera, Höhe Kamera −6 … +10 m (regnet auch auf Dächern). Dichte: Preset-Schlüssel `precip` (low 260/180, mid 900/500, high 1400/700, Desktop/Handy); `rainLines` bleibt, wird nicht mehr genutzt.
+- Provider `precip` { setWeather({ kind: 'rain'|'snow'|null, i: 0..1 }), current() }. Der erste Wert gilt sofort, Änderungen blenden über ~15 s (Artwechsel: erst aus, dann ein). Reine Logik in `weather/precip-logic.js`.
+- Schutzboxen (Laden, Palast-Foyer/-Saal, Friseur, Palast-Vordach, Kiosk, höchstens 6): Partikel darunter werden im Shader aus dem Clip-Raum geschoben. Sichtbar nur im Außenbereich oder bei Kamera draußen; Suspend blendet aus.
+- `weather` (Provider von `daytime`) hat `precip` und `onChange(fn) → off` (feuert bei Änderung von `raining`). `modules/sound.js` abonniert es und startet/stoppt den Regenton zur Laufzeit (Lautstärke nach `precip.i`, Schnee ohne Regenton).
+- Scheibentropfen: Tropfen stehen still, Rinnsale laufen per `onBeforeCompile` + `uTime` (zweite Textur); 1 Draw-Call, `prefers-reduced-motion`: Rinnsale stehen.
+- Falle: `Float32BufferAttribute(array, n)` KOPIERT das Array. Wer später in das eigene Array schreibt (`modules/snack.js` Popcorn), nimmt `new BufferAttribute(array, n)`.
