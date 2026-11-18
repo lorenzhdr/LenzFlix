@@ -9,6 +9,7 @@ import {
 } from 'three';
 import { makeCanvas, toTexture } from '../world/textures.js';
 import { getOutdoor } from './outdoor.js';
+import { scheduleWarm } from '../engine/warm.js';
 import { OUTDOOR_AREAS } from '../world/city.js';
 import { prefersReducedMotion } from './m4-util.js';
 import { winterNext } from '../weather/state.js';
@@ -281,6 +282,8 @@ export default {
       onWeather();
     }
     hook();
+    // Blitz-Strahl, Atem-Points und Thermometer erscheinen erst bei Ereignissen: Programme im Leerlauf nach dem Start vorwärmen
+    const cancelWarm = scheduleWarm(ctx, () => [bolt, breath, thermo].filter(Boolean).map((object) => ({ object })));
 
     return {
       update(dt, t) {
@@ -301,6 +304,7 @@ export default {
       onSuspend() { suspended = true; const w = W(); if (flashing) endFlash(w); breath.visible = false; },
       onResume() { suspended = false; onWeather(); },
       dispose() {
+        cancelWarm();
         if (offWeather) { offWeather(); offWeather = null; }
         const w = W();
         if (w && typeof w.flash === 'function') w.flash(0);

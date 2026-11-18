@@ -11,6 +11,7 @@ import { rng } from '../util/geo.js';
 import { presetFor } from '../engine/quality.js';
 import { OUTDOOR_AREAS } from '../world/city.js';
 import { clamp } from './m4-util.js';
+import { scheduleWarm } from '../engine/warm.js';
 import {
   HALF, Y_BELOW, Y_ABOVE, MAX_BOXES, KINDS, normalizeWeather, countFor, stepBlend, shelterBoxes, packBoxes,
 } from '../weather/precip-logic.js';
@@ -205,6 +206,9 @@ export default {
       }
     }
 
+    // Das Programm (Regen und Schnee teilen es, Art per Uniform) vor dem ersten Niederschlag im Leerlauf kompilieren
+    const cancelWarm = scheduleWarm(ctx, () => [{ object: mesh }]);
+
     return {
       update(dt, t) {
         refresh(t);
@@ -224,7 +228,7 @@ export default {
       onQuality(lv) { level = lv; },
       onSuspend() { suspended = true; mesh.visible = false; },
       onResume() { suspended = false; },
-      dispose() { if (window.__lfxM4) delete window.__lfxM4.precip; },
+      dispose() { cancelWarm(); if (window.__lfxM4) delete window.__lfxM4.precip; },
     };
   },
 };

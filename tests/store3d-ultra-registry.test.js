@@ -119,7 +119,7 @@ describe('Ultra-Registry', () => {
     t.u.api.register('a', entry().build);
     expect(t.u.api.has('a')).toBe(true);
     expect(t.u.api.keys()).toEqual(['a']);
-    expect(t.u.api.list()).toEqual([{ key: 'a', built: false, visible: false, ms: 0 }]);
+    expect(t.u.api.list()).toEqual([{ key: 'a', built: false, visible: false, ms: 0, warm: false }]);
   });
   it('fehlerhafter Bau wird übersprungen, andere Einträge laufen weiter', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -148,5 +148,50 @@ describe('Ultra-Registry', () => {
     t.flush();
     expect(c.build).not.toHaveBeenCalled();
     expect(t.u.api.keys()).toEqual([]);
+  });
+});
+
+describe('Ultra-Registry: Vorab-Kompilierung', () => {
+  function mk(renderer) {
+    const ctx = { scene: node(), quality: () => 'ultra', opts: { ultraOk: true }, isPhone: false, renderer, camera: { cam: 1 } };
+    const jobs = [];
+    const u = createUltra(ctx, { schedule: (fn) => { const j = { fn, cancel() {} }; jobs.push(j); return j; } });
+    return { u, jobs };
+  }
+  it('warmt nach dem Bau in einem eigenen Häppchen, stellt Sichtbarkeit wieder her und lädt api.textures hoch', async () => {
+    const seen = [];
+    const renderer = { compileAsync: vi.fn((obj) => { seen.push([obj.visible, obj.children[0].visible]); return Promise.resolve(); }), initTexture: vi.fn() };
+    const { u, jobs } = mk(renderer);
+    const tex = { isTexture: true };
+    const child = node(); child.visible = false;
+    const object = node(); object.add(child);
+    object.traverse = (f) => { f(object); f(child); };
+    u.api.register('a', () => ({ object, textures: [tex] }));
+    jobs.shift().fn(100); // Bau-Häppchen
+    expect(renderer.compileAsync).not.toHaveBeenCalled();
+    expect(object.visible).toBe(true);
+    expect(jobs.length).toBe(1);
+    jobs.shift().fn(100); // Warm-Häppchen
+    expect(renderer.compileAsync).toHaveBeenCalledTimes(1);
+    expect(renderer.compileAsync.mock.calls[0][0]).toBe(object);
+    expect(seen).toEqual([[true, true]]);
+    expect(renderer.initTexture).toHaveBeenCalledWith(tex);
+    expect(child.visible).toBe(false); // wie vorher
+    await Promise.resolve();
+    expect(u.api.list()[0].warm).toBe(true);
+    expect(jobs.length).toBe(0); // nur einmal
+  });
+  it('ein Eintrag je Warm-Häppchen; Renderer-Fehler werden geschluckt', async () => {
+    const renderer = { compileAsync: vi.fn(() => { throw new Error('boom'); }), initTexture: vi.fn() };
+    const { u, jobs } = mk(renderer);
+    for (const k of ['a', 'b']) u.api.register(k, () => ({ object: node() }));
+    jobs.shift().fn(100); // baut beide (Budget groß)
+    expect(renderer.compileAsync).not.toHaveBeenCalled();
+    jobs.shift().fn(100);
+    expect(renderer.compileAsync).toHaveBeenCalledTimes(1);
+    while (jobs.length) jobs.shift().fn(100);
+    expect(renderer.compileAsync).toHaveBeenCalledTimes(2);
+    await Promise.resolve(); await Promise.resolve();
+    expect(u.api.list().map((e) => e.warm)).toEqual([false, false]);
   });
 });
