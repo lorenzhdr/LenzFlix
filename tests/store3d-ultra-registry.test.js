@@ -7,10 +7,10 @@ function node() {
   const o = { visible: true, parent: null, children: [], add(c) { this.children.push(c); c.parent = this; }, removeFromParent() { if (this.parent) this.parent.children = this.parent.children.filter((x) => x !== this); this.parent = null; } };
   return o;
 }
-function setup(level = 'mid', dev) {
+function setup(level = 'mid', dev, extra = {}) {
   const state = { level };
   const scene = node();
-  const ctx = { scene, quality: () => state.level, opts: dev ? { dev } : {} };
+  const ctx = { scene, quality: () => state.level, opts: { ultraOk: true, ...(dev ? { dev } : {}), ...(extra.opts || {}) }, isPhone: !!extra.isPhone };
   const jobs = [];
   const schedule = (fn) => { const j = { fn, cancelled: false, cancel() { this.cancelled = true; } }; jobs.push(j); return j; };
   const u = createUltra(ctx, { schedule });
@@ -33,6 +33,18 @@ describe('Ultra-Registry', () => {
     t.flush();
     expect(e.build).toHaveBeenCalledTimes(1);
     expect(t.u.api.list()[0]).toMatchObject({ key: 'a', built: true, visible: false });
+  });
+  it('ohne ultraOk oder auf dem Handy wird auf high nichts vorab gebaut', () => {
+    for (const extra of [{ opts: { ultraOk: false } }, { isPhone: true }]) {
+      const t = setup('high', undefined, extra);
+      const e = entry();
+      t.u.api.register('a', e.build);
+      t.flush();
+      t.setLevel('high');
+      t.flush();
+      expect(e.build).not.toHaveBeenCalled();
+      expect(t.jobs.length).toBe(0);
+    }
   });
   it('Sichtbarkeit nur auf ultra; Umschalten baut nie neu', () => {
     const t = setup('high');
