@@ -1,6 +1,7 @@
 // VIDEOTHEK LENZ · Ultra-Registry (1.19.0): Zusatzdetails, die es nur auf der Stufe „ultra“ gibt. Rein, ohne three.
 // Provider 'ultra' (von modules/runtime.js bereitgestellt, Muster der anderen Provider):
-//   register(key, build, opts?) → remove()   build(ctx) → { object: Object3D, update?(dt, t), dispose?() }; opts.parent = Elternknoten (Standard: ctx.scene)
+//   register(key, build, opts?) → remove()   build(ctx) → { object: Object3D, update?(dt, t), dispose?(), onVisible?(bool) }; opts.parent = Elternknoten (Standard: ctx.scene)
+//   onVisible(bool) wird bei jedem Wechsel der Sichtbarkeit des Eintrags gerufen (z. B. für Details ohne eigenes Mesh, die Materialien umschalten).
 //   isActive() → bool (Stufe === 'ultra')   has(key) → bool   keys() → string[]   list() → [{ key, built, visible, ms }]
 // Bau: LAZY in Leerlauf-Häppchen (requestIdleCallback, Rückfall setTimeout, je Häppchen höchstens ~6 ms; ein Eintrag wird nie geteilt),
 // sobald die Stufe >= 'high' ist (damit der Wechsel auf Ultra keinen Hänger erzeugt) oder Ultra aktiv wird.
@@ -58,8 +59,21 @@ export function createUltra(ctx, o = {}) {
   const wantBuild = () => (reachable() ? atLeast(level(), 'high') : level() === 'ultra');
   const visibleNow = (e) => !disposed && isActive() && allowed(e.key) && !!e.built;
 
+  function setShown(e, v) {
+    if (!!e.shown === v) return;
+    e.shown = v;
+    if (e.api && typeof e.api.onVisible === 'function') {
+      try { e.api.onVisible(v); } catch (err) { warn(`Ultra-Detail "${e.key}".onVisible`, err); }
+    }
+  }
+
   function applyVisibility() {
-    for (const e of entries.values()) if (e.built && e.api.object) e.api.object.visible = visibleNow(e);
+    for (const e of entries.values()) {
+      if (!e.built || !e.api.object) continue;
+      const v = visibleNow(e);
+      e.api.object.visible = v;
+      setShown(e, v);
+    }
   }
 
   function buildOne(e) {
@@ -72,6 +86,7 @@ export function createUltra(ctx, o = {}) {
       api.object.visible = false;
       (e.parent || ctx.scene).add(api.object);
       api.object.visible = visibleNow(e);
+      setShown(e, api.object.visible);
     } catch (err) {
       e.failed = true;
       warn(`Ultra-Detail "${e.key}" konnte nicht gebaut werden`, err);
@@ -107,18 +122,20 @@ export function createUltra(ctx, o = {}) {
   function disposeEntry(e) {
     if (!e.built || !e.api) return;
     try {
+      setShown(e, false);
       if (typeof e.api.dispose === 'function') e.api.dispose();
       else if (e.api.object) disposeTree(e.api.object);
       if (e.api.object && e.api.object.removeFromParent) e.api.object.removeFromParent();
     } catch (err) { warn(`Ultra-Detail "${e.key}" dispose`, err); }
     e.built = false;
+    e.shown = false;
     e.api = null;
   }
 
   const api = {
     register(key, build, opts = {}) {
       if (disposed || typeof build !== 'function' || typeof key !== 'string' || !key || entries.has(key)) return () => {};
-      const e = { key, build, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0 };
+      const e = { key, build, parent: opts && opts.parent ? opts.parent : null, built: false, failed: false, api: null, ms: 0, shown: false };
       entries.set(key, e);
       kick();
       return () => {
