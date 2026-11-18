@@ -106,6 +106,13 @@ afterEach(() => {
 });
 
 describe('Zustand und Ereignisse', () => {
+  it('Titelquelle ist injizierbar (Hülle übergibt jellyfinTitle ohne Design-Zusatz)', () => {
+    document.title = 'Testfilm (2020) · LENZ+';
+    const b = createCinemaBridge({ pollMs: 250, readTitle: () => 'Testfilm (2020)' });
+    expect(b.state().title).toBe('Testfilm (2020)');
+    expect(createCinemaBridge({ pollMs: 250 }).state().title).toBe('Testfilm (2020) · LENZ+');
+    document.title = 'Testfilm (2020)';
+  });
   it('Phasen, Route, Titel, Lautstärke, Vor/Zurück', () => {
     let s = bridge.state();
     expect(s).toMatchObject({ route: 'video', phase: 'playing', time: 12, duration: 6000, title: 'Testfilm (2020)', hasPrev: false, hasNext: true, upNext: null, error: null, reloading: false });

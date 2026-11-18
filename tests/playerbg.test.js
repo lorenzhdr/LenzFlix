@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import playerbg from '../src/js/features/playerbg.js';
 import { features } from '../src/js/features/index.js';
 import { parseHash } from '../src/js/core/router.js';
+import { applyThemeColor, removeThemeColor } from '../src/js/core/themecolor.js';
 
 const html = document.documentElement;
 const meta = () => document.querySelector('meta[name="theme-color"]');
@@ -15,6 +16,7 @@ describe('playerbg', () => {
   });
   afterEach(() => {
     playerbg.unmount();
+    removeThemeColor();
     html.className = '';
   });
 
@@ -48,5 +50,15 @@ describe('playerbg', () => {
     expect(meta().getAttribute('content')).toBe('#000000');
     playerbg.unmount();
     expect(meta().getAttribute('content')).toBe('#141414');
+  });
+
+  it('bei angewandtem Design: Override #000 im Player, danach wieder die Designfarbe', () => {
+    document.head.innerHTML = '<meta name="theme-color" content="#202020">';
+    applyThemeColor('plus');
+    expect(meta().getAttribute('content')).toBe('#10131f');
+    playerbg.mount();
+    expect(meta().getAttribute('content')).toBe('#000000');
+    playerbg.unmount();
+    expect(meta().getAttribute('content')).toBe('#10131f');
   });
 });

@@ -1,8 +1,9 @@
 // VIDEOTHEK LENZ (VR-Kino): Brücke zum Jellyfin-Player. Reines DOM, keine Imports (läuft auch im Dev-Harness als Modul).
 // Liest Zustand per Polling, steuert den Player über die (auch ausgeblendeten) OSD-Knöpfe. Siehe docs/store3d.md.
-// Nichts hier loggt URLs oder Titel.
+// Nichts hier loggt URLs oder Titel. readTitle: Filmtitel-Quelle; die Hülle (home.js) übergibt jellyfinTitle() aus core/doctitle.js,
+// damit der Titel ohne den Design-Zusatz des Tab-Titels ankommt (Standard: doc.title).
 
-export function createCinemaBridge({ win = window, doc = document, pollMs = 250 } = {}) {
+export function createCinemaBridge({ win = window, doc = document, pollMs = 250, readTitle = () => String(doc.title || '') } = {}) {
   let timer = null;
   let videoEl = null;
   let played = false; // aktuelles <video> hat schon Bild geliefert (readyState 0 danach = Spurwechsel, kein Fehler)
@@ -104,7 +105,7 @@ export function createCinemaBridge({ win = window, doc = document, pollMs = 250 
       phase,
       time: v ? finite(v.currentTime) : 0,
       duration: v ? finite(v.duration) : 0,
-      title: String(doc.title || ''),
+      title: String(readTitle() || ''),
       hasPrev: visibleBtn('.btnPreviousTrack'),
       hasNext: visibleBtn('.btnNextTrack'),
       upNext: upNextState(),

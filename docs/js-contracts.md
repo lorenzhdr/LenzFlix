@@ -86,6 +86,20 @@ Fünf Designs: **LENZFLIX** (`flix`, Standard, das Kern-CSS selbst), **LENZ+** (
 - Basis-URL (`resolveThemeCssBase()`), Reihenfolge: 1. `window.LenzFlixConfig.themeCssBase` (Verzeichnis-URL; `.min` folgt dem erkannten Kern-CSS) → 2. Dev-Link `#lfx-dev-css` (mit Query) → 3. Ort des eingebundenen Kern-CSS/-JS (`@import`-Regel, `<link>`, Boot-Skript, `<script src>`) → 4. jsDelivr-Fallback `…/LenzFlix@v<VERSION>/dist/` (`VERSION` aus `core/version.js`).
 - Asset-URLs in Design-CSS wie im Kern relativ zu `dist/` (`../assets/…`).
 
+### Tab-Text, Tab-Icon und Browserleiste je Design (1.16.2)
+- **Tab-Text:** `document.title` schreibt allein `core/doctitle.js`.
+  - API: `startDocTitle()`, `stopDocTitle()`, `jellyfinTitle()`. Gestartet wird in `main.js` `sync()`.
+  - Schema: `<Seitenname> · <Designname>`, auf der Startseite nur der Designname. Unter `layout-tv` gilt immer LENZFLIX. Ist das Design noch pending, bleibt Jellyfins Titel stehen.
+  - Namensreihenfolge: im Player Jellyfins Rohtitel → offenes Info-Fenster (`#lfx-modal-title`) → `pageName()` aus `shared/pagetitle.js` → Rohtitel nativer Seiten. Server- und Designnamen gelten nie als Seitenname.
+  - Features schreiben `document.title` nie selbst. Wer Jellyfins Titel braucht (z. B. das Kino über `cinema-bridge.js` mit der Option `readTitle`), liest `jellyfinTitle()`. Nach einem Routenwechsel liefert es `''`, bis Jellyfin neu schreibt.
+- **Icons:** `core/favicon.js` setzt das Tab-Icon (`rel~=icon`, eingebettete data-URI, Quellen `assets/logo/favicon*.svg|png`), das Home-Bildschirm-Icon (`apple-touch-icon`) und `apple-mobile-web-app-title` (Designname).
+  - Das Home-Bildschirm-Icon ist eine Datei `assets/logo/touch-<id>.png` (180 px, randlos, deckend), relativ zu `resolveThemeCssBase()`. LENZFLIX nutzt das eingebettete PNG.
+- **Browserleiste:** `<meta name="theme-color">` gehört allein `core/themecolor.js`.
+  - Wirksam ist ein gesetzter Override, sonst die Designfarbe (`--lfx-bg`).
+  - `playerbg` setzt im Player `setThemeColorOverride('#000000')`.
+  - Unter `layout-tv` und auf `/dashboard*` bzw. `/configurationpage*` bleibt Jellyfins Wert.
+  - Jellyfin darf das Meta neu schreiben: Jeder Abgleich übernimmt dessen Wert als neues Original und setzt den Sollwert wieder.
+
 ### VIDEOTHEK LENZ (`store`, `features/store/`)
 - Zwei Bundles: Die Hülle `features/store/` liegt im Hauptbundle und importiert nie `three` (Wächter in `build/build.mjs`); die 3D-Welt `src/js/store3d/**` wird als `dist/lenzstore(.min).js` per `core/themejs.js` erst bei Auswahl nachgeladen (CSS analog über `themecss.js`). Das 3D-Bundle importiert nur `three` und eigene Dateien; Zustandsbehaftetes kommt per `deps` von der Hülle.
 - Lebenszyklus-Ausnahme: `unmount()` setzt die 3D-Instanz nur aus (suspend), nach 3 min folgt dispose; Design-Wechsel und `destroy()` disposen sofort.

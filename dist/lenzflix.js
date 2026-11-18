@@ -1,8 +1,8 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __export = (target, all) => {
+  var __export = (target2, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target2, name, { get: all[name], enumerable: true });
   };
 
   // src/js/core/cache.js
@@ -62,12 +62,12 @@
   var storedMemo = { raw: void 0, server: null };
   function readStoredServer() {
     try {
-      const raw = window.localStorage.getItem("jellyfin_credentials");
-      if (storedMemo.raw === raw) return storedMemo.server;
-      const parsed = JSON.parse(raw || "null");
+      const raw2 = window.localStorage.getItem("jellyfin_credentials");
+      if (storedMemo.raw === raw2) return storedMemo.server;
+      const parsed = JSON.parse(raw2 || "null");
       const servers = parsed && parsed.Servers || [];
       const server = servers.find((s) => s && s.AccessToken && s.UserId) || servers[0] || null;
-      storedMemo = { raw, server };
+      storedMemo = { raw: raw2, server };
       return server;
     } catch {
       return null;
@@ -240,8 +240,8 @@
     return null;
   }
   function landscapeImage(item, { maxWidth = 780, quality = 85, scale } = {}) {
-    const pick = pickLandscape(item);
-    return pick ? imageUrlFor(pick.id, { ...pick, maxWidth, quality, scale }) : null;
+    const pick2 = pickLandscape(item);
+    return pick2 ? imageUrlFor(pick2.id, { ...pick2, maxWidth, quality, scale }) : null;
   }
   function logoImage(item, { maxWidth = 500, quality = 90, scale } = {}) {
     if (!item) return null;
@@ -279,9 +279,9 @@
     let h2 = String(hash2 || "").replace(/^#!?/, "");
     if (!h2.startsWith("/")) h2 = `/${h2}`;
     const qi = h2.indexOf("?");
-    const raw = qi < 0 ? h2 : h2.slice(0, qi);
+    const raw2 = qi < 0 ? h2 : h2.slice(0, qi);
     const params = new URLSearchParams(qi < 0 ? "" : h2.slice(qi + 1));
-    const path = raw.replace(/\/+$/, "") || "/";
+    const path = raw2.replace(/\/+$/, "") || "/";
     return { path: path === "/" ? "/home" : path, params, hash: h2 };
   }
   function currentRoute(reason = "initial") {
@@ -420,7 +420,7 @@
   }
 
   // src/js/core/version.js
-  var VERSION = "1.16.1";
+  var VERSION = "1.16.2";
 
   // src/js/core/themecss.js
   var CLASS = "lfx-theme-css";
@@ -571,56 +571,91 @@
 
   // src/js/core/favicon.js
   var FLIX_HREF = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACKElEQVR42u3az2oTQQDH8V801SY2LUoOwryCF1/Ji4+lL+HVJ2hToo2xHqXRy0IPha40Ch6cQgjJRSo07ucLc1kYdpf5sH9getmRFoPxWZLLJJMkx0lOk8xL2/yK/rreDgG4SFLWDl8lma6gmCeZlrZZWtpuANjUzyTnFcVJHcelbX5Y7m4A2NQyyZc1FJPSNtcAdAPANhTn9VvibWmb910E0O8w/r0kL+pYJOkkgAfegt0OAAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgAASAABAAAkAACAABIAAEgAAQAAJAAAgAASAABIAAEAACQAAAIAAEgAAQAAJAAAiArvV8MRg/6+KN93blQheD8UWS8o9Pc5lkluRTHSdJpqVtrgDoBoBtfa8gZitAJqVtrgHoBoBNLZN8TfI5yVmFMU/yobTNDQD/P4Bt3aw8KWZJPiY5LW3z7T5ebN/33533KMnLOm57k+SVvwABIAAEgAAQAAJAAAgAASAABIAAEAACQAAIAAEgABR7ApPkdZJRksMke0kOkjxOMkwySLKf5Ek9Nqr3dlSRH9U5o5W52iUApW3e5W53Ge9XOMOKZ1jxHObPbumnSR5WPP2KZx3c7dyDCmsVXH8F673tN5bcY1gLzpx6AAAAAElFTkSuQmCC";
+  var PLUS_HREF = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='lfx-plusm-g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%231bb3e8'/%3E%3Cstop offset='1' stop-color='%234f7cff'/%3E%3C/linearGradient%3E%3Cfilter id='lfx-plusm-a' x='-80%25' y='-80%25' width='260%25' height='260%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%2310131f'/%3E%3Cg transform='translate(8.31 50)'%3E%3Cpath d='M25.69 0L7.8 0Q5.82 0 4.76-1.09Q3.69-2.18 3.69-4.11L3.69-4.11L3.69-32.66Q3.69-34.68 4.73-35.72Q5.77-36.76 7.75-36.76L7.75-36.76Q9.67-36.76 10.71-35.72Q11.75-34.68 11.75-32.66L11.75-32.66L11.75-6.81L25.69-6.81Q27.35-6.81 28.26-5.93Q29.17-5.04 29.17-3.43L29.17-3.43Q29.17-1.77 28.26-.88Q27.35 0 25.69 0L25.69 0Z' fill='%23fff' stroke='%23fff' stroke-width='.6' stroke-linejoin='round'/%3E%3C/g%3E%3Cg fill='%231bb3e8' filter='url(%23lfx-plusm-a)' opacity='.8'%3E%3Crect x='35' y='17.8' width='20' height='6.4' rx='2.4'/%3E%3Crect x='41.8' y='11' width='6.4' height='20' rx='2.4'/%3E%3C/g%3E%3Cg fill='url(%23lfx-plusm-g)'%3E%3Crect x='35' y='17.8' width='20' height='6.4' rx='2.4'/%3E%3Crect x='41.8' y='11' width='6.4' height='20' rx='2.4'/%3E%3C/g%3E%3C/svg%3E";
+  var PRIME_HREF = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2300050d'/%3E%3Cg transform='translate(0 37) scale(1.35)'%3E%3Cpath d='M20 6.58L13.8 6.58L13.8-20.74L17.64-20.74Q18.22-20.74 18.61-20.48Q19-20.22 19.16-19.7L19.16-19.7L19.62-18.18Q20.22-18.84 20.91-19.38Q21.6-19.92 22.39-20.31Q23.18-20.7 24.09-20.92Q25-21.14 26.08-21.14L26.08-21.14Q27.7-21.14 29.08-20.42Q30.46-19.7 31.46-18.34Q32.46-16.98 33.03-15.01Q33.6-13.04 33.6-10.54L33.6-10.54Q33.6-8.2 32.95-6.22Q32.3-4.24 31.13-2.78Q29.96-1.32 28.33-.5Q26.7 .32 24.72 .32L24.72 .32Q23.1 .32 22-.14Q20.9-.6 20-1.38L20-1.38L20 6.58ZM23.92-16.4L23.92-16.4Q23.24-16.4 22.69-16.27Q22.14-16.14 21.67-15.9Q21.2-15.66 20.8-15.29Q20.4-14.92 20-14.44L20-14.44L20-5.64Q20.7-4.86 21.52-4.55Q22.34-4.24 23.24-4.24L23.24-4.24Q24.1-4.24 24.82-4.58Q25.54-4.920 26.07-5.67Q26.6-6.42 26.9-7.62Q27.2-8.82 27.2-10.54L27.2-10.54Q27.2-12.18 26.96-13.3Q26.72-14.42 26.29-15.11Q25.86-15.8 25.26-16.1Q24.66-16.4 23.92-16.4Z' fill='%23fff'/%3E%3C/g%3E%3Cpath d='M10.5 54.2Q32 59.8 53.5 51.4Q32 53.4 10.5 54.2Z' fill='%231a98ff'/%3E%3C/svg%3E";
+  var RETRO_HREF = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='c' x1='0' y1='9.6' x2='0' y2='54.4' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%23ffe2a8'/%3E%3Cstop offset='.45' stop-color='%23ffb000'/%3E%3Cstop offset='1' stop-color='%23ff5a1f'/%3E%3C/linearGradient%3E%3Cmask id='m' maskUnits='userSpaceOnUse' x='0' y='0' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23fff'/%3E%3Crect y='34.7' width='64' height='1' fill='%23000'/%3E%3Crect y='40.75' width='64' height='1.7' fill='%23000'/%3E%3Crect y='46.8' width='64' height='2.4' fill='%23000'/%3E%3C/mask%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230a0603'/%3E%3Cg transform='translate(6.4 7) scale(.8)'%3E%3Cg mask='url(%23m)'%3E%3Cpath fill='url(%23c)' d='M7.7 9.6h16.2v6.4h-16.2zM2.3 16h5.4v6.4h-5.4zM23.9 16h5.4v6.4h-5.4zM2.3 22.4h5.4v6.4h-5.4zM23.9 22.4h5.4v6.4h-5.4zM7.7 28.8h16.2v6.4h-16.2zM2.3 35.2h5.4v6.4h-5.4zM23.9 35.2h5.4v6.4h-5.4zM2.3 41.6h5.4v6.4h-5.4zM23.9 41.6h5.4v6.4h-5.4zM7.7 48h16.2v6.4h-16.2zM50.9 9.6h5.4v6.4h-5.4zM45.5 16h10.8v6.4h-10.8zM40.1 22.4h5.4v6.4h-5.4zM50.9 22.4h5.4v6.4h-5.4zM34.7 28.8h5.4v6.4h-5.4zM50.9 28.8h5.4v6.4h-5.4zM34.7 35.2h27v6.4h-27zM50.9 41.6h5.4v6.4h-5.4zM50.9 48h5.4v6.4h-5.4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E";
   var STORE_HREF = "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%20role=%22img%22%3E%3Ctitle%3EVIDEOTHEK%20LENZ%3C/title%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2212%22%20fill=%22%230d1330%22/%3E%3Crect%20x=%224%22%20y=%224%22%20width=%2256%22%20height=%2256%22%20rx=%229%22%20fill=%22none%22%20stroke=%22%23ff3d7f%22%20stroke-width=%222.5%22/%3E%3Cpath%20d=%22M12%2018l9%2028%209-28h-5.5L21%2033.5%2017.5%2018zM34%2018h5.5v23H52v5H34z%22%20fill=%22%23ffd23f%22/%3E%3C/svg%3E";
-  var FAVICONS = { flix: FLIX_HREF, plus: FLIX_HREF, prime: FLIX_HREF, retro: FLIX_HREF, store: STORE_HREF };
+  var FAVICONS = { flix: FLIX_HREF, plus: PLUS_HREF, prime: PRIME_HREF, retro: RETRO_HREF, store: STORE_HREF };
+  var TOUCH_FILES = { plus: "touch-plus.png", prime: "touch-prime.png", retro: "touch-retro.png", store: "touch-store.png" };
+  function touchFor(theme2) {
+    const file = TOUCH_FILES[theme2];
+    if (!file) return FLIX_HREF;
+    try {
+      return new URL(`../assets/logo/${file}`, resolveThemeCssBase().base).href;
+    } catch {
+      return FLIX_HREF;
+    }
+  }
   var typeFor = (href) => href.startsWith("data:image/svg") ? "image/svg+xml" : "image/png";
   var ATTR = "data-lfx-orig";
   var ATTR_SIZES = "data-lfx-orig-sizes";
   var ATTR_TYPE = "data-lfx-orig-type";
+  var TITLE_META = 'meta[name="apple-mobile-web-app-title"]';
   var created = null;
-  var patched = [];
+  var createdTitle = null;
+  var patchedIcons = [];
+  var patchedTouch = [];
+  var patchedTitle = null;
   var currentTheme = null;
-  function hrefFor(theme) {
-    return FAVICONS[theme] || FAVICONS.flix;
+  var pick = (map, theme2) => map[theme2] || map.flix;
+  function setLink(l, href) {
+    l.setAttribute("href", href);
+    l.setAttribute("type", typeFor(href));
   }
-  function applyFavicon(theme = "flix") {
+  function setTitle(theme2) {
+    const el4 = patchedTitle || createdTitle;
+    if (el4) el4.setAttribute("content", brandName(theme2));
+  }
+  function applyFavicon(theme2 = "flix") {
     if (!document.head) return;
-    const href = hrefFor(theme);
+    const href = pick(FAVICONS, theme2);
+    const touch = touchFor(theme2);
     if (created) {
-      if (theme !== currentTheme) {
-        currentTheme = theme;
-        for (const l of [...patched, created]) {
-          l.setAttribute("href", href);
-          l.setAttribute("type", typeFor(href));
-        }
+      if (theme2 !== currentTheme) {
+        currentTheme = theme2;
+        for (const l of [...patchedIcons, created]) setLink(l, href);
+        for (const l of patchedTouch) setLink(l, touch);
+        setTitle(theme2);
       }
       return;
     }
-    currentTheme = theme;
-    patched = [...document.head.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]')];
-    for (const l of patched) {
-      l.setAttribute(ATTR, l.getAttribute("href") ?? "");
-      if (l.hasAttribute("sizes")) l.setAttribute(ATTR_SIZES, l.getAttribute("sizes"));
-      if (l.hasAttribute("type")) l.setAttribute(ATTR_TYPE, l.getAttribute("type"));
-      l.setAttribute("href", href);
-      l.setAttribute("type", typeFor(href));
-      l.removeAttribute("sizes");
+    currentTheme = theme2;
+    patchedIcons = [...document.head.querySelectorAll('link[rel~="icon"]')];
+    patchedTouch = [...document.head.querySelectorAll('link[rel~="apple-touch-icon"], link[rel~="apple-touch-icon-precomposed"]')].filter((l) => !patchedIcons.includes(l));
+    for (const [list, h2] of [[patchedIcons, href], [patchedTouch, touch]]) {
+      for (const l of list) {
+        l.setAttribute(ATTR, l.getAttribute("href") ?? "");
+        if (l.hasAttribute("sizes")) l.setAttribute(ATTR_SIZES, l.getAttribute("sizes"));
+        if (l.hasAttribute("type")) l.setAttribute(ATTR_TYPE, l.getAttribute("type"));
+        setLink(l, h2);
+        l.removeAttribute("sizes");
+      }
     }
     created = document.createElement("link");
     created.id = "lfx-favicon";
     created.rel = "icon";
-    created.type = typeFor(href);
-    created.href = href;
+    setLink(created, href);
     document.head.append(created);
+    patchedTitle = document.head.querySelector(TITLE_META);
+    if (patchedTitle) {
+      patchedTitle.setAttribute(ATTR, patchedTitle.getAttribute("content") ?? "");
+    } else {
+      createdTitle = document.createElement("meta");
+      createdTitle.setAttribute("name", "apple-mobile-web-app-title");
+      document.head.append(createdTitle);
+    }
+    setTitle(theme2);
   }
   function removeFavicon() {
     created?.remove();
     created = null;
+    createdTitle?.remove();
+    createdTitle = null;
     currentTheme = null;
-    for (const l of patched) {
+    for (const l of [...patchedIcons, ...patchedTouch]) {
       if (l.hasAttribute(ATTR)) {
-        const orig = l.getAttribute(ATTR);
-        if (orig) l.setAttribute("href", orig);
+        const orig2 = l.getAttribute(ATTR);
+        if (orig2) l.setAttribute("href", orig2);
         else l.removeAttribute("href");
         for (const [a, name] of [[ATTR_SIZES, "sizes"], [ATTR_TYPE, "type"]]) {
           if (l.hasAttribute(a)) l.setAttribute(name, l.getAttribute(a));
@@ -630,7 +665,113 @@
         l.removeAttribute(ATTR);
       }
     }
-    patched = [];
+    patchedIcons = [];
+    patchedTouch = [];
+    if (patchedTitle && patchedTitle.hasAttribute(ATTR)) {
+      const orig2 = patchedTitle.getAttribute(ATTR);
+      if (orig2) patchedTitle.setAttribute("content", orig2);
+      else patchedTitle.removeAttribute("content");
+      patchedTitle.removeAttribute(ATTR);
+    }
+    patchedTitle = null;
+  }
+
+  // src/js/core/themecolor.js
+  var THEME_COLORS = {
+    flix: "#141414",
+    plus: "#10131f",
+    prime: "#00050d",
+    retro: "#0a0603",
+    store: "#0d1330"
+  };
+  var OWN_ATTR = "data-lfx-themecolor";
+  var ADMIN = /^\/(dashboard|configurationpage)/;
+  var active = false;
+  var theme = null;
+  var override = null;
+  var unsub = null;
+  var meta = null;
+  var own = false;
+  var captured = false;
+  var orig = null;
+  var written = null;
+  function designColor() {
+    if (!active || !theme) return null;
+    if (isTv()) return null;
+    const route = currentRoute();
+    if (ADMIN.test(route.path)) return null;
+    return THEME_COLORS[theme] || THEME_COLORS.flix;
+  }
+  function target() {
+    return override ?? designColor();
+  }
+  function findMeta() {
+    const all = [...document.head.querySelectorAll('meta[name="theme-color"]')];
+    return all.find((m) => !m.hasAttribute(OWN_ATTR)) || all[0] || null;
+  }
+  function release() {
+    if (!meta) return;
+    if (own) meta.remove();
+    else if (captured) {
+      if (orig === null) meta.removeAttribute("content");
+      else if (meta.getAttribute("content") !== orig) meta.setAttribute("content", orig);
+    }
+    meta = null;
+    own = false;
+    captured = false;
+    orig = null;
+    written = null;
+  }
+  function sync() {
+    if (!document.head) return;
+    const want = target();
+    if (want === null) {
+      release();
+      return;
+    }
+    const found = findMeta();
+    if (found && found !== meta) {
+      if (own && meta) meta.remove();
+      meta = found;
+      own = found.hasAttribute(OWN_ATTR);
+      captured = false;
+      written = null;
+    }
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      meta.setAttribute(OWN_ATTR, "");
+      document.head.appendChild(meta);
+      own = true;
+    }
+    const dom = meta.getAttribute("content");
+    if (!own) {
+      if (!captured || dom !== written && dom !== want) {
+        orig = dom;
+        captured = true;
+      }
+    }
+    if (dom !== want) meta.setAttribute("content", want);
+    written = want;
+  }
+  function applyThemeColor(next = "flix") {
+    active = true;
+    theme = next;
+    if (!unsub) unsub = onRoute(() => sync());
+    sync();
+  }
+  function setThemeColorOverride(color) {
+    override = color || null;
+    sync();
+  }
+  function removeThemeColor() {
+    active = false;
+    theme = null;
+    if (unsub) {
+      unsub();
+      unsub = null;
+    }
+    sync();
   }
 
   // src/js/core/dom.js
@@ -997,10 +1138,10 @@
     } catch {
     }
   }
-  function emit(theme, previous) {
+  function emit(theme2, previous) {
     for (const fn of [...listeners]) {
       try {
-        fn({ theme, previous });
+        fn({ theme: theme2, previous });
       } catch (e) {
         console.error("[LenzFlix] onThemeChange", e);
       }
@@ -1011,6 +1152,7 @@
     effective = "flix";
     setHtmlTheme("flix");
     applyFavicon("flix");
+    applyThemeColor("flix");
     reevaluate();
     emit("flix", previous);
   }
@@ -1022,20 +1164,21 @@
     setHtmlTheme(id);
     removeThemeCss(id === "flix" ? null : id);
     applyFavicon(id);
+    applyThemeColor(id);
     if (previous !== id || prevState === "pending" && nextState !== "pending") reevaluate();
     if (previous !== id) emit(id, previous);
   }
-  function transition(target) {
-    if (inflight3 && inflight3.target === target) return inflight3.promise;
+  function transition(target2) {
+    if (inflight3 && inflight3.target === target2) return inflight3.promise;
     const mine = ++seq;
-    if (target === "flix") {
+    if (target2 === "flix") {
       inflight3 = null;
       commit("flix");
       return Promise.resolve(true);
     }
-    if (effective === target) {
+    if (effective === target2) {
       inflight3 = null;
-      removeThemeCss(target);
+      removeThemeCss(target2);
       return Promise.resolve(true);
     }
     const initial = effective === null;
@@ -1051,7 +1194,7 @@
         if (mine === seq && effective === null) revealFlix();
       }, Math.max(0, REVEAL_MS - waited));
     }
-    const promise = ensureThemeCss(target, { timeout: CSS_TIMEOUT_MS }).then((ok) => {
+    const promise = ensureThemeCss(target2, { timeout: CSS_TIMEOUT_MS }).then((ok) => {
       if (initial && mine === seq) {
         clearTimeout(revealTimer);
         revealTimer = null;
@@ -1059,7 +1202,7 @@
       if (mine !== seq) return false;
       inflight3 = null;
       if (ok) {
-        commit(target);
+        commit(target2);
         return true;
       }
       console.warn("[LenzFlix] Design-CSS konnte nicht geladen werden");
@@ -1068,7 +1211,7 @@
       else chosen = effective;
       return false;
     });
-    inflight3 = { target, promise };
+    inflight3 = { target: target2, promise };
     return promise;
   }
   async function setTheme(id, { source = "user" } = {}) {
@@ -1252,6 +1395,340 @@
     const cl2 = root2().classList;
     cl2.remove("lfx-js", "lfx-modern", "lfx-tv", "lfx-scrolled", "lfx-nav-on");
     for (const c of [...cl2]) if (c.startsWith("lfx-theme-")) cl2.remove(c);
+  }
+
+  // src/js/shared/libraries.js
+  var HUB_TYPES = ["movies", "tvshows", "homevideos", "mixed"];
+  function viewHref(view) {
+    const id = view.Id;
+    const ct = view.CollectionType;
+    const q = `topParentId=${id}&collectionType=${ct}`;
+    switch (ct) {
+      case "movies":
+        return `#/movies?${q}`;
+      case "tvshows":
+        return `#/tv?${q}`;
+      case "music":
+        return `#/music?${q}`;
+      case "books":
+        return `#/books?${q}`;
+      case "musicvideos":
+        return `#/musicvideos?${q}`;
+      case "boxsets":
+        return `#/boxsets?${q}`;
+      case "playlists":
+        return `#/playlists?${q}`;
+      case "homevideos":
+        return `#/homevideos?topParentId=${id}`;
+      case "livetv":
+        return "#/livetv";
+      default:
+        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
+    }
+  }
+  function getLibraries() {
+    return cached("libraries", async () => {
+      const res = await getViews();
+      const list = Array.isArray(res) ? res : res && res.Items || [];
+      return list.filter((v) => v && v.Id).map((v) => ({
+        id: v.Id,
+        name: v.Name,
+        collectionType: v.CollectionType || null,
+        href: viewHref(v),
+        hubCapable: !v.CollectionType || HUB_TYPES.includes(v.CollectionType)
+      }));
+    }, 5 * 60 * 1e3);
+  }
+
+  // src/js/shared/routes.js
+  var enc = encodeURIComponent;
+  var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
+  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
+  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
+  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
+  var KINDS = ["title", "hub", "browse", "search", "new", "tv", "series", "movies", "mylist"];
+  var SORTS = ["az", "za", "new", "year"];
+  var TYPES = ["movies", "series"];
+  function libraryHref(kind2, { genre, view, sort } = {}) {
+    const k = kind2 === "series" ? "series" : "movies";
+    return `#/home?lfx=${k}${genre ? `&genre=${enc(genre)}` : ""}${view === "grid" ? "&view=grid" : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
+  }
+  function myListHref({ type, sort } = {}) {
+    return `#/home?lfx=mylist${TYPES.includes(type) ? `&type=${type}` : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
+  }
+  function parseLfxRoute(route) {
+    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null, view: null, sort: null, type: null };
+    if (!route || !route.params || route.path !== "/home") return empty2;
+    const kind2 = route.params.get("lfx");
+    if (!KINDS.includes(kind2)) return empty2;
+    return {
+      kind: kind2,
+      id: route.params.get("id") || null,
+      lib: route.params.get("lib") || null,
+      genre: route.params.get("genre") || null,
+      q: route.params.get("q") || null,
+      view: route.params.get("view") === "grid" ? "grid" : null,
+      sort: SORTS.includes(route.params.get("sort")) ? route.params.get("sort") : null,
+      type: TYPES.includes(route.params.get("type")) ? route.params.get("type") : null
+    };
+  }
+  var tvModeHref = "#/home?lfx=tv";
+  var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
+  var isLibraryRoute = (route) => ["series", "movies"].includes(parseLfxRoute(route).kind);
+  var isMyListRoute = (route) => parseLfxRoute(route).kind === "mylist";
+
+  // src/js/shared/pagetitle.js
+  var KIND_LABEL = { series: "Serien", movies: "Filme" };
+  var NATIVE_TITLES = {
+    "/mypreferencesmenu": "Einstellungen",
+    "/mypreferencesdisplay": "Anzeige",
+    "/mypreferenceshome": "Startseite",
+    "/mypreferencesplayback": "Wiedergabe",
+    "/mypreferencessubtitles": "Untertitel",
+    "/mypreferencescontrols": "Steuerung",
+    "/mypreferencesquickconnect": "Quick Connect",
+    "/userprofile": "Profil",
+    "/search": "Suche",
+    "/queue": "Warteschlange"
+  };
+  function defaultDom(selector, attr) {
+    let el4 = null;
+    try {
+      el4 = document.querySelector(selector);
+    } catch {
+    }
+    if (!el4) return "";
+    return String((attr ? el4.getAttribute(attr) : el4.textContent) || "").trim();
+  }
+  var TITLE_SOURCES = [
+    [".lfx-pt__title"],
+    [".lfx-pt__logo", "alt"],
+    [".lfx-plus-title__logo", "alt"],
+    [".lfx-plus-title__name"],
+    [".lfx-rt__logo", "alt"],
+    [".lfx-rt__brand"]
+  ];
+  function titleName(dom) {
+    for (const [sel, attr] of TITLE_SOURCES) {
+      const t = dom(sel, attr);
+      if (t) return t;
+    }
+    return "";
+  }
+  function pageName(route, libs2, dom = defaultDom) {
+    if (!route || !route.params) return "";
+    const list = Array.isArray(libs2) ? libs2 : [];
+    const libName = (id) => id && (list.find((l) => l.id === id) || {}).name || "";
+    const p = route.params;
+    if (route.path === "/home") {
+      const { kind: kind2, lib, genre } = parseLfxRoute(route);
+      if (!kind2) return p.get("tab") === "1" ? "Meine Liste" : "";
+      switch (kind2) {
+        case "series":
+        case "movies": {
+          const label = KIND_LABEL[kind2];
+          const g = genre ? dom(".lfx-lib__title .lfx-lib__current") : "";
+          return g && g !== "\u2026" ? `${g} \xB7 ${label}` : label;
+        }
+        case "mylist":
+          return "Meine Liste";
+        case "new":
+          return "Neu & beliebt";
+        case "tv":
+          return "TV";
+        case "search":
+          return "Suche";
+        case "hub":
+          return libName(lib);
+        case "browse":
+          return libName(lib) || "Bibliothek";
+        case "title":
+          return titleName(dom);
+        default:
+          return "";
+      }
+    }
+    if (NATIVE_TITLES[route.path]) return NATIVE_TITLES[route.path];
+    const parent = p.get("topParentId") || p.get("parentId");
+    const name = libName(parent);
+    if (name) return name;
+    if (route.path === "/details" || route.path === "/item") return dom(".page:not(.hide) .nameContainer h1");
+    if (route.path === "/movies") return "Filme";
+    if (route.path === "/tv") return "Serien";
+    if (/^\/(mypreferences|usermenu)/.test(route.path)) return "Einstellungen";
+    return "";
+  }
+
+  // src/js/core/doctitle.js
+  var PLAYER = '[id="videoOsdPage"]:not(.hide)';
+  var MODAL_CLASS = "lfx-modal-open";
+  var FOLLOW_UP_MS = [300, 1e3, 2500];
+  function brands() {
+    try {
+      return Object.values(THEME_META).map((m) => m.name);
+    } catch {
+      return [];
+    }
+  }
+  var running = false;
+  var raw = null;
+  var rawValid = false;
+  var serverName = null;
+  var lastWritten = null;
+  var lastHash = null;
+  var libs = [];
+  var libSeq = 0;
+  var modalOpen = false;
+  var timers = [];
+  var headObs = null;
+  var titleObs = null;
+  var htmlObs = null;
+  var titleEl = null;
+  var unsubRoute = null;
+  var unsubTheme = null;
+  var rootEl = () => document.documentElement;
+  function isServerName(t) {
+    return t === serverName || t === "Jellyfin" || brands().includes(t);
+  }
+  var rawGood = () => rawValid && Boolean(raw) && !isServerName(raw);
+  function isPlainHome(route) {
+    return route.path === "/home" && !route.params.get("lfx") && !route.params.get("tab") && !document.querySelector(PLAYER);
+  }
+  function takeRaw(t) {
+    raw = t;
+    rawValid = true;
+    const route = currentRoute();
+    if (isPlainHome(route) && t) serverName = t;
+  }
+  function design() {
+    return isTv() ? "flix" : getTheme();
+  }
+  function desired2() {
+    const theme2 = design();
+    if (!theme2) return null;
+    const brand = brandName(theme2);
+    const route = currentRoute();
+    let name = "";
+    if ((route.path === "/video" || document.querySelector(PLAYER)) && rawGood()) {
+      name = raw;
+    }
+    if (!name && rootEl().classList.contains(MODAL_CLASS)) {
+      const el4 = document.getElementById("lfx-modal-title");
+      if (el4 && !el4.classList.contains("lfx-modal__error-title")) name = (el4.textContent || "").trim();
+    }
+    if (!name) name = pageName(route, libs);
+    if (!name && rawGood()) name = raw;
+    return name && name !== brand ? `${name} \xB7 ${brand}` : brand;
+  }
+  function observeTitle() {
+    const el4 = document.querySelector("title");
+    if (el4 === titleEl) return;
+    titleObs.disconnect();
+    titleEl = el4;
+    if (el4) titleObs.observe(el4, { characterData: true, childList: true, subtree: true });
+  }
+  function write(t) {
+    document.title = t;
+    lastWritten = t;
+    observeTitle();
+    titleObs.takeRecords();
+    headObs.takeRecords();
+  }
+  function update() {
+    if (!running) return;
+    const t = desired2();
+    if (t === null) return;
+    if (document.title !== t) write(t);
+    else lastWritten = t;
+  }
+  function loadLibs() {
+    if (!isReady()) return;
+    const seq3 = ++libSeq;
+    Promise.resolve().then(() => getLibraries()).then((list) => {
+      if (!running || seq3 !== libSeq || !Array.isArray(list)) return;
+      libs = list;
+      update();
+    }).catch(() => {
+    });
+  }
+  function followUp() {
+    for (const id of timers) clearTimeout(id);
+    timers = FOLLOW_UP_MS.map((ms) => setTimeout(() => {
+      if (!running) return;
+      loadLibs();
+      update();
+    }, ms));
+  }
+  function onRouteChange(route) {
+    if (route.hash !== lastHash) {
+      lastHash = route.hash;
+      rawValid = false;
+    }
+    update();
+    loadLibs();
+    followUp();
+  }
+  function startDocTitle() {
+    if (running) {
+      update();
+      return;
+    }
+    if (!document.head) return;
+    running = true;
+    headObs = new MutationObserver(() => {
+      const before = titleEl;
+      observeTitle();
+      if (titleEl !== before && document.title !== lastWritten) {
+        takeRaw(document.title);
+        update();
+      }
+    });
+    titleObs = new MutationObserver(() => {
+      takeRaw(document.title);
+      update();
+    });
+    headObs.observe(document.head, { childList: true });
+    observeTitle();
+    modalOpen = rootEl().classList.contains(MODAL_CLASS);
+    htmlObs = new MutationObserver(() => {
+      const open3 = rootEl().classList.contains(MODAL_CLASS);
+      if (open3 === modalOpen) return;
+      modalOpen = open3;
+      update();
+      followUp();
+    });
+    htmlObs.observe(rootEl(), { attributes: true, attributeFilter: ["class"] });
+    takeRaw(document.title);
+    unsubTheme = onThemeChange(() => update());
+    unsubRoute = onRoute(onRouteChange);
+    rawValid = true;
+    update();
+  }
+  function stopDocTitle() {
+    if (!running) return;
+    running = false;
+    headObs?.disconnect();
+    titleObs?.disconnect();
+    htmlObs?.disconnect();
+    headObs = titleObs = htmlObs = null;
+    titleEl = null;
+    if (unsubRoute) unsubRoute();
+    if (unsubTheme) unsubTheme();
+    unsubRoute = unsubTheme = null;
+    for (const id of timers) clearTimeout(id);
+    timers = [];
+    libSeq++;
+    if (raw !== null && document.title !== raw) document.title = raw;
+    raw = null;
+    rawValid = false;
+    serverName = null;
+    lastWritten = null;
+    lastHash = null;
+    libs = [];
+  }
+  function jellyfinTitle() {
+    if (!running) return String(document.title || "");
+    return rawValid && raw ? raw : "";
   }
 
   // src/js/core/csscheck.js
@@ -1511,9 +1988,9 @@
         const page2 = [...document.querySelectorAll(".itemDetailPage:not(.hide)")].find((p) => sameBefore || !stale.has(p) || shown2.has(p) || Date.now() - started2 > grace);
         const wrap = page2 && page2.querySelector(".mainDetailButtons");
         const visible = (sel) => wrap && [...wrap.querySelectorAll(sel)].find((b) => !b.classList.contains("hide"));
-        const target = resume ? visible(".btnPlay") : visible(".btnReplay") || visible(".btnPlay");
-        if (target) {
-          target.click();
+        const target2 = resume ? visible(".btnPlay") : visible(".btnReplay") || visible(".btnPlay");
+        if (target2) {
+          target2.click();
           done(true);
         } else if (Date.now() - started2 > timeoutMs) {
           done(false);
@@ -1573,8 +2050,8 @@
       return false;
     }
   }
-  function scrolledAncestor(target, el4) {
-    let n = target && target.nodeType === 1 ? target : target && target.parentElement;
+  function scrolledAncestor(target2, el4) {
+    let n = target2 && target2.nodeType === 1 ? target2 : target2 && target2.parentElement;
     while (n) {
       if (n.scrollTop > 0) return true;
       if (n === el4) break;
@@ -1900,10 +2377,10 @@
     if (session !== s) return;
     teardown(s);
     const { anchor, opts, command, item } = s;
-    const target = anchor && anchor.isConnected ? anchor : rebuiltAnchor(s);
-    if (target && typeof target.focus === "function") {
+    const target2 = anchor && anchor.isConnected ? anchor : rebuiltAnchor(s);
+    if (target2 && typeof target2.focus === "function") {
       try {
-        target.focus({ preventScroll: true });
+        target2.focus({ preventScroll: true });
       } catch {
       }
     }
@@ -1973,12 +2450,12 @@
     wrapper.className = "lfx-proxywrap itemsContainer";
     wrapper.style.display = "none";
     const list = Array.isArray(opts.siblings) && opts.siblings.some((s2) => s2 && s2.Id === item.Id) ? opts.siblings : [item];
-    let target = null;
+    let target2 = null;
     for (const it of list) {
       if (!it || !it.Id) continue;
       const proxy = buildProxyFor(it);
       wrapper.append(proxy);
-      if (it.Id === item.Id) target = proxy;
+      if (it.Id === item.Id) target2 = proxy;
     }
     container.append(wrapper);
     const s = {
@@ -2019,7 +2496,7 @@
     session = s;
     setPosition(computeMenuPosition(rectOf(anchor)));
     document.documentElement.classList.add("lfx-menu-open");
-    target.click();
+    target2.click();
     return true;
   }
   function isMenuOpen() {
@@ -2136,9 +2613,9 @@
   var fix = (v, range) => clamp(round05(v), range);
   function read() {
     try {
-      const raw = window.localStorage.getItem(storageKey());
-      if (!raw) return {};
-      const o = JSON.parse(raw);
+      const raw2 = window.localStorage.getItem(storageKey());
+      if (!raw2) return {};
+      const o = JSON.parse(raw2);
       return o && typeof o === "object" ? o : {};
     } catch {
       return {};
@@ -2199,7 +2676,7 @@
     lazy: "Zeilen erst kurz vor Sichtbarkeit",
     tvwarm: "TV: kein Vorw\xE4rmen"
   };
-  var active = false;
+  var active2 = false;
   var lastUid2;
   var offTheme = null;
   var offScale = null;
@@ -2268,9 +2745,9 @@
     const next = isDataSaver();
     document.documentElement.classList.toggle(DATASAVER_CLASS, next);
     setImageScale(isDataSaver("images") ? getSaverScale() : getNormalScale());
-    if (next === active) return;
-    active = next;
-    window.dispatchEvent(new CustomEvent(DATASAVER_EVENT, { detail: { active } }));
+    if (next === active2) return;
+    active2 = next;
+    window.dispatchEvent(new CustomEvent(DATASAVER_EVENT, { detail: { active: active2 } }));
   }
   function flash() {
     const cl2 = document.documentElement.classList;
@@ -2316,7 +2793,7 @@
     clearTimeout(flashTimer);
     flashTimer = 0;
     lastUid2 = void 0;
-    active = false;
+    active2 = false;
     document.documentElement.classList.remove(DATASAVER_CLASS, FLASH_CLASS);
     setImageScale(1);
   }
@@ -2451,8 +2928,8 @@
   var TTL_MS = 5 * 60 * 1e3;
   var FAIL_TTL_MS = 30 * 1e3;
   function getChartsUrl() {
-    const clean2 = (raw) => {
-      const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
+    const clean2 = (raw2) => {
+      const s = String(raw2 == null ? "" : raw2).trim().replace(/^["'\s]+|["'\s]+$/g, "").replace(/\/+$/, "");
       return /^https:\/\/[^\s"']+$/i.test(s) ? s : null;
     };
     const fromConfig = clean2(window.LenzFlixConfig && window.LenzFlixConfig.chartsUrl);
@@ -2825,8 +3302,8 @@
   }
   function openThemePicker({ returnFocus } = {}) {
     if (current) closeThemePicker();
-    const prev2 = document.activeElement;
-    const back = returnFocus || (prev2 && prev2 !== document.body && prev2 !== document.documentElement ? prev2 : null);
+    const prev = document.activeElement;
+    const back = returnFocus || (prev && prev !== document.body && prev !== document.documentElement ? prev : null);
     const sheet = isMobileViewport();
     const overlay = mountPoint(ID3, { className: `lfx-tp${sheet ? " lfx-tp--sheet" : ""}` });
     overlay.className = `lfx-tp${sheet ? " lfx-tp--sheet" : ""}`;
@@ -2866,14 +3343,14 @@
       }
       const first2 = nodes[0];
       const last = nodes[nodes.length - 1];
-      const active6 = document.activeElement;
-      if (!dialog.contains(active6) || active6 === dialog) {
+      const active7 = document.activeElement;
+      if (!dialog.contains(active7) || active7 === dialog) {
         e.preventDefault();
         (e.shiftKey ? last : first2).focus();
-      } else if (e.shiftKey && active6 === first2) {
+      } else if (e.shiftKey && active7 === first2) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && active6 === last) {
+      } else if (!e.shiftKey && active7 === last) {
         e.preventDefault();
         first2.focus();
       }
@@ -2913,43 +3390,6 @@
     });
     return c;
   }
-
-  // src/js/shared/routes.js
-  var enc = encodeURIComponent;
-  var titleHref = (id) => `#/home?lfx=title&id=${enc(id)}`;
-  var hubHref = (libId) => `#/home?lfx=hub&lib=${enc(libId)}`;
-  var browseHref = (libId, genreId) => `#/home?lfx=browse&lib=${enc(libId)}${genreId ? `&genre=${enc(genreId)}` : ""}`;
-  var searchHref = (q) => `#/home?lfx=search${q ? `&q=${enc(q)}` : ""}`;
-  var KINDS = ["title", "hub", "browse", "search", "new", "tv", "series", "movies", "mylist"];
-  var SORTS = ["az", "za", "new", "year"];
-  var TYPES = ["movies", "series"];
-  function libraryHref(kind2, { genre, view, sort } = {}) {
-    const k = kind2 === "series" ? "series" : "movies";
-    return `#/home?lfx=${k}${genre ? `&genre=${enc(genre)}` : ""}${view === "grid" ? "&view=grid" : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
-  }
-  function myListHref({ type, sort } = {}) {
-    return `#/home?lfx=mylist${TYPES.includes(type) ? `&type=${type}` : ""}${SORTS.includes(sort) ? `&sort=${sort}` : ""}`;
-  }
-  function parseLfxRoute(route) {
-    const empty2 = { kind: null, id: null, lib: null, genre: null, q: null, view: null, sort: null, type: null };
-    if (!route || !route.params || route.path !== "/home") return empty2;
-    const kind2 = route.params.get("lfx");
-    if (!KINDS.includes(kind2)) return empty2;
-    return {
-      kind: kind2,
-      id: route.params.get("id") || null,
-      lib: route.params.get("lib") || null,
-      genre: route.params.get("genre") || null,
-      q: route.params.get("q") || null,
-      view: route.params.get("view") === "grid" ? "grid" : null,
-      sort: SORTS.includes(route.params.get("sort")) ? route.params.get("sort") : null,
-      type: TYPES.includes(route.params.get("type")) ? route.params.get("type") : null
-    };
-  }
-  var tvModeHref = "#/home?lfx=tv";
-  var isTvModeRoute = (route) => parseLfxRoute(route).kind === "tv";
-  var isLibraryRoute = (route) => ["series", "movies"].includes(parseLfxRoute(route).kind);
-  var isMyListRoute = (route) => parseLfxRoute(route).kind === "mylist";
 
   // src/js/features/themeroute.js
   var REDIRECT_KINDS = ["title", "hub", "browse", "search"];
@@ -3078,8 +3518,8 @@
     isStatsHref: () => isStatsHref,
     statsHref: () => statsHref
   });
-  function clean(raw) {
-    const s = String(raw == null ? "" : raw).trim().replace(/^["'\s]+|["'\s]+$/g, "");
+  function clean(raw2) {
+    const s = String(raw2 == null ? "" : raw2).trim().replace(/^["'\s]+|["'\s]+$/g, "");
     if (!s || /[\s"'\\<>]/.test(s)) return null;
     if (/^https:\/\/[^/]/i.test(s)) return s;
     if (/^\/(?![/\\])/.test(s)) return s;
@@ -3094,10 +3534,10 @@
       return null;
     }
   }
-  function statsHref(theme = getTheme() || "flix") {
+  function statsHref(theme2 = getTheme() || "flix") {
     const url = getStatsUrl();
     if (!url) return null;
-    return `${url}${url.includes("?") ? "&" : "?"}theme=${encodeURIComponent(theme)}`;
+    return `${url}${url.includes("?") ? "&" : "?"}theme=${encodeURIComponent(theme2)}`;
   }
   var STATS_LABEL = "Meine Statistik";
   function isStatsHref(href) {
@@ -3615,8 +4055,8 @@
   }
   function readStored(now) {
     try {
-      const raw = JSON.parse(sessionStorage.getItem(storageKey3()) || "null");
-      if (raw && Array.isArray(raw.ids) && now - raw.at >= 0 && now - raw.at < TEN_MIN) return new Set(raw.ids);
+      const raw2 = JSON.parse(sessionStorage.getItem(storageKey3()) || "null");
+      if (raw2 && Array.isArray(raw2.ids) && now - raw2.at >= 0 && now - raw2.at < TEN_MIN) return new Set(raw2.ids);
     } catch {
     }
     return null;
@@ -3688,13 +4128,13 @@
   var degraded = /* @__PURE__ */ new WeakSet();
   function wrapRow(def) {
     const key = homeKey(getUserId(), "row", def.id);
-    const orig = def.load;
+    const orig2 = def.load;
     def.cacheKey = key;
     def.load = async (d = def) => {
       d.noCache = false;
       const snap = await cached(
         key,
-        async () => ({ items: await orig(d), id: d.id, title: d.title, noCache: !!d.noCache }),
+        async () => ({ items: await orig2(d), id: d.id, title: d.title, noCache: !!d.noCache }),
         (s) => s.noCache ? 0 : HOME_TTL
       );
       d.id = snap.id;
@@ -4125,9 +4565,9 @@
     state3.cats.hidden = false;
     cl().add("lfx-mnav-cats-open");
     if (state3.genreBtn) state3.genreBtn.setAttribute("aria-expanded", "true");
-    const active6 = state3.cats.querySelector(".is-active") || state3.cats.querySelector(".lfx-mnav-cats__link");
-    const target = active6 || state3.cats.querySelector(".lfx-mnav-cats__close");
-    if (target) target.focus();
+    const active7 = state3.cats.querySelector(".is-active") || state3.cats.querySelector(".lfx-mnav-cats__link");
+    const target2 = active7 || state3.cats.querySelector(".lfx-mnav-cats__close");
+    if (target2) target2.focus();
   }
   function closeCats({ restoreFocus = true } = {}) {
     if (!state3.cats || !isCatsOpen()) return;
@@ -4701,7 +5141,7 @@
     if (video) for (const t of ["play", "pause", "emptied"]) video.addEventListener(t, onVideoState);
     onVideoState();
   }
-  function sync() {
+  function sync2() {
     raf2 = 0;
     if (!el3) return;
     bindVideo();
@@ -4718,7 +5158,7 @@
   }
   function schedule2() {
     if (raf2) return;
-    raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sync) : setTimeout(sync, 0);
+    raf2 = typeof requestAnimationFrame === "function" ? requestAnimationFrame(sync2) : setTimeout(sync2, 0);
   }
   function press(key, sel) {
     const proxy = page() && page().querySelector(sel);
@@ -4759,7 +5199,7 @@
       for (const t of STOP) el3.addEventListener(t, stop2);
       mo2 = new MutationObserver(schedule2);
       mo2.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-      sync();
+      sync2();
     },
     update() {
       schedule2();
@@ -4784,33 +5224,6 @@
   // src/js/features/playerbg.js
   var CLASS2 = "lfx-in-player";
   var PAGE3 = '[id="videoOsdPage"]:not(.hide)';
-  var OWN_ATTR = "data-lfx-playerbg";
-  var meta = null;
-  var prev = null;
-  var own = false;
-  function applyMeta() {
-    meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) {
-      prev = meta.getAttribute("content");
-      own = false;
-    } else {
-      meta = document.createElement("meta");
-      meta.setAttribute("name", "theme-color");
-      meta.setAttribute(OWN_ATTR, "");
-      document.head.appendChild(meta);
-      own = true;
-    }
-    meta.setAttribute("content", "#000000");
-  }
-  function restoreMeta() {
-    if (!meta) return;
-    if (own) meta.remove();
-    else if (prev === null) meta.removeAttribute("content");
-    else meta.setAttribute("content", prev);
-    meta = null;
-    prev = null;
-    own = false;
-  }
   var playerbgFeature = {
     name: "playerbg",
     match(route) {
@@ -4818,11 +5231,11 @@
     },
     mount() {
       document.documentElement.classList.add(CLASS2);
-      applyMeta();
+      setThemeColorOverride("#000000");
     },
     unmount() {
       document.documentElement.classList.remove(CLASS2);
-      restoreMeta();
+      setThemeColorOverride(null);
     }
   };
   var playerbg_default = playerbgFeature;
@@ -4980,14 +5393,14 @@
       }
       const firstEl = focusable[0];
       const lastEl = focusable[focusable.length - 1];
-      const active6 = document.activeElement;
-      if (!sheet.contains(active6) || active6 === sheet) {
+      const active7 = document.activeElement;
+      if (!sheet.contains(active7) || active7 === sheet) {
         e.preventDefault();
         (e.shiftKey ? lastEl : firstEl).focus();
-      } else if (e.shiftKey && active6 === firstEl) {
+      } else if (e.shiftKey && active7 === firstEl) {
         e.preventDefault();
         lastEl.focus();
-      } else if (!e.shiftKey && active6 === lastEl) {
+      } else if (!e.shiftKey && active7 === lastEl) {
         e.preventDefault();
         firstEl.focus();
       }
@@ -5791,13 +6204,13 @@
   var REFRESH_DEBOUNCE = 1800;
   var state4 = null;
   var clickInstalled = false;
-  var rootEl = () => document.documentElement;
+  var rootEl2 = () => document.documentElement;
   var overlayOnTop = () => Boolean(document.querySelector(".dialogContainer")) || isChooserOpen();
   function isBlockedRoute(route) {
     return BLOCKED_PATHS.some((p) => route.path === p || route.path.startsWith(`${p}/`) || p === "/dashboard" && route.path.startsWith("/dashboard"));
   }
   function featureActive() {
-    const cl2 = rootEl().classList;
+    const cl2 = rootEl2().classList;
     return cl2.contains("lfx-js") && !cl2.contains("lfx-tv") && !cl2.contains("layout-tv") && !isTv();
   }
   function findInterceptTarget(e) {
@@ -5834,9 +6247,9 @@
       location.hash = `#/details?id=${id}${sid ? `&serverId=${sid}` : ""}`;
       return Promise.resolve();
     }
-    const theme = getTheme();
+    const theme2 = getTheme();
     if (opts.overlay && state4) state4.overlayMode = true;
-    if (theme && theme !== "flix" && !opts.overlay && !(state4 && state4.overlayMode)) {
+    if (theme2 && theme2 !== "flix" && !opts.overlay && !(state4 && state4.overlayMode)) {
       location.hash = titleHref(id);
       return Promise.resolve();
     }
@@ -5880,7 +6293,7 @@
         onClose: () => closeModal()
       });
     }
-    rootEl().classList.add("lfx-modal-open");
+    rootEl2().classList.add("lfx-modal-open");
     document.addEventListener("keydown", onKeydown2, true);
     window.addEventListener("popstate", onPopState);
     window.addEventListener("hashchange", onHashChange);
@@ -5928,7 +6341,7 @@
     window.removeEventListener("popstate", onPopState);
     window.removeEventListener("hashchange", onHashChange);
     unlockScroll(s);
-    rootEl().classList.remove("lfx-modal-open");
+    rootEl2().classList.remove("lfx-modal-open");
     unmountPoint(s.overlay);
     let op = s.opener;
     if (!(op && op.isConnected) && s.kb && s.rootId) op = document.querySelector('.lfx-card[data-lfx-id="' + s.rootId + '"] .lfx-card__link');
@@ -6001,14 +6414,14 @@
     }
     const first2 = list[0];
     const last = list[list.length - 1];
-    const active6 = document.activeElement;
-    if (!state4.modal.contains(active6)) {
+    const active7 = document.activeElement;
+    if (!state4.modal.contains(active7)) {
       e.preventDefault();
       first2.focus();
-    } else if (e.shiftKey && active6 === first2) {
+    } else if (e.shiftKey && active7 === first2) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && active6 === last) {
+    } else if (!e.shiftKey && active7 === last) {
       e.preventDefault();
       first2.focus();
     }
@@ -6030,13 +6443,13 @@
   function preloadImages(id, hint) {
     const item = hint || getStoredItem(id);
     if (!item) return;
-    let target = item;
+    let target2 = item;
     if (item.Type === "Episode" || item.Type === "Season") {
       const tid = item.SeriesId || item.ParentId;
-      target = tid ? getStoredItem(tid) : null;
-      if (!target) return;
+      target2 = tid ? getStoredItem(tid) : null;
+      if (!target2) return;
     }
-    for (const url of [heroImage(target), logoUrl(target)]) {
+    for (const url of [heroImage(target2), logoUrl(target2)]) {
       if (!url) continue;
       try {
         new Image().src = url;
@@ -6268,10 +6681,10 @@
         ParentBackdropImageTags: it.ParentBackdropImageTags || (hasBd ? main.BackdropImageTags : void 0)
       };
     };
-    const startPlayback2 = (target, resume) => {
-      show({ item: coverFor(target) });
+    const startPlayback2 = (target2, resume) => {
+      show({ item: coverFor(target2) });
       closeModal({ after: () => {
-        play(target, { resume }).catch(() => {
+        play(target2, { resume }).catch(() => {
         });
       } });
     };
@@ -6307,10 +6720,10 @@
     };
     const H = {
       async togglePlayed(item, btn3) {
-        const prev2 = { ...item.UserData || {} };
-        const next = prev2.Played !== true;
+        const prev = { ...item.UserData || {} };
+        const next = prev.Played !== true;
         const row = btn3.closest(".lfx-modal__ep");
-        item.UserData = { ...prev2, Played: next, PlaybackPositionTicks: 0 };
+        item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
         delete item.UserData.PlayedPercentage;
         const syncLabel = () => {
           if (item === main && main.Type !== "Series" && !stale() && s.parts) setPlayLabel(s.parts.playBtn, hasResume(item) ? "Fortsetzen" : "Abspielen");
@@ -6322,7 +6735,7 @@
         try {
           await setPlayed(item.Id, next);
         } catch {
-          item.UserData = prev2;
+          item.UserData = prev;
           syncLabel();
           setPlayedState(btn3, !next);
           setEpisodeSeen(row, !next);
@@ -6352,28 +6765,28 @@
         if (starting) return;
         starting = true;
         show({ item: main });
-        let target = main;
+        let target2 = main;
         let resume = hasResume(main);
         try {
           if (main.Type === "Series") {
-            target = await loadNextUp(main.Id).catch(() => null);
-            if (!target && !stale()) {
+            target2 = await loadNextUp(main.Id).catch(() => null);
+            if (!target2 && !stale()) {
               const ss = s.seasons.length ? s.seasons : await loadSeasons(main.Id).catch(() => []);
               const eps = ss.length ? await loadEpisodes2(main.Id, pickInitialSeason(ss, null)).catch(() => []) : [];
-              target = eps[0] || null;
+              target2 = eps[0] || null;
             }
-            resume = hasResume(target);
+            resume = hasResume(target2);
           }
         } catch {
-          target = null;
+          target2 = null;
         }
-        if (!target || stale()) {
+        if (!target2 || stale()) {
           starting = false;
-          if (!target && !stale()) toast("Keine Folgen verf\xFCgbar");
+          if (!target2 && !stale()) toast("Keine Folgen verf\xFCgbar");
           hide();
           return;
         }
-        startPlayback2(target, resume);
+        startPlayback2(target2, resume);
       },
       toggleFav: (btn3) => toggleFavGeneric(main, btn3),
       toggleFavOf: (item, btn3) => toggleFavGeneric(item, btn3),
@@ -6475,8 +6888,8 @@
     }
     const url = landscapeImage(item, { maxWidth });
     if (!url) return null;
-    const pick = pickLandscape(item);
-    return { url, isThumb: Boolean(pick && pick.type === "Thumb") };
+    const pick2 = pickLandscape(item);
+    return { url, isThumb: Boolean(pick2 && pick2.type === "Thumb") };
   }
   function posterUrl(item, maxWidth = 300) {
     if (item.Type === "Episode") {
@@ -6568,7 +6981,7 @@
       resizeRaf = 0;
     };
   }
-  function attachScroller({ track, prev: prev2, next, indicator }) {
+  function attachScroller({ track, prev, next, indicator }) {
     let raf3 = 0;
     let shownPages = 0;
     const cards = () => Array.from(track.querySelectorAll(".lfx-card"));
@@ -6581,13 +6994,13 @@
       if (cs.length > 1 && cs[1].offsetLeft > cs[0].offsetLeft) return (cs[1].offsetLeft - cs[0].offsetLeft) * visible();
       return track.clientWidth || 1;
     }
-    function update() {
+    function update2() {
       raf3 = 0;
       const left = track.scrollLeft;
       const max = track.scrollWidth - track.clientWidth;
       const pw = pageWidth();
       const pages = Math.max(1, Math.ceil(cards().length / visible()));
-      prev2.hidden = left <= 2;
+      prev.hidden = left <= 2;
       next.hidden = !(max > 2) || left >= max - 2;
       if (indicator) {
         if (pages !== shownPages) {
@@ -6601,7 +7014,7 @@
       }
     }
     const schedule4 = () => {
-      if (!raf3) raf3 = requestAnimationFrame(update);
+      if (!raf3) raf3 = requestAnimationFrame(update2);
     };
     function go3(dir) {
       const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -6630,14 +7043,14 @@
         t.focus();
       }
     }
-    prev2.addEventListener("click", onPrev);
+    prev.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
     track.addEventListener("scroll", schedule4, { passive: true });
     track.addEventListener("focusin", onFocusIn);
     track.addEventListener("keydown", onKey4);
     const unsubResize = subscribeResize(() => {
       if (raf3) cancelAnimationFrame(raf3);
-      update();
+      update2();
     });
     const ls = links();
     ls.forEach((l, i) => {
@@ -6647,7 +7060,7 @@
     return () => {
       if (raf3) cancelAnimationFrame(raf3);
       raf3 = 0;
-      prev2.removeEventListener("click", onPrev);
+      prev.removeEventListener("click", onPrev);
       next.removeEventListener("click", onNext);
       track.removeEventListener("scroll", schedule4);
       track.removeEventListener("focusin", onFocusIn);
@@ -6854,16 +7267,16 @@
       eager: eager && i < EAGER_CARDS
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": def.title || "" }, cards);
-    const prev2 = chevronButton("prev", "Zur\xFCck");
+    const prev = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
     const indicator = h("div", { class: "lfx-row__pages", "aria-hidden": "true", hidden: true });
     rowEl.querySelector(".lfx-row__head").append(indicator);
     const viewport = rowEl.querySelector(".lfx-row__viewport");
     viewport.textContent = "";
-    viewport.append(prev2, track, next);
+    viewport.append(prev, track, next);
     rowEl.querySelector(".lfx-row__title").textContent = def.title || "";
     rowEl.classList.remove("is-loading");
-    return attachScroller({ track, prev: prev2, next, indicator });
+    return attachScroller({ track, prev, next, indicator });
   }
   function render3(slot, ctx2 = {}) {
     const opts = ctx2 || {};
@@ -7246,7 +7659,7 @@
     let slide = null;
     let rowsReady = false;
     let warm = false;
-    const timers = /* @__PURE__ */ new Set();
+    const timers2 = /* @__PURE__ */ new Set();
     let video2 = null;
     let card3 = null;
     let media = null;
@@ -7260,10 +7673,10 @@
     };
     const later = (fn, ms) => {
       const t = setTimeout(() => {
-        timers.delete(t);
+        timers2.delete(t);
         fn();
       }, ms);
-      timers.add(t);
+      timers2.add(t);
       return t;
     };
     const noAuto = () => isDataSaver("trailer") || reducedMotion() || tvBgPlaying();
@@ -7329,15 +7742,15 @@
       };
       paint2();
       btn3.addEventListener("click", async () => {
-        const prev2 = Boolean(item.UserData && item.UserData.IsFavorite);
-        item.UserData = { ...item.UserData || {}, IsFavorite: !prev2 };
+        const prev = Boolean(item.UserData && item.UserData.IsFavorite);
+        item.UserData = { ...item.UserData || {}, IsFavorite: !prev };
         paint2();
         try {
-          await setFavorite(item.Id, !prev2);
+          await setFavorite(item.Id, !prev);
           clearCache("home:");
           clearCache(`lfx:modal:item:${item.Id}`);
         } catch {
-          item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
+          item.UserData = { ...item.UserData || {}, IsFavorite: prev };
           paint2();
         }
       });
@@ -7437,8 +7850,8 @@
           gen8 += 1;
           stopTrailer();
           clearTimeout(rotateTimer);
-          timers.forEach(clearTimeout);
-          timers.clear();
+          timers2.forEach(clearTimeout);
+          timers2.clear();
           content.replaceChildren();
           slot.hidden = true;
           resetAmbient();
@@ -7727,8 +8140,8 @@
       disposed = true;
       gen8 += 1;
       clearTimeout(rotateTimer);
-      timers.forEach(clearTimeout);
-      timers.clear();
+      timers2.forEach(clearTimeout);
+      timers2.clear();
       stopTrailer();
       setTr("");
       cleanupFns.forEach((f) => f());
@@ -7920,12 +8333,12 @@
     if (!card3 || !NATIVE_TYPES.has(card3.dataset.type)) return null;
     return { card: card3, id: card3.dataset.id, type: card3.dataset.type, own: false };
   }
-  function stubItem(target) {
-    const d = target.card.dataset;
-    if (target.own) return { Id: target.id, Type: target.type };
+  function stubItem(target2) {
+    const d = target2.card.dataset;
+    if (target2.own) return { Id: target2.id, Type: target2.type };
     return {
-      Id: target.id,
-      Type: target.type,
+      Id: target2.id,
+      Type: target2.type,
       ServerId: d.serverid || void 0,
       MediaType: d.mediatype || void 0,
       IsFolder: d.isfolder === "true"
@@ -7951,7 +8364,7 @@
   function svg4(name) {
     return `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true" focusable="false">${ICONS2[name]}</svg>`;
   }
-  var active2 = false;
+  var active3 = false;
   var session2 = null;
   var openTimer = null;
   var closeTimer = null;
@@ -8251,8 +8664,8 @@
     } else if (cardTitle) {
       s.overlay.append(h("span", { class: "lfx-hc__title" }, cardTitle.textContent));
     } else if ((!s.own || top10) && it && it.ImageTags) {
-      const pick = pickLandscape(it);
-      if (pick && pick.type !== "Thumb") {
+      const pick2 = pickLandscape(it);
+      if (pick2 && pick2.type !== "Thumb") {
         const logo = logoImage(it);
         if (logo) s.overlay.append(h("img", { class: "lfx-hc__logo", src: logo, alt: "" }));
         else if (it.Name) s.overlay.append(h("span", { class: "lfx-hc__title" }, it.Name));
@@ -8330,16 +8743,16 @@
     s.body = body;
     return el4;
   }
-  function open(target) {
-    if (!enabled() || !target.card.isConnected) return;
+  function open(target2) {
+    if (!enabled() || !target2.card.isConnected) return;
     closeNow();
-    const cardRect = target.card.getBoundingClientRect();
+    const cardRect = target2.card.getBoundingClientRect();
     if (!cardRect.width) return;
     const s = {
-      card: target.card,
-      target,
-      own: target.own,
-      item: getStoredItem(target.id) || stubItem(target),
+      card: target2.card,
+      target: target2,
+      own: target2.own,
+      item: getStoredItem(target2.id) || stubItem(target2),
       closing: false,
       removeTimer: null,
       busyFav: false,
@@ -8446,18 +8859,18 @@
       clearClose();
       return;
     }
-    const target = resolveTarget2(t);
-    if (!target || !enabled()) {
+    const target2 = resolveTarget2(t);
+    if (!target2 || !enabled()) {
       leave();
       return;
     }
     clearClose();
-    if (session2 && !session2.closing && session2.card === target.card) return;
+    if (session2 && !session2.closing && session2.card === target2.card) return;
     clearOpen();
     if (session2) closeNow();
     openTimer = setTimeout(() => {
       openTimer = null;
-      open(target);
+      open(target2);
     }, readDelay());
   }
   function onOut(e) {
@@ -8497,11 +8910,11 @@
     onAbort();
   }
   function start() {
-    if (active2) return;
-    active2 = true;
-    const add3 = (target, type, fn, opts) => {
-      target.addEventListener(type, fn, opts);
-      listeners3.push(() => target.removeEventListener(type, fn, opts));
+    if (active3) return;
+    active3 = true;
+    const add3 = (target2, type, fn, opts) => {
+      target2.addEventListener(type, fn, opts);
+      listeners3.push(() => target2.removeEventListener(type, fn, opts));
     };
     add3(document, "pointerover", onOver, { passive: true });
     add3(document, "pointerout", onOut, { passive: true });
@@ -8514,7 +8927,7 @@
     unsubItems = onItemsChanged(onItems);
   }
   function stop3() {
-    active2 = false;
+    active3 = false;
     wasHeld = false;
     lastOver = null;
     if (typeof unsubItems === "function") unsubItems();
@@ -8821,7 +9234,7 @@
     ["new", "Neu hinzugef\xFCgt"],
     ["year", "Erscheinungsjahr"]
   ];
-  var KIND_LABEL = { series: "Serien", movies: "Filme" };
+  var KIND_LABEL2 = { series: "Serien", movies: "Filme" };
   var ICON_ROWS = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
   var ICON_GRID = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="currentColor"/></svg>';
   function iconLink(cls, label, svg11) {
@@ -8854,7 +9267,7 @@
     select.addEventListener("change", onSort);
     function paint2() {
       const { kind: kind2, genre, view, sort } = state24;
-      const label = KIND_LABEL[kind2] || KIND_LABEL.movies;
+      const label = KIND_LABEL2[kind2] || KIND_LABEL2.movies;
       title.replaceChildren();
       if (genre) {
         const name = (genres.find((g) => g.id === genre) || {}).name || "\u2026";
@@ -9519,16 +9932,16 @@
       badge: badgeFor(it, newSeries, now)
     }));
     const track = h("div", { class: "lfx-row__track", role: "list", "aria-label": title }, cards);
-    const prev2 = chevronButton("prev", "Zur\xFCck");
+    const prev = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
     const indicator = h("div", { class: "lfx-row__pages", "aria-hidden": "true", hidden: true });
     const el4 = h("div", { class: "lfx-rows" }, [
       h("section", { class: `lfx-row lfx-row--${kind2}` }, [
         h("div", { class: "lfx-row__head" }, [h("h2", { class: "lfx-row__title" }, title), indicator]),
-        h("div", { class: "lfx-row__viewport" }, [prev2, track, next])
+        h("div", { class: "lfx-row__viewport" }, [prev, track, next])
       ])
     ]);
-    return { el: el4, scroller: { track, prev: prev2, next, indicator } };
+    return { el: el4, scroller: { track, prev, next, indicator } };
   }
   function sectionShell(def) {
     return h("section", { class: "lfx-np__section", id: `lfx-np-${def.id}`, dataset: { np: def.id } }, [
@@ -10002,14 +10415,14 @@
         } catch {
         }
       }
-      const raw = await fetchCatalog({ onProgress }, t);
+      const raw2 = await fetchCatalog({ onProgress }, t);
       if (hasIdb()) {
         try {
-          await idbPut(uid, key, raw);
+          await idbPut(uid, key, raw2);
         } catch {
         }
       }
-      return raw;
+      return raw2;
     }, MEM_TTL_MS);
   }
 
@@ -10023,15 +10436,15 @@
     const l = stripQuotes(label);
     if (l) out[n] = l;
   }
-  function parseChannelConfig(raw) {
+  function parseChannelConfig(raw2) {
     const out = {};
-    if (raw && typeof raw === "object") {
-      for (const [k, v] of Object.entries(raw)) {
+    if (raw2 && typeof raw2 === "object") {
+      for (const [k, v] of Object.entries(raw2)) {
         if (typeof v === "string") put(out, k, v);
       }
       return out;
     }
-    const s = stripQuotes(raw);
+    const s = stripQuotes(raw2);
     if (!s) return out;
     for (const part of s.split(";")) {
       const i = part.indexOf("=");
@@ -10177,9 +10590,9 @@
       return "";
     }
   }
-  function imageTagMap(raw) {
+  function imageTagMap(raw2) {
     const m = /* @__PURE__ */ new Map();
-    for (const list of [raw && raw.movies, raw && raw.series]) {
+    for (const list of [raw2 && raw2.movies, raw2 && raw2.series]) {
       for (const it of Array.isArray(list) ? list : []) {
         if (it && it.Id && (it.ImageTags || it.BackdropImageTags)) m.set(it.Id, it);
       }
@@ -10192,10 +10605,10 @@
     const tag = it && (type === "Backdrop" ? (it.BackdropImageTags || [])[0] : it.ImageTags && it.ImageTags[type]);
     return imageUrlFor(id, tag ? { ...o, tag } : o);
   }
-  function buildApiDeps(raw, user) {
-    const tags = imageTagMap(raw);
+  function buildApiDeps(raw2, user) {
+    const tags = imageTagMap(raw2);
     return defineZapWarm({
-      catalog: raw,
+      catalog: raw2,
       user,
       server: { deviceId: deviceId() },
       request: (method, path, o = {}) => requestJson(method, path, o),
@@ -10250,16 +10663,16 @@
       return null;
     }
   };
-  var write = (key, value) => {
+  var write2 = (key, value) => {
     try {
       window.localStorage.setItem(key, value);
     } catch {
     }
   };
   function getVolume() {
-    const raw = read2(storageKey4("volume"));
-    if (raw === null || raw === "") return DEFAULTS.volume;
-    const v = Number(raw);
+    const raw2 = read2(storageKey4("volume"));
+    if (raw2 === null || raw2 === "") return DEFAULTS.volume;
+    const v = Number(raw2);
     return Number.isFinite(v) && v >= 0 && v <= 1 ? v : DEFAULTS.volume;
   }
   var getMuted = () => read2(storageKey4("muted")) === "1";
@@ -10269,9 +10682,9 @@
   }
   function savePrefs(p) {
     if (!p || typeof p !== "object") return;
-    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write(storageKey4("volume"), String(p.volume));
-    if (typeof p.muted === "boolean") write(storageKey4("muted"), p.muted ? "1" : "0");
-    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write(storageKey4("lastChannel"), String(p.lastChannel));
+    if (typeof p.volume === "number" && Number.isFinite(p.volume) && p.volume >= 0 && p.volume <= 1) write2(storageKey4("volume"), String(p.volume));
+    if (typeof p.muted === "boolean") write2(storageKey4("muted"), p.muted ? "1" : "0");
+    if (Number.isInteger(p.lastChannel) && p.lastChannel >= 1 && p.lastChannel <= 18) write2(storageKey4("lastChannel"), String(p.lastChannel));
   }
 
   // src/js/features/tvmode/route.js
@@ -10472,10 +10885,10 @@
     }
     return ok;
   }
-  function buildDeps(raw, user, hooks) {
+  function buildDeps(raw2, user, hooks) {
     return defineZapWarm({
       // Spread kopiert den Getter zapWarm nur als Wert: neu setzen
-      ...buildApiDeps(raw, user),
+      ...buildApiDeps(raw2, user),
       savePrefs: ret((p) => savePrefs(p)),
       // alle Designs: Detailkarte als Overlay über dem weiterlaufenden TV (plus/prime mit „Zur Titelseite“)
       openDetails: ret((id) => {
@@ -10488,8 +10901,8 @@
       onReady: ret(hooks.ready),
       onFatal: ret(hooks.fatal),
       onStopped: ret(hooks.stopped),
-      onPip: ret((active6) => {
-        if (inst) inst.pip = Boolean(active6);
+      onPip: ret((active7) => {
+        if (inst) inst.pip = Boolean(active7);
       })
     });
   }
@@ -10509,14 +10922,14 @@
     setProgress(0.03, "TV wird vorbereitet \u2026");
     let loaded;
     try {
-      const [cssOk, jsOk, raw, user] = await Promise.all([
+      const [cssOk, jsOk, raw2, user] = await Promise.all([
         ensureAddonCss(ADDON),
         ensureThemeJs("tvmode"),
         loadCatalog({ onProgress: (f, label) => setProgress(0.05 + (CATALOG_SHARE - 0.05) * f, label) }),
         loadUser()
       ]);
       if (!cssOk || !jsOk || !window.LenzFlixTvMode || typeof window.LenzFlixTvMode.create !== "function") throw new Error("TV-Paket nicht geladen");
-      loaded = { raw, user };
+      loaded = { raw: raw2, user };
     } catch (e) {
       if (myGen === gen && ui) showFallback(e);
       return;
@@ -10666,7 +11079,7 @@
   var MOVE_TOLERANCE = 10;
   var CLICK_WINDOW_MS = 700;
   var DOUBLE_OPEN_MS = 800;
-  var active3 = false;
+  var active4 = false;
   var listeners4 = [];
   var pressTimer = null;
   var press2 = null;
@@ -10747,11 +11160,11 @@
     e.stopImmediatePropagation();
   }
   function start3() {
-    if (active3) return;
-    active3 = true;
-    const add3 = (target, type, fn, opts) => {
-      target.addEventListener(type, fn, opts);
-      listeners4.push(() => target.removeEventListener(type, fn, opts));
+    if (active4) return;
+    active4 = true;
+    const add3 = (target2, type, fn, opts) => {
+      target2.addEventListener(type, fn, opts);
+      listeners4.push(() => target2.removeEventListener(type, fn, opts));
     };
     add3(document, "contextmenu", onContextMenu, true);
     add3(document, "touchstart", onTouchStart, { passive: true });
@@ -10762,7 +11175,7 @@
     add3(window, "click", onClickCapture2, true);
   }
   function stop4() {
-    active3 = false;
+    active4 = false;
     cancelPress();
     swallowUntil = 0;
     lastLongPressAt = -Infinity;
@@ -10940,8 +11353,8 @@
     }
     s.root.remove();
     document.documentElement.classList.remove("lfx-secret-open");
-    const prev2 = s.prevFocus;
-    if (prev2 && prev2.isConnected && typeof prev2.focus === "function") prev2.focus();
+    const prev = s.prevFocus;
+    if (prev && prev.isConnected && typeof prev.focus === "function") prev.focus();
   }
   function openSecretMenu() {
     if (state7) return;
@@ -11155,7 +11568,7 @@
     if (!readState().firstShown) writeState({ firstShown: Date.now() });
     startHideTimer(HINT_DURATION);
   }
-  function sync2(route) {
+  function sync3(route) {
     if (isHomeRoute2(route)) {
       if (!state8.el && !state8.showTimer && shouldShow()) state8.showTimer = setTimeout(show2, HINT_DELAY);
     } else {
@@ -11176,10 +11589,10 @@
         }
       };
       document.addEventListener("click", state8.onClick, true);
-      sync2(route);
+      sync3(route);
     },
     update(route) {
-      sync2(route);
+      sync3(route);
     },
     unmount() {
       if (state8.onClick) document.removeEventListener("click", state8.onClick, true);
@@ -11198,13 +11611,13 @@
     }
     window.location.hash = "#/mypreferencesmenu";
   }
-  async function profileEntries({ theme, returnFocus } = {}) {
+  async function profileEntries({ theme: theme2, returnFocus } = {}) {
     const entries = [];
     if (getStatsUrl()) {
-      entries.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme) || getStatsUrl(), className: "is-stats" });
+      entries.push({ key: "stats", label: "Meine Statistik", href: statsHref(theme2) || getStatsUrl(), className: "is-stats" });
     }
     entries.push({ key: "design", label: "Design-Einstellungen", onClick: () => openThemePicker({ returnFocus }) });
-    if (DATASAVER_THEMES.includes(theme || getTheme() || "flix")) entries.push(dataSaverItem());
+    if (DATASAVER_THEMES.includes(theme2 || getTheme() || "flix")) entries.push(dataSaverItem());
     entries.push({ key: "settings", label: "Einstellungen", href: "#/mypreferencesmenu" });
     let user = null;
     try {
@@ -11236,49 +11649,6 @@
     return { name, imageUrl: imageUrl2 };
   }
 
-  // src/js/shared/libraries.js
-  var HUB_TYPES = ["movies", "tvshows", "homevideos", "mixed"];
-  function viewHref(view) {
-    const id = view.Id;
-    const ct = view.CollectionType;
-    const q = `topParentId=${id}&collectionType=${ct}`;
-    switch (ct) {
-      case "movies":
-        return `#/movies?${q}`;
-      case "tvshows":
-        return `#/tv?${q}`;
-      case "music":
-        return `#/music?${q}`;
-      case "books":
-        return `#/books?${q}`;
-      case "musicvideos":
-        return `#/musicvideos?${q}`;
-      case "boxsets":
-        return `#/boxsets?${q}`;
-      case "playlists":
-        return `#/playlists?${q}`;
-      case "homevideos":
-        return `#/homevideos?topParentId=${id}`;
-      case "livetv":
-        return "#/livetv";
-      default:
-        return ct ? `#/list?parentId=${id}` : `#/mixed?topParentId=${id}&collectionType=mixed`;
-    }
-  }
-  function getLibraries() {
-    return cached("libraries", async () => {
-      const res = await getViews();
-      const list = Array.isArray(res) ? res : res && res.Items || [];
-      return list.filter((v) => v && v.Id).map((v) => ({
-        id: v.Id,
-        name: v.Name,
-        collectionType: v.CollectionType || null,
-        href: viewHref(v),
-        hubCapable: !v.CollectionType || HUB_TYPES.includes(v.CollectionType)
-      }));
-    }, 5 * 60 * 1e3);
-  }
-
   // src/js/features/plus/header-icons.js
   var svg6 = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
   var ICONS3 = {
@@ -11308,8 +11678,8 @@
   var SCROLL_DELTA = 4;
   var OPEN_DELAY = 150;
   var CLOSE_DELAY = 250;
-  function navItems2(libs) {
-    const list = Array.isArray(libs) ? libs : [];
+  function navItems2(libs2) {
+    const list = Array.isArray(libs2) ? libs2 : [];
     const movies = list.find((l) => l.collectionType === "movies") || null;
     const series = list.find((l) => l.collectionType === "tvshows") || null;
     const items = [
@@ -11321,9 +11691,9 @@
     items.push({ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new", icon: "star" });
     return items;
   }
-  function activeKey2(route, libs) {
+  function activeKey2(route, libs2) {
     if (!route) return null;
-    const list = Array.isArray(libs) ? libs : [];
+    const list = Array.isArray(libs2) ? libs2 : [];
     const movies = list.find((l) => l.collectionType === "movies");
     const series = list.find((l) => l.collectionType === "tvshows");
     const { kind: kind2, lib } = parseLfxRoute(route);
@@ -11494,13 +11864,13 @@
     state9.raf = raf3(scrollTick);
   }
   async function loadLibraries(mountSeq) {
-    let libs = [];
+    let libs2 = [];
     try {
-      libs = await getLibraries() || [];
+      libs2 = await getLibraries() || [];
     } catch {
     }
     if (mountSeq !== state9.mountSeq || !state9.root) return;
-    state9.libs = libs;
+    state9.libs = libs2;
     renderNav();
   }
   var plusHeader = {
@@ -11593,9 +11963,9 @@
     const { kind: kind2 } = parseLfxRoute(route);
     return Boolean(kind2) && kind2 !== "hub";
   }
-  function headerTitle(route, libs) {
+  function headerTitle(route, libs2) {
     if (!route) return "";
-    const list = Array.isArray(libs) ? libs : [];
+    const list = Array.isArray(libs2) ? libs2 : [];
     const libName = (id) => (list.find((l) => l.id === id) || {}).name || "";
     if (route.path === "/home") {
       const { kind: kind2, lib } = parseLfxRoute(route);
@@ -11637,13 +12007,13 @@
     state10.raf = raf3(scrollTick2);
   }
   async function loadLibraries2(seq3) {
-    let libs = [];
+    let libs2 = [];
     try {
-      libs = await getLibraries() || [];
+      libs2 = await getLibraries() || [];
     } catch {
     }
     if (seq3 !== state10.seq || !state10.root) return;
-    state10.libs = libs;
+    state10.libs = libs2;
     render6();
   }
   var plusMobileHead = {
@@ -11660,16 +12030,16 @@
       const backEl = h("button", { type: "button", class: "lfx-plus-mhead__back", "aria-label": "Zur\xFCck", hidden: true });
       backEl.innerHTML = ICONS3.back;
       backEl.addEventListener("click", () => window.history.back());
-      const titleEl = h("h1", { class: "lfx-plus-mhead__title" });
+      const titleEl2 = h("h1", { class: "lfx-plus-mhead__title" });
       const tv = h("a", { class: "lfx-plus-mhead__tv", href: tvModeHref, "aria-label": "TV", title: "TV", dataset: { key: "tv" } });
       tv.innerHTML = ICONS3.tvmode;
       tv.addEventListener("click", () => window.dispatchEvent(new CustomEvent("lfx:tvmode-intent")));
       const ds = createDataSaverButton({ className: "lfx-plus-mhead__ds" });
-      root6.append(backEl, titleEl, ds, tv);
+      root6.append(backEl, titleEl2, ds, tv);
       state10.tvEl = tv;
       state10.root = root6;
       state10.backEl = backEl;
-      state10.titleEl = titleEl;
+      state10.titleEl = titleEl2;
       document.documentElement.classList.add(ON_CLASS7);
       window.addEventListener("scroll", onScroll3, { passive: true });
       state10.cleanups.push(() => window.removeEventListener("scroll", onScroll3));
@@ -11709,9 +12079,9 @@
     const tab2 = route.params.get("tab");
     return !tab2 || tab2 === "0";
   }
-  function switcherTabs(libs) {
+  function switcherTabs(libs2) {
     const tabs = [{ key: "foryou", label: "F\xFCr dich", href: "#/home" }];
-    for (const l of Array.isArray(libs) ? libs : []) {
+    for (const l of Array.isArray(libs2) ? libs2 : []) {
       tabs.push({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href });
     }
     return tabs;
@@ -11725,17 +12095,17 @@
   function applyActive5() {
     if (!state11.root || !state11.route) return;
     const key = activeTab(state11.route);
-    let active6 = null;
+    let active7 = null;
     for (const el4 of state11.root.querySelectorAll('[role="tab"]')) {
       const on = el4.dataset.key === key;
       el4.classList.toggle("is-active", on);
       el4.setAttribute("aria-selected", String(on));
       el4.tabIndex = on ? 0 : -1;
-      if (on) active6 = el4;
+      if (on) active7 = el4;
     }
     const list = state11.root.querySelector(".lfx-plus-switcher__list");
-    if (active6 && list && list.scrollWidth > list.clientWidth) {
-      list.scrollLeft = Math.max(0, active6.offsetLeft - (list.clientWidth - active6.offsetWidth) / 2);
+    if (active7 && list && list.scrollWidth > list.clientWidth) {
+      list.scrollLeft = Math.max(0, active7.offsetLeft - (list.clientWidth - active7.offsetWidth) / 2);
     }
   }
   function render7() {
@@ -11759,13 +12129,13 @@
     applyActive5();
   }
   async function loadLibraries3(seq3) {
-    let libs = [];
+    let libs2 = [];
     try {
-      libs = await getLibraries() || [];
+      libs2 = await getLibraries() || [];
     } catch {
     }
     if (seq3 !== state11.seq || !state11.root) return;
-    state11.libs = libs;
+    state11.libs = libs2;
     render7();
   }
   var plusSwitcher = {
@@ -12173,9 +12543,9 @@
     const n = list.length;
     const slides = list.map((it, i) => buildSlide(it, i, info, mobile, warm, saver ? 1 : 3));
     const track = h("div", { class: "lfx-plus-hero__track" }, slides);
-    const prev2 = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
+    const prev = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--prev", "aria-label": "Vorherige Empfehlung", tabindex: "-1" });
     const next = h("button", { type: "button", class: "lfx-plus-hero__nav lfx-plus-hero__nav--next", "aria-label": "N\xE4chste Empfehlung", tabindex: "-1" });
-    prev2.innerHTML = CHEVRON2;
+    prev.innerHTML = CHEVRON2;
     next.innerHTML = CHEVRON2;
     const dots = list.map((it, i) => h("button", {
       type: "button",
@@ -12186,7 +12556,7 @@
     const dotsEl = h("div", { class: "lfx-plus-hero__dots" }, n > 1 ? dots : []);
     const el4 = h("section", { class: `lfx-plus-hero${mobile ? " lfx-plus-hero--m" : ""}`, "aria-roledescription": "carousel", "aria-label": "Empfehlungen" }, [
       h("div", { class: "lfx-plus-hero__viewport" }, [track]),
-      n > 1 && !mobile ? prev2 : null,
+      n > 1 && !mobile ? prev : null,
       n > 1 && !mobile ? next : null,
       mobile ? null : dotsEl
     ]);
@@ -12194,22 +12564,22 @@
     let timer2 = null;
     let hover2 = false;
     let focus = false;
-    const running = () => !mobile && n > 1 && !hover2 && !focus && !document.hidden;
+    const running2 = () => !mobile && n > 1 && !hover2 && !focus && !document.hidden;
     function stop8() {
       clearTimeout(timer2);
       timer2 = null;
     }
     function schedule4() {
       stop8();
-      if (running()) timer2 = setTimeout(() => go3(idx + 1), interval);
+      if (running2()) timer2 = setTimeout(() => go3(idx + 1), interval);
     }
     function paint2() {
       el4.style.setProperty("--i", String(idx));
       slides.forEach((s, i) => {
-        const active6 = i === idx;
-        s.classList.toggle("is-active", active6);
-        s.setAttribute("aria-hidden", active6 ? "false" : "true");
-        s.tabIndex = active6 ? 0 : -1;
+        const active7 = i === idx;
+        s.classList.toggle("is-active", active7);
+        s.setAttribute("aria-hidden", active7 ? "false" : "true");
+        s.tabIndex = active7 ? 0 : -1;
       });
       dots.forEach((d, i) => {
         d.classList.toggle("is-active", i === idx);
@@ -12294,7 +12664,7 @@
       go3(idx + (e.key === "ArrowLeft" ? -1 : 1));
       if (el4.contains(document.activeElement)) slides[idx].focus({ preventScroll: true });
     };
-    prev2.addEventListener("click", onPrev);
+    prev.addEventListener("click", onPrev);
     next.addEventListener("click", onNext);
     track.addEventListener("click", onSlideClick);
     if (mobile) track.addEventListener("scroll", onTrackScroll, { passive: true });
@@ -12315,7 +12685,7 @@
         track.removeEventListener("scroll", onTrackScroll);
         if (scrollRaf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(scrollRaf);
         scrollRaf = 0;
-        prev2.removeEventListener("click", onPrev);
+        prev.removeEventListener("click", onPrev);
         next.removeEventListener("click", onNext);
         track.removeEventListener("click", onSlideClick);
         el4.removeEventListener("mouseenter", onEnter);
@@ -12435,16 +12805,16 @@
       eager: eager && i < EAGER_CARDS3
     }));
     const track = h("div", { class: "lfx-plus-row__track", role: "list", "aria-label": def.title || "" }, cards);
-    const prev2 = chevronButton("prev", "Zur\xFCck");
+    const prev = chevronButton("prev", "Zur\xFCck");
     const next = chevronButton("next", "Weiter");
-    prev2.classList.add("lfx-plus-row__arrow");
+    prev.classList.add("lfx-plus-row__arrow");
     next.classList.add("lfx-plus-row__arrow");
     const viewport = rowEl.querySelector(".lfx-plus-row__viewport");
     viewport.textContent = "";
-    viewport.append(prev2, track, next);
+    viewport.append(prev, track, next);
     rowEl.querySelector(".lfx-plus-row__title").textContent = def.title || "";
     rowEl.classList.remove("is-loading");
-    return attachScroller({ track, prev: prev2, next, indicator: null });
+    return attachScroller({ track, prev, next, indicator: null });
   }
   function renderRows(slot, getDefs, peekDefs, opts = {}) {
     let disposed = false;
@@ -12608,8 +12978,8 @@
     let lib = null;
     if (isHub) {
       try {
-        const libs = await getLibraries();
-        lib = libs.find((l) => l.id === key.slice(4)) || null;
+        const libs2 = await getLibraries();
+        lib = libs2.find((l) => l.id === key.slice(4)) || null;
       } catch {
         lib = null;
       }
@@ -12742,8 +13112,8 @@
       episodeLists = episodeLists || [];
     }
     const eps = episodeLists.flat();
-    const prev2 = isPlayed2(item);
-    const next = isSeries ? !prev2 : !(eps.length > 0 && eps.every(isPlayed2));
+    const prev = isPlayed2(item);
+    const next = isSeries ? !prev : !(eps.length > 0 && eps.every(isPlayed2));
     const n = eps.length;
     const verb = next ? "gesehen" : "ungesehen";
     const ok = await askConfirm({
@@ -12751,12 +13121,12 @@
       confirmLabel: `Als ${verb} markieren`,
       anchorEl
     });
-    if (!ok) return prev2;
+    if (!ok) return prev;
     try {
       const failed = await bulkPlayed2(seriesId, item.Id, seasonIds, next);
       if (failed) {
         toast(SAVE_ERROR3);
-        return prev2;
+        return prev;
       }
       item.UserData = { ...item.UserData || {}, Played: next };
       putItems([item]);
@@ -12764,22 +13134,22 @@
       return next;
     } catch {
       toast(SAVE_ERROR3);
-      return prev2;
+      return prev;
     }
   }
   async function togglePlayed2(item, { anchorEl } = {}) {
     if (!item || !item.Id) return false;
     if (item.Type === "Series" || item.Type === "Season") return bulkToggle(item, anchorEl);
-    const prev2 = { ...item.UserData || {} };
-    const next = prev2.Played !== true;
-    item.UserData = { ...prev2, Played: next, PlaybackPositionTicks: 0 };
+    const prev = { ...item.UserData || {} };
+    const next = prev.Played !== true;
+    item.UserData = { ...prev, Played: next, PlaybackPositionTicks: 0 };
     delete item.UserData.PlayedPercentage;
     try {
       await setPlayed(item.Id, next);
     } catch {
-      item.UserData = prev2;
+      item.UserData = prev;
       toast(SAVE_ERROR3);
-      return prev2.Played === true;
+      return prev.Played === true;
     }
     putItems([item]);
     clearPlayedCaches2(item.Id, item.Type === "Episode" ? item.SeriesId : null);
@@ -12787,14 +13157,14 @@
   }
   async function toggleFavorite2(item) {
     if (!item || !item.Id) return false;
-    const prev2 = Boolean(item.UserData && item.UserData.IsFavorite);
-    const next = !prev2;
+    const prev = Boolean(item.UserData && item.UserData.IsFavorite);
+    const next = !prev;
     item.UserData = { ...item.UserData || {}, IsFavorite: next };
     try {
       await setFavorite(item.Id, next);
     } catch {
-      item.UserData = { ...item.UserData || {}, IsFavorite: prev2 };
-      return prev2;
+      item.UserData = { ...item.UserData || {}, IsFavorite: prev };
+      return prev;
     }
     putItems([item]);
     return next;
@@ -13143,7 +13513,7 @@
     playIco.innerHTML = ICON_PLAY3;
     const playBtn = h("button", { type: "button", class: "lfx-plus-pill lfx-plus-pill--primary" }, [playIco, playLabel2]);
     const code = episodeCode;
-    const target = () => {
+    const target2 = () => {
       if (!isSeries) return { item: main, resume: hasResume(main), label: hasResume(main) ? "Fortsetzen" : "Abspielen" };
       const ep = c.focusEp || c.nextUp;
       if (!ep) return { item: null, resume: false, label: "Abspielen" };
@@ -13153,7 +13523,7 @@
       return { item: ep, resume, label: c.focusEp && cd ? `${cd} abspielen` : "Abspielen" };
     };
     const paintPlay2 = () => {
-      playLabel2.textContent = target().label;
+      playLabel2.textContent = target2().label;
       const it = isSeries ? c.focusEp || c.nextUp : main;
       const p = it ? progressPercent2(it) : 0;
       progressSlot.replaceChildren();
@@ -13171,7 +13541,7 @@
       }
     };
     playBtn.addEventListener("click", async () => {
-      let t = target();
+      let t = target2();
       if (isSeries && !t.item) {
         try {
           const list = c.seasons.length ? c.seasons : await loadSeasons(main.Id);
@@ -13773,8 +14143,8 @@
   }
   async function genreLib() {
     try {
-      const libs = await getLibraries();
-      return libs.find((l) => l.collectionType === "movies") || libs.find((l) => l.collectionType === "tvshows") || libs.find((l) => l.hubCapable) || null;
+      const libs2 = await getLibraries();
+      return libs2.find((l) => l.collectionType === "movies") || libs2.find((l) => l.collectionType === "tvshows") || libs2.find((l) => l.hubCapable) || null;
     } catch {
       return null;
     }
@@ -13991,12 +14361,12 @@
     return null;
   }
   var isVideoHash = (hash2) => /^#!?[/]video(?:[/?]|$)/.test(String(hash2 || ""));
-  function sheetEntries(libs, profile2, { go: go3, close: close2 }) {
+  function sheetEntries(libs2, profile2, { go: go3, close: close2 }) {
     const entries = [{ label: "Neu & beliebt", onClick: () => {
       close2();
       go3("#/home?lfx=new");
     } }];
-    for (const l of Array.isArray(libs) ? libs : []) {
+    for (const l of Array.isArray(libs2) ? libs2 : []) {
       const href = l.hubCapable ? hubHref(l.id) : l.href;
       if (href) entries.push({ label: l.name, onClick: () => {
         close2();
@@ -14050,11 +14420,11 @@
     }
     const seq3 = ++state15.seq;
     const anchor = state15.profileBtn;
-    let libs = [];
+    let libs2 = [];
     let profile2 = [];
     let user = { name: "" };
     try {
-      libs = await getLibraries() || [];
+      libs2 = await getLibraries() || [];
     } catch {
     }
     try {
@@ -14068,7 +14438,7 @@
     if (seq3 !== state15.seq || !state15.root) return;
     const c = openSheet(anchor, "Profil");
     state15.sheet = c;
-    const entries = sheetEntries(libs, profile2, { go, close: () => closeChooser() });
+    const entries = sheetEntries(libs2, profile2, { go, close: () => closeChooser() });
     renderSheet(c, user && user.name || "Profil", entries);
     const buttons = c.list ? c.list.querySelectorAll(".lfx-sheet__item") : [];
     entries.forEach((e, i) => {
@@ -14171,7 +14541,7 @@
     if (typeof getComputedStyle !== "function") return false;
     return getComputedStyle(el4).display === "none";
   }
-  function createNativeDetail({ name, theme, nologoClass, nobdClass = null }) {
+  function createNativeDetail({ name, theme: theme2, nologoClass, nobdClass = null }) {
     const NOLOGO = nologoClass;
     const NOBD = nobdClass;
     const ALL = [NOLOGO, NOBD].filter(Boolean);
@@ -14248,7 +14618,7 @@
     }
     const feature = {
       name,
-      match: (route) => isTheme(theme) && isModern() && !isTv() && isReady() && route.path === "/details",
+      match: (route) => isTheme(theme2) && isModern() && !isTv() && isReady() && route.path === "/details",
       mount() {
         state24.tries = 0;
         attach2();
@@ -14425,7 +14795,7 @@
       cur.input.focus();
       return;
     }
-    const prev2 = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    const prev = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
     const mobile = isMobile() && isNarrow();
     const root6 = mountPoint(ID11, { className: `lfx-prime-search${mobile ? " lfx-prime-search--full" : ""}` });
     root6.setAttribute("role", "dialog");
@@ -14448,7 +14818,7 @@
     const status = h("p", { class: "lfx-prime-search__status", role: "status" });
     const panel = h("div", { class: "lfx-prime-search__panel" }, [head, suggest, status, grid2]);
     root6.replaceChildren(panel);
-    const c = { root: root6, input, panel, timer: null, ctrl: null, returnFocus: prev2, seq: 0 };
+    const c = { root: root6, input, panel, timer: null, ctrl: null, returnFocus: prev, seq: 0 };
     cur = c;
     const close2 = () => closePrimeSearch();
     const reset = () => {
@@ -14516,14 +14886,14 @@
         if (!list.length) return;
         const first2 = list[0];
         const last = list[list.length - 1];
-        const active6 = document.activeElement;
-        if (!panel.contains(active6)) {
+        const active7 = document.activeElement;
+        if (!panel.contains(active7)) {
           e.preventDefault();
           first2.focus();
-        } else if (e.shiftKey && active6 === first2) {
+        } else if (e.shiftKey && active7 === first2) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active6 === last) {
+        } else if (!e.shiftKey && active7 === last) {
           e.preventDefault();
           first2.focus();
         }
@@ -14749,14 +15119,14 @@
         }
         const first2 = list[0];
         const last = list[list.length - 1];
-        const active6 = document.activeElement;
-        if (!sheet.contains(active6)) {
+        const active7 = document.activeElement;
+        if (!sheet.contains(active7)) {
           e.preventDefault();
           first2.focus();
-        } else if (e.shiftKey && active6 === first2) {
+        } else if (e.shiftKey && active7 === first2) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && active6 === last) {
+        } else if (!e.shiftKey && active7 === last) {
           e.preventDefault();
           first2.focus();
         }
@@ -14775,7 +15145,7 @@
     sheet.focus({ preventScroll: true });
     const mine = c;
     (async () => {
-      const [chip, libs, entries] = await Promise.all([
+      const [chip, libs2, entries] = await Promise.all([
         getUserChip().catch(() => ({ name: "", imageUrl: null })),
         getLibraries().catch(() => []),
         profileEntries({ theme: "prime", returnFocus }).catch(() => [])
@@ -14787,7 +15157,7 @@
         h("span", { class: "lfx-prime-psheet__name" }, chip.name || "Profil")
       );
       const nav = [{ key: "new", label: "Neu & beliebt", href: "#/home?lfx=new" }];
-      const libNodes = (libs || []).map((l) => ({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href }));
+      const libNodes = (libs2 || []).map((l) => ({ key: `lib:${l.id}`, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href }));
       body.replaceChildren(...[
         section3(null, nav.map((it) => entryNode(it, close2))),
         libNodes.length ? section3("Bibliotheken", libNodes.map((it) => entryNode(it, close2))) : null,
@@ -14825,8 +15195,8 @@
     svg11.append(p);
     return svg11;
   }
-  function navItems3(libs) {
-    const list = Array.isArray(libs) ? libs : [];
+  function navItems3(libs2) {
+    const list = Array.isArray(libs2) ? libs2 : [];
     const items = [{ key: "home", label: "Startseite", href: "#/home" }];
     const movies = list.find((l) => l.collectionType === "movies");
     const series = list.find((l) => l.collectionType === "tvshows");
@@ -14851,7 +15221,7 @@
     if (route.params.get("tab") === "1") return "sub";
     return !lfx || lfx === "hub" ? "home" : "sub";
   }
-  var NATIVE_TITLES = {
+  var NATIVE_TITLES2 = {
     "/mypreferencesmenu": "Einstellungen",
     "/mypreferencesdisplay": "Anzeige",
     "/mypreferenceshome": "Startseite",
@@ -14868,7 +15238,7 @@
     if (!el4) return "";
     return String((attr ? el4.getAttribute(attr) : el4.textContent) || "").trim();
   }
-  function mobileTitle(route, libs = []) {
+  function mobileTitle(route, libs2 = []) {
     if (!route) return "";
     const p = route.params;
     if (route.path === "/home") {
@@ -14879,14 +15249,14 @@
       if (lfx === "search") return "Suche";
       if (lfx === "title") return domText(".lfx-pt__title") || domText(".lfx-pt__logo", "alt");
       if (lfx === "browse") {
-        const lib2 = libs.find((l) => l.id === p.get("lib"));
+        const lib2 = libs2.find((l) => l.id === p.get("lib"));
         return lib2 ? lib2.name || "" : "";
       }
       return "";
     }
-    if (NATIVE_TITLES[route.path]) return NATIVE_TITLES[route.path];
+    if (NATIVE_TITLES2[route.path]) return NATIVE_TITLES2[route.path];
     const libId = p.get("topParentId") || p.get("parentId");
-    const lib = libId ? libs.find((l) => l.id === libId) : null;
+    const lib = libId ? libs2.find((l) => l.id === libId) : null;
     if (lib) return lib.name || "";
     if (route.path === "/details" || route.path === "/item") return domText(".page:not(.hide) .nameContainer h1");
     return "";
@@ -15073,30 +15443,30 @@
     applyActive7();
   }
   async function loadFlyoutData() {
-    let libs = state17.libs;
+    let libs2 = state17.libs;
     let cols;
     try {
       cols = await getCollections();
     } catch {
       cols = [];
     }
-    if (!libs.length) {
+    if (!libs2.length) {
       try {
-        libs = await getLibraries();
+        libs2 = await getLibraries();
       } catch {
-        libs = [];
+        libs2 = [];
       }
     }
     return {
-      libraries: libs.map((l) => ({ key: l.id, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href })),
+      libraries: libs2.map((l) => ({ key: l.id, label: l.name, href: l.hubCapable ? hubHref(l.id) : l.href })),
       collections: cols.map((c) => ({ key: c.id, label: c.name, href: titleHref(c.id) }))
     };
   }
-  async function loadLibs(seq3) {
+  async function loadLibs2(seq3) {
     try {
-      const libs = await getLibraries();
+      const libs2 = await getLibraries();
       if (seq3 !== state17.seq || !state17.el) return;
-      state17.libs = libs;
+      state17.libs = libs2;
     } catch {
       if (seq3 !== state17.seq || !state17.el) return;
       state17.libs = [];
@@ -15150,7 +15520,7 @@
     renderNav2();
     renderPills2();
     applyActive7();
-    loadLibs(seq3);
+    loadLibs2(seq3);
     loadAvatar(seq3, parts.avatar);
     startTitlePoll();
   }
@@ -15274,21 +15644,21 @@
 
   // src/js/features/prime/hero-play.js
   async function seriesTarget(series) {
-    let target = await loadNextUp(series.Id).catch(() => null);
-    if (!target) {
+    let target2 = await loadNextUp(series.Id).catch(() => null);
+    if (!target2) {
       const seasons = await loadSeasons(series.Id).catch(() => []);
       const sid = pickInitialSeason(seasons, null);
       const eps = sid ? await loadEpisodes2(series.Id, sid).catch(() => []) : [];
-      target = eps[0] || null;
+      target2 = eps[0] || null;
     }
-    return target;
+    return target2;
   }
   async function playTitle(item) {
     if (!item || !item.Id) return false;
-    let target = item;
-    if (item.Type === "Series") target = await seriesTarget(item);
-    if (!target) return false;
-    return play(target, { resume: hasResume(target) });
+    let target2 = item;
+    if (item.Type === "Series") target2 = await seriesTarget(item);
+    if (!target2) return false;
+    return play(target2, { resume: hasResume(target2) });
   }
   function playLabel(item, next = null) {
     if (item && item.Type === "Series") {
@@ -15314,7 +15684,7 @@
     let held2 = false;
     let stopped = false;
     let io = null;
-    const sync3 = () => {
+    const sync4 = () => {
       if (stopped || !video2) return;
       const want = visible && !held2 && !document.hidden;
       try {
@@ -15328,17 +15698,17 @@
       } catch {
       }
     };
-    const onVis = () => sync3();
+    const onVis = () => sync4();
     const onHold = (e) => {
       held2 = Boolean(e.detail && e.detail.on);
-      sync3();
+      sync4();
     };
     if (typeof IntersectionObserver === "function") {
       io = new IntersectionObserver((entries) => {
         const e = entries[entries.length - 1];
         if (!e) return;
         visible = e.isIntersecting && e.intersectionRatio >= VISIBLE_RATIO;
-        sync3();
+        sync4();
       }, { threshold: [0, VISIBLE_RATIO, 1] });
       io.observe(video2);
     }
@@ -15437,7 +15807,7 @@
     let muteBtn = null;
     let dots = null;
     let hero = null;
-    const timers = /* @__PURE__ */ new Set();
+    const timers2 = /* @__PURE__ */ new Set();
     const cleanupFns = [];
     const setTr = (v) => {
       if (v) slot.dataset.lfxTr = v;
@@ -15445,10 +15815,10 @@
     };
     const later = (fn, ms) => {
       const t = setTimeout(() => {
-        timers.delete(t);
+        timers2.delete(t);
         fn();
       }, ms);
-      timers.add(t);
+      timers2.add(t);
       return t;
     };
     const paused3 = () => hovering || trailerActive || document.hidden || document.documentElement.classList.contains("lfx-modal-open") || isMenuOpen() || isChooserOpen();
@@ -15725,18 +16095,18 @@
         buildMobile2();
         return;
       }
-      const prev2 = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--prev", "aria-label": "Vorherige Empfehlung" });
+      const prev = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--prev", "aria-label": "Vorherige Empfehlung" });
       const next = h("button", { type: "button", class: "lfx-prime-hero__arrow lfx-prime-hero__arrow--next", "aria-label": "N\xE4chste Empfehlung" });
-      prev2.append(svg8(ICON_CHEV));
+      prev.append(svg8(ICON_CHEV));
       next.append(svg8(ICON_CHEV));
-      prev2.addEventListener("click", () => step(-1));
+      prev.addEventListener("click", () => step(-1));
       next.addEventListener("click", () => step(1));
       fillDots();
       hero = h("div", { class: "lfx-prime-hero" }, [
         media,
         h("div", { class: "lfx-prime-hero__shade", "aria-hidden": "true" }),
         h("div", { class: "lfx-prime-hero__shade lfx-prime-hero__shade--corner", "aria-hidden": "true" }),
-        prev2,
+        prev,
         next,
         muteBtn,
         content,
@@ -15800,8 +16170,8 @@
       disposed = true;
       gen8 += 1;
       clearTimeout(rotateTimer);
-      timers.forEach(clearTimeout);
-      timers.clear();
+      timers2.forEach(clearTimeout);
+      timers2.clear();
       stopTrailer();
       cleanupFns.splice(0).forEach((f) => f());
       slot.replaceChildren();
@@ -15977,15 +16347,15 @@
         eager: eager && i < EAGER_CARDS4
       }));
       const track = rowEl.querySelector(".lfx-prime-row__track");
-      const prev2 = arrow("prev", "Zur\xFCck");
+      const prev = arrow("prev", "Zur\xFCck");
       const next = arrow("next", "Weiter");
       track.replaceChildren(...cards);
       track.setAttribute("aria-label", def.title || "");
-      track.before(prev2);
+      track.before(prev);
       track.after(next);
       rowEl.querySelector(".lfx-prime-row__title").textContent = def.title || "";
       rowEl.classList.remove("is-loading");
-      disposers.push(attachScroller({ track, prev: prev2, next, indicator: null }));
+      disposers.push(attachScroller({ track, prev, next, indicator: null }));
     }
     async function loadRow(rowEl, def, kind2) {
       try {
@@ -16091,12 +16461,12 @@
     document.documentElement.classList.remove(ON_CLASS14);
   }
   var isGenreDef = (d) => /(^|-)genre-/.test(d.id);
-  function moreHrefFor(def, { hub, libs, lib }) {
+  function moreHrefFor(def, { hub, libs: libs2, lib }) {
     if (hub) {
       if (lib && (def.id === `${lib.id}-latest` || def.id === `${lib.id}-toprated`)) return lib.href;
       return null;
     }
-    const byType = (t) => libs.find((l) => l.collectionType === t && l.hubCapable);
+    const byType = (t) => libs2.find((l) => l.collectionType === t && l.hubCapable);
     if (def.id === "latest-movies") {
       const l = byType("movies");
       return l ? hubHref(l.id) : null;
@@ -16110,15 +16480,15 @@
     return null;
   }
   async function start4(tab2, route, myGen) {
-    let libs = [];
+    let libs2 = [];
     try {
-      libs = await getLibraries();
+      libs2 = await getLibraries();
     } catch {
-      libs = [];
+      libs2 = [];
     }
     if (myGen !== gen3) return;
     const hub = route.kind === "hub";
-    const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
+    const lib = hub ? libs2.find((l) => l.id === route.lib && l.hubCapable) : null;
     if (hub && !lib) {
       teardown9();
       current4 = null;
@@ -16144,7 +16514,7 @@
     if (myGen !== gen3 || !isReady()) return;
     const rows = createRows(rowsSlot, {
       posterId: pickPosterId(defs, hub),
-      moreHref: (def) => moreHrefFor(def, { hub, libs, lib }),
+      moreHref: (def) => moreHrefFor(def, { hub, libs: libs2, lib }),
       prefetch: !hub,
       hero: () => heroSlot
     });
@@ -16342,7 +16712,7 @@
     return Math.max(0, Math.min(dy, top - HEADER_H));
   }
   var lastUserScroll = 0;
-  var active4 = null;
+  var active5 = null;
   var intent2 = null;
   var leaveTimer = null;
   var pointerInside = false;
@@ -16362,9 +16732,9 @@
     if (!trendP) trendP = getTrendInfo().catch(() => null);
     return trendP;
   }
-  function cardOf(target) {
-    if (!target || !target.closest) return null;
-    const card3 = target.closest(".lfx-prime-card");
+  function cardOf(target2) {
+    if (!target2 || !target2.closest) return null;
+    const card3 = target2.closest(".lfx-prime-card");
     return card3 && card3.closest(`#${ROOT_ID15}`) ? card3 : null;
   }
   function clearIntent() {
@@ -16375,8 +16745,8 @@
     clearIntent();
     clearTimeout(leaveTimer);
     leaveTimer = null;
-    const a = active4;
-    active4 = null;
+    const a = active5;
+    active5 = null;
     if (!a) return;
     a.timers.forEach(clearTimeout);
     if (a.preview) a.preview.cancel();
@@ -16392,7 +16762,7 @@
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(function check3() {
       leaveTimer = null;
-      if (!active4 || pointerInside) return;
+      if (!active5 || pointerInside) return;
       if (holdOpen2()) {
         leaveTimer = setTimeout(check3, HOLD_POLL_MS);
         return;
@@ -16407,7 +16777,7 @@
     const trendInfo = await trend();
     if (!intent2 || intent2.card !== card3) return;
     clearIntent();
-    if (active4 || blocked2()) return;
+    if (active5 || blocked2()) return;
     const a = { card: card3, kind: "popup", el: null, preview: null, video: null, timers: [] };
     const pic = landscapeFor(item, 900);
     const p = progressPercent(item);
@@ -16416,7 +16786,7 @@
       p > 0 ? h("div", { class: "lfx-prime-card__progress" }, [h("div", { class: "lfx-prime-card__bar", style: { width: `${Math.round(p)}%` } })]) : null
     ]);
     const info = h("div", { class: "lfx-prime-hover__info" }, [
-      buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active4 === a })
+      buildTitleInfo(item, "popup", { trend: trendInfo, isCurrent: () => active5 === a })
     ]);
     const el4 = mountPoint(POPUP_ID2, { className: "lfx-prime-hover" });
     el4.className = "lfx-prime-hover";
@@ -16437,10 +16807,10 @@
     el4.style.transformOrigin = `${g.originX}px ${g.originY}px`;
     el4.style.setProperty("--lfx-prime-s0", String(g.scale));
     el4.style.visibility = "";
-    active4 = a;
+    active5 = a;
     pointerInside = true;
     const go3 = () => {
-      if (active4 === a) el4.classList.add("is-in");
+      if (active5 === a) el4.classList.add("is-in");
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go3));
     else go3();
@@ -16456,7 +16826,7 @@
     const trendInfo = await trend();
     if (!intent2 || intent2.card !== card3) return;
     clearIntent();
-    if (active4 || blocked2()) return;
+    if (active5 || blocked2()) return;
     const a = { card: card3, kind: "poster", el: null, preview: null, video: null, timers: [], t0: Date.now() };
     const pic = landscapeFor(item, 1e3);
     const mediaEl = h("div", { class: "lfx-prime-expand__media" }, [
@@ -16470,16 +16840,16 @@
       mute.replaceChildren(svgIcon(a.video.muted ? ICON_MUTED2 : ICON_SOUND2));
       mute.setAttribute("aria-label", a.video.muted ? "Ton einschalten" : "Ton ausschalten");
     });
-    const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active4 === a })]);
+    const body = h("div", { class: "lfx-prime-expand__body" }, [buildTitleInfo(item, "expand", { trend: trendInfo, isCurrent: () => active5 === a })]);
     const el4 = h("div", { class: "lfx-prime-expand" }, [mediaEl, h("div", { class: "lfx-prime-expand__shade", "aria-hidden": "true" }), mute, body]);
     a.el = el4;
     card3.append(el4);
     card3.classList.add("is-expanded");
-    active4 = a;
+    active5 = a;
     pointerInside = true;
     a.timers.push(setTimeout(() => {
       const track = card3.closest(".lfx-prime-row__track");
-      if (!track || active4 !== a) return;
+      if (!track || active5 !== a) return;
       const cr = card3.getBoundingClientRect();
       const tr = track.getBoundingClientRect();
       const over = cr.right - (tr.right - EDGE2 * 2);
@@ -16497,12 +16867,12 @@
     }, 340));
     if (reducedMotion3() || isDataSaver("trailer")) return;
     loadDetail(item.Id).then((detail) => {
-      if (active4 !== a || !detail || isDataSaver("trailer")) return;
+      if (active5 !== a || !detail || isDataSaver("trailer")) return;
       a.preview = createMutedPreview(mediaEl, detail, {
         delay: Math.max(0, PREVIEW_MS - (Date.now() - a.t0)),
         startAt: 4,
         onStart: (v) => {
-          if (active4 !== a) return;
+          if (active5 !== a) return;
           a.video = v;
           a.holding = true;
           setPreviewHold(true);
@@ -16512,7 +16882,7 @@
           mute.replaceChildren(svgIcon(ICON_MUTED2));
         },
         onEnd: () => {
-          if (active4 !== a) return;
+          if (active5 !== a) return;
           a.preview = null;
           a.video = null;
           if (a.holding) {
@@ -16544,36 +16914,36 @@
     const t = e.target;
     const inPopup = Boolean(t && t.closest && t.closest(`#${POPUP_ID2}`));
     const card3 = inPopup ? null : cardOf(t);
-    if (inPopup || card3 && active4 && active4.card === card3) {
+    if (inPopup || card3 && active5 && active5.card === card3) {
       pointerInside = true;
       clearTimeout(leaveTimer);
       leaveTimer = null;
       return;
     }
     pointerInside = false;
-    if (active4) {
-      if (!card3 || card3 !== active4.card) {
+    if (active5) {
+      if (!card3 || card3 !== active5.card) {
         if (card3) closeNow2();
         else scheduleLeave();
       }
     }
-    if (card3 && !active4) scheduleOpen2(card3);
+    if (card3 && !active5) scheduleOpen2(card3);
     else if (!card3) clearIntent();
   }
   function onOut2(e) {
     if (e.relatedTarget) return;
     pointerInside = false;
     clearIntent();
-    if (active4) scheduleLeave();
+    if (active5) scheduleLeave();
   }
   function onScroll5() {
     if (Date.now() < selfScrollUntil) return;
     lastUserScroll = Date.now();
-    if (!active4 && !intent2) return;
+    if (!active5 && !intent2) return;
     closeNow2();
   }
   function onSaver() {
-    const a = active4;
+    const a = active5;
     if (!a || !a.preview || !isDataSaver("trailer")) return;
     a.preview.cancel();
     a.preview = null;
@@ -16587,11 +16957,11 @@
     if (mute) mute.hidden = true;
   }
   function onKey2(e) {
-    if (e.key === "Escape" && active4) closeNow2();
+    if (e.key === "Escape" && active5) closeNow2();
   }
-  function add(target, type, fn, opts) {
-    target.addEventListener(type, fn, opts);
-    listeners5.push(() => target.removeEventListener(type, fn, opts));
+  function add(target2, type, fn, opts) {
+    target2.addEventListener(type, fn, opts);
+    listeners5.push(() => target2.removeEventListener(type, fn, opts));
   }
   function start5() {
     add(document, "mouseover", onOver2);
@@ -17449,9 +17819,9 @@
     const hide2 = shouldHide();
     if (el4.classList.contains("is-hidden") !== hide2) el4.classList.toggle("is-hidden", hide2);
     el4.toggleAttribute("inert", hide2);
-    const active6 = state18.route ? activeTab2(state18.route, isPrimeSearchOpen()) : null;
+    const active7 = state18.route ? activeTab2(state18.route, isPrimeSearchOpen()) : null;
     for (const t of el4.querySelectorAll("[data-tab]")) {
-      const on = t.dataset.tab === active6;
+      const on = t.dataset.tab === active7;
       t.classList.toggle("is-active", on);
       if (on) {
         if (t.getAttribute("aria-current") !== "page") t.setAttribute("aria-current", "page");
@@ -17643,8 +18013,8 @@
   function isPhone2() {
     return window.innerWidth < 800;
   }
-  function navItems4(libs) {
-    const list = Array.isArray(libs) ? libs : [];
+  function navItems4(libs2) {
+    const list = Array.isArray(libs2) ? libs2 : [];
     const items = [{ key: "home", label: "Start", href: "#/home" }];
     const movies = list.find((l) => l.collectionType === "movies");
     const series = list.find((l) => l.collectionType === "tvshows");
@@ -17744,18 +18114,18 @@
       "aria-label": cfg.label,
       title: cfg.label
     }, [svgIcon2(cfg.icon)]);
-    const sync3 = () => {
+    const sync4 = () => {
       const on = getPref(pref);
       el4.setAttribute("aria-pressed", on ? "true" : "false");
       el4.classList.toggle("is-on", on);
     };
-    const onPrefs = () => sync3();
+    const onPrefs = () => sync4();
     el4.addEventListener("click", () => {
       togglePref(pref);
     });
     document.addEventListener(PREFS_EVENT, onPrefs);
-    sync3();
-    return { el: el4, sync: sync3, destroy() {
+    sync4();
+    return { el: el4, sync: sync4, destroy() {
       document.removeEventListener(PREFS_EVENT, onPrefs);
     } };
   }
@@ -17854,15 +18224,15 @@
     });
     return { avatar };
   }
-  async function loadLibs2(seq3) {
-    let libs;
+  async function loadLibs3(seq3) {
+    let libs2;
     try {
-      libs = await getLibraries() || [];
+      libs2 = await getLibraries() || [];
     } catch {
-      libs = [];
+      libs2 = [];
     }
     if (seq3 !== state19.seq || !state19.el) return;
-    state19.libs = libs;
+    state19.libs = libs2;
     renderNav3();
   }
   async function loadAvatar2(seq3, avatar) {
@@ -17905,7 +18275,7 @@
       state19.cleanups.push(() => window.removeEventListener("scroll", onScroll6));
       renderNav3();
       applyScroll2();
-      loadLibs2(seq3);
+      loadLibs3(seq3);
       loadAvatar2(seq3, avatar);
     },
     update(route) {
@@ -17960,10 +18330,10 @@
   var isVideoHash2 = (hash2) => /^#!?[/]video(?:[/?]|$)/.test(String(hash2 || ""));
   var PREF_LABEL = { sound: "Sound", crt: "CRT-Effekt" };
   var switchText = (label, on) => `${label}: ${on ? "AN" : "AUS"}`;
-  function moreEntries(libs, profile2, { go: goFn, close: close2, toggle }) {
+  function moreEntries(libs2, profile2, { go: goFn, close: close2, toggle }) {
     const entries = [];
     const order = { movies: 0, tvshows: 1 };
-    const sorted = (Array.isArray(libs) ? libs : []).map((l, i) => ({ l, i })).sort((a, b) => (order[a.l.collectionType] ?? 9) - (order[b.l.collectionType] ?? 9) || a.i - b.i);
+    const sorted = (Array.isArray(libs2) ? libs2 : []).map((l, i) => ({ l, i })).sort((a, b) => (order[a.l.collectionType] ?? 9) - (order[b.l.collectionType] ?? 9) || a.i - b.i);
     for (const { l } of sorted) {
       const href = l.hubCapable ? hubHref(l.id) : l.href;
       if (href) entries.push({ key: `lib:${l.id}`, label: l.name, onClick: () => {
@@ -18060,10 +18430,10 @@
     }
     const seq3 = ++state20.seq;
     const anchor = state20.moreBtn;
-    let libs = [];
+    let libs2 = [];
     let profile2 = [];
     try {
-      libs = await getLibraries() || [];
+      libs2 = await getLibraries() || [];
     } catch {
     }
     try {
@@ -18076,7 +18446,7 @@
     c.sheet.classList.add("lfx-retro-sheet");
     state20.sheet = c;
     releaseOffs();
-    const entries = moreEntries(libs, profile2, {
+    const entries = moreEntries(libs2, profile2, {
       go: go2,
       close: () => closeChooser(),
       toggle: (pref) => {
@@ -18297,7 +18667,7 @@
     let disposed = false;
     let pool = [];
     let index = 0;
-    let target = 0;
+    let target2 = 0;
     let gen8 = 0;
     let hovering = false;
     let inView = true;
@@ -18306,19 +18676,19 @@
     let bd = null;
     let win = null;
     const refs = {};
-    const timers = /* @__PURE__ */ new Set();
+    const timers2 = /* @__PURE__ */ new Set();
     const cleanups6 = [];
     const later = (fn, ms) => {
       const t = setTimeout(() => {
-        timers.delete(t);
+        timers2.delete(t);
         fn();
       }, ms);
-      timers.add(t);
+      timers2.add(t);
       return t;
     };
     const clearLater = (t) => {
       clearTimeout(t);
-      timers.delete(t);
+      timers2.delete(t);
     };
     const paused3 = () => hovering || !inView || document.hidden || document.documentElement.classList.contains("lfx-modal-open");
     function scheduleRotate() {
@@ -18328,7 +18698,7 @@
       rotateTimer = later(() => {
         rotateTimer = 0;
         if (paused3()) scheduleRotate();
-        else show3((target + 1) % pool.length);
+        else show3((target2 + 1) % pool.length);
       }, ROTATE_MS3);
     }
     function typeText(text, myGen) {
@@ -18379,7 +18749,7 @@
     }
     function show3(i, { immediate = false } = {}) {
       if (disposed || !pool[i]) return;
-      target = i;
+      target2 = i;
       if (immediate || reducedMotion6() || !hero) {
         apply3(i);
         return;
@@ -18396,7 +18766,7 @@
       }, CHANNEL_END_MS);
     }
     const step = (dir) => {
-      if (pool.length > 1) show3((target + dir + pool.length) % pool.length);
+      if (pool.length > 1) show3((target2 + dir + pool.length) % pool.length);
     };
     function arrow3(dir, label) {
       const b = h("button", { type: "button", class: `lfx-retro-hero__arrow lfx-retro-hero__arrow--${dir}`, "aria-label": label }, [svgIcon2(dir)]);
@@ -18490,7 +18860,7 @@
       const cur3 = pool[index];
       pool = saverPool(pool, cur3 && cur3.Id);
       index = Math.max(0, pool.findIndex((it) => cur3 && it.Id === cur3.Id));
-      target = index;
+      target2 = index;
       if (hero) updateCounter();
       scheduleRotate();
     }
@@ -18528,8 +18898,8 @@
     return () => {
       disposed = true;
       gen8 += 1;
-      timers.forEach(clearTimeout);
-      timers.clear();
+      timers2.forEach(clearTimeout);
+      timers2.clear();
       rotateTimer = 0;
       cleanups6.splice(0).forEach((f) => f());
       slot.replaceChildren();
@@ -18682,17 +19052,17 @@
         });
         const track = rowEl.querySelector(".lfx-retro-shelf");
         const title = rowLabel(def);
-        const prev2 = arrow2("prev", "Zur\xFCck");
+        const prev = arrow2("prev", "Zur\xFCck");
         const next = arrow2("next", "Weiter");
         track.replaceChildren(...cards);
         track.setAttribute("aria-label", title);
         track.style.setProperty("--lfx-cards-visible", variant === "spine" ? "6" : "4");
-        track.before(prev2);
+        track.before(prev);
         track.after(next);
         rowEl.querySelector(".lfx-retro-row__title").textContent = title;
         rowEl.classList.remove("is-loading");
         rowEl.dataset.variant = variant;
-        disposers.push(attachScroller({ track, prev: prev2, next, indicator: null }));
+        disposers.push(attachScroller({ track, prev, next, indicator: null }));
       } catch (e) {
         console.warn(`[LenzFlix] Zeile "${def.id}" nicht geladen`, e && e.message);
         if (!disposed) rowEl.remove();
@@ -18789,12 +19159,12 @@
     document.documentElement.classList.remove(ON_CLASS17);
   }
   var isGenreDef2 = (d) => /(^|-)genre-/.test(d.id);
-  function moreHrefFor2(def, { hub, libs, lib }) {
+  function moreHrefFor2(def, { hub, libs: libs2, lib }) {
     if (hub) {
       if (lib && (def.id === `${lib.id}-latest` || def.id === `${lib.id}-toprated`)) return browseHref(lib.id);
       return null;
     }
-    const byType = (t) => libs.find((l) => l.collectionType === t && l.hubCapable);
+    const byType = (t) => libs2.find((l) => l.collectionType === t && l.hubCapable);
     if (def.id === "latest-movies") {
       const l = byType("movies");
       return l ? hubHref(l.id) : null;
@@ -18814,15 +19184,15 @@
     ]);
   }
   async function start7(tab2, route, myGen) {
-    let libs = [];
+    let libs2 = [];
     try {
-      libs = await getLibraries();
+      libs2 = await getLibraries();
     } catch {
-      libs = [];
+      libs2 = [];
     }
     if (myGen !== gen4) return;
     const hub = route.kind === "hub";
-    const lib = hub ? libs.find((l) => l.id === route.lib && l.hubCapable) : null;
+    const lib = hub ? libs2.find((l) => l.id === route.lib && l.hubCapable) : null;
     if (hub && !lib) {
       current5 = null;
       teardown10();
@@ -18846,7 +19216,7 @@
       console.warn("[LenzFlix] Zeilen konnten nicht aufgebaut werden", e && e.message);
     }
     if (myGen !== gen4 || !isReady()) return;
-    const rows = createRows2(rowsSlot, { moreHref: (def) => moreHrefFor2(def, { hub, libs, lib }), prefetch: !hub, hero: () => heroSlot });
+    const rows = createRows2(rowsSlot, { moreHref: (def) => moreHrefFor2(def, { hub, libs: libs2, lib }), prefetch: !hub, hero: () => heroSlot });
     cleanups5.push(() => rows.destroy());
     rows.add(defs);
     let genreCount = BASE_GENRES2;
@@ -19154,13 +19524,13 @@
     setPageOn2(ON_CLASS18, false);
   }
   function preloadImages2(item) {
-    let target = item;
+    let target2 = item;
     if (item && (item.Type === "Episode" || item.Type === "Season")) {
       const tid = item.SeriesId || item.ParentId;
-      target = tid ? getStoredItem(tid) : null;
+      target2 = tid ? getStoredItem(tid) : null;
     }
-    if (!target) return;
-    for (const url of [backdropUrl3(target), logoImage(target, { maxWidth: 720 }), imageUrl(target, { type: "Primary", maxWidth: 700, quality: 85 })]) {
+    if (!target2) return;
+    for (const url of [backdropUrl3(target2), logoImage(target2, { maxWidth: 720 }), imageUrl(target2, { type: "Primary", maxWidth: 700, quality: 85 })]) {
       if (!url) continue;
       try {
         new Image().src = url;
@@ -19563,8 +19933,8 @@
   }
   async function genreLib2() {
     try {
-      const libs = await getLibraries();
-      return libs.find((l) => l.collectionType === "movies") || libs.find((l) => l.collectionType === "tvshows") || libs.find((l) => l.hubCapable) || null;
+      const libs2 = await getLibraries();
+      return libs2.find((l) => l.collectionType === "movies") || libs2.find((l) => l.collectionType === "tvshows") || libs2.find((l) => l.hubCapable) || null;
     } catch {
       return null;
     }
@@ -20126,9 +20496,9 @@
 
   // src/js/features/retro/fx/util.js
   var EDITABLE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"]';
-  function isEditable(target) {
+  function isEditable(target2) {
     try {
-      return Boolean(target && target.closest && target.closest(EDITABLE));
+      return Boolean(target2 && target2.closest && target2.closest(EDITABLE));
     } catch {
       return false;
     }
@@ -20227,14 +20597,14 @@
     top = Math.max(EDGE3, top);
     return { left, top };
   }
-  var active5 = null;
+  var active6 = null;
   var intent3 = null;
   var leaveTimer2 = null;
   var listeners6 = [];
   var scrollOff = null;
   var gen6 = 0;
   var overCard = null;
-  var lastHash = null;
+  var lastHash2 = null;
   var blocked3 = () => Boolean(
     document.hidden || isMenuOpen() || isDialogOpen() || isPlayerVisible(null) || document.getElementById(TERMINAL_ID)
   );
@@ -20245,18 +20615,18 @@
       return it;
     }, 5 * 6e4);
   }
-  function cardOf2(target) {
-    if (!target || !target.closest) return null;
-    const card3 = target.closest(".lfx-retro-card[data-lfx-id]");
+  function cardOf2(target2) {
+    if (!target2 || !target2.closest) return null;
+    const card3 = target2.closest(".lfx-retro-card[data-lfx-id]");
     if (!card3 || card3.closest(`#${POPUP_ID3}, #lfx-retro-title`)) return null;
     return card3;
   }
-  function add2(target, type, fn, opts) {
-    target.addEventListener(type, fn, opts);
-    return () => target.removeEventListener(type, fn, opts);
+  function add2(target2, type, fn, opts) {
+    target2.addEventListener(type, fn, opts);
+    return () => target2.removeEventListener(type, fn, opts);
   }
   function syncScroll() {
-    const need = Boolean(active5 || intent3);
+    const need = Boolean(active6 || intent3);
     if (need && !scrollOff) scrollOff = add2(window, "scroll", closeNow3, { capture: true, passive: true });
     else if (!need && scrollOff) {
       scrollOff();
@@ -20272,8 +20642,8 @@
     clearTimeout(leaveTimer2);
     leaveTimer2 = null;
     gen6 += 1;
-    const a = active5;
-    active5 = null;
+    const a = active6;
+    active6 = null;
     if (a) {
       a.timers.forEach(clearTimeout);
       if (a.preview) a.preview.cancel();
@@ -20319,11 +20689,11 @@
   }
   function open2(card3) {
     const stored = getStoredItem(card3.dataset.lfxId);
-    if (active5 || blocked3()) return;
+    if (active6 || blocked3()) return;
     if (!stored) {
       const g0 = gen6;
       loadDetail2(card3.dataset.lfxId).then((it) => {
-        if (it && g0 === gen6 && overCard === card3 && card3.isConnected && !active5) open2(card3);
+        if (it && g0 === gen6 && overCard === card3 && card3.isConnected && !active6) open2(card3);
       }, () => {
       });
       return;
@@ -20358,12 +20728,12 @@
       el4.style.top = `${Math.round(pos.top)}px`;
     };
     place2();
-    active5 = a;
+    active6 = a;
     card3.classList.add("is-preview");
     syncScroll();
     emitFx("open");
     const go3 = () => {
-      if (active5 === a) el4.classList.add("is-in");
+      if (active6 === a) el4.classList.add("is-in");
     };
     if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(go3));
     else go3();
@@ -20389,10 +20759,10 @@
       favBtn.disabled = true;
       const on = await toggleFavorite2(a.item);
       favBtn.disabled = false;
-      if (active5 === a) setFavLabel(favBtn, on);
+      if (active6 === a) setFavLabel(favBtn, on);
     });
     loadDetail2(stored.Id).then((detail) => {
-      if (active5 !== a || !detail) return;
+      if (active6 !== a || !detail) return;
       a.item = { ...stored, ...detail, UserData: detail.UserData || stored.UserData };
       meta2.textContent = metaLine3(a.item);
       setFavLabel(favBtn, Boolean(a.item.UserData && a.item.UserData.IsFavorite));
@@ -20402,13 +20772,13 @@
         delay: Math.max(0, PREVIEW_MS2 - (Date.now() - a.t0)),
         startAt: 4,
         onStart: (v) => {
-          if (active5 === a) {
+          if (active6 === a) {
             v.classList.add("is-in");
             el4.classList.add("is-video");
           }
         },
         onEnd: () => {
-          if (active5 === a) {
+          if (active6 === a) {
             a.preview = null;
             el4.classList.remove("is-video");
           }
@@ -20442,12 +20812,12 @@
     }
     const card3 = cardOf2(t);
     overCard = card3;
-    if (active5 && card3 === active5.card) {
+    if (active6 && card3 === active6.card) {
       clearTimeout(leaveTimer2);
       leaveTimer2 = null;
       return;
     }
-    if (active5) {
+    if (active6) {
       if (card3) closeNow3();
       else {
         scheduleLeave2();
@@ -20464,14 +20834,14 @@
     if (e.relatedTarget) return;
     overCard = null;
     clearIntent2();
-    if (active5) scheduleLeave2();
+    if (active6) scheduleLeave2();
     else syncScroll();
   }
   function onKey3(e) {
-    if (e.key === "Escape" && (active5 || intent3)) closeNow3();
+    if (e.key === "Escape" && (active6 || intent3)) closeNow3();
   }
   function onSaver2() {
-    const a = active5;
+    const a = active6;
     if (!a || !a.preview || !isDataSaver("trailer")) return;
     a.preview.cancel();
     a.preview = null;
@@ -20501,17 +20871,17 @@
     name: "retro-hover",
     match: (route) => isTheme("retro") && isModern() && !isTv() && isReady() && hoverCapable3() && !isPlayerVisible(route),
     mount(route) {
-      lastHash = route && route.hash;
+      lastHash2 = route && route.hash;
       start8();
     },
     update(route) {
       const hash2 = route && route.hash;
-      if (hash2 === lastHash) return;
-      lastHash = hash2;
+      if (hash2 === lastHash2) return;
+      lastHash2 = hash2;
       closeNow3();
     },
     unmount() {
-      lastHash = null;
+      lastHash2 = null;
       stop7();
     }
   };
@@ -20543,7 +20913,7 @@
       if (el4) el4.remove();
       el4 = null;
     }
-    function sync3(on) {
+    function sync4(on) {
       document.documentElement.classList.toggle(NO_CRT_CLASS, !on);
       if (on) mount2();
       else unmount2();
@@ -20568,7 +20938,7 @@
         if (el4) el4.classList.remove("is-shaking");
       }, ms);
     }
-    return { mount: mount2, unmount: unmount2, sync: sync3, glitchStrip, shake, get el() {
+    return { mount: mount2, unmount: unmount2, sync: sync4, glitchStrip, shake, get el() {
       return el4;
     } };
   }
@@ -20601,7 +20971,7 @@
   function runBoot({ getName = async () => "", reduced = false, onSound = () => {
   }, onDone = () => {
   } } = {}) {
-    const timers = createTimers();
+    const timers2 = createTimers();
     const text = h("div", { class: "lfx-retro-boot__text" });
     const top = h("div", { class: "lfx-retro-boot__half lfx-retro-boot__half--top" });
     const bot = h("div", { class: "lfx-retro-boot__half lfx-retro-boot__half--bottom" });
@@ -20619,7 +20989,7 @@
     });
     const skipEvents = ["keydown", "pointerdown", "touchstart"];
     function cleanup2() {
-      timers.clearAll();
+      timers2.clearAll();
       for (const ev of skipEvents) document.removeEventListener(ev, skip, true);
       el4.remove();
     }
@@ -20650,11 +21020,11 @@
         then(span2);
         return;
       }
-      const id = timers.interval(() => {
+      const id = timers2.interval(() => {
         i += 1;
         span2.textContent = str.slice(0, i);
         if (i >= n) {
-          timers.clear(id);
+          timers2.clear(id);
           then(span2);
         }
       }, Math.max(8, Math.round(ms / n)));
@@ -20667,58 +21037,58 @@
     function openUp(fast) {
       if (opening || done) return;
       opening = true;
-      timers.clearAll();
+      timers2.clearAll();
       caret2(false);
       el4.classList.add("is-open");
-      timers.timeout(finish3, fast ? 420 : 640);
-      timers.timeout(finish3, HARD_TIMEOUT_MS);
+      timers2.timeout(finish3, fast ? 420 : 640);
+      timers2.timeout(finish3, HARD_TIMEOUT_MS);
     }
     document.body.append(el4);
     for (const ev of skipEvents) document.addEventListener(ev, skip, { capture: true, passive: false });
-    timers.timeout(finish3, HARD_TIMEOUT_MS);
+    timers2.timeout(finish3, HARD_TIMEOUT_MS);
     try {
       onSound("boot");
     } catch {
     }
     if (reduced) {
       for (const s of [`LENZ//84 BIOS ${BOOT_VERSION}`, "SPEICHERTEST ... 640K OK", "LADE MEDIATHEK ... OK", "BEREIT."]) addLine().textContent = s;
-      timers.timeout(() => {
+      timers2.timeout(() => {
         caret2(false);
         el4.classList.add("is-open");
       }, REDUCED_MS - 300);
-      timers.timeout(finish3, REDUCED_MS);
+      timers2.timeout(finish3, REDUCED_MS);
       return { cancel() {
         done = true;
         cleanup2();
       } };
     }
-    timers.timeout(() => {
+    timers2.timeout(() => {
       typeLine(`LENZ//84 BIOS ${BOOT_VERSION}`, 400, () => {
       });
     }, 0);
-    timers.timeout(() => {
+    timers2.timeout(() => {
       const span2 = addLine();
       let kb = 0;
-      const id = timers.interval(() => {
+      const id = timers2.interval(() => {
         kb = Math.min(640, kb + 32);
         span2.textContent = `SPEICHERTEST ... ${kb}K${kb >= 640 ? " OK" : ""}`;
-        if (kb >= 640) timers.clear(id);
+        if (kb >= 640) timers2.clear(id);
       }, 30);
     }, 500);
-    timers.timeout(() => {
+    timers2.timeout(() => {
       typeLine("LADE MEDIATHEK ...", 380, (span2) => {
         span2.textContent += " OK";
       });
     }, 1200);
-    timers.timeout(() => {
+    timers2.timeout(() => {
       const who = (nameKnown && name ? name : "GAST").toUpperCase();
       typeLine(`BENUTZER: ${who}`, 300, () => {
       });
     }, 1700);
-    timers.timeout(() => {
+    timers2.timeout(() => {
       typeLine("BEREIT.", 160, () => caret2(true));
     }, 2100);
-    timers.timeout(() => openUp(false), 2450);
+    timers2.timeout(() => openUp(false), 2450);
     return { cancel() {
       done = true;
       cleanup2();
@@ -20737,21 +21107,21 @@
     return list.length ? list[Math.floor(Math.random() * list.length)] : null;
   }
   function createGlitch({ crt, enabled: enabled2 = () => true, minMs = 2e4, maxMs = 4e4 }) {
-    const timers = createTimers();
-    let running = false;
+    const timers2 = createTimers();
+    let running2 = false;
     const added = /* @__PURE__ */ new Set();
     function fire() {
-      if (!running) return;
+      if (!running2) return;
       if (enabled2() && !document.hidden) {
-        const target = pickTarget();
-        if (target) {
-          const addedBase = !target.classList.contains("lfx-retro-glitch");
-          target.classList.add("lfx-retro-glitch", "is-glitching");
-          if (addedBase) added.add(target);
-          timers.timeout(() => {
-            target.classList.remove("is-glitching");
-            if (addedBase) target.classList.remove("lfx-retro-glitch");
-            added.delete(target);
+        const target2 = pickTarget();
+        if (target2) {
+          const addedBase = !target2.classList.contains("lfx-retro-glitch");
+          target2.classList.add("lfx-retro-glitch", "is-glitching");
+          if (addedBase) added.add(target2);
+          timers2.timeout(() => {
+            target2.classList.remove("is-glitching");
+            if (addedBase) target2.classList.remove("lfx-retro-glitch");
+            added.delete(target2);
           }, 600);
         }
         crt.glitchStrip();
@@ -20759,17 +21129,17 @@
       schedule4();
     }
     function schedule4() {
-      if (running) timers.timeout(fire, rand(minMs, maxMs));
+      if (running2) timers2.timeout(fire, rand(minMs, maxMs));
     }
     return {
       start() {
-        if (running) return;
-        running = true;
+        if (running2) return;
+        running2 = true;
         schedule4();
       },
       stop() {
-        running = false;
-        timers.clearAll();
+        running2 = false;
+        timers2.clearAll();
         for (const el4 of document.querySelectorAll(".is-glitching")) el4.classList.remove("is-glitching");
         for (const el4 of added) el4.classList.remove("lfx-retro-glitch");
         added.clear();
@@ -21064,13 +21434,13 @@
     "|_____||_____||_| \\_|/____|/_/   /_/    \\___/    |_|"
   ];
   function parseCommand(input) {
-    const raw = String(input == null ? "" : input).trim();
-    if (!raw) return { raw, cmd: null, name: "", args: "", argv: [] };
-    const [first2, ...rest] = raw.split(/\s+/);
+    const raw2 = String(input == null ? "" : input).trim();
+    if (!raw2) return { raw: raw2, cmd: null, name: "", args: "", argv: [] };
+    const [first2, ...rest] = raw2.split(/\s+/);
     const name = first2.toLowerCase();
-    const args = raw.slice(first2.length).trim();
+    const args = raw2.slice(first2.length).trim();
     const cmd = Object.prototype.hasOwnProperty.call(ALIASES, name) ? ALIASES[name] : null;
-    return { raw, cmd, name, args, argv: rest };
+    return { raw: raw2, cmd, name, args, argv: rest };
   }
   var COMPLETABLE = Object.keys(ALIASES).filter((k) => !["sudo", "42", "hallo", "hello", "?"].includes(k));
   function complete(prefix) {
@@ -21121,18 +21491,18 @@
         out(formatTime(ctx2.now()));
         break;
       case "ls": {
-        let libs;
+        let libs2;
         try {
-          libs = await ctx2.libraries();
+          libs2 = await ctx2.libraries();
         } catch {
-          libs = [];
+          libs2 = [];
         }
-        if (!libs.length) {
+        if (!libs2.length) {
           out("KEINE BIBLIOTHEKEN GEFUNDEN.");
           break;
         }
-        out(`${libs.length} BIBLIOTHEK${libs.length === 1 ? "" : "EN"}:`);
-        for (const l of libs) out(`  <DIR>  ${String(l.name).toUpperCase()}`);
+        out(`${libs2.length} BIBLIOTHEK${libs2.length === 1 ? "" : "EN"}:`);
+        for (const l of libs2) out(`  <DIR>  ${String(l.name).toUpperCase()}`);
         break;
       }
       case "suche": {
@@ -21169,20 +21539,20 @@
       }
       case "zufall": {
         out("ZIEHE ZUFALLSKASSETTE ...");
-        let pick;
+        let pick2;
         try {
-          pick = await ctx2.randomTitle();
+          pick2 = await ctx2.randomTitle();
         } catch {
-          pick = null;
+          pick2 = null;
         }
         if (ctx2.isOpen && !ctx2.isOpen()) break;
-        if (!pick) {
+        if (!pick2) {
           ctx2.error("NICHTS GEFUNDEN. IST DIE MEDIATHEK LEER?");
           break;
         }
-        out(`GEZOGEN: ${String(pick.name).toUpperCase()}`);
+        out(`GEZOGEN: ${String(pick2.name).toUpperCase()}`);
         out("LADE KASSETTE ...");
-        ctx2.go(ctx2.titleHref(pick.id));
+        ctx2.go(ctx2.titleHref(pick2.id));
         break;
       }
       case "design": {
@@ -21297,7 +21667,7 @@
   var MAX_LINES = 400;
   var MAX_HISTORY = 50;
   function createTerminal(deps) {
-    const timers = createTimers();
+    const timers2 = createTimers();
     let root6 = null;
     let out = null;
     let input = null;
@@ -21343,7 +21713,7 @@
         isOpen: live,
         go(href) {
           if (!live()) return;
-          timers.timeout(() => {
+          timers2.timeout(() => {
             close2();
             try {
               window.location.hash = href;
@@ -21354,7 +21724,7 @@
         sleep(ms) {
           return new Promise((resolve2) => {
             sleepers.add(resolve2);
-            timers.timeout(() => {
+            timers2.timeout(() => {
               sleepers.delete(resolve2);
               resolve2(live());
             }, ms);
@@ -21363,17 +21733,17 @@
       };
     }
     async function run(line) {
-      const raw = String(line || "").trim();
-      if (!raw) return;
-      print(`${PROMPT} ${raw}`, "cmd");
-      if (history2[history2.length - 1] !== raw) history2.push(raw);
+      const raw2 = String(line || "").trim();
+      if (!raw2) return;
+      print(`${PROMPT} ${raw2}`, "cmd");
+      if (history2[history2.length - 1] !== raw2) history2.push(raw2);
       if (history2.length > MAX_HISTORY) history2.shift();
       hIndex = history2.length;
       draft = "";
       busy3 = true;
       const g = gen8;
       try {
-        await execute(raw, mkCtx(g));
+        await execute(raw2, mkCtx(g));
       } catch {
         if (g === gen8) print("INTERNER FEHLER. SYSTEM L\xC4UFT WEITER.", "err");
       } finally {
@@ -21467,7 +21837,7 @@
       ]);
       root6.addEventListener("keydown", onKey4);
       root6.addEventListener("pointerdown", (e) => {
-        if (e.target === out && input) timers.timeout(() => {
+        if (e.target === out && input) timers2.timeout(() => {
           if (alive && !String(window.getSelection && window.getSelection()).length) input.focus({ preventScroll: true });
         }, 0);
       });
@@ -21487,7 +21857,7 @@
       alive = true;
       print("LENZ//84 TERMINAL \u2014 TIPPE 'HILFE' F\xDCR BEFEHLE.");
       emitFx("open");
-      timers.timeout(() => {
+      timers2.timeout(() => {
         if (root6) root6.classList.add("is-open");
         input.focus({ preventScroll: true });
       }, 20);
@@ -21497,7 +21867,7 @@
       sleepers.clear();
     }
     function teardown11() {
-      timers.clearAll();
+      timers2.clearAll();
       releaseSleepers();
       alive = false;
       busy3 = false;
@@ -21515,8 +21885,8 @@
       releaseSleepers();
       if (el4) el4.classList.remove("is-open");
       document.documentElement.classList.remove("lfx-retro-term-open");
-      timers.clearAll();
-      timers.timeout(() => {
+      timers2.clearAll();
+      timers2.timeout(() => {
         if (root6 === el4) teardown11();
       }, 260);
       if (back && back.isConnected && typeof back.focus === "function") {
@@ -21551,14 +21921,14 @@
   function createScreensaver({ idleMs = IDLE_MS, isBlocked = () => false, getTitles = () => [], reduced = false, onStart = () => {
   }, onStop = () => {
   } } = {}) {
-    const timers = createTimers();
+    const timers2 = createTimers();
     let started2 = false;
-    let active6 = false;
+    let active7 = false;
     let lastInput = Date.now();
     let el4 = null;
     let canvas = null;
     let ctx2 = null;
-    let titleEl = null;
+    let titleEl2 = null;
     let raf3 = 0;
     let lastFrame = 0;
     let drops = [];
@@ -21570,7 +21940,7 @@
     let nextFlash = 0;
     const idleEvents = ["pointermove", "keydown", "touchstart", "wheel", "scroll", "pointerdown"];
     function noteInput(e) {
-      if (active6) return;
+      if (active7) return;
       if (e && e.type === "pointermove") {
         const p = { x: e.clientX, y: e.clientY };
         if (lastMove && Math.abs(p.x - lastMove.x) + Math.abs(p.y - lastMove.y) < 3) return;
@@ -21597,7 +21967,7 @@
     }
     function frame(now) {
       raf3 = 0;
-      if (!active6 || !ctx2) return;
+      if (!active7 || !ctx2) return;
       raf3 = requestAnimationFrame(frame);
       if (document.hidden) return;
       const step = reduced ? FRAME_MS * 2 : FRAME_MS;
@@ -21621,7 +21991,7 @@
       flashTitle(Date.now());
     }
     function flashTitle(t) {
-      if (!titleEl || t < nextFlash) return;
+      if (!titleEl2 || t < nextFlash) return;
       const titles = (() => {
         try {
           return getTitles();
@@ -21630,17 +22000,17 @@
         }
       })();
       const pool = ["LENZ//84", ...titles.slice(0, 20)];
-      titleEl.textContent = Math.random() < 0.4 ? pool[0] : pool[Math.floor(Math.random() * pool.length)];
-      titleEl.classList.remove("is-flash");
-      void titleEl.offsetWidth;
-      titleEl.classList.add("is-flash");
+      titleEl2.textContent = Math.random() < 0.4 ? pool[0] : pool[Math.floor(Math.random() * pool.length)];
+      titleEl2.classList.remove("is-flash");
+      void titleEl2.offsetWidth;
+      titleEl2.classList.add("is-flash");
       nextFlash = t + 5e3 + Math.random() * 4e3;
     }
     function onResize2() {
       size();
     }
     function onVisibility() {
-      if (!active6) return;
+      if (!active7) return;
       if (document.hidden) {
         cancelAnimationFrame(raf3);
         raf3 = 0;
@@ -21652,7 +22022,7 @@
       if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     }
     function onActiveInput(e) {
-      if (!active6) return;
+      if (!active7) return;
       if (e.type === "pointermove" || e.type === "mousemove") {
         const p = { x: e.clientX, y: e.clientY };
         if (!lastMove) {
@@ -21671,7 +22041,7 @@
     }
     const activeEvents = ["keydown", "pointerdown", "mousedown", "touchstart", "wheel", "pointermove"];
     function run(manual = true) {
-      if (active6) return true;
+      if (active7) return true;
       if (typeof requestAnimationFrame !== "function") return false;
       canvas = h("canvas", { class: "lfx-retro-rain__canvas" });
       let c;
@@ -21685,10 +22055,10 @@
         return false;
       }
       ctx2 = c;
-      titleEl = h("div", { class: "lfx-retro-rain__title", "aria-hidden": "true" });
-      el4 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl]);
+      titleEl2 = h("div", { class: "lfx-retro-rain__title", "aria-hidden": "true" });
+      el4 = h("div", { id: RAIN_ID, class: "lfx-retro-rain", role: "presentation", "aria-hidden": "true" }, [canvas, titleEl2]);
       document.body.append(el4);
-      active6 = true;
+      active7 = true;
       lastMove = null;
       nextFlash = Date.now() + 1500;
       size();
@@ -21703,15 +22073,15 @@
       return true;
     }
     function end() {
-      if (!active6) return;
-      active6 = false;
+      if (!active7) return;
+      active7 = false;
       if (raf3) cancelAnimationFrame(raf3);
       raf3 = 0;
       for (const ev of activeEvents) window.removeEventListener(ev, onActiveInput, true);
       window.removeEventListener("resize", onResize2);
       document.removeEventListener("visibilitychange", onVisibility);
       if (el4) el4.remove();
-      el4 = canvas = ctx2 = titleEl = null;
+      el4 = canvas = ctx2 = titleEl2 = null;
       drops = [];
       lastInput = Date.now();
       try {
@@ -21720,7 +22090,7 @@
       }
     }
     function check3() {
-      if (active6 || document.hidden) return;
+      if (active7 || document.hidden) return;
       if (reduced) return;
       if (Date.now() - lastInput < idleMs) return;
       if (isBlocked()) {
@@ -21735,7 +22105,7 @@
       lastInput = Date.now();
       for (const ev of idleEvents) window.addEventListener(ev, noteInput, { capture: true, passive: true });
       window.addEventListener("click", onClickGuard, true);
-      timers.interval(check3, 5e3);
+      timers2.interval(check3, 5e3);
     }
     function stop8() {
       end();
@@ -21745,9 +22115,9 @@
       }
       started2 = false;
       swallowClickUntil = 0;
-      timers.clearAll();
+      timers2.clearAll();
     }
-    return { start: start10, stop: stop8, run, end, isActive: () => active6 };
+    return { start: start10, stop: stop8, run, end, isActive: () => active7 };
   }
 
   // src/js/features/retro/fx/index.js
@@ -21769,16 +22139,16 @@
   function mount() {
     if (S) return;
     const reduced = prefersReducedMotion();
-    const timers = createTimers();
+    const timers2 = createTimers();
     const crt = createCrt();
     const sound = createSound(() => getPref("sound"));
     const seq3 = createSequence();
     const taps = createTapCounter({ gap: 400 });
     const html2 = document.documentElement;
-    S = { timers, crt, sound, reduced, boot: null, overdriveTimer: 0, pressTimer: 0, pressX: 0, pressY: 0, suppressClickUntil: 0, listeners: [] };
-    const listen2 = (target, type, fn, opts) => {
-      target.addEventListener(type, fn, opts);
-      S.listeners.push(() => target.removeEventListener(type, fn, opts));
+    S = { timers: timers2, crt, sound, reduced, boot: null, overdriveTimer: 0, pressTimer: 0, pressX: 0, pressY: 0, suppressClickUntil: 0, listeners: [] };
+    const listen2 = (target2, type, fn, opts) => {
+      target2.addEventListener(type, fn, opts);
+      S.listeners.push(() => target2.removeEventListener(type, fn, opts));
     };
     const unlockSound = () => sound.unlock();
     function endOverdrive() {
@@ -21794,13 +22164,13 @@
       if (toast2) toast2.remove();
       toast2 = h("div", { id: TOAST_ID, class: "lfx-retro-od-toast", role: "status" }, ">> OVERDRIVE AKTIVIERT <<");
       document.body.append(toast2);
-      timers.timeout(() => {
+      timers2.timeout(() => {
         if (toast2.isConnected) toast2.remove();
       }, 3600);
       crt.shake();
       sound.play("jingle");
-      if (S.overdriveTimer) timers.clear(S.overdriveTimer);
-      S.overdriveTimer = timers.timeout(endOverdrive, OVERDRIVE_MS);
+      if (S.overdriveTimer) timers2.clear(S.overdriveTimer);
+      S.overdriveTimer = timers2.timeout(endOverdrive, OVERDRIVE_MS);
     }
     function startBoot() {
       if (S.boot) S.boot.cancel();
@@ -21879,7 +22249,7 @@
     });
     const cancelPress2 = () => {
       if (S.pressTimer) {
-        timers.clear(S.pressTimer);
+        timers2.clear(S.pressTimer);
         S.pressTimer = 0;
       }
     };
@@ -21897,7 +22267,7 @@
       S.pressX = e.clientX;
       S.pressY = e.clientY;
       cancelPress2();
-      S.pressTimer = timers.timeout(() => {
+      S.pressTimer = timers2.timeout(() => {
         S.pressTimer = 0;
         taps.reset();
         S.suppressClickUntil = Date.now() + 1500;
@@ -21936,7 +22306,7 @@
       else if (d.name === "sound") {
         if (d.value) {
           sound.unlock();
-          timers.timeout(() => sound.play("click"), 80);
+          timers2.timeout(() => sound.play("click"), 80);
         } else sound.suspend();
       }
     });
@@ -22060,9 +22430,9 @@
   function buildCatalog({ items = [], resume = [], favorites = [], now = Date.now() } = {}) {
     const t = now instanceof Date ? now.getTime() : Number(now);
     const map = /* @__PURE__ */ new Map();
-    for (const raw of items) {
-      if (!raw || !raw.Id || raw.Type !== "Movie" && raw.Type !== "Series" || map.has(raw.Id)) continue;
-      map.set(raw.Id, decorate(raw, t));
+    for (const raw2 of items) {
+      if (!raw2 || !raw2.Id || raw2.Type !== "Movie" && raw2.Type !== "Series" || map.has(raw2.Id)) continue;
+      map.set(raw2.Id, decorate(raw2, t));
     }
     const all = [...map.values()];
     const adult = all.filter(isAdult);
@@ -22249,7 +22619,7 @@
       return null;
     }
   }
-  function write2(store3, key, value) {
+  function write3(store3, key, value) {
     try {
       window[store3].setItem(key, value);
     } catch {
@@ -22316,43 +22686,43 @@
   }
   function saveMp(m) {
     for (const k of ["on", "name", "film", "chat", "hint"]) {
-      if (typeof m[k] === "boolean") write2("localStorage", storageKey6(`mp${k[0].toUpperCase()}${k.slice(1)}`), m[k] ? "1" : "0");
+      if (typeof m[k] === "boolean") write3("localStorage", storageKey6(`mp${k[0].toUpperCase()}${k.slice(1)}`), m[k] ? "1" : "0");
     }
-    if (Array.isArray(m.mute)) write2("localStorage", storageKey6("mpMute"), JSON.stringify([...new Set(m.mute.filter((k) => typeof k === "string" && MP_KEY.test(k)))].slice(0, 50)));
+    if (Array.isArray(m.mute)) write3("localStorage", storageKey6("mpMute"), JSON.stringify([...new Set(m.mute.filter((k) => typeof k === "string" && MP_KEY.test(k)))].slice(0, 50)));
   }
   function savePrefs2(p) {
     if (!p) return;
-    if (QUALITIES.includes(p.quality)) write2("localStorage", storageKey6("quality"), p.quality);
-    if (typeof p.sound === "boolean") write2("localStorage", storageKey6("soundOn"), p.sound ? "1" : "0");
-    if (typeof p.fps === "boolean") write2("localStorage", storageKey6("fps"), p.fps ? "1" : "0");
-    if (typeof p.voiceOnline === "boolean") write2("localStorage", storageKey6("voiceOnline"), p.voiceOnline ? "1" : "0");
-    if (typeof p.voiceName === "string") write2("localStorage", storageKey6("voiceName"), p.voiceName);
-    if (VOICE_PITCHES.includes(p.voicePitch)) write2("localStorage", storageKey6("voicePitch"), p.voicePitch);
+    if (QUALITIES.includes(p.quality)) write3("localStorage", storageKey6("quality"), p.quality);
+    if (typeof p.sound === "boolean") write3("localStorage", storageKey6("soundOn"), p.sound ? "1" : "0");
+    if (typeof p.fps === "boolean") write3("localStorage", storageKey6("fps"), p.fps ? "1" : "0");
+    if (typeof p.voiceOnline === "boolean") write3("localStorage", storageKey6("voiceOnline"), p.voiceOnline ? "1" : "0");
+    if (typeof p.voiceName === "string") write3("localStorage", storageKey6("voiceName"), p.voiceName);
+    if (VOICE_PITCHES.includes(p.voicePitch)) write3("localStorage", storageKey6("voicePitch"), p.voicePitch);
     if (p.touchControlChosen === true && TOUCH_CONTROLS.includes(p.touchControl)) {
-      write2("localStorage", storageKey6("touchControl"), p.touchControl);
-      write2("localStorage", storageKey6("touchControlChosen"), "1");
+      write3("localStorage", storageKey6("touchControl"), p.touchControl);
+      write3("localStorage", storageKey6("touchControlChosen"), "1");
     }
-    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write2("localStorage", storageKey6(k), p[k] ? "1" : "0");
-    if (TOUCH_SENS.includes(p.touchSens)) write2("localStorage", storageKey6("touchSens"), p.touchSens);
-    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write2("localStorage", storageKey6("touchRegrip"), p.touchRegrip);
-    if (typeof p.bigCovers === "boolean") write2("localStorage", storageKey6("bigCovers"), p.bigCovers ? "1" : "0");
+    for (const k of TUNE_FLAGS) if (typeof p[k] === "boolean") write3("localStorage", storageKey6(k), p[k] ? "1" : "0");
+    if (TOUCH_SENS.includes(p.touchSens)) write3("localStorage", storageKey6("touchSens"), p.touchSens);
+    if (TOUCH_REGRIPS.includes(p.touchRegrip)) write3("localStorage", storageKey6("touchRegrip"), p.touchRegrip);
+    if (typeof p.bigCovers === "boolean") write3("localStorage", storageKey6("bigCovers"), p.bigCovers ? "1" : "0");
     if (p.mp && typeof p.mp === "object") saveMp(p.mp);
     const vr = p.vr;
     if (vr && typeof vr === "object") {
-      if (VR_TURNS.includes(vr.turn)) write2("localStorage", storageKey6("vrTurn"), vr.turn);
-      if (typeof vr.vignette === "boolean") write2("localStorage", storageKey6("vrVignette"), vr.vignette ? "1" : "0");
-      if (VR_HEIGHTS.includes(vr.height)) write2("localStorage", storageKey6("vrHeight"), vr.height);
-      if (VR_QUALITIES.includes(vr.quality)) write2("localStorage", storageKey6("vrQuality"), vr.quality);
-      if (VR_SEATS.includes(vr.seat)) write2("localStorage", storageKey6("vrSeat"), vr.seat);
+      if (VR_TURNS.includes(vr.turn)) write3("localStorage", storageKey6("vrTurn"), vr.turn);
+      if (typeof vr.vignette === "boolean") write3("localStorage", storageKey6("vrVignette"), vr.vignette ? "1" : "0");
+      if (VR_HEIGHTS.includes(vr.height)) write3("localStorage", storageKey6("vrHeight"), vr.height);
+      if (VR_QUALITIES.includes(vr.quality)) write3("localStorage", storageKey6("vrQuality"), vr.quality);
+      if (VR_SEATS.includes(vr.seat)) write3("localStorage", storageKey6("vrSeat"), vr.seat);
     }
   }
   var getIntroSeen = () => read3("sessionStorage", SESSION_INTRO) === "1";
-  var setIntroSeen = () => write2("sessionStorage", SESSION_INTRO, "1");
+  var setIntroSeen = () => write3("sessionStorage", SESSION_INTRO, "1");
   function getState() {
-    const raw = read3("sessionStorage", SESSION_STATE);
-    if (!raw) return null;
+    const raw2 = read3("sessionStorage", SESSION_STATE);
+    if (!raw2) return null;
     try {
-      const s = JSON.parse(raw);
+      const s = JSON.parse(raw2);
       return s && [s.x, s.z, s.yaw, s.pitch].every((n) => Number.isFinite(n)) ? s : null;
     } catch {
       return null;
@@ -22360,7 +22730,7 @@
   }
   function saveState(state24) {
     if (!state24 || typeof state24 !== "object") return;
-    write2("sessionStorage", SESSION_STATE, JSON.stringify(state24));
+    write3("sessionStorage", SESSION_STATE, JSON.stringify(state24));
   }
 
   // src/js/features/store/mp.js
@@ -22408,7 +22778,7 @@
   }
 
   // src/js/features/store/cinema-bridge.js
-  function createCinemaBridge({ win = window, doc = document, pollMs = 250 } = {}) {
+  function createCinemaBridge({ win = window, doc = document, pollMs = 250, readTitle = () => String(doc.title || "") } = {}) {
     let timer2 = null;
     let videoEl = null;
     let played = false;
@@ -22525,7 +22895,7 @@
         phase,
         time: v ? finite(v.currentTime) : 0,
         duration: v ? finite(v.duration) : 0,
-        title: String(doc.title || ""),
+        title: String(readTitle() || ""),
         hasPrev: visibleBtn(".btnPreviousTrack"),
         hasNext: visibleBtn(".btnNextTrack"),
         upNext: upNextState(),
@@ -22707,7 +23077,7 @@
       cache[kind2] = list;
       return list;
     }
-    async function pick(kind2, id) {
+    async function pick2(kind2, id) {
       const sheet = await openSheet2(kind2);
       if (!sheet) return false;
       const item = [...sheet.querySelectorAll(".actionSheetMenuItem[data-id]")].find((it) => it.getAttribute("data-id") === String(id));
@@ -22727,14 +23097,14 @@
         const s = subs.find((t) => t.selected);
         if (s && s.id !== "-1") prevSub = s.id;
       }
-      if (!await pick(kind2, id)) return false;
+      if (!await pick2(kind2, id)) return false;
       if (kind2 === "audio") {
         const v = cur3();
         if (v) {
           await waitFor(() => (Number(v.readyState) || 0) < 2, 1e3);
           await waitFor(() => (Number(v.readyState) || 0) >= 2, 15e3, 100);
         }
-        if (prevSub !== null) await pick("subtitle", prevSub);
+        if (prevSub !== null) await pick2("subtitle", prevSub);
       }
       return true;
     }
@@ -22894,7 +23264,7 @@
   var xr = { presenting: false, cinema: false };
   var palast = { active: false, full: false };
   var backBtn = null;
-  var getBridge = () => bridge || (bridge = createCinemaBridge());
+  var getBridge = () => bridge || (bridge = createCinemaBridge({ readTitle: jellyfinTitle }));
   function isPresenting() {
     if (!xr.presenting || !inst2 || !inst2.instance) return false;
     try {
@@ -22998,8 +23368,8 @@
   function setProgress2(fraction, label) {
     if (!ui2 || !ui2.fill) return;
     const f = Math.max(0, Math.min(1, Number(fraction) || 0));
-    const prev2 = Number(ui2.fill.dataset.v || 0);
-    const v = Math.max(prev2, f);
+    const prev = Number(ui2.fill.dataset.v || 0);
+    const v = Math.max(prev, f);
     ui2.fill.dataset.v = String(v);
     ui2.fill.style.width = `${Math.round(v * 100)}%`;
     ui2.loading.querySelector(".lfx-store-tape").setAttribute("aria-valuenow", String(Math.round(v * 100)));
@@ -23255,8 +23625,8 @@
         return;
       }
       const entry = { instance, uid: getUserId(), ready: false, disposeTimer: null, unsubTheme: null, offPlay: null };
-      entry.unsubTheme = onThemeChange(({ theme }) => {
-        if (theme !== "store") disposeInstance2();
+      entry.unsubTheme = onThemeChange(({ theme: theme2 }) => {
+        if (theme2 !== "store") disposeInstance2();
       });
       const dropCatalog = () => clearCache("store:catalog:");
       window.addEventListener("lfx:play", dropCatalog);
@@ -23485,13 +23855,13 @@
   var FAST_TICKS = 50;
   function init() {
     if (window.LenzFlix) return;
-    let running = false;
+    let running2 = false;
     let destroyed = false;
     let watchTimer = null;
     let refreshTimer = null;
     function startFeatures() {
-      if (running || destroyed) return;
-      running = true;
+      if (running2 || destroyed) return;
+      running2 = true;
       initLayout();
       initHomeCache();
       initUnlock();
@@ -23504,7 +23874,7 @@
       }, 500);
     }
     function stopFeatures() {
-      running = false;
+      running2 = false;
       clearInterval(refreshTimer);
       resetRouter();
       destroyHomeCache();
@@ -23516,20 +23886,26 @@
       destroyDataSaver();
       stopTheme();
     }
-    function sync3() {
+    function sync4() {
       if (destroyed) return;
       if (cssActive()) {
         startTheme();
         syncThemeUser();
         syncDataSaver();
         applyFavicon(getTheme() || "flix");
-        if (!running && window.ApiClient && isReady()) startFeatures();
-      } else if (running || document.documentElement.classList.contains("lfx-js")) {
+        applyThemeColor(getTheme() || "flix");
+        startDocTitle();
+        if (!running2 && window.ApiClient && isReady()) startFeatures();
+      } else if (running2 || document.documentElement.classList.contains("lfx-js")) {
         stopFeatures();
         removeFavicon();
+        removeThemeColor();
+        stopDocTitle();
       } else {
         stopTheme();
         removeFavicon();
+        removeThemeColor();
+        stopDocTitle();
       }
     }
     earlyTheme();
@@ -23538,25 +23914,27 @@
     watchTimer = setInterval(() => {
       if (++fastN >= FAST_TICKS) {
         clearInterval(watchTimer);
-        watchTimer = setInterval(sync3, WATCH_MS);
+        watchTimer = setInterval(sync4, WATCH_MS);
       }
-      sync3();
+      sync4();
     }, FAST_MS);
-    window.addEventListener("hashchange", sync3);
-    window.addEventListener("popstate", sync3);
-    document.addEventListener("viewshow", sync3);
-    sync3();
+    window.addEventListener("hashchange", sync4);
+    window.addEventListener("popstate", sync4);
+    document.addEventListener("viewshow", sync4);
+    sync4();
     function destroy2() {
       destroyed = true;
       clearInterval(watchTimer);
-      window.removeEventListener("hashchange", sync3);
-      window.removeEventListener("popstate", sync3);
-      document.removeEventListener("viewshow", sync3);
+      window.removeEventListener("hashchange", sync4);
+      window.removeEventListener("popstate", sync4);
+      document.removeEventListener("viewshow", sync4);
       stopFeatures();
       closeThemePicker();
       clearToast();
       destroyTheme();
       removeFavicon();
+      removeThemeColor();
+      stopDocTitle();
       delete window.LenzFlix;
     }
     window.LenzFlix = { version: VERSION, destroy: destroy2 };

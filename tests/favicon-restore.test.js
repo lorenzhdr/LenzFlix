@@ -13,6 +13,23 @@ function client(extra = {}) {
 beforeEach(() => { clearCache(); client(); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
+describe('removeFavicon stellt Web-App-Titel wieder her', () => {
+  afterEach(() => { removeFavicon(); document.head.innerHTML = ''; });
+  it('Meta ohne content bleibt ohne content, eigenes Meta verschwindet', () => {
+    document.head.innerHTML = '<meta name="apple-mobile-web-app-title">';
+    applyFavicon('plus');
+    expect(document.head.querySelector('meta').getAttribute('content')).toBe('LENZ+');
+    removeFavicon();
+    expect(document.head.querySelector('meta').hasAttribute('content')).toBe(false);
+    expect(document.head.querySelector('meta').hasAttribute('data-lfx-orig')).toBe(false);
+    document.head.innerHTML = '';
+    applyFavicon('plus');
+    expect(document.head.querySelectorAll('meta').length).toBe(1);
+    removeFavicon();
+    expect(document.head.querySelectorAll('meta').length).toBe(0);
+  });
+});
+
 describe('removeFavicon stellt sizes und fehlendes href wieder her', () => {
   afterEach(() => { removeFavicon(); document.head.innerHTML = ''; });
   it('sizes zurück, Link ohne href bleibt ohne href', () => {

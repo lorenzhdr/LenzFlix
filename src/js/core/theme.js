@@ -6,6 +6,7 @@ import { getAuth, getUserId, getJson, buildUrl, isReady } from './api.js';
 import { parseHash, reevaluate } from './router.js';
 import { ensureThemeCss, removeThemeCss } from './themecss.js';
 import { applyFavicon } from './favicon.js';
+import { applyThemeColor } from './themecolor.js';
 import { toast } from './toast.js';
 
 export const THEMES = ['flix', 'plus', 'prime', 'retro', 'store'];
@@ -341,6 +342,7 @@ function revealFlix() {
   effective = 'flix';
   setHtmlTheme('flix');
   applyFavicon('flix');
+  applyThemeColor('flix');
   reevaluate();
   emit('flix', previous);
 }
@@ -353,6 +355,7 @@ function commit(id, nextState = 'active') {
   setHtmlTheme(id);
   removeThemeCss(id === 'flix' ? null : id);
   applyFavicon(id);
+  applyThemeColor(id);
   // pending verlassen, auch ohne Designwechsel (Reveal lief schon): themeroute muss die Route neu bewerten
   if (previous !== id || (prevState === 'pending' && nextState !== 'pending')) reevaluate();
   if (previous !== id) emit(id, previous);

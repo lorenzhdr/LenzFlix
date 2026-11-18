@@ -22,6 +22,7 @@ import * as prefs from './prefs.js';
 import { createTicket } from './mp.js';
 import { VERSION } from '../../core/version.js';
 import { createCinemaBridge } from './cinema-bridge.js';
+import { jellyfinTitle } from '../../core/doctitle.js';
 import { parkStage, unparkStage } from './stage-park.js';
 import { mountBackButton } from './palast-back.js';
 
@@ -45,7 +46,7 @@ let bridge = null; // Player-Bridge, ein Objekt pro Modul, lazy
 const xr = { presenting: false, cinema: false };
 const palast = { active: false, full: false }; // 2D-Kino im LENZ PALAST (deps.onCinema2d), Bühne bleibt sichtbar geparkt
 let backBtn = null;
-const getBridge = () => bridge || (bridge = createCinemaBridge());
+const getBridge = () => bridge || (bridge = createCinemaBridge({ readTitle: jellyfinTitle }));
 
 /** Session läuft laut Meldung UND laut Instanz (fehlt isXr: nicht präsentierend). */
 function isPresenting() {
