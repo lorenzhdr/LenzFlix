@@ -293,6 +293,25 @@ describe('Modul npc: Provokation und Angriff', () => {
     expect(p.attackers()).toBeLessThanOrEqual(3);
   });
 
+  it('Obergrenze bleibt bei verschachteltem Beitritt (feste Zufallsfolgen, Regression: veralteter Zähler in joinBystanders)', async () => {
+    const real = Math.random;
+    try {
+      for (const seed of [1, 26, 36]) {
+        let st = seed * 2654435761 >>> 0;
+        Math.random = () => { st = (st + 0x6D2B79F5) >>> 0; let t = st; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        await build();
+        const p = host.ctx.use('npc');
+        const walkers = p.people().filter((q) => q.kind === 'walker');
+        place(walkers[0].x + 1.1, walkers[0].z, 0);
+        for (const w of walkers.slice(0, 8)) w.handle.hitReact({ x: 1, z: 0 });
+        let mx = 0;
+        for (let i = 0; i < 60; i++) { tick(1); mx = Math.max(mx, p.attackers()); }
+        expect(mx).toBeLessThanOrEqual(3);
+        host.hook('dispose'); dom.remove(); MODULES.length = 0; delete window.__lfxM4;
+      }
+    } finally { Math.random = real; }
+  }, 60000);
+
   it('Wurf-Pool: ein InstancedMesh, Treffer → hitPlayer, Ausweichen trifft nicht', async () => {
     await build();
     const p = host.ctx.use('npc');

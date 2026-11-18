@@ -4,7 +4,7 @@
 // Provider 'gang' (Vertrag .tmp/v118/contracts.md §4): active() → bool · members() → [{ i, handle, st, hp, pos:{x,z} }] · hit(i, weapon, dir?) → bool · role() → 'local'|'leader'|'follower'.
 //
 // Mehrspieler (Muster rich.js/net/richard.js, über ctx.use('net').fight, Vertrag Welle 6): Der Führer (Rolle 'leader') rechnet die Bande, wählt je Rowdy
-// das nächste Ziel unter sich und den Peers (Treffer auf Peers als `fh` src 1) und sendet `gs` mit 6/s; Mitläufer ('follower') spiegeln Zustände (Orte
+// das nächste Ziel unter sich und den Peers (Treffer auf Peers als `fh` src 1) und sendet `gs` mit höchstens 6/s (nur mit Mitspielern und bei Änderung, sonst Herzschlag alle 4 s); Mitläufer ('follower') spiegeln Zustände (Orte
 // geglättet, Sprüche und Posen aus dem Zustandswechsel), eigene Treffer gehen als `gh` an den Führer. Ohne Fähigkeit/Verbindung oder ohne Führer
 // läuft alles lokal ('local', wie 1.17 ohne Mehrspieler); wer sich in der Nähe befindet und keinen Führer sieht, fordert die Führung an (`gc`).
 // Die Uhr des Führers gilt: Tageszeit-Phase und Seed stehen im `gs`. Der Empfang von `fh` src 1 (Schaden an mir) gehört dem Modul fight, nicht hier.
@@ -24,6 +24,7 @@ export const NEAR_M = 44; // Figuren ab hier bauen, ab FAR_M wieder abbauen
 export const FAR_M = 52;
 export const LEAD_NEAR_M = 35; // so nah muss man der Bande sein, um die Führung anzufordern
 export const GS_EVERY_S = 0.17;
+export const GS_BEAT_S = 4; // Herzschlag des Führers bei unverändertem Zustand oder ohne Mitspieler (Server: 60 s Frist, Mitläufer: STALE_S)
 export const STALE_S = 6; // Mitläufer: so lange ohne gs, dann Bande weg
 export const HIT_PRIO = 25; // zwischen Richard (30) und Personen (20)
 const WALL_GROW = 0.3;
@@ -98,6 +99,9 @@ export default {
     let role = 'local';
     let lastGc = -1e9;
     let gsAcc = 0;
+    let gsSig = ''; // Zustand der zuletzt gesendeten Bande
+    let gsBeat = 0; // s seit dem letzten gs
+    let hadOthers = false;
     let lastGs = null; // jüngster gs des Führers
     let lastGsT = -1e9;
     let appliedGs = null;
@@ -116,6 +120,8 @@ export default {
     const figCap = () => (quality() === 'low' ? 2 : GANG_MAX);
     const poseOf = () => { try { return ctx.player.getPose(); } catch { return null; } };
     const fightProv = () => ctx.use('fight');
+    /** Weitere Mitspieler da? Ohne sie braucht niemand gs (Kontingent: allein ≈ 0 Sendungen). */
+    const othersOn = () => { try { const n = ctx.use('net'); const l = n && typeof n.peers === 'function' ? n.peers() : null; return !!(l && l.length > 0); } catch { return false; } };
     const netFight = () => { const n = ctx.use('net'); return n && n.fight ? n.fight : null; };
     const myC = () => { const n = ctx.use('net'); const me = n && typeof n.me === 'function' ? n.me() : null; return me ? me.c : 0; };
 
@@ -479,7 +485,7 @@ export default {
           if (next !== 'leader') sentRelease = false;
           if (role === 'follower' && members.length) { const p = wantPlan(); planKey = `${p.tod}:${p.seed}:${p.n}`; } // Führer weg: die gespiegelte Bande bleibt, bis die eigene Uhr einen neuen Plan verlangt
           role = next;
-          gsAcc = 0;
+          gsAcc = 0; gsSig = ''; gsBeat = 0; hadOthers = false;
           if (role === 'follower') appliedGs = null;
         }
         if (role === 'follower') {
@@ -487,7 +493,7 @@ export default {
           if (clockT - lastGsT > STALE_S && members.length) destroyAll(); // Führer schweigt: Bande weg, bis er wieder sendet oder die Führung frei wird
         } else {
           applyPlan();
-          if (role === 'local' && fn && fn.has() && members.length && clockT - lastGc > 1.5) {
+          if (role === 'local' && fn && fn.has() && members.length && clockT - lastGc > 1.5 && othersOn()) {
             const pose = poseOf();
             if (pose && members.some((m) => Math.hypot(pose.x - m.x, pose.z - m.z) < LEAD_NEAR_M)) { lastGc = clockT; fn.send('gc', {}); }
           }
@@ -498,12 +504,18 @@ export default {
           if (!members.length) releaseLead(fn);
           else {
             gsAcc += dt;
+            gsBeat += dt;
             if (gsAcc >= GS_EVERY_S) {
-              gsAcc = 0;
-              fn.send('gs', {
-                g: fn.gen(), phase: phaseOf(curTod), seed: curSeed,
-                members: members.map((m) => ({ st: m.st, x: m.x, y: 0, z: m.z, yaw: m.yaw, a: netAnim(m.st, m.spd, m.striking > 0), tgt: m.tgt, hp: m.hp })),
-              });
+              const others = othersOn();
+              const out = members.map((m) => ({ st: m.st, x: m.x, y: 0, z: m.z, yaw: m.yaw, a: netAnim(m.st, m.spd, m.striking > 0), tgt: m.tgt, hp: m.hp }));
+              const sig = curSeed + ':' + phaseOf(curTod) + ':' + out.map((m) => [m.st, Math.round(m.x * 100), Math.round(m.z * 100), Math.round(m.yaw * 100), m.a, m.tgt, m.hp].join(',')).join(';');
+              // nur mit Mitspielern UND bei geänderter Bande (6/s); sonst Herzschlag, damit die Führung nicht verfällt; neuer Mitspieler = sofort
+              const due = others ? (sig !== gsSig || !hadOthers || gsBeat >= GS_BEAT_S) : gsBeat >= GS_BEAT_S;
+              hadOthers = others;
+              if (due) {
+                gsAcc = 0;
+                if (fn.send('gs', { g: fn.gen(), phase: phaseOf(curTod), seed: curSeed, members: out })) { gsSig = sig; gsBeat = 0; }
+              } else gsAcc = GS_EVERY_S; // beim nächsten Schritt erneut prüfen, ohne den Takt zu verlieren
             }
           }
         }

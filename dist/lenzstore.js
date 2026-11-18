@@ -51893,14 +51893,12 @@ void main() {
         if (o.attack) joinBystanders(e);
       }
       function joinBystanders(src) {
-        let n = countAttackers();
         for (const o of walkers) {
           if (o === src || o.act || o.temper !== "hot" || !o.handle.root.visible || !havePose) continue;
-          if (Math.hypot(o.w.x - px, o.w.z - pz) > 9 || !bystanderJoin(n, o.temper)) continue;
+          if (Math.hypot(o.w.x - px, o.w.z - pz) > 9 || !bystanderJoin(countAttackers(), o.temper)) continue;
           o.tst.threatened = true;
           o.tst.chaseUntil = clock + CHASE_MAX;
           beginAct(o, { attack: true, until: o.tst.chaseUntil });
-          n++;
         }
       }
       function endAct(e, then) {
@@ -60856,6 +60854,7 @@ void main() {
       };
       let T5 = 0;
       let weapon = "hand";
+      let safeNow = false;
       let nextSwing = 0;
       let swingPose = null;
       let swingPoseUntil = 0;
@@ -61158,6 +61157,7 @@ void main() {
         if (id === weapon) return true;
         if (laserOn) setLaser(false);
         weapon = id;
+        if (safeNow) return true;
         wpDue = T5 + WP_DEBOUNCE;
         try {
           if (ctx.deps && typeof ctx.deps.toast === "function") ctx.deps.toast("Waffe: " + NAME[id]);
@@ -61294,6 +61294,7 @@ void main() {
           o.addScaledVector(d, t);
         }
       }
+      const HEAD_SLACK = 0.35;
       function laserTick() {
         aimRay(tmpO, tmpD);
         const o = { x: tmpO.x, y: tmpO.y, z: tmpO.z };
@@ -61321,7 +61322,7 @@ void main() {
           if (!p || !p.handle || p.kind === "peer" || typeof p.handle.headWorld !== "function") continue;
           if (p.handle.root && p.handle.root.visible === false) continue;
           const hw = p.handle.headWorld(tmpH);
-          const on = rayHitsHead(o, d, hw, 0.17, hit.t);
+          const on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
           for (const ev of step(p.handle, "person", on, null)) {
             if (ev.type === "blind") {
               try {
@@ -61336,7 +61337,7 @@ void main() {
           const c = ctx.use("cashier");
           const r = c && c.richard ? c.richard() : null;
           if (r && r.pos && r.inStore !== false) {
-            const on = rayHitsHead(o, d, { x: r.pos.x, y: (r.pos.y || 0) + 1.65, z: r.pos.z }, 0.2, hit.t);
+            const on = rayHitsHead(o, d, { x: r.pos.x, y: (r.pos.y || 0) + 1.65, z: r.pos.z }, 0.2, hit.t + HEAD_SLACK);
             for (const ev of step("richard", "richard", on, null)) {
               if (ev.type === "hit") {
                 const br = ctx.use("brawl");
@@ -61370,7 +61371,7 @@ void main() {
           for (const c of peerList()) {
             const pp = peerPos(c);
             if (!pp) continue;
-            const on = rayHitsHead(o, d, { x: pp.x, y: (pp.y || 0) + 1.55, z: pp.z }, 0.2, hit.t);
+            const on = rayHitsHead(o, d, { x: pp.x, y: (pp.y || 0) + 1.55, z: pp.z }, 0.2, hit.t + HEAD_SLACK);
             for (const ev of step("peer:" + c, "person", on, null)) if (ev.type === "blind") netSend("lb", { c });
           }
         }
@@ -61503,7 +61504,7 @@ void main() {
           }
           wheelCtl(true);
         },
-        heldWeapon: () => !xrOn() && !koing && (weapon === "belt" || weapon === "whip" || weapon === "laser") ? weapon : null,
+        heldWeapon: () => !xrOn() && !koing && !safeNow && (weapon === "belt" || weapon === "whip" || weapon === "laser") ? weapon : null,
         sitting: () => seatedKO,
         poseCode() {
           if (disposed || xrOn()) return null;
@@ -61547,21 +61548,36 @@ void main() {
             }
           }
           if (seatedKO && (ctx.player.getNet ? Math.hypot((ctx.player.getNet() || {}).vx || 0, (ctx.player.getNet() || {}).vz || 0) > 0.8 : false)) seatedKO = false;
+          const sz = !!isSafe(zoneState());
+          if (sz !== safeNow) {
+            safeNow = sz;
+            if (sz && laserOn) setLaser(false);
+            if (weapon !== "hand") {
+              wpDue = T5 + WP_DEBOUNCE;
+              if (sz) {
+                try {
+                  if (ctx.deps && typeof ctx.deps.toast === "function") ctx.deps.toast("Waffe weggesteckt");
+                } catch {
+                }
+              }
+            }
+          }
           try {
             const sv = ctx.use("selfview");
             const fig = sv && sv.figure ? sv.figure() : null;
             if (fig && fig.setHandItem) {
-              const want = weapon === "belt" || weapon === "whip" || weapon === "laser" ? weapon : null;
+              const want = !safeNow && (weapon === "belt" || weapon === "whip" || weapon === "laser") ? weapon : null;
               if ((fig.getHandItem ? fig.getHandItem() : null) !== want) fig.setHandItem(want);
             }
           } catch {
           }
           if (wpDue >= 0 && T5 >= wpDue) {
             if (netOn()) {
-              if (wpSent !== weapon && netSend("wp", { w: WEAPON_IDS.indexOf(weapon) })) wpSent = weapon;
+              const wEff = safeNow ? "hand" : weapon;
+              if (wpSent !== wEff && netSend("wp", { w: WEAPON_IDS.indexOf(wEff) })) wpSent = wEff;
               wpDue = -1;
             } else wpDue = T5 + 1;
-          } else if (wpDue < 0 && netOn() && wpSent == null && weapon !== "hand") wpDue = T5;
+          } else if (wpDue < 0 && netOn() && wpSent == null && weapon !== "hand" && !safeNow) wpDue = T5;
           if (auxHeld && !auxLaser && weapon === "laser" && T5 - auxStart >= AUX_TAP) auxLaser = setLaser(true);
           if (laserOn) {
             placeDot2d();
@@ -61836,6 +61852,7 @@ void main() {
   var FAR_M = 52;
   var LEAD_NEAR_M = 35;
   var GS_EVERY_S = 0.17;
+  var GS_BEAT_S = 4;
   var STALE_S = 6;
   var HIT_PRIO = 25;
   var WALL_GROW = 0.3;
@@ -61909,6 +61926,9 @@ void main() {
       let role = "local";
       let lastGc = -1e9;
       let gsAcc = 0;
+      let gsSig = "";
+      let gsBeat = 0;
+      let hadOthers = false;
       let lastGs = null;
       let lastGsT = -1e9;
       let appliedGs = null;
@@ -61932,6 +61952,15 @@ void main() {
         }
       };
       const fightProv = () => ctx.use("fight");
+      const othersOn = () => {
+        try {
+          const n = ctx.use("net");
+          const l = n && typeof n.peers === "function" ? n.peers() : null;
+          return !!(l && l.length > 0);
+        } catch {
+          return false;
+        }
+      };
       const netFight = () => {
         const n = ctx.use("net");
         return n && n.fight ? n.fight : null;
@@ -62472,6 +62501,9 @@ void main() {
             }
             role = next;
             gsAcc = 0;
+            gsSig = "";
+            gsBeat = 0;
+            hadOthers = false;
             if (role === "follower") appliedGs = null;
           }
           if (role === "follower") {
@@ -62481,7 +62513,7 @@ void main() {
             if (clockT - lastGsT > STALE_S && members.length) destroyAll();
           } else {
             applyPlan();
-            if (role === "local" && fn && fn.has() && members.length && clockT - lastGc > 1.5) {
+            if (role === "local" && fn && fn.has() && members.length && clockT - lastGc > 1.5 && othersOn()) {
               const pose = poseOf();
               if (pose && members.some((m) => Math.hypot(pose.x - m.x, pose.z - m.z) < LEAD_NEAR_M)) {
                 lastGc = clockT;
@@ -62495,14 +62527,20 @@ void main() {
             if (!members.length) releaseLead(fn);
             else {
               gsAcc += dt;
+              gsBeat += dt;
               if (gsAcc >= GS_EVERY_S) {
-                gsAcc = 0;
-                fn.send("gs", {
-                  g: fn.gen(),
-                  phase: phaseOf(curTod),
-                  seed: curSeed,
-                  members: members.map((m) => ({ st: m.st, x: m.x, y: 0, z: m.z, yaw: m.yaw, a: netAnim(m.st, m.spd, m.striking > 0), tgt: m.tgt, hp: m.hp }))
-                });
+                const others = othersOn();
+                const out = members.map((m) => ({ st: m.st, x: m.x, y: 0, z: m.z, yaw: m.yaw, a: netAnim(m.st, m.spd, m.striking > 0), tgt: m.tgt, hp: m.hp }));
+                const sig = curSeed + ":" + phaseOf(curTod) + ":" + out.map((m) => [m.st, Math.round(m.x * 100), Math.round(m.z * 100), Math.round(m.yaw * 100), m.a, m.tgt, m.hp].join(",")).join(";");
+                const due = others ? sig !== gsSig || !hadOthers || gsBeat >= GS_BEAT_S : gsBeat >= GS_BEAT_S;
+                hadOthers = others;
+                if (due) {
+                  gsAcc = 0;
+                  if (fn.send("gs", { g: fn.gen(), phase: phaseOf(curTod), seed: curSeed, members: out })) {
+                    gsSig = sig;
+                    gsBeat = 0;
+                  }
+                } else gsAcc = GS_EVERY_S;
               }
             }
           }

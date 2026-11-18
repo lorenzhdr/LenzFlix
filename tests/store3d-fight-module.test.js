@@ -485,3 +485,46 @@ describe('fight: Dev-Parameter (ctx.opts.dev)', () => {
     expect(n.calls.teleport).toHaveLength(0);
   });
 });
+
+describe('fight: Waffe in der Schutzzone weggesteckt', () => {
+  it('in der Kinder-Ecke waffenlos, Hinweis einmal, Laser aus, beim Verlassen kommt die Wahl zurück', () => {
+    const s = setup();
+    let item = null;
+    const setHandItem = vi.fn((i) => { item = i; });
+    s.providers.set('selfview', { mode: () => 'ego', figure: () => ({ setHandItem, getHandItem: () => item }), playAnim() {} });
+    s.f.setWeapon('laser');
+    s.frame();
+    expect(item).toBe('laser');
+    expect(s.f.laser(true)).toBe(true);
+    s.pose.x = 2; s.pose.z = 2;
+    s.frame();
+    expect(s.f.heldWeapon()).toBe(null);
+    expect(item).toBe(null);
+    expect(s.f.laserState().on).toBe(false);
+    expect(s.calls.toast.filter((t) => t.includes('weggesteckt'))).toHaveLength(1);
+    s.frames(1);
+    expect(s.calls.toast.filter((t) => t.includes('weggesteckt'))).toHaveLength(1);
+    expect(s.f.weapon()).toBe('laser');
+    s.pose.x = 10; s.pose.z = 10;
+    s.frame();
+    expect(s.f.heldWeapon()).toBe('laser');
+    expect(item).toBe('laser');
+  });
+  it('Menü-Schutz allein steckt die Waffe nicht weg; Netz meldet in der Zone Hand', () => {
+    const nf = netFake();
+    const s = setup();
+    s.providers.set('net', nf.net);
+    s.f.setWeapon('whip');
+    s.frames(1);
+    s.state.playing = false;
+    s.frame();
+    expect(s.f.heldWeapon()).toBe('whip');
+    s.state.playing = true;
+    s.pose.x = 2; s.pose.z = 2;
+    s.frames(1);
+    expect(nf.sent.filter((x) => x[0] === 'wp').at(-1)).toEqual(['wp', { w: 0 }]);
+    s.pose.x = 10; s.pose.z = 10;
+    s.frames(1);
+    expect(nf.sent.filter((x) => x[0] === 'wp').at(-1)).toEqual(['wp', { w: 2 }]);
+  });
+});

@@ -3,7 +3,7 @@
 // Treffer auf Rowdys, Flucht (Entdeckung gang-flee), K.O.-Spruch, VR, und die Mehrspieler-Rollen (lokal, Führer mit gs, Mitläufer mit gh) gegen einen Fake-net.fight.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Object3D, Scene, PerspectiveCamera, Vector3 } from 'three';
-import gang, { gangEnv, rowdyLook, STALE_S, LEAD_NEAR_M, HIT_PRIO } from '../src/js/store3d/modules/gang.js';
+import gang, { gangEnv, rowdyLook, STALE_S, GS_BEAT_S, LEAD_NEAR_M, HIT_PRIO } from '../src/js/store3d/modules/gang.js';
 import { buildCity } from '../src/js/store3d/world/city.js';
 import { gangAreaOk } from '../src/js/store3d/npc/gang-logic.js';
 import { createFrame } from '../src/js/store3d/net/frame.js';
@@ -292,7 +292,7 @@ describe('modules/gang: Mehrspieler (Fake net.fight)', () => {
   it('ohne Führer, aber mit Fähigkeit: Rolle lokal, in der Nähe fordert der Client die Führung an (höchstens alle 1,5 s)', () => {
     const t = setup({ n: 2 });
     const f = fakeFight();
-    withNet(t, f);
+    withNet(t, f, [{ c: 9, k: 'x', f: 1 }]); // gc nur mit weiterem Mitspieler
     t.run(2);
     t.putPlayerNear(0, 3);
     t.run(30);
@@ -303,7 +303,7 @@ describe('modules/gang: Mehrspieler (Fake net.fight)', () => {
     // weit weg: keine Anforderung
     const f2 = fakeFight();
     const u = setup({ n: 2 });
-    withNet(u, f2);
+    withNet(u, f2, [{ c: 9, k: 'x', f: 1 }]);
     u.st.pose = { x: 500, z: 500, y: 0 };
     u.run(40);
     expect(f2.sent.filter((s) => s.type === 'gc')).toHaveLength(0);
@@ -319,7 +319,7 @@ describe('modules/gang: Mehrspieler (Fake net.fight)', () => {
     expect(t.g.role()).toBe('leader');
     t.run(12);
     const gs = f.sent.filter((s) => s.type === 'gs');
-    expect(gs.length).toBeGreaterThanOrEqual(5);
+    expect(gs.length).toBeGreaterThanOrEqual(1); // unverändert: nur der erste Stand (Herzschlag siehe Kontingent-Test)
     expect(gs[0].p).toMatchObject({ g: 3, phase: 2, seed: 1 });
     expect(gs[0].p.members).toHaveLength(2);
     // gh eines Mitspielers
@@ -336,6 +336,56 @@ describe('modules/gang: Mehrspieler (Fake net.fight)', () => {
     expect(fh.length).toBeGreaterThan(0);
     expect(fh[0].p).toMatchObject({ c: 9, w: 0, src: 1 });
     expect(Math.hypot(fh[0].p.dir.x, fh[0].p.dir.z)).toBeCloseTo(1, 3);
+  });
+
+  it('gc nur mit weiterem Mitspieler: allein bleibt die Rolle lokal ohne Anforderung', () => {
+    const t = setup({ n: 2 });
+    const f = fakeFight();
+    withNet(t, f, []);
+    t.run(2);
+    t.putPlayerNear(0, 3);
+    t.run(60);
+    expect(t.g.role()).toBe('local');
+    expect(f.sent.filter((s) => s.type === 'gc')).toHaveLength(0);
+  });
+
+  it('Kontingent: allein nur Herzschlag, mit Mitläufer ruhig ≈ Herzschlag und ≤ 6/s nur bei Bewegung', () => {
+    const minute = (peers, near) => {
+      const t = setup({ n: 2 });
+      const f = fakeFight({ leader: 7, me: 7 });
+      withNet(t, f, peers);
+      t.enter();
+      t.run(2);
+      if (near) t.putPlayerNear(0, 5);
+      else { t.st.pose = { x: 200, z: 200, y: 0 }; t.ctx.camera.position.set(200, 1.6, 200); }
+      f.sent.length = 0;
+      t.run(600); // 60 s
+      return f.sent.filter((s) => s.type === 'gs').length;
+    };
+    const alone = minute([], false);
+    expect(alone).toBeLessThanOrEqual(Math.ceil(60 / GS_BEAT_S) + 1); // Herzschlag: damit die Führung nicht verfällt
+    expect(alone).toBeGreaterThanOrEqual(10);
+    const calm = minute([{ c: 9, k: 'x', f: 1 }], false);
+    expect(calm).toBeLessThanOrEqual(Math.ceil(60 / GS_BEAT_S) + 1);
+    const moving = minute([{ c: 9, k: 'x', f: 1 }], true);
+    expect(moving).toBeGreaterThan(calm);
+    expect(moving).toBeLessThanOrEqual(6 * 60 + 2);
+  });
+
+  it('neuer Mitspieler bekommt sofort den Bandenstand (ohne den Herzschlag abzuwarten)', () => {
+    const t = setup({ n: 2 });
+    const f = fakeFight({ leader: 7, me: 7 });
+    const peers = [];
+    withNet(t, f, peers);
+    t.enter();
+    t.run(2);
+    t.st.pose = { x: 200, z: 200, y: 0 };
+    t.ctx.camera.position.set(200, 1.6, 200);
+    t.run(20);
+    f.sent.length = 0;
+    peers.push({ c: 9, k: 'x', f: 1 });
+    t.run(3);
+    expect(f.sent.filter((s) => s.type === 'gs').length).toBeGreaterThanOrEqual(1);
   });
 
   it('Führer ohne Figuren: der Hieb-Code a=6 im gs klingt ab (striking unabhängig von der Figur)', () => {

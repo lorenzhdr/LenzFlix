@@ -297,14 +297,12 @@ export default {
     }
     /** Umstehende (hitzköpfig, nah am Spieler) machen mit, höchstens 3 Angreifer. */
     function joinBystanders(src) {
-      let n = countAttackers();
       for (const o of walkers) {
         if (o === src || o.act || o.temper !== 'hot' || !o.handle.root.visible || !havePose) continue;
-        if (Math.hypot(o.w.x - px, o.w.z - pz) > 9 || !bystanderJoin(n, o.temper)) continue;
+        if (Math.hypot(o.w.x - px, o.w.z - pz) > 9 || !bystanderJoin(countAttackers(), o.temper)) continue; // frisch zählen: beginAct → joinBystanders verschachtelt, ein Zwischenstand wäre veraltet
         o.tst.threatened = true;
         o.tst.chaseUntil = clock + CHASE_MAX;
         beginAct(o, { attack: true, until: o.tst.chaseUntil });
-        n++;
       }
     }
     function endAct(e, then) {

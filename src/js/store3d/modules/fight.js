@@ -51,6 +51,7 @@ export default {
 
     let T = 0; // s, aus update(dt)
     let weapon = 'hand';
+    let safeNow = false; // Schutzzone (ohne Menü-/Energie-Schutz): Waffe ist weggesteckt, die Wahl bleibt erhalten
     let nextSwing = 0;
     let swingPose = null; // 'whip'|'belt' bis swingPoseUntil
     let swingPoseUntil = 0;
@@ -280,6 +281,7 @@ export default {
       if (id === weapon) return true;
       if (laserOn) setLaser(false);
       weapon = id;
+      if (safeNow) return true; // bleibt gewählt, kommt beim Verlassen der Zone zurück
       wpDue = T + WP_DEBOUNCE;
       try { if (ctx.deps && typeof ctx.deps.toast === 'function') ctx.deps.toast('Waffe: ' + NAME[id]); } catch { /* egal */ }
       return true;
@@ -380,6 +382,8 @@ export default {
       }
     }
 
+    /** Köpfe stecken in eigenen Kollidern (Richard: statische 0,6-m-Box bis 2,6 m) – der Wandstrahl endet davor; Köpfe bis 0,35 m hinter dem Treffpunkt zählen noch. */
+    const HEAD_SLACK = 0.35;
     function laserTick() {
       aimRay(tmpO, tmpD);
       const o = { x: tmpO.x, y: tmpO.y, z: tmpO.z };
@@ -402,7 +406,7 @@ export default {
         if (!p || !p.handle || p.kind === 'peer' || typeof p.handle.headWorld !== 'function') continue;
         if (p.handle.root && p.handle.root.visible === false) continue;
         const hw = p.handle.headWorld(tmpH);
-        const on = rayHitsHead(o, d, hw, 0.17, hit.t);
+        const on = rayHitsHead(o, d, hw, 0.17, hit.t + HEAD_SLACK);
         for (const ev of step(p.handle, 'person', on, null)) {
           if (ev.type === 'blind') { try { if (n && n.laserHit) n.laserHit(p.handle); } catch (err) { warn('npc.laserHit', err); } }
         }
@@ -411,7 +415,7 @@ export default {
         const c = ctx.use('cashier');
         const r = c && c.richard ? c.richard() : null;
         if (r && r.pos && r.inStore !== false) {
-          const on = rayHitsHead(o, d, { x: r.pos.x, y: (r.pos.y || 0) + 1.65, z: r.pos.z }, 0.2, hit.t);
+          const on = rayHitsHead(o, d, { x: r.pos.x, y: (r.pos.y || 0) + 1.65, z: r.pos.z }, 0.2, hit.t + HEAD_SLACK);
           for (const ev of step('richard', 'richard', on, null)) {
             if (ev.type === 'hit') { const br = ctx.use('brawl'); if (br && br.hitBy) br.hitBy('laser', { x: dir.x, z: dir.z }); }
           }
@@ -436,7 +440,7 @@ export default {
         for (const c of peerList()) {
           const pp = peerPos(c);
           if (!pp) continue;
-          const on = rayHitsHead(o, d, { x: pp.x, y: (pp.y || 0) + 1.55, z: pp.z }, 0.2, hit.t);
+          const on = rayHitsHead(o, d, { x: pp.x, y: (pp.y || 0) + 1.55, z: pp.z }, 0.2, hit.t + HEAD_SLACK);
           for (const ev of step('peer:' + c, 'person', on, null)) if (ev.type === 'blind') netSend('lb', { c });
         }
       }
@@ -550,7 +554,7 @@ export default {
         if (auxLaser) { auxLaser = false; setLaser(false); return; }
         wheelCtl(true);
       },
-      heldWeapon: () => (!xrOn() && !koing && (weapon === 'belt' || weapon === 'whip' || weapon === 'laser') ? weapon : null),
+      heldWeapon: () => (!xrOn() && !koing && !safeNow && (weapon === 'belt' || weapon === 'whip' || weapon === 'laser') ? weapon : null),
       sitting: () => seatedKO,
       poseCode() {
         if (disposed || xrOn()) return null;
@@ -588,19 +592,29 @@ export default {
         // Energie-Anzeige (Regeneration)
         if (!koing) { const ev = energy.value(T); if (Math.abs(ev - hudVal) >= 0.5 || (ev >= 100 && hudVal < 100)) { hudVal = ev; hud.set(ev); } }
         if (seatedKO && (ctx.player.getNet ? Math.hypot((ctx.player.getNet() || {}).vx || 0, (ctx.player.getNet() || {}).vz || 0) > 0.8 : false)) seatedKO = false;
+        // Schutzzone: Waffe automatisch wegstecken, beim Verlassen kommt sie zurück
+        const sz = !!isSafe(zoneState());
+        if (sz !== safeNow) {
+          safeNow = sz;
+          if (sz && laserOn) setLaser(false);
+          if (weapon !== 'hand') {
+            wpDue = T + WP_DEBOUNCE;
+            if (sz) { try { if (ctx.deps && typeof ctx.deps.toast === 'function') ctx.deps.toast('Waffe weggesteckt'); } catch { /* egal */ } }
+          }
+        }
         // Waffe an die eigene Figur
         try {
           const sv = ctx.use('selfview');
           const fig = sv && sv.figure ? sv.figure() : null;
           if (fig && fig.setHandItem) {
-            const want = weapon === 'belt' || weapon === 'whip' || weapon === 'laser' ? weapon : null;
+            const want = !safeNow && (weapon === 'belt' || weapon === 'whip' || weapon === 'laser') ? weapon : null;
             if ((fig.getHandItem ? fig.getHandItem() : null) !== want) fig.setHandItem(want);
           }
         } catch { /* egal */ }
         // Waffenwahl an die Mitspieler (entprellt)
         if (wpDue >= 0 && T >= wpDue) {
-          if (netOn()) { if (wpSent !== weapon && netSend('wp', { w: WEAPON_IDS.indexOf(weapon) })) wpSent = weapon; wpDue = -1; } else wpDue = T + 1;
-        } else if (wpDue < 0 && netOn() && wpSent == null && weapon !== 'hand') wpDue = T;
+          if (netOn()) { const wEff = safeNow ? 'hand' : weapon; if (wpSent !== wEff && netSend('wp', { w: WEAPON_IDS.indexOf(wEff) })) wpSent = wEff; wpDue = -1; } else wpDue = T + 1;
+        } else if (wpDue < 0 && netOn() && wpSent == null && weapon !== 'hand' && !safeNow) wpDue = T;
         // Waffenknopf (Touch): lange halten mit Laser = leuchten
         if (auxHeld && !auxLaser && weapon === 'laser' && T - auxStart >= AUX_TAP) auxLaser = setLaser(true);
         // Laser
