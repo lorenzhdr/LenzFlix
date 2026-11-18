@@ -15,7 +15,9 @@ export const NET_A = { STAND: 0, WALK: 1, RUN: 2, AIR: 3, KNOCK: 4, MANTLE: 5, H
 /** Body.ANIM-Wert -> Leitungscode (bewusst eine Tabelle, nie Identität annehmen). Schlüssel = Body.ANIM.STAND … HIT. */
 export const BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
 /** Leitungscode (Index) -> Name in npc/anim.js ANIMS beim Empfänger. */
-export const NET_A_ANIM = ['idle', 'walk', 'run', 'idle', 'stagger', 'idle', 'hit', 'sit', 'throw'];
+export const NET_A_ANIM = ['idle', 'walk', 'run', 'idle', 'stagger', 'idle', 'hit', 'sit', 'throw',
+  // 1.18.0 (Vertrag §2): 9 ko, 10 cover, 11 whip, 12 belt, 13 aim, 14 threat, 15 away (Anzeige idle, Pause-Marke separat)
+  'ko', 'cover', 'whip', 'belt', 'aim', 'threat', 'idle'];
 
 /** Emote-`e` (1..8) und Namen in ANIMS beim Empfänger (dance/clap/thumbs/bow kommen in Welle b hinzu). */
 export const EMOTE = { WAVE: 1, CHEER: 2, POINT: 3, SIT: 4, DANCE: 5, CLAP: 6, THUMBS: 7, BOW: 8 };

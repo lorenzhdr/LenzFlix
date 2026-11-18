@@ -8,7 +8,7 @@ import { seeded } from '../src/js/store3d/modules/m4-util.js';
 import { MeshLambertMaterial } from 'three';
 import {
   HAIR_STYLES, EYES, BROWS, BEARDS, SHAPES, TOP_CUTS, TOP_PATTERNS, BOTTOM_CUTS, BOTTOM_PATTERNS, SHOE_MODELS, GLASSES, HATS, BAGS,
-  UNLOCK_TOPS, UNLOCK_BOTTOMS, UNLOCK_SHOES, UNLOCK_GLASSES, UNLOCK_HATS, UNLOCK_BAGS,
+  UNLOCK_TOPS, UNLOCK_BOTTOMS, UNLOCK_SHOES, UNLOCK_GLASSES, UNLOCK_HATS, UNLOCK_BAGS, UNLOCK_PENDING,
 } from '../src/js/store3d/char/ids.js';
 
 const baseLook = () => ({
@@ -52,14 +52,14 @@ describe('Figur v2: alle Optionen bauen', () => {
     ['brows', BROWS, (l, v) => { l.brows = v; }],
     ['beard', BEARDS, (l, v) => { l.beard = v; }],
     ['shape', SHAPES, (l, v) => { l.shape = v; }],
-    ['top.cut', [...TOP_CUTS, ...UNLOCK_TOPS], (l, v) => { l.top.cut = v; }],
+    ['top.cut', [...TOP_CUTS, ...UNLOCK_TOPS.filter((x) => !UNLOCK_PENDING.includes(x))], (l, v) => { l.top.cut = v; }],
     ['top.pattern', TOP_PATTERNS, (l, v) => { l.top.pattern = v; }],
     ['bottom.cut', [...BOTTOM_CUTS, ...UNLOCK_BOTTOMS], (l, v) => { l.bottom.cut = v; }],
     ['bottom.pattern', BOTTOM_PATTERNS, (l, v) => { l.bottom.pattern = v; }],
     ['shoes.model', [...SHOE_MODELS, ...UNLOCK_SHOES], (l, v) => { l.shoes.model = v; }],
-    ['glasses', [...GLASSES, ...UNLOCK_GLASSES], (l, v) => { l.glasses = v; }],
-    ['hat.id', [...HATS, ...UNLOCK_HATS], (l, v) => { l.hat.id = v; }],
-    ['bag.id', [...BAGS, ...UNLOCK_BAGS], (l, v) => { l.bag.id = v; }],
+    ['glasses', [...GLASSES, ...UNLOCK_GLASSES.filter((x) => !UNLOCK_PENDING.includes(x))], (l, v) => { l.glasses = v; }],
+    ['hat.id', [...HATS, ...UNLOCK_HATS.filter((x) => !UNLOCK_PENDING.includes(x))], (l, v) => { l.hat.id = v; }],
+    ['bag.id', [...BAGS, ...UNLOCK_BAGS.filter((x) => !UNLOCK_PENDING.includes(x))], (l, v) => { l.bag.id = v; }],
   ];
   const baseSig = sig(baseLook());
 

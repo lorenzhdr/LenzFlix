@@ -46995,12 +46995,12 @@ void main() {
   var GLASSES = ["none", "round", "square", "sun", "nerd"];
   var HATS2 = ["none", "cap", "beanie", "hat", "bucket", "band", "beret"];
   var BAGS2 = ["none", "bag", "backpack", "shopping"];
-  var UNLOCK_TOPS = ["cape", "jersey3", "banshirt", "hivis"];
+  var UNLOCK_TOPS = ["cape", "jersey3", "banshirt", "hivis", "studjacket"];
   var UNLOCK_BOTTOMS = ["zebra"];
   var UNLOCK_SHOES = ["splash"];
-  var UNLOCK_GLASSES = ["pilot", "3d"];
-  var UNLOCK_HATS = ["goldcap", "crown", "catears", "canhat", "usher"];
-  var UNLOCK_BAGS = ["chips", "vhspack"];
+  var UNLOCK_GLASSES = ["pilot", "3d", "bandaid"];
+  var UNLOCK_HATS = ["goldcap", "crown", "catears", "canhat", "usher", "curlers"];
+  var UNLOCK_BAGS = ["chips", "vhspack", "catpack"];
   var SKIN3 = [
     [0.98, 0.84, 0.74],
     [0.96, 0.78, 0.65],
@@ -47844,11 +47844,22 @@ void main() {
     "dance",
     "clap",
     "thumbs",
-    "bow"
+    "bow",
+    // 1.18.0 (Welle 4, vorläufige Posen; Welle 5 verfeinert): nur am Ende anhängen, Indizes 0..13 bleiben stabil
+    "threat",
+    "sleeves",
+    "shake",
+    "cover",
+    "whip",
+    "belt",
+    "aim",
+    "ko",
+    "swing",
+    "toss"
   ];
   var ANIM_CODE = Object.fromEntries(ANIMS2.map((n, i) => [n, i]));
-  var ONE_SHOT = { hit: 0.45, throw: 0.6, stagger: 1 };
-  var TIMED = { wave: 2.4, point: 2.2, cheer: 2.6, dance: 4, clap: 2.4, thumbs: 2.2, bow: 2.2 };
+  var ONE_SHOT = { hit: 0.45, throw: 0.6, stagger: 1, whip: 0.6, belt: 0.5, swing: 0.5, toss: 0.6 };
+  var TIMED = { wave: 2.4, point: 2.2, cheer: 2.6, dance: 4, clap: 2.4, thumbs: 2.2, bow: 2.2, threat: 2.5, sleeves: 2, shake: 1.6 };
   var timedDuration = (name) => TIMED[name] || 0;
   var POSE_KEYS = ["bob", "hipDrop", "lean", "roll", "headX", "headY", "armLx", "armLz", "armRx", "armRz", "legLx", "legRx"];
   var NET_VERSION = 1;
@@ -47991,6 +48002,75 @@ void main() {
         p.armLz = 0.05;
         p.armRz = 0.05;
         p.hipDrop = 0.02 * e;
+        break;
+      }
+      case "threat":
+        p.armRx = 1.2;
+        p.armRz = 0.1;
+        p.armLx = 0.4;
+        p.lean = 0.15;
+        p.headX = 0.12;
+        p.bob = Math.sin(age * 5) * 6e-3;
+        break;
+      case "sleeves":
+        p.armLx = 1.1 + Math.sin(age * 8) * 0.1;
+        p.armRx = 1.1 - Math.sin(age * 8) * 0.1;
+        p.headX = 0.15;
+        p.lean = 0.05;
+        break;
+      case "shake":
+        p.headY = Math.sin(age * 12) * 0.4;
+        p.armLz = 0.05;
+        p.armRz = 0.05;
+        break;
+      case "cover":
+        p.armLx = 2.2;
+        p.armRx = 2.2;
+        p.armLz = 0.1;
+        p.armRz = 0.1;
+        p.headX = 0.2;
+        p.lean = 0.1;
+        p.roll = Math.sin(age * 4) * 0.03;
+        break;
+      case "whip": {
+        const e = Math.sin(k * Math.PI);
+        p.armRx = -1.5 + 3.3 * e;
+        p.armRz = 0.3;
+        p.lean = 0.2 * e;
+        break;
+      }
+      case "belt": {
+        const e = Math.sin(k * Math.PI);
+        p.armRz = 2 * e;
+        p.armRx = 0.6 * e;
+        p.lean = 0.25 * e;
+        p.roll = -0.12 * e;
+        break;
+      }
+      case "aim":
+        p.armRx = 1.55;
+        p.armRz = 0.05;
+        p.armLx = 0.6;
+        p.headX = 0.05;
+        break;
+      case "ko":
+        p.hipDrop = 0.6;
+        p.lean = -1.2;
+        p.roll = 0.2;
+        p.armLz = 0.8;
+        p.armRz = 0.8;
+        break;
+      case "swing": {
+        const e = Math.sin(k * Math.PI);
+        p.armRx = 2 * e;
+        p.armLx = -0.4 * e;
+        p.lean = 0.3 * e;
+        break;
+      }
+      case "toss": {
+        const e = Math.sin(k * Math.PI);
+        p.armRx = -0.8 + 2.4 * e;
+        p.lean = 0.12 * e;
         break;
       }
       default: {
@@ -55258,7 +55338,25 @@ void main() {
   var CAPS = ["pres", "chat", "emote", "push", "phys", "rich", "wx", "kino", "admin", "look"];
   var F2 = { NAME: 1, FILM: 2, CHAT: 4, VR: 8 };
   var BODY_TO_NET = { 0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
-  var NET_A_ANIM = ["idle", "walk", "run", "idle", "stagger", "idle", "hit", "sit", "throw"];
+  var NET_A_ANIM = [
+    "idle",
+    "walk",
+    "run",
+    "idle",
+    "stagger",
+    "idle",
+    "hit",
+    "sit",
+    "throw",
+    // 1.18.0 (Vertrag §2): 9 ko, 10 cover, 11 whip, 12 belt, 13 aim, 14 threat, 15 away (Anzeige idle, Pause-Marke separat)
+    "ko",
+    "cover",
+    "whip",
+    "belt",
+    "aim",
+    "threat",
+    "idle"
+  ];
   var EMOTE = { WAVE: 1, CHEER: 2, POINT: 3, SIT: 4, DANCE: 5, CLAP: 6, THUMBS: 7, BOW: 8 };
   var EMOTE_ANIM = [null, "wave", "cheer", "point", "sit", "dance", "clap", "thumbs", "bow"];
   var EMOTE_END_A = [1, 2, 3, 4, 6, 8];
@@ -57599,6 +57697,40 @@ void main() {
       return { dispose() {
         off();
         close();
+      } };
+    }
+  };
+
+  // src/js/store3d/modules/fight.js
+  var fight_default = {
+    name: "fight",
+    init(ctx) {
+      const provider = {
+        weapon: () => "hand",
+        setWeapon() {
+        },
+        energy: () => 100,
+        protected: () => false,
+        onKO: () => () => {
+        },
+        hitPlayer: () => false,
+        blind() {
+        }
+      };
+      const off = ctx.provide("fight", provider);
+      return { dispose() {
+        off();
+      } };
+    }
+  };
+
+  // src/js/store3d/modules/gang.js
+  var gang_default = {
+    name: "gang",
+    init(ctx) {
+      const off = ctx.provide("gang", { active: () => false, members: () => [], hit: () => false });
+      return { dispose() {
+        off();
       } };
     }
   };
@@ -62500,6 +62632,9 @@ void main() {
     shopmirror_default,
     salon_default,
     xrchar_default,
+    // --- Kampf (1.18, Stubs aus Welle 4; vor net) ---
+    fight_default,
+    gang_default,
     // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
     net_default
   ];
@@ -62642,6 +62777,11 @@ void main() {
             if (self2.xrOn() || typeof app.player.knock !== "function") return false;
             app.player.knock(dir, strength);
             return true;
+          },
+          /** 1.18.0 K.O.-Ablauf-Haken: Aufwachen sitzend (Welle 6 füllt); heute ohne Wirkung (false). */
+          koSeat: (o) => {
+            const f = self2.providers.get("fight");
+            return !!(f && typeof f.koSeat === "function" && f.koSeat(o));
           },
           eyeY: () => typeof app.player.eyeY === "function" ? app.player.eyeY() : 1.65,
           getY: () => app.player.y || 0,
@@ -72731,6 +72871,26 @@ void main() {
       if (!sv || !this.canAct()) return false;
       sv.toggle();
       return true;
+    }
+    // --- Kampf (1.18.0, Welle 4: leere Nähte; Tasten/Rad belegt Welle 6) ---
+    /** Waffenrad öffnen/schließen (R halten). Reicht nur an den Provider fight durch. */
+    onWeaponWheel(open) {
+      const f = this.modUse("fight");
+      return !!(f && f.wheel && f.wheel(!!open));
+    }
+    /** Direktwahl 1–4. */
+    onWeaponPick(n) {
+      const f = this.modUse("fight");
+      if (!f) return false;
+      const id = ["hand", "belt", "whip", "laser"][(n | 0) - 1];
+      if (!id) return false;
+      f.setWeapon(id);
+      return true;
+    }
+    /** Mausrad: nächste/vorige Waffe (dir = ±1). */
+    onWeaponCycle(dir) {
+      const f = this.modUse("fight");
+      return !!(f && f.cycle && f.cycle(dir < 0 ? -1 : 1));
     }
     doEmote(src = "key") {
       return this.canAct() && this.mods.action("emote", this.actionEvent("emote", src));

@@ -17,7 +17,7 @@ describe('eingefrorene Codes', () => {
   });
   it('Pose-a und Emote-e', () => {
     expect(P.NET_A).toEqual({ STAND: 0, WALK: 1, RUN: 2, AIR: 3, KNOCK: 4, MANTLE: 5, HIT: 6, SIT: 7, THROW: 8 });
-    expect(P.NET_A_ANIM).toEqual(['idle', 'walk', 'run', 'idle', 'stagger', 'idle', 'hit', 'sit', 'throw']);
+    expect(P.NET_A_ANIM).toEqual(['idle', 'walk', 'run', 'idle', 'stagger', 'idle', 'hit', 'sit', 'throw', 'ko', 'cover', 'whip', 'belt', 'aim', 'threat', 'idle']);
     expect(P.EMOTE_ANIM).toEqual([null, 'wave', 'cheer', 'point', 'sit', 'dance', 'clap', 'thumbs', 'bow']);
     expect(P.EMOTE_END_A).toEqual([1, 2, 3, 4, 6, 8]);
   });
@@ -149,7 +149,9 @@ describe('Builder und Klemmen', () => {
     expect(P.build.p([0, 0, 0, 0, 0, 9, 1]).q[5]).toBe(9);
     expect(P.build.p([0, 0, 0, 0, 0, 15, 1]).q[5]).toBe(15);
     expect(P.build.p([0, 0, 0, 0, 0, 16, 1]).q[5]).toBe(0);
-    expect(P.netAnimName(12)).toBe('idle');
+    expect(P.netAnimName(12)).toBe('belt');
+    expect(P.netAnimName(15)).toBe('idle');
+    expect(P.netAnimName(16)).toBe('idle');
   });
   it('look: lk/mc wie der Server', () => {
     expect(P.build.lk([2, 1, 2, 3])).toEqual({ t: 'lk', l: [2, 1, 2, 3] });

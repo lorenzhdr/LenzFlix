@@ -127,6 +127,8 @@ export class ModuleHost {
         jump: () => (self.xrOn() || typeof app.player.jump !== 'function' ? false : app.player.jump()),
         /** Stoß { x, z, up } (Richtung wird normiert), strength Standard 1; in VR ohne Wirkung (false). */
         knock: (dir, strength) => { if (self.xrOn() || typeof app.player.knock !== 'function') return false; app.player.knock(dir, strength); return true; },
+        /** 1.18.0 K.O.-Ablauf-Haken: Aufwachen sitzend (Welle 6 füllt); heute ohne Wirkung (false). */
+        koSeat: (o) => { const f = self.providers.get('fight'); return !!(f && typeof f.koSeat === 'function' && f.koSeat(o)); },
         eyeY: () => (typeof app.player.eyeY === 'function' ? app.player.eyeY() : 1.65),
         getY: () => app.player.y || 0,
         isGrounded: () => app.player.grounded !== false,

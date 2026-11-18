@@ -4,8 +4,8 @@ import { Animator, ANIMS, ANIM_CODE, ONE_SHOT, gaitRate, targetPose, timedDurati
 describe('NPC-Animation (rein)', () => {
   it('kennt alle vierzehn Animationen mit stabilen Codes (die ersten zehn unverändert, Emotes am Ende)', () => {
     expect(ANIMS.slice(0, 10)).toEqual(['idle', 'walk', 'run', 'sit', 'wave', 'hit', 'throw', 'stagger', 'point', 'cheer']);
-    expect(ANIMS.slice(10)).toEqual(['dance', 'clap', 'thumbs', 'bow']);
-    expect(ANIMS.length).toBe(14);
+    expect(ANIMS.slice(10, 14)).toEqual(['dance', 'clap', 'thumbs', 'bow']);
+    expect(ANIMS.length).toBe(24);
     ANIMS.forEach((n, i) => expect(ANIM_CODE[n]).toBe(i));
   });
 
@@ -46,7 +46,7 @@ describe('NPC-Animation (rein)', () => {
       expect(b.applyNetState(JSON.parse(JSON.stringify(st)))).toBe(true);
       expect(b.anim).toBe(n);
     }
-    expect(new Animator('idle').applyNetState({ v: 1, a: 14 })).toBe(false);
+    expect(new Animator('idle').applyNetState({ v: 1, a: 24 })).toBe(false);
   });
 
   it('Gangfrequenz wächst mit dem Tempo und ist begrenzt', () => {

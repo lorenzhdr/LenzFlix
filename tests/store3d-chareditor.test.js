@@ -20,6 +20,7 @@ describe('Editor-Modell: Optionen', () => {
       for (const c of m.controls(t.id)) {
         if (c.kind === 'choice') {
           for (const o of c.options) {
+            if (m.isLocked(c.field, o.value)) continue; // gesperrt (1.18.0 Welle 4: Codes ohne Freischaltung)
             const before = m.code();
             m.set(c.field, c.options[0].value === o.value && before[c.field] === o.value ? (c.options[1] || o).value : before[c.field]); // Ausgangslage mischen
             const start = m.code();

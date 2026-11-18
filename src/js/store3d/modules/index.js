@@ -57,6 +57,9 @@ import selfview from './selfview.js';
 import shopmirror from './shopmirror.js';
 import salon from './salon.js';
 import xrchar from './xrchar.js';
+// --- Kampf (1.18, Stubs aus Welle 4) ---
+import fight from './fight.js';
+import gang from './gang.js';
 // --- Mehrspieler (1.16): imports ---
 import net from './net.js';
 
@@ -96,6 +99,9 @@ export const MODULES = [
   shopmirror,
   salon,
   xrchar,
+  // --- Kampf (1.18, Stubs aus Welle 4; vor net) ---
+  fight,
+  gang,
   // --- Mehrspieler (1.16, als LETZTES Modul: holt fremde Provider nur bei Gebrauch mit Guard) ---
   net,
 ];

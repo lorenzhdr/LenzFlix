@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { UNLOCKS, unlockedCodes, isUnlocked, unlockFor, lockHint } from '../src/js/store3d/char/unlocks.js';
-import { UNLOCK_BASE, UNLOCK_HATS, UNLOCK_TOPS, UNLOCK_BOTTOMS, UNLOCK_SHOES, UNLOCK_GLASSES, UNLOCK_BAGS } from '../src/js/store3d/char/ids.js';
+import { UNLOCK_BASE, UNLOCK_HATS, UNLOCK_TOPS, UNLOCK_BOTTOMS, UNLOCK_SHOES, UNLOCK_GLASSES, UNLOCK_BAGS, UNLOCK_PENDING } from '../src/js/store3d/char/ids.js';
 import { entryOf, CATALOG } from '../src/js/store3d/discover/catalog.js';
 
 describe('unlocks', () => {
@@ -20,12 +20,12 @@ describe('unlocks', () => {
 
   it('jedes Freischalt-Teil aus ids.js ist genau einmal vergeben', () => {
     const n = (s) => UNLOCKS.filter((u) => u.slot === s).length;
-    expect(n('top')).toBe(UNLOCK_TOPS.length);
-    expect(n('bottom')).toBe(UNLOCK_BOTTOMS.length);
-    expect(n('shoes')).toBe(UNLOCK_SHOES.length);
-    expect(n('glasses')).toBe(UNLOCK_GLASSES.length);
-    expect(n('hat')).toBe(UNLOCK_HATS.length);
-    expect(n('bag')).toBe(UNLOCK_BAGS.length);
+    expect(n('top')).toBe(UNLOCK_TOPS.filter((x) => !UNLOCK_PENDING.includes(x)).length);
+    expect(n('bottom')).toBe(UNLOCK_BOTTOMS.filter((x) => !UNLOCK_PENDING.includes(x)).length);
+    expect(n('shoes')).toBe(UNLOCK_SHOES.filter((x) => !UNLOCK_PENDING.includes(x)).length);
+    expect(n('glasses')).toBe(UNLOCK_GLASSES.filter((x) => !UNLOCK_PENDING.includes(x)).length);
+    expect(n('hat')).toBe(UNLOCK_HATS.filter((x) => !UNLOCK_PENDING.includes(x)).length);
+    expect(n('bag')).toBe(UNLOCK_BAGS.filter((x) => !UNLOCK_PENDING.includes(x)).length);
   });
 
   it('Zuordnung laut Brief', () => {

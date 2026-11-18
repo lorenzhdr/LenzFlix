@@ -569,6 +569,14 @@ export class StoreApp {
     return true;
   }
 
+  // --- Kampf (1.18.0, Welle 4: leere Nähte; Tasten/Rad belegt Welle 6) ---
+  /** Waffenrad öffnen/schließen (R halten). Reicht nur an den Provider fight durch. */
+  onWeaponWheel(open) { const f = this.modUse('fight'); return !!(f && f.wheel && f.wheel(!!open)); }
+  /** Direktwahl 1–4. */
+  onWeaponPick(n) { const f = this.modUse('fight'); if (!f) return false; const id = ['hand', 'belt', 'whip', 'laser'][(n | 0) - 1]; if (!id) return false; f.setWeapon(id); return true; }
+  /** Mausrad: nächste/vorige Waffe (dir = ±1). */
+  onWeaponCycle(dir) { const f = this.modUse('fight'); return !!(f && f.cycle && f.cycle(dir < 0 ? -1 : 1)); }
+
   doEmote(src = 'key') { return this.canAct() && this.mods.action('emote', this.actionEvent('emote', src)); }
 
   /** Springen (Leertaste, Knopf). Rückgabe: Sprung ist sofort möglich. */
