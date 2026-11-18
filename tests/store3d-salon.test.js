@@ -158,6 +158,7 @@ function setup({ quality = 'high', xr = false, noNpc = false, areaName = 'street
   const avatar = {
     openEditor: vi.fn((where, focus, o) => { rec.editors.push([where, focus, o]); return new Promise((res) => { editorResolve = (v) => res(v === undefined ? editorResult : v); }); }),
     changedFor: vi.fn(() => false),
+    changeKind: vi.fn(() => null),
     markSeen: vi.fn((w) => rec.seen.push(w)),
     code: () => null,
   };
@@ -398,6 +399,7 @@ describe('Salon: Modul', () => {
     hair = hair.slice();
     hair[5] = 7;
     t.avatar.changedFor = vi.fn((w) => w === 'gabi');
+    t.avatar.changeKind = vi.fn((w) => (w === 'gabi' ? 'hair' : null));
     t.setPose({ x: -18, z: t.ctx.layout.city.salon.rect.z0 + 3.4 });
     t.providers.set('areas', { current: () => 'salon', on: () => () => {} });
     for (let i = 0; i < 20; i++) h.update(0.1);

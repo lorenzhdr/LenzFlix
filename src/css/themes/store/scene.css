@@ -171,6 +171,44 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-menubtn span {
   background: #fff;
 }
 
+/* Ansicht-Knopf (Außenansicht, 1.17.0): neben dem Menü-Knopf, am Rechner allein links oben; im Touch-Schema „game“ nie (dort hat das Gamepad den Knopf) */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-viewbtn {
+  position: absolute;
+  left: var(--lfx-store-safe-x, 12px);
+  top: calc(var(--lfx-store-hud-h, 44px) + var(--lfx-store-safe-top, 0px) + 10px);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--lfx-store-glass-border, rgba(255, 255, 255, 0.14));
+  background: var(--lfx-store-glass, rgba(13, 19, 48, 0.62));
+  color: #fff;
+  pointer-events: auto;
+  cursor: pointer;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-menubtn + .lfx-store-viewbtn {
+  left: calc(var(--lfx-store-safe-x, 12px) + 54px);
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-viewbtn[hidden] {
+  display: none;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-viewbtn svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-viewbtn:hover,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-viewbtn:focus-visible {
+    border-color: var(--lfx-store-yellow, #ffd23f);
+    color: var(--lfx-store-yellow, #ffd23f);
+    outline: none;
+  }
+}
+
 /* ---------- Aktions-Knöpfe ---------- */
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-act {
   appearance: none;

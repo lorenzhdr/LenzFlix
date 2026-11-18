@@ -24,6 +24,22 @@ describe('xr/panel layoutPanel', () => {
     for (const h of hits) { expect(h.x + h.w).toBeLessThanOrEqual(900); expect(h.y + h.h).toBeLessThanOrEqual(L.height); }
   });
 
+  it('Knopf mit swatch: Farbstreifen links (ca. 30 %), Text im Rest; ohne swatch unverändert', () => {
+    const plain = layoutPanel({ buttons: [{ label: 'Rot' }] }, 900);
+    const sw = layoutPanel({ buttons: [{ label: 'Rot', swatch: [200, 20, 30] }] }, 900);
+    const hit = sw.hits.find((h) => h.kind === 'button');
+    const stripe = sw.ops.find((o) => o.t === 'rect' && o.fill === 'rgb(200,20,30)');
+    expect(stripe).toBeTruthy();
+    expect(stripe.x).toBeLessThan(hit.x + hit.w * 0.31);
+    expect(stripe.w).toBeLessThanOrEqual(hit.w * 0.3);
+    const t = sw.ops.find((o) => o.t === 'text' && o.text === 'Rot');
+    expect(t.x).toBeGreaterThan(hit.x + hit.w * 0.3);
+    expect(t.x + t.maxW / 2).toBeLessThanOrEqual(hit.x + hit.w);
+    expect(plain.ops.some((o) => typeof o.fill === 'string' && o.fill.startsWith('rgb('))).toBe(false);
+    expect(plain.ops.find((o) => o.t === 'text' && o.text === 'Rot').align).toBe('center');
+    expect(sw.height).toBe(plain.height);
+  });
+
   it('Tabs, Liste, Aktionen, Eingabe und Fortschritt liefern Treffer', () => {
     const L = layoutPanel({
       tabs: [{ label: 'Eins', on: true }, { label: 'Zwei' }],

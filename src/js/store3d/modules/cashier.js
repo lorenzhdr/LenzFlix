@@ -289,7 +289,7 @@ export default {
       // 1.17.0: neues Outfit/neue Frisur bemerken (nur im normalen Gruß; erst nach erfolgreichem Spruch als gesehen markieren)
       const av = ctx.use('avatar');
       let react = null;
-      try { if (!grudge && av && av.changedFor && av.changedFor('richard')) react = rand() < 0.65 ? 'outfitNew' : 'hairNew'; } catch { react = null; }
+      try { if (!grudge && av && av.changedFor && av.changedFor('richard')) react = (typeof av.changeKind === 'function' && av.changeKind('richard') === 'hair') ? 'hairNew' : 'outfitNew'; } catch { react = null; }
       let first;
       try { first = !sessionStorage.getItem(INTRO_KEY); if (first) sessionStorage.setItem(INTRO_KEY, '1'); } catch { first = false; }
       const said = speak(cat, {}, { force: true, also: react || (first && !grudge ? 'intro' : null) });

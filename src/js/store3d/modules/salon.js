@@ -9,7 +9,7 @@ import { buildSalon, drawPosterAtlas } from '../world/build-salon.js';
 import { createMirror } from '../world/mirror.js';
 import { canvasTexture } from './m3-gfx.js';
 import { FONT } from '../world/textures.js';
-import { toRender, F } from '../char/look2.js';
+import { toRender } from '../char/look2.js';
 import { npcCodes, VOICES, pickSalonLine } from '../char/salon-lines.js';
 import { debugHook } from './m3-debug.js';
 
@@ -65,13 +65,7 @@ export default {
     // ------------------------------------------------------------ Gabi und Ronny
     const codes = npcCodes();
     const people = {}; // { gabi: { handle, rect, off, speaker, last } }
-    let hairSeen = null;
-    const hairOf = (code) => (code ? `${code[F.hairStyle]}:${code[F.hairColor]}` : '');
     const av = () => ctx.use('avatar');
-    {
-      const a = av();
-      hairSeen = hairOf(a && typeof a.code === 'function' ? a.code() : null);
-    }
     function mountPerson(who, anchor) {
       const n = ctx.use('npc');
       if (!n || typeof n.figure !== 'function') return false;
@@ -173,7 +167,6 @@ export default {
           const who = kind === 'chair' ? 'gabi' : 'ronny';
           say(who, kind === 'chair' ? 'chairDone' : 'boothDone');
           try { if (typeof a.markSeen === 'function') a.markSeen(who); } catch { /* egal */ }
-          if (who === 'gabi') hairSeen = hairOf(typeof a.code === 'function' ? a.code() : null);
         }
         if (kind === 'chair') noteFirstVisit();
         // aufstehen: Kamera zurück an die Austrittsstelle, dann Körper dorthin und freigeben
@@ -258,12 +251,10 @@ export default {
         let ch;
         try { ch = !!a.changedFor(who); } catch { ch = false; }
         if (!ch) continue;
-        let cat = 'outfitNew';
-        if (who === 'gabi') {
-          const cur = hairOf(typeof a.code === 'function' ? a.code() : null);
-          if (cur && cur !== hairSeen) cat = 'hairNew';
-          hairSeen = cur || hairSeen;
-        }
+        // Art der Änderung kommt vom Avatar-Modul (nur Frisur/Haarfarbe/Bart → Haar-Spruch); unbekannt → Outfit
+        let kind;
+        try { kind = typeof a.changeKind === 'function' ? a.changeKind(who) : null; } catch { kind = null; }
+        const cat = kind === 'hair' ? 'hairNew' : 'outfitNew';
         say(who, cat);
         try { if (typeof a.markSeen === 'function') a.markSeen(who); } catch { /* egal */ }
         return; // eine Reaktion pro Takt

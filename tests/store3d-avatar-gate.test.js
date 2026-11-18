@@ -187,6 +187,20 @@ describe('avatar: needsGate und Provider-Daten', () => {
     expect(av.changedFor('richard')).toBe(true);
   });
 
+  it('changeKind: hair bei nur Haarfeldern, outfit sonst, null ohne Änderung oder ohne Vorgeschichte', () => {
+    const p = makeProfile({ slots: [slotOf(defaultCode()), null, null] });
+    const av = boot({ profile: p });
+    expect(av.changeKind('richard')).toBeNull(); // nie gesehen: Vorgeschichte unbekannt
+    av.markSeen('richard');
+    expect(av.changeKind('richard')).toBeNull(); // nichts geändert
+    expect(p.data.seen.richardR).toEqual(expect.any(String));
+    av.setCode(Object.assign(defaultCode(), { [F.hairColor]: 7 }));
+    expect(av.changeKind('richard')).toBe('hair');
+    av.setCode(Object.assign(defaultCode(), { [F.hairColor]: 7, [F.topColor]: 5 }));
+    expect(av.changeKind('richard')).toBe('outfit');
+    expect(av.changeKind('unbekannt')).toBeNull();
+  });
+
   it('setCode commit:false = nur Vorschau, kein onChange, kein Schreiben', () => {
     const p = makeProfile({ slots: [slotOf(defaultCode()), null, null] });
     const av = boot({ profile: p });
@@ -251,8 +265,9 @@ describe('avatar: Gate', () => {
     let resolved = false;
     const gp = av.gate().then(() => { resolved = true; });
     await tick();
-    const el = ctx.curOverlay().el;
+    let el = ctx.curOverlay().el;
     expect(el.classList.contains('lfx-store-char--gate')).toBe(true);
+    expect(ctx.overlay.open.mock.calls[0][1]).toMatchObject({ modal: true }); // Esc-fest (Runtime überspringt Esc)
     expect(el.querySelector('.lfx-store-char__input').value).toBe('Lenz');
     expect(el.querySelector('.lfx-store-char__input').readOnly).toBe(true);
     expect(ctx.stage.setScene).toHaveBeenCalledWith(studioMock.made[0].scene);
@@ -261,13 +276,12 @@ describe('avatar: Gate', () => {
     expect(av.gate()).toBe(gp ? av.gate() : null); // zweiter Aufruf teilt dieselbe Sitzung (kein zweites Formular)
     expect(ctx.overlay.open).toHaveBeenCalledTimes(1);
 
-    // Esc im Formular
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
-    // Esc der Bühne: overlayClose → onClose → das Gate öffnet sich wieder
+    // Erzwungenes Schließen von außen (Esc selbst fängt die Runtime per modal ab): Sitzung endet, die Gate-Schleife öffnet ein neues Formular
     ctx.overlay.close();
     await tick();
     expect(ctx.overlay.open).toHaveBeenCalledTimes(2);
-    expect(ctx.curOverlay().el).toBe(el);
+    el = ctx.curOverlay().el;
+    expect(el.classList.contains('lfx-store-char--gate')).toBe(true);
     expect(resolved).toBe(false);
     expect(p.update).not.toHaveBeenCalled();
     expect(av.needsGate()).toBe(true);

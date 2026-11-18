@@ -64,6 +64,20 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-pacts > .lfx-store-act {
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-mute.is-on {
   opacity: 0.8;
 }
+/* Ausweis ansehen (1.17.0): Mitgliedsfarbe als Rand, Stumm/Entfernen bleiben neutral */
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-card {
+  border-color: var(--lfx-store-yellow, #ffd23f);
+  color: var(--lfx-store-yellow, #ffd23f);
+}
+@media (hover: hover) and (pointer: fine) {
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-card:hover {
+    background: rgba(255, 210, 63, 0.16);
+  }
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-card:focus-visible {
+  outline: 2px solid var(--lfx-store-yellow, #ffd23f);
+  outline-offset: 2px;
+}
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-mp-kick.is-confirm {
   border-color: var(--lfx-store-danger, #ff6b6b);
 }

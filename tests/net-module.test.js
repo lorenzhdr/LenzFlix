@@ -202,6 +202,28 @@ describe('Modul net: Verbindung', () => {
     h.dispose();
   });
 
+  it('Salon-Stuhl: a=7 ohne Sitzplatz-Feld, sonst Standpose', async () => {
+    const t = setup();
+    t.provided.set('salon', { sitting: () => true });
+    const h = net.init(t.ctx);
+    const ws = await goLive(t);
+    h.update(0.016, 1);
+    await vi.advanceTimersByTimeAsync(300);
+    const ps = ws.frames().filter((m) => m.t === 'p');
+    expect(ps.length).toBe(1);
+    expect(ps[0].q[5]).toBe(7);
+    expect(ps[0].se).toBeUndefined();
+    h.dispose();
+    const t2 = setup();
+    t2.provided.set('salon', { sitting: () => false });
+    const h2 = net.init(t2.ctx);
+    const ws2 = await goLive(t2);
+    h2.update(0.016, 1);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(ws2.frames().filter((m) => m.t === 'p')[0].q[5]).not.toBe(7);
+    h2.dispose();
+  });
+
   it('Hülle in der Hand: nur mit Film-Flag über die Leitung', async () => {
     const id = 'a'.repeat(32);
     const t = setup();

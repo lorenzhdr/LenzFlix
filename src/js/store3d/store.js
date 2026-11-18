@@ -110,7 +110,7 @@ export class StoreApp {
     }
     this.xr = new XrMode(this);
     this.cinema2d = new PalastCinema(this); // 2D-Kino im LENZ PALAST (cinema/palast.js); Module: ctx.use('cinema2d')
-    this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), getTouchScheme: () => this.touchScheme });
+    this.hud = createHud(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), onView: () => this.doView(), getTouchScheme: () => this.touchScheme });
     this.fs = createFullscreen({
       host, isTouch: this.touch, getMode: () => (this.mods && this.mods.locked ? 'locked' : this.mode), userId: (deps.user && (deps.user.id || deps.user.name)) || 'anon', hud: this.hud,
       onChange: () => { if (this.pause) this.pause.refresh(); },
@@ -253,19 +253,20 @@ export class StoreApp {
       onThrow: () => this.doThrow('key'),
       onChat: () => this.doChat('key'),
       onEmote: () => this.doEmote('key'),
-      onView: () => { const sv = this.modUse('selfview'); if (sv && this.canAct()) sv.toggle(); }, // Taste V (1.17.0)
+      onView: () => this.doView(), // Taste V (1.17.0)
       onCarry: () => this.holdview.carryOut(),
       onZoom: (z) => this.setZoom(z),
       getZoom: () => this.zoom,
       onEscape: () => {
         if (this.mode === 'hold') this.holdview.close(true);
-        else if (this.mode === 'overlay') this.mods.overlayClose();
+        else if (this.mode === 'overlay') { const ov = this.mods.overlayState; if (!ov || ov.escape !== false) this.mods.overlayClose(); } // Esc-feste Overlays (Gate) bleiben
         else if (this.pause && this.pause.pickOpen) this.pause.closePick();
         else this.resumeFromPause();
       },
     });
     this.touchCtl = this.touch ? new TouchControls({ canvas: engine.canvas, player: this.player, getMode: () => this.mode, onTap: (x, y) => this.onTap(x, y), onZoom: (z) => this.setZoom(z), getZoom: () => this.zoomTarget, scheme: this.touchScheme, getTune: () => this.touchTune, debug: !!this.opts.debug, touchApi: this.opts.touchApi,
       onJump: () => this.doJump(), onUse: () => this.doUse('touch'), onHit: () => this.doHit('touch'), onThrow: () => this.doThrow('touch'),
+      onView: () => this.doView(),
     }) : null;
 
     this.progress(0.86, 'Module werden geladen');
@@ -368,6 +369,7 @@ export class StoreApp {
       this.hud.setCross(false, false);
       this.hud.showPrompt(false, false);
       this.hud.showMenuBtn(false);
+      this.hud.showViewBtn(false);
       this.hud.showVr(false);
       this.hud.setHint(null);
       if (this.touchCtl) this.touchCtl.gate({ xr: true });
@@ -379,6 +381,7 @@ export class StoreApp {
     this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
     this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
     this.hud.showMenuBtn(play);
+    this.hud.showViewBtn(play);
     if (this.touchCtl) this.touchCtl.gate(this.gateArgs());
     if (this.rotate) this.rotate.update();
     // nur im Laufmodus: die Halte-Ebene (z-index 4) läge sonst über dem Knopf und finge das Tippen ab
@@ -555,6 +558,14 @@ export class StoreApp {
 
   /** Chat (Enter) und Emote (T): nur im Laufmodus; true = ein Handler (Modul net) hat die Taste verbraucht, sonst bleibt sie unberührt (1.15-Verhalten). */
   doChat(src = 'key') { return this.canAct() && this.mods.action('chat', this.actionEvent('chat', src)); }
+  /** Ansicht wechseln (Taste V, HUD- und Gamepad-Knopf, 1.17.0): Ego/Außenansicht, nur wenn Handeln erlaubt ist. */
+  doView() {
+    const sv = this.modUse('selfview');
+    if (!sv || !this.canAct()) return false;
+    sv.toggle();
+    return true;
+  }
+
   doEmote(src = 'key') { return this.canAct() && this.mods.action('emote', this.actionEvent('emote', src)); }
 
   /** Springen (Leertaste, Knopf). Rückgabe: Sprung ist sofort möglich. */
@@ -782,7 +793,8 @@ export class StoreApp {
       this.engine.camera.updateMatrixWorld();
     }
     if (this.hands) {
-      this.hands.setVisible(!inXr && this.mode === 'play' && !this.mods.cam);
+      const svm = this.modUse('selfview');
+      this.hands.setVisible(!inXr && this.mode === 'play' && !this.mods.cam && !(svm && svm.mode && svm.mode() === 'third'));
       if (!inXr) this.hands.update(dt);
     }
     if (inXr && xr.inCinema) { xr.cinemaTick(dt, now); return; }

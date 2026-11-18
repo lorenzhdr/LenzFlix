@@ -65,7 +65,7 @@ describe('Hüllen-Panel im Sichtfeld', () => {
 describe('VR-Knopf nur im Laufmodus', () => {
   it('syncUi zeigt „In VR betreten“ im Haltemodus nicht (Halte-Ebene fängt das Tippen)', () => {
     const calls = [];
-    const hud = { setCross() {}, showPrompt() {}, showMenuBtn() {}, showVr: (v) => calls.push(v), setHint() {} };
+    const hud = { setCross() {}, showPrompt() {}, showMenuBtn() {}, showViewBtn() {}, showVr: (v) => calls.push(v), setHint() {} };
     const xr = { supported: true, presenting: false };
     const app = Object.create(StoreApp.prototype);
     Object.assign(app, { hud, xr, ready: true, suspended: false, aim: null, mode: 'play' });

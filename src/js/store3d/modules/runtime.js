@@ -112,7 +112,7 @@ export class ModuleHost {
       },
       addInteractable(o) {
         const b = o.box;
-        const ia = { box: { min: b.min, max: b.max }, label: o.label || '', hint: o.hint || '', onUse: o.onUse || (() => {}), enabled: o.enabled, anyHeight: !!o.anyHeight };
+        const ia = { box: { min: b.min, max: b.max }, label: o.label || '', hint: o.hint || '', onUse: o.onUse || (() => {}), enabled: o.enabled, anyHeight: !!o.anyHeight, noClick: !!o.noClick };
         self.interactables.push(ia);
         return () => { const i = self.interactables.indexOf(ia); if (i >= 0) self.interactables.splice(i, 1); };
       },
@@ -392,7 +392,8 @@ export class ModuleHost {
       return;
     }
     if (this.overlayState) this.overlayClose();
-    this.overlayState = { el, onClose: o.onClose, prev: app.mode };
+    // modal: true bzw. escape: false → Esc schließt das Overlay nicht (Pflicht-Gate, 1.17.0); nur der Besitzer schließt per overlay.close()
+    this.overlayState = { el, onClose: o.onClose, prev: app.mode, escape: !(o.modal === true || o.escape === false) };
     app.host.appendChild(el);
     if (app.desktop) app.desktop.releaseLock();
     app.player.cancelPath();
@@ -410,7 +411,7 @@ export class ModuleHost {
       return dead;
     }
     if (this.overlayState) this.overlayClose();
-    const st = { panel: null, el: null, onClose: spec && spec.onClose, prev: app.mode };
+    const st = { panel: null, el: null, onClose: spec && spec.onClose, prev: app.mode, escape: true };
     const wrapper = () => { if (this.overlayState === st) this.overlayClose(); };
     const h = app.xr.openPanel({ ...spec, onClose: wrapper });
     st.panel = h;

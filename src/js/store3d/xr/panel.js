@@ -194,7 +194,14 @@ function build(s, W, scroll, measure, shift, visCap) {
       const off = !!b.disabled;
       const lit = b.on || b.primary;
       rect(x, by, bw, BTN_H, lit ? COLORS.yellow : COLORS.fill, { r: 16, key: off ? null : `button:${i}`, alpha: off ? 0.4 : 1, stroke: b.on && !b.primary ? COLORS.pink : null });
-      text(x + bw / 2, by + 21, b.label, 30, lit ? COLORS.dark : COLORS.text, { align: 'center', weight: '700', maxW: bw - 24, alpha: off ? 0.5 : 1 });
+      const sw = Array.isArray(b.swatch) && b.swatch.length >= 3 && b.swatch.slice(0, 3).every((v) => Number.isFinite(v));
+      if (sw) {
+        // Farbstreifen links (ca. 30 % der Knopfbreite), der Text steht im Rest
+        const c = b.swatch.slice(0, 3).map((v) => Math.max(0, Math.min(255, Math.round(v))));
+        const stripe = Math.round(bw * 0.3);
+        rect(x + 8, by + 8, stripe - 8, BTN_H - 16, `rgb(${c[0]},${c[1]},${c[2]})`, { r: 10, alpha: off ? 0.4 : 1 });
+        text(x + stripe + (bw - stripe) / 2, by + 21, b.label, 30, lit ? COLORS.dark : COLORS.text, { align: 'center', weight: '700', maxW: bw - stripe - 20, alpha: off ? 0.5 : 1 });
+      } else text(x + bw / 2, by + 21, b.label, 30, lit ? COLORS.dark : COLORS.text, { align: 'center', weight: '700', maxW: bw - 24, alpha: off ? 0.5 : 1 });
       if (!off) hits.push({ x, y: by, w: bw, h: BTN_H, kind: 'button', ref: i });
     });
     y += rowsN * BTN_H + (rowsN - 1) * 14 + GAP;

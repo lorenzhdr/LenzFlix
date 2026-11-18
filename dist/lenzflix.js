@@ -23312,7 +23312,7 @@
     const c = isObj(o.cnt) ? o.cnt : {};
     const e = isObj(o.seen) ? o.seen : {};
     const seen = { t: nat(e.t) };
-    for (const k of ["richard", "gabi", "ronny"]) if (typeof e[k] === "string" && e[k].length <= 16) seen[k] = e[k];
+    for (const k of ["richard", "gabi", "ronny", "richardR", "gabiR", "ronnyR"]) if (typeof e[k] === "string" && e[k].length <= 16) seen[k] = e[k];
     return {
       v: 1,
       fig: { act: Number.isInteger(f.act) && f.act >= 0 && f.act < 3 ? f.act : 0, slots: [0, 1, 2].map((i) => slot(Array.isArray(f.slots) ? f.slots[i] : null)) },

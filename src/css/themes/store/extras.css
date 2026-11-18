@@ -34,7 +34,8 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-skip:focus-visible 
   outline: none;
 }
 html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-prompt,
-html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-menubtn {
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-menubtn,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-intro-on .lfx-store-viewbtn {
   display: none;
 }
 

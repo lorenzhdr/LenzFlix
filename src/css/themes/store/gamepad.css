@@ -149,6 +149,20 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-zoom {
   text-shadow: none;
   font-size: 0.5rem;
 }
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-view,
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
+  right: calc(var(--lfx-store-gp-r) + var(--lfx-store-gp-jump) + var(--lfx-store-gp-small) + 2 * var(--lfx-store-gp-gap));
+  bottom: var(--lfx-store-gp-b);
+  width: var(--lfx-store-gp-small);
+  height: var(--lfx-store-gp-small);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #fff;
+  text-shadow: none;
+  font-size: 0.5rem;
+}
+html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
+  right: calc(var(--lfx-store-gp-r) + var(--lfx-store-gp-jump) + 2 * var(--lfx-store-gp-small) + 3 * var(--lfx-store-gp-gap));
+}
 /* Hochformat: eigene Spalte rechts (Springen unten, darüber Benutzen, Schlagen/Werfen, Zoom), Stick kleiner */
 @media (orientation: portrait) {
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp {
@@ -179,6 +193,15 @@ html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-zoom {
   html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-zoom {
     right: calc(var(--lfx-store-gp-r) + (var(--lfx-store-gp-jump) - var(--lfx-store-gp-zoom)) / 2);
     bottom: calc(var(--lfx-store-gp-b) + var(--lfx-store-gp-jump) + 2 * var(--lfx-store-gp-small) + 3 * var(--lfx-store-gp-gap));
+  }  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-view,
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
+    right: calc(var(--lfx-store-gp-r) + (var(--lfx-store-gp-jump) - var(--lfx-store-gp-zoom)) / 2);
+    width: var(--lfx-store-gp-zoom);
+    height: var(--lfx-store-gp-zoom);
+    bottom: calc(var(--lfx-store-gp-b) + var(--lfx-store-gp-jump) + 2 * var(--lfx-store-gp-small) + 4 * var(--lfx-store-gp-gap) + var(--lfx-store-gp-zoom));
+  }
+  html.lfx-js.lfx-theme-store:not(.layout-tv) .lfx-store-gp-aux {
+    bottom: calc(var(--lfx-store-gp-b) + var(--lfx-store-gp-jump) + 2 * var(--lfx-store-gp-small) + 5 * var(--lfx-store-gp-gap) + 2 * var(--lfx-store-gp-zoom));
   }
 }
 /* niedriges Querformat (kleine Handys) */

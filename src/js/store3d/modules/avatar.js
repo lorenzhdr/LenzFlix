@@ -17,6 +17,9 @@ import { npcShould } from '../char/react-logic.js';
 import { createCharEditor } from '../ui/chareditor.js';
 
 const NPCS = ['richard', 'gabi', 'ronny'];
+const HAIR_FIELDS = [5, 6, 9]; // Frisur, Haarfarbe, Bart
+/** Outfit-Hash ohne die Haarfelder (unterscheidet „nur Haare geändert“ von „Outfit geändert“). */
+const restHash = (c) => { const k = c.slice(); for (const i of HAIR_FIELDS) k[i] = 0; return outfitHash(k); };
 const WHERES = ['pause', 'chair', 'booth', 'gate'];
 const PREVIEW_MS = 33; // ≤ 30 Hz auf setLook
 const STAMP_MS = 380;
@@ -242,19 +245,14 @@ export default {
         try { stageOn(startCode, s.focus); } catch (err) { warn('Studio', err); stageOff(); } // ohne Studio läuft das Formular trotzdem
       }
       session = s;
-      const open = () => ctx.overlay.open(s.ui.el, { onClose: () => onOverlayClosed(s, open) });
-      s.open = open;
-      open();
+      // Gate: Esc-fest (modal); der Editor schließt per Esc wie bisher
+      ctx.overlay.open(s.ui.el, { modal: gateMode, onClose: () => onOverlayClosed(s) });
       return s;
     }
 
-    /** Overlay wurde geschlossen (Esc, Moduswechsel, anderes Overlay): Editor = Abbrechen, Gate = wieder öffnen. */
-    function onOverlayClosed(s, open) {
+    /** Overlay wurde geschlossen (Esc, Moduswechsel, anderes Overlay): Editor = Abbrechen; beim Gate beendet es die Sitzung, die Gate-Schleife öffnet eine neue. */
+    function onOverlayClosed(s) {
       if (s.finished || disposed) return;
-      if (s.cfg.where === 'gate') {
-        queueMicrotask(() => { if (!s.finished && !disposed && session === s && !s.ui.el.isConnected) open(); });
-        return;
-      }
       s.finished = true;
       endSession(s, false);
     }
@@ -368,6 +366,17 @@ export default {
       onChange(fn) { if (typeof fn !== 'function') return () => {}; changeFns.add(fn); return () => changeFns.delete(fn); },
       onPreview(fn) { if (typeof fn !== 'function') return () => {}; previewFns.add(fn); return () => previewFns.delete(fn); },
       hash: () => { const c = code(); return c ? outfitHash(c) : ''; },
+      /** Art der Änderung seit dem letzten Gesehenen: 'hair' (nur Frisur/Haarfarbe/Bart), 'outfit' (anderes) oder null (keine Änderung / Vorgeschichte unbekannt). */
+      changeKind(npc) {
+        if (!NPCS.includes(npc) || !provider.changedFor(npc)) return null;
+        const c = code();
+        const p = prof();
+        const d = p && p.get();
+        const seen = d && d.seen && typeof d.seen === 'object' ? d.seen : {};
+        const rest = seen[`${npc}R`];
+        if (!c || typeof rest !== 'string') return null;
+        return rest === restHash(c) ? 'hair' : 'outfit';
+      },
       changedFor(npc) {
         if (!NPCS.includes(npc)) return false;
         const c = code();
@@ -382,9 +391,11 @@ export default {
         const c = code();
         if (!p || !c || !NPCS.includes(npc)) return;
         const h = outfitHash(c);
+        const r = restHash(c);
         p.update((d) => {
           if (!d.seen || typeof d.seen !== 'object') d.seen = { t: 0 };
           d.seen[npc] = h;
+          d.seen[`${npc}R`] = r;
           d.seen.t = Date.now();
         });
       },

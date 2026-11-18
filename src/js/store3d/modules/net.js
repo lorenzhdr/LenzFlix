@@ -290,6 +290,8 @@ export default {
         const se = sn ? sn.encode(c2.seatId) : null;
         if (se) { s.a = 7; s.se = se; }
       }
+      // Friseurstuhl im Salon (1.17.0): a=7 ohne se; r bleibt der Bereich (peers.js nutzt Kinositze nur bei r===1, sonst sitzt die Figur an der Körperposition)
+      if (s.a !== 7) { try { const sa = ctx.use('salon'); if (sa && typeof sa.sitting === 'function' && sa.sitting()) s.a = 7; } catch { /* egal */ } }
       const m = pose.update(s, ms);
       if (m) transport.send(m);
     }

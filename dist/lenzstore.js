@@ -35881,7 +35881,7 @@ void main() {
   var ZOOM_MIN = 1;
   var ZOOM_MAX = 3;
   var TouchControls = class {
-    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game'), debug?: bool (Eingabe-Ringpuffer), touchApi?: 'pointer' (Plan B: Pointer statt Touch Events im Schema 'game') } */
+    /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?(), onView?() (Schema 'game'; onView zeigt den Knopf „Ansicht“), debug?: bool (Eingabe-Ringpuffer), touchApi?: 'pointer' (Plan B: Pointer statt Touch Events im Schema 'game') } */
     constructor(ctx) {
       this.ctx = ctx;
       this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : "touch";
@@ -35915,6 +35915,9 @@ void main() {
         },
         onThrow: () => {
           if (c.onThrow) c.onThrow();
+        },
+        onView: () => {
+          if (c.onView) c.onView();
         },
         debug: !!ctx.debug,
         api: ctx.touchApi
@@ -36049,6 +36052,7 @@ void main() {
           this.pad = createGamepad(host, { now: c.now });
           this.pad.setAimed(this.aimed);
           this.pad.setCarrying(this.carrying);
+          if (this.pad.setViewShown) this.pad.setViewShown(!!c.onView);
           this.padKind = "game";
           this.game.attach(this.pad);
         }
@@ -43793,7 +43797,7 @@ void main() {
         const av = ctx.use("avatar");
         let react = null;
         try {
-          if (!grudge && av && av.changedFor && av.changedFor("richard")) react = rand() < 0.65 ? "outfitNew" : "hairNew";
+          if (!grudge && av && av.changedFor && av.changedFor("richard")) react = typeof av.changeKind === "function" && av.changeKind("richard") === "hair" ? "hairNew" : "outfitNew";
         } catch {
           react = null;
         }
@@ -53781,6 +53785,12 @@ void main() {
 
   // src/js/store3d/modules/avatar.js
   var NPCS = ["richard", "gabi", "ronny"];
+  var HAIR_FIELDS = [5, 6, 9];
+  var restHash = (c) => {
+    const k = c.slice();
+    for (const i of HAIR_FIELDS) k[i] = 0;
+    return outfitHash(k);
+  };
   var WHERES = ["pause", "chair", "booth", "gate"];
   var PREVIEW_MS = 33;
   var STAMP_MS = 380;
@@ -54078,19 +54088,11 @@ void main() {
           }
         }
         session = s;
-        const open = () => ctx.overlay.open(s.ui.el, { onClose: () => onOverlayClosed(s, open) });
-        s.open = open;
-        open();
+        ctx.overlay.open(s.ui.el, { modal: gateMode, onClose: () => onOverlayClosed(s) });
         return s;
       }
-      function onOverlayClosed(s, open) {
+      function onOverlayClosed(s) {
         if (s.finished || disposed) return;
-        if (s.cfg.where === "gate") {
-          queueMicrotask(() => {
-            if (!s.finished && !disposed && session === s && !s.ui.el.isConnected) open();
-          });
-          return;
-        }
         s.finished = true;
         endSession(s, false);
       }
@@ -54244,6 +54246,17 @@ void main() {
           const c = code();
           return c ? outfitHash(c) : "";
         },
+        /** Art der Änderung seit dem letzten Gesehenen: 'hair' (nur Frisur/Haarfarbe/Bart), 'outfit' (anderes) oder null (keine Änderung / Vorgeschichte unbekannt). */
+        changeKind(npc) {
+          if (!NPCS.includes(npc) || !provider.changedFor(npc)) return null;
+          const c = code();
+          const p = prof();
+          const d = p && p.get();
+          const seen = d && d.seen && typeof d.seen === "object" ? d.seen : {};
+          const rest = seen[`${npc}R`];
+          if (!c || typeof rest !== "string") return null;
+          return rest === restHash(c) ? "hair" : "outfit";
+        },
         changedFor(npc) {
           if (!NPCS.includes(npc)) return false;
           const c = code();
@@ -54258,9 +54271,11 @@ void main() {
           const c = code();
           if (!p || !c || !NPCS.includes(npc)) return;
           const h3 = outfitHash(c);
+          const r = restHash(c);
           p.update((d) => {
             if (!d.seen || typeof d.seen !== "object") d.seen = { t: 0 };
             d.seen[npc] = h3;
+            d.seen[`${npc}R`] = r;
             d.seen.t = Date.now();
           });
         },
@@ -56590,13 +56605,7 @@ void main() {
       };
       const codes = npcCodes();
       const people = {};
-      let hairSeen = null;
-      const hairOf = (code) => code ? `${code[F.hairStyle]}:${code[F.hairColor]}` : "";
       const av = () => ctx.use("avatar");
-      {
-        const a = av();
-        hairSeen = hairOf(a && typeof a.code === "function" ? a.code() : null);
-      }
       function mountPerson(who, anchor) {
         const n = ctx.use("npc");
         if (!n || typeof n.figure !== "function") return false;
@@ -56744,7 +56753,6 @@ void main() {
               if (typeof a.markSeen === "function") a.markSeen(who);
             } catch {
             }
-            if (who === "gabi") hairSeen = hairOf(typeof a.code === "function" ? a.code() : null);
           }
           if (kind === "chair") noteFirstVisit();
           if (kind === "booth") curtainTo = 0;
@@ -56844,12 +56852,13 @@ void main() {
             ch = false;
           }
           if (!ch) continue;
-          let cat = "outfitNew";
-          if (who === "gabi") {
-            const cur = hairOf(typeof a.code === "function" ? a.code() : null);
-            if (cur && cur !== hairSeen) cat = "hairNew";
-            hairSeen = cur || hairSeen;
+          let kind;
+          try {
+            kind = typeof a.changeKind === "function" ? a.changeKind(who) : null;
+          } catch {
+            kind = null;
           }
+          const cat = kind === "hair" ? "hairNew" : "outfitNew";
           say(who, cat);
           try {
             if (typeof a.markSeen === "function") a.markSeen(who);
@@ -61699,6 +61708,13 @@ void main() {
             s.se = se;
           }
         }
+        if (s.a !== 7) {
+          try {
+            const sa = ctx.use("salon");
+            if (sa && typeof sa.sitting === "function" && sa.sitting()) s.a = 7;
+          } catch {
+          }
+        }
         const m = pose.update(s, ms);
         if (m) transport.send(m);
       }
@@ -62072,7 +62088,7 @@ void main() {
         addInteractable(o) {
           const b = o.box;
           const ia = { box: { min: b.min, max: b.max }, label: o.label || "", hint: o.hint || "", onUse: o.onUse || (() => {
-          }), enabled: o.enabled, anyHeight: !!o.anyHeight };
+          }), enabled: o.enabled, anyHeight: !!o.anyHeight, noClick: !!o.noClick };
           self2.interactables.push(ia);
           return () => {
             const i = self2.interactables.indexOf(ia);
@@ -62437,7 +62453,7 @@ void main() {
         return;
       }
       if (this.overlayState) this.overlayClose();
-      this.overlayState = { el: el5, onClose: o.onClose, prev: app.mode };
+      this.overlayState = { el: el5, onClose: o.onClose, prev: app.mode, escape: !(o.modal === true || o.escape === false) };
       app.host.appendChild(el5);
       if (app.desktop) app.desktop.releaseLock();
       app.player.cancelPath();
@@ -62466,7 +62482,7 @@ void main() {
         return dead;
       }
       if (this.overlayState) this.overlayClose();
-      const st = { panel: null, el: null, onClose: spec && spec.onClose, prev: app.mode };
+      const st = { panel: null, el: null, onClose: spec && spec.onClose, prev: app.mode, escape: true };
       const wrapper = () => {
         if (this.overlayState === st) this.overlayClose();
       };
@@ -65158,7 +65174,13 @@ void main() {
         const off = !!b.disabled;
         const lit = b.on || b.primary;
         rect2(x, by, bw, BTN_H, lit ? COLORS2.yellow : COLORS2.fill, { r: 16, key: off ? null : `button:${i}`, alpha: off ? 0.4 : 1, stroke: b.on && !b.primary ? COLORS2.pink : null });
-        text(x + bw / 2, by + 21, b.label, 30, lit ? COLORS2.dark : COLORS2.text, { align: "center", weight: "700", maxW: bw - 24, alpha: off ? 0.5 : 1 });
+        const sw = Array.isArray(b.swatch) && b.swatch.length >= 3 && b.swatch.slice(0, 3).every((v) => Number.isFinite(v));
+        if (sw) {
+          const c = b.swatch.slice(0, 3).map((v) => Math.max(0, Math.min(255, Math.round(v))));
+          const stripe = Math.round(bw * 0.3);
+          rect2(x + 8, by + 8, stripe - 8, BTN_H - 16, `rgb(${c[0]},${c[1]},${c[2]})`, { r: 10, alpha: off ? 0.4 : 1 });
+          text(x + stripe + (bw - stripe) / 2, by + 21, b.label, 30, lit ? COLORS2.dark : COLORS2.text, { align: "center", weight: "700", maxW: bw - stripe - 20, alpha: off ? 0.5 : 1 });
+        } else text(x + bw / 2, by + 21, b.label, 30, lit ? COLORS2.dark : COLORS2.text, { align: "center", weight: "700", maxW: bw - 24, alpha: off ? 0.5 : 1 });
         if (!off) hits.push({ x, y: by, w: bw, h: BTN_H, kind: "button", ref: i });
       });
       y += rowsN * BTN_H + (rowsN - 1) * 14 + GAP2;
@@ -71595,7 +71617,7 @@ void main() {
       }
       this.xr = new XrMode(this);
       this.cinema2d = new PalastCinema(this);
-      this.hud = createHud2(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), getTouchScheme: () => this.touchScheme });
+      this.hud = createHud2(host, { touch: this.touch, onMenu: () => this.openPause(), onVr: () => this.xr.enter(), onView: () => this.doView(), getTouchScheme: () => this.touchScheme });
       this.fs = createFullscreen({
         host,
         isTouch: this.touch,
@@ -71813,18 +71835,17 @@ void main() {
         onThrow: () => this.doThrow("key"),
         onChat: () => this.doChat("key"),
         onEmote: () => this.doEmote("key"),
-        onView: () => {
-          const sv = this.modUse("selfview");
-          if (sv && this.canAct()) sv.toggle();
-        },
+        onView: () => this.doView(),
         // Taste V (1.17.0)
         onCarry: () => this.holdview.carryOut(),
         onZoom: (z) => this.setZoom(z),
         getZoom: () => this.zoom,
         onEscape: () => {
           if (this.mode === "hold") this.holdview.close(true);
-          else if (this.mode === "overlay") this.mods.overlayClose();
-          else if (this.pause && this.pause.pickOpen) this.pause.closePick();
+          else if (this.mode === "overlay") {
+            const ov = this.mods.overlayState;
+            if (!ov || ov.escape !== false) this.mods.overlayClose();
+          } else if (this.pause && this.pause.pickOpen) this.pause.closePick();
           else this.resumeFromPause();
         }
       });
@@ -71842,7 +71863,8 @@ void main() {
         onJump: () => this.doJump(),
         onUse: () => this.doUse("touch"),
         onHit: () => this.doHit("touch"),
-        onThrow: () => this.doThrow("touch")
+        onThrow: () => this.doThrow("touch"),
+        onView: () => this.doView()
       }) : null;
       this.progress(0.86, "Module werden geladen");
       this.mods.ctx.on("xr", (on) => this.onXrHold(on));
@@ -71956,6 +71978,7 @@ void main() {
         this.hud.setCross(false, false);
         this.hud.showPrompt(false, false);
         this.hud.showMenuBtn(false);
+        this.hud.showViewBtn(false);
         this.hud.showVr(false);
         this.hud.setHint(null);
         if (this.touchCtl) this.touchCtl.gate({ xr: true });
@@ -71967,6 +71990,7 @@ void main() {
       this.hud.setCross(play && !!this.desktop && locked, !!this.aim);
       this.hud.showPrompt(this.ready && play && !!this.desktop && !locked && !this.suspended, !!(this.desktop && this.desktop.relockArmed));
       this.hud.showMenuBtn(play);
+      this.hud.showViewBtn(play);
       if (this.touchCtl) this.touchCtl.gate(this.gateArgs());
       if (this.rotate) this.rotate.update();
       this.hud.showVr(this.ready && play && !!xr && xr.supported && !xr.presenting);
@@ -72151,6 +72175,13 @@ void main() {
     /** Chat (Enter) und Emote (T): nur im Laufmodus; true = ein Handler (Modul net) hat die Taste verbraucht, sonst bleibt sie unberührt (1.15-Verhalten). */
     doChat(src = "key") {
       return this.canAct() && this.mods.action("chat", this.actionEvent("chat", src));
+    }
+    /** Ansicht wechseln (Taste V, HUD- und Gamepad-Knopf, 1.17.0): Ego/Außenansicht, nur wenn Handeln erlaubt ist. */
+    doView() {
+      const sv = this.modUse("selfview");
+      if (!sv || !this.canAct()) return false;
+      sv.toggle();
+      return true;
     }
     doEmote(src = "key") {
       return this.canAct() && this.mods.action("emote", this.actionEvent("emote", src));
@@ -72394,7 +72425,8 @@ void main() {
         this.engine.camera.updateMatrixWorld();
       }
       if (this.hands) {
-        this.hands.setVisible(!inXr && this.mode === "play" && !this.mods.cam);
+        const svm = this.modUse("selfview");
+        this.hands.setVisible(!inXr && this.mode === "play" && !this.mods.cam && !(svm && svm.mode && svm.mode() === "third"));
         if (!inXr) this.hands.update(dt);
       }
       if (inXr && xr.inCinema) {

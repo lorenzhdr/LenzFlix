@@ -49,7 +49,7 @@ const ZOOM_MIN = 1;
 const ZOOM_MAX = 3;
 
 export class TouchControls {
-  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?() (Schema 'game'), debug?: bool (Eingabe-Ringpuffer), touchApi?: 'pointer' (Plan B: Pointer statt Touch Events im Schema 'game') } */
+  /** @param {object} ctx { canvas, player, getMode(), onTap(x, y), onZoom?(z), getZoom?(), now?() → ms (Standard performance.now), getTune?() → Feineinstellung (normTune), scheme?: 'game' | 'touch' | 'joystick' (Klassen-Standard 'touch'; die App übergibt 'game'), padHost?, onJump?(), onUse?(), onHit?(), onThrow?(), onView?() (Schema 'game'; onView zeigt den Knopf „Ansicht“), debug?: bool (Eingabe-Ringpuffer), touchApi?: 'pointer' (Plan B: Pointer statt Touch Events im Schema 'game') } */
   constructor(ctx) {
     this.ctx = ctx;
     this.scheme = SCHEMES.includes(ctx.scheme) ? ctx.scheme : 'touch';
@@ -71,6 +71,7 @@ export class TouchControls {
       onUse: () => { if (c.onUse) c.onUse(); },
       onHit: () => { if (c.onHit) c.onHit(); },
       onThrow: () => { if (c.onThrow) c.onThrow(); },
+      onView: () => { if (c.onView) c.onView(); },
       debug: !!ctx.debug,
       api: ctx.touchApi,
     });
@@ -185,6 +186,7 @@ export class TouchControls {
         this.pad = createGamepad(host, { now: c.now });
         this.pad.setAimed(this.aimed);
         this.pad.setCarrying(this.carrying);
+        if (this.pad.setViewShown) this.pad.setViewShown(!!c.onView);
         this.padKind = 'game';
         this.game.attach(this.pad); // übernimmt den aktuellen Gate-Zustand
       }
