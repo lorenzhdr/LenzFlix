@@ -175,7 +175,7 @@ export function buildV2Parts(look, opts = {}) {
   const winterHat = !!(opts.winter && opts.winter.hat) && L.hat === 'none';
   const winterScarf = !!(opts.winter && opts.winter.scarf);
   const td = 0.23 + (['sweater', 'jacket', 'hoodie'].includes(L.topCut) ? 0.03 : 0);
-  const dsc = { v2: true, skin, top: L.top, bottom: L.bottom, shoes: L.shoe, hair: L.hair, sw, hw, td, ax, lx, lw, topCut: L.topCut, botCut: L.botCut, shoeModel: L.shoeModel, brows: L.brows };
+  const dsc = { v2: true, skin, top: L.top, bottom: L.bottom, shoes: L.shoe, hair: L.hair, sw, hw, td, ax, lx, lw, topCut: L.topCut, botCut: L.botCut, shoeModel: L.shoeModel, brows: L.brows, handBusy: !!opts.handBusy || L.bag === 'shopping' || L.bag === 'chips' };
   if (opts.detail) detailBody(P, dsc);
   if (winterScarf) winterBody(P, dsc);
   // Kopf, Hals

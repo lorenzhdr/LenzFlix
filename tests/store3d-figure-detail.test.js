@@ -207,3 +207,50 @@ describe('Modul ultra-figures (Registry-Key figures)', () => {
     expect(f.getDetail()).toBe(false);
   });
 });
+
+describe('Detail: Handgegenstand, Schürze/Streifen (1.19.0 Nachlese 2b)', () => {
+  const delta = (mk, setup) => {
+    const f = createFigure(mk());
+    if (setup) setup(f);
+    const a = verts(f);
+    f.setDetail(true);
+    const d = verts(f) - a;
+    return d;
+  };
+  for (const [name, mk] of [['v2', () => v2()], ['Alt-Look', () => oldLook()]]) {
+    it(`${name}: Handgegenstand lässt die Finger der rechten Hand weg, gleiche Mesh-Anzahl`, () => {
+      const free = delta(mk);
+      const held = delta(mk, (f) => f.setHandItem('whip'));
+      expect(held).toBeLessThan(free);
+      expect(free - held).toBeGreaterThanOrEqual(5 * 8); // 4 Finger + Daumen (Boxen)
+    });
+    it(`${name}: Schirm in der Hand: Detail ohne rechte Finger, Rückbau stellt sie wieder her`, () => {
+      const free = delta(mk);
+      const f = createFigure(mk());
+      f.setDetail(true);
+      const withFingers = verts(f);
+      f.setUmbrella(true);
+      expect(verts(f)).toBeLessThan(withFingers);
+      f.setUmbrella(false);
+      expect(verts(f)).toBe(withFingers);
+      expect(free).toBeGreaterThan(0);
+    });
+  }
+  it('Schirm ohne Detail ändert die Geometrie nicht (bitgleich, kein neuer Cache-Zweig)', () => {
+    const f = createFigure(v2());
+    const base = posCopy(f);
+    const size = figureCacheInfo().size;
+    f.setUmbrella(true);
+    expect(posCopy(f)).toEqual(base);
+    expect(figureCacheInfo().size).toBe(size);
+  });
+  it('Alt-Look mit Schürze: weder Knöpfe noch Gürtel; mit Streifen: keine Knöpfe, aber Gürtel', () => {
+    const plain = oldLook();
+    const mk = (over) => () => ({ ...plain, apron: null, stripe: null, ...over });
+    const dPlain = delta(mk({}));
+    const dStripe = delta(mk({ stripe: [0.9, 0.8, 0.2] }));
+    const dApron = delta(mk({ apron: [1, 0.85, 0.35] }));
+    expect(dStripe).toBeLessThan(dPlain);
+    expect(dApron).toBeLessThan(dStripe);
+  });
+});

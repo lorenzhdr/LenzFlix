@@ -90,7 +90,13 @@ describe('fx-logic (rein)', () => {
     expect(wetLevel({ raining: false }, WET_DRY_S / 2)).toBeLessThan(wetLevel({ raining: false }, 0));
     expect(wetLevel({ raining: false }, WET_DRY_S)).toBe(0);
     expect(wetLevel({ raining: false, snowing: true }, 10)).toBe(0);
-    expect(wetLevel({ raining: true, i: 1, cover: 0.8 }, 0)).toBe(0);
+    // Regen auf liegendem Schnee: nass, von der Schneedecke geschmälert; Schneefall bleibt 0
+    expect(wetLevel({ raining: true, i: 1, cover: 0.8 }, 0)).toBeCloseTo(0.2, 5);
+    expect(wetLevel({ raining: true, i: 1, cover: 0.8 }, 0)).toBeGreaterThan(0);
+    expect(wetLevel({ raining: true, i: 1, cover: 0.8 }, 0)).toBeLessThan(wetLevel({ raining: true, i: 1, cover: 0.1 }, 0));
+    expect(wetLevel({ raining: true, i: 1, cover: 1 }, 0)).toBe(0);
+    expect(wetLevel({ raining: false, cover: 0.5 }, 0)).toBeCloseTo(0.225, 5);
+    expect(wetLevel({ raining: false, snowing: true, cover: 0.5 }, 0)).toBe(0);
     expect(wetGlow('night')).toBeGreaterThan(wetGlow('day'));
   });
   it('Spiegelquellen aus dem Layout (Laternen, Fenster, Tür, Palast, Kiosk)', () => {

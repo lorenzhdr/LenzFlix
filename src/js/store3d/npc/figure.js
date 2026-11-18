@@ -84,10 +84,10 @@ function acquire(look, ego = false, item = null, fx = null) {
   // Gegenstand (1.18): eigener Cache-Zweig; in der Ich-Sicht (Arme weg) ohne Gegenstand. Ohne Gegenstand bleibt der Schlüssel unverändert (bitgleich).
   const useItem = item && !ego && HAND_ITEMS.includes(item) ? item : null;
   const key = lookKey(look) + (useEgo ? '|ego' : '') + (useItem ? '|h:' + useItem + (useItem === 'umbrella' ? ':' + itemColorKey(look) : '') : '')
-    + (useDetail ? '|d' : '') + (winter ? (winter.hat && winter.scarf ? '|w' : winter.hat ? '|wh' : '|ws') : '');
+    + (useDetail ? '|d' + (useItem || (fx && fx.umb) ? 'n' : '') : '') + (winter ? (winter.hat && winter.scarf ? '|w' : winter.hat ? '|wh' : '|ws') : '');
   let e = geoCache.get(key);
   if (!e) {
-    const g = bodyGeometry(look, useEgo, useItem, useDetail, winter);
+    const g = bodyGeometry(look, useEgo, useItem, useDetail, winter, !!(useItem || (fx && fx.umb)));
     e = { key, g, refs: 0, used: 0, topY: useEgo ? fullTopY(look) : maxY(g) };
     geoCache.set(key, e);
   }
@@ -134,8 +134,8 @@ function itemColorKey(look) {
 }
 
 /** Geometrie je Look (gemergt, mit Skin-Attributen), ungecacht. item: Gegenstand an der rechten Hand (im selben Mesh, Bone armR). */
-function bodyGeometry(look, ego = false, item = null, detail = false, winter = null) {
-  const parts = look.v === 2 ? buildV2Parts(look, { ego, detail, winter }) : oldParts(look, detail, winter);
+function bodyGeometry(look, ego = false, item = null, detail = false, winter = null, handBusy = false) {
+  const parts = look.v === 2 ? buildV2Parts(look, { ego, detail, winter, handBusy }) : oldParts(look, detail, winter, handBusy);
   if (item) parts[B.armR].push(...buildHandItem(look, item));
   const geos = Object.entries(parts).filter(([, list]) => list.length).map(([bi, list]) => skinned(list, Number(bi)));
   const g = merge(geos);
@@ -144,7 +144,7 @@ function bodyGeometry(look, ego = false, item = null, detail = false, winter = n
 }
 
 /** Teile des alten Pfads (Looks ohne v===2) – unverändert. */
-function oldParts(look, detail = false, winter = null) {
+function oldParts(look, detail = false, winter = null, handBusy = false) {
   const skin = look.skin;
   const parts = { [B.spine]: [], [B.head]: [], [B.armL]: [], [B.armR]: [], [B.legL]: [], [B.legR]: [] };
   const bottom = look.bottom;
@@ -204,7 +204,7 @@ function oldParts(look, detail = false, winter = null) {
     }
   }
   if (detail || winter) {
-    const dsc = { v2: false, skin, top: look.top, bottom, shoes: look.shoes, hair, sw: 0.42, hw: 0.4, td: 0.23, ax: 0.26, lx: 0.1, lw: 0.14, topCut: undefined, botCut: 'jeans', shoeModel: 'sneaker', brows: 'none' };
+    const dsc = { v2: false, skin, top: look.top, bottom, shoes: look.shoes, hair, sw: 0.42, hw: 0.4, td: 0.23, ax: 0.26, lx: 0.1, lw: 0.14, topCut: undefined, botCut: 'jeans', shoeModel: 'sneaker', brows: 'none', apron: !!look.apron, stripe: !!look.stripe, handBusy: handBusy || look.bag === 'shopping' };
     if (detail) { detailBody(parts, dsc); detailHead(hd, dsc, (w, h, d, x, y, color, p, rz) => faceBox(hd, w, h, d, x, y, color, p, rz)); }
     if (winter && winter.scarf) winterBody(parts, dsc);
     if (winterHat) winterHead(hd, dsc);
@@ -271,7 +271,7 @@ export function createFigure(look, hooks = {}) {
   const bArmR = mk(0.26, 1.36 - SPINE_Y, 0, bSpine);
   const bLegL = mk(-0.1, SPINE_Y, 0, bRoot);
   const bLegR = mk(0.1, SPINE_Y, 0, bRoot);
-  let fx = { detail: false, winter: null }; // 1.19.0 U4
+  let fx = { detail: false, winter: null, umb: false }; // 1.19.0 U4 (umb: Schirm in der Hand → Detail ohne Finger der rechten Hand)
   let handItem = typeof look.handItem === 'string' && HAND_ITEMS.includes(look.handItem) ? look.handItem : null;
   let entry = acquire(look, ego, handItem, fx);
   const mesh = new SkinnedMesh(entry.g, hooks.material || material());
@@ -316,6 +316,7 @@ export function createFigure(look, hooks = {}) {
       if (dir) { const l = Math.hypot(dir.x, dir.z) || 1; recoil = { x: (dir.x / l) * 1.6, z: (dir.z / l) * 1.6 }; }
     },
     setUmbrella(on) {
+      if (!!on !== fx.umb) { fx = { ...fx, umb: !!on }; if (fx.detail) swapGeo(); } // Cache-Schlüssel ändert sich nur mit Detail
       if (on && !umbrella) {
         if (!umbrellaMat) umbrellaMat = new MeshLambertMaterial({ vertexColors: true, side: DoubleSide });
         umbrella = new Mesh(umbrellaGeometry(look.umbrellaColor || [0.85, 0.2, 0.25]), umbrellaMat);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // VIDEOTHEK LENZ · Wetterzustand (1.19.0): Vorrangkette, Ableitungen, Winter-Hysterese; Modul daytime mit echtem Wetter (Fake-deps.weather, kein Netzwerk).
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Scene, PerspectiveCamera } from 'three';
 import { resolveWeather, coverFromDepth, precipIntensity, winterNext, RAINY } from '../src/js/store3d/weather/state.js';
 import { skyPalette } from '../src/js/store3d/modules/m4-util.js';
@@ -228,5 +228,96 @@ describe('daytime mit echtem Wetter (Fake-deps.weather)', () => {
   it('?rain=1 (Altparameter) bleibt Regen ohne echtes Wetter, ohne Thermometer', async () => {
     const { w } = await build({ opts: { rain: true } });
     expect(w).toMatchObject({ raining: true, real: false, temp: null });
+  });
+
+  describe('Nachlese 2b', () => {
+    let nowMs;
+    let spy;
+    const later = (ms) => { nowMs += ms; };
+    const refetch = () => { later(16 * 60 * 1000); host.hook('onSuspend'); host.hook('onResume'); };
+    const setup = (fn) => {
+      nowMs = Date.now();
+      spy = vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
+      return build({ weather: fn });
+    };
+    afterEach(() => { if (spy) spy.mockRestore(); });
+
+    it('Folgeabfrage ohne Ergebnis (null/Fehler): letzter echter Wert bleibt bis 2 h, danach Rückfall', async () => {
+      let n = 0;
+      const { w } = await setup(() => (++n === 1 ? Promise.resolve(real({ k: 'snow', i: 0.5, sd: 0.1, t: -3 })) : n === 2 ? Promise.resolve(null) : Promise.reject(new Error('x'))));
+      await flush();
+      expect(w).toMatchObject({ kind: 'snow', real: true, temp: -3 });
+      refetch(); // null
+      await flush();
+      expect(w).toMatchObject({ kind: 'snow', real: true, temp: -3 });
+      refetch(); // Fehler, 32 min alt
+      await flush();
+      expect(w).toMatchObject({ kind: 'snow', real: true });
+      later(2 * 3600 * 1000);
+      refetch(); // Fehler, > 2 h alt
+      await flush();
+      expect(w.real).toBe(false);
+      expect(w.temp).toBeNull();
+    });
+
+    it('neuer echter Wert ersetzt den alten und setzt die Frist neu', async () => {
+      let n = 0;
+      const { w } = await setup(() => Promise.resolve(++n === 1 ? real({ k: 'snow', sd: 0.1, t: -1 }) : n === 2 ? real({ k: 'clear', t: 4 }) : null));
+      await flush();
+      refetch();
+      await flush();
+      expect(w).toMatchObject({ kind: 'clear', temp: 4 });
+      later(100 * 60 * 1000);
+      refetch(); // null, aber nur 116 min seit dem letzten echten Wert
+      await flush();
+      expect(w).toMatchObject({ kind: 'clear', real: true });
+    });
+
+    it('während pending bleibt die Mehrspieler-Meldung unsichtbar; Antwort „klar“ lässt keinen Regen aufblitzen', async () => {
+      let res;
+      const { w } = await build({ weather: () => new Promise((r) => { res = r; }) });
+      const calls = [];
+      w.onChange((x) => calls.push(x.raining));
+      w.setRaining(true);
+      expect(w.raining).toBe(false);
+      res(real({ k: 'clear' }));
+      await flush();
+      expect(w.raining).toBe(false);
+      expect(calls).not.toContain(true);
+    });
+
+    it('während pending gemerkte Mehrspieler-Meldung gilt nach Antwort null', async () => {
+      let res;
+      const { w } = await build({ weather: () => new Promise((r) => { res = r; }) });
+      w.setRaining(true);
+      expect(w.raining).toBe(false);
+      res(null);
+      await flush();
+      expect(w.raining).toBe(true);
+      expect(w.real).toBe(false);
+    });
+
+    it('sinceWet: Regenende führt der Provider (jede Stufe), Regen = 0, vorher null', async () => {
+      let n = 0;
+      const { w } = await setup(() => Promise.resolve(++n === 1 ? real({ k: 'rain', i: 0.6 }) : real({ k: 'clear' })));
+      await flush();
+      host.hook('update', 0.1, 100);
+      expect(w.sinceWet()).toBe(0);
+      refetch();
+      host.hook('update', 0.1, 200);
+      await flush();
+      host.hook('update', 0.1, 260);
+      expect(w.raining).toBe(false);
+      expect(w.sinceWet()).toBeGreaterThanOrEqual(0);
+      expect(w.sinceWet()).toBeLessThanOrEqual(60);
+      host.hook('update', 0.1, 500);
+      expect(w.sinceWet()).toBeGreaterThan(100);
+    });
+
+    it('sinceWet ohne Regen seit Start: null', async () => {
+      const { w } = await build({ weather: () => Promise.resolve(real({ k: 'clear' })) });
+      await flush();
+      expect(w.sinceWet()).toBeNull();
+    });
   });
 });

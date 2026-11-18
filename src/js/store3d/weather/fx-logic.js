@@ -70,13 +70,14 @@ export const WET_DRY_S = 600;
 
 /**
  * Nasse Straße (Ultra): Stärke 0..1. Regen (raining) 0,45 + 0,55·i; nach Regenende klingt es über 10 min linear ab
- * (sinceRain = Sekunden seit dem Ende, null = kein Regen bekannt); bei Schnee 0 (liegt Schnee, ist nichts nass).
+ * (sinceRain = Sekunden seit dem Ende, null = kein Regen bekannt); bei Schneefall 0; liegender Schnee (cover) schmälert die Nässe um (1 − cover), Regen auf Schnee bleibt also teils nass.
  */
 export function wetLevel(state, sinceRain) {
-  if (!state || state.snowing || state.cover > 0.05) return 0;
-  if (state.raining) return Math.min(1, 0.45 + 0.55 * (fin(state.i) ? state.i : 0.6));
+  if (!state || state.snowing) return 0;
+  const open = fin(state.cover) ? 1 - Math.min(1, Math.max(0, state.cover)) : 1; // liegender Schnee deckt Pfützen teilweise zu
+  if (state.raining) return Math.min(1, 0.45 + 0.55 * (fin(state.i) ? state.i : 0.6)) * open;
   if (!fin(sinceRain) || sinceRain < 0 || sinceRain >= WET_DRY_S) return 0;
-  return 0.45 * (1 - sinceRain / WET_DRY_S);
+  return 0.45 * (1 - sinceRain / WET_DRY_S) * open;
 }
 
 /** Tageszeit-Faktor der Spiegelungen: nachts deutlich, tagsüber dezent. */
