@@ -58,6 +58,7 @@ Die Hülle lädt es per `core/themejs.js` (`ensureThemeJs('store')`, Basis wie `
   // Daten (Katalog vorab von der Hülle geladen und eingeteilt, siehe unten)
   catalog: Catalog,
   user: { name: string },                     // Profilname (Kassierer-Sprüche)
+  profile?: Profile-Handle,                   // 1.17.0 Konto-Profil (Figur, Ausweis, Entdeckungen), nur mit Jellyfin-Benutzer; fehlt = keine eigene Figur, siehe „Figur, Ausweis, Salon (1.17.0)“ → „Konto-Profil“
   imageUrl(id, { type = 'Primary', maxWidth, maxHeight, tag, quality }) → string,  // ohne api_key, same-origin
   getItem(id) → Promise<Item>,                // volle Details (Overview, People, …)
   getSeasons(seriesId) → Promise<Item[]>,
@@ -165,6 +166,7 @@ Regeln (gemessen auf dem Entwicklungs-Server: 674 Filme, 157 Serien; Freigaben `
 
 - Desktop (`!opts.touch`): Klick auf Canvas → Pointer-Lock. WASD/Pfeile laufen, Maus schaut, Shift rennt,
   E/Linksklick nimmt die anvisierte Hülle (Fadenkreuz), Leertaste springt, F schlägt, G wirft/hebt auf, M im Halte-Bild nimmt die Hülle mit (Tragen, siehe „Open World“),
+  V (seit 1.17.0) wechselt Ich-/Außenansicht (`ACTIONS.KeyV` → `onView` → `StoreApp.doView()` → `selfview.toggle()`, nur wenn Handeln erlaubt ist; Touch: Knopf „Ansicht“ `.lfx-store-viewbtn` in `ui/hud.js`, im Schema `game` stattdessen `.lfx-store-gp-view` im Gamepad, Standard versteckt).
   Esc/Lock-Verlust → Pause-Menü. Leertaste/F/G nur im Modus `play` abgefangen (in Menüs bleibt die Leertaste für Knöpfe), nur bei Pointer-Lock oder `dragLook`, `repeat` ignoriert; die Relock-Taste führt die Aktion nicht zusätzlich aus. ctx-Rückrufe von `desktop.js`: `onJump`, `onHit`, `onThrow`, `onCarry`, `onTake('click'|'key')`. Tasten nur während
   der Szene aktiv ist, im Capture-Listener mit `stopPropagation()` (Jellyfins globale Tastenkürzel dürfen nichts sehen),
   nie in `input`/`textarea`. Kein Kopfwippen, weiche Beschleunigung.
@@ -218,12 +220,13 @@ export default { name: 'beispiel', init(ctx) { …; return { update(dt, t) {}, o
 
 `ctx`:
 - `scene, camera, renderer, layout, catalog, deps, opts, isPhone, isTouch`, `quality()` → `'low'|'mid'|'high'`, `soundOn()`.
-- `layout.zones[id] = { id, label, x, z, yaw, rect:{x0,z0,x1,z1,y0?,y1?}, reserved? }`: Laden `entrance, register (+counter), cashier, reserve, returns, snack, tv, staff, window, window2, kids, adult, dept:<id>`; Stadt `store, street, sidewalkN, sidewalkS, road, crossing, sideN, sideS, doorway, theft, alley, yard, escape, roof, kiosk, palast, palastFoyer, palastHall, palastEntrance`. `rect.y0/y1` sind optional (Dach `y0 3,0`; Ladenzonen `y1 2,6`; `checkZones` liest `y0/y1`, nicht `yMin/yMax`). Jede Zone braucht `x/z/yaw/label` (sonst wirft `__lfxStore.zones()`). Reservierte Zonen sind frei von Regalen; Kollider legen die Module an.
+- `layout.zones[id] = { id, label, x, z, yaw, rect:{x0,z0,x1,z1,y0?,y1?}, reserved? }`: Laden `entrance, register (+counter), cashier, reserve, returns, snack, tv, staff, window, window2, kids, adult, dept:<id>`; Stadt `store, street, sidewalkN, sidewalkS, road, crossing, sideN, sideS, doorway, theft, alley, yard, escape, roof, kiosk, palast, palastFoyer, palastHall, salon (1.17.0, Label „Friseur“), palastEntrance`. `rect.y0/y1` sind optional (Dach `y0 3,0`; Ladenzonen `y1 2,6`; `checkZones` liest `y0/y1`, nicht `yMin/yMax`). Jede Zone braucht `x/z/yaw/label` (sonst wirft `__lfxStore.zones()`). Reservierte Zonen sind frei von Regalen; Kollider legen die Module an.
 - `layout.bounds` ist seit 1.15.0 die **Weltgrenze**, nicht mehr der Laden. Den Laden liefern `layout.zones.store.rect` bzw. `0..w × 0..d`.
 - `addCollider(rect, { dynamic? })` / `moveCollider(rect, x0, z0, x1, z1, y0, y1)` / `removeCollider(rect)`: `rect = {x0,z0,x1,z1,kind?,y0?,y1?,top?}` (Höhen siehe „Kollision mit Höhen“); statisch wirkt auf Spielerkollision und A*-Raster (Neuaufbau im nächsten Frame, nur wenn `navBlocks(rect)`), `dynamic: true` liegt nur in `layout.dyn` und nie im Raster. Module im Laden ohne `y1` bekommen automatisch `y1 = layout.ceilH` (das Dach bleibt begehbar); eigene Welt-Kollider setzen `y1` selbst. Nie von Hand mutieren (Hash veraltet), immer `moveCollider`.
-- `addInteractable({ box, label, hint, onUse, enabled?, anyHeight? })` → `remove()`; `box` = `THREE.Box3` oder `{min,max}` in Weltkoordinaten. Wie eine Hülle: Fadenkreuz-Hint (`label`/`hint`), E/Klick (Reichweite 2,5 m), Touch-Tippen läuft hin und ruft `onUse()`. Ohne `anyHeight` nur am Boden benutzbar (Füße ≤ 0,5 m). Verdeckende Wände zählen beim Anvisieren (`controls/pick.js`: `wallOccluders` nur `kind` `wall` und Gebäude; Requisiten, Regale, Tresen, Türen, Kisten und Autos (`NOT_WALL`) verdecken ihre eigene Box nie).
-- `player.getPose()` → `{ x, z, yaw, pitch, y }`, `teleport(x,z,yaw,pitch?,y?)`, `walkTo(x,z,{face})` → `Promise<bool>` (`face` = yaw oder `{x,z}`), `lookAt(x,y,z,ms)` → `Promise`, `freeze(bool)`, `player.camera.flyTo(pos,target,ms)` → `Promise<bool>`, `player.camera.release()`; neu `jump()` → bool (in VR immer false), `knock({x,z,up}, strength = 1)` → bool (in VR wirkungslos), `eyeY()`, `getY()`, `isGrounded()`.
-- `overlay.open(el, {onClose})` (hängt in host, gibt Pointer-Lock frei, Esc schließt, sperrt Spielereingabe), `overlay.close()`, `overlay.isOpen()`.
+- `addInteractable({ box, label, hint, onUse, enabled?, anyHeight?, noClick? })` → `remove()`; `box` = `THREE.Box3` oder `{min,max}` in Weltkoordinaten. Wie eine Hülle: Fadenkreuz-Hint (`label`/`hint`), E/Klick (Reichweite 2,5 m), Touch-Tippen läuft hin und ruft `onUse()`. Ohne `anyHeight` nur am Boden benutzbar (Füße ≤ 0,5 m). `noClick: true` (1.17.0, `runtime.js` Z. 115, `store.js` `doUse`): Bei `src === 'click'` wird die Interaktion übersprungen, der Linksklick läuft weiter zu `doHit` (Schlag); nur E/Touch lösen aus. Gedacht für Interaktionen an Personen („Ausweis ansehen“), damit ein Schlag nie ein Fenster öffnet. Verdeckende Wände zählen beim Anvisieren (`controls/pick.js`: `wallOccluders` nur `kind` `wall` und Gebäude; Requisiten, Regale, Tresen, Türen, Kisten und Autos (`NOT_WALL`) verdecken ihre eigene Box nie).
+- `player.getPose()` → `{ x, z, yaw, pitch, y }`, `teleport(x,z,yaw,pitch?,y?)`, `walkTo(x,z,{face})` → `Promise<bool>` (`face` = yaw oder `{x,z}`), `lookAt(x,y,z,ms)` → `Promise`, `freeze(bool)`, `player.camera.flyTo(pos,target,ms)` → `Promise<bool>`, `player.camera.release()`, `player.camera.setRig(fn | null)` (1.17.0: `fn(camera, dt)` läuft nach `player.applyCamera`, aber nur, wenn KEIN `flyTo`/Modul-Kamera aktiv ist; gibt sie `true` zurück, hat sie die Kamera gesetzt; ein Rig, ein Besitzer: `selfview`; wirft das Rig, wird es verworfen); neu `jump()` → bool (in VR immer false), `knock({x,z,up}, strength = 1)` → bool (in VR wirkungslos), `eyeY()`, `getY()`, `isGrounded()`.
+- `overlay.open(el, {onClose, modal?, escape?})` (hängt in host, gibt Pointer-Lock frei, Esc schließt, sperrt Spielereingabe), `overlay.close()`, `overlay.isOpen()`. Seit 1.17.0 schließt Esc das Overlay nicht, wenn `modal: true` oder `escape: false` gesetzt ist (`runtime.js` `overlayOpen`, Feld `escape`); dann beendet nur der Besitzer per `overlay.close()` (Pflicht-Gate „Mitgliedsantrag“). In VR gibt es kein DOM-Overlay: Toast „In VR noch nicht verfügbar“ und `onClose` per Microtask.
+- `stage` (1.17.0): `stage.setScene(scene | null)` wechselt die gerenderte Szene (`null` = Laden-Szene `engine.storeScene`), `stage.isStore()` meldet, ob die Laden-Szene aktiv ist. Muster wie das VR-Kino (`cinema/cinema.js`); die Kamera-Rig-Gruppe hängt in `storeScene` und muss beim Wechsel mit umgehängt werden (`avatar.js` `stageOn`/`stageOff`). Spiegel und `selfview` prüfen `isStore()` (Auto-Ego bzw. matt, solange eine fremde Bühne läuft).
 - `items.take(id, {from:'shelf'|'counter'})`, `items.slotOf(id)` → `{x,y,z,dept,face,run,stand}|null`, `items.highlight(id,on)`; Tragen: `items.carried()` → `{ id, item } | null`, `items.carry(id)` → bool (false in VR/unbekannt), `items.drop()` (zurück ins Regal), `items.release()` → `{ id, item, art, media } | null` (Werfen: Hand leer, Fach bleibt versteckt), `items.restore(id)` (Fach wieder sichtbar). (`setBadge` ist nicht umgesetzt.)
 - `input.onAction(name, fn, { prio = 0 }) → off`; `name` = `'use' | 'hit' | 'throw'`, `fn(ev) → true` = verbraucht; `ev = { name, source: 'key'|'click'|'touch', aim, origin: Vector3, dir: Vector3 }` (bei `throw` zusätzlich `ev.carried`). Reihenfolge `prio` absteigend, dann Anmeldereihenfolge; erster `true`-Wert beendet, Ausnahmen blockieren die anderen nicht, danach `emit(name, ev, consumed)` als Beobachter.
 - `on(event, fn)` → `off()`; Events `'enter'`, `'take'(id)`, `'put'(id)`, `'play'(item,{resume})`, `'zone'(zoneId)`, `'zoneExit'(zoneId)`, `'frame'(dt,t)`, `'xr'(on)`; neu `'hit'`/`'throw'(ev, consumed)`, `'jump'({x,y,z})`, `'land'({impact})`, `'carry'({ id } | { id: null })`, `'leave'` / `'return'` (Innenraum `zones.store` verlassen/betreten, Höhe zählt: Dach = draußen; Takt 200 ms, Erstbestimmung ohne Ereignis).
@@ -255,23 +258,29 @@ Interactable „Sofa“ (E / Klick / Touch-Tipp) setzt den Spieler vor den Röhr
 - Pause-Menü „Vollbild“ nur auf Touch-Geräten (Callbacks `onFullscreen()`, `getFullscreen()`, `fullscreenKind()` → `'api'|'guide'|'none'`; bei `none` ausgeblendet). `api` (Android, iPad): Fullscreen-API am `documentElement`. `guide` (iPhone-Safari, nicht standalone): Panel `.lfx-store-fs-guide` mit Anleitung „Zum Home-Bildschirm → Als Web-App öffnen“. Standalone/Desktop: kein Knopf (Desktop: F11; Esc würde Vollbild und Pointer-Lock zugleich beenden).
 - Wisch-Trick (experimentell, nur iPhone-Safari, nicht standalone, Querformat, Modus `play` ohne Modul-Sperre, Leiste sichtbar = `innerHeight < min(screen.w, screen.h) − 24`): `html.lfx-store-swipe` hebt `overflow:hidden` auf, `div.lfx-store-swipe-spacer` am `body` macht die Seite scrollbar, Overlay `.lfx-store-swipe-hint` am `body` („Nach oben wischen für Vollbild“). Erfolg = Leiste weg oder `scrollY > 0` → Overlay weg, Klasse/Spacer bleiben. Wiederanzeige höchstens 2× pro Sitzung (`sessionStorage lfx.store.swipeShown`), „×“ = für die Sitzung aus. Hochformat/suspend/dispose räumen alles ab (`scrollTo(0,0)`). Einmaliger Home-Bildschirm-Tipp per `hud.note` (`localStorage lfx.store.fsTip.<user>`).
 
-### Provider und Module (Stand 1.15.0)
+### Provider und Module (Stand 1.17.0)
 
-Reihenfolge in `MODULES` (`modules/index.js`; Provider müssen vor ihren Nutzern stehen, fremde Provider trotzdem erst bei Gebrauch holen): `sound, city, door, intro, daytime, props, throw, cashier, brawl, rent, snack, tv, npc, traffic, kiosk, palast, terminal, returns, reserve, staff, showcase, discover`. `city` stellt `areas`/`city` vor allen Nutzern bereit; `npc` → `traffic` → `kiosk` (Kiosk braucht `npc`); `palast` nach `city`; `discover` zuletzt (braucht Dachgruppe und Wetter).
+Reihenfolge in `MODULES` (`modules/index.js`; Provider müssen vor ihren Nutzern stehen, fremde Provider trotzdem erst bei Gebrauch holen): `sound, city, door, intro, daytime, props, throw, cashier, brawl, rent, snack, tv, npc, traffic, kiosk, palast, terminal, returns, reserve, staff, showcase, discover, avatar, member, selfview, shopmirror, salon, xrchar, net`. `city` stellt `areas`/`city` vor allen Nutzern bereit; `npc` → `traffic` → `kiosk` (Kiosk braucht `npc`); `palast` nach `city`; `discover` vor den Figur-Modulen (`avatar` liest die Entdeckungen für die Freischaltungen); die Figur-Module (1.17.0) stehen vor `net`, das als letztes bleibt. Ihre Provider holen sie untereinander und aus älteren Modulen erst bei Gebrauch (`ctx.use('x')?.…`).
 
 | Provider | Form | Modul | Zweck |
 |---|---|---|---|
 | `terminal` | `{ open(q) }` | `modules/terminal.js` | Kassen-PC (Overlay mit Suche, Hinführen, „Über den Tresen“); `instance.openTerminal(q)` delegiert hierher, sonst Toast. Ergebnisse werden clientseitig mit `modules/search-rank.js` gerankt (exakt > beginnt mit > Wortanfang > enthält > Rest; Rest entfällt ab 5 Titeltreffern). Die Auswahl per Pfeiltasten (Fokus bleibt im Suchfeld) wird über eine eigene unsichtbare Live-Region (`role="status"`) angesagt. |
 | `intro` | `{ run() → Promise }` | `modules/intro.js` | Rollladen-Intro von draußen; öffnet die echten Türflügel `lfx-door-left`/`lfx-door-right`. Läuft nur ohne `opts.skipIntro`/`restore`/`openItemId`/`openTerminal`. |
 | `sound` | `{ play(name, opts), ambient(on), duck(key, on) }` | `modules/sound.js` | Web-Audio (synthetisch); folgt `onSound(on)` und `ctx.soundOn()`. Startwert `opts.sound` (Standard an); der Pause-Menü-Schalter ruft `setSound` → Module `onSound` + `deps.onPrefs`. `duck`: Set aktiver Schlüssel, stärkste Dämpfung gilt (`'tv'` ×0,12, `'talk'` ×0,45); `duck(bool)` = `duck('tv', bool)`. Lautlos-Schalter am iPhone wird respektiert (kein `navigator.audioSession`). |
-| `cashier` | `{ event('couchSit'\|'couchStand'), voiceInfo(), richard() }` | `modules/cashier.js` | Kassierer Richard: erzwungene Zeile als Blase (auch über offenem Overlay); `richard()` = Hand für `brawl` (siehe „Richard wehrt sich“). |
+| `cashier` | `{ event('couchSit'\|'couchStand'), voiceInfo(), richard(), speaker(opts) }` | `modules/cashier.js` | Kassierer Richard: erzwungene Zeile als Blase (auch über offenem Overlay); `richard()` = Hand für `brawl` (siehe „Richard wehrt sich“); `speaker(opts)` = Sprecher-Regie für Personen (1.17.0, siehe „Figur, Ausweis, Salon“). |
 | `couch` | `{ seated() }` | `modules/tv.js` | Solange man sitzt, spricht Richard nicht von sich aus. |
 | `weather` | `{ tod: 'day'\|'dusk'\|'night', raining, hour?, lampsOn, sheltered(x, z, y) }` | `modules/daytime.js` | Tageszeit/Regen für Kulisse und Stimmung; andere Module lesen sie (`ctx.use('weather')`). `lampsOn` = nicht am Tag, `sheltered` = Laden, Palast, unter dem Vordach. |
 | `areas` | `{ current(), at(x,z,y), on(fn(id, prev)) → off }` | `modules/city.js` | Bereich des Spielers (`areaAt`), Prüfung alle 0,15 s. |
 | `city` | `{ data, groups, signals(), visible(), partition() }` | `modules/city.js` | Stadt, Ampeluhr, Sichtbarkeit; Details „Open World“. |
 | `door` | `{ override(v\|null), open(sec), lock(sec)/unlock()/isLocked(), registerActor(fn) → remove, amount(), onChange(fn) → off }` | `modules/door.js` | Automatiktür samt Hausverbot-Sperre. |
 | `physics` | `{ spawn, hitTest, bodiesNear, count, pickable, hold, launch, hoopState, … }` | `modules/props.js` | Objekte, Werfen, Korb. |
-| `npc` | `{ figure, staff, nearestPerson, people, registerPerson, say, scare }` | `modules/npc.js` | Passanten, Personal, Tiere. |
+| `npc` | `{ figure, staff, nearestPerson, people, registerPerson, say, scare, reserve(n, key = 'net'), overflow() }` | `modules/npc.js` | Passanten, Personal, Tiere. `reserve(n, key)` belegt `n` Figuren-Slots (Passanten sinken um die Summe aller Schlüssel; `n <= 0` löscht den Schlüssel, höchstens 64); Schlüssel `net` (Mitspieler, `net/peers.js`) und `self` (Außenansicht, `selfview`). `overflow()` = `max(0, Summe − aktuelle Passanten-Höchstzahl)`; `peers.js` senkt damit sein Figurenlimit um den fremden Überlauf (ohne den eigenen Anteil, sonst schwingt es). Die Passanten sinken höchstens auf 0. |
+| `avatar` | `{ look(), code(), slots(), active(), setSlot(i), needsGate(), gate(), openEditor(where, focus?, { live? }), onChange(fn), onPreview(fn), hash(), changedFor(npc), changeKind(npc), markSeen(npc), lastChange(), portrait(code), setCode(code, { commit }), randomize({ commit }), setColor(part, idx) }` | `modules/avatar.js` | Eigene Figur: Konto-Profil, Gate, Editor, Studio; siehe „Figur, Ausweis, Salon (1.17.0)“. |
+| `member` | `{ cardData(), ensure(), showCard(data, { mode, ms? }), count(kind, itemId) }` | `modules/member.js` | Mitgliedsausweis und Zähler. |
+| `selfview` | `{ mode(), setMode(m), toggle(), eye(out), figure(), playAnim(name) }` | `modules/selfview.js` | Eigener Körper, Außenansicht (V). |
+| `salon` | `{ busy(), inside(), sitting() }` | `modules/salon.js` | Friseursalon FRISEUR HAARSCHARF. |
+| `shopmirror` | – (keine öffentliche API) | `modules/shopmirror.js` | Überwachungsspiegel über der Ladentür. |
+| `xrchar` | `{ open() → bool }` | `modules/xrchar.js` | „VR light“-Figurpanel (nur in VR). |
 | `traffic` | `{ zebraClear(edge), cars(), parked() }` | `modules/traffic.js` | Autos. |
 | `brawl` | `{ state(), isBanned(), canTalk(), hitBy(source, dir?), getNetState(), applyRemote(net) }` | `modules/brawl.js` | Richards Streit. |
 | `rent` | `{ isRented(id), rent(id), tryRent() }` | `modules/rent.js` | Ausleihen, Diebstahlsicherung. |
@@ -312,10 +321,10 @@ Weltgröße bei W = 12,5, D = 18 rund 72 × 71 m. `layout.bounds` ist die **Welt
 `buildCity`-Schema (kompakt):
 - `buildings[]` `{ id, x0, z0, x1, z1, h, region, color, front }` (Quader, zugleich Kollider `kind:'building'`); `colliders[]`, `zones{}`, `bounds`, `frame`, `signalCycle`.
 - `palast`: Hülle als Daten (`rect`, `wall` 0,25, `h` 8,5, Tür 3 m bei `W/2`, `foyer` (Decke 4), `hall` (Decke 7,5), `hallDoors[2]`, `screen`, `seatBlock`, `canopy`, `posterSlots[4]`, `sign`, optional `staff.ticket|popcorn = { x, z, yaw }`). Das Vordach ist bewusst nicht begehbar.
-- `spawns`: `shop, street, palast, yard, kiosk, alley, roof` (nur `roof` mit `y 3,3`).
+- `spawns`: `shop, street, palast, salon, yard, kiosk, alley, roof` (nur `roof` mit `y 3,3`; `salon` seit 1.17.0).
 - `sidewalkPaths[]` `{ id, pts, waits }` (`waits[i]` ∈ `null|'main'|'side'|'mid'` für Strecke `i→i+1`): `walkN, walkS, crossW, crossE, crossMid`, Stichleitungen `shopDoor, palastDoor, alleyMouth, kioskFront`. Passanten laufen nie per A*; Fußwege liegen mindestens 0,45 m neben festen Dingen.
 - `lanes[]` (`mainW, mainE, sideS, sideN`: `{ dir, z|x, from, to, speed, stop:{ at, axis, signal }, yields }`): Autos sind rein kinematisch und **keine** Rasterkollider. Außerdem `zebras`, `signals` (Ampelmasten), `lights` (Laternen), `signs` (nur „LENZ PALAST“, „KIOSK“, „HINTERHOF“, „LENZSTRASSE“, „BAHNWEG“), `shopFronts[]` (sieben erfundene Läden), `litfass`, `discoverSlots`, `propSlots` (`ball|crate|can|cone|box`), `kiosk { hut, counter, vendor, awning, table }`, `yard { …, hoop, graffiti, laundry }`, `escape` (Feuertreppe), `roof { …, y 3,3, gate }`, `doorPosts[2]`, `doorBlock`.
-- Rein: `signalAt(t)` (Ampel, Zyklus 24 s: main grün [0; 10), gelb [10; 11,5); side grün [12; 18,5), gelb [18,5; 20); nie beide grün; dazu `walkMain`/`walkSide`), `areaAt(layout, x, z, y)` → `roof, escape, palastHall, palastFoyer, shop, doorway, yard, alley, kiosk, palastEntrance, crossing, sideN, sideS, street, outside` (`AREAS`; Regen fällt in `OUTDOOR_AREAS`), `visibleGroups`, `resolveRestore`, `standSurfaces`.
+- Rein: `signalAt(t)` (Ampel, Zyklus 24 s: main grün [0; 10), gelb [10; 11,5); side grün [12; 18,5), gelb [18,5; 20); nie beide grün; dazu `walkMain`/`walkSide`), `areaAt(layout, x, z, y)` → `roof, escape, palastHall, palastFoyer, salon, shop, doorway, yard, alley, kiosk, palastEntrance, crossing, sideN, sideS, street, outside` (`AREAS`; Regen fällt in `OUTDOOR_AREAS`), `visibleGroups`, `resolveRestore`, `standSurfaces`.
 
 Modul `city` (`modules/city.js`, nach `sound`): baut dauerhaft Fassade (`buildFacade(out, { shutter })` → `{ group, setShutter, dropShutter, flicker, … }`; das Intro nutzt nur `setShutter(1)`/`dropShutter()`, nie `dispose()`), Stadt, Nebel und die Provider `areas`/`city`. Gruppen in `out.group`: `city-street`, `city-palast` (Hülle), `city-yard` (Hof, Gasse, Feuertreppe, Dach, Außenhaut des Ladens), `city-palast-interior`. Tageszeit über `out.hooks` (Neon-Flackern nur nachts und ohne `prefers-reduced-motion`, deterministisch).
 
@@ -448,7 +457,7 @@ Treffer in `throw/chase/banned` zählen nicht, in `grudge` springt Richard sofor
 - Schlagen (`hit`, prio 10): Kegel ±25° in XZ, 1,6 m, Höhenband −0,15…+2,1 m ab den Füßen, Impuls in Blickrichtung plus leicht nach oben, Nachbarn < 0,4 m bekommen einen halben Stoß; `thud`/`clang`.
 - Werfen (`throw`, prio 10): Hülle in der Hand → `ctx.items.release()` → Körper `tape` (Cover als Textur, 9 m/s nach vorn-oben), liegt nach der Landung flach, nach 6 s zurück ins Regal (`items.restore(id)`); E in 1,8 m Abstand hebt sie wieder auf. Hand leer: 1. G hebt ein aufhebbares Ding in 1,2 m auf, 2. G wirft (8,5 m/s), E legt ab. Wurftreffer (> 3 m/s, einmal je Ziel und Wurf): Richard über `brawl.hitBy('object', dir)` (Trefferzone um Richards echte Position, Radius 0,9 m, Höhe `pos.y .. pos.y + 2,1`; ohne `cashier`-Provider feste Zone an der Kasse), Passanten über `npc.nearestPerson(x, z, 0,55).handle.hitReact(dir)`; fehlende Provider werden still übergangen. VR-Start legt alles ab bzw. zurück.
 - Basketballkorb: Anker `city.yard.hoop { x, y, z, yaw, mast, board, ringR }` (Ringmitte `y 3,05`); Mast, Brett, Ring und Netz zeichnet `city`, Kollider `hoopMast` und `hoopBoard` (`y0 2,825`, `y1 3,875`, `top:false`); die Physik liefert nur die Trefferlogik (Ball kreuzt die Ringebene von oben nach unten im Ring); fehlt der Anker, baut `props.js` einen Rückfall-Korb. Serie: Fehlwurf setzt zurück, 3 in Folge → `hoop-3`; Anzeige am Mast, SFX `swish` + `cheer`. Dosen-Pyramide umgeworfen → `can-pyramid`.
-- SFX (`sound.js`, synthetisch; `sound.play(name)`): `thud, bounce, whoosh, swish, cheer, clang, alarm, honk, purr, meow, flap, oof, buy, munch, discover, doorbell`.
+- SFX (`sound.js`, synthetisch; `sound.play(name)`): `thud, bounce, whoosh, swish, cheer, clang, alarm, honk, purr, meow, flap, oof, buy, munch, discover, doorbell`; seit 1.17.0 zusätzlich `flash` (Fotoblitz, Gate), `stamp` (Stempel, Gate), `curtain` (Umkleidevorhang) und `snip` (Schere; definiert, bisher ohne Aufrufer).
 
 ### Figuren und Verkehr (`npc/*`, `modules/npc.js`, `traffic.js`, `kiosk.js`)
 
@@ -477,6 +486,7 @@ Treffer in `throw/chase/banned` zählen nicht, in `grudge` springt Richard sofor
 | `city-street` | immer außer `palastHall` |
 | `city-yard` | Bereich `yard/alley/escape/roof`, oder draußen < 16 m am Gassenmund (nie drinnen) |
 | `city-palast-interior` | Bereich Palast, oder Abstand zur Palast-Tür < 12 m und davor (nicht im Laden); der Saal (`hall.root`) nur in Foyer/Saal |
+| `city-salon-interior` (1.17.0) | Bereich `salon`, oder < 12 m vor der Salontür (`z < sa.door.z`, nicht im Laden) |
 | `city-palast` | immer |
 
 - Zusätzlich (`modules/city.js`): von draußen werden Ladenhülle und Regale nur gezeichnet, wenn Tür oder Schaufenster im Bild sind (bei `low` Regale nur bis 2,2 m vor der Front, einzelne Regale jenseits 11 m nicht); Straßen-Detailmeshes entfallen bei `low` im Laden und im Hof bei jeder Qualität; `area` wird vor `applyVisibility()` gesetzt. Der Cover-Manager ruht, wenn der Spieler > 25 m südlich vom Laden steht.
@@ -531,6 +541,216 @@ Im LENZ PALAST wählt man am Platz „Mitschauen“ oder den eigenen Film. Alle 
 - Zwei-Seiten-Test: `?mp=relay&relay=<port>&name=<N>[&admin=1]` mit echtem WebSocket zum Dev-Relay `build/mp-dev/relay.mjs` (Node, echter Reducer, kein Cloudflare).
 - Debug: `window.__devMp` (Fake-Welt bzw. Relay-Prefs), `window.__devNet`, `window.__devFigs`; mit `__lfxStoreDebug` zusätzlich `__lfxStore`.
 - Kino: `?cinema=1|series|fail|paused|slow` (Fake-Player) und `?subs=srt|ass|off`, `?palast=1` für das 2D-Kino; zusammen mit `?mp=…` lässt sich das gemeinsame Kino im Harness prüfen.
+
+## Figur, Ausweis, Salon (1.17.0)
+
+Release „eigene Figur“: Jeder legt am Anfang einen Mitgliedsantrag an (Figur-Editor im Foto-Studio), sieht sich in der Ich-Ansicht (Beine beim Blick nach unten, Spiegel) oder per Taste V in der Außenansicht, bekommt einen Mitgliedsausweis mit Zählern, kann im Friseursalon FRISEUR HAARSCHARF (Gabi und Ronny) Haare und Outfit ändern und wird von anderen Spielern mit der eigenen Figur gesehen. Das Wire-Protokoll (Fähigkeit `look`) steht in `docs/mp-api.md`. Alles Zustandsbehaftete (Konto-Profil, Mehrspieler-Prefs) kommt über `deps` aus der Hülle; das 3D-Bundle importiert weiter nichts aus `core/`/`shared/`/`features/`. Ohne Konto-Profil (`deps.profile` fehlt) gibt es weder Gate noch eigene Figur: `avatar.code()` ist `null`, „Figur …“ und „Mitgliedsausweis“ im Pause-Menü sind ausgeblendet, `selfview.figure()` ist `null`.
+
+### Look v2 (`char/ids.js`, `char/look2.js`)
+
+Zwei Darstellungen derselben Figur: der **Look-Code** (Leitung, Speicher) und der **Render-Look** (Figuren-Fabrik). Reine Dateien ohne `three`/DOM; Zufall nur über eine übergebene Funktion.
+
+- **Look-Code:** Int-Array der Länge 26 (`LEN`), Index 0 = Version (`VERSION` = 2). Die Feldindizes stehen als `F` in `look2.js`.
+
+| Index | Feld (`F.…`) | Wertebereich |
+|---|---|---|
+| 0 | Version (`ver`) | 2 |
+| 1 | Haut (`skin`) | 0..13 (`SKIN`, 14 Töne, keine eigene Farbe) |
+| 2 | Größe (`height`) | 0..20 → 0,90..1,10 |
+| 3 | Statur (`build`) | 0..20 → 0,85..1,25 |
+| 4 | Form (`shape`) | 0..2 (`straight`, `shoulders`, `hips`) |
+| 5 | Frisur (`hairStyle`) | `HAIR_STYLES` (18; 0–4 = die alten Passanten-Frisuren in alter Reihenfolge) |
+| 6 | Haarfarbe (C) | `HAIR_COLORS` |
+| 7 | Augen (`eyes`) | `EYES` (6) |
+| 8 | Brauen (`brows`) | `BROWS` (5) |
+| 9 | Bart (`beard`) | `BEARDS` (6) |
+| 10 | Oberteil-Schnitt (`topCut`) | `TOP_CUTS` (10) oder Freischalt-Code |
+| 11 | Oberteil-Farbe (C) | `CLOTH_COLORS` |
+| 12 | Oberteil-Muster (`topPattern`) | `TOP_PATTERNS` (6) |
+| 13 | Oberteil-Farbe 2 (C) | `CLOTH_COLORS` |
+| 14 | Hosen-Schnitt (`botCut`) | `BOTTOM_CUTS` (6) oder Freischalt-Code |
+| 15 | Hosen-Farbe (C) | `CLOTH_COLORS` |
+| 16 | Hosen-Muster (`botPattern`) | `BOTTOM_PATTERNS` (4) |
+| 17 | Hosen-Farbe 2 (C) | `CLOTH_COLORS` |
+| 18 | Schuh-Modell (`shoeModel`) | `SHOE_MODELS` (5) oder Freischalt-Code |
+| 19 | Schuh-Farbe (C) | `SHOE_COLORS` |
+| 20 | Sohle (`sole`) (C) | `SHOE_COLORS` |
+| 21 | Brille (`glasses`) | `GLASSES` (5) oder Freischalt-Code |
+| 22 | Kopfbedeckung (`hat`) | `HATS` (7) oder Freischalt-Code |
+| 23 | Kopfbedeckungs-Farbe (C) | `CLOTH_COLORS` |
+| 24 | Tasche (`bag`) | `BAGS` (4) oder Freischalt-Code |
+| 25 | Taschen-Farbe (C) | `CLOTH_COLORS` |
+
+  - **Reihenfolge ist Leitungscode:** Die Listen in `char/ids.js` werden nie umsortiert, neue Einträge nur hinten angehängt (sonst sehen ältere Clients andere Teile).
+  - **Farbcode (C):** Palettenindex oder eigene Farbe `0x1000000 | rgb24` (Gesamtbereich 0..`MAX_CODE` = 0x1FFFFFF). **Abweichung vom Entwurf:** Die Paletten haben je 16 Töne, gültig sind also nur die Indizes 0..15 (`validColor` prüft `v < palette.length`), nicht 0..63. Alles andere wird feldweise zum Standard. `encodeColor([r,g,b])`/`decodeColor(code, palette)`; unbekannte Palettenindizes zeichnet `decodeColor` mit dem ersten Palettenton.
+  - **Freischalt-Codes:** Teile aus Entdeckungen haben den Code `UNLOCK_BASE + i` (`UNLOCK_BASE` = 64), `i` = Index in der jeweiligen `UNLOCK_*`-Liste. `decode` akzeptiert einen Code ≥ 64 nur, wenn der Listeneintrag existiert; ob der Spieler das Teil besitzt, prüft erst der Editor bzw. `randomLook` (siehe „Freischaltungen“).
+  - **`decode(raw)`** ist tolerant: falsche Länge, Version ≠ 2 oder Nicht-Array → kompletter Standard-Look (`defaultCode()`); sonst wird jedes Feld einzeln geprüft und bei Ausreißern zum Standardwert. Ein Code einer neueren Version (z. B. 3) wird deshalb von diesem Client als Standardfigur gezeichnet. `equal(a, b)`, `outfitHash(code)` (siehe „Reaktionen“) und `randomLook(rand, unlocked)` (nur Basisteile plus die freigeschalteten `'slot:code'`; Hose nie in der Farbe des Oberteils).
+- **Render-Look:** `toRender(code)` → `{ v: 2, skin, height, build, shape, hairStyle, hair, eyes, brows, beard, top:{cut,color,pattern,color2}, bottom:{cut,color,pattern,color2}, shoes:{model,color,sole}, glasses, hat:{id,color}, bag:{id,color}, handItem: null }`. Farben sind immer `[r,g,b]` (0..1), IDs die Namen aus `ids.js`. `handItem` ist die 1.18-Naht (Gegenstand an der rechten Hand) und in 1.17 immer `null`.
+- **`makeLook` ist eingefroren** (`npc/looks.js`): Passanten und Seed-Figuren der Mitspieler ohne `look` nutzen weiter den alten Look ohne `v`. Der Baseline-Test `tests/store3d-figure-baseline.test.js` (64 feste Pseudonyme, Look-JSON und Geometrie-Hash des alten Pfads) darf NIE angepasst werden; ändert sich dort ein Hash, hat sich das Aussehen aller Passanten geändert. Neue Passanten-Frisuren o. Ä. gehören in `ids.js`/den v2-Pfad, nie in `makeLook`.
+
+### Figuren-Fabrik (`npc/figure.js`, `npc/figure-parts.js`)
+
+- `createFigure(look, hooks)` verzweigt in `bodyGeometry` auf `look.v === 2` → `buildV2Parts(look)` (`figure-parts.js`: Boxen/Kugeln mit Vertexfarben je Bone, unbekannte IDs zeichnen als Standard `tee`/`jeans`/`sneaker`/`none`); ohne `v` läuft `oldParts` unverändert. Weiter EIN gemergtes `SkinnedMesh` (1 Draw-Call), gemeinsames Material (`hooks.material` überschreibt, das Studio nutzt ein eigenes).
+- **Geometrie-Cache** mit Referenzzählung und LRU: Schlüssel `lookKey(look)` (`npc/looks.js`; v2: alle Render-Felder, Farben auf 1/255 genau, ohne `height`/`build`, die nur das Rig skalieren). `acquire` zählt `refs` hoch, `release` herunter; unreferenzierte Einträge bleiben bis `GEO_FREE_MAX` = 48 (älteste zuerst `dispose`). `figureCacheInfo()` → `{ size, free, refs }` (Tests/Debug); `disposeFigureCaches()` beim Modul-`dispose`.
+- **Handle zusätzlich zu den Feldern oben (Open World):** `setLook(look)` ersetzt nur die Geometrie (Skelett bleibt, `height`/`build` werden neu gesetzt, das Namensschild wandert mit); `topY` (Getter, Oberkante inkl. Hut/Frisur in Metern, × `height`; Schilder und Blasen richten sich danach, nur Altlooks nutzen die feste Höhe 1,98); `setEgo(on)`/`isEgo()` (Ego-Variante: Kopf- und Arm-Bones auf Skalierung 0, enge Hüllkugel, Rig 0,12 m nach hinten; Option `hooks.ego`).
+- **1.18-Nähte:** `HAND_R = { bone: 'armR', offset: [0.04, -0.5, -0.12] }` (Export aus `figure.js`) und `handle.setHandItem(id)` (in 1.17 ein Stub, liefert `null`, ohne Wirkung); dazu `handItem: null` im Render-Look, `actionEvent` mit `weapon: 'hand', range: 1.6, max: 1`, der freie `aux`-Platz im Gamepad (`setAux`) und die Pose-Codes 9..15 auf der Leitung. Nicht in 1.17 belegen.
+
+### Studio und Porträt (`char/studio.js`)
+
+Eigene kleine Szene (`createStudio()` → `{ scene, camera, figure(look), setLook, rotate(dRad), setYaw, getYaw, update(dt), cameraPose(focus), portrait(renderer, look), portraitCacheSize(), dispose() }`): Fotowand im 90er-Stil mit Vorhang, Schachbrettboden, Maßstab (Striche alle 10 cm) und Schild „VIDEOTHEK LENZ“, zwei Lichter, kein Nebel, 3 Draw-Calls (Bühne, Schild, Figur). Die Figur steht bei (0, 0, 0) und blickt nach −z, die Kamera bei −z. Läuft im vorhandenen Renderer (kein zweiter WebGL-Kontext).
+- **Bühnenwechsel:** `avatar.js` hängt die Kamera-Rig-Gruppe (`ctx.camera.parent`) in die Studio-Szene und `ctx.stage.setScene(studio.scene)`; beim Verlassen zurück in `ctx.scene` und `setScene(null)` (`stageOn`/`stageOff`). Die Kamera fährt per `player.camera.flyTo` an `cameraPose(focus)` (`STUDIO_FOCUS`: `body, hair, face, top, bottom, shoes, extras`; die Pose richtet sich nach `topY` und `height`); `poseCamera` in `avatar.js` korrigiert sie für den echten FOV (Studio-Posen sind für 30° gedacht) und versetzt die Figur im Querformat nach rechts (Formular links), im Hochformat ins obere Drittel.
+- **Porträt:** `portrait(renderer, look)` rendert Kopf und Schultern frontal (FOV 26) in ein `WebGLRenderTarget` 256² (`PORTRAIT_SIZE`), liest die Pixel (Y gespiegelt) in einen Canvas; LRU-Cache nach `lookKey` (`PORTRAIT_CACHE_MAX` = 16), der Canvas gehört dem Cache (nicht verändern). Provider: `avatar.portrait(code)` → `Promise<Canvas | null>` (null ohne Renderer oder bei Fehler).
+
+### Provider (`avatar`, `member`, `selfview`, `salon`, `xrchar`)
+
+Alle fremden Provider nur lazy und mit Guard holen. Tabelle der Formen: „Provider und Module“.
+
+- **`avatar`** (`modules/avatar.js`): Lesen aus `deps.profile` (`fig.act`, `fig.slots`): `look()` (Render-Look oder `null`), `code()` (Kopie oder `null`), `slots()` (drei Plätze, `null` = leer), `active()` (0..2), `setSlot(i)` (Platzwechsel, nur auf belegte Plätze). `needsGate()` = Profil vorhanden und kein gültiger Platz (auch ein vorläufiger `prov`-Platz zählt als gültig), `gate()` Promise (siehe „Gate-Ablauf“). `onChange(fn(look, code))` feuert NUR bei „Übernehmen“, Platzwechsel, Gate-Abschluss oder einem geänderten Konto-Look, nie während der Live-Vorschau; `onPreview(fn(look | null))` meldet die Live-Vorschau (`null` beendet sie). `setCode(code, { commit = true })` (`commit: false` = nur Vorschau), `randomize({ commit })` (nur freigeschaltete Teile), `setColor(part, idx)` für VR light (`part` = `hair|top|top2|bottom|bottom2|shoes|sole|hat|bag`, `idx` 0..15; übernimmt sofort). `hash()` = `outfitHash` des aktiven Codes, `lastChange()` = ms der letzten Änderung (0 = keine in dieser Sitzung). Reaktionen: `changedFor(npc)`, `markSeen(npc)` und (zusätzlich zum Entwurf) `changeKind(npc)`, siehe „Reaktionen“. Konto-Daten, die erst nach dem Start eintreffen (`profile.onRemote`), lösen `onChange` aus, beenden ein offenes Gate (es erübrigt sich) und zeigen den Toast „Deine Figur vom Konto ist geladen.“, wenn der vorherige Stand vorläufig war.
+- **`member`** (`modules/member.js`): `cardData()` → `CardData | null` (`null`, solange es keine Figur gibt) mit `{ name | null, no, since (dayNumber), rent, cine, stamps (Bitmaske), total, tier, code }`; der Name nur bei „Name zeigen“ (`deps.mp.prefs().name !== false`; ohne Mehrspieler gibt es keinen Schalter, dann zeigt die eigene Karte den eigenen Namen). `ensure()` vergibt Ausweisnummer (6-stellig, `crypto.getRandomValues`, 100000..999999) und `since`, falls es sie noch nicht gibt (das Gate ruft es nach „Fertig“ auf). `showCard(data, { mode: 'self'|'peer'|'rent'|'gate', ms? })` → Promise, löst beim Schließen auf. `count(kind: 'rent'|'cine', itemId)` → true, wenn gezählt. In VR zeigt `showCard` nur einen Toast „Ausweis Nr. …“ (kein DOM-Overlay).
+- **`selfview`** (`modules/selfview.js`): `mode()` = die WIRKSAME Ansicht (`'ego'|'third'`; bei Auto-Ego `'ego'`, auch wenn `'third'` gewählt ist), `setMode(m)`, `toggle()` (Taste V; Toast „Außenansicht (V)“/„Ich-Ansicht (V)“; in VR wirkungslos), `eye(out)` (Ego: die Kamera, bitgleich zu früher; Außenansicht: das Auge der Figur), `figure()` (volle eigene Figur, `null` ohne Figur), `playAnim(name)` (`null`/`'idle'`/`'stand'` beendet eine Dauer-Animation; `'sit'` ist Dauer-Animation, Einmal-Animationen laufen ihre Dauer; Aufstehen beim Loslaufen/Springen).
+- **`salon`** (`modules/salon.js`): `busy()` (Stuhl-/Umkleide-Ablauf läuft), `inside()` (Bereich `salon`), `sitting()` (sitzt im Stuhl; dient `net.js` für die Pose `a=7`). Entwurf kannte nur `busy`/`inside`.
+- **`xrchar`** (`modules/xrchar.js`): `open()` → bool, nur in einer VR-Sitzung (sonst `false`), schaltet das Panel um (offen → schließen).
+- **`shopmirror`:** `{}` ohne API.
+- **`npc.reserve(n, key = 'net')`/`overflow()`:** siehe Provider-Tabelle.
+
+### Gate-Ablauf („Mitgliedsantrag“, `store.js` `startSequence`, `modules/avatar.js`)
+
+1. `boot()` ruft `startSequence(r)`: erstes Bild immer abwarten (`onReadyHook`), dann `avatar.needsGate()` → `await avatar.gate()` (auch bei `opts.skipIntro`), danach `intro.run()` (nur ohne `skipIntro`), danach das Ereignis `'enter'`.
+2. `gate()` ist eine Schleife `while (!disposed && needsGate())`: wartet, solange VR präsentiert (kein DOM-Formular in VR), startet den Editor mit `where: 'gate'`, `focus: 'body'` und einem Zufalls-Startlook (`randomLook` mit den freigeschalteten Teilen), wartet auf dessen Ende. Wird das Overlay anders geschlossen (Moduswechsel, anderes Overlay), beendet das die Sitzung, die Schleife öffnet einen neuen Antrag.
+3. **Esc-fest:** Das Formular öffnet über `ctx.overlay.open(el, { modal: true })` (siehe `overlay.open` in „Module“). Esc und Pointer-Lock-Verlust schließen es nicht; der Editor hat im Gate keinen Abbrechen-Knopf und keinen Reiter „Plätze“.
+4. „Fertig“ (`gateDone`): Stempelanimation (380 ms, 150 ms bei `prefers-reduced-motion`, SFX `stamp`) → Fotoblitz (140 bzw. 320 ms, SFX `flash`) → `commit([code, null, null], 0)` → `member.ensure()` → `member.showCard(cardData(), { mode: 'gate' })` → Sitzung zu.
+5. Ohne Konto-Profil (`deps.profile` fehlt) gibt es kein Gate. Ist das Konto beim Start noch nicht geladen (`profile.state()` ≠ `'ok'`), schreibt `avatar` neue Plätze als vorläufig (`prov: true`); der Konto-Slot gewinnt später immer (siehe „Konto-Profil“).
+
+### Editor-Orte (`avatar.openEditor(where, focus?, { live? })` → `Promise<bool>`, true = übernommen)
+
+- `where`: `pause` (Pause-Menü „Figur …“; `StoreApp.onFigure` schließt das Menü, Modus `play`, dann der Editor als Overlay), `chair` (Friseurstuhl, Fokus `hair`), `booth` (Umkleide, Fokus `top`), `gate` (nur über `gate()`; `openEditor('gate')` wartet auf das Gate). Unbekannte Werte werden zu `pause`. Läuft schon eine Sitzung, liefert der Aufruf deren Promise. Ohne Figur (`code() === null`) sofort `false`.
+- **`live`** ist keine fünfte Ortsangabe, sondern die Option `{ live: true }` (Entwurf führte „live“ unter den Orten): KEIN Studio, die Kamera bleibt, wo der Aufrufer sie hingefahren hat (Salon-Spiegel); die Live-Vorschau geht über `onPreview` an die eigene Figur (`selfview`). Der Salon nutzt es ab Qualität `mid` und nicht in VR; bei `low` läuft das Studio.
+- Reiter (`char/editor-model.js` `TABS`, Ansicht `ui/chareditor.js`, Titel „Deine Figur“/„Frisierstuhl“/„Fotoautomat“/„Mitgliedsantrag“): Körper, Haare, Gesicht, Oberteil, Hose, Schuhe, Extras, Plätze (drei Outfit-Plätze, nicht im Gate). „Übernehmen“ schreibt Plätze und aktiven Platz (`commit`), Esc/Abbrechen verwirft alles. Die Vorschau wird auf höchstens ~30 Hz gedrosselt (33 ms). Knöpfe ≥ 44 px.
+- In VR ruft `openEditor` stattdessen `xrchar.open()` und liefert `false`; eine laufende Sitzung endet beim Start von VR.
+
+### Ausweis (`char/card.js`, `modules/member.js`, `ui/membercard.js`)
+
+- **Stufen** (`tierOf`): `uses = rent + cine`; Bronze = Standard, **Silber** ab `uses ≥ 5` und `≥ 4` Entdeckungen, **Gold** ab `uses ≥ 20` und `≥ 10` Entdeckungen.
+- **Zähler „je Titel 1× pro Tag“:** `member.count(kind, itemId)` (`kind` = `rent` | `cine`) nutzt `countOnce(cnt.last, '<kind>:<itemId>', dayNumber)`; derselbe Titel zählt je Art nur einmal pro UTC-Tag (`dayNumber = floor(ms / 86400000)`). Gespeichert wird je Geräte-ID in `cnt.rent[<dev>]`/`cnt.cine[<dev>]` (Summe über alle Geräte); `cnt.last` (höchstens 50 Einträge, ältester fliegt) bleibt lokal und wird nie hochgeladen. Aufrufer: `rent.js` (`tryRent`, nur wenn die Hülle in dieser Sitzung noch nicht ausgeliehen war) und `palast.js` (`countCine`: 2D-Kino beim ersten `playing` des Tickets, VR-Kino beim Start über `sitOwn`).
+- **Stempel:** Bitmaske der Entdeckungen (`stampsMask`: Bit i = Index i im `CATALOG` von `discover/catalog.js`, höchstens 31 Bit); die Karte zeigt `total` Stempel (nie fest 15).
+- **„Richard verlangt den Ausweis“** (`rent.js` `tryRent`): Nach dem Zählen sagt Richard `cardAsk` („Ausweis, bitte.“), `member.showCard(data, { mode: 'rent' })` blendet die Karte kurz ein (1,2 s, `ms` änderbar; ein DOM-Element am Canvas-Host, kein Overlay, kein Moduswechsel), danach `rentOk`. In VR nur der Spruch und 1,5 s Pause (`ASK_MS`).
+- **Modi von `showCard`:** `self` (Pause-Menü „Mitgliedsausweis“), `peer` (Titel „Ausweis von <Name>“; aus der Spielerliste-Zeile „Ausweis“ oder per E an einer fremden Figur), `rent`, `gate`. Außer `rent` öffnet die Karte ein Overlay mit Esc zum Schließen.
+- **Ausweis ansehen an Mitspielern:** `net/peers.js` legt für Peers mit gültigem `mc` eine Interaktion „Ausweis ansehen“ an (Box folgt der Figur, `noClick: true`, in VR aus); der Name erscheint nur, wenn der Peer „Name zeigen“ gesetzt hat.
+- **„Ausweis zeigen“** (Pref `mpCard`, `deps.mp.prefs().card`, Standard an; Schalter im Panel „Mehrspieler …“): aus ⇒ der Client sendet `mc: null`, niemand sieht den Ausweis. Das Abschalten geht ohne Wartezeit raus (Datenschutz).
+
+### Freischaltungen (`char/unlocks.js`)
+
+15 Entdeckungen schalten je ein Teil frei (`UNLOCKS`, erweiterbar; 1.18 hängt hinten an). Gesperrte Teile zeigt der Editor mit dem Hinweistext der Entdeckung (`lockHint`, verrät den Titel nicht); die Sperre gilt im Editor und bei `randomize`/`randomLook`, `decode` und die Figuren-Fabrik zeichnen jeden gültigen Code (auch bei Mitspielern).
+
+| Entdeckung (`discover`-ID) | Slot | Teil (ID) | Code |
+|---|---|---|---|
+| `golden-tape` | Kopfbedeckung | Goldkappe (`goldcap`) | 64 |
+| `graffiti` | Schuhe | Farbklecks-Treter (`splash`) | 64 |
+| `secret-door` | Kopfbedeckung | Krone des Fundus (`crown`) | 65 |
+| `roof-rain` | Oberteil | Regencape (`cape`) | 64 |
+| `roof` | Brille | Fliegerbrille (`pilot`) | 64 |
+| `cat-pet` | Kopfbedeckung | Katzenöhrchen (`catears`) | 66 |
+| `kiosk-snack` | Tasche | Chipstüte am Gurt (`chips`) | 64 |
+| `hoop-3` | Oberteil | Dreier-Trikot (`jersey3`) | 65 |
+| `can-pyramid` | Kopfbedeckung | Dosenhut (`canhat`) | 67 |
+| `richard-ban` | Oberteil | Hausverbot-Shirt (`banshirt`) | 66 |
+| `richard-rent` | Tasche | Kassettenrucksack (`vhspack`) | 65 |
+| `palast-film` | Kopfbedeckung | Platzanweiser-Mütze (`usher`) | 68 |
+| `palast-tape` | Brille | Dreidimensionale Brille (`3d`) | 65 |
+| `zebra` | Hose | Zebrastreifen-Hose (`zebra`) | 64 |
+| `car-honk` | Oberteil | Warnweste-Shirt (`hivis`) | 67 |
+
+API: `unlockedCodes(foundIds)` (Set `'slot:code'`), `isUnlocked(slot, code, foundIds)` (Basisteile < 64 immer frei), `unlockFor(discoverId)`, `lockHint(slot, code)`; Slots `top`, `bottom`, `shoes`, `glasses`, `hat`, `bag` (`SLOT_LISTS`). Die Entdeckungen liest `avatar` aus `discover.list()`.
+
+### Reaktionen (`char/react-logic.js`)
+
+Neues Outfit/neue Frisur wird bemerkt. Maßstab ist der **Outfit-Hash** (`outfitHash(code)`, 8 Hex-Zeichen FNV-1a über `OUTFIT_FIELDS` = Frisur, Haarfarbe, Bart, Oberteil, Hose, Schuhe, Brille, Kopfbedeckung, Tasche samt Farben; nie Haut, Körper, Augen, Brauen). Gesehen-Stände liegen im Profil unter `seen` (`richard|gabi|ronny` = Hash, dazu `<npc>R` = Hash ohne die Haarfelder 5, 6, 9, und `t`).
+- `avatar.changedFor(npc)` (`npc` = `richard|gabi|ronny`) = `npcShould(seen[npc], aktuellerHash)`; `markSeen(npc)` speichert beide Hashes. **`changeKind(npc)`** (Ergänzung zum Entwurf) → `'hair'` (nur Frisur/Haarfarbe/Bart seit dem letzten Gesehenen), `'outfit'` (sonst) oder `null` (keine Änderung oder unbekannte Vorgeschichte, also kein `<npc>R`). Sprüche je Art: `hairNew`/`outfitNew`.
+- **Richard:** bei der normalen Begrüßung (`cashier.js`, nicht bei Groll), `markSeen('richard')` erst nach erfolgreich gesprochener Zeile. **Gabi und Ronny:** `salon.js` `react()` alle 1,2 s, wenn die Person < 6,5 m entfernt ist, höchstens eine Reaktion je Takt, danach `markSeen`.
+- **Passanten** (`modules/npc.js`): Budget `createReactBudget()` mit `noteChange(now, hash)` bei jeder `avatar.onChange`, `passerbyMay(now, id)` und `markSaid(now, id)`: nur innerhalb von `WINDOW_MS` = 90 s nach der Änderung, höchstens `MAX_PASSERBY` = 3 verschiedene Passanten, mindestens `GAP_MS` = 6 s zwischen zwei Sprüchen, nach drei Sprüchen `QUIET_MS` = 5 min Ruhe. Prüftakt 0,4 s, Radius 4 m, nur bei sichtbarer Straßengruppe, nicht in VR und nicht auf dem Dach (Augenhöhe ≥ 1,2 m). Die Kategorie (`HAIR_NEW`/`OUTFIT_NEW`) kommt aus dem Vergleich des alten mit dem neuen Code (`hairOnly`).
+- Tonfall: „eher frech“, ohne Beleidigungen und nie über Körper oder Hautfarbe.
+
+### Sprecher-Regie (`modules/voice.js`, Provider `cashier.speaker`)
+
+`cashier.speaker({ id, voiceSeed, pitch, rate, prio, pos: () => ({ x, y, z }) })` → `{ say(text, { volume? }) → Promise<'spoken'|'bubble'|'muted'>, cancel(), release() }` (`createDirector`). Richard (`prio` ≥ `RICHARD_PRIO` = 100) hat Vorrang und unterbricht; sonst spricht nur die nächste Person bis `SPEAK_DIST` = 10 m, alle anderen bekommen `'bubble'`. Höchstens eine Zeile wartet in der Warteschlange. Ist der Ton aus, liefert `say` `'muted'` (der Aufrufer zeigt ebenfalls die Blase); bei `'bubble'` zeigt der Aufrufer die Blase über der Figur (`npc.say`/`handle.say`). Gabi und Ronny haben feste Stimmen (`char/salon-lines.js` `VOICES`, `prio` 50). `voice.js`-Regeln (nur lokale Stimmen, nie Titel loggen) gelten unverändert.
+
+### Außenansicht und Ego-Körper (`modules/selfview.js`, `char/tpcam.js`)
+
+- **Gewählt vs. wirksam:** `set.cam` (`'ego'|'third'`, Standard `ego`) steht im Profil; `mode()` meldet die wirksame Ansicht. **Auto-Ego** (`forcedEgo`): VR, ein offenes Overlay, eine fremde Bühne (`!ctx.stage.isStore()`, z. B. Studio) oder eine Modul-Kamera (Couch, Kino, Kasse, Intro). Letztere wird daran erkannt, dass das Rig im letzten Frame nicht lief (`rigFrame`, `runtime.cameraStep` ruft es nur ohne `flyTo`). Danach zurück zur gewählten Ansicht. Spätere Konto-Daten überschreiben die Wahl nicht, wenn der Nutzer in dieser Sitzung schon gewählt hat.
+- **Kamera** (`solveTpCam`): `BACK` = 2,4 m hinter und `UP` = 0,3 m über dem Auge, entlang Blickrichtung (yaw/pitch). Die Strecke Auge → Wunschposition wird gegen statische Kollider (`layout.cidx`) geprüft (`MARGIN` 0,14 m, `FLOOR_GAP`/`CEIL_GAP` 0,12 m): Treffer → sofort einziehen, danach in `EXTEND_T` = 0,25 s wieder ausfahren (`smoothFrac`); unter `HIDE_DIST` = 0,7 m wird die eigene Figur ausgeblendet (`hideBody` mit Hysterese). Das Rig hängt dauerhaft am Spieler (`player.camera.setRig`), in Ego tut es nichts.
+- **Zielen und Schlagen** (`store.js` `aimRay`/`actionEvent`): In Ego bleibt alles bitgleich (Kamera und Blickrichtung). In der Außenansicht ist der Ursprung die Projektion des Auges auf den Kamerastrahl; Anvisieren (`updateAim`) reicht 2,5 m ab dort, Tippen (`onTap`) 9 m. `actionEvent` liefert `origin` = Auge (`selfview.eye`) und zusätzlich `weapon: 'hand', range: 1.6, max: 1`. Die Hände unten im Bild (`ui/hands.js`) sind in der Außenansicht aus.
+- **Ebenen (Layer):** Layer 1 = Ego-Körper, nur die Hauptkamera aktiviert ihn (`ctx.camera.layers.enable(1)`). Layer 2 = die volle eigene Figur in der Ego-Sicht, nur Spiegelkameras (sie rendern Layer 0 und 2, nie 1). In der Außenansicht steht die volle Figur auf Layer 0 und der Ego-Körper entfällt. So sieht man sich im Spiegel komplett und bekommt in der Ego-Sicht trotzdem keine Kopfinnenansicht.
+- **Ego-Beine:** Der Ego-Körper (zweite Figur mit `setEgo(true)`) wird erst beim ersten Blick nach unten gebaut und ist sichtbar, wenn die Neigung unter `LEGS_ON` = −0,5 rad fällt (Hysterese bis `LEGS_OFF` = −0,4), nie bei Auto-Ego.
+- **Blob-Schatten** (nur Außenansicht): ein Quad (`MeshBasicMaterial`, Radialverlauf) am Boden, `scale` schrumpft mit der Höhe über dem letzten Bodenpunkt (`groundY`).
+- **Draw-Calls:** Außenansicht = Figur + Schatten = 2, ausgeglichen über `npc.reserve(2, 'self')` (sonst 0; die Ego-Beine zählen nur beim Blick nach unten). Die Animation kommt aus `Body.getNet().a` über `animFor` (wie bei Mitspielern); `selfview.dispose` ruft bewusst kein `reserve(0)` (`npc` ist dann schon entsorgt, ein Aufheben würde Passanten neu erzeugen). Die Figuren aktualisiert `modules/npc.js` (externals); `selfview` ruft nie `update()` auf.
+- **Debug:** `__lfxStore.m3.selfview.state()` → `{ want, third, frac, bodyHidden, legs, hasFigure, hasEgo, reserved, override }`.
+
+### Spiegel (`world/mirror.js`, `modules/shopmirror.js`)
+
+- **Planspiegel** statt three-`Reflector` (der nutzt HalfFloat, MSAA und kennt keine Layer): `createMirror(ctx, { x, y, z, yaw, w, h, parent, id, maxDist?, … })` → `{ mesh, update(dt), isLive(), wanted(), stats(), setSuppressed(bool), dispose() }`. Spiegelkamera mit schiefer Near-Ebene, `RenderTarget` 256² (`MIRROR_RT`, `UnsignedByteType`, ohne MSAA), Layer 0 + 2, `MIRROR_FAR` = 40 m. Das Mesh blickt mit +z aus der Wand (`yaw = π` = Blick nach −z).
+- **Takt und Gating:** `mirrorHz(level)`: `high` 20 Hz, `mid` 10 Hz, `low` 0 (matter statischer Verlauf, kein Render, keine RT). `mirrorGate({ quality, xr, store, visible, facing, dist, maxDist })` (rein): nur im Bild, zugewandt, näher als `MIRROR_MAX_DIST` = 8 m (Überwachungsspiegel `DOME_MAX_DIST` = 10 m), nicht in XR und nur in der Laden-Szene (`stage.isStore()`, im Studio matt). Höchstens EIN Spiegel gleichzeitig live (`liveHub(renderer)`; der nächste gewinnt: Besitzer verloren nach 600 ms oder neuer Spiegel mindestens 0,75 m näher). Außerhalb des Bildes bleibt das letzte Bild stehen, im Bild aber abgewandt oder zu weit wird er matt.
+- **Messfalle `renderer.info.autoReset`:** `renderToTarget` setzt `info.autoReset = false` und `shadowMap.autoUpdate = false` für den verschachtelten Render und stellt beides im `finally` wieder her, sonst zählt `stats().calls` die Spiegel-Draw-Calls zum Hauptbild und verfälscht Messungen am 140er-Ziel. Wer selbst verschachtelt rendert, muss dasselbe tun (und das Spiegelmesh währenddessen verstecken, `hide`).
+- **Überwachungsspiegel** (`modules/shopmirror.js`, Gruppe `m3-shopmirror`, damit `city.partition()` ihn mit der Ladenhülle ausblendet): gewölbte Kuppel (Halbkugel, Radius 0,17 m) + Rahmen + Stange als EIN Mesh (1 Draw-Call), innen über der Eingangstür unter der Decke (`domeSpot`), Weitwinkelkamera `DOME_FOV` = 110° auf eine 256er-RT, per Shader auf die Kuppel projiziert (mit Randabdunklung). Bei `low` und in XR matter Verlauf.
+- **Salon-Spiegel:** zwei Planspiegel (`salon-chair`, `salon-booth`); beim Stuhl-/Umkleide-Ablauf ist der jeweils andere ausgeschaltet (`setSuppressed`).
+
+### Salon FRISEUR HAARSCHARF (`modules/salon.js`, `world/build-salon.js`, `world/city.js`, `char/salon-lines.js`)
+
+- **Feste Lage:** `SALON = { x0: −22, z0: sz, x1: −14, z1: sz + 7 }` im Gebäude SW, unabhängig von der Ladenbreite (die Netzabbildung `net/frame.js` bildet x < 0 unverändert ab, sonst stünden Mitspieler daneben). `buildCity` teilt SW nach der Farbvergabe in West-, Ost- und Rückteil um den Salon herum (Farbfolge bleibt), dazu `salonRoof` über dem Salon. Tür 1,6 m in der Front bei x = −18 (Schaufenster links davon); `city.salon` trägt `rect, wall, ceil, door, window, chair, mirror, booth, rack, gabi, ronny`.
+- **Zone/Bereich:** Zone `salon` („Friseur“, Blickpunkt `x = −18, z = sz + 3,5`), Bereich `salon` in `areaAt` (nur unter y 2,9; Priorität nach `palastFoyer`), Spawn `salon`; „Friseur“ in der Spielerliste (`net/panel.js`).
+- **Sichtbarkeit:** Gruppe `city-salon-interior` (`groups.salonInterior`, `visibleGroups().salonInterior`) nur im Bereich `salon` oder < 12 m vor der Salontür, nicht aus dem Laden heraus. Mitspieler im Salon zeichnet `peers-logic.regionVisible` nur dann.
+- **Innenraum** (`buildSalon`): Fliesenboden, Friseurstuhl, Spiegelrahmen, Waschbecken, Föhnhaube, Theke, Kleiderstange, Umkleide mit Vorhang, Deckenlampen und Plakate mit erfundenen Frisurnamen (`POSTER_NAMES`); 3 Draw-Calls (Festkörper, Plakate, Vorhang) plus die beiden Spiegelflächen. Möbel-Kollider als Daten, `salon.js` legt sie per `ctx.addCollider` an.
+- **Gabi (Haare) und Ronny (Mode):** feste v2-Looks (`npcCodes()`), echte Figuren über `npc.figure`, als Personen registriert (`registerPerson`, Schlag → taumeln, Spruch `hit`, SFX `oof`), blicken den Spieler an (< 7 m), winken/zeigen im Leerlauf, Sprüche über die Sprecher-Regie (`greet`, `leave`, `idle`, `chair`, `chairDone`, `booth`, `boothDone`, `hit`, `hairNew`, `outfitNew`; `pickSalonLine` vermeidet Wiederholung). Begrüßung höchstens alle 45 s.
+- **Stuhl-Ablauf** (`session('chair')`): Interaktion „Friseurstuhl“ (E/Klick/Tippen) → Spieler einfrieren, Kamerafahrt in den Spiegel (950 ms), eigene Figur sitzt (`selfview.playAnim('sit')`), `avatar.openEditor('chair', 'hair', { live })` → Kamera zurück an die Austrittsstelle (520 ms), Aufstehen, Freigabe; alles im `finally` (Abbruch stellt den Spieler an den Austritt, nie in den Stuhl). **Umkleide** (`session('booth')`): Vorhang fährt zu (0,55 s, SFX `curtain`/`whoosh`), `openEditor('booth', 'top', { live })`. Nach einer Übernahme sagt Gabi bzw. Ronny `chairDone`/`boothDone` und `markSeen`; der erste Stuhlbesuch setzt `profile.evt.salonChair`. `suspend` bricht den Ablauf ab.
+- **Sitzen über die Leitung:** Der Stuhl setzt `sitting()`; `modules/net.js` sendet dann die Pose `a = 7` ohne `se` (`r` bleibt der Bereich). `peers.js` nutzt Kinositze nur bei `r === 1`, sonst sitzt die Fremdfigur an der Körperposition.
+- **VR:** Stuhl und Umkleide öffnen das „VR light“-Panel (`xrchar.open()`), sonst Toast „Die Figur-Auswahl für die VR-Brille ist gerade nicht verfügbar.“
+- **Debug:** `__lfxStore.m3.salon` = `{ chair, booth, interior, mirrors, say }`.
+
+### Mehrspieler-Looks (`net/look.js`, `net/peers.js`)
+
+Protokoll und Grenzen: `docs/mp-api.md` (Fähigkeit `look`).
+- **Senden** (`createLook(core)`, Teil `look` des Moduls `net`): nur nach einem `wl` mit der Fähigkeit `look` (sonst nie `lk`/`mc`), zuerst beim Beitritt, danach nach `avatar.onChange` (Übernehmen, Platzwechsel) und, wenn sich der Ausweis ändert (Vergleich alle 5 s, weil Leihen, Kino und Stempel ohne Ereignis wachsen). Nie während der Live-Vorschau (`avatar.onPreview` aktiv). Raten `LK_GAP_S` = 2 s, `MC_GAP_S` = 5 s; gleicher Inhalt wird nie doppelt gesendet. `mc` = `toWire(member.cardData())`, solange „Ausweis zeigen“ gilt und es eine Ausweisnummer gibt, sonst `null`; das Abschalten geht ohne Wartezeit raus.
+- **Empfangen** (`createPeers`): `wl.lk`/`wl.mc` (Karten `c` → Wert) und die Ereignisse `lk {c,l}`/`mc {c,m}`. `decode` macht aus jedem Code eine gültige Figur (Unbekanntes wird zum Standard), `setLook` auf der vorhandenen Figur. Eine neue Fremdfigur wartet höchstens `LOOK_WAIT_S` = 0,6 s auf ihren `lk` (nur wenn der Server `look` kann), bevor die Seed-Figur gebaut wird (kein Flackern Seed → eigene Figur). Ohne `lk` bleibt die Seed-Figur (`makeLook(seeded(lookSeed(k)))`).
+- **Kompatibilität:** Alter Client + neuer Worker: bietet `look` im `hi` nicht an, bekommt nichts und sieht weiter Seed-Figuren (die anderen sehen ihn auch so, ohne `lk`). Neuer Client + alter Worker: keine Fähigkeit `look`, es wird nichts gesendet, alle Fremden sind Seed-Figuren, die eigene Figur sieht man lokal trotzdem. Erst den Worker deployen, dann den Client veröffentlichen.
+
+### VR light (`modules/xrchar.js`, `xr/charpanel.js`)
+
+Kleine Figur-Auswahl in der Brille, kein Editor: Panel `buildCharSpec(avatar, state, hooks)` mit Outfit-Platz 1–3 (`avatar.setSlot`), Zufall (`randomize`) und einem Reiter je Farbteil (Haare, Oberteil, Hose, Schuhe, Mütze, Tasche) mit den 16 Palettenfeldern (`avatar.setColor`, übernimmt sofort); kein Farbwähler, keine Texteingabe. Einstiege: Eintrag „Figur“ im VR-Menü (`xr/menu.js`, nicht im Kino), Salon-Stuhl/-Umkleide und `avatar.openEditor` in VR. Das Panel zeichnet sich bei Änderungen von außen (`avatar.onChange`) per `handle.update(spec)` neu, ohne die Szene neu aufzubauen. Auch in VR sehen andere die eigene Figur (Look über `net`), die eigene Außenansicht und der Ego-Körper bleiben aus, Spiegel sind matt.
+
+### Konto-Profil (`features/store/profile.js`, `profile-merge.js`, `displayprefs.js`)
+
+- **Hülle:** `home.js` legt mit Jellyfin-Benutzer ein Profil an (`createProfile({ uid, name, storage })`, einmal je Benutzer) und lädt parallel zum Katalog (`profile.load({ timeoutMs: 4000 })`, höchstens 4 s; Zustand `'ok'`/`'local'`/`'unknown'`); es geht als `deps.profile` ins 3D-Bundle. Cache: `localStorage lfx.store.profile.<uid>` = `{ data, dirty }`.
+- **Form von `deps.profile`:** `get()` (immer ein Objekt, notfalls leer mit `v: 1`), `update(mutator)` (ändert eine Kopie, normalisiert, schreibt sofort in den Cache, lädt 2 s entprellt hoch), `state()` (`'ok'` Konto gelesen, `'local'` nur Cache, `'unknown'` nichts), `onRemote(fn) → off` (Konto-Daten kamen später oder haben sich geändert), `dev` (Geräte-ID), `load()`, `dispose()`.
+- **Daten** (`Profile`): `{ v: 1, fig: { act: 0..2, slots: [{ l: int[26], t: ms, prov?: true } | null ×3] }, set: { cam: 'ego'|'third', t }, mem: { no: '123456', since: dayNumber } (leer = noch keine Nummer), cnt: { rent: { dev: n }, cine: { dev: n }, last: {…} }, disc: { id: ms }, seen: { richard?, gabi?, ronny?, richardR?, gabiR?, ronnyR?, t }, evt: { salonChair?: ms } }`. `normalize` bringt jedes Feld einzeln auf einen gültigen Wert (Müll wird verworfen).
+- **Konto:** Jellyfin-`DisplayPreferences` mit der Id `lenzstore`, Client `lenzflix` (die Design-Id `lenzflix` bleibt unberührt), Schlüssel `CustomPrefs.profile` (JSON-String). `updateCustom` liest immer erst das ganze Objekt (GET), ändert nur den eigenen Schlüssel und schreibt das ganze Objekt zurück (POST): fremde `CustomPrefs` bleiben erhalten; ohne erfolgreiches GET nie ein POST. Wiederholung nach 5 s / 30 s / 2 min, `dirty` bleibt bis zum Erfolg und wird beim nächsten Start hochgeladen. `serialize` lässt `cnt.last` weg und kürzt über 6000 Zeichen stufenweise (zuerst `seen`/`evt`, dann Zähler, dann `disc`, dann nicht aktive Plätze).
+- **Merge** (`mergeProfiles(local, remote)`): Plätze einzeln, ein Konto-Platz ohne `prov` schlägt einen lokalen `prov`-Platz immer, sonst gewinnt der spätere `t` (Gleichstand: lokal); `act` folgt der Seite mit dem späteren nicht-vorläufigen Platz; `set` und `seen` nach `t`; `mem`: das kleinere `since` (samt Nummer); `cnt.rent`/`cnt.cine` je Geräte-ID das Maximum, höchstens 8 Geräte (der Rest wandert in `_`); `disc` Vereinigung mit dem früheren Zeitstempel; `evt` Vereinigung mit dem späteren; `cnt.last` kommt nur lokal.
+- **Geräte-ID:** zufällig, 8 Zeichen `[a-z0-9]`, `localStorage lfx.store.dev`.
+- **Alte Entdeckungen:** Einmalig je Gerät (Marker `lfx.store.discmerged.<uid>`) übernimmt das Profil die alten lokalen Entdeckungen aus `lfx.store.discover.<Jellyfin-Name | anon>` (der Schlüssel hängt am Namen, nicht an der Id) nach `disc`; danach vereinigt `discover.js` Profil und lokalen Speicher beim Start und schreibt `found()` zusätzlich ins Profil.
+
+### Harness-Parameter (`build/store-dev.js`, Kopfkommentar)
+
+`opts.dev` enthält alle Query-Parameter einmal (`ctx.opts.dev && ctx.opts.dev.<name>`); Module lesen ihre eigenen. `deps.profile` ist im Harness ein Fake im Speicher (kein Netzwerk, `window.__devProfile`):
+- `?profile=ok` (Standard) | `offline` (Zustand `local`) | `slow` (leeres Profil, das Konto kommt nach 6 s per `onRemote`) | `fail` (Zustand `unknown`).
+- `?char=keep` (Standard: vorhandener Look) | `new` (leeres Profil → Gate) | `look:<csv>` (Look-Code, 26 Ganzzahlen).
+- `?unlock=all` (alle 15 Entdeckungen gesetzt); `?member=bronze|silver|gold` (Zähler und Entdeckungen passend zur Stufe, Ausweisnummer 123456).
+- Dazu `?spawn=salon` (Startpunkt im Salon), Mehrspieler mit `?mp=fake&bots=N` bzw. `?mp=relay` (siehe „Harness (Mehrspieler)“; Looks und Ausweise gehen dort über den echten Reducer).
+
+### Draw-Calls und Größe
+
+Ziel bleibt ≤ 140 je Bild bei `low` (an der Ladentür, auch mit `?mp=fake&bots=5`, in Ego und Außenansicht).
+- Außenansicht +2 (Figur, Schatten), ausgeglichen über `npc.reserve(2, 'self')`; Ego-Beine 0 bei Geradeausblick; Salon innen 0 (Gruppe verborgen, außer im Salon bzw. < 12 m vor der Tür); Überwachungsspiegel +1 (matt bei `low`); Spiegel-Renders erscheinen dank `autoReset`-Wächter nicht im Hauptbild (siehe „Spiegel“); Studio ~3 Calls bei ausgeblendeter Welt; fremde Figuren mit v2-Look sind weiter 1 Call je Figur.
+- Neue Shader (Spiegel, Kuppel) kompilieren beim ersten Einsatz.
+
+### Fallen (1.17.0)
+
+- Die ID-Listen in `char/ids.js` nie umsortieren, nur anhängen; `makeLook` und `tests/store3d-figure-baseline.test.js` nicht anfassen (Passanten und Seed-Figuren bleiben bitgleich).
+- `CanvasTexture` nach Größenwechsel nie weiterverwenden (siehe VR-Modus; gilt auch für das Studio-Schild und Panels).
+- `renderer.info.autoReset`/`shadowMap.autoUpdate` bei jedem verschachtelten Render sichern und im `finally` zurücksetzen (siehe „Spiegel“).
+- `onChange` des Providers `avatar` NIE aus der Live-Vorschau speisen: nur `onPreview`. Das Netz (`net/look.js`) sendet während einer Vorschau nichts.
+- `selfview.mode()` ist die wirksame Ansicht, nicht die gewählte; wer die Wahl braucht, liest `profile.get().set.cam`.
+- Kamera-Rig-Gruppe beim Bühnenwechsel mit umhängen (`stageOn`/`stageOff`); ohne Hülle (`!ctx.renderer`) liefert `portrait` `null`.
+- `member.cardData()` und `avatar.code()` sind `null` ohne Figur bzw. Profil, Aufrufer müssen das abfangen (Pause-Menü blendet die Einträge aus).
+- Reaktionen nur über `changedFor`/`markSeen` und das Budget aus `react-logic.js`; kein eigener Zeitgeber und nie über Körper oder Hautfarbe.
+- Noch nicht belegt: der Zähler `cnt.last` ist lokal; ein zweites Gerät kann denselben Titel am selben Tag zusätzlich zählen.
 
 ## VR-Modus (Beta)
 

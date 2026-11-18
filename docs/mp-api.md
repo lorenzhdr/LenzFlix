@@ -1,6 +1,6 @@
-# LenzFlix Mehrspieler – Vertrag `lfx-mp.1` (Release 1.16.0)
+# LenzFlix Mehrspieler – Vertrag `lfx-mp.1` (Release 1.16.0, Fähigkeit `look` seit 1.17.0)
 
-Verbindlicher Vertrag zwischen Worker (Durable Object `MpWorld` im `charts-worker`), Hülle (`features/store/`, Hauptbundle) und 3D-Bundle (`src/js/store3d/net/`, lazy `lenzstore`) für den Mehrspieler der VIDEOTHEK LENZ. Gegenstück zu `docs/charts-api.md`; die Einrichtung des Workers steht in `charts-worker/README.md`, die 3D-Seite in `docs/store3d.md` („Mehrspieler (1.16.0)“).
+Verbindlicher Vertrag zwischen Worker (Durable Object `MpWorld` im `charts-worker`), Hülle (`features/store/`, Hauptbundle) und 3D-Bundle (`src/js/store3d/net/`, lazy `lenzstore`) für den Mehrspieler der VIDEOTHEK LENZ. Gegenstück zu `docs/charts-api.md`; die Einrichtung des Workers steht in `charts-worker/README.md`, die 3D-Seite in `docs/store3d.md` („Mehrspieler (1.16.0)“, „Figur, Ausweis, Salon (1.17.0)“). Die 1.17.0-Ergänzung (eigene Figur und Ausweis der Mitspieler, Nachrichten `lk`/`mc`) ist rein additiv und steht gesammelt in §15; die betroffenen Tabellen in §§1, 4, 5, 6.2, 7, 9, 10, 12, 13 verweisen dorthin.
 
 Schreibweise: Dezimalpunkt in Tabellen und Formeln (`0.35`); Einheiten cm (int), cRad (int, 1/100 rad), cm/s, Server-ms. „Entscheidung:“ markiert eine begründete Festlegung, wo die Entwürfe sich widersprachen.
 
@@ -20,8 +20,9 @@ Schreibweise: Dezimalpunkt in Tabellen und Formeln (`0.35`); Einheiten cm (int),
 | b | Chat, Emotes, Liste, Admin-Kick | `chat` `emote` `admin` | `m e ki` |
 | c | Schubsen, Physik, Richard, Wetter | `push` `phys` `rich` `wx` | `pu pc ps pn px rc rs rr` |
 | d | Kino-Sync | `kino` | `ks kj kl kc kb` |
+| e (1.17.0) | Eigene Figur und Ausweis der Mitspieler | `look` | `lk mc` |
 
-Der Server kündigt `kino` seit 1.16.0 an (`charts-worker/src/mp/kino.js`, `ANNOUNCE = true`). `wx` hat keine eigene Client-Nachricht (nur `wl.wx`).
+Der Server kündigt `kino` seit 1.16.0 an (`charts-worker/src/mp/kino.js`, `ANNOUNCE = true`) und `look` seit 1.17.0 (immer, `look.js` `cap`). `wx` hat keine eigene Client-Nachricht (nur `wl.wx`).
 
 ## 2. Transport und Auth
 
@@ -123,6 +124,7 @@ Vor jedem Close vom Server geht `bye {c, u?}`.
 | Wetter-Seed | `seed`, einmal zufällig | vollständig |
 | Ruhelagen bewegter Requisiten | Speicher + `rest`, höchstens 1x je 5 s, höchstens 96 Einträge, geleert wenn die letzte Verbindung geht | vollständig |
 | Physik-Besitz, Rate-Buckets | nur Speicher | leer/voll (Besitz endet mit dem Schlaf) |
+| Figur und Ausweis der Verbindung `lk:<c>` → `{l, m}` (1.17.0, §15) | Speicher + Storage, **je Verbindung** (nicht je Nutzer), gelöscht bei `onOpen` derselben `c`, `onClose` und im Alarm, wenn die Verbindung fehlt | geladen (Präfix `lk:`), Verwaiste räumt der nächste Alarm weg |
 | Tageszähler | `quota{d,n}` alle 500 Frames | ±500 |
 | Schema | `sv:1` | – |
 
@@ -161,9 +163,11 @@ Abweisen spart kein Kontingent (der Frame ist schon berechnet); Schutz heißt de
 | `f`, `hd`, `ck` | 2/s | verwerfen |
 | `rn` | 1/min | verwerfen |
 | `ki` | 1 je 5 s | `er perm` |
+| `lk` | 1 je 2 s, Burst 3 (1.17.0) | verwerfen |
+| `mc` | 1 je 5 s, Burst 2 (1.17.0) | verwerfen |
 | unbekanntes `t` | ignorieren | mehr als 30/min: 4000 |
 
-Klemmen (Netzrahmen): x ∈ [-3000; 5000] cm, z ∈ [-1600; 5400] cm, y ∈ [-200; 1200] cm; Geschwindigkeit ±1600 cm/s; yaw ∈ [-315; 315] cRad, pitch ∈ [-157; 157], tip ∈ [0; 157], ax/az ∈ ±100; Kino-Position `p` ∈ [0; 12 h] ms. Nicht-endliche Zahl: Nachricht verwerfen. Item-IDs `^[0-9a-f]{32}$`, Objekt-IDs `^[A-Za-z0-9._-]{1,24}$`. Unbekannte Anim-/Emote-Codes werden zu 0. Ratenbuckets liegen im Speicher; Beschränkungen je Typ sind Teil der Golden-Dateien (§12).
+Klemmen (Netzrahmen): x ∈ [-3000; 5000] cm, z ∈ [-1600; 5400] cm, y ∈ [-200; 1200] cm; Geschwindigkeit ±1600 cm/s; yaw ∈ [-315; 315] cRad, pitch ∈ [-157; 157], tip ∈ [0; 157], ax/az ∈ ±100; Kino-Position `p` ∈ [0; 12 h] ms. Nicht-endliche Zahl: Nachricht verwerfen. Item-IDs `^[0-9a-f]{32}$`, Objekt-IDs `^[A-Za-z0-9._-]{1,24}$`. Unbekannte Anim-/Emote-Codes werden zu 0; der Pose-Code `a` gilt seit 1.17.0 im Bereich 0..15 (vorher 0..8, §6.2). `lk`/`mc`: Wertebereiche in §15. Ratenbuckets liegen im Speicher; Beschränkungen je Typ sind Teil der Golden-Dateien (§12).
 
 ## 6. Netzrahmen, Codes, Sende-Takt
 
@@ -203,6 +207,7 @@ Tabellen werden nur am Ende ergänzt; Änderungen an Codes/Netzrahmen/Pflichtfel
 | 6 | Schlag | HIT | `hit` |
 | 7 | Sitzen | – | `sit` |
 | 8 | Wurf | – | `throw` (0.6 s) |
+| 9–15 | reserviert (Naht für 1.18) | – | der Server lässt sie durch; bekannte Clients zeigen unbekannte Codes als `idle` (`netAnimName`) |
 
 Falle: Die Zahlen von `Body.ANIM` und die Indizes in `npc/anim.js` `ANIMS` (`idle, walk, run, sit, wave, hit, throw, stagger, point, cheer`) stimmen NICHT überein (z. B. 3 = Luft vs. `sit`). Die Abbildung steht ausschließlich als Tabelle in `net/proto.js`; weder `Body.ANIM`-Werte noch `ANIM_CODE` dürfen blind als Leitungscode dienen. Das Gangtempo leitet der Empfänger aus der Interpolation ab. Das lokale Format `{v,a,p,s,t}` aus `npc/anim.js` (NPC-`getNetState`) geht nicht über die Leitung.
 
@@ -223,7 +228,9 @@ Neue Animationen werden in `ANIMS` nur am Ende angehängt (`dance, clap, thumbs,
 
 **Richard (Drahtformat `rs.q`):** `[s, h, r, x, y, z, yaw, a]` mit `s` = Index in `STATES` (`modules/brawl-fsm.js`: `calm, annoyed, shove, throw, chase, banned, grudge`), `h` = Trefferzähler, `r` = Restzeit bis zum zeitgesteuerten Übergang in **ds** (int), `x/y/z` in cm, `yaw` in cRad, `a` = Index in `modules/brawl-pose.js` `ANIMS`. Der Code liefert `getNetState` in Metern, Sekunden und der Reihenfolge x,z,y (`brawl.js`); die Umrechnung auf die Draht-Reihenfolge x,y,z und die Einheiten passiert in `net/richard.js`. **Entscheidung:** `r` ist für jeden Zustand ≠ `calm` definiert: annoyed/shove `DECAY - (t - lastHit)`, throw `THROW_MAX - (t - since)`, chase `CHASE_MAX - (t - since)`, banned/grudge `until - t`. Pflicht für die Umsetzung: `brawl-fsm.applyRemote` muss `lastHit`/`since`/`until` aus `r` rekonstruieren (statt `since = t`; heute wird `lastHit` nie gesetzt, annoyed/shove fielen beim Übernehmer sofort auf `calm` zurück, und `since = t` startet THROW_MAX/CHASE_MAX neu) und `getNetState` entsprechend erweitern.
 
-**Flag-Bits `f`:** 1 Name zeigen, 2 Film sichtbar, 4 Chat, 8 VR aktiv. **`cap`:** `pres`, `chat`, `emote`, `push`, `phys`, `rich`, `wx`, `kino`, `admin`.
+**Flag-Bits `f`:** 1 Name zeigen, 2 Film sichtbar, 4 Chat, 8 VR aktiv. **`cap`:** `pres`, `chat`, `emote`, `push`, `phys`, `rich`, `wx`, `kino`, `admin`, `look` (1.17.0).
+
+Der Posen-Code `a = 7` (Sitzen) kommt seit 1.17.0 auch ohne `se` vor: im Friseurstuhl des Salons (`modules/net.js`, `salon.sitting()`); `r` ist dort 2 (alles außer Laden und Palast), der Empfänger nutzt Kinositze nur bei `r = 1` und lässt die Figur sonst an der Körperposition sitzen.
 
 ### 6.3 Sende-Takt (W8)
 
@@ -256,6 +263,8 @@ Pose `p`: bei Änderung (Position > 2 cm, yaw > 2, pitch > 4, `a`/`r`/`se` neu),
 | `kc` | `sid`, `v`, `o` (1 play, 2 pause, 3 seek), `p` (ms) | absoluter Zielzustand | 2/s |
 | `kb` | `sid`, `b` (0/1) | Puffern | 4/s |
 | `ki` | `c` | Admin-Kick | 1/5 s |
+| `lk` (1.17.0) | `l:int[4..48]` (Look-Code, Client: 26 Einträge) | beim Beitritt, bei „Übernehmen“/Platzwechsel; nie während der Vorschau | 1 je 2 s, Burst 3 |
+| `mc` (1.17.0) | `m:[1, no, since, rent, cine, stamps] \| null` (Länge 2..12) | beim Beitritt, bei Änderung des Ausweises (höchstens alle 5 s), sofort bei „Ausweis zeigen“ aus | 1 je 5 s, Burst 2 |
 | `ck` | `a` (Client-ms) | 5x beim Start (1 s Abstand), dann alle 5 min | 2/s |
 | `rn` | `tk` | alle 10 min | 1/min |
 | Text `ping` | – | alle 3 s | auto-response |
@@ -264,12 +273,12 @@ Pose `p`: bei Änderung (Position > 2 cm, yaw > 2, pitch > 4, `a`/`r`/`se` neu),
 
 | t | Felder |
 |---|---|
-| `wl` | `pv`, `c`, `k`, `s`, `ad`, `cap` (Schnittmenge), `cf:{pr,ph}`, `wx:{sd,l:1800}`, `peers[]`, `po:[[i,o,g,h]]`, `pr:[[i,x,y,z,yaw,tip,ax,az]]`, `ra:{c,g,tg}`, `kh` |
+| `wl` | `pv`, `c`, `k`, `s`, `ad`, `cap` (Schnittmenge), `cf:{pr,ph}`, `wx:{sd,l:1800}`, `peers[]`, `po:[[i,o,g,h]]`, `pr:[[i,x,y,z,yaw,tip,ax,az]]`, `ra:{c,g,tg}`, `kh`, `lk:{c:l}` und `mc:{c:m}` (1.17.0, nur mit ausgehandelter `look`, ohne den Empfänger selbst) |
 | Peer | `{c,k,n,f,j,ad?,q?,se?,h?}` (`ad` = Admin-Kennung, additiv; erlaubt „nicht kickbar“ ohne `er perm`) |
 | `b` | `s`, `p:[[c,x,y,z,yaw,pitch,a,r,d,se?]]` (`d` = ms vor `s` empfangen), `ev[]` |
 | `ev`-Typen in `b` | `j{Peer}`, `l{c,r}` (`r` u. a. `"kick"`), `pf{c,f,n,h}`, `e{c,e}`, `ps{c,l}`, `pn{c,i,it,q}`, `px{i}`, `po{i,o,g,h}` (o=0 frei), `ra{c,g,tg}`, `rs{c,g,q,tg}`, `kh{l}`, `cf{pr,ph}` |
 | `kh`-Eintrag (nur öffentliche Sitzungen) | `[sid, host, i, anzahl, st, m:[c…], p, at]` (Entscheidung: Positionsfelder; die letzten drei sind die Ergänzung aus §2 des Review, additiv) |
-| `x` (empfängerspezifisch) | `ev`: `m{c,x,s}` (auch an den Absender), `pu{c,d,s}`, `kx{sid,v,i,st,p,at,m[],lg[],w?}`, `er{c: bad|rate|stale|deny|perm|off|cap, t?}` |
+| `x` (empfängerspezifisch) | `ev`: `m{c,x,s}` (auch an den Absender), `pu{c,d,s}`, `kx{sid,v,i,st,p,at,m[],lg[],w?}`, `lk{c,l}`, `mc{c,m}` (1.17.0, nur an andere Peers mit `look`, nie an den Absender; Flush sofort), `er{c: bad|rate|stale|deny|perm|off|cap, t?}` |
 | `ck` | `a` (Echo), `s` (Server-ms) |
 | `bye` | `c`, `u?` |
 
@@ -344,7 +353,7 @@ Rechnung:
 - Ping: Auto-Response ohne Laufzeitkosten; ob er als eingehende Nachricht (20:1) zählt, ist laut Preisseite unklar. Schlimmstenfalls 1 200 Pings je Spielerstunde = **etwa 60 Requests** (gut +6 %); `ck` ist selten.
 - Reichweite: etwa 100 Spielerstunden/Tag; alle 16 Spieler dauernd in Bewegung (Worst Case: 16 x 8 Hz x 100 % Bewegung): etwa 23 000/h, etwa 4 h. 8 Hz ist deshalb die Obergrenze.
 - Laufzeit: ein DO mit 128 MB, höchstens 86 400 s x 0.125 GB = 10 800 GB-s/Tag (unter 13 000).
-- Rows written je Stunde: Alarme 60, jti etwa 7 je Spielerstunde, `quota` etwa 1 je 500 Frames (etwa 38/h je Spielerstunde), `hall` je Kino-Änderung, `rest` höchstens 720/h (nur bei Physik); Ziel höchstens etwa 1 000/h gegen 100 000/Tag.
+- Rows written je Stunde: Alarme 60, jti etwa 7 je Spielerstunde, `quota` etwa 1 je 500 Frames (etwa 38/h je Spielerstunde), `hall` je Kino-Änderung, `rest` höchstens 720/h (nur bei Physik), `lk:<c>` (1.17.0) je Beitritt ein bis zwei Puts (`lk` und `mc` schreiben denselben Schlüssel; je Nachrichtenverarbeitung zählt nur der letzte Stand) und je spätere Änderung ein weiterer, dazu ein Delete beim Schließen; Ziel höchstens etwa 1 000/h gegen 100 000/Tag.
 - Worker-Requests (eigenes Kontingent): Ticket, Preflight, Upgrade, `rn` etwa 12 bis 18 je Spielerstunde.
 - **Sparwächter** (Tageszähler nach UTC: `Frames/20 + Upgrades + Alarme`):
   - ab 60 % von `MP_DAILY_REQ`: `cf {pr:4, ph:5}`
@@ -353,11 +362,11 @@ Rechnung:
 
 ## 10. Datenschutz
 
-- Über die Leitung gehen nur `k`, Name, `c`, Posen, Flags und Item-IDs. Nie Titel, Cover-URLs, Ratings, `uid` oder Jellyfin-Token.
+- Über die Leitung gehen nur `k`, Name, `c`, Posen, Flags und Item-IDs. Nie Titel, Cover-URLs, Ratings, `uid` oder Jellyfin-Token. Seit 1.17.0 zusätzlich der Look-Code `lk` (reine Zahlen) und die Ausweisdaten `mc` (Nummer, Eintrittstag, Zähler, Stempelmaske) — nie der Name im Ausweis (der kommt wie immer nur über Peer-`n` und das Flag „Name zeigen“) und nie ein Kontoname.
 - Rechte-Filter beim Empfänger: Cover/Titel nur, wenn die ID im eigenen Katalog steckt; Mitschauen erst nach erfolgreichem eigenem `getItem`; sonst neutrale Hülle bzw. „Palast – ein Film“.
 - Vom Server erzwungen: ohne „Name zeigen“ geht `n=""` raus (Empfänger zeigt „Jemand“, `peerName(c)`); ohne „Film sichtbar“ gehen weder `h` noch `pn.it` noch das Kino-`i` raus (Sitzung privat, nicht in `kh`; der Schalter umfasst also auch die gehaltene Hülle, das gehört in den UI-Untertitel); ohne „Chat“ nimmt das DO keine Chat-Nachrichten an und liefert keine aus.
 - Chat wird nur durchgereicht, nie gespeichert; NFC, Steuer-/Bidi-Zeichen raus; Anzeige nur über `textContent`; Fenster zeigt 50 Einträge im Client. Namensschilder, Blasen und Chat-Fenster haben `pointer-events:none`.
-- Storage enthält nur `k`, Fristen, jti, Seed, flüchtige Kino-IDs und Ruhelagen.
+- Storage enthält nur `k`, Fristen, jti, Seed, flüchtige Kino-IDs und Ruhelagen. Das DO speichert nichts je Nutzer über die Verbindung hinaus: Der einzige Eintrag mit Nutzerbezug, `lk:<c>` (Look-Code und Ausweisdaten, 1.17.0), hängt an der Verbindungsnummer `c` (nicht an `k` oder `uid`), ist ein Spiegel des Clients und wird beim Schließen, beim Neuöffnen derselben `c` und im Alarm (verwaiste Verbindung) gelöscht. Ohne „Ausweis zeigen“ geht `mc: null` raus und überschreibt den gespeicherten Ausweis.
 - Logs: nur feste Fehlercodes (`console.error('mp: do-fetch')`), nie Token, Ticket, Header, Chat, Namen, IDs oder `k`. `observability` bleibt unverändert; ein geloggtes Ticket ist wegen 60 s und jti wertlos.
 - Stumm: pro `k` im Client (`mute[]`, höchstens 50, `^[0-9a-f]{12}$`); Chat von stummen `k` wird nicht angezeigt.
 
@@ -407,7 +416,7 @@ Fremde Provider werden nur mit Guard benutzt. Ohne `deps.mp` gibt es keinen Prov
 
 ## 12. Unter-Reducer-Schnittstelle (W6)
 
-`room.js` wird nach Welle a nie wieder angefasst. Jede Fähigkeit ist ein Modul `src/mp/{chat,phys,rich,kino}.js`; Welle a legt leere Stubs an (`handlers = {}`, `cap = null`). Dispatch: `HANDLERS = {...core, ...chat.handlers, ...phys.handlers, ...rich.handlers, ...kino.handlers}`.
+`room.js` wird nach Welle a nie wieder angefasst. Jede Fähigkeit ist ein Modul `src/mp/{chat,phys,rich,kino,look}.js` (`SUBS` in `room.js`); Welle a legt leere Stubs an (`handlers = {}`, `cap = null`). Dispatch: `HANDLERS = {...core, ...chat.handlers, ...phys.handlers, ...rich.handlers, ...kino.handlers, ...look.handlers}`. Das Modul `look.js` (1.17.0, §15) nutzt `put`/`del` für `lk:<c>`, `sendTo` für die Weitergabe und `welcome` für `wl.lk`/`wl.mc`; `nextDeadline` liefert `null`, der Alarm räumt nur verwaiste Schlüssel auf (`onAlarm`).
 
 ```js
 export default {
@@ -436,6 +445,7 @@ Golden-Dateien (je ein Besitzer, werden von Worker- und Client-Tests gelesen; di
 | `.../phys.json` | W-C | `pc ps pn px pu`, Besitz, Haltezeit |
 | `.../rich.json` | W-C2 | `rc rs rr`, Autorität |
 | `.../kino.json` | W-K | `ks kj kl kc kb`, `kh.m`/`p`/`at`, Ratengrenzen `ks/kj/kl` |
+| `.../look.json` (1.17.0) | Worker | `lk mc` (roh → normalisiert/verworfen, Fähigkeit `look`) und die Ratengrenzen `lk`/`mc` |
 | `tests/fixtures/mp-frame.json` | Client | Netzrahmen, `encVec`, `wxRoll` |
 
 Kompatibilität:
@@ -447,8 +457,8 @@ Kompatibilität:
 
 Tests (Worker: Node-vitest, keine neue Dependency, kein Netzwerk; die bestehenden Testdateien bleiben unverändert grün):
 
-- `mp-ticket` (Signieren/Prüfen, Manipulation, Ablauf, stabiles `k`, Namensbereinigung), `mp-auth`, `mp-route` (`/mp/ticket`: 401/200/Rückfall ohne Admin/429/503; `/mp`: 426, 403, 401, Weiterleitung an gestubbtes `WORLD`: `X-Lfx-Claims` gesetzt, `x-lfx-*` entfernt), `mp-proto` (tabellengetrieben aus den Golden-Dateien), `mp-room` (Fake-Uhr: `wl`, `j`/`l`, Flush-Regeln aus §7.3, Privatsphäre, Limit 16/4 je `k`, Kick, Renew-Frist, Sparwächter, Kaltstart, Unter-Reducer-Hooks), `mp-world` (Kaltstart, jti), `mp-chat/phys/rich/kino`.
-- Client: `net-frame` (Bereichstreue), `net-proto` (eingefrorene Codetabellen, `ANIM`-/`ANIMS`-Mapping), `net-transport` (Handshake, Close-Tabelle, 6 Versuche/10 min, Ping-Timeout, `rn`, Sende-Takt ≤ 8 Frames/s, verborgen 60 s, Kino-Ausnahme), `net-peers`, `net-module`, `desktop-actions` (Enter/T nur bei `play`), `store-mp`, `store-home`, `store-prefs`.
+- `mp-ticket` (Signieren/Prüfen, Manipulation, Ablauf, stabiles `k`, Namensbereinigung), `mp-auth`, `mp-route` (`/mp/ticket`: 401/200/Rückfall ohne Admin/429/503; `/mp`: 426, 403, 401, Weiterleitung an gestubbtes `WORLD`: `X-Lfx-Claims` gesetzt, `x-lfx-*` entfernt), `mp-proto` (tabellengetrieben aus den Golden-Dateien), `mp-room` (Fake-Uhr: `wl`, `j`/`l`, Flush-Regeln aus §7.3, Privatsphäre, Limit 16/4 je `k`, Kick, Renew-Frist, Sparwächter, Kaltstart, Unter-Reducer-Hooks), `mp-world` (Kaltstart, jti), `mp-chat/phys/rich/kino/look` (`mp-look`: Golden `c2s` und Limits, Weitergabe nur an Peers mit `look`, `mc null`, `er cap` ohne Fähigkeit, Rate, Welcome, Storage und Aufräumen, Kaltstart).
+- Client: `net-frame` (Bereichstreue), `net-proto` (eingefrorene Codetabellen, `ANIM`-/`ANIMS`-Mapping), `net-transport` (Handshake, Close-Tabelle, 6 Versuche/10 min, Ping-Timeout, `rn`, Sende-Takt ≤ 8 Frames/s, verborgen 60 s, Kino-Ausnahme), `net-peers`, `net-look` (1.17.0), `net-module`, `desktop-actions` (Enter/T nur bei `play`), `store-mp`, `store-home`, `store-prefs`.
 - Harness `?mp=fake&bots=N` (`build/mp-dev/`, Reducer `charts-worker/src/mp/room.js` direkt; Transport per `opts.mpTransport` nur im Debug; nichts davon im Produktionsbundle). Messungen bei `low`: Draw-Calls ≤ 140 an Tür, im Laden und im Saal (mit 5 bzw. 8 Bots), Bots ≤ 8 Frames/s.
 - Still-aus-Matrix: ohne Charts-URL, 404 (nur vor dem Deploy gegen den echten Worker, danach per gestubbtem Fetch), 503, 429, WS-Abbruch, Kontingent (`cf` gestubbt). Live braucht zusätzlich ein zweites Konto ohne Admin-Rechte mit eingeschränkter Bibliothek (Rechte-Filter, Stumm, Kick).
 
@@ -463,3 +473,46 @@ Code-Änderungen, die dieser Vertrag voraussetzt (bestehendes Verhalten sonst un
 - **Richard:** `brawl-fsm.applyRemote` übernimmt `lastHit`, `since`, `until` aus den Restzeiten (§6.2); `getNetState` liefert `r` für alle Zustände ≠ `calm`; `applyRemote` bekommt ein Flag „nicht ich“ für das Hausverbot.
 - **Body:** Option `netDelay` (Standard 100 ms); Empfänger leitet die Geschwindigkeit aus zwei Posen ab; `yaw` vor dem Senden auf (-π, π] wrappen.
 - **Hülle:** `deps.mp`, `prefs.js` (`mp`-Zweig), Build-Wächter (§11.1).
+
+## 15. Fähigkeit `look` (1.17.0): eigene Figur und Ausweis der Mitspieler
+
+Additiv zu `lfx-mp.1` (kein neues Major: neue `cap`, neue Nachrichten, neue optionale `wl`-Felder, Pose-Codes 9..15). Server: `charts-worker/src/mp/look.js` (Unter-Reducer, §12), Client: `store3d/net/look.js` (Senden) und `net/peers.js` (Empfangen). Bedeutung der Zahlen im Look-Code (26 Felder, Farbcode, Freischalt-Codes): `docs/store3d.md` („Figur, Ausweis, Salon (1.17.0)“ → „Look v2“); der Worker prüft nur Form und Wertebereich, nicht die Bedeutung.
+
+**Nachrichten (Client → Server, nur mit ausgehandelter `look`, sonst `er cap`):**
+
+| t | Feld | Validierung (Server, `look.js` `V`) |
+|---|---|---|
+| `lk` | `l: int[4..48]` | Array von 4 bis 48 Ganzzahlen; `l[0]` (Version) in 1..15, alle weiteren 0..0x1FFFFFF (`MAX_C`); sonst verworfen (kein `er`, kein Close). Der Client sendet immer 26 Einträge mit `l[0] = 2` |
+| `mc` | `m: [1, no, since, rent, cine, stamps] \| null` | `null` = „kein Ausweis zeigen“; sonst 2..12 Ganzzahlen, je 0..2^31−1. `no` = Ausweisnummer als Zahl, `since` = Tagesnummer (`floor(ms / 86400000)`, UTC), `rent`/`cine` = Summen über alle Geräte, `stamps` = Bitmaske der Entdeckungen (Bit i = Index i im Katalog, höchstens 31 Bit). Die Stufe (Bronze/Silber/Gold) berechnet der Empfänger selbst aus den Zählern und den gesetzten Bits |
+
+Der Name steht nie im `mc`; er kommt wie immer über Peer-`n` und das Flag „Name zeigen“. Der Client ist beim Empfang strenger als der Server: Ein `l` mit anderer Länge als 26 oder Version ≠ 2 wird als Standardfigur gezeichnet (ein Code einer künftigen Version zeigt diesen Clients also eine Standardfigur); ein `m` ohne gültiges erstes Feld (< 1) oder mit Nicht-Ganzzahlen gilt als „kein Ausweis“. Ungültige Einzelfelder im Look werden je Feld zum Standardwert.
+
+**Server (Unter-Reducer `look.js`):**
+- Zustand je Verbindung: `st.store['lk:<c>'] = { l, m }` (Speicher und DO-Storage, siehe §4). `lk` und `mc` setzen je nur ihr Feld.
+- Weitergabe: `sendTo` an alle anderen lebenden Peers mit Fähigkeit `look` (nie an den Absender, nie an Peers ohne `look`), als Ereignis `{t:'lk', c, l}` bzw. `{t:'mc', c, m}` im empfängerspezifischen Frame `x` (§7.2), sofortiger Flush.
+- `welcome`: Für Verbindungen mit `look` liefert `wl` die Felder `lk: { <c>: l }` und `mc: { <c>: m }` aller anderen lebenden Verbindungen (nur vorhandene Einträge; `mc: null` erscheint dort nicht). Verbindungen ohne `look` bekommen beide Felder nicht.
+- Ratengrenzen (§5): `lk` 1 je 2 s mit Burst 3, `mc` 1 je 5 s mit Burst 2; Überschreitung wird still verworfen. Die Client-Takte (unten) liegen darunter.
+- Aufräumen: `onOpen` löscht einen Altlast-Eintrag gleicher `c` (Kaltstart-Rest), `onClose` den der Verbindung, `onAlarm` verwaiste Schlüssel (Verbindung fehlt oder nicht live). `storeKeys: ['lk:']` lässt den Kaltstart die Einträge laden. Es gibt keine Frist (`nextDeadline` = `null`).
+- Golden-Vektoren: `charts-worker/test/fixtures/mp-golden/look.json` (§13), von Worker- und Client-Tests gelesen.
+
+**Pose-Code:** `a` ist auf der Leitung 0..15 (§6.2); 9..15 sind die Naht für 1.18, ältere Clients zeigen unbekannte Codes als `idle` (`netAnimName`). 1.17.0 benutzt keinen davon; neu ist nur `a = 7` ohne `se` im Friseurstuhl.
+
+**Sendezeitpunkte (Client, `net/look.js`):**
+- Nur nach einem `wl` mit der Fähigkeit `look`; ein alter Worker bekommt nie `lk`/`mc`. Jeder (Wieder-)Beitritt sendet beides neu (die Verbindungsnummer `c` ist neu, der alte Eintrag ist weg).
+- `lk` beim Beitritt, danach nach „Übernehmen“ im Editor, Platzwechsel und Gate-Abschluss (`avatar.onChange`), höchstens alle 2 s, gleicher Code nie doppelt. **Nie während der Live-Vorschau** (`avatar.onPreview` meldet sie): Der Client hält zurück, bis die Vorschau endet. Ohne Figur (Gate offen, kein Profil) wird nichts gesendet.
+- `mc` beim Beitritt und bei jeder Änderung des Ausweises (Leihen, Kino, Stempel ändern sich ohne Ereignis: der Client vergleicht alle 5 s), höchstens alle 5 s, gleicher Inhalt nie doppelt. Ohne Ausweisnummer (noch kein Gate abgeschlossen) wird `null` gesendet.
+- **„Ausweis zeigen“** (Pref `mpCard`, über `deps.mp.prefs().card`, Standard an, nur ein ausdrückliches „0“ schaltet ab; Schalter im Panel „Mehrspieler …“): aus ⇒ der Client sendet `mc: null`, der Server leitet `null` weiter und löscht damit den gespeicherten Ausweis; die Mitspieler sehen weder Ausweis noch die Interaktion „Ausweis ansehen“. Das Abschalten geht ohne Wartezeit raus (Datenschutz), Änderungen in der Gegenrichtung entprellt. Der Look (`lk`) hängt nicht an diesem Schalter.
+
+**Empfang (Client):** Die Figur eines Peers bekommt den Look per `setLook` (Geometrie-Cache, Vertrag in `docs/store3d.md`); eine neue Fremdfigur wartet höchstens 0,6 s auf `lk`, wenn der Server `look` kann, bevor die Seed-Figur gebaut wird. Peers ohne `lk` bleiben Seed-Figuren (deterministisch aus `k`).
+
+**Kompatibilität alt ↔ neu:**
+
+| Client | Worker | Ergebnis |
+|---|---|---|
+| 1.17 | 1.17 | Eigene Figuren und Ausweise sichtbar |
+| 1.16 | 1.17 | Der alte Client bietet `look` im `hi` nicht an, bekommt weder `lk`/`mc` noch `wl.lk`/`wl.mc` und sieht Seed-Figuren; die 1.17-Clients sehen ihn ebenfalls als Seed-Figur (er sendet kein `lk`) |
+| 1.17 | 1.16 | `wl.cap` enthält `look` nicht: der Client sendet nichts, alle Fremden sind Seed-Figuren; die eigene Figur sieht man lokal trotzdem |
+
+Pose-Codes `a` 9..15 (für 1.18 reserviert): ältere Clients zeigen `idle`; ein 1.16-Worker klemmt `a > 8` zu 0 (1.17 sendet sie nicht).
+
+Reihenfolge der Auslieferung: **erst den Worker deployen, dann den Client veröffentlichen** (ein 1.17-Client gegen einen 1.16-Worker verliert nur die Figuren der anderen). Notbremse wie bisher (§13); die Fähigkeit `look` lässt sich nicht einzeln abschalten (`ANNOUNCE` gibt es nur für `kino`).
