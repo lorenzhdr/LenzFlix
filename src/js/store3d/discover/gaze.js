@@ -42,7 +42,7 @@ export function createGaze({ range = 4, dwell = 1.5, maxAngle = (32 * Math.PI) /
   };
 }
 
-/** Regennacht auf dem Dach: Bereich „roof“, Regen, Stunde 20 bis 5 Uhr (>= 20 oder < 5). */
+/** Schmuddelnacht auf dem Dach: Bereich „roof“, Regen oder Schnee (raining = nass), Stunde 20 bis 5 Uhr (>= 20 oder < 5). */
 export function isRoofRainNight({ area, raining, hour }) {
   if (area !== 'roof' || !raining || !Number.isFinite(hour)) return false;
   return hour >= 20 || hour < 5;

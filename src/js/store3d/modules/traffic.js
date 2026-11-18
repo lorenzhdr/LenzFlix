@@ -193,7 +193,7 @@ export default {
         const pose = ctx.player.getPose();
         px = pose.x; pz = pose.z; py = Number.isFinite(pose.y) ? pose.y : 0; havePose = true;
         const sig = ctx.use('city') && ctx.use('city').signals ? ctx.use('city').signals() : signalAt(Date.now() / 1000);
-        setCarLightsOn((weather().tod || 'day') !== 'day' || !!weather().raining);
+        setCarLightsOn((weather().tod || 'day') !== 'day' || !!(weather().wet !== undefined ? weather().wet : weather().raining) || weather().fog > 0.2);
         const gs = groups();
         const streetVisible = !gs || !gs.street || gs.street.visible || xrOn();
         const npc = ctx.use('npc');

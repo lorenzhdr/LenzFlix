@@ -55,14 +55,38 @@ const SKY = {
   night: { sky: [0x04081f, 0x0b1538, 0x16264f].map(hexRgb), shade: [0.14, 0.16, 0.3], exposure: 0.93, hemi: 0.9, cool: 0.35, stars: 1 },
 };
 
-/** Paletten für Tageszeit + Regen (Regen: Himmel grauer und dunkler, Außen etwas dunkler). */
-export function skyPalette(tod, rain) {
+/**
+ * Paletten für Tageszeit + Regen (Regen: Himmel grauer und dunkler, Außen etwas dunkler). Optionaler dritter Parameter (1.19.0):
+ * { overcast: bool, fog: 0..1, snow: bool } für bedeckt/Nebel/Schnee ohne Regen (Himmel entsättigt, Nebel hell und flach).
+ * Ohne ihn (oder bei lauter falschen Werten) bleibt das Ergebnis unverändert.
+ */
+export function skyPalette(tod, rain, ex) {
   const b = SKY[tod] || SKY.day;
-  if (!rain) return { ...b, rain: false };
-  const grey = (c, k, g) => {
+  const grey = (c, k, g, s = 0.65) => {
     const l = (c[0] + c[1] + c[2]) / 3;
-    return [lerp(c[0], l, 0.65) * g, lerp(c[1], l, 0.65) * g, lerp(c[2], l, 0.65) * g + k];
+    return [lerp(c[0], l, s) * g, lerp(c[1], l, s) * g, lerp(c[2], l, s) * g + k];
   };
+  if (!rain) {
+    const fog = ex && Number.isFinite(ex.fog) ? clamp(ex.fog, 0, 1) : 0;
+    const dull = !!ex && (ex.overcast || ex.snow || fog > 0);
+    if (!dull) return { ...b, rain: false };
+    const s = clamp(0.35 + (ex.snow ? 0.15 : 0) + fog * 0.5, 0, 0.95);
+    const g = (ex.snow ? 0.9 : 0.88) - fog * 0.05;
+    const sky = b.sky.map((c) => grey(c, 0.005, g, s));
+    if (fog > 0) {
+      const hor = sky[2]; // Nebel: Zenit und Mitte nähern sich dem Horizont (flacher, milchiger Himmel)
+      for (let i = 0; i < 2; i++) sky[i] = sky[i].map((v, k) => lerp(v, hor[k], fog * (i ? 0.6 : 0.8)));
+    }
+    return {
+      sky,
+      shade: b.shade.map((v) => v * (ex.snow ? 1 : 0.93)),
+      exposure: b.exposure,
+      hemi: b.hemi * 0.98,
+      cool: Math.min(1, b.cool + 0.04),
+      stars: 0,
+      rain: false,
+    };
+  }
   return {
     sky: b.sky.map((c) => grey(c, 0.01, 0.78)),
     shade: b.shade.map((v) => v * 0.85),

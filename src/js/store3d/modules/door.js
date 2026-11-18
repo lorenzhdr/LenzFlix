@@ -39,7 +39,7 @@ export default {
     const right = ctx.scene.getObjectByName('lfx-door-right');
     const leafMats = [left, right].filter(Boolean).map((g) => g.getObjectByName('lfx-door-frame')).filter(Boolean).map((o) => o.material);
     for (const mat of leafMats) out.tinted.push({ mat, base: [1, 1, 1] });
-    out.setPalette(out.tod, out.rain);
+    out.setPalette(out.tod, out.rain, out.wx);
 
     let amount = 0; // Automatik: 0 zu .. 1 offen (angezeigt wird ease(amount))
     let forced = null; // override(v)

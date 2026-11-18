@@ -10,6 +10,7 @@ import { quad, merge, rng } from '../util/geo.js';
 import { makeCanvas, toTexture } from '../world/textures.js';
 import { getOutdoor } from './outdoor.js';
 import { timeOfDay, rainDecision, skyPalette, prefersReducedMotion } from './m4-util.js';
+import { resolveWeather } from '../weather/state.js';
 import { areaAt, OUTDOOR_AREAS } from '../world/city.js';
 
 const COOL = new Color(0.72, 0.82, 1.08);
@@ -87,11 +88,29 @@ export default {
     let tod = timeOfDay(hourOpt);
     const seed = (Math.random() * 4294967296) >>> 0;
     const localRaining = rainDecision(seed, tod, rainForce);
-    const raining = localRaining;
+    // --- Quellen (1.19.0): Debug (Harness ?wx/?rain) > echtes Wetter (deps.weather) > Mehrspieler-Seed > lokaler Zufall ---
+    const dev = (ctx.opts && ctx.opts.dev) || null;
+    const num = (v) => (v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined);
+    const debugWx = (() => {
+      if (dev && (dev.wx || num(dev.temp) !== undefined || num(dev.cover) !== undefined || num(dev.sd) !== undefined)) {
+        return { kind: dev.wx || undefined, i: num(dev.wxi), cover: num(dev.cover), sd: num(dev.sd), fog: num(dev.fog), temp: num(dev.temp) };
+      }
+      if (rainForce !== undefined) return { kind: rainForce ? 'rain' : 'clear', legacy: true };
+      return null;
+    })();
+    const getReal = ctx.deps && typeof ctx.deps.weather === 'function' && !debugWx ? ctx.deps.weather : null;
+    let real = null;
+    let mp = null;
+    let pending = !!getReal; // bis zur Antwort (höchstens 1,5 s) kein Zufallsregen, damit nichts aufblitzt
+    const state0 = () => resolveWeather({ debug: debugWx, real, mp, local: pending ? false : localRaining });
+    const st0 = state0();
+    const raining = st0.raining;
+    const precipOf = (s) => (s.i > 0 ? { kind: s.snowing ? 'snow' : 'rain', i: s.i } : { kind: null, i: 0 });
     const weather = {
       tod, raining, hour: hourOpt,
+      kind: st0.kind, i: st0.i, snowing: st0.snowing, wet: st0.wet, cover: st0.cover, fog: st0.fog, storm: st0.storm, overcast: st0.overcast, temp: st0.temp, real: st0.real,
       /** Niederschlag für das Modul precip: { kind: 'rain'|'snow'|null, i: 0..1 }. */
-      precip: raining ? { kind: 'rain', i: 0.6 } : { kind: null, i: 0 },
+      precip: precipOf(st0),
       /** Laternen/Neon an (nicht am Tag). */
       get lampsOn() { return this.tod !== 'day'; },
       /** Geschützt vor Regen: im Laden, im Palast, unter dem Vordach. */
@@ -103,14 +122,43 @@ export default {
       },
     };
     /** Mehrspieler (net/weather.js): Regen für alle gleich (true/false), null = lokale Entscheidung wie 1.15. Der Debug-Wert rain hat Vorrang. */
+    /** Seit 1.19.0 setzt das nur die Mehrspieler-Ebene; bei echtem Wetter (oder Debug) wird der Wert ignoriert. */
     weather.setRaining = (on) => {
-      if (rainForce !== undefined) return;
-      const want = on === true || on === false ? on : localRaining;
-      if (want === weather.raining) return;
-      weather.raining = want;
-      weather.precip = want ? { kind: 'rain', i: 0.6 } : { kind: null, i: 0 };
-      if (ready) { apply(); syncVisible(); emit(); }
+      mp = on === true || on === false ? on : null;
+      recompute();
     };
+    let lastKey = '';
+    const keyOf = (s) => [s.kind, s.i, s.cover, s.fog, s.temp, s.real ? 1 : 0].join('|');
+    lastKey = keyOf(st0);
+    function recompute() {
+      const s = state0();
+      const k = keyOf(s);
+      if (k === lastKey) return;
+      lastKey = k;
+      Object.assign(weather, {
+        kind: s.kind, i: s.i, raining: s.raining, snowing: s.snowing, wet: s.wet, cover: s.cover, fog: s.fog, storm: s.storm, overcast: s.overcast, temp: s.temp, real: s.real,
+        precip: precipOf(s),
+      });
+      if (ready) { apply(); syncVisible(); emit(); }
+    }
+    // --- echtes Wetter holen: beim Start (höchstens 1,5 s Wartezeit), danach alle 15 min aktiver Zeit und beim Fortsetzen (wenn älter) ---
+    const REFRESH_S = 900;
+    let fetchedAt = 0;
+    let activeS = 0;
+    let gone = false;
+    let waitTimer = null;
+    function fetchReal() {
+      if (!getReal) return;
+      fetchedAt = Date.now();
+      activeS = 0;
+      let p;
+      try { p = getReal(); } catch { p = null; }
+      Promise.resolve(p).then((v) => { if (!gone) { real = v && typeof v === 'object' ? v : null; pending = false; recompute(); } }, () => { if (!gone) { pending = false; recompute(); } });
+    }
+    if (getReal) {
+      waitTimer = setTimeout(() => { waitTimer = null; if (pending) { pending = false; recompute(); } }, 1500);
+      fetchReal();
+    }
     const listeners = new Set();
     /** Meldet Änderungen des Wetters (raining, später weitere Felder); Rückgabe = Abmeldefunktion. */
     weather.onChange = (fn) => {
@@ -122,8 +170,16 @@ export default {
       for (const fn of [...listeners]) { try { fn(weather); } catch (e) { console.warn('[store3d] weather.onChange', e); } }
     }
     let ready = false;
+    let flashK = 0;
+    let curPal = null;
+    /** Blitz (0..1): Exposition und Himmel kurz heller (modules/weatherfx.js, nur ohne reduzierte Bewegung). */
+    weather.flash = (k) => {
+      flashK = k > 0 ? Math.min(1, k) : 0;
+      if (curPal) ctx.renderer.toneMappingExposure = baseExposure * curPal.exposure * (1 + flashK * 0.9);
+      out.setFlash(flashK);
+    };
     ctx.provide('weather', weather);
-    out.setPalette(tod, raining);
+    out.setPalette(tod, raining, weather);
 
     // --- Innenstimmung: vorhandene Lichter sanft nachtönen (Basis merken, bei dispose zurücksetzen) ---
     const lights = [];
@@ -140,11 +196,12 @@ export default {
         if (l.g) l.o.groundColor.copy(l.g).lerp(tmp.copy(COOL).multiply(l.g), cool);
       }
       for (const d of dirs) { d.o.intensity = d.i * pal.hemi * 0.95; d.o.color.copy(d.c).lerp(tmp.copy(COOL).multiply(d.c), cool); }
-      ctx.renderer.toneMappingExposure = baseExposure * pal.exposure;
+      curPal = pal;
+      ctx.renderer.toneMappingExposure = baseExposure * pal.exposure * (1 + flashK * 0.9);
     }
     function apply() {
-      const pal = skyPalette(tod, weather.raining);
-      out.setPalette(tod, weather.raining);
+      const pal = skyPalette(tod, weather.raining, { overcast: weather.overcast, fog: weather.fog, snow: weather.snowing });
+      out.setPalette(tod, weather.raining, weather);
       applyMood(pal);
     }
     apply();
@@ -204,6 +261,7 @@ uniform float uTime;`)
     return {
       update(dt, t) {
         out.follow(cam);
+        if (getReal && !suspended) { activeS += dt; if (activeS >= REFRESH_S) fetchReal(); }
         if (t - checkT > 0.4) {
           checkT = t;
           const was = near;
@@ -218,10 +276,13 @@ uniform float uTime;`)
       onResume() {
         suspended = false;
         const now = timeOfDay(hourOpt);
-        if (now !== tod) { tod = now; weather.tod = now; apply(); }
+        if (now !== tod) { tod = now; weather.tod = now; apply(); emit(); }
+        if (getReal && Date.now() - fetchedAt > REFRESH_S * 1000) fetchReal();
         syncVisible();
       },
       dispose() {
+        gone = true;
+        if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
         listeners.clear();
         const pr = ctx.use('precip');
         if (pr && typeof pr.setWeather === 'function') pr.setWeather(null);

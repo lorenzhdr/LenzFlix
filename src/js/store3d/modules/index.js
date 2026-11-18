@@ -35,6 +35,8 @@ import door from './door.js';
 import intro from './intro.js';
 import precip from './precip.js';
 import daytime from './daytime.js';
+import weatherfx from './weatherfx.js';
+import ultraWet from './ultra-wet.js';
 // --- Welle 2 physics: imports ---
 import props from './props.js';
 import throwModule from './throw.js';
@@ -73,6 +75,8 @@ export const MODULES = [
   intro,
   precip, // vor daytime: liefert den Provider 'precip'
   daytime,
+  weatherfx, // 1.19.0: Blitz/Donner, Thermometer, Atem, Winterkleidung (liest den Provider 'weather')
+  ultraWet, // 1.19.0: Ultra-Detail wet (nasse Straße), braucht die Straßengruppe von city
   // --- Welle 2 physics (props: Provider 'physics' vor allen Nutzern) ---
   props,
   throwModule,

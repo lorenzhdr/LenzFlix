@@ -381,6 +381,16 @@ export default {
       play,
       /** Laser-Summen als Schleife an/aus (1.18.0). */
       laser(on) { laserLoop(!!on); },
+      /** Donner (1.19.0): gefiltertes Rauschen, `delay` s nach jetzt (0,5 … 4), Lautstärke gain 0..1 (nach Abstand). Nur bei eingeschaltetem Ton; sonst still. */
+      thunder(delay, gain = 1) {
+        if (!live() || !noiseBuf) return false;
+        const g = Math.min(1, Math.max(0.05, gain));
+        const t = ac.currentTime + Math.min(6, Math.max(0, delay || 0));
+        noise(t, 0.35, { type: 'bandpass', freq: 700, q: 0.6, gain: 0.06 * g });
+        noise(t + 0.02, 2.4 + g, { type: 'lowpass', freq: 190, q: 0.7, gain: 0.3 * g });
+        noise(t + 0.6, 1.6, { type: 'lowpass', freq: 120, q: 0.7, gain: 0.18 * g });
+        return true;
+      },
       /** Audio freischalten (Nutzergeste, z. B. Klick auf „In VR betreten“). */
       unlock() { unlock(); },
       /** Ambiente/Effekte dämpfen (z. B. beim Fernsehen auf der Couch). */

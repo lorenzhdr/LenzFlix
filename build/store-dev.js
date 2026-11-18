@@ -1,7 +1,9 @@
 // Dev-Harness der VIDEOTHEK LENZ: erzeugt einen Fake-Katalog (analog 674 Filme + 157 Serien) und ruft create() des
 // 3D-Bundles ohne Jellyfin auf. Keine Netzwerkzugriffe: Cover sind per Canvas generierte data-URLs.
 // Parameter (Stadt, 1.15.0): ?spawn=shop|street|palast|yard|roof|kiosk|alley|salon (Startpunkt), ?npc=0 / ?cars=0 (Passanten/Autos aus,
-// für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0. Debug: __lfxStore.spawns() / area() / city().
+// für Welle 2: ctx.opts.devFlags), ?hour=22 (Tageszeit), ?rain=1|0.
+// Wetter (1.19.0, Lesen: modules/daytime.js über opts.dev): ?wx=clear|cloudy|fog|drizzle|rain|heavy|snow|storm (Debug-Wetter, Vorrang vor allem), ?wxi=0..1 (Stärke/Nebel), ?cover=0..1 oder ?sd=<m> (liegender Schnee),
+//   ?temp=<°C> (Thermometer, Atem bei <= 0 und high/ultra, Winterkleidung bei <= 3), ?fog=0..1; ?realwx=fake|404|slow (Fake-deps.weather, Werte ?fk ?fi ?fsd ?ft ?ffog); ?rain=1 bleibt wie bisher. Debug: __lfxStore.spawns() / area() / city().
 // Mehrspieler (1.16.0, build/mp-dev/): ?mp=fake&bots=N  Fake-Welt auf dem echten Reducer (deps.mp = fake.mp, opts.mpTransport = fake.socketFactory), N Bots (Straße, Laden, Tür, Palast-Saal, Foyer);
 //   Still-aus-Modi: ?mp=off (kein deps.mp), ?mp=nourl|404|503|401|drop (deps.mp vorhanden, Ticket scheitert bzw. die Verbindung bricht ab); ?mplat=ms (Latenz, Standard 30).
 //   Zwei-Seiten-Test (Welle 3/4): ?mp=relay&relay=<port>&name=<N>[&admin=1]  echtes WebSocket zu build/mp-dev/relay.mjs (Node, echter Reducer, kein Cloudflare); deps.mp.ticket() liefert das Dev-Ticket 'dev.<N>.<0|1>'.
@@ -631,6 +633,14 @@
     if (!location.hash) history.replaceState(null, '', location.pathname + location.search + '#/home');
   }
   window.__devCatalog = catalog;
+  // Echtes Wetter (1.19.0): ?realwx=fake (Fake-deps.weather; Werte ?fk=<Art> ?fi=<0..1> ?fsd=<m> ?ft=<°C> ?ffog=<0..1>) | 404 (liefert null) | slow (Antwort nach 4 s).
+  var rwx = q.get('realwx');
+  if (rwx) {
+    deps.weather = function () {
+      var v = rwx === '404' ? null : { k: q.get('fk') || 'rain', i: Number(q.get('fi') || 0.6), sd: Number(q.get('fsd') || 0), fog: Number(q.get('ffog') || 0), t: Number(q.get('ft') || 4), day: 1, ts: Date.now(), stale: 0 };
+      return rwx === 'slow' ? new Promise(function (res) { setTimeout(function () { res(v); }, 4000); }) : Promise.resolve(v);
+    };
+  }
   window.__devDeps = deps;
   window.__devFake = function () { return fake; };
 

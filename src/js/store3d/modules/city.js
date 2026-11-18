@@ -41,6 +41,17 @@ export function fogRange(preset, layout) {
   return { near, far };
 }
 
+/**
+ * Nebelbereich bei Wetter-Nebel (fog 0..1, 1.19.0): draußen near 20 → 6 m, far 58 → 22 m (nie weiter als der Normalbereich `base`),
+ * drinnen (Laden, Palast, Salon) und ohne Nebel unverändert.
+ */
+export function fogTarget(base, fog, indoor) {
+  const f = Number.isFinite(fog) ? Math.min(1, Math.max(0, fog)) : 0;
+  if (indoor || f <= 0) return { near: base.near, far: base.far };
+  return { near: Math.min(base.near, 20 - 14 * f), far: Math.min(base.far, 58 - 36 * f) };
+}
+const INDOOR_AREAS = new Set(['shop', 'palastHall', 'palastFoyer', 'salon']);
+
 export default {
   name: 'city',
   init(ctx) {
@@ -55,11 +66,11 @@ export default {
     }
 
     // --- Nebel (dauerhaft: kein Umschalten, das Shader neu kompiliert) ---
-    const fr = fogRange(presetFor(ctx.quality(), ctx.isPhone), L);
+    let fr = fogRange(presetFor(ctx.quality(), ctx.isPhone), L);
     const fog = new Fog(0x8cc4f2, fr.near, fr.far);
     ctx.scene.fog = fog;
     out.fog = fog;
-    out.setPalette(out.tod, out.rain);
+    out.setPalette(out.tod, out.rain, out.wx);
 
     // --- Bereich und Sichtbarkeit ---
     const listeners = [];
@@ -171,6 +182,14 @@ export default {
           if (s2 !== sees) { sees = s2; applyVisibility(); }
         }
         if (acc >= 0.15) { acc = 0; refresh(); }
+        // Wetter-Nebel: nur Fog-Parameter, weich in ~1 s (kein Neukompilieren)
+        const wx = ctx.use('weather');
+        const tg = fogTarget(fr, wx && wx.fog, INDOOR_AREAS.has(area));
+        if (Math.abs(tg.near - fog.near) > 0.02 || Math.abs(tg.far - fog.far) > 0.02) {
+          const k = 1 - Math.exp(-Math.min(dt, 0.25) * 3.5);
+          fog.near += (tg.near - fog.near) * k;
+          fog.far += (tg.far - fog.far) * k;
+        }
         if (cm) cm.update(dt);
         sigAcc += dt;
         if (cm && sigAcc >= 0.25) { sigAcc = 0; cm.setSignals(signalAt(Date.now() / 1000)); }
@@ -178,9 +197,9 @@ export default {
       onQuality(lv) {
         level = lv;
         cullShelves();
-        const r = fogRange(presetFor(lv, ctx.isPhone), L);
-        fog.near = r.near;
-        fog.far = r.far;
+        fr = fogRange(presetFor(lv, ctx.isPhone), L);
+        fog.near = fr.near;
+        fog.far = fr.far;
       },
       dispose() {
         if (ctx.scene.fog === fog) ctx.scene.fog = null;

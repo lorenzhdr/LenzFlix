@@ -282,6 +282,8 @@ export default {
       const w = weather();
       let cat = greetingCategory(timeOfDay(h), late);
       if (!late && w && w.raining && rand() < 0.4) cat = 'rain';
+      else if (!late && w && w.snowing && rand() < 0.5) cat = 'snow'; // 1.19.0: Schnee und Frost aus dem echten Wetter
+      else if (!late && w && w.real && Number.isFinite(w.temp) && w.temp <= -2 && rand() < 0.3) cat = 'cold';
       const bw = ctx.use('brawl');
       const grudge = !!(bw && bw.state() === 'grudge');
       if (grudge) cat = 'grudgeGreet';
